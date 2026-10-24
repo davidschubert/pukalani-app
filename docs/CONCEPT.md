@@ -104,7 +104,7 @@ sie ist eine Momentaufnahme (Stand 08/2026) und veraltet zwangsläufig.
 |---|---|---|
 | Nuxt | ^4.5.1 | Framework (Composition API, SSR) |
 | Nuxt UI | ^4.10.0 | UI-Komponentenbibliothek (inkl. `UAuthForm`, `UEditor`) |
-| Appwrite (self-hosted) | 2.6.1 dev/CI (seit 2026-10-23), prod noch 2.0.0 — MariaDB | Backend: Auth, TablesDB, Storage, Realtime, Presences |
+| Appwrite (self-hosted) | 2.6.1 (dev/CI seit 2026-10-23, prod seit 2026-10-24) — MariaDB | Backend: Auth, TablesDB, Storage, Realtime, Presences |
 | Pinia | ^4.0.2 (`@pinia/nuxt` ^1.0.1) | State Management — die beiden sind fest gekoppelt, nur gemeinsam bumpen |
 | node-appwrite | ^26.2.0 | **Server SDK** — Auth + TablesDB via Server Routes |
 | appwrite (Web SDK) | ^26.2.0 | **Nur Realtime** im Browser |

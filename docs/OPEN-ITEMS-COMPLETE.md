@@ -72,6 +72,41 @@ war die Lücke über `X-Forwarded-Host`: diesen Header prüft nginx NICHT, und
 der Proxy nicht anfasst — und unterscheidet am `content-type` bzw. am Rumpf,
 WER geantwortet hat.
 
+---
+
+### AW22: Appwrite 2.6.1 auf dev, CI und prod — PHP 8.5.12 gegen die PHP-RCE, der 2.2-Sprung mit drin ✅ 2026-10-24
+
+Anlass: das PHP-Notfall-Release vom 2026-10-21 (CVE-2026-109618/-109619,
+unauthentifizierte RCE in den Web-SAPIs). Die Ploi-Server waren am 2026-10-23
+gepatcht, appwrite-prod lief noch auf 2.0.0 mit PHP 8.5.9; der Sprung auf 2.2
+(AW22) wartete seit 2026-09-14 auf ein Fenster. Appwrite 2.6.1 (gleicher Tag)
+bringt PHP 8.5.12 und nennt sich selbst „precautionary" (Swoole, kein FPM) —
+Ziel wurde deshalb 2.6.1 statt 2.2, ein Fenster für alles (DECISION-LOG
+2026-10-23). Reihenfolge wie immer: Release-Notes 2.3–2.6.1 → dev → Runbook →
+CI-Ableitung → Davids „ja, jetzt" (2026-10-24) → prod.
+
+Beweise: dev `health/version` 2.6.1, PHP 8.5.12, Migration 13 s, Mail über den
+gepatchten Worker, Realtime 101, Unit + Playwright 16/16 funktional grün;
+prod (Skript `ops/appwrite-upgrade-2.6.sh`, Lauf durch die Elternsitzung)
+Werkzeug-Aufruf bis Beweise **71 s**, Dump 22,2 MB / 800 Tabellen, Migration
+16,6 s, alle zwölf Hosts `/api/health ok:true`, Zertifikat bis 2027-01-22,
+`verify-tls` 6/6, `schema-parity` 69/42/41/39; CI-E2E auf der 2.6.1-
+Wegwerf-Instanz 16/16. Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+
+**Gelernt:** (1) Seit 2.4 ist die Client-IP der RECHTESTE nicht vertraute
+`X-Forwarded-For`-Hop — mit unserer Kette (Nuxt setzt XFF, Traefik hängt die
+Nuxt-IP an) stünde jede Prod-Session wieder auf dem Web-Server; die Nuxt-IP
+gehört in `_APP_TRUSTED_PROXIES` (auf dev mit nachgestellter Kette gemessen,
+Fix ebenso). (2) Das Upgrade-Werkzeug lädt seit 2.5 die Override MIT und löst
+relative Mount-Pfade im eigenen Container auf — „Failed to start containers";
+absolute Host-Pfade, und es läuft in 20 s durch. Die Override muss damit VOR
+dem Werkzeug stimmen, das Gegenteil der 2.0-Regel. (3) Realtime-Handshakes
+per `curl` nur mit `--http1.1` — über HTTP/2 antwortet Swoole 400, das sieht
+aus wie ein Ausfall. (4) Executor 1.1.2 trägt weiter PHP 8.5.6; nur internes
+Netz, keine Functions — notiert, nicht gelöst.
+
+---
+
 ### SEO-Alternates: der Wächter gegen das blinde Leeren steht jetzt im Kern ✅ 2026-09-10
 
 **Was:** Nachtrag zu F60. Der Kern-Vertrag `useSeoHiddenLocales()` (aus BI1 I3)

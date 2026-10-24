@@ -16,7 +16,7 @@ Appwrite 2.6.1 (gleicher Tag) bringt PHP 8.5.12 und nennt sich selbst „precaut
 kein FPM/CGI) — getroffen oder nicht, die ungepatchte Laufzeit bleibt kein Zustand.
 
 **Entscheidung:** Ziel ist **2.6.1**, nicht 2.2 — ein Fenster, dieselben Vorarbeiten; dev + CI +
-Runbook zuerst, prod erst nach Davids ausdrücklicher Freigabe (unverändert).
+Runbook zuerst, prod erst nach Davids ausdrücklicher Freigabe (unverändert) — gegeben am 2026-10-24 („ja, jetzt"), prod seit 08:59 UTC auf 2.6.1, Fenster 71 s.
 
 **Was nur ein echter Lauf zeigt (dev, 2026-10-23):**
 - Die Client-IP-Auflösung ist seit 2.4 „rechtester nicht vertrauter Hop" statt „erstes Segment".

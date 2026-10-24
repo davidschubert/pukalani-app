@@ -13,7 +13,21 @@
  * wäre der Beweis wertlos — er wäre auch dann grün, wenn der Anstoß gar nichts
  * bewirkt oder die Vergiftung nicht greift.
  *
- * Braucht die lokale Docker-Appwrite (Redis-Zugriff über `docker exec`):
+ * SEIT APPWRITE 2.4 (#14104, 2026-10-24 gegen 2.6.1 bewiesen) ist das Rennen
+ * UPSTREAM geschlossen: steht die Spalte im gecachten Collection-Dokument
+ * nicht auf 'available', liest der Index-Endpunkt das Attribut-Dokument selbst
+ * nach („the attribute document itself is authoritative"). Die Gegenprobe
+ * dreht sich dort um: der vergiftete Cache darf den Index NICHT mehr
+ * aufhalten — ginge er wieder nicht durch, wäre das eine Regression upstream,
+ * und genau die soll hier auffallen. Der Anstoß bleibt (Gürtel UND
+ * Hosenträger für ältere Instanzen) und darf weiterhin nichts verstellen.
+ *
+ * Braucht die lokale Docker-Appwrite: die Vergiftung läuft als PHP IM
+ * Appwrite-API-Container (`docker exec`), weil Appwrite seit 2.3 igbinary in
+ * Redis schreibt — nur dort gibt es den Codec, und der Container kennt die
+ * Redis-Verbindung (`_APP_REDIS_*`). JSON-Einträge werden weiterhin
+ * verstanden. Container per APPWRITE_API_CONTAINER (Default
+ * `appwrite`; in der CI `docker compose ps -q appwrite`).
  *
  *   node --env-file=apps/comments/.env packages/media/scripts/verify-index-nudge.mjs
  */
@@ -25,7 +39,7 @@ const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
 const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY ?? process.env.NUXT_APPWRITE_KEY
-const redisContainer = process.env.APPWRITE_REDIS_CONTAINER || 'appwrite-redis'
+const apiContainer = process.env.APPWRITE_API_CONTAINER || 'appwrite'
 
 if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — über --env-file aufrufen.')
@@ -33,6 +47,12 @@ if (!endpoint || !projectId || !databaseId || !apiKey) {
 }
 
 const tablesDB = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey))
+/** Appwrite ≥ 2.4 prüft den Live-Status des Attributs nach (#14104). */
+async function liestLiveStatusNach() {
+  const { version } = await (await fetch(`${endpoint}/health/version`)).json()
+  const [major, minor] = String(version).split('.').map(Number)
+  return { version, nach: major > 2 || (major === 2 && minor >= 4) }
+}
 const { indexStep } = createIndexSteps(tablesDB, databaseId)
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 let pass = 0, fail = 0
@@ -40,7 +60,6 @@ const check = (label, ok, detail = '') => {
   if (ok) { pass++; console.log(`  ✔ ${label}`) }
   else { fail++; console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`) }
 }
-const redis = (...args) => execFileSync('docker', ['exec', redisContainer, 'redis-cli', ...args], { encoding: 'utf8' }).trim()
 
 async function warteAufSpalte(tableId, key) {
   for (let i = 0; i < 40; i++) {
@@ -51,43 +70,83 @@ async function warteAufSpalte(tableId, key) {
   return false
 }
 
-/** Dreht die Spalte im gecachten Collection-Dokument auf 'processing' zurück. */
-function vergifte(tableId, spalte) {
-  // ALLE Treffer prüfen, nicht den ersten (2026-09-08, zweimal in der CI rot
-  // seit der Wegwerf-Appwrite auf 2.0.0): seit 2.0 liegen je Tabelle MEHRERE
-  // Cache-Einträge unter `*collection*<tableId>*`, und nicht jeder trägt die
-  // Spaltenliste — welcher zuerst kommt, entscheidet der SCAN-Zufall. Der
-  // erste ohne `data.attributes` warf `Cannot read properties of undefined`,
-  // und der Deploy stand, obwohl niemand etwas geändert hatte. Appwrite 2.0
-  // nennt die Liste im Cache-Dokument teils `columns` — beides gilt.
-  const keys = redis('--scan', '--pattern', `*collection*${tableId}*`).split('\n').filter(Boolean)
-  for (const key of keys) {
-    for (const feld of redis('HKEYS', key).split('\n').filter(Boolean)) {
-      let eintrag
-      try { eintrag = JSON.parse(redis('HGET', key, feld)) }
-      catch { continue }
-      const liste = eintrag?.data?.attributes ?? eintrag?.data?.columns
-      if (!Array.isArray(liste)) continue
-      let getroffen = false
-      for (const a of liste) {
-        if (a.key === spalte) { a.status = 'processing'; getroffen = true }
+/**
+ * Dreht die Spalte im gecachten Collection-Dokument auf 'processing' zurück.
+ *
+ * Läuft als PHP im API-Container (Skript über stdin, Argumente hinter `--`).
+ * ALLE Treffer prüfen, nicht den ersten (2026-09-08, zweimal in der CI rot
+ * seit der Wegwerf-Appwrite auf 2.0.0): seit 2.0 liegen je Tabelle MEHRERE
+ * Cache-Einträge unter `*collection*<tableId>*`, und nicht jeder trägt die
+ * Spaltenliste — welcher zuerst kommt, entscheidet der SCAN-Zufall. Appwrite
+ * 2.0 nennt die Liste im Cache-Dokument teils `columns` — beides gilt.
+ * 2026-10-24 in der CI rot (2.6.1, „Vergiftung wirkt nicht"): seit 2.3
+ * schreibt Appwrites App-Cache igbinary statt JSON und packt das Dokument in
+ * einen Umschlag (`data.document` neben `collectionEpoch`/`field`); die
+ * Metadaten der Datenbank-Bibliothek liegen weiter als JSON daneben. Codec
+ * und Umschlag werden je Feld erkannt und beim Zurückschreiben beibehalten;
+ * die Spalte darf `key` oder `$id` heißen.
+ */
+const PHP_VERGIFTE = String.raw`<?php
+[, $tableId, $spalte] = $argv;
+$r = new Redis();
+$r->connect(getenv('_APP_REDIS_HOST') ?: 'redis', (int) (getenv('_APP_REDIS_PORT') ?: 6379));
+$pass = (string) getenv('_APP_REDIS_PASS');
+if ($pass !== '') { $user = (string) getenv('_APP_REDIS_USER'); $r->auth($user !== '' ? [$user, $pass] : $pass); }
+$r->setOption(Redis::OPT_SCAN, Redis::SCAN_RETRY);
+$it = null;
+while ($keys = $r->scan($it, "*collection*{$tableId}*", 200)) {
+  foreach ($keys as $key) {
+    foreach ($r->hGetAll($key) as $feld => $raw) {
+      $codec = 'igbinary';
+      $eintrag = @igbinary_unserialize($raw);
+      if (!is_array($eintrag)) { $codec = 'json'; $eintrag = json_decode($raw, true); }
+      if (!is_array($eintrag)) continue;
+      // Seit 2.3 liegt das Dokument unter data.document (Umschlag mit
+      // collectionEpoch/field), davor direkt unter data — beides gilt.
+      $innen = isset($eintrag['data']['document']) && is_array($eintrag['data']['document']);
+      $doc = $innen ? $eintrag['data']['document'] : $eintrag['data'];
+      $liste = $doc['attributes'] ?? $doc['columns'] ?? null;
+      if (!is_array($liste)) continue;
+      $pfad = isset($doc['attributes']) ? 'attributes' : 'columns';
+      $getroffen = false;
+      foreach ($liste as $i => $a) {
+        if (($a['key'] ?? $a['$id'] ?? null) === $spalte) { $liste[$i]['status'] = 'processing'; $getroffen = true; }
       }
-      if (!getroffen) continue
-      execFileSync('docker', ['exec', '-i', redisContainer, 'redis-cli', '-x', 'HSET', key, feld],
-        { input: JSON.stringify(eintrag) })
-      return true
+      if (!$getroffen) continue;
+      if ($innen) { $eintrag['data']['document'][$pfad] = $liste; } else { $eintrag['data'][$pfad] = $liste; }
+      $r->hSet($key, $feld, $codec === 'igbinary' ? igbinary_serialize($eintrag) : json_encode($eintrag));
+      echo "vergiftet ($codec) $key/$feld\n";
+      exit(0);
     }
   }
-  return false
+}
+echo "kein Cache-Eintrag mit Spalte $spalte\n";
+exit(1);
+`
+
+function vergifte(tableId, spalte) {
+  try {
+    const out = execFileSync('docker', ['exec', '-i', apiContainer, 'php', '--', tableId, spalte],
+      { input: PHP_VERGIFTE, encoding: 'utf8' }).trim()
+    console.log(`    (${out})`)
+    return out.startsWith('vergiftet')
+  }
+  catch (error) {
+    console.log(`    (${(error.stdout || error.message || '').toString().trim()})`)
+    return false
+  }
 }
 
 const tableId = `f19_nudge_${Date.now().toString(36)}`
 
 try {
-  console.log(`\nF19 — Index-Anstoß gegen ${endpoint}\nWegwerf-Tabelle ${tableId}\n`)
+  const { version, nach } = await liestLiveStatusNach()
+  console.log(`\nF19 — Index-Anstoß gegen ${endpoint} (Appwrite ${version}${nach ? ', prüft Live-Status nach' : ''})\nWegwerf-Tabelle ${tableId}\n`)
   await tablesDB.createTable({ databaseId, tableId, name: 'F19 Anstoß-Beweis', rowSecurity: true })
 
-  console.log('1. Gegenprobe: OHNE Anstoß muss es scheitern')
+  console.log(nach
+    ? '1. Gegenprobe: OHNE Anstoß darf der vergiftete Cache den Index NICHT mehr aufhalten (≥ 2.4)'
+    : '1. Gegenprobe: OHNE Anstoß muss es scheitern')
   await tablesDB.createVarcharColumn({ databaseId, tableId, key: 'ohne', size: 36, required: false, xdefault: '' })
   check('Spalte "ohne" verfügbar', await warteAufSpalte(tableId, 'ohne'))
   await tablesDB.getTable({ databaseId, tableId })
@@ -112,8 +171,14 @@ try {
       await sleep(2000)
     }
   }
-  check('ohne Anstoß: Index scheitert (Vorrat läuft leer)', ohneFehler !== null,
-    ohneFehler ? '' : 'ging unerwartet durch — Vergiftung wirkt nicht?')
+  if (nach) {
+    check('ohne Anstoß: Index kommt trotz vergiftetem Cache durch (Live-Status, #14104)', ohneFehler === null,
+      ohneFehler ? `${ohneFehler?.type ?? ohneFehler?.message} — Regression upstream?` : '')
+  }
+  else {
+    check('ohne Anstoß: Index scheitert (Vorrat läuft leer)', ohneFehler !== null,
+      ohneFehler ? '' : 'ging unerwartet durch — Vergiftung wirkt nicht?')
+  }
 
   console.log('\n2. MIT Anstoß muss derselbe Zustand überlebt werden')
   await tablesDB.createVarcharColumn({ databaseId, tableId, key: 'mit', size: 36, required: false, xdefault: '' })

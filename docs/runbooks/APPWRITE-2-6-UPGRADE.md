@@ -276,6 +276,21 @@ mit vorgezogenen Images; prod hat 4 Projekte, 22 MB Dump (2026-09-08),
    (erste Instanz-Mail nach Leerlauf = der KeepAlive-Fall) · **Standort-
    Beweis:** Sessions-Seite zeigt den eigenen Ort, nicht „Deutschland/Falkenstein"
    · `pnpm ops:schema-parity` (vier Prod-Projekte) · `node scripts/ops/verify-tls.mjs`.
+**Nachweise prod (2026-10-24, lesend gegengeprüft):** `_APP_VERSION` 2.6.1 ·
+`docker exec appwrite php -r …` → **8.5.12** · `health/version` 2.6.1 · 18 Container
+Up (mqtt/exiftool/autogravity/geo/clickhouse/console/exc1 healthy), kein
+`appwrite-worker-*`, kein `appwrite-assistant` · Override: Mount absolut,
+keepAlive 367 false, trustedIPs 2 + mqtt 2, 8883/8084 auf 127.0.0.1,
+`config.d/` mit `appwrite.xml` + `logging.xml` · `_APP_TRUSTED_PROXIES` mit
+49.13.211.173 · `health/db`, `/cache`, `/storage` je Projekt `pass` (Elternsitzung)
+· **alle zwölf Hosts** `/api/health ok:true` (Build 79cdcdbc), SSR demo/
+branding.supply 200, account 302 → Login · Zertifikat `api.pukalani.app` bis
+2027-01-22 · Realtime-Handshake 101 — **nur mit `curl --http1.1`**: über HTTP/2
+antwortet Swoole mit 400, das ist kein Befund (der Watchdog spricht HTTP/1.1) ·
+`node scripts/ops/verify-tls.mjs` 6/6 · `pnpm ops:schema-parity` 69/42/41/39
+Soll-Tabellen, Spalten deckungsgleich · Worker: 0 Fehler nach dem Start-Rauschen,
+stats-usage verarbeitet (396 Jobs in 4 min).
+
 7. **Aufräumen** erst nach einer stabilen Woche: alte Images
    (`appwrite/appwrite:1.9.5/1.9.6/2.0.0`, `appwrite/new:1.1.16`,
    `appwrite/console:*`, `openruntimes/executor:0.25.*/0.29.0`,
@@ -299,4 +314,4 @@ sie wieder an.
 | Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
 | --- | --- | --- | --- | --- | --- |
 | dev (OrbStack, von 2.2.0) | 2026-10-24 ~05:00 | 10,9 MB, 847 Tabellen | „Migration completed", 13 s | Werkzeug 19 s (Abbruch) + `up` + 20 s (Gegenprobe) | relativer Mount-Pfad ⇒ „Failed to start containers"; mit absolutem Pfad 20 s sauber durch; Unit grün, E2E 16/16 funktional grün (themes-visual: Baselines veraltet) |
-| prod (`api.pukalani.app`, von 2.0.0) | offen | — | — | — | wartet auf Davids Freigabe |
+| prod (`api.pukalani.app`, von 2.0.0) | 2026-10-24 08:56–08:59 | 22,2 MB, 800 Tabellen | „Migration completed", 16,6 s (gelbe „already exists"-Warnungen je Projekt, 0 Fehler) | Werkzeug 38 s „installed successfully", Werkzeug-Aufruf bis Beweise **71 s** | Skript `ops/appwrite-upgrade-2.6.sh` (Lauf durch die Elternsitzung nach Davids „ja, jetzt"; Log `~/appwrite-upgrade-2.6.log`); Start-Rauschen: 36× „Usage schema is not ready" im stats-usage-Worker in den ersten 4 s, danach 0 |

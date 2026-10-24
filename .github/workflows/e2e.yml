@@ -328,21 +328,23 @@ jobs:
       # er fasst als einziger die Appwrite-Interna an (Wegwerf-Tabelle + Redis).
       # Die billigen Zusagen sollen vorher scheitern, nicht danach.
       #
-      # Den Redis-Container fragt `docker compose` selbst ab, statt den Namen
+      # Den API-Container fragt `docker compose` selbst ab, statt den Namen
       # <projekt>-<dienst>-<n> nachzubauen: eine geratene Konvention wäre eine
       # stille Kopplung an compose, und ein falscher Name würde hier als
       # PRODUKTFEHLER aussehen und jeden Deploy blockieren. Fehlt der
-      # Container, bricht der Schritt mit eigener Ansage ab.
+      # Container, bricht der Schritt mit eigener Ansage ab. Seit Appwrite 2.3
+      # liegt der Cache als igbinary in Redis — die Vergiftung läuft deshalb
+      # als PHP im API-Container, nicht mehr per redis-cli (2026-10-24).
       - name: Beweis — Index-Anstoß überlebt vergifteten Metadaten-Cache (F19)
         run: |
-          REDIS=$(docker compose --env-file ci/appwrite/ci.env \
+          API=$(docker compose --env-file ci/appwrite/ci.env \
             --project-name appwrite-ci -f ci/appwrite/docker-compose.yml \
-            ps -q redis)
-          if [ -z "$REDIS" ]; then
-            echo '::error::Redis-Container des CI-Stacks nicht gefunden'
+            ps -q appwrite)
+          if [ -z "$API" ]; then
+            echo '::error::API-Container des CI-Stacks nicht gefunden'
             exit 1
           fi
-          APPWRITE_REDIS_CONTAINER="$REDIS" \
+          APPWRITE_API_CONTAINER="$API" \
             node --experimental-strip-types --env-file=apps/comments/.env \
               packages/media/scripts/verify-index-nudge.mjs
 
