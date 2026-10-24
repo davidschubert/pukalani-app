@@ -30,6 +30,69 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Code-Login mit Zweitfaktor endete in einer halben Session ✅ 2026-10-24
+
+**Ausgangslage (prod, api.pukalani.app, Appwrite 2.6.1, beim Mail-/Standort-
+Beweis nach dem Upgrade gefunden):** Davids Konto hat `mfa=1` mit
+verifiziertem TOTP-Authenticator. Nach dem richtigen E-Mail-Code legte
+`otp/verify.post.ts` die Session an (`factors: ["email"]`) und antwortete nur
+`{ ok: true }`; Appwrite beantwortet auf dieser Session jeden Konto-Aufruf mit
+`user_more_factors_required`, `/api/auth/me` sagt 401, der SSR-Guard hält den
+Nutzer für abgemeldet und leitet auf `/de/login` — nach KORREKTEM Code wieder
+das Login, ohne ein Wort. Kein Zusammenhang mit dem Upgrade: der Code-Weg
+hatte nie eine MFA-Weiche, nur der Passwort-Login (`login.post.ts`, U15 Teil
+4). Google kam durch, weil Appwrite `["email","oauth2"]` als zwei Faktoren
+zählt.
+
+**Gebaut (Core):** (1) `secondFactorPending(probe)` in `shared/mfa.ts` ist
+jetzt DIE EINE Weiche — `login.post.ts` und `otp/verify.post.ts` rufen
+dieselbe Funktion mit `account.get()` auf der frischen Session; Appwrite wird
+GEFRAGT, nicht nachgerechnet. (2) `otp/verify` antwortet
+`OtpVerifyResponse { ok, mfaRequired }` (`shared/types/auth-responses.ts`,
+Handler-Annotation + `$fetch<OtpVerifyResponse>` — Nitro-Routentypen sind
+aus) und protokolliert bei fehlendem Faktor noch KEIN `user.login`; die
+Beitritts-Kette (A5/BS1) bleibt hinter der Weiche. (3) `OtpLoginForm.vue`
+zeigt `AuthMfaChallengeForm`, der Erfolgspfad liegt einmal in `finishLogin()`
+(wie im Passwort-Formular), „Abbrechen" führt zum E-Mail-Schritt zurück (der
+Code ist mit der Session verbraucht). (4) Die Challenge-Route schrieb fest
+`password+<mode>` ins Protokoll; jetzt `mfaLoginMethod(session.factors, mode)`
+⇒ `otp+totp` bzw. `password+totp`. `register/code` rendert dasselbe
+`AuthOtpLoginForm` gegen dieselbe Route (einziger Aufrufer) — mit erledigt.
+Keine neuen Nutzertexte: die Challenge-Maske ist faktor-neutral formuliert.
+
+**Beweis:** Unit (`tests/mfa.test.ts`, 7 neue Fälle: Probe wirft
+`user_more_factors_required` ⇒ true, gelingt ⇒ false, Netz/500/null ⇒ false,
+Probe genau einmal; Protokollname) — 1652 Core-Tests, Lint, Typecheck,
+`check:i18n-keys` grün. HTTP (`scripts/verify-mfa.mjs`, neuer Abschnitt 10,
+gegen den Worktree-Server :3021 + lokale Appwrite 2.6.1 + Mailpit): Code über
+`/api/auth/otp` anfordern, Code aus der ECHTEN Mail (Mailpit-API), einlösen ⇒
+`200 {mfaRequired:true}` + Cookie, `/me` 401, Challenge mit App-Code 200,
+`/me` 200; Gegenprobe Konto ohne MFA ⇒ `mfaRequired:false` und sofort drin —
+**48/48**; mit der alten Route (HEAD-Fassung eingespielt) **46/48**, rot genau
+an der fehlenden Antwort. Klick-Beweis im Browser auf `/de/login/code` mit
+einem frisch angelegten TOTP-Konto: Code-Eingabe ⇒ Zwei-Faktor-Maske ⇒
+App-Code ⇒ Startseite mit Toast „Erfolgreich angemeldet", `/api/auth/me` 200.
+Audit-Protokoll des Laufs: `otp+totp` (vorher stand dort auch für den Code-Weg
+`password+totp`).
+
+**Gelernt (drei Stück):** (1) **Eine Weiche, die in EINER Route lebt, ist
+keine Weiche, sondern eine Ausnahme.** Die MFA-Prüfung stand seit U15 nur im
+Passwort-Login; jeder weitere Weg, der eine Session anlegt (Code, später
+OAuth, Magic-Link), musste sie selbst wissen — und der Code-Weg wusste sie
+nicht. Jetzt steht sie in `shared/mfa.ts`, und ein neuer Session-Anleger ruft
+sie oder fällt beim nächsten Lesen auf. (2) **Ein Server-Token ist KEIN
+E-Mail-Code.** Die erste Fassung des Beweises kürzte den Postweg über
+`users.createToken` ab — das Geheimnis ist Hex, unsere Route verlangt sechs
+Ziffern, 400. Der Beweis geht seither den Weg des Menschen (Route → Mail →
+Route); Mailpit macht das lokal möglich (`MAILPIT_URL`, Default :8025).
+(3) **Ein TOTP-Code, der an Sekunde 52 berechnet wird, ist beim Klick schon
+tot.** Der erste Klick-Versuch scheiterte an der Fenstergrenze, nicht am Code
+— für Klick-Beweise den Code am Fensteranfang (`epoch % 30 < 12`) berechnen
+und sofort eintragen. Nebenbei: die Worktree-Falle „`@shikijs/engine-
+oniguruma` nicht verlinkt ⇒ jede Route 500" trifft auch `apps/comments`,
+nicht nur `branding` (Symlink + Neustart, Memory).
+
+
 ### Die Host-Wache zählte Ziffern, statt den Port zu rechnen ✅ 2026-10-24
 
 **Ausgangslage:** `00.host-header.ts` + `shared/requestHost.ts` schlossen den
