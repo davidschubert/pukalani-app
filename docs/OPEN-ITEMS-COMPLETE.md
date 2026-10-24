@@ -30,6 +30,48 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Die Host-Wache zählte Ziffern, statt den Port zu rechnen ✅ 2026-10-24
+
+**Ausgangslage:** `00.host-header.ts` + `shared/requestHost.ts` schlossen den
+Prod-Befund vom 2026-08-09 (`Host: evil.tld"><x>` ⇒ `TypeError: Invalid URL`
+in `getRequestURL()` ⇒ **500 auf jeder Route jeder App**). Beim Nachfassen fiel
+eine Lücke DERSELBEN Fehlerklasse auf: die Regex erlaubte `(:\d{1,5})?` —
+fünf Ziffern sehen gültig aus, ein Port über **65535** ist aber keiner, und
+`new URL()` wirft darauf. `pukalani.studio:99999` kam also durch die Wache und
+ließ den Verbraucher eine Middleware später werfen.
+
+**Behoben** mit `portIsBuildable()` (rechnen statt zählen) in
+`packages/core/shared/requestHost.ts`; die vier Portfälle stehen jetzt auch in
+der Gegenprobe-Schleife „deckt sich mit new URL()". Ohne den Fix sind 6 der 58
+Tests rot.
+
+**Beweis in drei Stufen.** (1) Unit: 6 rot ⇒ 58/58 grün; 1650 core-Tests, 19
+Pakete, Lint, Typecheck grün. (2) Prod-Build portfolio, vorher/nachher am
+SELBEN Build (Port-Prüfung im `.output` neutralisiert): `Host: …:99999` vorher
+**500** auf `/`, `/de`, `/gibtsnicht`, `/api/health` mit 11 Stacktraces,
+nachher **400** mit 0 — gesunder Verkehr identisch (`/`=200, `/de`=200,
+`/de/`=301, `/gibtsnicht`=404, `robots.txt`/`sitemap.xml`=200, `:65535`=200,
+`[::1]`=200). (3) **Live** (Build 79cdcdbc auf allen drei Hosts):
+`X-Forwarded-Host: <host>:99999` vorher **500**, nachher **400** mit
+`statusMessage: "Invalid host header"` — gesunde Proxy-Ketten (`a.tld,
+pukalani.studio`) weiter 200.
+
+**Gelernt (zwei Stück):** (1) **Eine Zeichen-Erlaubnisliste kann keine
+ZAHLENgrenze ausdrücken.** Die Datei nennt `new URL()` ausdrücklich als
+Maßstab, und genau an der einen Stelle, wo der Parser rechnet statt zu lesen,
+wich die Regex ab. Wo eine Prüfung einen fremden Parser nachbaut, gehört die
+Gegenprobe GEGEN diesen Parser in die Tests — sie stand sogar schon da, nur
+ohne einen Port in ihrer Fallliste, und war damit grün über einem Loch.
+(2) **nginx versteckt den `Host`-Vektor und war fast ein falsches Entwarnen.**
+Live antwortete `Host: …:99999` schon vorher 400 — aber von **nginx selbst**
+(`server: nginx`, HTML-Seite), das kaputte Host-Header gar nicht erst
+durchlässt. Wer nur so misst, hält jede App-Wache für überflüssig. Erreichbar
+war die Lücke über `X-Forwarded-Host`: diesen Header prüft nginx NICHT, und
+@nuxtjs/i18n wie Nitros Fehler-Handler lesen ihn BEVORZUGT
+(`xForwardedHost: true`). Der App-Beweis läuft deshalb über den Header, den
+der Proxy nicht anfasst — und unterscheidet am `content-type` bzw. am Rumpf,
+WER geantwortet hat.
+
 ### SEO-Alternates: der Wächter gegen das blinde Leeren steht jetzt im Kern ✅ 2026-09-10
 
 **Was:** Nachtrag zu F60. Der Kern-Vertrag `useSeoHiddenLocales()` (aus BI1 I3)
