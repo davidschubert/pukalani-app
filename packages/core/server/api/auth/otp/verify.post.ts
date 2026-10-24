@@ -1,9 +1,14 @@
 import { Query } from 'node-appwrite'
-import { createAdminClient, setSessionCookie } from '../../../lib/appwrite'
+import { createAdminClient, createSessionClient, setSessionCookie } from '../../../lib/appwrite'
 import { otpVerifySchema } from '../../../../schemas/auth'
+import { secondFactorPending } from '../../../../shared/mfa'
+import type { OtpVerifyResponse } from '../../../../shared/types/auth-responses'
 
-/** Code prüfen → Session erzeugen → Cookie setzen (wie OAuth-Callback). */
-export default defineEventHandler(async (event) => {
+/**
+ * Code prüfen → Session erzeugen → Cookie setzen (wie OAuth-Callback) — und
+ * wie login.post.ts fragen, ob Appwrite noch einen ZWEITEN Faktor verlangt.
+ */
+export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
   const { userId, code } = await readValidatedBody(event, otpVerifySchema.parse)
 
   const { account, users } = createAdminClient(event)
@@ -17,7 +22,29 @@ export default defineEventHandler(async (event) => {
 
   try {
     const session = await account.createSession({ userId, secret: code })
+    // Das Cookie wird IMMER gesetzt, auch wenn noch ein zweiter Faktor fehlt
+    // (Begründung in login.post.ts): die halbe Session ist der Träger, mit dem
+    // /api/auth/mfa/challenge die Challenge löst, und für jeden Konto-Aufruf
+    // wertlos, solange der Faktor fehlt.
     setSessionCookie(event, session.secret, session.expire)
+
+    /**
+     * ZWEITER FAKTOR (Befund 2026-10-24, prod): ein Konto mit `mfa=1` und
+     * verifiziertem Authenticator bekam hier eine Session mit
+     * `factors: ['email']`, auf die Appwrite jeden Konto-Aufruf mit
+     * `user_more_factors_required` beantwortet — der SSR-Guard hielt den
+     * Nutzer für abgemeldet und zeigte nach dem RICHTIGEN Code wieder das
+     * Login. Dieselbe Weiche wie im Passwort-Login: Appwrite fragen, nicht
+     * rechnen. Ein Erst-Beitritt kann hier nicht gleichzeitig vorliegen (ein
+     * Authenticator setzt ein Konto voraus), die Beitritts-Kette unten bleibt
+     * deshalb hinter der Weiche. BEWUSST noch KEIN 'user.login' im Protokoll:
+     * angemeldet ist erst, wer auch den zweiten Faktor hatte — das schreibt
+     * die Challenge-Route.
+     */
+    if (await secondFactorPending(() => createSessionClient(event, session.secret).account.get())) {
+      return { ok: true, mfaRequired: true }
+    }
+
     await logAuthEvent(event, 'user.login', { userId: session.userId, method: 'otp' })
 
     if (isFirstJoin) {
@@ -66,7 +93,7 @@ export default defineEventHandler(async (event) => {
       await maybeRecordMilestone(event, { type: 'milestone.members', count: totalUsers })
     }
 
-    return { ok: true }
+    return { ok: true, mfaRequired: false }
   }
   catch {
     // Falscher/abgelaufener Code — generisch, KEIN Cookie

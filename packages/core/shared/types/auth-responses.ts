@@ -27,6 +27,17 @@ export interface LoginResponse {
   mfaRequired: boolean
 }
 
+/**
+ * POST /api/auth/otp/verify — dieselbe Form wie der Passwort-Login, aus
+ * demselben Grund: auch nach dem richtigen E-Mail-Code kann Appwrite noch
+ * einen zweiten Faktor verlangen (Befund 2026-10-24, prod).
+ */
+export interface OtpVerifyResponse {
+  ok: true
+  /** true = der Code saß, der zweite Faktor fehlt noch. */
+  mfaRequired: boolean
+}
+
 /** GET /api/auth/mfa/status */
 export interface MfaStatusResponse {
   enabled: boolean
