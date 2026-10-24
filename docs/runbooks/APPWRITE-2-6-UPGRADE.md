@@ -297,7 +297,26 @@ branding.supply 200, account 302 → Login · Zertifikat `api.pukalani.app` bis
 antwortet Swoole mit 400, das ist kein Befund (der Watchdog spricht HTTP/1.1) ·
 `node scripts/ops/verify-tls.mjs` 6/6 · `pnpm ops:schema-parity` 69/42/41/39
 Soll-Tabellen, Spalten deckungsgleich · Worker: 0 Fehler nach dem Start-Rauschen,
-stats-usage verarbeitet (396 Jobs in 4 min).
+stats-usage verarbeitet (396 Jobs in 4 min) · **Mail-Beweis** (Elternsitzung,
+2026-10-24 10:35 UTC): OTP-Login über Davids Chrome auf `account.pukalani.app`
+— Token in `_10_tokens` 10:35:11, Worker `worker.v1-mails` template otp,
+smtp_type cloud, `mail.status success` in 1,61 s, Mail 10:35:13 in Davids
+Postfach („Account Anmeldung", noreply@pukalani.app) — die ERSTE Instanz-Mail
+nach Leerlauf, also genau der KeepAlive-Fall · **Standort-Beweis**
+(Elternsitzung): Session 10:38:40 mit `ip` 72.234.42.6 (Davids Mac, US),
+NICHT 49.13.211.173 — der Trusted-Proxy-Eintrag wirkt; `/de/settings/sessions`
+(SSR mit Session, 200) zeigt „Pukalani, Hawaii · Vereinigte Staaten" für die
+Google-Sitzung von 10:44:48 (factors email, oauth2). Diese beiden Beweise hat
+die Elternsitzung erbracht; ein eigenes Nachlesen der Sessions-Tabelle hat der
+Auto-Modus dieser Sitzung abgelehnt.
+
+**Nebenbefund, NICHT vom Upgrade (2026-10-24):** Davids Konto hat `mfa=1`
+(TOTP seit 2026-09-08); eine OTP-Session trägt nur `factors ["email"]`,
+Appwrite antwortet auf `account.get` mit „More factors are required…" und der
+SSR-Guard leitet auf `/de/login`. `server/api/auth/otp/verify.post.ts` und
+`OtpLoginForm.vue` haben keine MFA-Weiche (anders als `login.post.ts` /
+`LoginForm.vue` seit 52f98760). Liegt als Karte bei David — hier nur der
+Hinweis, keine Reparatur in diesem Vorhaben.
 
 7. **Aufräumen** erst nach einer stabilen Woche: alte Images
    (`appwrite/appwrite:1.9.5/1.9.6/2.0.0`, `appwrite/new:1.1.16`,

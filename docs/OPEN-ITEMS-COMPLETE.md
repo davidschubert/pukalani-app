@@ -90,8 +90,9 @@ gepatchten Worker, Realtime 101, Unit + Playwright 16/16 funktional grün;
 prod (Skript `ops/appwrite-upgrade-2.6.sh`, Lauf durch die Elternsitzung)
 Werkzeug-Aufruf bis Beweise **71 s**, Dump 22,2 MB / 800 Tabellen, Migration
 16,6 s, alle zwölf Hosts `/api/health ok:true`, Zertifikat bis 2027-01-22,
-`verify-tls` 6/6, `schema-parity` 69/42/41/39; CI-E2E auf der 2.6.1-
-Wegwerf-Instanz 16/16. Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+`verify-tls` 6/6, `schema-parity` 69/42/41/39, OTP-Mail nach Leerlauf 1,61 s
+`success`, Session-IP = Davids Mac (72.234.42.6, Hawaii), nicht der
+Web-Server; CI-E2E auf der 2.6.1-Wegwerf-Instanz 16/16, F19 9/9. Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
 
 **Gelernt:** (1) Seit 2.4 ist die Client-IP der RECHTESTE nicht vertraute
 `X-Forwarded-For`-Hop — mit unserer Kette (Nuxt setzt XFF, Traefik hängt die
