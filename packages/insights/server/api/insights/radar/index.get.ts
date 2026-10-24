@@ -35,10 +35,22 @@ import type { InsightsRadarResponse, InsightsRadarVideoItem } from '../../../../
 export default defineEventHandler(async (event): Promise<InsightsRadarResponse> => {
   requirePermission(event, 'insights.manage')
 
-  const { channels, maxVideos, maxVideoAgeDays } = readInsightsRadarConfig(useAppConfig())
+  const { maxVideos, maxVideoAgeDays } = readInsightsRadarConfig(useAppConfig())
   const configured = !!useRuntimeConfig(event).insightsYoutubeKey
 
   const { tablesDB, databaseId } = insightsDb(event)
+
+  // Die Kanäle kommen seit BI2 K3 aus der TABELLE, nicht mehr aus der
+  // App-Config — dieselbe Quelle, die auch der nächtliche Lauf liest.
+  // FAIL-SOFT aus demselben Grund wie die Radar-Zeilen darunter: ohne
+  // insights-005 gibt es die Tabelle nicht, und die Seite soll dann „kein
+  // Kanal" zeigen statt eines 500.
+  const channels = await readActiveRadarChannels(tablesDB, databaseId)
+    .catch((error: unknown) => {
+      if (isInsightsRowMissing(error)) return []
+      throw error
+    })
+
   const listed = await tablesDB.listRows<InsightsTopicRow>({
     databaseId,
     tableId: INSIGHTS_TOPICS_TABLE,

@@ -114,6 +114,31 @@ export function insightsYoutubeVideosUrl(
   })
 }
 
+/**
+ * EIN KANAL ÜBER SEIN HANDLE (BI2 K3) — 1 Einheit, wie jede `channels.list`.
+ *
+ * Getrennt von `insightsYoutubeChannelsUrl`, weil es eine ANDERE Frage ist:
+ * dort „die Zahlen zu diesen Ids", hier „welcher Kanal ist `@thefutur`?".
+ * `forHandle` nimmt das Handle MIT oder OHNE `@`; wir schicken es mit, weil
+ * Googles eigene Beispiele es so zeigen und ein nacktes Handle in einem
+ * Parameter schwerer zu lesen ist.
+ *
+ * Es gibt bewusst KEINEN Bauer für `forUsername`: der trifft nur Konten von
+ * vor 2012, und ein Weg, der bei jedem zweiten Versuch unerklärlich nichts
+ * findet, ist schlechter als eine klare Absage (s. `insightsChannelLookup`).
+ */
+export function insightsYoutubeChannelByHandleUrl(
+  baseUrl: string,
+  apiKey: string,
+  handle: string,
+): string {
+  return buildUrl(baseUrl, 'channels', {
+    part: 'snippet,statistics',
+    forHandle: handle.startsWith('@') ? handle : `@${handle}`,
+    key: apiKey,
+  })
+}
+
 /** Name und Abonnentenzahl zu bis zu 50 Kanälen — 1 Einheit für den Stapel. */
 export function insightsYoutubeChannelsUrl(
   baseUrl: string,
@@ -185,7 +210,18 @@ const countSchema = z.string().optional().transform(toCount)
  */
 export const insightsYoutubePlaylistItemsSchema = z.object({
   items: z.array(z.object({
-    contentDetails: z.object({ videoId: z.string().min(1).max(32) }).optional(),
+    contentDetails: z.object({
+      videoId: z.string().min(1).max(32),
+      /**
+       * Wann dieses Video veröffentlicht wurde — kommt in DERSELBEN Antwort
+       * mit, ohne eine zusätzliche Einheit zu kosten (BI2 K3). Der Sweep liest
+       * es nicht (er holt `publishedAt` ohnehin aus `videos.list`), die
+       * KANAL-VORSCHAU dagegen braucht genau das und sonst nichts: „wann hat
+       * der zuletzt etwas hochgeladen?" ist die Frage, an der ein toter Kanal
+       * auffällt. Optional, weil ältere Einträge das Feld nicht tragen.
+       */
+      videoPublishedAt: z.string().optional(),
+    }).optional(),
   })).default([]),
 })
 
@@ -213,7 +249,15 @@ export const insightsYoutubeVideosSchema = z.object({
 export const insightsYoutubeChannelsSchema = z.object({
   items: z.array(z.object({
     id: z.string().min(1).max(64),
-    snippet: z.object({ title: z.string().default('') }).default(() => ({ title: '' })),
+    snippet: z.object({
+      title: z.string().default(''),
+      /**
+       * Das Handle MIT `@`, wie YouTube es führt (BI2 K3). Optional: Kanäle
+       * ohne Handle gibt es noch, und ein fehlendes Handle ist kein Grund,
+       * einen Kanal abzulehnen — die Id ist die Identität.
+       */
+      customUrl: z.string().optional(),
+    }).default(() => ({ title: '' })),
     statistics: z.object({ subscriberCount: countSchema }).default(() => ({ subscriberCount: 0 })),
   })).default([]),
 })

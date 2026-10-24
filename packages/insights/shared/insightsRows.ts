@@ -30,6 +30,8 @@ import {
 } from './insightsCorrection'
 import type { InsightsRadarStoredVideo } from './insightsRadar'
 import { INSIGHTS_RADAR_TOPIC_FALLBACK } from './insightsRadar'
+import type { InsightsChannel } from './insightsChannel'
+import { INSIGHTS_CHANNEL_NOTE_MAX } from './insightsChannel'
 import type { InsightsCorrectionListItem } from './types/insightsApi'
 
 /**
@@ -88,6 +90,14 @@ export const INSIGHTS_BRANDS_TABLE = 'insights_brands'
 export const INSIGHTS_CORRECTIONS_TABLE = 'insights_corrections'
 /** Der Themenradar (insights-004, BI1 I4) — kurzlebig, s. Kopf der Migration. */
 export const INSIGHTS_TOPICS_TABLE = 'insights_topics'
+/**
+ * Die kuratierte Kanalliste (insights-005, BI2 K3) — das genaue GEGENTEIL von
+ * `insights_topics`: dort stehen fremde Zahlen, die täglich neu geholt und nach
+ * dreissig Tagen gelöscht werden; hier steht eine REDAKTIONELLE Entscheidung,
+ * die bleibt, bis ein Mensch sie ändert.
+ */
+export const INSIGHTS_CHANNELS_TABLE = 'insights_channels'
+
 /** Die Newsletter-Liste (insights-006, BI1 I5a) — eigene Liste, eigenes DOI. */
 export const INSIGHTS_SUBSCRIBERS_TABLE = 'insights_subscribers'
 
@@ -594,5 +604,80 @@ export function toInsightsCorrectionListItem(
     hasContact: Boolean(contactEmail),
     createdAt: row.$createdAt,
     decidedAt: row.decidedAt ?? '',
+  }
+}
+
+// ── Die Kanalliste (insights-005, BI2 K3) ──────────────────────────────────
+
+/**
+ * EIN KURATIERTER KANAL ALS ZEILE.
+ *
+ * ── WAS VON DER API KOMMT UND WAS VOM MENSCHEN ──────────────────────────
+ * `topic`, `active` und `note` gehören dem BETREIBER — sie sind die
+ * Entscheidung, und nichts überschreibt sie. `title`, `handle`, `subscribers`,
+ * `lastUploadAt` und `checkedAt` gehören der API: sie werden bei der Vorschau
+ * und bei jedem Lauf nachgezogen. Die Trennung steht hier, weil sie sonst in
+ * jedem Schreibpfad neu erfunden würde — und beim ersten Mal, bei dem jemand
+ * sie vergisst, trägt ein Lauf die Notiz des Betreibers aus.
+ */
+export type InsightsChannelRow = Models.Row & {
+  channelId: string
+  topic: string
+  title: string
+  handle: string
+  subscribers: number
+  active: boolean
+  note: string
+  lastUploadAt: string | null
+  checkedAt: string | null
+}
+
+/** Die schreibbaren Felder einer Kanal-Zeile. */
+export type InsightsChannelRowData = Omit<InsightsChannelRow, keyof Models.Row>
+
+/**
+ * ZEILE → VERTRAG, fail-soft wie überall in dieser Datei.
+ *
+ * `topic` fällt auf denselben Wert zurück wie eine Radar-Zeile
+ * (`INSIGHTS_RADAR_TOPIC_FALLBACK`) und aus demselben Grund: ein Cluster, das
+ * der Katalog nicht mehr kennt, ist eine falsche RUBRIK und kein Grund, die
+ * Kanal-Liste mit einer Ausnahme abzubrechen. `active` ist bei einer Zeile
+ * ohne Wert WAHR — eine Zeile, die vor der Spalte entstanden wäre, soll
+ * mitlaufen und nicht still aus dem Radar fallen.
+ */
+export function toInsightsChannel(row: InsightsChannelRow): InsightsChannel {
+  return {
+    channelId: row.channelId,
+    topic: oneOf<InsightsTopicKey>(INSIGHTS_TOPIC_KEYS, row.topic, INSIGHTS_RADAR_TOPIC_FALLBACK),
+    title: row.title ?? '',
+    handle: row.handle ?? '',
+    subscribers: Math.max(0, Math.round(row.subscribers ?? 0)),
+    active: row.active !== false,
+    note: row.note ?? '',
+    lastUploadAt: (row.lastUploadAt ?? '').slice(0, 10),
+    checkedAt: row.checkedAt ?? '',
+  }
+}
+
+/**
+ * VERTRAG → ZEILE.
+ *
+ * `lastUploadAt` reist als Kalendertag und geht als UTC-Mitternacht hinaus —
+ * wörtlich dieselbe Begründung wie bei `fromInsightsRadarVideo`. `checkedAt`
+ * dagegen ist ein echter ZEITPUNKT und bleibt einer: „heute geprüft" und
+ * „heute um 23:50 geprüft" sind bei einem stündlichen Lauf zwei verschiedene
+ * Aussagen.
+ */
+export function fromInsightsChannel(channel: InsightsChannel): InsightsChannelRowData {
+  return {
+    channelId: channel.channelId,
+    topic: channel.topic,
+    title: channel.title.slice(0, 160),
+    handle: channel.handle.slice(0, 64),
+    subscribers: channel.subscribers,
+    active: channel.active,
+    note: channel.note.slice(0, INSIGHTS_CHANNEL_NOTE_MAX),
+    lastUploadAt: channel.lastUploadAt ? `${channel.lastUploadAt.slice(0, 10)}T00:00:00.000Z` : null,
+    checkedAt: channel.checkedAt || null,
   }
 }

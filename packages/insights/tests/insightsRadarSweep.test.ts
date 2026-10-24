@@ -79,8 +79,17 @@ const tablesDB = {
 
 const CHANNEL = 'UC-b3c7kxa5vU-bnmaROgvog'
 
-function appConfig(channels: { channelId: string, topic: string }[] = [{ channelId: CHANNEL, topic: 'brand-strategy' }]) {
-  return { pukalani: { insights: { radar: { channels, maxVideosPerChannel: 20 } } } }
+/**
+ * Die App-Config trägt seit BI2 K3 nur noch die zwei DECKEL — die Kanäle
+ * kommen aus der Tabelle und reisen über `readChannels` herein.
+ */
+function appConfig(extra: Record<string, unknown> = {}) {
+  return { pukalani: { insights: { radar: { maxVideosPerChannel: 20, ...extra } } } }
+}
+
+/** Die kuratierten Kanäle, wie `readActiveRadarChannels` sie liefern würde. */
+function channelsDep(channels: { channelId: string, topic: string }[] = [{ channelId: CHANNEL, topic: 'brand-strategy' }]) {
+  return async () => channels.map(entry => ({ ...entry, title: '' })) as never
 }
 
 function runtime(key = 'test-key') {
@@ -131,6 +140,12 @@ function fakeApi(options: {
 function deps(extra: Partial<InsightsRadarSweepDeps> = {}): InsightsRadarSweepDeps {
   return {
     readAppConfig: () => appConfig(),
+    readChannels: channelsDep(),
+    // Der Nachtrag an die Kanalliste ist ein Nitro-Auto-Import und existiert
+    // hier nicht; was er TUT, prüft `insightsChannel.test.ts` an den reinen
+    // Regeln. Hier zählt nur, dass der Lauf ihn ruft und an ihm nicht hängen
+    // bleibt — deshalb eine Fassung, die mitzählt (s. `touched`).
+    touchChannels: async (_db, _dbId, seen) => { touched.push(new Map(seen)) },
     readRuntimeConfig: () => runtime(),
     tablesDB,
     log: (level, name, data) => { logged.push({ level, name, data }) },
@@ -139,11 +154,15 @@ function deps(extra: Partial<InsightsRadarSweepDeps> = {}): InsightsRadarSweepDe
   }
 }
 
+/** Womit der Lauf die Kanalliste nachgezogen hat (BI2 K3). */
+let touched: Map<string, { title: string, subscribers: number, handle: string }>[] = []
+
 const NOW = new Date('2026-09-09T08:00:00.000Z')
 
 beforeEach(() => {
   rows = []
   logged = []
+  touched = []
   nextRowId = 0
   tablesDB.createRow.mockClear()
   tablesDB.updateRow.mockClear()
@@ -165,7 +184,7 @@ describe('runInsightsRadarSweep — die Gates', () => {
   })
 
   it('ohne Kanäle ist es kein Fehler, sondern „diese App betreibt keinen Radar"', async () => {
-    const result = await runInsightsRadarSweep(deps({ readAppConfig: () => appConfig([]) }), NOW)
+    const result = await runInsightsRadarSweep(deps({ readChannels: channelsDep([]) }), NOW)
     expect(result.skipped).toBe('no_channels')
     expect(result.errors).toBe(0)
   })
@@ -176,7 +195,7 @@ describe('runInsightsRadarSweep — die Gates', () => {
       topic: 'seo-geo',
     }))
     const fetchJson = vi.fn(fakeApi({}))
-    const result = await runInsightsRadarSweep(deps({ readAppConfig: () => appConfig(many), fetchJson }), NOW)
+    const result = await runInsightsRadarSweep(deps({ readChannels: channelsDep(many), fetchJson }), NOW)
     expect(result.skipped).toBe('quota_estimate')
     // Kein einziger Aufruf — das ist der ganze Punkt der Vorab-Schätzung.
     expect(fetchJson).not.toHaveBeenCalled()
@@ -334,7 +353,7 @@ describe('runInsightsRadarSweep — Upsert und 30-Tage-Netz', () => {
     // Der Deckel ist eine App-Vorgabe: mit 3.000 Tagen bliebe die Zeile von 2020.
     rows.push({ $id: 'alt2', videoId: 'von-2020', fetchedAt: '2026-09-08T00:00:00.000Z', publishedAt: '2020-03-01T00:00:00.000Z' })
     const lenient = await runInsightsRadarSweep(deps({
-      readAppConfig: () => ({ pukalani: { insights: { radar: { channels: [{ channelId: CHANNEL, topic: 'brand-strategy' }], maxVideoAgeDays: 3_000 } } } }),
+      readAppConfig: () => appConfig({ maxVideoAgeDays: 3_000 }),
     }), NOW)
     // 3.000 liegt über dem Deckel von 365 Tagen — die Zeile fällt trotzdem.
     expect(lenient.deleted).toBe(1)
@@ -349,10 +368,19 @@ describe('runInsightsRadarSweep — Upsert und 30-Tage-Netz', () => {
     expect(logged.some(entry => entry.name.includes('failed'))).toBe(false)
   })
 
-  it('schreibt in die Radar-Tabelle und in keine andere', async () => {
+  it('LEGT Zeilen nur in der Radar-Tabelle an — die Kanalliste wird nur nachgezogen', async () => {
     await runInsightsRadarSweep(deps(), NOW)
+    // Angelegt wird ausschliesslich in `insights_topics`. Die Kanalliste
+    // bekommt seit BI2 K3 einen Nachtrag, aber nur ÄNDERND und nur auf den
+    // API-Feldern — ein Lauf, der dort Zeilen anlegte, erfände Kanäle.
     for (const call of tablesDB.createRow.mock.calls) {
       expect((call[0] as { tableId: string }).tableId).toBe(INSIGHTS_TOPICS_TABLE)
     }
+  })
+
+  it('zieht die Kanalliste mit dem nach, was die API gerade gesagt hat', async () => {
+    await runInsightsRadarSweep(deps(), NOW)
+    expect(touched).toHaveLength(1)
+    expect(touched[0]!.get(CHANNEL)).toEqual({ title: 'The Futur', subscribers: 1_000_000, handle: '' })
   })
 })
