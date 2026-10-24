@@ -735,6 +735,31 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
    */
   { re: /^POST \/api\/insights\/public\/corrections$/, bucket: 'insights:correction', max: 3 },
   /**
+   * DER NEWSLETTER-EINTRAG (BI1 I5a, Plan §9.3a).
+   *
+   * Dieselbe Lage wie die Zeile darüber — eine ÖFFENTLICHE Schreibroute ohne
+   * Session — mit einem Unterschied, der sie SCHÄRFER macht: sie VERSCHICKT
+   * eine Mail, und zwar an eine frei wählbare Adresse. Ungedrosselt ist das
+   * die Bauform eines Mail-Bombing-Werkzeugs mit Listen-Müll als Nebenwirkung
+   * (wörtlich die Lehre, mit der `POST /api/auth/signup` in `ALWAYS_LIMITED`
+   * gekommen ist). Der Honigtopf fängt den einfachen Bot, nicht den, der ihn
+   * kennt.
+   *
+   * DIESE ZEILE IST DER MINUTEN-DECKEL, NICHT DER GANZE. §9.3a fährt die
+   * Zahlen des Korrekturweges: 3/Stunde und 10/Tag je Anschluss. Stunden- und
+   * Tagesfenster kennt diese Middleware nicht (`WINDOW_MS` ist eine Minute für
+   * alle); den Rest zählt die Route selbst
+   * (`decideInsightsNewsletterQuota`, `packages/insights/shared/
+   * insightsNewsletter.ts`) — die Minute schützt den Server, Stunde und Tag
+   * das Postfach eines Fremden.
+   *
+   * BESTÄTIGEN und ABMELDEN stehen BEWUSST NICHT in dieser Zeile: beide
+   * verschicken nichts, legen nichts an und kosten eine Abfrage — und ein
+   * Deckel auf dem Abmelden wäre ein Deckel auf einem Recht (Kopf von
+   * `unsubscribe.post.ts`). Geraten wird ein 256-Bit-Token ohnehin nicht.
+   */
+  { re: /^POST \/api\/insights\/public\/newsletter\/subscribe$/, bucket: 'insights:newsletter', max: 3 },
+  /**
    * DER MARKTVERGLEICHS-LAUF (MV1 M2, Plan §2.9 Nr. 8: „Rate-Limit je IP auf
    * den Abruf-Endpunkt") — die teuerste Route dieses Servers.
    *
