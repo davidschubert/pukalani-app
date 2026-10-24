@@ -104,7 +104,15 @@ in 2.3 bis 2.6.1 ANDERS ist — und was prod zusätzlich aus 2.1/2.2 nachholt.
   ist seit 2.2 Teil des einen `appwrite-worker`.
 - **Redis-Cache wechselt auf igbinary (2.3):** alte Einträge gelten als Miss
   und füllen sich nach — ein kurzer Schub Datenbankzugriffe nach dem Start,
-  kein Befund. Queue-Client 2.2 → 6.0: ein Rückweg auf 2.2.0 müsste die
+  kein Befund. TRIFFT ABER DEN F19-BEWEIS (`verify-index-nudge.mjs`, CI-Schritt
+  nach der Playwright-Suite): er vergiftete den Cache per `redis-cli` als
+  JSON — seit 2.3 unlesbar, und das Dokument steckt in einem Umschlag
+  (`data.document`). Die Vergiftung läuft jetzt als PHP im API-Container
+  (igbinary + Redis-Erweiterung sind nur dort). Und: **seit 2.4 (#14104) liest
+  der Index-Endpunkt bei nicht-`available` das Attribut-Dokument nach** — das
+  Rennen, das `tableCacheNudge` absichert, ist upstream geschlossen; der Beweis
+  prüft versionsbewusst (ab 2.4: vergifteter Cache darf NICHT mehr aufhalten),
+  die Fabrik bleibt. Dev 9/9. Queue-Client 2.2 → 6.0: ein Rückweg auf 2.2.0 müsste die
   Worker erst leerlaufen lassen; unser Rückweg geht ohnehin über den Dump.
 - **SDKs:** `node-appwrite` 29 und `appwrite` 27 bleiben (Response-Format
   `2.0.0` wird weiter bedient; Unit + E2E unten grün). Neuer wäre

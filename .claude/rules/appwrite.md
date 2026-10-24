@@ -69,7 +69,12 @@ paths:
   Tabelle (`tableCacheNudge`) räumt ihn. Der Anstoß war einen Tag lang ein
   OPTIONALES Argument: 2 von 63 Migrationen reichten ihn durch, 61 nicht, und
   eine davon warf die CI um — Sicherungen gehören deshalb in die Schnittstelle,
-  nicht in die Disziplin. Rohes `tablesDB.createIndex` in
+  nicht in die Disziplin. SEIT APPWRITE 2.4 (#14104; 2026-10-24 gegen 2.6.1
+  bewiesen) liest der Index-Endpunkt bei einem nicht-`available`-Status im
+  Cache das Attribut-Dokument selbst nach — das Rennen ist upstream
+  geschlossen, die Fabrik bleibt als Gürtel UND Hosenträger, und
+  `verify-index-nudge` prüft versionsbewusst (ab 2.4 darf ein vergifteter
+  Cache den Index NICHT mehr aufhalten). Rohes `tablesDB.createIndex` in
   `packages/*/scripts/migrations/**` verbietet ESLint (no-restricted-syntax);
   das ist der EINZIGE greifende Wächter, denn die Migrations-Scripts liegen in
   keiner tsconfig und werden von `pnpm -r typecheck` nie gesehen.
