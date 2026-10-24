@@ -30,18 +30,20 @@ import { INSIGHTS_TOPIC_KEYS } from './insightsPost'
 // ── Die kuratierte Kanalliste ──────────────────────────────────────────────
 
 /**
- * EIN KANAL IN DER KONFIGURATION (`pukalani.insights.radar.channels`).
+ * EIN KANAL, WIE IHN EIN RADAR-LAUF BRAUCHT.
  *
- * Sie steht in der APP-CONFIG und nicht in einer Tabelle: die Liste ändert
- * sich seltener als ein Deploy, sie ist eine redaktionelle Entscheidung, und
- * sie gehört in die Versionsgeschichte — „warum ist dieser Kanal drin?"
- * beantwortet ein Kommentar neben der Zeile, keine Datenbank-Row. Dieselbe
- * Überlegung wie beim Cluster-Katalog in `insightsPost.ts`.
+ * ── DIESE FORM BLIEB, DIE QUELLE WECHSELTE (BI2 K3, 2026-09-09) ─────────
+ * Bis dahin stand die Liste in `pukalani.insights.radar.channels`, und hier
+ * stand die Begründung dafür: sie ändere sich seltener als ein Deploy, und
+ * „warum ist dieser Kanal drin?" beantworte ein Kommentar neben der Zeile.
+ * Der Betrieb hat das widerlegt — an zwei Tagen drei Änderungen. Seit Davids
+ * Entscheidung vom 2026-09-09 liegt die Liste in `insights_channels` und wird
+ * im Dashboard gepflegt (`readActiveRadarChannels`); der Kommentar neben der
+ * Zeile ist zum Feld `note` geworden.
  *
- * `title` ist NUR ein Lesehinweis für den Menschen, der die Liste pflegt. Der
- * Name, der in der Tabelle landet, kommt aus `channels.list` — was wir hier
- * hinschreiben, könnte veraltet sein, und ein veralteter Name in einer
- * Redaktions-Ansicht ist schlimmer als gar keiner.
+ * Der Lauf selbst merkt davon nichts: er bekommt weiter genau diese drei
+ * Felder. `title` ist dabei NUR ein Lesehinweis — der Name, der in einer
+ * Radar-Zeile landet, kommt aus `channels.list`.
  */
 export interface InsightsRadarChannel {
   /** Die Kanal-Id (`UC…`, 24 Zeichen) — NIE ein Handle (`@name`). */
@@ -128,30 +130,12 @@ export function insightsUploadsPlaylistId(channelId: string): string | null {
  * selbst um dieselbe Zeile streiten.
  */
 export function readInsightsRadarConfig(appConfig: unknown): {
-  channels: InsightsRadarChannel[]
   maxVideos: number
   /** Videos, die älter sind, speichert der Lauf nicht (Tage ab Veröffentlichung). */
   maxVideoAgeDays: number
 } {
   const radar = (appConfig as { pukalani?: { insights?: { radar?: unknown } } } | null)
-    ?.pukalani?.insights?.radar as { channels?: unknown, maxVideosPerChannel?: unknown, maxVideoAgeDays?: unknown } | undefined
-
-  const seen = new Set<string>()
-  const channels: InsightsRadarChannel[] = []
-  for (const entry of Array.isArray(radar?.channels) ? radar.channels : []) {
-    const candidate = entry as { channelId?: unknown, topic?: unknown, title?: unknown }
-    const channelId = typeof candidate?.channelId === 'string' ? candidate.channelId.trim() : ''
-    const topic = typeof candidate?.topic === 'string' ? candidate.topic : ''
-    if (!insightsUploadsPlaylistId(channelId)) continue
-    if (!(INSIGHTS_TOPIC_KEYS as readonly string[]).includes(topic)) continue
-    if (seen.has(channelId)) continue
-    seen.add(channelId)
-    channels.push({
-      channelId,
-      topic: topic as InsightsTopicKey,
-      ...(typeof candidate.title === 'string' && candidate.title ? { title: candidate.title } : {}),
-    })
-  }
+    ?.pukalani?.insights?.radar as { maxVideosPerChannel?: unknown, maxVideoAgeDays?: unknown } | undefined
 
   const raw = typeof radar?.maxVideosPerChannel === 'number' ? radar.maxVideosPerChannel : INSIGHTS_RADAR_MAX_VIDEOS_DEFAULT
   const maxVideos = Math.max(1, Math.min(INSIGHTS_RADAR_MAX_VIDEOS_CAP, Math.floor(raw) || INSIGHTS_RADAR_MAX_VIDEOS_DEFAULT))
@@ -159,7 +143,7 @@ export function readInsightsRadarConfig(appConfig: unknown): {
   const rawAge = typeof radar?.maxVideoAgeDays === 'number' ? radar.maxVideoAgeDays : INSIGHTS_RADAR_MAX_VIDEO_AGE_DEFAULT
   const maxVideoAgeDays = Math.max(1, Math.min(INSIGHTS_RADAR_MAX_VIDEO_AGE_CAP, Math.floor(rawAge) || INSIGHTS_RADAR_MAX_VIDEO_AGE_DEFAULT))
 
-  return { channels, maxVideos, maxVideoAgeDays }
+  return { maxVideos, maxVideoAgeDays }
 }
 
 // ── Die Schlagwortliste je Cluster ─────────────────────────────────────────

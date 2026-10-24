@@ -397,6 +397,11 @@ const INSIGHTS_TABLES = [
   // nicht mehr erreicht (Policies III.E.4). KEINE Kommentar-Texte, KEINE
   // Nutzernamen — dafür gibt es hier keine Spalte.
   'insights_topics',
+  // insights-005: die kuratierte Kanalliste (BI2 K3) — das Gegenteil von
+  // `insights_topics`: dort fremde Zahlen, täglich neu und nach 30 Tagen weg;
+  // hier eine redaktionelle Entscheidung, die bleibt, bis ein Mensch sie
+  // ändert. Bis BI2 stand sie in `apps/branding/app/app.config.ts`.
+  'insights_channels',
 ]
 
 const PORTFOLIO_SOLL = [

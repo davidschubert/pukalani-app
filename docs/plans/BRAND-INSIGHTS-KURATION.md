@@ -339,7 +339,7 @@ Anwalt ist dafür kein Gate.
 |---|---|---|---|
 | ~~K1~~ | ~~Cluster-Katalog erweitern~~ — **entfällt** (Davids Entscheidung B, 2026-09-09: erst mal so lassen) | — | — |
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
-| **K3** | **Kanal-Seite** — Migration `insights-005`, `/dashboard/insights/channels`, Handle-Auflösung, Prüf-Vorschau, aktiv/inaktiv, Notiz; Übernahme der elf Config-Zeilen | Entscheidung A · Davids Ja zur Prod-Migration | M |
+| ✅ **K3** | **Kanal-Seite** — **GEBAUT 2026-10-24** (Migration `insights-005`, `/dashboard/insights/channels`, Handle-Auflösung, Prüf-Vorschau, aktiv/inaktiv, Notiz, Übernahme der elf Zeilen). **Offen: Davids Ja zur PROD-Migration.** | Entscheidung A ✔ | M |
 | **K4** | **Fundstücke + Schalter** — Migration `insights-006`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter „nur Interessante"; Sweep zieht die Zahlen mit | Davids Ja zur Prod-Migration | M |
 | **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle | Entscheidung C (§9) · K4 · **Routen-Probe** | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
@@ -505,3 +505,68 @@ war falsch.** Mit einer vollständigen Zeigerfolge (`pointermove` →
 die 30 kam als Zahl zurück, ohne eine einzige Warnung. Lehre: eine Diagnose,
 die aus dem Verhalten des WERKZEUGS stammt, ist erst eine, wenn sie gegen die
 Gegenprobe steht — sonst landet eine erfundene Falle als Kommentar im Code.
+
+
+---
+
+## 11. K3 gebaut (2026-10-24)
+
+Die Kanalliste wohnt jetzt in der Tabelle `insights_channels` und wird unter
+`/dashboard/insights/channels` gepflegt. Was dort steht:
+
+* **Elf Kanäle übernehmen** — ein Knopf, der nur auf eine LEERE Liste wirkt.
+  Die Saat liegt in `packages/insights/shared/insightsChannelSeed.ts`, samt der
+  Notizen, die vorher Code-Kommentare in der App-Config waren. Ein zweiter Lauf
+  brächte Kanäle zurück, die du bewusst entfernt hast — deshalb gibt es ihn
+  nicht, und die Antwort sagt das (`seeded: 0`) statt stillschweigend zu
+  gelingen.
+* **Prüfen, dann aufnehmen.** Zwei Schritte, und der Zwischenschritt ist der
+  Zweck: zwischen Eingabe und Speichern stehen **Titel, Abonnentenzahl und der
+  jüngste Upload**. Genau diese drei Angaben hätten `@PentagramDesign` im
+  September entlarvt (echte Id, Privatkonto, ein Video von 2012). Eingabe
+  ändern verwirft die Vorschau — sonst könnte man den einen prüfen und den
+  anderen aufnehmen.
+* **Handle, Id oder Adresse** werden gelesen; die alten Formen `/c/` und
+  `/user/` fallen klar durch, weil die API sie nicht mehr auflöst.
+* **Ausschalten statt löschen.** Ein Kanal, der nichts mehr liefert, behält
+  seine Zeile und seine Notiz. Entfernen gibt es für das, was nie hingehörte,
+  mit Rückfrage.
+* **Cluster und Notiz ändern sich an Ort und Stelle** in der Tabelle.
+* **Der Lauf zieht nach, was ihm die API sagt** — Titel, Handle, Abonnenten,
+  Prüfzeitpunkt. **Cluster, Zustand und Notiz fasst er nie an**; ein Lauf, der
+  die Notiz überschriebe, nähme der Liste genau das, wofür sie gebaut wurde.
+
+**Die Config ist leer.** `pukalani.insights.radar.channels` gibt es nicht mehr;
+`readInsightsRadarConfig` liest nur noch die zwei Betriebsgrössen (wie tief je
+Kanal, wie alt höchstens). Sweep und Radar-Route lesen beide dieselbe Tabelle.
+
+### Gelernt
+
+**Der `@`-Fall aus CLAUDE.md trifft auch PLATZHALTER.** Die Zeile
+`"inputPlaceholder": "@thefutur"` hat den vue-i18n-Nachrichten-Compiler
+abstürzen lassen — und zwar nicht nur diesen Schlüssel: auf der ganzen Seite
+standen rohe Schlüssel, bis hinauf in den Seitentitel (`ui.metaTitle`). Lint,
+Typecheck und 293 Unit-Tests waren dabei grün; sichtbar war es nur im Dev-Log
+(`Invalid linked format (error code: 10)`) und im Browser. Richtig ist
+`{'@'}thefutur`. Die Regel gilt für JEDE Zeichenkette einer Locale-Datei, auch
+für eine, die wie ein Beispiel aussieht.
+
+**Der Klick-Beweis hat eine Lücke gefunden, die kein Test hatte:** ein über die
+Vorschau aufgenommener Kanal stand dauerhaft mit seiner rohen Id in der Liste.
+Die Vorschau kannte sein Handle, der Lauf las es inzwischen auch mit — nur
+schrieb ihn niemand zurück. Jetzt trägt der Nachtrag das Handle mit, und zwar
+nur, wenn die API eines nennt (sonst verlöre ein Kanal ohne `customUrl` das,
+was die Saat mitgebracht hat).
+
+**Die Routen gehen über die KANAL-Id, nicht über die Row-Id.** Der Vertrag
+`InsightsChannel` beschreibt einen Kanal, keine Appwrite-Zeile — die Row-Id
+hätte durch jede Abbildung mitgeschleppt werden müssen, nur damit eine Adresse
+sie hat. Der Preis ist eine zusätzliche Abfrage je Änderung, bei höchstens
+fünfzig Zeilen keine Rechnung.
+
+### Was jetzt bei David liegt
+
+**Die Prod-Migration `insights-005`** — sie muss VOR dem Code-Deploy laufen,
+und danach einmal „Die elf Kanäle übernehmen" auf branding.supply. Bis beides
+geschehen ist, meldet der Radar dort „kein Kanal": die App-Config trägt die
+Liste nicht mehr.

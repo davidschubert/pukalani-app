@@ -96,6 +96,32 @@ const DELETE_BATCH = 200
  */
 const DELETE_ROUNDS_MAX = 5
 
+/**
+ * DIE VORGABEN FÜR DIE ZWEI KANAL-SCHRITTE — als lokale Funktionen und nicht
+ * direkt als `deps.x ?? autoImport`.
+ *
+ * Der Unterschied ist nicht kosmetisch: ein Nitro-Auto-Import ist im
+ * Vitest-Lauf gar nicht vorhanden, und `a ?? autoImport` schlägt ihn schon
+ * beim Auswerten nach — also auch dann, wenn der Test eine eigene Fassung
+ * mitbringt. In einer lokalen Funktion wird er erst beim AUFRUF berührt.
+ */
+async function defaultReadChannels(tablesDB: TablesDbLike, databaseId: string): Promise<InsightsRadarChannel[]> {
+  return await readActiveRadarChannels(tablesDB, databaseId)
+}
+async function defaultTouchChannels(
+  tablesDB: TablesDbLike,
+  databaseId: string,
+  seen: ReadonlyMap<string, { title: string, subscribers: number, handle: string }>,
+  checkedAt: string,
+): Promise<void> {
+  await touchInsightsChannels(
+    tablesDB as unknown as Parameters<typeof touchInsightsChannels>[0],
+    databaseId,
+    seen,
+    checkedAt,
+  )
+}
+
 /** Läuft gerade einer? Ein zweiter würde dieselben Zeilen doppelt schreiben. */
 let sweepRunning = false
 
@@ -139,6 +165,23 @@ export interface InsightsRadarSweepDeps {
   fetchJson?: (url: string) => Promise<unknown>
   /** Vorgabe: `useAppConfig()` (nimmt in Nitro kein Event). */
   readAppConfig?: () => unknown
+  /**
+   * Die kuratierten Kanäle. Vorgabe seit BI2 K3: die TABELLE
+   * `insights_channels` (`readActiveRadarChannels`) — vorher stand die Liste
+   * in der App-Config, und ein Deploy war der einzige Weg, sie zu ändern.
+   */
+  readChannels?: (tablesDB: TablesDbLike, databaseId: string) => Promise<InsightsRadarChannel[]>
+  /**
+   * Was der Lauf über die Kanäle gelernt hat, an die Liste zurückschreiben.
+   * Vorgabe: `touchInsightsChannels`. Überschreibbar aus demselben Grund wie
+   * alles andere hier — ein Nitro-Auto-Import existiert im Vitest-Lauf nicht.
+   */
+  touchChannels?: (
+    tablesDB: TablesDbLike,
+    databaseId: string,
+    seen: ReadonlyMap<string, { title: string, subscribers: number, handle: string }>,
+    checkedAt: string,
+  ) => Promise<void>
   /** Vorgabe: `useRuntimeConfig(event)`. */
   readRuntimeConfig?: () => { insightsYoutubeKey?: string, insightsYoutubeBaseUrl?: string, public: { appwriteDatabaseId: string } }
   /** Vorgabe: `createAdminClient(event).tablesDB`. */
@@ -224,14 +267,33 @@ export async function runInsightsRadarSweep(
       return { ...result, skipped: 'not_configured' }
     }
 
-    // GATE 2: die kuratierte Liste. Leer heisst „diese App betreibt keinen
-    // Radar" und ist kein Fehler.
+    // Die zwei DECKEL kommen weiter aus der App-Config: sie sind
+    // Betriebsgrössen („wie tief lesen wir", „wie alt darf ein Video sein")
+    // und keine redaktionelle Entscheidung.
     // OHNE Event, auch im Request: `useAppConfig()` nimmt in Nitro kein
     // Argument — die App-Config wird zur Bauzeit eingebacken und ist eine
     // Konstante des Prozesses, keine Eigenschaft eines Requests.
-    const { channels, maxVideos, maxVideoAgeDays } = readInsightsRadarConfig(
+    const { maxVideos, maxVideoAgeDays } = readInsightsRadarConfig(
       deps.readAppConfig?.() ?? useAppConfig(),
     )
+
+    const fetchJson = deps.fetchJson ?? defaultFetchJson
+    const tablesDB = deps.tablesDB ?? (createAdminClient(deps.event).tablesDB as unknown as TablesDbLike)
+    const databaseId = runtime.public.appwriteDatabaseId
+    const fetchedDay = toDay(now)
+
+    // GATE 2: die kuratierte Liste — seit BI2 K3 aus der TABELLE. Leer heisst
+    // „diese Instanz hat noch keine Kanäle" und ist kein Fehler: die
+    // Dashboard-Seite bietet dann die Übernahme der Saat an.
+    let channels: InsightsRadarChannel[]
+    try {
+      channels = await (deps.readChannels ?? defaultReadChannels)(tablesDB, databaseId)
+    }
+    catch (error) {
+      result.errors += 1
+      log('warn', 'insights.radar_channels_unreadable', { message: String((error as Error)?.name ?? 'error') })
+      return { ...result, skipped: 'no_channels' }
+    }
     if (channels.length === 0) return { ...result, skipped: 'no_channels' }
 
     // GATE 3: die Quota-Schätzung VOR dem ersten Aufruf (§9.6 Leitplanke c).
@@ -248,20 +310,20 @@ export async function runInsightsRadarSweep(
       return { ...result, skipped: 'quota_estimate' }
     }
 
-    const fetchJson = deps.fetchJson ?? defaultFetchJson
-    const tablesDB = deps.tablesDB ?? (createAdminClient(deps.event).tablesDB as unknown as TablesDbLike)
-    const databaseId = runtime.public.appwriteDatabaseId
-    const fetchedDay = toDay(now)
-
     // ── 1. Die Kanäle: Name und Abonnentenzahl, gestapelt zu je 50 ────────
-    const meta = new Map<string, { title: string, subscribers: number }>()
+    const meta = new Map<string, { title: string, subscribers: number, handle: string }>()
     for (const batch of insightsYoutubeBatches(channels.map(channel => channel.channelId))) {
       try {
         const parsed = insightsYoutubeChannelsSchema.parse(
           await fetchJson(insightsYoutubeChannelsUrl(baseUrl, apiKey, batch)),
         )
         for (const item of parsed.items) {
-          meta.set(item.id, { title: item.snippet.title, subscribers: item.statistics.subscriberCount })
+          meta.set(item.id, {
+            title: item.snippet.title,
+            subscribers: item.statistics.subscriberCount,
+            // YouTube führt das Handle MIT `@`; die Liste führt es ohne.
+            handle: (item.snippet.customUrl ?? '').replace(/^@/, ''),
+          })
         }
       }
       catch (error) {
@@ -270,6 +332,12 @@ export async function runInsightsRadarSweep(
         log('warn', 'insights.radar_channels_failed', { message: insightsYoutubeSafeMessage(error) })
       }
     }
+
+    // Was der Lauf gerade über die Kanäle gelernt hat, zurück an die Liste —
+    // damit die Dashboard-Seite den aktuellen Namen und die Abonnentenzahl
+    // zeigt, ohne dafür noch einmal Quota auszugeben. Nur die API-Felder;
+    // Cluster, Zustand und Notiz gehören dem Betreiber. Fail-soft.
+    await (deps.touchChannels ?? defaultTouchChannels)(tablesDB, databaseId, meta, now.toISOString())
 
     // ── 2. Je Kanal die jüngsten Uploads ─────────────────────────────────
     // Ein Kanal, der fehlschlägt, kostet EINEN Kanal. Der Lauf macht weiter:

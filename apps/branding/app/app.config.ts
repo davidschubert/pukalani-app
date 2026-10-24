@@ -368,83 +368,33 @@ export default defineAppConfig({
       enabled: true,
 
       /**
-       * DIE KURATIERTE KANALLISTE DES THEMENRADARS (BI1 I4, §9.6 Leitplanke c).
+       * DER THEMENRADAR (BI1 I4, §9.6) — DIE KANALLISTE STEHT NICHT MEHR HIER.
        *
-       * ── WARUM SIE IN DER APP STEHT UND NICHT IM LAYER ──────────────────
-       * Eine Kanalliste ist eine REDAKTIONELLE Entscheidung: wem hören wir zu?
-       * Der Layer-Default ist bewusst leer — eine zweite Brand-Site soll nicht
-       * über `extends` fremde Kanäle erben, ohne dass jemand sie ausgesucht
-       * hat. Hier steht sie neben dem `enabled: true` derselben Site, und das
-       * ist genau der Ort, an dem beide Entscheidungen zusammengehören.
+       * Bis BI2 K3 (2026-09-09) trug diese Config elf geprüfte Kanäle, und der
+       * Kommentar an dieser Stelle begründete ausführlich, warum sie in die
+       * APP gehören und nicht in den Layer: eine Kanalliste sei eine
+       * REDAKTIONELLE Entscheidung, und „warum ist dieser Kanal drin?"
+       * beantworte ein Kommentar neben der Zeile.
        *
-       * ── JEDE ID IST GEPRÜFT, KEINE IST GERATEN ─────────────────────────
-       * Alle zwölf Kanal-Ids wurden am 2026-09-09 aus dem HTML der jeweiligen
-       * Kanalseite gelesen (`"externalId":"UC…"` bzw. die kanonische
-       * `youtube.com/channel/UC…`-Adresse) — beide Fundstellen stimmten je
-       * Kanal überein. Das ist nicht Pedanterie: das erste naheliegende
-       * Muster (`"channelId":"UC…"`) liefert auf einer Kanalseite den Kanal
-       * eines EMPFOHLENEN Videos, nicht den der Seite; bei zwei der zwölf
-       * Kanäle hätte es eine fremde Id ergeben. Ein Tippfehler oder eine
-       * geratene Id kostet keinen Fehler, den man sieht — sie kostet einen
-       * 404 je Lauf und einen Kanal, der still fehlt.
+       * Der erste Satz stimmt weiterhin — der zweite nicht mehr. Eine
+       * redaktionelle Entscheidung gehört dem BETREIBER, und der hat keinen
+       * Deploy. Der Betrieb hat das an zwei Tagen dreimal gezeigt: ein
+       * vermeintliches Designbüro war ein Privatkonto, zwei Kanäle luden seit
+       * Jahren nichts mehr hoch. Seit Davids Entscheidung vom 2026-09-09 lebt
+       * die Liste in der Tabelle `insights_channels` und wird unter
+       * /dashboard/insights/channels gepflegt — mit einer Prüf-Vorschau vor
+       * dem Speichern, die genau diese drei Irrtümer verhindert hätte.
        *
-       * MERKSATZ FÜR SPÄTERE ERGÄNZUNGEN: nur Ids aufnehmen, die auf der
-       * Kanalseite selbst standen, mit Handle und Prüfdatum daneben. Ein
-       * Handle (`@thefutur`) gehört NIE in `channelId` — `readInsightsRadarConfig`
-       * wirft es still heraus, und dann fehlt der Kanal, ohne dass es auffällt.
-       *
-       * ── DAS `topic` IST DIE VORGABE, NICHT DAS URTEIL ──────────────────
-       * Es sagt, wofür der Kanal im Normalfall steht. Der Titel eines
-       * EINZELNEN Videos darf davon abweichen — die Schlagwortliste
-       * (`insightsRadarClassify`) ordnet dann um, wenn sie es belegen kann.
-       * Deshalb ist es kein Problem, dass hier zwei Cluster (`brand-analysis`
-       * und `rebranding`) nur schwach vertreten sind: sie werden über die
-       * Titel erreicht, nicht über einen eigenen Kanal.
-       *
-       * ── ZWÖLF UND NICHT FÜNFZIG ────────────────────────────────────────
-       * Quota wäre kein Argument (zwölf Kanäle à 20 Videos = 18 der 10.000
-       * Tageseinheiten; fünfzig wären 71). Das Argument ist die Redaktion: der
-       * Radar soll eine Liste liefern, die ein Mensch am Morgen durchsieht.
-       * Eine Liste, die niemand mehr liest, ist kein Signal.
+       * Die ALTEN Kanal-Zeilen samt ihren Begründungen stehen in der
+       * Versionsgeschichte dieser Datei; ihre Notizen sind in die Saat
+       * `packages/insights/shared/insightsChannelSeed.ts` gewandert und
+       * landen beim einmaligen Übernehmen an der jeweiligen Zeile.
        */
       radar: {
-        channels: [
-          // Marke & Strategie
-          { channelId: 'UC-b3c7kxa5vU-bnmaROgvog', topic: 'brand-strategy', title: 'The Futur' }, // @thefutur, geprüft 2026-09-09
-          { channelId: 'UCBFWrMRo37OVLM2l1pWnH7w', topic: 'brand-strategy', title: 'Brand Master Academy' }, // @BrandMasterAcademy, geprüft 2026-09-09
-          // Ogilvy STAND HIER und ist raus (2026-09-10, Davids Entscheidung):
-          // die Id UCHzbxHV1205I4FlG5rFZsPg war echt, der Kanal lädt nur seit
-          // dem 2024-12-02 nichts mehr hoch (646 Tage) — im Prod-Lauf vom
-          // 2026-09-10 null Zeilen bei einer Einheit Kosten je Lauf. Ersatz aus
-          // DEMSELBEN Haus: Nudgestock ist Ogilvys Behavioural-Science-Festival
-          // (Rory Sutherland). Bewusst dünn und stoßweise — rund 3 Uploads je
-          // 180 Tage, der Schwung an Vorträgen kommt nach dem Festival im Juni.
-          { channelId: 'UCBOzmOV9UHpTEYNr6NqOZ2g', topic: 'brand-psychology', title: 'Nudgestock' }, // @Nudgestock, geprüft 2026-09-10 (Titel UND jüngster Upload)
-          // Gestaltung & Identität
-          { channelId: 'UCN7dywl5wDxTu1RM3eJ_h9Q', topic: 'visual-identity', title: 'Flux Academy' }, // @FluxAcademy, geprüft 2026-09-09
-          { channelId: 'UCoeJKtPJLoIBqWq4o8TDLpA', topic: 'visual-identity', title: 'Satori Graphics' }, // @SatoriGraphics, geprüft 2026-09-09
-          { channelId: 'UCIp9sEZiv36cDG7cEnrVU7Q', topic: 'visual-identity', title: 'Will Paterson' }, // @WillPatersonDesign, geprüft 2026-09-09
-          // Pentagram STAND HIER und ist raus (2026-09-10): `@PentagramDesign`
-          // (UCTXgprkT2GFY9eKZiz5Egew) ist ein Privatkonto namens
-          // „pentagramdesign" mit einem Dublin-Video von 2012, `@pentagram`
-          // eine Metal-Band. Das Designbüro hat keinen YouTube-Kanal unter
-          // seinem Namen — die Id war echt, die Identität nicht. Lehre: ein
-          // Kanal ist erst geprüft, wenn TITEL und JÜNGSTER UPLOAD zur
-          // Erwartung passen, nicht nur die Id. `rebranding` bleibt damit ohne
-          // eigenen Kanal und wird über die Titel erreicht (s. o.).
-          // Erlebnis & Sprache
-          { channelId: 'UC2oCugzU6W8-h95W7eBTUEg', topic: 'brand-experience', title: 'Nielsen Norman Group' }, // @NNgroup, geprüft 2026-09-09
-          // Marketing Examples (Harry Dry) STAND HIER und ist raus (2026-09-10,
-          // Davids Entscheidung): die Id UC13ogyrw3DUgjlAIcWmWG3A war echt,
-          // letzter Upload 2024-07-20 (781 Tage), im Prod-Lauf ebenfalls null
-          // Zeilen. Ersatz in derselben Nische: StoryBrand ist Messaging,
-          // Elevator Pitch und Tonalität — der Kern von brand-language.
-          { channelId: 'UC_RirP9QR49zw2HOZ95dKrA', topic: 'brand-language', title: 'StoryBrand' }, // @StoryBrand, geprüft 2026-09-10 (Titel UND jüngster Upload)
-          // Sichtbarkeit
-          { channelId: 'UCWquNQV8Y0_defMKnGKrFOQ', topic: 'seo-geo', title: 'Ahrefs' }, // @AhrefsCom, geprüft 2026-09-09
-          { channelId: 'UCWf2ZlNsCGDS89VBF_awNvA', topic: 'seo-geo', title: 'Google Search Central' }, // @GoogleSearchCentral, geprüft 2026-09-09
-          { channelId: 'UCj7v9UM1aGx6GR-nsY-9u8w', topic: 'seo-geo', title: 'Semrush' }, // @Semrush, geprüft 2026-09-09
-        ],
+        // Leer mit Absicht: die Kanäle liegen in `insights_channels`, die
+        // zwei Betriebsgrössen (`maxVideosPerChannel`, `maxVideoAgeDays`)
+        // haben im Layer eine Vorgabe (20 Videos, 180 Tage), die diese App
+        // bewusst nicht überschreibt. Begründung s. o.
       },
     },
   },

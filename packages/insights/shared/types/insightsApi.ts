@@ -1,3 +1,4 @@
+import type { InsightsChannel, InsightsChannelPreview } from '../insightsChannel'
 import type {
   InsightsBrand,
   InsightsBrandScore,
@@ -442,4 +443,51 @@ export type InsightsPublicRankingResponse = InsightsPublicRankingPayload | Insig
  */
 export interface InsightsCorrectionSubmitResponse {
   ok: true
+}
+
+// ── Die Kanalliste (BI2 K3) ────────────────────────────────────────────────
+
+/**
+ * DIE LISTE (`GET /api/insights/channels`).
+ *
+ * `seedAvailable` ist mehr als eine Zahl: auf einer frisch migrierten Instanz
+ * heisst eine leere Tabelle „die elf Kanäle sind noch nicht übernommen", und
+ * das ist eine andere Auskunft als „hier sollen keine Kanäle laufen". Ohne
+ * dieses Feld stünde der Betreiber vor einer leeren Seite ohne Weg. Es ist
+ * `0`, sobald auch nur eine Zeile steht — die Übernahme gibt es nur einmal.
+ *
+ * `configured` sagt, ob es einen YouTube-Schlüssel gibt. Ohne ihn gibt es
+ * keine Prüf-Vorschau, und die Seite soll das sagen, BEVOR jemand tippt.
+ */
+export interface InsightsChannelsListResponse {
+  channels: InsightsChannel[]
+  seedAvailable: number
+  configured: boolean
+}
+
+/** Die Prüf-Vorschau (`POST /api/insights/channels/resolve`). */
+export interface InsightsChannelPreviewResponse {
+  preview: InsightsChannelPreview
+}
+
+/** Angelegt (`POST /api/insights/channels`). */
+export interface InsightsChannelCreatedResponse {
+  channel: InsightsChannel
+}
+
+/** Geändert (`PATCH /api/insights/channels/<id>`). */
+export interface InsightsChannelUpdatedResponse {
+  channel: InsightsChannel
+}
+
+/** Entfernt (`DELETE /api/insights/channels/<id>`). */
+export interface InsightsChannelDeletedResponse {
+  ok: true
+}
+
+/** Saat übernommen (`POST /api/insights/channels/seed`). */
+export interface InsightsChannelsSeededResponse {
+  /** Wie viele Zeilen entstanden sind — `0`, wenn die Liste schon stand. */
+  seeded: number
+  channels: InsightsChannel[]
 }

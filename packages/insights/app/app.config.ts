@@ -158,6 +158,10 @@ export default defineAppConfig({
             { id: 'insights-brands', labelKey: 'insights.admin.navBrands', to: '/dashboard/insights/brands' },
             { id: 'insights-corrections', labelKey: 'insights.admin.navCorrections', to: '/dashboard/insights/corrections' },
             { id: 'insights-radar', labelKey: 'insights.admin.navRadar', to: '/dashboard/insights/radar' },
+            // Die Kanäle stehen NACH dem Radar und nicht davor: sie sind seine
+            // Zutat, nicht sein Zweck. Wer morgens hereinkommt, will die
+            // Videoliste — die Pflege der Quellen ist der seltenere Weg.
+            { id: 'insights-channels', labelKey: 'insights.admin.navChannels', to: '/dashboard/insights/channels' },
           ],
         },
       ],

@@ -36,38 +36,18 @@ describe('insightsUploadsPlaylistId', () => {
 })
 
 describe('readInsightsRadarConfig', () => {
-  const channel = (channelId: string, topic = 'brand-strategy') => ({ channelId, topic })
-
-  it('liest gültige Kanäle und die Vorgabe für die Videozahl', () => {
-    const config = readInsightsRadarConfig({
-      pukalani: { insights: { radar: { channels: [channel('UC-b3c7kxa5vU-bnmaROgvog')] } } },
-    })
-    expect(config.channels).toEqual([{ channelId: 'UC-b3c7kxa5vU-bnmaROgvog', topic: 'brand-strategy' }])
-    expect(config.maxVideos).toBe(INSIGHTS_RADAR_MAX_VIDEOS_DEFAULT)
-  })
-
-  it('wirft Handles, unbekannte Cluster und Doppelte heraus', () => {
-    const config = readInsightsRadarConfig({
-      pukalani: {
-        insights: {
-          radar: {
-            channels: [
-              channel('@thefutur'),
-              channel('UC-b3c7kxa5vU-bnmaROgvog', 'erfundenes-cluster'),
-              channel('UCN7dywl5wDxTu1RM3eJ_h9Q', 'visual-identity'),
-              channel('UCN7dywl5wDxTu1RM3eJ_h9Q', 'seo-geo'),
-            ],
-          },
-        },
-      },
-    })
-    expect(config.channels.map(entry => entry.channelId)).toEqual(['UCN7dywl5wDxTu1RM3eJ_h9Q'])
-    expect(config.channels[0]!.topic).toBe('visual-identity')
-  })
-
+  /*
+   * SEIT BI2 K3 LIEST DIESE FUNKTION NUR NOCH ZWEI DECKEL.
+   *
+   * Die Kanalliste ist aus der App-Config in die Tabelle `insights_channels`
+   * gezogen (Davids Entscheidung 2026-09-09) — ihre Prüfungen (keine Id,
+   * unbekanntes Cluster, Doppelte) leben jetzt in `readActiveRadarChannels`
+   * und werden in `insightsChannel.test.ts` geprüft. Was hier bleibt, sind
+   * Betriebsgrössen des LAUFS, keine redaktionellen Entscheidungen.
+   */
   it('deckelt maxVideosPerChannel und fängt Unsinn ab', () => {
     const read = (value: unknown) => readInsightsRadarConfig({
-      pukalani: { insights: { radar: { channels: [], maxVideosPerChannel: value } } },
+      pukalani: { insights: { radar: { maxVideosPerChannel: value } } },
     }).maxVideos
     expect(read(5)).toBe(5)
     expect(read(999)).toBe(INSIGHTS_RADAR_MAX_VIDEOS_CAP)
@@ -78,7 +58,7 @@ describe('readInsightsRadarConfig', () => {
 
   it('der Alters-Deckel: 180 Tage Vorgabe, höchstens ein Jahr, Unsinn fällt auf die Vorgabe', () => {
     const read = (value: unknown) => readInsightsRadarConfig({
-      pukalani: { insights: { radar: { channels: [], maxVideoAgeDays: value } } },
+      pukalani: { insights: { radar: { maxVideoAgeDays: value } } },
     }).maxVideoAgeDays
     expect(INSIGHTS_RADAR_MAX_VIDEO_AGE_DEFAULT).toBe(180)
     expect(readInsightsRadarConfig({}).maxVideoAgeDays).toBe(INSIGHTS_RADAR_MAX_VIDEO_AGE_DEFAULT)
@@ -89,10 +69,11 @@ describe('readInsightsRadarConfig', () => {
     expect(read('ewig')).toBe(INSIGHTS_RADAR_MAX_VIDEO_AGE_DEFAULT)
   })
 
-  it('gibt bei fehlender Konfiguration eine leere Liste, keinen Wurf', () => {
-    expect(readInsightsRadarConfig(null).channels).toEqual([])
-    expect(readInsightsRadarConfig({}).channels).toEqual([])
-    expect(readInsightsRadarConfig({ pukalani: { insights: { radar: { channels: 'nein' } } } }).channels).toEqual([])
+  it('gibt bei fehlender Konfiguration die Vorgaben, keinen Wurf', () => {
+    expect(readInsightsRadarConfig(null).maxVideos).toBe(INSIGHTS_RADAR_MAX_VIDEOS_DEFAULT)
+    expect(readInsightsRadarConfig({}).maxVideos).toBe(INSIGHTS_RADAR_MAX_VIDEOS_DEFAULT)
+    expect(readInsightsRadarConfig({ pukalani: { insights: { radar: 'nein' } } }).maxVideos)
+      .toBe(INSIGHTS_RADAR_MAX_VIDEOS_DEFAULT)
   })
 })
 
