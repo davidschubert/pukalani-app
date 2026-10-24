@@ -46,6 +46,11 @@ describe('isValidHostHeader — gültige Hosts kommen durch', () => {
     expect(isValidHostHeader('GROSS.example.com')).toBe(true)
   })
 
+  it('höchster gültiger Port', () => {
+    expect(isValidHostHeader('pukalani.studio:65535')).toBe(true)
+    expect(isValidHostHeader('[::1]:65535')).toBe(true)
+  })
+
   it('IPv4 mit Port', () => {
     expect(isValidHostHeader('127.0.0.1:3045')).toBe(true)
   })
@@ -103,6 +108,16 @@ describe('isValidHostHeader — fehlgeformte Hosts werden abgewiesen', () => {
     expect(isValidHostHeader('pukalani.studio:abc')).toBe(false)
   })
 
+  it('Port über 65535 — fünf Ziffern sehen gültig aus, new URL wirft', () => {
+    // Die Lücke vom 2026-10-23: `\d{1,5}` passt auf `:99999`, ein Port über
+    // 65535 ist aber keiner. Kam durch die Wache und ließ `getRequestURL()`
+    // eine Middleware später werfen — derselbe 500er, engerer Auslöser.
+    expect(isValidHostHeader('pukalani.studio:65536')).toBe(false)
+    expect(isValidHostHeader('pukalani.studio:99999')).toBe(false)
+    expect(isValidHostHeader('127.0.0.1:70000')).toBe(false)
+    expect(isValidHostHeader('[::1]:99999')).toBe(false)
+  })
+
   it('Prozentzeichen', () => {
     expect(isValidHostHeader('evil%2etld')).toBe(false)
   })
@@ -137,6 +152,11 @@ describe('isValidHostHeader deckt sich mit new URL()', () => {
     'user@evil.tld',
     '::1',
     'pukalani.studio:abc',
+    'pukalani.studio:65535',
+    'pukalani.studio:65536',
+    'pukalani.studio:99999',
+    '[::1]:65536',
+    '127.0.0.1:70000',
   ]
 
   for (const host of hosts) {
@@ -217,6 +237,10 @@ describe('isValidForwardedHostHeader', () => {
 
   it('Leerzeichen INNERHALB eines Eintrags bleibt fehlgeformt', () => {
     expect(isValidForwardedHostHeader('a b.tld, c.tld')).toBe(false)
+  })
+
+  it('Port über 65535 in der Liste', () => {
+    expect(isValidForwardedHostHeader('a.tld, b.tld:99999')).toBe(false)
   })
 
   it('Zeilenumbruch in der Liste', () => {
