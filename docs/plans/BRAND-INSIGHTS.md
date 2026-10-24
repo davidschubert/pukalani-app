@@ -1100,7 +1100,22 @@ Format-Schlüssel ist, erlaubt nichts. **Davids Handgriff nach der
 Anwaltsantwort ist damit EINE Zeile** in `packages/insights/app/app.config.ts`
 (oder, enger, in `apps/branding/app/app.config.ts`) — kein Code, kein Deploy
 von Neuem. Artikel und Themen-Seiten sind seit I3 live-fähig.
-| **I5** | **Newsletter** | `insights_subscribers` mit Double-Opt-in nach dem Warteliste-Muster, Bestätigungs- und Abmelde-Weg, Eintrags-Formular je Format und zentral, Versand | **eigenes Gate:** Rechtstexte (A1/BS1 R2) · Zuschnitt entschieden: §11 Frage 5 |
+| **I5a** ✅ | **Newsletter — Sammeln, GEBAUT 2026-10-24 (Details OPEN-ITEMS-COMPLETE „BI1 I5a")** | `insights_subscribers` (Migration **insights-006**) mit Double-Opt-in wörtlich nach dem Warteliste-Muster, drei Routen (anmelden · bestätigen · abmelden), Formular zentral und am Ende jedes Beitrags, Fristen-Sweep mit zwei Regeln, GDPR-Contributor erweitert. Das Gate ist **gebaut statt abgewartet**: `pukalani.insights.newsletter.enabled` (Layer-Default `false`) schliesst an Seite UND Route | I3 ✅ · **Rechtstexte (A1/BS1 R2) stehen weiter aus** — jetzt ein Config-Riegel statt eines Baustopps (s. unten) |
+| **I5b** | **Newsletter — Versenden** | eine Ausgabe verfassen und an alle Bestätigten schicken (Betreiber-Seite im Dashboard, Stapel-Versand, Abmelde-Link je Empfänger), dazu der `List-Unsubscribe`-Header — den kennt `sendMail()` heute nicht | I5a · dieselben Rechtstexte |
+
+**Der Riegel `pukalani.insights.newsletter.enabled` (I5a, 2026-10-24)** — dieselbe
+Mechanik wie `publicFormats` bei den Markenprofilen, und aus demselben Grund:
+ohne Datenschutz-Abschnitt „Newsletter" darf keine Adresse erhoben werden
+(„erst Text, dann Schalter", wie bei Plausible R2c). Zu heisst: kein Formular
+auf der Seite, und alle drei Routen antworten 404 wie die Datentür — mit dem
+NEUTRALEN Grund der übrigen öffentlichen Routen, nicht mit „Newsletter aus".
+Die pure Regel ist fail-closed. **Davids Handgriff nach BS1 R2 ist EINE Zeile.**
+
+**Das Versprechen steht fest (Davids Entscheidung 2026-10-24): KEIN Takt.**
+Formular, Seite und Bestätigungsmail sagen „Wir schreiben, wenn ein neues Stück
+erscheint" — nirgends „wöchentlich". Der Wochentakt aus §3.3 bleibt ein
+Redaktionsziel und wird nicht zur Zusage an Fremde; ein Test hält die
+verbotenen Wörter in beiden Sprachen fest.
 | **I6** | **Launch-Paket** | die vier Beispiel-Beiträge (einer je Format), dann die restlichen fünfzehn Stücke aus §9.8; danach der Wochentakt | I3 · Davids Redaktionszeit |
 
 **Die Freigabe des Prototyps ist kein Startschuss für I1.** David hat am

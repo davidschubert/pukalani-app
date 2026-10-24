@@ -11728,3 +11728,82 @@ nach jedem Appwrite-Upgrade und bei jedem Zertifikats-Alarm also
 Appwrites `ssl`-Task, nicht Hand-certbot. Beim 2.2-Sprung (AW22) wandert der
 Worker in `appwrite-worker` — der Befehl bleibt derselbe, das Log heißt dann
 anders.
+
+---
+
+## BI1 I5a — Brand Insights: Newsletter-Anmeldung mit Double-Opt-in (2026-10-24)
+
+**Was gebaut wurde** (drei Commits — Core eigens, wie die Git-Regel verlangt; gebaut von einem
+Opus-Lauf nach Auftrag, geprüft und nachgeschärft im Hauptloop): die SAMMEL-Hälfte von Paket I5
+aus docs/plans/BRAND-INSIGHTS.md §9.3a/§11 Frage 5. Der VERSAND ist I5b und bewusst nicht
+gebaut — eine Route ohne Aufrufer ist eine Zusage ohne Einlösung.
+
+- **Der Riegel ist gebaut, nicht abgewartet.** `pukalani.insights.newsletter.enabled`
+  (Layer-Default `false`) schliesst an BEIDEN Türen: kein Formular auf der Seite, und alle drei
+  Routen antworten 404 — mit dem NEUTRALEN Grund der übrigen öffentlichen Routen
+  (`post_not_found`), nicht mit „Newsletter aus". Die pure Regel ist fail-closed. Grund: die
+  Rechtstexte von branding.supply sind Entwurf (BS1 R2 wartet auf Davids Generator-Texte, R3 ist
+  der Anwaltstermin) — ohne Datenschutz-Abschnitt „Newsletter" wird keine Adresse erhoben.
+  Dieselbe Mechanik wie `publicFormats` bei den Markenprofilen, dieselbe Regel wie bei
+  Plausible R2c: erst Text, dann Schalter.
+- **Kein Takt (Davids Entscheidung).** Formular, Seite und Mail sagen „Wir schreiben, wenn ein
+  neues Stück erscheint" — nirgends „wöchentlich". Ein Test nagelt die verbotenen Wörter in
+  beiden Sprachen fest; der Wochentakt aus §3.3 bleibt Redaktionsziel statt Zusage an Fremde.
+- **Tabelle `insights_subscribers` (Migration insights-006** — 005 hat während des Laufs die
+  Kanalliste der Nachbarsitzung belegt), server-only, Spalten wörtlich aus §9.3a plus
+  `retentionAt` als `datetime`. `uq_email_lower` ist die Wahrheit gegen Dubletten; der
+  Unique-Konflikt wird abgefangen statt vorher gefragt. **Die Warteliste wird NICHT
+  weiterbenutzt** — eine Zustimmung gilt nur für das, wofür sie gegeben wurde.
+- **Drei Routen:** anmelden (Riegel → Honigtopf → Drossel 3/Std + 10/Tag → Zeile → Mail;
+  schlägt die Mail fehl, 503 und die Zeile bleibt unbestätigt stehen), bestätigen (24-h-Frist,
+  löscht den Token-Hash), abmelden (nur Token, idempotent). Die Anmelde-Antwort ist IMMER
+  `{ ok: true }`: neue, bekannte unbestätigte, bekannte BESTÄTIGTE Adresse und zugeschnappter
+  Honigtopf laufen in dieselbe Antwort — jede Unterscheidung wäre die Auskunft, wer auf der
+  Liste steht.
+- **Der Abmelde-Token ist abgeleitet statt gespeichert** (HMAC über die Zeilen-Id, konstante
+  Zeit, Geheimnis wie bei `insightsIpHash`): der Bestätigungs-Hash wird beim Bestätigen
+  gelöscht, und eine Spalte mit einem rohen Geheimnis wäre ein lesbares Passwort.
+- **Fristen-Sweep, zwei Regeln:** nie bestätigt und Token-Frist 30 Tage her ⇒ die GANZE Zeile
+  fällt (für diese Adresse gab es nie eine Einwilligung); abgemeldet und 12 Monate um ⇒ die
+  personenbezogenen Felder werden GELEERT, die Zeile bleibt als Nachweis. `retentionAt` geht
+  mit auf null (die I1-Lehre), und `emailLower` bekommt `removed:<rowId>` statt `''`, weil die
+  Spalte den Unique-Index trägt.
+- **Core (eigener Commit):** Minuten-Eimer `insights:newsletter` (3/min) neben
+  `brand:correction`. Bestätigen und Abmelden bekommen bewusst keinen — beide tragen einen
+  Token, und ein Deckel träfe den Menschen, der zweimal auf denselben Link klickt.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree auf 3030, LOKALE branding-Instanz auf Appwrite
+2.6.1, Migration dort gefahren, **Mailpit** als SMTP): Riegel ZU ⇒ alle drei Routen 404 mit
+neutralem Grund, beide Seiten 404, Formular nicht im gerenderten Baum. Riegel testweise AUF ⇒
+Anmeldung mit `Leser@Example.TEST` ⇒ 200, **eine** Mail in Mailpit an `leser@example.test`
+(kleingeschrieben gespeichert), Betreff „Bitte bestätige deinen Newsletter", Text mit dem
+Versprechen-Satz, **keinem** Takt-Wort, Bestätigungs- UND Abmelde-Link; Bestätigen im BROWSER ⇒
+Seite „Eingetragen", Zeile trägt `confirmedAt` und hat Token-Hash und Frist geleert; zweite
+Anmeldung derselben bestätigten Adresse ⇒ 200 und **keine** zweite Mail; Honigtopf ⇒ 200, keine
+Zeile, keine Mail; Abmelden mit dem Token aus der Mail ⇒ `unsubscribedAt` + `retentionAt` auf
++12 Monate, zweites Abmelden idempotent 200, **gefälschter Token 200 ohne jede Änderung**
+(bewusst keine Fehlermeldung für jemanden, der aussteigen will); vier Anmeldungen von einem
+Anschluss ⇒ die vierte 429 `rate_limited_hour`. Danach Riegel zurück auf `false` und erneut
+geprüft, Testzeilen und Postfach geräumt, `.env` gelöscht.
+
+**Wächter nach dem Merge mit der Nachbarsitzung:** insights 362 Tests · core 1652 · branding 32
+· Lint insights/core/branding/scripts (core eine Alt-Warnung in `ContentClamp.vue`) · typecheck
+branding exit 0 · check:i18n-keys 311 · check:manifests 26/9 · check:bilanz · check:single-copy
+· check:doc-links.
+
+**Gelernt:** (1) **Ein Konflikt an einem Listen-ENDE ist additiv — aber die Auflösung darf die
+Klammer nicht fressen.** Vier Dateien kollidierten, weil die Nachbarsitzung (`insights_channels`,
+005) und dieses Paket (`insights_subscribers`, 006) an denselben Listen-Enden anbauen. Ein
+Skript, das „beide Seiten behalten" mechanisch anwendet, hat in `insightsApi.ts` die schliessende
+Klammer des letzten fremden Interfaces mit verschluckt: Tests und Typecheck liefen weiter, nur
+ESLint meldete `Parsing error`. Nach einer mechanischen Konfliktauflösung gehört der LINT-Lauf
+dazu, nicht nur die Tests. (2) **Eine Migrationsnummer ist erst beim Schreiben vergeben:**
+`origin/main` zog während des Bau-Laufs 005 unter dem Paket weg. Die Nummer gegen `origin/main`
+zu prüfen ist Pflicht — am Anfang UND vor dem Commit. (3) **Der erste Aufruf einer neuen
+API-Route im Dev-Server ist kein Beweis:** die Bestätigungsseite stand drei Sekunden lang auf
+„Wir prüfen den Link …", weil Nitro die Route erst bündelte — die Zeile in der Datenbank war da.
+Wer zu früh misst, sieht einen Fehler, den es nicht gibt (die Umkehrung der I4-Lehre, wo zu
+frühes Messen einen Zustand zeigte, den es nie gab). (4) **Mailpit ist der einzige ehrliche
+Beweis für einen Double-Opt-in:** „200 zurückbekommen" sagt nichts darüber, ob die Mail den
+richtigen Link, die richtige Sprache und den richtigen Satz trägt — und „keine zweite Mail" ist
+überhaupt nur am Postfach zu sehen.
