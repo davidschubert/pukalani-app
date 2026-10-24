@@ -11545,3 +11545,45 @@ der UptimeRobot-Alarm war trotzdem echt. Ein Appwrite-Major-Upgrade kann neue
 Container mitbringen, deren Standard-Config nicht für Dauerbetrieb taugt — nach
 jedem Upgrade `docker system df -v` lesen. Beim Prod-Sprung auf 2.2 (AW22) muss
 der `clickhouse`-Mount der Override mitkommen (Runbook ergänzt).
+
+## Vorfall appwrite-prod — TLS-Zertifikat von api.pukalani.app acht Tage abgelaufen (2026-10-24)
+
+**Entdeckt** beim Abschluss des ClickHouse-Vorfalls (Frage „ist das Ticket zu?"):
+`curl https://api.pukalani.app` scheiterte mit `certificate has expired`. Das
+Let's-Encrypt-Zertifikat war am **2026-10-16 11:45 UTC** abgelaufen; seitdem
+antworteten portfolio, platform, admin und branding auf `/api/health` mit
+`{"ok":false,"code":"INTERNAL_ERROR"}` — node-appwrite verweigert das abgelaufene
+Zertifikat, jede Server-Route stirbt. **Acht Tage Komplettausfall ohne Alarm.**
+
+**Ursache, zwei Glieder:** (1) Die planmäßige Erneuerung am 2026-09-17 00:00
+scheiterte an Let's Encrypt: `accountDoesNotExist — Account acct/3757026986 not
+found`. Das ACME-Konto lag nur in der Schreibschicht des Containers
+`appwrite-worker-certificates` (kein Volume) und war beim CA nicht mehr bekannt;
+warum, ist nicht feststellbar. (2) Appwrite setzt die Domain-Regel nach EINEM
+Fehlversuch auf `status: unverified` — und der Zertifikats-Worker überspringt
+jeden weiteren Auftrag für eine Regel, die nicht `verified` ist
+(`Certificates.php:295`). Die Maintenance plante zwar jede Nacht „1 certificate
+for renewal", der Worker warf es jede Nacht weg („skipped as the associated
+rule is … not in the expected state"). Dazu lief der Worker seit Wochen mit
+toter DB-Verbindung (`MySQL server has gone away`).
+
+**Behebung (05:05–05:10 UTC, ohne Neustart von Traefik oder API):** Sicherung
+von `/etc/letsencrypt` und der Regel-Zeile nach `~/backup/certs-2026-10-24/`;
+Regel per SQL zurück auf `verified` + Redis-Cache-Schlüssel der Regel gelöscht;
+`docker compose restart appwrite-worker-certificates` (frische DB-Verbindung);
+altes ACME-Kontoverzeichnis im Container entfernt, damit certbot neu registriert;
+dann Appwrites eigene Aufgabe `docker exec appwrite php app/cli.php ssl
+--domain=api.pukalani.app --skip-check=true`. Neues Zertifikat bis
+**2027-01-22**, neues ACME-Konto acct/3902972542, `renewDate` 2026-12-23,
+`attempts` 0, alle vier Apps wieder `ok:true`.
+
+**Gelernt:** Ein Health-Endpunkt mit `ok:false` ist nur so gut wie der Alarm
+dahinter — UptimeRobot hat acht Tage 500er nicht gemeldet oder die Mails kamen
+nicht an (⇒ MON1 in OPEN-ITEMS, braucht Davids Login). Appwrites
+Zertifikats-Pfad hat KEINEN zweiten Versuch: ein roter Lauf macht die Regel
+`unverified`, und ab da ist jede nächtliche Erneuerung ein stilles „skipped";
+nach jedem Appwrite-Upgrade und bei jedem Zertifikats-Alarm also
+`_console_rules.status` UND das Worker-Log lesen. Der Weg zurück ist
+Appwrites `ssl`-Task, nicht Hand-certbot. Beim 2.2-Sprung (AW22) wandert der
+Worker in `appwrite-worker` — der Befehl bleibt derselbe, das Log heißt dann
+anders.
