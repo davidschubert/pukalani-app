@@ -397,6 +397,13 @@ const INSIGHTS_TABLES = [
   // nicht mehr erreicht (Policies III.E.4). KEINE Kommentar-Texte, KEINE
   // Nutzernamen — dafür gibt es hier keine Spalte.
   'insights_topics',
+  // insights-006: die Newsletter-Liste (I5a, §9.3a) — eigene Liste, eigenes
+  // Double-Opt-in, KEIN Import aus `brand_waitlist` (eine Zustimmung gilt nur
+  // für das, wofür sie gegeben wurde). `emailLower` ist unique, zwei Sweep-
+  // Regeln räumen auf: unbestätigte Zeilen werden nach 30 Tagen GELÖSCHT (es
+  // gab nie eine Einwilligung), abgemeldete nach 12 Monaten GELEERT (die Zeile
+  // ist der Nachweis). Der Riegel davor ist eine Config-Zeile, kein Schema.
+  'insights_subscribers',
 ]
 
 const PORTFOLIO_SOLL = [

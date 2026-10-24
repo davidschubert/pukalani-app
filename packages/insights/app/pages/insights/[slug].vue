@@ -275,6 +275,16 @@ const startTarget = computed(() => localePath(isLoggedIn.value ? '/dashboard/bra
           </component>
         </template>
       </InArticle>
+
+      <!-- Der Newsletter am Ende des Stücks (I5a): wer bis hierher gelesen
+           hat, ist der Leser, den der Eintrag meint. `source` trägt den Slug
+           mit — die Zahl aus §9.7 sagt damit, WELCHES Stück Leser bringt. Die
+           Komponente prüft ihren Riegel selbst. In der Vorschau steht sie
+           nicht: ein Betreiber, der seinen Entwurf ansieht, soll sich nicht
+           selbst eintragen können. -->
+      <div v-if="!isPreview" class="mx-auto mt-14 max-w-3xl">
+        <InNewsletterForm :source="`post:${slug}`" compact />
+      </div>
     </div>
   </div>
 </template>

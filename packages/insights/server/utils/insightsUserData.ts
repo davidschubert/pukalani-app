@@ -1,12 +1,19 @@
 import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
 import { Query } from 'node-appwrite'
-import type { InsightsBrandRow, InsightsCorrectionRow, InsightsPostRow } from '../../shared/insightsRows'
+import type {
+  InsightsBrandRow,
+  InsightsCorrectionRow,
+  InsightsPostRow,
+  InsightsSubscriberRow,
+} from '../../shared/insightsRows'
 import {
   INSIGHTS_BRANDS_TABLE,
   INSIGHTS_CORRECTIONS_TABLE,
   INSIGHTS_POSTS_TABLE,
+  INSIGHTS_SUBSCRIBERS_TABLE,
 } from '../../shared/insightsRows'
+import { insightsNewsletterAnonymizedEmail } from '../../shared/insightsNewsletter'
 import { INSIGHTS_LAYER_ID, insightsDb, isInsightsRowMissing } from './insightsStore'
 
 /**
@@ -14,18 +21,21 @@ import { INSIGHTS_LAYER_ID, insightsDb, isInsightsRowMissing } from './insightsS
  * Kaskaden"; CLAUDE.md: „Neue Layer mit User-Daten MÜSSEN einen Contributor
  * registrieren").
  *
- * ── DREI BEZIEHUNGEN, DREI VERSCHIEDENE ANTWORTEN ────────────────────────
+ * ── VIER BEZIEHUNGEN, VIER VERSCHIEDENE ANTWORTEN ────────────────────────
  * Dieser Layer schreibt über FREMDE Marken, nicht über Konten — er hat
- * deshalb wenig Personenbezug, aber nicht keinen. Es gibt genau drei Wege,
+ * deshalb wenig Personenbezug, aber nicht keinen. Es gibt genau vier Wege,
  * auf denen ein Mensch in diesen Tabellen vorkommt:
  *
  *  1. `insights_corrections.contactEmail` — die FREIWILLIG hinterlassene
- *     Adresse eines Korrekturvorschlags. Das ist der einzige echte
- *     personenbezogene Inhalt des Layers (§9.3).
+ *     Adresse eines Korrekturvorschlags (§9.3).
  *  2. `insights_posts.reviewedBy` — die `userId` desjenigen, der eine
  *     Freigabe gezeichnet hat. Ein BETREIBER-Handgriff, kein Inhalt.
  *  3. `insights_brands.claimedBy` — die `userId` desjenigen, der ein Profil
  *     als seine Marke reklamiert hat.
+ *  4. `insights_subscribers.emailLower` — die Newsletter-Eintragung (I5a,
+ *     §9.3a). Sie ist der zweite echte personenbezogene Inhalt des Layers und
+ *     kommt wie der erste von DRAUSSEN: auch sie trägt keine `userId`, nur
+ *     eine Adresse.
  *
  * ── DER LESEPFAD IST DIE ADRESSE, NICHT DIE userId ───────────────────────
  * Ein Korrekturvorschlag kommt von DRAUSSEN: die Person hat kein Konto, wenn
@@ -40,7 +50,13 @@ import { INSIGHTS_LAYER_ID, insightsDb, isInsightsRowMissing } from './insightsS
  * verfehlen.
  *
  * ── WAS IM EXPORT NICHT STEHT ────────────────────────────────────────────
- * Der `ipHash`. Er ist kein Datum ÜBER die Person, sondern ein Tages-Stempel
+ * Der `ipHash` — und bei der Newsletter-Eintragung ZUSÄTZLICH der `tokenHash`
+ * mit seiner Frist: das ist der Schlüssel zu einem offenen Bestätigungs-Link,
+ * also ein GEHEIMNIS und kein Datum über die Person. Ein Auskunftspaket, das
+ * Geheimnisse mitliefert, ist eine zweite Kopie davon (und reist per Mail).
+ * Was der Export über die Eintragung sagt, ist der ZUSTAND: seit wann
+ * eingetragen, wann abgemeldet, von welcher Seite, in welcher Sprache.
+ * Der `ipHash` ist kein Datum ÜBER die Person, sondern ein Tages-Stempel
  * für den Missbrauchs-Deckel — und er ist bewusst nicht rückrechenbar. Ihn
  * auszuliefern hiesse, eine Zeichenkette in ein Auskunftspaket zu legen, mit
  * der niemand etwas anfangen kann. Ebenso wenig steht dort der INHALT der
@@ -57,6 +73,13 @@ import { INSIGHTS_LAYER_ID, insightsDb, isInsightsRowMissing } from './insightsS
  * und `ipHash` werden geleert, der Rest bleibt stehen. Ein gelöschter
  * Korrekturvorgang wäre ein Beleg weniger dafür, dass wir Widerspruch
  * annehmen und entscheiden.
+ * Bei der NEWSLETTER-Zeile gilt es ebenso, mit einem Zusatz: sie wird
+ * zugleich ABGEMELDET (`unsubscribedAt`) und ihre Token-Felder geleert. Eine
+ * Konto-Löschung, die die Adresse aus der Zeile nimmt, aber den Eintrag
+ * „aktiv" lässt, wäre eine Liste mit einem Empfänger ohne Adresse — und beim
+ * nächsten Versand ein Eintrag, der niemandem gehört. `emailLower` bekommt
+ * dabei den PLATZHALTER (`removed:<rowId>`) und nicht '': die Spalte trägt den
+ * Unique-Index, und zwei leere Werte wären ein 409 ab der zweiten Löschung.
  * Bei `reviewedBy` und `claimedBy` gilt dasselbe aus einem zweiten Grund:
  * einen Beitrag zu LÖSCHEN, weil sein Freigeber sein Konto schliesst, nähme
  * der Öffentlichkeit einen Text weg, der ihr gehört — und wäre für jeden
@@ -114,6 +137,12 @@ export async function insightsExportUserData(event: H3Event, userId: string): Pr
       ])
     : []
 
+  const subscriptions = emailLower
+    ? await safeListAll<InsightsSubscriberRow>(event, INSIGHTS_SUBSCRIBERS_TABLE, [
+        Query.equal('emailLower', emailLower),
+      ])
+    : []
+
   const reviewedPosts = await safeListAll<InsightsPostRow>(event, INSIGHTS_POSTS_TABLE, [
     Query.equal('reviewedBy', userId),
   ])
@@ -124,6 +153,21 @@ export async function insightsExportUserData(event: H3Event, userId: string): Pr
   return {
     // Der `ipHash` fällt heraus (s. Kopf) — der Rest der Zeile bleibt.
     corrections: corrections.map(({ ipHash: _ipHash, ...rest }) => rest),
+    /**
+     * DIE NEWSLETTER-EINTRAGUNG ALS ZUSTAND, nicht als Zeile (s. Kopf): kein
+     * `tokenHash`, keine Frist, kein `ipHash`. Jedes Feld steht EXPLIZIT da —
+     * ein `...rest` würde eine künftige Spalte still mit ausliefern, und bei
+     * dieser Tabelle ist die nächste Spalte wahrscheinlich wieder ein
+     * Geheimnis.
+     */
+    newsletter: subscriptions.map(row => ({
+      email: row.email ?? '',
+      locale: row.locale ?? '',
+      source: row.source ?? '',
+      signedUpAt: row.$createdAt,
+      confirmedAt: row.confirmedAt ?? '',
+      unsubscribedAt: row.unsubscribedAt ?? '',
+    })),
     /**
      * NUR DIE IDS, NICHT DIE BEITRÄGE. Ein redigierter Artikel über eine
      * fremde Marke ist kein personenbezogenes Datum des Freigebers; was ihn
@@ -159,6 +203,26 @@ export async function insightsDeleteUserData(event: H3Event, userId: string): Pr
       // Personenbezug wie die Adresse, nur schwächer — ihn stehen zu lassen,
       // während die Adresse geht, wäre eine halbe Löschung.
       await clear(INSIGHTS_CORRECTIONS_TABLE, row.$id, { contactEmail: '', ipHash: '', retentionAt: null })
+    }
+
+    /**
+     * Die Newsletter-Zeile: Adresse WEG, Eintrag ABGEMELDET, Token-Felder
+     * leer, Frist genullt (s. Kopf). IDEMPOTENT: ein zweiter Lauf findet über
+     * `emailLower` nichts mehr, weil dort nach dem ersten der Platzhalter
+     * steht — genau das macht den Lauf wertgleich statt zählend.
+     */
+    for (const row of await safeListAll<InsightsSubscriberRow>(event, INSIGHTS_SUBSCRIBERS_TABLE, [
+      Query.equal('emailLower', emailLower),
+    ])) {
+      await clear(INSIGHTS_SUBSCRIBERS_TABLE, row.$id, {
+        email: '',
+        emailLower: insightsNewsletterAnonymizedEmail(row.$id),
+        ipHash: '',
+        tokenHash: '',
+        tokenExpiresAt: '',
+        unsubscribedAt: row.unsubscribedAt || new Date().toISOString(),
+        retentionAt: null,
+      })
     }
   }
 

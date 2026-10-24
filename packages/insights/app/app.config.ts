@@ -64,6 +64,39 @@ export default defineAppConfig({
       publicFormats: ['article'] as string[],
 
       /**
+       * DER RIEGEL DES NEWSLETTERS (BI1 I5a, Plan §9.3a / §11 Frage 5).
+       *
+       * ── WARUM ER ZU IST ────────────────────────────────────────────────
+       * Nicht weil der Weg unfertig wäre, sondern weil der TEXT fehlt: die
+       * Rechtstexte von branding.supply sind Entwurf (BS1 **R2** wartet auf
+       * Davids Generator-Texte, **R3** ist der Anwaltstermin). Ohne einen
+       * Datenschutz-Abschnitt „Newsletter" — wer erhebt, wofür, wie lange, wie
+       * widerspricht man — darf keine Adresse erhoben werden. Das ist
+       * dieselbe Regel, die BS1 schon für `auth.termsUrl` und für Plausible
+       * (R2c) fährt: **erst Text, dann Schalter.**
+       *
+       * ── WAS „ZU" HEISST ────────────────────────────────────────────────
+       * Beides, wie bei `publicFormats`: das Formular wird NICHT gerendert
+       * (`InNewsletterForm` gibt nichts aus) UND alle drei Routen antworten
+       * 404 — denselben neutralen 404 wie eine unbekannte Adresse, nicht 403
+       * und nicht „Produkt aus". Eine Sperre nur in der Oberfläche ist keine.
+       *
+       * ── FAIL-CLOSED ────────────────────────────────────────────────────
+       * Gelesen wird über `insightsNewsletterEnabled()`
+       * (`shared/insightsPublic.ts`): NUR echtes `true` zählt. `'true'` oder
+       * `1` sehen aus wie eine Erlaubnis und wären eine, die niemand geprüft
+       * hat.
+       *
+       * Davids Handgriff nach den Texten ist diese EINE Zeile — kein Code,
+       * kein Deploy von Neuem. `apps/branding` setzt bewusst NICHTS: die App
+       * sagt „ich betreibe die Redaktion", der Layer sagt „so weit ist sie
+       * draussen" (wörtlich die Arbeitsteilung des Format-Riegels).
+       */
+      newsletter: {
+        enabled: false,
+      },
+
+      /**
        * DER THEMENRADAR (BI1 I4, §9.6) — seine KANALLISTE ist Konfiguration.
        *
        * ── WARUM EINE LISTE UND KEINE SUCHE (Leitplanke c) ────────────────

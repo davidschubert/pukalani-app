@@ -65,6 +65,34 @@ export function insightsFormatIsPublic(format: InsightsFormat, allowed: readonly
   return allowed.includes(format)
 }
 
+/**
+ * DER ZWEITE RIEGEL: STEHT DER NEWSLETTER OFFEN? (BI1 I5a,
+ * `pukalani.insights.newsletter.enabled`, Layer-Default `false`.)
+ *
+ * Er steht hier neben `readInsightsPublicFormats`, weil er dieselbe Sorte
+ * Entscheidung ist und dieselbe Mechanik braucht: EINE pure Regel, an BEIDEN
+ * Türen gelesen (das Formular wird nicht gerendert UND jede Route antwortet
+ * 404 wie ein unbekannter Slug), und FAIL-CLOSED.
+ *
+ * ── WARUM ÜBERHAUPT EIN RIEGEL ──────────────────────────────────────────
+ * Die Rechtstexte von branding.supply sind Entwurf (BS1 **R2** wartet auf
+ * Davids Generator-Texte, **R3** ist der Anwaltstermin). Ohne einen
+ * Datenschutz-Abschnitt „Newsletter" darf keine Adresse erhoben werden —
+ * dieselbe Regel, die BS1 für `auth.termsUrl` und für Plausible (R2c) fährt:
+ * **erst Text, dann Schalter.** Der Code darf also fertig sein; aufgehen tut
+ * er mit EINER Zeile in `app/app.config.ts`, kein Deploy von Neuem.
+ *
+ * ── NUR ECHTES `true` ZÄHLT ─────────────────────────────────────────────
+ * Kein `Boolean(raw)` und kein `raw !== false`: ein Tippfehler
+ * (`enabled: 'true'`, `enabled: 1`) sieht aus wie eine Erlaubnis und wäre
+ * eine, die niemand geprüft hat. Ein kaputter Eintrag nimmt das Formular vom
+ * Netz statt eine Rechtsfrage zu eröffnen — das ist die richtige Richtung,
+ * und es fällt beim ersten Aufruf auf.
+ */
+export function insightsNewsletterEnabled(raw: unknown): boolean {
+  return raw === true
+}
+
 // ── 2. Was hinausgeht ──────────────────────────────────────────────────────
 
 /**

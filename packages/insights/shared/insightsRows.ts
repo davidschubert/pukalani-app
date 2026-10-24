@@ -88,6 +88,8 @@ export const INSIGHTS_BRANDS_TABLE = 'insights_brands'
 export const INSIGHTS_CORRECTIONS_TABLE = 'insights_corrections'
 /** Der Themenradar (insights-004, BI1 I4) — kurzlebig, s. Kopf der Migration. */
 export const INSIGHTS_TOPICS_TABLE = 'insights_topics'
+/** Die Newsletter-Liste (insights-006, BI1 I5a) — eigene Liste, eigenes DOI. */
+export const INSIGHTS_SUBSCRIBERS_TABLE = 'insights_subscribers'
 
 // ── Zeilen (insights-001 … insights-004) ───────────────────────────────────
 
@@ -208,6 +210,46 @@ export type InsightsCorrectionRow = Models.Row & {
   /** sha256 mit Tages-Salz, nie die rohe IP. */
   ipHash?: string
   /** Ab hier werden `contactEmail` und `ipHash` geleert (§9.3). */
+  retentionAt?: string | null
+}
+
+/**
+ * EINE NEWSLETTER-EINTRAGUNG (insights-006, §9.3a).
+ *
+ * Es gibt KEINE `toInsightsSubscriber`-Abbildung daneben, und das ist der
+ * Unterschied zu den vier Zeilen darüber: diese Tabelle trägt keine
+ * JSON-Spalte, keinen Aufzählungswert und keinen Vertrag, den eine Oberfläche
+ * anzeigt — sie trägt eine Adresse, eine Sprache und vier Zeitstempel. Die
+ * drei Routen lesen die Felder, die sie brauchen, und schreiben JEDE Spalte
+ * explizit (CLAUDE.md). Eine Abbildung wäre hier eine Schicht ohne Arbeit.
+ *
+ * `''` und nicht `null` bei den Stempeln (wörtlich wie `brand_waitlist`): die
+ * Routen LEEREN sie, und '' neben null wären zwei Wörter für „gibt es nicht",
+ * von denen jeder Leser beide kennen müsste. Verglichen wird im Code
+ * (`Date.parse`), nie in einer Abfrage.
+ *
+ * AUSNAHME `retentionAt`: ein echtes `datetime`, weil der Sweep es als
+ * ABFRAGE braucht (`lessThanEqual` über `idx_retention`) und beim Leeren auf
+ * `null` setzt. Ein leerer String wäre dort lexikografisch KLEINER als jedes
+ * Datum — jede geleerte Zeile bliebe damit für immer „fällig" und füllte
+ * jeden Stapel (die Lehre aus I1, s. Kopf des Sweeps).
+ */
+export type InsightsSubscriberRow = Models.Row & {
+  /** Kleingeschrieben und getrimmt — trägt den UNIQUE-Index. */
+  emailLower?: string
+  /** Dieselbe Adresse in ihrer Original-Schreibweise (die Anrede). */
+  email?: string
+  locale?: string
+  /** sha256 des offenen Bestätigungs-Links — '' heisst „keiner offen". */
+  tokenHash?: string
+  tokenExpiresAt?: string
+  confirmedAt?: string
+  unsubscribedAt?: string
+  /** WO sich jemand eingetragen hat ('list', 'post:<slug>') — die Zahl aus §9.7. */
+  source?: string
+  /** sha256 mit Tages-Salz, nie die rohe IP. */
+  ipHash?: string
+  /** Ab hier werden `email`, `emailLower` und `ipHash` geleert (12 Monate). */
   retentionAt?: string | null
 }
 

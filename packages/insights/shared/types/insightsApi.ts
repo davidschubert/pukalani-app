@@ -443,3 +443,46 @@ export type InsightsPublicRankingResponse = InsightsPublicRankingPayload | Insig
 export interface InsightsCorrectionSubmitResponse {
   ok: true
 }
+
+/**
+ * DER NEWSLETTER-EINTRAG (`POST /api/insights/public/newsletter/subscribe`).
+ *
+ * `ok: true` ist ein LITERAL und sagt BEWUSST nichts weiter. Vier Fälle laufen
+ * in genau diese Antwort: neue Adresse, bekannte unbestätigte, bekannte
+ * BESTÄTIGTE und der zugeschnappte Honigtopf. Jede Unterscheidung wäre eine
+ * Auskunft darüber, wer auf der Liste steht — an eine Adresse gerichtet, die
+ * der Fragende vielleicht nicht besitzt. Was der Absender in diesem Moment
+ * wirklich weiss, ist „angekommen, schau in dein Postfach".
+ *
+ * (Die Warteliste im brand-Layer unterscheidet `mail_sent` und
+ * `already_confirmed` — dort ist das vertretbar, weil die Liste ein
+ * Betreiber-Vorgang ohne öffentliche Seite ist. Hier steht das Formular auf
+ * jeder Artikel-Seite, also auf einer Adresse, die jeder aufrufen kann.)
+ */
+export interface InsightsNewsletterSubscribeResponse {
+  ok: true
+}
+
+/**
+ * DIE BESTÄTIGUNG (`POST …/newsletter/confirm`).
+ *
+ * `already_confirmed` ist hier KEIN Leck: wer den Token hat, hat die Mail, und
+ * die ging an genau diese Adresse. Zwei Zustände, damit die Seite den
+ * passenden Satz sagen kann, statt zweimal „fertig".
+ */
+export interface InsightsNewsletterConfirmResponse {
+  ok: true
+  state: 'confirmed' | 'already_confirmed'
+}
+
+/**
+ * DIE ABMELDUNG (`POST …/newsletter/unsubscribe`).
+ *
+ * EIN Zustand, und das ist die Zusage: ein zweiter Klick aus einer alten Mail
+ * bekommt dieselbe 200 wie der erste (idempotent, kein 409). Ein unbekannter
+ * oder abgelaufener Token ebenfalls — wer sich abmelden will, soll nie eine
+ * Fehlermeldung lesen müssen.
+ */
+export interface InsightsNewsletterUnsubscribeResponse {
+  ok: true
+}

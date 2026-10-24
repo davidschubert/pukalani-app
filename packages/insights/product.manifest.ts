@@ -6,23 +6,31 @@ import type { ProductManifest } from '../core/shared/types/manifest'
  * Plan: docs/plans/BRAND-INSIGHTS.md (Konzept ENTSCHIEDEN 2026-09-08, die acht
  * Entscheidungen in §11; Frage 1 = „eigener Layer `insights`").
  *
- * STAND: **PAKET I4** (§9.9) — der Layer ist MONTIERT, hat ein SCHEMA, seine
- * REDAKTION und seinen THEMENRADAR. `apps/branding/site.manifest.ts` führt ihn zwischen
- * `market` und `pages`, die vier Tabellen (`insights_posts`,
- * `insights_brands`, `insights_corrections`, `insights_topics`) stehen als
- * Migrationen insights-001…004, der Vertrag zum brand-Layer liegt in
- * `server/contracts/brandContract.ts`, und es gibt `/dashboard/insights`
- * (Liste, Editor, Radar) samt `/api/insights/**` — inklusive der zwei
- * Modell-Läufe (Übersetzen, Entwurf) hinter Kill-Switch und Drossel und des
- * Themenradars hinter seinem eigenen Gate (API-Schlüssel, §9.6).
- * Was I2 BEWUSST NICHT baut: eine ÖFFENTLICHE Seite. `/insights`,
- * `/brands/<slug>`, `/duels/…` und `/rankings` sind Paket I3 und hängen an
- * den Anwaltsantworten BI1-3 und BI1-4 (§6, §11.3) — ohne sie geht kein
- * Markenprofil live.
+ * STAND: **PAKET I5a** (§9.9) — der Layer ist MONTIERT, hat ein SCHEMA, seine
+ * REDAKTION, seinen THEMENRADAR, seine ÖFFENTLICHEN SEITEN und seit I5a das
+ * SAMMELN des Newsletters. `apps/branding/site.manifest.ts` führt ihn zwischen
+ * `market` und `pages`, seine Tabellen (`insights_posts`, `insights_brands`,
+ * `insights_corrections`, `insights_topics` und seit I5a
+ * `insights_subscribers`, Migration insights-006) stehen im BRANDING_SOLL des
+ * Paritäts-Wächters, der Vertrag
+ * zum brand-Layer liegt in `server/contracts/brandContract.ts`, und es gibt
+ * `/dashboard/insights` (Liste, Editor, Marken, Korrekturen, Radar) samt
+ * `/api/insights/**` — inklusive der zwei Modell-Läufe (Übersetzen, Entwurf)
+ * hinter Kill-Switch und Drossel und des Themenradars hinter seinem eigenen
+ * Gate (API-Schlüssel, §9.6).
+ *
+ * ZWEI RIEGEL ENTSCHEIDEN, WAS DAVON DRAUSSEN STEHT, und beide sind eine
+ * Config-Zeile: `publicFormats` (Default nur `article` — die Anwaltsantworten
+ * BI1-3 und BI1-4, §6/§11.3) und `newsletter.enabled` (Default `false` — die
+ * Rechtstexte BS1 R2/R3, „erst Text, dann Schalter").
+ *
+ * Was I5a BEWUSST NICHT baut: den VERSAND einer Ausgabe und die Betreiber-
+ * Liste der Eintragungen im Dashboard. Beides ist **I5b** — eine Route ohne
+ * Aufrufer wäre eine Zusage ohne Einlösung.
  *
  * `hasMigrations: true` seit I1: der Layer steht damit in der LAYER_ORDER von
  * `scripts/migrate.mjs` (`pnpm check:manifests` erzwingt beides zusammen) und
- * seine vier Tabellen im BRANDING_SOLL von
+ * seine Tabellen im BRANDING_SOLL von
  * `scripts/ops/verify-schema-parity.mjs`. Das GATE davor bleibt Davids Ja zur
  * PROD-Migration — der Code darf gebaut sein, gefahren wird sie erst auf sein
  * Wort (CLAUDE.md).

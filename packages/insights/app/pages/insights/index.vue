@@ -60,5 +60,13 @@ useSeoMeta({
         :localize="localePath"
       />
     </div>
+
+    <!-- Der Newsletter, zentral unter der Liste (I5a). `source: 'list'` sagt
+         später, wie viele Leser aus dem Journal kommen und wie viele aus einem
+         einzelnen Stück (§9.7). Die Komponente prüft ihren Riegel selbst und
+         gibt ohne ihn nichts aus. -->
+    <div class="mx-auto mt-16 max-w-3xl">
+      <InNewsletterForm source="list" />
+    </div>
   </div>
 </template>

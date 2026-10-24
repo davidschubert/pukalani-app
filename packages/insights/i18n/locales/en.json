@@ -105,6 +105,52 @@
         "generic": "That did not work. Please try again later."
       }
     },
+    "newsletter": {
+      "eyebrow": "Newsletter",
+      "title": "New piece, one email",
+      "lead": "Brand profiles, duels, articles and rankings — we write when a new piece is out.",
+      "promise": "We write when a new piece is out. You will get a confirmation email first, and every email carries the unsubscribe link.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "aloha{'@'}example.com",
+      "emailInvalid": "Please enter a valid email address.",
+      "submit": "Sign up",
+      "sending": "Sending …",
+      "doneTitle": "Check your inbox",
+      "doneText": "We sent you an email. One click on the link inside and you are on the list — the link is valid for 24 hours.",
+      "errorTitle": "That did not work",
+      "errors": {
+        "rateLimited": "That was a few attempts in a row. Please try again later.",
+        "unavailable": "Not possible right now. Please try again in a few minutes.",
+        "invalid": "Please enter a valid email address.",
+        "generic": "Not possible right now. Please try again later."
+      },
+      "confirm": {
+        "title": "Confirm your newsletter",
+        "checking": "Checking the link …",
+        "confirmedTitle": "You are on the list",
+        "confirmedText": "Thank you. We write when a new piece is out, and every email carries the unsubscribe link.",
+        "alreadyTitle": "Already confirmed",
+        "alreadyText": "This address was confirmed before. There is nothing left to do.",
+        "expiredTitle": "Link expired",
+        "expiredText": "The link was valid for 24 hours. Just sign up again and a fresh one is on its way.",
+        "invalidTitle": "Link not valid",
+        "invalidText": "This link leads nowhere — it may have been used already. Sign up again and a fresh one is on its way.",
+        "unavailableTitle": "Not possible right now",
+        "unavailableText": "We could not check the link. Your link is not broken — please try again in a few minutes.",
+        "toList": "To Brand Insights"
+      },
+      "unsubscribe": {
+        "title": "Unsubscribe",
+        "checking": "Unsubscribing you …",
+        "doneTitle": "Unsubscribed",
+        "doneText": "We will not write to you again. Your address is deleted after twelve months — until then the entry stays as proof that the unsubscribe worked.",
+        "missingTitle": "Link not usable",
+        "missingText": "This link carries no valid identifier. You will find the right one at the end of every email we sent you.",
+        "unavailableTitle": "Not possible right now",
+        "unavailableText": "The unsubscribe did NOT go through. Please try again in a few minutes, or simply reply to one of our emails.",
+        "toList": "To Brand Insights"
+      }
+    },
     "profile": {
       "eyebrow": "Brand profile",
       "scoreLabel": "Brand score",

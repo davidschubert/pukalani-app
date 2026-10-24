@@ -125,3 +125,19 @@ export function insightsDb(event: H3Event) {
 export function isInsightsRowMissing(error: unknown): boolean {
   return error instanceof AppwriteException && error.code === 404
 }
+
+/**
+ * „Diese Zeile gibt es SCHON." — der 409 eines Unique-Index.
+ *
+ * Gebraucht wird er seit I5a an genau einer Stelle: zwei gleichzeitige
+ * Newsletter-Eintragungen derselben Adresse. Die Vorab-Abfrage sieht dort
+ * nichts, der Unique-Index auf `emailLower` fängt die zweite — und das IST der
+ * Erfolgsfall, denn danach existiert die Zeile, die der Mensch wollte. Ohne
+ * diese Frage wäre das Rennen ein 503 für den Schnelleren von zwei Klicks.
+ *
+ * Eigener Name statt einer Zahl in der Route: `error.code === 409` an der
+ * Aufrufstelle ist eine Appwrite-Eigenheit, die dort niemand erwartet.
+ */
+export function isInsightsRowConflict(error: unknown): boolean {
+  return error instanceof AppwriteException && error.code === 409
+}

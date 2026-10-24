@@ -17,6 +17,7 @@ import {
   INSIGHTS_FALLBACK_GRADIENT,
   insightsBrandIsVisible,
   insightsDuelCanonical,
+  insightsNewsletterEnabled,
   insightsPostIsVisible,
   insightsPublicHref,
   insightsSlugResolution,
@@ -71,6 +72,24 @@ import {
 export function insightsPublicFormats(): InsightsFormat[] {
   const config = useAppConfig() as { pukalani?: { insights?: { publicFormats?: unknown } } }
   return readInsightsPublicFormats(config.pukalani?.insights?.publicFormats)
+}
+
+/**
+ * STEHT DER NEWSLETTER OFFEN? (BI1 I5a, `pukalani.insights.newsletter.enabled`.)
+ *
+ * Dieselbe Bauart wie eine Zeile darüber und aus demselben Grund: `useAppConfig()`
+ * OHNE `event` (die Signatur nimmt in Nitro gar kein Argument), die pure Regel
+ * aus `shared/` entscheidet, und fail-closed heisst hier „nur echtes `true`".
+ *
+ * Die drei Newsletter-Routen rufen sie als ERSTES und antworten sonst
+ * `insightsPublicMissing()` — denselben neutralen 404 wie ein unbekannter Slug.
+ * Ein eigener Code (`newsletter_disabled`) wäre die Auskunft „es gibt das hier,
+ * es ist nur zu", und die ist auf einer öffentlichen Adresse nichts wert: der
+ * Riegel hängt an unseren Rechtstexten, nicht am Fragenden.
+ */
+export function insightsNewsletterAllowed(): boolean {
+  const config = useAppConfig() as { pukalani?: { insights?: { newsletter?: { enabled?: unknown } } } }
+  return insightsNewsletterEnabled(config.pukalani?.insights?.newsletter?.enabled)
 }
 
 /**

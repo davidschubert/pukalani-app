@@ -105,6 +105,52 @@
         "generic": "Das hat nicht geklappt. Bitte versuche es später noch einmal."
       }
     },
+    "newsletter": {
+      "eyebrow": "Newsletter",
+      "title": "Neues Stück, eine Mail",
+      "lead": "Markenprofile, Duelle, Artikel und Rankings — wir schreiben, wenn ein neues Stück erscheint.",
+      "promise": "Wir schreiben, wenn ein neues Stück erscheint. Du bekommst zuerst eine Mail zum Bestätigen, und in jeder Mail steht der Abmelde-Link.",
+      "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "aloha{'@'}beispiel.de",
+      "emailInvalid": "Bitte eine gültige E-Mail-Adresse angeben.",
+      "submit": "Eintragen",
+      "sending": "Schickt …",
+      "doneTitle": "Schau in dein Postfach",
+      "doneText": "Wir haben dir eine Mail geschickt. Ein Klick auf den Link darin, dann bist du eingetragen — der Link ist 24 Stunden gültig.",
+      "errorTitle": "Hat nicht geklappt",
+      "errors": {
+        "rateLimited": "Das waren eben mehrere Versuche. Probier es später noch einmal.",
+        "unavailable": "Gerade nicht möglich. Versuch es in ein paar Minuten noch einmal.",
+        "invalid": "Bitte eine gültige E-Mail-Adresse angeben.",
+        "generic": "Gerade nicht möglich. Versuch es später noch einmal."
+      },
+      "confirm": {
+        "title": "Newsletter bestätigen",
+        "checking": "Wir prüfen den Link …",
+        "confirmedTitle": "Eingetragen",
+        "confirmedText": "Danke — du stehst auf der Liste. Wir schreiben, wenn ein neues Stück erscheint, und in jeder Mail steht der Abmelde-Link.",
+        "alreadyTitle": "Du stehst schon drauf",
+        "alreadyText": "Diese Adresse war bereits bestätigt. Es gibt nichts weiter zu tun.",
+        "expiredTitle": "Link abgelaufen",
+        "expiredText": "Der Link war 24 Stunden gültig. Trag dich einfach noch einmal ein, dann kommt ein frischer.",
+        "invalidTitle": "Link ungültig",
+        "invalidText": "Dieser Link führt ins Leere — vielleicht war er schon benutzt. Trag dich noch einmal ein, dann kommt ein frischer.",
+        "unavailableTitle": "Gerade nicht möglich",
+        "unavailableText": "Wir konnten den Link eben nicht prüfen. Dein Link ist nicht kaputt — versuch es in ein paar Minuten noch einmal.",
+        "toList": "Zu Brand Insights"
+      },
+      "unsubscribe": {
+        "title": "Newsletter abmelden",
+        "checking": "Wir melden dich ab …",
+        "doneTitle": "Abgemeldet",
+        "doneText": "Wir schreiben dir nicht mehr. Deine Adresse wird nach zwölf Monaten gelöscht — bis dahin bleibt der Eintrag als Nachweis stehen, dass die Abmeldung gewirkt hat.",
+        "missingTitle": "Link unbrauchbar",
+        "missingText": "Dieser Link trägt keine gültige Kennung. Den richtigen findest du am Ende jeder Mail, die wir dir geschickt haben.",
+        "unavailableTitle": "Gerade nicht möglich",
+        "unavailableText": "Die Abmeldung ist eben NICHT durchgegangen. Versuch es in ein paar Minuten noch einmal oder antworte einfach auf eine unserer Mails.",
+        "toList": "Zu Brand Insights"
+      }
+    },
     "profile": {
       "eyebrow": "Markenprofil",
       "scoreLabel": "Brand Score",
