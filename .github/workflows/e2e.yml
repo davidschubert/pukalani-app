@@ -3,6 +3,8 @@
 # realtime, geo, worker, mariadb, redis; Rest des offiziellen Compose bleibt
 # aus). Seit Appwrite 2.2 gibt es NICHT mehr einen Container je Warteschlange:
 # `appwrite-worker` bedient alle (frueher hier: databases- und deletes-Worker).
+# Seit 2.6.1 kommen autogravity und exiftool als `depends_on` von `appwrite`
+# von selbst mit — die Liste unten bleibt deshalb kurz.
 # scripts/ci/appwrite-setup.mjs erledigt die Console-
 # Schritte (Account/Projekt/Key/Platform + .env), dann bootstrap --seed und
 # die Playwright-Suite — inklusive Realtime-Spec (env-gated, läuft hier,

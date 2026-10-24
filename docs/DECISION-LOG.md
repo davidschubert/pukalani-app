@@ -7,6 +7,38 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-10-23 — Appwrite 2.6.1 statt 2.2: das PHP-Notfall-Release zieht den Prod-Sprung vor
+
+**Anlass:** PHP 8.5.12 (2026-10-21) schließt CVE-2026-109618 / CVE-2026-109619 (unauthentifizierte
+RCE, CVSS 9.2). Die Ploi-Server waren am 2026-10-23 gepatcht, die Appwrite-Prod-Instanz lief
+noch auf 2.0.0 mit PHP 8.5.9; der Sprung auf 2.2 (AW22) wartete seit 2026-09-14 auf ein Fenster.
+Appwrite 2.6.1 (gleicher Tag) bringt PHP 8.5.12 und nennt sich selbst „precautionary" (Swoole,
+kein FPM/CGI) — getroffen oder nicht, die ungepatchte Laufzeit bleibt kein Zustand.
+
+**Entscheidung:** Ziel ist **2.6.1**, nicht 2.2 — ein Fenster, dieselben Vorarbeiten; dev + CI +
+Runbook zuerst, prod erst nach Davids ausdrücklicher Freigabe (unverändert).
+
+**Was nur ein echter Lauf zeigt (dev, 2026-10-23):**
+- Die Client-IP-Auflösung ist seit 2.4 „rechtester nicht vertrauter Hop" statt „erstes Segment".
+  Unsere Kette (Nuxt setzt XFF, Traefik hängt die Nuxt-IP an) ergibt damit auf prod für JEDE
+  Session die Web-Server-IP — gemessen auf dev mit nachgestellter Kette. `_APP_TRUSTED_PROXIES`
+  braucht `49.13.211.173`, dann stimmt sie wieder (ebenfalls gemessen).
+- Das Werkzeug lädt seit 2.5 die Override MIT (Falle 2 aus 2.0 ist weg), löst relative Mount-
+  Pfade aber im eigenen Container auf: `./patches/…` wird ein leeres Verzeichnis auf dem Host,
+  der Worker stirbt an „mount … not a directory", das Werkzeug meldet „Failed to start
+  containers". Absolute Host-Pfade in der Override, und der Lauf geht in 20 s sauber durch.
+- `keepAlive: true` steht weiter in `registers.php` (Zeile 367) — der SMTP-Patch bleibt.
+- Der Executor 1.1.2 trägt noch PHP 8.5.6 (kein neueres Tag); nur im internen Netz, keine
+  Functions bei uns — notiert, nicht gelöst.
+- MQTT-Broker neu mit zwei Traefik-Ports; Docker-Ports umgehen die ufw, deshalb an Loopback.
+
+**Beweise:** dev `health/version` 2.6.1, PHP 8.5.12, alle Gesundheitspillen `pass`, Bestände
+unverändert (85 Nutzer, 55 Tabellen), Mail über den gepatchten Worker, Realtime-Handshake 101,
+`pnpm -r test` grün, Playwright `apps/comments` 16/16 funktional grün (themes-visual rot: Baselines von 2026-08-06, Vorbefund); CI-Compose erneut abgeleitet (Probe auf das
+alte Compose reproduziert die committete Datei). Runbook: docs/runbooks/APPWRITE-2-6-UPGRADE.md.
+
+---
+
 ## 2026-09-14 — Appwrite 2.2 statt 2.1: ein Fenster, und dev/CI gehen vor prod
 
 **Anlass:** David: „Appwrite 2.1 ist erschienen. Bitte updaten." Beim Nachsehen stand
