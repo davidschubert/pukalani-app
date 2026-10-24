@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { createOtpRequestSchema, type OtpRequestInput } from '../../../schemas/auth'
+import type { OtpVerifyResponse } from '../../../shared/types/auth-responses'
 
 const props = defineProps<{
   /** true = Registrierungs-Kontext: eigene Texte, AGB-Pflicht bei termsUrl */
@@ -28,6 +29,18 @@ const isControlCenter = useIsControlCenter()
 const step = ref<'email' | 'code'>('email')
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
+
+/**
+ * Zwei-Faktor, auch auf dem Code-Weg (Befund 2026-10-24, prod): steht das auf
+ * true, hat der E-MAIL-CODE bereits gestimmt und die Session existiert — es
+ * fehlt nur noch der zweite Faktor aus der Authenticator-App. Bis dahin kannte
+ * dieses Formular die Antwort `mfaRequired` nicht: es rief `auth.refresh()`,
+ * bekam auf die halbe Session 401, und der Nutzer stand nach dem richtigen
+ * Code wortlos wieder vor dem Login. Der Erfolgspfad ist derselbe, mit oder
+ * ohne zweiten Schritt — deshalb liegt er in `finishLogin()` (wie im
+ * Passwort-Formular) und nicht zweimal hier.
+ */
+const mfaRequired = ref(false)
 
 // AGB nur im register-Modus erzwingen — Login bestehender User bleibt friktionsfrei
 const termsUrl = computed(() => appConfig.pukalani?.auth?.termsUrl ?? '')
@@ -147,34 +160,48 @@ async function resend() {
   }
 }
 
+async function finishLogin() {
+  await auth.refresh()
+
+  // Optionaler Name — NUR setzen, wenn der Account noch keinen hat
+  // (Auto-Signup legt User mit leerem Namen an; Bestandsnamen bleiben unangetastet)
+  const pendingName = state.name?.trim() ?? ''
+  if (pendingName.length >= 2 && auth.user && auth.user.name === '') {
+    try {
+      await $fetch('/api/auth/profile', { method: 'PUT', body: { name: pendingName } })
+      await auth.refresh()
+    }
+    catch {
+      // Name setzen fehlgeschlagen — Login bleibt trotzdem erfolgreich
+    }
+  }
+
+  if (props.register && isControlCenter) trackFunnel('funnel_register_done')
+
+  // Embed-Popup (E2): Session ans iframe übergeben statt zu navigieren
+  if (await completeEmbedLogin()) return
+  toast.add({ title: t('auth.login.success'), color: 'success', icon: 'i-ph-check-circle' })
+  await navigateTo(afterAuthTarget())
+}
+
 async function verify() {
   const secret = code.value.join('')
   if (secret.length !== 6) return
   loading.value = true
   errorMessage.value = null
   try {
-    await $fetch('/api/auth/otp/verify', { method: 'POST', body: { userId: userId.value, code: secret } })
-    await auth.refresh()
-
-    // Optionaler Name — NUR setzen, wenn der Account noch keinen hat
-    // (Auto-Signup legt User mit leerem Namen an; Bestandsnamen bleiben unangetastet)
-    const pendingName = state.name?.trim() ?? ''
-    if (pendingName.length >= 2 && auth.user && auth.user.name === '') {
-      try {
-        await $fetch('/api/auth/profile', { method: 'PUT', body: { name: pendingName } })
-        await auth.refresh()
-      }
-      catch {
-        // Name setzen fehlgeschlagen — Login bleibt trotzdem erfolgreich
-      }
+    const result = await $fetch<OtpVerifyResponse>('/api/auth/otp/verify', {
+      method: 'POST',
+      body: { userId: userId.value, code: secret },
+    })
+    // KEIN auth.refresh() vor dem zweiten Faktor: /api/auth/me antwortet auf
+    // eine halbe Session mit 401, der Store würde den Nutzer also als
+    // ausgeloggt führen und der Erfolgspfad liefe ins Leere.
+    if (result.mfaRequired) {
+      mfaRequired.value = true
+      return
     }
-
-    if (props.register && isControlCenter) trackFunnel('funnel_register_done')
-
-    // Embed-Popup (E2): Session ans iframe übergeben statt zu navigieren
-    if (await completeEmbedLogin()) return
-    toast.add({ title: t('auth.login.success'), color: 'success', icon: 'i-ph-check-circle' })
-    await navigateTo(afterAuthTarget())
+    await finishLogin()
   }
   catch (error) {
     // Auch die Code-PRÜFUNG ist gedrosselt (FAILURE_LIMITED) — nach fünf
@@ -187,10 +214,24 @@ async function verify() {
     loading.value = false
   }
 }
+
+/**
+ * „Abbrechen" in der Zwei-Faktor-Maske hat die halbe Session bereits
+ * abgemeldet (AuthMfaChallengeForm). Der E-Mail-Code ist mit dem Anlegen der
+ * Session VERBRAUCHT — zurück geht es deshalb zum E-Mail-Schritt, nicht zur
+ * Code-Eingabe: dort wäre jeder Versuch ein garantierter Fehlschlag.
+ */
+function onMfaCancelled() {
+  mfaRequired.value = false
+  code.value = []
+  step.value = 'email'
+}
 </script>
 
 <template>
-  <div class="space-y-4" data-otp-login>
+  <AuthMfaChallengeForm v-if="mfaRequired" @solved="finishLogin" @cancel="onMfaCancelled" />
+
+  <div v-else class="space-y-4" data-otp-login>
     <div class="text-center">
       <UIcon name="i-ph-envelope-simple" class="mx-auto size-8 text-primary" />
       <h1 class="mt-2 text-xl font-semibold">

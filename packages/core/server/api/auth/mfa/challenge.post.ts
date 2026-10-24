@@ -1,11 +1,12 @@
 import type { AuthenticationFactor } from 'node-appwrite'
 import { createSessionClient } from '../../../lib/appwrite'
 import { mfaChallengeSchema } from '../../../../schemas/auth'
-import { isInvalidMfaCode, mfaFactorFor } from '../../../../shared/mfa'
+import { isInvalidMfaCode, mfaFactorFor, mfaLoginMethod } from '../../../../shared/mfa'
 
 /**
- * Der zweite Schritt der Anmeldung: die halbe Session (nur `password`) löst
- * ihre Challenge ein und wird damit vollwertig.
+ * Der zweite Schritt der Anmeldung: die halbe Session (nur `password` — oder
+ * nur `email`, wenn der erste Schritt der E-Mail-Code war) löst ihre
+ * Challenge ein und wird damit vollwertig.
  *
  * Bewusst OHNE `requireAuth`: `event.context.user` ist hier IMMER leer — die
  * Middleware füllt ihn aus `account.get()`, und genau das wirft ja noch 401.
@@ -50,8 +51,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
-  // Jetzt ist die Session vollwertig — erst hier gilt die Anmeldung.
+  // Jetzt ist die Session vollwertig — erst hier gilt die Anmeldung. WELCHER
+  // erste Schritt davor lag (Passwort oder E-Mail-Code), steht in den
+  // Faktoren der Session, nicht in dieser Route — also nachsehen statt
+  // `password` zu behaupten (bis 2026-10-24 stand hier fest `password+…`).
   const user = await account.get()
-  await logAuthEvent(event, 'user.login', { userId: user.$id, name: user.name, method: `password+${mode}` })
+  const factors = await account.getSession({ sessionId: 'current' }).then(s => s.factors).catch(() => [])
+  await logAuthEvent(event, 'user.login', { userId: user.$id, name: user.name, method: mfaLoginMethod(factors, mode) })
   return { ok: true }
 })
