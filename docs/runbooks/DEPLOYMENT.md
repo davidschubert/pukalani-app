@@ -100,16 +100,18 @@ Sag mir, sobald das steht — dann gehen wir die Schritte gemeinsam durch.
      App-Server.
 5. **SMTP** in der Appwrite-Installation (`.env` der Instanz, nicht in der
    Console) konfigurieren, sonst keine Auth-Mails.
-   **Pflicht-Patch (Appwrite 1.9.5 bis 2.2.0, je Version eine Patchdatei —
-   aktuell `patches/registers-2.2.0-keepalive-off.php`):** der Mail-Versand verliert mit dem
+   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.1, je Version eine Patchdatei —
+   aktuell `patches/registers-2.6.1-keepalive-off.php`):** der Mail-Versand verliert mit dem
    hartkodierten SMTP-`keepAlive: true` still die ERSTE Mail nach einer
    Leerlaufphase (PHPMailer-`false` wird verschluckt, Worker loggt trotzdem
    „success") — auf beiden Instanzen mountet `docker-compose.override.yml`
    deshalb eine gepatchte `registers.php` (`keepAlive: false`) in den Worker.
    **Seit 2.2 heißt der Dienst `appwrite-worker`** (ein Container für ALLE
    Warteschlangen, vorher `appwrite-worker-mails`); die Datei ist in 2.2 neu
-   geschnitten, die zu ändernde Zeile ist 340. Details/Beweis:
-   PHASE-17-PRODUCTION.md Block 7, Ablauf: APPWRITE-2-2-UPGRADE.md.
+   geschnitten, die zu ändernde Zeile ist in 2.6.1 die 367. Der Mount in der
+   Override braucht seit 2.5 einen ABSOLUTEN Host-Pfad (das Upgrade-Werkzeug
+   lädt die Override mit und löst `./` im eigenen Container auf). Details/
+   Beweis: PHASE-17-PRODUCTION.md Block 7, Ablauf: APPWRITE-2-6-UPGRADE.md.
    Beim Upgrade Patch neu ziehen oder entfernen, falls upstream gefixt.
 6. **TLS** für die Appwrite-Subdomain (ploi.io/Caddy/Traefik) — Cookie braucht `secure`.
 

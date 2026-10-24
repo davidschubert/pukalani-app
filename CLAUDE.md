@@ -8,11 +8,13 @@ Vollständiges Konzept: docs/CONCEPT.md
 ## Stack
 - Nuxt 4.5.x (Composition API, SSR), Nuxt UI 4.10.x, Pinia 4, Tailwind CSS 4
 - node-appwrite 29 (Server SDK) + appwrite 27 (Web SDK, NUR Realtime) — Appwrite self-hosted
-  **2.2.0** (dev + CI seit 2026-09-14, prod noch 2.0.0 — wartet auf Davids
-  Freigabe; MariaDB bleibt. Sprung 2.0→2.2: docs/runbooks/APPWRITE-2-2-UPGRADE.md
-  — EIN `appwrite-worker` statt vierzehn, self-hosted erlaubt nur EINE
-  Organisation. Die drei Fallen des Upgrade-Werkzeugs gelten weiter:
-  docs/runbooks/APPWRITE-2-0-UPGRADE.md)
+  **2.6.1** (dev + CI seit 2026-10-23, prod seit 2026-10-24 — PHP 8.5.12;
+  MariaDB bleibt. Sprung auf 2.6.1 (PHP 8.5.12, CVE-2026-109618/-9):
+  docs/runbooks/APPWRITE-2-6-UPGRADE.md — Client-IP jetzt „rechtester nicht
+  vertrauter Hop" (`_APP_TRUSTED_PROXIES` braucht die Nuxt-Server-IP), das
+  Werkzeug lädt die Override MIT und braucht darin ABSOLUTE Mount-Pfade. 2.0→2.2
+  (EIN `appwrite-worker`, EINE Organisation): APPWRITE-2-2-UPGRADE.md; Fallen
+  des Werkzeugs: APPWRITE-2-0-UPGRADE.md)
 - Zod, @nuxtjs/i18n (de+en), TypeScript strict, pnpm Workspaces, Node 22
 
 ## Architektur (3 Ebenen)
