@@ -340,7 +340,7 @@ Anwalt ist dafür kein Gate.
 | ~~K1~~ | ~~Cluster-Katalog erweitern~~ — **entfällt** (Davids Entscheidung B, 2026-09-09: erst mal so lassen) | — | — |
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
-| **K4** | **Fundstücke + Schalter** — Migration `insights-007`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter „nur Interessante"; Sweep zieht die Zahlen mit | Davids Ja zur Prod-Migration | M |
+| ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT 2026-10-25** (Migration `insights-007`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter; Sweep zieht die Zahlen mit). **Offen: Davids Ja zur PROD-Migration.** | — | M |
 | **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle | Entscheidung C (§9) · K4 · **Routen-Probe** | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
@@ -587,3 +587,96 @@ gewesen.
 hat bewusst keinen `users`-Scope, eine Prod-Sitzung kann ich damit nicht
 herstellen. Der nächtliche Lauf liest die Tabelle beim nächsten Takt (90 s nach
 jedem Boot, sonst alle 24 h); die Radar-Seite liest sie bei jedem Aufruf.
+
+
+---
+
+## 12. K4 gebaut (2026-10-25)
+
+Die eigene Video-Liste steht unter `/dashboard/insights/finds`, und der
+Themenradar hat zwei Links je Zeile bekommen.
+
+* **Link-Wurf.** Ein Feld, ein Knopf. Gelesen wird jede Form, die beim
+  Kopieren entsteht: `watch?v=`, `youtu.be`, Shorts, Live, Embed, die nackte
+  Id, mit und ohne Anhängsel. Eine Playlist oder ein Kanal fällt klar durch,
+  statt irgendetwas daraus zu nehmen. Die Zahlen kommen sofort mit (zwei
+  Einheiten), sonst stünde die neue Zeile bis zum nächsten Lauf als leeres
+  Gerüst da.
+* **Der Dreifach-Schalter** (`InVerdictSwitch`) steht in BEIDEN Listen und
+  bedeutet dort dasselbe: Nicht geprüft · Uninteressant · Interessant.
+* **„Interessant" im Radar LEGT das Video in die Fundstücke** — ohne einen
+  einzigen API-Aufruf, weil die Radar-Zeile die Zahlen schon trägt.
+* **Der Radar blendet ab Werk aus, was du abgehakt hast.** Drei Stellungen:
+  ohne Uninteressante (Vorgabe) · nur Interessante · jedes Urteil.
+* **Der tägliche Lauf zieht die Zahlen der Fundstücke mit** (ein Stapel je 50,
+  also vier Einheiten bei vollen 200 Zeilen).
+
+### Die tragende Entscheidung, und warum sie so herum fällt
+
+**Das Urteil wohnt in den Fundstücken, nicht an der Radar-Zeile.** Eine Spalte
+dort wäre naheliegend und falsch: die Radar-Zeile wird täglich überschrieben
+und nach dreissig Tagen gelöscht (Policies III.E.4), ein Urteil daran
+verschwände mit ihr. Daraus folgt alles Weitere — „Urteil setzen" und „Zeile
+anlegen" sind derselbe Vorgang, und der Radar liest die Urteile über die
+Video-Ids dazu.
+
+**Zwei Lebensdauern in einer Zeile.** Video-Id, Zeitpunkt, Urteil, Notiz und
+Cluster gehören dir und bleiben. Titel, Kanal, Abonnenten und die drei Zahlen
+gehören YouTube und werden täglich überschrieben. Ist ein Video nicht mehr
+abrufbar, werden die **Zahlen geleert und die Zeile bleibt** (`available:
+false`) — im Radar ginge in diesem Fall die ganze Zeile. Ein Test nagelt fest,
+dass der Nachtrag Urteil, Notiz, Cluster und Zeitpunkt in KEINEM seiner
+Schreibvorgänge anfasst; ein Typ hält diese Zusage nicht.
+
+**Kein Alters-Deckel.** Der Radar fragt „was läuft jetzt"; hier hebt jemand
+absichtlich auch etwas Älteres auf.
+
+**„Nicht geprüft" kann wegnehmen — aber nicht, was beschrieben ist.** Stellt
+man im Radar zurück und hängt keine Notiz an der Zeile, bleibt nichts
+aufzuheben und sie geht. Mit Notiz bleibt sie: dann hat ein Mensch etwas
+hineingeschrieben, und das wirft kein Schalter weg.
+
+### Beweis
+
+400 Unit-Tests, Lint und Typecheck grün. Dazu ein Klickdurchlauf gegen eine
+**eigene Wegwerf-Appwrite auf Port 8080** (`docker compose -p k4proof`) und
+einen YouTube-Stub:
+
+| Was | Ergebnis |
+|---|---|
+| Alle sieben Migrationen auf einer leeren Instanz | durch, `insights-007` neu |
+| Radar-Lauf | 3 Videos, Fundstück-Nachtrag lief mit |
+| „Interessant" im Radar | Fundstücke 0 → 1, Zahlen übernommen, kein API-Aufruf |
+| „Uninteressant" im Radar | Zeile fällt sofort aus der Liste (Vorgabe greift) |
+| Drei Filterstellungen | 2 · 1 · 3 Zeilen |
+| Link-Wurf mit Anhängsel | Titel, Zahlen und Abonnenten sofort da |
+| Vier Ablehnungen | Playlist/Kanal/zu lang 400 · doppelt 409 · unbekannt 404 |
+| Video verschwindet, Lauf | `gone: 1`, Zahlen 0, Titel leer, **Notiz und Urteil stehen** |
+| Ansicht dazu | Striche statt Nullen, „keine Zahl", Hinweiszeile |
+| Notiz und Urteil in der Liste ändern | gespeichert, Notiz vom Urteilswechsel unberührt |
+| Zurückstellen mit/ohne Notiz | bleibt gelistet · wird entfernt |
+| Wegnehmen | 200, zweiter Versuch 404 |
+
+### Gelernt
+
+**Die lokale Appwrite liess sich nicht mehr benutzen.** Seit 2.2 erlaubt eine
+self-hosted Instanz nur EINE Organisation, und ein frisch angelegtes
+Konsolen-Konto ist in keiner — also kein Projekt, kein Schlüssel, kein
+`apps/branding/.env`. Der Weg heraus ist die **CI-Wegwerf-Instanz mit eigenem
+Compose-Projektnamen und eigenem Port** (`docker compose -p k4proof`,
+Port 8080): das Compose-File hat bewusst keine festen Container-Namen, also
+kollidiert nichts mit der laufenden Instanz auf :80. Zwei Dinge, die der CI-Lauf
+selbst macht und von Hand fehlen: `_APP_OPENSSL_KEY_V1` muss gesetzt sein
+(sonst beendet sich der `appwrite`-Container kommentarlos), und die Datenbank
+`main` legt das Setup-Skript nicht an.
+
+**Eine erfundene Video-Id im eigenen Stub hat den Parser zu Recht abgewiesen.**
+`verschwindet` sind zwölf Zeichen, eine YouTube-Id hat elf. Zehn Minuten
+Fehlersuche am richtigen Code — der Merksatz dazu: Testdaten müssen dasselbe
+Format erfüllen wie echte, sonst prüft man die Prüfung.
+
+### Was jetzt bei David liegt
+
+**Die Prod-Migration `insights-007`** — vor dem Code-Deploy. Bis sie läuft,
+antwortet die Fundstück-Seite auf Prod mit einer leeren Liste (die Routen sind
+fail-soft), und der Radar zeigt keine Urteile.

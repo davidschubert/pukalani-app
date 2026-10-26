@@ -1,5 +1,7 @@
 import type { InsightsTopicKey } from './insightsPost'
 import { INSIGHTS_TOPIC_KEYS } from './insightsPost'
+import type { InsightsRadarVerdictFilter, InsightsVerdict } from './insightsWatchlist'
+import { INSIGHTS_RADAR_VERDICT_DEFAULT, insightsVerdictPasses } from './insightsWatchlist'
 
 /**
  * DIE REINEN REGELN DER RADAR-ANSICHT (BI2 K2, Plan
@@ -131,6 +133,8 @@ export interface InsightsRadarFilterable {
   topic: string
   channelTitle: string
   ageDays: number
+  /** Das dazugelesene Urteil (BI2 K4) — ohne Eintrag `unrated`. */
+  verdict: InsightsVerdict
 }
 
 /** Was zum LESEN reicht — die Filter-Regeln fassen nichts an. */
@@ -141,6 +145,12 @@ export interface InsightsRadarFilter {
   channels: readonly string[]
   /** `0` heisst alle. */
   range: InsightsRadarRange
+  /**
+   * Das Urteil (BI2 K4). Anders als die drei darüber ist die VORGABE hier
+   * nicht „alles": `without-uninteresting` blendet aus, was ein Mensch
+   * abgehakt hat. Ein Urteil, das die Liste nicht ändert, ist eine Geste.
+   */
+  verdict: InsightsRadarVerdictFilter
 }
 
 /**
@@ -154,6 +164,7 @@ export interface InsightsRadarFilterState {
   topics: string[]
   channels: string[]
   range: InsightsRadarRange
+  verdict: InsightsRadarVerdictFilter
 }
 
 /**
@@ -168,7 +179,7 @@ export interface InsightsRadarFilterState {
  * Jeder Aufruf liefert deshalb frische Listen.
  */
 export function insightsRadarFilterNone(): InsightsRadarFilterState {
-  return { topics: [], channels: [], range: 0 }
+  return { topics: [], channels: [], range: 0, verdict: INSIGHTS_RADAR_VERDICT_DEFAULT }
 }
 
 /**
@@ -190,13 +201,19 @@ export function insightsRadarFilterRows<T extends InsightsRadarFilterable>(
     if (topics.size > 0 && !topics.has(row.topic)) return false
     if (channels.size > 0 && !channels.has(row.channelTitle)) return false
     if (filter.range > 0 && row.ageDays > filter.range) return false
+    if (!insightsVerdictPasses(row.verdict, filter.verdict)) return false
     return true
   })
 }
 
 /** Ob überhaupt etwas eingeschränkt ist — für den „Zurücksetzen"-Knopf. */
 export function insightsRadarFilterActive(filter: InsightsRadarFilter): boolean {
-  return filter.topics.length > 0 || filter.channels.length > 0 || filter.range > 0
+  return filter.topics.length > 0
+    || filter.channels.length > 0
+    || filter.range > 0
+    // Die VORGABE zählt nicht als Einschränkung: sonst stünde „Filter
+    // zurücksetzen" beim ersten Öffnen da, ohne dass jemand etwas gewählt hat.
+    || filter.verdict !== INSIGHTS_RADAR_VERDICT_DEFAULT
 }
 
 /**

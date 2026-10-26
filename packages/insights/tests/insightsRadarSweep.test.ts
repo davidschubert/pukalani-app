@@ -146,6 +146,10 @@ function deps(extra: Partial<InsightsRadarSweepDeps> = {}): InsightsRadarSweepDe
     // Regeln. Hier zählt nur, dass der Lauf ihn ruft und an ihm nicht hängen
     // bleibt — deshalb eine Fassung, die mitzählt (s. `touched`).
     touchChannels: async (_db, _dbId, seen) => { touched.push(new Map(seen)) },
+    // Der Fundstück-Nachtrag (BI2 K4) ist ebenfalls ein Auto-Import; WAS er
+    // tut, prüft `insightsWatchlistRefresh.test.ts`. Hier zählt nur, dass der
+    // Lauf ihn ruft und an ihm nicht hängen bleibt.
+    refreshWatchlist: async () => { refreshed += 1; return { items: 0, updated: 0, gone: 0 } },
     readRuntimeConfig: () => runtime(),
     tablesDB,
     log: (level, name, data) => { logged.push({ level, name, data }) },
@@ -156,6 +160,8 @@ function deps(extra: Partial<InsightsRadarSweepDeps> = {}): InsightsRadarSweepDe
 
 /** Womit der Lauf die Kanalliste nachgezogen hat (BI2 K3). */
 let touched: Map<string, { title: string, subscribers: number, handle: string }>[] = []
+/** Wie oft der Lauf den Fundstück-Nachtrag gerufen hat (BI2 K4). */
+let refreshed = 0
 
 const NOW = new Date('2026-09-09T08:00:00.000Z')
 
@@ -163,6 +169,7 @@ beforeEach(() => {
   rows = []
   logged = []
   touched = []
+  refreshed = 0
   nextRowId = 0
   tablesDB.createRow.mockClear()
   tablesDB.updateRow.mockClear()
@@ -376,6 +383,23 @@ describe('runInsightsRadarSweep — Upsert und 30-Tage-Netz', () => {
     for (const call of tablesDB.createRow.mock.calls) {
       expect((call[0] as { tableId: string }).tableId).toBe(INSIGHTS_TOPICS_TABLE)
     }
+  })
+
+  it('zieht auch die Fundstücke nach — derselbe Lauf, dieselbe API (BI2 K4)', async () => {
+    const result = await runInsightsRadarSweep(deps(), NOW)
+    expect(refreshed).toBe(1)
+    expect(result.watchlist).toEqual({ items: 0, updated: 0, gone: 0 })
+  })
+
+  it('ein Fehler im Fundstück-Nachtrag stellt das Tagesbild des Radars nicht in Frage', async () => {
+    const result = await runInsightsRadarSweep(deps({
+      refreshWatchlist: async () => { throw new Error('weg') },
+    }), NOW)
+    // Die Radar-Zeilen stehen; nur der Nachtrag fehlt und ist gezählt.
+    expect(result.upserted).toBe(1)
+    expect(result.watchlist).toBeUndefined()
+    expect(result.errors).toBe(1)
+    expect(logged.some(entry => entry.name === 'insights.watchlist_refresh_failed')).toBe(true)
   })
 
   it('zieht die Kanalliste mit dem nach, was die API gerade gesagt hat', async () => {

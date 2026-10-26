@@ -108,6 +108,19 @@ const DELETE_ROUNDS_MAX = 5
 async function defaultReadChannels(tablesDB: TablesDbLike, databaseId: string): Promise<InsightsRadarChannel[]> {
   return await readActiveRadarChannels(tablesDB, databaseId)
 }
+async function defaultRefreshWatchlist(
+  tablesDB: TablesDbLike,
+  databaseId: string,
+  apiKey: string,
+  baseUrl: string,
+  fetchJson: (url: string) => Promise<unknown>,
+  now: Date,
+): Promise<{ items: number, updated: number, gone: number }> {
+  return await refreshInsightsWatchlist(
+    tablesDB as unknown as Parameters<typeof refreshInsightsWatchlist>[0],
+    databaseId, apiKey, baseUrl, fetchJson, now,
+  )
+}
 async function defaultTouchChannels(
   tablesDB: TablesDbLike,
   databaseId: string,
@@ -154,6 +167,12 @@ export interface InsightsRadarSweepResult {
   errors: number
   /** Was der Lauf nach der Formel aus §9.6 gekostet hat (Schätzung). */
   quotaUnits: number
+  /**
+   * Wie viele FUNDSTÜCKE (BI2 K4) derselbe Lauf nachgezogen hat, und wie
+   * viele davon nicht mehr abrufbar waren. `undefined`, wenn es die Tabelle
+   * nicht gibt — der Layer kann ohne insights-007 im Bau sein.
+   */
+  watchlist?: { items: number, updated: number, gone: number }
   /** Gesetzt, wenn der Lauf gar nicht stattgefunden hat — mit dem Grund. */
   skipped?: 'not_configured' | 'no_channels' | 'quota_estimate' | 'running'
 }
@@ -182,6 +201,19 @@ export interface InsightsRadarSweepDeps {
     seen: ReadonlyMap<string, { title: string, subscribers: number, handle: string }>,
     checkedAt: string,
   ) => Promise<void>
+  /**
+   * Die Zahlen der FUNDSTÜCKE nachziehen (BI2 K4). Vorgabe:
+   * `refreshInsightsWatchlist`. Überschreibbar aus demselben Grund wie alles
+   * andere hier — ein Nitro-Auto-Import existiert im Vitest-Lauf nicht.
+   */
+  refreshWatchlist?: (
+    tablesDB: TablesDbLike,
+    databaseId: string,
+    apiKey: string,
+    baseUrl: string,
+    fetchJson: (url: string) => Promise<unknown>,
+    now: Date,
+  ) => Promise<{ items: number, updated: number, gone: number }>
   /** Vorgabe: `useRuntimeConfig(event)`. */
   readRuntimeConfig?: () => { insightsYoutubeKey?: string, insightsYoutubeBaseUrl?: string, public: { appwriteDatabaseId: string } }
   /** Vorgabe: `createAdminClient(event).tablesDB`. */
@@ -463,6 +495,32 @@ export async function runInsightsRadarSweep(
     result.deleted = swept.deleted + aged.deleted
     result.errors += swept.errors + aged.errors
 
+    // ── 6. Die FUNDSTÜCKE nachziehen (BI2 K4) ────────────────────────────
+    // Derselbe Lauf, weil es dieselbe Frage an dieselbe API ist: „was sagen
+    // die Zahlen heute?". Ein zweiter Sweep dafür hätte einen zweiten Takt,
+    // einen zweiten Kill-Switch und eine zweite Stelle, an der jemand den
+    // Schlüssel sucht. Kostet vier Einheiten je 200 Zeilen.
+    //
+    // FAIL-SOFT und AM ENDE: ein Fehler hier darf das Tagesbild des Radars
+    // nicht in Frage stellen, das oben schon geschrieben ist.
+    try {
+      const refreshed = await (deps.refreshWatchlist ?? defaultRefreshWatchlist)(
+        tablesDB, databaseId, apiKey, baseUrl, fetchJson, now,
+      )
+      result.watchlist = refreshed
+      result.quotaUnits += Math.ceil(refreshed.items / 50)
+    }
+    catch (error) {
+      // 404 = keine Tabelle: der Layer kann ohne insights-007 im Bau sein —
+      // dieselbe stille Wahl wie beim Radar ohne insights-004. `isTableMissing`
+      // ist die HAUSEIGENE Prüfung dieser Datei und nicht der Auto-Import
+      // `isInsightsRowMissing`: den gibt es im Vitest-Lauf nicht.
+      if (!isTableMissing(error)) {
+        result.errors += 1
+        log('warn', 'insights.watchlist_refresh_failed', { message: insightsYoutubeSafeMessage(error) })
+      }
+    }
+
     log('info', 'insights.radar_swept', {
       channels: result.channels,
       videos: result.videos,
@@ -471,6 +529,8 @@ export async function runInsightsRadarSweep(
       tooOld: result.tooOld,
       errors: result.errors,
       quotaUnits: result.quotaUnits,
+      watchlist: result.watchlist?.items ?? 0,
+      watchlistGone: result.watchlist?.gone ?? 0,
     })
     return result
   }

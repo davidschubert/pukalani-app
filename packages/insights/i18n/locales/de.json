@@ -246,6 +246,50 @@
         "no_channels": "Keine Kanäle konfiguriert — der Lauf hat nichts geholt.",
         "quota_estimate": "Der Lauf wäre zu teuer geworden. Die Kanalliste ist zu lang.",
         "running": "Es läuft schon einer. Kurz warten."
+      },
+      "openLabel": "Auf YouTube ansehen",
+      "verdictListed": "In deine Fundstücke gelegt.",
+      "verdictFilter": {
+        "without-uninteresting": "Ohne Uninteressante",
+        "interesting": "Nur Interessante",
+        "all": "Jedes Urteil"
+      }
+    },
+    "verdict": {
+      "label": "Urteil",
+      "unrated": "Nicht geprüft",
+      "uninteresting": "Uninteressant",
+      "interesting": "Interessant"
+    },
+    "finds": {
+      "title": "Fundstücke",
+      "lead": "Deine eigene Liste. Was der Themenradar nicht sieht, wirfst du hier als Link hinein — ausgelesen wird es genauso.",
+      "addLabel": "YouTube-Link",
+      "addHint": "Jede Form geht: watch, youtu.be, Shorts, Live.",
+      "addPlaceholder": "https://youtu.be/…",
+      "add": "Hinzufügen",
+      "added": "Hinzugefügt.",
+      "empty": "Noch nichts aufgehoben. Wirf einen YouTube-Link hinein, oder klick im Themenradar auf „Interessant\".",
+      "emptyFiltered": "Zu diesem Urteil liegt nichts in der Liste.",
+      "filterAll": "Jedes Urteil",
+      "shown": "{shown} von {total}",
+      "interesting": "kein Interessantes | ein Interessantes | {count} Interessante",
+      "capacity": "Platz für {max}",
+      "note": "Notiz",
+      "notePlaceholder": "Warum hebst du das auf?",
+      "remove": "Wegnehmen",
+      "removeConfirm": "Dieses Video aus deiner Liste nehmen? Wenn du es nur nicht mehr sehen willst, setz es auf „Uninteressant\" — dann bleibt es hier und verschwindet aus dem Radar.",
+      "removed": "Weggenommen.",
+      "gone": "Nicht mehr abrufbar — die Zahlen sind geleert, deine Notiz bleibt.",
+      "keyMissing": "Ohne API-Schlüssel lässt sich kein Video auslesen. Die Server-Umgebung braucht die Zeile NUXT_INSIGHTS_YOUTUBE_KEY.",
+      "error": {
+        "video_unreadable": "Daraus lässt sich kein Video lesen. Nimm den Link aus der Adresszeile oder von „Teilen\".",
+        "video_not_found": "YouTube kennt dieses Video nicht — es ist gelöscht oder privat.",
+        "video_duplicate": "Das liegt schon in deiner Liste.",
+        "watchlist_limit": "Deine Liste ist voll. Nimm etwas heraus.",
+        "not_configured": "Ohne API-Schlüssel geht das nicht.",
+        "youtube_unavailable": "YouTube hat nicht geantwortet.",
+        "generic": "Das hat nicht geklappt."
       }
     },
     "channels": {
@@ -454,7 +498,8 @@
       "navBrands": "Marken",
       "navCorrections": "Korrekturen",
       "navRadar": "Themenradar",
-      "navChannels": "Kanäle"
+      "navChannels": "Kanäle",
+      "navFinds": "Fundstücke"
     },
     "brands": {
       "title": "Marken",

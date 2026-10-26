@@ -32,6 +32,8 @@ import type { InsightsRadarStoredVideo } from './insightsRadar'
 import { INSIGHTS_RADAR_TOPIC_FALLBACK } from './insightsRadar'
 import type { InsightsChannel } from './insightsChannel'
 import { INSIGHTS_CHANNEL_NOTE_MAX } from './insightsChannel'
+import type { InsightsVerdict, InsightsWatchItem } from './insightsWatchlist'
+import { INSIGHTS_VERDICTS, INSIGHTS_VERDICT_FALLBACK, INSIGHTS_WATCH_NOTE_MAX } from './insightsWatchlist'
 import type { InsightsCorrectionListItem } from './types/insightsApi'
 
 /**
@@ -97,6 +99,12 @@ export const INSIGHTS_TOPICS_TABLE = 'insights_topics'
  * die bleibt, bis ein Mensch sie ändert.
  */
 export const INSIGHTS_CHANNELS_TABLE = 'insights_channels'
+/**
+ * Die eigene Video-Liste (insights-007, BI2 K4) — die EINZIGE Tabelle dieses
+ * Layers, in der ein Teil der Zeile bleibt und ein anderer abläuft: das Urteil
+ * ist deins, die Zahlen gehören YouTube.
+ */
+export const INSIGHTS_WATCHLIST_TABLE = 'insights_watchlist'
 
 /** Die Newsletter-Liste (insights-006, BI1 I5a) — eigene Liste, eigenes DOI. */
 export const INSIGHTS_SUBSCRIBERS_TABLE = 'insights_subscribers'
@@ -679,5 +687,93 @@ export function fromInsightsChannel(channel: InsightsChannel): InsightsChannelRo
     note: channel.note.slice(0, INSIGHTS_CHANNEL_NOTE_MAX),
     lastUploadAt: channel.lastUploadAt ? `${channel.lastUploadAt.slice(0, 10)}T00:00:00.000Z` : null,
     checkedAt: channel.checkedAt || null,
+  }
+}
+
+// ── Die Fundstücke (insights-007, BI2 K4) ──────────────────────────────────
+
+/**
+ * EIN FUNDSTÜCK ALS ZEILE.
+ *
+ * ── DIE TRENNLINIE IST HIER DIE WICHTIGSTE DES LAYERS ───────────────────
+ * `verdict`, `note`, `topic` und `addedAt` gehören dem MENSCHEN und werden von
+ * keinem Lauf angefasst. `title`, `channelId`, `channelTitle`,
+ * `channelSubscribers`, `views`, `likes`, `commentCount`, `publishedAt`,
+ * `available` und `refreshedAt` gehören der API und werden täglich
+ * überschrieben. Wer das durcheinanderbringt, löscht beim Aufräumen das
+ * Urteil — und das Urteil ist der einzige Grund, warum es diese Tabelle gibt.
+ *
+ * `available: false` heisst „beim letzten Abruf nicht mehr da" (gelöscht,
+ * privat). Dann sind die Zahlen GELEERT und die Zeile bleibt. Im Radar ginge
+ * in diesem Fall die ganze Zeile; der Unterschied steht im Kopf der Migration.
+ */
+export type InsightsWatchRow = Models.Row & {
+  videoId: string
+  verdict: string
+  note: string
+  topic: string
+  addedAt: string | null
+  available: boolean
+  refreshedAt: string | null
+  title: string
+  channelId: string
+  channelTitle: string
+  channelSubscribers: number
+  views: number
+  likes: number
+  commentCount: number
+  publishedAt: string | null
+}
+
+/** Die schreibbaren Felder eines Fundstücks. */
+export type InsightsWatchRowData = Omit<InsightsWatchRow, keyof Models.Row>
+
+/**
+ * ZEILE → VERTRAG, fail-soft wie überall hier.
+ *
+ * `verdict` fällt auf `unrated` zurück und NICHT auf `interesting` — ein
+ * geratenes Urteil schöbe ein Video in die Vorauswahl, die ein Mensch nie
+ * getroffen hat (Begründung im Kopf von `insightsWatchlist.ts`).
+ * `available` ist bei einer Zeile ohne Wert WAHR: eine Zeile, die vor der
+ * Spalte entstanden wäre, soll nicht als gelöschtes Video erscheinen.
+ */
+export function toInsightsWatchItem(row: InsightsWatchRow): InsightsWatchItem {
+  return {
+    videoId: row.videoId,
+    verdict: oneOf<InsightsVerdict>(INSIGHTS_VERDICTS, row.verdict, INSIGHTS_VERDICT_FALLBACK),
+    note: row.note ?? '',
+    topic: oneOf<InsightsTopicKey>(INSIGHTS_TOPIC_KEYS, row.topic, INSIGHTS_RADAR_TOPIC_FALLBACK),
+    addedAt: row.addedAt ?? row.$createdAt,
+    available: row.available !== false,
+    refreshedAt: row.refreshedAt ?? '',
+    title: row.title ?? '',
+    channelId: row.channelId ?? '',
+    channelTitle: row.channelTitle ?? '',
+    channelSubscribers: Math.max(0, Math.round(row.channelSubscribers ?? 0)),
+    views: Math.max(0, Math.round(row.views ?? 0)),
+    likes: Math.max(0, Math.round(row.likes ?? 0)),
+    commentCount: Math.max(0, Math.round(row.commentCount ?? 0)),
+    publishedAt: (row.publishedAt ?? '').slice(0, 10),
+  }
+}
+
+/** VERTRAG → ZEILE. `publishedAt` reist als Kalendertag, wie überall hier. */
+export function fromInsightsWatchItem(item: InsightsWatchItem): InsightsWatchRowData {
+  return {
+    videoId: item.videoId,
+    verdict: item.verdict,
+    note: item.note.slice(0, INSIGHTS_WATCH_NOTE_MAX),
+    topic: item.topic,
+    addedAt: item.addedAt || null,
+    available: item.available,
+    refreshedAt: item.refreshedAt || null,
+    title: item.title.slice(0, 300),
+    channelId: item.channelId.slice(0, 64),
+    channelTitle: item.channelTitle.slice(0, 160),
+    channelSubscribers: item.channelSubscribers,
+    views: item.views,
+    likes: item.likes,
+    commentCount: item.commentCount,
+    publishedAt: item.publishedAt ? `${item.publishedAt.slice(0, 10)}T00:00:00.000Z` : null,
   }
 }

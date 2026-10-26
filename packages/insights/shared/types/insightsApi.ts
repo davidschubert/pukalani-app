@@ -1,4 +1,5 @@
 import type { InsightsChannel, InsightsChannelPreview } from '../insightsChannel'
+import type { InsightsVerdict, InsightsWatchItem } from '../insightsWatchlist'
 import type {
   InsightsBrand,
   InsightsBrandScore,
@@ -243,8 +244,16 @@ export type InsightsRadarVideoItem = InsightsRadarStoredVideo
 export interface InsightsRadarResponse {
   /** Liegt ein API-Schlüssel vor? (`NUXT_INSIGHTS_YOUTUBE_KEY`) */
   configured: boolean
-  /** Wie viele GÜLTIGE Kanäle in der Konfiguration stehen. */
+  /** Wie viele AKTIVE Kanäle in der Liste stehen (seit BI2 K3 aus der Tabelle). */
   channels: number
+  /**
+   * Das Urteil je Video-Id — aus den FUNDSTÜCKEN dazugelesen (BI2 K4).
+   *
+   * Eine Karte und keine Liste: die Ansicht fragt je Zeile, und bei 500
+   * Zeilen wären das 500 lineare Suchen. Was hier FEHLT, ist `unrated` —
+   * ein Video ohne Eintrag ist eines, über das noch niemand geurteilt hat.
+   */
+  verdicts: Record<string, InsightsVerdict>
   /** Was ein Lauf nach der Formel aus §9.6 kostet (von 10.000 am Tag). */
   quotaEstimate: number
   /**
@@ -533,4 +542,48 @@ export interface InsightsNewsletterConfirmResponse {
  */
 export interface InsightsNewsletterUnsubscribeResponse {
   ok: true
+}
+
+// ── Die eigene Video-Liste (BI2 K4) ────────────────────────────────────────
+
+/**
+ * DIE FUNDSTÜCKE (`GET /api/insights/watchlist`).
+ *
+ * `today` reist mit, weil das Alter einer Zeile gegen den SERVER-Tag gerechnet
+ * werden muss — dieselbe Regel wie beim Radar: `new Date()` im Rendern ist auf
+ * dem Server ein anderer Wert als im Browser.
+ */
+export interface InsightsWatchlistResponse {
+  items: InsightsWatchItem[]
+  /** Ohne API-Schlüssel kann nichts hinzugefügt werden; die Seite sagt es vorher. */
+  configured: boolean
+  today: string
+}
+
+/** Hinzugefügt (`POST /api/insights/watchlist`). */
+export interface InsightsWatchAddedResponse {
+  item: InsightsWatchItem
+}
+
+/** Geändert (`PATCH /api/insights/watchlist/<videoId>`). */
+export interface InsightsWatchSavedResponse {
+  item: InsightsWatchItem
+}
+
+/** Weggenommen (`DELETE /api/insights/watchlist/<videoId>`). */
+export interface InsightsWatchDeletedResponse {
+  ok: true
+}
+
+/**
+ * EIN URTEIL AUS DEM RADAR (`POST /api/insights/watchlist/verdict`).
+ *
+ * `listed` sagt, ob zu diesem Video jetzt eine Zeile in den Fundstücken steht
+ * — die Radar-Ansicht braucht das für ihren Hinweis „ist in deiner Liste".
+ * Es folgt NICHT aus dem Urteil: „Nicht geprüft" kann eine Zeile stehen
+ * lassen (wenn eine Notiz daran hängt) oder entfernen.
+ */
+export interface InsightsWatchVerdictResponse {
+  verdict: InsightsVerdict
+  listed: boolean
 }

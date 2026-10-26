@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { InsightsVerdict } from '../shared/insightsWatchlist'
+import { INSIGHTS_RADAR_VERDICT_DEFAULT } from '../shared/insightsWatchlist'
 import {
   INSIGHTS_RADAR_RANGES,
   INSIGHTS_RADAR_SORT_DEFAULT,
@@ -24,6 +26,7 @@ import {
 interface Row {
   videoId: string
   topic: string
+  verdict: InsightsVerdict
   channelTitle: string
   views: number
   likes: number
@@ -35,6 +38,7 @@ interface Row {
 function row(partial: Partial<Row> & { videoId: string }): Row {
   return {
     topic: 'brand-strategy',
+    verdict: 'unrated',
     channelTitle: 'The Futur',
     views: 0,
     likes: 0,
@@ -175,6 +179,44 @@ describe('insightsRadarFilterNone', () => {
 
   it('ist leer und damit unbeschränkt', () => {
     expect(insightsRadarFilterActive(insightsRadarFilterNone())).toBe(false)
+  })
+})
+
+describe('der Urteils-Filter (BI2 K4)', () => {
+  const rows = [
+    row({ videoId: 'a', verdict: 'unrated' }),
+    row({ videoId: 'b', verdict: 'uninteresting' }),
+    row({ videoId: 'c', verdict: 'interesting' }),
+  ]
+
+  it('blendet in der VORGABE das Abgehakte aus — ein Urteil, das wirkt', () => {
+    const shown = insightsRadarFilterRows(rows, insightsRadarFilterNone())
+    expect(shown.map(r => r.videoId)).toEqual(['a', 'c'])
+  })
+
+  it('zeigt auf Wunsch nur die Vorauswahl', () => {
+    const only = insightsRadarFilterRows(rows, { ...insightsRadarFilterNone(), verdict: 'interesting' })
+    expect(only.map(r => r.videoId)).toEqual(['c'])
+  })
+
+  it('zeigt auf Wunsch alles — auch das eigene Nein', () => {
+    expect(insightsRadarFilterRows(rows, { ...insightsRadarFilterNone(), verdict: 'all' })).toHaveLength(3)
+  })
+
+  it('verbindet sich mit den anderen Filtern als UND', () => {
+    const both = insightsRadarFilterRows(
+      [row({ videoId: 'a', verdict: 'interesting', topic: 'seo-geo' }), row({ videoId: 'b', verdict: 'interesting', topic: 'rebranding' })],
+      { ...insightsRadarFilterNone(), verdict: 'interesting', topics: ['seo-geo'] },
+    )
+    expect(both.map(r => r.videoId)).toEqual(['a'])
+  })
+
+  it('die VORGABE zählt nicht als Einschränkung — sonst stünde „zurücksetzen" von Anfang an da', () => {
+    expect(insightsRadarFilterActive(insightsRadarFilterNone())).toBe(false)
+    expect(insightsRadarFilterNone().verdict).toBe(INSIGHTS_RADAR_VERDICT_DEFAULT)
+    // GEGENPROBE: jede ANDERE Stellung ist eine.
+    expect(insightsRadarFilterActive({ ...insightsRadarFilterNone(), verdict: 'all' })).toBe(true)
+    expect(insightsRadarFilterActive({ ...insightsRadarFilterNone(), verdict: 'interesting' })).toBe(true)
   })
 })
 

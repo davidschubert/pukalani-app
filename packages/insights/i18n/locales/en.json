@@ -246,6 +246,50 @@
         "no_channels": "No channels configured — the run fetched nothing.",
         "quota_estimate": "The run would have been too expensive. The channel list is too long.",
         "running": "One is already running. Wait a moment."
+      },
+      "openLabel": "Watch on YouTube",
+      "verdictListed": "Added to your finds.",
+      "verdictFilter": {
+        "without-uninteresting": "Without the rejected",
+        "interesting": "Only interesting",
+        "all": "Any verdict"
+      }
+    },
+    "verdict": {
+      "label": "Verdict",
+      "unrated": "Not reviewed",
+      "uninteresting": "Not interesting",
+      "interesting": "Interesting"
+    },
+    "finds": {
+      "title": "Finds",
+      "lead": "Your own list. Whatever the topic radar does not see, you drop in here as a link — it gets read the same way.",
+      "addLabel": "YouTube link",
+      "addHint": "Any form works: watch, youtu.be, Shorts, Live.",
+      "addPlaceholder": "https://youtu.be/…",
+      "add": "Add",
+      "added": "Added.",
+      "empty": "Nothing kept yet. Drop in a YouTube link, or press “Interesting” in the topic radar.",
+      "emptyFiltered": "Nothing on the list with that verdict.",
+      "filterAll": "Any verdict",
+      "shown": "{shown} of {total}",
+      "interesting": "none interesting | one interesting | {count} interesting",
+      "capacity": "Room for {max}",
+      "note": "Note",
+      "notePlaceholder": "Why are you keeping this?",
+      "remove": "Remove",
+      "removeConfirm": "Take this video off your list? If you just do not want to see it again, set it to “Not interesting” — it stays here and disappears from the radar.",
+      "removed": "Removed.",
+      "gone": "No longer available — the numbers are cleared, your note stays.",
+      "keyMissing": "Without an API key no video can be read. The server environment needs the line NUXT_INSIGHTS_YOUTUBE_KEY.",
+      "error": {
+        "video_unreadable": "No video can be read from that. Use the link from the address bar or from “Share”.",
+        "video_not_found": "YouTube does not know this video — it is deleted or private.",
+        "video_duplicate": "That is already on your list.",
+        "watchlist_limit": "Your list is full. Take something off it.",
+        "not_configured": "That does not work without an API key.",
+        "youtube_unavailable": "YouTube did not answer.",
+        "generic": "That did not work."
       }
     },
     "channels": {
@@ -454,7 +498,8 @@
       "navBrands": "Brands",
       "navCorrections": "Corrections",
       "navRadar": "Topic radar",
-      "navChannels": "Channels"
+      "navChannels": "Channels",
+      "navFinds": "Finds"
     },
     "brands": {
       "title": "Brands",

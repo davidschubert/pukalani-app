@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { INSIGHTS_RADAR_RETENTION_DAYS } from '../../../../shared/insightsPost'
 import { INSIGHTS_RADAR_DAILY_QUOTA } from '../../../../shared/insightsYoutube'
-import type { InsightsRadarResponse, InsightsRadarRunResponse, InsightsRadarVideoItem } from '../../../../shared/types/insightsApi'
+import type {
+  InsightsRadarResponse,
+  InsightsRadarRunResponse,
+  InsightsRadarVideoItem,
+  InsightsWatchVerdictResponse,
+} from '../../../../shared/types/insightsApi'
+import type { InsightsVerdict } from '../../../../shared/insightsWatchlist'
 import { insightsDay, insightsNumber } from '../../../utils/insightsFormat'
 
 /**
@@ -70,6 +76,43 @@ function resolveRelevance(video: { videoId: string }): number | undefined {
   return videos.value.find(entry => entry.videoId === video.videoId)?.relevance
 }
 
+/**
+ * DAS URTEIL AUS DEM RADAR (BI2 K4).
+ *
+ * Ein Klick auf „Interessant" LEGT das Video in die Fundstücke — das Urteil
+ * wohnt dort, weil die Radar-Zeile täglich überschrieben und nach dreissig
+ * Tagen gelöscht wird. Die Antwort sagt, ob jetzt eine Zeile steht; die
+ * Rückmeldung nennt das, damit der Klick nicht nur eine Farbe ändert.
+ *
+ * `refresh()` danach ist kein Luxus: der Filter „ohne Uninteressante" greift
+ * auf die dazugelesenen Urteile, und ohne Nachladen bliebe die eben
+ * abgehakte Zeile stehen, bis jemand die Seite neu lädt.
+ */
+const verdictBusy = ref('')
+
+async function setVerdict(videoId: string, verdict: InsightsVerdict): Promise<void> {
+  verdictBusy.value = videoId
+  try {
+    const result = await $fetch<InsightsWatchVerdictResponse>('/api/insights/watchlist/verdict', {
+      method: 'POST',
+      body: { videoId, verdict },
+    })
+    if (result.listed && verdict === 'interesting') {
+      toast.add({ title: t('insights.radar.verdictListed'), color: 'success' })
+    }
+    await refresh()
+  }
+  catch (error) {
+    const reason = (error as { data?: { reason?: string } } | null)?.data?.reason
+    const key = `insights.finds.error.${reason ?? 'generic'}`
+    const text = t(key)
+    toast.add({ title: text === key ? t('insights.finds.error.generic') : text, color: 'error' })
+  }
+  finally {
+    verdictBusy.value = ''
+  }
+}
+
 const running = ref(false)
 
 async function runNow(): Promise<void> {
@@ -121,6 +164,11 @@ async function runNow(): Promise<void> {
             :label="t('insights.editor.backToList')" icon="i-ph-arrow-left"
             color="neutral" variant="ghost"
             :to="localePath('/dashboard/insights')"
+          />
+          <UButton
+            :label="t('insights.finds.title')" icon="i-ph-bookmark-simple"
+            color="neutral" variant="ghost"
+            :to="localePath('/dashboard/insights/finds')"
           />
         </template>
       </UDashboardNavbar>
@@ -193,6 +241,9 @@ async function runNow(): Promise<void> {
           :today="today"
           :resolve-relevance="resolveRelevance"
           :max-age-days="data?.maxVideoAgeDays"
+          :verdicts="data?.verdicts"
+          :busy-video-id="verdictBusy"
+          @verdict="setVerdict"
         />
       </div>
     </template>

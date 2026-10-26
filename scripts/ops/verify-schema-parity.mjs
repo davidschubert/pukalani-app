@@ -410,6 +410,13 @@ const INSIGHTS_TABLES = [
   // gab nie eine Einwilligung), abgemeldete nach 12 Monaten GELEERT (die Zeile
   // ist der Nachweis). Der Riegel davor ist eine Config-Zeile, kein Schema.
   'insights_subscribers',
+
+  // insights-007: die eigene Video-Liste (BI2 K4) — die einzige Tabelle des
+  // Layers, in der ein Teil der Zeile BLEIBT und ein anderer abläuft: Urteil,
+  // Notiz, Cluster und `addedAt` gehören dem Menschen, die Zahlen der API
+  // werden täglich überschrieben. `available: false` heisst „Video weg, Zahlen
+  // geleert, Zeile steht" — im Radar ginge in diesem Fall die ganze Zeile.
+  'insights_watchlist',
 ]
 
 const PORTFOLIO_SOLL = [

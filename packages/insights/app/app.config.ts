@@ -194,6 +194,10 @@ export default defineAppConfig({
             // Die Kanäle stehen NACH dem Radar und nicht davor: sie sind seine
             // Zutat, nicht sein Zweck. Wer morgens hereinkommt, will die
             // Videoliste — die Pflege der Quellen ist der seltenere Weg.
+            // Die Fundstücke stehen NEBEN dem Radar und vor den Kanälen: sie
+            // sind die zweite Liste, die ein Mensch täglich öffnet. Die Kanäle
+            // sind Pflege und bleiben zuletzt.
+            { id: 'insights-finds', labelKey: 'insights.admin.navFinds', to: '/dashboard/insights/finds' },
             { id: 'insights-channels', labelKey: 'insights.admin.navChannels', to: '/dashboard/insights/channels' },
           ],
         },

@@ -67,8 +67,15 @@ export default defineEventHandler(async (event): Promise<InsightsRadarResponse> 
     .map(toInsightsRadarVideo)
     .sort((a, b) => (b.opportunity ?? -1) - (a.opportunity ?? -1))
 
+  // Das Urteil wohnt in den FUNDSTÜCKEN und nicht an der Radar-Zeile (BI2 K4):
+  // die hier wird täglich überschrieben und nach dreissig Tagen gelöscht, ein
+  // Urteil daran verschwände mit ihr. Es wird deshalb dazugelesen, über die
+  // Video-Ids dieser Antwort — eine Karte, weil die Ansicht je Zeile fragt.
+  const verdicts = await readInsightsVerdicts(event, videos.map(video => video.videoId))
+
   return {
     configured,
+    verdicts,
     channels: channels.length,
     quotaEstimate: insightsRadarQuotaEstimate(channels.length, maxVideos),
     lastRunAt: listed?.rows[0]?.fetchedAt ?? null,

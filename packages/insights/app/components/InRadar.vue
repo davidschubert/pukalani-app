@@ -20,6 +20,8 @@ import {
   insightsRadarFirstDesc,
   insightsRadarSort,
 } from '../../shared/insightsRadarView'
+import type { InsightsRadarVerdictFilter, InsightsVerdict } from '../../shared/insightsWatchlist'
+import { INSIGHTS_RADAR_VERDICT_FILTERS, insightsVideoUrl } from '../../shared/insightsWatchlist'
 import { insightsDaysBetween, insightsNumber } from '../utils/insightsFormat'
 
 /**
@@ -82,7 +84,17 @@ const props = defineProps<{
    * nur die Zeile.
    */
   maxAgeDays?: number
+  /**
+   * Das Urteil je Video-Id (BI2 K4) — aus den FUNDSTÜCKEN dazugelesen. Was
+   * fehlt, ist `unrated`. Ohne diese Karte (Prototyp, Playground) ist jede
+   * Zeile ungeprüft und der Schalter stumm.
+   */
+  verdicts?: Record<string, InsightsVerdict>
+  /** Welche Zeile gerade schreibt — damit nur IHR Schalter lädt. */
+  busyVideoId?: string
 }>()
+
+const emit = defineEmits<{ verdict: [videoId: string, verdict: InsightsVerdict] }>()
 
 const { t } = useI18n()
 
@@ -91,6 +103,8 @@ interface RadarRow extends InsightsRadarVideo {
   opportunity: InsightsOpportunity
   /** Dasselbe wie `opportunity.score` — die reinen Sortier-Regeln erwarten es flach. */
   score: number | null
+  /** Das dazugelesene Urteil (BI2 K4) — ohne Eintrag „nicht geprüft". */
+  verdict: InsightsVerdict
 }
 
 /* Alle Zeilen, gerechnet — vor Filter und Sortierung. Die Auswahllisten der
@@ -107,7 +121,13 @@ const allRows = computed<RadarRow[]>(() => props.videos.map((video) => {
   // `score` ist dieselbe Zahl noch einmal flach: die reinen Sortier-Regeln
   // sollen nichts über die Form der Opportunity wissen müssen — und `null`
   // bleibt `null`, damit „keine Messung" nicht zu „null Punkte" wird.
-  return { ...video, ageDays, opportunity, score: opportunity.score }
+  return {
+    ...video,
+    ageDays,
+    opportunity,
+    score: opportunity.score,
+    verdict: props.verdicts?.[video.videoId] ?? 'unrated',
+  }
 }))
 
 const filter = ref<InsightsRadarFilterState>(insightsRadarFilterNone())
@@ -151,6 +171,10 @@ const topicItems = computed(() => facets.value.topics.map(key => ({
   value: key,
 })))
 const channelItems = computed(() => facets.value.channels.map(name => ({ label: name, value: name })))
+const verdictItems = computed(() => INSIGHTS_RADAR_VERDICT_FILTERS.map(value => ({
+  label: t(`insights.radar.verdictFilter.${value}`),
+  value: value as InsightsRadarVerdictFilter,
+})))
 const rangeItems = computed(() => INSIGHTS_RADAR_RANGES.map(days => ({
   label: days === 0 ? t('insights.radar.rangeAll') : t('insights.radar.rangeDays', { days }),
   value: days as InsightsRadarRange,
@@ -165,6 +189,9 @@ const columns = computed<TableColumn<RadarRow>[]>(() => [
   { accessorKey: 'commentCount', header: () => t('insights.radar.comments') },
   { id: 'age', header: () => t('insights.radar.age') },
   { id: 'opportunity', header: () => t('insights.radar.opportunity') },
+  // Die zwei Links je Zeile (Plan §5): das Urteil und der Weg zum Video.
+  { id: 'verdict', header: () => t('insights.verdict.label') },
+  { id: 'open', header: () => t('insights.radar.openLabel') },
 ])
 
 /* Der Rechenweg NENNT die drei heutigen Signale und sagt, aus wie vielen die
@@ -228,6 +255,18 @@ function formulaFor(opportunity: InsightsOpportunity): string {
         value-key="value"
         icon="i-ph-clock-counter-clockwise"
         class="w-44"
+      />
+      <!--
+        Der Urteils-Filter (BI2 K4). Er steht als LETZTER, weil seine Vorgabe
+        bereits greift: wer nichts anfasst, sieht die Liste ohne das, was er
+        abgehakt hat — und genau dafür gibt es den Schalter in der Zeile.
+      -->
+      <USelect
+        v-model="filter.verdict"
+        :items="verdictItems"
+        value-key="value"
+        icon="i-ph-check-square-offset"
+        class="w-52"
       />
       <UButton
         v-if="filterActive"
@@ -333,6 +372,32 @@ function formulaFor(opportunity: InsightsOpportunity): string {
               </template>
             </span>
           </UTooltip>
+        </template>
+        <template #verdict-cell="{ row }">
+          <InVerdictSwitch
+            :model-value="row.original.verdict"
+            :busy="props.busyVideoId === row.original.videoId"
+            @update:model-value="value => emit('verdict', row.original.videoId, value)"
+          />
+        </template>
+
+        <!--
+          Der zweite Link: das Video selbst, in einem NEUEN Tab. `noopener`
+          ist Pflicht und nicht Geschmack — ohne ihn bekäme die geöffnete
+          Seite über `window.opener` Zugriff auf diese hier.
+        -->
+        <template #open-cell="{ row }">
+          <UButton
+            icon="i-ph-youtube-logo"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            :to="insightsVideoUrl(row.original.videoId)"
+            target="_blank"
+            rel="noopener"
+            :aria-label="t('insights.radar.openLabel')"
+            :title="t('insights.radar.openLabel')"
+          />
         </template>
       </UTable>
     </div>
