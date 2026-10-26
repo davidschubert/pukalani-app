@@ -221,7 +221,7 @@ innerhalb derselben Zeile:
 * **Kein Alters-Deckel.** Du findest absichtlich auch alte Videos. Die 180
   Tage sind eine Regel des Radars („was läuft gerade"), nicht Deiner Liste.
 
-**Migration `insights-006`**, `insights_watchlist`.
+**Migration `insights-007`**, `insights_watchlist`.
 
 ---
 
@@ -339,8 +339,8 @@ Anwalt ist dafür kein Gate.
 |---|---|---|---|
 | ~~K1~~ | ~~Cluster-Katalog erweitern~~ — **entfällt** (Davids Entscheidung B, 2026-09-09: erst mal so lassen) | — | — |
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
-| ✅ **K3** | **Kanal-Seite** — **GEBAUT 2026-10-24** (Migration `insights-005`, `/dashboard/insights/channels`, Handle-Auflösung, Prüf-Vorschau, aktiv/inaktiv, Notiz, Übernahme der elf Zeilen). **Offen: Davids Ja zur PROD-Migration.** | Entscheidung A ✔ | M |
-| **K4** | **Fundstücke + Schalter** — Migration `insights-006`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter „nur Interessante"; Sweep zieht die Zahlen mit | Davids Ja zur Prod-Migration | M |
+| ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
+| **K4** | **Fundstücke + Schalter** — Migration `insights-007`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter „nur Interessante"; Sweep zieht die Zahlen mit | Davids Ja zur Prod-Migration | M |
 | **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle | Entscheidung C (§9) · K4 · **Routen-Probe** | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
@@ -564,9 +564,26 @@ hätte durch jede Abbildung mitgeschleppt werden müssen, nur damit eine Adresse
 sie hat. Der Preis ist eine zusätzliche Abfrage je Änderung, bei höchstens
 fünfzig Zeilen keine Rechnung.
 
-### Was jetzt bei David liegt
+### Auf Prod (2026-10-24, Davids Ja)
 
-**Die Prod-Migration `insights-005`** — sie muss VOR dem Code-Deploy laufen,
-und danach einmal „Die elf Kanäle übernehmen" auf branding.supply. Bis beides
-geschehen ist, meldet der Radar dort „kein Kanal": die App-Config trägt die
-Liste nicht mehr.
+Migration `insights-005` gefahren, die elf Kanäle übernommen. Belege:
+
+* `insights_channels` auf `branding` — neun Spalten `available`, beide Indizes
+  `available`, `permissions: []`, `rowSecurity: false`;
+* **Schema-Parität branding 40/40**, keine unbekannten Tabellen;
+* elf Zeilen, alle aktiv, Cluster wie in der Saat;
+* `/api/insights/channels` und `/api/insights/radar` antworten ohne Konto
+  **401** (nicht 404) — die Routen sind ausgeliefert und das Produkt-Gate
+  lässt sie durch, nur die Berechtigung fehlt.
+
+**Reihenfolge, die hier schiefgehen konnte und nicht schiefging:** der Code war
+bereits ausgeliefert (Build `ecb5833f` trägt K3), als die Migration lief — der
+Radar las in diesem Fenster eine Tabelle, die es noch nicht gab. Das ist der
+Grund, warum die Route dafür einen `isInsightsRowMissing`-Zweig hat: sie meldet
+„kein Kanal" statt eines 500. Richtig wäre trotzdem Migration VOR Deploy
+gewesen.
+
+**Noch nicht bewiesen:** die Seite hinter dem Login. Der Migrations-Schlüssel
+hat bewusst keinen `users`-Scope, eine Prod-Sitzung kann ich damit nicht
+herstellen. Der nächtliche Lauf liest die Tabelle beim nächsten Takt (90 s nach
+jedem Boot, sonst alle 24 h); die Radar-Seite liest sie bei jedem Aufruf.
