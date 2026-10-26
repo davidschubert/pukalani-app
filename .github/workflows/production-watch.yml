@@ -79,12 +79,31 @@ on:
     # vollen Stunde, damit der Lauf nicht mit den Deploy-Wellen konkurriert.
     - cron: '17 4 * * *'
   workflow_dispatch:
+    # ── APPWRITE-ZERTIFIKAT (Vorfall 2026-10-16, s. Job `appwrite-cert`) ──
+    # Drei Schalter, alle standardmäßig AUS. Ohne Schalter verhält sich ein
+    # manueller Start wie bisher (tls + server). Mit Schalter laufen NUR die
+    # Appwrite-Schritte — die Wächter-Jobs bleiben dann still.
+    inputs:
+      appwrite_probe:
+        description: 'appwrite-prod: nur lesen (Erreichbarkeit, Container, Zertifikat)'
+        type: boolean
+        default: false
+      appwrite_renew:
+        description: 'appwrite-prod: Zertifikat für api.pukalani.app erneuern (ssl-Kommando)'
+        type: boolean
+        default: false
+      appwrite_reset_account:
+        description: 'appwrite-prod: veraltetes Let''s-Encrypt-Konto beiseitelegen, dann erneuern'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: production-watch
+  # Ein manueller Appwrite-Lauf darf den Halbstunden-Takt nicht abschießen
+  # (und umgekehrt): eigene Gruppe je Auslöser.
+  group: production-watch-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -94,7 +113,9 @@ jobs:
   # Deploy-Schlüssel fehlt.
   tls:
     runs-on: ubuntu-latest
-    if: github.event.repository.fork == false
+    if: >
+      github.event.repository.fork == false &&
+      !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -130,7 +151,8 @@ jobs:
     # bedeutungstragend, und die prüft der Schritt „Zeitplan bekannt?" oben.
     if: >
       github.event.repository.fork == false &&
-      github.event.schedule != '*/30 * * * *'
+      github.event.schedule != '*/30 * * * *' &&
+      !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
     env:
       SERVER: '49.13.211.173'
       SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
@@ -172,3 +194,113 @@ jobs:
         env:
           PUKALANI_OPS_SSH: ploi@49.13.211.173
         run: node scripts/ops/verify-instance-admins.mjs --ssh --strict
+
+  # ── NUR MANUELL: APPWRITE-ZERTIFIKAT ─────────────────────────────────────
+  # Vorfall 2026-10-16: das Let's-Encrypt-Zertifikat von api.pukalani.app lief
+  # ab, weil Appwrites Erneuerung seit dem 2026-09-17 an „Unable to validate
+  # JWS :: Account … not found" scheiterte (das gespeicherte ACME-Konto
+  # existiert bei Let's Encrypt nicht mehr). Jede App ruft Appwrite per
+  # Node-fetch auf → TLS-Fehler → /api/health 502 auf demo, portfolio,
+  # control, comments. Dieser Job ist der Hebel, wenn niemand am Mac sitzt.
+  #
+  # Zugang: derselbe Deploy-Key wie oben (PLOI_SSH_KEY). Ob er auf appwrite-
+  # prod freigeschaltet ist, zeigt die Probe — sie scheitert dann sichtbar.
+  # Host-Key von appwrite-prod ist NICHT gepinnt (es gibt keinen bekannten
+  # Wert im Repo); `accept-new` ist hier bewusst — die Probe gibt den
+  # Fingerprint aus, damit er beim nächsten Mal gepinnt werden kann.
+  appwrite-cert:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
+    env:
+      APPWRITE_SERVER: '188.245.61.155'
+      APPWRITE_DOMAIN: 'api.pukalani.app'
+      APP_SERVER: '49.13.211.173'
+      APP_SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
+    steps:
+      - name: SSH einrichten
+        env:
+          SSH_KEY: ${{ secrets.PLOI_SSH_KEY }}
+        run: |
+          set -u
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::Secret PLOI_SSH_KEY fehlt."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/ops_key
+          chmod 600 ~/.ssh/ops_key
+          printf '%s\n' "$APP_SERVER_HOSTKEY" > ~/.ssh/known_hosts
+          printf 'IdentityFile ~/.ssh/ops_key\nIdentitiesOnly yes\nBatchMode yes\nConnectTimeout 20\n' >> ~/.ssh/config
+          printf 'Host appwrite-prod\n  HostName %s\n  User ploi\n  StrictHostKeyChecking accept-new\n' "$APPWRITE_SERVER" >> ~/.ssh/config
+          printf 'Host app-prod\n  HostName %s\n  User ploi\n' "$APP_SERVER" >> ~/.ssh/config
+
+      - name: Zertifikat von außen (vorher)
+        run: |
+          echo | openssl s_client -connect "$APPWRITE_DOMAIN:443" -servername "$APPWRITE_DOMAIN" 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -dates || echo "kein Zertifikat lesbar"
+
+      - name: Probe
+        if: inputs.appwrite_probe
+        run: |
+          set -u
+          echo "Host-Key appwrite-prod (zum Pinnen):"
+          ssh-keyscan -t ed25519 -T 10 "$APPWRITE_SERVER" 2>/dev/null | sed 's/^/  /' || true
+          echo
+          echo "::group::Direkt: ploi@appwrite-prod"
+          if ssh appwrite-prod 'hostname; uptime; df -h / | tail -1; cd ~/appwrite && docker compose ps --format "{{.Name}}\t{{.Status}}" | sort'; then
+            echo "DIREKT: ok"
+          else
+            echo "DIREKT: fehlgeschlagen (Key dort nicht freigeschaltet oder Host nicht erreichbar)"
+          fi
+          echo "::endgroup::"
+          echo "::group::Hop über app-prod"
+          ssh app-prod 'ls -la ~/.ssh 2>/dev/null; echo "--- config ---"; cat ~/.ssh/config 2>/dev/null; echo "--- hop ---"; ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new ploi@188.245.61.155 hostname' \
+            || echo "HOP: fehlgeschlagen"
+          echo "::endgroup::"
+          echo "::group::Zertifikats-Worker (letzte 40 Zeilen)"
+          ssh appwrite-prod 'cd ~/appwrite && SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1) && echo "Worker-Dienst: $SVC" && docker compose logs --tail 40 "$SVC"' || true
+          echo "::endgroup::"
+
+      - name: Let's-Encrypt-Konto beiseitelegen
+        if: inputs.appwrite_reset_account
+        run: |
+          set -u
+          ssh appwrite-prod 'set -u; cd ~/appwrite
+            SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1)
+            echo "Worker-Dienst: $SVC"
+            grep -c "^_APP_SYSTEM_SECURITY_EMAIL_ADDRESS=.\+" .env >/dev/null || { echo "::error::_APP_SYSTEM_SECURITY_EMAIL_ADDRESS fehlt in .env — ohne Adresse kann certbot kein neues Konto anlegen."; exit 1; }
+            DIRS=$(docker compose exec -T "$SVC" sh -c "find / -maxdepth 8 -type d -name acme-v02.api.letsencrypt.org -path \"*accounts*\" 2>/dev/null")
+            if [ -z "$DIRS" ]; then echo "Kein gespeichertes ACME-Konto gefunden — nichts beiseitezulegen."; exit 0; fi
+            for D in $DIRS; do
+              echo "Lege beiseite: $D -> $D.alt-$(date +%Y%m%d%H%M)"
+              docker compose exec -T "$SVC" sh -c "mv \"$D\" \"$D.alt-$(date +%Y%m%d%H%M)\""
+            done'
+
+      - name: Zertifikat erneuern
+        if: inputs.appwrite_renew || inputs.appwrite_reset_account
+        run: |
+          set -u
+          ssh appwrite-prod 'set -u; cd ~/appwrite
+            SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1)
+            echo "ssl --domain='"$APPWRITE_DOMAIN"'"
+            docker compose exec -T appwrite ssl --domain="'"$APPWRITE_DOMAIN"'" || true
+            echo "warte 60 s auf den Worker …"; sleep 60
+            echo "::group::Worker-Log"; docker compose logs --since 3m "$SVC"; echo "::endgroup::"'
+
+      - name: Zertifikat von außen (nachher) — muss gültig sein
+        if: inputs.appwrite_renew || inputs.appwrite_reset_account
+        run: |
+          set -u
+          NOT_AFTER=$(echo | openssl s_client -connect "$APPWRITE_DOMAIN:443" -servername "$APPWRITE_DOMAIN" 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+          echo "notAfter: $NOT_AFTER"
+          END=$(date -d "$NOT_AFTER" +%s); NOW=$(date +%s)
+          if [ "$END" -le "$NOW" ]; then
+            echo "::error::Zertifikat ist weiterhin abgelaufen — siehe Worker-Log oben."
+            exit 1
+          fi
+          echo "Gültig noch $(( (END - NOW) / 86400 )) Tage."
+          for H in demo.pukalani.app portfolio.pukalani.app comments.pukalani.app; do
+            printf '%-26s ' "$H"; curl -s -o /dev/null -w '%{http_code}\n' "https://$H/api/health" || echo "?"
+          done

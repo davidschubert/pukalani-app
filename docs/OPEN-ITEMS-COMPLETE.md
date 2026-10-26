@@ -11786,6 +11786,14 @@ Zeile, keine Mail; Abmelden mit dem Token aus der Mail ⇒ `unsubscribedAt` + `r
 Anschluss ⇒ die vierte 429 `rate_limited_hour`. Danach Riegel zurück auf `false` und erneut
 geprüft, Testzeilen und Postfach geräumt, `.env` gelöscht.
 
+**Prod (2026-10-25, Davids ausdrückliches Ja):** Migration `insights-006` gegen `branding` auf
+api.pukalani.app gefahren — `insights_subscribers` angelegt (10 Spalten, 3 Indizes, server-only,
+0 Zeilen), `insights-005` der Nachbarsitzung stand da bereits. `pnpm ops:schema-parity` branding
+41/41, alle vier Instanzen grün. Live-Build `ecb5833f`; der Riegel bleibt zu, die drei Routen
+antworten weiter 404, obwohl die Tabelle jetzt steht. **Der Runner muss direkt über `node
+--experimental-strip-types scripts/migrate.mjs` laufen: pnpm 10 kennt ein eigenes `--env-file`
+und schluckt die Option, auch hinter `--`.**
+
 **Wächter nach dem Merge mit der Nachbarsitzung:** insights 362 Tests · core 1652 · branding 32
 · Lint insights/core/branding/scripts (core eine Alt-Warnung in `ContentClamp.vue`) · typecheck
 branding exit 0 · check:i18n-keys 311 · check:manifests 26/9 · check:bilanz · check:single-copy
