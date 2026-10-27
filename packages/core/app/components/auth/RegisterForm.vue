@@ -66,6 +66,17 @@ const errorMessage = ref<string | null>(null)
 const showPassword = ref(false)
 const showPasswordConfirm = ref(false)
 
+/**
+ * BOT-BEWEIS (Turnstile, Vorfall 2026-10-27). Ohne Site-Key rendert das Widget
+ * nichts, der Token bleibt leer und wird nicht mitgeschickt, der Knopf bleibt
+ * frei — das Formular verhält sich exakt wie vorher. Mit Site-Key wartet der
+ * Knopf, bis der Token da ist (meist unsichtbar, `interaction-only`).
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+
 // AGB-Checkbox nur, wenn die App eine termsUrl konfiguriert (config-gated)
 const termsUrl = computed(() => appConfig.pukalani?.auth?.termsUrl ?? '')
 const requireTerms = computed(() => !!termsUrl.value)
@@ -147,6 +158,8 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
         // Dasselbe für den Zulassungs-Code der Instanz (Brand-Beta) — eine
         // andere Tür, dieselbe Arbeitsteilung.
         ...(props.admissionCode ? { admissionCode: props.admissionCode } : {}),
+        // Nur mit Site-Key gesetzt — ohne fehlt das Feld wie vor dem Vorfall.
+        ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}),
       },
     })
     await auth.refresh()
@@ -163,6 +176,8 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
     else if (status === 409) fallback = t('auth.register.emailExists')
     else if (status === 422) fallback = t('auth.register.emailNotAllowed')
     errorMessage.value = authErrorMessage(error, fallback)
+    // Der Token ist verbraucht (ein Token gilt einmal) — neuen holen.
+    botCheck.value?.reset()
   }
   finally {
     loading.value = false
@@ -258,7 +273,9 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
         <p class="mt-1 text-xs text-muted" data-business-notice>{{ t('auth.register.businessNotice') }}</p>
       </UFormField>
 
-      <UButton type="submit" block size="lg" :loading="loading">{{ t('auth.register.submit') }}</UButton>
+      <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="signup" />
+
+      <UButton type="submit" block size="lg" :loading="loading" :disabled="waitingForBotCheck">{{ t('auth.register.submit') }}</UButton>
     </UForm>
 
     <!--

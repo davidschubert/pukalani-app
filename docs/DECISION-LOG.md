@@ -7,6 +7,34 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-10-27 — Spam- und Bot-Schutz an den Mail-Routen: Textregel, Stundenfenster, Turnstile
+
+**Anlass:** Resend-Spam über `POST /api/auth/signup` (209 Verifizierungs-Mails mit Spamtext
+im Anzeigenamen, Hergang in OPEN-ITEMS-COMPLETE 2026-10-27). David: „wir brauchen definitiv
+einen spam schutz und bot schutz", dazu seine Liste (Same-Origin, Honeypot, Zeitprüfung,
+Link-Heuristik, 5/h je IP, Turnstile) — als Leitplanke, nicht als Bauplan.
+
+**Entscheidungen (David, 2026-10-27):**
+- **Turnstile ja** — Cloudflare Turnstile an Registrierung, Code-Login und Passwort-
+  Zurücksetzen, serverseitig geprüft, fail-closed. Gate = beide Env-Variablen; ohne
+  Schlüssel bleibt alles wie vorher. Scharf schalten ist Davids Schritt (TS1).
+- **Spam-Konten löschen** — die 205 unverifizierten Konten mit Link im Namen und die
+  zwei verifizierten Testkonten des Angreifers, per Skript nach dem Deploy.
+- **20 je Stunde und IP statt 5** (Claude, mit Begründung): die vier Mail-Routen
+  bedienen auch den Code-LOGIN — fünf Personen hinter einem Büro- oder Schul-Anschluss
+  hätten die sechste ausgesperrt. Den Angreifer stoppt nicht das IP-Fenster, sondern
+  die Notbremse über alle IPs (60/h je Route) und Turnstile; das IP-Fenster ist nur
+  die billige Vorstufe.
+- **Nicht gebaut:** Honeypot und 4-Sekunden-Regel (treffen nur Formular-Bots, der
+  Angreifer rief die API direkt an) und eine Same-Origin-PFLICHT an den Mail-Routen
+  (Header frei setzbar; Browser-Cross-Site weist `csrfOriginCheck` schon ab).
+
+**Verworfen:** die Verifizierungs-Mail bei der Registrierung ganz abschalten — sie ist
+Produkt (`pukalani.auth.verification`), und ohne Namensregel bliebe der Hebel über
+`PUT /api/auth/profile` + „Mail erneut senden".
+
+---
+
 ## 2026-10-27 — Appwrite 2.6.2 sofort nachziehen: das Security-Release kam fünf Stunden nach dem Prod-Sprung
 
 **Anlass:** Appwrite 2.6.2 (2026-10-24 13:41 UTC) ist ein reines Security-Release der 2.6-Linie —
