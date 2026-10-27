@@ -100,8 +100,9 @@ Sag mir, sobald das steht — dann gehen wir die Schritte gemeinsam durch.
      App-Server.
 5. **SMTP** in der Appwrite-Installation (`.env` der Instanz, nicht in der
    Console) konfigurieren, sonst keine Auth-Mails.
-   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.1, je Version eine Patchdatei —
-   aktuell `patches/registers-2.6.1-keepalive-off.php`):** der Mail-Versand verliert mit dem
+   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.2, je Version eine Patchdatei —
+   prod aktuell `patches/registers-2.6.1-keepalive-off.php`, mit 2.6.2
+   `registers-2.6.2-keepalive-off.php`):** der Mail-Versand verliert mit dem
    hartkodierten SMTP-`keepAlive: true` still die ERSTE Mail nach einer
    Leerlaufphase (PHPMailer-`false` wird verschluckt, Worker loggt trotzdem
    „success") — auf beiden Instanzen mountet `docker-compose.override.yml`
