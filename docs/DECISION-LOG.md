@@ -7,6 +7,31 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-10-27 — Appwrite 2.6.2 sofort nachziehen: das Security-Release kam fünf Stunden nach dem Prod-Sprung
+
+**Anlass:** Appwrite 2.6.2 (2026-10-24 13:41 UTC) ist ein reines Security-Release der 2.6-Linie —
+`appwrite/base` 2.2.7 mit `brotli-libs` 1.2.1-r0 gegen CVE-2026-111497 (Out-of-bounds-Write im
+Brotli-Decoder; Appwrites ausgehender HTTP-Client dekodiert `br`, Avatar-/Favicon-Endpunkte holen
+nutzergelieferte URLs), dazu Härtung an API-Keys/JWTs, Realtime, GraphQL, Storage, VCS, Messaging.
+Prod stand seit 08:59 UTC desselben Tages auf 2.6.1 — das Release hat uns um fünf Stunden verpasst.
+
+**Entscheidung (Davids Auftrag „prüfen und installieren"):** 2.6.2 kommt auf dev, CI und prod, in
+dieser Reihenfolge wie immer; kein Schema, also ein kleines Fenster (Container-Neustart, keine
+Migration). Aus der Cloud-Sitzung sind nur CI, Skript und Runbook erreichbar (kein ssh, kein Netz zu
+`api.pukalani.app`) — prod und dev laufen von Davids Terminal: `ops/appwrite-upgrade-2.6.2.sh`, Runbook
+`APPWRITE-2-6-UPGRADE.md` Abschnitt „2.6.1 → 2.6.2".
+
+**Was gegen den Code geprüft ist (2026-10-27):** Key-Anlage nur noch per Console-Session oder Key mit
+gleichen Scopes — `create-site.mjs` und der CI-Setup nutzen die Console-Session, erlaubt. Admin-Mode nur
+aus Console-Origins — wir setzen nie `X-Appwrite-Mode`. `_APP_JOBS_SECRET` darf nicht mehr leer/Platz-
+halter sein — das Werkzeug ersetzt es, wir führen keine Functions. Betreiber-SMTP ist von der neuen
+Privatadressen-Sperre ausdrücklich ausgenommen (dev-Mailpit bleibt). Neu `_APP_MEMORY_LIMIT` (512M je
+Prozess) — im CI-Compose in den sieben PHP-Diensten nachgezogen; `registers.php` ist zu 2.6.1
+byte-gleich, der KeepAlive-Patch (Zeile 367) bleibt Pflicht und wird trotzdem je Version aus dem Image
+gezogen.
+
+---
+
 ## 2026-10-23 — Appwrite 2.6.1 statt 2.2: das PHP-Notfall-Release zieht den Prod-Sprung vor
 
 **Anlass:** PHP 8.5.12 (2026-10-21) schließt CVE-2026-109618 / CVE-2026-109619 (unauthentifizierte
