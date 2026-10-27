@@ -19,6 +19,14 @@ const signupSchema = registerSchema.extend({
    * gegen Riesen-Bodies.
    */
   admissionCode: z.string().trim().min(1).max(200).optional(),
+  /**
+   * Turnstile-Token (Bot-Beweis, Vorfall 2026-10-27) — aus demselben Grund
+   * wie `inviteToken` NICHT im geteilten Schema: das Formular-Schema prüft
+   * Eingaben eines Menschen, der Token ist ein Ausweis des Browsers. Ohne
+   * konfigurierte Schlüssel fehlt er und wird nie gelesen. 4096 ist eine
+   * Schranke gegen Riesen-Bodies, kein Format (Cloudflare nennt keins).
+   */
+  turnstileToken: z.string().max(4096).optional(),
 })
 
 /**
@@ -43,7 +51,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 403, statusText: 'Registration is currently disabled' })
   }
 
-  const { email, password, name, inviteToken, admissionCode } = await readValidatedBody(event, signupSchema.parse)
+  const { email, password, name, inviteToken, admissionCode, turnstileToken } = await readValidatedBody(event, signupSchema.parse)
 
   // Identische Meldung wie oben: ein falscher, abgelaufener, widerrufener oder
   // fehlender Code sieht aus wie eine schlicht geschlossene Registrierung
@@ -70,6 +78,15 @@ export default defineEventHandler(async (event) => {
   if (!tenantRegistrationOpen(event) && !(await inviteOpensRegistrationFor(event, inviteToken, email))) {
     throw createError({ status: 403, statusText: 'Registration is closed' })
   }
+
+  /**
+   * BOT-BEWEIS (Vorfall 2026-10-27: 209 Spam-Verifizierungsmails). Bewusst
+   * HINTER allen Registrierungs-Schaltern — eine geschlossene Tür antwortet
+   * wie bisher, ohne Cloudflare-Aufruf und ohne Mail — und VOR
+   * `account.create`, dem ersten Schritt, an dem eine Mail hängt. Ohne
+   * Schlüssel ein No-Op (server/utils/turnstile.ts).
+   */
+  await requireTurnstile(event, 'signup', turnstileToken)
 
   const { account } = createAdminClient(event)
 
