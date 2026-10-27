@@ -30,7 +30,67 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### Code-Login mit Zweitfaktor endete in einer halben Session ✅ 2026-10-24
+### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
+
+**Ausgangslage:** Resend meldete am 2026-10-26 das Tageslimit; im Dashboard
+standen Verifizierungs-Mails „Account Verification for Account" von
+noreply@pukalani.app an Empfänger wie „Etsy User! Your item has been
+successfully sold through our marketplace. https://a29.at/9hdF2k
+<opfer@gmail.com>". Hergang (aus `_10_users`, `_10_tokens` und dem
+App-Audit `audit_logs` des Projekts `account` rekonstruiert): ein Skript
+rief `POST /api/auth/signup` der Pool-App im 20-s-Takt auf — `name` = der
+Spamtext, `email` = eine fremde Adresse — und meldete sich danach per
+`POST /api/auth/logout` wieder ab. Appwrite setzt den Namen in Kopf und Gruß
+der Verifizierungs-Mail, unser Resend-Konto war damit ein Spam-Relais: 15
+Probeläufe am 2026-10-25 (drei IPs, darunter ein verifiziertes Testkonto und
+ein Versuch über `PUT /api/auth/profile` + `POST /api/auth/verification`),
+209 Mails in der Nacht zum 2026-10-27 von einer IP (138.124.33.231). Der
+Takt lag knapp unter unserem Limit von 5/min je IP — das einzige Fenster
+der Middleware war eine Minute. Appwrites eigene Abuse-Limits greifen für
+Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
+
+**Gebaut (Core, zwei Pakete + Aufräumen):**
+1. **Anzeigename ist kein Nachrichtenfeld** — pure Regel
+   `packages/core/shared/displayName.ts` (`displayNameProblem`: Link/Domain,
+   `@`, Steuer- und Bidi-Zeichen, mehr als 80 Zeichen), EINE Zod-Fabrik
+   `displayNameField()` in `schemas/auth.ts` für Registrierung, OTP-
+   Registrierung UND Profil (`schemas/profile.ts` — der zweite Hebel aus den
+   Probeläufen). Beweis `tests/displayName.test.ts`.
+2. **Mail-Routen haben ein Stundenfenster und eine Notbremse** — für die vier
+   Routen in `ALWAYS_LIMITED` (signup, otp, recovery, verification) zusätzlich
+   20 je Stunde und IP und 60 je Stunde über ALLE IPs je Route
+   (`auth.mail_route_breaker` einmal je Fenster im Log). Beweis
+   `tests/rateLimitMailRoutes.test.ts`: die 21. Registrierung im 20-s-Takt
+   bekommt 429, die 61. über 60 IPs ebenfalls.
+3. **Cloudflare Turnstile als Bot-Beweis** an signup/otp/recovery
+   (`server/utils/turnstile.ts`, `TurnstileWidget.vue`, Gate = beide Env-
+   Variablen gesetzt, fail-closed bei Cloudflare-Ausfall). Ohne Schlüssel
+   exakt das Verhalten von vorher; scharf schalten ist `TS1` in OPEN-ITEMS
+   (Davids Cloudflare-Login). Rezept: `docs/runbooks/DEPLOYMENT.md`.
+4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
+   `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
+   läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
+   `users.read` hat).
+
+**Bewusst nicht gebaut:** Honeypot-Feld und „unter 4 Sekunden abgelehnt" —
+der Angreifer sprach die API direkt an, mit 20 s Abstand; beides träfe nur
+Formular-Bots und kostete echte Nutzer. Eine strenge Same-Origin-Pflicht an
+den Mail-Routen (Anfragen ohne `Origin`/`Sec-Fetch-Site` abweisen) ebenfalls
+nicht: der Header ist frei setzbar, die bestehende `csrfOriginCheck`-
+Middleware weist Browser-Cross-Site schon ab, und die Verify-Skripte rufen
+die Routen ohne Browser.
+
+**Gelernt:** (1) Jede Route, die eine Mail mit NUTZERTEXT auslöst, braucht
+drei Dinge: eine Textregel (kein Link, keine Adresse), ein Fenster länger
+als eine Minute und einen Deckel über alle IPs — ein Limit je IP allein wird
+mit Adressrotation oder Geduld umgangen, und eine Minute ist für einen
+Mail-Versand kein Fenster. (2) Die Nuxt-Seite ist bei 200ern blind
+(`access_log off` je ploi-Site, pm2-out leer); die Wahrheit steht in der
+Appwrite-Datenbank — `_<projekt>_tokens` trägt IP und User-Agent des
+AUSLÖSERS (hier unser eigener Server mit dem Node-SDK, also der Weg über
+unsere Route), das App-Audit `audit_logs` die IP des Menschen dahinter.
+(3) Resends „To"-Spalte zeigt den Anzeigenamen — wer dort Text sieht, der
+nicht wie ein Name aussieht, sucht den Namen, nicht die Adresse.
 
 **Ausgangslage (prod, api.pukalani.app, Appwrite 2.6.1, beim Mail-/Standort-
 Beweis nach dem Upgrade gefunden):** Davids Konto hat `mfa=1` mit
