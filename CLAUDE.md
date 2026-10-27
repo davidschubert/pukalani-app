@@ -9,7 +9,10 @@ Vollständiges Konzept: docs/CONCEPT.md
 - Nuxt 4.5.x (Composition API, SSR), Nuxt UI 4.10.x, Pinia 4, Tailwind CSS 4
 - node-appwrite 29 (Server SDK) + appwrite 27 (Web SDK, NUR Realtime) — Appwrite self-hosted
   **2.6.1** (dev + CI seit 2026-10-23, prod seit 2026-10-24 — PHP 8.5.12;
-  MariaDB bleibt. Sprung auf 2.6.1 (PHP 8.5.12, CVE-2026-109618/-9):
+  MariaDB bleibt); **2.6.2** (Security-Release 2026-10-24, Brotli
+  CVE-2026-111497 im Basis-Image, kein Schema) seit 2026-10-27 in der CI, dev +
+  prod stehen aus (`ops/appwrite-upgrade-2.6.2.sh`, Runbook-Abschnitt
+  „2.6.1 → 2.6.2"). Sprung auf 2.6.1 (PHP 8.5.12, CVE-2026-109618/-9):
   docs/runbooks/APPWRITE-2-6-UPGRADE.md — Client-IP jetzt „rechtester nicht
   vertrauter Hop" (`_APP_TRUSTED_PROXIES` braucht die Nuxt-Server-IP), das
   Werkzeug lädt die Override MIT und braucht darin ABSOLUTE Mount-Pfade. 2.0→2.2

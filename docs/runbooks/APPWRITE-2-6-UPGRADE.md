@@ -1,4 +1,4 @@
-# Runbook: Appwrite 2.0.0 / 2.2.0 → 2.6.1 (self-hosted, MariaDB)
+# Runbook: Appwrite 2.0.0 / 2.2.0 → 2.6.1 → 2.6.2 (self-hosted, MariaDB)
 
 Gilt für beide Instanzen: **dev** (`~/Developer/orbstack/appwrite-maria/`,
 OrbStack, kam von 2.2.0) und **prod** (`ploi@188.245.61.155:~/appwrite/`,
@@ -119,6 +119,108 @@ in 2.3 bis 2.6.1 ANDERS ist — und was prod zusätzlich aus 2.1/2.2 nachholt.
   `node-appwrite` 31.0.0 (`updateEmail/updateSms/updatePush` haben seit 2.4
   eine andere Parameter-Reihenfolge — nutzen wir nicht). Kein Hub in diesem
   Vorhaben.
+
+## 2.6.1 → 2.6.2 — Security-Release (erschienen 2026-10-24 13:41 UTC)
+
+Appwrite hat 2.6.2 **fünf Stunden nach unserem Prod-Sprung** auf 2.6.1
+veröffentlicht (prod 08:56–08:59 UTC). Es ist ein reines Härtungs-Release der
+2.6-Linie: **kein Schema** (Migration V25 bleibt, `migrate` hat nichts zu tun),
+dieselbe Topologie, dieselbe Override. Geprüft am 2026-10-27 gegen die
+Release-Notes und den Quelltext (Tag `2.6.2`: `docker-compose.yml`,
+`app/config/variables.php`, `Install.php`, `Auth/JobsSecret.php`).
+
+**Was 2.6.2 bringt (für uns relevant):**
+
+- **Basis-Image `appwrite/base` 2.2.7 — CVE-2026-111497 (Brotli):**
+  `brotli-libs` 1.2.0-r1 → 1.2.1-r0 schließt einen Out-of-bounds-Write im
+  Brotli-Decoder. Appwrites AUSGEHENDER HTTP-Client dekodiert `br`, wenn der
+  Aufrufer kein `Accept-Encoding` setzt — und die Avatar-/Favicon-Endpunkte
+  holen nutzergelieferte URLs genau so; Swoole linkt die Bibliothek ebenfalls.
+  Das ist der Grund, das Release nicht liegen zu lassen. PHP bleibt laut
+  Release-Notes **8.5.12** (das Skript druckt die Version aus dem Image).
+- **Images:** Console `appwrite/new` 1.2.97 → **1.2.108-self-hosted**
+  (DOMPurify-Fixes), `appwrite/browser` 0.3.6 → **0.3.8**,
+  `ghcr.io/appwrite/exiftool` 0.1.0 → **0.1.1**. Unverändert: autogravity
+  0.0.11, orchestrator 2.2.4, executor 1.1.2 (weiterhin PHP 8.5.6, s. oben),
+  geo 0.3.2, mariadb 10.11, redis 7.4.7, traefik 3.6, clickhouse 26.4.3.
+- **`_APP_JOBS_SECRET` darf nicht mehr leer oder `your-secret-key` sein** —
+  `/v1/jobs/event` weist Signaturen damit ab (Function-Job-Callbacks). Das
+  Werkzeug ersetzt einen unsicheren Wert selbst (`JobsSecret::resolve`
+  erzeugt ein Token), eine selbst gepflegte `.env` braucht einen Zufallswert.
+  Wir führen keine Functions; das Skript prüft vor UND nach dem Werkzeug.
+  `doctor` meldet dazu 🔴/🟢 „unique secret key for jobs callbacks".
+- **`_APP_MEMORY_LIMIT` (neu, Default `512M`):** PHP-Speichergrenze JEDES
+  Appwrite-Prozesses (API, Realtime, Worker, Tasks). Das Werkzeug schreibt den
+  Default in die `.env`, das Compose reicht ihn in jeden PHP-Dienst. Heben,
+  „wenn ein Realtime-Container tausende Verbindungen hält" — nicht unser Maß.
+  Im CI-Compose steht er in den sieben PHP-Diensten (`appwrite`, `-realtime`,
+  `-mqtt`, `-worker`, drei `-task-*`), `ci.env` setzt `512M`.
+- **Ausgehende Verbindungen:** Projekt-SMTP, Messaging-SMTP, Migrationsquellen
+  und Zertifikatsprüfungen verweigern private/reservierte Adressen, außer sie
+  stehen in `_APP_ALLOWED_INTERNAL_ADDRESSES`. **Betreiber-`_APP_SMTP_*` ist
+  ausdrücklich NICHT betroffen** — dev (Mailpit über `host.docker.internal`)
+  und prod (Cloud-SMTP) bleiben, wie sie sind.
+- **API-Keys und JWTs:** Keys können keine Keys mit fremden Scopes oder
+  längerer Laufzeit anlegen, JWTs verwalten keine Keys, Account-Keys gelten
+  nur in der Console, ephemere Keys sind an ihr Projekt gebunden.
+  `scripts/create-site.mjs` und `scripts/ci/appwrite-setup.mjs` legen
+  Projekt-Keys mit einer **Console-SESSION** an — erlaubt. Unser JWT dient nur
+  der Realtime (`ensureRealtimeJwt`), nie der Key-Verwaltung.
+- **Realtime/GraphQL:** Realtime-Verbindungen durchlaufen dieselben
+  Session-Prüfungen wie HTTP; Admin-Mode nur noch aus Console-Origins (wir
+  setzen nirgends `X-Appwrite-Mode`, Grep 0). Realtime-Beweis bleibt der
+  101-Handshake (`curl --http1.1`) und die E2E `realtime`-Spec.
+- **Rate-Limits:** Token-Session-Versuche sind je KONTO begrenzt (OTP-Login);
+  der Limit-Schlüssel ist jetzt der Routen-Pfad statt der Request-Host
+  (unsere Pool-Hosts teilen sich damit je Client-IP einen Eimer — die IP
+  kommt über `_APP_TRUSTED_PROXIES` korrekt an, s. oben). Avatar-/Favicon-
+  Abrufe sind begrenzt und größengedeckelt (wir holen keine, Grep 0 außer
+  `probe-key-scopes.mjs`). CI: `_APP_OPTIONS_ABUSE="disabled"`, unverändert.
+- **Storage:** Dateinamen werden validiert, `Content-Disposition` folgt
+  RFC 6266, unvollständige Uploads sind nicht lesbar — Medien-Uploads
+  (`packages/media`) beweist die CI-E2E.
+- **Compose-Diff 2.6.1 → 2.6.2 (upstream, 2000 Zeilen):** nur
+  `_APP_MEMORY_LIMIT` in jedem PHP-Dienst, die drei Image-Tags, beim
+  migrations-Worker `appwrite-imports`-Volume + `_APP_DNS*`/
+  `_APP_ALLOWED_INTERNAL_ADDRESSES` (unser EIN `appwrite-worker` hat beides
+  seit 2.6.1 als Vereinigung), `init: true` am Postgres-Dienst (nicht unserer).
+  `registers.php` ist zu 2.6.1 **byte-gleich** (392 Zeilen, `keepAlive`
+  Zeile 367) — die Patchdatei wird trotzdem je Version aus dem Image gezogen.
+
+**Dev (OrbStack, `~/Developer/orbstack/appwrite-maria/`) — dieselben Schritte
+wie oben, nur kürzer:** Images pullen (`appwrite/appwrite:2.6.2`,
+`appwrite/new:1.2.108-self-hosted`, `appwrite/browser:0.3.8`,
+`ghcr.io/appwrite/exiftool:0.1.1`), Patchdatei `registers-2.6.2-keepalive-off.php`
+aus dem 2.6.2-Image (Zeile 367), in der Override NUR den Mount auf die neue
+Patchdatei drehen (absoluter Pfad bleibt), Werkzeug 2.6.2 `--interactive=N`
+im Elternverzeichnis, `docker compose up -d --remove-orphans`, `migrate`
+(„Migration completed", nichts zu tun). Beweise: `health/version` → `2.6.2`,
+`docker exec appwrite sh -c 'apk info -v brotli-libs'` → `brotli-libs-1.2.1-r0`,
+PHP 8.5.12, `php -r 'echo ini_get("memory_limit");'` → `512M`, keepAlive 367
+`false`, `doctor` 🟢 jobs, Mail-OTP über Mailpit, `pnpm -r test`, Playwright
+`apps/comments`.
+
+**Prod:** Skript [`ops/appwrite-upgrade-2.6.2.sh`](../../ops/appwrite-upgrade-2.6.2.sh)
+(Aufruf im Kopf des Skripts: `scp` + `ssh -t … | tee ~/appwrite-upgrade-2.6.2.log`).
+Es prüft die Vorbedingungen (`.env` auf 2.6.1, Override auf der 2.6.1-Patchdatei,
+Trusted-Proxy-Eintrag), zieht Images und Patchdatei OHNE Downtime, dumpt,
+dreht in der Override nur den Patch-Mount, prüft sie mit `docker compose
+config --quiet` (gegen die 2.6.1-Basis jetzt GRÜN zu erwarten — sie kennt
+`appwrite-worker`), ruft das Werkzeug, fährt `up`, `migrate`, Beweise. Fenster:
+nur der Container-Neustart durch das Werkzeug — kein Migrationslauf, also
+unter dem 71-s-Fenster von 2.6.1 zu erwarten. **Danach wie bei 2.6.1:** alle
+zwölf Hosts `/api/health ok:true`, SSR-Seite mit Session 200, Realtime 101
+(`--http1.1`), OTP-Mail nach Leerlauf, `node scripts/ops/verify-tls.mjs`,
+`pnpm ops:schema-parity` (Soll unverändert). Rückweg: `.env` +
+`docker-compose.yml` aus `*.<epoch>.backup`, Override-Mount zurück auf
+`registers-2.6.1-keepalive-off.php`, `docker compose up -d --remove-orphans`
+— der Dump liegt bereit, ist aber ohne Schema-Änderung nicht nötig.
+
+**CI (`ci/appwrite/`):** `ci.env` `_APP_VERSION="2.6.2"` + `_APP_MEMORY_LIMIT`,
+Compose: drei Image-Tags + `_APP_MEMORY_LIMIT` in den sieben PHP-Diensten —
+exakt der Upstream-Diff, erneut von Hand auf die abgeleitete Datei übertragen
+(das Rezept „Vorlage neu ableiten" gilt weiter, der Diff ist hier klein genug,
+um ihn zu lesen). Live-Beweis ist der E2E-Lauf auf dem Zweig.
 
 ## Die Fallen des Werkzeugs in 2.6.1 — zwei alte kippen, eine neue kommt
 
@@ -342,3 +444,8 @@ sie wieder an.
 | --- | --- | --- | --- | --- | --- |
 | dev (OrbStack, von 2.2.0) | 2026-10-24 ~05:00 | 10,9 MB, 847 Tabellen | „Migration completed", 13 s | Werkzeug 19 s (Abbruch) + `up` + 20 s (Gegenprobe) | relativer Mount-Pfad ⇒ „Failed to start containers"; mit absolutem Pfad 20 s sauber durch; Unit grün, E2E 16/16 funktional grün (themes-visual: Baselines veraltet) |
 | prod (`api.pukalani.app`, von 2.0.0) | 2026-10-24 08:56–08:59 | 22,2 MB, 800 Tabellen | „Migration completed", 16,6 s (gelbe „already exists"-Warnungen je Projekt, 0 Fehler) | Werkzeug 38 s „installed successfully", Werkzeug-Aufruf bis Beweise **71 s** | Skript `ops/appwrite-upgrade-2.6.sh` (Lauf durch die Elternsitzung nach Davids „ja, jetzt"; Log `~/appwrite-upgrade-2.6.log`); Start-Rauschen: 36× „Usage schema is not ready" im stats-usage-Worker in den ersten 4 s, danach 0 |
+| CI (`ci/appwrite/`, 2.6.1 → 2.6.2) | 2026-10-27 | — | — | — | Compose/`ci.env` auf 2.6.2 (drei Image-Tags, `_APP_MEMORY_LIMIT`); Beweis = E2E-Lauf des Zweigs `claude/appwrite-2-6-2-security` |
+
+2.6.2 auf **dev** und **prod** steht am 2026-10-27 noch aus (braucht Davids
+Terminal: dev-Schritte oben, prod über `ops/appwrite-upgrade-2.6.2.sh`) — die
+Zeilen hier nach dem Lauf mit den gemessenen Werten ergänzen.
