@@ -134,6 +134,34 @@ export interface MailInput {
   text: string
   /** Optional — ohne html geht die Mail als reiner Text raus */
   html?: string
+  /**
+   * ZUSÄTZLICHE KOPFZEILEN, unverändert an nodemailer durchgereicht (seit
+   * BI1 I5b, 2026-10-27).
+   *
+   * ── WOFÜR ───────────────────────────────────────────────────────────────
+   * `List-Unsubscribe`. Ein Newsletter ohne diesen Kopf wird von Gmail und
+   * Outlook schlechter behandelt als einer mit, und der Abmelde-Knopf des
+   * Mail-Programms ist für den Empfänger der kürzeste Weg hinaus — kürzer als
+   * jeder Link im Text. Der Wert ist JE EMPFÄNGER ein anderer (er trägt dessen
+   * Token), deshalb sitzt er an der EINZELNEN Mail und nicht in der
+   * Transporter-Konfiguration.
+   *
+   * ── BEWUSST OHNE `List-Unsubscribe-Post` (RFC 8058, One-Click) ──────────
+   * Der One-Click-Kopf ist eine ZUSAGE an das Mail-Programm: es darf ohne
+   * Rückfrage ein form-kodiertes `POST` an die Adresse schicken, mit
+   * `List-Unsubscribe=One-Click` als ganzem Körper und OHNE unseren Token
+   * darin. Unser Abmelde-Weg ist eine SEITE mit dem Token in der Query — ein
+   * solches POST wüsste also nicht, wen es abmelden soll, und Gmail wertete
+   * die ausbleibende Wirkung als kaputten Abmelde-Weg. Das wäre schlechter als
+   * keine Zusage. Ein eigener RFC-8058-Endpunkt ist ein eigenes Vorhaben.
+   *
+   * ── KEINE PRÜFUNG HIER ──────────────────────────────────────────────────
+   * Der Mailer ist Transport und policy-frei (wörtlich wie `aiComplete`): WAS
+   * eine sinnvolle Kopfzeile ist, weiss der Konsument. Wer hier etwas einträgt,
+   * trägt es in eine Mail ein — Zeilenumbrüche in einem Wert gehören dem
+   * Aufrufer, nodemailer kodiert sie.
+   */
+  headers?: Record<string, string>
 }
 
 /**
@@ -156,6 +184,9 @@ export async function sendMail(event: H3Event | undefined, input: MailInput): Pr
     subject: input.subject,
     text: input.text,
     ...(input.html ? { html: input.html } : {}),
+    // Nur setzen, wenn es welche gibt: ein leeres `headers: {}` an jeder Mail
+    // wäre ein Unterschied im Umschlag, den niemand beschlossen hat.
+    ...(input.headers && Object.keys(input.headers).length > 0 ? { headers: input.headers } : {}),
   })
   return true
 }
