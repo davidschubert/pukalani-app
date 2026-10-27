@@ -19,6 +19,7 @@ import type {
   InsightsPublicPost,
   InsightsPublicPostListItem,
 } from '../insightsPublic'
+import type { InsightsSendState } from '../insightsNewsletter'
 import type { InsightsRadarStoredVideo } from '../insightsRadar'
 import type {
   InsightsCorrection,
@@ -542,6 +543,81 @@ export interface InsightsNewsletterConfirmResponse {
  */
 export interface InsightsNewsletterUnsubscribeResponse {
   ok: true
+}
+
+// ── Der Versand einer Ausgabe (BI1 I5b) ────────────────────────────────────
+
+/**
+ * DER STAND EINES VERSANDS, wie die Oberfläche ihn sieht.
+ *
+ * `cursor` ist BEWUSST nicht dabei: das ist die Zeilen-Id eines Abonnenten.
+ * Sie ist keine Adresse, aber sie ist ein Zeiger auf einen Menschen, und eine
+ * Antwort, die ihn trägt, verliert ihn irgendwann in ein Log oder eine
+ * Fehlermeldung. Was die Oberfläche braucht, sind Zahlen.
+ */
+export interface InsightsNewsletterSendState {
+  state: InsightsSendState
+  /** Der Betreff, wie er verschickt WURDE (der Titel darf sich danach ändern). */
+  subject: string
+  intro: string
+  /** Die GRUNDSPRACHE des Beitrags beim Versand, NICHT die Sprache der Mails. */
+  locale: string
+  /** Wie viele beim START gezählt wurden. */
+  recipients: number
+  sent: number
+  failed: number
+  startedAt: string
+  finishedAt: string
+}
+
+/**
+ * WAS AM KNOPF STEHT (`GET /api/insights/posts/<id>/newsletter`).
+ *
+ * `recipients` und `remaining` sind GEZÄHLT, nicht geraten (Begründung an
+ * `countInsightsNewsletterRecipients`): die Zahl steht in der Rückfrage vor
+ * dem Versand, und sie ist das Einzige, was der Mensch über die Folgen seines
+ * Klicks weiss.
+ *
+ * `blocked` ist kein Fehler, sondern eine AUSKUNFT: ein Entwurf hat keine
+ * öffentliche Adresse, und ein Beitrag in einem gesperrten Format auch nicht —
+ * die Mail zeigte dann auf eine Seite, die 404 antwortet. Die Route antwortet
+ * trotzdem 200, damit das Panel den GRUND anzeigen kann statt zu verschwinden.
+ */
+export interface InsightsNewsletterSendStatusResponse {
+  /** Darf der Knopf gedrückt werden? */
+  sendable: boolean
+  /** Warum nicht — `''`, wenn `sendable`. */
+  blocked: '' | 'not_public' | 'no_public_address' | 'already_sent'
+  /** Bestätigte, nicht abgemeldete Empfänger mit Adresse — gezählt. */
+  recipients: number
+  /** Wie viele davon noch ausstehen (ohne laufenden Versand = `recipients`). */
+  remaining: number
+  /** Der Betreff, den DIESER Versand bekäme — der Titel der Grundfassung. */
+  subjectPreview: string
+  /** Die Sende-Zeile, falls es eine gibt. */
+  send: InsightsNewsletterSendState | null
+}
+
+/**
+ * EIN STAPEL IST DURCH (`POST /api/insights/posts/<id>/newsletter`).
+ *
+ * Die Seite ruft die Route, BIS `done` — so steht keine Route minutenlang
+ * offen und der Mensch sieht einen Balken (Begründung an
+ * `INSIGHTS_NEWSLETTER_BATCH`).
+ *
+ * `sent` und `failed` sind die Zahlen DIESES Stapels, `send.sent`/`send.failed`
+ * die des ganzen Versands — zwei Fragen, zwei Felder. `aborted` heisst „am
+ * SERVER stimmt etwas nicht" (kein Mailer), nicht „eine Adresse war kaputt":
+ * nur im ersten Fall soll die Seite aufhören zu rufen.
+ */
+export interface InsightsNewsletterSendBatchResponse {
+  sent: number
+  failed: number
+  /** Wie viele nach diesem Stapel noch ausstehen — gezählt. */
+  remaining: number
+  done: boolean
+  aborted: boolean
+  send: InsightsNewsletterSendState
 }
 
 // ── Die eigene Video-Liste (BI2 K4) ────────────────────────────────────────

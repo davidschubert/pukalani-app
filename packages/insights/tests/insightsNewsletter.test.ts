@@ -3,19 +3,26 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+  INSIGHTS_NEWSLETTER_BATCH,
   INSIGHTS_NEWSLETTER_DAY_LIMIT,
   INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS,
   INSIGHTS_NEWSLETTER_HOUR_LIMIT,
+  INSIGHTS_NEWSLETTER_INTRO_MAX,
   INSIGHTS_NEWSLETTER_PENDING_GRACE_DAYS,
   INSIGHTS_NEWSLETTER_PII_RETENTION_DAYS,
   INSIGHTS_NEWSLETTER_SOURCE_MAX,
+  createInsightsNewsletterSendSchema,
   createInsightsNewsletterSubscribeSchema,
   createInsightsNewsletterTokenSchema,
   decideInsightsNewsletterQuota,
   decideInsightsNewsletterUnsubscribe,
+  decideInsightsSendStart,
   insightsNewsletterAnonymizedEmail,
   insightsNewsletterConfirmMailCopy,
   insightsNewsletterIsAnonymized,
+  insightsNewsletterIsRecipient,
+  insightsNewsletterIssueCopy,
+  insightsNewsletterLocaleOf,
   insightsNewsletterPendingPurgeDue,
   insightsNewsletterPiiSweepDue,
   insightsNewsletterRetentionAt,
@@ -71,6 +78,26 @@ function stringsUnder(source: Record<string, unknown>, path: string[]): string[]
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * Ein Beitrags-KOPF, wie `insightsNewsletterIssueCopy` ihn braucht — mit
+ * redigierter zweiter Fassung. `baseLocale: 'en'`, damit der Rückfall nach
+ * §3.2 überhaupt prüfbar ist: wäre Deutsch die Grundsprache, sähe man dem
+ * deutschen Text nicht an, ob er aus der Fassung oder aus dem Rückfall kommt.
+ */
+const ISSUE_POST = {
+  baseLocale: 'en' as const,
+  translationReviewed: true,
+  titleDe: 'Zwei Marken im Vergleich',
+  titleEn: 'Two brands compared',
+  dekDe: 'Zwei Marken, ein Blick.',
+  dekEn: 'Two brands, one look.',
+}
+
+const ISSUE_LINKS = {
+  postUrl: 'https://branding.supply/de/duels/a-vs-b',
+  unsubscribeUrl: 'https://branding.supply/de/newsletter/unsubscribe?token=row.sig',
+}
+
 describe('insightsNewsletterEnabled — der Riegel', () => {
   it('öffnet NUR bei echtem true', () => {
     expect(insightsNewsletterEnabled(true)).toBe(true)
@@ -90,6 +117,16 @@ describe('Das Versprechen hat keinen Takt', () => {
         confirmUrl: 'https://branding.supply/newsletter/confirm?token=t',
         unsubscribeUrl: 'https://branding.supply/newsletter/unsubscribe?token=u',
       })
+      const haystack = `${copy.subject}\n${copy.text}`.toLowerCase()
+      for (const word of INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS) {
+        expect(haystack).not.toContain(word)
+      }
+    }
+  })
+
+  it('nennt auch in der AUSGABE-Mail keinen Takt — in beiden Fassungen', () => {
+    for (const locale of ['de', 'en'] as const) {
+      const copy = insightsNewsletterIssueCopy(ISSUE_POST, 'Diesmal ein Blick auf zwei Marken.', locale, ISSUE_LINKS)
       const haystack = `${copy.subject}\n${copy.text}`.toLowerCase()
       for (const word of INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS) {
         expect(haystack).not.toContain(word)
@@ -363,5 +400,145 @@ describe('Sweep-Regel 2 — abgemeldete Zeilen werden geleert', () => {
       unsubscribedAt: '2025-10-01T00:00:00.000Z',
       retentionAt: now.toISOString(),
     }, now)).toBe(true)
+  })
+})
+
+// ── Der Versand (I5b) ──────────────────────────────────────────────────────
+
+describe('insightsNewsletterLocaleOf — eine FREIE Spalte wird geprüft, nicht behauptet', () => {
+  it('nimmt die zwei bekannten Werte', () => {
+    expect(insightsNewsletterLocaleOf('de')).toBe('de')
+    expect(insightsNewsletterLocaleOf('en')).toBe('en')
+  })
+
+  it('fällt bei allem anderen auf `en` (Gegenprobe gegen ein blindes `as`)', () => {
+    for (const raw of ['', 'fr', 'DE', 'de-DE', undefined, null]) {
+      expect(insightsNewsletterLocaleOf(raw)).toBe('en')
+    }
+  })
+})
+
+describe('insightsNewsletterIsRecipient — wer eine Ausgabe bekommt', () => {
+  const ok = {
+    email: 'leser@example.test',
+    confirmedAt: '2026-10-01T10:00:00.000Z',
+    unsubscribedAt: '',
+  }
+
+  it('nimmt eine bestätigte, aktive Zeile mit Adresse', () => {
+    expect(insightsNewsletterIsRecipient(ok)).toBe(true)
+  })
+
+  it('lässt eine UNBESTÄTIGTE Zeile aus — es gab nie eine Einwilligung', () => {
+    expect(insightsNewsletterIsRecipient({ ...ok, confirmedAt: '' })).toBe(false)
+    expect(insightsNewsletterIsRecipient({ ...ok, confirmedAt: null })).toBe(false)
+  })
+
+  it('lässt eine ABGEMELDETE Zeile aus — sie bleibt als Nachweis stehen', () => {
+    // Der teuerste Fehler dieses Pakets: die Zeile IST in der Tabelle.
+    expect(insightsNewsletterIsRecipient({ ...ok, unsubscribedAt: '2026-10-20T00:00:00.000Z' })).toBe(false)
+  })
+
+  it('lässt eine GELEERTE Zeile aus — leer und Platzhalter', () => {
+    expect(insightsNewsletterIsRecipient({ ...ok, email: '' })).toBe(false)
+    expect(insightsNewsletterIsRecipient({ ...ok, email: undefined })).toBe(false)
+    expect(insightsNewsletterIsRecipient({ ...ok, email: insightsNewsletterAnonymizedEmail('row-7') })).toBe(false)
+  })
+})
+
+describe('decideInsightsSendStart — was beim Druck auf den Knopf passiert', () => {
+  it('fängt ohne Zeile an', () => {
+    expect(decideInsightsSendStart(null)).toBe('start')
+    expect(decideInsightsSendStart(undefined)).toBe('start')
+  })
+
+  it('setzt einen laufenden und einen gescheiterten Lauf FORT — nie von vorn', () => {
+    expect(decideInsightsSendStart({ state: 'running' })).toBe('resume')
+    expect(decideInsightsSendStart({ state: 'failed' })).toBe('resume')
+  })
+
+  it('verweigert den zweiten Versand (ein Beitrag, eine Mail)', () => {
+    expect(decideInsightsSendStart({ state: 'done' })).toBe('already_sent')
+  })
+
+  it('behandelt einen unbekannten Zustand wie `resume` — fail-safe gegen Doppel-Mails', () => {
+    // Ein `start` würde hier den Cursor wegwerfen und die halbe Liste erneut
+    // bedienen. Das ist der Fehler, den man nicht zurückholt.
+    expect(decideInsightsSendStart({ state: 'irgendwas' })).toBe('resume')
+    expect(decideInsightsSendStart({})).toBe('resume')
+  })
+})
+
+describe('Der Stapel ist gedeckelt', () => {
+  it('bleibt bei fünfzig — eine Route, die minutenlang offen steht, gibt es nicht', () => {
+    expect(INSIGHTS_NEWSLETTER_BATCH).toBe(50)
+  })
+})
+
+describe('createInsightsNewsletterSendSchema — ein Feld, und sonst nichts', () => {
+  it('nimmt eine Einleitung und trimmt sie', () => {
+    expect(createInsightsNewsletterSendSchema().parse({ intro: '  Hallo  ' }).intro).toBe('Hallo')
+  })
+
+  it('macht aus „nichts geschickt" eine leere Einleitung', () => {
+    expect(createInsightsNewsletterSendSchema().parse({}).intro).toBe('')
+  })
+
+  it('weist einen durchgereichten Betreff ab — er kommt aus dem BEITRAG', () => {
+    expect(() => createInsightsNewsletterSendSchema().parse({ intro: '', subject: 'Eigener Betreff' })).toThrow()
+  })
+
+  it('kürzt NICHT, sondern lehnt ab: ein Redakteur soll seinen Satz sehen', () => {
+    expect(() => createInsightsNewsletterSendSchema().parse({ intro: 'x'.repeat(INSIGHTS_NEWSLETTER_INTRO_MAX + 1) })).toThrow()
+    expect(createInsightsNewsletterSendSchema().parse({ intro: 'x'.repeat(INSIGHTS_NEWSLETTER_INTRO_MAX) }).intro.length)
+      .toBe(INSIGHTS_NEWSLETTER_INTRO_MAX)
+  })
+})
+
+describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
+  it('nimmt als Betreff den TITEL der Fassung, ohne Präfix und ohne Nummer', () => {
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, '', 'de', ISSUE_LINKS).subject)
+      .toBe('Zwei Marken im Vergleich')
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, '', 'en', ISSUE_LINKS).subject)
+      .toBe('Two brands compared')
+  })
+
+  it('schreibt in der Sprache des EMPFÄNGERS, wenn die Fassung redigiert ist', () => {
+    const de = insightsNewsletterIssueCopy(ISSUE_POST, '', 'de', ISSUE_LINKS)
+    expect(de.text).toContain('Zwei Marken, ein Blick.')
+    expect(de.text).toContain('Du bekommst das, weil du dich eingetragen hast')
+    const en = insightsNewsletterIssueCopy(ISSUE_POST, '', 'en', ISSUE_LINKS)
+    expect(en.text).toContain('Two brands, one look.')
+    expect(en.text).toContain('You are getting this because you signed up')
+  })
+
+  it('schickt die GRUNDFASSUNG, solange die zweite nicht redigiert ist (§3.2)', () => {
+    // Die Gegenprobe zum Test darüber: dieselbe Zeile, nur ohne Häkchen.
+    const roh = { ...ISSUE_POST, translationReviewed: false }
+    const copy = insightsNewsletterIssueCopy(roh, '', 'de', ISSUE_LINKS)
+    expect(copy.subject).toBe('Two brands compared')
+    expect(copy.text).toContain('Two brands, one look.')
+    expect(copy.text).not.toContain('Zwei Marken')
+  })
+
+  it('setzt die eigene Einleitung GANZ OBEN — und lässt sie weg, wenn es keine gibt', () => {
+    const mit = insightsNewsletterIssueCopy(ISSUE_POST, '  Diesmal kurz.  ', 'de', ISSUE_LINKS)
+    expect(mit.text.startsWith('Diesmal kurz.')).toBe(true)
+    const ohne = insightsNewsletterIssueCopy(ISSUE_POST, '   ', 'de', ISSUE_LINKS)
+    expect(ohne.text.startsWith('Zwei Marken, ein Blick.')).toBe(true)
+  })
+
+  it('trägt die Adresse des Beitrags UND den Abmelde-Link dieses Empfängers', () => {
+    const copy = insightsNewsletterIssueCopy(ISSUE_POST, '', 'de', ISSUE_LINKS)
+    expect(copy.text).toContain('https://branding.supply/de/duels/a-vs-b')
+    expect(copy.text).toContain('https://branding.supply/de/newsletter/unsubscribe?token=row.sig')
+  })
+
+  it('bleibt reiner Text — kein HTML, keine spitzen Klammern', () => {
+    for (const locale of ['de', 'en'] as const) {
+      const copy = insightsNewsletterIssueCopy(ISSUE_POST, 'Ganz kurz.', locale, ISSUE_LINKS)
+      expect(copy.text).not.toMatch(/[<>]/)
+      expect(copy.subject).not.toMatch(/[<>]/)
+    }
   })
 })

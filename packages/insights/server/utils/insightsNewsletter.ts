@@ -2,14 +2,19 @@ import { Buffer } from 'node:buffer'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { InsightsNewsletterLocale } from '../../shared/insightsNewsletter'
-import { insightsNewsletterConfirmMailCopy } from '../../shared/insightsNewsletter'
+import { insightsNewsletterConfirmMailCopy, insightsNewsletterIssueCopy } from '../../shared/insightsNewsletter'
+import type { InsightsPostHead } from '../../shared/insightsPost'
+import { insightsPublicKopf } from '../../shared/insightsPost'
 
 /**
- * DIE ZWEI TOKEN DES NEWSLETTERS UND DIE EINE MAIL, DIE I5a VERSCHICKT.
+ * DIE ZWEI TOKEN DES NEWSLETTERS UND DIE ZWEI MAILS, DIE ER VERSCHICKT —
+ * die Bestätigung (I5a) und eine Ausgabe (I5b).
  *
  * Hier liegt alles, was `node:crypto` braucht oder einen Request kennt; die
  * REGELN (Fristen, Drossel, Schemas, Wortlaut) stehen in
- * `shared/insightsNewsletter.ts` und haben dort ihre Gegenprobe.
+ * `shared/insightsNewsletter.ts` und haben dort ihre Gegenprobe. Der STAPEL-
+ * Versand selbst (Empfänger zählen, Cursor, Sende-Zeile) liegt in
+ * `insightsNewsletterSend.ts` — er braucht Appwrite, diese Datei nicht.
  *
  * ── ZWEI TOKEN, WEIL ES ZWEI VERSCHIEDENE FRAGEN SIND ───────────────────
  *
@@ -157,6 +162,29 @@ export function insightsNewsletterUnsubscribeUrl(
   return `${insightsNewsletterBaseUrl(event)}${insightsNewsletterPath(locale, '/newsletter/unsubscribe', token)}`
 }
 
+/**
+ * DIE ÖFFENTLICHE ADRESSE EINES BEITRAGS, ABSOLUT UND IN DER SPRACHE DES
+ * EMPFÄNGERS (I5b).
+ *
+ * `href` kommt aus `insightsPublicHref` und trägt BEWUSST keinen
+ * Sprach-Präfix — den setzt auf der Seite `localePath()`, und im Server-Kontext
+ * gibt es das nicht. Hier wird er deshalb genauso gesetzt wie bei den zwei
+ * Token-Links darüber: `prefix_except_default`, en ohne, de unter `/de`. Ein
+ * deutscher Leser soll nicht auf einer englischen Seite landen.
+ *
+ * Die SPRACHE ist die der FASSUNG, die in der Mail steht (der Rückfall aus
+ * `insightsPublicKopf`), nicht die des Abonnenten — sonst zeigte der Link auf
+ * `/de/...` und die Seite lieferte dort die englische Grundfassung.
+ */
+export function insightsNewsletterPostUrl(
+  event: H3Event,
+  href: string,
+  locale: InsightsNewsletterLocale,
+): string {
+  const prefix = locale === 'de' ? '/de' : ''
+  return `${insightsNewsletterBaseUrl(event)}${prefix}${href}`
+}
+
 /** `x***@domain` — die Maskierung aus `mailer.ts`, hier für das Log. */
 export function maskInsightsNewsletterEmail(value: string): string {
   return value.replace(/(.).*(@.*)/, '$1***$2')
@@ -208,5 +236,82 @@ export async function sendInsightsNewsletterConfirmMail(
       message: error instanceof Error ? error.message : String(error),
     })
     return false
+  }
+}
+
+// ── Die Ausgabe-Mail (I5b) ─────────────────────────────────────────────────
+
+export interface InsightsNewsletterIssueMailInput {
+  to: string
+  /** Die Zeilen-Id des ABONNENTEN — aus ihr wird sein Abmelde-Link abgeleitet. */
+  subscriberId: string
+  /** Der Beitrag (nur Kopf: Titel, Vorspann, Grundsprache, Redigier-Häkchen). */
+  post: InsightsPostHead
+  /** Die eigenen zwei, drei Sätze — '' ist der Normalfall. */
+  intro: string
+  /** Der Pfad des Beitrags OHNE Sprach-Präfix (`insightsPublicHref`). */
+  href: string
+  /** Die Sprache DIESES Empfängers (`insights_subscribers.locale`). */
+  locale: InsightsNewsletterLocale
+}
+
+/**
+ * DREI AUSGÄNGE, UND DER UNTERSCHIED IST DER GANZE PUNKT.
+ *
+ *  · `'sent'` — draussen.
+ *  · `'failed'` — DIESE Mail ging nicht (SMTP hat geworfen: Adresse abgelehnt,
+ *    Postfach voll, Zeitüberschreitung). Das ist ein Problem EINER Adresse. Der
+ *    Lauf zählt sie in `failed`, rückt den Cursor trotzdem vor und macht
+ *    weiter — sonst hängt ein Versand an fünfhundert Empfänger für immer an
+ *    einer kaputten Adresse, und zwar bei jedem Fortsetzen von vorn an
+ *    derselben.
+ *  · `'no_mailer'` — es gibt gar keinen Versandweg (`sendMail` gibt dort still
+ *    `false` zurück, OHNE zu werfen; die Falle, an der ein `.catch` allein
+ *    vorbeiliefe). Das ist ein Problem des SERVERS, nicht einer Adresse: der
+ *    Lauf bricht ab und geht auf `failed`. Würde er das als „diese Adresse
+ *    ging nicht" zählen, liefe er über die ganze Liste und meldete am Ende
+ *    fünfhundert Fehlschläge — nach aussen nicht unterscheidbar von fünfhundert
+ *    kaputten Adressen, und der `cursor` stünde am Ende. Niemand bekäme dann
+ *    je eine Mail, und ein Fortsetzen wäre unmöglich.
+ *
+ * `html` wird BEWUSST nicht gesetzt (Begründung am Wortlaut in `shared/`).
+ * `List-Unsubscribe` trägt den Abmelde-Link DIESES Empfängers, in spitzen
+ * Klammern (so verlangt es der Header) — ohne `List-Unsubscribe-Post`, weil
+ * One-Click nach RFC 8058 einen Endpunkt ohne Token im Körper braucht
+ * (Begründung am `headers`-Feld von `MailInput`).
+ */
+export async function sendInsightsNewsletterIssueMail(
+  event: H3Event,
+  input: InsightsNewsletterIssueMailInput,
+): Promise<'sent' | 'failed' | 'no_mailer'> {
+  // Welche FASSUNG geht raus? Dieselbe reine Entscheidung, die auch die Seite
+  // trifft — der Link muss auf die Sprache zeigen, die in der Mail steht, nicht
+  // auf die des Abonnenten (sonst `/de/...` mit englischem Text dahinter).
+  const fassung = insightsPublicKopf(input.post, input.locale)
+  const unsubscribeUrl = insightsNewsletterUnsubscribeUrl(
+    event,
+    insightsNewsletterUnsubTokenFor(event, input.subscriberId),
+    input.locale,
+  )
+  const copy = insightsNewsletterIssueCopy(input.post, input.intro, input.locale, {
+    postUrl: insightsNewsletterPostUrl(event, input.href, fassung.locale),
+    unsubscribeUrl,
+  })
+
+  try {
+    const ok = await sendMail(event, {
+      to: input.to,
+      subject: copy.subject,
+      text: copy.text,
+      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` },
+    })
+    return ok ? 'sent' : 'no_mailer'
+  }
+  catch (error) {
+    // Ohne Adresse, ohne Token: das Log sagt DASS, nicht AN WEN.
+    logEvent('warn', 'insights.newsletter_send_failed', {
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return 'failed'
   }
 }

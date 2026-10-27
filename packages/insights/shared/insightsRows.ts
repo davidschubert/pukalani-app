@@ -109,6 +109,14 @@ export const INSIGHTS_WATCHLIST_TABLE = 'insights_watchlist'
 /** Die Newsletter-Liste (insights-006, BI1 I5a) — eigene Liste, eigenes DOI. */
 export const INSIGHTS_SUBSCRIBERS_TABLE = 'insights_subscribers'
 
+/**
+ * Das Protokoll eines Versands (insights-008, BI1 I5b) — EINE Zeile je
+ * Beitrag, `postId` ist unique. Sie ist der FORTSCHRITTSSTAND, nicht der
+ * Bericht: ohne sie bekäme nach einem Abbruch die erste Hälfte der Liste ihre
+ * Mail ein zweites Mal.
+ */
+export const INSIGHTS_SENDS_TABLE = 'insights_sends'
+
 // ── Zeilen (insights-001 … insights-004) ───────────────────────────────────
 
 /** Ein Beitrag (insights-001). Alle Listen-Spalten sind JSON (s. Kopf). */
@@ -269,6 +277,42 @@ export type InsightsSubscriberRow = Models.Row & {
   ipHash?: string
   /** Ab hier werden `email`, `emailLower` und `ipHash` geleert (12 Monate). */
   retentionAt?: string | null
+}
+
+/**
+ * EIN VERSAND (insights-008, BI1 I5b) — derselbe Zuschnitt wie die Zeile
+ * darüber: keine Abbildung daneben, die Routen lesen die Felder, die sie
+ * brauchen, und schreiben jede Spalte explizit.
+ *
+ * ── HIER STEHT KEINE ADRESSE, UND DAS IST DER ENTWURF ──────────────────
+ * Die Zeile ZÄHLT (`recipients`, `sent`, `failed`) und nennt niemanden.
+ * `cursor` ist die `$id` einer Abonnenten-Zeile — kein Name, keine Adresse,
+ * kein Hash einer Adresse (ein Hash wäre wieder ein Personenbezug, und
+ * `insights_subscribers` hat eine Löschfrist, die eine Kopie daneben
+ * aushebelte). Wer eine Empfängerliste sucht, fragt die Liste.
+ *
+ * `''` und nicht `null` bei den zwei Stempeln (wörtlich wie beim Abonnenten):
+ * `finishedAt` beginnt LEER und wird beim Abschluss gesetzt; verglichen wird
+ * im Code, nie in einer Abfrage.
+ */
+export type InsightsSendRow = Models.Row & {
+  /** Die Zeilen-Id des Beitrags — UNIQUE, und damit DIE Sicherung (s. Kopf). */
+  postId?: string
+  /** Der Betreff, wie er verschickt WURDE (der Titel darf sich danach ändern). */
+  subject?: string
+  /** Die eigenen zwei, drei Sätze — der zweite Stapel braucht sie genauso. */
+  intro?: string
+  /** Die GRUNDSPRACHE des Beitrags, NICHT die Sprache der Mails. */
+  locale?: string
+  /** `running` · `done` · `failed`. */
+  state?: string
+  /** Die `$id` des zuletzt ERFOLGREICH bedienten Empfängers. */
+  cursor?: string
+  recipients?: number
+  sent?: number
+  failed?: number
+  startedAt?: string
+  finishedAt?: string
 }
 
 // ── Die puren Helfer ───────────────────────────────────────────────────────

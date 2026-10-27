@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import type { InsightsPostHead } from './insightsPost'
+import { insightsPublicKopf } from './insightsPost'
 
 /**
  * DER NEWSLETTER-VERTRAG VON BRAND INSIGHTS (Paket I5a „Sammeln", Plan
@@ -36,6 +38,22 @@ import { z } from 'zod'
  * `insightsCorrection.ts`): `emailLower` ist der UNIQUE-Index UND der
  * Lesepfad des GDPR-Contributors, und Appwrite vergleicht Zeichen für
  * Zeichen. Eine Zeile mit `Max@Example.COM` fände keine der beiden Abfragen.
+ *
+ * ── SEIT I5b STEHT HIER AUCH DER VERSAND (Abschnitte 8 und 9) ────────────
+ * Dieselbe Arbeitsteilung wie oben: WAS eine Regel ist, steht hier und hat
+ * eine Gegenprobe — wer Empfänger ist, wie gross ein Stapel ist, was beim
+ * zweiten Druck auf den Knopf passiert, und der WORTLAUT der Ausgabe-Mail. Was
+ * Nitro, `node:crypto` oder Appwrite braucht, liegt in
+ * `server/utils/insightsNewsletter.ts` bzw. `insightsNewsletterSend.ts`.
+ *
+ * ── EIN BEITRAG = EINE MAIL (Davids Entscheidung 2026-10-27) ─────────────
+ * Es gibt KEINEN zweiten Editor und KEINE freie Ausgabe. Betreff und Text
+ * entstehen aus dem Beitrag selbst — Titel, Vorspann, Adresse — plus einem
+ * optionalen Feld für zwei, drei eigene Sätze. Begründung: ein zweiter Text,
+ * der dasselbe sagt wie der Beitrag, VERALTET GETRENNT vom ersten. Ändert die
+ * Redaktion den Vorspann, stünde in der Ausgabe weiter der alte; und das
+ * Versprechen an den Leser lautet wörtlich „wir schreiben, wenn ein neues
+ * Stück erscheint" — nicht „wir schreiben etwas Eigenes".
  */
 
 // ── 1. Die Deckel der Spalten (insights-006) ───────────────────────────────
@@ -447,3 +465,224 @@ export const INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS = [
   'weekly',
   'every week',
 ] as const
+
+// ── 8. Der Versand: wer, wie viele, und was beim zweiten Druck ─────────────
+
+/**
+ * DIE SPRACHE EINES EMPFÄNGERS — aus einer FREIEN Spalte, fail-soft auf `en`.
+ *
+ * `insights_subscribers.locale` ist ein `varchar(8)` mit Default `'en'`; was
+ * dort steht, hat ein Formular geschrieben, und eine Zeile aus einer früheren
+ * Fassung könnte etwas anderes tragen. Ein `as InsightsNewsletterLocale`
+ * darüber wäre eine Behauptung — hier ist es eine Prüfung, und ein unbekannter
+ * Wert bekommt die Grundsprache der Seite statt eines Absturzes mitten in
+ * einem Stapel.
+ */
+export function insightsNewsletterLocaleOf(raw: string | undefined | null): InsightsNewsletterLocale {
+  return (INSIGHTS_NEWSLETTER_LOCALES as readonly string[]).includes(raw ?? '')
+    ? raw as InsightsNewsletterLocale
+    : 'en'
+}
+
+/** Was die Empfänger-Regel von einer Zeile braucht — mehr geht sie nichts an. */
+export interface InsightsNewsletterRecipientRow {
+  readonly email?: string
+  readonly confirmedAt?: string | null
+  readonly unsubscribedAt?: string | null
+}
+
+/**
+ * WER EINE AUSGABE BEKOMMT — drei Bedingungen, alle notwendig.
+ *
+ *  1. `confirmedAt` ist gesetzt. Das Double-Opt-in ist die Einwilligung; eine
+ *     wartende Zeile hat nie eine gegeben (I5a).
+ *  2. `unsubscribedAt` ist LEER. Eine abgemeldete Zeile BLEIBT als Nachweis
+ *     stehen (I5a, Regel 2 des Sweeps) — sie ist also sehr wohl in der
+ *     Tabelle, und ohne diese Bedingung bekäme genau der Mensch wieder Post,
+ *     der darum gebeten hat, keine mehr zu bekommen. Das ist der teuerste
+ *     Fehler dieses Pakets.
+ *  3. In `email` steht noch eine Adresse. Zwei Fälle, beide echt: der
+ *     12-Monats-Sweep LEERT das Feld (`''`), und `emailLower` trägt dann den
+ *     Platzhalter `removed:<rowId>` — eine Mail an `''` oder an `removed:…`
+ *     wäre ein SMTP-Fehler je Zeile, der den Zähler `failed` füllt und
+ *     niemandem hilft. Geprüft wird `email` (die Anschrift), nicht
+ *     `emailLower` (der Vergleichswert); der Platzhalter wird dennoch
+ *     mitgeprüft, weil eine künftige Fassung ihn auch hier eintragen könnte.
+ *
+ * Sie ist die ZWEITE Sicherung: die Abfrage des Versands filtert schon über
+ * `confirmedAt`/`unsubscribedAt` (Index `idx_confirmed_at`). Beides, weil eine
+ * Appwrite-Abfrage „ist nicht leer" nicht für jede Spalte ausdrücken kann und
+ * weil ein Filter, der nur in einer Query-Liste steht, beim nächsten Umbau
+ * still verschwindet.
+ */
+export function insightsNewsletterIsRecipient(row: InsightsNewsletterRecipientRow): boolean {
+  if (!row.confirmedAt) return false
+  if (row.unsubscribedAt) return false
+  const email = row.email ?? ''
+  if (!email) return false
+  return !insightsNewsletterIsAnonymized(email)
+}
+
+/**
+ * WIE VIELE MAILS EIN AUFRUF VERSCHICKT — fünfzig.
+ *
+ * Die Route arbeitet EINEN Stapel ab und antwortet; die Dashboard-Seite ruft
+ * sie, bis `done`. Drei Gründe, und alle drei sind gemessen an der Alternative
+ * „alles in einem Aufruf":
+ *  1. Keine Route steht minutenlang offen. Fünfhundert Mails über SMTP sind
+ *     Minuten, und ein Reverse-Proxy schliesst eine Antwort, die nicht kommt —
+ *     der Versand liefe dann weiter, ohne dass jemand das Ergebnis sieht.
+ *  2. Der Mensch sieht einen Balken statt eines hängenden Knopfes.
+ *  3. Der Fortschritt ist nach JEDEM Stapel in der Ablage. Ein Abbruch kostet
+ *     damit höchstens die fünfzig des laufenden Stapels — nicht fünfhundert.
+ */
+export const INSIGHTS_NEWSLETTER_BATCH = 50
+
+/** Die drei Zustände einer Sende-Zeile (insights-008). */
+export const INSIGHTS_SEND_STATES = ['running', 'done', 'failed'] as const
+export type InsightsSendState = (typeof INSIGHTS_SEND_STATES)[number]
+
+export type InsightsSendStartDecision = 'start' | 'resume' | 'already_sent'
+
+/**
+ * WAS PASSIERT, WENN JEMAND DEN KNOPF DRÜCKT — vier Fälle, drei Ausgänge.
+ *
+ *  · KEINE ZEILE ⇒ `start`. Der erste Druck.
+ *  · `running` ⇒ `resume`. Entweder arbeitet die Seite ihre Stapel ab (der
+ *    Normalfall) oder ein Lauf ist abgebrochen. BEIDES ist derselbe Handgriff:
+ *    weiter hinter dem `cursor`. Niemand fängt von vorn an.
+ *  · `done` ⇒ `already_sent` (409). DAS ist die Regel „ein Beitrag, eine
+ *    Mail". Wer denselben Beitrag ein zweites Mal schicken will, muss das
+ *    bewusst tun — und bis heute hat niemand entschieden, dass es diesen Weg
+ *    geben soll. Ein stilles „ok, nochmal" wäre die Sorte Bequemlichkeit, die
+ *    man an fünfhundert Postfächern bezahlt.
+ *  · `failed` ⇒ `resume`. Ein `failed` heisst „am Server stimmte etwas nicht"
+ *    (kein Mailer), nicht „die Liste ist durch": der `cursor` steht, und
+ *    weitermachen ist genau richtig.
+ *
+ * Ein UNBEKANNTER Zustandswert zählt wie `running` und damit als `resume` —
+ * fail-SAFE in Richtung „nicht von vorn": aus einer unlesbaren Zeile auf
+ * `start` zu schliessen hiesse, den `cursor` wegzuwerfen und die halbe Liste
+ * doppelt zu bedienen.
+ */
+export function decideInsightsSendStart(
+  existing: { state?: string } | null | undefined,
+): InsightsSendStartDecision {
+  if (!existing) return 'start'
+  return existing.state === 'done' ? 'already_sent' : 'resume'
+}
+
+// ── 9. Der Wortlaut einer Ausgabe ──────────────────────────────────────────
+
+/** Der Deckel des einen freien Feldes — dieselbe Zahl wie die Spalte (008). */
+export const INSIGHTS_NEWSLETTER_INTRO_MAX = 1000
+
+/**
+ * WAS DAS VERSAND-FORMULAR SCHICKEN DARF — ein Feld, und sonst nichts.
+ *
+ * `.strict()` wie beim Eintragen: der Betreff, die Sprache und die Adresse
+ * kommen aus dem BEITRAG, nicht aus dem Formular. Ein durchgereichter
+ * `subject` wäre genau der zweite Text, den Davids Entscheidung ausschliesst
+ * (s. Kopf) — und ein durchgereichter `postId` wäre eine Mail über einen
+ * anderen Beitrag als den, vor dem der Mensch steht.
+ *
+ * Gekürzt wird NICHT (anders als `source` beim Eintragen): hier tippt ein
+ * Redakteur, und ein stillschweigend abgeschnittener Satz ginge so in
+ * fünfhundert Postfächer. Das Formular zeigt denselben Deckel.
+ */
+export function createInsightsNewsletterSendSchema(t: (key: string) => string = key => key) {
+  return z.object({
+    intro: z.string().trim()
+      .max(INSIGHTS_NEWSLETTER_INTRO_MAX, { message: t('insights.newsletter.send.introTooLong') })
+      .default(''),
+  }).strict()
+}
+
+export type InsightsNewsletterSendInput
+  = z.output<ReturnType<typeof createInsightsNewsletterSendSchema>>
+
+export interface InsightsNewsletterIssueLinks {
+  /** Die ÖFFENTLICHE Adresse des Beitrags, absolut. */
+  postUrl: string
+  /** Der Abmelde-Link DIESES Empfängers — nie ein geteilter. */
+  unsubscribeUrl: string
+}
+
+/**
+ * DIE AUSGABE-MAIL — der Wortlaut steht hier und nicht in der Route, damit ein
+ * Test sie LESEN kann (wörtlich dieselbe Wahl wie bei der Bestätigungs-Mail).
+ *
+ * ── BETREFF = TITEL DER FASSUNG. Nichts davor, nichts danach ────────────
+ * Kein „Brand Insights:"-Präfix, keine Ausgabennummer. Der Titel ist das, was
+ * den Menschen interessiert, und ein Präfix kostet in der Betreffzeile eines
+ * Telefons genau die Zeichen, die der Titel braucht. Eine NUMMER wäre zudem
+ * ein Takt-Versprechen durch die Hintertür („Ausgabe 7" lässt eine achte
+ * erwarten).
+ *
+ * ── DIE SPRACHE IST DIE DES EMPFÄNGERS, MIT RÜCKFALL ────────────────────
+ * Aufgelöst über `insightsPublicKopf` — die körperlose Hälfte von
+ * `insightsPublicFassung` und damit DIESELBE Entscheidung, die auch die Seite
+ * und `hreflang` treffen: die Nicht-Grundsprache erscheint nur mit
+ * `translationReviewed === true`, sonst geht die GRUNDFASSUNG raus. „Eine
+ * maschinell erzeugte, unredigierte Fassung ist NIE öffentlich" (§3.2) gilt in
+ * der Mail genauso wie auf der Seite — eine Mail ist öffentlicher als eine
+ * Seite, man kann sie nicht zurückziehen. Der KOPF reicht, weil die Mail den
+ * Fliesstext nicht trägt (sie verlinkt ihn); zwei Artikel-Fassungen nur für
+ * eine Betreffzeile wären ein Megabyte je Empfänger im Speicher.
+ *
+ * ── VIER TEILE, IN DIESER REIHENFOLGE ───────────────────────────────────
+ *  1. Die eigene Einleitung, wenn es eine gibt. Sie steht OBEN, weil sie der
+ *     persönliche Teil ist; darunter wird es sachlich.
+ *  2. Der Vorspann des Beitrags.
+ *  3. Die Adresse. Als nackte URL in eigener Zeile, nicht in Klammern: ein
+ *     Link in spitzen Klammern wird von manchen Programmen mit eingefärbt, und
+ *     spitze Klammern sind hier ohnehin verboten (reiner Text, kein HTML).
+ *  4. Der Fuss: „Du bekommst das, weil du dich eingetragen hast" plus der
+ *     Abmelde-Link DIESES Empfängers. Die Regel „jede Mail trägt den
+ *     Abmelde-Link" kennt keine Ausnahme (I5a) — und der Grund steht dabei,
+ *     weil eine unerwartete Mail ohne Grund wie Spam aussieht.
+ *
+ * ── KEIN HTML, UND DAS IST EINE ENTSCHEIDUNG (2026-10-27) ───────────────
+ * Jede Mail dieses Repos ist heute reiner Text (`sendBrandWaitlistConfirmMail`,
+ * die DOI-Mail aus I5a). Eine HTML-Vorlage wäre eine ZWEITE Darstellung
+ * desselben Inhalts, dazu Bildpfade, Dark-Mode-Fragen und eine eigene
+ * Prüfstrecke über ein Dutzend Mail-Programme — ein eigenes Vorhaben, kein
+ * Nebenprodukt dieses Pakets. `sendMail` wird deshalb bewusst OHNE `html`
+ * gerufen.
+ *
+ * ── UND KEIN TAKT ───────────────────────────────────────────────────────
+ * Weder im Betreff noch im Text (Davids Entscheidung, s. Kopf). Der Test
+ * prüft diese Funktion gegen `INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS`.
+ */
+export function insightsNewsletterIssueCopy(
+  post: InsightsPostHead,
+  intro: string,
+  locale: InsightsNewsletterLocale,
+  links: InsightsNewsletterIssueLinks,
+): InsightsNewsletterMailCopy {
+  const kopf = insightsPublicKopf(post, locale)
+  const trimmedIntro = intro.trim()
+  const lines: string[] = []
+
+  if (trimmedIntro) lines.push(trimmedIntro, '')
+  if (kopf.dek) lines.push(kopf.dek, '')
+
+  if (kopf.locale === 'de') {
+    lines.push(
+      'Lesen:',
+      links.postUrl,
+      '',
+      `Du bekommst das, weil du dich eingetragen hast. Abmelden: ${links.unsubscribeUrl}`,
+    )
+  }
+  else {
+    lines.push(
+      'Read it:',
+      links.postUrl,
+      '',
+      `You are getting this because you signed up. Unsubscribe: ${links.unsubscribeUrl}`,
+    )
+  }
+
+  return { subject: kopf.title, text: lines.join('\n') }
+}
