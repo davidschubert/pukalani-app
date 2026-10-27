@@ -20,7 +20,7 @@ grep -q "registers-$OLD-keepalive-off.php" docker-compose.override.yml || { echo
 grep -q '^_APP_TRUSTED_PROXIES=.*49\.13\.211\.173' .env || { echo "ABBRUCH: _APP_TRUSTED_PROXIES ohne Nuxt-Server"; exit 1; }
 for i in appwrite/appwrite:$NEW appwrite/new:1.2.108-self-hosted appwrite/browser:0.3.8 ghcr.io/appwrite/exiftool:0.1.1; do docker pull -q "$i"; done
 echo "   PHP im $NEW-Image: $(docker run --rm --entrypoint=php appwrite/appwrite:$NEW -r 'echo PHP_VERSION;')"
-echo "   Brotli im $NEW-Image: $(docker run --rm --entrypoint=sh appwrite/appwrite:$NEW -c 'apk info -v brotli-libs 2>/dev/null | head -1')   (erwartet: brotli-libs-1.2.1-r0, CVE-2026-111497)"
+echo "   Brotli im $NEW-Image: $(docker run --rm --entrypoint=sh appwrite/appwrite:$NEW -c 'apk info -v 2>/dev/null | grep ^brotli-libs')   (erwartet: brotli-libs-1.2.1-r0, CVE-2026-111497 — apk info -v PAKET druckt nur die Beschreibung, daher grep)"
 docker run --rm --entrypoint=cat appwrite/appwrite:$NEW /usr/src/code/app/init/registers.php > patches/registers-$NEW.orig.php
 sed 's/keepAlive: true,/keepAlive: false,/' patches/registers-$NEW.orig.php > patches/registers-$NEW-keepalive-off.php
 diff patches/registers-$NEW.orig.php patches/registers-$NEW-keepalive-off.php || true   # erwartet: genau Zeile 367
@@ -54,15 +54,19 @@ grep -E '^_APP_(TRUSTED_PROXIES|MQTT_PORT|MQTT_WSS_PORT|MEMORY_LIMIT)=' .env
 grep -qE '^_APP_JOBS_SECRET=("?)(your-secret-key)?\1$' .env && { echo "ABBRUCH: _APP_JOBS_SECRET nach dem Werkzeug noch unsicher"; exit 1; } || true
 echo "== [5/7] Eigenes up -d $(date -u +%T)"
 docker compose up -d --remove-orphans
-echo "== [6/7] Migration (V25 bleibt — erwartet: nichts zu tun) $(date -u +%T)"
-docker compose exec -T appwrite migrate | tail -3
+echo "== [6/7] Migration (V25 bleibt — laeuft idempotent erneut durch: ~300 'already exists'-Warnungen, dev 1,6 s) $(date -u +%T)"
+MIG=$(docker compose exec -T appwrite migrate 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
+echo "$MIG" | grep -E 'Migration completed|task\.migrate' || { echo "$MIG" | tail -15; echo "ABBRUCH: migrate ohne 'Migration completed'"; exit 1; }
+echo "   already-exists-Warnungen: $(echo "$MIG" | grep -c 'already exists')   andere Fehlerzeilen: $(echo "$MIG" | grep -ci 'error\|exception' || true)"
 echo "== [7/7] Beweise $(date -u +%T)"
 echo "   trustedIPs: $(docker inspect appwrite-traefik --format '{{json .Config.Cmd}}' | tr ',' '\n' | grep -c trustedIPs)  mqtt-Entrypoints: $(docker inspect appwrite-traefik --format '{{json .Config.Cmd}}' | tr ',' '\n' | grep -c mqtt)"
 echo "   Ports: $(docker port appwrite-traefik | tr '\n' ' ')"
 echo "   keepAlive: $(docker exec appwrite-worker grep -n keepAlive /usr/src/code/app/init/registers.php)"
 echo "   clickhouse config.d: $(docker exec appwrite-clickhouse-1 ls /etc/clickhouse-server/config.d/ | tr '\n' ' ')"
-echo "   PHP: $(docker exec appwrite php -r 'echo PHP_VERSION;')   Brotli: $(docker exec appwrite sh -c 'apk info -v brotli-libs | head -1')"
-echo "   memory_limit: $(docker exec appwrite php -r 'echo ini_get("memory_limit");')"
+echo "   PHP: $(docker exec appwrite php -r 'echo PHP_VERSION;')   Brotli: $(docker exec appwrite sh -c 'apk info -v | grep ^brotli-libs')"
+# _APP_MEMORY_LIMIT greift per ini_set in app/init.php (Zeile 17) beim Start von http/realtime/worker — ein nacktes
+# `php -r 'echo ini_get(...)'` zeigt nur die CLI-ini (128M) und beweist NICHTS. Beweis = Env im Container + die init.php-Zeile.
+echo "   memory_limit: Env $(docker exec appwrite php -r 'echo getenv("_APP_MEMORY_LIMIT");') (realtime: $(docker exec appwrite-realtime sh -c 'echo $_APP_MEMORY_LIMIT'), worker: $(docker exec appwrite-worker sh -c 'echo $_APP_MEMORY_LIMIT')) · init.php: $(docker exec appwrite grep -n 'memory_limit' /usr/src/code/app/init.php | head -1)"
 echo "   Version: $(curl -s -m 10 http://localhost/v1/health/version)"
 echo "   Container $NEW: $(docker ps --format '{{.Image}}' | grep -c "appwrite:$NEW")  noch auf $OLD: $(docker ps --format '{{.Image}}' | grep -c "appwrite:$OLD" || true)  Console: $(docker ps --format '{{.Image}}' | grep 'appwrite/new' || true)"
 echo "   doctor: $(docker compose exec -T appwrite doctor 2>/dev/null | grep -i 'jobs callbacks' || echo '(doctor ohne Zeile zu jobs)')"
