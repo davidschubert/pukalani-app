@@ -23,6 +23,16 @@ export function useAuthErrorMessage() {
    */
   function authErrorMessage(error: unknown, fallback: string): string {
     if (isNetworkError(error)) return t('auth.networkError')
+    /**
+     * BOT-BEWEIS (Turnstile, Vorfall 2026-10-27): drei Gründe, drei Sätze. Ohne
+     * diesen Zweig fiele ein abgelehnter Token in die Formular-Meldung — beim
+     * Registrieren „Registrierung geschlossen" (403), also eine Lüge, die den
+     * Menschen vor dem Formular wegschickt statt ihn erneut probieren zu lassen.
+     */
+    const botReason = botCheckReason(error)
+    if (botReason === 'bot_check_required') return t('auth.botCheck.required')
+    if (botReason === 'bot_check_failed') return t('auth.botCheck.failed')
+    if (botReason === 'bot_check_unavailable') return t('auth.botCheck.unavailable')
     if (isRateLimited(error)) {
       // Die Wartezeit nur nennen, wenn die Antwort sie wirklich hergibt —
       // eine geratene Minute wäre dieselbe Sorte Lüge wie „Passwort falsch".

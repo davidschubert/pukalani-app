@@ -1,4 +1,5 @@
 import { ID, Query } from 'node-appwrite'
+import { z } from 'zod'
 import { createAdminClient, createSessionClient } from '../../lib/appwrite'
 import { decoySecurityPhrase } from '../../utils/securityPhrase'
 import { recoverySchema } from '../../../schemas/auth'
@@ -23,8 +24,24 @@ import { AUTH_METHOD_UNAVAILABLE_CODE, instanceAuthFeatureGap } from '../../../s
  * die Anmeldeseite sagt es auch so („Falls ein Konto existiert …"). Die
  * Alternative wäre, jedem Fremden zu bestätigen, wer hier Mitglied ist.
  */
+/**
+ * Das geteilte `recoverySchema` trägt auch das Formular — der Turnstile-Token
+ * gehört nur an diese Route (Vorbild: `inviteToken` in signup.post.ts).
+ */
+const otpRequestSchema = recoverySchema.extend({
+  turnstileToken: z.string().max(4096).optional(),
+})
+
 export default defineEventHandler(async (event) => {
-  const { email } = await readValidatedBody(event, recoverySchema.parse)
+  const { email, turnstileToken } = await readValidatedBody(event, otpRequestSchema.parse)
+
+  /**
+   * BOT-BEWEIS (Vorfall 2026-10-27) — VOR der stillen Antwort bei geschlossener
+   * Registrierung. Ein Bot ohne Token bekommt 403, und das verrät nichts über
+   * Konten: die Ablehnung fällt, bevor irgendeine Adresse nachgeschlagen wird,
+   * für JEDE Adresse gleich. Ohne Schlüssel ein No-Op.
+   */
+  await requireTurnstile(event, 'otp', turnstileToken)
 
   // Auto-Signup würde die Registrierungssperre umgehen: ist die Registrierung
   // zu, dürfen sich nur BESTEHENDE User per Code einloggen — für unbekannte
