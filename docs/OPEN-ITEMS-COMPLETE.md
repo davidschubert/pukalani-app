@@ -137,6 +137,44 @@ WER geantwortet hat.
 
 ---
 
+### AW262: Appwrite 2.6.2 (Security-Release) auf dev und prod — Brotli CVE-2026-111497 geschlossen ✅ 2026-10-27
+
+Anlass: 2.6.2 erschien am 2026-10-24 fünf Stunden nach dem Prod-Sprung auf
+2.6.1 — `appwrite/base` 2.2.7 mit `brotli-libs` 1.2.1-r0 (Out-of-bounds-Write
+im Decoder; Appwrites ausgehender HTTP-Client dekodiert `br`), dazu Härtung an
+Keys/Realtime/Storage, neu `_APP_MEMORY_LIMIT` (512M), `_APP_JOBS_SECRET` darf
+nicht leer sein, **kein Schema**. CI seit 2026-10-27 (Cloud-Sitzung), dev und
+prod am selben Tag von Davids Terminal (Auftrag „erst dev, dann prod").
+
+Beweise: dev (OrbStack, 20:51–20:56 UTC) Werkzeug 23,1 s, `migrate` 1,6 s,
+`health/version` 2.6.2, Brotli 1.2.1-r0, PHP 8.5.12, keepAlive 367 `false`,
+`doctor` 🟢 jobs, Health/DB/Cache/Storage/Time `pass`, Mail-OTP über Mailpit
+`success`, `pnpm -r test` 27 Pakete / 7644 grün, Playwright `apps/comments`
+16/16. Prod (`ops/appwrite-upgrade-2.6.2.sh` per ssh, 21:09–21:12 UTC):
+Dump 22,4 MB / 870 Tabellen, Werkzeug 28,1 s, `migrate` 19,6 s (253 „already
+exists", 0 Fehler), **Aufruf bis Beweise 81 s**; danach 0 Worker-/Realtime-
+Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
+(`--http1.1`), `verify-tls` 6/6, `schema-parity` 69/42/41/42, Health je
+Projekt `pass`. Offen: Davids OTP-Anmeldung als Mail-Beweis nach Leerlauf.
+Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+
+**Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":
+V25 läuft idempotent erneut durch und schreibt hunderte gelbe „already
+exists"-Zeilen — die Zahl zählen, auf 0 echte Fehler prüfen, nicht erschrecken.
+(2) Zwei Beweis-Zeilen des vorbereiteten Skripts bewiesen nichts: `apk info -v
+PAKET` druckt die Beschreibung (richtig: `apk info -v | grep ^brotli-libs`),
+und `php -r 'echo ini_get("memory_limit")'` zeigt die CLI-ini (128M), weil
+Appwrite den Wert per `ini_set` in `app/init.php` setzt — Beweis ist die Env im
+Container. Ein Beweis, der auf dev das Falsche zeigt, wird auf dev repariert,
+bevor prod läuft. (3) Backticks in einer doppelt gequoteten `echo`-Zeile sind
+Befehls-Substitution — die „Erklärung" `\`apk info -v <pkg>\`` warf auf prod
+einen Syntaxfehler ins Log (harmlos, aber hässlich). (4) Der HAUPT-Checkout
+hat ein veraltetes `node_modules` (`vitest` in brand, `mmdb-lib` in core
+fehlen ⇒ jede Dev-Route 500): Beweise im frisch installierten Worktree fahren,
+Dev-Server vor Playwright selbst starten.
+
+---
+
 ### AW22: Appwrite 2.6.1 auf dev, CI und prod — PHP 8.5.12 gegen die PHP-RCE, der 2.2-Sprung mit drin ✅ 2026-10-24
 
 Anlass: das PHP-Notfall-Release vom 2026-10-21 (CVE-2026-109618/-109619,

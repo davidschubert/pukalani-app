@@ -30,6 +30,14 @@ Prozess) — im CI-Compose in den sieben PHP-Diensten nachgezogen; `registers.ph
 byte-gleich, der KeepAlive-Patch (Zeile 367) bleibt Pflicht und wird trotzdem je Version aus dem Image
 gezogen.
 
+**Ausgeführt (2026-10-27, Davids Auftrag „erst dev, dann prod"):** dev 20:51–20:56 UTC, prod
+21:09–21:12 UTC über `ops/appwrite-upgrade-2.6.2.sh` per ssh — Werkzeug-Aufruf bis Beweise 81 s, davon
+`migrate` 19,6 s (V25 läuft idempotent erneut, 253 „already exists", 0 Fehler). Alle Beweise im Runbook
+(„Durchläufe"); offen nur Davids eigene OTP-Anmeldung als Mail-Beweis. Zwei Beweis-Zeilen des Skripts
+waren falsch und sind korrigiert: `apk info -v PAKET` druckt die Beschreibung (grep über `apk info -v`),
+und `php -r 'echo ini_get("memory_limit")'` zeigt die CLI-ini (128M), nicht den per `ini_set` in
+`app/init.php` gesetzten Wert — Beweis ist die Env im Container.
+
 ---
 
 ## 2026-10-23 — Appwrite 2.6.1 statt 2.2: das PHP-Notfall-Release zieht den Prod-Sprung vor

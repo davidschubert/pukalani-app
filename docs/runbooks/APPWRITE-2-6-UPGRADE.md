@@ -194,11 +194,28 @@ wie oben, nur kürzer:** Images pullen (`appwrite/appwrite:2.6.2`,
 aus dem 2.6.2-Image (Zeile 367), in der Override NUR den Mount auf die neue
 Patchdatei drehen (absoluter Pfad bleibt), Werkzeug 2.6.2 `--interactive=N`
 im Elternverzeichnis, `docker compose up -d --remove-orphans`, `migrate`
-(„Migration completed", nichts zu tun). Beweise: `health/version` → `2.6.2`,
-`docker exec appwrite sh -c 'apk info -v brotli-libs'` → `brotli-libs-1.2.1-r0`,
-PHP 8.5.12, `php -r 'echo ini_get("memory_limit");'` → `512M`, keepAlive 367
-`false`, `doctor` 🟢 jobs, Mail-OTP über Mailpit, `pnpm -r test`, Playwright
-`apps/comments`.
+(„Migration completed" — V25 läuft **idempotent erneut durch**: dev 306, prod
+253 gelbe „already exists"-Warnungen, 0 Fehler; dev 1,6 s, prod 19,6 s — NICHT
+„nichts zu tun", aber nichts Neues). Beweise (gelaufen 2026-10-27, 20:51–20:56 UTC):
+`health/version` → `2.6.2` · Brotli: `docker exec appwrite sh -c 'apk info -v |
+grep ^brotli-libs'` → `brotli-libs-1.2.1-r0` (**`apk info -v brotli-libs`
+druckt nur die Paket-BESCHREIBUNG**, das ist kein Beweis) · PHP 8.5.12 ·
+**`_APP_MEMORY_LIMIT`: ein nacktes `php -r 'echo ini_get("memory_limit");'`
+zeigt `128M` und beweist NICHTS** — der Wert greift per `ini_set` in
+`app/init.php` Zeile 17 beim Start von http/realtime/worker; Beweis ist die Env
+im Container (`getenv` → `512M`, ebenso in `appwrite-realtime`/`-worker`) plus
+diese Zeile · keepAlive 367 `false` · `doctor` 🟢 jobs (das Werkzeug hat das
+leere `_APP_JOBS_SECRET` ersetzt) · `health`, `health/db` (Console.DB +
+Projects.DB), `/cache`, `/storage`, `/time` je `pass` · Bestände unverändert
+(85 Nutzer, 55 Tabellen) · Realtime 101 · Console 302 · Mail-OTP über Mailpit
+(„OTP for reddit-comments Login", Worker `mail.status success`, Probe-Nutzer
+gelöscht) · `pnpm -r test` 27 Pakete / 7644 grün · Playwright `apps/comments`
+16/16 (ohne `themes-visual`). Zwei Fallen dabei, beide keine Appwrite-Befunde:
+der HAUPT-Checkout hatte ein veraltetes `node_modules` (`vitest` in
+`packages/brand`, `mmdb-lib` in core fehlten ⇒ jede Route 500) — Tests im
+frisch installierten Worktree fahren; und Playwrights `webServer` läuft in die
+120-s-Grenze — Dev-Server vorher selbst starten (`PW_E2E=1 pnpm dev`, Worktree
+braucht den Shiki-Symlink).
 
 **Prod:** Skript [`ops/appwrite-upgrade-2.6.2.sh`](../../ops/appwrite-upgrade-2.6.2.sh)
 (Aufruf im Kopf des Skripts: `scp` + `ssh -t … | tee ~/appwrite-upgrade-2.6.2.log`).
@@ -207,8 +224,9 @@ Trusted-Proxy-Eintrag), zieht Images und Patchdatei OHNE Downtime, dumpt,
 dreht in der Override nur den Patch-Mount, prüft sie mit `docker compose
 config --quiet` (gegen die 2.6.1-Basis jetzt GRÜN zu erwarten — sie kennt
 `appwrite-worker`), ruft das Werkzeug, fährt `up`, `migrate`, Beweise. Fenster:
-nur der Container-Neustart durch das Werkzeug — kein Migrationslauf, also
-unter dem 71-s-Fenster von 2.6.1 zu erwarten. **Danach wie bei 2.6.1:** alle
+nur der Container-Neustart durch das Werkzeug plus der idempotente
+`migrate`-Durchlauf (gemessen 2026-10-27: Werkzeug-Aufruf bis Beweise **81 s**,
+davon `migrate` 19,6 s). **Danach wie bei 2.6.1:** alle
 zwölf Hosts `/api/health ok:true`, SSR-Seite mit Session 200, Realtime 101
 (`--http1.1`), OTP-Mail nach Leerlauf, `node scripts/ops/verify-tls.mjs`,
 `pnpm ops:schema-parity` (Soll unverändert). Rückweg: `.env` +
@@ -445,7 +463,10 @@ sie wieder an.
 | dev (OrbStack, von 2.2.0) | 2026-10-24 ~05:00 | 10,9 MB, 847 Tabellen | „Migration completed", 13 s | Werkzeug 19 s (Abbruch) + `up` + 20 s (Gegenprobe) | relativer Mount-Pfad ⇒ „Failed to start containers"; mit absolutem Pfad 20 s sauber durch; Unit grün, E2E 16/16 funktional grün (themes-visual: Baselines veraltet) |
 | prod (`api.pukalani.app`, von 2.0.0) | 2026-10-24 08:56–08:59 | 22,2 MB, 800 Tabellen | „Migration completed", 16,6 s (gelbe „already exists"-Warnungen je Projekt, 0 Fehler) | Werkzeug 38 s „installed successfully", Werkzeug-Aufruf bis Beweise **71 s** | Skript `ops/appwrite-upgrade-2.6.sh` (Lauf durch die Elternsitzung nach Davids „ja, jetzt"; Log `~/appwrite-upgrade-2.6.log`); Start-Rauschen: 36× „Usage schema is not ready" im stats-usage-Worker in den ersten 4 s, danach 0 |
 | CI (`ci/appwrite/`, 2.6.1 → 2.6.2) | 2026-10-27 | — | — | — | Compose/`ci.env` auf 2.6.2 (drei Image-Tags, `_APP_MEMORY_LIMIT`); Beweis = E2E-Lauf des Zweigs `claude/appwrite-2-6-2-security` |
+| dev (OrbStack, 2.6.1 → 2.6.2) | 2026-10-27 20:51–20:56 | 10,9 MB, 931 Tabellen | „Migration completed", 1,6 s (306 „already exists", 0 Fehler) | Werkzeug 23,1 s, Aufruf bis Beweise 28 s | Dev-Ableitung des Prod-Skripts (nur Pfade, `stat -f`, `sed -i ""`); Brotli 1.2.1-r0, PHP 8.5.12, `_APP_MEMORY_LIMIT` 512M (Env), Console 1.2.108; Unit 7644 grün, E2E 16/16, OTP via Mailpit |
+| prod (`api.pukalani.app`, 2.6.1 → 2.6.2) | 2026-10-27 21:09–21:12 | 22,4 MB, 870 Tabellen | „Migration completed", 19,6 s (253 „already exists", 0 Fehler) | Werkzeug 28,1 s „installed successfully", Aufruf bis Beweise **81 s** | `ops/appwrite-upgrade-2.6.2.sh` per `ssh` (Log `~/appwrite-upgrade-2.6.2.log`); Images/Patch/Dump vorher 1:43 ohne Downtime; danach 0 Worker-Fehler, 0 API-5xx, 0 Realtime-Fehler; elf Hosts `ok:true` (www 301), SSR demo/branding/studio 200, account 302, Realtime 101, `verify-tls` 6/6, `schema-parity` 69/42/41/42, `health/db|cache|storage` je Projekt `pass`; Platte 66 % (vorher 55 %, die alten Images liegen noch) |
 
-2.6.2 auf **dev** und **prod** steht am 2026-10-27 noch aus (braucht Davids
-Terminal: dev-Schritte oben, prod über `ops/appwrite-upgrade-2.6.2.sh`) — die
-Zeilen hier nach dem Lauf mit den gemessenen Werten ergänzen.
+Offen nach dem Prod-Lauf: der **Mail-Beweis** (OTP-Anmeldung auf
+`account.pukalani.app`, erste Instanz-Mail nach Leerlauf) — der Projekt-Key hat
+keinen `users.read`-Scope, ein blinder Token-Aufruf hätte einen Streu-Nutzer
+anlegen können; Davids eigene Anmeldung ist der Beweis.
