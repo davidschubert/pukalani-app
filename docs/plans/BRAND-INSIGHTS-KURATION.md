@@ -340,7 +340,7 @@ Anwalt ist dafür kein Gate.
 | ~~K1~~ | ~~Cluster-Katalog erweitern~~ — **entfällt** (Davids Entscheidung B, 2026-09-09: erst mal so lassen) | — | — |
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
-| ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT 2026-10-25** (Migration `insights-007`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter; Sweep zieht die Zahlen mit). **Offen: Davids Ja zur PROD-Migration.** | — | M |
+| ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
 | **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle | Entscheidung C (§9) · K4 · **Routen-Probe** | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
@@ -675,8 +675,25 @@ selbst macht und von Hand fehlen: `_APP_OPENSSL_KEY_V1` muss gesetzt sein
 Fehlersuche am richtigen Code — der Merksatz dazu: Testdaten müssen dasselbe
 Format erfüllen wie echte, sonst prüft man die Prüfung.
 
-### Was jetzt bei David liegt
+### Auf Prod (2026-10-27, Davids Ja)
 
-**Die Prod-Migration `insights-007`** — vor dem Code-Deploy. Bis sie läuft,
-antwortet die Fundstück-Seite auf Prod mit einer leeren Liste (die Routen sind
-fail-soft), und der Radar zeigt keine Urteile.
+Migration `insights-007` gefahren. Belege:
+
+* `insights_watchlist` auf `branding` — **fünfzehn Spalten `available`**, alle
+  drei Indizes `available` (`uq_video_id` unique, `idx_verdict`,
+  `idx_added_at`), `permissions: []`, `rowSecurity: false`, 0 Zeilen;
+* **Schema-Parität branding 42/42**, keine unbekannten Tabellen;
+* `/api/insights/watchlist`, `/api/insights/channels`, `/api/insights/radar`
+  und `POST …/watchlist/verdict` antworten ohne Konto **401** (nicht 404) —
+  ausgeliefert, Produkt-Gate offen, nur die Berechtigung fehlt.
+
+**Dieselbe Reihenfolge wie bei K3, und wieder nicht die gedachte:** der Code
+war schon live (Build `d9b2919f` trägt K4), als die Migration lief. Es ist
+nichts passiert, weil die Routen für genau diesen Fall fail-soft sind — die
+Fundstück-Seite zeigt dann eine leere Liste, der Radar keine Urteile. Dass es
+zweimal so lief, ist trotzdem ein Befund: solange ein Paket per Merge auf
+`main` sofort deployt, ist „Migration VOR Deploy" nur einzuhalten, wenn die
+Migration vor dem Merge gefahren wird.
+
+**Nicht bewiesen:** die Seite hinter dem Login. Der Migrations-Schlüssel hat
+bewusst keinen `users`-Scope — dieselbe Grenze wie bei K3.

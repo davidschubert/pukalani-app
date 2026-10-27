@@ -118,6 +118,7 @@ services:
     - _APP_DNS_EXTERNAL
     - _APP_ALLOWED_INTERNAL_ADDRESSES
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_USAGE_STATS
     - _APP_USAGE_PASS
     - _APP_CONNECTIONS_DB_USAGE
@@ -310,7 +311,7 @@ services:
       options:
         max-file: "5"
         max-size: 10m
-    image: appwrite/new:1.2.97-self-hosted
+    image: appwrite/new:1.2.108-self-hosted
     restart: unless-stopped
     networks:
     - appwrite
@@ -364,6 +365,7 @@ services:
         condition: service_healthy
     environment:
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_USAGE_STATS
     - _APP_STATS_USAGE_QUEUE_NAME
     - _APP_WORKER_PER_CORE
@@ -442,6 +444,7 @@ services:
     - appwrite
     environment:
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_WORKER_PER_CORE
     - _APP_OPTIONS_ABUSE
     - _APP_OPTIONS_ROUTER_PROTECTION
@@ -501,6 +504,7 @@ services:
     - _APP_DNS_EXTERNAL
     - _APP_ALLOWED_INTERNAL_ADDRESSES
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_USAGE_STATS
     - _APP_USAGE_PASS
     - _APP_CONNECTIONS_DB_USAGE
@@ -661,6 +665,7 @@ services:
         condition: service_healthy
     environment:
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_USAGE_STATS
     - _APP_USAGE_PASS
     - _APP_CONNECTIONS_DB_USAGE
@@ -714,6 +719,7 @@ services:
         condition: service_healthy
     environment:
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_LOGGING_FORMAT
     - _APP_WORKER_PER_CORE
     - _APP_DOMAIN
@@ -763,6 +769,7 @@ services:
         condition: service_healthy
     environment:
     - _APP_ENV
+    - _APP_MEMORY_LIMIT
     - _APP_LOGGING_FORMAT
     - _APP_WORKER_PER_CORE
     - _APP_DOMAIN
@@ -788,7 +795,7 @@ services:
     - _APP_INTERVAL_DOMAIN_VERIFICATION
     - _APP_INTERVAL_CLEANUP_STALE_EXECUTIONS
   appwrite-browser:
-    image: appwrite/browser:0.3.6
+    image: appwrite/browser:0.3.8
     networks:
     - browser
     environment:
@@ -804,7 +811,7 @@ services:
     networks:
     - appwrite
   appwrite-exiftool:
-    image: ghcr.io/appwrite/exiftool:0.1.0
+    image: ghcr.io/appwrite/exiftool:0.1.1
     restart: unless-stopped
     networks:
     - appwrite

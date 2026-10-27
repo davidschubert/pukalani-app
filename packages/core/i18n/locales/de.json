@@ -78,6 +78,11 @@
       "requestNew": "Neuen Link anfordern"
     },
     "networkError": "Server nicht erreichbar — bitte später erneut versuchen.",
+    "botCheck": {
+      "required": "Bitte bestätige, dass du kein Roboter bist.",
+      "failed": "Die Roboter-Prüfung ist fehlgeschlagen, bitte versuche es erneut.",
+      "unavailable": "Die Roboter-Prüfung ist gerade nicht erreichbar, bitte versuche es in ein paar Minuten noch einmal."
+    },
     "rateLimited": "Zu viele Versuche. Warte kurz und versuch es dann noch einmal.",
     "rateLimitedIn": "Zu viele Versuche. Warte noch eine Sekunde und versuch es dann noch einmal. | Zu viele Versuche. Warte noch {n} Sekunden und versuch es dann noch einmal.",
     "verification": {
@@ -147,6 +152,8 @@
     "passwordMin": "Das Passwort muss mindestens 8 Zeichen lang sein",
     "passwordComplexity": "Mind. 1 Großbuchstabe, 1 Kleinbuchstabe, 1 Zahl und 1 Sonderzeichen",
     "nameMin": "Der Name muss mindestens 2 Zeichen lang sein",
+    "nameMax": "Der Name darf höchstens 80 Zeichen lang sein",
+    "nameNoLinks": "Der Name darf keine Links, Adressen oder Zeilenumbrüche enthalten",
     "bioMax": "Die Bio darf höchstens 500 Zeichen lang sein",
     "phoneFormat": "Nummer im internationalen Format eingeben, z.B. +491701234567 (mit + beginnen, max. 15 Ziffern, keine Leerzeichen)",
     "urlInvalid": "Bitte eine gültige URL eingeben",
