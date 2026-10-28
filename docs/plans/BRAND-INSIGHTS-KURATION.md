@@ -797,6 +797,17 @@ einen `google-vertex/eu`-Endpunkt**; `3.5-flash`, `3.8-flash` und `4-argon`
 bieten global/us und AI Studio. Das ist eine Entscheidung für David, keine
 Technikfrage — sie gehört zu BS1 (AVV, Datenschutzerklärung).
 
+**B1 ist noch am selben Tag behoben** (Davids Wahl, Hergang im Archiv unter
+„AI1"): `visionModel: 'google/gemini-3.1-flash-lite'`, und die
+Inspirationslesung läuft über die neue Konstante **`BRAND_PROVIDER_ROUTING_EU`**
+(`BRAND_PROVIDER_ROUTING` + `only: ['google-vertex/eu']`) — Davids
+Entscheidung „nur für Bild und Video pinnen". Dieselbe Konstante nimmt K5 für
+das Videolesen. Bewiesen mit einem echten Lauf der neuen Kombination (Modell +
+EU-Pin + echtes PNG ⇒ 200). Neu dazu: **`pnpm ops:ai-models`**, der jeden
+konfigurierten Slug gegen `/models?zdr=true` prüft (ohne Schlüssel, mit
+Gegenprobe am toten Slug). **Von B2 bleibt der TEXT-Weg offen** — OPEN-ITEMS
+`AI1`.
+
 ### Was daraus für K5 folgt
 
 * **C4 gewinnt** und braucht keine neue Rechtsrunde: hineingereicht wird eine
