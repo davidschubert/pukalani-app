@@ -75,16 +75,47 @@ PUKALANI_HEALTH_DRILL=1 node scripts/ops/verify-health.mjs
 
 ## 3 · Klickliste — nur David (Logins: GitHub, Resend, UptimeRobot)
 
+**Befunde vom 2026-10-28 (Postfach und GitHub gelesen, bevor jemand klickt):**
+
+- **Die ~900 roten Läufe KAMEN als Mail an — jeder einzelne.** GitHub
+  schickt je Lauf „Run failed: Produktions-Wächter" (allein am 23./24.10.
+  55 Mails in einem Thread, alle 30 min). Ein Gmail-Filter legt sie ohne
+  Posteingang im Label „Newsletter/Web Development/GitHub" ab (3 132 Mails,
+  2 150 ungelesen). Die Benachrichtigung war an; sie hieß „Newsletter".
+- **Issue-Mails kommen NICHT an.** Für Issue #57 (Probealarm vom
+  2026-10-28) gibt es keine Mail, und in 60 Tagen keine einzige Issue- oder
+  PR-Mail zu `pukalani.app` — Actions-Mails ja, Issues nein. Der
+  Issue-Alarm (§ 2, Schritt 1) erreicht heute also niemanden per Mail.
+- **UptimeRobot HAT alarmiert.** Am 2026-10-16 um 11:47–11:51 UTC vier
+  DOWN-Mails (demo „HTTP 502", comments, control, portfolio), Entwarnung am
+  2026-10-24 — alle ungelesen im Posteingang. Der HTTP-Monitor auf
+  `api.pukalani.app` blieb die ganze Zeit „UP" (99,95 % in der Woche
+  18.–24.10.): der Gratis-Tarif prüft kein Zertifikat, und ein HTTP-Monitor
+  liest keinen Rumpf — `200` mit `{"ok":false}` ist für ihn gesund. Der
+  Alert Contact „Mail" funktioniert; gelesen hat ihn niemand.
+- **SSL-Ablauf-Erinnerung gibt es nur in bezahlten Tarifen** (die DOWN-Mail
+  vom 24.10. sagt es wörtlich: „Paid plans watch it and warn you 30, 14 and 7
+  days"). Häkchen 4 ist damit eine Tarif-Entscheidung, kein Klick.
+- Bestand laut Wochenbericht (7 Monitore): `api.pukalani.app/v1/health/
+  version` (HTTP), `control.pukalani.app/api/health` (zeigt seit AH-4b auf
+  die Wildcard), `Keyword on comments.pukalani.app/api/health`,
+  `demo.pukalani.app`, `portfolio.pukalani.app`, `help.pukalani.app`,
+  `pukalani.app` (alle `/api/health`). Fehlen: platform, account, admin,
+  pukalani.studio, branding.supply.
+
 Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
 
-- [ ] **GitHub-Benachrichtigungen prüfen** (die eigentliche Lücke der 900
-      roten Läufe): github.com → Settings → Notifications → „Actions":
-      *Failed workflows only* + E-Mail AN; darunter „Participating, @mentions
-      and custom" → E-Mail AN (das deckt die Alarm-Issues; als Owner bist du
-      automatisch Beobachter des Repos — prüfen unter Repo → Watch →
-      *All Activity* oder *Custom → Issues*). Dann im Mail-Postfach nach
-      `notifications@github.com` suchen: landen die Mails in einem Filter?
-      Beweis: ein Probealarm (oben) erzeugt eine Issue-Mail.
+- [ ] **GitHub-Benachrichtigungen reparieren** (die eigentliche Lücke):
+      (a) Gmail → Einstellungen → Filter: den Filter auf
+      `notifications@github.com` so ändern, dass Mails mit Betreff
+      „Run failed" oder „Produktions-Alarm" NICHT archiviert werden
+      (Posteingang + als wichtig markieren); der Rest darf ins Label.
+      (b) github.com → Settings → Notifications → „Subscriptions":
+      *Watching* und *Participating, @mentions and custom* → E-Mail AN
+      (heute kommt keine Issue-Mail); Repo → Watch → *All Activity* oder
+      *Custom → Issues*. Beweis: ein Probealarm (§ 2) erzeugt eine Mail
+      „[davidschubert/pukalani.app] 🔴 Produktions-Alarm (Probealarm) …
+      (Issue #n)" IM POSTEINGANG.
 - [ ] **Resend → Alarm-Mail.** Resend → API Keys → *Create* → Name
       `produktions-waechter`, Permission *Full access* (Sending reicht für die
       Alarm-Mail, aber der Mail-Zähler liest `GET /emails` und braucht Full
@@ -95,32 +126,57 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       Variable (Reiter *Variables*) `PRODUCTION_ALARM_MAIL_TO` = deine
       Adresse. Absender ist `noreply@pukalani.app` (Domain bei Resend
       verifiziert). Beweis: Probealarm ⇒ Mail „🔴 Produktions-Alarm";
-      täglicher Lauf zeigt „Resend: n Mails in 24 h".
+      täglicher Lauf zeigt „Resend: n Mails in 24 h". Im Terminal statt im
+      Browser (Schlüssel nur als Eingabe, nie in Chat, Datei oder Commit):
+
+      ```bash
+      gh secret set PRODUCTION_ALARM_RESEND_KEY --repo davidschubert/pukalani.app
+      gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani.app
+      gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani.app --body "mail@…"
+      ```
 - [ ] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
-      GitHub): je Host *Add New Monitor* → Type *Keyword* → URL
-      `https://<host>/api/health` → Keyword `"ok":true` → Alert when keyword
-      *not exists* → Interval 5 min → Alert Contacts: Mail + App-Push. Hosts:
-      `platform.pukalani.app`, `account.pukalani.app`, `demo.pukalani.app`,
-      `admin.pukalani.app`, `pukalani.studio`, `branding.supply`,
-      `pukalani.app`, `help.pukalani.app`. Für Appwrite:
-      `https://api.pukalani.app/v1/health/version`, Keyword `"version"`.
-      Die alten HTTP-Monitore (`api`, `control`, `comments`, `portfolio`,
-      `demo`, `pukalani.app`) dabei durchsehen: **warum hat der 500 vom
-      Oktober keinen Alarm ausgelöst?** (Monitor pausiert? Alert Contact
-      ohne Bestätigung? `control` zeigt seit AH-4b auf einen 404-Host.)
-- [ ] **UptimeRobot → SSL-Ablauf.** Beim Monitor für `api.pukalani.app`
-      (HTTPS) *SSL expiry reminders* einschalten (30/14/7 Tage). Der
-      TLS-Wächter sieht das auch — aber ein zweiter, fremder Weg ist genau
-      das, was im Oktober fehlte.
-- [ ] **Heartbeat.** UptimeRobot → *Add New Monitor* → Type *Heartbeat*
-      (falls im Tarif; sonst kostenlos https://healthchecks.io, 20 Checks),
-      Name `production-watch`, Interval 60 min, Grace 60 min → die Ping-URL
-      als Secret `PRODUCTION_WATCH_HEARTBEAT_URL` eintragen. Beweis: der
-      nächste grüne Lauf zeigt „Heartbeat gesendet"; ein Probealarm lässt den
-      Ping aus, nach dem Fenster meldet der Monitor.
+      GitHub). Per API mit dem *Main API key* (UptimeRobot → Integrations &
+      API) — erst der Plan, dann das Schreiben:
+
+      ```bash
+      UPTIMEROBOT_API_KEY=… node scripts/ops/uptimerobot-sync.mjs
+      ```
+
+      ```bash
+      UPTIMEROBOT_API_KEY=… node scripts/ops/uptimerobot-sync.mjs --apply --prune
+      ```
+
+      Das Skript zeigt je Alert Contact und Monitor, warum er schweigen
+      könnte (unbestätigt, pausiert, ohne Kontakt, HTTP statt Keyword), legt
+      je Host einen Keyword-Monitor an (Keyword `"ok":true`, Alarm wenn es
+      FEHLT, 5 min, alle aktiven Kontakte; Appwrite: `/v1/health/version`,
+      Keyword `"version"`), biegt vorhandene Keyword-Monitore um und ersetzt
+      HTTP-Monitore; `--prune` löscht, was nicht im Soll steht (`control`,
+      `comments`). Von Hand: je Host *Add New Monitor* → Type *Keyword* →
+      URL `https://<host>/api/health` → Keyword `"ok":true` → Alert when
+      keyword *not exists* → Interval 5 min. Dazu in der UptimeRobot-App
+      einen zweiten Alert Contact *Push* anlegen — Mail allein lag am 16.10.
+      acht Tage ungelesen.
+- [ ] **SSL-Ablauf — Entscheidung.** UptimeRobot warnt vor dem Zertifikat-
+      Ablauf nur im Bezahltarif (Solo). Entweder Tarif buchen und beim
+      Monitor `api.pukalani.app (Appwrite)` *SSL expiry reminders* (30/14/7
+      Tage) einschalten — oder bewusst beim eigenen TLS-Wächter bleiben, der
+      seit MON1 ein Issue öffnet und (nach Häkchen 2) mailt. Zwei Wege
+      bleiben Pflicht; der zweite ist dann die Mail über Resend, nicht
+      UptimeRobot.
+- [ ] **Heartbeat.** https://healthchecks.io (kostenlos, 20 Checks): Check
+      `production-watch`, Period 1 h, Grace 1 h, Mail + App als Kanal; die
+      Ping-URL als Secret `PRODUCTION_WATCH_HEARTBEAT_URL` eintragen
+      (`gh secret set PRODUCTION_WATCH_HEARTBEAT_URL --repo
+      davidschubert/pukalani.app`). UptimeRobot-Heartbeats sind im
+      Gratis-Tarif nicht bestätigt; `uptimerobot-sync.mjs --heartbeat`
+      versucht es und zeigt die Antwort. Beweis: der nächste grüne Lauf zeigt
+      „Heartbeat gesendet"; ein Probealarm lässt den Ping aus, nach dem
+      Fenster meldet der Monitor.
 
 Wenn alle fünf Häkchen stehen: die Zeile MON2 in `docs/OPEN-ITEMS.md` nach
-COMPLETE ziehen.
+COMPLETE ziehen (mit Issue-Nummer des Probealarms, Zeitpunkt der Mail und
+Namen der Monitore als Beweis).
 
 ## 4 · Wenn ein Alarm kommt
 
