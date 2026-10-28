@@ -104,6 +104,15 @@ export async function readCommunitySeo(
   const cached = cache.get(key)
   if (cached !== undefined) return cached
 
+  // KEINE APPWRITE-INSTANZ (help: Endpunkt bewusst leer) ⇒ still „keine
+  // eigene Wahl". Ohne diese Zeile warf `createAdminClient` am leeren
+  // Endpunkt und landete im Warn-Zweig unten — zweimal je Stunde im
+  // pm2-Fehlerlog, sieben Wochen lang (Regel: shared/appwriteConfigured.ts).
+  if (!appwriteConfigured(event)) {
+    cache.set(key, null)
+    return null
+  }
+
   let settings: CommunitySeoSettings | null = null
   try {
     const config = useRuntimeConfig(event)

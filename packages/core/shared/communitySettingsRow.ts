@@ -25,6 +25,10 @@
  *     Spalten-WERT; als ROW-ID lehnt Appwrite einen führenden Unterstrich ab
  *     („Can't start with a leading underscore", Klickbeweis 2026-09-08:
  *     Speichern antwortete 500). Muster also nicht übertragbar.
+ *     EINE INSTANZ OHNE APPWRITE (help, Endpunkt leer) bekommt ebenfalls
+ *     `'instance'` — die LESER steigen dann vor dem Client-Bau aus
+ *     (shared/appwriteConfigured.ts); hier ist das richtig so, denn die
+ *     Row-Id sagt, WEM die Zeile gehörte, nicht, ob es sie geben kann.
  *  3. **Kontroll-Host der Pool-App** (kein Mandant, aber Mandantenfähigkeit an)
  *     ⇒ `null`. Dort gibt es keine Community, deren Einstellung jemand wählen
  *     dürfte; Leser liefern leer, Schreib-Routen antworten 404. Ohne diese
