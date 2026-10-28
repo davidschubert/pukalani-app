@@ -78,6 +78,11 @@
       "requestNew": "Request a new link"
     },
     "networkError": "Server unreachable — please try again later.",
+    "botCheck": {
+      "required": "Please confirm that you are not a robot.",
+      "failed": "The robot check failed, please try again.",
+      "unavailable": "The robot check is unavailable right now, please try again in a few minutes."
+    },
     "rateLimited": "Too many attempts. Wait a moment, then try again.",
     "rateLimitedIn": "Too many attempts. Wait one more second, then try again. | Too many attempts. Wait {n} more seconds, then try again.",
     "verification": {
@@ -147,6 +152,8 @@
     "passwordMin": "The password must be at least 8 characters long",
     "passwordComplexity": "At least 1 uppercase, 1 lowercase, 1 number and 1 special character",
     "nameMin": "The name must be at least 2 characters long",
+    "nameMax": "The name must be at most 80 characters long",
+    "nameNoLinks": "The name must not contain links, addresses or line breaks",
     "bioMax": "The bio must be at most 500 characters long",
     "phoneFormat": "Enter the number in international format, e.g. +14155552671 (start with +, max 15 digits, no spaces)",
     "urlInvalid": "Please enter a valid URL",

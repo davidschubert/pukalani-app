@@ -167,6 +167,21 @@ describe('POST /api/brand/intro-call — der gute Weg', () => {
     expect(mails[0]?.text).toContain(VALID.message)
   })
 
+  it('zitiert ein Anliegen MIT Link nicht zurück und grüßt einen Namen mit Link nicht (kein Relais)', async () => {
+    body = {
+      ...VALID,
+      name: 'Etsy User! Sold https://a29.at/9hdF2k',
+      message: 'Your item has been sold, see https://a29.at/9hdF2k',
+    }
+    await handler(makeEvent())
+    const text = mails[0]?.text ?? ''
+    expect(text).not.toContain('a29.at')
+    expect(text).toContain('Hallo,')
+    expect(text).toContain('Eure Nachricht liegt uns vor.')
+    // Die Benachrichtigung an uns selbst trägt weiterhin alles.
+    expect(mails.length).toBe(1)
+  })
+
   it('antwortet auf Englisch, wenn die Seite Englisch war', async () => {
     body = { ...VALID, locale: 'en' }
     await handler(makeEvent())

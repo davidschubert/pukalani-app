@@ -8,8 +8,12 @@ Vollständiges Konzept: docs/CONCEPT.md
 ## Stack
 - Nuxt 4.5.x (Composition API, SSR), Nuxt UI 4.10.x, Pinia 4, Tailwind CSS 4
 - node-appwrite 29 (Server SDK) + appwrite 27 (Web SDK, NUR Realtime) — Appwrite self-hosted
-  **2.6.1** (dev + CI seit 2026-10-23, prod seit 2026-10-24 — PHP 8.5.12;
-  MariaDB bleibt. Sprung auf 2.6.1 (PHP 8.5.12, CVE-2026-109618/-9):
+  **2.6.2** (dev, CI und prod seit 2026-10-27 — PHP 8.5.12, Brotli 1.2.1-r0
+  gegen CVE-2026-111497, `_APP_MEMORY_LIMIT` 512M; MariaDB bleibt; Runbook-
+  Abschnitt „2.6.1 → 2.6.2", Skript `ops/appwrite-upgrade-2.6.2.sh`). Der
+  Wert von `_APP_MEMORY_LIMIT` greift per `ini_set` in `app/init.php`, ein
+  nacktes `php -r 'echo ini_get(...)'` zeigt 128M und beweist nichts.
+  Sprung auf 2.6.1 (PHP 8.5.12, CVE-2026-109618/-9):
   docs/runbooks/APPWRITE-2-6-UPGRADE.md — Client-IP jetzt „rechtester nicht
   vertrauter Hop" (`_APP_TRUSTED_PROXIES` braucht die Nuxt-Server-IP), das
   Werkzeug lädt die Override MIT und braucht darin ABSOLUTE Mount-Pfade. 2.0→2.2

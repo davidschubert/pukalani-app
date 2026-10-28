@@ -30,7 +30,67 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### Code-Login mit Zweitfaktor endete in einer halben Session ✅ 2026-10-24
+### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
+
+**Ausgangslage:** Resend meldete am 2026-10-26 das Tageslimit; im Dashboard
+standen Verifizierungs-Mails „Account Verification for Account" von
+noreply@pukalani.app an Empfänger wie „Etsy User! Your item has been
+successfully sold through our marketplace. https://a29.at/9hdF2k
+<opfer@gmail.com>". Hergang (aus `_10_users`, `_10_tokens` und dem
+App-Audit `audit_logs` des Projekts `account` rekonstruiert): ein Skript
+rief `POST /api/auth/signup` der Pool-App im 20-s-Takt auf — `name` = der
+Spamtext, `email` = eine fremde Adresse — und meldete sich danach per
+`POST /api/auth/logout` wieder ab. Appwrite setzt den Namen in Kopf und Gruß
+der Verifizierungs-Mail, unser Resend-Konto war damit ein Spam-Relais: 15
+Probeläufe am 2026-10-25 (drei IPs, darunter ein verifiziertes Testkonto und
+ein Versuch über `PUT /api/auth/profile` + `POST /api/auth/verification`),
+209 Mails in der Nacht zum 2026-10-27 von einer IP (138.124.33.231). Der
+Takt lag knapp unter unserem Limit von 5/min je IP — das einzige Fenster
+der Middleware war eine Minute. Appwrites eigene Abuse-Limits greifen für
+Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
+
+**Gebaut (Core, zwei Pakete + Aufräumen):**
+1. **Anzeigename ist kein Nachrichtenfeld** — pure Regel
+   `packages/core/shared/displayName.ts` (`displayNameProblem`: Link/Domain,
+   `@`, Steuer- und Bidi-Zeichen, mehr als 80 Zeichen), EINE Zod-Fabrik
+   `displayNameField()` in `schemas/auth.ts` für Registrierung, OTP-
+   Registrierung UND Profil (`schemas/profile.ts` — der zweite Hebel aus den
+   Probeläufen). Beweis `tests/displayName.test.ts`.
+2. **Mail-Routen haben ein Stundenfenster und eine Notbremse** — für die vier
+   Routen in `ALWAYS_LIMITED` (signup, otp, recovery, verification) zusätzlich
+   20 je Stunde und IP und 60 je Stunde über ALLE IPs je Route
+   (`auth.mail_route_breaker` einmal je Fenster im Log). Beweis
+   `tests/rateLimitMailRoutes.test.ts`: die 21. Registrierung im 20-s-Takt
+   bekommt 429, die 61. über 60 IPs ebenfalls.
+3. **Cloudflare Turnstile als Bot-Beweis** an signup/otp/recovery
+   (`server/utils/turnstile.ts`, `TurnstileWidget.vue`, Gate = beide Env-
+   Variablen gesetzt, fail-closed bei Cloudflare-Ausfall). Ohne Schlüssel
+   exakt das Verhalten von vorher; scharf schalten ist `TS1` in OPEN-ITEMS
+   (Davids Cloudflare-Login). Rezept: `docs/runbooks/DEPLOYMENT.md`.
+4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
+   `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
+   läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
+   `users.read` hat).
+
+**Bewusst nicht gebaut:** Honeypot-Feld und „unter 4 Sekunden abgelehnt" —
+der Angreifer sprach die API direkt an, mit 20 s Abstand; beides träfe nur
+Formular-Bots und kostete echte Nutzer. Eine strenge Same-Origin-Pflicht an
+den Mail-Routen (Anfragen ohne `Origin`/`Sec-Fetch-Site` abweisen) ebenfalls
+nicht: der Header ist frei setzbar, die bestehende `csrfOriginCheck`-
+Middleware weist Browser-Cross-Site schon ab, und die Verify-Skripte rufen
+die Routen ohne Browser.
+
+**Gelernt:** (1) Jede Route, die eine Mail mit NUTZERTEXT auslöst, braucht
+drei Dinge: eine Textregel (kein Link, keine Adresse), ein Fenster länger
+als eine Minute und einen Deckel über alle IPs — ein Limit je IP allein wird
+mit Adressrotation oder Geduld umgangen, und eine Minute ist für einen
+Mail-Versand kein Fenster. (2) Die Nuxt-Seite ist bei 200ern blind
+(`access_log off` je ploi-Site, pm2-out leer); die Wahrheit steht in der
+Appwrite-Datenbank — `_<projekt>_tokens` trägt IP und User-Agent des
+AUSLÖSERS (hier unser eigener Server mit dem Node-SDK, also der Weg über
+unsere Route), das App-Audit `audit_logs` die IP des Menschen dahinter.
+(3) Resends „To"-Spalte zeigt den Anzeigenamen — wer dort Text sieht, der
+nicht wie ein Name aussieht, sucht den Namen, nicht die Adresse.
 
 **Ausgangslage (prod, api.pukalani.app, Appwrite 2.6.1, beim Mail-/Standort-
 Beweis nach dem Upgrade gefunden):** Davids Konto hat `mfa=1` mit
@@ -134,6 +194,50 @@ war die Lücke über `X-Forwarded-Host`: diesen Header prüft nginx NICHT, und
 (`xForwardedHost: true`). Der App-Beweis läuft deshalb über den Header, den
 der Proxy nicht anfasst — und unterscheidet am `content-type` bzw. am Rumpf,
 WER geantwortet hat.
+
+---
+
+### AW262: Appwrite 2.6.2 (Security-Release) auf dev und prod — Brotli CVE-2026-111497 geschlossen ✅ 2026-10-27
+
+Anlass: 2.6.2 erschien am 2026-10-24 fünf Stunden nach dem Prod-Sprung auf
+2.6.1 — `appwrite/base` 2.2.7 mit `brotli-libs` 1.2.1-r0 (Out-of-bounds-Write
+im Decoder; Appwrites ausgehender HTTP-Client dekodiert `br`), dazu Härtung an
+Keys/Realtime/Storage, neu `_APP_MEMORY_LIMIT` (512M), `_APP_JOBS_SECRET` darf
+nicht leer sein, **kein Schema**. CI seit 2026-10-27 (Cloud-Sitzung), dev und
+prod am selben Tag von Davids Terminal (Auftrag „erst dev, dann prod").
+
+Beweise: dev (OrbStack, 20:51–20:56 UTC) Werkzeug 23,1 s, `migrate` 1,6 s,
+`health/version` 2.6.2, Brotli 1.2.1-r0, PHP 8.5.12, keepAlive 367 `false`,
+`doctor` 🟢 jobs, Health/DB/Cache/Storage/Time `pass`, Mail-OTP über Mailpit
+`success`, `pnpm -r test` 27 Pakete / 7644 grün, Playwright `apps/comments`
+16/16. Prod (`ops/appwrite-upgrade-2.6.2.sh` per ssh, 21:09–21:12 UTC):
+Dump 22,4 MB / 870 Tabellen, Werkzeug 28,1 s, `migrate` 19,6 s (253 „already
+exists", 0 Fehler), **Aufruf bis Beweise 81 s**; danach 0 Worker-/Realtime-
+Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
+(`--http1.1`), `verify-tls` 6/6, `schema-parity` 69/42/41/42, Health je
+Projekt `pass`. Mail-Beweis nach Leerlauf (2026-10-28 00:39 UTC): Probe-Nutzer
+per Gast-OTP-Token an `delivered@resend.dev`, Worker `mail.template otp ·
+mail.status success` in 1,67 s, Nutzer per Runtime-Key der Site wieder gelöscht
+(204, Gegenprobe 404).
+Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+
+**Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":
+V25 läuft idempotent erneut durch und schreibt hunderte gelbe „already
+exists"-Zeilen — die Zahl zählen, auf 0 echte Fehler prüfen, nicht erschrecken.
+(2) Zwei Beweis-Zeilen des vorbereiteten Skripts bewiesen nichts: `apk info -v
+PAKET` druckt die Beschreibung (richtig: `apk info -v | grep ^brotli-libs`),
+und `php -r 'echo ini_get("memory_limit")'` zeigt die CLI-ini (128M), weil
+Appwrite den Wert per `ini_set` in `app/init.php` setzt — Beweis ist die Env im
+Container. Ein Beweis, der auf dev das Falsche zeigt, wird auf dev repariert,
+bevor prod läuft. (3) Backticks in einer doppelt gequoteten `echo`-Zeile sind
+Befehls-Substitution — die „Erklärung" `\`apk info -v <pkg>\`` warf auf prod
+einen Syntaxfehler ins Log (harmlos, aber hässlich). (4) Der HAUPT-Checkout
+hat ein veraltetes `node_modules` (`vitest` in brand, `mmdb-lib` in core
+fehlen ⇒ jede Dev-Route 500): Beweise im frisch installierten Worktree fahren,
+Dev-Server vor Playwright selbst starten. (5) Die Migrations-Keys haben
+keinen `users.*`-Scope; der Mail-Beweis per Probe-Nutzer läuft mit dem
+RUNTIME-Key der Site auf dem App-Server (per `ssh`, Key bleibt dort), die
+`userId` selbst gewählt, Adresse `delivered@resend.dev`.
 
 ---
 
@@ -11815,3 +11919,70 @@ frühes Messen einen Zustand zeigte, den es nie gab). (4) **Mailpit ist der einz
 Beweis für einen Double-Opt-in:** „200 zurückbekommen" sagt nichts darüber, ob die Mail den
 richtigen Link, die richtige Sprache und den richtigen Satz trägt — und „keine zweite Mail" ist
 überhaupt nur am Postfach zu sehen.
+
+---
+
+## BI1 I5b — Brand Insights: den Newsletter versenden (2026-10-27)
+
+**Was gebaut wurde** (vier Commits — Core eigens; gebaut von einem Opus-Lauf nach Auftrag,
+geprüft und in einem Punkt korrigiert im Hauptloop): die VERSAND-Hälfte von Paket I5. Damit
+ist I5 komplett.
+
+- **Ein Beitrag ist eine Ausgabe (Davids Entscheidung 2026-10-27).** Kein zweiter Editor, keine
+  freie Ausgabe: am freigegebenen Beitrag steht ein Knopf, Betreff und Text entstehen aus Titel,
+  Vorspann und Adresse. Begründung: ein zweiter Text, der dasselbe sagt, veraltet getrennt vom
+  ersten — und das Versprechen lautet wörtlich „wir schreiben, wenn ein neues Stück erscheint".
+- **Nur von Hand.** Kein Auslöser an der Freigabe, kein Sweep. §3.3 sagt es („ohne Davids
+  Zeichen erscheint auch in einer Woche nichts"), und ein Versand an echte Menschen, den ein
+  Zustandswechsel auslöst, ist der Unfall, den niemand zurückholt. Der Knopf fragt und nennt
+  dabei die Zahl — beim Fortsetzen die AUSSTEHENDEN, nicht die gesamten.
+- **Stapelweise und fortsetzbar**, und das ist der Kern des Pakets: `insights_sends`
+  (Migration insights-008, `uq_post_id` unique) hält einen Cursor auf die zuletzt bediente
+  Zeilen-Id; fortgesetzt wird dahinter. Eine kaputte Adresse zählt als `failed` und hält nichts
+  auf; ein fehlender Mailer bricht ab, ohne den Cursor vorzurücken — dann stimmt etwas am
+  Server, nicht an einer Adresse.
+- **Versendet wird nur, was draussen eine Seite hat:** nicht nur `published`/`updated`, sondern
+  auch der Format-Riegel und das Markenprofil ohne Marken-Zeile ⇒ `no_public_address`. Ohne das
+  führte eine Ausgabe über ein gesperrtes Duell fünfhundert Klicks in ein 404.
+- **Core (eigener Commit):** `sendMail()` reicht Kopfzeilen durch — gebraucht für
+  `List-Unsubscribe` je Empfänger. **Kein** One-Click nach RFC 8058: das verlangt einen
+  Endpunkt, der ein form-kodiertes POST ohne Token im Körper verträgt; eine Zusage, die der
+  Server nicht einlöst, wäre schlechter als keine.
+- **Reiner Text**, wie jede Mail dieses Repos. Eine HTML-Vorlage wäre eine zweite Darstellung
+  desselben Inhalts samt Bildpfaden und Dark-Mode-Fragen — ein eigenes Vorhaben.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree auf 3030, lokale Dev-Instanz, **Mailpit**,
+Admin-Session per `users.createSession`): 63 Abonnenten gesät, davon drei, die nichts bekommen
+dürfen (nie bestätigt · abgemeldet · vom Sweep geleert). Die Zustands-Route zählte **60**, nicht
+63. Stapel 1: 50 verschickt, 10 offen. Stapel 2: 10 verschickt, fertig. Im Postfach **60 Mails
+an 60 verschiedene Adressen, keine einzige doppelt** — damit ist der Cursor-Pfad
+(`Query.greaterThan('$id', …)` + `orderAsc('$id')`) gegen echtes Appwrite 2.6.1 bewiesen, was
+kein Unit-Test leisten kann. 30 Betreffzeilen deutsch, 30 englisch (Sprache des EMPFÄNGERS).
+Die drei Ausgeschlossenen bekamen nichts. Der dritte Klick auf denselben Beitrag: **409
+`already_sent`**, Postfach blieb bei 60. Im Rohtext einer Mail steht `List-Unsubscribe` mit dem
+Token DIESES Empfängers; zwei Mails tragen verschiedene Token. Der Abmelde-Link aus einer echten
+Newsletter-Mail wirkt (200). Riegel zu ⇒ Versand-Route 404. Danach Riegel zurück, Zeilen und
+Postfach geräumt, `.env` gelöscht.
+
+**Ein Befund aus dem Klick-Beweis — und Davids Entscheidung dazu.** Mit EINEM Einleitungs-Feld
+stand der deutsche Satz auch über den englischen Mails, während der Rest englisch war. Das ist
+dieselbe Wunde, die §3.2 auf der Seite vermeidet. David hat **zwei Felder** gewählt (`introDe`,
+`introEn`): jeder bekommt seine Einleitung ODER KEINE, nie die der anderen Sprache — und die
+Einleitung folgt der FASSUNG, die wirklich rausgeht, nicht der angeforderten. Migration 008
+bekam dafür zwei Spalten statt einer; sie wurde VOR ihrem ersten Prod-Lauf geändert, deshalb
+keine 009 hinterher. Nachgemessen am Postfach: nur `introDe` gefüllt ⇒ zwei deutsche Leser
+sehen den Satz, zwei englische bekommen eine saubere englische Mail ohne ihn.
+
+**Wächter:** insights 444 Tests · core 1710 · branding 32 · Lint insights/branding/scripts
+(core eine Alt-Warnung) · typecheck branding exit 0 · check:i18n-keys 312 · check:manifests 26/9
+· check:bilanz · check:single-copy · check:doc-links.
+
+**Gelernt:** (1) **Ein Stapel-Versand ist erst bewiesen, wenn er einen Stapel ÜBERSCHREITET.**
+Mit 50 Empfängern wäre jeder Test grün gewesen, ohne dass der Cursor je angefasst wird — genau
+der Pfad, an dem ein Fehler Menschen doppelt anschreibt. Die Zahl der Testdaten gehört zur
+Testidee, nicht zum Zufall. (2) **Zweisprachigkeit endet nicht an der Seite.** Der Beitrag ist
+zweisprachig, die Mail folgt dem Empfänger — ein einzelnes freies Textfeld daneben bricht die
+Regel still, und zwar nur bei der Hälfte der Leser, also genau dort, wo man es beim Testen mit
+sich selbst nie sieht. (3) **Mailpits JSON-Feld `Headers` ist nicht die Wahrheit:** die
+`List-Unsubscribe`-Zeile fehlte dort und stand trotzdem im Umschlag — der Beweis für eine
+Kopfzeile ist `/api/v1/message/<id>/raw`, nicht die aufbereitete Ansicht.

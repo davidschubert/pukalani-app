@@ -100,15 +100,16 @@ Sag mir, sobald das steht — dann gehen wir die Schritte gemeinsam durch.
      App-Server.
 5. **SMTP** in der Appwrite-Installation (`.env` der Instanz, nicht in der
    Console) konfigurieren, sonst keine Auth-Mails.
-   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.1, je Version eine Patchdatei —
-   aktuell `patches/registers-2.6.1-keepalive-off.php`):** der Mail-Versand verliert mit dem
+   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.2, je Version eine Patchdatei —
+   dev und prod seit 2026-10-27 `patches/registers-2.6.2-keepalive-off.php`):**
+   der Mail-Versand verliert mit dem
    hartkodierten SMTP-`keepAlive: true` still die ERSTE Mail nach einer
    Leerlaufphase (PHPMailer-`false` wird verschluckt, Worker loggt trotzdem
    „success") — auf beiden Instanzen mountet `docker-compose.override.yml`
    deshalb eine gepatchte `registers.php` (`keepAlive: false`) in den Worker.
    **Seit 2.2 heißt der Dienst `appwrite-worker`** (ein Container für ALLE
    Warteschlangen, vorher `appwrite-worker-mails`); die Datei ist in 2.2 neu
-   geschnitten, die zu ändernde Zeile ist in 2.6.1 die 367. Der Mount in der
+   geschnitten, die zu ändernde Zeile ist in 2.6.1 und 2.6.2 die 367. Der Mount in der
    Override braucht seit 2.5 einen ABSOLUTEN Host-Pfad (das Upgrade-Werkzeug
    lädt die Override mit und löst `./` im eigenen Container auf). Details/
    Beweis: PHASE-17-PRODUCTION.md Block 7, Ablauf: APPWRITE-2-6-UPGRADE.md.
@@ -206,7 +207,21 @@ NUXT_PUBLIC_APP_URL=https://comments.pukalani.app
 NUXT_PUBLIC_I18N_BASE_URL=https://comments.pukalani.app
 NUXT_SMTP_HOST=smtp.resend.com                      # + PORT/USER/PASS/FROM
 NUXT_REDIS_URL=redis://127.0.0.1:6379               # geteilter Rate-Limit-Store
+NUXT_TURNSTILE_SECRET=<Cloudflare-Turnstile-Secret> # server-only, Bot-Beweis an signup/otp/recovery
+NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Secret setzen
 ```
+> **Turnstile (seit 2026-10-27, Vorfall „Resend-Spam über die Registrierung"):**
+> beide Variablen gesetzt = Registrierung, Code-Login und Passwort-Zurücksetzen
+> verlangen einen Cloudflare-Turnstile-Token, den der Server bei Cloudflare
+> prüft (fail-closed: ist Cloudflare nicht erreichbar, antwortet die Route 503
+> und das Formular sagt „gerade nicht möglich"). Beide leer = aus, exakt das
+> Verhalten von vorher (Dev, CI, E2E). NUR EINE gesetzt = Fehlkonfiguration,
+> der Server schreibt sie beim Start ins Log (`auth.turnstile_misconfigured`);
+> ein Secret ohne Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt
+> ein nutzloses Widget. Das Widget legt David im Cloudflare-Dashboard an
+> (Turnstile → Add widget, Hostnames: `*.pukalani.app`, `branding.supply`,
+> Modus „Managed"); ein Widget kann mehrere Hostnames tragen, also EIN
+> Schlüsselpaar für alle Pukalani-Sites.
 > **Rate-Limit-Store (seit 2026-07-23):** mit `NUXT_REDIS_URL` zählen alle
 > Instanzen/Cluster-Worker einer App ihre Rate-Limits GETEILT in Redis
 > (läuft auf app-prod lokal auf 6379, bei der Server-Einrichtung

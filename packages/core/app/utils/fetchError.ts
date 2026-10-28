@@ -1,3 +1,5 @@
+import { isBotCheckReason, type BotCheckReason } from '../../shared/turnstile'
+
 /**
  * Netzwerkfehler (Server nicht erreichbar) von echten API-Antworten
  * unterscheiden — ofetch setzt response nur, wenn der Server geantwortet hat.
@@ -36,4 +38,15 @@ export function rateLimitRetrySeconds(error: unknown): number | null {
   const seconds = Number.parseInt(raw, 10)
   if (!Number.isFinite(seconds) || seconds <= 0) return null
   return seconds
+}
+
+/**
+ * Bot-Beweis abgelehnt (Turnstile, Vorfall 2026-10-27)? Liefert den Grund aus
+ * dem Envelope (`reason`, gesetzt von server/utils/turnstile.ts), sonst
+ * `null`. Bewusst NUR über den Grund, nie über den Status: 403 heißt an
+ * denselben Routen auch „Registrierung zu", 503 auch „OTP fehlt der Instanz".
+ */
+export function botCheckReason(error: unknown): BotCheckReason | null {
+  const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
+  return isBotCheckReason(reason) ? reason : null
 }
