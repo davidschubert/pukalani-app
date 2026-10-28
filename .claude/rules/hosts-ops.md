@@ -107,11 +107,22 @@ paths:
   ploi-Site `pukalani.app` — das überschreibt das Kunden-Wildcard. Neu
   anfordern nur auf der Site `platform.pukalani.app` mit `*.pukalani.app`.
   Wächter `node scripts/ops/verify-tls.mjs` (alle 30 min + nach jedem Deploy).
-- DREI WÄCHTER, EIN WORKFLOW (`.github/workflows/production-watch.yml`, seit
-  2026-08-20): Job `tls` alle 30 min (`verify-tls.mjs`, braucht weder ssh noch
-  Secret), Job `server` täglich 04:17 UTC mit `verify-site-env.mjs` +
-  `verify-stale-keys.mjs --strict`. Alle drei decken dieselbe blinde Stelle ab —
-  die Konfiguration ist falsch, aber nichts wird von selbst rot. GitHub kennt
+- SECHS WÄCHTER, EIN WORKFLOW, EIN ALARMWEG (`.github/workflows/
+  production-watch.yml`, seit 2026-08-20; Alarmweg MON1 seit 2026-10-28): Job
+  `tls` alle 30 min (`verify-tls.mjs` + `verify-health.mjs` — ok:true auf
+  jedem Host, Appwrite-Version; weder ssh noch Secret), Job `server` täglich
+  04:17 UTC mit `verify-site-env.mjs`, `verify-stale-keys.mjs --strict`,
+  `verify-instance-admins.mjs`, `verify-mail-breaker.mjs` (Notbremse im
+  pm2-Log, Resend-Zähler mit Secret). Alle decken dieselbe blinde Stelle ab —
+  die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
+  LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
+  Läufe rot, api.pukalani.app lief ab, niemand sah es): der Job `alarm` macht
+  daraus ein Issue `produktions-alarm` (offen = Alarm, grün schließt es),
+  eine Mail bei jedem Wechsel (Secret) und einen Heartbeat bei grün (Secret).
+  Probealarm `gh workflow run production-watch.yml -f alarm_drill=true` —
+  monatlich und nach JEDER Workflow-Änderung; Runbook + Klickliste
+  docs/runbooks/PRODUKTIONS-ALARM.md. Appwrite-Health NIE über `doctor`
+  (sendet SMTP-Testmail), nur `/v1/health/version`. GitHub kennt
   keinen Zeitplan JE JOB (jeder cron löst den ganzen Workflow aus), die Takte
   trennt daher `github.event.schedule`. ZWEI SICHERUNGEN dagegen, dass eine
   cron-Änderung den täglichen Teil lautlos abschaltet: der Schritt „Zeitplan

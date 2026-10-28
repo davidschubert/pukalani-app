@@ -65,6 +65,7 @@ gepflegt).
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
 | [runbooks/GOOGLE-LOGIN.md](runbooks/GOOGLE-LOGIN.md) | „Anmelden mit Google" scharfschalten (Google-Console, Appwrite-Console, die zwei Schalter) |
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
+| [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
 
 Die Häkchen in Runbooks sind **echt** — sie werden pro Durchlauf abgehakt und
