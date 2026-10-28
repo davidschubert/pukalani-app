@@ -144,6 +144,9 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
   })
 
   let brief
+  // Ohne Startwert: der `catch` wirft, also ist die Zahl an jeder Lesestelle
+  // gesetzt — eine 0 davor wäre toter Code (`no-useless-assignment`).
+  let briefRawChars: number
   try {
     const answer = await aiVideoJson<unknown>(
       event,
@@ -167,6 +170,12 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
         timeoutMs: 180_000,
       },
     )
+    // WIE LANG DIE ANTWORT WAR, bevor das Schema klemmt. Ohne diese Zahl
+    // wüsste niemand, wie oft das Modell über den Deckel schreibt — und genau
+    // das ist die Frage, die man an den PROMPT stellen muss, nicht an die
+    // Route (Kopf von `clampInsightsBrief`).
+    const answered = (answer as { brief?: unknown } | null | undefined)?.brief
+    briefRawChars = typeof answered === 'string' ? answered.length : 0
     brief = insightsVideoBriefSchema.parse(answer)
   }
   catch (error) {
@@ -245,6 +254,8 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
     model: videoConfig.model,
     promptVersion: INSIGHTS_BRIEF_PROMPT_VERSION,
     durationMs: Date.now() - startedAt,
+    briefChars: post.brief.length,
+    briefRawChars,
   })
 
   return { post: toInsightsPost(created), id: created.$id, item }

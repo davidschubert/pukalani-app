@@ -341,7 +341,7 @@ Anwalt ist dafür kein Gate.
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
-| ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`) | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
+| ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`). **Nachtrag 2026-10-28:** ein Brief über 2.000 Zeichen warf den bezahlten Lauf weg (2 von 6 gemessenen Läufen) — das Schema klemmt jetzt an einer Grenze statt abzulehnen | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
@@ -962,3 +962,36 @@ gemacht.
 (zweimal erlebt). Und: die Fundstück-Tabelle scrollt waagerecht — der
 Brief-Knopf liegt rechts ausserhalb des Sichtfelds, `scrollLeft` setzen,
 bevor man klickt.
+
+### Nachtrag (2026-10-28) — ein zu langer Brief warf den bezahlten Lauf weg
+
+Der Klick-Beweis oben lief durch, weil sein Brief 1.763 Zeichen lang war.
+Darüber hätte er nicht durchlaufen: `insightsVideoBriefSchema` klemmte
+`brief` mit `z.string().max(2000)`, die Route parst innerhalb eines `try`,
+dessen `catch` nur loggt und weiterwirft — und zu dem Zeitpunkt ist das Video
+gelesen und der Lauf **bezahlt**. Eine Ablehnung dort schützt nichts.
+
+Sechs echte Läufe gegen genau diesen Prompt (`gemini-3.1-flash-lite` auf
+`google-vertex/eu`, Videos von 8 bis 51 Minuten) ergaben: 1.575 · 1.673 ·
+1.848 · 1.897 · **2.027** · **2.387** Zeichen. **Zwei von sechs** über dem
+Deckel, und die Länge hängt NICHT an der des Videos (die 2.387 kamen aus acht
+Minuten, die 1.897 aus 45). Die vier Treffer unter dem Deckel liegen bei 92
+bis 95 Prozent davon — das Modell zielt auf die Zahl, die im Prompt steht.
+
+Jetzt klemmen alle drei Felder des Schemas, keines lehnt ab.
+`clampInsightsBrief` schneidet am spätesten sauberen Schluss (späteres von
+Zeilen- und Satzende, dann Wort, dann hart) und räumt eine abschliessende
+Zeile weg, die nur ankündigt — in der Gegenprobe endete ein Brief sonst auf
+`### OFFENE FRAGEN` ohne Fragen. Gegenprobe mit denselben zwei Videos:
+2.027 ⇒ 1.895, 2.387 ⇒ 1.905, beide auf einem Satzzeichen.
+
+**Gelernt:** eine Validierung NACH einem bezahlten Modell-Aufruf darf nicht
+ablehnen, sondern muss klemmen — streng ist VOR dem Aufruf (K5 prüft dort
+sechs Stufen), danach wird nur noch zugeschnitten. Und ein Deckel im Prompt
+ist eine Bitte, keine Grenze: wer danach hart schneidet, bekommt abgebrochene
+Wörter, wer ablehnt, verliert den Lauf.
+
+**Nebenbefund:** drei von zehn probierten YouTube-Videos antworteten mit
+`502` / `PERMISSION_DENIED` vom Anbieter — binnen 1,2 Sekunden und ohne
+Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar; ein `502` auf
+diesem Weg heisst also oft „dieses Video nicht", nicht „Anbieter kaputt".

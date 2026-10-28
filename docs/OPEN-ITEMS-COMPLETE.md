@@ -30,6 +30,79 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
+
+**Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die
+Antwort des Modells mit einem Zod-Schema: `brief: z.string().max(2000)`,
+`title: z.string().max(200)`. Die Route parste damit INNERHALB eines `try`,
+dessen `catch` nur loggt und weiterwirft. Zu dem Zeitpunkt ist das Video
+gelesen und der Lauf bezahlt — eine Ablehnung dort schützt nichts, sie wirft
+nur Geld weg und liefert dem Menschen davor einen 500er ohne Erklärung. Kein
+`safeParse`, keine Wiederholung, keine Kürzung.
+
+**Wie oft das passiert — gemessen, nicht geschätzt.** Sechs echte Läufe gegen
+genau diesen Prompt (`insights-b-1`, `gemini-3.1-flash-lite`,
+`only: ['google-vertex/eu']`, ZDR + `data_collection: deny`), Videos von 8 bis
+51 Minuten:
+
+| Video | Länge | Brief | Schema |
+|---|---|---|---|
+| `MT1n9FMXgmc` | kurz | 1.575 | OK |
+| `t_Zqh7EflhI` | 9 min | 1.673 | OK |
+| `EYXgfHNq6mo` | 11 min | 1.848 | OK |
+| `FFPaVFBEIhI` | 45 min | 1.897 | OK |
+| `WrehiIId62U` | 51 min | **2.027** | **wirft** (`brief: too_big`) |
+| `LEVGLXBzghc` | 8 min | **2.387** | **wirft** |
+
+**Zwei von sechs** über dem Deckel, also rund jeder dritte Lauf verloren — bei
+8 bis 10 Cent je Lauf. Und die Länge hängt NICHT an der des Videos: die 2.387
+Zeichen kamen aus acht Minuten, die 1.897 aus 45. Das Modell zielt auf den
+Deckel, den der Prompt ihm nennt, und trifft ihn mal von unten, mal von oben.
+Die vier „OK"-Werte liegen bei 92 bis 95 Prozent des Deckels — es war also
+nie eine Frage, OB das kippt.
+
+**Abhilfe.** Alle drei Felder des Schemas KLEMMEN jetzt, keines lehnt ab.
+`clampInsightsBrief` (pur, in `shared/insightsVideoBrief.ts`) schneidet am
+spätesten sauberen Schluss vor dem Deckel: es gewinnt das SPÄTERE von Zeilen-
+und Satzende (damit so viel wie möglich vom bezahlten Brief steht), sonst das
+Wort, sonst hart. Danach fällt eine abschliessende Zeile weg, die nur
+ankündigt — eine Markdown-Überschrift oder ein leerer Aufzählungs-Marker.
+Der `title` wird hart auf 200 zugeschnitten; er ist eine Beschriftung, und
+`insightsBriefTitle` schnitt ihn ohnehin schon auf dasselbe Mass.
+
+**Beweis (Gegenprobe mit denselben zwei Videos, echter Modell-Lauf):**
+2.027 ⇒ 1.895 Zeichen, Schluss „… in der Markenarbeit?"; 2.387 ⇒ 1.905,
+Schluss „… unterschätzen." Beide `parse` OK, beide auf einem Satzzeichen.
+Dazu zwei Zahlen im `completed`-Log (`briefChars`, `briefRawChars`): nur ihr
+Unterschied zeigt, dass der PROMPT seinen eigenen Deckel reisst — das ist eine
+Sache des Prompts, nicht der Route, und ohne die Zahlen sähe man es nie.
+Grün: 484 insights-Tests, `pnpm -r lint`, `lint:scripts`, `pnpm -r typecheck`,
+alle fünf Wächter.
+
+**Gelernt:** **Eine Validierung NACH einem bezahlten Modell-Aufruf darf nicht
+ablehnen, sondern muss klemmen.** Ein `z.string().max()` liest sich wie eine
+Sicherung und ist an dieser Stelle das Gegenteil: der Deckel ist UNSER
+Spaltenmass, kein Formfehler der Antwort. Die Regel gilt für jeden künftigen
+KI-Pfad dieses Monorepos — vor dem Aufruf streng ablehnen (K5 macht das in
+sechs Stufen, bis hin zur Frage, ob die Quelle überhaupt ablegbar ist),
+danach nur noch zuschneiden.
+
+**Zweitens gelernt:** **ein Deckel im Prompt ist eine Bitte, keine Grenze.**
+Wer einem Modell „höchstens N Zeichen" sagt, bekommt Antworten, die um N
+herum streuen — vier von sechs bei 92–95 %, zwei darüber. Wer danach hart auf
+N schneidet, bekommt abgebrochene Wörter (am 2026-10-27 im Klick-Beweis
+wörtlich „… den Markteintr"); wer ablehnt, verliert den Lauf. Nur ein Schnitt
+an einer Grenze ist beides nicht.
+
+**Drittens, als Nebenbefund:** drei der zehn probierten YouTube-Videos
+antworteten mit `502` / `PERMISSION_DENIED` vom Anbieter, binnen 1,2 Sekunden
+und ohne Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar. Das ist
+heute kein Schaden (die Route gibt den Fehler ehrlich weiter, bezahlt ist
+nichts), aber es heisst: ein `502` auf diesem Weg bedeutet nicht
+zwangsläufig „Anbieter kaputt", sondern oft „dieses Video nicht".
+
+---
+
 ### LOG1 — `seo_read_failed` im pm2-Log: der Schwall war das Zertifikat, das Dauerrauschen war `help` ohne Appwrite ✅ 2026-10-28
 
 **Ausgangslage (Nebenbefund beim Bau von MON1):** im pm2-Fehlerlog auf
