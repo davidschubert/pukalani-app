@@ -161,6 +161,16 @@ export function insightsTopicLabel(key: string): string {
   return INSIGHTS_TOPICS.find(topic => topic.key === key)?.label ?? key
 }
 
+/**
+ * WIE LANG EIN BRIEF SEIN DARF — ein Auftrag, kein Manuskript.
+ *
+ * Die Zahl stand bis BI2 K5 in `insightsPrompts.ts`, weil sie nur den Prompt
+ * zuschnitt. Seit K5 ist der Brief eine SPALTE (`brief`), und damit gehört
+ * ihre Grenze in den Datenvertrag: der Prompt darf nie mehr bestellen, als
+ * die Zeile tragen kann.
+ */
+export const INSIGHTS_BRIEF_MAX = 2000
+
 // ── 2. Quellen ─────────────────────────────────────────────────────────────
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD')
@@ -320,6 +330,25 @@ const insightsPostFields = {
   reviewedAt: z.string().max(32).default(''),
   reviewedBy: z.string().max(64).default(''),
   noteInternal: z.string().max(500).default(''),
+  /**
+   * DER BRIEF — der Auftrag an die Redaktion, aus dem der Entwurf entsteht
+   * (BI2 K5).
+   *
+   * Bis K5 war er FLÜCHTIG: ein Textfeld im Editor, das mit dem Lauf in die
+   * Entwurfs-Route reiste und danach weg war. Für einen Brief, den ein Mensch
+   * tippt, ging das; für einen, den ein bezahlter Video-Lauf erzeugt, nicht —
+   * ein Neuladen hätte fünf Cent und die Vorarbeit gekostet. Er gehört
+   * ausserdem zur HERKUNFT des Textes: „warum steht das so im Artikel?" ist
+   * nur beantwortbar, wenn der Auftrag noch da ist.
+   *
+   * Er bleibt EINGABE des Menschen (also im Formular änderbar) — die drei
+   * Felder darunter sind es nicht.
+   */
+  brief: z.string().max(INSIGHTS_BRIEF_MAX).default(''),
+  briefModel: z.string().max(120).default(''),
+  briefPromptVersion: z.string().max(64).default(''),
+  /** Aus WELCHEM Video der Brief kam (elfstellige YouTube-Id) — leer = getippt. */
+  briefVideoId: z.string().max(32).default(''),
   draftModel: z.string().max(120).default(''),
   draftPromptVersion: z.string().max(64).default(''),
 }
@@ -399,7 +428,10 @@ export type InsightsPost = z.infer<typeof insightsPostSchema>
  * `state` setzt der Zustands-Umschalter (mit den sechs Prüfregeln davor),
  * `publishedAt`/`reviewedAt`/`reviewedBy` die Freigabe, `translatedAt`/
  * `translationModel`/`translationPromptVersion` der Übersetzen-Lauf,
- * `draftModel`/`draftPromptVersion` der Entwurfs-Lauf, `readingMinutes` das
+ * `draftModel`/`draftPromptVersion` der Entwurfs-Lauf, `briefModel`/
+ * `briefPromptVersion`/`briefVideoId` der Brief-Lauf (K5 — der BRIEF selbst
+ * gehört dem Menschen und bleibt änderbar, seine HERKUNFT nicht),
+ * `readingMinutes` das
  * Speichern (§9.3: „beim Speichern, nicht beim Lesen") und `slugHistory` die
  * Umbenennung (`insightsSlugHistoryPush`).
  *
@@ -426,6 +458,9 @@ export const INSIGHTS_SERVER_OWNED_FIELDS = [
   'translationPromptVersion',
   'draftModel',
   'draftPromptVersion',
+  'briefModel',
+  'briefPromptVersion',
+  'briefVideoId',
   'slugHistory',
   'readingMinutes',
 ] as const
@@ -441,6 +476,9 @@ export const insightsPostEditSchema = z.object(insightsPostFields).omit({
   translationPromptVersion: true,
   draftModel: true,
   draftPromptVersion: true,
+  briefModel: true,
+  briefPromptVersion: true,
+  briefVideoId: true,
   slugHistory: true,
   readingMinutes: true,
 }).superRefine((post, ctx) => {

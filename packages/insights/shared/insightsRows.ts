@@ -156,6 +156,11 @@ export type InsightsPostRow = Models.Row & {
   reviewedAt?: string | null
   reviewedBy?: string
   noteInternal?: string
+  /** Der Auftrag, aus dem der Entwurf entstand (K5) — MEDIUMTEXT. */
+  brief?: string
+  briefModel?: string
+  briefPromptVersion?: string
+  briefVideoId?: string
   draftModel?: string
   draftPromptVersion?: string
 }
@@ -397,6 +402,10 @@ export function toInsightsPost(row: InsightsPostRow): InsightsPost {
     reviewedAt: row.reviewedAt ?? '',
     reviewedBy: row.reviewedBy ?? '',
     noteInternal: row.noteInternal ?? '',
+    brief: row.brief ?? '',
+    briefModel: row.briefModel ?? '',
+    briefPromptVersion: row.briefPromptVersion ?? '',
+    briefVideoId: row.briefVideoId ?? '',
     draftModel: row.draftModel ?? '',
     draftPromptVersion: row.draftPromptVersion ?? '',
   }
@@ -437,6 +446,10 @@ export function fromInsightsPost(post: InsightsPost): InsightsPostRowData {
     reviewedAt: post.reviewedAt || null,
     reviewedBy: post.reviewedBy,
     noteInternal: post.noteInternal,
+    brief: post.brief,
+    briefModel: post.briefModel,
+    briefPromptVersion: post.briefPromptVersion,
+    briefVideoId: post.briefVideoId,
     draftModel: post.draftModel,
     draftPromptVersion: post.draftPromptVersion,
   }
@@ -759,6 +772,8 @@ export type InsightsWatchRow = Models.Row & {
   note: string
   topic: string
   addedAt: string | null
+  /** Der Beitrag, dessen Brief aus diesem Video entstand (K5). */
+  briefPostId?: string
   available: boolean
   refreshedAt: string | null
   title: string
@@ -790,6 +805,7 @@ export function toInsightsWatchItem(row: InsightsWatchRow): InsightsWatchItem {
     note: row.note ?? '',
     topic: oneOf<InsightsTopicKey>(INSIGHTS_TOPIC_KEYS, row.topic, INSIGHTS_RADAR_TOPIC_FALLBACK),
     addedAt: row.addedAt ?? row.$createdAt,
+    briefPostId: row.briefPostId ?? '',
     available: row.available !== false,
     refreshedAt: row.refreshedAt ?? '',
     title: row.title ?? '',
@@ -811,6 +827,7 @@ export function fromInsightsWatchItem(item: InsightsWatchItem): InsightsWatchRow
     note: item.note.slice(0, INSIGHTS_WATCH_NOTE_MAX),
     topic: item.topic,
     addedAt: item.addedAt || null,
+    briefPostId: item.briefPostId,
     available: item.available,
     refreshedAt: item.refreshedAt || null,
     title: item.title.slice(0, 300),

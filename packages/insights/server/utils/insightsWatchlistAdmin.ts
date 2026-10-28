@@ -290,6 +290,7 @@ export async function fetchInsightsWatchVideo(
   return {
     videoId: video.id,
     topic: insightsRadarClassify(video.snippet.title, fallbackTopic).topic,
+    briefPostId: '',
     available: true,
     refreshedAt: new Date().toISOString(),
     title: video.snippet.title,

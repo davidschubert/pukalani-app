@@ -158,6 +158,22 @@ export default defineAppConfig({
        * vier Bilder.
        */
       imageModel: 'google/gemini-2.5-flash-image',
+      /**
+       * VIDEOS LESEN (BI2 K5, „Brief aus diesem Video") — dasselbe Modell wie
+       * die Bildlesung, und das ist der Grund, warum es dieses ist.
+       *
+       * Die Routen-Probe vom 2026-10-27 (Plan BRAND-INSIGHTS-KURATION §13)
+       * hat gemessen: `gemini-3.1-flash-lite` liest eine YouTube-Adresse
+       * unter unserer ZDR-Klemme, Bild UND Ton, auf `google-vertex/eu`
+       * gepinnt — und es ist das EINZIGE video-fähige ZDR-Gemini mit einem
+       * EU-Endpunkt. Ein 25-Minuten-Video kostet rund fünf Cent, eine
+       * Folgefrage im Cache-Fenster unter einem.
+       *
+       * Der Weg dorthin läuft über `BRAND_PROVIDER_ROUTING_EU` — der
+       * Transport klemmt `data_collection: 'deny'`, der Konsument legt `zdr`,
+       * `allow_fallbacks: false` und den Ort darauf.
+       */
+      videoModel: 'google/gemini-3.1-flash-lite',
     },
     /**
      * DER NAME, DEN DER BESUCHER SIEHT.

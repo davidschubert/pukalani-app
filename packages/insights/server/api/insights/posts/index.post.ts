@@ -68,6 +68,12 @@ export default defineEventHandler(async (event): Promise<InsightsPostCreatedResp
     reviewedAt: '',
     reviewedBy: '',
     noteInternal: '',
+    // Ein getippter Brief beginnt leer; `briefVideoId` leer heisst „nicht aus
+    // einem Video" (der Weg aus K5 legt den Beitrag selbst an).
+    brief: '',
+    briefModel: '',
+    briefPromptVersion: '',
+    briefVideoId: '',
     draftModel: '',
     draftPromptVersion: '',
   }

@@ -81,6 +81,20 @@ export interface InsightsWatchItem {
   topic: InsightsTopicKey
   /** Wann du es hinzugefügt hast (ISO) — die Vorgabe-Sortierung der Liste. */
   addedAt: string
+  /**
+   * Der Beitrag, dessen Brief aus diesem Video entstand (K5) — leer heisst
+   * „noch keiner".
+   *
+   * Er steht HIER und nicht nur am Beitrag, und zwar für genau eine Frage,
+   * die diese Liste beantworten muss: „habe ich das schon verarbeitet?". Ohne
+   * die Spalte wäre der Knopf „Brief aus diesem Video" bei jedem Besuch
+   * wieder unbenutzt — und ein zweiter Klick kostet echtes Geld (ein
+   * Video-Lauf ist der teuerste Weg dieses Monorepos).
+   *
+   * Er gehört damit zur dauerhaften, menschlichen Hälfte der Zeile: ein
+   * Zahlen-Nachtrag fasst ihn nie an.
+   */
+  briefPostId: string
 
   /** Ist das Video beim letzten Abruf noch da gewesen? */
   available: boolean
@@ -286,6 +300,7 @@ export function insightsWatchFromRadar(
     note: '',
     topic: video.topic,
     addedAt,
+    briefPostId: '',
     available: true,
     refreshedAt: addedAt,
     title: video.title,

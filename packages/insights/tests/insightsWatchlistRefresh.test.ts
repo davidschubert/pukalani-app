@@ -99,7 +99,7 @@ describe('refreshInsightsWatchlist', () => {
     expect(first.publishedAt).toBe('2026-10-01T00:00:00.000Z')
   })
 
-  it('FASST URTEIL, NOTIZ, CLUSTER UND `addedAt` NIE AN — die tragende Zusage', async () => {
+  it('FASST URTEIL, NOTIZ, CLUSTER, `addedAt` UND DEN BRIEF-VERWEIS NIE AN — die tragende Zusage', async () => {
     rows = [row('aaaaaaaaaaa'), row('bbbbbbbbbbb')]
     await refreshInsightsWatchlist(tablesDB, 'main', 'k', 'https://yt.test/v3', fakeApi(), NOW)
 
@@ -109,6 +109,9 @@ describe('refreshInsightsWatchlist', () => {
       expect(update.data).not.toHaveProperty('note')
       expect(update.data).not.toHaveProperty('topic')
       expect(update.data).not.toHaveProperty('addedAt')
+      // Seit K5 gehört `briefPostId` zur menschlichen Hälfte: ein Lauf, der
+      // ihn leerte, liesse denselben Brief ein zweites Mal bezahlen.
+      expect(update.data).not.toHaveProperty('briefPostId')
     }
   })
 

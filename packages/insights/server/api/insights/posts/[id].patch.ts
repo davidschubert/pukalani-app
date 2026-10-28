@@ -73,6 +73,12 @@ export default defineEventHandler(async (event): Promise<InsightsPostSavedRespon
     translationPromptVersion: current.translationPromptVersion,
     draftModel: current.draftModel,
     draftPromptVersion: current.draftPromptVersion,
+    // Der BRIEF kommt aus dem Körper (ihn ändert der Mensch), seine HERKUNFT
+    // nicht: welches Modell, welche Prompt-Fassung, welches Video — das hat
+    // der Lauf gesetzt (K5).
+    briefModel: current.briefModel,
+    briefPromptVersion: current.briefPromptVersion,
+    briefVideoId: current.briefVideoId,
     readingMinutes: insightsReadingMinutes(insightsBodyOf(body, body.baseLocale)),
   }
 

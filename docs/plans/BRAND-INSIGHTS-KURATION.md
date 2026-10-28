@@ -341,7 +341,7 @@ Anwalt ist dafür kein Gate.
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
-| **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle; **Routen-Probe gefahren (§13): C4 läuft unter unserer ZDR-Klemme, ~5 Cent je Video** — es fehlt der Video-Transport im Core und ein `videoModel` in der Config | Entscheidung C (§13) · K4 | S–M |
+| ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Prod-Migration steht aus** | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
@@ -822,3 +822,122 @@ Gegenprobe am toten Slug). **Von B2 bleibt der TEXT-Weg offen** — OPEN-ITEMS
   `getEffectiveAiConfig` (`claude-haiku-4.5` sieht keine Videos). K5 braucht
   einen eigenen Schlüssel in der Config — Vorschlag: `pukalani.ai.videoModel`,
   Core-Default LEER (= aus), wie beim Vision-Modell.
+
+---
+
+## 14. K5 gebaut (2026-10-27) — „Brief aus diesem Video"
+
+Aus einem Fundstück wird ein BEITRAG im Zustand `draft`, dessen Brief ein
+Modell geschrieben hat, nachdem es das Video gesehen hat — Bild und Ton. Der
+Artikel entsteht daraus NICHT: dafür gibt es den bestehenden Entwurfs-Lauf
+(`insights-d-1`), und dazwischen sitzt ein Mensch. Zwei Läufe statt einem,
+mit Absicht.
+
+### Der Weg, in einem Satz
+`/dashboard/insights/finds` → Knopf **„Erzeugen"** in der neuen Spalte
+*Brief* → Rückfrage → das Modell sieht das Video → Beitrag angelegt (Brief,
+Cluster, Video als Quelle) → der Knopf wird zu **„Zum Beitrag"** → im Editor
+steht der Brief im Feld „Brief an die KI", bereit für „Entwurf schreiben".
+
+### Was gebaut wurde
+
+* **Core: ein vierter Transport** `packages/core/server/utils/aiVideo.ts`
+  (neben `aiComplete`, `aiVision`, `aiImage`). Gate ist der Modell-NAME
+  (`pukalani.ai.videoModel`, Core-Default LEER), `data_collection: 'deny'`
+  klemmt der Transport fest, `zdr`/`only`/`allowFallbacks` verschärft der
+  Konsument. **Nur Adressen, keine Bytes:** `data:`-URIs fallen VOR dem
+  Netzaufruf durch — ein base64-Video wären hunderte Megabyte in einem
+  Request-Rumpf. 23 Tests.
+* **`apps/branding`:** `videoModel: 'google/gemini-3.1-flash-lite'` — dasselbe
+  Modell wie die Bildlesung, und damit dieselbe EU-gepinnte Route.
+* **Prompt `insights-b-1`** (`shared/insightsVideoBrief.ts`, pur, 30 Tests):
+  Aufbau in fünf Teilen (Worum es geht · die These · Belege mit Zeitmarken ·
+  Gegenposition · offene Fragen), Cluster-Vorschlag aus dem Katalog,
+  Arbeitstitel.
+* **Migration `insights-009`:** `brief` (MEDIUMTEXT), `briefModel`,
+  `briefPromptVersion`, `briefVideoId` an `insights_posts`; `briefPostId` an
+  `insights_watchlist`.
+* **Route** `POST /api/insights/watchlist/<videoId>/brief`, **UI** (Spalte +
+  Knopf + Rückfrage + Toast mit Link), **i18n** de/en.
+* Der **Brief ist jetzt eine Spalte** statt eines flüchtigen Formularfelds.
+  Er ist bezahlt und er ist Arbeit; ein Neuladen darf ihn nicht wegwerfen.
+
+### Die Entscheidungen, die drinstecken
+
+**KEINE WÖRTLICHEN ZITATE, SONDERN ZEITMARKEN.** Das ist die wichtigste und
+sie folgt aus unserer eigenen Mechanik: `insightsReviewIssues()` prüft ein
+Zitat, indem es die Quelle ABRUFT und den Satz im Text sucht. Der Text einer
+YouTube-Seite ist Titel und Beschreibung — ein gesprochener Satz steht dort
+nie. Ein Video-Zitat wäre also entweder ein blockiertes Gate
+(`quote_not_grounded`) oder, schlimmer, eine unprüfbare Behauptung darüber,
+was jemand gesagt hat. Der Prompt verlangt deshalb Paraphrasen mit Zeitmarke,
+und **die Quelle trägt `quote: ''`**. Eine Zeitmarke kann jeder nachsehen; ein
+Zitat, das niemand findet, ist kein Beleg.
+
+**DIE REIHENFOLGE DER PRÜFUNGEN IST DIE EIGENTLICHE ARBEIT.** Ein Video-Lauf
+ist der teuerste Weg dieses Monorepos. Jede Ablehnung, die nach dem
+Anbieter-Aufruf käme, wäre bezahlt. Also: Fundstück da? → schon ein Brief? →
+Video noch abrufbar? → als Quelle ablegbar (Kanal + Datum)? → Video-Modell
+konfiguriert? → Kill-Switch und Drossel → **erst jetzt** der Anbieter.
+
+**DER VERWEIS ÜBERLEBT EINEN FEHLSCHLAG.** Schlägt das abschliessende Update
+von `briefPostId` fehl, bleibt der BEITRAG stehen. Ihn wegzuwerfen wäre die
+schlechtere Wahl: der Brief ist bezahlt. Ein zweiter Lauf legt dann einen
+zweiten Entwurf an — lästig, aber sichtbar.
+
+**EIN GELÖSCHTER BEITRAG GIBT DAS FUNDSTÜCK FREI.** Zeigt `briefPostId` ins
+Leere, räumt die Route den Verweis und macht weiter. Sonst wäre ein Fundstück
+nach einem Aufräumen für immer blockiert.
+
+**DER BRIEF IST INTERN.** Er steht in `INSIGHTS_POST_INTERNAL_FIELDS` und
+kommt damit in keiner öffentlichen Antwort vor — er enthält ausdrücklich das,
+was NICHT veröffentlicht wurde.
+
+### Beweis (lokale Wegwerf-Instanz + echter Lauf)
+
+* `insights-009` zweimal gegen eine echte Appwrite gefahren: beim ersten Mal
+  fünf Spalten angelegt, beim zweiten **fünfmal „existiert bereits"**.
+* **Klick-Beweis:** Fundstück angelegt, in der Liste auf „Erzeugen" geklickt.
+  Ergebnis in der Datenbank: Beitrag `state: draft`, Adresse aus dem
+  Arbeitstitel (`pdfs-in-der-google-suche-warum-sie-kein-seo-geheimtipp-sind`),
+  `briefModel: google/gemini-3.1-flash-lite`, `briefPromptVersion:
+  insights-b-1`, `briefVideoId: wJukFIpZybY`, `topics: ["seo-geo"]`, Quelle
+  `{kind: youtube, publisher: "Google Search Central", date: "2026-10-13",
+  quote: ""}`, Brief 1.763 Zeichen. Die Fundstück-Zeile trägt `briefPostId`,
+  der Knopf heisst dort jetzt „Zum Beitrag", und im Editor steht der Brief im
+  Feld „Brief an die KI".
+* **Backstops live:** zweiter Lauf auf dasselbe Video ⇒ **409 `brief_exists`**
+  (kein zweites Mal bezahlt), unbekanntes Video ⇒ **404 `video_not_found`**.
+* **Kosten gemessen:** 0,0508 $ für ein 25-Minuten-Video (135.575
+  Prompt-Tokens: 96.960 Video + 37.888 Audio).
+
+### Gelernt
+
+**EIN SCHEMA MIT LAUTER VORGABEN NIMMT KEINEN FEHLENDEN RUMPF.** Der Knopf
+schickt keinen Body; `z.object({…default()})` nimmt ein Objekt OHNE Schlüssel,
+aber nicht `undefined` — der erste Klick endete mit **400 „Validation Error"**,
+bevor irgendetwas passierte. Typecheck, Lint und alle Tests waren grün; beide
+sahen nur, dass es ein Schema GIBT. Richtig ist ein `z.preprocess(value =>
+value ?? {}, …)`, und die Regel liegt jetzt im Vertrag (`insightsBriefRequestSchema`)
+mit vier Tests — **eine Route, deren Vorgaben nur greifen, wenn man
+ausdrücklich `{}` schickt, hat keine Vorgaben.** Gefunden hat das nur der
+Klick.
+
+**EIN EXIT-CODE AUS EINER PIPELINE GEHÖRT DER LETZTEN STUFE.** `pnpm
+typecheck | tail -6` meldete „exit 0" — das war `tail`. Dadurch ging ein
+Typfehler auf `main` (eine Nachbarsitzung fand ihn). Seither `set -o pipefail`
+oder Logdatei + eigener Statusabruf.
+
+**EIN `as const`-VERTRAG UND EIN MUTABLER TYP VERTRAGEN SICH NICHT.**
+`BRAND_PROVIDER_ROUTING_EU` liess sich nicht an `AiProviderRouting` übergeben
+(`readonly ["google-vertex/eu"]` gegen `string[]`). Geweitet wurde der
+CORE-TYP (`only?: readonly string[]`), nicht der Vertrag entschärft: die
+Konstante reist per Spread, und ein Spread kopiert die REFERENZ — ein
+`as string[]` hätte die Allowlist von jeder Aufrufstelle aus veränderbar
+gemacht.
+
+**WERKZEUG:** nach `users.create` auf einer frischen Appwrite erst
+`PATCH /users/<id>/password` setzen, sonst antwortet die Anmeldung 401
+(zweimal erlebt). Und: die Fundstück-Tabelle scrollt waagerecht — der
+Brief-Knopf liegt rechts ausserhalb des Sichtfelds, `scrollLeft` setzen,
+bevor man klickt.

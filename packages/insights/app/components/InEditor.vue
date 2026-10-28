@@ -17,12 +17,12 @@ import {
   insightsDuelFactSchema,
   insightsIsPublic,
   insightsMethodologyLinked,
+  INSIGHTS_BRIEF_MAX,
   insightsRankingSchema,
   insightsReadingMinutes,
   insightsReviewIssues,
 } from '../../shared/insightsPost'
 import {
-  INSIGHTS_BRIEF_MAX,
   INSIGHTS_DRAFT_WORDS_DEFAULT,
   INSIGHTS_DRAFT_WORDS_MAX,
   INSIGHTS_DRAFT_WORDS_MIN,
@@ -346,12 +346,21 @@ const showFacts = computed(() => draft.format === 'duel' || draft.format === 'ra
 
 // ── KI-Entwurf ─────────────────────────────────────────────────────────────
 
-const brief = ref('')
+/**
+ * DER BRIEF STEHT AM ENTWURF, NICHT IN EINEM EIGENEN `ref` (seit BI2 K5).
+ *
+ * Vorher war er ein lokales Feld: getippt, mit dem Lauf abgeschickt, beim
+ * Neuladen weg. Seit K5 ist er eine SPALTE, weil ein Brief AUS EINEM VIDEO
+ * bezahlt ist (rund fünf Cent) und weil ein Mensch ihn schärft, bevor der
+ * Entwurf läuft. Als Teil von `draft` wandert er damit durch denselben
+ * Speicher-Weg wie alles andere im Formular — und „geändert?" rechnet ihn
+ * mit, statt ihn stillschweigend zu verlieren.
+ */
 const targetWords = ref(INSIGHTS_DRAFT_WORDS_DEFAULT)
 
 function runDraft(): void {
-  if (!brief.value.trim()) return
-  emit('draft', { brief: brief.value.trim(), targetWords: targetWords.value })
+  if (!draft.brief.trim()) return
+  emit('draft', { brief: draft.brief.trim(), targetWords: targetWords.value })
 }
 
 // ── Prüfregeln ─────────────────────────────────────────────────────────────
@@ -462,6 +471,7 @@ function editPayload(): InsightsPostEdit {
     facts: draft.facts.map(fact => ({ ...fact })),
     ranking: draft.ranking,
     noteInternal: draft.noteInternal,
+    brief: draft.brief,
   }
 }
 
@@ -484,6 +494,7 @@ const pristinePayload = computed(() => JSON.stringify({
   facts: props.post.facts,
   ranking: props.post.ranking,
   noteInternal: props.post.noteInternal,
+  brief: props.post.brief,
 }))
 
 const dirty = computed(() => JSON.stringify(editPayload()) !== pristinePayload.value)
@@ -668,7 +679,7 @@ function confirmSend(): void {
         <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.editor.draftHint') }}</p>
         <UFormField class="mt-3" :label="t('insights.editor.draftBrief')">
           <UTextarea
-            v-model="brief" :rows="4" class="w-full"
+            v-model="draft.brief" :rows="4" class="w-full"
             :maxlength="INSIGHTS_BRIEF_MAX"
             :placeholder="t('insights.editor.draftBriefPlaceholder')"
           />
@@ -683,7 +694,7 @@ function confirmSend(): void {
           </UFormField>
           <UButton
             :label="t('insights.editor.draftRun')" icon="i-ph-sparkle"
-            :loading="drafting" :disabled="!brief.trim()"
+            :loading="drafting" :disabled="!draft.brief.trim()"
             class="rounded-full" @click="runDraft"
           />
         </div>

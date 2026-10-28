@@ -80,6 +80,7 @@ export default defineEventHandler(async (event): Promise<InsightsWatchVerdictRes
         likes: 0,
         commentCount: 0,
         publishedAt: '',
+        briefPostId: '',
       }
 
   await createInsightsWatchItem(event, item)

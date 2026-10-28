@@ -648,6 +648,23 @@ export interface InsightsWatchSavedResponse {
   item: InsightsWatchItem
 }
 
+/**
+ * DER BRIEF AUS EINEM VIDEO (`POST /api/insights/watchlist/<videoId>/brief`,
+ * BI2 K5).
+ *
+ * Beides reist zurück, und beides braucht die Seite: der angelegte BEITRAG
+ * (dorthin führt der nächste Klick) und das geänderte FUNDSTÜCK (seine Zeile
+ * trägt jetzt `briefPostId`, der Knopf wird zum Link). Eine Antwort mit nur
+ * einer der beiden Hälften hiesse, dass die Liste nach dem Lauf eine Lüge
+ * zeigt, bis jemand neu lädt.
+ */
+export interface InsightsBriefResponse {
+  post: InsightsPost
+  /** Die Zeilen-Id des neuen Beitrags — die Adresse im Dashboard. */
+  id: string
+  item: InsightsWatchItem
+}
+
 /** Weggenommen (`DELETE /api/insights/watchlist/<videoId>`). */
 export interface InsightsWatchDeletedResponse {
   ok: true
