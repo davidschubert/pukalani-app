@@ -227,6 +227,22 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > … --update-env` (kein Build nötig, auch der `NUXT_PUBLIC_`-Site-Key kommt
 > zur Laufzeit aus der Env). Neue Site mit Konten ⇒ beide Variablen mitgeben;
 > neue Root-Domain ⇒ als Hostname am Widget nachtragen.
+> **NEU LADEN NICHT VERGESSEN:** Nitro liest zur Laufzeit keine `.env`, die
+> Ecosystem-Config hebt sie nur beim `pm2 startOrReload … --update-env` in
+> den Prozess — und ein Deploy ohne App-Änderung überspringt. Nach dem
+> Eintragen (ploi-Panel oder direkt in der Site-`.env`) also einmal auf app-prod:
+> ```bash
+> for s in platform.pukalani.app:platform admin.pukalani.app:control portfolio.pukalani.app:portfolio branding.supply:branding; do
+>   pm2 startOrReload /home/ploi/${s%%:*}/ops/ecosystem-${s##*:}.config.cjs --update-env; done; pm2 save
+> ```
+> **Beweis:** `pnpm ops:turnstile` (scripts/ops/verify-turnstile.mjs) fragt
+> jede der vier Sites: `POST /api/auth/recovery` ohne Token ⇒ 403
+> `bot_check_required` (Server prüft) UND `/forgot-password` trägt
+> `data-turnstile` (Site-Key kam an) — recovery statt signup, weil die Route
+> für eine unbekannte Adresse im AUS-Fall weder Konto noch Mail erzeugt.
+> Dazu im pm2-Log der Site KEIN `auth.turnstile_misconfigured_at_boot`, und
+> eine echte Registrierung im Browser (die meisten sehen das Widget gar
+> nicht, `interaction-only`).
 > **Rate-Limit-Store (seit 2026-07-23):** mit `NUXT_REDIS_URL` zählen alle
 > Instanzen/Cluster-Worker einer App ihre Rate-Limits GETEILT in Redis
 > (läuft auf app-prod lokal auf 6379, bei der Server-Einrichtung
