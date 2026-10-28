@@ -12078,3 +12078,81 @@ Regel still, und zwar nur bei der Hälfte der Leser, also genau dort, wo man es 
 sich selbst nie sieht. (3) **Mailpits JSON-Feld `Headers` ist nicht die Wahrheit:** die
 `List-Unsubscribe`-Zeile fehlte dort und stand trotzdem im Umschlag — der Beweis für eine
 Kopfzeile ist `/api/v1/message/<id>/raw`, nicht die aufbereitete Ansicht.
+
+---
+
+## MON1 — Wächter gegen stille Prod-Ausfälle: Erreichbarkeit, Mail-Missbrauch und ein Alarmweg, der geprobt ist (2026-10-28)
+
+**Ausgangslage:** zwei stille Vorfälle im Oktober. Das Zertifikat von
+`api.pukalani.app` war vom 2026-10-16 bis 2026-10-24 abgelaufen, alle Apps
+antworteten acht Tage `ok:false` — kein Alarm (Eintrag „Vorfall appwrite-prod —
+TLS-Zertifikat", 2026-10-24). Danach missbrauchte ein Angreifer die
+Registrierung als Mail-Relais, bemerkt nur über Resends eigene Limit-Mail
+(Eintrag „Resend-Spam", 2026-10-27). Auftrag: kein Prod-Ausfall bleibt mehr
+acht Tage still.
+
+**Befund, der die Aufgabe umgedreht hat:** `api.pukalani.app` stand SEIT DEM
+ERSTEN TAG (2026-07-26) im TLS-Wächter, Schwelle 14 Tage. Der Wächter hat den
+Vorfall also GESEHEN: `gh run list` zeigt vom 2026-10-05 („läuft in 11 Tagen
+ab") bis zum 2026-10-24 **jeden Lauf von `production-watch.yml` rot — rund
+900 Stück, alle 30 Minuten**, dazu der TLS-Schritt am Ende jedes Deploys.
+Niemand hat es bemerkt. Die Lücke war nie der Wächter, sondern der Alarmweg:
+ein roter Lauf in GitHub Actions ist nur eine Farbe, solange die
+Benachrichtigung niemanden erreicht.
+
+**Gebaut (Branch `claude/mystifying-torvalds-833071`):**
+1. `scripts/ops/verify-health.mjs` — alle 30 min im Job `tls`: jeder
+   Produktions-Host muss `200` + `ok:true` liefern (Appwrite: `/v1/health/
+   version` mit `version`; NIE `doctor`, der schickt SMTP-Testmails). Ein
+   zweiter Versuch nach 15 s filtert Schluckauf. `PUKALANI_HEALTH_DRILL=1`
+   macht den Lauf sicher rot (Probealarm), `PUKALANI_HEALTH_PROBE_URL`
+   prüft eine beliebige URL mit (Beweis-Haken).
+2. `scripts/ops/verify-mail-breaker.mjs` — täglich im Job `server`: Blick 1
+   zählt über ssh die Notbremsen-Zeile `auth.mail_route_breaker` in den
+   pm2-Fehlerlogs der letzten 25 h (nur die Event-Zeile verlässt den Server);
+   Blick 2 zählt bei Resend selbst (`GET /emails`, ≥ 80 in 24 h ⇒ rot, also
+   VOR dem 100er-Limit), sobald `PRODUCTION_WATCH_RESEND_KEY` gesetzt ist —
+   ohne Secret sichtbar übersprungen und grün.
+3. Job `alarm` in `.github/workflows/production-watch.yml` — läuft nach jedem
+   Wächter-Lauf: rot ⇒ EIN Issue mit Label `produktions-alarm` (alle 12 h ein
+   Lebenszeichen-Kommentar), grün ⇒ „Entwarnung" + schließen. Dazu Mail bei
+   jedem Wechsel über Resend (Secret + Variable) und ein Heartbeat-Ping bei
+   grün (Secret) — beide ohne Einrichtung als gelbe Warnung sichtbar.
+   `workflow_dispatch` mit `alarm_drill` = Probealarm.
+4. Runbook `docs/runbooks/PRODUKTIONS-ALARM.md` (Wächter-Tabelle, Alarmweg,
+   Probealarm, Davids Klickliste, „Wenn ein Alarm kommt"); Regeln in
+   `.claude/rules/hosts-ops.md`; Hinweis im TLS-Wächter für den Appwrite-Weg.
+
+**Beweis:** (1) Lokal: `verify-health.mjs` grün auf allen 10 Hosts (Appwrite
+2.6.2, Build 188a5b4e); mit Drill Exit 1 (`probealarm.invalid: ENOTFOUND`);
+gegen einen lokalen Wegwerf-HTTPS-Server mit `{"ok":false,"code":
+"INTERNAL_ERROR"}` Exit 1 mit genau dieser Meldung. `verify-mail-breaker.mjs
+--ssh --strict` grün (0 Notbremsen auf app-prod); mit einem Muster, das im Log
+vorkommt (`--pattern community.seo_read_failed --hours 999`) Exit 1.
+(2) **CI, end-to-end:** Probealarm-Lauf 40649844704 ⇒ Job `tls` rot, Job
+`alarm` öffnet **Issue #57** „🔴 Produktions-Alarm (Probealarm)"; Lauf
+40649998721 ohne Haken ⇒ alles grün, Issue #57 bekommt „✅ Entwarnung" und ist
+geschlossen; Mail- und Heartbeat-Schritt melden als Warnung „nicht
+eingerichtet". `pnpm lint:scripts` und `pnpm check:doc-links` grün.
+
+**Was bei David bleibt (OPEN-ITEMS MON2, nur Klicks):** GitHub-
+Benachrichtigungen für Actions + Issues prüfen (das ist die Lücke der 900
+Läufe), Resend-Schlüssel + Mail-Adresse als Secret/Variable, UptimeRobot
+Keyword-Monitore `"ok":true`, SSL-Alarm auf `api`, Heartbeat-URL. Klickliste
+im Runbook, § 3.
+
+**Gelernt (drei Stück):** (1) **Ein roter Lauf ist nur eine Farbe.** Vor dem
+Bauen eines Wächters die Lauf-Historie des bestehenden lesen (`gh run list
+--created`): der Wächter war da, rot, 19 Tage lang. Ein Wächter braucht einen
+Alarmweg, und der Alarmweg braucht einen ZUSTAND (offenes Issue), der nicht
+in 48 Mails am Tag untergeht. (2) **Ein Alarmweg, der nie geprobt wurde, ist
+keiner — und der erste Probealarm fand prompt den Fehler:** bei leerer
+Issue-Liste gab jq `null null` zurück, der Schritt nahm den Zweig „weiterhin
+rot", rechnete mit `date null` in die Wand — und der Job war trotzdem GRÜN
+(`set -u` ohne `-e`, Arithmetik-Fehler ohne Abbruch). Alarm-Logik läuft
+seither unter `set -euo pipefail`, und Mail/Heartbeat prüfen auf explizit
+gesetzte Ausgaben, damit ein abgebrochener Schritt nie wie „grün" aussieht.
+Der Probealarm gehört monatlich und nach JEDER Workflow-Änderung gefahren.
+(3) **Uptime ≠ Gesundheit.** UptimeRobot sah einen antwortenden Host; die
+Aussage `ok:false` dahinter sieht nur, wer den Rumpf liest — deshalb
+Keyword-Monitore (David) UND der eigene Health-Blick.

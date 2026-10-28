@@ -27,6 +27,38 @@
 #      Blick deckt ab, was daran vorbei entsteht: Console-Klicks, Skripte,
 #      eine frisch aufgesetzte Instanz ohne Label-Vergabe.
 #
+#   4. ERREICHBARKEIT (`verify-health.mjs`), ALLE 30 MINUTEN (MON1, 2026-10-28).
+#      Vom 2026-10-16 bis 2026-10-24 antworteten ALLE Apps auf `/api/health`
+#      mit `ok:false` (Appwrite-Zertifikat abgelaufen) — acht Tage, kein
+#      Alarm. Dieser Blick fragt jeden Host, was er WIRKLICH sagt (ok:true,
+#      Appwrite-Version), nicht nur, ob er antwortet.
+#
+#   5. MAIL-MISSBRAUCH (`verify-mail-breaker.mjs`), TÄGLICH (MON1). Vorfall
+#      2026-10-25/27: die Registrierung wurde als Mail-Relais missbraucht,
+#      bemerkt NUR über Resends eigene Limit-Mail. Jetzt: Notbremsen-Zeile
+#      (`auth.mail_route_breaker`) im Server-Log der letzten 25 h ⇒ rot;
+#      mit Secret `PRODUCTION_WATCH_RESEND_KEY` zusätzlich Resends eigener
+#      Zähler (≥ 80 Mails in 24 h ⇒ rot, also VOR dem 100er-Limit).
+#
+# ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
+# Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft
+# in 11 Tagen ab") war jeder Lauf rot — rund 900 Stück bis zum 2026-10-24,
+# alle 30 Minuten. Niemand hat es bemerkt. Ein roter Lauf in GitHub Actions
+# ist nur dann ein Alarm, wenn jemand die Benachrichtigung bekommt UND liest;
+# das war nicht der Fall. Deshalb macht der Job `alarm` aus dem Lauf-Ergebnis
+# einen ZUSTAND, der nicht untergehen kann:
+#   · rot  ⇒ EIN offenes Issue mit Label `produktions-alarm` (kein zweites,
+#            solange es offen ist; alle 12 h ein Kommentar „weiterhin rot")
+#   · grün ⇒ das offene Issue bekommt „Entwarnung" und wird geschlossen
+#   · dazu, wenn eingerichtet: Mail bei JEDEM Wechsel (Resend-Secret) und
+#     ein Heartbeat-Ping bei jedem grünen Lauf (UptimeRobot-Heartbeat —
+#     bleibt der Ping aus, schlägt UptimeRobot an: das deckt auch den Fall
+#     „der Workflow läuft gar nicht mehr", den kein Job hier sehen kann).
+# PROBEALARM: `workflow_dispatch` mit `alarm_drill` macht den Health-Blick
+# sicher rot und prüft damit die ganze Kette (Issue, Mail, Heartbeat-Ausfall);
+# der nächste Lauf ohne Schalter räumt wieder auf. Runbook mit Klickliste:
+# docs/runbooks/PRODUKTIONS-ALARM.md
+#
 # Die beiden täglichen laufen IMMER beide, auch wenn der erste rot wird
 # (`if: always()`) — sonst verdeckt ein Befund den anderen und man repariert
 # zweimal hintereinander.
@@ -84,6 +116,10 @@ on:
     # manueller Start wie bisher (tls + server). Mit Schalter laufen NUR die
     # Appwrite-Schritte — die Wächter-Jobs bleiben dann still.
     inputs:
+      alarm_drill:
+        description: 'PROBEALARM: Health-Blick absichtlich rot — prüft Issue/Mail/Heartbeat; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
       appwrite_probe:
         description: 'appwrite-prod: nur lesen (Erreichbarkeit, Container, Zertifikat)'
         type: boolean
@@ -141,6 +177,16 @@ jobs:
       - name: Zertifikate prüfen
         run: node scripts/ops/verify-tls.mjs
 
+      # `always()`: ein TLS-Befund darf den Health-Blick nicht verdecken — im
+      # Oktober war BEIDES kaputt, und man will beides im selben Lauf sehen.
+      # `alarm_drill` ist nur bei workflow_dispatch gesetzt; im Zeitplan ist
+      # `inputs.*` leer und der Ausdruck ergibt '0'.
+      - name: Erreichbarkeit prüfen (ok:true auf jedem Host)
+        if: always()
+        env:
+          PUKALANI_HEALTH_DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+        run: node scripts/ops/verify-health.mjs
+
   # ── TÄGLICH ──────────────────────────────────────────────────────────────
   server:
     runs-on: ubuntu-latest
@@ -194,6 +240,155 @@ jobs:
         env:
           PUKALANI_OPS_SSH: ploi@49.13.211.173
         run: node scripts/ops/verify-instance-admins.mjs --ssh --strict
+
+      # Blick 1 liest die pm2-Fehlerlogs auf app-prod (nur die Event-Zeile,
+      # kein Request-Inhalt). Blick 2 zählt bei Resend — ohne das Secret wird
+      # er übersprungen und bleibt grün (Klickliste im Runbook).
+      - name: Mail-Missbrauch? (Notbremse im Log, Resend-Zähler)
+        if: always()
+        env:
+          PUKALANI_OPS_SSH: ploi@49.13.211.173
+          RESEND_API_KEY: ${{ secrets.PRODUCTION_WATCH_RESEND_KEY }}
+        run: node scripts/ops/verify-mail-breaker.mjs --ssh --resend --strict
+
+  # ── ALARMWEG: AUS EINEM ROTEN LAUF EINEN ZUSTAND MACHEN ─────────────────
+  # Läuft nach JEDEM Wächter-Lauf (nicht nach den manuellen Appwrite-Jobs).
+  # `always()`: gerade wenn oben etwas rot ist, muss dieser Job laufen.
+  # `!cancelled()`: ein von der Concurrency abgebrochener Lauf ist kein
+  # Befund und darf weder ein Issue öffnen noch eines schließen.
+  alarm:
+    runs-on: ubuntu-latest
+    needs: [tls, server]
+    if: >
+      always() && !cancelled() &&
+      github.event.repository.fork == false &&
+      !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      LABEL: produktions-alarm
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      TLS_RESULT: ${{ needs.tls.result }}
+      SERVER_RESULT: ${{ needs.server.result }}
+      DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+    steps:
+      # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
+      # Fehler (der tägliche Job läuft im Halbstunden-Takt nicht).
+      - name: Issue öffnen, bestätigen oder schließen
+        id: issue
+        run: |
+          # STRENG: bricht dieser Schritt ab, ist der Lauf rot und der
+          # Heartbeat bleibt aus — ein kaputter Alarmweg darf nicht grün
+          # aussehen (der erste Probealarm, 2026-10-28, starb genau so: ein
+          # `null` aus jq, ein Rechenfehler, Job trotzdem grün).
+          set -euo pipefail
+          rot=""
+          [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit (alle 30 min)"
+          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail)"
+          echo "tls=$TLS_RESULT server=$SERVER_RESULT rot='${rot# }' drill=$DRILL"
+
+          # Label einmalig sicherstellen (--force: vorhandenes nur aktualisieren).
+          gh label create "$LABEL" --color B60205 --force \
+            --description 'Produktions-Wächter rot — offen = Alarm aktiv, zu = Entwarnung' >/dev/null
+
+          # Leere Liste ⇒ leere Zeichenkette (NICHT "null null" — Probealarm 1).
+          offen=$(gh issue list --label "$LABEL" --state open --limit 1 --json number,updatedAt \
+            --jq 'if length > 0 then "\(.[0].number) \(.[0].updatedAt)" else "" end')
+          nummer="${offen%% *}"; zuletzt="${offen#* }"
+          stand=$(date -u +'%Y-%m-%d %H:%M UTC')
+          wechsel="keiner"
+
+          if [ -n "$rot" ] && [ -z "$nummer" ]; then
+            probe=""; [ "$DRILL" = "1" ] && probe=" (Probealarm)"
+            titel="🔴 Produktions-Alarm${probe}:${rot} — $stand"
+            {
+              echo "Der Produktions-Wächter ist ROT. Betroffen:**${rot}**."
+              echo
+              echo "- Lauf: $RUN_URL"
+              echo "- Was zuerst tun: \`docs/runbooks/PRODUKTIONS-ALARM.md\`, Abschnitt „Wenn ein Alarm kommt\" (Appwrite-Zertifikat, ok:false, Mail-Missbrauch)."
+              echo "- Dieses Issue schließt der Wächter SELBST, sobald ein Lauf wieder grün ist. Solange es offen ist, ist der Alarm aktiv."
+              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über \`alarm_drill\`; der nächste Lauf ohne Schalter räumt auf."
+              echo
+              echo "_Erzeugt vom Job \`alarm\` in \`.github/workflows/production-watch.yml\` (MON1)._"
+            } > /tmp/issue-body.md
+            url=$(gh issue create --title "$titel" --label "$LABEL" --body-file /tmp/issue-body.md)
+            echo "Issue geöffnet: $url"
+            wechsel="alarm"
+          elif [ -n "$rot" ]; then
+            # Weiterhin rot: alle 12 h ein Lebenszeichen, nicht alle 30 min.
+            alt=$(( $(date -u +%s) - $(date -u -d "$zuletzt" +%s) ))
+            if [ "$alt" -ge 43200 ]; then
+              gh issue comment "$nummer" --body "Weiterhin rot ($stand):${rot}. Lauf: $RUN_URL" >/dev/null
+              echo "Issue #$nummer: weiterhin rot, Kommentar gesetzt (zuletzt vor $((alt / 3600)) h)."
+            else
+              echo "Issue #$nummer ist offen (zuletzt vor $((alt / 60)) min) — nichts zu tun."
+            fi
+          elif [ -n "$nummer" ]; then
+            gh issue comment "$nummer" --body "✅ Entwarnung ($stand): alle Wächter wieder grün. Lauf: $RUN_URL" >/dev/null
+            gh issue close "$nummer" --reason completed >/dev/null
+            echo "Issue #$nummer geschlossen (Entwarnung)."
+            wechsel="entwarnung"
+          else
+            echo "Alles grün, kein offenes Alarm-Issue."
+          fi
+          # Die Folge-Schritte prüfen EXPLIZIT auf diese Werte: fehlen sie
+          # (Schritt abgebrochen), läuft weder Mail noch Heartbeat.
+          echo "wechsel=$wechsel" >> "$GITHUB_OUTPUT"
+          echo "rot=${rot# }" >> "$GITHUB_OUTPUT"
+          [ -z "$rot" ] && echo "gruen=1" >> "$GITHUB_OUTPUT" || echo "gruen=0" >> "$GITHUB_OUTPUT"
+
+      # Mail NUR bei einem Wechsel (Alarm / Entwarnung) — nie im Takt.
+      # Ohne Secret+Variable: sichtbar übersprungen, nicht rot (das Fehlen
+      # eines Alarmwegs ist in diesem Lauf kein Vorfall — aber im Runbook
+      # eine offene Klickzeile).
+      - name: Mail bei Alarm oder Entwarnung (Resend)
+        if: steps.issue.outputs.wechsel == 'alarm' || steps.issue.outputs.wechsel == 'entwarnung'
+        env:
+          WECHSEL: ${{ steps.issue.outputs.wechsel }}
+          ROT: ${{ steps.issue.outputs.rot }}
+          RESEND_KEY: ${{ secrets.PRODUCTION_ALARM_RESEND_KEY }}
+          MAIL_TO: ${{ vars.PRODUCTION_ALARM_MAIL_TO }}
+        run: |
+          set -u
+          if [ -z "$RESEND_KEY" ] || [ -z "$MAIL_TO" ]; then
+            echo "::warning::Mail-Alarm nicht eingerichtet (Secret PRODUCTION_ALARM_RESEND_KEY + Variable PRODUCTION_ALARM_MAIL_TO) — Klickliste: docs/runbooks/PRODUKTIONS-ALARM.md"
+            exit 0
+          fi
+          if [ "$WECHSEL" = "alarm" ]; then
+            betreff="🔴 Produktions-Alarm: $ROT"
+            text="Der Produktions-Wächter ist rot: $ROT. Lauf: $RUN_URL — Issue-Liste: ${{ github.server_url }}/${{ github.repository }}/issues?q=label%3Aproduktions-alarm"
+          else
+            betreff="✅ Entwarnung: Produktions-Wächter wieder grün"
+            text="Alle Wächter sind wieder grün. Lauf: $RUN_URL"
+          fi
+          jq -n --arg to "$MAIL_TO" --arg s "$betreff" --arg t "$text" \
+            '{from: "Produktions-Wächter <noreply@pukalani.app>", to: [$to], subject: $s, text: $t}' \
+            > /tmp/mail.json
+          code=$(curl -sS -o /tmp/mail-out.json -w '%{http_code}' -m 20 \
+            -H "Authorization: Bearer $RESEND_KEY" -H 'Content-Type: application/json' \
+            --data @/tmp/mail.json https://api.resend.com/emails)
+          if [ "$code" != "200" ]; then
+            echo "::error::Resend antwortet HTTP $code — Alarm-Mail NICHT raus (Schlüssel widerrufen?):"; cat /tmp/mail-out.json; echo
+            exit 1
+          fi
+          echo "Mail an $MAIL_TO: $betreff"
+
+      # Heartbeat NUR bei grün — bleibt er aus (rot ODER Workflow läuft gar
+      # nicht mehr), meldet UptimeRobot nach dem dort eingestellten Fenster.
+      - name: Heartbeat (nur bei grün)
+        if: steps.issue.outputs.gruen == '1'
+        env:
+          HEARTBEAT_URL: ${{ secrets.PRODUCTION_WATCH_HEARTBEAT_URL }}
+        run: |
+          set -u
+          if [ -z "$HEARTBEAT_URL" ]; then
+            echo "::warning::Heartbeat nicht eingerichtet (Secret PRODUCTION_WATCH_HEARTBEAT_URL) — Klickliste: docs/runbooks/PRODUKTIONS-ALARM.md"
+            exit 0
+          fi
+          curl -fsS -m 20 -o /dev/null "$HEARTBEAT_URL" && echo "Heartbeat gesendet."
 
   # ── NUR MANUELL: APPWRITE-ZERTIFIKAT ─────────────────────────────────────
   # Vorfall 2026-10-16: das Let's-Encrypt-Zertifikat von api.pukalani.app lief
