@@ -341,7 +341,7 @@ Anwalt ist dafür kein Gate.
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
-| ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Prod-Migration steht aus** | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
+| ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`) | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
@@ -910,6 +910,27 @@ was NICHT veröffentlicht wurde.
   (kein zweites Mal bezahlt), unbekanntes Video ⇒ **404 `video_not_found`**.
 * **Kosten gemessen:** 0,0508 $ für ein 25-Minuten-Video (135.575
   Prompt-Tokens: 96.960 Video + 37.888 Audio).
+
+### Auf Prod (2026-10-27, Davids Ja) — und zum ersten Mal in der richtigen Reihenfolge
+
+`insights-009` lief **VOR** dem Merge. Das war hier keine Formsache: anders als
+bei K3 und K4 wäre ein Deploy ohne die Spalten nicht fail-soft gewesen —
+`fromInsightsPost` schickt die neuen Felder bei JEDEM Schreibvorgang mit, also
+hätte es jedes Anlegen und jedes Speichern eines Beitrags gebrochen, nicht nur
+das Neue.
+
+* Vorher: `insights_posts` 26 Spalten, `insights_watchlist` 15, keine `brief*`.
+* Nachher: 30 und 16, alle fünf neuen Spalten `available`
+  (`brief` als MEDIUMTEXT), Zeilen unberührt.
+* `pnpm ops:schema-parity`: branding **43/43**, keine unbekannten Tabellen
+  (account 69/69, control 42/42, portfolio 41/41 ebenfalls grün).
+* Danach Merge und Deploy: Live-Build **`c97c4dea`**, `/api/health` `ok: true`.
+* `POST /api/insights/watchlist/<videoId>/brief` antwortet ohne Konto **401**
+  (nicht 404) — ausgeliefert, Produkt-Gate offen, nur die Berechtigung fehlt.
+
+**Nicht bewiesen auf Prod:** der Klick selbst. Der Migrations-Schlüssel hat
+bewusst keinen `users`-Scope; der Beweis oben lief gegen eine Wegwerf-Instanz
+mit demselben Schema.
 
 ### Gelernt
 
