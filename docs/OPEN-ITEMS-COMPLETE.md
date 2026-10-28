@@ -30,6 +30,64 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### LOG1 — `seo_read_failed` im pm2-Log: der Schwall war das Zertifikat, das Dauerrauschen war `help` ohne Appwrite ✅ 2026-10-28
+
+**Ausgangslage (Nebenbefund beim Bau von MON1):** im pm2-Fehlerlog auf
+app-prod standen hunderte Zeilen `community.seo_read_failed` /
+`community.redirects_read_failed` mit `communityId: "instance"`, obwohl
+`/api/health` überall `ok:true` meldete. Vermutet wurde die Pool-App
+`platform`.
+
+**Befund (Logs gelesen, nach App, Datum und Meldung gezählt):**
+(1) `platform` hat KEINE `instance`-Zeilen — ihre 58 Warnungen stammen vom
+2026-08-13/14 (U15-Einführung) und vom 2026-09-28 („Server Error", der
+ClickHouse-Platten-Vorfall), zuletzt eine am 2026-10-08. (2) Die
+„fetch failed"-Schwälle liegen in den ROTIERTEN Logs von admin (192),
+branding (801), portfolio (1244) und marketing (646), alle zwischen dem
+2026-10-16 und dem 2026-10-24 10:57 — das ist exakt das Fenster des
+abgelaufenen Appwrite-Zertifikats; mit dem Neustart um 11:33 sind die
+neuen Log-Dateien dieser Apps leer. Erledigt durch den Zertifikatsfix, kein
+Code. (3) Was WEITERLIEF: `help.pukalani.app` — `instance | Endpoint must be
+a valid string`, 796 Paare seit dem **2026-09-09** und 130 seit dem Neustart,
+etwa zwei je Stunde, bis heute. Die Hilfe-Site hat bewusst KEINE
+Appwrite-Instanz (`.env` leer, eigener Health ohne Appwrite); seit dem
+2026-09-08 lesen aber auch Silo-/Einzel-Instanzen ihre `instance`-Zeile
+(`shared/communitySettingsRow.ts`, Fall 2), und `createAdminClient` warf am
+leeren Endpunkt im SDK — der Fail-soft-Zweig fing das und meldete es als
+Lesefehler. Das Datum passt auf den Tag: der Fall begann mit dem Deploy, der
+`'instance'` einführte.
+
+**Behoben:** EINE pure Regel `appwriteEndpointConfigured()` in
+`packages/core/shared/appwriteConfigured.ts` („der Endpunkt ist der
+Schalter", wie SMTP-Host und Turnstile), Server-Wrapper
+`packages/core/server/utils/appwriteConfigured.ts`; beide optionalen Leser
+(`communitySeoStore.ts`, `communityRedirectStore.ts`) antworten ohne
+Endpunkt still `null` und cachen es, ohne Client und ohne Meldung. Geprüft
+wird NUR der Endpunkt — fehlt bei gesetztem Endpunkt Projekt oder Datenbank,
+ist das ein Konfigurationsfehler, der im Log stehen SOLL.
+
+**Beweis:** `packages/core/tests/communitySettingsReadersWithoutAppwrite.test.ts`
+— `createAdminClient` ist dort die Attrappe des SDK-Wurfs; der erste Fall war
+vor dem Fix rot (Meldung geloggt), danach grün, mit Gegenproben für 404
+(still), „fetch failed" (gemeldet — der Zertifikatsfall) und eine gelesene
+Zeile. Live-Beweis nach dem Deploy: `helppukalaniapp-error-*.log` bekommt
+keine neue `seo_read_failed`-Zeile mehr (vorher ~2/h).
+
+**Gelernt (zwei Stück):** (1) **Ein Log-Befund wird erst nach App, Datum
+UND Meldung gezählt, bevor er einen Namen bekommt.** „Über 180 Zeilen in der
+Pool-App" waren in Wahrheit drei verschiedene Geschichten in sechs Apps —
+ein erledigter Vorfall, ein alter Platten-Vorfall und ein Dauerfehler in der
+einen App, die niemand verdächtigte. `cut -c10-19 | sort | uniq -c` je Datei
+kostet eine Minute und ersetzt eine Stunde Vermutung. (2) **Fail-soft braucht
+einen Begriff für „gibt es hier nicht".** Der Leser unterschied nur „Zeile
+fehlt" (still) von „alles andere" (Meldung) — eine App ohne Instanz fiel in
+die zweite Schublade, und weil die Seite trotzdem richtig aussah, hat es
+sieben Wochen lang niemand gesehen. Eine neue Pflicht-Abhängigkeit, die
+eine App bewusst nicht hat, braucht vor dem Fehlerzweig einen eigenen
+Ausgang.
+
+---
+
 ### AI1 — Das Vision-Modell von branding.supply war tot, und nichts wurde rot ✅ 2026-10-27
 
 **Gefunden als Nebenbefund der Routen-Probe zu BI2-Frage C** (Plan
