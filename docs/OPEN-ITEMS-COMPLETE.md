@@ -133,6 +133,15 @@ Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
    ist im Browser freigegeben (er bleibt gesperrt, bis Cloudflare den Token
    geliefert hat). Beide Variablen sind seither PFLICHT im Wächter
    `verify-site-env.mjs`. Rezept: `docs/runbooks/DEPLOYMENT.md`.
+   **Nachgeprüft 2026-10-28 (PR #55, `pnpm ops:turnstile`):** der neue
+   Wächter `scripts/ops/verify-turnstile.mjs` fragt die vier Sites SELBST
+   (nicht die Dateien): `POST /api/auth/recovery` ohne Token ⇒ 403
+   `bot_check_required` UND `/forgot-password` trägt das Widget — 4/4 grün
+   auf account, admin, pukalani.studio, branding.supply; `pnpm ops:site-env`
+   grün; alle Hosts `/api/health` ok:true (Build 188a5b4e); signup ohne
+   Token 403 auf account/demo/branding (admin + studio haben die
+   Registrierung ohnehin aus); kein `turnstile_misconfigured` in den
+   pm2-Logs; beide Variablen in allen vier pm2-Prozessen (`pm2 jlist`).
 4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
    `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
    läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
@@ -156,7 +165,15 @@ Appwrite-Datenbank — `_<projekt>_tokens` trägt IP und User-Agent des
 AUSLÖSERS (hier unser eigener Server mit dem Node-SDK, also der Weg über
 unsere Route), das App-Audit `audit_logs` die IP des Menschen dahinter.
 (3) Resends „To"-Spalte zeigt den Anzeigenamen — wer dort Text sieht, der
-nicht wie ein Name aussieht, sucht den Namen, nicht die Adresse.
+nicht wie ein Name aussieht, sucht den Namen, nicht die Adresse. (4) TS1 lief in ZWEI Sitzungen parallel: die eine schaltete über Davids
+Chrome scharf und schrieb die Doku, die andere baute den Wächter (PR #55) —
+beide fassten OPEN-ITEMS, DEPLOYMENT und `verify-site-env.mjs` an. Beim
+Zusammenführen gilt `main` (die Pflicht-Einträge standen dort schon, der
+PR hätte sie verdoppelt); nur der Wächter, das pm2-Reload-Rezept und
+`ops:turnstile` kamen aus dem PR dazu. Und: „scharf" beweist nur das Skript
+gegen die laufenden Prozesse — die `.env` kann richtig sein und pm2 trotzdem
+die alte Umgebung tragen (`pm2 jlist` zeigt `pm2_env`), ein ploi-Deploy ohne
+App-Änderung lädt nicht neu.
 
 **Ausgangslage (prod, api.pukalani.app, Appwrite 2.6.1, beim Mail-/Standort-
 Beweis nach dem Upgrade gefunden):** Davids Konto hat `mfa=1` mit
