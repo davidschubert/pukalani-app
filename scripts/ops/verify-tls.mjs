@@ -115,7 +115,16 @@ const HOSTS = [
   // HTTP dabei 404). Der Eintrag prueft also ab sofort die Wildcard-Gesundheit
   // und ab dem Go-Live zusaetzlich die Site.
   { host: 'help.pukalani.app', ip: '49.13.211.173', note: 'Hilfe-Site (von der Wildcard gedeckt)' },
-  { host: 'api.pukalani.app', ip: '188.245.61.155', note: 'Appwrite' },
+  // APPWRITE-PROD — NICHT von ploi verwaltet, Let's Encrypt über Appwrites
+  // eigenen Zertifikats-Worker. Dieser Eintrag steht seit dem ersten Tag
+  // (2026-07-26) hier und hat den Vorfall vom Oktober auch GESEHEN: vom
+  // 2026-10-05 („läuft in 11 Tagen ab") bis zur Reparatur am 2026-10-24 war
+  // jeder Lauf rot — rund 900 Stück. Niemand hat es bemerkt, weil ein roter
+  // Lauf ohne Alarmweg nur eine Farbe ist. Seit MON1 (2026-10-28) macht der
+  // Job `alarm` in production-watch.yml daraus ein Issue + Mail; die
+  // Reparatur selbst ist der manuelle Job `appwrite-cert` dort
+  // (`appwrite_renew`) bzw. das Rezept in docs/runbooks/PRODUKTIONS-ALARM.md.
+  { host: 'api.pukalani.app', ip: '188.245.61.155', note: 'Appwrite-Prod (eigener Worker, nicht ploi — fällt sie, fallen ALLE Apps)' },
 ]
 
 /** Warnschwelle in Tagen — Let's Encrypt erneuert bei 30. */
@@ -187,6 +196,9 @@ if (failures.length) {
   console.error('löschen und "*.pukalani.app" per DNS-Prüfung neu anfordern.')
   console.error('Beim Apex dagegen liegt es NICHT am Ursprung — er läuft proxied über')
   console.error('Cloudflare (Zonen-Modus "Full", gepinnt) und hat dort bewusst kein Zertifikat.')
+  console.error('Bei api.pukalani.app (Appwrite, nicht ploi): Erneuerung über den manuellen Job')
+  console.error('`appwrite-cert` in production-watch.yml (appwrite_renew) oder das Rezept in')
+  console.error('docs/runbooks/PRODUKTIONS-ALARM.md — vorher _console_rules.status prüfen.')
   console.error('Details: docs/content/2.architektur/6.hosts-und-ports.md')
   process.exit(1)
 }
