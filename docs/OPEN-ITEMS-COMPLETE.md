@@ -118,8 +118,21 @@ Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
 3. **Cloudflare Turnstile als Bot-Beweis** an signup/otp/recovery
    (`server/utils/turnstile.ts`, `TurnstileWidget.vue`, Gate = beide Env-
    Variablen gesetzt, fail-closed bei Cloudflare-Ausfall). Ohne Schlüssel
-   exakt das Verhalten von vorher; scharf schalten ist `TS1` in OPEN-ITEMS
-   (Davids Cloudflare-Login). Rezept: `docs/runbooks/DEPLOYMENT.md`.
+   exakt das Verhalten von vorher. **SCHARF SEIT 2026-10-27 (TS1, über Davids
+   Chrome):** Widget „Pukalani Apps" im Cloudflare-Konto Hawaii Studio,
+   Hostnames `pukalani.app` + `branding.supply` (Turnstile deckt Subdomains
+   von selbst mit, ein Wildcard-Eintrag ist dort gar nicht vorgesehen), Modus
+   Managed. Beide Variablen in den Site-Envs platform, admin, portfolio,
+   branding (`.env.bak-2026-10-27-turnstile` liegt daneben; `comments` hat
+   keine eigene Site mehr, der Host läuft über platform), danach nur
+   `pm2 startOrReload … --update-env` — kein Deploy nötig, die Runtime-Config
+   liest die Env beim Start, auch den `NUXT_PUBLIC_`-Site-Key. Beweise:
+   signup/otp/recovery ohne Token ⇒ 403 `bot_check_required` auf allen vier
+   Hosts (Build 38a107bf), kein `auth.turnstile_misconfigured` im Log, der
+   Site-Key steht im HTML von /register, und der Knopf „Account erstellen"
+   ist im Browser freigegeben (er bleibt gesperrt, bis Cloudflare den Token
+   geliefert hat). Beide Variablen sind seither PFLICHT im Wächter
+   `verify-site-env.mjs`. Rezept: `docs/runbooks/DEPLOYMENT.md`.
 4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
    `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
    läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
