@@ -70,8 +70,11 @@ ist das ein Konfigurationsfehler, der im Log stehen SOLL.
 — `createAdminClient` ist dort die Attrappe des SDK-Wurfs; der erste Fall war
 vor dem Fix rot (Meldung geloggt), danach grün, mit Gegenproben für 404
 (still), „fetch failed" (gemeldet — der Zertifikatsfall) und eine gelesene
-Zeile. Live-Beweis nach dem Deploy: `helppukalaniapp-error-*.log` bekommt
-keine neue `seo_read_failed`-Zeile mehr (vorher ~2/h).
+Zeile. Live-Beweis erbracht (2026-10-28, Build 37291a8e, Deploy 09:45 UTC):
+die letzte Warnzeile in `helppukalaniapp-error-3.log` stammt von 09:00 UTC,
+zwei erzwungene Seitenaufrufe mit 33 s Abstand (über der Microcache-TTL)
+um 10:35 UTC liessen den Zähler bei 134 stehen — null neue Zeilen seit dem
+Deploy, vorher ~2/h.
 
 **Gelernt (zwei Stück):** (1) **Ein Log-Befund wird erst nach App, Datum
 UND Meldung gezählt, bevor er einen Namen bekommt.** „Über 180 Zeilen in der
