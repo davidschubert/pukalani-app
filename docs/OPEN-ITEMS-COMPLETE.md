@@ -218,7 +218,8 @@ Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
 Projekt `pass`. Mail-Beweis nach Leerlauf (2026-10-28 00:39 UTC): Probe-Nutzer
 per Gast-OTP-Token an `delivered@resend.dev`, Worker `mail.template otp ·
 mail.status success` in 1,67 s, Nutzer per Runtime-Key der Site wieder gelöscht
-(204, Gegenprobe 404).
+(204, Gegenprobe 404). Alte Images am 2026-10-28 auf prod und dev entfernt
+(nur ungenutzte Appwrite-Stack-Tags + dangling), prod-Platte 66 % → 34 %.
 Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
 
 **Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":
