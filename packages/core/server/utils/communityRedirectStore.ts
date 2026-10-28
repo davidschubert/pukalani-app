@@ -110,6 +110,15 @@ export async function readCommunityRedirects(
   const cached = cache.get(key)
   if (cached !== undefined) return cached
 
+  // KEINE APPWRITE-INSTANZ (help: Endpunkt bewusst leer) ⇒ still „keine
+  // Weiterleitung". Dieselbe Klammer wie in communitySeoStore.ts — ohne sie
+  // warf `createAdminClient` am leeren Endpunkt in den Warn-Zweig unten
+  // (Regel und Logbefund: shared/appwriteConfigured.ts).
+  if (!appwriteConfigured(event)) {
+    cache.set(key, null)
+    return null
+  }
+
   let config: CommunityRedirectConfig | null = null
   try {
     const runtime = useRuntimeConfig(event)
