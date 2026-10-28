@@ -4,6 +4,7 @@ import {
   INSIGHTS_BRIEF_PROMPT_VERSION,
   INSIGHTS_BRIEF_TOPICS_MAX,
   buildInsightsVideoBriefPrompt,
+  clampInsightsBrief,
   insightsBriefRequestSchema,
   insightsBriefTitle,
   insightsVideoBriefSchema,
@@ -128,8 +129,91 @@ describe('insightsVideoBriefSchema', () => {
     expect(parsed).toEqual({ title: '', brief: '', topics: [] })
   })
 
-  it('lehnt einen Brief ab, der länger ist als die Spalte', () => {
-    expect(() => insightsVideoBriefSchema.parse({ brief: 'x'.repeat(INSIGHTS_BRIEF_MAX + 1) })).toThrow()
+  /**
+   * DIE UMKEHRUNG VOM 2026-10-28. Hier stand „lehnt einen Brief ab, der
+   * länger ist als die Spalte" — ein Test, der genau das festnagelte, was
+   * Geld verbrennt: wenn dieses Schema etwas sieht, ist das Video gelesen
+   * und bezahlt. Zwei von sechs gemessenen Läufen lagen über dem Deckel.
+   */
+  it('KLEMMT einen zu langen Brief, statt den bezahlten Lauf wegzuwerfen', () => {
+    const long = `${'Satz eins. '.repeat(250)}Satz zwei.`
+    expect(long.length).toBeGreaterThan(INSIGHTS_BRIEF_MAX)
+    const parsed = insightsVideoBriefSchema.parse({ brief: long })
+    expect(parsed.brief.length).toBeLessThanOrEqual(INSIGHTS_BRIEF_MAX)
+    expect(parsed.brief.endsWith('.')).toBe(true)
+  })
+
+  it('klemmt auch einen zu langen Arbeitstitel, statt zu werfen', () => {
+    const parsed = insightsVideoBriefSchema.parse({ title: 'T'.repeat(260), brief: 'x' })
+    expect(parsed.title).toHaveLength(200)
+  })
+})
+
+/**
+ * DER SCHNITT AN DER GRENZE — die Gegenprobe zum Klick-Beweis vom
+ * 2026-10-27, wo ein nacktes `slice` einen Brief wörtlich mit „… den
+ * Markteintr" beendete.
+ */
+describe('clampInsightsBrief', () => {
+  it('lässt einen Brief unter dem Deckel unberührt (nur getrimmt)', () => {
+    expect(clampInsightsBrief('  Kurz und gut.  ')).toBe('Kurz und gut.')
+  })
+
+  it('endet auf einem Satzzeichen, nicht mitten im Wort', () => {
+    const text = `${'Ein Satz mit Inhalt. '.repeat(120)}Und dann folgt noch ein Gedanke über den Markteintritt.`
+    const clamped = clampInsightsBrief(text)
+    expect(clamped.length).toBeLessThanOrEqual(INSIGHTS_BRIEF_MAX)
+    expect(clamped).toMatch(/[.!?]$/)
+  })
+
+  it('nimmt das SPÄTERE von Zeilen- und Satzende — der Brief ist bezahlt', () => {
+    // Zeilenumbruch früh, Satzende spät: der Satz muss gewinnen, sonst
+    // verschenkt der Schnitt Hunderte Zeichen bezahlten Briefs.
+    const text = `${'a'.repeat(900)}\n${'b'.repeat(900)}. ${'c'.repeat(400)}`
+    const clamped = clampInsightsBrief(text)
+    expect(clamped.endsWith('b.')).toBe(true)
+    expect(clamped.length).toBeGreaterThan(1700)
+  })
+
+  it('trennt am Wort, wenn es weder Zeile noch Satz gibt', () => {
+    const clamped = clampInsightsBrief(`${'wort '.repeat(500)}ende`)
+    expect(clamped.endsWith('wort')).toBe(true)
+    expect(clamped.length).toBeLessThanOrEqual(INSIGHTS_BRIEF_MAX)
+  })
+
+  it('lässt den Brief nicht mit einer leeren Überschrift enden', () => {
+    // Genau der Fall aus der Gegenprobe: der Schnitt landete auf dem Umbruch
+    // NACH „### OFFENE FRAGEN", und der Brief kündigte etwas an, das fehlte.
+    const text = `${'Ein Satz mit Inhalt und etwas Länge.\n'.repeat(55)}### OFFENE FRAGEN\nDie erste Frage lautet wie folgt und ist lang.`
+    const clamped = clampInsightsBrief(text)
+    expect(clamped).not.toMatch(/OFFENE FRAGEN\s*$/)
+    expect(clamped).toMatch(/[.!?]$/)
+  })
+
+  it('räumt auch einen leeren Aufzählungs-Marker am Schluss weg', () => {
+    const text = `${'Ein Satz mit Inhalt und etwas Länge.\n'.repeat(55)}-\nNoch ein Punkt, der nicht mehr hineinpasst.`
+    expect(clampInsightsBrief(text)).toMatch(/Länge\.$/)
+  })
+
+  it('schneidet hart, wenn es gar keine Grenze gibt — lieber das als nichts', () => {
+    const clamped = clampInsightsBrief('x'.repeat(INSIGHTS_BRIEF_MAX + 500))
+    expect(clamped).toHaveLength(INSIGHTS_BRIEF_MAX)
+  })
+
+  it('zählt einen Punkt INNERHALB einer Zahl nicht als Satzende', () => {
+    // „3.1" darf den Schnitt nicht halten — sonst endet der Brief mit „3."
+    const text = `${'Der Abschnitt 3.1 beschreibt die Lage im Markt sehr genau '.repeat(40)}Ende`
+    const clamped = clampInsightsBrief(text)
+    expect(clamped).not.toMatch(/\d\.$/)
+    // Und trotzdem an einer Grenze: im Quelltext steht hinter dem Schnitt ein
+    // Leerzeichen, also wurde kein Wort zerteilt.
+    expect(text.slice(clamped.length, clamped.length + 1)).toBe(' ')
+  })
+
+  it('nimmt eine Abkürzung als Satzende an — bewusst, siehe Kopf der Regel', () => {
+    // Die Gegenprobe zum Satz oben: wer das ändern will, ändert hier mit.
+    const text = `${'Das gilt für Marken, z. B. '.repeat(100)}Schluss ohne Punkt`
+    expect(clampInsightsBrief(text).endsWith('z. B.')).toBe(true)
   })
 })
 

@@ -57,16 +57,106 @@ export const INSIGHTS_BRIEF_PROMPT_VERSION = 'insights-b-1'
 export const INSIGHTS_BRIEF_TOPICS_MAX = 4
 
 /**
+ * EIN ZU LANGER BRIEF WIRD GEKÜRZT — UND ZWAR AN EINER GRENZE.
+ *
+ * ── WARUM DAS SCHEMA IHN NICHT MEHR ABLEHNT ──────────────────────────────
+ * Bis zum 2026-10-28 stand hier `brief: z.string().max(INSIGHTS_BRIEF_MAX)`,
+ * und ein Brief über dem Deckel liess `parse` werfen. Das klingt streng und
+ * ist in Wahrheit die teuerste Antwort, die diese Route geben kann: der
+ * Video-Lauf ist DURCH und BEZAHLT, wenn das Schema zuschlägt. Es gibt
+ * nichts zu retten und keinen Grund, es wegzuwerfen — der Deckel ist UNSER
+ * Spaltenmass, nicht ein Formfehler des Modells.
+ *
+ * GEMESSEN, nicht vermutet (echte Läufe gegen genau diesen Prompt,
+ * `gemini-3.1-flash-lite` auf `google-vertex/eu`, 2026-10-28):
+ *   1575 · 1673 · 1848 · 1897 · **2027** · **2387** Zeichen
+ * Zwei von sechs gelesenen Videos lagen über 2.000 — und die Länge hängt
+ * NICHT an der des Videos: die 2.387 kamen aus einem Achtminüter, die 1.897
+ * aus 45 Minuten. Das Modell zielt auf den Deckel, den der Prompt nennt, und
+ * trifft ihn mal von unten, mal von oben. Jeder Treffer von oben kostete bei
+ * der alten Fassung den ganzen Lauf (rund 2 bis 10 Cent) und gab dem
+ * Menschen davor einen 500er ohne Erklärung.
+ *
+ * ── WARUM AN EINER GRENZE UND NICHT EINFACH `slice` ──────────────────────
+ * Ein nacktes `slice(0, 2000)` endete am 2026-10-27 im Klick-Beweis wörtlich
+ * mit „… den Markteintr" — mitten im Wort. Ein Auftrag, dessen letzter Satz
+ * abbricht, sieht nicht nach Deckel aus, sondern nach Fehler, und der Mensch
+ * davor fragt sich, was ihm fehlt. Deshalb schneidet `clampInsightsBrief` am
+ * SPÄTESTEN sauberen Schluss vor dem Deckel.
+ *
+ * Es gewinnt das spätere von Zeilen- und Satzende, nicht das erste gefundene:
+ * vom bezahlten Brief soll so viel wie möglich stehen bleiben. Erst wenn es
+ * weder Zeile noch Satz gibt, wird am Wort getrennt — und wenn auch das
+ * nicht geht (ein Text ohne jedes Leerzeichen), hart. Die letzte Stufe ist
+ * kein Versehen: lieber ein harter Schnitt als eine leere Antwort.
+ *
+ * Danach fällt noch weg, was am Ende nur ANKÜNDIGT — s. `dropDanglingLead`.
+ */
+/**
+ * EINE ÜBERSCHRIFT OHNE INHALT IST KEIN SCHLUSS.
+ *
+ * In der Gegenprobe vom 2026-10-28 landete der Schnitt eines 2.387-Zeichen-
+ * Briefs genau auf dem Zeilenumbruch NACH „### OFFENE FRAGEN" — der Brief
+ * endete also mit der Ankündigung von etwas, das nicht mehr kam. Das liest
+ * sich schlechter als ein kurzer Brief: es sieht aus, als hätte das Modell
+ * aufgegeben.
+ *
+ * Weg kommt deshalb jede abschliessende Zeile, die nur ANKÜNDIGT: eine
+ * Markdown-Überschrift (hier steht sie zwangsläufig ohne Rumpf, weil nichts
+ * dahinter ist) und ein leerer Aufzählungs- oder Nummern-Marker.
+ */
+function dropDanglingLead(text: string): string {
+  let result = text.trimEnd()
+  for (;;) {
+    const lastBreak = result.lastIndexOf('\n')
+    if (lastBreak <= 0) return result
+    const lastLine = result.slice(lastBreak + 1).trim()
+    if (!/^(#{1,6}\s|[-*+]$|\d+\.$)/.test(lastLine)) return result
+    result = result.slice(0, lastBreak).trimEnd()
+  }
+}
+
+export function clampInsightsBrief(raw: string): string {
+  const text = raw.trim()
+  if (text.length <= INSIGHTS_BRIEF_MAX) return text
+
+  const cut = text.slice(0, INSIGHTS_BRIEF_MAX)
+  let end = cut.lastIndexOf('\n')
+  // `(?=\s|$)` — ein Punkt MITTEN in einer Zahl („3.1") ist kein Satzende;
+  // einer am Ende des Zuschnitts schon, deshalb das `$`. Ein Punkt in einer
+  // Abkürzung („z. B.") zählt dagegen MIT, und das ist eine Entscheidung und
+  // kein Übersehen: eine Liste deutscher Abkürzungen wäre nie vollständig,
+  // und der Preis ist klein — der Schnitt landet dann auf einem Satzzeichen
+  // statt im Wort, nur ein paar Zeichen früher als nötig.
+  const sentence = /[.!?](?=\s|$)/g
+  for (let found = sentence.exec(cut); found; found = sentence.exec(cut)) {
+    end = Math.max(end, found.index + 1)
+  }
+  if (end <= 0) end = cut.lastIndexOf(' ')
+  return dropDanglingLead(end > 0 ? cut.slice(0, end) : cut)
+}
+
+/**
  * WAS DAS MODELL ZURÜCKGEBEN DARF.
+ *
+ * Alle drei Felder KLEMMEN, keines lehnt ab — aus dem einen Grund, der im
+ * Kopf von `clampInsightsBrief` steht: wenn dieses Schema etwas zu sehen
+ * bekommt, ist das Video gelesen und der Lauf bezahlt. Eine Ablehnung hier
+ * wirft Geld weg, das schon ausgegeben ist.
  *
  * `topics` ist bewusst gegen den KATALOG geklemmt und nicht gegen „irgendeine
  * Zeichenkette": ein erfundener Cluster-Schlüssel wäre ein Thema, das es in
  * der Navigation nicht gibt. Unbekannte Werte fallen weg statt alles
  * abzulehnen — ein brauchbarer Brief soll nicht an einem Schlagwort scheitern.
+ *
+ * Beim `title` ist der harte Zuschnitt richtig und nicht faul: er ist eine
+ * BESCHRIFTUNG, kein Fliesstext, und `insightsBriefTitle` schneidet ihn ohnehin
+ * auf dasselbe Mass. Ein Arbeitstitel über 200 Zeichen ist kein Titel mehr,
+ * sondern ein Satz — den kürzt der Mensch davor im Formular.
  */
 export const insightsVideoBriefSchema = z.object({
-  title: z.string().max(200).default(''),
-  brief: z.string().max(INSIGHTS_BRIEF_MAX).default(''),
+  title: z.string().default('').transform(value => value.trim().slice(0, 200)),
+  brief: z.string().default('').transform(clampInsightsBrief),
   topics: z.array(z.string()).default([]).transform(keys => keys
     .map(key => key.trim())
     .filter((key): key is InsightsTopicKey => (INSIGHTS_TOPIC_KEYS as readonly string[]).includes(key))
