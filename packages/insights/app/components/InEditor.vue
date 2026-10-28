@@ -107,7 +107,7 @@ const emit = defineEmits<{
   translate: []
   draft: [{ brief: string, targetWords: number }]
   createBrand: [{ name: string, homepage: string, industry: string }]
-  sendNewsletter: [{ intro: string }]
+  sendNewsletter: [{ introDe: string, introEn: string }]
 }>()
 
 const { t, locale } = useI18n()
@@ -518,14 +518,15 @@ const newsletterPanel = computed(() => (
   props.newsletter && insightsIsPublic(props.post) ? props.newsletter : null
 ))
 
-const newsletterIntro = ref('')
+const newsletterIntroDe = ref('')
+const newsletterIntroEn = ref('')
 
 /**
  * DAS EINLEITUNGS-FELD VERSCHWINDET, SOBALD DER ERSTE STAPEL DRAUSSEN IST.
  *
  * Beim Fortsetzen gilt der Text, der in der Sende-Zeile steht — sonst bekäme
  * die zweite Hälfte der Liste einen anderen Text als die erste (die Route
- * ignoriert ein mitgeschicktes `intro` dann bewusst). Ein Feld, das man
+ * ignoriert mitgeschickte Einleitungen dann bewusst). Ein Feld, das man
  * ausfüllen kann, ohne dass es wirkt, ist schlimmer als keines.
  */
 const newsletterStarted = computed(() => Boolean(newsletterPanel.value?.send))
@@ -555,7 +556,10 @@ const newsletterConfirmCount = computed(() => (
 
 function confirmSend(): void {
   sendOpen.value = false
-  emit('sendNewsletter', { intro: newsletterIntro.value.trim() })
+  emit('sendNewsletter', {
+    introDe: newsletterIntroDe.value.trim(),
+    introEn: newsletterIntroEn.value.trim(),
+  })
 }
 </script>
 
@@ -842,15 +846,30 @@ function confirmSend(): void {
           <!-- Das Feld verschwindet, sobald der erste Stapel draussen ist
                (s. `newsletterStarted` im Skript). -->
           <template v-if="!newsletterStarted">
-            <UFormField class="mt-3" :label="t('insights.newsletter.send.introLabel')">
+            <!-- ZWEI FELDER, EINES JE SPRACHE (Davids Entscheidung 2026-10-27):
+                 die Mail folgt der Sprache des Lesers, also muss es die
+                 Einleitung auch. Wer nur eines füllt, erreicht damit nur dessen
+                 Leser — die anderen bekommen die Mail ohne Einleitung, nie die
+                 fremde Sprache. -->
+            <UFormField class="mt-3" :label="t('insights.newsletter.send.introLabelDe')">
               <UTextarea
-                v-model="newsletterIntro" :rows="3" class="w-full"
+                v-model="newsletterIntroDe" :rows="3" class="w-full"
                 :maxlength="INSIGHTS_NEWSLETTER_INTRO_MAX"
                 :placeholder="t('insights.newsletter.send.introPlaceholder')"
               />
             </UFormField>
             <p class="bw-label mt-1" style="color: var(--bw-muted)">
-              {{ t('insights.newsletter.send.introCount', { count: newsletterIntro.length, max: INSIGHTS_NEWSLETTER_INTRO_MAX }) }}
+              {{ t('insights.newsletter.send.introCount', { count: newsletterIntroDe.length, max: INSIGHTS_NEWSLETTER_INTRO_MAX }) }}
+            </p>
+            <UFormField class="mt-3" :label="t('insights.newsletter.send.introLabelEn')">
+              <UTextarea
+                v-model="newsletterIntroEn" :rows="3" class="w-full"
+                :maxlength="INSIGHTS_NEWSLETTER_INTRO_MAX"
+                :placeholder="t('insights.newsletter.send.introPlaceholder')"
+              />
+            </UFormField>
+            <p class="bw-label mt-1" style="color: var(--bw-muted)">
+              {{ t('insights.newsletter.send.introCount', { count: newsletterIntroEn.length, max: INSIGHTS_NEWSLETTER_INTRO_MAX }) }}
             </p>
             <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.newsletter.send.introHint') }}</p>
           </template>

@@ -559,7 +559,9 @@ export interface InsightsNewsletterSendState {
   state: InsightsSendState
   /** Der Betreff, wie er verschickt WURDE (der Titel darf sich danach ändern). */
   subject: string
-  intro: string
+  /** Die Einleitung je Sprache — jeder Leser bekommt seine oder keine. */
+  introDe: string
+  introEn: string
   /** Die GRUNDSPRACHE des Beitrags beim Versand, NICHT die Sprache der Mails. */
   locale: string
   /** Wie viele beim START gezählt wurden. */

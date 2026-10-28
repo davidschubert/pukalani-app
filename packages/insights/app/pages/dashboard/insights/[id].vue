@@ -358,14 +358,14 @@ const SEND_ROUNDS_MAX = 400
  *    gleich; der Fortschritt steht in der Ablage, der Knopf setzt später fort.
  *  · ein Fehler — der Grund steht im Toast, der Stand wird neu geholt.
  */
-async function sendNewsletter(input: { intro: string }): Promise<void> {
+async function sendNewsletter(input: { introDe: string, introEn: string }): Promise<void> {
   newsletterSending.value = true
   newsletterProgress.value = { sent: newsletter.value?.send?.sent ?? 0, total: newsletter.value?.recipients ?? 0 }
   try {
     for (let round = 0; round < SEND_ROUNDS_MAX; round++) {
       const result = await $fetch<InsightsNewsletterSendBatchResponse>(
         `/api/insights/posts/${id.value}/newsletter`,
-        { method: 'POST', body: { intro: input.intro } },
+        { method: 'POST', body: { introDe: input.introDe, introEn: input.introEn } },
       )
       newsletterProgress.value = {
         sent: result.send.sent,

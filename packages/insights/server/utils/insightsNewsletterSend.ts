@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 import { ID, Query } from 'node-appwrite'
-import type { InsightsNewsletterLocale, InsightsSendState } from '../../shared/insightsNewsletter'
+import type { InsightsNewsletterIntros, InsightsNewsletterLocale, InsightsSendState } from '../../shared/insightsNewsletter'
 import {
   INSIGHTS_NEWSLETTER_BATCH,
   insightsNewsletterIsRecipient,
@@ -181,7 +181,8 @@ export function toInsightsNewsletterSendState(row: InsightsSendRow): InsightsNew
   return {
     state: (row.state ?? 'running') as InsightsSendState,
     subject: row.subject ?? '',
-    intro: row.intro ?? '',
+    introDe: row.introDe ?? '',
+    introEn: row.introEn ?? '',
     locale: row.locale ?? 'en',
     recipients: Math.max(0, Math.round(row.recipients ?? 0)),
     sent: Math.max(0, Math.round(row.sent ?? 0)),
@@ -262,8 +263,8 @@ export interface InsightsNewsletterBatchInput {
   post: InsightsPostHead
   /** Der Pfad des Beitrags OHNE Sprach-Präfix (`insightsPublicHref`). */
   href: string
-  /** Die eigenen zwei, drei Sätze — aus der Sende-Zeile, nicht vom Aufrufer. */
-  intro: string
+  /** Die zwei Einleitungen — aus der Sende-Zeile, nicht vom Aufrufer. */
+  intros: InsightsNewsletterIntros
   /** Die Sende-Zeile, auf der dieser Stapel aufsetzt. */
   row: InsightsSendRow
 }
@@ -347,7 +348,7 @@ export async function runInsightsNewsletterBatch(
       to: subscriber.email ?? '',
       subscriberId: subscriber.$id,
       post: input.post,
-      intro: input.intro,
+      intros: input.intros,
       href: input.href,
       locale: insightsNewsletterLocaleOf(subscriber.locale),
     })
@@ -419,7 +420,7 @@ export async function runInsightsNewsletterBatch(
 export interface InsightsNewsletterStartInput {
   postId: string
   subject: string
-  intro: string
+  intros: InsightsNewsletterIntros
   /** Die GRUNDSPRACHE des Beitrags — nicht die Sprache der Mails. */
   locale: InsightsNewsletterLocale
   /** Die gezählte Empfängerzahl (s. `countInsightsNewsletterRecipients`). */
@@ -454,7 +455,8 @@ export async function createInsightsSendRow(
       data: {
         postId: input.postId,
         subject: input.subject.slice(0, 200),
-        intro: input.intro,
+        introDe: input.intros.introDe,
+        introEn: input.intros.introEn,
         locale: input.locale,
         state: 'running',
         cursor: '',

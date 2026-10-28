@@ -81,7 +81,7 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSendB
       row = await createInsightsSendRow(event, {
         postId: id,
         subject: insightsSendSubjectPreview(target.post),
-        intro: body.intro,
+        intros: { introDe: body.introDe, introEn: body.introEn },
         locale: insightsNewsletterLocaleOf(target.post.baseLocale),
         recipients,
       })
@@ -106,7 +106,7 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSendB
     post: target.post,
     href: target.href,
     // Beim Fortsetzen gilt der Text der Zeile, nicht der des Formulars (s. Kopf).
-    intro: row.intro ?? '',
+    intros: { introDe: row.introDe ?? '', introEn: row.introEn ?? '' },
     row,
   })
 

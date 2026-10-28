@@ -466,9 +466,9 @@ describe('Ein Beitrag, eine Mail', () => {
   it('ignoriert beim Fortsetzen eine NEUE Einleitung — sonst bekäme die zweite Hälfte einen anderen Text', async () => {
     putSubscribers(Array.from({ length: INSIGHTS_NEWSLETTER_BATCH + 1 }, (_, index) => subscriber(index + 1)))
 
-    body = { intro: 'Die erste Fassung.' }
+    body = { introDe: 'Die erste Fassung.', introEn: 'Die erste Fassung.' }
     await runBatch(event)
-    body = { intro: 'Etwas ganz anderes.' }
+    body = { introDe: 'Etwas ganz anderes.', introEn: 'Etwas ganz anderes.' }
     await runBatch(event)
 
     expect(mails).toHaveLength(INSIGHTS_NEWSLETTER_BATCH + 1)

@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { H3Event } from 'h3'
-import type { InsightsNewsletterLocale } from '../../shared/insightsNewsletter'
+import type { InsightsNewsletterIntros, InsightsNewsletterLocale } from '../../shared/insightsNewsletter'
 import { insightsNewsletterConfirmMailCopy, insightsNewsletterIssueCopy } from '../../shared/insightsNewsletter'
 import type { InsightsPostHead } from '../../shared/insightsPost'
 import { insightsPublicKopf } from '../../shared/insightsPost'
@@ -248,7 +248,7 @@ export interface InsightsNewsletterIssueMailInput {
   /** Der Beitrag (nur Kopf: Titel, Vorspann, Grundsprache, Redigier-Häkchen). */
   post: InsightsPostHead
   /** Die eigenen zwei, drei Sätze — '' ist der Normalfall. */
-  intro: string
+  intros: InsightsNewsletterIntros
   /** Der Pfad des Beitrags OHNE Sprach-Präfix (`insightsPublicHref`). */
   href: string
   /** Die Sprache DIESES Empfängers (`insights_subscribers.locale`). */
@@ -293,7 +293,7 @@ export async function sendInsightsNewsletterIssueMail(
     insightsNewsletterUnsubTokenFor(event, input.subscriberId),
     input.locale,
   )
-  const copy = insightsNewsletterIssueCopy(input.post, input.intro, input.locale, {
+  const copy = insightsNewsletterIssueCopy(input.post, input.intros, input.locale, {
     postUrl: insightsNewsletterPostUrl(event, input.href, fassung.locale),
     unsubscribeUrl,
   })

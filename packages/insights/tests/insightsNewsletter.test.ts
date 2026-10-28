@@ -126,7 +126,7 @@ describe('Das Versprechen hat keinen Takt', () => {
 
   it('nennt auch in der AUSGABE-Mail keinen Takt — in beiden Fassungen', () => {
     for (const locale of ['de', 'en'] as const) {
-      const copy = insightsNewsletterIssueCopy(ISSUE_POST, 'Diesmal ein Blick auf zwei Marken.', locale, ISSUE_LINKS)
+      const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: 'Diesmal ein Blick auf zwei Marken.', introEn: 'Diesmal ein Blick auf zwei Marken.' }, locale, ISSUE_LINKS)
       const haystack = `${copy.subject}\n${copy.text}`.toLowerCase()
       for (const word of INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS) {
         expect(haystack).not.toContain(word)
@@ -475,39 +475,39 @@ describe('Der Stapel ist gedeckelt', () => {
   })
 })
 
-describe('createInsightsNewsletterSendSchema — ein Feld, und sonst nichts', () => {
+describe('createInsightsNewsletterSendSchema — die Einleitung je Sprache, und sonst nichts', () => {
   it('nimmt eine Einleitung und trimmt sie', () => {
-    expect(createInsightsNewsletterSendSchema().parse({ intro: '  Hallo  ' }).intro).toBe('Hallo')
+    expect(createInsightsNewsletterSendSchema().parse({ introDe: '  Hallo  ' }).introDe).toBe('Hallo')
   })
 
   it('macht aus „nichts geschickt" eine leere Einleitung', () => {
-    expect(createInsightsNewsletterSendSchema().parse({}).intro).toBe('')
+    expect(createInsightsNewsletterSendSchema().parse({}).introDe).toBe('')
   })
 
   it('weist einen durchgereichten Betreff ab — er kommt aus dem BEITRAG', () => {
-    expect(() => createInsightsNewsletterSendSchema().parse({ intro: '', subject: 'Eigener Betreff' })).toThrow()
+    expect(() => createInsightsNewsletterSendSchema().parse({ introDe: '', subject: 'Eigener Betreff' })).toThrow()
   })
 
   it('kürzt NICHT, sondern lehnt ab: ein Redakteur soll seinen Satz sehen', () => {
-    expect(() => createInsightsNewsletterSendSchema().parse({ intro: 'x'.repeat(INSIGHTS_NEWSLETTER_INTRO_MAX + 1) })).toThrow()
-    expect(createInsightsNewsletterSendSchema().parse({ intro: 'x'.repeat(INSIGHTS_NEWSLETTER_INTRO_MAX) }).intro.length)
+    expect(() => createInsightsNewsletterSendSchema().parse({ introDe: 'x'.repeat(INSIGHTS_NEWSLETTER_INTRO_MAX + 1) })).toThrow()
+    expect(createInsightsNewsletterSendSchema().parse({ introDe: 'x'.repeat(INSIGHTS_NEWSLETTER_INTRO_MAX) }).introDe.length)
       .toBe(INSIGHTS_NEWSLETTER_INTRO_MAX)
   })
 })
 
 describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
   it('nimmt als Betreff den TITEL der Fassung, ohne Präfix und ohne Nummer', () => {
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, '', 'de', ISSUE_LINKS).subject)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS).subject)
       .toBe('Zwei Marken im Vergleich')
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, '', 'en', ISSUE_LINKS).subject)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS).subject)
       .toBe('Two brands compared')
   })
 
   it('schreibt in der Sprache des EMPFÄNGERS, wenn die Fassung redigiert ist', () => {
-    const de = insightsNewsletterIssueCopy(ISSUE_POST, '', 'de', ISSUE_LINKS)
+    const de = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS)
     expect(de.text).toContain('Zwei Marken, ein Blick.')
     expect(de.text).toContain('Du bekommst das, weil du dich eingetragen hast')
-    const en = insightsNewsletterIssueCopy(ISSUE_POST, '', 'en', ISSUE_LINKS)
+    const en = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS)
     expect(en.text).toContain('Two brands, one look.')
     expect(en.text).toContain('You are getting this because you signed up')
   })
@@ -515,28 +515,71 @@ describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
   it('schickt die GRUNDFASSUNG, solange die zweite nicht redigiert ist (§3.2)', () => {
     // Die Gegenprobe zum Test darüber: dieselbe Zeile, nur ohne Häkchen.
     const roh = { ...ISSUE_POST, translationReviewed: false }
-    const copy = insightsNewsletterIssueCopy(roh, '', 'de', ISSUE_LINKS)
+    const copy = insightsNewsletterIssueCopy(roh, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS)
     expect(copy.subject).toBe('Two brands compared')
     expect(copy.text).toContain('Two brands, one look.')
     expect(copy.text).not.toContain('Zwei Marken')
   })
 
   it('setzt die eigene Einleitung GANZ OBEN — und lässt sie weg, wenn es keine gibt', () => {
-    const mit = insightsNewsletterIssueCopy(ISSUE_POST, '  Diesmal kurz.  ', 'de', ISSUE_LINKS)
+    const mit = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '  Diesmal kurz.  ', introEn: '  Diesmal kurz.  ' }, 'de', ISSUE_LINKS)
     expect(mit.text.startsWith('Diesmal kurz.')).toBe(true)
-    const ohne = insightsNewsletterIssueCopy(ISSUE_POST, '   ', 'de', ISSUE_LINKS)
+    const ohne = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '   ', introEn: '   ' }, 'de', ISSUE_LINKS)
     expect(ohne.text.startsWith('Zwei Marken, ein Blick.')).toBe(true)
   })
 
+  /**
+   * DER BEFUND AUS DEM KLICK-BEWEIS (2026-10-27), als Gegenprobe festgenagelt.
+   *
+   * Mit EINEM Einleitungs-Feld stand der deutsche Satz über einer sonst
+   * englischen Mail. Jetzt gilt: jeder bekommt seine Einleitung oder keine —
+   * nie die der anderen Sprache. Beide Richtungen werden geprüft, sonst
+   * bestünde der Test auch dann, wenn die Funktion schlicht immer `introDe`
+   * nähme.
+   */
+  it('gibt jedem seine Einleitung — und NIE die der anderen Sprache', () => {
+    const nurDe = { introDe: 'Nur auf Deutsch.', introEn: '' }
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurDe, 'de', ISSUE_LINKS).text)
+      .toContain('Nur auf Deutsch.')
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurDe, 'en', ISSUE_LINKS).text)
+      .not.toContain('Nur auf Deutsch.')
+
+    const nurEn = { introDe: '', introEn: 'English only.' }
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurEn, 'en', ISSUE_LINKS).text)
+      .toContain('English only.')
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurEn, 'de', ISSUE_LINKS).text)
+      .not.toContain('English only.')
+  })
+
+  /**
+   * UND SIE FOLGT DER FASSUNG, DIE WIRKLICH RAUSGEHT — nicht der angeforderten.
+   *
+   * Fällt der Beitrag nach §3.2 auf seine Grundsprache zurück (die zweite
+   * Fassung ist nicht redigiert), dann bekommt der Leser deutschen Text. Eine
+   * englische Einleitung darüber wäre genau der Sprachsalat, den der Rückfall
+   * gerade vermeidet.
+   */
+  it('nimmt die Einleitung der FASSUNG, nicht der Anforderung (§3.2-Rückfall)', () => {
+    const nurDeutschRedigiert = { ...ISSUE_POST, translationReviewed: false, baseLocale: 'de' as const }
+    const copy = insightsNewsletterIssueCopy(
+      nurDeutschRedigiert,
+      { introDe: 'Deutsch dazu.', introEn: 'English on top.' },
+      'en',
+      ISSUE_LINKS,
+    )
+    expect(copy.text).toContain('Deutsch dazu.')
+    expect(copy.text).not.toContain('English on top.')
+  })
+
   it('trägt die Adresse des Beitrags UND den Abmelde-Link dieses Empfängers', () => {
-    const copy = insightsNewsletterIssueCopy(ISSUE_POST, '', 'de', ISSUE_LINKS)
+    const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS)
     expect(copy.text).toContain('https://branding.supply/de/duels/a-vs-b')
     expect(copy.text).toContain('https://branding.supply/de/newsletter/unsubscribe?token=row.sig')
   })
 
   it('bleibt reiner Text — kein HTML, keine spitzen Klammern', () => {
     for (const locale of ['de', 'en'] as const) {
-      const copy = insightsNewsletterIssueCopy(ISSUE_POST, 'Ganz kurz.', locale, ISSUE_LINKS)
+      const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: 'Ganz kurz.', introEn: 'Ganz kurz.' }, locale, ISSUE_LINKS)
       expect(copy.text).not.toMatch(/[<>]/)
       expect(copy.subject).not.toMatch(/[<>]/)
     }

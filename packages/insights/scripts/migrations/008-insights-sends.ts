@@ -38,10 +38,16 @@
  *    entsteht aus dem Titel des Beitrags, und der Titel kann sich danach
  *    ändern: ohne diese Spalte könnte niemand mehr sagen, was in den
  *    Postfächern steht.
- *  · `intro` (1000, Default '') — die zwei, drei eigenen Sätze über dem
- *    Vorspann. Dieselbe Begründung wie beim Betreff, plus eine zweite: beim
- *    FORTSETZEN nach einem Abbruch muss die zweite Hälfte denselben Text
- *    bekommen wie die erste.
+ *  · `introDe` / `introEn` (je 1000, Default '') — die zwei, drei eigenen
+ *    Sätze über dem Vorspann, JE SPRACHE EINE. Dieselbe Begründung wie beim
+ *    Betreff, plus zwei weitere: beim FORTSETZEN nach einem Abbruch muss die
+ *    zweite Hälfte denselben Text bekommen wie die erste — und die Mail folgt
+ *    der Sprache des Lesers, also muss es die Einleitung auch (Davids
+ *    Entscheidung 2026-10-27; eine einzige Spalte schickte im Klick-Beweis
+ *    einen deutschen Satz an englische Leser). Wer nur eine Fassung schreibt,
+ *    erreicht nur deren Leser — es gibt KEINEN Rückfall auf die andere.
+ *    DIESE DATEI WURDE VOR IHREM ERSTEN PROD-LAUF GEÄNDERT (nur zwei lokale
+ *    Dev-Instanzen hatten sie gesehen); deshalb keine 009 hinterher.
  *  · `locale` (8, Default 'en') — die GRUNDSPRACHE des Beitrags zum Zeitpunkt
  *    des Versands. Sie ist NICHT die Sprache der Mails: die ist die des
  *    EMPFÄNGERS (`insights_subscribers.locale`, aufgelöst über
@@ -62,7 +68,7 @@
  *    für „noch nicht fertig". Verglichen wird im Code, nie in einer Abfrage.
  *
  * ── ZEILENBUDGET (MariaDB, utf8mb4) ─────────────────────────────────────
- * postId 64 + subject 200 + intro 1.000 + locale 8 + state 16 + cursor 64 +
+ * postId 64 + subject 200 + introDe 1.000 + introEn 1.000 + locale 8 + state 16 + cursor 64 +
  * startedAt 32 + finishedAt 32 = 1.416 Zeichen. Weit unter 16.381.
  *
  * ── EIN INDEX, UND ZWAR GENAU EINER ─────────────────────────────────────
@@ -166,9 +172,13 @@ await step(`Table ${SENDS}`, () => tablesDB.createTable({
   await columnStep(`Column ${SENDS}.subject`, 'subject', cols, () => tablesDB.createVarcharColumn({
     databaseId, tableId: SENDS, key: 'subject', size: 200, required: false, xdefault: '',
   }))
-  // Die eigenen zwei, drei Sätze — auch der zweite Stapel braucht sie (s. Kopf).
-  await columnStep(`Column ${SENDS}.intro`, 'intro', cols, () => tablesDB.createVarcharColumn({
-    databaseId, tableId: SENDS, key: 'intro', size: 1000, required: false, xdefault: '',
+  // Die eigenen zwei, drei Sätze, JE SPRACHE EINE — auch der zweite Stapel
+  // braucht sie, und die Mail folgt der Sprache des Lesers (s. Kopf).
+  await columnStep(`Column ${SENDS}.introDe`, 'introDe', cols, () => tablesDB.createVarcharColumn({
+    databaseId, tableId: SENDS, key: 'introDe', size: 1000, required: false, xdefault: '',
+  }))
+  await columnStep(`Column ${SENDS}.introEn`, 'introEn', cols, () => tablesDB.createVarcharColumn({
+    databaseId, tableId: SENDS, key: 'introEn', size: 1000, required: false, xdefault: '',
   }))
   // Die GRUNDSPRACHE des Beitrags — nicht die Sprache der Mails (s. Kopf).
   await columnStep(`Column ${SENDS}.locale`, 'locale', cols, () => tablesDB.createVarcharColumn({

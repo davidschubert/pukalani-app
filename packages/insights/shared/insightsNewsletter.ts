@@ -578,7 +578,7 @@ export function decideInsightsSendStart(
 export const INSIGHTS_NEWSLETTER_INTRO_MAX = 1000
 
 /**
- * WAS DAS VERSAND-FORMULAR SCHICKEN DARF — ein Feld, und sonst nichts.
+ * WAS DAS VERSAND-FORMULAR SCHICKEN DARF — die Einleitung, je Sprache eine.
  *
  * `.strict()` wie beim Eintragen: der Betreff, die Sprache und die Adresse
  * kommen aus dem BEITRAG, nicht aus dem Formular. Ein durchgereichter
@@ -586,16 +586,44 @@ export const INSIGHTS_NEWSLETTER_INTRO_MAX = 1000
  * (s. Kopf) — und ein durchgereichter `postId` wäre eine Mail über einen
  * anderen Beitrag als den, vor dem der Mensch steht.
  *
+ * ── ZWEI FELDER, WEIL DIE MAIL DER SPRACHE DES LESERS FOLGT ──────────────
+ * (Davids Entscheidung 2026-10-27, nach dem Klick-Beweis.) Zuerst gab es EIN
+ * Feld — und im Beweis stand der deutsche Einleitungssatz über einer sonst
+ * englischen Mail, weil der Beitrag selbst zweisprachig ist und die
+ * Einleitung nicht. Das ist dieselbe Wunde, die §3.2 auf der Seite vermeidet:
+ * Dieses Produkt zeigt niemandem Text in einer Sprache, die er nicht gewählt
+ * hat. Wer nur eine Fassung schreibt, erreicht damit nur die Leser dieser
+ * Sprache — die anderen bekommen die Mail OHNE Einleitung, nie die fremde
+ * (s. `insightsNewsletterIssueCopy`).
+ *
  * Gekürzt wird NICHT (anders als `source` beim Eintragen): hier tippt ein
  * Redakteur, und ein stillschweigend abgeschnittener Satz ginge so in
  * fünfhundert Postfächer. Das Formular zeigt denselben Deckel.
  */
 export function createInsightsNewsletterSendSchema(t: (key: string) => string = key => key) {
-  return z.object({
-    intro: z.string().trim()
-      .max(INSIGHTS_NEWSLETTER_INTRO_MAX, { message: t('insights.newsletter.send.introTooLong') })
-      .default(''),
-  }).strict()
+  const field = () => z.string().trim()
+    .max(INSIGHTS_NEWSLETTER_INTRO_MAX, { message: t('insights.newsletter.send.introTooLong') })
+    .default('')
+  return z.object({ introDe: field(), introEn: field() }).strict()
+}
+
+/** Die zwei Einleitungen, wie Zeile, Route und Mail-Bau sie herumreichen. */
+export interface InsightsNewsletterIntros {
+  introDe: string
+  introEn: string
+}
+
+/**
+ * DIE EINLEITUNG FÜR EINEN LESER — oder nichts.
+ *
+ * Kein Rückfall auf die andere Sprache: lieber eine Mail ohne Einleitung als
+ * eine mit einem Satz, den der Empfänger nicht lesen wollte.
+ */
+export function insightsNewsletterIntroFor(
+  intros: InsightsNewsletterIntros,
+  locale: InsightsNewsletterLocale,
+): string {
+  return (locale === 'de' ? intros.introDe : intros.introEn).trim()
 }
 
 export type InsightsNewsletterSendInput
@@ -656,12 +684,16 @@ export interface InsightsNewsletterIssueLinks {
  */
 export function insightsNewsletterIssueCopy(
   post: InsightsPostHead,
-  intro: string,
+  intros: InsightsNewsletterIntros,
   locale: InsightsNewsletterLocale,
   links: InsightsNewsletterIssueLinks,
 ): InsightsNewsletterMailCopy {
   const kopf = insightsPublicKopf(post, locale)
-  const trimmedIntro = intro.trim()
+  // Die Einleitung folgt der Fassung, die der Leser wirklich bekommt — nicht
+  // der angeforderten: fällt der Beitrag nach §3.2 auf seine Grundsprache
+  // zurück, täte ein Satz in der anderen Sprache darüber genau das, was der
+  // Rückfall gerade vermeidet.
+  const trimmedIntro = insightsNewsletterIntroFor(intros, kopf.locale)
   const lines: string[] = []
 
   if (trimmedIntro) lines.push(trimmedIntro, '')

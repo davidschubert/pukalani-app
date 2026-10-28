@@ -300,8 +300,10 @@ export type InsightsSendRow = Models.Row & {
   postId?: string
   /** Der Betreff, wie er verschickt WURDE (der Titel darf sich danach ändern). */
   subject?: string
-  /** Die eigenen zwei, drei Sätze — der zweite Stapel braucht sie genauso. */
-  intro?: string
+  /** Die eigenen zwei, drei Sätze je Sprache — der zweite Stapel braucht sie
+   *  genauso, und die Mail folgt der Sprache des Lesers (kein Rückfall). */
+  introDe?: string
+  introEn?: string
   /** Die GRUNDSPRACHE des Beitrags, NICHT die Sprache der Mails. */
   locale?: string
   /** `running` · `done` · `failed`. */
