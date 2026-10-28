@@ -11973,6 +11973,14 @@ bekam dafür zwei Spalten statt einer; sie wurde VOR ihrem ersten Prod-Lauf geä
 keine 009 hinterher. Nachgemessen am Postfach: nur `introDe` gefüllt ⇒ zwei deutsche Leser
 sehen den Satz, zwei englische bekommen eine saubere englische Mail ohne ihn.
 
+**In Betrieb (2026-10-27):** Prod-Migration `insights-008` mit Davids Ja gegen die Instanz
+`branding` gefahren (zentraler Runner mit `--app branding`; der Lauf zog die 005/006/007 der
+Nachbar-Sitzungen idempotent mit, alles „existiert bereits"). Nachgemessen am Projekt: Tabelle
+`insights_sends` server-only (`permissions: []`, `rowSecurity: false`), alle zwölf Spalten und
+der Unique-Index `uq_post_id` auf `available`, 0 Zeilen. `pnpm ops:schema-parity` danach grün
+auf allen vier ausgerollten Instanzen (branding 43/43), Spalten-Parität deckungsgleich. Der
+Riegel bleibt zu — es kann also nichts rausgehen, bevor die Config-Zeile fällt.
+
 **Wächter:** insights 444 Tests · core 1710 · branding 32 · Lint insights/branding/scripts
 (core eine Alt-Warnung) · typecheck branding exit 0 · check:i18n-keys 312 · check:manifests 26/9
 · check:bilanz · check:single-copy · check:doc-links.
