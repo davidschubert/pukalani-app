@@ -280,7 +280,11 @@ jobs:
       - name: Issue öffnen, bestätigen oder schließen
         id: issue
         run: |
-          set -u
+          # STRENG: bricht dieser Schritt ab, ist der Lauf rot und der
+          # Heartbeat bleibt aus — ein kaputter Alarmweg darf nicht grün
+          # aussehen (der erste Probealarm, 2026-10-28, starb genau so: ein
+          # `null` aus jq, ein Rechenfehler, Job trotzdem grün).
+          set -euo pipefail
           rot=""
           [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit (alle 30 min)"
           [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail)"
@@ -290,8 +294,9 @@ jobs:
           gh label create "$LABEL" --color B60205 --force \
             --description 'Produktions-Wächter rot — offen = Alarm aktiv, zu = Entwarnung' >/dev/null
 
+          # Leere Liste ⇒ leere Zeichenkette (NICHT "null null" — Probealarm 1).
           offen=$(gh issue list --label "$LABEL" --state open --limit 1 --json number,updatedAt \
-            --jq '.[0] | "\(.number) \(.updatedAt)"' || true)
+            --jq 'if length > 0 then "\(.[0].number) \(.[0].updatedAt)" else "" end')
           nummer="${offen%% *}"; zuletzt="${offen#* }"
           stand=$(date -u +'%Y-%m-%d %H:%M UTC')
           wechsel="keiner"
@@ -329,15 +334,18 @@ jobs:
           else
             echo "Alles grün, kein offenes Alarm-Issue."
           fi
+          # Die Folge-Schritte prüfen EXPLIZIT auf diese Werte: fehlen sie
+          # (Schritt abgebrochen), läuft weder Mail noch Heartbeat.
           echo "wechsel=$wechsel" >> "$GITHUB_OUTPUT"
           echo "rot=${rot# }" >> "$GITHUB_OUTPUT"
+          [ -z "$rot" ] && echo "gruen=1" >> "$GITHUB_OUTPUT" || echo "gruen=0" >> "$GITHUB_OUTPUT"
 
       # Mail NUR bei einem Wechsel (Alarm / Entwarnung) — nie im Takt.
       # Ohne Secret+Variable: sichtbar übersprungen, nicht rot (das Fehlen
       # eines Alarmwegs ist in diesem Lauf kein Vorfall — aber im Runbook
       # eine offene Klickzeile).
       - name: Mail bei Alarm oder Entwarnung (Resend)
-        if: steps.issue.outputs.wechsel != 'keiner'
+        if: steps.issue.outputs.wechsel == 'alarm' || steps.issue.outputs.wechsel == 'entwarnung'
         env:
           WECHSEL: ${{ steps.issue.outputs.wechsel }}
           ROT: ${{ steps.issue.outputs.rot }}
@@ -371,7 +379,7 @@ jobs:
       # Heartbeat NUR bei grün — bleibt er aus (rot ODER Workflow läuft gar
       # nicht mehr), meldet UptimeRobot nach dem dort eingestellten Fenster.
       - name: Heartbeat (nur bei grün)
-        if: steps.issue.outputs.rot == ''
+        if: steps.issue.outputs.gruen == '1'
         env:
           HEARTBEAT_URL: ${{ secrets.PRODUCTION_WATCH_HEARTBEAT_URL }}
         run: |
