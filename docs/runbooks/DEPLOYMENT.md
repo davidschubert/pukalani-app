@@ -218,10 +218,15 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > Verhalten von vorher (Dev, CI, E2E). NUR EINE gesetzt = Fehlkonfiguration,
 > der Server schreibt sie beim Start ins Log (`auth.turnstile_misconfigured`);
 > ein Secret ohne Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt
-> ein nutzloses Widget. Das Widget legt David im Cloudflare-Dashboard an
-> (Turnstile → Add widget, Hostnames: `*.pukalani.app`, `branding.supply`,
-> Modus „Managed"); ein Widget kann mehrere Hostnames tragen, also EIN
-> Schlüsselpaar für alle Pukalani-Sites.
+> ein nutzloses Widget. Das Widget EXISTIERT seit 2026-10-27: „Pukalani Apps"
+> im Cloudflare-Konto Hawaii Studio (Turnstile → Widgets), Hostnames
+> `pukalani.app` + `branding.supply` (Subdomains sind automatisch gedeckt),
+> Modus „Managed"; EIN Schlüsselpaar für alle Pukalani-Sites, gesetzt auf
+> platform, admin, portfolio, branding — und dort PFLICHT im Wächter
+> `verify-site-env.mjs`. Nach dem Eintragen reicht `pm2 startOrReload
+> … --update-env` (kein Build nötig, auch der `NUXT_PUBLIC_`-Site-Key kommt
+> zur Laufzeit aus der Env). Neue Site mit Konten ⇒ beide Variablen mitgeben;
+> neue Root-Domain ⇒ als Hostname am Widget nachtragen.
 > **Rate-Limit-Store (seit 2026-07-23):** mit `NUXT_REDIS_URL` zählen alle
 > Instanzen/Cluster-Worker einer App ihre Rate-Limits GETEILT in Redis
 > (läuft auf app-prod lokal auf 6379, bei der Server-Einrichtung
