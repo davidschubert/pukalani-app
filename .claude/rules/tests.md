@@ -53,11 +53,22 @@ läuft, ist nur so ehrlich wie sein ENTFERNTESTER Dienst; ein Worktree hat
 außerdem weder `node_modules` noch `.env` (installieren, `.env` aus dem
 Haupt-Checkout kopieren, danach wieder löschen).
 
-ZWEI BEWEIS-REGELN (2026-08-18 erwischt): (1) Erwartungswerte NIE aus derselben
-Antwort ableiten, die geprüft wird — eine solche Prüfung ist IMMER grün
-(Tautologie im Aufwärm-Schritt von verify-presence-away-priority). (2) Auch
-REGRESSIONS-Beweise brauchen die volle Dienst-Kette: verify-presence-boundary
-war 16/23 rot, weil nur die Control-Naht (:3004) tot war, nicht der Code.
+DREI BEWEIS-REGELN: (1) Erwartungswerte NIE aus derselben Antwort ableiten, die
+geprüft wird — eine solche Prüfung ist IMMER grün (Tautologie im Aufwärm-Schritt
+von verify-presence-away-priority; 2026-08-18 erwischt). (2) Auch REGRESSIONS-
+Beweise brauchen die volle Dienst-Kette: verify-presence-boundary war 16/23 rot,
+weil nur die Control-Naht (:3004) tot war, nicht der Code (2026-08-18).
+(3) EINE PIPE VERSCHLUCKT DEN EXIT-CODE (2026-10-28 live erwischt): in
+`pnpm --filter <app> typecheck | tail -6` ist der Status der von `tail`, also
+fast immer 0 — ein FEHLGESCHLAGENER Lauf sieht damit genau wie Erfolg aus.
+Besonders tückisch neben der Ausgaben-Deckelung aus der Sitzungs-Hygiene: der
+Fehler steht oft gar nicht in den letzten Zeilen. So kam ein TS2322 nach `main`
+und hielt den Typecheck drei Pushes lang rot, während die Sitzung ihn für grün
+hielt. Entweder Ausgabe UND Status trennen (`pnpm x > out.log 2>&1;
+echo "exit $?"; tail -6 out.log`) oder in der Pipe `set -o pipefail` setzen bzw.
+`${PIPESTATUS[0]}` lesen. Wer nur INHALT prüft (eine Erfolgszeile, eine
+Zählung), ist nicht betroffen — wer „exit 0" als Beweis NENNT, schon. Gilt
+genauso für `| head`, `| grep` und `| sed -n`.
 
 pnpm -r test (Unit) · Playwright-E2E in apps/comments (Base-URL per
 PW_BASE_URL überschreibbar — parallele Dev-Sessions) · themes-visual zielt
