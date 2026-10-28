@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "nuxi dev .playground --port 3013",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:launch": "node --env-file=../../apps/branding/.env scripts/seed-launch.mjs"
   },
   "dependencies": {
     "@nuxt/ui": "catalog:",
