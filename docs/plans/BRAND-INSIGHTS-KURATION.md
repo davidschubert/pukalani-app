@@ -341,13 +341,14 @@ Anwalt ist dafür kein Gate.
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
-| **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle | Entscheidung C (§9) · K4 · **Routen-Probe** | S–M |
+| **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle; **Routen-Probe gefahren (§13): C4 läuft unter unserer ZDR-Klemme, ~5 Cent je Video** — es fehlt der Video-Transport im Core und ein `videoModel` in der Config | Entscheidung C (§13) · K4 | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
 **Nach Davids Entscheidungen vom 2026-09-09 (§9):** K1 entfällt, K2 läuft
 sofort (kein Gate, keine Migration), K3 ist beauftragt und braucht ein Ja zur
-Prod-Migration, K5 wartet auf die Routen-Probe aus §9. **K7 hat seit I3 kein
+Prod-Migration, K5 wartete auf die Routen-Probe aus §9 — **die ist am
+2026-10-27 gefahren, §13: C4 ist baubar.** **K7 hat seit I3 kein
 Gate mehr** — Artikel sind öffentlich, der Anwalt hält nur Profil, Duell und
 Ranking.
 
@@ -420,7 +421,13 @@ nicht urheberrechtlich, er ist datenschutzrechtlich:
 heutigen Endpunkte von `gemini-2.5-flash` zeigt sieben Routen, davon drei über
 **`google-vertex/eu`** — der EU-Weg, über den unsere Läufe heute gehen — und
 vier über **`google-ai-studio`** (Sitz US). Der Weg, der Videos kann, ist also
-nicht der Weg, den wir heute fahren. Zwei Fragen entscheiden das Paket, und
+nicht der Weg, den wir heute fahren.
+
+> **BEIDE Sätze hat die Probe am 2026-10-27 widerlegt — siehe §13.** AI Studio
+> ist gar nicht ZDR-fähig (404), Vertex EU nimmt YouTube-Adressen sehr wohl,
+> und „der EU-Weg, über den unsere Läufe heute gehen" gibt es nicht: ohne
+> `only` wählt OpenRouter jede ZDR-Route, in der Probe Amazon Bedrock. Der
+> Absatz bleibt als Protokoll stehen, gilt aber nicht mehr. Zwei Fragen entscheiden das Paket, und
 beide sind billig zu beantworten:
 
 1. **Ist `google-ai-studio` unter `zdr: true` + `data_collection: 'deny'`
@@ -697,3 +704,121 @@ Migration vor dem Merge gefahren wird.
 
 **Nicht bewiesen:** die Seite hinter dem Login. Der Migrations-Schlüssel hat
 bewusst keinen `users`-Scope — dieselbe Grenze wie bei K3.
+
+---
+
+## 13. Die Routen-Probe zu Frage C — gefahren (2026-10-27, Davids Auftrag)
+
+Elf Anfragen mit dem echten Schlüssel (`~/.appwrite-secrets/branding-ai.key`),
+jede mit genau den drei Feldern aus `BRAND_PROVIDER_ROUTING`. Gesamtkosten der
+Probe: **0,063 $**.
+
+**Das Ergebnis in einem Satz:** Gemini sieht ein YouTube-Video unter unserer
+Datenschutz-Klemme — und sogar auf **`google-vertex/eu`** festgenagelt. **C4
+ist baubar, ohne den EU-Weg zu verlassen.**
+
+### Die fünf Messwerte
+
+1. **Vertex EU kann es doch.** `only: ['google-vertex/eu']` +
+   `google/gemini-3.1-flash-lite` + YouTube-Adresse ⇒ **HTTP 200**, inhaltlich
+   richtige Antwort. Die OpenRouter-Doku behauptet wörtlich, Vertex nehme keine
+   Video-URLs und nur „Google AI Studio" nehme YouTube-Links — **das ist heute
+   falsch**. Belegt nicht am Text, sondern an der ABRECHNUNG: für ein
+   19-Sekunden-Video weist die Antwort `video_tokens: 1197` und
+   `audio_tokens: 479` aus. Bild UND Ton, wie die Google-Doku es verspricht.
+2. **„Google AI Studio" ist gar nicht ZDR-fähig.** `only: ['google-ai-studio']`
+   ⇒ **404** „No endpoints found matching your data policy (Zero data
+   retention)". Damit ist die zweite Frage aus §9 („Wollen wir für diesen
+   Zweck den EU-Weg verlassen?") **gegenstandslos**: diese Route steht uns
+   ohnehin nicht offen — und wir brauchen sie nicht.
+3. **Das Modell erfindet nichts.** Gegenprobe mit einer erfundenen, aber
+   formgültigen Video-Id ⇒ **502** „Provider returned error". Ohne erreichbares
+   Video gibt es keine Antwort, also ist eine Antwort ein Beweis, dass das
+   Video gelesen wurde. Ohne diese Gegenprobe wäre jeder Treffer wertlos
+   gewesen — ein Modell, das aus dem Titel rät, antwortet genauso flüssig.
+4. **Was ein Video kostet** (gemessen, `gemini-3.1-flash-lite`): ein
+   25-Minuten-Video = **134.888 Prompt-Tokens** (96.960 Video + 37.888 Audio)
+   ⇒ **0,049 $**. Die ZWEITE Frage zum selben Video im Cache-Fenster:
+   **0,0067 $** (134.464 Tokens als `cached_tokens`). Also ~5 Cent fürs Lesen
+   und ~0,7 Cent je weitere Frage — **Brief und Artikel (K5 + K6) nacheinander
+   kosten zusammen rund 6 Cent je Video.** Ein 50-Minuten-Video liegt bei
+   ~10 Cent. Das trägt jede Drossel, die §9.4 heute schon hat.
+5. **`processing: 'static'` ist kein Sparhebel.** Mit und ohne das Feld stehen
+   dieselben Token-Zahlen in der Abrechnung (1197/479 beim kurzen,
+   96.960/37.888 beim langen Video). Der scheinbare Preissturz beim zweiten
+   langen Lauf war der **Prompt-Cache**, nicht der Modus — sichtbar nur, weil
+   `cached_tokens` mitgelesen wurde. Nicht als Einsparung einplanen.
+
+**Inhaltliche Gegenprobe (hat die Probe überhaupt verstanden?):** beim
+19-Sekunden-Video („Me at the zoo", bewusst gewählt, weil der Inhalt
+unabhängig bekannt ist) nennt die Antwort den Zoo, **zwei** Elefanten, den
+letzten gesprochenen Satz wörtlich und die Kleidung. Beim 25-Minuten-Video aus
+Davids Kanalliste (Google Search Central, „PDFs in Search") kommen drei
+Kernaussagen mit Zeitstempeln zurück, sachlich richtig, plus eine
+Artikel-These. Das ist genau die Form, die K5 braucht.
+
+### Zwei Befunde, die die Probe nebenbei aufgedeckt hat
+
+**B1 — das Vision-Modell von `branding` ist TOT.** `apps/branding` setzt
+`pukalani.ai.visionModel: 'google/gemini-2.5-flash'`. Dieses Modell steht
+**nicht mehr** in OpenRouters ZDR-Liste; sein ganzes Endpunkt-Angebot sind
+heute drei AI-Studio-Routen, und AI Studio ist nicht ZDR-fähig (Messwert 2).
+Jeder Aufruf antwortet deshalb **404 „No endpoints found matching your data
+policy"** — nachgestellt mit genau der Aufrufform der App (Text + `image_url`
++ die drei Routing-Felder). Betroffen ist der EINE Konsument von `aiVision`:
+die **Inspirationslesung** im Brand-Wizard
+(`packages/brand/server/utils/brandInspirationReading.ts`). Auf Prod ist der
+Schalter dabei AN (`app_config.brandAiEnabled: true`, `aiModel` leer, also
+gilt der Build-Default) — die Funktion ist also nicht abgeschaltet, sie
+scheitert. Ein Laufzeit-Override für `visionModel` gibt es bewusst nicht, die
+Spalte fehlt; es ist eine Zeile in `apps/branding/app/app.config.ts`.
+Dieselbe Falle hat schon einmal zugeschlagen und steht als Kommentar zwei
+Zeilen darunter (`…-image-preview` hatte 2026-09 keine Endpunkte mehr) — ein
+Modell-Slug bei OpenRouter ist kein Versprechen, sondern ein Angebot, das
+verschwindet. **Geprüft wurde deshalb jeder konfigurierte Slug gegen
+`/models?zdr=true`:** `anthropic/claude-haiku-4.5` ✓,
+`google/gemini-2.5-flash-image` ✓, `google/gemini-2.5-flash` ✗.
+`google/gemini-3.1-flash-lite` hat in derselben Probe ein echtes 32×32-PNG
+korrekt beschrieben — es kann Bild UND Video und wäre damit EIN Modell für
+beides.
+
+**B2 — die EU-Route ist heute nicht gepinnt.** `BRAND_PROVIDER_ROUTING` nennt
+kein `only`, also wählt OpenRouter jede Route, die ZDR und `deny` erfüllt —
+in der Probe wurde unser Textmodell von **Amazon Bedrock** bedient (die
+Endpunkt-Liste von `claude-haiku-4.5` führt `anthropic`, `azure/global`,
+`amazon-bedrock/{global,us,eu-west-1}`, `google-vertex/{global,us-east5,europe}`).
+**Die Notiz in §9, „`google-vertex/eu` — der EU-Weg, über den unsere Läufe
+heute gehen", war falsch:** ZDR sagt „nichts wird gespeichert", es sagt nichts
+über den ORT. Wer Datenresidenz in der EU will, muss sie pinnen
+(`only: ['google-vertex/eu']` o. ä.) — und zahlt dafür mit Ausfall ohne
+Ausweichweg, weil `allow_fallbacks: false` bleibt. Unter den heute
+video-fähigen ZDR-Gemini-Modellen hat **nur `gemini-3.1-flash-lite` überhaupt
+einen `google-vertex/eu`-Endpunkt**; `3.5-flash`, `3.8-flash` und `4-argon`
+bieten global/us und AI Studio. Das ist eine Entscheidung für David, keine
+Technikfrage — sie gehört zu BS1 (AVV, Datenschutzerklärung).
+
+**B1 ist noch am selben Tag behoben** (Davids Wahl, Hergang im Archiv unter
+„AI1"): `visionModel: 'google/gemini-3.1-flash-lite'`, und die
+Inspirationslesung läuft über die neue Konstante **`BRAND_PROVIDER_ROUTING_EU`**
+(`BRAND_PROVIDER_ROUTING` + `only: ['google-vertex/eu']`) — Davids
+Entscheidung „nur für Bild und Video pinnen". Dieselbe Konstante nimmt K5 für
+das Videolesen. Bewiesen mit einem echten Lauf der neuen Kombination (Modell +
+EU-Pin + echtes PNG ⇒ 200). Neu dazu: **`pnpm ops:ai-models`**, der jeden
+konfigurierten Slug gegen `/models?zdr=true` prüft (ohne Schlüssel, mit
+Gegenprobe am toten Slug). **Von B2 bleibt der TEXT-Weg offen** — OPEN-ITEMS
+`AI1`.
+
+### Was daraus für K5 folgt
+
+* **C4 gewinnt** und braucht keine neue Rechtsrunde: hineingereicht wird eine
+  öffentliche YouTube-Adresse an Googles eigenen, dokumentierten Weg, auf einer
+  Route, die wir ohnehin fahren dürfen.
+* Der Transport fehlt noch: `aiComplete` schickt `content` als STRING,
+  `aiVision` kennt `image_url`. K5 braucht **einen dritten Baustein im Core**
+  (oder eine Erweiterung von `aiVision` um `video_url` + das optionale
+  `processing`) — dieselbe Naht, dieselbe Schlüssel-Auflösung, derselbe
+  Routing-Vertrag.
+* Das Modell für K5 ist nicht automatisch das Modell aus
+  `getEffectiveAiConfig` (`claude-haiku-4.5` sieht keine Videos). K5 braucht
+  einen eigenen Schlüssel in der Config — Vorschlag: `pukalani.ai.videoModel`,
+  Core-Default LEER (= aus), wie beim Vision-Modell.

@@ -30,6 +30,59 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AI1 — Das Vision-Modell von branding.supply war tot, und nichts wurde rot ✅ 2026-10-27
+
+**Gefunden als Nebenbefund der Routen-Probe zu BI2-Frage C** (Plan
+`plans/BRAND-INSIGHTS-KURATION.md` §13). `apps/branding` setzte
+`pukalani.ai.visionModel: 'google/gemini-2.5-flash'`. Dieses Modell hatte bei
+OpenRouter **keinen ZDR-Endpunkt mehr** — sein ganzes Angebot waren drei
+Routen über „Google AI Studio", und AI Studio ist, mit einer eigenen Probe
+belegt, **nicht ZDR-fähig** (`only: ['google-ai-studio']` ⇒ 404). Weil
+`BRAND_PROVIDER_ROUTING` auf `zdr: true` + `allowFallbacks: false` klemmt,
+antwortete jeder Aufruf **404 „No endpoints found matching your data policy"**.
+Betroffen war der einzige Konsument von `aiVision`: die **Inspirationslesung**
+im Brand-Wizard. Dabei stand der Schalter auf Prod AN (`brandAiEnabled: true`,
+`aiModel` leer) — die Funktion war also nicht abgeschaltet, sie **scheiterte**.
+
+**Behoben** (Davids Wahl, 2026-10-27): `visionModel:
+'google/gemini-3.1-flash-lite'` — das einzige video-fähige ZDR-Gemini mit
+einem `google-vertex/eu`-Endpunkt, damit trägt EIN Modell die Bildlesung und
+ab K5 das Videolesen. Dazu, ebenfalls Davids Entscheidung („nur für Bild und
+Video pinnen"), die neue Konstante **`BRAND_PROVIDER_ROUTING_EU`**
+(`BRAND_PROVIDER_ROUTING` + `only: ['google-vertex/eu']`), die die
+Inspirationslesung benutzt: dort reicht ein Kunde eigenes Material hinein.
+**NICHT gepinnt** wurden die Zeichen-Entwürfe (`gemini-2.5-flash-image` hat
+als einzigen Endpunkt `google-vertex/global` — ein EU-Pin hätte die Funktion
+nicht geschützt, sondern abgeschaltet) und der Textweg (offen in OPEN-ITEMS
+`AI1`).
+
+**Beweis:** echter Lauf mit genau der neuen Kombination (Modell + EU-Pin +
+echtes 64×64-PNG) ⇒ HTTP 200, „Gelb und Blau, Schachbrettmuster", 0,05 Cent.
+Dazu `packages/brand/tests/brandProviderRouting.test.ts` (die EU-Fassung erbt
+die drei Bedingungen per Spread und darf nur den Ort ergänzen) und
+`pnpm --filter @pukalani/brand test` 3192/3192.
+
+**Der Wächter dagegen: `pnpm ops:ai-models`** (neu,
+`scripts/ops/verify-ai-models.mjs`). Er liest JEDEN Modell-Slug aus allen
+`app.config.ts` und prüft ihn gegen `/models?zdr=true`; für EU-gepinnte
+Felder prüft er zusätzlich, dass der `google-vertex/eu`-Endpunkt existiert.
+**Er braucht keinen Schlüssel** (die Liste ist öffentlich) und kostet nichts.
+Gegenprobe gefahren: mit dem alten Slug wird er rot (Exit 1) und nennt Datei
+und Feld, mit dem neuen grün (5/5).
+
+**Gelernt:** **Ein Modell-Slug bei OpenRouter ist kein Versprechen, sondern
+ein Angebot, das verschwinden kann** — und sein Verschwinden sieht wie nichts
+aus. Typecheck, Lint und 3192 Tests waren grün, der Code war richtig, nur die
+Gegenseite hatte sich geändert. Genau dieselbe Falle hatte am 2026-09-08 schon
+`google/gemini-2.5-flash-image-preview` erwischt; der Kommentar darüber stand
+zwei Zeilen neben dem toten Slug. Zweimal dieselbe Falle heißt: die
+Verabredung „beim nächsten Mal dran denken" trägt nicht, es braucht einen
+Wächter. **Zweitens: `zdr: true` ist keine Aussage über den ORT.** Es heißt
+„der Anbieter speichert nichts", nicht „der Anbieter rechnet in der EU" — in
+derselben Probe wurde unser Textmodell von **Amazon Bedrock** bedient,
+während im Plan stand, wir liefen über `google-vertex/eu`. Das war eine
+Annahme, die nie gemessen wurde.
+
 ### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
 
 **Ausgangslage:** Resend meldete am 2026-10-26 das Tageslimit; im Dashboard
@@ -65,8 +118,21 @@ Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
 3. **Cloudflare Turnstile als Bot-Beweis** an signup/otp/recovery
    (`server/utils/turnstile.ts`, `TurnstileWidget.vue`, Gate = beide Env-
    Variablen gesetzt, fail-closed bei Cloudflare-Ausfall). Ohne Schlüssel
-   exakt das Verhalten von vorher; scharf schalten ist `TS1` in OPEN-ITEMS
-   (Davids Cloudflare-Login). Rezept: `docs/runbooks/DEPLOYMENT.md`.
+   exakt das Verhalten von vorher. **SCHARF SEIT 2026-10-27 (TS1, über Davids
+   Chrome):** Widget „Pukalani Apps" im Cloudflare-Konto Hawaii Studio,
+   Hostnames `pukalani.app` + `branding.supply` (Turnstile deckt Subdomains
+   von selbst mit, ein Wildcard-Eintrag ist dort gar nicht vorgesehen), Modus
+   Managed. Beide Variablen in den Site-Envs platform, admin, portfolio,
+   branding (`.env.bak-2026-10-27-turnstile` liegt daneben; `comments` hat
+   keine eigene Site mehr, der Host läuft über platform), danach nur
+   `pm2 startOrReload … --update-env` — kein Deploy nötig, die Runtime-Config
+   liest die Env beim Start, auch den `NUXT_PUBLIC_`-Site-Key. Beweise:
+   signup/otp/recovery ohne Token ⇒ 403 `bot_check_required` auf allen vier
+   Hosts (Build 38a107bf), kein `auth.turnstile_misconfigured` im Log, der
+   Site-Key steht im HTML von /register, und der Knopf „Account erstellen"
+   ist im Browser freigegeben (er bleibt gesperrt, bis Cloudflare den Token
+   geliefert hat). Beide Variablen sind seither PFLICHT im Wächter
+   `verify-site-env.mjs`. Rezept: `docs/runbooks/DEPLOYMENT.md`.
 4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
    `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
    läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
@@ -218,7 +284,8 @@ Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
 Projekt `pass`. Mail-Beweis nach Leerlauf (2026-10-28 00:39 UTC): Probe-Nutzer
 per Gast-OTP-Token an `delivered@resend.dev`, Worker `mail.template otp ·
 mail.status success` in 1,67 s, Nutzer per Runtime-Key der Site wieder gelöscht
-(204, Gegenprobe 404).
+(204, Gegenprobe 404). Alte Images am 2026-10-28 auf prod und dev entfernt
+(nur ungenutzte Appwrite-Stack-Tags + dangling), prod-Platte 66 % → 34 %.
 Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
 
 **Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":

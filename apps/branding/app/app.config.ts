@@ -120,9 +120,33 @@ export default defineAppConfig({
      * nicht in dieser Wahl. Ein Laufzeit-Override (`app_config.aiVisionModel`)
      * ist im Core vorbereitet, die Spalte gibt es noch nicht — bis dahin gilt
      * dieser Wert.
+     *
+     * ── NACHGEZOGEN AM 2026-10-27, WEIL DER VORGÄNGER TOT WAR ────────────
+     * Hier stand `google/gemini-2.5-flash`. Dieses Modell hat bei OpenRouter
+     * **keinen ZDR-Endpunkt mehr** (sein ganzes Angebot sind heute drei
+     * AI-Studio-Routen, und AI Studio ist nicht ZDR-fähig) — jeder Aufruf
+     * antwortete **404 „No endpoints found matching your data policy"**,
+     * während `app_config.brandAiEnabled` auf Prod AN stand. Die Lesung war
+     * also nicht abgeschaltet, sie scheiterte, und zwar still: Typecheck,
+     * Lint und Tests sehen davon nichts.
+     *
+     * Das ist dieselbe Falle wie beim Bild-Modell drei Zeilen weiter unten
+     * (`…-image-preview`, 2026-09). **Ein Modell-Slug bei OpenRouter ist kein
+     * Versprechen, sondern ein Angebot, das verschwinden kann.** Der Wächter
+     * dagegen ist `pnpm ops:ai-models` — er prüft JEDEN hier konfigurierten
+     * Slug gegen `/models?zdr=true` und braucht dafür keinen Schlüssel.
+     *
+     * Davids Wahl vom 2026-10-27: `gemini-3.1-flash-lite`, und zwar für Bild
+     * UND Video. Begründung aus der Probe (Plan BRAND-INSIGHTS-KURATION §13):
+     * es ist das einzige video-fähige ZDR-Gemini mit einem
+     * `google-vertex/eu`-Endpunkt — damit trägt EIN Modell die Lesung der
+     * Kundenbilder und ab K5 das Videolesen der Redaktion, auf derselben,
+     * EU-gepinnten Route (`BRAND_PROVIDER_ROUTING_EU`). Belegt mit zwei
+     * echten Läufen: ein 64×64-PNG korrekt beschrieben (Farben + Muster),
+     * zwei YouTube-Videos korrekt ausgelesen (Bild und Ton).
      */
     ai: {
-      visionModel: 'google/gemini-2.5-flash',
+      visionModel: 'google/gemini-3.1-flash-lite',
       /**
        * BILDER ERZEUGEN (Zeichen, Stufe 3 — KI-Entwürfe, D5c): Davids
        * Entscheidung vom 2026-09-08 (DECISION-LOG). Dieselbe Anbieter-Familie
