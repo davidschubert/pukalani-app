@@ -215,7 +215,10 @@ Dump 22,4 MB / 870 Tabellen, Werkzeug 28,1 s, `migrate` 19,6 s (253 „already
 exists", 0 Fehler), **Aufruf bis Beweise 81 s**; danach 0 Worker-/Realtime-
 Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
 (`--http1.1`), `verify-tls` 6/6, `schema-parity` 69/42/41/42, Health je
-Projekt `pass`. Offen: Davids OTP-Anmeldung als Mail-Beweis nach Leerlauf.
+Projekt `pass`. Mail-Beweis nach Leerlauf (2026-10-28 00:39 UTC): Probe-Nutzer
+per Gast-OTP-Token an `delivered@resend.dev`, Worker `mail.template otp ·
+mail.status success` in 1,67 s, Nutzer per Runtime-Key der Site wieder gelöscht
+(204, Gegenprobe 404).
 Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
 
 **Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":
@@ -231,7 +234,10 @@ Befehls-Substitution — die „Erklärung" `\`apk info -v <pkg>\`` warf auf pro
 einen Syntaxfehler ins Log (harmlos, aber hässlich). (4) Der HAUPT-Checkout
 hat ein veraltetes `node_modules` (`vitest` in brand, `mmdb-lib` in core
 fehlen ⇒ jede Dev-Route 500): Beweise im frisch installierten Worktree fahren,
-Dev-Server vor Playwright selbst starten.
+Dev-Server vor Playwright selbst starten. (5) Die Migrations-Keys haben
+keinen `users.*`-Scope; der Mail-Beweis per Probe-Nutzer läuft mit dem
+RUNTIME-Key der Site auf dem App-Server (per `ssh`, Key bleibt dort), die
+`userId` selbst gewählt, Adresse `delivered@resend.dev`.
 
 ---
 
