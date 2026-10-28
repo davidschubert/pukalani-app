@@ -219,9 +219,28 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > der Server schreibt sie beim Start ins Log (`auth.turnstile_misconfigured`);
 > ein Secret ohne Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt
 > ein nutzloses Widget. Das Widget legt David im Cloudflare-Dashboard an
-> (Turnstile → Add widget, Hostnames: `*.pukalani.app`, `branding.supply`,
+> (Turnstile → Add widget, Hostnames: `pukalani.app` — Turnstile deckt
+> Subdomains automatisch mit, Wildcards nimmt es nicht — und `branding.supply`,
 > Modus „Managed"); ein Widget kann mehrere Hostnames tragen, also EIN
-> Schlüsselpaar für alle Pukalani-Sites.
+> Schlüsselpaar für alle Pukalani-Sites. Die Variablen gehören in die VIER
+> Site-Envs mit Konten (platform, admin, portfolio, branding) und sind dort
+> seit TS1 Pflicht (`pnpm ops:site-env`, täglich in der CI).
+> **NEU LADEN NICHT VERGESSEN:** Nitro liest zur Laufzeit keine `.env`, die
+> Ecosystem-Config hebt sie nur beim `pm2 startOrReload … --update-env` in
+> den Prozess — und ein Deploy ohne App-Änderung überspringt. Nach dem
+> Eintragen im ploi-Panel also einmal auf app-prod:
+> ```bash
+> for s in platform.pukalani.app:platform admin.pukalani.app:control portfolio.pukalani.app:portfolio branding.supply:branding; do
+>   pm2 startOrReload /home/ploi/${s%%:*}/ops/ecosystem-${s##*:}.config.cjs --update-env; done; pm2 save
+> ```
+> **Beweis:** `pnpm ops:turnstile` (scripts/ops/verify-turnstile.mjs) fragt
+> jede der vier Sites: `POST /api/auth/recovery` ohne Token ⇒ 403
+> `bot_check_required` (Server prüft) UND `/forgot-password` trägt
+> `data-turnstile` (Site-Key kam an) — recovery statt signup, weil die Route
+> für eine unbekannte Adresse im AUS-Fall weder Konto noch Mail erzeugt.
+> Dazu im pm2-Log der Site KEIN `auth.turnstile_misconfigured_at_boot`, und
+> eine echte Registrierung im Browser (die meisten sehen das Widget gar
+> nicht, `interaction-only`).
 > **Rate-Limit-Store (seit 2026-07-23):** mit `NUXT_REDIS_URL` zählen alle
 > Instanzen/Cluster-Worker einer App ihre Rate-Limits GETEILT in Redis
 > (läuft auf app-prod lokal auf 6379, bei der Server-Einrichtung
