@@ -466,7 +466,19 @@ sie wieder an.
 | dev (OrbStack, 2.6.1 → 2.6.2) | 2026-10-27 20:51–20:56 | 10,9 MB, 931 Tabellen | „Migration completed", 1,6 s (306 „already exists", 0 Fehler) | Werkzeug 23,1 s, Aufruf bis Beweise 28 s | Dev-Ableitung des Prod-Skripts (nur Pfade, `stat -f`, `sed -i ""`); Brotli 1.2.1-r0, PHP 8.5.12, `_APP_MEMORY_LIMIT` 512M (Env), Console 1.2.108; Unit 7644 grün, E2E 16/16, OTP via Mailpit |
 | prod (`api.pukalani.app`, 2.6.1 → 2.6.2) | 2026-10-27 21:09–21:12 | 22,4 MB, 870 Tabellen | „Migration completed", 19,6 s (253 „already exists", 0 Fehler) | Werkzeug 28,1 s „installed successfully", Aufruf bis Beweise **81 s** | `ops/appwrite-upgrade-2.6.2.sh` per `ssh` (Log `~/appwrite-upgrade-2.6.2.log`); Images/Patch/Dump vorher 1:43 ohne Downtime; danach 0 Worker-Fehler, 0 API-5xx, 0 Realtime-Fehler; elf Hosts `ok:true` (www 301), SSR demo/branding/studio 200, account 302, Realtime 101, `verify-tls` 6/6, `schema-parity` 69/42/41/42, `health/db|cache|storage` je Projekt `pass`; Platte 66 % (vorher 55 %, die alten Images liegen noch) |
 
-Offen nach dem Prod-Lauf: der **Mail-Beweis** (OTP-Anmeldung auf
-`account.pukalani.app`, erste Instanz-Mail nach Leerlauf) — der Projekt-Key hat
-keinen `users.read`-Scope, ein blinder Token-Aufruf hätte einen Streu-Nutzer
-anlegen können; Davids eigene Anmeldung ist der Beweis.
+**Mail-Beweis prod** (2026-10-28 00:39 UTC, ~3,5 h nach dem Werkzeug, also
+nach Leerlauf = der KeepAlive-Fall): Probe-Nutzer `probe-mail-20261027` per
+Gast-Aufruf `POST /v1/account/tokens/email` im Projekt `account` an die
+Resend-Testadresse `delivered@resend.dev` (zählt bei Resend als zugestellt,
+erzeugt weder Bounce noch Beschwerde) → `201` in 1 s; `appwrite-worker`:
+`worker.v1-mails · 1.67s · mail.template otp · mail.smtp_type cloud ·
+mail.recipient_domain resend.dev · mail.status success`; danach
+`DELETE /v1/users/probe-mail-20261027` → `204`, Gegenprobe `404`; 0 Worker-
+Fehler, 0 API-5xx. ZWEI FALLEN: (1) die Migrations-Keys unter
+`~/.appwrite-secrets/migrations/*.env` haben KEINEN `users.*`-Scope (401
+`general_unauthorized_scope`) — der Key mit `users.write` ist der RUNTIME-Key
+der Site, und der liegt nur in der Server-`.env` auf dem App-Server
+(`ploi@49.13.211.173:/home/ploi/platform.pukalani.app/.env`); den Lösch-Aufruf
+also DORT per `ssh` ausführen, der Key verlässt den Server nicht. (2) Die
+`userId` beim Token-Aufruf SELBST wählen (nie `unique()`), sonst ist der
+Streu-Nutzer ohne `users.read` nicht mehr auffindbar.
