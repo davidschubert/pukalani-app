@@ -121,8 +121,12 @@ paths:
   eine Mail bei jedem Wechsel (Secret) und einen Heartbeat bei grün (Secret).
   Probealarm `gh workflow run production-watch.yml -f alarm_drill=true` —
   monatlich und nach JEDER Workflow-Änderung; Runbook + Klickliste
-  docs/runbooks/PRODUKTIONS-ALARM.md. Appwrite-Health NIE über `doctor`
-  (sendet SMTP-Testmail), nur `/v1/health/version`. GitHub kennt
+  docs/runbooks/PRODUKTIONS-ALARM.md (Befunde 2026-10-28 dort in § 3: die
+  ~900 Actions-Mails KAMEN, ein Gmail-Filter nannte sie „Newsletter“;
+  Issue-Mails kommen gar nicht; UptimeRobot-Keyword-Monitore per
+  `scripts/ops/uptimerobot-sync.mjs`, SSL-Erinnerung dort nur im Bezahltarif).
+  Appwrite-Health NIE über `doctor` (sendet SMTP-Testmail), nur
+  `/v1/health/version`. GitHub kennt
   keinen Zeitplan JE JOB (jeder cron löst den ganzen Workflow aus), die Takte
   trennt daher `github.event.schedule`. ZWEI SICHERUNGEN dagegen, dass eine
   cron-Änderung den täglichen Teil lautlos abschaltet: der Schritt „Zeitplan
