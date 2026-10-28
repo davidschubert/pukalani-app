@@ -11875,3 +11875,70 @@ frühes Messen einen Zustand zeigte, den es nie gab). (4) **Mailpit ist der einz
 Beweis für einen Double-Opt-in:** „200 zurückbekommen" sagt nichts darüber, ob die Mail den
 richtigen Link, die richtige Sprache und den richtigen Satz trägt — und „keine zweite Mail" ist
 überhaupt nur am Postfach zu sehen.
+
+---
+
+## BI1 I5b — Brand Insights: den Newsletter versenden (2026-10-27)
+
+**Was gebaut wurde** (vier Commits — Core eigens; gebaut von einem Opus-Lauf nach Auftrag,
+geprüft und in einem Punkt korrigiert im Hauptloop): die VERSAND-Hälfte von Paket I5. Damit
+ist I5 komplett.
+
+- **Ein Beitrag ist eine Ausgabe (Davids Entscheidung 2026-10-27).** Kein zweiter Editor, keine
+  freie Ausgabe: am freigegebenen Beitrag steht ein Knopf, Betreff und Text entstehen aus Titel,
+  Vorspann und Adresse. Begründung: ein zweiter Text, der dasselbe sagt, veraltet getrennt vom
+  ersten — und das Versprechen lautet wörtlich „wir schreiben, wenn ein neues Stück erscheint".
+- **Nur von Hand.** Kein Auslöser an der Freigabe, kein Sweep. §3.3 sagt es („ohne Davids
+  Zeichen erscheint auch in einer Woche nichts"), und ein Versand an echte Menschen, den ein
+  Zustandswechsel auslöst, ist der Unfall, den niemand zurückholt. Der Knopf fragt und nennt
+  dabei die Zahl — beim Fortsetzen die AUSSTEHENDEN, nicht die gesamten.
+- **Stapelweise und fortsetzbar**, und das ist der Kern des Pakets: `insights_sends`
+  (Migration insights-008, `uq_post_id` unique) hält einen Cursor auf die zuletzt bediente
+  Zeilen-Id; fortgesetzt wird dahinter. Eine kaputte Adresse zählt als `failed` und hält nichts
+  auf; ein fehlender Mailer bricht ab, ohne den Cursor vorzurücken — dann stimmt etwas am
+  Server, nicht an einer Adresse.
+- **Versendet wird nur, was draussen eine Seite hat:** nicht nur `published`/`updated`, sondern
+  auch der Format-Riegel und das Markenprofil ohne Marken-Zeile ⇒ `no_public_address`. Ohne das
+  führte eine Ausgabe über ein gesperrtes Duell fünfhundert Klicks in ein 404.
+- **Core (eigener Commit):** `sendMail()` reicht Kopfzeilen durch — gebraucht für
+  `List-Unsubscribe` je Empfänger. **Kein** One-Click nach RFC 8058: das verlangt einen
+  Endpunkt, der ein form-kodiertes POST ohne Token im Körper verträgt; eine Zusage, die der
+  Server nicht einlöst, wäre schlechter als keine.
+- **Reiner Text**, wie jede Mail dieses Repos. Eine HTML-Vorlage wäre eine zweite Darstellung
+  desselben Inhalts samt Bildpfaden und Dark-Mode-Fragen — ein eigenes Vorhaben.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree auf 3030, lokale Dev-Instanz, **Mailpit**,
+Admin-Session per `users.createSession`): 63 Abonnenten gesät, davon drei, die nichts bekommen
+dürfen (nie bestätigt · abgemeldet · vom Sweep geleert). Die Zustands-Route zählte **60**, nicht
+63. Stapel 1: 50 verschickt, 10 offen. Stapel 2: 10 verschickt, fertig. Im Postfach **60 Mails
+an 60 verschiedene Adressen, keine einzige doppelt** — damit ist der Cursor-Pfad
+(`Query.greaterThan('$id', …)` + `orderAsc('$id')`) gegen echtes Appwrite 2.6.1 bewiesen, was
+kein Unit-Test leisten kann. 30 Betreffzeilen deutsch, 30 englisch (Sprache des EMPFÄNGERS).
+Die drei Ausgeschlossenen bekamen nichts. Der dritte Klick auf denselben Beitrag: **409
+`already_sent`**, Postfach blieb bei 60. Im Rohtext einer Mail steht `List-Unsubscribe` mit dem
+Token DIESES Empfängers; zwei Mails tragen verschiedene Token. Der Abmelde-Link aus einer echten
+Newsletter-Mail wirkt (200). Riegel zu ⇒ Versand-Route 404. Danach Riegel zurück, Zeilen und
+Postfach geräumt, `.env` gelöscht.
+
+**Ein Befund aus dem Klick-Beweis — und Davids Entscheidung dazu.** Mit EINEM Einleitungs-Feld
+stand der deutsche Satz auch über den englischen Mails, während der Rest englisch war. Das ist
+dieselbe Wunde, die §3.2 auf der Seite vermeidet. David hat **zwei Felder** gewählt (`introDe`,
+`introEn`): jeder bekommt seine Einleitung ODER KEINE, nie die der anderen Sprache — und die
+Einleitung folgt der FASSUNG, die wirklich rausgeht, nicht der angeforderten. Migration 008
+bekam dafür zwei Spalten statt einer; sie wurde VOR ihrem ersten Prod-Lauf geändert, deshalb
+keine 009 hinterher. Nachgemessen am Postfach: nur `introDe` gefüllt ⇒ zwei deutsche Leser
+sehen den Satz, zwei englische bekommen eine saubere englische Mail ohne ihn.
+
+**Wächter:** insights 444 Tests · core 1710 · branding 32 · Lint insights/branding/scripts
+(core eine Alt-Warnung) · typecheck branding exit 0 · check:i18n-keys 312 · check:manifests 26/9
+· check:bilanz · check:single-copy · check:doc-links.
+
+**Gelernt:** (1) **Ein Stapel-Versand ist erst bewiesen, wenn er einen Stapel ÜBERSCHREITET.**
+Mit 50 Empfängern wäre jeder Test grün gewesen, ohne dass der Cursor je angefasst wird — genau
+der Pfad, an dem ein Fehler Menschen doppelt anschreibt. Die Zahl der Testdaten gehört zur
+Testidee, nicht zum Zufall. (2) **Zweisprachigkeit endet nicht an der Seite.** Der Beitrag ist
+zweisprachig, die Mail folgt dem Empfänger — ein einzelnes freies Textfeld daneben bricht die
+Regel still, und zwar nur bei der Hälfte der Leser, also genau dort, wo man es beim Testen mit
+sich selbst nie sieht. (3) **Mailpits JSON-Feld `Headers` ist nicht die Wahrheit:** die
+`List-Unsubscribe`-Zeile fehlte dort und stand trotzdem im Umschlag — der Beweis für eine
+Kopfzeile ist `/api/v1/message/<id>/raw`, nicht die aufbereitete Ansicht.
