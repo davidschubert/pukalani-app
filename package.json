@@ -31,6 +31,7 @@
     "ops:schema-parity": "node scripts/ops/verify-schema-parity.mjs",
     "ops:stale-keys": "node scripts/ops/verify-stale-keys.mjs",
     "ops:instance-admins": "node scripts/ops/verify-instance-admins.mjs",
+    "ops:ai-models": "node scripts/ops/verify-ai-models.mjs",
     "ops:turnstile": "node scripts/ops/verify-turnstile.mjs",
     "ops:cleanup-portfolio-legacy": "node scripts/ops/cleanup-portfolio-legacy-tables.mjs"
   },

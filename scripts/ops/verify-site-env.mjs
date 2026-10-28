@@ -120,6 +120,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_PLATFORM_CONTROL_KEY',
       'NUXT_ONBOARDING_SERVICE_SECRET',
       /**
@@ -167,15 +172,6 @@ const SITES = [
        * `portfolio` erst recht nicht.
        */
       'NUXT_INSTANCE_SECRETS_KEY',
-      /**
-       * TURNSTILE (TS1, Vorfall 2026-10-27): der Bot-Beweis an signup/otp/
-       * recovery ist NUR mit beiden Schlüsseln scharf — fehlt einer, läuft
-       * die Site weiter und die Hürde ist still weg (F44-Muster). Beide
-       * gehören zusammen: Secret ohne Site-Key sperrt jeden Gast aus,
-       * Site-Key ohne Secret prüft nichts. Live-Beweis: `pnpm ops:turnstile`.
-       */
-      'NUXT_TURNSTILE_SECRET',
-      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
     ],
@@ -199,6 +195,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_CONTROL_ONBOARDING_SECRET',
       'NUXT_SMTP_HOST',
       'NUXT_SMTP_PORT',
@@ -237,15 +238,6 @@ const SITES = [
        * der Env-Wächter genau so rot weiterlief.)
        */
       'NUXT_INSTANCE_SECRETS_KEY',
-      /**
-       * TURNSTILE (TS1, Vorfall 2026-10-27): der Bot-Beweis an signup/otp/
-       * recovery ist NUR mit beiden Schlüsseln scharf — fehlt einer, läuft
-       * die Site weiter und die Hürde ist still weg (F44-Muster). Beide
-       * gehören zusammen: Secret ohne Site-Key sperrt jeden Gast aus,
-       * Site-Key ohne Secret prüft nichts. Live-Beweis: `pnpm ops:turnstile`.
-       */
-      'NUXT_TURNSTILE_SECRET',
-      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
     ],
@@ -262,6 +254,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_ANALYTICS_STATS_API_KEY',
       /**
        * Erstgespräch-Wizard (W1, 2026-08-21): `POST /api/intro-call` stellt
@@ -287,15 +284,6 @@ const SITES = [
        */
       'NUXT_ONBOARDING_CONTROL_URL',
       'NUXT_ONBOARDING_SERVICE_SECRET',
-      /**
-       * TURNSTILE (TS1, Vorfall 2026-10-27): der Bot-Beweis an signup/otp/
-       * recovery ist NUR mit beiden Schlüsseln scharf — fehlt einer, läuft
-       * die Site weiter und die Hürde ist still weg (F44-Muster). Beide
-       * gehören zusammen: Secret ohne Site-Key sperrt jeden Gast aus,
-       * Site-Key ohne Secret prüft nichts. Live-Beweis: `pnpm ops:turnstile`.
-       */
-      'NUXT_TURNSTILE_SECRET',
-      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
     ],
@@ -309,6 +297,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       /**
        * STEHT HIER, obwohl die drei älteren Site-Blöcke ihn nicht führen: die
        * Database-Id hat keinen brauchbaren Default — ohne sie findet KEIN
@@ -413,15 +406,6 @@ const SITES = [
        * `extends`-Kette einer App steht, verfällt mit ihr. Wer hier einen Layer
        * zu einer Site hinzufügt, prüft die Pflicht-Liste dieser Site mit.
        */
-      /**
-       * TURNSTILE (TS1, Vorfall 2026-10-27): der Bot-Beweis an signup/otp/
-       * recovery ist NUR mit beiden Schlüsseln scharf — fehlt einer, läuft
-       * die Site weiter und die Hürde ist still weg (F44-Muster). Beide
-       * gehören zusammen: Secret ohne Site-Key sperrt jeden Gast aus,
-       * Site-Key ohne Secret prüft nichts. Live-Beweis: `pnpm ops:turnstile`.
-       */
-      'NUXT_TURNSTILE_SECRET',
-      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
     ],

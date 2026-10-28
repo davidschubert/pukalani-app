@@ -218,17 +218,19 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > Verhalten von vorher (Dev, CI, E2E). NUR EINE gesetzt = Fehlkonfiguration,
 > der Server schreibt sie beim Start ins Log (`auth.turnstile_misconfigured`);
 > ein Secret ohne Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt
-> ein nutzloses Widget. Das Widget legt David im Cloudflare-Dashboard an
-> (Turnstile → Add widget, Hostnames: `pukalani.app` — Turnstile deckt
-> Subdomains automatisch mit, Wildcards nimmt es nicht — und `branding.supply`,
-> Modus „Managed"); ein Widget kann mehrere Hostnames tragen, also EIN
-> Schlüsselpaar für alle Pukalani-Sites. Die Variablen gehören in die VIER
-> Site-Envs mit Konten (platform, admin, portfolio, branding) und sind dort
-> seit TS1 Pflicht (`pnpm ops:site-env`, täglich in der CI).
+> ein nutzloses Widget. Das Widget EXISTIERT seit 2026-10-27: „Pukalani Apps"
+> im Cloudflare-Konto Hawaii Studio (Turnstile → Widgets), Hostnames
+> `pukalani.app` + `branding.supply` (Subdomains sind automatisch gedeckt),
+> Modus „Managed"; EIN Schlüsselpaar für alle Pukalani-Sites, gesetzt auf
+> platform, admin, portfolio, branding — und dort PFLICHT im Wächter
+> `verify-site-env.mjs`. Nach dem Eintragen reicht `pm2 startOrReload
+> … --update-env` (kein Build nötig, auch der `NUXT_PUBLIC_`-Site-Key kommt
+> zur Laufzeit aus der Env). Neue Site mit Konten ⇒ beide Variablen mitgeben;
+> neue Root-Domain ⇒ als Hostname am Widget nachtragen.
 > **NEU LADEN NICHT VERGESSEN:** Nitro liest zur Laufzeit keine `.env`, die
 > Ecosystem-Config hebt sie nur beim `pm2 startOrReload … --update-env` in
 > den Prozess — und ein Deploy ohne App-Änderung überspringt. Nach dem
-> Eintragen im ploi-Panel also einmal auf app-prod:
+> Eintragen (ploi-Panel oder direkt in der Site-`.env`) also einmal auf app-prod:
 > ```bash
 > for s in platform.pukalani.app:platform admin.pukalani.app:control portfolio.pukalani.app:portfolio branding.supply:branding; do
 >   pm2 startOrReload /home/ploi/${s%%:*}/ops/ecosystem-${s##*:}.config.cjs --update-env; done; pm2 save

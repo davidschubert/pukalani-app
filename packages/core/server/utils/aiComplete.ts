@@ -42,8 +42,24 @@ export interface AiProviderRouting {
   zdr?: boolean
   /** `'deny'` = der Anbieter darf den Inhalt nicht zum Training sammeln. */
   dataCollection?: 'allow' | 'deny'
-  /** Allowlist von Anbieter-Slugs — wörtlich übernommen. */
-  only?: string[]
+  /**
+   * Allowlist von Anbieter-Slugs — wörtlich übernommen.
+   *
+   * `readonly`, weil der Transport diese Liste nur LIEST (er kopiert sie beim
+   * Request-Bau: `only: [...routing.only]`). Mit `string[]` liess sich ein
+   * `as const`-Vertrag nicht übergeben — eine EU-gepinnte Konstante
+   * (`BRAND_PROVIDER_ROUTING_EU`) wurde so zum Typfehler an der Aufrufstelle,
+   * und der naheliegende Ausweg wäre gewesen, dem Vertrag sein `as const` zu
+   * nehmen. Genau das wäre der Fehler: die Konstante reist per Spread
+   * (`{ ...ROUTING }`), und ein Spread kopiert die REFERENZ auf das Array —
+   * eine mutable Allowlist wäre von jeder Aufrufstelle aus veränderbar
+   * gewesen (dieselbe Falle wie beim leeren Radar-Filter in BI2 K2, der
+   * deshalb eine Funktion ist und keine Konstante).
+   *
+   * Die Weitung erlaubt also mehr Aufrufer und verbietet gleichzeitig mehr:
+   * wer diese Liste ändern will, baut eine neue.
+   */
+  only?: readonly string[]
   /** `false` = kein Ausweichen auf einen Anbieter außerhalb der Bedingungen. */
   allowFallbacks?: boolean
 }
