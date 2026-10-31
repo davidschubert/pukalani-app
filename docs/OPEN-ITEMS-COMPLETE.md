@@ -12290,3 +12290,65 @@ Der Probealarm gehört monatlich und nach JEDER Workflow-Änderung gefahren.
 (3) **Uptime ≠ Gesundheit.** UptimeRobot sah einen antwortenden Host; die
 Aussage `ok:false` dahinter sieht nur, wer den Rumpf liest — deshalb
 Keyword-Monitore (David) UND der eigene Health-Blick.
+
+## BI1 I6 Stufe 1 — Brand Insights: der Launch-Inhalt, vier Beispiel-Beiträge als Seed (2026-10-28)
+
+**Was gebaut wurde** (Paket I6 aus docs/plans/BRAND-INSIGHTS.md §9.8/§9.9, Stufe 1 — gebaut von
+einem Opus-Lauf nach Auftrag, geprüft im Hauptloop): ein wiederholbares Seed-Skript
+`packages/insights/scripts/seed-launch.mjs` (`pnpm --filter @pukalani/insights seed:launch`,
+`--dry-run`, `--only <slug>`) mit den Inhalten als reinen Daten unter
+`packages/insights/scripts/launch/` und der puren Hälfte `packages/insights/scripts/launch-check.mjs`
+(Inhalt → Zeile, Vorab-Prüfung ohne Datenbank, von Seed UND Test benutzt).
+
+- **Vier Stücke, einer je Format, als Entwurf in beiden Sprachen** (de Grundfassung, en übersetzt,
+  `translationReviewed: false`): Markenprofil **Nike** (volle Marken-Zeile: drei Zeichen, sieben
+  Historien-Zeilen, Beziehung zu adidas, elf Belege — plus der `profile`-Beitrag `nike`), Duell
+  **adidas vs. Nike** (Slug alphabetisch `adidas-vs-nike`, sechs Faktenzeilen mit Beleg, 13 Quellen),
+  Artikel **„IKEA: Wie ein Möbelhaus zur Weltmarke wurde"** (990 Wörter, acht Kapitel, 24 Belege,
+  verweist die IKEA-Zeile — der Beweis, dass Profil und Artikel zusammenspielen), Ranking **„Die zehn
+  Marken mit dem stärksten Auftritt"** (Ausgabe 1, Slug `staerkster-auftritt-ausgabe-1`, vier der
+  zehn Plätze: Nike, Apple, Anthropic, The Barn; Methodik-Zeile). Dazu **sechs Marken-Zeilen**
+  (nike voll; adidas, ikea, apple, anthropic, the-barn schlank; `libraryKey` nur für die vier
+  handgeprüften Bibliotheks-Einträge).
+- **Idempotent über den Slug:** fehlt ⇒ anlegen; `draft` ⇒ Inhalt aktualisieren, Felder von Server
+  und Redaktion (Zustand, Freigabe-Stempel, Übersetzungs-Herkunft, `translationReviewed`, Brief,
+  Slug-Historie) bleiben; `review`/`published`/`updated` bzw. Marke `published`/`removed` ⇒ nicht
+  angefasst, nur gemeldet. Nichts ändert sich ⇒ nichts wird geschrieben (`= unverändert`). Geplant
+  und geprüft wird ALLES, bevor die erste Zeile entsteht.
+- **Ranking-Scores nie von Hand:** der Seed liest je Marke die jüngste nicht ausgeblendete Zeile aus
+  `brand_checks` über `brandCheckUrlKey(homepage)` (wie `findBrandCheckForUrl`), reiht nach Score und
+  schreibt `checkId`; fehlt ein Check ⇒ Score 0, Warnung und Vermerk in `noteInternal`. Lokal fehlen
+  alle vier — auf Prod gehört ein Brand-Check je Homepage VOR den Seed-Lauf.
+- **Quellen nur, was der echte Prüfer liest** (User-Agent PukalaniMarketBot, robots/TDM): nike.com,
+  about.nike.com, ikea.com (global/us/de), inter.ikea.com, apple.com, anthropic.com, thebarn.de und
+  Wikipedia (de/en, mit CC-BY-SA-Lizenz-Link). **Nicht lesbar:** alle adidas-Sites (Timeout) und
+  about.ikea.com — adidas ist deshalb ausschliesslich über Wikipedia belegt.
+- **Test** `packages/insights/tests/launchContent.test.ts` (22 Fälle): Schemas, die sechs Prüfregeln
+  ohne Abruf, Zitatschranke, Lizenzpflicht, beide Sprachen, Wir-Stimme ohne Autor, Duell-Slug,
+  Methodik-Link, Katalogwerte, Gegenprobe des Namensfilters.
+
+**Beweise (lokal, Dev-Projekt `portfolio-g4ml` aus dem Worktree, Dev-Server :3010):** Seed-Lauf 1 ⇒
+10× angelegt, Lauf 2 ⇒ 10× unverändert, nach einer Inhaltsänderung nur `↷ Marke nike aktualisiert`;
+ein Beitrag auf `review` gesetzt ⇒ `--only` meldet `übersprungen (state=review)`. Alle vier Beiträge
+bestehen das volle Server-Gate (`POST …/state {to:'review'}` ⇒ `changed: true, issues: []`, alle
+Belege abgerufen und wörtlich gefunden) und stehen danach wieder auf `draft`. Dashboard-Liste zeigt die
+vier Entwürfe; die Vorschau (`?preview=1`) rendert alle vier Formate — für Profil, Duell und Ranking
+mit einem UNCOMMITTETEN lokalen Override von `publicFormats` (zurückgesetzt), weil die Seiten den
+Riegel auch in der Vorschau anwenden. Wächter: Lint insights, 496 Tests, Typecheck branding,
+check:doc-links. Prod unberührt.
+
+**Zwei Befunde fürs Folgepaket (kein Gate):** (1) Die Duell-Vorschau antwortet 404, solange die beiden
+Marken-Zeilen `draft` sind (die Route verlangt `published` auch mit `?preview=1`) — David muss die
+Marken vor dem Blick aufs Duell veröffentlichen, oder die Vorschau wird gelockert. (2) Der
+Namensfilter vergleicht auch OHNE Leerzeichen: „von IKEA" wird `vonikea` (enthält `nike`), „Nike as"
+wird `nikeas` (enthält `ikea`) — die Texte sind darum herum geschrieben, der Test hält es fest; der
+Filter selbst gehört nachgebessert, sobald Stufe 2 mehr Marken nebeneinander nennt.
+
+**Gelernt:** (1) Ein Beleg-Riegel gegen lebende Websites entscheidet, WELCHE Quellen überhaupt
+infrage kommen — erst probieren, dann schreiben: das Anthropic-Zitat der Bibliothek vom 2026-09-06
+stand sieben Wochen später nicht mehr auf der Seite, und keine adidas-Site liess sich lesen. (2)
+Wikipedia-Zitate tragen die Spuren der Text-Extraktion (`" Just Do It "`, `IKEA- Katalog`): wörtlich
+heisst wörtlich wie der Prüfer liest, nicht wie es schön aussähe. (3) Ein Seed, der Scores von Hand
+setzte, wäre eine zweite Skala neben dem Produkt — die ehrliche Form ist Score 0 mit Vermerk, bis der
+Brand-Check gelaufen ist. (4) Die Marken-Belege prüft das Gate NICHT (nur die des Beitrags) — sie sind
+nur lokal gegen dieselbe Extraktion geprüft.

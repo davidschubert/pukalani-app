@@ -1118,7 +1118,7 @@ Formular, Seite und Bestätigungsmail sagen „Wir schreiben, wenn ein neues St�
 erscheint" — nirgends „wöchentlich". Der Wochentakt aus §3.3 bleibt ein
 Redaktionsziel und wird nicht zur Zusage an Fremde; ein Test hält die
 verbotenen Wörter in beiden Sprachen fest.
-| **I6** | **Launch-Paket** | die vier Beispiel-Beiträge (einer je Format), dann die restlichen fünfzehn Stücke aus §9.8; danach der Wochentakt | I3 · Davids Redaktionszeit |
+| **I6** | **Launch-Paket — Stufe 1 GEBAUT 2026-10-28 (Details OPEN-ITEMS-COMPLETE „BI1 I6 Stufe 1")** | **Stufe 1:** die vier Beispiel-Beiträge (einer je Format) als wiederholbares Seed-Skript `packages/insights/scripts/seed-launch.mjs` — Markenprofil Nike, Duell adidas vs. Nike, Artikel „IKEA: Wie ein Möbelhaus zur Weltmarke wurde", Ranking (vier der zehn Plätze) — plus sechs Marken-Zeilen; alles als **Entwurf** in beiden Sprachen, lokal durch das Server-Gate bewiesen. **Stufe 2:** die restlichen fünfzehn Stücke aus §9.8 (sechs Profile, zwei Duelle, vier Artikel, die Plätze 5–10 des Rankings) im Wochentakt | I3 ✅ · **Davids Redaktionszeit** (Klickliste im PR): redigieren, Brand-Checks für die Ranking-Marken, Seed auf Prod mit Ja, freigeben |
 
 **Die Freigabe des Prototyps ist kein Startschuss für I1.** David hat am
 2026-09-08 die FORM abgenommen („so bauen"). Die drei Gates darüber bleiben
