@@ -108,7 +108,7 @@ const columns = computed<TableColumn<CommunityPost>[]>(() => [
   { accessorKey: 'type', header: () => t('posts.moderation.col.type'), meta: { class: HIDE_MD } },
   { id: 'state', header: () => t('posts.moderation.col.state') },
   { accessorKey: '$createdAt', header: () => t('posts.moderation.col.date'), id: 'createdAt', meta: { class: HIDE_MD } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 /** Wartende Beiträge: dieselbe Tabelle, nur ohne Aktionen (sie sind noch nicht da). */

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { BwNewBrandSubmit } from './BwNewBrandModal.vue'
+
 /** Brand-Auswahl (Korrekturrunde 3, David): Trigger zeigt NUR den Namen;
  *  ausgeklappt alle Brandings mit Zusatzinfo untereinander, die aktive
  *  mit Haken. "Brandings verwalten" lebt hier, nicht in der Topbar. */
@@ -7,10 +9,21 @@ defineProps<{
   others: { title: string, path: string, flag?: string, to: string }[]
 }>()
 /* Runde 62 (David): "Neues Branding anlegen" öffnet denselben Layer wie
- * auf der Startseite. */
+ * auf der Startseite — im LIVE-Modus (2026-09-09): ohne Modus zeigte das
+ * Modal in die Demo. Anlage + Sprung über `useBrandCreate()`. */
 const { t } = useI18n()
 const newBrandOpen = ref(false)
 const popoverOpen = ref(false)
+const {
+  contentLocales: newBrandLocales,
+  creating: newBrandCreating,
+  failed: newBrandFailed,
+  create: createBrand,
+} = useBrandCreate()
+
+async function createFromModal(payload: BwNewBrandSubmit): Promise<void> {
+  if (await createBrand(payload)) newBrandOpen.value = false
+}
 </script>
 
 <template>
@@ -51,5 +64,9 @@ const popoverOpen = ref(false)
       </div>
     </template>
   </UPopover>
-  <BwNewBrandModal v-model:open="newBrandOpen" />
+  <BwNewBrandModal
+    v-model:open="newBrandOpen" mode="live"
+    :content-locales="newBrandLocales" :loading="newBrandCreating" :failed="newBrandFailed"
+    @submit="createFromModal"
+  />
 </template>

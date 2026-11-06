@@ -32,12 +32,12 @@ import {
  * behält ihre Daten und ihren Stand.
  */
 export default defineEventHandler(async (event): Promise<BrandProfileDetailResponse> => {
-  const { userId } = await requireBrandAccess(event)
+  const { userId, betaAccount } = await requireBrandAccess(event)
   const profileId = requireProfileIdParam(event)
   const profile = await loadOwnedProfile(event, userId, profileId)
 
   const stepRows = await loadStepRows(event, profileId)
-  const journey = resolveBrandJourney(profileFacts(profile), toStepFacts(stepRows))
+  const journey = resolveBrandJourney(profileFacts(profile, betaAccount), toStepFacts(stepRows))
   const shared = await activeShareProfileIds(event, [profileId])
 
   const steps: BrandStepSummary[] = []
@@ -50,7 +50,7 @@ export default defineEventHandler(async (event): Promise<BrandProfileDetailRespo
   }
 
   return {
-    profile: toProfileSummary(profile, shared.has(profileId)),
+    profile: toProfileSummary(profile, shared.has(profileId), betaAccount),
     story: toStoryView(profile),
     journey: [...journey],
     steps,

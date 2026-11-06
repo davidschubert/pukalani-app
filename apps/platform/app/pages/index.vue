@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { pageExcerpt } from '../../../../packages/pages/shared/pageExcerpt'
 import type { PublicPage } from '../../../../packages/pages/shared/types/page'
-import { resolveCommunitySeo } from '../../../../packages/core/shared/communitySeo'
 
 /**
  * Tenant-Homepage (H3, „pro Tenant konfigurierbar"): rendert die im Dashboard
@@ -66,6 +65,10 @@ const parts = computed(() => {
  * `resolveCommunitySeo` — dieselbe Funktion, die der Editor für seine Vorschau
  * benutzt und `useLocaleSeoHead` für das robots-Signal. Eine zweite Rechnung
  * daneben wäre der Anfang zweier verschiedener Antworten auf dieselbe Frage.
+ * Seit 2026-09-09 steht dieses Zusammenstecken deshalb in
+ * `useCommunitySeoDescription()` (core) statt hier: branding und portfolio
+ * brauchen auf ihren eigenen Startseiten dieselbe Antwort (Davids Entscheidung
+ * — die Owner-Beschreibung gilt auf JEDER Site).
  *
  * Vor U15 stand hier als Fallback die Betreiber-Tagline im Tab JEDES Mandanten
  * (K11); ohne home-Eintrag UND ohne eigene Beschreibung bleibt die description
@@ -81,13 +84,13 @@ const parts = computed(() => {
  * ohnehin nur der Brand allein stehen und würde den dortigen Titel
  * überschreiben, weil das Setup der Seite VOR dem der Komponente läuft.
  */
-const communitySeo = useCommunitySeoSettings()
+const seoDescription = useCommunitySeoDescription(
+  () => (page.value ? pageExcerpt(parts.value.markdown) : ''),
+)
 if (!isControlCenter) {
   useBrandTitle(() => page.value?.title ?? '', {
-    description: () => resolveCommunitySeo(
-      communitySeo.value,
-      page.value ? pageExcerpt(parts.value.markdown) : '',
-    ).description || undefined,
+    // `|| undefined`: '' heisst „kein Tag", und genau das erwartet useBrandTitle.
+    description: () => seoDescription.value || undefined,
   })
 }
 </script>

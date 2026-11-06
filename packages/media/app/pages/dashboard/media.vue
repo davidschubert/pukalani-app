@@ -163,7 +163,7 @@ const columns = computed<TableColumn<AdminMediaItem>[]>(() => [
   { accessorKey: 'subtitle', header: () => t('media.admin.col.subtitle'), meta: { class: HIDE_MD } },
   { id: 'state', header: () => t('media.admin.col.state') },
   { accessorKey: '$createdAt', header: () => t('media.admin.col.uploaded'), id: 'uploaded', meta: { class: HIDE_LG } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function rowActions(item: AdminMediaItem): DropdownMenuItem[][] {

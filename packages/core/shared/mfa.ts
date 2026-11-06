@@ -63,6 +63,53 @@ export function isMoreFactorsRequired(error: unknown): boolean {
 }
 
 /**
+ * DIE EINE WEICHE „erste Stufe steht, zweiter Faktor fehlt" — für JEDEN Weg,
+ * der eine Session anlegt (Passwort, E-Mail-Code, …).
+ *
+ * Ob ein zweiter Faktor nötig ist, sagt APPWRITE, nicht wir: die Rechnung
+ * (`minimumFactors`, app/controllers/shared/api.php) hängt an `user.mfa` UND
+ * daran, ob überhaupt ein Faktor verifiziert ist, und sie zählt Faktoren, die
+ * wir nicht erraten sollten (`['email','oauth2']` gilt als zwei — deshalb kam
+ * der Google-Login immer durch). Also wird GEFRAGT statt gerechnet: `probe`
+ * ist ein Konto-Aufruf mit der frischen Session (`account.get()`).
+ *
+ *  - Appwrite wirft `user_more_factors_required` ⇒ true: die Session EXISTIERT
+ *    und ihr Cookie ist gültig, sie trägt nur erst EINEN Faktor; der Aufrufer
+ *    antwortet `mfaRequired: true` und protokolliert noch KEIN `user.login`.
+ *  - der Aufruf gelingt ⇒ false.
+ *  - jeder andere Fehler (Netz, Appwrite) ⇒ false: das ist kein Fehler der
+ *    Anmeldung, die Session steht — also normal weitermachen.
+ *
+ * Der Code-Login (otp/verify) hatte diese Weiche bis zum 2026-10-24 NICHT:
+ * nach dem richtigen Code entstand eine Session mit `factors: ['email']`,
+ * `/api/auth/me` antwortete 401, der SSR-Guard hielt den Nutzer für
+ * abgemeldet und zeigte ohne ein Wort wieder das Login.
+ */
+export async function secondFactorPending(probe: () => Promise<unknown>): Promise<boolean> {
+  try {
+    await probe()
+    return false
+  }
+  catch (error) {
+    return isMoreFactorsRequired(error)
+  }
+}
+
+/**
+ * Wie die Anmeldung im Protokoll heißt, NACHDEM der zweite Faktor saß —
+ * aus den Faktoren der Session, nicht aus einer Annahme: `['email','totp']`
+ * ⇒ `otp+totp`, `['password','totp']` ⇒ `password+totp`. Vor dem 2026-10-24
+ * schrieb die Challenge-Route fest `password+…`, obwohl auch der Code-Weg
+ * dort ankommt. Appwrite nennt den E-Mail-Code-Faktor `email`; im Protokoll
+ * heißt der Weg seit jeher `otp` (otp/verify), deshalb die Übersetzung.
+ */
+export function mfaLoginMethod(factors: readonly string[], mode: MfaChallengeMode): string {
+  const first = factors[0]
+  const label = first === undefined ? 'unknown' : first === 'email' ? 'otp' : first
+  return `${label}+${mode}`
+}
+
+/**
  * „Der Code war falsch." Appwrite wirft beim Challenge-Abschluss
  * `user_invalid_token`; beim Bestätigen eines frischen Authenticators
  * zusätzlich `user_invalid_credentials`.

@@ -1,7 +1,7 @@
-import type { BrandStepKey } from './slotRegistry'
+import type { BrandStepKey, BrandTeamKind } from './slotRegistry'
 
 /**
- * DAS BERATERTEAM — fünf Steckbriefe, eine STIMME.
+ * DAS BERATERTEAM — sechs Steckbriefe, eine STIMME JE SCHICHT.
  *
  * ── EINE STIMME, DAS TEAM IM RÜCKEN (Davids Entscheidung 2026-09-02) ──────
  * George ist der EINZIGE Sprecher durch den ganzen Wizard. Vera, Milo, Nika
@@ -11,8 +11,16 @@ import type { BrandStepKey } from './slotRegistry'
  * (DECISION-LOG 2026-09-02): vier Sprecherwechsel in einer 45-Minuten-Sitzung
  * heissen viermal Beziehung neu aufbauen — Aufstückelung statt Beratung.
  *
+ * ── DIE ZWEITE STIMME: FRIDA, AB SCHICHT 2 (Brand Design D0) ──────────────
+ * Die Eine-Stimme-Regel gilt INNERHALB der Foundation und bleibt unangetastet.
+ * Brand Design (Konzept docs/archiv/BRAND-DESIGN.md §2.1) ist aber keine Phase
+ * derselben Sitzung, sondern ein eigenes, extra freigeschaltetes Produkt mit
+ * eigener Beraterin — `BRAND_DESIGN_VOICE`. `advisorIsVoice()` ist die eine
+ * Stelle, die „spricht selbst" beantwortet; ein `key !== 'george'` an den
+ * Aufrufstellen wäre seither still falsch.
+ *
  * Damit trägt diese Datei ZWEI Dinge, die man nicht verwechseln darf:
- *   · WER SPRICHT → `BRAND_VOICE`. Immer George, in jedem Baustein.
+ *   · WER SPRICHT → `BRAND_VOICE` (Foundation) bzw. `BRAND_DESIGN_VOICE`.
  *   · WIE GEFRAGT WIRD → `techniqueForStep()`. Die Facette des Kapitels, und
  *     `colleagueForStep()` sagt, welche Kollegin bzw. welcher Kollege dahinter
  *     steht (`null` in Georges eigenen Bausteinen).
@@ -53,7 +61,7 @@ import type { BrandStepKey } from './slotRegistry'
  * (`brandAdvisors.test.ts`), und der ist die richtige Stelle dafür.
  */
 
-export const BRAND_ADVISOR_KEYS = ['george', 'vera', 'milo', 'nika', 'otto'] as const
+export const BRAND_ADVISOR_KEYS = ['george', 'vera', 'milo', 'nika', 'otto', 'frida'] as const
 export type BrandAdvisorKey = (typeof BRAND_ADVISOR_KEYS)[number]
 
 /** Rollen-Titel in beiden Oberflächen-Sprachen (kurz — er steht im Chat-Kopf). */
@@ -63,7 +71,20 @@ export interface BrandAdvisorRole {
 }
 
 export interface BrandAdvisorOpeners {
+  /** Die deutschen Satzanfänge im TEAM — die ältere Fassung, s. `deSolo`. */
   de: readonly string[]
+  /**
+   * Die deutschen Satzanfänge bei „Nur ich" — OPTIONAL (BW1-Inhaltsrunde
+   * 2026-09-09).
+   *
+   * Die Openers sind die Stimmprobe, die ins Modell geht („Warum ausgerechnet
+   * ihr?"). Steht dort die Team-Anrede, ahmt das Modell sie nach — auch bei
+   * einer Marke, die aus einer Person besteht, und dann hilft die
+   * Anrede-Regel im Prompt nur noch dagegen an. Ein Berater ohne Anrede in
+   * seinen Anfängen (Milos „Erzähl mir von einem Tag, an dem") lässt die
+   * Zeile weg.
+   */
+  deSolo?: readonly string[]
   en: readonly string[]
 }
 
@@ -112,7 +133,9 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
     // Georges EIGENE Bausteine: Startbogen, Baustein A und das Ergebnis. Er
     // spricht auch alle anderen — dort borgt er sich die Technik der Kollegin
     // bzw. des Kollegen, nicht deren Stimme (s. Kopf).
-    steps: ['context', 'result'],
+    // Schicht 3: das Pressekit ist Georges Kapitel (K0, §2.10) — hier entsteht
+    // nichts Neues, der Gastgeber liefert aus, was längst steht.
+    steps: ['context', 'result', 'presskit'],
     strengths: 'You open the work and you keep the thread. You turn a blank page into one small, '
       + 'answerable question, and you play back what you heard before you move on.',
     interviewTechnique: 'Work like a journalist: ask the smallest concrete question first, one per '
@@ -146,6 +169,7 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
     toneTraits: ['demanding', 'precise', 'respectful', 'unmoved by buzzwords'],
     openers: {
       de: ['Das könnte jeder in eurer Branche sagen —', 'Warum ausgerechnet ihr?', 'Ich hake nach:'],
+      deSolo: ['Das könnte jeder in deiner Branche sagen —', 'Warum ausgerechnet du?', 'Ich hake nach:'],
       en: ['Anyone in your industry could say that —', 'Why you, of all people?', 'Let me push on that:'],
     },
     neverDo: [
@@ -171,6 +195,7 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
     toneTraits: ['calm', 'curious', 'patient', 'warm'],
     openers: {
       de: ['Erzähl mir von einem Tag, an dem', 'Was hat euch das gekostet?', 'Da höre ich einen Wert heraus:'],
+      deSolo: ['Erzähl mir von einem Tag, an dem', 'Was hat dich das gekostet?', 'Da höre ich einen Wert heraus:'],
       en: ['Tell me about a day when', 'What did that cost you?', 'I hear a value in that:'],
     },
     neverDo: [
@@ -186,7 +211,10 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
     personal: 'Sprach-Beraterin — liest jeden Satz laut, bevor er stehen bleibt, und streicht, was nach Werbung klingt.',
     role: { de: 'Sprach-Beraterin', en: 'Language advisor' },
     avatar: '',
-    steps: ['manifesto', 'verbal'],
+    // Schicht 3: die AI-Guidelines gehören ihr (K0, §2.10) — es ist dieselbe
+    // Frage wie in `verbal`, nur an eine Maschine gerichtet: welcher Ton, welche
+    // Wörter nie, was klingt nach Werbung.
+    steps: ['manifesto', 'verbal', 'aiguide'],
     strengths: 'You hear how a sentence lands. You cut filler, empty superlatives and sales talk, '
       + 'and you keep the rhythm that makes a line stick without changing what it means.',
     interviewTechnique: 'Test every line by ear: would a real person say this out loud to a friend? '
@@ -195,6 +223,7 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
     toneTraits: ['playful', 'exact', 'attentive to rhythm', 'allergic to filler'],
     openers: {
       de: ['Sag den Satz mal laut:', 'Zwei Fassungen — welche klingt nach euch?', 'Ein Wort stört mich:'],
+      deSolo: ['Sag den Satz mal laut:', 'Zwei Fassungen — welche klingt nach dir?', 'Ein Wort stört mich:'],
       en: ['Say that line out loud:', 'Two versions — which one sounds like you?', 'One word bothers me:'],
     },
     neverDo: [
@@ -210,7 +239,10 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
     personal: 'Namens-Berater — prüft Aussprache, Schreibweise und Verfügbarkeit, bevor ein Name gefallen darf.',
     role: { de: 'Namens-Berater', en: 'Naming advisor' },
     avatar: '',
-    steps: ['naming'],
+    // Schicht 3: die Nomenklatur ist der Ausbau seines eigenen Kapitels (K0,
+    // §2.2) — dieselben nüchternen Fragen, nur für alles, was NACH dem
+    // Markennamen noch einen bekommt.
+    steps: ['naming', 'nomenclature'],
     strengths: 'You judge names the sober way: can it be said, spelled, found and owned? You take '
       + 'the shine off a favourite before it costs money — survival first, charm second.',
     interviewTechnique: 'Put every candidate through the same plain questions, one per turn: can you '
@@ -225,6 +257,37 @@ export const BRAND_ADVISORS: readonly BrandAdvisor[] = [
       'never give legal advice on trademarks — point to the guided checks and the disclaimer',
       'never let enthusiasm for a favourite replace a check',
       'never state availability or trademark facts you have not been given',
+    ],
+  },
+  {
+    // D1: Inhalte sind Davids Gate. Die Steckbrief-Zeilen sind aus dem
+    // freigegebenen Prototyp (`demoDesign.ts`, `DS_ADVISOR`) übernommen; die
+    // englischen Prompt-Felder sind eine erste Fassung.
+    key: 'frida',
+    name: 'Frida',
+    fullName: 'Frida Martens',
+    personal: 'Design Directorin — übersetzt Strategie in Gestalt und begründet jede Entscheidung am Fundament.',
+    role: { de: 'Design Directorin', en: 'Design director' },
+    avatar: '',
+    // SCHICHT 2 GEHÖRT IHR (Konzept §2.1): die sechs Kapitel von Brand Design.
+    steps: ['dna', 'color', 'type', 'mark', 'imagery', 'motion'],
+    strengths: 'You turn a strategy into a form and you can say why. You never present taste as a '
+      + 'fact: every colour, every typeface, every rule is tied back to something the foundation '
+      + 'already settled.',
+    interviewTechnique: 'Propose first, then justify — never the other way round. Show at most three '
+      + 'options, name the one that follows from the foundation and say in one sentence what the '
+      + 'others would cost. Hand strategy questions back to George instead of answering them in '
+      + 'colour.',
+    toneTraits: ['decisive', 'concrete', 'unimpressed by trends', 'explains before it asks'],
+    openers: {
+      de: ['Aus eurer Foundation folgt:', 'Drei Möglichkeiten, eine Empfehlung:', 'Das ist keine Geschmacksfrage:'],
+      deSolo: ['Aus deiner Foundation folgt:', 'Drei Möglichkeiten, eine Empfehlung:', 'Das ist keine Geschmacksfrage:'],
+      en: ['From your foundation it follows:', 'Three options, one recommendation:', 'This is not a matter of taste:'],
+    },
+    neverDo: [
+      'never recommend something because it is current — only because it follows from the foundation',
+      'never answer a positioning question with a colour; hand it back to George',
+      'never present an image draft as a finished, protectable logo',
     ],
   },
 ]
@@ -245,6 +308,33 @@ const ADVISOR_BY_STEP = new Map<BrandStepKey, BrandAdvisor>(
  * Werkstatt, den Avatar oder die Identität im System-Prompt füllt, liest hier.
  */
 export const BRAND_VOICE: BrandAdvisor = ADVISORS_BY_KEY.get('george')!
+
+/**
+ * DIE STIMME VON SCHICHT 2 — Frida (Konzept §2.1: „Beraterin Frida Martens,
+ * Tonalität wie die Crew, eine Stimme; George bleibt Gastgeber").
+ *
+ * Sie steht NEBEN `BRAND_VOICE` und nicht darin: die Eine-Stimme-Entscheidung
+ * (2026-09-02) gilt unverändert INNERHALB der Foundation — vier
+ * Sprecherwechsel in einer Sitzung sind Aufstückelung. Brand Design ist keine
+ * Phase derselben Sitzung, sondern ein eigenes, extra freigeschaltetes
+ * Produkt; dort spricht Frida, so wie im Prototyp abgenommen.
+ */
+export const BRAND_DESIGN_VOICE: BrandAdvisor = ADVISORS_BY_KEY.get('frida')!
+
+const VOICE_KEYS: readonly BrandAdvisorKey[] = ['george', 'frida']
+
+/**
+ * SPRICHT DIESE PERSON SELBST? — die Frage hinter jeder Liste „das Team hinter
+ * der Stimme" (Steckbrief in der Werkstatt, Crew-Abschnitt auf /team).
+ *
+ * Sie steht hier und nicht als `key !== 'george'` an den zwei Aufrufstellen:
+ * seit es eine zweite Stimme gibt, wäre dieser Vergleich an beiden Stellen
+ * falsch — und zwar still, mit einer Beraterin, die plötzlich zweimal auf
+ * derselben Seite steht.
+ */
+export function advisorIsVoice(key: BrandAdvisorKey): boolean {
+  return VOICE_KEYS.includes(key)
+}
 
 export function advisorByKey(key: string): BrandAdvisor | undefined {
   return ADVISORS_BY_KEY.get(key)
@@ -279,8 +369,15 @@ export function colleagueForStep(stepKey: BrandStepKey): BrandAdvisor | null {
  * beginnt, bekommt die englischen — dieselbe Konvention wie im übrigen Layer
  * (`en` ist die Default-Locale der App).
  */
-export function advisorOpenersFor(advisor: BrandAdvisor, locale: string): readonly string[] {
-  return locale.toLowerCase().startsWith('de') ? advisor.openers.de : advisor.openers.en
+export function advisorOpenersFor(
+  advisor: BrandAdvisor,
+  locale: string,
+  team: BrandTeamKind = 'team',
+): readonly string[] {
+  if (!locale.toLowerCase().startsWith('de')) return advisor.openers.en
+  // `team` ist die Vorgabe wie bei `brandChoiceFallbackQuestion`: eine
+  // Aufrufstelle ohne Weiche bekommt, was vor der Inhaltsrunde dort stand.
+  return team === 'solo' ? (advisor.openers.deSolo ?? advisor.openers.de) : advisor.openers.de
 }
 
 /**

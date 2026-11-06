@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
-import { Query } from 'node-appwrite'
+import { ID, Query } from 'node-appwrite'
 import { type BrandInviteFacts, decideBrandInvite } from '../../shared/brandInvite'
 import { BRAND_INVITES_TABLE, brandDb, isAppwriteNotFound } from './brandStore'
 
@@ -87,4 +87,84 @@ export async function evaluateBrandInvite(
     emailLower,
   })
   return { valid: decision.valid, invite: decision.valid ? invite : null }
+}
+
+/**
+ * ── EINEN CODE AUSGEBEN ───────────────────────────────────────────────────
+ *
+ * Die Erzeugung, die es bisher NUR als Skript gab (`packages/brand/scripts/
+ * invite.mjs`, Plan §3e „Operator-Werkzeug Phase 1 als SKRIPTE"). Sie zieht
+ * hier herüber, weil die Warteliste im Dashboard denselben Code braucht — und
+ * ZWEI Erzeugungen wären zwei Formate, von denen eines irgendwann nicht mehr
+ * einlösbar ist. Das Skript bleibt trotzdem: es ist der Weg für einen
+ * Nachschlag an eine Adresse, die gar nicht auf der Liste steht.
+ *
+ * IDENTISCH ZUM SKRIPT, und das ist der Punkt: 32 Zufalls-Bytes als hex,
+ * gespeichert wird ausschliesslich `sha256` davon (`codeHash`), gebunden an
+ * `emailLower`, Frist als ISO-Zeichenkette. Wer hier ein Format „vereinfacht",
+ * bricht keine Kompilierung, sondern eine Einlösung.
+ *
+ * DER ROHE CODE WIRD ZURÜCKGEGEBEN, NICHT GELOGGT. Er existiert danach genau
+ * einmal — in der Mail. Der Aufrufer trägt die Pflicht, ihn nirgendwo sonst
+ * hinzuschreiben; deshalb steht in dieser Funktion selbst KEIN `logEvent`.
+ */
+export const BRAND_INVITE_DEFAULT_DAYS = 30
+
+export interface CreatedBrandInvite {
+  inviteId: string
+  code: string
+  expiresAt: string
+}
+
+export async function createBrandInviteForEmail(
+  event: H3Event,
+  input: { emailLower: string, createdByUserId: string, days?: number },
+): Promise<CreatedBrandInvite> {
+  const { tablesDB, databaseId } = brandDb(event)
+  const days = input.days ?? BRAND_INVITE_DEFAULT_DAYS
+  const code = randomBytes(32).toString('hex')
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+
+  const row = await tablesDB.createRow({
+    databaseId,
+    tableId: BRAND_INVITES_TABLE,
+    rowId: ID.unique(),
+    // Alle Spalten explizit (CLAUDE.md): eine neue Spalte in brand_invites soll
+    // hier eine Entscheidung erzwingen und nicht still auf ihrem Default landen.
+    data: {
+      emailLower: input.emailLower,
+      codeHash: hashBrandInviteCode(code),
+      createdByUserId: input.createdByUserId,
+      expiresAt,
+    },
+  })
+
+  return { inviteId: row.$id, code, expiresAt }
+}
+
+/**
+ * DEN GERADE ERZEUGTEN CODE WIEDER WEGNEHMEN — die Rücknahme für den Fall,
+ * dass die Mail NICHT rausging.
+ *
+ * GELÖSCHT statt `revokedAt` gestempelt, und das ist der Unterschied zu
+ * `pnpm brand:revoke`: dort wird eine Einladung zurückgezogen, die jemand in
+ * der Hand hat (die Zeile ist Protokoll). Hier hat sie NIE jemand gesehen —
+ * ohne Mail gibt es den Klartext nicht mehr, die Zeile wäre ein Eintrag über
+ * ein Ereignis, das nicht stattgefunden hat.
+ *
+ * FAIL-SOFT: schlägt auch das Löschen fehl, bleibt eine unbenutzbare Zeile
+ * stehen (niemand kennt ihren Code) — das ist folgenlos und darf die
+ * Fehlermeldung an den Betreiber nicht überdecken.
+ */
+export async function deleteBrandInvite(event: H3Event, inviteId: string): Promise<void> {
+  const { tablesDB, databaseId } = brandDb(event)
+  try {
+    await tablesDB.deleteRow({ databaseId, tableId: BRAND_INVITES_TABLE, rowId: inviteId })
+  }
+  catch (error) {
+    logEvent('warn', 'brand.invite_cleanup_failed', {
+      inviteId,
+      message: error instanceof Error ? error.message : String(error),
+    })
+  }
 }

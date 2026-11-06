@@ -2,8 +2,16 @@
 
 **EINGESCHALTET am 2026-08-21** (Google-Projekt „Pukalani",
 `silver-area-506109-a4`, Appwrite-Projekt `account`; end-to-end bewiesen —
-COMPLETE-Eintrag U14). Dieses Runbook bleibt das Rezept für WEITERE Projekte
-(z. B. die Betreiber-Konsole: eigener Client, Redirect-URI endet auf `/admin`).
+COMPLETE-Eintrag U14). **AUCH AUF branding.supply seit 2026-09-04** (gleicher
+Client, zweite Redirect-URI `…/google/branding`; Secret war weder in Google
+noch in Appwrite noch ablesbar ⇒ Davids Kopie bzw. „Add secret"-Weg, s.
+Kasten in Schritt 2; ERSTE Speicherung schlug fehl —
+in Appwrite versteckt sich das Secret-Feld hinter „Update Client Secret",
+ein Update ohne den Klick dorthin speichert ein LEERES Secret und der
+Rückweg stirbt mit `client_secret is missing`; end-to-end bewiesen
+2026-09-04). Dieses Runbook bleibt das Rezept für WEITERE Projekte
+(z. B. Betreiber-Konsole oder branding.supply: derselbe Client, eine weitere
+Redirect-URI, die auf die Projekt-Id endet — Details im Kasten von Schritt 2).
 Zwei Fallen, die beim Einschalten live gefunden wurden und im Code verdrahtet
 sind: SSR-Seiten brauchen `Cache-Control: no-cache` (core-Plugin
 `html-no-cache.ts`), und das Session-Cookie MUSS `sameSite: 'lax'` sein —
@@ -89,10 +97,16 @@ unterscheiden — es ist dieselbe `setSessionCookie()` wie in `login.post.ts`.
 
 ## 2 · Appwrite Console (je Projekt, das Google anbieten soll)
 
-Für jedes Projekt einzeln: `account` (Kundenbereich + alle Pool-Communities)
-und `admin` (Betreiber-Konsole). Jedes Appwrite-Projekt braucht einen EIGENEN
-OAuth-Client in der Google Cloud, weil die Redirect-URI die Projekt-Id trägt —
-der Client von `account` gilt für `admin` nicht.
+Für jedes Projekt einzeln: `account` (Kundenbereich + alle Pool-Communities),
+`admin` (Betreiber-Konsole), `branding` (branding.supply). Der EINE Google-
+Client bedient dabei ALLE Projekte (Korrektur 2026-09-03 — hier stand vorher
+„jedes Projekt braucht einen eigenen Client", das ist falsch): ein OAuth-Client
+erlaubt mehrere Redirect-URIs, je Projekt kommt also nur eine weitere Zeile in
+Schritt 1.3 dazu (die URI trägt die Projekt-Id). ABER: der Consent-Screen
+(App-Name „Pukalani") hängt am Google-Cloud-PROJEKT und gilt für alle seine
+Clients — eine eigene Marke mit eigenem Namen im Zustimmungsdialog (etwa
+„Branding Supply") bräuchte ein eigenes Google-Cloud-Projekt, nicht nur einen
+eigenen Client.
 
 1. Console → Projekt wählen → **Auth → Settings**
 2. In der Liste **Google** öffnen

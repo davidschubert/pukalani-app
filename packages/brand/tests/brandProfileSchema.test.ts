@@ -7,7 +7,14 @@ import {
   BRAND_ABOUT_MAX,
   BRAND_AUDIENCE_MAX,
   BRAND_INDUSTRY_MAX,
+  BRAND_NEW_DETAILS_FIELDS,
   BRAND_WEBSITE_URL_MAX,
+  brandInitialContentLocale,
+  brandNewDetailsCopy,
+  brandNewDraftBody,
+  brandNewDraftComplete,
+  brandNewDraftMissing,
+  emptyBrandNewDraft,
   isBrandWebsiteUrl,
 } from '../shared/brandStartCard'
 import { brandIndustrySuggestions } from '../shared/industrySuggestions'
@@ -180,6 +187,113 @@ describe('Branchen-Vorschläge folgen der INHALTSSPRACHE', () => {
       for (const suggestion of brandIndustrySuggestions(locale)) {
         expect(suggestion.length).toBeLessThanOrEqual(BRAND_INDUSTRY_MAX)
       }
+    }
+  })
+})
+
+/**
+ * DIE ANLAGE-REGELN DER STARTKARTE (Testlauf-Befunde H, I und J, 2026-09-09).
+ *
+ * Drei Befunde aus demselben Modal, und alle drei sind Fragen an eine PURE
+ * Regel: Reist der Arbeitstitel mit? Welche Inhaltssprache steht vorne? Und
+ * was sagt der abgeschaltete Knopf über sich selbst?
+ */
+describe('Der Anlage-Entwurf (Startkarte)', () => {
+  const draft = {
+    ...emptyBrandNewDraft('de'),
+    title: 'Morgenlicht Studio',
+    industry: 'Kaffeerösterei',
+    about: 'Wir rösten Kaffee in kleinen Chargen.',
+    audience: 'Cafés und Menschen, die zu Hause gut trinken wollen.',
+  }
+
+  /**
+   * BEFUND H: „Arbeitstitel geht verloren" — der Rumpf trägt ihn, und zwar
+   * getrimmt. Der Test nagelt genau diese Zeile fest: sie ist die einzige
+   * Übersetzung vom Formular in die Route, und beide Oberflächen (Modal und
+   * Seite) gehen durch sie hindurch.
+   */
+  it('der Arbeitstitel reist in den Rumpf der Route (H)', () => {
+    expect(brandNewDraftBody('new', { ...draft, title: '  Morgenlicht Studio  ' }))
+      .toMatchObject({ title: 'Morgenlicht Studio' })
+    // Und auf dem Relaunch-Pfad genauso — dort ist es der echte Markenname.
+    expect(brandNewDraftBody('relaunch', draft)).toMatchObject({ title: 'Morgenlicht Studio' })
+  })
+
+  it('ein leerer Titel bleibt leer — „Neue Marke" darf namenlos starten', () => {
+    expect(brandNewDraftBody('new', { ...draft, title: '   ' })).toMatchObject({ title: '' })
+  })
+
+  /** BEFUND I: die Vorgabe folgt der Oberfläche, wenn es sie dort gibt. */
+  it('die Inhaltssprache folgt der UI-Sprache (I)', () => {
+    expect(brandInitialContentLocale('de', ['en', 'de'])).toBe('de')
+    expect(brandInitialContentLocale('en', ['en', 'de'])).toBe('en')
+  })
+
+  it('… und sonst dem ersten Eintrag der Konfiguration', () => {
+    expect(brandInitialContentLocale('fr', ['en', 'de'])).toBe('en')
+    expect(brandInitialContentLocale('de', [])).toBe('en')
+  })
+
+  /** BEFUND J: der abgeschaltete Knopf nennt, was noch fehlt. */
+  it('nennt die offenen Pflichtfelder in Feld-Reihenfolge (J)', () => {
+    expect(brandNewDraftMissing(emptyBrandNewDraft('de')))
+      .toEqual(['industry', 'about', 'audience'])
+    expect(brandNewDraftMissing({ ...draft, about: '' })).toEqual(['about'])
+    expect(brandNewDraftMissing(draft)).toEqual([])
+  })
+
+  it('eine kaputte Adresse ist ebenfalls „noch offen", eine leere nicht', () => {
+    expect(brandNewDraftMissing({ ...draft, websiteUrl: 'mailto:hi@example.com' }))
+      .toEqual(['websiteUrl'])
+    expect(brandNewDraftMissing({ ...draft, websiteUrl: '' })).toEqual([])
+  })
+
+  it('„vollständig" ist genau „nichts mehr offen" — eine Rechnung, zwei Leser', () => {
+    for (const candidate of [
+      emptyBrandNewDraft('de'),
+      { ...draft, industry: '' },
+      { ...draft, websiteUrl: 'nope' },
+      draft,
+    ]) {
+      expect(brandNewDraftComplete(candidate)).toBe(brandNewDraftMissing(candidate).length === 0)
+    }
+  })
+
+  /** Der Rumpf muss durch das SCHEMA gehen — sonst ist der Test eine Meinung. */
+  it('der gebaute Rumpf besteht die Anlage-Prüfung', () => {
+    const parsed = createBrandProfileCreateSchema(LOCALES).safeParse(brandNewDraftBody('new', draft))
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.title).toBe('Morgenlicht Studio')
+  })
+})
+
+/**
+ * DIE ANLAGE FOLGT DER WEICHE W3 (Dritter Testlauf, Befund 5, 2026-09-10).
+ *
+ * Die Weiche steht IM SELBEN Formular; die vier Fragen darunter blieben nach
+ * dem Umschalten auf „Zwei oder mehr" im Singular stehen.
+ */
+describe('brandNewDetailsCopy', () => {
+  it('gibt je Feld einen eigenen Schlüssel — solo und team verschieden', () => {
+    const solo = brandNewDetailsCopy('solo')
+    const team = brandNewDetailsCopy('team')
+    for (const field of BRAND_NEW_DETAILS_FIELDS) {
+      expect(solo[field]).toBe(`brand.new.startCard.${field}.solo`)
+      expect(team[field]).toBe(`brand.new.startCard.${field}.team`)
+      expect(solo[field]).not.toBe(team[field])
+    }
+  })
+
+  it('deckt genau die vier Felder der Startkarte ab', () => {
+    expect([...BRAND_NEW_DETAILS_FIELDS]).toEqual(['website', 'industry', 'about', 'audience'])
+    expect(Object.keys(brandNewDetailsCopy('solo')).sort())
+      .toEqual([...BRAND_NEW_DETAILS_FIELDS].sort())
+  })
+
+  it('der BASIS-Schlüssel wird nicht mehr geliefert — er stünde sonst roh im Formular', () => {
+    for (const key of Object.values(brandNewDetailsCopy('solo'))) {
+      expect(key.endsWith('.solo')).toBe(true)
     }
   })
 })

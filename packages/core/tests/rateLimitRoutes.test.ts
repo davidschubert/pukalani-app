@@ -141,4 +141,52 @@ describe('Drossel-Liste in 05.rate-limit.ts', () => {
     expect(checkout?.max ?? Infinity).toBeLessThanOrEqual(portal?.max ?? Infinity)
     expect(checkout?.bucket).not.toBe(portal?.bucket)
   })
+
+  /**
+   * Audit-Runde Brand Design (2026-09-09): von den vier KI-Läufen des
+   * Zeichen-Kapitels stand einer GAR NICHT in der Liste — das Briefing. Es ist
+   * dieselbe Fehlerklasse wie die Handle-Suche oben: die Route antwortete, die
+   * Seite lief, nur zählte niemand mit.
+   */
+  it('deckelt alle vier KI-Läufe von Brand Design — jeder in seinem EIGENEN Eimer', () => {
+    const laeufe = [
+      ['POST \\/api\\/brand\\/profiles\\/[^/]+\\/inspiration\\/read', 'Vorbilder lesen'],
+      ['POST \\/api\\/brand\\/profiles\\/[^/]+\\/dna\\/propose', 'DNA vorschlagen'],
+      ['POST \\/api\\/brand\\/profiles\\/[^/]+\\/mark\\/brief', 'Zeichen-Briefing'],
+      ['POST \\/api\\/brand\\/profiles\\/[^/]+\\/mark\\/drafts', 'Zeichen-Entwürfe'],
+    ] as const
+    const eimer = new Set<string>()
+    for (const [pfad, name] of laeufe) {
+      const treffer = eintrag(pfad)
+      expect(treffer, `${name} fehlt in der Drossel-Liste`).not.toBeNull()
+      // TOKEN_MAX (10/min): WEITER als jeder fachliche Tages-Deckel, sonst
+      // hörte der Mensch „zu schnell", wo „heute genug" richtig wäre.
+      expect(treffer?.max, `${name} sollte TOKEN_MAX tragen`).toBe(10)
+      eimer.add(treffer?.bucket ?? '')
+    }
+    // Vier Rechnungen, vier Eimer — ein geteilter bremste den nächsten Schritt
+    // im selben Kapitel aus.
+    expect(eimer.size).toBe(4)
+  })
+
+  it('das Briefing wird NICHT vom Entwurfs-Muster mitgedeckt (Reihenfolge-Falle)', () => {
+    // `find()` nimmt den ERSTEN Treffer: stünde `…/mark/brief` hinter einem
+    // Muster, das es mitfängt, liefe der Lauf im fremden Eimer.
+    const brief = eintrag('POST \\/api\\/brand\\/profiles\\/[^/]+\\/mark\\/brief')
+    const drafts = eintrag('POST \\/api\\/brand\\/profiles\\/[^/]+\\/mark\\/drafts')
+    expect(brief?.bucket).not.toBe(drafts?.bucket)
+    let geprueft = 0
+    for (const zeile of listen.split('\n')) {
+      const muster = /\{ re: \/\^(.+?)\$\//.exec(zeile)?.[1]
+      if (!muster || muster.includes('mark\\/brief')) continue
+      geprueft++
+      expect(
+        new RegExp(`^${muster}$`).test('POST /api/brand/profiles/p1/mark/brief'),
+        `„${muster}" fängt das Briefing mit ab`,
+      ).toBe(false)
+    }
+    // Ohne diese Zeile wäre die Schleife eine Tautologie: fände die Ausdruck-
+    // Erkennung nichts, liefe sie null Mal und der Test wäre immer grün.
+    expect(geprueft).toBeGreaterThan(50)
+  })
 })

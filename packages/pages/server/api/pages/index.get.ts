@@ -1,9 +1,9 @@
 import { Query } from 'node-appwrite'
 import { guidelinesFallbackGroup } from '../../../shared/guidelinesFallback'
-import { GUIDELINES_SLUG, PAGES_TABLE, type PageGroup, type PageRow } from '../../../shared/types/page'
+import { GUIDELINES_SLUG, PAGES_TABLE, type PageGroup, type PageRow, type PagesListResponse } from '../../../shared/types/page'
 
 /** Admin: alle Seiten, nach slug gruppiert (das aufklappbare Menü). */
-export default defineEventHandler(async (event): Promise<{ groups: PageGroup[] }> => {
+export default defineEventHandler(async (event): Promise<PagesListResponse> => {
   await requireCommunityPermission(event, 'pages.manage')
 
   // Datentür statt Hand-Scope (scopeQuery) — gleicher Filter, eine Autorität.
@@ -33,5 +33,8 @@ export default defineEventHandler(async (event): Promise<{ groups: PageGroup[] }
   if (!bySlug.has(GUIDELINES_SLUG) && guidelinesFallbackEnabled()) rawGroups.push(guidelinesFallbackGroup())
 
   const groups = rawGroups.sort((a, b) => a.sortOrder - b.sortOrder || a.slug.localeCompare(b.slug))
-  return { groups }
+  // Ob der Übersetzen-Knopf überhaupt erscheinen darf (F60) — dieselbe Frage
+  // wie in der Kategorie-Verwaltung, dieselbe Antwort an derselben Stelle:
+  // beim Laden der Liste, nicht als zweite Route.
+  return { groups, aiTranslate: await isAiConfigured(event) }
 })

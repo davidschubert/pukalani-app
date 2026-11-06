@@ -11,9 +11,39 @@
  * mit NUXT_REDIS_URL geteilt über alle Instanzen/Cluster-Worker (Fixed-
  * Window in Redis), ohne wie bisher in-memory pro Instanz. Fail-open bei
  * totem Redis (Fallback drosselt pro Instanz weiter).
+ *
+ * MAIL-ROUTEN HABEN DREI FENSTER, NICHT EINES (Vorfall 2026-10-27): ein
+ * Angreifer rief `POST /api/auth/signup` im 20-Sekunden-Takt auf — mit der
+ * Adresse eines Opfers und einem Werbesatz samt Kurzlink als Namen, danach
+ * jeweils `POST /api/auth/logout`. Appwrite schickte jedes Mal die
+ * Verifizierungs-Mail über unser Resend-Konto: 209 Spam-Mails in einer Nacht
+ * von EINER IP. Drei Anfragen je Minute liegen knapp unter dem 5/min-Deckel —
+ * ein Fenster von 60 s vergisst zu schnell, um einen GEDULDIGEN Absender zu
+ * sehen. Deshalb zusätzlich zum Minutenfenster (gegen Hämmern) ein
+ * Stundenfenster je IP (gegen Geduld) und eine Notbremse über alle IPs (gegen
+ * Adressrotation) — Einzelheiten bei `checkMailRouteBudget` unten. Den INHALT
+ * des Hebels (Link im Namen) schließt die Regel shared/displayName.ts.
  */
+import type { H3Event } from 'h3'
+import type { RateLimitState, RateLimitStore } from '../utils/rateLimitStore'
+
 const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 5
+/**
+ * Mail-Routen (ALWAYS_LIMITED), zweites Fenster je IP: 20 je Stunde. Ein Mensch
+ * fordert vielleicht drei, vier Mails an (Registrierung, „nochmal senden",
+ * Passwort vergessen); geteilte Anschlüsse (Vereinsnetz, Konferenz-WLAN) haben
+ * mit 20 Luft. Der Angreifer aus dem Vorfall kam auf ~180 je Stunde.
+ */
+const MAIL_HOUR_WINDOW_MS = 3_600_000
+const MAIL_HOUR_MAX = 20
+/**
+ * Notbremse je Mail-Route über ALLE IPs: 60 je Stunde und App. Bewusst hoch
+ * genug für eine echte Anmeldewelle (ein Community-Start mit Newsletter bringt
+ * Dutzende, nicht Hunderte je Stunde) und bewusst eine Zahl, die ein Mensch im
+ * Log wiedererkennt, wenn `auth.mail_route_breaker` auftaucht.
+ */
+const MAIL_GLOBAL_HOUR_MAX = 60
 const WRITE_MAX = 60
 // Presence-Heartbeats laufen legitim hochfrequent (20s-Intervall + jede
 // metadata-Änderung, pro Tab) — großzügiges eigenes Budget, das nur echtes
@@ -411,6 +441,46 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
    */
   { re: /^POST \/api\/brand\/invite\/(check|redeem)$/, bucket: 'brand:invite', max: TOKEN_MAX },
   /**
+   * DIE WARTELISTE — die einzige Route des Layers, die OHNE jeden Beweis eine
+   * Zeile schreibt (kein Gate, keine Session, kein Code): sie existiert genau
+   * für die Menschen, die das Beta-Gate nicht passieren.
+   *
+   * 5/min je IP ist enger als `TOKEN_MAX`, und das passt zum Gebrauch: ein
+   * Mensch trägt sich EINMAL ein, im Zweifel ein zweites Mal, weil er nicht
+   * sicher war. Wer öfter drückt, ist ein Skript — und für das soll jeder
+   * Versuch teuer sein, denn jeder kostet hier eine Abfrage UND (beim ersten
+   * Mal je Adresse) einen Schreibvorgang über den Admin-Client, an dem
+   * Appwrites eigene Bremse nicht greift.
+   *
+   * Die Zeile ist der DECKEL, nicht der Filter: den Bot fängt der Honigtopf im
+   * Rumpf (`hp`), die Dublette der UNIQUE-Index auf `emailLower`.
+   *
+   * SEIT DEM DOUBLE-OPT-IN GILT SIE FÜR BEIDE HÄLFTEN — Eintragen UND
+   * Bestätigen teilen sich EINEN Eimer, weil es EIN Vorgang ist (dasselbe
+   * Muster wie `brand:invite` für check+redeem). Wer sich einträgt und den Link
+   * öffnet, macht beides je einmal; 5/min reichen dafür doppelt. Und das
+   * Bestätigen ist die teurere Hälfte: sie liest, schreibt und verschickt eine
+   * Mail — ein eigener, grosszügigerer Eimer daneben wäre die Lücke, durch die
+   * ein Skript Token durchprobiert.
+   */
+  { re: /^POST \/api\/brand\/waitlist(\/confirm)?$/, bucket: 'brand:waitlist', max: 5 },
+  /**
+   * DAS ERSTGESPRÄCH (BS1 Z0) — die zweite öffentliche Route dieses Layers,
+   * die MAIL VERSCHICKT, und deshalb dieselbe Zahl wie die Warteliste: 5/min
+   * je IP.
+   *
+   * Sie ist von den drei Bremsen der Route die EINZIGE, die serverseitig
+   * misst: der Honigtopf und die Mindestzeit hängen beide an Werten, die der
+   * Client schickt. Wer sie fälscht, steht trotzdem vor dieser Zeile.
+   *
+   * EIGENER EIMER, nicht der `brand:waitlist` daneben: das sind zwei
+   * verschiedene Vorgänge, und wer sich gerade eingetragen hat, soll nicht mit
+   * einem 429 bestraft werden, wenn er danach ein Gespräch anfragt. Ein
+   * geteilter Eimer koppelte zwei Trichter, die nichts miteinander zu tun
+   * haben.
+   */
+  { re: /^POST \/api\/brand\/intro-call$/, bucket: 'brand:intro-call', max: 5 },
+  /**
    * GEORGES ENTWÜRFE (P2.1) — die teuerste Route des Wizards: jeder Lauf ist
    * ein Anbieter-Aufruf mit Streaming-Antwort. Die eigentlichen Deckel sind
    * feiner und sitzen IN der Route (Burst 2 je Konto, 10/Tag je Brand ×
@@ -455,6 +525,305 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
    */
   { re: /^POST \/api\/brand\/profiles\/[^/]+\/analyze$/, bucket: 'brand:analyze', max: 3 },
   /**
+   * DER KOSTENLOSE BRAND-CHECK (docs/archiv/BRAND-CHECK.md) — die Zeile darüber
+   * plus eine Anbieter-Rechnung, und OHNE Konto davor: der Check ist Davids
+   * Akquise-Instrument und läuft bewusst ohne Anmeldung.
+   *
+   * Er tut in EINEM Aufruf beides, was die zwei teuersten Routen des Layers je
+   * einzeln tun: eine fremde Seite holen (Last aus unserem Rechenzentrum,
+   * bis zu zehn Sekunden offene Verbindung) und ein Modell über den ganzen
+   * Seitentext urteilen lassen. Deshalb dieselben 3/min wie bei der Analyse —
+   * ein Mensch gibt eine Adresse ein und liest dann ein Ergebnis.
+   *
+   * Die feineren Deckel sitzen IN der Route (3/Tag je Anschluss, 200/Tag je
+   * Instanz — `packages/brand/shared/brandAiLimits.ts`); diese Zeile zählt je
+   * IP und DAVOR, bevor der Zwischenspeicher überhaupt befragt wird. Der GET
+   * auf das Ergebnis (`/api/brand/check/<id>`) steht bewusst NICHT hier: er
+   * liest eine fertige Zeile, kostet nichts, und ein geteilter Link soll auch
+   * dann noch aufgehen, wenn ihn zehn Menschen gleichzeitig öffnen.
+   */
+  { re: /^POST \/api\/brand\/check$/, bucket: 'brand:check', max: 3 },
+  /**
+   * DER FUNDAMENT-CHECK (BRAND-CHECK-SEITE §5b) — derselbe Eimer, weil es
+   * dieselbe Ausgabe ist: ein Modell urteilt über eine ganze Marke.
+   *
+   * Er braucht eine EIGENE Zeile, weil die Zeile darüber auf `/api/brand/check`
+   * genagelt ist und diese Route unter `/api/brand/profiles/:id/check` liegt —
+   * ohne sie fiele der teuerste Aufruf des Dashboards in den allgemeinen
+   * Token-Eimer und wäre damit praktisch ungedrosselt.
+   *
+   * Denselben Eimer wie der öffentliche Check und nicht einen zweiten: Beide
+   * bezahlen eine Anbieter-Antwort über ein ganzes Markenbild, und ein Mensch,
+   * der abwechselnd Website und Fundament anstösst, soll dafür EINEN Zähler
+   * haben. Was hier NICHT dazukommt, ist die ausgehende Verbindung — das
+   * Material steht in unserer eigenen Ablage. Der feinere Deckel sitzt in der
+   * Route (10/Tag je Konto, `BRAND_CHECK_ACCOUNT_DAILY_LIMIT`).
+   */
+  { re: /^POST \/api\/brand\/profiles\/[^/]+\/check$/, bucket: 'brand:check', max: 3 },
+  /**
+   * DER KORREKTURVORSCHLAG ZU EINEM CHECK (BRAND-CHECK-SEITE §3b) — die zweite
+   * öffentliche Schreibroute des Layers nach der Warteliste: kein Gate, keine
+   * Session, kein Code. Sie muss so sein, denn sie existiert für die Betreiber
+   * der geprüften Auftritte, und die haben hier kein Konto.
+   *
+   * 3/min je IP ist enger als `TOKEN_MAX` und passt zum Gebrauch: ein Mensch
+   * sieht EINEN falschen Eintrag und meldet ihn. Wer öfter drückt, ist ein
+   * Skript — und für das soll jeder Versuch teuer sein, denn jeder kostet eine
+   * Abfrage UND (beim ersten Mal je Check) einen Schreibvorgang über den
+   * Admin-Client, an dem Appwrites eigene Bremse nicht greift.
+   *
+   * DIESE ZEILE IST DER MINUTEN-DECKEL, NICHT DER GANZE. Der Plan verlangt
+   * 3/Stunde je Anschluss; ein Stundenfenster kennt diese Middleware nicht
+   * (`WINDOW_MS` ist eine Minute für alle). Den Rest zählt die Route selbst
+   * (`bookBrandCorrectionQuota`, `shared/brandCheckCorrections.ts`) — die
+   * Minute schützt den Server, die Stunde die Arbeitsliste des Betreibers.
+   * Den Bot fängt daneben der Honigtopf im Rumpf, die Dublette der 409 auf
+   * einen bereits offenen Vorschlag.
+   */
+  { re: /^POST \/api\/brand\/check\/[^/]+\/correction$/, bucket: 'brand:correction', max: 3 },
+  /**
+   * IN DIE ÖFFENTLICHE GALERIE EINREICHEN UND WIEDER ZURÜCKZIEHEN
+   * (docs/plans/DISCOVER-BRANDS.md §6: „Drossel 10/Tag je Konto").
+   *
+   * Jeder Aufruf friert ein bis zu 400 KB grosses Abbild ein, schreibt es über
+   * den Admin-Client (an dem Appwrites eigene Bremse nicht greift) und legt
+   * dem Betreiber Arbeit auf den Tisch. `TOKEN_MAX` (10/min je IP) ist dafür
+   * reichlich: ein Mensch veröffentlicht seine Marke einmal und aktualisiert
+   * den Stand gelegentlich.
+   *
+   * DIESE ZEILE IST DER MINUTEN-DECKEL, NICHT DER GANZE. Der Plan verlangt
+   * 10/Tag je KONTO; ein Tagesfenster kennt diese Middleware nicht (`WINDOW_MS`
+   * ist eine Minute für alle), und eine IP ist kein Konto. Den Rest zählt die
+   * Route selbst (`bookBrandPublicationQuota`,
+   * `packages/brand/shared/brandPublication.ts`) — die Minute schützt den
+   * Server, der Tag die Warteschlange des Betreibers. Dieselbe Arbeitsteilung
+   * wie bei den Korrekturvorschlägen eine Zeile höher.
+   *
+   * EIN gemeinsamer Eimer für beide Methoden, weil es EIN Vorgang ist
+   * (Muster: `market:competitors`). Das GET steht bewusst nicht hier: es liest
+   * eine einzelne Zeile und hängt am SSR-Aufbau der Leseansicht.
+   */
+  { re: /^(POST|DELETE) \/api\/brand\/profiles\/[^/]+\/publication$/, bucket: 'brand:publish', max: TOKEN_MAX },
+  /**
+   * DIE VORBILDER — Hochladen, Ändern, Entfernen (docs/archiv/BRAND-DESIGN.md
+   * §2.2 Schritt 2, Paket D2a).
+   *
+   * DER TEUERSTE SCHREIBWEG DIESES LAYERS, DER KEIN MODELL RUFT: jeder Aufruf
+   * schiebt bis zu 5 MB durch den Server in den Appwrite-Speicher. Ohne Bremse
+   * ist die Route der bequemste Weg, die Platte einer Instanz zu füllen — der
+   * FACHLICHE Deckel (12 Bilder je Marke) greift erst NACH dem Lesen des
+   * Rumpfes, und wer die Grenze erreicht hat, kann weiter löschen und
+   * hochladen.
+   *
+   * EIN gemeinsamer Eimer für alle drei Methoden, weil es EIN Vorgang ist
+   * (Muster: `brand:publish` eine Zeile höher). 12/min je IP ist genau das
+   * Kontingent einer Marke am Stück: wer zwölf Screenshots auf einmal auswählt,
+   * kommt in einem Zug durch (die Werkstatt schickt sie einzeln), und danach
+   * geht es um Korrekturen einzelner Karten.
+   *
+   * DAS GET STEHT BEWUSST NICHT HIER: es liest höchstens zwölf Zeilen und
+   * hängt am Aufbau des Kapitels. Die BILD-Route ebenso wenig — eine Seite mit
+   * zwölf Karten holt zwölf Bilder, das wäre eine Bremse gegen die eigene
+   * Anzeige.
+   */
+  /**
+   * DIE LESUNG DER VORBILDER (§2.2 Schritt 3, Paket D2b) — der Vision-Lauf.
+   *
+   * SIE STEHT VOR DER ZEILE DARUNTER, UND ZWAR ZWINGEND: `find()` nimmt den
+   * ERSTEN passenden Eintrag, und `…/inspiration/[^/]+` deckt `…/read` mit ab.
+   * Andersherum liefe der teuerste Aufruf dieser Fläche im Eimer des
+   * billigsten und hätte zwölf Züge je Minute.
+   *
+   * DER EIGENTLICHE DECKEL IST FACHLICH und liegt in der Route: 3 Läufe je
+   * Marke und Tag (`brandAiLimits.ts`). Diese Zeile schützt nur den Server vor
+   * dem Fall, in dem jemand ohne Konto-Deckel dagegenhämmert, und greift VOR
+   * jeder Datenbank-Abfrage.
+   *
+   * DESHALB MUSS SIE WEITER SEIN ALS DER FACHLICHE DECKEL, und 3/min wäre
+   * genau das nicht: der Eimer zählt JEDEN Aufruf des Pfades — auch die, die
+   * die Route mit 404 (fremde Marke), 409 (kein Vorbild) oder 429 (Tag voll)
+   * beantwortet. Mit derselben Zahl wie der Tages-Deckel bekäme der Mensch
+   * beim vierten Klick „zu schnell" statt „heute genug", und das ist die
+   * falsche Auskunft — beim ersten Beweislauf fielen dadurch vier Prüfungen
+   * auf einmal. TOKEN_MAX (10/min) ist dieselbe Zahl wie beim Veröffentlichen
+   * und lässt jede fachliche Antwort durch, bevor sie greift.
+   */
+  { re: /^POST \/api\/brand\/profiles\/[^/]+\/inspiration\/read$/, bucket: 'brand:reading', max: TOKEN_MAX },
+  { re: /^(POST|PATCH|DELETE) \/api\/brand\/profiles\/[^/]+\/inspiration(\/[^/]+)?$/, bucket: 'brand:inspiration', max: 12 },
+  /**
+   * DER DNA-VORSCHLAG (§2.2 Schritt 4, Paket D2c) — der Text-Lauf, der aus der
+   * Foundation zehn Zeilen ableitet.
+   *
+   * EIGENER EIMER, nicht `brand:reading`: das sind zwei verschiedene Deckel auf
+   * zwei verschiedenen Rechnungen (ein Vision-Lauf über zwölf Bilder gegen
+   * einen Text-Lauf), und geteilt würde das Lesen der Vorbilder das Vorschlagen
+   * bremsen, obwohl beides im selben Kapitel direkt nacheinander passiert.
+   *
+   * DER EIGENTLICHE DECKEL IST FACHLICH und liegt in der Route: 10 Anläufe je
+   * Marke, Feld und Tag (`BRAND_AI_SLOT_DAILY_LIMIT`). Diese Zeile schützt nur
+   * den Server, greift VOR jeder Datenbank-Abfrage und muss deshalb WEITER sein
+   * als der fachliche Deckel — sonst bekäme der Mensch „zu schnell" zu hören,
+   * wo „heute genug" die richtige Auskunft wäre (dieselbe Begründung wie bei
+   * `brand:reading` weiter oben).
+   */
+  { re: /^POST \/api\/brand\/profiles\/[^/]+\/dna\/propose$/, bucket: 'brand:dna', max: TOKEN_MAX },
+  /**
+   * DAS ZEICHEN-BRIEFING (§2.5 Stufe 1, Paket D5a) — der Text-Lauf, der aus
+   * Foundation und DNA die Vorgaben für das Zeichen schreibt.
+   *
+   * EIGENER EIMER, nicht `brand:dna` und nicht `brand:drafts`: drei
+   * verschiedene Rechnungen im selben Kapitel, und geteilt bremste das
+   * Briefing die Entwürfe, die unmittelbar danach kommen — dieselbe
+   * Begründung wie eine Zeile höher.
+   *
+   * DIE REIHENFOLGE STIMMT AUCH OHNE SORGFALT: `…/mark/brief` wird von KEINEM
+   * anderen Muster dieser Liste gedeckt — das Entwurfs-Muster endet auf
+   * `…/mark/drafts$`, das Handgriff-Muster verlangt PATCH/DELETE und ein
+   * weiteres Pfad-Glied. Ohne diese Zeile stand der Lauf ganz OHNE IP-Eimer da
+   * (Audit-Befund 2026-09-09): der fachliche Deckel greift erst NACH Zugang,
+   * Besitz und Kapitel-Prüfung, also nach drei Datenbank-Abfragen.
+   *
+   * DER EIGENTLICHE DECKEL IST FACHLICH und liegt in der Route: 10 Anläufe je
+   * Marke, Feld und Tag (`BRAND_AI_SLOT_DAILY_LIMIT` auf `j.brief`). Diese
+   * Zeile schützt nur den Server und muss deshalb WEITER sein als er — sonst
+   * bekäme der Mensch „zu schnell" zu hören, wo „heute genug" die richtige
+   * Auskunft wäre (dieselbe Begründung und dieselbe Zahl wie bei
+   * `brand:reading` weiter oben).
+   */
+  { re: /^POST \/api\/brand\/profiles\/[^/]+\/mark\/brief$/, bucket: 'brand:brief', max: TOKEN_MAX },
+  /**
+   * DIE KI-ENTWÜRFE DES ZEICHENS (§2.5 Stufe 3, Paket D5c) — der teuerste Lauf
+   * dieses Layers: VIER Bild-Aufrufe an ein Bildmodell in einem Klick.
+   *
+   * EIGENER EIMER, nicht `brand:dna` oder `brand:reading`: drei verschiedene
+   * Rechnungen, und geteilt bremste ein Bildlauf das Vorschlagen im Kapitel
+   * davor. Der LESE-Pfad (`GET …/mark/drafts`, die Bild-Auslieferung) steht
+   * BEWUSST NICHT in dieser Zeile — eine Seite mit vier Karten holt vier
+   * Bilder, und ein Deckel auf dem Ansehen wäre ein Deckel auf dem Anschauen
+   * der eigenen Entwürfe.
+   *
+   * DER EIGENTLICHE DECKEL IST FACHLICH und liegt in der Route: 3 Läufe je
+   * Marke und Tag (`BRAND_DESIGN_DRAFTS_DAILY_LIMIT`). Diese Zeile schützt nur
+   * den Server, greift VOR jeder Datenbank-Abfrage und muss deshalb WEITER
+   * sein als der fachliche Deckel — sonst bekäme der Mensch „zu schnell" zu
+   * hören, wo „heute genug" die richtige Auskunft wäre (dieselbe Begründung
+   * und dieselbe Zahl wie bei `brand:reading`).
+   */
+  { re: /^POST \/api\/brand\/profiles\/[^/]+\/mark\/drafts$/, bucket: 'brand:drafts', max: TOKEN_MAX },
+  /**
+   * EIGENER EIMER FÜR DIE HANDGRIFFE („Behalten", umbenennen, verwerfen) — er
+   * heisst NICHT `brand:drafts`, obwohl er daneben steht.
+   *
+   * Der Grund ist der SCHLÜSSEL, nicht die Zahl: zwei Regeln mit demselben
+   * `bucket` zählen in denselben Eimer, und die kleinere Obergrenze verliert.
+   * Mit einem gemeinsamen Eimer nähmen drei Klicks auf „Behalten" dem Menschen
+   * einen Lauf weg — im ersten Beweislauf war genau das die Ursache einer 429
+   * an einer Stelle, an der eine 401 stehen sollte.
+   */
+  { re: /^(PATCH|DELETE) \/api\/brand\/profiles\/[^/]+\/mark\/drafts\/[^/]+$/, bucket: 'brand:drafts-edit', max: 12 },
+  /**
+   * „HIER STIMMT ETWAS NICHT" — die Meldung zu einer Marke in der öffentlichen
+   * Galerie (docs/plans/DISCOVER-BRANDS.md §3.4/§6, Paket D3).
+   *
+   * Dieselbe Bauform und dieselbe Zahl wie beim Korrekturvorschlag zwei Zeilen
+   * höher, und aus denselben Gründen: die Route hat KEIN Gate davor (gemeldet
+   * wird von jemandem, der eine fremde Marke sieht und hier kein Konto hat),
+   * jeder Versuch kostet eine Abfrage UND beim ersten Mal je Marke einen
+   * Schreibvorgang über den Admin-Client, an dem Appwrites eigene Bremse nicht
+   * greift. 3/min je IP passt zum Gebrauch: ein Mensch sieht EINE Marke und
+   * meldet sie.
+   *
+   * DIESE ZEILE IST DER MINUTEN-DECKEL, NICHT DER GANZE. §6 verlangt 3/Stunde
+   * je Anschluss; ein Stundenfenster kennt diese Middleware nicht (`WINDOW_MS`
+   * ist eine Minute für alle). Den Rest zählt die Route selbst
+   * (`bookBrandPublicationReportQuota`,
+   * `packages/brand/shared/brandPublication.ts`) — die Minute schützt den
+   * Server, die Stunde die Arbeitsliste des Betreibers. Den Bot fängt daneben
+   * der Honigtopf im Rumpf, die Dublette der 409 auf eine bereits offene
+   * Meldung derselben IP zur selben Marke.
+   */
+  { re: /^POST \/api\/discover\/[^/]+\/report$/, bucket: 'brand:report', max: 3 },
+  /**
+   * DER KORREKTUR- UND ENTFERNUNGS-WUNSCH ZU EINEM INSIGHTS-BEITRAG ODER
+   * MARKENPROFIL (BI1 I3, Plan docs/plans/BRAND-INSIGHTS.md §9.5).
+   *
+   * Wörtlich dieselbe Lage wie `brand:correction` und `brand:report` drei
+   * Zeilen darüber: eine ÖFFENTLICHE Schreibroute ohne Session, ohne Gate,
+   * ohne Code — sie muss es sein, denn sie existiert für die Betreiber der
+   * FREMDEN Marken, über die wir schreiben, und die haben hier kein Konto.
+   * Genau danach fragt Anwaltsfrage 3 („funktioniert der Korrekturweg?"), und
+   * ein Weg, der ein Konto verlangt, funktioniert nicht.
+   *
+   * DIESE ZEILE IST DER MINUTEN-DECKEL, NICHT DER GANZE. §9.5 verlangt 3/Stunde
+   * je Anschluss plus einen Tages-Eimer; Stunden- und Tagesfenster kennt diese
+   * Middleware nicht (`WINDOW_MS` ist eine Minute für alle). Den Rest zählt die
+   * Route selbst (`decideInsightsCorrectionQuota`,
+   * `packages/insights/shared/insightsCorrection.ts`) — die Minute schützt den
+   * Server, Stunde und Tag die Arbeitsliste der Redaktion. Den Bot fängt
+   * daneben der Honigtopf im Rumpf, die Dublette der 409 auf einen bereits
+   * offenen Vorschlag desselben Anschlusses zum selben Ziel.
+   */
+  { re: /^POST \/api\/insights\/public\/corrections$/, bucket: 'insights:correction', max: 3 },
+  /**
+   * DER NEWSLETTER-EINTRAG (BI1 I5a, Plan §9.3a).
+   *
+   * Dieselbe Lage wie die Zeile darüber — eine ÖFFENTLICHE Schreibroute ohne
+   * Session — mit einem Unterschied, der sie SCHÄRFER macht: sie VERSCHICKT
+   * eine Mail, und zwar an eine frei wählbare Adresse. Ungedrosselt ist das
+   * die Bauform eines Mail-Bombing-Werkzeugs mit Listen-Müll als Nebenwirkung
+   * (wörtlich die Lehre, mit der `POST /api/auth/signup` in `ALWAYS_LIMITED`
+   * gekommen ist). Der Honigtopf fängt den einfachen Bot, nicht den, der ihn
+   * kennt.
+   *
+   * DIESE ZEILE IST DER MINUTEN-DECKEL, NICHT DER GANZE. §9.3a fährt die
+   * Zahlen des Korrekturweges: 3/Stunde und 10/Tag je Anschluss. Stunden- und
+   * Tagesfenster kennt diese Middleware nicht (`WINDOW_MS` ist eine Minute für
+   * alle); den Rest zählt die Route selbst
+   * (`decideInsightsNewsletterQuota`, `packages/insights/shared/
+   * insightsNewsletter.ts`) — die Minute schützt den Server, Stunde und Tag
+   * das Postfach eines Fremden.
+   *
+   * BESTÄTIGEN und ABMELDEN stehen BEWUSST NICHT in dieser Zeile: beide
+   * verschicken nichts, legen nichts an und kosten eine Abfrage — und ein
+   * Deckel auf dem Abmelden wäre ein Deckel auf einem Recht (Kopf von
+   * `unsubscribe.post.ts`). Geraten wird ein 256-Bit-Token ohnehin nicht.
+   */
+  { re: /^POST \/api\/insights\/public\/newsletter\/subscribe$/, bucket: 'insights:newsletter', max: 3 },
+  /**
+   * DER MARKTVERGLEICHS-LAUF (MV1 M2, Plan §2.9 Nr. 8: „Rate-Limit je IP auf
+   * den Abruf-Endpunkt") — die teuerste Route dieses Servers.
+   *
+   * EIN Klick holt bis zu FÜNF fremde Websites mit je bis zu ACHT Seiten und
+   * bezahlt danach bis zu fünf Extraktionen und zehn Aussensicht-Antworten.
+   * Er ist damit ungefähr das Vierzigfache der Brand-Analyse — und die Last
+   * trifft fremde Server, aus unserem Rechenzentrum, uns zugerechnet.
+   *
+   * 5/min je IP ist deutlich enger als `TOKEN_MAX` und passt zum Gebrauch: ein
+   * Mensch stösst einen Vergleich an und liest dann ein Ergebnis. Der WIRKSAME
+   * Deckel sitzt ohnehin IN der Route (3/Tag je Branding plus Instanz-Deckel —
+   * `packages/market/shared/marketLimits.ts`); diese Zeile zählt je IP und
+   * DAVOR, bevor die erste fremde Verbindung aufgebaut wird.
+   *
+   * WARUM NICHT 2/min, wie zuerst gesetzt: hier zählt JEDER Aufruf, auch der
+   * abgewiesene (die Middleware läuft vor jedem Handler). Ein 409
+   * `market_locked` und ein 404 auf ein fremdes Branding verbrauchen dasselbe
+   * Budget wie ein echter Lauf — bei 2/min sperrte sich aus, wer einmal zu
+   * früh klickt und es dann richtig macht. Der Tages-Deckel von 3 macht die
+   * Minute ohnehin zur zweiten Reihe.
+   */
+  { re: /^POST \/api\/market\/profiles\/[^/]+\/run$/, bucket: 'market:run', max: 5 },
+  /**
+   * DAS FÜHREN DER KANDIDATENLISTE (anlegen, ändern, entfernen). Sie kostet
+   * keinen Anbieter-Cent und keine fremde Verbindung — aber jeder Aufruf
+   * schreibt über den Admin-Client, an dem Appwrites eigene Bremse nicht
+   * greift. `WRITE_MAX` ist hier richtig: eine Liste mit fünf Einträgen
+   * zusammenzustellen sind ein paar Klicks, kein Dauerbetrieb.
+   *
+   * EIN gemeinsamer Bucket für alle drei Methoden, weil es EIN Vorgang ist.
+   * Die GET-Routen stehen bewusst NICHT hier: sie lesen fertige Zeilen.
+   */
+  { re: /^(POST|PATCH|DELETE) \/api\/market\/profiles\/[^/]+\/competitors/, bucket: 'market:competitors', max: WRITE_MAX },
+  /**
    * INHALTE ÜBERSETZEN (2026-08-17) — dieselbe Kostenklasse wie eine Zeile
    * darüber, nur häufiger erreichbar: jeder Klick schickt bis zu 10.000 Zeichen
    * an den KI-Anbieter und bezahlt die Antwort. Beide Routen haben SCHON eine
@@ -483,6 +852,16 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
   { re: /^POST \/api\/events\/[^/]+\/translate$/, bucket: 'events:translate', max: TOKEN_MAX },
   { re: /^POST \/api\/courses\/[^/]+\/translate$/, bucket: 'courses:translate', max: TOKEN_MAX },
   { re: /^POST \/api\/lessons\/[^/]+\/translate$/, bucket: 'courses:lesson-translate', max: TOKEN_MAX },
+  /**
+   * BETREIBER-SEITEN ÜBERSETZEN (F60, 2026-09-10) — dieselbe Kostenklasse,
+   * andere Person: hier klickt der OWNER, und was an den Anbieter geht, ist
+   * ein Rechtstext von bis zu 12.000 Zeichen. Anders als die fünf Zeilen
+   * darüber hat diese Route KEINE feinere Drossel in sich: sie liegt schon
+   * hinter `pages.manage` und zwei Produkt-Gates, und ein Owner, der seine
+   * eigene Impressumsseite übersetzt, ist kein Massenlauf. Diese Zeile ist
+   * deshalb der einzige Deckel — und sie zählt je IP, VOR der Arbeit.
+   */
+  { re: /^POST \/api\/pages\/translate$/, bucket: 'pages:translate', max: TOKEN_MAX },
   // Early-Access-Anfrage: die EINZIGE session-lose Schreibroute des Trichters,
   // und sie verschickt Mail an den Betreiber → engstes Budget.
   { re: /^POST \/api\/onboarding\/request$/, bucket: 'onboarding:request', max: 3 },
@@ -536,6 +915,84 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
   // der Schutz des Webhooks ist die Signatur-Verifikation (billing B4).
 ]
 
+/**
+ * 429 mit Retry-After und dem fachlichen Grund. Der GRUND reist als
+ * `data.code` — der zentrale Handler (server/error.ts) hebt genau diesen
+ * Schlüssel als `reason` ins Envelope. Ohne ihn konnten die Auth-Formulare eine
+ * Sperre nicht von einem echten Fehlversuch unterscheiden und schrieben
+ * „Passwort falsch" bzw. „bitte erneut versuchen" — beides falsch, und beides
+ * fordert genau die Handlung, die gerade geblockt wird (Audit-Befund G7,
+ * 2026-08-09). Der Status allein reicht dem Client nicht: eine 429 kann auch von
+ * einem vorgelagerten Proxy kommen und trägt dann nicht unser Fenster.
+ *
+ * EIN Code für alle Fenster (Minute, Stunde, Notbremse): der Client soll nur
+ * wissen, DASS er warten muss — wie lange, sagt Retry-After.
+ */
+function tooManyRequests(event: H3Event, resetInMs: number): never {
+  setHeader(event, 'Retry-After', Math.max(1, Math.ceil(resetInMs / 1000)))
+  throw createError({ status: 429, statusText: 'Too Many Requests', data: { code: 'rate_limited' } })
+}
+
+/**
+ * Die beiden zusätzlichen Fenster der Mail-Routen (Vorfall 2026-10-27, s. Kopf).
+ * Liefert das Fenster, das blockt, oder `null`.
+ *
+ * 1. STUNDE JE IP (`MAIL_HOUR_MAX`): fängt den geduldigen Absender, der unter
+ *    dem Minutendeckel bleibt. Gezählt wird nur, was das Minutenfenster schon
+ *    durchgelassen hat (der Aufrufer prüft es vorher) — die Zahl bedeutet damit
+ *    ziemlich genau „verschickte Mails dieser IP in der Stunde".
+ * 2. NOTBREMSE ÜBER ALLE IPs (`MAIL_GLOBAL_HOUR_MAX`, je Route): Mail-Versand
+ *    kostet Resend-Kontingent und — schwerer zu ersetzen — Absender-Ruf. Eine
+ *    IP-Drossel allein umgeht, wer über viele Adressen rotiert (Proxy-Netze sind
+ *    billig). Gezählt wird nur, was die IP-Fenster durchgelassen haben, damit
+ *    EINE gesperrte IP den gemeinsamen Eimer nicht leerhämmert; eine einzelne
+ *    IP kann ihn höchstens zu einem Drittel füllen. Der Preis ist bewusst
+ *    gewählt: ist der Deckel erreicht, wartet für den Rest der Stunde AUCH der
+ *    echte Mensch — lieber eine Stunde keine Anmeldung als eine Nacht Spam in
+ *    unserem Namen.
+ *
+ *    Die Log-Zeile kommt EINMAL je Fenster: genau der Request, der den Zähler
+ *    auf `MAX + 1` hebt (INCR ist in Redis atomar, also sieht genau einer
+ *    diesen Wert — ohne eigenen „schon gemeldet"-Zustand). Fällt Redis aus,
+ *    zählt der In-Memory-Fallback je Instanz; die Bremse greift dann je
+ *    Instanz, und jede meldet sich einmal.
+ */
+/**
+ * GAST-FORMULARE, DIE EINE MAIL AN EINE VOM ABSENDER GEWÄHLTE ADRESSE SCHICKEN
+ * (Quittung, Double-Opt-in) — dieselbe Spam-Relais-Klasse wie die Auth-Routen,
+ * nur ohne Konto: Erstgespräch (zitiert Name UND Anliegen zurück), Warteliste
+ * und Newsletter (Bestätigungs-Link an die eingegebene Adresse). Sie liegen in
+ * `WRITE_LIMITED` mit eigenem Minuten-Deckel; Stundenfenster und Notbremse
+ * gelten hier je BUCKET statt je Route, damit ein Formular mit mehreren
+ * Pfaden (waitlist + waitlist/confirm) einen Eimer teilt. Das Portfolio-
+ * Erstgespräch mailt nur an David (keine Relais-Gefahr), hält aber dieselbe
+ * Kontingent-Grenze — eine Nacht Formular-Spam kostet Resend-Mails, egal wer
+ * der Empfänger ist.
+ */
+const GUEST_MAIL_BUCKETS = new Set([
+  'brand:intro-call',
+  'brand:waitlist',
+  'insights:newsletter',
+  'portfolio:intro-call',
+])
+
+async function checkMailRouteBudget(
+  store: RateLimitStore,
+  prefix: string,
+  ip: string,
+  route: string,
+): Promise<RateLimitState | null> {
+  const hour = await store.hit(`${prefix}${ip}:${route}:h`, MAIL_HOUR_WINDOW_MS)
+  if (hour.count > MAIL_HOUR_MAX) return hour
+
+  const global = await store.hit(`${prefix}global:${route}:h`, MAIL_HOUR_WINDOW_MS)
+  if (global.count > MAIL_GLOBAL_HOUR_MAX) {
+    if (global.count === MAIL_GLOBAL_HOUR_MAX + 1) logEvent('warn', 'auth.mail_route_breaker', { route })
+    return global
+  }
+  return null
+}
+
 export default defineEventHandler(async (event) => {
   const isWriteMethod = event.method === 'POST' || event.method === 'PUT' || event.method === 'PATCH'
   const pathname = getRequestURL(event).pathname
@@ -572,17 +1029,12 @@ export default defineEventHandler(async (event) => {
   const counting = always || Boolean(write)
   const state = counting ? await store.hit(key, WINDOW_MS) : await store.peek(key, WINDOW_MS)
 
-  if (counting ? state.count > max : state.count >= max) {
-    setHeader(event, 'Retry-After', Math.max(1, Math.ceil(state.resetInMs / 1000)))
-    // Der GRUND reist als `data.code` — der zentrale Handler (server/error.ts)
-    // hebt genau diesen Schlüssel als `reason` ins Envelope. Ohne ihn konnten
-    // die Auth-Formulare eine Sperre nicht von einem echten Fehlversuch
-    // unterscheiden und schrieben „Passwort falsch" bzw. „bitte erneut
-    // versuchen" — beides falsch, und beides fordert genau die Handlung, die
-    // gerade geblockt wird (Audit-Befund G7, 2026-08-09). Der Status allein
-    // reicht dem Client nicht: eine 429 kann auch von einem vorgelagerten
-    // Proxy kommen und trägt dann nicht unser Fenster.
-    throw createError({ status: 429, statusText: 'Too Many Requests', data: { code: 'rate_limited' } })
+  if (counting ? state.count > max : state.count >= max) tooManyRequests(event, state.resetInMs)
+
+  // Mail-Routen: zusätzlich Stunde je IP + Notbremse über alle IPs (s. oben).
+  if (always || (write && GUEST_MAIL_BUCKETS.has(write.bucket))) {
+    const blocked = await checkMailRouteBudget(store, prefix, ip, write ? write.bucket : route)
+    if (blocked) tooManyRequests(event, blocked.resetInMs)
   }
 
   if (!always && !write) {

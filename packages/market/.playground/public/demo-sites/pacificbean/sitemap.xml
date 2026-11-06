@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Erfundene Demo-Sitemap. Acht Adressen; gelesen werden sechs — 
+     Impressum und Kontakt stehen auf der Pfad-Sperrliste (Plan §2.9 Nr. 2). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://pacificbean.example/</loc></url>
+  <url><loc>https://pacificbean.example/about</loc></url>
+  <url><loc>https://pacificbean.example/wholesale</loc></url>
+  <url><loc>https://pacificbean.example/delivery</loc></url>
+  <url><loc>https://pacificbean.example/grades</loc></url>
+  <url><loc>https://pacificbean.example/faq</loc></url>
+  <url><loc>https://pacificbean.example/imprint</loc></url>
+  <url><loc>https://pacificbean.example/contact</loc></url>
+</urlset>

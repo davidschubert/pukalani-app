@@ -1,20 +1,18 @@
 import { randomBytes } from 'node:crypto'
 import { ID } from 'node-appwrite'
 import { createBrandSharePublishSchema } from '../../../../../schemas/brandAccess'
-import { resolveBrandJourney } from '../../../../../shared/brandJourney'
-import type { BrandShareSnapshot, BrandSharePublishResponse } from '../../../../../shared/types/brand'
+import type { BrandSharePublishResponse } from '../../../../../shared/types/brand'
 import {
   BRAND_SHARES_TABLE,
   brandDb,
-  confirmedSlotValues,
   listActiveShares,
   loadOwnedProfile,
   loadStepRows,
-  profileFacts,
   requireProfileIdParam,
-  toStepFacts,
-  toStoryView,
 } from '../../../../utils/brandStore'
+import { brandDesignSnapshotPreset } from '../../../../../shared/brandDesignValues'
+import { loadBrandDesignPreset } from '../../../../utils/brandDesignPreset'
+import { buildBrandSnapshot } from '../../../../utils/brandSnapshot'
 import { hashBrandShareToken } from '../../../../utils/brandShares'
 import { recordBrandEvent } from '../../../../utils/brandEvents'
 
@@ -34,6 +32,28 @@ import { recordBrandEvent } from '../../../../utils/brandEvents'
  * Metriken. `confirmedSlotValues` liest deshalb ausschliesslich das Feld
  * `confirmed` — `latestDraft` steht direkt daneben und wäre der eine Griff, mit
  * dem ein halbfertiger Gedanke öffentlich würde.
+ *
+ * ── UND SEIT MV1 M5: NICHTS `internal` (BF1 §3a Nr. 7) ────────────────────
+ * `brandShareableSlotValues` wirft raus, was die Registry als nicht-öffentlich
+ * führt — heute die vier Sessions `a.competitors`, `a.complaints`,
+ * `a.challenge`, `a.facts`. SEIT PAKET G1 kommt die zweite Bedingung dazu
+ * (`sessionTravels`: öffentlich UND `audience: 'foundation'`): auch jede
+ * ROHANTWORT bleibt draussen — `a.origin` ist nicht vertraulich und trotzdem
+ * kein Inhalt eines Abbilds, das die MARKE beschreibt (BF-Leseansicht §2.3).
+ * Der Snapshot trägt damit dasselbe, was die Leseansicht zeigt; die zweite
+ * Hälfte des Doppelnetzes ist der Renderer (`shared/brandFoundation.ts`), der
+ * dieselbe Frage noch einmal stellt — Snapshots von VOR dieser Zeile tragen
+ * alles Bestätigte. Die Zusage stand seit BF1 im Typ
+ * (`sensitivity`: „Was per Share-Link und Export standardmässig NICHT
+ * reist"), gelesen hat sie hier niemand: ein Schnappschuss trug bis dahin die
+ * NAMEN der Wettbewerber samt notierter Schwäche in einen dreissig Tage lang
+ * öffentlich abrufbaren Link. Begründung und Fail-closed-Regel stehen in
+ * `shared/brandSharing.ts`.
+ *
+ * BEFUNDE reisen weiterhin GAR NICHT mit — auch keine der Art `market`. Das
+ * ist keine Auslassung, sondern die Form dieses Snapshots: er zeigt die
+ * bestätigte Marke, nicht die Arbeit daran. Ein Feld dafür gibt es in
+ * `BrandShareSnapshot` nicht, und `tests/brandSharing.test.ts` nagelt das fest.
  *
  * ÜBERSPRUNGENE BAUSTEINE FEHLEN, ihre Daten bleiben aber liegen: die Kapitel
  * kommen aus der JOURNEY, nicht aus der Zeilenmenge.
@@ -55,51 +75,37 @@ import { recordBrandEvent } from '../../../../utils/brandEvents'
 const SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 /**
- * Fassung der Snapshot-FORM — steigt, wenn sich der Aufbau ändert. Ein alter
- * Link muss danach weiter lesbar bleiben; deshalb steht die Zahl IM Snapshot
- * und nicht in einer Spalte, die man beim Lesen erst nachschlagen müsste.
+ * DIE RECHNUNG SELBST WOHNT IN `server/utils/brandSnapshot.ts` (Discover D1) —
+ * Fassung, Deckel und Filter stehen dort, weil die VERÖFFENTLICHUNG dasselbe
+ * Abbild einfriert. Zwei Kopien wären die Stelle, an der eines Tages der eine
+ * Snapshot einen neuen Filter bekommt und der andere nicht — und der andere
+ * ist der dauerhaft indexierbare.
  */
-const SHARE_SCHEMA_VERSION = 1
-
-/** Zod-Zusage aus Schema-Anhang §4. */
-const SNAPSHOT_MAX = 400_000
 
 export default defineEventHandler(async (event): Promise<BrandSharePublishResponse> => {
-  const { userId } = await requireBrandAccess(event)
+  const { userId, betaAccount } = await requireBrandAccess(event)
   const profileId = requireProfileIdParam(event)
   const profile = await loadOwnedProfile(event, userId, profileId)
   await readValidatedBody(event, createBrandSharePublishSchema().parse)
 
   const stepRows = await loadStepRows(event, profileId)
-  const journey = resolveBrandJourney(profileFacts(profile), toStepFacts(stepRows))
-  const byStepKey = new Map(stepRows.map(row => [row.stepKey, row]))
 
-  const snapshot: BrandShareSnapshot = {
-    schemaVersion: SHARE_SCHEMA_VERSION,
-    title: profile.title ?? '',
-    contentLocale: profile.contentLocale,
-    story: toStoryView(profile).body,
-    chapters: journey
-      .filter(step => step.state !== 'skipped')
-      .map((step) => {
-        const row = byStepKey.get(step.stepKey)
-        return { stepKey: step.stepKey, slots: row ? confirmedSlotValues(row) : [] }
-      })
-      // Ein Kapitel ohne bestätigten Inhalt hat nichts zu zeigen — es fehlt,
-      // statt als leere Überschrift dazustehen.
-      .filter(chapter => chapter.slots.length > 0),
-    presetId: profile.designPresetId ?? '',
-    presetVersion: profile.designPresetVersion ?? '',
-  }
-
-  const payload = JSON.stringify(snapshot)
-  if (payload.length > SNAPSHOT_MAX) {
-    throw createError({
-      status: 413,
-      statusText: 'Snapshot too large',
-      data: { code: 'snapshot_too_large' },
-    })
-  }
+  /**
+   * DAS PRESET REIST MIT — OHNE DIE BEHALTENEN ENTWÜRFE (D8, §2.8/§1.11 b).
+   *
+   * Der Empfänger eines Links soll die visuelle Identität SEHEN (das ist der
+   * halbe Grund, ihn zu verschicken); die KI-Entwürfe soll er nie sehen. Beides
+   * hält `brandDesignSnapshotPreset` — und der Typ dahinter lässt das Feld gar
+   * nicht erst zu, statt sich auf Disziplin zu verlassen.
+   *
+   * Ohne fertige Schicht 2 ist `preset` null, und der Snapshot bleibt inhaltlich
+   * das, was er vor D8 war (nur mit `schemaVersion: 2`).
+   */
+  const { preset } = await loadBrandDesignPreset(event, profile, stepRows)
+  const { snapshot, payload } = buildBrandSnapshot(profile, stepRows, {
+    betaAccount,
+    ...(preset ? { design: brandDesignSnapshotPreset(preset) } : {}),
+  })
 
   const now = new Date()
   const expiresAt = new Date(now.getTime() + SHARE_TTL_MS).toISOString()

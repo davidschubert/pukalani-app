@@ -108,6 +108,51 @@ export function formatBrandSlotStructured(
 }
 
 /**
+ * DIE LESE-FORM EINES WERTES (Finale Abnahme, §5a Schritt 1: „der bestätigte
+ * Wert, VOLLSTÄNDIG, nicht gekürzt").
+ *
+ * ── WARUM DIE ANSICHT HIER WOHNT UND NICHT IN DER SEITE ──────────────────
+ * Die Schreiber stehen schon hier (`formatBrandSlotList`,
+ * `formatBrandSlotStructured`). Ein LESER, der die Form woanders nachbaut,
+ * ist die zweite Stelle, an der `- ` und `## ` stehen — und die erste, die
+ * beim nächsten Format-Schritt vergessen wird.
+ *
+ * ── FAIL-SOFT IST HIER PFLICHT, NICHT KOMFORT ────────────────────────────
+ * Ein Wert kann formfremd sein: das Modell hat sich vertan, ein Mensch hat im
+ * Textfeld nachgebessert, ein Bestandswert stammt aus der Zeit vor der Regel.
+ * Dann gilt „freier Text", und der Mensch sieht seinen Satz — statt einer
+ * leeren Liste, die behauptet, er hätte nichts gesagt.
+ */
+export type BrandSlotValueView =
+  | { kind: 'text', text: string }
+  | { kind: 'list', items: string[] }
+  | { kind: 'blocks', blocks: { label: string, body: string }[] }
+
+export function brandSlotValueView(
+  kind: BrandSlotSchemaKind,
+  value: string,
+): BrandSlotValueView {
+  const text = value.replace(/\r\n/g, '\n').trim()
+  if (!brandSlotValueMatchesFormat(kind, text)) return { kind: 'text', text }
+
+  if (kind === 'list') {
+    return { kind: 'list', items: text.split('\n').map(line => line.slice(2).trim()) }
+  }
+
+  if (kind === 'structured') {
+    return {
+      kind: 'blocks',
+      blocks: text.split(/\n{2,}/).map((block) => {
+        const [heading, ...body] = block.split('\n')
+        return { label: (heading ?? '').slice(3).trim(), body: body.join('\n').trim() }
+      }),
+    }
+  }
+
+  return { kind: 'text', text }
+}
+
+/**
  * Hält dieser Wert die Form seiner Art ein? Arten ohne Regel sind IMMER in
  * Ordnung — sonst hätte „keine Form" plötzlich eine.
  */

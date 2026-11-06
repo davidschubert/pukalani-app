@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
+  DASHBOARD_NAV_GROUPS,
+  MAX_DASHBOARD_NAV_IDS,
+  MAX_DASHBOARD_NAV_ID_LENGTH,
+  applyDashboardNavPrefs,
+  parseDashboardNavPrefs,
   resolveDashboardPlace,
   scopeVisibleAt,
   filterDashboardModules,
@@ -380,5 +385,251 @@ describe('configFlagEnabled — fail-closed', () => {
     expect(configFlagEnabled({ a: 'true' }, 'a')).toBe(false)
     expect(configFlagEnabled({ a: {} }, 'a')).toBe(false)
     expect(configFlagEnabled({ a: true }, 'a')).toBe(true)
+  })
+})
+
+/**
+ * NAV1 PAKET 3 — DIE REIHENFOLGE JE PERSON.
+ *
+ * Sechs Zusagen aus docs/plans/DASHBOARD-NAV-JE-PERSON.md, jede MIT
+ * Gegenprobe: eine Regel, die nur den erwarteten Fall prüft, ist grün, auch
+ * wenn sie gar nichts tut.
+ *
+ * Zusage 5 (ausgeblendet fehlt in der Seitenleiste, NICHT in der ⌘K-Suche) ist
+ * hier nur zur HÄLFTE prüfbar — die Suche liest ihre eigene, unpersonalisierte
+ * Liste im Layout (packages/admin/app/layouts/dashboard.vue). Geprüft wird
+ * hier die Seitenleisten-Hälfte; die andere gehört dorthin, wo die zweite
+ * Liste entsteht.
+ */
+interface OrderModule {
+  id: string
+  group?: string
+  order?: number
+}
+
+/** Registry-Auszug: zwei Gruppen, ein Modul ohne Gruppe, `order` mit Lücken. */
+const ORDER_MODULES: OrderModule[] = [
+  { id: 'inbox' },
+  { id: 'members', group: 'products', order: 10 },
+  { id: 'posts', group: 'products', order: 20 },
+  { id: 'media', group: 'products', order: 30 },
+  { id: 'themes', group: 'branding', order: 10 },
+  { id: 'fonts', group: 'branding', order: 20 },
+]
+
+/** Kompakte Sicht auf das Ergebnis: [ohne Gruppe, [Gruppe, Ids]…]. */
+function shape(result: ReturnType<typeof applyDashboardNavPrefs<OrderModule>>) {
+  return {
+    ungrouped: result.ungrouped.map(m => m.id),
+    groups: result.groups.map(g => [g.group, g.modules.map(m => m.id)] as const),
+  }
+}
+
+const STANDARD = {
+  ungrouped: ['inbox'],
+  groups: [
+    ['products', ['members', 'posts', 'media']],
+    ['branding', ['themes', 'fonts']],
+  ],
+}
+
+describe('applyDashboardNavPrefs — die Reihenfolge je Person (NAV1 Paket 3)', () => {
+  it('Zusage 1: ohne Prefs ist das Ergebnis exakt die heutige Nav', () => {
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, undefined))).toEqual(STANDARD)
+    // Gegenprobe an den drei Formen von „nichts gewählt": ein leeres Objekt
+    // und leere Listen dürfen sich nicht anders verhalten als `undefined`.
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, {}))).toEqual(STANDARD)
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, { groups: [], items: [], hidden: [] }))).toEqual(STANDARD)
+  })
+
+  it('Zusage 1: `order` schlägt die Registry-Reihenfolge, Gleichstand bleibt stabil', () => {
+    // Absichtlich VERDREHT in der Registry und mit einem Gleichstand (media/
+    // extra teilen sich 30): der Gleichstand behält die Registry-Reihenfolge.
+    const jumbled: OrderModule[] = [
+      { id: 'media', group: 'products', order: 30 },
+      { id: 'extra', group: 'products', order: 30 },
+      { id: 'members', group: 'products', order: 10 },
+    ]
+    expect(shape(applyDashboardNavPrefs(jumbled, undefined)).groups)
+      .toEqual([['products', ['members', 'media', 'extra']]])
+  })
+
+  it('Zusage 1: ein Modul OHNE `order` hängt hinter jedem mit (999)', () => {
+    const withGap: OrderModule[] = [
+      { id: 'namenlos', group: 'products' },
+      { id: 'members', group: 'products', order: 10 },
+    ]
+    expect(shape(applyDashboardNavPrefs(withGap, undefined)).groups)
+      .toEqual([['products', ['members', 'namenlos']]])
+  })
+
+  it('Zusage 2: unbekannte Ids in groups/items/hidden ändern GAR NICHTS', () => {
+    const prefs = {
+      groups: ['gibtesnicht', 'auch-nicht'],
+      items: ['verschwundener-layer'],
+      hidden: ['weg-seit-gestern'],
+    }
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, prefs))).toEqual(STANDARD)
+    // Gegenprobe: eine BEKANNTE Id an derselben Stelle wirkt sehr wohl —
+    // sonst prüfte der Test nur, dass die Funktion überhaupt etwas zurückgibt.
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, { groups: ['branding'] })).groups[0]?.[0])
+      .toBe('branding')
+  })
+
+  it('Zusage 3: Genanntes vorn, Rest hinten — Gruppen im Standard, Einträge nach order', () => {
+    const result = shape(applyDashboardNavPrefs(ORDER_MODULES, {
+      groups: ['branding'],
+      items: ['media'],
+    }))
+    // `branding` wandert nach vorn, `products` folgt im Standard.
+    expect(result.groups).toEqual([
+      ['branding', ['themes', 'fonts']],
+      ['products', ['media', 'members', 'posts']],
+    ])
+  })
+
+  it('Zusage 3: die Reihenfolge in `items` zählt, nicht die in der Registry', () => {
+    const result = shape(applyDashboardNavPrefs(ORDER_MODULES, { items: ['media', 'posts'] }))
+    expect(result.groups[0]).toEqual(['products', ['media', 'posts', 'members']])
+    // Gegenprobe: umgedreht kommt auch das Gegenteil heraus.
+    const flipped = shape(applyDashboardNavPrefs(ORDER_MODULES, { items: ['posts', 'media'] }))
+    expect(flipped.groups[0]).toEqual(['products', ['posts', 'media', 'members']])
+  })
+
+  it('Zusage 3: `items` wirkt nur INNERHALB der Gruppe — kein Eintrag wechselt sie', () => {
+    // `themes` (branding) steht ganz vorn in der Liste, bleibt aber in seiner
+    // Gruppe; die Gruppen-Reihenfolge ändert sich davon nicht.
+    const result = shape(applyDashboardNavPrefs(ORDER_MODULES, { items: ['themes', 'media'] }))
+    expect(result.groups).toEqual([
+      ['products', ['media', 'members', 'posts']],
+      ['branding', ['themes', 'fonts']],
+    ])
+  })
+
+  it('Zusage 4: eine Gruppe, deren Einträge alle ausgeblendet sind, fehlt ganz', () => {
+    const result = shape(applyDashboardNavPrefs(ORDER_MODULES, { hidden: ['themes', 'fonts'] }))
+    expect(result.groups.map(g => g[0])).toEqual(['products'])
+    // Gegenprobe: EIN sichtbarer Eintrag genügt, damit die Gruppe bleibt.
+    const partial = shape(applyDashboardNavPrefs(ORDER_MODULES, { hidden: ['themes'] }))
+    expect(partial.groups).toEqual([
+      ['products', ['members', 'posts', 'media']],
+      ['branding', ['fonts']],
+    ])
+  })
+
+  it('Zusage 5 (Seitenleisten-Hälfte): `hidden` nimmt Einträge heraus, auch ungruppierte', () => {
+    const result = shape(applyDashboardNavPrefs(ORDER_MODULES, { hidden: ['inbox', 'posts'] }))
+    expect(result.ungrouped).toEqual([])
+    expect(result.groups[0]).toEqual(['products', ['members', 'media']])
+    // Gegenprobe: ohne `hidden` sind beide da.
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, {})).ungrouped).toEqual(['inbox'])
+  })
+
+  it('Zusage 6: Module ohne Gruppe bleiben vorn und folgen ebenfalls `items`', () => {
+    const loose: OrderModule[] = [
+      { id: 'inbox', order: 10 },
+      { id: 'board', order: 20 },
+      { id: 'members', group: 'products', order: 10 },
+    ]
+    expect(shape(applyDashboardNavPrefs(loose, undefined)).ungrouped).toEqual(['inbox', 'board'])
+    expect(shape(applyDashboardNavPrefs(loose, { items: ['board'] })).ungrouped).toEqual(['board', 'inbox'])
+    // Sie bleiben VOR den Gruppen — `ungrouped` ist ein eigenes Feld, keine
+    // Position in einer Liste, die man versehentlich umsortieren könnte.
+    expect(shape(applyDashboardNavPrefs(loose, { items: ['members'] })).ungrouped).toEqual(['inbox', 'board'])
+  })
+
+  it('ein Modul mit UNBEKANNTER Gruppe erscheint nirgends (fail-closed, wie heute)', () => {
+    const strange: OrderModule[] = [
+      { id: 'inbox' },
+      { id: 'vertippt', group: 'produkte' },
+      { id: 'members', group: 'products', order: 10 },
+    ]
+    const result = shape(applyDashboardNavPrefs(strange, undefined))
+    expect(result.ungrouped).toEqual(['inbox'])
+    expect(result.groups).toEqual([['products', ['members']]])
+  })
+
+  it('die Standard-Reihenfolge der Gruppen ist die des Layouts (E9 + U7)', () => {
+    const all = DASHBOARD_NAV_GROUPS.map((group, index) => ({ id: `m${index}`, group }))
+    expect(shape(applyDashboardNavPrefs(all, undefined)).groups.map(g => g[0]))
+      .toEqual([...DASHBOARD_NAV_GROUPS])
+  })
+
+  it('die Eingabe wird NICHT verändert (die Registry ist geteilt)', () => {
+    const before = ORDER_MODULES.map(m => m.id)
+    applyDashboardNavPrefs(ORDER_MODULES, { items: ['media'], groups: ['branding'] })
+    expect(ORDER_MODULES.map(m => m.id)).toEqual(before)
+  })
+})
+
+describe('parseDashboardNavPrefs — fail-soft (ein Prefs-Dokument darf nichts umwerfen)', () => {
+  it('kein Objekt ⇒ undefined', () => {
+    for (const raw of [undefined, null, 'nav', 42, true, ['items']]) {
+      expect(parseDashboardNavPrefs(raw), String(raw)).toBeUndefined()
+    }
+  })
+
+  it('ein Objekt ohne brauchbare Liste ⇒ undefined (nicht `{}`)', () => {
+    expect(parseDashboardNavPrefs({})).toBeUndefined()
+    expect(parseDashboardNavPrefs({ groups: 'products' })).toBeUndefined()
+    expect(parseDashboardNavPrefs({ fremdes: ['feld'] })).toBeUndefined()
+    // Gegenprobe: EINE brauchbare Liste genügt.
+    expect(parseDashboardNavPrefs({ groups: ['products'] })).toEqual({ groups: ['products'] })
+  })
+
+  it('gemischte Typen: nur die gültigen Ids bleiben, der Rest fällt EINZELN weg', () => {
+    expect(parseDashboardNavPrefs({ items: ['posts', 7, null, { id: 'x' }, 'media'] }))
+      .toEqual({ items: ['posts', 'media'] })
+  })
+
+  it('Ids gegen das Muster: nur [a-z0-9-], höchstens 64 Zeichen', () => {
+    const raw = {
+      items: [
+        'brand-check',
+        'Posts', // Großbuchstabe
+        'mit punkt.', // Punkt und Leerzeichen
+        '', // leer
+        'a'.repeat(MAX_DASHBOARD_NAV_ID_LENGTH),
+        'b'.repeat(MAX_DASHBOARD_NAV_ID_LENGTH + 1),
+      ],
+    }
+    expect(parseDashboardNavPrefs(raw)).toEqual({
+      items: ['brand-check', 'a'.repeat(MAX_DASHBOARD_NAV_ID_LENGTH)],
+    })
+  })
+
+  it('doppelte Ids: der ERSTE Auftritt zählt', () => {
+    expect(parseDashboardNavPrefs({ items: ['posts', 'media', 'posts'] }))
+      .toEqual({ items: ['posts', 'media'] })
+  })
+
+  it('zu lange Liste wird GEKÜRZT, nicht verworfen (Lesen ist milder als Schreiben)', () => {
+    const many = Array.from({ length: MAX_DASHBOARD_NAV_IDS + 25 }, (_, i) => `m${i}`)
+    const parsed = parseDashboardNavPrefs({ items: many })
+    expect(parsed?.items).toHaveLength(MAX_DASHBOARD_NAV_IDS)
+    // Die ERSTEN gewinnen — sie stehen oben in der Seitenleiste; der Rest
+    // hängt nach Zusage 3 ohnehin hinten an.
+    expect(parsed?.items?.[0]).toBe('m0')
+    expect(parsed?.items?.at(-1)).toBe(`m${MAX_DASHBOARD_NAV_IDS - 1}`)
+  })
+
+  it('eine leere Liste bleibt eine leere Liste — und wirkt wie „nichts gewählt"', () => {
+    expect(parseDashboardNavPrefs({ items: [], groups: ['products'] }))
+      .toEqual({ items: [], groups: ['products'] })
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, parseDashboardNavPrefs({ items: [] }))))
+      .toEqual(STANDARD)
+  })
+
+  it('das Gelesene ist gültige Eingabe für die Regel (beide Enden passen zusammen)', () => {
+    const parsed = parseDashboardNavPrefs({
+      groups: ['branding', 'Products', 'branding'],
+      items: ['media', 42],
+      hidden: ['themes'],
+    })
+    expect(parsed).toEqual({ groups: ['branding'], items: ['media'], hidden: ['themes'] })
+    expect(shape(applyDashboardNavPrefs(ORDER_MODULES, parsed)).groups).toEqual([
+      ['branding', ['fonts']],
+      ['products', ['media', 'members', 'posts']],
+    ])
   })
 })

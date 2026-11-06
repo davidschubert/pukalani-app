@@ -14,7 +14,78 @@ export interface BwRailStepInfo {
    */
   description?: string
   minutes?: string
-  bausteine: { label: string, note: string, done?: boolean }[]
+  /**
+   * `affects` ist der Satz „Wofür brauchen wir das?" (§3a): wohin dieses Feld
+   * später fliesst. Er kommt aus einer RECHNUNG über der Registry
+   * (`sessionsAffectedBy`), nie aus einer gepflegten Liste — eine gepflegte
+   * Liste ist irgendwann falsch. Optional, weil der Klickdummy ihn nicht hat.
+   */
+  bausteine: { label: string, note: string, done?: boolean, affects?: string }[]
+}
+/**
+ * EIN UNTERPUNKT: die SESSION eines Kapitels (BW2 Paket 3c-i, Plan §11).
+ *
+ * Die Beschriftungen (Label, Umfang, Titel) reicht die SEITE übersetzt herein
+ * — dieselbe Regel wie bei den Kapiteln. Die Komponente kennt nur Glyphe,
+ * Sperre und Klick.
+ */
+export interface BwRailSession {
+  /** Slot-Id der Session (`a.origin`) — sie reist als `?s=` in die Adresse. */
+  id: string
+  label: string
+  /** „~3 Min" aus der Registry (`effort.minutes`). */
+  effort?: string
+  /**
+   * `deferred` ist KEIN Zustand der Zustandsmaschine, sondern ein Merkzeichen
+   * daneben (`answers.allowDefer`, §3a). Er steht hier trotzdem in derselben
+   * Liste, weil die LEISTE genau eine Glyphe je Zeile zeigt und „vertagt" die
+   * Auskunft ist, die der Mensch dann sucht.
+   */
+  state: 'locked' | 'open' | 'active' | 'done' | 'stale' | 'deferred'
+  /** Der gesperrte Platzhalter „Finale Abnahme" (Funken-Glyphe, Paket 3c-ii). */
+  kind?: 'acceptance'
+  /**
+   * DER GRUPPEN-TRENNER ÜBER DIESER ZEILE („Daraus abgeleitet", 2026-09-09).
+   *
+   * Er steht AM Eintrag und nicht als eigener Listen-Typ: eine Liste aus zwei
+   * Sorten zwänge jeden Leser (Leiste, Abnahme, Tests) zu einer Fallunter-
+   * scheidung für eine Überschrift. Gesetzt wird er von genau einer Regel
+   * (`brandDerivedDividerSlot`) an genau einer Zeile je Kapitel — und nur,
+   * wenn das Kapitel sauber in Fragen und Ableitungen zerfällt.
+   */
+  groupLabel?: string
+  /** Gesperrt heisst NICHT anklickbar — kein 409 für den Menschen (3a-Befund 3). */
+  disabled?: boolean
+  /**
+   * HERVORGEHOBEN, OHNE ANKLICKBAR ZU SEIN: die Finale Abnahme, sobald das
+   * Kapitel vollständig ist (§11). Ein eigener Schalter statt `state:
+   * 'active'`, weil „aktiv" die Session meint, in der der Mensch GERADE
+   * steht — zwei Zeilen mit demselben Zeichen wären eine Frage zu viel.
+   */
+  highlight?: boolean
+  /** Erklärt die Sperre beim Überfahren (`title`), z. B. „kommt als Nächstes". */
+  title?: string
+  /**
+   * DER GRUND, SICHTBAR (Testlauf-Befund M, 2026-09-09) — eine kleine Zeile
+   * UNTER dem Eintrag statt eines Hover-`title`.
+   *
+   * Ein Tooltip erreicht weder Touch noch Tastatur, und die Finale Abnahme ist
+   * der eine Eintrag, der lange gesperrt dasteht: „Frei, sobald alle Felder
+   * dieses Kapitels bestätigt sind" ist die halbe Anleitung. Die Sidebar hängt
+   * die Zeile zusätzlich per `aria-describedby` an den Knopf, damit ein
+   * Screenreader sie mit der Sperre zusammen vorliest.
+   */
+  note?: string
+  /**
+   * An dieser Session hängt ein OFFENER Befund (§8, Paket 5) — ein
+   * bernsteinfarbenes Merkzeichen HINTER der Beschriftung.
+   *
+   * Ein eigener Schalter statt eines Zustands, aus demselben Grund wie
+   * `highlight`: die Zeile zeigt genau EINE Glyphe, und die sagt, wie es um die
+   * Arbeit steht („bestätigt", „veraltet", „vertagt"). Ein Befund ist eine
+   * ZWEITE Auskunft daneben — beratend, nie sperrend.
+   */
+  finding?: boolean
 }
 export interface BwRailStep {
   id: string
@@ -32,9 +103,38 @@ export interface BwRailStep {
   minutes?: string
   info?: BwRailStepInfo
   /* Runde 78 (David): 'result' = Ergebnis-Ansicht der Schicht — letzter
-   * Punkt der Gruppe, verlinkt statt Info-Icon, gesperrt bis alles fertig. */
-  kind?: 'result'
+   * Punkt der Gruppe, verlinkt statt Info-Icon, gesperrt bis alles fertig.
+   *
+   * 'document' = „Euer Branding" (BW2 Paket 7, §10): der letzte Eintrag UNTER
+   * den Kapiteln, mit eigener Adresse (`to`) und IMMER klickbar — Lesen ist
+   * immer erlaubt, und ein Dokument, das erst am Ende aufgeht, sähe man nie
+   * wachsen. Es ist bewusst KEIN 'result': das ist die gesperrte Ergebnis-Kachel
+   * der Übersicht (R35), eine andere Sache mit einer anderen Regel.
+   *
+   * 'extra' = ein Eintrag, den ein ANDERER Layer angemeldet hat (MV1 M4,
+   * `pukalani.brand.workspaceNavExtras`) — z. B. „Markt". Er trägt seine
+   * eigene Glyphe in `icon` (die anderen Arten lassen das Feld leer und
+   * bekommen ihre Glyphe aus dem Zustand) und darf als EINZIGER `locked`
+   * sein, ohne dass ein Kapitel davor läge: seine Sperre ist eine
+   * PRODUKT-Freischaltung, keine Wegstrecke. */
+  kind?: 'result' | 'document' | 'extra'
   to?: string
+  /**
+   * DIE SESSIONS DIESES KAPITELS (§11) — nur die Sidebar rendert sie, und nur
+   * für das AKTIVE Kapitel. `BwProgressRail` (der Klickdummy-Vorfahr) ignoriert
+   * das Feld bewusst: dort gibt es keine Unterpunkte, und eine zweite
+   * Darstellung derselben Liste wäre eine zweite Stelle zum Altern.
+   */
+  sessions?: BwRailSession[]
+  /** Die Zähl-Zeile eines Kapitels („7 von 11 bestätigt · 2 neu besprechen"). */
+  counter?: string
+  /**
+   * Die RESTzeit des AUFGEKLAPPTEN Kapitels („~9 Min") — sie hängt hinten an
+   * `counter` (Testlauf-Befund 7, 2026-09-09). Vorher stand hier der
+   * Registry-Umfang, und er ERSETZTE den Zähler: die eine Zeile der Leiste, die
+   * sich beim Arbeiten nie bewegte.
+   */
+  effort?: string
 }
 export interface BwRailLayer {
   id: string

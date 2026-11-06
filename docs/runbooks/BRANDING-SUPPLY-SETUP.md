@@ -55,6 +55,64 @@ Konsole der Prod-Appwrite öffnen (dieselbe wie für portfolio/admin).
       system-Spalten (brandAdmissionMode/brandAiEnabled) auf
       account/admin/portfolio nachgefahren.
 
+### 2b · Nachzügler-Migrationen (je Produkt, mit Davids Ja)
+
+Neue Produkt-Layer im Site-Manifest kommen NICHT durch Schritt 2 mit — jeder
+bringt seine eigenen Migrationen mit, und die REIHENFOLGE ist nicht
+verhandelbar: **erst die Migration auf `branding`, dann der Code-Deploy.**
+Sonst zeigt der Fuß auf eine Route, deren Tabelle es nicht gibt.
+
+- [x] `market` (MV1 M1, 2026-09-06): brand-018/019 + market-001…004.
+- [x] **`pages` (BS1 R1; Prod-Migration GEFAHREN 2026-09-07 mit Davids Ja — pages-001…006, Kontrolllauf identisch, Seed 6 Gerüst-Seiten, Parität 30/30):**
+
+      ```
+      pnpm migrate --app branding --layer pages    # sechs Migrationen
+      pnpm --filter branding seed:legal            # das Entwurfs-Gerüst
+      pnpm ops:schema-parity                       # `pages` steht im BRANDING_SOLL
+      ```
+
+      Gate-Reihenfolge: **Davids Ja** → Migration → Seed → Code-Deploy →
+      `curl https://branding.supply/api/health` (Build-SHA) → die sechs Routen
+      (`/imprint`, `/privacy`, `/terms` und `/de/*`) einmal aufrufen.
+
+      Drei Dinge, die dabei nicht überraschen sollen:
+
+      1. **Der Seed ist ein eigenes Skript der App**
+         (`apps/branding/scripts/seed-legal-pages.ts`), nicht das des Layers:
+         dessen Vorlagen sprechen einen Community-Betreiber an und kennen
+         keine AGB. Idempotent je slug+locale — ein zweiter Lauf lässt
+         gefüllte Seiten unberührt.
+      2. **Die Zeilen entstehen `published`**, mit dem Hinweis „Entwurf, in
+         anwaltlicher Prüfung" und `noindex` (`pukalani.pages.draftNotice`).
+         Das ist Davids Entscheidung 7 und beabsichtigt: der AGB-Link am
+         Registrier-Häkchen darf nicht ins 404 zeigen.
+      3. **pages-003 und pages-006 sind ein PAAR.** 003 legt `tenantId` an,
+         006 zieht `communityId` nach und löscht `tenantId` wieder — bei jedem
+         Lauf. Das Ergebnis konvergiert (Zweitlauf endet im selben Zustand),
+         die Ausgabe ist nur nicht still. Kein Datenrisiko: 006 backfillt
+         zuerst und prüft gegen.
+
+- [x] **`brand-021` — die Erstgespräch-Anfragen (BS1 Z0, wartet auf Davids Ja):**
+
+      ```
+      pnpm migrate --app branding --layer brand    # legt brand_intro_requests an
+      pnpm ops:schema-parity                       # die Tabelle steht im BRAND_TABLES-Soll
+      ```
+
+      Gate-Reihenfolge wie immer: **Davids Ja** → Migration → Code-Deploy →
+      `curl https://branding.supply/api/health` (Build-SHA) → `/erstgespraech`
+      und `/de/erstgespraech` einmal aufrufen und eine Testanfrage abschicken.
+
+      Ohne die Tabelle ANTWORTET die Route trotzdem (die Bestätigungs-Mail ist
+      der zweite, entkoppelte Zustellweg) — die Anfrage lebte dann aber nur in
+      einem Postfach und stünde nicht unter `/dashboard/intro-calls`. Genau
+      deshalb Migration zuerst.
+
+      **Danach ein Handgriff für David, wenn er die Anfragen im Postfach will:**
+      `introCallNotify: 'seine@adresse'` in `apps/branding/app/app.config.ts`
+      (Default `''` = keine Betreiber-Mail). Der Absender bekommt seine
+      Bestätigung unabhängig davon.
+
 ## 3 · Monorepo (Claude — läuft bereits parallel)
 
 - [x] apps/branding (**Dev**-Port 3010 — anfangs 3006, das kollidierte

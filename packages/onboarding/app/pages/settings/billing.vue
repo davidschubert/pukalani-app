@@ -57,7 +57,7 @@ const columns: TableColumn<MyCommunityView>[] = [
   { accessorKey: 'name', header: () => t('onboarding.account.billing.columns.community') },
   { accessorKey: 'plan', header: () => t('onboarding.account.billing.columns.plan') },
   { id: 'state', header: () => t('onboarding.account.billing.columns.state') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ]
 
 useBrandTitle(() => t('onboarding.account.billing.title'))

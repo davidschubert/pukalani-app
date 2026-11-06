@@ -55,7 +55,7 @@ import { recordBrandEvent } from '../../../utils/brandEvents'
  * verwaiste Zeile ohne Wirkung, kein halbes Produkt.
  */
 export default defineEventHandler(async (event): Promise<BrandProfileDetailResponse> => {
-  const { userId } = await requireBrandAccess(event)
+  const { userId, betaAccount } = await requireBrandAccess(event)
 
   const appConfig = useAppConfig() as { pukalani?: { brand?: { contentLocales?: string[] } } }
   const contentLocales = appConfig.pukalani?.brand?.contentLocales ?? []
@@ -106,6 +106,22 @@ export default defineEventHandler(async (event): Promise<BrandProfileDetailRespo
         industry: body.industry,
         about: body.about,
         audience: body.audience,
+        // BRAND DESIGN IST BEIM ANLEGEN IMMER ZU (Konzept §2.10, brand-022).
+        // Explizit `null` statt weggelassen, weil `createRow` im Layer jede
+        // Spalte ausdrücklich verlangt (CLAUDE.md) — und weil genau hier die
+        // Entscheidung sichtbar sein soll: eine neue Marke bekommt Schicht 2
+        // nie automatisch, sie bekommt sie vom Studio.
+        designUnlockedAt: null,
+        designUnlockedBy: null,
+        // DIE ABLEITUNG IST BEIM ANLEGEN IMMER ZU (Konzept
+        // docs/plans/BRAND-BOOK-KIT.md §2.8, brand-025) — und zwar als FELD.
+        // Dass ein Beta-Konto sie trotzdem offen sieht, entscheidet die pure
+        // Regel `resolveDerivationAccess` beim LESEN und nicht ein Wert beim
+        // Anlegen: die Zusage „Beta-Konten dauerhaft frei" gilt dem KONTO, und
+        // ein hier eingetragenes Datum bliebe nach einem Widerruf stehen.
+        derivationUnlockedAt: null,
+        derivationUnlockedVia: null,
+        derivationUnlockedBy: null,
         progressPct: progress.progressPct,
         currentStepKey: progress.currentStepKey,
         lastActivityAt: now,
@@ -167,7 +183,7 @@ export default defineEventHandler(async (event): Promise<BrandProfileDetailRespo
   })
 
   return {
-    profile: toProfileSummary(profile, false),
+    profile: toProfileSummary(profile, false, betaAccount),
     story: { body: '', generatedAt: null, editedByUser: false, inputHash: '' },
     journey: [...journey],
     // Die Kurzform wird hier GEBAUT statt aus einer gerade geschriebenen Zeile

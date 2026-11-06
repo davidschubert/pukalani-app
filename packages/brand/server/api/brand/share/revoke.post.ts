@@ -7,6 +7,7 @@ import {
   listActiveShares,
   loadOwnedProfile,
 } from '../../../utils/brandStore'
+import { recordBrandEvent } from '../../../utils/brandEvents'
 
 /**
  * EINEN LESE-LINK ZURÜCKNEHMEN.
@@ -54,6 +55,18 @@ export default defineEventHandler(async (event): Promise<BrandShareRevokeRespons
     catch (error) {
       if (!isAppwriteNotFound(error)) throw toH3Error(error, 'Brand share could not be revoked')
     }
+  }
+
+  // Nur, wenn wirklich etwas zuging: der zweite Klick ist idempotent (s. o.),
+  // und ein Ereignis ohne Wirkung machte aus einer Messung eine Klickzählung.
+  if (revoked > 0) {
+    await recordBrandEvent(event, {
+      type: 'share.revoked',
+      profileId: body.profileId,
+      userId,
+      // Umfang, nicht Inhalt — und nie ein Token.
+      payload: { revoked },
+    })
   }
 
   return { revoked }

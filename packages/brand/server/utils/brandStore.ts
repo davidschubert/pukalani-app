@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
 import { AppwriteException, Query } from 'node-appwrite'
@@ -10,24 +11,32 @@ import type {
   BrandStepSummary,
   BrandStoryView,
 } from '../../shared/types/brand'
+import { BRAND_INDUSTRY_UNKNOWN } from '../../shared/brandIndustries'
 import { siteAnalysisIsStale } from '../../shared/brandSiteAnalysis'
+import { resolveDerivationAccess } from '../../shared/brandDerivation'
 import {
   type BrandConfidence,
   type BrandJourneyStep,
   type BrandProfileFacts,
+  type BrandSessionState,
   type BrandStepFacts,
   type BrandStoredStepState,
   canEnterBrandStep,
   resolveBrandJourney,
+  resolveSessionStates,
 } from '../../shared/brandJourney'
 import {
   BRAND_SLOTS,
   BRAND_STEP_KEYS,
   BRAND_STEP_SLOTS_MAX_LENGTH,
+  type BrandSlot,
   type BrandSlotStateFacts,
   type BrandStepKey,
+  isBrandDesignStep,
+  isBrandKitStep,
   slotById,
 } from '../../shared/slotRegistry'
+import { computeSourcesHash } from '../../shared/brandSessions'
 
 /**
  * DER LESE-/SCHREIB-UNTERBAU DER `/api/brand/**`-ROUTEN — alles, was mehr als
@@ -60,6 +69,27 @@ export const BRAND_MESSAGES_TABLE = 'brand_messages'
 export const BRAND_SHARES_TABLE = 'brand_shares'
 export const BRAND_INVITES_TABLE = 'brand_invites'
 export const BRAND_EVENTS_TABLE = 'brand_events'
+export const BRAND_WAITLIST_TABLE = 'brand_waitlist'
+/**
+ * Der kostenlose Aussen-Check (brand-016). Er gehört zu KEINEM Profil und zu
+ * keinem Konto — die einzige `brand_*`-Tabelle ohne `createdByUserId`, weil
+ * die Route ohne Anmeldung läuft (Davids Hybrid-Zugang, Plan §5).
+ */
+export const BRAND_CHECKS_TABLE = 'brand_checks'
+/**
+ * Die Korrekturvorschläge zum Ranking (brand-017, Plan §3b). Eigene Tabelle
+ * und keine Spalte an `brand_checks`: ein Vorschlag hat einen eigenen STATUS,
+ * einen eigenen Absender und es kann mehrere je Check geben.
+ */
+export const BRAND_CHECK_CORRECTIONS_TABLE = 'brand_check_corrections'
+/**
+ * DIE ERSTGESPRÄCH-ANFRAGEN (brand-021, BS1 Paket Z0). Wie `brand_waitlist`
+ * eine Tabelle, in die jemand OHNE Konto schreibt — anders als sie trägt eine
+ * Zeile hier aber optional eine `userId` und eine `profileId`, weil der Weg
+ * aus der Werkstatt der wahrscheinlichere ist. Beides ist `''`, wenn die
+ * Anfrage von der öffentlichen Seite kommt.
+ */
+export const BRAND_INTRO_REQUESTS_TABLE = 'brand_intro_requests'
 
 export type BrandProfileRow = Models.Row & {
   createdByUserId: string
@@ -99,6 +129,59 @@ export type BrandProfileRow = Models.Row & {
   siteAnalysis?: string | null
   siteAnalyzedAt?: string
   siteAnalysisUrl?: string
+  /**
+   * DAS OPT-IN „diese Marke darf im Marktvergleich anderer Kunden als Kandidat
+   * erscheinen" (Migration brand-019, MV1 M4). Optional getypt, weil die
+   * Spalte ADDITIV dazukam — eine Zeile von vorher liest `undefined`, und das
+   * ist genau der Default `private`. Gelesen und geschrieben wird sie
+   * ausschliesslich über `brandMarketVisibility.ts`; die FAIL-CLOSED-Regel
+   * steht dort (`brandMarketVisibilityOf`).
+   */
+  marketVisibility?: string
+  /**
+   * DIE FREISCHALTUNG VON BRAND DESIGN (Konzept §2.10, Migration brand-022).
+   * Optional getypt, weil sie ADDITIV dazukam — `undefined` ist genau der
+   * Default „gesperrt"; `profileFacts()` macht daraus das `null`, mit dem die
+   * pure Regel rechnet.
+   */
+  designUnlockedAt?: string | null
+  /**
+   * WER FREIGESCHALTET HAT (brand-022) — die Betreiber-Id, nicht der Name.
+   * Sie steht NEBEN dem Ereignis `design.unlocked` und nicht statt seiner:
+   * das Ereignis ist die Geschichte, diese Spalte der ZUSTAND, den die
+   * Betreiber-Liste je Zeile zeigt, ohne den Funnel zu durchsuchen. Sie wird
+   * mit `designUnlockedAt` zusammen gesetzt UND zusammen geleert — eine Id
+   * ohne Datum wäre die Behauptung einer Freischaltung, die es nicht gibt.
+   */
+  designUnlockedBy?: string | null
+  /**
+   * DIE FREISCHALTUNG DER ABLEITUNG (Book & Kit + Marktvergleich, Konzept
+   * BRAND-BOOK-KIT.md §2.8) — die Spalte kommt mit Migration **brand-025**
+   * (Paket K1). Sie steht hier schon, damit `profileFacts()` sie lesen KANN;
+   * bis zur Migration fehlt sie in jeder Zeile, und `undefined` ist genau der
+   * Default „nicht freigeschaltet". Der Leser läuft also bewusst ohne sie —
+   * sonst wäre der Code vor der Migration nicht deploybar (D1-Lehre:
+   * Migration VOR Code, aber der Code darf nicht darauf bestehen).
+   */
+  derivationUnlockedAt?: string | null
+  /**
+   * WOHER die Freischaltung kommt (`'operator' | 'purchase'`, brand-025) und
+   * WER sie gesetzt hat (Betreiber-Id bzw. ab BS1 Z1 die Stripe-Event-Id).
+   * Beide optional getypt aus demselben Grund wie das Datum darüber; sie
+   * stehen NEBEN dem Ereignis `derivation.unlocked`, nicht statt seiner (die
+   * Begründung steht bei `designUnlockedBy` und gilt hier wörtlich).
+   */
+  derivationUnlockedVia?: string | null
+  derivationUnlockedBy?: string | null
+  /**
+   * DAS OPT-IN „diese Marke darf als öffentliche Seite in der Galerie stehen"
+   * (Migration brand-020, Discover D1). EIGENE Spalte neben `marketVisibility`
+   * und nicht dieselbe: eine Zustimmung gilt nur für das, wofür sie gegeben
+   * wurde, und „indexierbar im offenen Netz" ist der grössere Satz (Kopf von
+   * brand-020). Optional getypt, weil sie ADDITIV dazukam — `undefined` ist
+   * genau der Default `private`.
+   */
+  publicationVisibility?: string
   progressPct: number
   currentStepKey?: string
   lastActivityAt: string
@@ -119,12 +202,27 @@ export type BrandStepRow = Models.Row & {
   confidence?: BrandConfidence | null
   startedAt?: string | null
   completedAt?: string | null
+  /**
+   * DER VERLAUFS-SCHNITT nach „Nochmal von vorn" (brand-013, §5a). Die
+   * Nachrichten bleiben stehen (Retention brand-003), aber der Verlauf lädt
+   * nur noch Züge DANACH — George beginnt ohne das alte Gedächtnis, sonst
+   * wäre „von vorn" eine Lüge. `null`/fehlend = nie neu begonnen.
+   */
+  restartedAt?: string | null
   activeSeconds: number
 }
 
 export type BrandMessageRow = Models.Row & {
   profileId: string
   stepKey: string
+  /**
+   * DIE SESSION, in der dieser Zug entstand (brand-011, BW2 Paket 3a).
+   *
+   * OPTIONAL getypt, weil die Spalte ADDITIV dazukam: eine Zeile von vor der
+   * Migration liest `undefined`, und der einzige Leser macht daraus dasselbe
+   * '' wie die Spalten-Vorgabe — der Kapitel-Verlauf aus der Zeit vor BW2.
+   */
+  sessionKey?: string
   role: string
   body: string
   parts?: string | null
@@ -138,6 +236,174 @@ export type BrandShareRow = Models.Row & {
   publishedAt: string
   expiresAt: string
   revokedAt?: string | null
+}
+
+/**
+ * Die Warteliste (brand-012). Sie hängt an KEINEM Profil und an keinem Konto —
+ * die Zeile entsteht, bevor es beides gibt; ihre Identität ist `emailLower`
+ * (UNIQUE).
+ *
+ * `status` IST SEIT DEM DOUBLE-OPT-IN (brand-015) LOGIK, nicht mehr nur
+ * Anzeige: 'pending' | 'confirmed' | 'invited' | 'declined'. Genau EIN Wert
+ * wird gelesen — 'confirmed' heisst „die Adresse hat sich selbst bestätigt";
+ * alles andere heisst „noch nicht", einschliesslich des Altwerts 'new' aus der
+ * Zeit davor (in Produktion existiert keine solche Zeile, die Tabelle war
+ * leer). 'invited'/'declined' bleiben Betreiber-Notizen ohne Code dahinter —
+ * der Übergang zur Einladung läuft über `brand_invites`, nicht über dieses Feld.
+ *
+ * Die drei Token-Felder kamen ADDITIV dazu und sind deshalb optional getypt:
+ * eine Zeile von vor der Migration liest `undefined`, und jeder Leser hier
+ * rechnet damit (`brandWaitlistTokenExpired` behandelt „fehlt" wie „abgelaufen").
+ * `tokenHash: ''` ist der NORMALFALL einer bestätigten Zeile — der Hash wird
+ * beim Bestätigen gelöscht, damit ein weitergeleiteter Link tot ist.
+ */
+export type BrandWaitlistRow = Models.Row & {
+  emailLower: string
+  email: string
+  name: string
+  company: string
+  website: string
+  locale: string
+  source: string
+  status: string
+  note: string
+  tokenHash?: string
+  tokenExpiresAt?: string
+  confirmedAt?: string
+}
+
+/**
+ * EINE ERSTGESPRÄCH-ANFRAGE (brand-021).
+ *
+ * `emailLower` steht NEBEN `email` aus demselben Grund wie in der Warteliste:
+ * verglichen wird technisch (klein), angeschrieben wird so, wie jemand sich
+ * selbst geschrieben hat. Anders als dort trägt der Vergleichswert hier KEINEN
+ * Unique-Index — zwei Anfragen derselben Person sind zwei verschiedene
+ * Anliegen, kein Duplikat. Er ist der Lesepfad der GDPR-Löschung
+ * (`brandUserData.ts`) und sonst nichts.
+ *
+ * `userId` und `profileId` sind `''`, wenn die Anfrage von der öffentlichen
+ * Seite kommt. `profileId` steht nur da, wenn die Datentür der Route sie
+ * bestätigt hat — eine fremde Id wird verworfen, nicht gespeichert.
+ */
+export type BrandIntroRequestRow = Models.Row & {
+  name: string
+  email: string
+  emailLower: string
+  company: string
+  message: string
+  phone: string
+  locale: string
+  source: string
+  profileId: string
+  userId: string
+  status: string
+  note: string
+}
+
+/**
+ * EIN GESPEICHERTER BRAND-CHECK (brand-016).
+ *
+ * `categories`, `criteria` und `findings` sind JSON-Zeichenketten, keine
+ * Objekte: Appwrite kennt kein JSON-Feld, und drei Spalten je Kriterium wären
+ * hundertzwanzig Spalten. Wer sie liest, parst sie — die Route tut das an
+ * genau einer Stelle.
+ *
+ * KEIN SEITENTEXT (Plan §5): `textHash` ist alles, was von der gelesenen Seite
+ * bleibt. Er beantwortet später „hat sich dort überhaupt etwas geändert?",
+ * ohne dass wir fremde Inhalte aufbewahren.
+ */
+export type BrandCheckRow = Models.Row & {
+  urlKey: string
+  url: string
+  host: string
+  locale: string
+  score: number
+  band: string
+  scoreVersion: string
+  promptVersion: string
+  model: string
+  categories: string
+  criteria: string
+  findings: string
+  textHash: string
+  ipHash: string
+  /**
+   * DIE SECHS SPALTEN DES RANKINGS (brand-017, Plan §3/§5/§8) — alle OPTIONAL
+   * getypt, weil sie ADDITIV dazukamen: eine Zeile aus der Zeit davor liest
+   * `undefined`, und jeder Leser hier macht daraus denselben Wert wie die
+   * Spalten-Vorgabe (`brandCheckRankingFacts`). Das ist dasselbe Muster wie
+   * bei `namingOpted` und der Startkarte am Profil.
+   *
+   * `industry` ist ein VARCHAR und kein Enum — dieselbe Entscheidung wie bei
+   * `brand_waitlist.status`: die Wahrheit über die erlaubten Werte steht in
+   * `shared/brandIndustries.ts`, und eine siebzehnte Branche soll ein Eintrag
+   * in einer Datei sein und keine Migration auf einer laufenden Instanz.
+   *
+   * `rankingOptIn` ist das Häkchen des PRÜFERS (Davids Entscheidung 1),
+   * `hidden` der Entfernen-Weg des BETREIBERS (§3 „Recht"). Zwei Flags, weil
+   * es zwei verschiedene Menschen sind: ein ausgeblendeter Check darf nicht
+   * dadurch zurückkommen, dass jemand das Häkchen erneut setzt.
+   *
+   * `source` trennt Website- von Dokument-Checks (§5b) — beide haben eine
+   * Zahl, aber sie messen nicht dasselbe und dürfen deshalb nie in einer
+   * Spalte verglichen werden.
+   */
+  industry?: string
+  rankingOptIn?: boolean
+  hidden?: boolean
+  userId?: string
+  profileId?: string
+  source?: string
+}
+
+/**
+ * EIN KORREKTURVORSCHLAG (brand-017, Plan §3b).
+ *
+ * `reporterEmail` ist FREIWILLIG und der einzige Personenbezug neben dem
+ * `ipHash` — sie steht in der Zeile, damit der Betreiber zurückfragen kann,
+ * und sie geht deshalb NUR an die Betreiber-Liste, nie an eine öffentliche
+ * Antwort.
+ */
+export type BrandCheckCorrectionRow = Models.Row & {
+  checkId: string
+  field: string
+  proposed: string
+  reason: string
+  reporterEmail: string
+  status: string
+  decisionNote: string
+  decidedAt?: string | null
+  ipHash: string
+}
+
+/**
+ * DIE RANKING-TATSACHEN EINER ZEILE — die EINE Stelle, an der aus `undefined`
+ * ein Wert wird (dieselbe Rolle wie `profileStartCard` für die Startkarte).
+ *
+ * Ohne sie stünde in der Ranking-Antwort einer Bestands-Zeile `undefined` als
+ * Branche, und `rankingOptIn` wäre dort weder wahr noch falsch, sondern
+ * nichts — und `!undefined` ist zwar zufällig richtig, aber niemand hätte es
+ * entschieden.
+ */
+export interface BrandCheckRankingFacts {
+  industry: string
+  rankingOptIn: boolean
+  hidden: boolean
+  userId: string
+  profileId: string
+  source: string
+}
+
+export function brandCheckRankingFacts(row: BrandCheckRow): BrandCheckRankingFacts {
+  return {
+    industry: row.industry || BRAND_INDUSTRY_UNKNOWN,
+    rankingOptIn: row.rankingOptIn === true,
+    hidden: row.hidden === true,
+    userId: row.userId ?? '',
+    profileId: row.profileId ?? '',
+    source: row.source || 'website',
+  }
 }
 
 /** Der Admin-Client + die Database-Id des Requests — EIN Aufruf statt zwei. */
@@ -172,6 +438,101 @@ export interface BrandSlotRecord {
   confirmed?: string | null
   confidence?: BrandConfidence | null
   updatedAt?: string | null
+  /**
+   * DER FORTSCHRITT EINER SAMMEL-SESSION (BW2 Paket 3a): Teil-Id → Antwort,
+   * additiv in derselben JSON-Spalte (Plan §12: „kein Schema-Schritt").
+   *
+   * Nur `collect`-Sessions haben ihn (heute `a.facts`). Er ist ein
+   * ZWISCHENSTAND, kein Wert: der Wert entsteht erst, wenn alle Teile
+   * beantwortet sind, und steht dann wie jeder andere in `latestDraft`.
+   * Deshalb steht er auch NICHT in `sameSlot` (Autosave-No-op-Regel) — er
+   * wird ausschliesslich von der Konversations-Route geschrieben.
+   */
+  collected?: Record<string, string>
+  /**
+   * DER STAND DER QUELLEN BEIM BESTÄTIGEN (§9, seit Paket 3b verdrahtet).
+   * Fehlt er, gilt die Session als AKTUELL — Bestand wird nie bernstein.
+   */
+  sourcesHash?: string
+  /** Im Kapitel-Zusammenhang abgenommen (§5a). Fällt mit jeder Wert-Änderung. */
+  accepted?: boolean
+  /**
+   * DER BESTÄTIGTE WORTLAUT VOR EINER KORREKTUR (§9, Paket 6) — gesetzt vom
+   * Autosave-PATCH, sobald „Korrigieren" ein Feld mit bestätigten Abhängigen
+   * öffnet, und von der Schliess-Route wieder gelöscht, sobald sie ihn benutzt
+   * hat.
+   *
+   * Er ist die EINZIGE Spur, an der die spätere Eingrenzung erkennt, dass sie
+   * eine Korrektur vor sich hat und nicht eine erste Bestätigung — und der
+   * alte Wortlaut ist zugleich die Hälfte ihrer Eingabe („was hat sich
+   * geändert"). Der Versions-Vertrag kann ihn nicht liefern: `firstDraft`/
+   * `latestDraft`/`confirmed` sind drei Rollen, kein Verlauf.
+   *
+   * Ohne Abhängige wird er NICHT gesetzt: dort gibt es nichts einzugrenzen.
+   */
+  previousValue?: string
+  /** Auf später vertagt (§3a `answers.allowDefer`) — je Session, nicht je Teil. */
+  deferred?: boolean
+  /**
+   * DIE NOTIZ DES SCHLIESS-AUFRUFS (§4) — 0–3 kurze Sätze in der
+   * Inhaltssprache, als EIN Text mit Zeilenumbrüchen.
+   *
+   * Warum ein String und keine Liste: sie wird gelesen (Abnahme-Seite,
+   * Kapitel-Notizen im nächsten Prompt), nie einzeln adressiert — und eine
+   * Liste in einer gedeckelten JSON-Spalte kostet Klammern ohne Gegenwert.
+   * GESCHRIEBEN wird sie seit Paket 4; der Restart-Schutz zählt sie schon
+   * seit 3b.
+   *
+   * Der Ablehnungs-Grund eines Befunds (§8) landet ebenfalls hier — er ist
+   * genau das: etwas Gelerntes, das in kein Feld passt.
+   */
+  notes?: string
+  /**
+   * DAS URTEIL DES SPEZIALISTEN (§7). `goalReached: false` sperrt NICHTS — es
+   * ist der Stoff für Georges „hat mitgelesen"-Block und für den Prüfblick.
+   */
+  review?: {
+    goalReached?: boolean
+    missing?: string[]
+    reviewedBy?: string
+    at?: string
+  }
+  /**
+   * DER SCHLIESS-AUFRUF IST GELAUFEN (§7). FEHLT er, ist er fail-soft
+   * ausgefallen — und genau diese Sessions holt der Prüfblick (§10) nach. Ein
+   * gespeichertes `false` gibt es deshalb nicht: „nicht da" heisst „nicht
+   * gelaufen", und ein drittes Wort dafür wäre eines zu viel.
+   */
+  reviewed?: boolean
+  /**
+   * DER VORSCHLAG DES SPEZIALISTEN für die nächste Session (§6). Er wird beim
+   * Antworten GEPRÜFT (`pickNextSession`) und nicht beim Speichern: zwischen
+   * Schreiben und nächstem Lesen kann die vorgeschlagene Session längst
+   * bestätigt sein.
+   */
+  nextSession?: string
+  /**
+   * GEORGE HAT AUSGESPROCHEN, WAS DEM SPEZIALISTEN FEHLTE (§7: „George sagt im
+   * nächsten Zug EINMAL, was fehlt"). Ohne diese Marke stünde derselbe Satz in
+   * jedem Zug der nächsten Session — aus einem Hinweis würde eine Mahnung.
+   */
+  briefDelivered?: boolean
+}
+
+/**
+ * Der gelesene Zwischenstand einer Sammel-Session — kaputte oder fremde
+ * Formen ergeben ein LEERES Objekt statt einer Ausnahme (dieselbe
+ * Nachsicht wie `parseSlotRecords`: ein unlesbarer Zwischenstand darf die
+ * Session nicht unbedienbar machen, der nächste Zug schreibt ihn neu).
+ */
+export function parseCollectedParts(record: BrandSlotRecord | undefined): Record<string, string> {
+  const raw = record?.collected
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, string> = {}
+  for (const [part, value] of Object.entries(raw)) {
+    if (typeof value === 'string') out[part] = value
+  }
+  return out
 }
 
 /**
@@ -268,9 +629,64 @@ export function toSlotFacts(records: Record<string, BrandSlotRecord>): Record<st
   const facts: Record<string, BrandSlotStateFacts> = {}
   for (const [slotId, record] of Object.entries(records)) {
     const displayed = record.latestDraft ?? record.firstDraft ?? record.confirmed ?? ''
-    facts[slotId] = { hasValue: displayed.length > 0, confirmed: brandSlotRecordConfirmed(record) }
+    facts[slotId] = {
+      hasValue: displayed.length > 0,
+      confirmed: brandSlotRecordConfirmed(record),
+      /**
+       * DER WERT REIST SEIT PAKET 3b MIT — und zwar in der SERVER-Rangfolge
+       * (`brandSlotStoredValue`: bestätigt schlägt Entwurf), nicht in der
+       * Anzeige-Rangfolge daneben. Er muss es: `computeSourcesHash` rechnet
+       * über genau diesen Wert, und ein Leser ohne Wert bekäme für jede
+       * bestätigte Session einen anderen Hash als der Schreiber — jedes Feld
+       * stünde nach dem ersten Deploy auf `stale`.
+       *
+       * DIE INVARIANTEN SIND DAMIT NICHT SCHARF (Paket-1-Befund a): sie laufen
+       * ausschliesslich in `transitionBrandStep(…, 'confirmSlot')`, und diese
+       * Handlung ruft heute KEINE Route — bestätigt wird im Autosave-PATCH, der
+       * den Wert direkt schreibt. Wer `confirmSlot` verdrahtet, schaltet damit
+       * auch `c.final count 3–5` scharf und muss vorher prüfen, dass der
+       * Chips-Editor Listen als `- eintrag`-Zeilen speichert (heute tut er das
+       * nicht: die Antwort geht als getippter Fliesstext in den Slot).
+       */
+      value: brandSlotStoredValue(record),
+      ...(record.sourcesHash ? { sourcesHash: record.sourcesHash } : {}),
+      ...(record.accepted ? { accepted: true } : {}),
+      ...(record.deferred ? { deferred: true } : {}),
+    }
   }
   return facts
+}
+
+/**
+ * DER GESTEMPELTE QUELLEN-HASH einer Session (§9) — sha256 über die kanonische
+ * Zeichenkette aus `shared/brandSessions.ts`, genau wie der `inputHash` einer
+ * Generation (`brandGenerationInputHash`). `node:crypto` bleibt dabei auf der
+ * Serverseite: die Zeichenkette gehört `shared/`, das Hashen nicht.
+ */
+export function brandSourcesHash(
+  config: BrandSlot,
+  slotFacts: Readonly<Record<string, BrandSlotStateFacts | undefined>>,
+): string {
+  return createHash('sha256').update(computeSourcesHash(config, slotFacts)).digest('hex')
+}
+
+/**
+ * DER SESSION-ZUSTAND AUF DER SERVERSEITE — dieselbe pure Regel, aber mit dem
+ * Stempler, der die Werte auch GESCHRIEBEN hat.
+ *
+ * ── DIESER WRAPPER IST DIE SICHERUNG, NICHT DIE BEQUEMLICHKEIT ───────────
+ * `resolveSessionStates` vergleicht den GESPEICHERTEN `sourcesHash` mit einem
+ * frisch gerechneten. Gespeichert wird sha256 (`brandSourcesHash`), gerechnet
+ * würde ohne Zutun die kanonische Zeichenkette — der Vergleich schlüge dann
+ * IMMER fehl und jede bestätigte Session stünde auf `stale`. Genau das ist
+ * eine Sicherung, die in die Schnittstelle gehört und nicht in die Disziplin:
+ * jede Route ruft diesen Wrapper, keine ruft die pure Regel mit Vorgabe.
+ */
+export function resolveBrandSessionStates(
+  profile: BrandProfileFacts,
+  stepFacts: readonly BrandStepFacts[],
+): Readonly<Record<string, BrandSessionState>> {
+  return resolveSessionStates(profile, stepFacts, brandSourcesHash)
 }
 
 /**
@@ -349,8 +765,31 @@ export const BRAND_EMPTY_GENERATIONS = '{"items":[],"count":0}'
 
 // ── Profil ──────────────────────────────────────────────────────────────────
 
-/** Die Weichen-Tatsachen des Profils, so wie die pure Regel sie erwartet. */
-export function profileFacts(row: BrandProfileRow): BrandProfileFacts {
+/**
+ * DIE WEICHEN-TATSACHEN DES PROFILS, so wie die pure Regel sie erwartet.
+ *
+ * ── WARUM `betaAccount` EIN PFLICHT-ARGUMENT IST (K1) ────────────────────
+ * Seit Schicht 3 hängt eine der Tatsachen NICHT mehr allein an der Zeile: „ist
+ * die Ableitung offen?" ist Feld ODER Beta-Konto (§2.8). Die Beta-Zulassung
+ * gehört dem KONTO, nicht der Marke — sie kann hier also gar nicht abgelesen
+ * werden, und sie hier nachzuschlagen wäre der zweite Leser der Beta-Wahrheit,
+ * den §2.17 ausdrücklich verbietet.
+ *
+ * Ein Vorgabewert `false` wäre bequem und falsch: er verstünde sich als „nein"
+ * und würde einem Beta-Konto still die dritte Schicht wegnehmen, ohne dass
+ * irgendwo etwas rot wird. Das PFLICHT-Argument zwingt jede Aufrufstelle, die
+ * Frage zu beantworten — dieselbe Leitplanke wie beim `scope` von `notify()`
+ * (CLAUDE.md, C15): der Typfehler ersetzt hier den Wächter, den es für diese
+ * Klasse Fehler sonst nicht gibt.
+ *
+ * DREI ANTWORTEN KOMMEN VOR:
+ *   · `access.betaAccount` — jede Eigentümer-Route (der Wert aus dem Gate).
+ *   · ein Wert aus `loadBrandBetaAccounts` — die Betreiber-Liste über FREMDE
+ *     Marken (dort zählt der Eigentümer, nicht der Betreiber).
+ *   · `false` — Rechnungen, die keine Person haben (Sweeps, Snapshot-Bau,
+ *     Prüf-Rechnungen). Jede solche Stelle sagt an Ort und Stelle, warum.
+ */
+export function profileFacts(row: BrandProfileRow, betaAccount: boolean): BrandProfileFacts {
   return {
     pathKind: row.pathKind === 'relaunch' ? 'relaunch' : 'new',
     relaunchScope: row.relaunchScope === 'refine' || row.relaunchScope === 'recut' ? row.relaunchScope : null,
@@ -358,6 +797,22 @@ export function profileFacts(row: BrandProfileRow): BrandProfileFacts {
     team: row.team === 'team' ? 'team' : 'solo',
     subBrands: row.subBrands === 'yes' || row.subBrands === 'no' ? row.subBrands : 'unknown',
     namingOpted: row.namingOpted === true,
+    // BRAND DESIGN, SCHICHT 2 (Konzept §2.10, Migration brand-022): eine
+    // Zeile aus der Zeit davor liest `undefined`, und das ist genau der
+    // Default „nicht freigeschaltet". Der Leser läuft bewusst weiter ohne die
+    // Spalte — sonst wäre der Code vor der Migration nicht deploybar.
+    designUnlockedAt: row.designUnlockedAt ?? null,
+    // BRAND BOOK & KIT, SCHICHT 3 (Konzept §2.8, Migration brand-025, K1):
+    // Beta-Konto ODER Feld — die pure Regel legt beides zusammen, die Journey
+    // bekommt nur ihr ERGEBNIS und nie die Einzelteile. Eine Zeile aus der Zeit
+    // vor brand-025 liest `undefined`, und das ist genau der Default „nicht
+    // freigeschaltet" (fail-soft; der Code muss vor der Migration deploybar
+    // bleiben, D1-Lehre).
+    derivationUnlocked: resolveDerivationAccess({
+      betaAccount,
+      unlockedAt: row.derivationUnlockedAt,
+      via: row.derivationUnlockedVia,
+    }).unlocked,
   }
 }
 
@@ -398,8 +853,12 @@ export function profileSiteAnalysis(row: BrandProfileRow): BrandSiteAnalysisView
   }
 }
 
-export function toProfileSummary(row: BrandProfileRow, hasActiveShare: boolean): BrandProfileSummary {
-  const facts = profileFacts(row)
+export function toProfileSummary(
+  row: BrandProfileRow,
+  hasActiveShare: boolean,
+  betaAccount: boolean,
+): BrandProfileSummary {
+  const facts = profileFacts(row, betaAccount)
   return {
     id: row.$id,
     title: row.title ?? '',
@@ -420,6 +879,19 @@ export function toProfileSummary(row: BrandProfileRow, hasActiveShare: boolean):
     createdAt: row.$createdAt,
     updatedAt: row.$updatedAt,
     hasActiveShare,
+    // Der ZEITPUNKT, nicht bloss ein Ja/Nein (Brand Design D1): das Rail und
+    // Kapitel 10 sagen „freigeschaltet am …", und ein Boolean könnte das nicht
+    // — es hätte ein zweites Feld daneben verlangt, das dasselbe noch einmal
+    // behauptet. Wer nur die Frage stellt, fragt `Boolean(...)`.
+    designUnlockedAt: facts.designUnlockedAt ?? null,
+    /**
+     * DIE ABLEITUNG ALS JA/NEIN, anders als die Zeile darüber (K1, §2.8): sie
+     * hat DREI Quellen, und nur zwei davon sind Spalten dieser Zeile. Ein
+     * Zeitstempel hier wäre die halbe Wahrheit — er fehlte ausgerechnet dem
+     * Beta-Konto, das gar keinen hat. Wer das DATUM braucht (Betreiber-Liste),
+     * liest die Spalte; wer die FRAGE stellt, liest dieses Feld.
+     */
+    derivationUnlocked: facts.derivationUnlocked === true,
   }
 }
 
@@ -479,6 +951,79 @@ export async function loadOwnedProfile(
   }
   assertBrandOwnerAccess(event, row, userId)
   return row
+}
+
+/**
+ * DIE BRANDINGS EINES KONTOS — nur ihre Ids.
+ *
+ * Ergänzt für den Vertrag zum market-Layer (MV1 M1): dessen GDPR-Contributor
+ * und seine Kaskade müssen wissen, welche `profileId`s einem Konto gehören,
+ * ohne `brand_profiles` selbst abzufragen. Eine fremde Tabelle direkt zu
+ * lesen wäre genau die implizite Kopplung, die CONCEPT A14 verbietet — und
+ * die zweite Wahrheit über Besitz, sobald die Regel hier sich ändert.
+ *
+ * Nur `ownerType: 'user'`: der community-Zweig ist in Phase 1 tot geschaltet
+ * (`assertBrandOwnerAccess`), und ein Konto ist nicht Eigentümer eines
+ * Community-Brandings. Fehlt die Tabelle (Instanz ohne brand-Migration),
+ * gibt es nichts — ein GDPR-Lauf darf daran nicht scheitern.
+ */
+export async function listOwnedBrandProfileIds(event: H3Event, userId: string): Promise<string[]> {
+  const { tablesDB, databaseId } = brandDb(event)
+  try {
+    const rows = await listAllRows<BrandProfileRow>(tablesDB, databaseId, BRAND_PROFILES_TABLE, [
+      Query.equal('ownerType', 'user'),
+      Query.equal('ownerId', userId),
+    ])
+    return rows.map(row => row.$id)
+  }
+  catch (error) {
+    if (isAppwriteNotFound(error)) return []
+    throw error
+  }
+}
+
+/** Ein Branding des Kontos, so wie eine AUSWAHLLISTE es braucht (MV1 M4). */
+export interface BrandOwnedProfileHit {
+  id: string
+  title: string
+  /** Die Branche aus der Startkarte — Zweitzeile im Wähler, sonst leer. */
+  industry: string
+}
+
+/**
+ * DIE BRANDINGS EINES KONTOS MIT TITEL UND BRANCHE.
+ *
+ * ── WARUM NEBEN `listOwnedBrandProfileIds` ────────────────────────────────
+ * Die Funktion darüber liefert bewusst nur Ids: ihr Aufrufer ist der
+ * GDPR-Contributor, und der braucht keine Beschriftung. Der Quellen-Wähler
+ * des Marktvergleichs (§7.2 Nr. 2) braucht genau die: eine Auswahlliste aus
+ * Ids ist keine. Sie um zwei Felder zu ERWEITERN hiesse, dem Löschpfad Daten
+ * mitzugeben, die er nicht braucht — zwei Fragen, zwei Antworten.
+ *
+ * `ownerType: 'user'` wie dort: der community-Zweig ist in Phase 1 tot
+ * geschaltet. Fehlt die Tabelle, gibt es nichts.
+ */
+export async function listBrandProfilesForOwner(
+  event: H3Event,
+  userId: string,
+): Promise<BrandOwnedProfileHit[]> {
+  const { tablesDB, databaseId } = brandDb(event)
+  try {
+    const rows = await listAllRows<BrandProfileRow>(tablesDB, databaseId, BRAND_PROFILES_TABLE, [
+      Query.equal('ownerType', 'user'),
+      Query.equal('ownerId', userId),
+      Query.orderDesc('lastActivityAt'),
+    ])
+    return rows.map(row => ({
+      id: row.$id,
+      title: row.title ?? '',
+      industry: row.industry ?? '',
+    }))
+  }
+  catch (error) {
+    if (isAppwriteNotFound(error)) return []
+    throw error
+  }
 }
 
 /** Die Profil-Id aus dem Pfad — vorhanden und plausibel, sonst 404. */
@@ -577,9 +1122,22 @@ export interface BrandStepContext {
   stepRow: BrandStepRow
   stepRows: BrandStepRow[]
   journey: readonly BrandJourneyStep[]
+  /**
+   * DIE BETA-TATSACHE DES AUFRUFERS (K1) — sie reist im Kontext mit, damit
+   * jede Rechnung DAHINTER (Abnahme, Session-Zustände, ein zweites
+   * `resolveBrandJourney`) dieselbe Antwort auf „ist die Ableitung offen?"
+   * bekommt wie der Eintritts-Beschluss davor. Ohne sie müsste jede dieser
+   * Rechnungen sie erneut anfordern — und die erste, die es vergisst, sperrt
+   * einem Beta-Konto still die dritte Schicht.
+   */
+  betaAccount: boolean
 }
 
-export async function loadBrandStepContext(event: H3Event, userId: string): Promise<BrandStepContext> {
+export async function loadBrandStepContext(
+  event: H3Event,
+  userId: string,
+  betaAccount: boolean,
+): Promise<BrandStepContext> {
   const profileId = requireProfileIdParam(event)
   const profile = await loadOwnedProfile(event, userId, profileId)
 
@@ -587,7 +1145,7 @@ export async function loadBrandStepContext(event: H3Event, userId: string): Prom
   if (!stepKey) throw createError({ status: 404, statusText: 'Not Found' })
 
   const stepRows = await loadStepRows(event, profileId)
-  const journey = resolveBrandJourney(profileFacts(profile), toStepFacts(stepRows))
+  const journey = resolveBrandJourney(profileFacts(profile, betaAccount), toStepFacts(stepRows))
 
   const entry = canEnterBrandStep(journey, stepKey)
   if (!entry.allowed) {
@@ -605,7 +1163,7 @@ export async function loadBrandStepContext(event: H3Event, userId: string): Prom
   // Verlust zu verdecken.
   if (!stepRow) throw createError({ status: 404, statusText: 'Not Found' })
 
-  return { profile, stepKey, stepRow, stepRows, journey }
+  return { profile, stepKey, stepRow, stepRows, journey, betaAccount }
 }
 
 // ── Fortschritt am Profil (DENORM-Cache) ────────────────────────────────────
@@ -631,6 +1189,27 @@ export function resolveProfileProgress(journey: readonly BrandJourneyStep[]): Br
 
   for (const step of journey) {
     if (step.state === 'skipped') continue
+    // BRAND DESIGN ZÄHLT HIER NICHT MIT — ENTSCHIEDEN (D1), NICHT VERTAGT.
+    //
+    // Der Cache füttert die Marken-Karte und die Zeile „Schritt 3 von 9" —
+    // beides Aussagen über die FOUNDATION. Zählte Schicht 2 mit, fiele der
+    // Prozentwert jedes fertigen Brandings im Deploy-Moment von 100 auf rund
+    // 70, ohne dass sich an der Marke etwas geändert hätte, und
+    // `currentStepKey` rutschte hinter `result` — womit der „Euer
+    // Branding"-Einstieg auf `/dashboard/brands` lautlos aufginge (Audit C4).
+    //
+    // Schicht 2 hat ihren EIGENEN Fortschritt, und zwar dort, wo sie stattfindet:
+    // im Rail-Fuss der Werkstatt („Brand Design 0/6", Prototyp Screen 8). Zwei
+    // Zahlen für zwei Produkte sind ehrlicher als eine gemischte, die weder die
+    // Foundation noch das Design beschreibt — und die Marken-Karte bleibt die
+    // Karte der Foundation.
+    if (isBrandDesignStep(step.stepKey)) continue
+    // UND SCHICHT 3 GENAUSO WENIG (K0, dieselbe Begründung). Ohne
+    // Freischaltung stehen ihre Kapitel ohnehin auf `skipped` und fielen schon
+    // oben heraus; die Klemme hier gilt dem Tag DANACH: eine freigeschaltete
+    // Marke soll nicht im Freischalt-Moment von 100 % auf 80 % fallen, ohne
+    // dass sich an ihrer Foundation etwas geändert hätte.
+    if (isBrandKitStep(step.stepKey)) continue
     lastOnPath = step.stepKey
     total += step.progress.requiredTotal
     filled += step.progress.requiredFilled

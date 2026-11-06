@@ -72,7 +72,16 @@ onMounted(() => {
 const { capabilities: siteCaps } = useCommunityRole()
 const can = (capability: Capability) =>
   userHasCapability(auth.user, capability) || siteCaps.value.has(capability)
-const canModerateComments = computed(() => can('comments.moderate'))
+// Die Kommentar-Schnellmoderation gibt es nur, wenn der comments-Layer in
+// dieser App überhaupt montiert ist — erkennbar an seinem Eintrag in der
+// Modul-Registry (`pukalani.admin.modules`, id `comments`), dem expliziten
+// Vertrag statt eines Layer-Imports (A14). Vorher lief die Anfrage an
+// `/api/admin/comments` auf jeder Silo-Site ohne Kommentare ins 404
+// (pukalani.studio, 2026-09-08 erwischt): die Capability hatte der Admin,
+// die Route nicht die App.
+const commentsHere = ((appConfig.pukalani as { admin?: { modules?: { id?: string }[] } }).admin?.modules ?? [])
+  .some(module => module.id === 'comments')
+const canModerateComments = computed(() => commentsHere && can('comments.moderate'))
 const canReadAudit = computed(() => can('audit.read'))
 const canManageStorage = computed(() => can('storage.manage'))
 // S5: die Schnellmoderation ist für JEDEN Site-Moderator sichtbar, ihr
@@ -174,9 +183,17 @@ const { data: analytics, refresh: refreshAnalytics } = await useFetch<AdminAnaly
 })
 
 // --- Online-Presence (live) ---------------------------------------------------
+// NICHT auf dem Kontroll-Host (Davids Entscheidung 2026-09-08, S3-Nachlese):
+// dort gibt es keine Community, also nichts zu zählen — die Presence-Routen
+// stehen bewusst nicht in `controlApiPrefixes` (404), und eine Karte, die
+// immer „0 online" zeigt, wäre eine Lüge. Karte, Erst-Abruf, Realtime-Nachzug
+// und 30-s-Poll hängen alle an derselben Bedingung.
+const presenceHere = place !== 'control'
 interface OnlineUser { userId: string, userName: string, avatarUrl: string }
 const { data: presence, refresh: refreshPresence } = await useFetch<{ count: number, users: OnlineUser[] }>('/api/presence/count', {
   query: { scope: 'global' },
+  immediate: presenceHere,
+  server: presenceHere,
 })
 const onlineCount = computed(() => presence.value?.count ?? 0)
 const onlineUsers = computed(() => presence.value?.users ?? [])
@@ -273,6 +290,7 @@ useRealtimeRows<Models.Row & { communityId?: string }>(config.public.appwriteDat
   }, 500)
 }, { where: payload => rowBelongsToHost(payload, tenantId.value) })
 watch(present, () => {
+  if (!presenceHere) return
   clearTimeout(presenceTimer)
   presenceTimer = setTimeout(() => { void refreshPresence() }, 500)
 })
@@ -280,7 +298,7 @@ useRealtimeRows<Models.Row>(config.public.appwriteDatabaseId, 'audit_logs', () =
   clearTimeout(auditTimer)
   auditTimer = setTimeout(() => { if (canReadAudit.value) void refreshAudit() }, 500)
 })
-onMounted(() => { presencePoll = setInterval(() => { void refreshPresence() }, 30_000) })
+onMounted(() => { if (presenceHere) presencePoll = setInterval(() => { void refreshPresence() }, 30_000) })
 
 onScopeDispose(() => {
   clearTimeout(commentsTimer)
@@ -312,8 +330,8 @@ onScopeDispose(() => {
              vor den Zahlen: was jetzt zu tun ist, steht über dem, was war. -->
         <component :is="notice.component" v-for="notice in notices" :key="notice.id" />
 
-        <!-- Online -->
-        <UCard data-online-card>
+        <!-- Online — nicht auf dem Kontroll-Host (s. presenceHere) -->
+        <UCard v-if="presenceHere" data-online-card>
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2">
               <span class="relative flex size-2.5">

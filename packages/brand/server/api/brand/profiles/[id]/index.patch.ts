@@ -56,12 +56,12 @@ import {
  * später von Hand liest.
  */
 export default defineEventHandler(async (event): Promise<BrandProfilePatchResponse> => {
-  const { userId } = await requireBrandAccess(event)
+  const { userId, betaAccount } = await requireBrandAccess(event)
   const profileId = requireProfileIdParam(event)
   const profile = await loadOwnedProfile(event, userId, profileId)
   const body = await readValidatedBody(event, createBrandProfilePatchSchema().parse)
 
-  const before = profileFacts(profile)
+  const before = profileFacts(profile, betaAccount)
   if (body.relaunchScope !== undefined && before.pathKind !== 'relaunch') {
     throw createError({
       status: 400,
@@ -147,6 +147,7 @@ export default defineEventHandler(async (event): Promise<BrandProfilePatchRespon
         currentStepKey: progress.currentStepKey,
       },
       shared.has(profileId),
+      betaAccount,
     ),
     story: toStoryView(profile),
     journey: [...journey],

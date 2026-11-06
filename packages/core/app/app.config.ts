@@ -98,8 +98,10 @@ export default defineAppConfig({
        *    unter der Überschrift „Community-Einstellungen" am irreführendsten.
        *
        * Deshalb ein `configFlag` (Core-Default AUS, wie jedes Core-Gate) statt
-       * einer Liste, die man je App wiederholt. AN steht er in apps/comments —
-       * dem EINEN lebenden Silo (SILO-REGEL, DECISION-LOG 2026-08-04).
+       * einer Liste, die man je App wiederholt. AN steht er in den Silo-Apps
+       * comments, portfolio und branding (SILO-REGEL, DECISION-LOG 2026-08-04
+       * und 2026-08-31); die Hülle heißt dort „Website-Einstellungen" (Davids
+       * Wort vom 2026-09-08).
        */
       instanceTabs: false,
     },
@@ -189,6 +191,55 @@ export default defineAppConfig({
       enabled: false,
       /** Model-Id der OpenAI-kompatiblen Chat-Completions-API (Default: OpenRouter) */
       model: 'anthropic/claude-haiku-4.5',
+      /**
+       * BILDER LESEN (`aiVision`, docs/archiv/BRAND-DESIGN.md §2.12) — LEER
+       * heisst AUS, und das ist der Core-Default.
+       *
+       * Der Modell-Name IST das Gate: es gibt keinen zweiten Schalter daneben
+       * (Begründung im Kopf von `server/utils/aiVision.ts`). Wer ihn setzt,
+       * schickt Bilder an einen fremden Anbieter — der Transport klemmt
+       * deshalb JEDEN Vision-Aufruf fest auf `provider.data_collection:
+       * 'deny'` (OpenRouter-Provider-Routing, Davids ZDR-Entscheidung
+       * 2026-09-08), und das lässt sich von aussen nicht abschalten.
+       *
+       * Zu wählen ist ein MULTIMODALES Modell, das unter dieser Bedingung
+       * überhaupt Anbieter findet — sonst antwortet OpenRouter mit einem
+       * Routing-Fehler statt mit einer Lesung.
+       */
+      visionModel: '',
+      /**
+       * BILDER ERZEUGEN (`aiImage`, docs/archiv/BRAND-DESIGN.md §2.12, Paket
+       * D5c) — LEER heisst AUS, und das ist der Core-Default.
+       *
+       * Dieselbe Bauform und dieselbe Begründung wie beim Vision-Modell eine
+       * Zeile darüber: der Modell-Name IST das Gate, und der Transport klemmt
+       * JEDEN Aufruf fest auf `provider.data_collection: 'deny'` (Davids
+       * ZDR-Entscheidung 2026-09-08).
+       *
+       * Zu wählen ist ein Modell mit BILD-AUSGABE, das unter dieser Bedingung
+       * Anbieter findet (Davids Wahl: `google/gemini-2.5-flash-image-preview`)
+       * — sonst antwortet OpenRouter mit einem Routing-Fehler statt mit einem
+       * Bild, und die Werkstatt sagt „gerade nicht verfügbar".
+       */
+      imageModel: '',
+      /**
+       * VIDEOS LESEN (`aiVideo`, BI2 K5 — Plan
+       * docs/plans/BRAND-INSIGHTS-KURATION.md §6/§13) — LEER heisst AUS, und
+       * das ist der Core-Default.
+       *
+       * Dieselbe Bauform wie die zwei Schlüssel darüber, mit einem zweiten
+       * Grund für die Strenge: NICHT JEDES MODELL KANN ES. Das Textmodell
+       * dieses Monorepos sieht keine Videos, also wäre ein Gate am
+       * allgemeinen KI-Schalter eine Einladung, mit dem falschen Modell zu
+       * rufen.
+       *
+       * Zu wählen ist ein Modell mit VIDEO-EINGABE, das unter
+       * `data_collection: 'deny'` (+ dem `zdr`/`only` des Konsumenten)
+       * Anbieter findet. Gemessen am 2026-10-27 (Plan §13): die
+       * `gemini-3.x`-Reihe kann es, `google/gemini-3.1-flash-lite` auch auf
+       * `google-vertex/eu` — und ein 25-Minuten-Video kostet rund fünf Cent.
+       */
+      videoModel: '',
       baseUrl: 'https://openrouter.ai/api/v1',
     },
     auth: {
@@ -197,6 +248,58 @@ export default defineAppConfig({
       providers: [] as string[],
       /** AGB-URL — gesetzt = Pflicht-Checkbox im Register-Formular */
       termsUrl: '',
+      /**
+       * DIE FASSUNG, DER JEMAND ZUSTIMMT (BS1 R1, 2026-09-07) — z. B.
+       * '2026-09-draft-1'. Wird bei der Konto-ANLAGE zusammen mit
+       * `termsAcceptedAt` in die Account-Prefs geschrieben (alle drei Wege:
+       * Passwort, Code, Google — `server/utils/termsAcceptance.ts`).
+       *
+       * Leer ist erlaubt und heißt „wir wissen wann, nicht welcher Text";
+       * geschrieben wird ohnehin nur, wenn `termsUrl` gesetzt ist. Wer die
+       * AGB inhaltlich ändert, ÄNDERT DIESEN WERT — sonst behauptet der
+       * Vermerk am Konto eine Zustimmung zu einem Text, den es nicht mehr
+       * gibt. (Die Nachfrage bei Bestandskonten kommt mit Fassung 2, R3.)
+       */
+      termsVersion: '',
+      /**
+       * „Entwurf, in anwaltlicher Prüfung" NEBEN dem Häkchen (BS1 R1, Davids
+       * Entscheidung 7 vom 2026-09-07).
+       *
+       * Ein BOOLEAN und kein i18n-Schlüssel: der Satz gehört dem Core und
+       * steht in seinen Locale-Dateien (`auth.register.termsDraftNotice`),
+       * damit ihn jede App in beiden Sprachen hat. Ein Schlüssel in der Config
+       * wäre ein Versprechen, das `pnpm check:i18n-keys` einlösen müsste —
+       * für einen Satz, der überall derselbe ist.
+       *
+       * Core-Default AUS: eine App mit fertigen AGB darf diesen Hinweis nicht
+       * zeigen. Er sagt nichts über die Pflicht (das tut `termsUrl`), sondern
+       * über den Reifegrad des Textes dahinter.
+       */
+      termsDraft: false,
+      /**
+       * NUR FÜR UNTERNEHMEN UND SELBSTSTÄNDIGE (BS1 R1c, Davids Entscheidung
+       * vom 2026-09-08): true = in JEDEM Registrierungsweg steht ein zweites
+       * PFLICHT-Häkchen „Ich handle als Unternehmer/in oder Selbstständige/r",
+       * und bei der Konto-Anlage wird `businessConfirmedAt` in die
+       * Account-Prefs geschrieben (`server/utils/businessConfirmation.ts`).
+       *
+       * Ein BOOLEAN und kein i18n-Schlüssel: Text und Begründung gehören dem
+       * Core und stehen in seinen Locale-Dateien (`auth.register.
+       * businessLabel` + `businessNotice`), damit jede App sie in beiden
+       * Sprachen hat. Ein Schlüssel in der Config wäre ein Versprechen, das
+       * `pnpm check:i18n-keys` einlösen müsste — für einen Satz, der überall
+       * derselbe ist. (Dieselbe Abwägung wie bei `termsDraft`.)
+       *
+       * Core-Default AUS — und das ist mehr als die übliche Vorsicht: der
+       * Schalter schliesst Verbraucher AUS. In einer App, die auch
+       * Privatpersonen aufnimmt (jede Pool-Community, portfolio, comments),
+       * wäre das Häkchen eine Hürde vor einer Tür, die offen sein soll.
+       *
+       * ER IST UNABHÄNGIG VON `termsUrl`: die AGB sagen, WELCHEM Text jemand
+       * zustimmt, dieser Schalter sagt, WER zustimmt. Eine App kann das eine
+       * ohne das andere verlangen, deshalb zwei Schalter und zwei Häkchen.
+       */
+      businessOnly: false,
       /** Passwortloser Login per E-Mail-Code (Appwrite Email-OTP) —
        *  Ergänzung zum Passwort-Login, kein Ersatz */
       otp: false,

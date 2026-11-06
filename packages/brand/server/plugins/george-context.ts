@@ -1,7 +1,8 @@
 import { createAdvisorSlotGenerator } from '../utils/advisorGenerator'
 import type { BrandSlotGenerator } from '../utils/brandGenerators'
 import { registerBrandSlotGenerator } from '../utils/brandGenerators'
-import { GEORGE_PROMPT_VERSION, contextSlotInstruction } from '../utils/georgePrompt'
+import { GEORGE_PROMPT_VERSION } from '../utils/georgePrompt'
+import { sessionInstructionForSlot } from '../utils/sessionPrompt'
 
 /**
  * DER ECHTE GEORGE FÜR BAUSTEIN A (P2.2) — die Registrierung an der Naht aus
@@ -25,7 +26,7 @@ import { GEORGE_PROMPT_VERSION, contextSlotInstruction } from '../utils/georgePr
 /** Georges Generator für Baustein A · Kontext. */
 export const georgeContextGenerator: BrandSlotGenerator = createAdvisorSlotGenerator({
   promptVersion: GEORGE_PROMPT_VERSION,
-  instruction: contextSlotInstruction,
+  instruction: sessionInstructionForSlot,
 })
 
 export { georgeMaxTokens } from '../utils/advisorGenerator'

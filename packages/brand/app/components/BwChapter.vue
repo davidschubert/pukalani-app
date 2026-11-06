@@ -1,10 +1,17 @@
 <script setup lang="ts">
 /** Dokument-Kapitel mit Zustandssprache (§3d-Matrix): Kennzeichen ist
- *  immer Icon + Text, nie nur Farbe. Entwürfe tragen Georges Handschrift. */
-const props = defineProps<{
+ *  immer Icon + Text, nie nur Farbe. Entwürfe tragen die Handschrift der
+ *  STIMME dieses Kapitels — George in der Foundation, Frida in Schicht 2
+ *  (D8). Deshalb nennt `voiceName` sie von aussen; der Vorgabewert ist
+ *  `BRAND_VOICE`, weil das Kapitel ohne Angabe ein Foundation-Kapitel ist. */
+import { BRAND_VOICE } from '../../shared/brandAdvisors'
+
+const props = withDefaults(defineProps<{
   title: string
   state: 'empty' | 'active' | 'generating' | 'draft' | 'edited' | 'confirmed' | 'stale'
   staleNote?: string
+  /** Vorname der Stimme, die in diesem Kapitel entwirft. */
+  voiceName?: string
   /**
    * DER KAPITEL-BALKEN (Davids Live-Walkthrough, 2026-09-02) — bestätigte
    * Entscheidungen von allen möglichen DIESES Kapitels, gerechnet in
@@ -17,7 +24,12 @@ const props = defineProps<{
    */
   progressConfirmed?: number
   progressTotal?: number
-}>()
+}>(), {
+  staleNote: undefined,
+  voiceName: BRAND_VOICE.name,
+  progressConfirmed: undefined,
+  progressTotal: undefined,
+})
 
 const showProgress = computed(() => (props.progressTotal ?? 0) > 0)
 const progressPct = computed(() => (showProgress.value
@@ -39,7 +51,7 @@ const STATE = {
 } as const
 const stateMeta = computed(() => {
   const meta = STATE[props.state]
-  return { label: t(meta.key), icon: meta.icon, cls: meta.cls }
+  return { label: t(meta.key, { voice: props.voiceName }), icon: meta.icon, cls: meta.cls }
 })
 
 /* Iteration 2: der Abschluss-Moment — beim Übergang zu 'confirmed'

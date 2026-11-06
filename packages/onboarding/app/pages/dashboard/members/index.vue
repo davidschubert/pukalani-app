@@ -185,14 +185,14 @@ const columns: TableColumn<CommunityMemberView>[] = [
   { accessorKey: 'role', header: () => t('members.role') },
   { accessorKey: 'joinedAt', header: () => t('members.joined'), id: 'joinedAt' },
   { accessorKey: 'status', header: () => t('members.status') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ]
 
 const inviteColumns: TableColumn<CommunityInviteView>[] = [
   { accessorKey: 'email', header: () => t('members.invites.email') },
   { accessorKey: 'role', header: () => t('members.invites.role') },
   { accessorKey: 'expiresAt', header: () => t('members.invites.expires') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ]
 
 const roleLabel = (role: CommunityRole) => t(`members.roles.${role}`)

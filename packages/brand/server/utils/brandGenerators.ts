@@ -12,6 +12,7 @@ import { formatBrandSlotList, formatBrandSlotStructured } from '../../shared/bra
 import {
   type BrandSlot,
   type BrandStepKey,
+  type BrandTeamKind,
   dependencyClosure,
 } from '../../shared/slotRegistry'
 import type { BrandStartCard } from '../../shared/types/brand'
@@ -71,6 +72,19 @@ export interface BrandGeneratorContext {
   /** Die Weiche W1, für pfadabhängige Prompts. */
   pathKind: 'new' | 'relaunch'
   /**
+   * DIE WEICHE W3 (a-14, Davids Entscheidung 2026-09-09) — sie entscheidet, WER
+   * im Markentext spricht: `solo` ⇒ Ich-Form, `team` ⇒ Wir-Form.
+   *
+   * Sie steht NEBEN `pathKind`, weil sie dieselbe Sorte Tatsache ist: eine
+   * Angabe aus dem Profil, die den Auftrag ändert und nicht die Eingaben. Sie
+   * geht deshalb auch NICHT in den `inputHash` — der beschreibt den Stand der
+   * Quell-Slots, genau wie bei Startkarte und Website-Text.
+   *
+   * OPTIONAL, damit ein Aufrufer ohne Profil (Beweise, Werkzeuge) weiterläuft:
+   * ohne sie sagt der Auftrag zur Person das, was er vor a-14 sagte.
+   */
+  team?: BrandTeamKind
+  /**
    * DIE STARTKARTE DES PROFILS (Content-Spec §2.1) — die primäre Quelle des
    * Bausteins A, dessen Slots gerade DESHALB keine `dependencies` haben.
    *
@@ -103,6 +117,27 @@ export interface BrandGeneratorContext {
   hint: string
   /** Werte der (transitiven) Quell-Slots in Katalog-Reihenfolge. */
   dependencies: readonly BrandSlotDependency[]
+  /**
+   * DIE LETZTEN ZÜGE DIESES BAUSTEINS (a-9), älteste zuerst. Leer = kein
+   * Verlauf, und das ist beim ersten Entwurf der Normalfall.
+   *
+   * Es steht NEBEN `dependencies` und nicht darin: das hier sind GESPRÄCHS-Züge,
+   * keine Slot-Werte. Ein Feldwert ist ein festgehaltenes Ergebnis mit einer Id
+   * aus der Registry; ein Zug ist Gesagtes — von George so gut wie vom Menschen.
+   * Zusammengelegt müsste man jedem Zug eine Slot-Id erfinden, und Georges
+   * eigene Rückfrage stünde als Feldinhalt da.
+   *
+   * WOZU: bis a-9 las der Entwurf nur gespeicherte Werte. Antwortete jemand auf
+   * eine Rückfrage IM CHAT, kam das nie beim Generator an — er fragte dasselbe
+   * ein zweites Mal, und bei einem Slot ohne eigenes Eingabefeld gab es gar
+   * keinen Weg mehr nach vorn.
+   *
+   * Es geht wie Startkarte und Website-Text NICHT in den `inputHash`: der
+   * beschreibt den Stand der Quell-SLOTS. Eine neue Chat-Antwort macht einen
+   * bestehenden Entwurf also nicht still „veraltet" — die Neuerzeugung stösst
+   * der Mensch selbst an.
+   */
+  conversation: readonly { role: 'george' | 'user' | 'system', body: string }[]
   /** Abbruch durch den Menschen ODER durch eine geschlossene Verbindung. */
   signal: AbortSignal
   /** Jedes Text-Delta genau einmal — hier hängt `message.delta` dran. */
@@ -179,7 +214,17 @@ export function clearBrandSlotGenerators(): void {
   GENERATORS.clear()
 }
 
-function devStubEnabled(): boolean {
+/**
+ * LÄUFT DER ENTWICKLUNGS-ERSATZ? — `pukalani.brand.devStubGenerator`, EINMAL
+ * gelesen.
+ *
+ * EXPORTIERT seit Paket 4: der Schliess-Aufruf (`brandReview.ts`) braucht
+ * dieselbe Auskunft, und zwei Abfragen desselben Schlüssels wären zwei
+ * Stellen, an denen jemand später einen Schalter vergisst — eine Marke mit
+ * echten Entwürfen und einem Ersatz-Spezialisten (oder umgekehrt) wäre in
+ * ihrem Ergebnis von einer echten nicht zu unterscheiden.
+ */
+export function brandDevStubEnabled(): boolean {
   const config = useAppConfig() as { pukalani?: { brand?: { devStubGenerator?: boolean } } }
   return config.pukalani?.brand?.devStubGenerator === true
 }
@@ -192,7 +237,7 @@ function devStubEnabled(): boolean {
 export function resolveBrandSlotGenerator(stepKey: BrandStepKey): BrandGeneratorChoice | null {
   const registered = GENERATORS.get(stepKey) ?? GENERATORS.get('*')
   if (registered) return { generator: registered, chargesQuota: true }
-  return devStubEnabled() ? { generator: brandDevStubGenerator, chargesQuota: false } : null
+  return brandDevStubEnabled() ? { generator: brandDevStubGenerator, chargesQuota: false } : null
 }
 
 // ── Der KI-Kill-Switch der Laufzeit ────────────────────────────────────────

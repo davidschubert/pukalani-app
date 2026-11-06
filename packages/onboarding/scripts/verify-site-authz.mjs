@@ -161,7 +161,10 @@ async function waitForClosedRegistration(host) {
   for (let i = 0; i < 40; i++) {
     const res = await call(host, '/api/auth/signup', {
       method: 'POST',
-      body: { email: `probe-${i}-${Date.now()}@example.test`, password: 'x', name: 'P' },
+      // GÜLTIGER Body (starkes Passwort, Name ≥ 2 Zeichen), sonst antwortet Zod
+      // 400, BEVOR die Route die Registrierungssperre prüft — und die 403 kommt
+      // nie (2026-09-08 erwischt: der Check war seit der Schema-Härtung tot).
+      body: { email: `probe-${i}-${Date.now()}@example.test`, password: 'Probe-Passw0rd!1', name: 'Probe' },
       clientIp: `192.0.2.${1 + (i % 250)}`,
     })
     if (res.status === 403) return true
@@ -415,8 +418,13 @@ try {
   check('Gast ohne Session → 401', guestList.status === 401, `Status ${guestList.status}`)
 
   console.log('  Einladen: gleiche Grenze, eigener Endpunkt')
+  // `community:invite` drosselt 5/min JE IP (F57) — sieben Aufrufe aus ::1
+  // liefen sonst ab dem sechsten in 429 statt 401/409. Jeder Aufruf bekommt
+  // deshalb eine eigene (dokumentierte TEST-NET-3-)Adresse.
+  let inviteIp = 0
+  const nextInviteIp = () => `203.0.113.${++inviteIp}`
   const inviteBody = { email: `o5-invitee-${Date.now()}@example.test`, role: 'viewer' }
-  const ownerInvite = await call(host, '/api/community/members', { method: 'POST', cookie: ownerCookie, body: inviteBody })
+  const ownerInvite = await call(host, '/api/community/members', { method: 'POST', cookie: ownerCookie, body: inviteBody, clientIp: nextInviteIp() })
   // 503 = kein SMTP in dieser Umgebung. Das ist KEIN Autorisierungsfehler und
   // der Punkt dieses Abschnitts: 401/403 wären der Fehler.
   check('Owner darf einladen (200; 503 = Mailer aus)',
@@ -424,21 +432,21 @@ try {
   if (ownerInvite.status === 503) console.log('    ℹ Mailer aus (503) — Einladung wurde bewusst NICHT angelegt')
   if (ownerInvite.json?.inviteId) cleanup.invites.push(ownerInvite.json.inviteId)
   const adminInvite = await call(host, '/api/community/members', {
-    method: 'POST', cookie: staff.admin.cookie, body: { email: `o5-invitee2-${Date.now()}@example.test`, role: 'editor' },
+    method: 'POST', cookie: staff.admin.cookie, body: { email: `o5-invitee2-${Date.now()}@example.test`, role: 'editor' }, clientIp: nextInviteIp(),
   })
   check('Admin darf einladen (200; 503 = Mailer aus)',
     adminInvite.status === 200 || adminInvite.status === 503, `Status ${adminInvite.status}`)
   if (adminInvite.json?.inviteId) cleanup.invites.push(adminInvite.json.inviteId)
   for (const role of ['moderator', 'editor', 'viewer']) {
     const res = await call(host, '/api/community/members', {
-      method: 'POST', cookie: staff[role].cookie, body: { email: 'nope@example.test', role: 'viewer' },
+      method: 'POST', cookie: staff[role].cookie, body: { email: 'nope@example.test', role: 'viewer' }, clientIp: nextInviteIp(),
     })
     check(`${role} darf NICHT einladen → 403`, res.status === 403, `Status ${res.status}`)
   }
-  const guestInvite = await call(host, '/api/community/members', { method: 'POST', body: { email: 'nope@example.test', role: 'viewer' } })
+  const guestInvite = await call(host, '/api/community/members', { method: 'POST', body: { email: 'nope@example.test', role: 'viewer' }, clientIp: nextInviteIp() })
   check('Gast darf nicht einladen → 401', guestInvite.status === 401, `Status ${guestInvite.status}`)
   const inviteAsOwnerRole = await call(host, '/api/community/members', {
-    method: 'POST', cookie: ownerCookie, body: { email: 'nope@example.test', role: 'owner' },
+    method: 'POST', cookie: ownerCookie, body: { email: 'nope@example.test', role: 'owner' }, clientIp: nextInviteIp(),
   })
   check('als „owner" einladen ist verboten (Besitz nur per Übergabe)',
     inviteAsOwnerRole.status === 409 || inviteAsOwnerRole.status === 400,

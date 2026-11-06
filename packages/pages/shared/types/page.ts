@@ -22,37 +22,33 @@ export type PageStatus = (typeof PAGE_STATUSES)[number]
 export const GUIDELINES_SLUG = 'guidelines'
 
 /**
- * Die Slugs, die eine CMS-Seite zu einer RECHTSSEITE machen — sie gehören in
- * die Fußzeile, nicht in die Hauptnavigation.
+ * ── FÜNF NAV-HELFER SIND AM 2026-09-08 NACH core GEZOGEN (U15 Teil 3) ──────
  *
- * STAND VOR DIESER KONSTANTE: dieselbe Liste lebte dreimal — im
- * blueprint-Layout (vier Slugs), in der Fußzeile von `apps/portfolio` (sechs)
- * und als `LEGAL_TEMPLATE_SLUGS` in `legalTemplates.ts` (zwei, andere
- * Aufgabe: was wir SEEDEN). Zwei Listen, die dasselbe meinen und verschieden
- * lang sind, sind kein Stil-Problem: eine veröffentlichte `terms`-Seite stand
- * in blueprint-Apps in der HAUPTNAVIGATION und in portfolio im Fuß. Jetzt
- * gibt es überall dieselbe Antwort.
+ * `LEGAL_PAGE_SLUGS`, `isLegalPageSlug`, `PublicPageNavItem`, `cmsPageNavId`
+ * und `CMS_PAGE_NAV_ORDER` leben jetzt in
+ * `packages/core/shared/communityNavigation.ts` und werden hier
+ * RE-EXPORTIERT — jeder bestehende Import bleibt damit gültig, und der
+ * Auto-Import über `shared/types` ebenso.
  *
- * ZWEI SCHREIBWEISEN JE BEGRIFF, und das ist Absicht: die Slugs im Dashboard
- * sind FREI benennbar, und ein deutschsprachiger Kunde legt „impressum" an,
- * kein „imprint". Die SPRACHE einer Seite steckt dagegen in der ZEILE
- * (`PageRow.locale`), nicht im Slug — ein Dokument hat EINEN Slug und je
- * Sprache eine Row. Beide Schreibweisen zu kennen kostet nichts und ist der
- * einzige Weg, den Bestand mitzunehmen.
+ * WARUM SIE GEHEN MUSSTEN, obwohl sie inhaltlich hierher gehören: seit
+ * demselben Tag rendert auch `packages/brand` (branding.supply) das
+ * Community-Menü, und ein Produkt-Layer darf einen anderen NICHT importieren
+ * (A14). Hätte `brand` seine eigene Rechts-Slug-Liste bekommen, stünde genau
+ * die Liste zum dritten Mal da, die es einmal schon dreifach gab — und ein
+ * `terms` im Kopf statt im Fuß war der Schaden.
  *
- * STEHT HIER UND NICHT IN `legalTemplates.ts`, obwohl sie inhaltlich dorthin
- * gehörte — aus demselben Grund wie `GUIDELINES_SLUG` oben: die Konsumenten
- * sind App-Code (blueprint-Layout, Fußzeilen), und ein Wert-Import aus der
- * Vorlagen-Datei zöge deren gesamten Text (beide Sprachen, mehrere Kilobyte)
- * in das CLIENT-Bundle jeder App — für sechs Zeichenketten.
+ * WAS HIER GEBLIEBEN IST: alles, was die SEITEN betrifft (Tabelle, Status,
+ * Zeilen-Typen, Slugs mit Bedeutung fürs Produkt). Der pages-Layer bleibt der
+ * Eigentümer der Seiten; abgegeben ist nur die Frage „wie heisst so eine Seite
+ * im MENÜ".
  */
-export const LEGAL_PAGE_SLUGS = ['imprint', 'impressum', 'privacy', 'datenschutz', 'terms', 'agb'] as const
-export type LegalPageSlug = (typeof LEGAL_PAGE_SLUGS)[number]
-
-/** Ist dieser Slug eine Rechtsseite? Der EINE Test für Nav und Fußzeile. */
-export function isLegalPageSlug(slug: string): boolean {
-  return (LEGAL_PAGE_SLUGS as readonly string[]).includes(slug)
-}
+export {
+  CMS_PAGE_NAV_ORDER,
+  LEGAL_PAGE_SLUGS,
+  cmsPageNavId,
+  isLegalPageSlug,
+} from '../../../core/shared/communityNavigation'
+export type { LegalPageSlug, PublicPageNavItem } from '../../../core/shared/communityNavigation'
 
 /**
  * Die Adresse des Beschreibungs- und Kontakttextes der About-Seite (F1 Stufe 2).
@@ -119,53 +115,47 @@ export interface PublicPage {
   title: string
   body: string
   updatedAt: string
+  /**
+   * In welchen Sprachen es diese Seite VERÖFFENTLICHT gibt (F60).
+   *
+   * Zwei Leser, ein Feld: die Seite sagt damit „du liest gerade eine
+   * Ersatzsprache" (Vergleich mit `locale`), und sie meldet dem EINEN SEO-Kopf,
+   * welche `hreflang`-Alternates überhaupt wahr sind
+   * (`usePageLocaleAlternates()` im core). Kostet keine zweite Abfrage — die
+   * Route hat die Zeilen aller Sprachen ohnehin geladen, um die passende
+   * auszuwählen.
+   */
+  availableLocales: string[]
 }
 
-/**
- * Nav-Eintrag einer veröffentlichten Seite — bewusst OHNE body.
- *
- * WOHNT HIER UND NICHT AN DER ROUTE (Audit 2026-08-02): der Konsument ist das
- * default-Layout des blueprint-Layers, und der importierte den Typ bis heute
- * direkt aus `server/api/pages/public/index.get.ts`. Damit zog App-Code eine
- * Nitro-Route in sein Programm, die `node-appwrite` und Server-Auto-Imports
- * (`defineEventHandler`, `tenantDb`) auf oberster Ebene benutzt — der
- * `server`-Zweig eines Layers ist aus jeder `tsconfig.app.json`
- * ausgeschlossen, genau dieser Import-Kante wegen. Und zwar zu Recht: der
- * Import zog eine Nitro-Route in das App-Programm, in dem ihre
- * Auto-Imports gar nicht existieren.
- *
- * Zur Laufzeit war es harmlos (`import type` wird
- * gelöscht), als Schnitt aber falsch: geteilte Domain-Typen gehören nach
- * `shared/types/` (CLAUDE.md), damit Server UND App sie sehen dürfen.
- */
-export interface PublicPageNavItem {
-  slug: string
+/** Antwort des KI-Übersetzungsvorschlags (F60) — die Route SPEICHERT NICHTS. */
+export interface PageTranslateResponse {
+  /** Zielsprache, wie angefragt. */
+  locale: string
+  /** Leer = kein Vorschlag; die Oberfläche lässt das Feld dann in Ruhe. */
   title: string
-  sortOrder: number
+  body: string
+  /** Welches Modell geantwortet hat — für die Nachvollziehbarkeit im Log. */
+  model: string
 }
 
-/**
- * Die Nav-Id einer CMS-Seite (U15) — der Schlüssel, unter dem der
- * Navigations-Editor sie ausblendet, umbenennt oder verschiebt.
- *
- * STEHT HIER UND NICHT AN DEN BEIDEN VERWENDUNGSSTELLEN, obwohl es nur ein
- * Präfix ist: die Id wird an ZWEI Orten gebildet — im blueprint-Layout, das
- * das Menü rendert, und im Editor, der es beschreibt. Zwei Zeichenketten, die
- * gleich sein MÜSSEN, aber getrennt gepflegt werden, laufen auseinander; hier
- * wäre die Folge still und hässlich: der Owner blendet eine Seite aus, sie
- * bleibt stehen, und niemand sieht warum. (Dasselbe Argument wie bei
- * `GUIDELINES_SLUG` und `LEGAL_PAGE_SLUGS` darüber.)
- */
-export function cmsPageNavId(slug: string): string {
-  return `page-${slug}`
+/** Antwort von `GET /api/pages` (Liste im Dashboard). */
+export interface PagesListResponse {
+  groups: PageGroup[]
+  /**
+   * Ist ein KI-Schlüssel hinterlegt? Der Übersetzen-Knopf erscheint nur dann
+   * (und nur mit dem Produkt `ai` im Tarif) — ein Knopf, der beim Drücken 503
+   * antwortet, wäre ein Versprechen, das die Seite nicht halten kann. Die
+   * Route prüft es trotzdem selbst; sie ist die Grenze, dies die Höflichkeit.
+   */
+  aiTranslate: boolean
 }
 
-/**
- * Wo CMS-Seiten im Menü stehen, wenn niemand etwas anderes gesagt hat: nach
- * den Produkten (Default 50), vor „Pricing" (90). Wie oben aus EINER Quelle,
- * weil Layout und Editor dieselbe Reihenfolge zeigen müssen.
- */
-export const CMS_PAGE_NAV_ORDER = 60
+/** Antwort von `GET /api/pages/:slug` (alle Sprachfassungen zum Bearbeiten). */
+export interface PageDetailResponse {
+  rows: PageEditorRow[]
+  isTemplate: boolean
+}
 
 /** Admin-Gruppierung: ein slug mit allen seinen Sprachversionen. */
 export interface PageGroup {

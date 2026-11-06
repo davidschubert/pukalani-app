@@ -39,8 +39,12 @@ export default defineEventHandler(async (event): Promise<CommunitySeoSettings> =
   // Ohne Mandanten-Kontext gibt es keine Community, deren Sucheintrag man
   // einstellen könnte (Silo-App, Kontroll-Host, Single-Tenant) — 404 wie eine
   // fehlende Route, dieselbe Antwort wie bei `PATCH /api/pages/navigation`.
-  const communityId = useTenant(event)?.communityId
-  if (!communityId) throw createError({ status: 404, statusText: 'Not found' })
+  // Seit 2026-09-08 dieselbe Row-Id-Regel wie Navigation und Weiterleitungen
+  // (core/shared/communitySettingsRow.ts): im Silo speichert die INSTANZ
+  // (`instance`) — vorher war die Id dort leer und jedes Speichern ein 404.
+  // Nur der Kontroll-Host bleibt ohne Zeile.
+  const rowId = communitySettingsRowIdFor(event)
+  if (!rowId) throw createError({ status: 404, statusText: 'Not found' })
 
   const body = await readValidatedBody(event, communitySeoSchema.parse)
 
@@ -48,7 +52,7 @@ export default defineEventHandler(async (event): Promise<CommunitySeoSettings> =
     metaDescription: normalizeSeoDescription(body.metaDescription),
     noindex: body.noindex,
   }
-  await writeCommunitySeo(event, communityId, settings)
+  await writeCommunitySeo(event, rowId, settings)
 
   // Die Antwort ist der GESPEICHERTE Zustand — die Seite übernimmt ihn daraus,
   // statt ihn sich zusammenzureimen (Muster navigation.patch.ts). Hier trägt

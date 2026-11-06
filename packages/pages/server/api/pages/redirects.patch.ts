@@ -41,15 +41,18 @@ export default defineEventHandler(async (event): Promise<CommunityRedirectConfig
   // könnte (Silo-App, Kontroll-Host, Single-Tenant) — 404 wie eine fehlende
   // Route, dieselbe Antwort wie bei `PATCH /api/pages/navigation` und
   // `PATCH /api/pages/seo`.
-  const communityId = useTenant(event)?.communityId
-  if (!communityId) throw createError({ status: 404, statusText: 'Not found' })
+  // Seit 2026-09-08 dieselbe Row-Id-Regel wie Navigation und Sucheintrag
+  // (core/shared/communitySettingsRow.ts): im Silo speichert die INSTANZ
+  // (`instance`) — vorher war die Id dort leer und jedes Speichern ein 404.
+  const rowId = communitySettingsRowIdFor(event)
+  if (!rowId) throw createError({ status: 404, statusText: 'Not found' })
 
   const body = await readValidatedBody(event, communityRedirectsSchema.parse)
 
   const config: CommunityRedirectConfig = {
     rules: body.rules.map((rule): CommunityRedirectRule => normalizeRedirectRule(rule)),
   }
-  await writeCommunityRedirects(event, communityId, config)
+  await writeCommunityRedirects(event, rowId, config)
 
   // Die Antwort ist der GESPEICHERTE Zustand — die Seite übernimmt ihn daraus,
   // statt ihn sich zusammenzureimen (Muster navigation.patch.ts). Hier trägt

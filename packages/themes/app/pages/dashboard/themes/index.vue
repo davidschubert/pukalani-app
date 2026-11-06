@@ -135,7 +135,7 @@ function isActive(id: string): boolean {
 const galleryColumns = computed<TableColumn<GalleryEntry>[]>(() => [
   { id: 'swatches', header: () => t('themes.customize.col.preview') },
   { accessorKey: 'name', header: () => t('themes.customize.col.theme') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 // Aktive Zeile hervorheben, ausgeblendete Themes dimmen — dieselbe Aussage

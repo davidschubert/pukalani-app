@@ -40,7 +40,7 @@ const MAX_HOST_HEADER_LENGTH = 260
  * Ohne Klammern (`Host: ::1`) wirft `new URL()` — das ist kein gültiger
  * Host-Header, sondern ein kaputter Client.
  */
-const IPV6_HOST = /^\[[0-9a-f:.]+\](:\d{1,5})?$/i
+const IPV6_HOST = /^\[[0-9a-f:.]+\](?::(\d{1,5}))?$/i
 
 /**
  * Name oder IPv4, optional mit Port. Buchstaben/Ziffern/`.`/`-`/`_` decken
@@ -50,7 +50,7 @@ const IPV6_HOST = /^\[[0-9a-f:.]+\](:\d{1,5})?$/i
  * im Host verbietet — `" < > # % / ? @ [ ] ^ | \` sowie Leerzeichen,
  * Tabulator und Zeilenumbruch.
  */
-const NAMED_HOST = /^[a-z0-9._-]+(:\d{1,5})?$/i
+const NAMED_HOST = /^[a-z0-9._-]+(?::(\d{1,5}))?$/i
 
 /**
  * PURE (unit-getestet): Lässt sich aus diesem Host-Header eine URL bauen?
@@ -66,8 +66,30 @@ export function isValidHostHeader(host: string): boolean {
   // Kein Trimmen: ein Header mit Leerzeichen am Rand ist bereits fehlgeformt,
   // und stillschweigend zu reparieren hieße, zwei Schichten könnten sich über
   // den Wert uneinig sein (die Wache prüft die getrimmte, h3 baut die rohe).
-  if (host.startsWith('[')) return IPV6_HOST.test(host)
-  return NAMED_HOST.test(host)
+  const match = host.startsWith('[') ? IPV6_HOST.exec(host) : NAMED_HOST.exec(host)
+  if (!match) return false
+  return portIsBuildable(match[1])
+}
+
+/**
+ * DER PORT IST DIE EINE STELLE, DIE EINE ZEICHEN-REGEX NICHT ENTSCHEIDEN KANN
+ * (Lücke gemessen 2026-10-23, Gegenprobe gegen `new URL()`).
+ *
+ * `\d{1,5}` passt auch auf `:99999` — fünf Ziffern sehen gültig aus, der
+ * URL-Parser wirft darauf aber, weil ein Port über **65535** keiner ist.
+ * `Host: pukalani.studio:99999` kam damit durch die Wache und ließ
+ * `getRequestURL()` eine Middleware später werfen: derselbe 500er auf jeder
+ * Route, nur mit engerem Auslöser. Der Maßstab dieser Datei ist `new URL()`,
+ * und der kennt eine ZAHLENgrenze — also muss hier gerechnet werden, nicht
+ * gezählt.
+ *
+ * Führende Nullen sind in Ordnung (`:00080` ⇒ 80, `new URL()` normalisiert
+ * selbst); die Länge deckelt bereits `\d{1,5}`, `Number()` kann hier also
+ * nicht überlaufen.
+ */
+function portIsBuildable(port: string | undefined): boolean {
+  if (port === undefined) return true
+  return Number(port) <= 65_535
 }
 
 /**

@@ -1,0 +1,60 @@
+/**
+ * KLICKDUMMY „BRAND DESIGN": die kuratierten Schriftfamilien der Vorschau
+ * (Konzept docs/archiv/BRAND-DESIGN.md §2.4 und §2.17).
+ *
+ * WAS HIER GELADEN WERDEN SOLL — sieben Familien, aus denen die sechs
+ * Schriftpaare des Katalogs (`app/utils/demoDesign.ts`, DS_FONT_PAIRS)
+ * bestehen:
+ *   Inter · Source Sans 3 · Source Serif 4 · Nunito Sans · Sora ·
+ *   PT Sans · PT Serif
+ * Je Familie die Schnitte 400 / 500 / 600 / 700 — die Typografie-Seite lässt
+ * das Überschriften-Gewicht bis 700 stellen, und ein NICHT geladener Schnitt
+ * würde vom Browser gefälscht (aufgeblasene Konturen), also genau das
+ * verfälschen, was hier beurteilt werden soll.
+ *
+ * WARUM SO UND NICHT INLINE: `@nuxt/fonts` (kommt über @nuxt/ui mit)
+ * self-hostet ausschliesslich Familien, die es im BUILD in einer
+ * CSS-Deklaration sieht — dasselbe Muster wie
+ * `packages/themes/app/assets/css/fonts.css`. Ein `font-family` in einem
+ * `style`-Attribut sieht der Build NICHT; die Vorschau fiele still auf
+ * Georgia/Arial zurück und wäre wieder das, was G4 bewusst war („eine
+ * Richtung, kein Rendering-Beweis"). Diese Datei ist deshalb der Grund,
+ * warum die Szene ihre Stacks trotzdem inline setzen darf.
+ *
+ * Die Klassen selbst werden nicht gebraucht (die Szene setzt `font-family`
+ * über lokale CSS-Variablen); sie sind die DEKLARATION, die der Build liest —
+ * und zugleich der bequeme Weg, im Browser `document.fonts` zu prüfen.
+ *
+ * Gilt NUR im Playground: keine App erbt diese Datei.
+ */
+
+.ds-face-inter { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; }
+.ds-face-inter-500 { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-weight: 500; }
+.ds-face-inter-600 { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-weight: 600; }
+.ds-face-inter-700 { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
+
+.ds-face-source-sans { font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; }
+.ds-face-source-sans-500 { font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif; font-weight: 500; }
+.ds-face-source-sans-600 { font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif; font-weight: 600; }
+.ds-face-source-sans-700 { font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
+
+.ds-face-source-serif { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-weight: 400; }
+.ds-face-source-serif-500 { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-weight: 500; }
+.ds-face-source-serif-600 { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-weight: 600; }
+.ds-face-source-serif-700 { font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif; font-weight: 700; }
+
+.ds-face-nunito-sans { font-family: 'Nunito Sans', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; }
+.ds-face-nunito-sans-500 { font-family: 'Nunito Sans', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif; font-weight: 500; }
+.ds-face-nunito-sans-600 { font-family: 'Nunito Sans', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif; font-weight: 600; }
+.ds-face-nunito-sans-700 { font-family: 'Nunito Sans', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
+
+.ds-face-sora { font-family: 'Sora', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; }
+.ds-face-sora-500 { font-family: 'Sora', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif; font-weight: 500; }
+.ds-face-sora-600 { font-family: 'Sora', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif; font-weight: 600; }
+.ds-face-sora-700 { font-family: 'Sora', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
+
+.ds-face-pt-sans { font-family: 'PT Sans', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif; font-weight: 400; }
+.ds-face-pt-sans-700 { font-family: 'PT Sans', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
+
+.ds-face-pt-serif { font-family: 'PT Serif', Georgia, 'Times New Roman', serif; font-weight: 400; }
+.ds-face-pt-serif-700 { font-family: 'PT Serif', Georgia, 'Times New Roman', serif; font-weight: 700; }

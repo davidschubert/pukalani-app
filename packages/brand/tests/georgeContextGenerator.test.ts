@@ -70,12 +70,19 @@ function context(overrides: {
   startCard?: Partial<typeof EMPTY_START_CARD>
   siteAnalysis?: string
   uiLocale?: string
+  conversation?: { role: 'george' | 'user' | 'system', body: string }[]
+  /** Nur für die Weiche W3 (a-14): sie greift nur, wo der Wert einen Sprecher hat. */
+  slotId?: string
+  team?: 'solo' | 'team'
 } = {}) {
   return {
     event,
     stepKey: 'context' as const,
-    slot,
+    slot: overrides.slotId ? slotById(overrides.slotId)! : slot,
     locale: 'de',
+    // Die Weiche W3 kommt aus dem Profil und reist seit a-14 bis in den
+    // Entwurfs-Auftrag; ohne Angabe bleibt sie leer (Rückwärts-Vertrag).
+    ...(overrides.team ? { team: overrides.team } : {}),
     // Die Route setzt hier IMMER einen Wert (mit Rückfall auf die
     // Inhaltssprache) — der Generator fällt deshalb nie selbst zurück.
     uiLocale: overrides.uiLocale ?? 'de',
@@ -85,6 +92,9 @@ function context(overrides: {
     siteAnalysis: overrides.siteAnalysis ?? '',
     hint: overrides.hint ?? '',
     dependencies: overrides.dependencies ?? [],
+    // a-9: leer heisst „in diesem Baustein wurde noch nicht geredet" — der
+    // Normalfall beim ersten Entwurf.
+    conversation: overrides.conversation ?? [],
     signal: overrides.signal ?? new AbortController().signal,
     onDelta: overrides.onDelta ?? (() => {}),
   }
@@ -220,11 +230,59 @@ describe('Der Aufruf an den Transport', () => {
     expect(prompt.indexOf('[start card · industry]')).toBeLessThan(prompt.indexOf('[a.pitch]'))
   })
 
+  /**
+   * DIE KONVERSATIONS-SENKE (a-9). Ohne diesen Beweis ist der ganze Umbau
+   * unsichtbar: der Verlauf stünde im Vertrag, käme aber nie im Prompt an — und
+   * George stellte weiter die Frage, die der Mensch längst beantwortet hat.
+   */
+  it('DAS GESPRÄCH REIST MIT — als Block UND als Arbeitsregel', async () => {
+    await plugin.georgeContextGenerator(context({
+      conversation: [
+        { role: 'george', body: 'Wen nennt ihr selbst zuerst?' },
+        { role: 'user', body: 'Kona Roasters und Lava Beans.' },
+      ],
+    }))
+    const { prompt } = lastCall()
+    expect(prompt).toContain('earlier in this conversation')
+    expect(prompt).toContain('you: Wen nennt ihr selbst zuerst?')
+    expect(prompt).toContain('person: Kona Roasters und Lava Beans.')
+    // Die Regel, die aus dem Material eine Wirkung macht.
+    expect(prompt).toContain('do NOT ask the same question again')
+  })
+
+  it('OHNE Gespräch steht weder der Block noch die Regel im Prompt', async () => {
+    await plugin.georgeContextGenerator(context())
+    const { prompt } = lastCall()
+    expect(prompt).not.toContain('earlier in this conversation')
+    expect(prompt).not.toContain('do NOT ask the same question again')
+  })
+
   it('OHNE Startkarte und ohne Slots bleibt die ehrliche Zeile stehen', async () => {
     await plugin.georgeContextGenerator(context())
     const { prompt } = lastCall()
     expect(prompt).toContain('no earlier answers were handed to you')
     expect(prompt).not.toContain('[start card')
+  })
+
+  /**
+   * DIE WEICHE W3 KOMMT WIRKLICH BIS IN DEN PROMPT (a-14).
+   *
+   * Der Beweis gehört HIERHER und nicht zu den puren Prompt-Tests: dort steht,
+   * dass die Regel gebaut WÜRDE, wenn jemand `team` reicht. Ob der Generator
+   * sie reicht, sieht man nur an dem, was beim Anbieter ankommt — und genau
+   * diese Naht war die Lücke, an der Davids Elevator-Pitch „Wir drehen und
+   * brennen …" entstand.
+   */
+  it('reicht die Solo-Weiche in den Auftrag durch — gemessen am gesendeten Prompt', async () => {
+    await plugin.georgeContextGenerator(context({ slotId: 'a.pitch', team: 'solo' }))
+    expect(lastCall().prompt).toContain('THE BRAND IS RUN BY ONE PERSON')
+    expect(lastCall().prompt).not.toContain('Write it in the first person plural ("we").')
+  })
+
+  it('OHNE Weiche steht die Regel nicht im Prompt — die Gegenprobe', async () => {
+    await plugin.georgeContextGenerator(context({ slotId: 'a.pitch' }))
+    expect(lastCall().prompt).not.toContain('THE BRAND IS RUN BY ONE PERSON')
+    expect(lastCall().prompt).toContain('Write it in the first person plural ("we").')
   })
 })
 
@@ -241,7 +299,7 @@ describe('Das Ergebnis im Vertrag', () => {
     expect(result.draft).toBe('ErstZweit')
     expect(result.model).toBe('m')
     expect(result.provider).toBe('p')
-    expect(result.promptVersion).toBe('george-a-8')
+    expect(result.promptVersion).toBe('george-a-15')
     expect(result.aborted).toBe(false)
   })
 
@@ -314,9 +372,16 @@ describe('Das Ergebnis im Vertrag', () => {
     }
   })
 
-  it('ein Slot ohne Auftrag wirft, statt still etwas zu erfinden', async () => {
-    const foreign = { ...context(), slot: slotById('b.purpose')! }
-    await expect(plugin.georgeContextGenerator(foreign)).rejects.toThrow(/b\.purpose/)
+  /**
+   * Bis BW2 stand hier `b.purpose` — ein Slot aus VERAS Tabelle, den Georges
+   * Tabelle nicht kannte. Diese Grenze ist mit dem einen Prompt-Bauer weg
+   * (BRAND-WIZARD-SESSIONS.md §3), die Zusage dahinter bleibt: eine Session
+   * ohne Entwurfs-Auftrag bekommt keinen stillen Allzweck-Text. `a.origin` ist
+   * eine reine Menschenfrage (`generator: 'none'`) und im selben Baustein.
+   */
+  it('eine Session ohne Entwurfs-Auftrag wirft, statt still etwas zu erfinden', async () => {
+    const foreign = { ...context(), slot: slotById('a.origin')! }
+    await expect(plugin.georgeContextGenerator(foreign)).rejects.toThrow(/a\.origin/)
     expect(streamMock).not.toHaveBeenCalled()
   })
 })

@@ -5,15 +5,21 @@ import { describe, expect, it } from 'vitest'
 import {
   BRAND_ADVISORS,
   BRAND_ADVISOR_KEYS,
+  BRAND_DESIGN_VOICE,
   BRAND_VOICE,
   type BrandAdvisor,
   advisorByKey,
+  advisorIsVoice,
   advisorOpenersFor,
   colleagueForStep,
   techniqueForStep,
   validateBrandAdvisors,
 } from '../shared/brandAdvisors'
-import { BRAND_STEP_KEYS } from '../shared/slotRegistry'
+import {
+  BRAND_DESIGN_STEP_KEYS,
+  BRAND_FOUNDATION_STEP_KEYS,
+  BRAND_STEP_KEYS,
+} from '../shared/slotRegistry'
 
 /**
  * DAS BERATERTEAM — was ohne diesen Beweis stillschweigend kaputtgehen kann.
@@ -37,8 +43,30 @@ import { BRAND_STEP_KEYS } from '../shared/slotRegistry'
 const localesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'i18n', 'locales')
 const LOCALES = ['de', 'en'] as const
 
-interface AdvisorCopy { role?: string, focus?: string, intro?: string }
+interface AdvisorCopy {
+  role?: string
+  focus?: string
+  /**
+   * Seit der Solo-Weiche (BW1-Inhaltsrunde 2026-09-09) darf das Intro ein Paar
+   * `{solo, team}` sein — es ist ein GESPROCHENER Satz und folgt der Anrede der
+   * Marke (`shared/brandTeamText.ts`). Die Wächter unten prüfen deshalb JEDE
+   * Fassung: eine Weiche darf keine Gelegenheit sein, in einem der beiden Zweige
+   * den Namen der Kollegin oder das Übergabe-Verbot zu vergessen.
+   */
+  intro?: string | { solo?: string, team?: string }
+}
 type Catalog = { brand: { advisors?: Record<string, AdvisorCopy> } }
+
+/** Alle Fassungen eines Intros — eine ohne Weiche, zwei mit. */
+function introVariants(entry: AdvisorCopy | undefined): string[] {
+  const intro = entry?.intro
+  if (typeof intro === 'string') return [intro]
+  if (!intro) return []
+  // Ein halbes Paar ist ein Loch und kein Sonderfall: der Rückfall in
+  // `teamTextKeyFor` griffe zwar, aber der Basis-Schlüssel steht dann nicht
+  // mehr da — die Anrede fiele auf den rohen Schlüssel zurück.
+  return typeof intro.solo === 'string' && typeof intro.team === 'string' ? [intro.solo, intro.team] : []
+}
 
 const catalogs = Object.fromEntries(LOCALES.map(locale => [
   locale,
@@ -46,10 +74,10 @@ const catalogs = Object.fromEntries(LOCALES.map(locale => [
 ])) as Record<(typeof LOCALES)[number], Catalog>
 
 describe('Berater-Registry', () => {
-  it('kennt genau die fünf Beraterinnen und Berater aus Davids Entscheidung', () => {
+  it('kennt die fünf aus Davids Entscheidung plus Frida für Schicht 2', () => {
     expect(BRAND_ADVISORS.map(advisor => advisor.key)).toEqual([...BRAND_ADVISOR_KEYS])
     expect(BRAND_ADVISORS.map(advisor => advisor.name))
-      .toEqual(['George', 'Vera', 'Milo', 'Nika', 'Otto'])
+      .toEqual(['George', 'Vera', 'Milo', 'Nika', 'Otto', 'Frida'])
   })
 
   it('ist in sich schlüssig — jeder Baustein genau einmal, kein leeres Feld', () => {
@@ -77,6 +105,31 @@ describe('Berater-Registry', () => {
     expect(techniqueForStep('manifesto').key).toBe('nika')
     expect(techniqueForStep('verbal').key).toBe('nika')
     expect(techniqueForStep('naming').key).toBe('otto')
+  })
+
+  it('GIBT DIE SECHS DESIGN-KAPITEL FRIDA — und nur sie', () => {
+    // Konzept §2.1: Schicht 2 gehört ihr, die Foundation bleibt unberührt.
+    for (const stepKey of BRAND_DESIGN_STEP_KEYS) {
+      expect(techniqueForStep(stepKey).key, stepKey).toBe('frida')
+      expect(colleagueForStep(stepKey)?.key, stepKey).toBe('frida')
+    }
+    for (const stepKey of BRAND_FOUNDATION_STEP_KEYS) {
+      expect(techniqueForStep(stepKey).key, stepKey).not.toBe('frida')
+    }
+  })
+
+  it('FRIDA IST DIE ZWEITE STIMME — George bleibt die erste', () => {
+    // `advisorIsVoice` ist die eine Stelle, die „spricht selbst" beantwortet:
+    // die zwei Listen „das Team hinter der Stimme" (Werkstatt-Steckbrief,
+    // Crew-Abschnitt auf /team) lesen sie, und ein `key !== 'george'` wäre
+    // dort seit D0 still falsch.
+    expect(BRAND_DESIGN_VOICE.key).toBe('frida')
+    expect(BRAND_DESIGN_VOICE.fullName).toBe('Frida Martens')
+    expect(advisorIsVoice('george')).toBe(true)
+    expect(advisorIsVoice('frida')).toBe(true)
+    for (const key of ['vera', 'milo', 'nika', 'otto'] as const) {
+      expect(advisorIsVoice(key), key).toBe(false)
+    }
   })
 
   it('DIE STIMME IST GEORGE — in jedem einzelnen Baustein', () => {
@@ -111,6 +164,7 @@ describe('Berater-Registry', () => {
       'Milo Berger',
       'Nika Sommer',
       'Otto Kessler',
+      'Frida Martens',
     ])
     for (const advisor of BRAND_ADVISORS) {
       // Davids Entscheidung 2026-09-02 (DECISION-LOG): die About-Zeile sagt,
@@ -159,7 +213,8 @@ describe('Berater im i18n-Katalog', () => {
         const entry = catalogs[locale].brand.advisors?.[advisor.key]
         if (!entry?.role?.trim()) gaps.push(`${advisor.key}.role fehlt in ${locale}`)
         if (!entry?.focus?.trim()) gaps.push(`${advisor.key}.focus fehlt in ${locale}`)
-        if (!entry?.intro?.trim()) gaps.push(`${advisor.key}.intro fehlt in ${locale}`)
+        const intros = introVariants(entry)
+        if (!intros.length || intros.some(intro => !intro.trim())) gaps.push(`${advisor.key}.intro fehlt in ${locale}`)
       }
     }
     expect(gaps).toEqual([])
@@ -168,8 +223,9 @@ describe('Berater im i18n-Katalog', () => {
   it('das Phasen-Intro nennt die Kollegin beim Namen', () => {
     for (const advisor of BRAND_ADVISORS) {
       for (const locale of LOCALES) {
-        expect(catalogs[locale].brand.advisors![advisor.key]!.intro, `${advisor.key}/${locale}`)
-          .toContain(advisor.name)
+        for (const intro of introVariants(catalogs[locale].brand.advisors?.[advisor.key])) {
+          expect(intro, `${advisor.key}/${locale}`).toContain(advisor.name)
+        }
       }
     }
   })
@@ -181,8 +237,9 @@ describe('Berater im i18n-Katalog', () => {
     const handoverWording = /übernimmt|takes over|führt ab hier|leads from here/i
     for (const advisor of BRAND_ADVISORS) {
       for (const locale of LOCALES) {
-        expect(catalogs[locale].brand.advisors![advisor.key]!.intro, `${advisor.key}/${locale}`)
-          .not.toMatch(handoverWording)
+        for (const intro of introVariants(catalogs[locale].brand.advisors?.[advisor.key])) {
+          expect(intro, `${advisor.key}/${locale}`).not.toMatch(handoverWording)
+        }
       }
     }
   })

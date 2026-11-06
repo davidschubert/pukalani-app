@@ -311,7 +311,7 @@ const columns = computed<TableColumn<TenantDto>[]>(() => [
   { id: 'tier', header: () => t('control.tenants.col.tier') },
   { id: 'registration', header: () => t('control.tenants.col.registration'), meta: { class: HIDE_LG } },
   { accessorKey: 'status', header: () => t('control.tenants.col.status') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function rowActions(tenant: TenantDto): DropdownMenuItem[][] {

@@ -109,7 +109,7 @@ const isKnownRole = (label: string) => te(`admin.roles.${label}`)
 const roleItems = computed(() => ASSIGNABLE_ROLES.map(role => ({ label: roleLabel(role), value: role as string })))
 
 const columns: TableColumn<AdminUserRow>[] = [
-  { id: 'select', header: () => '' },
+  { id: 'select', header: srOnlyHeader(() => t('ui.table.select')) },
   { accessorKey: 'name', header: () => t('admin.users.name') },
   { accessorKey: 'email', header: () => t('admin.users.email') },
   { accessorKey: '$createdAt', header: () => t('admin.users.joined'), id: 'createdAt' },
@@ -118,7 +118,7 @@ const columns: TableColumn<AdminUserRow>[] = [
   { accessorKey: 'emailVerification', header: () => t('admin.users.verified'), id: 'verified' },
   { accessorKey: 'status', header: () => t('admin.users.status'), id: 'status' },
   { accessorKey: 'labels', header: () => t('admin.users.labels'), id: 'labels' },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ]
 
 type UserAction = 'block' | 'unblock' | 'sessions' | 'delete'

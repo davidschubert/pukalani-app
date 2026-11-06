@@ -88,6 +88,9 @@ const pct = computed(() =>
             <span class="min-w-0">
               <span class="block text-sm font-medium">{{ b.label }}</span>
               <span v-if="b.note" class="block text-sm" style="color: var(--bw-ink-soft)">{{ b.note }}</span>
+              <!-- „Wofür brauchen wir das?" (§3a) — der Mensch antwortet
+                   besser, wenn er weiss, wozu die Antwort dient. -->
+              <span v-if="b.affects" class="bw-label mt-0.5 block" style="color: var(--bw-muted)">{{ b.affects }}</span>
             </span>
           </li>
         </ul>

@@ -115,6 +115,16 @@ const FIELDS = [
     keys: p => Object.values(p.chrome?.nav ?? {}).flatMap(e => (e ? str(e.labelKey) : [])),
   },
   {
+    // PS1 (2026-09-09): die Beschreibung eines Kindes im Aufklapper — dieselbe
+    // Klasse Versprechen wie der `labelKey` eine Zeile darüber und derselbe
+    // fremde Renderer. Ohne diesen Eintrag stünde unter „Marktvergleich"
+    // wörtlich `brand.nav.product.benchmark`, und Typecheck, Lint und
+    // Unit-Tests sähen davon nichts.
+    pfad: 'pukalani.chrome.nav.<id>.descriptionKey',
+    quelle: 'packages/brand/app/components/BwSiteNav.vue',
+    keys: p => Object.values(p.chrome?.nav ?? {}).flatMap(e => (e ? str(e.descriptionKey) : [])),
+  },
+  {
     pfad: 'pukalani.admin.modules[].labelKey',
     quelle: 'packages/admin/app/layouts/dashboard.vue · packages/admin/app/components/DashboardUserMenu.vue',
     keys: p => arr(p.admin?.modules).flatMap(m => str(m?.labelKey)),
@@ -173,6 +183,17 @@ const FIELDS = [
     pfad: 'pukalani.brand.completionCta.labelKey',
     quelle: 'packages/brand/app/pages/brand/[profileId]/[stepKey].vue',
     keys: p => str(p.brand?.completionCta?.labelKey),
+  },
+  {
+    // MV1 M4 (2026-09-05): die Zusatz-Einträge der Werkstatt-Leiste. Genau
+    // dieselbe Klasse Versprechen wie die Reiter-Registries — die LEISTE
+    // gehört dem brand-Layer, der TEXT dem Layer, der sich einträgt (heute
+    // `market` mit „Markt"). Ohne diesen Eintrag stünde in der Leiste
+    // wörtlich `market.nav.market`, sobald jemand den Schlüssel umbenennt,
+    // und Typecheck, Lint und Unit-Tests sähen davon nichts.
+    pfad: 'pukalani.brand.workspaceNavExtras[].labelKey',
+    quelle: 'packages/brand/app/composables/useBrandWorkspaceNavExtras.ts',
+    keys: p => arr(p.brand?.workspaceNavExtras).flatMap(e => str(e?.labelKey)),
   },
   {
     pfad: 'pukalani.billing.plans[].labelKey',

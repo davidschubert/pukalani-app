@@ -17,6 +17,18 @@ export default defineAppConfig({
        * Community gehören (apps/platform).
        */
       guidelinesFallback: false,
+      /**
+       * VERÖFFENTLICHT, ABER NOCH ENTWURF (BS1 R1, 2026-09-07) — die Slugs,
+       * über denen „Entwurf, in anwaltlicher Prüfung" steht und die `noindex`
+       * tragen. Die vollständige Begründung (warum eine App-Ansage und keine
+       * Spalte) steht im Kopf von `shared/pageDraftNotice.ts`.
+       *
+       * Layer-Default LEER: portfolio, control und platform fahren diesen
+       * Layer heute mit fertigen bzw. kundeneigenen Texten — sie sollen von
+       * dieser Möglichkeit nichts sehen. Gesetzt wird sie in `apps/branding`
+       * und dort in R3 wieder entfernt.
+       */
+      draftNotice: [] as string[],
     },
     // Chrome-Registry (S9): pages ist die CMS-Nav-Quelle — das blueprint-
     // Layout holt /api/pages/public NUR, wenn dieses Flag (= dieser Layer)

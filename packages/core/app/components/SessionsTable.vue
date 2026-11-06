@@ -42,7 +42,7 @@ const columns = computed<TableColumn<SessionRow>[]>(() => [
   { accessorKey: 'auth', header: () => t('account.sessions.auth') },
   { accessorKey: 'location', header: () => t('account.sessions.location') },
   { accessorKey: 'times', header: () => t('account.sessions.times') },
-  ...(slots.actions ? [{ id: 'actions', header: () => '' }] : []),
+  ...(slots.actions ? [{ id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) }] : []),
 ])
 </script>
 

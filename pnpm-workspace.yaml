@@ -109,12 +109,28 @@ catalog:
   # ^4.5.1, unhead ^3.2.3, vue-router ^5.2.0, h3 ^1.15.11 — dieselbe Linie.
   '@nuxtjs/i18n': ^10.6.0
   eslint: ^10.8.0
-  appwrite: ^26.2.0
-  node-appwrite: ^26.2.0
+  # In-Memory-Zip für das Brand-Kit-Bündel (BK1 K6, Konzept §2.17). Pur, ohne
+  # Abhängigkeiten, läuft in Node und im Browser — gebraucht wird nur
+  # `zipSync`/`strToU8` in `packages/brand/shared/brandKitZip.ts` (Server).
+  fflate: ^0.8.3
+  # Web-SDK auf 27 (AW2 Stufe 4): setzt Response-Format 2.0.0 voraus, also
+  # Appwrite-Server 2.0 — dev läuft dort, prod zieht nach. Aufgefangene
+  # Brüche: `presences.list/get/upsert/update` sind nicht mehr generisch
+  # (`Models.DefaultPresence` entfällt — wir casten ohnehin selbst) und das
+  # `Theme`-Enum heißt `BrowserTheme` (avatars.getScreenshot, ungenutzt).
+  appwrite: ^27.0.0
+  # Server-SDK auf 29 (AW2 Stufe 4): sendet Response-Format 2.0.0, setzt also
+  # ebenfalls Appwrite-Server 2.0 voraus. Aufgefangene Brüche über alle
+  # Stufen: der `Health`-Service ist seit 27 weg (Ersatz: REST-Helfer in
+  # core/server/utils/appwriteHealth.ts — dessen RESPONSE_FORMAT zieht mit),
+  # `account.createJWT` seit 28 (Ersatz: `users.createJWT` am Admin-Client),
+  # und seit 29 heißt `Execution.functionId` `resourceId`/`resourceType`
+  # sowie `tablesDB.cutoverMigration` `createCutover` (beide ungenutzt).
+  node-appwrite: ^29.0.0
   '@types/node': ^22.18.0
-  nuxt: ^4.5.1
-  # 4.11.0 bringt USplitter (Werkstatt-Zonen im brand-Layer).
-  '@nuxt/ui': ^4.11.0
+  nuxt: ^4.5.2
+  # 4.11.1 (Patch: Link-Prefetch unter Nuxt 4.5, Table-colspan, Form-method) — 4.11.0 bringt USplitter (Werkstatt-Zonen im brand-Layer).
+  '@nuxt/ui': ^4.11.1
   # EXAKT gepinnt, ohne Caret — und das ist hier keine Vorsicht, sondern die
   # Bedingung. Tiptap liegt bereits als auto-installierter optionaler Peer von
   # @nuxt/ui im Baum (3.27.1, genau eine Kopie je Paket). Wir nehmen NUR
@@ -130,12 +146,17 @@ catalog:
   # @nuxt/ui-Bump gehört diese Zeile mitgezogen — `pnpm check:single-copy`
   # (Liste enthält `@tiptap/core`) ist der Wächter.
   '@tiptap/extension-mention': 3.27.1
-  # Bild-Naht Schritt 2 (C14). 2.1.0 haengt NUR an h3 ^1.15.11 + @nuxt/kit
-  # ^4.5.1 — also genau an der Linie, die `overrides.h3` und `nuxt` hier
-  # ohnehin festhalten. `ipx` (und darueber `sharp`) ist eine OPTIONALE
-  # Abhaengigkeit und wird nur vom ipx-Anbieter gebraucht; dieses Repo
-  # transformiert in Appwrite, nicht auf dem App-Server.
-  '@nuxt/image': ^2.1.0
+  # Bild-Naht Schritt 2 (C14). 2.2.1 (2026-11-06, GHSA-p5vf-pjf5-ggj3: Speicher-
+  # fehler in der /_ipx-Route) haengt an h3 ^1.15.11 — die Linie, die
+  # `overrides.h3` festhaelt — und an @nuxt/kit ^4.6.3, also EINE Kit-Linie
+  # ueber unserem nuxt (4.5.x): das Modul bringt sein Kit als zweite Kopie
+  # mit (Kompatibilitaet laut Modul-Meta `nuxt >=3.1.0`, Build + Provider-
+  # Test gruen; `@nuxt/kit` steht bewusst nicht in check:single-copy). Die
+  # Luecke selbst trifft dieses Repo nicht: `ipx` (und darueber `sharp`) ist
+  # eine OPTIONALE Abhaengigkeit, unten ausgeschlossen, und wird nur vom
+  # ipx-Anbieter gebraucht — dieses Repo transformiert in Appwrite, nicht
+  # auf dem App-Server (Anbieter `appwrite` global in core/nuxt.config.ts).
+  '@nuxt/image': ^2.2.1
   # MUSS zur Range von @nuxt/ui passen (4.11.0 verlangt ^4.3.2), sonst liegen
   # zwei Tailwind-Kopien im Baum. Steht hier, weil `tailwindcss` DIREKT gebraucht
   # wird: packages/core/app/assets/css/main.css und docs/app/assets/css/main.css
@@ -149,18 +170,18 @@ catalog:
   '@nuxtjs/mdc': ^0.22.2
   # Fest gekoppelt: @pinia/nuxt 0.11.x verlangt pinia ^3, 1.0.x verlangt ^4 —
   # einzeln bewegt sich keines von beiden ohne unerfuellten Peer.
-  '@pinia/nuxt': ^1.0.1
-  pinia: ^4.0.2
+  '@pinia/nuxt': ^1.0.2
+  pinia: ^4.0.3
   # MUSS zu dem mitwandern, was nuxt intern verlangt (4.5.1 → @vue/shared
   # ^3.5.40). Bleibt der Katalog darunter, hält pnpm für die Workspace-Pakete
   # die alte vue-Version und nuxt zieht daneben die neue: mit ZWEI vue-Kopien
   # läuft der Nitro-Externals-Tracer im Zyklus vue → @vue/server-renderer → vue
   # und der Prod-Build stirbt an ENAMETOOLONG.
-  vue: ^3.5.40
+  vue: ^3.5.42
   typescript: ^5.9.3
   vitest: ^4.1.8
   vue-tsc: ^3.3.11
-  zod: ^4.4.3
+  zod: ^4.5.4
   jiti: ^2.7.0
   nodemailer: ^7.0.0
   ioredis: ^5.9.0

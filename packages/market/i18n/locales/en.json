@@ -1,0 +1,342 @@
+{
+  "market": {
+    "nav": {
+      "branding": "Your branding",
+      "market": "Market",
+      "findings": "{count} findings"
+    },
+    "page": {
+      "title": "Market",
+      "lead": "What your competitors say in public, translated into the same fields as your own foundation — statement by statement, each one with a quote and its source.",
+      "limit": "We show what brands say — not how successfully they say it.",
+      "unlocked": "This page is open because chapter B (purpose, vision and mission) is accepted.",
+      "sources": "Read from public marketing pages only. Team, imprint and contact pages are never fetched.",
+      "sourcesFour": "A candidate does not have to be a website: it can be one of your own brands from your account (the relaunch case), an entry from our hand-checked library, or another brand whose owner has released it."
+    },
+    "candidates": {
+      "title": "Candidates",
+      "hint": "The names come from your context chapter. The address is yours to enter — we never guess one.",
+      "name": "Competitor",
+      "url": "Website address",
+      "urlPlaceholder": "competitor.example",
+      "max": "At most {count} competitors per branding.",
+      "add": "Add a competitor",
+      "remove": "Remove {name}",
+      "suggested": "Suggested from your context chapter",
+      "newTitle": "New candidate",
+      "save": "Save as competitor",
+      "saveSelf": "Save as your old website",
+      "cancel": "Discard",
+      "selfHint": "Your old website does not count towards the five competitors and does not appear in the field — it shows up in the relaunch comparison."
+    },
+    "status": {
+      "pending": "Not read yet",
+      "reading": "Reading",
+      "fetched": "Profile created",
+      "excluded": "Excluded",
+      "failed": "Could not be read"
+    },
+    "reason": {
+      "robots": "The website does not allow the analysis (robots.txt).",
+      "tdm": "The website reserves its texts against automated analysis.",
+      "noText": "This page gives nothing away without a browser.",
+      "unreachable": "The address could not be reached.",
+      "withdrawn": "The owner has withdrawn the sharing permission."
+    },
+    "paywall": {
+      "title": "The market comparison is a paid step",
+      "body": "Building your foundation stays free. Holding it against the field is the paid part.",
+      "price": "Price in the intro call",
+      "beta": "Beta accounts have it unlocked.",
+      "unlockedTitle": "Unlocked for your beta account",
+      "unlockedBody": "Three runs per branding and day. A run on an unchanged state costs nothing.",
+      "toggle": "Beta account",
+      "toggleHint": "Prototype switch — shows both states of the paywall.",
+      "cta": "Discuss it in the first call"
+    },
+    "action": {
+      "compare": "Compare the market",
+      "again": "Run it again",
+      "toResult": "Open the report",
+      "back": "Back to the market page",
+      "needsCandidate": "Add a competitor first."
+    },
+    "run": {
+      "title": "Comparison run",
+      "lead": "Every competitor is checked first, then read, then translated into the field structure.",
+      "robots": "robots.txt checked",
+      "sitemap": "sitemap.xml read ({count} addresses)",
+      "pages": "{count} key pages read",
+      "profiled": "Profile created",
+      "waiting": "Waiting",
+      "comparing": "Comparing the field",
+      "done": "Report ready",
+      "replay": "Play the run again",
+      "llmsFound": "llms.txt found",
+      "llmsMissing": "llms.txt not found",
+      "jsonLd": "JSON-LD read",
+      "brandCheck": "Brand check started"
+    },
+    "result": {
+      "title": "The field, side by side",
+      "matrix": "Side by side",
+      "matrixHint": "One row per field, one column per brand. Every cell shows the short value; the quote and its source sit behind it.",
+      "field": "Field",
+      "you": "You",
+      "excluded": "excluded",
+      "empty": "not publicly formulated",
+      "missingOwn": "Not confirmed on your side yet",
+      "meta": "Report from {date}",
+      "none": "No report yet. Add candidates and run the comparison."
+    },
+    "field": {
+      "categoryLanguage": "Category language",
+      "pitch": "What they promise",
+      "audience": "Who it is for",
+      "firstChoice": "Why choose them first",
+      "purpose": "Purpose",
+      "values": "Values claimed",
+      "toneWords": "Tone",
+      "tagline": "Tagline",
+      "keyMessages": "Key messages",
+      "distinctiveAsset": "Verbal signature"
+    },
+    "claims": {
+      "convention": {
+        "title": "Conventions",
+        "hint": "What almost everyone in the field says. An entry ticket — it tells nobody apart.",
+        "count": "{shared} of {of} say it"
+      },
+      "overlap": {
+        "title": "Overlaps",
+        "hint": "Your statement, and who else in the field makes it.",
+        "count": "also said by {shared} of {of}",
+        "also": "Also said by"
+      },
+      "whitespace": {
+        "title": "Open ground",
+        "hint": "Nobody in the field says this. Whether it is worth saying is your call — an empty spot can be empty because nobody believes it."
+      }
+    },
+    "profiles": {
+      "title": "Competitor profiles",
+      "hint": "Every field with the sentence it came from. Empty fields stay empty — that is a statement about the category, not a gap in the report.",
+      "open": "Show profile",
+      "close": "Hide profile",
+      "read": "{count} pages read on {date}",
+      "none": "No profile — this competitor was not evaluated."
+    },
+    "evidence": {
+      "show": "Evidence",
+      "hide": "Hide evidence",
+      "source": "Source",
+      "fetched": "Retrieved {date}",
+      "stated": "stated in these words",
+      "implied": "derived from several passages",
+      "demoNote": "Prototype: the sources open the invented demo websites in this playground."
+    },
+    "finding": {
+      "kind": "Market finding",
+      "title": "What this shows about your own fields",
+      "hint": "A finding always addresses one of your own fields. It never judges a competitor and never drafts a sentence that names one.",
+      "field": "Your field",
+      "accept": "Accept",
+      "dismiss": "Dismiss",
+      "accepted": "Accepted",
+      "dismissed": "Dismissed",
+      "open": "Open the field",
+      "none": "This report has no open findings."
+    },
+    "stand": {
+      "title": "State",
+      "candidates": "Candidates",
+      "profiles": "Profiles created",
+      "excluded": "Excluded",
+      "findings": "Open findings",
+      "lastRun": "Last run",
+      "never": "never",
+      "missingOwn": "Your key messages are not confirmed yet — that row compares only what the field says.",
+      "limits": "Three runs per branding and day. Raw text is deleted after 24 hours; the profile keeps the short quotes and their source.",
+      "confidential": "Confidential, like your competitor notes: never in a share link, never in the export.",
+      "visibility": "Sharing"
+    },
+    "workshop": {
+      "chapter": "Purpose, Vision and Mission",
+      "session": "Your session",
+      "chipHint": "The market finding sits above the field it is about — the same place a conflict finding sits.",
+      "yourAnswer": "Your confirmed answer",
+      "log": "Confirmed in this chapter"
+    },
+    "demo": {
+      "title": "Market comparison — prototype",
+      "lead": "Five screens, one interaction type each (plan §2.11 and §7). The brand is the invented Kailua Coffee Co., the field is three invented competitors whose websites live in this playground — plus the old website of the brand itself.",
+      "note": "Nothing here talks to a server: no fetching, no model, no tables. This is the component template that packages M1 to M4 take over.",
+      "screen1": "1 · Market page: candidates, addresses, paywall",
+      "screen2": "2 · Run: what happens per competitor",
+      "screen3": "3 · Report: side by side, three lists, profiles, findings",
+      "screen4": "4 · Workshop: the market finding at the field",
+      "sites": "The invented competitor websites",
+      "screen5": "5 · Relaunch: your brand against your old website",
+      "checkNote": "The “Open the brand check” links are placeholders: the brand check is built, but it lives in its own app — this playground only shows where its score sits inside the market comparison."
+    },
+    "source": {
+      "label": "Source",
+      "website": "Website address",
+      "foundation": "Your own brand",
+      "library": "Library",
+      "shared": "Released brand",
+      "search": "Search a brand",
+      "foundationPlaceholder": "Pick one of your brands",
+      "libraryPlaceholder": "Pick a known brand",
+      "sharedPlaceholder": "Pick a released brand",
+      "foundationHint": "From your accepted fields. No fetching, no quote — these sentences are decided, not read off.",
+      "libraryHint": "Market profile from our library — computed by us and checked by hand against the source. An invented quote under a real brand name is something we never write.",
+      "sharedHint": "Visible only with the owner’s consent, and only the ten outward fields. Nothing from her workshop."
+    },
+    "library": {
+      "verifiedAt": "Checked by hand on {date}",
+      "stale": "Older than 90 days"
+    },
+    "score": {
+      "link": "Open the brand check",
+      "pending": "Brand check running along"
+    },
+    "frequency": {
+      "pages": "on {pages} of {of} pages"
+    },
+    "view": {
+      "website": "The website says",
+      "ai": "AI answers say"
+    },
+    "ai": {
+      "title": "AI outside view",
+      "label": "unverified outside view",
+      "consensus": "{agree} of {asked} AI answers agree",
+      "adopted": "adopted",
+      "dropped": "dropped",
+      "agree": "{agree} of {asked} answers",
+      "empty": "no answer the models agreed on",
+      "disclaimer": "Unverified outside view without evidence — it has no influence on the brand check score.",
+      "tableHint": "This is how AI answers describe these brands. There is no source and no quote behind it: only what at least two models say alike is adopted."
+    },
+    "relaunch": {
+      "title": "Your brand against your old website",
+      "lead": "On the left what your old website still says. On the right what you accepted in the foundation. Field by field, the same structure as for any competitor.",
+      "oldSite": "Old website",
+      "newFoundation": "New foundation",
+      "state": {
+        "same": "same",
+        "different": "different",
+        "onlyFoundation": "only in the foundation",
+        "onlyWebsite": "only on the website",
+        "neither": "stated nowhere"
+      },
+      "gapTitle": "What your foundation says and your website does not",
+      "gapHint": "The comparison turns into a list. Different means different, not worse — a website is allowed to be older than a decision.",
+      "gap": {
+        "missing": "Your website does not say this at all yet.",
+        "differs": "Your website says something else about this."
+      },
+      "gapNone": "Your website already says everything you have accepted."
+    },
+    "locked": {
+      "title": "The market comparison is waiting for chapter B",
+      "body": "What we compare is your own claim against the claims of the field. Until purpose, vision and mission are accepted, that claim does not exist yet — and the comparison would have an empty column on your side. You can still prepare candidates.",
+      "cta": "Go to purpose, vision and mission"
+    },
+    "stale": {
+      "notice": "Something has moved since this report — one of your fields, or a fetched state. It stays readable; a new run brings it up to date."
+    },
+    "optIn": {
+      "label": "My brand may appear as a candidate in other customers’ market comparisons",
+      "hint": "What becomes visible is only the market profile built from your confirmed fields — never conversations, drafts, notes or your own competitors. Revocable at any time: later runs exclude your brand, reports already written remain as a snapshot."
+    },
+    "error": {
+      "load": "The current state could not be loaded.",
+      "options": "The selection could not be loaded.",
+      "competitorAdd": "The candidate could not be saved.",
+      "competitorUpdate": "The change could not be saved.",
+      "competitorRemove": "The candidate could not be removed.",
+      "run": "The comparison could not run.",
+      "visibility": "The sharing setting could not be saved.",
+      "aiOff": "AI is switched off right now — the websites were read, nothing was interpreted."
+    },
+    "rejected": {
+      "market_locked": "The market comparison opens once chapter B is accepted.",
+      "market_no_profiles": "There is no market profile to compare yet — run the comparison first.",
+      "ai_disabled": "AI is switched off right now. The comparison needs it.",
+      "market_run_limit": "Three runs per brand and day are used up. Tomorrow it continues.",
+      "market_instance_limit": "All runs for today are used up. Please try again tomorrow.",
+      "competitor_limit": "A brand keeps at most five competitors.",
+      "competitor_duplicate": "That brand is already on your list.",
+      "competitor_url_invalid": "We cannot read that address — please include the domain.",
+      "self_limit": "One old site of your own per brand, not two.",
+      "shared_unavailable": "That brand is not (or no longer) shared for market comparisons."
+    },
+    "about": {
+      "title": "What the comparison does and does not do",
+      "does": "It shows, field by field, what other brands publicly say about themselves — every statement with a verbatim quote and the page it stands on.",
+      "doesNot": "It does not measure success. No ranking, no score per competitor, no claim about who owns the market.",
+      "noClaim": "It never writes an advertising line that names a competitor. Findings always address a field of your own.",
+      "optIn": "Your brand appears in someone else's comparison only if you explicitly release it. Without that, nobody sees it.",
+      "deletion": "The page text we read is cleared after 24 hours; the short quotes with their source remain. Market profiles and reports die with your branding.",
+      "bot": "How we read other websites — and how to shut us out"
+    },
+    "rating": {
+      "title": "Was this comparison useful?",
+      "hint": "One question, once. Your answer decides what gets built next.",
+      "score": "{score} out of 5",
+      "notePlaceholder": "Optional: one sentence",
+      "send": "Send",
+      "thanks": "Thank you — received.",
+      "failed": "The rating could not be saved."
+    }
+  },
+  "marketBot": {
+    "seoTitle": "PukalaniMarketBot — what it reads and how to block it",
+    "seoDescription": "Information for site owners about the branding.supply market crawler: which pages it reads, what it never touches, how long it keeps text and how to exclude it.",
+    "eyebrow": "Information for site owners",
+    "title": "PukalaniMarketBot",
+    "lead": "If this name appears in your access log, our market comparison has read a public page of your website. This page explains what happens — and how to stop it.",
+    "reads": {
+      "title": "What it reads",
+      "body": "Publicly reachable marketing pages only: home, about, services, pricing and the like. They are found through your home page, your sitemap and, if present, your llms.txt.",
+      "pages": "At most {max} pages per website and run.",
+      "size": "At most {chars} characters of text and {mb} MB per page.",
+      "noJs": "No browser, no JavaScript, no forms, no downloads — only the HTML you serve.",
+      "sequential": "One page after another, never in parallel. Fetching is a read, not a load test."
+    },
+    "skips": {
+      "title": "What is never requested",
+      "body": "Pages carrying these path segments are skipped before any request is made — personal data, legal texts, functional pages and dated content:",
+      "pii": "From the remaining text, e-mail addresses, phone numbers and personal names are removed before any language model sees it. The bot never touches login areas and never signs in anywhere."
+    },
+    "keeps": {
+      "title": "What happens to what was read",
+      "ttl": "Page text is cleared after at most {hours} hours. It is an intermediate product, not a record.",
+      "quote": "What remains are short quotes of at most {max} characters, each with the address of the page it stands on.",
+      "noRanking": "No ranking and no rating of your brand is produced. We show what brands say — not how successful they are with it.",
+      "noClaim": "No advertising line naming you or making you identifiable is derived from the result.",
+      "noTraining": "None of it is used to train models. The providers we use run without data retention."
+    },
+    "optOut": {
+      "title": "How to shut us out",
+      "body": "Two ways, both effective on the next run. Being excluded means your website is not analysed, and the customer who started the comparison is shown exactly that as the reason.",
+      "robotsTitle": "1. robots.txt",
+      "robotsBody": "We fetch your robots.txt before every access and obey it — including rules addressed to all bots.",
+      "tdmTitle": "2. Usage reservation (text and data mining)",
+      "tdmBody": "We recognise a machine-readable reservation under EU DSM Article 4 in these four forms. Any one of them is enough:",
+      "form": {
+        "header": "As an HTTP header",
+        "meta": "As an HTML meta tag",
+        "robotsMeta": "As a robots meta tag",
+        "tdmrep": "As tdmrep.json under /.well-known/"
+      },
+      "doubt": "In case of doubt we decide against analysis: if a reservation cannot be safely ruled out, your website is excluded."
+    },
+    "contact": {
+      "title": "Questions, objection, deletion",
+      "body": "Write to us. On request we exclude your domain permanently, without you having to change anything on your website."
+    }
+  }
+}
