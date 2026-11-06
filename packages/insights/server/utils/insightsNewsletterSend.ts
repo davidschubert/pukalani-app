@@ -347,6 +347,7 @@ export async function runInsightsNewsletterBatch(
     const outcome = await sendInsightsNewsletterIssueMail(event, {
       to: subscriber.email ?? '',
       subscriberId: subscriber.$id,
+      sendId: input.row.$id,
       post: input.post,
       intros: input.intros,
       href: input.href,

@@ -71,6 +71,51 @@ Webhook erreicht, hat keinen Platz im Menü.
 
 ---
 
+### RS1 c+d — Mail-Wächter auf Usage-/Metrics-API, Idempotenz im Newsletter-Stapel ✅ 2026-11-06
+
+**Auslöser.** Zwei Teilpakete aus OPEN-ITEMS „RS1" (Resend-Changelog-
+Durchsicht), die David nicht brauchten. (a) Tarif, (b) Webhook, (e)–(g)
+bleiben dort offen.
+
+**(c) Gebaut.** `scripts/ops/verify-mail-breaker.mjs` blättert nicht mehr bis
+zu 20 Seiten `GET /emails`, sondern macht zwei Aufrufe: `GET /usage` liefert
+die TAGESGRENZE (Schwelle = 80 % davon, heute 80 von 100 wie vorher; ohne
+Tagesgrenze Rückfall auf 80; `--alarm N` setzt eine feste Zahl) und
+`daily.used`; `GET /emails/metrics?start_date&end_date&metrics=sent,bounced,
+complained` liefert Menge (Blick 2) UND Bounces/Beschwerden (Blick 3) im
+gleitenden Fenster. Die Empfänger-Domains holt der Wächter nur noch, wenn es
+Bounces oder Beschwerden gibt (eine Seite `/emails`, best effort). Schalter
+`--bounce-alarm`, `--complaint-alarm`, `--resend-hours` und das Fehlerverhalten
+(ohne Schlüssel grün übersprungen, Netz/HTTP ⇒ Exit 2, fehlende Felder ⇒
+Exit 2) sind erhalten. Die gemessenen Antwortfelder stehen im Kopf der Datei.
+
+**(d) Gebaut.** Jede Ausgabe-Mail trägt `Resend-Idempotency-Key:
+insights-issue/<Sende-Zeile>/<Abonnent>` (`insightsNewsletterIdempotencyKey`,
+`packages/insights/shared/insightsNewsletter.ts`) — beides Zeilen-Ids, nie die
+Adresse. Stirbt ein Stapel zwischen Versand und Cursor-Schreiben, schickt das
+Fortsetzen dieselben Schlüssel, und Resend stellt kein zweites Mal zu. Grenzen
+laut Resend-Doku: Schlüssel gilt 24 h, höchstens 256 Zeichen; derselbe
+Schlüssel mit anderem Inhalt ⇒ 409, über SMTP eine abgelehnte Mail, die der
+Lauf als `failed` zählt (der Empfänger hatte die erste Fassung schon).
+
+**Beweise.** Echtes Konto: 24 h ⇒ „1 Mails, heute (UTC) 1/100 · Monat
+236/3000", 0/0, Exit 0 mit `--strict`; `--bounce-alarm 0 --strict` ⇒ ✗, Exit 1;
+Vorfall-Fenster `--resend-hours 400` ⇒ 237 Mails, 2 Bounces (gmail.com),
+0 Beschwerden — deckt sich mit dem Blättern von MZ1; ohne Schlüssel ⇒ grün
+übersprungen; kaputter Schlüssel ⇒ HTTP 400, Exit 2. insights-Tests 511/511
+(neu: Schlüsselbildung + „Cursor-Schreiben scheitert ⇒ Fortsetzen mit
+identischen Schlüsseln"), insights-Lint, branding-Typecheck, `pnpm
+lint:scripts` grün.
+
+**Gelernt:** `GET /usage` zählt `daily` je UTC-KALENDERTAG (`resets_at`
+23:59:59.999Z), kein gleitendes Fenster — der Wächter läuft um 04:17 UTC und
+hätte mit `daily.used` allein nur vier Stunden gesehen. Der „ein Aufruf statt
+Blättern" aus der Notiz hätte Blick 2 still blind gemacht. Die Menge kommt
+deshalb aus `/emails/metrics` (Fenster frei wählbar), von `/usage` nur die
+Grenze. Vor dem Umbau die Antwort messen, nicht dem Feldnamen glauben.
+
+---
+
 ### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
 
 **Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
