@@ -30,7 +30,533 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### Code-Login mit Zweitfaktor endete in einer halben Session ✅ 2026-10-24
+### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
+
+Anlass: Die Marketing-Seite verlinkt seit a77f79fd `admin.pukalani.app/changelog`,
+dort stand nur EIN Eintrag (AI-Runner, 2026-08-19).
+
+- **Bestand gemessen:** Tabelle `changelog` im Prod-Projekt `admin` hatte 7
+  Rows — 1 veröffentlicht, **6 fertige zweisprachige Entwürfe vom 2026-08-14**
+  (Reaktionen/Verweise, Mitglieder laden ein, Tages-Limit, Navigation/
+  Sucheintrag/Weiterleitungen, Export, Zwei-Faktor/Zeitzone/`@name`), die nie
+  jemand veröffentlicht hatte. Ihre Hilfe-Links zeigten in die falsche Sprache.
+- **Der v3.0.0-Entwurf war überholt** (sieben Schritte statt vier, `start.`
+  leitet auf `account.`, „Basic" als Plan, Kurse/Events „anschalten" obwohl
+  Early Access, ein Betreiber-Fix). Neu geschrieben aus der Hilfe
+  (`apps/help/content`) + Commits 2026-07-28 … 2026-10-27: 9 neue Einträge.
+- **Davids Freigabe** 2026-11-06: alle 15, der Satz zur früheren
+  Community-übergreifenden Moderations-Ansicht bleibt drin.
+- **Lauf:** erst lokal (`studio-1xsl`, 15/15), dann Prod per `upsertRow` mit
+  fester Row-Id (`cl-<datum>-<thema>` bzw. die alten Ids) — idempotent,
+  wiederholbar. Alle ohne `version`, `published: true`.
+- **Beweis (eigener Abruf):** `/api/changelog?limit=50` ⇒ `total 16`, neueste
+  zuerst; in Chrome `/de/changelog` (`lang=de-DE`) und `/changelog`
+  (`lang=en-US`) je 16 Überschriften in der richtigen Sprache, Markdown
+  gerendert. Text: [CHANGELOG-CL1-FREIGABE.md](archiv/CHANGELOG-CL1-FREIGABE.md).
+- Nicht angefasst: der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-
+  Changelog) und das Datum, das auch auf `/de` englisch formatiert ist
+  („Oct 27, 2026") — beides als Beobachtung, nicht als Auftrag.
+
+**Gelernt:** Ein fertiger Text in `plans/` ist nach drei Monaten kein fertiger
+Text mehr — fünf seiner Aussagen stimmten nicht mehr. Die Kundenhilfe ist der
+geprüfte Stand, gegen den ein Changelog geschrieben wird. Und: vor dem
+Schreiben die Tabelle LESEN — sechs fertige Einträge lagen seit August als
+Entwurf daneben. Die Sortierung stellt Einträge mit `version` vor alle ohne;
+gemischt angelegt, landet der älteste ganz oben (CHANGELOG-WORKFLOW.md).
+
+---
+
+### AW27: Appwrite 2.7.1 auf dev, CI und prod — Executor-Leck geschlossen, Secret rotiert, Account-WS pingt ✅ 2026-11-06
+
+Anlass: 2.7.0 (2026-11-03) und das Security-Release 2.7.1 (2026-11-04) —
+Executor 1.1.2 → 1.3.1: der alte folgte Symlinks in Log-/Build-Dateien, eine
+Function konnte so `_APP_EXECUTOR_SECRET` lesen und über die Executor-API
+Docker auf dem Host steuern. 2.7.0 braucht `migrate` (neue V25-Schritte).
+Reihenfolge wie immer: dev → CI (PR #65, E2E gegen die Wegwerf-Instanz 2.7.1
+16/16) → Davids „Ja, mit Rotation" → Ping-Fix live (Build bb380b92) → prod.
+
+- **dev** 2026-11-06 00:37–00:41 UTC: Werkzeug 161 s (Image-Pulls), `migrate`
+  9,2 s, 0 Fehler; 66 neue Appwrite-interne Tabellen, Nutzertabellen 388 →
+  388; E2E `apps/comments` 16/16, core-Unit 1740.
+- **prod** 2026-11-06 01:16–01:19 UTC mit `ROTATE_EXECUTOR_SECRET=1`: Aufruf
+  bis Beweise 99 s, `migrate` 24,1 s, 0 Fehler; Executor-API mit neuem Secret
+  200, mit falschem 401; zehn Hosts gesund, TLS grün, Parität 69/42/41/43,
+  OTP-Mail an `delivered@resend.dev` `success` in 1,73 s (Probe-Nutzer gelöscht).
+- **Core-Fix** `useRealtimeAccount`: Appwrite 2.7 schließt Realtime nach 120 s
+  Stille (#15059), unser cookie-nativer Account-WS sendete nie etwas. Er pingt
+  jetzt alle 20 s. Probe: stummer WS nach 120,2 s weg, pingender lebt.
+- „Deny realtime guests" bleibt AUS (Begründung im Runbook); Realtime-Grenzen
+  (100 Abos/Verbindung, 32 Verbindungen/Nutzer) mit ~15 Abos weit entfernt.
+- Offen geblieben: der Browser-Blick mit Anmeldung (Account-WS > 2 min stabil)
+  — Chrome war auf account. nicht angemeldet. Ob der keepAlive-Patch fallen
+  kann: AW28.
+
+Runbook: [APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md).
+
+**Gelernt:** Eine Appwrite-Version kann still ein KLIENT-Verhalten verlangen —
+2.7 trennt jeden Socket, der zwei Minuten schweigt. Die SDKs pingen, ein
+handgeschriebener `new WebSocket` nicht; Typecheck, Unit und E2E (Läufe unter
+2 min je Seite) sehen das nie. Bei jedem Realtime-Changelog-Punkt also auch
+nach EIGENEN WebSockets greppen. Und: ein UTC-Datum nie aus einer reinen
+Uhrzeit schätzen — `date -u +%T` zeigte nur 00:37, das Datum wurde als
+2026-11-07 geraten und stand so in Runbook und CLAUDE.md, bis der `$createdAt`
+des Prod-Tokens 2026-11-06 zeigte. Für Protokolle `date -u +%FT%T`.
+
+---
+
+### RA1 — Konto löschen verlangt eine frische Anmeldung ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-29: Firewall-Regeln können auf
+„Session age" und „MFA age" prüfen. Die Firewall gibt es nur auf Appwrite
+Cloud — wir sind self-hosted, also nichts zu übernehmen. Die IDEE dahinter
+(eine unumkehrbare Aktion verlangt eine FRISCHE Anmeldung statt „irgendwann
+eingeloggt") deckte aber eine echte Lücke auf: `DELETE /api/auth/account`
+löschte das Konto vollständig (DSGVO Art. 17) mit nichts als einem gültigen
+Cookie. Passwort ändern (altes Passwort) und MFA abschalten (MFA-Code) waren
+schon geschützt.
+
+**Davids Entscheidung (2026-11-06): frische Anmeldung statt Passwort-Feld.**
+Auf platform, control und branding gibt es Konten OHNE Passwort (Google,
+E-Mail-Code) — ein Passwort-Feld hätte sie ausgesperrt, ein eigener
+Lösch-Code per Mail wäre ein zweites Login-System gewesen. Eine neue
+Anmeldung kann jede Konto-Art und prüft MFA gleich mit.
+
+**Gebaut.**
+- `core/shared/recentAuth.ts` — pure Regel `isRecentAuth` (10 Minuten,
+  fail-closed bei fehlendem/kaputtem Datum, leichter Uhrenversatz zählt als
+  frisch), Grund `reauth_required`.
+- `core/server/utils/recentAuth.ts` — `requireRecentAuth(event)` liest
+  `$createdAt` der AKTUELLEN Session bei Appwrite (nicht aus Cookie oder
+  Body) und wirft 403 mit `reason: reauth_required`.
+- `account.delete.ts` ruft sie als ERSTES — eine Ablehnung hat nichts
+  angefasst, und das Cookie bleibt (der `finally` dort räumt es sonst ab).
+- Oberfläche: `AccountDeleteCard` erkennt den Grund (`isReauthRequired` in
+  `app/utils/fetchError.ts`, bewusst über den Grund, nicht über 403), erklärt
+  „zur Sicherheit neu anmelden" und schickt über `useLogout().reauthenticate()`
+  nach `/login?redirect=…` — danach steht die Person wieder auf derselben
+  Seite. `reauthenticate` ist eine eigene Funktion, weil `logout` direkt als
+  Klick-Handler hängt und sonst das Klick-Ereignis als Option bekäme.
+- Der Host-Wechsel (`site-session`, `embed-session`) reicht dasselbe Secret
+  weiter, legt also keine neue Session an — er macht nichts „frisch". Nur ein
+  echter Login tut das.
+
+**Beweis.** Unit: `packages/core/tests/recentAuth.test.ts` (Grenze ±1 ms,
+Gegenproben, fail-closed, Grund-Erkennung, Wächter „Prüfung steht VOR
+`deleteUserCompletely`"); core 1750/1750, Lint, Typecheck core + platform,
+`check:i18n-keys` grün.
+Klick-Beweis (lokale Dev-Appwrite, comments-Dev-Server aus dem Worktree,
+Wegwerf-Konto mit Label `moderator`, danach gelöscht): Session über die
+Admin-API angelegt und 11 Minuten altern lassen ⇒ `DELETE /api/auth/account`
+**403** `{"reason":"reauth_required"}`, kein `Set-Cookie`, `/api/auth/me`
+danach weiter 200, Konto existiert. Im Browser: „Account löschen" →
+„Endgültig löschen" ⇒ Dialog „Zur Sicherheit neu anmelden" → „Neu anmelden"
+⇒ `/de/login?redirect=/de/dashboard/settings/data` mit Toast; die ALTE
+Session antwortet jetzt 401. Neu angemeldet ⇒ zurück auf derselben Seite,
+Löschen ⇒ „Account gelöscht.", `users.get` **404**.
+
+**Offen ⇒ OPEN-ITEMS „RA2":** dieselbe Klammer für die übrigen
+unumkehrbaren Stellen (Owner-Rolle übergeben, Community stilllegen) — nicht
+geprüft.
+
+---
+
+### CL0 — Appwrite-Brotli-Hinweis geprüft; dabei: der Changelog-Link der Marketing-Seite zeigte seit Monaten auf einen toten Webhook ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-24 (Brotli, CVE-2026-111497): Server
+auf 2.6.2 heben UND die Runtime-Images für Functions/Sites neu ziehen.
+
+**Brotli — nichts mehr zu tun.** Server-Teil ist AW262 (2.6.2 seit 2026-10-27).
+Runtime-Teil, gemessen auf appwrite-prod: kein einziges `openruntimes/*`-Image
+außer dem Executor (der `ImagePuller` zog node-22/static-1/flutter-3.29 beim
+Neustart am 2026-10-27, also nach den Patches; das Aufräumen am 2026-10-28
+entfernte sie als ungenutzt), und **0 Functions, 0 Sites** in allen vier
+Projekten (Zählung direkt in MariaDB, `_6/_10/_11/_12_functions|_sites`).
+Konfiguriert ist nur `node-22` — keine der abgekündigten Runtimes.
+
+**Nebenbefund — Changelog-Track 2B war tot, die Doku sagte „AKTIV".** Die
+Function `changelog-draft` lebte im Prod-Projekt `comments`, das es seit dem
+Control-Cutover nicht mehr gibt. `changelog.pukalani.app` liefert nur noch
+Traefiks Ersatz-Zertifikat; der GitHub-Webhook (654489788) stand weiter auf
+`active=true`. Schlimmer: die **Marketing-Seite verlinkte genau diese Adresse
+als öffentlichen Changelog** — Ressourcen-Menü, Fuß und Beweis-Abschnitt
+(„öffentlich nachlesbar"), live viermal je Seite. Die echte öffentliche Seite
+liegt unter `admin.pukalani.app/changelog` (200, Sprachweiche per
+`Accept-Language` ⇒ 302 auf `/de/changelog`).
+
+**Erledigt (Davids Wahl 2026-11-06: „Doku + Webhook aufräumen", Link auf
+admin…/changelog):** `marketing.changelogUrl` → `https://admin.pukalani.app/changelog`;
+`ProofSection.vue` liest die Adresse jetzt aus `useMarketingSite()` statt einer
+zweiten festen Kopie; Anzeigename de/en angepasst; GitHub-Webhook deaktiviert
+(nicht gelöscht); CHANGELOG-WORKFLOW.md (2A ist DER Weg, 2B stillgelegt mit
+Hergang + Wiederbeleben), hosts-und-ports, Function-README, OPEN-ITEMS-Status.
+Der v3.0.0-Entwurf ist nachweislich nicht veröffentlicht ⇒ OPEN-ITEMS „CL1".
+
+**Gelernt:** Ein Endpunkt ist keine Seite. Die Marketing-Seite verlinkte die
+Webhook-Adresse, weil sie nach „Changelog" klang — im Juli antwortete sie mit
+200 (Ping), also fiel es nie auf. Beim Projekt-Umbau verschwand die Function
+still, weil Functions in keinem Wächter vorkommen (`verify-health` und
+`verify-tls` kennen `changelog.` nicht). Wer eine Adresse nach außen verlinkt,
+verlinkt eine Seite, die ein Mensch lesen soll — und eine Function, die nur ein
+Webhook erreicht, hat keinen Platz im Menü.
+
+---
+
+### RS1 c+d — Mail-Wächter auf Usage-/Metrics-API, Idempotenz im Newsletter-Stapel ✅ 2026-11-06
+
+**Auslöser.** Zwei Teilpakete aus OPEN-ITEMS „RS1" (Resend-Changelog-
+Durchsicht), die David nicht brauchten. (a) Tarif, (b) Webhook, (e)–(g)
+bleiben dort offen.
+
+**(c) Gebaut.** `scripts/ops/verify-mail-breaker.mjs` blättert nicht mehr bis
+zu 20 Seiten `GET /emails`, sondern macht zwei Aufrufe: `GET /usage` liefert
+die TAGESGRENZE (Schwelle = 80 % davon, heute 80 von 100 wie vorher; ohne
+Tagesgrenze Rückfall auf 80; `--alarm N` setzt eine feste Zahl) und
+`daily.used`; `GET /emails/metrics?start_date&end_date&metrics=sent,bounced,
+complained` liefert Menge (Blick 2) UND Bounces/Beschwerden (Blick 3) im
+gleitenden Fenster. Die Empfänger-Domains holt der Wächter nur noch, wenn es
+Bounces oder Beschwerden gibt (eine Seite `/emails`, best effort). Schalter
+`--bounce-alarm`, `--complaint-alarm`, `--resend-hours` und das Fehlerverhalten
+(ohne Schlüssel grün übersprungen, Netz/HTTP ⇒ Exit 2, fehlende Felder ⇒
+Exit 2) sind erhalten. Die gemessenen Antwortfelder stehen im Kopf der Datei.
+
+**(d) Gebaut.** Jede Ausgabe-Mail trägt `Resend-Idempotency-Key:
+insights-issue/<Sende-Zeile>/<Abonnent>` (`insightsNewsletterIdempotencyKey`,
+`packages/insights/shared/insightsNewsletter.ts`) — beides Zeilen-Ids, nie die
+Adresse. Stirbt ein Stapel zwischen Versand und Cursor-Schreiben, schickt das
+Fortsetzen dieselben Schlüssel, und Resend stellt kein zweites Mal zu. Grenzen
+laut Resend-Doku: Schlüssel gilt 24 h, höchstens 256 Zeichen; derselbe
+Schlüssel mit anderem Inhalt ⇒ 409, über SMTP eine abgelehnte Mail, die der
+Lauf als `failed` zählt (der Empfänger hatte die erste Fassung schon).
+
+**Beweise.** Echtes Konto: 24 h ⇒ „1 Mails, heute (UTC) 1/100 · Monat
+236/3000", 0/0, Exit 0 mit `--strict`; `--bounce-alarm 0 --strict` ⇒ ✗, Exit 1;
+Vorfall-Fenster `--resend-hours 400` ⇒ 237 Mails, 2 Bounces (gmail.com),
+0 Beschwerden — deckt sich mit dem Blättern von MZ1; ohne Schlüssel ⇒ grün
+übersprungen; kaputter Schlüssel ⇒ HTTP 400, Exit 2. insights-Tests 511/511
+(neu: Schlüsselbildung + „Cursor-Schreiben scheitert ⇒ Fortsetzen mit
+identischen Schlüsseln"), insights-Lint, branding-Typecheck, `pnpm
+lint:scripts` grün.
+
+**Gelernt:** `GET /usage` zählt `daily` je UTC-KALENDERTAG (`resets_at`
+23:59:59.999Z), kein gleitendes Fenster — der Wächter läuft um 04:17 UTC und
+hätte mit `daily.used` allein nur vier Stunden gesehen. Der „ein Aufruf statt
+Blättern" aus der Notiz hätte Blick 2 still blind gemacht. Die Menge kommt
+deshalb aus `/emails/metrics` (Fenster frei wählbar), von `/usage` nur die
+Grenze. Vor dem Umbau die Antwort messen, nicht dem Feldnamen glauben.
+
+---
+
+### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
+
+**Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
+das ist das `resend`-SDK in einer Server-Route, kein Modul; wir verschicken
+längst über Resend, per SMTP (`sendMail()`, nodemailer, Mailpit lokal). Was
+fehlte, war die Sicht darauf, was aus den Mails wird. Plan:
+[archiv/MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md).
+
+**Davids Entscheidungen (2026-11-06).** Nur Stufe A (Pull im Wächter, keine
+App-Änderung); rot ab 3 Bounces ODER 1 Beschwerde in 24 h; Stufe B (Webhook,
+Konto-Merker) zurückgestellt — lebt als Teilpaket (b) in OPEN-ITEMS „RS1"
+(eine Nachbarsitzung hatte am selben Tag die Resend-Changelog-Durchsicht
+angelegt; kein zweiter Eintrag).
+
+**Gebaut.** `scripts/ops/verify-mail-breaker.mjs` zählt in der Liste, die
+Blick 2 schon holt, `last_event === 'bounced' | 'complained'`; ins öffentliche
+CI-Log kommt nur die Empfänger-Domain. Schalter `--bounce-alarm`,
+`--complaint-alarm` (0 = Probealarm), `--resend-hours`.
+
+**Beweise.** Echtes Resend-Konto: 24 h ⇒ 0/0, grün, Exit 0 mit `--strict`;
+`--bounce-alarm 0 --strict` ⇒ ✗, Exit 1; Vorfall-Fenster `--resend-hours 400`
+⇒ 234 Mails, 2 Bounces (gmail.com), 0 Beschwerden; `pnpm lint:scripts` grün.
+
+**Gelernt:** Die Annahme „Spam an fremde Adressen erzeugt Bounces und
+Beschwerden" war falsch — beim Oktober-Vorfall 2 Bounces auf 234 Mails, die
+Opfer-Adressen waren echt. Blick 3 schützt den Absender-Ruf, er meldet keinen
+Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
+dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
+der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
+(`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
+
+---
+
+### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
+
+**Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die
+Antwort des Modells mit einem Zod-Schema: `brief: z.string().max(2000)`,
+`title: z.string().max(200)`. Die Route parste damit INNERHALB eines `try`,
+dessen `catch` nur loggt und weiterwirft. Zu dem Zeitpunkt ist das Video
+gelesen und der Lauf bezahlt — eine Ablehnung dort schützt nichts, sie wirft
+nur Geld weg und liefert dem Menschen davor einen 500er ohne Erklärung. Kein
+`safeParse`, keine Wiederholung, keine Kürzung.
+
+**Wie oft das passiert — gemessen, nicht geschätzt.** Sechs echte Läufe gegen
+genau diesen Prompt (`insights-b-1`, `gemini-3.1-flash-lite`,
+`only: ['google-vertex/eu']`, ZDR + `data_collection: deny`), Videos von 8 bis
+51 Minuten:
+
+| Video | Länge | Brief | Schema |
+|---|---|---|---|
+| `MT1n9FMXgmc` | kurz | 1.575 | OK |
+| `t_Zqh7EflhI` | 9 min | 1.673 | OK |
+| `EYXgfHNq6mo` | 11 min | 1.848 | OK |
+| `FFPaVFBEIhI` | 45 min | 1.897 | OK |
+| `WrehiIId62U` | 51 min | **2.027** | **wirft** (`brief: too_big`) |
+| `LEVGLXBzghc` | 8 min | **2.387** | **wirft** |
+
+**Zwei von sechs** über dem Deckel, also rund jeder dritte Lauf verloren — bei
+8 bis 10 Cent je Lauf. Und die Länge hängt NICHT an der des Videos: die 2.387
+Zeichen kamen aus acht Minuten, die 1.897 aus 45. Das Modell zielt auf den
+Deckel, den der Prompt ihm nennt, und trifft ihn mal von unten, mal von oben.
+Die vier „OK"-Werte liegen bei 92 bis 95 Prozent des Deckels — es war also
+nie eine Frage, OB das kippt.
+
+**Abhilfe.** Alle drei Felder des Schemas KLEMMEN jetzt, keines lehnt ab.
+`clampInsightsBrief` (pur, in `shared/insightsVideoBrief.ts`) schneidet am
+spätesten sauberen Schluss vor dem Deckel: es gewinnt das SPÄTERE von Zeilen-
+und Satzende (damit so viel wie möglich vom bezahlten Brief steht), sonst das
+Wort, sonst hart. Danach fällt eine abschliessende Zeile weg, die nur
+ankündigt — eine Markdown-Überschrift oder ein leerer Aufzählungs-Marker.
+Der `title` wird hart auf 200 zugeschnitten; er ist eine Beschriftung, und
+`insightsBriefTitle` schnitt ihn ohnehin schon auf dasselbe Mass.
+
+**Beweis (Gegenprobe mit denselben zwei Videos, echter Modell-Lauf):**
+2.027 ⇒ 1.895 Zeichen, Schluss „… in der Markenarbeit?"; 2.387 ⇒ 1.905,
+Schluss „… unterschätzen." Beide `parse` OK, beide auf einem Satzzeichen.
+Dazu zwei Zahlen im `completed`-Log (`briefChars`, `briefRawChars`): nur ihr
+Unterschied zeigt, dass der PROMPT seinen eigenen Deckel reisst — das ist eine
+Sache des Prompts, nicht der Route, und ohne die Zahlen sähe man es nie.
+Grün: 484 insights-Tests, `pnpm -r lint`, `lint:scripts`, `pnpm -r typecheck`,
+alle fünf Wächter.
+
+**Gelernt:** **Eine Validierung NACH einem bezahlten Modell-Aufruf darf nicht
+ablehnen, sondern muss klemmen.** Ein `z.string().max()` liest sich wie eine
+Sicherung und ist an dieser Stelle das Gegenteil: der Deckel ist UNSER
+Spaltenmass, kein Formfehler der Antwort. Die Regel gilt für jeden künftigen
+KI-Pfad dieses Monorepos — vor dem Aufruf streng ablehnen (K5 macht das in
+sechs Stufen, bis hin zur Frage, ob die Quelle überhaupt ablegbar ist),
+danach nur noch zuschneiden.
+
+**Zweitens gelernt:** **ein Deckel im Prompt ist eine Bitte, keine Grenze.**
+Wer einem Modell „höchstens N Zeichen" sagt, bekommt Antworten, die um N
+herum streuen — vier von sechs bei 92–95 %, zwei darüber. Wer danach hart auf
+N schneidet, bekommt abgebrochene Wörter (am 2026-10-27 im Klick-Beweis
+wörtlich „… den Markteintr"); wer ablehnt, verliert den Lauf. Nur ein Schnitt
+an einer Grenze ist beides nicht.
+
+**Drittens, als Nebenbefund:** drei der zehn probierten YouTube-Videos
+antworteten mit `502` / `PERMISSION_DENIED` vom Anbieter, binnen 1,2 Sekunden
+und ohne Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar. Das ist
+heute kein Schaden (die Route gibt den Fehler ehrlich weiter, bezahlt ist
+nichts), aber es heisst: ein `502` auf diesem Weg bedeutet nicht
+zwangsläufig „Anbieter kaputt", sondern oft „dieses Video nicht".
+
+---
+
+### LOG1 — `seo_read_failed` im pm2-Log: der Schwall war das Zertifikat, das Dauerrauschen war `help` ohne Appwrite ✅ 2026-10-28
+
+**Ausgangslage (Nebenbefund beim Bau von MON1):** im pm2-Fehlerlog auf
+app-prod standen hunderte Zeilen `community.seo_read_failed` /
+`community.redirects_read_failed` mit `communityId: "instance"`, obwohl
+`/api/health` überall `ok:true` meldete. Vermutet wurde die Pool-App
+`platform`.
+
+**Befund (Logs gelesen, nach App, Datum und Meldung gezählt):**
+(1) `platform` hat KEINE `instance`-Zeilen — ihre 58 Warnungen stammen vom
+2026-08-13/14 (U15-Einführung) und vom 2026-09-28 („Server Error", der
+ClickHouse-Platten-Vorfall), zuletzt eine am 2026-10-08. (2) Die
+„fetch failed"-Schwälle liegen in den ROTIERTEN Logs von admin (192),
+branding (801), portfolio (1244) und marketing (646), alle zwischen dem
+2026-10-16 und dem 2026-10-24 10:57 — das ist exakt das Fenster des
+abgelaufenen Appwrite-Zertifikats; mit dem Neustart um 11:33 sind die
+neuen Log-Dateien dieser Apps leer. Erledigt durch den Zertifikatsfix, kein
+Code. (3) Was WEITERLIEF: `help.pukalani.app` — `instance | Endpoint must be
+a valid string`, 796 Paare seit dem **2026-09-09** und 130 seit dem Neustart,
+etwa zwei je Stunde, bis heute. Die Hilfe-Site hat bewusst KEINE
+Appwrite-Instanz (`.env` leer, eigener Health ohne Appwrite); seit dem
+2026-09-08 lesen aber auch Silo-/Einzel-Instanzen ihre `instance`-Zeile
+(`shared/communitySettingsRow.ts`, Fall 2), und `createAdminClient` warf am
+leeren Endpunkt im SDK — der Fail-soft-Zweig fing das und meldete es als
+Lesefehler. Das Datum passt auf den Tag: der Fall begann mit dem Deploy, der
+`'instance'` einführte.
+
+**Behoben:** EINE pure Regel `appwriteEndpointConfigured()` in
+`packages/core/shared/appwriteConfigured.ts` („der Endpunkt ist der
+Schalter", wie SMTP-Host und Turnstile), Server-Wrapper
+`packages/core/server/utils/appwriteConfigured.ts`; beide optionalen Leser
+(`communitySeoStore.ts`, `communityRedirectStore.ts`) antworten ohne
+Endpunkt still `null` und cachen es, ohne Client und ohne Meldung. Geprüft
+wird NUR der Endpunkt — fehlt bei gesetztem Endpunkt Projekt oder Datenbank,
+ist das ein Konfigurationsfehler, der im Log stehen SOLL.
+
+**Beweis:** `packages/core/tests/communitySettingsReadersWithoutAppwrite.test.ts`
+— `createAdminClient` ist dort die Attrappe des SDK-Wurfs; der erste Fall war
+vor dem Fix rot (Meldung geloggt), danach grün, mit Gegenproben für 404
+(still), „fetch failed" (gemeldet — der Zertifikatsfall) und eine gelesene
+Zeile. Live-Beweis erbracht (2026-10-28, Build 37291a8e, Deploy 09:45 UTC):
+die letzte Warnzeile in `helppukalaniapp-error-3.log` stammt von 09:00 UTC,
+zwei erzwungene Seitenaufrufe mit 33 s Abstand (über der Microcache-TTL)
+um 10:35 UTC liessen den Zähler bei 134 stehen — null neue Zeilen seit dem
+Deploy, vorher ~2/h.
+
+**Gelernt (zwei Stück):** (1) **Ein Log-Befund wird erst nach App, Datum
+UND Meldung gezählt, bevor er einen Namen bekommt.** „Über 180 Zeilen in der
+Pool-App" waren in Wahrheit drei verschiedene Geschichten in sechs Apps —
+ein erledigter Vorfall, ein alter Platten-Vorfall und ein Dauerfehler in der
+einen App, die niemand verdächtigte. `cut -c10-19 | sort | uniq -c` je Datei
+kostet eine Minute und ersetzt eine Stunde Vermutung. (2) **Fail-soft braucht
+einen Begriff für „gibt es hier nicht".** Der Leser unterschied nur „Zeile
+fehlt" (still) von „alles andere" (Meldung) — eine App ohne Instanz fiel in
+die zweite Schublade, und weil die Seite trotzdem richtig aussah, hat es
+sieben Wochen lang niemand gesehen. Eine neue Pflicht-Abhängigkeit, die
+eine App bewusst nicht hat, braucht vor dem Fehlerzweig einen eigenen
+Ausgang.
+
+---
+
+### AI1 — Das Vision-Modell von branding.supply war tot, und nichts wurde rot ✅ 2026-10-27
+
+**Gefunden als Nebenbefund der Routen-Probe zu BI2-Frage C** (Plan
+`plans/BRAND-INSIGHTS-KURATION.md` §13). `apps/branding` setzte
+`pukalani.ai.visionModel: 'google/gemini-2.5-flash'`. Dieses Modell hatte bei
+OpenRouter **keinen ZDR-Endpunkt mehr** — sein ganzes Angebot waren drei
+Routen über „Google AI Studio", und AI Studio ist, mit einer eigenen Probe
+belegt, **nicht ZDR-fähig** (`only: ['google-ai-studio']` ⇒ 404). Weil
+`BRAND_PROVIDER_ROUTING` auf `zdr: true` + `allowFallbacks: false` klemmt,
+antwortete jeder Aufruf **404 „No endpoints found matching your data policy"**.
+Betroffen war der einzige Konsument von `aiVision`: die **Inspirationslesung**
+im Brand-Wizard. Dabei stand der Schalter auf Prod AN (`brandAiEnabled: true`,
+`aiModel` leer) — die Funktion war also nicht abgeschaltet, sie **scheiterte**.
+
+**Behoben** (Davids Wahl, 2026-10-27): `visionModel:
+'google/gemini-3.1-flash-lite'` — das einzige video-fähige ZDR-Gemini mit
+einem `google-vertex/eu`-Endpunkt, damit trägt EIN Modell die Bildlesung und
+ab K5 das Videolesen. Dazu, ebenfalls Davids Entscheidung („nur für Bild und
+Video pinnen"), die neue Konstante **`BRAND_PROVIDER_ROUTING_EU`**
+(`BRAND_PROVIDER_ROUTING` + `only: ['google-vertex/eu']`), die die
+Inspirationslesung benutzt: dort reicht ein Kunde eigenes Material hinein.
+**NICHT gepinnt** wurden die Zeichen-Entwürfe (`gemini-2.5-flash-image` hat
+als einzigen Endpunkt `google-vertex/global` — ein EU-Pin hätte die Funktion
+nicht geschützt, sondern abgeschaltet) und der Textweg (offen in OPEN-ITEMS
+`AI1`).
+
+**Beweis:** echter Lauf mit genau der neuen Kombination (Modell + EU-Pin +
+echtes 64×64-PNG) ⇒ HTTP 200, „Gelb und Blau, Schachbrettmuster", 0,05 Cent.
+Dazu `packages/brand/tests/brandProviderRouting.test.ts` (die EU-Fassung erbt
+die drei Bedingungen per Spread und darf nur den Ort ergänzen) und
+`pnpm --filter @pukalani/brand test` 3192/3192.
+
+**Der Wächter dagegen: `pnpm ops:ai-models`** (neu,
+`scripts/ops/verify-ai-models.mjs`). Er liest JEDEN Modell-Slug aus allen
+`app.config.ts` und prüft ihn gegen `/models?zdr=true`; für EU-gepinnte
+Felder prüft er zusätzlich, dass der `google-vertex/eu`-Endpunkt existiert.
+**Er braucht keinen Schlüssel** (die Liste ist öffentlich) und kostet nichts.
+Gegenprobe gefahren: mit dem alten Slug wird er rot (Exit 1) und nennt Datei
+und Feld, mit dem neuen grün (5/5).
+
+**Gelernt:** **Ein Modell-Slug bei OpenRouter ist kein Versprechen, sondern
+ein Angebot, das verschwinden kann** — und sein Verschwinden sieht wie nichts
+aus. Typecheck, Lint und 3192 Tests waren grün, der Code war richtig, nur die
+Gegenseite hatte sich geändert. Genau dieselbe Falle hatte am 2026-09-08 schon
+`google/gemini-2.5-flash-image-preview` erwischt; der Kommentar darüber stand
+zwei Zeilen neben dem toten Slug. Zweimal dieselbe Falle heißt: die
+Verabredung „beim nächsten Mal dran denken" trägt nicht, es braucht einen
+Wächter. **Zweitens: `zdr: true` ist keine Aussage über den ORT.** Es heißt
+„der Anbieter speichert nichts", nicht „der Anbieter rechnet in der EU" — in
+derselben Probe wurde unser Textmodell von **Amazon Bedrock** bedient,
+während im Plan stand, wir liefen über `google-vertex/eu`. Das war eine
+Annahme, die nie gemessen wurde.
+
+### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
+
+**Ausgangslage:** Resend meldete am 2026-10-26 das Tageslimit; im Dashboard
+standen Verifizierungs-Mails „Account Verification for Account" von
+noreply@pukalani.app an Empfänger wie „Etsy User! Your item has been
+successfully sold through our marketplace. https://a29.at/9hdF2k
+<opfer@gmail.com>". Hergang (aus `_10_users`, `_10_tokens` und dem
+App-Audit `audit_logs` des Projekts `account` rekonstruiert): ein Skript
+rief `POST /api/auth/signup` der Pool-App im 20-s-Takt auf — `name` = der
+Spamtext, `email` = eine fremde Adresse — und meldete sich danach per
+`POST /api/auth/logout` wieder ab. Appwrite setzt den Namen in Kopf und Gruß
+der Verifizierungs-Mail, unser Resend-Konto war damit ein Spam-Relais: 15
+Probeläufe am 2026-10-25 (drei IPs, darunter ein verifiziertes Testkonto und
+ein Versuch über `PUT /api/auth/profile` + `POST /api/auth/verification`),
+209 Mails in der Nacht zum 2026-10-27 von einer IP (138.124.33.231). Der
+Takt lag knapp unter unserem Limit von 5/min je IP — das einzige Fenster
+der Middleware war eine Minute. Appwrites eigene Abuse-Limits greifen für
+Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
+
+**Gebaut (Core, zwei Pakete + Aufräumen):**
+1. **Anzeigename ist kein Nachrichtenfeld** — pure Regel
+   `packages/core/shared/displayName.ts` (`displayNameProblem`: Link/Domain,
+   `@`, Steuer- und Bidi-Zeichen, mehr als 80 Zeichen), EINE Zod-Fabrik
+   `displayNameField()` in `schemas/auth.ts` für Registrierung, OTP-
+   Registrierung UND Profil (`schemas/profile.ts` — der zweite Hebel aus den
+   Probeläufen). Beweis `tests/displayName.test.ts`.
+2. **Mail-Routen haben ein Stundenfenster und eine Notbremse** — für die vier
+   Routen in `ALWAYS_LIMITED` (signup, otp, recovery, verification) zusätzlich
+   20 je Stunde und IP und 60 je Stunde über ALLE IPs je Route
+   (`auth.mail_route_breaker` einmal je Fenster im Log). Beweis
+   `tests/rateLimitMailRoutes.test.ts`: die 21. Registrierung im 20-s-Takt
+   bekommt 429, die 61. über 60 IPs ebenfalls.
+3. **Cloudflare Turnstile als Bot-Beweis** an signup/otp/recovery
+   (`server/utils/turnstile.ts`, `TurnstileWidget.vue`, Gate = beide Env-
+   Variablen gesetzt, fail-closed bei Cloudflare-Ausfall). Ohne Schlüssel
+   exakt das Verhalten von vorher. **SCHARF SEIT 2026-10-27 (TS1, über Davids
+   Chrome):** Widget „Pukalani Apps" im Cloudflare-Konto Hawaii Studio,
+   Hostnames `pukalani.app` + `branding.supply` (Turnstile deckt Subdomains
+   von selbst mit, ein Wildcard-Eintrag ist dort gar nicht vorgesehen), Modus
+   Managed. Beide Variablen in den Site-Envs platform, admin, portfolio,
+   branding (`.env.bak-2026-10-27-turnstile` liegt daneben; `comments` hat
+   keine eigene Site mehr, der Host läuft über platform), danach nur
+   `pm2 startOrReload … --update-env` — kein Deploy nötig, die Runtime-Config
+   liest die Env beim Start, auch den `NUXT_PUBLIC_`-Site-Key. Beweise:
+   signup/otp/recovery ohne Token ⇒ 403 `bot_check_required` auf allen vier
+   Hosts (Build 38a107bf), kein `auth.turnstile_misconfigured` im Log, der
+   Site-Key steht im HTML von /register, und der Knopf „Account erstellen"
+   ist im Browser freigegeben (er bleibt gesperrt, bis Cloudflare den Token
+   geliefert hat). Beide Variablen sind seither PFLICHT im Wächter
+   `verify-site-env.mjs`. Rezept: `docs/runbooks/DEPLOYMENT.md`.
+   **Nachgeprüft 2026-10-28 (PR #55, `pnpm ops:turnstile`):** der neue
+   Wächter `scripts/ops/verify-turnstile.mjs` fragt die vier Sites SELBST
+   (nicht die Dateien): `POST /api/auth/recovery` ohne Token ⇒ 403
+   `bot_check_required` UND `/forgot-password` trägt das Widget — 4/4 grün
+   auf account, admin, pukalani.studio, branding.supply; `pnpm ops:site-env`
+   grün; alle Hosts `/api/health` ok:true (Build 188a5b4e); signup ohne
+   Token 403 auf account/demo/branding (admin + studio haben die
+   Registrierung ohnehin aus); kein `turnstile_misconfigured` in den
+   pm2-Logs; beide Variablen in allen vier pm2-Prozessen (`pm2 jlist`).
+4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
+   `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
+   läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
+   `users.read` hat).
+
+**Bewusst nicht gebaut:** Honeypot-Feld und „unter 4 Sekunden abgelehnt" —
+der Angreifer sprach die API direkt an, mit 20 s Abstand; beides träfe nur
+Formular-Bots und kostete echte Nutzer. Eine strenge Same-Origin-Pflicht an
+den Mail-Routen (Anfragen ohne `Origin`/`Sec-Fetch-Site` abweisen) ebenfalls
+nicht: der Header ist frei setzbar, die bestehende `csrfOriginCheck`-
+Middleware weist Browser-Cross-Site schon ab, und die Verify-Skripte rufen
+die Routen ohne Browser.
+
+**Gelernt:** (1) Jede Route, die eine Mail mit NUTZERTEXT auslöst, braucht
+drei Dinge: eine Textregel (kein Link, keine Adresse), ein Fenster länger
+als eine Minute und einen Deckel über alle IPs — ein Limit je IP allein wird
+mit Adressrotation oder Geduld umgangen, und eine Minute ist für einen
+Mail-Versand kein Fenster. (2) Die Nuxt-Seite ist bei 200ern blind
+(`access_log off` je ploi-Site, pm2-out leer); die Wahrheit steht in der
+Appwrite-Datenbank — `_<projekt>_tokens` trägt IP und User-Agent des
+AUSLÖSERS (hier unser eigener Server mit dem Node-SDK, also der Weg über
+unsere Route), das App-Audit `audit_logs` die IP des Menschen dahinter.
+(3) Resends „To"-Spalte zeigt den Anzeigenamen — wer dort Text sieht, der
+nicht wie ein Name aussieht, sucht den Namen, nicht die Adresse. (4) TS1 lief in ZWEI Sitzungen parallel: die eine schaltete über Davids
+Chrome scharf und schrieb die Doku, die andere baute den Wächter (PR #55) —
+beide fassten OPEN-ITEMS, DEPLOYMENT und `verify-site-env.mjs` an. Beim
+Zusammenführen gilt `main` (die Pflicht-Einträge standen dort schon, der
+PR hätte sie verdoppelt); nur der Wächter, das pm2-Reload-Rezept und
+`ops:turnstile` kamen aus dem PR dazu. Und: „scharf" beweist nur das Skript
+gegen die laufenden Prozesse — die `.env` kann richtig sein und pm2 trotzdem
+die alte Umgebung tragen (`pm2 jlist` zeigt `pm2_env`), ein ploi-Deploy ohne
+App-Änderung lädt nicht neu.
 
 **Ausgangslage (prod, api.pukalani.app, Appwrite 2.6.1, beim Mail-/Standort-
 Beweis nach dem Upgrade gefunden):** Davids Konto hat `mfa=1` mit
@@ -134,6 +660,51 @@ war die Lücke über `X-Forwarded-Host`: diesen Header prüft nginx NICHT, und
 (`xForwardedHost: true`). Der App-Beweis läuft deshalb über den Header, den
 der Proxy nicht anfasst — und unterscheidet am `content-type` bzw. am Rumpf,
 WER geantwortet hat.
+
+---
+
+### AW262: Appwrite 2.6.2 (Security-Release) auf dev und prod — Brotli CVE-2026-111497 geschlossen ✅ 2026-10-27
+
+Anlass: 2.6.2 erschien am 2026-10-24 fünf Stunden nach dem Prod-Sprung auf
+2.6.1 — `appwrite/base` 2.2.7 mit `brotli-libs` 1.2.1-r0 (Out-of-bounds-Write
+im Decoder; Appwrites ausgehender HTTP-Client dekodiert `br`), dazu Härtung an
+Keys/Realtime/Storage, neu `_APP_MEMORY_LIMIT` (512M), `_APP_JOBS_SECRET` darf
+nicht leer sein, **kein Schema**. CI seit 2026-10-27 (Cloud-Sitzung), dev und
+prod am selben Tag von Davids Terminal (Auftrag „erst dev, dann prod").
+
+Beweise: dev (OrbStack, 20:51–20:56 UTC) Werkzeug 23,1 s, `migrate` 1,6 s,
+`health/version` 2.6.2, Brotli 1.2.1-r0, PHP 8.5.12, keepAlive 367 `false`,
+`doctor` 🟢 jobs, Health/DB/Cache/Storage/Time `pass`, Mail-OTP über Mailpit
+`success`, `pnpm -r test` 27 Pakete / 7644 grün, Playwright `apps/comments`
+16/16. Prod (`ops/appwrite-upgrade-2.6.2.sh` per ssh, 21:09–21:12 UTC):
+Dump 22,4 MB / 870 Tabellen, Werkzeug 28,1 s, `migrate` 19,6 s (253 „already
+exists", 0 Fehler), **Aufruf bis Beweise 81 s**; danach 0 Worker-/Realtime-
+Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
+(`--http1.1`), `verify-tls` 6/6, `schema-parity` 69/42/41/42, Health je
+Projekt `pass`. Mail-Beweis nach Leerlauf (2026-10-28 00:39 UTC): Probe-Nutzer
+per Gast-OTP-Token an `delivered@resend.dev`, Worker `mail.template otp ·
+mail.status success` in 1,67 s, Nutzer per Runtime-Key der Site wieder gelöscht
+(204, Gegenprobe 404). Alte Images am 2026-10-28 auf prod und dev entfernt
+(nur ungenutzte Appwrite-Stack-Tags + dangling), prod-Platte 66 % → 34 %.
+Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+
+**Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":
+V25 läuft idempotent erneut durch und schreibt hunderte gelbe „already
+exists"-Zeilen — die Zahl zählen, auf 0 echte Fehler prüfen, nicht erschrecken.
+(2) Zwei Beweis-Zeilen des vorbereiteten Skripts bewiesen nichts: `apk info -v
+PAKET` druckt die Beschreibung (richtig: `apk info -v | grep ^brotli-libs`),
+und `php -r 'echo ini_get("memory_limit")'` zeigt die CLI-ini (128M), weil
+Appwrite den Wert per `ini_set` in `app/init.php` setzt — Beweis ist die Env im
+Container. Ein Beweis, der auf dev das Falsche zeigt, wird auf dev repariert,
+bevor prod läuft. (3) Backticks in einer doppelt gequoteten `echo`-Zeile sind
+Befehls-Substitution — die „Erklärung" `\`apk info -v <pkg>\`` warf auf prod
+einen Syntaxfehler ins Log (harmlos, aber hässlich). (4) Der HAUPT-Checkout
+hat ein veraltetes `node_modules` (`vitest` in brand, `mmdb-lib` in core
+fehlen ⇒ jede Dev-Route 500): Beweise im frisch installierten Worktree fahren,
+Dev-Server vor Playwright selbst starten. (5) Die Migrations-Keys haben
+keinen `users.*`-Scope; der Mail-Beweis per Probe-Nutzer läuft mit dem
+RUNTIME-Key der Site auf dem App-Server (per `ssh`, Key bleibt dort), die
+`userId` selbst gewählt, Adresse `delivered@resend.dev`.
 
 ---
 
@@ -11815,3 +12386,218 @@ frühes Messen einen Zustand zeigte, den es nie gab). (4) **Mailpit ist der einz
 Beweis für einen Double-Opt-in:** „200 zurückbekommen" sagt nichts darüber, ob die Mail den
 richtigen Link, die richtige Sprache und den richtigen Satz trägt — und „keine zweite Mail" ist
 überhaupt nur am Postfach zu sehen.
+
+---
+
+## BI1 I5b — Brand Insights: den Newsletter versenden (2026-10-27)
+
+**Was gebaut wurde** (vier Commits — Core eigens; gebaut von einem Opus-Lauf nach Auftrag,
+geprüft und in einem Punkt korrigiert im Hauptloop): die VERSAND-Hälfte von Paket I5. Damit
+ist I5 komplett.
+
+- **Ein Beitrag ist eine Ausgabe (Davids Entscheidung 2026-10-27).** Kein zweiter Editor, keine
+  freie Ausgabe: am freigegebenen Beitrag steht ein Knopf, Betreff und Text entstehen aus Titel,
+  Vorspann und Adresse. Begründung: ein zweiter Text, der dasselbe sagt, veraltet getrennt vom
+  ersten — und das Versprechen lautet wörtlich „wir schreiben, wenn ein neues Stück erscheint".
+- **Nur von Hand.** Kein Auslöser an der Freigabe, kein Sweep. §3.3 sagt es („ohne Davids
+  Zeichen erscheint auch in einer Woche nichts"), und ein Versand an echte Menschen, den ein
+  Zustandswechsel auslöst, ist der Unfall, den niemand zurückholt. Der Knopf fragt und nennt
+  dabei die Zahl — beim Fortsetzen die AUSSTEHENDEN, nicht die gesamten.
+- **Stapelweise und fortsetzbar**, und das ist der Kern des Pakets: `insights_sends`
+  (Migration insights-008, `uq_post_id` unique) hält einen Cursor auf die zuletzt bediente
+  Zeilen-Id; fortgesetzt wird dahinter. Eine kaputte Adresse zählt als `failed` und hält nichts
+  auf; ein fehlender Mailer bricht ab, ohne den Cursor vorzurücken — dann stimmt etwas am
+  Server, nicht an einer Adresse.
+- **Versendet wird nur, was draussen eine Seite hat:** nicht nur `published`/`updated`, sondern
+  auch der Format-Riegel und das Markenprofil ohne Marken-Zeile ⇒ `no_public_address`. Ohne das
+  führte eine Ausgabe über ein gesperrtes Duell fünfhundert Klicks in ein 404.
+- **Core (eigener Commit):** `sendMail()` reicht Kopfzeilen durch — gebraucht für
+  `List-Unsubscribe` je Empfänger. **Kein** One-Click nach RFC 8058: das verlangt einen
+  Endpunkt, der ein form-kodiertes POST ohne Token im Körper verträgt; eine Zusage, die der
+  Server nicht einlöst, wäre schlechter als keine.
+- **Reiner Text**, wie jede Mail dieses Repos. Eine HTML-Vorlage wäre eine zweite Darstellung
+  desselben Inhalts samt Bildpfaden und Dark-Mode-Fragen — ein eigenes Vorhaben.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree auf 3030, lokale Dev-Instanz, **Mailpit**,
+Admin-Session per `users.createSession`): 63 Abonnenten gesät, davon drei, die nichts bekommen
+dürfen (nie bestätigt · abgemeldet · vom Sweep geleert). Die Zustands-Route zählte **60**, nicht
+63. Stapel 1: 50 verschickt, 10 offen. Stapel 2: 10 verschickt, fertig. Im Postfach **60 Mails
+an 60 verschiedene Adressen, keine einzige doppelt** — damit ist der Cursor-Pfad
+(`Query.greaterThan('$id', …)` + `orderAsc('$id')`) gegen echtes Appwrite 2.6.1 bewiesen, was
+kein Unit-Test leisten kann. 30 Betreffzeilen deutsch, 30 englisch (Sprache des EMPFÄNGERS).
+Die drei Ausgeschlossenen bekamen nichts. Der dritte Klick auf denselben Beitrag: **409
+`already_sent`**, Postfach blieb bei 60. Im Rohtext einer Mail steht `List-Unsubscribe` mit dem
+Token DIESES Empfängers; zwei Mails tragen verschiedene Token. Der Abmelde-Link aus einer echten
+Newsletter-Mail wirkt (200). Riegel zu ⇒ Versand-Route 404. Danach Riegel zurück, Zeilen und
+Postfach geräumt, `.env` gelöscht.
+
+**Ein Befund aus dem Klick-Beweis — und Davids Entscheidung dazu.** Mit EINEM Einleitungs-Feld
+stand der deutsche Satz auch über den englischen Mails, während der Rest englisch war. Das ist
+dieselbe Wunde, die §3.2 auf der Seite vermeidet. David hat **zwei Felder** gewählt (`introDe`,
+`introEn`): jeder bekommt seine Einleitung ODER KEINE, nie die der anderen Sprache — und die
+Einleitung folgt der FASSUNG, die wirklich rausgeht, nicht der angeforderten. Migration 008
+bekam dafür zwei Spalten statt einer; sie wurde VOR ihrem ersten Prod-Lauf geändert, deshalb
+keine 009 hinterher. Nachgemessen am Postfach: nur `introDe` gefüllt ⇒ zwei deutsche Leser
+sehen den Satz, zwei englische bekommen eine saubere englische Mail ohne ihn.
+
+**In Betrieb (2026-10-27):** Prod-Migration `insights-008` mit Davids Ja gegen die Instanz
+`branding` gefahren (zentraler Runner mit `--app branding`; der Lauf zog die 005/006/007 der
+Nachbar-Sitzungen idempotent mit, alles „existiert bereits"). Nachgemessen am Projekt: Tabelle
+`insights_sends` server-only (`permissions: []`, `rowSecurity: false`), alle zwölf Spalten und
+der Unique-Index `uq_post_id` auf `available`, 0 Zeilen. `pnpm ops:schema-parity` danach grün
+auf allen vier ausgerollten Instanzen (branding 43/43), Spalten-Parität deckungsgleich. Der
+Riegel bleibt zu — es kann also nichts rausgehen, bevor die Config-Zeile fällt.
+
+**Wächter:** insights 444 Tests · core 1710 · branding 32 · Lint insights/branding/scripts
+(core eine Alt-Warnung) · typecheck branding exit 0 · check:i18n-keys 312 · check:manifests 26/9
+· check:bilanz · check:single-copy · check:doc-links.
+
+**Gelernt:** (1) **Ein Stapel-Versand ist erst bewiesen, wenn er einen Stapel ÜBERSCHREITET.**
+Mit 50 Empfängern wäre jeder Test grün gewesen, ohne dass der Cursor je angefasst wird — genau
+der Pfad, an dem ein Fehler Menschen doppelt anschreibt. Die Zahl der Testdaten gehört zur
+Testidee, nicht zum Zufall. (2) **Zweisprachigkeit endet nicht an der Seite.** Der Beitrag ist
+zweisprachig, die Mail folgt dem Empfänger — ein einzelnes freies Textfeld daneben bricht die
+Regel still, und zwar nur bei der Hälfte der Leser, also genau dort, wo man es beim Testen mit
+sich selbst nie sieht. (3) **Mailpits JSON-Feld `Headers` ist nicht die Wahrheit:** die
+`List-Unsubscribe`-Zeile fehlte dort und stand trotzdem im Umschlag — der Beweis für eine
+Kopfzeile ist `/api/v1/message/<id>/raw`, nicht die aufbereitete Ansicht.
+
+---
+
+## MON1 — Wächter gegen stille Prod-Ausfälle: Erreichbarkeit, Mail-Missbrauch und ein Alarmweg, der geprobt ist (2026-10-28)
+
+**Ausgangslage:** zwei stille Vorfälle im Oktober. Das Zertifikat von
+`api.pukalani.app` war vom 2026-10-16 bis 2026-10-24 abgelaufen, alle Apps
+antworteten acht Tage `ok:false` — kein Alarm (Eintrag „Vorfall appwrite-prod —
+TLS-Zertifikat", 2026-10-24). Danach missbrauchte ein Angreifer die
+Registrierung als Mail-Relais, bemerkt nur über Resends eigene Limit-Mail
+(Eintrag „Resend-Spam", 2026-10-27). Auftrag: kein Prod-Ausfall bleibt mehr
+acht Tage still.
+
+**Befund, der die Aufgabe umgedreht hat:** `api.pukalani.app` stand SEIT DEM
+ERSTEN TAG (2026-07-26) im TLS-Wächter, Schwelle 14 Tage. Der Wächter hat den
+Vorfall also GESEHEN: `gh run list` zeigt vom 2026-10-05 („läuft in 11 Tagen
+ab") bis zum 2026-10-24 **jeden Lauf von `production-watch.yml` rot — rund
+900 Stück, alle 30 Minuten**, dazu der TLS-Schritt am Ende jedes Deploys.
+Niemand hat es bemerkt. Die Lücke war nie der Wächter, sondern der Alarmweg:
+ein roter Lauf in GitHub Actions ist nur eine Farbe, solange die
+Benachrichtigung niemanden erreicht.
+
+**Gebaut (Branch `claude/mystifying-torvalds-833071`):**
+1. `scripts/ops/verify-health.mjs` — alle 30 min im Job `tls`: jeder
+   Produktions-Host muss `200` + `ok:true` liefern (Appwrite: `/v1/health/
+   version` mit `version`; NIE `doctor`, der schickt SMTP-Testmails). Ein
+   zweiter Versuch nach 15 s filtert Schluckauf. `PUKALANI_HEALTH_DRILL=1`
+   macht den Lauf sicher rot (Probealarm), `PUKALANI_HEALTH_PROBE_URL`
+   prüft eine beliebige URL mit (Beweis-Haken).
+2. `scripts/ops/verify-mail-breaker.mjs` — täglich im Job `server`: Blick 1
+   zählt über ssh die Notbremsen-Zeile `auth.mail_route_breaker` in den
+   pm2-Fehlerlogs der letzten 25 h (nur die Event-Zeile verlässt den Server);
+   Blick 2 zählt bei Resend selbst (`GET /emails`, ≥ 80 in 24 h ⇒ rot, also
+   VOR dem 100er-Limit), sobald `PRODUCTION_WATCH_RESEND_KEY` gesetzt ist —
+   ohne Secret sichtbar übersprungen und grün.
+3. Job `alarm` in `.github/workflows/production-watch.yml` — läuft nach jedem
+   Wächter-Lauf: rot ⇒ EIN Issue mit Label `produktions-alarm` (alle 12 h ein
+   Lebenszeichen-Kommentar), grün ⇒ „Entwarnung" + schließen. Dazu Mail bei
+   jedem Wechsel über Resend (Secret + Variable) und ein Heartbeat-Ping bei
+   grün (Secret) — beide ohne Einrichtung als gelbe Warnung sichtbar.
+   `workflow_dispatch` mit `alarm_drill` = Probealarm.
+4. Runbook `docs/runbooks/PRODUKTIONS-ALARM.md` (Wächter-Tabelle, Alarmweg,
+   Probealarm, Davids Klickliste, „Wenn ein Alarm kommt"); Regeln in
+   `.claude/rules/hosts-ops.md`; Hinweis im TLS-Wächter für den Appwrite-Weg.
+
+**Beweis:** (1) Lokal: `verify-health.mjs` grün auf allen 10 Hosts (Appwrite
+2.6.2, Build 188a5b4e); mit Drill Exit 1 (`probealarm.invalid: ENOTFOUND`);
+gegen einen lokalen Wegwerf-HTTPS-Server mit `{"ok":false,"code":
+"INTERNAL_ERROR"}` Exit 1 mit genau dieser Meldung. `verify-mail-breaker.mjs
+--ssh --strict` grün (0 Notbremsen auf app-prod); mit einem Muster, das im Log
+vorkommt (`--pattern community.seo_read_failed --hours 999`) Exit 1.
+(2) **CI, end-to-end:** Probealarm-Lauf 40649844704 ⇒ Job `tls` rot, Job
+`alarm` öffnet **Issue #57** „🔴 Produktions-Alarm (Probealarm)"; Lauf
+40649998721 ohne Haken ⇒ alles grün, Issue #57 bekommt „✅ Entwarnung" und ist
+geschlossen; Mail- und Heartbeat-Schritt melden als Warnung „nicht
+eingerichtet". `pnpm lint:scripts` und `pnpm check:doc-links` grün.
+
+**Was bei David bleibt (OPEN-ITEMS MON2, nur Klicks):** GitHub-
+Benachrichtigungen für Actions + Issues prüfen (das ist die Lücke der 900
+Läufe), Resend-Schlüssel + Mail-Adresse als Secret/Variable, UptimeRobot
+Keyword-Monitore `"ok":true`, SSL-Alarm auf `api`, Heartbeat-URL. Klickliste
+im Runbook, § 3.
+
+**Gelernt (drei Stück):** (1) **Ein roter Lauf ist nur eine Farbe.** Vor dem
+Bauen eines Wächters die Lauf-Historie des bestehenden lesen (`gh run list
+--created`): der Wächter war da, rot, 19 Tage lang. Ein Wächter braucht einen
+Alarmweg, und der Alarmweg braucht einen ZUSTAND (offenes Issue), der nicht
+in 48 Mails am Tag untergeht. (2) **Ein Alarmweg, der nie geprobt wurde, ist
+keiner — und der erste Probealarm fand prompt den Fehler:** bei leerer
+Issue-Liste gab jq `null null` zurück, der Schritt nahm den Zweig „weiterhin
+rot", rechnete mit `date null` in die Wand — und der Job war trotzdem GRÜN
+(`set -u` ohne `-e`, Arithmetik-Fehler ohne Abbruch). Alarm-Logik läuft
+seither unter `set -euo pipefail`, und Mail/Heartbeat prüfen auf explizit
+gesetzte Ausgaben, damit ein abgebrochener Schritt nie wie „grün" aussieht.
+Der Probealarm gehört monatlich und nach JEDER Workflow-Änderung gefahren.
+(3) **Uptime ≠ Gesundheit.** UptimeRobot sah einen antwortenden Host; die
+Aussage `ok:false` dahinter sieht nur, wer den Rumpf liest — deshalb
+Keyword-Monitore (David) UND der eigene Health-Blick.
+
+## BI1 I6 Stufe 1 — Brand Insights: der Launch-Inhalt, vier Beispiel-Beiträge als Seed (2026-10-28)
+
+**Was gebaut wurde** (Paket I6 aus docs/plans/BRAND-INSIGHTS.md §9.8/§9.9, Stufe 1 — gebaut von
+einem Opus-Lauf nach Auftrag, geprüft im Hauptloop): ein wiederholbares Seed-Skript
+`packages/insights/scripts/seed-launch.mjs` (`pnpm --filter @pukalani/insights seed:launch`,
+`--dry-run`, `--only <slug>`) mit den Inhalten als reinen Daten unter
+`packages/insights/scripts/launch/` und der puren Hälfte `packages/insights/scripts/launch-check.mjs`
+(Inhalt → Zeile, Vorab-Prüfung ohne Datenbank, von Seed UND Test benutzt).
+
+- **Vier Stücke, einer je Format, als Entwurf in beiden Sprachen** (de Grundfassung, en übersetzt,
+  `translationReviewed: false`): Markenprofil **Nike** (volle Marken-Zeile: drei Zeichen, sieben
+  Historien-Zeilen, Beziehung zu adidas, elf Belege — plus der `profile`-Beitrag `nike`), Duell
+  **adidas vs. Nike** (Slug alphabetisch `adidas-vs-nike`, sechs Faktenzeilen mit Beleg, 13 Quellen),
+  Artikel **„IKEA: Wie ein Möbelhaus zur Weltmarke wurde"** (990 Wörter, acht Kapitel, 24 Belege,
+  verweist die IKEA-Zeile — der Beweis, dass Profil und Artikel zusammenspielen), Ranking **„Die zehn
+  Marken mit dem stärksten Auftritt"** (Ausgabe 1, Slug `staerkster-auftritt-ausgabe-1`, vier der
+  zehn Plätze: Nike, Apple, Anthropic, The Barn; Methodik-Zeile). Dazu **sechs Marken-Zeilen**
+  (nike voll; adidas, ikea, apple, anthropic, the-barn schlank; `libraryKey` nur für die vier
+  handgeprüften Bibliotheks-Einträge).
+- **Idempotent über den Slug:** fehlt ⇒ anlegen; `draft` ⇒ Inhalt aktualisieren, Felder von Server
+  und Redaktion (Zustand, Freigabe-Stempel, Übersetzungs-Herkunft, `translationReviewed`, Brief,
+  Slug-Historie) bleiben; `review`/`published`/`updated` bzw. Marke `published`/`removed` ⇒ nicht
+  angefasst, nur gemeldet. Nichts ändert sich ⇒ nichts wird geschrieben (`= unverändert`). Geplant
+  und geprüft wird ALLES, bevor die erste Zeile entsteht.
+- **Ranking-Scores nie von Hand:** der Seed liest je Marke die jüngste nicht ausgeblendete Zeile aus
+  `brand_checks` über `brandCheckUrlKey(homepage)` (wie `findBrandCheckForUrl`), reiht nach Score und
+  schreibt `checkId`; fehlt ein Check ⇒ Score 0, Warnung und Vermerk in `noteInternal`. Lokal fehlen
+  alle vier — auf Prod gehört ein Brand-Check je Homepage VOR den Seed-Lauf.
+- **Quellen nur, was der echte Prüfer liest** (User-Agent PukalaniMarketBot, robots/TDM): nike.com,
+  about.nike.com, ikea.com (global/us/de), inter.ikea.com, apple.com, anthropic.com, thebarn.de und
+  Wikipedia (de/en, mit CC-BY-SA-Lizenz-Link). **Nicht lesbar:** alle adidas-Sites (Timeout) und
+  about.ikea.com — adidas ist deshalb ausschliesslich über Wikipedia belegt.
+- **Test** `packages/insights/tests/launchContent.test.ts` (22 Fälle): Schemas, die sechs Prüfregeln
+  ohne Abruf, Zitatschranke, Lizenzpflicht, beide Sprachen, Wir-Stimme ohne Autor, Duell-Slug,
+  Methodik-Link, Katalogwerte, Gegenprobe des Namensfilters.
+
+**Beweise (lokal, Dev-Projekt `portfolio-g4ml` aus dem Worktree, Dev-Server :3010):** Seed-Lauf 1 ⇒
+10× angelegt, Lauf 2 ⇒ 10× unverändert, nach einer Inhaltsänderung nur `↷ Marke nike aktualisiert`;
+ein Beitrag auf `review` gesetzt ⇒ `--only` meldet `übersprungen (state=review)`. Alle vier Beiträge
+bestehen das volle Server-Gate (`POST …/state {to:'review'}` ⇒ `changed: true, issues: []`, alle
+Belege abgerufen und wörtlich gefunden) und stehen danach wieder auf `draft`. Dashboard-Liste zeigt die
+vier Entwürfe; die Vorschau (`?preview=1`) rendert alle vier Formate — für Profil, Duell und Ranking
+mit einem UNCOMMITTETEN lokalen Override von `publicFormats` (zurückgesetzt), weil die Seiten den
+Riegel auch in der Vorschau anwenden. Wächter: Lint insights, 496 Tests, Typecheck branding,
+check:doc-links. Prod unberührt.
+
+**Zwei Befunde fürs Folgepaket (kein Gate):** (1) Die Duell-Vorschau antwortet 404, solange die beiden
+Marken-Zeilen `draft` sind (die Route verlangt `published` auch mit `?preview=1`) — David muss die
+Marken vor dem Blick aufs Duell veröffentlichen, oder die Vorschau wird gelockert. (2) Der
+Namensfilter vergleicht auch OHNE Leerzeichen: „von IKEA" wird `vonikea` (enthält `nike`), „Nike as"
+wird `nikeas` (enthält `ikea`) — die Texte sind darum herum geschrieben, der Test hält es fest; der
+Filter selbst gehört nachgebessert, sobald Stufe 2 mehr Marken nebeneinander nennt.
+
+**Gelernt:** (1) Ein Beleg-Riegel gegen lebende Websites entscheidet, WELCHE Quellen überhaupt
+infrage kommen — erst probieren, dann schreiben: das Anthropic-Zitat der Bibliothek vom 2026-09-06
+stand sieben Wochen später nicht mehr auf der Seite, und keine adidas-Site liess sich lesen. (2)
+Wikipedia-Zitate tragen die Spuren der Text-Extraktion (`" Just Do It "`, `IKEA- Katalog`): wörtlich
+heisst wörtlich wie der Prüfer liest, nicht wie es schön aussähe. (3) Ein Seed, der Scores von Hand
+setzte, wäre eine zweite Skala neben dem Produkt — die ehrliche Form ist Score 0 mit Vermerk, bis der
+Brand-Check gelaufen ist. (4) Die Marken-Belege prüft das Gate NICHT (nur die des Beitrags) — sie sind
+nur lokal gegen dieselbe Extraktion geprüft.

@@ -340,14 +340,15 @@ Anwalt ist dafür kein Gate.
 | ~~K1~~ | ~~Cluster-Katalog erweitern~~ — **entfällt** (Davids Entscheidung B, 2026-09-09: erst mal so lassen) | — | — |
 | ✅ **K2** | **Filtern und sortieren** im Radar — **GEBAUT 2026-09-09** (reine Regeln in `packages/insights/shared/insightsRadarView.ts`, 27 Tests, Klick-Beweis im Playground) | — | S |
 | ✅ **K3** | **Kanal-Seite** — **GEBAUT UND AUF PROD 2026-10-24** (Migration `insights-005` gefahren, elf Kanäle übernommen) | Entscheidung A ✔ | M |
-| ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT 2026-10-25** (Migration `insights-007`, Link-Wurf, Urteil in beiden Listen, YouTube-Link je Zeile, Filter; Sweep zieht die Zahlen mit). **Offen: Davids Ja zur PROD-Migration.** | — | M |
-| **K5** | **Brief aus Video** — Prompt `insights-b-1`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle | Entscheidung C (§9) · K4 · **Routen-Probe** | S–M |
+| ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
+| ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`). **Nachtrag 2026-10-28:** ein Brief über 2.000 Zeichen warf den bezahlten Lauf weg (2 von 6 gemessenen Läufen) — das Schema klemmt jetzt an einer Grenze statt abzulehnen | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
 | **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
 **Nach Davids Entscheidungen vom 2026-09-09 (§9):** K1 entfällt, K2 läuft
 sofort (kein Gate, keine Migration), K3 ist beauftragt und braucht ein Ja zur
-Prod-Migration, K5 wartet auf die Routen-Probe aus §9. **K7 hat seit I3 kein
+Prod-Migration, K5 wartete auf die Routen-Probe aus §9 — **die ist am
+2026-10-27 gefahren, §13: C4 ist baubar.** **K7 hat seit I3 kein
 Gate mehr** — Artikel sind öffentlich, der Anwalt hält nur Profil, Duell und
 Ranking.
 
@@ -420,7 +421,13 @@ nicht urheberrechtlich, er ist datenschutzrechtlich:
 heutigen Endpunkte von `gemini-2.5-flash` zeigt sieben Routen, davon drei über
 **`google-vertex/eu`** — der EU-Weg, über den unsere Läufe heute gehen — und
 vier über **`google-ai-studio`** (Sitz US). Der Weg, der Videos kann, ist also
-nicht der Weg, den wir heute fahren. Zwei Fragen entscheiden das Paket, und
+nicht der Weg, den wir heute fahren.
+
+> **BEIDE Sätze hat die Probe am 2026-10-27 widerlegt — siehe §13.** AI Studio
+> ist gar nicht ZDR-fähig (404), Vertex EU nimmt YouTube-Adressen sehr wohl,
+> und „der EU-Weg, über den unsere Läufe heute gehen" gibt es nicht: ohne
+> `only` wählt OpenRouter jede ZDR-Route, in der Probe Amazon Bedrock. Der
+> Absatz bleibt als Protokoll stehen, gilt aber nicht mehr. Zwei Fragen entscheiden das Paket, und
 beide sind billig zu beantworten:
 
 1. **Ist `google-ai-studio` unter `zdr: true` + `data_collection: 'deny'`
@@ -675,8 +682,316 @@ selbst macht und von Hand fehlen: `_APP_OPENSSL_KEY_V1` muss gesetzt sein
 Fehlersuche am richtigen Code — der Merksatz dazu: Testdaten müssen dasselbe
 Format erfüllen wie echte, sonst prüft man die Prüfung.
 
-### Was jetzt bei David liegt
+### Auf Prod (2026-10-27, Davids Ja)
 
-**Die Prod-Migration `insights-007`** — vor dem Code-Deploy. Bis sie läuft,
-antwortet die Fundstück-Seite auf Prod mit einer leeren Liste (die Routen sind
-fail-soft), und der Radar zeigt keine Urteile.
+Migration `insights-007` gefahren. Belege:
+
+* `insights_watchlist` auf `branding` — **fünfzehn Spalten `available`**, alle
+  drei Indizes `available` (`uq_video_id` unique, `idx_verdict`,
+  `idx_added_at`), `permissions: []`, `rowSecurity: false`, 0 Zeilen;
+* **Schema-Parität branding 42/42**, keine unbekannten Tabellen;
+* `/api/insights/watchlist`, `/api/insights/channels`, `/api/insights/radar`
+  und `POST …/watchlist/verdict` antworten ohne Konto **401** (nicht 404) —
+  ausgeliefert, Produkt-Gate offen, nur die Berechtigung fehlt.
+
+**Dieselbe Reihenfolge wie bei K3, und wieder nicht die gedachte:** der Code
+war schon live (Build `d9b2919f` trägt K4), als die Migration lief. Es ist
+nichts passiert, weil die Routen für genau diesen Fall fail-soft sind — die
+Fundstück-Seite zeigt dann eine leere Liste, der Radar keine Urteile. Dass es
+zweimal so lief, ist trotzdem ein Befund: solange ein Paket per Merge auf
+`main` sofort deployt, ist „Migration VOR Deploy" nur einzuhalten, wenn die
+Migration vor dem Merge gefahren wird.
+
+**Nicht bewiesen:** die Seite hinter dem Login. Der Migrations-Schlüssel hat
+bewusst keinen `users`-Scope — dieselbe Grenze wie bei K3.
+
+---
+
+## 13. Die Routen-Probe zu Frage C — gefahren (2026-10-27, Davids Auftrag)
+
+Elf Anfragen mit dem echten Schlüssel (`~/.appwrite-secrets/branding-ai.key`),
+jede mit genau den drei Feldern aus `BRAND_PROVIDER_ROUTING`. Gesamtkosten der
+Probe: **0,063 $**.
+
+**Das Ergebnis in einem Satz:** Gemini sieht ein YouTube-Video unter unserer
+Datenschutz-Klemme — und sogar auf **`google-vertex/eu`** festgenagelt. **C4
+ist baubar, ohne den EU-Weg zu verlassen.**
+
+### Die fünf Messwerte
+
+1. **Vertex EU kann es doch.** `only: ['google-vertex/eu']` +
+   `google/gemini-3.1-flash-lite` + YouTube-Adresse ⇒ **HTTP 200**, inhaltlich
+   richtige Antwort. Die OpenRouter-Doku behauptet wörtlich, Vertex nehme keine
+   Video-URLs und nur „Google AI Studio" nehme YouTube-Links — **das ist heute
+   falsch**. Belegt nicht am Text, sondern an der ABRECHNUNG: für ein
+   19-Sekunden-Video weist die Antwort `video_tokens: 1197` und
+   `audio_tokens: 479` aus. Bild UND Ton, wie die Google-Doku es verspricht.
+2. **„Google AI Studio" ist gar nicht ZDR-fähig.** `only: ['google-ai-studio']`
+   ⇒ **404** „No endpoints found matching your data policy (Zero data
+   retention)". Damit ist die zweite Frage aus §9 („Wollen wir für diesen
+   Zweck den EU-Weg verlassen?") **gegenstandslos**: diese Route steht uns
+   ohnehin nicht offen — und wir brauchen sie nicht.
+3. **Das Modell erfindet nichts.** Gegenprobe mit einer erfundenen, aber
+   formgültigen Video-Id ⇒ **502** „Provider returned error". Ohne erreichbares
+   Video gibt es keine Antwort, also ist eine Antwort ein Beweis, dass das
+   Video gelesen wurde. Ohne diese Gegenprobe wäre jeder Treffer wertlos
+   gewesen — ein Modell, das aus dem Titel rät, antwortet genauso flüssig.
+4. **Was ein Video kostet** (gemessen, `gemini-3.1-flash-lite`): ein
+   25-Minuten-Video = **134.888 Prompt-Tokens** (96.960 Video + 37.888 Audio)
+   ⇒ **0,049 $**. Die ZWEITE Frage zum selben Video im Cache-Fenster:
+   **0,0067 $** (134.464 Tokens als `cached_tokens`). Also ~5 Cent fürs Lesen
+   und ~0,7 Cent je weitere Frage — **Brief und Artikel (K5 + K6) nacheinander
+   kosten zusammen rund 6 Cent je Video.** Ein 50-Minuten-Video liegt bei
+   ~10 Cent. Das trägt jede Drossel, die §9.4 heute schon hat.
+5. **`processing: 'static'` ist kein Sparhebel.** Mit und ohne das Feld stehen
+   dieselben Token-Zahlen in der Abrechnung (1197/479 beim kurzen,
+   96.960/37.888 beim langen Video). Der scheinbare Preissturz beim zweiten
+   langen Lauf war der **Prompt-Cache**, nicht der Modus — sichtbar nur, weil
+   `cached_tokens` mitgelesen wurde. Nicht als Einsparung einplanen.
+
+**Inhaltliche Gegenprobe (hat die Probe überhaupt verstanden?):** beim
+19-Sekunden-Video („Me at the zoo", bewusst gewählt, weil der Inhalt
+unabhängig bekannt ist) nennt die Antwort den Zoo, **zwei** Elefanten, den
+letzten gesprochenen Satz wörtlich und die Kleidung. Beim 25-Minuten-Video aus
+Davids Kanalliste (Google Search Central, „PDFs in Search") kommen drei
+Kernaussagen mit Zeitstempeln zurück, sachlich richtig, plus eine
+Artikel-These. Das ist genau die Form, die K5 braucht.
+
+### Zwei Befunde, die die Probe nebenbei aufgedeckt hat
+
+**B1 — das Vision-Modell von `branding` ist TOT.** `apps/branding` setzt
+`pukalani.ai.visionModel: 'google/gemini-2.5-flash'`. Dieses Modell steht
+**nicht mehr** in OpenRouters ZDR-Liste; sein ganzes Endpunkt-Angebot sind
+heute drei AI-Studio-Routen, und AI Studio ist nicht ZDR-fähig (Messwert 2).
+Jeder Aufruf antwortet deshalb **404 „No endpoints found matching your data
+policy"** — nachgestellt mit genau der Aufrufform der App (Text + `image_url`
++ die drei Routing-Felder). Betroffen ist der EINE Konsument von `aiVision`:
+die **Inspirationslesung** im Brand-Wizard
+(`packages/brand/server/utils/brandInspirationReading.ts`). Auf Prod ist der
+Schalter dabei AN (`app_config.brandAiEnabled: true`, `aiModel` leer, also
+gilt der Build-Default) — die Funktion ist also nicht abgeschaltet, sie
+scheitert. Ein Laufzeit-Override für `visionModel` gibt es bewusst nicht, die
+Spalte fehlt; es ist eine Zeile in `apps/branding/app/app.config.ts`.
+Dieselbe Falle hat schon einmal zugeschlagen und steht als Kommentar zwei
+Zeilen darunter (`…-image-preview` hatte 2026-09 keine Endpunkte mehr) — ein
+Modell-Slug bei OpenRouter ist kein Versprechen, sondern ein Angebot, das
+verschwindet. **Geprüft wurde deshalb jeder konfigurierte Slug gegen
+`/models?zdr=true`:** `anthropic/claude-haiku-4.5` ✓,
+`google/gemini-2.5-flash-image` ✓, `google/gemini-2.5-flash` ✗.
+`google/gemini-3.1-flash-lite` hat in derselben Probe ein echtes 32×32-PNG
+korrekt beschrieben — es kann Bild UND Video und wäre damit EIN Modell für
+beides.
+
+**B2 — die EU-Route ist heute nicht gepinnt.** `BRAND_PROVIDER_ROUTING` nennt
+kein `only`, also wählt OpenRouter jede Route, die ZDR und `deny` erfüllt —
+in der Probe wurde unser Textmodell von **Amazon Bedrock** bedient (die
+Endpunkt-Liste von `claude-haiku-4.5` führt `anthropic`, `azure/global`,
+`amazon-bedrock/{global,us,eu-west-1}`, `google-vertex/{global,us-east5,europe}`).
+**Die Notiz in §9, „`google-vertex/eu` — der EU-Weg, über den unsere Läufe
+heute gehen", war falsch:** ZDR sagt „nichts wird gespeichert", es sagt nichts
+über den ORT. Wer Datenresidenz in der EU will, muss sie pinnen
+(`only: ['google-vertex/eu']` o. ä.) — und zahlt dafür mit Ausfall ohne
+Ausweichweg, weil `allow_fallbacks: false` bleibt. Unter den heute
+video-fähigen ZDR-Gemini-Modellen hat **nur `gemini-3.1-flash-lite` überhaupt
+einen `google-vertex/eu`-Endpunkt**; `3.5-flash`, `3.8-flash` und `4-argon`
+bieten global/us und AI Studio. Das ist eine Entscheidung für David, keine
+Technikfrage — sie gehört zu BS1 (AVV, Datenschutzerklärung).
+
+**B1 ist noch am selben Tag behoben** (Davids Wahl, Hergang im Archiv unter
+„AI1"): `visionModel: 'google/gemini-3.1-flash-lite'`, und die
+Inspirationslesung läuft über die neue Konstante **`BRAND_PROVIDER_ROUTING_EU`**
+(`BRAND_PROVIDER_ROUTING` + `only: ['google-vertex/eu']`) — Davids
+Entscheidung „nur für Bild und Video pinnen". Dieselbe Konstante nimmt K5 für
+das Videolesen. Bewiesen mit einem echten Lauf der neuen Kombination (Modell +
+EU-Pin + echtes PNG ⇒ 200). Neu dazu: **`pnpm ops:ai-models`**, der jeden
+konfigurierten Slug gegen `/models?zdr=true` prüft (ohne Schlüssel, mit
+Gegenprobe am toten Slug). **Von B2 bleibt der TEXT-Weg offen** — OPEN-ITEMS
+`AI1`.
+
+### Was daraus für K5 folgt
+
+* **C4 gewinnt** und braucht keine neue Rechtsrunde: hineingereicht wird eine
+  öffentliche YouTube-Adresse an Googles eigenen, dokumentierten Weg, auf einer
+  Route, die wir ohnehin fahren dürfen.
+* Der Transport fehlt noch: `aiComplete` schickt `content` als STRING,
+  `aiVision` kennt `image_url`. K5 braucht **einen dritten Baustein im Core**
+  (oder eine Erweiterung von `aiVision` um `video_url` + das optionale
+  `processing`) — dieselbe Naht, dieselbe Schlüssel-Auflösung, derselbe
+  Routing-Vertrag.
+* Das Modell für K5 ist nicht automatisch das Modell aus
+  `getEffectiveAiConfig` (`claude-haiku-4.5` sieht keine Videos). K5 braucht
+  einen eigenen Schlüssel in der Config — Vorschlag: `pukalani.ai.videoModel`,
+  Core-Default LEER (= aus), wie beim Vision-Modell.
+
+---
+
+## 14. K5 gebaut (2026-10-27) — „Brief aus diesem Video"
+
+Aus einem Fundstück wird ein BEITRAG im Zustand `draft`, dessen Brief ein
+Modell geschrieben hat, nachdem es das Video gesehen hat — Bild und Ton. Der
+Artikel entsteht daraus NICHT: dafür gibt es den bestehenden Entwurfs-Lauf
+(`insights-d-1`), und dazwischen sitzt ein Mensch. Zwei Läufe statt einem,
+mit Absicht.
+
+### Der Weg, in einem Satz
+`/dashboard/insights/finds` → Knopf **„Erzeugen"** in der neuen Spalte
+*Brief* → Rückfrage → das Modell sieht das Video → Beitrag angelegt (Brief,
+Cluster, Video als Quelle) → der Knopf wird zu **„Zum Beitrag"** → im Editor
+steht der Brief im Feld „Brief an die KI", bereit für „Entwurf schreiben".
+
+### Was gebaut wurde
+
+* **Core: ein vierter Transport** `packages/core/server/utils/aiVideo.ts`
+  (neben `aiComplete`, `aiVision`, `aiImage`). Gate ist der Modell-NAME
+  (`pukalani.ai.videoModel`, Core-Default LEER), `data_collection: 'deny'`
+  klemmt der Transport fest, `zdr`/`only`/`allowFallbacks` verschärft der
+  Konsument. **Nur Adressen, keine Bytes:** `data:`-URIs fallen VOR dem
+  Netzaufruf durch — ein base64-Video wären hunderte Megabyte in einem
+  Request-Rumpf. 23 Tests.
+* **`apps/branding`:** `videoModel: 'google/gemini-3.1-flash-lite'` — dasselbe
+  Modell wie die Bildlesung, und damit dieselbe EU-gepinnte Route.
+* **Prompt `insights-b-1`** (`shared/insightsVideoBrief.ts`, pur, 30 Tests):
+  Aufbau in fünf Teilen (Worum es geht · die These · Belege mit Zeitmarken ·
+  Gegenposition · offene Fragen), Cluster-Vorschlag aus dem Katalog,
+  Arbeitstitel.
+* **Migration `insights-009`:** `brief` (MEDIUMTEXT), `briefModel`,
+  `briefPromptVersion`, `briefVideoId` an `insights_posts`; `briefPostId` an
+  `insights_watchlist`.
+* **Route** `POST /api/insights/watchlist/<videoId>/brief`, **UI** (Spalte +
+  Knopf + Rückfrage + Toast mit Link), **i18n** de/en.
+* Der **Brief ist jetzt eine Spalte** statt eines flüchtigen Formularfelds.
+  Er ist bezahlt und er ist Arbeit; ein Neuladen darf ihn nicht wegwerfen.
+
+### Die Entscheidungen, die drinstecken
+
+**KEINE WÖRTLICHEN ZITATE, SONDERN ZEITMARKEN.** Das ist die wichtigste und
+sie folgt aus unserer eigenen Mechanik: `insightsReviewIssues()` prüft ein
+Zitat, indem es die Quelle ABRUFT und den Satz im Text sucht. Der Text einer
+YouTube-Seite ist Titel und Beschreibung — ein gesprochener Satz steht dort
+nie. Ein Video-Zitat wäre also entweder ein blockiertes Gate
+(`quote_not_grounded`) oder, schlimmer, eine unprüfbare Behauptung darüber,
+was jemand gesagt hat. Der Prompt verlangt deshalb Paraphrasen mit Zeitmarke,
+und **die Quelle trägt `quote: ''`**. Eine Zeitmarke kann jeder nachsehen; ein
+Zitat, das niemand findet, ist kein Beleg.
+
+**DIE REIHENFOLGE DER PRÜFUNGEN IST DIE EIGENTLICHE ARBEIT.** Ein Video-Lauf
+ist der teuerste Weg dieses Monorepos. Jede Ablehnung, die nach dem
+Anbieter-Aufruf käme, wäre bezahlt. Also: Fundstück da? → schon ein Brief? →
+Video noch abrufbar? → als Quelle ablegbar (Kanal + Datum)? → Video-Modell
+konfiguriert? → Kill-Switch und Drossel → **erst jetzt** der Anbieter.
+
+**DER VERWEIS ÜBERLEBT EINEN FEHLSCHLAG.** Schlägt das abschliessende Update
+von `briefPostId` fehl, bleibt der BEITRAG stehen. Ihn wegzuwerfen wäre die
+schlechtere Wahl: der Brief ist bezahlt. Ein zweiter Lauf legt dann einen
+zweiten Entwurf an — lästig, aber sichtbar.
+
+**EIN GELÖSCHTER BEITRAG GIBT DAS FUNDSTÜCK FREI.** Zeigt `briefPostId` ins
+Leere, räumt die Route den Verweis und macht weiter. Sonst wäre ein Fundstück
+nach einem Aufräumen für immer blockiert.
+
+**DER BRIEF IST INTERN.** Er steht in `INSIGHTS_POST_INTERNAL_FIELDS` und
+kommt damit in keiner öffentlichen Antwort vor — er enthält ausdrücklich das,
+was NICHT veröffentlicht wurde.
+
+### Beweis (lokale Wegwerf-Instanz + echter Lauf)
+
+* `insights-009` zweimal gegen eine echte Appwrite gefahren: beim ersten Mal
+  fünf Spalten angelegt, beim zweiten **fünfmal „existiert bereits"**.
+* **Klick-Beweis:** Fundstück angelegt, in der Liste auf „Erzeugen" geklickt.
+  Ergebnis in der Datenbank: Beitrag `state: draft`, Adresse aus dem
+  Arbeitstitel (`pdfs-in-der-google-suche-warum-sie-kein-seo-geheimtipp-sind`),
+  `briefModel: google/gemini-3.1-flash-lite`, `briefPromptVersion:
+  insights-b-1`, `briefVideoId: wJukFIpZybY`, `topics: ["seo-geo"]`, Quelle
+  `{kind: youtube, publisher: "Google Search Central", date: "2026-10-13",
+  quote: ""}`, Brief 1.763 Zeichen. Die Fundstück-Zeile trägt `briefPostId`,
+  der Knopf heisst dort jetzt „Zum Beitrag", und im Editor steht der Brief im
+  Feld „Brief an die KI".
+* **Backstops live:** zweiter Lauf auf dasselbe Video ⇒ **409 `brief_exists`**
+  (kein zweites Mal bezahlt), unbekanntes Video ⇒ **404 `video_not_found`**.
+* **Kosten gemessen:** 0,0508 $ für ein 25-Minuten-Video (135.575
+  Prompt-Tokens: 96.960 Video + 37.888 Audio).
+
+### Auf Prod (2026-10-27, Davids Ja) — und zum ersten Mal in der richtigen Reihenfolge
+
+`insights-009` lief **VOR** dem Merge. Das war hier keine Formsache: anders als
+bei K3 und K4 wäre ein Deploy ohne die Spalten nicht fail-soft gewesen —
+`fromInsightsPost` schickt die neuen Felder bei JEDEM Schreibvorgang mit, also
+hätte es jedes Anlegen und jedes Speichern eines Beitrags gebrochen, nicht nur
+das Neue.
+
+* Vorher: `insights_posts` 26 Spalten, `insights_watchlist` 15, keine `brief*`.
+* Nachher: 30 und 16, alle fünf neuen Spalten `available`
+  (`brief` als MEDIUMTEXT), Zeilen unberührt.
+* `pnpm ops:schema-parity`: branding **43/43**, keine unbekannten Tabellen
+  (account 69/69, control 42/42, portfolio 41/41 ebenfalls grün).
+* Danach Merge und Deploy: Live-Build **`c97c4dea`**, `/api/health` `ok: true`.
+* `POST /api/insights/watchlist/<videoId>/brief` antwortet ohne Konto **401**
+  (nicht 404) — ausgeliefert, Produkt-Gate offen, nur die Berechtigung fehlt.
+
+**Nicht bewiesen auf Prod:** der Klick selbst. Der Migrations-Schlüssel hat
+bewusst keinen `users`-Scope; der Beweis oben lief gegen eine Wegwerf-Instanz
+mit demselben Schema.
+
+### Gelernt
+
+**EIN SCHEMA MIT LAUTER VORGABEN NIMMT KEINEN FEHLENDEN RUMPF.** Der Knopf
+schickt keinen Body; `z.object({…default()})` nimmt ein Objekt OHNE Schlüssel,
+aber nicht `undefined` — der erste Klick endete mit **400 „Validation Error"**,
+bevor irgendetwas passierte. Typecheck, Lint und alle Tests waren grün; beide
+sahen nur, dass es ein Schema GIBT. Richtig ist ein `z.preprocess(value =>
+value ?? {}, …)`, und die Regel liegt jetzt im Vertrag (`insightsBriefRequestSchema`)
+mit vier Tests — **eine Route, deren Vorgaben nur greifen, wenn man
+ausdrücklich `{}` schickt, hat keine Vorgaben.** Gefunden hat das nur der
+Klick.
+
+**EIN EXIT-CODE AUS EINER PIPELINE GEHÖRT DER LETZTEN STUFE.** `pnpm
+typecheck | tail -6` meldete „exit 0" — das war `tail`. Dadurch ging ein
+Typfehler auf `main` (eine Nachbarsitzung fand ihn). Seither `set -o pipefail`
+oder Logdatei + eigener Statusabruf.
+
+**EIN `as const`-VERTRAG UND EIN MUTABLER TYP VERTRAGEN SICH NICHT.**
+`BRAND_PROVIDER_ROUTING_EU` liess sich nicht an `AiProviderRouting` übergeben
+(`readonly ["google-vertex/eu"]` gegen `string[]`). Geweitet wurde der
+CORE-TYP (`only?: readonly string[]`), nicht der Vertrag entschärft: die
+Konstante reist per Spread, und ein Spread kopiert die REFERENZ — ein
+`as string[]` hätte die Allowlist von jeder Aufrufstelle aus veränderbar
+gemacht.
+
+**WERKZEUG:** nach `users.create` auf einer frischen Appwrite erst
+`PATCH /users/<id>/password` setzen, sonst antwortet die Anmeldung 401
+(zweimal erlebt). Und: die Fundstück-Tabelle scrollt waagerecht — der
+Brief-Knopf liegt rechts ausserhalb des Sichtfelds, `scrollLeft` setzen,
+bevor man klickt.
+
+### Nachtrag (2026-10-28) — ein zu langer Brief warf den bezahlten Lauf weg
+
+Der Klick-Beweis oben lief durch, weil sein Brief 1.763 Zeichen lang war.
+Darüber hätte er nicht durchlaufen: `insightsVideoBriefSchema` klemmte
+`brief` mit `z.string().max(2000)`, die Route parst innerhalb eines `try`,
+dessen `catch` nur loggt und weiterwirft — und zu dem Zeitpunkt ist das Video
+gelesen und der Lauf **bezahlt**. Eine Ablehnung dort schützt nichts.
+
+Sechs echte Läufe gegen genau diesen Prompt (`gemini-3.1-flash-lite` auf
+`google-vertex/eu`, Videos von 8 bis 51 Minuten) ergaben: 1.575 · 1.673 ·
+1.848 · 1.897 · **2.027** · **2.387** Zeichen. **Zwei von sechs** über dem
+Deckel, und die Länge hängt NICHT an der des Videos (die 2.387 kamen aus acht
+Minuten, die 1.897 aus 45). Die vier Treffer unter dem Deckel liegen bei 92
+bis 95 Prozent davon — das Modell zielt auf die Zahl, die im Prompt steht.
+
+Jetzt klemmen alle drei Felder des Schemas, keines lehnt ab.
+`clampInsightsBrief` schneidet am spätesten sauberen Schluss (späteres von
+Zeilen- und Satzende, dann Wort, dann hart) und räumt eine abschliessende
+Zeile weg, die nur ankündigt — in der Gegenprobe endete ein Brief sonst auf
+`### OFFENE FRAGEN` ohne Fragen. Gegenprobe mit denselben zwei Videos:
+2.027 ⇒ 1.895, 2.387 ⇒ 1.905, beide auf einem Satzzeichen.
+
+**Gelernt:** eine Validierung NACH einem bezahlten Modell-Aufruf darf nicht
+ablehnen, sondern muss klemmen — streng ist VOR dem Aufruf (K5 prüft dort
+sechs Stufen), danach wird nur noch zugeschnitten. Und ein Deckel im Prompt
+ist eine Bitte, keine Grenze: wer danach hart schneidet, bekommt abgebrochene
+Wörter, wer ablehnt, verliert den Lauf.
+
+**Nebenbefund:** drei von zehn probierten YouTube-Videos antworteten mit
+`502` / `PERMISSION_DENIED` vom Anbieter — binnen 1,2 Sekunden und ohne
+Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar; ein `502` auf
+diesem Weg heisst also oft „dieses Video nicht", nicht „Anbieter kaputt".

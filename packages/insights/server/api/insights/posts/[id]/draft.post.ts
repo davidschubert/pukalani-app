@@ -1,9 +1,8 @@
 import { z } from 'zod'
 import type { InsightsPost } from '../../../../../shared/insightsPost'
-import { insightsReadingMinutes } from '../../../../../shared/insightsPost'
+import { INSIGHTS_BRIEF_MAX, insightsReadingMinutes } from '../../../../../shared/insightsPost'
 import { toInsightsBrand, toInsightsPost } from '../../../../../shared/insightsRows'
 import {
-  INSIGHTS_BRIEF_MAX,
   INSIGHTS_DRAFT_PROMPT_VERSION,
   INSIGHTS_DRAFT_WORDS_DEFAULT,
   INSIGHTS_DRAFT_WORDS_MAX,

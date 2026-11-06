@@ -20,7 +20,7 @@ import {
   brandReadingImageLabel,
   brandReadingPrompt,
 } from './readingPrompt'
-import { BRAND_PROVIDER_ROUTING } from './brandProviderRouting'
+import { BRAND_PROVIDER_ROUTING_EU } from './brandProviderRouting'
 import { brandDevStubEnabled } from './brandGenerators'
 import { brandSlotPromptLabel } from './brandSlotPromptLabels'
 import {
@@ -317,11 +317,13 @@ export async function runBrandInspirationReading(
         label: 'brand-reading',
         maxTokens: BRAND_READING_MAX_TOKENS,
         timeoutMs: BRAND_READING_TIMEOUT_MS,
-        // Die ZDR-Bedingungen dieses Layers. `data_collection: 'deny'` setzt
+        // Die ZDR-Bedingungen dieses Layers, PLUS der Ort: hier reicht ein
+        // Kunde eigene Bilder hinein, deshalb die EU-gepinnte Fassung
+        // (Davids Entscheidung 2026-10-27). `data_collection: 'deny'` setzt
         // der Transport ohnehin selbst und lässt es sich nicht nehmen — `zdr`
         // und `allowFallbacks: false` verschärfen sie auf dieselbe Weise wie
         // bei jedem Text-Aufruf.
-        providerRouting: { ...BRAND_PROVIDER_ROUTING },
+        providerRouting: { ...BRAND_PROVIDER_ROUTING_EU },
       },
     )
   }

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MAX_DISPLAY_NAME_LENGTH, displayNameProblem } from '../shared/displayName'
 
 export type TranslateFn = (key: string) => string
 
@@ -13,6 +14,38 @@ const identity: TranslateFn = key => key
  */
 function normalizedEmail(t: TranslateFn) {
   return z.email(t('validation.emailInvalid')).transform(value => value.trim().toLowerCase())
+}
+
+/**
+ * Frei gewählter Anzeigename (Vorfall 2026-10-27, Regel shared/displayName.ts):
+ * Appwrite setzt ihn in den Kopf jeder Verifizierungs-Mail — ein Name mit Link
+ * machte aus der Registrierung ein Spam-Werkzeug an fremde Adressen. EINE
+ * Fabrik für Registrierung, OTP-Registrierung und Profil (schemas/profile.ts),
+ * damit kein Eingang die Regel vergisst.
+ *
+ * `optional: true` = der OTP-Login ohne Registrierung: leer ist dann erlaubt,
+ * alles andere muss dieselben Hürden nehmen wie der Pflicht-Name. Bewusst ein
+ * `refine` statt der früheren `z.union([min(2), literal('')])`: eine Union
+ * meldet bei JEDEM Fehlschlag nur ihre eigene Sammelmeldung — der Hinweis
+ * „keine Links" wäre dort als „mindestens 2 Zeichen" angekommen.
+ *
+ * `too_long` beantwortet `.max()` mit eigener Meldung; das `refine` meldet nur
+ * Links/Steuerzeichen, damit ein zu langer Name nicht zwei Fehler zeigt.
+ */
+export function displayNameField(t: TranslateFn = identity, options: { optional?: boolean } = {}) {
+  return z.string(t('validation.required'))
+    .max(MAX_DISPLAY_NAME_LENGTH, t('validation.nameMax'))
+    .refine(
+      value => (options.optional && value === '') || value.length >= 2,
+      t('validation.nameMin'),
+    )
+    .refine(
+      value => {
+        const problem = displayNameProblem(value)
+        return problem === null || problem === 'too_long'
+      },
+      t('validation.nameNoLinks'),
+    )
 }
 
 export function createLoginSchema(t: TranslateFn = identity) {
@@ -37,7 +70,7 @@ function strongPassword(t: TranslateFn = identity) {
 
 export function createRegisterSchema(t: TranslateFn = identity) {
   return createLoginSchema(t).extend({
-    name: z.string(t('validation.required')).min(2, t('validation.nameMin')),
+    name: displayNameField(t),
     password: strongPassword(t),
   })
 }
@@ -131,8 +164,8 @@ export function createOtpRequestSchema(t: TranslateFn = identity, options: OtpRe
   return z.object({
     email: normalizedEmail(t),
     name: options.requireName
-      ? z.string(t('validation.required')).min(2, t('validation.nameMin'))
-      : z.union([z.string().min(2, t('validation.nameMin')), z.literal('')], t('validation.nameMin')).optional(),
+      ? displayNameField(t)
+      : displayNameField(t, { optional: true }).optional(),
     terms: options.requireTerms
       ? z.literal(true, t('validation.termsRequired'))
       : z.boolean().optional(),

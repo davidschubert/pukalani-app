@@ -130,6 +130,14 @@ export function insightsLogAi(
     promptVersion?: string
     durationMs?: number
     errorCode?: string
+    /**
+     * Wie lang der Brief GEWORDEN ist und wie lang die Antwort WAR. Zwei
+     * Zahlen statt einer, weil nur ihr Unterschied zeigt, dass der Prompt
+     * seinen eigenen Deckel reisst (gemessen am 2026-10-28: zwei von sechs
+     * Läufen) — und das ist eine Sache des PROMPTS, nicht der Route.
+     */
+    briefChars?: number
+    briefRawChars?: number
   },
 ): void {
   logEvent(phase === 'failed' ? 'warn' : 'info', `insights.${kind}.${phase}`, { ...data })

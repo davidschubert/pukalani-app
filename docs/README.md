@@ -65,6 +65,7 @@ gepflegt).
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
 | [runbooks/GOOGLE-LOGIN.md](runbooks/GOOGLE-LOGIN.md) | „Anmelden mit Google" scharfschalten (Google-Console, Appwrite-Console, die zwei Schalter) |
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
+| [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
 
 Die Häkchen in Runbooks sind **echt** — sie werden pro Durchlauf abgehakt und
@@ -86,7 +87,6 @@ gehören dort hin.
 | [plans/BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) | Brand Insights Fortsetzung (BI2): Kanalliste bearbeitbar, Cluster erweitert, Filter/Sortierung, eigene Fundstück-Liste per YouTube-Link, Dreifach-Urteil, KI-Brief aus Video, Kommentare nach I3 — **Konzept geschrieben 2026-09-09, drei Entscheidungsfragen offen (A/B/C)** |
 | [plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) | branding.supply — Rechtstexte + Bezahlweg (BS1): Strategie + Konzept geschrieben 2026-09-07, acht Entscheidungsfragen offen; Vorbedingung fürs Öffnen der Beta |
 | [plans/F7-PAYMENTS-CONNECT.md](plans/F7-PAYMENTS-CONNECT.md) | Entscheidungsvorlage, nichts gebaut (F7) |
-| [plans/CHANGELOG-3.0.0-ENTWURF.md](plans/CHANGELOG-3.0.0-ENTWURF.md) | fertiger Kundentext — **ob er eingefügt ist, muss David nachsehen** |
 
 **Regel:** Sobald ein Plan ausgeführt ist, wandert er nach `archiv/` und seine
 Reste nach `OPEN-ITEMS.md`. Ein Plan-Dokument ist nie eine To-do-Liste.

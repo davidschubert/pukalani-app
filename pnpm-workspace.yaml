@@ -146,12 +146,17 @@ catalog:
   # @nuxt/ui-Bump gehört diese Zeile mitgezogen — `pnpm check:single-copy`
   # (Liste enthält `@tiptap/core`) ist der Wächter.
   '@tiptap/extension-mention': 3.27.1
-  # Bild-Naht Schritt 2 (C14). 2.1.0 haengt NUR an h3 ^1.15.11 + @nuxt/kit
-  # ^4.5.1 — also genau an der Linie, die `overrides.h3` und `nuxt` hier
-  # ohnehin festhalten. `ipx` (und darueber `sharp`) ist eine OPTIONALE
-  # Abhaengigkeit und wird nur vom ipx-Anbieter gebraucht; dieses Repo
-  # transformiert in Appwrite, nicht auf dem App-Server.
-  '@nuxt/image': ^2.1.0
+  # Bild-Naht Schritt 2 (C14). 2.2.1 (2026-11-06, GHSA-p5vf-pjf5-ggj3: Speicher-
+  # fehler in der /_ipx-Route) haengt an h3 ^1.15.11 — die Linie, die
+  # `overrides.h3` festhaelt — und an @nuxt/kit ^4.6.3, also EINE Kit-Linie
+  # ueber unserem nuxt (4.5.x): das Modul bringt sein Kit als zweite Kopie
+  # mit (Kompatibilitaet laut Modul-Meta `nuxt >=3.1.0`, Build + Provider-
+  # Test gruen; `@nuxt/kit` steht bewusst nicht in check:single-copy). Die
+  # Luecke selbst trifft dieses Repo nicht: `ipx` (und darueber `sharp`) ist
+  # eine OPTIONALE Abhaengigkeit, unten ausgeschlossen, und wird nur vom
+  # ipx-Anbieter gebraucht — dieses Repo transformiert in Appwrite, nicht
+  # auf dem App-Server (Anbieter `appwrite` global in core/nuxt.config.ts).
+  '@nuxt/image': ^2.2.1
   # MUSS zur Range von @nuxt/ui passen (4.11.0 verlangt ^4.3.2), sonst liegen
   # zwei Tailwind-Kopien im Baum. Steht hier, weil `tailwindcss` DIREKT gebraucht
   # wird: packages/core/app/assets/css/main.css und docs/app/assets/css/main.css

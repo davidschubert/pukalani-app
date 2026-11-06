@@ -1,3 +1,15 @@
+import { isBotCheckReason, type BotCheckReason } from '../../shared/turnstile'
+import { REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
+
+/**
+ * Hat der Server eine FRISCHE Anmeldung verlangt (`requireRecentAuth`, RA1)?
+ * Bewusst über den Grund, nicht über 403 — das heißt an anderen Stellen
+ * „keine Berechtigung", und dort hilft Neu-Anmelden nicht.
+ */
+export function isReauthRequired(error: unknown): boolean {
+  return (error as { data?: { reason?: unknown } } | null)?.data?.reason === REAUTH_REQUIRED_REASON
+}
+
 /**
  * Netzwerkfehler (Server nicht erreichbar) von echten API-Antworten
  * unterscheiden — ofetch setzt response nur, wenn der Server geantwortet hat.
@@ -36,4 +48,15 @@ export function rateLimitRetrySeconds(error: unknown): number | null {
   const seconds = Number.parseInt(raw, 10)
   if (!Number.isFinite(seconds) || seconds <= 0) return null
   return seconds
+}
+
+/**
+ * Bot-Beweis abgelehnt (Turnstile, Vorfall 2026-10-27)? Liefert den Grund aus
+ * dem Envelope (`reason`, gesetzt von server/utils/turnstile.ts), sonst
+ * `null`. Bewusst NUR über den Grund, nie über den Status: 403 heißt an
+ * denselben Routen auch „Registrierung zu", 503 auch „OTP fehlt der Instanz".
+ */
+export function botCheckReason(error: unknown): BotCheckReason | null {
+  const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
+  return isBotCheckReason(reason) ? reason : null
 }

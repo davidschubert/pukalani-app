@@ -120,6 +120,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_PLATFORM_CONTROL_KEY',
       'NUXT_ONBOARDING_SERVICE_SECRET',
       /**
@@ -190,6 +195,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_CONTROL_ONBOARDING_SECRET',
       'NUXT_SMTP_HOST',
       'NUXT_SMTP_PORT',
@@ -244,6 +254,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_ANALYTICS_STATS_API_KEY',
       /**
        * Erstgespräch-Wizard (W1, 2026-08-21): `POST /api/intro-call` stellt
@@ -282,6 +297,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       /**
        * STEHT HIER, obwohl die drei älteren Site-Blöcke ihn nicht führen: die
        * Database-Id hat keinen brauchbaren Default — ohne sie findet KEIN

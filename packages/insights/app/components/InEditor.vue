@@ -15,18 +15,24 @@ import {
   INSIGHTS_TOPICS,
   INSIGHTS_TRANSITIONS,
   insightsDuelFactSchema,
+  insightsIsPublic,
   insightsMethodologyLinked,
+  INSIGHTS_BRIEF_MAX,
   insightsRankingSchema,
   insightsReadingMinutes,
   insightsReviewIssues,
 } from '../../shared/insightsPost'
 import {
-  INSIGHTS_BRIEF_MAX,
   INSIGHTS_DRAFT_WORDS_DEFAULT,
   INSIGHTS_DRAFT_WORDS_MAX,
   INSIGHTS_DRAFT_WORDS_MIN,
 } from '../../shared/insightsPrompts'
-import type { InsightsBrandListItem, InsightsEvidenceResponse } from '../../shared/types/insightsApi'
+import { INSIGHTS_NEWSLETTER_INTRO_MAX } from '../../shared/insightsNewsletter'
+import type {
+  InsightsBrandListItem,
+  InsightsEvidenceResponse,
+  InsightsNewsletterSendStatusResponse,
+} from '../../shared/types/insightsApi'
 import { bodyToSave as decideBodyToSave } from '../../../core/shared/editorBody'
 import { insightsDay } from '../utils/insightsFormat'
 import { createInsightsBrandSchema } from '../utils/insightsForms'
@@ -79,6 +85,19 @@ const props = defineProps<{
   transitioning?: boolean
   /** Welche Quelle gerade geprüft wird (Index), sonst `null`. */
   checkingIndex?: number | null
+  /**
+   * DER NEWSLETTER-STAND (I5b) — `null` heisst „das Panel gibt es hier nicht".
+   *
+   * Genau zwei Fälle führen darauf, und beide gehören der SEITE: der Riegel
+   * `pukalani.insights.newsletter.enabled` ist zu, oder der Stand ist noch
+   * nicht geladen. Der Editor fragt nichts nach (s. Kopf) — er zeigt, was
+   * hereinkommt.
+   */
+  newsletter?: InsightsNewsletterSendStatusResponse | null
+  /** Läuft gerade ein Stapel-Versand? */
+  newsletterSending?: boolean
+  /** Der Balken: wie viele von wie vielen (nur während des Versands). */
+  newsletterProgress?: { sent: number, total: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -88,6 +107,7 @@ const emit = defineEmits<{
   translate: []
   draft: [{ brief: string, targetWords: number }]
   createBrand: [{ name: string, homepage: string, industry: string }]
+  sendNewsletter: [{ introDe: string, introEn: string }]
 }>()
 
 const { t, locale } = useI18n()
@@ -326,12 +346,21 @@ const showFacts = computed(() => draft.format === 'duel' || draft.format === 'ra
 
 // ── KI-Entwurf ─────────────────────────────────────────────────────────────
 
-const brief = ref('')
+/**
+ * DER BRIEF STEHT AM ENTWURF, NICHT IN EINEM EIGENEN `ref` (seit BI2 K5).
+ *
+ * Vorher war er ein lokales Feld: getippt, mit dem Lauf abgeschickt, beim
+ * Neuladen weg. Seit K5 ist er eine SPALTE, weil ein Brief AUS EINEM VIDEO
+ * bezahlt ist (rund fünf Cent) und weil ein Mensch ihn schärft, bevor der
+ * Entwurf läuft. Als Teil von `draft` wandert er damit durch denselben
+ * Speicher-Weg wie alles andere im Formular — und „geändert?" rechnet ihn
+ * mit, statt ihn stillschweigend zu verlieren.
+ */
 const targetWords = ref(INSIGHTS_DRAFT_WORDS_DEFAULT)
 
 function runDraft(): void {
-  if (!brief.value.trim()) return
-  emit('draft', { brief: brief.value.trim(), targetWords: targetWords.value })
+  if (!draft.brief.trim()) return
+  emit('draft', { brief: draft.brief.trim(), targetWords: targetWords.value })
 }
 
 // ── Prüfregeln ─────────────────────────────────────────────────────────────
@@ -442,6 +471,7 @@ function editPayload(): InsightsPostEdit {
     facts: draft.facts.map(fact => ({ ...fact })),
     ranking: draft.ranking,
     noteInternal: draft.noteInternal,
+    brief: draft.brief,
   }
 }
 
@@ -464,6 +494,7 @@ const pristinePayload = computed(() => JSON.stringify({
   facts: props.post.facts,
   ranking: props.post.ranking,
   noteInternal: props.post.noteInternal,
+  brief: props.post.brief,
 }))
 
 const dirty = computed(() => JSON.stringify(editPayload()) !== pristinePayload.value)
@@ -475,6 +506,72 @@ function save(): void {
 // ── Vorschau ───────────────────────────────────────────────────────────────
 
 const previewOpen = ref(false)
+
+// ── Newsletter: an die Liste schicken (I5b) ────────────────────────────────
+
+/**
+ * DAS PANEL STEHT NUR AN EINEM FREIGEGEBENEN BEITRAG, UND ZWAR AUS ZWEI
+ * GRÜNDEN GLEICHZEITIG.
+ *
+ * `newsletter !== null` sagt, dass der Riegel offen ist (die Seite fragt sonst
+ * gar nicht); `insightsIsPublic` sagt, dass dieser Beitrag draussen steht. Die
+ * zweite Prüfung wiederholt etwas, das die Route auch weiss — mit Absicht: an
+ * einem Entwurf gäbe es nichts zu entscheiden, und ein Knopf mit der Auskunft
+ * „erst freigeben" an einer Stelle, an der man ohnehin noch schreibt, ist
+ * Lärm. Die Auskunft `blocked: 'not_public'` bleibt für den Fall, dass jemand
+ * den Beitrag im zweiten Reiter zurückzieht.
+ *
+ * `props.post.state` und nicht `draft.state`: der Zustand gehört dem Server
+ * (`INSIGHTS_SERVER_OWNED_FIELDS`), und ein ungespeicherter Entwurf darf das
+ * Panel nicht erscheinen lassen.
+ */
+const newsletterPanel = computed(() => (
+  props.newsletter && insightsIsPublic(props.post) ? props.newsletter : null
+))
+
+const newsletterIntroDe = ref('')
+const newsletterIntroEn = ref('')
+
+/**
+ * DAS EINLEITUNGS-FELD VERSCHWINDET, SOBALD DER ERSTE STAPEL DRAUSSEN IST.
+ *
+ * Beim Fortsetzen gilt der Text, der in der Sende-Zeile steht — sonst bekäme
+ * die zweite Hälfte der Liste einen anderen Text als die erste (die Route
+ * ignoriert mitgeschickte Einleitungen dann bewusst). Ein Feld, das man
+ * ausfüllen kann, ohne dass es wirkt, ist schlimmer als keines.
+ */
+const newsletterStarted = computed(() => Boolean(newsletterPanel.value?.send))
+
+const newsletterDone = computed(() => newsletterPanel.value?.send?.state === 'done')
+const newsletterStopped = computed(() => newsletterPanel.value?.send?.state === 'failed')
+
+/** Der Knopf steht nur, wenn die Route ihn erlaubt UND jemand da ist. */
+const canSendNewsletter = computed(() => Boolean(
+  newsletterPanel.value?.sendable && newsletterPanel.value.recipients > 0,
+))
+
+const sendOpen = ref(false)
+
+/**
+ * WELCHE ZAHL IN DER RÜCKFRAGE STEHT — beim Fortsetzen die AUSSTEHENDEN.
+ *
+ * „Diese Mail geht an 500 Menschen" wäre nach 300 verschickten Mails falsch,
+ * und zwar in die teure Richtung: sie liesse den Leser des Satzes glauben, er
+ * schicke etwas doppelt.
+ */
+const newsletterConfirmCount = computed(() => (
+  newsletterStarted.value
+    ? (newsletterPanel.value?.remaining ?? 0)
+    : (newsletterPanel.value?.recipients ?? 0)
+))
+
+function confirmSend(): void {
+  sendOpen.value = false
+  emit('sendNewsletter', {
+    introDe: newsletterIntroDe.value.trim(),
+    introEn: newsletterIntroEn.value.trim(),
+  })
+}
 </script>
 
 <template>
@@ -582,7 +679,7 @@ const previewOpen = ref(false)
         <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.editor.draftHint') }}</p>
         <UFormField class="mt-3" :label="t('insights.editor.draftBrief')">
           <UTextarea
-            v-model="brief" :rows="4" class="w-full"
+            v-model="draft.brief" :rows="4" class="w-full"
             :maxlength="INSIGHTS_BRIEF_MAX"
             :placeholder="t('insights.editor.draftBriefPlaceholder')"
           />
@@ -597,7 +694,7 @@ const previewOpen = ref(false)
           </UFormField>
           <UButton
             :label="t('insights.editor.draftRun')" icon="i-ph-sparkle"
-            :loading="drafting" :disabled="!brief.trim()"
+            :loading="drafting" :disabled="!draft.brief.trim()"
             class="rounded-full" @click="runDraft"
           />
         </div>
@@ -710,6 +807,115 @@ const previewOpen = ref(false)
         </div>
       </div>
 
+      <!-- Newsletter: an die Liste schicken (I5b). Nur an einem freigegebenen
+           Beitrag und nur bei offenem Riegel — beides entscheidet
+           `newsletterPanel`. -->
+      <div v-if="newsletterPanel" class="bw-card p-6" data-insights-newsletter-panel>
+        <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.newsletter.send.panelTitle') }}</p>
+
+        <template v-if="newsletterPanel.blocked === 'not_public'">
+          <p class="mt-3 text-sm" style="color: var(--bw-stale)">{{ t('insights.newsletter.send.notPublicTitle') }}</p>
+          <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.newsletter.send.notPublicText') }}</p>
+        </template>
+
+        <template v-else-if="newsletterPanel.blocked === 'no_public_address'">
+          <p class="mt-3 text-sm" style="color: var(--bw-stale)">{{ t('insights.newsletter.send.noAddressTitle') }}</p>
+          <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.newsletter.send.noAddressText') }}</p>
+        </template>
+
+        <!-- Durch: statt des Knopfes stehen hier Datum und Zahl (ein Beitrag,
+             eine Mail — es gibt keinen zweiten Versand). -->
+        <template v-else-if="newsletterDone && newsletterPanel.send">
+          <p class="mt-3 flex items-center gap-2 text-sm" style="color: var(--bw-accent)">
+            <UIcon name="i-ph-check-circle-fill" class="size-4" />
+            {{ t('insights.newsletter.send.doneTitle') }}
+          </p>
+          <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
+            {{ t('insights.newsletter.send.doneText', {
+              date: insightsDay((newsletterPanel.send.finishedAt || newsletterPanel.send.startedAt).slice(0, 10), locale),
+              count: newsletterPanel.send.sent,
+            }) }}
+          </p>
+          <p v-if="newsletterPanel.send.failed > 0" class="mt-2 text-sm leading-relaxed" style="color: var(--bw-stale)">
+            {{ t('insights.newsletter.send.failedNote', { count: newsletterPanel.send.failed }) }}
+          </p>
+        </template>
+
+        <template v-else>
+          <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.newsletter.send.hint') }}</p>
+
+          <p class="bw-label mt-3" style="color: var(--bw-muted)">{{ t('insights.newsletter.send.subjectLabel') }}</p>
+          <p class="text-sm leading-snug">{{ newsletterPanel.subjectPreview }}</p>
+
+          <UAlert
+            v-if="newsletterStopped"
+            class="mt-3" icon="i-ph-warning-circle" color="warning" variant="subtle"
+            :title="t('insights.newsletter.send.stoppedTitle')"
+            :description="t('insights.newsletter.send.stoppedText')"
+          />
+
+          <!-- Das Feld verschwindet, sobald der erste Stapel draussen ist
+               (s. `newsletterStarted` im Skript). -->
+          <template v-if="!newsletterStarted">
+            <!-- ZWEI FELDER, EINES JE SPRACHE (Davids Entscheidung 2026-10-27):
+                 die Mail folgt der Sprache des Lesers, also muss es die
+                 Einleitung auch. Wer nur eines füllt, erreicht damit nur dessen
+                 Leser — die anderen bekommen die Mail ohne Einleitung, nie die
+                 fremde Sprache. -->
+            <UFormField class="mt-3" :label="t('insights.newsletter.send.introLabelDe')">
+              <UTextarea
+                v-model="newsletterIntroDe" :rows="3" class="w-full"
+                :maxlength="INSIGHTS_NEWSLETTER_INTRO_MAX"
+                :placeholder="t('insights.newsletter.send.introPlaceholder')"
+              />
+            </UFormField>
+            <p class="bw-label mt-1" style="color: var(--bw-muted)">
+              {{ t('insights.newsletter.send.introCount', { count: newsletterIntroDe.length, max: INSIGHTS_NEWSLETTER_INTRO_MAX }) }}
+            </p>
+            <UFormField class="mt-3" :label="t('insights.newsletter.send.introLabelEn')">
+              <UTextarea
+                v-model="newsletterIntroEn" :rows="3" class="w-full"
+                :maxlength="INSIGHTS_NEWSLETTER_INTRO_MAX"
+                :placeholder="t('insights.newsletter.send.introPlaceholder')"
+              />
+            </UFormField>
+            <p class="bw-label mt-1" style="color: var(--bw-muted)">
+              {{ t('insights.newsletter.send.introCount', { count: newsletterIntroEn.length, max: INSIGHTS_NEWSLETTER_INTRO_MAX }) }}
+            </p>
+            <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.newsletter.send.introHint') }}</p>
+          </template>
+
+          <!-- Plural über die ZAHL, nicht über ein benanntes Feld (wie bei den
+               Prüfregeln): nur so wählt vue-i18n die Form. -->
+          <p class="mt-3 text-sm" style="color: var(--bw-ink-soft)">
+            {{ t('insights.newsletter.send.recipients', newsletterPanel.recipients) }}
+          </p>
+          <p v-if="newsletterStarted" class="bw-label" style="color: var(--bw-muted)">
+            {{ t('insights.newsletter.send.remaining', { count: newsletterPanel.remaining }) }}
+          </p>
+
+          <template v-if="newsletterPanel.recipients === 0 && !newsletterStarted">
+            <p class="mt-3 text-sm" style="color: var(--bw-muted)">{{ t('insights.newsletter.send.emptyTitle') }}</p>
+            <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.newsletter.send.emptyText') }}</p>
+          </template>
+
+          <template v-else>
+            <UButton
+              class="mt-4 rounded-full" block icon="i-ph-paper-plane-tilt"
+              :label="newsletterStarted ? t('insights.newsletter.send.resume') : t('insights.newsletter.send.button')"
+              :loading="newsletterSending"
+              :disabled="!canSendNewsletter || dirty"
+              data-insights-newsletter-send
+              @click="sendOpen = true"
+            />
+            <p v-if="dirty" class="bw-label mt-2" style="color: var(--bw-muted)">{{ t('insights.editor.saveFirst') }}</p>
+            <p v-if="newsletterSending && newsletterProgress" class="bw-label mt-2" style="color: var(--bw-muted)">
+              {{ t('insights.newsletter.send.running', newsletterProgress) }}
+            </p>
+          </template>
+        </template>
+      </div>
+
       <div class="bw-card p-6">
         <UFormField :label="t('insights.editor.noteInternal')">
           <UTextarea v-model="draft.noteInternal" :rows="3" class="w-full" :maxlength="500" />
@@ -727,6 +933,28 @@ const previewOpen = ref(false)
         </article>
       </template>
     </USlideover>
+
+    <!-- Die Rückfrage vor dem Versand: sie NENNT DIE ZAHL. Ein „Wirklich?"
+         ohne Zahl ist keine Rückfrage, sondern ein zweiter Klick. -->
+    <UModal v-model:open="sendOpen" :title="t('insights.newsletter.send.confirmTitle')">
+      <template #body>
+        <p class="text-sm leading-relaxed">{{ t('insights.newsletter.send.confirmText', newsletterConfirmCount) }}</p>
+        <p class="mt-2 text-sm text-muted">
+          {{ t('insights.newsletter.send.confirmSubject', { subject: newsletterPanel?.subjectPreview ?? '' }) }}
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" :label="t('ui.cancel')" @click="sendOpen = false" />
+          <UButton
+            :loading="newsletterSending"
+            :label="t('insights.newsletter.send.confirmSend')"
+            data-insights-newsletter-confirm
+            @click="confirmSend()"
+          />
+        </div>
+      </template>
+    </UModal>
 
     <!-- Marken-Schnellanlage -->
     <UModal v-model:open="brandDialogOpen" :title="t('insights.editor.brandAdd')">

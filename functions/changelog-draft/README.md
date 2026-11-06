@@ -5,10 +5,11 @@ _innerhalb_ von Appwrite und erreicht die DB direkt (löst das `localhost`-Probl
 von Track 2A). Teilt die Parsing-Logik mit dem lokalen Generator
 (`packages/admin/scripts/changelog-draft.mjs`) über `src/parse.js` — eine Quelle.
 
-> **Status:** deploy-bereit, aber **erst mit Prod + öffentlicher Domain aktiv**
-> (Phase 17). GitHub muss den Webhook per HTTPS erreichen können. Lokal/self-hosted
-> hinter `localhost` kann GitHub nicht zustellen — bis dahin bleibt Track 2A
-> (`pnpm changelog:draft`) der Weg.
+> **Status: STILLGELEGT seit dem Control-Cutover** (festgestellt 2026-11-06).
+> Die Function lief vom 2026-07-19 an im Prod-Projekt `comments`, das es nicht
+> mehr gibt; der GitHub-Webhook ist deaktiviert. Der Weg ist Track 2A
+> (`pnpm changelog:draft`). `src/parse.js` bleibt die geteilte Parser-Quelle.
+> Hergang und Wiederbeleben: `docs/referenz/CHANGELOG-WORKFLOW.md` § 2B.
 
 ## Was sie tut
 

@@ -42,6 +42,17 @@ const errorMessage = ref<string | null>(null)
  */
 const mfaRequired = ref(false)
 
+/**
+ * BOT-BEWEIS (Turnstile, Vorfall 2026-10-27). Das Widget steht AUSSERHALB des
+ * E-Mail-Schritts, damit es auch im Code-Schritt lebt: „Code erneut senden"
+ * ist ein zweiter `POST /api/auth/otp` und braucht einen frischen Token. Ohne
+ * Site-Key rendert es nichts und beide Knöpfe verhalten sich wie vorher.
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+
 // AGB nur im register-Modus erzwingen — Login bestehender User bleibt friktionsfrei
 const termsUrl = computed(() => appConfig.pukalani?.auth?.termsUrl ?? '')
 const requireTerms = computed(() => props.register === true && termsUrl.value.length > 0)
@@ -98,10 +109,19 @@ onScopeDispose(() => {
 })
 
 async function requestToken() {
-  const response = await $fetch<{ ok: boolean, userId: string, phrase: string }>('/api/auth/otp', {
-    method: 'POST',
-    body: { email: state.email },
-  })
+  let response: { ok: boolean, userId: string, phrase: string }
+  try {
+    response = await $fetch<{ ok: boolean, userId: string, phrase: string }>('/api/auth/otp', {
+      method: 'POST',
+      body: { email: state.email, ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}) },
+    })
+  }
+  finally {
+    // Ein Token gilt einmal — egal, wie der Request ausgeht, er ist
+    // verbraucht; der nächste Versuch (Wiederholen, „erneut senden") braucht
+    // einen frischen.
+    botCheck.value?.reset()
+  }
   userId.value = response.userId
   phrase.value = response.phrase
   startCountdown()
@@ -262,7 +282,7 @@ function onMfaCancelled() {
         <UCheckbox v-model="state.business" :label="t('auth.register.businessLabel')" data-business-check />
         <p class="mt-1 text-xs text-muted" data-business-notice>{{ t('auth.register.businessNotice') }}</p>
       </UFormField>
-      <UButton type="submit" block size="lg" :loading="loading">{{ t('auth.otp.requestCode') }}</UButton>
+      <UButton type="submit" block size="lg" :loading="loading" :disabled="waitingForBotCheck">{{ t('auth.otp.requestCode') }}</UButton>
       <p v-if="requireTerms" class="text-center">
         <ULink :to="termsHref" target="_blank" class="text-sm text-muted hover:text-primary">
           {{ t('auth.register.termsLink') }}
@@ -283,10 +303,12 @@ function onMfaCancelled() {
       </UButton>
 
       <p class="text-center text-sm text-muted">
-        <UButton variant="link" size="sm" :disabled="resendIn > 0 || loading" @click="resend">
+        <UButton variant="link" size="sm" :disabled="resendIn > 0 || loading || waitingForBotCheck" @click="resend">
           {{ resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend') }}
         </UButton>
       </p>
     </template>
+
+    <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="otp" />
   </div>
 </template>

@@ -222,6 +222,24 @@ export default defineAppConfig({
        * Bild, und die Werkstatt sagt „gerade nicht verfügbar".
        */
       imageModel: '',
+      /**
+       * VIDEOS LESEN (`aiVideo`, BI2 K5 — Plan
+       * docs/plans/BRAND-INSIGHTS-KURATION.md §6/§13) — LEER heisst AUS, und
+       * das ist der Core-Default.
+       *
+       * Dieselbe Bauform wie die zwei Schlüssel darüber, mit einem zweiten
+       * Grund für die Strenge: NICHT JEDES MODELL KANN ES. Das Textmodell
+       * dieses Monorepos sieht keine Videos, also wäre ein Gate am
+       * allgemeinen KI-Schalter eine Einladung, mit dem falschen Modell zu
+       * rufen.
+       *
+       * Zu wählen ist ein Modell mit VIDEO-EINGABE, das unter
+       * `data_collection: 'deny'` (+ dem `zdr`/`only` des Konsumenten)
+       * Anbieter findet. Gemessen am 2026-10-27 (Plan §13): die
+       * `gemini-3.x`-Reihe kann es, `google/gemini-3.1-flash-lite` auch auf
+       * `google-vertex/eu` — und ein 25-Minuten-Video kostet rund fünf Cent.
+       */
+      videoModel: '',
       baseUrl: 'https://openrouter.ai/api/v1',
     },
     auth: {

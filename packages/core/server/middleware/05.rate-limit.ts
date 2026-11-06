@@ -11,9 +11,39 @@
  * mit NUXT_REDIS_URL geteilt über alle Instanzen/Cluster-Worker (Fixed-
  * Window in Redis), ohne wie bisher in-memory pro Instanz. Fail-open bei
  * totem Redis (Fallback drosselt pro Instanz weiter).
+ *
+ * MAIL-ROUTEN HABEN DREI FENSTER, NICHT EINES (Vorfall 2026-10-27): ein
+ * Angreifer rief `POST /api/auth/signup` im 20-Sekunden-Takt auf — mit der
+ * Adresse eines Opfers und einem Werbesatz samt Kurzlink als Namen, danach
+ * jeweils `POST /api/auth/logout`. Appwrite schickte jedes Mal die
+ * Verifizierungs-Mail über unser Resend-Konto: 209 Spam-Mails in einer Nacht
+ * von EINER IP. Drei Anfragen je Minute liegen knapp unter dem 5/min-Deckel —
+ * ein Fenster von 60 s vergisst zu schnell, um einen GEDULDIGEN Absender zu
+ * sehen. Deshalb zusätzlich zum Minutenfenster (gegen Hämmern) ein
+ * Stundenfenster je IP (gegen Geduld) und eine Notbremse über alle IPs (gegen
+ * Adressrotation) — Einzelheiten bei `checkMailRouteBudget` unten. Den INHALT
+ * des Hebels (Link im Namen) schließt die Regel shared/displayName.ts.
  */
+import type { H3Event } from 'h3'
+import type { RateLimitState, RateLimitStore } from '../utils/rateLimitStore'
+
 const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 5
+/**
+ * Mail-Routen (ALWAYS_LIMITED), zweites Fenster je IP: 20 je Stunde. Ein Mensch
+ * fordert vielleicht drei, vier Mails an (Registrierung, „nochmal senden",
+ * Passwort vergessen); geteilte Anschlüsse (Vereinsnetz, Konferenz-WLAN) haben
+ * mit 20 Luft. Der Angreifer aus dem Vorfall kam auf ~180 je Stunde.
+ */
+const MAIL_HOUR_WINDOW_MS = 3_600_000
+const MAIL_HOUR_MAX = 20
+/**
+ * Notbremse je Mail-Route über ALLE IPs: 60 je Stunde und App. Bewusst hoch
+ * genug für eine echte Anmeldewelle (ein Community-Start mit Newsletter bringt
+ * Dutzende, nicht Hunderte je Stunde) und bewusst eine Zahl, die ein Mensch im
+ * Log wiedererkennt, wenn `auth.mail_route_breaker` auftaucht.
+ */
+const MAIL_GLOBAL_HOUR_MAX = 60
 const WRITE_MAX = 60
 // Presence-Heartbeats laufen legitim hochfrequent (20s-Intervall + jede
 // metadata-Änderung, pro Tab) — großzügiges eigenes Budget, das nur echtes
@@ -885,6 +915,84 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
   // der Schutz des Webhooks ist die Signatur-Verifikation (billing B4).
 ]
 
+/**
+ * 429 mit Retry-After und dem fachlichen Grund. Der GRUND reist als
+ * `data.code` — der zentrale Handler (server/error.ts) hebt genau diesen
+ * Schlüssel als `reason` ins Envelope. Ohne ihn konnten die Auth-Formulare eine
+ * Sperre nicht von einem echten Fehlversuch unterscheiden und schrieben
+ * „Passwort falsch" bzw. „bitte erneut versuchen" — beides falsch, und beides
+ * fordert genau die Handlung, die gerade geblockt wird (Audit-Befund G7,
+ * 2026-08-09). Der Status allein reicht dem Client nicht: eine 429 kann auch von
+ * einem vorgelagerten Proxy kommen und trägt dann nicht unser Fenster.
+ *
+ * EIN Code für alle Fenster (Minute, Stunde, Notbremse): der Client soll nur
+ * wissen, DASS er warten muss — wie lange, sagt Retry-After.
+ */
+function tooManyRequests(event: H3Event, resetInMs: number): never {
+  setHeader(event, 'Retry-After', Math.max(1, Math.ceil(resetInMs / 1000)))
+  throw createError({ status: 429, statusText: 'Too Many Requests', data: { code: 'rate_limited' } })
+}
+
+/**
+ * Die beiden zusätzlichen Fenster der Mail-Routen (Vorfall 2026-10-27, s. Kopf).
+ * Liefert das Fenster, das blockt, oder `null`.
+ *
+ * 1. STUNDE JE IP (`MAIL_HOUR_MAX`): fängt den geduldigen Absender, der unter
+ *    dem Minutendeckel bleibt. Gezählt wird nur, was das Minutenfenster schon
+ *    durchgelassen hat (der Aufrufer prüft es vorher) — die Zahl bedeutet damit
+ *    ziemlich genau „verschickte Mails dieser IP in der Stunde".
+ * 2. NOTBREMSE ÜBER ALLE IPs (`MAIL_GLOBAL_HOUR_MAX`, je Route): Mail-Versand
+ *    kostet Resend-Kontingent und — schwerer zu ersetzen — Absender-Ruf. Eine
+ *    IP-Drossel allein umgeht, wer über viele Adressen rotiert (Proxy-Netze sind
+ *    billig). Gezählt wird nur, was die IP-Fenster durchgelassen haben, damit
+ *    EINE gesperrte IP den gemeinsamen Eimer nicht leerhämmert; eine einzelne
+ *    IP kann ihn höchstens zu einem Drittel füllen. Der Preis ist bewusst
+ *    gewählt: ist der Deckel erreicht, wartet für den Rest der Stunde AUCH der
+ *    echte Mensch — lieber eine Stunde keine Anmeldung als eine Nacht Spam in
+ *    unserem Namen.
+ *
+ *    Die Log-Zeile kommt EINMAL je Fenster: genau der Request, der den Zähler
+ *    auf `MAX + 1` hebt (INCR ist in Redis atomar, also sieht genau einer
+ *    diesen Wert — ohne eigenen „schon gemeldet"-Zustand). Fällt Redis aus,
+ *    zählt der In-Memory-Fallback je Instanz; die Bremse greift dann je
+ *    Instanz, und jede meldet sich einmal.
+ */
+/**
+ * GAST-FORMULARE, DIE EINE MAIL AN EINE VOM ABSENDER GEWÄHLTE ADRESSE SCHICKEN
+ * (Quittung, Double-Opt-in) — dieselbe Spam-Relais-Klasse wie die Auth-Routen,
+ * nur ohne Konto: Erstgespräch (zitiert Name UND Anliegen zurück), Warteliste
+ * und Newsletter (Bestätigungs-Link an die eingegebene Adresse). Sie liegen in
+ * `WRITE_LIMITED` mit eigenem Minuten-Deckel; Stundenfenster und Notbremse
+ * gelten hier je BUCKET statt je Route, damit ein Formular mit mehreren
+ * Pfaden (waitlist + waitlist/confirm) einen Eimer teilt. Das Portfolio-
+ * Erstgespräch mailt nur an David (keine Relais-Gefahr), hält aber dieselbe
+ * Kontingent-Grenze — eine Nacht Formular-Spam kostet Resend-Mails, egal wer
+ * der Empfänger ist.
+ */
+const GUEST_MAIL_BUCKETS = new Set([
+  'brand:intro-call',
+  'brand:waitlist',
+  'insights:newsletter',
+  'portfolio:intro-call',
+])
+
+async function checkMailRouteBudget(
+  store: RateLimitStore,
+  prefix: string,
+  ip: string,
+  route: string,
+): Promise<RateLimitState | null> {
+  const hour = await store.hit(`${prefix}${ip}:${route}:h`, MAIL_HOUR_WINDOW_MS)
+  if (hour.count > MAIL_HOUR_MAX) return hour
+
+  const global = await store.hit(`${prefix}global:${route}:h`, MAIL_HOUR_WINDOW_MS)
+  if (global.count > MAIL_GLOBAL_HOUR_MAX) {
+    if (global.count === MAIL_GLOBAL_HOUR_MAX + 1) logEvent('warn', 'auth.mail_route_breaker', { route })
+    return global
+  }
+  return null
+}
+
 export default defineEventHandler(async (event) => {
   const isWriteMethod = event.method === 'POST' || event.method === 'PUT' || event.method === 'PATCH'
   const pathname = getRequestURL(event).pathname
@@ -921,17 +1029,12 @@ export default defineEventHandler(async (event) => {
   const counting = always || Boolean(write)
   const state = counting ? await store.hit(key, WINDOW_MS) : await store.peek(key, WINDOW_MS)
 
-  if (counting ? state.count > max : state.count >= max) {
-    setHeader(event, 'Retry-After', Math.max(1, Math.ceil(state.resetInMs / 1000)))
-    // Der GRUND reist als `data.code` — der zentrale Handler (server/error.ts)
-    // hebt genau diesen Schlüssel als `reason` ins Envelope. Ohne ihn konnten
-    // die Auth-Formulare eine Sperre nicht von einem echten Fehlversuch
-    // unterscheiden und schrieben „Passwort falsch" bzw. „bitte erneut
-    // versuchen" — beides falsch, und beides fordert genau die Handlung, die
-    // gerade geblockt wird (Audit-Befund G7, 2026-08-09). Der Status allein
-    // reicht dem Client nicht: eine 429 kann auch von einem vorgelagerten
-    // Proxy kommen und trägt dann nicht unser Fenster.
-    throw createError({ status: 429, statusText: 'Too Many Requests', data: { code: 'rate_limited' } })
+  if (counting ? state.count > max : state.count >= max) tooManyRequests(event, state.resetInMs)
+
+  // Mail-Routen: zusätzlich Stunde je IP + Notbremse über alle IPs (s. oben).
+  if (always || (write && GUEST_MAIL_BUCKETS.has(write.bucket))) {
+    const blocked = await checkMailRouteBudget(store, prefix, ip, write ? write.bucket : route)
+    if (blocked) tooManyRequests(event, blocked.resetInMs)
   }
 
   if (!always && !write) {

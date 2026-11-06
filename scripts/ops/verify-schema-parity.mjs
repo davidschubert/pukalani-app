@@ -417,6 +417,13 @@ const INSIGHTS_TABLES = [
   // werden täglich überschrieben. `available: false` heisst „Video weg, Zahlen
   // geleert, Zeile steht" — im Radar ginge in diesem Fall die ganze Zeile.
   'insights_watchlist',
+
+  // insights-008: das Protokoll eines Versands (I5b) — die Zeile ZÄHLT und
+  // nennt niemanden (`recipients`/`sent`/`failed`, dazu ein `cursor` auf eine
+  // Abonnenten-Zeile). `uq_post_id` ist die Sicherung gegen den zweiten
+  // Versand: ein Beitrag, eine Mail. Sie entsteht VOR der ersten Mail, damit
+  // ein abgebrochener Lauf fortgesetzt statt wiederholt wird.
+  'insights_sends',
 ]
 
 const PORTFOLIO_SOLL = [

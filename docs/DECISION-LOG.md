@@ -7,6 +7,67 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-10-27 — Spam- und Bot-Schutz an den Mail-Routen: Textregel, Stundenfenster, Turnstile
+
+**Anlass:** Resend-Spam über `POST /api/auth/signup` (209 Verifizierungs-Mails mit Spamtext
+im Anzeigenamen, Hergang in OPEN-ITEMS-COMPLETE 2026-10-27). David: „wir brauchen definitiv
+einen spam schutz und bot schutz", dazu seine Liste (Same-Origin, Honeypot, Zeitprüfung,
+Link-Heuristik, 5/h je IP, Turnstile) — als Leitplanke, nicht als Bauplan.
+
+**Entscheidungen (David, 2026-10-27):**
+- **Turnstile ja** — Cloudflare Turnstile an Registrierung, Code-Login und Passwort-
+  Zurücksetzen, serverseitig geprüft, fail-closed. Gate = beide Env-Variablen; ohne
+  Schlüssel bleibt alles wie vorher. Scharf schalten ist Davids Schritt (TS1).
+- **Spam-Konten löschen** — die 205 unverifizierten Konten mit Link im Namen und die
+  zwei verifizierten Testkonten des Angreifers, per Skript nach dem Deploy.
+- **20 je Stunde und IP statt 5** (Claude, mit Begründung): die vier Mail-Routen
+  bedienen auch den Code-LOGIN — fünf Personen hinter einem Büro- oder Schul-Anschluss
+  hätten die sechste ausgesperrt. Den Angreifer stoppt nicht das IP-Fenster, sondern
+  die Notbremse über alle IPs (60/h je Route) und Turnstile; das IP-Fenster ist nur
+  die billige Vorstufe.
+- **Nicht gebaut:** Honeypot und 4-Sekunden-Regel (treffen nur Formular-Bots, der
+  Angreifer rief die API direkt an) und eine Same-Origin-PFLICHT an den Mail-Routen
+  (Header frei setzbar; Browser-Cross-Site weist `csrfOriginCheck` schon ab).
+
+**Verworfen:** die Verifizierungs-Mail bei der Registrierung ganz abschalten — sie ist
+Produkt (`pukalani.auth.verification`), und ohne Namensregel bliebe der Hebel über
+`PUT /api/auth/profile` + „Mail erneut senden".
+
+---
+
+## 2026-10-27 — Appwrite 2.6.2 sofort nachziehen: das Security-Release kam fünf Stunden nach dem Prod-Sprung
+
+**Anlass:** Appwrite 2.6.2 (2026-10-24 13:41 UTC) ist ein reines Security-Release der 2.6-Linie —
+`appwrite/base` 2.2.7 mit `brotli-libs` 1.2.1-r0 gegen CVE-2026-111497 (Out-of-bounds-Write im
+Brotli-Decoder; Appwrites ausgehender HTTP-Client dekodiert `br`, Avatar-/Favicon-Endpunkte holen
+nutzergelieferte URLs), dazu Härtung an API-Keys/JWTs, Realtime, GraphQL, Storage, VCS, Messaging.
+Prod stand seit 08:59 UTC desselben Tages auf 2.6.1 — das Release hat uns um fünf Stunden verpasst.
+
+**Entscheidung (Davids Auftrag „prüfen und installieren"):** 2.6.2 kommt auf dev, CI und prod, in
+dieser Reihenfolge wie immer; kein Schema, also ein kleines Fenster (Container-Neustart, keine
+Migration). Aus der Cloud-Sitzung sind nur CI, Skript und Runbook erreichbar (kein ssh, kein Netz zu
+`api.pukalani.app`) — prod und dev laufen von Davids Terminal: `ops/appwrite-upgrade-2.6.2.sh`, Runbook
+`APPWRITE-2-6-UPGRADE.md` Abschnitt „2.6.1 → 2.6.2".
+
+**Was gegen den Code geprüft ist (2026-10-27):** Key-Anlage nur noch per Console-Session oder Key mit
+gleichen Scopes — `create-site.mjs` und der CI-Setup nutzen die Console-Session, erlaubt. Admin-Mode nur
+aus Console-Origins — wir setzen nie `X-Appwrite-Mode`. `_APP_JOBS_SECRET` darf nicht mehr leer/Platz-
+halter sein — das Werkzeug ersetzt es, wir führen keine Functions. Betreiber-SMTP ist von der neuen
+Privatadressen-Sperre ausdrücklich ausgenommen (dev-Mailpit bleibt). Neu `_APP_MEMORY_LIMIT` (512M je
+Prozess) — im CI-Compose in den sieben PHP-Diensten nachgezogen; `registers.php` ist zu 2.6.1
+byte-gleich, der KeepAlive-Patch (Zeile 367) bleibt Pflicht und wird trotzdem je Version aus dem Image
+gezogen.
+
+**Ausgeführt (2026-10-27, Davids Auftrag „erst dev, dann prod"):** dev 20:51–20:56 UTC, prod
+21:09–21:12 UTC über `ops/appwrite-upgrade-2.6.2.sh` per ssh — Werkzeug-Aufruf bis Beweise 81 s, davon
+`migrate` 19,6 s (V25 läuft idempotent erneut, 253 „already exists", 0 Fehler). Alle Beweise im Runbook
+(„Durchläufe"); offen nur Davids eigene OTP-Anmeldung als Mail-Beweis. Zwei Beweis-Zeilen des Skripts
+waren falsch und sind korrigiert: `apk info -v PAKET` druckt die Beschreibung (grep über `apk info -v`),
+und `php -r 'echo ini_get("memory_limit")'` zeigt die CLI-ini (128M), nicht den per `ini_set` in
+`app/init.php` gesetzten Wert — Beweis ist die Env im Container.
+
+---
+
 ## 2026-10-23 — Appwrite 2.6.1 statt 2.2: das PHP-Notfall-Release zieht den Prod-Sprung vor
 
 **Anlass:** PHP 8.5.12 (2026-10-21) schließt CVE-2026-109618 / CVE-2026-109619 (unauthentifizierte

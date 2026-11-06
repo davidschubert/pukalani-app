@@ -111,8 +111,8 @@ niemand aufruft, kostet ohne Gegenwert. Empfehlung je Server:
 | Server | Empfehlung | Warum |
 | --- | --- | --- |
 | GitHub-MCP | aus | `gh` ist seit jeher die Regel (PRs, Issues, API); doppelter Weg |
-| Appwrite-API-MCP | aus | verbindet in Sessions regelmäßig nicht; alle Schreibwege laufen über `pnpm migrate` und `scripts/ops/*` (node-appwrite) |
-| Appwrite-Docs, Nuxt-Docs, Nuxt-UI-Docs | an lassen | Nachschlagen ohne Kontextlast des Repos; nur bei Bedarf aufgerufen |
+| Appwrite-API-MCP | **an, nur lokal und nur lesend** (Davids Entscheidung 2026-11-06) | zeigt den IST-Zustand (Spalten, Indizes, Rechte, Daten) beim Debuggen; seit dem Server-Stand vom 2026-10-27 nur fünf Meta-Werkzeuge im Kontext. Plugin-Optionen `http://localhost/v1` + `reddit-comments` (Pool), Schlüssel `claude-mcp-readonly` mit ausschließlich `*.read`-Scopes (ohne `keys`/`oauth2`/`providers`). NIE gegen Prod: die Sessions laufen ohne Rückfrage, die „destruktiv"-Annotation schützt dort nicht. Schema-Änderungen bleiben bei `pnpm migrate` und `scripts/ops/*` (node-appwrite) |
+| Appwrite-Docs, Nuxt-Docs, Nuxt-UI-Docs | an lassen | Nachschlagen ohne Kontextlast des Repos; nur bei Bedarf aufgerufen. Der Appwrite-Docs-Server `mcp-for-docs.appwrite.io` ist abgekündigt; sein Nachfolger `mcp.appwrite.io` meldet sich bei Appwrite Cloud an (für self-hosted nur als Doku-Suche brauchbar) |
 | ploi | an lassen | Deploy-Log und Site-Env ohne Browser; kein CLI-Ersatz vorhanden |
 | Playwright-Plugin | aus, wenn der eingebaute Browser reicht | zweiter Browser-Werkzeugsatz neben Claude_Browser und Claude-in-Chrome |
 | Figma, Trello, Gmail, Kalender, Drive, Obsidian | aus für dieses Projekt | kein Repo-Bezug; Obsidian nur, wenn Notizen bewusst gebraucht werden |

@@ -100,15 +100,16 @@ Sag mir, sobald das steht — dann gehen wir die Schritte gemeinsam durch.
      App-Server.
 5. **SMTP** in der Appwrite-Installation (`.env` der Instanz, nicht in der
    Console) konfigurieren, sonst keine Auth-Mails.
-   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.1, je Version eine Patchdatei —
-   aktuell `patches/registers-2.6.1-keepalive-off.php`):** der Mail-Versand verliert mit dem
+   **Pflicht-Patch (Appwrite 1.9.5 bis 2.6.2, je Version eine Patchdatei —
+   dev und prod seit 2026-10-27 `patches/registers-2.6.2-keepalive-off.php`):**
+   der Mail-Versand verliert mit dem
    hartkodierten SMTP-`keepAlive: true` still die ERSTE Mail nach einer
    Leerlaufphase (PHPMailer-`false` wird verschluckt, Worker loggt trotzdem
    „success") — auf beiden Instanzen mountet `docker-compose.override.yml`
    deshalb eine gepatchte `registers.php` (`keepAlive: false`) in den Worker.
    **Seit 2.2 heißt der Dienst `appwrite-worker`** (ein Container für ALLE
    Warteschlangen, vorher `appwrite-worker-mails`); die Datei ist in 2.2 neu
-   geschnitten, die zu ändernde Zeile ist in 2.6.1 die 367. Der Mount in der
+   geschnitten, die zu ändernde Zeile ist in 2.6.1 und 2.6.2 die 367. Der Mount in der
    Override braucht seit 2.5 einen ABSOLUTEN Host-Pfad (das Upgrade-Werkzeug
    lädt die Override mit und löst `./` im eigenen Container auf). Details/
    Beweis: PHASE-17-PRODUCTION.md Block 7, Ablauf: APPWRITE-2-6-UPGRADE.md.
@@ -206,7 +207,42 @@ NUXT_PUBLIC_APP_URL=https://comments.pukalani.app
 NUXT_PUBLIC_I18N_BASE_URL=https://comments.pukalani.app
 NUXT_SMTP_HOST=smtp.resend.com                      # + PORT/USER/PASS/FROM
 NUXT_REDIS_URL=redis://127.0.0.1:6379               # geteilter Rate-Limit-Store
+NUXT_TURNSTILE_SECRET=<Cloudflare-Turnstile-Secret> # server-only, Bot-Beweis an signup/otp/recovery
+NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Secret setzen
 ```
+> **Turnstile (seit 2026-10-27, Vorfall „Resend-Spam über die Registrierung"):**
+> beide Variablen gesetzt = Registrierung, Code-Login und Passwort-Zurücksetzen
+> verlangen einen Cloudflare-Turnstile-Token, den der Server bei Cloudflare
+> prüft (fail-closed: ist Cloudflare nicht erreichbar, antwortet die Route 503
+> und das Formular sagt „gerade nicht möglich"). Beide leer = aus, exakt das
+> Verhalten von vorher (Dev, CI, E2E). NUR EINE gesetzt = Fehlkonfiguration,
+> der Server schreibt sie beim Start ins Log (`auth.turnstile_misconfigured`);
+> ein Secret ohne Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt
+> ein nutzloses Widget. Das Widget EXISTIERT seit 2026-10-27: „Pukalani Apps"
+> im Cloudflare-Konto Hawaii Studio (Turnstile → Widgets), Hostnames
+> `pukalani.app` + `branding.supply` (Subdomains sind automatisch gedeckt),
+> Modus „Managed"; EIN Schlüsselpaar für alle Pukalani-Sites, gesetzt auf
+> platform, admin, portfolio, branding — und dort PFLICHT im Wächter
+> `verify-site-env.mjs`. Nach dem Eintragen reicht `pm2 startOrReload
+> … --update-env` (kein Build nötig, auch der `NUXT_PUBLIC_`-Site-Key kommt
+> zur Laufzeit aus der Env). Neue Site mit Konten ⇒ beide Variablen mitgeben;
+> neue Root-Domain ⇒ als Hostname am Widget nachtragen.
+> **NEU LADEN NICHT VERGESSEN:** Nitro liest zur Laufzeit keine `.env`, die
+> Ecosystem-Config hebt sie nur beim `pm2 startOrReload … --update-env` in
+> den Prozess — und ein Deploy ohne App-Änderung überspringt. Nach dem
+> Eintragen (ploi-Panel oder direkt in der Site-`.env`) also einmal auf app-prod:
+> ```bash
+> for s in platform.pukalani.app:platform admin.pukalani.app:control portfolio.pukalani.app:portfolio branding.supply:branding; do
+>   pm2 startOrReload /home/ploi/${s%%:*}/ops/ecosystem-${s##*:}.config.cjs --update-env; done; pm2 save
+> ```
+> **Beweis:** `pnpm ops:turnstile` (scripts/ops/verify-turnstile.mjs) fragt
+> jede der vier Sites: `POST /api/auth/recovery` ohne Token ⇒ 403
+> `bot_check_required` (Server prüft) UND `/forgot-password` trägt
+> `data-turnstile` (Site-Key kam an) — recovery statt signup, weil die Route
+> für eine unbekannte Adresse im AUS-Fall weder Konto noch Mail erzeugt.
+> Dazu im pm2-Log der Site KEIN `auth.turnstile_misconfigured_at_boot`, und
+> eine echte Registrierung im Browser (die meisten sehen das Widget gar
+> nicht, `interaction-only`).
 > **Rate-Limit-Store (seit 2026-07-23):** mit `NUXT_REDIS_URL` zählen alle
 > Instanzen/Cluster-Worker einer App ihre Rate-Limits GETEILT in Redis
 > (läuft auf app-prod lokal auf 6379, bei der Server-Einrichtung

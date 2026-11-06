@@ -16,6 +16,7 @@ import {
   insightsVideoUrl,
 } from '../../../../shared/insightsWatchlist'
 import type {
+  InsightsBriefResponse,
   InsightsWatchAddedResponse,
   InsightsWatchDeletedResponse,
   InsightsWatchSavedResponse,
@@ -182,6 +183,53 @@ async function remove(item: InsightsWatchItem): Promise<void> {
   }
 }
 
+// ── Brief aus einem Video (K5) ─────────────────────────────────────────────
+
+/**
+ * DER TEUERSTE KNOPF DIESER OBERFLÄCHE — deshalb drei Dinge, die ein
+ * gewöhnlicher Speichern-Knopf nicht braucht.
+ *
+ *  1. EINE RÜCKFRAGE. Ein Lauf kostet echtes Geld (rund fünf Cent für ein
+ *     25-Minuten-Video) und dauert bis zu drei Minuten. Ein versehentlicher
+ *     Klick soll nicht beides ausgeben.
+ *  2. EIN EIGENER LADE-ZUSTAND. `busyId` lässt die ganze Zeile warten — bei
+ *     Minuten ist das richtig: in dieser Zeit darf niemand dieselbe Zeile
+ *     noch einmal schicken.
+ *  3. KEIN AUTOMATISCHES WEITERSPRINGEN. Der Beitrag ist angelegt, aber der
+ *     Brief will gelesen werden; der Toast führt hin, statt die Liste unter
+ *     den Händen wegzuziehen.
+ */
+const briefingId = ref('')
+
+async function makeBrief(item: InsightsWatchItem): Promise<void> {
+  if (!confirm(t('insights.finds.briefConfirm'))) return
+  briefingId.value = item.videoId
+  busyId.value = item.videoId
+  try {
+    const result = await $fetch<InsightsBriefResponse>(
+      `/api/insights/watchlist/${item.videoId}/brief`,
+      { method: 'POST' },
+    )
+    await refresh()
+    toast.add({
+      title: t('insights.finds.briefDone'),
+      description: t('insights.finds.briefDoneHint'),
+      color: 'success',
+      actions: [{
+        label: t('insights.finds.briefOpen'),
+        onClick: () => navigateTo(localePath(`/dashboard/insights/${result.id}`)),
+      }],
+    })
+  }
+  catch (error) {
+    toast.add({ title: errorText(error), color: 'error' })
+  }
+  finally {
+    briefingId.value = ''
+    busyId.value = ''
+  }
+}
+
 /** Der Ablehnungsgrund aus dem Envelope — sonst ein Satz. */
 function errorText(error: unknown): string {
   const reason = (error as { data?: { reason?: string } } | null)?.data?.reason
@@ -204,6 +252,7 @@ const columns = computed<TableColumn<FindRow>[]>(() => [
   { id: 'opportunity', header: () => t('insights.radar.opportunity') },
   { accessorKey: 'note', header: () => t('insights.finds.note') },
   { id: 'verdict', header: () => t('insights.verdict.label') },
+  { id: 'brief', header: () => t('insights.finds.brief') },
   { id: 'open', header: () => t('insights.radar.openLabel') },
 ])
 
@@ -375,6 +424,26 @@ function formulaFor(opportunity: InsightsOpportunity): string {
               :model-value="row.original.verdict"
               :busy="busyId === row.original.videoId"
               @update:model-value="value => patch(row.original, { verdict: value })"
+            />
+          </template>
+
+          <template #brief-cell="{ row }">
+            <UButton
+              v-if="row.original.briefPostId"
+              icon="i-ph-article"
+              color="neutral" variant="subtle" size="xs"
+              :to="localePath(`/dashboard/insights/${row.original.briefPostId}`)"
+              :label="t('insights.finds.briefOpen')"
+            />
+            <UButton
+              v-else
+              icon="i-ph-sparkle"
+              color="primary" variant="ghost" size="xs"
+              :loading="briefingId === row.original.videoId"
+              :disabled="busyId === row.original.videoId || !row.original.available"
+              :label="t('insights.finds.briefMake')"
+              :title="row.original.available ? t('insights.finds.briefHint') : t('insights.finds.gone')"
+              @click="makeBrief(row.original)"
             />
           </template>
 

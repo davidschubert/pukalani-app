@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { displayNameProblem, textContainsLink } from '../../../core/shared/displayName'
 import { Query } from 'node-appwrite'
 import type { BrandIntroCallInput, BrandIntroLocale } from '../../schemas/brandIntroCall'
 import {
@@ -134,14 +135,27 @@ export async function sendBrandIntroConfirmMail(
   event: H3Event,
   entry: BrandIntroMailInput,
 ): Promise<boolean> {
+  /**
+   * KEIN RELAIS (Vorfall 2026-10-27, Resend-Spam über die Registrierung):
+   * diese Mail geht an eine Adresse, die der ABSENDER eintippt — mit seinem
+   * Namen im Gruß und seinem Text im Zitat ist sie dieselbe Spam-Maschine
+   * wie die Verifizierungs-Mail dort. Ein Name mit Link oder Adresse fällt
+   * aus dem Gruß (dieselbe Regel wie am Konto, core/shared/displayName.ts),
+   * ein Anliegen mit Link wird nicht zitiert, sondern nur bestätigt. Für
+   * echte Absender ändert sich nichts: ein Mensch schreibt seinen Namen ohne
+   * URL, und wer in seiner Anfrage eine Website nennt, bekommt die Quittung
+   * trotzdem — nur ohne das Zitat.
+   */
+  const salutationName = displayNameProblem(entry.name) === null ? entry.name : ''
+  const quote = !textContainsLink(entry.message)
+
   const de = [
-    `Hallo ${entry.name},`,
+    salutationName ? `Hallo ${salutationName},` : 'Hallo,',
     '',
     'danke — eure Anfrage für ein Erstgespräch ist bei uns angekommen. Wir',
     'melden uns bei euch mit ein paar Terminvorschlägen.',
     '',
-    'Das habt ihr uns geschrieben:',
-    entry.message,
+    ...(quote ? ['Das habt ihr uns geschrieben:', entry.message] : ['Eure Nachricht liegt uns vor.']),
     '',
     'Wenn etwas fehlt, antwortet einfach auf diese Mail.',
     '',
@@ -149,13 +163,12 @@ export async function sendBrandIntroConfirmMail(
   ].join('\n')
 
   const en = [
-    `Hi ${entry.name},`,
+    salutationName ? `Hi ${salutationName},` : 'Hi,',
     '',
     'thanks — your request for an intro call has reached us. We will come back',
     'to you with a few suggested times.',
     '',
-    'Here is what you wrote:',
-    entry.message,
+    ...(quote ? ['Here is what you wrote:', entry.message] : ['We have your message on file.']),
     '',
     'If anything is missing, just reply to this email.',
     '',

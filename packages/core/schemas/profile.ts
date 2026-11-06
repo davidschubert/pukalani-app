@@ -1,11 +1,14 @@
 import { z } from 'zod'
+import { displayNameField } from './auth'
 import type { TranslateFn } from './auth'
 
 const identity: TranslateFn = key => key
 
 export function createProfileSchema(t: TranslateFn = identity) {
   return z.object({
-    name: z.string(t('validation.required')).min(2, t('validation.nameMin')),
+    // Profil = der zweite Hebel aus dem Vorfall 2026-10-27 („Name ändern" +
+    // „Mail erneut senden") — dieselbe Regel wie bei der Registrierung.
+    name: displayNameField(t),
     bio: z.string().max(500, t('validation.bioMax')).optional(),
     // Wird ins native Appwrite-Phone-Feld geschrieben → strenges E.164
     // (Start mit '+', max. 15 Ziffern, keine Leerzeichen). Leer = Feld löschen.

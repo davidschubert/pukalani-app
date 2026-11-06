@@ -39,8 +39,18 @@ export const INSIGHTS_AI_DAILY_LIMIT = 50
 export const INSIGHTS_AI_HOUR_WINDOW_MS = 60 * 60_000
 export const INSIGHTS_AI_DAY_WINDOW_MS = 24 * 60 * 60_000
 
-/** Die zwei Läufe der Redaktion, die ein Modell rufen (§9.4). */
-export type InsightsAiKind = 'translate' | 'draft'
+/**
+ * Die Läufe der Redaktion, die ein Modell rufen (§9.4) — seit BI2 K5 drei.
+ *
+ * `brief` (Brief aus einem Video) teilt die Zahlen oben, hat aber seinen
+ * EIGENEN Eimer, wie jede Art: zehn in der Stunde, fünfzig am Tag. Das ist
+ * bewusst nicht enger, obwohl ein Video-Lauf der teuerste ist (gemessen rund
+ * fünf Cent je 25-Minuten-Video, also höchstens ~2,50 € am Tag) — eine
+ * zweite, strengere Zahl an genau dieser Stelle wäre eine Regel ohne Anlass,
+ * und der Deckel, der hier wirklich trägt, ist der Mensch, der jedes Video
+ * selbst in die Liste gelegt hat.
+ */
+export type InsightsAiKind = 'translate' | 'draft' | 'brief'
 
 /**
  * Der Stunden-Eimer EINES Kontos für EINE Art. `kind` vor `userId`, damit die

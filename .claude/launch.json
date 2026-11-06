@@ -144,6 +144,15 @@
         "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter branding dev"
       ],
       "port": 3010
+    },
+    {
+      "name": "comments-turnstile",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && NUXT_TURNSTILE_SECRET=1x0000000000000000000000000000000AA NUXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA exec pnpm --filter comments exec nuxi dev --port 3012"
+      ],
+      "port": 3012
     }
   ]
 }

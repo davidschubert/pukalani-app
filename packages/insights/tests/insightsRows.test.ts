@@ -84,6 +84,13 @@ function duelPost(): InsightsPost {
     reviewedAt: '2026-09-09T07:00:00.000Z',
     reviewedBy: 'user-1',
     noteInternal: 'Zahlen am 09.09. geprüft.',
+    // Der Brief und seine Herkunft (K5) — sie gehören zur Rundreise, weil
+    // genau hier auffallen soll, wenn eine neue Spalte nur in EINE Richtung
+    // abgebildet wird.
+    brief: '## Worum es geht\nZwei Marken, eine Dimension.',
+    briefModel: 'google/gemini-3.1-flash-lite',
+    briefPromptVersion: 'insights-b-1',
+    briefVideoId: 'jNQXAC9IVRw',
     draftModel: 'gemini-2.5-flash',
     draftPromptVersion: 'insights-d-1',
   }

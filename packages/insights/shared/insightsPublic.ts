@@ -115,6 +115,14 @@ export const INSIGHTS_POST_INTERNAL_FIELDS = [
   'draftPromptVersion',
   'translationModel',
   'translationPromptVersion',
+  // Der BRIEF ist der interne Auftrag an die Redaktion (K5) — er gehört nie
+  // in eine öffentliche Antwort. Er enthält Thesen, Gegenpositionen und
+  // offene Fragen, also ausdrücklich das, was NICHT veröffentlicht wurde;
+  // dazu die Herkunft (welches Modell, welche Prompt-Fassung, welches Video).
+  'brief',
+  'briefModel',
+  'briefPromptVersion',
+  'briefVideoId',
 ] as const
 
 /**

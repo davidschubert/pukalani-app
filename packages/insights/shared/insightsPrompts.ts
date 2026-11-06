@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { InsightsFormat, InsightsLocale, InsightsPost } from './insightsPost'
 import {
+  INSIGHTS_BRIEF_MAX,
   INSIGHTS_METHODOLOGY_PATH,
   INSIGHTS_QUOTE_MAX,
   insightsBodyOf,
@@ -36,9 +37,6 @@ import {
 
 export const INSIGHTS_DRAFT_PROMPT_VERSION = 'insights-d-1'
 export const INSIGHTS_TRANSLATE_PROMPT_VERSION = 'insights-t-1'
-
-/** Wie lang ein Brief höchstens sein darf — ein Auftrag, kein Manuskript. */
-export const INSIGHTS_BRIEF_MAX = 2000
 
 /** Zielumfang des Entwurfs in Wörtern (Vorgabe 700). */
 export const INSIGHTS_DRAFT_WORDS_MIN = 200

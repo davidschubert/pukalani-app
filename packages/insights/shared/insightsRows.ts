@@ -109,6 +109,14 @@ export const INSIGHTS_WATCHLIST_TABLE = 'insights_watchlist'
 /** Die Newsletter-Liste (insights-006, BI1 I5a) — eigene Liste, eigenes DOI. */
 export const INSIGHTS_SUBSCRIBERS_TABLE = 'insights_subscribers'
 
+/**
+ * Das Protokoll eines Versands (insights-008, BI1 I5b) — EINE Zeile je
+ * Beitrag, `postId` ist unique. Sie ist der FORTSCHRITTSSTAND, nicht der
+ * Bericht: ohne sie bekäme nach einem Abbruch die erste Hälfte der Liste ihre
+ * Mail ein zweites Mal.
+ */
+export const INSIGHTS_SENDS_TABLE = 'insights_sends'
+
 // ── Zeilen (insights-001 … insights-004) ───────────────────────────────────
 
 /** Ein Beitrag (insights-001). Alle Listen-Spalten sind JSON (s. Kopf). */
@@ -148,6 +156,11 @@ export type InsightsPostRow = Models.Row & {
   reviewedAt?: string | null
   reviewedBy?: string
   noteInternal?: string
+  /** Der Auftrag, aus dem der Entwurf entstand (K5) — MEDIUMTEXT. */
+  brief?: string
+  briefModel?: string
+  briefPromptVersion?: string
+  briefVideoId?: string
   draftModel?: string
   draftPromptVersion?: string
 }
@@ -271,6 +284,44 @@ export type InsightsSubscriberRow = Models.Row & {
   retentionAt?: string | null
 }
 
+/**
+ * EIN VERSAND (insights-008, BI1 I5b) — derselbe Zuschnitt wie die Zeile
+ * darüber: keine Abbildung daneben, die Routen lesen die Felder, die sie
+ * brauchen, und schreiben jede Spalte explizit.
+ *
+ * ── HIER STEHT KEINE ADRESSE, UND DAS IST DER ENTWURF ──────────────────
+ * Die Zeile ZÄHLT (`recipients`, `sent`, `failed`) und nennt niemanden.
+ * `cursor` ist die `$id` einer Abonnenten-Zeile — kein Name, keine Adresse,
+ * kein Hash einer Adresse (ein Hash wäre wieder ein Personenbezug, und
+ * `insights_subscribers` hat eine Löschfrist, die eine Kopie daneben
+ * aushebelte). Wer eine Empfängerliste sucht, fragt die Liste.
+ *
+ * `''` und nicht `null` bei den zwei Stempeln (wörtlich wie beim Abonnenten):
+ * `finishedAt` beginnt LEER und wird beim Abschluss gesetzt; verglichen wird
+ * im Code, nie in einer Abfrage.
+ */
+export type InsightsSendRow = Models.Row & {
+  /** Die Zeilen-Id des Beitrags — UNIQUE, und damit DIE Sicherung (s. Kopf). */
+  postId?: string
+  /** Der Betreff, wie er verschickt WURDE (der Titel darf sich danach ändern). */
+  subject?: string
+  /** Die eigenen zwei, drei Sätze je Sprache — der zweite Stapel braucht sie
+   *  genauso, und die Mail folgt der Sprache des Lesers (kein Rückfall). */
+  introDe?: string
+  introEn?: string
+  /** Die GRUNDSPRACHE des Beitrags, NICHT die Sprache der Mails. */
+  locale?: string
+  /** `running` · `done` · `failed`. */
+  state?: string
+  /** Die `$id` des zuletzt ERFOLGREICH bedienten Empfängers. */
+  cursor?: string
+  recipients?: number
+  sent?: number
+  failed?: number
+  startedAt?: string
+  finishedAt?: string
+}
+
 // ── Die puren Helfer ───────────────────────────────────────────────────────
 
 /**
@@ -351,6 +402,10 @@ export function toInsightsPost(row: InsightsPostRow): InsightsPost {
     reviewedAt: row.reviewedAt ?? '',
     reviewedBy: row.reviewedBy ?? '',
     noteInternal: row.noteInternal ?? '',
+    brief: row.brief ?? '',
+    briefModel: row.briefModel ?? '',
+    briefPromptVersion: row.briefPromptVersion ?? '',
+    briefVideoId: row.briefVideoId ?? '',
     draftModel: row.draftModel ?? '',
     draftPromptVersion: row.draftPromptVersion ?? '',
   }
@@ -391,6 +446,10 @@ export function fromInsightsPost(post: InsightsPost): InsightsPostRowData {
     reviewedAt: post.reviewedAt || null,
     reviewedBy: post.reviewedBy,
     noteInternal: post.noteInternal,
+    brief: post.brief,
+    briefModel: post.briefModel,
+    briefPromptVersion: post.briefPromptVersion,
+    briefVideoId: post.briefVideoId,
     draftModel: post.draftModel,
     draftPromptVersion: post.draftPromptVersion,
   }
@@ -713,6 +772,8 @@ export type InsightsWatchRow = Models.Row & {
   note: string
   topic: string
   addedAt: string | null
+  /** Der Beitrag, dessen Brief aus diesem Video entstand (K5). */
+  briefPostId?: string
   available: boolean
   refreshedAt: string | null
   title: string
@@ -744,6 +805,7 @@ export function toInsightsWatchItem(row: InsightsWatchRow): InsightsWatchItem {
     note: row.note ?? '',
     topic: oneOf<InsightsTopicKey>(INSIGHTS_TOPIC_KEYS, row.topic, INSIGHTS_RADAR_TOPIC_FALLBACK),
     addedAt: row.addedAt ?? row.$createdAt,
+    briefPostId: row.briefPostId ?? '',
     available: row.available !== false,
     refreshedAt: row.refreshedAt ?? '',
     title: row.title ?? '',
@@ -765,6 +827,7 @@ export function fromInsightsWatchItem(item: InsightsWatchItem): InsightsWatchRow
     note: item.note.slice(0, INSIGHTS_WATCH_NOTE_MAX),
     topic: item.topic,
     addedAt: item.addedAt || null,
+    briefPostId: item.briefPostId,
     available: item.available,
     refreshedAt: item.refreshedAt || null,
     title: item.title.slice(0, 300),

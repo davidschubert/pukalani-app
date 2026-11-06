@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { InsightsPost, InsightsPostEdit, InsightsReviewIssue, InsightsState } from '../../../../shared/insightsPost'
-import { insightsPostDeletable } from '../../../../shared/insightsPost'
+import { insightsIsPublic, insightsPostDeletable } from '../../../../shared/insightsPost'
+import { insightsNewsletterEnabled } from '../../../../shared/insightsPublic'
 import type {
   InsightsBrandCreatedResponse,
   InsightsBrandListItem,
   InsightsDraftResponse,
   InsightsEvidenceResponse,
+  InsightsNewsletterSendBatchResponse,
+  InsightsNewsletterSendStatusResponse,
   InsightsPostDeletedResponse,
   InsightsPostDetailResponse,
   InsightsPostSavedResponse,
@@ -108,6 +111,9 @@ const evidence = ref<Record<number, InsightsEvidenceResponse>>({})
 const REASON_KEY: Record<string, string> = {
   ai_disabled: 'insights.editor.error.aiDisabled',
   not_deletable: 'insights.editor.error.notDeletable',
+  already_sent: 'insights.editor.error.alreadySent',
+  not_public: 'insights.editor.error.notPublic',
+  no_public_address: 'insights.editor.error.noPublicAddress',
   ai_hourly_limit: 'insights.editor.error.aiHourlyLimit',
   ai_daily_limit: 'insights.editor.error.aiDailyLimit',
   not_draft: 'insights.editor.error.notDraft',
@@ -287,6 +293,104 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
+// ── Newsletter: an die Liste schicken (I5b) ────────────────────────────────
+
+/**
+ * DER RIEGEL WIRD HIER GELESEN, NICHT IN DER KOMPONENTE.
+ *
+ * `pukalani.insights.newsletter.enabled` (Layer-Default `false`) — zu heisst:
+ * es wird NICHT GEFRAGT und das Panel erscheint nicht. Dieselbe pure Regel wie
+ * im Anmelde-Formular (`insightsNewsletterEnabled`, fail-closed: nur echtes
+ * `true`). Die zwei Routen prüfen ihn unabhängig davon und antworten 404 —
+ * eine Sperre nur in der Oberfläche ist keine.
+ */
+const appConfig = useAppConfig() as { pukalani?: { insights?: { newsletter?: { enabled?: unknown } } } }
+const newsletterOpen = computed(() => insightsNewsletterEnabled(appConfig.pukalani?.insights?.newsletter?.enabled))
+
+const newsletter = ref<InsightsNewsletterSendStatusResponse | null>(null)
+const newsletterSending = ref(false)
+const newsletterProgress = ref<{ sent: number, total: number } | null>(null)
+
+/**
+ * Der Stand wird geholt, sobald ein FREIGEGEBENER Beitrag vor uns steht —
+ * nicht beim Laden der Seite. Zwei Gründe: an einem Entwurf gibt es nichts zu
+ * zeigen (das Panel bleibt weg), und die Zählung der Empfänger blättert durch
+ * die Liste. Eine Abfrage, die niemand sieht, zahlt trotzdem.
+ *
+ * Fehler sind hier STILL: ein nicht ladbarer Newsletter-Stand darf keinen Toast
+ * über einem Beitrag auslösen, an dem gerade geschrieben wird. Ohne Stand gibt
+ * es kein Panel, und das ist die ehrliche Anzeige von „weiss ich nicht".
+ */
+async function loadNewsletter(): Promise<void> {
+  const current = post.value
+  if (!newsletterOpen.value || !current || !insightsIsPublic(current)) {
+    newsletter.value = null
+    return
+  }
+  try {
+    newsletter.value = await $fetch<InsightsNewsletterSendStatusResponse>(`/api/insights/posts/${id.value}/newsletter`)
+  }
+  catch {
+    newsletter.value = null
+  }
+}
+
+watch(post, () => { void loadNewsletter() }, { immediate: true })
+
+/**
+ * EIN DECKEL AUF DIE SCHLEIFE — 400 Stapel à 50, also 20.000 Mails.
+ *
+ * Nicht eine Erwartung, sondern die Sicherung gegen eine Route, die aus
+ * irgendeinem Grund nie `done` meldet: eine `while (true)`-Schleife im Browser,
+ * die POSTs schickt, ist das Gegenteil von dem, was dieses Panel schützen soll.
+ */
+const SEND_ROUNDS_MAX = 400
+
+/**
+ * DIE SEITE RUFT, BIS `done` — und das ist der Entwurf, nicht ein Notbehelf.
+ *
+ * Die Route arbeitet EINEN Stapel ab (höchstens 50 Mails) und antwortet. So
+ * steht keine Route minutenlang offen, und der Mensch sieht einen Balken statt
+ * eines hängenden Knopfes. Drei Abbruch-Gründe, und alle drei hören SOFORT auf
+ * zu rufen:
+ *  · `done` — die Liste ist durch.
+ *  · `aborted` — es gibt keinen Mail-Weg. Jeder weitere Aufruf scheiterte
+ *    gleich; der Fortschritt steht in der Ablage, der Knopf setzt später fort.
+ *  · ein Fehler — der Grund steht im Toast, der Stand wird neu geholt.
+ */
+async function sendNewsletter(input: { introDe: string, introEn: string }): Promise<void> {
+  newsletterSending.value = true
+  newsletterProgress.value = { sent: newsletter.value?.send?.sent ?? 0, total: newsletter.value?.recipients ?? 0 }
+  try {
+    for (let round = 0; round < SEND_ROUNDS_MAX; round++) {
+      const result = await $fetch<InsightsNewsletterSendBatchResponse>(
+        `/api/insights/posts/${id.value}/newsletter`,
+        { method: 'POST', body: { introDe: input.introDe, introEn: input.introEn } },
+      )
+      newsletterProgress.value = {
+        sent: result.send.sent,
+        total: Math.max(result.send.recipients, result.send.sent + result.send.failed + result.remaining),
+      }
+      if (result.aborted) {
+        toast.add({ title: t('insights.newsletter.send.stoppedTitle'), description: t('insights.newsletter.send.stoppedText'), color: 'warning' })
+        break
+      }
+      if (result.done) {
+        toast.add({ title: t('insights.newsletter.send.doneTitle'), color: 'success' })
+        break
+      }
+    }
+  }
+  catch (error) {
+    fail(error)
+  }
+  finally {
+    newsletterSending.value = false
+    newsletterProgress.value = null
+    await loadNewsletter()
+  }
+}
+
 // ── Marke anlegen ──────────────────────────────────────────────────────────
 
 async function createBrand(input: { name: string, homepage: string, industry: string }): Promise<void> {
@@ -352,7 +456,11 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           :drafting="drafting"
           :transitioning="transitioning"
           :checking-index="checkingIndex"
+          :newsletter="newsletter"
+          :newsletter-sending="newsletterSending"
+          :newsletter-progress="newsletterProgress"
           @save="save"
+          @send-newsletter="sendNewsletter"
           @change-state="changeState"
           @check-evidence="checkEvidence"
           @translate="translate"
