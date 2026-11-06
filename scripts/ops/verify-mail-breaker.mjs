@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Mail-Wächter: zwei Blicke auf dieselbe Frage — „verschickt unsere
+ * Mail-Wächter: drei Blicke auf dieselbe Frage — „verschickt unsere
  * Produktion gerade Mails, die kein Mensch ausgelöst hat?"
  *
  *   node scripts/ops/verify-mail-breaker.mjs --ssh            # Blick 1 (Server-Log)
  *   node scripts/ops/verify-mail-breaker.mjs --ssh --strict   # CI: Fund = rot
- *   RESEND_API_KEY=… node scripts/ops/verify-mail-breaker.mjs --resend   # Blick 2
+ *   RESEND_API_KEY=… node scripts/ops/verify-mail-breaker.mjs --resend   # Blick 2 + 3
+ *   RESEND_API_KEY=… node scripts/ops/verify-mail-breaker.mjs --resend --bounce-alarm 0   # Probealarm
  *
  * WARUM ES DAS GIBT (Vorfall 2026-10-25/27): ein Angreifer missbrauchte
  * `POST /api/auth/signup` als Mail-Relais (Name = Spamtext, E-Mail = Opfer);
@@ -36,8 +37,27 @@
  * dann nicht als Befund, weil das Fehlen eines Schlüssels kein Vorfall ist;
  * dass er läuft, beweist nur das CI-Log („Resend: n Mails in 24 h").
  *
+ * BLICK 3 — WAS WURDE AUS DEN MAILS? (läuft mit `--resend`, MZ1 2026-11-06,
+ * Plan docs/plans/MAIL-ZUSTELLBARKEIT.md): dieselbe Liste trägt je Mail
+ * `last_event`. Gezählt werden `bounced` und `complained` im selben
+ * 24-h-Fenster. Das ist das, woran ein Mail-Anbieter den ABSENDER misst —
+ * steigt die Quote, drosselt oder sperrt Resend uns, und dann kommt auch
+ * keine Verifizierungs-Mail mehr an. KEIN Missbrauchs-Melder: gegen das
+ * Fenster des Oktober-Vorfalls gemessen (`--resend-hours 400`) standen bei
+ * 234 Mails nur 2 Bounces und 0 Beschwerden — die Opfer-Adressen waren
+ * echt und nahmen an. Missbrauch sieht Blick 2 (Menge) und Blick 1.
+ * Resend sperrt abgeprallte Adressen selbst
+ * (Suppression List, teamweit) — wir bauen keine eigene Sperrliste, wir
+ * wollen es nur SEHEN. Schwellen (Davids Entscheidung 2026-11-06): rot ab
+ * 3 Bounces ODER 1 Beschwerde in 24 h. Gemessen am 2026-11-06: `last_event`
+ * liefert wirklich `bounced`; `to` kann „Name <adresse>" enthalten (beim
+ * Vorfall stand dort der Spamtext). Ins Log kommt deshalb nur die
+ * Empfänger-DOMAIN, nie Adresse oder Name — das Repo ist öffentlich.
+ * Ein Lauf ohne Bounces liest die Liste, die Blick 2 ohnehin holt: kein
+ * zusätzlicher API-Aufruf.
+ *
  * Exit 0 = ruhig · Exit 1 (nur mit --strict) = Notbremse gegriffen ODER
- * Resend-Zähler über der Schwelle · Exit 2 = ssh/Netz kaputt (bleibt in der
+ * Resend-Zähler bzw. Bounce-/Beschwerde-Zähler über der Schwelle · Exit 2 = ssh/Netz kaputt (bleibt in der
  * CI absichtlich KEIN Alarm-Grund — s. Kopf von production-watch.yml).
  */
 import { spawnSync } from 'node:child_process'
@@ -52,10 +72,31 @@ const HOURS = Number(arg('--hours')) || 25
 const PATTERN = arg('--pattern') || 'auth.mail_route_breaker'
 /** Blick 2: ab so vielen Mails in 24 h ist es kein normaler Tag mehr. */
 const MAIL_DAY_ALARM = Number(arg('--alarm')) || 80
+/** Blick 3: ab so vielen Bounces / Beschwerden in 24 h ⇒ rot. `0` ist
+ *  erlaubt (Probealarm: jeder Lauf rot) — deshalb `??` statt `||`. */
+const BOUNCE_ALARM = zahl(arg('--bounce-alarm')) ?? 3
+const COMPLAINT_ALARM = zahl(arg('--complaint-alarm')) ?? 1
+/** Fenster für Blick 2 + 3. Überschreibbar NUR für den Beweis gegen einen
+ *  vergangenen Vorfall (`--resend-hours 400`); die Schwelle von Blick 2 ist
+ *  auf 24 h geeicht und wird bei einem längeren Fenster nicht umgerechnet. */
+const RESEND_HOURS = zahl(arg('--resend-hours')) || 24
 
 function arg(name) {
   const i = process.argv.indexOf(name)
   return i !== -1 ? process.argv[i + 1] : undefined
+}
+
+/** Nicht-negative Ganzzahl oder `undefined` (fehlend/kaputt ⇒ Default). */
+function zahl(wert) {
+  const n = Number(wert)
+  return wert !== undefined && Number.isInteger(n) && n >= 0 ? n : undefined
+}
+
+/** Nur die Domain des ersten Empfängers — `to` kann „Name <adresse>" sein. */
+function empfaengerDomain(mail) {
+  const roh = Array.isArray(mail?.to) ? String(mail.to[0] ?? '') : String(mail?.to ?? '')
+  const treffer = /@([^\s<>@]+)/.exec(roh)
+  return treffer ? treffer[1].toLowerCase() : '?'
 }
 
 let befund = false
@@ -97,13 +138,16 @@ if (process.argv.includes('--ssh')) {
 // ── BLICK 2: Resend zählt selbst ─────────────────────────────────────────
 if (process.argv.includes('--resend')) {
   const key = process.env.RESEND_API_KEY
-  console.log(`\nMail-Wächter, Blick 2 — Resend, Mails der letzten 24 h (Alarm ab ${MAIL_DAY_ALARM})\n`)
+  console.log(`\nMail-Wächter, Blick 2 — Resend, Mails der letzten ${RESEND_HOURS} h (Alarm ab ${MAIL_DAY_ALARM})\n`)
   if (!key) {
     console.log('… übersprungen: RESEND_API_KEY fehlt (Klickliste: docs/runbooks/PRODUKTIONS-ALARM.md).')
   }
   else {
-    const seit = Date.now() - 24 * 3_600_000
+    const seit = Date.now() - RESEND_HOURS * 3_600_000
     let anzahl = 0
+    /** Blick 3: Domains der abgeprallten bzw. als Spam gemeldeten Mails. */
+    const bounces = []
+    const beschwerden = []
     let after
     let fertig = false
     for (let seite = 0; seite < 20 && !fertig; seite++) {
@@ -127,16 +171,31 @@ if (process.argv.includes('--resend')) {
       for (const mail of daten) {
         if (Date.parse(mail.created_at) < seit) { fertig = true; break }
         anzahl++
+        if (mail.last_event === 'bounced') bounces.push(empfaengerDomain(mail))
+        else if (mail.last_event === 'complained') beschwerden.push(empfaengerDomain(mail))
       }
       if (!json?.has_more || !daten.length) fertig = true
       after = daten.at(-1)?.id
     }
     if (anzahl >= MAIL_DAY_ALARM) {
       befund = true
-      console.log(`✗ Resend: ${anzahl} Mails in 24 h — das ist kein normaler Tag (Tageslimit 100).`)
+      console.log(`✗ Resend: ${anzahl} Mails in ${RESEND_HOURS} h — das ist kein normaler Tag (Tageslimit 100).`)
     }
     else {
-      console.log(`✔ Resend: ${anzahl} Mails in 24 h.`)
+      console.log(`✔ Resend: ${anzahl} Mails in ${RESEND_HOURS} h.`)
+    }
+
+    // ── BLICK 3: Bounces und Spam-Beschwerden ──────────────────────────────
+    console.log(`\nMail-Wächter, Blick 3 — Bounces (Alarm ab ${BOUNCE_ALARM}) und Spam-Beschwerden (Alarm ab ${COMPLAINT_ALARM}) in ${RESEND_HOURS} h\n`)
+    for (const [name, liste, schwelle] of [['Bounces', bounces, BOUNCE_ALARM], ['Spam-Beschwerden', beschwerden, COMPLAINT_ALARM]]) {
+      const domains = [...new Set(liste)].slice(0, 10).join(', ')
+      if (liste.length >= schwelle) {
+        befund = true
+        console.log(`✗ ${name}: ${liste.length}${domains ? ` (Domains: ${domains})` : ''}`)
+      }
+      else {
+        console.log(`✔ ${name}: ${liste.length}${domains ? ` (Domains: ${domains})` : ''}`)
+      }
     }
   }
 }

@@ -38,7 +38,8 @@
 #      bemerkt NUR über Resends eigene Limit-Mail. Jetzt: Notbremsen-Zeile
 #      (`auth.mail_route_breaker`) im Server-Log der letzten 25 h ⇒ rot;
 #      mit Secret `PRODUCTION_WATCH_RESEND_KEY` zusätzlich Resends eigener
-#      Zähler (≥ 80 Mails in 24 h ⇒ rot, also VOR dem 100er-Limit).
+#      Zähler (≥ 80 Mails in 24 h ⇒ rot, also VOR dem 100er-Limit) und
+#      Blick 3 (MZ1): ≥ 3 Bounces oder ≥ 1 Spam-Beschwerde in 24 h ⇒ rot.
 #
 # ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
 # Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft

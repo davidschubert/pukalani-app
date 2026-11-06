@@ -36,7 +36,8 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 12 · BS1 | **branding.supply: Rechtstexte + Bezahlweg — 8 Entscheidungen GEFALLEN (2026-09-07), in Umsetzung.** **R0 + R1 + R1b + Z0 GEBAUT und LIVE** (2026-09-07/08; Prod-Migrationen pages-001…006 und brand-021 mit Davids Ja GEFAHREN, Geo-Env gesetzt): der 404 am Erstgespräch-Knopf ist weg, der `pages`-Layer ist montiert, die drei Rechtsseiten stehen als Entwurfs-Gerüst mit Hinweis „Entwurf, in anwaltlicher Prüfung" und `noindex`, der Fuß verlinkt sie, das AGB-Häkchen steht — und die Fassung wird am Konto festgehalten (Core). **R1b GEBAUT** (2026-09-07): die versprochenen 24 Monate der Funnel-Ereignisse haben jetzt einen Sweep, und der Env-Wächter verlangt für branding die zwei `GEO_*`-Pfade — **David setzt sie in der Server-`.env` (ploi-Site 402929) + Reload**, bis dahin bleibt `pnpm ops:site-env` rot. **R2a GEBAUT** (2026-09-07): die Methodik-Seite zum Brand-Score steht unter `/brand-check/methodik` (de+en, ohne Konto, verlinkt als vierter Reiter und von Start/Ranking/Ergebnis) — damit darf der Datenschutz-Abschnitt „Öffentliche Bewertung fremder Marken“ live gehen. **R2b GEBAUT** (2026-09-08, Davids Entscheidung): der Befund aus R2a ist erledigt — der Brand-Check holt jetzt `robots.txt` und prüft den TDM-Vorbehalt (dieselben Regeln wie der Marktvergleich, eigener Absender `PukalaniBrandCheck`, Verbot ⇒ 409 ohne gespeicherte Zeile); der Wizard-Weg für die EIGENE Website bleibt bewusst ausgenommen. **Z0 GEBAUT** (2026-09-07): `/erstgespraech` lebt im brand-Layer, der Trichter springt nicht mehr auf pukalani.studio — offen ist **Davids Ja zur Prod-Migration `brand-021`** (vor dem Code-Deploy) und, falls die Anfragen ins Postfach sollen, ein `introCallNotify` in `apps/branding/app/app.config.ts`. Offen: **Prod-Migration `pages` auf `branding` GEFAHREN 2026-09-07** (Migration VOR dem Code-Deploy) · **R2 wartet auf Davids Generator-Texte** (dazu neu: der Abschnitt „Reichweitenmessung") · **R2c = Plausible einschalten** (beschlossen 2026-09-08 mit BI1; David legt die Plausible-Site an, Text vor Schalter) · R3 = Anwaltstermin · Z1 braucht `4 · A2`. **Drei Entscheidungen vom 2026-09-08** (Plan §9): **Kundenkreis nur B2B** (Unternehmen + Selbstständige — kein Verbraucher-Widerruf, keine Verbraucherstreitbeilegung, Preise netto; das Häkchen „Ich handle als Unternehmer/in" bei der Registrierung ist Paket **R1c**, läuft) · **Generator = activeMind** für die Erstfassung, später eRecht24 Premium (activeMind verlangt Quellennennung im Text) · **Art.-27-Vertreter verschoben** in die eigene Zeile `A27`. Vorbedingung fürs Öffnen der Beta. | **Hoch** | M | Ja: Migration, Texte, Anwalt, Preis | [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) |
 | 14 · BK1 | **Brand Book & Kit (Produkt 03) — Strategie FREIGEGEBEN, Konzeption GESCHRIEBEN + sechs Konzept-Fragen beantwortet (alles 2026-09-09, DECISION-LOG).** EIN Produkt als dritte Schicht in `brand` (Kapitel Nomenklatur/AI-Guidelines/Pressekit + Lieferseite `/brand/:id/kit`), Kit = `brand.md` + `brand.json` + `tokens.json` (DTCG, hell/dunkel als Gruppen) + `tokens.css` + Zeichen-SVGs + `LICENSES.md` + Zip, Freischaltung „Ableitung" als Feld brand-025 (Beta/Betreiber/Z1), Preis 149 € netto erst mit Z1 sichtbar. **Konzept + PROTOTYP FREIGEGEBEN 2026-09-09 (§3), Pakete K0–K8 verbindlich (§2.18). K0 Gerüst, K1 Freischaltung (brand-025 auf Prod mit Davids Ja, `verify:kit` 40/40 gegen Prod) K2 Token-Modell (inkl. §2.20 Nr. 7 Dunkelmodus-Akzent), K3 Brand Context, K4 Book-Kapitel K5 Werkstatt-Kapitel (Otto/Nika/Pressekit) und **K6 Lieferseite + Bündel (`/brand/:id/kit`, Zeichen-Route, Zip, Export-Karte echt; `verify:kit` 58/58) GEBAUT** und auf main. **Nächster Schritt: K7 Beispiel + Copy in einer NEUEN Session** (WORKFLOW „ein Paket = eine Session"), danach K8.** Gates für David: Blick auf Kailuas `brand.md` (K3, Dateien liegen vor) + Leseansicht (K4: eigene Marke unter `/dashboard/brand-unlocks` freischalten, dann `/brand/:id/foundation`), Inhalts-Gate Otto/Nika (K5) FREIGEGEBEN 2026-09-09, **Lieferseite (K6) liegt David vor**, Copy (K7), Abnahme (K8). Offen aus K5: Verify-Zusagen 31–33 gegen Prod (Davids Ja + Aufräumen), Persona-Audit ⇒ K8. Vermerk: „Brand Extract" wird eigener Baustein NACH BK1. | Mittel | L | Ja: Migrations-Ja, Inhalts-Gates, Abnahme | [BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) |
 | 15 · SH1 | **Sitzungs-Hygiene — fünf Schalter, die nur David stellt.** Regeln und Bewertung der 24 Video-Tipps sind seit 2026-09-09 in [SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md); `bashOutputMaxChars` ist gesetzt. Offen: (a) Recap aus (`awaySummaryEnabled: false`), (b) `disableBundledSkills`, (c) Standard-`effortLevel`, (d) MCP-Server ohne Repo-Bezug abschalten (Tabelle im Dokument), (e) zweite Kürzungsrunde CLAUDE.md unter 200 Zeilen. | Mittel | S | Ja: nur Klicks/Entscheidungen | [SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md) |
-| 16 · RS1 | **Resend besser nutzen (Changelog-Durchsicht 2026-11-06).** Vor dem Newsletter-Schalter (BI1 I5): (a) **Tarif klären** — frei = 100 Mails/Tag, Newsletter und OTP/Verifizierung teilen sie; (b) Bounces/Beschwerden per Webhook zurück in unsere Daten (Abonnent abmelden, Mail-Benachrichtigung aus); (g) **DMARC-Eintrag für `pukalani.app` fehlt** (ein TXT in Cloudflare). Danach: Wächter auf Usage- + Metrics-API, `Resend-Idempotency-Key` im Stapelversand, eigene Newsletter-Subdomain, DPF/EU-Region für die Rechtstexte. | Mittel | M | Ja: Tarif, DMARC-Eintrag in Cloudflare | [Notiz RS1](#rs1) |
+| 16 · RS1 | **Resend besser nutzen (Changelog-Durchsicht 2026-11-06).** Vor dem Newsletter-Schalter (BI1 I5): (a) **Tarif klären** — frei = 100 Mails/Tag, Newsletter und OTP/Verifizierung teilen sie; (b) Bounces/Beschwerden per Webhook zurück in unsere Daten (Abonnent abmelden, Mail-Benachrichtigung aus; Zuschnitt fertig in [MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md) § 2 Stufe B); (g) **DMARC-Eintrag für `pukalani.app` fehlt** (ein TXT in Cloudflare). Danach: Wächter auf Usage- + Metrics-API, `Resend-Idempotency-Key` im Stapelversand, eigene Newsletter-Subdomain, DPF/EU-Region für die Rechtstexte. | Mittel | M | Ja: Tarif, DMARC-Eintrag in Cloudflare | [Notiz RS1](#rs1) |
+| 17 · CL1 | **Öffentlicher Changelog ist fast leer.** Die Marketing-Seite verlinkt seit 2026-11-06 `admin.pukalani.app/changelog` — dort steht nur EIN Eintrag (2026-08-19). Der fertige v3.0.0-Text wartet in [CHANGELOG-3.0.0-ENTWURF.md](plans/CHANGELOG-3.0.0-ENTWURF.md); danach Entwürfe per `pnpm changelog:draft` (2B ist stillgelegt). | mittel | 1 h | ja — Text freigeben, Prod-Lauf | [CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -53,6 +54,7 @@ ist Wochen. (F3 ist am 2026-08-11 als AH-6 in die Hauptliste gezogen.)
 | BI2 | 6 — Tage | **Brand Insights: Kuration, Merkliste, Artikel aus Video.** Davids sieben Wünsche zum Themenradar (2026-09-09), Konzept + Entscheidungen im Plan. **Entschieden (2026-09-09):** Kanalliste zieht in eine Tabelle mit Dashboard-Seite (A2) · Cluster bleiben erst mal wie sie sind (K1 entfällt) · Reihenfolge K2 zuerst. **K2 GEBAUT: filtern und sortieren** — Themen-, Kanal- und Zeitraum-Filter, jede Zahlenspalte sortierbar (Alter startet beim Jüngsten), Trefferzeile, „Filter zurücksetzen"; reine Regeln in `insightsRadarView.ts` mit 27 Tests, Klick-Beweis im Playground. **Frage C BEANTWORTET — Routen-Probe gefahren 2026-10-27 (Plan §13):** Gemini liest ein YouTube-Video unter unserer ZDR-Klemme, sogar auf `google-vertex/eu` gepinnt (Abrechnung weist Video- UND Audio-Tokens aus); „google-ai-studio" ist gar nicht ZDR-fähig und wird nicht gebraucht; erfundene Video-Id ⇒ 502, also erfindet das Modell nichts. Kosten gemessen: ~5 Cent je 25-Minuten-Video, ~0,7 Cent je weitere Frage (Prompt-Cache). **C4 gewinnt — und K5 IST GEBAUT (2026-10-27, Plan §14):** Core-Transport `aiVideo` (vierter neben Text/Bild/Bilderzeugen, nur Adressen, keine Bytes), Prompt `insights-b-1` (Zeitmarken statt Zitate — ein gesprochener Satz ist mit unserem Beleg-Riegel nicht belegbar), Migration `insights-009`, Knopf „Erzeugen" auf den Fundstücken. Klick-Beweis gegen eine echte Appwrite: Beitrag als `draft` mit Brief, Cluster und Video-Quelle; zweiter Lauf ⇒ 409, unbekanntes Video ⇒ 404; 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27, und zum ersten Mal in der richtigen Reihenfolge:** `insights-009` lief VOR dem Merge (ohne die Spalten hätte es JEDES Anlegen und Speichern eines Beitrags gebrochen, nicht nur das Neue) — fünf Spalten `available`, Parität branding 43/43, Build `c97c4dea`, Route antwortet ohne Konto 401. **K5-NACHTRAG 2026-10-28: ein zu langer Brief warf den bezahlten Lauf weg** — das Schema lehnte eine Antwort über 2.000 Zeichen ab, und zu dem Zeitpunkt ist das Video gelesen und bezahlt; gemessen lagen **2 von 6** echten Läufen darüber (bis 2.387 Zeichen, unabhängig von der Video-Länge). Jetzt klemmt das Schema an der spätesten Satz-/Zeilengrenze statt abzulehnen, und zwei Log-Zahlen zeigen, wie oft der Prompt seinen Deckel reisst (Details COMPLETE „K5-Nachtrag“). Nächstes K6. **K3 GEBAUT 2026-10-24: Kanal-Seite** `/dashboard/insights/channels` (Migration `insights-005`, Saat-Übernahme, Prüf-Vorschau mit Titel/Abonnenten/jüngstem Upload, Handle-Auflösung, aktiv/inaktiv, Notiz; Config trägt die Liste nicht mehr, Sweep und Route lesen die Tabelle) — **auf PROD 2026-10-24: Migration `insights-005` gefahren (Parität branding 40/40), elf Kanäle übernommen, Routen antworten 401 statt 404.** Der nächste nächtliche Lauf liest die Tabelle. **K4 GEBAUT 2026-10-25: Fundstücke** `/dashboard/insights/finds` (Migration `insights-007`, Link-Wurf mit sofortigen Zahlen, Dreifach-Schalter in BEIDEN Listen, YouTube-Link je Zeile, Urteilsfilter — Vorgabe im Radar blendet Abgehaktes aus; der tägliche Lauf zieht die Zahlen mit und fasst Urteil/Notiz/Cluster nie an) — **auf PROD 2026-10-27: Migration `insights-007` gefahren (Parität branding 42/42, 15 Spalten + 3 Indizes `available`), alle vier Routen antworten 401 statt 404.** Danach K5/K6, K7 (Kommentare unter Artikeln) hat **kein Gate mehr**: Artikel sind seit I3 öffentlich (`publicFormats: ['article']`), der Anwalt hält nur Profil/Duell/Ranking. | Mittel | M–L | **Ja: Frage C nach der Probe; zwei Prod-Migrationen** | [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) |
 | AW28 | 8 — Stunden | **Braucht es unseren SMTP-keepAlive-Patch noch?** Appwrite 2.7.0 repariert den Fehler „Mail nach Leerlauf still weg" selbst (#14213 „Retry a stale SMTP session once"). Auf dev ohne Patch fahren und die erste Mail nach Leerlauf beweisen; erst dann die Override-Zeile streichen. | Niedrig | Stunden | Nein | AW27 (prod auf 2.7.1) — [runbooks/APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md) |
 | A27 | 7 — Stunden | **EU-Vertreter nach Art. 27 DSGVO** für branding.supply (und pukalani.studio) — Anbieterliste mit Vergleich: [ART-27-VERTRETER-ANBIETER.md](referenz/ART-27-VERTRETER-ANBIETER.md); Entscheidung nach der Anwaltsantwort (R3), ob nötig. (Davids Entscheidung 2026-09-08: verschoben, eigener Punkt.) | Mittel | S | **Ja: Wahl + Beauftragung** | R3 (Anwaltsantwort aus `12 · BS1`) |
+| VDB1 | 8 — Tage | **Semantische Suche mit Appwrite VectorsDB — geprüft 2026-11-06, lohnt jetzt nicht.** SDK kann es schon (node-appwrite 29), aber self-hosted braucht es ein zweites Postgres + Embedding-Container, und die eingebauten Modelle können nur Englisch. Einziger echter Kandidat: George-RAG über die Insights-Basis. [Notiz](#vdb1) | Niedrig | M | Ja: Strategie-Freigabe | mehrsprachiges Modell in Appwrite + Insights-Basis mit einigen hundert Einträgen |
 
 ---
 
@@ -110,7 +112,7 @@ portfolio (comments ist seit F3 am 2026-08-12 eine Pool-Community), **platform**
 demo.pukalani.app als erster Pool-Tenant, neue Kundensite = ein Klick im
 Control, kein Build), **help.pukalani.app** (Hilfe-Site, seit 2026-07-27) und
 die interne Doku unter `admin.pukalani.app/docs`. Auto-Deploy (6 Sites),
-Zero-Downtime Stufe 2, Changelog-2B, Alerting, GDPR, pages-Layer
+Zero-Downtime Stufe 2, Alerting, GDPR, pages-Layer
 (/imprint,/terms,/privacy editierbar + Footer-Links). M1–M9 komplett,
 Self-Service-Onboarding komplett, **alle sechs Kundenprodukte durch die
 Datentür** (comments, posts, pages, moderation, events, courses).
@@ -394,13 +396,20 @@ zuerst:
   „bestätigt" und zählt bei jeder Ausgabe als Fehlschlag. Ein Webhook-Endpunkt
   für `email.bounced` / `email.complained` / `email.suppressed` (Webhook-API
   seit 2025-10-31, Signatur prüfen) meldet den Abonnenten ab bzw. schaltet
-  `emailNotifications` aus.
+  `emailNotifications` aus. Zuschnitt (Svix-Prüfung selbst, 404 ohne Secret,
+  Prefs-Merker, ein Webhook je Deployment) und Davids Entscheidung „bei
+  Beschwerde nur Mails aus, keine Konto-Markierung" (2026-11-06):
+  [MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md) § 2 Stufe B.
 - **(c) Wächter vereinfachen und erweitern.** Blick 2 im Mail-Wächter auf
   `GET /usage` umstellen: ein Aufruf statt Blättern, die Grenze kommt aus der
-  Antwort statt fest 100. Neuer Blick über die Email Metrics API
-  (`/emails/metrics`, seit 2026-08-27): Alarm bei steigender Bounce- oder
-  Beschwerdequote, das frühe Zeichen eines Missbrauchs wie im Vorfall
-  2026-10-25/27. Beide brauchen einen Schlüssel mit vollem Zugriff.
+  Antwort statt fest 100. Der Bounce-/Beschwerde-Blick ist **seit
+  2026-11-06 GEBAUT** (Blick 3, COMPLETE „MZ1": `last_event` aus derselben
+  Liste, rot ab 3 Bounces / 1 Beschwerde in 24 h); `/emails/metrics` könnte
+  ihn beim Umbau auf `/usage` ersetzen. **Gemessen:** er ist KEIN frühes
+  Zeichen eines Missbrauchs — im Fenster des Vorfalls 2026-10-25/27 standen
+  bei 234 Mails nur 2 Bounces und 0 Beschwerden, die Opfer-Adressen waren
+  echt. Er schützt den Absender-Ruf. Beide brauchen einen Schlüssel mit
+  vollem Zugriff.
 - **(d) Idempotenz im Stapelversand.** `Resend-Idempotency-Key` wirkt auch
   über SMTP (Doku „Send with SMTP"). Ein Schlüssel aus Ausgabe und Empfänger
   verhindert doppelte Post, wenn ein Stapel zwischen Versand und Cursor-
@@ -432,6 +441,44 @@ Zur Kenntnis, kein Bau: Resend sperrt öffentlich gewordene Schlüssel selbst
 öffentlich: landet der SMTP-Schlüssel dort, fallen alle Mails sofort aus, und
 die Admins bekommen eine Mail. One-Click-Abmeldung (RFC 8058) bleibt ein
 eigenes Vorhaben, Begründung im Kopf von `packages/core/server/utils/mailer.ts`.
+
+<a id="vdb1"></a>
+
+**VDB1 — Appwrite VectorsDB für semantische Suche.** Geprüft am 2026-11-06
+anhand der Doku, des 2.6.2-Quellcodes (`app/init/registers.php`,
+`docker-compose.yml`, `.env`) und von node-appwrite 29. Live probiert wurde
+nichts, OrbStack war aus.
+
+- **Was passt:** `VectorsDB` und `Embeddings.createTextEmbeddings` sind seit
+  node-appwrite 29.0.0 im SDK, also kein Bump nötig. Suche per
+  `Query.vectorCosine` mit `$distance`, beliebige `metadata` je Eintrag,
+  Berechtigungen je Eintrag, Dimension der Sammlung frei wählbar.
+- **Server:** VectorsDB läuft nicht auf MariaDB. Es braucht ein eigenes
+  Postgres (`appwrite/postgres:0.1.0`, `_APP_DB_*_VECTORSDB`, Standard-Host
+  `postgresql:5432`), dazu für die eingebauten Embeddings den Container
+  `appwrite/embedding:0.3.1` (Profil `embedding`, CPU-Rechnung, Volume
+  `appwrite-models`) und `_APP_EMBEDDING=enabled` (Standard aus). Das ist eine
+  zweite Datenbank im Backup, mehr RAM auf appwrite-prod und mehr Fläche für
+  das Upgrade-Werkzeug. Den Alt-Container haben wir am 2026-09-08 bewusst
+  entfernt (APPWRITE-2-0-UPGRADE).
+- **Sprache:** eingebaut sind `nomic-embed-text` (768) und `all-minilm` (384),
+  beide nur Englisch. Das mehrsprachige `embedding-gemma` steht auf „coming
+  soon" und antwortet bis dahin mit 400. Vektoren selbst rechnen ginge, dann
+  stellt sich aber die ZDR-ist-nicht-EU-Frage wie bei OpenRouter (AI1).
+- **Mandanten-Trennung:** `tenantDb` deckt nur TablesDB. Im Pool bräuchte
+  jeder Eintrag `tenantId` in `metadata` plus eine eigene Datentür,
+  ESLint-Wächter und VectorsDB-Schritte im Migrations-Runner, also ein
+  Eingriff nach CONCEPT A14.
+- **Bedarf heute:** Volltext über MariaDB trägt `posts`, `comments`, `events`
+  und `admin`. Der eine echte Kandidat ist George-RAG über die
+  Insights-Basis (BRAND-WIZARD-PHASE-1, „RAG + Embeddings"), und die hat erst
+  eine Handvoll Beiträge.
+
+Wieder anfassen, wenn BEIDES zutrifft: ein mehrsprachiges Modell ist in
+Appwrite verfügbar, und die Insights-Basis ist so groß, dass Volltext nicht
+mehr reicht (grob einige hundert Einträge). Dann in derselben Strategie-Runde
+VectorsDB gegen pgvector im eigenen Postgres und gegen einen externen
+Embedding-Dienst abwägen.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 

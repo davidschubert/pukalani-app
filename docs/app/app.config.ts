@@ -21,7 +21,7 @@ export default defineAppConfig({
     colorMode: true,
     links: [{
       'icon': 'i-simple-icons-github',
-      'to': 'https://github.com/davidschubert/maui-monorepo',
+      'to': 'https://github.com/davidschubert/pukalani-app',
       'target': '_blank',
       'aria-label': 'GitHub',
     }],
@@ -31,7 +31,7 @@ export default defineAppConfig({
     colorMode: false,
     links: [{
       'icon': 'i-simple-icons-github',
-      'to': 'https://github.com/davidschubert/maui-monorepo',
+      'to': 'https://github.com/davidschubert/pukalani-app',
       'target': '_blank',
       'aria-label': 'Pukalani Monorepo auf GitHub',
     }],
@@ -40,16 +40,16 @@ export default defineAppConfig({
     title: 'Auf dieser Seite',
     bottom: {
       title: 'Vertiefung',
-      edit: 'https://github.com/davidschubert/maui-monorepo/edit/main/docs/content',
+      edit: 'https://github.com/davidschubert/pukalani-app/edit/main/docs/content',
       links: [{
         icon: 'i-lucide-book-open',
         label: 'Konzept (CONCEPT.md)',
-        to: 'https://github.com/davidschubert/maui-monorepo/blob/main/docs/CONCEPT.md',
+        to: 'https://github.com/davidschubert/pukalani-app/blob/main/docs/CONCEPT.md',
         target: '_blank',
       }, {
         icon: 'i-lucide-map',
         label: 'Roadmap (GOALS.md)',
-        to: 'https://github.com/davidschubert/maui-monorepo/blob/main/docs/GOALS.md',
+        to: 'https://github.com/davidschubert/pukalani-app/blob/main/docs/GOALS.md',
         target: '_blank',
       }],
     },

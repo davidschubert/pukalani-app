@@ -30,6 +30,80 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CL0 — Appwrite-Brotli-Hinweis geprüft; dabei: der Changelog-Link der Marketing-Seite zeigte seit Monaten auf einen toten Webhook ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-24 (Brotli, CVE-2026-111497): Server
+auf 2.6.2 heben UND die Runtime-Images für Functions/Sites neu ziehen.
+
+**Brotli — nichts mehr zu tun.** Server-Teil ist AW262 (2.6.2 seit 2026-10-27).
+Runtime-Teil, gemessen auf appwrite-prod: kein einziges `openruntimes/*`-Image
+außer dem Executor (der `ImagePuller` zog node-22/static-1/flutter-3.29 beim
+Neustart am 2026-10-27, also nach den Patches; das Aufräumen am 2026-10-28
+entfernte sie als ungenutzt), und **0 Functions, 0 Sites** in allen vier
+Projekten (Zählung direkt in MariaDB, `_6/_10/_11/_12_functions|_sites`).
+Konfiguriert ist nur `node-22` — keine der abgekündigten Runtimes.
+
+**Nebenbefund — Changelog-Track 2B war tot, die Doku sagte „AKTIV".** Die
+Function `changelog-draft` lebte im Prod-Projekt `comments`, das es seit dem
+Control-Cutover nicht mehr gibt. `changelog.pukalani.app` liefert nur noch
+Traefiks Ersatz-Zertifikat; der GitHub-Webhook (654489788) stand weiter auf
+`active=true`. Schlimmer: die **Marketing-Seite verlinkte genau diese Adresse
+als öffentlichen Changelog** — Ressourcen-Menü, Fuß und Beweis-Abschnitt
+(„öffentlich nachlesbar"), live viermal je Seite. Die echte öffentliche Seite
+liegt unter `admin.pukalani.app/changelog` (200, Sprachweiche per
+`Accept-Language` ⇒ 302 auf `/de/changelog`).
+
+**Erledigt (Davids Wahl 2026-11-06: „Doku + Webhook aufräumen", Link auf
+admin…/changelog):** `marketing.changelogUrl` → `https://admin.pukalani.app/changelog`;
+`ProofSection.vue` liest die Adresse jetzt aus `useMarketingSite()` statt einer
+zweiten festen Kopie; Anzeigename de/en angepasst; GitHub-Webhook deaktiviert
+(nicht gelöscht); CHANGELOG-WORKFLOW.md (2A ist DER Weg, 2B stillgelegt mit
+Hergang + Wiederbeleben), hosts-und-ports, Function-README, OPEN-ITEMS-Status.
+Der v3.0.0-Entwurf ist nachweislich nicht veröffentlicht ⇒ OPEN-ITEMS „CL1".
+
+**Gelernt:** Ein Endpunkt ist keine Seite. Die Marketing-Seite verlinkte die
+Webhook-Adresse, weil sie nach „Changelog" klang — im Juli antwortete sie mit
+200 (Ping), also fiel es nie auf. Beim Projekt-Umbau verschwand die Function
+still, weil Functions in keinem Wächter vorkommen (`verify-health` und
+`verify-tls` kennen `changelog.` nicht). Wer eine Adresse nach außen verlinkt,
+verlinkt eine Seite, die ein Mensch lesen soll — und eine Function, die nur ein
+Webhook erreicht, hat keinen Platz im Menü.
+
+---
+
+### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
+
+**Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
+das ist das `resend`-SDK in einer Server-Route, kein Modul; wir verschicken
+längst über Resend, per SMTP (`sendMail()`, nodemailer, Mailpit lokal). Was
+fehlte, war die Sicht darauf, was aus den Mails wird. Plan:
+[archiv/MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md).
+
+**Davids Entscheidungen (2026-11-06).** Nur Stufe A (Pull im Wächter, keine
+App-Änderung); rot ab 3 Bounces ODER 1 Beschwerde in 24 h; Stufe B (Webhook,
+Konto-Merker) zurückgestellt — lebt als Teilpaket (b) in OPEN-ITEMS „RS1"
+(eine Nachbarsitzung hatte am selben Tag die Resend-Changelog-Durchsicht
+angelegt; kein zweiter Eintrag).
+
+**Gebaut.** `scripts/ops/verify-mail-breaker.mjs` zählt in der Liste, die
+Blick 2 schon holt, `last_event === 'bounced' | 'complained'`; ins öffentliche
+CI-Log kommt nur die Empfänger-Domain. Schalter `--bounce-alarm`,
+`--complaint-alarm` (0 = Probealarm), `--resend-hours`.
+
+**Beweise.** Echtes Resend-Konto: 24 h ⇒ 0/0, grün, Exit 0 mit `--strict`;
+`--bounce-alarm 0 --strict` ⇒ ✗, Exit 1; Vorfall-Fenster `--resend-hours 400`
+⇒ 234 Mails, 2 Bounces (gmail.com), 0 Beschwerden; `pnpm lint:scripts` grün.
+
+**Gelernt:** Die Annahme „Spam an fremde Adressen erzeugt Bounces und
+Beschwerden" war falsch — beim Oktober-Vorfall 2 Bounces auf 234 Mails, die
+Opfer-Adressen waren echt. Blick 3 schützt den Absender-Ruf, er meldet keinen
+Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
+dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
+der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
+(`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
+
+---
+
 ### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
 
 **Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die
