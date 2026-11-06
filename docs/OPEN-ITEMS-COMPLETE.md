@@ -30,6 +30,35 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
+
+**Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
+das ist das `resend`-SDK in einer Server-Route, kein Modul; wir verschicken
+längst über Resend, per SMTP (`sendMail()`, nodemailer, Mailpit lokal). Was
+fehlte, war die Sicht darauf, was aus den Mails wird. Plan:
+[archiv/MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md).
+
+**Davids Entscheidungen (2026-11-06).** Nur Stufe A (Pull im Wächter, keine
+App-Änderung); rot ab 3 Bounces ODER 1 Beschwerde in 24 h; Stufe B (Webhook,
+Konto-Merker) geparkt als „MZ1-B".
+
+**Gebaut.** `scripts/ops/verify-mail-breaker.mjs` zählt in der Liste, die
+Blick 2 schon holt, `last_event === 'bounced' | 'complained'`; ins öffentliche
+CI-Log kommt nur die Empfänger-Domain. Schalter `--bounce-alarm`,
+`--complaint-alarm` (0 = Probealarm), `--resend-hours`.
+
+**Beweise.** Echtes Resend-Konto: 24 h ⇒ 0/0, grün, Exit 0 mit `--strict`;
+`--bounce-alarm 0 --strict` ⇒ ✗, Exit 1; Vorfall-Fenster `--resend-hours 400`
+⇒ 234 Mails, 2 Bounces (gmail.com), 0 Beschwerden; `pnpm lint:scripts` grün.
+
+**Gelernt:** Die Annahme „Spam an fremde Adressen erzeugt Bounces und
+Beschwerden" war falsch — beim Oktober-Vorfall 2 Bounces auf 234 Mails, die
+Opfer-Adressen waren echt. Blick 3 schützt den Absender-Ruf, er meldet keinen
+Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
+dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
+der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
+(`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
+
 ### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
 
 **Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die

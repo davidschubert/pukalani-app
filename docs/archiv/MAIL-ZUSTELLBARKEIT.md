@@ -1,7 +1,8 @@
 # MZ1 — Mail-Zustellbarkeit: Bounces und Spam-Beschwerden sehen
 
-**Stand:** 2026-11-06 · **Phase:** Konzeption abgeschlossen, Davids
-Entscheidungen in § 5 gefallen — als Nächstes Stufe A bauen · **Offener Punkt:** OPEN-ITEMS „MZ1"
+**Stand:** 2026-11-06 · **ARCHIV:** Stufe A gebaut (COMPLETE „MZ1"), Stufe B
+bewusst zurückgestellt — offen als OPEN-ITEMS „MZ1-B" (Geparkt). § 8 hält fest,
+was die Messung an dieser Skizze widerlegt hat.
 
 ## 1. Ausgangslage (gemessen, nicht geglaubt)
 
@@ -23,9 +24,10 @@ Entscheidungen in § 5 gefallen — als Nächstes Stufe A bauen · **Offener Pun
   NICHTS nachbauen.
 - **Was uns fehlt, ist die Sicht.** Den Spam-Vorfall vom 2026-10-25/27 (209
   Verifizierungs-Mails an fremde Adressen) bemerkten wir nur durch Resends
-  Tageslimit-Mail. Fremde Opfer erzeugen typischerweise Bounces und
-  Beschwerden; eine steigende Quote ist also ein FRÜHES Signal für Missbrauch
-  und zugleich das, was ein Mail-Anbieter zuerst gegen den Absender verwendet.
+  Tageslimit-Mail. Die Annahme dieser Skizze, fremde Opfer erzeugten Bounces
+  und Beschwerden und die Quote sei deshalb ein frühes Missbrauchs-Signal,
+  hat die Messung WIDERLEGT (§ 8). Die Quote bleibt das, woran ein
+  Mail-Anbieter den Absender misst.
 - Heute zählt der Mail-Wächter (`scripts/ops/verify-mail-breaker.mjs`,
   Blick 2, täglich in `.github/workflows/production-watch.yml`) nur die MENGE
   der Mails in 24 Stunden (`GET /emails`), nicht ihr Schicksal.
@@ -131,3 +133,22 @@ Quote. Zuschnitt:
   Kopfzeile) und Allowlist; lokal über Resends CLI-Weiterleitung ein echter
   Test-Bounce an `bounced@resend.dev` ⇒ Prefs gesetzt, Hinweis sichtbar;
   ohne Secret 404.
+
+## 8. Gebaut und gemessen (2026-11-06)
+
+- Blick 3 steckt in `scripts/ops/verify-mail-breaker.mjs` und läuft mit
+  `--resend` (also im täglichen Job von `production-watch.yml`, kein neuer
+  Schritt, kein neues Secret). Er liest dieselbe Liste wie Blick 2 — kein
+  zusätzlicher API-Aufruf. Schalter: `--bounce-alarm`, `--complaint-alarm`
+  (0 = Probealarm), `--resend-hours` (nur für Beweise gegen die Vergangenheit).
+- **Gemessen:** `last_event` liefert wirklich `bounced`; `to` kann
+  „Name <adresse>" sein ⇒ geloggt wird nur die Domain. Die Suppressions-API
+  liefert `id, email, origin, source_id, created_at` (`origin: bounce`) — für
+  Blick 3 nicht gebraucht, `last_event` genügt.
+- **Widerlegt:** gegen das Fenster des Oktober-Vorfalls (`--resend-hours 400`)
+  standen bei 234 Mails nur **2 Bounces und 0 Beschwerden**. Die Opfer-
+  Adressen waren echt und nahmen an. Blick 3 ist ein Reputations-Wächter,
+  kein Missbrauchs-Melder — den Missbrauch sieht Blick 2 (Menge).
+- **Offen beim Betrieb:** im CI läuft Blick 2 + 3 erst, wenn David das Secret
+  `PRODUCTION_WATCH_RESEND_KEY` setzt (OPEN-ITEMS „MON2"); bis dahin wird er
+  übersprungen und ist grün.
