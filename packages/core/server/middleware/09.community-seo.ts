@@ -28,7 +28,9 @@
  * exakt der von vor U15.
  */
 export default defineEventHandler(async (event) => {
-  const communityId = event.context.tenant?.communityId
+  // Seit 2026-09-08 liest auch der SILO seine Zeile (`instance`) — vorher
+  // blieb der Sucheintrag dort ohne Wirkung (Regel: shared/communitySettingsRow.ts).
+  const communityId = communitySettingsRowIdFor(event)
   if (!communityId) return
 
   const path = event.path.split('?')[0] ?? ''

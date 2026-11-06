@@ -30,7 +30,7 @@ Nuxt 4 Monorepo mit zentralem Core Layer und komponierbaren Feature Layers auf A
   color: neutral
   variant: outline
   size: xl
-  to: https://github.com/davidschubert/maui-monorepo
+  to: https://github.com/davidschubert/pukalani-app
   target: _blank
   ---
   Zum Repository
@@ -148,7 +148,7 @@ Was dich hier erwartet
       to: '/erste-schritte'
       trailingIcon: i-lucide-arrow-right
     - label: Konzept lesen (CONCEPT.md)
-      to: 'https://github.com/davidschubert/maui-monorepo/blob/main/docs/CONCEPT.md'
+      to: 'https://github.com/davidschubert/pukalani-app/blob/main/docs/CONCEPT.md'
       target: _blank
       variant: subtle
       icon: i-lucide-book-open

@@ -89,7 +89,7 @@ const columns = computed<TableColumn<GdprExportFile>[]>(() => [
   { accessorKey: 'name', header: () => t('admin.gdprExports.col.file') },
   { accessorKey: 'sizeOriginal', header: () => t('admin.gdprExports.col.size'), id: 'size', meta: { class: HIDE_SM } },
   { accessorKey: '$createdAt', header: () => t('admin.gdprExports.col.created'), id: 'created' },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 </script>
 

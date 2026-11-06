@@ -58,8 +58,10 @@ const appConfig = useAppConfig()
 /**
  * WIE DIE HÜLLE HEISST (U7/G1, 2026-08-11) — dieselbe Rechnung wie am
  * Menüpunkt in der Seitenleiste (packages/admin/app/layouts/dashboard.vue):
- * wo `admin.instanceTabs` an ist (heute apps/comments), stehen hier die vier
- * Reiter der INSTANZ-Verwaltung und keine Community. Ein Menüpunkt und eine
+ * wo `admin.instanceTabs` an ist (die Silo-Apps comments, portfolio,
+ * branding), stehen hier die vier Reiter der INSTANZ-Verwaltung und keine
+ * Community — die Hülle heißt dann „Website-Einstellungen" (Davids Wort vom
+ * 2026-09-08, Schlüssel bleibt `instanceSettings`). Ein Menüpunkt und eine
  * Kopfzeile mit zwei verschiedenen Namen für dieselbe Fläche wären der
  * nächste Befund; deshalb liest auch dieser Titel den Schalter.
  */

@@ -18,6 +18,15 @@ const sent = ref(false)
 const blockedMessage = ref('')
 const { authErrorMessage } = useAuthErrorMessage()
 
+/**
+ * BOT-BEWEIS (Turnstile, Vorfall 2026-10-27) — dieselbe Verdrahtung wie im
+ * Register-Formular. Ohne Site-Key: kein Widget, kein Feld im Body, Knopf frei.
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+
 // Seitentitel „Passwort vergessen · <Brand>" — gleiche Kette wie /login (B3-Rest).
 useBrandTitle(() => t('auth.forgot.title'))
 
@@ -29,7 +38,10 @@ async function onSubmit(event: FormSubmitEvent<RecoveryInput>) {
   loading.value = true
   blockedMessage.value = ''
   try {
-    await $fetch('/api/auth/recovery', { method: 'POST', body: event.data })
+    await $fetch('/api/auth/recovery', {
+      method: 'POST',
+      body: { ...event.data, ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}) },
+    })
     sent.value = true
   }
   catch (error) {
@@ -38,7 +50,13 @@ async function onSubmit(event: FormSubmitEvent<RecoveryInput>) {
     // also nichts darüber, ob es diese Adresse gibt — und „Schau in dein
     // Postfach" wäre hier schlicht falsch: es wurde nichts verschickt, und der
     // Nutzer wartet auf eine Mail, die nie kommt.
-    if (isRateLimited(error)) blockedMessage.value = authErrorMessage(error, '')
+    // DASSELBE für den Bot-Beweis: die Ablehnung fällt, bevor eine Adresse
+    // nachgeschlagen wird, verrät also nichts — und „Mail ist unterwegs" wäre
+    // auch hier falsch. Der Token ist verbraucht, das Widget holt einen neuen.
+    if (isRateLimited(error) || botCheckReason(error)) {
+      blockedMessage.value = authErrorMessage(error, '')
+      botCheck.value?.reset()
+    }
     else sent.value = true
   }
   finally {
@@ -62,7 +80,8 @@ async function onSubmit(event: FormSubmitEvent<RecoveryInput>) {
       <UFormField :label="t('auth.fields.email')" name="email" required>
         <UInput v-model="state.email" type="email" size="lg" :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
       </UFormField>
-      <UButton type="submit" block size="lg" :loading="loading">{{ t('auth.forgot.submit') }}</UButton>
+      <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="recovery" />
+      <UButton type="submit" block size="lg" :loading="loading" :disabled="waitingForBotCheck">{{ t('auth.forgot.submit') }}</UButton>
     </UForm>
 
     <p class="text-center text-sm text-muted">

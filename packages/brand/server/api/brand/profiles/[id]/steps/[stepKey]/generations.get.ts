@@ -39,8 +39,8 @@ const querySchema = z.object({
 })
 
 export default defineEventHandler(async (event): Promise<BrandGenerationVersionsResponse> => {
-  const { userId } = await requireBrandAccess(event)
-  const { stepKey, stepRow } = await loadBrandStepContext(event, userId)
+  const { userId, betaAccount } = await requireBrandAccess(event)
+  const { stepKey, stepRow } = await loadBrandStepContext(event, userId, betaAccount)
 
   const query = await getValidatedQuery(event, querySchema.parse)
 

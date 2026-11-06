@@ -18,10 +18,23 @@
  * sieht sie sonst nicht (CLAUDE.md).
  */
 
+import type { DashboardNavPrefs } from '../dashboardNav'
+
 /** POST /api/auth/login */
 export interface LoginResponse {
   ok: true
   /** true = erste Stufe steht, der zweite Faktor fehlt noch. */
+  mfaRequired: boolean
+}
+
+/**
+ * POST /api/auth/otp/verify — dieselbe Form wie der Passwort-Login, aus
+ * demselben Grund: auch nach dem richtigen E-Mail-Code kann Appwrite noch
+ * einen zweiten Faktor verlangen (Befund 2026-10-24, prod).
+ */
+export interface OtpVerifyResponse {
+  ok: true
+  /** true = der Code saß, der zweite Faktor fehlt noch. */
   mfaRequired: boolean
 }
 
@@ -62,4 +75,18 @@ export interface MfaDisableResponse {
 export interface TimezoneResponse {
   ok: true
   timezone: string
+}
+
+/**
+ * PUT /api/auth/dashboard-nav
+ *
+ * `dashboardNav: null` ist die Antwort auf das Zurücksetzen — der Schlüssel
+ * wurde aus den Prefs ENTFERNT, nicht auf `{}` gesetzt. Die Route gibt den
+ * GESPEICHERTEN Stand zurück, nicht den geschickten: leere Listen fallen beim
+ * Lesen weg (parseDashboardNavPrefs), und der Client soll denselben Stand
+ * sehen wie die Seitenleiste nach `auth.refresh()`.
+ */
+export interface DashboardNavResponse {
+  ok: true
+  dashboardNav: DashboardNavPrefs | null
 }

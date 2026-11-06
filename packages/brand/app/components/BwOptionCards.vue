@@ -12,6 +12,7 @@ export interface BwOptionCard {
 }
 defineProps<{ options: BwOptionCard[], ownPlaceholder?: string }>()
 const emit = defineEmits<{ pick: [id: string], own: [text: string], dontKnow: [] }>()
+const { t } = useI18n()
 const openWhy = ref<string | null>(null)
 const own = ref('')
 function toggleWhy(id: string) {
@@ -34,7 +35,7 @@ function submitOwn() {
       <button class="flex w-full items-start justify-between gap-3 text-left" @click="$emit('pick', o.id)">
         <span class="min-w-0">
           <span class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-medium">
-            {{ o.label }}<span v-if="o.recommended" class="bw-pop-chip">Empfehlung</span>
+            {{ o.label }}<span v-if="o.recommended" class="bw-pop-chip">{{ t('brand.workspace.recommended') }}</span>
           </span>
           <span v-if="o.description" class="mt-0.5 block text-sm" style="color: var(--bw-ink-soft)">{{ o.description }}</span>
         </span>
@@ -42,7 +43,7 @@ function submitOwn() {
           v-if="o.why"
           class="bw-info-btn grid size-7 flex-none place-items-center rounded-full"
           role="button" tabindex="0"
-          :aria-label="`Warum empfiehlt George ${o.label}?`" :aria-expanded="openWhy === o.id"
+          :aria-label="t('brand.workspace.whyRecommended', { label: o.label })" :aria-expanded="openWhy === o.id"
           @click.stop="toggleWhy(o.id)" @keydown.enter.stop="toggleWhy(o.id)"
         >
           <UIcon name="i-ph-info" class="size-4.5" />
@@ -59,13 +60,13 @@ function submitOwn() {
     >
       <UInput
         v-model="own" variant="none" class="flex-1" :ui="{ base: 'rounded-full' }"
-        :placeholder="ownPlaceholder ?? 'Oder etwas ganz Eigenes …'"
+        :placeholder="ownPlaceholder ?? t('brand.workspace.ownAnswerPlaceholder')"
       />
-      <UButton type="submit" icon="i-ph-arrow-right" aria-label="Eigene Antwort senden" size="sm" color="neutral" variant="ghost" class="bw-send rounded-full" :disabled="!own.trim()" />
+      <UButton type="submit" icon="i-ph-arrow-right" :aria-label="t('brand.workspace.sendOwnAnswer')" size="sm" color="neutral" variant="ghost" class="bw-send rounded-full" :disabled="!own.trim()" />
     </form>
     <!-- Interaktionsregel 5 (Audit D16): "Weiß ich nicht" hängt IMMER hinten. -->
     <button class="bw-chip bw-chip--ghost text-left" @click="emit('dontKnow')">
-      Weiß ich nicht
+      {{ t('brand.workspace.dontKnow') }}
     </button>
   </div>
 </template>

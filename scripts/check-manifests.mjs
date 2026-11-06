@@ -18,6 +18,15 @@
  *  4. extends in nuxt.config.ts = Produkte in kanonischer EXTENDS_ORDER
  *     + core + system am Ende (früher gelistet = höhere Priorität).
  *  5. @pukalani/*-Dependencies in package.json = exakt Produkte + core + system.
+ *  6. `apiPrefixes` im Manifest ⇒ `server/plugins/product-manifest.ts` Pflicht
+ *     (PM1, 2026-09-09): das Manifest-FILE ist `import type`-only, erst das
+ *     Nitro-Plugin registriert es zur Laufzeit (`registerProductManifest`).
+ *     Ohne Plugin ist `apiPrefixes` ein Versprechen ohne Wirkung — die
+ *     Produkt-Middleware (core/server/middleware/04.product-gate.ts) kennt
+ *     nur die Registry, Notabschaltung und Sweep-Gates laufen ins Leere
+ *     (`market` fuhr so seit M1, COMPLETE „BI1 I1"). Das Plugin muss den
+ *     Aufruf wörtlich enthalten; Ausnahmen stehen begründet in
+ *     MANIFEST_PLUGIN_EXCEPTIONS.
  *
  * Ausgabe pro Verstoß eine Zeile (Datei · erwartet/ist), Exit 1 bei Fehlern.
  */
@@ -41,6 +50,15 @@ const EXTENDS_ORDER = [
   'billing', 'courses', 'tickets', 'runner', 'activity', 'messages', 'moderation',
 ]
 const FOUNDATION_ALWAYS = ['core', 'system']
+
+// Prüfung 6 — Layer, die `apiPrefixes` deklarieren, aber BEWUSST kein
+// server/plugins/product-manifest.ts haben. Jeder Eintrag braucht eine
+// Begründung und Davids Entscheidung (DECISION-LOG). Heute leer: die drei
+// Kandidaten domains/onboarding/runner haben am 2026-09-09 ein Plugin
+// bekommen (PM1, Davids Entscheidung — Empfehlung angenommen).
+const MANIFEST_PLUGIN_EXCEPTIONS = new Map([
+  // ['layer', 'Begründung — wer/wann entschieden'],
+])
 
 const errors = []
 const err = (msg) => errors.push(msg)
@@ -95,6 +113,25 @@ for (const layer of layers) {
     err(`${rel}: hasMigrations=${parsed.data.hasMigrations}, aber scripts/migrations/ ${hasDir ? 'existiert' : 'fehlt'}`)
   }
   manifests.set(layer, parsed.data)
+}
+
+// ── 6: apiPrefixes ⇒ Laufzeit-Plugin ────────────────────────────────────
+for (const [layer, m] of manifests) {
+  if (!m.apiPrefixes?.length) continue
+  const rel = `packages/${layer}/server/plugins/product-manifest.ts`
+  const file = join(ROOT, rel)
+  if (MANIFEST_PLUGIN_EXCEPTIONS.has(layer)) {
+    if (existsSync(file)) err(`${rel}: existiert, der Layer steht aber in MANIFEST_PLUGIN_EXCEPTIONS — Ausnahme streichen`)
+    continue
+  }
+  if (!existsSync(file)) {
+    err(`${rel}: fehlt — das Manifest deklariert apiPrefixes [${m.apiPrefixes.join(', ')}], ohne Plugin registriert sie niemand (Notabschaltung tot; Muster: packages/insights)`)
+    continue
+  }
+  const src = readFileSync(file, 'utf8')
+  if (!/registerProductManifest\s*\(\s*manifest\s*\)/.test(src) || !/from\s+'\.\.\/\.\.\/product\.manifest'/.test(src)) {
+    err(`${rel}: muss \`import manifest from '../../product.manifest'\` und \`registerProductManifest(manifest)\` enthalten`)
+  }
 }
 
 // requires müssen existieren

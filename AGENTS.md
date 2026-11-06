@@ -1,6 +1,7 @@
 # Agenten-Regeln → siehe CLAUDE.md
 
-**Die Regeln für dieses Repository stehen vollständig in [CLAUDE.md](CLAUDE.md).**
+**Die Regeln für dieses Repository stehen vollständig in [CLAUDE.md](CLAUDE.md)
+und den dort verzeichneten Domänen-Dateien unter [.claude/rules/](.claude/rules/).**
 Lies sie dort, unabhängig davon, welches Werkzeug dich startet (Claude Code,
 Codex, ein anderer Agent).
 
@@ -19,7 +20,8 @@ einen weiteren Zeiger an, als den Inhalt zu duplizieren.
 
 ## Kurzorientierung
 
-- Regeln, Konventionen, Fallen: [CLAUDE.md](CLAUDE.md)
+- Regeln, Konventionen, Fallen: [CLAUDE.md](CLAUDE.md) + [.claude/rules/](.claude/rules/)
+  (Domänen-Regeln, in Claude Code pfadgebunden geladen — andere Agenten lesen sie mit)
 - Was ist offen, was kommt als Nächstes: [docs/OPEN-ITEMS.md](docs/OPEN-ITEMS.md)
 - Wo steht welches Dokument: [docs/README.md](docs/README.md)
 - Architektur im Detail: [docs/CONCEPT.md](docs/CONCEPT.md)

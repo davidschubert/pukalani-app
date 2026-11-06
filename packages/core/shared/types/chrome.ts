@@ -23,6 +23,27 @@ export interface PukalaniChromeNavEntry {
   to: string
   /** Icon (i-ph-…) — nur im Überlauf-Dropdown sichtbar */
   icon?: string
+  /**
+   * BESCHREIBUNG EINES KINDES IM AUFKLAPPER (PS1, 2026-09-09) — ein
+   * i18n-Schlüssel, genau wie `labelKey`, und aus demselben Grund: der Text
+   * gehört dem registrierenden Layer, gerendert wird er von einem fremden
+   * (`BwSiteNav`, blueprint-Layout).
+   *
+   * EIN VERTRAG UND KEINE SCHLÜSSEL-KONVENTION: der Renderer hätte sich die
+   * Beschreibung auch aus dem `labelKey` ableiten können (`<key>` ⇒
+   * `<key>Description`, wie es `billing.plans[].labelKey` tut). Dann stünde
+   * die Zuordnung im Renderer statt in der Registry, und ein Layer könnte
+   * seinem Eintrag keine Beschreibung geben, ohne seinen Label-Schlüssel
+   * umzubenennen — die Schlüssel der Produkt-Beschreibungen von
+   * branding.supply (`brand.nav.product.*`) heißen bewusst anders als die
+   * Labels (`brand.nav.*`).
+   *
+   * Fehlend = ein Eintrag ohne Beschreibung, also exakt das Verhalten von vor
+   * diesem Tag (additiv). Gedeckt vom Wächter `pnpm check:i18n-keys`
+   * (FIELDS-Zeile `pukalani.chrome.nav.<id>.descriptionKey`) — sonst stünde im
+   * Aufklapper wörtlich der Schlüssel.
+   */
+  descriptionKey?: string
   /** Sortierung (aufsteigend, Default 50) */
   order?: number
   /** Laufzeit-Produkt-Gate (F2): Eintrag verschwindet, wenn das Produkt aus ist */
@@ -35,6 +56,32 @@ export interface PukalaniChromeNavEntry {
   planProduct?: string
   /** Nur für eingeloggte Besucher sichtbar */
   requiresAuth?: boolean
+  /**
+   * STANDARD-HAUPTPUNKT DIESES EINTRAGS (U15 Teil 3 Nachtrag, 2026-09-08) — die
+   * Id eines ANDEREN Eintrags DERSELBEN Map, unter dem dieser als Unterpunkt
+   * erscheint. Fehlend = ein gewöhnlicher Hauptpunkt, also exakt das Verhalten
+   * von vor diesem Tag (additiv).
+   *
+   * ── WARUM DER BAUPLAN GRUPPEN VORGEBEN DARF ─────────────────────────────
+   * Davids Korrektur am Prototyp vom 2026-09-08: das STANDARD-Menü von
+   * branding.supply lautet „Products ▾ (Brand Score) · Discover Brands · About
+   * · Team". Bis dahin entstanden Unterpunkte AUSSCHLIESSLICH über die
+   * gespeicherte Owner-Wahl (`CommunityNavOverrideEntry.parent`) — die Registry
+   * konnte nur eine flache Reihe beschreiben. Eine Site hätte ihr eigenes
+   * Standard-Menü also erst per Klick im Editor herstellen können, und eine
+   * frische Instanz derselben Software hätte anders ausgesehen als die
+   * beworbene. Der BAUPLAN gehört dem Layer, deshalb steht die Vorgabe hier.
+   *
+   * `to: ''` ist ausdrücklich ERLAUBT und heisst „Aufklapper ohne eigene Seite"
+   * — dieselbe Bedeutung wie `to === ''` bei `CommunityNavItem` (dort geprüft
+   * über `navItemHasTarget()`). Ein Aufklapper braucht so keine Seite, die es
+   * nicht gibt.
+   *
+   * GENAU EINE EBENE, und die Gates gelten für den Gruppen-Eintrag SELBST:
+   * fällt die Gruppe per `productKey`/`requiresAuth`/`planProduct` weg, rücken
+   * ihre Kinder nach Zusage 6 auf die oberste Ebene — nichts verschwindet.
+   */
+  parent?: string
 }
 
 /** Header-Utility rechts (Buttons/Menüs — DisplaySettingsMenu, Bell, …). */

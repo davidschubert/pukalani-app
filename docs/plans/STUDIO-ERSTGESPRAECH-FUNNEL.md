@@ -185,3 +185,77 @@ eine Eigenschaft DIESER Marketing-Site ist und nichts, was eine Community je
 zuschaltet. Angelegt idempotent über `apps/portfolio/scripts/
 ensure-intro-requests.mjs` (409 → skip); der Schema-Parity-Wächter meldet
 unbekannte portfolio-Tabellen ohnehin nur als nicht-fatale Warnung.
+
+## 7 · W3-Textentwürfe — ZUR FREIGABE (Claude, 2026-09-03)
+
+Davids Gate für W3 ist das Gegenlesen der Schmerz-Texte. Hier der komplette
+Entwurf (deutsch; EN folgt nach der Freigabe, damit nur eine Fassung im
+Review liegt). Regeln: Wir-Stimme, nur Belegbares, Du-Ansprache wie auf der
+Site, jeder CTA zeigt auf /erstgespraech.
+
+### 7.1 Problem-Spiegel — „Kommt dir das bekannt vor?" (6 Karten)
+
+1. **„Die Website sieht gut aus — bringt aber keine Anfragen."**
+   Design ohne Strategie ist Dekoration. Es fehlt der Weg vom Besucher zur
+   Anfrage.
+2. **„Agenturen sprengen das Budget, Freelancer decken nur die Hälfte ab."**
+   Für Strategie, Design UND Code brauchst du sonst drei Verträge — und
+   koordinierst sie selbst.
+3. **„Der Relaunch verschleppt sich seit Monaten."**
+   Niemand treibt ihn, jeder wartet auf jeden — und die alte Seite verkauft
+   derweil unter Wert.
+4. **„Jede kleine Änderung braucht ein Ticket und drei Wochen."**
+   Kurze Wege gibt es nur, wenn die Person, die entscheidet, auch baut.
+5. **„Der Baukasten war schnell — jetzt bremst er bei allem, was zählt."**
+   Sobald es speziell wird (Tempo, SEO, Anbindungen), zahlst du den
+   Startvorteil doppelt zurück.
+6. **„Viele Ansprechpartner, keiner verantwortlich fürs Ergebnis."**
+   Zwischen Projektleitung, Designer und Entwickler versickert genau das,
+   was du eigentlich kaufen wolltest.
+
+### 7.2 Vergleichstabelle — Kategorie-Abgrenzung
+
+Spalten: **Pukalani Studio · klassische Agentur · Einzel-Freelancer ·
+Baukasten-Tool**. Ehrliche Marker (✓ trifft zu · ○ teils/abhängig · ✕ nein) —
+keine Strohmänner, die Tabelle muss auch aus Agentur-Sicht fair lesbar sein.
+
+| Kriterium | Studio | Agentur | Freelancer | Baukasten |
+| --- | --- | --- | --- | --- |
+| Strategie, Design und Code aus einer Hand | ✓ | ✓ | ○ | ✕ |
+| Du sprichst direkt mit denen, die bauen | ✓ | ✕ | ✓ | — |
+| Fester Preis vor Projektstart | ✓ | ○ | ○ | ✓ |
+| Senior-Level ohne Agentur-Überbau | ✓ | ✕ | ○ | ✕ |
+| Trägt auch Spezielles (Tempo, SEO, Anbindungen) | ✓ | ✓ | ○ | ✕ |
+| Bleibt nach dem Launch ansprechbar | ✓ | ○ | ○ | ✕ |
+
+### 7.3 Selbst-Selektion — „Passt das?"
+
+**PASSEND FÜR UNS ✓**
+- Du hast ein echtes Angebot und willst, dass es online so gut dasteht,
+  wie es ist.
+- Du willst EINEN Partner für Strategie, Design und Code — nicht drei
+  Gewerke koordinieren.
+- Du kannst Feedback und Inhalte beisteuern; wir treiben den Rest.
+- Qualität ist dir einen fairen, vorher festen Preis wert.
+
+**NICHT PASSEND ✕**
+- „Nur schnell ein Logo" oder Design zum Stundensatz-Schnäppchen.
+- Fertige Layouts 1:1 abtippen, ohne Gestaltungs- und Strategie-Spielraum.
+- Deadline übermorgen für ein Projekt, das Substanz braucht.
+- Ranking-Wunder über Nacht — seriös verspricht das niemand.
+
+### 7.4 Ehrlichkeits-Disclaimer (an den Ergebnissen/Cases)
+
+> Alle gezeigten Ergebnisse stammen aus echten Projekten. Sie sind
+> Beispiele, keine Garantie — jedes Vorhaben startet mit eigenen
+> Voraussetzungen, und genau darüber sprechen wir im Erstgespräch.
+
+### 7.5 CTA-Beistellzeile (überall identisch)
+
+„✓ Kostenlos & unverbindlich — ca. 3 Minuten" (bestehende CTA_NOTE
+erweitern; KEINE erfundene Rating-Zeile — wir haben keine 50 Bewertungen,
+und „nur Belegbares" gilt auch hier).
+
+**Nach Freigabe:** Sektion Problem-Spiegel VOR die Leistungen, Tabelle +
+Selbst-Selektion dahinter, Disclaimer an die Cases, EN-Fassung, Bau als
+eigene Runde (M).

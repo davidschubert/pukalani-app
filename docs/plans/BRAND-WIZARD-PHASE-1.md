@@ -1028,6 +1028,68 @@ Dummies: /products (Pfad 01–04 + laufende 05–07 + Plattform +
 Team-Teaser), /team (7 Persona-Karten); Nav-Punkt „Products" (Team
 im Footer). Profilbilder folgen (Platzhalter: Initialen).
 
+> **NACHTRAG 2026-09-02 — die Hunde-Welt ist verworfen** (Davids
+> Entscheidung, DECISION-LOG). Der Absatz oben ist das Protokoll der
+> Runde 163 und bleibt stehen; GÜLTIG sind heute professionelle
+> Beraterinnen und Berater ohne Rassen und Tier-Gags: George **Winter**
+> (Wizard) · Frida **Martens** (Design) · Rex **Weber** (Book & Kit) ·
+> Kira **Hoffmann** (Experience) · Wanda **Nowak** (Monitoring) · Ada
+> **Sander** (Score) · Scout **Krüger** (Benchmark), dazu die
+> Wizard-Crew Vera **Stein** · Milo **Berger** · Nika **Sommer** · Otto
+> **Kessler**. „Persönliches" ist eine Kurzzeile über die Arbeitsweise,
+> kein Wohnort-und-Hobby-Steckbrief; Profilbilder gibt es keine
+> (Monogramme), und wenn, dann für alle. Stand: `apps/branding/app/
+> pages/team.vue` + `packages/brand/shared/brandAdvisors.ts`.
+
+> **NACHTRAG 2026-09-05 — fünf Ebenen als KARTE über den sieben Produkten
+> (David, Fragenrunde; Anlass: seine Auswertung der Guidelines-Referenzen
+> Frontify/Corebook°/standards.site/Brandkit/Lovable, Quellen in
+> docs/archiv/BRAND-FOUNDATION-LESEANSICHT.md Anhang A).** Die Produkte 01–07
+> und ihre Namen bleiben; die Ebenen sagen, WOFÜR ein Produkt da ist, und
+> ordnen auch das, was kein eigenes Produkt ist:
+> **Discover** (Insights/Artikel, Brand Library, Rankings — die SEO-Maschine)
+> → **Audit** (Brand-Check: 40 Kriterien · 8 Kategorien · Score ·
+> Markenabdruck · Stärke/Chance/Nächster Schritt; Produkt 06)
+> → **Compare** (Quartett, Marktvergleich, Ranking, später Perzentile;
+> Produkt 07) → **Build** (Brand Wizard 01 + Brand Design 02 — der
+> Wizard schliesst die Lücken, die der Audit zeigt) → **Supply** (Brand
+> Foundation als Leseansicht/BF1, Brand Book & Kit 03, Brand Experience 04;
+> Monitoring 05 läuft dauerhaft neben allem). Die Differenzierung gegenüber
+> den Containern (Frontify „manage", Corebook° „publish", standards.site
+> „build guidelines", Brandkit „manage assets", Lovable „extract") ist die
+> Reihenfolge: **Brand Intelligence → Brand Development → Brand
+> Infrastructure** — verstehen, verbessern, bauen, bereitstellen. Der Satz
+> **„Understand. Improve. Build. Supply your brand."** ist als
+> POSITIONIERUNGS-KANDIDAT vermerkt, NICHT auf der Startseite (die ist
+> abgenommen; Copy-Regel „Markenberater" gilt weiter). BEWUSST NICHT:
+> DAM (30.000 Fotos, Freigabe-Workflows, Rechte, Download-Analytics),
+> Template-Editor, Enterprise-Asset-Analytics — Assets existieren bei uns,
+> WEIL sie die Marke definieren, nicht um Dropbox zu ersetzen.
+>
+> **Produkt 03 bekommt einen benannten Export „Brand Context":** neben PDF,
+> Assets.zip und Design-Tokens (JSON/CSS/Tailwind) liefert das Kit
+> `brand.json` (bestand schon oben) UND `brand.md` — der Markenkern als
+> Kontext-Datei für Coding-/Schreib-Agenten (Claude Code, Cursor, Custom
+> GPTs); die Lovable-Vorlage exportiert genau so ein `design.md`, Frontify
+> und Corebook° hängen ihre Guidelines per MCP an Agenten. „Connect"
+> (MCP/API, Figma, CMS) bleibt Phase 3+ („Connect Your Tools" oben). Die
+> Foundation-Leseansicht (BF1) zeigt diese Exporte im Export-Menü sichtbar
+> GESPERRT, wie die visuellen Kapitel.
+>
+> **Discover, zwei Ergänzungen (kein Vorhaben jetzt):** (1) „Ähnliche
+> Marken" je Case über Archetyp/Branche/Farbwelt — die Filter, die nur wir
+> haben; (2) Cases sind zugleich REFERENZMATERIAL für den Judge (Brand-Check
+> und Marktvergleich lesen sie als Beispiele mit Beleg), nicht nur Galerie.
+> Weiter gilt: keine Galerie zum Launch (leer), Moderationspfad zuerst.
+>
+> **Reihenfolge nach dem Brand-Check (BC1 P6), Strang „Brand System":**
+> BF1 Foundation-Leseansicht → Produkt 02 Brand Design (die
+> URL-/Asset-Extraktion aus Brand-Check und brand-010 als Relaunch-
+> Einstieg: Website → verstehen → bewerten → verbessern, nicht nur
+> extrahieren wie Lovable) → Produkt 03 Book & Kit + Brand Context. KEINE
+> neuen P-Nummern (sie kollidieren mit BC1 P1–P6 und diesem Plan); die
+> Notiz steht in OPEN-ITEMS.
+
 ### Weiche: „Neue Marke" / „Marken-Relaunch" (Produktentscheidung David, 2026-08-30)
 
 BENENNUNG (bestätigt nach Fachbegriffs-Recherche): die Weiche heißt

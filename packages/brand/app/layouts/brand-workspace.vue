@@ -39,4 +39,22 @@
   min-height: 0;
   flex: 1 1 auto;
 }
+
+/* DRUCK (BF1 G2, 2026-09-06 live erwischt): die Leseansicht der Brand
+ * Foundation druckt aus diesem Layout heraus. `100dvh` + `overflow: hidden`
+ * gelten sonst auch auf Papier — der Druck endete nach der ERSTEN Seite
+ * (gemessen: Dokumenthöhe 800 px bei 6102 px Inhalt). Auf Papier gibt es
+ * keinen Bildschirm, den der Rahmen füllen müsste: er wächst mit dem Inhalt,
+ * die Seite selbst entscheidet über Umbrüche und Ausblendungen. */
+@media print {
+  .bw-workspace-layout {
+    height: auto;
+    overflow: visible;
+    display: block;
+  }
+
+  .bw-workspace-layout > :deep(*) {
+    flex: none;
+  }
+}
 </style>

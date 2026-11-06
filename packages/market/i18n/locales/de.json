@@ -1,0 +1,342 @@
+{
+  "market": {
+    "nav": {
+      "branding": "Euer Branding",
+      "market": "Markt",
+      "findings": "{count} Befunde"
+    },
+    "page": {
+      "title": "Markt",
+      "lead": "Was eure Wettbewerber öffentlich sagen, übersetzt in dieselben Felder wie eure eigene Foundation — Aussage für Aussage, jede mit Zitat und Quelle.",
+      "limit": "Wir zeigen, was Marken sagen — nicht, wie erfolgreich sie damit sind.",
+      "unlocked": "Diese Seite ist offen, weil Kapitel B (Purpose, Vision und Mission) abgenommen ist.",
+      "sources": "Gelesen werden nur öffentliche Marketing-Seiten. Team-, Impressums- und Kontaktseiten werden gar nicht erst abgerufen.",
+      "sourcesFour": "Ein Kandidat muss keine Website sein: er kann auch eine eigene Marke aus eurem Konto sein (der Relaunch-Fall), ein Eintrag unserer geprüften Bibliothek oder eine fremde Marke, deren Eigentümerin sie freigegeben hat."
+    },
+    "candidates": {
+      "title": "Kandidaten",
+      "hint": "Die Namen kommen aus eurem Kontext-Kapitel. Die Adresse tragt ihr ein — geraten wird sie nie.",
+      "name": "Wettbewerber",
+      "url": "Adresse der Website",
+      "urlPlaceholder": "wettbewerber.example",
+      "max": "Höchstens {count} Wettbewerber je Branding.",
+      "add": "Wettbewerber ergänzen",
+      "remove": "{name} entfernen",
+      "suggested": "Vorschlag aus eurem Kontext-Kapitel",
+      "newTitle": "Neuer Kandidat",
+      "save": "Als Wettbewerber speichern",
+      "saveSelf": "Als eure alte Website speichern",
+      "cancel": "Verwerfen",
+      "selfHint": "Eure alte Website zählt nicht zu den fünf Wettbewerbern und erscheint nicht im Feld — sie steht in der Relaunch-Gegenüberstellung."
+    },
+    "source": {
+      "label": "Quelle",
+      "website": "Website-Adresse",
+      "foundation": "Eigene Marke",
+      "library": "Bibliothek",
+      "shared": "Freigegebene Marke",
+      "search": "Marke suchen",
+      "foundationPlaceholder": "Eigene Marke wählen",
+      "libraryPlaceholder": "Bekannte Marke wählen",
+      "sharedPlaceholder": "Freigegebene Marke wählen",
+      "foundationHint": "Aus euren bestätigten Feldern. Kein Abruf, kein Zitat — diese Sätze sind beschlossen, nicht abgelesen.",
+      "libraryHint": "Marktprofil aus unserer Bibliothek — von uns gerechnet und von Hand gegen die Quelle geprüft. Ein erfundenes Zitat unter einem echten Markennamen gibt es bei uns nie.",
+      "sharedHint": "Nur mit Zustimmung der Eigentümerin sichtbar, und nur die zehn Außen-Felder. Nichts aus ihrer Werkstatt."
+    },
+    "library": {
+      "verifiedAt": "Handgeprüft am {date}",
+      "stale": "Stand älter als 90 Tage"
+    },
+    "score": {
+      "link": "Zum Brand-Check",
+      "pending": "Brand-Check läuft mit"
+    },
+    "frequency": {
+      "pages": "auf {pages} von {of} Seiten"
+    },
+    "view": {
+      "website": "Website sagt",
+      "ai": "KI-Antworten sagen"
+    },
+    "ai": {
+      "title": "KI-Außensicht",
+      "label": "ungeprüfte Außensicht",
+      "consensus": "{agree} von {asked} KI-Antworten übereinstimmend",
+      "adopted": "übernommen",
+      "dropped": "verworfen",
+      "agree": "{agree} von {asked} Antworten",
+      "empty": "keine übereinstimmende Antwort",
+      "disclaimer": "Ungeprüfte Außensicht ohne Beleg — sie hat keinen Einfluss auf den Brand-Check-Score.",
+      "tableHint": "So beschreiben KI-Antworten diese Marken. Es gibt dazu keine Quelle und keinen Beleg: übernommen wird nur, was mindestens zwei Modelle übereinstimmend sagen."
+    },
+    "relaunch": {
+      "title": "Eure Marke gegen eure alte Website",
+      "lead": "Links, was auf eurer alten Website noch steht. Rechts, was ihr in der Foundation bestätigt habt. Feld für Feld, dieselbe Struktur wie bei jedem Wettbewerber.",
+      "oldSite": "Alte Website",
+      "newFoundation": "Neue Foundation",
+      "state": {
+        "same": "gleich",
+        "different": "anders",
+        "onlyFoundation": "nur in der Foundation",
+        "onlyWebsite": "nur auf der Website",
+        "neither": "nirgends formuliert"
+      },
+      "gapTitle": "Was eure Foundation sagt und eure Website noch nicht",
+      "gapHint": "Aus dem Vergleich wird eine Liste. Anders heißt anders, nicht schlechter — eine Website darf älter sein als eine Entscheidung.",
+      "gap": {
+        "missing": "Steht auf eurer Website noch gar nicht.",
+        "differs": "Eure Website sagt dazu etwas anderes."
+      },
+      "gapNone": "Eure Website sagt bereits alles, was ihr bestätigt habt."
+    },
+    "status": {
+      "pending": "Noch nicht gelesen",
+      "reading": "Wird gelesen",
+      "fetched": "Profil erstellt",
+      "excluded": "Ausgeschlossen",
+      "failed": "Konnte nicht gelesen werden"
+    },
+    "reason": {
+      "robots": "Die Website untersagt die Auswertung (robots.txt).",
+      "tdm": "Die Website behält sich ihre Texte gegen automatisierte Auswertung vor.",
+      "noText": "Diese Seite gibt ohne Browser nichts preis.",
+      "unreachable": "Die Adresse war nicht erreichbar.",
+      "withdrawn": "Die Eigentümerin hat die Freigabe zurückgezogen."
+    },
+    "paywall": {
+      "title": "Der Marktvergleich ist ein bezahlter Schritt",
+      "body": "Eure Foundation zu bauen bleibt kostenlos. Sie gegen das Feld zu halten ist der bezahlte Teil.",
+      "price": "Preis im Erstgespräch",
+      "beta": "Beta-Konten haben ihn freigeschaltet.",
+      "unlockedTitle": "Für euer Beta-Konto freigeschaltet",
+      "unlockedBody": "Drei Läufe je Branding und Tag. Ein Lauf auf unverändertem Stand kostet nichts.",
+      "toggle": "Beta-Konto",
+      "toggleHint": "Schalter des Prototyps — zeigt beide Zustände der Schranke.",
+      "cta": "Im Erstgespräch besprechen"
+    },
+    "action": {
+      "compare": "Markt vergleichen",
+      "again": "Erneut vergleichen",
+      "toResult": "Bericht öffnen",
+      "back": "Zurück zur Markt-Seite",
+      "needsCandidate": "Tragt zuerst einen Wettbewerber ein."
+    },
+    "run": {
+      "title": "Vergleichs-Lauf",
+      "lead": "Jeder Wettbewerber wird zuerst geprüft, dann gelesen, dann in die Feldstruktur übersetzt.",
+      "robots": "robots.txt geprüft",
+      "sitemap": "sitemap.xml gelesen ({count} Adressen)",
+      "pages": "{count} Schlüsselseiten gelesen",
+      "llmsFound": "llms.txt gefunden",
+      "llmsMissing": "llms.txt nicht gefunden",
+      "jsonLd": "JSON-LD gelesen",
+      "brandCheck": "Brand-Check angestoßen",
+      "profiled": "Profil erstellt",
+      "waiting": "Wartet",
+      "comparing": "Vergleich läuft",
+      "done": "Bericht fertig",
+      "replay": "Lauf noch einmal abspielen"
+    },
+    "result": {
+      "title": "Das Feld, nebeneinander",
+      "matrix": "Gegenüberstellung",
+      "matrixHint": "Eine Zeile je Feld, eine Spalte je Marke. Jede Zelle zeigt den Kurzwert; Zitat und Quelle liegen dahinter.",
+      "field": "Feld",
+      "you": "Wir",
+      "excluded": "ausgeschlossen",
+      "empty": "nicht öffentlich formuliert",
+      "missingOwn": "Bei euch noch nicht bestätigt",
+      "meta": "Bericht vom {date}",
+      "none": "Noch kein Bericht. Tragt Kandidaten ein und lasst den Vergleich laufen."
+    },
+    "field": {
+      "categoryLanguage": "Kategorie-Sprache",
+      "pitch": "Was sie versprechen",
+      "audience": "Für wen",
+      "firstChoice": "Warum zuerst wählen",
+      "purpose": "Purpose",
+      "values": "Behauptete Werte",
+      "toneWords": "Tonwörter",
+      "tagline": "Tagline",
+      "keyMessages": "Kernbotschaften",
+      "distinctiveAsset": "Markenzeichen (verbal)"
+    },
+    "claims": {
+      "convention": {
+        "title": "Konventionen",
+        "hint": "Was fast alle im Feld sagen. Eine Eintrittskarte — sie unterscheidet niemanden.",
+        "count": "{shared} von {of} sagen das"
+      },
+      "overlap": {
+        "title": "Überschneidungen",
+        "hint": "Eure Aussage, und wer sie im Feld ebenfalls macht.",
+        "count": "sagen {shared} von {of} ebenfalls",
+        "also": "Sagen ebenfalls"
+      },
+      "whitespace": {
+        "title": "Freie Stellen",
+        "hint": "Niemand im Feld sagt das. Ob es sich zu sagen lohnt, entscheidet ihr — eine freie Stelle kann frei sein, weil niemand sie glaubt."
+      }
+    },
+    "profiles": {
+      "title": "Profile der Wettbewerber",
+      "hint": "Jedes Feld mit dem Satz, aus dem es stammt. Leere Felder bleiben leer — das ist eine Aussage über die Kategorie, keine Lücke im Bericht.",
+      "open": "Profil zeigen",
+      "close": "Profil schliessen",
+      "read": "{count} Seiten gelesen am {date}",
+      "none": "Kein Profil — dieser Wettbewerber wurde nicht ausgewertet."
+    },
+    "evidence": {
+      "show": "Beleg",
+      "hide": "Beleg schliessen",
+      "source": "Quelle",
+      "fetched": "Abgerufen am {date}",
+      "stated": "wörtlich so gesagt",
+      "implied": "aus mehreren Stellen abgeleitet",
+      "demoNote": "Prototyp: die Quellen öffnen die erfundenen Demo-Websites in diesem Playground."
+    },
+    "finding": {
+      "kind": "Markt-Befund",
+      "title": "Was das über eure eigenen Felder zeigt",
+      "hint": "Ein Befund richtet sich immer an ein Feld von euch. Er bewertet nie einen Wettbewerber und entwirft nie einen Satz, der einen nennt.",
+      "field": "Euer Feld",
+      "accept": "Annehmen",
+      "dismiss": "Ablehnen",
+      "accepted": "Angenommen",
+      "dismissed": "Abgelehnt",
+      "open": "Feld öffnen",
+      "none": "Zu diesem Bericht gibt es keine offenen Befunde."
+    },
+    "stand": {
+      "title": "Stand",
+      "candidates": "Kandidaten",
+      "profiles": "Profile erstellt",
+      "excluded": "Ausgeschlossen",
+      "findings": "Offene Befunde",
+      "lastRun": "Letzter Lauf",
+      "never": "nie",
+      "missingOwn": "Eure Kernbotschaften sind bei euch noch nicht bestätigt — diese Zeile vergleicht nur, was das Feld sagt.",
+      "limits": "Drei Läufe je Branding und Tag. Rohtext wird nach 24 Stunden gelöscht; im Profil bleiben die kurzen Zitate und ihre Quelle.",
+      "confidential": "Vertraulich wie eure Wettbewerber-Notizen: nie in einem Teilen-Link, nie im Export.",
+      "visibility": "Freigabe"
+    },
+    "workshop": {
+      "chapter": "Purpose, Vision und Mission",
+      "session": "Eure Session",
+      "chipHint": "Der Markt-Befund steht über dem Feld, um das es geht — an derselben Stelle wie ein Konflikt-Befund.",
+      "yourAnswer": "Eure bestätigte Antwort",
+      "log": "In diesem Kapitel bestätigt"
+    },
+    "demo": {
+      "title": "Marktvergleich — Prototyp",
+      "lead": "Fünf Screens, je ein Interaktionstyp (Plan §2.11 und §7). Die Marke ist die erfundene Kailua Coffee Co., das Feld sind drei erfundene Wettbewerber, deren Websites in diesem Playground liegen — dazu die alte Website der eigenen Marke.",
+      "note": "Nichts hier spricht mit einem Server: kein Abruf, kein Modell, keine Tabellen. Das ist die Komponenten-Vorlage, die die Pakete M1 bis M4 übernehmen.",
+      "screen1": "1 · Markt-Seite: Kandidaten, Adressen, Schranke",
+      "screen2": "2 · Lauf: was je Wettbewerber passiert",
+      "screen3": "3 · Bericht: Gegenüberstellung, drei Listen, Profile, Befunde",
+      "screen4": "4 · Werkstatt: der Markt-Befund am Feld",
+      "screen5": "5 · Relaunch: eure Marke gegen eure alte Website",
+      "sites": "Die erfundenen Wettbewerber-Websites",
+      "checkNote": "Die Links „Zum Brand-Check\" sind Platzhalter: der Brand-Check ist gebaut, aber er lebt in seiner eigenen App — dieser Playground zeigt nur, wo sein Score im Marktvergleich steht."
+    },
+    "locked": {
+      "title": "Der Marktvergleich wartet auf Kapitel B",
+      "body": "Verglichen wird eure eigene Behauptung mit der des Feldes. Solange Purpose, Vision und Mission nicht abgenommen sind, gibt es diese Behauptung noch nicht — und ein Vergleich hätte auf eurer Seite eine leere Spalte. Kandidaten könnt ihr trotzdem schon vorbereiten.",
+      "cta": "Zu Purpose, Vision und Mission"
+    },
+    "stale": {
+      "notice": "Seit diesem Bericht hat sich etwas bewegt — ein eigenes Feld oder ein Abrufstand. Er bleibt lesbar; ein neuer Lauf bringt ihn auf den Stand von heute."
+    },
+    "optIn": {
+      "label": "Meine Marke darf im Marktvergleich anderer Kunden erscheinen",
+      "hint": "Sichtbar wird dann nur das Marktprofil aus euren bestätigten Feldern — nie Gespräche, Entwürfe, Notizen oder eure eigenen Wettbewerber. Jederzeit widerrufbar: neue Läufe schliessen eure Marke danach aus, schon geschriebene Berichte bleiben als Schnappschuss bestehen."
+    },
+    "error": {
+      "load": "Der Stand konnte nicht geladen werden.",
+      "options": "Die Auswahl konnte nicht geladen werden.",
+      "competitorAdd": "Der Kandidat konnte nicht gespeichert werden.",
+      "competitorUpdate": "Die Änderung konnte nicht gespeichert werden.",
+      "competitorRemove": "Der Kandidat konnte nicht entfernt werden.",
+      "run": "Der Vergleich konnte nicht laufen.",
+      "visibility": "Die Freigabe konnte nicht gespeichert werden.",
+      "aiOff": "Die KI ist zurzeit abgeschaltet — die Websites wurden gelesen, ausgewertet wurde nichts."
+    },
+    "rejected": {
+      "market_locked": "Der Marktvergleich ist frei, sobald Kapitel B abgenommen ist.",
+      "market_no_profiles": "Es gibt noch kein Marktprofil, das man vergleichen könnte — lasst zuerst einen Lauf durchlaufen.",
+      "ai_disabled": "Die KI ist zurzeit abgeschaltet. Der Vergleich braucht sie.",
+      "market_run_limit": "Drei Läufe je Branding und Tag sind erreicht. Morgen geht es weiter.",
+      "market_instance_limit": "Heute sind alle Läufe aufgebraucht. Bitte morgen erneut versuchen.",
+      "competitor_limit": "Mehr als fünf Wettbewerber führt ein Branding nicht.",
+      "competitor_duplicate": "Diese Marke steht schon in eurer Liste.",
+      "competitor_url_invalid": "Diese Adresse können wir nicht lesen — bitte mit Domain angeben.",
+      "self_limit": "Eine eigene alte Website je Branding, nicht zwei.",
+      "shared_unavailable": "Diese Marke ist nicht (mehr) für den Marktvergleich freigegeben."
+    },
+    "about": {
+      "title": "Was der Vergleich tut und was nicht",
+      "does": "Er zeigt Feld für Feld, was andere Marken öffentlich über sich sagen — jede Aussage mit wörtlichem Zitat und der Seite, auf der sie steht.",
+      "doesNot": "Er misst keinen Erfolg. Kein Ranking, keine Punktzahl je Wettbewerber, keine Aussage darüber, wem der Markt gehört.",
+      "noClaim": "Er formuliert keinen Werbesatz, der einen Wettbewerber nennt. Befunde richten sich immer an euer eigenes Feld.",
+      "optIn": "Eure Marke erscheint im Vergleich anderer nur, wenn ihr sie ausdrücklich freigebt. Ohne Freigabe sieht sie niemand.",
+      "deletion": "Der gelesene Seitentext wird nach 24 Stunden geleert; es bleiben die kurzen Zitate mit Quelle. Marktprofile und Berichte fallen mit eurem Branding.",
+      "bot": "Wie wir fremde Websites lesen und wie man uns aussperrt"
+    },
+    "rating": {
+      "title": "War der Vergleich brauchbar?",
+      "hint": "Eine Frage, einmal. Die Antwort hilft uns zu entscheiden, was als Nächstes daran gebaut wird.",
+      "score": "{score} von 5",
+      "notePlaceholder": "Optional: ein Satz dazu",
+      "send": "Absenden",
+      "thanks": "Danke — angekommen.",
+      "failed": "Die Bewertung konnte nicht gespeichert werden."
+    }
+  },
+  "marketBot": {
+    "seoTitle": "PukalaniMarketBot — was er liest und wie man ihn aussperrt",
+    "seoDescription": "Auskunft über den Abruf-Bot von branding.supply: welche Seiten er liest, was er nicht anfasst, wie lange er Text behält und wie man ihn ausschließt.",
+    "eyebrow": "Auskunft für Website-Betreiber",
+    "title": "PukalaniMarketBot",
+    "lead": "Wenn dieser Name in eurem Zugriffs-Protokoll steht, hat unser Marktvergleich eine öffentliche Seite eurer Website gelesen. Diese Seite sagt, was dabei passiert — und wie ihr es abstellt.",
+    "reads": {
+      "title": "Was gelesen wird",
+      "body": "Ausschließlich öffentlich erreichbare Marketing-Seiten: Startseite, Über-uns, Leistungen, Preise und Ähnliches. Gefunden werden sie über eure Startseite, eure Sitemap und, falls vorhanden, eure llms.txt.",
+      "pages": "Höchstens {max} Seiten je Website und Lauf.",
+      "size": "Höchstens {chars} Zeichen Text und {mb} MB je Seite.",
+      "noJs": "Kein Browser, kein JavaScript, keine Formulare, keine Downloads — nur das ausgelieferte HTML.",
+      "sequential": "Eine Seite nach der anderen, nie parallel. Der Abruf ist ein Lesevorgang, keine Last."
+    },
+    "skips": {
+      "title": "Was gar nicht erst abgerufen wird",
+      "body": "Seiten mit diesen Pfad-Segmenten werden übersprungen, bevor eine Anfrage gestellt wird — Personenbezug, Rechtstexte, Funktionsseiten und Tagesaktuelles:",
+      "pii": "Aus dem verbleibenden Text werden E-Mail-Adressen, Telefonnummern und Personennamen entfernt, bevor ihn ein Sprachmodell sieht. Login-Bereiche fasst der Bot nicht an; er meldet sich nirgends an."
+    },
+    "keeps": {
+      "title": "Was mit dem Gelesenen passiert",
+      "ttl": "Der Seitentext wird nach höchstens {hours} Stunden geleert. Er ist ein Zwischenprodukt, kein Bestand.",
+      "quote": "Was bleibt, sind kurze Zitate von höchstens {max} Zeichen, jedes mit der Adresse der Seite, auf der es steht.",
+      "noRanking": "Es entsteht kein Ranking und keine Bewertung eurer Marke. Wir stellen dar, was Marken sagen — nicht, wie erfolgreich sie damit sind.",
+      "noClaim": "Aus dem Ergebnis entsteht kein Werbesatz, der euch nennt oder erkennbar macht.",
+      "noTraining": "Nichts davon wird zum Training von Modellen verwendet. Die genutzten Anbieter laufen ohne Datenspeicherung."
+    },
+    "optOut": {
+      "title": "Wie ihr uns aussperrt",
+      "body": "Zwei Wege, beide wirken sofort beim nächsten Lauf. Ein Ausschluss heißt: eure Website wird nicht ausgewertet, und der Kunde, der den Vergleich gestartet hat, bekommt genau das als Grund angezeigt.",
+      "robotsTitle": "1. robots.txt",
+      "robotsBody": "Wir holen eure robots.txt vor jedem Zugriff und halten uns daran — auch an allgemeinen Regeln für alle Bots.",
+      "tdmTitle": "2. Nutzungsvorbehalt (Text und Data Mining)",
+      "tdmBody": "Einen maschinenlesbaren Vorbehalt nach § 44b UrhG erkennen wir in diesen vier Formen. Eine davon genügt:",
+      "form": {
+        "header": "Als HTTP-Kopfzeile",
+        "meta": "Als Meta-Angabe im HTML",
+        "robotsMeta": "Als robots-Meta-Angabe",
+        "tdmrep": "Als tdmrep.json unter /.well-known/"
+      },
+      "doubt": "Im Zweifel entscheiden wir gegen die Auswertung: lässt sich ein Vorbehalt nicht sicher ausschließen, wird eure Website ausgeschlossen."
+    },
+    "contact": {
+      "title": "Fragen, Widerspruch, Löschung",
+      "body": "Schreibt uns. Wir nehmen eure Domain auf Wunsch dauerhaft aus, auch ohne dass ihr etwas an eurer Website ändert."
+    }
+  }
+}

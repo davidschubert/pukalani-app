@@ -5,6 +5,7 @@ import {
   MAX_NAV_TARGET,
   communityNavConfigFits,
   isCustomNavLinkId,
+  isGroupNavId,
   isSafeExternalNavTarget,
   isSafeInternalNavTarget,
 } from '../../core/shared/communityNavigation'
@@ -39,6 +40,19 @@ const navIdRe = /^[A-Za-z0-9][A-Za-z0-9\-_.]{0,63}$/
  * wirklich gibt. Das braucht Daten (die veröffentlichten Slugs), also prüft es
  * die Route nach der Schema-Prüfung. Hier bleibt die FORM: ein Pfad, kein
  * Schema, kein `//host`, kein `..`.
+ *
+ * ── UNTERPUNKTE (U15 Teil 3, 2026-09-08) ──────────────────────────────────
+ * Zwei neue Zusagen, und beide sind hier FAIL-LOUD, obwohl die Leseregel sie
+ * fail-soft noch einmal abfängt. Das ist keine Doppelung ohne Grund: beim
+ * SCHREIBEN sitzt ein Mensch davor, der eine Antwort verdient — ein still
+ * ausgerichteter Eintrag sähe im Editor wie ein Speicherfehler aus.
+ *
+ *  - Eine GRUPPE (`group-<n>`) hat einen Text und KEIN Ziel. Ein Ziel an einer
+ *    Gruppe wäre genau die Umlenkung, die der Absatz darüber verbietet, nur
+ *    unter neuem Namen.
+ *  - `parent` muss auf eine Id IM DOKUMENT zeigen, die selbst kein `parent`
+ *    trägt: GENAU EINE EBENE (Davids Entscheidung). Eine zweite Ebene wäre
+ *    nicht bloss ungerendert, sie wäre eine Zusage, die die Regel bricht.
  */
 export function createCommunityNavigationSchema(t: TranslateFn = identity) {
   const entrySchema = z.object({
@@ -47,8 +61,21 @@ export function createCommunityNavigationSchema(t: TranslateFn = identity) {
     label: z.string().trim().max(MAX_NAV_LABEL, t('pages.navigation.validation.labelMax')).optional(),
     to: z.string().trim().max(MAX_NAV_TARGET, t('pages.navigation.validation.targetMax')).optional(),
     external: z.boolean().optional(),
+    // Dieselbe enge Form wie `id` — es IST eine Id, kein Text.
+    parent: z.string().trim().regex(navIdRe, t('pages.navigation.validation.idInvalid')).optional(),
   }).strict().superRefine((entry, ctx) => {
     const custom = isCustomNavLinkId(entry.id)
+
+    if (isGroupNavId(entry.id)) {
+      // Ein Wort, das aufklappt: Text Pflicht, Ziel verboten.
+      if (entry.to !== undefined || entry.external !== undefined) {
+        ctx.addIssue({ code: 'custom', path: ['to'], message: t('pages.navigation.validation.groupNoTarget') })
+      }
+      if (!entry.label) {
+        ctx.addIssue({ code: 'custom', path: ['label'], message: t('pages.navigation.validation.labelRequired') })
+      }
+      return
+    }
 
     if (!custom) {
       // Umbenennen ja, umlenken nein (s. Kopf).
@@ -89,6 +116,28 @@ export function createCommunityNavigationSchema(t: TranslateFn = identity) {
       }
       seen.add(entry.id)
     }
+
+    /**
+     * GENAU EINE EBENE — die Prüfung, die nur über das GANZE Dokument geht
+     * (U15 Teil 3). Ein einzelner Eintrag kann sie nicht bestehen oder
+     * verfehlen: ob sein `parent` zulässig ist, hängt an einem ANDEREN Eintrag.
+     *
+     * Drei Ablehnungen, alle mit derselben Begründung `parentInvalid`: der
+     * Hauptpunkt steht nicht im Dokument · der Eintrag zeigt auf sich selbst ·
+     * der Hauptpunkt ist selbst ein Kind (das wäre Ebene zwei).
+     */
+    const parentOf = new Map(value.entries.map(entry => [entry.id, entry.parent]))
+    for (const entry of value.entries) {
+      if (entry.parent === undefined) continue
+      const invalid = entry.parent === entry.id
+        || !parentOf.has(entry.parent)
+        || parentOf.get(entry.parent) !== undefined
+      if (invalid) {
+        ctx.addIssue({ code: 'custom', path: ['entries'], message: t('pages.navigation.validation.parentInvalid') })
+        break
+      }
+    }
+
     // Die Spalte ist die Grenze (MAX_NAV_CONFIG_CHARS) — ein sauberes 400 mit
     // Begründung statt eines 500 aus Appwrite.
     if (!communityNavConfigFits(value)) {

@@ -49,6 +49,10 @@ const palette = [
     </template>
 
     <template #default>
+      <!-- Iteration 3 (Konzept BRAND-FOUNDATION-LESEANSICHT.md): die Leseansicht
+           löst diese Ergebnis-Seite als Kunden-Dokument ab. Diese Seite bleibt
+           als Protokoll der Iteration 2 stehen und zeigt nur den Weg dorthin. -->
+      <NuxtLink to="/brand/demo/foundation" class="bw-label mb-4 inline-flex items-center gap-1.5 underline" style="color: var(--bw-ink-soft)">Neue Fassung: Brand Foundation lesen <UIcon name="i-ph-arrow-right" class="size-3.5" /></NuxtLink>
       <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">Brand Foundation · Ergebnis</p>
       <h1 class="mt-1 text-4xl leading-tight">Eure Brand Foundation ist fertig</h1>
 

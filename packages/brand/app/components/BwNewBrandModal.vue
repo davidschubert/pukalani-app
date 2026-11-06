@@ -18,38 +18,110 @@
  *  Nichts an den Dummy-Zweigen wurde geändert: ohne die neuen Props verhält
  *  sich die Komponente Zeichen für Zeichen wie vorher.
  *
- *  OFFEN UND BEWUSST SO: die Copy hier ist fest DEUTSCH — sie stammt aus dem
- *  abgenommenen Klickdummy, und der ist Davids Demo-Anker. Die i18n-fähige
- *  Fassung derselben Anlage ist die SEITE `/dashboard/brands/new`; wer die
- *  Sprachumschaltung auch im Layer braucht, ersetzt hier die Zeichenketten
- *  durch `brand.new.*` (die Schlüssel liegen bereits in beiden Sprachen). */
+ *  EINGELÖST (2026-09-01): die Copy lief über `brand.new.*` — sie war fest
+ *  DEUTSCH und stand damit auch auf einer englischen Oberfläche deutsch da.
+ *  Der Wortlaut des abgenommenen Klickdummys ist dabei der KANONISCHE: die
+ *  zwei Stellen, an denen die Seite `/dashboard/brands/new` kürzer war
+ *  (Titel-Platzhalter, Sprach-Hinweis), tragen jetzt den Modal-Text — beide
+ *  Oberflächen lesen denselben Schlüssel. Eigennamen bleiben hart:
+ *  „Deutsch"/„English" und George. */
+import {
+  type BrandNewDraft,
+  brandInitialContentLocale,
+  brandNewDraftComplete,
+  brandNewDraftMissing,
+  emptyBrandNewDraft,
+} from '../../shared/brandStartCard'
+
 export interface BwNewBrandSubmit {
   kind: 'new' | 'rebrand'
   title: string
   lang: 'de' | 'en'
+  /**
+   * ALLES, WAS DIE ANLAGE-ROUTE SONST NOCH BRAUCHT (Kailua-Befund 6) — nur im
+   * `live`-Modus gesetzt. Der Klickdummy kennt es nicht und braucht es nicht:
+   * er verlinkt.
+   */
+  draft?: BrandNewDraft
 }
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   mode?: 'demo' | 'live'
   /** Ziel im Demo-Modus — bleibt der abgenommene Dummy-Pfad. */
   to?: string
   loading?: boolean
-}>(), { mode: 'demo', to: '/brand/demo/werte', loading: false })
+  /** Erlaubte Inhaltssprachen (live) — aus `pukalani.brand.contentLocales`. */
+  contentLocales?: readonly string[]
+  /** Die Anlage ist gescheitert — der Satz steht neben dem Knopf, nicht im Nichts. */
+  failed?: boolean
+}>(), {
+  // LIVE IST DIE VOREINSTELLUNG (2026-09-09, Davids Test): zwei Aufrufer in der
+  // App (Site-Navigation, Marken-Umschalter) übergaben keinen Modus und
+  // verlinkten deshalb auf den Klickdummy `/brand/demo/werte` — David landete
+  // nach der Anlage in der Demo. Wer die Demo will, sagt es (`mode="demo"`,
+  // nur der Playground); ein vergessener Prop darf nie mehr in die Attrappe
+  // führen.
+  mode: 'live',
+  to: '/brand/demo/werte',
+  loading: false,
+  failed: false,
+  // Der Klickdummy hat keine App-Config — er zeigt die zwei Sprachen des
+  // abgenommenen Entwurfs. Im `live`-Modus reicht die Seite die echte Liste
+  // aus `pukalani.brand.contentLocales` herein.
+  contentLocales: () => ['de', 'en'],
+})
 defineEmits<{ submit: [payload: BwNewBrandSubmit] }>()
+const { t, locale } = useI18n()
 const open = defineModel<boolean>('open', { default: false })
 const kind = ref<'new' | 'rebrand' | null>(null)
 const title = ref('')
 const lang = ref<'de' | 'en'>('de')
+
+/**
+ * DER LIVE-ENTWURF (Kailua-Befund 6, 2026-09-08).
+ *
+ * Das Modal legt seit Davids Entscheidung SELBST an, statt auf
+ * `/dashboard/brands/new` weiterzureichen, wo Weiche, Titel und Sprache ein
+ * zweites Mal gefragt wurden. Dafür braucht es, was die Route verlangt — die
+ * Startkarte ist Pflicht (§2.1), ohne sie antwortet sie 400. Die Felder
+ * kommen aus derselben Komponente wie auf der Seite (`BwNewBrandDetails`),
+ * die Regeln aus `shared/brandStartCard.ts`.
+ *
+ * Der DEMO-Zweig ist unangetastet: dort bleiben die zwei Schritte des
+ * abgenommenen Klickdummys, und der Knopf bleibt ein Link.
+ */
+const locales = computed(() => (props.contentLocales?.length ? props.contentLocales : ['de', 'en']))
+/**
+ * DIE VORGABE DER INHALTSSPRACHE FOLGT DER OBERFLÄCHE (Testlauf-Befund I,
+ * 2026-09-09) — die Regel steht pur nebenan (`brandInitialContentLocale`).
+ * Auf `/de` stand hier `en`, und die Inhaltssprache ist beim Anlegen fixiert.
+ */
+const initialLocale = computed(() => brandInitialContentLocale(locale.value, locales.value))
+const draft = ref<BrandNewDraft>(emptyBrandNewDraft(initialLocale.value))
+const ready = computed(() => brandNewDraftComplete(draft.value))
+/** Was noch fehlt — als Satz unter dem abgeschalteten Knopf (Befund J). */
+const missing = computed(() => brandNewDraftMissing(draft.value))
+const missingLine = computed(() => (missing.value.length
+  ? t('brand.new.missing', {
+      fields: missing.value.map(field => t(`brand.new.startCard.short.${field}`)).join(', '),
+    })
+  : ''))
+
 /* Jedes Öffnen beginnt beim ersten Schritt. */
 watch(open, (o) => {
   if (o) {
     kind.value = null
     title.value = ''
+    draft.value = emptyBrandNewDraft(initialLocale.value)
   }
 })
-const kinds = [
-  { id: 'new' as const, label: 'Neue Marke', note: 'Ihr startet bei null — Name und Marke entstehen im Gespräch.' },
-  { id: 'rebrand' as const, label: 'Marken-Relaunch', note: 'Ihr habt schon eine Marke — vom Feinschliff bis zum Neuschnitt.' },
-]
+/* Die Weichen-Ids des Dummys heißen 'new' | 'rebrand', die Schlüssel des
+ * Layers 'new' | 'relaunch' (so heißt der Pfad im Datenmodell) — `key`
+ * hält die Übersetzung an den Schlüsseln, ohne die abgenommene API zu
+ * verschieben. */
+const kinds = computed(() => [
+  { id: 'new' as const, label: t('brand.new.kind.new.label'), note: t('brand.new.kind.new.note') },
+  { id: 'rebrand' as const, label: t('brand.new.kind.relaunch.label'), note: t('brand.new.kind.relaunch.note') },
+])
 const langs = [
   { id: 'de' as const, label: 'Deutsch', flag: 'i-circle-flags-de' },
   { id: 'en' as const, label: 'English', flag: 'i-circle-flags-us' },
@@ -57,18 +129,24 @@ const langs = [
 </script>
 
 <template>
-  <UModal v-model:open="open">
+  <!-- `title` = der NAME des Dialogs (Audit B10). Bei belegtem `content`-Slot
+       rendert Nuxt UI ihn visuell versteckt als DialogTitle; ohne ihn kündigt
+       ein Screenreader nur „Dialog" an. -->
+  <UModal v-model:open="open" :title="t('brand.new.title')">
     <template #content>
-      <div class="bw-root relative max-h-[85vh] overflow-y-auto p-8" style="background: var(--bw-surface-hi)">
+      <!-- `bw-overlay` statt Inline-Hintergrund: dieselbe Farbe, aber aus dem
+           System und nicht aus einer zweiten Quelle (Audit B9). -->
+      <div class="bw-root bw-overlay relative max-h-[85vh] overflow-y-auto p-8">
         <button
+          type="button"
           class="absolute right-5 top-5 grid size-8 place-items-center rounded-full transition-colors hover:bg-[var(--bw-line)]"
-          aria-label="Schließen"
+          :aria-label="t('brand.common.close')"
           @click="open = false"
         >
           <UIcon name="i-ph-x" class="size-4.5" style="color: var(--bw-ink-soft)" />
         </button>
-        <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">Neues Branding</p>
-        <h2 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">Womit starten wir?</h2>
+        <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('brand.new.eyebrow') }}</p>
+        <h2 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">{{ t('brand.new.title') }}</h2>
 
         <!-- Schritt 1: die Weiche, links oder rechts -->
         <div class="mt-5 grid grid-cols-2 gap-2">
@@ -83,42 +161,60 @@ const langs = [
           </button>
         </div>
 
-        <!-- Schritt 2 (erscheint erst nach der Wahl): Rahmendaten -->
+        <!-- Schritt 2 (erscheint erst nach der Wahl): Rahmendaten.
+             DEMO fragt Titel und Sprache und VERLINKT; LIVE fragt alles, was
+             die Anlage-Route braucht, und legt an (Kailua-Befund 6). -->
         <Transition name="bw-sync">
           <div v-if="kind">
-            <p class="bw-label mt-6" style="color: var(--bw-muted)">{{ kind === 'new' ? 'Arbeitstitel (optional)' : 'Wie heißt eure Marke?' }}</p>
-            <UInput
-              v-model="title" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
-              :placeholder="kind === 'new' ? 'z. B. Kailua Coffee Co. — der echte Name kann im Gespräch entstehen' : 'z. B. Kailua Coffee Co.'"
-              style="background: var(--bw-surface)"
-            />
-
-            <p class="bw-label mt-6" style="color: var(--bw-muted)">Eure Marke spricht</p>
-            <div class="mt-2 flex gap-2">
-              <button
-                v-for="l in langs" :key="l.id"
-                class="bw-select-card flex items-center gap-2 rounded-full px-4 py-2 text-sm"
-                :class="lang === l.id ? 'bw-select-card--on' : ''"
-                @click="lang = l.id"
-              >
-                <UIcon :name="l.flag" class="size-4.5 flex-none" /> {{ l.label }}
-              </button>
-            </div>
-            <p class="bw-label mt-2" style="color: var(--bw-muted)">Die Sprache, in der eure Markeninhalte entstehen — nicht die der Oberfläche. Und keine einsame Entscheidung: George übersetzt später alles auf Wunsch in weitere Sprachen, z. B. von Englisch nach Deutsch.</p>
-
-            <div class="mt-7 flex justify-end">
-              <UButton
-                v-if="mode === 'demo'"
-                :to="to"
-                trailing-icon="i-ph-arrow-right" label="Los geht's — George übernimmt" size="lg" class="rounded-full"
+            <template v-if="mode === 'demo'">
+              <p class="bw-label mt-6" style="color: var(--bw-muted)">{{ kind === 'new' ? t('brand.new.titleField.new') : t('brand.new.titleField.relaunch') }}</p>
+              <UInput
+                v-model="title" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
+                :placeholder="kind === 'new' ? t('brand.new.titleField.placeholderNew') : t('brand.new.titleField.placeholderRelaunch')"
+                style="background: var(--bw-surface)"
               />
-              <UButton
-                v-else
-                :loading="loading"
-                trailing-icon="i-ph-arrow-right" label="Los geht's — George übernimmt" size="lg" class="rounded-full"
-                @click="$emit('submit', { kind, title, lang })"
+
+              <p class="bw-label mt-6" style="color: var(--bw-muted)">{{ t('brand.new.locale.label') }}</p>
+              <div class="mt-2 flex gap-2">
+                <button
+                  v-for="l in langs" :key="l.id"
+                  class="bw-select-card flex items-center gap-2 rounded-full px-4 py-2 text-sm"
+                  :class="lang === l.id ? 'bw-select-card--on' : ''"
+                  @click="lang = l.id"
+                >
+                  <UIcon :name="l.flag" class="size-4.5 flex-none" /> {{ l.label }}
+                </button>
+              </div>
+              <p class="bw-label mt-2" style="color: var(--bw-muted)">{{ t('brand.new.locale.note') }}</p>
+
+              <div class="mt-7 flex justify-end">
+                <UButton
+                  :to="to"
+                  trailing-icon="i-ph-arrow-right" :label="t('brand.new.submit')" size="lg" class="rounded-full"
+                />
+              </div>
+            </template>
+
+            <template v-else>
+              <BwNewBrandDetails
+                v-model="draft"
+                :path-kind="kind === 'new' ? 'new' : 'relaunch'"
+                :content-locales="locales"
               />
-            </div>
+              <!-- BEFUND J (2026-09-09): der Knopf war `disabled` und nichts
+                   sagte warum. Der Satz steht UNTER dem Knopf, nennt die
+                   offenen Felder beim Namen und verschwindet, sobald sie
+                   dastehen — kein roter Fehler, nur die fehlende Auskunft. -->
+              <div class="mt-7 flex items-center justify-end gap-3">
+                <p v-if="failed" class="mr-auto text-sm" style="color: var(--bw-stale)">{{ t('brand.new.failed') }}</p>
+                <UButton
+                  :loading="loading" :disabled="!ready"
+                  trailing-icon="i-ph-arrow-right" :label="t('brand.new.submit')" size="lg" class="rounded-full"
+                  @click="$emit('submit', { kind, title: draft.title, lang, draft })"
+                />
+              </div>
+              <p v-if="missingLine" class="bw-label mt-2 text-right" style="color: var(--bw-muted)">{{ missingLine }}</p>
+            </template>
           </div>
         </Transition>
       </div>

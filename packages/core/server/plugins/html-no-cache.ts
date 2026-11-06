@@ -22,8 +22,19 @@
  * gecacht, hashed) laufen hier nie durch.
  */
 export default defineNitroPlugin((nitroApp) => {
-  nitroApp.hooks.hook('render:response', (response) => {
+  nitroApp.hooks.hook('render:response', (response, { event }) => {
     response.headers ??= {}
+    // Eine Seite, die STRENGER sein will, hat ihren Header schon per
+    // Middleware am Event gesetzt (`no-store` auf der Share-Seite der Brand
+    // Foundation, BF1 G3): `response.headers` kennt ihn nicht, und der
+    // Render-Header gewinnt am Ende — die Middleware wäre wirkungslos (live
+    // erwischt 2026-09-07). Deshalb: was am Event steht, wird übernommen;
+    // erst ohne alles greift der Default.
+    const already = getResponseHeader(event, 'cache-control')
+    if (typeof already === 'string' && already.length > 0) {
+      response.headers['cache-control'] ??= already
+      return
+    }
     response.headers['cache-control'] ??= 'no-cache'
   })
 })

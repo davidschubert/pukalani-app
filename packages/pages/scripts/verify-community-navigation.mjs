@@ -30,6 +30,12 @@
  *      dieser Community nicht enthält, bleibt unsichtbar, auch wenn das
  *      Override es nennt (mit und ohne eigenes Label). Das Menü darf nichts
  *      freischalten (Zusage 1 in core/shared/communityNavigation.ts).
+ *  13. UNTERPUNKTE (U15 Teil 3, seit 2026-09-08): eine Gruppe mit zwei Kindern
+ *      erscheint als AUSLÖSER (`data-nav-group`), und die Kinder stehen nicht
+ *      mehr als Hauptpunkte in der Reihe. Drei Gegenproben: Hauptpunkt
+ *      ausgeblendet ⇒ die Kinder sind wieder Hauptpunkte (Zusage 6) · Gruppe
+ *      ohne Kinder ⇒ sie erscheint gar nicht (Zusage 7) · das Schema weist
+ *      Ebene zwei und eine Gruppe mit eigenem Ziel ab.
  *
  * Setzt am Ende alles zurück und räumt jede angelegte Zeile weg — auch die
  * `community_navigation`-Rows im Runtime-Projekt und die Seite, die für den
@@ -584,13 +590,107 @@ try {
   const storedAnyway = await call(siteA.host, '/api/pages/navigation')
   check('die Wahl bleibt GESPEICHERT (Zusage 2: unbekannte Id wird ignoriert, nicht gelöscht)',
     storedAnyway.json?.entries?.[0]?.id === 'events', JSON.stringify(storedAnyway.json))
+
+  /**
+   * 15. UNTERPUNKTE (U15 Teil 3, Davids Entscheidung 2026-09-08).
+   *
+   * GEMESSEN WIRD IM SSR-HTML, wie überall in diesem Beweis. Der Aufklapper
+   * selbst rendert seinen INHALT beim Seitenaufbau NICHT (ein `UDropdownMenu`
+   * baut ihn erst beim Öffnen) — und genau das macht die Messung scharf: steht
+   * das Ziel eines Kindes nicht mehr in der Kopfzeile, ist es wirklich unter
+   * seinen Hauptpunkt gewandert und nicht bloss umsortiert. Der Auslöser trägt
+   * dafür den Haken `data-nav-group="<id>"`.
+   *
+   * TARIF ZUERST ZURÜCK: Abschnitt 14 hat kunde-a auf `basic` gesetzt, und
+   * `basic` sperrt auch `/discussions` — der erste Lauf am 2026-09-08 war
+   * hier viermal rot, weil die „Kinder" gar nicht mehr im Menü standen (die
+   * Gruppen-Prüfung wäre damit eine Tautologie gewesen). Deshalb erst auf
+   * `pro` (enthält alles), auf das SSR-HTML warten, und die Vorbedingung
+   * NACHSEHEN statt annehmen.
+   */
+  console.log('\n15. Unterpunkte: Gruppe, Kinder, und was passiert, wenn der Hauptpunkt ausgeht')
+  await control.updateRow({ databaseId, tableId: 'communities', rowId: siteA.communityId, data: { plan: 'pro' } })
+  const upgraded = await waitForSsr(siteA.host, html => hrefsOf(html).includes('/discussions'))
+  check(`kunde-a steht wieder auf Tarif "pro" (nach ${Math.round(upgraded.ms / 1000)} s)`, upgraded.ok,
+    JSON.stringify(hrefsOf(upgraded.html)))
+  const beforeGroup = await patchNav(siteA.host, ownerCookieA, [])
+  check('Vorbedingung: zurück auf das Standard-Menü → 200', beforeGroup.status === 200, `Status ${beforeGroup.status}`)
+  const plainHtml2 = await page(siteA.host, '/')
+  const KINDER = ['/discussions', '/guidelines']
+  check('Vorbedingung: beide künftigen Kinder stehen als HAUPTPUNKTE im HTML',
+    KINDER.every(href => hrefsOf(plainHtml2.text).includes(href)),
+    JSON.stringify(hrefsOf(plainHtml2.text)))
+
+  const groupLabel = `Bereiche-${stamp}`
+  const grouped = await patchNav(siteA.host, ownerCookieA, [
+    { id: 'group-1', label: groupLabel },
+    { id: 'discussions', parent: 'group-1' },
+    { id: 'page-guidelines', parent: 'group-1' },
+  ])
+  check('Gruppe + zwei Kinder speichern → 200', grouped.status === 200,
+    `Status ${grouped.status} ${grouped.text.slice(0, 200)}`)
+  const groupedHtml = await page(siteA.host, '/')
+  check(`SSR-HTML: der Auslöser steht da (data-nav-group="group-1", Text „${groupLabel}")`,
+    navRegion(groupedHtml.text).includes('data-nav-group="group-1"')
+    && navRegion(groupedHtml.text).includes(groupLabel),
+    navRegion(groupedHtml.text).slice(0, 300))
+  check('… und die Kinder stehen NICHT mehr als Hauptpunkte in der Reihe',
+    KINDER.every(href => !hrefsOf(groupedHtml.text).includes(href)),
+    JSON.stringify(hrefsOf(groupedHtml.text)))
+  check('Gegenprobe: vorher standen genau diese beiden dort',
+    KINDER.every(href => hrefsOf(plainHtml2.text).includes(href)))
+
+  console.log('\n15b. Gegenprobe (Zusage 6): Hauptpunkt ausgeblendet ⇒ die Kinder stehen als Hauptpunkte')
+  const hiddenGroup = await patchNav(siteA.host, ownerCookieA, [
+    { id: 'group-1', label: groupLabel, hidden: true },
+    { id: 'discussions', parent: 'group-1' },
+    { id: 'page-guidelines', parent: 'group-1' },
+  ])
+  check('PATCH → 200', hiddenGroup.status === 200, `Status ${hiddenGroup.status}`)
+  const hiddenGroupHtml = await page(siteA.host, '/')
+  check('SSR-HTML: der Auslöser ist weg', !navRegion(hiddenGroupHtml.text).includes('data-nav-group="group-1"'))
+  check('… und beide Kinder stehen wieder als Hauptpunkte da (nichts ist verschwunden)',
+    KINDER.every(href => hrefsOf(hiddenGroupHtml.text).includes(href)),
+    JSON.stringify(hrefsOf(hiddenGroupHtml.text)))
+
+  console.log('\n15c. Gegenprobe (Zusage 7): eine Gruppe ohne Kinder ist ein toter Klick und erscheint nicht')
+  const lonelyGroup = await patchNav(siteA.host, ownerCookieA, [{ id: 'group-1', label: groupLabel }])
+  check('PATCH → 200 (gespeichert wird sie)', lonelyGroup.status === 200, `Status ${lonelyGroup.status}`)
+  const lonelyHtml = await page(siteA.host, '/')
+  check('SSR-HTML: kein Auslöser', !navRegion(lonelyHtml.text).includes('data-nav-group="group-1"'))
+  check('… und ihr Text steht nicht im Menü', !navRegion(lonelyHtml.text).includes(groupLabel),
+    navRegion(lonelyHtml.text).slice(0, 300))
+  check('… die übrigen Einträge stehen unverändert (kein Loch in der Reihe)',
+    KINDER.every(href => hrefsOf(lonelyHtml.text).includes(href)),
+    JSON.stringify(hrefsOf(lonelyHtml.text)))
+
+  console.log('\n15d. Das Schema hält die eine Ebene und die Gruppen-Form')
+  for (const [label, entries] of [
+    ['`parent` zeigt auf ein KIND (Ebene zwei)', [
+      { id: 'discussions' },
+      { id: 'page-guidelines', parent: 'discussions' },
+      { id: 'group-1', label: 'X', parent: 'page-guidelines' },
+    ]],
+    ['`parent` steht nicht im Dokument', [{ id: 'discussions', parent: 'gibt-es-nicht' }]],
+    ['`parent` zeigt auf sich selbst', [{ id: 'discussions', parent: 'discussions' }]],
+    ['Gruppe MIT eigenem Ziel', [{ id: 'group-2', label: 'X', to: '/discussions' }]],
+    ['Gruppe MIT external', [{ id: 'group-2', label: 'X', external: true }]],
+    ['Gruppe OHNE Text', [{ id: 'group-2' }]],
+  ]) {
+    const res = await patchNav(siteA.host, ownerCookieA, entries)
+    check(`${label} → 400`, res.status === 400, `Status ${res.status} ${res.text.slice(0, 140)}`)
+  }
+  const afterSchema = await call(siteA.host, '/api/pages/navigation')
+  check('nach allen Ablehnungen steht die letzte gute Wahl unverändert',
+    afterSchema.json?.entries?.length === 1 && afterSchema.json.entries[0]?.id === 'group-1',
+    JSON.stringify(afterSchema.json))
 }
 catch (error) {
   fail++
   console.error('\n✗ Abbruch:', error?.message || error)
 }
 finally {
-  console.log('\n15. Aufräumen')
+  console.log('\n16. Aufräumen')
   for (const p of cleanup.pages) {
     await call(p.host, `/api/pages/${p.slug}`, { method: 'DELETE', cookie: p.cookie }).catch(() => {})
   }

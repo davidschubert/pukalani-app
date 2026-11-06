@@ -3,7 +3,12 @@ import type { BwMessage } from '../../../../../app/components/BwGeorge.vue'
 import { demoRail } from '../../../utils/demoRail'
 
 /** Clickdummy Baustein C (Werte) — geskripteter Dialog aus der
- *  P0-Inhaltsspez (C-P3 → Kandidaten → Auswahl). Statisch, keine KI. */
+ *  P0-Inhaltsspez (C-P3 → Kandidaten → Auswahl). Statisch, keine KI.
+ *
+ *  Die graue BEISPIEL-ANTWORT im Composer ist die echte aus dem Katalog
+ *  (`brand.example.c.discovery3`) — die gestellte Frage IST c.discovery3,
+ *  der Dummy zeigt hier also exakt das Verhalten der Werkstatt. */
+const { t } = useI18n()
 const messages = ref<BwMessage[]>([
   { id: 'm1', role: 'george', text: 'Zwei Dinge aus deinem Kontext klingen schon nach Werten: Du hast Verlässlichkeit betont — und dass ihr lieber absagt, als halbe Arbeit zu liefern.', help: 'Ich frage jetzt drei Dinge, dann schlage ich Wertewörter vor.' },
   { id: 'm2', role: 'george', text: 'Welches Verhalten würdest du nie dulden — auch nicht vom bestzahlenden Kunden?' },
@@ -129,7 +134,7 @@ function confirmPick() {
     </template>
 
     <template #george>
-      <BwGeorge :messages="messages" @send="answer">
+      <BwGeorge :messages="messages" :placeholder="phase === 'ask' ? t('brand.example.c.discovery3') : ''" @send="answer">
         <template #chips>
           <div v-if="phase === 'ask'" class="pl-9">
             <BwOptionCards

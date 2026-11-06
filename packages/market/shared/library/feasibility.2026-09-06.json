@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-09-07T07:58:15.172Z",
+  "userAgent": "PukalaniMarketBot/1.0 (+https://branding.supply/market-bot)",
+  "maxRequestsPerHost": 3,
+  "note": "Trockenlauf der Machbarkeit (MV1 M6). Kein Seiteninhalt gespeichert, keine Unterseite abgerufen. `llms.txt` bleibt ungeprüft, weil das Anfrage-Budget den rechtlichen Fragen gehört.",
+  "rows": [
+    {
+      "key": "anthropic",
+      "name": "Anthropic",
+      "homepage": "https://www.anthropic.com/company",
+      "origin": "https://www.anthropic.com",
+      "pair": "ki-labor",
+      "category": "KI-Labor",
+      "country": "US",
+      "requests": 3,
+      "robots": "erlaubt",
+      "robotsDetail": "",
+      "tdm": "kein Vorbehalt",
+      "tdmForm": "",
+      "sitemap": "1× in robots.txt",
+      "llms": "ungeprüft (Budget)",
+      "finalOrigin": "",
+      "verdict": "erlaubt"
+    },
+    {
+      "key": "meta",
+      "name": "Meta",
+      "homepage": "https://www.meta.com/about/",
+      "origin": "https://www.meta.com",
+      "pair": "plattform",
+      "category": "Technologie-Plattform",
+      "country": "US",
+      "requests": 3,
+      "robots": "erlaubt",
+      "robotsDetail": "",
+      "tdm": "kein Vorbehalt",
+      "tdmForm": "",
+      "sitemap": "5× in robots.txt",
+      "llms": "ungeprüft (Budget)",
+      "finalOrigin": "",
+      "verdict": "erlaubt"
+    }
+  ]
+}

@@ -11,9 +11,13 @@ import { emptyCommunityNavOverride } from '../../../../core/shared/communityNavi
  * haben, und die Reihenfolge dieser beiden Schritte ist die Zusage, dass ein
  * Override nichts freischalten kann.
  *
- * OHNE MANDANT: leeres Dokument. Kontroll-Hosts, Silo-Apps und der Playground
- * haben keine Community, deren Menü man wählen könnte — dort gilt der Bauplan,
- * und zwar unverändert.
+ * WESSEN MENÜ, ENTSCHEIDET `communityNavRowId()` (U15 Teil 3, 2026-09-08). Hier
+ * stand vorher `useTenant(event)?.communityId`, und damit gab es in JEDER
+ * Silo-App (branding, comments, portfolio, photos) kein Menü — der Bauplan
+ * galt dort unverändert, obwohl der Editor im Dashboard sichtbar war. Jetzt ist
+ * die Instanz dort selbst der Besitzer (`'instance'`); ohne Besitzer bleibt nur
+ * noch der KONTROLL-HOST der Pool-App, und dort ist das leere Dokument die
+ * richtige Antwort: es gibt keine Community, deren Menü man wählen könnte.
  *
  * DIE PUBLIKUMS-FRAGE, und warum sie hier so beantwortet ist wie nebenan:
  * `assertCommunityContentReadable` steht auch vor `/api/pages/public`, und
@@ -33,9 +37,9 @@ import { emptyCommunityNavOverride } from '../../../../core/shared/communityNavi
 export default defineEventHandler(async (event): Promise<CommunityNavOverride> => {
   assertCommunityContentReadable(event, 'Navigation not found')
 
-  const communityId = useTenant(event)?.communityId
-  if (!communityId) return emptyCommunityNavOverride()
+  const rowId = communitySettingsRowIdFor(event)
+  if (!rowId) return emptyCommunityNavOverride()
 
-  const override = await readCommunityNavOverride(event, communityId)
+  const override = await readCommunityNavOverride(event, rowId)
   return override ?? emptyCommunityNavOverride()
 })

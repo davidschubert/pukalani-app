@@ -36,7 +36,7 @@ const columns = computed<TableColumn<CustomFontDto>[]>(() => [
   { accessorKey: 'name', header: () => t('themes.fonts.col.name') },
   { id: 'preview', header: () => t('themes.fonts.col.preview') },
   { id: 'weights', header: () => t('themes.fonts.col.weights'), meta: { class: HIDE_MD } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 const NAME_RE = /^[a-z0-9][a-z0-9 _-]{0,63}$/i

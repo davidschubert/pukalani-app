@@ -37,6 +37,11 @@
   color: var(--bw-ink);
   font-variant-numeric: tabular-nums;
 }
+/* Runde 19c (David, „wieso ist das Menü grau?"): .bw-root ist der
+   Token-Wirt UND malt den Seiten-Grund (--bw-paper). Teleportierte Layer
+   (Dropdowns, Menüs) brauchen die Token, aber die KARTEN-Farbe — diese
+   Klasse zusätzlich zu bw-root auf den Content geben. */
+.bw-root.bw-overlay { background: var(--bw-surface-hi); }
 .dark .bw-root {
   --bw-paper: #191a19;
   --bw-surface: #222323;
@@ -67,21 +72,148 @@
   padding: 1.25rem 2rem; border-bottom: 1px solid var(--bw-line);
   background: var(--bw-surface); flex: none;
 }
-.bw-zones { display: grid; grid-template-columns: clamp(320px, 24vw, 400px) minmax(0,62fr) minmax(0,38fr); flex: 1; min-height: 0; }
-.bw-rail { overflow-y: auto; padding: var(--bw-gutter); }
+/* Runde 18 (David): --bw-rail-w = feste Nav-Breite (Sidebar-Seiten);
+   ohne sie gilt weiter die mitwachsende clamp-Spalte.
+   Audit B3: die drei Spuren stehen als EIGENE Variablen da, damit die
+   Balken-Toggles auch im Grid wirken. `display: none` scheidet aus — ein
+   verstecktes Grid-Kind gibt seine Spur nicht ab, die beiden anderen
+   rutschen eine Spalte nach links. Eingeklappt heisst deshalb: Spur auf
+   null (der Inhalt liegt hinter `overflow: hidden`). */
+.bw-zones {
+  display: grid;
+  grid-template-columns:
+    var(--bw-col-rail, var(--bw-rail-w, clamp(320px, 24vw, 400px)))
+    var(--bw-col-stage, minmax(0,62fr))
+    var(--bw-col-log, minmax(0,38fr));
+  flex: 1; min-height: 0;
+}
+/* Runde 12 (David, 2026-09-02): der Abstand lag AUSSEN am Scroller — die
+   Spalte trug das Padding, der Scroll-Container war ein Kind DARIN. Folge:
+   der Scrollbalken begann unter der Oberkante, endete vor der Unterkante
+   und schwebte neben der Spalten-Kante. Das Padding wohnt jetzt IM Scroller
+   (.bw-rail-scroll), der Balken läuft an der Kante über die volle Höhe. */
+.bw-rail { overflow: hidden; }
+/* Runde 17 (David): Seiten mit der Nuxt-UI-Sidebar setzen die
+   Standardabstände des Vorbilds (px-4/py-2 statt 2rem-Gutter) — per
+   --bw-rail-pad-x/-y am Workspace-Root; ohne sie gilt weiter der Gutter. */
+.bw-rail-scroll { overflow-y: auto; padding: var(--bw-rail-pad-y, var(--bw-gutter)) var(--bw-rail-pad-x, var(--bw-gutter)); }
+/* Runde 15 (David): dieselbe 1px-Abschluss-Linie über dem Fuß wie rechts
+   im Stand — läuft über die volle Spaltenbreite. */
+.bw-rail-foot { padding: 0 var(--bw-rail-pad-x, var(--bw-gutter)) var(--bw-rail-pad-y, var(--bw-gutter)); border-top: 1px solid var(--bw-line); }
 .bw-stage { overflow-y: auto; padding: var(--bw-gutter) clamp(1.2rem, 4vw, 3.5rem) 4rem; }
-.bw-stage-inner { max-width: 46rem; margin: 0 auto; }
-.bw-george { display: flex; flex-direction: column; min-height: 0; background: var(--bw-surface); border-radius: 0; margin: 0; }
-@media (max-width: 1279px) { .bw-zones { grid-template-columns: 56px minmax(0,1fr) 380px; } .bw-rail-full { display: none; } }
+/* Runde 20b+20e (David): der Bühnen-Balken in den Maßen der
+   UDashboardNavbar des Vorbilds — h-(--ui-header-height)=4rem, px-6,
+   gap-1.5, items-center, border-b; Grund bleibt die bw-Karte. */
+.bw-stage-bar {
+  display: flex; align-items: center; gap: 0.375rem;
+  block-size: 4rem; padding: 0 1.5rem;
+  /* Runde 29b (David, mit Pfeil präzisiert): „Chatfenster" meint die
+     GESPRÄCHS-Fläche — der Balken trägt deren Papier-Grau; nur die
+     1px-Linie trennt ihn von der Bühne. */
+  background: var(--bw-paper);
+  border-bottom: 1px solid var(--bw-line);
+}
+/* Runde 23 (David): fester Bühnen-Fuß fürs Chat-Prompt — gleiche
+   horizontale Flucht wie die Bühne, unten mit Luft zum Rand. */
+.bw-stage-foot { padding: 0.5rem clamp(1.2rem, 4vw, 3.5rem) 1rem; }
+/* BÜHNENBREITE: Lesebreite als Default (Gespräch, Dokument, Leseansicht);
+   eine Seite mit Auswahl-Flächen (Karten zu dritt, Rampen, Specimen) setzt
+   `--bw-stage-max` über die Prop `stageWidth` von BwWorkspace (Davids
+   Korrektur am Brand-Design-Prototyp 2026-09-08: „alles so schmal"). */
+.bw-stage-inner { max-width: var(--bw-stage-max, 46rem); margin: 0 auto; }
+/* `overflow: hidden` gehört dazu, seit die Spur auf null gehen kann (B3) —
+   sonst steht der Log-Inhalt neben seiner eigenen, leeren Spalte. */
+.bw-george { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--bw-surface); border-radius: 0; margin: 0; }
+@media (max-width: 1279px) {
+  .bw-zones { --bw-col-rail: 56px; --bw-col-stage: minmax(0,1fr); --bw-col-log: 380px; }
+  .bw-rail-full { display: none; }
+  /* B2-INTERIM (2026-09-02): Seiten MIT fester Rail-Breite behalten sie auch
+     zwischen 768 und 1279 px — die neue `BwWorkspaceSidebar` hat KEINEN
+     Mini-Zustand und wurde hier auf 56 px abgeschnitten. Zusammen mit den
+     jetzt wirksamen Toggles (B3) ist die Spalte damit bedienbar. Die
+     Teilung 63/37 ist dieselbe wie im Splitter- und im Pre-Mount-Zweig,
+     also springt beim Mount nichts mehr (B5). OFFENE DESIGN-FRAGE bei
+     David: ein echter Mini-Zustand der Sidebar (Glyphen-Spalte). */
+  .bw-zones--fixed-rail { --bw-col-rail: var(--bw-rail-w); --bw-col-stage: minmax(0,63fr); --bw-col-log: minmax(0,37fr); }
+  .bw-zones--fixed-rail .bw-rail-full { display: block; }
+}
 @media (min-width: 1280px) { .bw-rail-mini { display: none; } }
 @media (max-width: 767px) {
-  .bw-zones { grid-template-columns: minmax(0,1fr); }
+  .bw-zones, .bw-zones--fixed-rail { grid-template-columns: minmax(0,1fr); }
   .bw-rail { display: none; }
   .bw-george { margin: 0; border-radius: 0; }
   .bw-mode-stage .bw-george { display: none; }
-  .bw-mode-george .bw-stage { display: none; }
+  /* Audit B13: im Stand-Modus verschwindet die BÜHNE — dann dürfen weder ihr
+     Balken noch ihr Fuß (das Prompt) über dem Log stehen bleiben. */
+  .bw-mode-george .bw-stage,
+  .bw-mode-george .bw-stage-foot { display: none; }
+  /* A7-Nachtrag (David, 2026-09-02): der BALKEN bleibt jetzt stehen. Er
+     trägt den einzigen mobilen Einstieg in die Baustein-Navigation (den
+     Overlay-Toggle) und den Namen des offenen Bausteins — im Stand-Modus,
+     dem MOBILEN STARTZUSTAND, wäre er sonst nicht erreichbar. Versteckt
+     bleiben Bühne und Prompt, wie B13 es verlangt.
+     Damit stehen im Stand-Modus zwei Grid-Kinder untereinander, und dort
+     lauert eine Falle: bei zwei `auto`-Zeilen verteilt `align-content:
+     stretch` (der Default) die freie Höhe GLEICHMÄSSIG — der 4rem-Balken
+     bekäme die halbe Werkstatt. Deshalb die festen Zeilen. */
+  .bw-mode-george .bw-zones { grid-template-rows: auto minmax(0, 1fr); }
+
+  /* MOBIL IST DIE NAV EIN SCHMALER DRAWER (A7, Davids Entscheidung
+     2026-09-02; „schmal statt Vollbild" 2026-09-03) — derselbe `<aside>` wie
+     in der Spalte, nur aus dem Fluss gehoben: links fixiert, Spaltenbreite
+     (`--bw-rail-w` erbt vom Zonen-Container, Deckel 85vw für schmale
+     Geräte), dahinter dunkelt `.bw-rail-backdrop` die Werkstatt ab und
+     schliesst per Tipp. Ein fixiertes Grid-Kind bildet KEINE Spur mehr, das
+     Raster darunter bleibt also einspaltig wie bisher.
+     Die Regel sticht `.bw-rail { display: none }` zwei Zeilen weiter oben
+     über die zweite Klasse, nicht über die Reihenfolge.
+
+     Z-INDEX 50 IST EXAKT ABGEZÄHLT, nicht geraten (live erwischt): die
+     Hauptnavigation (`BwSiteNav`) klebt mit `sticky z-50` oben — bei 30 lag
+     das Overlay UNTER ihr, der Schliessen-Knopf verschwand
+     dahinter, und man sah eine Leiste, die `inert` ist. Gleicher Wert heisst
+     „DOM-Reihenfolge entscheidet": die Rail steht NACH der Navigation, also
+     gewinnt sie. Und die teleportierten Modals („Was bedeutet das?", „Neues
+     Branding") hängen am `body`-Ende, ebenfalls z-50 — sie gewinnen aus
+     demselben Grund gegen die Rail. Höher zählen darf man hier also NICHT:
+     51 stellte das Overlay über den Info-Layer, aus dem es ihn öffnet.
+     Der Backdrop steht im DOM VOR der Rail und teilt ihre 50 — die Rail
+     gewinnt über die Reihenfolge, ein eigener Zähler wäre die 51-Falle. */
+  .bw-rail-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgb(20 18 15 / 0.45);
+  }
+  .bw-rail.bw-rail-overlay {
+    display: flex; position: fixed; inset: 0 auto 0 0; z-index: 50;
+    width: min(85vw, var(--bw-rail-w, 20rem));
+    background: var(--bw-surface-hi);
+    box-shadow: 0 0 40px rgb(20 18 15 / 0.25);
+  }
+  .bw-rail.bw-rail-overlay .bw-rail-overlay-head {
+    display: flex; justify-content: flex-end;
+    padding: var(--bw-rail-pad-y, var(--bw-gutter)) var(--bw-rail-pad-x, var(--bw-gutter)) 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bw-rail.bw-rail-overlay { animation: bw-drawer-in 0.2s ease-out; }
+    .bw-rail-backdrop { animation: bw-fade-in 0.2s ease-out; }
+  }
 }
+@keyframes bw-drawer-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes bw-fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* Der Backdrop existiert nur mobil — ab 768 px ist die Rail eine Spalte. */
+@media (min-width: 768px) { .bw-rail-backdrop { display: none; } }
 @media (min-width: 768px) { .bw-modeswitch { display: none; } }
+/* Der Schliessen-Knopf des Overlays existiert nur mobil — ab 768 px ist der
+   `<aside>` eine Spalte und braucht keinen. */
+.bw-rail-overlay-head { display: none; }
+/* Die Toggle-Zustände stehen NACH den Media-Blöcken: gleiche Spezifität,
+   also gewinnt die spätere Zeile — in jedem Breitenbereich. */
+.bw-zones--rail-off { --bw-col-rail: 0px; }
+.bw-zones--log-off { --bw-col-log: 0px; }
+/* Dasselbe für die Splitter-Zweige: reka-ui schreibt `flex-grow` INLINE,
+   nur `!important` sticht das (Audit B1 — eine Klasse statt eines zweiten
+   Vnode-Baums, damit die Bühne beim Toggle nicht neu mountet). */
+.bw-panel-off { flex-grow: 0 !important; flex-basis: 0 !important; }
 
 /* Dot-Matrix-Ziffern (Runde 9, Referenz superpower) — das
    Signature-Element für Zahlen: Prozent, Zähler, später Scores. */
@@ -108,6 +240,10 @@
 .bw-card--hover:hover { box-shadow: var(--bw-shadow-card-hover); transform: translateY(-1px); }
 .bw-card--menu { border-radius: var(--bw-radius-frame); box-shadow: var(--bw-shadow-overlay); }
 .bw-rounded-card { border-radius: var(--bw-radius-card); }
+/* Rahmen-Radius als Klasse (2026-09-04): Bild-Rahmen, Platzhalter und kleine
+   Innen-Kacheln folgen damit derselben Squircle-Regel wie die Karten — ein
+   Inline-`border-radius` bekäme das corner-shape unten nie. */
+.bw-frame { border-radius: var(--bw-radius-frame); }
 
 /* Squircle (Runde 8b, Davids Hinweis): kontinuierliche Ecken statt
    Kreisabschnitten — natives corner-shape, border-radius bleibt als
@@ -118,7 +254,7 @@
    nie je Stelle abweichen. */
 @supports (corner-shape: superellipse(1.7)) {
   .bw-root { --bw-radius-card: 44px; --bw-radius-frame: 22px; }
-  .bw-card, .bw-pair-card, .bw-draft-frame, .bw-rounded-card {
+  .bw-card, .bw-pair-card, .bw-draft-frame, .bw-rounded-card, .bw-frame {
     corner-shape: superellipse(1.7);
   }
 }
@@ -167,6 +303,24 @@
 .bw-select-card--on .bw-select-note { color: var(--bw-line); }
 .bw-option-card { background: var(--bw-surface-hi); box-shadow: var(--bw-shadow-card); transition: background 120ms; }
 .bw-option-card:hover { background: var(--bw-line); }
+
+/* AUSWAHL-KARTEN der geschlossenen Menge (P4, Infografik §12.3): dieselbe
+   Bedeutung wie `.bw-chip--selected`, nur als Karte — grüne Fläche, grüner
+   Ring, „gewählt = entschieden". Die Karte ist HELLER als der Grund und trägt
+   nur einen Hauch Ambient (§3d, Runde 9): die Trennung ist tonal, der Schatten
+   ist kein Rahmen-Ersatz. */
+.bw-choice-card {
+  background: var(--bw-surface-hi); box-shadow: var(--bw-shadow-card);
+  cursor: pointer; transition: background 120ms, box-shadow 120ms;
+  color: var(--bw-ink);
+}
+.bw-choice-card:not(.bw-choice-card--selected):hover { background: var(--bw-line); }
+.bw-choice-card:focus-visible { outline: 2px solid var(--bw-ink); outline-offset: 2px; }
+.bw-choice-card--selected {
+  background: var(--bw-accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--bw-accent);
+}
+.bw-choice-card:disabled { cursor: default; opacity: 0.55; }
 /* Info-Buttons (Audit D17): Ruheton muted, Hover Pop mit Ink-Zeichen. */
 .bw-info-btn { color: var(--bw-muted); transition: background 120ms, color 120ms; }
 .bw-info-btn:hover, .bw-info-btn:focus-visible { background: var(--bw-pop); color: var(--bw-ink); }
@@ -212,6 +366,130 @@
 .bw-state--stale { color: var(--bw-stale); background: var(--bw-stale-soft); }
 .bw-draft-frame { border: 1px dashed var(--bw-draft); border-radius: var(--bw-radius-frame); padding: 1.1rem 1.25rem; background: var(--bw-surface); }
 
+/* ── Die Slot-Ampel (Davids Live-Walkthrough, 2026-09-02) ──────────────────
+   Drei Zustände, zwei Farben, KEINE neuen Tokens: Bernstein ist `--bw-draft`
+   (dieselbe Familie wie das DRAFT-BY-GEORGE-Etikett), Grün ist `--bw-accent`.
+   Beide gibt es in Hell und Dunkel; ein eigenes Ampel-Farbpaar wäre eine
+   zweite Wahrheit über dieselbe Farbe.
+
+   Der PUNKT ist eine Orientierungshilfe beim Scrollen, nie die einzige
+   Auskunft: daneben steht das Etikett in Worten, und der Punkt trägt seinen
+   Zustand als `title`/`aria-label` (Regel „nie nur Farbe"). */
+.bw-dot {
+  flex: none; display: grid; place-items: center;
+  inline-size: 1rem; block-size: 1rem; border-radius: 999px;
+  background: transparent; box-shadow: inset 0 0 0 1px var(--bw-line-strong);
+  color: var(--bw-paper);
+}
+.bw-dot--draft { background: var(--bw-draft); box-shadow: none; }
+.bw-dot--confirmed { background: var(--bw-accent); box-shadow: none; }
+/* Ableitungs-Blöcke ohne Eingabe (Davids Zähler-Frage, 2026-09-02): ein
+   Ampel-Punkt, der nie grün werden kann, wäre ein ewiger Vorwurf ohne
+   Handlung. Der Diamant sagt „George leitet das ab" — die Ampel bleibt
+   exklusiv für echte Entscheidungen. */
+.bw-dot--derived {
+  border-radius: 2px; transform: rotate(45deg) scale(0.72);
+  box-shadow: inset 0 0 0 1.5px var(--bw-muted);
+}
+
+/* Der Bestätigungs-Knopf trägt seinen Zustand in der Farbe: bernstein
+   umrandet = offen, grün gefüllt mit Häkchen = bestätigt (Davids Wortlaut).
+   BEWUSST kein `UButton`: dessen Varianten kennen `neutral`/`primary`, nicht
+   „die Farbe der Werkstatt-Ampel" — sie über `:ui` zu überschreiben hiesse,
+   gegen die Komponente zu arbeiten. Ein eigenes Element ist hier dasselbe
+   Muster wie `.bw-chip`, das aus demselben Grund existiert. */
+.bw-confirm {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border-radius: 999px; padding: 0.3rem 0.85rem;
+  font-size: 0.875rem; line-height: 1.25rem; cursor: pointer;
+  background: transparent; color: var(--bw-draft);
+  box-shadow: inset 0 0 0 1px var(--bw-draft);
+  transition: background 120ms, color 120ms;
+}
+.bw-confirm:hover:not(:disabled) { background: var(--bw-draft-soft); }
+/* Runde 36 (David): kompakte Fassung für die Log-Karten im Stand — gleiche
+   Größe wie der Korrigieren-Knopf (UButton xs). */
+.bw-confirm--xs { padding: 0.15rem 0.65rem; font-size: 0.75rem; line-height: 1rem; gap: 0.3rem; }
+/* Runde 37b (David): der Korrigieren-Knopf in EXAKT der Bestätigen-Größe —
+   gleiche bw-confirm-Metrik, nur neutral statt bernstein und ohne Ring. */
+.bw-confirm--ghost { color: var(--bw-ink-soft); box-shadow: none; }
+.bw-confirm--ghost:hover:not(:disabled) { background: var(--bw-surface-hi); }
+/* Leerer Slot: es gibt nichts zu bestätigen. Der BESTÄTIGTE Knopf ist
+   ebenfalls nicht klickbar, wird aber nicht gedimmt — er ist kein
+   abgeschaltetes Angebot, sondern eine Zustandsanzeige. */
+.bw-confirm:disabled { cursor: default; }
+.bw-confirm--open:disabled { opacity: 0.4; }
+.bw-confirm--done {
+  background: var(--bw-accent); color: var(--bw-surface-hi);
+  box-shadow: none; font-weight: 500;
+}
+
+/* ── DIE HANDLUNGEN EINES BEFUND-CHIPS (Kailua-Befund 1, 2026-09-08) ───────
+   „Annehmen"/„Ablehnen" standen als `UButton size="xs"`: rund 24 px hoch, mit
+   4 px Innenabstand oben und unten. Das ist unter jeder Empfehlung für ein
+   Klickziel (32 px), und im Lauf traf der Zeiger sie nur pixelgenau — die
+   Entscheidung über einen Befund ist aber der EINE Weg, ihn loszuwerden.
+
+   Die Fläche wächst NACH INNEN (`min-height` + Innenabstand), nicht über eine
+   grössere Schrift: der Chip ist ein ruhiger Hinweis und soll neben dem Text
+   nicht lauter werden. Der Fokus-Ring steht ausdrücklich hier, weil die
+   Ghost-Variante von Nuxt UI auf der getönten Chip-Fläche (`--bw-stale-soft`)
+   kaum zu sehen war. */
+.bw-chip-action {
+  min-height: 2rem; padding-left: 0.75rem; padding-right: 0.75rem;
+}
+.bw-chip-action:focus-visible {
+  outline: 2px solid var(--bw-stale); outline-offset: 2px;
+}
+
+/* ── WERKSTATT „GESPRÄCH ALS BÜHNE" (2026-09-02) ──────────────────────────
+   Die Klassen der neuen Sidebar (`BwWorkspaceSidebar`) und der Log-Spalte
+   der Werkstatt. Sie stehen GLOBAL und nicht als scoped CSS der Seite: die
+   Log-Karten leben in einem Slot von `BwWorkspace`, und der Slot-Inhalt
+   einer fremden Komponente bekommt das Scope-Attribut der Seite nicht
+   verlässlich mit (dieselbe Falle wie bei den teleportierten Menüs). */
+
+/* Sidebar-Zeilen: ruhige Flächen, Hover wie im Nuxt-UI-Vorbild. */
+.bw-nav-switch:hover, .bw-nav-switch:focus-visible { background: var(--bw-surface-hi); }
+.bw-nav-row:not(:disabled):hover { background: var(--bw-surface-hi); }
+/* Info-Icons RUHEN, bis die Zeile Hover/Fokus hat — sie bleiben fokussierbar
+   (Runde 16, David: die schlanken Zeilen sollen still sein).
+   Seit Audit B6/B7 liegt der Info-Knopf als GESCHWISTER über der Zeile (ein
+   Knopf im Knopf ist ungültig, und auf einer deaktivierten Zeile schluckt der
+   Browser seinen Klick). Die Hover-Regel hängt deshalb an der Hülle
+   `.bw-nav-item`, nicht mehr an der Zeile selbst. */
+.bw-nav-item { position: relative; }
+.bw-nav-info { opacity: 0; transition: opacity 120ms; }
+/* Kind-Kombinator, nicht Nachfahre: die Gruppen-Hülle enthält AUCH alle
+   Zeilen-Hüllen, ein Nachfahren-Selektor weckte mit einer Zeile die ganze
+   Sektion (im Browser-Beweis gesehen). */
+.bw-nav-item:hover > .bw-nav-info,
+.bw-nav-item:focus-within > .bw-nav-info { opacity: 1; }
+/* Und ein Zeilen-Hover weckt nicht das Icon der GRUPPE darüber — der Fokus
+   schlägt die Regel, sonst wäre der Knopf beim Tabben unsichtbar. Fällt
+   `:has()` aus, bleibt nur diese Feinheit weg, nicht die Enthüllung. */
+.bw-nav-item:has(.bw-nav-item:hover) > .bw-nav-info:not(:focus-visible) { opacity: 0; }
+.bw-nav-info:focus-visible { opacity: 1; }
+
+/* Log-Spalte: „Korrigieren" ruht bis Hover/Fokus der Karte, „Bestätigen"
+   bleibt IMMER sichtbar (Runde 25, David) — eine offene Entscheidung braucht
+   ihren Weg, eine erledigte nur bei Bedarf. */
+.bw-fix { opacity: 0; transition: opacity 120ms; }
+.bw-log-card:hover .bw-fix, .bw-log-card:focus-within .bw-fix { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .bw-nav-info, .bw-fix { transition: none; }
+}
+/* Runde 28 (David): zwischen den Kapitel-Sektionen IMMER eine 1px-Linie. */
+.bw-log-chapter { padding-block: 0.625rem; }
+.bw-log-chapter + .bw-log-chapter { border-top: 1px solid var(--bw-line); }
+
+/* Kapitel-Fortschritt: eine dünne Linie unter der Kapitel-Kopfzeile, die beim
+   Scrollen oben stehen bleibt. Sie beantwortet „wie weit bin ich in DIESEM
+   Kapitel" — der Balken unten in der Leiste beantwortet den ganzen Weg. */
+.bw-chapter-progress { position: sticky; top: 0; z-index: 2; background: var(--bw-paper); padding-block: 0.5rem; }
+.bw-chapter-progress-track { block-size: 3px; border-radius: 999px; background: var(--bw-line); overflow: hidden; }
+.bw-chapter-progress-fill { block-size: 100%; background: var(--bw-accent); border-radius: 999px; transition: inline-size 220ms ease-out; }
+
 /* George-Chat: ruhig, keine dicken Blasen */
 .bw-msg { padding: 0.15rem 0; display: flex; gap: 0.65rem; }
 .bw-msg-mark {
@@ -242,8 +520,37 @@
 }
 .bw-chip:not(.bw-chip--selected):hover { background: var(--bw-line); }
 .bw-chip:focus-visible { outline: 2px solid var(--bw-ink); outline-offset: 2px; }
-.bw-chip--selected { background: var(--bw-ink); color: var(--bw-paper); font-weight: 600; }
+/* GEWÄHLT SPRICHT DIE SPRACHE DER AMPEL (Davids Befund „ziemlich defekt",
+   2026-09-02). Vorher war es `--bw-ink` — fast schwarz, und in einer Reihe
+   von drei Optionen sah die eine gewählte aus wie eine VORAUSWAHL statt wie
+   eine Antwort. Jetzt dieselbe grüne Fläche wie am bestätigten Slot: gewählt
+   = entschieden, eine Bedeutung, eine Farbe. Der Ring trägt die Aussage auch
+   dort, wo Flächen schwer zu unterscheiden sind (Regel „nie nur Farbe" hält
+   der Text daneben). */
+.bw-chip--selected {
+  background: var(--bw-accent-soft); color: var(--bw-ink); font-weight: 600;
+  box-shadow: inset 0 0 0 1.5px var(--bw-accent);
+}
+.bw-chip--selected:hover { background: var(--bw-accent-soft); box-shadow: inset 0 0 0 2px var(--bw-accent); }
+/* ABGESETZT HEISST LEISER: der Weg zurück („Nochmal von vorn") steht ohne
+   Karte und ohne Schatten da. Eine Warnfarbe wäre falsch — die Option löscht
+   nichts, sie öffnet eine Vertiefungsrunde. */
+.bw-chip--quiet:not(.bw-chip--selected) {
+  background: transparent; box-shadow: none;
+  border-color: var(--bw-line-strong); color: var(--bw-muted);
+}
+.bw-chip--quiet:not(.bw-chip--selected):hover { background: var(--bw-line); color: var(--bw-ink); }
 .bw-chip--ghost { background: transparent; box-shadow: none; border: 1px dashed var(--bw-line-strong); color: var(--bw-muted); }
+
+/* BESTÄTIGT IST DOKUMENT-TEXT, KEIN FELD (Davids Wortlaut 2026-09-02: „kann
+   man dann dort direkt den antworttext zeigen, anstatt den antworttext im
+   form field"). Kein Rahmen, kein Platzhalter-Grau, dieselbe Ruhe wie der
+   übrige Körper — die Zeilenumbrüche bleiben stehen, damit Listen und
+   beschriftete Blöcke ihre Form behalten. */
+.bw-doc-text {
+  font-size: 1rem; line-height: 1.65; color: var(--bw-ink);
+  max-width: 42rem;
+}
 
 /* Paarvergleich */
 /* Runde 5+15 (David): Karten untereinander, volle Breite, 8px Lücke */
@@ -279,3 +586,22 @@
 @supports (corner-shape: superellipse(1.7)) {
   .bw-tile, .bw-tile--lg { corner-shape: superellipse(1.7); }
 }
+
+/* Ampel-Matrix der Ergebnisseite (BRAND-CHECK-SEITE §10, „Diagnose"): 8 × 5
+ * Zellen mit VIER Zuständen. Die Farbe setzt die Komponente aus den
+ * bestehenden Signal-Tokens (--bw-accent / --bw-draft / --bw-stale); hier
+ * steht nur die Form. Jede Zelle bleibt ein `button` — Tastatur und
+ * Screenreader brauchen den Weg zur Notiz, und ein Klick springt in den Plan. */
+.bw-matrix-cell {
+  display: grid; place-items: center;
+  block-size: 1.75rem; flex: 1 1 0; min-inline-size: 1.75rem;
+  border-radius: 6px; cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+.bw-matrix-cell:hover { transform: translateY(-1px); }
+.bw-matrix-cell:focus-visible { outline: 2px solid var(--bw-ink); outline-offset: 2px; }
+.bw-matrix-cell--locked { box-shadow: inset 0 0 0 1px var(--bw-line-strong); }
+.bw-matrix-cell--legend {
+  flex: none; block-size: 1rem; inline-size: 1rem; min-inline-size: 1rem; cursor: default;
+}
+.bw-matrix-cell--legend:hover { transform: none; }

@@ -1,0 +1,121 @@
+{
+  "note": "Kandidatenliste der kuratierten Bibliothek (Plan §7.2 Nr. 3, MV1 M6). SIE IST KEINE BIBLIOTHEK: hier stehen nur Name, Adresse, Kategorie und Herkunft — keine Aussage über eine Marke, kein Zitat, keine Wertung. Gelesen wird sie ausschliesslich von scripts/market-library-compute.mjs. Ausgewertet wird eine Marke erst nach --check (Machbarkeit) und --compute (Rechnen), in die Bibliothek kommt sie erst nach der Handprüfung (docs/runbooks/MARKTVERGLEICH-BIBLIOTHEK.md).",
+  "rules": [
+    "Paare aus DERSELBEN Kategorie — ein Vergleich über Kategoriegrenzen zeigt nur, dass Kategorien verschieden sind.",
+    "Balance klein/gross und DE/US, damit die Bibliothek nicht nur nach Konzern klingt.",
+    "Nur Firmen-Websites, nie die Website einer Person.",
+    "Aussagen ausschliesslich von der EIGENEN Website der Marke — nie aus Presse, Wikipedia oder Datenbanken."
+  ],
+  "pairs": [
+    {
+      "pair": "sportartikel",
+      "category": "Sportartikel",
+      "brands": [
+        {
+          "key": "adidas",
+          "name": "adidas",
+          "homepage": "https://www.adidas.com",
+          "country": "DE",
+          "size": "gross",
+          "note": "Paar-Beispiel aus Plan §7.2. Konzern-Website, mehrsprachig, stark segmentiert."
+        },
+        {
+          "key": "nike",
+          "name": "Nike",
+          "homepage": "https://www.nike.com",
+          "country": "US",
+          "size": "gross",
+          "note": "Paar-Beispiel aus Plan §7.2. Gegenstück zu adidas."
+        }
+      ]
+    },
+    {
+      "pair": "ki-labor",
+      "category": "KI-Labor",
+      "brands": [
+        {
+          "key": "anthropic",
+          "name": "Anthropic",
+          "homepage": "https://www.anthropic.com/company",
+          "country": "US",
+          "size": "gross",
+          "note": "Paar-Beispiel aus Plan §7.2. Startadresse seit 2026-09-06 die Unternehmensseite (Davids Entscheidung nach Lauf 1: Startseite lieferte nur fünf Felder)."
+        },
+        {
+          "key": "openai",
+          "name": "OpenAI",
+          "homepage": "https://openai.com",
+          "country": "US",
+          "size": "gross",
+          "note": "Paar-Beispiel aus Plan §7.2. Gegenstück zu Anthropic."
+        }
+      ]
+    },
+    {
+      "pair": "plattform",
+      "category": "Technologie-Plattform",
+      "brands": [
+        {
+          "key": "meta",
+          "name": "Meta",
+          "homepage": "https://www.meta.com/about/",
+          "country": "US",
+          "size": "gross",
+          "note": "Paar-Beispiel aus Plan §7.2. Startadresse seit 2026-09-06 die Unternehmensseite `/about/` (`about.meta.com` leitet dorthin um); Lauf 1 von der Shop-Startseite brachte nur zwei Felder. Die Produkt-Hosts sind Login-Flächen und gehören nicht in den Abruf."
+        },
+        {
+          "key": "apple",
+          "name": "Apple",
+          "homepage": "https://www.apple.com",
+          "country": "US",
+          "size": "gross",
+          "note": "Paar-Beispiel aus Plan §7.2. Gegenstück zu Meta."
+        }
+      ]
+    },
+    {
+      "pair": "kaffeeroesterei",
+      "category": "Kaffeerösterei",
+      "brands": [
+        {
+          "key": "the-barn",
+          "name": "The Barn",
+          "homepage": "https://thebarn.de",
+          "country": "DE",
+          "size": "klein",
+          "note": "Kleinere Marke mit ausgeprägter Haltung — der Fall, für den das Produkt gebaut ist."
+        },
+        {
+          "key": "counter-culture-coffee",
+          "name": "Counter Culture Coffee",
+          "homepage": "https://counterculturecoffee.com",
+          "country": "US",
+          "size": "klein",
+          "note": "US-Gegenstück derselben Kategorie, vergleichbare Grösse."
+        }
+      ]
+    },
+    {
+      "pair": "buchhaltungs-saas",
+      "category": "Buchhaltungs-Software",
+      "brands": [
+        {
+          "key": "sevdesk",
+          "name": "sevDesk",
+          "homepage": "https://sevdesk.de",
+          "country": "DE",
+          "size": "mittel",
+          "note": "Deutsche SaaS-Marke mit dichter Marketing-Sprache."
+        },
+        {
+          "key": "freshbooks",
+          "name": "FreshBooks",
+          "homepage": "https://www.freshbooks.com",
+          "country": "US",
+          "size": "mittel",
+          "note": "US-Gegenstück derselben Kategorie."
+        }
+      ]
+    }
+  ]
+}

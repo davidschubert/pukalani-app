@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isBrandIndustryValue } from '../shared/brandIndustries'
 
 /**
  * DIE ÖFFENTLICHEN RÜMPFE: Einladungs-Code, Veröffentlichung, Widerruf,
@@ -37,6 +38,31 @@ export function createBrandSharePublishSchema() {
 }
 
 /**
+ * IN DIE ÖFFENTLICHE GALERIE EINREICHEN (docs/plans/DISCOVER-BRANDS.md §4.3).
+ *
+ * ── DAS HÄKCHEN MUSS AM SERVER ANKOMMEN ───────────────────────────────────
+ * „Ich darf diese Marke veröffentlichen und weiss, dass sie nach Freigabe
+ * öffentlich und indexierbar ist" ist eine RECHTLICH gemeinte Zustimmung (§3.5:
+ * eigene Kunden-Inhalte mit ausdrücklicher Zustimmung). Ein Häkchen, das nur
+ * einen Knopf entgrauen würde, wäre Zierde — die Zustimmung muss Teil der
+ * Anfrage sein, sonst gibt es sie nicht. `literal(true)`: ein `false` ist keine
+ * Zustimmung und deshalb kein gültiger Rumpf.
+ *
+ * WIE beim Teilen KEINE Inhaltsfelder: WAS veröffentlicht wird, entscheidet
+ * der Server aus den bestätigten Slots (Audit 3).
+ */
+export function createBrandPublicationSubmitSchema() {
+  return z.object({
+    consent: z.literal(true),
+    // Die Branche für Galerie-Facette und Steckbrief — eine Katalog-Id aus
+    // `BRAND_INDUSTRIES` (Nachzug 2026-09-08: der Freitext der Startkarte trifft
+    // den Katalog selten, „Nicht zugeordnet" wäre die Regel). Fehlt sie, gilt
+    // die Normalisierung des Freitexts wie bisher.
+    industry: z.string().trim().min(1).max(40).refine(isBrandIndustryValue).optional(),
+  }).strict()
+}
+
+/**
  * Widerruf. Ohne `shareId` werden ALLE aktiven Veröffentlichungen des Profils
  * widerrufen — das ist der Knopf „Link deaktivieren", und er soll nicht die
  * Hälfte stehen lassen, wenn zwischendurch rotiert wurde.
@@ -55,6 +81,12 @@ export const BRAND_MESSAGES_LIMIT_MAX = 100
 export function createBrandMessagesQuerySchema() {
   return z.object({
     stepKey: z.string().max(32).optional(),
+    /**
+     * DER VERLAUF EINER SESSION (brand-011, BW2 §6) — ohne ihn kommt wie
+     * bisher das GANZE Kapitel. Zwei Fragen, ein Endpunkt: die Werkstatt zeigt
+     * den Faden einer Session, der Wiedereinstieg zeigt das Kapitel.
+     */
+    session: z.string().max(32).optional(),
     cursor: z.string().max(64).optional(),
     limit: z.coerce.number().int().min(1).max(BRAND_MESSAGES_LIMIT_MAX)
       .default(BRAND_MESSAGES_LIMIT_DEFAULT),

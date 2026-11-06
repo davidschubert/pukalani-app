@@ -55,7 +55,11 @@ import { resolveCommunityRedirect } from '../../shared/communityRedirects'
  * Silo, Kontroll-Host, Playground — passiert hier gar nichts.
  */
 export default defineEventHandler(async (event) => {
-  const communityId = event.context.tenant?.communityId
+  // Seit 2026-09-08 liest auch der SILO seine Zeile (`instance`) — vorher
+  // brach die Middleware ohne Mandant ab, und eine dort gespeicherte
+  // Weiterleitung hätte nie gegriffen (Regel: shared/communitySettingsRow.ts).
+  // Instanzen ohne die Tabelle kosten einen 404 je 30 s (Negativ-Cache).
+  const communityId = communitySettingsRowIdFor(event)
   if (!communityId) return
 
   if (event.method !== 'GET' && event.method !== 'HEAD') return

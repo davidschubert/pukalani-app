@@ -47,6 +47,21 @@ export type Capability =
    * ROLE_CAPABILITIES.moderator, nur im Admin-Wildcard.
    */
   | 'runner.manage'
+  /**
+   * Die REDAKTION von Brand Insights (docs/plans/BRAND-INSIGHTS.md §9.4,
+   * Paket I1): Beiträge und Markenprofile anlegen, redigieren, freigeben und
+   * zurückziehen, Korrekturvorschläge entscheiden.
+   *
+   * NUR ADMIN, wie das Geschwister `runner.manage` und aus einem verwandten
+   * Grund: die Redaktion ist eine BETREIBER-Sache. Sie entscheidet, was
+   * öffentlich über FREMDE Marken behauptet wird — die rechtliche
+   * Verantwortung dafür trägt der Betreiber, nicht ein Moderator. Und sie
+   * lebt in einer SILO-App (`apps/branding`), die gar keine Community-Rollen
+   * hat: dort trägt der Betreiber-Admin die Fähigkeit über sein globales
+   * Label. Deshalb steht sie NICHT in ROLE_CAPABILITIES.moderator, nur im
+   * Admin-Wildcard.
+   */
+  | 'insights.manage'
   | 'pages.manage'
   // G1 — Community-Rollen (communityAuthz.ts): feinere Caps, die die 5 Rollen
   // sauber trennen (Autor ≠ Moderator ≠ Admin ≠ Owner). Die drei mit dem

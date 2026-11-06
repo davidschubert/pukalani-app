@@ -1,5 +1,6 @@
 import { ROBOTS_NOINDEX } from '../../shared/communityAudience'
 import { resolveCommunitySeo } from '../../shared/communitySeo'
+import { filterSeoAlternates } from '../../shared/seoAlternates'
 import { rebaseSeoLinks, rebaseSeoMeta, rebaseSeoUrl, resolveSeoOrigin, type SeoHeadMeta } from '../../shared/seoOrigin'
 
 /**
@@ -59,6 +60,7 @@ export function useLocaleSeoHead(): void {
   const { t } = useI18n()
   const { membersOnly } = useTenantAudience()
   const communitySeo = useCommunitySeoSettings()
+  const hiddenLocales = useSeoHiddenLocalesState()
 
   // '' = kein Umschreiben (Silo-Apps + jeder Fall, in dem kein Origin steht)
   const origin = appConfig.pukalani?.seo?.originFromRequest === true
@@ -118,9 +120,25 @@ export function useLocaleSeoHead(): void {
       : []
   })
 
-  useHead(() => ({
-    htmlAttrs: localeHead.value.htmlAttrs,
-    link: rebaseSeoLinks(localeHead.value.link, origin),
-    meta: [...rebaseSeoMeta(localeHead.value.meta, origin), ...imageMeta.value, ...robotsMeta.value],
-  }))
+  /**
+   * hreflang NUR AUF VORHANDENE FASSUNGEN (BI1 I3, Plan BRAND-INSIGHTS §9.5).
+   *
+   * Gefiltert wird VOR dem Rebase, und das ist keine Geschmacksfrage: die
+   * Umschreibung auf den Request-Origin arbeitet je Eintrag, ein danach
+   * entfernter Eintrag wäre also umsonst umgeschrieben — schlimmer, die
+   * Reihenfolge lüde dazu ein, den Filter beim nächsten Umbau hinter
+   * `imageMeta` zu schieben, wo er `og:image` mitnähme.
+   *
+   * Der Default ist LEER: jede Seite ohne Eintrag bekommt unverändert alle
+   * Alternates. Eintragen tut es die Seite, die weiss, dass ihr eine Fassung
+   * fehlt (`useSeoHiddenLocales(quelle)`).
+   */
+  useHead(() => {
+    const alternates = filterSeoAlternates(localeHead.value.link, localeHead.value.meta, hiddenLocales.value)
+    return {
+      htmlAttrs: localeHead.value.htmlAttrs,
+      link: rebaseSeoLinks(alternates.links, origin),
+      meta: [...rebaseSeoMeta(alternates.meta, origin), ...imageMeta.value, ...robotsMeta.value],
+    }
+  })
 }

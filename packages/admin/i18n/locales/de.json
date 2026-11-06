@@ -15,7 +15,7 @@
       "people": "Personen",
       "products": "Produkte",
       "communitySettings": "Community-Einstellungen",
-      "instanceSettings": "Instanz-Einstellungen",
+      "instanceSettings": "Website-Einstellungen",
       "groups": {
         "platform": "Plattform",
         "studio": "Studio",
@@ -584,7 +584,28 @@
       "notifications": "Benachrichtigungen",
       "sessions": "Sitzungen",
       "security": "Sicherheit",
-      "data": "Daten"
+      "data": "Daten",
+      "navigation": "Navigation"
+    },
+    "navPrefs": {
+      "title": "Reihenfolge der Navigation",
+      "description": "Sortiere die Einträge der Seitenleiste so, wie du sie brauchst. Die Wahl gehört zu deinem Konto und gilt auf jeder Website, an der du mit diesem Konto arbeitest.",
+      "searchHint": "Ausgeblendete Einträge findest du weiterhin über die Suche (⌘K).",
+      "ungrouped": "Ohne Abschnitt",
+      "hide": "Ausblenden",
+      "show": "Einblenden",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "groupUp": "Abschnitt nach oben",
+      "groupDown": "Abschnitt nach unten",
+      "reset": "Auf Standard zurücksetzen",
+      "saved": "Reihenfolge gespeichert",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "resetDone": "Standard-Reihenfolge wiederhergestellt",
+      "empty": {
+        "title": "Nichts zu sortieren",
+        "description": "Auf dieser Website hat deine Rolle noch keine Einträge in der Seitenleiste."
+      }
     },
     "communitySettings": {
       "title": "Community-Einstellungen"

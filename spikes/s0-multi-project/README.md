@@ -24,7 +24,7 @@ validiert die **FORM der Verträge**, bevor M1 sie festschreibt. Kein Produkt-Co
 # 1. Wegwerf-Appwrite (ci/appwrite) auf Port 8081 — Projektname appwrite-s0
 cd ci/appwrite && _APP_HTTP_PORT=8081 docker compose --env-file ci.env \
   --project-name appwrite-s0 up -d traefik appwrite appwrite-realtime \
-  appwrite-worker-databases appwrite-worker-deletes mariadb redis
+  appwrite-worker mariadb redis
 
 # 2. Zwei Projekte + Keys + Platforms + Test-User (Console-REST wie ci-setup)
 cd spikes/s0-multi-project && pnpm install --ignore-workspace

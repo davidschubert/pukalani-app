@@ -68,8 +68,9 @@ export default defineAppConfig({
        * damit ein VERZEICHNIS der Instanz-Verwaltung, keine Hülle um sie.
        *
        * ── UND DESHALB HÄNGEN SIE AN EINEM SCHALTER ─────────────────────────
-       * `configFlag: 'admin.instanceTabs'` (Core-Default AUS, an nur in
-       * apps/comments). `scope: 'operator'` allein reicht NICHT: es hält die
+       * `configFlag: 'admin.instanceTabs'` (Core-Default AUS, an in den
+       * Silo-Apps comments, portfolio, branding). `scope: 'operator'` allein
+       * reicht NICHT: es hält die
        * Reiter zwar von jedem Mandanten-Host fern — genau Davids „System
        * entfällt im Pool" —, lässt sie aber im Kundenbereich
        * account.pukalani.app (`place: 'control'`) und in apps/control/apps/photos

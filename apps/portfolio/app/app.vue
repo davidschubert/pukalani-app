@@ -48,12 +48,25 @@ useBrandOgImage().value = {
   height: 630,
   type: 'image/png',
 }
+
+/**
+ * Seiten-Fade NUR auf der öffentlichen Site (Layout `site`, CSS in
+ * portfolio.css auf `.portfolio-site` gescopet). Im Dashboard ist er AUS —
+ * nicht aus Geschmack: eine `out-in`-Transition über einem mehrwurzeligen
+ * `UDashboardPanel` lässt Vue Suspense die neue Seite im versteckten Container
+ * hängen, der Seitenbereich bleibt nach dem ersten Klick leer (Begründung und
+ * Bisektion im nuxt.config.ts, 2026-09-08).
+ */
+const route = useRoute()
+const pageTransition = computed(() => route.meta.layout === 'site'
+  ? { name: 'page', mode: 'out-in' as const }
+  : false)
 </script>
 
 <template>
   <UApp>
     <NuxtLayout>
-      <NuxtPage />
+      <NuxtPage :transition="pageTransition" />
     </NuxtLayout>
   </UApp>
 </template>
