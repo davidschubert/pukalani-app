@@ -30,6 +30,47 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CL0 — Appwrite-Brotli-Hinweis geprüft; dabei: der Changelog-Link der Marketing-Seite zeigte seit Monaten auf einen toten Webhook ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-24 (Brotli, CVE-2026-111497): Server
+auf 2.6.2 heben UND die Runtime-Images für Functions/Sites neu ziehen.
+
+**Brotli — nichts mehr zu tun.** Server-Teil ist AW262 (2.6.2 seit 2026-10-27).
+Runtime-Teil, gemessen auf appwrite-prod: kein einziges `openruntimes/*`-Image
+außer dem Executor (der `ImagePuller` zog node-22/static-1/flutter-3.29 beim
+Neustart am 2026-10-27, also nach den Patches; das Aufräumen am 2026-10-28
+entfernte sie als ungenutzt), und **0 Functions, 0 Sites** in allen vier
+Projekten (Zählung direkt in MariaDB, `_6/_10/_11/_12_functions|_sites`).
+Konfiguriert ist nur `node-22` — keine der abgekündigten Runtimes.
+
+**Nebenbefund — Changelog-Track 2B war tot, die Doku sagte „AKTIV".** Die
+Function `changelog-draft` lebte im Prod-Projekt `comments`, das es seit dem
+Control-Cutover nicht mehr gibt. `changelog.pukalani.app` liefert nur noch
+Traefiks Ersatz-Zertifikat; der GitHub-Webhook (654489788) stand weiter auf
+`active=true`. Schlimmer: die **Marketing-Seite verlinkte genau diese Adresse
+als öffentlichen Changelog** — Ressourcen-Menü, Fuß und Beweis-Abschnitt
+(„öffentlich nachlesbar"), live viermal je Seite. Die echte öffentliche Seite
+liegt unter `admin.pukalani.app/changelog` (200, Sprachweiche per
+`Accept-Language` ⇒ 302 auf `/de/changelog`).
+
+**Erledigt (Davids Wahl 2026-11-06: „Doku + Webhook aufräumen", Link auf
+admin…/changelog):** `marketing.changelogUrl` → `https://admin.pukalani.app/changelog`;
+`ProofSection.vue` liest die Adresse jetzt aus `useMarketingSite()` statt einer
+zweiten festen Kopie; Anzeigename de/en angepasst; GitHub-Webhook deaktiviert
+(nicht gelöscht); CHANGELOG-WORKFLOW.md (2A ist DER Weg, 2B stillgelegt mit
+Hergang + Wiederbeleben), hosts-und-ports, Function-README, OPEN-ITEMS-Status.
+Der v3.0.0-Entwurf ist nachweislich nicht veröffentlicht ⇒ OPEN-ITEMS „CL1".
+
+**Gelernt:** Ein Endpunkt ist keine Seite. Die Marketing-Seite verlinkte die
+Webhook-Adresse, weil sie nach „Changelog" klang — im Juli antwortete sie mit
+200 (Ping), also fiel es nie auf. Beim Projekt-Umbau verschwand die Function
+still, weil Functions in keinem Wächter vorkommen (`verify-health` und
+`verify-tls` kennen `changelog.` nicht). Wer eine Adresse nach außen verlinkt,
+verlinkt eine Seite, die ein Mensch lesen soll — und eine Function, die nur ein
+Webhook erreicht, hat keinen Platz im Menü.
+
+---
+
 ### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
 
 **Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
@@ -60,6 +101,8 @@ Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
 dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
 der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
 (`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
+
+---
 
 ### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
 
