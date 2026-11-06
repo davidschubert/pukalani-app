@@ -1,4 +1,14 @@
 import { isBotCheckReason, type BotCheckReason } from '../../shared/turnstile'
+import { REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
+
+/**
+ * Hat der Server eine FRISCHE Anmeldung verlangt (`requireRecentAuth`, RA1)?
+ * Bewusst über den Grund, nicht über 403 — das heißt an anderen Stellen
+ * „keine Berechtigung", und dort hilft Neu-Anmelden nicht.
+ */
+export function isReauthRequired(error: unknown): boolean {
+  return (error as { data?: { reason?: unknown } } | null)?.data?.reason === REAUTH_REQUIRED_REASON
+}
 
 /**
  * Netzwerkfehler (Server nicht erreichbar) von echten API-Antworten
