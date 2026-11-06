@@ -3,39 +3,30 @@
 // UDashboardGroup + collapsible/resizable Sidebar (Brand oben, UserMenu unten),
 // Command-Palette-Suche (⌘K). Die Seiten rendern in <slot/> als UDashboardPanel.
 import type { CommandPaletteGroup, CommandPaletteItem, NavigationMenuItem } from '@nuxt/ui'
-import { isProductStateEnabled } from '../../../core/shared/types/config'
-import type { Capability } from '../../../core/shared/types/authz'
 import type { PukalaniSettingsTab } from '../../../core/shared/types/settings-tab'
 import { resolveSettingsTabs } from '../../../core/shared/types/settings-tab'
-import { configFlagEnabled, filterDashboardModules, resolveDashboardPlace, scopeVisibleAt } from '../../../core/shared/dashboardNav'
+import { applyDashboardNavPrefs, configFlagEnabled, parseDashboardNavPrefs } from '../../../core/shared/dashboardNav'
 
 const { t } = useI18n()
 const localePath = useLocalePath()
 const auth = useAuthStore()
 const appConfig = useAppConfig()
 
-// Laufzeit-Produkt-Gates (F2): Module deaktivierter Produkte verschwinden
-// aus der Nav — live über den Realtime-Config-Kanal (useRuntimeFlags).
-// Nur UX; die Autorität bleibt die Server-Middleware (Routen 404en).
-const runtimeFlags = useRuntimeFlags()
-const productOn = (productKey?: string) =>
-  !productKey || isProductStateEnabled(runtimeFlags.value.products[productKey])
-
-// TARIF-Gate (C2): Module, die der Plan dieser Community nicht enthält,
-// verschwinden — ihre Routen antworten wegen `requirePlanProduct` ohnehin 404
-// (Kurse/Events sind Pro). Zweites, unabhängiges Gate neben `productOn`: das
-// ist der Betreiber-Schalter, das hier der Vertrag des Kunden. `planAllows`
-// gibt ohne Pool-Tenant (Silo, Kontroll-Host, Playground) true zurück — dort
-// bleibt das Menü unverändert. Nur UX; die Autorität sitzt an der Route.
-const { planAllows } = useTenantPlan()
-const planOn = (planProduct: string) => planAllows(planProduct)
-
-// BAU-SCHALTER der App (F37): Module, deren Produkt diese App gar nicht
-// angeschaltet hat, verschwinden — z.B. das Einbetter-Register des Widgets in
-// einer App ohne `pukalani.comments.embed.enabled`. Drittes, unabhängiges Gate
-// neben productOn (Betreiber-Schalter) und planOn (Tarif des Kunden); die
-// Regel selbst ist pur und getestet (core/shared/dashboardNav.ts).
-const configOn = (configFlag: string) => configFlagEnabled(appConfig.pukalani, configFlag)
+/**
+ * DIE ZUTATEN DER NAVIGATION KOMMEN AUS EINER HAND (NAV1 Paket 3): Ort, die
+ * zwei Rechte-Quellen (N1) und die drei Produkt-Gates (F2 · C2 · F37) rechnet
+ * `useDashboardNavModules()` — dieselbe Rechnung liest die Konto-Seite
+ * „Navigation", damit dort nie etwas zum Sortieren angeboten wird, das die
+ * Leiste gar nicht zeigt. Die Begründungen zu jedem Gate stehen dort.
+ */
+const {
+  place,
+  operatorHere,
+  can,
+  tabFilter,
+  navModules,
+  bottomModules,
+} = useDashboardNavModules()
 
 // Glocke in der Betreiber-Shell (C17): dieselbe Config-Naht wie im
 // core-default-Layout. Betrifft heute apps/control — dort liegen die
@@ -63,50 +54,6 @@ const sidebarClass = computed(() => {
 const close = () => { open.value = false }
 const route = useRoute()
 
-// Capability-Prüfung mit ZWEI Quellen (N1): Operator-Labels und die Community-
-// Rolle dieses Mandanten (useCommunityRole, SSR-gespiegelt). Sie bleiben seit
-// E9 GETRENNT, weil die Ebene eines Moduls entscheidet, welche zählt
-// (moduleAllowedFor in core/shared/dashboardNav.ts): Betreiber-Module nur per
-// Label, Community-Module per Rolle ODER Label (Support-Break-Glass). Die
-// Zuordnung ist KONSERVATIV — sie ergibt sich vollständig aus den vorhandenen
-// Capabilities der Module × der Rollen-Matrix (core/shared/communityAuthz.ts),
-// hier wird keine neue Rechte-Liste gepflegt. Für einen Community-OWNER auf
-// seinem Host heißt das:
-//   sichtbar: Overview (dashboard.access), Kommentare (comments.moderate),
-//     Beiträge (posts.moderate), Events/Kurse/Activity (events/courses/
-//     activity.manage), Seiten (pages.manage), Medien (media.manage),
-//     Mitglieder (team.manage), Abo (community.billing)
-//   unsichtbar (Operator-only, Community-Rollen tragen die Caps nicht):
-//     Themes/Embed (system.manage) — deshalb ist „Branding" für ihn heute noch
-//     leer, s. Kommentar in packages/themes/app/app.config.ts
-//   gar nicht am Ort (scope 'operator'): Nutzer, Admin/Audit, Speicher, System,
-//     Plattform/Studio, Feedback, Board, Zahlungs-Protokolle
-const { capabilities: siteCaps } = useCommunityRole()
-/** Globales Operator-Label (authz.ts) — die INSTANZ-weite Rechte-Quelle. */
-const canAsOperator = (capability: Capability) => userHasCapability(auth.user, capability)
-/** Rolle in DIESER Community (communityAuthz.ts) — die zweite Quelle. */
-const canAsMember = (capability: Capability) => siteCaps.value.has(capability)
-/** Beide zusammen — für die hart verdrahteten Links und die Suche. */
-const can = (capability: Capability) => canAsOperator(capability) || canAsMember(capability)
-
-/**
- * DER ORT (E9, docs/plans/DASHBOARD-IA.md): Betreiber-Einträge verschwinden
- * auf einem Mandanten-Host, Community-Einträge erscheinen nur dort — und im
- * Silo-/Einzelbetrieb bleibt alles wie vorher, weil es dort keine zweite Ebene
- * gibt. Die Regel selbst ist pur und getestet (core/shared/dashboardNav.ts);
- * hier steht nur, woher ihre zwei Eingaben kommen.
- *
- * Beides ist eine Tatsache des REQUESTS (Config + Host), keine reaktive
- * Größe — SSR und Client kommen zwangsläufig zum selben Ergebnis, also gibt
- * es keinen Hydration-Bruch.
- */
-const place = resolveDashboardPlace(
-  (appConfig.pukalani as { tenancy?: { enabled?: boolean } }).tenancy?.enabled === true,
-  useIsTenantHost(),
-)
-/** Nur für die HART verdrahteten Links unten (Nutzer, Admin, Speicher, System). */
-const operatorHere = scopeVisibleAt('operator', place)
-
 /**
  * Community-Switcher im Sidebar-Kopf (F50, 2026-08-07 — Davids Entscheidung im
  * DECISION-LOG „Konto-Modell bestätigt, Community-Switcher kommt"). ZWEI
@@ -129,66 +76,71 @@ const canManageUsers = computed(() => can('users.manage'))
 // (Davids Entscheidung, Befund B7) — die verlangt `comments.moderate`.
 const canModerateComments = computed(() => can('comments.moderate'))
 
-// Hauptnavigation oben — je Eintrag nach Capability gefiltert (RBAC). Overview
-// sieht jeder mit dashboard.access; der Rest nur mit der jeweiligen Capability.
-const links = computed<NavigationMenuItem[]>(() => {
+// Von Produkt-Layern registrierte Dashboard-Module (z.B. comments-Moderation),
+// nach EBENE und Capability gefiltert — admin kennt sie nicht hart
+// (Modul-Registry, A14). Mit children wird der Eintrag zum aufklappbaren
+// Abschnitt (Unterpunkte erben die Capability des Moduls, sofern keine
+// eigene gesetzt ist). placement 'bottom' rendert unten, 'userMenu' im
+// Account-Menü (DashboardUserMenu) — beides nicht hier.
+const toItem = (m: PukalaniAdminModule): NavigationMenuItem => {
+  const children = (m.children ?? [])
+    .filter(child => can(child.requiredCapability ?? m.requiredCapability))
+    .map(child => ({ label: t(child.labelKey), icon: child.icon, to: localePath(child.to), exact: child.exact, onSelect: close }))
+  return children.length
+    ? { label: t(m.labelKey), icon: m.icon, defaultOpen: route.path.startsWith(localePath(m.to)), children }
+    : { label: t(m.labelKey), icon: m.icon, to: localePath(m.to), onSelect: close }
+}
+
+/**
+ * Die Module in Abschnitte legen und in Menü-Einträge übersetzen — erst die
+ * ohne Gruppe, dann je Gruppe ein Label und darunter ihre Einträge. Die
+ * Gruppen-Reihenfolge steht als `DASHBOARD_NAV_GROUPS` in
+ * core/shared/dashboardNav.ts (bis NAV1 Paket 3 als Literal-Array hier).
+ *
+ * Innerhalb sortiert `order` (Vergabe-Regel ebendort); Label-Abstand kommt
+ * einheitlich über :ui der UNavigationMenu.
+ */
+function toNavItems(layout: ReturnType<typeof applyDashboardNavPrefs<PukalaniAdminModule>>): NavigationMenuItem[] {
   const items: NavigationMenuItem[] = [
     { label: t('admin.nav.overview'), icon: 'i-ph-gauge', to: localePath('/dashboard'), exact: true, onSelect: close },
   ]
-  // Von Produkt-Layern registrierte Dashboard-Module (z.B. comments-Moderation),
-  // nach EBENE und Capability gefiltert — admin kennt sie nicht hart
-  // (Modul-Registry, A14). Mit children wird der Eintrag zum aufklappbaren
-  // Abschnitt (Unterpunkte erben die Capability des Moduls, sofern keine
-  // eigene gesetzt ist). placement 'bottom' rendert unten, 'userMenu' im
-  // Account-Menü (DashboardUserMenu) — beides nicht hier.
-  const toItem = (m: PukalaniAdminModule): NavigationMenuItem => {
-    const children = (m.children ?? [])
-      .filter(child => can(child.requiredCapability ?? m.requiredCapability))
-      .map(child => ({ label: t(child.labelKey), icon: child.icon, to: localePath(child.to), exact: child.exact, onSelect: close }))
-    return children.length
-      ? { label: t(m.labelKey), icon: m.icon, defaultOpen: route.path.startsWith(localePath(m.to)), children }
-      : { label: t(m.labelKey), icon: m.icon, to: localePath(m.to), onSelect: close }
-  }
-  const modules = filterDashboardModules(
-    (appConfig.pukalani?.admin?.modules ?? []) as PukalaniAdminModule[],
-    { place, placement: 'nav', canAsOperator, canAsMember, productOn, planOn, configOn },
-  )
-  for (const m of modules.filter(m => !m.group)) items.push(toItem(m))
-  // Gruppen in fester Reihenfolge (Davids Struktur, E9): erst die Betreiber-
-  // Ebene (Plattform · Studio · Management), dann die Konto-Ebene, dann die
-  // Community-Ebene (Website · Produkte · Moderation · Gestaltung ·
-  // Einstellungen). Am Ort schließt sich ohnehin immer eine der beiden Hälften
-  // aus — die eine Liste genügt.
-  //
-  // ZWEI GRUPPEN KAMEN MIT U7 DAZU (2026-08-11):
-  //
-  //  - `moderation` (Audit-Befund G5). Die vier Moderations-Arbeitsflächen
-  //    lagen in zwei Gruppen, von denen eine „Einstellungen" hieß (ein
-  //    Moderator darf dort nichts einstellen) und die andere „Produkte" (er
-  //    verwaltet keine). Für die Rolle, deren einziger Zweck Moderation ist,
-  //    gab es keinen Ort, der so heißt. Sie steht zwischen „Produkte" und
-  //    „Gestaltung": erst der Inhalt, dann seine Aufsicht, dann das Aussehen.
-  //  - `account` (Audit-Befund G8). `scope: 'account'` heißt „überall, für
-  //    jeden Angemeldeten" — solche Einträge gehören nicht in die Gruppe
-  //    „Management" des Betreibers. Sie steht DIREKT HINTER `management`,
-  //    damit der Betreiber „Wünsche & Ideen" weiterhin an derselben Stelle
-  //    findet; für ein Mitglied einer Kunden-Community ist sie die einzige
-  //    der ersten vier, die überhaupt Inhalt hat.
-  //
-  // Innerhalb sortiert 'order' (sonst Registry-Reihenfolge; Vergabe-Regel in
-  // core/shared/dashboardNav.ts); Label-Abstand kommt einheitlich über :ui der
-  // UNavigationMenu.
-  for (const group of ['platform', 'studio', 'management', 'account', 'website', 'products', 'moderation', 'branding', 'settings'] as const) {
-    const grouped = modules
-      .filter(m => m.group === group)
-      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
-    if (!grouped.length) continue
-    items.push({ label: t(`admin.nav.groups.${group}`), type: 'label' })
-    for (const m of grouped) items.push(toItem(m))
+  for (const m of layout.ungrouped) items.push(toItem(m))
+  for (const group of layout.groups) {
+    items.push({ label: t(`admin.nav.groups.${group.group}`), type: 'label' })
+    for (const m of group.modules) items.push(toItem(m))
   }
   // Settings bewusst nicht hier — sitzt schon im User-Menü unten (DashboardUserMenu)
   return items
-})
+}
+
+/**
+ * DIE SEITENLEISTE ZEIGT DIE WAHL DIESER PERSON (NAV1 Paket 3, Entscheidung 3
+ * vom 2026-09-08). `prefs.dashboardNav` kommt aus dem Konto und ist SSR-
+ * hydriert (`auth.user` steht im Payload) — es gibt hier keine Client-only-
+ * Verzweigung und damit keinen Hydration-Bruch. Ohne gespeicherte Wahl ist das
+ * Ergebnis exakt die bisherige Nav (Zusage 1).
+ *
+ * Gelesen wird IMMER durch `parseDashboardNavPrefs`: ein Prefs-Dokument kann
+ * alles enthalten, und ein kaputtes darf höchstens die Standard-Reihenfolge
+ * kosten, nie das Menü.
+ */
+const navPrefs = computed(() => parseDashboardNavPrefs(auth.user?.prefs?.dashboardNav))
+
+const links = computed<NavigationMenuItem[]>(() =>
+  toNavItems(applyDashboardNavPrefs(navModules.value, navPrefs.value)))
+
+/**
+ * DIESELBE NAV OHNE DIE PERSÖNLICHE WAHL — die liest die ⌘K-Suche (Zusage 5).
+ *
+ * „Ausblenden" nimmt einen Eintrag aus der SEITENLEISTE, nicht aus der
+ * Anwendung: die Fläche darf man weiterhin betreten, die Route sagt dazu
+ * unverändert ja. Läse die Suche `links`, wäre ein Ausblenden ein Weg, sich
+ * selbst auszusperren — und der einzige Rückweg ein Besuch der Konto-Seite.
+ * Reihenfolge spielt hier keine Rolle (die Palette sortiert nach Treffer);
+ * es geht allein um die VOLLSTÄNDIGKEIT.
+ */
+const allLinks = computed<NavigationMenuItem[]>(() =>
+  toNavItems(applyDashboardNavPrefs(navModules.value, undefined)))
 
 /**
  * Der INSTANZ-Unterbau, knapp über dem User-Menü: Nutzer · (registrierte
@@ -219,7 +171,7 @@ const links = computed<NavigationMenuItem[]>(() => {
  */
 const communityTabsHere = computed(() => resolveSettingsTabs(
   (appConfig.pukalani?.admin?.communityTabs ?? []) as PukalaniSettingsTab[],
-  { place, canAsOperator, canAsMember, productOn, planOn, configOn },
+  tabFilter,
 ))
 
 /**
@@ -233,7 +185,11 @@ const communityTabsHere = computed(() => resolveSettingsTabs(
  *
  * Der Schalter dafür war schon da: `admin.instanceTabs` (Core-Default aus)
  * hängt genau die vier Betreiber-Reiter in diese Hülle (packages/admin/app/
- * app.config.ts). Wo er an ist, heißt sie nach dem, was drin steht. Gelesen
+ * app.config.ts). Wo er an ist, heißt sie „Website-Einstellungen" — Davids
+ * Wort vom 2026-09-08 (davor „Instanz-Einstellungen": für einen Kunden ist
+ * „Instanz" Technik, „Website" das, was er vor sich hat; der i18n-SCHLÜSSEL
+ * `instanceSettings` bleibt, Label ≠ Key). An ist er in den drei Silo-Apps
+ * comments, portfolio und branding. Gelesen
  * über dieselbe pure Regel wie die Registry-Gates (`configFlagEnabled`,
  * fail-closed) — kein zweiter Weg zu derselben Tatsache.
  *
@@ -260,10 +216,7 @@ const bottomLinks = computed<NavigationMenuItem[]>(() => {
   if (operatorHere && canManageUsers.value) {
     items.push({ label: t('admin.nav.people'), icon: 'i-ph-users', to: localePath('/dashboard/users'), onSelect: close })
   }
-  for (const m of filterDashboardModules(
-    (appConfig.pukalani?.admin?.modules ?? []) as PukalaniAdminModule[],
-    { place, placement: 'bottom', canAsOperator, canAsMember, productOn, planOn, configOn },
-  ).sort((a, b) => (a.order ?? 999) - (b.order ?? 999))) {
+  for (const m of bottomModules.value) {
     items.push({ label: t(m.labelKey), icon: m.icon, to: localePath(m.to), onSelect: close })
   }
   if (operatorHere && can('audit.read')) items.push({ label: t('admin.nav.admin'), icon: 'i-ph-shield-check', to: localePath('/dashboard/admin'), onSelect: close })
@@ -365,7 +318,7 @@ watch(searchTerm, (term) => {
  *  - `communityTabsHere` — dieselbe gefilterte Reiter-Liste, die auch der
  *    Menüpunkt unten links benutzt (Ort × Capability × die drei Produkt-Gates).
  *    Damit findet die Suche nie einen Reiter, den die Hülle wegfiltert.
- *  - `ACCOUNT_SETTINGS_TABS` — die fünf Konto-Reiter aus der Hülle selbst
+ *  - `ACCOUNT_SETTINGS_TABS` — die Konto-Reiter aus der Hülle selbst
  *    (app/utils/accountSettingsTabs.ts). Sie tragen keine Capability: sein
  *    eigenes Konto verwaltet jeder Angemeldete.
  * Registrierte FREMDE Konto-Reiter (`pukalani.admin.settingsTabs`) kommen
@@ -375,17 +328,21 @@ watch(searchTerm, (term) => {
  * EINE Gruppe für beides, weil ein Suchender die Hüllen nicht auseinanderhält:
  * er sucht eine Fläche, nicht ihren Behälter. Die Vereinigung ist bewusst
  * doppelfrei — `to` ist der Schlüssel, und der ist je Fläche eindeutig.
+ *
+ * SEIT NAV1 PAKET 3 liest die Nav-Gruppe `allLinks`, nicht `links`: die
+ * persönliche Wahl gehört in die Seitenleiste, nicht in die Suche (Zusage 5,
+ * Begründung an `allLinks`).
  */
 const settingsTabsHere = computed(() => resolveSettingsTabs(
   (appConfig.pukalani?.admin?.settingsTabs ?? []) as PukalaniSettingsTab[],
-  { place, canAsOperator, canAsMember, productOn, planOn, configOn },
+  tabFilter,
 ))
 
 const searchGroups = computed(() => {
   const navGroup: PaletteGroup = {
     id: 'links',
     label: t('dashboard.search.label'),
-    items: [...links.value, ...bottomLinks.value].map(link => ({ label: String(link.label), icon: link.icon, to: String(link.to) })),
+    items: [...allLinks.value, ...bottomLinks.value].map(link => ({ label: String(link.label), icon: link.icon, to: String(link.to) })),
   }
   const seen = new Set(navGroup.items.map(item => item.to))
   const tabItems: PaletteItem[] = []

@@ -53,7 +53,7 @@ const columns = computed<TableColumn<TrustLevelMember>[]>(() => [
   { id: 'name', header: () => t('posts.trustLevels.col.person') },
   { id: 'level', header: () => t('posts.trustLevels.col.level') },
   { id: 'activity', header: () => t('posts.trustLevels.col.activity') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function displayName(entry: TrustLevelMember): string {

@@ -15,9 +15,14 @@ export default defineEventHandler(async (event) => {
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  const { account } = createSessionClient(event)
+  // node-appwrite 28: `account.createJWT` ist entfernt — geminzt wird am
+  // ADMIN-Client (`users.createJWT`). Die userId stammt AUSSCHLIESSLICH aus
+  // `event.context.user` (von der Auth-Middleware aus der Session aufgelöst),
+  // nie aus Query oder Body: sonst könnte man sich ein JWT für ein fremdes
+  // Konto ausstellen lassen.
+  const { users } = createAdminClient(event)
   // Session kann zwischen Middleware und Route abgelaufen sein → 401, nicht 500.
-  const { jwt } = await account.createJWT({ duration: JWT_DURATION_S })
+  const { jwt } = await users.createJWT({ userId: event.context.user.$id, duration: JWT_DURATION_S })
     .catch(() => { throw createError({ status: 401, statusText: 'Unauthorized' }) })
   return { jwt }
 })

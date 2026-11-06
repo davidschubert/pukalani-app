@@ -72,7 +72,7 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
   { accessorKey: 'userId', header: () => t('billing.admin.col.user'), meta: { class: HIDE_MD } },
   { accessorKey: 'currentPeriodEnd', header: () => t('billing.admin.col.renews'), id: 'renews', meta: { class: HIDE_LG } },
   { accessorKey: '$updatedAt', header: () => t('billing.admin.col.updated'), id: 'updated' },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 </script>
 

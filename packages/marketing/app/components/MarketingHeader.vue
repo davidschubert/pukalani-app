@@ -122,7 +122,7 @@ const desktopItems = computed(() => [
    *
    * Beide Ziele verlassen diese App IMMER: die Hilfe liegt auf
    * help.pukalani.app (locale-bewusst, siehe useMarketingSite), der Changelog
-   * auf changelog.pukalani.app. `LINK_DEFAULTS` gilt trotzdem — `active:
+   * auf admin.pukalani.app/changelog. `LINK_DEFAULTS` gilt trotzdem — `active:
    * false` hält den Eintrag frei von der Einfärbung, `locale: false` verbietet
    * `ULink` das Durchreichen einer absoluten URL durch `localePath()`.
    */

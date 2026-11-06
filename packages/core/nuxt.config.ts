@@ -270,6 +270,12 @@ export default defineNuxtConfig({
     smtpUser: '',
     smtpPass: '',
     smtpFrom: '',
+    // server-only! Env: NUXT_TURNSTILE_SECRET — Secret Key von Cloudflare
+    // Turnstile (Bot-Beweis an signup/otp/recovery, Vorfall 2026-10-27).
+    // Leer = aus, ZUSAMMEN mit `public.turnstileSiteKey` der Schalter
+    // (shared/turnstile.ts: beide leer = aus, beide gesetzt = an, nur einer =
+    // Fehlkonfiguration, laut im Log). Prüfung: server/utils/turnstile.ts.
+    turnstileSecret: '',
     // server-only! Entitlement-Zustellung (F3/M8-Vorbereitung): URL des
     // Control-Plane-Dokuments (leer = Pull aus, Gates neutral) + kid→Public-
     // Key-Map (JSON, SPKI-DER base64). Env: NUXT_ENTITLEMENTS_URL /
@@ -338,6 +344,11 @@ export default defineNuxtConfig({
       appwriteEndpoint: '',
       appwriteProjectId: '',
       appwriteDatabaseId: '',
+      // Env: NUXT_PUBLIC_TURNSTILE_SITE_KEY — Site Key von Cloudflare Turnstile
+      // (öffentlich, steht im Widget). Leer = kein Widget, die Formulare
+      // verhalten sich wie vor dem Vorfall 2026-10-27. Gegenstück zum
+      // server-only `turnstileSecret` oben.
+      turnstileSiteKey: '',
       // Storage-Bucket für Profilfotos (gehört der App). Leer = Foto-Upload-UI
       // ausgeblendet, bis der Bucket existiert (NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET).
       appwriteAvatarsBucket: '',

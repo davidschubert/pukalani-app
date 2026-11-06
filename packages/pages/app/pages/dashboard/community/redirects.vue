@@ -147,7 +147,7 @@ const columns = computed<TableColumn<RedirectRow>[]>(() => [
   { accessorKey: 'from', header: () => t('pages.redirects.col.from') },
   { accessorKey: 'to', header: () => t('pages.redirects.col.to') },
   { id: 'kind', header: () => t('pages.redirects.col.kind') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 </script>
 

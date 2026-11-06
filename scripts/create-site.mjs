@@ -182,8 +182,19 @@ if (!skipAppwrite && consoleEmail && consolePassword) {
         teamId = `pukalani-sites-${Math.random().toString(36).slice(2, 6)}`
         ;({ status, json } = await consoleApi('/teams', 'POST', { teamId, name: 'Pukalani Sites' }))
       }
-      if (status !== 201) fail(`Organisation (${status}): ${json?.message ?? ''}`)
-      console.log(`✔ Organisation ${teamId} angelegt`)
+      // Seit Appwrite 2.1 erlaubt eine SELBST GEHOSTETE Instanz genau EINE
+      // Organisation (403 statt 201). Dann ist die vorhandene die richtige —
+      // Projekte hängen an ihr, und eine zweite gibt es hier nie wieder.
+      if (status === 403) {
+        const mine = (own.json?.teams ?? [])[0]
+        if (!mine) fail(`Organisation (403): ${json?.message ?? ''} — und dieser Console-Account ist in KEINER Organisation Mitglied.`)
+        teamId = mine.$id
+        console.log(`↷ Organisation ${teamId} (die einzige der Instanz) wird genutzt — seit 2.1 erlaubt self-hosted nur eine`)
+      }
+      else {
+        if (status !== 201) fail(`Organisation (${status}): ${json?.message ?? ''}`)
+        console.log(`✔ Organisation ${teamId} angelegt`)
+      }
     }
   }
 

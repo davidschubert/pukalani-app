@@ -52,7 +52,7 @@ const columns = computed<TableColumn<EmbedSiteDto>[]>(() => [
   { accessorKey: 'label', header: () => t('comments.embedAdmin.col.label'), meta: { class: HIDE_SM } },
   { id: 'targets', header: () => t('comments.embedAdmin.col.targets'), meta: { class: HIDE_SM } },
   { accessorKey: 'active', header: () => t('comments.embedAdmin.col.active') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 const showCreate = ref(false)

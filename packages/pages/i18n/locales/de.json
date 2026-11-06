@@ -54,10 +54,21 @@
       "loadFailedHint": "Der Editor ist leer geblieben — was du hier speicherst, würde den vorhandenen Inhalt überschreiben. Prüf die Verbindung und öffne die Seite noch einmal.",
       "titleRequired": "Bitte einen Titel eingeben",
       "titleRequiredHint": "Jede Sprachversion hat ihren eigenen Titel — trag ihn im aktiven Reiter ein.",
-      "locale": {
-        "en": "Englisch",
-        "de": "Deutsch"
-      }
+      "localeState": {
+        "published": "{language}: veröffentlicht",
+        "draft": "{language}: Entwurf",
+        "missing": "{language}: fehlt"
+      },
+      "translateWithAi": "Aus {language} übersetzen",
+      "translated": "Vorschlag eingefügt",
+      "translatedHint": "Er ist noch nicht gespeichert und noch nicht veröffentlicht — lies ihn durch, ändere was nötig ist, dann speichern.",
+      "translateFailed": "Übersetzen hat nicht geklappt",
+      "translateFailedHint": "Bitte versuch es gleich noch einmal. Bleibt es dabei, übersetze den Text von Hand.",
+      "translateTooLong": "Zu lang für den Vorschlag (höchstens {max} Zeichen) — dieser Text gehört in Menschenhand."
+    },
+    "draftNotice": {
+      "title": "Entwurf, in anwaltlicher Prüfung",
+      "body": "Diese Seite trägt die nötige Struktur, aber noch keinen verbindlichen Text. Die geprüfte Fassung ersetzt sie, bevor branding.supply für alle öffnet. Bis dahin gilt: hier steht nichts, worauf du dich verlassen kannst."
     },
     "validation": {
       "slugInvalid": "Ungültiger Slug (Kleinbuchstaben, Ziffern, Bindestriche)",
@@ -65,7 +76,8 @@
       "titleRequired": "Titel ist erforderlich",
       "titleMax": "Titel ist zu lang",
       "bodyMax": "Inhalt ist zu lang",
-      "statusInvalid": "Ungültiger Status"
+      "statusInvalid": "Ungültiger Status",
+      "translateBodyMax": "Text ist zu lang für einen Übersetzungsvorschlag"
     },
     "navigation": {
       "navLabel": "Navigation",
@@ -79,10 +91,16 @@
       "labelAria": "Name des Menüpunkts",
       "externalHint": "öffnet in einem neuen Tab",
       "unavailable": "gerade nicht verfügbar",
+      "childOf": "Unterpunkt von „{label}“",
+      "orphanHint": "Steht als Hauptpunkt, weil „{label}“ ausgeblendet ist.",
+      "groupHint": "Nur ein Aufklapper — dieser Punkt hat keine eigene Seite.",
+      "groupEmptyHint": "Erscheint erst mit einem Unterpunkt.",
       "show": "Im Menü zeigen",
       "hide": "Aus dem Menü nehmen",
       "moveUp": "Nach oben",
       "moveDown": "Nach unten",
+      "indent": "Zum Unterpunkt machen",
+      "outdent": "Wieder zum Hauptpunkt machen",
       "reset": "Auf das Standard-Menü zurücksetzen",
       "saved": "Menü gespeichert",
       "errorSave": "Das Menü konnte nicht gespeichert werden.",
@@ -93,6 +111,7 @@
         "remove": "Link entfernen",
         "kindPage": "Eine Seite dieser Community",
         "kindExternal": "Eine externe Adresse",
+        "kindGroup": "Ein Hauptpunkt ohne eigene Seite",
         "labelPlaceholder": "Wie der Link heißen soll",
         "labelAria": "Name des Links",
         "urlAria": "Webadresse",
@@ -100,7 +119,7 @@
       },
       "preview": {
         "title": "Vorschau",
-        "description": "So sehen Besucher die Reihenfolge. Ab dem sechsten Eintrag wandert der Rest in ein „Mehr“-Menü.",
+        "description": "So sehen Besucher die Reihenfolge. Ab dem sechsten Hauptpunkt wandert der Rest in ein „Mehr“-Menü.",
         "emptyMenu": "Das Menü ist leer."
       },
       "validation": {
@@ -108,6 +127,8 @@
         "labelMax": "Dieser Name ist zu lang",
         "targetMax": "Diese Adresse ist zu lang",
         "notRetargetable": "Mitgelieferte Einträge lassen sich umbenennen, aber nicht umlenken. Lege dafür einen eigenen Link an.",
+        "groupNoTarget": "Ein Hauptpunkt ohne eigene Seite kann kein Ziel haben. Lege dafür einen eigenen Link an.",
+        "parentInvalid": "Dieser Unterpunkt braucht einen Hauptpunkt aus derselben Liste — und Unterpunkte eines Unterpunkts gibt es nicht.",
         "labelRequired": "Bitte gib dem Link einen Namen",
         "targetRequired": "Bitte wähle, wohin der Link führt",
         "externalInvalid": "Externe Links müssen mit https:// beginnen",
@@ -193,6 +214,13 @@
         "tooMany": "Es sind zu viele Weiterleitungen.",
         "tooLarge": "Die Liste ist insgesamt zu lang."
       }
+    },
+    "language": {
+      "en": "Englisch",
+      "de": "Deutsch"
+    },
+    "public": {
+      "otherLanguage": "Diese Seite gibt es noch nicht auf {requested} — angezeigt wird die Fassung auf {delivered}."
     }
   }
 }

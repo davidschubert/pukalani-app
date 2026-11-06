@@ -30,7 +30,7 @@ du für die Person; Solo-Fassung durchgehend „du").
 | Wirkung en | Klassisch, verlässlich, leicht britisch — der ruhige Berater, nicht das Maskottchen. Passt zum Weisen-Grundton. |
 | Wirkung de | Vertraut und leicht altmodisch im sympathischen Sinn; wird im Deutschen englisch ausgesprochen (kein „Schorsch"-Stolperer in der Zielgruppe). |
 | Passung Archetyp | Pukalani-Facette „Der Weise · Rest Schöpfer" — George führt wissend, baut aber sichtbar MIT. Passt. |
-| Dummy-Realität | George Wuffwuff (Chihuahua) trägt den Namen seit Wochen durch alle Ansichten; er funktioniert im UI, im Chat und im Team-Kontext (About-Seite). |
+| Dummy-Realität | George trägt den Namen seit Wochen durch alle Ansichten; er funktioniert im UI, im Chat und im Team-Kontext (About-Seite). Der volle Name ist seit dem 2026-09-02 **George Winter** — professioneller Markenberater, kein Maskottchen (s. §1.4). |
 | White-Label | Name lebt als `pukalani.brand.persona` (app.config) + i18n-Parameter `{persona}` — NIE hartkodiert in Texten. Der spätere White-Label-Tier tauscht ein Config-Feld, keine Übersetzungen. |
 
 → **Gate ②: ABGESEGNET (David, 2026-08-30) — George bleibt.**
@@ -109,6 +109,72 @@ mit Beleg + Angebot", B3 zeigt „nimmt Last ab + bleibt ehrlich über
 Unsicherheit". Jede künftige George-Textzeile wird gegen diese drei
 gelesen.
 
+### 1.4 NACHTRAG 2026-09-01 — Beraterteam statt Alleskönner (hebt „nur George" auf)
+
+Nach dem Live-Persona-Audit an Davids erstem echten Branding. **Davids
+Leitsatz, der jede Prompt-Entscheidung führt:** „Die Qualität der Antworten
+wird durchs INTERVIEW bestimmt — eine kleine, leicht beantwortbare Frage
+zuerst; ehrlich benennen, was fehlt; runterbrechen, bevor jemand zu viel
+erzählt."
+
+**Davids Entscheidung 1: der Wizard zeigt ein TEAM.** §1.1/§1.2 sprechen von
+EINER Persona; das gilt ab hier nur noch für den Gastgeber. Fünf Beraterinnen
+und Berater, je einer pro Baustein — Registry:
+`packages/brand/shared/brandAdvisors.ts` (pur, `advisorForStep()` ist die
+einzige Rechenstelle, George der Rückfall).
+
+| Berater | Rolle | Bausteine | Kern der Interview-Technik |
+| --- | --- | --- | --- |
+| **George** Winter | Markenberater (Gastgeber) | Startbogen · A Kontext · Ergebnis | Journalist: kleinste konkrete Frage zuerst, spiegelt zurück |
+| **Vera** Stein | Strategin | B PVM · B2 Architektur | fragt warum, bis es trägt; „Das könnte jeder sagen" — die Widerspruchs-Pflicht (Regel 5) lebt hier am stärksten |
+| **Milo** Berger | Werte-Berater | C Werte · D Archetyp | Momente statt Adjektive („Erzähl von einem Tag, an dem …"), destilliert Werte aus Geschichten |
+| **Nika** Sommer | Sprach-Beraterin | E Manifest · E+ Verbale Identität | testet am Ohr, jagt Floskeln und Vertriebssprache |
+| **Otto** Kessler | Namens-Berater | F Name | nüchtern-pragmatisch, dämpft Namens-Verliebtheit: erst überleben, dann gefallen |
+
+**Die neun Regeln aus §1.2 gelten unverändert für alle fünf.** Die
+Persönlichkeit steht im Prompt ÜBER dem Regel-Fundament und ordnet sich ihm
+ausdrücklich unter: sie entscheidet WIE gesprochen wird, die Regeln WAS erlaubt
+ist — bei Konflikt gewinnen die Regeln. Auch die drei Beispielantworten aus
+§1.3 bleiben die Kalibrierung; sie beschreiben Haltungen, keine Stimmen.
+
+**Davids Entscheidung 2: die Namen — REVIDIERT am 2026-09-02.** Die erste
+Fassung holte die Nachnamen aus der Hunde-Welt des Klickdummys (Runde 163:
+George Wuffwuff, Vera Witterung, Milo Treuherz, Nika Bellkant, Otto Testbiss).
+Diese Welt ist **komplett verworfen** — Davids Entscheidung, festgehalten im
+DECISION-LOG 2026-09-02. Das Team sind professionelle Beraterinnen und Berater,
+ohne Rassen und ohne Tier-Gags, im Wizard wie auf der About-Seite:
+
+| | Wizard | Produkt-Team (About) |
+| --- | --- | --- |
+| Namen | George **Winter** · Vera **Stein** · Milo **Berger** · Nika **Sommer** · Otto **Kessler** | Frida **Martens** · Rex **Weber** · Kira **Hoffmann** · Wanda **Nowak** · Ada **Sander** · Scout **Krüger** |
+
+**Zwei Ebenen, bewusst getrennt:**
+- **About-Seite:** voller Name + `personal` = eine PROFESSIONELLE Kurzzeile über
+  Haltung und Arbeitsweise (kein „Rasse · Stadt · zwei Hobbys" mehr).
+- **Arbeitsmodus:** nur Vorname + Rollen-Titel im Chat-Kopf.
+- **Prompt:** weder Nachname noch Hunde-Vokabular (per Test genagelt) — im
+  Interview sind das Beraterinnen und Berater, kein Maskottchen.
+
+**Was `george-a-4` sonst noch ändert** (jede Zeile ein Audit-Befund):
+
+| # | Befund | Änderung |
+| --- | --- | --- |
+| B2 | Entwürfe kamen ohne Rahmen | Der CHAT-Zug rahmt: 1 Satz worauf er fusst · der Entwurf · genau EINE Frage. Der SLOT bekommt nur den Wert. Marker-Vertrag `BASIS:/DRAFT:/ASK:` in `server/utils/georgeTurn.ts` |
+| B3 | dünnes Material ⇒ erfundener Entwurf | `QUESTION:` als Antwortform — der Lauf endet als Rückfrage (`outcome: 'question'`), fasst keinen Slot an, stellt EINE kleine Frage |
+| B4 | Sternchen im Slot-Text | Feldwert ohne Markdown-Auszeichnung, ausser dem list/structured-Formvertrag |
+| B6 | „steht nicht in den Eingaben" als Steckbrief-Füllung | GEKENNZEICHNETE Annahmen erlaubt (`- Name — assumption, please verify: …`); erfundene NAMEN bleiben verboten |
+| B8 | Vertriebston für einen Verein | Kontext-Sensibilität: Non-Profit/Verein ⇒ keine Vertriebssprache; gelesen aus den Eingaben, nicht erfragt |
+| B9 | Wortdoppler, holpriges Deutsch | Sorgfaltszeile unter den Regeln |
+| B5a | eigene Antworten unsichtbar | Der Verlauf zeigt die getippten Antworten. **NICHT dabei (B5b):** Georges Reaktion darauf — jede Reaktion wäre ein KI-Aufruf je Antwort, das ist eine Kostenentscheidung und gehört in die Konversations-Runde P3 |
+
+**Bereitschafts-Gate („zu wenig ist zu wenig", Davids Entscheidung):** je Slot
+prüft eine pure Regel (`shared/brandSlotReadiness.ts`) VOR dem Klick, ob das
+Material reicht — aus denselben Quellen, die der Generator sieht (Startkarte,
+Website-Text, Quell-Slots). Fehlt etwas, steht das beim Namen in der Werkstatt
+und die Route antwortet 409 `not_ready`; ein Anbieter-Aufruf entsteht nicht.
+Was man rechnen kann, fragt man nicht — die Rückfrage (B3) bleibt für das, was
+man nicht rechnen kann.
+
 ---
 
 ## 2. Schritt 0 — Startkarte und Weichen
@@ -160,6 +226,14 @@ Prüfstand?" — Chip, Default nein).
 | R2 | What goes — deliberately? And why that? | Was fliegt bewusst raus — und warum gerade das? |
 | R3 | Why now? What happened — growth, new audience, merger, or the moment you got embarrassed by your own website? | Warum jetzt? Was ist passiert — Wachstum, neue Zielgruppe, Zusammenschluss, oder der Moment, in dem euch die eigene Website peinlich wurde? |
 | R4 (aus 06 §7) | What do you NOT like about your current appearance? | Was gefällt dir am jetzigen Auftritt NICHT? |
+
+**R3 und R4: ohne Session — 2026-09-04 gestrichen.** R1 trägt `a.origin` auf dem
+Relaunch-Pfad wörtlich, R2 steht dort als Qualitätsmerkmal („nennt eine Sache, die
+bleibt, und eine, die geht"). R3 und R4 landeten dagegen in KEINEM Feld: sie waren
+nur Locale-Schlüssel (`brand.q.rebrand.r3/.r4`) und damit gebaut, aber unerreichbar
+(Inhalts-Audit §2.1). Ein eigener Slot dafür hiesse eine neue Registry-Fassung für
+zwei Fragen, deren Substanz `a.origin` und `a.challenge` schon holen — deshalb sind
+die beiden Schlüssel entfernt. Die Zeilen hier bleiben als Protokoll stehen.
 
 Gründer-Pfad behält stattdessen die Ursprungsfragen (02 §5 / 06 §3).
 → **Gate ①: David liest R1–R4 und die Provokationen in §4/§5 gegen.**
@@ -274,6 +348,22 @@ c.conflictRule (F) · c.teamFilter (F, NUR Team-Weiche).
 | D6 | What do people praise you for, again and again? | Wofür werdet ihr immer wieder gelobt? |
 | D7 | How should your team decide when you're not in the room? | Wie soll dein Team entscheiden, wenn du nicht im Raum bist? |
 
+**Der Pool ist EINGEFROREN — 2026-09-04, Davids Entscheidung.** Gebaut sind fest
+D1 → `c.discovery1`, D2 → `c.discovery2`, D3 → `c.discovery3`. Die „KI wählt 3 der
+7"-Adaptivität gibt es nicht und wird nicht gebaut: sie macht die Brandings
+untereinander unvergleichbar, und D4–D6 fügen dem, was D1–D3 holen, wenig hinzu
+(D6 „wofür gelobt" deckt ohnehin `a.customerPraise` ab).
+
+**D4, D5, D6: nicht gebaut — eingefroren am 2026-09-04.** Sie bleiben hier als
+Protokoll stehen, damit niemand später denkt, es fehle etwas.
+
+**D7 IST die eine Ausnahme.** Steht die Weiche W3 auf Team, ersetzt D7 die Frage D3:
+`c.discovery3` trägt dafür `teamVariant: true`, und der Locale-Katalog führt beide
+Fassungen unter `brand.q.c.discovery3.solo` bzw. `.team`. Ziel, Qualitätsmerkmale
+und Frage-Leiter der Session tragen beide Lesarten (die persönliche Grenze und die
+Entscheidungsregel des Teams) — es ist EINE Session mit zwei Wortlauten, nicht ein
+zweiter Slot.
+
 **Aktivierung (bleibt Pflicht — die Substanz):**
 
 | Slot | en | de |
@@ -321,6 +411,11 @@ Lieblingszeile, wird verbales Erkennungszeichen).
 | W3 | If you could change ONE thing about your industry overnight? | Wenn du EINE Sache an deiner Branche über Nacht ändern könntest? |
 | W4 | What's the promise you make every customer — spoken or not? | Welches Versprechen gebt ihr jedem Kunden — ausgesprochen oder nicht? |
 | W5 | What hill would you die on? | Auf welchem Hügel würdest du sterben? |
+
+**Auch dieser Pool ist EINGEFROREN — 2026-09-04, Davids Entscheidung.** Gebaut sind
+fest W1 → `e.warmup1` und W2 → `e.warmup2`; eine Auswahl-Regel gibt es nicht.
+**W3, W4, W5: nicht gebaut — eingefroren am 2026-09-04.** Sie bleiben als Protokoll
+stehen. W4 („Versprechen") deckt ohnehin `b.mission` und `ep.keyMessages` ab.
 
 Die 23 Satzanfänge (Instrument bleibt, Quelle 05 §7–11): „We believe…"
 ×5 · Commitment/Desire ×5 · Energy/Identity ×4 · Stance/Contrast ×5 ·
@@ -701,12 +796,22 @@ Basispfad bei **~45–55 min aktiver Zeit** — die 45-min-Angabe hält
 also ungefähr, die „40 Eingaben" nicht. Konsequenzen (bereits
 beschlossene Linien, hier nur verbindlich gemacht):
 1. Zeitangaben je Baustein sind PFLICHT-UI und werden in der Beta
-   GEMESSEN (Median aktive Zeit, §9b) — Startwerte: 0: 3 · A: 8 ·
-   B: 8 · B2: 4 · C: 10 · D: 8 · E: 8 · E+: 4 · F: 12 · Ergebnis: 3 min.
+   GEMESSEN (Median aktive Zeit, §9b). Die Startwerte von hier (0: 3 · A: 8 ·
+   B: 8 · B2: 4 · C: 10 · D: 8 · E: 8 · E+: 4 · F: 12 · Ergebnis: 3 min)
+   sind seit **2026-09-04 abgelöst**: die Zahl steht jetzt je SESSION in
+   `packages/brand/shared/sessionContent.ts` (`effort.minutes`), und die
+   Kapitel-Summe rechnet die Lese-Fassung aus. Nach Davids Entscheidung
+   („halbieren, in Kapitel-Etappen kommunizieren", Inhalts-Audit Punkt 1)
+   sind es **~78 Min im Basispfad und ~96 Min im Vollpfad**: A 14 · B 14 ·
+   B2 6 · C 14 · D 14 · E 13 · E+ 7 · F 12 · Ergebnis 2. Die alte Summe der
+   Session-Schätzungen war 154 Min und stand damit gegen die eigene
+   Kommunikationslinie.
 2. D endet im Standardfall nach 8 Paaren (§12.2) — Runden 9–12 nur bei
    fehlendem Abstand.
-3. Kommunikation spricht von ZEIT („~45 Minuten"), nie von
-   Eingabe-Zahlen.
+3. Kommunikation spricht von ZEIT, nie von Eingabe-Zahlen — seit
+   2026-09-04 von **„~75 Minuten, in Kapiteln"** statt von „~45 Minuten":
+   ehrlich genug, um nicht zu enttäuschen, und die Kapitel-Anzeige macht
+   sichtbar, dass man aufhören und zurückkommen kann.
 4. Der Vollpfad (~78 Züge / ~75 min) bekommt im UI einen ehrlichen
    Hinweis bei W2/W4 („Naming ergänzt ~12 Minuten").
 
@@ -727,6 +832,13 @@ Abdeckungs-Matrix 287 (§15) · Interaktionsbilanz (§16).
 **Bei David:** ① R1–R4 + Provokations-Wortlaute gegenlesen · ③
 Bilanz-Befund zur Kenntnis (45-min-Kommunikation statt 40-Eingaben).
 ② „George" ist ABGESEGNET (2026-08-30).
+
+**Session-Inhalte (BW2 Paket 2, 2026-09-04):** Ziel, Qualitätsmerkmale,
+Anti-Muster, Frage-Leiter, Form, Antwort-Regeln und Beispiele je Session
+stehen in `packages/brand/shared/sessionContent.ts` und sind als Lese-Fassung
+erzeugt: [BRAND-WIZARD-SESSION-INHALTE.md](../referenz/BRAND-WIZARD-SESSION-INHALTE.md)
+(generiert, nicht von Hand editieren). Hier steht der FRAGEN-Katalog, dort die
+Arbeitsanweisung je Feld — dieselbe Trennung wie zwischen Frage und Prompt.
 
 **Nächstes Paket danach:** P0b ist durch den Klick-Dummy substanziell
 vorweggenommen (Werkstatt, Zustände, Modal, Rail — abgenommen in der

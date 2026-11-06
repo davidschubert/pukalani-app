@@ -8,14 +8,12 @@ import type { BrandStepCompleteResponse } from '../../../../../../../shared/type
 import {
   BRAND_STEPS_TABLE,
   brandDb,
-  loadBrandStepContext,
-  parseSlotRecords,
   profileFacts,
   resolveProfileProgress,
-  toSlotFacts,
   toStepFacts,
   touchProfile,
 } from '../../../../../../utils/brandStore'
+import { loadBrandAcceptanceContext } from '../../../../../../utils/brandAcceptance'
 import { recordBrandEvent } from '../../../../../../utils/brandEvents'
 
 /**
@@ -43,15 +41,31 @@ import { recordBrandEvent } from '../../../../../../utils/brandEvents'
  * der später widersprechen könnte.
  */
 export default defineEventHandler(async (event): Promise<BrandStepCompleteResponse> => {
-  const { userId } = await requireBrandAccess(event)
-  const { profile, stepKey, stepRow, stepRows } = await loadBrandStepContext(event, userId)
+  const { userId, betaAccount } = await requireBrandAccess(event)
+  const {
+    profile,
+    stepKey,
+    stepRow,
+    stepRows,
+    stepFacts,
+    sessionStates,
+    openConflicts,
+    journey: enteredJourney,
+  } = await loadBrandAcceptanceContext(event, userId, betaAccount)
   const body = await readValidatedBody(event, createBrandStepCompleteSchema().parse)
 
+  // DER GERECHNETE ZUSTAND, NICHT DER ROHE — dieselbe Regel wie im
+  // Autosave-PATCH (dort steht die ganze Begründung): eine Zeile, deren
+  // Vorgänger fertig wird, bleibt roh `locked`; die Journey rechnet sie
+  // `open`, und nur mit diesem Zustand greift der Betreten-Zweig unten.
+  // `skipped` kann hier nie ankommen (canEnterBrandStep hat abgewiesen).
+  const journeyState = enteredJourney.find(entry => entry.stepKey === stepKey)?.state
+  const resolvedState = journeyState && journeyState !== 'skipped' ? journeyState : stepRow.state
   let facts: BrandStepFacts = {
     stepKey,
-    state: stepRow.state,
+    state: resolvedState,
     confidence: stepRow.confidence ?? null,
-    slots: toSlotFacts(parseSlotRecords(stepRow.slots)),
+    slots: stepFacts.find(entry => entry.stepKey === stepKey)?.slots ?? {},
   }
 
   // Ein Baustein, dessen Slots über den Generierungs-Weg gefüllt wurden, kann
@@ -70,14 +84,32 @@ export default defineEventHandler(async (event): Promise<BrandStepCompleteRespon
     facts = set.step
   }
 
-  const done = transitionBrandStep(facts, { kind: 'complete' })
+  /**
+   * DIE DREI NEUEN GLIEDER DER ABNAHME (§5a) reisen als PARAMETER hinein, nicht
+   * als Abfrage in der puren Regel: `sessionStates` sagt, was veraltet ist,
+   * `openConflicts` sagt, wo ein offener `conflict`-Befund hängt (seit Paket 4
+   * echt, aus `brand_findings`). Beide kommen aus DEMSELBEN Kontext, den auch
+   * die Abnahme-Seite gelesen hat — sonst zeigte sie „bereit" und diese Route
+   * antwortete `acceptance_incomplete`.
+   */
+  const done = transitionBrandStep(facts, {
+    kind: 'complete',
+    sessionStates,
+    openConflicts,
+  })
   if (!done.ok) {
     throw createError({
       status: 400,
       statusText: 'Brand step cannot be completed yet',
       // `missing` steht NEBEN `code`: den Grund hebt der zentrale Handler als
-      // `reason` heraus, die Liste bleibt für die Oberfläche in `data`.
-      data: { code: done.code, missing: done.missing ?? [] },
+      // `reason` heraus, die Liste bleibt für die Oberfläche in `data`. Bei
+      // `acceptance_incomplete` kommt `blockers` dazu — dieselben Ids, aber mit
+      // dem Grund daneben („veraltet" ist etwas anderes als „nicht abgenommen").
+      data: {
+        code: done.code,
+        missing: done.missing ?? [],
+        ...(done.blockers ? { blockers: done.blockers } : {}),
+      },
     })
   }
   facts = done.step
@@ -105,7 +137,7 @@ export default defineEventHandler(async (event): Promise<BrandStepCompleteRespon
   const mergedRows = stepRows.map(row => (row.$id === stepRow.$id
     ? { ...row, state: 'done' as const, confidence: facts.confidence ?? null }
     : row))
-  const journey = resolveBrandJourney(profileFacts(profile), toStepFacts(mergedRows))
+  const journey = resolveBrandJourney(profileFacts(profile, betaAccount), toStepFacts(mergedRows))
   const progress = resolveProfileProgress(journey)
   await touchProfile(event, profile.$id, {
     progressPct: progress.progressPct,

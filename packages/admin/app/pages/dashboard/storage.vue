@@ -144,7 +144,7 @@ const columns = computed<TableColumn<StorageFileEntry>[]>(() => [
   { accessorKey: 'sizeBytes', header: () => t('admin.storage.col.size'), meta: { class: HIDE_SM } },
   { accessorKey: '$createdAt', header: () => t('admin.storage.col.uploaded'), id: 'uploaded', meta: { class: HIDE_MD } },
   { id: 'state', header: () => t('admin.storage.col.state') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 /** Alle verwaisten Dateien des Buckets löschen */

@@ -9,11 +9,20 @@ import {
   BRAND_AI_PARALLEL_LIMIT,
   BRAND_AI_SLOT_DAILY_LIMIT,
   BRAND_AI_SLOT_LIMIT_CODE,
+  BRAND_AI_REVIEW_DAILY_LIMIT,
+  BRAND_AI_TALK_DAILY_LIMIT,
+  BRAND_AI_TALK_LIMIT_CODE,
+  BRAND_DESIGN_DRAFTS_DAILY_LIMIT,
+  BRAND_DESIGN_DRAFTS_LIMIT_CODE,
+  BRAND_DESIGN_READING_DAILY_LIMIT,
+  BRAND_DESIGN_READING_LIMIT_CODE,
   type BrandAiQuotaCounts,
   brandAiAccountDayKey,
   brandAiInstanceDayKey,
   brandAiRejectionMessageKey,
   brandAiSlotDayKey,
+  brandAiTalkDayKey,
+  brandDesignReadingDayKey,
   decideBrandAiQuota,
   isBrandAiRejectionCode,
   resolveBrandAiInstanceCap,
@@ -33,17 +42,35 @@ import {
  *     zusammengehört (ein Konto = ein Eimer über alle Brands).
  */
 
-const zero: BrandAiQuotaCounts = { parallel: 0, slotDay: 0, accountDay: 0, instanceDay: 0 }
+/**
+ * ALLE Zähler auf 0. `talkDay` steht hier neben `slotDay`, obwohl in EINEM
+ * echten Aufruf immer nur einer von beiden belegt ist (P3.2) — die Entscheidung
+ * muss trotzdem beide sehen können, sonst könnte sie nicht sagen, welcher
+ * Deckel gefallen ist.
+ */
+const zero: BrandAiQuotaCounts = {
+  parallel: 0, slotDay: 0, talkDay: 0, reviewDay: 0, readingDay: 0, draftsDay: 0, accountDay: 0, instanceDay: 0,
+}
 
 describe('Die Zahlen des Vertrags (Plan §6)', () => {
   it('stehen so da, wie der Plan sie zusagt', () => {
     expect(BRAND_AI_ACCOUNT_DAILY_LIMIT).toBe(200)
     expect(BRAND_AI_SLOT_DAILY_LIMIT).toBe(10)
+    expect(BRAND_AI_TALK_DAILY_LIMIT).toBe(40)
     expect(BRAND_AI_PARALLEL_LIMIT).toBe(2)
     expect(BRAND_AI_INSTANCE_DAILY_DEFAULT).toBe(1000)
+    expect(BRAND_AI_REVIEW_DAILY_LIMIT).toBe(120)
+    // Brand Design D2b: der Vision-Lauf über die Vorbilder (§2.2 Leitplanke d).
+    expect(BRAND_DESIGN_READING_DAILY_LIMIT).toBe(3)
+    // Brand Design D5c: der Bildlauf des Zeichens (§2.5 Stufe 3).
+    expect(BRAND_DESIGN_DRAFTS_DAILY_LIMIT).toBe(3)
     expect(BRAND_AI_LIMITS).toEqual({
       parallel: 2,
       slotDay: 10,
+      talkDay: 40,
+      reviewDay: 120,
+      readingDay: 3,
+      draftsDay: 3,
       accountDay: 200,
       instanceDay: 1000,
     })
@@ -53,7 +80,9 @@ describe('Die Zahlen des Vertrags (Plan §6)', () => {
 describe('decideBrandAiQuota', () => {
   it('lässt einen Lauf durch, solange nichts überschritten ist', () => {
     expect(decideBrandAiQuota(zero)).toBeNull()
-    expect(decideBrandAiQuota({ parallel: 2, slotDay: 10, accountDay: 200, instanceDay: 1000 })).toBeNull()
+    expect(decideBrandAiQuota({
+      parallel: 2, slotDay: 10, talkDay: 40, reviewDay: 120, readingDay: 3, draftsDay: 3, accountDay: 200, instanceDay: 1000,
+    })).toBeNull()
   })
 
   it('DER LETZTE ERLAUBTE LAUF GEHT, der nächste nicht (je Deckel)', () => {
@@ -63,6 +92,15 @@ describe('decideBrandAiQuota', () => {
     expect(decideBrandAiQuota({ ...zero, slotDay: 10 })).toBeNull()
     expect(decideBrandAiQuota({ ...zero, slotDay: 11 })).toBe(BRAND_AI_SLOT_LIMIT_CODE)
 
+    expect(decideBrandAiQuota({ ...zero, talkDay: 40 })).toBeNull()
+    expect(decideBrandAiQuota({ ...zero, talkDay: 41 })).toBe(BRAND_AI_TALK_LIMIT_CODE)
+
+    expect(decideBrandAiQuota({ ...zero, readingDay: 3 })).toBeNull()
+    expect(decideBrandAiQuota({ ...zero, readingDay: 4 })).toBe(BRAND_DESIGN_READING_LIMIT_CODE)
+
+    expect(decideBrandAiQuota({ ...zero, draftsDay: 3 })).toBeNull()
+    expect(decideBrandAiQuota({ ...zero, draftsDay: 4 })).toBe(BRAND_DESIGN_DRAFTS_LIMIT_CODE)
+
     expect(decideBrandAiQuota({ ...zero, accountDay: 200 })).toBeNull()
     expect(decideBrandAiQuota({ ...zero, accountDay: 201 })).toBe(BRAND_AI_DAILY_LIMIT_CODE)
 
@@ -71,11 +109,12 @@ describe('decideBrandAiQuota', () => {
   })
 
   it('ENG VOR WEIT: sind mehrere verletzt, gewinnt der engere', () => {
-    const all = { parallel: 9, slotDay: 99, accountDay: 999, instanceDay: 9999 }
+    const all = { parallel: 9, slotDay: 99, talkDay: 99, accountDay: 999, instanceDay: 9999 }
     expect(decideBrandAiQuota(all)).toBe(BRAND_AI_BUSY_CODE)
     expect(decideBrandAiQuota({ ...all, parallel: 0 })).toBe(BRAND_AI_SLOT_LIMIT_CODE)
-    expect(decideBrandAiQuota({ ...all, parallel: 0, slotDay: 0 })).toBe(BRAND_AI_DAILY_LIMIT_CODE)
-    expect(decideBrandAiQuota({ ...all, parallel: 0, slotDay: 0, accountDay: 0 }))
+    expect(decideBrandAiQuota({ ...all, parallel: 0, slotDay: 0 })).toBe(BRAND_AI_TALK_LIMIT_CODE)
+    expect(decideBrandAiQuota({ ...all, parallel: 0, slotDay: 0, talkDay: 0 })).toBe(BRAND_AI_DAILY_LIMIT_CODE)
+    expect(decideBrandAiQuota({ ...all, parallel: 0, slotDay: 0, talkDay: 0, accountDay: 0 }))
       .toBe(BRAND_AI_INSTANCE_LIMIT_CODE)
   })
 
@@ -111,10 +150,23 @@ describe('Die Eimer-Schlüssel', () => {
     expect(brandAiAccountDayKey('u1')).not.toContain('p1')
   })
 
+  it('GEBEN DEM GESPRÄCH EINEN EIGENEN — je Branding, ohne Slot und ohne Konto', () => {
+    expect(brandAiTalkDayKey('p1')).toBe('brand-ai-talk-day:p1')
+    expect(brandAiTalkDayKey('p1')).not.toBe(brandAiTalkDayKey('p2'))
+    // Der Punkt der ganzen Entscheidung: reden und entwerfen zählen GETRENNT.
+    expect(brandAiTalkDayKey('p1')).not.toBe(brandAiSlotDayKey('p1', 'a.pitch'))
+  })
+
   it('trennen Brand UND Slot-Typ', () => {
     expect(brandAiSlotDayKey('p1', 'a.pitch')).toBe('brand-ai-slot-day:p1:a.pitch')
     expect(brandAiSlotDayKey('p1', 'a.pitch')).not.toBe(brandAiSlotDayKey('p1', 'b.purpose'))
     expect(brandAiSlotDayKey('p1', 'a.pitch')).not.toBe(brandAiSlotDayKey('p2', 'a.pitch'))
+  })
+
+  it('trennen die LESUNG vom Entwurf desselben Brandings (D2b)', () => {
+    expect(brandDesignReadingDayKey('p1')).toBe('brand-reading-day:p1')
+    expect(brandDesignReadingDayKey('p1')).not.toBe(brandDesignReadingDayKey('p2'))
+    expect(brandDesignReadingDayKey('p1')).not.toBe(brandAiSlotDayKey('p1', 'g.reading'))
   })
 
   it('geben der INSTANZ genau einen — ohne Konto, ohne Brand', () => {
@@ -122,16 +174,23 @@ describe('Die Eimer-Schlüssel', () => {
   })
 
   it('kollidieren nicht miteinander', () => {
-    const keys = [brandAiAccountDayKey('x'), brandAiSlotDayKey('x', 'y'), brandAiInstanceDayKey()]
-    expect(new Set(keys).size).toBe(3)
+    const keys = [
+      brandAiAccountDayKey('x'),
+      brandAiSlotDayKey('x', 'y'),
+      brandAiTalkDayKey('x'),
+      brandDesignReadingDayKey('x'),
+      brandAiInstanceDayKey(),
+    ]
+    expect(new Set(keys).size).toBe(5)
   })
 })
 
 describe('Die Ablehnungsgründe', () => {
-  it('erkennt genau die vier eigenen Codes', () => {
+  it('erkennt genau die fünf eigenen Codes', () => {
     for (const code of [
       BRAND_AI_BUSY_CODE,
       BRAND_AI_SLOT_LIMIT_CODE,
+      BRAND_AI_TALK_LIMIT_CODE,
       BRAND_AI_DAILY_LIMIT_CODE,
       BRAND_AI_INSTANCE_LIMIT_CODE,
     ]) {
@@ -148,10 +207,11 @@ describe('Die Ablehnungsgründe', () => {
     const keys = [
       brandAiRejectionMessageKey(BRAND_AI_BUSY_CODE),
       brandAiRejectionMessageKey(BRAND_AI_SLOT_LIMIT_CODE),
+      brandAiRejectionMessageKey(BRAND_AI_TALK_LIMIT_CODE),
       brandAiRejectionMessageKey(BRAND_AI_DAILY_LIMIT_CODE),
       brandAiRejectionMessageKey(BRAND_AI_INSTANCE_LIMIT_CODE),
     ]
-    expect(new Set(keys).size).toBe(4)
+    expect(new Set(keys).size).toBe(5)
     for (const key of keys) expect(key).toMatch(/^brand\.workspace\.generate\./)
   })
 

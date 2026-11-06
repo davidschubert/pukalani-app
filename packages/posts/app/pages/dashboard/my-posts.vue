@@ -69,7 +69,7 @@ const columns = computed<TableColumn<CommunityPost>[]>(() => [
   { accessorKey: 'type', header: () => t('posts.mine.col.type'), meta: { class: HIDE_MD } },
   { id: 'state', header: () => t('posts.mine.col.state') },
   { accessorKey: '$createdAt', header: () => t('posts.mine.col.date'), id: 'createdAt', meta: { class: HIDE_MD } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 const busyId = ref('')

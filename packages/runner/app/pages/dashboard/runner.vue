@@ -61,7 +61,7 @@ const runnerColumns = computed<TableColumn<RunnerPublic>[]>(() => [
   { accessorKey: 'kind', header: () => t('runner.runners.col.kind'), id: 'kind', meta: { class: HIDE_SM } },
   { accessorKey: 'status', header: () => t('runner.runners.col.status'), id: 'status' },
   { accessorKey: 'lastSeenAt', header: () => t('runner.runners.col.lastSeen'), id: 'lastSeen' },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 const runColumns = computed<TableColumn<RunRow>[]>(() => [

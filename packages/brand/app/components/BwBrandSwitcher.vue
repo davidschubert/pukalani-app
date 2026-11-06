@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { BwNewBrandSubmit } from './BwNewBrandModal.vue'
+
 /** Brand-Auswahl (Korrekturrunde 3, David): Trigger zeigt NUR den Namen;
  *  ausgeklappt alle Brandings mit Zusatzinfo untereinander, die aktive
  *  mit Haken. "Brandings verwalten" lebt hier, nicht in der Topbar. */
@@ -7,9 +9,21 @@ defineProps<{
   others: { title: string, path: string, flag?: string, to: string }[]
 }>()
 /* Runde 62 (David): "Neues Branding anlegen" öffnet denselben Layer wie
- * auf der Startseite. */
+ * auf der Startseite — im LIVE-Modus (2026-09-09): ohne Modus zeigte das
+ * Modal in die Demo. Anlage + Sprung über `useBrandCreate()`. */
+const { t } = useI18n()
 const newBrandOpen = ref(false)
 const popoverOpen = ref(false)
+const {
+  contentLocales: newBrandLocales,
+  creating: newBrandCreating,
+  failed: newBrandFailed,
+  create: createBrand,
+} = useBrandCreate()
+
+async function createFromModal(payload: BwNewBrandSubmit): Promise<void> {
+  if (await createBrand(payload)) newBrandOpen.value = false
+}
 </script>
 
 <template>
@@ -42,13 +56,17 @@ const popoverOpen = ref(false)
         </NuxtLink>
         <div class="my-1.5 border-t" style="border-color: var(--bw-line)" />
         <button class="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-(--bw-accent-soft)" @click="popoverOpen = false; newBrandOpen = true">
-          <UIcon name="i-ph-plus" style="color: var(--bw-muted)" /> Neues Branding anlegen
+          <UIcon name="i-ph-plus" style="color: var(--bw-muted)" /> {{ t('brand.nav.newBranding') }}
         </button>
         <NuxtLink to="/" class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-(--bw-accent-soft)">
-          <UIcon name="i-ph-squares-four" style="color: var(--bw-muted)" /> Brandings verwalten
+          <UIcon name="i-ph-squares-four" style="color: var(--bw-muted)" /> {{ t('brand.nav.manageBrandings') }}
         </NuxtLink>
       </div>
     </template>
   </UPopover>
-  <BwNewBrandModal v-model:open="newBrandOpen" />
+  <BwNewBrandModal
+    v-model:open="newBrandOpen" mode="live"
+    :content-locales="newBrandLocales" :loading="newBrandCreating" :failed="newBrandFailed"
+    @submit="createFromModal"
+  />
 </template>

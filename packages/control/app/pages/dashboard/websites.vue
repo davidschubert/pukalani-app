@@ -322,14 +322,14 @@ const websiteColumns = computed<TableColumn<WebsiteWithEntitlements>[]>(() => [
   { id: 'state', header: () => t('control.websites.col.state') },
   { id: 'domain', header: () => t('control.websites.col.domain'), meta: { class: HIDE_MD } },
   { id: 'products', header: () => t('control.websites.col.products'), meta: { class: HIDE_LG } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 const jobColumns = computed<TableColumn<JobRow>[]>(() => [
   { id: 'job', header: () => t('control.jobs.col.job') },
   { id: 'jobProducts', header: () => t('control.jobs.col.products'), meta: { class: HIDE_MD } },
   { accessorKey: 'status', header: () => t('control.jobs.col.status') },
-  { id: 'jobActions', header: () => '' },
+  { id: 'jobActions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function siteActions(site: WebsiteWithEntitlements): DropdownMenuItem[][] {

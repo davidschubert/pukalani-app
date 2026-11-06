@@ -143,7 +143,7 @@ const columns = computed<TableColumn<ChangelogEntry>[]>(() => [
   { accessorKey: 'version', header: () => t('admin.changelog.col.version'), meta: { class: HIDE_MD } },
   { id: 'state', header: () => t('admin.changelog.col.state') },
   { accessorKey: 'date', header: () => t('admin.changelog.col.date') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function rowActions(entry: ChangelogEntry): DropdownMenuItem[][] {

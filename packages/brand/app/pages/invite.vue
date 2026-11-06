@@ -104,6 +104,22 @@ watchEffect(() => {
   }
 })
 
+/**
+ * EIN ABGELEHNTER COOKIE-CODE IST ALTLAST, KEIN URTEIL (Davids Test-Audit
+ * 2026-09-03): der Cookie überlebt sieben Tage — auch das ERFOLGREICHE
+ * Einlösen von früher, wenn das Löschen damals fehlte oder in einem anderen
+ * Tab passierte. Ein leerer /invite-Besuch begrüsste dann mit „Code ungültig
+ * oder abgelaufen", bevor irgendjemand etwas eingegeben hatte. Nur ein
+ * QUERY-Code trägt eine echte Behauptung des Besuchers; einen Cookie-Code,
+ * den der Server ablehnt, räumen wir still weg — die Seite fällt damit auf
+ * `enterCode` (das leere Feld) zurück.
+ */
+watchEffect(() => {
+  if (!queryCode.value && inviteCookie.value && checkStatus.value === 'success' && !check.value?.valid) {
+    inviteCookie.value = null
+  }
+})
+
 /** `null` = noch kein Versuch. Siehe Kopf von `brandInviteView.ts`. */
 const redeemed = ref<boolean | null>(null)
 const redeeming = ref(false)
@@ -271,6 +287,19 @@ async function submitCode(): Promise<void> {
         >
           {{ t('brand.invite.submit') }}
         </UButton>
+
+        <!-- OHNE CODE GAB ES HIER NICHTS ZU TUN (bis 2026-09-04): „sonst
+             melden wir uns" versprach eine Meldung, für die es keinen Weg
+             gab. Die Warteliste ist der Weg — unter dem Code-Feld, damit
+             der Code-Besitzer sie nicht suchen muss und der Code-Lose nicht
+             leer ausgeht. -->
+        <div class="pt-2" data-invite-waitlist>
+          <p class="text-sm font-medium tracking-tight">{{ t('brand.invite.noCodeTitle') }}</p>
+          <p class="mt-1 text-sm text-muted">{{ t('brand.invite.noCodeText') }}</p>
+          <div class="mt-4">
+            <BwWaitlistForm source="invite" />
+          </div>
+        </div>
       </div>
 
       <!-- Gültig, aber kein Konto: es entsteht HIER. Ein Verweis auf

@@ -5,7 +5,9 @@ import {
   isInvalidMfaCode,
   isMoreFactorsRequired,
   mfaFactorFor,
+  mfaLoginMethod,
   normalizeMfaCode,
+  secondFactorPending,
 } from '../shared/mfa'
 import { mfaChallengeSchema, mfaVerifySchema } from '../schemas/auth'
 
@@ -41,6 +43,53 @@ describe('Appwrite-Fehler erkennen', () => {
     expect(isInvalidMfaCode({ type: 'user_invalid_credentials' })).toBe(true)
     expect(isInvalidMfaCode({ type: 'user_more_factors_required' })).toBe(false)
     expect(isInvalidMfaCode(undefined)).toBe(false)
+  })
+})
+
+/**
+ * Die EINE Weiche hinter login.post.ts UND otp/verify.post.ts. Der Code-Weg
+ * hatte sie bis zum 2026-10-24 nicht: nach dem richtigen E-Mail-Code entstand
+ * eine Session mit `factors: ['email']`, und der Nutzer stand wortlos wieder
+ * vor dem Login. Hier steht fest, was die Weiche aus jeder Antwort der Probe
+ * macht — damit kein Aufrufer sie je wieder selbst nachbaut.
+ */
+describe('secondFactorPending (die Weiche hinter Passwort- UND Code-Login)', () => {
+  it('meldet den fehlenden zweiten Faktor, wenn Appwrite ihn verlangt', async () => {
+    const probe = async () => { throw { type: 'user_more_factors_required', code: 401 } }
+    await expect(secondFactorPending(probe)).resolves.toBe(true)
+  })
+
+  it('lässt durch, wenn der Konto-Aufruf gelingt', async () => {
+    await expect(secondFactorPending(async () => ({ $id: 'u1' }))).resolves.toBe(false)
+  })
+
+  it('hält jeden ANDEREN Fehler nicht für einen fehlenden Faktor', async () => {
+    // Netz, Appwrite, 500 — kein Fehler der Anmeldung: die Session steht,
+    // der Aufrufer macht normal weiter statt eine Challenge zu verlangen.
+    await expect(secondFactorPending(async () => { throw new Error('ECONNRESET') })).resolves.toBe(false)
+    await expect(secondFactorPending(async () => { throw { type: 'general_unknown', code: 500 } })).resolves.toBe(false)
+    await expect(secondFactorPending(async () => { throw null })).resolves.toBe(false)
+  })
+
+  it('ruft die Probe genau einmal', async () => {
+    let calls = 0
+    await secondFactorPending(async () => { calls++ })
+    expect(calls).toBe(1)
+  })
+})
+
+describe('mfaLoginMethod (Protokoll-Name nach dem zweiten Faktor)', () => {
+  it('nennt den Code-Weg otp, wie otp/verify es ohne Zweitfaktor tut', () => {
+    expect(mfaLoginMethod(['email', 'totp'], 'totp')).toBe('otp+totp')
+    expect(mfaLoginMethod(['email', 'recoveryCode'], 'recovery')).toBe('otp+recovery')
+  })
+
+  it('lässt den Passwort-Weg wie bisher', () => {
+    expect(mfaLoginMethod(['password', 'totp'], 'totp')).toBe('password+totp')
+  })
+
+  it('behauptet ohne Faktoren nichts', () => {
+    expect(mfaLoginMethod([], 'totp')).toBe('unknown+totp')
   })
 })
 

@@ -100,7 +100,7 @@ const HIDE_MD = { td: 'hidden md:table-cell', th: 'hidden md:table-cell' }
 const HIDE_LG = { td: 'hidden lg:table-cell', th: 'hidden lg:table-cell' }
 
 const columns = computed<TableColumn<FeedbackEntry>[]>(() => [
-  { id: 'vote', header: () => '' },
+  { id: 'vote', header: srOnlyHeader(() => t('ui.table.vote')) },
   { accessorKey: 'title', header: () => t('feedback.list.col.entry') },
   { accessorKey: 'state', header: () => t('feedback.list.col.state'), meta: { class: HIDE_MD } },
   { accessorKey: 'commentCount', header: () => t('feedback.list.col.comments'), meta: { class: HIDE_LG } },

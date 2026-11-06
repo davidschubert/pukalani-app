@@ -30,6 +30,2496 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW27: Appwrite 2.7.1 auf dev, CI und prod — Executor-Leck geschlossen, Secret rotiert, Account-WS pingt ✅ 2026-11-06
+
+Anlass: 2.7.0 (2026-11-03) und das Security-Release 2.7.1 (2026-11-04) —
+Executor 1.1.2 → 1.3.1: der alte folgte Symlinks in Log-/Build-Dateien, eine
+Function konnte so `_APP_EXECUTOR_SECRET` lesen und über die Executor-API
+Docker auf dem Host steuern. 2.7.0 braucht `migrate` (neue V25-Schritte).
+Reihenfolge wie immer: dev → CI (PR #65, E2E gegen die Wegwerf-Instanz 2.7.1
+16/16) → Davids „Ja, mit Rotation" → Ping-Fix live (Build bb380b92) → prod.
+
+- **dev** 2026-11-06 00:37–00:41 UTC: Werkzeug 161 s (Image-Pulls), `migrate`
+  9,2 s, 0 Fehler; 66 neue Appwrite-interne Tabellen, Nutzertabellen 388 →
+  388; E2E `apps/comments` 16/16, core-Unit 1740.
+- **prod** 2026-11-06 01:16–01:19 UTC mit `ROTATE_EXECUTOR_SECRET=1`: Aufruf
+  bis Beweise 99 s, `migrate` 24,1 s, 0 Fehler; Executor-API mit neuem Secret
+  200, mit falschem 401; zehn Hosts gesund, TLS grün, Parität 69/42/41/43,
+  OTP-Mail an `delivered@resend.dev` `success` in 1,73 s (Probe-Nutzer gelöscht).
+- **Core-Fix** `useRealtimeAccount`: Appwrite 2.7 schließt Realtime nach 120 s
+  Stille (#15059), unser cookie-nativer Account-WS sendete nie etwas. Er pingt
+  jetzt alle 20 s. Probe: stummer WS nach 120,2 s weg, pingender lebt.
+- „Deny realtime guests" bleibt AUS (Begründung im Runbook); Realtime-Grenzen
+  (100 Abos/Verbindung, 32 Verbindungen/Nutzer) mit ~15 Abos weit entfernt.
+- Offen geblieben: der Browser-Blick mit Anmeldung (Account-WS > 2 min stabil)
+  — Chrome war auf account. nicht angemeldet. Ob der keepAlive-Patch fallen
+  kann: AW28.
+
+Runbook: [APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md).
+
+**Gelernt:** Eine Appwrite-Version kann still ein KLIENT-Verhalten verlangen —
+2.7 trennt jeden Socket, der zwei Minuten schweigt. Die SDKs pingen, ein
+handgeschriebener `new WebSocket` nicht; Typecheck, Unit und E2E (Läufe unter
+2 min je Seite) sehen das nie. Bei jedem Realtime-Changelog-Punkt also auch
+nach EIGENEN WebSockets greppen. Und: ein UTC-Datum nie aus einer reinen
+Uhrzeit schätzen — `date -u +%T` zeigte nur 00:37, das Datum wurde als
+2026-11-07 geraten und stand so in Runbook und CLAUDE.md, bis der `$createdAt`
+des Prod-Tokens 2026-11-06 zeigte. Für Protokolle `date -u +%FT%T`.
+
+---
+
+### RA1 — Konto löschen verlangt eine frische Anmeldung ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-29: Firewall-Regeln können auf
+„Session age" und „MFA age" prüfen. Die Firewall gibt es nur auf Appwrite
+Cloud — wir sind self-hosted, also nichts zu übernehmen. Die IDEE dahinter
+(eine unumkehrbare Aktion verlangt eine FRISCHE Anmeldung statt „irgendwann
+eingeloggt") deckte aber eine echte Lücke auf: `DELETE /api/auth/account`
+löschte das Konto vollständig (DSGVO Art. 17) mit nichts als einem gültigen
+Cookie. Passwort ändern (altes Passwort) und MFA abschalten (MFA-Code) waren
+schon geschützt.
+
+**Davids Entscheidung (2026-11-06): frische Anmeldung statt Passwort-Feld.**
+Auf platform, control und branding gibt es Konten OHNE Passwort (Google,
+E-Mail-Code) — ein Passwort-Feld hätte sie ausgesperrt, ein eigener
+Lösch-Code per Mail wäre ein zweites Login-System gewesen. Eine neue
+Anmeldung kann jede Konto-Art und prüft MFA gleich mit.
+
+**Gebaut.**
+- `core/shared/recentAuth.ts` — pure Regel `isRecentAuth` (10 Minuten,
+  fail-closed bei fehlendem/kaputtem Datum, leichter Uhrenversatz zählt als
+  frisch), Grund `reauth_required`.
+- `core/server/utils/recentAuth.ts` — `requireRecentAuth(event)` liest
+  `$createdAt` der AKTUELLEN Session bei Appwrite (nicht aus Cookie oder
+  Body) und wirft 403 mit `reason: reauth_required`.
+- `account.delete.ts` ruft sie als ERSTES — eine Ablehnung hat nichts
+  angefasst, und das Cookie bleibt (der `finally` dort räumt es sonst ab).
+- Oberfläche: `AccountDeleteCard` erkennt den Grund (`isReauthRequired` in
+  `app/utils/fetchError.ts`, bewusst über den Grund, nicht über 403), erklärt
+  „zur Sicherheit neu anmelden" und schickt über `useLogout().reauthenticate()`
+  nach `/login?redirect=…` — danach steht die Person wieder auf derselben
+  Seite. `reauthenticate` ist eine eigene Funktion, weil `logout` direkt als
+  Klick-Handler hängt und sonst das Klick-Ereignis als Option bekäme.
+- Der Host-Wechsel (`site-session`, `embed-session`) reicht dasselbe Secret
+  weiter, legt also keine neue Session an — er macht nichts „frisch". Nur ein
+  echter Login tut das.
+
+**Beweis.** Unit: `packages/core/tests/recentAuth.test.ts` (Grenze ±1 ms,
+Gegenproben, fail-closed, Grund-Erkennung, Wächter „Prüfung steht VOR
+`deleteUserCompletely`"); core 1750/1750, Lint, Typecheck core + platform,
+`check:i18n-keys` grün.
+Klick-Beweis (lokale Dev-Appwrite, comments-Dev-Server aus dem Worktree,
+Wegwerf-Konto mit Label `moderator`, danach gelöscht): Session über die
+Admin-API angelegt und 11 Minuten altern lassen ⇒ `DELETE /api/auth/account`
+**403** `{"reason":"reauth_required"}`, kein `Set-Cookie`, `/api/auth/me`
+danach weiter 200, Konto existiert. Im Browser: „Account löschen" →
+„Endgültig löschen" ⇒ Dialog „Zur Sicherheit neu anmelden" → „Neu anmelden"
+⇒ `/de/login?redirect=/de/dashboard/settings/data` mit Toast; die ALTE
+Session antwortet jetzt 401. Neu angemeldet ⇒ zurück auf derselben Seite,
+Löschen ⇒ „Account gelöscht.", `users.get` **404**.
+
+**Offen ⇒ OPEN-ITEMS „RA2":** dieselbe Klammer für die übrigen
+unumkehrbaren Stellen (Owner-Rolle übergeben, Community stilllegen) — nicht
+geprüft.
+
+---
+
+### CL0 — Appwrite-Brotli-Hinweis geprüft; dabei: der Changelog-Link der Marketing-Seite zeigte seit Monaten auf einen toten Webhook ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-24 (Brotli, CVE-2026-111497): Server
+auf 2.6.2 heben UND die Runtime-Images für Functions/Sites neu ziehen.
+
+**Brotli — nichts mehr zu tun.** Server-Teil ist AW262 (2.6.2 seit 2026-10-27).
+Runtime-Teil, gemessen auf appwrite-prod: kein einziges `openruntimes/*`-Image
+außer dem Executor (der `ImagePuller` zog node-22/static-1/flutter-3.29 beim
+Neustart am 2026-10-27, also nach den Patches; das Aufräumen am 2026-10-28
+entfernte sie als ungenutzt), und **0 Functions, 0 Sites** in allen vier
+Projekten (Zählung direkt in MariaDB, `_6/_10/_11/_12_functions|_sites`).
+Konfiguriert ist nur `node-22` — keine der abgekündigten Runtimes.
+
+**Nebenbefund — Changelog-Track 2B war tot, die Doku sagte „AKTIV".** Die
+Function `changelog-draft` lebte im Prod-Projekt `comments`, das es seit dem
+Control-Cutover nicht mehr gibt. `changelog.pukalani.app` liefert nur noch
+Traefiks Ersatz-Zertifikat; der GitHub-Webhook (654489788) stand weiter auf
+`active=true`. Schlimmer: die **Marketing-Seite verlinkte genau diese Adresse
+als öffentlichen Changelog** — Ressourcen-Menü, Fuß und Beweis-Abschnitt
+(„öffentlich nachlesbar"), live viermal je Seite. Die echte öffentliche Seite
+liegt unter `admin.pukalani.app/changelog` (200, Sprachweiche per
+`Accept-Language` ⇒ 302 auf `/de/changelog`).
+
+**Erledigt (Davids Wahl 2026-11-06: „Doku + Webhook aufräumen", Link auf
+admin…/changelog):** `marketing.changelogUrl` → `https://admin.pukalani.app/changelog`;
+`ProofSection.vue` liest die Adresse jetzt aus `useMarketingSite()` statt einer
+zweiten festen Kopie; Anzeigename de/en angepasst; GitHub-Webhook deaktiviert
+(nicht gelöscht); CHANGELOG-WORKFLOW.md (2A ist DER Weg, 2B stillgelegt mit
+Hergang + Wiederbeleben), hosts-und-ports, Function-README, OPEN-ITEMS-Status.
+Der v3.0.0-Entwurf ist nachweislich nicht veröffentlicht ⇒ OPEN-ITEMS „CL1".
+
+**Gelernt:** Ein Endpunkt ist keine Seite. Die Marketing-Seite verlinkte die
+Webhook-Adresse, weil sie nach „Changelog" klang — im Juli antwortete sie mit
+200 (Ping), also fiel es nie auf. Beim Projekt-Umbau verschwand die Function
+still, weil Functions in keinem Wächter vorkommen (`verify-health` und
+`verify-tls` kennen `changelog.` nicht). Wer eine Adresse nach außen verlinkt,
+verlinkt eine Seite, die ein Mensch lesen soll — und eine Function, die nur ein
+Webhook erreicht, hat keinen Platz im Menü.
+
+---
+
+### RS1 c+d — Mail-Wächter auf Usage-/Metrics-API, Idempotenz im Newsletter-Stapel ✅ 2026-11-06
+
+**Auslöser.** Zwei Teilpakete aus OPEN-ITEMS „RS1" (Resend-Changelog-
+Durchsicht), die David nicht brauchten. (a) Tarif, (b) Webhook, (e)–(g)
+bleiben dort offen.
+
+**(c) Gebaut.** `scripts/ops/verify-mail-breaker.mjs` blättert nicht mehr bis
+zu 20 Seiten `GET /emails`, sondern macht zwei Aufrufe: `GET /usage` liefert
+die TAGESGRENZE (Schwelle = 80 % davon, heute 80 von 100 wie vorher; ohne
+Tagesgrenze Rückfall auf 80; `--alarm N` setzt eine feste Zahl) und
+`daily.used`; `GET /emails/metrics?start_date&end_date&metrics=sent,bounced,
+complained` liefert Menge (Blick 2) UND Bounces/Beschwerden (Blick 3) im
+gleitenden Fenster. Die Empfänger-Domains holt der Wächter nur noch, wenn es
+Bounces oder Beschwerden gibt (eine Seite `/emails`, best effort). Schalter
+`--bounce-alarm`, `--complaint-alarm`, `--resend-hours` und das Fehlerverhalten
+(ohne Schlüssel grün übersprungen, Netz/HTTP ⇒ Exit 2, fehlende Felder ⇒
+Exit 2) sind erhalten. Die gemessenen Antwortfelder stehen im Kopf der Datei.
+
+**(d) Gebaut.** Jede Ausgabe-Mail trägt `Resend-Idempotency-Key:
+insights-issue/<Sende-Zeile>/<Abonnent>` (`insightsNewsletterIdempotencyKey`,
+`packages/insights/shared/insightsNewsletter.ts`) — beides Zeilen-Ids, nie die
+Adresse. Stirbt ein Stapel zwischen Versand und Cursor-Schreiben, schickt das
+Fortsetzen dieselben Schlüssel, und Resend stellt kein zweites Mal zu. Grenzen
+laut Resend-Doku: Schlüssel gilt 24 h, höchstens 256 Zeichen; derselbe
+Schlüssel mit anderem Inhalt ⇒ 409, über SMTP eine abgelehnte Mail, die der
+Lauf als `failed` zählt (der Empfänger hatte die erste Fassung schon).
+
+**Beweise.** Echtes Konto: 24 h ⇒ „1 Mails, heute (UTC) 1/100 · Monat
+236/3000", 0/0, Exit 0 mit `--strict`; `--bounce-alarm 0 --strict` ⇒ ✗, Exit 1;
+Vorfall-Fenster `--resend-hours 400` ⇒ 237 Mails, 2 Bounces (gmail.com),
+0 Beschwerden — deckt sich mit dem Blättern von MZ1; ohne Schlüssel ⇒ grün
+übersprungen; kaputter Schlüssel ⇒ HTTP 400, Exit 2. insights-Tests 511/511
+(neu: Schlüsselbildung + „Cursor-Schreiben scheitert ⇒ Fortsetzen mit
+identischen Schlüsseln"), insights-Lint, branding-Typecheck, `pnpm
+lint:scripts` grün.
+
+**Gelernt:** `GET /usage` zählt `daily` je UTC-KALENDERTAG (`resets_at`
+23:59:59.999Z), kein gleitendes Fenster — der Wächter läuft um 04:17 UTC und
+hätte mit `daily.used` allein nur vier Stunden gesehen. Der „ein Aufruf statt
+Blättern" aus der Notiz hätte Blick 2 still blind gemacht. Die Menge kommt
+deshalb aus `/emails/metrics` (Fenster frei wählbar), von `/usage` nur die
+Grenze. Vor dem Umbau die Antwort messen, nicht dem Feldnamen glauben.
+
+---
+
+### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
+
+**Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
+das ist das `resend`-SDK in einer Server-Route, kein Modul; wir verschicken
+längst über Resend, per SMTP (`sendMail()`, nodemailer, Mailpit lokal). Was
+fehlte, war die Sicht darauf, was aus den Mails wird. Plan:
+[archiv/MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md).
+
+**Davids Entscheidungen (2026-11-06).** Nur Stufe A (Pull im Wächter, keine
+App-Änderung); rot ab 3 Bounces ODER 1 Beschwerde in 24 h; Stufe B (Webhook,
+Konto-Merker) zurückgestellt — lebt als Teilpaket (b) in OPEN-ITEMS „RS1"
+(eine Nachbarsitzung hatte am selben Tag die Resend-Changelog-Durchsicht
+angelegt; kein zweiter Eintrag).
+
+**Gebaut.** `scripts/ops/verify-mail-breaker.mjs` zählt in der Liste, die
+Blick 2 schon holt, `last_event === 'bounced' | 'complained'`; ins öffentliche
+CI-Log kommt nur die Empfänger-Domain. Schalter `--bounce-alarm`,
+`--complaint-alarm` (0 = Probealarm), `--resend-hours`.
+
+**Beweise.** Echtes Resend-Konto: 24 h ⇒ 0/0, grün, Exit 0 mit `--strict`;
+`--bounce-alarm 0 --strict` ⇒ ✗, Exit 1; Vorfall-Fenster `--resend-hours 400`
+⇒ 234 Mails, 2 Bounces (gmail.com), 0 Beschwerden; `pnpm lint:scripts` grün.
+
+**Gelernt:** Die Annahme „Spam an fremde Adressen erzeugt Bounces und
+Beschwerden" war falsch — beim Oktober-Vorfall 2 Bounces auf 234 Mails, die
+Opfer-Adressen waren echt. Blick 3 schützt den Absender-Ruf, er meldet keinen
+Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
+dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
+der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
+(`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
+
+---
+
+### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
+
+**Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die
+Antwort des Modells mit einem Zod-Schema: `brief: z.string().max(2000)`,
+`title: z.string().max(200)`. Die Route parste damit INNERHALB eines `try`,
+dessen `catch` nur loggt und weiterwirft. Zu dem Zeitpunkt ist das Video
+gelesen und der Lauf bezahlt — eine Ablehnung dort schützt nichts, sie wirft
+nur Geld weg und liefert dem Menschen davor einen 500er ohne Erklärung. Kein
+`safeParse`, keine Wiederholung, keine Kürzung.
+
+**Wie oft das passiert — gemessen, nicht geschätzt.** Sechs echte Läufe gegen
+genau diesen Prompt (`insights-b-1`, `gemini-3.1-flash-lite`,
+`only: ['google-vertex/eu']`, ZDR + `data_collection: deny`), Videos von 8 bis
+51 Minuten:
+
+| Video | Länge | Brief | Schema |
+|---|---|---|---|
+| `MT1n9FMXgmc` | kurz | 1.575 | OK |
+| `t_Zqh7EflhI` | 9 min | 1.673 | OK |
+| `EYXgfHNq6mo` | 11 min | 1.848 | OK |
+| `FFPaVFBEIhI` | 45 min | 1.897 | OK |
+| `WrehiIId62U` | 51 min | **2.027** | **wirft** (`brief: too_big`) |
+| `LEVGLXBzghc` | 8 min | **2.387** | **wirft** |
+
+**Zwei von sechs** über dem Deckel, also rund jeder dritte Lauf verloren — bei
+8 bis 10 Cent je Lauf. Und die Länge hängt NICHT an der des Videos: die 2.387
+Zeichen kamen aus acht Minuten, die 1.897 aus 45. Das Modell zielt auf den
+Deckel, den der Prompt ihm nennt, und trifft ihn mal von unten, mal von oben.
+Die vier „OK"-Werte liegen bei 92 bis 95 Prozent des Deckels — es war also
+nie eine Frage, OB das kippt.
+
+**Abhilfe.** Alle drei Felder des Schemas KLEMMEN jetzt, keines lehnt ab.
+`clampInsightsBrief` (pur, in `shared/insightsVideoBrief.ts`) schneidet am
+spätesten sauberen Schluss vor dem Deckel: es gewinnt das SPÄTERE von Zeilen-
+und Satzende (damit so viel wie möglich vom bezahlten Brief steht), sonst das
+Wort, sonst hart. Danach fällt eine abschliessende Zeile weg, die nur
+ankündigt — eine Markdown-Überschrift oder ein leerer Aufzählungs-Marker.
+Der `title` wird hart auf 200 zugeschnitten; er ist eine Beschriftung, und
+`insightsBriefTitle` schnitt ihn ohnehin schon auf dasselbe Mass.
+
+**Beweis (Gegenprobe mit denselben zwei Videos, echter Modell-Lauf):**
+2.027 ⇒ 1.895 Zeichen, Schluss „… in der Markenarbeit?"; 2.387 ⇒ 1.905,
+Schluss „… unterschätzen." Beide `parse` OK, beide auf einem Satzzeichen.
+Dazu zwei Zahlen im `completed`-Log (`briefChars`, `briefRawChars`): nur ihr
+Unterschied zeigt, dass der PROMPT seinen eigenen Deckel reisst — das ist eine
+Sache des Prompts, nicht der Route, und ohne die Zahlen sähe man es nie.
+Grün: 484 insights-Tests, `pnpm -r lint`, `lint:scripts`, `pnpm -r typecheck`,
+alle fünf Wächter.
+
+**Gelernt:** **Eine Validierung NACH einem bezahlten Modell-Aufruf darf nicht
+ablehnen, sondern muss klemmen.** Ein `z.string().max()` liest sich wie eine
+Sicherung und ist an dieser Stelle das Gegenteil: der Deckel ist UNSER
+Spaltenmass, kein Formfehler der Antwort. Die Regel gilt für jeden künftigen
+KI-Pfad dieses Monorepos — vor dem Aufruf streng ablehnen (K5 macht das in
+sechs Stufen, bis hin zur Frage, ob die Quelle überhaupt ablegbar ist),
+danach nur noch zuschneiden.
+
+**Zweitens gelernt:** **ein Deckel im Prompt ist eine Bitte, keine Grenze.**
+Wer einem Modell „höchstens N Zeichen" sagt, bekommt Antworten, die um N
+herum streuen — vier von sechs bei 92–95 %, zwei darüber. Wer danach hart auf
+N schneidet, bekommt abgebrochene Wörter (am 2026-10-27 im Klick-Beweis
+wörtlich „… den Markteintr"); wer ablehnt, verliert den Lauf. Nur ein Schnitt
+an einer Grenze ist beides nicht.
+
+**Drittens, als Nebenbefund:** drei der zehn probierten YouTube-Videos
+antworteten mit `502` / `PERMISSION_DENIED` vom Anbieter, binnen 1,2 Sekunden
+und ohne Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar. Das ist
+heute kein Schaden (die Route gibt den Fehler ehrlich weiter, bezahlt ist
+nichts), aber es heisst: ein `502` auf diesem Weg bedeutet nicht
+zwangsläufig „Anbieter kaputt", sondern oft „dieses Video nicht".
+
+---
+
+### LOG1 — `seo_read_failed` im pm2-Log: der Schwall war das Zertifikat, das Dauerrauschen war `help` ohne Appwrite ✅ 2026-10-28
+
+**Ausgangslage (Nebenbefund beim Bau von MON1):** im pm2-Fehlerlog auf
+app-prod standen hunderte Zeilen `community.seo_read_failed` /
+`community.redirects_read_failed` mit `communityId: "instance"`, obwohl
+`/api/health` überall `ok:true` meldete. Vermutet wurde die Pool-App
+`platform`.
+
+**Befund (Logs gelesen, nach App, Datum und Meldung gezählt):**
+(1) `platform` hat KEINE `instance`-Zeilen — ihre 58 Warnungen stammen vom
+2026-08-13/14 (U15-Einführung) und vom 2026-09-28 („Server Error", der
+ClickHouse-Platten-Vorfall), zuletzt eine am 2026-10-08. (2) Die
+„fetch failed"-Schwälle liegen in den ROTIERTEN Logs von admin (192),
+branding (801), portfolio (1244) und marketing (646), alle zwischen dem
+2026-10-16 und dem 2026-10-24 10:57 — das ist exakt das Fenster des
+abgelaufenen Appwrite-Zertifikats; mit dem Neustart um 11:33 sind die
+neuen Log-Dateien dieser Apps leer. Erledigt durch den Zertifikatsfix, kein
+Code. (3) Was WEITERLIEF: `help.pukalani.app` — `instance | Endpoint must be
+a valid string`, 796 Paare seit dem **2026-09-09** und 130 seit dem Neustart,
+etwa zwei je Stunde, bis heute. Die Hilfe-Site hat bewusst KEINE
+Appwrite-Instanz (`.env` leer, eigener Health ohne Appwrite); seit dem
+2026-09-08 lesen aber auch Silo-/Einzel-Instanzen ihre `instance`-Zeile
+(`shared/communitySettingsRow.ts`, Fall 2), und `createAdminClient` warf am
+leeren Endpunkt im SDK — der Fail-soft-Zweig fing das und meldete es als
+Lesefehler. Das Datum passt auf den Tag: der Fall begann mit dem Deploy, der
+`'instance'` einführte.
+
+**Behoben:** EINE pure Regel `appwriteEndpointConfigured()` in
+`packages/core/shared/appwriteConfigured.ts` („der Endpunkt ist der
+Schalter", wie SMTP-Host und Turnstile), Server-Wrapper
+`packages/core/server/utils/appwriteConfigured.ts`; beide optionalen Leser
+(`communitySeoStore.ts`, `communityRedirectStore.ts`) antworten ohne
+Endpunkt still `null` und cachen es, ohne Client und ohne Meldung. Geprüft
+wird NUR der Endpunkt — fehlt bei gesetztem Endpunkt Projekt oder Datenbank,
+ist das ein Konfigurationsfehler, der im Log stehen SOLL.
+
+**Beweis:** `packages/core/tests/communitySettingsReadersWithoutAppwrite.test.ts`
+— `createAdminClient` ist dort die Attrappe des SDK-Wurfs; der erste Fall war
+vor dem Fix rot (Meldung geloggt), danach grün, mit Gegenproben für 404
+(still), „fetch failed" (gemeldet — der Zertifikatsfall) und eine gelesene
+Zeile. Live-Beweis erbracht (2026-10-28, Build 37291a8e, Deploy 09:45 UTC):
+die letzte Warnzeile in `helppukalaniapp-error-3.log` stammt von 09:00 UTC,
+zwei erzwungene Seitenaufrufe mit 33 s Abstand (über der Microcache-TTL)
+um 10:35 UTC liessen den Zähler bei 134 stehen — null neue Zeilen seit dem
+Deploy, vorher ~2/h.
+
+**Gelernt (zwei Stück):** (1) **Ein Log-Befund wird erst nach App, Datum
+UND Meldung gezählt, bevor er einen Namen bekommt.** „Über 180 Zeilen in der
+Pool-App" waren in Wahrheit drei verschiedene Geschichten in sechs Apps —
+ein erledigter Vorfall, ein alter Platten-Vorfall und ein Dauerfehler in der
+einen App, die niemand verdächtigte. `cut -c10-19 | sort | uniq -c` je Datei
+kostet eine Minute und ersetzt eine Stunde Vermutung. (2) **Fail-soft braucht
+einen Begriff für „gibt es hier nicht".** Der Leser unterschied nur „Zeile
+fehlt" (still) von „alles andere" (Meldung) — eine App ohne Instanz fiel in
+die zweite Schublade, und weil die Seite trotzdem richtig aussah, hat es
+sieben Wochen lang niemand gesehen. Eine neue Pflicht-Abhängigkeit, die
+eine App bewusst nicht hat, braucht vor dem Fehlerzweig einen eigenen
+Ausgang.
+
+---
+
+### AI1 — Das Vision-Modell von branding.supply war tot, und nichts wurde rot ✅ 2026-10-27
+
+**Gefunden als Nebenbefund der Routen-Probe zu BI2-Frage C** (Plan
+`plans/BRAND-INSIGHTS-KURATION.md` §13). `apps/branding` setzte
+`pukalani.ai.visionModel: 'google/gemini-2.5-flash'`. Dieses Modell hatte bei
+OpenRouter **keinen ZDR-Endpunkt mehr** — sein ganzes Angebot waren drei
+Routen über „Google AI Studio", und AI Studio ist, mit einer eigenen Probe
+belegt, **nicht ZDR-fähig** (`only: ['google-ai-studio']` ⇒ 404). Weil
+`BRAND_PROVIDER_ROUTING` auf `zdr: true` + `allowFallbacks: false` klemmt,
+antwortete jeder Aufruf **404 „No endpoints found matching your data policy"**.
+Betroffen war der einzige Konsument von `aiVision`: die **Inspirationslesung**
+im Brand-Wizard. Dabei stand der Schalter auf Prod AN (`brandAiEnabled: true`,
+`aiModel` leer) — die Funktion war also nicht abgeschaltet, sie **scheiterte**.
+
+**Behoben** (Davids Wahl, 2026-10-27): `visionModel:
+'google/gemini-3.1-flash-lite'` — das einzige video-fähige ZDR-Gemini mit
+einem `google-vertex/eu`-Endpunkt, damit trägt EIN Modell die Bildlesung und
+ab K5 das Videolesen. Dazu, ebenfalls Davids Entscheidung („nur für Bild und
+Video pinnen"), die neue Konstante **`BRAND_PROVIDER_ROUTING_EU`**
+(`BRAND_PROVIDER_ROUTING` + `only: ['google-vertex/eu']`), die die
+Inspirationslesung benutzt: dort reicht ein Kunde eigenes Material hinein.
+**NICHT gepinnt** wurden die Zeichen-Entwürfe (`gemini-2.5-flash-image` hat
+als einzigen Endpunkt `google-vertex/global` — ein EU-Pin hätte die Funktion
+nicht geschützt, sondern abgeschaltet) und der Textweg (offen in OPEN-ITEMS
+`AI1`).
+
+**Beweis:** echter Lauf mit genau der neuen Kombination (Modell + EU-Pin +
+echtes 64×64-PNG) ⇒ HTTP 200, „Gelb und Blau, Schachbrettmuster", 0,05 Cent.
+Dazu `packages/brand/tests/brandProviderRouting.test.ts` (die EU-Fassung erbt
+die drei Bedingungen per Spread und darf nur den Ort ergänzen) und
+`pnpm --filter @pukalani/brand test` 3192/3192.
+
+**Der Wächter dagegen: `pnpm ops:ai-models`** (neu,
+`scripts/ops/verify-ai-models.mjs`). Er liest JEDEN Modell-Slug aus allen
+`app.config.ts` und prüft ihn gegen `/models?zdr=true`; für EU-gepinnte
+Felder prüft er zusätzlich, dass der `google-vertex/eu`-Endpunkt existiert.
+**Er braucht keinen Schlüssel** (die Liste ist öffentlich) und kostet nichts.
+Gegenprobe gefahren: mit dem alten Slug wird er rot (Exit 1) und nennt Datei
+und Feld, mit dem neuen grün (5/5).
+
+**Gelernt:** **Ein Modell-Slug bei OpenRouter ist kein Versprechen, sondern
+ein Angebot, das verschwinden kann** — und sein Verschwinden sieht wie nichts
+aus. Typecheck, Lint und 3192 Tests waren grün, der Code war richtig, nur die
+Gegenseite hatte sich geändert. Genau dieselbe Falle hatte am 2026-09-08 schon
+`google/gemini-2.5-flash-image-preview` erwischt; der Kommentar darüber stand
+zwei Zeilen neben dem toten Slug. Zweimal dieselbe Falle heißt: die
+Verabredung „beim nächsten Mal dran denken" trägt nicht, es braucht einen
+Wächter. **Zweitens: `zdr: true` ist keine Aussage über den ORT.** Es heißt
+„der Anbieter speichert nichts", nicht „der Anbieter rechnet in der EU" — in
+derselben Probe wurde unser Textmodell von **Amazon Bedrock** bedient,
+während im Plan stand, wir liefen über `google-vertex/eu`. Das war eine
+Annahme, die nie gemessen wurde.
+
+### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
+
+**Ausgangslage:** Resend meldete am 2026-10-26 das Tageslimit; im Dashboard
+standen Verifizierungs-Mails „Account Verification for Account" von
+noreply@pukalani.app an Empfänger wie „Etsy User! Your item has been
+successfully sold through our marketplace. https://a29.at/9hdF2k
+<opfer@gmail.com>". Hergang (aus `_10_users`, `_10_tokens` und dem
+App-Audit `audit_logs` des Projekts `account` rekonstruiert): ein Skript
+rief `POST /api/auth/signup` der Pool-App im 20-s-Takt auf — `name` = der
+Spamtext, `email` = eine fremde Adresse — und meldete sich danach per
+`POST /api/auth/logout` wieder ab. Appwrite setzt den Namen in Kopf und Gruß
+der Verifizierungs-Mail, unser Resend-Konto war damit ein Spam-Relais: 15
+Probeläufe am 2026-10-25 (drei IPs, darunter ein verifiziertes Testkonto und
+ein Versuch über `PUT /api/auth/profile` + `POST /api/auth/verification`),
+209 Mails in der Nacht zum 2026-10-27 von einer IP (138.124.33.231). Der
+Takt lag knapp unter unserem Limit von 5/min je IP — das einzige Fenster
+der Middleware war eine Minute. Appwrites eigene Abuse-Limits greifen für
+Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
+
+**Gebaut (Core, zwei Pakete + Aufräumen):**
+1. **Anzeigename ist kein Nachrichtenfeld** — pure Regel
+   `packages/core/shared/displayName.ts` (`displayNameProblem`: Link/Domain,
+   `@`, Steuer- und Bidi-Zeichen, mehr als 80 Zeichen), EINE Zod-Fabrik
+   `displayNameField()` in `schemas/auth.ts` für Registrierung, OTP-
+   Registrierung UND Profil (`schemas/profile.ts` — der zweite Hebel aus den
+   Probeläufen). Beweis `tests/displayName.test.ts`.
+2. **Mail-Routen haben ein Stundenfenster und eine Notbremse** — für die vier
+   Routen in `ALWAYS_LIMITED` (signup, otp, recovery, verification) zusätzlich
+   20 je Stunde und IP und 60 je Stunde über ALLE IPs je Route
+   (`auth.mail_route_breaker` einmal je Fenster im Log). Beweis
+   `tests/rateLimitMailRoutes.test.ts`: die 21. Registrierung im 20-s-Takt
+   bekommt 429, die 61. über 60 IPs ebenfalls.
+3. **Cloudflare Turnstile als Bot-Beweis** an signup/otp/recovery
+   (`server/utils/turnstile.ts`, `TurnstileWidget.vue`, Gate = beide Env-
+   Variablen gesetzt, fail-closed bei Cloudflare-Ausfall). Ohne Schlüssel
+   exakt das Verhalten von vorher. **SCHARF SEIT 2026-10-27 (TS1, über Davids
+   Chrome):** Widget „Pukalani Apps" im Cloudflare-Konto Hawaii Studio,
+   Hostnames `pukalani.app` + `branding.supply` (Turnstile deckt Subdomains
+   von selbst mit, ein Wildcard-Eintrag ist dort gar nicht vorgesehen), Modus
+   Managed. Beide Variablen in den Site-Envs platform, admin, portfolio,
+   branding (`.env.bak-2026-10-27-turnstile` liegt daneben; `comments` hat
+   keine eigene Site mehr, der Host läuft über platform), danach nur
+   `pm2 startOrReload … --update-env` — kein Deploy nötig, die Runtime-Config
+   liest die Env beim Start, auch den `NUXT_PUBLIC_`-Site-Key. Beweise:
+   signup/otp/recovery ohne Token ⇒ 403 `bot_check_required` auf allen vier
+   Hosts (Build 38a107bf), kein `auth.turnstile_misconfigured` im Log, der
+   Site-Key steht im HTML von /register, und der Knopf „Account erstellen"
+   ist im Browser freigegeben (er bleibt gesperrt, bis Cloudflare den Token
+   geliefert hat). Beide Variablen sind seither PFLICHT im Wächter
+   `verify-site-env.mjs`. Rezept: `docs/runbooks/DEPLOYMENT.md`.
+   **Nachgeprüft 2026-10-28 (PR #55, `pnpm ops:turnstile`):** der neue
+   Wächter `scripts/ops/verify-turnstile.mjs` fragt die vier Sites SELBST
+   (nicht die Dateien): `POST /api/auth/recovery` ohne Token ⇒ 403
+   `bot_check_required` UND `/forgot-password` trägt das Widget — 4/4 grün
+   auf account, admin, pukalani.studio, branding.supply; `pnpm ops:site-env`
+   grün; alle Hosts `/api/health` ok:true (Build 188a5b4e); signup ohne
+   Token 403 auf account/demo/branding (admin + studio haben die
+   Registrierung ohnehin aus); kein `turnstile_misconfigured` in den
+   pm2-Logs; beide Variablen in allen vier pm2-Prozessen (`pm2 jlist`).
+4. **Aufräumen** `scripts/ops/purge-spam-accounts.mjs` (Trockenlauf-Default,
+   `--execute`, `--include-verified` für die zwei Testkonten des Angreifers;
+   läuft auf app-prod mit der Site-`.env`, weil der Migrations-Key kein
+   `users.read` hat).
+
+**Bewusst nicht gebaut:** Honeypot-Feld und „unter 4 Sekunden abgelehnt" —
+der Angreifer sprach die API direkt an, mit 20 s Abstand; beides träfe nur
+Formular-Bots und kostete echte Nutzer. Eine strenge Same-Origin-Pflicht an
+den Mail-Routen (Anfragen ohne `Origin`/`Sec-Fetch-Site` abweisen) ebenfalls
+nicht: der Header ist frei setzbar, die bestehende `csrfOriginCheck`-
+Middleware weist Browser-Cross-Site schon ab, und die Verify-Skripte rufen
+die Routen ohne Browser.
+
+**Gelernt:** (1) Jede Route, die eine Mail mit NUTZERTEXT auslöst, braucht
+drei Dinge: eine Textregel (kein Link, keine Adresse), ein Fenster länger
+als eine Minute und einen Deckel über alle IPs — ein Limit je IP allein wird
+mit Adressrotation oder Geduld umgangen, und eine Minute ist für einen
+Mail-Versand kein Fenster. (2) Die Nuxt-Seite ist bei 200ern blind
+(`access_log off` je ploi-Site, pm2-out leer); die Wahrheit steht in der
+Appwrite-Datenbank — `_<projekt>_tokens` trägt IP und User-Agent des
+AUSLÖSERS (hier unser eigener Server mit dem Node-SDK, also der Weg über
+unsere Route), das App-Audit `audit_logs` die IP des Menschen dahinter.
+(3) Resends „To"-Spalte zeigt den Anzeigenamen — wer dort Text sieht, der
+nicht wie ein Name aussieht, sucht den Namen, nicht die Adresse. (4) TS1 lief in ZWEI Sitzungen parallel: die eine schaltete über Davids
+Chrome scharf und schrieb die Doku, die andere baute den Wächter (PR #55) —
+beide fassten OPEN-ITEMS, DEPLOYMENT und `verify-site-env.mjs` an. Beim
+Zusammenführen gilt `main` (die Pflicht-Einträge standen dort schon, der
+PR hätte sie verdoppelt); nur der Wächter, das pm2-Reload-Rezept und
+`ops:turnstile` kamen aus dem PR dazu. Und: „scharf" beweist nur das Skript
+gegen die laufenden Prozesse — die `.env` kann richtig sein und pm2 trotzdem
+die alte Umgebung tragen (`pm2 jlist` zeigt `pm2_env`), ein ploi-Deploy ohne
+App-Änderung lädt nicht neu.
+
+**Ausgangslage (prod, api.pukalani.app, Appwrite 2.6.1, beim Mail-/Standort-
+Beweis nach dem Upgrade gefunden):** Davids Konto hat `mfa=1` mit
+verifiziertem TOTP-Authenticator. Nach dem richtigen E-Mail-Code legte
+`otp/verify.post.ts` die Session an (`factors: ["email"]`) und antwortete nur
+`{ ok: true }`; Appwrite beantwortet auf dieser Session jeden Konto-Aufruf mit
+`user_more_factors_required`, `/api/auth/me` sagt 401, der SSR-Guard hält den
+Nutzer für abgemeldet und leitet auf `/de/login` — nach KORREKTEM Code wieder
+das Login, ohne ein Wort. Kein Zusammenhang mit dem Upgrade: der Code-Weg
+hatte nie eine MFA-Weiche, nur der Passwort-Login (`login.post.ts`, U15 Teil
+4). Google kam durch, weil Appwrite `["email","oauth2"]` als zwei Faktoren
+zählt.
+
+**Gebaut (Core):** (1) `secondFactorPending(probe)` in `shared/mfa.ts` ist
+jetzt DIE EINE Weiche — `login.post.ts` und `otp/verify.post.ts` rufen
+dieselbe Funktion mit `account.get()` auf der frischen Session; Appwrite wird
+GEFRAGT, nicht nachgerechnet. (2) `otp/verify` antwortet
+`OtpVerifyResponse { ok, mfaRequired }` (`shared/types/auth-responses.ts`,
+Handler-Annotation + `$fetch<OtpVerifyResponse>` — Nitro-Routentypen sind
+aus) und protokolliert bei fehlendem Faktor noch KEIN `user.login`; die
+Beitritts-Kette (A5/BS1) bleibt hinter der Weiche. (3) `OtpLoginForm.vue`
+zeigt `AuthMfaChallengeForm`, der Erfolgspfad liegt einmal in `finishLogin()`
+(wie im Passwort-Formular), „Abbrechen" führt zum E-Mail-Schritt zurück (der
+Code ist mit der Session verbraucht). (4) Die Challenge-Route schrieb fest
+`password+<mode>` ins Protokoll; jetzt `mfaLoginMethod(session.factors, mode)`
+⇒ `otp+totp` bzw. `password+totp`. `register/code` rendert dasselbe
+`AuthOtpLoginForm` gegen dieselbe Route (einziger Aufrufer) — mit erledigt.
+Keine neuen Nutzertexte: die Challenge-Maske ist faktor-neutral formuliert.
+
+**Beweis:** Unit (`tests/mfa.test.ts`, 7 neue Fälle: Probe wirft
+`user_more_factors_required` ⇒ true, gelingt ⇒ false, Netz/500/null ⇒ false,
+Probe genau einmal; Protokollname) — 1652 Core-Tests, Lint, Typecheck,
+`check:i18n-keys` grün. HTTP (`scripts/verify-mfa.mjs`, neuer Abschnitt 10,
+gegen den Worktree-Server :3021 + lokale Appwrite 2.6.1 + Mailpit): Code über
+`/api/auth/otp` anfordern, Code aus der ECHTEN Mail (Mailpit-API), einlösen ⇒
+`200 {mfaRequired:true}` + Cookie, `/me` 401, Challenge mit App-Code 200,
+`/me` 200; Gegenprobe Konto ohne MFA ⇒ `mfaRequired:false` und sofort drin —
+**48/48**; mit der alten Route (HEAD-Fassung eingespielt) **46/48**, rot genau
+an der fehlenden Antwort. Klick-Beweis im Browser auf `/de/login/code` mit
+einem frisch angelegten TOTP-Konto: Code-Eingabe ⇒ Zwei-Faktor-Maske ⇒
+App-Code ⇒ Startseite mit Toast „Erfolgreich angemeldet", `/api/auth/me` 200.
+Audit-Protokoll des Laufs: `otp+totp` (vorher stand dort auch für den Code-Weg
+`password+totp`).
+
+**Gelernt (drei Stück):** (1) **Eine Weiche, die in EINER Route lebt, ist
+keine Weiche, sondern eine Ausnahme.** Die MFA-Prüfung stand seit U15 nur im
+Passwort-Login; jeder weitere Weg, der eine Session anlegt (Code, später
+OAuth, Magic-Link), musste sie selbst wissen — und der Code-Weg wusste sie
+nicht. Jetzt steht sie in `shared/mfa.ts`, und ein neuer Session-Anleger ruft
+sie oder fällt beim nächsten Lesen auf. (2) **Ein Server-Token ist KEIN
+E-Mail-Code.** Die erste Fassung des Beweises kürzte den Postweg über
+`users.createToken` ab — das Geheimnis ist Hex, unsere Route verlangt sechs
+Ziffern, 400. Der Beweis geht seither den Weg des Menschen (Route → Mail →
+Route); Mailpit macht das lokal möglich (`MAILPIT_URL`, Default :8025).
+(3) **Ein TOTP-Code, der an Sekunde 52 berechnet wird, ist beim Klick schon
+tot.** Der erste Klick-Versuch scheiterte an der Fenstergrenze, nicht am Code
+— für Klick-Beweise den Code am Fensteranfang (`epoch % 30 < 12`) berechnen
+und sofort eintragen. Nebenbei: die Worktree-Falle „`@shikijs/engine-
+oniguruma` nicht verlinkt ⇒ jede Route 500" trifft auch `apps/comments`,
+nicht nur `branding` (Symlink + Neustart, Memory).
+
+
+### Die Host-Wache zählte Ziffern, statt den Port zu rechnen ✅ 2026-10-24
+
+**Ausgangslage:** `00.host-header.ts` + `shared/requestHost.ts` schlossen den
+Prod-Befund vom 2026-08-09 (`Host: evil.tld"><x>` ⇒ `TypeError: Invalid URL`
+in `getRequestURL()` ⇒ **500 auf jeder Route jeder App**). Beim Nachfassen fiel
+eine Lücke DERSELBEN Fehlerklasse auf: die Regex erlaubte `(:\d{1,5})?` —
+fünf Ziffern sehen gültig aus, ein Port über **65535** ist aber keiner, und
+`new URL()` wirft darauf. `pukalani.studio:99999` kam also durch die Wache und
+ließ den Verbraucher eine Middleware später werfen.
+
+**Behoben** mit `portIsBuildable()` (rechnen statt zählen) in
+`packages/core/shared/requestHost.ts`; die vier Portfälle stehen jetzt auch in
+der Gegenprobe-Schleife „deckt sich mit new URL()". Ohne den Fix sind 6 der 58
+Tests rot.
+
+**Beweis in drei Stufen.** (1) Unit: 6 rot ⇒ 58/58 grün; 1650 core-Tests, 19
+Pakete, Lint, Typecheck grün. (2) Prod-Build portfolio, vorher/nachher am
+SELBEN Build (Port-Prüfung im `.output` neutralisiert): `Host: …:99999` vorher
+**500** auf `/`, `/de`, `/gibtsnicht`, `/api/health` mit 11 Stacktraces,
+nachher **400** mit 0 — gesunder Verkehr identisch (`/`=200, `/de`=200,
+`/de/`=301, `/gibtsnicht`=404, `robots.txt`/`sitemap.xml`=200, `:65535`=200,
+`[::1]`=200). (3) **Live** (Build 79cdcdbc auf allen drei Hosts):
+`X-Forwarded-Host: <host>:99999` vorher **500**, nachher **400** mit
+`statusMessage: "Invalid host header"` — gesunde Proxy-Ketten (`a.tld,
+pukalani.studio`) weiter 200.
+
+**Gelernt (zwei Stück):** (1) **Eine Zeichen-Erlaubnisliste kann keine
+ZAHLENgrenze ausdrücken.** Die Datei nennt `new URL()` ausdrücklich als
+Maßstab, und genau an der einen Stelle, wo der Parser rechnet statt zu lesen,
+wich die Regex ab. Wo eine Prüfung einen fremden Parser nachbaut, gehört die
+Gegenprobe GEGEN diesen Parser in die Tests — sie stand sogar schon da, nur
+ohne einen Port in ihrer Fallliste, und war damit grün über einem Loch.
+(2) **nginx versteckt den `Host`-Vektor und war fast ein falsches Entwarnen.**
+Live antwortete `Host: …:99999` schon vorher 400 — aber von **nginx selbst**
+(`server: nginx`, HTML-Seite), das kaputte Host-Header gar nicht erst
+durchlässt. Wer nur so misst, hält jede App-Wache für überflüssig. Erreichbar
+war die Lücke über `X-Forwarded-Host`: diesen Header prüft nginx NICHT, und
+@nuxtjs/i18n wie Nitros Fehler-Handler lesen ihn BEVORZUGT
+(`xForwardedHost: true`). Der App-Beweis läuft deshalb über den Header, den
+der Proxy nicht anfasst — und unterscheidet am `content-type` bzw. am Rumpf,
+WER geantwortet hat.
+
+---
+
+### AW262: Appwrite 2.6.2 (Security-Release) auf dev und prod — Brotli CVE-2026-111497 geschlossen ✅ 2026-10-27
+
+Anlass: 2.6.2 erschien am 2026-10-24 fünf Stunden nach dem Prod-Sprung auf
+2.6.1 — `appwrite/base` 2.2.7 mit `brotli-libs` 1.2.1-r0 (Out-of-bounds-Write
+im Decoder; Appwrites ausgehender HTTP-Client dekodiert `br`), dazu Härtung an
+Keys/Realtime/Storage, neu `_APP_MEMORY_LIMIT` (512M), `_APP_JOBS_SECRET` darf
+nicht leer sein, **kein Schema**. CI seit 2026-10-27 (Cloud-Sitzung), dev und
+prod am selben Tag von Davids Terminal (Auftrag „erst dev, dann prod").
+
+Beweise: dev (OrbStack, 20:51–20:56 UTC) Werkzeug 23,1 s, `migrate` 1,6 s,
+`health/version` 2.6.2, Brotli 1.2.1-r0, PHP 8.5.12, keepAlive 367 `false`,
+`doctor` 🟢 jobs, Health/DB/Cache/Storage/Time `pass`, Mail-OTP über Mailpit
+`success`, `pnpm -r test` 27 Pakete / 7644 grün, Playwright `apps/comments`
+16/16. Prod (`ops/appwrite-upgrade-2.6.2.sh` per ssh, 21:09–21:12 UTC):
+Dump 22,4 MB / 870 Tabellen, Werkzeug 28,1 s, `migrate` 19,6 s (253 „already
+exists", 0 Fehler), **Aufruf bis Beweise 81 s**; danach 0 Worker-/Realtime-
+Fehler, 0 API-5xx, elf Hosts `ok:true` (www 301), SSR 200, Realtime 101
+(`--http1.1`), `verify-tls` 6/6, `schema-parity` 69/42/41/42, Health je
+Projekt `pass`. Mail-Beweis nach Leerlauf (2026-10-28 00:39 UTC): Probe-Nutzer
+per Gast-OTP-Token an `delivered@resend.dev`, Worker `mail.template otp ·
+mail.status success` in 1,67 s, Nutzer per Runtime-Key der Site wieder gelöscht
+(204, Gegenprobe 404). Alte Images am 2026-10-28 auf prod und dev entfernt
+(nur ungenutzte Appwrite-Stack-Tags + dangling), prod-Platte 66 % → 34 %.
+Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+
+**Gelernt:** (1) `migrate` ist nach einem Patch-Release NICHT „nichts zu tun":
+V25 läuft idempotent erneut durch und schreibt hunderte gelbe „already
+exists"-Zeilen — die Zahl zählen, auf 0 echte Fehler prüfen, nicht erschrecken.
+(2) Zwei Beweis-Zeilen des vorbereiteten Skripts bewiesen nichts: `apk info -v
+PAKET` druckt die Beschreibung (richtig: `apk info -v | grep ^brotli-libs`),
+und `php -r 'echo ini_get("memory_limit")'` zeigt die CLI-ini (128M), weil
+Appwrite den Wert per `ini_set` in `app/init.php` setzt — Beweis ist die Env im
+Container. Ein Beweis, der auf dev das Falsche zeigt, wird auf dev repariert,
+bevor prod läuft. (3) Backticks in einer doppelt gequoteten `echo`-Zeile sind
+Befehls-Substitution — die „Erklärung" `\`apk info -v <pkg>\`` warf auf prod
+einen Syntaxfehler ins Log (harmlos, aber hässlich). (4) Der HAUPT-Checkout
+hat ein veraltetes `node_modules` (`vitest` in brand, `mmdb-lib` in core
+fehlen ⇒ jede Dev-Route 500): Beweise im frisch installierten Worktree fahren,
+Dev-Server vor Playwright selbst starten. (5) Die Migrations-Keys haben
+keinen `users.*`-Scope; der Mail-Beweis per Probe-Nutzer läuft mit dem
+RUNTIME-Key der Site auf dem App-Server (per `ssh`, Key bleibt dort), die
+`userId` selbst gewählt, Adresse `delivered@resend.dev`.
+
+---
+
+### AW22: Appwrite 2.6.1 auf dev, CI und prod — PHP 8.5.12 gegen die PHP-RCE, der 2.2-Sprung mit drin ✅ 2026-10-24
+
+Anlass: das PHP-Notfall-Release vom 2026-10-21 (CVE-2026-109618/-109619,
+unauthentifizierte RCE in den Web-SAPIs). Die Ploi-Server waren am 2026-10-23
+gepatcht, appwrite-prod lief noch auf 2.0.0 mit PHP 8.5.9; der Sprung auf 2.2
+(AW22) wartete seit 2026-09-14 auf ein Fenster. Appwrite 2.6.1 (gleicher Tag)
+bringt PHP 8.5.12 und nennt sich selbst „precautionary" (Swoole, kein FPM) —
+Ziel wurde deshalb 2.6.1 statt 2.2, ein Fenster für alles (DECISION-LOG
+2026-10-23). Reihenfolge wie immer: Release-Notes 2.3–2.6.1 → dev → Runbook →
+CI-Ableitung → Davids „ja, jetzt" (2026-10-24) → prod.
+
+Beweise: dev `health/version` 2.6.1, PHP 8.5.12, Migration 13 s, Mail über den
+gepatchten Worker, Realtime 101, Unit + Playwright 16/16 funktional grün;
+prod (Skript `ops/appwrite-upgrade-2.6.sh`, Lauf durch die Elternsitzung)
+Werkzeug-Aufruf bis Beweise **71 s**, Dump 22,2 MB / 800 Tabellen, Migration
+16,6 s, alle zwölf Hosts `/api/health ok:true`, Zertifikat bis 2027-01-22,
+`verify-tls` 6/6, `schema-parity` 69/42/41/39, OTP-Mail nach Leerlauf 1,61 s
+`success`, Session-IP = Davids Mac (72.234.42.6, Hawaii), nicht der
+Web-Server; CI-E2E auf der 2.6.1-Wegwerf-Instanz 16/16, F19 9/9. Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
+
+**Gelernt:** (1) Seit 2.4 ist die Client-IP der RECHTESTE nicht vertraute
+`X-Forwarded-For`-Hop — mit unserer Kette (Nuxt setzt XFF, Traefik hängt die
+Nuxt-IP an) stünde jede Prod-Session wieder auf dem Web-Server; die Nuxt-IP
+gehört in `_APP_TRUSTED_PROXIES` (auf dev mit nachgestellter Kette gemessen,
+Fix ebenso). (2) Das Upgrade-Werkzeug lädt seit 2.5 die Override MIT und löst
+relative Mount-Pfade im eigenen Container auf — „Failed to start containers";
+absolute Host-Pfade, und es läuft in 20 s durch. Die Override muss damit VOR
+dem Werkzeug stimmen, das Gegenteil der 2.0-Regel. (3) Realtime-Handshakes
+per `curl` nur mit `--http1.1` — über HTTP/2 antwortet Swoole 400, das sieht
+aus wie ein Ausfall. (4) Executor 1.1.2 trägt weiter PHP 8.5.6; nur internes
+Netz, keine Functions — notiert, nicht gelöst.
+
+---
+
+### SEO-Alternates: der Wächter gegen das blinde Leeren steht jetzt im Kern ✅ 2026-09-10
+
+**Was:** Nachtrag zu F60. Der Kern-Vertrag `useSeoHiddenLocales()` (aus BI1 I3)
+ist ein APP-WEITER State, und sein Kopfkommentar verlangte von jeder Seite, ihn
+in `onBeforeRouteLeave` UND `onUnmounted` zu LEEREN. Das ist falsch: beim
+Wechsel im Browser wird zuerst die NEUE Seite aufgebaut — sie schreibt ihren
+Wert — und erst danach die alte abgeräumt. Das blinde Leeren löscht damit genau
+den frischen Eintrag der neuen Seite. Der `pages`-Layer hatte den Fix seit F60
+je Seite; die drei `insights`-Seiten (Beitrag, Duell, Ranking) hatten ihn nicht.
+
+**Wie:** Die Absicherung liegt jetzt EINMAL im Kern statt in jeder Seite.
+`useSeoHiddenLocales(quelle)` ist die neue Seiten-Seite: sie nimmt einen Getter
+oder Ref, kopiert die Liste beim Schreiben (damit die Identität wirklich ihr
+gehört) und räumt im `onUnmounted` nur auf, wenn im State noch GENAU DAS
+Array-Objekt liegt, das dieser Aufruf hineingelegt hat. Der Kopf liest über
+`useSeoHiddenLocalesState()` — ein `readonly` Ref, damit niemand am Wächter
+vorbei schreiben kann. `onBeforeRouteLeave` fällt bewusst weg: mit dem
+Identitätsvergleich braucht es den Haken nicht mehr, und er feuert, BEVOR
+feststeht, dass die Navigation stattfindet (ein abbrechender Guard räumte sonst
+die Meldung der Seite weg, auf der man bleibt). Alle vier Aufrufstellen sind
+umgestellt.
+
+**Beweis:** Erst der Fehler, dann der Fix, mit demselben Klick. `branding` lokal,
+zweisprachiger Insights-Beitrag → einsprachige Rechtsseite `/terms` (client-seitig,
+per Marker geprüft): VORHER meldete der Kopf `hreflang="en"` und `en-US` auf einen
+Text, den es auf Englisch nicht gibt — der Direktaufruf derselben Seite meldete
+korrekt nur `x-default`, `de`, `de-DE`. NACHHER stimmen beide überein. Gegenrichtung
+(`/terms` → Beitrag) liefert wieder alle fünf. Dieselben zwei Richtungen im
+`pages`-Layer auf `demo.localhost` (platform) nachgeklickt. Dazu Typecheck von
+`branding`, `portfolio`, `control`, `platform`, `pnpm -r lint`, `pnpm -r test`.
+
+**Gelernt:** **Ein app-weiter State braucht einen Besitzer, keine Disziplin.**
+Der ursprüngliche Vertrag war nicht falsch AUFGESCHRIEBEN, er war falsch
+GESCHNITTEN: er legte das Aufräumen in die Hand jeder Seite und beschrieb dabei
+eine Reihenfolge, die es im Browser nicht gibt. Vier Aufrufstellen, drei davon
+mit demselben Fehler — das ist das Muster, an dem eine Sicherung in die
+Schnittstelle gehört statt in die Anleitung (dieselbe Lehre wie beim
+`tableCacheNudge` der Migrationen). Und: **SSR sieht nichts davon.** Der Fehler
+lebt ausschließlich in der Client-Navigation; Unit-Tests, Typecheck und Lint
+finden ihn nicht, nur der Klick.
+
+---
+
+### F60 — Mehrsprachige Betreiber-Seiten: der Fallback zeigt und sagt, was er zeigt ✅ 2026-09-10
+
+**Was:** Der geparkte Punkt F60 versprach „je Sprache eine Fassung" nach dem
+Muster der Kategorie-Übersetzungen. Die Analyse vor Baubeginn zeigte, dass der
+`pages`-Layer das **seit `pages-001`** hat, und zwar in der stärkeren Form: eine
+Zeile je `slug` × `locale` (Unique-Index `uq_slug_locale`), `body` als
+MEDIUMTEXT, Titel/Text/Veröffentlicht-Status je Fassung, EN/DE-Reiter im Editor,
+sprachgenaue öffentliche Auflösung samt Microcache. **Keine Ablage-Entscheidung,
+keine Migration.** Gebaut wurden die vier Lücken DRUMHERUM (Davids vier
+Entscheidungen, DECISION-LOG 2026-09-10; Plan:
+[archiv/F60-MEHRSPRACHIGE-SEITEN.md](archiv/F60-MEHRSPRACHIGE-SEITEN.md)):
+
+1. **Der stumme Fallback spricht.** Eine nur auf Deutsch gepflegte Seite kam
+   unter dem englischen Pfad mit `lang="en"` heraus, und `useLocaleHead` bewarb
+   weiterhin ein `hreflang="en"`-Alternate, hinter dem derselbe deutsche Text
+   stand — bei Impressum und Datenschutz der unangenehmste Fall. Jetzt: eine
+   Zeile für den Leser („Diese Seite gibt es noch nicht auf Englisch — angezeigt
+   wird die Fassung auf Deutsch."), `lang` am TEXT (Überschrift und Rumpf, nicht
+   am Hinweis — der steht in der Sprache des Lesers), und Alternate-Adressen nur
+   noch für Sprachen, die es **veröffentlicht** gibt. 404 in der fehlenden
+   Sprache war die verworfene Alternative: Rechtstexte müssen erreichbar bleiben.
+2. **Der Editor zeigt, was FEHLT:** je App-Sprache ein Kürzel (grün
+   veröffentlicht · grau Entwurf · umrandet fehlt), und die Reiter kommen aus der
+   i18n-Config statt aus `['en','de']` — das Datenmodell konnte immer beliebige
+   Sprachen, dieser Bildschirm nicht.
+3. **KI-Übersetzungsvorschlag** nach dem Muster des Kategorie-Vorschlags:
+   `POST /api/pages/translate` **speichert nichts**, zwei Produkt-Gates
+   (`pages` + `ai`), Kill-Switch (503 ohne Schlüssel, Knopf erscheint dann gar
+   nicht), IP-Drossel `pages:translate`, ZDR fail-closed
+   (`zdr: true, dataCollection: 'deny', allowFallbacks: false` — anders als bei
+   den Kategorien geht hier ein RECHTSTEXT an den Anbieter), Deckel 12.000
+   Zeichen mit klarer Absage statt Halbergebnis.
+
+**Beweise:** `packages/pages/scripts/verify-page-languages.mjs` **23/23** gegen
+zwei Dev-Server aus dem Worktree (Fallback, Hinweis, `lang`, `hreflang` UND
+`og:locale:alternate`, drei Gegenproben: englische Fassung dazu ⇒ Hinweis weg +
+Adressen zurück · Fassung auf Entwurf ⇒ beides wieder weg · Nachbarseite und
+Startseite behalten ihre Adressen) · Unit: `pages/tests/pageLocales.test.ts` ·
+Typecheck grün in ALLEN vier Apps mit dem Layer (platform, portfolio, control,
+branding) · `check:i18n-keys`, `check:manifests`, `check:bilanz` grün ·
+Klick-Beweis hinter Login auf einer Wegwerf-Community: Sprach-Kürzel gelesen
+(`en:missing`/`de:draft`), deutsche Fassung veröffentlicht, danach auf dem
+englischen Pfad Hinweis + `lang="de"` + nur deutsche Adressen im Browser
+gemessen, dazu beide Richtungen einer CLIENT-Navigation (einsprachig ↔
+zweisprachig ↔ Startseite) — genau dort steckte der Fehler unter Gelernt (3) ·
+Kunden-Hilfe in beiden Sprachen ergänzt.
+
+**Gelernt:** (1) **Ein geparkter Punkt beschreibt den Stand vom Tag seiner
+Aufnahme, nicht den von heute.** F60 stand mit „Aufwand M — Tage" in der Liste;
+die Hälfte war längst gebaut. Vor der ersten Frage an David gehört die
+Ausgangslage im CODE nachgelesen — sonst führt man eine Entscheidungsrunde über
+eine Ablage, die es schon gibt. (2) **Doppelte Arbeit erkennt man erst beim
+Rebase, und dann gilt Davids Regel.** Ein eigener Kern-Vertrag für die
+Alternate-Adressen war fertig und getestet, als der Rebase zeigte, dass eine
+Nachbarsitzung am selben Tag für BI1 I3 denselben Mechanismus gebaut hatte
+(`useSeoHiddenLocales()` + `core/shared/seoAlternates.ts`). Der EIGENE Commit
+fiel; die fremde Fassung kann mehr (räumt auch `og:locale:alternate` mit) und
+entscheidet bei `x-default` besser (es bleibt — keine Sprachzusage, sondern der
+Rückfall, den die Seite ohnehin zeigt). Der Preis war eine Stunde; zwei Wege für
+dieselbe Sache hätten dauerhaft mehr gekostet. (3) **Und der übernommene
+Vertrag hatte einen Fehler, den nur der Klick-Beweis findet.** Der fremde State
+ist app-weit; sein Kopf verlangt, dass die Seite ihn in `onBeforeRouteLeave` und
+`onUnmounted` LEERT. Beim Wechsel im Browser wird aber zuerst die NEUE Seite
+aufgebaut — sie schreibt ihren Wert — und erst danach die alte abgeräumt: das
+blinde Leeren löscht genau den frischen Eintrag. Gemessen auf dem Weg zurück von
+einer zweisprachigen Seite auf eine einsprachige: der Hinweis stand da, der Kopf
+bewarb weiter `hreflang="en"`. Die Gegenrichtung fällt NICHT auf, weil dort beide
+Seiten denselben Wert schreiben — und SSR sieht davon nichts, weil jeder Request
+einen frischen State hat. Die Seite räumt jetzt nur auf, wenn im State noch genau
+DAS Array-Objekt liegt, das sie hineingelegt hat (Identität, nicht Inhalt: zwei
+Seiten dürfen dieselbe fehlende Sprache melden). Dass die insights-Seiten aus
+BI1 I3 denselben Fehler haben könnten, war als eigene Aufgabe gemeldet — sie
+hatten ihn, und die Absicherung steht seit demselben Tag EINMAL im Kern statt in
+jeder Seite (eigener Eintrag oben).
+(4) **Erwartungswerte im Beweis sind selbst eine Behauptung.** Drei Prüfungen
+waren rot, weil sie `["de"]` erwarteten — nuxt-i18n schreibt je Sprache ZWEI
+Alternates (`de` aus `code`, `de-DE` aus `language`) plus `x-default`. Der Code
+stimmte, die Erwartung nicht. (5) **Die Port-Falle aus `.claude/rules/tests.md`
+ist real und sieht wie ein Regressionsschaden aus:** der Platform-Dev-Server wich
+beim Start still von 3021 auf **3000** aus (der Vorgänger hatte den Port noch
+nicht freigegeben), die Messungen liefen gegen den sterbenden alten Prozess —
+Symptom war ein `401 Invalid credentials` beim Login mit einem gerade erst
+angelegten Konto, weil `login.post.ts` JEDEN Appwrite-Fehler bewusst zu einer
+generischen 401 macht. Immer die `Local:`-Zeile im Dev-Log gegen den erwarteten
+Port prüfen, nicht nur `lsof`. (6) **Beweis-Skripte räumten bisher nur ihre
+EIGENEN Zeilen weg, nicht die vom Onboarding geseedeten** — in der lokalen
+Dev-Datenbank lagen dadurch ~200 Seiten-Zeilen zu 69 Communities, von denen es
+nur noch vier gibt. `verify-page-languages.mjs` merkt sich die Pool-Id der
+Community (sie steht auf jeder gespeicherten `pages`-Zeile) und löscht am Ende
+alle Seiten dieser Community. (7) **Ein frisch installierter Worktree kann ein
+LÜCKENHAFTES Hoisting haben:** `pnpm install --frozen-lockfile` liess
+`@shikijs/engine-oniguruma` aus `node_modules/.pnpm/node_modules` weg, und JEDE
+SSR-Seite und API-Route antwortete 500 („Cannot find package") —
+`pnpm install --frozen-lockfile --force` baut `node_modules` neu auf, ohne das
+Lockfile anzufassen.
+
+**Offen bei David (ein Gate, kein Blocker):** Der ZDR-Zwang ist lokal NICHT
+gegen einen echten Anbieter gemessen — ohne hinterlegten Schlüssel antwortet die
+Route 503, bevor sie das Modell ruft. Dieselbe Routing-Vorgabe läuft auf
+branding.supply seit BI1 I2 produktiv (`BRAND_PROVIDER_ROUTING`), dort aber mit
+einem anderen Modell. Der erste Klick auf Prod zeigt, ob ein ZDR-Anbieter das
+auf `platform` eingestellte Modell bedient; tut er es nicht, ist die ehrliche
+Absage sichtbar — und die Entscheidung, ob ZDR fällt oder das Modell wechselt,
+gehört dann David.
+
+### Sitzungs-Hygiene: 24 Video-Tipps gegen unseren Stand geprüft, Regeln je Phase, Ausgabe-Deckel gesetzt ✅ 2026-09-09
+
+**Was:** Davids Auftrag, das Video „How To Never Run Out Of Codex and Claude
+Usage Limits" (AI LABS, 2026-08-28) auszuwerten und in den Workflow zu
+integrieren. Ergebnis: [referenz/SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md)
+(jeder Tipp mit Befund übernommen / schon gebaut / bewusst nicht / Davids
+Entscheidung, zehn Regeln, MCP-gegen-CLI-Vorschlag, Messwerte),
+[WORKFLOW.md](referenz/WORKFLOW.md) Abschnitt „Sitzungsführung je Phase",
+CLAUDE.md-Kurzabschnitt plus „Compact instructions" (offizieller Haken:
+Claude Code liest diesen Block beim `/compact`), `.claude/settings.json`
+mit `bashOutputMaxChars: 10000` (gilt nur für erfolgreiche Kommandos).
+Neu als Regel: Korrektur per `/rewind` statt Nachricht, Sub-Agent falsch ⇒
+neu spawnen, Befunde als EINE Liste, `/context` je Session, Playwright aus
+dem Agenten mit `--reporter=dot`. Davids fünf Schalter stehen als `15 · SH1`
+in OPEN-ITEMS.
+
+**Gelernt:** (1) Der Test-Filter-Hook des Videos bringt bei uns nichts —
+gemessen: Vitest 4 druckt ohne TTY bei Grün nur die Zusammenfassung (161
+Tests = 498 Bytes); Regeln erst nach Messung übernehmen. (2) Einstellungs-
+namen aus Videos nie übernehmen, ohne die Doku zu lesen: das Video sagt
+„bash max output length", der Schlüssel heißt `bashOutputMaxChars` (die Env-
+Variable `BASH_MAX_OUTPUT_LENGTH` wird ignoriert, sobald der Schlüssel
+gesetzt ist). (3) YouTube-Transkripte gibt es ohne Proof-of-Origin-Token
+nicht mehr (curl leer, yt-dlp 429, Transkript-Endpunkt 400 auch im
+eingebauten Browser) — Rezept im Dokument: Player-`timedtext`-URL aus den
+Performance-Einträgen des echten Chrome erneut mit `fmt=json3` abrufen.
+
+---
+
+### PS1 — Products-Seite auf branding.supply: Übersicht, fünf Produktseiten, deutsche Slugs, Nav-Aufklapper zurück ✅ 2026-09-09
+
+**Auftrag (DECISION-LOG 2026-09-08, Nebenbefund BI1):** Übersicht plus je eine
+Marketing-Seite pro Produkt, Namen aus den Manifesten, je Produkt Preis oder
+Erstgespräch; der Nav-Punkt „Products" kehrt erst mit den Seiten zurück.
+Konzept + sechs Entscheidungen: [PRODUCTS-SEITE.md](archiv/PRODUCTS-SEITE.md) §8
+(DECISION-LOG 2026-09-09).
+
+**Gebaut (Commits 0d3c9c26 Konzept · 7ec39e34 core · 83bff531 branding ·
+68e31fee Fix):** `/products` + `/products/{brand-check,brand-foundation,
+market-comparison,brand-design,brand-book-kit}` in `apps/branding` (die App
+kennt alle ihre Produkte, ein Layer die anderen nicht — A14), deutsch
+`/de/produkte/…` und `/de/produkte/marktvergleich` per `defineI18nRoute`
+(`customRoutes: 'page'` ist der i18n-Default, `localePath('/products/…')` löst
+je Sprache auf; `/de/products` leitet nuxt-i18n selbst per 302 auf
+`/de/produkte`). Geteilter Rahmen `ProductPage.vue` + `ProductPriceLine.vue`,
+Preis als EINE Konstante `apps/branding/app/utils/productPricing.ts` (149 € netto,
+reist als `{price}` — steht in keiner Locale-Datei). Übersicht mit zwei
+abgeblendeten „Kommt"-Karten (Experience, Monitoring). Nav-Registry: core kennt
+`descriptionKey` (Vertrag statt Schlüssel-Konvention, FIELDS-Zeile im
+i18n-Wächter, 5 Tests), die App trägt `products` (`to: '/products'`) + fünf
+Kinder mit Icon + Beschreibung ein; `brand.nav.product.wizard` ohne George.
+
+**Beweis:** Worktree-Server auf 3017 (`.env` aus `~/.appwrite-secrets`, danach
+gelöscht), alle neun Routen 200 mit übersetzten Titeln, 0× `Detected HTML`,
+eigener Klick auf Übersicht, Marktvergleich-Seite und Aufklapper (544 × 260 px,
+sechs Einträge, Kartenfarbe, liegt oben auf — per `elementFromPoint` geprüft).
+Wächter nach Rebase: manifests 26/9, i18n-keys 304/18 Felder, doc-links,
+Lint core/brand/branding, Typecheck core/branding, core 1623 Tests, brand 2769,
+branding 28. Davids Freigabe 2026-09-09 (Prototyp = echte Seiten; Brand-Check
+im Aufklapper auf die Marketing-Seite, wie gebaut). **Prod-Beweis:** Deploy-Lauf
+34409516032, `https://branding.supply/api/health` → `.build` = **66110cbe**;
+live `/products`, `/products/market-comparison`, `/de/produkte`,
+`/de/produkte/marktvergleich`, `/de/produkte/brand-book-kit` → 200,
+`/de/products` → 302 auf `/de/produkte`; Aufklapper live 544 × 280 px, sechs
+Links auf `/de/produkte/…`, Preis-Zeile „149 € netto je Branding, einmalig".
+
+**Gelernt:** (1) Der Nuxt-UI-Aufklapper (`UNavigationMenu`, waagerecht) wird
+nie breiter als die Menüleiste: Reka misst `--reka-navigation-menu-viewport-
+width` am CONTENT, und der ist im Theme `absolute w-full` des Viewports — eine
+Fixpunkt-Schleife bei der Leistenbreite. `w-max` am Content half nicht (die
+erste Messung blieb stehen), `sm:w-[34rem]` am Viewport verlor gegen die
+Variablen-Klasse `sm:w-(--reka-…)` (tailwind-merge kennt die Kurzform nicht als
+`w-`-Klasse, beide bleiben, die Variable gewinnt in der CSS-Reihenfolge).
+**`sm:min-w-[34rem]` am Viewport** ist die Lösung: andere Eigenschaft, schlägt
+jede kleinere Breite, Reka misst danach den vollen Content (544 px) und klammert
+rechts korrekt. (2) `viewport: 'bw-root'` allein malt teleportierte Flächen im
+Seiten-Grund — auf dunklem Grund unsichtbar; `bw-overlay` dazu (brand.css Runde
+19c gilt auch hier). (3) Ein Dropdown-Kind ist Marketing-Copy: der alte
+Klickdummy-Schlüssel nannte George, die Rolle-vor-Name-Regel (2026-09-04) griff
+erst, als der Text sichtbar wurde. (4) Screenshot-Messungen am offenen Menü
+IMMER über eine eindeutige Klasse (`.bw-overlay`) — der erste
+`[data-state=open]` im DOM war einmal ein anderes Element (Höhe 0, Opazität 0)
+und täuschte ein Render-Problem vor, das es nicht gab. (5) **Ein Laufzeit-
+Import aus `apps/<app>/shared/` bricht den Prod-Build** (Deploy-Lauf
+34407402347 rot: `RollupError: Could not resolve "…/apps/branding/shared/
+productPricing.ts" from ".nuxt/dist/server/_nuxt/products-….js"`) — der
+Vite-SSR-Build lässt die Datei extern, Nitro findet sie nicht. Dev-Server,
+Typecheck und alle Tests sahen davon nichts. Die anderen Apps importieren aus
+ihrem `shared/` nur TYPEN (verschwinden beim Bauen); Laufzeit-Code, den nur die
+Oberfläche braucht, gehört in `app/utils/` (auto-importiert, sicher im Bundle);
+was Server UND Client brauchen, in das `shared/` eines LAYERS (dort bündelt es
+der Build, Beweis: `packages/brand/shared/brandLegalLinks`). Nachgezogen mit
+Fix-Commit + lokalem `pnpm --filter branding build` als Beweis.
+
+### Sucheintrag-Beschreibung gilt auch im Silo (NAV1-Nebenbefund, letzte offene Entscheidung) ✅ 2026-09-09
+
+**Anlass:** Beim Abschluss von NAV1 blieb eine Frage offen (Zeile `13 · NAV1` in OPEN-ITEMS):
+den Sucheintrag unter `/dashboard/community/seo` gibt es auf jeder Site, aber von seinen zwei
+Werten wirkte im Silo nur `noindex` — das sitzt in `useLocaleSeoHead()` und gilt der ganzen
+Community. Die BESCHREIBUNG las genau EINE Datei, die Pool-Startseite. Auf branding.supply und
+portfolio stand im Kopf der Startseite weiter der fest verdrahtete Text, egal was der Owner
+eintrug. Davids Entscheidung 2026-09-09 (DECISION-LOG): die Owner-Beschreibung gilt auf JEDER
+Site, der bisherige Text bleibt der Rückfall.
+
+**Gebaut:** (1) `packages/core/app/composables/useCommunitySeoDescription.ts` — EINE Stelle, die
+`useCommunitySeoSettings()` mit der puren Regel `resolveCommunitySeo` (core/shared/communitySeo.ts)
+zusammensteckt: `useCommunitySeoDescription(fallback: MaybeRefOrGetter<string | null | undefined>):
+ComputedRef<string>`, `''` heisst weiterhin „kein description-Tag" (S5). `noindex` bleibt bewusst
+draussen — der zweite Wert derselben Zeile gilt der ganzen Community und gehört in den EINEN
+Kopf-Aufruf. (2) Drei Leser: `apps/platform/app/pages/index.vue` (Inline-Rechnung ersetzt,
+Verhalten identisch — Rückfall bleibt der Anriss der home-Seite, `|| undefined` lässt das Tag
+weg), `apps/branding/app/pages/index.vue` (`description` + `ogDescription` in `useSeoMeta` und die
+`description` des `WebSite`-Knotens im JSON-LD; Rückfall `home.seoDescription`),
+`apps/portfolio/app/pages/index.vue` (`usePortfolioSeo({ description })` und die `description` des
+`WebPage`-Knotens; Rückfall `HOME_META.description`). Unangetastet bleiben `personDescription`
+(Person-Knoten) und `serviceDescription` (ProfessionalService) — die beschreiben die Person und
+das Angebot, nicht die Site.
+
+**Beweis:** lokal (branding :3010 im Worktree, Session per Server-SDK, 8/8): PATCH /api/pages/seo
+mit eigener Beschreibung ⇒ 200; Startseite trägt sie in meta description, og:description und im
+JSON-LD-WebSite-Knoten; Gegenprobe /about behält seine eigene; PATCH leer ⇒ i18n-Fallback de und en
+steht wieder. Gemergt 4a544a03, LIVE mit Build 6d787e2e (CI viermal grün): Owner-Beschreibung per
+PATCH in Davids Session gesetzt ⇒ branding.supply/de und / tragen sie in description + og:description,
+/about unberührt; zurückgesetzt ⇒ i18n-Fallback wieder da.
+
+---
+
+### NAV1 Paket 3 — Reihenfolge der Dashboard-Navigation je Person (Konto-Prefs, Konto-Reiter „Navigation") ✅ 2026-09-08
+
+**Anlass:** Entscheidung 3 aus „Navigation anpassen" (DECISION-LOG 2026-09-08): die Reihenfolge der
+Dashboard-Nav ist die Wahl JEDER PERSON, nicht je Community (die Nav ist rollen-gefiltert). Konzept
++ Verträge: docs/archiv/DASHBOARD-NAV-JE-PERSON.md; Freigabe am Prototyp „wie gebaut" (E1–E3 nach
+Empfehlung, Nachtrag im DECISION-LOG).
+
+**Gebaut:** (1) `prefs.dashboardNav` = `{ groups?, items?, hidden? }` (Ids; ≤ 100 je Liste, ≤ 64
+Zeichen, `^[a-z0-9-]+$`) in `PukalaniUserPrefs`. (2) Pure Regel `applyDashboardNavPrefs` +
+fail-softer Leser `parseDashboardNavPrefs` in core/shared/dashboardNav.ts mit sechs Zusagen
+(ohne Prefs = heutige Nav; unbekannte Ids still ignoriert; nicht Erwähntes hängt hinten an;
+leere Gruppen fehlen; `hidden` nur in der Seitenleiste, NICHT in ⌘K; Module ohne Gruppe bleiben
+vorne) — 22 neue Unit-Fälle (57 in der Datei). Die Standard-Gruppenreihenfolge steht jetzt EINMAL
+(`DASHBOARD_NAV_GROUPS`), Typ `PukalaniAdminModule.group` liest sie (Nebenbefund: dem Typ fehlten
+seit U7 `account` und `moderation` — nie aufgefallen, weil die Registry nicht gegen ihn geprüft
+wird). (3) `PUT /api/auth/dashboard-nav` (core, Muster timezone.put.ts): Zod, 401/400, Merge über
+die bestehenden Prefs; `null` oder `{}` = Zurücksetzen (Schlüssel wird entfernt). (4) admin:
+Composable `useDashboardNavModules()` kapselt die Filter-Zutaten EINMAL für Layout und Editor;
+`dashboard.vue` rendert `links` personalisiert und hält `allLinks` unpersonalisiert für die
+Suche; sechster Konto-Reiter `/dashboard/settings/navigation` mit `DashboardNavPrefsEditor`
+(ein Block je Gruppe, Gruppen-Pfeile, je Zeile Griff/Ziehen innerhalb der Gruppe, Pfeile, Auge;
+Speichern ⇒ `auth.refresh()`, Seitenleiste zieht ohne Reload mit; Zurücksetzen). i18n de+en.
+
+**Beweise:** Unit 57/57; Klick-Beweis lokal (Playwright gegen branding :3010 im Worktree, Session
+per Server-SDK, Dev-Projekt portfolio-g4ml, Test-User `paket6-klickbeweis` mit Label `admin`):
+18/18 — Reiter rendert, Ausblenden + Zeile hoch + Gruppe runter ⇒ PUT 200, Seitenleiste ohne
+Reload, nach Reload persistent, Editor zeigt Ausgeblendetes gedimmt, ⌘K findet es weiter,
+Zurücksetzen ⇒ Ausgangslage; Gegenproben ungültige Id 400, 101 Ids 400, ohne Session 401,
+unbekannte Id angenommen und wirkungslos. Alle Gates grün (test/lint/typecheck/i18n-keys/
+single-copy/manifests/bilanz/lint:scripts). LIVE: Build 5bbb3b8f auf branding.supply (`/api/health`),
+Klick hinter dem Login (Davids Chrome, de): „Warteliste" ausblenden + „Website" hoch + Speichern
+⇒ PUT 200, Seitenleiste ohne Reload „Übersicht · Website · Seiten · Management · …";
+Zurücksetzen ⇒ `dashboardNav: null`, Ausgangslage zurück.
+
+**Gelernt:** (1) **`$fetch` mit `body: null` schickt GAR KEINEN Body** — die Route sah `undefined`
+und antwortete 400; „Zurücksetzen" schickt deshalb `{}`, und ein FEHLENDER Body bleibt bewusst 400
+(ein Client, der seinen Body vergisst, darf nicht still die Wahl löschen). (2) **Appwrite 2.0
+lehnt ein LEERES Prefs-Dokument ab** (`PATCH /account/prefs` mit `{}` ⇒ 400
+general_argument_invalid „Value must be a valid object"; PHP dekodiert `{}` zu einem leeren
+Array). Wer außer der Nav-Wahl nichts in den Prefs hat, bekam beim Zurücksetzen ein 500 — die
+Route lässt in genau diesem Fall `dashboardNav: {}` stehen (liest sich als „keine Wahl"). Gilt
+für JEDE künftige „Pref entfernen"-Route. (3) Der Browser-Pane wurde vom Klassifizierer
+blockiert — der Klick-Beweis lief als Playwright-Skript mit Cookie aus `users.createSession`
+(kein Passwort), dasselbe Muster wie die verify-Skripte; ein Seitenleisten-Selektor muss die
+Nuxt-UI-Id `#dashboard-sidebar-dashboard` nehmen (`#dashboard nav` findet nichts, und ein leeres
+Array macht jede „Eintrag fehlt"-Prüfung tautologisch grün — beim ersten Lauf so erwischt).
+
+### Brand Design (Produkt 02, BD1): sechs Werkstatt-Kapitel, Vorbilder + Lesung, Farbwelt aus der Ramp-Mathematik, Zeichen in drei Stufen, Ergebnis-Board ✅ 2026-09-09
+
+**Was:** Die erste bezahlte Ableitung aus der Foundation — Schicht 2 derselben Werkstatt mit
+Beraterin Frida: `dna` (Weiche „Vorbilder oder Frida schlägt vor", bis 16 Screenshots je Marke,
+KI-Lesung gegen die Foundation, Visual DNA aus zehn Dimensionen, drei Boards + Mix & Match),
+`color` (Basis-/Akzent-Kandidaten mit Begründung, Hell- UND Dunkel-Rampe aus
+`themes/shared/ramp.ts`, Rollen, Kontrast-Matrix mit adaptiver Knopf-Schriftfarbe), `type`
+(sechs Paare, sieben self-gehostete Familien, Hierarchie-Faktor, Regeln), `mark` (Richtung,
+Briefing mit gerechnetem Schutzraum, gesetzte Wortmarke/Monogramm als SVG, Stufe 3 KI-Entwürfe
+über `aiImage` mit ZDR), `imagery` (drei Prinzipien mit Do & Don't, Icon-Satz mit
+Strichstärken-Auskunft), `motion` (drei Tempi, Token-Satz, sechs Regel-Sätze, 800 ms
+Zeichen-Aufbau). Ergebnis: `BrandDesignPreset` → Kapitel 10 der Foundation, Ergebnis-Board
+`/brand/:id/design`, Snapshot v2 (Design-Kapitel reisen NIE roh — Vorbilder, Lesung und
+Entwürfe sind `internal`), Beispiel Kailua Coffee. Freischaltung je Marke durch den Betreiber
+(brand-022), Buckets `brand-inspiration` (5 MB) + `brand-drafts` (2 MB) server-only mit
+Magic-Bytes und Owner-Auslieferung `no-store`; Core bekam zwei neue Transporte `aiVision` +
+`aiImage` (OpenRouter, `data_collection: deny` fest und nur verschärfbar, Gates leer = aus).
+Modelle (David): Vision `google/gemini-2.5-flash`, Bild `google/gemini-2.5-flash-image`
+(Preview-Slug hatte unter ZDR keinen Endpunkt). Weg: Strategie (Konkurrenz Looka/Brandmark/
+Huemint/Frontify) → Konzept (§2, Davids vier Entscheidungen, zwei gegen die Empfehlung) →
+Prototyp im Playground (acht Screens + Nachtrag Weiche/Upload/Lesung/Board + Hell/Dunkel,
+abgenommen 2026-09-08, eingefroren) → Pakete D0–D9 (Opus baut, Fable prüft; jedes Paket mit
+eigenem Klick hinter Login: getComputedStyle, `--ds-dur`, SVG-Attribute, Kontrastwerte) →
+Nachschnitt (Snapshot ohne rohe Design-Werte) → Audit ohne hohe Befunde
+(docs/archiv/audits/BRAND-DESIGN-AUDIT-2026-09-09.md) → A1 (IP-Eimer `brand:brief`,
+Vision-Eingangsklemme 16 Bilder/64 MB vor dem Netz, GDPR-Purges werfen bei Nicht-404,
+Burst-Deckel `retainBrandGeneration`) → Davids Abnahme 2026-09-09 („ich vertraue dir erstmal
+hier"; Fundstellen-Liste D1–D8 in der Sitzung). Drei Prod-Migrationen mit Davids Ja
+(brand-022, brand-024, brand-023). Beweise: `verify-brand-design.mjs` 130/130 (Gegenprobe 108),
+`verify-brand-share.mjs` 51/51 (Gegenprobe 36), `verify-brand-sessions.mjs` 383/383; 2 705
+brand-Tests, 1 597 Core-Tests. **Live:** Build `d4f17df6` auf branding.supply. Plan:
+[archiv/BRAND-DESIGN.md](archiv/BRAND-DESIGN.md); Entscheidungen DECISION-LOG 2026-09-07…09.
+
+**Gelernt:** (1) `isAiConfigured` verlangt `pukalani.ai.enabled`, das die branding-App nie setzt —
+eine Brand-Route damit zu gaten heißt immer 503; Brand-Konsumenten gaten über `readBrandAiEnabled`
++ `resolveAiKey`. (2) Ein Special-Slot, der nie `confirmed` wird, sperrt alles hinter sich für
+immer, wenn `inputSatisfied` ihn wie einen Antwort-Slot behandelt — Durchreich-Regel, getestet.
+(3) Nach einem Karten-Klick darf `resolveNextSession` nur ERREICHBARE Sessions nennen, sonst
+springt der Chat in ein gesperrtes Kapitel. (4) Ein Modell-Slug „Preview" kann unter ZDR ohne
+Endpunkt sein („No endpoints found") — immer den GA-Slug prüfen, bevor er in die Config geht.
+(5) Ein Wirkungs-Hinweis („fließt in 53 Felder") darf nur ERREICHBARE Kapitel zählen, sonst
+verrät er Sperren. (6) Klick-Beweise auf Werkstatt-Seiten per DOM-Messung statt Screenshot —
+die Animation lässt Playwright-Screenshots verhungern. (7) Eine gerechnete Setzung
+(Schutzraum, Strichstärke) gehört an EINE Stelle als Zahl, der Satz wird daraus gebaut — sonst
+widersprechen sich Text und Maß beim ersten Nachschnitt.
+
+---
+
+### Klick-Test-Befunde 13–18: Modal nie Demo, Anrede nach Weiche, Leiste hakt sofort, Kapitel-Reihenfolge, Session-Abschluss „George führt", Notizblock-Knöpfe ✅ 2026-09-09
+
+**Was:** Davids eigener Durchgang als Testnutzer an einer neuen Marke (Freelancer Supply), direkt
+nach den Kailua-Läufen. Sechs Befunde, drei davon Produktentscheidungen (DECISION-LOG 2026-09-09
+(9) und (10)), alle am selben Tag gebaut und live; dazu zwei Nachzüge und eine Wortlaut-Entscheidung.
+- **13 — Modal führte in die Demo** (`4413b5cd`): „Neues Branding" aus dem Avatar-Menü landete auf dem
+  Klickdummy `/brand/demo/werte`. `BwNewBrandModal` hatte `mode: 'demo'` als VOREINSTELLUNG, und
+  BwSiteNav + BwBrandSwitcher übergaben keinen Modus (Altbestand seit 2026-09-03; der Befund-6-Lauf
+  hatte nur die drei Aufrufer umgebaut, die „live" schon sagten). Jetzt beide über `useBrandCreate`,
+  Voreinstellung `live`, nur der Playground sagt `mode="demo"`.
+- **14 — „ihr" für einen Solo-Gründer** (`34a3ef7c`, `converse-13`): die Team-Weiche W3 erreichte nur
+  die Feld-Beschriftungen (`brandSlotPromptLabel`), nie den Auftrag. Jetzt `addressLines`: solo ⇒ eine
+  Person im Singular (du/dich/dein, keine erfundenen Mitgründer), team ⇒ ihr/euch/euer; ohne Weiche
+  bleibt der Auftrag wie zuvor. Route reicht `profileFacts(profile).team` durch; Route-Test am Solo-
+  Profil.
+- **15 — Leiste hakte erst nach Reload ab** (`86537da6`): die PATCH-Antwort trägt Slots + `revision`,
+  aber keine Session-Zustände (rechnet der Server nur im vollen Abruf). Der Autosave lädt nach einem
+  Rumpf mit Bestätigung `refreshStep` (Gespräch und offene Eingabe bleiben); bestätigte Sessions zeigen
+  keine Minuten mehr („die Zeit verschwindet hinten dran").
+- **16 — Ableitungen vor den Fragen verwirrten** (`953c0261` + `6770a2ce`, Entscheidung (9), gegen
+  die Empfehlung „nur Kontext"): ALLE Kapitel geprüft. Fünf umgebaut (context, pvm, verbal, imagery,
+  motion), Trenner „Daraus abgeleitet" in Leiste, Abnahme und Dokument; pure Regel
+  `brandSessionGroups.ts` + Wächter `validateSessionOrder` (saubere Teilung ODER nachgewiesene
+  blockierende Abhängigkeit). Sieben Kapitel bleiben gemischt, weil eine Frage aus einer Ableitung
+  schöpft; in archetype/manifesto rücken die abhängigkeitsfreien Menschenfragen trotzdem vor
+  (Nachfrage, nach Empfehlung), color bleibt begründet (beide Fragen schöpfen aus h.base). Session-
+  Inhalte-Referenz zweimal über `print:sessions` neu erzeugt (reiner Reorder).
+- **17 — Session-Abschluss: George führt** (`b39eaeb0`, `converse-14`, Entscheidung (10)): der Auftrag
+  kennt jetzt den Session-Zustand (`sessionConfirmed`) — bestätigt ⇒ kein Bohren; unbestätigt ⇒
+  Marker `CONFIRM:` als Bedienelement (Knöpfe „Passt so, bestätigen" / „Ich ergänze noch etwas", Texte
+  aus dem Katalog). Abschlusszug `closing` nur bei bestätigter Session: würdigen, Übersprungene nennen
+  (`skippedSessionsBetween`, gesperrte fallen weg), Ziel aus `resolveNextStop` als Beschriftung — die
+  Bühne rendert „Weiter zu …", ohne Ziel zur Finalen Abnahme. Eröffnungszug spiegelt ein bis zwei Sätze
+  Bekanntes (`chapterAnswers`). Der Auto-Sprung nach Bestätigung UND nach jeder Antwort entfällt (er
+  hätte die Knöpfe unklickbar gemacht); nur die Eröffnung einer Entwurfs-Session springt weiter (8).
+  Neu gefunden: ohne `?s=` rechnete die Bühne nach der Bestätigung still die nächste Session —
+  `pinSession` hält sie in der Adresse. Davids Rückfrage „wohin, wenn das Nächste schon beantwortet
+  ist?" beantwortet die Regel, nicht George: übersprungen wird, was bestätigt/vertagt ist, und George
+  spricht es aus.
+- **18 — leere Karten sagten „Korrigieren"** (`b39eaeb0`): pure Regel `brandLogCardAction` — leer +
+  Frage „Beantworten", leer + Ableitung „Entwerfen" (beide springen per `?s=` in die Session), mit Wert
+  „Korrigieren"; Bestätigen bleibt leer deaktiviert mit Hinweis.
+- **Nachzüge:** sieben Werkstatt-Texte sprechen mit der Stimme des Kapitels (`{voice}`, in Design-
+  Kapiteln Frida; `95533300`); die fünf Drossel-Meldungen sind stimmneutral (Davids Wortlaut-
+  Entscheidung: die Grenze gehört dem Werkzeug, nicht der Person). Startseite: der Kailua-Teaser führt
+  auf `/discover/kailua-coffee-co`, `/beispiel/kailua-coffee` (de+en) antwortet 301, Alt-Seite und
+  ihr i18n-Block entfernt, Sitemap führt den Pfad als bewussten Ausschluss.
+
+**Live-Beweise:** Builds `54737e39` (14/15), `953c0261` + `6d787e2e` (16), `b39eaeb0` (17/18),
+`d1e04658` (Nachzüge: `/de/beispiel/kailua-coffee` → 301 auf `/de/discover/kailua-coffee-co`, en
+ebenso, Startseite verlinkt die Anatomie). Gates je Commit: brand 2755 → 2824 Tests, branding 28,
+Lint, Typecheck, i18n-Keys, Bilanz. Die Wizard-Fixes liegen hinter dem Login — Davids Durchgang durch
+den Session-Abschluss steht in OPEN-ITEMS BW1.
+
+**Gelernt:** (1) Eine Attrappe darf nie die Voreinstellung sein — der Demo-Zweig einer Komponente ist
+eine ausdrückliche Wahl, und „an drei Orten" heißt grep über ALLE Render-Stellen. (2) Eine Weiche, die
+nur Beschriftungen erreicht, ist für den Auftrag unsichtbar; jede Produktwahl, die das Gespräch
+prägen soll, braucht eine ausformulierte Regel je Fall (du/ihr), nicht „address them correctly".
+(3) Ein Deploy kann RÜCKWÄRTS laufen: bei parallelen Wellen gewinnt die ältere in Arbeit, die neueren
+werden abgebrochen — der Wächter prüft deshalb Vorfahrschaft, nicht Gleichheit, und meldet den
+Zwischenstand ehrlich. (4) Navigation ist eine Regel, kein Modell-Urteil: „wohin weiter" rechnet der
+Server deterministisch, George spricht nur aus, was die Regel sagt. (5) Der Testnutzer sieht die
+Registry-Reihenfolge als Erzählung — Ableitungen vor Fragen lasen sich wie übersprungene Fragen; die
+Ordnung der Registry ist Produkt, nicht Implementierungsdetail.
+
+---
+
+### Kailua-Befunde 1–6: kein 409 gegen leere Serverfassung, Zähler aus dem Server-Stand, Sammel-Wert gehört dem Server, Anlage-Modal springt in die Werkstatt ✅ 2026-09-09
+
+**Was:** Die sieben Bedien-Befunde aus dem ERSTEN Kailua-Wizard-Lauf (2026-09-08). Davids
+Entscheidungen per Fragenrunde (DECISION-LOG 2026-09-09): Befund 6 Modal legt an und springt in die
+Werkstatt, Befund 7 (Chat-Sprache = Oberflächensprache) ist gewollt. Ein Opus-Lauf, im Hauptloop
+geprüft, Commit `5f4f5af3` — jede Ursache GEMESSEN, drei davon waren nicht die vermuteten:
+- **1 — Pillen winzig:** kein Klick-Abfänger, nur `size="xs"` (≈24 px). Jetzt 32 px, Innenabstand,
+  eigener Fokus-Ring (der Nuxt-UI-Ghost-Ring war auf `--bw-stale-soft` unsichtbar).
+- **2 — 409 gegen leere Serverfassung, in EINEM Tab:** zwei Wurzeln. (a) Die Konversation warf die
+  vom Server gemeldete `revision` weg — ein Gesprächszug bewegt sie aber (Sammel-Session schreibt
+  Zwischenstand, „hat mitgelesen"-Stempel); der nächste Autosave war damit veraltet. (b) `flush()`
+  kehrte bei laufendem Speichern sofort um — `await autosave.flush()` war an zwölf Stellen eine
+  Lüge, der Nachzügler kam 750 ms später mitten in den Zug. Fix: `applyGenerationRevision` aus jedem
+  Zug, `flush()` wartet den Lauf wirklich ab (Deckel 3), pure Regel `brandConflictNeedsDecision`
+  (leere Serverfassung, gleicher Wortlaut oder reine Bestätigung auf unverändertem Text ⇒ KEIN
+  Dialog: Server-Revision übernehmen, eigene Eingabe behalten, erneut senden; ab dem vierten stillen
+  Anlauf wird der Dialog erzwungen). Der Dialog bleibt für echte Text-Kollisionen. 8 Tests.
+- **3 — Zähler optimistisch (10/10 → 1/10):** dieselbe Wurzel plus zwei eigene: `completion`
+  zählte die ABSICHT (`slotConfirmed`), und jedes unbehandelte Nein fiel in `mark('error')` ohne
+  Toast. Jetzt zählt `serverSlotFacts` (die EINE Fortschritts-Wahrheit = Server-Stand), „wird
+  gespeichert" hängt an der Zeile, endgültige Neins werden zum Toast mit Feldnamen (`rejectSave`),
+  429/5xx werden weiter wiederholt.
+- **4 — nur ein Fakt von drei:** NICHT der Renderer — der Client schrieb den ersten Teil einer
+  `collect`-Session als Slot-Wert, damit galt `a.facts` als gefüllt, die Bühne verließ das
+  Sammel-Modul, Teil 2/3 wurden „freie Fragen", und der Autosave überschrieb den vom Server
+  zusammengelegten Wert mit dem Rohtext von Teil 1. Pure Regel `brandAnswerWritesSlot` (der
+  Sammel-Wert gehört dem Server), `store.refreshStep()` lädt nach, ohne das Gespräch zu leeren;
+  ohne KI-Zug (`noTurn`) schreibt der Browser doch, sonst wäre `a.facts` unbedienbar.
+- **5 — Kontext-Felder aus dem Gespräch:** gemessen eine Produktfrage (Entwurfs-Slots hatten NIE
+  eine Katalog-Frage), nicht gebaut — David hat danach Weg B gewählt (eigener Lauf). Gebaut wurde
+  das Mindestmaß: die Wiederholungs-Regel `george-a-9` stand nur im Entwurfs-Prompt, jetzt auch im
+  Gesprächs-Prompt.
+- **6 — doppelte Anlage:** das Modal navigierte auf `new.vue` mit Query, dort standen die drei Felder
+  erneut; das Modal hängt an DREI Orten. Jetzt `BwNewBrandDetails` einmal für Modal und Seite,
+  Regeln pur in `brandStartCard.ts`, `useBrandCreate()` legt an und springt über
+  `firstOpenBrandStep(journey)` ins erste offene Kapitel; Fehler bleiben im Modal; `new.vue` bleibt
+  für direkte Links (`?path=relaunch`).
+Gates: brand 2725 Tests (+20 aus dem Lauf, Rest Nachbar-Merges), Lint, Typecheck branding,
+i18n-Keys, Bilanz. **Live:** Build `5f4f5af3` auf branding.supply (Health-SHA, Seiten 200) — die
+Fixes liegen hinter dem Login, Davids Klick-Test steht in OPEN-ITEMS BW1.
+
+**Gelernt:** (1) Bei drei von sechs Befunden lag die Ursache woanders als vermutet (Renderer vs.
+Client-Schreibpfad, Pillen vs. Klick-Abfänger, Zähler vs. Absicht) — „Ursache gemessen, nicht
+vermutet" als Pflicht im Auftrag zahlt sich aus. (2) Ein `await flush()`, das bei laufendem Lauf
+sofort zurückkehrt, ist an jeder Aufrufstelle eine falsche Zusage; Serialisierung gehört in die
+Funktion, nicht in die Disziplin der Aufrufer. (3) Eine Revision, die der Server meldet, gehört
+IMMER in den Store — aus jeder Antwort, nicht nur aus dem Autosave.
+
+**Befund 5 — Weg B + Kapitel-Verlauf ✅ 2026-09-09, Commit `cc6310c2` (Opus-Lauf, im Hauptloop
+geprüft):** Ursache an der Registry bestätigt — `slotsForStep('context')` beginnt mit vier
+nicht-fragbaren Entwurfs-Sessions, `resolveActiveSession` nahm die erste OFFENE (Pitch), die Bühne
+rechnete ihr Modul aber aus der ersten offenen FRAGE (Herkunft); daraus folgten beide Befunde (kein
+Entwurfs-Knopf für das Feld, auf dem der Mensch saß; `sessionKey: a.pitch` bei `nextSlotId:
+a.origin`). Pure Regel `brandStageClaim` (`shared/brandStageModule.ts`): die aktive Session
+bestimmt Modul und Feld, leer + entwerfbar ⇒ `draft` mit Georges Frage zum Feld (Label +
+Hilfetext aus dem Katalog, ein neuer Satz mit `{voice}`) und Eingabezeile → `hints[slot.id]` →
+`generateSlot()`; `nextSlot` ist null, solange die aktive Session die Bühne hält. Prompt:
+`draftField` schließt den Zug auf dem eigenen Feld, `openFieldLabels` nennt Feld + Knopf.
+`converse-12`: `loadBrandChapterAnswers` — EIN Lesezugriff je Zug (`Query.limit(60)`), jüngste
+Antwort je fremder Session des Kapitels, Deckel 8 × 220 Zeichen, Block im Rumpf, „NEVER ASK
+AGAIN" beruft sich darauf; Eröffnungszug trägt die Liste plus eigene Regel; Session-Schnitt des
+Verlaufs bleibt. Tests brand 2753 (+28). Auto-Weiter bleibt (David, DECISION-LOG (8)).
+**Gelernt:** eine Entscheidung, die über drei Computeds verteilt ist (`activeAwaitsConfirm`,
+`nextSlot`, `stageModule`), hat keinen Ort, an dem sie falsch sein kann — erst die eine pure Regel
+machte den Fehler benennbar und testbar.
+
+**Nachtrag 2026-09-09, Davids erster Klick-Test:** „Neues Branding" aus dem Avatar-Menü landete
+nach dem Modal auf dem Klickdummy `/brand/demo/werte`. Ursache: `BwNewBrandModal` hatte die
+Voreinstellung `mode: 'demo'`, und zwei Aufrufer (BwSiteNav, BwBrandSwitcher) übergaben keinen
+Modus — Altbestand seit dem 2026-09-03, vom Befund-6-Lauf übersehen, der nur die drei Live-Aufrufer
+umbaute. Fix `4413b5cd`: beide über `useBrandCreate`, Voreinstellung `live`, der Playground sagt
+`mode="demo"` ausdrücklich. **Gelernt:** eine Attrappe darf nie die VOREINSTELLUNG sein — wer eine
+Komponente mit Demo-Zweig baut, macht den Demo-Zweig zur ausdrücklichen Wahl; und „an drei Orten"
+in einem Bericht heißt: `grep` über ALLE Render-Stellen, nicht nur die, die schon `mode` sagen.
+
+---
+
+### Kailua-Wizard-Befunde 8/9/10/12: George behauptet nichts, leere Bestätigung erklärt sich, „Alle abnehmen", Handbuch-Kapitel „Stimme" geteilt ✅ 2026-09-09
+
+**Was:** Der D5-Durchlauf (Beispiel-Branding Kailua Coffee Co. über den echten Wizard) brachte fünf
+Bedien-Befunde (OPEN-ITEMS BW1 8–12). Drei waren Produktfragen, per Fragenrunde entschieden
+(DECISION-LOG 2026-09-09: 11 kein Tor, 8 Prompt-Regel statt Auto-Entwurf, 12 Kapitel teilen —
+GEGEN die Empfehlung). Ein Opus-Lauf, im Hauptloop geprüft, Commit `ea87feb6`:
+- **8 — „ich trage das ein":** ein Gesprächszug bleibt ganz Nachricht (kein Marker, kein Feld —
+  die Trennung aus `conversePrompt.ts` steht). Neu `converse-11`: George darf NIE behaupten, etwas
+  eingetragen/notiert/geschrieben zu haben; nennt der Mensch eine Entscheidung, bestätigt er sie in
+  einem Satz und verweist auf den Knopf. Der Knopf-NAME reist wie `openFieldLabels` aus dem
+  Locale-Katalog (`brandDraftButtonLabel`, „George, entwirf das" / in Design-Kapiteln „Frida,
+  entwirf das"). Bühne: nach einem Gesprächszug ohne Wert wird der Entwurfs-Knopf `solid` statt
+  `ghost` (`draftNudge`), erlischt beim Klick, beim Kartenwechsel und mit dem ersten Wert.
+- **9 — stiller No-op:** gemessen war der Knopf NIE klickbar (`confirmEnabled = hasValue`,
+  natives `disabled`) — nur sagte nichts, was fehlt. Jetzt pure Regel `showConfirmBlockedNote`
+  + Satz „Erst entwerfen oder selbst schreiben" in Draft- und Confirm-Modul; das 400 `slot_empty`
+  der PATCH-Route landet als Toast (`rejectEmptyConfirmations` im Store) statt als stummes „Nicht
+  gespeichert".
+- **10 — „Alle abnehmen":** BULK-Route `POST …/steps/<stepKey>/accept-all` (Zod nur `revision`;
+  was abnehmbar ist, rechnet der Server — eine Client-Liste wäre eine Behauptung über den
+  Serverstand), dieselbe Tür wie die Einzel-Route, EIN `updateRow`, Teilerfolg als `failed[]`.
+  Grund gegen elf Client-Aufrufe: jede Abnahme dreht `revision`, elf abhängige Roundtrips auf
+  dieselbe Zeile hinterließen beim ersten 409 ein halb abgenommenes Kapitel. Pure Regel
+  `brandAcceptableSessions` versorgt jetzt auch `BwSessionBlock` (vorher eigener Ausdruck dort).
+- **12 — Kapitel geteilt:** `BRAND_FOUNDATION_SOURCE_STEPS.stimme = ['archetype']`, der
+  Wort-Leitfaden (`ep.vocabulary`) steht als `vocabularyBlocks` im Messaging-Kapitel nach den
+  Kernbotschaften. Keine Migration: alle vier Konsumenten (Leseansicht, Share, Discover-Anatomie,
+  foundation.get) rufen `buildBrandFoundation` mit rohen Slot-Werten zur Lesezeit.
+Gates: brand 2674 Tests (+17), Lint, Typecheck branding, i18n-Keys. Nebenbei: `check:bilanz` war
+nach der neuen Route rot und hielt den Deploy — die Nachbar-Session hat die Bilanz zeitgleich neu
+erzeugt (`bb39e223`), mein identischer Commit fiel beim Rebase als leer weg (Duplikat-Rennen
+verloren, wie die Regel es will).
+
+**Live-Beweis (Build `ea87feb6`, öffentlich ohne Login):** `/api/discover/kailua-coffee-co` liefert
+das Kapitel `stimme` nur noch mit Archetyp-Wahl, Ziel-Gefühl und Ton-Wörtern (`choice, text,
+chips`) und das Kapitel `messaging` mit dem Wort-Leitfaden (`list`); auf `/de/discover/
+kailua-coffee-co` steht „Wort-Leitfaden" unter Kapitel 05, nicht mehr unter Kapitel 04
+„Persönlichkeit & Stimme". Gesprächs-Regel, Karten-Hinweis und „Alle abnehmen" liegen hinter dem
+Login — Davids Klick-Test steht in OPEN-ITEMS BW1.
+
+**Gelernt:** (1) Ein „stiller No-op" ist oft ein deaktivierter Knopf ohne Erklärung — erst messen
+(`disabled`, Handler, Route), dann bauen; hier war die Lücke die fehlende Ansage, nicht der Klick.
+(2) Neue Route ⇒ `node scripts/produkt-bilanz.mjs` VOR dem Push, sonst hält das Lint-Gate den
+Deploy (dritter Vorfall dieser Art, CLAUDE.md-Regel). (3) Nicht rebasen, während ein Agent im selben
+Worktree schreibt — es ging nur gut, weil er noch keine getrackte Datei angefasst hatte.
+
+---
+
+### Navigation: komplette Testrunde Silo + Pool (Davids „teste du alles") ✅ 2026-09-08
+
+**Was:** Nach Paket 2 und dem Silo-Fix eine volle Runde mit eigenen Klicks und den drei
+Pool-Beweisen. LIVE branding.supply (eingeloggt, PATCH-Antworten mitgeschnitten): umbenennen
+(Team → „Unser Team"), umordnen, Discover unter Products einrücken, externen Link anlegen
+(target=_blank + rel=noopener im SSR-HTML), speichern 200, Neuladen hält den Stand, SSR-Kopf
+zeigt genau die Wahl; dann Gruppe ausblenden (Kinder rücken hoch, Hinweis „steht als
+Hauptpunkt, weil …"), About ausblenden, Link entfernen, speichern 200, SSR-Kopf stimmt;
+Zurücksetzen 200 ⇒ Standard „Products → Brand Score · Discover Brands · About · Team" zurück;
+Validierung: http-Link ⇒ Fehlertext + Knopf gesperrt. Sucheintrag: Beschreibung speichern 200,
+nach Neuladen da, leeren 200. Weiterleitung: /nav-test ⇒ 301, entfernt ⇒ 404. POOL lokal
+(control 3164 + platform 3165 aus dem Worktree): verify-community-navigation 87/87,
+verify-community-redirects 61/61, verify-community-seo 49/49.
+
+**Gelernt:** (1) Der erste Pool-Lauf war in Abschnitt 15 viermal rot — nicht der Code, das
+Skript: Abschnitt 14 setzt die Community auf `basic`, und `basic` sperrt auch `/discussions`,
+das 15 als Kind nutzen wollte. Die „Gruppen-Prüfung" wäre eine Tautologie gewesen (Kinder
+fehlen wegen des Tarifs, nicht wegen der Gruppe) — genau deshalb prüft der Abschnitt seine
+Vorbedingung NACH statt sie anzunehmen. Kur: Tarif vor 15 zurück auf `pro`, auf das SSR-HTML
+warten. (2) Im ferngesteuerten Chrome-Tab kommen Klicks per Referenz nach einem `navigate`
+nicht mehr an (Tab ist `visibilityState: hidden`) — Klicks per JavaScript auf den ECHTEN
+Knopf funktionieren und messen dieselben Handler. (3) Pool-Klick im Browser NACHGEHOLT (David eingeloggt, 2026-09-08): auf demo.pukalani.app
+Gruppe „Inhalte" mit Feed + Diskussionen angelegt, PATCH 200, Kopf zeigt den UDropdownMenu-
+Auslöser mit beiden Kindern (`data-nav-group`), Rest daneben plus „Mehr"; Zurücksetzen 200,
+Standard wieder da. Die Hülle heißt im Pool weiterhin „Community-Einstellungen" (richtig so).
+
+### Sucheintrag + Weiterleitungen speichern im Silo (NAV1-Nebenbefund) ✅ 2026-09-08
+
+**Was:** Davids Auftrag „fix die neu gefundenen Probleme": `PATCH /api/pages/seo` und
+`PATCH /api/pages/redirects` antworteten ohne Mandanten-Kontext 404 — dieselbe Falle wie
+bei der Navigation. Die Row-Id-Regel ist jetzt EINE (`core/shared/communitySettingsRow.ts`,
+`communitySettingsRowIdFor(event)` in core/server/utils) für alle drei Ablagen, Routen UND
+Lese-Middlewares (die brachen im Silo ebenfalls ab — eine gespeicherte Weiterleitung hätte
+dort nie gegriffen).
+
+**Beweis:** lokal (Dev-Instanz) PATCH 200, `/de/alt-test` ⇒ 301 `/de/about`, Gegenprobe 404,
+`noindex` ⇒ robots-Meta; LIVE auf branding.supply per Klick: Weiterleitung `/nav-test` ⇒ 301
+`/de/about`, entfernt ⇒ 404, Sucheintrag speichert; core 1566 Tests, Lint, Typecheck.
+
+**Gelernt:** Wer eine Regel „nachzieht", zieht sie an EINE Stelle — drei Routen mit derselben
+Zeile wären die nächste Drift. Und: Leser prüfen, nicht nur Schreiber — die Middlewares hätten
+den Silo weiter ignoriert. Nebenbefund: die Sucheintrag-BESCHREIBUNG liest nur die
+Pool-Startseite; im Silo wirkt bisher nur `noindex` (offen in OPEN-ITEMS).
+
+### Website-Navigation mit Unterpunkten + Silo-Ablage (NAV1 Paket 2) ✅ 2026-09-08
+
+**Was:** Davids Screenshot vom 2026-09-08: der Navigations-Editor auf branding.supply war leer
+und ohne Wirkung — der brand-Layer registrierte nichts in `pukalani.chrome.nav`, der einzige
+Leser der gespeicherten Wahl war das blueprint-Layout (BwSiteNav hatte eine feste Liste), und
+im Silo antwortete `PATCH /api/pages/navigation` 404. Gebaut (Konzept
+[archiv/NAVIGATION-UNTERPUNKTE.md](archiv/NAVIGATION-UNTERPUNKTE.md), Entscheidungen
+DECISION-LOG „Navigation anpassen"): Vertrag additiv um `parent` (eine Ebene) und Gruppen
+`group-n` (Hauptpunkt ohne Ziel) erweitert, Zusagen 5–9 in `resolveCommunityNav` (Kind folgt
+Hauptpunkt · nichts verschwindet durch fehlenden Hauptpunkt · Gruppe ohne Kinder wird nicht
+gerendert · Überlauf zählt nur Hauptpunkte · der Bauplan darf Gruppen vorgeben), Silo-Ablage
+unter der rowId `instance`, EIN Composable `useCommunityNav()` (core) statt dreier Rechnungen,
+Renderer blueprint (UDropdownMenu) + BwSiteNav (UNavigationMenu-children, Reihe und mobiles
+Akkordeon), Editor mit Einrücken/Ausrücken/Ziehen/Gruppen, Schema-Regeln. Davids Korrektur am
+Prototyp: das Standard-Menü von branding.supply ist „Products → Brand Score · Discover Brands ·
+About · Team" — dafür darf die Registry Gruppen vorgeben (`parent`, `to: ''`).
+
+**Beweis:** core 1526 Tests (79 Navigation, je Zusage eine Gegenprobe; drei Mutations-Gegenproben
+je einzeln rot), pages 82 (Schema 19), brand 2592, Lint, Typecheck branding/comments/platform,
+i18n-Wächter; Klickbeweis lokal (branding, Dev-Instanz portfolio-g4ml): Gruppe anlegen,
+einrücken, Speichern 200, Neuladen, Desktop-Aufklapper, Mobil-Akkordeon, Standard ohne Wahl;
+Screenshots an David, Freigabe 2026-09-08.
+
+**Gelernt:** (1) `_instance` nach dem Muster `_account` war falsch übertragen — `_account` ist
+ein Spalten-WERT, als ROW-ID lehnt Appwrite einen führenden Unterstrich ab (500 beim
+Speichern; erst der Klickbeweis fand es, kein Test). (2) Ein Watcher läuft im SSR genau einmal:
+wer aus einem nicht awaiteten `useAsyncData` eigenen Zustand in `watch(…, { immediate })`
+ableitet, rendert auf dem Server den Stand OHNE Daten — Hydration-Mismatch; das Composable
+liefert deshalb `ready`, und der Editor wartet darauf. (3) Reka rendert den Inhalt eines
+Aufklappers erst beim Öffnen — Unterpunkte standen in keinem SSR-HTML, bis
+`unmount-on-hide=false` sie versteckt im DOM hält (Crawler). (4) Ein Nuxt-UI-Hauptpunkt MIT
+`to` UND `children` ist waagerecht klickbar, senkrecht aber ein Link ohne Akkordeon — deshalb
+trägt ein Hauptpunkt mit Kindern kein `to`, sein Ziel reist als erstes Kind (`navMenuChildren`).
+
+---
+
+### Session-Token-Hygiene: CLAUDE.md als Kern + pfadgebundene `.claude/rules/` ✅ 2026-09-08
+
+**Was:** Davids Auftrag „optimierter fahren, gleiches Ergebnis, weniger Nutzung". Gemessen
+an einer 655k-Session: Verlauf 547k, CLAUDE.md + Memory-Index 53k je Runde, 445
+MCP-Werkzeuge (19k geladen, 189k deferred — auch die Namen kosten). Umgesetzt:
+CLAUDE.md 88 KB → 24 KB Kern, neun wortgleiche Domänen-Dateien in `.claude/rules/`
+mit `paths:`-Frontmatter (Verlust-Prüfung: jede Zeile des Originals steht in genau
+einer der neuen Dateien), Memory-Index 18 KB → 10,7 KB (80 Einträge erhalten),
+Feedback-Memory `session-token-hygiene`, Connectoren/Plugins ohne Repo-Bezug in der
+Desktop-App abgeschaltet (David). Entscheidung: DECISION-LOG 2026-09-08.
+
+**Beweis:** `claude -p --model haiku` liest `packages/themes/package.json` → antwortet
+`RULE_LOADED=yes` (Themes-Regel im Kontext) und `TENANT_RULE=no` (Isolations-Regel
+nicht geladen).
+
+**Gelernt:** Der Pfad-Trigger hängt am Read-Tool — wer per Bash liest (cat/sed), lädt
+keine Regel; deshalb steht die Domänen-Liste mit Read-Hinweis oben im Kern. Subagenten
+(außer Explore/Plan) bekommen die komplette CLAUDE.md-Hierarchie mit — jeder Aufruf
+zahlte 44k, jetzt ~12k. Und: `TaskOutput` auf einen laufenden Agenten kippt sein
+JSONL-Transkript in den Kontext (zweimal ~20k in derselben Session) — auf die
+Benachrichtigung warten.
+
+### Discover Brands (DB1 D0–D5): Galerie, Anatomie, Veröffentlichen mit Freigabe, Betreiber-Seite, Beispiel-Branding, Sitemap + OG-Bild ✅ 2026-09-08/09
+
+**Was:** Davids Vorziehen von DB1 („mach mit discover brands weiter"). Strategie + Konzept
+(docs/archiv/DISCOVER-BRANDS.md, seit D4 im Archiv) auf dem abgenommenen Klickdummy, der BF1-Leseansicht
+(Veröffentlichung = eingefrorener Snapshot mit `sensitivity`-Filter, derselbe Renderer) und den
+BC1/MV1-Daten; acht Entscheidungen per Fragenrunde (DECISION-LOG 2026-09-08: Freigabe VOR
+Veröffentlichung, `/discover`, Website-Score sonst Fundament-Reife, Kailua-Beispiel; nach dem
+Prototyp: Score im Ring + Reife als Zweitzeile, genau ein Featured, natives Teilen-Blatt,
+Veröffentlichen mobil im Export-Menü). Vier Opus-Läufe (D0 Prototyp im Playground, D1 Backend,
+D2 + D3 parallel), jeder im Fable-Hauptloop geprüft:
+- **D0** Dummy an das Konzept angeglichen (Facetten Weiche/Archetyp/Farbwelt/Branche, beschriftete
+  Scores, Badges Beispiel/Relaunch, Anatomie Kailua mit Markenabdruck, Veröffentlichen-Dialog mit
+  drei Zuständen, Betreiber-Skizze) — von David abgenommen.
+- **D1** Migration **brand-020** (`brand_profiles.publicationVisibility`, `brand_publications`
+  mit `status` pending/published/declined/hidden/withdrawn und ZWEI Snapshot-Spalten — der
+  öffentliche Stand bleibt sichtbar, bis über einen neuen entschieden ist —,
+  `brand_publication_reports`), Snapshot-Bau in `brandSnapshot.ts` herausgezogen (Share-Link
+  und Veröffentlichung rufen dieselbe Funktion), Slug-Regel (Umlaute, Deckel, Kollisions-Suffix),
+  `brandPublicationCanSubmit` (Titel, Kapitel A+B, Archetyp), Dialog in der Leseansicht,
+  Zustand auf der Brands-Karte, `navigator.share` im Teilen-Dialog, Kaskaden (Löschen, GDPR).
+- **D2** Lese-API `GET /api/discover` (+`/<slug>`, Microcache 60 s, Zahlen gebündelt über
+  `profileId` — beide Arten in einer Abfrage), Galerie, Anatomie (Fundament SERVER-seitig aus dem
+  Snapshot gerechnet, der rohe Snapshot verlässt den Server nie), Nav-Punkt „Discover Brands",
+  Startseiten-Teaser (unsichtbar ohne Veröffentlichungen), Betreiber-Vorschau `?preview=1`
+  (users.manage, eingereichter Stand, nie im Cache, noindex).
+- **D3** Betreiber-Routen approve/decline/hide/unhide/feature/example, Meldungen (öffentlich mit
+  Honeypot + 3/Std je IP + Minuten-Eimer; Betreiber erledigt), Seite `/dashboard/discover` mit
+  Reitern Warteschlange/Veröffentlicht/Abgelehnt/Meldungen; Regel-Erweiterungen: Ablehnung eines
+  NEUEN Stands bei bestehendem öffentlichen (bleibt published, Begründung als „Aktualisierung
+  abgelehnt"), Featured „genau eine, letzte gewinnt", Reiter decken alle fünf Zustände
+  lückenlos ab (Test).
+
+**Live-Beweise (Davids Chrome):** Einreichen an Krume & Gold → `POST …/publication` 200,
+Pille „Wartet auf Freigabe", Log `publication_submitted`; Betreiber-Seite Warteschlange 1;
+Vorschau `/discover/krume-gold?preview=1` mit Badge und sieben Kapiteln; Freigabe →
+`POST …/approve` 200, Log `publication_approved`, Galerie „1 Marke", `/discover/krume-gold`
+200 (indexierbar). Gates: brand 2158 Tests, Lint/Typecheck, i18n 283, Bilanz, Manifeste.
+
+**Befund, offen:** Davids erster Klick auf „Freigeben" (und zwei eigene Klicks per Element-
+Referenz/Koordinate) erreichten den Server NICHT — kein Request, kein Toast; ein Klick über die
+Seite selbst (`button.click()`) und ein späterer physischer Klick auf „Ausblenden" derselben
+Tabelle funktionierten. Nicht reproduzierbar, sobald die Warteschlange leer war; als
+Beobachtungspunkt in OPEN-ITEMS. Weitere Nachzüge dort: Branche im Dialog aus dem Katalog wählen
+(Freitext „Handwerksbäckerei" ⇒ „Nicht zugeordnet"), Log ohne Ids. Die graue Kachel von Krume & Gold ist KEIN Fehler: ihr Dreiklang ist „Schiefer" (`slate`), derselbe wie auf der Brands-Übersicht.
+
+**Gelernt:** (1) „Hat geklappt" ist erst bewiesen, wenn der Server es sagt — Galerie-API,
+Anatomie-Status und Log-Zeile gehören zu jedem Freigabe-Beweis; Davids Meldung und die leere
+Galerie widersprachen sich, und nur das Log entschied. (2) Zwei Snapshot-Spalten statt eines
+Zustands-Flags: „alter Stand bleibt öffentlich, bis entschieden ist" braucht ZWEI Wahrheiten
+nebeneinander, kein Feld kann beides tragen. (3) Parallel-Läufe mit klarem Dateibesitz und
+i18n-nur-per-Edit tragen auch zu dritt; die Naht (Vorschau-Parameter) blieb trotzdem beim
+Hauptloop — wer zwei Läufe koppelt, baut die Kopplung selbst.
+
+**Nachzüge 2026-09-08 (nach Davids Test):** (1) **Branche im Veröffentlichen-Dialog** aus dem
+16er-Katalog wählen (vorbelegt aus dem Freitext; Schema lässt nur Katalog-Ids durch) — Krume &
+Gold stand als „Nicht zugeordnet" in der Galerie, jetzt „Lebensmittel und Getränke". (2) Log-Zeilen
+der Veröffentlichung ohne Profil-/Zeilen-Id. (3) **Live erwischt und behoben:** nach „Stand
+aktualisieren" wechselt die Zeile auf `pending`, und Galerie wie Anatomie lasen nur
+`status = published` — Krume & Gold war 404, obwohl die Regel „alter Stand bleibt öffentlich, bis
+entschieden ist" beim SCHREIBEN galt. Pure Lese-Regel `brandPublicationIsVisible` (published, oder
+pending MIT altem `snapshot`; unbekannter Status veröffentlicht nie), Galerie-Abfrage holt beide
+Zustände. Beweis: Anatomie 200 während der Prüfung, Freigabe des neuen Stands → Galerie mit Branche.
+**Gelernt:** eine Regel, die zwei Wahrheiten nebeneinander legt (öffentlicher + eingereichter Stand),
+braucht ZWEI Leser — den Schreiber und den Leser; wer nur den Schreiber testet, sieht die Lücke
+nicht. **Offen geblieben:** Davids echte Mausklicks auf „Freigeben" (zweimal) erreichten den Server
+nicht, während synthetische Ereignisfolgen und andere Knöpfe derselben Tabelle funktionieren;
+Verdacht ist der mit der Browser-Fernsteuerung GETEILTE Chrome-Tab (Navigation kurz vor dem Klick).
+Nächster Test: neuer Tab, keine Fernsteuerung. Nebenbefund Nuxt UI: `UDashboardSearchButton`
+rendert `⌘k` erst im Client — Hydration-Mismatch auf jeder Dashboard-Seite (Bestand, nicht D3).
+**Geklärt (2026-09-08, 23:43 UTC):** im sauberen Test — neuer Tab, Fernsteuerung aus, zuerst nur
+„siehst du die Zeile?", dann der Klick — kamen `publication_approved`, drei `publication_featured`
+und zwei `publication_example` an. Die zwei verlorenen Klicks davor waren der GETEILTE Chrome-Tab:
+die Fernsteuerung navigiert genau den Tab, in dem David klickt. **Gelernt:** Wenn David in seinem
+Chrome testet, fasse ich den Browser nicht an — Fernsteuerung und Mensch teilen sich eine Tab-Gruppe,
+und ein Navigate der Fernsteuerung frisst den Klick des Menschen lautlos. Beweis vor Vermutung: erst
+„was siehst du?", dann „klick", dann Log.
+
+**D5 — Beispiel-Branding „Kailua Coffee Co." über den echten Wizard ✅ 2026-09-08/09 (UTC):** zwei
+Opus-Läufe in Davids freigegebenem Chrome (Davids Konto, Profil-Id nur im Lauf), 19 + 14 George-Züge,
+keine Drossel. Der erste Lauf blieb an einem abgelehnten Befund hängen, den das Kapitel-Review bei
+jedem Lauf NEU anlegte (`writeBrandFindings` deduplizierte nur gegen offene Befunde) — Fix `53be8792`:
+Dedup gegen offene UND abgelehnte, nur ANGENOMMENE dürfen wiederkommen (Kehrtwende zu BW2 Paket 6,
+DECISION-LOG). Beweis im zweiten Lauf: Werte-Konflikt „Falscher Moment" abgelehnt → `finding_dismissed`
+im Log, nach Reload nicht wieder da, Kapitel 8/8. Danach Werte abgenommen, Archetyp-Kapitel 11/11
+(primär „Der Weise", sekundär „Der Schöpfer", Ton calm/grounded/plain-spoken — beides per
+Chat-Korrektur gesetzt, George übernahm), vier von acht Kapiteln abgenommen. Veröffentlichen mit
+Branche „Lebensmittel und Getränke" → `publication_submitted` 01:19 UTC, Freigabe → `publication_approved`
+01:20, Beispiel-Schalter → `publication_example: true` 01:20. Live geprüft (curl + Playwright-Screenshots
+an David): `/api/discover` 2 Marken, Kailua `example: true`, Branche `food`; `/de/discover` 200 mit
+Kailua im Hero (kein Featured gesetzt — der Hero fällt auf die neueste Marke zurück) und Badge
+„Beispiel" auf der Kachel; `/de/discover/kailua-coffee-co` 200 mit Kopf „Anatomie · Beispiel", sieben
+Kapiteln, Weiche „Neue Marke", Archetyp „Der Weise · Rest Der Schöpfer".
+**Neue Bedien-Befunde** (in OPEN-ITEMS BW1 eingetragen): George sagt „ich trage das ein" und trägt
+nichts ein; „Übernehmen & bestätigen" ohne Entwurf ist ein stiller No-op; Bestätigen ≠ Abnehmen — in der
+Finalen Abnahme fehlt ein „Alle abnehmen" (11 Einzelklicks); ein offener Lücke-Befund blockiert die
+Abnahme nicht; Leseansicht-Seitenleiste zeigt „Persönlichkeit & Stimme" offen, obwohl das Kapitel
+abgenommen ist. **Gelernt:** (1) Ein Dedup, der „entschieden" mit „angenommen" gleichsetzt, macht
+jede Ablehnung zur Endlosschleife — der Zustand, den man NICHT wiedersehen will, muss im Filter
+stehen. (2) Ein Bedien-Lauf ohne Screenshot-Pfade ist kein Beweis für David — die Beweisbilder macht
+der Hauptloop selbst (Playwright-CLI gegen die öffentlichen Seiten), nicht der Agent.
+
+**D4 — Sitemap + robots.txt, OG-Bild je Anatomie, Branche als Ähnlichkeits-Grund ✅ 2026-09-09
+(UTC), Commit `919f588c`, Opus-Lauf, im Hauptloop geprüft:** (1) `apps/branding/server/routes/
+sitemap.xml.get.ts` + `robots.txt.get.ts` nach dem Marketing-Muster, pure Bausteine in
+`server/utils/brandingSitemap.ts` (neun feste Seiten, jede sichtbare Anatomie mit ECHTEM `lastmod`
+aus der Zeile, hreflang x-default/en/de, XML-Escaping, fail-soft mit Warn-Log; Rechtsseiten bewusst
+draußen bis BS1 R3, `/beispiel/kailua-coffee` drin, weil von der Startseite verlinkt und ohne
+noindex); Testlauf für `apps/branding` neu eingerichtet (vitest). (2) OG-Bild 1200×630 PNG in der
+Farbwelt der Marke: Route `apps/branding/server/routes/og/discover/[slug].get.ts` (die App
+komponiert — der Rasterizer wohnt in `themes`, ein Produkt-Layer darf ihn nicht importieren, A14;
+`.png` schneidet der Handler ab, ein Nitro-Parameter deckt immer das ganze Segment), Renderer
+`discoverOgImage.ts` mit dem gebackenen Font-Atlas, Verlauf mit früher Tiefe (Kontrast für alle zwölf
+Welten nachgerechnet, Tinte über `brandInkColor`), Ablage unter Hash aus Slug + `$updatedAt` in
+`tmpdir()`, `max-age` ein Tag statt `immutable` (die Adresse wandert bei neuem Stand nicht); nur
+SICHTBARE Veröffentlichungen werden gerendert (404 sonst — niemand füllt die Platte mit erfundenen
+Slugs). Pfad-Wahrheit `brandDiscoverOgPath()` im Layer, die Anatomie-Seite trägt ihn über
+`useBrandOgImage()` ein und setzt beim Verlassen auf `null` zurück (app-weiter State). (3)
+`similarDiscoverEntries`: Archetyp → Farbwelt → Branche (`unknown` zählt nicht), Deckel 4, i18n
+de/en. Gates: brand 2651 Tests, branding 28 (neu), Lint/Typecheck, i18n-Keys 290, Manifeste.
+**Live-Beweis (curl, Build `919f588c`):** `/robots.txt` 200 mit drei Disallow + Sitemap-Zeile;
+`/sitemap.xml` 200, 22 URLs, beide Anatomien en+de mit `lastmod` = Freigabezeit;
+`/og/discover/kailua-coffee-co.png` 200 `image/png` 50 KB, erfundener Slug 404, ohne `.png` 404;
+Anatomie-Quelltext trägt `og:image` absolut + Typ/Maße + `twitter:card`; `/api/discover/
+kailua-coffee-co` liefert Krume & Gold als Ähnliche mit Grund `industry`. **Gelernt:** (1) Ein
+Deploy-Wächter, der auf den EIGENEN SHA wartet, schläft ewig, wenn die Nachbar-Session direkt danach
+pusht — prüfen, ob der Live-Build den eigenen Commit als VORFAHR enthält. (2) `pnpm install
+--filter <app>` erzeugt hier Peer-Hash-Churn im Lockfile und lässt `node_modules` inkonsistent
+zurück (`nuxi prepare` stirbt repo-weit) — immer ungefiltert installieren.
+
+---
+
+### S3: Zweiter Faktor auf allen vier Betreiber-Konten + Google-Login für die Betreiber-Konsole ✅ 2026-09-08
+
+Anlass (nachgemessen 2026-08-23): `mail@davidschubert.com` war in `admin`,
+`account`, `portfolio` und `branding` das einzige Admin-Konto, überall ohne
+MFA; Google-Login gab es nur für `account` und `branding`. Heute, direkt nach
+AW2 (Appwrite 2.0), abgeschlossen:
+
+- **MFA-Flow auf Appwrite 2.0 bewiesen** (`verify-mfa.mjs` 39/39 gegen die
+  2.0-Dev-Instanz — Einrichten, Code, Drossel, Wiederherstellungs-Code in
+  camelCase, Abschalten, Gast-Abwehr), dann hat David den Zweitfaktor auf
+  allen vier Konten eingerichtet; Users-API zeigt je Projekt `mfa=true`.
+- **Google für Projekt `admin`**: David hat die Redirect-URI
+  `…/oauth2/callback/google/admin` am bestehenden Client ergänzt und den
+  Provider in der Appwrite-Konsole angeschaltet (dritter Schlüssel war nicht
+  nötig — ein Client bedient alle Projekte); Claude hat
+  `NUXT_PUBLIC_AUTH_OAUTH_PROVIDERS=google` auf der admin-Site gesetzt, per
+  `workflow_dispatch` ausgerollt und gemessen: Knopf auf `/login`,
+  `/api/auth/oauth?provider=google` → 302 zu accounts.google.com.
+- **Nebenbefund 1, gefixt (Commit 215fb1ae):** auf `account.pukalani.app`
+  `/settings → Sicherheit` fehlte die Zwei-Faktor-Karte (sie hing nur im
+  Dashboard-Reiter des admin-Layers, den der Kontroll-Host nicht hat).
+- **Nebenbefund 2, Davids Entscheidung (Commit cd383bc4):** die Online-Karte
+  auf dem Kontroll-Host-Dashboard zeigte seit jeher „0 online" (Presence-
+  Routen stehen bewusst nicht in `controlApiPrefixes`) — jetzt ausgeblendet.
+- **Nebenbefund 3, gefixt (Commit cc330ce7):** im Dashboard von
+  pukalani.studio blieb nach dem ersten Sidebar-Klick der Seitenbereich leer
+  (nur harter Reload half). Ursache nach Bisektion mit identischen Versionen:
+  die globale `app.pageTransition` (out-in) der portfolio-App über dem
+  mehrwurzeligen `UDashboardPanel` — Vue gibt Fragmenten inerte
+  Transition-Hooks, `afterLeave` feuert nie, Suspense parkt die neue Seite im
+  versteckten Container. Seit 2026-07-17 so, kein heutiges Update beteiligt.
+  Fade jetzt nur noch per `<NuxtPage :transition>` auf Layout `site`.
+- **Nebenbefund 4, gefixt (Davids Auftrag, 2026-09-08):** die Dashboard-
+  Übersicht fragte `/api/admin/comments?status=reported` auch in Apps ohne
+  comments-Layer ab (404 in der Konsole von pukalani.studio) — die Capability
+  hatte der Admin, die Route nicht die App. Die Schnellmoderations-Karte hängt
+  jetzt am Registry-Eintrag `pukalani.admin.modules` (id `comments`), dem
+  expliziten Vertrag statt eines Layer-Imports. Playwright gegen den lokalen
+  Prod-Build: 0 Konsolenfehler, 0 Anfragen ≥ 400, Karte weg, Navigation intakt.
+
+**Gelernt:** (1) Eine globale `app.pageTransition` mit `mode: 'out-in'`
+verträgt sich nicht mit Seiten, deren Wurzel ein Fragment ist
+(`UDashboardPanel`, jede Seite mit zwei Wurzelknoten) — es gibt keinen
+Fehler, keine Warnung im Prod-Build, nur eine leere Seite; im Vite-Dev tritt
+es fast nie auf, weil die Seite dort ohne eigenen Chunk vor dem Fallback
+aufgelöst ist. Transitionen gehören je Route gesetzt, nie global über ein
+Dashboard. (2) Ein per Extension gesteuerter Chrome-Tab liegt in einem
+VERSTECKTEN Fenster: `requestAnimationFrame` und damit jede CSS-Transition
+stehen dort still — „hängende" Übergänge in so einem Tab sind ein Messfehler,
+kein Befund. Für Übergänge und Animationen Playwright headless nehmen (dort
+läuft rAF). (3) Wenn man selbst als derselbe Nutzer in einem zweiten
+(versteckten) Tab eingeloggt ist, überschreibt dessen `away`-Heartbeat die
+sichtbare Presence desselben Mandanten (Letzter-gewinnt) — „0 online" war
+einmal ich selbst. (4) Google erlaubt zwei Client-Secrets je OAuth-Client;
+für ein weiteres Appwrite-Projekt braucht es keinen neuen Schlüssel, nur die
+gespeicherte Kopie oder einen sauberen Tausch in allen Projekten.
+
+### AW2: Appwrite 2.0 — Server (dev + prod) und SDKs (node-appwrite 29, appwrite 27) in einem Vorhaben ✅ 2026-09-08
+
+Anlass: die Abhängigkeiten-Seite meldete Appwrite 1.9.6 → 2.0.0 und die SDKs
+26 → 29/27. Davids Entscheidungen (DECISION-LOG 2026-09-08): alles in EINEM
+Vorhaben, Start sofort, Prod-Fenster nach grüner CI-E2E gegen 2.0. Vier Stufen
+in Reihenfolge, weil die SDK-Majors am Server hängen:
+
+1. **SDK 28 + Code** (Commit `2d6dbc0d`): `Health`-Service (seit 27 weg) durch
+   REST-Helfer `core/server/utils/appwriteHealth.ts` ersetzt (gleiche
+   Methodennamen, 5-s-Timeout, nackter 502); `account.createJWT` (seit 28
+   weg) durch `users.createJWT` am Admin-Client, userId NUR aus der bewiesenen
+   Session — Scope `users.write` auf allen vier Prod-Keys vorher per Probe
+   belegt. Läuft gegen 1.9.6 UND 2.0 (Response-Format 1.9.6).
+2. **Dev-Instanz 2.0.0** (OrbStack): Dump + Config-Backup, Upgrade-Werkzeug,
+   Override nachziehen, `migrate`. Beweise: verify-onboarding 28/28,
+   verify-presence-boundary 23/23, verify-site-authz 120/120 (nach Reparatur
+   von zwei Skript-Drifts), Health-Pillen, JWT + WS als Nutzer, Login per Klick.
+3. **CI-Wegwerf-Appwrite 2.0** (Commit `547b3ae7`): Compose aus dem Werkzeug
+   abgeleitet, `-ci`-Netze/-Labels, `appwrite-geo` in der Startliste; E2E
+   danach viermal grün.
+4. **Prod `api.pukalani.app` 2.0.0** (05:00 UTC, Skript auf appwrite-prod,
+   unter 12 min) und **SDK 29 + Web 27** (Commit `03a0bffb`, Response-Format
+   2.0.0). Nachweise: Runbook docs/runbooks/APPWRITE-2-0-UPGRADE.md.
+
+**Gelernt:** (1) Das Upgrade-Werkzeug 2.0.0 ignoriert `--no-start`, startet
+die Container OHNE `docker-compose.override.yml` (explizites `-f`) und lässt
+`migrate` aus — Traefik-XFF und SMTP-Patch waren nach dem Lauf weg, ein
+eigenes `docker compose up -d` + `migrate` gehört IMMER hinterher. (2) Eine
+1.9.6-Patchdatei in einem 2.0.0-Container ist falsch (52 Diff-Zeilen) — je
+Version eine eigene, die Override erst im Fenster umstellen. (3) `MYSQL_ROOT_PASSWORD`, nicht
+`MARIADB_ROOT_PASSWORD`: mit der falschen Variablen ist der Dump 20 Byte groß
+und nur am `ls` zu erkennen — der Prod-Ablauf bricht deshalb unter 100
+Tabellen ab. (4) Beweis-Skripte rosten: `verify-site-authz` war seit der
+Zod-Härtung (Name ≥ 2) und der Einladungs-Drossel (F57, 5/min je IP) bei 117
+von 120, ohne dass es jemand sah — wer ein Skript als Beweis nimmt, liest die
+roten Zeilen, bevor er sie dem Server anlastet. (5) Der Dev-traefik hängt
+CI-Container in seine Router, wenn Label und Netz gleich heißen (beide lesen
+denselben Docker-Socket) — `-ci`-Suffixe sind Pflicht für jeden lokalen
+Nachstell-Versuch. (6) `users.createJWT` braucht `users.write`; vor einem
+Deploy, der ein neues SDK-Verfahren nutzt, die Prod-Keys per Wegwerf-Probe
+(create → jwts → delete) prüfen statt annehmen.
+
+### Brand Foundation als Guidelines (BF1): Leseansicht, Teilen, Beispiel, Richtung — die Foundation als Markenhandbuch ✅ 2026-09-07
+
+**Was:** Das Ergebnis-Dokument des Brand-Wizards („Euer Branding", die Arbeitsansicht mit
+Abnahme und Prüfblick) hat eine zweite Ansicht bekommen: die **Brand Foundation** liest dieselben
+bestätigten Werte als Markenhandbuch — zwölf Kapitel im klassischen Guidelines-Aufbau (Story,
+Kontext, Purpose/Vision/Mission, Positionierung, Architektur, Werte, Stimme mit Do & Don't,
+Manifest, Tagline & Messaging, Name, visuelle Schranke, Regeln für KI-Texte), teilbar per Link,
+druckbar, ohne einen neuen KI-Aufruf. Anlass war Davids eingefügte Brand-Guidelines-Definition
+(2026-09-05); Konzept, Prototyp (Playground, Davids Abnahme), fünf Pakete, Abnahme aller vier Blicke
+am 2026-09-07. Plan (ausgeführt): [archiv/BRAND-FOUNDATION-LESEANSICHT.md](archiv/BRAND-FOUNDATION-LESEANSICHT.md).
+
+**Davids Entscheidungen** (alle nach Empfehlung, DECISION-LOG 2026-09-05/07): Name „Brand
+Foundation" (kein Konflikt mit dem bezahlten „Brand Book"), nur Festlegungen (Registry-Feld
+`audience` neben `sensitivity`), visuelle Kapitel sichtbar gesperrt mit Begründung, Browser-Druck
+statt Server-PDF; für G4 kuratierter Richtungen-Katalog, drei Richtungen je Archetyp, kein Preis
+an der Schranke (Studio-Angebot), Wahl in der Werkstatt.
+
+**Pakete (alle auf main, alle in Prod):**
+- **Konzept + Prototyp** `418c5bd0`, `b54ba7e1`, `8fc82e21`, `fa686cac` — Konkurrenzanalyse mit
+  Quellen (Frontify, Corebook°, standards.site, Brandkit, Lovable …), Dummy im Playground mit EINEM
+  Renderer (`FdChapter`) für private und geteilte Ansicht, Inhaltsverzeichnis als `UPageAside` +
+  `UContentToc` (Davids Wunsch), dann auch auf der echten Dokument-Seite `26bd2378`.
+- **G1 `daa5eec0` — Regel + Renderer.** `audience: 'foundation' | 'internal'` je Session
+  (31/37, Ausnahmetabelle per Test genagelt), `sessionTravels` = public UND foundation als EINE
+  Regel hinter `brandShareableSlotValues` (den `sensitivity`-Filter hatte die Nachbar-Sitzung mit
+  MV1 M5 am selben Tag geschlossen — kein zweiter daneben), purer Renderer `buildBrandFoundation`
+  in `shared/brandFoundation.ts` (Snapshot-Form rein, Kapitel + Blöcke raus, Texte als
+  i18n-Schlüssel). Drei Zuordnungen nach dem Konzept entschieden (d.emotion, e.composition
+  foundation; b2.roleOfMaster internal).
+- **G2 `6f2020e5` — private Leseansicht + Print.** Route + Seite `/brand/:id/foundation`,
+  `BwFoundationChapter` (aus dem Dummy, plus `choice`-Zweig), generische `BwReadingToc` für
+  Dokument UND Foundation, Rail-Einstieg „Brand Foundation" (immer erreichbar, ehrlicher Zustand),
+  „Auf einer Seite", Export-Menü mit drei gesperrten Formen, 60+ i18n-Schlüssel mit Wächter aus
+  einem echten Renderer-Lauf.
+- **G3 `59516f76` + Core `f51b88d2` — Teilen sichtbar.** Zustands-Route, Teilen-Dialog (Link
+  genau einmal, Kopieren, Widerrufen, Rotation), öffentliche Seite `/brand/share/:token` (Layout
+  `false`, Schutz-Köpfe, `noindex` + og), Ereignisse ohne Token/Inhalt, Alt-Snapshot-Filter beim
+  Lesen; Beweis `packages/brand/scripts/verify-brand-share.mjs` 36/36, Gegenprobe
+  `VERIFY_EXPECT_LEAK=1` ⇒ 31/36 rot. Prod-Bestand `brand_shares` vor dem Deploy: 0.
+- **G5 `e1d513d0` — Beispiel Kailua.** `/beispiel/kailua-coffee` auf branding.supply,
+  indexierbar, fester Snapshot `shared/examples/kailuaCoffee.ts` (27 reisefähige Slots, 14
+  Prüfungen inkl. Schmuggel-Gegenprobe), Startseiten-Teaser zurück.
+- **G4 `65a9af3d` — Schranke + Richtung.** Katalog `shared/brandDirections.ts` (sechs
+  Richtungen, jeder Archetyp in genau drei), `suggestBrandDirections`, `BwDirectionCard` mit
+  lokalen CSS-Variablen ohne Web-Schriften, Weiche im Karten-Editor der Werkstatt
+  (`result.direction`, Werkstatt kennt die Archetypen über `sourceValues`), Kapitel 10 zeigt
+  Richtung + Farbwelt vor der Schranke; Wahrheit = bestätigter Slot, `presetId/presetVersion` im
+  Snapshot daraus.
+
+**Beweise:** je Paket Lint, brand-Tests (am Ende 1967), Typecheck der branding-App, i18n- und
+Sessions-Wächter; Live-Durchspielungen am Dev-Server mit einer geseedeten Testmarke (eigene Marke
+200, fremde 404, keine Rohantwort in Antwort/DOM, Druck-Emulation, Richtung wählen → Kapitel 10 →
+Snapshot); Prod-Beweis je Paket der Live-Build-SHA von branding.supply.
+
+**Gelernt:** (1) Nuxt UI registriert die Content-Komponenten (`UContentToc`, `UPageAside`) NUR mit
+`ui.content: true` oder installiertem `@nuxt/content` — ohne den Schalter bleibt `<UContentToc>`
+ein unaufgelöstes Element mit leerer Spalte und nur einer Vue-Warnung; ein laufender Dev-Server
+übernimmt eine Layer-`nuxt.config`-Änderung nicht (Neustart). (2) `UContentToc` schiebt beim Klick
+den Hash in den Router, der scrollt das FENSTER — in einer scrollenden Bühne muss die Seite selbst
+per `scrollIntoView` springen; die Hervorhebungs-Linie rechnet mit fester Zeilenhöhe (1,75 rem),
+zweizeilige Einträge setzen sie an den falschen Eintrag. (3) Das Workspace-Layout hält `100dvh` +
+`overflow: hidden` auch auf Papier — der Druck endete nach der ersten Seite; der Dummy hatte kein
+Layout, deshalb fiel es erst an der echten Seite auf (`@media print` im Layout). (4)
+`frame-ancestors 'none'` war über `registerEmbeddableRoute` nicht ausdrückbar und verlor gegen den
+Core-Default `'self'` im `render:response`-Hook — jetzt eine Verbots-Registry, Verbot schlägt
+Erlaubnis; ebenso setzte `html-no-cache` sein `no-cache` über einen am Event gesetzten `no-store`.
+(5) Appwrite schreibt Zeitstempel als `+00:00`, `toISOString()` als `Z` — wer Zeichenketten
+vergleicht, sieht zwei Fristen. (6) Ein Befund im Konzept war schon geschlossen, bevor G1 begann
+(MV1 M5) — „erst main prüfen" gilt auch mitten im Paket, sonst entsteht ein zweiter Filter für
+dieselbe Frage. (7) Beweise mit dem versteckten Browser-Pane liefern widersprüchliche Messwerte
+(JS-Scroll wird beim Screenshot zurückgesetzt) — für Mess-Beweise den Playwright-Browser mit festem
+Viewport nehmen. (8) Ein Agent hat einmal ins Hauptrepo statt in den Worktree geschrieben — der
+Auftrag nennt seither den Worktree-Pfad ausdrücklich und verbietet den Wechsel.
+
+---
+
+### Marktvergleich (MV1): Layer `market`, Behauptungs-Raum einer Kategorie mit Beleg, Bericht mit UWG-Riegel ✅ 2026-09-06
+
+**Was:** Davids Produktgedanke vom 2026-09-04 („Konkurrenzanalysen … wo sich unsere Marke am
+Markt am besten positionieren sollte") — geplant, freigegeben, gebaut und auf branding.supply
+in Betrieb genommen. Strategie + Konzept mit acht Entscheidungen (DECISION-LOG 2026-09-05),
+Prototyp M0/M0b abgenommen, §7 als Erweiterung aus der Prototyp-Runde (ein Motor drei
+Ansichten · vier Kandidaten-Quellen · KEIN zweiter Score · erweiterter Abruf · KI-Aussensicht);
+Plan jetzt [archiv/BRAND-MARKTVERGLEICH.md](archiv/BRAND-MARKTVERGLEICH.md).
+Das Produkt zeigt den **Behauptungs-Raum** einer Kategorie — was Wettbewerber auf ihren
+Websites SAGEN, übersetzt in die Feldstruktur der Brand Foundation, jede Aussage mit Zitat und
+Quelle. Bewusst KEIN Ranking, kein Score je Wettbewerber, keine Aussage über Markterfolg.
+
+- **M1 `475aeabd` — Layer + Vertrag.** `market` montiert in `apps/branding` (Manifest,
+  `extends`, `LAYER_ORDER`, Schema-Parity-Soll), Gate `pukalani.market.enabled`.
+  Der EINZIGE Griff über die Paketgrenze ist `packages/market/server/contracts/brandContract.ts`
+  (Abruf, Besitz mit 404 statt 403, Slot-Registry, Kaskade), ESLint kennt dafür einen benannten
+  Block. Drei Tabellen `market_competitors` / `market_profiles` / `market_reports`
+  (market-001…003, server-only, MEDIUMTEXT, Indizes über `createIndexSteps`), Lösch-Kaskade als
+  Registry in `brand` und ein eigener `registerUserDataContributor` (Rohtext bleibt aus der Auskunft).
+- **M2 `1bb5c55f` — Abruf, Extraktion, Aussensicht.** Geteilter Mehrseiten-Abruf im brand-Layer
+  (`brandSiteCrawl.ts`, `fetchBrandDocument` additiv), eigener Absender
+  `PukalaniMarketBot/1.0`, robots-Parser nach RFC 9309, **vier anerkannte Formen des
+  Nutzungsvorbehalts** (TDM-Kopfzeile, `tdmrep.json`, `noai`-Meta, `tdm-reservation`-Meta;
+  fail-closed bei Zweifel, ein Vorbehalt schliesst den ganzen Wettbewerber aus), Pfad-Sperrliste
+  (Personenbezug, Rechtstexte, Funktions- und Tagesaktuelles), PII-Filter, 8 Seiten / 2 MB /
+  20 000 Zeichen je Seite / 60 000 je Lauf. Extraktion mit **drei deterministischen Riegeln**:
+  Zod fail-soft je Feld · Beleg-Riegel (Zitat muss wörtlich im Rohtext GENAU der genannten Seite
+  stehen, sonst fliegt das Feld) · Häufigkeit wird im Code gezählt, nie vom Modell übernommen.
+  KI-Aussensicht (`market-ai-1`) nur mit Konsens ≥ 2 verschiedener Modelle, in eigener Spalte,
+  ohne Einfluss auf irgendeinen Score.
+- **M3 `11be1ef4` — Vergleich + Befunde.** Ein Modellaufruf (`market-r-1`) über eigenes Profil
+  + N Marktprofile ⇒ Matrix, Konventionen, Überschneidungen, freie Stellen. **§ 6 UWG-Riegel in
+  drei Lagen:** Anonymisierung im Prompt (das Modell sieht `c1…c5`, nie einen Namen),
+  Prompt-Regel, Filter im Code über JEDES erzeugte Element (Name inkl. Teil-Token,
+  umlaut-normalisiert, Domain, Wortliste herabsetzender Ausdrücke) — ein Treffer VERWIRFT das
+  Element. Markt-Befunde als `kind: 'market'` in `brand_findings` (Migration **brand-018**,
+  additiv), höchstens drei je Bericht, sperren nichts, ERSETZEN statt dazulegen.
+  `revisionKey`/`stale` aus derselben Rechnung — ein überholter Bericht bleibt lesbar.
+- **M4 `8e936691` + `0add6133` — Oberfläche.** Seite „Markt" als Ebene-1-Seite der Werkstatt in
+  fünf Zuständen, Quellen-Wähler über vier Quellen (Website · eigene Brandings · Bibliothek ·
+  freigegebene fremde Marken), Opt-in `brand_profiles.marketVisibility` (**brand-019**, Semantik
+  wie das Brand-Check-Ranking, nie eine `ownerId` in der Antwort), Leisten-Erweiterungspunkt
+  generisch in `brand` (nennt nirgends ein Produkt), Schranke `resolveMarketPaywall` mit
+  `studio_cta_erstgespraech`. Der Nachfix zog das Gate auf alle drei Flächen.
+- **M5 `ae3b70d7` — Betrieb.** Rohtext-Frist 24 h mit Sweep alle 30 min (Takt hängt am Layer,
+  nicht am Produkt-Gate; Fail-Richtung umgekehrt: kein Stempel ⇒ löschen; der Sweep fasst die
+  Belege NIE an), Erklärseite `/market-bot` (bewusst ohne Produkt-Gate), Vertraulichkeits-Nachweis
+  als Typ-Form, Bewertungs-Route, Runbook + interne Doku-Seite.
+- **M6 `0c2070bc` + M6b `66377315` — Bibliothek.** Werkzeug mit vier Modi, das den KUNDENWEG
+  benutzt (Wegwerf-Konto, echte Route, dieselbe Kette) statt einer zweiten Pipeline; das Tor ist
+  ein ZUSTAND (`status: 'verified'`), keine Zusage. Trockenlauf gegen zehn echte Hosts,
+  Kostenschätzung, Rechts-Check-Memo (Anhang G, sechs Anwaltsfragen). M6b: die zwei ERFUNDENEN
+  Einträge sind aus dem Produkt heraus, `the-barn` (9 Felder) und `apple` (5, `purpose`
+  gestrichen) nach Davids Handprüfung übernommen — Fassung `lib-3`.
+
+**Beweise:** `packages/market/scripts/verify-market-fetch.mjs` **33/33** ·
+`verify-market-report.mjs` **45/45** · `verify-market-ui.mjs` **46/46** ·
+`verify-market-retention.mjs` **51/51** (je gegen echte Routen, echte Ablage und erfundene
+Websites auf eigenen `node:http`-Servern) · **213 Unit-Tests** im market-Layer, dazu
+`brandSiteCrawlParse`, `brandFindings`, `brandWorkspaceNavExtras`, `brandSharing`,
+`conversePrompt` im brand-Layer — jeder mit Gegenprobe.
+
+**In Betrieb (2026-09-06):** Prod-Migrationen `brand-018/019` + `market-001…004` auf der Instanz
+`branding` mit Davids ausdrücklichem Ja gefahren (zweiter Lauf komplett „existiert bereits",
+`ops:schema-parity` grün), Gate-Flip als eigener Commit `9e984253` (auf `main` als Merge
+`f7bd9fe4`), Rauchtest in Produktion von David bestanden, Seiten abgenommen. Erster bezahlter
+Bibliothekslauf ≈ $0,11 für fünf Extraktionen. Runbooks:
+[MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) (Durchlauf abgehakt) und
+[MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md).
+
+**Gelernt: Cross-Layer-Re-Exporte gehören in `server/contracts/`, nie in `server/utils/`** —
+Nitro auto-importiert `server/utils/**`, und die Re-Exporte des Vertrags hätten dort die
+gleichnamigen Symbole des eigenen Layers geschattet. Ein Vertrag, den man versehentlich
+benutzt, ist keiner.
+
+**Gelernt: ein Gate muss ALLE Flächen schalten — Seite, Leiste und Routen.**
+`pukalani.market.enabled` schaltete zuerst nur die Seite: die Leiste zeigte „Markt" weiter
+(Klick ⇒ 404), und vor `/api/market/**` stand allein die core-Middleware `04.product-gate.ts`,
+die den LAUFZEIT-Zustand prüft und einen fehlenden Eintrag bewusst als „an" durchlässt. Ohne
+den Nachfix wäre mit dem Deploy etwas SICHTBAR geworden, bevor die Migration lief — genau die
+Reihenfolge, die das Runbook verbietet.
+
+**Gelernt: je Beweis-Skript ein FRISCHER Dev-Server-Prozess.** Die Drossel-Eimer leben im
+Prozess; ein zweiter Beweis gegen denselben Server erbt die Zählerstände des ersten und meldet
+in einem beliebigen Schritt eine 429. Genau so stand `verify-market-report.mjs` bei 42/43 — mit
+eigenem Prozess 43/43. Ein Beweis, der die Reihenfolge seiner Nachbarn mitmisst, misst nicht das
+Produkt.
+
+**Gelernt: `aiEnabled` ist ein KONFIG-Flag, kein Schlüssel-Beweis.** Der erste bezahlte
+Bibliothekslauf lief mit eingeschaltetem Gate, aber ohne `NUXT_AI_KEY` in der Dev-Env — fünf
+Extraktionen kamen leer zurück, und im Log stand fünfmal `message: ""`. Grund: H3-Fehler
+(`createError`) tragen die Aussage in `status`/`statusText`, nicht in `message` („AI not
+configured" ist ein 503). Wer eine Anbieter-Meldung protokolliert, protokolliert beide Felder
+(`describeProviderError` in `marketExtract.ts`, Commit `4fbb1a79`).
+
+**Gelernt: erfundene „verified"-Einträge waren in PRODUKTION sichtbar — Fixtures gehören nach
+`tests/`, nie in ausgelieferte Daten.** Die zwei `.example`-Marken waren als Platzhalter
+richtig, solange die Mechanik ohne Inhalt lief; mit dem Gate-Flip standen sie im Quellen-Wähler
+zahlender Kunden, mit einem Prüfsiegel, das niemand geleistet hatte. Sie leben jetzt als
+`tests/fixtures/marketLibraryFixture.ts`, und die Test-Sperre ist UMGEDREHT: echter Host,
+Prüfdatum nicht in der Zukunft, Beleg vom Auftritt der Marke selbst.
+
+**Gelernt: Konzeptarbeit braucht denselben Blick auf `main` wie Code.** §7 wurde geschrieben,
+während der Brand-Check (BC1) längst gebaut auf `main` lag — die Erweiterung plante einen
+zweiten „Klarheits-Score" neben einem Score, den es schon gab. Der Blick auf `main` noch am
+selben Abend hat ihn gestrichen und daraus „ein Motor, drei Ansichten" gemacht. Davids Regel
+vom 2026-08-02 gilt nicht nur für Codemods.
+
+**Gelernt: „die Grossen sperren" stimmt per BOT-ABWEHR, nicht per `Disallow` — und
+JS-Seiten liefern ohne Headless-Browser keinen Text.** Acht von neun Konzern-Websites erlauben
+unserem Absender alles; wer sperrt, antwortet schon auf die `robots.txt` mit 403 (adidas,
+OpenAI, Counter Culture). Ein Werkzeug, das nur `Disallow` liest, hielte das für einen
+Netzwerkfehler und versuchte es beim nächsten Lauf erneut. Umgekehrt sind sevDesk und
+FreshBooks technisch offen und trotzdem unbrauchbar: ihr Text entsteht erst im Browser.
+
+**Gelernt: der Share-Link las `sensitivity` nie — das BF1-Versprechen wurde erst durch M5
+eingelöst.** `BrandSessionConfig.sensitivity` trug seit BF1 wörtlich „was per Share-Link und
+Export standardmässig NICHT reist", und `confirmedSlotValues` lief beim Veröffentlichen über
+ALLE bestätigten Slots: vier interne Sessions (`a.competitors` mit Wettbewerber-Namen und
+notierter Schwäche, `a.complaints`, `a.challenge`, `a.facts`) waren dreissig Tage lang für
+jeden mit dem Token lesbar. Gefunden hat das kein brand-Audit, sondern der Versuch, einen SATZ
+AUS EINEM ANDEREN PLAN zu beweisen („vertraulich wie `a.competitors`") — ein Beweis, der einen
+fremden Massstab benutzt, prüft auch den Massstab. Fix additiv in `brandSharing.ts`
+(fail-closed), nicht in `confirmedSlotValues`.
+
+**Nachzug 2026-09-06 (BC1-Rest + 90-Tage-Regel, zwei Opus-Läufe parallel):** (a) Die
+Check-Mechanik ist aus `check.post.ts` als `runBrandCheck(event, input)` herausgezogen
+(`packages/brand/server/utils/brandCheckRun.ts`; Reihenfolge Cache → Profil → Buchung →
+Abruf → Urteil → Zeile byteweise erhalten; `profileId` darf eine Funktion sein, damit ein
+Cache-Treffer keine Besitz-Abfrage kostet; `Retry-After` setzt nur noch die Route, weil ein
+zweiter Aufrufer es sonst auf eine 200 stempelte). `decideBrandCheckMode` hat den dritten
+Eingang `quota: 'account'` (Konto-Eimer OHNE Cache-Umgehung — vorher hing beides an
+`force`). Der Marktvergleich-Lauf stösst für jeden GELESENEN Website-Kandidaten ohne Check
+einen an — synchron vor dem Bericht (h3 1.15 exportiert kein `waitUntil`, ein schwebendes
+Promise nähme unter pm2 den Prozess mit), Wanduhr 120 s, fail-soft je Kandidat; per robots.txt
+Ausgeschlossene und ausgeblendete Zeilen bleiben ohne Score. brand 1906 / market 232 Tests.
+(b) 90-Tage-Regel als pure Datei `marketLibraryAge.ts` (eigene Datei, weil das Werkzeug
+Produkt-Regeln als `.ts` lädt und `marketLibrary.ts` über zod/marketProfile für Node-ESM
+unerreichbar ist), `now` immer Parameter (Grenze 90 = frisch, 91 = stale, unlesbares Datum =
+stale), `--check` zeigt das Alter, `--stale` (Exit 1) als Andockstelle für einen Cron,
+`--now` zum Vorführen; Quellen-Wähler zeigt „Handgeprüft am …“ (UTC-Datum, `stale` vom
+Server). **Bewusst nicht gebaut:** Mehrseiten-Abruf im Brand-Check (Produktfrage, Empfehlung
+„Startseite bleibt“), Zeitplan für `--stale`. **Gelernt:** ein Nachzug, der eine Route in
+eine Funktion zerlegt, ist nur dann keine Verhaltensänderung, wenn die Reihenfolge der
+Kostenstellen als Test festgenagelt ist — deshalb `profileId` als Funktion statt als Wert.
+
+**Live-Beweis 2026-09-08 (selbst geklickt, Davids freigegebener Chrome):** Krume & Gold ist die
+einzige Brand mit abgenommenem Kapitel B und hatte KEINEN Wettbewerber — der Knopf „Markt
+vergleichen“ war deaktiviert, Davids drei Klicks lösten nie einen Request aus, das Log blieb
+leer. Wettbewerber `zeitfuerbrot.com` eingetragen → Lauf 42 s: `market.run_started` (1
+Kandidat) → `market.extracted` (6 Seiten, 5 belegte Felder) → `market.run` →
+**`brand.check_completed` Score 82** → `market.brand_checks` (open 1, ran 1, skipped 0) →
+`market.report` (4 Konventionen, 3 freie Stellen, 3 Befunde). Kandidatenkarte zeigt „82 ·
+Ausgezeichnet · Zum Brand-Check“. Dazu die Lauf-Route mit `market.run_requested` (vor jeder
+Prüfung, nur Session ja/nein), `market.run_rejected` (Gate/Session/Besitz/locked/no_competitors/
+Drossel als Code) und `market.run_started` — 4xx protokolliert der zentrale Handler nicht, und
+genau das machte die Diagnose drei Runden lang unmöglich.
+
+**Gelernt (Davids Rückfrage „wieso testest du das nicht immer direkt mit?“):** Eine
+Live-Meldung ohne selbst durchgeführten Klick — auch hinter dem Login, Davids Chrome ist
+freigegeben — verlagert den Test auf David und lässt Bedien-Ursachen (deaktivierter Knopf)
+unsichtbar, weil sie nie den Server erreichen. Regel: den entscheidenden Klick selbst machen,
+Netzwerk + Konsole + Server-Log zusammen lesen; nur vor echten Geld-Aktionen fragen.
+
+### H1: Leere `UTable`-Spaltenköpfe (stille Hydration-Fehler) — 40 Stellen in 15 Layern behoben ✅ 2026-09-06
+
+**Was:** Folgepunkt aus dem Brand-Check-Ranking: `header: () => ''` in einer `UTable`-Spalte
+meldet im Browser „Hydration completed but contains mismatches" OHNE Knoten-Warnung — Vue
+schreibt leeren Text beim SSR nicht (`<th><!--[--><!--]--></th>`), legt beim Hydrieren aber
+einen leeren Textknoten an, und `hydrateFragment` loggt ohne `warn`. Statt 40 Einzel-
+korrekturen EIN Helfer im Core: `srOnlyHeader(label)` (`packages/core/app/utils/tableHeader.ts`,
+auto-importiert in allen Layern) rendert `<span class="sr-only">` — behebt den Fehler und gibt
+Screenreadern den Spaltennamen. Leeres Label WIRFT im Dev (ein Fallback auf ein Leerzeichen
+würde die Falle nur umbenennen), fällt in Prod still auf ein echtes Leerzeichen zurück. Vier
+generische Schlüssel `ui.table.actions/select/drag/vote` (de+en). 40 Spalten in 36 Dateien
+umgestellt (admin 4 · brand 4 · control 6 · posts 4 · comments/courses/events/onboarding/pages/
+themes je 2 · billing/core/feedback/media/runner je 1). Gates: `pnpm -r lint` 0 Fehler,
+`pnpm -r typecheck` 12 Pakete grün, core 1430 Tests, i18n-Wächter grün.
+
+**Beweis (echtes Vorher/Nachher, comments-Dev-Server aus dem Worktree, Seed-Konto):**
+`/de/dashboard/comments` nachher ohne Meldung und mit `<span class="sr-only">Aktionen</span>`
+im letzten `<th>`; dieselbe Zeile testweise auf `header: () => ''` zurück ⇒ die Meldung 2× und
+`<th><!--[--><!--]--><!--]--></th>`; wieder behoben ⇒ weg. Drei SSR-Ladungen (comments,
+core-SessionsTable mit bedingtem Spread, themes) mit 0 Konsolen-Fehlern.
+
+**Gelernt:** (1) Ein Hydration-Fehler ohne Knoten-Warnung heisst nicht „Datum/Locale", sondern
+oft „leerer Text aus einer Renderfunktion" — Bisektion über Spalten/Slots findet ihn. (2) Bei
+`select`-Spalten rendert Nuxt UI den `#select-header`-Slot, die `header`-Funktion greift dort
+nicht — die Umstellung ist trotzdem richtig (konsistent, wirkt bei Slot-Wegfall). (3) Ein
+Wiederholungs-Muster über viele Layer gehört als EIN Helfer ins Fundament, nicht als 40 Kopien.
+
+### Brand-Check als Produktseite (BC1 P1–P6): Startseite, Ranking, Vergleich, Meine Brands, Ergebnisseite v2 ✅ 2026-09-05/06
+
+**Was:** Davids Auftrag nach dem ersten Live-Check („eigene Seite, Teaser zeigen dorthin, Archiv/
+Ranking, Quartett-Vergleich, Score neu ermitteln mit Gegenüberstellung, To-dos") — Konzept
+docs/archiv/BRAND-CHECK-SEITE.md, vier Entscheidungen per Fragenrunde (Ranking nur mit Opt-in,
+Branche per KI + Korrekturvorschlag, Dokument-Check sofort, Konto-Deckel 10/Tag; DECISION-LOG
+2026-09-05), Visualisierung nach externem Input festgezogen (Markenabdruck, Ampel-Matrix,
+Stärke · Chance · Nächster Schritt; §10). Sechs Opus-Läufe, meist zu zweit/dritt parallel im
+selben Worktree (i18n nur per Edit, Dateibesitz je Lauf), jeder im Fable-Hauptloop geprüft:
+- **P1** `/brand-check` (Formular, Reiter, Marketing, FAQ+JSON-LD, Opt-in-Häkchen), Teaser auf
+  Start/About/Team · **P2** Migration **brand-017** (industry, rankingOptIn, hidden, userId,
+  profileId, source; Tabelle `brand_check_corrections`), Branche im Judge (check-judge-2),
+  force/Konto-Deckel, Ranking-API (je urlKey der jüngste Opt-in-Check, Microcache 60 s),
+  Korrektur-Routen, hidden-Flag · **P3** Ranking-Seite (Filter, Sortierung je Kategorie,
+  Zwei-Häkchen-Vergleich), Korrekturvorschlag auf der Ergebnisseite, Betreiber-Warteschlange
+  `/dashboard/brand-check/corrections` · **P4** Vergleich mit zwei überlagerten Markenabdrücken
+  (`BwBrandFingerprint`, Inline-SVG) + acht Duell-Zeilen · **P5** Dokument-Check
+  (`POST /api/brand/profiles/:id/check`, Fundament-Reife `doc-score-1`, urlKey `doc:<profileId>`),
+  Verlauf + `diffBrandChecks`, `pickBrandCheckTodos`, Score-Seite je Brand · **P6** Ergebnisseite
+  v2 (Fazit-Bento, Delta zum Vorgänger, Rang, Markenabdruck, acht OFFENE Kategorie-Karten in
+  eigener Section — Davids Zuschnitt —, Ampel-Matrix 8×5, Verbesserungsplan mit exakt
+  gerechnetem „+X Punkte" je Kriterium), Vergleichs-Insights-Bento (Gesamtbild, Bilanz,
+  Abstände ≥ 25 mit Kriterien-Belegen beider Seiten), Brand-Scores-Liste `/dashboard/brand-scores`.
+
+**Abgenommen 2026-09-06 (David):** Ranking, Vergleich, Ergebnisseite , der Dokument-Check („Fundament prüfen") und „Neu ermitteln" (Cache-Umgehung gegen den Konto-Deckel) auf /dashboard/brand-scores live getestet — damit ist jeder Pfad des Pakets einmal echt gelaufen — „hat
+geklappt"; Plan nach docs/archiv/BRAND-CHECK-SEITE.md verschoben.
+**Live-Beweise:** pukalani.app (89, Branche `software` vom Judge) und freelancer.supply (61,
+`personal`) mit Opt-in im Ranking; Vergleich beider 200 mit Markenabdruck; Korrektur- und
+Score-Routen registriert. Nicht live durchgespielt (Login + echte KI-Kosten): Dokument-Check,
+Neu-ermitteln, Korrektur-Annahme — per Route-Tests mit Attrappen abgesichert.
+
+**Zwei Live-Fehler danach:** (1) Ranking sprang nach dem SSR auf 500 — `''` als Wert für „Alle
+Branchen" im `USelect` (Reka verbietet leere `SelectItem`-Werte, die bekannte Falle) ⇒ Sentinel
+`all`. (2) Stille Hydration-Fehler im Ranking: `header: () => ''` in einer `UTable`-Spalte — Vue
+schreibt leeren Text beim SSR nicht, legt beim Hydrieren aber einen Textknoten an; der Zweig
+loggt ohne Knoten-Warnung. Kur: echte `sr-only`-Beschriftung. Dasselbe Muster steht ~40-mal in
+anderen Layern (comments, posts, core/SessionsTable, runner) — als Folgeaufgabe notiert.
+
+**Gelernt:** (1) Parallel-Läufe im selben Worktree funktionieren, wenn jeder Lauf einen
+Dateibesitz hat und geteilte Dateien (i18n) nur per Edit angefasst werden — ein Lauf hat trotzdem
+eine Datei des anderen verwaist (`createdAt` nach Ersatz durch eine Komponente); das fängt nur
+der Lint auf dem GESAMTSTAND. (2) Ein Lauf, der `.env`/Vorschauseiten anlegt, muss sie löschen —
+und der Nachbar darf sie nicht „reparieren"; der eine TS-Fehler in `cmp-preview.vue` war genau
+das. (3) Eine `''`-Option in einem Reka-Select ist kein Build-Fehler, sondern eine 500-Seite
+NACH dem SSR — die Seite „steht kurz und springt". (4) Leere Spaltenköpfe in `UTable` erzeugen
+Hydration-Fehler ohne Knoten-Warnung; Bisektion (Spalten einzeln ausschalten) findet sie.
+
+### Brand-Check als Instrument: Website → Brand Score, 8 Kategorien, 3 Befunde ✅ 2026-09-05
+
+**Was:** Davids Auftrag „mach mit dem brand-check instrument weiter" — der kostenlose
+Aussen-Check der Startseite aus BRAND-WIZARD-PHASE-1 („Brand Score", Bewertungsmodell v2)
+als baubares Instrument konzipiert (docs/archiv/BRAND-CHECK.md, 40 Kriterien in 8
+Kategorien ausformuliert) und nach drei Entscheidungen Davids (Hybrid-Zugang: Score sofort,
+Report per Mail über die Warteliste · mit dem Kriterien-Entwurf bauen · Ergebnis teilbar mit
+`noindex`) in einem Opus-Lauf gebaut, im Fable-Hauptloop geprüft, live auf branding.supply:
+- **Katalog + Rechnung pur** (`packages/brand/shared/brandCheck.ts`): 16 messbare + 24
+  KI-beurteilte Kriterien, Gewichte 15/15/15/15/10/10/10/10, Bänder 94+/88/80/70/60/50,
+  `scoreVersion` in der Zeile; nicht bewertbare Kriterien fallen aus der Normalisierung
+  (Schloss statt 0). Die 16 Messwerte (`brandCheckMeasure.ts`) rechnen aus
+  `extractSiteSignals()` (Kopf-Metadaten, Überschriften, Alt-Texte, CTA-Texte, JSON-LD,
+  Mojibake/Doppel-Escapes) — deterministisch, ohne KI.
+- **EIN Judge-Aufruf** für alle 24 beurteilten Kriterien (`brandCheckJudge.ts`,
+  temperature 0, ZDR-Routing wie der Wizard, 12.000 Zeichen Seitentext, Pflicht-Beleg
+  ≤ 160 Zeichen in Originalsprache); Antwort wird Eintrag für Eintrag geprüft — fremde Ids
+  verworfen (ein Modell kann kein GERECHNETES Kriterium überschreiben), fehlende = `null`.
+- **Route** `POST /api/brand/check`: Honeypot → `urlKey` → **7-Tage-Cache** je URL (0 KI-Kosten
+  beim zweiten Aufruf) → Deckel **3/Tag je IP-Hash** (Salt aus Runtime-Key + UTC-Tag) und
+  **200/Tag Instanz** (`brandAiQuota` kind `check`) → SSRF-sicherer `fetchBrandSite` → Messung →
+  Judge → Score → Zeile `brand_checks` (Migration **brand-016**, mit Davids Ja gefahren; Parität
+  25/25). Judge-Fehler ⇒ 503 `check_unavailable` und NICHTS gespeichert — ein „Score" aus 16
+  von 40 Kriterien misst etwas anderes, als er behauptet. Kein Seitentext in der Zeile, nur
+  Belege.
+- **Client:** `BwBrandCheckForm` (Startseiten-Karte, drei Statuszeilen, Fehler je `reason`),
+  Ergebnisseite `/brand-check/<id>` (SSR, Score-Ring, 8 Balken, 3 Befunde mit Beleg + nächstem
+  Schritt, Relaunch-CTA, „Report per Mail" über `BwWaitlistForm :website`, Link kopieren, 40
+  Kriterien zugeklappt); 140 i18n-Schlüssel je Sprache.
+
+**Der eine Live-Fehler (und wo er wirklich lag):** der erste echte Check antwortete 503
+`check_unavailable`; Log: `[brand-check] KI-Antwort war kein JSON: ```json`. Verdacht zuerst
+beim Judge (Zaun, Token-Deckel, unmaskierte Anführungszeichen) — alles ausgeschlossen. Ursache
+war **`aiCompleteJson` im Core**: `raw.replace(/\}[\s\S]*$/, '}')` greift am ERSTEN `}` der
+Antwort, jedes verschachtelte Objekt (`{"items":[{…}]}`) wurde dahinter abgeschnitten. Die
+bisherigen Konsumenten (Triage, Übersetzung, Assist) antworten flach und haben es nie berührt;
+der Brand-**Review** des Wizards erwartet `findings: [{…}]` und lief bei jedem Befund still in
+`provider_error` (fail-soft — deshalb unbemerkt). Fix: pure `extractJsonObject` (erstes `{` bis
+letztes `}`) + Tests (`packages/core/tests/aiJsonExtract.test.ts`), Commit `7414cacb`.
+**Live-Beweis nach dem Flip:** `POST /api/brand/check` für branding.supply/de → 200 in 14,5 s,
+Score 80, 38 von 40 Kriterien bewertet (a5 Bildsprache und b5 Wort-/Bildwelt ehrlich „nicht
+bewertbar" — die Seite hat keine Alt-Texte), drei Befunde mit Messwert-Beleg, Ergebnisseite 200.
+
+**Gelernt:** (1) Ein „defensiver" Regex, der nur an flachen Antworten getestet wurde, ist eine
+Zeitbombe für den ersten Konsumenten mit einer Liste von Objekten — Zuschnitt-Helfer gehören
+als pure Funktion exportiert und mit einem VERSCHACHTELTEN Fall getestet. (2) Fail-soft
+verbirgt Fehler: der Review hat monatelang „keine Befunde" gezeigt statt zu scheitern; wer
+fail-soft baut, braucht einen Zähler im Log, den jemand liest. (3) Ein Log-Ausschnitt von 300
+Zeichen, der mit „```json" beginnt und danach abbricht, heisst nicht „nur der Zaun kam an" —
+pm2 schneidet Mehrzeilen-Ausgaben an der ersten Zeile; erst der Regex-Test in Node hat die
+Ursache gezeigt. (4) Migrations-Nummern VOR der Anlage gegen `origin/main` prüfen (013/014 waren
+von der Nachbar-Sitzung vergeben → 016).
+
+### Brand-Wizard „Branding-Atome" (BW2): Session je Feld, Spezialist, Abnahmen, Korrektur-Regel, Dokument ✅ 2026-09-04/05
+
+**Was:** Davids Idee vom 2026-09-04 („wir dröseln alles bis ins letzte Detail auf … jeder
+Einzelpunkt bekommt seine eigene Session … wie ein Designsystem aus Atomen") als Plan
+(docs/archiv/BRAND-WIZARD-SESSIONS.md) in acht Opus-Läufen gebaut, jeder im Fable-Hauptloop
+geprüft (Bilanz + Klick-Beweis im Browser), alle live auf branding.supply:
+- **P1** Session-Vertrag `BrandSessionConfig` (alle 68 Felder), `sessionsAffectedBy` (Hülle =
+  Anhang A, mit Gegenprobe), Zustand je Session, EIN Prompt-Bauer statt vier Tabellen —
+  Prompts zeichengleich (Fixture unabhängig gegen origin/main regeneriert, 42/42).
+- **P2/2b** Inhalte für 68 Sessions (Ziel, Qualität, Anti-Muster, Leiter, Form, Beispiele de+en);
+  unabhängiger Inhalts-Audit (archiv/audits/2026-09-04-brand-session-inhalte-audit.md), Davids
+  8 Entscheidungen + 5 Reparaturen; Lese-Fassung GENERIERT (referenz/BRAND-WIZARD-SESSION-INHALTE.md,
+  `check:sessions` hält sie am Code).
+- **P3a/3b/3c** Verlauf je Session (brand-011), Eröffnungszug, Sammel-Session (a.facts), Abnahme-
+  Backend (accept/defer/restart, brand-013, Quellen-Hash beim Bestätigen), Werkstatt mit
+  Unterpunkten/`?s=`/Auto-Weiter/Vertagen, Finale-Abnahme-Seite mit Restart-Layer.
+- **P4** `brand_findings` (brand-014), zweistufiger Prüf-Aufruf, Kapitel-Modus, hat-mitgelesen-Block,
+  adaptive nächste Session, Eimer `review`. **P5** Befund-Chips (Abnahme/Log/Bühne, Annehmen/Ablehnen
+  mit Grund). **P6** Impact vor Korrektur (409 ohne Ack), Warteschlange stale, „Gilt weiter",
+  `correct`-Eingrenzung fail-closed, Invarianten scharf mit toleranter Listen-Lesung.
+- **P7** „Euer Branding" (Dokument = Finale Abnahme der Ebene 1) + Prüfblick auf Klick (Nachholung ≤ 10).
+- **P8** Reste: Hydration-Mismatch (Ursache: Eröffnungszug im Setup statt onMounted — NICHT die
+  Layout-Zweige), Team-Fassung in Platzhalter/Prompt-Etikett, toter Store-Aufruf, 404 auf dem Dokument.
+- **P9** (2026-09-05, Davids Entscheidung): Werkstatt antwortet für fremde/unbekannte Brandings mit 404 wie das
+  Dokument; `blocked` (kein Beta-Zugang) bleibt die ruhige Fläche. Store trennt Listen-404 (`denied`) und
+  Profil-404 (`profileDenied`) — das Rennen ist strukturell zu. **Dokument-Seite von David abgenommen 2026-09-05.**
+- Prod-Migrationen 011/013/014 mit Davids Ja (Runner zog 012 der Nachbar-Sitzung mit).
+- Tests brand 799 → 1434; Beweis-Skript `verify-brand-sessions.mjs` 106 Zusagen.
+
+**Gelernt:** (1) **Die Bilanz-Gate-Liste gehört in JEDEN Agent-Auftrag** — ohne `check:bilanz` ging
+Paket 3 mit rotem Lint auf main (Deploy hängt an Test+E2E, nicht an Lint). (2) **Screenshots des
+Browser-Panes hinken der Darstellung hinterher** — dreimal sah eine korrekte Seite leer aus; DOM
+(`get_page_text`/JS) ist die Wahrheit, dann eine zweite Aufnahme. (3) **Klick-Beweise finden, was
+Route-Tests nicht sehen:** Abnahme-Entscheidung erreichte den Store nicht (P5), Plural im Layer (P6)
+— beides erst im Browser sichtbar. (4) **Agent-Berichte prüfen, nicht glauben:** das Fixture „vor dem
+Umbau erzeugt" wurde unabhängig gegen origin/main regeneriert; die Hydration-„Ursache" aus dem
+Auftrag (Layout-Zweige) war falsch, der Agent hat sie mit Instrumentierung widerlegt. (5) **Ein
+Agent im Worktree blockiert Doku-Fixes** — Fix in einem Wegwerf-Worktree (`git worktree add
+--detach`) und `push HEAD:main`. (6) **Parallele Sitzungen auf main**: dreimal Doku-Konflikte in
+OPEN-ITEMS (BW1-Zeile von main, BW2-Zeile von uns), einmal Push abgewiesen — immer `fetch+merge`
+direkt vor dem Push und danach Bilanz. (7) **`readonly`-Einwände gegen einen Kundenwunsch prüfen,
+ob sie am Rahmen hängen:** „Session je Feld" schien falsch, bis David „Session" als konfigurierte
+Arbeitseinheit definierte — dann fielen alle Einwände. (8) Lokale branding-Entwicklung hat weder
+`.env` noch Appwrite-Projekt: Läufe nutzen `portfolio-g4ml` @ localhost + Shiki-Symlink-Krücke —
+gehört eigentlich in eine `apps/branding/.env.example`-taugliche Dev-Anleitung.
+
+### branding.supply: Warteliste-Dashboard („wie bei pukalani.app") ✅ 2026-09-05
+
+**Anlass:** Davids Frage, ob die Warteliste wie die Frühzugang-Anfragen auf
+pukalani.app auch im Dashboard bedienbar sein muss — ja: ohne Seite hiesse jede
+Beta-Welle Console-Arbeit und Codes von Hand.
+
+**Gebaut (Opus-Lauf, eigene Prüfung):** Betreiber-Modul `/dashboard/waitlist`
+(admin-Layer, `users.manage`, Registry-Eintrag „Management"): Zähler je Status,
+Filter (Standard „bestätigt" = Arbeitsliste), UTable, Aktionen Einladen ·
+Ablehnen · Notiz, CSV-Export (BOM, Semikolon). Routen unter
+`/api/brand/admin/waitlist/*`, die EINE Auslass-Naht liefert nie `tokenHash`.
+**Einladen** nutzt die bestehende Code-Erzeugung aus `scripts/invite.mjs`
+(jetzt `createBrandInviteForEmail`: sha256-Hash, an emailLower gebunden, 30
+Tage) + Einladungs-Mail de/en; scheitert die Mail, wird der Code zurückgenommen
+— kein Code ohne Mail. Pure Zustandsregeln (`brandWaitlistAdmin.ts`), 36 Tests;
+Bilanz regeneriert (neue Routen). Bewusste Abweichungen vom Vorbild:
+Capability `users.manage` statt `sites.manage` (branding hat keine Sites),
+Ablehnen auf Abgelehntes ist ein 200-No-op, kein eigener Drossel-Eimer.
+
+**End-to-end von David bewiesen (2026-09-05):** Eintrag über die Brand-Check-
+Karte → Bestätigungs-Mail → Link → „Bestätigt" → im Dashboard sichtbar →
+Einladen → Einladungs-Mail mit Code angekommen.
+
+**Gelernt:** Der Produkt-Bilanz-Wächter zählt Routen — neue Betreiber-Routen
+verlangen `node scripts/produkt-bilanz.mjs` vor dem Push.
+
+### branding.supply: Startseite, Vektoren, Double-Opt-in, Copy-Regeln ✅ 2026-09-04/05
+
+**Startseite** nach dem abgenommenen Conversion-Dummy (Runden 137–148): Hero-Split
+mit den zwei Weiche-Optionen (eingeloggt → Anlage mit `?path=`, Gäste → /invite),
+Artefakte mit visuellen Beweisen, sechs Fähigkeiten, Brand-Check als EHRLICHER
+Vorab-Eintrag über die Warteliste (Instrument noch nicht gebaut — ein „Check
+starten" ins Leere wäre ein toter Knopf), Abschluss-CTA. Brand Insights und
+Beispiel-Branding bleiben draussen (nur echte Ziele) — offen in OPEN-ITEMS.
+
+**Vektor-Illustrationen** (Davids Entscheidung statt KI-Fotos): sieben Inline-SVGs
+(`apps/branding/app/components/Art*.vue`) aus den `--bw-`-Tokens, genau ein Acid-Pop
+je Motiv, beide Farbwelten ohne zweite Fassung; Squircle-Regel per `.bw-frame`
+auf Rahmen/Platzhalter/Erfolgskarte ausgedehnt (corner-shape superellipse 1.7 —
+cornerKit bewusst NICHT eingeführt: Safari/Firefox-Squircles nur per JS-Clip-Path,
+der unsere randlosen Schatten abschnitte).
+
+**Double-Opt-in der Warteliste** (Opus-Lauf Server, Formular/Landeseite selbst):
+`pending` + sha256-Token-Hash + 24 h, Rohtoken nur in der Mail (Base-URL
+`public.appUrl`), `POST /waitlist/confirm` stempelt `confirmed` und leert den
+Hash — Betreiber-Mail ERST danach; kein Mailer/Mail-Fehler ⇒ 503 statt
+Schein-Erfolg. Migration brand-015 (013/014 waren von der Nachbar-Session
+belegt), Drossel für beide Routen, 21 Tests. Live bewiesen: `mail_sent`, Re-Signup
+erneuert den Link, 400 bei unbekanntem Token.
+
+**Copy-Regeln (David):** Rolle vor Name — „persönlicher Markenberater"/„Team aus
+Markenexperten" statt bloß „George" (SEO + Verständlichkeit; George nur mit Rolle
+gekoppelt, Wizard-Chat ausgenommen). Titel-Muster „Erstellt eure eigene Marke.
+Ganz einfach, im Gespräch mit eurem persönlichen Markenberater." Positionierung
+BREIT (Marke), Personal Brand nur in Sub-Copy/Description; Marketing „ihr",
+Wizard „du" — zwei bewusste Register.
+
+**Gelernt:** (1) Resend lehnt `example.com`-Empfänger mit 550 ab — Probe-Adressen
+für Mail-Pfade sind `delivered@resend.dev`, sonst misst man den Anbieter statt
+den Code. (2) Parallel-Sessions belegen Migrationsnummern: vor dem Anlegen
+`ls scripts/migrations` gegen origin/main — 011 UND 013/014 wurden am selben Tag
+doppelt vergeben.
+
+### branding.supply: About und Team als Produktseiten + Warteliste ✅ 2026-09-04
+
+**Auftrag (David):** /about und /team trennen (erst zu leer, dann: „optimiere
+Struktur, Konzept und Texte auf Verständlichkeit, Verkaufsargumente, SEO,
+Lead-Generierung, Mehrwert — Vorbild Apple; Platzhalter für Bildmaterial mit
+Prompt an der Stelle").
+
+**Konzept:** ein Gedanke je Abschnitt, grosse Aussage, ein Satz, ein Bild.
+About = Verkaufsgespräch in acht Schritten (Hero „Wir sind unser eigener
+Beweis" · Warum es uns gibt: Agentur/Generator/George · Drei Grundsätze · So
+arbeiten wir mit 45-Minuten-Versprechen aus dem abgenommenen Landing-Dummy ·
+Der Beweis · FAQ mit Preis-Wahrheit „Beta kostenlos, Fundament bleibt frei,
+Ableitung bezahlt" (Produktentscheidung 2026-08-27) · Frühzugang · Team-
+Teaser). Team = Produktseite: George als Hauptdarsteller, je Rolle ein
+Nutzen-Satz „Was das für euch heißt", Wizard-Crew, Zusammenspiel als
+Reihenfolge Fundament → Gestalt → Produktion → Draussen, Frühzugang. Die
+Startseiten-Inhalte (Artefakte, Brand-Check, Beispiel-Branding) bleiben dem
+abgenommenen Dummy vorbehalten — About wiederholt sie nicht.
+
+**SEO:** `useSeoMeta` je Seite (Title/Description/OG), JSON-LD Organization
++ FAQPage (about) und AboutPage (team) über `apps/branding/app/utils/
+jsonLd.ts`; FAQ-Antworten stehen IMMER im Markup, geklappt wird nur die
+Sichtbarkeit.
+
+**Lead-Generierung — die Warteliste (Opus-Lauf, Server; Formular selbst):**
+bis dahin gab es KEINE Erfassung ohne Code. `POST /api/brand/waitlist`
+(öffentlich, Zod, Honeypot statt Captcha, Dedupe per `emailLower`, 503 ohne
+Tabelle, Betreiber-Mail fail-soft über `pukalani.brand.waitlistNotify`),
+Tabelle `brand_waitlist` (Migration brand-012 — auf 012 umnummeriert, weil
+die Nachbar-Session parallel eine 011 anlegte; server-only, UNIQUE-Index über
+die indexRetry-Fabrik), Drossel `brand:waitlist` 5/min, `BwWaitlistForm` auf
+About, Team und unter dem Code-Feld auf /invite. Datenschutz-Grenze
+dokumentiert: kein `registerUserDataContributor` (kein Konto), Löschung heute
+manuell.
+
+**Bildmaterial:** `BwImagePlaceholder` (Kennung sichtbar, Prompt als Prop im
+Code, NICHT im DOM) an neun Stellen (A1–A6, T1–T3); Register mit Visual-DNA-
+Regel und wörtlichen Prompts in `docs/referenz/BRANDING-SUPPLY-BILDMATERIAL.md`.
+
+**Beweise:** 1103 Tests (kombinierter Baum inkl. BW2 Paket 2b/3a der
+Nachbar-Session), Typecheck, Lints (brand/core/app/scripts), i18n- und
+Manifest-Wächter grün; live geprüft (de+en, JSON-LD geparst, Platzhalter,
+Formulare gerendert).
+
+**Gelernt:** (1) Rohe `@` in Locale-Nachrichten fängt `i18nCatalog.test.ts`
+— auch die `{'@'}`-Schreibweise; Platzhalter-Texte ohne @ formulieren.
+(2) Zwei Sessions, zwei Migrationen mit derselben Nummer: der Runner läuft
+beide, aber die Labels lügen im Log — vor dem Push `ls scripts/migrations`
+gegen origin/main prüfen. (3) Gates nach dem Rebase WIEDERHOLEN (diesmal
+gemacht: 1034 → 1103 Tests auf dem kombinierten Baum).
+
+### Brand-Wizard: Archetyp-Generator als Interim + Live-Durchstich bis zur Weiche ✅ 2026-09-04
+
+**Auslöser:** Davids Live-Check-Auftrag („checke du auch den chatverlauf und die
+buttons"). Der Durchstich fand den strukturellen Blocker: für `archetype` war
+NIE ein Generator registriert (`no_generator`), sieben editor-none-Slots ohne
+Weg, und laut Spec §12.2 wären Primär/Sekundär aus dem (bewusst späteren)
+Paarvergleich-Instrument BERECHNET — das Kapitel war unabschliessbar.
+**Davids Entscheidung** (AskUserQuestion, DECISION-LOG): Gesprächs-Ableitung
+als Interim.
+
+**Gebaut (Opus-Lauf + zwei eigene Fix-Runden):** 12-Archetypen-Katalog als
+geschlossene Choice-Verträge (stabile Ids; Choice-Prüfung in die Advisor-Fabrik
+gezogen — eine Kopie für B2 und D), 7 Slot-Aufträge (Hypothese ohne Festlegung;
+bei zwei Kandidaten Rückfrage mit OPTION-Chips; gapReveal benennt Abweichung
+ehrlich; voiceSamples = genau 3 Sätze), Stimme-Antworten erreichen George über
+den a-9-Verlauf (Registry-Rückwärtsregel verbietet sie als dependencies).
+Zwei Live-Funde sofort nachgefixt: (1) KOHÄRENZ — Prosa argumentierte
+„Handwerker", Feld speicherte `sage`; jetzt Pflicht-Regel „Prosa nennt den
+Katalog-Namen, informelle Gesprächs-Namen werden hörbar abgebildet"
+(george-archetype-2). (2) ROHE ID IN DER BLASE — der Server-Tausch griff nur
+auf der persistierten Nachricht; die Tausch-Regel wohnt jetzt in shared
+(`swapBrandChoiceValueLine`) und läuft an BEIDEN Enden (Persistenz + gestreamte
+Blase beim slot.ready-Frame). Dazu converse-5/george-a-11: OPTION-Zeilen als
+MUST mit ausdrücklicher Klartext-Ausnahme + wörtlichem Beispiel (das Modell
+liess die Kann-Fassung im Live-Test weg).
+
+**Live bewiesen (Krume & Gold, Davids Chrome):** Rückfrage bei Müll-Daten →
+Chat-Antwort → Entwurf wörtlich „aus euren eigenen Worten in diesem Gespräch"
+(Senke end-to-end) → Der Schöpfer primär, Der Fürsorgliche sekundär (kohärent,
+Anzeige statt Id) → gapReveal mit ehrlicher Lücke → **11/11, Konfidenz-Weiche
+erreicht** — das Kapitel war am Morgen desselben Tages strukturell
+unabschliessbar. Tests 727 → 1017 (inkl. BW2-Paket-1 der Nachbar-Session).
+
+**Gelernt:** Ein Rebase nach fremdem Push macht die eigene grüne Gate-Runde
+ungültig — die Gates liefen VOR dem Rebase, der kombinierte Baum war
+unverifiziert (hier gut gegangen: Nachbar-Refactor war kompatibel). Nach jedem
+Rebase mit Fremd-Commits die Gates auf dem NEUEN Baum wiederholen, bevor
+gepusht wird — oder direkt danach, vor dem nächsten Schritt.
+
+### Brand-Wizard: Konversations-Senke geschlossen + Gesprächs-Runde ✅ 2026-09-04
+
+**Auftrag:** Davids Go („bau die konversations-senke wie du empfohlen hast") auf den
+zentralen Befund des Komplett-Tests, plus drei Live-Funde aus seinem Krume-Test am
+selben Tag. Vier Pakete, alle auf main und live bewiesen (Health-SHA):
+
+1. **Konversations-Senke (`george-a-9`, Commit e91ac226, Opus-Lauf + eigene Prüfung):**
+   Die letzten Züge des Bausteins reisen als eigener Prompt-Block in den
+   Entwurfs-Generator (geteilte Verlaufs-Ladung `brandConversationHistory.ts` für
+   generate+converse — eigene Blatt-Datei, weil ein Import in brandStore den Ring
+   brandStore→conversePrompt→georgePrompt→brandGenerators→brandStore geschlossen hätte).
+   Zwei neue Arbeitsregeln: Chat-Antworten haben Feldwert-Gewicht; eine beantwortete
+   Frage wird NIE erneut gestellt. Injection-Grenze doppelt (Label + Regel).
+   `inputHash` bewusst unberührt (gleiche Grenze wie Startkarte/Website-Text — die
+   Neuerzeugung stösst der Mensch an). Heilt Loop UND editor-none-Sackgasse.
+2. **Bühnen-Einstieg (2598fb23):** Der statische Abschluss-Satz benennt das erste
+   offene Pflicht-Feld samt Aktion (Entwurfs-Knopf bzw. Bestätigen) statt ein Gespräch
+   zu versprechen, das nicht startet (Davids Archetyp-Screenshot). TDZ-sicher ohne
+   `pendingCard` gerechnet (Scroll-Watcher-Falle vom 2026-09-03).
+3. **converse-3 (5bb70154):** „Keine Katalog-Frage mehr" ist NICHT „nichts mehr offen" —
+   auf „was ist noch offen?" behauptete George „nichts mehr", während vier
+   Ableitungs-Felder unbestätigt waren. Die offenen Pflicht-Felder reisen jetzt
+   beschriftet in den Auftrag (brandStepCompletion + brandSlotPromptLabel); der Zweig
+   treibt das erste voran statt zum Abschluss einzuladen, den die Route abwiese.
+4. **Antwort-Chips (`george-a-10`/`converse-4`, 94f8e3db, Opus-Lauf):** Davids
+   Anforderung an Vergleichsfragen — neuer Marker `OPTION:` (2–3 Zeilen am Zug-Ende,
+   Empfehlung bleibt Prosa), Zeilen verlassen Sprechblase+Persistenz vollständig,
+   reisen strukturiert im completed-Frame; Bühne rendert Chips, Klick geht über den
+   EINEN bestehenden Sende-Pfad. Geteilte Normalisierung in shared (max 3 × 60,
+   unter 2 = keine Wahl) für Server UND Frame-Dekoder; fehlendes Feld = Verhalten
+   von vorher. Dazu Konto-Menü-Fix (b97592e0): „Brandings" führte auf nacktes `/`.
+
+Beweise: brand-Tests 727 → 764, Lint/Typecheck/i18n-Wächter grün je Push.
+
+**Gelernt:** Dieselbe fachliche Verwechslung („keine Frage mehr" vs. „nichts mehr
+offen") sass an ZWEI Stellen — Bühnen-Satz und Gesprächs-Prompt — und der zweite
+Fundort kam erst durch Davids Live-Test ans Licht, nachdem der erste längst gefixt
+war. Wer eine Zustands-Verwechslung findet, sucht sofort alle Leser desselben
+Zustands ab (hier: `resolveNextQuestion === null`), nicht nur den gemeldeten.
+
+### Brand-Wizard: Komplett-Test (Links, Seiten, Login, Dashboard, 5 Brandings durchgespielt) ✅ 2026-09-03/04
+
+**Davids Auftrag** (fünf Punkte) — alles Testbare getestet, alles Fixbare
+gefixt (10 Commits, Details in den Commit-Messages), der Rest als
+Zuschnitts-Fragen in OPEN-ITEMS.
+
+**Durchgespielt:** Pfotenanker Kontext KOMPLETT (Fragen → Entwürfe →
+Hinweis → Korrigieren-Ausweg → 10/10 → Gate → Auto-Übergang), Krume & Gold
+pvm+Werte KOMPLETT + Archetyp bis zur Ableitungs-Wand, Pukalani Studio pvm
+(EN-Content/DE-Chat), Ember + Untitled Kontext-Anspiel. George-Qualität am
+neuen Prompt-Stand (a-7/a-8): Deutsch durchgehend, 3–4 Sätze, EINE Frage,
+Katalog-Reihenfolge exakt, konkrete Anerkennung, B8-Kontextton
+(Tierschutz), ehrliche Rückfragen statt dünner Entwürfe, aktive
+Widerspruchs-Erkennung.
+
+**Gefixte Blocker aus dem Durchspielen:**
+- `step_locked` (`60b8d2af`): `open` ist GERECHNET — Zeilen nach einem
+  Vorgänger-Abschluss bleiben roh `locked`, die Routen fütterten die
+  Maschine mit dem rohen Zustand ⇒ Kapitel liessen sich NIE abschliessen
+  („Passt" = stilles 400; Krume pvm 10/10 und fest). Routen nehmen jetzt
+  den Journey-Zustand. DANACH liefen pvm→Werte→Archetyp-Übergänge sauber.
+- Autosave wiederholte permanente 400 endlos (Retry jetzt nur 5xx/429).
+- Abschluss-Satz unter Live-Zügen + „Nochmal"-Label auf jungfräulichen
+  Feldern (`c0e678a1`).
+
+**Der zentrale offene Befund (Davids Zuschnitt):** Die KONVERSATIONS-SENKE.
+Antworten auf Georges Rückfragen (Kategorie-Einordnung, Purpose-Material,
+Kunden-Zitate) erreichen den Entwurfs-Generator NIE — der liest nur
+gespeicherte Slots. Folge: Entwurf → Rückfrage → Antwort → Entwurf →
+dieselbe Rückfrage (dreifach live belegt). Härtester Fall: `editor: none`-
+Ableitungen (d.hypothesis) — kein Entwurf (Generator verweigert ehrlich),
+kein Tippen (Absicht), Antworten versickern ⇒ Kapitel UNABSCHLIESSBAR bei
+dünnen/kaputten Quelldaten. Dazu: Rückfragen verweisen auf Felder
+ABGESCHLOSSENER Kapitel ohne Weg dorthin.
+
+**Weitere Zuschnitts-/Content-Befunde:** d.voiceSamples-Katalogfrage setzt
+eine Auswahl voraus, die es nicht gibt — George erfand „vier Sätze", die
+Bühne zeigt null (wie d.pairs behandeln oder Optionen generieren) ·
+leeres unfertiges Ableitungs-Feld ohne Quellen zeigt „Passt das so als
+Grundlage?" mit totem Bestätigen · Options-Modul-Platzhalter „Oder etwas
+ganz Eigenes …" ohne Optionen darüber; Haupt-Prompt derweil kommentarlos
+gesperrt · a.facts bündelt drei Fragen (bekannt) · `##`-Markdown roh in
+Log-Karten · Ember-Altentwurf bricht B6 (echte Rösterei-NAMEN, selbst als
+„not stated in inputs" markiert) · Kapitelwechsel blitzt <1 s die Frage
+des Vorkapitels.
+
+**Gelernt:** (1) Eine Katalog-Frage, die Optionen VORAUSSETZT („Welcher
+dieser Sätze…"), zwingt das Modell zum Erfinden der Optionen — Fragen
+müssen zur real existierenden UI passen. (2) „Ehrliche Verweigerung" des
+Generators ist nur ehrlich, wenn es danach einen WEG gibt — sonst ist sie
+eine höfliche Sackgasse. (3) CDP-getippte Eingaben wurden auf zwei Seiten
+verschluckt (per JS-Submit reproduzierbar ok) — vor einem UI-Bug-Urteil
+den Automations-Weg wechseln.
+
+---
+
+### S4: `events-sweep`-Naht-Geheimnis rotiert ✅ 2026-09-03
+
+**Was:** Das zweite Naht-Geheimnis aus der A0-Runde stand seit der
+Einrichtung unverändert in `platform.pukalani.app/.env`. Rotiert nach der
+Reihenfolge aus `sharedSeamSecret.ts` (Empfänger zuerst), komplett
+server-seitig und file-to-file — der Wert hat die Maschine nie verlassen:
+
+1. Neuer Wert (64 hex) auf dem Server erzeugt, verschlüsselt (secretBox
+   v1, exakt nach `secretBox.ts` repliziert) per Appwrite-REST in die
+   Ablage geschrieben (`instance_secrets/events-sweep`, Projekt aus der
+   platform-.env; Schreibstatus 200). Ab da nahm der Empfänger alt UND
+   neu an.
+2. Beweis an der Kante: falscher Schlüssel ⇒ 401, neuer ⇒ 200.
+3. `NUXT_EVENTS_SWEEP_KEY` in der .env getauscht (Backup zuvor auf dem
+   Server abgelegt, Eindeutigkeit der Schlüssel danach geprüft — die
+   Doppel-Zeilen-Zeitbombe vom 2026-09-01 war die Blaupause dafür), der
+   Cron-Weg mit der neuen .env liefert 200. Temp-Dateien gelöscht.
+
+Der ALTE Wert bleibt als Env-Kandidat des laufenden Prozesses gültig, bis
+der nächste Deploy die platform-App neu lädt — das ist der Sinn der
+Übergangsstufe, kein Rest.
+
+**Gelernt:** Nodes `fetch` (undici) VERWIRFT einen gesetzten
+`Host`-Header stillschweigend — die Kanten-Probe lief damit als
+unbekannter Host in die Tenant-404 und sah aus wie eine kaputte Route;
+für Host-Header-Proben auf Mehr-Mandanten-Apps immer `curl` (so macht es
+auch der Cron). Und: die Rotations-Reihenfolge „Empfänger zuerst" aus dem
+Datei-Kopf trägt wirklich fensterlos — der Sweep lief zwischen allen
+Schritten stündlich grün weiter.
+
+---
+
+### Brand-Wizard: Werkstatt-Umbau „Gespräch als Bühne" live + Live-Audit-Befunde behoben ✅ 2026-09-03
+
+**Was passiert ist:** Der in 39 Dummy-Runden abgenommene Umbau
+([plans/BRAND-WIZARD-GESPRAECH-UMBAU.md](plans/BRAND-WIZARD-GESPRAECH-UMBAU.md),
+Davids Freigabe) wurde in zwei Opus-Läufen ausgeführt (Layout; Eine Stimme —
+George spricht durchgehend, `BRAND_VOICE`/`techniqueForStep`/`colleagueForStep`
+statt Berater-Übergaben), von drei parallelen Code-Audits geprüft, alle
+Befunde in einer Fix-Runde behoben, danach Design-Entscheidungen Davids
+umgesetzt (Kapitelname „Tagline & Messaging", Tablet volle Sidebar-Breite,
+Mobil-Sidebar als Overlay, mobil Start im Gespräch). Abschluss war ein
+**Live-Audit auf branding.supply** (Davids eingeloggter Chrome, Test-Brand
+Krume & Gold): Layout, Log-Sublines, UChatPrompt, George-Layer, Toggles und
+ein sparsamer George-Zug (erkannte die Platzhalter-Antworten und fragte nach,
+statt sie zu übernehmen) — alles grün, keine Konsolen-Fehler.
+
+**Die drei Live-Audit-Befunde, alle noch am selben Tag gefixt + deployt:**
+
+1. **Konfidenz-Wahl verschwand nach Reload** (`ba4d5de8`): PATCH 200, GET trug
+   den Wert, SSR malte den gewählten Chip — die Hydration nahm ihn weg.
+   `serverConfidence`/`localConfidence` waren PRIVATE Refs im Setup-Store, und
+   Pinia serialisiert nur Zurückgegebenes in den SSR-Payload. Beide Refs
+   stehen jetzt im Return; Quelltext-Wächter
+   `packages/brand/tests/brandWorkspaceStoreState.test.ts` prüft künftig jede
+   Store-Ref auf Rückgabe.
+2. **Gesamtfortschritt widersprach sich je Seite** (`52712129`): pvm 19/59,
+   context 20/59. `toSlotFacts` (Server) zählte „gab es je einen Entwurf" —
+   ein GELEERTES Feld (`b.mission`: latestDraft `''`, firstDraft 1 Zeichen)
+   blieb über den firstDraft-Fallback gefüllt, der Client zählt das Sichtbare.
+   Jetzt beidseitig die Anzeige-Rangfolge `latestDraft ?? firstDraft ??
+   confirmed` (drei Tests inkl. Gegenprobe). Live bestätigt: beide Seiten 19/59.
+3. **Georges Abschluss-Satz behauptete zu viel** (`71e5c792`): „In diesem
+   Kapitel ist nichts mehr offen" stand direkt über „Noch offen: 1 von 10
+   Feldern". Kein Server-Fehler, sondern Wortlaut: `resolveNextQuestion` kennt
+   bewusst nur Frage-/Auswahl-Slots, Bühnen-Entwürfe (`stage-edit` wie
+   `b.mission`) fragt George nie. Der Satz folgt jetzt dem Kapitel-Stand
+   (`completion.slotsReady`); davor: „Meine Fragen sind durch — die offenen
+   Felder unten formen wir jetzt hier im Gespräch."
+
+**Befund 3 riss selbst eine Regression** (behoben in `836f0283`, ~40 min
+Werkstatt-500 für Eingeloggte): `turns` las das erst ~280 Zeilen SPÄTER
+deklarierte `completion`, und der Scroll-Watcher
+(`watch(() => turns.value.length)`) wertet seine Quelle beim ANLEGEN aus —
+im Browser mitten im Setup ⇒ TDZ-ReferenceError („Cannot access 'K' before
+initialization") ⇒ 500-Seite auf jeder Werkstatt-Route. SSR blieb grün (der
+Server legt keine Watcher an, `curl` zeigte 200), Tests/Lint/Typecheck sehen
+TDZ in Callbacks nicht. Gefunden über `$nuxt.payload.error` im Browser, weil
+die Prod-Fehlerseite Details bewusst versteckt.
+
+**Dazu Davids Zuschnitt zur Optik-Meldung:** die Kapitel-Subline mischt
+optionale Felder nicht in den Zähler, sondern benennt sie als Anhängsel —
+„10/10 bestätigt + 1 optional" (`ef57a89c`, Registry-Zahl je Kapitel; betrifft
+context/values/result). Live verifiziert am Kontext-Kapitel.
+
+**Und die Kachel-Farbwelten je Brand** (Davids Auftrag aus dem Audit, gleich
+mitgebaut): `shared/brandPalette.ts` — zwölf handgestimmte Dreiklänge (die
+drei im Dummy ABGENOMMENEN führen die Tabelle an: Brot-Braun, Blaugrau,
+Tannengrün; dazu Terrakotta, Oliv, Petrol, Pflaume, Rosenholz, Schiefer,
+Messing, Taubenblau, Moos), deterministisch per FNV-1a aus der PROFIL-ID
+(Umbenennen ändert die Farbe nicht; Tabelle darf nur hinten wachsen, sonst
+färben sich Bestands-Kacheln um). Bewusst kuratierte Tabelle statt
+Hash→OKLCH-Generator: unendlich viele Töne heisst regelmäßig hässliche.
+Später kann eine echte Farb-Phase des Wizards die Zuweisung überschreiben.
+
+**Zweite Welle in derselben Nacht (Davids Live-Test + „setze die offenen
+Tasks alle um"):**
+
+- **C5 verdrahtet** (`998b22c7`): „Nochmal von vorn" auf einem
+  abgeschlossenen Kapitel öffnet es jetzt wirklich (`reopen` im
+  Autosave-PATCH, Route öffnet vor der Konfidenz; vorher war die pure
+  Transition von keinem API-Weg erreichbar — der Chip war eine Attrappe).
+- **Mobil-Drawer statt Vollbild** (`d5d58630`, Davids Entscheidung):
+  Spaltenbreite (`--bw-rail-w`, Deckel 85vw), Backdrop dunkelt ab und
+  schliesst per Tipp; Backdrop teilt die z-50 der Rail über DOM-Reihenfolge
+  (eigener Zähler wäre die 51-Falle über dem Info-Layer).
+- **George sprach interne Slot-Ids nach** (`7fe8d8e8`, Davids Screenshot:
+  „Die Felder a.customerPraise, a.oneThing … enthalten Platzhalter"): die
+  Eingabe-Blöcke reisten als `[a.customerPraise]` in Prompt und Historie.
+  Jetzt tragen sie die Frage aus dem Locale-Katalog in der Inhaltssprache
+  (`brandSlotPromptLabel`, dieselbe Quelle wie die UI) und eine Care-Zeile
+  verbietet Feld-Ids ausdrücklich (george-a-6, converse-2; inputHash liest
+  slotId+value und blieb unberührt).
+- **Autosave-Klemme** (`7fe8d8e8`): „Nicht gespeichert — wir versuchen es
+  erneut" versprach eine Wiederholung, die es nicht gab — ein PATCH in
+  einen Deploy-Reload (502, pm2 lädt) blieb für immer stehen. Jetzt Retry
+  mit Backoff (4 s verdoppelnd, Deckel 60 s). Die Prod-Logs zeigten
+  KEINEN 5xx, aber ein Dutzend Reloads, während Davids Tab offen war —
+  der Fehler sass zwischen nginx und pm2, nicht im Code der Route.
+
+**Dritte Welle in derselben Nacht (Davids „setze alle offenen Tasks um" +
+sein zweiter Live-Test am eigenen Pukalani-Studio-Branding):**
+
+- **P4: Architektur-Karten für `b2.model`** (`e11df0e7`, Opus-Agent
+  implementiert, Hauptloop geprüft): Karten mit Titel/Wirkung/Beispiel je
+  Modell, Klick übermittelt die stabile Id; `brandChoiceDisplayLabel` löst
+  gespeicherte Ids an allen Lese-Stellen in den Namen auf. Offene
+  choice-Slots behalten ihr Textfeld. Live-Klickpfad steht noch aus (kein
+  Test-Branding hat `architecture` auf dem Weg).
+- **Gesprächs-Verlauf** (`69d52f0d`, Davids Screenshots): (a) eine
+  GEGENFRAGE landete wörtlich als Feld-Wert („wo hast du die website
+  her?") — Fragezeichen-Endung läuft jetzt als freie Frage, bewusste
+  Heuristik; (b) george-a-7: EINE Frage pro Zug (kein „oder was fehlt?",
+  kein „aber bevor wir das durchgehen:"), und die Eingabe-Blöcke sieht nur
+  das Modell — George verwies auf eine „start card hier oben im Gespräch",
+  die es für den Menschen nicht gibt; (c) B4 mechanisch: `**Fett-Marker**`
+  fallen server-seitig aus Slot-Entwürfen. Geklärt, kein Bug: englische
+  Ableitungen auf Davids Branding folgen `contentLocale: 'en'` (bei der
+  Anlage gewählt).
+- **Kurz-Labels + Erklär-Absätze** (`bda41103`): 50 dokumentartige
+  Log-Karten-Labels je Sprache (`brand.labels.<id>`, te()-Rückfall auf die
+  Frage) und der Beschreibungs-Absatz je Baustein im Erklär-Layer
+  (`brand.stepInfo.<key>` — die sieben Dummy-Texte wörtlich,
+  architecture/result neu, alle übersetzt).
+- **EIN Kopf für branding.supply** (`f838b330`, Davids Nachtrag „dieselbe
+  Navbar wie im Wizard, eingesetzt"): App-default-Layout rendert
+  BwSiteNav + BwSiteFooter im Fluss und überlagert das Core-Default —
+  dessen Kopfzeile stand auf /team ÜBER der Inline-Nav (zwei Köpfe).
+  Browser-bewiesen im Worktree-Dev (/, /team, /dashboard/brands).
+- **Nav-Konto echt + Karten-Rückweg** (`3b9f3532`): das hartkodierte
+  „DS"-Avatar wird zu echten Konto-Initialen, „Abmelden" wirkt
+  (useLogout), Gäste sehen den Anmelden-Knopf statt eines Konto-Menüs
+  ohne Konto (Gast-Zweig browser-bewiesen); und „Korrigieren" an
+  `b2.model` führt zurück auf die Auswahl-Karten statt in eine
+  UTextarea mit der rohen Id.
+- **Bewusst NICHT gebaut:** die Ergebnis-SEITE (P5–P7). Der einzige
+  Dummy (`demo/ergebnis.vue`) ist Iteration 2 von VOR dem Bühnen-Umbau
+  und widerspricht der Spec (Leseansicht ohne George) — das Paket
+  braucht Davids Konzept-Gate, keine Nacht-Improvisation. Ebenso die
+  Antwort-AKKUMULATION für mehrteilige Katalog-Fragen (a.facts):
+  Davids Richtung ist klar („einzeln nacheinander"), aber der Zuschnitt
+  (Teil-Fragen als neue Katalog-Texte? Akkumulations-Mechanik im Slot?)
+  ändert abgenommene Fragen und gehört vor sein Gate ①.
+
+**Gelernt:** (1) In Pinia-Setup-Stores gehört JEDE Ref ins Return, auch wenn
+nur ein computed sie liest — private Refs überleben die SSR-Hydration nicht,
+und der Fehler ist unsichtbar, solange man nur den SSR-HTML-Strom oder nur
+die API prüft (beide waren korrekt; erst der DOM-Vergleich nach Hydration
+zeigte ihn). (2) Zwei Rechenwege für dieselbe Zahl (Server-Journey vs.
+Client-Live) divergieren an Rändern, die keiner bedacht hat — hier das
+GELEERTE Feld; die Kur ist eine geteilte Rangfolge, nicht ein Abgleich-Code.
+(3) Ein Widerspruch auf dem Bildschirm hat nicht immer EINE Ursache: Befund 2
+(Zahlen) und Befund 3 (Wortlaut) sahen aus wie dasselbe Problem und waren
+zwei — nach dem ersten Fix weiterprüfen, ob der Widerspruch wirklich weg ist.
+(4) In `<script setup>` ist jede Referenz auf eine SPÄTER deklarierte
+`const` in einem Computed/Watcher eine Zeitbombe: `watch`-Quellen laufen
+beim Anlegen, also im Setup — und genau diese Fehlerklasse sehen weder
+Unit-Tests noch Typecheck noch Lint, nur ein Browser, der die Seite lädt.
+Deklarationen strikt vor der ersten Verwendung anordnen, und eine Seite mit
+neuen Computed-Verkettungen VOR dem Push einmal im Browser öffnen.
+(5) Jede Beschriftung, die in einen Prompt reist, spricht das Modell
+irgendwann nach — interne Ids, Pfade oder Codenamen haben in prompt-
+sichtbaren Blöcken nichts verloren; menschliche Labels aus derselben Quelle
+wie die UI. (6) Ein Zustandstext ist ein Versprechen: „wir versuchen es
+erneut" ohne Retry-Mechanismus ist gelogen — erst den Mechanismus bauen,
+dann den Text.
+
+---
+
+### branding-Prod-Ausfall nach Reload: zerschossene Server-.env, nicht der Code ✅ 2026-09-01
+
+**Vorfall:** Nach dem Deploy des Dev-Port-Fixes (78bd3bb5) meldete der
+Deploy-Wächter branding rot — `/api/health` antwortete 500, die Startseite
+weiter 200. Ursache war NICHT der neue Build: die Server-`.env` der
+branding-Site war um 09:30 (16 Minuten vor dem Reload) bei einem
+Neuschrieb zerschossen worden — ein Kommentar klebte an `NUXT_SMTP_HOST`,
+der SMTP-Block stand doppelt, und es gab ZWEI `NUXT_APPWRITE_KEY`-Zeilen,
+von denen die LETZTE (die beim Parsen gewinnt) ungültig war. Die Zeitbombe
+blieb unsichtbar, weil pm2 die .env erst beim (Re-)Load neu einliest: die
+App lief mit dem alten, gesunden Env weiter, bis der nächste Deploy sie
+zündete. Das ist die Gegenseite des Gelernt-Punkts (3) im P2-Eintrag
+darunter — derselbe parallele .env-Neuschrieb, zwei Sitzungen an einer Datei.
+
+**Diagnose ohne Wert-Exfiltration:** beide Key-Zeilen einzeln per
+HTTP-Statuscode gegen `/v1/health` und `/v1/users` gemessen (Zeile 21:
+200/200 = gültig · Zeile 22: 401/401 = tot); Struktur der .env nur als
+Schlüsselnamen + Wertlängen gelesen, nie als Werte. **Reparatur** nach dem
+dokumentierten Verfahren (Werte nie durch den Chat): Original nach
+`~/.appwrite-secrets/branding-site-env-backup-2026-09-01-0930.env`
+gesichert, lokal chirurgisch gepatcht (tote Key-Zeile raus, Kommentar
+getrennt, SMTP dedupliziert, `NUXT_AI_KEY` blieb), per scp hoch, Reload
+über deploy.yml-Dispatch. Danach alle sechs Hosts `ok:true` auf demselben
+Build, branding 3× in Folge (Wächter-Kriterium).
+
+**Gelernt:** (1) Zwei Sitzungen dürfen nie gleichzeitig dieselbe
+Server-`.env` neu schreiben — und wegen der pm2-Reload-Verzögerung beweist
+„die App läuft noch" nach einem .env-Schreiben NICHTS: geprüft ist eine
+.env erst, wenn danach ein Reload sie eingelesen hat (oder man sie
+strukturell gegenliest: doppelte Schlüssel sind das Alarmsignal, der
+LETZTE gewinnt). (2) Ein 500 auf `/api/health` bei gesunder Startseite
+zeigt auf den Admin-Key, nicht auf den Build — die Startseite braucht ihn
+anonym nicht. (3) Leere pm2-Logs trotz 500ern heißen nur: das
+Observability-Gate ist in dieser App aus — die Diagnose läuft dann über
+direkte Proben am nginx vorbei (`curl 127.0.0.1:<port>`), nicht über Logs.
+
+### Brand-Wizard P2 — George wird echt: Drosseln, Prompts, Startkarte, URL-Analyse ✅ 2026-09-01
+
+**Was:** Vier Teilpakete am Stück (je ein Opus-Lauf, im Hauptloop geprüft):
+(1) Der §6-DROSSEL-VERTRAG als Launch-Gate — 200/Tag je Konto, 10/Tag je
+Brand×Slot, Burst 2 parallel, Instanz-Deckel 1000; gebucht wird NUR ein
+echter Anbieter-Lauf (Stub/Cache/Kill-Switch/Sperre kosten nichts), 429
+reist VOR dem SSE-Start als echtes HTTP mit Retry-After. (2) Der echte
+George-GENERATOR für Baustein A: 9-Regeln-System-Prompt als pure Templates,
+providerRouting wörtlich { zdr, dataCollection: 'deny', allowFallbacks:
+false }, und ein geteilter FORMVERTRAG (shared/brandSlotFormat.ts), durch
+den Stub und George dieselben list/structured-Formen schreiben — per Test
+aneinander genagelt. (3) Die STARTKARTE (Content-Spec §2.1) existierte nur
+als Papier — brand-009 legt websiteUrl/industry/about/audience an, der
+Anlage-Dialog erhebt sie mit den wörtlichen Spez-Texten, George bekommt sie
+als primäre Quelle (das Modal legt seither NICHT mehr selbst an, sondern
+übergibt an die Startkarten-Seite). (4) Die URL-ANALYSE mit GESCHLOSSENEM
+Rebinding-Fenster: einmal auflösen → alle IPs prüfen → eigene lookup-
+Funktion in den Request → remoteAddress-Nachprüfung; v4/v6-Sperrbereiche
+inkl. v4-mapped/NAT64/Oktal (81 Testfälle), max. 3 manuell geprüfte
+Redirects, Dekompressions-Deckel, rohes HTML wird nie gespeichert, eigener
+Tages-Deckel 20/Konto AUSSERHALB des KI-Kontingents. brand-Tests 227 → 437.
+Migrationen brand-009/010 liefen jeweils VOR dem Code-Deploy gegen Prod.
+
+**Gelernt:** (1) Eine SPEZIFIKATION ist keine Datenlage — Baustein A hätte
+ohne die nie gebauten Startkarten-Spalten inhaltsleer generiert; der
+Generator-Agent hat das ehrlich gemeldet („dir wurde nichts übergeben —
+erfinde nichts") statt es zu kaschieren, daraus wurde Paket 2.5. (2)
+MEDIUMTEXT kann in MariaDB keinen Default — Bestands-Zeilen lesen dann
+undefined; Startkarten-Felder deshalb varchar mit '' und Pflicht NUR im
+Zod. (3) Ein paralleler Server-.env-Neuschrieb verschluckte die frisch
+angehängte NUXT_AI_KEY-Zeile still — die Kur ist nicht Sorgfalt, sondern
+der Wächter: der Key ist seither Pflicht in ops:site-env.
+
 ### Deploy-Change-Detection: ältester Build ALLER Probe-Hosts als Diff-Basis ✅ 2026-09-01
 
 **Was:** Nachzug zu Falle (3) des branding.supply-Erst-Deploys (Eintrag
@@ -91,6 +2581,32 @@ Servers ist eine EIGENE Liste (3002 portfolio · 3003 admin · 3004 platform ·
 die Hilfe-Seite aus.
 
 ---
+
+### branding-Dev-Port 3006→3010 — Kollision mit platform aufgelöst ✅ 2026-09-01
+
+**Befund (beim Doku-Nachzug der Hosts-und-Ports-Seite gemessen):** `apps/branding`
+und `apps/platform` starteten beide auf Dev-Port **3006** — der branding-Infra-Plan
+zählte die Dev-Portkarte falsch („3000–3005 lokal vergeben") und übersah, dass
+platform die 3006 seit jeher hält; er hatte damit BEIDE Portachsen falsch belegt
+(die Server-Achse war schon beim Erst-Deploy aufgefallen, 3007 statt 3006). Folge
+der Kollision: der zweite Nuxt-Server weicht STILL auf einen anderen Port aus —
+genau die bekannte Falle, bei der ein „Beweis" den falschen Server misst.
+
+**Gebaut (Commit `78bd3bb5`):** Dev-Port auf **3010** (nächster freier; 3009 hält
+der brand-Playground), Prod-Port 3007 unberührt (eigene Achse). Alle Erwähnungen
+in EINEM Commit nachgezogen: nuxt.config + package.json, Ecosystem-Kommentar
+(„3006 lokal frei" gestrichen), CLAUDE.md-Silo-Regel, Hosts-und-Ports-Seite
+(Warnbox durch Historien-Notiz ersetzt, 3010-Zeile), Infra-Plan §2, Runbook §3;
+Memory `branding-supply-live` mit. **Beweis:** Ports 3006/3010 vorher per lsof
+frei gemessen, dann `pnpm --filter branding dev` aus dem Worktree — erste
+Log-Zeile bestätigt den Worktree-Pfad, Listener auf `[::1]:3010`.
+
+**Gelernt:** Eine Portvergabe „aus dem Kopf" zählt verlässlich falsch — die
+Dev-Portkarte in docs/content/2.architektur/6.hosts-und-ports.md ist die EINE
+Liste, gegen die jede neue App prüft (dort steht es jetzt als Regel-Note). Und:
+derselbe Plan hatte dieselbe Fehlerklasse (Achse verwechselt/falsch gezählt)
+schon einmal auf der Server-Achse — wer einen Zähl-Fehler findet, prüft die
+Schwester-Liste gleich mit.
 
 ### Paritäts-Wächter: AH-4c-Lücke geschlossen + Ausgerollt-Flag ✅ 2026-08-31
 
@@ -9068,3 +11584,984 @@ naheliegend aus, `pristineBody` leer zu lassen — „es gibt ja nichts zu
 schonen". Genau das hätte beim Öffnen-und-Speichern einen LEEREN Text
 gespeichert. Wer an einer Stelle mit Sonderregel etwas Neues anhängt, muss die
 Sonderregel erst zu Ende lesen.
+
+---
+
+## BI1 I1 — Brand Insights: Layer + Schema + Vertrag (2026-09-09)
+
+**Was gebaut wurde** (drei Commits, Live-Build `bb1f9102` auf branding.supply, per /api/health bewiesen): Paket I1 aus
+docs/plans/BRAND-INSIGHTS.md §9.9, die „volle Rechnung" aus §9.1 (5) ohne Abkürzung.
+
+- **`insights.manage`** (`41a84637`, eigener Commit): nur im Admin-Wildcard, bewusst
+  nicht bei `moderator` — die Redaktion ist Betreiber-Sache, die Silo-App hat keine
+  Community-Rollen (Vorlage `runner.manage`).
+- **Layer montiert** (`b5d284f1`): `product.manifest.ts` (`hasMigrations: true`,
+  `apiPrefixes: ['/api/insights']`), `apps/branding/site.manifest.ts` + `nuxt.config.ts`
+  (nach `market`, vor `pages` — pages muss mit seiner `/[slug]`-Route zuletzt stehen),
+  `@pukalani/insights` in der App, `pukalani.insights.enabled: true`, `LAYER_ORDER`
+  in `scripts/migrate.mjs` nach `market`, Bilanz regeneriert, `INSIGHTS_TABLES` im
+  BRANDING_SOLL des Paritäts-Wächters.
+- **Drei Tabellen** `insights_posts` (26 Spalten) · `insights_brands` (21) ·
+  `insights_corrections` (12), server-only, Indizes nur über `createIndexSteps`.
+  Abweichungen von §9.3, alle im Migrationskopf vorgerechnet: `facts` MEDIUMTEXT
+  statt varchar 4000 (12 Duell-Zeilen ≈ 7.400 Zeichen, 10 Ranking-Plätze ≈ 8.300),
+  `brandRefs` 4000 statt 2000, `history` 5000 statt 4000, `topics` als JSON-Liste
+  statt Kommaliste (ein Parser; `Query.contains` trifft bei Kommalisten Präfixe).
+  Zusatz gegenüber §9.3: `insights_corrections.retentionAt` (Datum, ab dem
+  `contactEmail`/`ipHash` geleert werden, 12 Monate als EINE Konstante) mit Index
+  `idx_retention`, und `idx_contact_email` als Lesepfad des GDPR-Contributors
+  (Adresse wird getrimmt + kleingeschrieben gespeichert).
+- **Der EINE Vertrag** `packages/insights/server/contracts/brandContract.ts`
+  (genau §9.1 (2)): `brand_checks`-Lesezugriff + Kategorien, Farbwelt,
+  Archetyp-Katalog, Branchen-Katalog, Slug-Regel, SSRF-fester Abruf samt
+  robots/TDM. ESLint-Block `packages/insights/**` erlaubt nur `brand`; der
+  Datentür-Block (`tablesDB`-Sperre) nimmt insights BEWUSST NICHT auf: kein
+  `communityId`, Silo auf `branding` — Begründung steht im ESLint-Block.
+- **GDPR-Contributor** (`registerUserDataContributor`, id `insights`): Export der
+  Korrekturen mit der Konto-Adresse (ohne `ipHash`), Ids der geprüften Beiträge und
+  beanspruchten Marken; Löschung leert `contactEmail`/`ipHash`/`retentionAt`,
+  `reviewedBy`, `claimedBy` — idempotent, die Zeile bleibt (Nachweis, §9.3).
+- **Fristen-Sweep** (`insightsCorrectionsSweep.ts`, Plugin alle 24 h, Produkt-Gate)
+  nach dem Muster `brandEventsSweep.ts` — leert, löscht nicht.
+- **Shared-Vertrag erweitert:** `insightsCorrectionSchema`, `insightsSlugHistoryPush`
+  (≤ 5, ohne Duplikate), Row ⇄ Vertrag fail-soft (`shared/insightsRows.ts`); 87 Tests.
+
+**Beweise:** Migration lokal gegen die Dev-Appwrite zweimal gefahren (Lauf 2: 75 ×
+„existiert bereits"), **Prod `branding` mit Davids Ja 2026-09-09 gefahren** (3 Tabellen,
+13 Indizes), `pnpm ops:schema-parity` branding 38/38 grün; `check:manifests`,
+`check:i18n-keys`, `check:single-copy`, `check:bilanz`, `lint:scripts`, Lint
+insights/core/brand/market/branding, Typecheck branding, Unit-Tests insights 87 / core
+1618 / brand 2820 / market 206.
+
+**Nebenbefund, behoben** (`bb1f9102`): `packages/market` hatte seit M1 KEIN
+`server/plugins/product-manifest.ts` — als einziger Produkt-Layer mit `apiPrefixes`.
+Folge: die Notabschaltung `app_config.products.market.enabled = false` traf
+`/api/market/**` nie, und der Rohtext-Sweep stieg an `getProductRegistry().has('market')`
+bei jedem Lauf aus — der gefilterte Text fremder Websites blieb über die zugesagten
+24 Stunden hinaus liegen. Vier Zeilen Plugin, jetzt registriert. Ebenfalls ohne Plugin,
+aber NICHT angefasst (eigene Entscheidung nötig): `domains`, `onboarding`, `runner`.
+
+**Gelernt:** Ein Manifest mit `apiPrefixes` ist ein Versprechen, das erst ein
+Laufzeit-Plugin einlöst — `check:manifests` prüft die DATEI, nicht die Registrierung.
+Beim nächsten Layer gehört das Plugin in dieselbe Checkliste wie LAYER_ORDER und
+Paritäts-Soll; ein Wächter „Layer mit `apiPrefixes` braucht
+`server/plugins/product-manifest.ts`" wäre die dauerhafte Antwort (offen: OPEN-ITEMS Zeile `PM1`). **Zweite Lehre:** ein Fristen-Sweep, der Felder LEERT statt Zeilen zu löschen,
+muss auch sein Fälligkeits-Datum leeren — sonst füllen die schon geleerten Zeilen
+jeden Batch (`retentionAt <= now`, Limit 200) und neue fällige Zeilen werden nie mehr
+erreicht. Bei der Prüfung erwischt, vor dem Deploy behoben. **Dritte:** Appwrite 2.0
+lehnt einen Index über varchar > 768 Zeichen ab (`column_index_invalid`, MariaDB
+3072 B ÷ 4) — `idx_slug_history` auf einer 1000er-Spalte braucht `lengths: [768]`.
+
+## BI1 I2 — Brand Insights: Redaktions-Dashboard + KI-Entwurf (2026-09-09)
+
+**Was gebaut wurde** (Commit `f6d6da89`, Merge `d1e04658`, Bilanz `9d4dc553`; Live-Build
+`d1e04658` auf branding.supply per /api/health bewiesen): Paket I2 aus
+docs/plans/BRAND-INSIGHTS.md §9.9 — die Redaktion hinter `insights.manage`, gebaut von einem
+Opus-Lauf nach Auftrag, geprüft und nachgeschärft im Hauptloop.
+
+- **Routen `/api/insights/**`** (alle `requirePermission(event, 'insights.manage')`, Admin-Client
+  über `insightsDb`, expliziter `Query.limit`): Liste, Anlegen (Slug über den brand-Vertrag),
+  Lesen mit Editor-Kontext (Marken, Form-Issues), Speichern (`insightsPostEditSchema` ohne
+  Server-Felder, `readingMinutes` beim Speichern, `slugHistory` bei Umbenennung,
+  `translationReviewed` nur mit vorhandener zweiter Fassung), Zustandswechsel
+  (`insightsTransitionAllowed`-Matrix; vor jedem Ziel außer `draft` die **sechs Prüfregeln als
+  Server-Gate MIT Quellen-Abruf** über `fetchBrandSiteForCheck` — robots/TDM-Verbot und
+  Abruf-Fehler zählen als „nicht belegbar", nie als „ungeprüft"; Deckel 20 Quellen je Lauf),
+  Beleg-Ampel je Quelle (deterministisch, `evidenceIsGrounded`, Grund `ok/not_found/
+  fetch_failed/robots_denied/tdm_reserved/no_url`), Übersetzen und KI-Entwurf (Kette
+  Permission → `readBrandAiEnabled` fail-closed → Drossel 10/Stunde + 50/Tag je Konto und Art
+  über `useRateLimitStore` → `aiCompleteJson` mit `BRAND_PROVIDER_ROUTING`; Prompt-Fassungen
+  `insights-t-1`/`insights-d-1` als Konstanten, je Beitrag gespeichert; Entwurf bleibt `draft`),
+  Marken-Liste + Schnellanlage (Prüfregel 6 braucht eine Zeile).
+- **Seiten** `packages/insights/app/pages/dashboard/insights/{index,[id],radar}.vue`
+  (`layout: 'dashboard'`, `['auth','admin']`, `requiredCapability: 'insights.manage'`): Liste als
+  `UTable` mit Anlege-Dialog, Editor aus der I0-Form (`InEditor.vue` ist jetzt die echte
+  Komponente: UEditor nach editor.md, zwei Sprach-Reiter mit Maschinen-Stempel, editierbares
+  Quellen-Panel mit Ampel, Marken-Panel, Fakten als JSON mit Zod, Prüfregeln, Übergänge,
+  Vorschau, Übersetzen, KI-Entwurf), Radar-Platzhalter bis I4. Admin-Modul `insights` in
+  `pukalani.admin.modules` (operator, `productKey`, `configFlag`, zwei Kinder).
+- **brand-Vertrag** um Abschnitt 7 (Kill-Switch, ZDR-Routing) und `fetchBrandSiteForCheck`
+  ergänzt; kein Schreiben in brand-Tabellen — KI-Ereignisse als `logEvent`-Zeilen
+  `insights.{draft,translate}.{requested,completed,failed}` (nie Prompt, nie Text).
+- **Shared:** `insightsAiLimits.ts`, `insightsPrompts.ts`, `types/insightsApi.ts` (an beiden
+  Enden verlangt), Erweiterungen in `insightsPost.ts` (Edit-Schema aus denselben Regeln,
+  Übergangs-Matrix, `insightsMethodologyLinked`). 33 neue Tests (87 → 120).
+
+**Drei Zuschnitte, die vom Auftrag abweichen** (alle im Code begründet): (1) `review_blocked`
+ist **200 mit `changed: false` + `issues`**, kein 409 — der zentrale Fehler-Handler hebt aus
+`data` nur den `code`, eine Liste käme nie an, und der teure Gate-Lauf müsste doppelt laufen.
+(2) Abruf über `fetchBrandSiteForCheck` statt `fetchBrandSite` — nur jener prüft robots/TDM
+(der Wizard-Weg auf die EIGENE Website tut es bewusst nicht); kein eigener
+`PukalaniInsightsBot` in I2. (3) Der Herabsetzungs-Riegel bekommt als Kandidaten die Marken,
+die der Beitrag NICHT verweist — wörtlich umgesetzt hätte jedes Markenprofil an seinem eigenen
+Titel blockiert; ein Treffer heißt jetzt „genannt, aber ohne Verweis" (genau Regel 6).
+
+**Klick-Beweis** (Dev-Server aus dem Worktree, Port 3018, Dev-Instanz `portfolio-g4ml`,
+Admin-Session per Server-SDK als Cookie — kein Passwort getippt): Anlegen → Editor → Text +
+Quelle example.com → Speichern 200 (`readingMinutes: 1`) → Beleg prüfen: erst `not_found`
+(example.com hat 2025 seinen Satz geändert — das Gate hatte RECHT), mit dem echten Satz `ok`
+→ Gate ohne Marken-Verweis: `disparagement competitor_domain` an Titel und Text → Marke
+angelegt + verknüpft → `review` → `published` mit `reviewedBy`/`publishedAt` → Vorschau →
+Übersetzen lokal 503 „AI not configured" (kein Schlüssel lokal; Log-Zeilen requested/failed
+da). Screenshots an David. **Prod-Beweis nach dem Deploy** (Davids freigegebener Chrome,
+branding.supply, Build `d1e04658`): Beitrag „I2-Beweis: Kailua Coffee Co." angelegt → KI-Entwurf
+(Brief, 300 Wörter) liefert Titel/Vorspann/Text mit `[Quelle]`-Platzhaltern, Lesezeit 3 Min,
+Zustand bleibt Entwurf → Übersetzen liefert die englische Fassung mit Stempel „Maschinell
+erzeugt am 09.09.2026, noch nicht redigiert" und Häkchen; der Platzhalter bleibt Platzhalter.
+Der Beitrag steht als Entwurf in Davids Redaktion (I2 hat keinen Löschen-Weg — offen in
+OPEN-ITEMS). Wächter: 120 Tests, Lint insights/branding, Typecheck branding,
+check:i18n-keys, check:manifests, check:bilanz.
+
+**Fünf Befunde aus dem Klick-Beweis, alle vor dem Push behoben:** `i-ph-radar` gibt es in
+Phosphor nicht (→ `i-ph-broadcast`) · Herabsetzungs-Meldung zeigte den rohen Grund
+(`competitor_domain`) statt eines Satzes · „1 Punkte offen" — Plural braucht `t(key, n)`,
+nicht `{ count }` · eine Quelle ohne Herausgeber ließ sich nicht speichern und der Toast sagte
+nur „Das hat nicht geklappt" — die Formregeln rechnen jetzt LOKAL am Entwurf mit (Regel 2 war
+hinter dem Schema-400 unsichtbar), der 400 bekommt einen sprechenden Toast · Fehlercode im
+KI-Log war „Error" statt „503 AI not configured".
+
+**Gelernt:** (1) Ein Schema, das beim SPEICHERN abweist, macht eine Prüfregel im Panel
+unerreichbar — wer beides will (Plan §9.3: Schema UND Übergang), muss die puren Regeln auch am
+unsaved Entwurf rechnen, sonst sieht der Mensch nur einen 400. (2) Ein Beleg-Riegel gegen eine
+LEBENDE Website ist ein Test mit beweglichem Erwartungswert: example.com hat seinen Satz
+geändert; der „Fehler" war die Wahrheit. (3) `check:bilanz` gehört in dieselbe Wächter-Liste
+wie i18n/manifests, sobald ein Layer Routen oder Seiten bekommt — die CI hat es gesehen, die
+lokale Runde nicht. (4) Klick-Beweis hinter Login ohne Passwort: `users.createSession` per
+Server-SDK, Secret als `a_session_<projekt>`-Cookie in den Playwright-Kontext.
+
+## BI1 I2-Reste — Beitrag löschen, Marken-Seite, Korrekturen-Liste (2026-09-10)
+
+**Was:** die drei kleinen Reste aus Paket I2 (Plan §9.4), ohne Migration. (1) `DELETE
+/api/insights/posts/[id]` hinter `insights.manage`: nur `draft`/`review` löschbar, ein
+freigegebener Beitrag antwortet 409 `not_deletable` und wird erst über den bestehenden
+Übergang zurückgezogen; EINE pure Regel `insightsPostDeletable` für Route und Oberfläche.
+Knopf mit Bestätigung im Editor (gesperrt mit Hinweis, solange öffentlich) und Papierkorb je
+Entwurfszeile der Liste. (2) `/dashboard/insights/brands`: UTable mit Zustands-Filtern und
+Zählern, Slideover über alle §9.3-Felder (Quellen über die aus dem Editor gezogene
+`InSourcesEditor`, Zeichen und Historie mit Beleg-Zeiger, Beziehungen, Zustand — `removed`
+nur mit Grund, `removedAt` setzt der Server am Übergang und leert es auf dem Rückweg);
+`GET`/`PATCH /api/insights/brands/[id]` mit slugHistory-Führung, `insightsBrandEditSchema`
+ohne die drei Server-Felder. (3) `/dashboard/insights/corrections` nach dem Muster der
+Brand-Check-Korrekturen: Filter open (Standard)/accepted/declined/alle mit Zählern, Annehmen,
+Ablehnen mit Pflicht-Notiz; `GET /api/insights/corrections` liefert den Kontakt NUR als
+`hasContact` (nie die Adresse), `POST …/[id]/decision` mit 409 `already_decided` und 400
+`note_required` aus der puren Regel `insightsCorrectionDecisionAllowed`. Das Speichern der
+Entscheidung schreibt bewusst nur `status`/`decisionNote`/`decidedAt` — ein Vollschreiben
+hätte eine vom Retention-Sweep geleerte Adresse aus altem Stand zurückgeholt. Annehmen
+ändert das Ziel NICHT (das bleibt Redaktionsarbeit — Hinweis im Toast). Nav: Beiträge ·
+Marken · Korrekturen · Radar als Unterpunkte; i18n de+en; 144 Tests (vorher 119).
+
+**Klick-Beweis** (Dev-Server aus dem Worktree, Port 3018, Dev-Instanz `portfolio-g4ml`,
+Admin-Session per `users.createSession` als Cookie, zwei Korrekturen per Server-SDK gesät):
+Korrekturen 2 offen → Annehmen (Zähler 1/1/0) → Ablehnen-Knopf ohne Notiz gesperrt → mit
+Notiz (0/1/1) → API-Gegenprobe 409 `already_decided` · Marke: Land + Gründungsjahr, Zeichen
+ohne Beleg ⇒ Formular bleibt mit „Beleg fehlt" stehen, ohne Zeichen + „Veröffentlicht" ⇒
+gespeichert, Slideover zu, Zähler 0/1/0; API: `removed` ohne Grund 400, mit Grund `removedAt`
+gesetzt, zurück auf `published` geleert · Löschen: neuer Entwurf im Editor gelöscht ⇒ Liste,
+GET 404; Papierkorb nur an Entwurfszeilen; DELETE auf den freigegebenen Beitrag 409; Knopf im
+Editor des freigegebenen gesperrt. Danach alle vier Seiten ohne Hydration-Meldung (Browser-
+Konsole und Dev-Log 0). Prod: Test-Entwurf „I2-Beweis: Kailua Coffee Co." über den neuen
+Löschen-Weg entfernt. Wächter: Tests, Lint insights/branding, Typecheck branding,
+check:i18n-keys, check:manifests, check:bilanz.
+
+**Vier Befunde aus dem Klick-Beweis, alle vor dem Push behoben:** (a) Hydration-Mismatch auf
+ALLEN Insights-Seiten, seit I2: `useFetch` mit `server: false` steht auf dem Server auf
+`idle`, im Browser schon beim Hydrieren auf `pending` — das Lade-Icon, das `disabled` des
+Knopfs und der Leer-Zustand des Editors („Beitrag nicht gefunden" kurz per SSR) wichen ab.
+Der Ladezustand zählt jetzt erst nach dem Mounten (`hydrated`-Ref) · (b) die Korrekturen-
+Tabelle lief bei 1440 px aus dem Panel und versteckte „Ablehnen": Nuxt UI setzt
+`whitespace-nowrap` auf jede Zelle, ein Grund-Satz reichte (dieselbe Falle wie die
+Kit-Lizenztabelle) — `:ui="{ td: 'whitespace-normal' }"` · (c) die Beleg-Auswahl zeigte
+„-1" statt „Ohne Beleg": ein numerisches `USelect` rendert einen Wert ohne Eintrag roh —
+„Ohne Beleg" ist jetzt ein Eintrag mit Wert -1, das Schema weist ihn weiter ab · (d) die
+Ablehnung des Schemas war UNSICHTBAR: die Zeilen-Felder für Zeichen/Historie hatten kein
+`name`, UForm konnte den Fehler nirgends zeigen, Speichern tat stumm nichts — `name`
+`marks.<i>.sourceIndex` usw. plus Meldung „Beleg fehlt" statt zods „Too small".
+
+**Gelernt:** (1) `server: false` + `status` im Markup ist IMMER ein Hydration-Mismatch —
+Nuxt startet die Abfrage im Browser vor dem Mount; ein Ladezustand, der SSR-sichtbar ist,
+braucht ein Mount-Gate. Die Warnung steht nur in der Dev-Konsole, Typecheck/Lint/Tests sehen
+sie nie; ein Klick-Beweis liest deshalb IMMER auch die Konsole mit. (2) Ein UForm-Feld ohne
+`name` hat keinen Ort für seinen Fehler: das Schema blockiert, der Mensch sieht nichts. Jede
+Zeilen-Liste in einem Formular braucht `name` mit Index. (3) `nuxi typecheck` neben einem
+laufenden Dev-Server desselben Worktrees schreibt `.nuxt` neu und reißt den Server mit —
+Wächter vor oder nach dem Beweis fahren, nicht daneben. (4) Ein Zähler-Reiter, der den
+Standard „Offen" zeigt, ist im Beweis nur mit ZWEI Zeilen aussagekräftig — eine angenommen,
+eine abgelehnt —, sonst ist „0 offen" auch ohne Funktion grün.
+## BI1 I4 — Brand Insights: Themenradar (2026-09-09)
+
+**Was gebaut wurde** (Commit `c52768e3`, Merge mit den I2-Resten der Nachbarsitzung `83e1b4d3`):
+Paket I4 aus docs/plans/BRAND-INSIGHTS.md §9.6/§9.9 — der Themenradar hinter `insights.manage`,
+gebaut von einem Opus-Lauf nach Auftrag, geprüft und nachgeschärft im Hauptloop. Die vier
+Leitplanken sind KEINE Absicht, sondern Form: es gibt in `shared/insightsYoutube.ts` nur drei
+Adress-Bauer (`channels`, `playlistItems`, `videos` — je 1 Einheit), keinen für `search.list`
+und keinen für `commentThreads`; ein Test hält das über die Export-Namen fest.
+
+- **Migration insights-004 `insights_topics`** (server-only, 14 Spalten, Indizes über
+  `createIndexSteps`: `uq_video_id`, `idx_fetched_at`, `idx_topic`). Je Video NUR die
+  öffentlichen API-Zahlen (Aufrufe, Likes, Kommentar-ZAHL, Datum, Kanal, Titel) plus UNSERE
+  drei Werte (`relevance`, `opportunity` nullable, `opportunitySignals`). **Retention-Entscheid
+  (§9.6 offen gelassen, in I4 gefällt): „täglich neu" + 30-Tage-Netz** — der Lauf überschreibt
+  je `videoId`, und was er nicht mehr erreicht (Kanal aus der Liste, Video privat, Lauf
+  ausgefallen), löscht das Netz als GANZE Zeile. Leitplanke (a) ERLAUBT das Bleiben unserer
+  Zahl, verlangt es nicht; eine 30 Tage alte Zahl zu einem Video, das wir nicht mehr
+  beobachten, hilft Discover nicht. Schema-Parität-Soll + Bilanz nachgezogen.
+- **Kanalliste als Konfiguration** `pukalani.insights.radar.channels` (Layer-Default leer —
+  eine Kanalliste ist eine redaktionelle Entscheidung der App), zwölf Kanäle in
+  `apps/branding/app/app.config.ts`, jede Id aus dem Kanal-HTML verifiziert (`externalId`
+  bzw. kanonische `/channel/UC…`-Adresse). Uploads-Playlist = `UU` + Rumpf der Kanal-Id;
+  Handles und alles, was nicht `UC` + 22 Zeichen ist, wirft `readInsightsRadarConfig` still
+  heraus. `maxVideosPerChannel` 20 (Deckel 50).
+- **Relevanz per Schlagwortliste** (§9.6): `INSIGHTS_TOPIC_KEYWORDS` je Cluster (de+en),
+  `insightsRadarClassify(title, channelTopic)` — Treffer auf Wortgrenzen, Cluster mit den
+  meisten Treffern gewinnt, Gleichstand ⇒ Kanal-Cluster, ohne Treffer 0.5 (kuratierter Kanal
+  ist ein halbes Signal), je Treffer +0.25, Deckel 1.0. Ohne Abonnentenzahl gibt es KEIN
+  Performance-Signal (Zahl aus 2 von 5), nicht Signal 0.
+- **Sweep** `server/utils/insightsRadarSweep.ts` mit injizierbaren `deps` (fetch, Config,
+  TablesDB, Log — nur so mit Fakes prüfbar), Plugin `radar-sweep.ts` (erster Lauf 90 s, dann
+  24 h, Produkt-Registry-Gate). Drei Gates VOR dem ersten Aufruf: Schlüssel, Kanäle,
+  Quota-Schätzung (`ceil(K/50) + K + ceil(K·V/50)`, Deckel 5.000 von 10.000 — der Nachtlauf
+  teilt sich das Budget mit dem Knopf). `quotaExceeded`/401/403 bricht ab, ein fehlender
+  Kanal kostet einen Kanal. Fehlermeldungen gehen nur durch `insightsYoutubeSafeMessage`
+  (der Schlüssel steht bei dieser API in der Query jeder Adresse, und `fetch` zitiert
+  Adressen in Fehlern). Logs tragen NUR Zahlen.
+- **Routen** `GET /api/insights/radar` (Zustand: `configured`, Kanäle, Quota-Schätzung,
+  `lastRunAt` = jüngster `fetchedAt`, kein zweiter Zustand; Zeilen nach `opportunity`
+  sortiert, Deckel 500) und `POST /api/insights/radar/run` (Drossel 3/Stunde je Konto über
+  `useRateLimitStore`, 503 `not_configured` ohne Schlüssel). **Seite**
+  `/dashboard/insights/radar`: Status-Karte (Schlüssel hinterlegt/fehlt mit dem Env-Namen als
+  Code, Kanäle, Kosten je Lauf, letzter Lauf), Knopf, `InRadar` unverändert mit der
+  gespeicherten `relevance` über `resolveRelevance`; Warnung ohne Schlüssel.
+- **Env-Wächter:** `NUXT_INSIGHTS_YOUTUBE_KEY` ist im `branding`-Block von
+  `verify-site-env.mjs` PFLICHT und bis zu Davids Eintrag bewusst rot — ein still nichts
+  tuender Sweep ist die F44-Sorte Loch. `NUXT_INSIGHTS_YOUTUBE_BASE_URL` (Stub-Adresse für
+  den lokalen Beweis) steht dort absichtlich NICHT.
+- 55 neue Tests (120 → 175; nach dem Merge mit den I2-Resten 199).
+
+**Klick-Beweis** (Dev-Server aus dem Worktree, Port 3021, Dev-Instanz `portfolio-g4ml`,
+Migration 004 lokal gefahren, Admin-Session per Server-SDK als Cookie; **YouTube als Stub**
+auf Port 3099 über `NUXT_INSIGHTS_YOUTUBE_BASE_URL` — antwortet für jede Kanal-Id
+deterministisch in den drei API-Formen): GET vor dem Lauf `configured: true, channels: 12,
+quotaEstimate: 18, lastRunAt: null` → Knopf „Jetzt laufen lassen" → Toast „Fertig: 12 Kanäle,
+38 Videos, 38 gespeichert, 0 entfernt" → Tabelle mit Cluster, Zahlen, Alter und „78 von 100 ·
+aus 3 von 5 Signalen" (Zeilen ohne Abonnentenzahl zeigen „aus 2 von 5") → zweiter Lauf
+idempotent (38 gespeichert, 0 neu) → Stub-Treffer NUR `/channels` 1×, `/playlistItems` 12×,
+`/videos` 1× (kein `search`, kein `commentThreads`; Query-Parameter ohne Inhalt) → 4. Lauf in
+der Stunde 429 `reason: rate_limited` → ohne Session 401 → **30-Tage-Netz:** eine Zeile mit
+`fetchedAt` vor 40 Tagen eingepflanzt, Lauf meldet `deleted: 1`, Zeile weg → Plugin-Lauf nach
+90 s im Log (`insights.radar_swept`). **Fail-closed** (zweiter Server ohne Schlüssel):
+`configured: false`, POST 503 `reason: not_configured`, Warnung „Es fehlt der API-Schlüssel",
+Knopf ausgegraut, einmalige Log-Zeile `insights.radar_unconfigured`. Screenshots an David.
+Wächter: 199 Tests, Lint insights/branding/scripts, Typecheck branding, check:i18n-keys,
+check:manifests, check:bilanz.
+
+**Ein Befund aus dem Klick-Beweis, vor dem Push behoben:** die Status-Karte hatte **Höhe 0**.
+Der Body der `UDashboardPanel` ist eine Flex-SPALTE fester Höhe; ein Kind mit
+`overflow-hidden` (`UCard`) verliert dort sein `min-height: auto` und schrumpft auf null,
+sobald der Inhalt darunter überläuft. Die Seite las sich per `innerText` vollständig vor,
+gerendert war ein Strich, der Knopf stand im DOM und war nicht anklickbar — Konsole, Lint,
+Typecheck sahen nichts. Fix: `shrink-0` an der Karte, Begründung im Markup.
+
+**Nicht live geschaltet, und zwar absichtlich:** der Schlüssel liegt nicht in der Server-.env
+(per ploi geprüft), und die Prod-Migration insights-004 braucht Davids Ja. Der Code ist
+deployt und ohne Schlüssel stumm.
+
+**Gelernt:** (1) Ein Klick-Beweis, der nur `innerText` liest, ist grün bei einem Element mit
+Höhe 0 — die Geometrie (`getBoundingClientRect`) gehört zum Beweis, sobald ein Klick nicht
+ankommt. (2) `"channelId":"UC…"` im HTML einer Kanalseite ist der Kanal eines EMPFOHLENEN
+Videos, nicht der der Seite; die Kanal-Id steht in `externalId` bzw. der kanonischen
+`/channel/`-Adresse (zwei von zwölf wären sonst fremd gewesen). (3) Ein Flex-Kind mit
+`overflow-hidden` in einer Flex-Spalte braucht `shrink-0` — dieselbe Falle wartet auf jede
+weitere `UCard` über einer langen Tabelle im Dashboard-Body. (4) Zwei `nuxi dev` derselben App
+im selben Worktree schliessen sich aus („Another Nuxt dev is already running") — der
+Fail-closed-Beweis ohne Schlüssel läuft NACH dem Beweis mit Schlüssel, nicht daneben.
+(5) `useAppConfig(event)` ist in Nitro kein gültiger Aufruf (TS2554), auch wenn eine Stelle im
+Repo es so schreibt — die App-Config ist eine Konstante des Prozesses.
+
+## BI1 I4 — Gates auf Prod geschlossen: Schlüssel, Migration, erster Lauf (2026-09-10)
+
+**Was:** (1) `NUXT_INSIGHTS_YOUTUBE_KEY` in die Server-`.env` von branding.supply — über ein
+Terminal-Fenster mit `read -rs`, das den Wert nur per stdin durch ssh reicht (nie Argument, nie
+Log, nie Chat), Sicherung der `.env` daneben, Gegenlesen nur strukturell (eine Schlüssel-Zeile,
+Wertlänge 39, keine doppelten Schlüssel — das Alarmsignal aus dem Vorfall vom 2026-09-01),
+danach `pm2 startOrReload <ecosystem> --update-env` und Health 200 am Prozess; `ops:site-env`
+für branding grün. (2) Prod-Migration insights-004 mit Davids Ja gefahren (`pnpm migrate --app
+branding --env-file … --layer insights`), Parität branding 39/39. (3) Erster Lauf auf Prod:
+12 Kanäle, 205 Videos gespeichert, 0 Fehler, 18 Einheiten; die Radar-Seite zeigt „Letzter Lauf
+10.09.2026" und die Tabelle mit Opportunity-Werten.
+
+**Befund für die I4-Sitzung (nicht angefasst):** Ogilvy, pentagramdesign und Harry Dry liefern
+Uploads von vor Jahren (755–5314 Tage) mit Opportunity 17–50 — das 30-Tage-Netz gilt dem
+Abruf-Datum, nicht dem Video-Alter; ein Alters-Deckel je Video (oder die Kanäle aus der Liste)
+wäre die nächste Schärfung.
+
+**Gelernt:** (1) Ein Terminal-Fenster für ein Geheimnis: `osascript` an Terminal.app scheitert
+ohne Automations-Freigabe (AppleEvent-Timeout) — eine ausführbare `.command`-Datei per `open`
+braucht keine. (2) Ein Klick des Chrome-Werkzeugs auf einen Nuxt-UI-Knopf kann ohne jede
+Wirkung verpuffen (kein Request, kein Toast) — Beweis ist der Server: `fetch` in der Seite oder
+das pm2-Log, nie „ich habe geklickt". (3) Der 90-s-Erstlauf des Sweeps nach dem Deploy lief
+VOR der Migration und endete still am fehlenden Tisch — ein leeres Log nach dem Neustart ist
+also kein Beweis für „nichts passiert", sondern ein Hinweis auf einen stillen Rückweg.
+
+## BI1 I4-Schärfung — Alters-Deckel je Video, Pentagram raus (2026-09-10)
+
+**Anlass:** der Befund der Nachbarsitzung aus dem ersten Prod-Lauf (COMPLETE „BI1 I4 — Gates auf
+Prod geschlossen"): Ogilvy, „pentagramdesign" und Harry Dry lieferten Uploads von 2012–2024 mit
+Opportunity 17–50 — die Uploads-Playlist gibt die JÜNGSTEN Videos eines Kanals, und bei einem
+Kanal ohne neue Uploads sind das Jahre alte; das 30-Tage-Netz rechnet mit dem Abruf-Datum.
+
+**Was gebaut wurde:** (1) `INSIGHTS_RADAR_MAX_VIDEO_AGE_DEFAULT = 180` / `…_CAP = 365`,
+`readInsightsRadarConfig` liest `pukalani.insights.radar.maxVideoAgeDays` (Unsinn ⇒ Vorgabe,
+über 365 ⇒ 365). (2) Der Sweep überspringt ältere Videos VOR dem Schreiben und zählt sie
+(`tooOld` im Ergebnis, im Log und im Toast) — ein Video ohne lesbares Datum bleibt drin. (3) Das
+Netz läuft zweimal: über `fetchedAt` (30 Tage) und über `publishedAt` (Deckel), damit die schon
+gespeicherten alten Zeilen sofort fallen und nicht erst nach 30 Tagen. `publishedAt` hat keinen
+Index; der Filter läuft auf Appwrite 2.0 ohne (lesend gegen Prod geprüft: 32 Zeilen älter als
+180 Tage, genau die drei Kanäle plus ein Google-Search-Central-Video von vor 245 Tagen),
+sortiert wird über den indizierten `fetchedAt`. (4) `GET /api/insights/radar` meldet
+`maxVideoAgeDays`, `InRadar` sagt es als dritte Hinweiszeile (de+en). (5) „Pentagram" aus der
+Kanalliste: `@PentagramDesign` ist ein Privatkonto, `@pentagram` eine Metal-Band — das Designbüro
+hat keinen YouTube-Kanal unter seinem Namen. Drei neue Tests (Deckel beim Schreiben, Deckel im
+Netz inkl. Kappung auf 365, Config-Leser), Sweep-Fake liest die Spalte aus der Abfrage.
+Beschlüsse im DECISION-LOG (2026-09-10, vier Punkte, darunter Env statt `instance_secrets` mit
+Grund).
+
+**Beweise:** 202 Tests insights, Lint insights/branding, Typecheck branding, check:i18n-keys
+(309 Nennungen), check:manifests, check:bilanz, check:doc-links, `pnpm --filter branding build`;
+Prod (Build `fbe77d71`, 2026-09-10): `GET /api/insights/radar` meldet `maxVideoAgeDays: 180`,
+11 Kanäle, 17 Einheiten, die Hinweiszeile steht auf der Seite; der Lauf über
+`POST /api/insights/radar/run` (aus der eingeloggten Seite — der Werkzeug-Klick auf den Knopf
+verpuffte wie bei der Nachbarsitzung) antwortet 200 mit `channels 11, videos 173, upserted 173,
+deleted 32, tooOld 31, errors 0, quotaUnits 17`; danach 173 Zeilen, ältestes Video 2026-03-17,
+neun Kanäle in der Tabelle — Ogilvy, „pentagramdesign" und Harry Dry sind weg, genau die 32
+Zeilen der lesenden Vorab-Prüfung.
+
+**Gelernt:** (1) Eine Seite mit `useFetch({ lazy: true, server: false })` zeigt nach dem Laden
+erst ihre VORGABEN („Schlüssel fehlt", „kein Kanal", „noch kein Lauf") — wer sie sofort ausliest,
+liest einen Zustand, den es nie gab; der Beweis liest die Antwort der Route (`fetch` in der
+Seite) oder wartet auf `status === 'success'`. Zwanzig Minuten Fehlersuche an einem gesunden
+Server. (2) Eine Kanal-Id ist erst geprüft, wenn Titel UND jüngster Upload zur Erwartung passen —
+`@PentagramDesign` löst sauber auf, nur eben auf jemand anderen. (3) Ein Wächter, der etwas
+„bei David" nennt, muss gelesen werden, BEVOR man Fragen bündelt: Schlüssel und Migration waren
+schon durch (Env-Wächter grün, Parität 39/39), während OPEN-ITEMS sie noch als offen führte.
+
+## PM1 — Produkt-Manifest-Wächter: `apiPrefixes` ⇒ Laufzeit-Plugin (2026-09-09)
+
+**Ausgangslage:** Ein `product.manifest.ts` ist `import type`-only; was es unter
+`apiPrefixes` verspricht, löst erst ein `server/plugins/product-manifest.ts` mit
+`registerProductManifest(manifest)` ein. Die Produkt-Middleware
+(`core/server/middleware/04.product-gate.ts`), `isProductEnabled()`, der Betreiber-
+Katalog und `/api/platform/products` kennen nur die Registry. `market` fuhr so seit
+M1 (behoben `bb1f9102`, COMPLETE „BI1 I1"); drei Layer blieben ohne Plugin.
+
+**Live-Befund vor dem Bau** (`/api/platform/products`): pukalani.studio listete
+`admin, analytics, core, pages, system, themes` — **`domains` fehlte**, obwohl
+einkompiliert; admin.pukalani.app listete neun Produkte — **`runner` fehlte**.
+Folge: Notabschaltung über `app_config.products.<key>.enabled=false` traf
+`/api/site/domain/**` und `/api/runner/**` nie, beide fehlten im Katalog.
+`onboarding` (`tier: foundation`) war nur inkonsistent zu core/system/admin/themes.
+
+**Davids Entscheidung** (strukturierte Frage je Layer, alle drei Empfehlungen
+angenommen, daher kein DECISION-LOG-Eintrag): **Plugin nachrüsten** für `domains`,
+`runner` und `onboarding`. Ausnahmeliste bleibt leer.
+
+**Gebaut:**
+- Drei Plugins nach dem insights-Muster (`packages/{domains,runner,onboarding}/server/plugins/product-manifest.ts`), Kopfkommentar nennt die Wirkung und das Datum.
+- `scripts/check-manifests.mjs` Prüfung 6: jeder Layer mit `apiPrefixes` braucht das Plugin, und das Plugin muss wörtlich `import manifest from '../../product.manifest'` + `registerProductManifest(manifest)` enthalten (eine leere Plugin-Datei zählt nicht). `MANIFEST_PLUGIN_EXCEPTIONS` (Map Layer → Begründung, heute leer) — steht ein Layer dort UND hat ein Plugin, ist das ebenfalls rot („Ausnahme streichen").
+
+**Gegenproben** (Wächter rot, Plugin zurückgelegt): (A) Plugin entfernt ⇒ „fehlt —
+das Manifest deklariert apiPrefixes [/api/site/domain] …"; (B) Plugin ohne Aufruf ⇒
+„muss … enthalten"; (C) Ausnahme eingetragen trotz Plugin ⇒ „Ausnahme streichen";
+(D) Ausnahme + kein Plugin ⇒ grün. Gates: check:manifests, lint:scripts, -r lint,
+-r typecheck, -r test, check:i18n-keys, check:single-copy, check:bilanz.
+
+**Live-Beweis nach dem Deploy** (Build `b976197d` auf beiden Hosts, CI Test/Lint/
+Typecheck/E2E grün): `/api/platform/products` listet auf pukalani.studio jetzt
+`domains`, auf admin.pukalani.app `runner`; `GET /api/site/domain` und
+`GET /api/runner/runs` antworten weiter 401 (nicht 404) — kein Entitlement-Dokument
+hat die neu registrierten Produkte abgeschaltet.
+
+**Gelernt:** Der Wächter prüft die DATEI, deshalb prüft er auch den INHALT — ein
+leeres `defineNitroPlugin(() => {})` hätte die Regel formal erfüllt und nichts
+registriert. Zweitens: `/api/platform/products` ist der schnellste Live-Beweis,
+ob ein Layer wirklich registriert ist (fehlt der Key trotz Site-Manifest, fehlt das
+Plugin). Drittens (Arbeitsweise): `git checkout -- <datei>` als „Aufräumen" nach
+einer Gegenprobe wirft auch die eigene uncommittete Änderung weg — Gegenproben an
+einer Kopie im Scratchpad fahren oder die Änderung vorher als WIP committen.
+
+
+---
+
+## BI1 I3 — Brand Insights: die öffentlichen Seiten (2026-09-10)
+
+**Was gebaut wurde** (zwei Commits — Core eigens, wie die Git-Regel es verlangt; gebaut von
+einem Opus-Lauf nach Auftrag, geprüft und nachgeschärft im Hauptloop): Paket I3 aus
+docs/plans/BRAND-INSIGHTS.md §9.5 — Journal, Artikel, Themen, Markenprofil, Duell und Ranking
+sind öffentlich lesbar, ohne Konto, über eigene Leserouten mit Microcache.
+
+- **DER RIEGEL IST DIE HAUPTSACHE.** Das Gate aus §6 (Anwaltsantworten BI1-3/BI1-4) ist
+  GEBAUT, nicht umgangen: `pukalani.insights.publicFormats` steht im Layer auf `['article']`,
+  und ein gesperrtes Format antwortet an BEIDEN Türen 404 — Seite UND Leseroute, wie die
+  Datentür. Auch Sitemap und og-Bild lassen es weg. Die pure Regel
+  `readInsightsPublicFormats` ist fail-closed (kein Array bekannter Schlüssel ⇒ nichts
+  erlaubt). Davids Handgriff nach der Anwaltsantwort ist EINE Zeile, kein Code.
+- **Sieben Leserouten** `/api/insights/public/**` (Liste, Artikel, Marke, Duell, Rankings ×2,
+  Korrektur-POST), je 60 s Microcache; `?preview=1` hinter `insights.manage` und NIE im Cache.
+- **Was öffentlich wird, entscheidet die Route:** `state ∈ {published, updated}`, interne
+  Felder (`noteInternal`, `reviewedBy`, Modell-Stempel) gestrichen — und eine NICHT redigierte
+  Maschinenübersetzung verlässt den Server gar nicht (§3.2). Die Seite zeigt dann die
+  Grundfassung mit Hinweis, `noindex, follow`, und meldet die fehlende Sprache NICHT als
+  hreflang-Alternate.
+- **Sieben Seiten**; Filter, Sortierung und Ansicht stehen in der Adresse (teilbarer Link).
+  301 aus `slugHistory` und für die Duell-Gegenrichtung (Slug alphabetisch), 410 für die auf
+  Wunsch entfernte Marke — mit Hinweis und ohne ihre Inhalte.
+- **Korrekturweg** auf Profil, Duell und Ranking: EIN Formular, Honigtopf, 3/Std + 10/Tag je
+  Anschluss, Ziel muss öffentlich sein, Dublette 409, kein Double-Opt-in, Frist 12 Monate als
+  Datum in der Zeile.
+- **SEO:** JSON-LD Article + BreadcrumbList (+ ItemList am Ranking), og:image je Artikel,
+  Sitemap mit `lastmod` und nur den Sprachen, die es WIRKLICH gibt. Bewusst kein
+  `Organization` und kein `Review`/`AggregateRating` über fremde Marken. Nav-Punkt
+  „Brand Insights" (Eigenname, unübersetzt).
+- **Drei Core-Bausteine** (eigener Commit `4c45ca2a`): `markdownHeadings` + Prop
+  `headingAnchors` an `MarkdownContent` (Verzeichnis und Text rechnen DIESELBE Id an EINER
+  Stelle), `shared/seoAlternates.ts` + `useSeoHiddenLocales()` in `useLocaleSeoHead()`,
+  Minuten-Eimer `insights:correction`. 14 neue Fälle, je mit Gegenprobe.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree, Port 3020, Dev-Instanz `portfolio-g4ml`,
+Admin-Session per `users.createSession` als Cookie, Daten per Server-SDK gesät und danach
+wieder entfernt): Riegel zu ⇒ Marke/Duell/Rankings 404, Liste nur Artikel, Entwurf 404,
+`?preview=1` ohne Konto 401 und mit Admin-Cookie 200 + noindex + Vorschau-Marke · alter Slug ⇒
+echte 301 mit richtigem Ziel · Honigtopf schreibt KEINE Zeile (in der Tabelle gegengeprüft),
+Adresse kleingeschrieben gespeichert, Frist auf 2027 · Entwurf als Ziel und Marke bei
+gesperrtem Format je 404, `removal` ohne Grund und unbekanntes Feld je 400, 4. Korrektur in der
+Stunde 429 `rate_limited_hour` (der Minuten-Eimer des Core greift schon beim 4. in der Minute)
+· og-Bild 1200×630 PNG, für ein gesperrtes Format 404 · Sitemap bietet den Artikel NUR auf
+Deutsch an (hreflang `x-default,de`), ohne `/brands` und `/rankings` · die unredigierte
+englische Fassung steht nirgends in der Antwort. Riegel testweise offen ⇒ Profil mit
+Steckbrief/Zeichen/Historie/Beziehung/Quellen, Duell mit 301 der Gegenrichtung, Ranking mit
+ausgewiesener Lücke „auf Wunsch entfernt", entfernte Marke 410 ohne ihre Inhalte; danach
+zurückgesetzt. Browser: keine Hydration-Meldung, ein geteilter Link stellt Thema, Sortierung
+und Ansicht wieder her, die englische Fassung zeigt „This language has not been edited yet".
+Wächter: 249 Tests insights, 1637 core, 32 branding, Lint insights/core/branding/scripts,
+Typecheck branding exit 0, check:i18n-keys 310, check:manifests 26/9, check:bilanz,
+check:single-copy, check:doc-links.
+
+**Drei Befunde aus dem eigenen Klick-Beweis, alle vor dem Push behoben:** (a) `/rankings` war
+bei gesperrtem Format eine erreichbare, indexierbare Seite („Rankings", `index, follow`) — der
+Riegel hatte dort bewusst NICHT geschlossen, mit der Begründung „eine 404 in der Navigation
+wäre Davids 404-Audit"; die trägt nicht, denn bei gesperrtem Format steht die Adresse in keiner
+Navigation und in keiner Sitemap. (b) Ein Duell ohne Brand-Check antwortete 404, obwohl die
+Prüfregeln vor `review` keinen verlangen (`showsScore` fragt `brandRefs.some(ref => ref.checkId)`)
+— Sitemap, Journal-Karte und die 301 der Gegenrichtung zeigten damit auf einen toten Punkt. Die
+Statistik-Tafel entfällt jetzt (wie `score` am Profil seit dem Prototyp optional ist), Fakten,
+Einordnung und Quellen bleiben. (c) Auf JEDER Karte und im Artikel-Kopf stand der rohe
+Zeitstempel `2026-09-08T10:00:00.000+00:00` statt „8. Sept. 2026".
+
+**Gelernt:** (1) **Ein Prototyp ist eine Form, keine Datenprobe.** `insightsDay` war an
+Demo-Daten mit reinen Datums-Strings gebaut (`publishedAt: '2026-09-04'`); die echten Spalten
+sind Appwrite-`datetime` und liefern einen vollen Zeitstempel, den die Funktion als „ungültig"
+zurückgab — und ihr Ausweg „gib die Eingabe zurück" machte den Fehler zu etwas, das wie Absicht
+aussah. Der Editor hatte sich längst mit `.slice(0, 10)` an der Aufrufstelle beholfen: genau die
+Sorte Wissen, die an der zweiten Aufrufstelle fehlt. Normalisierung gehört IN die Funktion.
+(2) **Ein Riegel, der eine Adresse übrig lässt, ist keiner.** Die Liste eines gesperrten Formats
+darf nicht mit einer leeren Liste antworten — „diesen Bereich gibt es, er ist nur leer" ist eine
+Auskunft, und die Seite darüber wird indexiert. 404 an beiden Türen, wie die Datentür.
+(3) **Zwei Sicherungen für dieselbe Sache müssen dieselbe Frage stellen.** Die Prüfregeln vor
+`review` und die Leseroute waren sich über das Duell uneins; das Ergebnis war ein freigegebener
+Beitrag, den die Sitemap anbot und die Route mit 404 beantwortete. Wer eine Bedingung in die
+Leseroute schreibt, muss sie in der Redaktion durchsetzen — oder sie fallen lassen.
+(4) **Textsuche im HTML ist kein Render-Beweis:** der i18n-Katalog und der Nuxt-Payload stehen
+im Dokument, und Vue rendert Template-Kommentare mit aus. Dreimal hintereinander ein falsches
+„JA" gemessen; erst `<script>`-Blöcke UND Kommentare herausschneiden misst, was ein Mensch sieht.
+
+## BI1 Kanalliste-Nachtrag — Ogilvy und Harry Dry ersetzt (2026-09-10)
+
+**Anlass:** der offene Punkt aus COMPLETE „BI1 I4-Schärfung" — nach dem Alters-Deckel blieben
+zwei Kanäle in der Liste, die nichts mehr liefern. Das Inventar hat es scharf gemacht: im Lauf
+vom 2026-09-10 lieferten **Ogilvy** (letzter Upload 2024-12-02, 646 Tage) und **Marketing
+Examples / Harry Dry** (2024-07-20, 781 Tage) **null Zeilen** bei je einer Einheit Kosten pro
+Lauf — 173 Zeilen kamen aus 9 der 11 Kanäle. Beide waren zugleich der EINZIGE Kanal ihres
+Clusters (`brand-psychology` bzw. `brand-language`).
+
+**Davids Entscheidung (2026-09-10, gebündelt gefragt): ersetzen statt streichen.**
+- `brand-psychology`: Ogilvy → **Nudgestock** (UCBOzmOV9UHpTEYNr6NqOZ2g) — Ogilvys eigenes
+  Behavioural-Science-Festival (Rory Sutherland), also dieselbe Nische und dasselbe Haus.
+  Bewusst dünn und stoßweise: rund 3 Uploads je 180 Tage, der Schwung an Vorträgen kommt nach
+  dem Festival im Juni.
+- `brand-language`: Marketing Examples → **StoryBrand With Donald Miller**
+  (UC_RirP9QR49zw2HOZ95dKrA) — Messaging, Elevator Pitch, Tonalität; täglich aktiv.
+Verworfen: beide ersatzlos streichen (hätte zwei von sieben Clustern ohne eigenen Kanal
+gelassen) · Ogilvy Consulting (825 Tage) und Copyblogger (923 Tage), beide ebenso tot wie das,
+was sie ersetzen sollten · Marketing Week (6637 Tage). Begründungen im DECISION-LOG (2026-09-10).
+
+**Prüfweg ohne API-Schlüssel** (der Schlüssel liegt nur in der Prod-`.env`, und das soll so
+bleiben): Handle → `externalId` aus dem Kanal-HTML → `https://www.youtube.com/feeds/videos.xml
+?channel_id=UC…` liefert Titel UND jüngsten Upload. Damit ist die Pentagram-Lehre („Titel und
+jüngster Upload müssen passen, nicht nur die Id") zum ersten Mal maschinell prüfbar — und sie
+hat sofort gegriffen: **`@BusinessMadeSimple` löst auf einen Kanal namens „Cameron Belling"
+auf** und ist gar nicht erst in die Liste gekommen.
+
+**Beweise:** 202 Tests insights, Lint insights + branding, Typecheck branding, `check:i18n-keys`,
+`check:manifests`, `check:bilanz` — alle grün; vier CI-Checks auf `main` grün (Test, Lint,
+Typecheck, E2E). Deploy-Beweis `https://branding.supply/api/health` → `.build` = `d1c3da9a`.
+Danach der Lauf per Knopf auf `/dashboard/insights/radar` (1 von 3 der Stunde): Toast
+„Fertig: 11 Kanäle, 190 Videos, 190 gespeichert, 0 entfernt, 24 zu alt"; `GET /api/insights/radar`
+danach **196 Zeilen aus allen 11 Kanälen** — StoryBrand 20 Zeilen unter `brand-language`
+(„Messaging Not Working? Fix Your C-Suite Confusion", 2026-09-09), Nudgestock 3 Zeilen unter
+`brand-psychology` („Nudgestock 2026 - Livestream", 36 Tage, 42 von 100), Ogilvy und Marketing
+Examples weg. Kanalzahl bleibt 11, Quota-Schätzung bleibt 17 Einheiten je Lauf.
+
+**Gelernt:** (1) **Ein leerer RSS-Feed ist kein Beweis für „tot".** `videos.xml` lässt Kanäle
+ohne Langform-Uploads leer aussehen, während die Uploads-Playlist (die unser Sweep über
+`UU`+Rumpf liest) sehr wohl etwas hat — Copy Posse, April Dunford und Wynter kamen so als
+„inaktiv" heraus und wurden zu Unrecht aussortiert. Umgekehrt gilt der Beweis: ein Feed MIT
+Einträgen datiert den jüngsten Upload zuverlässig. (2) **Das Nachrüsten eines zweiten Prüfwegs
+per Scraping ist gescheitert** — die `/videos`- und `/playlist`-Seiten liefern per `curl` gar
+keine Video-Einträge (JS-gerendert bzw. Consent-Wand); die Methode gab auch bei einem KNOWN-GOOD
+Kanal null zurück. Ein Prüfweg, der beim Gegenbeispiel dasselbe sagt wie beim Befund, ist kein
+Prüfweg — das fällt nur auf, wenn man ihn gegen einen bekannt gesunden Fall laufen lässt.
+(3) Die Id-Regel `^UC[A-Za-z0-9_-]{22}$` erlaubt Unterstriche — bei `UC_RirP9QR49zw2HOZ95dKrA`
+lohnte der Blick, denn ein zu enges Muster hätte den Kanal STILL aus der Liste geworfen
+(`readInsightsRadarConfig` verwirft ohne Meldung). Vor dem Push gegen die echte Regel geprüft.
+(4) Der Werkzeug-Klick auf „Jetzt laufen lassen" hat diesmal gegriffen (zweimal zuvor verpuffte
+er) — der Beweis blieb trotzdem die Antwort der Route, nicht der Klick.
+
+## BW1 Solo-Inhaltsrunde — die Wizard-Oberfläche spricht anredefrei (2026-09-09)
+
+**Ausgangslage:** Die Katalog-FRAGEN tragen die Solo-Weiche seit `1ba268db`.
+Alles daneben sprach weiter „ihr/euch": eine Einzelperson las im selben Kapitel
+erst eine du-Frage und darunter „Tragt eure Farbe ein". Die Notiz in OPEN-ITEMS
+sprach von 254 Texten.
+
+**Inventur (Explore-Agent):** **407** Stellen, nicht 254 — die alte Zahl traf
+genau `packages/brand/i18n/locales/de.json` (255) und übersah die 85
+Marketing-Schlüssel in `apps/branding/i18n/` sowie 67 deutsche Strings im CODE
+(Auswahl-Fragen, Berater-Stimmen, die komplett hartcodierte `team.vue`).
+Nebenbefund, der Arbeit sparte: die Server-Prompts waren **schon erledigt**
+(`conversePrompt.ts` hat seit converse-13 `addressLines`, `georgePrompt.ts`
+`brandTeamVoiceLines`) — offen war dort genau eine Beispielzeile.
+
+**Davids Zuschnitt** (drei strukturierte Fragen, alle Empfehlungen angenommen,
+daher kein DECISION-LOG-Eintrag): (1) **nur Wizard** — Marketing bleibt „ihr"
+nach der Copy-Regel vom 2026-09-04, und technisch könnte es die Weiche gar nicht
+tragen: sie liest `profile.team`, das es auf öffentlichen Seiten nicht gibt;
+(2) **neutral wo möglich**, Weiche nur wo wirklich jemand angesprochen wird;
+(3) **Wizard-Code mitnehmen**.
+
+**Gebaut** (`9cab0bc8`):
+- **162 Texte anredefrei** — stepInfo, Hilfe-Blöcke, Design- und Kit-Kapitel, „Meine Brands", Dokument, Vorbilder. „warum es euch gibt" ⇒ „warum es diese Marke gibt".
+- **Die 20 Brand-Check-Kriterien ebenfalls neutral**, obwohl sie auch auf der ÖFFENTLICHEN Ergebnisseite stehen: derselbe Text an zwei Orten kann nicht zwei Anreden haben, und anredefrei ist in beiden richtig. Bewusster Nebeneffekt auf einer Marketing-Seite.
+- **11 Weichen-Paare** für Georges Kapitel-Einstiege und die Phasen-Intros der Berater, neue pure Regel `shared/brandTeamText.ts` (`teamTextKeyFor`) + Composable. Die Weiche ist je Schlüssel OPTIONAL: kein Paar ⇒ Basis-Schlüssel.
+- **Im Code:** 15 `deSolo` an den Auswahl-Verträgen, 4 Solo-Satzanfänge der Berater, die Rückfragen von Nika und Otto, acht Vokabular-Stellen neutral.
+- **`team` reist bis in die Prompts** (Generator + converse-Route setzen es, `advisorOpenersFor` und `brandChoiceFallbackQuestion` lesen es).
+- **Wächter** `tests/brandTeamText.test.ts`: kein Wizard-Text spricht Plural · jede Weiche trägt beide Fassungen in beiden Sprachen · keine Solo-Fassung sagt „ihr".
+
+**Beweise:** Gegenproben rot (eingebauter „ihr"-Text · halbe Weiche), Resolver
+gegen den echten Katalog zeigt du/ihr getrennt und den Rückfall bei Texten ohne
+Weiche, Dev-Server rendert ohne Konsolenfehler. Gates: -r lint, -r typecheck,
+-r test (3187 in brand nach dem Rebase auf BK1), check:i18n-keys,
+check:manifests, check:single-copy, check:bilanz. Nach der Runde stehen in
+`de.json` noch 90 Plural-Texte — alle in Marketing und Admin, also gewollt.
+**Offen: Davids Klick** durch ein Solo-Branding in der Werkstatt; lokal ging der
+Beweis nur bis vor den Login (kein Gast-Zugang, Zugangsdaten gibt der Agent nicht ein).
+
+**Gelernt:** Die Annahme „Englisch braucht die Weiche nicht, weil `you` beides
+ist" war fachlich richtig und strukturell falsch — `i18nCatalog.test.ts` verlangt
+für beide Sprachen denselben Schlüsselvorrat, und der Test hat es sofort gefangen.
+Die englischen Kinder tragen jetzt zweimal denselben Satz; das ist kein Versehen,
+sondern steht so im Kopf von `brandTeamText.ts`. **Zweite Lehre:** ein Wächter,
+der eine Anrede prüft, muss die dritte Person Singular ausnehmen — „die Produkte
+heissen nach ihr" und „danach steht hier ihr Score" sind kein „ihr" an den Leser.
+**Dritte:** typografische Ellipsen aus einem Kommentar können ein
+Zero-Width-Space mitbringen (`no-irregular-whitespace`); Typecheck und Tests
+sehen das nicht, nur Lint. **Vierte (Umgebung):** ein frischer Worktree startet
+`apps/branding` nicht — `@shikijs/engine-oniguruma` liegt im pnpm-Store, ist aber
+nicht auflösbar, und Nitro antwortet auf JEDER Seite 500. Ein Symlink in
+`node_modules` plus Neustart des Dev-Servers heilt es; das Repo bleibt unberührt.
+
+
+## Vorfall appwrite-prod — Platte voll durch ClickHouse-Diagnose-Logs (2026-09-28)
+
+**Auslöser:** UptimeRobot meldete `api.pukalani.app` als DOWN. `/v1/health/version`
+antwortete beim Nachmessen durchgehend 200 in 0,7 s — der Alarm war ein Timeout,
+kein 5xx (Traefik zeigt keine Fehlerantworten). Dahinter: Platte von
+`appwrite-prod` (75 GB) zu 100 % voll, Load ~10 auf 4 CPUs, Redis mit 73 % CPU.
+
+**Ursache:** Appwrite 2.0 brachte am 2026-09-08 ClickHouse als Pflicht-Container
+mit (Nutzungsstatistik der Console, vorher MariaDB). Die Stock-`docker-compose.yml`
+mountet für `clickhouse` KEINE Logger-Config, das Alpine-Image loggt auf Trace:
+~320 Zeilen/s in `system.text_log`, insgesamt **31 GB `system.*`-Tabellen in
+20 Tagen** (text_log 19,3 GB, trace_log 5,5 GB, query_log 1,9 GB,
+processors_profile_log, part_log, metric_log …) plus 1,8 GB Logdateien im
+Container. Nutzdaten (`appwrite.projects_usage_events`) nur 234 MB. Folge: Redis
+konnte seinen RDB-Snapshot nicht schreiben (`MISCONF … unable to persist to
+disk`) und lehnte ab 20:07 CEST JEDEN Schreibbefehl ab; die Worker drehten im
+Retry (`[Usage] Failed to publish usage message`), daher die Last. Gleiches Muster
+wie der Plausible-Vorfall vom 2026-08-04 (dort ClickHouse 24, andere Maschine).
+
+**Sofortmaßnahme (00:32 CEST):** Logdateien im Container geleert, dann alle
+`system.*_log`-Tabellen truncated — reine Diagnostik, kein Nutzdatenverlust.
+Platte 100 % ⇒ 55 %, `rdb_last_bgsave_status:ok`, keine MISCONF-Zeile mehr,
+Load 10 ⇒ 0,4.
+
+**Dauerfix (mit Davids Ja, 00:40 CEST):** `~/appwrite/patches/clickhouse-logging.xml`
+per `docker-compose.override.yml` nach `/etc/clickhouse-server/config.d/logging.xml`
+gemountet — Logger auf `warning` (100 M × 3), sämtliche `system.*_log`-Tabellen
+per `remove` abgeschaltet; `docker compose up -d clickhouse` (nur dieser
+Container, Usage-Ingest lief weiter: +232 Events in 60 s). Dazu
+`docker image prune` (10 verwaiste Images, 9,4 GB). Endstand **43 %**.
+Beweise: preprocessed config ohne text_log/trace_log/query_log, `<level>warning`,
+`system.*`-Parts nach 2 min unverändert 7 MB, Logdateien 2,8 K. Backup der
+Override: `docker-compose.override.yml.bak-2026-09-28`.
+
+**Gelernt:** `TRUNCATE` in ClickHouse braucht 1 MiB freien Platz — bei 0 Byte
+zuerst Logdateien leeren (`: > *.log`), sonst `NOT_ENOUGH_SPACE`. Ein
+Health-Endpunkt, der nur die Version liefert, sieht eine volle Platte nicht;
+der UptimeRobot-Alarm war trotzdem echt. Ein Appwrite-Major-Upgrade kann neue
+Container mitbringen, deren Standard-Config nicht für Dauerbetrieb taugt — nach
+jedem Upgrade `docker system df -v` lesen. Beim Prod-Sprung auf 2.2 (AW22) muss
+der `clickhouse`-Mount der Override mitkommen (Runbook ergänzt).
+
+## Vorfall appwrite-prod — TLS-Zertifikat von api.pukalani.app acht Tage abgelaufen (2026-10-24)
+
+**Entdeckt** beim Abschluss des ClickHouse-Vorfalls (Frage „ist das Ticket zu?"):
+`curl https://api.pukalani.app` scheiterte mit `certificate has expired`. Das
+Let's-Encrypt-Zertifikat war am **2026-10-16 11:45 UTC** abgelaufen; seitdem
+antworteten portfolio, platform, admin und branding auf `/api/health` mit
+`{"ok":false,"code":"INTERNAL_ERROR"}` — node-appwrite verweigert das abgelaufene
+Zertifikat, jede Server-Route stirbt. **Acht Tage Komplettausfall ohne Alarm.**
+
+**Ursache, zwei Glieder:** (1) Die planmäßige Erneuerung am 2026-09-17 00:00
+scheiterte an Let's Encrypt: `accountDoesNotExist — Account acct/3757026986 not
+found`. Das ACME-Konto lag nur in der Schreibschicht des Containers
+`appwrite-worker-certificates` (kein Volume) und war beim CA nicht mehr bekannt;
+warum, ist nicht feststellbar. (2) Appwrite setzt die Domain-Regel nach EINEM
+Fehlversuch auf `status: unverified` — und der Zertifikats-Worker überspringt
+jeden weiteren Auftrag für eine Regel, die nicht `verified` ist
+(`Certificates.php:295`). Die Maintenance plante zwar jede Nacht „1 certificate
+for renewal", der Worker warf es jede Nacht weg („skipped as the associated
+rule is … not in the expected state"). Dazu lief der Worker seit Wochen mit
+toter DB-Verbindung (`MySQL server has gone away`).
+
+**Behebung (05:05–05:10 UTC, ohne Neustart von Traefik oder API):** Sicherung
+von `/etc/letsencrypt` und der Regel-Zeile nach `~/backup/certs-2026-10-24/`;
+Regel per SQL zurück auf `verified` + Redis-Cache-Schlüssel der Regel gelöscht;
+`docker compose restart appwrite-worker-certificates` (frische DB-Verbindung);
+altes ACME-Kontoverzeichnis im Container entfernt, damit certbot neu registriert;
+dann Appwrites eigene Aufgabe `docker exec appwrite php app/cli.php ssl
+--domain=api.pukalani.app --skip-check=true`. Neues Zertifikat bis
+**2027-01-22**, neues ACME-Konto acct/3902972542, `renewDate` 2026-12-23,
+`attempts` 0, alle vier Apps wieder `ok:true`.
+
+**Gelernt:** Ein Health-Endpunkt mit `ok:false` ist nur so gut wie der Alarm
+dahinter — UptimeRobot hat acht Tage 500er nicht gemeldet oder die Mails kamen
+nicht an (⇒ MON1 in OPEN-ITEMS, braucht Davids Login). Appwrites
+Zertifikats-Pfad hat KEINEN zweiten Versuch: ein roter Lauf macht die Regel
+`unverified`, und ab da ist jede nächtliche Erneuerung ein stilles „skipped";
+nach jedem Appwrite-Upgrade und bei jedem Zertifikats-Alarm also
+`_console_rules.status` UND das Worker-Log lesen. Der Weg zurück ist
+Appwrites `ssl`-Task, nicht Hand-certbot. Beim 2.2-Sprung (AW22) wandert der
+Worker in `appwrite-worker` — der Befehl bleibt derselbe, das Log heißt dann
+anders.
+
+---
+
+## BI1 I5a — Brand Insights: Newsletter-Anmeldung mit Double-Opt-in (2026-10-24)
+
+**Was gebaut wurde** (drei Commits — Core eigens, wie die Git-Regel verlangt; gebaut von einem
+Opus-Lauf nach Auftrag, geprüft und nachgeschärft im Hauptloop): die SAMMEL-Hälfte von Paket I5
+aus docs/plans/BRAND-INSIGHTS.md §9.3a/§11 Frage 5. Der VERSAND ist I5b und bewusst nicht
+gebaut — eine Route ohne Aufrufer ist eine Zusage ohne Einlösung.
+
+- **Der Riegel ist gebaut, nicht abgewartet.** `pukalani.insights.newsletter.enabled`
+  (Layer-Default `false`) schliesst an BEIDEN Türen: kein Formular auf der Seite, und alle drei
+  Routen antworten 404 — mit dem NEUTRALEN Grund der übrigen öffentlichen Routen
+  (`post_not_found`), nicht mit „Newsletter aus". Die pure Regel ist fail-closed. Grund: die
+  Rechtstexte von branding.supply sind Entwurf (BS1 R2 wartet auf Davids Generator-Texte, R3 ist
+  der Anwaltstermin) — ohne Datenschutz-Abschnitt „Newsletter" wird keine Adresse erhoben.
+  Dieselbe Mechanik wie `publicFormats` bei den Markenprofilen, dieselbe Regel wie bei
+  Plausible R2c: erst Text, dann Schalter.
+- **Kein Takt (Davids Entscheidung).** Formular, Seite und Mail sagen „Wir schreiben, wenn ein
+  neues Stück erscheint" — nirgends „wöchentlich". Ein Test nagelt die verbotenen Wörter in
+  beiden Sprachen fest; der Wochentakt aus §3.3 bleibt Redaktionsziel statt Zusage an Fremde.
+- **Tabelle `insights_subscribers` (Migration insights-006** — 005 hat während des Laufs die
+  Kanalliste der Nachbarsitzung belegt), server-only, Spalten wörtlich aus §9.3a plus
+  `retentionAt` als `datetime`. `uq_email_lower` ist die Wahrheit gegen Dubletten; der
+  Unique-Konflikt wird abgefangen statt vorher gefragt. **Die Warteliste wird NICHT
+  weiterbenutzt** — eine Zustimmung gilt nur für das, wofür sie gegeben wurde.
+- **Drei Routen:** anmelden (Riegel → Honigtopf → Drossel 3/Std + 10/Tag → Zeile → Mail;
+  schlägt die Mail fehl, 503 und die Zeile bleibt unbestätigt stehen), bestätigen (24-h-Frist,
+  löscht den Token-Hash), abmelden (nur Token, idempotent). Die Anmelde-Antwort ist IMMER
+  `{ ok: true }`: neue, bekannte unbestätigte, bekannte BESTÄTIGTE Adresse und zugeschnappter
+  Honigtopf laufen in dieselbe Antwort — jede Unterscheidung wäre die Auskunft, wer auf der
+  Liste steht.
+- **Der Abmelde-Token ist abgeleitet statt gespeichert** (HMAC über die Zeilen-Id, konstante
+  Zeit, Geheimnis wie bei `insightsIpHash`): der Bestätigungs-Hash wird beim Bestätigen
+  gelöscht, und eine Spalte mit einem rohen Geheimnis wäre ein lesbares Passwort.
+- **Fristen-Sweep, zwei Regeln:** nie bestätigt und Token-Frist 30 Tage her ⇒ die GANZE Zeile
+  fällt (für diese Adresse gab es nie eine Einwilligung); abgemeldet und 12 Monate um ⇒ die
+  personenbezogenen Felder werden GELEERT, die Zeile bleibt als Nachweis. `retentionAt` geht
+  mit auf null (die I1-Lehre), und `emailLower` bekommt `removed:<rowId>` statt `''`, weil die
+  Spalte den Unique-Index trägt.
+- **Core (eigener Commit):** Minuten-Eimer `insights:newsletter` (3/min) neben
+  `brand:correction`. Bestätigen und Abmelden bekommen bewusst keinen — beide tragen einen
+  Token, und ein Deckel träfe den Menschen, der zweimal auf denselben Link klickt.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree auf 3030, LOKALE branding-Instanz auf Appwrite
+2.6.1, Migration dort gefahren, **Mailpit** als SMTP): Riegel ZU ⇒ alle drei Routen 404 mit
+neutralem Grund, beide Seiten 404, Formular nicht im gerenderten Baum. Riegel testweise AUF ⇒
+Anmeldung mit `Leser@Example.TEST` ⇒ 200, **eine** Mail in Mailpit an `leser@example.test`
+(kleingeschrieben gespeichert), Betreff „Bitte bestätige deinen Newsletter", Text mit dem
+Versprechen-Satz, **keinem** Takt-Wort, Bestätigungs- UND Abmelde-Link; Bestätigen im BROWSER ⇒
+Seite „Eingetragen", Zeile trägt `confirmedAt` und hat Token-Hash und Frist geleert; zweite
+Anmeldung derselben bestätigten Adresse ⇒ 200 und **keine** zweite Mail; Honigtopf ⇒ 200, keine
+Zeile, keine Mail; Abmelden mit dem Token aus der Mail ⇒ `unsubscribedAt` + `retentionAt` auf
++12 Monate, zweites Abmelden idempotent 200, **gefälschter Token 200 ohne jede Änderung**
+(bewusst keine Fehlermeldung für jemanden, der aussteigen will); vier Anmeldungen von einem
+Anschluss ⇒ die vierte 429 `rate_limited_hour`. Danach Riegel zurück auf `false` und erneut
+geprüft, Testzeilen und Postfach geräumt, `.env` gelöscht.
+
+**Prod (2026-10-25, Davids ausdrückliches Ja):** Migration `insights-006` gegen `branding` auf
+api.pukalani.app gefahren — `insights_subscribers` angelegt (10 Spalten, 3 Indizes, server-only,
+0 Zeilen), `insights-005` der Nachbarsitzung stand da bereits. `pnpm ops:schema-parity` branding
+41/41, alle vier Instanzen grün. Live-Build `ecb5833f`; der Riegel bleibt zu, die drei Routen
+antworten weiter 404, obwohl die Tabelle jetzt steht. **Der Runner muss direkt über `node
+--experimental-strip-types scripts/migrate.mjs` laufen: pnpm 10 kennt ein eigenes `--env-file`
+und schluckt die Option, auch hinter `--`.**
+
+**Wächter nach dem Merge mit der Nachbarsitzung:** insights 362 Tests · core 1652 · branding 32
+· Lint insights/core/branding/scripts (core eine Alt-Warnung in `ContentClamp.vue`) · typecheck
+branding exit 0 · check:i18n-keys 311 · check:manifests 26/9 · check:bilanz · check:single-copy
+· check:doc-links.
+
+**Gelernt:** (1) **Ein Konflikt an einem Listen-ENDE ist additiv — aber die Auflösung darf die
+Klammer nicht fressen.** Vier Dateien kollidierten, weil die Nachbarsitzung (`insights_channels`,
+005) und dieses Paket (`insights_subscribers`, 006) an denselben Listen-Enden anbauen. Ein
+Skript, das „beide Seiten behalten" mechanisch anwendet, hat in `insightsApi.ts` die schliessende
+Klammer des letzten fremden Interfaces mit verschluckt: Tests und Typecheck liefen weiter, nur
+ESLint meldete `Parsing error`. Nach einer mechanischen Konfliktauflösung gehört der LINT-Lauf
+dazu, nicht nur die Tests. (2) **Eine Migrationsnummer ist erst beim Schreiben vergeben:**
+`origin/main` zog während des Bau-Laufs 005 unter dem Paket weg. Die Nummer gegen `origin/main`
+zu prüfen ist Pflicht — am Anfang UND vor dem Commit. (3) **Der erste Aufruf einer neuen
+API-Route im Dev-Server ist kein Beweis:** die Bestätigungsseite stand drei Sekunden lang auf
+„Wir prüfen den Link …", weil Nitro die Route erst bündelte — die Zeile in der Datenbank war da.
+Wer zu früh misst, sieht einen Fehler, den es nicht gibt (die Umkehrung der I4-Lehre, wo zu
+frühes Messen einen Zustand zeigte, den es nie gab). (4) **Mailpit ist der einzige ehrliche
+Beweis für einen Double-Opt-in:** „200 zurückbekommen" sagt nichts darüber, ob die Mail den
+richtigen Link, die richtige Sprache und den richtigen Satz trägt — und „keine zweite Mail" ist
+überhaupt nur am Postfach zu sehen.
+
+---
+
+## BI1 I5b — Brand Insights: den Newsletter versenden (2026-10-27)
+
+**Was gebaut wurde** (vier Commits — Core eigens; gebaut von einem Opus-Lauf nach Auftrag,
+geprüft und in einem Punkt korrigiert im Hauptloop): die VERSAND-Hälfte von Paket I5. Damit
+ist I5 komplett.
+
+- **Ein Beitrag ist eine Ausgabe (Davids Entscheidung 2026-10-27).** Kein zweiter Editor, keine
+  freie Ausgabe: am freigegebenen Beitrag steht ein Knopf, Betreff und Text entstehen aus Titel,
+  Vorspann und Adresse. Begründung: ein zweiter Text, der dasselbe sagt, veraltet getrennt vom
+  ersten — und das Versprechen lautet wörtlich „wir schreiben, wenn ein neues Stück erscheint".
+- **Nur von Hand.** Kein Auslöser an der Freigabe, kein Sweep. §3.3 sagt es („ohne Davids
+  Zeichen erscheint auch in einer Woche nichts"), und ein Versand an echte Menschen, den ein
+  Zustandswechsel auslöst, ist der Unfall, den niemand zurückholt. Der Knopf fragt und nennt
+  dabei die Zahl — beim Fortsetzen die AUSSTEHENDEN, nicht die gesamten.
+- **Stapelweise und fortsetzbar**, und das ist der Kern des Pakets: `insights_sends`
+  (Migration insights-008, `uq_post_id` unique) hält einen Cursor auf die zuletzt bediente
+  Zeilen-Id; fortgesetzt wird dahinter. Eine kaputte Adresse zählt als `failed` und hält nichts
+  auf; ein fehlender Mailer bricht ab, ohne den Cursor vorzurücken — dann stimmt etwas am
+  Server, nicht an einer Adresse.
+- **Versendet wird nur, was draussen eine Seite hat:** nicht nur `published`/`updated`, sondern
+  auch der Format-Riegel und das Markenprofil ohne Marken-Zeile ⇒ `no_public_address`. Ohne das
+  führte eine Ausgabe über ein gesperrtes Duell fünfhundert Klicks in ein 404.
+- **Core (eigener Commit):** `sendMail()` reicht Kopfzeilen durch — gebraucht für
+  `List-Unsubscribe` je Empfänger. **Kein** One-Click nach RFC 8058: das verlangt einen
+  Endpunkt, der ein form-kodiertes POST ohne Token im Körper verträgt; eine Zusage, die der
+  Server nicht einlöst, wäre schlechter als keine.
+- **Reiner Text**, wie jede Mail dieses Repos. Eine HTML-Vorlage wäre eine zweite Darstellung
+  desselben Inhalts samt Bildpfaden und Dark-Mode-Fragen — ein eigenes Vorhaben.
+
+**Klick-Beweis** (Dev-Server aus dem Worktree auf 3030, lokale Dev-Instanz, **Mailpit**,
+Admin-Session per `users.createSession`): 63 Abonnenten gesät, davon drei, die nichts bekommen
+dürfen (nie bestätigt · abgemeldet · vom Sweep geleert). Die Zustands-Route zählte **60**, nicht
+63. Stapel 1: 50 verschickt, 10 offen. Stapel 2: 10 verschickt, fertig. Im Postfach **60 Mails
+an 60 verschiedene Adressen, keine einzige doppelt** — damit ist der Cursor-Pfad
+(`Query.greaterThan('$id', …)` + `orderAsc('$id')`) gegen echtes Appwrite 2.6.1 bewiesen, was
+kein Unit-Test leisten kann. 30 Betreffzeilen deutsch, 30 englisch (Sprache des EMPFÄNGERS).
+Die drei Ausgeschlossenen bekamen nichts. Der dritte Klick auf denselben Beitrag: **409
+`already_sent`**, Postfach blieb bei 60. Im Rohtext einer Mail steht `List-Unsubscribe` mit dem
+Token DIESES Empfängers; zwei Mails tragen verschiedene Token. Der Abmelde-Link aus einer echten
+Newsletter-Mail wirkt (200). Riegel zu ⇒ Versand-Route 404. Danach Riegel zurück, Zeilen und
+Postfach geräumt, `.env` gelöscht.
+
+**Ein Befund aus dem Klick-Beweis — und Davids Entscheidung dazu.** Mit EINEM Einleitungs-Feld
+stand der deutsche Satz auch über den englischen Mails, während der Rest englisch war. Das ist
+dieselbe Wunde, die §3.2 auf der Seite vermeidet. David hat **zwei Felder** gewählt (`introDe`,
+`introEn`): jeder bekommt seine Einleitung ODER KEINE, nie die der anderen Sprache — und die
+Einleitung folgt der FASSUNG, die wirklich rausgeht, nicht der angeforderten. Migration 008
+bekam dafür zwei Spalten statt einer; sie wurde VOR ihrem ersten Prod-Lauf geändert, deshalb
+keine 009 hinterher. Nachgemessen am Postfach: nur `introDe` gefüllt ⇒ zwei deutsche Leser
+sehen den Satz, zwei englische bekommen eine saubere englische Mail ohne ihn.
+
+**In Betrieb (2026-10-27):** Prod-Migration `insights-008` mit Davids Ja gegen die Instanz
+`branding` gefahren (zentraler Runner mit `--app branding`; der Lauf zog die 005/006/007 der
+Nachbar-Sitzungen idempotent mit, alles „existiert bereits"). Nachgemessen am Projekt: Tabelle
+`insights_sends` server-only (`permissions: []`, `rowSecurity: false`), alle zwölf Spalten und
+der Unique-Index `uq_post_id` auf `available`, 0 Zeilen. `pnpm ops:schema-parity` danach grün
+auf allen vier ausgerollten Instanzen (branding 43/43), Spalten-Parität deckungsgleich. Der
+Riegel bleibt zu — es kann also nichts rausgehen, bevor die Config-Zeile fällt.
+
+**Wächter:** insights 444 Tests · core 1710 · branding 32 · Lint insights/branding/scripts
+(core eine Alt-Warnung) · typecheck branding exit 0 · check:i18n-keys 312 · check:manifests 26/9
+· check:bilanz · check:single-copy · check:doc-links.
+
+**Gelernt:** (1) **Ein Stapel-Versand ist erst bewiesen, wenn er einen Stapel ÜBERSCHREITET.**
+Mit 50 Empfängern wäre jeder Test grün gewesen, ohne dass der Cursor je angefasst wird — genau
+der Pfad, an dem ein Fehler Menschen doppelt anschreibt. Die Zahl der Testdaten gehört zur
+Testidee, nicht zum Zufall. (2) **Zweisprachigkeit endet nicht an der Seite.** Der Beitrag ist
+zweisprachig, die Mail folgt dem Empfänger — ein einzelnes freies Textfeld daneben bricht die
+Regel still, und zwar nur bei der Hälfte der Leser, also genau dort, wo man es beim Testen mit
+sich selbst nie sieht. (3) **Mailpits JSON-Feld `Headers` ist nicht die Wahrheit:** die
+`List-Unsubscribe`-Zeile fehlte dort und stand trotzdem im Umschlag — der Beweis für eine
+Kopfzeile ist `/api/v1/message/<id>/raw`, nicht die aufbereitete Ansicht.
+
+---
+
+## MON1 — Wächter gegen stille Prod-Ausfälle: Erreichbarkeit, Mail-Missbrauch und ein Alarmweg, der geprobt ist (2026-10-28)
+
+**Ausgangslage:** zwei stille Vorfälle im Oktober. Das Zertifikat von
+`api.pukalani.app` war vom 2026-10-16 bis 2026-10-24 abgelaufen, alle Apps
+antworteten acht Tage `ok:false` — kein Alarm (Eintrag „Vorfall appwrite-prod —
+TLS-Zertifikat", 2026-10-24). Danach missbrauchte ein Angreifer die
+Registrierung als Mail-Relais, bemerkt nur über Resends eigene Limit-Mail
+(Eintrag „Resend-Spam", 2026-10-27). Auftrag: kein Prod-Ausfall bleibt mehr
+acht Tage still.
+
+**Befund, der die Aufgabe umgedreht hat:** `api.pukalani.app` stand SEIT DEM
+ERSTEN TAG (2026-07-26) im TLS-Wächter, Schwelle 14 Tage. Der Wächter hat den
+Vorfall also GESEHEN: `gh run list` zeigt vom 2026-10-05 („läuft in 11 Tagen
+ab") bis zum 2026-10-24 **jeden Lauf von `production-watch.yml` rot — rund
+900 Stück, alle 30 Minuten**, dazu der TLS-Schritt am Ende jedes Deploys.
+Niemand hat es bemerkt. Die Lücke war nie der Wächter, sondern der Alarmweg:
+ein roter Lauf in GitHub Actions ist nur eine Farbe, solange die
+Benachrichtigung niemanden erreicht.
+
+**Gebaut (Branch `claude/mystifying-torvalds-833071`):**
+1. `scripts/ops/verify-health.mjs` — alle 30 min im Job `tls`: jeder
+   Produktions-Host muss `200` + `ok:true` liefern (Appwrite: `/v1/health/
+   version` mit `version`; NIE `doctor`, der schickt SMTP-Testmails). Ein
+   zweiter Versuch nach 15 s filtert Schluckauf. `PUKALANI_HEALTH_DRILL=1`
+   macht den Lauf sicher rot (Probealarm), `PUKALANI_HEALTH_PROBE_URL`
+   prüft eine beliebige URL mit (Beweis-Haken).
+2. `scripts/ops/verify-mail-breaker.mjs` — täglich im Job `server`: Blick 1
+   zählt über ssh die Notbremsen-Zeile `auth.mail_route_breaker` in den
+   pm2-Fehlerlogs der letzten 25 h (nur die Event-Zeile verlässt den Server);
+   Blick 2 zählt bei Resend selbst (`GET /emails`, ≥ 80 in 24 h ⇒ rot, also
+   VOR dem 100er-Limit), sobald `PRODUCTION_WATCH_RESEND_KEY` gesetzt ist —
+   ohne Secret sichtbar übersprungen und grün.
+3. Job `alarm` in `.github/workflows/production-watch.yml` — läuft nach jedem
+   Wächter-Lauf: rot ⇒ EIN Issue mit Label `produktions-alarm` (alle 12 h ein
+   Lebenszeichen-Kommentar), grün ⇒ „Entwarnung" + schließen. Dazu Mail bei
+   jedem Wechsel über Resend (Secret + Variable) und ein Heartbeat-Ping bei
+   grün (Secret) — beide ohne Einrichtung als gelbe Warnung sichtbar.
+   `workflow_dispatch` mit `alarm_drill` = Probealarm.
+4. Runbook `docs/runbooks/PRODUKTIONS-ALARM.md` (Wächter-Tabelle, Alarmweg,
+   Probealarm, Davids Klickliste, „Wenn ein Alarm kommt"); Regeln in
+   `.claude/rules/hosts-ops.md`; Hinweis im TLS-Wächter für den Appwrite-Weg.
+
+**Beweis:** (1) Lokal: `verify-health.mjs` grün auf allen 10 Hosts (Appwrite
+2.6.2, Build 188a5b4e); mit Drill Exit 1 (`probealarm.invalid: ENOTFOUND`);
+gegen einen lokalen Wegwerf-HTTPS-Server mit `{"ok":false,"code":
+"INTERNAL_ERROR"}` Exit 1 mit genau dieser Meldung. `verify-mail-breaker.mjs
+--ssh --strict` grün (0 Notbremsen auf app-prod); mit einem Muster, das im Log
+vorkommt (`--pattern community.seo_read_failed --hours 999`) Exit 1.
+(2) **CI, end-to-end:** Probealarm-Lauf 40649844704 ⇒ Job `tls` rot, Job
+`alarm` öffnet **Issue #57** „🔴 Produktions-Alarm (Probealarm)"; Lauf
+40649998721 ohne Haken ⇒ alles grün, Issue #57 bekommt „✅ Entwarnung" und ist
+geschlossen; Mail- und Heartbeat-Schritt melden als Warnung „nicht
+eingerichtet". `pnpm lint:scripts` und `pnpm check:doc-links` grün.
+
+**Was bei David bleibt (OPEN-ITEMS MON2, nur Klicks):** GitHub-
+Benachrichtigungen für Actions + Issues prüfen (das ist die Lücke der 900
+Läufe), Resend-Schlüssel + Mail-Adresse als Secret/Variable, UptimeRobot
+Keyword-Monitore `"ok":true`, SSL-Alarm auf `api`, Heartbeat-URL. Klickliste
+im Runbook, § 3.
+
+**Gelernt (drei Stück):** (1) **Ein roter Lauf ist nur eine Farbe.** Vor dem
+Bauen eines Wächters die Lauf-Historie des bestehenden lesen (`gh run list
+--created`): der Wächter war da, rot, 19 Tage lang. Ein Wächter braucht einen
+Alarmweg, und der Alarmweg braucht einen ZUSTAND (offenes Issue), der nicht
+in 48 Mails am Tag untergeht. (2) **Ein Alarmweg, der nie geprobt wurde, ist
+keiner — und der erste Probealarm fand prompt den Fehler:** bei leerer
+Issue-Liste gab jq `null null` zurück, der Schritt nahm den Zweig „weiterhin
+rot", rechnete mit `date null` in die Wand — und der Job war trotzdem GRÜN
+(`set -u` ohne `-e`, Arithmetik-Fehler ohne Abbruch). Alarm-Logik läuft
+seither unter `set -euo pipefail`, und Mail/Heartbeat prüfen auf explizit
+gesetzte Ausgaben, damit ein abgebrochener Schritt nie wie „grün" aussieht.
+Der Probealarm gehört monatlich und nach JEDER Workflow-Änderung gefahren.
+(3) **Uptime ≠ Gesundheit.** UptimeRobot sah einen antwortenden Host; die
+Aussage `ok:false` dahinter sieht nur, wer den Rumpf liest — deshalb
+Keyword-Monitore (David) UND der eigene Health-Blick.
+
+## BI1 I6 Stufe 1 — Brand Insights: der Launch-Inhalt, vier Beispiel-Beiträge als Seed (2026-10-28)
+
+**Was gebaut wurde** (Paket I6 aus docs/plans/BRAND-INSIGHTS.md §9.8/§9.9, Stufe 1 — gebaut von
+einem Opus-Lauf nach Auftrag, geprüft im Hauptloop): ein wiederholbares Seed-Skript
+`packages/insights/scripts/seed-launch.mjs` (`pnpm --filter @pukalani/insights seed:launch`,
+`--dry-run`, `--only <slug>`) mit den Inhalten als reinen Daten unter
+`packages/insights/scripts/launch/` und der puren Hälfte `packages/insights/scripts/launch-check.mjs`
+(Inhalt → Zeile, Vorab-Prüfung ohne Datenbank, von Seed UND Test benutzt).
+
+- **Vier Stücke, einer je Format, als Entwurf in beiden Sprachen** (de Grundfassung, en übersetzt,
+  `translationReviewed: false`): Markenprofil **Nike** (volle Marken-Zeile: drei Zeichen, sieben
+  Historien-Zeilen, Beziehung zu adidas, elf Belege — plus der `profile`-Beitrag `nike`), Duell
+  **adidas vs. Nike** (Slug alphabetisch `adidas-vs-nike`, sechs Faktenzeilen mit Beleg, 13 Quellen),
+  Artikel **„IKEA: Wie ein Möbelhaus zur Weltmarke wurde"** (990 Wörter, acht Kapitel, 24 Belege,
+  verweist die IKEA-Zeile — der Beweis, dass Profil und Artikel zusammenspielen), Ranking **„Die zehn
+  Marken mit dem stärksten Auftritt"** (Ausgabe 1, Slug `staerkster-auftritt-ausgabe-1`, vier der
+  zehn Plätze: Nike, Apple, Anthropic, The Barn; Methodik-Zeile). Dazu **sechs Marken-Zeilen**
+  (nike voll; adidas, ikea, apple, anthropic, the-barn schlank; `libraryKey` nur für die vier
+  handgeprüften Bibliotheks-Einträge).
+- **Idempotent über den Slug:** fehlt ⇒ anlegen; `draft` ⇒ Inhalt aktualisieren, Felder von Server
+  und Redaktion (Zustand, Freigabe-Stempel, Übersetzungs-Herkunft, `translationReviewed`, Brief,
+  Slug-Historie) bleiben; `review`/`published`/`updated` bzw. Marke `published`/`removed` ⇒ nicht
+  angefasst, nur gemeldet. Nichts ändert sich ⇒ nichts wird geschrieben (`= unverändert`). Geplant
+  und geprüft wird ALLES, bevor die erste Zeile entsteht.
+- **Ranking-Scores nie von Hand:** der Seed liest je Marke die jüngste nicht ausgeblendete Zeile aus
+  `brand_checks` über `brandCheckUrlKey(homepage)` (wie `findBrandCheckForUrl`), reiht nach Score und
+  schreibt `checkId`; fehlt ein Check ⇒ Score 0, Warnung und Vermerk in `noteInternal`. Lokal fehlen
+  alle vier — auf Prod gehört ein Brand-Check je Homepage VOR den Seed-Lauf.
+- **Quellen nur, was der echte Prüfer liest** (User-Agent PukalaniMarketBot, robots/TDM): nike.com,
+  about.nike.com, ikea.com (global/us/de), inter.ikea.com, apple.com, anthropic.com, thebarn.de und
+  Wikipedia (de/en, mit CC-BY-SA-Lizenz-Link). **Nicht lesbar:** alle adidas-Sites (Timeout) und
+  about.ikea.com — adidas ist deshalb ausschliesslich über Wikipedia belegt.
+- **Test** `packages/insights/tests/launchContent.test.ts` (22 Fälle): Schemas, die sechs Prüfregeln
+  ohne Abruf, Zitatschranke, Lizenzpflicht, beide Sprachen, Wir-Stimme ohne Autor, Duell-Slug,
+  Methodik-Link, Katalogwerte, Gegenprobe des Namensfilters.
+
+**Beweise (lokal, Dev-Projekt `portfolio-g4ml` aus dem Worktree, Dev-Server :3010):** Seed-Lauf 1 ⇒
+10× angelegt, Lauf 2 ⇒ 10× unverändert, nach einer Inhaltsänderung nur `↷ Marke nike aktualisiert`;
+ein Beitrag auf `review` gesetzt ⇒ `--only` meldet `übersprungen (state=review)`. Alle vier Beiträge
+bestehen das volle Server-Gate (`POST …/state {to:'review'}` ⇒ `changed: true, issues: []`, alle
+Belege abgerufen und wörtlich gefunden) und stehen danach wieder auf `draft`. Dashboard-Liste zeigt die
+vier Entwürfe; die Vorschau (`?preview=1`) rendert alle vier Formate — für Profil, Duell und Ranking
+mit einem UNCOMMITTETEN lokalen Override von `publicFormats` (zurückgesetzt), weil die Seiten den
+Riegel auch in der Vorschau anwenden. Wächter: Lint insights, 496 Tests, Typecheck branding,
+check:doc-links. Prod unberührt.
+
+**Zwei Befunde fürs Folgepaket (kein Gate):** (1) Die Duell-Vorschau antwortet 404, solange die beiden
+Marken-Zeilen `draft` sind (die Route verlangt `published` auch mit `?preview=1`) — David muss die
+Marken vor dem Blick aufs Duell veröffentlichen, oder die Vorschau wird gelockert. (2) Der
+Namensfilter vergleicht auch OHNE Leerzeichen: „von IKEA" wird `vonikea` (enthält `nike`), „Nike as"
+wird `nikeas` (enthält `ikea`) — die Texte sind darum herum geschrieben, der Test hält es fest; der
+Filter selbst gehört nachgebessert, sobald Stufe 2 mehr Marken nebeneinander nennt.
+
+**Gelernt:** (1) Ein Beleg-Riegel gegen lebende Websites entscheidet, WELCHE Quellen überhaupt
+infrage kommen — erst probieren, dann schreiben: das Anthropic-Zitat der Bibliothek vom 2026-09-06
+stand sieben Wochen später nicht mehr auf der Seite, und keine adidas-Site liess sich lesen. (2)
+Wikipedia-Zitate tragen die Spuren der Text-Extraktion (`" Just Do It "`, `IKEA- Katalog`): wörtlich
+heisst wörtlich wie der Prüfer liest, nicht wie es schön aussähe. (3) Ein Seed, der Scores von Hand
+setzte, wäre eine zweite Skala neben dem Produkt — die ehrliche Form ist Score 0 mit Vermerk, bis der
+Brand-Check gelaufen ist. (4) Die Marken-Belege prüft das Gate NICHT (nur die des Beitrags) — sie sind
+nur lokal gegen dieselbe Extraktion geprüft.

@@ -17,6 +17,7 @@ const routes = [
 const demo = [
   { to: '/', label: 'Klickdummy: Brandings' },
   { to: '/brand/demo/werte', label: 'Klickdummy: Werkstatt' },
+  { to: '/brand/demo/gespraech', label: 'Klickdummy: Werkstatt „Gespräch als Bühne" (Revision 2026-09-02)' },
 ]
 </script>
 

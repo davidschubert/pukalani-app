@@ -313,13 +313,13 @@ const HIDE_LG = { td: 'hidden lg:table-cell', th: 'hidden lg:table-cell' }
 const HIDE_MD = { td: 'hidden md:table-cell', th: 'hidden md:table-cell' }
 
 const columns = computed<TableColumn<ModeratedComment>[]>(() => [
-  { id: 'select', header: () => '' },
+  { id: 'select', header: srOnlyHeader(() => t('ui.table.select')) },
   { accessorKey: 'authorName', header: () => t('admin.moderation.col.author') },
   { accessorKey: 'content', header: () => t('admin.moderation.col.comment') },
   { id: 'target', header: () => t('admin.moderation.col.target'), meta: { class: HIDE_LG } },
   { accessorKey: 'status', header: () => t('admin.moderation.col.status') },
   { accessorKey: '$createdAt', header: () => t('admin.moderation.col.date'), id: 'createdAt', meta: { class: HIDE_MD } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 // Die per Deeplink angesprungene Zeile hervorheben — dieselbe Mechanik wie in

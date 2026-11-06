@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, resolveComponent, type VNodeChild } from 'vue'
-import { parseMarkdown, type BlockNode, type InlineNode } from '../../shared/markdown'
+import { markdownHeadings, parseMarkdown, type BlockNode, type InlineNode } from '../../shared/markdown'
 import { classifyContentLink, splitContentLinks, type ContentLink } from '../../shared/contentLinks'
 import { splitMentions } from '../../shared/mentions'
 
@@ -49,7 +49,31 @@ import { splitMentions } from '../../shared/mentions'
  * `shared/contentLinks.ts`). Weggelassen heisst: keine Verlinkung, kein
  * Verhalten ändert sich für die bestehenden Aufrufer.
  */
-const props = defineProps<{ source: string, mentions?: string[], links?: ContentLink[] }>()
+/**
+ * SPRUNGMARKEN AN DEN ÜBERSCHRIFTEN (`headingAnchors`, BI1 I3 — Plan
+ * docs/plans/BRAND-INSIGHTS.md §9.5).
+ *
+ * Aus ist der Default und bleibt es: die sieben bestehenden Aufrufer rendern
+ * user-generierte Beiträge, und eine Id je Überschrift wäre dort ein
+ * Anker-Namensraum, den niemand vergeben hat (mehrere Beiträge auf EINER
+ * Feed-Seite ergäben doppelte Ids im selben Dokument). Wo ein Text die GANZE
+ * Seite ist — ein Insights-Artikel —, ist genau das erwünscht.
+ *
+ * Die Ids kommen aus `markdownHeadings(source)` und werden NICHT hier noch
+ * einmal gerechnet: das Inhaltsverzeichnis liest dieselbe Liste, und zwei
+ * Rechnungen wären zwei Wahrheiten über dasselbe Sprungziel.
+ */
+const props = defineProps<{
+  source: string
+  mentions?: string[]
+  links?: ContentLink[]
+  headingAnchors?: boolean
+}>()
+
+/** Leer, solange niemand Sprungmarken will — dann kostet der Parser-Lauf nichts. */
+const anchorIds = computed(() => (props.headingAnchors
+  ? markdownHeadings(props.source).map(heading => heading.id)
+  : []))
 
 const knownMentions = computed(() => (props.mentions?.length ? new Set(props.mentions) : undefined))
 
@@ -122,6 +146,14 @@ function renderText(text: string): VNodeChild {
   })
 }
 
+/**
+ * Zähler der Überschriften INNERHALB EINES Renderdurchlaufs — er wird in
+ * `Content` vor dem Mapping zurückgesetzt. Er muss ausserhalb von
+ * `renderBlock` stehen, weil die Funktion je Block einmal läuft; ein Zähler
+ * darin zählte nie weiter.
+ */
+let headingIndex = 0
+
 function renderBlock(block: BlockNode): VNodeChild {
   switch (block.type) {
     case 'codeblock':
@@ -133,14 +165,24 @@ function renderBlock(block: BlockNode): VNodeChild {
       return h('blockquote', { class: 'border-s-2 border-default ps-3 text-muted whitespace-pre-line' }, renderInline(block.children))
     case 'heading':
       return h(block.level === 2 ? 'h2' : 'h3', {
-        class: block.level === 2 ? 'text-lg font-semibold mt-4 mb-1' : 'text-base font-semibold mt-3 mb-1',
+        // `scroll-mt-10` gehört zur Sprungmarke, nicht zur Optik: ohne
+        // Abstand nach oben verschwindet die angesprungene Überschrift unter
+        // einer klebenden Kopfzeile.
+        class: [
+          block.level === 2 ? 'text-lg font-semibold mt-4 mb-1' : 'text-base font-semibold mt-3 mb-1',
+          props.headingAnchors ? 'scroll-mt-10' : '',
+        ],
+        ...(props.headingAnchors ? { id: anchorIds.value[headingIndex++] } : {}),
       }, renderInline(block.children))
     default:
       return h('p', { class: 'whitespace-pre-line' }, renderInline(block.children))
   }
 }
 
-const Content = () => h('div', { class: 'space-y-2 leading-relaxed' }, parseMarkdown(props.source).map(renderBlock))
+const Content = () => {
+  headingIndex = 0
+  return h('div', { class: 'space-y-2 leading-relaxed' }, parseMarkdown(props.source).map(renderBlock))
+}
 </script>
 
 <template>

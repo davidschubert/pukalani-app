@@ -1,6 +1,6 @@
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../lib/appwrite'
 import { loginSchema } from '../../../schemas/auth'
-import { isMoreFactorsRequired } from '../../../shared/mfa'
+import { secondFactorPending } from '../../../shared/mfa'
 import type { LoginResponse } from '../../../shared/types/auth-responses'
 
 export default defineEventHandler(async (event): Promise<LoginResponse> => {
@@ -25,22 +25,14 @@ export default defineEventHandler(async (event): Promise<LoginResponse> => {
   // bleibt leer und der Nutzer ist überall ausgeloggt.
   setSessionCookie(event, session.secret, session.expire)
 
-  // Ob ein zweiter Faktor nötig ist, sagt APPWRITE — nicht wir. Die Rechnung
-  // dahinter (`minimumFactors`, app/controllers/shared/api.php) hängt an
-  // `user.mfa` UND daran, ob überhaupt ein Faktor verifiziert ist; sie hier
-  // nachzubauen hieße, sie bei jeder Appwrite-Version neu zu raten. Die
-  // Frage kostet einen Aufruf: `account.get()` mit der frischen Session.
-  try {
-    await createSessionClient(event, session.secret).account.get()
-  }
-  catch (error) {
-    if (isMoreFactorsRequired(error)) {
-      // BEWUSST noch KEIN 'user.login' im Protokoll: angemeldet ist erst, wer
-      // auch den zweiten Faktor hatte. Das schreibt die Challenge-Route.
-      return { ok: true, mfaRequired: true }
-    }
-    // Jeder andere Fehler ist keiner des Logins (Netz, Appwrite) — die
-    // Session steht, also normal weitermachen.
+  // Ob ein zweiter Faktor nötig ist, sagt APPWRITE — nicht wir (Begründung
+  // an der Weiche selbst, shared/mfa.ts). Die Frage kostet einen Aufruf:
+  // `account.get()` mit der frischen Session. Dieselbe Weiche nimmt seit dem
+  // 2026-10-24 auch der Code-Login (otp/verify.post.ts).
+  if (await secondFactorPending(() => createSessionClient(event, session.secret).account.get())) {
+    // BEWUSST noch KEIN 'user.login' im Protokoll: angemeldet ist erst, wer
+    // auch den zweiten Faktor hatte. Das schreibt die Challenge-Route.
+    return { ok: true, mfaRequired: true }
   }
 
   await logAuthEvent(event, 'user.login', { userId: session.userId, method: 'password' })
