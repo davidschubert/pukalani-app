@@ -116,7 +116,9 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       *Custom → Issues*. Beweis: ein Probealarm (§ 2) erzeugt eine Mail
       „[davidschubert/pukalani.app] 🔴 Produktions-Alarm (Probealarm) …
       (Issue #n)" IM POSTEINGANG.
-- [ ] **Resend → Alarm-Mail.** Resend → API Keys → *Create* → Name
+- [x] **Resend → Alarm-Mail.** ✅ 2026-11-06: alle drei Einträge gesetzt,
+      Probealarm (Lauf 42139629230, Issue #66) ⇒ Mail kam an, Mail-Wächter
+      Blick 2 + 3 zählten im CI. Resend → API Keys → *Create* → Name
       `produktions-waechter`, Permission *Full access* (Sending reicht für die
       Alarm-Mail, aber der Mail-Zähler liest `GET /emails` und braucht Full
       access; EIN Schlüssel darf in beiden Secrets stehen). GitHub → Repo →
@@ -130,9 +132,9 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       Browser (Schlüssel nur als Eingabe, nie in Chat, Datei oder Commit):
 
       ```bash
-      gh secret set PRODUCTION_ALARM_RESEND_KEY --repo davidschubert/pukalani.app
-      gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani.app
-      gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani.app --body "mail@…"
+      gh secret set PRODUCTION_ALARM_RESEND_KEY --repo davidschubert/pukalani-app
+      gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani-app
+      gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani-app --body "mail@…"
       ```
 - [ ] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
       GitHub). Per API mit dem *Main API key* (UptimeRobot → Integrations &
