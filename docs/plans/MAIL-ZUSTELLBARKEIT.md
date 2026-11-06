@@ -1,7 +1,7 @@
 # MZ1 — Mail-Zustellbarkeit: Bounces und Spam-Beschwerden sehen
 
-**Stand:** 2026-11-06 · **Phase:** Strategie + Konzeption (Skizze) — wartet auf
-Davids Entscheidungen in § 5 · **Offener Punkt:** OPEN-ITEMS „MZ1"
+**Stand:** 2026-11-06 · **Phase:** Konzeption abgeschlossen, Davids
+Entscheidungen in § 5 gefallen — als Nächstes Stufe A bauen · **Offener Punkt:** OPEN-ITEMS „MZ1"
 
 ## 1. Ausgangslage (gemessen, nicht geglaubt)
 
@@ -106,14 +106,13 @@ Quote. Zuschnitt:
 | Stufe B Prefs | `packages/core/server/utils/notificationEmail.ts` (`resolveEmailPrefs`), Digest-Sweep in `emailDigest.ts` überspringt ohnehin alles außer `digest` |
 | Stufe B Env | `NUXT_RESEND_WEBHOOK_SECRET` je Site (ops:site-env, Pflichtliste in `.claude/rules/hosts-ops.md`) |
 
-## 5. Entscheidungen für David
+## 5. Entscheidungen (David, 2026-11-06)
 
-1. **Umfang:** nur Stufe A (Empfehlung für den Anfang) — oder A und B?
-2. **Schwellen für Stufe A:** ≥ 3 Bounces oder ≥ 1 Beschwerde in 24 h, oder
-   andere Werte?
-3. **Bei einer Beschwerde (nur Stufe B):** nur Benachrichtigungs-Mails
-   abschalten — oder das Konto zusätzlich zur Prüfung markieren (Hinweis auf
-   Missbrauch wie im Oktober)?
+1. **Umfang:** nur Stufe A. Stufe B bleibt Skizze und kommt erst, wenn die
+   Zahlen aus Stufe A einen Grund liefern.
+2. **Schwellen für Stufe A:** rot ab 3 Bounces ODER 1 Beschwerde in 24 h.
+3. **Bei einer Beschwerde (falls Stufe B je kommt):** nur Benachrichtigungs-
+   Mails abschalten und den Hinweis zeigen, keine Markierung des Kontos.
 
 ## 6. Vor dem Bau zu messen
 
