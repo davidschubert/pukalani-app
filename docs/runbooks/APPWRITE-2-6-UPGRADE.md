@@ -1,5 +1,7 @@
 # Runbook: Appwrite 2.0.0 / 2.2.0 → 2.6.1 → 2.6.2 (self-hosted, MariaDB)
 
+> Weiter geht es mit 2.6.2 → 2.7.1 in [APPWRITE-2-7-UPGRADE.md](APPWRITE-2-7-UPGRADE.md).
+
 Gilt für beide Instanzen: **dev** (`~/Developer/orbstack/appwrite-maria/`,
 OrbStack, kam von 2.2.0) und **prod** (`ploi@188.245.61.155:~/appwrite/`,
 `api.pukalani.app`, kommt von 2.0.0). Dev ist am 2026-10-23 nach genau diesem
