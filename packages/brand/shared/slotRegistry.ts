@@ -1648,16 +1648,3 @@ export function partKeyFor(slot: BrandSlot, part: string, team: BrandTeamKind = 
 export function partLabelKeyFor(slot: BrandSlot, part: string): string {
   return `brand.partLabel.${slot.id}.${part}`
 }
-
-/**
- * Der i18n-Schlüssel der BEISPIEL-ANTWORT einer Menschenfrage — dieselbe
- * Pfad-Konvention wie `questionKeyFor`, nur unter `brand.example.<id>`. Sie
- * steht GRAU im Antwortfeld des Berater-Chats (Platzhalter, nie ein Wert):
- * eine Mustervorlage senkt die Hürde vor der leeren Zeile, ohne etwas zu
- * beantworten. Nur `type: 'question'` wird so gefragt; Auswahl-Slots haben
- * Chips statt Freitext und darum keinen Beispiel-Schlüssel.
- */
-export function exampleKeyFor(slot: BrandSlot, pathKind: BrandPathKind): string {
-  const base = `brand.example.${slot.id}`
-  return slot.pathVariants?.[pathKind] ? `${base}.${pathKind}` : base
-}
