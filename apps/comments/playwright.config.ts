@@ -68,7 +68,7 @@ export default defineConfig({
     command: 'pnpm dev',
     url: baseURL,
     reuseExistingServer: true,
-    timeout: 120_000,
+    timeout: 180_000,
     /**
      * Schaltet die Nuxt DevTools ab (nuxt.config liest `PW_E2E`) — ihr
      * Abzeichen trägt eine wechselnde ms-Zahl und saß sonst mitten in den
