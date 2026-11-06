@@ -27,7 +27,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Env-Variablen | `scripts/ops/verify-site-env.mjs` | täglich 04:17 UTC | Pflicht-Variable fehlt auf einer Site |
 | Tote Zugänge | `scripts/ops/verify-stale-keys.mjs` | täglich | Schlüssel auf ein gelöschtes Projekt |
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
-| Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 Mails in 24 h (vor dem 100er-Limit) |
+| Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 
 Die Mail-Notbremse selbst (60 je Stunde und Route über alle IPs) lebt in
 `packages/core/server/middleware/05.rate-limit.ts`; sie STOPPT den Versand und
@@ -120,8 +120,8 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       Probealarm (Lauf 42139629230, Issue #66) ⇒ Mail kam an, Mail-Wächter
       Blick 2 + 3 zählten im CI. Resend → API Keys → *Create* → Name
       `produktions-waechter`, Permission *Full access* (Sending reicht für die
-      Alarm-Mail, aber der Mail-Zähler liest `GET /emails` und braucht Full
-      access; EIN Schlüssel darf in beiden Secrets stehen). GitHub → Repo →
+      Alarm-Mail, aber der Mail-Zähler liest `GET /usage` und
+      `GET /emails/metrics` und braucht Full access; EIN Schlüssel darf in beiden Secrets stehen). GitHub → Repo →
       Settings → Secrets and variables → Actions:
       Secret `PRODUCTION_ALARM_RESEND_KEY` = der Schlüssel,
       Secret `PRODUCTION_WATCH_RESEND_KEY` = derselbe Schlüssel,
