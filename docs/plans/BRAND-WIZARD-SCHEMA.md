@@ -45,6 +45,46 @@ Indizes: `idx_owner (ownerType, ownerId)` · `idx_creator
 (createdByUserId)`. Kein visibility-Feld (Audit 5/6 — „geteilt" ist
 `hasActiveShare` aus brand_shares, abgeleitet). Zod: storyBody ≤ 100k.
 
+**Nachtrag 2026-09-01 (P2.5) — die STARTKARTE bekommt vier Spalten.**
+Migration `brand-009`, additiv:
+
+| Spalte | Typ | Pflicht | Inhalt |
+| --- | --- | --- | --- |
+| websiteUrl | string 256 | nein | „Eure Website (optional)" — leer oder http(s)-Adresse |
+| industry | string 120 | nein | „In welcher Branche seid ihr unterwegs?" (Eingabe mit Vorschlägen) |
+| about | string 2000 | nein | „Was macht ihr" — 2–3 Sätze |
+| audience | string 500 | nein | „Für wen ist es gedacht?" — ein Satz |
+
+WARUM SIE FEHLTEN: die P1a-Fassung dieses Anhangs beschreibt den
+Profil-Kopf als ANLAGE-Daten (Pfad, Weichen, Sprache, Titel); die
+Startkarte steht nur in der Content-Spec §2.1 („Mehr erhebt Schritt 0
+NICHT") und war bis P2.5 reine Spezifikation. Sichtbar wurde die Lücke
+mit dem echten George (P2.2): die Slots des Bausteins A haben in der
+Registry KEINE `dependencies`, weil sie aus der Startkarte schöpfen —
+ohne diese vier Spalten bekam er buchstäblich nichts übergeben
+(`formatDependencies([])` ⇒ „no earlier answers were handed to you").
+
+OPTIONALITÄT — die Spalten sind alle vier `required: false` mit
+`xdefault: ''`, die PFLICHT lebt im Zod-Schema der Anlage-Route
+(`industry`/`about`/`audience` min 1 nach trim, `websiteUrl` frei). Der
+Grund ist der übliche: es gibt Bestands-Zeilen von vor der Migration,
+und für die ist '' die einzige wahre Auskunft. Dieselbe Bauart wie bei
+`title`. `varchar` statt MEDIUMTEXT, weil MariaDB auf TEXT-Spalten
+keinen Default erlaubt (s. `storyBody`) — ohne Default läse eine
+Bestands-Zeile `undefined` statt ''. Kein Index: die vier werden nie
+gefiltert oder sortiert.
+
+ÄNDERBAR, ANDERS ALS DIE SPRACHE: der Profil-PATCH nimmt alle vier
+entgegen (die drei Pflichtfelder ohne '' — weglassen heißt „nicht
+angefasst", leeren wäre „ich nehme meine Antwort zurück"). Eine
+korrigierte Branche macht den nächsten Entwurf besser; eine gewechselte
+`contentLocale` machte die bisherigen unlesbar, deshalb bleibt DIE
+fixiert.
+
+NICHT im `inputHash`: der beschreibt den Stand der Quell-SLOTS. Eine
+geänderte Startkarte macht einen bestehenden Entwurf heute also nicht
+„veraltet" — offener Punkt, kein Versehen.
+
 ## 2. brand_steps — eine Row je Profil × Baustein
 
 stepKeys (aus der Content-Spez): `context` `pvm` `architecture`

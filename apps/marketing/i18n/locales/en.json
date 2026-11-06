@@ -913,7 +913,7 @@
           "what": "The same platform in a completely different design — proof that branding doesn't stop at an accent colour."
         },
         "changelog": {
-          "name": "changelog.pukalani.app",
+          "name": "admin.pukalani.app/changelog",
           "what": "What we changed and when, publicly readable. Including the weeks where little happened."
         }
       },

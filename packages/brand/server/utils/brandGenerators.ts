@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
 import {
   type BrandGenerationLockEntry,
+  type BrandGenerationOutcome,
   brandGenerationHashInput,
   brandGenerationLockHeld,
   brandGenerationLockKey,
@@ -11,8 +12,10 @@ import { formatBrandSlotList, formatBrandSlotStructured } from '../../shared/bra
 import {
   type BrandSlot,
   type BrandStepKey,
+  type BrandTeamKind,
   dependencyClosure,
 } from '../../shared/slotRegistry'
+import type { BrandStartCard } from '../../shared/types/brand'
 import { type BrandSlotRecord, brandSlotStoredValue } from './brandStore'
 
 /**
@@ -54,12 +57,87 @@ export interface BrandGeneratorContext {
   slot: BrandSlot
   /** Inhaltssprache des Brandings (`brand_profiles.contentLocale`) — nie die UI-Sprache. */
   locale: string
+  /**
+   * DIE SPRACHE DER SEITE, auf der der Mensch gerade steht — Georges ANSPRACHE
+   * (Chat-Zug, Rahmung, Rückfrage), nie der Slot-Inhalt.
+   *
+   * Sie steht NEBEN `locale` und nicht darin, weil beide auseinanderfallen
+   * DÜRFEN: eine deutschsprachige Marke, besprochen auf einer englischen
+   * Oberfläche, ist ein gültiger Fall. Sie kommt aus dem Rumpf (der Browser
+   * kennt seine Route, der Server nicht) und ist bereits geprüft; ist sie
+   * unbekannt oder fehlt sie, steht hier die Inhaltssprache — ein Generator
+   * muss also nie selbst zurückfallen.
+   */
+  uiLocale: string
   /** Die Weiche W1, für pfadabhängige Prompts. */
   pathKind: 'new' | 'relaunch'
+  /**
+   * DIE WEICHE W3 (a-14, Davids Entscheidung 2026-09-09) — sie entscheidet, WER
+   * im Markentext spricht: `solo` ⇒ Ich-Form, `team` ⇒ Wir-Form.
+   *
+   * Sie steht NEBEN `pathKind`, weil sie dieselbe Sorte Tatsache ist: eine
+   * Angabe aus dem Profil, die den Auftrag ändert und nicht die Eingaben. Sie
+   * geht deshalb auch NICHT in den `inputHash` — der beschreibt den Stand der
+   * Quell-Slots, genau wie bei Startkarte und Website-Text.
+   *
+   * OPTIONAL, damit ein Aufrufer ohne Profil (Beweise, Werkzeuge) weiterläuft:
+   * ohne sie sagt der Auftrag zur Person das, was er vor a-14 sagte.
+   */
+  team?: BrandTeamKind
+  /**
+   * DIE STARTKARTE DES PROFILS (Content-Spec §2.1) — die primäre Quelle des
+   * Bausteins A, dessen Slots gerade DESHALB keine `dependencies` haben.
+   *
+   * Sie steht NEBEN `dependencies` und nicht darin: Abhängigkeiten sind
+   * Slot-Werte (sie bilden den inputHash und stammen aus `brand_steps.slots`),
+   * die Startkarte steht am PROFIL. Zusammengelegt müsste man ihr vier
+   * Slot-Ids erfinden, die es in der Registry nicht gibt.
+   *
+   * Leere Felder sind der Normalfall (Bestands-Profile von vor brand-009) —
+   * jeder Generator muss mit einer vollständig leeren Karte umgehen können.
+   */
+  startCard: BrandStartCard
+  /**
+   * DER TEXT VON IHRER WEBSITE (P2.3) — leer, solange niemand „Website lesen"
+   * gedrückt hat, und das ist der Normalfall.
+   *
+   * Er steht NEBEN der Startkarte und nicht darin: die Karte sind ANTWORTEN
+   * eines Menschen, das hier ist FREMDER Text, den wir eingesammelt haben.
+   * Georges Prompt behandelt beides verschieden — die Karte ist Quelle, dieser
+   * Block ist Material, aus dem NIE eine Anweisung wird
+   * (Prompt-Injection-Grenze, Plan §9b).
+   *
+   * Er geht ebenfalls NICHT in den `inputHash`: der beschreibt den Stand der
+   * Quell-SLOTS. Ein neu gelesener Website-Text macht einen bestehenden Entwurf
+   * heute also nicht „veraltet" — dieselbe bewusste Grenze wie bei der
+   * Startkarte.
+   */
+  siteAnalysis: string
   /** Freier Hinweis des Menschen („wärmer", „kürzer") — bereits auf 500 Zeichen geklemmt. */
   hint: string
   /** Werte der (transitiven) Quell-Slots in Katalog-Reihenfolge. */
   dependencies: readonly BrandSlotDependency[]
+  /**
+   * DIE LETZTEN ZÜGE DIESES BAUSTEINS (a-9), älteste zuerst. Leer = kein
+   * Verlauf, und das ist beim ersten Entwurf der Normalfall.
+   *
+   * Es steht NEBEN `dependencies` und nicht darin: das hier sind GESPRÄCHS-Züge,
+   * keine Slot-Werte. Ein Feldwert ist ein festgehaltenes Ergebnis mit einer Id
+   * aus der Registry; ein Zug ist Gesagtes — von George so gut wie vom Menschen.
+   * Zusammengelegt müsste man jedem Zug eine Slot-Id erfinden, und Georges
+   * eigene Rückfrage stünde als Feldinhalt da.
+   *
+   * WOZU: bis a-9 las der Entwurf nur gespeicherte Werte. Antwortete jemand auf
+   * eine Rückfrage IM CHAT, kam das nie beim Generator an — er fragte dasselbe
+   * ein zweites Mal, und bei einem Slot ohne eigenes Eingabefeld gab es gar
+   * keinen Weg mehr nach vorn.
+   *
+   * Es geht wie Startkarte und Website-Text NICHT in den `inputHash`: der
+   * beschreibt den Stand der Quell-SLOTS. Eine neue Chat-Antwort macht einen
+   * bestehenden Entwurf also nicht still „veraltet" — die Neuerzeugung stösst
+   * der Mensch selbst an.
+   */
+  conversation: readonly { role: 'george' | 'user' | 'system', body: string }[]
   /** Abbruch durch den Menschen ODER durch eine geschlossene Verbindung. */
   signal: AbortSignal
   /** Jedes Text-Delta genau einmal — hier hängt `message.delta` dran. */
@@ -69,10 +147,33 @@ export interface BrandGeneratorContext {
 export interface BrandSlotDependency {
   slotId: string
   value: string
+  /**
+   * Menschliche Beschriftung für PROMPTS (Frage/Label aus dem Locale-Katalog,
+   * `brandSlotPromptLabel`) — ohne sie druckt der Formatter die Id, und das
+   * Modell spricht `a.customerPraise` im Chat nach (Davids Live-Fund
+   * 2026-09-03). Optional, weil der inputHash sie nicht kennt und Bestands-
+   * Aufrufer ohne Label weiterlaufen.
+   */
+  label?: string
 }
 
 export interface BrandGeneratorResult {
+  /** Der SLOT-Wert. Bei `outcome: 'question'` leer — dann wird kein Feld angefasst. */
   draft: string
+  /**
+   * DER CHAT-ZUG (george-a-4, Audit-Befund B2) — gerahmter Entwurf („worauf es
+   * sich stützt · der Entwurf · eine Frage") bzw. die Rückfrage selbst.
+   *
+   * OPTIONAL, und das ist der ganze Rückwärts-Vertrag: fehlt das Feld, nimmt
+   * die Route `draft` — also exakt das Verhalten vor a-4. Ein Generator, der
+   * die Rahmung nicht kann, verhält sich damit wie bisher statt gar nicht.
+   */
+  message?: string
+  /**
+   * Entwurf (Default) oder Rückfrage. Fehlt das Feld, gilt `'draft'` — ein
+   * Generator muss den neuen Zweig nicht kennen, um zu funktionieren.
+   */
+  outcome?: BrandGenerationOutcome
   model: string
   provider: string
   /** Steigt, sobald sich der Prompt ändert — sie steht im Generations-Eintrag. */
@@ -113,7 +214,17 @@ export function clearBrandSlotGenerators(): void {
   GENERATORS.clear()
 }
 
-function devStubEnabled(): boolean {
+/**
+ * LÄUFT DER ENTWICKLUNGS-ERSATZ? — `pukalani.brand.devStubGenerator`, EINMAL
+ * gelesen.
+ *
+ * EXPORTIERT seit Paket 4: der Schliess-Aufruf (`brandReview.ts`) braucht
+ * dieselbe Auskunft, und zwei Abfragen desselben Schlüssels wären zwei
+ * Stellen, an denen jemand später einen Schalter vergisst — eine Marke mit
+ * echten Entwürfen und einem Ersatz-Spezialisten (oder umgekehrt) wäre in
+ * ihrem Ergebnis von einer echten nicht zu unterscheiden.
+ */
+export function brandDevStubEnabled(): boolean {
   const config = useAppConfig() as { pukalani?: { brand?: { devStubGenerator?: boolean } } }
   return config.pukalani?.brand?.devStubGenerator === true
 }
@@ -126,7 +237,7 @@ function devStubEnabled(): boolean {
 export function resolveBrandSlotGenerator(stepKey: BrandStepKey): BrandGeneratorChoice | null {
   const registered = GENERATORS.get(stepKey) ?? GENERATORS.get('*')
   if (registered) return { generator: registered, chargesQuota: true }
-  return devStubEnabled() ? { generator: brandDevStubGenerator, chargesQuota: false } : null
+  return brandDevStubEnabled() ? { generator: brandDevStubGenerator, chargesQuota: false } : null
 }
 
 // ── Der KI-Kill-Switch der Laufzeit ────────────────────────────────────────
@@ -362,6 +473,10 @@ export const brandDevStubGenerator: BrandSlotGenerator = async (context) => {
 
   return {
     draft,
+    // Der Ersatz entwirft IMMER. Eine Rückfrage zu würfeln hiesse, das
+    // §3e-Protokoll mit einem Zufall zu beweisen — und der Zweig hat mit
+    // `georgeTurn.ts` seinen eigenen, deterministischen Beweis.
+    outcome: 'draft',
     model: 'dev-stub',
     provider: 'local',
     promptVersion: 'stub-1',

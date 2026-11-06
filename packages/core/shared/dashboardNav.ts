@@ -44,7 +44,7 @@ import type { Capability } from './types/authz'
  * Einträgen ist immer Platz für einen dritten:
  *
  *   posts 10–40 · events 50–60 · courses 70 · media 80 · messages 90–100 ·
- *   comments 110–120 · feedback 10 (eigene Gruppe „Dein Konto")
+ *   comments 110–120 · brand 130 · feedback 10 (eigene Gruppe „Dein Konto")
  *
  * Die Blöcke gelten je LAYER, nicht je Gruppe: `posts` vergibt 10 an seine
  * Moderationsfläche (Gruppe „Moderation") und 20–40 an seine drei übrigen
@@ -239,4 +239,233 @@ export function configFlagEnabled(pukalani: unknown, path: string): boolean {
     node = (node as Record<string, unknown>)[key]
   }
   return node === true
+}
+
+/**
+ * DIE STANDARD-REIHENFOLGE DER GRUPPEN — an EINER Stelle (NAV1 Paket 3).
+ *
+ * Bis hierher stand sie als Literal-Array im Layout (packages/admin/app/
+ * layouts/dashboard.vue) und der Typ `PukalaniAdminModule.group` kannte nur
+ * SIEBEN der neun Werte: `account` und `moderation` fehlten dort, seit U7 sie
+ * hinzufügte. Aufgefallen ist es nie, weil `app.config.ts` nicht gegen den Typ
+ * geprüft wird (s. `isDashboardScope`) — die Registry hätte also beliebige
+ * Gruppen tragen können. Jetzt gibt es die Liste genau einmal: der Typ liest
+ * sie, das Layout iteriert über sie, und die Prefs-Regel unten sortiert gegen
+ * sie.
+ *
+ * Die Reihenfolge ist Davids Struktur (E9 + U7): erst die Betreiber-Ebene
+ * (Plattform · Studio · Management), dann die Konto-Ebene, dann die
+ * Community-Ebene (Website · Produkte · Moderation · Gestaltung ·
+ * Einstellungen).
+ */
+export const DASHBOARD_NAV_GROUPS = [
+  'platform',
+  'studio',
+  'management',
+  'account',
+  'website',
+  'products',
+  'moderation',
+  'branding',
+  'settings',
+] as const
+
+export type DashboardNavGroup = typeof DASHBOARD_NAV_GROUPS[number]
+
+function isDashboardNavGroup(value: unknown): value is DashboardNavGroup {
+  return typeof value === 'string' && (DASHBOARD_NAV_GROUPS as readonly string[]).includes(value)
+}
+
+/**
+ * DIE REIHENFOLGE DER DASHBOARD-NAVIGATION IST DIE WAHL JEDER PERSON
+ * (NAV1 Paket 3, Entscheidung 3 aus DECISION-LOG „Navigation anpassen",
+ * 2026-09-08 — Konzept: docs/plans/DASHBOARD-NAV-JE-PERSON.md).
+ *
+ * JE PERSON, NICHT JE COMMUNITY: die Nav ist rollen-gefiltert, eine vom Owner
+ * gesetzte Reihenfolge ginge für einen Moderator gar nicht auf — er sieht die
+ * halben Einträge nicht. Gespeichert wird deshalb in den Prefs des KONTOS
+ * (`prefs.dashboardNav`, kein Table), gültig auf jeder Site desselben
+ * Konten-Stamms. Was auf einer anderen Site dazukommt, hängt dort hinten an
+ * (Zusage 3) und wird dort sortiert.
+ *
+ * ANGEWENDET NACH `filterDashboardModules`, nie davor: die Filter (Ort ×
+ * Rolle × drei Produkt-Gates) entscheiden, WAS es gibt — die Prefs nur, in
+ * welcher Reihenfolge. Andersherum könnte eine gespeicherte Id etwas sichtbar
+ * machen, das der Filter wegnimmt; die Nav bliebe zwar UX (Autorität sind die
+ * Routen), aber sie versprächen etwas, das die Seite nicht hält.
+ *
+ * AUSBLENDEN IST KEIN LÖSCHEN: `hidden` nimmt einen Eintrag aus der
+ * SEITENLEISTE, nicht aus der ⌘K-Suche. Die Suche liest bewusst die
+ * unpersonalisierte Liste (Zusage 5) — sonst wäre „ausblenden" ein Weg, sich
+ * selbst aus einer Fläche auszusperren, die man weiterhin betreten darf.
+ * Der zweite Rückweg ist „Zurücksetzen" (PUT null).
+ *
+ * NUR ADDITIV erweiterbar, kein `version`-Feld: fehlende Felder sind der
+ * Normalfall (jedes Konto von vor dieser Änderung hat gar keins), und
+ * `parseDashboardNavPrefs` verwirft alles, was nicht passt.
+ */
+export interface DashboardNavPrefs {
+  /** Reihenfolge der GRUPPEN (Gruppen-Ids). Nicht Erwähntes hängt hinten an, in Standardreihenfolge. */
+  groups?: string[]
+  /** Reihenfolge der EINTRÄGE (Modul-Ids) — gilt innerhalb ihrer Gruppe. Nicht Erwähntes hängt hinten an, nach `order`. */
+  items?: string[]
+  /** Ausgeblendete Modul-Ids. Ausblenden ist kein Löschen: der Eintrag bleibt in der ⌘K-Suche erreichbar. */
+  hidden?: string[]
+}
+
+/**
+ * Grenzen — Schema (server/api/auth/dashboard-nav.put.ts) UND Regel lesen
+ * DIESELBEN Zahlen. Prefs sind ein JSON-Dokument am Konto; ein Menü mit ~30
+ * Ids liegt weit unter jeder Appwrite-Grenze, die 100 sind Kopfschutz gegen
+ * ein aufgeblähtes Dokument, nicht eine erwartete Größe.
+ */
+export const MAX_DASHBOARD_NAV_IDS = 100
+export const MAX_DASHBOARD_NAV_ID_LENGTH = 64
+/** Modul-Ids der Registry sind Kleinbuchstaben, Ziffern und Bindestriche. */
+export const DASHBOARD_NAV_ID_PATTERN = /^[a-z0-9-]+$/
+
+function isNavId(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length <= MAX_DASHBOARD_NAV_ID_LENGTH
+    && DASHBOARD_NAV_ID_PATTERN.test(value)
+}
+
+/**
+ * Eine gelesene Liste in eine brauchbare Id-Liste verwandeln — FAIL-SOFT.
+ *
+ * Kein Wurf: was hier ankommt, kommt aus einem Prefs-Dokument, das eine
+ * ältere (oder kaputte) Fassung geschrieben haben kann. Ein Fehler beim Lesen
+ * hieße „Dashboard weiß"; eine verworfene Liste heißt nur „Standard-
+ * Reihenfolge", und die ist immer richtig.
+ *
+ *  - Kein Array ⇒ die Liste fällt GANZ weg (ein Objekt ist keine Reihenfolge).
+ *  - Einzelne Einträge, die keine gültige Id sind (Zahl, Objekt, zu lang,
+ *    falsches Muster), fallen EINZELN weg — eine kaputte Id soll nicht die
+ *    Reihenfolge der 29 anderen kosten.
+ *  - Doppelte Ids: der ERSTE Auftritt zählt. Eine Id zweimal zu nennen ergibt
+ *    keine zweite Position.
+ *  - Zu lange Liste: GEKÜRZT auf `MAX_DASHBOARD_NAV_IDS`, nicht verworfen.
+ *    Dieselbe Begründung wie oben — die ersten 100 sind die, die man sieht,
+ *    und der Rest hängt nach Zusage 3 ohnehin hinten an. (Die SCHREIB-Route
+ *    ist strenger: dort ist eine zu lange Liste eine 400, denn dort schickt
+ *    ein Client gerade etwas, das er sich ausgedacht hat.)
+ */
+function parseNavIds(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const entry of raw) {
+    if (!isNavId(entry) || seen.has(entry)) continue
+    seen.add(entry)
+    out.push(entry)
+    if (out.length >= MAX_DASHBOARD_NAV_IDS) break
+  }
+  return out
+}
+
+/**
+ * Das gelesene Prefs-Feld in den Vertrag übersetzen. `undefined` heißt „diese
+ * Person hat nichts gewählt" — und das ist der Normalfall, nicht der Fehler.
+ */
+export function parseDashboardNavPrefs(raw: unknown): DashboardNavPrefs | undefined {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined
+  const source = raw as Record<string, unknown>
+  const prefs: DashboardNavPrefs = {}
+  const groups = parseNavIds(source.groups)
+  const items = parseNavIds(source.items)
+  const hidden = parseNavIds(source.hidden)
+  if (groups) prefs.groups = groups
+  if (items) prefs.items = items
+  if (hidden) prefs.hidden = hidden
+  // Kein einziges brauchbares Feld ⇒ dasselbe wie „nichts gewählt". Sonst
+  // reiste ein leeres Objekt durch die halbe Anwendung und müsste überall
+  // gegen `undefined` mitgeprüft werden.
+  return prefs.groups || prefs.items || prefs.hidden ? prefs : undefined
+}
+
+/** Was `applyDashboardNavPrefs` von einem Modul mindestens braucht. */
+export interface DashboardNavOrderable {
+  id: string
+  group?: string
+  order?: number
+}
+
+/** Das Ergebnis: erst die Module ohne Gruppe, dann die nicht-leeren Gruppen. */
+export interface DashboardNavLayout<M> {
+  ungrouped: M[]
+  groups: { group: DashboardNavGroup, modules: M[] }[]
+}
+
+/**
+ * Die persönliche Reihenfolge auf eine BEREITS GEFILTERTE Modul-Liste legen.
+ *
+ * Sechs Zusagen (jede mit Gegenprobe unit-getestet,
+ * packages/core/tests/dashboardNav.test.ts):
+ *
+ *  1. Ohne Prefs (fehlend, leer, alle Listen leer) ist das Ergebnis exakt die
+ *     heutige Nav — Gruppen in `DASHBOARD_NAV_GROUPS`, Einträge nach `order`.
+ *  2. Unbekannte Ids (Gruppe wie Eintrag) werden STILL ignoriert. Ein Layer,
+ *     der verschwunden ist, darf keine Nav zerlegen; und deshalb prüft die
+ *     Schreib-Route die Ids auch gar nicht erst gegen die Registry — sie kennt
+ *     die effektive Registry der App je Ort nicht.
+ *  3. Nicht Erwähntes hängt HINTEN an: Gruppen in Standardreihenfolge,
+ *     Einträge nach `order` (fehlend = 999), untereinander stabil in
+ *     Registry-Reihenfolge. Sichtbar am Ende ist die ehrlichere Vorgabe als
+ *     unsichtbar — ein neues Produkt taucht auf, statt sich zu verstecken.
+ *  4. Eine Gruppe ohne sichtbare Einträge erscheint NICHT (wie heute).
+ *  5. `hidden` entfernt Einträge aus dieser Liste — die ⌘K-Suche liest eine
+ *     andere (unpersonalisierte), s. Kopf von `DashboardNavPrefs`.
+ *  6. Module OHNE Gruppe bleiben vor den Gruppen und folgen ebenfalls `items`.
+ *
+ * Module mit einer UNBEKANNTEN Gruppe (nicht in `DASHBOARD_NAV_GROUPS`)
+ * erscheinen nirgends — genau wie heute im Layout, das über seine feste
+ * Gruppenliste iteriert. Fail-closed aus demselben Grund wie bei
+ * `isDashboardScope`: ein vertippter Gruppenname soll auffallen, nicht
+ * stillschweigend nach oben rutschen.
+ */
+export function applyDashboardNavPrefs<M extends DashboardNavOrderable>(
+  modules: readonly M[],
+  prefs: DashboardNavPrefs | undefined,
+): DashboardNavLayout<M> {
+  const hidden = new Set(prefs?.hidden ?? [])
+  const visible = modules.filter(m => !hidden.has(m.id))
+
+  // Rang aus `items`: kleiner = weiter vorn. Unerwähnt = kein Rang.
+  const rank = new Map<string, number>()
+  ;(prefs?.items ?? []).forEach((id, index) => {
+    if (!rank.has(id)) rank.set(id, index)
+  })
+
+  /**
+   * Erwähnte vor Unerwähnten, dann jeweils in ihrer eigenen Ordnung.
+   * `Array.prototype.sort` ist seit ES2019 stabil — Gleichstand behält also
+   * die Registry-Reihenfolge, dieselbe Zusage wie beim `order`-Sortieren im
+   * Layout seit jeher.
+   */
+  const ordered = (list: M[]): M[] => [...list].sort((a, b) => {
+    const ra = rank.get(a.id)
+    const rb = rank.get(b.id)
+    if (ra !== undefined && rb !== undefined) return ra - rb
+    if (ra !== undefined) return -1
+    if (rb !== undefined) return 1
+    return (a.order ?? 999) - (b.order ?? 999)
+  })
+
+  // Gruppen-Reihenfolge: erst die genannten (unbekannte und doppelte fallen
+  // weg), dann der Rest im Standard.
+  const groupOrder: DashboardNavGroup[] = []
+  for (const group of prefs?.groups ?? []) {
+    if (isDashboardNavGroup(group) && !groupOrder.includes(group)) groupOrder.push(group)
+  }
+  for (const group of DASHBOARD_NAV_GROUPS) {
+    if (!groupOrder.includes(group)) groupOrder.push(group)
+  }
+
+  const groups: DashboardNavLayout<M>['groups'] = []
+  for (const group of groupOrder) {
+    const members = ordered(visible.filter(m => m.group === group))
+    if (members.length) groups.push({ group, modules: members })
+  }
+
+  return { ungrouped: ordered(visible.filter(m => !m.group)), groups }
 }

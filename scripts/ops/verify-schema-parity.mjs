@@ -72,7 +72,9 @@ import { join } from 'node:path'
  *                        media/billing (teils nur als Teilmengen). Deshalb wird
  *                        sein Soll unten EXPLIZIT gepflegt, nicht rein aus
  *                        Blöcken komponiert.
- *   branding         : brand core system (noch nicht ausgerollt)
+ *   branding         : themes admin brand market pages core system
+ *                      (Dashboard seit 2026-09-03, Marktvergleich seit
+ *                       2026-09-05, Rechtsseiten seit 2026-09-07)
  *   photos           : themes admin media core system (noch nicht ausgerollt)
  *
  * GRUNDWAHRHEIT der Kuratierung: `account` und `control` sind gesund — ihr
@@ -106,7 +108,7 @@ const SYSTEM_TABLES = [
 /** `admin`-Layer — der Betreiber-Changelog. Auf ALLEN ausgerollten Instanzen. */
 const ADMIN_TABLES = ['changelog']
 
-/** `pages`-Layer — CMS-Rechtstexte. account + control + portfolio. */
+/** `pages`-Layer — CMS-Rechtstexte. account + control + portfolio + branding. */
 const PAGES_TABLES = ['pages']
 
 /** `analytics`-Layer — Plausible-Einstellungen. account + portfolio. */
@@ -270,7 +272,7 @@ const CONTROL_SOLL = [
  *   feature_catalog · feedback
  */
 /**
- * brand (packages/brand) — der Brand-Wizard. Die sieben Tabellen laufen
+ * brand (packages/brand) — der Brand-Wizard. Die acht Tabellen laufen
  * AUSSCHLIESSLICH auf `branding` (branding.supply) und stehen deshalb NUR im
  * BRANDING_SOLL: sie gehören nicht in die instanzweite Spalten-Parität (die
  * vergleicht nur system+admin+pages+analytics, s. u.).
@@ -292,6 +294,136 @@ const BRAND_TABLES = [
   'brand_invites',
   'brand_access',
   'brand_events',
+  // brand-011: die Warteliste der geschlossenen Beta („Frühzugang anfragen").
+  'brand_waitlist',
+  // brand-014: die Befunde des Spezialisten (BW2 §4) — Konflikte, betroffene
+  // Felder und Lücken. Eigene Tabelle, weil sie einen STATUS haben und
+  // kapitelübergreifend sind.
+  'brand_findings',
+  // brand-016: der kostenlose Aussen-Check (docs/plans/BRAND-CHECK.md). Die
+  // einzige brand_*-Tabelle ohne Konto — sie ist zugleich der 7-Tage-
+  // Zwischenspeicher, der die KI-Kosten der öffentlichen Route deckelt.
+  'brand_checks',
+  // brand-017: die Korrekturvorschläge zum öffentlichen Ranking
+  // (docs/plans/BRAND-CHECK-SEITE.md §3b). Ebenfalls ohne Konto — ein
+  // Vorschlag hat einen eigenen Status, einen freiwilligen Absender und es
+  // kann mehrere je Check geben; deshalb eine Tabelle und keine Spalte.
+  'brand_check_corrections',
+  // brand-020: die öffentliche Markengalerie (docs/plans/DISCOVER-BRANDS.md
+  // §5). EINE Zeile je Branding (rowId = profileId) mit dem eingefrorenen
+  // Stand, dem Steckbrief der Galerie und dem Freigabe-Zustand.
+  'brand_publications',
+  // brand-020: die Meldungen zu einer veröffentlichten Marke. Eigene Tabelle
+  // aus demselben Grund wie `brand_check_corrections`: eigener Status, eigener
+  // (freiwilliger) Absender, mehrere je Veröffentlichung möglich.
+  'brand_publication_reports',
+  // brand-021: die Erstgespräch-Anfragen (BS1 Z0,
+  // docs/plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md §7 Zeile Z0). Der
+  // Gesprächs-Einstieg von branding.supply — wie `brand_waitlist` eine
+  // Tabelle, in die jemand OHNE Konto schreibt, aber mit optionaler `userId`
+  // und optionalem Branding-Bezug.
+  'brand_intro_requests',
+  // brand-024: die Vorbilder des Kunden (docs/plans/BRAND-DESIGN.md §2.2
+  // Schritt 2). EINE Zeile je Bild, Zeilen-Id = Datei-Id im Bucket
+  // `brand-inspiration`; an ihr hängt ab D2b auch die Lesung des
+  // Vision-Modells. Sie steht hier, damit eine fehlende Migration auffällt,
+  // BEVOR der erste Kunde auf „Screenshots hinzufügen" klickt.
+  'brand_inspiration',
+  // brand-023: die KI-Entwürfe des Zeichens (docs/plans/BRAND-DESIGN.md §2.5
+  // Stufe 3). EINE Zeile je Entwurf, Zeilen-Id = Datei-Id im Bucket
+  // `brand-drafts`; sie trägt die HERKUNFT (Modell, Prompt-Hash) und das
+  // `kept` des Menschen. Sie steht hier aus demselben Grund wie die Zeile
+  // darüber: eine fehlende Migration soll auffallen, BEVOR der erste Kunde auf
+  // „Entwürfe erzeugen" klickt — der Lauf antwortete sonst 503.
+  'brand_mark_drafts',
+]
+
+/**
+ * market (packages/market) — der Marktvergleich (MV1 M1, Plan
+ * docs/archiv/BRAND-MARKTVERGLEICH.md §2.6, Schema-Anhang B). Wie die
+ * brand_*-Tabellen laufen die drei AUSSCHLIESSLICH auf `branding` und stehen
+ * deshalb NUR im BRANDING_SOLL — nicht in der instanzweiten Spalten-Parität.
+ *
+ * Sie hängen an `brand_profiles.$id` (Spalte `profileId`) und fallen mit dem
+ * Branding: die Kaskade läuft über `registerBrandProfileCascade`
+ * (packages/brand/server/utils/brandProfileCascade.ts), der GDPR-Contributor
+ * des Layers über die Brandings des Kontos. Wer die Tabellen hier einträgt,
+ * ohne `pnpm migrate --app branding --layer market` zu fahren, bekommt genau
+ * das gemeldet — das ist die Absicht.
+ */
+const MARKET_TABLES = [
+  // market-001: die Kandidaten (Adresse, Status, Rohtext mit 24-h-Frist,
+  // Quelle nach §7.2, Adresse des Brand-Check-Ergebnisses nach §7.3).
+  'market_competitors',
+  // market-002: das Marktprofil je Kandidat — die zehn Aussen-Felder mit
+  // Beleg (§2.2), die KI-Aussensicht getrennt daneben (§7.5).
+  'market_profiles',
+  // market-003: der Bericht je Stand — Gegenüberstellung, Konventionen,
+  // Überschneidungen, freie Stellen; `revisionKey` ist der Kostendeckel.
+  'market_reports',
+]
+
+/**
+ * insights (packages/insights) — der redaktionelle Bereich Brand Insights
+ * (BI1 I1, Plan docs/plans/BRAND-INSIGHTS.md §9.3). Wie die brand_*- und die
+ * market_*-Tabellen laufen die drei AUSSCHLIESSLICH auf `branding` und stehen
+ * deshalb NUR im BRANDING_SOLL — nicht in der instanzweiten Spalten-Parität.
+ *
+ * Sie hängen an KEINEM Branding: der Layer schreibt über FREMDE Marken, nicht
+ * über Kunden. Es gibt daher auch keine Profil-Kaskade; der GDPR-Contributor
+ * des Layers geht über die Kontakt-Adresse eines Korrekturvorschlags und über
+ * die zwei Betreiber-Stempel `reviewedBy`/`claimedBy`.
+ *
+ * Wer die Tabellen hier einträgt, ohne `pnpm migrate --app branding --layer
+ * insights` zu fahren, bekommt genau das gemeldet — das ist die Absicht.
+ */
+const INSIGHTS_TABLES = [
+  // insights-001: der Beitrag — alle vier Formate in einer Zeile (Profil,
+  // Duell, Artikel, Ranking), beide Sprachfassungen nebeneinander,
+  // `translationReviewed` als Riegel vor der unredigierten Maschinenfassung.
+  'insights_posts',
+  // insights-002: die Marken-Entität einer FREMDEN Marke — Zeichen, Historie
+  // und Beziehungen je mit Beleg, `state: 'removed'` als protokollierter
+  // Notausgang. Bewusst NICHT `brand_publications` (§9.3: andere
+  // Rechtsgrundlage, anderer Notausgang, anderer Inhalt).
+  'insights_brands',
+  // insights-003: Korrekturvorschlag UND Entfernen-Wunsch in einer Tabelle.
+  // `contactEmail`/`ipHash` werden nach 12 Monaten geleert (`retentionAt` +
+  // Sweep), die Entscheidungs-Zeile selbst bleibt als Nachweis.
+  'insights_corrections',
+  // insights-004: der Themenradar (§9.6) — je Video NUR die öffentlichen
+  // Zahlen der YouTube Data API plus unsere Opportunity-Zahl. Kurzlebig: der
+  // tägliche Lauf überschreibt je `videoId`, das 30-Tage-Netz löscht, was er
+  // nicht mehr erreicht (Policies III.E.4). KEINE Kommentar-Texte, KEINE
+  // Nutzernamen — dafür gibt es hier keine Spalte.
+  'insights_topics',
+  // insights-005: die kuratierte Kanalliste (BI2 K3) — das Gegenteil von
+  // `insights_topics`: dort fremde Zahlen, täglich neu und nach 30 Tagen weg;
+  // hier eine redaktionelle Entscheidung, die bleibt, bis ein Mensch sie
+  // ändert. Bis BI2 stand sie in `apps/branding/app/app.config.ts`.
+  'insights_channels',
+
+  // insights-006: die Newsletter-Liste (I5a, §9.3a) — eigene Liste, eigenes
+  // Double-Opt-in, KEIN Import aus `brand_waitlist` (eine Zustimmung gilt nur
+  // für das, wofür sie gegeben wurde). `emailLower` ist unique, zwei Sweep-
+  // Regeln räumen auf: unbestätigte Zeilen werden nach 30 Tagen GELÖSCHT (es
+  // gab nie eine Einwilligung), abgemeldete nach 12 Monaten GELEERT (die Zeile
+  // ist der Nachweis). Der Riegel davor ist eine Config-Zeile, kein Schema.
+  'insights_subscribers',
+
+  // insights-007: die eigene Video-Liste (BI2 K4) — die einzige Tabelle des
+  // Layers, in der ein Teil der Zeile BLEIBT und ein anderer abläuft: Urteil,
+  // Notiz, Cluster und `addedAt` gehören dem Menschen, die Zahlen der API
+  // werden täglich überschrieben. `available: false` heisst „Video weg, Zahlen
+  // geleert, Zeile steht" — im Radar ginge in diesem Fall die ganze Zeile.
+  'insights_watchlist',
+
+  // insights-008: das Protokoll eines Versands (I5b) — die Zeile ZÄHLT und
+  // nennt niemanden (`recipients`/`sent`/`failed`, dazu ein `cursor` auf eine
+  // Abonnenten-Zeile). `uq_post_id` ist die Sicherung gegen den zweiten
+  // Versand: ein Beitrag, eine Mail. Sie entsteht VOR der ersten Mail, damit
+  // ein abgebrochener Lauf fortgesetzt statt wiederholt wird.
+  'insights_sends',
 ]
 
 const PORTFOLIO_SOLL = [
@@ -322,10 +454,11 @@ const PORTFOLIO_SOLL = [
 
 /**
  * branding (apps/branding) = branding.supply, das neue Zuhause des
- * Brand-Wizards (docs/plans/BRANDING-SUPPLY-INFRA.md §3). Layer: brand + core +
- * system — mehr nicht, deshalb steht hier NUR der system-Block plus die sieben
- * brand_*-Tabellen. KEIN `admin`: die App zieht den Layer nicht, es gibt dort
- * also auch keinen Betreiber-Changelog.
+ * Brand-Wizards (docs/plans/BRANDING-SUPPLY-INFRA.md §3). Layer laut
+ * Site-Manifest: themes + admin + brand + market (+ core/system als
+ * Fundament) — deshalb steht hier der system-Block plus die brand_*- und die
+ * market_*-Tabellen. `themes` besitzt keine eigenen Tabellen (die
+ * custom_themes/custom_fonts gehören `system`).
  *
  * NOCH NICHT AUSGEROLLT (Plan §6 Schritt 1–4 stehen aus): der Eintrag trägt
  * `ausgerollt: false` und WARNT deshalb nur, wenn die Env-Datei fehlt —
@@ -335,7 +468,21 @@ const PORTFOLIO_SOLL = [
  * geschrieben ist. Beim Launch das Flag auf true drehen; die Env-Datei allein
  * macht den Eintrag schon vorher scharf, sobald sie existiert.
  */
-const BRANDING_SOLL = [...SYSTEM_TABLES, ...BRAND_TABLES]
+// Seit 2026-09-03 MIT admin (Davids Dashboard-Entscheidung): die
+// changelog-Tabelle gehört auf die branding-Instanz, sobald
+// `pnpm migrate --app branding` die admin-Migrationen gefahren hat.
+// Seit MV1 M1 (2026-09-05) zusätzlich mit `market`: der Marktvergleich ist
+// ein eigener Produkt-Layer im Site-Manifest dieser App.
+// Seit BI1 I1 (2026-09-09) zusätzlich mit `insights`: der redaktionelle
+// Bereich (Plan docs/plans/BRAND-INSIGHTS.md §9.1) ist ein eigener
+// Produkt-Layer im Site-Manifest dieser App; seine drei Tabellen gehören auf
+// die branding-Instanz (Migration VOR dem Code-Deploy, Gate ist Davids Ja).
+// Seit BS1 R1 (2026-09-07) zusätzlich mit `pages`: Impressum, Datenschutz und
+// AGB leben als CMS-Zeilen (Davids Entscheidung zu Frage 1 des Plans
+// docs/plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md). Die sechs
+// pages-Migrationen gehören damit auf die branding-Instanz — Migration VOR
+// dem Code-Deploy (§2.3 des Plans).
+const BRANDING_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...BRAND_TABLES, ...MARKET_TABLES, ...INSIGHTS_TABLES, ...PAGES_TABLES]
 
 /**
  * photos (apps/photos) = themes admin media core system. NICHT ausgerollt

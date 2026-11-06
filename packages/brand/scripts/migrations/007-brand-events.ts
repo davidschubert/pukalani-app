@@ -21,9 +21,24 @@
  * die es den Funnel gibt.
  *
  * ── RETENTION: 24 MONATE ──────────────────────────────────────────────────
- * Ein Sweep im Layer räumt Älteres weg. Er läuft ohne Request und damit ohne
- * H3Event — die ESLint-Ausnahme dafür wird an DER Stelle begründet, nicht
- * durch eine Aufweichung der Regel.
+ * Die Zahl steht seit BS1 R1b (2026-09-07) genau EINMAL, und zwar NICHT hier:
+ * `BRAND_EVENTS_RETENTION_MONTHS` in `packages/brand/shared/brandEventsRetention.ts`.
+ * Dieser Kopf zitiert sie, die Datenschutz-Abschnitte zitieren sie, der Sweep
+ * rechnet mit ihr — zwei Stellen mit derselben Zahl sind beim ersten Ändern
+ * zwei verschiedene Fristen.
+ *
+ * Der Sweep dazu: `server/utils/brandEventsSweep.ts`, getaktet von
+ * `server/plugins/brand-events-sweep.ts` (täglich, erster Lauf 60 s nach dem
+ * Start), Betreiber-Handgriff `POST /api/brand/ops/events-sweep`. Er löscht
+ * ganze Zeilen (es sind Ereignisse, keine Belege) und läuft ohne Request und
+ * damit ohne H3Event — deshalb liegt die Arbeit in `server/utils` und nicht in
+ * `server/plugins`: der richtige ORT ist die bessere Antwort als eine
+ * `eslint-disable`-Zeile.
+ *
+ * ZWISCHEN DEM 2026-07 UND BS1 R1b GAB ES DIESEN SWEEP NICHT. Der Satz stand
+ * hier, die Mechanik fehlte — gefunden hat es das Faktenblatt
+ * (`docs/plans/BRANDING-SUPPLY-FAKTENBLATT.md` §2 Zeile 12), als aus dem
+ * Kommentar eine Aussage in einer Datenschutzerklärung werden sollte.
  *
  * ── DER INDEX WEICHT BEWUSST VOM ANHANG AB ────────────────────────────────
  * Der Schema-Anhang nennt `idx_type_time (type, $createdAt)`. Hier steht nur
@@ -33,6 +48,12 @@
  * Zeitfenster-Abfrage läuft als `orderDesc($createdAt)` auf dem gefilterten
  * Ergebnis. Ein zweiter Index über eine fremdverwaltete Spalte wäre eine
  * Ausnahme ohne Not.
+ *
+ * MIT BS1 R1b GEMESSEN statt angenommen: `Query.lessThan('$createdAt', …)` +
+ * `orderAsc('$createdAt')` auf dieser Tabelle antwortet gegen Appwrite 1.9.6,
+ * ohne einen Index zu verlangen (dieselbe Abfrage fährt `pruneGuestAuthors` im
+ * comments-Layer seit 2026-08-01 in Produktion). Der Sweep kostet deshalb KEINE
+ * Folge-Migration.
  *
  * Idempotent (409 → skip). Aufruf über den Runner:
  *

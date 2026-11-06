@@ -217,7 +217,7 @@ const columns = computed<TableColumn<InviteDto>[]>(() => [
   { accessorKey: 'boundEmail', header: () => t('control.invites.col.recipient') },
   { id: 'uses', header: () => t('control.invites.col.uses'), meta: { class: HIDE_MD } },
   { accessorKey: 'expiresAt', header: () => t('control.invites.col.expires'), id: 'expires', meta: { class: HIDE_MD } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 </script>
 

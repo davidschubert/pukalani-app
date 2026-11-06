@@ -45,7 +45,7 @@ const registered = computed<PukalaniSettingsTab[]>(() => resolveSettingsTabs(
 ))
 
 const links = computed<NavigationMenuItem[]>(() => [
-  // Die fünf KONTO-Reiter gehören dem admin-Layer selbst — er bringt die Hülle
+  // Die KONTO-Reiter gehören dem admin-Layer selbst — er bringt die Hülle
   // mit, ein Registry-Umweg zu sich selbst brächte nichts. Die LISTE steht
   // seit U7/E8 in app/utils/accountSettingsTabs.ts, weil die ⌘K-Suche sie
   // ebenfalls liest; hier bleibt nur, was die Hülle daraus macht.

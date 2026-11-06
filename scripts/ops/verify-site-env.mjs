@@ -68,7 +68,9 @@ const SERVER = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
  * Pfad zur lokalen MMDB (DB-IP City Lite), aus der die Sitzungsliste zu jeder
  * Session-IP Stadt + Region auflöst (packages/core/server/utils/geoCity.ts).
  *
- * PFLICHT AUF JEDER SITE MIT KONTEN — und zwar aus dem F44-Grund: fehlt die
+ * PFLICHT AUF JEDER SITE MIT KONTEN (platform, control, portfolio — und seit
+ * BS1 R1b auch branding, das den `admin`-Layer seit 2026-09-03 mitführt) — und
+ * zwar aus dem F44-Grund: fehlt die
  * Variable, läuft alles weiter und die Anzeige fällt STILL auf das Land
  * zurück, das Appwrite ohnehin liefert. „Deutschland" sieht nicht nach einem
  * Defekt aus, sondern nach dem, was das Produkt eben kann — man käme nie auf
@@ -91,12 +93,13 @@ const GEO_CITY_DB_PATH = 'NUXT_GEO_CITY_DB_PATH'
  * das dort ist die IP-Datenbank („wo war diese Sitzung?"), das hier ein
  * Namensverzeichnis („wo wohnst du?").
  *
- * PFLICHT AUF JEDER SITE MIT KONTEN — und damit auf denselben dreien wie der
+ * PFLICHT AUF JEDER SITE MIT KONTEN — und damit auf denselben VIEREN wie der
  * Nachbar darüber, obwohl das Produkt (die Mitglieder-Karte) auf `platform`
  * lebt. Der Grund ist nicht Symmetrie, sondern wo der Code steht: das
  * Profil-Formular ist EINE Komponente in core (`UserProfileForm`), gerendert
  * von `UserProfilePanel` — und die hängt über den `admin`-Layer auch in
- * `/dashboard/settings` von control und portfolio. Der Picker ist dort also
+ * `/dashboard/settings` von control, portfolio und (seit 2026-09-03) branding.
+ * Der Picker ist dort also
  * da; ohne Pfad findet er nur nichts. Das ist exakt die F44-Sorte Loch: kein
  * Fehler, keine Warnung, nur ein Feld, das aussieht, als wäre es kaputt.
  *
@@ -117,6 +120,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_PLATFORM_CONTROL_KEY',
       'NUXT_ONBOARDING_SERVICE_SECRET',
       /**
@@ -187,6 +195,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_CONTROL_ONBOARDING_SECRET',
       'NUXT_SMTP_HOST',
       'NUXT_SMTP_PORT',
@@ -241,6 +254,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       'NUXT_ANALYTICS_STATS_API_KEY',
       /**
        * Erstgespräch-Wizard (W1, 2026-08-21): `POST /api/intro-call` stellt
@@ -279,6 +297,11 @@ const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
+      // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
+      // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
+      'NUXT_TURNSTILE_SECRET',
+      'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       /**
        * STEHT HIER, obwohl die drei älteren Site-Blöcke ihn nicht führen: die
        * Database-Id hat keinen brauchbaren Default — ohne sie findet KEIN
@@ -328,17 +351,63 @@ const SITES = [
        */
       'NUXT_PUBLIC_I18N_BASE_URL',
       /**
-       * NICHT in dieser Liste: `NUXT_AI_KEY`. Georges Entwürfe (P2) sind noch
-       * aus (`brandAiEnabled`), und ohne Generator streamt §3e bewusst gar
-       * nichts statt Ersatztext. MIT P2 / offenem `brandAiEnabled` wird er
-       * Pflicht — dann hier eintragen (dieselbe Sorte Loch wie bei platform:
-       * kein Fehler, der Knopf erscheint nur nicht).
-       *
-       * Ebenfalls NICHT: die GEO_*-Pfade der anderen Konten-Sites. Sie decken
-       * die Sitzungsliste und den Orts-Picker im Profil ab, und beide hängen
-       * an Seiten der Layer `admin` bzw. `onboarding` — branding hat keinen
-       * von beiden, die Formulare sind hier also gar nicht erreichbar.
+       * Seit P2 (2026-09-01) PFLICHT: der George-Generator ist registriert und
+       * der Schlüssel liegt in der Server-.env. Der Anlass, ihn SOFORT hier
+       * einzutragen, war ein realer Verlust am Eintrag-Tag: eine parallele
+       * Sitzung schrieb die .env neu und die frisch angehängte Key-Zeile war
+       * still weg — exakt das Loch, das dieser Wächter täglich zudeckt.
+       * (Der KILL-SWITCH bleibt davon getrennt: `app_config.brandAiEnabled`
+       * entscheidet, ob George antwortet — der Wächter prüft nur, dass der
+       * Schlüssel da wäre.)
        */
+      'NUXT_AI_KEY',
+      /**
+       * SEIT BI1 I4 (2026-09-09) PFLICHT — der YouTube-Data-API-Schlüssel des
+       * Themenradars (Plan docs/plans/BRAND-INSIGHTS.md §9.6).
+       *
+       * DIESELBE SORTE LOCH WIE F44, und diesmal in ihrer stillsten Form:
+       * fehlt der Schlüssel, tut der tägliche Radar-Lauf NICHTS. Er wirft
+       * nicht, er meldet nichts (die eine `insights.radar_unconfigured`-Zeile
+       * steht einmal je Prozess, bewusst auf `info`), die Seite
+       * `/dashboard/insights/radar` sieht gesund aus und zeigt eine leere
+       * Tabelle — und eine leere Tabelle heisst dort auch „noch nie gelaufen".
+       * Genau dafür gibt es diesen Wächter.
+       *
+       * ER IST BIS ZU DAVIDS EINTRAG BEWUSST ROT. Der Schlüssel ist eines der
+       * drei Gates aus §11.3 (Google-Cloud-Projekt anlegen, Data API v3
+       * freischalten, Schlüssel erzeugen) und liegt heute nicht auf dem
+       * Server. Ein Wächter, der eine ausstehende Handreichung als „passt
+       * schon" durchwinkt, hätte den Eintrag nie erinnert; ein roter Punkt mit
+       * genau diesem Namen daneben ist die Erinnerung.
+       *
+       * `NUXT_INSIGHTS_YOUTUBE_BASE_URL` steht hier NICHT: sie ist eine
+       * DEV-Hilfe (Stub-Server statt echter API, damit ein lokaler Beweis
+       * keine Quota kostet) und in PROD ungesetzt richtig. Ein Wächter, der
+       * eine Dev-Hilfe anmahnt, erzieht zum Weglesen.
+       */
+      'NUXT_INSIGHTS_YOUTUBE_KEY',
+      /**
+       * SEIT BS1 R1b (2026-09-07) AUCH HIER PFLICHT — die Begründung von
+       * vorher ist ÜBERHOLT und stand als Befund im Faktenblatt (§2 Zeile 2).
+       *
+       * Sie lautete: „branding hat weder `admin` noch `onboarding`, die
+       * Formulare sind hier gar nicht erreichbar." Das stimmte, bis
+       * `apps/branding` am 2026-09-03 den `admin`-Layer in seine
+       * `extends`-Kette bekam. Seither hängen dort BEIDE Flächen:
+       * `/dashboard/settings/sessions` (die Sitzungsliste, `AuthAccountSessionsCard`)
+       * und `/dashboard/settings` (`UserProfilePanel` mit dem `GeoCityPicker`).
+       *
+       * Ohne die Pfade fällt beides STILL zurück — die Sitzungsliste auf das
+       * blosse Land, der Orts-Picker auf „keine Vorschläge". Genau die
+       * F44-Sorte Loch, für die dieser Wächter da ist: ein zugewachsener
+       * Kommentar erklärt einen Defekt zur Absicht, und niemand sieht mehr nach.
+       *
+       * MERKSATZ FÜR DEN NÄCHSTEN LAYER-ZUZUG: eine Begründung, die auf der
+       * `extends`-Kette einer App steht, verfällt mit ihr. Wer hier einen Layer
+       * zu einer Site hinzufügt, prüft die Pflicht-Liste dieser Site mit.
+       */
+      GEO_CITY_DB_PATH,
+      GEO_CITIES_PATH,
     ],
   },
   {

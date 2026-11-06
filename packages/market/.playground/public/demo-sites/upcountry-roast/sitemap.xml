@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Erfundene Demo-Sitemap. Acht Adressen; gelesen werden sechs — 
+     Impressum und Kontakt stehen auf der Pfad-Sperrliste (Plan §2.9 Nr. 2). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://upcountry-roast.example/</loc></url>
+  <url><loc>https://upcountry-roast.example/about</loc></url>
+  <url><loc>https://upcountry-roast.example/wholesale</loc></url>
+  <url><loc>https://upcountry-roast.example/roasting</loc></url>
+  <url><loc>https://upcountry-roast.example/farms</loc></url>
+  <url><loc>https://upcountry-roast.example/faq</loc></url>
+  <url><loc>https://upcountry-roast.example/imprint</loc></url>
+  <url><loc>https://upcountry-roast.example/contact</loc></url>
+</urlset>

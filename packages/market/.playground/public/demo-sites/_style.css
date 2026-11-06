@@ -1,0 +1,21 @@
+/* PROTOTYP (M0): das gemeinsame Aussehen der drei ERFUNDENEN Demo-Websites.
+   Sie liegen im Playground, damit der Marktvergleich ohne Netz vorführbar ist
+   und jedes Belegzitat auf eine Textstelle zeigt, die es wirklich gibt. */
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: -apple-system, 'Helvetica Neue', sans-serif;
+  color: #1b1b1a; background: #fbfbfa; line-height: 1.6;
+}
+.demo-warning {
+  background: #f3eede; color: #6b5320; font-size: 13px;
+  padding: 8px 20px; border-bottom: 1px solid #e3d9bd;
+}
+header, main, footer { max-width: 46rem; margin: 0 auto; padding: 0 20px; }
+header { padding-top: 40px; }
+nav a { color: #4a4a48; margin-right: 16px; }
+h1 { font-size: 34px; line-height: 1.2; margin: 24px 0 8px; font-weight: 600; }
+h2 { font-size: 20px; margin: 32px 0 8px; font-weight: 600; }
+.lead { font-size: 18px; color: #3a3a38; }
+ul { padding-left: 20px; }
+li { margin: 6px 0; }
+footer { color: #767674; font-size: 13px; padding: 48px 20px; }

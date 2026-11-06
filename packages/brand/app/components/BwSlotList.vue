@@ -11,11 +11,12 @@ export interface BwSlot {
 }
 defineProps<{ slots: BwSlot[] }>()
 defineEmits<{ edit: [id: string] }>()
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="mt-4">
-    <p class="bw-label" style="color: var(--bw-muted)">Entscheidungen</p>
+    <p class="bw-label" style="color: var(--bw-muted)">{{ t('brand.workspace.decisions') }}</p>
     <ul class="mt-2 space-y-2">
       <li
         v-for="slot in slots" :key="slot.id"
@@ -32,12 +33,12 @@ defineEmits<{ edit: [id: string] }>()
         <span class="min-w-0 flex-1">
           <span class="bw-label block" style="color: var(--bw-muted)">{{ slot.label }}</span>
           <span v-if="slot.value" class="block truncate text-sm">{{ slot.value }}</span>
-          <span v-else class="bw-pending block text-sm">Noch offen — kommt im Gespräch.</span>
+          <span v-else class="bw-pending block text-sm">{{ t('brand.workspace.stage.pending') }}</span>
         </span>
         <button
           v-if="slot.value"
           class="grid size-8 flex-none place-items-center rounded-full transition-colors hover:bg-[var(--bw-line)]"
-          :aria-label="`${slot.label} bearbeiten`"
+          :aria-label="t('brand.workspace.editSlot', { label: slot.label })"
           @click="$emit('edit', slot.id)"
         >
           <UIcon name="i-ph-pencil-simple" class="size-4" style="color: var(--bw-ink-soft)" />

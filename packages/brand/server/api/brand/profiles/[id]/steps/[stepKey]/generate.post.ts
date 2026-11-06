@@ -5,24 +5,32 @@ import {
   type BrandGenerationEventDataMap,
   type BrandGenerationEventName,
   type BrandGenerationFailureCode,
+  type BrandGenerationOutcome,
   findBrandGenerationByKey,
   packBrandGenerations,
   serializeBrandGenerationEvent,
 } from '../../../../../../../shared/brandGeneration'
 import { resolveBrandJourney } from '../../../../../../../shared/brandJourney'
-import { slotById } from '../../../../../../../shared/slotRegistry'
+import { slotReadiness } from '../../../../../../../shared/brandSlotReadiness'
+import { BRAND_STEP_KEYS, slotById } from '../../../../../../../shared/slotRegistry'
+import { resolveBrandUiLocale } from '../../../../../../../shared/brandUiLocale'
 import type { BrandGenerationEntry } from '../../../../../../../shared/types/brand'
 import {
   BRAND_MESSAGES_TABLE,
   BRAND_STEPS_TABLE,
   type BrandSlotRecord,
   brandDb,
+  brandSlotRecordConfirmed,
+  brandSlotStoredValue,
   loadBrandStepContext,
   loadStepRow,
   loadStepRows,
+  mergeStepSlotRecords,
   parseGenerations,
   parseSlotRecords,
   profileFacts,
+  profileSiteAnalysisText,
+  profileStartCard,
   resolveProfileProgress,
   serializeSlotRecords,
   toStepFacts,
@@ -38,6 +46,9 @@ import {
   resolveBrandSlotGenerator,
   retainBrandGeneration,
 } from '../../../../../../utils/brandGenerators'
+import { labelSlotDependencies } from '../../../../../../utils/brandSlotPromptLabels'
+import { parseGeorgeOptions } from '../../../../../../utils/georgeTurn'
+import { loadBrandConversationHistory } from '../../../../../../utils/brandConversationHistory'
 import { bookBrandAiQuota } from '../../../../../../utils/brandAiQuota'
 import { recordBrandEvent } from '../../../../../../utils/brandEvents'
 
@@ -50,12 +61,26 @@ import { recordBrandEvent } from '../../../../../../utils/brandEvents'
  * `generation.failed`. Jedes trägt seine `generationId`; die Serialisierung
  * (und die Lese-Seite) liegen als pure Regel in `shared/brandGeneration.ts`.
  *
+ * ── ZWEI ERGEBNISSE SEIT `george-a-4` ─────────────────────────────────────
+ * Ein Lauf endet als ENTWURF oder als RÜCKFRAGE (`outcome`, Audit-Befund B3).
+ * Die Rückfrage schreibt KEINEN Slot-Wert, kein `slot.ready`, keinen
+ * `inputHash` — nur eine Zeile im Verlauf und einen Eintrag in der Historie.
+ * Der Client erfährt den Unterschied im `generation.completed`-Frame und nicht
+ * an der Abwesenheit eines Frames: „nichts gekommen" ist auch der Zustand
+ * eines abgerissenen Stroms.
+ *
+ * Ausserdem trägt der Zug seit a-4 eine RAHMUNG (Befund B2) — worauf sich der
+ * Entwurf stützt, der Entwurf, eine Frage. Der Chat-Text und der Feld-Text sind
+ * damit zwei verschiedene Zeichenketten; welche wohin gehört, entscheidet
+ * `parseGeorgeTurn` im Generator, nicht diese Route.
+ *
  * ── ZWEI ARTEN, NEIN ZU SAGEN — UND DER UNTERSCHIED IST ABSICHT ───────────
  * VOR dem Strom wird mit HTTP abgewiesen: kein Beta-Zugang (404, Datentür),
  * fremdes Profil (404), gesperrter Baustein (403), unbekannter/deaktivierter
- * Slot oder ein Slot, den George gar nicht entwirft (400). Das sind Fehler des
- * AUFRUFERS — sie gehören in den Status, nicht in einen Datenstrom, den ein
- * `fetch` ohne Weiteres für einen Erfolg hält.
+ * Slot oder ein Slot, den George gar nicht entwirft (400), und seit dem
+ * Bereitschafts-Gate auch „dafür ist zu wenig da" (409, `not_ready`). Das sind
+ * Fehler bzw. Voraussetzungen des AUFRUFERS — sie gehören in den Status, nicht
+ * in einen Datenstrom, den ein `fetch` ohne Weiteres für einen Erfolg hält.
  *
  * IM Strom wird abgewiesen, was ein ZUSTAND ist: KI abgeschaltet
  * (`ai_disabled`), kein Generator registriert (`no_generator`), hier läuft schon
@@ -117,10 +142,22 @@ function clampDraft(draft: string, maxLength: number): string {
   return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed
 }
 
+/**
+ * B4, MECHANISCH (Davids Live-Fund 2026-09-03): die Tonalitäts-Ableitung kam
+ * mit `**Fett-Markern**` an, und die Log-Karte zeigt Slot-Text als reinen
+ * Text — der Mensch las wörtlich die Sternchen. Die Prompt-Regel („kein
+ * Markdown ausser der Vertragsform") bleibt; hier fällt, was trotzdem
+ * durchkommt. NUR der SLOT-Wert wird bereinigt, nie der Chat-Zug — und nur
+ * `**`-Paare: einzelne Sterne können Inhalt sein (Fussnoten, Mathe).
+ */
+function stripBoldMarkers(draft: string): string {
+  return draft.replace(/\*\*([^*]+)\*\*/g, '$1')
+}
+
 export default defineEventHandler(async (event) => {
   const started = Date.now()
-  const { userId } = await requireBrandAccess(event)
-  const { profile, stepKey, stepRow } = await loadBrandStepContext(event, userId)
+  const { userId, betaAccount } = await requireBrandAccess(event)
+  const { profile, stepKey, stepRow, stepRows } = await loadBrandStepContext(event, userId, betaAccount)
 
   // ── HTTP-Gates: Fehler des Aufrufers (s. Kopf) ───────────────────────────
   const parsed = createBrandGenerateSchema().safeParse(await readBody(event))
@@ -159,11 +196,100 @@ export default defineEventHandler(async (event) => {
   const aiEnabled = await readBrandAiEnabled(event)
   const choice = aiEnabled ? resolveBrandSlotGenerator(stepKey) : null
 
+  /**
+   * ── ZWEI AUFNAHMEN, ZWEI FRAGEN (P3.1) ───────────────────────────────────
+   * `records` ist die Zeile DIESES Bausteins — sie beantwortet die Frage nach
+   * dem Slot, der gerade geschrieben werden soll (ist er bestätigt?), und sie
+   * ist die Zeile, in die nachher geschrieben wird.
+   *
+   * `allRecords` ist der Stand ALLER neun Bausteine. Er beantwortet die Frage
+   * nach den QUELLEN — und die zeigen laut Registry ausdrücklich über
+   * Baustein-Grenzen hinweg (`b.purpose` ← `a.pitch`). Bis P3.1 gab es nur die
+   * erste Aufnahme, also kamen fremde Quellen leer bei George an und der
+   * inputHash sah ihre Änderungen nicht.
+   *
+   * Es kostet KEINE zusätzliche Abfrage: `loadBrandStepContext` hat die neun
+   * Zeilen für die Journey ohnehin schon mit EINEM `listRows` geholt.
+   */
   const records = parseSlotRecords(stepRow.slots)
-  const dependencies = collectSlotDependencies(slot.id, records)
+  const allRecords = mergeStepSlotRecords(stepRows)
+  // Die Labels reisen NUR in den Prompt (george-a-6) — der inputHash liest
+  // slotId+value und bleibt von ihnen unberührt.
+  const dependencies = labelSlotDependencies(
+    collectSlotDependencies(slot.id, allRecords),
+    profile.contentLocale,
+    profileFacts(profile, betaAccount).pathKind,
+    profileFacts(profile, betaAccount).team,
+  )
   const inputHash = brandGenerationInputHash(slot.id, profile.contentLocale, dependencies)
   const stored = parseGenerations(stepRow.generations)
   const reused = findBrandGenerationByKey(stored.items, body.idempotencyKey)
+
+  /**
+   * ── DIE BESTÄTIGUNGS-SPERRE (Davids Entscheidung 2026-09-02) ─────────────
+   * Ein bestätigter Slot wird nicht überschrieben — auch nicht von George.
+   * Sie steht VOR jeder Buchung, denn sie kostet nichts, und sie steht
+   * UNBEDINGT, anders als das Bereitschafts-Gate eine Zeile weiter unten: das
+   * ist ein RAT über das vorhandene Material und schweigt deshalb, wenn ohnehin
+   * nicht generiert würde (abgeschaltete KI, Cache-Treffer); dies hier ist eine
+   * SPERRE über den Zustand des Slots, und die gilt in jeder Betriebslage.
+   * Sonst hinge die Unversehrtheit des bestätigten Textes daran, ob gerade ein
+   * Kill-Switch gesetzt ist.
+   *
+   * Der Weg zurück ist derselbe wie überall: „Korrigieren" (der Autosave hebt
+   * die Bestätigung auf), danach entwirft George wieder.
+   */
+  if (brandSlotRecordConfirmed(records[slot.id])) {
+    throw createError({
+      status: 409,
+      statusText: 'Slot is confirmed',
+      data: { code: 'slot_confirmed' },
+    })
+  }
+
+  /**
+   * ── DAS BEREITSCHAFTS-GATE (Davids „zu wenig ist zu wenig") ──────────────
+   * Es steht VOR der Sperre und vor jeder Buchung, denn es sagt etwas, das
+   * schon vor dem Klick feststand: aus dieser Ausgangslage kann kein ehrlicher
+   * Entwurf entstehen. Es kostet keinen Anbieter-Aufruf und keine Zeile in der
+   * Datenbank — deshalb ist es ein HTTP-Nein (409, `not_ready`) und kein
+   * Zustand im Strom.
+   *
+   * Geprüft wird nur, was auch WIRKLICH generiert würde: kein Cache-Treffer,
+   * kein abgeschalteter Dienst, kein fehlender Generator. Sonst bekäme ein
+   * Mensch bei ausgeschalteter KI die falsche Auskunft — nämlich die über sein
+   * Material statt die über den Dienst.
+   *
+   * DIE QUELLEN SIND DIESELBEN, die gleich in den Generator-Vertrag wandern
+   * (Startkarte, Website-Text, Slot-Werte ALLER Bausteine — seit P3.1). Ein
+   * Gate, das mehr oder weniger sieht als der Prompt, widerspricht George
+   * irgendwann öffentlich.
+   */
+  if (aiEnabled && choice && !reused?.draft) {
+    const readiness = slotReadiness(slot.id, {
+      startCard: profileStartCard(profile),
+      hasSiteAnalysis: profileSiteAnalysisText(profile).trim().length > 0,
+      records: Object.fromEntries(
+        Object.keys(allRecords).map(id => [id, brandSlotStoredValue(allRecords[id])]),
+      ),
+      // Der Server kennt ALLE neun Zeilen und darf deshalb über jede Quelle
+      // urteilen; die Werkstatt reicht nur den offenen Baustein herein.
+      coveredSteps: BRAND_STEP_KEYS,
+    })
+    if (!readiness.ready) {
+      logEvent('info', 'brand.generation_not_ready', {
+        slotId: slot.id, stepKey, missing: readiness.missing,
+      })
+      // Nur der CODE reist (der zentrale Handler hebt ihn als `reason`); WAS
+      // fehlt, rechnet die Werkstatt aus denselben Daten selbst — sie zeigt es
+      // ohnehin schon, bevor der Knopf gedrückt wird.
+      throw createError({
+        status: 409,
+        statusText: 'Not enough material for a draft',
+        data: { code: 'not_ready' },
+      })
+    }
+  }
 
   const generationId = ID.unique()
 
@@ -193,6 +319,7 @@ export default defineEventHandler(async (event) => {
     const rejection = await bookBrandAiQuota(event, {
       userId,
       profileId: profile.$id,
+      kind: 'slot',
       slotId: slot.id,
     })
     if (rejection) {
@@ -278,19 +405,64 @@ export default defineEventHandler(async (event) => {
         promptVersion: reused.promptVersion,
         createdAt: reused.createdAt,
         reused: true,
+        // Wiederverwendet wird nur, was einen Entwurf HAT
+        // (`findBrandGenerationByKey` verlangt ihn) — eine Rückfrage landet
+        // deshalb nie in diesem Zweig.
+        outcome: 'draft',
       })
       res.end()
       return
     }
+
+    /**
+     * DER VERLAUF DIESES BAUSTEINS (a-9) — die Antworten, die der Mensch auf
+     * Georges Rückfragen in den Chat getippt hat.
+     *
+     * ER WIRD ERST HIER GELESEN, nach dem Wiederverwendungs-Zweig: ein
+     * Cache-Treffer braucht ihn nicht, und was nichts kostet, soll auch keine
+     * Abfrage kosten. FAIL-SOFT — ein unlesbarer Verlauf gibt ein leeres Array
+     * und kostet den Lauf nicht (s. `brandConversationHistory.ts`).
+     *
+     * ER GEHT NICHT IN DEN `inputHash`: der beschreibt den Stand der
+     * Quell-SLOTS, und dafür ist `collectSlotDependencies` die einzige Quelle.
+     * Dieselbe bewusste Grenze wie bei Startkarte und Website-Text — eine neue
+     * Chat-Antwort macht einen bestehenden Entwurf nicht still „veraltet"; die
+     * Neuerzeugung stösst der Mensch selbst an.
+     */
+    // Der Verlaufs-Schnitt gilt auch hier (brand-013): ein Entwurf, der aus
+    // dem verworfenen Gespräch schöpft, wäre genau die Erinnerung, die
+    // ein Neubeginn beseitigen sollte.
+    const conversation = await loadBrandConversationHistory(
+      event, profile.$id, stepKey, undefined, stepRow.restartedAt,
+    )
 
     const context: BrandGeneratorContext = {
       event,
       stepKey,
       slot,
       locale: profile.contentLocale,
-      pathKind: profileFacts(profile).pathKind,
+      // Georges ANSPRACHE folgt der Seite, sein INHALT der Marke (s. Vertrag).
+      // Der Rückfall auf die Inhaltssprache passiert HIER, damit kein
+      // Generator ihn je selbst bauen muss.
+      uiLocale: resolveBrandUiLocale(body.uiLocale, profile.contentLocale),
+      pathKind: profileFacts(profile, betaAccount).pathKind,
+      // DIE WEICHE W3 (george-a-14, Davids Entscheidung 2026-09-09): sie
+      // entscheidet, WER im Markentext spricht. Die Beschriftungen bekamen sie
+      // schon (`labelSlotDependencies`, oben), der Entwurfs-Auftrag nicht —
+      // deshalb sprach der Pitch einer Solo-Marke von „unserer Werkstatt".
+      team: profileFacts(profile, betaAccount).team,
+      // Die STARTKARTE aus dem PROFIL (§2.1) — sie geht NICHT in den
+      // `inputHash`: der beschreibt den Stand der Quell-SLOTS, und dafür ist
+      // `collectSlotDependencies` die einzige Quelle. Eine Änderung an der
+      // Karte macht einen Entwurf deshalb heute nicht „veraltet".
+      startCard: profileStartCard(profile),
+      // Der gelesene Website-Text (P2.3) — leer, solange niemand „Website
+      // lesen" gedrückt hat. Er geht wie die Startkarte NICHT in den
+      // `inputHash` (Begründung im Vertrag, `brandGenerators.ts`).
+      siteAnalysis: profileSiteAnalysisText(profile),
       hint: body.hint ?? '',
       dependencies,
+      conversation,
       signal: abort.signal,
       onDelta: (text: string) => { send('message.delta', { generationId, text }) },
     }
@@ -311,13 +483,48 @@ export default defineEventHandler(async (event) => {
 
     if (result.aborted || abort.signal.aborted) return fail('aborted')
 
-    const draft = clampDraft(result.draft, slot.maxLength)
-    if (!draft) return fail('empty_result')
+    /**
+     * ── ZWEI AUSGÄNGE STATT EINEM (george-a-4, Befund B3) ─────────────────
+     * `draft` ist der FELD-Wert, `chat` der Zug im Verlauf. Bis a-3 waren das
+     * dieselbe Zeichenkette; seit der Rahmung sind es zwei, und bei einer
+     * RÜCKFRAGE gibt es den ersten gar nicht.
+     *
+     * Der Rückfall `result.message ?? result.draft` ist der Vertrag für jeden
+     * Generator, der die Rahmung nicht kennt (Dev-Stub, künftige Bausteine):
+     * dann ist der Zug wieder der Entwurf, wie vorher.
+     */
+    const outcome: BrandGenerationOutcome = result.outcome ?? 'draft'
 
-    send('slot.ready', { generationId, slotId: slot.id, draft })
+    /**
+     * ANTWORT-MÖGLICHKEITEN GIBT ES NUR ZUR RÜCKFRAGE (Davids Anforderung
+     * 2026-09-04). Ein ENTWURFS-Zug endet laut Vertrag mit „passt das?" — dafür
+     * sind zwei Knöpfe die falsche Form, denn die Antwort darauf ist entweder
+     * eine Bestätigung (die hat ihren eigenen Knopf) oder eine Korrektur (die
+     * ist Text). Sein ASK-Zweig bleibt deshalb unangetastet.
+     *
+     * GELESEN WIRD VOR DEM KLEMMEN: `clampDraft` schneidet auf den Slot-Deckel,
+     * und die `OPTION:`-Zeilen stehen ganz am Ende — nach dem Klemmen wären sie
+     * bei einem langen Zug die ersten, die fehlen.
+     */
+    const spoken = outcome === 'question'
+      ? parseGeorgeOptions(result.message ?? result.draft)
+      : { message: result.message ?? result.draft, options: [] as string[] }
+    const chat = clampDraft(spoken.message, slot.maxLength)
+    const draft = outcome === 'question' ? '' : clampDraft(stripBoldMarkers(result.draft), slot.maxLength)
+
+    // Bei einer Rückfrage ist der ZUG das Ergebnis; bei einem Entwurf das FELD.
+    // Ein leerer Zug wäre in beiden Fällen nichts, was man speichern sollte.
+    if (!chat || (outcome === 'draft' && !draft)) return fail('empty_result')
+
+    // KEIN `slot.ready` für eine Rückfrage: das Frame IST die Anweisung an den
+    // Client, ein Feld zu füllen und es als Entwurf zu markieren.
+    if (outcome === 'draft') send('slot.ready', { generationId, slotId: slot.id, draft })
 
     const completed = await persist({
       draft,
+      chat,
+      options: spoken.options,
+      outcome,
       inputHash,
       generationId,
       result,
@@ -335,6 +542,7 @@ export default defineEventHandler(async (event) => {
       generationId,
       slotId: slot.id,
       stepKey,
+      outcome,
       model: result.model,
       provider: result.provider,
       ms: Date.now() - started,
@@ -343,7 +551,10 @@ export default defineEventHandler(async (event) => {
       type: 'generation.completed',
       profileId: profile.$id,
       userId,
-      payload: { slotId: slot.id, stepKey, model: result.model, ms: Date.now() - started },
+      // `outcome` ist eine KENNZAHL, kein Inhalt (Log-Regel §6): „wie oft musste
+      // George nachfragen" ist die Frage, an der man merkt, ob der Startbogen
+      // genug erhebt.
+      payload: { slotId: slot.id, stepKey, outcome, model: result.model, ms: Date.now() - started },
     })
     res.end()
   }
@@ -363,7 +574,13 @@ export default defineEventHandler(async (event) => {
    * statt eines Abschlusses, den niemand wiederfindet.
    */
   async function persist(input: {
+    /** Der FELD-Wert. Bei einer Rückfrage leer — dann bleiben die Slots unberührt. */
     draft: string
+    /** Der Zug im Verlauf (gerahmter Entwurf bzw. die Rückfrage). */
+    chat: string
+    /** Antwort-Möglichkeiten zur Rückfrage — leer heisst „keine Chips". */
+    options: readonly string[]
+    outcome: BrandGenerationOutcome
     inputHash: string
     generationId: string
     result: { model: string, provider: string, promptVersion: string }
@@ -380,17 +597,22 @@ export default defineEventHandler(async (event) => {
       const now = new Date().toISOString()
 
       const before: BrandSlotRecord = records[input.entryBase.slotId] ?? {}
+      const written: BrandSlotRecord = {
+        ...before,
+        // Der ERSTE Wert bleibt für immer stehen — aus dem Verhältnis von
+        // `firstDraft` zu `confirmed` entstehen die beiden Übernahmequoten
+        // (Audit 2). Eine Regeneration darf ihn nicht mitziehen.
+        firstDraft: before.firstDraft ?? input.draft,
+        latestDraft: input.draft,
+        updatedAt: now,
+      }
+      // Ein NEUER Entwurf nimmt der Zeile ihre Abnahme (§5a): `accepted` ist
+      // eine Aussage über einen gelesenen Wortlaut, und der ist jetzt ein
+      // anderer. Der Server tut das, nie die Oberfläche.
+      delete written.accepted
       const next: Record<string, BrandSlotRecord> = {
         ...records,
-        [input.entryBase.slotId]: {
-          ...before,
-          // Der ERSTE Wert bleibt für immer stehen — aus dem Verhältnis von
-          // `firstDraft` zu `confirmed` entstehen die beiden Übernahmequoten
-          // (Audit 2). Eine Regeneration darf ihn nicht mitziehen.
-          firstDraft: before.firstDraft ?? input.draft,
-          latestDraft: input.draft,
-          updatedAt: now,
-        },
+        [input.entryBase.slotId]: written,
       }
 
       const history = parseGenerations(fresh.generations)
@@ -405,7 +627,12 @@ export default defineEventHandler(async (event) => {
         inputHash: input.inputHash,
         createdAt: now,
         ...(input.entryBase.idempotencyKey ? { idempotencyKey: input.entryBase.idempotencyKey } : {}),
-        draft: input.draft,
+        // EINE RÜCKFRAGE HAT KEINEN `draft`, und das ist mehr als Sparsamkeit:
+        // die Fassungs-Wiederherstellung bietet jeden Eintrag mit Text zum
+        // Übernehmen an — eine Frage im Feld wäre dort ein Angebot, das
+        // niemand annehmen will. Der Lauf steht trotzdem in der Historie
+        // (`outcome`), sonst fehlte in der Herkunft ein bezahlter Aufruf.
+        ...(input.outcome === 'question' ? { outcome: 'question' as const } : { draft: input.draft }),
       }
       const packed = packBrandGenerations([...history.items, entry], history.count + 1)
 
@@ -416,10 +643,15 @@ export default defineEventHandler(async (event) => {
         tableId: BRAND_STEPS_TABLE,
         rowId: fresh.$id,
         data: {
-          slots: serializeSlotRecords(next),
           generations: packed.json,
-          inputHash: input.inputHash,
           revision,
+          // NUR ein Entwurf fasst Slots und `inputHash` an. Der Hash sagt
+          // „woraus ist der aktuelle Entwurf entstanden" — nach einer Rückfrage
+          // gibt es keinen neuen, und ihn trotzdem fortzuschreiben machte einen
+          // veralteten Entwurf stillschweigend wieder „aktuell".
+          ...(input.outcome === 'draft'
+            ? { slots: serializeSlotRecords(next), inputHash: input.inputHash }
+            : {}),
         },
       })
 
@@ -435,9 +667,20 @@ export default defineEventHandler(async (event) => {
           data: {
             profileId: profile.$id,
             stepKey,
+            // DIE SESSION IST DAS FELD (brand-011): ein Entwurfs-Zug gehört in
+            // den Faden des Feldes, das er entwirft — sonst stünde er im
+            // Kapitel-Verlauf und in keiner Session.
+            sessionKey: input.entryBase.slotId,
             role: 'george',
-            body: input.draft,
-            parts: JSON.stringify({ kind: 'draft', slotId: input.entryBase.slotId }),
+            body: input.chat,
+            // `options` liegt ADDITIV daneben (Davids Anforderung 2026-09-04):
+            // der `body` trägt sie NICHT — dort stünden die Beschriftungen als
+            // roher Text in der Sprechblase.
+            parts: JSON.stringify({
+              kind: input.outcome,
+              slotId: input.entryBase.slotId,
+              ...(input.options.length ? { options: input.options } : {}),
+            }),
             generationId: input.generationId,
           },
         })
@@ -460,7 +703,7 @@ export default defineEventHandler(async (event) => {
         ? { ...row, slots: JSON.stringify(next) }
         : row))
       const progress = resolveProfileProgress(
-        resolveBrandJourney(profileFacts(profile), toStepFacts(mergedRows)),
+        resolveBrandJourney(profileFacts(profile, betaAccount), toStepFacts(mergedRows)),
       )
       await touchProfile(event, profile.$id, {
         progressPct: progress.progressPct,
@@ -476,6 +719,10 @@ export default defineEventHandler(async (event) => {
         promptVersion: input.result.promptVersion,
         createdAt: now,
         reused: false,
+        outcome: input.outcome,
+        // Rückwärts-Vertrag: fehlt das Feld, gibt es keine Chips — also genau
+        // das Verhalten von vor dieser Runde.
+        ...(input.options.length ? { options: input.options } : {}),
       }
     }
     catch (error) {

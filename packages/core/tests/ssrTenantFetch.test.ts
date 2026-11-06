@@ -29,11 +29,19 @@ import { fileURLToPath } from 'node:url'
 const wurzel = fileURLToPath(new URL('../../..', import.meta.url))
 
 /**
- * Nur Layer, deren Seiten auf einem MANDANTEN-Host laufen können. `core` und
- * `system` sind Fundament, `marketing`/`help` sind Single-Host — dort gibt es
+ * Layer, deren App-Code auf einem MANDANTEN-Host laufen kann. `system` ist
+ * Fundament ohne App-Code, `marketing`/`help` sind Single-Host — dort gibt es
  * keinen Mandanten, den man verlieren könnte.
+ *
+ * `core` STEHT SEIT DEM 2026-09-08 MIT DRIN (U15 Teil 3). Hier stand vorher
+ * „core ist Fundament, dort gibt es keinen Mandanten" — und das war eine
+ * Verwechslung von SCHICHT und LAUFZEIT: ein core-COMPOSABLE läuft in genau der
+ * Seite, in der es aufgerufen wird, also auch auf jedem Mandanten-Host.
+ * `useCommunityNav()` holt von dort zwei Routen, und beide antworten „404
+ * Unknown host", wenn der Aufruf den Host verliert. Der Anlass ist also nicht
+ * Vollständigkeit, sondern eine Datei, die es vorher nicht gab.
  */
-const LAYER = ['blueprint', 'posts', 'comments', 'events', 'courses', 'pages', 'onboarding', 'admin', 'themes', 'moderation']
+const LAYER = ['core', 'blueprint', 'brand', 'posts', 'comments', 'events', 'courses', 'pages', 'onboarding', 'admin', 'themes', 'moderation']
 
 const dateien = LAYER.flatMap(layer =>
   globSync(`packages/${layer}/app/**/*.{vue,ts}`, { cwd: wurzel }).map(p => `${wurzel}${p}`),

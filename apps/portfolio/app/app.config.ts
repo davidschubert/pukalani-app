@@ -24,6 +24,15 @@ export default defineAppConfig({
      */
     brand: { name: 'Pukalani Studio' },
     /**
+     * „WEBSITE-EINSTELLUNGEN" STATT „COMMUNITY-EINSTELLUNGEN" (Davids
+     * Entscheidung 2026-09-08, DECISION-LOG „Navigation anpassen"): portfolio
+     * ist ein Silo ohne Community; der Schalter benennt die Hülle um und hängt
+     * die vier Betreiber-Reiter hinein — wie in apps/comments und
+     * apps/branding (Begründung an `instanceTabs` in
+     * packages/core/app/app.config.ts).
+     */
+    admin: { instanceTabs: true },
+    /**
      * SEO-BASIS AUS DEM REQUEST-HOST (control-036, 2026-08-07).
      *
      * Sobald diese Site eine eigene Domain hat, bedient DERSELBE Prozess zwei

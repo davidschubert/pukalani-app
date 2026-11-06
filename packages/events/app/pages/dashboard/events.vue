@@ -207,7 +207,7 @@ const columns = computed<TableColumn<EventRow>[]>(() => [
   { accessorKey: 'location', header: () => t('events.admin.col.location'), meta: { class: HIDE_LG } },
   { id: 'attendees', header: () => t('events.admin.col.attendees'), meta: { class: HIDE_MD } },
   { accessorKey: 'status', header: () => t('events.admin.col.status') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 /**

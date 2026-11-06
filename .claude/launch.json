@@ -117,6 +117,42 @@
         "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter marketing dev"
       ],
       "port": 3007
+    },
+    {
+      "name": "brand-gespraech",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter @pukalani/brand exec nuxi dev .playground --port 3031"
+      ],
+      "port": 3031
+    },
+    {
+      "name": "insights-playground",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter @pukalani/insights exec nuxi dev .playground --port 3013"
+      ],
+      "port": 3013
+    },
+    {
+      "name": "branding",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter branding dev"
+      ],
+      "port": 3010
+    },
+    {
+      "name": "comments-turnstile",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && NUXT_TURNSTILE_SECRET=1x0000000000000000000000000000000AA NUXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA exec pnpm --filter comments exec nuxi dev --port 3012"
+      ],
+      "port": 3012
     }
   ]
 }

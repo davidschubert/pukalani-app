@@ -26,7 +26,7 @@ import {
  * eine stille Erhöhung wäre die schlechtere Antwort darauf.
  */
 export default defineEventHandler(async (event): Promise<BrandProfileListResponse> => {
-  const { userId } = await requireBrandAccess(event)
+  const { userId, betaAccount } = await requireBrandAccess(event)
   const { tablesDB, databaseId } = brandDb(event)
 
   let rows: BrandProfileRow[] = []
@@ -53,5 +53,5 @@ export default defineEventHandler(async (event): Promise<BrandProfileListRespons
 
   const shared = await activeShareProfileIds(event, rows.map(row => row.$id))
 
-  return { profiles: rows.map(row => toProfileSummary(row, shared.has(row.$id))) }
+  return { profiles: rows.map(row => toProfileSummary(row, shared.has(row.$id), betaAccount)) }
 })

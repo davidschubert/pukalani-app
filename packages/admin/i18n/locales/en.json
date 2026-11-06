@@ -15,7 +15,7 @@
       "people": "People",
       "products": "Products",
       "communitySettings": "Community settings",
-      "instanceSettings": "Instance settings",
+      "instanceSettings": "Website settings",
       "groups": {
         "platform": "Platform",
         "studio": "Studio",
@@ -584,7 +584,28 @@
       "notifications": "Notifications",
       "sessions": "Sessions",
       "security": "Security",
-      "data": "Data"
+      "data": "Data",
+      "navigation": "Navigation"
+    },
+    "navPrefs": {
+      "title": "Navigation order",
+      "description": "Arrange the sidebar entries the way you need them. This choice belongs to your account and applies on every website you work on with it.",
+      "searchHint": "Hidden entries are still reachable through search (⌘K).",
+      "ungrouped": "No section",
+      "hide": "Hide",
+      "show": "Show",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "groupUp": "Move section up",
+      "groupDown": "Move section down",
+      "reset": "Reset to default",
+      "saved": "Order saved",
+      "saveFailed": "Saving failed",
+      "resetDone": "Default order restored",
+      "empty": {
+        "title": "Nothing to arrange",
+        "description": "On this website your role does not have any sidebar entries yet."
+      }
     },
     "communitySettings": {
       "title": "Community settings"

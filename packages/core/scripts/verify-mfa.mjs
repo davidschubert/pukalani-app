@@ -3,7 +3,8 @@
  *
  * Fährt den GANZEN Weg über die echten HTTP-Routen des Dev-Servers, nicht
  * gegen die Funktionen: Einrichten, Anmelden mit Code, Drossel, Wiederher-
- * stellungs-Code, Abschalten, Gast-Abwehr.
+ * stellungs-Code, Abschalten, Gast-Abwehr — und seit 2026-10-24 die
+ * Anmeldung per E-MAIL-CODE mit Zweitfaktor (Abschnitt 10).
  *
  * Die TOTP-Codes rechnet das Skript selbst aus dem Geheimnis (HMAC über
  * node:crypto). Das ist BEWUSST nur hier so — im Produkt rechnet niemand
@@ -22,6 +23,8 @@ import { Client, Account, Users, ID, AuthenticatorType } from 'node-appwrite'
 const PORT = Number(process.env.PORT || 3021)
 const HOST = process.env.HOST || 'localhost'
 const ENV_FILE = process.env.ENV_FILE || 'apps/comments/.env'
+/** Abschnitt 10 liest den E-Mail-Code aus dem lokalen Mailpit (Appwrite-Dev schickt dorthin). */
+const MAILPIT_URL = process.env.MAILPIT_URL || 'http://localhost:8025'
 
 const env = Object.fromEntries(
   readFileSync(ENV_FILE, 'utf8').split('\n')
@@ -109,6 +112,28 @@ function totp(secret) {
  * verbrauchte Budget des ersten und meldete 429 schon beim ERSTEN Versuch —
  * ein Fehlschlag, der nach kaputtem Produkt aussieht und keiner ist.
  */
+/**
+ * Holt den sechsstelligen Code aus der ECHTEN Mail (Mailpit-API, bis zu 15 s
+ * Geduld): Abschnitt 10 soll denselben Weg gehen wie ein Mensch — Code
+ * anfordern über /api/auth/otp, Code aus dem Postfach, Code einlösen. Ein
+ * Server-Token (`users.createToken`) wäre die Abkürzung, aber der ist HEX und
+ * kein sechsstelliger Zahlencode: unsere Route lehnt ihn zu Recht mit 400 ab.
+ */
+async function otpCodeFromMail(to) {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const search = await fetch(`${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`)
+      .then(r => r.json()).catch(() => null)
+    const id = search?.messages?.[0]?.ID
+    if (id) {
+      const message = await fetch(`${MAILPIT_URL}/api/v1/message/${id}`).then(r => r.json()).catch(() => null)
+      const match = String(message?.Text ?? '').match(/\b(\d{6})\b/)
+      if (match) return match[1]
+    }
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+  return null
+}
+
 function freshIp() {
   return `203.0.113.${1 + Math.floor(Math.random() * 250)}`
 }
@@ -350,6 +375,53 @@ try {
   const statusBody = await call('/api/auth/mfa/status', { cookie, clientIp: ip })
   check('status trägt weder Geheimnis noch Codes',
     !statusBody.raw.includes(secret) && !recoveryCodes.some(code => statusBody.raw.includes(code)))
+
+  // ---------------------------------------------------------------- 10
+  console.log('\n10. Anmeldung per E-MAIL-CODE mit Zweitfaktor (Befund 2026-10-24, prod)')
+  // Derselbe Weg wie ein Mensch: Code anfordern (/api/auth/otp), Code aus der
+  // Mail (Mailpit), Code einlösen (/api/auth/otp/verify) — auf einem Konto MIT
+  // eingeschaltetem Zweitfaktor. Vor dem Fix endete das in einer Session mit
+  // `factors: ['email']`, auf die /api/auth/me 401 sagt, und ohne ein Wort
+  // an den Nutzer.
+  const otpUser = await createUserWithMfa('otp')
+  await call('/api/auth/logout', { method: 'POST', cookie, clientIp: ip })
+  ip = freshIp()
+  const otpRequest = await call('/api/auth/otp', { method: 'POST', body: { email: otpUser.email }, clientIp: ip })
+  check('otp anfordern 200', otpRequest.status === 200, `status ${otpRequest.status} ${otpRequest.raw.slice(0, 120)}`)
+  const otpCode = await otpCodeFromMail(otpUser.email)
+  check('Code steht in der Mail (Mailpit)', Boolean(otpCode), `kein Code unter ${MAILPIT_URL}`)
+  const otpLogin = await call('/api/auth/otp/verify', {
+    method: 'POST', body: { userId: otpRequest.json?.userId, code: otpCode ?? '000000' }, clientIp: ip,
+  })
+  cookie = sessionCookieFrom(otpLogin)
+  check('otp/verify 200 und mfaRequired: true',
+    otpLogin.status === 200 && otpLogin.json?.mfaRequired === true, `status ${otpLogin.status} ${otpLogin.raw.slice(0, 120)}`)
+  check('otp/verify setzt trotzdem ein Session-Cookie', Boolean(cookie))
+  const otpHalf = await call('/api/auth/me', { cookie, clientIp: ip })
+  check('halbe Session ist überall ausgeloggt (/me 401)', otpHalf.status === 401, `status ${otpHalf.status}`)
+  const otpChallenge = await call('/api/auth/mfa/challenge', {
+    method: 'POST', body: { mode: 'totp', code: totp(otpUser.secret) }, cookie, clientIp: ip,
+  })
+  check('Challenge mit App-Code 200', otpChallenge.status === 200, `status ${otpChallenge.status} ${otpChallenge.raw.slice(0, 120)}`)
+  const otpFull = await call('/api/auth/me', { cookie, clientIp: ip })
+  check('jetzt drin — /api/auth/me liefert den Code-Nutzer',
+    otpFull.status === 200 && otpFull.json?.email === otpUser.email, `status ${otpFull.status}`)
+
+  // Gegenprobe: ein Konto OHNE Zweitfaktor darf sich durch die Weiche nicht ändern.
+  await call('/api/auth/logout', { method: 'POST', cookie, clientIp: ip })
+  ip = freshIp()
+  const plainEmail = `mfa-verify-otp-plain-${Date.now()}@example.com`
+  extraUserIds.push((await a.users.create({ userId: ID.unique(), email: plainEmail, password, name: 'OTP ohne MFA' })).$id)
+  const plainRequest = await call('/api/auth/otp', { method: 'POST', body: { email: plainEmail }, clientIp: ip })
+  const plainCode = await otpCodeFromMail(plainEmail)
+  const plainLogin = await call('/api/auth/otp/verify', {
+    method: 'POST', body: { userId: plainRequest.json?.userId, code: plainCode ?? '000000' }, clientIp: ip,
+  })
+  cookie = sessionCookieFrom(plainLogin)
+  check('ohne Zweitfaktor: otp/verify meldet mfaRequired: false',
+    plainLogin.status === 200 && plainLogin.json?.mfaRequired === false, `status ${plainLogin.status} ${plainLogin.raw.slice(0, 120)}`)
+  const plainMe = await call('/api/auth/me', { cookie, clientIp: ip })
+  check('… und man ist sofort drin', plainMe.status === 200 && plainMe.json?.email === plainEmail, `status ${plainMe.status}`)
 }
 catch (error) {
   fail++

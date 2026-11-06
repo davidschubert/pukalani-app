@@ -1,4 +1,6 @@
-import type { BwRailLayer } from '../../../app/components/BwProgressRail.vue'
+import type { BwRailLayer, BwRailSession, BwRailStep } from '../../../app/components/BwProgressRail.vue'
+import { type DsChapterKey, DS_CHAPTERS, dsChapterPath } from './demoDesign'
+import { type DkChapterKey, DK_CHAPTERS, dkChapterPath } from './demoKit'
 
 /** Statische Dummy-Daten (P0b): die fünf Schichten, Baustein C aktiv.
  *  Runde 45 (David): JEDER Schritt trägt sein Info-Paket für den
@@ -6,6 +8,9 @@ import type { BwRailLayer } from '../../../app/components/BwProgressRail.vue'
 export const demoRail: BwRailLayer[] = [
   {
     id: 'foundation',
+    /* Davids Entscheidung 2026-09-02: Brand Language ist IN der Foundation
+     * aufgegangen (ein Wizard, ein Dokument, George durchgehend) — die
+     * Tagline/Naming-Kapitel stehen jetzt vor dem Foundation-Ergebnis. */
     label: 'Brand Foundation',
     note: 'Wer ihr seid und wofür ihr steht',
     info: {
@@ -13,7 +18,7 @@ export const demoRail: BwRailLayer[] = [
       minutes: '~34 Min',
       bausteine: [
         { label: 'Kontext', note: 'Wer ihr seid, was ihr anbietet, für wen — und euer Marktumfeld.', done: true },
-        { label: 'Purpose · Vision · Mission', note: 'Warum es euch gibt, wohin ihr wollt, wie ihr dorthin kommt.', done: true },
+        { label: 'Purpose, Vision & Mission', note: 'Warum es euch gibt, wohin ihr wollt, wie ihr dorthin kommt.', done: true },
         { label: 'Werte', note: 'Die Verhaltensregeln eurer Marke — gerade im Gespräch.' },
         { label: 'Archetyp & Stimme', note: 'Euer Charakter und wie er klingt.' },
         { label: 'Manifest', note: 'Die ganze Foundation als ein Text mit Haltung.' },
@@ -40,7 +45,7 @@ export const demoRail: BwRailLayer[] = [
       },
       {
         id: 'pvm',
-        label: 'Purpose · Vision · Mission',
+        label: 'Purpose, Vision & Mission',
         icon: 'i-ph-target',
         state: 'done',
         info: {
@@ -103,22 +108,6 @@ export const demoRail: BwRailLayer[] = [
           ],
         },
       },
-      { id: 'foundation-result', kind: 'result', label: 'Ergebnis', icon: '', state: 'open', to: '/brand/demo/ergebnis' },
-    ],
-  },
-  {
-    id: 'verbal',
-    label: 'Brand Language',
-    note: 'Tagline, Botschaften & Name',
-    info: {
-      description: 'Die verbale Identität: der eine Satz neben eurem Namen, die Botschaften dahinter — und der Name selbst auf dem Prüfstand. Baut direkt auf der Foundation auf: ohne geklärte Werte klingt jede Tagline beliebig.',
-      minutes: '~13 Min',
-      bausteine: [
-        { label: 'Tagline & Messaging', note: 'Tagline-Kandidaten mit Herleitung, Kernbotschaften, Elevator Pitch.' },
-        { label: 'Name & Prüfung', note: 'Namens-Kandidaten oder Bestandsname — gemessen an der Foundation, plus Verfügbarkeits- und Sprach-Check.' },
-      ],
-    },
-    steps: [
       {
         id: 'messaging',
         label: 'Tagline & Messaging',
@@ -149,7 +138,7 @@ export const demoRail: BwRailLayer[] = [
           ],
         },
       },
-      { id: 'verbal-result', kind: 'result', label: 'Ergebnis', icon: '', state: 'open', to: '/brand/demo/ergebnis' },
+      { id: 'foundation-result', kind: 'result', label: 'Ergebnis', icon: '', state: 'open', to: '/brand/demo/ergebnis' },
     ],
   },
   {
@@ -248,6 +237,16 @@ export const demoRail: BwRailLayer[] = [
       ],
     },
   },
+  /*
+   * SCHICHT 3 — „Brand Book & Kit" (Konzept docs/plans/BRAND-BOOK-KIT.md
+   * §2.7, Copy nach §1.11 e / §2.14).
+   *
+   * Der Zuschnitt ist mit BK1 ein anderer als in den ersten Runden: es gibt
+   * KEINE „Templates" und kein „Strategy Playbook" mehr (Social-Set und
+   * Content-Kompass gehören zu Produkt 04, §2.16). Was bleibt, sind die drei
+   * Bausteine, die BK1 wirklich liefert — Brand Book, Kit & Brand Context,
+   * Pressekit — plus die Lieferseite als eigener Punkt (§2.20 Nr. 2).
+   */
   {
     id: 'book',
     steps: [
@@ -257,42 +256,42 @@ export const demoRail: BwRailLayer[] = [
         icon: '',
         state: 'open',
         info: {
-          description: 'Euer Regelwerk entsteht automatisch aus den fertigen Schichten — ihr kuratiert Kapitel, bestätigt Do-&-Don’t-Beispiele und legt fest, was KI im Namen eurer Marke darf.',
+          description: 'Euer Regelwerk wächst aus den fertigen Schichten: dieselbe Leseansicht, nur mit den Regel-Kapiteln — Nomenklatur, Zeichen-, Farb- und Typografie-Anwendung, AI-Guidelines.',
           minutes: '~6 Min',
           bausteine: [
-            { label: 'Kapitel', note: 'Zusammengestellt aus Foundation, Language und Design.' },
-            { label: 'Do & Don’t', note: 'Beispiele bestätigen oder tauschen.' },
-            { label: 'AI-Guidelines', note: 'Was KI in eurer Stimme erzeugen darf — und was nie.' },
+            { label: 'Regel-Kapitel', note: 'Zeichen, Farbe und Typografie als Regelwerk statt als Vitrine.' },
+            { label: 'Nomenklatur', note: 'Wie neue Produkte, Orte und Formate heißen — nur mit Markenarchitektur.' },
+            { label: 'AI-Guidelines', note: 'Was KI in eurer Stimme erzeugen darf, wer freigibt, welche Tabus gelten.' },
           ],
         },
       },
       {
         id: 'book-kit',
-        label: 'Kit & Design Tokens',
+        label: 'Kit & Brand Context',
         icon: '',
         state: 'open',
         info: {
-          description: 'Das Kit arbeitet: Design Tokens für hell und dunkel, Exporte für CSS, Tailwind und Figma — und das maschinenlesbare brand.json für KI-Werkzeuge.',
+          description: 'Das Kit arbeitet: Design-Tokens für hell und dunkel in einer Datei (DTCG), dazu tokens.css — und der Brand Context als brand.md und brand.json, direkt als System-Prompt einsetzbar.',
           minutes: '~5 Min',
           bausteine: [
-            { label: 'Token-Set', note: 'Hell/dunkel mit geprüften Kontrasten — bestätigen.' },
-            { label: 'Exporte', note: 'CSS, Tailwind, Figma.' },
-            { label: 'brand.json', note: 'Stimme, Vokabular und Tabus — maschinenlesbar.' },
+            { label: 'Design-Tokens', note: 'Hell und dunkel mit denselben Rollen-Namen, Kontrast-Urteile als Beleg.' },
+            { label: 'brand.md', note: 'Euer Brand Context als Markdown — für ChatGPT, Claude und Agenten.' },
+            { label: 'brand.json', note: 'Dieselben Werte maschinenlesbar, plus Zeichen als SVG.' },
           ],
         },
       },
       {
-        id: 'book-templates',
-        label: 'Templates',
+        id: 'book-presskit',
+        label: 'Pressekit',
         icon: '',
         state: 'open',
         info: {
-          description: 'Vorlagen mit festen Wiedererkennungs-Ankern — für Social, Dokumente und Präsentationen.',
+          description: 'Fast gratis aus Book und Kit: Boilerplates in drei Längen, Tagline, Zeichen — und die Fakten, die ihr einzeln freigebt.',
           minutes: '~4 Min',
           bausteine: [
-            { label: 'Social-Set', note: 'Formate je Plattform mit euren Ankern.' },
-            { label: 'Dokumente & Präsentationen', note: 'Basis-Vorlagen in eurem Design.' },
-            { label: 'Pressekit', note: 'Logos, Boilerplate in drei Längen, Fakten — entsteht fast gratis aus Book + Kit.' },
+            { label: 'Fakten-Freigabe', note: 'Je Fakt ein Häkchen — Voreinstellung ist: keiner reist.' },
+            { label: 'Presse-Kontakt', note: 'Eine Ansprechperson, die öffentlich reist — optional.' },
+            { label: 'Boilerplates', note: 'Kurz, mittel, lang — wörtlich zu übernehmen.' },
           ],
         },
       },
@@ -300,14 +299,14 @@ export const demoRail: BwRailLayer[] = [
     ],
     label: 'Brand Book & Kit',
     locked: true,
-    lockedNote: 'Entsteht aus Design + Foundation',
+    lockedNote: 'Teil der Ableitung — nach dem Erstgespräch',
     info: {
-      description: 'Regelwerk und Werkzeuge: Das Book erklärt, das Kit arbeitet. Das meiste entsteht hier automatisch aus euren fertigen Schichten — ihr kuratiert und bestätigt, statt neu zu entscheiden.',
+      description: 'Regelwerk und Werkzeuge: Das Book erklärt, das Kit arbeitet. Hier wird nichts Neues entschieden — es wird kuratiert und ausgeliefert, was in Foundation und Design längst steht.',
       minutes: '~15 Min',
       bausteine: [
-        { label: 'Brand Book', note: 'Kapitel aus euren Schichten, Do-&-Don’t-Beispiele, AI-Guidelines (was KI im Namen der Marke darf).' },
-        { label: 'Kit & Design Tokens', note: 'Token-Set hell/dunkel, Exporte (CSS, Tailwind, Figma), maschinenlesbares brand.json.' },
-        { label: 'Templates', note: 'Social-Set mit Wiedererkennungs-Ankern, Basis-Vorlagen — und das Pressekit, fast gratis aus Book + Kit.' },
+        { label: 'Brand Book', note: 'Regel-Kapitel aus euren Schichten: Nomenklatur, Zeichen-, Farb- und Typografie-Anwendung, AI-Guidelines.' },
+        { label: 'Kit & Brand Context', note: 'Design-Tokens hell/dunkel (DTCG + CSS), brand.md und brand.json, Zeichen als SVG.' },
+        { label: 'Pressekit', note: 'Boilerplates in drei Längen, Tagline, freigegebene Fakten, Ansprechperson.' },
       ],
     },
   },
@@ -472,3 +471,163 @@ export const demoRail: BwRailLayer[] = [
     ],
   },
 ]
+
+/**
+ * DIE RAIL DER SCHICHT 2 (Brand Design, Konzept docs/archiv/BRAND-DESIGN.md
+ * §2.1 und Screen 8 aus §2.15).
+ *
+ * Der Layer „Brand Design" oben in dieser Datei ist der GESPERRTE Zustand —
+ * er bleibt unverändert, weil er heute überall so aussieht. Diese Funktion
+ * baut daraus die zwei anderen Zustände: freigeschaltet (sechs Kapitel, eines
+ * aktiv, Sessions darunter) und fertig.
+ *
+ * Zwei Dinge sind Absicht:
+ *  1. Die Foundation-Schritte stehen dabei IMMER auf `done` — Schicht 2 öffnet
+ *     laut §2.1 erst nach dem Foundation-Ergebnis; eine offene Foundation
+ *     neben einem laufenden Brand Design wäre eine Auskunft, die nicht stimmt.
+ *  2. Die Kapitel-Beschriftungen kommen aus `DS_CHAPTERS` (§2.19 Frage 3:
+ *     Moodboard · Farbwelt · Typografie · Zeichen · Bildsprache · Bewegung),
+ *     NICHT aus dem gesperrten Layer oben — dort stehen noch die alten Namen
+ *     („Logo & Zeichen", „Motion"), und zwei Namenslisten für dieselben
+ *     Kapitel wären die erste Stelle, an der etwas altert.
+ */
+export function demoRailWithDesign(options: {
+  active?: DsChapterKey | null
+  /** false = heutiger Zustand (Schranke + Erklär-Text). */
+  unlocked?: boolean
+  /** true = alle sechs Kapitel abgenommen, Ergebnis-Punkt erreichbar. */
+  done?: boolean
+} = {}): BwRailLayer[] {
+  const { active = null, unlocked = true, done = false } = options
+
+  return demoRail.map((layer) => {
+    if (layer.id === 'foundation' && layer.steps) {
+      const steps: BwRailStep[] = layer.steps.map(step => step.kind === 'result'
+        ? { ...step, label: 'Brand Foundation', state: 'done', to: '/brand/demo/foundation' }
+        : { ...step, state: 'done', slots: undefined, minutes: undefined })
+      return { ...layer, steps }
+    }
+    if (layer.id !== 'design' || !unlocked) return layer
+
+    const activeIndex = DS_CHAPTERS.findIndex(chapter => chapter.key === active)
+    const steps: BwRailStep[] = DS_CHAPTERS.map((chapter, i) => {
+      const state: BwRailStep['state'] = done || (activeIndex >= 0 && i < activeIndex)
+        ? 'done'
+        : i === activeIndex ? 'active' : 'open'
+      return {
+        id: `design-${chapter.key}`,
+        label: chapter.label,
+        icon: '',
+        state,
+        to: dsChapterPath(chapter.key),
+        minutes: chapter.minutes,
+        /* Nur das AKTIVE Kapitel zeigt seine Sessions — die Sidebar rendert
+         * sie ohnehin nur dort (BwWorkspaceSidebar), und eine zweite offene
+         * Liste wäre Lärm. */
+        /* Rückgabetyp annotiert statt `as const` am Ausdruck: ein `as const`
+         * auf einem Bedingungs-Ausdruck ist kein gültiges TypeScript
+         * (TS1355), und der Union-Typ kommt hier ohnehin aus der Rail. */
+        sessions: i === activeIndex
+          ? chapter.sessions.map((session, s): BwRailSession => ({
+              id: session.id,
+              label: session.label,
+              effort: session.effort,
+              state: s === 0 ? 'active' : 'open',
+            }))
+          : undefined,
+      }
+    })
+    steps.push({
+      id: 'design-result',
+      kind: 'result',
+      label: 'Visuelle Identität',
+      icon: '',
+      state: done ? 'done' : 'open',
+      /* Das Ergebnis-Board (§2.8) — Kapitel 10 der Foundation trägt dasselbe
+       * Board als Kopf, die eigene Ansicht ist die druckbare Fläche. */
+      to: '/brand/demo/design/board',
+    })
+    return {
+      ...layer,
+      locked: false,
+      lockedNote: undefined,
+      note: done ? 'Abgeschlossen am 7. September 2026' : 'Freigeschaltet am 7. September 2026',
+      steps,
+    }
+  })
+}
+
+/**
+ * DIE RAIL DER SCHICHT 3 (Brand Book & Kit, Konzept
+ * docs/plans/BRAND-BOOK-KIT.md §2.7 und Screen 7 aus §2.15).
+ *
+ * Sie baut AUF `demoRailWithDesign` auf: wer bei Book & Kit steht, hat
+ * Foundation und Design hinter sich — beides steht deshalb auf `done`. Der
+ * Layer „Book & Kit" wird hier aus dem gesperrten Erklär-Layer (oben in dieser
+ * Datei, mit der BK1-Copy) zur echten Gruppe mit DREI Kapiteln plus dem
+ * Ergebnis-Punkt „Kit".
+ *
+ * ZWEI DINGE SIND ABSICHT:
+ *  1. Der Punkt „Kit" ist ein `result`, kein Kapitel — die Lieferseite
+ *     entscheidet nichts (§2.20 Nr. 2). Er steht deshalb dort, wo bei den
+ *     anderen Schichten das Ergebnis steht, und nicht zwischen den Kapiteln.
+ *  2. Gesperrt bleibt der Layer UNVERÄNDERT (bis auf die neue Copy): die
+ *     Schranke ist heute überall dieselbe, und ein zweiter gesperrter Zustand
+ *     wäre eine zweite Stelle zum Auseinanderlaufen.
+ */
+export function demoRailWithKit(options: {
+  active?: DkChapterKey | null
+  /** false = Schranke „Teil der Ableitung" (Erklär-Layer, kein Kapitel). */
+  unlocked?: boolean
+  /** true = alle drei Kapitel abgenommen, das Kit steht bereit. */
+  done?: boolean
+} = {}): BwRailLayer[] {
+  const { active = null, unlocked = true, done = false } = options
+
+  return demoRailWithDesign({ unlocked: true, done: true }).map((layer) => {
+    if (layer.id !== 'book' || !unlocked) return layer
+
+    const activeIndex = DK_CHAPTERS.findIndex(chapter => chapter.key === active)
+    const steps: BwRailStep[] = DK_CHAPTERS.map((chapter, i) => {
+      const state: BwRailStep['state'] = done || (activeIndex >= 0 && i < activeIndex)
+        ? 'done'
+        : i === activeIndex ? 'active' : 'open'
+      return {
+        id: `kit-${chapter.key}`,
+        label: chapter.label,
+        icon: '',
+        state,
+        to: dkChapterPath(chapter.key),
+        minutes: chapter.minutes,
+        /* Nur das AKTIVE Kapitel zeigt seine Sessions — dieselbe Regel wie in
+         * Schicht 2; die Sidebar rendert sie ohnehin nur dort. */
+        sessions: i === activeIndex
+          ? chapter.sessions.map((session, s): BwRailSession => ({
+              id: session.id,
+              label: session.label,
+              effort: session.effort,
+              state: s === 0 ? 'active' : 'open',
+            }))
+          : undefined,
+      }
+    })
+    steps.push({
+      id: 'kit-result',
+      kind: 'result',
+      label: 'Kit',
+      icon: '',
+      /* „Erreichbar" heisst für einen Ergebnis-Punkt `done` (die Sidebar sperrt
+       * jeden anderen Zustand) — die Lieferseite ist aber auch mitten in der
+       * Schicht lesbar: sie sagt ehrlich, was schon geht und was noch fehlt. */
+      state: 'done',
+      to: '/brand/demo/kit',
+    })
+    return {
+      ...layer,
+      locked: false,
+      lockedNote: undefined,
+      note: done ? 'Abgeschlossen am 9. September 2026' : 'Freigeschaltet am 9. September 2026',
+      steps,
+    }
+  })
+}

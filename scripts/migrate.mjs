@@ -48,7 +48,7 @@ const WAVES = ['internal', 'canary', 'stable']
 // Produkt) — es läuft ausschliesslich auf `branding` (branding.supply; bis zum
 // Rückbau 2026-08-31 war das `portfolio`), und die zwei Laufzeit-Flags, die es
 // liest, gehören `system` und laufen davor.
-const LAYER_ORDER = ['system', 'comments', 'posts', 'events', 'media', 'billing', 'pages', 'courses', 'tickets', 'brand', 'runner', 'moderation', 'analytics', 'messages', 'control', 'admin']
+const LAYER_ORDER = ['system', 'comments', 'posts', 'events', 'media', 'billing', 'pages', 'courses', 'tickets', 'brand', 'market', 'insights', 'runner', 'moderation', 'analytics', 'messages', 'control', 'admin']
 
 function parseArgs(argv) {
   const args = { app: null, envFile: null, layers: [], wave: null, controlEnv: null, keysDir: null }

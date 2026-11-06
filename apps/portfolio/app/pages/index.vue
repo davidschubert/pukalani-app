@@ -57,10 +57,20 @@ const contactChannels = computed(() => CONTACT_CHANNELS.map(channel => ({
       : `tel:${CONTACT.phoneTel}`,
 })))
 
+/**
+ * Die Beschreibung im Kopf kommt seit 2026-09-09 aus dem Sucheintrag
+ * (/dashboard/community/seo), sonst wie bisher aus `HOME_META`. Davids
+ * Entscheidung: die Owner-Beschreibung gilt auf JEDER Site, nicht nur auf der
+ * Pool-Startseite — sonst wäre das Feld hier eine Fläche ohne Wirkung. Der
+ * `WebPage`-Knoten unten trägt sie mit, weil er DIESE Seite beschreibt;
+ * `personDescription` bleibt unangetastet — das ist die Person, nicht die Site.
+ */
+const seoDescription = useCommunitySeoDescription(() => HOME_META.description[lang.value])
+
 usePortfolioSeo({
   path: '/',
   title: () => HOME_META.title[lang.value],
-  description: () => HOME_META.description[lang.value],
+  description: () => seoDescription.value,
   ogType: 'website',
   // Person, Marke, Angebot, Site, Seite, FAQ — die Startseite ist die einzige
   // Seite, die den Graphen VOLLSTÄNDIG aufspannt; alle anderen verweisen nur
@@ -142,7 +152,7 @@ usePortfolioSeo({
       '@id': `${ctx.pageUrl}#webpage`,
       'url': ctx.pageUrl,
       'name': HOME_META.title[lang.value],
-      'description': HOME_META.description[lang.value],
+      'description': seoDescription.value,
       'isPartOf': { '@id': ctx.websiteId },
       'about': { '@id': ctx.personId },
       // Das Datum DIESER Seite (HOME_META), nicht der Site-Stand: die

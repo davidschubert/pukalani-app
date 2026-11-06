@@ -1,0 +1,13 @@
+# ENTWÜRFE GEHÖREN NICHT INS REPO (MV1 M6).
+#
+# Was `scripts/market-library-compute.mjs --compute` hier ablegt, ist eine
+# MASCHINELL gerechnete Aussage über eine fremde Marke, die noch niemand am
+# Original geprüft hat. Sie ist ein Zwischenstand zwischen Rechnen und
+# Handprüfung — und genau die Sorte Datei, die man nicht versehentlich
+# mitcommittet: ein Entwurf im Repo sähe aus wie ein Bibliotheks-Eintrag,
+# hätte aber niemandes Zeichen unter sich.
+#
+# Der geprüfte Eintrag landet über `--promote` in `../index.ts` und wird DORT
+# im Diff gelesen. Der Ordner bleibt (mit dieser Datei), damit das Werkzeug
+# ihn nicht bei jedem Lauf neu erklären muss.
+*.json

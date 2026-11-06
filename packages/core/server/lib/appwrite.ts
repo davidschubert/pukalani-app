@@ -1,6 +1,7 @@
-import { Client, Account, TablesDB, Health, Storage, Users, Presences, Avatars } from 'node-appwrite'
+import { Client, Account, TablesDB, Storage, Users, Presences, Avatars } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { trustedClientIp } from '../utils/clientIp'
+import { createAppwriteHealth } from '../utils/appwriteHealth'
 
 /**
  * Projekt des Requests (Horizont-3 Naht 2): der Tenant-Context der Middleware
@@ -129,7 +130,10 @@ export function createAdminClient(event?: H3Event) {
   return {
     get account() { return new Account(client) },
     get tablesDB() { return new TablesDB(client) },
-    get health() { return new Health(client) },
+    // node-appwrite 28: der `Health`-Service ist seit 27 aus dem SDK entfernt.
+    // Ersatz ist ein REST-Helfer mit denselben Methodennamen — die Endpunkte
+    // gibt es auf Appwrite 1.9.6 unverändert.
+    get health() { return createAppwriteHealth(config.public.appwriteEndpoint, projectId, config.appwriteKey) },
     get storage() { return new Storage(client) },
     get users() { return new Users(client) },
     get presences() { return new Presences(client) },

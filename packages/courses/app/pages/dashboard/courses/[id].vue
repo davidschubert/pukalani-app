@@ -174,7 +174,7 @@ const lessonColumns = computed<TableColumn<LessonRow>[]>(() => [
   { id: 'order', header: () => t('courses.admin.col.order') },
   { accessorKey: 'title', header: () => t('courses.admin.col.lesson') },
   { accessorKey: 'status', header: () => t('courses.admin.col.status'), meta: { class: HIDE_SM } },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function lessonActions(lesson: LessonRow): DropdownMenuItem[][] {

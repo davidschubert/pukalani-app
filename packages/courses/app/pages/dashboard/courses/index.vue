@@ -59,7 +59,7 @@ const columns = computed<TableColumn<CourseRow>[]>(() => [
   { accessorKey: 'access', header: () => t('courses.admin.col.access'), meta: { class: HIDE_SM } },
   { accessorKey: 'lessonCount', header: () => t('courses.admin.col.lessons'), meta: { class: HIDE_SM } },
   { accessorKey: 'status', header: () => t('courses.admin.col.status') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 </script>
 

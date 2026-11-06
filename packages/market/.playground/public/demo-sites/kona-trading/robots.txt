@@ -1,0 +1,7 @@
+# Invented demo website for the market comparison prototype.
+# This is the case the product must respect: the site says no.
+User-agent: *
+Disallow: /
+
+User-agent: PukalaniMarketBot
+Disallow: /

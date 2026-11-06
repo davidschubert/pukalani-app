@@ -29,9 +29,10 @@ import { emptyCommunityRedirectConfig } from '../../../../core/shared/communityR
 export default defineEventHandler(async (event): Promise<CommunityRedirectConfig> => {
   await requireCommunityPermission(event, 'branding.manage')
 
-  const communityId = useTenant(event)?.communityId
-  if (!communityId) return emptyCommunityRedirectConfig()
+  // Dieselbe Row-Id-Regel wie beim Schreiben (core/shared/communitySettingsRow.ts).
+  const rowId = communitySettingsRowIdFor(event)
+  if (!rowId) return emptyCommunityRedirectConfig()
 
-  const config = await readCommunityRedirects(event, communityId)
+  const config = await readCommunityRedirects(event, rowId)
   return config ?? emptyCommunityRedirectConfig()
 })

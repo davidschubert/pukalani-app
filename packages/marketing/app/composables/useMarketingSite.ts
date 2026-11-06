@@ -133,8 +133,10 @@ export function useMarketingSite() {
    * unter `/de`. Wer auf der deutschen Marketing-Seite auf „Hilfe" klickt,
    * soll nicht in der englischen Doku landen.
    *
-   * Changelog und Status sind eigene Dienste ohne Sprachpfade — sie bleiben
-   * einfache Zeichenketten.
+   * Changelog und Status bleiben einfache Zeichenketten: die Statusseite hat
+   * keine Sprachpfade, und die Changelog-Seite (admin.pukalani.app) leitet
+   * selbst nach Browser-Sprache auf `/de/changelog` weiter (gemessen
+   * 2026-11-06: `Accept-Language: de` ⇒ 302).
    *
    * `computed`, weil der Sprachwechsler die Seite nicht neu lädt: ein im Setup
    * berechneter String bliebe danach auf der alten Sprache stehen.

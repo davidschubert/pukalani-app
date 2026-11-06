@@ -2,7 +2,16 @@
 /** Clickdummy: About us (Runde 163, David) — die Seite ist der
  *  SELBSTBEWEIS: Branding Supply ist mit den eigenen Produkten
  *  gebaut. Darunter das Team mit Rollen-Abschnitten je Mitglied
- *  („In dieser Rolle …" / „… weil"). Profilbilder folgen. */
+ *  („In dieser Rolle …" / „… weil"). Profilbilder folgen.
+ *
+ *  ── IM RUHESTAND (2026-09-02) ───────────────────────────────────────────
+ *  Die HUNDE-WELT dieses Dummys (Rassen, tierische Nachnamen, Wohnort-und-
+ *  Hobby-Zeilen) ist am 2026-09-02 zugunsten eines professionellen Teams
+ *  VERWORFEN — Davids Entscheidung, nachzulesen im DECISION-LOG. Der aktuelle
+ *  Stand steht in `apps/branding/app/pages/team.vue` (live) und in
+ *  `packages/brand/shared/brandAdvisors.ts` (Registry). Diese Datei bleibt
+ *  bewusst unverändert als historischer Dummy — sie ist ein Protokoll der
+ *  Runde 163, keine Vorlage. Nichts hier abschreiben. */
 const team = [
   {
     initials: 'GW', name: 'George Wuffwuff', title: 'Markenberater · Brand Wizard',

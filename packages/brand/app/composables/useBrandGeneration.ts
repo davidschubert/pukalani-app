@@ -5,8 +5,10 @@ import {
 } from '../../shared/brandAiLimits'
 import {
   type BrandGenerationFailureCode,
+  type BrandGenerationOutcome,
   decodeBrandGenerationChunk,
 } from '../../shared/brandGeneration'
+import { isBrandUiLocale } from '../../shared/brandUiLocale'
 import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
 
 /**
@@ -55,6 +57,15 @@ export type BrandGenerationClientFailure =
   | BrandGenerationFailureCode
   | BrandAiRejectionCode
   | 'request_rejected'
+  /** Das Bereitschafts-Gate hat abgelehnt (409) — zu wenig Material (george-a-4). */
+  | 'not_ready'
+  /**
+   * Die Bestätigungs-Sperre hat abgelehnt (409) — der Slot ist zu, bis
+   * „Korrigieren" ihn öffnet. Ein eigener Code neben `not_ready`, weil beide
+   * 409 sind und VERSCHIEDENE Dinge sagen: „hol mehr Material" gegen „du hast
+   * das schon entschieden".
+   */
+  | 'slot_confirmed'
 
 export interface UseBrandGenerationOptions {
   /** Vor dem Start ausführen — die Seite reicht hier `autosave.flush` herein. */
@@ -62,13 +73,13 @@ export interface UseBrandGenerationOptions {
 }
 
 /**
- * Der Drossel-Grund aus dem Fehler-Envelope (`{ ok, code, message, reason }`).
- * `null`, wenn dort nichts Bekanntes steht — ein alter Server, ein Proxy-429
- * oder eine leere Antwort fallen so auf den bisherigen Text zurück.
+ * Der Grund aus dem Fehler-Envelope (`{ ok, code, message, reason }`) — roh.
+ * `null`, wenn dort nichts steht: ein alter Server, ein Proxy-Fehler oder eine
+ * leere Antwort fallen so auf den allgemeinen Text zurück.
  */
-async function rejectionReason(response: Response): Promise<BrandAiRejectionCode | null> {
+async function envelopeReason(response: Response): Promise<string | null> {
   const body = await response.json().catch(() => null) as { reason?: unknown } | null
-  return isBrandAiRejectionCode(body?.reason) ? body.reason : null
+  return typeof body?.reason === 'string' ? body.reason : null
 }
 
 function newIdempotencyKey(): string {
@@ -81,10 +92,29 @@ export function useBrandGeneration(
   options: UseBrandGenerationOptions = {},
 ) {
   const store = useBrandWorkspaceStore()
+  /**
+   * DIE SPRACHE DER SEITE — sie reist im Rumpf mit (Davids Befund 2026-09-02).
+   * Der Server las sie bis dahin aus `i18n_redirected` und traf damit die
+   * einmal gewählte statt der gerade offenen: englische Werkstatt, deutscher
+   * George. `locale` aus `useI18n()` folgt der ROUTE (`prefix_except_default`)
+   * und ist damit genau die Auskunft, die dort fehlte.
+   */
+  const { locale } = useI18n()
 
   const status = ref<BrandGenerationStatus>('idle')
   const activeSlotId = ref<string | null>(null)
   const failureCode = ref<BrandGenerationClientFailure | null>(null)
+  /**
+   * WAS DER LETZTE LAUF WAR (george-a-4): ein Entwurf oder eine Rückfrage.
+   *
+   * Er wird aus dem `generation.completed`-Frame übernommen und NICHT aus dem
+   * Ausbleiben eines `slot.ready` geschlossen — ein abgerissener Strom sähe
+   * sonst aus wie eine Rückfrage. Für den Slot ist ohnehin nichts zu tun:
+   * `slot.ready` ist die einzige Stelle, die einen Editor füllt, und bei einer
+   * Rückfrage kommt es gar nicht erst. Die Frage steht dann als gewöhnlicher
+   * Zug im Verlauf — kein Fehler, kein Hinweis, kein Toast.
+   */
+  const lastOutcome = ref<BrandGenerationOutcome | null>(null)
 
   let controller: AbortController | null = null
 
@@ -113,6 +143,7 @@ export function useBrandGeneration(
     status.value = 'streaming'
     activeSlotId.value = slotId
     failureCode.value = null
+    lastOutcome.value = null
 
     let generationId = ''
 
@@ -124,6 +155,10 @@ export function useBrandGeneration(
           headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
           body: JSON.stringify({
             slotId,
+            // Nur eine BEKANNTE Sprache wird mitgeschickt; alles andere lehnt
+            // das Schema ab (400), und der Rückfall auf die Inhaltssprache
+            // gehört ohnehin dem Server.
+            ...(isBrandUiLocale(locale.value) ? { uiLocale: locale.value } : {}),
             ...(hint.trim() ? { hint: hint.trim() } : {}),
             // Ein Schlüssel je Knopfdruck: wiederholt der Client denselben
             // Aufruf (Netzhänger), liefert der Server den bereits erzeugten
@@ -143,7 +178,20 @@ export function useBrandGeneration(
         // wieder", „morgen wieder", „nicht an dir". Ein gemeinsames „hat nicht
         // geklappt" schickte den Menschen zurück an denselben Knopf.
         status.value = 'failed'
-        failureCode.value = (response.status === 429 ? await rejectionReason(response) : null)
+        // Zwei Ausnahmen von „der Grund bleibt beim Server": die Drossel (429)
+        // sagt WANN es wieder geht, die 409-Gates sagen WORAN es liegt.
+        // Beides schickt den Menschen sonst zurück an denselben Knopf.
+        //
+        // DIE BEIDEN 409 WERDEN UNTERSCHIEDEN, und zwar am `reason`, nicht am
+        // Status: „zu wenig Material" und „das hast du schon bestätigt" führen
+        // zu verschiedenen nächsten Handgriffen. Ein alter Server ohne
+        // `reason` fällt auf `not_ready` zurück — das war bis heute die einzige
+        // Bedeutung dieses Status.
+        const reason = response.status === 429 || response.status === 409
+          ? await envelopeReason(response)
+          : null
+        failureCode.value = (response.status === 429 && isBrandAiRejectionCode(reason) ? reason : null)
+          ?? (response.status === 409 ? (reason === 'slot_confirmed' ? 'slot_confirmed' : 'not_ready') : null)
           ?? 'request_rejected'
         return
       }
@@ -167,8 +215,17 @@ export function useBrandGeneration(
           }
           else if (item.type === 'slot.ready') {
             store.applyGeorgeDraft(item.slotId, item.draft, item.generationId)
+            // Die GESTREAMTE Blase zeigt bei einem Choice-Slot die Wert-Zeile
+            // roh (`sage`, Live-Fund 2026-09-04) — hier ist der Strom fertig,
+            // und die geteilte Regel tauscht sie gegen die Anzeige der Seite.
+            store.localizeGeorgeChoiceMessage(item.generationId, item.slotId, locale.value)
           }
           else if (item.type === 'generation.completed') {
+            lastOutcome.value = item.outcome ?? 'draft'
+            // Eine RÜCKFRAGE darf Antwort-Möglichkeiten tragen (Davids
+            // Anforderung 2026-09-04); ein Entwurf nie — die Route schickt sie
+            // dort gar nicht erst mit.
+            if (item.options?.length) store.setGeorgeMessageOptions(item.generationId, item.options)
             store.applyGenerationRevision(item.revision)
             store.endGeorgeMessage(item.generationId)
             status.value = 'done'
@@ -213,5 +270,15 @@ export function useBrandGeneration(
     onBeforeUnmount(() => stop())
   }
 
-  return { status, streaming, activeSlotId, failureCode, isStreamingSlot, generate, stop, dismissFailure }
+  return {
+    status,
+    streaming,
+    activeSlotId,
+    failureCode,
+    lastOutcome,
+    isStreamingSlot,
+    generate,
+    stop,
+    dismissFailure,
+  }
 }

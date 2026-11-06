@@ -73,7 +73,16 @@ export function guidelinesFallbackNavItem(locale: string | null | undefined): Pu
 export function guidelinesFallbackPage(locale: string | null | undefined): PublicPage {
   const resolved = guidelinesTemplateLocale(locale)
   const template = guidelinesTemplate(resolved)
-  return { slug: template.slug, locale: resolved, title: template.title, body: template.body, updatedAt: '' }
+  // Die Vorlage gibt es in JEDER Sprache, die sie mitbringt — der Hinweis auf
+  // eine Ersatzsprache und die hreflang-Alternates gelten hier deshalb voll.
+  return {
+    slug: template.slug,
+    locale: resolved,
+    title: template.title,
+    body: template.body,
+    updatedAt: '',
+    availableLocales: [...GUIDELINES_TEMPLATE_LOCALES],
+  }
 }
 
 /**
