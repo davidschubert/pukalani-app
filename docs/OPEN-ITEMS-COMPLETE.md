@@ -30,6 +30,62 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RA1 — Konto löschen verlangt eine frische Anmeldung ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-29: Firewall-Regeln können auf
+„Session age" und „MFA age" prüfen. Die Firewall gibt es nur auf Appwrite
+Cloud — wir sind self-hosted, also nichts zu übernehmen. Die IDEE dahinter
+(eine unumkehrbare Aktion verlangt eine FRISCHE Anmeldung statt „irgendwann
+eingeloggt") deckte aber eine echte Lücke auf: `DELETE /api/auth/account`
+löschte das Konto vollständig (DSGVO Art. 17) mit nichts als einem gültigen
+Cookie. Passwort ändern (altes Passwort) und MFA abschalten (MFA-Code) waren
+schon geschützt.
+
+**Davids Entscheidung (2026-11-06): frische Anmeldung statt Passwort-Feld.**
+Auf platform, control und branding gibt es Konten OHNE Passwort (Google,
+E-Mail-Code) — ein Passwort-Feld hätte sie ausgesperrt, ein eigener
+Lösch-Code per Mail wäre ein zweites Login-System gewesen. Eine neue
+Anmeldung kann jede Konto-Art und prüft MFA gleich mit.
+
+**Gebaut.**
+- `core/shared/recentAuth.ts` — pure Regel `isRecentAuth` (10 Minuten,
+  fail-closed bei fehlendem/kaputtem Datum, leichter Uhrenversatz zählt als
+  frisch), Grund `reauth_required`.
+- `core/server/utils/recentAuth.ts` — `requireRecentAuth(event)` liest
+  `$createdAt` der AKTUELLEN Session bei Appwrite (nicht aus Cookie oder
+  Body) und wirft 403 mit `reason: reauth_required`.
+- `account.delete.ts` ruft sie als ERSTES — eine Ablehnung hat nichts
+  angefasst, und das Cookie bleibt (der `finally` dort räumt es sonst ab).
+- Oberfläche: `AccountDeleteCard` erkennt den Grund (`isReauthRequired` in
+  `app/utils/fetchError.ts`, bewusst über den Grund, nicht über 403), erklärt
+  „zur Sicherheit neu anmelden" und schickt über `useLogout().reauthenticate()`
+  nach `/login?redirect=…` — danach steht die Person wieder auf derselben
+  Seite. `reauthenticate` ist eine eigene Funktion, weil `logout` direkt als
+  Klick-Handler hängt und sonst das Klick-Ereignis als Option bekäme.
+- Der Host-Wechsel (`site-session`, `embed-session`) reicht dasselbe Secret
+  weiter, legt also keine neue Session an — er macht nichts „frisch". Nur ein
+  echter Login tut das.
+
+**Beweis.** Unit: `packages/core/tests/recentAuth.test.ts` (Grenze ±1 ms,
+Gegenproben, fail-closed, Grund-Erkennung, Wächter „Prüfung steht VOR
+`deleteUserCompletely`"); core 1750/1750, Lint, Typecheck core + platform,
+`check:i18n-keys` grün.
+Klick-Beweis (lokale Dev-Appwrite, comments-Dev-Server aus dem Worktree,
+Wegwerf-Konto mit Label `moderator`, danach gelöscht): Session über die
+Admin-API angelegt und 11 Minuten altern lassen ⇒ `DELETE /api/auth/account`
+**403** `{"reason":"reauth_required"}`, kein `Set-Cookie`, `/api/auth/me`
+danach weiter 200, Konto existiert. Im Browser: „Account löschen" →
+„Endgültig löschen" ⇒ Dialog „Zur Sicherheit neu anmelden" → „Neu anmelden"
+⇒ `/de/login?redirect=/de/dashboard/settings/data` mit Toast; die ALTE
+Session antwortet jetzt 401. Neu angemeldet ⇒ zurück auf derselben Seite,
+Löschen ⇒ „Account gelöscht.", `users.get` **404**.
+
+**Offen ⇒ OPEN-ITEMS „RA2":** dieselbe Klammer für die übrigen
+unumkehrbaren Stellen (Owner-Rolle übergeben, Community stilllegen) — nicht
+geprüft.
+
+---
+
 ### CL0 — Appwrite-Brotli-Hinweis geprüft; dabei: der Changelog-Link der Marketing-Seite zeigte seit Monaten auf einen toten Webhook ✅ 2026-11-06
 
 **Anlass.** Appwrite-Changelog vom 2026-10-24 (Brotli, CVE-2026-111497): Server
