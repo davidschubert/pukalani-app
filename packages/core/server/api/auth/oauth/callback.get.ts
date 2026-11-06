@@ -113,6 +113,24 @@ export default defineEventHandler(async (event) => {
     // Request-Cookie, deshalb userId + sessionSecret explizit.
     await joinCommunity(event, 'registration', { sessionSecret: session.secret, userId: session.userId })
 
+    /**
+     * AGB-ZUSTIMMUNG MIT FASSUNG (BS1 R1) — wortgleich zu signup.post.ts, und
+     * hier ist es am wenigsten verzichtbar: der Google-Weg hat gar kein
+     * Formularfeld, das eine Zustimmung tragen könnte. Was ihn trotzdem
+     * bindet, ist der gesperrte Knopf neben dem Häkchen (`AuthOauthButtons`
+     * `:disabled`) — der Vermerk hier ist die Server-Seite derselben Zusage.
+     * No-Op in jeder App ohne `pukalani.auth.termsUrl`.
+     */
+    await recordTermsAcceptance(event, session.userId)
+
+    /**
+     * UNTERNEHMER-BESTÄTIGUNG (BS1 R1c) — und hier gilt Wort für Wort
+     * dasselbe wie oben: kein Formularfeld, gebunden durch den gesperrten
+     * Knopf neben BEIDEN Häkchen (`oauthBlockedBy` in `RegisterForm.vue`),
+     * festgehalten aus der Config. No-Op ohne `pukalani.auth.businessOnly`.
+     */
+    await recordBusinessConfirmation(event, session.userId)
+
     await recordActivity(event, {
       actorId: session.userId,
       actorName: user?.name ?? '',

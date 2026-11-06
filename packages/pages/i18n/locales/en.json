@@ -54,10 +54,21 @@
       "loadFailedHint": "The editor stayed empty — saving from here would overwrite the existing content. Check your connection and open the page again.",
       "titleRequired": "Please enter a title",
       "titleRequiredHint": "Every language version has its own title — enter it in the active tab.",
-      "locale": {
-        "en": "English",
-        "de": "German"
-      }
+      "localeState": {
+        "published": "{language}: published",
+        "draft": "{language}: draft",
+        "missing": "{language}: missing"
+      },
+      "translateWithAi": "Translate from {language}",
+      "translated": "Suggestion inserted",
+      "translatedHint": "It is not saved and not published yet — read it through, change what needs changing, then save.",
+      "translateFailed": "Translation failed",
+      "translateFailedHint": "Please try again in a moment. If it keeps failing, translate the text by hand.",
+      "translateTooLong": "Too long for a suggestion (up to {max} characters) — this text belongs in human hands."
+    },
+    "draftNotice": {
+      "title": "Draft, under review by our lawyers",
+      "body": "This page carries the required structure, but no binding text yet. The reviewed version will replace it before branding.supply opens to everyone. Until then: nothing here is something you can rely on."
     },
     "validation": {
       "slugInvalid": "Invalid slug (lowercase letters, digits, hyphens)",
@@ -65,7 +76,8 @@
       "titleRequired": "Title is required",
       "titleMax": "Title is too long",
       "bodyMax": "Content is too long",
-      "statusInvalid": "Invalid status"
+      "statusInvalid": "Invalid status",
+      "translateBodyMax": "Text is too long for a translation suggestion"
     },
     "navigation": {
       "navLabel": "Navigation",
@@ -79,10 +91,16 @@
       "labelAria": "Menu entry name",
       "externalHint": "opens in a new tab",
       "unavailable": "not available right now",
+      "childOf": "Sub-entry of “{label}”",
+      "orphanHint": "Shows as a main entry because “{label}” is hidden.",
+      "groupHint": "A drop-down only — this entry has no page of its own.",
+      "groupEmptyHint": "Appears once it has a sub-entry.",
       "show": "Show in the menu",
       "hide": "Hide from the menu",
       "moveUp": "Move up",
       "moveDown": "Move down",
+      "indent": "Turn into a sub-entry",
+      "outdent": "Turn back into a main entry",
       "reset": "Reset to the default menu",
       "saved": "Menu saved",
       "errorSave": "The menu could not be saved.",
@@ -93,6 +111,7 @@
         "remove": "Remove link",
         "kindPage": "A page of this community",
         "kindExternal": "An external address",
+        "kindGroup": "A main entry without a page of its own",
         "labelPlaceholder": "What the link is called",
         "labelAria": "Link name",
         "urlAria": "Web address",
@@ -100,7 +119,7 @@
       },
       "preview": {
         "title": "Preview",
-        "description": "This is the order visitors will see. Entries beyond the fifth move into a “More” menu.",
+        "description": "This is the order visitors will see. Main entries beyond the fifth move into a “More” menu.",
         "emptyMenu": "The menu is empty."
       },
       "validation": {
@@ -108,6 +127,8 @@
         "labelMax": "That name is too long",
         "targetMax": "That address is too long",
         "notRetargetable": "Built-in entries can be renamed, but not pointed somewhere else. Add your own link instead.",
+        "groupNoTarget": "A main entry without a page of its own cannot have a target. Add your own link instead.",
+        "parentInvalid": "A sub-entry needs a main entry from the same list — and sub-entries of a sub-entry do not exist.",
         "labelRequired": "Please give the link a name",
         "targetRequired": "Please choose where the link goes",
         "externalInvalid": "External links must start with https://",
@@ -193,6 +214,13 @@
         "tooMany": "There are too many redirects.",
         "tooLarge": "The list is too long overall."
       }
+    },
+    "language": {
+      "en": "English",
+      "de": "German"
+    },
+    "public": {
+      "otherLanguage": "This page is not available in {requested} yet — showing the {delivered} version."
     }
   }
 }

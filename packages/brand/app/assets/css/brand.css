@@ -116,7 +116,11 @@
 /* Runde 23 (David): fester Bühnen-Fuß fürs Chat-Prompt — gleiche
    horizontale Flucht wie die Bühne, unten mit Luft zum Rand. */
 .bw-stage-foot { padding: 0.5rem clamp(1.2rem, 4vw, 3.5rem) 1rem; }
-.bw-stage-inner { max-width: 46rem; margin: 0 auto; }
+/* BÜHNENBREITE: Lesebreite als Default (Gespräch, Dokument, Leseansicht);
+   eine Seite mit Auswahl-Flächen (Karten zu dritt, Rampen, Specimen) setzt
+   `--bw-stage-max` über die Prop `stageWidth` von BwWorkspace (Davids
+   Korrektur am Brand-Design-Prototyp 2026-09-08: „alles so schmal"). */
+.bw-stage-inner { max-width: var(--bw-stage-max, 46rem); margin: 0 auto; }
 /* `overflow: hidden` gehört dazu, seit die Spur auf null gehen kann (B3) —
    sonst steht der Log-Inhalt neben seiner eigenen, leeren Spalte. */
 .bw-george { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--bw-surface); border-radius: 0; margin: 0; }
@@ -236,6 +240,10 @@
 .bw-card--hover:hover { box-shadow: var(--bw-shadow-card-hover); transform: translateY(-1px); }
 .bw-card--menu { border-radius: var(--bw-radius-frame); box-shadow: var(--bw-shadow-overlay); }
 .bw-rounded-card { border-radius: var(--bw-radius-card); }
+/* Rahmen-Radius als Klasse (2026-09-04): Bild-Rahmen, Platzhalter und kleine
+   Innen-Kacheln folgen damit derselben Squircle-Regel wie die Karten — ein
+   Inline-`border-radius` bekäme das corner-shape unten nie. */
+.bw-frame { border-radius: var(--bw-radius-frame); }
 
 /* Squircle (Runde 8b, Davids Hinweis): kontinuierliche Ecken statt
    Kreisabschnitten — natives corner-shape, border-radius bleibt als
@@ -246,7 +254,7 @@
    nie je Stelle abweichen. */
 @supports (corner-shape: superellipse(1.7)) {
   .bw-root { --bw-radius-card: 44px; --bw-radius-frame: 22px; }
-  .bw-card, .bw-pair-card, .bw-draft-frame, .bw-rounded-card {
+  .bw-card, .bw-pair-card, .bw-draft-frame, .bw-rounded-card, .bw-frame {
     corner-shape: superellipse(1.7);
   }
 }
@@ -416,6 +424,24 @@
   box-shadow: none; font-weight: 500;
 }
 
+/* ── DIE HANDLUNGEN EINES BEFUND-CHIPS (Kailua-Befund 1, 2026-09-08) ───────
+   „Annehmen"/„Ablehnen" standen als `UButton size="xs"`: rund 24 px hoch, mit
+   4 px Innenabstand oben und unten. Das ist unter jeder Empfehlung für ein
+   Klickziel (32 px), und im Lauf traf der Zeiger sie nur pixelgenau — die
+   Entscheidung über einen Befund ist aber der EINE Weg, ihn loszuwerden.
+
+   Die Fläche wächst NACH INNEN (`min-height` + Innenabstand), nicht über eine
+   grössere Schrift: der Chip ist ein ruhiger Hinweis und soll neben dem Text
+   nicht lauter werden. Der Fokus-Ring steht ausdrücklich hier, weil die
+   Ghost-Variante von Nuxt UI auf der getönten Chip-Fläche (`--bw-stale-soft`)
+   kaum zu sehen war. */
+.bw-chip-action {
+  min-height: 2rem; padding-left: 0.75rem; padding-right: 0.75rem;
+}
+.bw-chip-action:focus-visible {
+  outline: 2px solid var(--bw-stale); outline-offset: 2px;
+}
+
 /* ── WERKSTATT „GESPRÄCH ALS BÜHNE" (2026-09-02) ──────────────────────────
    Die Klassen der neuen Sidebar (`BwWorkspaceSidebar`) und der Log-Spalte
    der Werkstatt. Sie stehen GLOBAL und nicht als scoped CSS der Seite: die
@@ -560,3 +586,22 @@
 @supports (corner-shape: superellipse(1.7)) {
   .bw-tile, .bw-tile--lg { corner-shape: superellipse(1.7); }
 }
+
+/* Ampel-Matrix der Ergebnisseite (BRAND-CHECK-SEITE §10, „Diagnose"): 8 × 5
+ * Zellen mit VIER Zuständen. Die Farbe setzt die Komponente aus den
+ * bestehenden Signal-Tokens (--bw-accent / --bw-draft / --bw-stale); hier
+ * steht nur die Form. Jede Zelle bleibt ein `button` — Tastatur und
+ * Screenreader brauchen den Weg zur Notiz, und ein Klick springt in den Plan. */
+.bw-matrix-cell {
+  display: grid; place-items: center;
+  block-size: 1.75rem; flex: 1 1 0; min-inline-size: 1.75rem;
+  border-radius: 6px; cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+.bw-matrix-cell:hover { transform: translateY(-1px); }
+.bw-matrix-cell:focus-visible { outline: 2px solid var(--bw-ink); outline-offset: 2px; }
+.bw-matrix-cell--locked { box-shadow: inset 0 0 0 1px var(--bw-line-strong); }
+.bw-matrix-cell--legend {
+  flex: none; block-size: 1rem; inline-size: 1rem; min-inline-size: 1rem; cursor: default;
+}
+.bw-matrix-cell--legend:hover { transform: none; }

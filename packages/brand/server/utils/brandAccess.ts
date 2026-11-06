@@ -3,6 +3,7 @@ import type { Models } from 'node-appwrite'
 import { AppwriteException, Query } from 'node-appwrite'
 import {
   type BrandAccessRowFacts,
+  brandAccountIsBeta,
   decideBrandAccess,
   normalizeBrandAdmissionMode,
 } from '../../shared/brandAccess'
@@ -32,6 +33,20 @@ export const BRAND_ACCESS_TABLE = 'brand_access'
 export interface BrandAccessContext {
   /** Konto, das die Route bedienen darf. Ab hier gilt `assertBrandOwnerAccess`. */
   userId: string
+  /**
+   * IST DAS EIN BETA-KONTO? (BS1 §9 Entscheidung 6 „dauerhaft frei", Konzept
+   * BRAND-BOOK-KIT.md §2.8/§2.17, Paket K1).
+   *
+   * Sie steht HIER, weil das Gate die `brand_access`-Zeile ohnehin liest — die
+   * Frage kostet also keine zusätzliche Abfrage. Und sie steht hier, damit die
+   * pure Regel `resolveDerivationAccess` sie ÜBERGEBEN bekommt statt sie selbst
+   * zu ermitteln (§2.17: „ein zweiter Leser der Beta-Wahrheit wäre ein Leck").
+   *
+   * ACHTUNG, SIE GILT DEM AUFRUFER: für eine FREMDE Marke (Betreiber-Liste)
+   * ist sie die falsche Auskunft — dort zählt die Beta-Zulassung des
+   * EIGENTÜMERS, und die holt `loadBrandBetaAccounts` gebündelt.
+   */
+  betaAccount: boolean
 }
 
 type BrandAccessRow = Models.Row & BrandAccessRowFacts & { userId: string }
@@ -115,5 +130,55 @@ export async function requireBrandAccess(event: H3Event): Promise<BrandAccessCon
   })
   if (!decision.allowed) throw createError({ status: 404, statusText: 'Not Found' })
 
-  return { userId }
+  return { userId, betaAccount: brandAccountIsBeta(accessRow) }
+}
+
+/**
+ * DIE BETA-ZULASSUNG VIELER KONTEN AUF EINMAL — EINE Abfrage, nicht eine je
+ * Zeile (Konzept docs/plans/BRAND-BOOK-KIT.md §2.8, Paket K1).
+ *
+ * Gebraucht wird sie an genau einer Stelle: der Betreiber-Liste
+ * `/dashboard/brand-unlocks`. Sie zeigt FREMDE Marken, und ob deren Ableitung
+ * offen ist, hängt an der Beta-Zulassung ihres EIGENTÜMERS — nicht an der des
+ * Betreibers, der die Liste öffnet. Dasselbe Muster wie
+ * `loadBrandFoundationDone`: eine Liste mit fünfzig Marken darf nicht fünfzig
+ * Fragen stellen.
+ *
+ * Es ist KEIN zweiter Begriff von „Beta": entschieden wird auch hier mit
+ * `brandAccountIsBeta` (shared/brandAccess.ts) — nur der Zuschnitt der Abfrage
+ * ist ein anderer.
+ *
+ * FAIL-SOFT: geht sie schief, gilt kein Konto als Beta-Konto. Das ist die
+ * sichere Richtung — die Liste zeigt dann „gesperrt", wo vielleicht „frei · via
+ * beta" stünde, und der Betreiber kann immer noch von Hand freischalten. Die
+ * Gegenrichtung hätte eine Freischaltung behauptet, die es nicht gibt.
+ */
+export async function loadBrandBetaAccounts(
+  event: H3Event,
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  const beta = new Set<string>()
+  const unique = [...new Set(userIds.filter(id => id.length > 0))]
+  if (unique.length === 0) return beta
+  try {
+    const config = useRuntimeConfig(event)
+    const { tablesDB } = createAdminClient(event)
+    const res = await tablesDB.listRows<BrandAccessRow>({
+      databaseId: config.public.appwriteDatabaseId,
+      tableId: BRAND_ACCESS_TABLE,
+      // `uq_user` ist UNIQUE — je Konto höchstens eine Zeile, das Limit ist
+      // deshalb exakt und nicht geraten (Repo-Regel: nie das Default-25).
+      queries: [Query.equal('userId', unique), Query.limit(unique.length)],
+    })
+    for (const row of res.rows) {
+      if (brandAccountIsBeta(row)) beta.add(row.userId)
+    }
+  }
+  catch (error) {
+    logEvent('warn', 'brand.beta_lookup_failed', {
+      count: unique.length,
+      message: error instanceof Error ? error.message : 'unknown',
+    })
+  }
+  return beta
 }

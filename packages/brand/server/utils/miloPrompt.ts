@@ -1,9 +1,3 @@
-import {
-  type BrandSlotInstructionOptions,
-  GEORGE_PRIMARY_SOURCE_ANSWERS,
-  brandSlotInstructionTail,
-} from './georgePrompt'
-
 /**
  * DIE AUFTRÄGE AUS MILOS TECHNIK (P3.1) — Baustein C · Werte, Content-Spec §6.
  *
@@ -33,69 +27,48 @@ import {
  * fiele wieder nach Klang. Deshalb ist die Form „Wert — Beleg" Teil des
  * Feldwerts, innerhalb der Listen-Form aus `brandSlotFormat.ts`.
  *
- * Diese Datei ist PUR (kein H3, kein Appwrite, kein i18n); die Formalien kommen
- * aus `brandSlotInstructionTail` und sind damit wortgleich mit den anderen
- * Beratern.
+ * ── SEIT BW2 STEHT DIE AUFGABE NICHT MEHR HIER ────────────────────────────
+ * Sie ist Inhalt der Session (`shared/sessionContent.ts`) und wird von EINEM
+ * Bauer gesetzt (`server/utils/sessionPrompt.ts`). Am WORTLAUT hat der Umzug
+ * nichts geändert (Fixture-Beweis), also steigt `MILO_PROMPT_VERSION` nicht.
+ * Was hier bleibt, ist die Begründung dieses Kapitels — sie erklärt die
+ * Regeltexte, die jetzt nebenan stehen.
  */
 
 /**
  * Fassung dieser Aufträge. Steigt, sobald sich eine Aufgabe inhaltlich ändert —
- * oder der System-Prompt, mit dem sie gesendet werden (`milo-c-2`, 2026-09-02:
- * Aufgaben unverändert, System-Prompt auf `george-a-5` · Eine Stimme).
- */
-export const MILO_PROMPT_VERSION = 'milo-c-2'
-
-/**
- * Wie viele Kandidaten. §6/03 §7 grenzt danach auf 3–5 ein — weniger als fünf
- * Kandidaten wäre keine Auswahl, mehr als sieben keine Liste mehr.
- */
-export const MILO_CANDIDATE_RANGE = { min: 5, max: 7 } as const
-
-const MILO_SLOT_TASKS: Record<string, (options: BrandSlotInstructionOptions) => string[]> = {
-  'c.candidates': () => [
-    `TASK: distil ${MILO_CANDIDATE_RANGE.min} to ${MILO_CANDIDATE_RANGE.max} candidate VALUES out of `
-    + 'what this person has told you.',
-    'A value is a rule of behaviour that is allowed to cost money — not a poster word. You are looking '
-    + 'for the moments where they chose the harder way: that is where a value becomes visible.',
-    'Read the moments in the inputs: when the business was at its best, when something felt deeply '
-    + 'wrong, what they would never tolerate, how the brand began, what customers praise, what they '
-    + 'complain about, and the conviction they would defend even when it costs them.',
-    'ONE LINE PER CANDIDATE, in exactly this shape: "- <value in one or two words> — <the moment or '
-    + 'statement it comes from, in half a sentence>". The evidence half must be traceable to the inputs: '
-    + 'quote or paraphrase what they actually said.',
-    'NEVER list a value you cannot point at: no "quality", "reliability", "passion", "innovation", '
-    + '"customer focus" or any other word that could stand under any brand in any industry — unless a '
-    + 'specific moment in the inputs earns it, and then the line says which moment.',
-    'Two candidates may not rest on the same sentence: if you can only find three moments, return three '
-    + 'candidates and say in the BASIS line that the material carries no more.',
-    'Do not rank them and do not pick a favourite — the choosing is the next step, and it belongs to the '
-    + 'person.',
-  ],
-  'c.definitions': () => [
-    'TASK: for each value they chose, write ONE sentence saying what it means HERE — in this brand, not '
-    + 'in a dictionary.',
-    'ONE LINE PER VALUE, in exactly this shape: "- <value> — <what it means here, in one sentence>".',
-    'The sentence has to be behavioural: it says what someone DOES or DOES NOT do because of this value. '
-    + '"Honesty means we say no to work we cannot do well" beats "Honesty means being honest".',
-    'Build each sentence from the moments they described, not from the word itself — the same moment '
-    + 'that made the value a candidate should be recognisable in its definition.',
-    'Cover exactly the values in their final selection: no extra ones, none left out. If a chosen value '
-    + 'has no moment behind it in the inputs, ask about that one instead of inventing a meaning for it.',
-  ],
-}
-
-/**
- * DIE INSTRUKTION FÜR EINEN SLOT AUS MILOS BAUSTEIN.
+ * oder der System-Prompt, mit dem sie gesendet werden.
  *
- * Wirft für einen Slot ohne Aufgabe — dieselbe Absicht wie bei George und Vera
- * (die Route macht daraus `provider_error`, der Stand bleibt bearbeitbar).
+ * `milo-c-5` (2026-09-09, Davids Team-Entscheidung): die Aufgaben sind
+ * unverändert, das FUNDAMENT nicht (`george-a-14`, Solo-Weiche für
+ * Markentexte). `c.definitions` schreibt Werte-Definitionen als VERHALTEN in
+ * der ersten Person — für eine Marke, die eine Person allein führt, heisst das
+ * ab hier „ich" und nicht mehr „wir".
+ *
+ * `milo-c-4` (2026-09-04, BW2 Paket 2b — Gegenlese-Runde): neue Beispielwelt
+ * (Ernährungscoaching statt Hundeschule), und `c.definitions` trägt eine
+ * INVARIANTE — jeder gewählte Wert muss in der Liste vorkommen, geprüft im
+ * Code statt im Modell.
+ *
+ * `milo-c-3` (2026-09-04, BW2 Paket 2 — Session-Inhalte): Kandidaten und
+ * Definitionen tragen jetzt Qualitätsmerkmale, Anti-Muster und ein Formvorbild
+ * aus einer fremden Branche (dieselbe Hundeschule durch das ganze Kapitel, so
+ * dass man Moment, Wert und Definition aneinander sieht). Die Moment-Beleg-
+ * Pflicht ist wörtlich geblieben.
+ *
+ * `milo-c-2` (2026-09-02): Aufgaben unverändert, System-Prompt auf
+ * `george-a-5` · Eine Stimme.
  */
-export function miloSlotInstruction(slotId: string, options: BrandSlotInstructionOptions): string {
-  const task = MILO_SLOT_TASKS[slotId]
-  if (!task) throw new Error(`Kein Milo-Auftrag für Slot ${slotId}`)
+export const MILO_PROMPT_VERSION = 'milo-c-5'
 
-  return [
-    ...task(options),
-    ...brandSlotInstructionTail(options, { primarySource: GEORGE_PRIMARY_SOURCE_ANSWERS }),
-  ].join('\n')
-}
+/**
+ * WIE VIELE WERTE-KANDIDATEN — die Zahl, auf die §6/03 §7 danach auf 3–5
+ * eingrenzt.
+ *
+ * Sie LIEGT seit BW2 in `shared/sessionContent.ts`, weil die Verarbeitungsregel
+ * sie im Satz führt („distil 5 to 7 candidate VALUES") und `shared/` nicht aus
+ * `server/utils/` lesen kann. Hier bleibt der NAME, unter dem ihn die Beweise
+ * kennen — zwei Zahlen für dieselbe Spanne wären zwei Auffassungen davon, was
+ * noch eine Auswahl ist.
+ */
+export { MILO_CANDIDATE_RANGE } from '../../shared/sessionContent'

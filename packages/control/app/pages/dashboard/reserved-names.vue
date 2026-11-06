@@ -97,7 +97,7 @@ const columns = computed<TableColumn<ReservedEntry>[]>(() => [
   { accessorKey: 'name', header: () => t('control.reservedNames.colName') },
   { accessorKey: 'source', header: () => t('control.reservedNames.colSource') },
   { accessorKey: 'note', header: () => t('control.reservedNames.colNote') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 </script>
 

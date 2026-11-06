@@ -53,6 +53,22 @@ import { BrandSiteFetchError, fetchBrandSite } from '../../../../utils/brandSite
  * Das rohe HTML. Es verlässt `fetchBrandSite()` gar nicht erst — dort wird
  * extrahiert, und zurück kommt schon der fertige Text (Plan §9b: „Rohmaterial
  * nach Extraktion früh gelöscht").
+ *
+ * ── WARUM DIESER WEG KEINE `robots.txt` LIEST — UND DER CHECK SCHON ───────
+ * Seit BS1 R2b (Davids Entscheidung 2026-09-08) holt der Brand-Check vor jedem
+ * Abruf `robots.txt` und prüft den TDM-Nutzungsvorbehalt
+ * (`server/utils/brandCheckFetch.ts`, eigener Absender `PukalaniBrandCheck`).
+ * DIESE Route bleibt bewusst, wie sie war, und der Unterschied ist nicht
+ * Bequemlichkeit, sondern die Begründung: hier trägt ein eingeloggter
+ * Betreiber die Adresse SEINER EIGENEN Website ein und drückt selbst auf den
+ * Knopf. `robots.txt` regelt, was Crawler und Suchmaschinen bei einem fremden
+ * Auftritt tun dürfen — nicht, was ein Werkzeug darf, das sein Besitzer auf
+ * sein eigenes Haus richtet. Beim Check dagegen kann die Adresse von JEDEM
+ * stammen, und dort trägt die Begründung nicht (Faktenblatt §4c).
+ *
+ * Wer diesen Weg eines Tages für FREMDE Adressen öffnet (etwa als Recherche
+ * über einen Wettbewerber), öffnet damit auch diese Frage — dann gehört er auf
+ * `fetchBrandSiteForCheck` umgestellt, nicht mit einem Häkchen versehen.
  */
 export default defineEventHandler(async (event): Promise<BrandSiteAnalyzeResponse> => {
   const { userId } = await requireBrandAccess(event)

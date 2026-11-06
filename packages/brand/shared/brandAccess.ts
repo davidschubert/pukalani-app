@@ -97,6 +97,32 @@ export function admissionAllowsRedeem(mode: BrandAdmissionMode): boolean {
   return mode === 'invite'
 }
 
+/**
+ * IST DIESES KONTO EIN BETA-KONTO? — die EINE Fassung dieser Frage.
+ *
+ * Sie steht neben `decideBrandAccess` und nicht darin, weil es eine ANDERE
+ * Frage ist: „darf dieses Konto arbeiten?" beantwortet auch der Modus 'open'
+ * mit Ja (jedes verifizierte Konto darf, ohne Zeile) — „ist es ein Beta-Konto?"
+ * nicht. Die Zusage aus BS1 §9 Entscheidung 6 („Beta-Konten dauerhaft frei")
+ * hängt ausdrücklich an der ZEILE: „Gilt je KONTO (`brand_access` /
+ * Beta-Zulassung)". Ein offener Aufnahme-Modus verschenkt also nicht die
+ * Ableitung an jeden Vorbeikommenden — er öffnet nur den Wizard.
+ *
+ * Ein Entzug schlägt auch hier alles (Regel 2 im Kopf): `revokedAt` gesetzt ⇒
+ * kein Beta-Konto, und die Freischaltung der Ableitung fällt mit ihm weg,
+ * sofern sie nicht als FELD an der Marke steht (§2.8: das Feld ist der Weg,
+ * eine Zusage haltbar zu machen).
+ *
+ * Gelesen wird sie an ZWEI Datenwegen — im Zugangs-Gate jedes Requests
+ * (`requireBrandAccess`) und gebündelt für die Betreiber-Liste
+ * (`loadBrandBetaAccounts`). Beide fragen DIESE Funktion; die Regel steht
+ * einmal, die Abfrage zweimal (die zweite ist ein anderer Zuschnitt derselben
+ * Tabelle, kein zweiter Begriff von „Beta").
+ */
+export function brandAccountIsBeta(row: BrandAccessRowFacts | null | undefined): boolean {
+  return !!row && !row.revokedAt
+}
+
 export function decideBrandAccess(input: BrandAccessInput): BrandAccessDecision {
   if (!input.userId) return { allowed: false, reason: 'no_session' }
   if (!input.emailVerified) return { allowed: false, reason: 'not_verified' }

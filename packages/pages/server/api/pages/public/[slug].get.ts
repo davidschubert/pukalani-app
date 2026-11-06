@@ -44,5 +44,12 @@ export default defineEventHandler(async (event): Promise<PublicPage> => {
     }
     throw createError({ status: 404, statusText: 'Page not found' })
   }
-  return { slug: row.slug, locale: row.locale, title: row.title, body: row.body, updatedAt: row.$updatedAt }
+  /**
+   * Die Sprachen, in denen es die Seite VERÖFFENTLICHT gibt (F60). Aus den
+   * schon geladenen Zeilen — keine zweite Abfrage. Entwürfe zählen bewusst
+   * nicht mit: ein `hreflang` auf eine Fassung, die niemand sehen kann, wäre
+   * dieselbe Unwahrheit wie zuvor, nur andersherum.
+   */
+  const availableLocales = [...new Set(res.rows.map(r => r.locale))]
+  return { slug: row.slug, locale: row.locale, title: row.title, body: row.body, updatedAt: row.$updatedAt, availableLocales }
 })

@@ -24,15 +24,23 @@ import {
  * Weil die Tür an dieser Zeile keinen Angriffspunkt hat, und zwar buchstäblich:
  * `tenantDb().get()` prüft mit `rowBelongsToTenant`, ob `row.communityId` zum
  * Mandanten passt — diese Tabelle hat aber gar keine `communityId`-Spalte,
- * ihre **rowId IST die Community** (Form von `community_branding`, system-028).
+ * ihre **rowId IST der Besitzer** (Form von `community_branding`, system-028).
  * Die Prüfung fiele damit fail-closed auf JEDE Zeile aus. Eine Spalte
  * nachzuziehen, nur damit die Tür etwas prüfen kann, was die rowId schon sagt,
  * wäre eine zweite Wahrheit über denselben Mandanten — genau die Sorte
  * Doppelablage, die auseinanderläuft.
  *
+ * SEIT U15 TEIL 3 (2026-09-08) IST DER BESITZER NICHT MEHR IMMER EINE
+ * COMMUNITY: in einer Silo-App gibt es keinen Mandanten, und die INSTANZ hält
+ * ihr eigenes Menü unter der rowId `'instance'` (gerechnet von
+ * `communityNavRowId()` in core/shared/communityNavigation.ts — dort steht die
+ * ganze Begründung samt der dritten Möglichkeit „gar kein Besitzer"). Beide
+ * Funktionen hier nehmen deshalb eine **rowId** und keine communityId; das
+ * Rechnen bleibt bei den Routen, diese Datei legt nur ab.
+ *
  * DIE MANDANTEN-GRENZE GEHT DADURCH NICHT VERLOREN, sie liegt nur woanders:
- * die `communityId` kommt in BEIDEN Richtungen aus `useTenant(event)`, also aus
- * der Host-Auflösung des Servers — NIE aus dem Aufrufer. Eine fremde Community
+ * die rowId kommt in BEIDEN Richtungen aus `useTenant(event)`, also aus der
+ * Host-Auflösung des Servers — NIE aus dem Aufrufer. Eine fremde Community
  * ist nicht adressierbar, unabhängig davon, was im Body steht. Zusätzlich
  * hätte `tenantDb().create` Row-Permissions gesetzt, die auf einer Tabelle
  * ohne Client-Rechte nichts zu suchen haben.
@@ -64,6 +72,9 @@ const TTL_MS = 30_000
  * SCHLÜSSEL = MANDANT (`tenantCacheScope`). Pflicht: im Pool teilen sich alle
  * Communities einen Prozess, ein ungescopter Schlüssel gäbe Kunde A das Menü
  * von Kunde B — genau die Falle, die `publicPagesCache` daneben beschreibt.
+ * Ohne Mandant liefert er den festen Schlüssel `'single'`, und das passt genau
+ * zur `instance`-Zeile (U15 Teil 3): eine Silo-App hat einen Prozess, ein
+ * Projekt und ein Menü.
  *
  * `null` WIRD MITGECACHT, und das ist der wichtigere Teil: die allermeisten
  * Communities haben keine Row. Ohne negatives Caching kostete JEDER
@@ -76,7 +87,7 @@ function isRowNotFound(error: unknown): boolean {
 }
 
 /**
- * Die gespeicherte Wahl dieser Community — oder `null` („keine eigene Wahl").
+ * Die gespeicherte Wahl dieses Besitzers — oder `null` („keine eigene Wahl").
  *
  * FAIL-SOFT, und zwar absichtlich bis zur letzten Zeile: fehlende Tabelle
  * (Instanz ohne system-033), fehlende Row, kaputtes JSON, Appwrite gerade nicht
@@ -87,9 +98,9 @@ function isRowNotFound(error: unknown): boolean {
  */
 export async function readCommunityNavOverride(
   event: H3Event,
-  communityId: string,
+  rowId: string,
 ): Promise<CommunityNavOverride | null> {
-  if (!communityId) return null
+  if (!rowId) return null
   const key = tenantCacheScope(event)
   const cached = cache.get(key)
   if (cached !== undefined) return cached
@@ -101,7 +112,7 @@ export async function readCommunityNavOverride(
     const row = await admin.tablesDB.getRow<Models.Row & { config?: string }>({
       databaseId: config.public.appwriteDatabaseId,
       tableId: COMMUNITY_NAVIGATION_TABLE,
-      rowId: communityId,
+      rowId,
     })
     override = parseCommunityNavOverride(row.config)
   }
@@ -111,7 +122,7 @@ export async function readCommunityNavOverride(
     // nur alles andere ist eine Meldung wert.
     if (!isRowNotFound(error)) {
       logEvent('warn', 'community.navigation_read_failed', {
-        communityId,
+        communityId: rowId,
         message: error instanceof Error ? error.message : String(error),
       })
     }
@@ -121,7 +132,7 @@ export async function readCommunityNavOverride(
 }
 
 /**
- * Die Wahl dieser Community speichern.
+ * Die Wahl dieses Besitzers speichern.
  *
  * NICHT fail-soft (anders als das Lesen): wer auf „Speichern" klickt, muss
  * erfahren, wenn nichts gespeichert wurde. Der Aufrufer ist die Owner-Route,
@@ -129,7 +140,7 @@ export async function readCommunityNavOverride(
  */
 export async function writeCommunityNavOverride(
   event: H3Event,
-  communityId: string,
+  rowId: string,
   override: CommunityNavOverride,
 ): Promise<void> {
   const config = useRuntimeConfig(event)
@@ -137,7 +148,7 @@ export async function writeCommunityNavOverride(
   const target = {
     databaseId: config.public.appwriteDatabaseId,
     tableId: COMMUNITY_NAVIGATION_TABLE,
-    rowId: communityId,
+    rowId,
   }
   const data = { config: JSON.stringify(override) }
   try {

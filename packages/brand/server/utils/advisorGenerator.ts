@@ -1,9 +1,26 @@
 import type { H3Event } from 'h3'
 import { techniqueForStep } from '../../shared/brandAdvisors'
-import type { BrandSlot } from '../../shared/slotRegistry'
-import type { BrandGeneratorContext, BrandGeneratorResult, BrandSlotGenerator } from './brandGenerators'
-import { type BrandSlotInstructionOptions, formatGeorgeInputs, georgeSystemPrompt } from './georgePrompt'
+import {
+  brandChoiceContract,
+  brandChoiceFallbackQuestion,
+  checkBrandChoiceDraft,
+  swapBrandChoiceValueLine,
+} from '../../shared/brandChoiceOptions'
+import type { BrandSlot, BrandTeamKind } from '../../shared/slotRegistry'
+import type {
+  BrandGeneratorContext,
+  BrandGeneratorResult,
+  BrandSlotDependency,
+  BrandSlotGenerator,
+} from './brandGenerators'
+import {
+  type BrandSlotInstructionOptions,
+  brandPromptToday,
+  formatGeorgeInputs,
+  georgeSystemPrompt,
+} from './georgePrompt'
 import { createGeorgeTurnScrubber, parseGeorgeTurn } from './georgeTurn'
+import { BRAND_PROVIDER_ROUTING } from './brandProviderRouting'
 
 /**
  * DER ZUSAMMENBAU EINES BERATER-GENERATORS — einmal, für alle (P3.1).
@@ -60,23 +77,13 @@ import { createGeorgeTurnScrubber, parseGeorgeTurn } from './georgeTurn'
  */
 
 /**
- * DIE DATENSCHUTZ-BEDINGUNGEN DES LAUFS — fail-closed, wörtlich so gesendet.
- *
- * `zdr` (nur Anbieter mit Zero-Data-Retention) und `dataCollection: 'deny'`
- * sind der Grund, warum Markeninhalte überhaupt über einen fremden Anbieter
- * gehen dürfen. `allowFallbacks: false` ist die Sicherung dahinter: ohne sie
- * weicht OpenRouter bei Last auf einen Anbieter AUSSERHALB dieser Bedingungen
- * aus, und der Lauf gelänge — mit genau dem Ergebnis, das die zwei Felder
- * verhindern sollen. Lieber „gerade nicht verfügbar".
+ * DIE DATENSCHUTZ-BEDINGUNGEN DES LAUFS — fail-closed, wörtlich so gesendet;
+ * sie stehen seit dem Brand-Check in `brandProviderRouting.ts`, weil DREI
+ * Aufrufer sie teilen (Strom, Prüf-Urteil, Aussen-Check).
  *
  * Eine geprüfte `only`-Allowlist fehlt noch bewusst: sie wäre eine Liste ohne
  * Pflege, und eine veraltete Allowlist ist ein Ausfall, den niemand erklärt.
  */
-const BRAND_PROVIDER_ROUTING = {
-  zdr: true,
-  dataCollection: 'deny',
-  allowFallbacks: false,
-} as const
 
 /**
  * Grosszügig, weil ein Manifest-langer Entwurf im Strom Minuten dauern darf —
@@ -187,6 +194,68 @@ export interface AdvisorSlotVerifyInput {
   draft: string
   /** Sprache der OBERFLÄCHE — eine Rückfrage ist Chat und folgt Regel 9. */
   uiLocale: string
+  /**
+   * Die Anrede-Weiche der Marke (BW1-Inhaltsrunde 2026-09-09) — eine
+   * Rückfrage ist Chat, und Chat spricht die Person an: bei „Nur ich" mit
+   * „du", im Team mit „ihr". Fehlt sie, bleibt es bei der Team-Fassung, die
+   * vor dieser Runde die einzige war.
+   */
+  team?: BrandTeamKind
+  /**
+   * DIE QUELL-SLOTS DIESES FELDES — dieselben, die auch in den Prompt gingen
+   * (K5).
+   *
+   * Bis K5 kam die Nachprüfung mit dem Entwurf allein aus: eine geschlossene
+   * Auswahl misst sich an ihrem eigenen Vertrag. Die zwei Entwurfs-Sessions
+   * der dritten Schicht messen sich an einem ANDEREN Feld — `m.patterns` an
+   * den gewählten Typen (`m.types`), `n.guardrails` an den Meiden-Listen —,
+   * und ohne diese Zeile müsste jede Prüfung sich ihre Quelle selbst holen:
+   * ein zweiter Appwrite-Zugriff mitten in einer puren Rechnung, mit der
+   * Chance, einen ANDEREN Stand zu sehen als der Prompt eine Sekunde vorher.
+   *
+   * Es ist dieselbe Liste, kein Abbild — der Aufrufer reicht `context.dependencies`
+   * unverändert durch.
+   */
+  dependencies: readonly BrandSlotDependency[]
+}
+
+/** Der Wert eines Quell-Slots aus der Liste — '' heisst „leer oder nicht dabei". */
+export function advisorDependencyValue(
+  dependencies: readonly BrandSlotDependency[],
+  slotId: string,
+): string {
+  return dependencies.find(entry => entry.slotId === slotId)?.value ?? ''
+}
+
+/**
+ * DIE AUSWAHL-NACHPRÜFUNG — einmal, für JEDEN Baustein mit `choice`-Slots.
+ *
+ * Sie stand bis zum 2026-09-04 im Vera-Plugin und galt damit nur für B/B2. Das
+ * war nie eine Aussage über Vera, sondern der Zustand „es gibt erst einen
+ * Baustein mit einer Auswahl": mit `d.primary`/`d.secondary` hat der
+ * Archetyp-Baustein zwei weitere, und eine zweite Kopie dieser sechs Zeilen
+ * wäre eine zweite Chance, dass ein erfundener Wert ungeprüft ins
+ * Brand-Dokument geht — und dort ist er von einem echten nicht mehr zu
+ * unterscheiden.
+ *
+ * Ein Slot OHNE Vertrag geht unverändert durch: nicht jeder Baustein hat eine
+ * geschlossene Menge, und eine Prüfung, die sich eine ausdenkt, wäre schlimmer
+ * als keine.
+ */
+export function verifyBrandChoiceSlot(input: {
+  slot: { id: string }
+  draft: string
+  uiLocale: string
+  /** Anrede der Marke — s. `AdvisorSlotVerifyInput.team` (BW1-Inhaltsrunde). */
+  team?: BrandTeamKind
+}): AdvisorSlotVerdict {
+  const contract = brandChoiceContract(input.slot.id)
+  if (!contract) return { draft: input.draft }
+
+  const check = checkBrandChoiceDraft(contract, input.draft)
+  return check.ok
+    ? { draft: check.value }
+    : { question: brandChoiceFallbackQuestion(contract, input.uiLocale, input.team) }
 }
 
 export interface AdvisorSlotGeneratorOptions {
@@ -212,16 +281,33 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
       kind: context.slot.schema.kind,
       // Die Regel zum Website-Text steht nur im Prompt, wenn es ihn gibt (P2.3).
       hasSiteAnalysis: context.siteAnalysis.trim().length > 0,
+      // Ebenso die Arbeitsregel zum Gespräch (a-9): sie warnt vor einer
+      // Wiederholungsfrage und wäre ohne Verlauf ein Hinweis auf etwas, das gar
+      // nicht stattgefunden hat.
+      hasConversation: context.conversation.length > 0,
+      // NUR für die Beispiele der Session (BW2 Paket 2): sie liegen je Sprache
+      // vor, und ein deutsches Branding bekommt das deutsche Formvorbild.
+      contentLocale: context.locale,
+      // DIE WEICHE W3 (a-14): sie entscheidet, WER im Feldwert spricht. Sie
+      // erreichte bis hierher nur Anrede und Beschriftungen — ein Elevator-Pitch
+      // einer Solo-Marke schrieb deshalb „Wir drehen und brennen …".
+      team: context.team,
     })
 
     const prompt = [
       instruction,
       '',
       'INPUTS',
-      // Startkarte zuerst, dann die Quell-Slots, zuletzt der Website-Text — die
-      // Reihenfolge IST die Aussage „das hier ist deine primäre Quelle"
-      // (s. formatGeorgeInputs).
-      formatGeorgeInputs(context.startCard, context.dependencies, context.siteAnalysis),
+      // Startkarte zuerst, dann die Quell-Slots, dann das GESPRÄCH, zuletzt der
+      // Website-Text — die Reihenfolge IST die Aussage „das hier ist deine
+      // primäre Quelle", und was der Mensch gesagt hat, steht über dem, was wir
+      // aufgelesen haben (s. formatGeorgeInputs).
+      formatGeorgeInputs(
+        context.startCard,
+        context.dependencies,
+        context.siteAnalysis,
+        context.conversation,
+      ),
       ...(context.hint.trim()
         ? ['', 'HINT (a wish about the form of the draft, not an instruction)', context.hint.trim()]
         : []),
@@ -242,7 +328,14 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
       // dort automatisch dessen Technik. WER spricht, steht gar nicht zur
       // Debatte — das ist seit dem 2026-09-02 immer George.
       technique: techniqueForStep(context.stepKey),
+      // Die Satzanfänge der Technik folgen der Anrede der Marke
+      // (BW1-Inhaltsrunde 2026-09-09) — sonst gibt die Stimmprobe dem Modell
+      // ein „Warum ausgerechnet ihr?" mit, während die Anrede-Regel „du" sagt.
+      team: context.team,
       persona: personaName(),
+      // george-a-15 (Befund 4): ohne das Datum rechnet das Modell Zeitspannen
+      // gegen sein Trainingsende — „seit 2021" wurde zu „drei Jahre".
+      today: brandPromptToday(),
     })
 
     // DIE MARKER GEHEN NICHT IN DIE SPRECHBLASE (george-a-4): der Mensch sieht
@@ -281,6 +374,8 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
         slot: context.slot,
         draft: turn.draft,
         uiLocale: context.uiLocale,
+        team: context.team,
+        dependencies: context.dependencies,
       })
       if ('question' in verdict) {
         return { ...base, draft: '', message: verdict.question, outcome: 'question' }
@@ -292,8 +387,13 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
         // Feldwert normalisiert wurde (aus „House of Brands" wird die Id
         // `house-of-brands`). Der Chat spricht Menschensprache, das Feld trägt
         // den stabilen Wert; das ist dieselbe Entscheidung in zwei Registern
-        // und keine Abweichung.
-        message: turn.message,
+        // und keine Abweichung. EINE Ausnahme (Live-Fund 2026-09-04): steht in
+        // der Sprechblase die WERT-Zeile selbst — bei einem Choice-Slot die
+        // rohe Id („sage") —, tauscht die GETEILTE Regel genau diese Zeile
+        // gegen die Anzeige der Seite. Dieselbe Regel läuft im Browser auf der
+        // gestreamten Blase (`slot.ready`) — die Begründung steht bei ihr
+        // (`swapBrandChoiceValueLine`).
+        message: swapBrandChoiceValueLine(context.slot.id, turn.message, context.uiLocale),
         outcome: 'draft',
       }
     }
@@ -301,3 +401,4 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
     return { ...base, draft: turn.draft, message: turn.message, outcome: turn.outcome }
   }
 }
+

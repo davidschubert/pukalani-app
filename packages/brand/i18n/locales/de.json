@@ -1,5 +1,368 @@
 {
   "brand": {
+    "admin": {
+      "waitlist": {
+        "nav": "Warteliste",
+        "title": "Warteliste",
+        "subtitle": "Wer auf Zugang zur Beta wartet. Bestätigt heißt: der Link aus der Mail wurde geöffnet — diese Einträge warten auf eine Entscheidung.",
+        "refresh": "Neu laden",
+        "export": "CSV exportieren",
+        "filterLabel": "Nach Status filtern",
+        "shown": "{count} angezeigt",
+        "rowActions": "Aktionen",
+        "counts": {
+          "pending": "Wartend",
+          "confirmed": "Bestätigt",
+          "invited": "Eingeladen",
+          "declined": "Abgelehnt"
+        },
+        "filter": {
+          "pending": "Wartend",
+          "confirmed": "Bestätigt",
+          "invited": "Eingeladen",
+          "declined": "Abgelehnt",
+          "all": "Alle"
+        },
+        "status": {
+          "pending": "Wartend",
+          "confirmed": "Bestätigt",
+          "invited": "Eingeladen",
+          "declined": "Abgelehnt"
+        },
+        "col": {
+          "email": "E-Mail",
+          "who": "Name / Firma",
+          "website": "Website",
+          "source": "Quelle",
+          "status": "Status",
+          "date": "Eingetragen"
+        },
+        "action": {
+          "invite": "Einladen",
+          "decline": "Ablehnen",
+          "note": "Notiz"
+        },
+        "inviteTitle": "Beta-Code senden?",
+        "inviteText": "Code an {email} senden?",
+        "inviteHint": "Der Code geht sofort per E-Mail raus, gilt 30 Tage und nur für diese Adresse. Er lässt sich hier nicht noch einmal anzeigen — gespeichert wird nur seine Prüfsumme.",
+        "invited": "Code an {email} verschickt",
+        "invitedHint": "Der Eintrag steht jetzt auf „Eingeladen“.",
+        "declineTitle": "Anfrage ablehnen?",
+        "declineText": "{email} ablehnen?",
+        "declineHint": "Der Eintrag bleibt in der Liste stehen, damit dieselbe Adresse nicht erneut als neue Anfrage auftaucht. Eine Mail geht nicht raus.",
+        "declined": "{email} abgelehnt",
+        "noteTitle": "Notiz",
+        "noteLabel": "Notiz zu diesem Eintrag",
+        "noteHint": "Nur für euch — sie wird niemandem angezeigt und geht in keine Mail.",
+        "notePlaceholder": "Was ihr euch merken wollt",
+        "noteSaved": "Notiz gespeichert",
+        "actionFailed": "Das hat nicht geklappt",
+        "error": {
+          "not_confirmed": "Dieser Eintrag ist noch nicht bestätigt — der Link aus der Mail wurde noch nicht geöffnet.",
+          "already_invited": "Für diesen Eintrag ist bereits ein Code raus. Ein zweiter geht über das Skript.",
+          "invite_mail_failed": "Der Code konnte nicht verschickt werden. Er wurde deshalb wieder zurückgenommen — versucht es gleich noch einmal.",
+          "waitlist_unavailable": "Die Warteliste antwortet gerade nicht. Versucht es in einer Minute noch einmal.",
+          "not_found": "Diesen Eintrag gibt es nicht mehr.",
+          "generic": "Unbekannter Fehler. Ladet die Liste neu."
+        },
+        "emptyTitle": "Nichts in dieser Ansicht",
+        "empty": "Hier steht noch niemand. Wechselt den Filter, um die anderen Zustände zu sehen."
+      },
+      "discover": {
+        "nav": "Discover"
+      },
+      "checkCorrections": {
+        "nav": "Korrekturen",
+        "title": "Korrekturvorschläge",
+        "subtitle": "Wer im Ranking eine falsch zugeordnete Branche sieht, schlägt hier eine Korrektur vor. Angenommen wandert der Wert in den Check, abgelehnt bleibt er stehen.",
+        "refresh": "Neu laden",
+        "more": "Mehr laden",
+        "shown": "{count} von {total} angezeigt",
+        "actionFailed": "Das hat nicht geklappt",
+        "accepted": "Vorschlag angenommen",
+        "acceptedHint": "Die Branche des Checks ist jetzt der vorgeschlagene Wert.",
+        "unchangedHint": "Der Check trug diesen Wert bereits — geändert hat sich nichts.",
+        "declined": "Vorschlag abgelehnt",
+        "filter": {
+          "open": "Offen",
+          "accepted": "Angenommen",
+          "declined": "Abgelehnt",
+          "all": "Alle"
+        },
+        "status": {
+          "open": "Offen",
+          "accepted": "Angenommen",
+          "declined": "Abgelehnt"
+        },
+        "field": {
+          "industry": "Branche"
+        },
+        "col": {
+          "host": "Auftritt",
+          "field": "Feld",
+          "change": "Heute · Vorschlag",
+          "reason": "Begründung",
+          "reporter": "Absender",
+          "status": "Status",
+          "date": "Eingegangen"
+        },
+        "action": {
+          "accept": "Annehmen",
+          "decline": "Ablehnen"
+        },
+        "declineTitle": "Vorschlag ablehnen",
+        "declineText": "Der Vorschlag zu {host} wird abgelehnt. Der Check bleibt, wie er ist.",
+        "declineNoteLabel": "Begründung",
+        "declineNoteHint": "Freiwillig, höchstens 300 Zeichen. Sie bleibt an der Zeile stehen.",
+        "declineNotePlaceholder": "Warum wird der Vorschlag abgelehnt?",
+        "emptyTitle": "Nichts in dieser Ansicht",
+        "empty": "Hier wartet gerade kein Vorschlag. Wechselt den Filter, um die entschiedenen zu sehen.",
+        "error": {
+          "already_decided": "Dieser Vorschlag ist bereits anders entschieden. Ändert das Feld direkt über den Entfernen-Weg unten.",
+          "invalid_value": "Der vorgeschlagene Wert gehört nicht zum Branchen-Katalog.",
+          "not_found": "Diesen Vorschlag gibt es nicht mehr.",
+          "check_not_found": "Den Check dazu gibt es nicht mehr.",
+          "corrections_unavailable": "Die Liste antwortet gerade nicht. Versucht es in einer Minute noch einmal.",
+          "generic": "Unbekannter Fehler. Ladet die Liste neu."
+        },
+        "hiddenTitle": "Eintrag aus dem Ranking nehmen",
+        "hiddenHint": "Auf Wunsch eines Website-Betreibers. Ausgeblendet antwortet der Check überall so, als gäbe es ihn nicht — die Zeile bleibt als Beleg erhalten.",
+        "hiddenLabel": "Check-Id",
+        "hiddenPlaceholder": "Check-Id einfügen",
+        "hide": "Ausblenden",
+        "unhide": "Wieder einblenden",
+        "hiddenOn": "Der Check ist ausgeblendet",
+        "hiddenOff": "Der Check ist wieder sichtbar"
+      },
+      "introCalls": {
+        "nav": "Erstgespräche",
+        "title": "Erstgespräche",
+        "subtitle": "Wer um ein Gespräch gebeten hat. Jede Anfrage steht hier, auch wenn keine Mail hinausgegangen ist.",
+        "refresh": "Neu laden",
+        "filterLabel": "Nach Zustand filtern",
+        "shown": "{count} angezeigt",
+        "rowActions": "Aktionen für diese Anfrage",
+        "emptyTitle": "Noch keine Anfrage",
+        "empty": "Sobald jemand über die Erstgespräch-Seite schreibt, steht die Anfrage hier.",
+        "actionFailed": "Das hat nicht geklappt",
+        "noteTitle": "Notiz zur Anfrage",
+        "notePlaceholder": "Was ihr euch zu dieser Anfrage merken wollt",
+        "noteSaved": "Notiz gespeichert",
+        "replySubject": "Euer Erstgespräch",
+        "close": "Schliessen",
+        "filter": {
+          "new": "Offen",
+          "contacted": "Beantwortet",
+          "closed": "Erledigt",
+          "all": "Alle"
+        },
+        "status": {
+          "new": "Offen",
+          "contacted": "Beantwortet",
+          "closed": "Erledigt"
+        },
+        "counts": {
+          "new": "Offen",
+          "contacted": "Beantwortet",
+          "closed": "Erledigt"
+        },
+        "col": {
+          "who": "Wer",
+          "email": "E-Mail",
+          "phone": "Telefon",
+          "company": "Marke",
+          "brand": "Branding",
+          "message": "Anliegen",
+          "source": "Herkunft",
+          "status": "Zustand",
+          "date": "Eingegangen"
+        },
+        "action": {
+          "read": "Anfrage lesen",
+          "reply": "Per Mail antworten",
+          "note": "Notiz",
+          "new": "Als offen markieren",
+          "contacted": "Als beantwortet markieren",
+          "closed": "Als erledigt markieren"
+        },
+        "set": {
+          "new": "Wieder offen",
+          "contacted": "Als beantwortet markiert",
+          "closed": "Als erledigt markiert"
+        },
+        "error": {
+          "not_found": "Diese Anfrage gibt es nicht mehr.",
+          "generic": "Das hat gerade nicht geklappt. Versucht es in einer Minute noch einmal."
+        }
+      },
+      "unlocks": {
+        "nav": "Freischaltungen",
+        "title": "Freischaltungen",
+        "subtitle": "Zwei Schranken je Marke: Brand Design (Schicht 2) und die Ableitung — ein Feld, das Brand Book & Kit und den Marktvergleich zugleich öffnet. Beides ist studio-begleitet: eine Marke bekommt es, wenn das Erstgespräch gelaufen ist. Beta-Konten haben die Ableitung dauerhaft frei, auch ohne Eintrag.",
+        "refresh": "Neu laden",
+        "rowActions": "Aktionen für dieses Branding",
+        "emptyTitle": "Noch kein Branding",
+        "empty": "Sobald jemand eine Marke anlegt, steht sie hier — mit den Knöpfen, sobald ihre Foundation steht.",
+        "actionFailed": "Das hat nicht geklappt",
+        "events": "Ereignisse dieser Sitzung",
+        "counts": {
+          "all": "Brandings",
+          "ready": "Foundation fertig",
+          "design": "Brand Design frei",
+          "derivation": "Ableitung frei"
+        },
+        "col": {
+          "brand": "Marke",
+          "foundation": "Foundation",
+          "design": "Brand Design",
+          "derivation": "Ableitung",
+          "created": "Angelegt"
+        },
+        "foundation": {
+          "done": "Abgeschlossen",
+          "open": "Offen · {pct} %"
+        },
+        "state": {
+          "locked": "Gesperrt",
+          "unlocked": "Frei seit {date}",
+          "unlockedVia": "Frei seit {date} · {via}",
+          "beta": "Frei · Beta-Konto"
+        },
+        "grant": {
+          "beta": "Beta-Konto",
+          "operator": "vom Studio",
+          "purchase": "gekauft",
+          "none": "gesperrt"
+        },
+        "action": {
+          "design": {
+            "unlock": "Brand Design freischalten",
+            "lock": "Brand Design zurücknehmen"
+          },
+          "derivation": {
+            "unlock": "Ableitung freischalten",
+            "lock": "Ableitung zurücknehmen"
+          }
+        },
+        "done": {
+          "design": {
+            "unlock": "Brand Design ist freigeschaltet",
+            "lock": "Brand Design ist wieder gesperrt"
+          },
+          "derivation": {
+            "unlock": "Die Ableitung ist freigeschaltet",
+            "lock": "Die Ableitung ist wieder gesperrt"
+          }
+        },
+        "confirm": {
+          "design": {
+            "unlock": {
+              "title": "Brand Design freischalten?",
+              "body": "„{brand}\" bekommt damit die sechs Kapitel von Schicht 2 — Moodboard, Farbwelt, Typografie, Zeichen, Bildsprache, Bewegung. Ihr könnt das jederzeit zurücknehmen.",
+              "action": "Freischalten"
+            },
+            "lock": {
+              "title": "Brand Design zurücknehmen?",
+              "body": "Brand Design wird für „{brand}\" wieder gesperrt. Nichts wird gelöscht: bereits erarbeitete Kapitel bleiben liegen und stehen nach einer erneuten Freischaltung wieder da.",
+              "action": "Zurücknehmen"
+            }
+          },
+          "derivation": {
+            "unlock": {
+              "title": "Ableitung freischalten?",
+              "body": "„{brand}\" bekommt damit Brand Book & Kit UND den Marktvergleich — es ist ein Feld, nicht zwei. Die drei Kapitel-Zeilen werden angelegt, und die Handlung hinterlässt eine Ereignis-Zeile mit eurem Namen.",
+              "action": "Freischalten"
+            },
+            "lock": {
+              "title": "Ableitung zurücknehmen?",
+              "body": "Brand Book & Kit und der Marktvergleich werden für „{brand}\" wieder gesperrt. Nichts wird gelöscht: erarbeitete Kapitel bleiben liegen. Ist das Konto ein Beta-Konto, bleibt die Ableitung trotzdem offen — dafür ist der Beta-Zugang zuständig, nicht diese Marke.",
+              "action": "Zurücknehmen"
+            }
+          }
+        },
+        "error": {
+          "foundation_incomplete": "Die Brand Foundation dieser Marke ist noch nicht abgeschlossen — beide Schranken setzen das Ergebnis-Kapitel voraus.",
+          "generic": "Bitte noch einmal versuchen."
+        }
+      }
+    },
+    "color": {
+      "base": {
+        "title": "Basisfarbe",
+        "tag": "h.base · drei Kandidaten",
+        "intro": "Das ist die einzige Farbe, die wirklich gewählt wird — alles andere rechne ich daraus. Geprüft wird sie als Textfarbe auf dem Papierton, den sie selbst erzeugt.",
+        "onPaper": "{ratio} auf Papier · {level}",
+        "blocked": "Als Textfarbe nicht wählbar — unter 4,5:1. Als Fläche bleibt sie erlaubt.",
+        "pickerLabel": "Basisfarbe im Farb-Picker wählen",
+        "hexLabel": "Eigene Basisfarbe als Hex-Wert",
+        "hexHint": "Picker öffnen oder eigenen Hex-Wert eingeben (sechs Zeichen)."
+      },
+      "candidate": {
+        "direction-deep": "Die Tiefe der Richtung",
+        "palette-deep": "Die Tiefe der Farbwelt",
+        "direction-mid": "Der Mittelton der Richtung",
+        "signal-deep": "Ein zweiter Farbton als Signal",
+        "signal-alt": "Noch ein Signal-Ton"
+      },
+      "reason": {
+        "base": {
+          "directionDeep": "Die tiefste Farbe der gewählten Richtung — tief genug, um Text zu tragen.",
+          "paletteDeep": "Ein anderer Farbton aus derselben kuratierten Welt: eigenständiger, ohne die Richtung zu verlassen.",
+          "directionMid": "Der freundlichste der drei — und meistens der, der als Textfarbe durchfällt."
+        },
+        "accent": {
+          "directionMid": "Aus der eigenen Welt und damit harmonisch — für hellen Knopf-Text ist er meistens zu hell.",
+          "signalDeep": "Ein anderer Farbton, tief genug für hellen Text: das Signal, das man auch von weitem sieht.",
+          "signalAlt": "Dieselbe Idee in einer zweiten Farbe — falls die erste zu nah am Umfeld der Marke liegt."
+        }
+      },
+      "scheme": {
+        "light": "Hell",
+        "dark": "Dunkel"
+      },
+      "ramp": {
+        "title": "Hell- und Dunkel-Rampe",
+        "tag": "h.ramp · gerechnet, nicht gewählt",
+        "intro": "Elf Stufen je Welt, wahrgenommen gleichmäßig. Die dunkle Rampe ist dieselbe Mathematik mit anderen Enden — auf dunklem Grund braucht die Marke oben mehr Luft.",
+        "pair": "Text {ink} auf Grund {ground}",
+        "note": "Beide Welten sind dieselbe Basisfarbe — nur die Enden der Rampe sind andere. Wer die dunkle Welt nicht will, hat trotzdem eine: Betriebssysteme schalten sie ein."
+      },
+      "neutral": {
+        "title": "Grundton",
+        "tag": "h.neutral",
+        "intro": "Flächen und Linien tragen einen Hauch Farbe — oder bewusst einen anderen Ton.",
+        "note": {
+          "tinted": "Flächen tragen einen Hauch der Marke — die Vorgabe.",
+          "warm": "Papierfarben mit Gelbstich, wie ungestrichenes Papier.",
+          "cool": "Ruhiger, technischer — nimmt der Wärme etwas Süße."
+        }
+      },
+      "accent": {
+        "title": "Akzent",
+        "tag": "h.accent",
+        "intro": "Ein Signal, kein Zweitgrund: ein Pop je Fläche.",
+        "tooClose": "Zu nah an der Basisfarbe — als Signal würde ihn niemand lesen."
+      },
+      "roles": {
+        "title": "Rollen",
+        "tag": "h.roles · wofür welche Farbe steht"
+      },
+      "contrast": {
+        "title": "Kontrast-Prüfung",
+        "tag": "h.contrast · WCAG 2.1",
+        "intro": "Sechs Paare, hell und dunkel. Sie sind Teil des Vorschlags und nicht ein Prüfschritt danach — was hier durchfällt, wird gar nicht erst angeboten.",
+        "sample": "Ein Satz zur Probe",
+        "note": "Die Zahlen sind live gerechnet: eine andere Basisfarbe oben ändert diese Tabelle sofort.",
+        "blocked": "So lässt sich die Prüfung nicht bestätigen: {pairs} bleiben unter AA. Ändert die Basisfarbe, den Grundton oder den Akzent — die Zahlen folgen sofort.",
+        "column": {
+          "pair": "Paar",
+          "scheme": "Welt",
+          "sample": "Probe",
+          "ratio": "Verhältnis",
+          "verdict": "Urteil"
+        }
+      }
+    },
     "cta": {
       "book": "Erstgespräch buchen"
     },
@@ -9,12 +372,14 @@
     },
     "nav": {
       "products": "Products",
+      "brandCheck": "Brand-Check",
       "discover": "Discover Brands",
       "insights": "Brand Insights",
       "about": "About",
+      "team": "Team",
       "product": {
-        "wizard": "Eure Marke entsteht im Gespräch mit George.",
-        "design": "Drei Moodboards aus eurer Visual DNA.",
+        "wizard": "Die Marke entsteht im Gespräch mit einem persönlichen Markenberater.",
+        "design": "Drei Moodboards aus der Visual DNA.",
         "book": "Book, Tokens, brand.json + Strategy Playbook.",
         "experience": "Assets und Pläne entlang des 90-Tage-Plans.",
         "monitoring": "Wöchentlicher Blick von außen, mit Alerts.",
@@ -35,7 +400,17 @@
       "dashboard": "Dashboard",
       "newBranding": "Neues Branding anlegen",
       "manageBrandings": "Brandings verwalten",
-      "footerNav": "Fußzeile"
+      "footerNav": "Fußzeile",
+      "footerLegal": "Rechtliches",
+      "sessionLocked": "Erst sind die Felder davor dran.",
+      "acceptance": "Finale Abnahme",
+      "acceptancePending": "Frei, sobald alle Felder dieses Kapitels bestätigt sind.",
+      "derivedGroup": "Daraus abgeleitet",
+      "chapterCount": "{confirmed} von {total} bestätigt",
+      "chapterCountOptional": "{confirmed} von {total} bestätigt + {optional} optional",
+      "chapterCountStale": "{confirmed} von {total} bestätigt · {stale} neu besprechen",
+      "document": "Dein Branding",
+      "foundation": "Brand Foundation"
     },
     "legal": {
       "imprint": "Impressum",
@@ -48,92 +423,302 @@
         "category": "Kategorie",
         "competitors": "Wettbewerber",
         "audienceSketch": "Zielgruppen-Skizze",
-        "toneAnalysis": "Tonalität eurer bestehenden Texte",
+        "toneAnalysis": "Tonalität bestehender Texte",
         "origin": {
-          "new": "Warum hast du angefangen — was war der Auslöser, welches Problem konntest du nicht ignorieren?",
-          "relaunch": "Was am bestehenden Auftritt MUSS bleiben — woran man euch erkennt, was Stammkunden vermissen würden?"
+          "new": {
+            "solo": "Warum hast du angefangen — was war der Auslöser, welches Problem konntest du nicht ignorieren?",
+            "team": "Warum hast du angefangen — was war der Auslöser, welches Problem konntest du nicht ignorieren?"
+          },
+          "relaunch": {
+            "solo": "Was am bestehenden Auftritt MUSS bleiben — woran man dich erkennt, was Stammkunden vermissen würden?",
+            "team": "Was am bestehenden Auftritt MUSS bleiben — woran man euch erkennt, was Stammkunden vermissen würden?"
+          }
         },
-        "customerPraise": "Was sagen deine glücklichsten Kunden über euch — in DEREN Worten?",
-        "complaints": "Welche Beschwerden oder Kritik bekommt ihr? Ehrlich — das ist so wertvoll wie das Lob.",
-        "oneThing": "Was ist das eine, von dem du dir wünschst, dass es jeder Kunde über euch wüsste?",
-        "challenge": "Was ist gerade das größte Hindernis vor euch?",
-        "facts": "Ein paar schnelle Zahlen: Wie groß ist das Team, wie lange gibt es euch, welche Märkte?"
+        "customerPraise": {
+          "solo": "Was sagen deine glücklichsten Kunden über dich — in DEREN Worten?",
+          "team": "Was sagen deine glücklichsten Kunden über euch — in DEREN Worten?"
+        },
+        "complaints": {
+          "solo": "Welche Beschwerden oder Kritik bekommst du? Ehrlich — das ist so wertvoll wie das Lob.",
+          "team": "Welche Beschwerden oder Kritik bekommt ihr? Ehrlich — das ist so wertvoll wie das Lob."
+        },
+        "oneThing": {
+          "solo": "Was ist das eine, von dem du dir wünschst, dass es jeder Kunde über dich wüsste?",
+          "team": "Was ist das eine, von dem du dir wünschst, dass es jeder Kunde über euch wüsste?"
+        },
+        "challenge": {
+          "solo": "Was ist gerade das größte Hindernis vor dir?",
+          "team": "Was ist gerade das größte Hindernis vor euch?"
+        },
+        "facts": {
+          "solo": "Ein paar schnelle Zahlen: Wie groß ist das Team, wie lange machst du das schon, welche Märkte?",
+          "team": "Ein paar schnelle Zahlen: Wie groß ist das Team, wie lange gibt es euch, welche Märkte?"
+        }
       },
       "b": {
         "whyStarted": {
-          "new": "Du hast mir schon erzählt, wie es angefangen hat. In einem Satz: Warum zählt das heute noch?",
-          "relaunch": "Vergiss kurz die Gründungsgeschichte: Warum gibt es euch HEUTE noch — was würde euren Kunden morgen fehlen?"
+          "new": {
+            "solo": "Du hast mir schon erzählt, wie es angefangen hat. In einem Satz: Warum zählt das heute noch?",
+            "team": "Du hast mir schon erzählt, wie es angefangen hat. In einem Satz: Warum zählt das heute noch?"
+          },
+          "relaunch": {
+            "solo": "Vergiss kurz die Gründungsgeschichte: Warum gibt es dich HEUTE noch — was würde deinen Kunden morgen fehlen?",
+            "team": "Vergiss kurz die Gründungsgeschichte: Warum gibt es euch HEUTE noch — was würde euren Kunden morgen fehlen?"
+          }
         },
-        "worldLoses": "Was ginge der Welt verloren, wenn ihr morgen zumacht? Wirkung, nicht Umsatz.",
-        "conviction": "Welche Überzeugung treibt euch — die, die ihr auch verteidigt, wenn sie euch etwas kostet?",
-        "tenYears": "In zehn Jahren: Was sieht in der Welt anders aus, weil es euch gab?",
-        "legacy": "Wenn man in 20 Jahren über euch spricht — was sollen die Leute sagen?",
+        "worldLoses": {
+          "solo": "Was ginge der Welt verloren, wenn du morgen zumachst? Wirkung, nicht Umsatz.",
+          "team": "Was ginge der Welt verloren, wenn ihr morgen zumacht? Wirkung, nicht Umsatz."
+        },
+        "conviction": {
+          "solo": "Welche Überzeugung treibt dich — die, die du auch verteidigst, wenn sie dich etwas kostet?",
+          "team": "Welche Überzeugung treibt euch — die, die ihr auch verteidigt, wenn sie euch etwas kostet?"
+        },
+        "tenYears": {
+          "solo": "In zehn Jahren: Was sieht in der Welt anders aus, weil es dich gab?",
+          "team": "In zehn Jahren: Was sieht in der Welt anders aus, weil es euch gab?"
+        },
+        "legacy": {
+          "solo": "Wenn man in 20 Jahren über dich spricht — was sollen die Leute sagen?",
+          "team": "Wenn man in 20 Jahren über euch spricht — was sollen die Leute sagen?"
+        },
         "purpose": "Purpose",
         "vision": "Vision",
         "mission": "Mission",
-        "positioningCategory": "In welcher Kategorie spielt ihr?",
-        "positioningFirstChoice": "Und in dieser Kategorie: Für wen seid ihr die ERSTE Wahl — und gegen wen?"
+        "positioningCategory": {
+          "solo": "In welcher Kategorie spielst du?",
+          "team": "In welcher Kategorie spielt ihr?"
+        },
+        "positioningFirstChoice": {
+          "solo": "Und in dieser Kategorie: Für wen bist du die ERSTE Wahl — und gegen wen?",
+          "team": "Und in dieser Kategorie: Für wen seid ihr die ERSTE Wahl — und gegen wen?"
+        }
       },
       "b2": {
-        "visibility": "Sollen eure Produktmarken sichtbar zur Hauptmarke gehören — oder eigenständig auftreten?",
+        "visibility": {
+          "solo": "Sollen deine Produktmarken sichtbar zur Hauptmarke gehören — oder eigenständig auftreten?",
+          "team": "Sollen eure Produktmarken sichtbar zur Hauptmarke gehören — oder eigenständig auftreten?"
+        },
         "roleOfMaster": "Soll die Hauptmarke ihnen Vertrauen leihen — oder dürfen sie Publika erreichen, die die Hauptmarke nicht erreicht?",
         "namingPattern": "Wie dürfen sie HEISSEN — „Marke Produkt\", oder eigene Namen?",
-        "model": "Welches Architektur-Modell passt zu euch?",
-        "rule": "Eure Namensregel"
+        "model": {
+          "solo": "Welches Architektur-Modell passt zu dir?",
+          "team": "Welches Architektur-Modell passt zu euch?"
+        },
+        "rule": "Die Namensregel"
       },
       "c": {
-        "discovery1": "Denk an einen Moment, in dem euer Geschäft am besten war. Was ist da passiert?",
+        "discovery1": {
+          "solo": "Denk an einen Moment, in dem dein Geschäft am besten war. Was ist da passiert?",
+          "team": "Denk an einen Moment, in dem euer Geschäft am besten war. Was ist da passiert?"
+        },
         "discovery2": "Denk an einen Moment, in dem sich etwas zutiefst falsch angefühlt hat. Was war da los?",
-        "discovery3": "Welches Verhalten würdest du nie dulden — auch nicht vom bestzahlenden Kunden?",
+        "discovery3": {
+          "solo": "Welches Verhalten würdest du nie dulden — auch nicht vom bestzahlenden Kunden?",
+          "team": "Wie soll dein Team entscheiden, wenn du nicht im Raum bist?"
+        },
         "candidates": "Wertekandidaten",
-        "final": "Welche drei bis fünf würdet ihr verteidigen, auch wenn es euch etwas kostet?",
-        "definitions": "Was jeder Wert bei euch heißt",
-        "livedExamples": "Zu jedem Wert: EIN echtes Beispiel, wo ihr ihn schon gelebt habt.",
-        "conflictRule": "Wo geraten zwei eurer Werte in Konflikt — und welcher gewinnt?",
-        "teamFilter": "Wenn ihr morgen jemanden einstellt: Welcher Wert ist der unverhandelbare Filter?"
+        "final": {
+          "solo": "Welche drei bis fünf würdest du verteidigen, auch wenn es dich etwas kostet?",
+          "team": "Welche drei bis fünf würdet ihr verteidigen, auch wenn es euch etwas kostet?"
+        },
+        "definitions": "Was jeder Wert konkret heißt",
+        "livedExamples": {
+          "solo": "Zu jedem Wert: EIN echtes Beispiel, wo du ihn schon gelebt hast.",
+          "team": "Zu jedem Wert: EIN echtes Beispiel, wo ihr ihn schon gelebt habt."
+        },
+        "conflictRule": {
+          "solo": "Wo geraten zwei deiner Werte in Konflikt — und welcher gewinnt?",
+          "team": "Wo geraten zwei eurer Werte in Konflikt — und welcher gewinnt?"
+        },
+        "teamFilter": {
+          "solo": "Wenn du morgen jemanden einstellst: Welcher Wert ist der unverhandelbare Filter?",
+          "team": "Wenn ihr morgen jemanden einstellt: Welcher Wert ist der unverhandelbare Filter?"
+        }
       },
       "d": {
-        "hypothesis": "Archetyp-Hypothese aus eurem heutigen Auftritt",
-        "pairs": "Welche der beiden fühlt sich mehr nach euch an?",
+        "hypothesis": "Archetyp-Hypothese aus dem heutigen Auftritt",
+        "pairs": {
+          "solo": "Welche der beiden fühlt sich mehr nach dir an?",
+          "team": "Welche der beiden fühlt sich mehr nach euch an?"
+        },
         "primary": "Primärer Archetyp",
         "secondary": "Sekundärer Archetyp",
         "gapReveal": "Selbstbild und Außenbild",
-        "party": "Wenn eure Marke ein Mensch auf einer Party wäre — wie verhält sie sich?",
-        "never": "Welche Eigenschaft sollte eure Marke NIEMALS haben?",
+        "party": {
+          "solo": "Wenn deine Marke ein Mensch auf einer Party wäre — wie verhält sie sich?",
+          "team": "Wenn eure Marke ein Mensch auf einer Party wäre — wie verhält sie sich?"
+        },
+        "never": {
+          "solo": "Welche Eigenschaft sollte deine Marke NIEMALS haben?",
+          "team": "Welche Eigenschaft sollte eure Marke NIEMALS haben?"
+        },
         "admired": "Nenn eine Marke, deren Persönlichkeit du bewunderst — was genau ist es bei denen?",
-        "emotion": "Was sollen Leute FÜHLEN, wenn sie mit euch zu tun haben?",
-        "voiceSamples": "Welcher dieser Sätze klingt am meisten nach euch?",
-        "toneWords": "Welche Wörter beschreiben euren Ton?",
-        "vocabulary": "Welche Wörter würdet ihr NIE benutzen?"
+        "emotion": {
+          "solo": "Was sollen Leute FÜHLEN, wenn sie mit dir zu tun haben?",
+          "team": "Was sollen Leute FÜHLEN, wenn sie mit euch zu tun haben?"
+        },
+        "voiceSamples": {
+          "solo": "Welcher dieser Sätze klingt am meisten nach dir?",
+          "team": "Welcher dieser Sätze klingt am meisten nach euch?"
+        },
+        "toneWords": {
+          "solo": "Welche Wörter beschreiben deinen Ton?",
+          "team": "Welche Wörter beschreiben euren Ton?"
+        },
+        "vocabulary": {
+          "solo": "Welche Wörter würdest du NIE benutzen?",
+          "team": "Welche Wörter würdet ihr NIE benutzen?"
+        }
       },
       "e": {
         "warmup1": "Was regt dich an deiner Branche auf?",
-        "warmup2": "Was sollten mehr Leute über eure Arbeit verstehen?",
+        "warmup2": {
+          "solo": "Was sollten mehr Leute über deine Arbeit verstehen?",
+          "team": "Was sollten mehr Leute über eure Arbeit verstehen?"
+        },
         "statements": "Die Satzanfänge",
         "composition": "Ton, Länge und Verwendung des Manifests",
         "manifesto": "Manifest",
-        "anchorLine": "Welche Zeile ist die, die ihr an eine Wand hängen würdet?"
+        "anchorLine": {
+          "solo": "Welche Zeile ist die, die du an eine Wand hängen würdest?",
+          "team": "Welche Zeile ist die, die ihr an eine Wand hängen würdet?"
+        }
       },
       "ep": {
         "taglines": "Welche Tagline trägt es?",
         "boilerplates": "Boilerplates — Bio, Kurzabsatz, Absatz",
         "keyMessages": "Kernbotschaften je Zielgruppe",
         "vocabulary": "Wörter zum Benutzen, Wörter zum Meiden",
-        "distinctiveAsset": "Welche Zeile wird euer verbales Erkennungszeichen?"
+        "distinctiveAsset": {
+          "solo": "Welche Zeile wird dein verbales Erkennungszeichen?",
+          "team": "Welche Zeile wird euer verbales Erkennungszeichen?"
+        }
       },
       "f": {
-        "nameType": "Welche Sorte Name passt zu euch?",
+        "nameType": {
+          "solo": "Welche Sorte Name passt zu dir?",
+          "team": "Welche Sorte Name passt zu euch?"
+        },
         "taste": "Nenn drei bis fünf Markennamen, die du liebst — egal welche Branche — und sag warum.",
         "noGos": "Gibt es Wörter, Stile oder Längen, die tabu sind?",
         "candidates": "Namens-Kandidaten",
         "shortlist": "Welche Kandidaten kommen auf die Shortlist?",
         "checks": "Vorprüfung der Verfügbarkeit",
-        "criteria": "Bewertet die Finalisten an den acht Kriterien.",
-        "decision": "Eure Top drei, in Reihenfolge."
+        "criteria": {
+          "solo": "Bewerte die Finalisten an den acht Kriterien.",
+          "team": "Bewertet die Finalisten an den acht Kriterien."
+        },
+        "decision": {
+          "solo": "Deine Top drei, in Reihenfolge.",
+          "team": "Eure Top drei, in Reihenfolge."
+        }
       },
       "result": {
-        "direction": "Welche Richtung passt zu eurer Marke?",
+        "direction": {
+          "solo": "Welche Richtung passt zu deiner Marke?",
+          "team": "Welche Richtung passt zu eurer Marke?"
+        },
         "rating": "Wie hilfreich war das Ergebnis?"
+      },
+      "g": {
+        "source": {
+          "solo": "Hast du Vorbilder — Screenshots, ein Pinnwand-Board, drei Seiten, die dir gefallen?",
+          "team": "Habt ihr Vorbilder — Screenshots, ein Pinnwand-Board, drei Seiten, die euch gefallen?"
+        },
+        "inspiration": "Die Vorbilder",
+        "reading": "Lesung gegen die Foundation",
+        "dna": "Die Visual DNA",
+        "boards": "Drei Moodboards",
+        "board": {
+          "solo": "Welches Board ist dein Ausgangspunkt?",
+          "team": "Welches Board ist euer Ausgangspunkt?"
+        },
+        "mix": "Mix und Match"
+      },
+      "h": {
+        "base": "Die Basisfarbe",
+        "ramp": "Hell- und Dunkel-Rampe",
+        "neutral": {
+          "solo": "Welchen Grundton sollen deine Flächen haben?",
+          "team": "Welchen Grundton sollen eure Flächen haben?"
+        },
+        "accent": {
+          "solo": "Welche Farbe ist dein Signal?",
+          "team": "Welche Farbe ist euer Signal?"
+        },
+        "roles": "Farb-Rollen",
+        "contrast": "Kontrast-Prüfung"
+      },
+      "i": {
+        "pair": {
+          "solo": "Welches Schriftpaar passt zu dir?",
+          "team": "Welches Schriftpaar passt zu euch?"
+        },
+        "scale": "Grössen-Hierarchie",
+        "rules": "Schrift-Regeln"
+      },
+      "j": {
+        "kind": {
+          "solo": "Welche Art Zeichen brauchst du?",
+          "team": "Welche Art Zeichen braucht ihr?"
+        },
+        "brief": "Briefing für das Zeichen",
+        "examples": "Gesetzte Beispiele",
+        "pick": {
+          "solo": "Welche Setzung nimmst du als Vorzugs-Beispiel?",
+          "team": "Welche Setzung nehmt ihr als Vorzugs-Beispiel?"
+        },
+        "drafts": "KI-Entwürfe"
+      },
+      "k": {
+        "photo": "Die Bild-Prinzipien",
+        "illustration": {
+          "solo": "Willst du Illustration — und wenn ja, welche?",
+          "team": "Wollt ihr Illustration — und wenn ja, welche?"
+        },
+        "icons": {
+          "solo": "Welcher Icon-Satz passt zu deiner Schrift?",
+          "team": "Welcher Icon-Satz passt zu eurer Schrift?"
+        },
+        "dodont": "Do und Don’t der Bildsprache"
+      },
+      "l": {
+        "tempo": {
+          "solo": "Wie schnell soll sich deine Marke bewegen?",
+          "team": "Wie schnell soll sich eure Marke bewegen?"
+        },
+        "transitions": "Übergangs-Tokens",
+        "logo": {
+          "solo": "Soll sich dein Zeichen bewegen?",
+          "team": "Soll sich euer Zeichen bewegen?"
+        },
+        "rules": "Bewegungs-Regeln"
+      },
+      "m": {
+        "types": {
+          "solo": "Wofür brauchst du Namen — Produkte, Leistungen, Formate, Orte, Digitales?",
+          "team": "Wofür braucht ihr Namen — Produkte, Leistungen, Formate, Orte, Digitales?"
+        },
+        "patterns": "Namensmuster je Typ",
+        "rules": "Die Namens-Regeln"
+      },
+      "n": {
+        "scope": {
+          "solo": "Was darf KI in deinem Namen erzeugen?",
+          "team": "Was darf KI in eurem Namen erzeugen?"
+        },
+        "review": "Wer gibt frei, bevor etwas rausgeht?",
+        "guardrails": "Die Leitplanken für KI",
+        "prompts": "Prompt-Vorlagen"
+      },
+      "p": {
+        "facts": "Welche Fakten dürfen ins Pressekit?",
+        "contact": {
+          "solo": "Wer ist deine Ansprechperson für Presse?",
+          "team": "Wer ist eure Ansprechperson für Presse?"
+        },
+        "summary": "Vorschau des Pressekits"
       }
     },
     "labels": {
@@ -148,9 +733,9 @@
       "b": {
         "whyStarted": "Warum es zählt",
         "worldLoses": "Was fehlen würde",
-        "conviction": "Eure Überzeugung",
+        "conviction": "Die Überzeugung",
         "tenYears": "Blick in zehn Jahre",
-        "legacy": "Euer Vermächtnis",
+        "legacy": "Das Vermächtnis",
         "positioningCategory": "Positionierungs-Kategorie",
         "positioningFirstChoice": "Erste Wahl für"
       },
@@ -164,7 +749,7 @@
         "discovery1": "Bester Moment",
         "discovery2": "Falscher Moment",
         "discovery3": "Nie geduldet",
-        "final": "Eure Werte",
+        "final": "Die Werte",
         "livedExamples": "Gelebte Beispiele",
         "conflictRule": "Konfliktregel",
         "teamFilter": "Einstellungs-Filter"
@@ -207,15 +792,48 @@
       }
     },
     "stepInfo": {
-      "context": "Der Kontext ist der Boden, auf dem alles steht: Wer ihr seid, was ihr anbietet, für wen — und in welchem Markt ihr euch bewegt. Jede spätere Empfehlung von George stützt sich auf diese Fakten; ohne sauberen Kontext wären Werte, Archetyp und Tagline geraten statt hergeleitet.",
-      "pvm": "Der Kompass der Marke: Der Purpose sagt, warum es euch gibt. Die Vision, wohin ihr wollt. Die Mission, wie ihr dorthin kommt. Zusammen sind sie die Messlatte für jede Entscheidung — von der Preisliste bis zum Instagram-Post.",
-      "architecture": "Die Markenarchitektur ordnet eure Markenfamilie: Tritt alles unter einer Marke auf, tragen Produkte eigene Namen — und wer leiht wem Vertrauen? Aus drei Weichen leitet George ein Modell her und macht daraus eine Namensregel, an der sich jedes künftige Angebot messen lässt.",
-      "values": "Werte sind die Verhaltensregeln eurer Marke: Sie sagen, wie ihr entscheidet, wenn es unbequem wird. In der Brand Foundation sind sie das Scharnier zwischen Purpose (warum es euch gibt) und Archetyp & Stimme (wie ihr klingt) — jede spätere Design- und Textentscheidung wird an ihnen gemessen.",
-      "archetype": "Der Archetyp gibt eurer Marke einen wiedererkennbaren Charakter — ein Muster, das Menschen intuitiv verstehen (der Weise, der Entdecker, der Fürsorgliche …). Daraus leitet sich die Stimme ab: wie ihr klingt, worüber ihr sprecht und worüber nie. So schreibt jeder im Team, als schriebe dieselbe Person.",
+      "context": "Der Kontext ist der Boden, auf dem alles steht: wer hinter der Marke steht, was sie anbietet, für wen — und in welchem Markt sie sich bewegt. Jede spätere Empfehlung von George stützt sich auf diese Fakten; ohne sauberen Kontext wären Werte, Archetyp und Tagline geraten statt hergeleitet.",
+      "pvm": "Der Kompass der Marke: Der Purpose sagt, warum es sie gibt. Die Vision, wohin sie will. Die Mission, wie sie dorthin kommt. Zusammen sind sie die Messlatte für jede Entscheidung — von der Preisliste bis zum Instagram-Post.",
+      "architecture": "Die Markenarchitektur ordnet die Markenfamilie: Tritt alles unter einer Marke auf, tragen Produkte eigene Namen — und wer leiht wem Vertrauen? Aus drei Weichen leitet George ein Modell her und macht daraus eine Namensregel, an der sich jedes künftige Angebot messen lässt.",
+      "values": "Werte sind die Verhaltensregeln der Marke: Sie sagen, wie entschieden wird, wenn es unbequem wird. In der Brand Foundation sind sie das Scharnier zwischen Purpose (warum es die Marke gibt) und Archetyp & Stimme (wie sie klingt) — jede spätere Design- und Textentscheidung wird an ihnen gemessen.",
+      "archetype": "Der Archetyp gibt der Marke einen wiedererkennbaren Charakter — ein Muster, das Menschen intuitiv verstehen (der Weise, der Entdecker, der Fürsorgliche …). Daraus leitet sich die Stimme ab: wie die Marke klingt, worüber sie spricht und worüber nie. So liest sich jeder Text, als schriebe dieselbe Person.",
       "manifesto": "Das Manifest verdichtet die ganze Foundation in einen Text mit Haltung — das Stück, das man laut vorlesen kann: auf der Website, im Pitch, beim Onboarding neuer Leute. Es entsteht aus Purpose, Werten und Stimme, nicht umgekehrt.",
-      "verbal": "Die Tagline ist der eine Satz neben eurem Namen; das Messaging sind die Kernbotschaften dahinter — was ihr wem sagt, damit es hängen bleibt. Beides baut auf der Foundation auf: Ohne geklärte Werte klingt jede Tagline beliebig.",
+      "verbal": "Die Tagline ist der eine Satz neben dem Namen; das Messaging sind die Kernbotschaften dahinter — was wem gesagt wird, damit es hängen bleibt. Beides baut auf der Foundation auf: Ohne geklärte Werte klingt jede Tagline beliebig.",
       "naming": "Ob neue Marke oder Prüfstand für den Bestandsnamen: Hier wird der Name an der Foundation gemessen — passt er zu Purpose, Werten und Archetyp? Dazu die nüchterne Prüfung: Ist er frei, ist er aussprechbar, funktioniert er auch auf Englisch?",
-      "result": "Das Ergebnis bündelt alle bestätigten Entscheidungen der Foundation zu eurem Markendokument — mit einer Richtung für alles Weitere. Von hier aus geht es in Design, Texte und den Auftritt; und je ehrlicher die Kapitel davor, desto tragfähiger ist, was hier steht."
+      "result": "Das Ergebnis bündelt alle bestätigten Entscheidungen der Foundation zum Markendokument — mit einer Richtung für alles Weitere. Von hier aus geht es in Design, Texte und den Auftritt; und je ehrlicher die Kapitel davor, desto tragfähiger ist, was hier steht.",
+      "dna": "Vor Farbe und Schrift steht eine Richtung. Frida liest die Foundation und — falls welche hinterlegt sind — die Vorbilder, und macht daraus zehn benannte Eigenschaften der Gestalt statt einer Stimmung.",
+      "color": "Die Farben kommen nicht aus dem Katalog: aus Archetyp und Werten wird eine Basisfarbe hergeleitet und daraus eine geprüfte Hell- und Dunkel-Rampe mit barrierefreien Kontrast-Paaren.",
+      "type": "Schrift ist Stimme in Form. Aus der Tonalität folgt ein Paar für Überschrift und Text, dazu Grade, Hierarchie und die Regeln, wo welcher Schnitt gilt.",
+      "mark": "Die Richtung des Zeichens — Wortmarke, Monogramm oder Bildmarke — mit Briefing und gesetzten Beispielen. Ein Entwurf ist ein Entwurf, kein fertiges, schützbares Logo.",
+      "imagery": "Wie die Marke aussieht, wenn sie nicht spricht: Fotografie-Stil, Illustration und Icons — mit Do & Don’t zum Fühlen statt einer Liste von Adjektiven.",
+      "motion": "Bewegung mit Charakter: Tempo und Übergänge, ob das Zeichen sich bewegt — und was passiert, wenn jemand reduzierte Bewegung eingestellt hat.",
+      "nomenclature": "Wenn die Marke wächst, bekommt jedes neue Ding einen Namen — und ohne Muster bekommt es irgendeinen. Otto leitet je Produkttyp ein Namensmuster aus der Markenarchitektur her und macht daraus Regeln, an denen sich jeder künftige Name messen lässt.",
+      "aiguide": "KI schreibt längst mit. Hier wird festgelegt, was sie im Namen der Marke erzeugen darf, wer freigibt und welche Leitplanken gelten — Ton, Tabu-Wörter, Schreibweisen. Nika leitet alles aus der Stimme der Marke ab; erfunden wird nichts.",
+      "presskit": "Fast fertig aus dem, was schon steht: Boilerplates, Tagline, Zeichen. Zwei Dinge muss trotzdem ein Mensch sagen — welche Fakten öffentlich reisen dürfen und wer die Ansprechperson ist."
+    },
+    "part": {
+      "a": {
+        "facts": {
+          "teamSize": "Wie viele Leute arbeiten mit — feste und freie zusammen?",
+          "age": {
+            "solo": "Seit wann machst du das? Ein Jahr reicht.",
+            "team": "Seit wann gibt es euch? Ein Jahr reicht."
+          },
+          "markets": {
+            "solo": "Wo verkaufst du wirklich — welche Orte, welche Kanäle?",
+            "team": "Wo verkauft ihr wirklich — welche Orte, welche Kanäle?"
+          }
+        }
+      }
+    },
+    "partLabel": {
+      "a": {
+        "facts": {
+          "teamSize": "Team",
+          "age": "Seit",
+          "markets": "Märkte"
+        }
+      }
     },
     "example": {
       "a": {
@@ -223,7 +841,10 @@
           "new": "Ich habe als Kunde nie gefunden, was ich gesucht habe — also habe ich es selbst gebaut.",
           "relaunch": "Unser Name und die persönliche Beratung müssen bleiben — dafür kennt man uns seit Jahren."
         },
-        "customerPraise": "Bei euch fühlt man sich nicht wie eine Nummer — und das Ergebnis passt einfach.",
+        "customerPraise": {
+          "solo": "Bei dir fühlt man sich nicht wie eine Nummer — und das Ergebnis passt einfach.",
+          "team": "Bei euch fühlt man sich nicht wie eine Nummer — und das Ergebnis passt einfach."
+        },
         "complaints": "Manchmal dauert es länger als versprochen, und die Preise wirken erst mal hoch.",
         "oneThing": "Dass hinter jedem Auftrag echtes Handwerk steckt — nichts von der Stange.",
         "challenge": "Wir gewinnen kaum Neukunden, obwohl unsere Stammkunden uns lieben."
@@ -247,7 +868,10 @@
       "c": {
         "discovery1": "Als ein Kunde uns weiterempfohlen hat, bevor sein eigenes Projekt fertig war.",
         "discovery2": "Als wir einen Auftrag angenommen haben, hinter dem keiner stand — nur wegen des Geldes.",
-        "discovery3": "Dass jemand Kollegen vor Kunden schlecht macht.",
+        "discovery3": {
+          "solo": "Dass jemand Kollegen vor Kunden schlecht macht.",
+          "team": "Im Zweifel die sorgfältige Lösung — lieber einmal mehr nachfragen als etwas Halbes ausliefern."
+        },
         "livedExamples": "Ehrlichkeit: Wir haben einem Kunden abgeraten, obwohl uns das den Auftrag gekostet hat.",
         "conflictRule": "Tempo gegen Sorgfalt — im Zweifel gewinnt die Sorgfalt.",
         "teamFilter": "Verlässlichkeit — wer Zusagen nicht hält, passt nicht zu uns."
@@ -266,44 +890,84 @@
       "f": {
         "taste": "Vitra, Patagonia, Aesop — kurz, eigenständig, ohne Erklärung merkbar.",
         "noGos": "Keine englischen Kunstwörter, nichts mit Global oder 24 im Namen."
+      },
+      "p": {
+        "contact": "Leilani Kahale, Inhaberin — Presse und Kooperationen"
       }
     },
     "help": {
       "b": {
-        "purpose": "Der Purpose ist das WARUM: der Grund, aus dem es euch gibt — jenseits vom Geldverdienen. Die Vision ist das WOHIN, die Mission das WIE: drei Sätze, drei Aufgaben. Patagonias Purpose verkauft keine Jacken, er will den Planeten retten.",
-        "vision": "Die Vision beschreibt die Welt, wenn ihr Erfolg hattet — ein Bild, keine Zielzahl. Sie darf zehn Jahre entfernt liegen und muss trotzdem heute Richtung geben.",
-        "mission": "Die Mission sagt, was ihr täglich tut, um dorthin zu kommen — konkret genug, dass eine neue Kollegin danach handeln kann. Purpose ist das Warum, Vision das Wohin, Mission das Wie.",
-        "positioningCategory": "Positionierung ist der Platz, den ihr im Kopf besetzt: eine Kategorie — und die Leute, für die ihr darin die erste Wahl seid. Ohne Kategorie vergleicht man euch trotzdem, nur ohne euer Zutun."
+        "purpose": "Der Purpose ist das WARUM: der Grund, aus dem es die Marke gibt — jenseits vom Geldverdienen. Die Vision ist das WOHIN, die Mission das WIE: drei Sätze, drei Aufgaben. Patagonias Purpose verkauft keine Jacken, er will den Planeten retten.",
+        "vision": "Die Vision beschreibt die Welt, wenn die Marke Erfolg hatte — ein Bild, keine Zielzahl. Sie darf zehn Jahre entfernt liegen und muss trotzdem heute Richtung geben.",
+        "mission": "Die Mission sagt, was täglich getan wird, um dorthin zu kommen — konkret genug, dass jemand Neues danach handeln kann. Purpose ist das Warum, Vision das Wohin, Mission das Wie.",
+        "positioningCategory": "Positionierung ist der Platz, den die Marke im Kopf besetzt: eine Kategorie — und die Leute, für die sie darin die erste Wahl ist. Ohne Kategorie wird sie trotzdem verglichen, nur ohne ihr Zutun."
       },
       "b2": {
         "model": "Vier Modelle: Branded House (eine Marke trägt alles), Sub-Brands, Endorsed Brands, House of Brands (Marken ohne sichtbare Mutter). Jedes kauft eine andere Art Vertrauen — und jedes hat seinen Preis."
       },
       "c": {
         "candidates": "Werte sind Verhaltensregeln, die Geld kosten dürfen — keine Poster-Wörter. In Umfrage um Umfrage kennt die Mehrheit der Beschäftigten die Werte der eigenen Firma nicht; genau das passiert, wenn sie nach Klang gewählt wurden.",
-        "final": "Drei bis fünf ist die Arbeitsgröße: Weniger sagt nichts, mehr merkt sich niemand. Nehmt die, die ihr in einer schlechten Woche verteidigen würdet — nicht die, die sich gut lesen."
+        "final": "Drei bis fünf ist die Arbeitsgröße: Weniger sagt nichts, mehr merkt sich niemand. Bleiben sollten die Werte, die sich in einer schlechten Woche verteidigen lassen — nicht die, die sich gut lesen."
       },
       "d": {
-        "pairs": "Der Archetyp ist der Charakter eurer Marke — er steuert Stimme, Bilder und Wirkung. Man wählt ihn nicht aus einer Liste: Er entsteht aus Vergleichen, weil eine Entscheidung zwischen zwei Gefühlen ehrlicher ist als ein Menü mit zwölf Einträgen.",
-        "primary": "Zwölf Archetypen in vier Gruppen; ihr bekommt einen primären und einen sekundären. Der primäre setzt den Ton, der sekundäre bewahrt ihn vor dem Klischee.",
-        "gapReveal": "Hier trifft euer Selbstbild auf das Bild, das euer heutiger Auftritt sendet. Eine Abweichung ist kein Fehler — sie ist das Nützlichste auf dieser Seite, und sie wird benannt statt weggeglättet."
+        "pairs": "Der Archetyp ist der Charakter der Marke — er steuert Stimme, Bilder und Wirkung. Man wählt ihn nicht aus einer Liste: Er entsteht aus Vergleichen, weil eine Entscheidung zwischen zwei Gefühlen ehrlicher ist als ein Menü mit zwölf Einträgen.",
+        "primary": "Zwölf Archetypen in vier Gruppen; heraus kommen ein primärer und ein sekundärer. Der primäre setzt den Ton, der sekundäre bewahrt ihn vor dem Klischee.",
+        "gapReveal": "Hier trifft das Selbstbild auf das Bild, das der heutige Auftritt sendet. Eine Abweichung ist kein Fehler — sie ist das Nützlichste auf dieser Seite, und sie wird benannt statt weggeglättet."
       },
       "e": {
-        "statements": "Ein Manifest bezieht Stellung: Es soll die Richtigen anziehen und die Falschen abschrecken. Die Satzanfänge sind ein Gerüst — streicht, was geliehen klingt, und behaltet, was ihr laut sagen würdet.",
+        "statements": "Ein Manifest bezieht Stellung: Es soll die Richtigen anziehen und die Falschen abschrecken. Die Satzanfänge sind ein Gerüst — weg mit allem, was geliehen klingt; bleiben darf, was sich laut sagen lässt.",
         "manifesto": "Eine Mission erklärt, ein Manifest verpflichtet. Es ist zum Vorlesen geschrieben — kürzer und schärfer gewinnt fast immer."
       },
       "f": {
         "nameType": "Es gibt neun Sorten Namen — beschreibend, erfunden, metaphorisch und so weiter. Erst die Sorte wählen, dann brainstormen: Eine gemischte Liste kippt immer in die sicherste Option.",
-        "taste": "Der Name ist das meistwiederholte Element einer Marke — er muss sprechbar, merkbar und schützbar sein. Was ihr an fremden Namen liebt, sagt mehr über euren Geschmack als jede Adjektivliste.",
+        "taste": "Der Name ist das meistwiederholte Element einer Marke — er muss sprechbar, merkbar und schützbar sein. Was an fremden Namen gefällt, sagt mehr über den eigenen Geschmack als jede Adjektivliste.",
         "checks": "Je erfundener ein Name, desto schützbarer ist er. Was hier steht, sind Indikatoren aus öffentlichen Registern und aus dem DNS — allgemeine Information, keine Rechtsberatung. Sprecht vor der Festlegung mit einer Markenanwältin."
       }
     },
     "rebrand": {
-      "r1": "Was am bestehenden Auftritt MUSS bleiben — woran man euch erkennt, was Stammkunden vermissen würden?",
-      "r2": "Was fliegt bewusst raus — und warum gerade das?",
-      "r3": "Warum jetzt? Was ist passiert — Wachstum, neue Zielgruppe, Zusammenschluss, oder der Moment, in dem euch die eigene Website peinlich wurde?",
-      "r4": "Was gefällt dir am jetzigen Auftritt NICHT?"
+      "r1": "Was am bestehenden Auftritt MUSS bleiben — woran man die Marke erkennt, was Stammkunden vermissen würden?",
+      "r2": "Was fliegt bewusst raus — und warum gerade das?"
     },
     "choice": {
+      "aiScope": {
+        "drafts": {
+          "label": "Entwürfe für alles",
+          "hint": "KI darf jeden Text vorschlagen — Website, Social, Mail, Verpackung. Veröffentlicht wird nichts ohne Mensch.",
+          "example": "Die Produkttexte entstehen als Entwurf, eine Person gibt sie frei."
+        },
+        "textOnly": {
+          "label": "Nur Text",
+          "hint": "Texte ja, Bilder und Zeichen nie. Passt zu Marken, deren Bildsprache an Fotografie hängt.",
+          "example": "Der Newsletter ja, das Motiv darüber nie."
+        },
+        "internal": {
+          "label": "Nur intern",
+          "hint": "Notizen, Zusammenfassungen, Übersetzungen — nichts, was ein Kunde je sieht.",
+          "example": "Gesprächsnotizen und Übersetzungen fürs Team."
+        },
+        "none": {
+          "label": "Nichts Kundenseitiges",
+          "hint": "Die strengste Fassung: KI bleibt aus der Marke heraus. Ehrlich, aber teuer im Alltag.",
+          "example": "Jeder Satz der Marke stammt von einem Menschen."
+        }
+      },
+      "aiReview": {
+        "every": {
+          "label": "Jede Veröffentlichung durch einen Menschen",
+          "hint": "Eine Person liest, bevor es rausgeht — und trägt es dann auch.",
+          "example": "Nichts geht online, das nicht jemand gelesen hat."
+        },
+        "sample": {
+          "label": "Stichprobe",
+          "hint": "Jeder fünfte Text wird geprüft. Schneller, aber der Fehler steht dann schon draussen.",
+          "example": "Freitags werden fünf Beiträge der Woche gegengelesen."
+        },
+        "channel": {
+          "label": "Kanal-abhängig",
+          "hint": "Website und Verpackung immer, Social nur stichprobenartig.",
+          "example": "Die Preisseite immer, ein Story-Post nicht."
+        }
+      },
       "exampleLabel": "Bekannt",
       "model": {
         "brandedHouse": {
@@ -325,6 +989,18 @@
           "label": "House of Brands",
           "hint": "Die Marken stehen allein, die Mutter bleibt unsichtbar.",
           "example": "Procter und Gamble: Ariel, Pampers, Gillette."
+        }
+      },
+      "dnaSource": {
+        "inspiration": {
+          "label": "Wir haben Vorbilder",
+          "hint": "Screenshots, Pinterest, drei Websites, die gefallen. Frida liest sie gegen die Foundation.",
+          "example": "Die Startseite einer Rösterei, ein Buch-Cover, ein Instagram-Feed."
+        },
+        "foundation": {
+          "label": "Frida schlägt vor",
+          "hint": "Die Richtung kommt allein aus der Foundation — Archetyp, Werte, Ton-Wörter, Positionierung.",
+          "example": "Archetyp, Werte, Ton-Wörter, Positionierung — mehr braucht es nicht."
         }
       }
     },
@@ -362,11 +1038,31 @@
       "confirmedSlot": "Bestätigt",
       "confirmedBadge": "Bestätigt",
       "reviseSlot": "Korrigieren",
-      "reviseDone": "Korrigieren beenden",
+      "reviseApply": "Übernehmen",
+      "reviseDiscard": "Verwerfen",
+      "answerSlot": "Beantworten",
+      "draftSlot": "Entwerfen",
+      "confirmChoice": {
+        "label": "Bestätigen oder ergänzen",
+        "confirm": "Passt so, bestätigen",
+        "more": "Ich ergänze noch etwas"
+      },
+      "continueTo": "Weiter zu {field}",
+      "continueAcceptance": "Weiter zur Finalen Abnahme",
       "confirmQuestion": "Passt das so als Grundlage?",
       "acceptAndConfirm": "Übernehmen & bestätigen",
+      "confirmNeedsValue": "Erst entwerfen oder selbst schreiben — dann lässt sich das übernehmen.",
+      "confirmEmpty": "Hier steht noch nichts, was sich bestätigen liesse.",
       "retryWithHint": "Nochmal, mit Hinweis",
       "submitChoice": "Übermitteln",
+      "save": {
+        "rejected": "Nicht gespeichert",
+        "rejectedField": "„{field}“ ist nicht angekommen. Der Text steht noch da — bitte noch einmal bestätigen.",
+        "rejectedRetry": "Die letzte Änderung ist nicht angekommen. Der Text steht noch da — bitte noch einmal versuchen."
+      },
+      "turnOptions": {
+        "label": "Antwortmöglichkeiten"
+      },
       "example": {
         "show": "Beispiel ansehen",
         "hide": "Beispiel ausblenden",
@@ -384,13 +1080,14 @@
         "confirmedOf": "{confirmed}/{total} bestätigt",
         "confirmedOfOptional": "{confirmed}/{total} bestätigt + {optional} optional",
         "count": "{confirmed}/{total}",
-        "countOptional": "{confirmed}/{total} + {optional} optional"
+        "countOptional": "{confirmed}/{total} + {optional} optional",
+        "confirmSaving": "{count} wird gespeichert"
       },
       "advisorInfo": {
         "open": "Über {name}",
-        "desc": "Führt euch durch den ganzen Wizard — von Kontext bis Name. Er stellt kleine, konkrete Fragen, sagt ehrlich, was fehlt, und hält den roten Faden. Im Rücken liest sein Team mit:",
+        "desc": "Führt dich durch den ganzen Wizard — von Kontext bis Name. Er stellt kleine, konkrete Fragen, sagt ehrlich, was fehlt, und hält den roten Faden. Im Rücken liest sein Team mit:",
         "asksTitle": "Typische Frage",
-        "asks": "„Warum habt ihr angefangen — was war der Auslöser?“",
+        "asks": "„Warum hast du angefangen — was war der Auslöser?“",
         "personal": "Markenberater und Markenstratege — jede Empfehlung mit Begründung, jede Entscheidung festgehalten."
       },
       "sidebar": {
@@ -401,10 +1098,11 @@
       "decisions": "Entscheidungen",
       "recommended": "Empfehlung",
       "ownAnswerPlaceholder": "Oder etwas ganz Eigenes …",
+      "ownAnswerPlaceholderPlain": "Deine Antwort …",
       "whyRecommended": "Warum empfiehlt George {label}?",
       "sendOwnAnswer": "Eigene Antwort senden",
       "editSlot": "{label} bearbeiten",
-      "ourBranding": "Euer Branding",
+      "ourBranding": "Dein Branding",
       "likeBrands": "wie {brands}",
       "mode": {
         "conversation": "Gespräch",
@@ -422,7 +1120,7 @@
       "chapterState": {
         "empty": "Offen",
         "active": "Im Gespräch",
-        "generating": "George schreibt …",
+        "generating": "{voice} schreibt …",
         "edited": "Von dir bearbeitet",
         "confirmed": "Fertig",
         "stale": "Wird aktualisiert"
@@ -435,15 +1133,19 @@
       },
       "george": {
         "subtitle": "Dein Markenberater",
-        "placeholder": "Antwort schreiben — oder George etwas fragen",
+        "placeholder": "Antwort schreiben — oder {voice} etwas fragen",
+        "addToPlaceholder": "Ergänzung zu „{field}“ schreiben",
         "nothingOpen": "In diesem Kapitel ist nichts mehr offen — bestätige es, wenn es passt.",
         "questionsDone": "Meine Fragen sind durch — die offenen Felder unten formen wir jetzt hier im Gespräch.",
+        "nextDraft": "Fangen wir mit „{field}“ an: Klick auf „{voice}, entwirf das“, dann lege ich dir eine erste Fassung aus deinen bisherigen Antworten vor — oder erzähl mir hier, was dir dazu durch den Kopf geht.",
+        "nextConfirm": "Nächster Schritt: Sieh dir „{field}“ an und bestätige es — oder klick auf „Korrigieren“, wenn es noch nicht passt.",
         "send": "Senden"
       },
       "stage": {
-        "title": "Euer Brand-Dokument",
-        "empty": "Hier steht noch nichts — es füllt sich, während ihr antwortet.",
+        "title": "Dein Brand-Dokument",
+        "empty": "Hier steht noch nichts — es füllt sich, während du antwortest.",
         "pending": "Noch offen — kommt im Gespräch.",
+        "draftAnswer": "Was soll {voice} für „{field}“ wissen? Schreib es hier hinein — daraus entsteht der Entwurf.",
         "pairsPlaceholder": "Der Archetypen-Vergleich ist ein eigenes Instrument und kommt mit einer späteren Phase.",
         "notEditable": "Das leitet George ab — hier tippt niemand."
       },
@@ -461,9 +1163,9 @@
       "completeFailed": "Das Kapitel ist noch nicht fertig",
       "reopenFailed": "Wieder öffnen hat nicht geklappt — versuch es gleich nochmal",
       "missingRequired": "Einige Pflicht-Entscheidungen sind noch offen — bestätige sie und versuch es erneut.",
-      "draftBadge": "Entwurf von George",
+      "draftBadge": "Entwurf von {voice}",
       "site": {
-        "label": "Eure Website",
+        "label": "Deine Website",
         "never": "Noch nicht gelesen.",
         "read": "Gelesen am {date}.",
         "stale": "In der Startkarte steht inzwischen eine andere Adresse — lies sie neu, damit George den richtigen Text hat.",
@@ -472,37 +1174,42 @@
         "consent": "Ich darf diese Website analysieren lassen. George ruft die öffentliche Seite einmal ab, behält nur den Text und nichts sonst.",
         "confirm": "Ja, lesen",
         "cancel": "Doch nicht",
-        "running": "Ich lese gerade eure Website …",
+        "running": "Ich lese gerade deine Website …",
         "done": "Gelesen — {chars} Zeichen übernommen. George nutzt sie beim nächsten Entwurf.",
         "error": {
           "noUrl": "In der Startkarte steht keine Adresse. Trag eine ein, dann lese ich sie.",
           "blocked": "Diese Adresse darf ich nicht abrufen. Bitte nenn eine öffentliche http- oder https-Adresse.",
           "notHtml": "Dahinter liegt keine Webseite, die ich lesen kann — vielleicht eine Datei oder ein Bild.",
-          "tooLarge": "Die Seite ist zu groß zum Lesen. Nimm eine einzelne Unterseite, etwa eure Startseite.",
+          "tooLarge": "Die Seite ist zu groß zum Lesen. Nimm eine einzelne Unterseite, etwa deine Startseite.",
           "unreachable": "Ich komme gerade nicht an die Seite. Versuch es später noch einmal.",
           "dailyLimit": "Für heute habe ich genug Websites gelesen. Morgen wieder.",
           "failed": "Das hat gerade nicht geklappt. Versuch es gleich nochmal."
         }
       },
       "generate": {
-        "start": "George, entwirf das",
-        "again": "George, versuch es nochmal",
+        "start": "{voice}, entwirf das",
+        "again": "{voice}, versuch es nochmal",
         "stop": "Stopp",
         "hintPlaceholder": "Hinweis — z. B. wärmer, kürzer, weniger Fachsprache",
-        "hintLabel": "Hinweis für George",
-        "aiDisabled": "George entwirft gerade nicht. Du kannst alles ganz normal weiterschreiben.",
-        "noGenerator": "Für dieses Feld gibt es noch keinen Entwurf von George. Schreib es selbst — es wird gespeichert.",
-        "busy": "George schreibt schon an einer anderen Stelle. Einen Moment noch.",
-        "parallelLimit": "George schreibt schon an zwei Stellen gleichzeitig. Sobald eine fertig ist, geht es hier weiter.",
-        "slotLimit": "Für dieses Feld hat George heute genug Anläufe gemacht. Morgen wieder — oder schreib es jetzt selbst.",
-        "talkLimit": "Für dieses Branding hat George heute genug geantwortet. Schreib ruhig weiter — deine Antworten werden gespeichert, morgen redet er wieder mit.",
-        "dailyLimit": "Du hast heute alle Entwürfe von George aufgebraucht. Morgen gibt es neue; dein Text bleibt natürlich da.",
-        "instanceLimit": "George macht heute Feierabend — das liegt nicht an dir. Morgen entwirft er wieder.",
+        "hintLabel": "Hinweis für {voice}",
+        "answerPlaceholder": "Stichworte, Sätze — alles, was du dazu weißt",
+        "answerLabel": "Antwort für {voice}",
+        "aiDisabled": "{voice} entwirft gerade nicht. Du kannst alles ganz normal weiterschreiben.",
+        "noGenerator": "Für dieses Feld gibt es noch keinen Entwurf von {voice}. Schreib es selbst — es wird gespeichert.",
+        "busy": "{voice} schreibt schon an einer anderen Stelle. Einen Moment noch.",
+        "parallelLimit": "Gerade laufen schon zwei Entwürfe gleichzeitig. Sobald einer fertig ist, geht es hier weiter.",
+        "slotLimit": "Für dieses Feld sind die Anläufe für heute aufgebraucht. Morgen wieder — oder schreib es jetzt selbst.",
+        "talkLimit": "Für dieses Branding ist die Gesprächsgrenze für heute erreicht. Schreib ruhig weiter — deine Antworten werden gespeichert, morgen geht das Gespräch weiter.",
+        "reviewLimit": "Für dieses Branding ist heute genug gegengelesen worden. Deine Antworten stehen trotzdem — morgen schaut das Team wieder mit.",
+        "dailyLimit": "Du hast heute alle Entwürfe aufgebraucht. Morgen gibt es neue; dein Text bleibt natürlich da.",
+        "instanceLimit": "Für heute ist Feierabend — das liegt nicht an dir. Morgen gibt es wieder Entwürfe.",
         "stopped": "Abgebrochen. Dein bisheriger Text ist unverändert.",
         "failed": "Das hat gerade nicht geklappt. Versuch es gleich nochmal.",
         "dismiss": "Verstanden",
         "notReady": "Dafür ist noch zu wenig da — oben steht, was fehlt.",
-        "slotConfirmed": "Das hast du schon bestätigt. Wenn du es ändern willst, klick auf Korrigieren."
+        "slotConfirmed": "Das hast du schon bestätigt. Wenn du es ändern willst, klick auf Korrigieren.",
+        "readingLimit": "Für heute sind die Lese-Läufe aufgebraucht. Morgen geht es weiter — deine Vorbilder und die bisherige Lesung bleiben stehen.",
+        "draftsLimit": "Heute keine Entwürfe mehr — morgen wieder drei Läufe."
       },
       "versions": {
         "open": "Frühere Fassungen",
@@ -519,15 +1226,26 @@
       "ready": {
         "needs": "{advisor} braucht dafür erst: {needs}",
         "need": {
-          "startcardAbout": "was ihr macht (aus dem Startbogen)",
-          "startcardAudience": "für wen ihr da seid (aus dem Startbogen)",
-          "startcardIndustry": "eure Branche (aus dem Startbogen)",
-          "competitorNames": "Namen von Wettbewerbern — lest eure Website ein oder tragt sie selbst ein",
-          "sourceTexts": "vorhandene Texte — lest dafür eure Website ein",
-          "sourceSlots": "mindestens eine der Antworten, auf denen dieses Feld aufbaut"
+          "startcardAbout": "was du machst (aus dem Startbogen)",
+          "startcardAudience": "für wen du da bist (aus dem Startbogen)",
+          "startcardIndustry": "deine Branche (aus dem Startbogen)",
+          "competitorNames": "Namen von Wettbewerbern — lies deine Website ein oder trag sie selbst ein",
+          "sourceTexts": "vorhandene Texte — lies dafür deine Website ein",
+          "sourceSlots": "mindestens eine der Antworten, auf denen dieses Feld aufbaut",
+          "nameTypes": "die Sorten von Dingen, die benannt werden — die Frage davor in diesem Kapitel",
+          "toneWords": "die Ton-Wörter aus dem Kapitel Stimme"
         }
       },
-      "progressConfirmed": "{confirmed} von {total} bestätigt"
+      "progressConfirmed": "{confirmed} von {total} bestätigt",
+      "chapterReady": "Alle Felder dieses Kapitels sind bestätigt — weiter zur Finalen Abnahme.",
+      "designLocked": {
+        "title": "Brand Design ist noch nicht freigeschaltet",
+        "description": "Diese Schicht schaltet das Studio nach dem Erstgespräch für deine Marke frei. Deine Brand Foundation bleibt unverändert offen."
+      },
+      "derivationLocked": {
+        "title": "Book & Kit ist Teil der Ableitung",
+        "description": "Diese Schicht schaltet das Studio nach dem Erstgespräch für deine Marke frei — zusammen mit dem Marktvergleich. Deine Brand Foundation bleibt unverändert offen."
+      }
     },
     "brands": {
       "title": "Brandings",
@@ -552,7 +1270,7 @@
         "actions": "Aktionen",
         "rename": "Umbenennen",
         "share": "Teilen",
-        "result": "Euer Branding",
+        "result": "Dein Branding",
         "resultLocked": "Ab Foundation-Abschluss",
         "delete": "Löschen"
       },
@@ -564,11 +1282,11 @@
       "kind": {
         "new": {
           "label": "Neue Marke",
-          "note": "Ihr startet bei null — Name und Marke entstehen im Gespräch."
+          "note": "Start bei null — Name und Marke entstehen im Gespräch."
         },
         "relaunch": {
           "label": "Marken-Relaunch",
-          "note": "Ihr habt schon eine Marke — vom Feinschliff bis zum Neuschnitt."
+          "note": "Es gibt schon eine Marke — vom Feinschliff bis zum Neuschnitt."
         }
       },
       "scope": {
@@ -579,13 +1297,13 @@
       },
       "titleField": {
         "new": "Arbeitstitel (optional)",
-        "relaunch": "Wie heißt eure Marke?",
+        "relaunch": "Wie heißt die Marke?",
         "placeholderNew": "z. B. Kailua Coffee Co. — der echte Name kann im Gespräch entstehen",
         "placeholderRelaunch": "z. B. Kailua Coffee Co."
       },
       "locale": {
-        "label": "Eure Marke spricht",
-        "note": "Die Sprache, in der eure Markeninhalte entstehen — nicht die der Oberfläche. Und keine einsame Entscheidung: George übersetzt später alles auf Wunsch in weitere Sprachen, z. B. von Englisch nach Deutsch."
+        "label": "Sprache der Marke",
+        "note": "Die Sprache, in der die Markeninhalte entstehen — nicht die der Oberfläche. Und keine einsame Entscheidung: George übersetzt später alles auf Wunsch in weitere Sprachen, z. B. von Englisch nach Deutsch."
       },
       "team": {
         "label": "Wer steckt dahinter?",
@@ -593,11 +1311,32 @@
         "team": "Zwei oder mehr"
       },
       "startCard": {
-        "website": "Eure Website (optional) — ich lese sie, damit du dich nicht wiederholen musst.",
-        "industry": "In welcher Branche seid ihr unterwegs?",
-        "about": "Was macht ihr — in 2–3 Sätzen, wie du es einem Freund erzählen würdest?",
-        "audience": "Für wen ist es gedacht?"
+        "website": {
+          "solo": "Deine Website (optional) — ich lese sie, damit du dich nicht wiederholen musst.",
+          "team": "Eure Website (optional) — ich lese sie, damit ihr euch nicht wiederholen müsst."
+        },
+        "industry": {
+          "solo": "In welcher Branche bist du unterwegs?",
+          "team": "In welcher Branche seid ihr unterwegs?"
+        },
+        "about": {
+          "solo": "Was machst du — in 2–3 Sätzen, wie du es einem Freund erzählen würdest?",
+          "team": "Was macht ihr — in 2–3 Sätzen, wie ihr es einem Freund erzählen würdet?"
+        },
+        "audience": {
+          "solo": "Für wen ist es gedacht?",
+          "team": "Für wen ist es gedacht?"
+        },
+        "short": {
+          "industry": "Branche",
+          "about": "Angebot",
+          "audience": "Zielgruppe",
+          "websiteUrl": "Website"
+        }
       },
+      "requiredHint": "Mit * markierte Felder brauche ich.",
+      "requiredField": "Pflichtfeld",
+      "missing": "Noch offen: {fields}",
       "submit": "Los geht's — George übernimmt",
       "failed": "Das Branding konnte nicht angelegt werden.",
       "preparing": "Einen Moment — das Formular wird bereit gemacht."
@@ -611,7 +1350,16 @@
       "manifesto": "Manifest",
       "verbal": "Tagline & Messaging",
       "naming": "Name",
-      "result": "Ergebnis"
+      "result": "Ergebnis",
+      "dna": "Moodboard",
+      "color": "Farbwelt",
+      "type": "Typografie",
+      "mark": "Zeichen",
+      "imagery": "Bildsprache",
+      "motion": "Bewegung",
+      "nomenclature": "Nomenklatur",
+      "aiguide": "AI-Guidelines",
+      "presskit": "Pressekit"
     },
     "advisors": {
       "george": {
@@ -622,7 +1370,10 @@
       "vera": {
         "role": "Strategin",
         "focus": "Warum-Fragen, Positionierung",
-        "intro": "Ich habe euren Kontext mit Vera durchgesehen — unserer Strategin; sie liest in diesem Kapitel streng mit. Jetzt stelle ich die Warum-Fragen, bis eure Positionierung trägt."
+        "intro": {
+          "solo": "Ich habe deinen Kontext mit Vera durchgesehen — unserer Strategin; sie liest in diesem Kapitel streng mit. Jetzt stelle ich die Warum-Fragen, bis deine Positionierung trägt.",
+          "team": "Ich habe euren Kontext mit Vera durchgesehen — unserer Strategin; sie liest in diesem Kapitel streng mit. Jetzt stelle ich die Warum-Fragen, bis eure Positionierung trägt."
+        }
       },
       "milo": {
         "role": "Werte-Berater",
@@ -638,6 +1389,14 @@
         "role": "Namens-Berater",
         "focus": "erst überleben, dann gefallen",
         "intro": "Beim Namen halte ich mich an Otto — unseren Namens-Berater: erst überleben, dann gefallen."
+      },
+      "frida": {
+        "role": "Design Directorin",
+        "focus": "Strategie wird Gestalt",
+        "intro": {
+          "solo": "Ab hier arbeite ich mit Frida — unserer Design Directorin. Sie macht aus deiner Foundation eine Gestalt und begründet jede Entscheidung am Fundament.",
+          "team": "Ab hier arbeite ich mit Frida — unserer Design Directorin. Sie macht aus eurer Foundation eine Gestalt und begründet jede Entscheidung am Fundament."
+        }
       }
     },
     "invite": {
@@ -656,7 +1415,9 @@
       "verifyText": "Der Code ist an deine Adresse gebunden. Sobald sie bestätigt ist, kommst du auf diese Seite zurück und wir lösen ihn ein.",
       "redeeming": "Wir schalten deinen Zugang frei.",
       "deniedHint": "Ein Einladungscode gilt nur für die Adresse, an die er verschickt wurde. Bist du mit dem richtigen Konto angemeldet?",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "noCodeTitle": "Noch keinen Code?",
+      "noCodeText": "Tragt euch in die Warteliste ein — wir schalten in Wellen frei und melden uns, sobald euer Zugang bereitsteht."
     },
     "validation": {
       "contentLocale": "Diese Inhaltssprache steht nicht zur Verfügung.",
@@ -664,6 +1425,2269 @@
       "emptyPatch": "Nichts zu ändern.",
       "emptySlotPatch": "Eine Slot-Änderung braucht einen Wert oder eine Bestätigung.",
       "websiteUrl": "Bitte eine vollständige Web-Adresse eintragen (http:// oder https://) — oder das Feld leer lassen."
+    },
+    "placeholder": {
+      "pending": "Bild folgt"
+    },
+    "waitlist": {
+      "email": "E-Mail-Adresse",
+      "emailPlaceholder": "Eure E-Mail-Adresse",
+      "website": "Website (optional)",
+      "websitePlaceholder": "eure-website.de — falls es sie schon gibt",
+      "submit": "Auf die Warteliste",
+      "sending": "Wird eingetragen …",
+      "haveCode": "Ich habe einen Code",
+      "doneTitle": "Fast geschafft — schaut in euer Postfach.",
+      "doneText": "Wir haben euch einen Bestätigungs-Link geschickt, 24 Stunden gültig. Erst mit dem Klick steht ihr auf der Liste — so bleibt sie frei von Adressen, die niemand eingetragen hat.",
+      "duplicateText": "Diese Adresse ist schon bestätigt und steht auf der Liste — ihr seid dran, sobald die nächste Welle öffnet.",
+      "error": "Das hat gerade nicht geklappt — die Bestätigungs-Mail konnte nicht raus. Versucht es in einer Minute noch einmal.",
+      "consent": "Wir nutzen die Adresse nur, um euch zur Beta einzuladen. Kein Newsletter, keine Weitergabe.",
+      "confirm": {
+        "title": "Warteliste bestätigen",
+        "checking": "Wir prüfen euren Link …",
+        "confirmedTitle": "Bestätigt — ihr steht auf der Liste.",
+        "confirmedText": "Wir schalten in Wellen frei und melden uns per E-Mail, sobald euer Zugang bereitsteht.",
+        "alreadyTitle": "Schon bestätigt.",
+        "alreadyText": "Diese Adresse steht bereits auf der Liste — es gibt nichts weiter zu tun.",
+        "invalidTitle": "Dieser Link ist ungültig.",
+        "invalidText": "Er ist unvollständig oder wurde schon benutzt. Tragt euch einfach noch einmal ein — ihr bekommt einen neuen Link.",
+        "expiredTitle": "Dieser Link ist abgelaufen.",
+        "expiredText": "Bestätigungs-Links gelten 24 Stunden. Tragt euch noch einmal ein — ihr bekommt sofort einen neuen.",
+        "back": "Zur Warteliste",
+        "home": "Zur Startseite"
+      },
+      "name": "Name",
+      "namePlaceholder": "Euer Name (optional)",
+      "company": "Firma",
+      "companyPlaceholder": "Firma oder Marke (optional)"
+    },
+    "check": {
+      "form": {
+        "label": "Eure Website",
+        "placeholder": "eure-website.de",
+        "submit": "Check starten",
+        "running": "Wir prüfen …",
+        "hint": "Wir lesen nur eure Startseite — genau das, was jeder Besucher auch sieht. Das Ergebnis dauert eine knappe Minute.",
+        "status1": "Wir lesen eure Startseite …",
+        "status2": "40 Kriterien werden geprüft …",
+        "status3": "Score und Befunde entstehen …",
+        "errors": {
+          "invalidUrl": "Diese Adresse können wir nicht lesen. Schreibt sie bitte so, wie ihr sie im Browser eingebt — zum Beispiel eure-website.de.",
+          "blockedTarget": "Diese Adresse dürfen wir nicht abrufen. Nennt uns bitte die öffentliche Adresse eurer Website.",
+          "fetchFailed": "Die Seite hat nicht geantwortet. Prüft die Adresse und versucht es gleich noch einmal.",
+          "siteBlocked": "Diese Website untersagt die automatische Auswertung — wir respektieren das. Deshalb gibt es hier kein Ergebnis.",
+          "rateLimited": "Für heute sind die kostenlosen Checks aufgebraucht. Morgen geht es weiter — oder tragt euch für den vollständigen Report ein.",
+          "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
+          "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
+        },
+        "ranking": "Diesen Check ins öffentliche Ranking aufnehmen",
+        "rankingHint": "Ohne Häkchen bleibt euer Ergebnis privat, die Adresse ist trotzdem teilbar. Wurde dieselbe Adresse in den letzten sieben Tagen schon geprüft, bekommt ihr den gespeicherten Check mit seiner damaligen Einstellung — dieses Häkchen ändert daran nichts."
+      },
+      "bands": {
+        "exceptional": "Außergewöhnlich",
+        "outstanding": "Herausragend",
+        "excellent": "Ausgezeichnet",
+        "strong": "Stark",
+        "average": "Durchschnittlich",
+        "weak": "Ausbaufähig",
+        "poor": "Ganz am Anfang"
+      },
+      "categories": {
+        "distinctiveness": "Eigenständigkeit",
+        "visual": "Visuelle Identität",
+        "consistency": "Konsistenz",
+        "experience": "Markenerlebnis",
+        "clarity": "Positionierung und Klarheit",
+        "emotion": "Emotionale Wirkung",
+        "adaptability": "Anpassungsfähigkeit",
+        "craft": "Handwerk"
+      },
+      "result": {
+        "seoTitle": "Brand-Check · {host}",
+        "seoTitleEmpty": "Brand-Check",
+        "eyebrow": "Brand-Check · Außen-Check der Startseite",
+        "stand": "Stand: Außen-Check der Startseite {host}, {date}",
+        "maturity": "Das ist ein Reifegrad, kein Zeugnis. Er sagt, wo euer Auftritt heute steht und was als Nächstes dran wäre — bewertet mit denselben 40 Kriterien, mit denen hier jedes Branding entsteht.",
+        "copy": "Link kopieren",
+        "copied": "Link kopiert",
+        "copyFailed": "Kopieren hat nicht geklappt",
+        "loading": "Wir holen euer Ergebnis …",
+        "categoriesTitle": "Acht Kategorien",
+        "locked": "Von außen nicht prüfbar — wir raten hier nicht, sondern lassen es aus der Rechnung.",
+        "relaunchEyebrow": "Der Weg weiter",
+        "relaunchTitle": "Marken-Relaunch starten",
+        "relaunchBody": "Euer Markenberater kennt euren Auftritt schon — ihr steigt mit diesem Ergebnis ein statt bei null. Aus den Befunden wird die Reihenfolge der Arbeit.",
+        "relaunchCta": "Relaunch starten",
+        "reportEyebrow": "Zum Nachlesen",
+        "reportTitle": "Vollständigen Report per Mail",
+        "reportBody": "Alle 40 Kriterien mit ihren Belegen als Dokument — sobald der Report-Versand freigeschaltet ist. Die Bewertungen selbst stehen schon auf dieser Seite.",
+        "criterionPoints": "{score} von 2",
+        "notAssessable": "nicht bewertbar",
+        "criterionFallback": "Weiteres Kriterium",
+        "nextFallback": "Euer Markenberater ordnet diesen Punkt im Relaunch ein.",
+        "missingTitle": "Diesen Check gibt es nicht (mehr).",
+        "missingText": "Der Link ist unvollständig, oder das Ergebnis ist inzwischen gelöscht. Startet den Check einfach neu — er dauert eine knappe Minute.",
+        "missingCta": "Zum Brand-Check"
+      },
+      "criteria": {
+        "a1": {
+          "title": "Der erste Satz gehört nur dieser Marke",
+          "next": "Schreibt den ersten Satz so, dass ihn kein Wettbewerber unterschreiben könnte — im Relaunch ist das der erste Baustein."
+        },
+        "a2": {
+          "title": "Name und Claim sind unverwechselbar",
+          "next": "Der Claim sollte etwas behaupten, statt nur die Kategorie zu nennen — der Markenberater stellt genau diese Frage zuerst."
+        },
+        "a3": {
+          "title": "Keine Floskeln im Einstieg",
+          "next": "Ersetzt jede Floskel durch eine konkrete Tatsache: eine Zahl, einen Namen, ein Beispiel."
+        },
+        "a4": {
+          "title": "Ein erkennbarer Standpunkt",
+          "next": "Einen Satz formulieren, der auch dann fällt, wenn er nicht allen gefällt — daraus wird die Haltung."
+        },
+        "a5": {
+          "title": "Eigene Bildsprache statt Stock-Motive",
+          "next": "Drei Motive aus dem echten Alltag sammeln; sie tragen mehr als jedes gekaufte Bild."
+        },
+        "b1": {
+          "title": "Favicon und Vorschaubild vorhanden",
+          "next": "Legt beides an — es ist das kleinste Stück Marke, und es reist überallhin mit."
+        },
+        "b2": {
+          "title": "Saubere Überschriften-Hierarchie",
+          "next": "Gebt der Seite genau eine Hauptüberschrift und darunter eine klare Staffelung."
+        },
+        "b3": {
+          "title": "Alt-Texte beschreiben eine Bildwelt",
+          "next": "In den Alt-Texten beschreiben, was zu sehen ist — nebenbei ordnet das die Bildwelt."
+        },
+        "b4": {
+          "title": "Farb- und Theme-Angaben gesetzt",
+          "next": "Die Markenfarbe im Seitenkopf hinterlegen, damit Browser und App sie übernehmen."
+        },
+        "b5": {
+          "title": "Wort- und Bildwelt passen zusammen",
+          "next": "Stellt Texte und Motive nebeneinander und streicht, was aus einer anderen Marke stammen könnte."
+        },
+        "c1": {
+          "title": "Ein Ton durch die ganze Seite",
+          "next": "Eine Anrede und ein Register festlegen und durchziehen — im Wizard wird daraus eine festgehaltene Regel."
+        },
+        "c2": {
+          "title": "Titel, Vorschau und Überschrift sagen dasselbe",
+          "next": "Gleicht die drei Zeilen an; es ist derselbe Satz an drei Orten."
+        },
+        "c3": {
+          "title": "Das Versprechen oben trägt die Seite",
+          "next": "Prüft Abschnitt für Abschnitt, ob er das Versprechen aus dem Einstieg einlöst."
+        },
+        "c4": {
+          "title": "Sprache deklariert und stimmig",
+          "next": "Setzt die Sprachangabe passend zum Text — für Suchmaschinen und für Vorleseprogramme."
+        },
+        "c5": {
+          "title": "Der Markenname wird einheitlich geschrieben",
+          "next": "Legt eine Schreibweise fest und haltet sie überall, auch mitten im Fließtext."
+        },
+        "d1": {
+          "title": "Eine klare Handlungsaufforderung",
+          "next": "Setzt oben eine Aktion mit einem Verb — buchen, anfragen, testen — statt eines allgemeinen Weiter."
+        },
+        "d2": {
+          "title": "Der nächste Schritt ist eindeutig",
+          "next": "Streicht Nebenwege, bis eine Hauptaktion übrig bleibt."
+        },
+        "d3": {
+          "title": "Auffindbarkeit: Titel und Beschreibung",
+          "next": "Titel und Beschreibung in guter Länge schreiben — sie sind der Auftritt in der Suche."
+        },
+        "d4": {
+          "title": "Strukturierte Daten für Suche und KI",
+          "next": "Organisation und Website als strukturierte Daten hinterlegen, damit Antwortmaschinen die Marke richtig zitieren."
+        },
+        "d5": {
+          "title": "Kontakt und Vertrauen sichtbar",
+          "next": "Zeigt, wer hinter der Marke steht, und macht den Kontakt in einem Klick erreichbar."
+        },
+        "e1": {
+          "title": "In zehn Sekunden verständlich",
+          "next": "Im ersten Absatz ohne Anlauf sagen, was angeboten wird."
+        },
+        "e2": {
+          "title": "Für wen es gemacht ist",
+          "next": "Die Zielgruppe beim Namen nennen — im Wizard ist das ein eigener Baustein."
+        },
+        "e3": {
+          "title": "Ein kurzer, aktiver Kernsatz",
+          "next": "Den Kernsatz auf höchstens zwanzig Wörter mit einem aktiven Verb kürzen."
+        },
+        "e4": {
+          "title": "Erkennbare Abgrenzung",
+          "next": "Sachlich sagen, was anders gemacht wird — ohne den Wettbewerb zu nennen."
+        },
+        "e5": {
+          "title": "Wenig Fachjargon",
+          "next": "Lange Fachwörter gegen die Worte der Kundschaft tauschen."
+        },
+        "f1": {
+          "title": "Die Seite spricht ein Gefühl an",
+          "next": "Erzählt neben der Leistung, was sie für Menschen verändert."
+        },
+        "f2": {
+          "title": "Eine Geschichte oder ein Ursprung",
+          "next": "In drei Sätzen aufschreiben, warum es diese Marke gibt — das trägt die halbe Marke."
+        },
+        "f3": {
+          "title": "Menschliche Stimme statt Behördenton",
+          "next": "Sprecht als Menschen: wir statt man, konkrete Bilder, kurze Sätze."
+        },
+        "f4": {
+          "title": "Ein Moment, den man weitersagt",
+          "next": "Eine eigenwillige Zeile darf sein — eine genügt."
+        },
+        "f5": {
+          "title": "Der Ton passt zur Kategorie",
+          "next": "Prüfen, ob der Ton zu dem passt, was angeboten wird — und zu denen, die es kaufen."
+        },
+        "g1": {
+          "title": "Für mobile Geräte vorbereitet",
+          "next": "Die Viewport-Angabe setzen; ohne sie bricht der Auftritt auf dem Telefon auseinander."
+        },
+        "g2": {
+          "title": "Bereit für den Dunkelmodus",
+          "next": "Eine dunkle Fassung der Farben hinterlegen — viele Menschen sehen die Marke nur so."
+        },
+        "g3": {
+          "title": "Die Botschaft trägt als Einzeiler",
+          "next": "Formuliert eine Zeile, die allein steht: in der Suche, im Profil, auf einer Karte."
+        },
+        "g4": {
+          "title": "Vollständige soziale Vorschau",
+          "next": "Ergänzt Titel, Beschreibung und Bild für geteilte Links."
+        },
+        "g5": {
+          "title": "Die Sprache trägt kurz und lang",
+          "next": "Beschriftungen und Knöpfe im selben Ton schreiben wie die Absätze."
+        },
+        "h1": {
+          "title": "Rechtschreibung und Zeichensetzung",
+          "next": "Lest die Startseite einmal laut — die meisten Funde erledigen sich dabei von selbst."
+        },
+        "h2": {
+          "title": "Kein Platzhalter-Text",
+          "next": "Ersetzt jeden Platzhalter durch echten Inhalt, bevor ihn jemand liest."
+        },
+        "h3": {
+          "title": "HTTPS und saubere Weiterleitung",
+          "next": "Stellt die Seite vollständig auf HTTPS um und leitet die alte Adresse dorthin."
+        },
+        "h4": {
+          "title": "Kurze Sätze im Einstieg",
+          "next": "Kürzt die ersten Sätze auf eine Aussage pro Satz."
+        },
+        "h5": {
+          "title": "Saubere Meta-Angaben",
+          "next": "Räumt doppelte Angaben im Seitenkopf auf und setzt eine kanonische Adresse."
+        }
+      },
+      "document": {
+        "eyebrow": "Brand-Check · Fundament-Reife",
+        "source": "Quelle: Fundament-Dokument von {host}, Stand {date}",
+        "sourceUnnamed": "Quelle: Fundament-Dokument, Stand {date}",
+        "hint": "Geprüft wurden die bestätigten Antworten, nicht eine Website. Die 16 gerechneten Kriterien gibt es an einem Dokument nicht — sie bleiben nicht bewertbar.",
+        "errors": {
+          "empty": "Bestätigt zuerst Felder im Fundament. Ohne bestätigte Antworten gibt es nichts zu prüfen.",
+          "accountLimit": "Heute sind die 10 Neu-Ermittlungen aufgebraucht. Morgen geht es weiter.",
+          "notFound": "Diese Brand ist unter diesem Konto nicht verfügbar.",
+          "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
+          "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
+        }
+      }
+    },
+    "myScores": {
+      "title": "Brand-Score",
+      "subtitle": "Wo diese Marke heute steht — von außen gemessen und im Fundament geprüft.",
+      "back": "Zurück zu den Brands",
+      "loading": "Die Stände werden geholt …",
+      "missingTitle": "Diese Brand gibt es hier nicht.",
+      "missingText": "Der Link zeigt auf eine Brand, die es nicht mehr gibt oder die zu einem anderen Konto gehört.",
+      "sources": {
+        "website": "Website",
+        "document": "Fundament"
+      },
+      "website": {
+        "title": "Website-Score",
+        "lead": "Der Außen-Check der Startseite — dieselben 40 Kriterien wie im öffentlichen Brand-Check.",
+        "stand": "Geprüft am {date}",
+        "open": "Ergebnis ansehen",
+        "recheck": "Brand-Score neu ermitteln",
+        "running": "Die Website wird geprüft …",
+        "none": "Für diese Brand gibt es noch keinen Website-Check.",
+        "start": "Website prüfen",
+        "noUrl": "Für diese Brand ist noch keine Website hinterlegt.",
+        "addUrl": "Website hinterlegen",
+        "urlLabel": "Website der Marke",
+        "urlPlaceholder": "beispiel-marke.de",
+        "save": "Speichern",
+        "saved": "Website gespeichert"
+      },
+      "document": {
+        "title": "Fundament-Reife",
+        "lead": "Dieselben Kriterien, gestellt an das Fundament-Dokument statt an eine Seite. Die 16 gerechneten Kriterien bleiben dort nicht bewertbar.",
+        "stand": "Geprüft am {date}",
+        "open": "Ergebnis ansehen",
+        "recheck": "Fundament erneut prüfen",
+        "start": "Fundament prüfen",
+        "running": "Das Fundament wird gelesen …",
+        "none": "Das Fundament wurde noch nicht geprüft."
+      },
+      "diff": {
+        "title": "Gegenüberstellung",
+        "lead": "Der jüngste Stand gegen den davor — je Kategorie und im Gesamtwert.",
+        "dates": "{previous} gegen {latest}",
+        "category": "Kategorie",
+        "previous": "Vorher",
+        "latest": "Jetzt",
+        "change": "Veränderung",
+        "total": "Gesamtwert",
+        "notAssessable": "nicht bewertbar",
+        "isNew": "neu"
+      },
+      "todos": {
+        "title": "Was der Experte jetzt angehen würde",
+        "lead": "Alle Kriterien unter der vollen Punktzahl, nach Gewicht sortiert — jedes mit dem Beleg, auf dem es steht.",
+        "empty": "Nichts offen: in dieser Prüfung hat jedes bewertbare Kriterium die volle Punktzahl.",
+        "points": "{score} von 2",
+        "chapter": "Passt ins Kapitel {chapter}",
+        "openChapter": "Kapitel öffnen"
+      },
+      "history": {
+        "title": "Verlauf",
+        "lead": "Jeder Stand, den wir für diese Brand gespeichert haben.",
+        "date": "Datum",
+        "source": "Quelle",
+        "score": "Score",
+        "open": "Ansehen",
+        "empty": "Für diese Brand ist noch kein Stand gespeichert."
+      },
+      "card": {
+        "score": "Brand-Score: {score}",
+        "empty": "Brand-Score: noch keiner",
+        "open": "Score ansehen",
+        "addUrl": "Website hinterlegen"
+      },
+      "list": {
+        "nav": "Brand-Scores",
+        "all": "Alle Brand-Scores",
+        "title": "Brand-Scores",
+        "subtitle": "Alle Brands mit ihren zwei Zahlen — von außen gemessen und im Fundament geprüft.",
+        "summary": "{count} Brands · Ø Website-Score {avg}",
+        "summaryEmpty": "{count} Brands · noch kein Website-Score",
+        "col": {
+          "brand": "Brand",
+          "website": "Website",
+          "websiteScore": "Website-Score",
+          "documentScore": "Fundament-Reife",
+          "lastCheck": "Letzte Prüfung"
+        },
+        "sortBy": "Nach {column} sortieren",
+        "addUrl": "Website hinterlegen",
+        "never": "noch nie geprüft",
+        "runWebsite": "Neu ermitteln",
+        "runDocument": "Fundament prüfen",
+        "done": "Der neue Stand ist da.",
+        "failed": "Das hat nicht geklappt",
+        "emptyTitle": "Noch keine Brand",
+        "empty": "Noch keine Brand angelegt — danach steht hier ihr Score.",
+        "emptyCta": "Brand anlegen"
+      },
+      "errors": {
+        "accountLimit": "Heute sind die 10 Neu-Ermittlungen aufgebraucht. Morgen geht es weiter.",
+        "documentEmpty": "Bestätigt zuerst Felder im Fundament. Ohne bestätigte Antworten gibt es nichts zu prüfen.",
+        "notFound": "Diese Brand ist unter diesem Konto nicht verfügbar.",
+        "invalidUrl": "Diese Adresse können wir nicht lesen. Bitte so schreiben, wie sie im Browser steht.",
+        "blockedTarget": "Diese Adresse dürfen wir nicht abrufen. Bitte die öffentliche Adresse der Website angeben.",
+        "fetchFailed": "Die Seite hat nicht geantwortet. Prüft die Adresse und versucht es gleich noch einmal.",
+        "siteBlocked": "Diese Website untersagt die automatische Auswertung — wir respektieren das. Deshalb gibt es hier kein Ergebnis.",
+        "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
+        "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
+      }
+    },
+    "checkResult": {
+      "deltaUp": "+{points} seit {date}",
+      "deltaDown": "−{points} seit {date}",
+      "deltaSame": "unverändert seit {date}",
+      "rank": "Platz {position} von {total} im Ranking",
+      "verdictTitle": "Das Fazit",
+      "verdictLead": "Die wichtigsten Fakten aus 40 Kriterien — jede Karte steht auf dem, was wir wirklich gesehen haben.",
+      "strengthTitle": "Größte Stärke",
+      "opportunityTitle": "Größte Chance",
+      "nextStepTitle": "Nächster Schritt",
+      "nextStepChapter": "Im Relaunch ist das das Kapitel {chapter}.",
+      "nextStepPlain": "Das gehört in die Umsetzung eures Auftritts — im Relaunch ordnen wir es ein.",
+      "nextStepCta": "Marken-Relaunch starten",
+      "strongestTitle": "Stärkste Kategorie",
+      "weakestTitle": "Schwächste Kategorie",
+      "categoryValue": "{score} von 100",
+      "categoryWeight": "Gewicht {weight}",
+      "categoriesLead": "Acht Kategorien, jede mit ihrem Gewicht. Klickt eine an, dann seht ihr ihre fünf Kriterien.",
+      "coverageTitle": "Bewertet",
+      "coverageValue": "{assessed} von {total} bewertet",
+      "coverageLocked": "{count} sind von außen nicht prüfbar — die lassen wir aus der Rechnung.",
+      "coverageComplete": "Alles, was von außen prüfbar ist, hat einen Wert.",
+      "coverageGrades": "{full} mal volle Punktzahl · {partial} mal halb · {none} mal offen",
+      "industryTitle": "Branche",
+      "sourceTitle": "Quelle und Stand",
+      "sourceWebsite": "Außen-Check der Startseite",
+      "sourceDocument": "Check des Fundament-Dokuments",
+      "matrixTitle": "Alle 40 Kriterien auf einen Blick",
+      "matrixLead": "Acht Zeilen, je fünf Kriterien. Klickt eine Zelle an, dann springt ihr zur passenden Zeile im Plan darunter.",
+      "matrixCell": "{criterion}: {state}",
+      "matrixLegend": {
+        "full": "volle Punktzahl",
+        "partial": "halbe Punktzahl",
+        "none": "offen",
+        "locked": "nicht bewertbar"
+      },
+      "planTitle": "Das würde euren Score am meisten heben",
+      "planLead": "Jedes Kriterium unter der vollen Punktzahl, sortiert nach dem, was es am Gesamtwert ausmacht — jedes mit dem Beleg, auf dem es steht.",
+      "planTotal": "Gesamt möglich: +{points} Punkte bis 100",
+      "planEmpty": "Nichts offen: jedes bewertbare Kriterium hat die volle Punktzahl.",
+      "planChapter": "Passt ins Kapitel {chapter}",
+      "planShowAll": "Alle {count} anzeigen",
+      "planShowLess": "Weniger anzeigen",
+      "gain": "+{points} Punkte",
+      "gainNone": "unter einem Punkt"
+    },
+    "checkPage": {
+      "seoTitle": "Brand-Check — euren Markenauftritt prüfen und den Brand Score erhalten",
+      "seoDescription": "Kostenloser Brand-Check: Website eintragen, 40 Kriterien in acht Kategorien, ein Brand Score von 0 bis 100 und die drei wichtigsten Befunde mit Beleg. Ohne Konto, in einer knappen Minute.",
+      "tabsAria": "Brand-Check",
+      "tabs": {
+        "start": "Start",
+        "ranking": "Ranking",
+        "compare": "Vergleich",
+        "method": "Methodik",
+        "soon": "bald"
+      },
+      "hero": {
+        "eyebrow": "Brand-Check · kostenlos, ohne Konto",
+        "title": "Wie stark ist eure Marke?",
+        "lead": "Website eintragen und in einer knappen Minute wissen, wo euer Markenauftritt heute steht — Brand Score, acht Kategorien, drei Befunde mit Beleg."
+      },
+      "what": {
+        "eyebrow": "Was der Brand-Check ist",
+        "title": "Der Blick von außen auf euren Markenauftritt",
+        "body": "Wir lesen eure Startseite — genau das, was jeder Besucher auch sieht — und bewerten sie mit 40 Kriterien in acht Kategorien. Heraus kommt ein Brand Score von 0 bis 100, acht Kategorie-Werte und die drei wichtigsten Befunde, jeder mit dem Beleg, auf dem er steht.",
+        "honest": "Das ist ein Reifegrad, kein Zeugnis: er sagt, wo ihr heute steht und was als Nächstes dran wäre.",
+        "f1Label": "40 Kriterien",
+        "f1Body": "Jedes mit einer festen Regel von 0 bis 2. Nichts davon ist Geschmack.",
+        "f2Label": "Acht Kategorien",
+        "f2Body": "Von Eigenständigkeit bis Handwerk, jede mit ihrem eigenen Gewicht.",
+        "f3Label": "0 bis 100",
+        "f3Body": "Ein Wert mit Band, den ihr in einem Jahr wieder mit heute vergleichen könnt."
+      },
+      "why": {
+        "eyebrow": "Warum es ihn gibt",
+        "title": "Eure Marke entsteht im Kopf der anderen",
+        "body1": "Eine Marke ist nicht das, was ihr über euch sagt, sondern was bei anderen ankommt. Genau diesen Blick habt ihr auf euren eigenen Auftritt nie: ihr kennt die Absicht hinter jedem Satz, ein Besucher kennt nur den Satz.",
+        "body2": "Der Check nimmt diesen Blick ein. Er urteilt nicht über euren Geschmack, sondern prüft, ob eure Absicht nach draußen kommt — und sagt bei jedem Befund dazu, woran er das festmacht."
+      },
+      "value": {
+        "eyebrow": "Was ihr davon habt",
+        "title": "Drei Befunde, mit denen ihr morgen anfangen könnt",
+        "v1Title": "Belege statt Bauchgefühl",
+        "v1Body": "Jeder Befund trägt sein Zitat oder seinen Messwert und den nächsten Schritt. Ihr müsst niemandem glauben, ihr könnt nachlesen.",
+        "v2Title": "Kostenlos und ohne Konto",
+        "v2Body": "Kein Anmelden, keine Mail-Adresse, keine Rückrufbitte. Adresse eintragen, Ergebnis ansehen.",
+        "v3Title": "Teilbar",
+        "v3Body": "Das Ergebnis hat eine eigene Adresse. Ihr schickt sie ins Team oder an eure Geschäftsführung, statt Folien zu bauen."
+      },
+      "basis": {
+        "eyebrow": "Worauf er aufbaut",
+        "title": "Acht Kategorien, vierzig Kriterien",
+        "lead": "Dieselben Kriterien, mit denen hier jedes Branding entsteht. Die Gewichte stehen fest, bevor eure Seite gelesen wird.",
+        "weight": "{weight} von 100 Punkten",
+        "note": "16 Kriterien werden gerechnet, 24 beurteilt ein Markenexperte — jedes Urteil mit Beleg.",
+        "lockedNote": "Was von außen nicht prüfbar ist, raten wir nicht: es fällt aus der Rechnung, statt als null Punkte zu zählen."
+      },
+      "features": {
+        "eyebrow": "Rund um den Check",
+        "title": "Was der Check sonst noch kann",
+        "f1Label": "Sieben Tage dieselbe Antwort",
+        "f1Body": "Dieselbe Adresse liefert innerhalb einer Woche denselben gespeicherten Check — reproduzierbar statt zufällig.",
+        "f2Label": "Öffentliches Ranking",
+        "f2Body": "Wer mag, nimmt seinen Check in die Liste aller geprüften Auftritte auf. Ohne Häkchen bleibt er privat.",
+        "f3Label": "Zwei Marken vergleichen",
+        "f3Body": "Zwei Ergebnisse nebeneinander, Kategorie für Kategorie — wie zwei Karten gegeneinander.",
+        "f4Label": "Verlauf",
+        "f4Body": "Nach einem Relaunch noch einmal prüfen und beide Stände nebeneinander sehen."
+      },
+      "next": {
+        "eyebrow": "Und dann?",
+        "title": "Aus den Befunden wird die Reihenfolge der Arbeit",
+        "body": "Euer Markenberater kennt euren Auftritt dann schon — ihr steigt mit dem Ergebnis ein statt bei null. Und euer neues Branding lässt sich später noch einmal durch denselben Check schicken.",
+        "cta": "Marken-Relaunch starten",
+        "brands": "Meine Brands",
+        "brandsHint": "Ihr seid angemeldet: eure Brands liegen im Dashboard."
+      },
+      "faq": {
+        "eyebrow": "Häufige Fragen",
+        "title": "Was ihr vorher wissen wollt",
+        "q1Q": "Was wird gelesen?",
+        "q1A": "Nur eure Startseite: der sichtbare Text und die Angaben im Seitenkopf, höchstens 20.000 Zeichen. Kein Login-Bereich, keine Unterseiten, keine Daten von Dritten.",
+        "q2Q": "Werden Daten gespeichert?",
+        "q2A": "Wir speichern die geprüfte Adresse, den Score und die Belege, damit euer Ergebnis unter seinem Link erreichbar bleibt. Eine Mail-Adresse braucht der Check nicht.",
+        "q3Q": "Warum nur die Startseite?",
+        "q3A": "Weil dort die Marke entscheidet: die Startseite ist der erste Eindruck. Sie ist außerdem der einzige Ort, den wir bei jeder Website gleich behandeln können — nur so sind zwei Ergebnisse überhaupt vergleichbar.",
+        "q4Q": "Wie oft darf ich?",
+        "q4A": "Drei Checks am Tag je Anschluss. Dieselbe Adresse liefert innerhalb von sieben Tagen dasselbe gespeicherte Ergebnis und zählt dann nicht erneut.",
+        "q5Q": "Kann ich meine Website aus dem Ranking nehmen?",
+        "q5A": "Ja. Ins Ranking kommt ein Check nur mit Häkchen, und wer eine Website betreibt, kann ihren Eintrag jederzeit entfernen lassen — schreibt uns, wir blenden ihn aus.",
+        "q6Q": "Was heißt „nicht bewertbar\"?",
+        "q6A": "Manches ist von außen nicht prüfbar. Statt zu raten weisen wir es aus und lassen es aus der Rechnung: es zählt weder als Punkt noch als Abzug."
+      },
+      "teaser": {
+        "eyebrow": "Brand-Check · kostenlos",
+        "title": "Wie stark ist eure Marke — von außen betrachtet?",
+        "body": "40 Kriterien, acht Kategorien, ein Brand Score von 0 bis 100 mit den drei wichtigsten Befunden. Ohne Konto, in einer knappen Minute.",
+        "cta": "Brand-Check starten",
+        "sampleLabel": "Beispiel",
+        "sampleNote": "So sieht ein Ergebnis aus: ein Wert mit Band und acht Kategorien darunter."
+      }
+    },
+    "checkMethod": {
+      "seoTitle": "So rechnen wir — die Methodik hinter dem Brand Score",
+      "seoDescription": "Was der Brand Score misst und was nicht: welche Seite wir lesen, wie die {criteria} Kriterien in {categories} Kategorien bewertet werden, wo die Grenzen liegen und wie ihr ein Ergebnis korrigieren oder entfernen lasst.",
+      "eyebrow": "Methodik",
+      "title": "So rechnen wir",
+      "lead": "Diese Seite erklärt, wie ein Brand Score entsteht. Es gibt sie, weil der Brand-Check auch Auftritte bewertet, die uns nicht gehören — und wer bewertet wird, hat ein Recht darauf, die Rechnung nachzurechnen.",
+      "updated": "Sie beschreibt den Stand, der heute läuft. Ändert sich die Rechnung, ändert sich diese Seite mit.",
+      "what": {
+        "title": "Was der Brand Score ist",
+        "body": "Der Brand Score ist eine Zahl zwischen 0 und 100. Er beschreibt, wie klar ein öffentlich zugänglicher Webauftritt seine Marke ausdrückt. Grundlage ist die öffentliche Selbstdarstellung: der Text, den jeder Besucher auch sieht, dazu die technischen Angaben im Seitenkopf.",
+        "opinion": "Er ist eine Einordnung, keine Tatsachenbehauptung — eine begründete Meinung darüber, wie ein Auftritt von außen wirkt. Jedes Einzelurteil trägt seinen Beleg aus dem Auftritt selbst, damit man ihm widersprechen kann.",
+        "notTitle": "Was er ausdrücklich nicht ist",
+        "not1": "Keine Aussage über geschäftlichen Erfolg, Umsatz oder Zahlungsfähigkeit.",
+        "not2": "Keine Aussage über die Qualität der Produkte oder Leistungen dahinter. Ein hervorragendes Handwerk kann sich schlecht darstellen — und umgekehrt.",
+        "not3": "Keine Aussage über Seriosität oder Vertrauenswürdigkeit.",
+        "not4": "Kein Urteil über Geschmack. Wir prüfen, ob eine Entscheidung erkennbar getroffen wurde, nicht ob sie uns gefällt.",
+        "bandsTitle": "Die sieben Bänder",
+        "bandsLead": "Aus der Zahl wird ein Wort. Die Grenzen stehen fest und gelten für jedes Ergebnis gleich.",
+        "bandFrom": "ab {min}",
+        "bandUnder": "unter {max}"
+      },
+      "reads": {
+        "title": "Was wir lesen",
+        "body": "Genau eine Seite: die eingetragene Adresse, nach allen Weiterleitungen. Kein Durchsuchen der Website, kein zweiter Abruf.",
+        "l1": "Den sichtbaren Fließtext dieser einen Seite, höchstens {chars} Zeichen. Was darüber hinausgeht, wird abgeschnitten und nicht bewertet.",
+        "l2": "Die Angaben im Seitenkopf: Titel, Beschreibung, Sprachangabe, Favicon, Vorschaubild, Farb- und Darstellungsangaben, strukturierte Daten, Überschriften-Aufbau.",
+        "l3": "Die Beschriftungen von Bildern. Die Bilder selbst laden wir nicht und speichern wir nicht.",
+        "l4": "Ob die Adresse auf eine verschlüsselte Verbindung führt.",
+        "skipsTitle": "Was wir nicht lesen",
+        "s1": "Keine Unterseiten. Ob ein Impressum, eine Kontakt- oder eine Über-uns-Seite verlinkt ist, sehen wir auf dieser einen Seite — geöffnet wird sie nicht.",
+        "s2": "Nichts hinter einer Anmeldung. Wir melden uns nirgends an und füllen keine Formulare aus.",
+        "s3": "Keine Profile in sozialen Netzwerken, keine Bewertungsportale, keine Register, keine Presseberichte.",
+        "s4": "Kein JavaScript. Wir lesen das ausgelieferte Dokument, nicht das, was ein Browser daraus nachbaut.",
+        "keepsTitle": "Was davon bleibt",
+        "keepsBody": "Der Seitentext wird nach der Auswertung verworfen. Gespeichert bleiben die geprüfte Adresse, die Zahlenwerte, die kurzen Belege, das Datum und ein Prüfwert des Textes, an dem wir erkennen, ob sich seither etwas geändert hat. Dazu ein täglich wechselnder Prüfwert des anfragenden Anschlusses — nur für den Tagesdeckel, nie die Adresse selbst.",
+        "agentTitle": "Woran ihr uns im Zugriffsprotokoll erkennt",
+        "robotsTitle": "robots.txt und Nutzungsvorbehalt",
+        "robotsBody": "Bevor wir eine Seite holen, lesen wir eure robots.txt und halten uns daran — auch an allgemeinen Regeln für alle Bots. Ebenso prüfen wir einen maschinenlesbaren Nutzungsvorbehalt für Text und Data Mining (§ 44b UrhG). Verbietet uns eines von beidem die Auswertung, brechen wir ab: es gibt dann keinen Score, kein Ergebnis und keinen gespeicherten Eintrag — wer den Check gestartet hat, bekommt genau das als Grund angezeigt. Bis zum 8. September 2026 galt das nur für unseren Marktvergleich; seither auch hier.",
+        "blockTitle": "Wie ihr uns aussperrt",
+        "blockBody": "Drei Wege, jeder wirkt sofort beim nächsten Check. Der erste ist eine Zeile in eurer robots.txt:",
+        "tdmTitle": "Nutzungsvorbehalt (Text und Data Mining)",
+        "tdmBody": "Der zweite Weg: einen maschinenlesbaren Vorbehalt nach § 44b UrhG erkennen wir in diesen vier Formen. Eine davon genügt:",
+        "doubt": "Im Zweifel entscheiden wir gegen die Auswertung: lässt sich ein Vorbehalt nicht sicher ausschließen, brechen wir ab.",
+        "blockContact": "Der dritte Weg braucht keine Datei: schreibt uns, dann sperren wir eure Adresse bei uns. Das gilt auch rückwirkend für ein Ergebnis, das schon entstanden ist.",
+        "limitTitle": "Die Grenze dieser Zusage",
+        "limitBody": "Gefragt wird der Ursprung der eingetragenen Adresse. Springt sie per Weiterleitung auf einen anderen Wirt, holen wir dessen robots.txt nicht zusätzlich — unser Marktvergleich verhält sich genauso. Und die eigene Website, die ein eingeloggter Betreiber im Brand-Wizard selbst einträgt, lesen wir weiterhin ohne diese Vorabfrage: dort erteilt den Auftrag, wem die Seite gehört.",
+        "form": {
+          "header": "Als HTTP-Kopfzeile",
+          "meta": "Als Meta-Angabe im HTML",
+          "robotsMeta": "Als robots-Meta-Angabe",
+          "tdmrep": "Als tdmrep.json unter /.well-known/"
+        },
+        "botLink": "Wie unser Marktvergleich-Bot arbeitet"
+      },
+      "judge": {
+        "title": "Wie bewertet wird",
+        "body": "{criteria} Kriterien in {categories} Kategorien. Jedes Kriterium hat eine feste Regel und gibt 0, 1 oder 2 Punkte. Die Kategorien tragen unterschiedliches Gewicht; zusammen ergeben sie die {total} Punkte des Gesamtwerts.",
+        "criteriaCount": "{count} Kriterien",
+        "weight": "{weight} von {total} Punkten",
+        "categories": {
+          "distinctiveness": "Sagt der Auftritt etwas, das nur diese Marke sagen könnte — mit eigener Haltung statt Füllwörtern?",
+          "visual": "Ist eine eigene Bildwelt erkennbar, und sind die sichtbaren Zeichen der Marke gesetzt: Favicon, Vorschaubild, Überschriften-Aufbau?",
+          "consistency": "Sprechen Titel, Überschrift und Text mit einer Stimme, und wird der Markenname überall gleich geschrieben?",
+          "experience": "Findet sich jemand zurecht, der zum ersten Mal hier ist: eine klare nächste Handlung, auffindbare Angaben, ein erkennbarer Absender?",
+          "clarity": "Steht in klaren Worten und ohne Fachjargon, was angeboten wird, für wen — und was anders ist als bei anderen?",
+          "emotion": "Spricht der Auftritt ein Gefühl an: eine Herkunft, eine menschliche Stimme, ein Ton, der zur Sache passt?",
+          "adaptability": "Trägt die Marke auch anderswo: auf dem Telefon, im dunklen Modus, in der Vorschau beim Teilen, in einem einzigen Satz?",
+          "craft": "Stimmen die Details: Rechtschreibung, keine Platzhaltertexte, verschlüsselte Verbindung, saubere Angaben im Seitenkopf?"
+        },
+        "splitTitle": "Gerechnet und beurteilt",
+        "splitBody": "{measured} der {criteria} Kriterien werden deterministisch aus dem Dokument gerechnet — Favicon, Vorschaubild, Überschriften-Aufbau, Sprachangabe, verschlüsselte Verbindung und Ähnliches. Dieselbe Seite ergibt dort immer dieselben Punkte. Die übrigen {judged} beurteilt ein Sprachmodell, in einem Durchgang, mit Pflicht-Beleg für jedes Urteil.",
+        "modelTitle": "Welches Modell, und unter welchen Bedingungen",
+        "modelBody": "Wir rufen ein großes Sprachmodell über einen Vermittler auf — und ausschließlich bei Anbietern, die sich zur Nichtspeicherung der Anfrage verpflichtet haben. Die Verwendung zu Trainingszwecken ist untersagt, und das Ausweichen auf Anbieter außerhalb dieser Bedingungen ist abgeschaltet: lieber sagt der Check, dass er gerade nicht verfügbar ist. Welches Modell ein bestimmtes Ergebnis beurteilt hat, halten wir bei diesem Ergebnis fest; es kann sich mit der Zeit ändern, und deshalb steht hier kein fester Name.",
+        "varianceTitle": "Warum zwei Läufe leicht abweichen können",
+        "varianceBody": "Der gerechnete Teil ist reproduzierbar. Der beurteilte Teil ist es fast: wir fahren das Modell so kalt wie möglich, aber ein Sprachmodell ist kein Rechenwerk. Vor allem ändert sich die Grundlage — die Website von heute ist nicht die von letzter Woche. Deshalb trägt jedes Ergebnis sein Datum, und dieselbe Adresse liefert innerhalb von {days} Tagen bewusst dasselbe gespeicherte Ergebnis, statt eine zweite Zahl daneben zu stellen.",
+        "nullTitle": "Was von außen nicht prüfbar ist, raten wir nicht",
+        "nullBody": "Ein Kriterium, zu dem sich ehrlich nichts sagen lässt, wird als nicht bewertbar ausgewiesen und fällt aus der Rechnung — es zählt weder im Zähler noch im Nenner. Null Punkte wären eine Behauptung über etwas, das wir nicht angesehen haben."
+      },
+      "maturity": {
+        "title": "Fundament-Reife — die zweite Zahl",
+        "body": "Wer bei uns ein Branding erarbeitet, kann statt einer Website das eigene Fundament prüfen lassen: die bestätigten Antworten aus dem Wizard. Gerechnet wird mit derselben Formel und demselben Kriterienkatalog.",
+        "labelBody": "Diese Zahl heißt deshalb anders und wird überall getrennt beschriftet. Die {measured} gerechneten Kriterien sind dort durchweg nicht bewertbar — Favicon und Überschriften-Aufbau sind Eigenschaften einer Seite, nicht eines Fundaments. Eine Fundament-Reife von 78 und ein Website-Score von 78 sagen Verschiedenes; die Gegenüberstellung verweigert den Vergleich über diese Grenze hinweg.",
+        "note": "Die Fundament-Reife gibt es nur zur eigenen Brand. Über einen fremden Auftritt lässt sie sich nicht erheben."
+      },
+      "public": {
+        "title": "Was öffentlich ist — und was nicht",
+        "privateTitle": "Ein Ergebnis ist zunächst privat",
+        "privateBody": "In unser öffentliches Ranking kommt ein Check nur, wenn die prüfende Person das beim Start ausdrücklich angehakt hat. Ohne Häkchen steht er in keiner Liste, in keiner Sortierung und in keinem Ranking-Platz.",
+        "linkTitle": "Die Ergebnisseite selbst",
+        "linkBody": "Jedes Ergebnis bekommt eine eigene, teilbare Adresse. Wer sie kennt, kann das Ergebnis öffnen — sie ist zum Weiterschicken gedacht. Von Suchmaschinen wird sie nicht aufgenommen, und sie zeigt nichts, was nicht ohnehin öffentlich wäre: die geprüfte Adresse und Urteile über eine öffentlich erreichbare Seite.",
+        "ownerTitle": "Uns ist bewusst, dass die prüfende Person nicht immer der Markeninhaber ist",
+        "ownerBody": "Deshalb gibt es zwei Wege zurück. Beide kosten nichts und brauchen kein Konto.",
+        "correctionTitle": "Korrektur vorschlagen",
+        "correctionBody": "Zu jedem Ergebnis lässt sich ein Korrekturvorschlag einreichen: betroffenes Feld, Vorschlag, Begründung. Eine Kontaktadresse ist freiwillig. Wir prüfen von Hand und nehmen an oder lehnen mit Begründung ab. Korrigierbar ist heute die Branche — sie ist ein Vorschlag des Modells über einen fremden Auftritt. Dem Score selbst widerspricht man nicht mit einer Korrektur, sondern über den Weg darunter.",
+        "correctionLimit": "{limit} Vorschläge je Stunde und Anschluss.",
+        "removalTitle": "Entfernen lassen",
+        "removalBody": "Auf begründete Anfrage nehmen wir ein Ergebnis vom Netz. Es verschwindet aus dem Ranking und auch von seiner eigenen Adresse — dort steht danach dasselbe wie bei einem Ergebnis, das es nie gab. Die Entfernung ist dauerhaft: sie wird nicht dadurch aufgehoben, dass jemand anderes dieselbe Adresse erneut prüft.",
+        "contactTitle": "Wie ihr uns erreicht",
+        "contactBody": "Für eine Korrektur genügt das Formular am Ergebnis. Für eine Entfernung, eine Sperre eurer Adresse oder eine Rückfrage zu einem Urteil schreibt uns über die Kontaktangaben im Impressum.",
+        "imprint": "Zum Impressum",
+        "contactMail": "Oder direkt per E-Mail an"
+      },
+      "limits": {
+        "title": "Grenzen und Fairness",
+        "l1Title": "Ein Modell kann irren",
+        "l1Body": "Die beurteilten Kriterien sind ein maschinelles Urteil. Es trägt seinen Beleg und ist damit überprüfbar, aber es ist nicht unfehlbar. Wer einen Fehler sieht, soll ihn uns sagen.",
+        "l2Title": "Der Score ist eine Momentaufnahme",
+        "l2Body": "Er gilt für eine Seite an einem Tag. Ein Relaunch, ein neuer Text, eine geänderte Startseite — und die Zahl stimmt nicht mehr. Deshalb steht an jedem Ergebnis sein Datum, und deshalb ist für uns ein alter Wert kein gültiger Wert.",
+        "l3Title": "Wir stellen keine zwei Marken gegeneinander",
+        "l3Body": "Es gibt eine Gegenüberstellung, aber sie ist beschreibend: zwei Ergebnisse nebeneinander, Kategorie für Kategorie, ohne Sieger und ohne Herabsetzung. Wir behaupten nicht, eine Marke sei besser als eine andere.",
+        "l4Title": "Keine fremden Logos",
+        "l4Body": "Wir zeigen Wortnamen, Branche und kurze Belegzitate vom Auftritt selbst. Keine Logos, keine Bildmarken, keine Favicons, keine Bildschirmfotos.",
+        "l5Title": "Eine Startseite ist nicht die ganze Marke",
+        "l5Body": "Eine Marke lebt auch im Produkt, im Laden, im Gespräch und im Service. Nichts davon sieht dieser Check. Er misst den ersten Eindruck im Netz — der ist wichtig, aber er ist nicht alles."
+      },
+      "back": {
+        "check": "Zum Brand-Check",
+        "ranking": "Zum Ranking"
+      }
+    },
+    "checkRanking": {
+      "seoTitle": "Brand-Ranking — alle geprüften Markenauftritte",
+      "seoDescription": "Die Bestenliste des Brand-Checks: geprüfte Markenauftritte mit Brand Score, Band und Branche. Filterbar nach Branche und Stärke, sortierbar nach jeder der acht Kategorien.",
+      "eyebrow": "Brand-Check · Ranking",
+      "title": "Das Ranking",
+      "lead": "Alle Auftritte, deren Prüfer sie ins Ranking aufgenommen haben — je höher, desto stärker.",
+      "total": "{count} Auftritte",
+      "compare": "Vergleichen",
+      "compareHint": "Hakt zwei Zeilen an, um beide Ergebnisse nebeneinander zu sehen. Ein dritter Haken ersetzt den ältesten.",
+      "pick": "{host} für den Vergleich auswählen",
+      "note": "Im Ranking steht nur, wer beim Check das Häkchen gesetzt hat. Betreibt ihr einen der Auftritte und wollt ihn hier nicht sehen? Schreibt uns, wir blenden ihn aus.",
+      "filter": {
+        "industry": "Branche",
+        "band": "Stärke",
+        "sort": "Sortierung",
+        "allIndustries": "Alle Branchen",
+        "allBands": "Alle Stärken"
+      },
+      "sort": {
+        "score": "Bester Score",
+        "date": "Zuletzt geprüft",
+        "category": "Die Besten in {category}"
+      },
+      "col": {
+        "pick": "Auswahl",
+        "rank": "Rang",
+        "host": "Auftritt",
+        "score": "Score",
+        "industry": "Branche",
+        "source": "Quelle",
+        "strongest": "Stärkste Kategorie",
+        "date": "Geprüft"
+      },
+      "source": {
+        "website": "Website",
+        "document": "Fundament"
+      },
+      "emptyTitle": "Noch kein Auftritt im Ranking",
+      "empty": "Prüft euren und setzt das Häkchen — dann steht er hier.",
+      "emptyCta": "Brand-Check starten"
+    },
+    "industry": {
+      "agency": "Agentur",
+      "software": "Software",
+      "ecommerce": "Online-Handel",
+      "consulting": "Beratung",
+      "craft": "Handwerk",
+      "food": "Lebensmittel und Getränke",
+      "hospitality": "Gastgewerbe und Reisen",
+      "health": "Gesundheit",
+      "finance": "Finanzen und Versicherung",
+      "education": "Bildung",
+      "creative": "Kreativ und Design",
+      "realestate": "Immobilien",
+      "manufacturing": "Industrie und Fertigung",
+      "nonprofit": "Gemeinnützig",
+      "personal": "Personen und persönliche Marken",
+      "other": "Sonstiges",
+      "unknown": "Nicht zugeordnet"
+    },
+    "checkCorrection": {
+      "trigger": "Branche stimmt nicht?",
+      "title": "Branche korrigieren",
+      "lead": "Die Branche schätzt der Markenexperte aus der Startseite. Sagt uns, was stimmt — wir sehen es uns an.",
+      "current": "Heute eingetragen: {industry}",
+      "proposedLabel": "Richtige Branche",
+      "proposedPlaceholder": "Branche wählen",
+      "reasonLabel": "Begründung",
+      "reasonHint": "Freiwillig, höchstens 300 Zeichen.",
+      "reasonPlaceholder": "Was macht dieser Auftritt wirklich?",
+      "emailLabel": "E-Mail-Adresse",
+      "emailHint": "Freiwillig — nur, falls wir nachfragen wollen.",
+      "emailPlaceholder": "Eure E-Mail-Adresse",
+      "submit": "Vorschlag senden",
+      "thanks": "Danke — wir prüfen den Vorschlag.",
+      "errors": {
+        "correctionOpen": "Dazu liegt schon ein Vorschlag vor.",
+        "rateLimited": "Zu viele Vorschläge, später noch einmal.",
+        "notFound": "Diesen Check gibt es nicht mehr.",
+        "unavailable": "Das antwortet gerade nicht. Versucht es in einer Minute noch einmal.",
+        "generic": "Das hat nicht geklappt. Versucht es noch einmal."
+      }
+    },
+    "checkCompare": {
+      "seoTitle": "Vergleich · {a} gegen {b}",
+      "seoTitleEmpty": "Zwei Markenauftritte vergleichen",
+      "eyebrow": "Vergleich · zwei Auftritte nebeneinander",
+      "title": "Zwei Marken, Kategorie für Kategorie",
+      "lead": "Zwei geprüfte Auftritte direkt gegeneinander: ein Markenabdruck mit beiden Profilen übereinander und acht Kategorien im direkten Duell.",
+      "sideA": "Seite A",
+      "sideB": "Seite B",
+      "stand": "Stand {date}",
+      "open": "Ergebnis ansehen",
+      "pick": "Anderen Check wählen",
+      "pickHint": "Zur Auswahl stehen die Auftritte aus dem Ranking. Einen privaten Check vergleicht ihr über seinen Link.",
+      "pickTitle": "Auftritt wählen",
+      "pickLead": "Sucht nach der Adresse. Die Liste zeigt die Auftritte, die im Ranking stehen.",
+      "pickSearch": "Adresse suchen",
+      "pickLoading": "Die Liste wird geladen.",
+      "pickFailed": "Die Liste antwortet gerade nicht. Versucht es in einem Moment noch einmal.",
+      "pickEmpty": "Dazu steht nichts im Ranking.",
+      "pickCount": "{count} Auftritt zur Auswahl | {count} Auftritte zur Auswahl",
+      "slotEmpty": "Hier ist noch nichts gewählt.",
+      "swap": "Seiten tauschen",
+      "rowsTitle": "Kategorie für Kategorie",
+      "rowsLead": "Jede Zeile ist ein direktes Duell: die Seite mit dem höheren Wert steht in voller Farbe.",
+      "notAssessable": "n. b.",
+      "notAssessableHint": "n. b. heißt nicht bewertbar: was wir von außen nicht prüfen konnten, gewinnt und verliert keine Kategorie.",
+      "missingTitle": "Diesen Check gibt es nicht",
+      "missingText": "Mindestens einer der beiden Links führt ins Leere. Wählt einen Auftritt aus dem Ranking oder prüft die Adresse.",
+      "missingCta": "Zum Ranking",
+      "chooseTitle": "Wählt zwei Auftritte",
+      "chooseText": "Wählt zwei Auftritte aus dem Ranking — oder öffnet einen Check und klickt dort auf Vergleichen.",
+      "chooseA": "Seite A wählen",
+      "chooseB": "Seite B wählen",
+      "fromResult": "Vergleichen",
+      "summary": {
+        "eyebrow": "Fazit",
+        "leader": "{host} liegt vorn",
+        "tie": "Gleichstand — keiner der beiden gewinnt mehr Kategorien",
+        "wins": "{host} gewinnt keine Kategorie. | {host} gewinnt eine Kategorie. | {host} gewinnt {count} Kategorien.",
+        "ties": "Kein Gleichstand. | Ein Gleichstand. | {count} Gleichstände.",
+        "notAssessable": "Eine Kategorie war auf mindestens einer Seite nicht bewertbar. | {count} Kategorien waren auf mindestens einer Seite nicht bewertbar.",
+        "basis": "Bewertbare Kategorien: {a} auf Seite A, {b} auf Seite B."
+      },
+      "insights": {
+        "eyebrow": "Erkenntnisse",
+        "title": "Was der Vergleich zeigt",
+        "lead": "Nach Wichtigkeit sortiert — vom Gesamtbild bis zu den Stellen, an denen die großen Abstände entstehen.",
+        "pointsGap": "{count} Punkt Unterschied | {count} Punkte Unterschied",
+        "overall": {
+          "title": "Das Gesamtbild",
+          "close": "{leader} und {other} liegen dicht beieinander — {gap}.",
+          "clear": "{leader} liegt vor {other} — {gap}, ein deutlicher Abstand.",
+          "wide": "{leader} liegt weit vor {other} — {gap}.",
+          "tie": "Beide kommen auf denselben Gesamtwert.",
+          "note": "Der Gesamtwert wiegt alle acht Kategorien. Wie oft jemand gewinnt, steht in der Bilanz daneben — beides darf auseinanderfallen."
+        },
+        "wins": {
+          "title": "Kategorie-Bilanz",
+          "count": "keine von {total} | eine von {total} | {count} von {total}",
+          "tieLabel": "Gleichstand",
+          "none": "keine"
+        },
+        "gap": {
+          "titleTop": "Größter Abstand: {category}",
+          "title": "Großer Abstand: {category}",
+          "line": "{leader} {leaderValue}, {other} {otherValue} — {gap}.",
+          "why": "Woran das liegt",
+          "noReasons": "Der Abstand verteilt sich über die fünf Kriterien — kein einzelnes sticht heraus.",
+          "noEvidence": "ohne Beleg"
+        },
+        "ties": {
+          "title": "Gleichstand",
+          "lead": "Diese Kategorien trennt nichts.",
+          "value": "beide {value}"
+        },
+        "strengths": {
+          "title": "Stärkste und schwächste Kategorie",
+          "lead": "Je Seite gerechnet — nicht gegeneinander.",
+          "best": "Stärkste",
+          "worst": "Schwächste",
+          "none": "nichts bewertbar"
+        },
+        "notAssessable": {
+          "title": "Nicht bewertbar",
+          "lead": "Was wir von außen nicht prüfen konnten, gewinnt und verliert nichts.",
+          "line": "{host}: {categories}, {criteria}",
+          "categories": "keine Kategorie | eine Kategorie | {count} Kategorien",
+          "criteria": "kein Kriterium | ein Kriterium | {count} Kriterien"
+        }
+      }
+    },
+    "fingerprint": {
+      "title": "Markenabdruck",
+      "lead": "Die acht Kategorien als Profil. Je weiter außen, desto stärker.",
+      "notAssessable": "nicht bewertbar",
+      "aria": "Markenabdruck mit acht Achsen. {values}",
+      "ariaSeries": "{label}: {values}",
+      "axis": {
+        "distinctiveness": "Eigenart",
+        "visual": "Optik",
+        "consistency": "Konsistenz",
+        "experience": "Erlebnis",
+        "clarity": "Klarheit",
+        "emotion": "Wirkung",
+        "adaptability": "Anpassung",
+        "craft": "Handwerk"
+      }
+    },
+    "acceptance": {
+      "title": "Finale Abnahme",
+      "lead": "Alles aus diesem Kapitel nebeneinander. Nimm jede Zeile ab, die so stehen bleiben soll.",
+      "counter": "{accepted} von {total} abgenommen",
+      "area": "Bereich",
+      "exampleLabel": "Beispiel — erfunden, fremde Branche",
+      "own": "Die eigene Eingabe",
+      "notes": "Notiz",
+      "valueEmpty": "Noch keine Eingabe — optional.",
+      "accept": "Abnehmen",
+      "acceptAll": "Alle abnehmen",
+      "acceptAllHint": "{count} bestätigte Zeilen warten noch auf die Abnahme.",
+      "accepted": "Abgenommen",
+      "edit": "Bearbeiten",
+      "toSession": "Zur Session",
+      "unconfirmed": "Noch nicht bestätigt — zur Session.",
+      "acceptFailed": "Das Abnehmen hat nicht geklappt.",
+      "reloadHint": "Der Stand hat sich geändert — lade die Seite neu.",
+      "loadFailed": "Die Abnahme konnte nicht geladen werden.",
+      "status": {
+        "open": "offen",
+        "confirmed": "bestätigt",
+        "accepted": "abgenommen",
+        "stale": "veraltet",
+        "deferred": "vertagt"
+      },
+      "blockersTitle": "Das steht noch offen",
+      "blocker": {
+        "unconfirmed": "Noch nicht besprochen",
+        "unaccepted": "Noch nicht abgenommen",
+        "stale": "Die Quellen haben sich bewegt — neu besprechen",
+        "conflict": "Ein Konflikt ist offen",
+        "deferred": "Vertagt — erst wieder aufnehmen"
+      },
+      "allClear": "In diesem Kapitel ist nichts mehr offen — bestätige es, wenn es passt.",
+      "question": "Passt dieses Kapitel?",
+      "completing": "Kapitel bestätigen",
+      "completeFailed": "Das Kapitel ließ sich nicht abschließen.",
+      "doneNote": "Dieses Kapitel ist abgenommen.",
+      "continueTo": "Weiter zu {step}",
+      "restart": {
+        "title": "Nochmal von vorn",
+        "loss": "Dieses Kapitel beginnt von vorn: {values} bestätigte Werte, {notes} Notizen und {accepted} Abnahmen gehen verloren.",
+        "downstream": "Das berührt außerdem {count} bestätigte Felder in späteren Kapiteln.",
+        "downstreamShow": "Felder anzeigen",
+        "downstreamHide": "Felder ausblenden",
+        "typeToConfirm": "Tippe {word}, um zu bestätigen.",
+        "word": "bestätigen",
+        "inputLabel": "Bestätigungswort",
+        "confirm": "Bestätigen",
+        "cancel": "Abbrechen",
+        "changed": "Der Stand hat sich geändert — bitte lies es noch einmal.",
+        "failed": "Das hat nicht geklappt.",
+        "loading": "Wird geprüft …"
+      },
+      "continueToDocument": "Weiter zu deinem Branding"
+    },
+    "document": {
+      "title": "Dein Branding",
+      "lead": "Alle bestätigten Entscheidungen der Foundation, Kapitel für Kapitel. Hier wird gelesen — abgenommen wird im Kapitel.",
+      "loadFailed": "Das Dokument konnte nicht geladen werden.",
+      "empty": "Hier steht noch nichts — sobald ein Kapitel besprochen ist, füllt es sich.",
+      "toc": "Inhalt",
+      "standProgress": "Abgenommen",
+      "state": {
+        "done": "abgenommen",
+        "active": "in Arbeit",
+        "open": "offen",
+        "locked": "gesperrt"
+      },
+      "chapter": {
+        "toAcceptance": "Zur Abnahme"
+      },
+      "reviewTitle": "Der letzte Blick",
+      "reviewLead": "Das Team liest das ganze Dokument einmal am Stück und meldet Widersprüche, Lücken und Stellen, die schärfer gehen.",
+      "review": "Dokument prüfen",
+      "reviewing": "Wird gelesen …",
+      "reviewNeedsChapter": "Sobald ein Kapitel abgenommen ist, lohnt sich der Blick.",
+      "unreviewedCount": "{count} Session ist noch nicht gegengelesen — sie wird dabei nachgeholt. | {count} Sessions sind noch nicht gegengelesen — sie werden dabei nachgeholt.",
+      "reviewResult": "{caughtUp} Sessions nachgeholt, {findings} Befunde.",
+      "stillUnreviewed": "{count} Session bleibt noch offen — der nächste Blick holt sie nach. | {count} Sessions bleiben noch offen — der nächste Blick holt sie nach.",
+      "noFindings": "Nichts gefunden, was sich reibt.",
+      "reviewFailed": "Der Blick kam gerade nicht zustande. Das Dokument steht trotzdem — bitte später noch einmal versuchen.",
+      "readFoundation": "Als Foundation lesen"
+    },
+    "foundation": {
+      "title": "Brand Foundation",
+      "share": {
+        "button": "Teilen",
+        "eyebrow": "Teilen",
+        "title": "Brand Foundation teilen",
+        "close": "Schließen",
+        "intro": "So sehen Empfänger das Dokument: eine Momentaufnahme des bestätigten Stands, lesbar über einen Link — ohne Konto, ohne Anmeldung.",
+        "visible": {
+          "title": "Wird sichtbar",
+          "story": "Brand Story",
+          "chapters": "Die Kapitel in ihrer abgenommenen Fassung",
+          "stand": "Das Stand-Datum der Momentaufnahme"
+        },
+        "hidden": {
+          "title": "Bleibt drin",
+          "chats": "Gespräche mit George",
+          "drafts": "Entwürfe und Rohantworten",
+          "competitors": "Wettbewerber und Beschwerden",
+          "meta": "Zähler, Notizen, Befunde"
+        },
+        "expires": "Läuft ab nach 30 Tagen",
+        "activeUntil": "Aktiv bis {date}",
+        "linkLabel": "Lese-Link",
+        "create": "Link erzeugen",
+        "rotate": "Neuen Link erzeugen",
+        "revoke": "Widerrufen",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "copyToast": "Der Link ist in der Zwischenablage.",
+        "copyFailed": "Der Link ließ sich nicht kopieren. Markiert ihn und kopiert ihn von Hand.",
+        "onceHint": "Der Link wird nur jetzt angezeigt. Geht er verloren, lässt sich ein neuer erzeugen.",
+        "replacesHint": "Ein neuer Link ersetzt den alten — der alte antwortet danach nicht mehr.",
+        "createdToast": "Der Lese-Link steht.",
+        "revokedToast": "Der Lese-Link ist widerrufen.",
+        "failed": "Das hat nicht geklappt. Bitte noch einmal versuchen.",
+        "open": "Empfänger-Ansicht öffnen",
+        "stand": "Stand {date}",
+        "print": "Drucken",
+        "madeWith": "Erstellt mit",
+        "product": "Branding Supply",
+        "seoTitle": "Brand Foundation · {brand}",
+        "native": "Teilen …"
+      },
+      "toc": "Inhalt",
+      "counter": "{accepted} von {total} Kapiteln abgenommen",
+      "contentLocale": "Inhaltssprache {locale}",
+      "standProgress": "Kapitel",
+      "loadFailed": "Die Brand Foundation konnte nicht geladen werden.",
+      "empty": "Hier steht noch nichts. Sobald die ersten Felder bestätigt sind, füllt sich dieses Handbuch.",
+      "showToc": "Inhalt einblenden",
+      "hideToc": "Inhalt ausblenden",
+      "chapterNumber": "Kapitel {num}",
+      "pending": "noch nicht abgenommen",
+      "pendingNote": "Dieses Kapitel steht noch nicht fest.",
+      "toAcceptance": "Zur Abnahme",
+      "onePage": {
+        "title": "Auf einer Seite",
+        "values": "Werte",
+        "archetype": "Archetyp",
+        "tagline": "Tagline",
+        "wallLine": "Zeile für die Wand"
+      },
+      "export": {
+        "label": "Exportieren",
+        "print": "Drucken / PDF",
+        "printSub": "Browser-Druck mit Print-Layout",
+        "context": "Brand Context",
+        "contextSub": "brand.md · brand.json",
+        "tokens": "Design-Tokens",
+        "tokensSub": "CSS, Tailwind, JSON",
+        "assets": "Assets",
+        "assetsSub": "Zeichen, Tokens und Kontext als ZIP",
+        "kit": "Brand Book & Kit",
+        "openKit": "Lieferseite öffnen",
+        "bundle": "Bündel (ZIP)",
+        "needsDesign": "kommt mit Brand Design",
+        "gate": "Brand Book & Kit ansehen"
+      },
+      "ai": {
+        "tone": "Schreibt in diesem Ton:",
+        "avoid": "Vermeidet:",
+        "stands": "Steht für:",
+        "hint": "Zum Kopieren in ChatGPT, Claude oder das Redaktionssystem."
+      },
+      "note": {
+        "visuell": "Gehört zum Fundament dazu, entsteht aber erst im Brand Design — hergeleitet aus dem, was oben steht.",
+        "ki-texte": "Ein fester Rahmen, gefüllt aus den Werten dieser Marke — keine eigene Erfindung, so aktuell wie die Kapitel darüber.",
+        "visuellDone": "Im Brand Design entschieden — Farbwelt, Schriftpaar, Zeichen, Bildsprache und Bewegung, hergeleitet aus dem, was oben steht.",
+        "nomenklatur": "Wie neue Produkte, Orte und Formate heißen — hergeleitet aus Markenarchitektur, Werten und Ton.",
+        "zeichen-anwendung": "Das Regelwerk zum Zeichen — dieselbe Setzung wie im Kapitel „Visuelle Identität\", eine Zoomstufe näher.",
+        "farbe-anwendung": "Rollen, Kontraste und Regeln — dieselben Zahlen, die auch in tokens.json stehen.",
+        "typografie-anwendung": "Paar, Größen-Leiter und Lizenz — gerechnet aus der gewählten Hierarchie, nicht getippt.",
+        "pressekit": "Nichts Neues — zusammengestellt aus Botschaften, freigegebenen Fakten und Kontakt.",
+        "kiTexteGuidelines": "Der feste Rahmen bleibt — darunter stehen Umfang, Freigabe, Leitplanken und die Vorlagen."
+      },
+      "visual": {
+        "follows": "folgt in Brand Design",
+        "shareLine": "Visuelle Identität: folgt in Brand Design.",
+        "product": "Brand Design",
+        "ctaCall": "Erstgespräch buchen",
+        "logo": {
+          "title": "Logo",
+          "text": "Wort- oder Bildmarke samt Schutzraum und Mindestgröße — hergeleitet aus Archetyp und Wiedererkennungs-Anker."
+        },
+        "color": {
+          "title": "Farbwelt",
+          "text": "Eine Grundfarbe mit zwei bis vier Begleitern, kontrastgeprüft — hergeleitet aus Archetyp und Positionierung."
+        },
+        "typography": {
+          "title": "Typografie",
+          "text": "Ein Schriftpaar für Überschrift und Text plus eine Mono für Herkunft und Preise — hergeleitet aus den Ton-Wörtern."
+        },
+        "imagery": {
+          "title": "Bildsprache",
+          "text": "Was auf ein Foto darf und was nie — hergeleitet aus Werten und Zielgruppen."
+        },
+        "motion": {
+          "title": "Motion",
+          "text": "Tempo und Ruhe der Bewegung — hergeleitet aus den Ton-Wörtern."
+        },
+        "offer": "Brand Design entsteht gemeinsam mit dem Markenberater im Studio-Angebot — wir besprechen es im Erstgespräch.",
+        "ctaDesign": "Brand Design starten",
+        "unlocked": "Brand Design ist für diese Marke freigeschaltet.",
+        "unlockedOn": "Freigeschaltet vom Studio am {date}."
+      },
+      "chapter": {
+        "story": "Brand Story",
+        "kontext": "Kontext & Zielgruppe",
+        "purpose": "Purpose, Vision, Mission",
+        "positionierung": "Positionierung",
+        "architektur": "Markenarchitektur",
+        "nomenklatur": "Nomenklatur",
+        "werte": "Werte",
+        "stimme": "Persönlichkeit & Stimme",
+        "manifest": "Manifest",
+        "messaging": "Tagline & Messaging",
+        "name": "Name",
+        "visuell": "Visuelle Identität",
+        "zeichen-anwendung": "Zeichen-Anwendung",
+        "farbe-anwendung": "Farb-Anwendung",
+        "typografie-anwendung": "Typografie-Anwendung",
+        "pressekit": "Pressekit",
+        "ki-texte": "Regeln für KI-Texte",
+        "aiGuidelines": "AI-Guidelines"
+      },
+      "label": {
+        "pitch": "In einem Satz",
+        "category": "Kategorie",
+        "audience": "Zielgruppen",
+        "purpose": "Purpose",
+        "vision": "Vision",
+        "mission": "Mission",
+        "positioningCategory": "Positionierungs-Kategorie",
+        "firstChoice": "Erste Wahl für",
+        "model": "Architektur-Modell",
+        "namingRule": "Namensregel",
+        "values": "Die Werte",
+        "definitions": "Definitionen",
+        "livedExamples": "Gelebte Beispiele",
+        "conflictRule": "Konfliktregel",
+        "teamFilter": "Einstellungs-Filter",
+        "archetype": "Archetyp",
+        "emotion": "Ziel-Gefühl",
+        "toneWords": "Ton-Wörter",
+        "voiceSamples": "Stimmproben",
+        "doDont": "Do & Don't",
+        "vocabulary": "Wort-Leitfaden",
+        "anchorLine": "Zeile für die Wand",
+        "composition": "Ton, Länge & Verwendung",
+        "tagline": "Tagline",
+        "boilerplates": "Boilerplates",
+        "keyMessages": "Kernbotschaften",
+        "distinctiveAsset": "Verbales Erkennungszeichen",
+        "nameDecision": "Top drei",
+        "nameChecks": "Verfügbarkeits-Check",
+        "nameCriteria": "Acht Kriterien",
+        "nameTypes": "Produkttypen",
+        "namePatterns": "Muster je Produkttyp",
+        "nameRules": "Namens-Regeln",
+        "markKind": "Zeichenart",
+        "markBrief": "Briefing",
+        "markClearSpace": "Schutzraum",
+        "markMinSizes": "Mindestgrößen",
+        "markVariants": "Varianten",
+        "markDonts": "Don'ts",
+        "colorRolesLight": "Rollen im hellen Modus",
+        "colorRolesDark": "Rollen im dunklen Modus",
+        "accentLift": "Akzent im dunklen Modus",
+        "contrastPairs": "Kontrast-Paare mit Urteil",
+        "colorRules": "Farb-Regeln",
+        "typePair": "Schriftpaar",
+        "typeScale": "Größen-Skala",
+        "typeRules": "Schrift-Regeln",
+        "typeLicense": "Lizenz",
+        "pressFacts": "Freigegebene Fakten",
+        "pressContact": "Presse-Kontakt",
+        "pressMark": "Zeichen",
+        "aiScope": "Was KI erzeugen darf",
+        "aiReview": "Freigabe-Regel",
+        "aiGuardrails": "Leitplanken",
+        "aiPrompt": "Vorlage"
+      },
+      "column": {
+        "name": "Name",
+        "note": "Notiz",
+        "rank": "Rang",
+        "check": "Prüfung",
+        "criteria": "Kriterium",
+        "nameType": "Typ",
+        "pattern": "Muster",
+        "example": "Beispiel",
+        "source": "Herkunft",
+        "usage": "Verwendung",
+        "minSize": "Mindestgröße",
+        "role": "Rolle",
+        "hex": "Hex",
+        "contrast": "Kontrast",
+        "accent": "Akzent",
+        "ground": "Grund",
+        "pair": "Paar",
+        "ratio": "Verhältnis",
+        "verdict": "Urteil",
+        "step": "Stufe",
+        "size": "Größe",
+        "lineHeight": "Zeilenhöhe",
+        "weight": "Gewicht",
+        "font": "Schrift"
+      },
+      "direction": {
+        "chosen": "Gewählte Richtung",
+        "choose": "Richtung wählen",
+        "change": "Richtung ändern",
+        "lockedHint": "Die Richtung wird im Ergebnis-Kapitel gewählt — es öffnet sich, sobald die Kapitel davor stehen.",
+        "fontsLabel": "Schriftpaar",
+        "colors": "Farbwelt",
+        "previewLine": "So liest sich eine Seite in dieser Welt.",
+        "previewButton": "Mehr erfahren",
+        "role": {
+          "ground": "Grund & Text",
+          "warmth": "Wärme & Flächen",
+          "light": "Helle Flächen"
+        },
+        "reason": {
+          "both": "Passt zum Haupt- und zum Neben-Archetyp.",
+          "primary": "Passt zum Haupt-Archetyp.",
+          "secondary": "Passt zum Neben-Archetyp.",
+          "fallback": "Eine dritte Möglichkeit zum Vergleich."
+        },
+        "warmEditorial": {
+          "name": "Warm & Editorial",
+          "reason": "Viel Papierweiß, ruhige Zeilen, Farbe als Erdton statt als Signal. Eine Serif für Überschriften macht daraus eher ein Heft als eine Anzeige."
+        },
+        "clearTechnical": {
+          "name": "Klar & Technisch",
+          "reason": "Kühles Blaugrau, eine einzige Grotesk, alles auf einem Raster. Nichts schmückt, jede Fläche hat eine Aufgabe."
+        },
+        "calmNatural": {
+          "name": "Ruhig & Natürlich",
+          "reason": "Grüne Erdtöne, weiche Kanten, viel Luft. Wirkt gewachsen statt gemacht — und ruft nie."
+        },
+        "boldContrast": {
+          "name": "Kraftvoll & Kontrastreich",
+          "reason": "Tiefer Grund, warmes Signal, große Überschriften. Diese Welt bezieht Position, bevor jemand den ersten Satz gelesen hat."
+        },
+        "lightPlayful": {
+          "name": "Leicht & Verspielt",
+          "reason": "Helle Flächen, frisches Petrol, runde Formen. Nimmt sich selbst nicht zu ernst, ohne albern zu werden."
+        },
+        "classicSerious": {
+          "name": "Klassisch & Ernst",
+          "reason": "Schiefer, eine klassische Serif, breite Ränder. Sieht in zehn Jahren so aus wie heute — das ist der Punkt."
+        }
+      },
+      "design": {
+        "title": "Visuelle Identität",
+        "stand": "Stand {date}",
+        "farbwelt": "Farbwelt",
+        "typografie": "Typografie",
+        "zeichen": "Zeichen",
+        "bildsprache": "Bildsprache",
+        "bewegung": "Bewegung",
+        "ramp": {
+          "light": "Hell",
+          "dark": "Dunkel"
+        },
+        "board": {
+          "colors": "Farbwelt",
+          "type": "Typografie",
+          "mark": "Zeichen",
+          "imagery": "Bildsprache",
+          "motion": "Bewegung"
+        },
+        "tileAlt": "Bild-Prinzip, abstrahiert",
+        "markNote": "Gesetzte Beispiele aus Schriftpaar und Farbwelt — eine Vorlage für die Designer-Arbeit, kein fertiges Logo.",
+        "drafts": "1 behaltener KI-Entwurf | {count} behaltene KI-Entwürfe",
+        "draftsNote": "Entwürfe sind Ideen für die Designer-Arbeit, keine geprüften Logos. Sie bleiben privat: sie stehen weder im geteilten Link noch im Druck.",
+        "boardHint": "Dasselbe Board als eigene Ansicht, druckbar:",
+        "boardLink": "Visuelle Identität öffnen",
+        "correctHint": "Dieses Board entscheidet nichts. Korrigiert wird in den Kapiteln — rechts der Weg dorthin.",
+        "eyebrow": "Ergebnis-Board",
+        "headline": "Visuelle Identität auf einer Fläche",
+        "lead": "Farbwelt, Schriftpaar, Zeichen, Bild-Prinzipien und Bewegung. Dasselbe Board steht als Kopf von Kapitel 10 in dieser Brand Foundation.",
+        "print": "Drucken / PDF",
+        "inDocument": "Im Dokument lesen",
+        "correctTitle": "Korrigieren",
+        "correctLead": "Jede Fläche des Boards gehört zu einem Kapitel. Wer etwas ändern will, geht dorthin — das Board zieht nach.",
+        "privateTitle": "Was hier nicht steht",
+        "privateLead": "Die hinterlegten Vorbilder und die behaltenen KI-Entwürfe. Beides ist privat und reist weder ins Board noch in den geteilten Link.",
+        "lockedTitle": "Noch nicht fertig",
+        "lockedLead": "Das Board entsteht, sobald alle sechs Kapitel von Brand Design abgenommen sind.",
+        "lockedProgress": "{done} von {total} Kapiteln",
+        "toChapter": "Weiter im Brand Design",
+        "progressTitle": "Brand Design"
+      },
+      "usage": {
+        "follows": "folgt in Brand Book & Kit",
+        "product": "Brand Book & Kit",
+        "lockedDerivation": "Book & Kit ist Teil der Ableitung — wir schalten sie im Erstgespräch frei.",
+        "lockedDesign": "Kommt mit Brand Design: ohne Farbwelt, Schriftpaar und Zeichen gibt es hier keine Regel, die stimmt.",
+        "shareLine": "Dieses Kapitel folgt in Brand Book & Kit.",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "contactPublic": "Diese Angabe reist mit dem Pressekit und dem geteilten Link.",
+        "promptHint": "Ohne KI gerechnet — aus den Werten, Ton-Wörtern und den Leitplanken darüber.",
+        "markClearspace": {
+          "title": "Schutzraum und Mindestgrößen",
+          "text": "Wie viel Luft das Zeichen braucht und ab welcher Größe es nicht mehr gesetzt wird."
+        },
+        "markVariants": {
+          "title": "Varianten",
+          "text": "Hell, dunkel, einfarbig — und wann welche gilt."
+        },
+        "markDonts": {
+          "title": "Don'ts",
+          "text": "Was mit dem Zeichen nie passiert, mit Gegenbeispiel daneben."
+        },
+        "colorRoles": {
+          "title": "Rollen-Tabelle",
+          "text": "Jede Rolle mit Hex, hell und dunkel — dieselben Namen in beiden Modi."
+        },
+        "colorContrast": {
+          "title": "Kontrast-Paare",
+          "text": "Geprüfte Paare mit Urteil, und die Regel „nie Text auf …\" aus den Durchfallern."
+        },
+        "typeScale": {
+          "title": "Größen-Tabelle",
+          "text": "h1 bis small mit Größe, Zeilenhöhe und Gewicht."
+        },
+        "typeLicense": {
+          "title": "Regeln und Lizenz",
+          "text": "Was welche Schrift trägt — und woher die Dateien kommen."
+        }
+      }
+    },
+    "session": {
+      "minutes": "~{minutes} Min",
+      "affects": "Das fließt später in {count} weitere Felder ein — in {steps}.",
+      "affectsNone": "Eine Korrektur hier löst nichts Weiteres aus.",
+      "defer": "Später",
+      "resume": "Wieder aufnehmen",
+      "deferredNote": "Vertagt — wir kommen später darauf zurück. Bis dahin bleibt das Kapitel offen.",
+      "deferFailed": "Das Vertagen hat nicht geklappt.",
+      "resumeFailed": "Das Wiederaufnehmen hat nicht geklappt.",
+      "deferConfirmed": "Dieses Feld ist bereits bestätigt — dafür gibt es „Korrigieren\".",
+      "error": {
+        "session_locked": "Dieses Feld ist noch gesperrt — erst sind die Felder davor dran.",
+        "session_foreign": "Dieses Feld gehört zu einem anderen Kapitel."
+      },
+      "stale": "Ein Feld davor hat sich geändert — passt das hier noch?",
+      "keep": "Gilt weiter",
+      "rediscuss": "Neu besprechen",
+      "keepFailed": "Das hat nicht geklappt — bitte noch einmal."
+    },
+    "finding": {
+      "kind": {
+        "conflict": "Konflikt",
+        "affected": "Betroffen",
+        "gap": "Lücke",
+        "market": "Markt"
+      },
+      "fields": "Felder",
+      "accept": "Annehmen",
+      "acceptWhich": "Welches Feld anfassen?",
+      "dismiss": "Ablehnen",
+      "dismissTitle": "Befund ablehnen",
+      "dismissPrompt": "Warum passt das nicht?",
+      "dismissTooShort": "Bitte schreibe einen Grund — er landet als Notiz an der Session.",
+      "dismissed": "abgelehnt",
+      "accepted": "angenommen",
+      "openCount": "{count} Befund offen | {count} Befunde offen",
+      "openMarker": "Offener Befund",
+      "decideFailed": "Das hat nicht geklappt.",
+      "alreadyDecided": "Dieser Befund ist bereits entschieden — die Liste wird aufgefrischt."
+    },
+    "review": {
+      "unreviewed": "noch nicht gegengelesen"
+    },
+    "log": {
+      "notes": "Notizen"
+    },
+    "impact": {
+      "eyebrow": "Vor der Korrektur",
+      "title": "Diese Änderung berührt anderes",
+      "loading": "Wir sehen nach, was daran hängt …",
+      "summary": "Diese Änderung berührt {fields} {chapters}.",
+      "direct": "· hängt direkt daran",
+      "indirect": "· hängt über andere Felder daran",
+      "note": "Nichts davon wird gelöscht. Die betroffenen Felder werden als „neu besprechen\" markiert — was die Änderung nicht wirklich trifft, macht der Berater danach wieder grün.",
+      "changed": "Seit dem letzten Blick hat sich etwas bewegt — das hier ist der neue Stand.",
+      "accept": "Annehmen und korrigieren",
+      "cancel": "Abbrechen",
+      "fieldCount": "{n} bestätigtes Feld | {n} bestätigte Felder",
+      "chapterCount": "in {n} Kapitel | in {n} Kapiteln"
+    },
+    "invariant": {
+      "title": "Das passt so noch nicht",
+      "generic": "„{field}\" hält eine Regel dieses Feldes noch nicht ein.",
+      "hex": "„{field}“ muss eine Farbe sein — sechs Zeichen mit Raute, zum Beispiel #4a3123.",
+      "count": "„{field}\" braucht zwischen {min} und {max} Einträge — je Eintrag eine Zeile oder mit Komma getrennt.",
+      "memberOf": "„{field}\" muss einer der Einträge aus „{source}\" sein.",
+      "subsetOf": "In „{field}\" darf nur stehen, was auch in „{source}\" steht.",
+      "sentenceOf": "„{field}\" muss wörtlich ein Satz aus „{source}\" sein.",
+      "mentionsFrom": "„{field}\" muss die Einträge aus „{source}\" auch nennen.",
+      "mentionsNone": "„{field}\" darf nichts aus „{source}\" wiederholen.",
+      "oneOf": "„{field}\" muss eine der angebotenen Möglichkeiten sein — wählt eine Karte statt eigenen Text zu schreiben."
+    },
+    "discoverAdmin": {
+      "title": "Veröffentlichungen",
+      "subtitle": "Jede Marke wird erst öffentlich, wenn sie hier freigegeben ist. Eine Ablehnung braucht eine Begründung — der Kunde sieht sie in seiner Leseansicht und kann erneut einreichen.",
+      "refresh": "Neu laden",
+      "more": "Mehr laden",
+      "shown": "{count} von {total} angezeigt",
+      "actionFailed": "Das hat nicht geklappt",
+      "tab": {
+        "pending": "Warteschlange",
+        "live": "Veröffentlicht",
+        "closed": "Abgelehnt & zurückgezogen",
+        "reports": "Meldungen"
+      },
+      "status": {
+        "pending": "Wartet",
+        "published": "Öffentlich",
+        "declined": "Abgelehnt",
+        "hidden": "Ausgeblendet",
+        "withdrawn": "Zurückgezogen"
+      },
+      "reportStatus": {
+        "open": "Offen",
+        "done": "Erledigt"
+      },
+      "col": {
+        "brand": "Marke",
+        "submitted": "Eingereicht",
+        "published": "Öffentlich seit",
+        "score": "Zahl",
+        "reports": "Meldungen",
+        "featured": "Brand of the Day",
+        "example": "Beispiel",
+        "status": "Status",
+        "reason": "Grund",
+        "received": "Eingegangen"
+      },
+      "score": {
+        "website": "Brand Score",
+        "document": "Fundament-Reife",
+        "none": "noch kein Check"
+      },
+      "owner": "Konto {id}",
+      "ownerUnknown": "Konto unbekannt",
+      "pendingUpdate": "Neuer Stand wartet",
+      "action": {
+        "preview": "Vorschau",
+        "approve": "Freigeben",
+        "decline": "Ablehnen",
+        "hide": "Ausblenden",
+        "unhide": "Wieder einblenden",
+        "resolve": "Erledigen"
+      },
+      "declineTitle": "Einreichung ablehnen",
+      "declineText": "„{title}“ wird nicht veröffentlicht. Die Begründung steht in der Leseansicht des Kunden.",
+      "declineUpdateText": "Die Aktualisierung von „{title}“ wird abgelehnt. Der freigegebene Stand bleibt öffentlich.",
+      "hideTitle": "Aus der Galerie nehmen",
+      "hideText": "„{title}“ antwortet danach 404. Die Zeile und der Stand bleiben erhalten, ihr könnt sie wieder einblenden.",
+      "noteLabel": "Begründung",
+      "noteHint": "Pflicht. Schreibt sie so, dass der Kunde weiß, was zu ändern ist.",
+      "notePlaceholder": "Im Kapitel Werte steht ein fremdes Logo …",
+      "approved": "Freigegeben — die Marke steht jetzt öffentlich.",
+      "declined": "Abgelehnt.",
+      "declinedKept": "Aktualisierung abgelehnt — der alte Stand bleibt öffentlich.",
+      "hiddenToast": "Aus der Galerie genommen.",
+      "unhiddenToast": "Wieder öffentlich.",
+      "featuredOn": "Brand of the Day gesetzt.",
+      "featuredReplaced": "Brand of the Day gesetzt — die vorige wurde abgelöst.",
+      "featuredOff": "Brand of the Day entfernt.",
+      "exampleOn": "Als Beispiel markiert.",
+      "exampleOff": "Beispiel-Markierung entfernt.",
+      "reportResolved": "Meldung erledigt.",
+      "reporterAnonymous": "anonym",
+      "emptyTitle": "Nichts zu entscheiden",
+      "empty": "Sobald jemand eine Marke einreicht, wartet sie hier auf die Freigabe.",
+      "reportsEmptyTitle": "Keine Meldungen",
+      "reportsEmpty": "Wenn jemand eine öffentliche Marke beanstandet, steht sie hier.",
+      "error": {
+        "already_decided": "Diese Einreichung wurde schon entschieden. Ladet die Liste neu.",
+        "publication_state": "Der Zustand dieser Marke erlaubt das nicht mehr.",
+        "not_published": "Nur eine öffentliche Marke kann Brand of the Day sein.",
+        "publication_not_found": "Diese Veröffentlichung gibt es nicht mehr.",
+        "not_found": "Diesen Eintrag gibt es nicht mehr.",
+        "publication_admin_unavailable": "Die Ablage antwortet gerade nicht. Bitte später noch einmal.",
+        "generic": "Bitte noch einmal versuchen."
+      }
+    },
+    "discoverReport": {
+      "trigger": "Melden",
+      "title": "Diese Marke melden",
+      "lead": "Sagt uns, was hier nicht stimmt — ein fremdes Logo, echte Personendaten, Beleidigungen. Wir sehen es uns an.",
+      "reasonLabel": "Was stimmt nicht?",
+      "reasonHint": "Pflicht, mindestens {min} Zeichen.",
+      "reasonPlaceholder": "Das Logo im Kopf gehört einer anderen Firma …",
+      "counter": "{count}/{max}",
+      "emailLabel": "E-Mail (freiwillig)",
+      "emailHint": "Nur für eine Rückfrage. Sie wird nicht veröffentlicht.",
+      "emailPlaceholder": "Eure E-Mail-Adresse",
+      "submit": "Melden",
+      "cancel": "Abbrechen",
+      "thanks": "Danke — wir sehen es uns an.",
+      "errors": {
+        "reportOpen": "Zu dieser Marke liegt schon eine Meldung von euch. Wir sind dran.",
+        "rateLimited": "Gerade genug gemeldet. Versucht es später noch einmal.",
+        "notFound": "Diese Marke gibt es hier nicht (mehr).",
+        "tooShort": "Bitte schreibt in ein paar Worten, was nicht stimmt.",
+        "unavailable": "Das ging gerade nicht. Bitte später noch einmal.",
+        "generic": "Hat nicht geklappt. Bitte noch einmal versuchen."
+      }
+    },
+    "publication": {
+      "button": "Veröffentlichen",
+      "eyebrow": "Veröffentlichen",
+      "title": "In Discover Brands zeigen",
+      "intro": "Wir frieren den bestätigten Stand ein und legen ihn dem Team zur Freigabe vor. Erst danach ist die Marke öffentlich und für Suchmaschinen sichtbar.",
+      "summary": {
+        "title": "So steht sie in der Galerie",
+        "brandTitle": "Titel",
+        "address": "Adresse",
+        "industry": "Branche",
+        "path": "Weiche",
+        "archetype": "Archetyp",
+        "locale": "Sprache",
+        "stand": "Stand",
+        "score": "Brand Score",
+        "scoreEmpty": "noch kein Check"
+      },
+      "hidden": "Nicht veröffentlicht werden: Gespräche, Entwürfe, Wettbewerber, Beschwerden — genau wie beim Teilen.",
+      "addressHint": "Trägt eine andere Marke denselben Namen, bekommt die Adresse eine Nummer.",
+      "consent": "Ich darf diese Marke veröffentlichen und weiß, dass sie nach Freigabe öffentlich und indexierbar ist",
+      "submit": "Zur Freigabe einreichen",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "blocker": {
+        "title": "Das fehlt noch",
+        "title_missing": "Die Marke braucht einen Titel.",
+        "context_open": "Kapitel A ist noch nicht abgenommen.",
+        "pvm_open": "Kapitel B ist noch nicht abgenommen.",
+        "archetype_missing": "Der Archetyp ist noch nicht bestätigt."
+      },
+      "state": {
+        "pending": "Wartet auf Freigabe",
+        "pendingAddress": "Nach der Freigabe erreichbar unter {address}",
+        "pendingUpdate": "Neuer Stand wartet auf Freigabe",
+        "updateDeclined": "Aktualisierung abgelehnt",
+        "public": "Öffentlich",
+        "publicSince": "seit {date}",
+        "update": "Stand aktualisieren",
+        "withdraw": "Zurückziehen",
+        "declined": "Abgelehnt",
+        "decidedAt": "am {date}",
+        "resubmit": "Erneut einreichen",
+        "hidden": "Ausgeblendet",
+        "hiddenHint": "Diese Marke wurde vom Team aus der Galerie genommen. Schreibt uns, wenn ihr das klären möchtet."
+      },
+      "card": {
+        "public": "Öffentlich in Discover",
+        "publicSince": "Öffentlich in Discover · seit {date}",
+        "pending": "Wartet auf Freigabe",
+        "declined": "Veröffentlichung abgelehnt",
+        "hidden": "Aus der Galerie genommen"
+      },
+      "submittedToast": "Eingereicht — wir melden uns nach der Prüfung.",
+      "withdrawnToast": "Zurückgezogen. Die Marke ist nicht mehr öffentlich.",
+      "notReady": "So noch nicht — es fehlt etwas.",
+      "limited": "Heute genug eingereicht. Versucht es morgen wieder.",
+      "failed": "Hat nicht geklappt. Bitte noch einmal versuchen."
+    },
+    "discover": {
+      "seoTitle": "Discover Brands — Marken, gebaut mit eurem persönlichen Markenberater",
+      "seoDescription": "Öffentliche Markenfundamente aus Branding Supply: Purpose, Werte, Archetyp, Stimme und Farbwelt — jede Marke mit ihrer ganzen Anatomie.",
+      "eyebrow": "Discover Brands",
+      "title": "Marken, gebaut mit eurem persönlichen Markenberater",
+      "lead": "Jede mit ihrer ganzen Anatomie: Purpose, Werte, Archetyp, Stimme, Farbwelt.",
+      "featured": {
+        "label": "Brand of the Day",
+        "cta": "Anatomie ansehen",
+        "prev": "Vorheriges Branding",
+        "next": "Nächstes Branding"
+      },
+      "filter": {
+        "path": "Weiche",
+        "allPaths": "Alle",
+        "archetype": "Archetyp",
+        "palette": "Farbwelt",
+        "industry": "Branche",
+        "allIndustries": "Alle Branchen",
+        "sort": "Sortierung",
+        "reset": "Filter zurücksetzen"
+      },
+      "path": {
+        "new": "Neue Marke",
+        "relaunch": "Relaunch"
+      },
+      "sort": {
+        "newest": "Neueste",
+        "score": "Brand Score",
+        "maturity": "Fundament-Reife"
+      },
+      "score": {
+        "website": "Brand Score",
+        "document": "Fundament-Reife",
+        "secondary": "{label} {value}"
+      },
+      "badge": {
+        "example": "Beispiel",
+        "relaunch": "Relaunch",
+        "preview": "Vorschau — wartet auf Freigabe"
+      },
+      "total": "{count} Marken",
+      "emptyTitle": "Noch keine veröffentlichte Marke — die erste könnte eure sein.",
+      "emptyCta": "Starte deine eigene",
+      "note": "Jedes Branding hier ist freiwillig öffentlich und vom Team freigegeben.",
+      "entry": {
+        "seoTitle": "{brand} — Anatomie einer Marke · Discover Brands",
+        "seoDescription": "Die Anatomie von {brand}: Purpose, Werte, Archetyp, Stimme und Farbwelt — öffentlich gezeigt mit Zustimmung der Marke.",
+        "eyebrow": "Anatomie",
+        "back": "Discover Brands",
+        "profile": "Steckbrief",
+        "field": {
+          "industry": "Branche",
+          "path": "Weiche",
+          "archetype": "Archetyp",
+          "voice": "Stimme",
+          "language": "Sprache",
+          "published": "Veröffentlicht"
+        },
+        "archetypePair": "{primary} · Rest {secondary}",
+        "language": {
+          "de": "Deutsch",
+          "en": "Englisch"
+        },
+        "fingerprint": {
+          "title": "Markenabdruck",
+          "lead": "Aus der Prüfung, die beim Veröffentlichen galt — acht Kategorien, gewichtet zum Wert {score}.",
+          "link": "Zum Brand-Check"
+        },
+        "similar": {
+          "title": "Ähnliche Marken",
+          "all": "Alle ansehen",
+          "archetype": "gleicher Archetyp",
+          "palette": "gleiche Farbwelt",
+          "industry": "gleiche Branche"
+        },
+        "cta": {
+          "body": "Gefällt euch, wie das gebaut ist? Marken sind keine Vorlagen — aber der Weg dorthin steht euch offen.",
+          "button": "Starte deine eigene"
+        },
+        "share": "Teilen",
+        "copy": "Link kopieren",
+        "copied": "Link kopiert",
+        "notFoundTitle": "Diese Marke gibt es hier nicht.",
+        "notFoundBody": "Vielleicht ist die Adresse falsch — oder das Branding ist nicht mehr öffentlich.",
+        "notFoundCta": "Zur Galerie"
+      },
+      "teaser": {
+        "eyebrow": "Discover Brands",
+        "title": "Seht, wie ein Markenfundament aussieht",
+        "body": "Marken, die auf Branding Supply gebaut wurden und ihre Anatomie freiwillig zeigen — Purpose, Werte, Archetyp, Stimme, Farbwelt.",
+        "cta": "Alle Marken ansehen"
+      }
+    },
+    "introCall": {
+      "seoTitle": "Erstgespräch — Branding Supply",
+      "seoDescription": "Ein Gespräch über eure Marke: wo ihr steht, was fehlt und was der nächste Schritt wäre. Kostenlos und unverbindlich.",
+      "hero": {
+        "eyebrow": "Erstgespräch",
+        "title": "Reden wir über eure Marke.",
+        "lead": "Ein Gespräch, in dem wir uns anschauen, wo ihr steht und was der nächste sinnvolle Schritt ist. Kostenlos, unverbindlich und ohne Verkaufsgespräch."
+      },
+      "steps": {
+        "s1Title": "Ihr schreibt uns",
+        "s1Body": "Drei Angaben und ein paar Sätze zu eurem Anliegen. Mehr brauchen wir für den Anfang nicht.",
+        "s2Title": "Wir melden uns",
+        "s2Body": "Mit ein paar Terminvorschlägen — per Mail, oder telefonisch, wenn ihr eine Nummer hinterlasst.",
+        "s3Title": "Wir sprechen",
+        "s3Body": "Dreissig bis vierzig Minuten. Danach wisst ihr, was wir empfehlen — auch wenn das heisst: noch nicht jetzt."
+      },
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "Euer Name",
+        "email": "E-Mail-Adresse",
+        "emailPlaceholder": "Eure E-Mail-Adresse",
+        "company": "Unternehmen oder Marke (optional)",
+        "companyPlaceholder": "Wie heisst eure Marke?",
+        "brand": "Um welches Branding geht es?",
+        "noBrand": "Keine bestimmte Marke",
+        "untitledBrand": "Branding ohne Namen",
+        "message": "Euer Anliegen",
+        "messagePlaceholder": "Woran arbeitet ihr gerade, und wo hakt es?",
+        "remaining": "Noch {count} Zeichen",
+        "phone": "Telefon (optional)",
+        "phonePlaceholder": "Telefonnummer, falls ihr lieber telefoniert",
+        "submit": "Gespräch anfragen",
+        "sending": "Wird gesendet …",
+        "consent": "Wir nutzen eure Angaben ausschliesslich, um auf diese Anfrage zu antworten. Mehr dazu:",
+        "error": {
+          "too_fast": "Einen Moment noch — dann schickt es bitte erneut ab.",
+          "rate_limited": "Das waren gerade viele Anfragen. Versucht es in einer Minute noch einmal.",
+          "unavailable": "Das hat gerade nicht geklappt. Versucht es in einer Minute noch einmal — oder schreibt uns direkt."
+        }
+      },
+      "done": {
+        "title": "Angekommen — danke.",
+        "body": "Wir haben eure Anfrage und melden uns mit ein paar Terminvorschlägen.",
+        "bodyMailed": "Wir haben eure Anfrage und melden uns mit ein paar Terminvorschlägen. Eine Bestätigung liegt in eurem Postfach."
+      },
+      "what": {
+        "eyebrow": "Worum es geht",
+        "title": "Ein Gespräch, kein Angebotstermin.",
+        "body": "Wir hören zu, stellen Fragen und sagen euch ehrlich, was wir sehen. Wenn ihr danach allein weiterarbeitet, ist das ein gutes Ergebnis — dann wisst ihr wenigstens, woran ihr seid.",
+        "honest": "Was ein Brand Design kostet, hängt davon ab, was ihr braucht. Deshalb steht hier keine Zahl: eine erfundene wäre teurer als eine fehlende."
+      }
+    },
+    "designLayer": {
+      "label": "Brand Design",
+      "lockedNote": "Baut auf der Foundation auf",
+      "info": "Die visuelle Identität der Marke — hergeleitet aus Foundation und Brand Language, nicht aus dem Katalog. Farben, Schrift und Zeichen entstehen aus Archetyp, Werten und Stimme; jede Entscheidung trägt ihre Begründung. Freigeschaltet wird Brand Design vom Studio nach dem Erstgespräch.",
+      "progress": "{done} von {total} Kapiteln",
+      "result": "Visuelle Identität"
+    },
+    "kitLayer": {
+      "label": "Brand Book & Kit",
+      "lockedNote": "Teil der Ableitung",
+      "info": "Regelwerk und Werkzeuge: Das Book erklärt, das Kit arbeitet. Hier wird nichts Neues entschieden — es wird kuratiert und ausgeliefert, was in Foundation und Design längst steht. Freigeschaltet wird die Ableitung vom Studio nach dem Erstgespräch.",
+      "progress": "{done} von {total} Kapiteln",
+      "result": "Kit"
+    },
+    "inspiration": {
+      "title": "Vorbilder",
+      "intro": "Screenshots von allem, was gefällt — je Bild nur eine Angabe, was daran: Farbwelt, Typografie, Zeichen, Bildsprache oder Komposition. Ein Satz dazu hilft, ist aber nicht Pflicht.",
+      "counter": "{count} von {max}",
+      "loading": "Die Vorbilder werden geladen …",
+      "add": "Screenshots hinzufügen",
+      "formats": "PNG, JPG, WebP · bis 5 MB je Bild",
+      "itemLabel": "Vorbild {number}",
+      "areaLabel": "Bereich von Vorbild {number}",
+      "noteLabel": "Notiz zu Vorbild {number}",
+      "notePlaceholder": "Was gefällt daran? (optional)",
+      "remove": "Vorbild {number} entfernen",
+      "limits": "Bis {max} Bilder je Marke · höchstens 5 MB je Bild",
+      "privacy": "Vorbilder bleiben privat: sie erscheinen weder im Dokument noch im geteilten Link noch im Beispiel. Sie sind Fremdwerke — wir lesen sie, wir bauen sie nicht nach.",
+      "error": {
+        "tooLarge": "Das Bild ist größer als 5 MB. Ein Screenshot in Bildschirmgröße reicht völlig.",
+        "unsupportedType": "Nur PNG, JPG und WebP. Diese Datei ist keines davon.",
+        "limitReached": "Mehr als {max} Vorbilder nehmen wir nicht — für ein weiteres muss eines weichen.",
+        "areaInvalid": "Diesen Bereich gibt es nicht. Wählt Farbwelt, Typografie, Zeichen, Bildsprache oder Komposition.",
+        "noteTooLong": "Die Notiz ist zu lang — ein Satz genügt.",
+        "rateLimited": "Das ging zu schnell hintereinander. Wartet eine Minute und versucht es noch einmal.",
+        "notFound": "Dieses Vorbild gibt es nicht mehr.",
+        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+      },
+      "skipped": "Fridas Vorschlag ist gewählt — Vorbilder entfallen in diesem Kapitel. Die Weiche oben lässt sich jederzeit korrigieren."
+    },
+    "reading": {
+      "title": "Was Frida darin liest",
+      "intro": "Jedes Vorbild wird an der Foundation gemessen, nicht umgekehrt: Was trägt schon, weil es zu Archetyp, Werten und Ton passt — und was geht besser? Die Stelle, an der gemessen wurde, steht bei jedem Urteil.",
+      "state": {
+        "read": "gelesen",
+        "stale": "veraltet"
+      },
+      "keeps": "Trägt schon · {count}",
+      "improves": "Geht besser · {count}",
+      "anchor": "gemessen an: {anchor}",
+      "unread": "Noch nicht gelesen",
+      "unreadHint": "Kommt mit dem nächsten Lauf dazu.",
+      "empty": "Zuerst Vorbilder ablegen — dann liest Frida sie gegen die Foundation.",
+      "running": "Frida liest die Vorbilder …",
+      "run": {
+        "first": "Vorbilder lesen",
+        "more": "{count} neue Vorbilder lesen",
+        "again": "Vorbilder erneut lesen"
+      },
+      "limits": "Bis {max} Läufe je Marke und Tag",
+      "remaining": "Heute noch {count} von {max} Läufen",
+      "error": {
+        "unavailable": "Das Lesen von Bildern ist auf dieser Instanz gerade nicht eingerichtet. Das Kapitel geht trotzdem weiter — Frida schlägt die Richtung aus der Foundation vor.",
+        "noImages": "Es liegt kein Vorbild da, das gelesen werden könnte.",
+        "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
+        "notFound": "Diese Marke gibt es nicht mehr.",
+        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+      }
+    },
+    "dna": {
+      "error": {
+        "unavailable": "Der Vorschlag lässt sich gerade nicht rechnen. Bitte später noch einmal versuchen — das Kapitel bleibt, wie es ist.",
+        "noFoundation": "Dafür fehlt noch die Foundation. Bestätigt zuerst Werte, Archetyp, Ton und Richtung — daraus wird die DNA abgeleitet.",
+        "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
+        "notFound": "Diese Marke gibt es nicht mehr.",
+        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+      },
+      "title": "Visual DNA",
+      "intro": "Zehn Eigenschaften, die sich nicht gegenseitig erklären. Jede ist aus der Foundation hergeleitet — die Begründung steht daneben, damit sich widersprechen lässt.",
+      "introWithReferences": "Zehn Eigenschaften, die sich nicht gegenseitig erklären. Jede ist aus der Foundation hergeleitet, und wo ein Vorbild sie bestätigt oder korrigiert, steht das dabei. Die Begründung steht daneben, damit sich widersprechen lässt.",
+      "state": {
+        "ready": "Vorschlag steht"
+      },
+      "origin": "Herkunft: {origin}",
+      "empty": "Noch kein Vorschlag. Frida leitet ihn aus der Foundation ab.",
+      "running": "Frida leitet die Richtung ab …",
+      "limits": "Bis {max} Vorschläge je Tag.",
+      "remaining": "Noch {count} von {max} Vorschlägen heute.",
+      "run": {
+        "first": "Richtung vorschlagen",
+        "again": "Neu vorschlagen"
+      },
+      "board": {
+        "differs": "Anders als der Vorschlag: {dimensions}",
+        "same": "Der Vorschlag selbst"
+      },
+      "mix": {
+        "title": "Mix & Match",
+        "intro": "Haltet fest, was sitzt — den Rest schlage ich neu vor. „Farbwelt aus Board 1, Typografie aus Board 3“ ist hier kein Sonderfall, sondern der Normalweg.",
+        "held": "{count} von {total} festgehalten",
+        "hold": "Festhalten",
+        "holding": "Festgehalten",
+        "resuggest": "Nicht festgehaltene neu vorschlagen",
+        "resuggestHint": "Jede offene Zeile rückt ein Board weiter — nach dreimal Klicken steht wieder der Anfang."
+      },
+      "stand": {
+        "title": "Der Stand",
+        "from": "Farbwelt aus „{color}“ · Typografie aus „{type}“",
+        "note": "Diese Belegung ist die Vorbelegung aller folgenden Kapitel — Farbwelt, Typografie, Zeichen, Bildsprache und Bewegung fangen damit an."
+      },
+      "card": {
+        "above": "Der Vorschlag steht oben in voller Länge — hier wird er bestätigt."
+      }
+    },
+    "type": {
+      "pair": {
+        "title": "Schriftpaar",
+        "tag": "i.pair · sechs kuratierte Paare",
+        "intro": "Zwei Rollen: eine Schrift für Überschriften, eine für den Fließtext. Die Mono steht fest daneben und gehört Herkunft, Preisen und Zahlen — mehr als drei Schriften hat keine Marke nötig. Alle Familien sind selbst gehostet; hier lädt nichts von einem fremden Server.",
+        "proposed": "Aus der DNA",
+        "specimenBody": "So liest sich ein Absatz, den die Kundschaft wirklich liest — zehn Zeilen weiter klingt er hoffentlich immer noch nach dieser Marke.",
+        "specimenMono": "Bestellnummer 4711 · 38,00 € · 07/2026"
+      },
+      "scale": {
+        "title": "Hierarchie",
+        "tag": "i.scale · {ratio}",
+        "intro": "Wie weit Überschrift und Fließtext auseinanderliegen. Der Vorschlag kommt aus der DNA-Dimension „Komposition“; die Zahl daneben ist das Verhältnis der größten Überschrift zum Fließtext.",
+        "note": {
+          "calm": "Wenige Größen, viel Zeilenabstand — der ruhige Fall, der fast überall trägt.",
+          "dense": "Redaktionell: kleinere Sprünge, mehr Text je Bildschirm.",
+          "loud": "Große Sprünge — gut für Kampagnen, unruhig in einem Handbuch."
+        }
+      },
+      "rules": {
+        "title": "Schrift-Regeln",
+        "tag": "i.rules · Wirkung sofort im Specimen",
+        "intro": "Drei Stellschrauben, alle nur an der Überschrift. Der Fließtext bleibt unangetastet: an ihm zu drehen kostet Lesbarkeit und gibt der Marke nichts.",
+        "weight": "Überschrift-Gewicht",
+        "tracking": "Laufweite",
+        "uppercase": "Versalien",
+        "on": "An",
+        "off": "Aus",
+        "uppercaseHint": "Versalien sind eine Ausnahme, kein Stil — sie kosten Lesbarkeit.",
+        "weightWarning": "{family} gibt es nicht in diesem Schnitt — der Browser malt ihn dann selbst, und beurteilt würde eine Schrift, die es nicht gibt. Besser 400 oder 700 nehmen, oder ein anderes Paar."
+      },
+      "specimen": {
+        "title": "Specimen · {pair} ({heading} · {body})",
+        "heading": "Eine Überschrift in dieser Schrift",
+        "subheading": "Die zweite Ebene, eine Stufe kleiner",
+        "body": "Hier steht der Absatz, an dem sich ein Schriftpaar wirklich entscheidet: nicht die Schlagzeile, sondern die sechs Zeilen darunter. Wer nach zehn Zeilen noch mühelos liest, hat die richtige Wahl getroffen.",
+        "mono": "Bestellnummer 4711 · 38,00 € · Ernte 07/2026 · 1 200 m",
+        "monoNote": "Die Mono ist FEST (Regel „höchstens drei Schriften“) und trägt Herkunft, Preise und Zahlen — sonst nirgends."
+      },
+      "scene": {
+        "title": "In der Anwendung",
+        "intro": "Dieselbe Typografie in der bestätigten Farbwelt — so, wie sie auf einer Seite ankommt.",
+        "note": "Die Szene rechnet mit denselben Werten wie das Specimen darüber: eine andere Wahl oben ändert sie sofort."
+      }
+    },
+    "mark": {
+      "kind": {
+        "title": "Stufe 1 · Richtung",
+        "tag": "j.kind · vier Möglichkeiten",
+        "intro": "Was für ein Zeichen soll es werden — und warum. Der Vorschlag kommt aus der DNA-Dimension „Visueller Stil“ und aus dem Namen. Was hier steht, ist die Richtung für den Menschen, der das Zeichen später zeichnet.",
+        "proposed": "Aus der DNA",
+        "reason": {
+          "word": "Der Name trägt die Aussage. Eine Wortmarke braucht keine Erklärung und altert am langsamsten — sie ist fast immer die ehrliche Antwort für eine junge Marke.",
+          "pictorial": "Ein Zeichen ohne Namen wirkt erst nach vielen Kontakten. Wer selten gesehen wird, bezahlt diese Wiedererkennung teuer.",
+          "combination": "Wortmarke plus Zeichen: flexibel für Avatar und Schild — aber zwei Dinge, die gepflegt und zusammen gedacht werden wollen.",
+          "monogram": "Der Anfangsbuchstabe als Avatar und App-Icon. Als Hauptzeichen sagt er wenig, als Variante ist er ohnehin Pflicht."
+        }
+      },
+      "brief": {
+        "title": "Stufe 1 · Briefing",
+        "tag": "j.brief · der Auftrag an den Menschen",
+        "intro": "Das ist der Text, den ein Designer bekommt — und der Prüfstein für jeden Entwurf. Er ist bearbeitbar: ein Briefing, das sich nicht selbst sagen lässt, trägt nicht.",
+        "derived": "gerechnet",
+        "empty": "Noch kein Briefing. Frida leitet es aus der Foundation, der DNA, der Farbwelt und dem Schriftpaar ab.",
+        "running": "Frida schreibt das Briefing …",
+        "limits": "Bis {max} Briefings je Tag.",
+        "remaining": "Noch {count} von {max} Briefings heute.",
+        "run": {
+          "first": "Briefing erzeugen",
+          "again": "Briefing neu erzeugen"
+        },
+        "error": {
+          "unavailable": "Das Briefing lässt sich gerade nicht erzeugen. Bitte später noch einmal versuchen — das Kapitel bleibt, wie es ist.",
+          "noFoundation": "Dafür fehlt noch die Foundation. Bestätigt zuerst Werte, Archetyp, Ton und Richtung — daraus wird das Briefing abgeleitet.",
+          "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
+          "notFound": "Diese Marke gibt es nicht mehr.",
+          "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+        }
+      },
+      "examples": {
+        "title": "Stufe 2 · Gesetzte Beispiele",
+        "tag": "j.examples · gerechnet, kein KI-Aufruf",
+        "intro": "Wortmarke und Monogramm aus dem Schriftpaar ({family}) und der Farbwelt, in vier Varianten. Der gestrichelte Rahmen ist der Schutzraum — die Fläche, die frei bleibt.",
+        "notALogo": "Das ist Satz, keine Erfindung: gesetzte Beispiele, kein Logo. Sie zeigen, wie der Name in dieser Schrift und diesen Farben aussieht — das Zeichen selbst zeichnet ein Mensch.",
+        "clearSpace": {
+          "show": "Schutzraum einblenden",
+          "hide": "Schutzraum ausblenden"
+        }
+      },
+      "variant": {
+        "note": {
+          "primary": "Der Normalfall: Marken-Ton auf dem eigenen Papier.",
+          "inverted": "Umgekehrt — für dunkle Flächen, Verpackung und Fotos.",
+          "mono": "Ein Ton, für Prägung, Stempel und Gravur. Hier gibt es keine zweite Farbe.",
+          "icon": "Fläche statt Papier: Avatar, App-Icon, Favicon."
+        }
+      },
+      "setting": {
+        "title": {
+          "wordmark": "Wortmarke {brand}",
+          "monogram": "Monogramm von {brand}"
+        },
+        "note": {
+          "wordmark": "Der ganze Name, gesetzt in der Überschriften-Schrift.",
+          "monogram": "Der Anfangsbuchstabe in der Kachel — für alles, was klein und quadratisch ist."
+        }
+      },
+      "scene": {
+        "title": "Im Zusammenhang",
+        "intro": "Dieselbe Wortmarke im Kopf einer Anwendung — in dieser Farbwelt und dieser Schrift."
+      },
+      "drafts": {
+        "title": "Stufe 3 · KI-Entwürfe",
+        "tag": "j.drafts · {count} behalten",
+        "intro": "Erzeugt aus Briefing, Visual DNA und Farbwelt. Das sind IDEEN für die Designer-Arbeit — kein fertiges Logo, keine Prüfung, kein Anspruch auf Schutzfähigkeit.",
+        "loading": "Entwürfe werden geladen …",
+        "empty": "Noch keine Entwürfe. Ein Lauf erzeugt vier auf einmal.",
+        "running": "Die Entwürfe entstehen … das dauert einen Moment.",
+        "limits": "{max} Läufe je Tag, {per} Entwürfe je Lauf.",
+        "remaining": "Noch {count} von {max} Läufen heute.",
+        "full": "Mehr als {max} Entwürfe hält eine Marke nicht. Verwerft ein paar, dann geht der nächste Lauf.",
+        "disclaimer": "Entwurf — Idee für die Designer-Arbeit, kein geprüftes Logo.",
+        "promptHash": "Prompt {hash}",
+        "alt": "Entwurf: {title}",
+        "keep": "Behalten",
+        "kept": "Wird behalten",
+        "discard": "Verwerfen",
+        "trademark": "Markenrecht: Ein Entwurf sagt nichts über Schutzfähigkeit oder Ähnlichkeit zu bestehenden Marken. Vor der Anmeldung prüft das eine Anwältin — wir prüfen es nicht.",
+        "private": "Behaltene Entwürfe bleiben privat: sie stehen in diesem Kapitel und im Briefing — nie im Foundation-Snapshot und nie im geteilten Link.",
+        "run": {
+          "first": "Vier Entwürfe erzeugen",
+          "again": "Vier weitere Entwürfe"
+        },
+        "error": {
+          "unavailable": "Entwürfe lassen sich hier gerade nicht erzeugen. Das Kapitel läuft ohne sie weiter — Richtung, Briefing und die gesetzten Beispiele bleiben, wie sie sind.",
+          "noBrief": "Dafür fehlt noch das Briefing. Erzeugt es eine Stufe weiter oben — daraus entstehen die Entwürfe.",
+          "limitReached": "Es liegen schon genug Entwürfe. Verwerft ein paar, dann geht der nächste Lauf.",
+          "failed": "Der Lauf hat kein brauchbares Bild geliefert. Versucht es später noch einmal.",
+          "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
+          "notFound": "Diesen Entwurf gibt es nicht mehr.",
+          "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+        }
+      }
+    },
+    "imagery": {
+      "photo": {
+        "title": "Bild-Prinzipien",
+        "tag": "k.photo · drei Vorschläge",
+        "intro": "Vier Achsen entscheiden alles Weitere: Licht, Ausschnitt, Menschen, Farbigkeit. Daraus wird der Satz, der an die Fotografin geht.",
+        "proposed": "Aus der DNA",
+        "sketch": "Stil-Skizze: {name}",
+        "noPhotos": "Die Skizzen sind aus der Farbwelt gezeichnet, keine Fotos. Ein Beispielbild würde die Entscheidung verkaufen, um die es hier geht — gewählt wird ein Prinzip, kein Motiv."
+      },
+      "illustration": {
+        "title": "Illustration",
+        "tag": "k.illustration",
+        "intro": "Gibt es überhaupt Illustration — und wenn ja, in welcher Sprache? „Keine\" ist eine vollwertige Antwort und die einzige Regel, die niemand brechen kann.",
+        "note": {
+          "none": "Fotos und Typografie tragen alles — die einfachste Regel, die man nicht brechen kann.",
+          "line": "Feine Konturzeichnungen für Herkunft und Ablauf — ruhig, gut erweiterbar.",
+          "area": "Farbflächen ohne Kontur — plakativ, näher an Verpackung als an Handbuch.",
+          "organic": "Gezeichnete, unregelmäßige Formen — warm, aber schwer konsistent zu halten."
+        }
+      },
+      "icons": {
+        "title": "Icons",
+        "tag": "k.icons · Phosphor",
+        "intro": "Dieselben fünf Icons in drei Stärken, daneben die Probe mit der echten Strichstärke. Die einzige Frage hier ist, ob der Strich zur Textschrift passt.",
+        "sample": "Strichstärke-Probe: {stroke}",
+        "strokeLabel": "Strichstärke {stroke} bei 24 px",
+        "line": "So steht ein Icon neben der Textschrift.",
+        "note": {
+          "regular": "Gleiche Strichstärke wie eine Textschrift — ruhig, unauffällig.",
+          "fill": "Gefüllt: gut lesbar auf kleinen Flächen, wirkt schwerer.",
+          "bold": "Dicker Strich — laut, und neben einer Serif sehr laut."
+        },
+        "rule": {
+          "fits": "Passt: {stroke} liegt in der Spanne der Schrift ({family}: {range}).",
+          "heavy": "Kräftiger als die Schrift: {stroke} liegt über der Spanne ({family}: {range}). Das ist kein Fehler, nur lauter — bestätigen lässt es sich trotzdem.",
+          "light": "Feiner als die Schrift: {stroke} liegt unter der Spanne ({family}: {range}) — die Icons verschwinden neben der Zeile.",
+          "area": "Eine Fläche hat keine Strichstärke. Neben {family} wirkt sie schwerer als jede Linie — in der kleinsten benutzten Größe prüfen."
+        }
+      },
+      "dodont": {
+        "title": "Do & Don’t",
+        "tag": "k.dodont · gerechnet aus den drei Entscheidungen",
+        "intro": "Sechs Paare: die vier Achsen des Prinzips, dazu Illustration und Icons. Jedes Do hat sein Don’t — erst das Paar macht die Regel prüfbar."
+      }
+    },
+    "motion": {
+      "tempo": {
+        "title": "Tempo",
+        "tag": "l.tempo · aus der DNA",
+        "intro": "Tempo liest man nicht, man sieht es. Die drei Fassungen stehen nebeneinander und laufen gleichzeitig — „Übergang abspielen“ klicken und entscheiden, welche passt.",
+        "proposed": "Aus der DNA",
+        "play": "Übergang abspielen",
+        "reduced": "Weniger Bewegung simulieren",
+        "reducedOn": "Weniger Bewegung: an",
+        "note": {
+          "calm": "Langsam anlaufend, sanft ausklingend. Wirkt ruhig und sicher — und ein wenig gemächlich.",
+          "lively": "Kürzer, mit leichtem Überschwingen: wach und freundlich, aber unruhiger auf langen Seiten.",
+          "snappy": "Fast ohne Anlauf. Wirkt effizient und nimmt der Marke einen Teil ihrer Ruhe."
+        }
+      },
+      "transitions": {
+        "title": "Übergänge",
+        "tag": "l.transitions · drei Dauern, ein Versatz",
+        "intro": "Mehr Tokens heißt mehr Streit im Team. Drei reichen — sie hängen alle am Tempo oben und ändern sich mit ihm. Genau diese Namen gehen später ins Handbuch und in den Code.",
+        "col": {
+          "token": "Token",
+          "duration": "Dauer",
+          "easing": "Kurve",
+          "usage": "Wofür"
+        }
+      },
+      "scene": {
+        "title": "In der Anwendung",
+        "intro": "Dieselbe Fläche im gewählten Tempo: Karten blenden versetzt ein, der Knopf reagiert beim Überfahren. Hell und dunkel schaltet die Szene selbst um.",
+        "note": "Alles hier läuft mit {duration} Grunddauer. Der Schalter oben zeigt, was Menschen sehen, die im Betriebssystem weniger Bewegung eingestellt haben — dann steht der Endzustand sofort."
+      },
+      "logo": {
+        "title": "Kinetisches Zeichen",
+        "tag": "l.logo",
+        "intro": "Bewegt sich das Zeichen? Ein Ja kostet eine eigene Datei, die jemand pflegen muss — und eine Fassung ohne Bewegung. Ein Nein ist eine Entscheidung, keine Auslassung.",
+        "note": {
+          "no": "Das Zeichen steht still — auch im Vorspann. Spart eine Datei, die sonst niemand aktuell hält.",
+          "yes": "Ein Aufbau von 800 ms für Vorspann und Ladefläche. Danach steht das Zeichen; im Fließtext bewegt es sich nie."
+        }
+      },
+      "rules": {
+        "title": "Bewegungs-Regeln",
+        "tag": "l.rules · aus den zwei Entscheidungen",
+        "intro": "Sechs Sätze, jeder an einer echten Seite nachprüfbar. Die letzte Zeile gilt immer und lässt sich nicht abwählen: weniger Bewegung heißt Endzustand, nicht Zeitlupe."
+      }
+    },
+    "scene": {
+      "wordmarkFallback": "Diese Marke",
+      "eyebrow": "Neu · Ausgabe 01",
+      "nav1": "Angebot",
+      "nav2": "Über uns",
+      "nav3": "Kontakt",
+      "heading": "Ein Satz, der sagt, wofür diese Marke steht.",
+      "body": "Hier steht der Absatz, den Besucher wirklich lesen: was die Marke macht, für wen — und warum es so aussieht und nicht anders.",
+      "button": "Mehr erfahren",
+      "link": "Zur Übersicht",
+      "cardTitle": "Eine Karte, eine Aussage",
+      "cardText": "So sehen Flächen aus, die auf dem Grund liegen: Rand, Abstand und Kontrast kommen aus derselben Rampe.",
+      "cardMeta": "Stand heute · 12 Einträge",
+      "quote": "Ein Zitat zeigt, wie die Überschriften-Schrift in längeren Sätzen läuft.",
+      "toggleToDark": "Dunkle Ansicht zeigen",
+      "toggleToLight": "Helle Ansicht zeigen",
+      "reducedMotion": "Weniger Bewegung eingestellt — Übergänge stehen still. Werte: {duration} ms · {easing} · Versatz {stagger} ms."
+    },
+    "kit": {
+      "moves": {
+        "nomenclature": {
+          "m1": {
+            "text": {
+              "solo": "Namen sind billig, bis sie auf einem Schild stehen. Sag mir zuerst, welche Sorten von Dingen du überhaupt benennst — dann schlage ich je Sorte EIN Muster vor, kein Sortiment.",
+              "team": "Namen sind billig, bis sie auf einem Schild stehen. Sagt mir zuerst, welche Sorten von Dingen ihr überhaupt benennt — dann schlage ich je Sorte EIN Muster vor, kein Sortiment."
+            },
+            "help": "Nur auf dem Weg mit Markenarchitektur — ohne Untermarken gäbe es nichts zu bestätigen."
+          },
+          "m2": {
+            "text": {
+              "solo": "Beim Namen halte ich mich an Otto: erst überleben, dann gefallen. Die Muster unten sind hergeleitet, nicht erfunden — wenn dir eines nicht gefällt, korrigier es, aber sag mir, welche Regel dann stattdessen gilt.",
+              "team": "Beim Namen halte ich mich an Otto: erst überleben, dann gefallen. Die Muster unten sind hergeleitet, nicht erfunden — wenn euch eines nicht gefällt, korrigiert es, aber sagt mir, welche Regel dann stattdessen gilt."
+            }
+          },
+          "m3": {
+            "text": {
+              "solo": "Und der Prüfstein für jeden künftigen Namen: Kann man ihn am Telefon buchstabieren? Wenn nicht, kostet er dich jeden Tag ein bisschen Geld.",
+              "team": "Und der Prüfstein für jeden künftigen Namen: Kann man ihn am Telefon buchstabieren? Wenn nicht, kostet er euch jeden Tag ein bisschen Geld."
+            }
+          }
+        },
+        "aiguide": {
+          "m1": {
+            "text": {
+              "solo": "Zwei Fragen entscheiden das ganze Kapitel: Was darf eine Maschine in deinem Namen schreiben — und wer liest, bevor es rausgeht. Alles danach sind Leitplanken, keine neuen Entscheidungen.",
+              "team": "Zwei Fragen entscheiden das ganze Kapitel: Was darf eine Maschine in eurem Namen schreiben — und wer liest, bevor es rausgeht. Alles danach sind Leitplanken, keine neuen Entscheidungen."
+            }
+          },
+          "m2": {
+            "text": {
+              "solo": "Die Leitplanken lese ich mit Nikas Ohr gegen: deine Ton-Wörter, deine Tabu-Wörter, deine Werte, deine Namens-Regeln. Ich habe nichts erfunden — ich habe sortiert. Streich, was nicht stimmt.",
+              "team": "Die Leitplanken lese ich mit Nikas Ohr gegen: eure Ton-Wörter, eure Tabu-Wörter, eure Werte, eure Namens-Regeln. Ich habe nichts erfunden — ich habe sortiert. Streicht, was nicht stimmt."
+            },
+            "help": {
+              "solo": "Ton-Parameter aus deinen Ton-Wörtern · Tabus aus deiner Meiden-Liste · Schreibweisen aus deinen Namens-Regeln.",
+              "team": "Ton-Parameter aus euren Ton-Wörtern · Tabus aus eurer Meiden-Liste · Schreibweisen aus euren Namens-Regeln."
+            }
+          },
+          "m3": {
+            "text": {
+              "solo": "Die drei Vorlagen darunter sind pur gerechnet: kein Modell hat sie geschrieben. Kopier sie in dein KI-Werkzeug — und wenn eine Leitplanke sich ändert, ändern sie sich mit.",
+              "team": "Die drei Vorlagen darunter sind pur gerechnet: kein Modell hat sie geschrieben. Kopiert sie in euer KI-Werkzeug — und wenn eine Leitplanke sich ändert, ändern sie sich mit."
+            }
+          }
+        },
+        "presskit": {
+          "m1": {
+            "text": {
+              "solo": "Hier entsteht nichts Neues — ich stelle zusammen, was du längst entschieden hast. Zwei Dinge muss trotzdem ein Mensch sagen: welche Fakten reisen dürfen und wer für Presse ansprechbar ist.",
+              "team": "Hier entsteht nichts Neues — ich stelle zusammen, was ihr längst entschieden habt. Zwei Dinge muss trotzdem ein Mensch sagen: welche Fakten reisen dürfen und wer für Presse ansprechbar ist."
+            }
+          },
+          "m2": {
+            "text": {
+              "solo": "Deine harten Zahlen aus dem Kontext bleiben intern. Ins Pressekit kommt nur, was du hier einzeln anhakst — Voreinstellung ist: keiner.",
+              "team": "Eure harten Zahlen aus dem Kontext bleiben intern. Ins Pressekit kommt nur, was ihr hier einzeln anhakt — Voreinstellung ist: keiner."
+            },
+            "help": "Die Auswahl wird als eigener Wert gespeichert; die Rohliste reist nie."
+          }
+        }
+      },
+      "nomenclature": {
+        "note": "Dieses Kapitel gibt es nur auf dem Weg mit Markenarchitektur — ohne Untermarken gäbe es kein Muster, das zu bestätigen wäre."
+      },
+      "types": {
+        "title": "Wofür braucht die Marke Namen?",
+        "tag": "Mehrfachwahl",
+        "intro": "Die Sorten wählen, die es heute gibt oder für die schon geplant wird. Was nicht benannt wird, bleibt aus der Liste."
+      },
+      "patterns": {
+        "title": "Ein Muster je Sorte",
+        "tag": "Entwurf",
+        "intro": "Je gewählter Sorte eine Regel, ein Beispiel und die Stelle, aus der sie folgt.",
+        "empty": "Noch kein Muster — der Entwurf entsteht unten auf der Karte.",
+        "column": {
+          "type": "Sorte",
+          "pattern": "Muster",
+          "example": "Beispiel",
+          "source": "Herkunft"
+        }
+      },
+      "rules": {
+        "title": "Die Regeln",
+        "tag": "Vorschlag",
+        "intro": "Aus den Mustern gerechnet: Reihenfolge, Schreibweise, Trennzeichen und was nie passiert. Übernehmt sie oder ändert sie auf der Karte.",
+        "empty": "Sobald ein Muster steht, rechne ich die Regeln daraus.",
+        "apply": "Regeln übernehmen",
+        "applied": "Übernommen"
+      },
+      "prompts": {
+        "title": "Drei Vorlagen zum Kopieren",
+        "tag": "Pur gerechnet",
+        "intro": "System-Prompt, Social-Post, E-Mail an Kunden — aus den Werten und den Leitplanken dieser Marke. Kein Modell war beteiligt.",
+        "loading": "Rechne die Vorlagen …",
+        "empty": "Die Vorlagen entstehen, sobald die Leitplanken stehen.",
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "apply": "Vorlagen übernehmen",
+        "applied": "Übernommen"
+      },
+      "facts": {
+        "title": "Welche Fakten dürfen reisen?",
+        "tag": "Opt-in je Eintrag",
+        "intro": "Die Zahlen aus dem Kontext bleiben intern. Einzeln anhaken, was ins Pressekit darf.",
+        "loading": "Fakten werden geholt …",
+        "empty": "Im Kontext sind keine Fakten hinterlegt — das Pressekit funktioniert auch ohne.",
+        "hint": "Voreinstellung ist: keiner. Was hier angehakt wird, wird als eigener Wert gespeichert; die Rohliste reist nie."
+      },
+      "contact": {
+        "title": "Presse-Kontakt",
+        "tag": "Optional",
+        "intro": "Eine Person, an die sich Presse wendet — Name, Rolle, E-Mail.",
+        "loading": "Suche vorhandene Ansprechpartner …",
+        "public": "Diese Angabe reist öffentlich im Pressekit und in jeder Datei, die herausgegeben wird. Eine Telefonnummer nehmen wir bewusst nicht auf.",
+        "template": {
+          "account": "Konto-Inhaber",
+          "intro": "Kontakt aus dem Erstgespräch",
+          "manual": "Oder tragt jemand anderen ein — die Karten füllen die Felder nur vor."
+        },
+        "field": {
+          "name": "Name",
+          "role": "Rolle",
+          "email": "E-Mail"
+        },
+        "apply": "Kontakt übernehmen",
+        "applied": "Übernommen"
+      },
+      "summary": {
+        "title": "So liest sich das Pressekit",
+        "tag": "Nur lesen",
+        "intro": "Zusammengestellt aus dem, was oben steht. Was fehlt, steht als fehlend da — nichts wird ersetzt.",
+        "loading": "Stelle das Pressekit zusammen …",
+        "empty": "Sobald Tagline, Boilerplates und Fakten stehen, sieht man hier das ganze Kit.",
+        "apply": "Vorschau übernehmen",
+        "applied": "Übernommen"
+      }
+    },
+    "kitPage": {
+      "title": "Kit",
+      "eyebrow": "Lieferseite",
+      "headline": "{title} — Brand Kit",
+      "stand": "Stand {date}",
+      "computed": "gerechnet aus euren bestätigten Werten, nicht gespeichert",
+      "contentLocale": "Inhaltssprache {locale}",
+      "toBook": "Brand Book",
+      "bundle": "Bündel laden ({file})",
+      "missingTiles": "Ohne Brand Design — eine Kachel fehlt | Ohne Brand Design — {count} Kacheln fehlen",
+      "complete": "Vollständig",
+      "correctHint": "Hier wird nichts entschieden. Korrigiert wird in den Kapiteln — rechts der Weg dorthin.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "download": "Laden",
+      "loading": "Wird geladen …",
+      "previewFailed": "Die Vorschau konnte nicht geladen werden. Der Download funktioniert trotzdem.",
+      "showAll": "Ganze Datei zeigen",
+      "showLess": "Weniger zeigen",
+      "correctTitle": "Korrigieren",
+      "correctLead": "Jede Datei hier ist eine Rechnung über euren bestätigten Werten. Wer etwas ändern will, geht ins Kapitel — das Kit zieht nach.",
+      "privateTitle": "Was hier nicht steht",
+      "privateLead": "Wettbewerber, Beschwerden, Rohantworten und gesperrte Fakten. Die Reise-Regel des geteilten Links ist auch die Export-Regel.",
+      "context": {
+        "title": "Brand Context",
+        "lead": "Eure Marke in einer Datei, die eine Maschine lesen kann. Gebt sie ChatGPT, Claude oder einem Agenten, bevor er für euch schreibt — es steht nur darin, was auch im geteilten Dokument reisen darf.",
+        "preview": "Vorschau · brand.md",
+        "privateNote": "Dieselben Werte wie oben, nur maschinenlesbar. Wettbewerber, Rohantworten und gesperrte Fakten stehen in KEINER der beiden Dateien."
+      },
+      "tokens": {
+        "title": "Design-Tokens",
+        "lead": "Hell und dunkel in EINER Datei, mit denselben Rollen-Namen in beiden Modi — Figma bildet die Gruppen auf zwei Modi ab, Style Dictionary auf zwei Sets.",
+        "rampLight": "Rampe hell · color.brand",
+        "rampDark": "Rampe dunkel · color.brand-dark",
+        "rolesLight": "Rollen hell · color.light",
+        "rolesDark": "Rollen dunkel · color.dark",
+        "note": "Jeder Hex in tokens.css stammt aus tokens.json — beide kommen aus derselben Rechnung über eurer Basisfarbe. Die Kontrast-Urteile stehen als Erweiterung an den Rollen: sie sind Beleg, kein Token."
+      },
+      "marks": {
+        "title": "Zeichen",
+        "lead": "Wortmarke und Monogramm, je Variante. Gesetzt aus eurem Schriftpaar und eurer Farbwelt — die Schriften sind als Stack referenziert, nicht eingebettet.",
+        "note": "Kein PNG-Raster in dieser Fassung. Die behaltenen KI-Entwürfe bleiben privat und liegen in keinem Bündel.",
+        "setting": {
+          "wordmark": "Wortmarke",
+          "monogram": "Monogramm"
+        },
+        "variant": {
+          "primary": "Primär",
+          "inverted": "Invertiert",
+          "mono": "Einfarbig",
+          "icon": "Icon-Fläche"
+        }
+      },
+      "presskit": {
+        "title": "Pressekit",
+        "tag": "aus Botschaften, Fakten-Freigabe und Kontakt",
+        "lead": "Nichts Neues — zusammengestellt aus dem, was längst entschieden ist. Was reist, habt ihr einzeln freigegeben.",
+        "contact": "Presse-Kontakt",
+        "empty": "Das Pressekit entsteht im Kapitel Pressekit. Solange dort nichts bestätigt ist, bleibt diese Kachel leer.",
+        "toChapter": "Freigabe ändern — Kapitel Pressekit"
+      },
+      "licenses": {
+        "title": "Lizenzen",
+        "family": "Familie",
+        "weights": "Gewichte",
+        "role": "Rolle",
+        "source": "Quelle",
+        "spdx": "Lizenz",
+        "download": "LICENSES.md laden"
+      },
+      "bundleList": {
+        "title": "Was im Bündel ist",
+        "missingTitle": "Was fehlt — und warum",
+        "missingReason": "kommt mit Brand Design",
+        "marks": "Eine Setzung als SVG | {count} Setzungen als SVG, Wortmarke und Monogramm je Variante",
+        "note": "Das Bündel heißt {file} und trägt den Stand im Namen. Es wird bei jedem Abruf neu gepackt — es gibt keine gespeicherte Fassung, die altern könnte.",
+        "what": {
+          "brandMd": "Der Brand Context als Markdown — direkt als System-Prompt einsetzbar.",
+          "brandJson": "Dieselben Werte maschinenlesbar, schemaVersion 1.",
+          "tokensJson": "Design-Tokens nach DTCG, hell und dunkel in einer Datei.",
+          "tokensCss": "Dieselben Werte als CSS-Variablen plus Tailwind-Block.",
+          "licensesMd": "Schriftfamilien mit Gewichten, Quelle und Lizenz — ohne Schriftdateien.",
+          "readmeMd": "Was im Bündel liegt, von wann es ist und was fehlt."
+        }
+      },
+      "locked": {
+        "title": "Kommt mit Brand Design",
+        "lead": "{what} entstehen aus eurer Farbwelt, eurem Schriftpaar und eurem Zeichen — die werden im Brand Design entschieden. Bis dahin liefert das Kit alles Übrige: Brand Context, Pressekit, Bündel.",
+        "design": "Brand Design ansehen"
+      }
     }
   }
 }

@@ -1,15 +1,24 @@
 import { createBrandStepSaveSchema } from '../../../../../../schemas/brandStep'
 import {
   type BrandStepFacts,
+  mergeBrandSlotFacts,
   resolveBrandJourney,
   transitionBrandStep,
 } from '../../../../../../shared/brandJourney'
+import {
+  confirmedDependents,
+  correctionNeedsAck,
+  evaluateInvariants,
+} from '../../../../../../shared/brandSessions'
+import { slotById } from '../../../../../../shared/slotRegistry'
 import type { BrandStepSaveResponse } from '../../../../../../shared/types/brand'
+import { brandCorrectionAck } from '../../../../../utils/brandCorrection'
 import {
   BRAND_STEPS_TABLE,
   type BrandSlotRecord,
   brandDb,
   brandSlotRecordConfirmed,
+  brandSourcesHash,
   loadBrandStepContext,
   parseSlotRecords,
   profileFacts,
@@ -78,8 +87,8 @@ import {
 const SCHEMA_CODES = new Set(['unknown_slot', 'slot_foreign', 'slot_too_long'])
 
 export default defineEventHandler(async (event): Promise<BrandStepSaveResponse> => {
-  const { userId } = await requireBrandAccess(event)
-  const { profile, stepKey, stepRow, stepRows } = await loadBrandStepContext(event, userId)
+  const { userId, betaAccount } = await requireBrandAccess(event)
+  const { profile, stepKey, stepRow, stepRows, journey: enteredJourney } = await loadBrandStepContext(event, userId, betaAccount)
 
   // Bewusst `safeParse` statt `readValidatedBody`: die drei Registry-Gründe
   // sollen als `data.code` beim Client ankommen (createError-Regel), und ein
@@ -112,6 +121,20 @@ export default defineEventHandler(async (event): Promise<BrandStepSaveResponse> 
   const now = new Date().toISOString()
   const next: Record<string, BrandSlotRecord> = { ...records }
   let slotsChanged = false
+  /** Slots, die dieser Patch NEU bestätigt — sie bekommen ihren Quellen-Hash. */
+  const confirmedNow: string[] = []
+
+  /**
+   * DER STAND VOR DIESEM PATCH, über ALLE Kapitel — die Grundlage der
+   * Impact-Hülle (§9).
+   *
+   * Sie wird aus dem GELESENEN Stand gerechnet, nicht aus dem entstehenden:
+   * die Hülle ist die Ankündigung, die der Mensch VOR seinem Klick gesehen
+   * hat, und ihr Hash bindet genau diesen Augenblick (Feld, `revision`,
+   * bestätigte Abhängige). Rechnete man sie mit dem Patch, änderte der Patch
+   * seine eigene Vorbedingung.
+   */
+  const factsBefore = mergeBrandSlotFacts(toStepFacts(stepRows))
 
   for (const [slotId, patch] of Object.entries(body.slots)) {
     const before = records[slotId]
@@ -150,21 +173,166 @@ export default defineEventHandler(async (event): Promise<BrandStepSaveResponse> 
       candidate.confirmed = value
     }
     else if (patch.confirmed === false) {
+      /**
+       * DIE KORREKTUR-REGEL (BW2 Paket 6, §9) — hier und nur hier.
+       *
+       * „Korrigieren" IST dieser Zweig: ein bestätigter Wert wird wieder
+       * offen. Hängen daran BESTÄTIGTE Felder, hat der Mensch das vorher
+       * gesehen (`GET …/sessions/:id/impact`) und angenommen — und trägt den
+       * Hash genau dieser Hülle zurück. Ohne ihn 409, mit einem alten
+       * ebenfalls: die Hülle kann sich zwischen dem Zeigen und dem Klick
+       * bewegt haben, und dann ist die Zustimmung eine zu einer anderen Zahl.
+       *
+       * DIE HÜLLE REIST NICHT IM 409 MIT. Der zentrale Fehler-Handler
+       * (`packages/core/server/error.ts`) hebt ausschliesslich `data.code` als
+       * `reason` ins Envelope; alles andere bliebe liegen. Der Client holt sie
+       * deshalb mit einem GET nach — dieselbe Kette, die der Autosave beim
+       * `revision_conflict` schon geht (s. `useBrandAutosave`).
+       *
+       * NUR auf einem BESTÄTIGTEN Slot: `confirmed: false` auf einem offenen
+       * ist ein No-op und keine Korrektur.
+       */
+      if (brandSlotRecordConfirmed(before)) {
+        const impact = confirmedDependents(slotId, factsBefore)
+        if (correctionNeedsAck(impact)) {
+          const expected = brandCorrectionAck(slotId, stepRow.revision ?? 0, impact.transitive)
+          if (body.impactAck !== expected) {
+            throw createError({
+              status: 409,
+              statusText: 'Correction was not acknowledged',
+              data: { code: 'impact_unacknowledged' },
+            })
+          }
+          /**
+           * DER WERT VON VORHER, für die EINGRENZUNG (§9).
+           *
+           * Der Schliess-Aufruf im `correct`-Modus vergleicht alten und neuen
+           * Wortlaut — sonst könnte er nicht sagen, welches abhängige Feld die
+           * Änderung inhaltlich trifft. `slots[id]` führt keine Historie
+           * (`firstDraft`/`latestDraft`/`confirmed` sind der Versions-Vertrag,
+           * kein Verlauf), also hält ihn diese eine additive Zeile fest — und
+           * die Schliess-Route löscht sie wieder, sobald sie ihn benutzt hat.
+           *
+           * GESETZT WIRD ER NUR MIT HÜLLE: ohne Abhängige gäbe es nichts
+           * einzugrenzen, und ein Feld, das für immer seinen Vorgänger-Text
+           * mitschleppt, wäre Ballast in einer gedeckelten JSON-Spalte.
+           */
+          candidate.previousValue = before?.confirmed ?? ''
+        }
+      }
       candidate.confirmed = null
     }
 
     // Vergleich OHNE `updatedAt` — sonst wäre jede Speicherung per Definition
     // eine Änderung und die No-op-Regel wirkungslos.
     if (sameSlot(before, candidate)) continue
+
+    /**
+     * EINE WERT-ÄNDERUNG NIMMT DIE ABNAHME (Plan §5a, Fables Entscheidung
+     * 2026-09-04) — und zwar HIER, im Server, nie in der Oberfläche.
+     *
+     * `accepted` heisst „im Zusammenhang des Kapitels gelesen und für gut
+     * befunden". Sobald der Wortlaut ein anderer ist, ist es eine Aussage über
+     * einen Text, den niemand mehr gelesen hat. Sie fällt deshalb bei JEDER
+     * Änderung, die `sameSlot` sieht — Schreiben, Bestätigen, Aufheben —, und
+     * `sameSlot` selbst ignoriert `accepted`/`deferred` weiter: sie sind kein
+     * Inhalt, und ein Autosave-Tick darf davon keine Änderung machen.
+     */
+    delete candidate.accepted
     candidate.updatedAt = now
+    if (candidate.confirmed && candidate.confirmed !== before?.confirmed) confirmedNow.push(slotId)
     next[slotId] = candidate
     slotsChanged = true
   }
 
+  /**
+   * DER QUELLEN-HASH BEIM BESTÄTIGEN (§9, aus Paket 6 vorgezogen).
+   *
+   * Ohne ihn könnte „Nochmal von vorn" nachgelagerte Felder nicht als veraltet
+   * zeigen: der `inputHash` einer Generation beantwortet dieselbe Frage nur für
+   * GENERIERTE Felder, und ein Frage-Feld wie `c.livedExamples` hängt an
+   * `c.final`, ohne je etwas zu generieren.
+   *
+   * Gerechnet wird über die Slot-Fakten ALLER Kapitel — mit DIESEM Patch schon
+   * eingesetzt, denn eine Session schöpft auch aus ihrem eigenen Kapitel
+   * (`c.definitions` ← `c.final`), und zwei Slots können in einem Rumpf
+   * kommen. Die Zusammenlegung ist wörtlich dieselbe wie in
+   * `resolveSessionStates` (`mergeBrandSlotFacts`); zwei Zusammenlegungen
+   * hiessen zwei Hashes für denselben Stand, und die Abweichung sähe man erst
+   * an einem Feld, das sich für veraltet hält.
+   */
+  if (confirmedNow.length > 0) {
+    const factsForHash = mergeBrandSlotFacts(
+      toStepFacts(stepRows).map(facts => (facts.stepKey === stepKey
+        ? { ...facts, slots: toSlotFacts(next) }
+        : facts)),
+    )
+    /**
+     * DIE INVARIANTEN SIND SCHARF (BW2 Paket 6, §3a Nr. 6) — und zwar HIER,
+     * weil hier bestätigt wird.
+     *
+     * Die Prüfung stand seit Paket 1 in `transitionBrandStep('confirmSlot')`,
+     * und diese Handlung ruft keine Route: bestätigt wird im Autosave-PATCH,
+     * der den Wert direkt schreibt (Paket-1-Befund (a)). Sie lief damit nie —
+     * eine Regel, die niemand ausführt, ist eine Zusage ohne Deckung.
+     *
+     * ── SIE LÄUFT VOR DEM SCHREIBEN, ÜBER DEN GANZEN PATCH ────────────────
+     * Gerechnet wird gegen `factsForHash`: den Stand ALLER Kapitel MIT diesem
+     * Patch. Eine Session liest über Kapitelgrenzen (`f.decision` ←
+     * `f.shortlist`), und zwei Slots können in einem Rumpf kommen — wer nur
+     * die gespeicherte Zeile prüfte, bekäme für den zweiten ein 409 auf einen
+     * Wert, der im selben Rumpf mitkommt.
+     *
+     * ── NUR DER SCHREIBWEG, NIE DER BESTAND ───────────────────────────────
+     * Geprüft wird ausschliesslich, was DIESER Patch neu bestätigt. Ein
+     * Bestands-Wert, der die Regel verletzt, bleibt unangetastet stehen: eine
+     * Regel, die rückwirkend Felder sperrt, nähme jemandem sein fertiges
+     * Kapitel weg, ohne dass er etwas getan hätte.
+     *
+     * ── WELCHE Invariante gerissen ist, sagt der Client sich SELBST ───────
+     * Der Envelope trägt nur `data.code` als `reason` (createError-Regel), und
+     * `invariant_violated` ist dieser Code. Die Oberfläche rechnet mit
+     * DERSELBEN puren Funktion nach, welche Regel es war, und schreibt den
+     * passenden Satz — ein zweiter Kanal für dieselbe Auskunft wäre eine
+     * Sonderbehandlung im Core.
+     */
+    for (const slotId of confirmedNow) {
+      const config = slotById(slotId)
+      if (!config) continue
+      const verdict = evaluateInvariants(config, next[slotId]?.confirmed ?? '', factsForHash)
+      if (!verdict.ok) {
+        throw createError({
+          status: 409,
+          statusText: 'Value breaks a rule of this field',
+          data: { code: verdict.code },
+        })
+      }
+    }
+    for (const slotId of confirmedNow) {
+      const config = slotById(slotId)
+      if (!config) continue
+      next[slotId] = { ...next[slotId], sourcesHash: brandSourcesHash(config, factsForHash) }
+    }
+  }
+
   // ── Zustand und Konfidenz über die pure Regel ────────────────────────────
+  //
+  // DER GERECHNETE ZUSTAND, NICHT DER ROHE (Davids Durchspiel-Audit
+  // 2026-09-03): `open` ist kein gespeicherter Zustand — eine Zeile, deren
+  // Vorgänger fertig wird, bleibt roh `locked`, und die Journey rechnet sie
+  // `open`. Mit dem ROHEN Zustand übersprang der Start-Zweig solche
+  // Bausteine (Tippen speicherte transitionslos), und `setConfidence`/
+  // `complete` prallten mit `step_locked` ab: ein Kapitel nach einem
+  // Vorgänger-Abschluss liess sich NIE abschliessen (live an Krume & Gold
+  // pvm erwischt, 10/10 bestätigt und trotzdem 400). `canEnterBrandStep`
+  // hat den Eintritt oben schon geprüft — was hier ankommt, ist auf dem Weg.
+  // `skipped` kann hier nie ankommen (canEnterBrandStep hat oben abgewiesen)
+  // — der Rückfall auf den Zeilen-Zustand hält nur den Typ ehrlich.
+  const journeyState = enteredJourney.find(entry => entry.stepKey === stepKey)?.state
+  const resolvedState = journeyState && journeyState !== 'skipped' ? journeyState : stepRow.state
   let facts: BrandStepFacts = {
     stepKey,
-    state: stepRow.state,
+    state: resolvedState,
     confidence: stepRow.confidence ?? null,
     slots: toSlotFacts(next),
   }
@@ -232,7 +400,7 @@ export default defineEventHandler(async (event): Promise<BrandStepSaveResponse> 
   const mergedRows = stepRows.map(row => (row.$id === stepRow.$id
     ? { ...row, state: facts.state, confidence: facts.confidence ?? null, slots: JSON.stringify(next) }
     : row))
-  const journey = resolveBrandJourney(profileFacts(profile), toStepFacts(mergedRows))
+  const journey = resolveBrandJourney(profileFacts(profile, betaAccount), toStepFacts(mergedRows))
   const progress = resolveProfileProgress(journey)
   await touchProfile(event, profile.$id, {
     progressPct: progress.progressPct,

@@ -68,6 +68,71 @@ describe('Ereignis-Serialisierung (§3e)', () => {
     ])
   })
 
+  /**
+   * ANTWORT-MÖGLICHKEITEN IM ABSCHLUSS-FRAME (Davids Anforderung 2026-09-04).
+   *
+   * `options` ist das EINZIGE Feld, aus dem die Oberfläche eine Liste rendert —
+   * ein Text statt eines Arrays wäre dort kein falscher Wert, sondern ein
+   * Fehler im Rendern. Deshalb wird genau dieses Feld beim Lesen geprüft, und
+   * genau deshalb braucht es hier eine Gegenprobe je Bruchstelle.
+   */
+  describe('options im generation.completed-Frame', () => {
+    function completed(options: unknown) {
+      const frame = JSON.stringify({
+        type: 'generation.completed',
+        generationId: 'g1',
+        slotId: '',
+        revision: 3,
+        messageId: 'm1',
+        model: 'test',
+        promptVersion: 'converse-5',
+        createdAt: '2026-09-04T10:00:00.000Z',
+        reused: false,
+        outcome: 'question',
+        options,
+      })
+      return parseBrandGenerationEvent(frame)
+    }
+
+    it('reicht zwei bis drei Beschriftungen durch', () => {
+      expect(completed(['Der Handwerker', 'Der Mentor']))
+        .toMatchObject({ options: ['Der Handwerker', 'Der Mentor'] })
+      expect(completed(['A', 'B', 'C'])).toMatchObject({ options: ['A', 'B', 'C'] })
+    })
+
+    it('RÜCKWÄRTS-VERTRAG: ohne das Feld ist der Frame vollständig, nur ohne Chips', () => {
+      const frame = serializeBrandGenerationEvent('generation.completed', {
+        generationId: 'g1',
+        slotId: '',
+        revision: 3,
+        messageId: 'm1',
+        model: 'test',
+        promptVersion: 'converse-3',
+        createdAt: '2026-09-04T10:00:00.000Z',
+        reused: false,
+        outcome: 'question',
+      })
+      const parsed = parseBrandGenerationEvent(frame.split('\n')[1]!.slice('data: '.length))
+      expect(parsed).toMatchObject({ type: 'generation.completed', outcome: 'question' })
+      expect((parsed as { options?: unknown }).options).toBeUndefined()
+    })
+
+    it('GEGENPROBE: Unsinn verschwindet, der Frame bleibt', () => {
+      // Vier Bruchstellen, EIN Verhalten: der Zug ist die Sache, die Chips sind
+      // die Beilage — ein kaputtes `options` darf keinen Zug verschlucken.
+      for (const broken of ['Der Handwerker', 42, null, [{ label: 'A' }, 7]]) {
+        const parsed = completed(broken)
+        expect(parsed).toMatchObject({ type: 'generation.completed' })
+        expect((parsed as { options?: unknown }).options).toBeUndefined()
+      }
+    })
+
+    it('EINE Möglichkeit ist keine Wahl, VIER werden auf drei geklemmt', () => {
+      expect((completed(['nur eine']) as { options?: unknown }).options).toBeUndefined()
+      expect(completed(['A', 'B', 'C', 'D'])).toMatchObject({ options: ['A', 'B', 'C'] })
+    })
+  })
+
   it('GEGENPROBE: ein erfundener Typ, kaputtes JSON und ein Array fallen durch', () => {
     expect(parseBrandGenerationEvent('{"type":"generation.exploded"}')).toBeNull()
     expect(parseBrandGenerationEvent('{kaputt')).toBeNull()

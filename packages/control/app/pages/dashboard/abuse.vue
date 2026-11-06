@@ -120,7 +120,7 @@ const columns = computed<TableColumn<AbuseReportView>[]>(() => [
   { accessorKey: 'category', header: () => t('control.abuse.col.category'), meta: { class: HIDE_MD } },
   { accessorKey: 'message', header: () => t('control.abuse.col.message') },
   { accessorKey: 'status', header: () => t('control.abuse.col.status') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 function rowActions(report: AbuseReportView): DropdownMenuItem[][] {

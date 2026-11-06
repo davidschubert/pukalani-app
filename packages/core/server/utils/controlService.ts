@@ -99,7 +99,16 @@ export async function mintServiceJwt(event: H3Event, sessionSecret?: string): Pr
       .setEndpoint(config.public.appwriteEndpoint)
       .setProject(config.public.appwriteProjectId)
       .setSession(sessionSecret)
-    const { jwt } = await new Account(client).createJWT({ duration: 120 })
+    // node-appwrite 28: `account.createJWT` ist entfernt, geminzt wird jetzt am
+    // ADMIN-Client (`users.createJWT`). Der braucht eine userId — und die darf
+    // NICHT vom Aufrufer kommen. Deshalb zuerst `account.get()` mit dem
+    // Session-Client: der Ruf BEWEIST die Session (kein Konto ⇒ Fehler ⇒ 401)
+    // und liefert dieselbe userId, die das alte Verfahren implizit benutzte.
+    const userId = await new Account(client).get()
+      .then(user => user.$id)
+      .catch(() => { throw createError({ status: 401, statusText: 'Unauthorized' }) })
+    const { users } = createAdminClient(event)
+    const { jwt } = await users.createJWT({ userId, duration: 120 })
       .catch(() => { throw createError({ status: 401, statusText: 'Unauthorized' }) })
     return jwt
   }
@@ -107,8 +116,10 @@ export async function mintServiceJwt(event: H3Event, sessionSecret?: string): Pr
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  const { account } = createSessionClient(event)
-  const { jwt } = await account.createJWT({ duration: 120 })
+  // Hier ist die Session bereits durch die Auth-Middleware belegt
+  // (`event.context.user`) — die userId kommt aus dem Context, nie aus dem Body.
+  const { users } = createAdminClient(event)
+  const { jwt } = await users.createJWT({ userId: event.context.user.$id, duration: 120 })
     .catch(() => { throw createError({ status: 401, statusText: 'Unauthorized' }) })
   return jwt
 }

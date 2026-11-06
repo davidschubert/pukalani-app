@@ -1,5 +1,5 @@
 import type { Capability } from './authz'
-import type { DashboardScope } from '../dashboardNav'
+import type { DashboardNavGroup, DashboardScope } from '../dashboardNav'
 
 /**
  * Admin-Modul, das ein Produkt-Layer im Dashboard registriert
@@ -122,8 +122,15 @@ export interface PukalaniAdminModule {
    *
    * 'design' ist mit E9 entfallen: Themes zogen nach 'branding', Medien zu den
    * Produkten — eine Gruppe mit einem einzigen Eintrag ist kein Abschnitt.
+   *
+   * DIE LISTE STEHT SEIT NAV1 PAKET 3 IN `DASHBOARD_NAV_GROUPS`
+   * (shared/dashboardNav.ts) — und dabei fiel ein Nebenbefund auf: hier
+   * standen nur SIEBEN Werte, das Layout rendert seit U7 neun. `account` und
+   * `moderation` fehlten im Typ, ohne dass es je aufgefallen wäre, weil
+   * `app.config.ts` nicht gegen diesen Typ geprüft wird. Jetzt liest der Typ
+   * dieselbe Konstante, gegen die auch sortiert wird.
    */
-  group?: 'platform' | 'studio' | 'management' | 'website' | 'products' | 'branding' | 'settings'
+  group?: DashboardNavGroup
   /** Sortierung INNERHALB der Gruppe (aufsteigend; ohne = Registry-Reihenfolge) */
   order?: number
   /**

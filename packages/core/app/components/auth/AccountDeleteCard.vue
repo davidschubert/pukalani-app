@@ -5,6 +5,24 @@ const toast = useToast()
 const auth = useAuthStore()
 
 const confirm = useConfirm()
+const route = useRoute()
+const { reauthenticate } = useLogout()
+
+/**
+ * Der Server löscht nur nach FRISCHER Anmeldung (RA1, requireRecentAuth).
+ * Ist sie älter, erklären wir das und schicken die Person über den normalen
+ * Login hierher zurück — das geht für jede Konto-Art (Passwort, Google,
+ * E-Mail-Code) und prüft MFA gleich mit. Gelöscht wurde dabei nichts.
+ */
+async function askForFreshSignIn() {
+  const ok = await confirm({
+    title: t('account.delete.reauthTitle'),
+    description: t('account.delete.reauthText'),
+    confirmLabel: t('account.delete.reauthConfirm'),
+    color: 'primary',
+  })
+  if (ok) await reauthenticate(route.fullPath)
+}
 
 async function deleteAccount() {
   try {
@@ -20,6 +38,10 @@ async function deleteAccount() {
     await navigateTo(localePath('/login'))
   }
   catch (error) {
+    if (isReauthRequired(error)) {
+      await askForFreshSignIn()
+      return
+    }
     toast.add({
       title: isNetworkError(error) ? t('auth.networkError') : t('account.delete.failed'),
       // Der Titel nennt nur den Fehlschlag — die für den Nutzer entscheidende

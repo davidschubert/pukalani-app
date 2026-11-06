@@ -1,0 +1,28 @@
+{
+  "name": "@pukalani/insights",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./nuxt.config.ts",
+  "scripts": {
+    "dev": "nuxi dev .playground --port 3013",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "seed:launch": "node --env-file=../../apps/branding/.env scripts/seed-launch.mjs"
+  },
+  "dependencies": {
+    "@nuxt/ui": "catalog:",
+    "@nuxtjs/i18n": "catalog:",
+    "node-appwrite": "catalog:",
+    "nuxt": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@nuxt/eslint-config": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vue": "catalog:"
+  }
+}

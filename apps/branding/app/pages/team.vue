@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { BRAND_ADVISORS } from '../../../../packages/brand/shared/brandAdvisors'
+import { BRAND_ADVISORS, advisorIsVoice } from '../../../../packages/brand/shared/brandAdvisors'
+import { jsonLdScript } from '../utils/jsonLd'
 
 /**
  * DIE TEAM-SEITE — der abgenommene Klickdummy (Runde 163, David) als echte
@@ -37,7 +38,30 @@ import { BRAND_ADVISORS } from '../../../../packages/brand/shared/brandAdvisors'
 const { locale, t } = useI18n()
 const localePath = useLocalePath()
 
-useHead({ title: computed(() => t('team.title')) })
+/**
+ * PRODUKT-SEITE STATT STECKBRIEF-WAND (Davids Auftrag 2026-09-04, Vorbild
+ * Apple): George als Hauptdarsteller zuerst, dann das Team mit der Zeile
+ * „Was das für euch heißt" je Rolle, die Wizard-Crew als seine
+ * Spezialisten, und das Zusammenspiel als Reihenfolge — bevor die Warteliste
+ * kommt. Bilder sind Platzhalter mit Prompt (T1–T3, Register in
+ * docs/referenz/BRANDING-SUPPLY-BILDMATERIAL.md).
+ */
+useSeoMeta({
+  title: () => t('team.seoTitle'),
+  description: () => t('team.seoDescription'),
+  ogTitle: () => t('team.teamTitle'),
+  ogDescription: () => t('team.seoDescription'),
+})
+useHead({
+  script: computed(() => [jsonLdScript({
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    'name': t('team.seoTitle'),
+    'description': t('team.seoDescription'),
+    'inLanguage': locale.value,
+    'isPartOf': { '@type': 'WebSite', 'name': 'Branding Supply', 'url': 'https://branding.supply' },
+  })]),
+})
 
 type L = 'de' | 'en'
 const lang = computed<L>(() => (locale.value === 'de' ? 'de' : 'en'))
@@ -52,6 +76,8 @@ interface Member {
   skills: Record<L, string[]>
   personal: Record<L, string>
   pronoun: Record<L, string>
+  /** „Was das für euch heißt" — der eine Nutzen-Satz je Rolle (2026-09-04). */
+  benefit: Record<L, string>
 }
 
 const productTeam: Member[] = [
@@ -76,6 +102,7 @@ const productTeam: Member[] = [
       en: 'Brand advisor and brand strategist — every recommendation with a reason, every decision written down.',
     },
     pronoun: { de: 'er', en: 'he' },
+    benefit: { de: 'Ihr müsst nicht wissen, was eine Marke braucht — ihr müsst nur ehrlich antworten.', en: 'You do not need to know what a brand needs — you only need to answer honestly.' },
   },
   {
     initials: 'FM', name: 'Frida Martens',
@@ -98,6 +125,7 @@ const productTeam: Member[] = [
       en: 'Design director — turns strategy into form and justifies every decision against the foundation.',
     },
     pronoun: { de: 'sie', en: 'she' },
+    benefit: { de: 'Eure Strategie wird sichtbar — bevor ein Logo entsteht.', en: 'Your strategy becomes visible — before a logo exists.' },
   },
   {
     initials: 'RW', name: 'Rex Weber',
@@ -120,6 +148,7 @@ const productTeam: Member[] = [
       en: 'Producer — takes decisions into production without inventing anything new along the way.',
     },
     pronoun: { de: 'er', en: 'he' },
+    benefit: { de: 'Alles, was entschieden ist, ist am nächsten Tag benutzbar.', en: 'Everything that is decided is usable the next day.' },
   },
   {
     initials: 'KH', name: 'Kira Hoffmann',
@@ -142,6 +171,7 @@ const productTeam: Member[] = [
       en: 'Content strategist — plans in weeks instead of ideas and writes what each channel actually needs.',
     },
     pronoun: { de: 'sie', en: 'she' },
+    benefit: { de: 'Ihr wisst jede Woche, was ihr sagt — und wo.', en: 'Every week you know what to say — and where.' },
   },
   {
     initials: 'WN', name: 'Wanda Nowak',
@@ -164,6 +194,7 @@ const productTeam: Member[] = [
       en: 'Monitoring analyst — watches the outside image weekly and reports only once a change is backed by evidence.',
     },
     pronoun: { de: 'sie', en: 'she' },
+    benefit: { de: 'Ihr erfahrt, wie eure Marke draußen ankommt — bevor es ein Kunde tut.', en: 'You learn how your brand lands out there — before a customer tells you.' },
   },
   {
     initials: 'AS', name: 'Ada Sander',
@@ -186,6 +217,7 @@ const productTeam: Member[] = [
       en: 'Score examiner — computes reproducibly and justifies every score, including for our own brands.',
     },
     pronoun: { de: 'sie', en: 'she' },
+    benefit: { de: 'Eine Zahl, die ihr vergleichen könnt — heute und in einem Jahr.', en: 'A number you can compare — today and a year from now.' },
   },
   {
     initials: 'SK', name: 'Scout Krüger',
@@ -208,6 +240,7 @@ const productTeam: Member[] = [
       en: 'Research analyst — backs every finding with sources and leaves the conclusions to the conversation.',
     },
     pronoun: { de: 'er', en: 'he' },
+    benefit: { de: 'Ihr seht, wo ihr im Markt steht — belegt, nicht gefühlt.', en: 'You see where you stand in the market — backed by evidence, not a feeling.' },
   },
 ]
 
@@ -251,90 +284,139 @@ const crewCopy: Record<string, { desc: Record<L, string>, asks: Record<L, string
     personalEn: 'Naming advisor — checks pronunciation, spelling and availability before a name is allowed to charm.',
   },
 }
-const crew = BRAND_ADVISORS.filter(a => a.key !== 'george').map(a => ({
+/**
+ * DIE CREW HINTER DER STIMME — alle, die NICHT selbst sprechen.
+ *
+ * `advisorIsVoice` statt `key !== 'george'` (Brand Design D0): Frida ist seit
+ * D0 in der Berater-Registry und ist die STIMME von Schicht 2 — sie steht
+ * oben in `productTeam` mit ihrer eigenen Karte. Ohne diesen Filter stünde sie
+ * ein zweites Mal auf derselben Seite, im Abschnitt „hinter George".
+ */
+const crew = BRAND_ADVISORS.filter(a => !advisorIsVoice(a.key)).map(a => ({
   advisor: a,
   copy: crewCopy[a.key] ?? { desc: { de: '', en: '' }, asks: { de: '', en: '' }, personalEn: a.personal },
 }))
 </script>
 
 <template>
-  <!-- Nav + Fuß kommen seit 2026-09-03 aus dem App-default-Layout — die
-       Inline-Kopien hier erzeugten mit der Core-Kopfzeile zwei Köpfe. -->
+  <!-- Nav + Fuß kommen seit 2026-09-03 aus dem App-default-Layout. -->
   <div class="pb-10">
     <div class="@container mx-auto max-w-7xl">
-      <!-- Wer wir sind: der Selbstbeweis (Dummy-Wortlaut, Runde 163) -->
-      <div class="mx-auto mt-14 max-w-3xl text-center">
-        <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.eyebrow') }}</p>
-        <h1 class="mt-4 text-balance text-5xl font-extralight leading-tight tracking-tight">{{ t('team.title') }}</h1>
-        <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.intro1') }}</p>
-        <p class="mx-auto mt-4 max-w-2xl text-lg leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.intro2') }}</p>
-        <p class="bw-label mx-auto mt-6 max-w-2xl leading-relaxed" style="color: var(--bw-muted)">{{ t('team.fingerprint') }}</p>
-      </div>
-
-      <!-- Das Produkt-Team -->
-      <div class="mx-auto mt-24 max-w-3xl text-center">
+      <!-- 1 · Kopf: die Behauptung -->
+      <section class="mx-auto mt-14 max-w-3xl text-center">
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.teamEyebrow') }}</p>
-        <h2 class="mt-3 text-balance text-3xl font-extralight tracking-tight">{{ t('team.teamTitle') }}</h2>
-        <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.teamIntro') }}</p>
-      </div>
+        <h1 class="mt-4 text-balance text-5xl font-extralight leading-tight tracking-tight sm:text-6xl">{{ t('team.teamTitle') }}</h1>
+        <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.teamIntro') }}</p>
+      </section>
 
-      <div class="mt-10 grid gap-x-6 gap-y-6 @sm:grid-cols-2 @md:grid-cols-3">
-        <div v-for="m in productTeam" :key="m.name" class="bw-card flex flex-col p-8">
-          <div class="flex items-center gap-4">
-            <!-- Alle Karten tragen dasselbe Monogramm: Georges Sonderfall
-                 (BwGeorgeAvatar mit Foto) ist mit der Hunde-Welt gefallen
-                 (2026-09-02), und ein einzelnes „G" neben lauter „FM"/„RW"
-                 wäre nur noch ein Rest. Porträts kämen für ALLE oder gar nicht. -->
-            <UAvatar :text="m.initials" size="xl" />
-            <div class="min-w-0">
-              <h3 class="truncate text-lg font-medium tracking-tight">{{ m.name }}</h3>
-              <p class="bw-label mt-0.5" style="color: var(--bw-muted)">{{ m.title[lang] }}</p>
-            </div>
-          </div>
-          <p class="mt-4 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ m.desc[lang] }}</p>
-          <p class="bw-label mt-4" style="color: var(--bw-muted)">{{ t('team.willLabel', { pronoun: m.pronoun[lang] }) }}</p>
-          <ul class="mt-1.5 space-y-1">
-            <li v-for="w in m.will[lang]" :key="w" class="flex gap-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)"><span class="flex-none" style="color: var(--bw-line-strong)">—</span>{{ w }}</li>
-          </ul>
-          <p class="bw-label mt-3" style="color: var(--bw-muted)">{{ t('team.becauseLabel') }}</p>
-          <ul class="mt-1.5 flex-1 space-y-1">
-            <li v-for="b in m.because[lang]" :key="b" class="flex gap-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)"><span class="flex-none" style="color: var(--bw-line-strong)">—</span>{{ b }}</li>
-          </ul>
-          <div class="mt-4 flex flex-wrap gap-1.5">
-            <span v-for="s in m.skills[lang]" :key="s" class="bw-label rounded-full px-2.5 py-1" style="background: var(--bw-surface-hi)">{{ s }}</span>
-          </div>
-          <p class="bw-label mt-4 leading-relaxed" style="color: var(--bw-muted)">{{ m.personal[lang] }}</p>
+      <!-- 2 · George: der Hauptdarsteller (T1) -->
+      <section class="bw-card mt-14 grid items-center gap-10 overflow-hidden @lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <BwImagePlaceholder
+          id="T1" ratio="4 / 5" class="!rounded-none" :label="t('team.georgeImage')"
+          prompt="Studio portrait, 4:5: a calm, attentive brand advisor in his mid-forties, short grey-flecked hair, plain dark knit sweater, looking slightly past the camera as if listening. Neutral light-grey seamless backdrop, monochrome photograph with exactly one acid-green (#dbe74b) detail: a small round enamel pin on the chest. Soft directional studio light, editorial, precise, no text."
+        />
+        <div class="p-10 @lg:pr-14">
+          <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.georgeEyebrow') }}</p>
+          <h2 class="mt-3 text-balance text-3xl font-extralight tracking-tight sm:text-4xl">{{ t('team.georgeTitle') }}</h2>
+          <p class="mt-5 text-base leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.georgeBody') }}</p>
+          <UButton :label="t('team.ctaButton')" :to="localePath('/invite')" size="lg" class="mt-8 rounded-full" />
         </div>
-      </div>
+      </section>
 
-      <!-- Die Wizard-Crew: Georges Phasen-Spezialisten (Beraterteam, 2026-09-01) -->
-      <div class="mx-auto mt-24 max-w-3xl text-center">
-        <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.crewEyebrow') }}</p>
-        <h2 class="mt-3 text-balance text-3xl font-extralight tracking-tight">{{ t('team.crewTitle') }}</h2>
-        <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.crewIntro') }}</p>
-      </div>
-
-      <div class="mt-10 grid gap-x-6 gap-y-6 @sm:grid-cols-2 @lg:grid-cols-4">
-        <div v-for="{ advisor, copy } in crew" :key="advisor.key" class="bw-card flex flex-col p-8">
-          <div class="flex items-center gap-4">
-            <UAvatar :text="advisor.name.slice(0, 1)" size="xl" />
-            <div class="min-w-0">
-              <h3 class="truncate text-lg font-medium tracking-tight">{{ advisor.fullName }}</h3>
-              <p class="bw-label mt-0.5" style="color: var(--bw-muted)">{{ lang === 'de' ? advisor.role.de : advisor.role.en }}</p>
+      <!-- 3 · Das Produkt-Team (T2 darüber) -->
+      <section class="mt-28">
+        <BwImagePlaceholder
+          id="T2" ratio="16 / 7" :label="t('team.teamImage')"
+          prompt="Wide editorial group photograph, 16:7: seven people of mixed ages and genders in a bright, minimal studio with a matte grey floor, standing loosely in a line as if between two tasks — notebooks, a swatch fan, a laptop closed under one arm. Monochrome photograph; a single acid-green (#dbe74b) folder held by one person. Geometric composition, wide negative space, soft daylight, no readable text."
+        />
+        <div class="mt-10 grid gap-x-6 gap-y-6 @sm:grid-cols-2 @md:grid-cols-3">
+          <div v-for="m in productTeam" :key="m.name" class="bw-card flex flex-col p-8">
+            <div class="flex items-center gap-4">
+              <!-- Alle Karten tragen dasselbe Monogramm: Porträts kämen für
+                   ALLE oder gar nicht (2026-09-02) — bis dahin T2 als Gruppe. -->
+              <UAvatar :text="m.initials" size="xl" />
+              <div class="min-w-0">
+                <h3 class="truncate text-lg font-medium tracking-tight">{{ m.name }}</h3>
+                <p class="bw-label mt-0.5" style="color: var(--bw-muted)">{{ m.title[lang] }}</p>
+              </div>
             </div>
+            <!-- Der Nutzen zuerst — die eine Zeile, die verkauft. -->
+            <p class="bw-label mt-5" style="color: var(--bw-muted)">{{ t('team.benefitLabel') }}</p>
+            <p class="mt-1.5 text-base font-medium leading-snug tracking-tight">{{ m.benefit[lang] }}</p>
+            <p class="mt-4 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ m.desc[lang] }}</p>
+            <p class="bw-label mt-4" style="color: var(--bw-muted)">{{ t('team.willLabel', { pronoun: m.pronoun[lang] }) }}</p>
+            <ul class="mt-1.5 space-y-1">
+              <li v-for="w in m.will[lang]" :key="w" class="flex gap-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)"><span class="flex-none" style="color: var(--bw-line-strong)">—</span>{{ w }}</li>
+            </ul>
+            <p class="bw-label mt-3" style="color: var(--bw-muted)">{{ t('team.becauseLabel') }}</p>
+            <ul class="mt-1.5 flex-1 space-y-1">
+              <li v-for="b in m.because[lang]" :key="b" class="flex gap-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)"><span class="flex-none" style="color: var(--bw-line-strong)">—</span>{{ b }}</li>
+            </ul>
+            <div class="mt-4 flex flex-wrap gap-1.5">
+              <span v-for="sk in m.skills[lang]" :key="sk" class="bw-label rounded-full px-2.5 py-1" style="background: var(--bw-surface-hi)">{{ sk }}</span>
+            </div>
+            <p class="bw-label mt-4 leading-relaxed" style="color: var(--bw-muted)">{{ m.personal[lang] }}</p>
           </div>
-          <p class="mt-4 flex-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ copy.desc[lang] }}</p>
-          <p class="bw-label mt-4" style="color: var(--bw-muted)">{{ t('team.crewAsksLabel') }}</p>
-          <p class="mt-1.5 text-sm italic leading-relaxed" style="color: var(--bw-ink-soft)">{{ copy.asks[lang] }}</p>
-          <p class="bw-label mt-4 leading-relaxed" style="color: var(--bw-muted)">{{ lang === 'de' ? advisor.personal : copy.personalEn }}</p>
         </div>
-      </div>
+      </section>
 
-      <div class="bw-card mt-16 flex flex-wrap items-center justify-between gap-4 p-8">
-        <p class="text-sm" style="color: var(--bw-ink-soft)">{{ t('team.ctaText') }}</p>
-        <UButton :label="t('team.ctaButton')" :to="localePath('/invite')" class="rounded-full" />
-      </div>
+      <!-- 4 · Die Wizard-Crew: Georges Spezialisten je Kapitel -->
+      <section class="mt-28">
+        <div class="mx-auto max-w-3xl text-center">
+          <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.crewEyebrow') }}</p>
+          <h2 class="mt-3 text-balance text-3xl font-extralight tracking-tight sm:text-4xl">{{ t('team.crewTitle') }}</h2>
+          <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.crewIntro') }}</p>
+        </div>
+        <div class="mt-10 grid gap-x-6 gap-y-6 @sm:grid-cols-2 @lg:grid-cols-4">
+          <div v-for="{ advisor, copy } in crew" :key="advisor.key" class="bw-card flex flex-col p-8">
+            <div class="flex items-center gap-4">
+              <UAvatar :text="advisor.name.slice(0, 1)" size="xl" />
+              <div class="min-w-0">
+                <h3 class="truncate text-lg font-medium tracking-tight">{{ advisor.fullName }}</h3>
+                <p class="bw-label mt-0.5" style="color: var(--bw-muted)">{{ lang === 'de' ? advisor.role.de : advisor.role.en }}</p>
+              </div>
+            </div>
+            <p class="mt-4 flex-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ copy.desc[lang] }}</p>
+            <p class="bw-label mt-4" style="color: var(--bw-muted)">{{ t('team.crewAsksLabel') }}</p>
+            <p class="mt-1.5 text-sm italic leading-relaxed" style="color: var(--bw-ink-soft)">{{ copy.asks[lang] }}</p>
+            <p class="bw-label mt-4 leading-relaxed" style="color: var(--bw-muted)">{{ lang === 'de' ? advisor.personal : copy.personalEn }}</p>
+          </div>
+        </div>
+      </section>
 
+      <!-- 5 · Zusammenspiel: eine Reihenfolge (T3) -->
+      <section class="mt-28">
+        <div class="mx-auto max-w-3xl text-center">
+          <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.flowEyebrow') }}</p>
+          <h2 class="mt-3 text-balance text-3xl font-extralight tracking-tight sm:text-4xl">{{ t('team.flowTitle') }}</h2>
+          <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.flowLead') }}</p>
+        </div>
+        <ArtT3 :label="t('team.flowImage')" class="mt-10" />
+        <!-- Nummern tragen hier Bedeutung: es IST eine Reihenfolge. -->
+        <div class="mt-6 grid gap-6 @sm:grid-cols-2 @lg:grid-cols-4">
+          <div v-for="(f, index) in ['flow1', 'flow2', 'flow3', 'flow4']" :key="f" class="bw-card p-8">
+            <p class="bw-label" style="color: var(--bw-muted)">0{{ index + 1 }}</p>
+            <h3 class="mt-2 text-lg font-medium tracking-tight">{{ t(`team.${f}Title`) }}</h3>
+            <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t(`team.${f}Body`) }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 · Brand-Check: der kostenlose Einstieg NEBEN der Warteliste
+           (Plan docs/archiv/BRAND-CHECK-SEITE.md §1 — ergänzend, nicht
+           ersetzend). Das Formular selbst lebt genau einmal, auf
+           /brand-check; hier steht nur der Verweis. -->
+      <BwBrandCheckTeaser source="team" class="mt-28" />
+
+      <!-- 7 · Frühzugang: die Warteliste -->
+      <section class="bw-card mt-28 grid items-center gap-10 p-10 @lg:grid-cols-[minmax(0,1fr)_26rem] @lg:p-14">
+        <div class="min-w-0">
+          <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('lead.eyebrow') }}</p>
+          <h2 class="mt-3 max-w-lg text-balance text-3xl font-extralight leading-snug tracking-tight sm:text-4xl">{{ t('lead.title') }}</h2>
+          <p class="mt-4 max-w-lg text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.ctaText') }} {{ t('lead.body') }}</p>
+        </div>
+        <BwWaitlistForm source="team" />
+      </section>
     </div>
   </div>
 </template>

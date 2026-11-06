@@ -9,14 +9,20 @@ import {
   BRAND_AI_PARALLEL_LIMIT,
   BRAND_AI_SLOT_DAILY_LIMIT,
   BRAND_AI_SLOT_LIMIT_CODE,
+  BRAND_AI_REVIEW_DAILY_LIMIT,
   BRAND_AI_TALK_DAILY_LIMIT,
   BRAND_AI_TALK_LIMIT_CODE,
+  BRAND_DESIGN_DRAFTS_DAILY_LIMIT,
+  BRAND_DESIGN_DRAFTS_LIMIT_CODE,
+  BRAND_DESIGN_READING_DAILY_LIMIT,
+  BRAND_DESIGN_READING_LIMIT_CODE,
   type BrandAiQuotaCounts,
   brandAiAccountDayKey,
   brandAiInstanceDayKey,
   brandAiRejectionMessageKey,
   brandAiSlotDayKey,
   brandAiTalkDayKey,
+  brandDesignReadingDayKey,
   decideBrandAiQuota,
   isBrandAiRejectionCode,
   resolveBrandAiInstanceCap,
@@ -42,7 +48,9 @@ import {
  * muss trotzdem beide sehen können, sonst könnte sie nicht sagen, welcher
  * Deckel gefallen ist.
  */
-const zero: BrandAiQuotaCounts = { parallel: 0, slotDay: 0, talkDay: 0, accountDay: 0, instanceDay: 0 }
+const zero: BrandAiQuotaCounts = {
+  parallel: 0, slotDay: 0, talkDay: 0, reviewDay: 0, readingDay: 0, draftsDay: 0, accountDay: 0, instanceDay: 0,
+}
 
 describe('Die Zahlen des Vertrags (Plan §6)', () => {
   it('stehen so da, wie der Plan sie zusagt', () => {
@@ -51,10 +59,18 @@ describe('Die Zahlen des Vertrags (Plan §6)', () => {
     expect(BRAND_AI_TALK_DAILY_LIMIT).toBe(40)
     expect(BRAND_AI_PARALLEL_LIMIT).toBe(2)
     expect(BRAND_AI_INSTANCE_DAILY_DEFAULT).toBe(1000)
+    expect(BRAND_AI_REVIEW_DAILY_LIMIT).toBe(120)
+    // Brand Design D2b: der Vision-Lauf über die Vorbilder (§2.2 Leitplanke d).
+    expect(BRAND_DESIGN_READING_DAILY_LIMIT).toBe(3)
+    // Brand Design D5c: der Bildlauf des Zeichens (§2.5 Stufe 3).
+    expect(BRAND_DESIGN_DRAFTS_DAILY_LIMIT).toBe(3)
     expect(BRAND_AI_LIMITS).toEqual({
       parallel: 2,
       slotDay: 10,
       talkDay: 40,
+      reviewDay: 120,
+      readingDay: 3,
+      draftsDay: 3,
       accountDay: 200,
       instanceDay: 1000,
     })
@@ -64,8 +80,9 @@ describe('Die Zahlen des Vertrags (Plan §6)', () => {
 describe('decideBrandAiQuota', () => {
   it('lässt einen Lauf durch, solange nichts überschritten ist', () => {
     expect(decideBrandAiQuota(zero)).toBeNull()
-    expect(decideBrandAiQuota({ parallel: 2, slotDay: 10, talkDay: 40, accountDay: 200, instanceDay: 1000 }))
-      .toBeNull()
+    expect(decideBrandAiQuota({
+      parallel: 2, slotDay: 10, talkDay: 40, reviewDay: 120, readingDay: 3, draftsDay: 3, accountDay: 200, instanceDay: 1000,
+    })).toBeNull()
   })
 
   it('DER LETZTE ERLAUBTE LAUF GEHT, der nächste nicht (je Deckel)', () => {
@@ -77,6 +94,12 @@ describe('decideBrandAiQuota', () => {
 
     expect(decideBrandAiQuota({ ...zero, talkDay: 40 })).toBeNull()
     expect(decideBrandAiQuota({ ...zero, talkDay: 41 })).toBe(BRAND_AI_TALK_LIMIT_CODE)
+
+    expect(decideBrandAiQuota({ ...zero, readingDay: 3 })).toBeNull()
+    expect(decideBrandAiQuota({ ...zero, readingDay: 4 })).toBe(BRAND_DESIGN_READING_LIMIT_CODE)
+
+    expect(decideBrandAiQuota({ ...zero, draftsDay: 3 })).toBeNull()
+    expect(decideBrandAiQuota({ ...zero, draftsDay: 4 })).toBe(BRAND_DESIGN_DRAFTS_LIMIT_CODE)
 
     expect(decideBrandAiQuota({ ...zero, accountDay: 200 })).toBeNull()
     expect(decideBrandAiQuota({ ...zero, accountDay: 201 })).toBe(BRAND_AI_DAILY_LIMIT_CODE)
@@ -140,6 +163,12 @@ describe('Die Eimer-Schlüssel', () => {
     expect(brandAiSlotDayKey('p1', 'a.pitch')).not.toBe(brandAiSlotDayKey('p2', 'a.pitch'))
   })
 
+  it('trennen die LESUNG vom Entwurf desselben Brandings (D2b)', () => {
+    expect(brandDesignReadingDayKey('p1')).toBe('brand-reading-day:p1')
+    expect(brandDesignReadingDayKey('p1')).not.toBe(brandDesignReadingDayKey('p2'))
+    expect(brandDesignReadingDayKey('p1')).not.toBe(brandAiSlotDayKey('p1', 'g.reading'))
+  })
+
   it('geben der INSTANZ genau einen — ohne Konto, ohne Brand', () => {
     expect(brandAiInstanceDayKey()).toBe('brand-ai-instance-day')
   })
@@ -149,9 +178,10 @@ describe('Die Eimer-Schlüssel', () => {
       brandAiAccountDayKey('x'),
       brandAiSlotDayKey('x', 'y'),
       brandAiTalkDayKey('x'),
+      brandDesignReadingDayKey('x'),
       brandAiInstanceDayKey(),
     ]
-    expect(new Set(keys).size).toBe(4)
+    expect(new Set(keys).size).toBe(5)
   })
 })
 

@@ -47,6 +47,8 @@ import {
   retainBrandGeneration,
 } from '../../../../../../utils/brandGenerators'
 import { labelSlotDependencies } from '../../../../../../utils/brandSlotPromptLabels'
+import { parseGeorgeOptions } from '../../../../../../utils/georgeTurn'
+import { loadBrandConversationHistory } from '../../../../../../utils/brandConversationHistory'
 import { bookBrandAiQuota } from '../../../../../../utils/brandAiQuota'
 import { recordBrandEvent } from '../../../../../../utils/brandEvents'
 
@@ -154,8 +156,8 @@ function stripBoldMarkers(draft: string): string {
 
 export default defineEventHandler(async (event) => {
   const started = Date.now()
-  const { userId } = await requireBrandAccess(event)
-  const { profile, stepKey, stepRow, stepRows } = await loadBrandStepContext(event, userId)
+  const { userId, betaAccount } = await requireBrandAccess(event)
+  const { profile, stepKey, stepRow, stepRows } = await loadBrandStepContext(event, userId, betaAccount)
 
   // ── HTTP-Gates: Fehler des Aufrufers (s. Kopf) ───────────────────────────
   const parsed = createBrandGenerateSchema().safeParse(await readBody(event))
@@ -216,7 +218,8 @@ export default defineEventHandler(async (event) => {
   const dependencies = labelSlotDependencies(
     collectSlotDependencies(slot.id, allRecords),
     profile.contentLocale,
-    profileFacts(profile).pathKind,
+    profileFacts(profile, betaAccount).pathKind,
+    profileFacts(profile, betaAccount).team,
   )
   const inputHash = brandGenerationInputHash(slot.id, profile.contentLocale, dependencies)
   const stored = parseGenerations(stepRow.generations)
@@ -411,6 +414,28 @@ export default defineEventHandler(async (event) => {
       return
     }
 
+    /**
+     * DER VERLAUF DIESES BAUSTEINS (a-9) — die Antworten, die der Mensch auf
+     * Georges Rückfragen in den Chat getippt hat.
+     *
+     * ER WIRD ERST HIER GELESEN, nach dem Wiederverwendungs-Zweig: ein
+     * Cache-Treffer braucht ihn nicht, und was nichts kostet, soll auch keine
+     * Abfrage kosten. FAIL-SOFT — ein unlesbarer Verlauf gibt ein leeres Array
+     * und kostet den Lauf nicht (s. `brandConversationHistory.ts`).
+     *
+     * ER GEHT NICHT IN DEN `inputHash`: der beschreibt den Stand der
+     * Quell-SLOTS, und dafür ist `collectSlotDependencies` die einzige Quelle.
+     * Dieselbe bewusste Grenze wie bei Startkarte und Website-Text — eine neue
+     * Chat-Antwort macht einen bestehenden Entwurf nicht still „veraltet"; die
+     * Neuerzeugung stösst der Mensch selbst an.
+     */
+    // Der Verlaufs-Schnitt gilt auch hier (brand-013): ein Entwurf, der aus
+    // dem verworfenen Gespräch schöpft, wäre genau die Erinnerung, die
+    // ein Neubeginn beseitigen sollte.
+    const conversation = await loadBrandConversationHistory(
+      event, profile.$id, stepKey, undefined, stepRow.restartedAt,
+    )
+
     const context: BrandGeneratorContext = {
       event,
       stepKey,
@@ -420,7 +445,12 @@ export default defineEventHandler(async (event) => {
       // Der Rückfall auf die Inhaltssprache passiert HIER, damit kein
       // Generator ihn je selbst bauen muss.
       uiLocale: resolveBrandUiLocale(body.uiLocale, profile.contentLocale),
-      pathKind: profileFacts(profile).pathKind,
+      pathKind: profileFacts(profile, betaAccount).pathKind,
+      // DIE WEICHE W3 (george-a-14, Davids Entscheidung 2026-09-09): sie
+      // entscheidet, WER im Markentext spricht. Die Beschriftungen bekamen sie
+      // schon (`labelSlotDependencies`, oben), der Entwurfs-Auftrag nicht —
+      // deshalb sprach der Pitch einer Solo-Marke von „unserer Werkstatt".
+      team: profileFacts(profile, betaAccount).team,
       // Die STARTKARTE aus dem PROFIL (§2.1) — sie geht NICHT in den
       // `inputHash`: der beschreibt den Stand der Quell-SLOTS, und dafür ist
       // `collectSlotDependencies` die einzige Quelle. Eine Änderung an der
@@ -432,6 +462,7 @@ export default defineEventHandler(async (event) => {
       siteAnalysis: profileSiteAnalysisText(profile),
       hint: body.hint ?? '',
       dependencies,
+      conversation,
       signal: abort.signal,
       onDelta: (text: string) => { send('message.delta', { generationId, text }) },
     }
@@ -463,7 +494,22 @@ export default defineEventHandler(async (event) => {
      * dann ist der Zug wieder der Entwurf, wie vorher.
      */
     const outcome: BrandGenerationOutcome = result.outcome ?? 'draft'
-    const chat = clampDraft(result.message ?? result.draft, slot.maxLength)
+
+    /**
+     * ANTWORT-MÖGLICHKEITEN GIBT ES NUR ZUR RÜCKFRAGE (Davids Anforderung
+     * 2026-09-04). Ein ENTWURFS-Zug endet laut Vertrag mit „passt das?" — dafür
+     * sind zwei Knöpfe die falsche Form, denn die Antwort darauf ist entweder
+     * eine Bestätigung (die hat ihren eigenen Knopf) oder eine Korrektur (die
+     * ist Text). Sein ASK-Zweig bleibt deshalb unangetastet.
+     *
+     * GELESEN WIRD VOR DEM KLEMMEN: `clampDraft` schneidet auf den Slot-Deckel,
+     * und die `OPTION:`-Zeilen stehen ganz am Ende — nach dem Klemmen wären sie
+     * bei einem langen Zug die ersten, die fehlen.
+     */
+    const spoken = outcome === 'question'
+      ? parseGeorgeOptions(result.message ?? result.draft)
+      : { message: result.message ?? result.draft, options: [] as string[] }
+    const chat = clampDraft(spoken.message, slot.maxLength)
     const draft = outcome === 'question' ? '' : clampDraft(stripBoldMarkers(result.draft), slot.maxLength)
 
     // Bei einer Rückfrage ist der ZUG das Ergebnis; bei einem Entwurf das FELD.
@@ -477,6 +523,7 @@ export default defineEventHandler(async (event) => {
     const completed = await persist({
       draft,
       chat,
+      options: spoken.options,
       outcome,
       inputHash,
       generationId,
@@ -531,6 +578,8 @@ export default defineEventHandler(async (event) => {
     draft: string
     /** Der Zug im Verlauf (gerahmter Entwurf bzw. die Rückfrage). */
     chat: string
+    /** Antwort-Möglichkeiten zur Rückfrage — leer heisst „keine Chips". */
+    options: readonly string[]
     outcome: BrandGenerationOutcome
     inputHash: string
     generationId: string
@@ -548,17 +597,22 @@ export default defineEventHandler(async (event) => {
       const now = new Date().toISOString()
 
       const before: BrandSlotRecord = records[input.entryBase.slotId] ?? {}
+      const written: BrandSlotRecord = {
+        ...before,
+        // Der ERSTE Wert bleibt für immer stehen — aus dem Verhältnis von
+        // `firstDraft` zu `confirmed` entstehen die beiden Übernahmequoten
+        // (Audit 2). Eine Regeneration darf ihn nicht mitziehen.
+        firstDraft: before.firstDraft ?? input.draft,
+        latestDraft: input.draft,
+        updatedAt: now,
+      }
+      // Ein NEUER Entwurf nimmt der Zeile ihre Abnahme (§5a): `accepted` ist
+      // eine Aussage über einen gelesenen Wortlaut, und der ist jetzt ein
+      // anderer. Der Server tut das, nie die Oberfläche.
+      delete written.accepted
       const next: Record<string, BrandSlotRecord> = {
         ...records,
-        [input.entryBase.slotId]: {
-          ...before,
-          // Der ERSTE Wert bleibt für immer stehen — aus dem Verhältnis von
-          // `firstDraft` zu `confirmed` entstehen die beiden Übernahmequoten
-          // (Audit 2). Eine Regeneration darf ihn nicht mitziehen.
-          firstDraft: before.firstDraft ?? input.draft,
-          latestDraft: input.draft,
-          updatedAt: now,
-        },
+        [input.entryBase.slotId]: written,
       }
 
       const history = parseGenerations(fresh.generations)
@@ -613,9 +667,20 @@ export default defineEventHandler(async (event) => {
           data: {
             profileId: profile.$id,
             stepKey,
+            // DIE SESSION IST DAS FELD (brand-011): ein Entwurfs-Zug gehört in
+            // den Faden des Feldes, das er entwirft — sonst stünde er im
+            // Kapitel-Verlauf und in keiner Session.
+            sessionKey: input.entryBase.slotId,
             role: 'george',
             body: input.chat,
-            parts: JSON.stringify({ kind: input.outcome, slotId: input.entryBase.slotId }),
+            // `options` liegt ADDITIV daneben (Davids Anforderung 2026-09-04):
+            // der `body` trägt sie NICHT — dort stünden die Beschriftungen als
+            // roher Text in der Sprechblase.
+            parts: JSON.stringify({
+              kind: input.outcome,
+              slotId: input.entryBase.slotId,
+              ...(input.options.length ? { options: input.options } : {}),
+            }),
             generationId: input.generationId,
           },
         })
@@ -638,7 +703,7 @@ export default defineEventHandler(async (event) => {
         ? { ...row, slots: JSON.stringify(next) }
         : row))
       const progress = resolveProfileProgress(
-        resolveBrandJourney(profileFacts(profile), toStepFacts(mergedRows)),
+        resolveBrandJourney(profileFacts(profile, betaAccount), toStepFacts(mergedRows)),
       )
       await touchProfile(event, profile.$id, {
         progressPct: progress.progressPct,
@@ -655,6 +720,9 @@ export default defineEventHandler(async (event) => {
         createdAt: now,
         reused: false,
         outcome: input.outcome,
+        // Rückwärts-Vertrag: fehlt das Feld, gibt es keine Chips — also genau
+        // das Verhalten von vor dieser Runde.
+        ...(input.options.length ? { options: input.options } : {}),
       }
     }
     catch (error) {

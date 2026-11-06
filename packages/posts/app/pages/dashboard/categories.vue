@@ -93,12 +93,12 @@ const filtered = computed(() => {
 const canReorder = computed(() => !search.value.trim() && rows.value.length > 1)
 
 const columns = computed<TableColumn<CategoryWithCount>[]>(() => [
-  ...(canReorder.value ? [{ id: 'drag', header: () => '' } as TableColumn<CategoryWithCount>] : []),
+  ...(canReorder.value ? [{ id: 'drag', header: srOnlyHeader(() => t('ui.table.drag')) } as TableColumn<CategoryWithCount>] : []),
   { id: 'name', header: () => t('posts.categories.col.name') },
   { id: 'slug', header: () => t('posts.categories.col.slug') },
   { id: 'topics', header: () => t('posts.categories.col.topics') },
   { id: 'state', header: () => t('posts.categories.col.state') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 // ── Reihenfolge ────────────────────────────────────────────────────────────

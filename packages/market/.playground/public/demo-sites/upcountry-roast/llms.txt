@@ -1,0 +1,14 @@
+# Upcountry Roast Co.
+
+> A craft coffee roastery in Upcountry Maui. Small-batch coffee, roasted upcountry, direct from the farm.
+
+## Who we serve
+Cafes, restaurants and offices across the island.
+
+## What we stand for
+Craft, community and sustainability guide everything we do.
+
+## Pages
+- /about: our story and our values
+- /wholesale: standing orders for cafes and restaurants
+- /farms: the six farms we buy from

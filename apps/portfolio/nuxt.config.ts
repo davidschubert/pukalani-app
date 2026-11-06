@@ -23,9 +23,15 @@ export default defineNuxtConfig({
   // Deklaration im CSS (Registry-Muster, kein Google-Link).
   css: ['~/assets/css/portfolio.css'],
 
-  app: {
-    pageTransition: { name: 'page', mode: 'out-in' },
-  },
+  // KEINE globale `app.pageTransition` mehr (2026-09-08, live erwischt): mit
+  // `mode: 'out-in'` blieb im Dashboard nach der ERSTEN Client-Navigation der
+  // ganze Seitenbereich leer — `UDashboardPanel` hat mehrere Wurzelknoten, und
+  // Vue Suspense parkt die fertig gerenderte Seite dann im versteckten
+  // Container, weil die Fragment-Transition-Hooks nie „afterLeave" feuern (kein
+  // Fehler, kein Log, harter Reload rendert). Der Fade gilt deshalb nur noch
+  // auf der öffentlichen Site: app.vue setzt ihn je Route über `<NuxtPage
+  // :transition>` (Layout `site`); das CSS ist ohnehin auf `.portfolio-site`
+  // gescopet. Bisektion 2026-09-08: gleiche Versionen mit/ohne Transition.
 
   // SPRACHRICHTUNG GEDREHT (Content-Umzug aus dem alten Portfolio-Repo):
   // dort lag Deutsch auf `/` und Englisch unter `/en`. Hier gilt die

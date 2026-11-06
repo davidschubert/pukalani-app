@@ -23,6 +23,13 @@ interface RealtimeMessage {
  * JWT-WS käme dieses Signal NICHT an. Daher hier nicht konsolidieren.
  *
  * - SSR: no-op (import.meta.server Guard)
+ * - Ping alle 20 s (`{"type":"ping"}`, wie jedes Appwrite-SDK): seit Appwrite
+ *   2.7 schließt der Realtime-Server (Swoole `heartbeat_idle_time: 120`) jede
+ *   Verbindung, die zwei Minuten lang NICHTS sendet (#15059). Ein reiner
+ *   Zuhörer wie dieser WS flog sonst alle 2 min raus — jedes Mal mit
+ *   onClose → Auth-Nachtrag (`/api/auth/me`) → Reconnect. 20 s statt knapp
+ *   unter 120 s, weil Browser die Timer von Hintergrund-Tabs auf einmal pro
+ *   Minute drosseln (Appwrites eigene Begründung für den Abstand).
  * - Reconnect mit Backoff, solange der Scope lebt
  * - Cleanup via onScopeDispose
  */
@@ -53,6 +60,14 @@ export function useRealtimeAccount(
   // Backoff. Ein open→sofort-close-Muster (z.B. degradierter Realtime-Worker)
   // bliebe sonst in einem ewigen 1s-Reconnect-Loop hängen.
   const STABLE_MS = 5_000
+  // Appwrite 2.7 trennt nach 120 s Stille; die SDKs pingen alle 20 s.
+  const PING_MS = 20_000
+  let pingTimer: ReturnType<typeof setInterval> | null = null
+
+  function stopPing() {
+    if (pingTimer) clearInterval(pingTimer)
+    pingTimer = null
+  }
 
   function handleMessage(raw: string) {
     let message: RealtimeMessage
@@ -83,9 +98,18 @@ export function useRealtimeAccount(
       scheduleReconnect()
       return
     }
-    socket.onopen = () => { opened = true; openedAt = Date.now() }
+    socket.onopen = () => {
+      opened = true
+      openedAt = Date.now()
+      stopPing()
+      const current = socket
+      pingTimer = setInterval(() => {
+        if (current?.readyState === WebSocket.OPEN) current.send(JSON.stringify({ type: 'ping' }))
+      }, PING_MS)
+    }
     socket.onmessage = event => handleMessage(String(event.data))
     socket.onclose = () => {
+      stopPing()
       if (disposed) return
       // Wird die eigene Session widerrufen, schließt der Server die Verbindung,
       // bevor zuverlässig ein Event ankommt → onClose als zusätzliches Signal
@@ -105,6 +129,7 @@ export function useRealtimeAccount(
 
   const close = () => {
     disposed = true
+    stopPing()
     socket?.close()
     socket = null
   }

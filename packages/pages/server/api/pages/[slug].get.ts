@@ -1,6 +1,6 @@
 import { Query } from 'node-appwrite'
 import { guidelinesFallbackEditorRows } from '../../../shared/guidelinesFallback'
-import { GUIDELINES_SLUG, PAGES_TABLE, type PageEditorRow, type PageRow } from '../../../shared/types/page'
+import { GUIDELINES_SLUG, PAGES_TABLE, type PageDetailResponse, type PageEditorRow, type PageRow } from '../../../shared/types/page'
 
 /**
  * Admin: alle Sprachversionen einer Seite (inkl. body) zum Bearbeiten.
@@ -11,7 +11,7 @@ import { GUIDELINES_SLUG, PAGES_TABLE, type PageEditorRow, type PageRow } from '
  * erste Speichern legt die Seite an; „Löschen" gibt es dort nicht, weil es
  * nichts zu löschen gäbe.
  */
-export default defineEventHandler(async (event): Promise<{ rows: PageEditorRow[], isTemplate: boolean }> => {
+export default defineEventHandler(async (event): Promise<PageDetailResponse> => {
   await requireCommunityPermission(event, 'pages.manage')
   const slug = getRouterParam(event, 'slug')
   if (!slug) {

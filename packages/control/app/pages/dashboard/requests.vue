@@ -118,7 +118,7 @@ const columns = computed<TableColumn<RequestDto>[]>(() => [
   { accessorKey: 'note', header: () => t('control.requests.col.note'), meta: { class: HIDE_MD } },
   { accessorKey: 'status', header: () => t('control.requests.col.status') },
   { id: 'state', header: () => t('control.requests.col.state') },
-  { id: 'actions', header: () => '' },
+  { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
 
 /**

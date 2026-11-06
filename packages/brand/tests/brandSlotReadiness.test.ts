@@ -124,6 +124,58 @@ describe('Die Regel aus der Registry', () => {
   })
 })
 
+/**
+ * BAUSTEIN D — das Gate darf den INTERIM-WEG nicht zusperren.
+ *
+ * INTERIM bis zum Paarvergleich-Instrument (Spec §12.2) — Davids Entscheidung
+ * 2026-09-04: `d.primary`/`d.secondary` werden im GESPRÄCH hergeleitet statt
+ * aus `d.pairs` berechnet. `d.pairs` hat kein Instrument und bleibt deshalb für
+ * JEDE Marke leer. Es gibt dafür bewusst KEINE eigene Slot-Regel (s. Kommentar
+ * in `SLOT_RULES`) — was hier bewiesen wird, ist, dass die vorhandene
+ * Registry-Regel genau das Richtige tut, und zwar in BEIDE Richtungen.
+ */
+describe('Baustein D: Archetyp ohne Paarvergleich (Interim)', () => {
+  it('DIE HÜLLE IST TRANSITIV — `d.pairs` ist nicht die einzige Quelle', () => {
+    // Das ist der ganze Grund, warum das leere Instrument nichts zusperrt.
+    expect([...dependencyClosure('d.primary')].sort()).toEqual([
+      'a.customerPraise', 'a.pitch', 'a.toneAnalysis', 'd.hypothesis', 'd.pairs',
+    ])
+  })
+
+  it('EIN LEERES d.pairs SPERRT NICHTS, solange irgendeine Quelle trägt', () => {
+    for (const slotId of ['d.primary', 'd.secondary']) {
+      expect(slotReadiness(slotId, input({ records: { 'a.pitch': 'Wir rösten Kaffee.' } })), slotId)
+        .toEqual({ ready: true })
+      // Und erst recht mit der Hypothese, aus der der Interim-Weg schöpft.
+      expect(slotReadiness(slotId, input({ records: { 'd.hypothesis': 'Viel vom Weisen.' } })), slotId)
+        .toEqual({ ready: true })
+    }
+  })
+
+  it('GEGENPROBE: ist WIRKLICH nichts da, bleibt es zu Recht nicht bereit', () => {
+    // Ohne Pitch, Ton-Analyse, Lob und Hypothese lässt sich kein Archetyp
+    // ableiten — nur einer erfinden. Das Gate spart hier den Anbieter-Lauf.
+    for (const slotId of ['d.primary', 'd.secondary', 'd.gapReveal', 'd.voiceSamples']) {
+      expect(slotReadiness(slotId, input()), slotId)
+        .toEqual({ ready: false, missing: ['source_slots'] })
+    }
+  })
+
+  it('DIE VIER STIMME-FRAGEN HABEN KEINE QUELLEN — sie werden gefragt, nicht abgeleitet', () => {
+    for (const slotId of ['d.party', 'd.never', 'd.admired', 'd.emotion']) {
+      expect(dependencyClosure(slotId), slotId).toEqual([])
+      expect(slotReadiness(slotId, input()), slotId).toEqual({ ready: true })
+    }
+  })
+
+  it('BROWSER-SICHT: nur `archetype` abgedeckt ⇒ im Zweifel DURCHLASSEN', () => {
+    // Die Werkstatt sieht `a.pitch` nicht (er liegt in `context`) — sie darf
+    // deshalb nicht über ihn urteilen, auch nicht bei leerem Stand.
+    expect(slotReadiness('d.primary', input({ coveredSteps: ['archetype'] })))
+      .toEqual({ ready: true })
+  })
+})
+
 describe('Wer die Quelle nicht sieht, urteilt nicht über sie (P3.1)', () => {
   it('SERVER: alle neun Bausteine abgedeckt ⇒ die Registry-Regel greift', () => {
     // `b.purpose` schöpft aus `a.pitch` (Baustein A) UND drei B-Slots.

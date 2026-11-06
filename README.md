@@ -42,7 +42,7 @@ export default defineNuxtConfig({
 | Technologie | Rolle |
 |---|---|
 | Nuxt 4 (SSR) + Nuxt UI 4 | Framework + UI-Komponenten |
-| Appwrite (self-hosted, aktuell 1.9.6, MariaDB, TablesDB) | Backend: Auth, Datenbank, Storage, Realtime, Presences |
+| Appwrite (self-hosted, aktuell 2.0.0, MariaDB, TablesDB) | Backend: Auth, Datenbank, Storage, Realtime, Presences |
 | node-appwrite / appwrite | Server SDK (CRUD via Server Routes) / Web SDK (Realtime + Presences API) |
 | Pinia · Zod · @nuxtjs/i18n (de+en) | State · Validierung · Internationalisierung |
 | Tailwind CSS 4 · TypeScript strict | Styling · Typsicherheit |

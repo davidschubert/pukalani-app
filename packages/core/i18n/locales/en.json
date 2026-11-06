@@ -27,7 +27,10 @@
       "hasAccount": "Already have an account?",
       "loginLink": "Sign in",
       "termsLabel": "I accept the Terms and Conditions",
+      "termsDraftNotice": "Draft, under review by our lawyers — the binding version will replace it after the review. We record which version you agreed to.",
       "termsLink": "Read Terms and Conditions",
+      "businessLabel": "I am acting as a business or self-employed person, not as a consumer",
+      "businessNotice": "Our offer is intended for businesses and self-employed people only — that is why we ask.",
       "invitedEmailNote": "This address is fixed: the invitation was sent to it."
     },
     "logout": "Sign out",
@@ -75,6 +78,11 @@
       "requestNew": "Request a new link"
     },
     "networkError": "Server unreachable — please try again later.",
+    "botCheck": {
+      "required": "Please confirm that you are not a robot.",
+      "failed": "The robot check failed, please try again.",
+      "unavailable": "The robot check is unavailable right now, please try again in a few minutes."
+    },
     "rateLimited": "Too many attempts. Wait a moment, then try again.",
     "rateLimitedIn": "Too many attempts. Wait one more second, then try again. | Too many attempts. Wait {n} more seconds, then try again.",
     "verification": {
@@ -136,7 +144,8 @@
         "recoveryCode": "Recovery code",
         "recoveryPlaceholder": "e.g. 4f3a9c2b10"
       }
-    }
+    },
+    "reauthSignedOut": "Please sign in again to confirm."
   },
   "validation": {
     "required": "This field is required",
@@ -144,12 +153,15 @@
     "passwordMin": "The password must be at least 8 characters long",
     "passwordComplexity": "At least 1 uppercase, 1 lowercase, 1 number and 1 special character",
     "nameMin": "The name must be at least 2 characters long",
+    "nameMax": "The name must be at most 80 characters long",
+    "nameNoLinks": "The name must not contain links, addresses or line breaks",
     "bioMax": "The bio must be at most 500 characters long",
     "phoneFormat": "Enter the number in international format, e.g. +14155552671 (start with +, max 15 digits, no spaces)",
     "urlInvalid": "Please enter a valid URL",
     "passwordMismatch": "The passwords do not match",
     "passwordConfirmRequired": "Please confirm the password",
     "termsRequired": "Please accept the Terms and Conditions",
+    "businessRequired": "Please confirm that you are acting as a business or self-employed person",
     "mfaCodeInvalid": "That code is not right."
   },
   "ui": {
@@ -162,6 +174,12 @@
     "sortBy": "Sort by {label}",
     "sortedAsc": "{label}, sorted ascending",
     "sortedDesc": "{label}, sorted descending",
+    "table": {
+      "actions": "Actions",
+      "select": "Select",
+      "drag": "Reorder",
+      "vote": "Vote"
+    },
     "confirm": {
       "confirm": "Confirm"
     },
@@ -319,7 +337,10 @@
       "cancel": "Cancel",
       "success": "Account deleted.",
       "failed": "Deletion failed — please try again.",
-      "failedDescription": "Your account is unchanged — nothing was deleted. Try again in a moment."
+      "failedDescription": "Your account is unchanged — nothing was deleted. Try again in a moment.",
+      "reauthTitle": "Sign in again to continue",
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete your account. Nothing has been deleted.",
+      "reauthConfirm": "Sign in again"
     },
     "twoFactor": {
       "title": "Two-factor",

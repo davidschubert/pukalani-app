@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "nuxi dev --port 3010",
     "build": "nuxi build",
+    "seed:legal": "node --experimental-strip-types --env-file=.env scripts/seed-legal-pages.ts",
     "lint": "eslint .",
     "preview": "nuxi preview",
+    "test": "nuxi prepare && vitest run",
     "typecheck": "nuxi typecheck"
   },
   "dependencies": {
@@ -16,6 +18,9 @@
     "@pukalani/admin": "workspace:*",
     "@pukalani/brand": "workspace:*",
     "@pukalani/core": "workspace:*",
+    "@pukalani/insights": "workspace:*",
+    "@pukalani/market": "workspace:*",
+    "@pukalani/pages": "workspace:*",
     "@pukalani/system": "workspace:*",
     "@pukalani/themes": "workspace:*",
     "@nuxt/image": "catalog:",
@@ -37,6 +42,7 @@
     "@types/nodemailer": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:"
   }
 }

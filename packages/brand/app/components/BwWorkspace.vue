@@ -28,6 +28,13 @@ const props = withDefaults(defineProps<{
    * '288px', Vorbild UDashboardSidebar --width). Gesetzt entfällt die
    * ziehbare Naht Rail↔Bühne — nur Bühne↔Stand bleibt ein Splitter. */
   railWidth?: string
+  /**
+   * Breite der Bühne (`--bw-stage-max`, Default 46 rem = Lesebreite). Die
+   * Werkstatt-Kapitel setzen 72 rem: dort wird gewählt, nicht gelesen —
+   * Karten zu dritt, Rampen, Specimen brauchen die Fläche (David, 2026-09-08).
+   * Dokument und Foundation-Leseansicht bleiben bei der Lesebreite.
+   */
+  stageWidth?: string
   /* Runde 20 (David): die Seite darf die Nav-Spalte einklappen (Toggle im
    * Bühnen-Balken). Wirkt nur im Fixed-Rail-Zweig; v-show statt v-if, damit
    * Collapsible-Zustände der Sidebar das Einklappen überleben. */
@@ -78,6 +85,7 @@ const props = withDefaults(defineProps<{
   progressCount: undefined,
   progressTime: undefined,
   railWidth: undefined,
+  stageWidth: undefined,
   railCollapsed: false,
   georgeCollapsed: false,
   initialMode: 'george',
@@ -208,7 +216,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
 </script>
 
 <template>
-  <div class="bw-root bw-shell" :class="mode === 'stage' ? 'bw-mode-stage' : 'bw-mode-george'">
+  <div
+    class="bw-root bw-shell" :class="mode === 'stage' ? 'bw-mode-stage' : 'bw-mode-george'"
+    :style="stageWidth ? `--bw-stage-max: ${stageWidth}` : undefined"
+  >
     <!-- Hauptnavigation liegt auch über der Werkstatt (Davids Vorgabe
          Runde 131) — der Rest des Shells teilt sich die Resthöhe. -->
     <div class="flex-none px-6" :inert="railOverlay || undefined">

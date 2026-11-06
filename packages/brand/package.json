@@ -7,11 +7,18 @@
   "scripts": {
     "dev": "nuxi dev .playground --port 3009",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:design": "node --env-file=../../apps/branding/.env scripts/verify-brand-design.mjs",
+    "verify:kit": "node --env-file=../../apps/branding/.env scripts/verify-brand-kit.mjs",
+    "verify:tokens": "node scripts/verify-brand-tokens.mjs",
+    "verify:context": "node scripts/verify-brand-context.mjs",
+    "print:sessions": "jiti scripts/print-session-content.mts",
+    "check:sessions": "jiti scripts/print-session-content.mts --check"
   },
   "dependencies": {
     "@nuxt/ui": "catalog:",
     "@nuxtjs/i18n": "catalog:",
+    "fflate": "catalog:",
     "node-appwrite": "catalog:",
     "nuxt": "catalog:",
     "pinia": "catalog:",
@@ -21,6 +28,7 @@
     "@nuxt/eslint-config": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "jiti": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vue": "catalog:"

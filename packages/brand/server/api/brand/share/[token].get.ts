@@ -1,4 +1,5 @@
 import { Query } from 'node-appwrite'
+import { brandShareableSlotValues, isBrandChapterShareable } from '../../../../shared/brandSharing'
 import type { BrandShareSnapshot, BrandShareViewResponse } from '../../../../shared/types/brand'
 import {
   BRAND_SHARES_TABLE,
@@ -7,6 +8,7 @@ import {
   isAppwriteNotFound,
 } from '../../../utils/brandStore'
 import { hashBrandShareToken } from '../../../utils/brandShares'
+import { recordBrandEvent } from '../../../utils/brandEvents'
 
 /**
  * DIE ÖFFENTLICHE LESEANSICHT — die AUSDRÜCKLICHE zweite Ausnahme vom
@@ -37,6 +39,21 @@ import { hashBrandShareToken } from '../../../utils/brandShares'
  *
  * ── UNBEKANNT UND ABGELAUFEN ANTWORTEN GLEICH ─────────────────────────────
  * 404, ohne Unterschied. „Abgelaufen" verriete, dass es diesen Link gab.
+ *
+ * ── DER ALTE SNAPSHOT WIRD BEIM LESEN GEFILTERT (Paket G3) ────────────────
+ * Seit MV1 M5 friert `share.post.ts` nur noch reisefähige Festlegungen ein —
+ * jede Zeile, die VORHER entstanden ist, trägt trotzdem alles Bestätigte:
+ * Wettbewerber samt notierter Schwäche, Beschwerden, Rohantworten (Konzept
+ * §4). Diese Route sendet sie deshalb nicht mehr roh, sondern durch DENSELBEN
+ * Filter, den der Schreibweg benutzt (`brandShareableSlotValues`). Das ist die
+ * dritte Masche des Doppelnetzes aus §2.8 — nötig, weil der Renderer nur die
+ * SEITE schützt: die API-Antwort steht daneben und ist mit dem Token ohne
+ * Browser abrufbar.
+ *
+ * SEIT BRAND DESIGN D9 gilt dasselbe für ganze KAPITEL: die sechs von Brand
+ * Design fallen hier wie dort (`isBrandChapterShareable`). Ein Abbild aus der
+ * Zeit zwischen D8 und D9 trägt sie noch als rohe Slot-Werte; gerendert wurden
+ * sie nie, ausgeliefert schon.
  */
 export default defineEventHandler(async (event): Promise<BrandShareViewResponse> => {
   setResponseHeaders(event, {
@@ -89,5 +106,31 @@ export default defineEventHandler(async (event): Promise<BrandShareViewResponse>
     throw createError({ status: 404, statusText: 'Not Found' })
   }
 
-  return { snapshot, publishedAt: row.publishedAt, expiresAt: row.expiresAt }
+  // Ein Kapitel, von dem nach dem Filter nichts übrig bleibt, FÄLLT WEG statt
+  // als leere Überschrift dazustehen — dieselbe Regel wie beim Einfrieren.
+  //
+  // DIE SECHS DESIGN-KAPITEL FALLEN GANZ (D9, Davids Entscheidung 2026-09-09).
+  // Auch hier gilt: der Schreibweg lässt sie seit D9 nicht mehr hinein, aber
+  // jede Zeile von VORHER trägt sie noch — dieselbe Lage wie bei den internen
+  // Sessions vor MV1 M5, und deshalb dieselbe Kur. Die Antwort verliert dabei
+  // nichts Sichtbares: die visuelle Identität steht im `design`-Preset, das
+  // unangetastet bleibt.
+  const chapters = (snapshot.chapters ?? [])
+    .filter(chapter => isBrandChapterShareable(chapter.stepKey))
+    .map(chapter => ({ ...chapter, slots: brandShareableSlotValues(chapter.slots ?? []) }))
+    .filter(chapter => chapter.slots.length > 0)
+
+  await recordBrandEvent(event, {
+    type: 'share.viewed',
+    profileId: row.profileId,
+    // Kein `userId`: der zweite Leser hat kein Konto — das ist der Sinn des
+    // Links. Und keine IP: gezählt wird, DASS jemand liest, nicht wer.
+    payload: { shareId: row.$id, chapters: chapters.length },
+  })
+
+  return {
+    snapshot: { ...snapshot, chapters },
+    publishedAt: row.publishedAt,
+    expiresAt: row.expiresAt,
+  }
 })

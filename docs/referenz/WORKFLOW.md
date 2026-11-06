@@ -60,3 +60,35 @@ gilt als Vorlage für alles Weitere. Er ergänzt die bestehenden Regeln
 - **Gelerntes wird notiert, nicht wiederholt:** Fallen und Erkenntnisse
   wandern in COMPLETE/Referenz/Memory, damit die nächste Umsetzung sie
   geerbt hat.
+
+## Sitzungsführung je Phase (seit 2026-09-09)
+
+Jede Runde einer Session sendet den ganzen bisherigen Kontext neu; das
+Nutzungslimit ist über alle Modelle geteilt. Deshalb gehört zur Arbeit an
+jeder Phase auch die Frage, WELCHE Session sie trägt und WER darin denkt.
+Die Regeln im Einzelnen (mit Begründung und Messwerten) stehen in
+[SESSION-HYGIENE.md](SESSION-HYGIENE.md); hier nur die Zuordnung:
+
+- **Phasen 1–2 (Strategie, Konzeption):** Recherche und Bestandsaufnahme an
+  Explore/audit-scout (Haiku/Sonnet, laden CLAUDE.md nicht), nur die
+  Schlussfolgerung zurück. Die Konzeption endet mit Commit — der Bau startet
+  in einer NEUEN Session, nicht im Verlauf der Planung.
+- **Phase 3 (Prototyp-Iteration):** David sammelt Befunde und schickt sie als
+  EINE nummerierte Liste; ein falscher Weg wird per `/rewind` (Doppel-Esc)
+  zurückgenommen und der Auftrag korrigiert gestellt, statt eine Korrektur
+  nachzuschieben. Claude baut Änderungen gebündelt, nicht Stück für Stück.
+- **Phase 5 (Umsetzung):** Opus baut mit vollständigem, selbständigem Auftrag
+  (Pfade, Ursache, Ziel, Gate-Liste, „kein Commit"); Fable prüft im
+  Hauptloop. Ein Paket = eine Session; falsches Ergebnis eines Sub-Agenten =
+  neu spawnen mit korrigiertem Auftrag, nicht nachsteuern.
+- **Phasen 6–8 (Audit, Testing):** audit-scout (Haiku) vor audit-worker
+  (Opus); Testläufe mit großer Ausgabe im Sub-Agenten, Playwright mit
+  `--reporter=dot`; Beweise als Zahlen und `read_page`, Screenshots nur zum
+  Schluss.
+- **Phasen 9–11 (Freigabe, Deploy, Docs):** Wartezeiten (CI, Deploy) sind
+  keine Runden — kein Polling im Minutentakt, kein Loop ohne Zweck. Der
+  Abschluss (COMPLETE-Eintrag, Push, Live-SHA) beendet die Session; das
+  nächste Vorhaben startet über die Karte.
+- **Quer über alle Phasen:** `/effort` nach Aufgabe, `/context` einmal je
+  Session, `/usage` einmal je Woche; Compaction nur vor einer Pause und mit
+  Fokus; MCP-Server ohne Repo-Bezug aus.

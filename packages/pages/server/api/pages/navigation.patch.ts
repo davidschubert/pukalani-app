@@ -44,11 +44,21 @@ import { PAGES_TABLE, type PageRow } from '../../../shared/types/page'
 export default defineEventHandler(async (event): Promise<CommunityNavOverride> => {
   await requireCommunityPermission(event, 'branding.manage')
 
-  // Ohne Mandanten-Kontext gibt es keine Community, deren Menü man wählen
-  // könnte (Silo-App, Kontroll-Host, Single-Tenant) — 404 wie eine fehlende
-  // Route, dieselbe Antwort wie bei `PATCH /api/community/branding`.
-  const communityId = useTenant(event)?.communityId
-  if (!communityId) throw createError({ status: 404, statusText: 'Not found' })
+  /**
+   * WESSEN MENÜ WIRD HIER GESCHRIEBEN (U15 Teil 3, 2026-09-08)?
+   *
+   * Hier stand `useTenant(event)?.communityId`, und damit antwortete diese
+   * Route in JEDER Silo-App 404 — auf branding.supply und
+   * comments.pukalani.app konnte der Betreiber sein eigenes Menü nie speichern,
+   * obwohl der Reiter im Dashboard stand. `communityNavRowId()` (core) kennt
+   * den Fall: dort ist die INSTANZ der Besitzer (`'instance'`).
+   *
+   * 404 bleibt genau für den Fall, für den es gedacht war — den KONTROLL-HOST
+   * der Pool-App: dort gibt es keine Community, deren Menü jemand wählen
+   * dürfte, und die Antwort ist dieselbe wie bei `PATCH /api/community/branding`.
+   */
+  const rowId = communitySettingsRowIdFor(event)
+  if (!rowId) throw createError({ status: 404, statusText: 'Not found' })
 
   const body = await readValidatedBody(event, communityNavigationSchema.parse)
 
@@ -68,7 +78,7 @@ export default defineEventHandler(async (event): Promise<CommunityNavOverride> =
     }
   }
 
-  await writeCommunityNavOverride(event, communityId, body)
+  await writeCommunityNavOverride(event, rowId, body)
 
   // Die Antwort ist der GESPEICHERTE Zustand — die Seite übernimmt ihn daraus,
   // statt ihn sich zusammenzureimen (Muster registration.patch.ts).

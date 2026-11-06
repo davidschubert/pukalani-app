@@ -57,12 +57,15 @@ async function createPoolUserWithJwt(tag) {
   const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `O2 ${tag}` })
   cleanup.users.push(user.$id)
 
-  // Session wie beim Login (Admin-Client), dann JWT aus der Session.
+  // Session wie beim Login (Admin-Client), dann JWT zu dieser Session.
+  // node-appwrite 28: `account.createJWT` ist entfernt — geminzt wird am
+  // ADMIN-Client (`users.createJWT`), genau wie in der Platform-App
+  // (core/server/utils/controlService.ts). Die Session wird trotzdem angelegt:
+  // ein JWT ohne Session ist auf Appwrite wertlos.
   const admin = new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey)
   const { Account } = await import('node-appwrite')
-  const session = await new Account(admin).createEmailPasswordSession({ email, password })
-  const sessionClient = new Client().setEndpoint(endpoint).setProject(poolProject).setSession(session.secret)
-  const { jwt } = await new Account(sessionClient).createJWT()
+  await new Account(admin).createEmailPasswordSession({ email, password })
+  const { jwt } = await poolUsers.createJWT({ userId: user.$id })
   return { userId: user.$id, email, jwt }
 }
 

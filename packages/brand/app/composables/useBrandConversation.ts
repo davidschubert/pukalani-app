@@ -5,6 +5,7 @@ import {
 } from '../../shared/brandAiLimits'
 import { decodeBrandGenerationChunk } from '../../shared/brandGeneration'
 import { isBrandUiLocale } from '../../shared/brandUiLocale'
+import type { BrandNextSessionRef } from '../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
 
 /**
@@ -14,8 +15,26 @@ import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
  * Sie ist die kleine Schwester von `useBrandGeneration()` und teilt deren
  * Protokoll, deren Leser (`decodeBrandGenerationChunk`) und deren
  * Store-Aktionen. Was fehlt, ist alles, was mit einem FELD zu tun hat: kein
- * `slot.ready`, keine Entwurfs-Markierung, keine `revision`. Ein Zug ist eine
- * Sprechblase, sonst nichts.
+ * `slot.ready`, keine Entwurfs-Markierung. Ein Zug ist eine Sprechblase, sonst
+ * nichts.
+ *
+ * ── DIE `revision` REIST TROTZDEM MIT, UND SIE MUSS ÜBERNOMMEN WERDEN ─────
+ * (Kailua-Befund 2, 2026-09-08 — der teuerste Fehler dieser Datei.)
+ *
+ * „Ein Zug schreibt keinen Slot" stimmt, „ein Zug bewegt die `revision` nie"
+ * stimmt NICHT: die Sammel-Session schreibt ihren Zwischenstand, und der
+ * „hat mitgelesen"-Stempel (`briefDelivered`) schreibt die Kapitel-Zeile —
+ * beide erhöhen sie, und der Abschluss-Frame sagt es ausdrücklich („GELESEN,
+ * nicht erhöht — AUSSER …", converse.post.ts). Dieser Leser hat die Zahl bis
+ * hierher WEGGEWORFEN. Der nächste Autosave schickte damit eine Fassung, die
+ * der Server längst überholt hatte, kassierte 409 — und der Mensch bekam in
+ * einem EINZIGEN offenen Tab den Dialog „woanders geändert" über eine
+ * Serverfassung, die für sein Feld leer war. Wer „Serverfassung laden" drückte,
+ * verlor seine Eingabe. Dahinter blieben Bestätigungen unbemerkt liegen
+ * (Befund 3: 10/10 angezeigt, 1/10 gespeichert).
+ *
+ * `applyGenerationRevision` nimmt nur GRÖSSERE Zahlen an — ein Zug, der die
+ * gelesene Fassung meldet (der Normalfall), ändert damit nichts.
  *
  * ── DREI ARTEN, NICHTS ZU TUN — UND ZWEI DAVON SIND STILL ────────────────
  * 1. `{ conversed: false }` (kein Strom): der Kill-Switch ist aus, der Zug lief
@@ -43,9 +62,34 @@ import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
 /** Nur die Drossel wird gemeldet; alles andere bleibt still (s. Kopf). */
 export type BrandConversationFailure = BrandAiRejectionCode
 
+/**
+ * DIE ZWEI ABLEHNUNGEN, DIE EIN MENSCH ZU SEHEN BEKOMMT (BW2 3c-i).
+ *
+ * Sie sind die Ausnahme von „alles andere bleibt still": beide sagen etwas
+ * über die SESSION, die der Mensch gerade angeklickt hat — ein stiller
+ * Abbruch sähe hier aus wie ein kaputter Knopf. Alles Übrige bleibt bei der
+ * Regel im Kopf: ein ausgefallener Zug ist kein Unglück.
+ */
+export type BrandConversationSessionFailure = 'session_locked' | 'session_foreign'
+
 export interface BrandConverseInput {
-  /** Was der Mensch getippt hat. */
-  text: string
+  /** Was der Mensch getippt hat — beim ERÖFFNUNGSZUG hat niemand etwas gesagt. */
+  text?: string
+  /**
+   * ERÖFFNUNGSZUG: George spricht als Erster in dieser Session (§6). Die Route
+   * ist idempotent — hat die Session schon einen Berater-Zug, antwortet sie
+   * `{ conversed: false, skipped: true }`.
+   */
+  opening?: true
+  /**
+   * ABSCHLUSSZUG: die Session ist bestätigt, George würdigt sie in einem Satz
+   * und sagt, wohin es weitergeht (Davids Entscheidung 2026-09-09). Die Route
+   * prüft die Bestätigung selbst und antwortet sonst
+   * `{ conversed: false, skipped: true }` — sie glaubt dem Rumpf nicht.
+   */
+  closing?: true
+  /** Die Session, in der dieser Zug stattfindet (BW2 §6) — seit 3c-i immer gesetzt. */
+  sessionKey?: string
   /** Der Frage-Slot, dessen Antwort das war — bei einer freien Frage keiner. */
   slotId?: string
   /** Wortlaut dieser Frage, wie er im Panel stand. */
@@ -103,6 +147,49 @@ export function useBrandConversation(
   const spoke = ref(false)
   const coveredSlotId = ref<string | null>(null)
 
+  /**
+   * HAT DIESER ZUG AUF DEM SERVER ETWAS GESCHRIEBEN? (Kailua-Befund 4)
+   *
+   * Genau dann, wenn die gemeldete `revision` grösser ist als die gelesene.
+   * Heute gibt es dafür zwei Auslöser (Sammel-Session, „hat mitgelesen"-
+   * Stempel), und der erste ist der teure: der zusammengelegte Wert von
+   * `a.facts` entsteht IM SERVER, und kein Frame trägt ihn. Ohne diese Flanke
+   * sähe die Bühne ihn nie — sie zeigte weiter den Rohtext, den der Mensch als
+   * ERSTEN Teil getippt hat.
+   */
+  const wrote = ref(false)
+
+  /**
+   * ES KAM GAR KEIN ZUG ZUSTANDE (Kailua-Befund 4, Absicherung).
+   *
+   * Gesetzt, wenn die Route vor dem Strom umkehrt: Kill-Switch aus,
+   * Baustein-Sperre belegt, wiederholter Schlüssel, Drossel, eine
+   * Session-Ablehnung. In ALL diesen Fällen ist auch der Sammel-Schritt nicht
+   * gelaufen — die Route bucht und schreibt ihn erst hinter diesen Toren.
+   *
+   * Die Werkstatt braucht die Auskunft für genau eine Entscheidung: die
+   * Antwort auf einen Sammel-Teil gehört normalerweise dem Server. Läuft dort
+   * nichts, gäbe es niemanden, der sie aufhebt — dann schreibt der Browser sie
+   * doch, und die Werkstatt verhält sich wie vor P3.2. Ein abgerissener STROM
+   * zählt ausdrücklich NICHT dazu: dort kann der Server den Teil längst
+   * gespeichert haben, und ein zweiter Schreiber machte daraus zwei Wahrheiten.
+   */
+  const noTurn = ref(false)
+
+  /**
+   * WOHIN ES NACH DIESEM ZUG WEITERGEHT (Auto-Weiter, §5) — der Wegweiser aus
+   * dem Abschluss-Frame, gerechnet auf dem SERVER-Stand. `null` heisst „bleib,
+   * wo du bist"; die Entscheidung DARF ich jetzt wechseln trifft nicht dieser
+   * Leser, sondern `decideAutoAdvance` (shared).
+   */
+  const nextStop = ref<BrandNextSessionRef | null>(null)
+
+  /**
+   * DIE SESSION-ABLEHNUNG (400/409) — der eine Fall, in dem die Werkstatt
+   * etwas SAGEN muss (s. `BrandConversationSessionFailure`).
+   */
+  const sessionFailure = ref<BrandConversationSessionFailure | null>(null)
+
   let controller: AbortController | null = null
 
   async function converse(input: BrandConverseInput): Promise<void> {
@@ -120,8 +207,12 @@ export function useBrandConversation(
     controller = new AbortController()
     pending.value = true
     failureCode.value = null
+    sessionFailure.value = null
     spoke.value = false
     coveredSlotId.value = null
+    wrote.value = false
+    noTurn.value = false
+    nextStop.value = null
 
     let turnId = ''
 
@@ -132,7 +223,13 @@ export function useBrandConversation(
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
           body: JSON.stringify({
-            text: input.text,
+            // BEIM ERÖFFNUNGS- UND BEIM ABSCHLUSSZUG DARF KEIN `text`
+            // MITREISEN: das Schema weist beides ausdrücklich ab (drei Formen,
+            // ein Rumpf).
+            ...(input.opening
+              ? { opening: true }
+              : input.closing ? { closing: true } : { text: input.text }),
+            ...(input.sessionKey ? { sessionKey: input.sessionKey } : {}),
             ...(input.slotId ? { slotId: input.slotId } : {}),
             ...(input.question?.trim() ? { question: input.question.trim() } : {}),
             ...(input.nextSlotId ? { nextSlotId: input.nextSlotId } : {}),
@@ -146,17 +243,27 @@ export function useBrandConversation(
       )
 
       if (!response.ok || !response.body) {
-        // Nur die Drossel nennt ihren Grund; jedes andere Nein bleibt still.
-        failureCode.value = response.status === 429
-          ? (code => (isBrandAiRejectionCode(code) ? code : null))(await envelopeReason(response))
+        // Nur die Drossel nennt ihren Grund; jedes andere Nein bleibt still —
+        // AUSSER den zwei Session-Ablehnungen, die von der Wahl des Menschen
+        // handeln (`session_locked` 409, `session_foreign` 400).
+        const reason = response.status === 429 || response.status === 409 || response.status === 400
+          ? await envelopeReason(response)
           : null
+        failureCode.value = response.status === 429 && isBrandAiRejectionCode(reason) ? reason : null
+        sessionFailure.value = reason === 'session_locked' || reason === 'session_foreign'
+          ? reason
+          : null
+        noTurn.value = true
         return
       }
 
       // `{ conversed: false }` — kein Strom, kein Zug, kein Hinweis (s. Kopf).
       // Erkannt am Kopf und nicht am Rumpf: den Rumpf zu lesen hiesse, den
       // Strom anzufassen, bevor klar ist, dass es einer ist.
-      if (!response.headers.get('content-type')?.includes('text/event-stream')) return
+      if (!response.headers.get('content-type')?.includes('text/event-stream')) {
+        noTurn.value = true
+        return
+      }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -174,6 +281,22 @@ export function useBrandConversation(
           else if (item.type === 'generation.completed') {
             spoke.value = true
             coveredSlotId.value = item.slotId || null
+            // s. Kopf: der Zug kann die Fassung bewegt haben (Sammel-Session,
+            // „hat mitgelesen"-Stempel). `wrote` sagt der Seite, dass es einen
+            // neuen SERVER-Stand gibt, den nur ein Abruf zeigen kann.
+            wrote.value = item.revision > store.revision
+            store.applyGenerationRevision(item.revision)
+            // ANTWORT-MÖGLICHKEITEN, falls der Zug eine Wahl anbietet (Davids
+            // Anforderung 2026-09-04). VOR dem Abschluss gesetzt, damit der Zug
+            // in EINEM Schritt fertig und beknopft wird — sonst rendert die
+            // Bühne für einen Wimpernschlag eine Frage ohne ihre Knöpfe.
+            if (item.options?.length) store.setGeorgeMessageOptions(item.generationId, item.options)
+            // Das BESTÄTIGUNGS-Angebot (Davids Entscheidung 2026-09-09) — aus
+            // demselben Grund vor dem Abschluss: der Zug wird in EINEM Schritt
+            // fertig und beknopft.
+            if (item.confirm) store.setGeorgeMessageConfirm(item.generationId)
+            // Der Wegweiser des Servers (§5) — gelesen, nie gerechnet.
+            nextStop.value = item.next ?? null
             store.endGeorgeMessage(item.generationId)
           }
           // `slot.ready` kommt hier NIE — die Route hat keinen Pfad dorthin.
@@ -204,6 +327,11 @@ export function useBrandConversation(
     failureCode.value = null
   }
 
+  /** Der Toast ist gezeigt — die Meldung darf nicht ein zweites Mal feuern. */
+  function dismissSessionFailure(): void {
+    sessionFailure.value = null
+  }
+
   if (import.meta.client) {
     onBeforeUnmount(() => stop())
   }
@@ -212,8 +340,26 @@ export function useBrandConversation(
   function reset(): void {
     spoke.value = false
     coveredSlotId.value = null
+    wrote.value = false
+    noTurn.value = false
     failureCode.value = null
+    sessionFailure.value = null
+    nextStop.value = null
   }
 
-  return { pending, failureCode, spoke, coveredSlotId, converse, stop, dismissFailure, reset }
+  return {
+    pending,
+    failureCode,
+    sessionFailure,
+    spoke,
+    coveredSlotId,
+    wrote,
+    noTurn,
+    nextStop,
+    converse,
+    stop,
+    dismissFailure,
+    dismissSessionFailure,
+    reset,
+  }
 }

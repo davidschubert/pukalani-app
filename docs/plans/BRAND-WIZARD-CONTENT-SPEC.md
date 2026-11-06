@@ -227,6 +227,14 @@ Prüfstand?" — Chip, Default nein).
 | R3 | Why now? What happened — growth, new audience, merger, or the moment you got embarrassed by your own website? | Warum jetzt? Was ist passiert — Wachstum, neue Zielgruppe, Zusammenschluss, oder der Moment, in dem euch die eigene Website peinlich wurde? |
 | R4 (aus 06 §7) | What do you NOT like about your current appearance? | Was gefällt dir am jetzigen Auftritt NICHT? |
 
+**R3 und R4: ohne Session — 2026-09-04 gestrichen.** R1 trägt `a.origin` auf dem
+Relaunch-Pfad wörtlich, R2 steht dort als Qualitätsmerkmal („nennt eine Sache, die
+bleibt, und eine, die geht"). R3 und R4 landeten dagegen in KEINEM Feld: sie waren
+nur Locale-Schlüssel (`brand.q.rebrand.r3/.r4`) und damit gebaut, aber unerreichbar
+(Inhalts-Audit §2.1). Ein eigener Slot dafür hiesse eine neue Registry-Fassung für
+zwei Fragen, deren Substanz `a.origin` und `a.challenge` schon holen — deshalb sind
+die beiden Schlüssel entfernt. Die Zeilen hier bleiben als Protokoll stehen.
+
 Gründer-Pfad behält stattdessen die Ursprungsfragen (02 §5 / 06 §3).
 → **Gate ①: David liest R1–R4 und die Provokationen in §4/§5 gegen.**
 
@@ -340,6 +348,22 @@ c.conflictRule (F) · c.teamFilter (F, NUR Team-Weiche).
 | D6 | What do people praise you for, again and again? | Wofür werdet ihr immer wieder gelobt? |
 | D7 | How should your team decide when you're not in the room? | Wie soll dein Team entscheiden, wenn du nicht im Raum bist? |
 
+**Der Pool ist EINGEFROREN — 2026-09-04, Davids Entscheidung.** Gebaut sind fest
+D1 → `c.discovery1`, D2 → `c.discovery2`, D3 → `c.discovery3`. Die „KI wählt 3 der
+7"-Adaptivität gibt es nicht und wird nicht gebaut: sie macht die Brandings
+untereinander unvergleichbar, und D4–D6 fügen dem, was D1–D3 holen, wenig hinzu
+(D6 „wofür gelobt" deckt ohnehin `a.customerPraise` ab).
+
+**D4, D5, D6: nicht gebaut — eingefroren am 2026-09-04.** Sie bleiben hier als
+Protokoll stehen, damit niemand später denkt, es fehle etwas.
+
+**D7 IST die eine Ausnahme.** Steht die Weiche W3 auf Team, ersetzt D7 die Frage D3:
+`c.discovery3` trägt dafür `teamVariant: true`, und der Locale-Katalog führt beide
+Fassungen unter `brand.q.c.discovery3.solo` bzw. `.team`. Ziel, Qualitätsmerkmale
+und Frage-Leiter der Session tragen beide Lesarten (die persönliche Grenze und die
+Entscheidungsregel des Teams) — es ist EINE Session mit zwei Wortlauten, nicht ein
+zweiter Slot.
+
 **Aktivierung (bleibt Pflicht — die Substanz):**
 
 | Slot | en | de |
@@ -387,6 +411,11 @@ Lieblingszeile, wird verbales Erkennungszeichen).
 | W3 | If you could change ONE thing about your industry overnight? | Wenn du EINE Sache an deiner Branche über Nacht ändern könntest? |
 | W4 | What's the promise you make every customer — spoken or not? | Welches Versprechen gebt ihr jedem Kunden — ausgesprochen oder nicht? |
 | W5 | What hill would you die on? | Auf welchem Hügel würdest du sterben? |
+
+**Auch dieser Pool ist EINGEFROREN — 2026-09-04, Davids Entscheidung.** Gebaut sind
+fest W1 → `e.warmup1` und W2 → `e.warmup2`; eine Auswahl-Regel gibt es nicht.
+**W3, W4, W5: nicht gebaut — eingefroren am 2026-09-04.** Sie bleiben als Protokoll
+stehen. W4 („Versprechen") deckt ohnehin `b.mission` und `ep.keyMessages` ab.
 
 Die 23 Satzanfänge (Instrument bleibt, Quelle 05 §7–11): „We believe…"
 ×5 · Commitment/Desire ×5 · Energy/Identity ×4 · Stance/Contrast ×5 ·
@@ -767,12 +796,22 @@ Basispfad bei **~45–55 min aktiver Zeit** — die 45-min-Angabe hält
 also ungefähr, die „40 Eingaben" nicht. Konsequenzen (bereits
 beschlossene Linien, hier nur verbindlich gemacht):
 1. Zeitangaben je Baustein sind PFLICHT-UI und werden in der Beta
-   GEMESSEN (Median aktive Zeit, §9b) — Startwerte: 0: 3 · A: 8 ·
-   B: 8 · B2: 4 · C: 10 · D: 8 · E: 8 · E+: 4 · F: 12 · Ergebnis: 3 min.
+   GEMESSEN (Median aktive Zeit, §9b). Die Startwerte von hier (0: 3 · A: 8 ·
+   B: 8 · B2: 4 · C: 10 · D: 8 · E: 8 · E+: 4 · F: 12 · Ergebnis: 3 min)
+   sind seit **2026-09-04 abgelöst**: die Zahl steht jetzt je SESSION in
+   `packages/brand/shared/sessionContent.ts` (`effort.minutes`), und die
+   Kapitel-Summe rechnet die Lese-Fassung aus. Nach Davids Entscheidung
+   („halbieren, in Kapitel-Etappen kommunizieren", Inhalts-Audit Punkt 1)
+   sind es **~78 Min im Basispfad und ~96 Min im Vollpfad**: A 14 · B 14 ·
+   B2 6 · C 14 · D 14 · E 13 · E+ 7 · F 12 · Ergebnis 2. Die alte Summe der
+   Session-Schätzungen war 154 Min und stand damit gegen die eigene
+   Kommunikationslinie.
 2. D endet im Standardfall nach 8 Paaren (§12.2) — Runden 9–12 nur bei
    fehlendem Abstand.
-3. Kommunikation spricht von ZEIT („~45 Minuten"), nie von
-   Eingabe-Zahlen.
+3. Kommunikation spricht von ZEIT, nie von Eingabe-Zahlen — seit
+   2026-09-04 von **„~75 Minuten, in Kapiteln"** statt von „~45 Minuten":
+   ehrlich genug, um nicht zu enttäuschen, und die Kapitel-Anzeige macht
+   sichtbar, dass man aufhören und zurückkommen kann.
 4. Der Vollpfad (~78 Züge / ~75 min) bekommt im UI einen ehrlichen
    Hinweis bei W2/W4 („Naming ergänzt ~12 Minuten").
 
@@ -793,6 +832,13 @@ Abdeckungs-Matrix 287 (§15) · Interaktionsbilanz (§16).
 **Bei David:** ① R1–R4 + Provokations-Wortlaute gegenlesen · ③
 Bilanz-Befund zur Kenntnis (45-min-Kommunikation statt 40-Eingaben).
 ② „George" ist ABGESEGNET (2026-08-30).
+
+**Session-Inhalte (BW2 Paket 2, 2026-09-04):** Ziel, Qualitätsmerkmale,
+Anti-Muster, Frage-Leiter, Form, Antwort-Regeln und Beispiele je Session
+stehen in `packages/brand/shared/sessionContent.ts` und sind als Lese-Fassung
+erzeugt: [BRAND-WIZARD-SESSION-INHALTE.md](../referenz/BRAND-WIZARD-SESSION-INHALTE.md)
+(generiert, nicht von Hand editieren). Hier steht der FRAGEN-Katalog, dort die
+Arbeitsanweisung je Feld — dieselbe Trennung wie zwischen Frage und Prompt.
 
 **Nächstes Paket danach:** P0b ist durch den Klick-Dummy substanziell
 vorweggenommen (Werkstatt, Zustände, Modal, Rail — abgenommen in der

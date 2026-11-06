@@ -1,15 +1,11 @@
 # Kunden-Changelog v3.0.0 — Entwurf zum Einfügen
 
-> **OFFENE FRAGE (Stand 2026-08-09) — braucht einen Blick von David.**
-> Ob dieser Text inzwischen eingefügt wurde, ist **aus dem Repo nicht
-> feststellbar**: die `changelog`-Tabelle liegt nur auf der comments-Instanz,
-> und deren Runtime-Key ist nicht im Repo. Es gibt hier weder einen Beleg
-> dafür noch dagegen.
->
-> **Einmal im Dashboard nachsehen** (Changelog → Einträge): steht er drin,
-> zieht diese Datei nach `docs/archiv/`. Steht er nicht drin, gehört ein
-> Ein-Zeiler nach `docs/OPEN-ITEMS.md` — sonst verliert sich der Punkt
-> zwischen den Sorten.
+> **NACHGEMESSEN 2026-11-06: NICHT veröffentlicht.** Die Tabelle `changelog`
+> liegt heute im Prod-Projekt `admin`; `https://admin.pukalani.app/api/changelog`
+> liefert genau einen veröffentlichten Eintrag (2026-08-19, AI-Runner) — v3.0.0
+> fehlt (ob ein unveröffentlichter Entwurf existiert, zeigt nur das Dashboard). Offener
+> Punkt: OPEN-ITEMS „CL1". Der Absatz unten über die `comments`-Instanz ist
+> Stand 2026-08-09; Prod-Lauf heute mit der env des Projekts `admin`.
 
 **Warum als Datei und nicht direkt in prod:** Die `changelog`-Table existiert
 weder im Projekt `control` noch im Pool (beide geprüft: `table_not_found`) —

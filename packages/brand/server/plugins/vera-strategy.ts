@@ -1,12 +1,12 @@
 import {
-  brandChoiceContract,
-  brandChoiceFallbackQuestion,
-  checkBrandChoiceDraft,
-} from '../../shared/brandChoiceOptions'
-import { type AdvisorSlotVerdict, createAdvisorSlotGenerator } from '../utils/advisorGenerator'
+  type AdvisorSlotVerdict,
+  createAdvisorSlotGenerator,
+  verifyBrandChoiceSlot,
+} from '../utils/advisorGenerator'
 import type { BrandSlotGenerator } from '../utils/brandGenerators'
 import { registerBrandSlotGenerator } from '../utils/brandGenerators'
-import { VERA_PROMPT_VERSION, veraSlotInstruction } from '../utils/veraPrompt'
+import { sessionInstructionForSlot } from '../utils/sessionPrompt'
+import { VERA_PROMPT_VERSION } from '../utils/veraPrompt'
 
 /**
  * VERAS TECHNIK (P3.1) — Bausteine B (Purpose · Vision · Mission +
@@ -35,24 +35,25 @@ import { VERA_PROMPT_VERSION, veraSlotInstruction } from '../utils/veraPrompt'
  * gehabt, nicht zu wenig Willen. Genau dafür gibt es `outcome: 'question'`.
  */
 
+/**
+ * Veras Nachprüfung IST die allgemeine (`verifyBrandChoiceSlot`) — sie ist am
+ * 2026-09-04 in die Fabrik gewandert, als Baustein D seine eigenen zwei
+ * Auswahl-Slots bekam. Der Name bleibt hier als Aufrufstelle stehen, damit
+ * sichtbar ist, WELCHE Verträge dieser Generator prüft; die Regel selbst gibt
+ * es nur noch einmal.
+ */
 export function verifyVeraChoice(input: {
   slot: { id: string }
   draft: string
   uiLocale: string
 }): AdvisorSlotVerdict {
-  const contract = brandChoiceContract(input.slot.id)
-  if (!contract) return { draft: input.draft }
-
-  const check = checkBrandChoiceDraft(contract, input.draft)
-  return check.ok
-    ? { draft: check.value }
-    : { question: brandChoiceFallbackQuestion(contract, input.uiLocale) }
+  return verifyBrandChoiceSlot(input)
 }
 
 /** Veras Generator für die Bausteine B und B2. */
 export const veraStrategyGenerator: BrandSlotGenerator = createAdvisorSlotGenerator({
   promptVersion: VERA_PROMPT_VERSION,
-  instruction: veraSlotInstruction,
+  instruction: sessionInstructionForSlot,
   verify: verifyVeraChoice,
 })
 

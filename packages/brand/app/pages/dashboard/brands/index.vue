@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import type { BwNewBrandSubmit } from '../../../components/BwNewBrandModal.vue'
-import { BRAND_STEP_KEYS, type BrandStepKey } from '../../../../shared/slotRegistry'
+import {
+  BRAND_FOUNDATION_STEP_KEYS,
+  BRAND_STEP_KEYS,
+  type BrandFoundationStepKey,
+  type BrandStepKey,
+} from '../../../../shared/slotRegistry'
 import { brandGradientFor } from '../../../../shared/brandPalette'
-import type { BrandProfileSummary } from '../../../../shared/types/brand'
+import type { BrandProfileScoresResponse, BrandProfileSummary } from '../../../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../../../stores/brandWorkspace'
 
 /**
@@ -59,11 +64,24 @@ function stepLabel(key: string): string {
     : t('brand.steps.context')
 }
 
+/**
+ * „Schritt 3 von 9" — die Zahl der FOUNDATION (Brand Design D0).
+ *
+ * `BRAND_STEP_KEYS` trägt seit D0 auch die sechs Kapitel von Schicht 2; die
+ * Zeile hier meint aber den Weg, den diese Karte anzeigt, und der endet bei
+ * `result` (`resolveProfileProgress` rechnet über dieselbe Menge).
+ *
+ * SO BLEIBT ES (Brand Design D1, entschieden statt vertagt): die Marken-Karte
+ * ist die Karte der FOUNDATION. Schicht 2 hat ihren eigenen Fortschritt dort,
+ * wo sie stattfindet — im Rail der Werkstatt („N von 6 Kapiteln"). Zwei Zahlen
+ * für zwei Produkte sind ehrlicher als eine gemischte, und ein fertiges
+ * Branding fiele sonst im Deploy-Moment von 100 % auf rund 70 %.
+ */
 function stepPosition(profile: BrandProfileSummary): string {
-  const index = BRAND_STEP_KEYS.indexOf(profile.currentStepKey as BrandStepKey)
+  const index = BRAND_FOUNDATION_STEP_KEYS.indexOf(profile.currentStepKey as BrandFoundationStepKey)
   return t('brand.brands.card.stepOf', {
     index: index < 0 ? 1 : index + 1,
-    total: BRAND_STEP_KEYS.length,
+    total: BRAND_FOUNDATION_STEP_KEYS.length,
   })
 }
 
@@ -118,31 +136,120 @@ function resultReady(profile: BrandProfileSummary): boolean {
 }
 
 /**
- * Der Submit des Modals — seit P2.5 eine ÜBERGABE, keine Anlage mehr.
+ * DER BRAND-SCORE JE KARTE (BRAND-CHECK-SEITE §5) — GEBÜNDELT geholt.
  *
- * Das Modal erhebt drei Dinge (Weiche, Titel, Sprache). Seit die STARTKARTE
- * Pflicht ist (Content-Spec §2.1: URL, Branche, „was ihr macht", „für wen"),
- * reichen die drei nicht mehr aus, um ein Branding anzulegen: die Anlage-Route
- * antwortete mit 400, und der Mensch läse „konnte nicht angelegt werden".
+ * Eine Abfrage je Karte wäre das N+1, das `activeShareProfileIds` für die
+ * geteilten Brandings schon einmal verhindert hat; `GET /api/brand/profiles/
+ * scores` beantwortet die Frage für ALLE eigenen Brands in einem Zug.
  *
- * ZWEI WEGE WÄREN SCHLECHTER GEWESEN. Die Startkarte im Modal zu wiederholen
- * hiesse, dasselbe Formular an zwei Stellen zu pflegen (und das Modal ist
- * Davids abgenommener Klickdummy, dessen Copy bewusst fest deutsch ist). Sie
- * für diesen Weg optional zu machen hiesse, Brandings anzulegen, denen George
- * beim ersten Zug nichts entnehmen kann — genau die Lücke, die P2.5 schliesst.
- * Also: die drei Antworten reisen als Query mit, `/dashboard/brands/new`
- * übernimmt sie und fragt nur noch, was fehlt.
+ * FAIL-SOFT: keine Antwort ⇒ keine Zahl. Der Score ist eine ANGABE auf einer
+ * Karte, kein Recht und keine Bedingung — die Übersicht darf daran nicht
+ * scheitern (dieselbe Haltung wie bei „geteilt").
+ *
+ * GEZEIGT WIRD DER WEBSITE-SCORE, sonst der des Fundaments. Nie beide in
+ * einer Zahl: sie messen Verschiedenes (§5b), und eine Karte hat für die
+ * Erklärung keinen Platz — die hat die Score-Seite.
  */
+const { data: scores } = await useAsyncData<BrandProfileScoresResponse | null>(
+  'brand-profile-scores',
+  async () => {
+    try {
+      return await request<BrandProfileScoresResponse>('/api/brand/profiles/scores')
+    }
+    catch {
+      return null
+    }
+  },
+)
+
+function scoreOf(profile: BrandProfileSummary): number | null {
+  const entry = scores.value?.items.find(item => item.profileId === profile.id)
+  return entry?.website?.score ?? entry?.document?.score ?? null
+}
+
+function scoreLine(profile: BrandProfileSummary): string {
+  const score = scoreOf(profile)
+  return score === null
+    ? t('brand.myScores.card.empty')
+    : t('brand.myScores.card.score', { score })
+}
+
+function scorePath(profile: BrandProfileSummary): string {
+  return localePath(`/dashboard/brands/${profile.id}/score`)
+}
+
+/**
+ * DER VERÖFFENTLICHUNGS-ZUSTAND JE KARTE (Discover §4.3: „Zustand auch auf der
+ * Brands-Übersichtskarte").
+ *
+ * Er kommt aus DERSELBEN gebündelten Antwort wie der Score — eine eigene Route
+ * je Karte wäre wieder das N+1, das diese Seite schon zweimal vermieden hat
+ * (`activeShareProfileIds`, `scores`). `null` heisst „nie eingereicht", und
+ * dann steht hier gar nichts: eine Zeile „nicht veröffentlicht" an jeder Kachel
+ * wäre Lärm über eine Nicht-Handlung.
+ *
+ * Der Link führt in die LESEANSICHT und nicht auf die öffentliche Seite: dort
+ * steht die Begründung einer Ablehnung, dort sind die Knöpfe, und bei „wartet
+ * auf Freigabe" gibt es öffentlich noch nichts zu sehen.
+ */
+function publicationOf(profile: BrandProfileSummary) {
+  return scores.value?.items.find(item => item.profileId === profile.id)?.publication ?? null
+}
+
+/** Ein kaputtes Datum wird zur leeren Zeile, nie zu „Invalid Date". */
+function publicationDate(iso: string): string {
+  const value = Date.parse(iso)
+  return Number.isFinite(value)
+    ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(value)
+    : ''
+}
+
+function publicationLine(profile: BrandProfileSummary): string {
+  const publication = publicationOf(profile)
+  if (!publication) return ''
+  switch (publication.status) {
+    case 'published': return publication.publishedAt
+      ? t('brand.publication.card.publicSince', { date: publicationDate(publication.publishedAt) })
+      : t('brand.publication.card.public')
+    case 'pending': return t('brand.publication.card.pending')
+    case 'declined': return t('brand.publication.card.declined')
+    case 'hidden': return t('brand.publication.card.hidden')
+    // Zurückgezogen ist der Zustand NACH einer eigenen Entscheidung — die Karte
+    // meldet ihn nicht, sie meldet, was gerade gilt.
+    default: return ''
+  }
+}
+
+function foundationPath(profile: BrandProfileSummary): string {
+  return localePath(`/brand/${profile.id}/foundation`)
+}
+
+/**
+ * Der Submit des Modals — seit dem Kailua-Lauf wieder eine ANLAGE (Befund 6,
+ * Davids Entscheidung 2026-09-08).
+ *
+ * ── WAS VORHER PASSIERTE ─────────────────────────────────────────────────
+ * P2.5 hatte den Submit zu einer ÜBERGABE gemacht: das Modal fragte Weiche,
+ * Titel und Sprache und schickte sie als Query an `/dashboard/brands/new` —
+ * wo dieselben drei Felder ein zweites Mal standen. Wer im Modal „Neue Marke"
+ * gewählt und einen Arbeitstitel getippt hatte, bestätigte beides sofort
+ * wieder. Der Grund dafür war echt (die Startkarte ist Pflicht), die Auflösung
+ * die falsche: sie machte aus einem Formular zwei Halbe.
+ *
+ * ── DIE PFLEGE-SORGE VON DAMALS IST BEANTWORTET ──────────────────────────
+ * „Die Startkarte im Modal zu wiederholen hiesse, dasselbe Formular an zwei
+ * Stellen zu pflegen" — genau deshalb steht sie jetzt an EINER Stelle
+ * (`BwNewBrandDetails`), und der Anlage-Weg ebenfalls (`useBrandCreate`).
+ */
+const {
+  contentLocales: newBrandLocales,
+  creating: newBrandCreating,
+  failed: newBrandFailed,
+  create: createBrand,
+} = useBrandCreate()
+
 async function createFromModal(payload: BwNewBrandSubmit): Promise<void> {
-  newBrandOpen.value = false
-  await navigateTo({
-    path: localePath('/dashboard/brands/new'),
-    query: {
-      path: payload.kind === 'rebrand' ? 'relaunch' : 'new',
-      ...(payload.title ? { title: payload.title } : {}),
-      lang: payload.lang,
-    },
-  })
+  if (await createBrand(payload)) newBrandOpen.value = false
 }
 
 useBrandTitle(() => t('brand.brands.title'))
@@ -210,26 +317,52 @@ useBrandTitle(() => t('brand.brands.title'))
            Verlinkt sind jetzt die Kachel (sie trägt den Titel) und
            „Weiterarbeiten"; die Karte bekommt ihr Ziel als Prop. -->
       <div v-else class="grid gap-x-6 gap-y-16 @sm:grid-cols-2 @lg:grid-cols-3">
-        <BwBrandCard
-          v-for="profile in store.profiles" :key="profile.id"
-          :to="workspacePath(profile)"
-          :gradient="brandGradientFor(profile.id)"
-          :title="profile.title || t('brand.brands.card.untitled')"
-          :path="t(`brand.brands.card.path.${profile.pathKind}`)"
-          :step="t('brand.brands.card.currentStep', { step: stepLabel(profile.currentStepKey) })"
-          :progress="stepPosition(profile)"
-          :remaining="remaining(profile)"
-          :edited="editedAt(profile)"
-          :pct="profile.progressPct"
-          :result-to="resultPath(profile)"
-          :result-ready="resultReady(profile)"
-        />
+        <div v-for="profile in store.profiles" :key="profile.id">
+          <BwBrandCard
+            :to="workspacePath(profile)"
+            :gradient="brandGradientFor(profile.id)"
+            :title="profile.title || t('brand.brands.card.untitled')"
+            :path="t(`brand.brands.card.path.${profile.pathKind}`)"
+            :step="t('brand.brands.card.currentStep', { step: stepLabel(profile.currentStepKey) })"
+            :progress="stepPosition(profile)"
+            :remaining="remaining(profile)"
+            :edited="editedAt(profile)"
+            :pct="profile.progressPct"
+            :result-to="resultPath(profile)"
+            :result-ready="resultReady(profile)"
+          />
+          <!-- Der Brand-Score (BRAND-CHECK-SEITE §5) steht UNTER der Karte und
+               nicht in ihr: `BwBrandCard` ist Davids abgenommener Klickdummy,
+               und seine `score`-Prop meint den Ergebnis-Ring der Foundation,
+               nicht den Aussen-Check. Eine Zeile, zwei Wege — die Zahl führt
+               zur Score-Seite, und wo keine Website hinterlegt ist, steht der
+               fehlende Schritt daneben. -->
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1" data-brand-score-line>
+            <NuxtLink :to="scorePath(profile)" class="bw-label hover:underline" style="color: var(--bw-ink-soft)">
+              {{ scoreLine(profile) }}
+            </NuxtLink>
+            <NuxtLink
+              v-if="!profile.startCard.websiteUrl" :to="scorePath(profile)"
+              class="bw-label hover:underline" style="color: var(--bw-muted)"
+            >
+              {{ t('brand.myScores.card.addUrl') }}
+            </NuxtLink>
+            <NuxtLink
+              v-if="publicationLine(profile)" :to="foundationPath(profile)"
+              class="bw-label hover:underline" style="color: var(--bw-muted)"
+              data-brand-publication-line
+            >
+              {{ publicationLine(profile) }}
+            </NuxtLink>
+          </div>
+        </div>
       </div>
 
     </div>
 
     <BwNewBrandModal
       v-model:open="newBrandOpen" mode="live"
+      :content-locales="newBrandLocales" :loading="newBrandCreating" :failed="newBrandFailed"
       @submit="createFromModal"
     />
   </div>

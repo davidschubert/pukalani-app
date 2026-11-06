@@ -293,3 +293,94 @@ export function parseMarkdown(source: string): BlockNode[] {
 
   return blocks
 }
+
+/*
+ * ---------------------------------------------------------------------------
+ * Sprungmarken für Überschriften (BI1 I3, docs/plans/BRAND-INSIGHTS.md §9.5)
+ * ---------------------------------------------------------------------------
+ *
+ * WARUM IM CORE UND NICHT IM insights-LAYER: die Regel gehört zum PARSER. Ein
+ * Inhaltsverzeichnis, das seine Ids anders rechnet als der Renderer sie
+ * setzt, ist ein Verzeichnis mit toten Links — und zwar lautlos, weil ein
+ * `#abschnitt` ohne Ziel im Browser einfach nichts tut. Beide Seiten lesen
+ * deshalb DIESELBE Funktion, und sie steht dort, wo der AST entsteht.
+ *
+ * NUR h2/h3, weil der Parser nur die kennt (`level: 2 | 3`). Damit ist die
+ * Tiefe des Verzeichnisses nicht eine Einstellung, sondern eine Eigenschaft
+ * des Formats — §9.5 sagt genau das.
+ */
+
+/** Eine Überschrift mit ihrer Sprungmarke. */
+export interface MarkdownHeading {
+  id: string
+  text: string
+  depth: 2 | 3
+}
+
+/**
+ * DIE SPRUNGMARKE EINER ÜBERSCHRIFT.
+ *
+ * Drei Regeln, jede mit einem Grund:
+ *  1. Kleinbuchstaben, Ziffern und Bindestriche — alles andere fällt weg. Eine
+ *     Id mit Leerzeichen oder Punkt lässt sich nicht als CSS-Selektor
+ *     (`#id`) ansprechen, und genau das tut der Scrollspy.
+ *  2. Bleibt nichts übrig (eine Überschrift nur aus Satzzeichen oder aus
+ *     Zeichen ohne ASCII-Entsprechung), ist die Id `abschnitt-<index>`. Eine
+ *     LEERE Id wäre ein `id=""` — im HTML gültig, als Sprungziel wertlos.
+ *  3. Beginnt der Slug mit einer ZIFFER, bekommt er dasselbe Präfix. `#3-gruende`
+ *     ist ein gültiges HTML-Attribut und ein UNGÜLTIGER CSS-Selektor (ein
+ *     Bezeichner darf nicht mit einer Ziffer anfangen) — `document.querySelector`
+ *     wirft dort, und der Scrollspy nähme die ganze Seite mit.
+ *
+ * Umlaute werden über die Unicode-Zerlegung entschärft (`ä` → `a`), nicht
+ * gelöscht: „Für Gründer" ergibt `fur-grunder` und nicht `f-r-gr-nder`.
+ */
+export function markdownHeadingId(text: string, index: number): string {
+  const slug = text
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (!slug) return `abschnitt-${index}`
+  return /^\d/.test(slug) ? `abschnitt-${slug}` : slug
+}
+
+/** Die Inline-Knoten einer Überschrift flach als Text — ohne Marker. */
+function inlineText(nodes: readonly InlineNode[]): string {
+  return nodes.map((node) => {
+    switch (node.type) {
+      case 'text': return node.text
+      case 'code': return node.text
+      default: return inlineText(node.children)
+    }
+  }).join('')
+}
+
+/**
+ * DIE ÜBERSCHRIFTEN EINES TEXTES, in der Reihenfolge, in der sie stehen.
+ *
+ * ── DOPPELTE ÜBERSCHRIFTEN BEKOMMEN VERSCHIEDENE IDs ────────────────────
+ * Zwei Abschnitte „Fazit" ergäben sonst zweimal dieselbe Id: der Browser
+ * springt dann immer zum ersten, und der Scrollspy hebt beim Lesen des
+ * zweiten den ersten Eintrag hervor. Die Dublette bekommt deshalb ihren
+ * INDEX angehängt — deterministisch, also auf Server und Browser gleich.
+ *
+ * `MarkdownContent` rendert die Ids NICHT selbst nach, sondern liest genau
+ * diese Liste (s. dort): eine zweite Rechnung wäre eine zweite Wahrheit.
+ */
+export function markdownHeadings(source: string): MarkdownHeading[] {
+  const headings: MarkdownHeading[] = []
+  const seen = new Set<string>()
+  let index = 0
+  for (const block of parseMarkdown(source)) {
+    if (block.type !== 'heading') continue
+    const text = inlineText(block.children).trim()
+    const base = markdownHeadingId(text, index)
+    const id = seen.has(base) ? `${base}-${index}` : base
+    seen.add(id)
+    headings.push({ id, text, depth: block.level })
+    index++
+  }
+  return headings
+}

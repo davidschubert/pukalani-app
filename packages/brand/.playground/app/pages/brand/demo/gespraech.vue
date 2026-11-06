@@ -572,7 +572,7 @@ onBeforeUnmount(() => clearTimeout(syncTimer))
   <BwWorkspace
     :progress-pct="progressPct" content-locale="de" :locale-in-topbar="false"
     :topbar="false" :rail-footer="false"
-    rail-width="300px" :rail-collapsed="railCollapsed" :george-collapsed="standCollapsed"
+    rail-width="300px" stage-width="72rem" :rail-collapsed="railCollapsed" :george-collapsed="standCollapsed"
     style="--bw-rail-pad-x: 1rem; --bw-rail-pad-y: 0.75rem"
   >
     <!-- LINKS: die Sidebar im Nuxt-UI-Muster (Runde 16) — Switcher oben,

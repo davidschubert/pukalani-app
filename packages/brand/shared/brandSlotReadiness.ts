@@ -55,6 +55,10 @@ export type BrandReadinessNeed =
   | 'competitor_names'
   | 'source_texts'
   | 'source_slots'
+  /** Schicht 3 (K5): ohne die gewählten Produkttypen gibt es kein Muster. */
+  | 'name_types'
+  /** Schicht 3 (K5): ohne Ton-Wörter gibt es keine Ton-Parameter. */
+  | 'tone_words'
 
 export interface BrandReadinessInput {
   startCard: BrandStartCard
@@ -85,6 +89,26 @@ function filled(value: string | undefined): boolean {
 }
 
 /**
+ * FEHLT DIESE EINE QUELLE — und darf der Aufrufer das überhaupt behaupten?
+ *
+ * Dieselbe Vorsicht wie in der Registry-Regel unten (s. Kopf, `coveredSteps`):
+ * wer einen Slot gar nicht sehen kann, darf nicht sagen, er sei leer. Der
+ * SERVER reicht alle Bausteine herein und urteilt mit vollem Wissen; die
+ * WERKSTATT kennt nur den offenen Baustein und lässt im Zweifel durch — ein
+ * Gate, das clientseitig fälschlich sperrt, nimmt dem Menschen einen Knopf,
+ * den der Server ihm gegeben hätte.
+ *
+ * Ohne diese Klammer wäre `n.guardrails` im Browser IMMER gesperrt:
+ * `d.toneWords` liegt im Baustein „Stimme", und der ist beim Kapitel
+ * `aiguide` nie geladen.
+ */
+function needsSource(input: BrandReadinessInput, slotId: string): boolean {
+  const home = slotById(slotId)?.stepId
+  if (!home || !input.coveredSteps.includes(home)) return false
+  return !filled(input.records[slotId])
+}
+
+/**
  * Die SLOT-EIGENEN Regeln (Content-Spec §4). Alles, was hier nicht steht, wird
  * allein von der Registry-Regel unten beurteilt.
  *
@@ -111,6 +135,52 @@ const SLOT_RULES: Record<string, (input: BrandReadinessInput) => BrandReadinessN
   // Eine Ton-ANALYSE ohne Texte wäre eine Ton-Erfindung (Instruktion §4 sagt
   // dasselbe; hier kostet die Einsicht nichts).
   'a.toneAnalysis': input => (input.hasSiteAnalysis ? [] : ['source_texts']),
+
+  /**
+   * SCHICHT 3 BRAUCHT ZWEI EIGENE REGELN (Konzept BRAND-BOOK-KIT §2.2/§2.3,
+   * Paket K5) — die Registry-Regel unten reicht hier NICHT.
+   *
+   * Sie sperrt erst, wenn ALLE Quellen leer sind, und das ist bei diesen zwei
+   * Sessions praktisch nie der Fall: `m.patterns` hängt auch an `b2.model` und
+   * `d.toneWords`, `n.guardrails` an sechs Slots. Ohne die eine Quelle, die den
+   * ENTWURF trägt, käme trotzdem ein Lauf zustande — und der schriebe Muster
+   * für Typen, die niemand gewählt hat, bzw. Ton-Parameter, die es gar nicht
+   * gibt. Genau davor steht die Invariante (`checkBrandNamePatterns`), aber sie
+   * kostet dann schon einen bezahlten Lauf: was man rechnen kann, fragt man
+   * nicht.
+   *
+   * Es sind die STRUKTUR-Quellen, nicht die inhaltlichen: `m.patterns` verlangt
+   * die gewählten TYPEN (aus ihnen entsteht je ein Block), `n.guardrails` die
+   * TON-WÖRTER (aus ihnen entsteht die erste der vier Gruppen). Die übrigen
+   * Quellen dürfen fehlen — eine Solo-Marke ohne `m.rules` bekommt ihre
+   * Schreibweisen aus Titel und Tagline (§2.20 Nr. 4), und genau dafür ist die
+   * Abhängigkeit optional.
+   */
+  'm.patterns': input => (needsSource(input, 'm.types') ? ['name_types'] : []),
+  'n.guardrails': input => (needsSource(input, 'd.toneWords') ? ['tone_words'] : []),
+
+  /**
+   * BAUSTEIN D STEHT BEWUSST NICHT IN DIESER TABELLE.
+   *
+   * INTERIM bis zum Paarvergleich-Instrument (Spec §12.2) — Davids Entscheidung
+   * 2026-09-04: `d.primary`/`d.secondary` werden im GESPRÄCH hergeleitet statt
+   * aus `d.pairs` berechnet. `d.pairs` bleibt leer, solange es das Instrument
+   * nicht gibt — und das ist genau der Fall, in dem eine eigene Slot-Regel
+   * („ohne Paare kein Archetyp") den einzigen Weg zusperren würde, den es
+   * heute gibt.
+   *
+   * Die Registry-Regel unten lässt den Interim-Weg von selbst durch, und zwar
+   * ohne Ausnahme: sie fragt die TRANSITIVE Hülle, und die von `d.primary` ist
+   * `d.pairs · d.hypothesis · a.pitch · a.toneAnalysis · a.customerPraise`.
+   * Ein leeres `d.pairs` neben einem gefüllten Pitch ist damit „eine Quelle
+   * trägt", also bereit — und ein Stand, in dem AUCH Pitch, Ton-Analyse, Lob
+   * und Hypothese leer sind, ist zu Recht nicht bereit: daraus lässt sich kein
+   * Archetyp ableiten, nur einer erfinden.
+   *
+   * Es steht als Kommentar hier und nicht nur in den Beweisen, weil die
+   * Abwesenheit einer Regel sonst wie ein Versehen aussieht. Kommt das
+   * Instrument, ändert sich hier nichts.
+   */
 }
 
 /**

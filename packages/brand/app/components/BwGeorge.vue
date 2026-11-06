@@ -123,7 +123,7 @@ watch(() => props.messages.length, async () => {
     <form class="flex gap-2 border-t px-7 py-4" style="border-color: var(--bw-line)" @submit.prevent="!busy && draft.trim() && ($emit('send', draft), draft = '')">
       <UInput
         v-model="draft" variant="none" class="flex-1 rounded-full" :ui="{ base: 'rounded-full px-4' }"
-        :placeholder="placeholder || t('brand.workspace.george.placeholder')" size="lg" style="background: var(--bw-surface-hi)"
+        :placeholder="placeholder || t('brand.workspace.george.placeholder', { voice: advisorName })" size="lg" style="background: var(--bw-surface-hi)"
         @keydown.tab="acceptExample"
       />
       <UButton

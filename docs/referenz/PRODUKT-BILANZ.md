@@ -19,17 +19,19 @@ Protokoll in [`docs/archiv/PRODUKT-BILANZ-2026-07-27.md`](../archiv/PRODUKT-BILA
 | --- | --- | --- | --- | --- | --- |
 | **activity** | ✅ | comments | 2/2 über `tenantDb` | — | basic |
 | **analytics** | ✅ | comments, portfolio | 3/3 über `tenantDb` | ✅ | personal |
-| **brand** | — | branding | 0/18 über `tenantDb` · 12 roh | ✅ | — |
+| **brand** | — | branding | 0/96 über `tenantDb` · 47 roh | ✅ | — |
 | **comments** | ✅ | _template, comments | 18/19 über `tenantDb` | ✅ | — |
 | **control** | — | control | 0/85 über `tenantDb` · 61 roh | ✅ | — |
 | **courses** | ✅ | _template, comments | 14/15 über `tenantDb` | ✅ | pro |
 | **domains** | — | comments, portfolio | 0/5 über `tenantDb` | — | — |
 | **events** | ✅ | _template, comments | 18/19 über `tenantDb` | ✅ | pro |
 | **feedback** | ✅ | control | 0/8 über `tenantDb` | — | — |
+| **insights** | — | branding | 0/41 über `tenantDb` · 6 roh | ✅ | — |
+| **market** | — | branding | 0/12 über `tenantDb` · 1 roh | ✅ | — |
 | **media** | ✅ | comments, photos | 5/5 über `tenantDb` | ✅ | personal |
 | **messages** | ✅ | comments | 0/13 über `tenantDb` | ✅ | personal |
 | **moderation** | ✅ | _template, comments | 3/4 über `tenantDb` | ✅ | — |
-| **pages** | ✅ | control, portfolio | 7/11 über `tenantDb` | ✅ | — |
+| **pages** | ✅ | branding, control, portfolio | 7/12 über `tenantDb` | ✅ | — |
 | **posts** | ✅ | _template, comments | 27/32 über `tenantDb` | ✅ | personal |
 | **runner** | — | control | 0/21 über `tenantDb` · 21 roh | — | — |
 | **tickets** | — | control | 0/21 über `tenantDb` · 18 roh | — | — |
@@ -60,12 +62,14 @@ holt seine Daten über die Naht eines anderen Layers.
 | `domains` | — | — | ✅ | — | — | — | — | — | ✅ |
 | `events` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
 | `feedback` | — | — | — | ✅ | — | — | — | ✅ | — |
+| `insights` | — | ✅ | — | — | — | — | — | — | — |
+| `market` | — | ✅ | — | — | — | — | — | — | — |
 | `marketing` | — | — | — | — | ✅ | ✅ | — | — | — |
 | `media` | — | — | ✅ | — | — | — | ✅ | ✅ | — |
 | `messages` | — | — | ✅ | — | — | — | — | ✅ | — |
 | `moderation` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
 | `onboarding` | — | — | — | — | — | — | — | ✅ | — |
-| `pages` | — | — | — | ✅ | — | — | — | ✅ | ✅ |
+| `pages` | — | ✅ | — | ✅ | — | — | — | ✅ | ✅ |
 | `posts` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
 | `runner` | — | — | — | ✅ | — | — | — | — | — |
 | `themes` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
