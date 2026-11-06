@@ -30,6 +30,44 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW27: Appwrite 2.7.1 auf dev, CI und prod — Executor-Leck geschlossen, Secret rotiert, Account-WS pingt ✅ 2026-11-06
+
+Anlass: 2.7.0 (2026-11-03) und das Security-Release 2.7.1 (2026-11-04) —
+Executor 1.1.2 → 1.3.1: der alte folgte Symlinks in Log-/Build-Dateien, eine
+Function konnte so `_APP_EXECUTOR_SECRET` lesen und über die Executor-API
+Docker auf dem Host steuern. 2.7.0 braucht `migrate` (neue V25-Schritte).
+Reihenfolge wie immer: dev → CI (PR #65, E2E gegen die Wegwerf-Instanz 2.7.1
+16/16) → Davids „Ja, mit Rotation" → Ping-Fix live (Build bb380b92) → prod.
+
+- **dev** 2026-11-06 00:37–00:41 UTC: Werkzeug 161 s (Image-Pulls), `migrate`
+  9,2 s, 0 Fehler; 66 neue Appwrite-interne Tabellen, Nutzertabellen 388 →
+  388; E2E `apps/comments` 16/16, core-Unit 1740.
+- **prod** 2026-11-06 01:16–01:19 UTC mit `ROTATE_EXECUTOR_SECRET=1`: Aufruf
+  bis Beweise 99 s, `migrate` 24,1 s, 0 Fehler; Executor-API mit neuem Secret
+  200, mit falschem 401; zehn Hosts gesund, TLS grün, Parität 69/42/41/43,
+  OTP-Mail an `delivered@resend.dev` `success` in 1,73 s (Probe-Nutzer gelöscht).
+- **Core-Fix** `useRealtimeAccount`: Appwrite 2.7 schließt Realtime nach 120 s
+  Stille (#15059), unser cookie-nativer Account-WS sendete nie etwas. Er pingt
+  jetzt alle 20 s. Probe: stummer WS nach 120,2 s weg, pingender lebt.
+- „Deny realtime guests" bleibt AUS (Begründung im Runbook); Realtime-Grenzen
+  (100 Abos/Verbindung, 32 Verbindungen/Nutzer) mit ~15 Abos weit entfernt.
+- Offen geblieben: der Browser-Blick mit Anmeldung (Account-WS > 2 min stabil)
+  — Chrome war auf account. nicht angemeldet. Ob der keepAlive-Patch fallen
+  kann: AW28.
+
+Runbook: [APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md).
+
+**Gelernt:** Eine Appwrite-Version kann still ein KLIENT-Verhalten verlangen —
+2.7 trennt jeden Socket, der zwei Minuten schweigt. Die SDKs pingen, ein
+handgeschriebener `new WebSocket` nicht; Typecheck, Unit und E2E (Läufe unter
+2 min je Seite) sehen das nie. Bei jedem Realtime-Changelog-Punkt also auch
+nach EIGENEN WebSockets greppen. Und: ein UTC-Datum nie aus einer reinen
+Uhrzeit schätzen — `date -u +%T` zeigte nur 00:37, das Datum wurde als
+2026-11-07 geraten und stand so in Runbook und CLAUDE.md, bis der `$createdAt`
+des Prod-Tokens 2026-11-06 zeigte. Für Protokolle `date -u +%FT%T`.
+
+---
+
 ### RA1 — Konto löschen verlangt eine frische Anmeldung ✅ 2026-11-06
 
 **Anlass.** Appwrite-Changelog vom 2026-10-29: Firewall-Regeln können auf

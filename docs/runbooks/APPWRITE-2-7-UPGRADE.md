@@ -3,7 +3,8 @@
 Gilt für beide Instanzen: **dev** (`~/Developer/orbstack/appwrite-maria/`,
 OrbStack) und **prod** (`ploi@188.245.61.155:~/appwrite/`, `api.pukalani.app`),
 dazu die CI-Wegwerf-Instanz (`ci/appwrite/`). Alles, was hier „dev" heißt, ist
-am 2026-11-06 Ortszeit (= 2026-11-07 UTC) dort gemessen worden, nicht vermutet.
+am 2026-11-06 (UTC) dort gemessen worden, nicht vermutet; prod lief am selben
+Tag 01:16–01:19 UTC nach Davids „Ja, mit Rotation".
 
 Die Vorgänger gelten weiter und werden hier nicht wiederholt: Backup-Befehl und
 Rückweg in [APPWRITE-2-0-UPGRADE.md](APPWRITE-2-0-UPGRADE.md), Ein-Worker-Dienst
@@ -111,7 +112,7 @@ Schema; ein Sprung 2.6.2 → 2.7.1 in EINEM Werkzeug-Lauf plus `migrate` reicht
 ### Executor-Secret — Davids Entscheidung
 
 Betroffen ist laut Appwrite, wer FREMDEN erlaubt, Functions oder Sites zu
-deployen. Prod (lesend geprüft 2026-11-07): `_APP_CONSOLE_WHITELIST_ROOT=
+deployen. Prod (lesend geprüft 2026-11-06): `_APP_CONSOLE_WHITELIST_ROOT=
 "enabled"`, `_APP_CONSOLE_WHITELIST_EMAILS` nur `@pukalani.app` — Console-
 Zugang hat nur das eigene Team, Deployments machen nur wir. **Damit sind wir
 nach Appwrites Maßstab nicht betroffen.** Die Rotation kostet trotzdem nichts:
@@ -122,7 +123,7 @@ Neustart passiert ohnehin — KEINE zusätzliche Downtime. Empfehlung: mitrotier
 muss nicht beweisen, dass ihn nie jemand gelesen hat). Ohne die Variable bleibt
 das Secret, wie es ist.
 
-**Probe des Mechanismus auf dev (2026-11-07 00:47 UTC):** neues Secret per
+**Probe des Mechanismus auf dev (2026-11-06 00:47 UTC):** neues Secret per
 `openssl rand -hex 32` in die `.env`, Werkzeug 2.7.1 erneut (wiederholbar,
 20,6 s, „installed successfully") → der Wert steht danach UNVERÄNDERT in der
 `.env`; `appwrite`, `appwrite-worker` und `exc1` (`OPR_EXECUTOR_SECRET`)
@@ -150,7 +151,7 @@ Realtime-Limit-Schlüssel, `_APP_DB_MAX_CONNECTIONS`,
 `_APP_ALERTS_USAGE_LAG` (120), `_APP_MAINTENANCE_RETENTION_ALERTS` (7776000),
 `_APP_NOTIFICATIONS_PUSH_APNS(_KEY)`, vier `_APP_REVIEWS_*` (leer).
 
-### Ablauf dev (OrbStack) — gelaufen 2026-11-07
+### Ablauf dev (OrbStack) — gelaufen 2026-11-06
 
 Dieselben Schritte wie das Prod-Skript, nur mit Dev-Pfaden (`stat -f`,
 `sed -i ''`, Mount-Pfad `/Users/…/appwrite-maria/appwrite/patches/…`):
@@ -179,7 +180,7 @@ mit `container_name` (Console, Browser; in der CI-Fassung ohne) von Hand.
 `docker compose config --quiet` grün. Die CI installiert je Lauf FRISCH, ein
 `migrate` gibt es dort nicht. Live-Beweis ist der E2E-Lauf auf dem PR.
 
-### Prod — Ablauf (nach Davids Freigabe)
+### Prod — Ablauf (gelaufen 2026-11-06 nach Davids „Ja, mit Rotation")
 
 Skript [`ops/appwrite-upgrade-2.7.1.sh`](../../ops/appwrite-upgrade-2.7.1.sh)
 (Aufruf im Kopf: `scp` + `ssh -t … | tee ~/appwrite-upgrade-2.7.1.log`, mit
@@ -189,8 +190,12 @@ neuen Images (inkl. Console/Executor/Orchestrator — auf dev waren das die
 2½ Minuten) und die Patchdatei OHNE Downtime, dumpt, rotiert optional das
 Executor-Secret, dreht in der Override nur den Patch-Mount, ruft das Werkzeug,
 fährt `up`, `migrate`, Beweise — OHNE `doctor` (sendet eine SMTP-Testmail).
-Erwartetes Fenster wie 2.6.2 (dort 81 s) plus etwas mehr `migrate` (neue
-Schritte; dev 9,2 s statt 1,6 s, prod hatte 19,6 s bei 2.6.2).
+Gemessenes Fenster: Werkzeug-Aufruf bis Beweise **99 s** (Werkzeug 27,6 s,
+`up` 36 s, `migrate` 24,1 s). Images vorher von Hand gezogen, während der
+App-Deploy mit dem Ping-Fix lief — Reihenfolge bewusst: ERST der Ping-Fix live
+(sonst flappt jeder angemeldete Tab bis zum Deploy alle 2 min), DANN Appwrite.
+Ein parallel laufender Nachbar-Deploy stört nicht: `deploy.yml` prüft nur
+`/api/health` und fährt keine Migrationen.
 
 **Danach wie bei 2.6.2:** alle Hosts `/api/health ok:true`, SSR-Seite mit
 Session 200, Realtime 101 (`curl --http1.1`), OTP-Mail nach Leerlauf (der
@@ -211,4 +216,5 @@ Executor-Secret steht im Config-Tar.
 
 | Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
 | --- | --- | --- | --- | --- | --- |
-| dev (OrbStack, 2.6.2 → 2.7.1) | 2026-11-07 00:37–00:41 | 10,9 MB, 943 Tabellen | „Migration completed", 9,2 s (334 „already exists", 0 Fehler) | Werkzeug 161 s (Image-Pulls), Aufruf bis Beweise ~3,5 min | Tabellen vorher (Dump) gegen nachher (`information_schema`): **0 verschwunden, 66 neu** — alle Appwrite-intern (`reviews*` × 12 je Projekt × 5, `_console_transfers/monitors/monitorAlerts`), Nutzertabellen `_database_*` 388 → 388 · `health/version` 2.7.1 · PHP 8.5.12 · Brotli 1.2.1-r0 · keepAlive 372 `false` · trustedIPs 2 + mqtt 2, 8883/8084 auf 127.0.0.1 · Executor 1.3.1 (`OPR_EXECUTOR_VERSION`), Orchestrator 4.0.0, Console 1.2.138, Browser 0.3.10 · 7 Container auf 2.7.1, keiner auf 2.6.2, alle Up · Realtime-Limits 100/100/100 in der Env · Console 302 · Realtime 101 · Leerlauf-Probe 120,2 s / Ping lebt · **E2E `apps/comments` 16/16** (ohne `themes-visual`, Worktree-Dev-Server mit Ping-Code) · core-Unit 1740 grün · Executor-Secret-Rotation geprobt (s. oben) · `pnpm ops:schema-parity` (prod, unverändert 2.6.2) 69/42/41/43, Spalten deckungsgleich — Ausgangsstand für AW27 |
+| dev (OrbStack, 2.6.2 → 2.7.1) | 2026-11-06 00:37–00:41 | 10,9 MB, 943 Tabellen | „Migration completed", 9,2 s (334 „already exists", 0 Fehler) | Werkzeug 161 s (Image-Pulls), Aufruf bis Beweise ~3,5 min | Tabellen vorher (Dump) gegen nachher (`information_schema`): **0 verschwunden, 66 neu** — alle Appwrite-intern (`reviews*` × 12 je Projekt × 5, `_console_transfers/monitors/monitorAlerts`), Nutzertabellen `_database_*` 388 → 388 · `health/version` 2.7.1 · PHP 8.5.12 · Brotli 1.2.1-r0 · keepAlive 372 `false` · trustedIPs 2 + mqtt 2, 8883/8084 auf 127.0.0.1 · Executor 1.3.1 (`OPR_EXECUTOR_VERSION`), Orchestrator 4.0.0, Console 1.2.138, Browser 0.3.10 · 7 Container auf 2.7.1, keiner auf 2.6.2, alle Up · Realtime-Limits 100/100/100 in der Env · Console 302 · Realtime 101 · Leerlauf-Probe 120,2 s / Ping lebt · **E2E `apps/comments` 16/16** (ohne `themes-visual`, Worktree-Dev-Server mit Ping-Code) · core-Unit 1740 grün · Executor-Secret-Rotation geprobt (s. oben) · `pnpm ops:schema-parity` (prod, unverändert 2.6.2) 69/42/41/43, Spalten deckungsgleich — Ausgangsstand für AW27 |
+| prod (`api.pukalani.app`, 2.6.2 → 2.7.1) | 2026-11-06 01:16–01:19 | 22,3 MB, 872 Tabellen | „Migration completed", 24,1 s (257 „already exists", 0 Fehler) | Werkzeug 27,6 s „installed successfully", Aufruf bis Beweise **99 s** | `ROTATE_EXECUTOR_SECRET=1 bash ~/appwrite-upgrade-2.7.1.sh` per `ssh` (Log `~/appwrite-upgrade-2.7.1.log`), Skript-Exit 0 · Executor 1.3.1, Secret in appwrite+executor gleich, `/v1/runtimes` neu 200 / falsch 401 · PHP 8.5.12, Brotli 1.2.1-r0, keepAlive 372 `false`, trustedIPs 2 + mqtt 2, 8883/8084 auf 127.0.0.1, `config.d` mit `logging.xml` · 7 Container auf 2.7.1, alle Up · 0 Fehler in API/Worker/Realtime nach dem Start · extern `health/version` 2.7.1, Realtime 101 (`--http1.1`) · `verify-health` 10/10 (Build bb380b92 mit Ping-Fix), `verify-tls` grün, `schema-parity` 69/42/41/43 deckungsgleich · SSR demo/branding.supply/pukalani.studio 200, account 302 · **Mail-Beweis** 01:19 UTC: Gast-`POST /v1/account/tokens/email` (Projekt `account`, `userId` `probe-mail-20261106`, `delivered@resend.dev`) → 201, Worker `v1-mails` otp · cloud · `success` 1,73 s; Probe-Nutzer auf dem App-Server gelöscht (204, Gegenprobe 404) · Platte 41 % → 45 % · **offen:** Browser-Blick mit Anmeldung (Account-WS > 2 min stabil) — Chrome war auf account. nicht angemeldet |

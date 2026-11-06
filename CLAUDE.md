@@ -9,9 +9,9 @@ Vollständiges Konzept: docs/CONCEPT.md
 ## Stack
 - Nuxt 4.5.x (Composition API, SSR), Nuxt UI 4.10.x, Pinia 4, Tailwind CSS 4
 - node-appwrite 29 (Server SDK) + appwrite 27 (Web SDK, NUR Realtime) — Appwrite self-hosted
-  **2.7.1** auf dev + CI seit 2026-11-07, **prod noch 2.6.2** bis Davids Ja
-  (AW27; Executor 1.3.1 gegen das `_APP_EXECUTOR_SECRET`-Leck, `migrate`
-  nötig; docs/runbooks/APPWRITE-2-7-UPGRADE.md, `ops/appwrite-upgrade-2.7.1.sh`).
+  **2.7.1** (dev, CI und prod seit 2026-11-06 — Executor 1.3.1 gegen das
+  `_APP_EXECUTOR_SECRET`-Leck, Secret auf prod rotiert, `migrate` nötig;
+  docs/runbooks/APPWRITE-2-7-UPGRADE.md, `ops/appwrite-upgrade-2.7.1.sh`).
   Seit 2.7 trennt Realtime jede Verbindung nach 120 s STILLE — ein eigener
   `new WebSocket` muss alle 20 s `{"type":"ping"}` senden wie die SDKs
   (`useRealtimeAccount` tut es); die Richtlinie „Deny realtime guests" bleibt
