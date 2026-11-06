@@ -56,6 +56,24 @@ Prod denselben Aufruf mit `node --env-file=<prod-env des Projekts admin>
 packages/admin/scripts/changelog-draft.mjs …` fahren; der Schlüssel braucht
 `rows.write` auf der Tabelle `changelog`.
 
+### Zwei Fallen beim Veröffentlichen (CL1, 2026-11-06)
+
+- **Version sortiert vor Datum.** `compareChangelogByVersion` stellt Einträge
+  MIT `version` immer vor alle ohne — ein „v3.0.0" vom Juli stünde über jedem
+  späteren Eintrag ohne Version. Seit CL1 tragen die öffentlichen Einträge
+  KEINE Version und ordnen sich nach `date` (= Tag des Feature-Commits). Wer
+  wieder Versionen will, setzt sie an ALLEN Einträgen.
+- **Hilfe-Links je Sprache.** help.pukalani.app hat Englisch ohne Präfix:
+  im `body` (de) `https://help.pukalani.app/de/anleitung/…`, im `bodyEn`
+  `https://help.pukalani.app/anleitung/…` — `/en/…` ist nur eine Weiterleitung.
+- Direkte DB-Schreibvorgänge (Skript statt Dashboard) leeren den Microcache
+  der öffentlichen Liste NICHT — bis zu 5 Minuten Verzug; `?limit=50` ist ein
+  anderer Cache-Schlüssel und zeigt den Stand sofort.
+
+Die kundenfertigen Texte stammen aus den Hilfe-Seiten (`apps/help/content`),
+nicht aus Commit-Betreffs — die Hilfe ist der geprüfte Kundenstand.
+Ausgeführtes Beispiel: [CHANGELOG-CL1-FREIGABE.md](../archiv/CHANGELOG-CL1-FREIGABE.md).
+
 ### 2B — Appwrite Function (STILLGELEGT, Stand 2026-11-06)
 
 Gedacht war es voll hands-off: GitHub-Release-Webhook → Function

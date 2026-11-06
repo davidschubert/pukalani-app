@@ -30,6 +30,42 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
+
+Anlass: Die Marketing-Seite verlinkt seit a77f79fd `admin.pukalani.app/changelog`,
+dort stand nur EIN Eintrag (AI-Runner, 2026-08-19).
+
+- **Bestand gemessen:** Tabelle `changelog` im Prod-Projekt `admin` hatte 7
+  Rows — 1 veröffentlicht, **6 fertige zweisprachige Entwürfe vom 2026-08-14**
+  (Reaktionen/Verweise, Mitglieder laden ein, Tages-Limit, Navigation/
+  Sucheintrag/Weiterleitungen, Export, Zwei-Faktor/Zeitzone/`@name`), die nie
+  jemand veröffentlicht hatte. Ihre Hilfe-Links zeigten in die falsche Sprache.
+- **Der v3.0.0-Entwurf war überholt** (sieben Schritte statt vier, `start.`
+  leitet auf `account.`, „Basic" als Plan, Kurse/Events „anschalten" obwohl
+  Early Access, ein Betreiber-Fix). Neu geschrieben aus der Hilfe
+  (`apps/help/content`) + Commits 2026-07-28 … 2026-10-27: 9 neue Einträge.
+- **Davids Freigabe** 2026-11-06: alle 15, der Satz zur früheren
+  Community-übergreifenden Moderations-Ansicht bleibt drin.
+- **Lauf:** erst lokal (`studio-1xsl`, 15/15), dann Prod per `upsertRow` mit
+  fester Row-Id (`cl-<datum>-<thema>` bzw. die alten Ids) — idempotent,
+  wiederholbar. Alle ohne `version`, `published: true`.
+- **Beweis (eigener Abruf):** `/api/changelog?limit=50` ⇒ `total 16`, neueste
+  zuerst; in Chrome `/de/changelog` (`lang=de-DE`) und `/changelog`
+  (`lang=en-US`) je 16 Überschriften in der richtigen Sprache, Markdown
+  gerendert. Text: [CHANGELOG-CL1-FREIGABE.md](archiv/CHANGELOG-CL1-FREIGABE.md).
+- Nicht angefasst: der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-
+  Changelog) und das Datum, das auch auf `/de` englisch formatiert ist
+  („Oct 27, 2026") — beides als Beobachtung, nicht als Auftrag.
+
+**Gelernt:** Ein fertiger Text in `plans/` ist nach drei Monaten kein fertiger
+Text mehr — fünf seiner Aussagen stimmten nicht mehr. Die Kundenhilfe ist der
+geprüfte Stand, gegen den ein Changelog geschrieben wird. Und: vor dem
+Schreiben die Tabelle LESEN — sechs fertige Einträge lagen seit August als
+Entwurf daneben. Die Sortierung stellt Einträge mit `version` vor alle ohne;
+gemischt angelegt, landet der älteste ganz oben (CHANGELOG-WORKFLOW.md).
+
+---
+
 ### AW27: Appwrite 2.7.1 auf dev, CI und prod — Executor-Leck geschlossen, Secret rotiert, Account-WS pingt ✅ 2026-11-06
 
 Anlass: 2.7.0 (2026-11-03) und das Security-Release 2.7.1 (2026-11-04) —

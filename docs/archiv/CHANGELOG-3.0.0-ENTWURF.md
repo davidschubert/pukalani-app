@@ -1,5 +1,9 @@
 # Kunden-Changelog v3.0.0 — Entwurf zum Einfügen
 
+> **ABGELÖST 2026-11-06** durch [CHANGELOG-CL1-FREIGABE.md](CHANGELOG-CL1-FREIGABE.md):
+> der Text unten war in mehreren Punkten überholt (sieben Schritte, `start.`,
+> „Basic" als Plan, Kurse/Events) und ging so NICHT live. Nur noch Historie.
+
 > **NACHGEMESSEN 2026-11-06: NICHT veröffentlicht.** Die Tabelle `changelog`
 > liegt heute im Prod-Projekt `admin`; `https://admin.pukalani.app/api/changelog`
 > liefert genau einen veröffentlichten Eintrag (2026-08-19, AI-Runner) — v3.0.0
