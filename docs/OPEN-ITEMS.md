@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 12 offen · 4 geparkt/wartend · 13 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 13 offen · 4 geparkt/wartend · 13 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-08-19**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -35,6 +35,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 12 · BS1 | **branding.supply: Rechtstexte + Bezahlweg — 8 Entscheidungen GEFALLEN (2026-09-07), in Umsetzung.** **R0 + R1 + R1b + Z0 GEBAUT und LIVE** (2026-09-07/08; Prod-Migrationen pages-001…006 und brand-021 mit Davids Ja GEFAHREN, Geo-Env gesetzt): der 404 am Erstgespräch-Knopf ist weg, der `pages`-Layer ist montiert, die drei Rechtsseiten stehen als Entwurfs-Gerüst mit Hinweis „Entwurf, in anwaltlicher Prüfung" und `noindex`, der Fuß verlinkt sie, das AGB-Häkchen steht — und die Fassung wird am Konto festgehalten (Core). **R1b GEBAUT** (2026-09-07): die versprochenen 24 Monate der Funnel-Ereignisse haben jetzt einen Sweep, und der Env-Wächter verlangt für branding die zwei `GEO_*`-Pfade — **David setzt sie in der Server-`.env` (ploi-Site 402929) + Reload**, bis dahin bleibt `pnpm ops:site-env` rot. **R2a GEBAUT** (2026-09-07): die Methodik-Seite zum Brand-Score steht unter `/brand-check/methodik` (de+en, ohne Konto, verlinkt als vierter Reiter und von Start/Ranking/Ergebnis) — damit darf der Datenschutz-Abschnitt „Öffentliche Bewertung fremder Marken“ live gehen. **R2b GEBAUT** (2026-09-08, Davids Entscheidung): der Befund aus R2a ist erledigt — der Brand-Check holt jetzt `robots.txt` und prüft den TDM-Vorbehalt (dieselben Regeln wie der Marktvergleich, eigener Absender `PukalaniBrandCheck`, Verbot ⇒ 409 ohne gespeicherte Zeile); der Wizard-Weg für die EIGENE Website bleibt bewusst ausgenommen. **Z0 GEBAUT** (2026-09-07): `/erstgespraech` lebt im brand-Layer, der Trichter springt nicht mehr auf pukalani.studio — offen ist **Davids Ja zur Prod-Migration `brand-021`** (vor dem Code-Deploy) und, falls die Anfragen ins Postfach sollen, ein `introCallNotify` in `apps/branding/app/app.config.ts`. Offen: **Prod-Migration `pages` auf `branding` GEFAHREN 2026-09-07** (Migration VOR dem Code-Deploy) · **R2 wartet auf Davids Generator-Texte** (dazu neu: der Abschnitt „Reichweitenmessung") · **R2c = Plausible einschalten** (beschlossen 2026-09-08 mit BI1; David legt die Plausible-Site an, Text vor Schalter) · R3 = Anwaltstermin · Z1 braucht `4 · A2`. **Drei Entscheidungen vom 2026-09-08** (Plan §9): **Kundenkreis nur B2B** (Unternehmen + Selbstständige — kein Verbraucher-Widerruf, keine Verbraucherstreitbeilegung, Preise netto; das Häkchen „Ich handle als Unternehmer/in" bei der Registrierung ist Paket **R1c**, läuft) · **Generator = activeMind** für die Erstfassung, später eRecht24 Premium (activeMind verlangt Quellennennung im Text) · **Art.-27-Vertreter verschoben** in die eigene Zeile `A27`. Vorbedingung fürs Öffnen der Beta. | **Hoch** | M | Ja: Migration, Texte, Anwalt, Preis | [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) |
 | 14 · BK1 | **Brand Book & Kit (Produkt 03) — Strategie FREIGEGEBEN, Konzeption GESCHRIEBEN + sechs Konzept-Fragen beantwortet (alles 2026-09-09, DECISION-LOG).** EIN Produkt als dritte Schicht in `brand` (Kapitel Nomenklatur/AI-Guidelines/Pressekit + Lieferseite `/brand/:id/kit`), Kit = `brand.md` + `brand.json` + `tokens.json` (DTCG, hell/dunkel als Gruppen) + `tokens.css` + Zeichen-SVGs + `LICENSES.md` + Zip, Freischaltung „Ableitung" als Feld brand-025 (Beta/Betreiber/Z1), Preis 149 € netto erst mit Z1 sichtbar. **Konzept + PROTOTYP FREIGEGEBEN 2026-09-09 (§3), Pakete K0–K8 verbindlich (§2.18). K0 Gerüst, K1 Freischaltung (brand-025 auf Prod mit Davids Ja, `verify:kit` 40/40 gegen Prod) K2 Token-Modell (inkl. §2.20 Nr. 7 Dunkelmodus-Akzent), K3 Brand Context, K4 Book-Kapitel K5 Werkstatt-Kapitel (Otto/Nika/Pressekit) und **K6 Lieferseite + Bündel (`/brand/:id/kit`, Zeichen-Route, Zip, Export-Karte echt; `verify:kit` 58/58) GEBAUT** und auf main. **Nächster Schritt: K7 Beispiel + Copy in einer NEUEN Session** (WORKFLOW „ein Paket = eine Session"), danach K8.** Gates für David: Blick auf Kailuas `brand.md` (K3, Dateien liegen vor) + Leseansicht (K4: eigene Marke unter `/dashboard/brand-unlocks` freischalten, dann `/brand/:id/foundation`), Inhalts-Gate Otto/Nika (K5) FREIGEGEBEN 2026-09-09, **Lieferseite (K6) liegt David vor**, Copy (K7), Abnahme (K8). Offen aus K5: Verify-Zusagen 31–33 gegen Prod (Davids Ja + Aufräumen), Persona-Audit ⇒ K8. Vermerk: „Brand Extract" wird eigener Baustein NACH BK1. | Mittel | L | Ja: Migrations-Ja, Inhalts-Gates, Abnahme | [BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) |
 | 15 · SH1 | **Sitzungs-Hygiene — fünf Schalter, die nur David stellt.** Regeln und Bewertung der 24 Video-Tipps sind seit 2026-09-09 in [SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md); `bashOutputMaxChars` ist gesetzt. Offen: (a) Recap aus (`awaySummaryEnabled: false`), (b) `disableBundledSkills`, (c) Standard-`effortLevel`, (d) MCP-Server ohne Repo-Bezug abschalten (Tabelle im Dokument), (e) zweite Kürzungsrunde CLAUDE.md unter 200 Zeilen. | Mittel | S | Ja: nur Klicks/Entscheidungen | [SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md) |
+| 16 · RS1 | **Resend besser nutzen (Changelog-Durchsicht 2026-11-06).** Vor dem Newsletter-Schalter (BI1 I5): (a) **Tarif klären** — frei = 100 Mails/Tag, Newsletter und OTP/Verifizierung teilen sie; (b) Bounces/Beschwerden per Webhook zurück in unsere Daten (Abonnent abmelden, Mail-Benachrichtigung aus). Danach: Wächter auf Usage- + Metrics-API, `Resend-Idempotency-Key` im Stapelversand, eigene Newsletter-Subdomain, DPF/EU-Region für die Rechtstexte. | Mittel | M | Ja: Tarif, Region im Dashboard ablesen | [Notiz RS1](#rs1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -368,6 +369,58 @@ Details: [SAAS-ROADMAP #1](archiv/SAAS-ROADMAP.md).
 [David, Console]. Der ploi-Alias `studio.` ist entfernt (2026-07-30), und das
 „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
+
+<a id="rs1"></a>
+
+**RS1 — Resend besser nutzen.** Durchsicht aller 115 Einträge von
+resend.com/changelog am 2026-11-06. Unser Weg heute: SMTP (Appwrite-Mails +
+`sendMail()` über nodemailer, `NUXT_SMTP_HOST=smtp.resend.com`), der
+Insights-Newsletter über denselben Mailer, und die API nur in den Wächtern
+(`scripts/ops/verify-mail-breaker.mjs` zählt per `GET /emails`,
+`production-watch.yml` schickt die Alarm-Mail). Die Teilpakete, wichtigstes
+zuerst:
+
+- **(a) Tarif — vor dem Newsletter-Schalter.** Der freie Tarif erlaubt 100
+  Mails am Tag, und Newsletter, OTP und Verifizierung teilen sich diese
+  Grenze. Eine Ausgabe an mehr als ~100 Leute erschöpft sie, danach scheitern
+  auch Anmeldungen. Entweder Tarif anheben (Pro hat keine Tagesgrenze; seit
+  2025-12 gibt es Pay-as-you-go für Transaktionstarife) oder vor jedem Stapel
+  per Usage API (`GET /usage`, seit 2026-10-01) den Rest abfragen und anhalten.
+- **(b) Bounces und Beschwerden zurückmelden.** Resend sperrt Adressen nach
+  Hard-Bounce oder Spam-Beschwerde selbst (Status `suppressed`, verwaltete
+  Suppression List seit 2026-07-28), bei uns bleibt der Abonnent aber
+  „bestätigt" und zählt bei jeder Ausgabe als Fehlschlag. Ein Webhook-Endpunkt
+  für `email.bounced` / `email.complained` / `email.suppressed` (Webhook-API
+  seit 2025-10-31, Signatur prüfen) meldet den Abonnenten ab bzw. schaltet
+  `emailNotifications` aus.
+- **(c) Wächter vereinfachen und erweitern.** Blick 2 im Mail-Wächter auf
+  `GET /usage` umstellen: ein Aufruf statt Blättern, die Grenze kommt aus der
+  Antwort statt fest 100. Neuer Blick über die Email Metrics API
+  (`/emails/metrics`, seit 2026-08-27): Alarm bei steigender Bounce- oder
+  Beschwerdequote, das frühe Zeichen eines Missbrauchs wie im Vorfall
+  2026-10-25/27. Beide brauchen einen Schlüssel mit vollem Zugriff.
+- **(d) Idempotenz im Stapelversand.** `Resend-Idempotency-Key` wirkt auch
+  über SMTP (Doku „Send with SMTP"). Ein Schlüssel aus Ausgabe und Empfänger
+  verhindert doppelte Post, wenn ein Stapel zwischen Versand und Cursor-
+  Schreiben abbricht (heute bis zu 50 Mails). Der Mailer reicht `headers`
+  schon durch.
+- **(e) Eigene Newsletter-Subdomain.** Seit 2026-08-25 hat auch der freie
+  Tarif drei Domains: Newsletter von einer eigenen Subdomain schicken, damit
+  ihr Ruf die Anmelde-Mails nicht mitzieht. Die dritte Domain kann Staging
+  werden.
+- **(f) Rechtstexte.** Resend ist seit 2025-03-13 nach dem EU-US Data Privacy
+  Framework zertifiziert, damit gilt der Angemessenheitsbeschluss. Das schließt
+  die Lücke „SMTP/Resend ungeprüft" (G1/E12 in
+  [BRANDING-SUPPLY-RECHTSTEXTE-ENTWURF.md](plans/BRANDING-SUPPLY-RECHTSTEXTE-ENTWURF.md)).
+  Seit 2025-03-06 darf auch der freie Tarif aus der EU-Region senden. **Nur
+  David:** im Dashboard unter Domains ablesen, in welcher Region unsere
+  Domains liegen.
+
+Zur Kenntnis, kein Bau: Resend sperrt öffentlich gewordene Schlüssel selbst
+(GitHub-Scanner seit 2026-07-16, TruffleHog seit 2026-11-04). Unser Repo ist
+öffentlich: landet der SMTP-Schlüssel dort, fallen alle Mails sofort aus, und
+die Admins bekommen eine Mail. One-Click-Abmeldung (RFC 8058) bleibt ein
+eigenes Vorhaben, Begründung im Kopf von `packages/core/server/utils/mailer.ts`.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
