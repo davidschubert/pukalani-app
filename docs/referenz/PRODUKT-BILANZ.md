@@ -49,7 +49,7 @@ holt seine Daten über die Naht eines anderen Layers.
 | Produkt | _template | branding | comments | control | help | marketing | photos | platform | portfolio |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `activity` | — | — | ✅ | — | — | — | — | ✅ | — |
-| `admin` | ✅ | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
+| `admin` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
 | `analytics` | — | — | ✅ | — | — | — | — | ✅ | ✅ |
 | `billing` | — | — | ✅ | ✅ | — | — | — | — | — |
 | `blueprint` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
@@ -68,7 +68,7 @@ holt seine Daten über die Naht eines anderen Layers.
 | `pages` | — | — | — | ✅ | — | — | — | ✅ | ✅ |
 | `posts` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
 | `runner` | — | — | — | ✅ | — | — | — | — | — |
-| `themes` | ✅ | — | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
+| `themes` | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ |
 | `tickets` | — | — | — | ✅ | — | — | — | — | — |
 
 ## Der Bauplan: wo Pool und Silo dasselbe zeigen
