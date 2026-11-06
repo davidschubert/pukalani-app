@@ -1,7 +1,7 @@
 # MZ1 — Mail-Zustellbarkeit: Bounces und Spam-Beschwerden sehen
 
 **Stand:** 2026-11-06 · **ARCHIV:** Stufe A gebaut (COMPLETE „MZ1"), Stufe B
-bewusst zurückgestellt — offen als OPEN-ITEMS „MZ1-B" (Geparkt). § 8 hält fest,
+bewusst zurückgestellt — offen als Teilpaket (b) von OPEN-ITEMS „RS1". § 8 hält fest,
 was die Messung an dieser Skizze widerlegt hat.
 
 ## 1. Ausgangslage (gemessen, nicht geglaubt)

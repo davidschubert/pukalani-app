@@ -40,7 +40,9 @@ fehlte, war die Sicht darauf, was aus den Mails wird. Plan:
 
 **Davids Entscheidungen (2026-11-06).** Nur Stufe A (Pull im Wächter, keine
 App-Änderung); rot ab 3 Bounces ODER 1 Beschwerde in 24 h; Stufe B (Webhook,
-Konto-Merker) geparkt als „MZ1-B".
+Konto-Merker) zurückgestellt — lebt als Teilpaket (b) in OPEN-ITEMS „RS1"
+(eine Nachbarsitzung hatte am selben Tag die Resend-Changelog-Durchsicht
+angelegt; kein zweiter Eintrag).
 
 **Gebaut.** `scripts/ops/verify-mail-breaker.mjs` zählt in der Liste, die
 Blick 2 schon holt, `last_event === 'bounced' | 'complained'`; ins öffentliche
