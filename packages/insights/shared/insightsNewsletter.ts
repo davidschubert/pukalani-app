@@ -538,6 +538,39 @@ export function insightsNewsletterIsRecipient(row: InsightsNewsletterRecipientRo
  */
 export const INSIGHTS_NEWSLETTER_BATCH = 50
 
+/**
+ * DER IDEMPOTENZ-SCHLÜSSEL EINER AUSGABE-MAIL (RS1 d, 2026-11-06) — die
+ * Lücke, die der Cursor allein nicht schliesst.
+ *
+ * Der Cursor wird EINMAL je Stapel geschrieben (s. oben, Grund 3). Stirbt der
+ * Vorgang zwischen der letzten Mail und diesem Schreiben (Prozess-Neustart,
+ * Appwrite antwortet nicht), steht der Cursor noch VOR dem Stapel — das
+ * Fortsetzen schickt bis zu fünfzig Mails ein zweites Mal. Resend erkennt
+ * dieselbe Mail an diesem Kopf (`Resend-Idempotency-Key`, wirkt laut Doku
+ * „Send with SMTP" auch über SMTP) und verschickt sie dann nicht noch einmal,
+ * sondern antwortet mit der ursprünglichen.
+ *
+ * Gebaut aus AUSGABE und EMPFÄNGER, beides Zeilen-Ids:
+ *  · Ausgabe = `$id` der Sende-Zeile (`insights_sends`), nicht der Beitrag —
+ *    der Schlüssel benennt diesen EINEN Versand.
+ *  · Empfänger = `$id` der Abonnenten-Zeile, NIE die Adresse: der Kopf reist
+ *    in der Mail mit, und eine Adresse hat in einer Kennung nichts verloren.
+ * Form nach Resends Empfehlung `<ereignis>/<id>`; Appwrite-Ids sind höchstens
+ * 36 Zeichen, das Ganze bleibt also weit unter Resends Grenze von 256.
+ *
+ * GRENZEN, BENANNT (Resend-Doku „Idempotency Keys", gelesen 2026-11-06):
+ *  · Resend hält den Schlüssel 24 STUNDEN. Ein Fortsetzen später als einen
+ *    Tag nach dem Abbruch ist wieder ungeschützt — der Abbruch zeigt sich aber
+ *    sofort als hängender Balken, und fortgesetzt wird von Hand.
+ *  · Derselbe Schlüssel mit ANDEREM Inhalt (Beitrag dazwischen redigiert) ist
+ *    für Resend ein Fehler (409 `invalid_idempotent_request`), über SMTP also
+ *    eine abgelehnte Mail. Der Lauf zählt sie als `failed` — der Empfänger
+ *    hatte die erste Fassung da schon. Das ist die richtige Richtung.
+ */
+export function insightsNewsletterIdempotencyKey(sendId: string, subscriberId: string): string {
+  return `insights-issue/${sendId}/${subscriberId}`
+}
+
 /** Die drei Zustände einer Sende-Zeile (insights-008). */
 export const INSIGHTS_SEND_STATES = ['running', 'done', 'failed'] as const
 export type InsightsSendState = (typeof INSIGHTS_SEND_STATES)[number]

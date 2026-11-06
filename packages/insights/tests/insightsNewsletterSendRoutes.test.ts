@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
 import type { InsightsPost } from '../shared/insightsPost'
-import { INSIGHTS_NEWSLETTER_BATCH } from '../shared/insightsNewsletter'
+import { INSIGHTS_NEWSLETTER_BATCH, insightsNewsletterIdempotencyKey } from '../shared/insightsNewsletter'
 import { INSIGHTS_POSTS_TABLE, INSIGHTS_SENDS_TABLE, INSIGHTS_SUBSCRIBERS_TABLE, fromInsightsPost } from '../shared/insightsRows'
 import type {
   InsightsNewsletterSendBatchResponse,
@@ -40,6 +40,10 @@ import { insightsNewsletterAllowed, insightsPublicFormats, insightsPublicMissing
  *     fortsetzbar — und am Ende hat jeder GENAU EINE Mail.
  *  8. ZWEITER DRUCK nach `done` ⇒ 409 `already_sent`.
  *  9. JEDE MAIL trägt ihren eigenen `List-Unsubscribe`-Header.
+ *  9b. JEDE MAIL trägt einen `Resend-Idempotency-Key` aus Sende-Zeile +
+ *     Abonnent — und ein Stapel, dessen Cursor-Schreiben scheitert, schickt
+ *     beim Fortsetzen DIESELBEN Schlüssel (RS1 d): Resend verwirft die
+ *     zweite Zustellung, die der Fake hier bewusst noch mitzählt.
  * 10. DIE SPRACHE ist die des Empfängers, mit §3.2-Rückfall.
  */
 
@@ -476,6 +480,47 @@ describe('Ein Beitrag, eine Mail', () => {
       expect(mail.text.startsWith('Die erste Fassung.')).toBe(true)
       expect(mail.text).not.toContain('Etwas ganz anderes.')
     }
+  })
+})
+
+describe('Ein abgebrochener Stapel schickt beim Fortsetzen dieselben Schlüssel (RS1 d)', () => {
+  it('setzt je Mail den Schlüssel aus Sende-Zeile und Abonnent — verschieden je Empfänger', async () => {
+    putSubscribers([subscriber(1), subscriber(2)])
+    await runBatch(event)
+
+    const sendId = tables[INSIGHTS_SENDS_TABLE]?.[0]?.$id ?? ''
+    expect(sendId).not.toBe('')
+    const keys = mails.map(mail => mail.headers?.['Resend-Idempotency-Key'] ?? '')
+    expect(keys).toEqual([
+      insightsNewsletterIdempotencyKey(sendId, 's0001'),
+      insightsNewsletterIdempotencyKey(sendId, 's0002'),
+    ])
+    // Keine Adresse im Kopf — er reist in der Mail mit.
+    for (const key of keys) expect(key).not.toContain('@')
+  })
+
+  it('stirbt das Cursor-Schreiben, wiederholt das Fortsetzen die Mails MIT denselben Schlüsseln', async () => {
+    putSubscribers([subscriber(1), subscriber(2), subscriber(3)])
+    // Der Stapel geht raus, das Schreiben danach scheitert — genau die Lücke,
+    // die der Cursor allein nicht schliesst.
+    tablesDB.updateRow.mockImplementationOnce(async () => {
+      throw new AppwriteException('Server Error', 500)
+    })
+    await expect(runBatch(event)).rejects.toBeTruthy()
+    const ersterVersuch = mails.map(mail => mail.headers?.['Resend-Idempotency-Key'] ?? '')
+    expect(ersterVersuch).toHaveLength(3)
+    expect(tables[INSIGHTS_SENDS_TABLE]?.[0]?.cursor).toBe('')
+
+    mails = []
+    const result = await runBatch(event)
+    expect(result.done).toBe(true)
+    const zweiterVersuch = mails.map(mail => mail.headers?.['Resend-Idempotency-Key'] ?? '')
+    // Gegenprobe gegen eine Tautologie: der Fake hat wirklich ein zweites Mal
+    // „verschickt" (ohne Resend kein Schutz) — und zwar mit IDENTISCHEN
+    // Schlüsseln, an denen Resend die Dublette erkennt.
+    expect(zweiterVersuch).toHaveLength(3)
+    expect(zweiterVersuch).toEqual(ersterVersuch)
+    expect(new Set(zweiterVersuch).size).toBe(3)
   })
 })
 
