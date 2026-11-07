@@ -350,6 +350,50 @@ heute kein Schaden (die Route gibt den Fehler ehrlich weiter, bezahlt ist
 nichts), aber es heisst: ein `502` auf diesem Weg bedeutet nicht
 zwangsläufig „Anbieter kaputt", sondern oft „dieses Video nicht".
 
+**PROD-BEWEIS, nachgeholt am 2026-11-06** (Live-Build `034f0868`, Davids eigene
+Sitzung, echte Läufe mit echtem Geld — bis dahin sagte der Plan hier
+„Nicht bewiesen auf Prod: der Klick selbst"):
+
+| Video | Dauer | `briefRawChars` | `briefChars` | Ergebnis |
+|---|---|---|---|---|
+| `WrehiIId62U` | 65,4 s | 1.993 | 1.993 | Schnitt griff NICHT |
+| `LEVGLXBzghc` | 18,7 s | **2.194** | **1.887** | **Schnitt griff**, Entwurf angelegt |
+
+Der ZWEITE Lauf ist der Beweis: 2.194 Zeichen, 194 über dem Deckel — die alte
+Fassung hätte hier `brief: too_big` geworfen und den bezahlten Lauf verloren,
+die ausgelieferte klemmte auf 1.887 und legte den Entwurf an (Status 200). Der
+Schluss steht auf einem vollständigen Satz unter `### OFFENE FRAGEN`, und die
+Überschrift hängt nicht leer in der Luft — genau das, was `dropDanglingLead`
+zusagt. Beide Entwürfe und beide Fundstücke danach wieder entfernt (Prod
+zurück auf 1 Beitrag / 0 Fundstücke).
+
+Der ERSTE Lauf ist der ehrlichere Befund: dasselbe Video, das am 2026-10-28
+noch 2.027 Zeichen lieferte, blieb diesmal mit 1.993 sieben Zeichen UNTER dem
+Deckel. Dieselbe Eingabe, dieselbe Temperatur, anderes Ergebnis — die Streuung
+aus der Messreihe oben ist also keine Eigenschaft des VIDEOS, sondern des
+LAUFS. Ein Prod-Beweis, der auf einen einzigen Lauf gesetzt hätte, hätte hier
+nichts gezeigt.
+
+**Viertens gelernt (neu, aus dem Prod-Lauf): die Route läuft dem Proxy davon.**
+Der 51-Minuten-Lauf brauchte 65,4 Sekunden, nginx gibt bei 60 auf — der Klient
+bekam `504 Gateway Time-out`, während der Node-Prozess in Ruhe weiterlief und
+den Entwurf korrekt anlegte. Kein Geld verloren (Stufe 3 der Route führt den
+zweiten Klick auf den vorhandenen Beitrag), aber der Mensch sieht einen Fehler
+und bekommt den Link zu seinem fertigen Entwurf nie. Als eigener Punkt `BI3`
+in OPEN-ITEMS. **Gemerkt sei die Form des Fehlers:** ein 504 heisst hier nicht
+„das ist nicht passiert", sondern „das dauert länger als der Proxy wartet" —
+wer nach so einem Fehler nur auf die Antwort schaut statt in die Datenbank,
+zieht den falschen Schluss.
+
+**Fünftens, für jeden künftigen Klick-Beweis:** `window.confirm` friert den
+Renderer ein, und ein nativer Dialog ist über die Browser-Automatisierung
+NICHT beantwortbar — jeder Klick auf „Erzeugen" lief in einen CDP-Timeout, und
+die Seite sah dabei aus wie abgestürzt. Der Lauf wurde deshalb mit der
+seiteneigenen `fetch`-Anfrage ausgelöst: gleiche Route, gleiche Sitzung, nur
+ohne den Dialog davor. Das Dashboard benutzt an zwei Stellen natives `confirm`
+statt einer Nuxt-UI-Bestätigung (`finds.vue:171` und `:205`) — nicht falsch,
+aber es macht genau diese Knöpfe unprüfbar.
+
 ---
 
 ### LOG1 — `seo_read_failed` im pm2-Log: der Schwall war das Zertifikat, das Dauerrauschen war `help` ohne Appwrite ✅ 2026-10-28

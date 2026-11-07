@@ -183,7 +183,7 @@ catalog:
   vue-tsc: ^3.3.11
   zod: ^4.5.4
   jiti: ^2.7.0
-  nodemailer: ^7.0.0
+  nodemailer: ^10.3.1
   ioredis: ^5.9.0
   '@types/nodemailer': ^7.0.0
   stripe: ^18.0.0
