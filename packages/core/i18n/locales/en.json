@@ -144,7 +144,8 @@
         "recoveryCode": "Recovery code",
         "recoveryPlaceholder": "e.g. 4f3a9c2b10"
       }
-    }
+    },
+    "reauthSignedOut": "Please sign in again to confirm."
   },
   "validation": {
     "required": "This field is required",
@@ -336,7 +337,10 @@
       "cancel": "Cancel",
       "success": "Account deleted.",
       "failed": "Deletion failed — please try again.",
-      "failedDescription": "Your account is unchanged — nothing was deleted. Try again in a moment."
+      "failedDescription": "Your account is unchanged — nothing was deleted. Try again in a moment.",
+      "reauthTitle": "Sign in again to continue",
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete your account. Nothing has been deleted.",
+      "reauthConfirm": "Sign in again"
     },
     "twoFactor": {
       "title": "Two-factor",

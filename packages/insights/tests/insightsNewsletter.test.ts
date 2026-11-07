@@ -19,6 +19,7 @@ import {
   decideInsightsSendStart,
   insightsNewsletterAnonymizedEmail,
   insightsNewsletterConfirmMailCopy,
+  insightsNewsletterIdempotencyKey,
   insightsNewsletterIsAnonymized,
   insightsNewsletterIsRecipient,
   insightsNewsletterIssueCopy,
@@ -583,5 +584,24 @@ describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
       expect(copy.text).not.toMatch(/[<>]/)
       expect(copy.subject).not.toMatch(/[<>]/)
     }
+  })
+})
+
+describe('insightsNewsletterIdempotencyKey (RS1 d)', () => {
+  it('baut den Schlüssel aus Sende-Zeile und Abonnent in Resends Form `<ereignis>/<id>`', () => {
+    expect(insightsNewsletterIdempotencyKey('send-1', 'sub-9')).toBe('insights-issue/send-1/sub-9')
+  })
+
+  it('ist für dieselbe Ausgabe und denselben Empfänger stabil, sonst verschieden', () => {
+    const a = insightsNewsletterIdempotencyKey('send-1', 'sub-1')
+    expect(insightsNewsletterIdempotencyKey('send-1', 'sub-1')).toBe(a)
+    expect(insightsNewsletterIdempotencyKey('send-1', 'sub-2')).not.toBe(a)
+    // Eine ANDERE Ausgabe an denselben Empfänger darf nicht als Dublette gelten.
+    expect(insightsNewsletterIdempotencyKey('send-2', 'sub-1')).not.toBe(a)
+  })
+
+  it('bleibt mit den längsten Appwrite-Ids (36 Zeichen) unter Resends Grenze von 256', () => {
+    const id = 'x'.repeat(36)
+    expect(insightsNewsletterIdempotencyKey(id, id).length).toBeLessThanOrEqual(256)
   })
 })

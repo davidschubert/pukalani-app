@@ -17,15 +17,18 @@
 // dieselbe Adresse steckt in jedem Demo-CTA der Seite und ist per
 // NUXT_PUBLIC_MARKETING_DEMO_URL überschreibbar (lokal/Staging). Eine
 // zweite, hart notierte Kopie hätte den Schalter genau hier ins Leere laufen
-// lassen.
+// lassen. Dasselbe gilt für den Changelog: er kommt aus `useMarketingSite()`
+// (eine Quelle mit Kopf- und Fußmenü) — die zweite, feste Kopie zeigte bis
+// 2026-11-06 auf eine tote Adresse, während niemand hinsah.
 const { t } = useI18n()
 const { demo } = useProductLinks()
+const { changelogUrl } = useMarketingSite()
 
 const PROOF_ITEMS = [
   { slug: 'comments', url: 'https://comments.pukalani.app' },
   { slug: 'demo', url: demo },
   { slug: 'portfolio', url: 'https://portfolio.pukalani.app' },
-  { slug: 'changelog', url: 'https://changelog.pukalani.app' },
+  { slug: 'changelog', url: changelogUrl },
 ] as const
 
 const items = computed(() =>

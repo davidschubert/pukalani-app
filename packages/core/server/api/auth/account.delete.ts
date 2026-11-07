@@ -6,11 +6,19 @@ import { clearSessionCookie } from '../../lib/appwrite'
  * alle UserDataContributors (Kommentare→Tombstone, Votes/Reports/
  * Notifications→Hard-Delete, Audit→Pseudonymisierung), Avatar + Presence,
  * users.delete() als letzter Schritt NUR bei Voll-Erfolg. Unumkehrbar.
+ *
+ * Deshalb nur mit FRISCHER Anmeldung (RA1, `requireRecentAuth`): vorher
+ * genügte ein gültiges Cookie, also auch ein gestohlenes oder ein offener
+ * Laptop. Die Prüfung läuft VOR allem anderen — eine Ablehnung hat nichts
+ * angefasst, und das Cookie bleibt stehen (der `finally` unten räumt es
+ * sonst bei JEDEM Ausgang ab).
  */
 export default defineEventHandler(async (event) => {
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
+
+  await requireRecentAuth(event)
 
   const userId = event.context.user.$id
   let result: Awaited<ReturnType<typeof deleteUserCompletely>>

@@ -2,13 +2,21 @@
 
 ## Projekt
 Nuxt 4 Monorepo — Marke **Pukalani** (der lokale Ordner heißt weiterhin
-`maui-monorepo`, ebenso das GitHub-Repo) — mit zentralem Core Layer + Produkt-Layern.
+`maui-monorepo`, das GitHub-Repo seit 2026-11 `davidschubert/pukalani-app`) — mit
+zentralem Core Layer + Produkt-Layern.
 Vollständiges Konzept: docs/CONCEPT.md
 
 ## Stack
 - Nuxt 4.5.x (Composition API, SSR), Nuxt UI 4.10.x, Pinia 4, Tailwind CSS 4
 - node-appwrite 29 (Server SDK) + appwrite 27 (Web SDK, NUR Realtime) — Appwrite self-hosted
-  **2.6.2** (dev, CI und prod seit 2026-10-27 — PHP 8.5.12, Brotli 1.2.1-r0
+  **2.7.1** (dev, CI und prod seit 2026-11-06 — Executor 1.3.1 gegen das
+  `_APP_EXECUTOR_SECRET`-Leck, Secret auf prod rotiert, `migrate` nötig;
+  docs/runbooks/APPWRITE-2-7-UPGRADE.md, `ops/appwrite-upgrade-2.7.1.sh`).
+  Seit 2.7 trennt Realtime jede Verbindung nach 120 s STILLE — ein eigener
+  `new WebSocket` muss alle 20 s `{"type":"ping"}` senden wie die SDKs
+  (`useRealtimeAccount` tut es); die Richtlinie „Deny realtime guests" bleibt
+  AUS (Gäste abonnieren absichtlich `read(any)`-Tabellen, Runbook).
+  2.6.2 (seit 2026-10-27 — PHP 8.5.12, Brotli 1.2.1-r0
   gegen CVE-2026-111497, `_APP_MEMORY_LIMIT` 512M; MariaDB bleibt; Runbook-
   Abschnitt „2.6.1 → 2.6.2", Skript `ops/appwrite-upgrade-2.6.2.sh`). Der
   Wert von `_APP_MEMORY_LIMIT` greift per `ini_set` in `app/init.php`, ein

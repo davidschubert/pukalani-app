@@ -928,9 +928,18 @@ das Neue.
 * `POST /api/insights/watchlist/<videoId>/brief` antwortet ohne Konto **401**
   (nicht 404) — ausgeliefert, Produkt-Gate offen, nur die Berechtigung fehlt.
 
-**Nicht bewiesen auf Prod:** der Klick selbst. Der Migrations-Schlüssel hat
-bewusst keinen `users`-Scope; der Beweis oben lief gegen eine Wegwerf-Instanz
-mit demselben Schema.
+**Auf Prod bewiesen am 2026-11-06** (Live-Build `034f0868`, Davids eigene
+Sitzung): zwei echte Läufe über die echte Route. Einer schrieb 2.194 Zeichen,
+die Klemme machte 1.887 daraus und legte den Entwurf an — die alte Fassung
+hätte den bezahlten Lauf hier verloren. Der andere blieb von selbst unter dem
+Deckel (1.993), dasselbe Video lieferte neun Tage zuvor noch 2.027: die
+Streuung gehört zum LAUF, nicht zum Video. Entwürfe und Fundstücke danach
+wieder entfernt. Details und beide Log-Zeilen: COMPLETE „K5-Nachtrag".
+
+**Dabei aufgefallen (offen als `BI3`):** der 51-Minuten-Lauf brauchte 65,4 s,
+nginx gibt bei 60 auf. Der Klient bekommt `504`, der Server legt den Entwurf
+trotzdem an — kein Geld verloren, aber der Mensch sieht einen Fehler statt
+des Links zu seinem Entwurf. Kurze Videos (18,7 s) sind nicht betroffen.
 
 ### Gelernt
 

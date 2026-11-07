@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { InsightsNewsletterIntros, InsightsNewsletterLocale } from '../../shared/insightsNewsletter'
-import { insightsNewsletterConfirmMailCopy, insightsNewsletterIssueCopy } from '../../shared/insightsNewsletter'
+import { insightsNewsletterConfirmMailCopy, insightsNewsletterIdempotencyKey, insightsNewsletterIssueCopy } from '../../shared/insightsNewsletter'
 import type { InsightsPostHead } from '../../shared/insightsPost'
 import { insightsPublicKopf } from '../../shared/insightsPost'
 
@@ -245,6 +245,9 @@ export interface InsightsNewsletterIssueMailInput {
   to: string
   /** Die Zeilen-Id des ABONNENTEN — aus ihr wird sein Abmelde-Link abgeleitet. */
   subscriberId: string
+  /** Die Zeilen-Id der SENDE-Zeile — Teil des Idempotenz-Schlüssels
+   *  (`insightsNewsletterIdempotencyKey`). */
+  sendId: string
   /** Der Beitrag (nur Kopf: Titel, Vorspann, Grundsprache, Redigier-Häkchen). */
   post: InsightsPostHead
   /** Die eigenen zwei, drei Sätze — '' ist der Normalfall. */
@@ -303,7 +306,10 @@ export async function sendInsightsNewsletterIssueMail(
       to: input.to,
       subject: copy.subject,
       text: copy.text,
-      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` },
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'Resend-Idempotency-Key': insightsNewsletterIdempotencyKey(input.sendId, input.subscriberId),
+      },
     })
     return ok ? 'sent' : 'no_mailer'
   }

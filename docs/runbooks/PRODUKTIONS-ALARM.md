@@ -27,7 +27,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Env-Variablen | `scripts/ops/verify-site-env.mjs` | täglich 04:17 UTC | Pflicht-Variable fehlt auf einer Site |
 | Tote Zugänge | `scripts/ops/verify-stale-keys.mjs` | täglich | Schlüssel auf ein gelöschtes Projekt |
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
-| Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 Mails in 24 h (vor dem 100er-Limit) |
+| Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 
 Die Mail-Notbremse selbst (60 je Stunde und Route über alle IPs) lebt in
 `packages/core/server/middleware/05.rate-limit.ts`; sie STOPPT den Versand und
@@ -116,10 +116,12 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       *Custom → Issues*. Beweis: ein Probealarm (§ 2) erzeugt eine Mail
       „[davidschubert/pukalani.app] 🔴 Produktions-Alarm (Probealarm) …
       (Issue #n)" IM POSTEINGANG.
-- [ ] **Resend → Alarm-Mail.** Resend → API Keys → *Create* → Name
+- [x] **Resend → Alarm-Mail.** ✅ 2026-11-06: alle drei Einträge gesetzt,
+      Probealarm (Lauf 42139629230, Issue #66) ⇒ Mail kam an, Mail-Wächter
+      Blick 2 + 3 zählten im CI. Resend → API Keys → *Create* → Name
       `produktions-waechter`, Permission *Full access* (Sending reicht für die
-      Alarm-Mail, aber der Mail-Zähler liest `GET /emails` und braucht Full
-      access; EIN Schlüssel darf in beiden Secrets stehen). GitHub → Repo →
+      Alarm-Mail, aber der Mail-Zähler liest `GET /usage` und
+      `GET /emails/metrics` und braucht Full access; EIN Schlüssel darf in beiden Secrets stehen). GitHub → Repo →
       Settings → Secrets and variables → Actions:
       Secret `PRODUCTION_ALARM_RESEND_KEY` = der Schlüssel,
       Secret `PRODUCTION_WATCH_RESEND_KEY` = derselbe Schlüssel,
@@ -130,9 +132,9 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       Browser (Schlüssel nur als Eingabe, nie in Chat, Datei oder Commit):
 
       ```bash
-      gh secret set PRODUCTION_ALARM_RESEND_KEY --repo davidschubert/pukalani.app
-      gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani.app
-      gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani.app --body "mail@…"
+      gh secret set PRODUCTION_ALARM_RESEND_KEY --repo davidschubert/pukalani-app
+      gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani-app
+      gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani-app --body "mail@…"
       ```
 - [ ] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
       GitHub). Per API mit dem *Main API key* (UptimeRobot → Integrations &

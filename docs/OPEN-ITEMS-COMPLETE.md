@@ -30,6 +30,255 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
+
+Anlass: Die Marketing-Seite verlinkt seit a77f79fd `admin.pukalani.app/changelog`,
+dort stand nur EIN Eintrag (AI-Runner, 2026-08-19).
+
+- **Bestand gemessen:** Tabelle `changelog` im Prod-Projekt `admin` hatte 7
+  Rows — 1 veröffentlicht, **6 fertige zweisprachige Entwürfe vom 2026-08-14**
+  (Reaktionen/Verweise, Mitglieder laden ein, Tages-Limit, Navigation/
+  Sucheintrag/Weiterleitungen, Export, Zwei-Faktor/Zeitzone/`@name`), die nie
+  jemand veröffentlicht hatte. Ihre Hilfe-Links zeigten in die falsche Sprache.
+- **Der v3.0.0-Entwurf war überholt** (sieben Schritte statt vier, `start.`
+  leitet auf `account.`, „Basic" als Plan, Kurse/Events „anschalten" obwohl
+  Early Access, ein Betreiber-Fix). Neu geschrieben aus der Hilfe
+  (`apps/help/content`) + Commits 2026-07-28 … 2026-10-27: 9 neue Einträge.
+- **Davids Freigabe** 2026-11-06: alle 15, der Satz zur früheren
+  Community-übergreifenden Moderations-Ansicht bleibt drin.
+- **Lauf:** erst lokal (`studio-1xsl`, 15/15), dann Prod per `upsertRow` mit
+  fester Row-Id (`cl-<datum>-<thema>` bzw. die alten Ids) — idempotent,
+  wiederholbar. Alle ohne `version`, `published: true`.
+- **Beweis (eigener Abruf):** `/api/changelog?limit=50` ⇒ `total 16`, neueste
+  zuerst; in Chrome `/de/changelog` (`lang=de-DE`) und `/changelog`
+  (`lang=en-US`) je 16 Überschriften in der richtigen Sprache, Markdown
+  gerendert. Text: [CHANGELOG-CL1-FREIGABE.md](archiv/CHANGELOG-CL1-FREIGABE.md).
+- Nicht angefasst: der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-
+  Changelog) und das Datum, das auch auf `/de` englisch formatiert ist
+  („Oct 27, 2026") — beides als Beobachtung, nicht als Auftrag.
+
+**Gelernt:** Ein fertiger Text in `plans/` ist nach drei Monaten kein fertiger
+Text mehr — fünf seiner Aussagen stimmten nicht mehr. Die Kundenhilfe ist der
+geprüfte Stand, gegen den ein Changelog geschrieben wird. Und: vor dem
+Schreiben die Tabelle LESEN — sechs fertige Einträge lagen seit August als
+Entwurf daneben. Die Sortierung stellt Einträge mit `version` vor alle ohne;
+gemischt angelegt, landet der älteste ganz oben (CHANGELOG-WORKFLOW.md).
+
+---
+
+### AW27: Appwrite 2.7.1 auf dev, CI und prod — Executor-Leck geschlossen, Secret rotiert, Account-WS pingt ✅ 2026-11-06
+
+Anlass: 2.7.0 (2026-11-03) und das Security-Release 2.7.1 (2026-11-04) —
+Executor 1.1.2 → 1.3.1: der alte folgte Symlinks in Log-/Build-Dateien, eine
+Function konnte so `_APP_EXECUTOR_SECRET` lesen und über die Executor-API
+Docker auf dem Host steuern. 2.7.0 braucht `migrate` (neue V25-Schritte).
+Reihenfolge wie immer: dev → CI (PR #65, E2E gegen die Wegwerf-Instanz 2.7.1
+16/16) → Davids „Ja, mit Rotation" → Ping-Fix live (Build bb380b92) → prod.
+
+- **dev** 2026-11-06 00:37–00:41 UTC: Werkzeug 161 s (Image-Pulls), `migrate`
+  9,2 s, 0 Fehler; 66 neue Appwrite-interne Tabellen, Nutzertabellen 388 →
+  388; E2E `apps/comments` 16/16, core-Unit 1740.
+- **prod** 2026-11-06 01:16–01:19 UTC mit `ROTATE_EXECUTOR_SECRET=1`: Aufruf
+  bis Beweise 99 s, `migrate` 24,1 s, 0 Fehler; Executor-API mit neuem Secret
+  200, mit falschem 401; zehn Hosts gesund, TLS grün, Parität 69/42/41/43,
+  OTP-Mail an `delivered@resend.dev` `success` in 1,73 s (Probe-Nutzer gelöscht).
+- **Core-Fix** `useRealtimeAccount`: Appwrite 2.7 schließt Realtime nach 120 s
+  Stille (#15059), unser cookie-nativer Account-WS sendete nie etwas. Er pingt
+  jetzt alle 20 s. Probe: stummer WS nach 120,2 s weg, pingender lebt.
+- „Deny realtime guests" bleibt AUS (Begründung im Runbook); Realtime-Grenzen
+  (100 Abos/Verbindung, 32 Verbindungen/Nutzer) mit ~15 Abos weit entfernt.
+- Offen geblieben: der Browser-Blick mit Anmeldung (Account-WS > 2 min stabil)
+  — Chrome war auf account. nicht angemeldet. Ob der keepAlive-Patch fallen
+  kann: AW28.
+
+Runbook: [APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md).
+
+**Gelernt:** Eine Appwrite-Version kann still ein KLIENT-Verhalten verlangen —
+2.7 trennt jeden Socket, der zwei Minuten schweigt. Die SDKs pingen, ein
+handgeschriebener `new WebSocket` nicht; Typecheck, Unit und E2E (Läufe unter
+2 min je Seite) sehen das nie. Bei jedem Realtime-Changelog-Punkt also auch
+nach EIGENEN WebSockets greppen. Und: ein UTC-Datum nie aus einer reinen
+Uhrzeit schätzen — `date -u +%T` zeigte nur 00:37, das Datum wurde als
+2026-11-07 geraten und stand so in Runbook und CLAUDE.md, bis der `$createdAt`
+des Prod-Tokens 2026-11-06 zeigte. Für Protokolle `date -u +%FT%T`.
+
+---
+
+### RA1 — Konto löschen verlangt eine frische Anmeldung ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-29: Firewall-Regeln können auf
+„Session age" und „MFA age" prüfen. Die Firewall gibt es nur auf Appwrite
+Cloud — wir sind self-hosted, also nichts zu übernehmen. Die IDEE dahinter
+(eine unumkehrbare Aktion verlangt eine FRISCHE Anmeldung statt „irgendwann
+eingeloggt") deckte aber eine echte Lücke auf: `DELETE /api/auth/account`
+löschte das Konto vollständig (DSGVO Art. 17) mit nichts als einem gültigen
+Cookie. Passwort ändern (altes Passwort) und MFA abschalten (MFA-Code) waren
+schon geschützt.
+
+**Davids Entscheidung (2026-11-06): frische Anmeldung statt Passwort-Feld.**
+Auf platform, control und branding gibt es Konten OHNE Passwort (Google,
+E-Mail-Code) — ein Passwort-Feld hätte sie ausgesperrt, ein eigener
+Lösch-Code per Mail wäre ein zweites Login-System gewesen. Eine neue
+Anmeldung kann jede Konto-Art und prüft MFA gleich mit.
+
+**Gebaut.**
+- `core/shared/recentAuth.ts` — pure Regel `isRecentAuth` (10 Minuten,
+  fail-closed bei fehlendem/kaputtem Datum, leichter Uhrenversatz zählt als
+  frisch), Grund `reauth_required`.
+- `core/server/utils/recentAuth.ts` — `requireRecentAuth(event)` liest
+  `$createdAt` der AKTUELLEN Session bei Appwrite (nicht aus Cookie oder
+  Body) und wirft 403 mit `reason: reauth_required`.
+- `account.delete.ts` ruft sie als ERSTES — eine Ablehnung hat nichts
+  angefasst, und das Cookie bleibt (der `finally` dort räumt es sonst ab).
+- Oberfläche: `AccountDeleteCard` erkennt den Grund (`isReauthRequired` in
+  `app/utils/fetchError.ts`, bewusst über den Grund, nicht über 403), erklärt
+  „zur Sicherheit neu anmelden" und schickt über `useLogout().reauthenticate()`
+  nach `/login?redirect=…` — danach steht die Person wieder auf derselben
+  Seite. `reauthenticate` ist eine eigene Funktion, weil `logout` direkt als
+  Klick-Handler hängt und sonst das Klick-Ereignis als Option bekäme.
+- Der Host-Wechsel (`site-session`, `embed-session`) reicht dasselbe Secret
+  weiter, legt also keine neue Session an — er macht nichts „frisch". Nur ein
+  echter Login tut das.
+
+**Beweis.** Unit: `packages/core/tests/recentAuth.test.ts` (Grenze ±1 ms,
+Gegenproben, fail-closed, Grund-Erkennung, Wächter „Prüfung steht VOR
+`deleteUserCompletely`"); core 1750/1750, Lint, Typecheck core + platform,
+`check:i18n-keys` grün.
+Klick-Beweis (lokale Dev-Appwrite, comments-Dev-Server aus dem Worktree,
+Wegwerf-Konto mit Label `moderator`, danach gelöscht): Session über die
+Admin-API angelegt und 11 Minuten altern lassen ⇒ `DELETE /api/auth/account`
+**403** `{"reason":"reauth_required"}`, kein `Set-Cookie`, `/api/auth/me`
+danach weiter 200, Konto existiert. Im Browser: „Account löschen" →
+„Endgültig löschen" ⇒ Dialog „Zur Sicherheit neu anmelden" → „Neu anmelden"
+⇒ `/de/login?redirect=/de/dashboard/settings/data` mit Toast; die ALTE
+Session antwortet jetzt 401. Neu angemeldet ⇒ zurück auf derselben Seite,
+Löschen ⇒ „Account gelöscht.", `users.get` **404**.
+
+**Offen ⇒ OPEN-ITEMS „RA2":** dieselbe Klammer für die übrigen
+unumkehrbaren Stellen (Owner-Rolle übergeben, Community stilllegen) — nicht
+geprüft.
+
+---
+
+### CL0 — Appwrite-Brotli-Hinweis geprüft; dabei: der Changelog-Link der Marketing-Seite zeigte seit Monaten auf einen toten Webhook ✅ 2026-11-06
+
+**Anlass.** Appwrite-Changelog vom 2026-10-24 (Brotli, CVE-2026-111497): Server
+auf 2.6.2 heben UND die Runtime-Images für Functions/Sites neu ziehen.
+
+**Brotli — nichts mehr zu tun.** Server-Teil ist AW262 (2.6.2 seit 2026-10-27).
+Runtime-Teil, gemessen auf appwrite-prod: kein einziges `openruntimes/*`-Image
+außer dem Executor (der `ImagePuller` zog node-22/static-1/flutter-3.29 beim
+Neustart am 2026-10-27, also nach den Patches; das Aufräumen am 2026-10-28
+entfernte sie als ungenutzt), und **0 Functions, 0 Sites** in allen vier
+Projekten (Zählung direkt in MariaDB, `_6/_10/_11/_12_functions|_sites`).
+Konfiguriert ist nur `node-22` — keine der abgekündigten Runtimes.
+
+**Nebenbefund — Changelog-Track 2B war tot, die Doku sagte „AKTIV".** Die
+Function `changelog-draft` lebte im Prod-Projekt `comments`, das es seit dem
+Control-Cutover nicht mehr gibt. `changelog.pukalani.app` liefert nur noch
+Traefiks Ersatz-Zertifikat; der GitHub-Webhook (654489788) stand weiter auf
+`active=true`. Schlimmer: die **Marketing-Seite verlinkte genau diese Adresse
+als öffentlichen Changelog** — Ressourcen-Menü, Fuß und Beweis-Abschnitt
+(„öffentlich nachlesbar"), live viermal je Seite. Die echte öffentliche Seite
+liegt unter `admin.pukalani.app/changelog` (200, Sprachweiche per
+`Accept-Language` ⇒ 302 auf `/de/changelog`).
+
+**Erledigt (Davids Wahl 2026-11-06: „Doku + Webhook aufräumen", Link auf
+admin…/changelog):** `marketing.changelogUrl` → `https://admin.pukalani.app/changelog`;
+`ProofSection.vue` liest die Adresse jetzt aus `useMarketingSite()` statt einer
+zweiten festen Kopie; Anzeigename de/en angepasst; GitHub-Webhook deaktiviert
+(nicht gelöscht); CHANGELOG-WORKFLOW.md (2A ist DER Weg, 2B stillgelegt mit
+Hergang + Wiederbeleben), hosts-und-ports, Function-README, OPEN-ITEMS-Status.
+Der v3.0.0-Entwurf ist nachweislich nicht veröffentlicht ⇒ OPEN-ITEMS „CL1".
+
+**Gelernt:** Ein Endpunkt ist keine Seite. Die Marketing-Seite verlinkte die
+Webhook-Adresse, weil sie nach „Changelog" klang — im Juli antwortete sie mit
+200 (Ping), also fiel es nie auf. Beim Projekt-Umbau verschwand die Function
+still, weil Functions in keinem Wächter vorkommen (`verify-health` und
+`verify-tls` kennen `changelog.` nicht). Wer eine Adresse nach außen verlinkt,
+verlinkt eine Seite, die ein Mensch lesen soll — und eine Function, die nur ein
+Webhook erreicht, hat keinen Platz im Menü.
+
+---
+
+### RS1 c+d — Mail-Wächter auf Usage-/Metrics-API, Idempotenz im Newsletter-Stapel ✅ 2026-11-06
+
+**Auslöser.** Zwei Teilpakete aus OPEN-ITEMS „RS1" (Resend-Changelog-
+Durchsicht), die David nicht brauchten. (a) Tarif, (b) Webhook, (e)–(g)
+bleiben dort offen.
+
+**(c) Gebaut.** `scripts/ops/verify-mail-breaker.mjs` blättert nicht mehr bis
+zu 20 Seiten `GET /emails`, sondern macht zwei Aufrufe: `GET /usage` liefert
+die TAGESGRENZE (Schwelle = 80 % davon, heute 80 von 100 wie vorher; ohne
+Tagesgrenze Rückfall auf 80; `--alarm N` setzt eine feste Zahl) und
+`daily.used`; `GET /emails/metrics?start_date&end_date&metrics=sent,bounced,
+complained` liefert Menge (Blick 2) UND Bounces/Beschwerden (Blick 3) im
+gleitenden Fenster. Die Empfänger-Domains holt der Wächter nur noch, wenn es
+Bounces oder Beschwerden gibt (eine Seite `/emails`, best effort). Schalter
+`--bounce-alarm`, `--complaint-alarm`, `--resend-hours` und das Fehlerverhalten
+(ohne Schlüssel grün übersprungen, Netz/HTTP ⇒ Exit 2, fehlende Felder ⇒
+Exit 2) sind erhalten. Die gemessenen Antwortfelder stehen im Kopf der Datei.
+
+**(d) Gebaut.** Jede Ausgabe-Mail trägt `Resend-Idempotency-Key:
+insights-issue/<Sende-Zeile>/<Abonnent>` (`insightsNewsletterIdempotencyKey`,
+`packages/insights/shared/insightsNewsletter.ts`) — beides Zeilen-Ids, nie die
+Adresse. Stirbt ein Stapel zwischen Versand und Cursor-Schreiben, schickt das
+Fortsetzen dieselben Schlüssel, und Resend stellt kein zweites Mal zu. Grenzen
+laut Resend-Doku: Schlüssel gilt 24 h, höchstens 256 Zeichen; derselbe
+Schlüssel mit anderem Inhalt ⇒ 409, über SMTP eine abgelehnte Mail, die der
+Lauf als `failed` zählt (der Empfänger hatte die erste Fassung schon).
+
+**Beweise.** Echtes Konto: 24 h ⇒ „1 Mails, heute (UTC) 1/100 · Monat
+236/3000", 0/0, Exit 0 mit `--strict`; `--bounce-alarm 0 --strict` ⇒ ✗, Exit 1;
+Vorfall-Fenster `--resend-hours 400` ⇒ 237 Mails, 2 Bounces (gmail.com),
+0 Beschwerden — deckt sich mit dem Blättern von MZ1; ohne Schlüssel ⇒ grün
+übersprungen; kaputter Schlüssel ⇒ HTTP 400, Exit 2. insights-Tests 511/511
+(neu: Schlüsselbildung + „Cursor-Schreiben scheitert ⇒ Fortsetzen mit
+identischen Schlüsseln"), insights-Lint, branding-Typecheck, `pnpm
+lint:scripts` grün.
+
+**Gelernt:** `GET /usage` zählt `daily` je UTC-KALENDERTAG (`resets_at`
+23:59:59.999Z), kein gleitendes Fenster — der Wächter läuft um 04:17 UTC und
+hätte mit `daily.used` allein nur vier Stunden gesehen. Der „ein Aufruf statt
+Blättern" aus der Notiz hätte Blick 2 still blind gemacht. Die Menge kommt
+deshalb aus `/emails/metrics` (Fenster frei wählbar), von `/usage` nur die
+Grenze. Vor dem Umbau die Antwort messen, nicht dem Feldnamen glauben.
+
+---
+
+### MZ1 — Bounces und Spam-Beschwerden im Mail-Wächter (Blick 3) ✅ 2026-11-06
+
+**Auslöser.** Die Frage, ob `resend.com/nuxt` etwas für uns ist. Antwort: nein —
+das ist das `resend`-SDK in einer Server-Route, kein Modul; wir verschicken
+längst über Resend, per SMTP (`sendMail()`, nodemailer, Mailpit lokal). Was
+fehlte, war die Sicht darauf, was aus den Mails wird. Plan:
+[archiv/MAIL-ZUSTELLBARKEIT.md](archiv/MAIL-ZUSTELLBARKEIT.md).
+
+**Davids Entscheidungen (2026-11-06).** Nur Stufe A (Pull im Wächter, keine
+App-Änderung); rot ab 3 Bounces ODER 1 Beschwerde in 24 h; Stufe B (Webhook,
+Konto-Merker) zurückgestellt — lebt als Teilpaket (b) in OPEN-ITEMS „RS1"
+(eine Nachbarsitzung hatte am selben Tag die Resend-Changelog-Durchsicht
+angelegt; kein zweiter Eintrag).
+
+**Gebaut.** `scripts/ops/verify-mail-breaker.mjs` zählt in der Liste, die
+Blick 2 schon holt, `last_event === 'bounced' | 'complained'`; ins öffentliche
+CI-Log kommt nur die Empfänger-Domain. Schalter `--bounce-alarm`,
+`--complaint-alarm` (0 = Probealarm), `--resend-hours`.
+
+**Beweise.** Echtes Resend-Konto: 24 h ⇒ 0/0, grün, Exit 0 mit `--strict`;
+`--bounce-alarm 0 --strict` ⇒ ✗, Exit 1; Vorfall-Fenster `--resend-hours 400`
+⇒ 234 Mails, 2 Bounces (gmail.com), 0 Beschwerden; `pnpm lint:scripts` grün.
+
+**Gelernt:** Die Annahme „Spam an fremde Adressen erzeugt Bounces und
+Beschwerden" war falsch — beim Oktober-Vorfall 2 Bounces auf 234 Mails, die
+Opfer-Adressen waren echt. Blick 3 schützt den Absender-Ruf, er meldet keinen
+Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
+dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
+der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
+(`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
+
+---
+
 ### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
 
 **Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die
@@ -100,6 +349,50 @@ und ohne Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar. Das ist
 heute kein Schaden (die Route gibt den Fehler ehrlich weiter, bezahlt ist
 nichts), aber es heisst: ein `502` auf diesem Weg bedeutet nicht
 zwangsläufig „Anbieter kaputt", sondern oft „dieses Video nicht".
+
+**PROD-BEWEIS, nachgeholt am 2026-11-06** (Live-Build `034f0868`, Davids eigene
+Sitzung, echte Läufe mit echtem Geld — bis dahin sagte der Plan hier
+„Nicht bewiesen auf Prod: der Klick selbst"):
+
+| Video | Dauer | `briefRawChars` | `briefChars` | Ergebnis |
+|---|---|---|---|---|
+| `WrehiIId62U` | 65,4 s | 1.993 | 1.993 | Schnitt griff NICHT |
+| `LEVGLXBzghc` | 18,7 s | **2.194** | **1.887** | **Schnitt griff**, Entwurf angelegt |
+
+Der ZWEITE Lauf ist der Beweis: 2.194 Zeichen, 194 über dem Deckel — die alte
+Fassung hätte hier `brief: too_big` geworfen und den bezahlten Lauf verloren,
+die ausgelieferte klemmte auf 1.887 und legte den Entwurf an (Status 200). Der
+Schluss steht auf einem vollständigen Satz unter `### OFFENE FRAGEN`, und die
+Überschrift hängt nicht leer in der Luft — genau das, was `dropDanglingLead`
+zusagt. Beide Entwürfe und beide Fundstücke danach wieder entfernt (Prod
+zurück auf 1 Beitrag / 0 Fundstücke).
+
+Der ERSTE Lauf ist der ehrlichere Befund: dasselbe Video, das am 2026-10-28
+noch 2.027 Zeichen lieferte, blieb diesmal mit 1.993 sieben Zeichen UNTER dem
+Deckel. Dieselbe Eingabe, dieselbe Temperatur, anderes Ergebnis — die Streuung
+aus der Messreihe oben ist also keine Eigenschaft des VIDEOS, sondern des
+LAUFS. Ein Prod-Beweis, der auf einen einzigen Lauf gesetzt hätte, hätte hier
+nichts gezeigt.
+
+**Viertens gelernt (neu, aus dem Prod-Lauf): die Route läuft dem Proxy davon.**
+Der 51-Minuten-Lauf brauchte 65,4 Sekunden, nginx gibt bei 60 auf — der Klient
+bekam `504 Gateway Time-out`, während der Node-Prozess in Ruhe weiterlief und
+den Entwurf korrekt anlegte. Kein Geld verloren (Stufe 3 der Route führt den
+zweiten Klick auf den vorhandenen Beitrag), aber der Mensch sieht einen Fehler
+und bekommt den Link zu seinem fertigen Entwurf nie. Als eigener Punkt `BI3`
+in OPEN-ITEMS. **Gemerkt sei die Form des Fehlers:** ein 504 heisst hier nicht
+„das ist nicht passiert", sondern „das dauert länger als der Proxy wartet" —
+wer nach so einem Fehler nur auf die Antwort schaut statt in die Datenbank,
+zieht den falschen Schluss.
+
+**Fünftens, für jeden künftigen Klick-Beweis:** `window.confirm` friert den
+Renderer ein, und ein nativer Dialog ist über die Browser-Automatisierung
+NICHT beantwortbar — jeder Klick auf „Erzeugen" lief in einen CDP-Timeout, und
+die Seite sah dabei aus wie abgestürzt. Der Lauf wurde deshalb mit der
+seiteneigenen `fetch`-Anfrage ausgelöst: gleiche Route, gleiche Sitzung, nur
+ohne den Dialog davor. Das Dashboard benutzt an zwei Stellen natives `confirm`
+statt einer Nuxt-UI-Bestätigung (`finds.vue:171` und `:205`) — nicht falsch,
+aber es macht genau diese Knöpfe unprüfbar.
 
 ---
 
