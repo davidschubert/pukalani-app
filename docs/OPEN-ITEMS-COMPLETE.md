@@ -30,6 +30,42 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
+
+Anlass: Die Marketing-Seite verlinkt seit a77f79fd `admin.pukalani.app/changelog`,
+dort stand nur EIN Eintrag (AI-Runner, 2026-08-19).
+
+- **Bestand gemessen:** Tabelle `changelog` im Prod-Projekt `admin` hatte 7
+  Rows — 1 veröffentlicht, **6 fertige zweisprachige Entwürfe vom 2026-08-14**
+  (Reaktionen/Verweise, Mitglieder laden ein, Tages-Limit, Navigation/
+  Sucheintrag/Weiterleitungen, Export, Zwei-Faktor/Zeitzone/`@name`), die nie
+  jemand veröffentlicht hatte. Ihre Hilfe-Links zeigten in die falsche Sprache.
+- **Der v3.0.0-Entwurf war überholt** (sieben Schritte statt vier, `start.`
+  leitet auf `account.`, „Basic" als Plan, Kurse/Events „anschalten" obwohl
+  Early Access, ein Betreiber-Fix). Neu geschrieben aus der Hilfe
+  (`apps/help/content`) + Commits 2026-07-28 … 2026-10-27: 9 neue Einträge.
+- **Davids Freigabe** 2026-11-06: alle 15, der Satz zur früheren
+  Community-übergreifenden Moderations-Ansicht bleibt drin.
+- **Lauf:** erst lokal (`studio-1xsl`, 15/15), dann Prod per `upsertRow` mit
+  fester Row-Id (`cl-<datum>-<thema>` bzw. die alten Ids) — idempotent,
+  wiederholbar. Alle ohne `version`, `published: true`.
+- **Beweis (eigener Abruf):** `/api/changelog?limit=50` ⇒ `total 16`, neueste
+  zuerst; in Chrome `/de/changelog` (`lang=de-DE`) und `/changelog`
+  (`lang=en-US`) je 16 Überschriften in der richtigen Sprache, Markdown
+  gerendert. Text: [CHANGELOG-CL1-FREIGABE.md](archiv/CHANGELOG-CL1-FREIGABE.md).
+- Nicht angefasst: der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-
+  Changelog) und das Datum, das auch auf `/de` englisch formatiert ist
+  („Oct 27, 2026") — beides als Beobachtung, nicht als Auftrag.
+
+**Gelernt:** Ein fertiger Text in `plans/` ist nach drei Monaten kein fertiger
+Text mehr — fünf seiner Aussagen stimmten nicht mehr. Die Kundenhilfe ist der
+geprüfte Stand, gegen den ein Changelog geschrieben wird. Und: vor dem
+Schreiben die Tabelle LESEN — sechs fertige Einträge lagen seit August als
+Entwurf daneben. Die Sortierung stellt Einträge mit `version` vor alle ohne;
+gemischt angelegt, landet der älteste ganz oben (CHANGELOG-WORKFLOW.md).
+
+---
+
 ### AW27: Appwrite 2.7.1 auf dev, CI und prod — Executor-Leck geschlossen, Secret rotiert, Account-WS pingt ✅ 2026-11-06
 
 Anlass: 2.7.0 (2026-11-03) und das Security-Release 2.7.1 (2026-11-04) —
@@ -313,6 +349,50 @@ und ohne Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar. Das ist
 heute kein Schaden (die Route gibt den Fehler ehrlich weiter, bezahlt ist
 nichts), aber es heisst: ein `502` auf diesem Weg bedeutet nicht
 zwangsläufig „Anbieter kaputt", sondern oft „dieses Video nicht".
+
+**PROD-BEWEIS, nachgeholt am 2026-11-06** (Live-Build `034f0868`, Davids eigene
+Sitzung, echte Läufe mit echtem Geld — bis dahin sagte der Plan hier
+„Nicht bewiesen auf Prod: der Klick selbst"):
+
+| Video | Dauer | `briefRawChars` | `briefChars` | Ergebnis |
+|---|---|---|---|---|
+| `WrehiIId62U` | 65,4 s | 1.993 | 1.993 | Schnitt griff NICHT |
+| `LEVGLXBzghc` | 18,7 s | **2.194** | **1.887** | **Schnitt griff**, Entwurf angelegt |
+
+Der ZWEITE Lauf ist der Beweis: 2.194 Zeichen, 194 über dem Deckel — die alte
+Fassung hätte hier `brief: too_big` geworfen und den bezahlten Lauf verloren,
+die ausgelieferte klemmte auf 1.887 und legte den Entwurf an (Status 200). Der
+Schluss steht auf einem vollständigen Satz unter `### OFFENE FRAGEN`, und die
+Überschrift hängt nicht leer in der Luft — genau das, was `dropDanglingLead`
+zusagt. Beide Entwürfe und beide Fundstücke danach wieder entfernt (Prod
+zurück auf 1 Beitrag / 0 Fundstücke).
+
+Der ERSTE Lauf ist der ehrlichere Befund: dasselbe Video, das am 2026-10-28
+noch 2.027 Zeichen lieferte, blieb diesmal mit 1.993 sieben Zeichen UNTER dem
+Deckel. Dieselbe Eingabe, dieselbe Temperatur, anderes Ergebnis — die Streuung
+aus der Messreihe oben ist also keine Eigenschaft des VIDEOS, sondern des
+LAUFS. Ein Prod-Beweis, der auf einen einzigen Lauf gesetzt hätte, hätte hier
+nichts gezeigt.
+
+**Viertens gelernt (neu, aus dem Prod-Lauf): die Route läuft dem Proxy davon.**
+Der 51-Minuten-Lauf brauchte 65,4 Sekunden, nginx gibt bei 60 auf — der Klient
+bekam `504 Gateway Time-out`, während der Node-Prozess in Ruhe weiterlief und
+den Entwurf korrekt anlegte. Kein Geld verloren (Stufe 3 der Route führt den
+zweiten Klick auf den vorhandenen Beitrag), aber der Mensch sieht einen Fehler
+und bekommt den Link zu seinem fertigen Entwurf nie. Als eigener Punkt `BI3`
+in OPEN-ITEMS. **Gemerkt sei die Form des Fehlers:** ein 504 heisst hier nicht
+„das ist nicht passiert", sondern „das dauert länger als der Proxy wartet" —
+wer nach so einem Fehler nur auf die Antwort schaut statt in die Datenbank,
+zieht den falschen Schluss.
+
+**Fünftens, für jeden künftigen Klick-Beweis:** `window.confirm` friert den
+Renderer ein, und ein nativer Dialog ist über die Browser-Automatisierung
+NICHT beantwortbar — jeder Klick auf „Erzeugen" lief in einen CDP-Timeout, und
+die Seite sah dabei aus wie abgestürzt. Der Lauf wurde deshalb mit der
+seiteneigenen `fetch`-Anfrage ausgelöst: gleiche Route, gleiche Sitzung, nur
+ohne den Dialog davor. Das Dashboard benutzt an zwei Stellen natives `confirm`
+statt einer Nuxt-UI-Bestätigung (`finds.vue:171` und `:205`) — nicht falsch,
+aber es macht genau diese Knöpfe unprüfbar.
 
 ---
 
