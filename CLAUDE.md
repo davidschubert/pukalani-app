@@ -96,7 +96,7 @@ schon in einer Datei stehen.
 - pukalani.observability: JSON-5xx-Logs am zentralen `server/error.ts` +
   Client-Error-Inbox (`POST /api/telemetry/error`); Core-Default aus
 - pukalani.realtime.enabled (F14, seit 2026-08-01): der EINE Schalter für alle
-  Realtime-Einstiege des Core (Row-Streams, Presence, Account-WS). **Core-Default
+  Realtime-Einstiege des Core (Row-Streams, Presence, Account-Channel). **Core-Default
   AN** — die begründete Ausnahme von „Core-Default ist IMMER aus"; AUS in
   `marketing` + `help`. ZWEITES GATE, andere Frage: `startWhenHostResolves()`
   sagt, ob die SEITE einen Host hat (G5). Begründungen, Messwerte und die

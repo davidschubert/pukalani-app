@@ -51,6 +51,11 @@ Schema; ein Sprung 2.6.2 → 2.7.1 in EINEM Werkzeug-Lauf plus `migrate` reicht
   `/v1/realtime?project=reddit-comments&channels[]=account` — der stumme wurde
   nach **120,2 s** mit 1006 geschlossen, der mit 20-s-Ping stand nach 170 s
   noch (readyState 1).
+  *Nachtrag RT2 (2026-11-08):* den eigenen Account-WS gibt es nicht mehr —
+  der `account`-Channel läuft über den geteilten SDK-Socket (der eigene war
+  in Prod ein Gast und bekam den Session-Widerruf nie mit). Zweite 2.7-Regel,
+  dabei gefunden: eine JWT-Verbindung schließt Appwrite beim Ablauf des JWT,
+  mit dem sie GEÖFFNET wurde (401) — der 12-min-Refresh verbindet deshalb neu.
 - **Realtime: Grenzen je Verbindung (#14945, #14948).** Höchstens 100
   Subscriptions, 100 Channels und 100 Queries (verschachtelte zählen) je
   Verbindung (`_APP_LIMIT_REALTIME_SUBSCRIPTIONS/_CHANNELS/_QUERIES`, Default
