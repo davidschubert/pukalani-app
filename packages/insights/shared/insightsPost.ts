@@ -431,7 +431,7 @@ export type InsightsPost = z.infer<typeof insightsPostSchema>
  * Redaktions-Eingabe VERSCHWINDEN müssen.
  *
  * Sie sind keine Meinung des Formulars, sondern Ergebnis einer Handlung:
- * `state` setzt der Zustands-Umschalter (mit den sechs Prüfregeln davor),
+ * `state` setzt der Zustands-Umschalter (mit den sieben Prüfregeln davor),
  * `publishedAt`/`reviewedAt`/`reviewedBy` die Freigabe, `translatedAt`/
  * `translationModel`/`translationPromptVersion` der Übersetzen-Lauf,
  * `draftModel`/`draftPromptVersion` der Entwurfs-Lauf, `briefModel`/
@@ -443,7 +443,7 @@ export type InsightsPost = z.infer<typeof insightsPostSchema>
  *
  * Sie WEGZULASSEN reicht nicht — sie müssen ABGELEHNT werden können: ein
  * durchgereichtes `state: 'published'` im PATCH-Body wäre die Freigabe an den
- * sechs Regeln vorbei, und ein durchgereichtes `reviewedBy` eine Unterschrift
+ * sieben Regeln vorbei, und ein durchgereichtes `reviewedBy` eine Unterschrift
  * unter fremdem Namen. `z.object` ist in Zod standardmässig nachsichtig gegen
  * unbekannte Schlüssel (sie fallen still weg) — genau das ist hier richtig:
  * das Formular schickt weg, was es nicht ändern darf, und der Server setzt es
@@ -588,7 +588,7 @@ export function insightsIsPublic(post: Pick<InsightsPost, 'state'>): boolean {
  * steht deshalb hier: pur, mit Gegenprobe, und von Server-Gate wie Oberfläche
  * gelesen (der Editor zeigt genau die Knöpfe, die diese Tabelle erlaubt).
  *
- *  · `draft → review`     — die sechs Prüfregeln laufen davor.
+ *  · `draft → review`     — die sieben Prüfregeln laufen davor.
  *  · `review → draft`     — zurück an die Verfassenden; das ist kein Fehler,
  *                           sondern der Normalfall einer Redaktion.
  *  · `review → published` — die Freigabe. Sie setzt `publishedAt`,
@@ -600,7 +600,7 @@ export function insightsIsPublic(post: Pick<InsightsPost, 'state'>): boolean {
  *  · `published → draft` und `updated → draft` — ZURÜCKZIEHEN. Der einzige
  *                           Weg aus der Öffentlichkeit heraus, und er führt
  *                           bewusst ganz nach vorn: was zurückgezogen wurde,
- *                           geht durch dieselben sechs Regeln wie beim ersten
+ *                           geht durch dieselben sieben Regeln wie beim ersten
  *                           Mal.
  *
  * ZWEI ÜBERGÄNGE FEHLEN ABSICHTLICH. `updated → published` wäre eine
@@ -1073,7 +1073,7 @@ export type InsightsBrand = z.infer<typeof insightsBrandSchema>
  *    auf dem Weg über den Kontakt, nicht in einem Feld neben der Branche.
  *
  * `state` bleibt BEWUSST drin — anders als beim Beitrag. Dort ist der Zustand
- * das Gate mit sechs Prüfregeln davor, hier ist er eine redaktionelle Angabe
+ * das Gate mit sieben Prüfregeln davor, hier ist er eine redaktionelle Angabe
  * mit genau EINER Bedingung (`removed` braucht einen Grund), und die steht im
  * Schema. Ein eigener Zustands-Endpunkt für drei Werte ohne Prüfkette wäre
  * eine zweite Route für dasselbe Speichern.

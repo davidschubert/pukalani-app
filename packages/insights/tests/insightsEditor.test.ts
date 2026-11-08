@@ -108,7 +108,7 @@ describe('insightsPostEditSchema', () => {
 
   /**
    * GEGENPROBE — und die teuerste des Pakets: ein durchgereichtes
-   * `state: 'published'` wäre die Freigabe an den sechs Prüfregeln vorbei.
+   * `state: 'published'` wäre die Freigabe an den sieben Prüfregeln vorbei.
    */
   it('lässt kein Server-eigenes Feld durch', () => {
     const parsed = insightsPostEditSchema.parse({

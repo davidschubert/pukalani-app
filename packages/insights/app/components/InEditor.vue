@@ -762,7 +762,7 @@ const urlPlaceholder = 'https://'
       </div>
     </div>
 
-    <!-- Rechte Spalte: die sechs Regeln, die Übergänge, die Notiz -->
+    <!-- Rechte Spalte: die sieben Regeln, die Übergänge, die Notiz -->
     <aside class="space-y-4">
       <div class="bw-card p-6">
         <UButton

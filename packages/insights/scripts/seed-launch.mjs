@@ -37,7 +37,7 @@
  * Reihenfolge des Anlegens spielt keine Rolle).
  *
  * VOR JEDEM SCHREIBEN: Schema (`insightsBrandSchema` / `insightsPostSchema`)
- * und die sechs Prüfregeln (`insightsReviewIssues`) ohne Quelltexte, mit dem
+ * und die sieben Prüfregeln (`insightsReviewIssues`) ohne Quelltexte, mit dem
  * Namensfilter über ALLE Marken-Zeilen der Instanz. Der Lauf plant zuerst
  * alles, prüft alles und schreibt erst dann — ein Treffer bricht ab, bevor die
  * erste Zeile entsteht. Der Beleg-Abruf (steht das Zitat wörtlich auf der

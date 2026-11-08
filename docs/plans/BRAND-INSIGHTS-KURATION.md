@@ -1560,7 +1560,7 @@ das auch — sonst behaupten zwei verschiedene Läufe dieselbe Herkunft.
 
 **EINE NEUE PRÜFREGEL TRIFFT ALTEN INHALT — und das ist der eigentliche
 Beweis, dass sie beisst.** Nach dem Einbau war genau ein Test rot:
-`launchContent.test.ts` („die sechs Prüfregeln ohne Quelltexte: keine
+`launchContent.test.ts` („die sieben Prüfregeln ohne Quelltexte: keine
 Treffer"). Keiner der vier Launch-Beiträge endete mit einer Frage (alle vier
 endeten auf den **Methodik:**-Satz), und das Markenprofil hatte überhaupt
 keine Zwischenüberschrift. Zwei Wege standen offen: die Regel an der
@@ -1704,3 +1704,37 @@ Allowlist** — ein einzelner Pin macht einen Anbieter-Ausfall zum Totalausfall
 des Textwegs, zwei EU-Endpunkte geben Redundanz INNERHALB der EU (Probe D).
 Der Textweg verbraucht pro Lauf Bruchteile eines Cents; 10 % davon sind kein
 Argument gegen einen Satz, den man dem Anwalt sonst nicht sagen kann.
+
+### Live-Beweis auf Prod (2026-11-09)
+
+Build `97fb15f7` auf branding.supply, dann ein ECHTER, bezahlter Entwurfs-Lauf
+im Dashboard (Davids Freigabe eingeholt, Kosten vorher genannt):
+`anthropic/claude-haiku-4.5`, Brief über Wiedererkennung durch Wiederholung,
+Zielumfang 700 Wörter. Das Ergebnis trägt `draftPromptVersion:
+'insights-d-3'` und erfüllt alle sechs Zusagen SICHTBAR: die Antwort steht im
+ersten Absatz, acht Zwischenüberschriften sind Fragen, am Ende steht ein
+FAQ-Block mit fünf `###`-Fragen, der letzte Absatz ist eine Diskussionsfrage,
+keine Floskel, und statt einer erfundenen Zahl steht „es gibt keine feste
+Zeitspanne".
+
+**EINE GEMESSENE ÜBERRASCHUNG FÜR BI4:** der Lauf lieferte **827 Wörter gegen
+700 bestellte (118 %)**. BI4 hat unter `insights-d-2` 50–80 % des bestellten
+Umfangs gemessen — die Struktur-Bestellung dreht das um, weil FAQ-Block und
+Diskussionsfrage ZUSÄTZLICH zum Zielumfang kommen. Wer BI4s Schwellen-Messung
+wiederholt, muss sie unter `insights-d-3` wiederholen; die gerechnete Decke
+(`insightsDraftMaxTokens`) trägt es, die alte Erwartung „das Modell liefert
+weniger als bestellt" trägt nicht mehr.
+
+Dazu der zweite Seed-Lauf auf Prod (`seed-launch.mjs`, Davids Freigabe):
+alle vier Launch-Beiträge aktualisiert, alle bleiben `draft`, Marken
+unverändert. Zurückgelesen aus der Prod-Datenbank: je drei Frage-Über­
+schriften und eine Schlussfrage, in BEIDEN Sprachen. Das Skript prüft vor dem
+Schreiben selbst gegen `insightsReviewIssues` — der Lauf wäre abgebrochen,
+hätte Regel 7 gegriffen.
+
+**Gelernt (und live gefunden):** eine neue Regel macht ALTE TEXTE falsch, nicht
+nur alte Inhalte. Die Erfolgsmeldung im Editor sagte nach dem Deploy weiter
+„Alle sechs Regeln erfüllt" — eine Zahl, die in 17 Dateien stand (zwei
+Locale-Strings und fünfzehn Kommentare, die das Gate beschreiben). Typecheck,
+Lint und 582 Tests sehen davon nichts; gefunden hat es erst der Blick auf die
+Seite nach dem Deploy. Wer eine Regel hinzufügt, greppt nach ihrer ANZAHL.
