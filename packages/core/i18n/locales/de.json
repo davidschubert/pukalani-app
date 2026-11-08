@@ -412,7 +412,10 @@
       "saved": "Benachrichtigungs-Einstellungen gespeichert.",
       "saveFailed": "Speichern fehlgeschlagen.",
       "saveFailedDescription": "Deine bisherige Einstellung gilt weiter. Prüfe deine Verbindung und versuche es erneut.",
-      "noSmtp": "Auf diesem Server ist kein E-Mail-Versand konfiguriert — die Auswahl wird gespeichert und greift, sobald SMTP eingerichtet ist."
+      "noSmtp": "Auf diesem Server ist kein E-Mail-Versand konfiguriert — die Auswahl wird gespeichert und greift, sobald SMTP eingerichtet ist.",
+      "undeliverableTitle": "Mails an deine Adresse kommen nicht an",
+      "undeliverableBounce": "Der Mail-Server deiner Adresse hat unsere Mails abgelehnt. Wir haben die E-Mail-Benachrichtigungen deshalb ausgeschaltet. Prüfe deine Adresse oder nutze eine andere.",
+      "undeliverableComplaint": "Eine unserer Mails wurde als Spam gemeldet. Wir haben die E-Mail-Benachrichtigungen deshalb ausgeschaltet. In der Glocke siehst du weiterhin alles."
     }
   },
   "error": {
