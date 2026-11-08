@@ -100,4 +100,21 @@ test.describe('Session-Widerruf meldet sofort ab (RT2)', () => {
     expect(frames.some(f => f.includes(`sessions.${session.$id}.delete`))).toBe(true)
     expect(frames.some(f => f.includes('"type":"error"') && f.includes('"code":401'))).toBe(true)
   })
+
+  // Prod-Messung 2026-11-09 (demo): eine Prüfung kurz vorher spannte die
+  // 30-s-Bremse, der Widerruf fiel ins Fenster und wurde VERWORFEN — abgemeldet
+  // erst nach 33 s. Ein Session-Lösch-Ereignis geht jetzt an der Bremse vorbei.
+  test('ein Widerruf direkt nach einem anderen Account-Ereignis meldet trotzdem sofort ab', async ({ page, baseURL }) => {
+    const { session, frames } = await openSignedIn(page, baseURL!)
+    const other = await users.createSession({ userId })
+    await users.deleteSession({ userId, sessionId: other.$id })
+    // Erstes Ereignis ist da und geprüft (400 ms Entprellung) — die Bremse läuft.
+    await expect.poll(() => frames.some(f => f.includes(`sessions.${other.$id}.delete`)), { timeout: 15_000 }).toBe(true)
+    await page.waitForTimeout(2_000)
+
+    const revokedAt = Date.now()
+    await users.deleteSession({ userId, sessionId: session.$id })
+    await expect(page).toHaveURL(/\/login(\?|$)/, { timeout: 10_000 })
+    console.log(`[RT2] Abmeldung im Bremsfenster nach ${((Date.now() - revokedAt) / 1000).toFixed(1)} s`)
+  })
 })
