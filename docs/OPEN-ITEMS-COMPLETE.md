@@ -275,9 +275,13 @@ pukalani.studio), je eigenes Secret in `/home/ploi/<site>/.env`
 Live-Beweis je Host: vorher 404, danach unsigniert **401**, selbst signiertes
 `email.delivered` **200**, fremdes Secret **401**; `/api/health` weiter
 `ok:true`. `NUXT_RESEND_WEBHOOK_SECRET` ist seitdem Pflicht in
-`verify-site-env.mjs` (Lauf gegen die Server grün). Nicht bewiesen: ein
-echtes Bounce-Ereignis aus Resend — es kommt mit dem ersten echten Bounce
-(Log `mail.undeliverable`).
+`verify-site-env.mjs` (Lauf gegen die Server grün). Ende-zu-Ende-Beweis
+(2026-11-08, 17:42 UTC): eine Mail von `noreply@pukalani.app` an
+`bounced@resend.dev` ⇒ Resend stellte DASSELBE Ereignis (eine `svix-id`) an
+alle vier Webhooks zu, und alle vier Sites loggten `mail.undeliverable`
+(`reason: bounce`, `subType: General`, `domain: resend.dev`) mit
+`outcomes.account: none` — branding.supply zusätzlich `insights: none`. Die
+Adresse gehört niemandem, die Wirkung blieb also aus, wie sie soll.
 
 **Gelernt:** Der Svix-Testvektor ist das billigste Beweisstück für eine
 selbst gebaute Signaturprüfung — er traf beim ersten Lauf, und ohne ihn hätte
