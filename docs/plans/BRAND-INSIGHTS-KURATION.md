@@ -1206,3 +1206,231 @@ nimmt ihre Ports aus der Env-Kopie (`_APP_HTTP_PORT`, `_APP_HTTPS_PORT`,
 `_APP_MQTT_PORT`, `_APP_MQTT_WSS_PORT`), hier 8099/8444/8885/8086. Und der
 Worktree brauchte wieder die `@shikijs`-Symlinks in `node_modules`, sonst
 antwortet jede Route 500.
+
+## 16. BI4 gebaut (2026-11-08) — der lange Entwurf wird nicht mehr weggeworfen
+
+Der Befund aus `OPEN-ITEMS` lautete: „mit `targetWords: 2000` bricht die
+Antwort nach 19 s mitten im JSON ab, die Route meldet `502 AI returned no
+JSON` — bezahlt und weg." Die naheliegende Ursache war die feste Token-Decke
+(`maxTokens: 8000` in `draft.post.ts`), und der Eintrag nannte zwei Wege:
+`maxTokens` aus `targetWords` rechnen, oder den erlaubten Bereich senken.
+
+**Gemessen wurde zuerst — und die Messung hat beide Wege erledigt.**
+
+### Die Messung (52 echte Läufe, 2026-11-08)
+
+Gegen `anthropic/claude-haiku-4.5` über OpenRouter, mit dem ECHTEN
+Entwurfs-Prompt, denselben Datenschutz-Bedingungen wie die Route
+(`zdr: true`, `data_collection: deny`, `allow_fallbacks: false`, bedient hat
+Amazon Bedrock) und `max_tokens: 8000` wie in Produktion:
+
+| Bestellt | Läufe | gelieferte Wörter | `completion_tokens` | `finish_reason` | kaputt |
+| --- | --- | --- | --- | --- | --- |
+| 200 | 6 | 163–175 | 477–510 | `stop` (6/6) | 0 |
+| 700 | 26 | 436–596 | 1.116–1.469 | `stop` (26/26) | 1 |
+| 2.000 | 26 | 963–1.582 | 2.195–3.621 | `stop` (26/26) | 3 |
+
+**Die Token-Decke ist in KEINEM der 52 Läufe gerissen.** `finish_reason` stand
+immer auf `stop`, der höchste gemessene Wert war 3.621 Tokens gegen eine Decke
+von 8.000. Die Modelle liefern ausserdem nur 50–80 % des bestellten Umfangs;
+ein Wort kostet gemessen 2,3–2,9 Tokens.
+
+### Die wirkliche Ursache: ein nicht escaptes Anführungszeichen
+
+Alle vier kaputten Antworten waren VOLLSTÄNDIG (schließendes `}` vorhanden,
+`finish_reason: 'stop'`) und scheiterten an derselben Stelle:
+
+```
+… die Wortmarke „Adidas" erscheint ausschließlich im Abspann …
+                        ^ U+0022, nicht escaped
+```
+
+Das Modell öffnet mit dem deutschen Anführungszeichen `„` (U+201E) und
+schließt mit einem nackten ASCII-`"`. Innerhalb eines JSON-Strings beendet
+dieses Zeichen den String — `JSON.parse` steigt aus, und `extractJsonObject`
+hilft nicht, weil der Fehler mitten im Wert sitzt. Die „19 Sekunden mitten im
+JSON" aus dem Befund waren eine Deutung der auf 300 Zeichen gekürzten
+Log-Zeile; abgeschnitten war nie etwas.
+
+**Und der Fehler trifft nicht nur den oberen Rand.** Einer der vier Fehlschläge
+lief bei 700 Wörtern, also in der VORGABE. Die Häufigkeit wächst mit der Länge
+(je Zitat eine Gelegenheit), sie wird aber in keinem erlaubten Umfang null:
+gemessen 1/26 bei 700 und 3/26 bei 2.000 Wörtern. Der Defekt frisst also seit
+K5 still auch Läufe in der Standardeinstellung.
+
+### Die Entscheidungen, die drinstecken
+
+**`max_tokens` IST KEIN BUDGET, SONDERN EINE GUILLOTINE.** Bezahlt wird, was
+erzeugt wurde; eine niedrigere Decke spart keinen Cent. Sie kann nur eines
+bewirken: einen Lauf, der zu lang geworden wäre, mitten im JSON abschneiden
+und damit vollständig vernichten. **Die zweite Option des BI4-Eintrags — den
+erlaubten Bereich senken — ist damit verworfen:** sie nähme der Redaktion eine
+Möglichkeit und gewänne nichts. Und die erste Option gewinnt nur, wenn man sie
+in die ANDERE Richtung rechnet als vermutet.
+
+**GERECHNET WIRD, ABER NACH OBEN** (`insightsDraftMaxTokens`, pure Regel in
+`packages/insights/shared/insightsDraftBudget.ts`). Decke =
+`400 + ceil(Wörter × 2,5 × 3)`. Bei 2.000 Wörtern steht sie jetzt bei **15.400
+statt 8.000** Tokens: liefert ein Modell einmal wirklich die bestellten 2.000
+Wörter, kostet das rund 5.000 Tokens, und die alte Decke hätte nur noch
+1,6-fachen Abstand gehabt. Bei 200 Wörtern steht sie bei **1.900 statt 8.000**
+— dort ist sie die Notbremse gegen ein durchgegangenes Modell, das sonst das
+Vierzigfache des Bestellten schreiben darf. Der Aufschlag ist bewusst
+dreifach: jedes Reissen dieser Decke kostet einen bezahlten Lauf, der Abstand
+gehört also grosszügig und nicht knapp (gemessener Abstand jetzt 3,8-fach bei
+700, 4,3-fach bei 2.000 Wörtern).
+
+**DIE VORSORGE GEHÖRT VOR DEN AUFRUF, DIE RETTUNG DAHINTER — BEIDES.** Vor dem
+Aufruf steht jetzt `JSON_QUOTE_RULE` in BEIDEN JSON-Prompts (Entwurf und
+Übersetzung, Fassungen darum `insights-d-2`/`insights-t-2`): typografische
+Anführungszeichen benutzen, ein gerades ASCII-`"` nie. Das senkt die
+Häufigkeit und beseitigt den Fall nicht — **eine Bitte im Prompt ist keine
+Grenze**, dieselbe Lehre wie beim Umfangs-Deckel in §14 (dort schrieben 2 von
+6 Läufen darüber). Darum steht hinter dem Aufruf die Reparatur.
+
+**DIE REGEL AUS DEM K5-NACHTRAG, VERSCHÄRFT.** Ab dem Anbieter-Aufruf ist der
+Lauf bezahlt, also wird gerettet statt abgelehnt. Nur gibt es hier nichts zu
+KLEMMEN: der Text ist vollständig, bloß der Umschlag ist kaputt.
+`repairModelJson` (`packages/core/shared/aiJson.ts`) escapt deshalb genau die
+zwei Fehler, die Modelle wirklich machen — ein nicht escaptes `"` und ein rohes
+Steuerzeichen — und lässt alles andere Zeichen für Zeichen stehen.
+
+**DIE SICHERUNG: ES ÄNDERT SICH NICHTS, WAS HEUTE GEHT.** `parseModelJson`
+versucht IMMER zuerst den unveränderten Text; die Reparatur läuft
+ausschließlich, nachdem `JSON.parse` schon gescheitert ist. Für jede Antwort,
+die heute durchgeht, ist die neue Datei ein No-op — sie kann bestehendes
+Verhalten nicht verbiegen, nur verlorene Läufe zurückholen. Darum durfte sie
+auch in den CORE und gilt für alle drei Transporte (`aiCompleteJson`,
+`aiVisionJson`, `aiVideoJson`) — der Brief-Lauf aus K5 liest über `aiVideoJson`
+und war demselben Defekt ausgesetzt.
+
+**DIE EINE STELLE, AN DER DIE REGEL RATEN MUSS,** ist die Frage, ob ein `"` den
+String schließt. Entschieden wird am nächsten Zeichen, das nicht Leerraum ist:
+`:`, `}`, `]` oder Textende schließen; ein `,` nur dann, wenn dahinter ein
+weiterer Schlüssel oder ein nächstes Element beginnt. Sonst wäre `… sagte
+"Hallo", und dann …` an der naiven Regel „Komma schließt" zerschnitten worden
+— das ist ein eigener Test.
+
+**WAS NICHT REPARIERT WIRD: eine abgeschnittene Antwort.** Kein fehlendes `}`,
+kein angeklebtes Ende. Eine Reparatur, die einem halben Satz ein Ende gibt,
+erfindet dem Menschen einen Artikel, den niemand geschrieben hat. Stattdessen
+wird dieser Fall jetzt BENANNT: der Transport reicht `finish_reason` und
+`completion_tokens` durch (`aiCompleteDetailed`, neu — `aiComplete` bleibt
+unverändert), und bei `'length'` wirft `aiCompleteJson`
+`data: { code: 'ai_truncated' }` statt „AI returned no JSON". Die Oberfläche
+liest den Grund wie jeden anderen und sagt, was passiert ist und was der
+Mensch ändern kann (de/en). **Bis BI4 warf der Transport beides weg** und las
+nur `choices[0].message.content` — deshalb musste die Diagnose an OpenRouter
+vorbei gemessen werden, statt im Log zu stehen. Die Reihenfolge ist Absicht:
+erst parsen (mit Reparatur), und nur WENN das scheitert, erklärt
+`finish_reason` den Fehlschlag. Ein Lauf, der an der Decke endete und trotzdem
+gültiges JSON lieferte, wird angenommen.
+
+### Was gebaut wurde
+
+- `packages/core/shared/aiJson.ts` — NEU: `extractJsonObject` (aus
+  `aiComplete.ts` hierher gezogen, dort als Re-Export), `repairModelJson`,
+  `parseModelJson`.
+- `packages/core/server/utils/aiComplete.ts` — `aiCompleteDetailed` (Inhalt +
+  `finishReason` + `completionTokens`), `AI_TRUNCATED_CODE`, `aiCompleteJson`
+  über die gemeinsame Regel.
+- `packages/core/server/utils/aiVision.ts` / `aiVideo.ts` — derselbe Parse-Weg.
+- `packages/insights/shared/insightsDraftBudget.ts` — NEU: `insightsDraftMaxTokens`.
+- `packages/insights/server/api/insights/posts/[id]/draft.post.ts` — gerechnete
+  Decke statt der festen 8.000.
+- `packages/insights/shared/insightsPrompts.ts` — `JSON_QUOTE_RULE` in beiden
+  Prompts, Fassungen `insights-d-2`/`insights-t-2`.
+- `insights.editor.error.aiTruncated` (de/en) + `ai_truncated` in `REASON_KEY`.
+- Tests: `packages/core/tests/aiJson.test.ts` (25),
+  `packages/core/tests/aiCompleteJson.test.ts` (12),
+  `packages/insights/tests/insightsDraftBudget.test.ts` (9).
+
+### Beweis
+
+**Einheitentests mit den ECHTEN kaputten Antworten.** Die vier gemessenen
+Fehlschläge stehen wörtlich als Vorlagen in `aiJson.test.ts` — jeder ist erst
+unparsbar (`expect(() => JSON.parse(broken)).toThrow()`) und kommt dann
+vollständig und zeichengleich zurück. Gegenprobe beidseitig: gültiges JSON
+bleibt zeichengleich, die Reparatur ist idempotent, und eine abgeschnittene
+Antwort bleibt `null`. `insightsDraftBudget.test.ts` prüft die Decke GEGEN die
+Messtabelle (nicht gegen sich selbst), inklusive der beiden Ränder: 2.000
+Wörter müssen über 8.000 Tokens liegen, 200 darunter.
+
+**Vier Tore grün, Exit-Code getrennt gelesen** (nicht aus einer Pipe):
+`pnpm -r test` 0, `pnpm -r lint` 0, `pnpm lint:scripts` 0,
+`pnpm -r typecheck` 0. Dazu die fünf Wächter aus `lint.yml`
+(`check:manifests`, `check:i18n-keys`, `check:bilanz`, `check:doc-links`,
+`check:single-copy`) je Exit 0.
+
+**Klick-Beweis hinter dem Login, lokale Wegwerf-Instanz** (Appwrite 2.7.1,
+eigener Compose-Projektname `bi4aw`, Ports 8099/8444/8885/8086, Migrationen
+gefahren, `app_config/global.brandAiEnabled = true`, Konto mit Label `admin`,
+Dev-Server aus DEM WORKTREE auf Port 3017 — Pfad in der Log-Zeile geprüft).
+Zwei echte, bezahlte Läufe:
+
+1. **Oberer Rand.** Beitrag angelegt, Brief eingetragen, Zielumfang auf
+   **2.000** gestellt, „Entwurf schreiben" geklickt. `insights.draft.completed`
+   nach **17,3 s**, `promptVersion: insights-d-2`, 7.050 Zeichen Fließtext
+   gespeichert, Lesezeit gerechnet. Kein Fehler, keine Reparatur nötig.
+2. **Der Lauf, der vorher gekippt wäre.** Dafür wurde `JSON_QUOTE_RULE`
+   VORÜBERGEHEND aus dem Prompt genommen (Zustand wie vor BI4) und ein Brief
+   benutzt, der die Wortmarken ausdrücklich zitieren lässt. Erster Klick, und
+   im Server-Log steht:
+
+   ```
+   WARN  [insights] KI-Antwort war erst nach Reparatur JSON (2400 Tokens)
+   {"event":"insights.draft.completed","durationMs":16658, …}
+   ```
+
+   Gespeichert wurden 6.848 Zeichen mit **zehn** `„…"`-Paaren, jedes mit
+   nacktem ASCII-`"` — der Defekt also zehnmal im Text und der Artikel
+   trotzdem heil. Genau dieser Lauf wäre vor BI4 ein `502 AI returned no
+   JSON` gewesen. Der Prompt wurde danach wieder hergestellt, die Instanz mit
+   `docker compose -p bi4aw down -v` abgeräumt, `apps/branding/.env` gelöscht.
+
+**Kosten der Messung:** 64 bezahlte Läufe, zusammen rund 60.200 Prompt- und
+123.700 Completion-Tokens. Bei `claude-haiku-4.5` (1 $/M ein, 5 $/M aus, am
+Einzellauf gegen `/api/v1/generation` nachgerechnet: `usage: 0.004231` für
+31 + 840 Tokens) sind das **rund 0,68 US-Dollar**. Dazu die zwei Läufe des
+Klick-Beweises, zusammen etwa 2,5 Cent.
+
+### Gelernt
+
+**EIN BEFUND IST EINE HYPOTHESE, BIS ER EINE ZAHL HAT.** „Bricht nach 19 s
+mitten im JSON ab" klang nach Token-Decke, und beide im Eintrag vorgeschlagenen
+Lösungen folgten dieser Deutung. Gemessen war die Decke nie in der Nähe (3.621
+von 8.000), und die wirkliche Ursache lag ein Zeichen breit an einer völlig
+anderen Stelle. Wer hier gebaut hätte statt gemessen, hätte zwei Wochen später
+denselben Fehlschlag gehabt — und eine gesenkte Obergrenze als Narbe.
+
+**`finish_reason` IST DER BEWEIS, UND ER WURDE WEGGEWORFEN.** Der Transport las
+seit immer nur `choices[0].message.content`. Damit war „das Modell lief in die
+Decke" von „das Modell schrieb Unsinn" nicht zu unterscheiden, und die
+Diagnose eines Produktionsfehlers musste an der eigenen Anwendung vorbei
+gefahren werden. **Wer einen fremden Dienst ruft, hebt auf, was dieser über
+den Lauf selbst sagt** — nicht nur das Ergebnis.
+
+**EINE GRENZE NACH EINEM BEZAHLTEN AUFRUF IST KEIN SCHUTZ.** Die K5-Lehre
+(§14) galt für eine Validierung; hier galt sie für einen PARSER. Ein 502 vor
+einem fertigen, vollständigen Artikel ist dieselbe Geldvernichtung wie ein
+abgelehnter Brief — nur schwerer zu sehen, weil der Fehler technisch klingt.
+Streng ist man vor dem Aufruf; danach rettet man.
+
+**`max_tokens` SPART NICHTS.** Es ist eine Guillotine, kein Budget. Eine
+knappe Decke kostet kein Geld weniger und kann nur Läufe zerstören — der
+Reflex „sicherheitshalber tiefer" ist hier genau falsch. Richtig ist: so hoch,
+dass sie im Normalbetrieb nie greift, und tief genug, dass ein durchgegangenes
+Modell nicht unbegrenzt schreibt. Diese zwei Anforderungen schreibt man als
+Rechnung auf, nicht als eine Zahl.
+
+**EIN FEHLER AM OBEREN RAND IST SELTEN NUR DORT.** Der Befund stand unter
+„2.000 Wörter", gemessen traf er auch die Vorgabe 700. Eine Fehlerklasse, die
+mit einer Grösse HÄUFIGER wird, ist bei der kleineren Grösse nicht abwesend —
+sie ist nur seltener gemeldet. Wer nur den Rand prüft, hält eine
+Wahrscheinlichkeit für eine Schwelle.
+
+**WERKZEUG:** Der Worktree hatte keine verlinkten Workspace-`node_modules`
+(`pnpm install --frozen-lockfile` zuerst, sonst misst man einen alten Baum) und
+wieder keine `@shikijs`-Symlinks. Für Messungen gegen eine reine `shared/`-Regel
+lohnt ein kleiner Resolver-Hook: `node --experimental-strip-types` löst
+erweiterungslose relative TS-Importe nicht auf.

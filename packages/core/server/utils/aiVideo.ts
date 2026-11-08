@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { parseModelJson } from '../../shared/aiJson'
 import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
 
 /**
@@ -400,13 +401,21 @@ export async function aiVideoJson<T = unknown>(
   options: AiVideoOptions = {},
 ): Promise<T> {
   const raw = await aiVideo(event, videos, prompt, options)
-  try {
-    return JSON.parse(extractJsonObject(raw)) as T
+  // SEIT BI4 (2026-11-08) ÜBER DIE GEMEINSAME REGEL (`core/shared/aiJson.ts`):
+  // zuschneiden, parsen, und erst bei Misserfolg das nicht escapte
+  // Anführungszeichen reparieren. Ein bezahlter Lauf stirbt nicht mehr an
+  // `„Adidas"` — die vollständige Begründung steht in jener Datei.
+  const parsed = parseModelJson<T>(raw)
+  if (parsed) {
+    if (parsed.repaired) {
+      console.warn(
+        `[${options.label ?? 'core'}] KI-Video-Antwort war erst nach Reparatur JSON (${raw.length} Zeichen)`,
+      )
+    }
+    return parsed.value
   }
-  catch {
-    console.error(
-      `[${options.label ?? 'core'}] KI-Video-Antwort war kein JSON (${raw.length} Zeichen)`,
-    )
-    throw createError({ status: 502, statusText: 'AI returned no JSON' })
-  }
+  console.error(
+    `[${options.label ?? 'core'}] KI-Video-Antwort war kein JSON (${raw.length} Zeichen)`,
+  )
+  throw createError({ status: 502, statusText: 'AI returned no JSON' })
 }
