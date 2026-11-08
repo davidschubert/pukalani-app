@@ -30,6 +30,19 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW29 — SMTP-keepAlive-Patch auch auf prod entfernt ✅ 2026-11-08
+
+**Was.** Davids „Ja, prod jetzt“ zum vorbereiteten Skript
+`ops/appwrite-aw28-drop-smtp-keepalive-patch.sh` (AW28). Lauf 23:00:49–23:01:25
+UTC auf `api.pukalani.app`: Override gesichert (`.bak-aw28-20261108-2300`), NUR
+der `appwrite-worker`-Block entfernt (traefik/clickhouse unverändert), NUR der
+Worker neu erzeugt (15 s, API/Realtime/Console liefen durch). Beweise:
+keepAlive 372 `true`, 0 Patch-Mounts, Retry-Zeile da, Version 2.7.1, alle
+Container Up, 0 Worker-Fehler; OTP an `delivered@resend.dev` → `success`
+(1,58 s, smtp_type cloud); Probe-Nutzer auf dem App-Server gelöscht (204,
+Gegenprobe 404). Rückweg und Protokoll: Runbook APPWRITE-2-7-UPGRADE.md,
+Abschnitt „AW28“.
+
 ### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
 
 **Was.** Seit 2026-07-19 mountete `docker-compose.override.yml` eine gepatchte
@@ -46,7 +59,7 @@ EINEM Retry auf frischer Verbindung, wenn der gehaltene Socket tot ist (#14213).
   `success` 29,7 ms, in Mailpit.
 - **CI** trug den Patch nie (keine Override, leerer SMTP-Host).
 - **prod** vorbereitet: `ops/appwrite-aw28-drop-smtp-keepalive-patch.sh`,
-  an einer Kopie der Prod-Override geprüft — Lauf ist AW29 (Davids Ja).
+  an einer Kopie der Prod-Override geprüft — gelaufen als AW29 (oben).
 - Doku: Runbook APPWRITE-2-7-UPGRADE.md Abschnitt „AW28" (Zeitstempel-Tabelle,
   Rückweg), DEPLOYMENT.md Punkt 5 umgeschrieben.
 
