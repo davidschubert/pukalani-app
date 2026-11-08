@@ -190,13 +190,11 @@ Die drei realistischen Fälle:
       einen 301 trotzdem. Wenn ein Kunde nach dem Abgeben „meine Adresse geht
       nicht mehr" meldet, ist ein hart geladener Reload (bzw. das Leeren des
       Verlaufs) die erste Frage.
-- [ ] **Live-Aktualisierung auf Kundendomains ist teilweise eingeschränkt, und
-      das bleibt so.** Row-Streams, Presence und Live-Theme laufen (sie hängen
-      am JWT-Socket). Der KONTO-Socket (`useRealtimeAccount`) ist bewusst
-      cookie-nativ — daran hängt die Sofort-Abmeldung bei Session-Widerruf, und
-      CLAUDE.md verbietet die Konsolidierung auf JWT ausdrücklich. Auf einer
-      Kundendomain fällt er auf den 30-s-Poll zurück. Das ist eine bekannte
-      Grenze, kein Fehler.
+- [ ] **Live-Aktualisierung auf Kundendomains läuft vollständig.** Row-Streams,
+      Presence, Live-Theme UND seit RT2 (2026-11-08) der `account`-Channel
+      (Sofort-Abmeldung bei Session-Widerruf) hängen am JWT-Socket — der
+      frühere cookie-native Konto-Socket, der hier auf einen Poll zurückfiel,
+      ist entfernt.
 
 ---
 

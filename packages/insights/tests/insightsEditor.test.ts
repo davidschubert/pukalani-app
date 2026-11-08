@@ -199,10 +199,38 @@ describe('insightsAiLimits', () => {
 
 describe('insightsPrompts', () => {
   it('trägt die Fassungen aus dem Plan', () => {
-    // Hochgezählt mit BI2 K6: die Fassung bestellt SEO/GEO-Struktur, also
-    // inhaltlich etwas anderes. Alte Beiträge tragen weiter `insights-d-1`.
-    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-2')
-    expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-1')
+    // `-2` seit BI4 (2026-11-08): die Anführungszeichen-Regel in beiden
+    // Prompts. `-3` seit BI2 K6 (2026-11-09): die SEO/GEO-Regeln im Entwurf.
+    // Die Fassung steht je Beitrag in der Zeile — wer den Prompt inhaltlich
+    // ändert, zählt hoch, sonst behauptet ein alter Beitrag einen Auftrag,
+    // den er nie bekommen hat. Die Übersetzung blieb von K6 unberührt.
+    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-3')
+    expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-2')
+  })
+
+  it('bittet beide Prompts um typografische Anführungszeichen (BI4)', () => {
+    // Die Vorsorge VOR dem bezahlten Aufruf. Sie ist eine Bitte, keine
+    // Grenze — die Grenze ist die Reparatur in `core/shared/aiJson.ts`.
+    const draft = buildInsightsDraftPrompt({
+      format: 'article',
+      baseLocale: 'de',
+      brief: 'Ein Brief.',
+      targetWords: 700,
+      brandNames: ['Adidas'],
+    })
+    expect(draft).toContain('typografische Anführungszeichen')
+    expect(draft).toContain('beendet dort den JSON-String')
+
+    const translate = buildInsightsTranslatePrompt({
+      titleDe: 'Titel',
+      titleEn: '',
+      dekDe: 'Vorspann',
+      dekEn: '',
+      bodyDe: 'Fließtext',
+      bodyEn: '',
+      baseLocale: 'de',
+    }, 'en')
+    expect(translate).toContain('typografische Anführungszeichen')
   })
 
   describe('buildInsightsDraftPrompt', () => {
@@ -294,7 +322,7 @@ describe('insightsPrompts', () => {
 
     /**
      * GEGENPROBE ZUR ARBEITSTEILUNG: die vier Verbote sind die RECHTLICHE
-     * Hälfte und mit `insights-d-1` wortgleich. Die neue Fassung erweitert die
+     * Hälfte und über alle Fassungen wortgleich. Die neue Fassung erweitert die
      * Form, nicht die Haftung — fiele hier ein Verbot heraus, wäre das die
      * teuerste stille Änderung dieses Produkts.
      */

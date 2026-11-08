@@ -30,6 +30,33 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
+
+**Was.** Seit 2026-07-19 mountete `docker-compose.override.yml` eine gepatchte
+`registers.php` (`keepAlive: false`) in den Worker: Appwrite 1.9.5–2.6.x verlor
+die ERSTE Instanz-Mail nach Leerlauf still („success" im Log). 2.7 hat einen
+NEUEN SMTP-Adapter (ohne PHPMailer) mit NOOP-Ping nach > 30 s Stille und
+EINEM Retry auf frischer Verbindung, wenn der gehaltene Socket tot ist (#14213).
+
+- **dev** ohne Patch seit 17:54 UTC. Gegenprobe zuerst: Adapter-Kopie ohne
+  Ping und Retry, Socket per Mailpit-Neustart getötet ⇒ **Mail weg**
+  (`failure`, 4,8 ms) — die Probe kann rot werden. Nur Retry ⇒ Mail da.
+  Unverändert ⇒ Mail da. **Leerlauf 4 h** (17:55–21:55, 0 Mails im Fenster,
+  Mailpit hatte den Socket selbst geschlossen) ⇒ erste Mail 21:55:34
+  `success` 29,7 ms, in Mailpit.
+- **CI** trug den Patch nie (keine Override, leerer SMTP-Host).
+- **prod** vorbereitet: `ops/appwrite-aw28-drop-smtp-keepalive-patch.sh`,
+  an einer Kopie der Prod-Override geprüft — Lauf ist AW29 (Davids Ja).
+- Doku: Runbook APPWRITE-2-7-UPGRADE.md Abschnitt „AW28" (Zeitstempel-Tabelle,
+  Rückweg), DEPLOYMENT.md Punkt 5 umgeschrieben.
+
+**Gelernt:** Den 1.9.x-Fehler kann man in 2.7 nicht mehr nachbauen — der Code
+existiert nicht mehr. Die ehrliche Gegenprobe ist, die NEUEN Schutznetze
+einzeln abzuschalten (Adapter-Kopie per Mount) und denselben toten Socket
+herzustellen; `CLOSE_WAIT` in `/proc/net/tcp` des Workers zeigt, dass der Fall
+wirklich eintrat, statt es anzunehmen. Mailpit (dev) läuft ohne Volume: jeder
+Neustart leert die Postfächer.
+
 ### RS1 h — Der SMTP-Schlüssel darf nur noch senden ✅ 2026-11-08
 
 **Was.** `NUXT_SMTP_PASS` war der `full_access`-Schlüssel „Pukalani App"
@@ -132,6 +159,79 @@ der nur lokal auftritt, kann trotzdem echt sein (er verdeckte hier, dass lokal
 seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
 der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
 (`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
+### BI4 — ein langer Entwurf warf den bezahlten Lauf weg ✅ 2026-11-08
+
+**Der Befund.** Mit `targetWords: 2000` meldete „Entwurf schreiben" `502 AI
+returned no JSON` — bezahlt und weg (einmal auf Prod gemessen, 2026-11-07).
+Die naheliegende Ursache war die feste Token-Decke (`maxTokens: 8000` in
+`draft.post.ts`), und der Eintrag nannte zwei Wege: `maxTokens` aus
+`targetWords` rechnen oder den erlaubten Bereich senken.
+
+**Gemessen (52 echte Läufe gegen `anthropic/claude-haiku-4.5`, mit dem echten
+Prompt und denselben ZDR-Bedingungen wie die Route):** die Decke ist in
+KEINEM Lauf gerissen. `finish_reason` stand 52-mal auf `stop`, der höchste
+Wert war 3.621 von 8.000 Tokens; 200/700/2.000 bestellte Wörter kosteten
+477–510 / 1.116–1.469 / 2.195–3.621 Tokens, geliefert wurden nur 50–80 % des
+Bestellten (2,3–2,9 Tokens je Wort).
+
+**Die wirkliche Ursache** war ein Zeichen breit: das Modell schreibt
+`„Adidas"` — deutsches Anführungszeichen auf (U+201E), nacktes ASCII-`"` zu —
+und beendet damit mitten im Wert seinen eigenen JSON-String. Alle vier
+kaputten Antworten waren vollständig. Und der Fehler trifft nicht nur den
+oberen Rand: einer der vier lief bei 700 Wörtern, also in der VORGABE
+(gemessen 1/26 bei 700, 3/26 bei 2.000) — der Defekt frisst seit K5 still
+auch Läufe in der Standardeinstellung.
+
+**Gebaut.** Vor dem Aufruf: `JSON_QUOTE_RULE` in beiden JSON-Prompts (Fassungen
+`insights-d-2`/`insights-t-2`). Hinter dem Aufruf: `repairModelJson` /
+`parseModelJson` in `packages/core/shared/aiJson.ts`, benutzt von allen drei
+Transporten (`aiCompleteJson`, `aiVisionJson`, `aiVideoJson` — der Brief-Lauf
+aus K5 liest über `aiVideoJson` und war demselben Defekt ausgesetzt). Die
+Reparatur läuft NUR, nachdem `JSON.parse` schon gescheitert ist; für jede
+Antwort, die heute durchgeht, ist sie ein No-op. Dazu die gerechnete Decke
+`insightsDraftMaxTokens` (`400 + Wörter × 2,5 × 3`) und, wenn es doch einmal
+reisst, eine Auskunft statt eines Rätsels: `aiCompleteDetailed` reicht
+`finish_reason`/`completion_tokens` durch, `'length'` wirft
+`data: { code: 'ai_truncated' }` mit Text in de/en.
+
+**Die Entscheidung zwischen den zwei Wegen.** Den Bereich zu senken ist
+verworfen: `max_tokens` ist keine Budgetgrenze, sondern eine Guillotine —
+bezahlt wird, was erzeugt wurde, eine tiefere Decke spart keinen Cent und kann
+nur Läufe zerstören. Gerechnet wird daher in die ANDERE Richtung: bei 2.000
+Wörtern steht die Decke jetzt bei 15.400 statt 8.000 (Luft für eine Lieferung
+in voller bestellter Länge), bei 200 Wörtern bei 1.900 statt 8.000 (Notbremse
+gegen ein durchgegangenes Modell).
+
+**Beweise.** Die vier echten kaputten Antworten stehen wörtlich als Vorlagen in
+`packages/core/tests/aiJson.test.ts` — erst unparsbar, dann zeichengleich
+zurück; Gegenprobe beidseitig (gültiges JSON bleibt unangetastet, die
+Reparatur ist idempotent, eine abgeschnittene Antwort bleibt `null`).
+`insightsDraftBudget.test.ts` prüft die Decke gegen die Messtabelle statt
+gegen sich selbst. Vier Tore grün mit getrennt gelesenem Exit-Code, dazu die
+fünf `lint.yml`-Wächter. Klick-Beweis hinter dem Login auf einer lokalen
+Wegwerf-Instanz, zwei echte Läufe: 2.000 Wörter in 17,3 s und 7.050 Zeichen
+gespeichert; und — mit vorübergehend entfernter Prompt-Regel, also im Zustand
+vor BI4 — ein Lauf, bei dem im Log `KI-Antwort war erst nach Reparatur JSON
+(2400 Tokens)` steht und 6.848 Zeichen mit zehn `„…"`-Paaren heil gespeichert
+wurden. Genau dieser Lauf war vorher ein `502`. Messkosten: 64 bezahlte Läufe,
+rund 0,68 US-Dollar (am Einzellauf gegen `/api/v1/generation` nachgerechnet).
+Vollständig in [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md)
+§ 16.
+
+**Gelernt:** Ein Befund ist eine Hypothese, bis er eine Zahl hat — „bricht
+mitten im JSON ab" klang nach Token-Decke, und BEIDE im Eintrag
+vorgeschlagenen Lösungen folgten dieser Deutung, während die Decke nie in der
+Nähe war. Der direkte Beweis lag im `finish_reason`, den der Transport seit
+immer wegwarf: wer einen fremden Dienst ruft, hebt auf, was dieser über den
+LAUF sagt, nicht nur das Ergebnis. Dazu drei Regeln: `max_tokens` ist eine
+Guillotine und kein Budget (der Reflex „sicherheitshalber tiefer" ist genau
+falsch); eine Grenze NACH einem bezahlten Aufruf ist kein Schutz, sondern
+Geldvernichtung — das ist die K5-Lehre, hier auf einen PARSER angewandt; und
+eine Fehlerklasse, die mit einer Grösse häufiger wird, ist bei der kleineren
+Grösse nicht abwesend, nur seltener gemeldet — wer nur den Rand prüft, hält
+eine Wahrscheinlichkeit für eine Schwelle.
+
+---
 
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
 
@@ -1206,6 +1306,36 @@ Wächter. **Zweitens: `zdr: true` ist keine Aussage über den ORT.** Es heißt
 derselben Probe wurde unser Textmodell von **Amazon Bedrock** bedient,
 während im Plan stand, wir liefen über `google-vertex/eu`. Das war eine
 Annahme, die nie gemessen wurde.
+
+### SH1 — Sitzungs-Hygiene: die fünf Schalter sind gestellt ✅ 2026-11-08
+
+Davids Freigabe: „alles nacheinander, punkt für punkt, testen und prüfen".
+Vollständige Tabelle und Begründungen in
+[SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md), Abschnitt „SH1
+abgeschlossen".
+
+Kurz: **(c)** `effortLevel: "medium"` · **(d)** acht Connectors (GitHub,
+Linear, Figma, Gmail, Drive, Kalender, Trello, Kiwi.com) und die Plugins
+Playwright + Stripe aus — **264 Werkzeug-Namen weniger in JEDER Runde**;
+an bleiben Nuxt, Nuxt UI, Appwrite Docs, ploi, Resend und die lokale,
+nur lesende Appwrite-API · **(e)** CLAUDE.md **399 → 199 Zeilen**
+(27,6 KB → 12,6 KB): fünf Blöcke wortgleich nach `.claude/rules/`
+(`realtime`, `plans-products`, `i18n-seo`, `deps-build`, `docs-ordnung`),
+sechs weitere gekürzt, mit Gegenprobe, dass jede entfernte Tatsache in einem
+Runbook oder im Archiv steht.
+
+**Gelernt:** **ein Tipp aus einem Video ist noch kein Schalter.** Zwei der
+fünf Punkte liessen sich nicht umsetzen wie notiert. **(a)** `awaySummaryEnabled`
+gibt es in diesem Build überhaupt nicht — weder im Schema von `settings.json`
+noch in den App-Einstellungen; den Schlüssel trotzdem hineinzuschreiben hätte
+ausgesehen wie erledigt und nichts bewirkt. Ersatz mit demselben Zweck:
+Prompt-Vorschläge aus (sie kosteten je Antwort einen zusätzlichen
+Modell-Aufruf). **(b)** `disableBundledSkills: true` wäre alles-oder-nichts
+gewesen und hätte `/code-review` und `/security-review` mitgenommen, die in
+der Memory als fester Bestandteil stehen — und `update-config`, mit dem der
+Schalter selbst gesetzt wurde. Richtig war `skillOverrides` je Skill. Wer
+solche Listen abarbeitet, prüft zuerst, ob der Schlüssel überhaupt gelesen
+wird, und was der Schalter ausser dem Gewollten noch trifft.
 
 ### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
 

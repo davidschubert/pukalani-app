@@ -530,6 +530,7 @@
         "aiDisabled": "AI is switched off on this instance.",
         "aiHourlyLimit": "Too many runs this hour — try again shortly.",
         "aiDailyLimit": "The daily allowance is used up.",
+        "aiTruncated": "The model stopped mid-text, so the run is unusable. Ask for a shorter length and try again.",
         "notDraft": "An AI draft only works in the draft state.",
         "translationEmpty": "There is no second version yet that could have been reviewed.",
         "slugTaken": "That address is taken — please choose a different title.",

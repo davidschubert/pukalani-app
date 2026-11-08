@@ -530,6 +530,7 @@
         "aiDisabled": "Die KI ist auf dieser Instanz abgeschaltet.",
         "aiHourlyLimit": "Zu viele Läufe in dieser Stunde — gleich wieder.",
         "aiDailyLimit": "Das Tageskontingent ist aufgebraucht.",
+        "aiTruncated": "Das Modell hat mitten im Text aufgehört — der Lauf ist unbrauchbar. Bestelle einen kürzeren Umfang und versuche es noch einmal.",
         "notDraft": "Ein KI-Entwurf geht nur im Zustand Entwurf.",
         "translationEmpty": "Es gibt noch keine zweite Fassung, die redigiert sein könnte.",
         "slugTaken": "Diese Adresse ist vergeben — bitte einen anderen Titel wählen.",

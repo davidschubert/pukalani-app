@@ -1,6 +1,6 @@
 import type { Client, Realtime } from 'appwrite'
 import { realtimeAllowed } from '../../shared/realtimeGate'
-import { isJwtCookieConflict } from '../../shared/realtimeAuth'
+import { isJwtCookieConflict, isRealtimeAccessEnded } from '../../shared/realtimeAuth'
 
 /**
  * EINE geteilte, JWT-authentifizierte Realtime-Verbindung für die ganze App.
@@ -108,11 +108,28 @@ export function ensureRealtimeClients(): Promise<RealtimeClients | null> {
       // Socket erreicht und gültig ist — ab dann trägt es den Socket allein.
       realtime.onError((error, code) => {
         if (isJwtCookieConflict(error?.message, code)) switchToCookieAuth(rtClient)
+        // RT2: Appwrite hat dem angemeldeten Socket den Zugang entzogen
+        // (Session widerrufen). Als Gast gibt es keinen Zugang zu verlieren.
+        else if (jwtReady && isRealtimeAccessEnded(code)) accessEndedListeners.forEach(listener => listener())
       })
       return { cookieClient, rtClient, realtime }
     })
   }
   return clientsPromise
+}
+
+/**
+ * ── ZUGANG ENTZOGEN (RT2, 2026-11-08) ──────────────────────────────────────
+ * Wer erfahren will, dass Appwrite dem angemeldeten Socket den Zugang entzogen
+ * hat (401-Frame vor dem Schließen, Regel in `shared/realtimeAuth.ts`). Das
+ * Web-SDK kennt kein `offError` — deshalb EIN `onError` oben und hier eine
+ * abmeldbare Liste, sonst sammelte jeder Login einen weiteren Listener an.
+ */
+const accessEndedListeners = new Set<() => void>()
+
+export function onRealtimeAccessEnded(listener: () => void): () => void {
+  accessEndedListeners.add(listener)
+  return () => { accessEndedListeners.delete(listener) }
 }
 
 /** Cookie-authentifizierter Client für HTTP-SDK-Services (Presences, …). `null` = Gate aus. */
@@ -227,6 +244,33 @@ async function fetchJwt() {
 }
 
 /**
+ * Offenen Socket einmal schließen — die SDK verbindet selbst neu (Backoff +
+ * Re-Subscribe ALLER aktiven Subscriptions beim `connected`) und liest dabei
+ * den JWT frisch aus `rtClient.config`. `closeSocket` ist im d.ts privat,
+ * existiert aber stabil (am 27.0.0-Quellcode verifiziert). Kein Socket → no-op.
+ */
+async function reconnectSocket(realtime: Realtime) {
+  const internal = realtime as unknown as { closeSocket?: () => Promise<void>, socket?: unknown }
+  if (internal.socket && internal.closeSocket) await internal.closeSocket().catch(() => {})
+}
+
+/**
+ * ── DER REFRESH VERBINDET NEU (RT2, 2026-11-08) ─────────────────────────────
+ * Appwrite ≥ 2.7 merkt sich je Verbindung den Ablauf des JWT, mit dem sie
+ * GEÖFFNET wurde, und schließt sie danach bei der nächsten Zustellung oder dem
+ * nächsten Ping mit 401 — ein später per `setJWT` gesetzter Token ändert daran
+ * nichts. Ohne diesen Neuaufbau flog der Socket in Prod alle 15 min raus, und
+ * das Event, das den Abbruch auslöste, ging dabei verloren (der Server
+ * schließt statt zuzustellen). Außerdem hieße ein 401 dann nicht mehr nur
+ * „Session widerrufen" — genau darauf hört aber die Sofort-Abmeldung.
+ */
+async function refreshJwtAndReconnect() {
+  await fetchJwt()
+  if (!jwtReady || useCookieAuth || !clientsPromise) return
+  await reconnectSocket((await clientsPromise).realtime)
+}
+
+/**
  * Trägt der Realtime-Client aktuell einen (erfolgreich geholten) JWT? Gate für
  * Aktionen, die zwingend Auth brauchen (Presence-Upsert). Reine read("any")-
  * Row-Subscriptions funktionieren auch als Gast und brauchen dieses Gate nicht.
@@ -271,7 +315,7 @@ export function ensureRealtimeJwt(): Promise<void> {
     jwtPromise = fetchJwt()
     // `??=`: syncRealtimeAuth nullt jwtPromise bei jedem Auth-Wechsel — ohne
     // diesen Wächter legte jeder Login einen ZWEITEN Refresh-Timer an.
-    jwtTimer ??= setInterval(() => { void fetchJwt() }, JWT_REFRESH_MS)
+    jwtTimer ??= setInterval(() => { void refreshJwtAndReconnect() }, JWT_REFRESH_MS)
   }
   return jwtPromise
 }
@@ -304,8 +348,5 @@ export async function syncRealtimeAuth(loggedIn: boolean): Promise<void> {
   const { rtClient, realtime } = await clientsPromise
   rtClient.setJWT('')
   if (loggedIn) await ensureRealtimeJwt()
-  // closeSocket ist im d.ts privat, existiert aber stabil — Reconnect übernimmt
-  // die SDK (Backoff + Re-Subscribe). Kein Socket offen → no-op.
-  const internal = realtime as unknown as { closeSocket?: () => Promise<void>, socket?: unknown }
-  if (internal.socket && internal.closeSocket) await internal.closeSocket().catch(() => {})
+  await reconnectSocket(realtime)
 }
