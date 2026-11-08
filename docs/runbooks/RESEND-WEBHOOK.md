@@ -1,8 +1,8 @@
 # Resend-Webhook: Bounces und Beschwerden zurückmelden (RS1 b)
 
-**Wann.** Einmal je Deployment zum Einrichten (nur mit Davids Ja, Klickliste
-in § 2), danach bei einem Schlüsseltausch oder wenn das Log
-`mail.webhook_signature_invalid` zeigt.
+**Wann.** Bei einem Schlüsseltausch, einer neuen Site mit Konten oder wenn das
+Log `mail.webhook_signature_invalid` zeigt. **Eingerichtet am 2026-11-08 auf
+allen vier Sites** (Davids Auftrag, ausgeführt über Resend-API + SSH, § 1).
 
 **Was die Route tut.** `POST /api/mail/resend-webhook` (core-Layer, also in
 jeder App mit Appwrite) nimmt drei Resend-Ereignisse an und handelt nur im
@@ -31,45 +31,59 @@ anderen Projekte gar nicht erreichen (kein Schlüssel dorthin).
 
 ---
 
-## 1 · Reihenfolge
+## 1 · Stand (2026-11-08)
 
-1. **branding.supply** — zuerst: hier lebt der Newsletter (BI1 I5), und (b)
-   soll vor dem Newsletter-Schalter wirken.
-2. **account.pukalani.app** (Site `platform`) — die meisten Konten (Projekt
-   `account`). Der Kontroll-Host, nicht ein Mandanten-Host: der löst sicher
-   auf, ein Community-Host könnte gesperrt oder umgezogen sein.
-3. **admin.pukalani.app** (control) und **portfolio.pukalani.app**.
+| Site (ploi-Ordner) | Endpunkt in Resend | pm2 / Ecosystem |
+| --- | --- | --- |
+| `branding.supply` | `https://branding.supply/api/mail/resend-webhook` | `ecosystem-branding` |
+| `platform.pukalani.app` | `https://account.pukalani.app/api/mail/resend-webhook` | `ecosystem-platform` |
+| `admin.pukalani.app` | `https://admin.pukalani.app/api/mail/resend-webhook` | `ecosystem-control` |
+| `portfolio.pukalani.app` | `https://pukalani.studio/api/mail/resend-webhook` | `ecosystem-portfolio` |
 
-Erlaubt der Resend-Tarif weniger Webhooks als vier (Frage aus
-MAIL-ZUSTELLBARKEIT § 6, offen), nach dieser Reihenfolge abschneiden.
+Je Eintrag die drei Ereignisse, eigenes Secret. Der freie Tarif hat vier
+Webhooks ohne Murren angenommen (Frage aus MAIL-ZUSTELLBARKEIT § 6).
 
-## 2 · Klickliste je Deployment (David)
+Zwei Fallen beim Einrichten:
+- **Portfolio antwortet unter `pukalani.studio`**: `portfolio.pukalani.app`
+  leitet mit 308 dorthin, und Svix folgt keiner Weiterleitung eines POST —
+  der Endpunkt muss der kanonische Host sein.
+- **Kontroll-Hosts lassen nur gelistete API-Pfade durch**
+  (`pukalani.tenancy.controlApiPrefixes`, Middleware `01.control-center.ts`):
+  `account.` antwortete trotz Secret 404, bis `/api/mail/resend-webhook` dort
+  eingetragen war. `platform.pukalani.app` selbst ist kein brauchbarer
+  Endpunkt (404 ohne Mandant).
+
+## 2 · Einrichtung je Site (für eine neue Site oder einen Neuaufbau)
+
+Über das Dashboard oder, wie am 2026-11-08, über die Resend-API (MCP
+`create-webhook`, liefert das Secret direkt) und SSH statt ploi-Formular —
+dann steht das Secret in keinem Formularfeld und in keiner Ausgabe.
 
 - [ ] Resend → **Webhooks** → **Add Webhook**.
       Endpoint: `https://<host>/api/mail/resend-webhook`
       Events: **nur** `email.bounced`, `email.complained`, `email.suppressed`
       (keine Öffnungen/Klicks — die werten wir bewusst nicht aus).
 - [ ] Den **Signing Secret** (`whsec_…`) des neuen Eintrags kopieren.
-- [ ] ploi → Site `<host>` → **Environment** → Zeile
-      `NUXT_RESEND_WEBHOOK_SECRET=whsec_…` ergänzen und speichern.
-- [ ] Neu laden: per SSH `pm2 reload <pm2-name>` (so auch beim Turnstile-
-      Secret 2026-10-27; ein ploi-„Deploy" gibt es für CI-rsync-Sites wie
-      `admin` nicht). Erst der Reload beweist, dass die `.env` gelesen wurde
+- [ ] Zeile `NUXT_RESEND_WEBHOOK_SECRET=whsec_…` an
+      `/home/ploi/<site>/.env` anhängen (vorher Kopie
+      `.env.bak-<datum>-resend`; danach doppelte Schlüssel prüfen — nur Namen,
+      nie Werte).
+- [ ] Neu laden wie der Deploy:
+      `pm2 startOrReload /home/ploi/<site>/ops/ecosystem-<app>.config.cjs --update-env`.
+      Erst der Reload beweist, dass die `.env` gelesen wurde
       (Server-.env-Reload-Zeitbombe).
 - [ ] Probe ohne Signatur (darf jeder, auch Claude):
       `curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<host>/api/mail/resend-webhook`
       ⇒ **401**. Vorher war es **404** (kein Secret). Bleibt es 404, ist das
       Secret nicht angekommen.
-- [ ] Probe mit Signatur: Resend → Webhook → **Send test event** bzw. eine Mail
-      an `bounced@resend.dev` schicken. Im pm2-Log der Site steht danach
-      `mail.undeliverable` mit `domain: resend.dev` und `outcomes`
-      (`account: none` — die Testadresse hat kein Konto). Ein
-      `mail.webhook_signature_invalid` heißt: Secret gehört zu einem anderen
-      Webhook-Eintrag.
-- [ ] Erst JETZT `NUXT_RESEND_WEBHOOK_SECRET` in den `required`-Block dieser
-      Site in `scripts/ops/verify-site-env.mjs` eintragen (Commit). Vorher
-      nicht: der Wächter läuft täglich in `production-watch.yml` und hätte
-      bis zu Davids Klick jeden Tag einen `produktions-alarm` geöffnet.
+- [ ] Probe mit Signatur: ein selbst signiertes, wirkungsloses
+      `email.delivered` (Svix-Rechnung wie in `checkResendSignature`) ⇒
+      **200** `{"received":true}`; dasselbe mit einem FREMDEN Secret ⇒
+      **401** (Gegenprobe). Oder echt: eine Mail an `bounced@resend.dev` ⇒ im
+      pm2-Log `mail.undeliverable` mit `domain: resend.dev`.
+- [ ] Neue Site? Dann in `scripts/ops/verify-site-env.mjs` deren
+      `required`-Block um `RESEND_WEBHOOK_SECRET` ergänzen — erst NACH dem
+      Setzen (der Wächter läuft täglich und alarmiert sonst).
 
 ## 3 · Beweis von Ende zu Ende (branding.supply)
 
