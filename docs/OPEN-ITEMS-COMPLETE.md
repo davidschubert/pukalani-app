@@ -30,6 +30,54 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RT2 — Sofort-Abmeldung bei Session-Widerruf kam in Prod nie an ✅ 2026-11-09
+
+**Was:** `useRealtimeAccount` öffnete einen eigenen, cookie-nativen WebSocket
+auf dem `account`-Channel, damit ein Tab sich sofort abmeldet, wenn die
+Session anderswo beendet wird. Gemessen in Prod (Davids Chrome,
+`account.pukalani.app`, 2026-11-08): Session aus einem zweiten Tab beendet,
+der Server meldete nach 1,2 s 401 — **der Tab war nach 98,5 s noch
+angemeldet** und blieb auf `/de`.
+
+**Ursache:** Das Session-Cookie ist host-only (`setSessionCookie`, kein
+`Domain`) und erreicht `api.pukalani.app` nie — der Cookie-WS verband sich in
+Prod als GAST (`connected`, `user: null`) und bekam weder Event noch Abbruch.
+Lokal fiel es nicht auf, weil `localhost` App und Appwrite dasselbe Cookie
+gibt (dieselbe Wurzel wie RT1). Die Begründung „nur ein Cookie-Socket wird
+beim Widerruf geschlossen, also NICHT konsolidieren" stimmt seit Appwrite 2.7
+nicht mehr: 2.7.1 bindet JEDE angemeldete Verbindung an ihre Session, auch
+die JWT-Verbindung (`sessionId` aus dem JWT), und stellt beim Widerruf erst
+das `account`-Event zu, dann einen 401-Frame, dann schließt es
+(`src/Appwrite/Realtime/Event/Handler.php`, `revalidateUser`).
+
+**Fix (core, `b3bbcd17`, PR #90, live als Build `2767f819`; Davids Wahl
+„geteilter Socket"):** `useRealtimeAccount` abonniert `Channel.account()` auf
+dem EINEN geteilten SDK-Socket (Prod per JWT, lokal per Cookie nach RT1) —
+eigener WS, Ping und Backoff entfallen, ein Socket weniger je Tab. Ein
+401-Frame auf einem angemeldeten Socket ruft `onRealtimeAccessEnded`
+(`isRealtimeAccessEnded`, `core/shared/realtimeAuth.ts`), das Plugin prüft dann
+die Session — auch wenn das Event fehlt. Nebenbefund mitgefixt: ein
+JWT-Socket wird nach Ablauf SEINES JWT mit 401 geschlossen (das auslösende
+Event geht verloren); der 12-min-Refresh verbindet jetzt gezielt neu
+(`refreshJwtAndReconnect`). Regel in `.claude/rules/appwrite.md` und alle
+Doku-Stellen („Account-WS", „Konto-Socket fällt auf Poll zurück") nachgezogen.
+
+**Beweis:** Lokal per Playwright, Session per Admin-API widerrufen —
+Cookie-Modus abgemeldet nach **0,56 s**, JWT-Modus (Appwrite über
+`127.0.0.1`, wie Prod) Event + 401-Frame nach 0,10 s, abgemeldet nach
+**1,24 s**; 17-min-Dauerlauf ohne Eingriff: 0 Fehler-Frames, gezielter
+Neuaufbau nach 12,4 min, weiter angemeldet. **Prod nachher** (Davids Chrome,
+Build `2767f819`, 2026-11-09): `DELETE /api/auth/sessions/<current>` aus einem
+zweiten Tab, der angemeldete Tab stand nach **0,62 s** auf `/de/login` mit dem
+Toast „Deine Sitzung wurde beendet". Unit: `packages/core/tests/realtimeAuth.test.ts`
+(401-Erkennung + Verdrahtung).
+
+**Gelernt:** Eine Regel mit „NIE" braucht ihren Beweis im Ziel-Umfeld — die
+Konsolidierungs-Sperre war lokal richtig begründet und in Prod von Anfang an
+wirkungslos, weil das Cookie dort gar nicht ankam. Ein Sicherheits-Signal
+wird in Prod gemessen, nicht lokal. Und: ein Messpunkt im `window` stirbt mit
+dem Seitenwechsel, den er messen soll — `localStorage` überlebt ihn.
+
 ### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
 
 **Was.** Seit 2026-07-19 mountete `docker-compose.override.yml` eine gepatchte
