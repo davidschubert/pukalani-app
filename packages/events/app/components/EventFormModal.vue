@@ -149,6 +149,17 @@ const priceLookupKeyHelp = computed(() => {
 })
 
 /**
+ * Der URL-Platzhalter kommt aus dem Script, NICHT als `placeholder="https://"`
+ * ins Template: vue-tsc ab 3.3.9 hält jedes `//` in den Props einer Komponente
+ * für einen Zeilenkommentar, auch innerhalb eines Strings, und erzeugt
+ * ungültigen Code (vuejs/language-tools#6240, Fix-PR #6241 offen). Die
+ * Parser-Erholung danach verlor hier die `.value`-Zusicherung für `form` —
+ * sechs TS2339 in jeder App, die events erbt. Ein Literal ohne `//` im
+ * Template ist sicher.
+ */
+const urlPlaceholder = 'https://'
+
+/**
  * BEIM ÖFFNEN eingefroren, nicht laufend berechnet: sonst verschwände die
  * Option mitten im Ausfüllen, sobald jemand ein bestehendes Paid-Event
  * versuchsweise auf „Kostenlos" stellt — und der Rückweg wäre weg.
@@ -569,10 +580,10 @@ const recurrenceChoice = computed({
           :label="t('events.admin.form.url')"
           :help="form.locationType === 'online' ? t('events.admin.form.urlHelp') : undefined"
         >
-          <UInput v-model="form.url" type="url" class="w-full" :maxlength="500" placeholder="https://" />
+          <UInput v-model="form.url" type="url" class="w-full" :maxlength="500" :placeholder="urlPlaceholder" />
         </UFormField>
         <UFormField :label="t('events.admin.form.replayUrl')" :help="t('events.admin.form.replayHelp')">
-          <UInput v-model="form.replayUrl" type="url" class="w-full" :maxlength="500" placeholder="https://" />
+          <UInput v-model="form.replayUrl" type="url" class="w-full" :maxlength="500" :placeholder="urlPlaceholder" />
         </UFormField>
         <UFormField :label="t('events.admin.form.capacity')" :help="t('events.admin.form.capacityHelp')">
           <UInputNumber v-model="form.capacity" :min="1" class="w-full" data-testid="event-form-capacity" />

@@ -115,6 +115,20 @@ const addInput = ref('')
 const addTopic = ref<InsightsTopicKey>(INSIGHTS_TOPICS[0]!.key)
 const addNote = ref('')
 const preview = ref<InsightsChannelPreview | null>(null)
+/**
+ * Die Kanal-Adresse entsteht im Script, NICHT als Template-Literal im `:to`:
+ * vue-tsc ab 3.3.9 hält jedes `//` in den Props einer Komponente für einen
+ * Zeilenkommentar, auch in einem String (vuejs/language-tools#6240, Fix-PR
+ * #6241 offen) — der virtuelle Code wird ungültig, und die Parser-Erholung
+ * verliert die `v-if="preview"`-Verengung (sechs TS18047 in apps/branding).
+ */
+const previewChannelUrl = computed(() => {
+  const channel = preview.value
+  if (!channel) return undefined
+  return channel.handle
+    ? `https://www.youtube.com/@${channel.handle}`
+    : `https://www.youtube.com/channel/${channel.channelId}`
+})
 const checking = ref(false)
 const saving = ref(false)
 
@@ -430,7 +444,7 @@ function youtubeUrl(channel: InsightsChannel): string {
                   <dt style="color: var(--ui-text-muted)">YouTube</dt>
                   <dd>
                     <ULink
-                      :to="preview.handle ? `https://www.youtube.com/@${preview.handle}` : `https://www.youtube.com/channel/${preview.channelId}`"
+                      :to="previewChannelUrl"
                       target="_blank" rel="noopener"
                     >
                       {{ preview.handle ? `@${preview.handle}` : t('insights.channels.openOnYoutube') }}
