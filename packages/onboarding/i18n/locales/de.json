@@ -45,6 +45,7 @@
         "confirmTitle": "„{name}\" wirklich löschen?",
         "confirmText": "Die Adresse antwortet danach binnen einer halben Minute nicht mehr, und alle Mitglieder verlieren ihren Zugang — auch du. Beiträge, Kommentare und Kursfortschritte bleiben gespeichert; wiederherstellen kann sie nur der Betreiber. Ein Konto löschen ist ein anderer Vorgang.",
         "confirm": "Ja, Community löschen",
+        "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Community löschen. Es wurde nichts gelöscht.",
         "done": "Community stillgelegt.",
         "doneDesc": "Die Adresse antwortet binnen einer halben Minute nicht mehr. Inhalte bleiben gespeichert.",
         "errors": {
@@ -834,7 +835,8 @@
       "title": "Besitz an {name} übertragen?",
       "text": "Diese Person wird Inhaber/in der Community. Du selbst bleibst Administrator/in — du behältst also die Verwaltung, gibst aber Übergabe und Abrechnung ab.",
       "confirm": "Besitz übertragen",
-      "done": "Besitz übertragen."
+      "done": "Besitz übertragen.",
+      "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst den Besitz übertragen. Es wurde nichts übertragen."
     },
     "errors": {
       "self_demote": "Du kannst dir selbst keine Rechte entziehen. Bitte jemand anderen mit der Rolle „Administrator/in\" darum.",

@@ -30,6 +30,87 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RA2 — Frische Anmeldung auch beim Besitz-Übertragen und Stilllegen ✅ 2026-11-08
+
+**Anlass.** RA1 (2026-11-06) hat `requireRecentAuth` (Anmeldung höchstens
+10 Minuten alt) an das Konto-Löschen gehängt und drei weitere Stellen offen
+gelassen. Je Route entschieden; die Begründung steht jeweils im Kopf der
+Route selbst.
+
+**Entscheidungen.**
+- **Besitz übertragen — JA** (`onboarding/server/api/community/members/[id]/
+  transfer.post.ts`). Der Übertragende kann es nicht zurückholen: danach ist
+  er Admin, nur der NEUE Owner kann den Besitz zurückgeben, und mit dem
+  Besitz wandern Abrechnung, Stilllegen und die nächste Übergabe. Ein
+  gestohlenes Cookie könnte die Community sonst an ein Zweitkonto
+  verschenken, das vorher beigetreten ist.
+- **Community stilllegen — JA** (`onboarding/server/api/community/delete.post.ts`).
+  Die Daten bleiben, aber der Owner kann es nicht zurücknehmen: Host 404,
+  alle Mitgliedschaften 'removed', Labels eingezogen. Zurück geht es nur
+  über den Betreiber, und jedes Mitglied muss neu eingeladen werden.
+- **Rolle ändern / Zugang entziehen — NEIN** (`members/[id].patch.ts`,
+  `members/[id].delete.ts`, ebenso die Betreiber-Route
+  `admin/users/[id]/role.patch.ts`). Beides ist mit demselben Menü umkehrbar
+  (Rolle zurücksetzen, neu einladen), es ist Alltagsarbeit des Teams, und
+  `owner` lässt sich dort gar nicht vergeben. Gegen das Gefährliche stehen
+  schon Regeln (nie der letzte Owner/Admin, kein Selbst-Entzug, keine
+  Eskalation über die eigenen Rechte). Eine Klammer an jedem Handgriff würde
+  zur Routine, die man wegklickt.
+
+**Gebaut.**
+- Server: `await requireRecentAuth(event)` in beiden Routen NACH dem
+  Rollen-Gate (`requireCommunityTeamGate`) und VOR der Service-Naht ins
+  Control Plane. Nach dem Gate, damit ein Admin sein 403 bekommt, statt sich
+  erst neu anzumelden und dann abzuprallen. Vor der Naht, damit eine
+  Ablehnung im Control Plane nichts angefasst hat.
+- Client: RA1s `askForFreshSignIn` (bisher in `AccountDeleteCard`) ist jetzt
+  der EINE Weg `useRecentAuthPrompt().promptFreshSignIn(error, text)` in
+  core. Er erkennt `reauth_required`, erklärt es in einem Dialog, meldet ab
+  und schickt über `/login?redirect=…` an dieselbe Seite zurück. Die
+  Wiederholung ist ein zweiter Klick der Person: ein unumkehrbarer Vorgang,
+  der nach dem Login von allein liefe, wäre von niemandem bestätigt.
+  Konto-Löschen, Mitglieder-Seite und Community-Seite nutzen ihn. Titel und
+  Knopf liegen dafür als `auth.reauthTitle`/`auth.reauthConfirm` in core
+  (vorher `account.delete.*`), der Text je Stelle im eigenen Layer (de+en).
+- Wächter: `packages/onboarding/tests/recentAuthRoutes.test.ts` prüft die
+  Reihenfolge Gate → Klammer → Naht an beiden Routen, die bewusste
+  Abwesenheit an Rolle/Entziehen (samt Begründungs-Zeile an der Route), den
+  Client-Weg auf beiden Seiten und die Texte in de+en.
+
+**Beweis.** Unit: onboarding 112/112, core 1750/1750; Lint core+onboarding+
+admin, Typecheck core+platform, `check:i18n-keys`, `check:doc-links` grün.
+Gegenprobe: ohne die Zeile in `delete.post.ts` werden 2 Tests rot.
+Klick-Beweis (lokale Dev-Appwrite, control :3004 + platform :3006 beide aus
+dem Worktree; Wegwerf-Community über die echte Wizard-Route, Owner + zweites
+Konto als Admin, danach alles gelöscht). Die Community bekam lokal den Host
+`ra2-….localhost` — die Wizard-Route vergibt `*.pukalani.app`, und der Browser
+wäre damit auf die echte Domain gegangen. Mit der 12,7 Minuten alten
+Owner-Session: Übergabe und Stilllegen **403** `{"reason":"reauth_required"}`,
+kein `Set-Cookie`, `/api/auth/me` weiter 200, DB unverändert. Rolle ändern
+(admin → moderator → admin) mit derselben Session **200** — die Klammer sitzt
+nur an den beiden Stellen. Der Admin bekommt beim Übertragen ein schlichtes
+**403** ohne Grund, wird also nicht zum Login geschickt.
+Im Browser mit einer gut 10 Minuten alten Session: „Community löschen" → „Ja,
+Community löschen" ⇒ Dialog „Zur Sicherheit neu anmelden", kein Fehler-Toast;
+„Abbrechen" ⇒ Community weiter `active`. „Besitz übertragen" → bestätigen ⇒
+derselbe Dialog mit dem Übergabe-Text; „Neu anmelden" ⇒
+`/de/login?redirect=/de/dashboard/members`, nichts übertragen. Neu angemeldet
+⇒ zurück auf der Mitglieder-Seite, Übergabe wiederholt ⇒ „Besitz
+übertragen.", Rollen getauscht. Danach Stilllegen durch den neuen Owner mit
+frischer Anmeldung ⇒ Community `disabled`.
+
+**Offen ⇒ OPEN-ITEMS „RA3":** die Betreiber-Löschungen (Nutzer löschen in
+der Betreiber-Konsole, Mandant/Website löschen im Control Plane) sind
+ebenfalls endgültig und haben die Klammer noch nicht. RA2 sollte nur die drei
+Kunden-Stellen entscheiden, deshalb sind sie hier nicht mitgebaut.
+
+**Gelernt:** Eine Wegwerf-Community aus der Wizard-Route trägt lokal einen
+`*.pukalani.app`-Host. Skripte erreichen sie über den Host-Header, ein Browser
+ginge damit aber ins Netz. Für einen Klick-Beweis den Host vorher auf
+`*.localhost` umschreiben (Resolver-Cache 30 s abwarten).
+
+---
+
 ### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
 
 Anlass: Die Marketing-Seite verlinkt seit a77f79fd `admin.pukalani.app/changelog`,
@@ -156,7 +237,7 @@ Löschen ⇒ „Account gelöscht.", `users.get` **404**.
 
 **Offen ⇒ OPEN-ITEMS „RA2":** dieselbe Klammer für die übrigen
 unumkehrbaren Stellen (Owner-Rolle übergeben, Community stilllegen) — nicht
-geprüft.
+geprüft. **Erledigt 2026-11-08, siehe „RA2" oben.**
 
 ---
 

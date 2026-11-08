@@ -28,9 +28,19 @@ import { requireCommunityTeamGate } from '../../utils/communityTeamGate'
  * WARUM POST UND NICHT DELETE: die Route löscht nichts. `POST …/delete` sagt
  * „führe den Vorgang Löschen aus" — DELETE hätte behauptet, hier verschwinde
  * eine Ressource.
+ *
+ * FRISCHE ANMELDUNG (RA2, 2026-11-08 — `requireRecentAuth`, wie Konto löschen):
+ * die Daten bleiben zwar, aber der OWNER kann das Stilllegen nicht
+ * zurücknehmen — der Host antwortet 404, alle Mitgliedschaften sind
+ * 'removed', die Labels eingezogen; zurück geht es nur über den Betreiber, und
+ * auch dann muss jedes Mitglied neu eingeladen werden. Für die Community ist es
+ * also das Ende. Die Prüfung steht NACH dem Rollen-Gate (Nicht-Owner: 403
+ * statt Umweg über den Login) und VOR der Service-Naht — eine Ablehnung hat
+ * nichts stillgelegt.
  */
 export default defineEventHandler(async (event) => {
   const { communityId, jwt } = await requireCommunityTeamGate(event, 'community.delete')
+  await requireRecentAuth(event)
 
   const result = await callControlPlane<{
     ok: boolean

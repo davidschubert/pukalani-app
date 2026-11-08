@@ -26,6 +26,15 @@ import { requireCommunityTeamGate } from '../../../utils/communityTeamGate'
  * heilt die Label-Middleware es beim nächsten Besuch der entfernten Person
  * (06.community-label.ts: Label ohne aktive Zeile → das Control Plane sagt 'removed' →
  * Label weg). Zurück kommt der Zugang nie von selbst.
+ *
+ * BEWUSST OHNE FRISCHE ANMELDUNG (RA2, 2026-11-08): `requireRecentAuth` gehört
+ * an Unumkehrbares (Konto löschen, Besitz übertragen, Community stilllegen).
+ * Entziehen ist umkehrbar — Inhalte und Name bleiben, eine neue Einladung
+ * holt die Person zurück — und es ist Alltagsarbeit des Teams (Admin,
+ * nicht nur Owner). Die Schutzregeln, die hier zählen (nie der letzte Owner,
+ * kein Selbst-Entzug, Owner nur per Übergabe), setzt das Control Plane durch.
+ * Ein 10-Minuten-Login vor jedem Aufräumen der Liste kostete mehr, als er
+ * schützt.
  */
 export default defineEventHandler(async (event) => {
   const { communityId, jwt } = await requireCommunityTeamGate(event, 'team.manage')
