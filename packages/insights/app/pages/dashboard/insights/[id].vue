@@ -121,6 +121,9 @@ const REASON_KEY: Record<string, string> = {
   budget_unknown: 'insights.editor.error.budgetUnknown',
   ai_hourly_limit: 'insights.editor.error.aiHourlyLimit',
   ai_daily_limit: 'insights.editor.error.aiDailyLimit',
+  // BI4: die Decke ist gerissen, der Lauf ist bezahlt und leer. Der Text sagt
+  // beides — was passiert ist und was der Mensch ändern kann.
+  ai_truncated: 'insights.editor.error.aiTruncated',
   not_draft: 'insights.editor.error.notDraft',
   translation_empty: 'insights.editor.error.translationEmpty',
   slug_taken: 'insights.editor.error.slugTaken',

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { InsightsPost } from '../../../../../shared/insightsPost'
+import { insightsDraftMaxTokens } from '../../../../../shared/insightsDraftBudget'
 import { INSIGHTS_BRIEF_MAX, insightsReadingMinutes } from '../../../../../shared/insightsPost'
 import { toInsightsBrand, toInsightsPost } from '../../../../../shared/insightsRows'
 import {
@@ -84,7 +85,10 @@ export default defineEventHandler(async (event): Promise<InsightsDraftResponse> 
       model: run.model,
       providerRouting: run.providerRouting,
       label: 'insights',
-      maxTokens: 8000,
+      // GERECHNET, NICHT GERATEN (BI4): die Decke wächst mit dem bestellten
+      // Umfang — `insightsDraftMaxTokens` trägt die Messung und die
+      // Begründung, warum sie grosszügig ist und nicht knapp.
+      maxTokens: insightsDraftMaxTokens(body.targetWords),
       temperature: 0.5,
       timeoutMs: 120_000,
     })

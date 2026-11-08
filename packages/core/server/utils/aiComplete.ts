@@ -1,4 +1,6 @@
 import type { H3Event } from 'h3'
+import type { ModelJsonResult } from '../../shared/aiJson'
+import { extractJsonObject as extractJsonObjectRule, parseModelJson } from '../../shared/aiJson'
 
 /**
  * Generischer KI-Completion-Client (Core): EIN Transport für alle Server-
@@ -240,7 +242,35 @@ export async function getEffectiveAiConfig(event: H3Event): Promise<EffectiveAiC
   return config
 }
 
+/**
+ * WAS EINE ANTWORT AUSSER DEM TEXT NOCH SAGT (BI4, 2026-11-08).
+ *
+ * `finishReason` ist der EINZIGE direkte Beweis für „die Token-Decke ist
+ * gerissen" (`'length'` statt `'stop'`), und `completionTokens` sagt, wie
+ * nah es war. Bis BI4 warf der Transport beides weg und las nur
+ * `choices[0].message.content` — ein abgeschnittener Lauf war dadurch von
+ * einem Modell, das Unsinn geschrieben hat, nicht zu unterscheiden, und die
+ * Diagnose von BI4 musste an OpenRouter vorbei gemessen werden statt im Log
+ * zu stehen.
+ */
+export interface AiCompletion {
+  content: string
+  /** OpenAI-kompatibel: `'stop'`, `'length'`, … — oder `''`, wenn es fehlt. */
+  finishReason: string
+  /** Erzeugte Tokens laut Anbieter — `0`, wenn er keine nennt. */
+  completionTokens: number
+}
+
+/**
+ * Der Text-Weg, OHNE die Nebendaten — die ALTE, unveränderte Schnittstelle
+ * für jeden Konsumenten, der nur den Text will (Triage, Assist,
+ * Übersetzung, Brand-Wizard).
+ */
 export async function aiComplete(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<string> {
+  return (await aiCompleteDetailed(event, prompt, options)).content
+}
+
+export async function aiCompleteDetailed(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<AiCompletion> {
   const defaults = getAiConfig()
   const label = options.label ?? 'core'
   const model = options.model ?? defaults.model
@@ -273,8 +303,16 @@ export async function aiComplete(event: H3Event, prompt: string, options: AiComp
       console.error(`[${label}] KI-API ${res.status}: ${(await res.text()).slice(0, 300)}`)
       throw createError({ status: 502, statusText: 'AI provider unavailable' })
     }
-    const payload = await res.json() as { choices?: { message?: { content?: string } }[] }
-    return payload.choices?.[0]?.message?.content ?? ''
+    const payload = await res.json() as {
+      choices?: { message?: { content?: string }, finish_reason?: string }[]
+      usage?: { completion_tokens?: number }
+    }
+    const choice = payload.choices?.[0]
+    return {
+      content: choice?.message?.content ?? '',
+      finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
+      completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
+    }
   }
   catch (error) {
     if (error && typeof error === 'object' && 'statusCode' in error) throw error
@@ -287,23 +325,23 @@ export async function aiComplete(event: H3Event, prompt: string, options: AiComp
 }
 
 /**
- * Schneidet eine Modell-Antwort auf das äußere JSON-Objekt zu: vom ERSTEN `{`
- * bis zum LETZTEN `}` — Zaun-Markierungen (```json) und Plauderei davor oder
- * dahinter fallen weg.
- *
- * Bis 2026-09-05 stand hier `raw.replace(/\}[\s\S]*$/, '}')`, und das greift
- * am ersten `}` der Antwort: jedes Objekt mit einem VERSCHACHTELTEN Objekt
- * (`{"items":[{…}]}`) wurde hinter dem inneren Ende abgeschnitten und war
- * damit nie parsbar. Die flachen Antworten der Triage, der Übersetzung und des
- * Assistenten haben das nie berührt; der Brand-Check war der erste Konsument
- * mit einer Liste von Objekten und starb live daran.
+ * DAS ZUSCHNEIDEN WOHNT SEIT BI4 IN `core/shared/aiJson.ts` — zusammen mit
+ * der Reparatur, die dasselbe Problem einen Schritt weiter löst. Hier steht
+ * nur noch der Re-Export: `aiVisionJson`/`aiVideoJson` holen sich diesen
+ * Namen per Auto-Import aus dieser Datei, und ein Umzug des NAMENS wäre eine
+ * Änderung an zwei Transporten, die mit BI4 nichts zu tun haben.
  */
-export function extractJsonObject(raw: string): string {
-  const start = raw.indexOf('{')
-  const end = raw.lastIndexOf('}')
-  if (start === -1 || end < start) return raw.trim()
-  return raw.slice(start, end + 1)
-}
+export const extractJsonObject = extractJsonObjectRule
+
+/**
+ * WIE EIN KONSUMENT EINE KAPUTTE ANTWORT ERKLÄRT (BI4, 2026-11-08).
+ *
+ * `'ai_truncated'` reist als `data: { code }` und hebt sich im zentralen
+ * Handler zum `reason` — die Oberfläche kann damit sagen, WAS passiert ist
+ * („das Modell hat mitten im Satz aufgehört") und was der Mensch ändern kann
+ * (kürzer bestellen), statt „AI returned no JSON".
+ */
+export const AI_TRUNCATED_CODE = 'ai_truncated'
 
 /**
  * Completion mit JSON-Antwort: schneidet defensiv auf das äußere Objekt zu
@@ -312,13 +350,31 @@ export function extractJsonObject(raw: string): string {
  * (deshalb sinnvollerweise Partial<...> übergeben).
  */
 export async function aiCompleteJson<T = unknown>(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<T> {
-  const raw = await aiComplete(event, prompt, options)
-  const jsonText = extractJsonObject(raw)
-  try {
-    return JSON.parse(jsonText) as T
+  const label = options.label ?? 'core'
+  const completion = await aiCompleteDetailed(event, prompt, options)
+  const parsed: ModelJsonResult<T> | null = parseModelJson<T>(completion.content)
+
+  if (parsed) {
+    if (parsed.repaired) {
+      // Kein Fehler, aber eine Zahl, die man sehen will: steigt sie, lohnt
+      // ein Blick auf den Prompt (BI4 hat ihm das Anführungszeichen beigebracht).
+      console.warn(`[${label}] KI-Antwort war erst nach Reparatur JSON (${completion.completionTokens} Tokens)`)
+    }
+    return parsed.value
   }
-  catch {
-    console.error(`[${options.label ?? 'core'}] KI-Antwort war kein JSON: ${raw.slice(0, 300)}`)
-    throw createError({ status: 502, statusText: 'AI returned no JSON' })
+
+  // Ab hier ist der Lauf bezahlt und nichts zu retten. Die EINE Frage, die
+  // dem Menschen weiterhilft: hat das Modell aufgehört, weil es fertig war,
+  // oder weil die Decke gerissen ist?
+  if (completion.finishReason === 'length') {
+    console.error(`[${label}] KI-Antwort an der Token-Decke abgeschnitten (${completion.completionTokens} Tokens)`)
+    throw createError({
+      status: 502,
+      statusText: 'AI response truncated',
+      data: { code: AI_TRUNCATED_CODE },
+    })
   }
+
+  console.error(`[${label}] KI-Antwort war kein JSON (finish_reason=${completion.finishReason || 'unbekannt'}): ${completion.content.slice(0, 300)}`)
+  throw createError({ status: 502, statusText: 'AI returned no JSON' })
 }

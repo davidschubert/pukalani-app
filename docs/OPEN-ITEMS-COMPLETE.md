@@ -132,6 +132,79 @@ der nur lokal auftritt, kann trotzdem echt sein (er verdeckte hier, dass lokal
 seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
 der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
 (`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
+### BI4 — ein langer Entwurf warf den bezahlten Lauf weg ✅ 2026-11-08
+
+**Der Befund.** Mit `targetWords: 2000` meldete „Entwurf schreiben" `502 AI
+returned no JSON` — bezahlt und weg (einmal auf Prod gemessen, 2026-11-07).
+Die naheliegende Ursache war die feste Token-Decke (`maxTokens: 8000` in
+`draft.post.ts`), und der Eintrag nannte zwei Wege: `maxTokens` aus
+`targetWords` rechnen oder den erlaubten Bereich senken.
+
+**Gemessen (52 echte Läufe gegen `anthropic/claude-haiku-4.5`, mit dem echten
+Prompt und denselben ZDR-Bedingungen wie die Route):** die Decke ist in
+KEINEM Lauf gerissen. `finish_reason` stand 52-mal auf `stop`, der höchste
+Wert war 3.621 von 8.000 Tokens; 200/700/2.000 bestellte Wörter kosteten
+477–510 / 1.116–1.469 / 2.195–3.621 Tokens, geliefert wurden nur 50–80 % des
+Bestellten (2,3–2,9 Tokens je Wort).
+
+**Die wirkliche Ursache** war ein Zeichen breit: das Modell schreibt
+`„Adidas"` — deutsches Anführungszeichen auf (U+201E), nacktes ASCII-`"` zu —
+und beendet damit mitten im Wert seinen eigenen JSON-String. Alle vier
+kaputten Antworten waren vollständig. Und der Fehler trifft nicht nur den
+oberen Rand: einer der vier lief bei 700 Wörtern, also in der VORGABE
+(gemessen 1/26 bei 700, 3/26 bei 2.000) — der Defekt frisst seit K5 still
+auch Läufe in der Standardeinstellung.
+
+**Gebaut.** Vor dem Aufruf: `JSON_QUOTE_RULE` in beiden JSON-Prompts (Fassungen
+`insights-d-2`/`insights-t-2`). Hinter dem Aufruf: `repairModelJson` /
+`parseModelJson` in `packages/core/shared/aiJson.ts`, benutzt von allen drei
+Transporten (`aiCompleteJson`, `aiVisionJson`, `aiVideoJson` — der Brief-Lauf
+aus K5 liest über `aiVideoJson` und war demselben Defekt ausgesetzt). Die
+Reparatur läuft NUR, nachdem `JSON.parse` schon gescheitert ist; für jede
+Antwort, die heute durchgeht, ist sie ein No-op. Dazu die gerechnete Decke
+`insightsDraftMaxTokens` (`400 + Wörter × 2,5 × 3`) und, wenn es doch einmal
+reisst, eine Auskunft statt eines Rätsels: `aiCompleteDetailed` reicht
+`finish_reason`/`completion_tokens` durch, `'length'` wirft
+`data: { code: 'ai_truncated' }` mit Text in de/en.
+
+**Die Entscheidung zwischen den zwei Wegen.** Den Bereich zu senken ist
+verworfen: `max_tokens` ist keine Budgetgrenze, sondern eine Guillotine —
+bezahlt wird, was erzeugt wurde, eine tiefere Decke spart keinen Cent und kann
+nur Läufe zerstören. Gerechnet wird daher in die ANDERE Richtung: bei 2.000
+Wörtern steht die Decke jetzt bei 15.400 statt 8.000 (Luft für eine Lieferung
+in voller bestellter Länge), bei 200 Wörtern bei 1.900 statt 8.000 (Notbremse
+gegen ein durchgegangenes Modell).
+
+**Beweise.** Die vier echten kaputten Antworten stehen wörtlich als Vorlagen in
+`packages/core/tests/aiJson.test.ts` — erst unparsbar, dann zeichengleich
+zurück; Gegenprobe beidseitig (gültiges JSON bleibt unangetastet, die
+Reparatur ist idempotent, eine abgeschnittene Antwort bleibt `null`).
+`insightsDraftBudget.test.ts` prüft die Decke gegen die Messtabelle statt
+gegen sich selbst. Vier Tore grün mit getrennt gelesenem Exit-Code, dazu die
+fünf `lint.yml`-Wächter. Klick-Beweis hinter dem Login auf einer lokalen
+Wegwerf-Instanz, zwei echte Läufe: 2.000 Wörter in 17,3 s und 7.050 Zeichen
+gespeichert; und — mit vorübergehend entfernter Prompt-Regel, also im Zustand
+vor BI4 — ein Lauf, bei dem im Log `KI-Antwort war erst nach Reparatur JSON
+(2400 Tokens)` steht und 6.848 Zeichen mit zehn `„…"`-Paaren heil gespeichert
+wurden. Genau dieser Lauf war vorher ein `502`. Messkosten: 64 bezahlte Läufe,
+rund 0,68 US-Dollar (am Einzellauf gegen `/api/v1/generation` nachgerechnet).
+Vollständig in [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md)
+§ 16.
+
+**Gelernt:** Ein Befund ist eine Hypothese, bis er eine Zahl hat — „bricht
+mitten im JSON ab" klang nach Token-Decke, und BEIDE im Eintrag
+vorgeschlagenen Lösungen folgten dieser Deutung, während die Decke nie in der
+Nähe war. Der direkte Beweis lag im `finish_reason`, den der Transport seit
+immer wegwarf: wer einen fremden Dienst ruft, hebt auf, was dieser über den
+LAUF sagt, nicht nur das Ergebnis. Dazu drei Regeln: `max_tokens` ist eine
+Guillotine und kein Budget (der Reflex „sicherheitshalber tiefer" ist genau
+falsch); eine Grenze NACH einem bezahlten Aufruf ist kein Schutz, sondern
+Geldvernichtung — das ist die K5-Lehre, hier auf einen PARSER angewandt; und
+eine Fehlerklasse, die mit einer Grösse häufiger wird, ist bei der kleineren
+Grösse nicht abwesend, nur seltener gemeldet — wer nur den Rand prüft, hält
+eine Wahrscheinlichkeit für eine Schwelle.
+
+---
 
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
 
