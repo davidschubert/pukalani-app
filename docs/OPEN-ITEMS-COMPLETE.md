@@ -1207,6 +1207,36 @@ derselben Probe wurde unser Textmodell von **Amazon Bedrock** bedient,
 während im Plan stand, wir liefen über `google-vertex/eu`. Das war eine
 Annahme, die nie gemessen wurde.
 
+### SH1 — Sitzungs-Hygiene: die fünf Schalter sind gestellt ✅ 2026-11-08
+
+Davids Freigabe: „alles nacheinander, punkt für punkt, testen und prüfen".
+Vollständige Tabelle und Begründungen in
+[SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md), Abschnitt „SH1
+abgeschlossen".
+
+Kurz: **(c)** `effortLevel: "medium"` · **(d)** acht Connectors (GitHub,
+Linear, Figma, Gmail, Drive, Kalender, Trello, Kiwi.com) und die Plugins
+Playwright + Stripe aus — **264 Werkzeug-Namen weniger in JEDER Runde**;
+an bleiben Nuxt, Nuxt UI, Appwrite Docs, ploi, Resend und die lokale,
+nur lesende Appwrite-API · **(e)** CLAUDE.md **399 → 199 Zeilen**
+(27,6 KB → 12,6 KB): fünf Blöcke wortgleich nach `.claude/rules/`
+(`realtime`, `plans-products`, `i18n-seo`, `deps-build`, `docs-ordnung`),
+sechs weitere gekürzt, mit Gegenprobe, dass jede entfernte Tatsache in einem
+Runbook oder im Archiv steht.
+
+**Gelernt:** **ein Tipp aus einem Video ist noch kein Schalter.** Zwei der
+fünf Punkte liessen sich nicht umsetzen wie notiert. **(a)** `awaySummaryEnabled`
+gibt es in diesem Build überhaupt nicht — weder im Schema von `settings.json`
+noch in den App-Einstellungen; den Schlüssel trotzdem hineinzuschreiben hätte
+ausgesehen wie erledigt und nichts bewirkt. Ersatz mit demselben Zweck:
+Prompt-Vorschläge aus (sie kosteten je Antwort einen zusätzlichen
+Modell-Aufruf). **(b)** `disableBundledSkills: true` wäre alles-oder-nichts
+gewesen und hätte `/code-review` und `/security-review` mitgenommen, die in
+der Memory als fester Bestandteil stehen — und `update-config`, mit dem der
+Schalter selbst gesetzt wurde. Richtig war `skillOverrides` je Skill. Wer
+solche Listen abarbeitet, prüft zuerst, ob der Schlüssel überhaupt gelesen
+wird, und was der Schalter ausser dem Gewollten noch trifft.
+
 ### Resend-Spam über die Registrierung: der Anzeigename war ein Mail-Relais ✅ 2026-10-27
 
 **Ausgangslage:** Resend meldete am 2026-10-26 das Tageslimit; im Dashboard

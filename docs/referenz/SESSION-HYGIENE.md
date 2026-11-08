@@ -39,9 +39,9 @@ Dieses Dokument ergänzt [WORKFLOW.md](WORKFLOW.md) (Abschnitt
 | 2 | `/compact` meiden; wenn nötig **vor** der Pause, nicht danach, und mit Fokus-Anweisung | Regel gab es nur als Memory-Zeile | **übernommen**: Compact-Anweisung steht jetzt in CLAUDE.md, Zeitpunkt-Regel unten |
 | 3 | `/rewind` (Doppel-Esc) statt Korrektur-Nachricht: der Fehler bleibt sonst in jeder folgenden Runde im Kontext | nicht geregelt | **übernommen** (David und Agent, s. Regeln 3/4) |
 | 4 | EIN langer Prompt statt vieler kleiner — der Agent plant dann als Ganzes, und jede Tool-Runde trägt weniger Kontext | Opus-Aufträge sind bereits vollständig und selbständig | **übernommen** für die Prototyp-Iteration: Korrekturen sammeln, als Liste senden |
-| 5 | Session-Recap abschalten, `/recap` bei Bedarf selbst | Recap läuft (Standard) | **Davids Entscheidung** (`awaySummaryEnabled: false`) |
+| 5 | Session-Recap abschalten, `/recap` bei Bedarf selbst | Recap läuft (Standard) | **ERLEDIGT 2026-11-08, anders als gedacht:** den Schalter gibt es in diesem Build NICHT (weder in `settings.json` noch in den App-Einstellungen). Stattdessen **Prompt-Vorschläge AUS** — die kosteten je Antwort einen zusätzlichen Modell-Aufruf |
 | 6 | Modell nach Schwere: Opus nur für das Schwere, Sonnet fürs Tägliche, Haiku für Kleines | Fable prüft und entscheidet, Opus baut, Haiku (audit-scout) und Explore erkunden | schon gebaut |
-| 7 | Effort-Stufe: Standard mittel, hoch nur je Aufgabe (`/effort`, „ultrathink") | nur als Memory-Zeile | **übernommen** als Regel; Standardwert `effortLevel` ist Davids Entscheidung. Fable denkt immer (nicht abschaltbar) |
+| 7 | Effort-Stufe: Standard mittel, hoch nur je Aufgabe (`/effort`, „ultrathink") | nur als Memory-Zeile | **ERLEDIGT 2026-11-08: `effortLevel: "medium"`** in `~/.claude/settings.json`; hoch weiter je Aufgabe. Fable denkt immer (nicht abschaltbar) |
 | 8 | Sub-Agenten auf anderen Modellen; ein „Model-Router"-Skill auf jedem Prompt | Routing nach ROLLE (Prüfen/Bauen/Erkunden), nicht je Prompt | **bewusst nicht**: ein Skill, der auf jedem Prompt läuft, kostet selbst — die Rollenregel ist billiger und vorhersagbar |
 | 9 | Skill-Datei unter 200 Zeilen; Tiefe in Referenzdateien daneben (nur Name + Beschreibung sind dauerhaft im Kontext) | `.claude/rules/*.md` laden per `paths:` nur beim Lesen passender Dateien; größte Datei tenant-isolation 13 KB | schon gebaut; Regel unten: neue Regel-Datei ≤ 200 Zeilen, Geschichte nach docs/referenz |
 | 10 | Spezielles in Skills, nicht in CLAUDE.md | dasselbe Prinzip mit `.claude/rules` seit 2026-09-08 | schon gebaut |
@@ -49,10 +49,10 @@ Dieses Dokument ergänzt [WORKFLOW.md](WORKFLOW.md) (Abschnitt
 | 12 | CLAUDE.md nicht vom Agenten schreiben lassen (füllt sie mit Bekanntem) | Regel „Regel + ein Satz Warum + Verweis" (Memory) | schon gebaut; ergänzt: kein „wie startet man die App" in CLAUDE.md |
 | 13 | Je Ordner eine CLAUDE.md, die nur beim Öffnen lädt | `paths:`-Frontmatter der rules leistet dasselbe, ohne 30 Dateien im Baum | schon gebaut (andere Mechanik, gleiche Wirkung) |
 | 14 | `/usage` lesen: was frisst das Fenster (Skills, MCP, Verhalten) | nicht geregelt | **übernommen**: `/context` einmal je Session, `/usage` je Woche (Regel 8) |
-| 15 | CLI statt MCP: MCP-Werkzeuge liegen dauerhaft im Kontext, ein CLI nur, wenn es läuft | `gh` ist Regel, GitHub-MCP liegt trotzdem daneben; Appwrite-API-MCP (verbindet hier nicht einmal), ploi-MCP (Projekt), Nuxt/Nuxt-UI-Docs, Playwright, Figma, Trello, Gmail, Kalender, Drive, Obsidian | **Davids Entscheidung**: siehe Vorschlag unten |
+| 15 | CLI statt MCP: MCP-Werkzeuge liegen dauerhaft im Kontext, ein CLI nur, wenn es läuft | `gh` ist Regel, GitHub-MCP liegt trotzdem daneben; Appwrite-API-MCP (verbindet hier nicht einmal), ploi-MCP (Projekt), Nuxt/Nuxt-UI-Docs, Playwright, Figma, Trello, Gmail, Kalender, Drive, Obsidian | **ERLEDIGT 2026-11-08:** acht Connectors aus (GitHub, Linear, Figma, Gmail, Drive, Kalender, Trello, Kiwi.com) und die Plugins Playwright + Stripe — zusammen 264 Werkzeug-Namen weniger je Runde. AN bleiben: Nuxt, Nuxt UI, Appwrite Docs, ploi, Resend, Appwrite-API (lokal, lesend) |
 | 16 | Ein Skill sagt dem Agenten, dass das CLI existiert | CLAUDE.md/rules nennen `gh`, `pnpm migrate`, `scripts/ops/*` | schon gebaut |
 | 17 | Memory abschalten (lädt in jede Nachricht) | MEMORY.md ist Davids Übergabe-Mechanik zwischen Sessions (12,5 KB Index) | **bewusst nicht**; stattdessen Regel 9: Index kurz halten, `/consolidate-memory` je Monat |
-| 18 | `disableBundledSkills: true`, wenn die eingebauten Skills ungenutzt sind | `/code-review`, `/simplify`, `/security-review`, `/loop` sind eingebaut; Nutzung unklar | **Davids Entscheidung** |
+| 18 | `disableBundledSkills: true`, wenn die eingebauten Skills ungenutzt sind | `/code-review`, `/simplify`, `/security-review`, `/loop` sind eingebaut | **ERLEDIGT 2026-11-08, GEZIELT statt pauschal:** `disableBundledSkills` wäre alles-oder-nichts gewesen und hätte `/code-review` und `/security-review` mitgenommen, die wir nachweislich benutzen. Stattdessen `skillOverrides` auf `user-invocable-only` für elf ungenutzte (artifact-*, dataviz, loop, schedule, init, plugin-/workflow-authoring, keybindings-help, fewer-permission-prompts): aus meiner Sicht weg, für David weiter tippbar |
 | 19 | Workflows abschalten oder klein halten | Workflows laufen nur auf ausdrückliche Bitte („ultracode"); Richtwert mittel (≤ 15 Agenten) | schon so; keine Änderung |
 | 20 | Hook, der aus Test-Ausgaben nur die Fehlschläge durchlässt | **Gemessen**: Vitest 4 druckt ohne TTY bei Grün nur die Zusammenfassung (themes: 161 Tests = 498 Bytes). Playwright-`list` druckt je Test eine Zeile | **bewusst nicht** (kein Gewinn bei Vitest); Playwright aus dem Agenten mit `--reporter=dot` (Regel 7) |
 | 21 | Terminal-Ausgabe deckeln: 30 000 → 10 000 Zeichen | Standard 30 000 | **übernommen**: `bashOutputMaxChars: 10000` in `.claude/settings.json` — gilt nur für ERFOLGREICHE Kommandos, Fehlschläge kommen weiter voll |
@@ -149,3 +149,35 @@ eingebauten Browser). Weg, der funktioniert: im echten Chrome den Player
 Untertitel laden lassen und die dabei entstandene `timedtext`-URL aus
 `performance.getEntriesByType('resource')` mit `fmt=json3` erneut abrufen —
 innerhalb der Seite, denn die URL trägt das Token.
+
+
+## SH1 abgeschlossen (2026-11-08)
+
+Alle fünf Schalter sind gestellt — Davids Freigabe „alles nacheinander,
+punkt für punkt, testen und prüfen".
+
+| | Was | Ergebnis |
+| --- | --- | --- |
+| a | Recap aus | **Gibt es hier nicht.** `awaySummaryEnabled` steht weder im Schema von `settings.json` noch in den App-Einstellungen. Den Schlüssel trotzdem zu schreiben hätte ausgesehen wie erledigt und nichts getan. Ersatz mit demselben Zweck: Prompt-Vorschläge aus |
+| b | `disableBundledSkills` | **Gezielt statt pauschal** (s. Tabelle oben) |
+| c | Standard-Effort | `effortLevel: "medium"` |
+| d | MCP ohne Repo-Bezug | acht Connectors + zwei Plugins aus, 264 Werkzeug-Namen weniger |
+| e | CLAUDE.md unter 200 | **399 → 199 Zeilen** (27,6 KB → 12,6 KB) |
+
+**Wie (e) gemacht wurde:** fünf Blöcke WORTGLEICH nach `.claude/rules/`
+(`realtime.md`, `plans-products.md`, `i18n-seo.md`, `deps-build.md`,
+`docs-ordnung.md`), je ein Zeiger bleibt in CLAUDE.md. Sechs weitere Blöcke
+wurden GEKÜRZT statt verschoben — Appwrite-Upgrade-Historie, die
+Silo-Chronik, die Manifest-Begründung, die Git-Anekdote, die
+GDPR-Orchestrierung, der Observability-Andockpunkt. Geprüft wurde, dass jede
+dabei entfernte Tatsache anderswo steht: „Deny realtime guests" in
+`runbooks/APPWRITE-2-7-UPGRADE.md`, die `ini_get`-Falle in
+`APPWRITE-2-6-UPGRADE.md`, `comments` als Pool-Community in
+`archiv/F3-COMMENTS-POOL.md`. Alle fünf Wächter (doc-links, manifests,
+i18n-keys, bilanz, single-copy) grün.
+
+**Gelernt:** ein Tipp aus einem Video ist kein Schalter. Zwei der fünf
+Punkte liessen sich nicht so umsetzen, wie sie notiert waren — (a) existiert
+in diesem Build nicht, (b) hätte mehr abgeschaltet als gemeint. Wer solche
+Listen abarbeitet, prüft zuerst, ob der Schlüssel überhaupt gelesen wird, und
+was der Schalter ausser dem Gewollten noch trifft.
