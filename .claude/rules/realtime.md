@@ -42,7 +42,11 @@ paths:
   Realtime weiter, sonst verlöre man dort die Sofort-Abmeldung bei
   Session-Widerruf. Nachgeholt, sobald `clearError()` räumt. Der Auth-Nachtrag
   selbst hat zusätzlich einen Mindestabstand (`accountVerifyDue`, 30 s) — er ist
-  der Verstärker bei jedem flappenden Socket, nicht nur auf 404-Hosts. Der feste
+  der Verstärker bei jedem flappenden Socket, nicht nur auf 404-Hosts. Sie darf
+  aber NICHTS VERWERFEN (Prod-Messung 2026-11-09: eine Prüfung beim Seitenladen,
+  Widerruf 7 s später im Fenster ⇒ abgemeldet erst nach 33 s): ein
+  `sessions.*.delete`-Ereignis geht vorbei, alles andere wird ans Fensterende
+  geschoben (`accountVerifyAt`). Der feste
   1-s-Reconnect in der Konsole kommt aus dem Appwrite-Web-SDK (es nullt
   `reconnectAttempts` im `open`-Handler, erreicht seine Staffelung also nie).
   Seit RT2 (2026-11-08) gibt es keinen eigenen Account-WS mehr — der
