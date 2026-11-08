@@ -133,7 +133,6 @@ seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
 der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
 (`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
 
-
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
 
 **Was.** MON1 (2026-10-28) baute den Wächter und den Alarm-Job; offen waren
