@@ -261,16 +261,16 @@ Die Appwrite-PROJEKTE haben keine eigene SMTP (Feld `smtp` in
   seine `.env` hat gar kein SMTP. Wer nur die vier `.env` tauscht, lässt die
   Pool-App (alle Kunden-Communities) auf dem alten Schlüssel — und merkt es
   erst, wenn der alte gelöscht ist.
-- **pm2 merkt sich alte Variablen.** `pm2_env` des platform-Prozesses trägt
-  noch `NUXT_SMTP_*` aus einer Zeit, als sie in der `.env` standen —
-  `--update-env` fügt hinzu, entfernt aber nichts. Seit dem Tausch ist das
-  nur noch der Rückfall „Ablage unlesbar", und der zeigt auf einen gelöschten
-  Schlüssel. Sauber würde es erst mit `pm2 delete` + Neustart aus der
-  Ecosystem-Datei (Ausfall von Sekunden) — bewusst nicht nebenbei gemacht.
+- **pm2 merkt sich alte Variablen.** `--update-env` fügt hinzu, entfernt aber
+  nichts: der platform-Prozess trug bis 2026-11-09 `NUXT_SMTP_*` aus einer
+  Zeit, als sie in der `.env` standen. Entfernt wird eine Variable nur mit
+  `pm2 delete <name>` + `pm2 startOrReload <ecosystem> --update-env` +
+  `pm2 save` (gemessen ~2 s ohne Antwort) — danach `pm2 jlist` prüfen.
 - **Start-Rauschen nach `compose up`:** der neue `appwrite-worker` meldete
   einmal „ClickHouse insert failed: Broken pipe" und lehnte danach ~1 Minute
   `v1-stats-usage`-Nachrichten ab („Usage events are not being written"),
   dann 0. Nur Nutzungsstatistik, kein Mail- oder Datenpfad — abwarten und in
   30-s-Fenstern zählen, nicht eingreifen.
-- **`pm_cwd` kann veraltet sein** (platform: Site-Ordner statt Release) —
-  den Code-Pfad aus `pm_exec_path` nehmen.
+- **`pm_cwd` kann veraltet sein** (reload übernimmt das `cwd` der
+  Ecosystem-Datei nicht; `pm2-heal.sh` greift nur, wenn der Ordner fehlt) —
+  den Code-Pfad aus `pm_exec_path` nehmen; geheilt wird es wie oben.

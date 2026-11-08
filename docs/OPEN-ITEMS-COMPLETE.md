@@ -121,8 +121,8 @@ die `.env`:
 
 | Stelle | Wo er wirklich gilt | Tausch |
 | --- | --- | --- |
-| branding · admin · portfolio | `.env` → `NUXT_SMTP_PASS` | Zeile ersetzt, Backup `.env.bak-2026-11-08-smtp`, `pm2 startOrReload … --update-env` |
-| platform (Pool, alle Kunden-Communities) | Ablage `instance_secrets/smtp` im Projekt `account` — die `.env` hat seit 2026-08-19 gar kein SMTP | nur `pass` im verschlüsselten Block getauscht, Kennung + übrige Felder unverändert, alter Umschlag als `instance_secrets-smtp.bak-2026-11-08-smtp.json`; wirkt ohne Reload |
+| branding · admin · portfolio | `.env` → `NUXT_SMTP_PASS` | Zeile ersetzt, Backup `.env.bak-2026-11-08-smtp` (am 2026-11-09 gelöscht), `pm2 startOrReload … --update-env` |
+| platform (Pool, alle Kunden-Communities) | Ablage `instance_secrets/smtp` im Projekt `account` — die `.env` hat seit 2026-08-19 gar kein SMTP | nur `pass` im verschlüsselten Block getauscht, Kennung + übrige Felder unverändert, alter Umschlag als `instance_secrets-smtp.bak-2026-11-08-smtp.json` (am 2026-11-09 gelöscht); wirkt ohne Reload |
 | Appwrite-Instanz | `_APP_SMTP_PASSWORD` in `~/appwrite/.env` | Backup, `docker compose up -d` (Trockenlauf: genau `appwrite` + `appwrite-worker`), API nach **11 s** wieder `200` |
 
 Appwrite-Projekte haben keine eigene SMTP (Feld in `_console_projects` bei
@@ -141,12 +141,17 @@ Backup bekommt SMTP `535 Authentication credentials invalid` und von der API
 für alle sechs Sites grün. Unangetastet: `pukalani-budget-read`,
 `produktions-waechter`, `hawaiifromthesky`.
 
-**Nebenbefund, nicht behoben:** `pm2_env` des platform-Prozesses trägt noch
-`NUXT_SMTP_*` aus der Zeit vor dem Umzug in die Ablage — `--update-env` fügt
-hinzu, entfernt aber nichts. Seit dem Tausch zeigt dieser Rückfall („Ablage
-unlesbar") auf einen gelöschten Schlüssel; sauber erst mit `pm2 delete` +
-Start aus der Ecosystem-Datei. Ebenso ist `pm_cwd` dort veraltet
-(Site-Ordner statt Release). Beides harmlos, solange die Ablage lesbar ist.
+**Nebenbefund, nachgezogen 2026-11-09 (Davids Ja):** `pm2_env` des
+platform-Prozesses trug noch `NUXT_SMTP_*` aus der Zeit vor dem Umzug in die
+Ablage (`--update-env` fügt hinzu, entfernt aber nichts) — der Rückfall
+„Ablage unlesbar" zeigte damit auf den gelöschten Schlüssel. Dazu war `pm_cwd`
+veraltet (Site-Ordner statt Release; `pm2-heal.sh` greift nur, wenn der Ordner
+FEHLT). `pm2 delete platformpukalaniapp` + `pm2 startOrReload
+ops/ecosystem-platform.config.cjs --update-env` + `pm2 save`: ~2 s ohne
+Antwort (lokale Probe `000`, dann `200`), danach keine `NUXT_SMTP_*` mehr,
+`pm_cwd` = `releases/platform/current`, platform/demo/account `ok:true`, und
+die Probe-Mail aus der Ablage `250`. Die fünf Backups mit dem alten Wert sind
+gelöscht.
 
 **Gelernt:** Die Aufgabe hieß „vier `.env` tauschen" — gestimmt hätte das
 für drei von fünf Stellen. Hätten wir nur die `.env` getauscht und danach den
