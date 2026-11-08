@@ -45,6 +45,7 @@
         "confirmTitle": "Really delete \"{name}\"?",
         "confirmText": "Within half a minute the address stops answering, and every member loses access — you included. Posts, comments and course progress stay stored; only the operator can bring them back. Deleting an account is a different matter.",
         "confirm": "Yes, delete community",
+        "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete the community. Nothing has been deleted.",
         "done": "Community shut down.",
         "doneDesc": "The address stops answering within half a minute. Content stays stored.",
         "errors": {
@@ -834,7 +835,8 @@
       "title": "Transfer ownership to {name}?",
       "text": "This person becomes the owner of the community. You stay on as administrator — you keep management, but hand over transfer and billing.",
       "confirm": "Transfer ownership",
-      "done": "Ownership transferred."
+      "done": "Ownership transferred.",
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can transfer ownership. Nothing has been transferred."
     },
     "errors": {
       "self_demote": "You cannot take rights away from yourself. Ask another administrator to do it.",

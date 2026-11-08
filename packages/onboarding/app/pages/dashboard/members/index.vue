@@ -59,6 +59,8 @@ const { formatDate } = useFormatDate()
 const { formatRelativeTime } = useFormatRelativeTime()
 const toast = useToast()
 const confirm = useConfirm()
+/** Besitz übertragen verlangt eine frische Anmeldung (RA2) — gemeinsamer Weg aus core. */
+const { promptFreshSignIn } = useRecentAuthPrompt()
 
 useBrandTitle(() => t('members.title'))
 
@@ -349,6 +351,7 @@ async function transferOwnership(member: CommunityMemberView) {
     await refresh()
   }
   catch (error) {
+    if (await promptFreshSignIn(error, t('members.transfer.reauthText'))) return
     toast.add({ ...ruleMessage(error), color: 'error' })
   }
 }

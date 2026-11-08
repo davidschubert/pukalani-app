@@ -390,6 +390,8 @@ async function saveAudience(next: 'members' | 'public') {
  */
 const canDelete = useCommunityCapability('community.delete')
 const confirm = useConfirm()
+/** Stilllegen verlangt eine frische Anmeldung (RA2) — gemeinsamer Weg aus core. */
+const { promptFreshSignIn } = useRecentAuthPrompt()
 /** Anzeigename dieser Community (mit Fallback auf den App-Brand). Er gehört in
  *  die Rückfrage — „diese Community" ist kein Gegenstand, den man
  *  wiedererkennt, und genau daran hängt eine unumkehrbar wirkende Zusage. */
@@ -415,7 +417,10 @@ async function deleteCommunity() {
       deleting.value = true
       await $fetch('/api/community/delete', { method: 'POST' })
     },
-  }).catch((error: unknown) => {
+  }).catch(async (error: unknown) => {
+    // Erst die frische Anmeldung (RA2): dann erklärt ein eigener Dialog den
+    // Grund, und nichts ist stillgelegt — kein Fehler-Toast obendrauf.
+    if (await promptFreshSignIn(error, t('dashboard.community.danger.reauthText'))) return false
     // FACHLICHE Gründe reisen als `data.reason` (core/server/error.ts hebt
     // `data.code` ins Envelope) — alles andere ist ein echter Fehler.
     const reason = (error as { data?: { reason?: string } })?.data?.reason

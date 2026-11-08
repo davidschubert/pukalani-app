@@ -8,6 +8,11 @@ const roleSchema = z.object({
 /**
  * Rollen eines Users setzen (Mehrfachauswahl, als Appwrite-Labels gespeichert).
  * Ersetzt das frühere { admin: boolean }. Siehe docs/referenz/RBAC-CONCEPT.md.
+ *
+ * BEWUSST OHNE FRISCHE ANMELDUNG (RA2, 2026-11-08): Rollen setzen und entziehen
+ * ist umkehrbar (dieselbe Route setzt sie zurück); gegen das Gefährliche —
+ * Selbst-Aussperren, letzter Admin, Eskalation über die eigenen Rechte —
+ * stehen die Regeln unten. `requireRecentAuth` gehört an Unumkehrbares.
  */
 export default defineEventHandler(async (event) => {
   const actor = requirePermission(event, 'users.manage')
