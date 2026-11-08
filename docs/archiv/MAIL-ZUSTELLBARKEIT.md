@@ -1,8 +1,10 @@
 # MZ1 — Mail-Zustellbarkeit: Bounces und Spam-Beschwerden sehen
 
-**Stand:** 2026-11-06 · **ARCHIV:** Stufe A gebaut (COMPLETE „MZ1"), Stufe B
-bewusst zurückgestellt — offen als Teilpaket (b) von OPEN-ITEMS „RS1". § 8 hält fest,
-was die Messung an dieser Skizze widerlegt hat.
+**Stand:** 2026-11-08 · **ARCHIV:** Stufe A gebaut (COMPLETE „MZ1"), Stufe B
+gebaut 2026-11-08 als RS1 b (COMPLETE „RS1 b" — dort stehen die fünf
+begründeten Abweichungen von dieser Skizze; Einrichtung:
+[RESEND-WEBHOOK.md](../runbooks/RESEND-WEBHOOK.md)). § 8 hält fest, was die
+Messung an dieser Skizze widerlegt hat.
 
 ## 1. Ausgangslage (gemessen, nicht geglaubt)
 

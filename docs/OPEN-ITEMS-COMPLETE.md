@@ -30,6 +30,71 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RS1 b — Bounces und Beschwerden per Webhook zurückmelden ✅ 2026-11-08 (Code; Einrichtung je Site offen)
+
+**Was.** Resend sperrt eine Adresse nach hartem Bounce oder Spam-Beschwerde
+selbst, bei uns blieb sie aber lebendig: der Newsletter-Abonnent stand weiter
+auf „bestätigt" und zählte bei jeder Ausgabe als Fehlschlag, die
+Benachrichtigungs-Mails eines Kontos liefen ins Leere. Neu:
+`POST /api/mail/resend-webhook` im core-Layer
+(`packages/core/server/api/mail/resend-webhook.post.ts`) — Svix-Signatur
+selbst geprüft (`node:crypto`, 5-Minuten-Fenster, Listen-Signaturen,
+konstante Zeit; belegt mit dem offiziellen Svix-Testvektor), ohne Secret 404,
+ohne gültige Signatur 401 vor jedem Datenzugriff, Schreibfehler 500 (Resend
+wiederholt). Wirkung bei `email.bounced` (nur `Permanent`),
+`email.complained`, `email.suppressed`: Konto im Projekt DIESES Deployments ⇒
+`emailNotifications: 'off'` + Merker `emailUndeliverable` (Prefs
+zusammengeführt) + Hinweis unter Einstellungen → Benachrichtigungen (de+en);
+Newsletter ⇒ abgemeldet über denselben Schreibvorgang wie der Abmelde-Link
+(bestätigt: markieren + 12-Monats-Frist, nie bestätigt: löschen). Weiche
+Bounces nur als Log `mail.bounce_soft`. Idempotent ohne Ereignis-Tabelle:
+steht der Merker schon und sind die Mails aus, wird nichts geschrieben; ein
+abgemeldeter Abonnent ist `unchanged`. Logs tragen `svix-id`, `email_id` und
+die Domain, nie eine Adresse (Test prüft das). Regeln pur in
+`packages/core/shared/mailUndeliverable.ts`. Neue Env
+`NUXT_RESEND_WEBHOOK_SECRET` (`runtimeConfig.resendWebhookSecret`).
+
+**Abweichungen vom Zuschnitt (MAIL-ZUSTELLBARKEIT § 2 B), mit Grund.**
+(1) Ungültige Signatur ⇒ **401** statt 400 (Auftrag; 401 trennt „nicht
+signiert" sauber von „kaputter Body"). (2) **`email.suppressed` statt
+`suppression.added`**: Letzteres feuert auch bei Hand-Einträgen und seine
+Nutzlast ist nicht dokumentiert; `email.suppressed` trägt dasselbe `to` und
+holt Sperren von VOR dem Webhook nach, sobald wir wieder an die Adresse
+schreiben. (3) Der Newsletter hängt über einen **Vertrag**
+(`registerMailUndeliverableHandler`, Muster `registerUserDataContributor`,
+insights-Plugin `server/plugins/mail-undeliverable.ts`) — core kennt keine
+Produkt-Tabellen (A14); der Zuschnitt sah nur das Konto. Der
+Abmelde-Schreibvorgang ist dafür aus der Route nach
+`insightsNewsletterUnsubscribe.ts` gezogen, damit beide Wege dasselbe
+schreiben. (4) Der Merker ist an einen **Hash der Adresse** gebunden statt von
+einer Adressänderung geräumt zu werden: es gibt bei uns keine Route zum
+Ändern der E-Mail (nur die Appwrite-Konsole), ein Hash-Vergleich räumt den
+Hinweis bei JEDEM Weg. (5) Die Env ist **noch nicht Pflicht** in
+`verify-site-env.mjs` (der Zuschnitt verortete die Liste in
+`hosts-ops.md`, sie steht aber im Skript): der Wächter läuft täglich in
+`production-watch.yml` und hätte bis zu Davids Klick jeden Tag einen
+`produktions-alarm` geöffnet — eintragen ist der letzte Schritt der
+Klickliste.
+
+**Beweis.** `packages/core/tests/mailUndeliverable.test.ts` (26: Svix-Vektor,
+falsche/alte/fehlende Signatur, Listen; Allowlist; Merge + Idempotenz;
+Route: 404, 401 ohne Datenzugriff, Bounce, Beschwerde, Wiederholung,
+unbekannte Adresse, weicher Bounce, kaputter Produkt-Layer ⇒ 500 bei
+erledigtem Konto, keine Adresse im Log) und
+`packages/insights/tests/insightsNewsletterUndeliverable.test.ts` (5:
+bestätigt ⇒ markiert, Wiederholung, unbestätigt ⇒ gelöscht, unbekannt,
+ohne Tabelle/Produkt). Tests, Lint, Typecheck core/insights/branding grün.
+NICHT bewiesen: ein echtes Resend-Ereignis gegen eine Site — das braucht
+Davids Einrichtung ([RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md) § 2–3,
+mit Probe 404 ⇒ 401 und Ende-zu-Ende über `bounced@resend.dev`).
+
+**Gelernt:** Der Svix-Testvektor ist das billigste Beweisstück für eine
+selbst gebaute Signaturprüfung — er traf beim ersten Lauf, und ohne ihn hätte
+ein Test, der seine Signatur mit derselben Funktion baut, die er prüft, nur
+sich selbst bestätigt. Und: eine neue Pflicht-Variable gehört erst DANN in
+den täglichen Env-Wächter, wenn sie gesetzt ist — sonst ist der erste Alarm
+ein bestellter.
+
 ### RS1 g — DMARC für `pukalani.app` ✅ 2026-11-08
 
 **Was.** `_dmarc.pukalani.app` fehlte (Gmail und Yahoo erwarten DMARC von
