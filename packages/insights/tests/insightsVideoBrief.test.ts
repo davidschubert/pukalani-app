@@ -93,7 +93,29 @@ describe('buildInsightsVideoBriefPrompt', () => {
   })
 
   it('hat eine Fassung im Namen', () => {
-    expect(INSIGHTS_BRIEF_PROMPT_VERSION).toBe('insights-b-1')
+    // `-2` seit dem 2026-11-09: der Prompt trägt die Anführungszeichen-Regel.
+    expect(INSIGHTS_BRIEF_PROMPT_VERSION).toBe('insights-b-2')
+  })
+
+  it('bittet auch der Brief um typografische Anführungszeichen (BI4)', () => {
+    // Der Brief läuft über `aiVideoJson` und war damit demselben Defekt
+    // ausgesetzt wie der Entwurf — nur teurer, weil ein gelesenes Video
+    // davor steht. Die Fassung kommt aus `insightsPrompts.ts`; dieser Test
+    // prüft, dass sie IM Brief-Prompt ankommt.
+    const prompt = buildInsightsVideoBriefPrompt(INPUT)
+    expect(prompt).toContain('typografische Anführungszeichen')
+    expect(prompt).toContain('beendet dort den JSON-String')
+  })
+
+  it('macht den Fehler NICHT selbst vor (Gegenprobe)', () => {
+    // Die eigentliche Lehre vom 2026-11-09: die erste Fassung der Regel
+    // schrieb ihre Beispiele als `\u201e…"` — genau die Form, die den
+    // JSON-String beendet — und `BRIEF_RULES` führte `\u201ebei 12:40 …"`
+    // vor. Ein Modell lernt die Form seiner Antwort aus den Beispielen im
+    // Auftrag. Also darf im ganzen Prompt kein deutsches
+    // Anführungszeichen mit einem geraden `"` schliessen.
+    const prompt = buildInsightsVideoBriefPrompt(INPUT)
+    expect(prompt).not.toMatch(/\u201e[^\u201c"\n]{0,120}"/)
   })
 })
 

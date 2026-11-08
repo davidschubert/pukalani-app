@@ -279,6 +279,10 @@ eine Fehlerklasse, die mit einer Grösse häufiger wird, ist bei der kleineren
 Grösse nicht abwesend, nur seltener gemeldet — wer nur den Rand prüft, hält
 eine Wahrscheinlichkeit für eine Schwelle.
 
+**Nachtrag 2026-11-09 — die Regel stand neben vier Gegenbeispielen.** Davids Auftrag, die Anführungszeichen-Regel auch in den Brief-Prompt zu legen, führte zu einem Befund an der Regel selbst: ihre EIGENEN Beispiele schlossen mit einem geraden `"` (`„…"` im Deutschen), und `HARD_RULES` (Entwurf) wie `BRIEF_RULES` (Brief) führten dasselbe vor — vier Vorlagen für genau das Zeichen, das die Regel verbietet. Alle vier sind jetzt typografisch, `JSON_QUOTE_RULE` ist exportiert und wird vom Brief-Prompt importiert (EINE Fassung für drei Prompts), Fassungen `insights-b-2` / `insights-d-4` / `insights-t-3` (`-d-3` gehört den SEO/GEO-Regeln aus K6, die am selben Tag aus einer Nachbarsitzung kamen und sieben weitere Gegenbeispiele mitbrachten — aus vier Fundstellen wurden elf). Ein Test prüft alle drei Prompts gegen das Muster und wird rot, wenn das alte Beispiel zurückkommt. Bezahlter Beweis: zwei echte Brief-Läufe gegen dasselbe Video (`google/gemini-3.1-flash-lite`, EU-gepinnt) — mit Regel ein brauchbarer Brief mit 24 typografischen und NULL geraden Anführungszeichen, OHNE Regel aber ebenfalls null. Auf dem Brief-Pfad ist der Defekt also nie beobachtet worden; die Regel bleibt als Vorsorge, die nichts kostet, das Netz ist die Reparatur. Nebenbei korrigiert: ein Brief kostet bei einem langen Video **10,5 Cent**, nicht die notierten 5. Dieselbe Falle in vier Prompts anderer Layer steht als `AI2` offen. Details: § 16.1 des Plans.
+
+**Gelernt (Nachtrag):** Ein Prompt lehrt mit seinen BEISPIELEN, nicht mit seinen Verboten — ein Gegenbeispiel im Auftragstext wiegt mehr als der Satz daneben, der es untersagt. Und: eine Gegenprobe, die NICHTS zeigt, gehört genauso aufgeschrieben wie eine, die etwas zeigt; sonst wird aus einer kostenlosen Vorsorge im Protokoll eine bewiesene Kur.
+
 ---
 
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
