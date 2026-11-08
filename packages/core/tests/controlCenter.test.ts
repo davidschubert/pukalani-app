@@ -174,6 +174,16 @@ describe('Erlaubte Pfade im Kundenbereich (fail-closed)', () => {
     expect(isAllowedControlPath('/api/comments', livePrefixes)).toBe(false)
   })
 
+  it('lässt den Resend-Webhook durch, aber nur genau ihn (RS1 b) — gegen die ECHTE Liste', () => {
+    // Live erwischt beim Einrichten am 2026-11-08: Secret gesetzt, Prozess
+    // trug es, account.pukalani.app antwortete trotzdem 404 — diese Wache.
+    const config = readFileSync(new URL('../app/app.config.ts', import.meta.url), 'utf8')
+    const livePrefixes = [...(/controlApiPrefixes:\s*\[([^\]]*)\]/.exec(config)?.[1] ?? '').matchAll(/'([^']+)'/g)].map(m => m[1]!)
+    expect(isAllowedControlPath('/api/mail/resend-webhook', livePrefixes)).toBe(true)
+    expect(isAllowedControlPath('/api/mail/other', livePrefixes)).toBe(false)
+    expect(isAllowedControlPath('/api/mail', livePrefixes)).toBe(false)
+  })
+
   it('sperrt JEDEN anderen API-Pfad — dort wäre nichts mandanten-gescopt', () => {
     for (const path of ['/api/comments', '/api/pages/public/home', '/api/themes', '/api/stats', '/api/admin/themes', '/api/presence/heartbeat']) {
       expect(isAllowedControlPath(path, PREFIXES), path).toBe(false)

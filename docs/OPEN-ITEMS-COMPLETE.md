@@ -30,7 +30,7 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### RS1 b — Bounces und Beschwerden per Webhook zurückmelden ✅ 2026-11-08 (Code; Einrichtung je Site offen)
+### RS1 b — Bounces und Beschwerden per Webhook zurückmelden ✅ 2026-11-08
 
 **Was.** Resend sperrt eine Adresse nach hartem Bounce oder Spam-Beschwerde
 selbst, bei uns blieb sie aber lebendig: der Newsletter-Abonnent stand weiter
@@ -84,16 +84,30 @@ erledigtem Konto, keine Adresse im Log) und
 `packages/insights/tests/insightsNewsletterUndeliverable.test.ts` (5:
 bestätigt ⇒ markiert, Wiederholung, unbestätigt ⇒ gelöscht, unbekannt,
 ohne Tabelle/Produkt). Tests, Lint, Typecheck core/insights/branding grün.
-NICHT bewiesen: ein echtes Resend-Ereignis gegen eine Site — das braucht
-Davids Einrichtung ([RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md) § 2–3,
-mit Probe 404 ⇒ 401 und Ende-zu-Ende über `bounced@resend.dev`).
+**Eingerichtet 2026-11-08** (Davids Auftrag „mach du das alles"), über die
+Resend-API (MCP `create-webhook`) und SSH statt Formular: vier Webhooks
+(branding.supply, account.pukalani.app, admin.pukalani.app,
+pukalani.studio), je eigenes Secret in `/home/ploi/<site>/.env`
+(`.env.bak-2026-11-08-resend` daneben), `pm2 startOrReload … --update-env`.
+Live-Beweis je Host: vorher 404, danach unsigniert **401**, selbst signiertes
+`email.delivered` **200**, fremdes Secret **401**; `/api/health` weiter
+`ok:true`. `NUXT_RESEND_WEBHOOK_SECRET` ist seitdem Pflicht in
+`verify-site-env.mjs` (Lauf gegen die Server grün). Nicht bewiesen: ein
+echtes Bounce-Ereignis aus Resend — es kommt mit dem ersten echten Bounce
+(Log `mail.undeliverable`).
 
 **Gelernt:** Der Svix-Testvektor ist das billigste Beweisstück für eine
 selbst gebaute Signaturprüfung — er traf beim ersten Lauf, und ohne ihn hätte
 ein Test, der seine Signatur mit derselben Funktion baut, die er prüft, nur
 sich selbst bestätigt. Und: eine neue Pflicht-Variable gehört erst DANN in
 den täglichen Env-Wächter, wenn sie gesetzt ist — sonst ist der erste Alarm
-ein bestellter.
+ein bestellter. Und beim Einrichten zweimal: (1) eine Route im core-Layer
+ist auf einem KONTROLL-Host erst erreichbar, wenn ihr Pfad in
+`pukalani.tenancy.controlApiPrefixes` steht — `account.` antwortete trotz
+gesetztem Secret 404 (Fix + Wächter-Test im Folge-PR); (2) Svix folgt keiner
+Weiterleitung: `portfolio.pukalani.app` antwortet 308 auf `pukalani.studio`,
+der Endpunkt muss der kanonische Host sein. Lokale Unit-Tests sehen beides
+nicht, nur die Probe gegen den echten Host.
 
 ### TC1 — Typecheck auf main rot: vue-tsc zerlegt `//` in Komponenten-Props ✅ 2026-11-08
 

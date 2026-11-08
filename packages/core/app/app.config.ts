@@ -616,7 +616,22 @@ export default defineAppConfig({
        * öffentlichen Ortsnamen (GeoNames) und fasst keine Zeile an. Ihre
        * Grenze ist die Sitzung, nicht die Community.
        */
-      controlApiPrefixes: ['/api/auth/', '/api/storage/', '/api/onboarding/', '/api/health', '/api/telemetry/', '/api/notifications', '/api/feedback', '/api/abuse', '/api/account/activity', '/api/account/handle', '/api/geo/cities', '/api/geo/countries', '/api/analytics/config', '/api/stats-script.js', '/api/stats-event', '/api/_nuxt_icon/'] as string[],
+      /**
+       * `/api/mail/resend-webhook` (RS1 b, 2026-11-08) — EXAKTER Pfad, kein
+       * `/api/mail/`: dieselbe Begründung wie bei den Konto-Routen oben.
+       *
+       * Er GEHÖRT hierher, weil der Kundenbereich der Host des Projekts
+       * `account` ist, in dem die Konten liegen, deren Mails der Webhook
+       * abschaltet — ein Mandanten-Host wäre ein willkürlicher Kunde, der
+       * gesperrt oder umgezogen sein kann. Ohne den Eintrag antwortete die
+       * Route auf account.pukalani.app 404, obwohl das Secret gesetzt war
+       * (live erwischt beim Einrichten).
+       *
+       * Sicher ohne Mandanten-Scope: ohne gültige Svix-Signatur antwortet sie
+       * 401 vor jedem Datenzugriff, und sie handelt nur an Konten dieses
+       * Projekts über deren Adresse — Mandanten kennt sie nicht.
+       */
+      controlApiPrefixes: ['/api/auth/', '/api/mail/resend-webhook', '/api/storage/', '/api/onboarding/', '/api/health', '/api/telemetry/', '/api/notifications', '/api/feedback', '/api/abuse', '/api/account/activity', '/api/account/handle', '/api/geo/cities', '/api/geo/countries', '/api/analytics/config', '/api/stats-script.js', '/api/stats-event', '/api/_nuxt_icon/'] as string[],
     },
     /**
      * Realtime-Gate (F14, 2026-08-01) — der EINE Schalter, mit dem eine App
