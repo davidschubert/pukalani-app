@@ -572,6 +572,11 @@ function confirmSend(): void {
     introEn: newsletterIntroEn.value.trim(),
   })
 }
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const urlPlaceholder = 'https://'
 </script>
 
 <template>
@@ -964,7 +969,7 @@ function confirmSend(): void {
             <UInput v-model="brandForm.name" class="w-full" :maxlength="200" />
           </UFormField>
           <UFormField :label="t('insights.editor.brandHomepage')" name="homepage">
-            <UInput v-model="brandForm.homepage" class="w-full" :maxlength="512" placeholder="https://" />
+            <UInput v-model="brandForm.homepage" class="w-full" :maxlength="512" :placeholder="urlPlaceholder" />
           </UFormField>
           <UFormField :label="t('insights.editor.brandIndustry')" name="industry">
             <UInput v-model="brandForm.industry" class="w-full" :maxlength="40" />

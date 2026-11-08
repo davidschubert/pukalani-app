@@ -49,6 +49,11 @@ const ROLE_COLOR: Record<CommunityRole, 'primary' | 'info' | 'warning' | 'neutra
 const displayName = computed(() => data.value?.name || data.value?.handle || t('members.map.unnamed'))
 
 useBrandTitle(() => (data.value ? displayName.value : t('members.profile.notFoundTitle')))
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const geonamesUrl = 'https://www.geonames.org'
 </script>
 
 <template>
@@ -142,7 +147,7 @@ useBrandTitle(() => (data.value ? displayName.value : t('members.profile.notFoun
             class="mt-4 text-xs text-dimmed"
           >
             <template #provider>
-              <ULink to="https://www.geonames.org" target="_blank" rel="noopener" class="underline">GeoNames</ULink>
+              <ULink :to="geonamesUrl" target="_blank" rel="noopener" class="underline">GeoNames</ULink>
             </template>
           </i18n-t>
         </template>
