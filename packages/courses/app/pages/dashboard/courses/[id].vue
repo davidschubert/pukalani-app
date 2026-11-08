@@ -190,6 +190,11 @@ function lessonActions(lesson: LessonRow): DropdownMenuItem[][] {
     [{ label: t('courses.admin.deleteLesson'), icon: 'i-ph-trash', color: 'error', onSelect: () => { void removeLesson(lesson) } }],
   ]
 }
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const urlPlaceholder = 'https://'
 </script>
 
 <template>
@@ -331,7 +336,7 @@ function lessonActions(lesson: LessonRow): DropdownMenuItem[][] {
               <UTextarea v-model="lessonForm.content" class="w-full" :rows="10" data-testid="lesson-form-content" />
             </UFormField>
             <UFormField :label="t('courses.admin.form.videoUrl')" :help="t('courses.admin.form.videoHelp')">
-              <UInput v-model="lessonForm.videoUrl" type="url" class="w-full" :maxlength="500" placeholder="https://" />
+              <UInput v-model="lessonForm.videoUrl" type="url" class="w-full" :maxlength="500" :placeholder="urlPlaceholder" />
             </UFormField>
             <div class="flex justify-end gap-2 pt-2">
               <UButton color="neutral" variant="ghost" @click="() => { lessonModal = false }">{{ t('ui.cancel') }}</UButton>

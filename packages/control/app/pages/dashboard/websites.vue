@@ -342,6 +342,11 @@ function siteActions(site: WebsiteWithEntitlements): DropdownMenuItem[][] {
     [{ label: t('control.websites.deregister'), icon: 'i-ph-trash', color: 'error', onSelect: () => { void deregister(site) } }],
   ]
 }
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const appUrlPlaceholder = 'http://localhost:3003'
 </script>
 
 <template>
@@ -495,7 +500,7 @@ function siteActions(site: WebsiteWithEntitlements): DropdownMenuItem[][] {
             <UFormField :label="t('control.websites.fieldSlug')"><UInput v-model="form.slug" class="w-full" placeholder="photos" /></UFormField>
             <UFormField :label="t('control.websites.fieldProjectId')" :hint="t('control.websites.fieldProjectIdHint')"><UInput v-model="form.projectId" class="w-full" placeholder="photos-qgry" /></UFormField>
             <UFormField :label="t('control.websites.fieldEndpoint')"><UInput v-model="form.endpoint" class="w-full" /></UFormField>
-            <UFormField :label="t('control.websites.fieldAppUrl')"><UInput v-model="form.appUrl" class="w-full" placeholder="http://localhost:3003" /></UFormField>
+            <UFormField :label="t('control.websites.fieldAppUrl')"><UInput v-model="form.appUrl" class="w-full" :placeholder="appUrlPlaceholder" /></UFormField>
           </div>
         </template>
         <template #footer>

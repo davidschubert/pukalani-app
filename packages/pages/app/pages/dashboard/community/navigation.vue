@@ -446,6 +446,11 @@ async function resetAll() {
   rows.value = []
   await save()
 }
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const urlPlaceholder = 'https://'
 </script>
 
 <template>
@@ -625,7 +630,7 @@ async function resetAll() {
             v-else
             v-model="newUrl"
             type="url"
-            placeholder="https://"
+            :placeholder="urlPlaceholder"
             :aria-label="t('pages.navigation.link.urlAria')"
             class="w-full"
           />
