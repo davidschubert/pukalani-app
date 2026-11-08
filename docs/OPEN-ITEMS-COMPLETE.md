@@ -134,9 +134,12 @@ dort stand nur EIN Eintrag (AI-Runner, 2026-08-19).
   zuerst; in Chrome `/de/changelog` (`lang=de-DE`) und `/changelog`
   (`lang=en-US`) je 16 Überschriften in der richtigen Sprache, Markdown
   gerendert. Text: [CHANGELOG-CL1-FREIGABE.md](archiv/CHANGELOG-CL1-FREIGABE.md).
-- Nicht angefasst: der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-
-  Changelog) und das Datum, das auch auf `/de` englisch formatiert ist
-  („Oct 27, 2026") — beides als Beobachtung, nicht als Auftrag.
+- Nachgezogen 2026-11-08 (Davids Ja): das Datum stand auch auf `/de`
+  englisch („Oct 27, 2026") — `UChangelogVersion` formatiert mit der Sprache
+  von Nuxt UI, die keine App setzt; eigener `#date`-Slot (034f0868, live).
+  Der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-Changelog, Row
+  `6a85680f0005d12698a1`) ist auf Prod unveröffentlicht, nicht gelöscht —
+  öffentlich seitdem 15 Einträge.
 
 **Gelernt:** Ein fertiger Text in `plans/` ist nach drei Monaten kein fertiger
 Text mehr — fünf seiner Aussagen stimmten nicht mehr. Die Kundenhilfe ist der
