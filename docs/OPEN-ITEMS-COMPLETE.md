@@ -30,6 +30,53 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RT1 — Geteilter Realtime-Socket verband sich lokal jede Sekunde neu ✅ 2026-11-08
+
+**Was:** Im eingeloggten Tab (comments, localhost:3001, Demo-Admin) antwortete
+Appwrite dem geteilten SDK-Socket mit `403 JWT and cookie used in the same
+request` und schloss ihn — das Web-SDK verband sich sofort neu. Nebenbei beim
+Nuxt-UI-Locale-Paket (UL1) aufgefallen.
+
+**Ursache:** Seit Appwrite 2.7 prüft auch der Realtime-Server „gültige
+Cookie-Session UND JWT ⇒ 403 `user_jwt_and_cookie_set`"
+(`app/init/realtime/connection.php` im Container `appwrite-realtime`). Unser
+Session-Cookie ist HOST-ONLY (`setSessionCookie`, kein `Domain`), und Cookies
+kennen keine Ports: `a_session_reddit-comments` von `localhost:3001` geht beim
+Handshake an `localhost:80` mit — zusammen mit dem `&jwt=` aus der URL. Das
+SDK nullt seinen Reconnect-Zähler bei jedem `open`, daher kein Backoff.
+
+**Prod ist NICHT betroffen** (live gemessen aus Davids Chrome auf
+`https://account.pukalani.app`, angemeldet): alle Sites zeigen auf
+`https://api.pukalani.app/v1` (öffentliche Runtime-Config von comments, demo,
+my, admin, account, www, pukalani.studio, branding.supply abgefragt), das
+host-only Cookie erreicht diesen Host nicht. Der JWT-Handshake meldet
+`connected` MIT Nutzer und bleibt offen; derselbe Handshake nur mit Cookie
+meldet `connected` mit `user: null`.
+
+**Fix (core, `34522796`):** Appwrites Ablehnung IST der Beweis, dass das
+Cookie den Socket erreicht und gültig ist. `realtime.onError` erkennt genau
+diesen Fall (`isJwtCookieConflict`, `core/shared/realtimeAuth.ts`: Code 403 +
+Wortlaut), räumt den JWT vom Realtime-Client, stoppt den 12-min-Refresh und
+holt für diesen Tab keinen neuen; der Reconnect des SDK läuft per Cookie.
+Bewusst KEINE Vorhersage per Host-Vergleich — eine falsche Vorhersage hieße
+„stiller Gast-Socket", schlimmer als der laute Loop. `hasRealtimeJwt()` meldet
+im Cookie-Modus „angemeldet" (Presence-Upsert bleibt möglich).
+
+**Beweis** (Playwright gegen Worktree-Dev-Server, angemeldet, 60-s-Fenster,
+Admin-Client legt währenddessen einen Kommentar an):
+vorher **167 Sockets, alle 403, Kommentar-Event kam nicht an** — nachher pro
+Seitenladung EIN abgewiesener JWT-Socket, direkt danach Cookie-Socket als der
+Nutzer verbunden, **0 neue Sockets im Fenster, 0 Fehler-Frames, Event kam an**.
+Unit: `packages/core/tests/realtimeAuth.test.ts` (Wortlaut aus Appwrites
+`errors.php` + Gegenproben anderer 403 + Verdrahtung an den drei Stellen).
+
+**Gelernt:** Cookies kennen keine Ports — „lokal" ist für Cookies EIN Host,
+App und Appwrite teilen sich lokal das Cookie-Glas, in Prod nicht. Ein Fehler,
+der nur lokal auftritt, kann trotzdem echt sein (er verdeckte hier, dass lokal
+seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
+der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
+(`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
+
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
 
 **Was.** MON1 (2026-10-28) baute den Wächter und den Alarm-Job; offen waren

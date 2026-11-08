@@ -28,7 +28,11 @@ paths:
   Config-Flags multiplexen über denselben Socket (Channel.tablesdb().table()
   .row(), optional server-seitige queries; where-Filter bleibt Sicherheitsnetz).
   JWT via GET /api/auth/realtime-token (15 min, Client refresht; Cookie-Client
-  NIE mit JWT mischen → Appwrite-403). AUSNAHME: useRealtimeAccount bleibt
+  NIE mit JWT mischen → Appwrite-403). Dasselbe 403 trifft seit Appwrite 2.7
+  den SOCKET, sobald das host-only Session-Cookie den Realtime-Host selbst
+  erreicht (lokal: `localhost` teilt Cookies über alle Ports) — dann schaltet
+  der Tab auf Cookie-Auth um (RT1, `core/shared/realtimeAuth.ts`); in Prod
+  (`api.pukalani.app` ≠ App-Host) bleibt es beim JWT. AUSNAHME: useRealtimeAccount bleibt
   bewusst cookie-nativer WS (Instant-Session-Revoke hängt am Cookie-Close) —
   NICHT konsolidieren. Realtime braucht einen gesunden appwrite-realtime-
   Container (Swoole-Crash → `docker compose up -d --no-deps appwrite-realtime`).
