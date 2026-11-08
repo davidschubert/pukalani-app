@@ -101,7 +101,7 @@ Mailer gehört und nicht dem Newsletter: reine Regeln in
 `packages/core/shared/mailBudget.ts` (`readResendDailyRemaining`,
 `decideMailBatch`, Rücklage 20), der Netzzugriff in
 `packages/core/server/utils/mailBudget.ts` (`GET /usage`, neue Env
-`NUXT_RESEND_API_KEY`, nur-lesend — verschickt wird weiter über SMTP). Der
+`NUXT_RESEND_API_KEY` — verschickt wird weiter über SMTP). Der
 Insights-Versand fragt sie VOR dem ersten Schreibvorgang
 (`newsletter.post.ts`): angehalten heißt dann **keine Sende-Zeile**, der
 Beitrag bleibt unberührt, und die Redaktion drückt morgen zum ersten Mal.
@@ -145,6 +145,39 @@ core-Helfer zur Laufzeit überhaupt sieht. Das zeigt erst der generierte
 Nitro-Import im Dev-Bündel (`.nuxt/types/nitro-imports.d.ts` +
 `.nuxt/dev/index.mjs`) — dieselbe Lücke, die PM1 für Manifest-Plugins
 beschreibt.
+
+**Nachtrag 2026-11-08 — der Schlüssel steht, und er ist nicht nur-lesend.**
+Auf Davids „mach du das alles" selbst eingerichtet: Schlüssel
+`pukalani-budget-read` angelegt, in die `.env` von `branding.supply` über
+`stdin` (nicht über die Shell-Historie) mit Backup
+`.env.bak-2026-11-08-budget`, `pm2 startOrReload` mit der Ecosystem-Datei,
+Pflicht-Eintrag im Wächter DANACH. Nur auf **branding** — nur diese App hat
+den `insights`-Layer und damit einen Newsletter; der Block in
+`apps/platform/.env.example` war zu viel versprochen und ist entfernt.
+Beweis: `pm2 jlist` zeigt den Wert nur bei `brandingsupply` (36 Zeichen,
+Präfix passend), bei den fünf anderen Prozessen FEHLT er (eingebaute
+Gegenprobe), und `verify-site-env.mjs` ist für alle sechs Sites grün, wobei
+nur branding eine Variable mehr zählt (18 → 19). Der Beweis IN DER
+OBERFLÄCHE bleibt bis zur Öffnung des Riegels unmöglich: die Versand-Route
+antwortet bei geschlossenem `pukalani.insights.newsletter.enabled` 404.
+
+**Gelernt:** Zwei Behauptungen dieses Pakets waren falsch, und beide hätte
+nur ein Versuch widerlegt. (1) **„Nur-lesender Schlüssel" gibt es bei Resend
+nicht.** Es existieren genau zwei Stufen; ein `sending_access`-Schlüssel
+antwortet auf `GET /usage` mit 401 `restricted_api_key` („restricted to only
+send emails"). Die Bremse braucht `full_access` — der Code-Kommentar, das
+`.env.example` und das Runbook versprachen drei Dateien lang etwas, was das
+Produkt nicht anbietet. Ein eigener Schlüssel bleibt trotzdem richtig: nur so
+lässt sich der SENDE-Schlüssel später verengen, ohne die Bremse mitzureißen —
+und dass `NUXT_SMTP_PASS` heute `full_access` ist (er darf `GET /domains` und
+`GET /api-keys`), stand genau deshalb danach als neuer offener Punkt in
+OPEN-ITEMS. (2) **`/proc/<pid>/environ` beweist bei pm2 nichts.** Im
+Cluster-Modus setzt pm2 die App-Env erst nach dem Start in `process.env`; im
+OS-Environ stehen 11 Variablen und keine einzige `NUXT_*`. Die erste Messung
+sah deshalb wie ein Fehlschlag aus — bis auffiel, dass dort auch das längst
+funktionierende Webhook-Secret „fehlte". Gefragt wird pm2 selbst
+(`pm2 jlist` → `pm2_env`), Rezept im Runbook § 5.3. Ein Beweis, dessen
+Negativ-Fall man nicht kennt, ist kein Beweis, sondern eine Münze.
 
 ### RS1 b — Nachtrag: der Klick-Beweis ✅ 2026-11-08
 

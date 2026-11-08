@@ -100,7 +100,7 @@ Resend → Webhook → **Rotate secret**, dann § 2 ab „ploi → Environment".
 zum Reload antwortet die Route `401`; Resend wiederholt die verpassten
 Zustellungen selbst (Svix-Wiederholungen über ~1 Tag).
 
-## 5 · Tagesbudget: der nur-lesende Schlüssel (RS1 a)
+## 5 · Tagesbudget: der Resend-Schlüssel der Bremse (RS1 a) — ERLEDIGT 2026-11-08
 
 Gehört nicht zum Webhook, aber in dieselbe Klick-Runde: derselbe Resend-Account,
 dieselbe Server-`.env`.
@@ -115,32 +115,92 @@ Empfängern je Ausgabe.
 
 **Ohne diesen Schlüssel geht keine Ausgabe raus** (`budget_unknown`, mit
 Begründung im Kopf von `packages/core/shared/mailBudget.ts`): eine Bremse, die
-ohne Schlüssel still durchlässt, wäre keine Bremse. Solange der
-Newsletter-Riegel `pukalani.insights.newsletter.enabled` zu ist, fehlt dadurch
-nichts.
+ohne Schlüssel still durchlässt, wäre keine Bremse.
 
-**Klickliste (David).**
+### 5.1 Stand
 
-1. [resend.com/api-keys](https://resend.com/api-keys) → **Create API Key**,
-   Name `pukalani-usage-read`, Permission **Sending access** ist NICHT nötig —
-   `Full access` vermeiden, wenn die Oberfläche eine nur-lesende Wahl anbietet.
-   Der Schlüssel wird nur für `GET /usage` benutzt, nie zum Versenden
-   (verschickt wird weiter über SMTP).
-2. In der Server-`.env` der Site setzen und neu laden — nur über `stdin`, damit
-   der Schlüssel nicht in der Shell-Historie landet:
+| | |
+|---|---|
+| Schlüssel | `pukalani-budget-read`, Resend-Id `0ba2e456-17fc-4e84-90c7-79fd12ed6a97` |
+| Recht | `full_access` — **nur-lesend gibt es bei Resend nicht**, s. 5.2 |
+| Gesetzt auf | **nur `branding.supply`** (`NUXT_RESEND_API_KEY`), Backup der alten Datei: `.env.bak-2026-11-08-budget` |
+| Wirksam seit | `pm2 startOrReload .../ops/ecosystem-branding.config.cjs --update-env` am 2026-11-08 |
+| Wächter | `scripts/ops/verify-site-env.mjs` führt ihn seit 2026-11-08 als Pflicht — **nur im branding-Block** |
 
-```bash
-ssh ploi@<host> 'cat >> /home/ploi/<site>/.env' <<< 'NUXT_RESEND_API_KEY=re_…'
+**Nur branding**, weil nur `apps/branding` den `insights`-Layer hat und damit
+überhaupt einen Newsletter. `platform`, `control` und `portfolio` fragen die
+Bremse nie; eine Pflicht-Variable, die eine Site nicht braucht, erzieht zum
+Weglesen. Kommt der Newsletter je in eine zweite App, gehört der Schlüssel dort
+hin **und** in deren Block im Wächter.
+
+### 5.2 Warum `full_access` — und was daraus folgt
+
+Resend kennt genau **zwei** Rechte-Stufen. Gemessen am 2026-11-08, nicht
+vermutet:
+
+```
+sending_access  → GET /usage  401 restricted_api_key
+                  "This API key is restricted to only send emails"
+full_access     → GET /usage  200
 ```
 
-3. `pm2 reload <site>` (die `.env` wird beim Start gelesen — ohne Reload wirkt
-   sie nicht, s. Memory „Server-.env-Reload-Zeitbombe").
-4. Beweis: im Dashboard unter einem freigegebenen Beitrag auf „Newsletter
-   verschicken" — bei fehlendem Schlüssel erscheint der Satz „Wir können das
-   Mail-Budget gerade nicht abfragen", danach nicht mehr.
+Die Bremse braucht also `full_access`. Die alte Fassung dieses Abschnitts
+versprach einen „nur-lesenden Schlüssel" — das war falsch und ist
+richtiggestellt (auch in `packages/core/nuxt.config.ts` und
+`packages/core/shared/mailBudget.ts`).
 
-**Erst danach** gehört `NUXT_RESEND_API_KEY` in die Pflichtliste von
-`scripts/ops/verify-site-env.mjs` — dieselbe Lehre wie beim Webhook-Secret
-(§ 2, letzter Schritt): eine Pflicht-Variable, die noch nicht gesetzt ist,
-öffnet im täglichen `production-watch.yml` jeden Tag einen bestellten
-`produktions-alarm`.
+Daraus folgt der Grund für einen **eigenen** Schlüssel statt des SMTP-Werts:
+der Sende-Schlüssel kann später auf `sending_access` verengt werden, ohne die
+Bremse mitzureißen. Dass heute auch `NUXT_SMTP_PASS` ein `full_access`-Schlüssel
+ist (geprüft: er darf `GET /domains` und `GET /api-keys`), ist ein **offener
+Punkt** in `docs/OPEN-ITEMS.md`, keine Rechtfertigung.
+
+### 5.3 Rezept (für den nächsten Schlüssel oder eine Rotation)
+
+1. Resend → **Create API Key**, `full_access` (ein `sending_access`-Schlüssel
+   kann das Budget nicht lesen, s. 5.2).
+2. In die Server-`.env` — nur über `stdin`, damit der Schlüssel nicht in der
+   Shell-Historie landet, und mit Backup:
+
+```bash
+{ printf 'NUXT_RESEND_API_KEY='; cat /pfad/zum/schluessel.txt; printf '\n'; } \
+  | ssh ploi@<host> 'cd /home/ploi/<site> && cp .env .env.bak-$(date +%F)-budget && cat >> .env'
+```
+
+3. **Wirksam wird er erst mit dem richtigen Reload.** Die `.env` wird von der
+   pm2-Ecosystem-Datei beim (Re-)Load geparst — ein nacktes
+   `pm2 reload <prozess> --update-env` liest sie daher **nicht** neu:
+
+```bash
+ssh ploi@<host> 'pm2 startOrReload /home/ploi/<site>/ops/ecosystem-<app>.config.cjs --update-env && pm2 save'
+```
+
+4. **Beweis — und die Falle dabei.** `tr '\0' '\n' < /proc/<pid>/environ`
+   beweist **nichts**: pm2 setzt die App-Env im Cluster-Modus erst NACH dem
+   Start in `process.env`, im OS-Environ stehen nur 11 Variablen und **keine**
+   `NUXT_*` (am 2026-11-08 erst als Fehlschlag gelesen — auch das längst
+   gesetzte Webhook-Secret „fehlte" dort). Gefragt wird pm2 selbst, ohne den
+   Wert zu drucken:
+
+```bash
+ssh ploi@<host> 'pm2 jlist' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+  for (const a of JSON.parse(s)) {
+    const k = (a.pm2_env||{}).NUXT_RESEND_API_KEY
+    console.log(a.name.padEnd(24), k ? `gesetzt, ${k.length} Zeichen` : "FEHLT")
+  }})'
+```
+
+Die Gegenprobe ist eingebaut: die Prozesse der anderen Sites müssen `FEHLT`
+zeigen (sonst hat man ihn versehentlich überall gesetzt).
+
+5. Danach `node scripts/ops/verify-site-env.mjs` — alle sechs Sites grün, und
+   nur `branding` zählt eine Variable mehr.
+6. Der Beweis IN DER OBERFLÄCHE („Wir können das Mail-Budget gerade nicht
+   abfragen" verschwindet) ist erst möglich, wenn der Riegel
+   `pukalani.insights.newsletter.enabled` offen ist — solange er zu ist,
+   antwortet die Versand-Route ohnehin 404.
+
+**Pflicht-Variable immer ERST eintragen, wenn der Wert steht** — dieselbe
+Lehre wie beim Webhook-Secret (§ 2, letzter Schritt): der Wächter läuft täglich
+in `production-watch.yml`, und ein Eintrag vorher öffnet jeden Tag einen
+bestellten `produktions-alarm`.
