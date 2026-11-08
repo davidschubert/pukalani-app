@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   INSIGHTS_BRAND_SERVER_OWNED_FIELDS,
+  INSIGHTS_FORMATS,
   INSIGHTS_OPPORTUNITY_MAX,
   INSIGHTS_OPPORTUNITY_SIGNALS,
   INSIGHTS_OPPORTUNITY_SIGNALS_PLANNED,
+  INSIGHTS_QUESTION_HEADINGS_MIN,
   INSIGHTS_QUOTE_MAX,
   INSIGHTS_RANKING_PLACES,
   INSIGHTS_STATES,
@@ -14,12 +16,14 @@ import {
   insightsBrandEditSchema,
   insightsBrandSchema,
   insightsDuelSlug,
+  insightsEndsWithQuestion,
   insightsIsPublic,
   insightsOpportunity,
   insightsPopularity,
   insightsPostDeletable,
   insightsPostSchema,
   insightsPublicFassung,
+  insightsQuestionHeadings,
   insightsRankingSchema,
   insightsReadingMinutes,
   insightsReviewIssues,
@@ -56,6 +60,35 @@ const PRESS: InsightsSource = {
   license: '',
 }
 
+/** Ein Fliesstext, der die siebte Prüfregel hält (Frage-Kapitel + Schlussfrage). */
+const BODY_DE = [
+  'Ein Rebranding kostet zwischen zwei und sechs Monatsumsätzen.',
+  '',
+  '## Was steckt in der Summe?',
+  '',
+  'Ein Absatz.',
+  '',
+  '### Und was kostet die Agentur?',
+  '',
+  'Ein Absatz.',
+  '',
+  'Was war euch ein Rebranding wert?',
+].join('\n')
+
+const BODY_EN = [
+  'A rebrand costs between two and six months of revenue.',
+  '',
+  '## What is in that number?',
+  '',
+  'One paragraph.',
+  '',
+  '### And what does the agency cost?',
+  '',
+  'One paragraph.',
+  '',
+  'What was a rebrand worth to you?',
+].join('\n')
+
 function article(overrides: Partial<InsightsPost> = {}): unknown {
   return {
     format: 'article',
@@ -66,8 +99,11 @@ function article(overrides: Partial<InsightsPost> = {}): unknown {
     titleEn: 'What does a rebrand really cost?',
     dekDe: 'Mit Zahlen statt „kommt drauf an".',
     dekEn: 'With numbers instead of „it depends".',
-    bodyDe: 'Ein Absatz.',
-    bodyEn: 'One paragraph.',
+    // Der Fliesstext hält die siebte Prüfregel (BI2 K6): zwei Frage-
+    // Überschriften und eine Diskussionsfrage am Ende. Ohne das würde JEDE
+    // andere Regel-Prüfung hier zwei fremde Befunde mitschleppen.
+    bodyDe: BODY_DE,
+    bodyEn: BODY_EN,
     topics: ['rebranding'],
     sources: [OWN_DATA, PRESS],
     ...overrides,
@@ -266,6 +302,142 @@ describe('Prüfregeln vor der Redaktion', () => {
     // Kein `quoteGrounded` ⇒ keine Beleg-Meldung. Das ist die Lücke, die man
     // sieht; eine Prüfung, die ohne Quelltext „grün" sagt, wäre eine Lüge.
     expect(insightsReviewIssues(post)).toEqual([])
+  })
+})
+
+/**
+ * DIE SIEBTE PRÜFREGEL (BI2 K6, Plan §6) — die zwei Zusagen des SEO/GEO-
+ * Prompts, die sich wirklich rechnen lassen.
+ *
+ * Beide mit Gegenprobe, und zwar in BEIDE Richtungen: ein Text ohne Frage am
+ * Ende fällt durch, derselbe Text MIT Frage besteht. Und die Überschriften
+ * werden GEZÄHLT — eine Überschrift, die ein Fragezeichen nur in der Mitte
+ * trägt, ist keine Frage-Überschrift.
+ */
+describe('Siebte Prüfregel: Frage-Kapitel und Schlussfrage (BI2 K6)', () => {
+  const body = (lines: string[]) => lines.join('\n')
+
+  const GUT = body([
+    'Ein Rebranding kostet zwischen zwei und sechs Monatsumsätzen.',
+    '',
+    '## Was steckt in der Summe?',
+    '',
+    'Die Hälfte liegt in der Umsetzung.',
+    '',
+    '### Und was kostet die Agentur?',
+    '',
+    'Weniger, als die meisten denken.',
+    '',
+    'Was war euch ein Rebranding wert?',
+  ])
+
+  it('zählt nur Überschriften, die mit einem Fragezeichen ENDEN', () => {
+    expect(insightsQuestionHeadings(GUT)).toEqual([
+      'Was steckt in der Summe?',
+      'Und was kostet die Agentur?',
+    ])
+    // Fragezeichen in der MITTE: eine Überschrift, die eine Frage erwähnt,
+    // statt eine zu stellen — sie zählt nicht.
+    expect(insightsQuestionHeadings('## Was kostet es? Drei Zahlen\n\nText.')).toEqual([])
+    // Die oberste Ebene gibt es im Fliesstext nicht (den Titel trägt das Feld).
+    expect(insightsQuestionHeadings('# Was kostet es?\n\nText.')).toEqual([])
+    // Auszeichnung darf dahinterstehen.
+    expect(insightsQuestionHeadings('### **Was heißt das für eure Marke?**')).toEqual([
+      'Was heißt das für eure Marke?',
+    ])
+  })
+
+  it('liest die LETZTE Zeile — und eine Überschrift ist kein Absatz', () => {
+    expect(insightsEndsWithQuestion(GUT)).toBe(true)
+    expect(insightsEndsWithQuestion('Ein Absatz.\n\nUnd ihr?\n\n')).toBe(true)
+    expect(insightsEndsWithQuestion('**Und was meint ihr?**')).toBe(true)
+    // GEGENPROBE: kein Fragezeichen am Ende.
+    expect(insightsEndsWithQuestion('Ein Absatz.\n\nDas bleibt zu beobachten.')).toBe(false)
+    // GEGENPROBE: die Frage steht in der Mitte, hinten steht ein Hinweis —
+    // genau der Fall der Launch-Texte, die mit dem Methodik-Satz endeten.
+    expect(insightsEndsWithQuestion('Und ihr?\n\n**Methodik:** Siehe [Methodik](/brand-check/methodik).')).toBe(false)
+    // GEGENPROBE: ein Text, der mit einer Überschrift aufhört, kündigt einen
+    // Absatz an, den niemand geschrieben hat.
+    expect(insightsEndsWithQuestion('Ein Absatz.\n\n## Und ihr?')).toBe(false)
+  })
+
+  it('blockiert den Weg nach `review` — mit Stelle und Sprache', () => {
+    const post = insightsPostSchema.parse(article({ bodyDe: 'Ein Absatz. Das war es.', bodyEn: '' }))
+    const issues = insightsReviewIssues(post)
+    expect(issues).toEqual([
+      { code: 'text_without_closing_question', at: { kind: 'text', index: 4 }, detail: 'de' },
+      { code: 'text_without_question_headings', at: { kind: 'text', index: 4 }, detail: 'de' },
+    ])
+  })
+
+  it('GEGENPROBE: derselbe Beitrag mit Frage-Kapiteln und Schlussfrage besteht', () => {
+    const post = insightsPostSchema.parse(article({ bodyDe: GUT, bodyEn: '' }))
+    expect(insightsReviewIssues(post)).toEqual([])
+  })
+
+  it('EINE Frage-Überschrift ist zu wenig — der Deckel liegt bei zwei', () => {
+    const eine = body([
+      '## Was steckt in der Summe?',
+      '',
+      'Ein Absatz.',
+      '',
+      '## Die Einordnung',
+      '',
+      'Was war es euch wert?',
+    ])
+    expect(INSIGHTS_QUESTION_HEADINGS_MIN).toBe(2)
+    expect(insightsQuestionHeadings(eine)).toHaveLength(1)
+    const post = insightsPostSchema.parse(article({ bodyDe: eine, bodyEn: '' }))
+    expect(insightsReviewIssues(post).map(issue => issue.code)).toEqual(['text_without_question_headings'])
+  })
+
+  it('prüft eine LEERE zweite Fassung nicht — und behauptet es auch nicht', () => {
+    const nurDe = insightsPostSchema.parse(article({ bodyDe: GUT, bodyEn: '   ' }))
+    expect(insightsReviewIssues(nurDe)).toEqual([])
+    // GEGENPROBE: sobald die zweite Fassung Text trägt, gilt die Regel dort
+    // genauso — sonst verlöre der englische Leser die Frage still.
+    const beide = insightsPostSchema.parse(article({ bodyDe: GUT, bodyEn: 'One paragraph. That is all.' }))
+    expect(insightsReviewIssues(beide).map(issue => issue.detail)).toEqual(['en', 'en'])
+  })
+
+  /**
+   * DER RANKING-FALL aus dem Auftrag: seine Plätze stehen in den DATEN
+   * (`ranking.entries`), nicht im Text. Die Regel darf deshalb keine Kapitel
+   * über die Plätze verlangen — zwei Fragen aus dem FAQ-Block genügen, und
+   * genau so bestellt sie der Prompt (`SEO_GEO_RULES`, `###`-Überschriften).
+   */
+  it('gilt für alle vier Formate — ein Ranking hält sie mit seinem FAQ-Block', () => {
+    const rankingBody = body([
+      'Vier Marken, ein Prüfdatum: der stärkste Auftritt steht in der Liste.',
+      '',
+      '## Methodik',
+      '',
+      'Wie der Score entsteht, steht in der [Methodik](/brand-check/methodik).',
+      '',
+      '### Wie oft erscheint die Liste?',
+      '',
+      'Vier Mal im Jahr.',
+      '',
+      '### Warum fehlt meine Marke?',
+      '',
+      'Weil sie noch nicht geprüft ist.',
+      '',
+      'Welche Marke sollen wir für die nächste Ausgabe prüfen?',
+    ])
+    for (const format of INSIGHTS_FORMATS) {
+      const extras = format === 'duel'
+        ? { facts: [{ key: 'mark', labelDe: 'Zeichen', labelEn: 'Mark', left: 'Grat', right: 'Streifen', winner: 'tie', sourceIndex: 1 }] }
+        : format === 'ranking'
+          ? { ranking: { issue: 1, asOf: '2026-11-08', entries: [{ rank: 1, brandId: 'upcountry', reasonDe: 'Klar.', reasonEn: 'Clear.' }] } }
+          : {}
+      const post = insightsPostSchema.parse(article({
+        format,
+        bodyDe: format === 'ranking' ? rankingBody : GUT,
+        bodyEn: '',
+        ...extras,
+      }))
+      expect(insightsReviewIssues(post), format).toEqual([])
+    }
   })
 })
 
