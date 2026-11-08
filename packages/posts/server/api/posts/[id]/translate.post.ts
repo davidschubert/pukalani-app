@@ -9,6 +9,7 @@ import {
   ugcTranslationDayKey,
   type UgcTranslationEntry,
 } from '../../../../../core/shared/ugcTranslations'
+import { AI_JSON_QUOTE_RULE } from '../../../../../core/shared/aiJson'
 import { postTranslateSchema } from '../../../../schemas/post'
 import {
   MAX_POLL_OPTION_LENGTH,
@@ -114,6 +115,11 @@ function buildPrompt(post: CommunityPost, options: string[], locale: string): st
           '- Eine Wahlmöglichkeit ist eine Beschriftung: kurz, ohne Satzzeichen am Ende.',
         ]
       : []),
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

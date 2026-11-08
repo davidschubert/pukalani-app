@@ -120,7 +120,10 @@ describe('Mit Vorbildern', () => {
     expect(prompt).toMatch(/inspirationReason: ONLY with origin "both"/)
     expect(prompt).toMatch(/names the reference NUMBER/)
     // Der Kunde kennt sein Bild als „Vorbild 3": der deutsche Satz darf nicht „reference" sagen.
-    expect(prompt).toContain('call a reference „Vorbild N"')
+    // Typografisch geschlossen seit AI2 (2026-11-09): der Prompt BESTELLTE
+    // bis dahin ein „Vorbild N" mit geradem Schluss — also genau das
+    // Zeichen, das seine eigene JSON-Antwort beendet.
+    expect(prompt).toContain('call a reference „Vorbild N“')
     expect(prompt).toContain(`max ${BRAND_DNA_INSPIRATION_REASON_MAX} characters`)
     expect(prompt).toMatch(/"both" without it is downgraded to "foundation"/)
   })
@@ -171,7 +174,11 @@ describe('Die Sprache', () => {
     expect(brandDnaPrompt(input())).toContain('write reason and inspirationReason in German')
     const english = brandDnaPrompt(input({ contentLocale: 'en' }))
     expect(english).toContain('write reason and inspirationReason in English')
-    expect(english).not.toContain('in German')
+    // Geschärft am 2026-11-09 (AI2): geprüft wird die SPRACHZEILE, nicht das
+    // Wort „German“ irgendwo im Prompt — die Anführungszeichen-Regel nennt
+    // beide Schreibweisen mit Namen, und das ist richtig so (dieser Prompt
+    // bestellt je nach Inhaltssprache auch deutschen Text).
+    expect(english).not.toContain('reason and inspirationReason in German')
     // Das Vokabular folgt mit: die Etiketten stehen dann englisch daneben.
     expect(english).toContain('minimal (Minimal)')
     expect(english).toContain('era (Aesthetic era)')

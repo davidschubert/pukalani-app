@@ -7,6 +7,7 @@ import {
   serializeUgcTranslations,
   ugcTranslationDayKey,
 } from '../../../../../core/shared/ugcTranslations'
+import { AI_JSON_QUOTE_RULE } from '../../../../../core/shared/aiJson'
 import { courseTranslateSchema } from '../../../../schemas/course'
 import {
   LESSONS_TABLE,
@@ -75,8 +76,13 @@ function buildPrompt(lesson: LessonRow, locale: string): string {
     '- Die Markdown-Struktur bleibt EXAKT erhalten. Es gibt nur: fett, kursiv, `Code`, Links, Überschriften (## und ###), Listen, Zitate (>) und Codeblöcke (```).',
     '- Inhalte von Code-Spans und Codeblöcken bleiben UNVERÄNDERT stehen — in einer Lektion ist der Code das Lernmaterial, nicht die Beschriftung.',
     '- URLs und Erwähnungen (@name) bleiben UNVERÄNDERT stehen.',
-    '- Eigennamen, Produktnamen und Fachbegriffe, die auch in der Zielsprache unübersetzt benutzt werden, bleiben stehen (z. B. „Nuxt", „TypeScript").',
+    '- Eigennamen, Produktnamen und Fachbegriffe, die auch in der Zielsprache unübersetzt benutzt werden, bleiben stehen (z. B. „Nuxt“, „TypeScript“).',
     '- Ist der Text bereits vollständig in der Zielsprache, übersetze NICHT: Antworte stattdessen NUR mit {"same": true} und wiederhole den Text nicht.',
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

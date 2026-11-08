@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import type { ModerationAssist } from '../../../../../shared/types/moderation'
+import { AI_JSON_QUOTE_RULE } from '../../../../../../core/shared/aiJson'
 
 /**
  * KI-Moderations-Assist (advisory): Zweitmeinung zu einem gemeldeten Kommentar
@@ -26,6 +27,11 @@ function buildPrompt(comment: CommentRow, reports: { reason: string, note: strin
     '',
     `Meldungen (${reports.length}):`,
     ...reports.slice(0, 20).map(r => `- ${r.reason}${r.note ? `: ${r.note.slice(0, 300)}` : ''}`),
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

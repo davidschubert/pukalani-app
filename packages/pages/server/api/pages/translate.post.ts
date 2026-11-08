@@ -1,3 +1,4 @@
+import { AI_JSON_QUOTE_RULE } from '../../../../core/shared/aiJson'
 import { MAX_PAGE_TITLE, MAX_PAGE_TRANSLATE_BODY, pageTranslateSchema } from '../../../schemas/page'
 import type { PageTranslateResponse } from '../../../shared/types/page'
 
@@ -57,6 +58,11 @@ function buildPrompt(title: string, body: string, locale: string): string {
     '- Ist der Text schon in der Zielsprache, gib ihn unverändert zurück.',
     `- Der Titel bleibt kurz (höchstens ${MAX_PAGE_TITLE} Zeichen) und ohne Satzzeichen am Ende.`,
     '- Keine Erklärungen, keine Alternativen, keine Anmerkungen zur Übersetzung.',
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown-Zaun, keine Erklärung außenrum):',
     '{',

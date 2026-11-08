@@ -1,3 +1,4 @@
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { MARKET_AI_VIEW_FIELDS } from '../../shared/marketExtractRules'
 
 /**
@@ -23,7 +24,8 @@ import { MARKET_AI_VIEW_FIELDS } from '../../shared/marketExtractRules'
  * hiesse, ein wörtliches Zitat zu bestellen, für das es hier keinen Beleg gibt.
  */
 
-export const MARKET_AI_VIEW_PROMPT_VERSION = 'market-ai-1'
+/** `+1` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`. */
+export const MARKET_AI_VIEW_PROMPT_VERSION = 'market-ai-2'
 
 export const MARKET_AI_VIEW_MAX_TOKENS = 700
 
@@ -77,6 +79,11 @@ export function marketAiViewPrompt(input: MarketAiViewPromptInput): string {
     '2. If you are not sure that you know this specific brand, return every field with an empty value. Do not describe a similarly named company, and do not reason from the domain name alone.',
     '3. Describe. Never evaluate, never compare it to competitors.',
     '4. No people: no founder names, no e-mail addresses, no phone numbers.',
+    '',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
     '',
     'Return exactly this JSON and nothing else:',
     '{"fields":[{"fieldId":"pitch","value":"…"}]}',

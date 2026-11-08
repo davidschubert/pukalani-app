@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { AI_JSON_QUOTE_RULE } from '../../../core/shared/aiJson'
 import { TICKETS_TABLE, type TicketChecklistItem, type TicketRow } from '../../shared/types/ticket'
 
 /** Defensive Kopie des Client-Parsers — Server importiert nicht aus app/ */
@@ -100,6 +101,11 @@ function buildPrompt(ticket: TicketRow): string {
     'Beschreibung:',
     ticket.description.split(TRIAGE_MARKER)[0] || '(leer)',
     checklist.length ? `\nCheckliste:\n${checklist.map(i => `- ${i.text}`).join('\n')}` : '',
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

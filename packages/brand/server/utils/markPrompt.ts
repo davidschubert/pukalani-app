@@ -1,3 +1,4 @@
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { BRAND_MARK_BRIEF_FIELD_MAX } from '../../shared/brandDesignMark'
 
 /**
@@ -113,6 +114,11 @@ export function brandMarkBriefPrompt(input: BrandMarkBriefPromptInput): string {
     '- A field that is empty or that only restates the task makes the whole briefing unusable.',
     '',
     `LANGUAGE: write all four fields in ${language}.`,
+    '',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
     '',
     'ANSWER FORMAT (JSON only)',
     '{"character":"<text>","formLanguage":"<text>","noGos":"<text>","places":"<text>"}',

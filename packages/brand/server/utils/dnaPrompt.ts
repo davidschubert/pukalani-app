@@ -1,3 +1,4 @@
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { BRAND_DNA_DIMENSION_IDS } from '../../shared/brandDesignVocab'
 import {
   BRAND_DNA_INSPIRATION_REASON_MAX,
@@ -135,7 +136,7 @@ export function brandDnaPrompt(input: BrandDnaPromptInput): string {
         // Liste ist die interne Sprache des Prompts, der Satz gehört in die
         // Sprache des Kunden.
         + (language === 'German'
-          ? ' In the German text, call a reference „Vorbild N" (for example „wie in Vorbild 3, aber wärmer"), never "reference".'
+          ? ' In the German text, call a reference „Vorbild N“ (for example „wie in Vorbild 3, aber wärmer“), never “reference”.'
           : ''),
       ]
     : [
@@ -171,6 +172,11 @@ export function brandDnaPrompt(input: BrandDnaPromptInput): string {
     '',
     'DIMENSIONS (in this order)',
     BRAND_DNA_DIMENSION_IDS.join(', '),
+    '',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
     '',
     'ANSWER FORMAT (JSON only)',
     '{"dna":[{"dimension":"<dimension id>","value":"<value id>",'

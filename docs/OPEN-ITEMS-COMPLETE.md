@@ -250,6 +250,64 @@ der nur lokal auftritt, kann trotzdem echt sein (er verdeckte hier, dass lokal
 seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
 der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
 (`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
+### AI2 — die Anführungszeichen-Regel gilt jetzt für JEDEN JSON-Prompt ✅ 2026-11-09
+
+**Der Anlass.** Der BI4-Nachtrag fand elf Prompt-Beispiele im insights-Layer,
+die ein deutsches Anführungszeichen mit einem GERADEN `"` schlossen — also
+mit dem Zeichen, das in einem JSON-String den Wert beendet und eine bezahlte
+Antwort unlesbar macht (gemessen: 4 von 52 Entwurfs-Läufen). Die Regel dagegen
+lag im insights-Layer; `courses`, `posts`, `comments`, `events`, `pages`,
+`tickets`, `market` und `brand` rufen denselben Transport und hatten sie nicht.
+
+**Was gebaut wurde.**
+- `AI_JSON_QUOTE_RULE` (deutsch) und `AI_JSON_QUOTE_RULE_EN` (englisch) liegen
+  jetzt in `packages/core/shared/aiJson.ts` — neben der REPARATUR, weil beide
+  dieselbe Fehlerklasse betreffen: die eine VOR dem bezahlten Aufruf, die
+  andere danach. Zwei Sprachen, weil `brand` und `market` englische Prompts
+  schreiben und eine deutsche Zeile dort als Material gelesen würde; im
+  Englischen wiegt die Bitte schwerer, weil `"` dort das NORMALE
+  Anführungszeichen ist.
+- Die Regel steht in **17 Prompt-Stellen** von zehn Layern (insights holt sie
+  jetzt aus dem Core statt aus der eigenen Kopie).
+- **Zwei echte Funde dabei, die keine Kosmetik sind:** `dnaPrompt.ts` und
+  `readingPrompt.ts` BESTELLTEN die kaputte Form ausdrücklich
+  (`call a reference „Vorbild N"`) — der Prompt verlangte genau das
+  Zeichen, das seine eigene Antwort zerstört.
+- Fassungen hochgezählt, wo eine gespeichert wird: `check-judge-3`,
+  `check-judge-doc-2`, `review-4`, `market-ai-2`, `market-x-2`.
+- **Der Wächter** `scripts/check-prompt-quotes.mjs` (`pnpm
+  check:prompt-quotes`, siebter Schritt in `lint.yml`): er prüft die 42
+  Dateien, die einen KI-Transport rufen oder `*Prompt.ts` heissen, und nur
+  deren Zeichenketten-Zeilen. Zeilen, die nicht in einen Prompt gehen (ein
+  Ersatz-Text an die Oberfläche), tragen `prompt-quotes-ok` mit Grund — heute
+  genau eine.
+
+**Beweise.** `pnpm -r test` (3.199 Tests), `pnpm -r lint`, `pnpm lint:scripts`,
+`pnpm -r typecheck`, die sechs alten Wächter und der neue — alle Exit 0,
+einzeln gelesen. Gegenprobe zum Wächter: ein neu eingesetztes
+`„Rechnung"` in `ticketTriage.ts` färbt ihn rot, nach dem Rücknehmen
+wieder grün. Gegenprobe zur Regel-Quelle:
+`packages/core/tests/aiJsonQuoteRule.test.ts` nagelt beide Fassungen gegen das
+Muster selbst (das gerade Zeichen darf NUR in der Verbots-Zeile stehen — ein
+Verbot, das sein Zeichen nicht nennt, ist keines).
+
+**Erster Wächter-Entwurf war zu breit und wäre abgeschaltet worden:** er nahm
+jede Datei, in der irgendwo `Prompt(` stand, und meldete 47 deutsche
+INHALTS-Zeilen der Demo-Sitzungen (`brand/shared/sessionContent.ts`), die kein
+Modell je sieht. Die deutsche Haus-Typografie des Repos (`„…"` in
+Oberflächen-Texten und Locale-Dateien) bleibt unangetastet; der Wächter gilt
+NUR für Text, der zu einem Anbieter reist.
+
+**Gelernt:** Eine Regel gehört dorthin, wo der TRANSPORT liegt, nicht dorthin,
+wo sie zuerst gebraucht wurde — sonst hat sie genau ein Layer und neun andere
+rufen dieselbe API ohne sie. Und ein Wächter wird nach seiner FALSCH-Melderate
+beurteilt, nicht nach seiner Trefferrate: die erste Fassung fand alles Richtige
+und 47 Zeilen dazu, und ein Wächter, der zu viel meldet, wird abgeschaltet
+statt befolgt. Die Verengung (nur Dateien, die wirklich einen KI-Transport
+rufen) kostete drei Zeilen und machte aus 49 Meldungen drei echte.
+
+---
+
 ### BI4 — ein langer Entwurf warf den bezahlten Lauf weg ✅ 2026-11-08
 
 **Der Befund.** Mit `targetWords: 2000` meldete „Entwurf schreiben" `502 AI

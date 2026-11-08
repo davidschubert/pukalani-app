@@ -46,8 +46,9 @@ function options(overrides: Partial<BrandReviewPromptOptions> = {}): BrandReview
 }
 
 describe('Die Fassung', () => {
-  it('heisst review-3 (§7: „Änderungen versioniert" — Paket 7 bringt den Prüfblick)', () => {
-    expect(BRAND_REVIEW_PROMPT_VERSION).toBe('review-3')
+  it('heisst review-4 (§7: „Änderungen versioniert" — Paket 7 bringt den Prüfblick)', () => {
+    // `-4` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`.
+    expect(BRAND_REVIEW_PROMPT_VERSION).toBe('review-4')
   })
 })
 
