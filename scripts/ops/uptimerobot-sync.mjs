@@ -97,6 +97,23 @@ if (!apiKey) {
   console.error('UPTIMEROBOT_API_KEY fehlt (UptimeRobot → Integrations & API → Main API key).')
   process.exit(1)
 }
+// FORM VOR DEM SENDEN (MON2, 2026-11-08): bei der verdeckten Eingabe sieht man
+// nicht, dass etwas ankam — der Schlüssel wurde viermal hintereinander
+// eingefügt. Ein Main API key ist `u<Ziffern>-<Hex>`; alles andere geht gar
+// nicht erst raus.
+if (!/^[a-z]?\d+-[0-9a-f]+$/i.test(apiKey)) {
+  console.error(`UPTIMEROBOT_API_KEY hat nicht die Form eines Main API key (${apiKey.length} Zeichen) — mehrfach eingefügt? Nichts gesendet.`)
+  process.exit(1)
+}
+
+/**
+ * Den Schlüssel aus JEDER Ausgabe tilgen. UptimeRobot schickt einen
+ * ungültigen Schlüssel in der Fehlerantwort zurück (`passed_value`) — am
+ * 2026-11-08 stand er so im Terminal, weil diese Antwort roh ausgegeben wird.
+ */
+function ohneSchluessel(text) {
+  return String(text).split(apiKey).join('***')
+}
 
 /**
  * Ein v2-Aufruf: POST mit Formular-Körper, Antwort `{ stat: 'ok' | 'fail' }`.
@@ -114,10 +131,10 @@ async function call(method, fields = {}) {
   try {
     json = JSON.parse(text)
   } catch {
-    throw new Error(`${method}: keine JSON-Antwort (HTTP ${res.status}): ${text.slice(0, 200)}`)
+    throw new Error(`${method}: keine JSON-Antwort (HTTP ${res.status}): ${ohneSchluessel(text.slice(0, 200))}`)
   }
   if (json.stat !== 'ok') {
-    throw new Error(`${method}: ${JSON.stringify(json.error ?? json)}`)
+    throw new Error(`${method}: ${ohneSchluessel(JSON.stringify(json.error ?? json))}`)
   }
   return json
 }
@@ -131,7 +148,7 @@ async function schreibe(method, fields) {
   zeige(method, fields)
   if (!APPLY) return null
   const json = await call(method, fields)
-  console.log(`   ← ${JSON.stringify(json)}`)
+  console.log(`   ← ${ohneSchluessel(JSON.stringify(json))}`)
   return json
 }
 

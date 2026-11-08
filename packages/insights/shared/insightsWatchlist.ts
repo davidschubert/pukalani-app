@@ -95,6 +95,27 @@ export interface InsightsWatchItem {
    * Zahlen-Nachtrag fasst ihn nie an.
    */
   briefPostId: string
+  /**
+   * Wann der laufende oder letzte Brief-Lauf GEBUCHT wurde (ISO) — leer heisst
+   * „nie einer" (BI3).
+   *
+   * Sie ist der ANKER des Zustands und nicht seine Anzeige: ob daraus „läuft
+   * gerade" oder „ist nicht zurückgekommen" wird, rechnet
+   * `insightsBriefState()` gegen die Uhr. Eine Spalte `briefState` daneben
+   * wäre eine zweite Wahrheit über dieselbe Sache — dieselbe Begründung, aus
+   * der `insightsVideoUrl` gerechnet und nicht gespeichert wird.
+   */
+  briefRunAt: string
+  /**
+   * Warum der letzte Lauf nichts geliefert hat — leer heisst „kein Fehler"
+   * (BI3).
+   *
+   * Ein GESCHLOSSENER Satz von Gründen (`INSIGHTS_BRIEF_ERRORS`), damit die
+   * Oberfläche ihn übersetzen kann. Die Diagnose-Kennung des Anbieters
+   * (`502 AI video failed`) gehört ins LOG und nicht in eine Spalte, die ein
+   * Mensch liest.
+   */
+  briefError: InsightsBriefError | ''
 
   /** Ist das Video beim letzten Abruf noch da gewesen? */
   available: boolean
@@ -146,6 +167,138 @@ export const INSIGHTS_WATCH_CODES = {
   /** Kein API-Schlüssel. */
   notConfigured: 'not_configured',
 } as const
+
+// ── Der Lauf an der Zeile (BI3, 2026-11-08) ────────────────────────────────
+
+/**
+ * WIE LANGE EIN VIDEO-LAUF HÖCHSTENS DAUERT.
+ *
+ * Es ist die Zeitgrenze, die die Route dem Transport mitgibt
+ * (`packages/core/server/utils/aiVideo.ts`). Sie steht HIER und nicht als
+ * Zahl in der Route, weil zwei Regeln sie brauchen und sie sonst
+ * auseinanderlaufen: die Route begrenzt damit den Lauf, und
+ * `INSIGHTS_BRIEF_STALL_MS` leitet daraus ab, ab wann ein Lauf als
+ * verschollen gilt.
+ */
+export const INSIGHTS_BRIEF_TIMEOUT_MS = 180_000
+
+/**
+ * AB WANN EIN LAUF ALS VERSCHOLLEN GILT — und warum die Zahl GRÖSSER ist als
+ * die Zeitgrenze.
+ *
+ * Ein Lauf, der noch läuft, bricht spätestens nach `INSIGHTS_BRIEF_TIMEOUT_MS`
+ * von selbst ab und schreibt dann seinen Fehler an die Zeile. Verschollen ist
+ * also nur, wer DANACH noch nichts geschrieben hat — der Prozess ist
+ * neugestartet, der Container weg, der Deploy dazwischen.
+ *
+ * Die Minute Zuschlag ist kein Sicherheitsgefühl, sondern die Rechenzeit
+ * danach: parsen, Adresse suchen, Beitrag anlegen, Zeile nachtragen. Eine
+ * Grenze UNTERHALB der Zeitgrenze wäre der teuerste Fehler, den diese Datei
+ * machen kann — sie gäbe die Zeile frei, WÄHREND der erste Lauf noch bezahlt
+ * wird, und der zweite Klick zahlte ein zweites Mal. Genau das nagelt ein
+ * Test fest.
+ */
+export const INSIGHTS_BRIEF_STALL_MS = INSIGHTS_BRIEF_TIMEOUT_MS + 60_000
+
+/** Wie oft die Liste nachfragt, solange ein Lauf offen ist (BI3). */
+export const INSIGHTS_BRIEF_POLL_MS = 5_000
+
+/**
+ * DIE GRÜNDE, AUS DENEN EIN LAUF NICHTS GELIEFERT HAT — zwei, nicht fünf.
+ *
+ *  · `brief_failed` — der Lauf kam nicht mit einem brauchbaren Brief zurück.
+ *    Das deckt BEWUSST drei Fälle in einem: der Anbieter hat abgelehnt (nicht
+ *    jedes öffentliche Video ist für das Modell lesbar — gemessen drei von
+ *    zehn), die Zeitgrenze ist gerissen, oder die Antwort war kein JSON. Der
+ *    Transport wirft für alle drei dasselbe `502`; eine feinere Auskunft an
+ *    dieser Stelle wäre erfunden, und die Handlung des Menschen ist in allen
+ *    drei Fällen dieselbe.
+ *  · `slug_taken` — unsere eigene Ablehnung: zum Arbeitstitel ist keine freie
+ *    Adresse zu finden. Derselbe Schlüssel, den die Route vor BI3 als
+ *    `data.code` geworfen hat, und derselbe Satz in der Oberfläche.
+ */
+export const INSIGHTS_BRIEF_ERRORS = ['brief_failed', 'slug_taken'] as const
+export type InsightsBriefError = (typeof INSIGHTS_BRIEF_ERRORS)[number]
+
+/**
+ * EIN GRUND AUS DEM SATZ — oder keiner.
+ *
+ * Fail-soft auf LEER und nicht auf `brief_failed`: ein unbekannter Wert in
+ * der Spalte (Altstand, Hand angelegt) heisst „ich weiss es nicht", und
+ * daraus einen Fehlschlag zu machen wäre eine Behauptung über einen Lauf, den
+ * niemand gesehen hat.
+ */
+export function insightsBriefErrorOrNone(value: string | undefined): InsightsBriefError | '' {
+  const raw = (value ?? '').trim()
+  return (INSIGHTS_BRIEF_ERRORS as readonly string[]).includes(raw) ? raw as InsightsBriefError : ''
+}
+
+/** „Der Lauf zu diesem Video läuft noch." — die Zusage für den zweiten Klick. */
+export const INSIGHTS_BRIEF_RUNNING_CODE = 'brief_running'
+
+/**
+ * FÜNF ZUSTÄNDE, UND KEINER VON IHNEN WIRD GESPEICHERT.
+ *
+ * Er wird aus zwei Spalten und der Uhr GERECHNET — wörtlich dieselbe
+ * Entscheidung wie bei der Opportunity einer Zeile: eine gespeicherte Zahl
+ * wäre die Aussage von damals, und niemand sähe ihr das an. Hier kommt dazu,
+ * dass „läuft gerade" überhaupt erst durch den Zeitablauf zu „verschollen"
+ * wird; eine Spalte dafür müsste jemand zurückschreiben, der in diesem Fall
+ * gerade nicht mehr lebt.
+ */
+export const INSIGHTS_BRIEF_STATES = ['none', 'running', 'stalled', 'failed', 'done'] as const
+export type InsightsBriefState = (typeof INSIGHTS_BRIEF_STATES)[number]
+
+/**
+ * DIE REIHENFOLGE DER FRAGEN IST DIE REGEL.
+ *
+ *  1. STEHT EIN BEITRAG? Dann ist der Brief da — egal was sonst an der Zeile
+ *     steht. Das ist kein Schönheitsfehler, sondern die K5-Entscheidung „der
+ *     Verweis überlebt einen Fehlschlag": ein bezahlter Brief, der angelegt
+ *     ist, zählt mehr als ein Fehler-Vermerk aus einem früheren Versuch.
+ *  2. STEHT EIN FEHLER? Dann ist der Lauf gelaufen und schiefgegangen.
+ *  3. IST DIE BUCHUNG FRISCH? Dann läuft er noch.
+ *  4. IST SIE ALT? Dann ist er nicht zurückgekommen.
+ *
+ * Eine Buchung in der ZUKUNFT (schiefe Uhr, Hand angelegt) zählt als „läuft"
+ * — fail-safe in die teure Richtung: lieber einmal zu lange warten als ein
+ * zweites Mal zahlen.
+ */
+export function insightsBriefState(
+  item: Pick<InsightsWatchItem, 'briefPostId' | 'briefRunAt' | 'briefError'>,
+  nowMs: number,
+): InsightsBriefState {
+  if (item.briefPostId) return 'done'
+  if (item.briefError) return 'failed'
+  const startedMs = item.briefRunAt ? Date.parse(item.briefRunAt) : Number.NaN
+  if (Number.isNaN(startedMs)) return 'none'
+  return nowMs - startedMs < INSIGHTS_BRIEF_STALL_MS ? 'running' : 'stalled'
+}
+
+/**
+ * DARF EIN NEUER — BEZAHLTER — LAUF STARTEN?
+ *
+ * `failed` und `stalled` dürfen: beide heissen „es liegt nichts vor, das ein
+ * zweiter Lauf doppeln würde". `running` und `done` dürfen nicht, und das ist
+ * die eine Zusage, die diese Datei einhalten muss.
+ */
+export function insightsBriefStartable(state: InsightsBriefState): boolean {
+  return state === 'none' || state === 'stalled' || state === 'failed'
+}
+
+/**
+ * MUSS DIE LISTE WEITER NACHFRAGEN?
+ *
+ * Genau solange mindestens ein Lauf offen ist. `stalled` zählt NICHT mit —
+ * sonst fragte die Seite bis zum Neuladen weiter nach einer Antwort, die
+ * niemand mehr gibt.
+ */
+export function insightsBriefPending(
+  items: readonly Pick<InsightsWatchItem, 'briefPostId' | 'briefRunAt' | 'briefError'>[],
+  nowMs: number,
+): boolean {
+  return items.some(item => insightsBriefState(item, nowMs) === 'running')
+}
 
 // ── Eine YouTube-Adresse lesen ─────────────────────────────────────────────
 
@@ -301,6 +454,8 @@ export function insightsWatchFromRadar(
     topic: video.topic,
     addedAt,
     briefPostId: '',
+    briefRunAt: '',
+    briefError: '',
     available: true,
     refreshedAt: addedAt,
     title: video.title,

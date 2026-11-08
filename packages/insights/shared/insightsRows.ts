@@ -33,7 +33,12 @@ import { INSIGHTS_RADAR_TOPIC_FALLBACK } from './insightsRadar'
 import type { InsightsChannel } from './insightsChannel'
 import { INSIGHTS_CHANNEL_NOTE_MAX } from './insightsChannel'
 import type { InsightsVerdict, InsightsWatchItem } from './insightsWatchlist'
-import { INSIGHTS_VERDICTS, INSIGHTS_VERDICT_FALLBACK, INSIGHTS_WATCH_NOTE_MAX } from './insightsWatchlist'
+import {
+  INSIGHTS_VERDICTS,
+  INSIGHTS_VERDICT_FALLBACK,
+  INSIGHTS_WATCH_NOTE_MAX,
+  insightsBriefErrorOrNone,
+} from './insightsWatchlist'
 import type { InsightsCorrectionListItem } from './types/insightsApi'
 
 /**
@@ -774,6 +779,10 @@ export type InsightsWatchRow = Models.Row & {
   addedAt: string | null
   /** Der Beitrag, dessen Brief aus diesem Video entstand (K5). */
   briefPostId?: string
+  /** Wann der laufende oder letzte Brief-Lauf gebucht wurde (BI3). */
+  briefRunAt?: string | null
+  /** Warum der letzte Brief-Lauf nichts geliefert hat (BI3). */
+  briefError?: string
   available: boolean
   refreshedAt: string | null
   title: string
@@ -806,6 +815,11 @@ export function toInsightsWatchItem(row: InsightsWatchRow): InsightsWatchItem {
     topic: oneOf<InsightsTopicKey>(INSIGHTS_TOPIC_KEYS, row.topic, INSIGHTS_RADAR_TOPIC_FALLBACK),
     addedAt: row.addedAt ?? row.$createdAt,
     briefPostId: row.briefPostId ?? '',
+    // BEIDE fail-soft auf leer: eine Zeile aus der Zeit VOR insights-010 hat
+    // keinen Lauf gehabt, und ein geratener Lauf-Stempel zeigte an einer
+    // alten Zeile für vier Minuten „läuft gerade".
+    briefRunAt: row.briefRunAt ?? '',
+    briefError: insightsBriefErrorOrNone(row.briefError),
     available: row.available !== false,
     refreshedAt: row.refreshedAt ?? '',
     title: row.title ?? '',
@@ -828,6 +842,8 @@ export function fromInsightsWatchItem(item: InsightsWatchItem): InsightsWatchRow
     topic: item.topic,
     addedAt: item.addedAt || null,
     briefPostId: item.briefPostId,
+    briefRunAt: item.briefRunAt || null,
+    briefError: item.briefError,
     available: item.available,
     refreshedAt: item.refreshedAt || null,
     title: item.title.slice(0, 300),
