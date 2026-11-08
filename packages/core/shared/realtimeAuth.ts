@@ -53,3 +53,15 @@ export function isJwtCookieConflict(message: string | undefined, code: number | 
 export function isRealtimeAccessEnded(code: number | string | undefined): boolean {
   return Number(code) === 401
 }
+
+/**
+ * Ist unter den Ereignisnamen eines `account`-Events eine GELÖSCHTE Session
+ * (`users.<id>.sessions.<id>.delete`)? Dann prüft `realtime-account.client.ts`
+ * sofort, an der 30-s-Bremse vorbei (`accountVerifyAt`): ob es die EIGENE
+ * war, weiß der Client nicht, `/api/auth/me` beantwortet es. Ein Sturm ist
+ * hier ausgeschlossen — jede Löschung ist eine Handlung (Sessions-Seite,
+ * Admin, Abmelden), kein Reconnect-Effekt.
+ */
+export function isSessionDeleteEvent(events: readonly string[]): boolean {
+  return events.some(e => /^users\.[^.]+\.sessions\.[^.]+\.delete$/.test(e))
+}
