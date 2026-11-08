@@ -180,7 +180,7 @@ catalog:
   vue: ^3.5.42
   typescript: ^5.9.3
   vitest: ^4.1.11
-  vue-tsc: ^3.3.8
+  vue-tsc: ^3.3.11
   zod: ^4.5.4
   jiti: ^2.7.0
   nodemailer: ^10.3.1
