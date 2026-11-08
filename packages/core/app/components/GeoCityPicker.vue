@@ -161,6 +161,11 @@ watch(country, () => {
 })
 
 onScopeDispose(() => clearTimeout(timer))
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const geonamesUrl = 'https://www.geonames.org'
 </script>
 
 <template>
@@ -208,7 +213,7 @@ onScopeDispose(() => clearTimeout(timer))
          Vorschläge. Muster: die DB-IP-Zeile unter der Sitzungsliste. -->
     <i18n-t keypath="profile.locationAttribution" tag="p" scope="global" class="text-xs text-dimmed">
       <template #provider>
-        <ULink to="https://www.geonames.org" target="_blank" rel="noopener" class="underline">GeoNames</ULink>
+        <ULink :to="geonamesUrl" target="_blank" rel="noopener" class="underline">GeoNames</ULink>
       </template>
     </i18n-t>
   </div>

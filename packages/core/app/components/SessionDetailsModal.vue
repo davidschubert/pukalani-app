@@ -138,6 +138,11 @@ watch([mapEl, coordinates], ([el, center]) => {
 })
 
 onScopeDispose(destroyMap)
+
+// Im Script statt als Literal im Template: vue-tsc ab 3.3.9 liest jedes `//`
+// in den Props einer Komponente als Zeilenkommentar, auch in einem String, und
+// erzeugt ungültigen virtuellen Code (vuejs/language-tools#6240, Fix-PR #6241).
+const dbIpUrl = 'https://db-ip.com'
 </script>
 
 <template>
@@ -241,7 +246,7 @@ onScopeDispose(destroyMap)
           class="text-xs text-dimmed"
         >
           <template #provider>
-            <ULink to="https://db-ip.com" target="_blank" rel="noopener" class="underline">DB-IP</ULink>
+            <ULink :to="dbIpUrl" target="_blank" rel="noopener" class="underline">DB-IP</ULink>
           </template>
         </i18n-t>
       </div>
