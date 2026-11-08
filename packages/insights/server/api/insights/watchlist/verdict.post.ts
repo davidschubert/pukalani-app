@@ -81,6 +81,8 @@ export default defineEventHandler(async (event): Promise<InsightsWatchVerdictRes
         commentCount: 0,
         publishedAt: '',
         briefPostId: '',
+        briefRunAt: '',
+        briefError: '' as const,
       }
 
   await createInsightsWatchItem(event, item)

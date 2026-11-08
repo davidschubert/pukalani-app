@@ -313,6 +313,13 @@
       "briefConfirm": "The AI will now watch the video and write a brief from it. This takes up to three minutes and counts as one run. Continue?",
       "briefDone": "The brief is ready.",
       "briefDoneHint": "Read it and fix what is off — then the AI writes the draft.",
+      "briefStarted": "The run has started.",
+      "briefStartedHint": "The AI is watching the video now. This takes up to three minutes — the row here will say once the brief is ready. You can leave the page open.",
+      "briefRunning": "Running",
+      "briefRunningHint": "The AI is watching this video right now. Up to three minutes; the row changes by itself.",
+      "briefStalledHint": "This run never came back — the server was most likely restarted in between. Try again.",
+      "briefRetry": "Try again",
+      "briefFailed": "The run went wrong.",
       "note": "Note",
       "notePlaceholder": "Why are you keeping this?",
       "remove": "Remove",
@@ -333,7 +340,9 @@
         "ai_hourly_limit": "Enough runs for this hour. Try again later.",
         "ai_daily_limit": "Enough runs for today. Try again tomorrow.",
         "slug_taken": "No free address could be found for this working title. Rename the video or create the post by hand.",
-        "generic": "That did not work."
+        "generic": "That did not work.",
+        "brief_running": "A run for this video is already in flight. Wait until it is done — a second one would cost a second time.",
+        "brief_failed": "This run did not deliver a brief. Either the model cannot read this video (not every public video can be read), or it took too long. A second attempt costs another run."
       }
     },
     "channels": {

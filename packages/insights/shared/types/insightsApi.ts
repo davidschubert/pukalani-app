@@ -650,18 +650,23 @@ export interface InsightsWatchSavedResponse {
 
 /**
  * DER BRIEF AUS EINEM VIDEO (`POST /api/insights/watchlist/<videoId>/brief`,
- * BI2 K5).
+ * BI2 K5, seit BI3 mit Status `202`).
  *
- * Beides reist zurück, und beides braucht die Seite: der angelegte BEITRAG
- * (dorthin führt der nächste Klick) und das geänderte FUNDSTÜCK (seine Zeile
- * trägt jetzt `briefPostId`, der Knopf wird zum Link). Eine Antwort mit nur
- * einer der beiden Hälften hiesse, dass die Liste nach dem Lauf eine Lüge
- * zeigt, bis jemand neu lädt.
+ * ── WARUM HIER KEIN BEITRAG MEHR STEHT ──────────────────────────────────
+ * Bis BI3 trug die Antwort den angelegten Beitrag und seine Id. Sie konnte
+ * das, weil die Route wartete, bis der Lauf fertig war — und genau daran
+ * starb sie: nginx gibt nach 60 s auf, ein 51-Minuten-Video braucht 65
+ * (gemessen auf Prod, 2026-11-06). Seit BI3 ist der Beitrag zum Zeitpunkt
+ * der Antwort noch nicht angelegt, und eine Antwort, die ihn trotzdem
+ * behauptete, wäre die Lüge von BI3 in einem Typ.
+ *
+ * Was bleibt, ist die FUNDSTÜCK-ZEILE — und die ist jetzt die vollständige
+ * Auskunft: `briefRunAt` sagt, dass ein Lauf offen ist, `briefPostId` sagt
+ * später, wohin er geführt hat, `briefError`, warum nicht. Die Liste liest
+ * dieselbe Zeile, wenn sie nachfragt; es gibt also nur EINE Form, aus der
+ * die Oberfläche ihren Zustand rechnet.
  */
 export interface InsightsBriefResponse {
-  post: InsightsPost
-  /** Die Zeilen-Id des neuen Beitrags — die Adresse im Dashboard. */
-  id: string
   item: InsightsWatchItem
 }
 

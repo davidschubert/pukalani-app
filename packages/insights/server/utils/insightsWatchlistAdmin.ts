@@ -291,6 +291,8 @@ export async function fetchInsightsWatchVideo(
     videoId: video.id,
     topic: insightsRadarClassify(video.snippet.title, fallbackTopic).topic,
     briefPostId: '',
+    briefRunAt: '',
+    briefError: '',
     available: true,
     refreshedAt: new Date().toISOString(),
     title: video.snippet.title,

@@ -166,6 +166,136 @@ ginge damit aber ins Netz. Für einen Klick-Beweis den Host vorher auf
 `*.localhost` umschreiben (Resolver-Cache 30 s abwarten).
 
 ---
+### BI3 — „Brief aus Video" lief dem Proxy davon: 504 statt Erfolgsmeldung ✅ 2026-11-08
+
+**Befund** (beim Prod-Beweis des K5-Nachtrags am 2026-11-06 aufgefallen): der
+Brief aus einem 51-Minuten-Video brauchte 65,4 Sekunden, `proxy_read_timeout`
+der ploi-Site stand auf 60s. Nginx gab auf und schickte dem Browser einen
+`504 Gateway Time-out` — während Nitro in Ruhe weiterrechnete und den Entwurf
+KORREKT anlegte. Kein Geld verloren (Stufe 3 der Route führte den zweiten
+Klick auf den vorhandenen Beitrag), aber der Mensch sah einen Fehler und bekam
+den Link zu seinem fertigen Entwurf nie.
+
+**ZWEI SITZUNGEN, ZWEI WEGE — UND BEIDE BLEIBEN, WEIL SIE VERSCHIEDENE
+FRAGEN BEANTWORTEN.** Der Punkt wurde am selben Tag doppelt bearbeitet (das
+ist der Fall, für den die `main`-Regel in CLAUDE.md steht). Davids
+Entscheidung am 2026-11-08 nach dem Gegenlesen: beides behalten, weil der
+nginx-Block DREI Routen deckt und nur sein `brief`-Arm wirkungslos wird.
+
+#### Teil 1 — der nginx-Block (deckt `draft` und `translate` weiterhin)
+
+Ein eigener Regex-Block VOR `location /` — nginx prüft Regex vor dem Präfix,
+erster Treffer gewinnt — für genau die drei Routen, die ein Modell rufen
+(`brief`, `draft`, `translate`), mit `proxy_read_timeout 180s`. Der REST der
+Site bleibt bei 60s, damit ein hängendes Nitro weiterhin schnell auffällt.
+Wortlaut und Wiederherstellung: Runbook BRANDING-SUPPLY-SETUP.md § 7 — **die
+vhost-Konfiguration liegt NUR in ploi, nicht im Repo**, eine Neuanlage der
+Site verschluckt den Block sonst wortlos.
+
+**Warum 180s reichen — gemessen, nicht geraten.** Der Anbieter nimmt Videos
+nur bis etwa EINE STUNDE: 51 und 56 Minuten laufen durch, 66 und 85 Minuten
+antworten binnen einer halben Sekunde mit `502` und kosten nichts. Damit ist
+die längstmögliche Laufzeit gedeckelt; fünf echte Läufe lagen bei 18,7 / 58,9
+/ 59,1 / 59,2 / 65,4 Sekunden. 180s ist knapp das Dreifache des Ausreissers.
+
+**Beweis — und seine Grenze, ehrlich.** Verifiziert sind: der Block liegt auf
+der Platte vor `location /`; der Reload hat neue Worker gestartet (also wurde
+genau diese Datei geladen); die Regex trifft die drei echten URIs und sonst
+nichts; die Site antwortet weiter (`/api/health` 200, `/de` 200) und die
+Brief-Route reicht zu Nitro durch (401 ohne Konto, nicht 404). NICHT direkt
+beobachtet ist ein Lauf über 60 Sekunden, der jetzt 200 statt 504 liefert:
+danach landeten drei Läufe bei 59,1 / 59,2 / 58,9 Sekunden, und die 65,4 vom
+6.11. sind ein Ausreisser, der sich nicht auf Bestellung herstellen lässt —
+jeder Versuch kostet rund zehn Cent. Dafür fiel ein ZWEITER Live-Beweis des
+K5-Fixes ab: `briefRawChars 2265 → briefChars 1927`, sauberer Schluss.
+
+#### Teil 2 — der Brief-Lauf wandert hinter die Antwort
+
+Davids Richtung für diesen Teil: eine höhere Proxy-Grenze verschiebt sie nur,
+und die Antwortzeit dieser Route hängt an der Länge eines FREMDEN Videos. Die
+Route antwortet deshalb **sofort** und der Lauf rechnet dahinter weiter.
+
+**Die Teilung liegt genau am GELD.** Die Stufen 1–7 (bis einschliesslich
+Drossel) bleiben synchron und lehnen weiter mit `4xx` ab — der Mensch sieht
+es sofort. Dann stempelt die Route `briefRunAt` an die Fundstück-Zeile und
+antwortet **`202`**. Der Anbieter-Aufruf und alles danach läuft in
+`runInsightsBrief()` hinter der Antwort, mit eigenem `catch` (ein
+besitzerloses Promise nähme unter pm2 den Prozess mit).
+
+Migration `insights-010` bringt zwei Spalten an `insights_watchlist`:
+`briefRunAt` (DATETIME) und `briefError` (VARCHAR 32, geschlossener Satz:
+`brief_failed` · `slug_taken`). Der ZUSTAND wird daraus GERECHNET und nie
+gespeichert (`insightsBriefState`: none · running · stalled · failed · done);
+die Oberfläche zeigt vier Ansichten statt zwei und fragt alle 5 s nach,
+solange ein Lauf offen ist. i18n de/en, 30 neue Tests.
+
+**Warum kein Realtime:** die drei insights-Tabellen sind server-only
+(`permissions: []`, `rowSecurity: false`) — es gibt keine Session, die
+`insights_watchlist` abonnieren KÖNNTE. Realtime hiesse, eine
+Betreiber-Tabelle für Klient-Lesezugriff zu öffnen, für eine Seite, die EIN
+Mensch benutzt. Und es hätte die Spalten nicht erspart: Realtime trägt die
+ZEILE, also muss die Zeile „läuft" und „schiefgegangen" sagen können.
+
+**Die zwei Zusagen, die nicht brechen durften:** (1) Der zweite Klick zahlt
+nicht zweimal — vorher hielt die offene Verbindung ihn auf, jetzt hängt die
+Sperre an der Zeile (`brief_running`, SERVER-Uhr). (2) Ein Lauf, der im
+Hintergrund stirbt, blockiert die Zeile nicht für immer: nach
+`INSIGHTS_BRIEF_STALL_MS` (= Zeitgrenze des Laufs + 60 s, per Test echt
+grösser) gilt er als verschollen und ist wieder startbar. Die Drossel bucht
+unverändert beim START.
+
+**Beweise** (Wegwerf-Appwrite 2.7.1 auf Port 8099, Projekt `branding`):
+`insights_watchlist` 16 → 18 Spalten, beide `available`, zweiter Lauf
+„existiert bereits". Echter bezahlter Lauf: **202 nach 0,066 s**, fertig nach
+10,08 s, Entwurf mit 1.875-Zeichen-Brief. Drei Klicks währenddessen ⇒ dreimal
+**409 `brief_running`**. **Regressionsbeweis mit 90-Sekunden-Stub:** 202 nach
+0,079 s, Zeile bei t+61 s und t+71 s noch „läuft" (jenseits des alten
+60-s-Deckels, dort wo vorher der 504 kam), Beitrag bei t+91 s, Log
+`durationMs: 90094`. Fehlschlag (502) ⇒ `briefError: brief_failed` an der
+Zeile. Verwaist (5 min) ⇒ wieder startbar, 30 s alt ⇒ gesperrt. Klick-Beweis
+im Browser hinter dem Login: „Läuft" mit Spinner, dann von selbst „Zum
+Beitrag" plus Erfolgs-Toast MIT Link. Vier Checks und sechs Wächter grün.
+Details: [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) §15.
+
+**Nebenbefund mit eigenem Punkt (`BI4`):** derselbe nginx-Block deckt `draft`
+ab, und beim Testen zeigte sich dort ein Fehler DERSELBEN Bauart wie der
+K5-Nachtrag — `targetWords` erlaubt 2.000 Wörter, `maxTokens` steht fest auf
+8.000, die Antwort bricht mitten im JSON ab und der bezahlte Lauf ist weg.
+Einmal gemessen, Ursache plausibel, aber nicht bestätigt.
+
+**Gelernt:** **Ein Reverse Proxy ist eine zweite, unsichtbare Deadline.** Die
+Route hatte sechs Prüfstufen, eine Drossel, einen Kill-Switch und ein
+Kostenbudget — und scheiterte an einer Zahl, die in keiner Datei dieses
+Repositories steht. Wer eine Operation baut, die länger als eine Minute
+dauern DARF, prüft die Kette bis nach draussen: nginx
+(`proxy_read_timeout`, Default 60s), davor ggf. Cloudflare (100s im freien
+Tarif, nicht heraufsetzbar; branding.supply liegt grau, die Kette endet also
+bei nginx). **Und: eine Antwort, die auf einen fremden Dienst wartet, hat
+keine eigene Antwortzeit** — jede Zahl, die man dagegen setzt, ist geraten,
+solange die Dauer an fremder Eingabe hängt. Daraus vier Regeln:
+(a) **`reload`, nicht `restart`** — ein Reload mit kaputter Konfiguration wird
+von nginx VERWEIGERT, die alte bleibt in Betrieb; ein Restart hätte die Site
+mitgenommen (das Sicherheitsnetz, wenn kein passwortloses `sudo nginx -t` da
+ist). (b) **Ein Zustand mit Zeitablauf gehört nicht in eine Spalte** —
+„läuft" wird zu „verschollen", ohne dass jemand klickt, und eine Spalte
+dafür bräuchte genau den Schreiber, der dann tot ist; gerechnet aus einem
+Zeitstempel braucht derselbe Übergang niemanden. (c) **Wer eine Wartezeit
+wegnimmt, nimmt auch eine Sperre weg** — die offene Verbindung war unbemerkt
+der Schutz gegen den Doppelklick, und das fällt beim Umbau nicht auf, weil
+nichts bricht, es wird nur teurer. (d) **Ein Beweis muss die Grenze
+überschreiten, um die es geht** — der echte Lauf war nach 10 s fertig und
+hätte den Befund nie berührt; erst der kostenlose 90-Sekunden-Stub hat
+gezeigt, dass die Zeile jenseits des alten Deckels noch lebt.
+
+**Gelernt, zum Vorgang selbst:** zwei Sitzungen haben denselben Punkt am
+selben Tag angefasst. Die `main`-Regel („erst prüfen, dann anfangen") hat
+nicht getragen, weil die Nachbarsitzung ERST NACH meinem `git fetch` gepusht
+hat — eine Prüfung am Anfang reicht bei einem Punkt, der Stunden dauert,
+nicht. Gerettet hat es die zweite Prüfung VOR dem Merge; der eigene Commit
+lag da fertig und grün und wurde NICHT einfach gemergt, sondern David
+vorgelegt.
+
+---
 
 ### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
 
@@ -416,64 +546,6 @@ Missbrauch; das tut die Menge (Blick 2). Erst gegen den echten Vorfall messen,
 dann den Zweck eines Wächters hinschreiben. Nebenbei: der Resend-Schlüssel,
 der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
 (`GET /emails` ⇒ 200) — ein reiner Sende-Schlüssel wäre enger.
-
----
-
-### BI3 — „Brief aus Video" lief dem Proxy davon: 504 statt Erfolgsmeldung ✅ 2026-11-08
-
-**Befund** (beim Prod-Beweis des K5-Nachtrags am 2026-11-06 aufgefallen): der
-Brief aus einem 51-Minuten-Video brauchte 65,4 Sekunden, `proxy_read_timeout`
-der ploi-Site stand auf 60s. Nginx gab auf und schickte dem Browser einen
-`504 Gateway Time-out` — während Nitro in Ruhe weiterrechnete und den Entwurf
-KORREKT anlegte. Kein Geld verloren (Stufe 3 der Route führt den zweiten Klick
-auf den vorhandenen Beitrag), aber der Mensch sah einen Fehler und bekam den
-Link zu seinem fertigen Entwurf nie.
-
-**Abhilfe.** Ein eigener Regex-Block VOR `location /` — nginx prüft Regex vor
-dem Präfix, erster Treffer gewinnt — für genau die drei Routen, die ein Modell
-rufen (`brief`, `draft`, `translate`), mit `proxy_read_timeout 180s`. Der REST
-der Site bleibt bei 60s, damit ein hängendes Nitro weiterhin schnell auffällt.
-Wortlaut und Wiederherstellung: Runbook BRANDING-SUPPLY-SETUP.md § 7 — **die
-vhost-Konfiguration liegt NUR in ploi, nicht im Repo**, eine Neuanlage der Site
-verschluckt den Block sonst wortlos.
-
-**Warum 180s reichen — gemessen, nicht geraten.** Der Anbieter nimmt Videos nur
-bis etwa EINE STUNDE: 51 und 56 Minuten laufen durch, 66 und 85 Minuten
-antworten binnen einer halben Sekunde mit `502` und kosten nichts. Damit ist
-die längstmögliche Laufzeit gedeckelt; fünf echte Läufe lagen bei 18,7 / 58,9 /
-59,1 / 59,2 / 65,4 Sekunden. 180s ist knapp das Dreifache des Ausreissers.
-
-**Beweis — und seine Grenze, ehrlich.** Verifiziert sind: der Block liegt auf
-der Platte vor `location /`; der Reload hat neue Worker gestartet (also wurde
-genau diese Datei geladen); die Regex trifft die drei echten URIs und sonst
-nichts (gegen die tatsächlichen Pfade geprüft); die Site antwortet weiter
-(`/api/health` 200, `/de` 200) und die Brief-Route reicht zu Nitro durch
-(401 ohne Konto, nicht 404). NICHT direkt beobachtet ist ein Lauf über 60
-Sekunden, der jetzt 200 statt 504 liefert: nach der Änderung landeten drei
-Läufe bei 59,1 / 59,2 / 58,9 Sekunden, und die 65,4 vom 6.11. sind ein
-Ausreisser, der sich nicht auf Bestellung herstellen lässt — jeder Versuch
-kostet rund zehn Cent. Dafür fiel bei diesen Läufen ein ZWEITER Live-Beweis
-des K5-Fixes ab: `briefRawChars 2265 → briefChars 1927`, sauberer Schluss.
-
-**Gelernt:** **ein Reverse Proxy ist eine zweite, unsichtbare Deadline.** Die
-Route hatte sechs Prüfstufen, eine Drossel, einen Kill-Switch und ein
-Kostenbudget — und scheiterte an einer Zahl, die in keiner Datei dieses
-Repositories steht. Wer eine Operation baut, die länger als eine Minute
-dauern DARF, prüft die Kette bis nach draußen: nginx (`proxy_read_timeout`,
-Default 60s), davor ggf. Cloudflare (100s im freien Tarif, nicht
-heraufsetzbar). Hier liegt branding.supply grau, also endet die Kette bei
-nginx; auf einem proxied Host wäre die 180s-Zeile wirkungslos gewesen.
-
-**Zweitens gelernt:** **`reload`, nicht `restart`.** Ein Reload mit kaputter
-Konfiguration wird von nginx VERWEIGERT, die alte bleibt in Betrieb; ein
-Restart hätte die Site mitgenommen. Das ist das Sicherheitsnetz, wenn — wie
-hier — kein passwortloses `sudo nginx -t` zur Verfügung steht.
-
-**Drittens, als Nebenbefund mit eigenem Punkt (`BI4`):** derselbe Block deckt
-`draft` ab, und beim Testen zeigte sich dort ein Fehler DERSELBEN Bauart wie
-der K5-Nachtrag — `targetWords` erlaubt 2.000 Wörter, `maxTokens` steht fest
-auf 8.000, die Antwort bricht mitten im JSON ab und der bezahlte Lauf ist weg.
-Einmal gemessen, Ursache plausibel, aber nicht bestätigt.
 
 ---
 
