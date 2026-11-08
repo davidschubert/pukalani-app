@@ -30,6 +30,62 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RS1 h — Der SMTP-Schlüssel darf nur noch senden ✅ 2026-11-08
+
+**Was.** `NUXT_SMTP_PASS` war der `full_access`-Schlüssel „Pukalani App"
+(angelegt 2026-07-18, eine Minute vor der Domain) — er durfte Domains und
+API-Keys lesen. Ersetzt durch **`pukalani-smtp-send`**: `sending_access`,
+gebunden an die Domain `pukalani.app`. Davids Ja vor dem Tausch (inkl.
+Appwrite-Neubau und Löschen), ausgeführt per Resend-MCP + SSH, Werte nie
+gedruckt (nur Länge + `sha256`-Präfix). Rezept und Stand:
+[RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md) § 6.
+
+**Fünf Stellen statt vier.** Die Bestandsaufnahme vor dem Tausch fand den
+Schlüssel (überall derselbe Wert) an fünf Stellen, und eine davon war nicht
+die `.env`:
+
+| Stelle | Wo er wirklich gilt | Tausch |
+| --- | --- | --- |
+| branding · admin · portfolio | `.env` → `NUXT_SMTP_PASS` | Zeile ersetzt, Backup `.env.bak-2026-11-08-smtp`, `pm2 startOrReload … --update-env` |
+| platform (Pool, alle Kunden-Communities) | Ablage `instance_secrets/smtp` im Projekt `account` — die `.env` hat seit 2026-08-19 gar kein SMTP | nur `pass` im verschlüsselten Block getauscht, Kennung + übrige Felder unverändert, alter Umschlag als `instance_secrets-smtp.bak-2026-11-08-smtp.json`; wirkt ohne Reload |
+| Appwrite-Instanz | `_APP_SMTP_PASSWORD` in `~/appwrite/.env` | Backup, `docker compose up -d` (Trockenlauf: genau `appwrite` + `appwrite-worker`), API nach **11 s** wieder `200` |
+
+Appwrite-Projekte haben keine eigene SMTP (Feld in `_console_projects` bei
+allen vier ein leerer Umschlag).
+
+**Beweis.** Neuer Schlüssel allein vorab: SMTP `250`, `GET /domains` `401`.
+Danach je Stelle der wirksame Wert `a0d50da6c8…` (Sites über `pm2 jlist` bzw.
+die entschlüsselte Ablage, Appwrite über `printenv` in beiden Containern) und
+eine echte Mail an `delivered@resend.dev` mit genau den Einstellungen, die der
+Prozess auflöst (Ablage vor Env): platform, portfolio, admin, branding je
+`250`. Appwrite: Gast-OTP im Projekt `account` → `201`, Worker `v1-mails` ·
+`otp` · `success` 1,79 s, Probe-Nutzer `probe-mail-20261108` gelöscht (`204`,
+Gegenprobe `404`). Nach dem Löschen von „Pukalani App": der alte Wert aus dem
+Backup bekommt SMTP `535 Authentication credentials invalid` und von der API
+`400`; die vier Sites senden mit dem neuen weiter `250`. `pnpm ops:site-env`
+für alle sechs Sites grün. Unangetastet: `pukalani-budget-read`,
+`produktions-waechter`, `hawaiifromthesky`.
+
+**Nebenbefund, nicht behoben:** `pm2_env` des platform-Prozesses trägt noch
+`NUXT_SMTP_*` aus der Zeit vor dem Umzug in die Ablage — `--update-env` fügt
+hinzu, entfernt aber nichts. Seit dem Tausch zeigt dieser Rückfall („Ablage
+unlesbar") auf einen gelöschten Schlüssel; sauber erst mit `pm2 delete` +
+Start aus der Ecosystem-Datei. Ebenso ist `pm_cwd` dort veraltet
+(Site-Ordner statt Release). Beides harmlos, solange die Ablage lesbar ist.
+
+**Gelernt:** Die Aufgabe hieß „vier `.env` tauschen" — gestimmt hätte das
+für drei von fünf Stellen. Hätten wir nur die `.env` getauscht und danach den
+alten Schlüssel gelöscht, wäre die Pool-App (jede Kunden-Community) und die
+Appwrite-Instanz (OTP, Verifizierung) still ohne Mail gewesen, während die
+`.env`-Probe grün war. Bei einem Geheimnis mit zwei Quellen ist die erste
+Frage nicht „wo steht es?", sondern „welche Quelle gewinnt in DIESEM
+Prozess?" — gemessen wird der wirksame Wert (Hash aus `pm2 jlist`, aus der
+entschlüsselten Ablage, aus `printenv` im Container), nicht die Datei. Und
+den alten Schlüssel löscht man erst, wenn KEINE Stelle mehr seinen Hash
+zeigt; der Test danach („alter Wert ⇒ 535") beweist zugleich, dass der
+richtige Schlüssel gelöscht wurde, denn die Resend-API verrät nicht, welcher
+Name zu welchem Wert gehört.
+
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
 
 **Was.** MON1 (2026-10-28) baute den Wächter und den Alarm-Job; offen waren
