@@ -129,8 +129,8 @@ catalog:
   node-appwrite: ^29.0.0
   '@types/node': ^22.18.0
   nuxt: ^4.5.2
-  # 4.11.1 (Patch: Link-Prefetch unter Nuxt 4.5, Table-colspan, Form-method) — 4.11.0 bringt USplitter (Werkstatt-Zonen im brand-Layer).
-  '@nuxt/ui': ^4.11.1
+  # 4.12.0 (UL1-Nachtrag 2026-11-08): Paginierung + Toast-Region holen ihre aria-Labels aus dem Sprachpaket. Zog unhead doppelt — nach jedem Bump check:single-copy. 4.11.0 brachte USplitter (Werkstatt-Zonen im brand-Layer).
+  '@nuxt/ui': ^4.12.0
   # EXAKT gepinnt, ohne Caret — und das ist hier keine Vorsicht, sondern die
   # Bedingung. Tiptap liegt bereits als auto-installierter optionaler Peer von
   # @nuxt/ui im Baum (3.27.1, genau eine Kopie je Paket). Wir nehmen NUR
