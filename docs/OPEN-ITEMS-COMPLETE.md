@@ -56,9 +56,12 @@ gesetzt. Beweise je Kanal:
 - **SSL-Ablauf**: Entscheidung ohne Bezahltarif — der eigene TLS-Wächter
   meldet über Issue + Mail.
 
-**Nicht nachgewiesen** (bewusst nicht abgewartet): der iPhone-Push von
-UptimeRobot und die Ausfall-Meldung von healthchecks.io (Gegenprobe dauert
-Period + Grace = 2 h). UptimeRobot zeigt außerdem ein Banner „Your account is
+- **healthchecks.io-Meldeweg**: „Test!" an beiden Integrationen (17:34 UTC)
+  ⇒ Mail „DOWN | TEST" im Posteingang, Discord „Delivered".
+
+**Nicht nachgewiesen:** der iPhone-Push von UptimeRobot und ein ECHTES
+Ausbleiben des Heartbeats (dauert Period + Grace = 2 h; der Meldeweg selbst
+ist per Testmeldung belegt). UptimeRobot zeigt außerdem ein Banner „Your account is
 under fair use review" — das beantwortet David selbst.
 
 **Gelernt:** (1) Watch + Mail-Haken bei *Watching* liefern für ein Bot-Issue
