@@ -85,11 +85,36 @@ zweiten Tab, der angemeldete Tab stand nach **0,62 s** auf `/de/login` mit dem
 Toast „Deine Sitzung wurde beendet". Unit: `packages/core/tests/realtimeAuth.test.ts`
 (401-Erkennung + Verdrahtung).
 
+**Nachtrag 2026-11-09 — die 30-s-Bremse verwarf den Widerruf (PR #88, Fix
+`f49a3499`, live als Build `37fcfc02`):** Der 0,62-s-Beweis oben ist echt,
+traf aber nur den Fall „letzte Prüfung liegt > 30 s zurück". Zweite Prod-
+Messung mit `2767f819` (Davids Chrome, demo.pukalani.app beobachtet,
+comments.pukalani.app widerruft): beim Seitenladen lief eine Prüfung
+(`/api/auth/me` + `/api/community/role`), der Widerruf 7 s später fiel ins
+Fenster von `accountVerifyDue` und wurde VERWORFEN — Event und 401 kamen an,
+abgemeldet erst nach **33 s** durch ein späteres 401 eines Reconnects. Fix:
+ein `users.*.sessions.*.delete`-Ereignis (`isSessionDeleteEvent`,
+`core/shared/realtimeAuth.ts`) geht an der Bremse vorbei; alles andere wird
+ans Fensterende geschoben statt verworfen (`accountVerifyAt`,
+`core/shared/realtimeGate.ts`); 401-Stürme bleiben bei einer Prüfung je 30 s.
+E2E `apps/comments/e2e/session-revoke.spec.ts` (läuft in CI): Gegenprobe
+andere Session, eigener Widerruf, Widerruf 2 s nach einem anderen
+Session-Ereignis — lokal im JWT-Modus 0,9 s, mit dem alten Plugin rot.
+**Prod nachher** (Build `37fcfc02`): demo-Tab neu geladen, Prüfung beim Laden
+um 23:55:39,5, Widerruf um 42,13 (also IM Fenster), `/api/auth/me` 401 um
+42,54, Tab auf `/de/login` mit Toast nach **0,4 s**; Gegenprobe: der
+widerrufende comments-Tab blieb angemeldet (`/api/auth/me` 200).
+
 **Gelernt:** Eine Regel mit „NIE" braucht ihren Beweis im Ziel-Umfeld — die
 Konsolidierungs-Sperre war lokal richtig begründet und in Prod von Anfang an
 wirkungslos, weil das Cookie dort gar nicht ankam. Ein Sicherheits-Signal
 wird in Prod gemessen, nicht lokal. Und: ein Messpunkt im `window` stirbt mit
-dem Seitenwechsel, den er messen soll — `localStorage` überlebt ihn.
+dem Seitenwechsel, den er messen soll — `localStorage` überlebt ihn. Eine
+Bremse, die Signale VERWIRFT statt sie zu verschieben, ist für ein seltenes
+Sicherheits-Signal ein Loch: „der Widerruf kommt meist nach langer Ruhe" war
+eine Annahme, die erste Messung direkt nach dem Seitenladen widerlegte sie —
+Messungen gehören auch in den ungünstigsten Zeitpunkt, nicht nur in den
+typischen.
 
 ### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
 
