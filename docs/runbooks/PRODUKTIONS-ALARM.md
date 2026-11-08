@@ -105,7 +105,16 @@ PUKALANI_HEALTH_DRILL=1 node scripts/ops/verify-health.mjs
 
 Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
 
-- [ ] **GitHub-Benachrichtigungen reparieren** (die eigentliche Lücke):
+- [x] **GitHub-Benachrichtigungen reparieren** (die eigentliche Lücke).
+      ✅ 2026-11-08: Gmail-Filter lässt „Run failed"/„Produktions-Alarm" im
+      Posteingang, Repo auf *Watch*, Mail-Haken bei *Watching* gesetzt —
+      und trotzdem kam für die Probealarme #72 und #73 KEINE Mail (nur
+      github.com/notifications). Ein Bot-Issue erreicht den Besitzer nur
+      über „Watching", und das lieferte hier nicht. Deshalb WEIST der
+      Workflow das Issue seitdem dem Repo-Besitzer ZU (`--assignee`,
+      Commit `28ca655f`): Zuweisung zählt als „Participating" und kommt an
+      wie jeder Review-Ruf. Beweis: Probealarm Lauf 42431586394 ⇒ Issue
+      #75 ⇒ Mail im Posteingang um 00:51:39 UTC. Ursprüngliche Klickliste:
       (a) Gmail → Einstellungen → Filter: den Filter auf
       `notifications@github.com` so ändern, dass Mails mit Betreff
       „Run failed" oder „Produktions-Alarm" NICHT archiviert werden
@@ -114,7 +123,7 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       *Watching* und *Participating, @mentions and custom* → E-Mail AN
       (heute kommt keine Issue-Mail); Repo → Watch → *All Activity* oder
       *Custom → Issues*. Beweis: ein Probealarm (§ 2) erzeugt eine Mail
-      „[davidschubert/pukalani.app] 🔴 Produktions-Alarm (Probealarm) …
+      „[davidschubert/pukalani-app] 🔴 Produktions-Alarm (Probealarm) …
       (Issue #n)" IM POSTEINGANG.
 - [x] **Resend → Alarm-Mail.** ✅ 2026-11-06: alle drei Einträge gesetzt,
       Probealarm (Lauf 42139629230, Issue #66) ⇒ Mail kam an, Mail-Wächter
@@ -136,16 +145,34 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani-app
       gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani-app --body "mail@…"
       ```
-- [ ] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
-      GitHub). Per API mit dem *Main API key* (UptimeRobot → Integrations &
-      API) — erst der Plan, dann das Schreiben:
+- [x] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
+      GitHub). ✅ 2026-11-08: zehn Keyword-Monitore, alle mit den Kontakten
+      #8632224 (Mail) und #8862802 (iPhone-Push): platform #804590660,
+      account #804590661, demo #804590662, admin #804590663,
+      pukalani.studio #804590664, portfolio #804590665, branding.supply
+      #804590666, pukalani.app #804590667, help #804590679,
+      api.pukalani.app (Appwrite, Keyword `"version"`) #804590680.
+      Gelöscht: api-HTTP, control, help-HTTP, comments. Die drei alten
+      HTTP-Doppel `demo`/`portfolio`/`pukalani.app …/api/health`
+      (#803598269, #803548618, #803598266) sind PAUSIERT, nicht gelöscht —
+      David löscht sie, wenn er will. Dashboard: 10 Up · 3 Paused.
+      Drei Fallen unterwegs (alle im Skript behoben, `34ab0130`,
+      `808496cf`): die v2-API meldet AKTIVE Kontakte als „pausiert"
+      (Status 1) — ohne `--contacts` wären die Monitore stumm angelegt
+      worden; ein ungültiger Schlüssel kommt als `passed_value` in der
+      Fehlerantwort zurück (das Skript tilgt ihn jetzt und prüft die Form
+      vorab); der Gratis-Tarif bremst bei ~10 Aufrufen/min
+      (`rate_limit_exceeded`, das Skript wartet und wiederholt).
+      Per API mit dem *Main API key* (UptimeRobot → Integrations & API) —
+      Schlüssel nur verdeckt eingeben (`read -rs`, zsh), nie in Chat oder
+      Datei; erst der Plan, dann das Schreiben:
 
       ```bash
-      UPTIMEROBOT_API_KEY=… node scripts/ops/uptimerobot-sync.mjs
+      read -rs "UPTIMEROBOT_API_KEY?UptimeRobot Main API key: " && export UPTIMEROBOT_API_KEY && echo && node scripts/ops/uptimerobot-sync.mjs
       ```
 
       ```bash
-      UPTIMEROBOT_API_KEY=… node scripts/ops/uptimerobot-sync.mjs --apply --prune
+      node scripts/ops/uptimerobot-sync.mjs --apply --prune --contacts 8632224,8862802
       ```
 
       Das Skript zeigt je Alert Contact und Monitor, warum er schweigen
@@ -159,26 +186,34 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       keyword *not exists* → Interval 5 min. Dazu in der UptimeRobot-App
       einen zweiten Alert Contact *Push* anlegen — Mail allein lag am 16.10.
       acht Tage ungelesen.
-- [ ] **SSL-Ablauf — Entscheidung.** UptimeRobot warnt vor dem Zertifikat-
+- [x] **SSL-Ablauf — Entscheidung.** ✅ 2026-11-08: kein Bezahltarif —
+      der eigene TLS-Wächter (Issue + Zuweisungs-Mail + Resend-Mail) ist
+      der Weg; nachweislich angekommen beim Probealarm #75. Bucht David
+      später „Solo", gilt die Alternative unten. UptimeRobot warnt vor dem Zertifikat-
       Ablauf nur im Bezahltarif (Solo). Entweder Tarif buchen und beim
       Monitor `api.pukalani.app (Appwrite)` *SSL expiry reminders* (30/14/7
       Tage) einschalten — oder bewusst beim eigenen TLS-Wächter bleiben, der
       seit MON1 ein Issue öffnet und (nach Häkchen 2) mailt. Zwei Wege
       bleiben Pflicht; der zweite ist dann die Mail über Resend, nicht
       UptimeRobot.
-- [ ] **Heartbeat.** https://healthchecks.io (kostenlos, 20 Checks): Check
+- [x] **Heartbeat.** ✅ 2026-11-08: Check `pukalani-production-watch`
+      (Period 1 h, Grace 1 h, Kanäle E-Mail + Discord), Secret gesetzt um
+      13:20 UTC; Lauf 42484572852 ⇒ „Heartbeat gesendet." (13:22:10 UTC),
+      healthchecks.io zeigt den Ping unter „Last Ping". Die Gegenprobe
+      (Ping bleibt aus ⇒ healthchecks meldet) ist NICHT gefahren — sie
+      dauert Period + Grace = 2 h. https://healthchecks.io (kostenlos, 20 Checks): Check
       `production-watch`, Period 1 h, Grace 1 h, Mail + App als Kanal; die
       Ping-URL als Secret `PRODUCTION_WATCH_HEARTBEAT_URL` eintragen
       (`gh secret set PRODUCTION_WATCH_HEARTBEAT_URL --repo
-      davidschubert/pukalani.app`). UptimeRobot-Heartbeats sind im
+      davidschubert/pukalani-app` oder Repo → Settings → Secrets and
+      variables → Actions). UptimeRobot-Heartbeats sind im
       Gratis-Tarif nicht bestätigt; `uptimerobot-sync.mjs --heartbeat`
       versucht es und zeigt die Antwort. Beweis: der nächste grüne Lauf zeigt
       „Heartbeat gesendet"; ein Probealarm lässt den Ping aus, nach dem
       Fenster meldet der Monitor.
 
-Wenn alle fünf Häkchen stehen: die Zeile MON2 in `docs/OPEN-ITEMS.md` nach
-COMPLETE ziehen (mit Issue-Nummer des Probealarms, Zeitpunkt der Mail und
-Namen der Monitore als Beweis).
+Alle fünf Häkchen stehen seit 2026-11-08 — MON2 ist nach
+[OPEN-ITEMS-COMPLETE.md](../OPEN-ITEMS-COMPLETE.md) gezogen (Beweise dort).
 
 ## 4 · Wenn ein Alarm kommt
 

@@ -30,6 +30,50 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
+
+**Was.** MON1 (2026-10-28) baute den Wächter und den Alarm-Job; offen waren
+Davids Klicks — Klickliste und alle Befunde in
+[PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) § 3, alle fünf Häkchen
+gesetzt. Beweise je Kanal:
+
+- **Resend-Mail** (seit 2026-11-06): Probealarme am 2026-11-08 ⇒ „🔴
+  Produktions-Alarm" um 00:25 und 00:46 UTC im Posteingang, Entwarnung 00:32
+  UTC.
+- **GitHub „Run failed"**: Gmail-Filter umgestellt ⇒ Posteingang 00:26 und
+  00:46 UTC.
+- **GitHub-Issue**: Probealarm Lauf 42431586394 ⇒ Issue #75, dem Besitzer
+  zugewiesen ⇒ Mail im Posteingang 00:51:39 UTC (Commit `28ca655f`). Alle
+  Alarm-Issues sind wieder zu.
+- **UptimeRobot**: zehn Keyword-Monitore (platform, account, demo, admin,
+  pukalani.studio, portfolio, branding.supply, pukalani.app, help,
+  api.pukalani.app/Appwrite) mit Mail- und iPhone-Kontakt; Dashboard 10 Up ·
+  3 Paused (die drei alten HTTP-Doppel nur pausiert). Der Mail-Kontakt hat
+  am 2026-11-03 „Monitor is DOWN/UP: pukalani.app/api/health" zugestellt.
+- **Heartbeat**: healthchecks.io-Check `pukalani-production-watch` (1 h / 1 h,
+  E-Mail + Discord); Lauf 42484572852 ⇒ „Heartbeat gesendet." 13:22:10 UTC,
+  der Ping steht bei healthchecks.io.
+- **SSL-Ablauf**: Entscheidung ohne Bezahltarif — der eigene TLS-Wächter
+  meldet über Issue + Mail.
+
+**Nicht nachgewiesen** (bewusst nicht abgewartet): der iPhone-Push von
+UptimeRobot und die Ausfall-Meldung von healthchecks.io (Gegenprobe dauert
+Period + Grace = 2 h). UptimeRobot zeigt außerdem ein Banner „Your account is
+under fair use review" — das beantwortet David selbst.
+
+**Gelernt:** (1) Watch + Mail-Haken bei *Watching* liefern für ein Bot-Issue
+KEINE Mail (#72, #73 standen nur in github.com/notifications) — erst die
+ZUWEISUNG an den Besitzer („Participating") kommt an. (2) Die
+UptimeRobot-v2-API meldet aktive Alert Contacts als „pausiert" (Status 1):
+wer ihr glaubt, legt Monitore ohne Kontakt an — daher `--contacts`. (3)
+UptimeRobot schickt einen ungültigen Schlüssel als `passed_value` in der
+Fehlerantwort zurück; ein Skript, das die Antwort roh ausgibt, druckt das
+Geheimnis ins Terminal (`34ab0130` tilgt es und prüft die Form vorab — der
+Schlüssel muss rotiert werden). (4) Der Gratis-Tarif bremst bei ~10
+Aufrufen/min, und `--prune` übersah überzählige Monitore auf einer Soll-URL
+(`808496cf`). (5) Schlüssel-Eingaben gehören in einen echten Terminal-Tab mit
+`read -rs` — die `!`-Zeile im Chat ist nicht interaktiv.
+
 ### RS1 a — Tarif entschieden, der Newsletter bremst sich selbst ✅ 2026-11-08
 
 **Die Entscheidung.** Vorgelegt wurde die gemessene Lage, nicht die Theorie:
