@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
 import type { InsightsPost } from '../shared/insightsPost'
 import { INSIGHTS_NEWSLETTER_BATCH, insightsNewsletterIdempotencyKey } from '../shared/insightsNewsletter'
+import type { MailDailyRemaining } from '../../core/shared/mailBudget'
 import { INSIGHTS_POSTS_TABLE, INSIGHTS_SENDS_TABLE, INSIGHTS_SUBSCRIBERS_TABLE, fromInsightsPost } from '../shared/insightsRows'
 import type {
   InsightsNewsletterSendBatchResponse,
@@ -64,6 +65,14 @@ let brokenAddresses: Set<string>
 let mails: { to: string, subject: string, text: string, headers?: Record<string, string> }[]
 let logs: { level: string, name: string, data: Record<string, unknown> }[]
 let body: Record<string, unknown>
+/**
+ * Was die Mail-Bremse beim Blick auf Resend sieht (RS1 a). `'unlimited'` ist
+ * der Vorgabewert in `beforeEach` — die Bremse ist für die ÜBRIGEN Tests
+ * dieser Datei damit wirkungslos, und nur der eigene Abschnitt unten dreht
+ * daran. Ein Vorgabewert von z. B. 100 hätte die Stapel-Tests still
+ * mitgebremst.
+ */
+let budgetRemaining: MailDailyRemaining
 
 function rowsOf(tableId: string): FakeRow[] {
   tables[tableId] ??= []
@@ -170,6 +179,7 @@ vi.stubGlobal('countInsightsNewsletterRecipients', send.countInsightsNewsletterR
 vi.stubGlobal('runInsightsNewsletterBatch', send.runInsightsNewsletterBatch)
 vi.stubGlobal('createInsightsSendRow', send.createInsightsSendRow)
 vi.stubGlobal('insightsSendAlreadySent', send.insightsSendAlreadySent)
+vi.stubGlobal('mailDailyRemaining', async () => budgetRemaining)
 
 const status = (await import('../server/api/insights/posts/[id]/newsletter.get'))
   .default as unknown as (event: H3Event) => Promise<InsightsNewsletterSendStatusResponse>
@@ -262,6 +272,7 @@ beforeEach(() => {
   mails = []
   logs = []
   body = {}
+  budgetRemaining = 'unlimited'
   putPost(articlePost())
   Object.values(tablesDB).forEach(fn => fn.mockClear())
 })
@@ -588,5 +599,125 @@ describe('Das Log trägt Zahlen und die Beitrags-Id, nie eine Adresse', () => {
       sent: 2,
       failed: 0,
     })
+  })
+})
+
+/**
+ * DIE MAIL-BREMSE AM VERSAND (RS1 a, Davids Entscheidung 2026-11-08).
+ *
+ * Wir bleiben auf dem freien Resend-Tarif: 100 Mails am Tag für ALLES, auch
+ * für OTP und Verifizierung. Eine Ausgabe an fünfzig Leute kann das Budget
+ * also so weit leerziehen, dass sich danach niemand mehr anmelden kann — und
+ * genau das ist der teure Teil, nicht die verlorene Ausgabe.
+ *
+ * Geprüft wird deshalb beides: dass die Bremse HÄLT, und dass sie nicht mehr
+ * hält als nötig (die Gegenproben).
+ */
+describe('Die Mail-Bremse schützt das Anmelde-Budget', () => {
+  it('hält an und schreibt NICHTS, wenn der Tag voll ist', async () => {
+    budgetRemaining = 5 // unter der Rücklage von 20
+    putSubscribers([subscriber(1), subscriber(2)])
+
+    await expect(runBatch(event)).rejects.toMatchObject({ status: 409, data: { code: 'budget_exhausted' } })
+
+    // Kein Mail, und vor allem KEINE Sende-Zeile: der Beitrag bleibt
+    // unberührt, die Redaktion drückt morgen zum ERSTEN Mal. (Geprüft wird
+    // die ZEILENZAHL, nicht `toBeUndefined` — die Route LIEST die Tabelle
+    // vorher, und der Fake legt beim Lesen eine leere Liste an.)
+    expect(mails).toHaveLength(0)
+    expect(tables[INSIGHTS_SENDS_TABLE] ?? []).toHaveLength(0)
+  })
+
+  it('hält an, wenn das Budget unbekannt ist (kein Schlüssel) — fail-closed', async () => {
+    budgetRemaining = null
+    putSubscribers([subscriber(1)])
+
+    await expect(runBatch(event)).rejects.toMatchObject({ status: 409, data: { code: 'budget_unknown' } })
+    expect(mails).toHaveLength(0)
+    expect(tables[INSIGHTS_SENDS_TABLE] ?? []).toHaveLength(0)
+  })
+
+  it('lässt bei genug Luft den vollen Stapel durch (GEGENPROBE)', async () => {
+    // 100 frei − 20 Rücklage = 80 ≥ 50 ⇒ die Bremse greift nicht.
+    budgetRemaining = 100
+    putSubscribers(Array.from({ length: 50 }, (_, index) => subscriber(index + 1)))
+
+    const result = await runBatch(event)
+    expect(result.sent).toBe(50)
+    expect(hasDuplicates(recipientsOfMails())).toBe(false)
+  })
+
+  it('verschickt einen TEIL-Stapel und meldet den Lauf NICHT als fertig', async () => {
+    // 45 frei − 20 Rücklage = 25. Es gibt 30 Empfänger: 25 heute, 5 morgen.
+    //
+    // DIESER TEST IST DIE FALLE DES PAKETS: `done` kam aus
+    // `rows.length < INSIGHTS_NEWSLETTER_BATCH`. Ein gebremster Stapel von 25
+    // Zeilen wäre damit „25 < 50", also FERTIG — der Lauf hätte ein
+    // `finishedAt` bekommen, `already_sent` hätte jeden zweiten Druck
+    // abgewiesen, und die letzten fünf Abonnenten hätten NIE Post bekommen.
+    budgetRemaining = 45
+    putSubscribers(Array.from({ length: 30 }, (_, index) => subscriber(index + 1)))
+
+    const first = await runBatch(event)
+    expect(first.sent).toBe(25)
+    expect(first.done).toBe(false)
+    expect(first.remaining).toBe(5)
+    expect(tables[INSIGHTS_SENDS_TABLE]?.[0]?.state).toBe('running')
+    expect(tables[INSIGHTS_SENDS_TABLE]?.[0]?.finishedAt).toBe('')
+
+    // Am nächsten Tag ist wieder Luft — derselbe Knopf macht den Rest fertig.
+    budgetRemaining = 100
+    const second = await runBatch(event)
+    expect(second.sent).toBe(5)
+    expect(second.done).toBe(true)
+
+    // Und die Zusage des ganzen Pakets hält über die Bremse hinweg.
+    expect(recipientsOfMails()).toHaveLength(30)
+    expect(hasDuplicates(recipientsOfMails())).toBe(false)
+  })
+
+  it('schreibt den Deckel ins Log, damit ein gebremster Stapel erkennbar ist', async () => {
+    budgetRemaining = 45
+    putSubscribers(Array.from({ length: 30 }, (_, index) => subscriber(index + 1)))
+
+    await runBatch(event)
+
+    const batchLog = logs.find(entry => entry.name === 'insights.newsletter_send_batch')
+    // `batch: 25, limit: 25` ist ein enger Tag; `batch: 25, limit: 50` wäre
+    // das Ende der Liste. Ohne `limit` im Log sind die beiden nicht zu
+    // unterscheiden.
+    expect(batchLog?.data).toMatchObject({ batch: 25, limit: 25 })
+  })
+
+  it('bremst bei einem Tarif OHNE Tagesgrenze gar nicht', async () => {
+    // Der Selbst-Abschalter: wechselt David auf Pro, liefert `GET /usage`
+    // `daily.limit: null` ⇒ `'unlimited'` ⇒ voller Stapel, ohne Rückbau.
+    budgetRemaining = 'unlimited'
+    putSubscribers(Array.from({ length: 50 }, (_, index) => subscriber(index + 1)))
+
+    const result = await runBatch(event)
+    expect(result.sent).toBe(50)
+    const batchLog = logs.find(entry => entry.name === 'insights.newsletter_send_batch')
+    expect(batchLog?.data).toMatchObject({ limit: INSIGHTS_NEWSLETTER_BATCH })
+  })
+
+  it('weist die Nein des BEITRAGS vor der Bremse ab — sie sind genauer', async () => {
+    // Ein Entwurf bei leerem Budget muss `not_public` sagen, nicht
+    // `budget_exhausted`: der Grund des Beitrags ist der, den die Redaktion
+    // beheben kann, und er kostet keinen Ruf nach draussen.
+    budgetRemaining = 0
+    putPost(articlePost({ state: 'draft' }))
+    putSubscribers([subscriber(1)])
+
+    await expect(runBatch(event)).rejects.toMatchObject({ status: 409, data: { code: 'not_public' } })
+  })
+
+  it('weist einen schon verschickten Beitrag vor der Bremse ab', async () => {
+    budgetRemaining = 'unlimited'
+    putSubscribers([subscriber(1)])
+    await runBatch(event)
+
+    budgetRemaining = 0
+    await expect(runBatch(event)).rejects.toMatchObject({ status: 409, data: { code: 'already_sent' } })
   })
 })

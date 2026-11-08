@@ -1,6 +1,8 @@
+import { decideMailBatch } from '../../../../../../core/shared/mailBudget'
 import {
   createInsightsNewsletterSendSchema,
   decideInsightsSendStart,
+  INSIGHTS_NEWSLETTER_BATCH,
   insightsNewsletterLocaleOf,
 } from '../../../../../shared/insightsNewsletter'
 import type { InsightsNewsletterSendBatchResponse } from '../../../../../shared/types/insightsApi'
@@ -75,6 +77,38 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSendB
   const decision = decideInsightsSendStart(row)
   if (decision === 'already_sent') throw insightsSendAlreadySent()
 
+  /**
+   * DIE MAIL-BREMSE (RS1 a, Davids Entscheidung 2026-11-08) — VOR dem ersten
+   * Schreibvorgang.
+   *
+   * Wir bleiben auf dem freien Resend-Tarif (100 Mails am Tag für ALLES, auch
+   * OTP und Verifizierung) und halten stattdessen hier an. Die Prüfung steht
+   * mit Absicht VOR dem `start`-Zweig: ein angehaltener Versand legt dann
+   * KEINE Sende-Zeile an, der Beitrag bleibt unberührt, und die Redaktion
+   * drückt morgen denselben Knopf zum ersten Mal.
+   *
+   * Nach den Nein des BEITRAGS (nicht öffentlich, keine Adresse, schon raus):
+   * die sind lokal, genauer und kosten keinen Ruf nach draussen.
+   *
+   * `allowed` ist der Rest des Tages, gedeckelt auf die Stapelgröße — ein
+   * TEIL-Stapel ist der Normalfall an einem engen Tag, nicht ein Fehler
+   * (Begründung an `decideMailBatch`).
+   */
+  const budget = decideMailBatch({
+    remaining: await mailDailyRemaining(event),
+    batchSize: INSIGHTS_NEWSLETTER_BATCH,
+  })
+  if (!budget.go) {
+    // Ein FACHLICHER Grund: er reist als `reason` im Envelope zum Client
+    // (`budget_unknown` = kein Schlüssel gesetzt, `budget_exhausted` = der Tag
+    // ist voll) und steht dort als eigener Satz in der Oberfläche.
+    throw createError({
+      status: 409,
+      statusText: 'Mail budget not available',
+      data: { code: budget.code },
+    })
+  }
+
   if (decision === 'start') {
     const recipients = await countInsightsNewsletterRecipients(event)
     try {
@@ -108,6 +142,7 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSendB
     // Beim Fortsetzen gilt der Text der Zeile, nicht der des Formulars (s. Kopf).
     intros: { introDe: row.introDe ?? '', introEn: row.introEn ?? '' },
     row,
+    maxBatch: budget.allowed,
   })
 
   const remaining = result.done ? 0 : await countInsightsNewsletterRecipients(event, result.cursor)

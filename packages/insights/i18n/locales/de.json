@@ -538,6 +538,8 @@
         "alreadySent": "Dieser Beitrag ist schon an die Liste gegangen — ein zweites Mal gibt es nicht.",
         "notPublic": "Erst freigeben: ein Entwurf hat draussen keine Adresse.",
         "noPublicAddress": "Dieser Beitrag hat draussen keine Seite — eine Mail würde ins Leere zeigen.",
+        "budgetExhausted": "Das Mail-Budget des Tages ist aufgebraucht. Der Versand hält an, damit Anmeldung und Bestätigung weiter Mails verschicken können — morgen denselben Knopf noch einmal drücken, es geht an der Stelle weiter.",
+        "budgetUnknown": "Wir können das Mail-Budget gerade nicht abfragen und schicken deshalb nichts. Fehlt der Resend-Schlüssel in der Server-Umgebung? Siehe Runbook „Resend-Webhook“.",
         "generic": "Das hat nicht geklappt.",
         "notDeletable": "Erst zurückziehen — ein freigegebener Beitrag wird nicht direkt gelöscht."
       },
