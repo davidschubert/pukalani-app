@@ -1,8 +1,4 @@
-import {
-  createInsightsNewsletterTokenSchema,
-  decideInsightsNewsletterUnsubscribe,
-  insightsNewsletterRetentionAt,
-} from '../../../../../shared/insightsNewsletter'
+import { createInsightsNewsletterTokenSchema } from '../../../../../shared/insightsNewsletter'
 import type { InsightsSubscriberRow } from '../../../../../shared/insightsRows'
 import { INSIGHTS_SUBSCRIBERS_TABLE } from '../../../../../shared/insightsRows'
 import type { InsightsNewsletterUnsubscribeResponse } from '../../../../../shared/types/insightsApi'
@@ -80,39 +76,11 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterUnsub
     throw insightsStorageError(error, 'insightsNewsletterUnsubscribe')
   }
 
-  const action = decideInsightsNewsletterUnsubscribe({
-    confirmedAt: row.confirmedAt,
-    unsubscribedAt: row.unsubscribedAt,
-  })
-
-  if (action === 'noop') {
-    logEvent('info', 'insights.newsletter_unsubscribed', { state: 'already' })
-    return { ok: true }
-  }
-
+  let action: 'delete' | 'mark' | 'noop'
   try {
-    if (action === 'delete') {
-      await tablesDB.deleteRow({ databaseId, tableId: INSIGHTS_SUBSCRIBERS_TABLE, rowId })
-    }
-    else {
-      const now = new Date()
-      await tablesDB.updateRow({
-        databaseId,
-        tableId: INSIGHTS_SUBSCRIBERS_TABLE,
-        rowId,
-        data: {
-          unsubscribedAt: now.toISOString(),
-          // Ein offener Bestätigungs-Link stirbt mit — wer abgemeldet ist, soll
-          // nicht über eine alte Mail wieder auf die Liste kommen.
-          tokenHash: '',
-          tokenExpiresAt: '',
-          // Die Frist steht als DATUM in der Zeile, nicht als Rechnung: so ist
-          // sie ablesbar, und ein späterer Wechsel verlängert nicht
-          // rückwirkend, was schon zugesagt wurde.
-          retentionAt: insightsNewsletterRetentionAt(now).toISOString(),
-        },
-      })
-    }
+    // Der Schreibvorgang ist mit dem Resend-Webhook GETEILT (RS1 b) —
+    // `server/utils/insightsNewsletterUnsubscribe.ts`.
+    action = await applyInsightsNewsletterUnsubscribe(tablesDB, databaseId, row, new Date())
   }
   catch (error) {
     // Auch hier KEINE Nachsicht ausser dem fehlenden Datensatz: ein
@@ -120,6 +88,11 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterUnsub
     // Behauptung, die Abmeldung sei erfolgt.
     if (isInsightsRowMissing(error)) return { ok: true }
     throw insightsStorageError(error, 'insightsNewsletterUnsubscribeWrite')
+  }
+
+  if (action === 'noop') {
+    logEvent('info', 'insights.newsletter_unsubscribed', { state: 'already' })
+    return { ok: true }
   }
 
   logEvent('info', 'insights.newsletter_unsubscribed', { state: action })
