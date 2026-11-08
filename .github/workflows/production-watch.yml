@@ -276,6 +276,7 @@ jobs:
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
       DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+      ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
       # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
       # Fehler (der tägliche Job läuft im Halbstunden-Takt nicht).
@@ -316,7 +317,12 @@ jobs:
               echo
               echo "_Erzeugt vom Job \`alarm\` in \`.github/workflows/production-watch.yml\` (MON1)._"
             } > /tmp/issue-body.md
-            url=$(gh issue create --title "$titel" --label "$LABEL" --body-file /tmp/issue-body.md)
+            # ZUWEISEN statt nur öffnen (MON2, 2026-11-08): ein Bot-Issue
+            # erreicht den Besitzer nur über „Watching" — und das lieferte
+            # trotz Watch + Mail-Haken KEINE Mail (Probealarme #72/#73 standen
+            # nur in github.com/notifications). Eine Zuweisung ist
+            # „Participating" und kommt als Mail an wie jeder PR-Review-Ruf.
+            url=$(gh issue create --title "$titel" --label "$LABEL" --assignee "$ALARM_ASSIGNEE" --body-file /tmp/issue-body.md)
             echo "Issue geöffnet: $url"
             wechsel="alarm"
           elif [ -n "$rot" ]; then
