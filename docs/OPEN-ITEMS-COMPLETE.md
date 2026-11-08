@@ -12688,6 +12688,16 @@ mit einem UNCOMMITTETEN lokalen Override von `publicFormats` (zurückgesetzt), w
 Riegel auch in der Vorschau anwenden. Wächter: Lint insights, 496 Tests, Typecheck branding,
 check:doc-links. Prod unberührt.
 
+**Prod (2026-11-08, mit Davids Ja, nach Merge von PR #61 und Live-Build `bb380b92`):** `node
+--env-file=~/.appwrite-secrets/migrations/branding.env packages/insights/scripts/seed-launch.mjs`
+aus `packages/insights` — Dry-run 10× „angelegt (dry-run)", echter Lauf 10× angelegt (Marken
+`6aefb947…`, Beiträge `6aefb948…`), zweiter Lauf 10× unverändert. Gegenprobe per Admin-Key:
+`insights_posts` 6 Zeilen (zwei ältere Artikel-Entwürfe + die vier), `insights_brands` 6, alles
+`draft`. Die vier Ranking-Warnungen sind echt: `brand_checks` auf Prod hat sieben Zeilen (pukalani.*,
+zeitfuerbrot, freelancer.supply, branding.supply), keine zu nike/apple/anthropic/thebarn — die
+Bibliothek `lib-3` ist eine Datei, keine Check-Zeile. Davids Brand-Checks + ein zweiter Seed-Lauf
+füllen die Scores nach.
+
 **Zwei Befunde fürs Folgepaket (kein Gate):** (1) Die Duell-Vorschau antwortet 404, solange die beiden
 Marken-Zeilen `draft` sind (die Route verlangt `published` auch mit `?preview=1`) — David muss die
 Marken vor dem Blick aufs Duell veröffentlichen, oder die Vorschau wird gelockert. (2) Der
