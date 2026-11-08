@@ -180,3 +180,49 @@ Sonst zeigt der Fuß auf eine Route, deren Tabelle es nicht gibt.
       bekam die Verifizierung nie mit (Fokus-Refresh + noAccess-Knopf,
       Commit 95ced9cf). George antwortet erst mit P2 — der Generator
       bleibt auf Prod bewusst ohne Dev-Stub.
+
+## 7 · nginx: lange Modell-Läufe (BI3, 2026-11-08)
+
+**Wichtig bei einer Neuanlage der Site:** die vhost-Konfiguration liegt NUR in
+ploi (Site 402929 → „Verwalte" → nginx), NICHT im Repo. Wer die Site neu
+anlegt oder ploi die Konfiguration neu schreiben lässt, verliert den Block
+unten wortlos — und bekommt den 504 zurück.
+
+**Warum er da ist.** Gemessen am 2026-11-06 auf Prod: der Brief aus einem
+51-Minuten-Video brauchte 65,4 Sekunden. `proxy_read_timeout` stand auf 60s,
+nginx gab auf und schickte dem Browser einen `504 Gateway Time-out` — während
+Nitro in Ruhe weiterrechnete und den Entwurf KORREKT anlegte. Der Mensch sah
+einen Fehler und bekam den Link zu seinem fertigen Entwurf nie.
+
+**Der Block gehört VOR `location /`** — nginx prüft Regex-Blöcke vor dem
+Präfix, und der erste Treffer gewinnt. Die `proxy_set_header`-Zeilen sind
+wiederholt, weil sie aus `location /` NICHT vererbt werden:
+
+```nginx
+location ~ ^/api/insights/(posts/[^/]+/(draft|translate)|watchlist/[^/]+/brief)$ {
+proxy_pass http://127.0.0.1:3007;
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $http_connection;
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_read_timeout 180s;
+}
+```
+
+**Warum 180s und nicht mehr.** Der Anbieter nimmt ohnehin nur Videos bis etwa
+EINE STUNDE: 51 und 56 Minuten laufen durch, 66 und 85 Minuten antworten
+binnen einer halben Sekunde mit `502` und kosten nichts (gemessen 2026-11-07).
+Die längstmöglichen Läufe liegen damit bei 59–66 Sekunden; 180s ist knapp das
+Dreifache. Der REST der Site bleibt bewusst bei 60s, damit ein hängendes Nitro
+weiterhin schnell auffällt.
+
+**Ändern und neu laden:** ploi-Panel oder MCP `update-nginx-config`, danach
+IMMER `reload` (nicht `restart`) — ein Reload mit kaputter Konfiguration wird
+von nginx verweigert und die alte bleibt in Betrieb, ein Restart nähme die
+Site mit. Der ploi-Nutzer hat KEIN passwortloses `sudo nginx -t`; der Reload
+ist die Prüfung. Danach drei Proben: `/api/health` 200, `/de` 200 und
+`POST /api/insights/watchlist/<id>/brief` ohne Konto **401** (nicht 404 —
+das beweist, dass der neue Regex-Block zu Nitro durchreicht).

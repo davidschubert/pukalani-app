@@ -279,6 +279,64 @@ der als SMTP-Passwort in der platform-Env steht, darf die API voll LESEN
 
 ---
 
+### BI3 — „Brief aus Video" lief dem Proxy davon: 504 statt Erfolgsmeldung ✅ 2026-11-08
+
+**Befund** (beim Prod-Beweis des K5-Nachtrags am 2026-11-06 aufgefallen): der
+Brief aus einem 51-Minuten-Video brauchte 65,4 Sekunden, `proxy_read_timeout`
+der ploi-Site stand auf 60s. Nginx gab auf und schickte dem Browser einen
+`504 Gateway Time-out` — während Nitro in Ruhe weiterrechnete und den Entwurf
+KORREKT anlegte. Kein Geld verloren (Stufe 3 der Route führt den zweiten Klick
+auf den vorhandenen Beitrag), aber der Mensch sah einen Fehler und bekam den
+Link zu seinem fertigen Entwurf nie.
+
+**Abhilfe.** Ein eigener Regex-Block VOR `location /` — nginx prüft Regex vor
+dem Präfix, erster Treffer gewinnt — für genau die drei Routen, die ein Modell
+rufen (`brief`, `draft`, `translate`), mit `proxy_read_timeout 180s`. Der REST
+der Site bleibt bei 60s, damit ein hängendes Nitro weiterhin schnell auffällt.
+Wortlaut und Wiederherstellung: Runbook BRANDING-SUPPLY-SETUP.md § 7 — **die
+vhost-Konfiguration liegt NUR in ploi, nicht im Repo**, eine Neuanlage der Site
+verschluckt den Block sonst wortlos.
+
+**Warum 180s reichen — gemessen, nicht geraten.** Der Anbieter nimmt Videos nur
+bis etwa EINE STUNDE: 51 und 56 Minuten laufen durch, 66 und 85 Minuten
+antworten binnen einer halben Sekunde mit `502` und kosten nichts. Damit ist
+die längstmögliche Laufzeit gedeckelt; fünf echte Läufe lagen bei 18,7 / 58,9 /
+59,1 / 59,2 / 65,4 Sekunden. 180s ist knapp das Dreifache des Ausreissers.
+
+**Beweis — und seine Grenze, ehrlich.** Verifiziert sind: der Block liegt auf
+der Platte vor `location /`; der Reload hat neue Worker gestartet (also wurde
+genau diese Datei geladen); die Regex trifft die drei echten URIs und sonst
+nichts (gegen die tatsächlichen Pfade geprüft); die Site antwortet weiter
+(`/api/health` 200, `/de` 200) und die Brief-Route reicht zu Nitro durch
+(401 ohne Konto, nicht 404). NICHT direkt beobachtet ist ein Lauf über 60
+Sekunden, der jetzt 200 statt 504 liefert: nach der Änderung landeten drei
+Läufe bei 59,1 / 59,2 / 58,9 Sekunden, und die 65,4 vom 6.11. sind ein
+Ausreisser, der sich nicht auf Bestellung herstellen lässt — jeder Versuch
+kostet rund zehn Cent. Dafür fiel bei diesen Läufen ein ZWEITER Live-Beweis
+des K5-Fixes ab: `briefRawChars 2265 → briefChars 1927`, sauberer Schluss.
+
+**Gelernt:** **ein Reverse Proxy ist eine zweite, unsichtbare Deadline.** Die
+Route hatte sechs Prüfstufen, eine Drossel, einen Kill-Switch und ein
+Kostenbudget — und scheiterte an einer Zahl, die in keiner Datei dieses
+Repositories steht. Wer eine Operation baut, die länger als eine Minute
+dauern DARF, prüft die Kette bis nach draußen: nginx (`proxy_read_timeout`,
+Default 60s), davor ggf. Cloudflare (100s im freien Tarif, nicht
+heraufsetzbar). Hier liegt branding.supply grau, also endet die Kette bei
+nginx; auf einem proxied Host wäre die 180s-Zeile wirkungslos gewesen.
+
+**Zweitens gelernt:** **`reload`, nicht `restart`.** Ein Reload mit kaputter
+Konfiguration wird von nginx VERWEIGERT, die alte bleibt in Betrieb; ein
+Restart hätte die Site mitgenommen. Das ist das Sicherheitsnetz, wenn — wie
+hier — kein passwortloses `sudo nginx -t` zur Verfügung steht.
+
+**Drittens, als Nebenbefund mit eigenem Punkt (`BI4`):** derselbe Block deckt
+`draft` ab, und beim Testen zeigte sich dort ein Fehler DERSELBEN Bauart wie
+der K5-Nachtrag — `targetWords` erlaubt 2.000 Wörter, `maxTokens` steht fest
+auf 8.000, die Antwort bricht mitten im JSON ab und der bezahlte Lauf ist weg.
+Einmal gemessen, Ursache plausibel, aber nicht bestätigt.
+
+---
+
 ### K5-Nachtrag — Ein zu langer Brief warf den bezahlten Video-Lauf weg ✅ 2026-10-28
 
 **Ausgangslage.** K5 („Brief aus diesem Video", Commit `54990522`) klemmte die
