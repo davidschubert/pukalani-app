@@ -64,7 +64,21 @@ Drei Gedanken nehmen wir aus dieser Geschichte mit, gleich ob für eine Röstere
 
 Wie stark ein Auftritt heute im Netz wirkt, misst der Brand-Check – für eine Weltmarke genauso wie für die eigene.
 
-**Methodik:** Wie der Brand Score entsteht, steht in der [Methodik](/brand-check/methodik).`
+### Wofür stehen die vier Buchstaben?
+
+Für die Initialen des Gründers und für die beiden Orte seiner Herkunft, den Hof und das Dorf. Vier Buchstaben, drei Herkunftsangaben – und keine Erfindung darunter.
+
+### Warum zeigte der Katalog Zimmer statt Produkte?
+
+Weil ein Zimmer ein Versprechen zeigt und ein Produkt nur sich selbst. Wer ein Zimmer sieht, sieht den eigenen Alltag darin; genau das war das Angebot.
+
+### Was heißt das für eine kleine Marke?
+
+Dass Herkunft nichts kostet, aber gezeigt werden muss – und dass das Medium zur Marke gehört. Wo ihr erzählt, erzählt mit.
+
+**Methodik:** Wie der Brand Score entsteht, steht in der [Methodik](/brand-check/methodik).
+
+Welchen Ort, welchen Namen oder welche Gewohnheit aus euren Anfängen zeigt ihr heute zu wenig?`
 
 const bodyEn = `## A mail-order business from Småland
 
@@ -118,7 +132,21 @@ We take three thoughts from this story, whether for a roastery, a studio or a so
 
 How strong a presence is online today is what the Brand Check measures – for a global brand just as for your own.
 
-**Methodology:** How the Brand Score is calculated is explained in our [methodology](/brand-check/methodik).`
+### What do the four letters stand for?
+
+The founder's initials and the two places he came from, the farm and the village. Four letters, three origins – and nothing invented among them.
+
+### Why did the catalogue show rooms instead of products?
+
+Because a room shows a promise and a product only shows itself. Anyone looking at a room sees their own everyday life in it; that was exactly the offer.
+
+### What does this mean for a small brand?
+
+That origin costs nothing but has to be shown – and that the medium is part of the brand. Where you tell your story tells part of it.
+
+**Methodology:** How the Brand Score is calculated is explained in our [methodology](/brand-check/methodik).
+
+Which place, which name or which habit from your early days are you showing too little of today?`
 
 export const ikeaArticle = {
   format: 'article',

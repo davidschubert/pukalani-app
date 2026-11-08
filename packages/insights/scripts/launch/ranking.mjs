@@ -26,7 +26,21 @@ Die Liste ist eingefroren: Sie zeigt die Scores zum angegebenen Stand und rechne
 
 ## Warum diese Marken
 
-Auf die Liste kommen Marken, deren Auftritt wir redaktionell geprüft haben: mit Zitat, Quelle und Prüfdatum. Je Platz steht ein Satz, der begründet, was den Auftritt ausmacht. Die Zahl dahinter kommt nie von uns, sondern immer aus dem Brand-Check.`
+Auf die Liste kommen Marken, deren Auftritt wir redaktionell geprüft haben: mit Zitat, Quelle und Prüfdatum. Je Platz steht ein Satz, der begründet, was den Auftritt ausmacht. Die Zahl dahinter kommt nie von uns, sondern immer aus dem Brand-Check.
+
+### Wie oft erscheint diese Liste?
+
+Als neue Ausgabe, sobald sich die geprüfte Grundlage ändert. Diese Ausgabe bleibt mit Hinweis stehen und rechnet sich nicht still neu.
+
+### Warum fehlt eine Marke in dieser Ausgabe?
+
+Weil ihr Auftritt noch nicht redaktionell geprüft ist – mit Zitat, Quelle und Prüfdatum. Ohne diese drei Angaben entsteht kein Platz.
+
+### Kann eine Marke ihren Platz zurückziehen?
+
+Ja. Wir nehmen den Platz heraus und markieren die Lücke; die übrigen Plätze rücken nicht nach.
+
+Welche Marke sollen wir für die nächste Ausgabe prüfen?`
 
 const bodyEn = `## Methodology
 
@@ -38,7 +52,21 @@ The list is frozen: it shows the scores as of the stated date and never quietly 
 
 ## Why these brands
 
-The list includes brands whose presence we have reviewed editorially: with quote, source and review date. Each place carries one sentence explaining what defines the presence. The number behind it never comes from us but always from the Brand Check.`
+The list includes brands whose presence we have reviewed editorially: with quote, source and review date. Each place carries one sentence explaining what defines the presence. The number behind it never comes from us but always from the Brand Check.
+
+### How often does this list appear?
+
+As a new issue, as soon as the reviewed basis changes. This issue stays online with a note and never quietly recalculates.
+
+### Why is a brand missing from this issue?
+
+Because its presence has not been reviewed editorially yet – with quote, source and review date. Without those three, no place is created.
+
+### Can a brand withdraw its place?
+
+Yes. We remove the place and mark the gap; the remaining places do not move up.
+
+Which brand should we review for the next issue?`
 
 export const strongestPresenceRanking = {
   format: 'ranking',

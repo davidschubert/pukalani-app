@@ -446,6 +446,8 @@
         "disparagement": "Herabsetzung oder fremder Name im Text: {detail}",
         "scoreWithoutMethodology": "Score ohne Link auf die Methodik",
         "brandWithoutEntity": "Genannte Marke ohne eigene Zeile: {detail}",
+        "textWithoutClosingQuestion": "Der Text endet nicht mit einer Frage ({detail})",
+        "textWithoutQuestionHeadings": "Weniger als {min} Zwischenüberschriften sind Fragen ({detail})",
         "reason": {
           "competitorName": "Name einer Marke ohne Verweis im Marken-Panel",
           "competitorDomain": "Website einer Marke ohne Verweis im Marken-Panel",

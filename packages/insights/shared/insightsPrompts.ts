@@ -3,6 +3,7 @@ import type { InsightsFormat, InsightsLocale, InsightsPost } from './insightsPos
 import {
   INSIGHTS_BRIEF_MAX,
   INSIGHTS_METHODOLOGY_PATH,
+  INSIGHTS_QUESTION_HEADINGS_MIN,
   INSIGHTS_QUOTE_MAX,
   insightsBodyOf,
   insightsDekOf,
@@ -22,7 +23,7 @@ import {
  * Kopfkommentar. Hier sind sie Zeichenketten, die ein Test lesen kann.
  *
  * ── DIE FASSUNG STEHT IM NAMEN, UND SIE WIRD GESPEICHERT ─────────────────
- * `insights-d-1` / `insights-t-1` (Muster: `BRAND_CHECK_PROMPT_VERSION =
+ * `insights-d-2` / `insights-t-1` (Muster: `BRAND_CHECK_PROMPT_VERSION =
  * 'check-judge-2'`). Ohne sie ist ein alter Entwurf nicht mehr einzuordnen:
  * „warum steht da diese Formulierung?" ist nur beantwortbar, wenn man weiss,
  * welcher Prompt sie erzeugt hat. Wer einen Prompt inhaltlich ändert, zählt
@@ -35,7 +36,25 @@ import {
  * „findet", findet auch welche, die es nicht gibt.
  */
 
-export const INSIGHTS_DRAFT_PROMPT_VERSION = 'insights-d-1'
+/**
+ * ── WARUM `insights-d-2` UND NICHT EINE ERGÄNZUNG AN `insights-d-1` ──────
+ * Die Fassung bestellt inhaltlich etwas ANDERES als ihre Vorgängerin (BI2 K6):
+ * die Antwort im ersten Absatz, Zwischenüberschriften als Fragen, einen
+ * FAQ-Block und eine Diskussionsfrage am Ende. Ein Beitrag, der unter
+ * `insights-d-1` entstanden ist, hat davon nichts gewusst — und trägt
+ * `insights-d-1` in `draftPromptVersion` auch weiter. Genau dafür ist das
+ * Feld da: „warum steht da diese Formulierung?" bleibt beantwortbar.
+ *
+ * ── DIESE FASSUNG BESTELLT LÄNGERE ANTWORTEN (Berührung mit BI4) ─────────
+ * FAQ-Block und Diskussionsfrage kommen zum Zielumfang HINZU. Die Token-Decke
+ * des Entwurfs-Laufs (`draft.post.ts`, fest `maxTokens: 8000` bei bis zu
+ * `INSIGHTS_DRAFT_WORDS_MAX` Zielwörtern) wird damit früher erreicht als
+ * vorher — ein abgeschnittenes JSON kostet den bezahlten Lauf. Das ist
+ * Gegenstand von BI4 und bewusst NICHT hier mitgebaut; die beiden Pakete
+ * gehören zusammen, und wer K6 ohne BI4 auf hohe Wortzahlen loslässt,
+ * verliert Läufe.
+ */
+export const INSIGHTS_DRAFT_PROMPT_VERSION = 'insights-d-2'
 export const INSIGHTS_TRANSLATE_PROMPT_VERSION = 'insights-t-1'
 
 /** Zielumfang des Entwurfs in Wörtern (Vorgabe 700). */
@@ -100,6 +119,45 @@ const HARD_RULES = [
   'ERFINDE KEINEN AUTOR und keine Redaktions-Anekdote. Der Text spricht als Redaktion, ohne Namen.',
 ].join('\n')
 
+/**
+ * DIE SEO/GEO-REGELN (BI2 K6, Plan §6 „Die SEO/GEO-Regeln — eine Prompt-Frage,
+ * kein Bauwerk") — Davids Wunsch, wörtlich: „der Artikel soll alle
+ * SEO/GEO-relevanten Regeln beachten, gleichzeitig Freude beim Lesen bereiten
+ * und am Ende zum Diskutieren anregen".
+ *
+ * ── WARUM SIE EIN EIGENER BLOCK SIND UND NICHT IN `HARD_RULES` WANDERN ───
+ * `HARD_RULES` ist die RECHTLICHE Hälfte (kein erfundenes Zitat, keine Zahl
+ * ohne Beleg, keine Herabsetzung, kein erfundener Autor). Ein Verstoß dort
+ * kostet Geld und Vertrauen; ein Verstoß hier kostet Reichweite. Die zwei
+ * Sorten zu mischen hiesse, dass eine Lockerung an der Form („diesmal ohne
+ * FAQ") wie eine Lockerung an der Haftung aussieht. Die vier Verbote bleiben
+ * deshalb unangetastet — sie sind mit `insights-d-1` wortgleich.
+ *
+ * ── WAS DAVON DAS GATE PRÜFT, UND WAS PROMPT BLEIBT ─────────────────────
+ * Prüfbar sind genau zwei Zusagen: der Text endet mit einer Frage, und
+ * mindestens `INSIGHTS_QUESTION_HEADINGS_MIN` Zwischenüberschriften sind
+ * Fragen (`insightsReviewIssues`, Regel 7). „Die Antwort im ersten Absatz",
+ * „definierende Sätze" und „keine Floskeln" sind BEWERTUNGEN — ein Regex
+ * darüber wäre eine Prüfung, die man austrickst, ohne besser zu schreiben.
+ * Sie bleiben Prompt und Redaktion. Der Plan sagt es genauso: „Alles Übrige
+ * ist Prompt und bleibt Prompt."
+ *
+ * ── DER FAQ-BLOCK TRÄGT DIE FRAGEN ALS `###`-ÜBERSCHRIFTEN ──────────────
+ * Das ist die Kopplung zwischen Prompt und Regel: so hat JEDES Format seine
+ * zwei Frage-Überschriften, auch das RANKING, dessen Plätze bewusst in den
+ * DATEN stehen und nicht im Text (`FORMAT_BRIEFING.ranking`). Ohne diese
+ * Kopplung müsste die Regel das Ranking ausnehmen — und eine Regel mit
+ * Ausnahme für genau ein Format ist eine halbe Regel.
+ */
+const SEO_GEO_RULES = [
+  `DIE ANTWORT STEHT IM ERSTEN ABSATZ. Der erste Absatz beantwortet die Frage des Titels in zwei bis drei Sätzen, bevor er sie ausbreitet. Eine Antwortmaschine zitiert den Satz, der die Frage BEANTWORTET — nicht den, der sie ankündigt.`,
+  `ZWISCHENÜBERSCHRIFTEN SIND FRAGEN, so gestellt, wie Menschen sie stellen („Warum …?", „Was heißt …?", „Wie …?"). Mindestens ${INSIGHTS_QUESTION_HEADINGS_MIN} Überschriften des Beitrags enden mit einem Fragezeichen.`,
+  'SCHREIBE DEFINIERENDE SÄTZE. Was der Beitrag erklärt, steht einmal in der zitierfähigen Form „X ist …" — ein Satz, der allein stehen kann, ohne den Absatz um ihn herum.',
+  'EIN FAQ-BLOCK AM ENDE: drei bis fünf echte Fragen, jede als eigene Überschrift der Ebene ###, darunter die Antwort in zwei bis vier Sätzen. Echte Fragen heißt: solche, die jemand nach dem Lesen wirklich hätte — keine, die der Text schon beantwortet hat.',
+  'DER LETZTE ABSATZ IST EINE DISKUSSIONSFRAGE an die Leser, und zwar der letzte — nach dem FAQ-Block, nach jedem Hinweis, nach jedem Link. Ein Satz, der mit einem Fragezeichen endet.',
+  'KEINE FLOSKELN. Nicht „In der heutigen schnelllebigen Welt", nicht „Es ist kein Geheimnis, dass", nicht „Eines ist klar". Keine Beschwörung von Wandel und Zukunft als Einleitung. Der Ton ist der von branding.supply: ruhig, konkret, an der Sache — und er macht Freude beim Lesen, weil er etwas zu sagen hat, nicht weil er sich anstrengt.',
+].join('\n')
+
 export interface InsightsDraftPromptInput {
   format: InsightsFormat
   /** Die Grundsprache — der Entwurf entsteht IMMER in ihr (Entscheidung 3). */
@@ -111,7 +169,7 @@ export interface InsightsDraftPromptInput {
 }
 
 /**
- * DER ENTWURFS-PROMPT (§9.4, `insights-d-1`).
+ * DER ENTWURFS-PROMPT (§9.4, `insights-d-2` — SEO/GEO seit BI2 K6).
  *
  * Der Entwurf landet IMMER als `draft` — „es gibt keinen Weg von der KI direkt
  * nach `review`". Deshalb sagt der Prompt auch nichts über Freigabe oder
@@ -132,6 +190,8 @@ export function buildInsightsDraftPrompt(input: InsightsDraftPromptInput): strin
     `ZIELUMFANG: etwa ${input.targetWords} Wörter im Fließtext.`,
     '',
     MARKDOWN_RULES,
+    '',
+    SEO_GEO_RULES,
     '',
     HARD_RULES,
     '',

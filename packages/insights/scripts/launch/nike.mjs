@@ -60,7 +60,21 @@ Die Sprache folgte später. 1977 zeigte die erste Markenanzeige – „There is 
 
 Für uns ist Nike deshalb das Lehrbuchbeispiel einer Marke, deren Name, Zeichen und Sprache dieselbe Geschichte erzählen: Sieg, Bewegung, Aufbruch. Wie stark der Auftritt der heutigen Website ist, misst der Brand-Check.
 
-**Methodik:** Wie der Brand Score entsteht, steht in der [Methodik](/brand-check/methodik).`
+### Wofür steht der Name Nike?
+
+Für die griechische Siegesgöttin. Das Versprechen steht damit vor dem Produkt – und zwar seit dem 30. Mai 1971, dem Tag, an dem das Unternehmen diesen Namen annahm.
+
+### Wer hat den Swoosh entworfen?
+
+Carolyn Davidson. Zum ersten Mal eingesetzt wurde das Zeichen am 18. Juni 1971; ersetzt wurde es seither nie.
+
+### Was lässt sich von diesem Auftritt lernen?
+
+Die Reihenfolge. Name, Zeichen und Sprache erzählen dieselbe Geschichte statt drei verschiedene – und sie bleiben, anstatt mit jeder Kampagne neu anzufangen.
+
+**Methodik:** Wie der Brand Score entsteht, steht in der [Methodik](/brand-check/methodik).
+
+Welche drei Dinge erzählen in eurer Marke dieselbe Geschichte – und welches erzählt eine andere?`
 
 const bodyEn = `Nike did not start out as Nike. The company was founded on 25 January 1964 as “Blue Ribbon Sports” by Bill Bowerman and Phil Knight; it has carried its current name since 30 May 1971. The name comes from the Greek goddess of victory – a promise every product carries before anyone has tried it on.
 
@@ -70,7 +84,21 @@ The language came later. In 1977 the first brand ad – “There is no finish li
 
 For us, Nike is therefore the textbook case of a brand whose name, mark and language tell one story: victory, movement, momentum. How strong the current website is, the Brand Check measures.
 
-**Methodology:** How the Brand Score is calculated is explained in our [methodology](/brand-check/methodik).`
+### What does the name Nike stand for?
+
+The Greek goddess of victory. The promise therefore comes before the product – and has done since 30 May 1971, the day the company took that name.
+
+### Who designed the Swoosh?
+
+Carolyn Davidson. The mark was first used on 18 June 1971 and has never been replaced since.
+
+### What can be learned from this presence?
+
+The order of things. Name, mark and language tell one story instead of three – and they stay, instead of starting over with every campaign.
+
+**Methodology:** How the Brand Score is calculated is explained in our [methodology](/brand-check/methodik).
+
+Which three things tell one story in your brand – and which one tells a different one?`
 
 export const nikeProfile = {
   format: 'profile',

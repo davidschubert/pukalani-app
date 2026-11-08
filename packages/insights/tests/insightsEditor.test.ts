@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   INSIGHTS_METHODOLOGY_PATH,
+  INSIGHTS_QUESTION_HEADINGS_MIN,
   INSIGHTS_SERVER_OWNED_FIELDS,
   INSIGHTS_STATES,
   INSIGHTS_TRANSITIONS,
@@ -198,7 +199,9 @@ describe('insightsAiLimits', () => {
 
 describe('insightsPrompts', () => {
   it('trägt die Fassungen aus dem Plan', () => {
-    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-1')
+    // Hochgezählt mit BI2 K6: die Fassung bestellt SEO/GEO-Struktur, also
+    // inhaltlich etwas anderes. Alte Beiträge tragen weiter `insights-d-1`.
+    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-2')
     expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-1')
   })
 
@@ -251,6 +254,69 @@ describe('insightsPrompts', () => {
       const prompt = buildInsightsDraftPrompt(input)
       expect(prompt).toContain('KEINE Tabellen')
       expect(prompt).toContain('~~')
+    })
+
+    /**
+     * DIE SEO/GEO-ZUSAGEN (BI2 K6, Plan §6) am TEXT festgenagelt — so wie
+     * `insightsVideoBrief.test.ts` es für `insights-b-1` tut. Ohne diese
+     * Prüfungen wären sie eine Behauptung im Dateikopf, und eine stille
+     * Prompt-Kürzung fiele niemandem auf.
+     */
+    it('bestellt die Antwort im ERSTEN Absatz', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('DIE ANTWORT STEHT IM ERSTEN ABSATZ')
+      expect(prompt).toContain('BEANTWORTET')
+    })
+
+    it('bestellt Frage-Überschriften, und zwar mindestens zwei', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('ZWISCHENÜBERSCHRIFTEN SIND FRAGEN')
+      expect(prompt).toContain(`Mindestens ${INSIGHTS_QUESTION_HEADINGS_MIN} Überschriften`)
+    })
+
+    it('bestellt definierende Sätze, FAQ-Block und Diskussionsfrage', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('SCHREIBE DEFINIERENDE SÄTZE')
+      expect(prompt).toContain('„X ist …"')
+      expect(prompt).toContain('EIN FAQ-BLOCK AM ENDE')
+      expect(prompt).toContain('drei bis fünf echte Fragen')
+      // Die FAQ-Fragen sind `###`-Überschriften — genau das ist die Kopplung
+      // an die siebte Prüfregel (sie zählt Frage-Überschriften).
+      expect(prompt).toContain('eigene Überschrift der Ebene ###')
+      expect(prompt).toContain('DER LETZTE ABSATZ IST EINE DISKUSSIONSFRAGE')
+    })
+
+    it('verbietet die Floskel, die David ausdrücklich genannt hat', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('KEINE FLOSKELN')
+      expect(prompt).toContain('In der heutigen schnelllebigen Welt')
+    })
+
+    /**
+     * GEGENPROBE ZUR ARBEITSTEILUNG: die vier Verbote sind die RECHTLICHE
+     * Hälfte und mit `insights-d-1` wortgleich. Die neue Fassung erweitert die
+     * Form, nicht die Haftung — fiele hier ein Verbot heraus, wäre das die
+     * teuerste stille Änderung dieses Produkts.
+     */
+    it('lässt die vier Verbote unverändert stehen', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('ERFINDE KEIN ZITAT')
+      expect(prompt).toContain('ERFINDE KEINE ZAHL')
+      expect(prompt).toContain('SETZE NIEMANDEN HERAB')
+      expect(prompt).toContain('ERFINDE KEINEN AUTOR')
+      // Die Verbote stehen HINTER den Form-Regeln: das Letzte vor dem Brief.
+      expect(prompt.indexOf('ERFINDE KEIN ZITAT')).toBeGreaterThan(prompt.indexOf('KEINE FLOSKELN'))
+    })
+
+    it('gibt jedem Format dieselben SEO/GEO-Regeln — auch dem Ranking', () => {
+      for (const format of ['profile', 'duel', 'article', 'ranking'] as const) {
+        const prompt = buildInsightsDraftPrompt({ ...input, format })
+        expect(prompt, format).toContain('DER LETZTE ABSATZ IST EINE DISKUSSIONSFRAGE')
+        expect(prompt, format).toContain('EIN FAQ-BLOCK AM ENDE')
+      }
+      // Und das Ranking behält seine eigene Zusage: die Plätze stehen in den
+      // DATEN, nicht im Text.
+      expect(buildInsightsDraftPrompt({ ...input, format: 'ranking' })).toContain('schreibe sie NICHT in den Text')
     })
 
     it('sagt die Sprache der Grundfassung an', () => {

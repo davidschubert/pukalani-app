@@ -38,7 +38,21 @@ Beim Namen sehen wir Nike vorn: Wer eine Siegesgöttin im Namen trägt, muss das
 
 Zwei Klassiker, zwei Philosophien: Herkunft auf der einen Seite, Mythos auf der anderen. Welche Website heute den stärkeren Auftritt hat, misst der Brand-Check.
 
-**Methodik:** Wie der Brand Score entsteht, steht in der [Methodik](/brand-check/methodik).`
+### Wessen Zeichen ist älter?
+
+Das von adidas. Die drei Streifen wurden am Gründungstag eingetragen, das Zeichen ist also genauso alt wie das Unternehmen; der Swoosh kam 1971 und damit Jahre nach der Gründung.
+
+### Warum ist ein Muster etwas anderes als ein Symbol?
+
+Ein Muster sitzt im Produkt und ist dort Gestaltung und Absender zugleich. Ein Symbol ist ablösbar: Es lässt sich auf jede Fläche setzen, ohne das Produkt zu verändern.
+
+### Wer gewinnt dieses Duell?
+
+Niemand – und das ist die Antwort. Die Zeilen gehen auseinander, weil beide Marken jahrzehntelang an ihrem Weg festgehalten haben: Herkunft auf der einen Seite, Mythos auf der anderen.
+
+**Methodik:** Wie der Brand Score entsteht, steht in der [Methodik](/brand-check/methodik).
+
+Was wäre für eure Marke der richtige Weg: ein Zeichen, das Herkunft zeigt, oder eines, das ein Versprechen trägt?`
 
 const bodyEn = `## Two foundings, two logics
 
@@ -58,7 +72,21 @@ On the name, Nike is ahead for us: a brand named after a goddess of victory neve
 
 Two classics, two philosophies: heritage on one side, myth on the other. Which website has the stronger presence today is what the Brand Check measures.
 
-**Methodology:** How the Brand Score is calculated is explained in our [methodology](/brand-check/methodik).`
+### Whose mark is older?
+
+The adidas one. The three stripes were registered on the day the company was founded, so the mark is exactly as old as the company; the Swoosh arrived in 1971, years after Nike was founded.
+
+### Why is a pattern different from a symbol?
+
+A pattern sits in the product, where it is design and sender at once. A symbol can be detached: it can be placed on any surface without changing the product.
+
+### Who wins this duel?
+
+Nobody – and that is the answer. The rows pull apart because both brands held on to their own path for decades: origin on one side, myth on the other.
+
+**Methodology:** How the Brand Score is calculated is explained in our [methodology](/brand-check/methodik).
+
+What would be the right path for your brand: a mark that shows origin, or one that carries a promise?`
 
 export const adidasVsNike = {
   format: 'duel',

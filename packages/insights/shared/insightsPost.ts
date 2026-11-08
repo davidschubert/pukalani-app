@@ -380,6 +380,12 @@ interface InsightsPostRuleInput {
 /**
  * DIE FORM-REGELN als LISTE statt als `ctx.addIssue`-Aufrufe: so sind sie ohne
  * Zod-Kontext prüfbar und werden von beiden Schemas GELESEN, nicht kopiert.
+ *
+ * WAS HIER NICHT HINEINGEHÖRT: eine Regel über die SPRACHE des Fliesstextes.
+ * Durch dieses `superRefine` geht jedes Schreiben, auch das eines bezahlten
+ * KI-Laufs — eine Regel hier lehnt die Antwort ab, statt sie zu beanstanden.
+ * Die SEO/GEO-Regel aus BI2 K6 sitzt deshalb im Gate vor `review`
+ * (`insightsReviewIssues`, Regel 7); die Begründung steht dort ausführlich.
  */
 function insightsPostRuleIssues(post: InsightsPostRuleInput): { path: (string | number)[], message: string }[] {
   const issues: { path: (string | number)[], message: string }[] = []
@@ -663,6 +669,76 @@ export function insightsMethodologyLinked(post: Pick<InsightsPost, 'bodyDe' | 'b
 }
 
 /**
+ * WIE VIELE ZWISCHENÜBERSCHRIFTEN EINES BEITRAGS FRAGEN SEIN MÜSSEN (BI2 K6).
+ *
+ * Zwei, nicht drei: der Prompt bestellt einen FAQ-Block mit DREI bis FÜNF
+ * Fragen, die Regel darf aber auch einen von Hand geschriebenen Beitrag
+ * durchlassen, der seine Kapitel als Fragen führt und auf den FAQ-Block
+ * verzichtet. Eine Regel, die genau den Prompt abzählt, prüft nicht den Text,
+ * sondern den Prompt.
+ */
+export const INSIGHTS_QUESTION_HEADINGS_MIN = 2
+
+/** Eine Zwischenüberschrift, wie `core/shared/markdown.ts` sie liest (## / ###). */
+const INSIGHTS_HEADING_LINE = /^#{2,3}[ \t]+(.+)$/
+
+/**
+ * DER SCHMUCK UM DIE FRAGE — Sternchen, Anführungszeichen, Klammern,
+ * Backticks.
+ *
+ * Ohne dieses Abschneiden wäre `**Und was heißt das für eure Marke?**` keine
+ * Frage, weil die Zeile auf `*` endet. Die Regel soll zählen, was dasteht,
+ * nicht wie es ausgezeichnet ist — deshalb fällt die Auszeichnung auf BEIDEN
+ * Seiten, und was zurückkommt, ist die Frage selbst (ein Test zeigt sie).
+ */
+function insightsTrimDecoration(line: string): string {
+  return line.replace(/^[\s*_`"'”“»«([]+/u, '').replace(/[\s*_`"'”“»«)\]]+$/u, '')
+}
+
+/**
+ * DIE FRAGE-ZWISCHENÜBERSCHRIFTEN EINES TEXTES — GEZÄHLT, nicht geraten
+ * (BI2 K6, Plan §6).
+ *
+ * Gezählt wird eine Überschriftenzeile (`##`/`###`), deren Text mit einem
+ * Fragezeichen ENDET. Ein Fragezeichen in der Mitte („Warum? Drei Gründe")
+ * zählt NICHT: das ist eine Überschrift, die eine Frage erwähnt, keine, die
+ * eine stellt — und nur die zweite ist der Aufhänger, um den es geht (eine
+ * Antwortmaschine liest die Überschrift als Frage und den Absatz darunter
+ * als Antwort).
+ *
+ * Die Funktion gibt die TEXTE zurück und nicht ihre Anzahl, damit ein Test
+ * zeigen kann, WELCHE Überschrift gezählt wurde.
+ */
+export function insightsQuestionHeadings(body: string): string[] {
+  const found: string[] = []
+  for (const line of body.split('\n')) {
+    const match = INSIGHTS_HEADING_LINE.exec(line.trim())
+    if (!match) continue
+    const text = insightsTrimDecoration(match[1] ?? '')
+    if (text.endsWith('?')) found.push(text)
+  }
+  return found
+}
+
+/**
+ * ENDET DER TEXT MIT EINER FRAGE? (BI2 K6 — Davids „am Ende zum Diskutieren
+ * anregen", und die Brücke zu den Kommentaren unter den Artikeln.)
+ *
+ * Gefragt ist die LETZTE nicht-leere Zeile. Eine ÜBERSCHRIFT zählt bewusst
+ * nicht: ein Beitrag, der mit `## Und ihr?` aufhört, kündigt einen Absatz an,
+ * den niemand geschrieben hat. Gemeint ist der letzte ABSATZ — und er muss
+ * wirklich der letzte sein, hinter dem FAQ-Block und hinter jedem Hinweis
+ * (der Methodik-Satz stand in den Launch-Texten ganz am Ende und ist dafür
+ * eine Zeile nach oben gewandert).
+ */
+export function insightsEndsWithQuestion(body: string): boolean {
+  const lines = body.split('\n').map(line => line.trim()).filter(Boolean)
+  const last = lines.at(-1) ?? ''
+  if (last.startsWith('#')) return false
+  return insightsTrimDecoration(last).endsWith('?')
+}
+
+/**
  * DIE LESEZEIT (§9.3): Wörter ÷ 200, aufgerundet, gerechnet beim SPEICHERN.
  * Nicht beim Lesen — sonst rechnet jede Seitenansicht dieselbe Zahl neu, und
  * die Sortierung „Kürzeste Lesezeit" müsste den ganzen Text laden.
@@ -699,6 +775,18 @@ export type InsightsReviewCode =
   | 'disparagement'
   | 'score_without_methodology'
   | 'brand_without_entity'
+  | 'text_without_closing_question'
+  | 'text_without_question_headings'
+
+/**
+ * DIE REIHENFOLGE DER TEXTFELDER, auf die sich `at: { kind: 'text', index }`
+ * bezieht — eine Liste statt zweier Stellen, die dieselbe Zählung behaupten.
+ *
+ * Regel 4 (Herabsetzung) läuft über ALLE sechs, Regel 7 (BI2 K6) nur über die
+ * beiden Fliesstexte. Stand die Reihenfolge zweimal da, zeigte der Editor beim
+ * ersten neuen Feld auf das falsche.
+ */
+export const INSIGHTS_TEXT_FIELDS = ['titleDe', 'titleEn', 'dekDe', 'dekEn', 'bodyDe', 'bodyEn'] as const
 
 export interface InsightsReviewIssue {
   code: InsightsReviewCode
@@ -753,12 +841,26 @@ export interface InsightsReviewContext {
 }
 
 /**
- * DIE SECHS PRÜFREGELN VOR DEM ÜBERGANG NACH `review` (§9.4) — alle
- * blockierend, alle pur, alle mit Gegenprobe im Test.
+ * DIE SIEBEN PRÜFREGELN VOR DEM ÜBERGANG NACH `review` (§9.4, Regel 7 aus
+ * BI2 K6) — alle blockierend, alle pur, alle mit Gegenprobe im Test.
  *
  * Sie geben eine LISTE zurück und nicht `true`/`false`: der Redakteur muss
  * sehen, WELCHE Stelle klemmt („ein Treffer blockiert nicht stumm, sondern
  * zeigt die Stelle", §9.4 Nr. 4).
+ *
+ * ── WARUM REGEL 7 HIER STEHT UND NICHT IN `insightsPostRuleIssues` ───────
+ * Dort hätte sie gut hingepasst — sie ist eine FORM-Regel, und die Form-
+ * Regeln gelten auch im Formular. Nur: `insightsPostRuleIssues` läuft im
+ * `superRefine` von `insightsPostSchema`, und durch dieses Schema geht JEDES
+ * Schreiben — auch das des Entwurfs-Laufs (`draft.post.ts` →
+ * `saveInsightsPostRow`). Eine Regel dort hätte also die Antwort eines
+ * BEZAHLTEN Laufs abgelehnt, sobald das Modell die Diskussionsfrage
+ * vergisst: der Lauf ist weg, der Redakteur hat nichts in der Hand, und das
+ * Geld ist ausgegeben. Genau diese Bauart hat der K5-Nachtrag vom 2026-10-28
+ * schon einmal gekostet („das Schema klemmt jetzt an einer Grenze statt
+ * abzulehnen"). Ein unvollständiger Entwurf ist kein Fehler, sondern Arbeit
+ * — er gehört in den Editor, wo die Liste ihn anzeigt, und blockiert erst
+ * den Weg nach `review`.
  */
 export function insightsReviewIssues(post: InsightsPost, context: InsightsReviewContext = {}): InsightsReviewIssue[] {
   const issues: InsightsReviewIssue[] = []
@@ -791,7 +893,7 @@ export function insightsReviewIssues(post: InsightsPost, context: InsightsReview
 
   // 4 — Namens- und Herabsetzungsfilter auf Titel, Vorspann und Fliesstext.
   if (context.flagText) {
-    const texts = [post.titleDe, post.titleEn, post.dekDe, post.dekEn, post.bodyDe, post.bodyEn]
+    const texts = INSIGHTS_TEXT_FIELDS.map(field => post[field])
     for (const [index, text] of texts.entries()) {
       if (!text) continue
       for (const hit of context.flagText(text)) {
@@ -817,6 +919,25 @@ export function insightsReviewIssues(post: InsightsPost, context: InsightsReview
       if (!entry.removed && !known.has(entry.brandId)) {
         issues.push({ code: 'brand_without_entity', at: { kind: 'fact', index }, detail: entry.brandId })
       }
+    }
+  }
+
+  // 7 — die zwei PRÜFBAREN SEO/GEO-Zusagen (BI2 K6, Plan §6): der Text endet
+  //     mit einer Frage, und mindestens zwei Zwischenüberschriften sind
+  //     Fragen. Alles Übrige am Prompt („die Antwort im ersten Absatz",
+  //     „keine Floskeln") ist eine Bewertung und bleibt Prompt.
+  for (const locale of INSIGHTS_LOCALES) {
+    const body = insightsBodyOf(post, locale)
+    // Eine LEERE Fassung wird nicht geprüft — eine Prüfung ohne Text wäre
+    // eine Lüge (dieselbe Begründung wie bei `sourceTexts`), und die zweite
+    // Fassung entsteht erst im Übersetzen-Lauf.
+    if (!body.trim()) continue
+    const index = INSIGHTS_TEXT_FIELDS.indexOf(locale === 'de' ? 'bodyDe' : 'bodyEn')
+    if (!insightsEndsWithQuestion(body)) {
+      issues.push({ code: 'text_without_closing_question', at: { kind: 'text', index }, detail: locale })
+    }
+    if (insightsQuestionHeadings(body).length < INSIGHTS_QUESTION_HEADINGS_MIN) {
+      issues.push({ code: 'text_without_question_headings', at: { kind: 'text', index }, detail: locale })
     }
   }
 

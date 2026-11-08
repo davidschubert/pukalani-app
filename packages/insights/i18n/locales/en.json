@@ -446,6 +446,8 @@
         "disparagement": "Disparagement or a third-party name in the text: {detail}",
         "scoreWithoutMethodology": "Score without a link to the method",
         "brandWithoutEntity": "Brand mentioned without its own row: {detail}",
+        "textWithoutClosingQuestion": "The text does not end with a question ({detail})",
+        "textWithoutQuestionHeadings": "Fewer than {min} subheadings are questions ({detail})",
         "reason": {
           "competitorName": "a brand name without a reference in the brands panel",
           "competitorDomain": "a brand website without a reference in the brands panel",
