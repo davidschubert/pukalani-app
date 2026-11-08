@@ -677,9 +677,9 @@ Reihenfolge wie immer: dev → CI (PR #65, E2E gegen die Wegwerf-Instanz 2.7.1
   jetzt alle 20 s. Probe: stummer WS nach 120,2 s weg, pingender lebt.
 - „Deny realtime guests" bleibt AUS (Begründung im Runbook); Realtime-Grenzen
   (100 Abos/Verbindung, 32 Verbindungen/Nutzer) mit ~15 Abos weit entfernt.
-- Offen geblieben: der Browser-Blick mit Anmeldung (Account-WS > 2 min stabil)
-  — Chrome war auf account. nicht angemeldet. Ob der keepAlive-Patch fallen
-  kann: AW28.
+- Browser-Blick mit Anmeldung NACHGEHOLT 2026-11-08 (account.pukalani.app):
+  nach 210 s Account-WS + SDK-Socket offen, 16 Pings, 0 Abbrüche, kein
+  `/api/auth/me`. Ob der keepAlive-Patch fallen kann: AW28.
 
 Runbook: [APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md).
 

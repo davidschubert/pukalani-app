@@ -203,7 +203,10 @@ KeepAlive-Fall), `node scripts/ops/verify-tls.mjs`, `pnpm ops:schema-parity`
 (Soll unverändert — die neuen Collections sind Appwrite-intern), dazu NEU:
 im Browser 3 Minuten ein Dashboard offen lassen und im Netzwerk-Tab prüfen,
 dass der Account-WS (`channels[]=account`) NICHT neu aufgebaut wird und kein
-`/api/auth/me` alle 2 min nachkommt.
+`/api/auth/me` alle 2 min nachkommt. **Prod-Beweis 2026-11-08** (angemeldet,
+account.pukalani.app/de, `WebSocket.prototype.send` instrumentiert): nach 210 s
+beide Sockets (Account-WS + geteilter SDK-Socket) `readyState 1`, 16 Pings,
+0 `close`-Ereignisse, kein `/api/auth/me` im Netzwerk.
 
 **Rückweg:** `.env` + `docker-compose.yml` aus `*.<epoch>.backup`, Override-
 Mount zurück auf `registers-2.6.2-keepalive-off.php`, `docker compose up -d
