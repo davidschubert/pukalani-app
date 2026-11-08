@@ -267,6 +267,15 @@ export interface InsightsNewsletterBatchInput {
   intros: InsightsNewsletterIntros
   /** Die Sende-Zeile, auf der dieser Stapel aufsetzt. */
   row: InsightsSendRow
+  /**
+   * WIE VIELE MAILS DIESER STAPEL HÖCHSTENS VERSCHICKEN DARF (RS1 a).
+   *
+   * Ohne Angabe die volle Stapelgröße (50). Die Mail-Bremse setzt hier den
+   * Rest des Tagesbudgets ein, wenn der kleiner ist (`decideMailBatch`) —
+   * dreißig freie Mails verschicken dreißig Ausgaben, der Cursor steht danach
+   * mitten in der Liste, und morgen geht es weiter.
+   */
+  maxBatch?: number
 }
 
 export interface InsightsNewsletterBatchResult {
@@ -313,6 +322,14 @@ export async function runInsightsNewsletterBatch(
 ): Promise<InsightsNewsletterBatchResult> {
   const { tablesDB, databaseId } = insightsDb(event)
   const startCursor = input.row.cursor ?? ''
+  /**
+   * Der Deckel DIESES Stapels (RS1 a). Er geht in BEIDE Rechnungen ein — in
+   * `Query.limit` und in `done` weiter unten. Würde `done` gegen die feste
+   * Stapelgröße prüfen, wäre ein gebremster Stapel von dreißig Zeilen
+   * („30 < 50") fälschlich FERTIG: der Lauf bekäme ein `finishedAt`, und der
+   * Rest der Liste bekäme nie Post. Genau deshalb steht hier eine Variable.
+   */
+  const limit = Math.max(1, Math.min(INSIGHTS_NEWSLETTER_BATCH, Math.round(input.maxBatch ?? INSIGHTS_NEWSLETTER_BATCH)))
 
   let rows: InsightsSubscriberRow[]
   try {
@@ -324,7 +341,7 @@ export async function runInsightsNewsletterBatch(
         Query.equal('unsubscribedAt', ''),
         Query.orderAsc('$id'),
         ...(startCursor ? [Query.greaterThan('$id', startCursor)] : []),
-        Query.limit(INSIGHTS_NEWSLETTER_BATCH),
+        Query.limit(limit),
       ],
     })
     rows = res.rows
@@ -364,7 +381,7 @@ export async function runInsightsNewsletterBatch(
     cursor = subscriber.$id
   }
 
-  const done = !aborted && rows.length < INSIGHTS_NEWSLETTER_BATCH
+  const done = !aborted && rows.length < limit
   const now = new Date().toISOString()
   const state: InsightsSendState = aborted ? 'failed' : (done ? 'done' : 'running')
 
@@ -398,6 +415,10 @@ export async function runInsightsNewsletterBatch(
   logEvent(aborted ? 'warn' : 'info', aborted ? 'insights.newsletter_send_failed' : 'insights.newsletter_send_batch', {
     postId: input.postId,
     batch: rows.length,
+    // Der Deckel steht im Log, damit ein GEBREMSTER Stapel als solcher zu
+    // erkennen ist (RS1 a) — `batch: 30, limit: 30` ist ein enger Tag,
+    // `batch: 30, limit: 50` ist das Ende der Liste.
+    limit,
     sent,
     failed,
     totalSent: nextSent,

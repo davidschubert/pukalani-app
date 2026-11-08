@@ -276,6 +276,16 @@ export default defineNuxtConfig({
     // Ein Webhook je Deployment, jeder mit eigenem Secret
     // (docs/runbooks/RESEND-WEBHOOK.md).
     resendWebhookSecret: '',
+    // server-only! Env: NUXT_RESEND_API_KEY — NUR-LESENDER Resend-Schlüssel
+    // für `GET /usage` (RS1 a, Davids Entscheidung 2026-11-08: freier Tarif
+    // behalten und stattdessen bremsen). Der Newsletter-Versand fragt damit
+    // vor jedem Stapel, wie viele Mails der Tag noch trägt, und hält an,
+    // bevor er das Anmelde-Budget (OTP, Verifizierung) mitnimmt —
+    // `shared/mailBudget.ts`. NICHT der SMTP-Schlüssel, und NICHT zum
+    // Versenden: verschickt wird weiter über SMTP (`NUXT_SMTP_*`).
+    // Leer = der Versand hält jeden Stapel an (`budget_unknown`, fail-closed
+    // mit Begründung im Kopf von shared/mailBudget.ts).
+    resendApiKey: '',
     // server-only! Env: NUXT_TURNSTILE_SECRET — Secret Key von Cloudflare
     // Turnstile (Bot-Beweis an signup/otp/recovery, Vorfall 2026-10-27).
     // Leer = aus, ZUSAMMEN mit `public.turnstileSiteKey` der Schalter

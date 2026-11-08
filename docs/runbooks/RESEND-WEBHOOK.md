@@ -99,3 +99,48 @@ dann steht das Secret in keinem Formularfeld und in keiner Ausgabe.
 Resend → Webhook → **Rotate secret**, dann § 2 ab „ploi → Environment". Bis
 zum Reload antwortet die Route `401`; Resend wiederholt die verpassten
 Zustellungen selbst (Svix-Wiederholungen über ~1 Tag).
+
+## 5 · Tagesbudget: der nur-lesende Schlüssel (RS1 a)
+
+Gehört nicht zum Webhook, aber in dieselbe Klick-Runde: derselbe Resend-Account,
+dieselbe Server-`.env`.
+
+**Warum.** Davids Entscheidung vom 2026-11-08 war, auf dem **freien Tarif** zu
+bleiben (100 Mails/Tag für ALLES — OTP, Verifizierung, Benachrichtigungen und
+den Insights-Newsletter) und stattdessen zu **bremsen**. Der Newsletter-Versand
+fragt vor jedem Stapel `GET /usage`, wie viele Mails der Tag noch trägt, und
+hält an, bevor er das Anmelde-Budget mitnimmt. Gemessen am 2026-11-08: 243
+Mails im Monat, 0 bestätigte Abonnenten — eng wird es erst ab etwa 85
+Empfängern je Ausgabe.
+
+**Ohne diesen Schlüssel geht keine Ausgabe raus** (`budget_unknown`, mit
+Begründung im Kopf von `packages/core/shared/mailBudget.ts`): eine Bremse, die
+ohne Schlüssel still durchlässt, wäre keine Bremse. Solange der
+Newsletter-Riegel `pukalani.insights.newsletter.enabled` zu ist, fehlt dadurch
+nichts.
+
+**Klickliste (David).**
+
+1. [resend.com/api-keys](https://resend.com/api-keys) → **Create API Key**,
+   Name `pukalani-usage-read`, Permission **Sending access** ist NICHT nötig —
+   `Full access` vermeiden, wenn die Oberfläche eine nur-lesende Wahl anbietet.
+   Der Schlüssel wird nur für `GET /usage` benutzt, nie zum Versenden
+   (verschickt wird weiter über SMTP).
+2. In der Server-`.env` der Site setzen und neu laden — nur über `stdin`, damit
+   der Schlüssel nicht in der Shell-Historie landet:
+
+```bash
+ssh ploi@<host> 'cat >> /home/ploi/<site>/.env' <<< 'NUXT_RESEND_API_KEY=re_…'
+```
+
+3. `pm2 reload <site>` (die `.env` wird beim Start gelesen — ohne Reload wirkt
+   sie nicht, s. Memory „Server-.env-Reload-Zeitbombe").
+4. Beweis: im Dashboard unter einem freigegebenen Beitrag auf „Newsletter
+   verschicken" — bei fehlendem Schlüssel erscheint der Satz „Wir können das
+   Mail-Budget gerade nicht abfragen", danach nicht mehr.
+
+**Erst danach** gehört `NUXT_RESEND_API_KEY` in die Pflichtliste von
+`scripts/ops/verify-site-env.mjs` — dieselbe Lehre wie beim Webhook-Secret
+(§ 2, letzter Schritt): eine Pflicht-Variable, die noch nicht gesetzt ist,
+öffnet im täglichen `production-watch.yml` jeden Tag einen bestellten
+`produktions-alarm`.

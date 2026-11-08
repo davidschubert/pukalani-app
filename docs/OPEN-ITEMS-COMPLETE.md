@@ -30,6 +30,109 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RS1 a — Tarif entschieden, der Newsletter bremst sich selbst ✅ 2026-11-08
+
+**Die Entscheidung.** Vorgelegt wurde die gemessene Lage, nicht die Theorie:
+freier Resend-Tarif (100 Mails/Tag, 3.000/Monat), Verbrauch **243 im Monat,
+6 am Tag der Messung** (also ~8/Tag für OTP, Verifizierung,
+Benachrichtigungen), und `insights_subscribers` auf Prod mit **0 Zeilen** —
+der Riegel `pukalani.insights.newsletter.enabled` hält nicht nur den Versand,
+sondern auch das Anmelde-Formular zu, es kann also noch niemand abonniert
+haben. Eine Ausgabe kostet EINE Mail je bestätigtem Abonnenten, auf EINEN Tag
+gebündelt; eng wird es damit erst ab etwa **85 Empfängern**. Was dann
+scheitert, ist aber nicht nur die Ausgabe, sondern jede weitere Mail des
+Tages: niemand kann sich mehr anmelden oder seine Adresse bestätigen.
+
+**Davids Wahl: freien Tarif behalten UND bremsen** (gegen „jetzt auf Pro",
+20 $/Monat, und gegen „nur zusehen"). Begründung: 20 $/Monat für eine leere
+Liste wären bezahlte Vorsorge gegen ein Problem, das erst in Monaten
+auftritt — die Bremse hilft dagegen dauerhaft, auch auf Pro. Wechsel auf Pro,
+sobald die bestätigte Liste ~75 überschreitet.
+
+**Was gebaut ist.** Eine Bremse im core-Layer, weil das Mail-Budget dem
+Mailer gehört und nicht dem Newsletter: reine Regeln in
+`packages/core/shared/mailBudget.ts` (`readResendDailyRemaining`,
+`decideMailBatch`, Rücklage 20), der Netzzugriff in
+`packages/core/server/utils/mailBudget.ts` (`GET /usage`, neue Env
+`NUXT_RESEND_API_KEY`, nur-lesend — verschickt wird weiter über SMTP). Der
+Insights-Versand fragt sie VOR dem ersten Schreibvorgang
+(`newsletter.post.ts`): angehalten heißt dann **keine Sende-Zeile**, der
+Beitrag bleibt unberührt, und die Redaktion drückt morgen zum ersten Mal.
+Reicht das Budget nur für einen Teil, läuft ein **Teil-Stapel** — der Versand
+war mit Stapel und Cursor ohnehin dafür gebaut. Zwei neue Gründe im
+Envelope (`budget_exhausted`, `budget_unknown`) mit Text in de+en.
+
+**Drei Entscheidungen mit Grund.** (1) **Ohne Schlüssel wird nicht
+gesendet** (fail-closed) — die begründete Umkehrung der Hausregel „eine Mail
+wird nie verworfen" (D5): dort geht es um eine Mail an einen Menschen, hier um
+fünfzig auf einmal, die das Anmelde-Budget mitnehmen; eine Bremse, die ohne
+Schlüssel still durchlässt, ist ein gutes Gefühl und keine Bremse. (2) Die
+Grenze kommt aus der **Antwort**, nicht als feste 100 aus dem Code: bei einem
+Tarif ohne Tagesgrenze liefert Resend `daily.limit: null` ⇒ `'unlimited'` ⇒
+die Bremse ist von selbst wirkungslos, ein Wechsel auf Pro braucht keinen
+Rückbau. (3) Die **Rücklage ist eine Konstante**, keine Konfiguration: sie
+schützt den Anmeldeweg, und wer eine Ausgabe verschickt, soll nicht zwischen
+„reicht schon" und „sicher" wählen müssen.
+
+**Beweis.** `packages/core/tests/mailBudget.test.ts` (29: Antwort lesen —
+Zahl, `limit: null`, negativer Rest geklemmt, acht unlesbare Formen ⇒
+„unbekannt"; entscheiden — voller Stapel, Teil-Stapel, angehalten, Rücklage,
+`unlimited` als Gegenprobe; der Netzzugriff — ohne Schlüssel kein Aufruf, bei
+Netzfehler/4xx/5xx/unlesbarem Rumpf `null`, und weder Schlüssel noch fremder
+Fehlertext landen im Log) und neun Fälle in
+`packages/insights/tests/insightsNewsletterSendRoutes.test.ts` (hält an ⇒
+409 ohne Sende-Zeile · voller Stapel als Gegenprobe · Teil-Stapel 25 von 30,
+am nächsten Tag die letzten 5, keine Dublette · Deckel im Log · `unlimited`
+bremst nicht · die Nein des Beitrags kommen VOR der Bremse). Dazu der
+Klick-Beweis gegen den lokalen Dev-Server (unten).
+
+**Gelernt:** Ein gebremster Stapel hätte den Lauf fast als FERTIG gemeldet.
+`done` kam aus `rows.length < INSIGHTS_NEWSLETTER_BATCH` — bei einem Deckel
+von 25 ist „25 < 50" wahr, der Lauf hätte ein `finishedAt` bekommen,
+`already_sent` jeden zweiten Druck abgewiesen, und die restlichen Abonnenten
+hätten NIE Post bekommen. Wer eine Obergrenze einführt, muss JEDE Rechnung
+mitziehen, die vorher gegen die Konstante lief; der Test dazu ist namentlich
+die Falle des Pakets. Und: die Unit-Tests stellen `mailDailyRemaining` als
+Global — sie können deshalb NICHT beweisen, dass der Produkt-Layer den
+core-Helfer zur Laufzeit überhaupt sieht. Das zeigt erst der generierte
+Nitro-Import im Dev-Bündel (`.nuxt/types/nitro-imports.d.ts` +
+`.nuxt/dev/index.mjs`) — dieselbe Lücke, die PM1 für Manifest-Plugins
+beschreibt.
+
+### RS1 b — Nachtrag: der Klick-Beweis ✅ 2026-11-08
+
+Der Eintrag „RS1 b" belegt die Route auf den vier Hosts (unsigniert 401,
+selbst signiertes `email.delivered` 200) und nennt als offen nur noch ein
+echtes Bounce-Ereignis aus Resend. Was dort NICHT belegt ist, ist die
+WIRKUNG — dass ein harter Bounce wirklich ein Konto umschaltet und einen
+Abonnenten abmeldet; auf einem Prod-Host wäre dafür ein echtes Konto zu
+beschädigen. Dieser Beweis ist jetzt lokal gefahren, mit selbst signierten
+Ereignissen: branding aus dem Worktree auf
+:3010 (cwd geprüft — ein Dev-Server aus `.claude/launch.json` startet im
+HAUPT-Repo, s. `.claude/rules/tests.md`), echte lokale Appwrite 2.7.1,
+Projekt `portfolio-g4ml`, Konto und Abonnent-Zeile für den Lauf angelegt und
+danach entfernt.
+
+**23 grün, 0 rot:** verfälschte Signatur, fremdes Secret, eine Stunde alter
+Zeitstempel und fehlende Kopfzeilen ⇒ je **401**, und das Konto danach
+unberührt · harter Bounce ⇒ 200, `emailNotifications: 'off'`, Merker gesetzt,
+und **`theme` sowie `emailLocale` bleiben stehen** (zusammengeführt, nicht
+überschrieben) · dasselbe Ereignis zweimal ⇒ Merker unverändert ·
+Beschwerde ⇒ Abonnent abgemeldet, `confirmedAt` bleibt, Wiederholung ändert
+nichts · unbekannte Adresse ⇒ 200 und KEINE neue Zeile · weicher Bounce
+(`Transient`) ⇒ 200 und der Abonnent bleibt angemeldet. Dazu die Gegenprobe
+mit entferntem Secret und Dev-Neustart: ein **gültig signiertes** Ereignis
+⇒ **404** (es ist also die Abwesenheit des Secrets, nicht eine schlechte
+Signatur).
+
+**Gelernt:** Ein Worktree hat keine `.env`, und für `branding` gab es auch im
+Haupt-Checkout keine — die einzige lokale lag im Worktree einer
+Nachbarsitzung. Kopieren (lesen) ist in Ordnung, nur geschrieben wird dort
+nichts; die eigenen Testzeilen gehören danach weg. Dazu die bekannte
+Worktree-Falle: `@shikijs/engine-oniguruma` ist nicht auflösbar und JEDE Route
+antwortet 500 — ein Symlink aus `node_modules/.pnpm` und ein Neustart heilen
+es, sonst sieht die eigene Arbeit wie ein Totalausfall aus.
+
 ### RS1 b — Bounces und Beschwerden per Webhook zurückmelden ✅ 2026-11-08
 
 **Was.** Resend sperrt eine Adresse nach hartem Bounce oder Spam-Beschwerde

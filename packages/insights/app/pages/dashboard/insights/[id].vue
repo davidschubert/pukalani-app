@@ -114,6 +114,11 @@ const REASON_KEY: Record<string, string> = {
   already_sent: 'insights.editor.error.alreadySent',
   not_public: 'insights.editor.error.notPublic',
   no_public_address: 'insights.editor.error.noPublicAddress',
+  // Die Mail-Bremse (RS1 a): der Tag trägt keine fünfzig Mails mehr, oder wir
+  // können das Budget nicht sehen. Beides ist ein WARTEN, kein Fehler — der
+  // Text sagt deshalb, was als Nächstes zu tun ist.
+  budget_exhausted: 'insights.editor.error.budgetExhausted',
+  budget_unknown: 'insights.editor.error.budgetUnknown',
   ai_hourly_limit: 'insights.editor.error.aiHourlyLimit',
   ai_daily_limit: 'insights.editor.error.aiDailyLimit',
   not_draft: 'insights.editor.error.notDraft',

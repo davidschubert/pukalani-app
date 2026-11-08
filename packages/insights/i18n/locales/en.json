@@ -538,6 +538,8 @@
         "alreadySent": "This piece has already gone to the list — there is no second time.",
         "notPublic": "Publish it first: a draft has no address out there.",
         "noPublicAddress": "This piece has no page out there — an email would point nowhere.",
+        "budgetExhausted": "Today’s email budget is used up. Sending stops so sign-up and confirmation can still send mail — press the same button again tomorrow and it picks up where it left off.",
+        "budgetUnknown": "We cannot read the email budget right now, so nothing was sent. Is the Resend key missing from the server environment? See the “Resend webhook” runbook.",
         "generic": "That did not work.",
         "notDeletable": "Withdraw it first — a published piece is not deleted directly."
       },
