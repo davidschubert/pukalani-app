@@ -119,7 +119,7 @@ function ohneSchluessel(text) {
  * Ein v2-Aufruf: POST mit Formular-Körper, Antwort `{ stat: 'ok' | 'fail' }`.
  * Der Schlüssel wird NUR hier angehängt und nie geloggt.
  */
-async function call(method, fields = {}) {
+async function call(method, fields = {}, versuch = 1) {
   const body = new URLSearchParams({ api_key: apiKey, format: 'json', ...fields })
   const res = await fetch(API + method, {
     method: 'POST',
@@ -132,6 +132,15 @@ async function call(method, fields = {}) {
     json = JSON.parse(text)
   } catch {
     throw new Error(`${method}: keine JSON-Antwort (HTTP ${res.status}): ${ohneSchluessel(text.slice(0, 200))}`)
+  }
+  // GRATIS-TARIF BREMST (2026-11-08: nach 9 newMonitor in 17 s
+  // „rate_limit_exceeded, retry in 57 seconds"). Warten statt abbrechen —
+  // sonst steht der Abgleich halb, und der Rest braucht einen zweiten Lauf.
+  if (json.stat !== 'ok' && json.error?.type === 'rate_limit_exceeded' && versuch <= 3) {
+    const s = Number(/(\d+) seconds?/.exec(json.error.message ?? '')?.[1] ?? 60) + 2
+    console.log(`   … UptimeRobot bremst (${method}), warte ${s} s (Versuch ${versuch}/3)`)
+    await new Promise((r) => setTimeout(r, s * 1000))
+    return call(method, fields, versuch + 1)
   }
   if (json.stat !== 'ok') {
     throw new Error(`${method}: ${ohneSchluessel(JSON.stringify(json.error ?? json))}`)
@@ -167,13 +176,17 @@ async function main() {
     const typ = c.type === 2 ? 'E-Mail' : `Typ ${c.type}`
     console.log(`  - #${c.id} ${typ} ${c.friendly_name ?? ''} ${c.value ?? ''} — ${status}`)
     if (c.status !== CONTACT_STATUS_ACTIVE) {
-      console.log('    ⚠ dieser Kontakt bekommt KEINEN Alarm (nicht bestätigt oder pausiert)')
+      // VORSICHT (2026-11-08): die v2-API meldete BEIDE Kontakte als 1
+      // „pausiert", der Mail-Kontakt stellte aber am 2026-11-03 DOWN/UP zu.
+      // Die Zahl ist also kein Beweis — im Zweifel `--contacts` angeben.
+      console.log('    ⚠ laut API nicht aktiv (nicht bestätigt oder pausiert) — im Dashboard gegenprüfen; die v2-API irrte hier schon')
     }
   }
   const aktiveKontakte = contacts.filter((c) => c.status === CONTACT_STATUS_ACTIVE).map((c) => String(c.id))
   const zielKontakte = CONTACT_IDS ?? aktiveKontakte
   if (zielKontakte.length === 0) {
     console.log('\n⚠ Kein aktiver Alert Contact — ein Monitor ohne Kontakt ist ein Wächter ohne Alarmweg.')
+    console.log('  Erreichen die Kontakte dich trotzdem (letzte DOWN-Mail?), sie ausdrücklich nennen: --contacts <id>,<id>')
   }
   const alertContactsFeld = zielKontakte.map((id) => `${id}_0_0`).join('-')
   console.log(`  Ziel für neue/umgebogene Monitore: ${alertContactsFeld || '(keiner)'}\n`)
@@ -240,8 +253,15 @@ async function main() {
     await schreibe('editMonitor', { id: String(vorhanden.id), status: '1', ...ohneTyp })
   }
 
+  // Drei Sorten „fremd": gerade ersetzt, URL nicht im Soll — und (2026-11-08
+  // live erwischt) ein ÜBERZÄHLIGER Monitor auf einer Soll-URL: brach ein
+  // Lauf nach dem Anlegen ab, steht beim nächsten der Keyword-Monitor schon
+  // da, wird Kandidat seiner URL, und der alte HTTP-Monitor daneben fiel
+  // durch beide Raster (3 alte blieben stehen, ungenannt).
   const fremde = monitors.filter((m) => m.type !== TYPE_HEARTBEAT
-    && (ersetzt.has(m.id) || !sollUrls.has(normUrl(m.url))))
+    && (ersetzt.has(m.id)
+      || !sollUrls.has(normUrl(m.url))
+      || nachUrl.get(normUrl(m.url))?.id !== m.id))
   for (const m of fremde) {
     console.log(`  ${PRUNE ? '-' : '?'} nicht im Soll: #${m.id} ${m.friendly_name} → ${m.url}${PRUNE ? ' (löschen)' : ' (behalten; --prune löscht)'}`)
     if (PRUNE) await schreibe('deleteMonitor', { id: String(m.id) })
