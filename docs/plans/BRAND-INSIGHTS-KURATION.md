@@ -936,10 +936,19 @@ Deckel (1.993), dasselbe Video lieferte neun Tage zuvor noch 2.027: die
 Streuung gehört zum LAUF, nicht zum Video. Entwürfe und Fundstücke danach
 wieder entfernt. Details und beide Log-Zeilen: COMPLETE „K5-Nachtrag".
 
-**Dabei aufgefallen (offen als `BI3`):** der 51-Minuten-Lauf brauchte 65,4 s,
-nginx gibt bei 60 auf. Der Klient bekommt `504`, der Server legt den Entwurf
-trotzdem an — kein Geld verloren, aber der Mensch sieht einen Fehler statt
-des Links zu seinem Entwurf. Kurze Videos (18,7 s) sind nicht betroffen.
+**Dabei aufgefallen — `BI3`, ERLEDIGT 2026-11-08:** der 51-Minuten-Lauf brauchte
+65,4 s, nginx gab bei 60 auf. Der Klient bekam `504`, der Server legte den
+Entwurf trotzdem an — kein Geld verloren, aber der Mensch sah einen Fehler
+statt des Links zu seinem Entwurf. Behoben mit einem eigenen nginx-Block
+(`brief`/`draft`/`translate`, `proxy_read_timeout 180s`); der Rest der Site
+bleibt bei 60s. Wortlaut im Runbook BRANDING-SUPPLY-SETUP.md § 7 — die
+vhost-Konfiguration liegt NUR in ploi, nicht im Repo. Einzelheiten und die
+Grenze des Beweises: COMPLETE „BI3".
+
+**Und ein neuer offener Punkt `BI4`:** `draft` erlaubt 2.000 Zielwörter, trägt
+aber nur 8.000 Tokens — am oberen Ende bricht die Antwort mitten im JSON ab
+und der bezahlte Lauf ist weg. Dieselbe Bauart wie der K5-Nachtrag, einmal
+gemessen, Schwelle noch unbekannt.
 
 ### Gelernt
 
