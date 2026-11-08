@@ -30,6 +30,26 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RS1 g — DMARC für `pukalani.app` ✅ 2026-11-08
+
+**Was.** `_dmarc.pukalani.app` fehlte (Gmail und Yahoo erwarten DMARC von
+Absendern mit Newslettern). Angelegt über Cloudflare → pukalani.app → Email →
+DMARC Management → „Enable": Cloudflare schreibt selbst den TXT
+`v=DMARC1; p=none; rua=mailto:<eigene Adresse>@dmarc-reports.cloudflare.net`
+und wertet die Berichte im Dashboard aus (Seite „DMARC Management", erste
+Daten nach ~24 h). Beweis: `dig +short TXT _dmarc.pukalani.app @1.1.1.1`
+liefert den Wert.
+
+**Offen bleibt** nur das Anziehen auf `p=quarantine`, sobald die Berichte ein
+paar Wochen sauber sind (Resend besteht SPF/DKIM über `send.` und
+`resend._domainkey`). Das steht in der RS1-Notiz.
+
+**Gelernt:** `pukalani.app` hat KEINEN MX — die übliche Berichtsadresse
+`dmarc@pukalani.app` wäre ins Leere gegangen. Cloudflares DMARC Management
+liefert eine eigene Empfangsadresse und braucht dafür weder Postfach noch
+Freigabe-Eintrag in einer fremden Zone. Dass die Übersicht dort „SPF N/A,
+DKIM Fail" zeigt, betrifft den Apex selbst, nicht Resends Absender-Domain.
+
 ### UL1 — Nuxt UI spricht die Sprache der Seite ✅ 2026-11-08
 
 **Anlass.** Beim CL1-Nachzug (2026-11-06) stand auf `/de/changelog` das Datum
