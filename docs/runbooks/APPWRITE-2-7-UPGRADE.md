@@ -90,8 +90,8 @@ Schema; ein Sprung 2.6.2 → 2.7.1 in EINEM Werkzeug-Lauf plus `migrate` reicht
   2026-07-19 steht (Instanz-Mail nach Leerlauf still weg). Der Patch BLEIBT in
   diesem Upgrade (Gürtel und Hosenträger; `registers.php` hat sich geändert —
   Redis-Timeouts —, keepAlive steht jetzt in **Zeile 372** statt 367, die
-  Patchdatei wird wie immer aus dem Image gezogen). Ob er fallen kann, ist ein
-  eigener Schritt mit Mail-Beweis nach Leerlauf — OPEN-ITEMS.
+  Patchdatei wird wie immer aus dem Image gezogen). **Seit 2026-11-08 auf dev
+  entfernt (AW28)**, Beweis und Prod-Skript im Abschnitt „AW28" unten.
 - **Server-Key-Rotation (#15198/#15199):** `_APP_OPENSSL_KEY_CURRENT`/`_OLDEST`
   (Werkzeug schreibt `1`/`1` = nichts ändert sich), `_APP_OPENSSL_KEY_V2` leer.
   Keine Handlung. Achtung für später: nach einer Konfigurationsänderung
@@ -221,3 +221,69 @@ Executor-Secret steht im Config-Tar.
 | --- | --- | --- | --- | --- | --- |
 | dev (OrbStack, 2.6.2 → 2.7.1) | 2026-11-06 00:37–00:41 | 10,9 MB, 943 Tabellen | „Migration completed", 9,2 s (334 „already exists", 0 Fehler) | Werkzeug 161 s (Image-Pulls), Aufruf bis Beweise ~3,5 min | Tabellen vorher (Dump) gegen nachher (`information_schema`): **0 verschwunden, 66 neu** — alle Appwrite-intern (`reviews*` × 12 je Projekt × 5, `_console_transfers/monitors/monitorAlerts`), Nutzertabellen `_database_*` 388 → 388 · `health/version` 2.7.1 · PHP 8.5.12 · Brotli 1.2.1-r0 · keepAlive 372 `false` · trustedIPs 2 + mqtt 2, 8883/8084 auf 127.0.0.1 · Executor 1.3.1 (`OPR_EXECUTOR_VERSION`), Orchestrator 4.0.0, Console 1.2.138, Browser 0.3.10 · 7 Container auf 2.7.1, keiner auf 2.6.2, alle Up · Realtime-Limits 100/100/100 in der Env · Console 302 · Realtime 101 · Leerlauf-Probe 120,2 s / Ping lebt · **E2E `apps/comments` 16/16** (ohne `themes-visual`, Worktree-Dev-Server mit Ping-Code) · core-Unit 1740 grün · Executor-Secret-Rotation geprobt (s. oben) · `pnpm ops:schema-parity` (prod, unverändert 2.6.2) 69/42/41/43, Spalten deckungsgleich — Ausgangsstand für AW27 |
 | prod (`api.pukalani.app`, 2.6.2 → 2.7.1) | 2026-11-06 01:16–01:19 | 22,3 MB, 872 Tabellen | „Migration completed", 24,1 s (257 „already exists", 0 Fehler) | Werkzeug 27,6 s „installed successfully", Aufruf bis Beweise **99 s** | `ROTATE_EXECUTOR_SECRET=1 bash ~/appwrite-upgrade-2.7.1.sh` per `ssh` (Log `~/appwrite-upgrade-2.7.1.log`), Skript-Exit 0 · Executor 1.3.1, Secret in appwrite+executor gleich, `/v1/runtimes` neu 200 / falsch 401 · PHP 8.5.12, Brotli 1.2.1-r0, keepAlive 372 `false`, trustedIPs 2 + mqtt 2, 8883/8084 auf 127.0.0.1, `config.d` mit `logging.xml` · 7 Container auf 2.7.1, alle Up · 0 Fehler in API/Worker/Realtime nach dem Start · extern `health/version` 2.7.1, Realtime 101 (`--http1.1`) · `verify-health` 10/10 (Build bb380b92 mit Ping-Fix), `verify-tls` grün, `schema-parity` 69/42/41/43 deckungsgleich · SSR demo/branding.supply/pukalani.studio 200, account 302 · **Mail-Beweis** 01:19 UTC: Gast-`POST /v1/account/tokens/email` (Projekt `account`, `userId` `probe-mail-20261106`, `delivered@resend.dev`) → 201, Worker `v1-mails` otp · cloud · `success` 1,73 s; Probe-Nutzer auf dem App-Server gelöscht (204, Gegenprobe 404) · Platte 41 % → 45 % · **offen:** Browser-Blick mit Anmeldung (Account-WS > 2 min stabil) — Chrome war auf account. nicht angemeldet |
+
+## AW28 — keepAlive-Patch entfernt (2026-11-08)
+
+**Ergebnis:** Der Patch (`registers.php` mit `keepAlive: false`, gemountet in
+`appwrite-worker`, seit 2026-07-19) wird ab 2.7 nicht mehr gebraucht. dev ohne
+Patch seit 2026-11-08 17:54 UTC; CI trug ihn NIE (`ci/appwrite/` hat keine
+Override, `_APP_SMTP_HOST` ist leer); prod: Skript fertig, Lauf wartet auf
+Davids Ja.
+
+**Warum (Quelltext am Tag 2.7.1 im Container gelesen):** 2.7 hat einen NEUEN
+SMTP-Adapter (`packages/messaging/src/Adapter/Email/SMTP.php`, kein PHPMailer
+mehr — der alte Fehler war ein verschlucktes PHPMailer-`false`). Zwei Netze:
+(1) `reusable()` schickt nach mehr als `pingThreshold` = 30 s Stille ein NOOP,
+bevor eine gehaltene Verbindung wiederverwendet wird; (2) stirbt die gehaltene
+Verbindung trotzdem vor dem Punkt (`ConnectionException`/`ProtocolException`
+oder 421), sendet `deliver(…, false)` die Mail EINMAL auf frischer Verbindung
+(#14213). Und ein Fehlschlag ist jetzt sichtbar: `mail.status failure`, nicht
+mehr „success".
+
+**Beweis dev** (OrbStack, Mailpit v1.29.3, OTP über Gast-`POST
+/v1/account/tokens/email`, Projekt `reddit-comments`, je Probe eine neue
+Adresse `aw28-<etikett>-<zeit>@example.test`; „gehaltener Socket" = Zeile für
+Port 1025 in `/proc/net/tcp` des Workers, `01` = offen, `08` = `CLOSE_WAIT`,
+die Gegenseite hat geschlossen; „getötet" = `docker restart mailpit`):
+
+| Zeit (UTC) | Adapter im Worker | Fall | Ergebnis |
+| --- | --- | --- | --- |
+| 17:51:14 | 2.7.1 ohne Ping, ohne Retry (Gegenprobe G0) | Aufwärmen | `success` 110 ms, Socket gehalten (`01`) |
+| 17:51:55 | G0 | Socket getötet (`08`) | **`failure` 4,8 ms, Mailpit 0 Treffer, kein Queue-Nachversuch** — die Probe kann rot werden |
+| 17:53:07 | 2.7.1 ohne Ping, MIT Retry (G1) | Aufwärmen | `success` 184 ms |
+| 17:53:38 | G1 | Socket getötet (`08`) | `success` 73 ms, NEUER Socket, Mail da — der Retry allein heilt |
+| 17:54:30 | 2.7.1 unverändert, ohne Patch | Aufwärmen | `success` 120 ms |
+| 17:55:02 | unverändert | Socket getötet (`08`) | `success` 68 ms, neuer Socket, Mail da |
+| **21:55:34** | unverändert | **4 h Leerlauf** (17:55:27–21:55:33, 0 `v1-mails`-Spans im Fenster, Worker und Mailpit seit 17:54 nicht neu gestartet) — Mailpit hatte den gehaltenen Socket in der Stille SELBST geschlossen (`08`) | **`success` 29,7 ms, neuer Socket, Mail in Mailpit 21:55:34.394** |
+
+Die Gegenprobe-Adapter sind Kopien des 2.7.1-Originals mit genau zwei
+Änderungen (`reusable()` → immer `true`; `process()` → `deliver($message,
+false)`), per Override-Mount auf `/usr/src/code/packages/messaging/src/
+Adapter/Email/SMTP.php` eingehängt; sie liegen auf dev unter `patches/
+SMTP-2.7.1-noping{,-noretry}.php` und taugen als Werkzeug, falls ein späteres
+Release den Adapter wieder umbaut: Gegenprobe zuerst, dann der Beweis. Das
+1.9.x-Verhalten selbst (verschlucktes `false`) lässt sich in 2.7 nicht mehr
+herstellen — der Code dafür existiert nicht mehr; G0 ist der nächste Fall, und
+er unterscheidet sich vom alten nur dadurch, dass er `failure` loggt.
+
+**Prod** — Skript
+[`ops/appwrite-aw28-drop-smtp-keepalive-patch.sh`](../../ops/appwrite-aw28-drop-smtp-keepalive-patch.sh)
+(Aufruf im Kopf, NUR nach Davids Ja): prüft `.env` 2.7.1 und den Patch-Mount,
+sichert die Override (`.bak-aw28-<TS>`), schreibt den Kopfkommentar neu und
+entfernt NUR den Block `appwrite-worker` (traefik- und clickhouse-Block
+bleiben — an einer lesend geholten Kopie der Prod-Override geprüft: −10
+Kommentarzeilen +5, −3 Blockzeilen), `docker compose config --quiet`, dann
+nur `docker compose up -d appwrite-worker` (Sekunden; API/Realtime/Console
+laufen durch, Jobs warten in Redis). Beweise: keepAlive 372 `true`, 0
+Patch-Mounts, Retry-Zeile im Adapter vorhanden, `health/version`, alle
+Container Up, OTP an `delivered@resend.dev` mit `v1-mails`-Span. Probe-Nutzer
+`probe-aw28-<datum>` danach mit dem Runtime-Key auf dem App-Server löschen
+(die Migrations-Keys haben keinen `users.*`-Scope, s. Runbook 2.6). Der
+eigentliche Leerlauf-Beweis auf prod ist dieselbe OTP-Probe nach ≥ 3 h
+Stille. **Rückweg:** `cp docker-compose.override.yml.bak-aw28-<TS>
+docker-compose.override.yml && docker compose up -d appwrite-worker` — die
+Patchdateien bleiben unter `patches/` liegen.
+
+**Künftige Upgrades:** keine Patchdatei mehr ziehen. Die Upgrade-Skripte
+`ops/appwrite-upgrade-2.*.sh` prüfen den Patch-Mount als Vorbedingung — ein
+NEUES Skript lässt diese Prüfung und den Mount-Dreh weg.

@@ -30,6 +30,33 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
+
+**Was.** Seit 2026-07-19 mountete `docker-compose.override.yml` eine gepatchte
+`registers.php` (`keepAlive: false`) in den Worker: Appwrite 1.9.5–2.6.x verlor
+die ERSTE Instanz-Mail nach Leerlauf still („success" im Log). 2.7 hat einen
+NEUEN SMTP-Adapter (ohne PHPMailer) mit NOOP-Ping nach > 30 s Stille und
+EINEM Retry auf frischer Verbindung, wenn der gehaltene Socket tot ist (#14213).
+
+- **dev** ohne Patch seit 17:54 UTC. Gegenprobe zuerst: Adapter-Kopie ohne
+  Ping und Retry, Socket per Mailpit-Neustart getötet ⇒ **Mail weg**
+  (`failure`, 4,8 ms) — die Probe kann rot werden. Nur Retry ⇒ Mail da.
+  Unverändert ⇒ Mail da. **Leerlauf 4 h** (17:55–21:55, 0 Mails im Fenster,
+  Mailpit hatte den Socket selbst geschlossen) ⇒ erste Mail 21:55:34
+  `success` 29,7 ms, in Mailpit.
+- **CI** trug den Patch nie (keine Override, leerer SMTP-Host).
+- **prod** vorbereitet: `ops/appwrite-aw28-drop-smtp-keepalive-patch.sh`,
+  an einer Kopie der Prod-Override geprüft — Lauf ist AW29 (Davids Ja).
+- Doku: Runbook APPWRITE-2-7-UPGRADE.md Abschnitt „AW28" (Zeitstempel-Tabelle,
+  Rückweg), DEPLOYMENT.md Punkt 5 umgeschrieben.
+
+**Gelernt:** Den 1.9.x-Fehler kann man in 2.7 nicht mehr nachbauen — der Code
+existiert nicht mehr. Die ehrliche Gegenprobe ist, die NEUEN Schutznetze
+einzeln abzuschalten (Adapter-Kopie per Mount) und denselben toten Socket
+herzustellen; `CLOSE_WAIT` in `/proc/net/tcp` des Workers zeigt, dass der Fall
+wirklich eintrat, statt es anzunehmen. Mailpit (dev) läuft ohne Volume: jeder
+Neustart leert die Postfächer.
+
 ### RS1 h — Der SMTP-Schlüssel darf nur noch senden ✅ 2026-11-08
 
 **Was.** `NUXT_SMTP_PASS` war der `full_access`-Schlüssel „Pukalani App"
