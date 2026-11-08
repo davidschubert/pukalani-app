@@ -37,6 +37,17 @@
  * verloren. Der Grund steht in der Antwort, der Fix ist eine Env-Zeile
  * (docs/runbooks/RESEND-WEBHOOK.md § 5).
  *
+ * ── DER SCHLÜSSEL KANN NICHT NUR-LESEND SEIN (gemessen 2026-11-08) ───────
+ * Resend kennt genau zwei Rechte-Stufen: `full_access` und `sending_access`.
+ * Ein `sending_access`-Schlüssel antwortet auf `GET /usage` mit 401
+ * `restricted_api_key` („This API key is restricted to only send emails") —
+ * probiert, nicht vermutet. Die Bremse braucht also `full_access`, und das
+ * ist der Grund für einen EIGENEN Schlüssel (`pukalani-budget-read`) statt
+ * des SMTP-Werts: so kann der SENDE-Schlüssel später auf `sending_access`
+ * verengt werden, ohne die Bremse mitzureißen. Dass heute auch der
+ * SMTP-Schlüssel `full_access` hat, ist ein offener Punkt in OPEN-ITEMS,
+ * keine Rechtfertigung.
+ *
  * ── WAS HIER STEHT UND WAS NICHT ────────────────────────────────────────
  * Hier stehen nur Regeln: das Lesen der Antwort, die Rücklage und die
  * Entscheidung. Jede hat eine Gegenprobe (`packages/core/tests/
