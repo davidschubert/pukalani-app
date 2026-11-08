@@ -58,10 +58,13 @@ const localeHead = useLocaleHead({ seo: false, lang: true, dir: true })
 // erwartet dort ein Objekt, dessen Felder Getter sein dürfen, keine Funktion
 // an der Stelle des Objekts.
 useHead(() => ({ htmlAttrs: localeHead.value.htmlAttrs }))
+
+// Nuxt UI in der Seitensprache — die Fehlerseite rendert ihren EIGENEN UApp.
+const uiLocale = useNuxtUiLocale()
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="uiLocale">
     <main class="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
       <p class="text-sm font-medium text-muted">{{ brand }}</p>
       <h1 class="text-5xl font-bold">{{ status }}</h1>
