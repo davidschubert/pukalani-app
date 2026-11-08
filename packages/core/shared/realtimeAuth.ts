@@ -31,3 +31,37 @@ export function isJwtCookieConflict(message: string | undefined, code: number | 
   if (Number(code) !== 403) return false
   return /\bJWT and cookie\b/i.test(message ?? '')
 }
+
+/**
+ * ── HAT APPWRITE DEM SOCKET DEN ZUGANG ENTZOGEN? (RT2, 2026-11-08) ──────────
+ *
+ * Seit Appwrite 2.7 ist JEDE angemeldete Realtime-Verbindung an die Session
+ * gebunden, mit der sie geöffnet wurde — auch eine JWT-Verbindung (die
+ * `sessionId` steht im JWT, `app/init/realtime/connection.php`). Wird diese
+ * Session widerrufen (Sessions-Seite, zweites Gerät, Admin), stellt der
+ * Realtime-Server erst das `account`-Event zu, schickt dann einen Fehler-Frame
+ * `USER_UNAUTHORIZED` (401) und schließt den Socket
+ * (`src/Appwrite/Realtime/Event/Handler.php`, `revalidateUser`). Denselben
+ * Frame bekommt ein Socket, dessen JWT abgelaufen ist (`isExpired`).
+ *
+ * Das ist das Signal für die Sofort-Abmeldung. Bewusst NUR der Code, nicht der
+ * Wortlaut: ein Fehlalarm kostet genau einen entprellten `/api/auth/me`
+ * (`accountVerifyDue`), ein verpasster Widerruf dagegen eine Abmeldung, die
+ * nie kommt. Der 403 aus RT1 („JWT and cookie") ist KEIN Entzug, sondern der
+ * Beweis, dass das Cookie trägt — er fällt hier absichtlich durch.
+ */
+export function isRealtimeAccessEnded(code: number | string | undefined): boolean {
+  return Number(code) === 401
+}
+
+/**
+ * Ist unter den Ereignisnamen eines `account`-Events eine GELÖSCHTE Session
+ * (`users.<id>.sessions.<id>.delete`)? Dann prüft `realtime-account.client.ts`
+ * sofort, an der 30-s-Bremse vorbei (`accountVerifyAt`): ob es die EIGENE
+ * war, weiß der Client nicht, `/api/auth/me` beantwortet es. Ein Sturm ist
+ * hier ausgeschlossen — jede Löschung ist eine Handlung (Sessions-Seite,
+ * Admin, Abmelden), kein Reconnect-Effekt.
+ */
+export function isSessionDeleteEvent(events: readonly string[]): boolean {
+  return events.some(e => /^users\.[^.]+\.sessions\.[^.]+\.delete$/.test(e))
+}

@@ -15,7 +15,7 @@ paths:
 
 - pukalani.realtime.enabled (F14, seit 2026-08-01): der EINE Schalter für alle
   Realtime-Einstiege des Core — Row-Streams (useRealtimeRows), Presence
-  (usePresence/-State) und den Account-WS (useRealtimeAccount). AUS heißt: kein
+  (usePresence/-State) und den Account-Channel (useRealtimeAccount). AUS heißt: kein
   Web-SDK nachgeladen, kein Socket, kein /api/auth/realtime-token. **Core-Default
   AN** — die begründete Ausnahme von „Core-Default ist IMMER aus": Realtime ist
   kein Zusatz, sondern das bestehende Verhalten jeder Produkt-App, und ein
@@ -33,7 +33,7 @@ paths:
   Realtime hat — `startWhenHostResolves()` (core/app/utils/hostGate.ts) sagt, ob
   die SEITE dazu einen Host hat. Auf einem unbekannten oder `abuse`-gesperrten
   Host antwortet jeder Pfad 404, die Fehlerseite rendert aber MIT hydriertem
-  Auth-Store (C12b) — der Account-WS lief los, und JEDER Abbruch zog
+  Auth-Store (C12b) — der damalige Account-WS lief los, und JEDER Abbruch zog
   `/api/auth/me` + `/api/community/role` nach (gemessen: 66 WS + 15 Requests in
   60 s, jetzt 1 + 0). JEDES neue client-Realtime-Plugin gehört in diese Klammer
   (heute: realtime-account, realtime-config, realtime-themes; realtime-branding
@@ -42,7 +42,12 @@ paths:
   Realtime weiter, sonst verlöre man dort die Sofort-Abmeldung bei
   Session-Widerruf. Nachgeholt, sobald `clearError()` räumt. Der Auth-Nachtrag
   selbst hat zusätzlich einen Mindestabstand (`accountVerifyDue`, 30 s) — er ist
-  der Verstärker bei jedem flappenden Socket, nicht nur auf 404-Hosts. Der feste
+  der Verstärker bei jedem flappenden Socket, nicht nur auf 404-Hosts. Sie darf
+  aber NICHTS VERWERFEN (Prod-Messung 2026-11-09: eine Prüfung beim Seitenladen,
+  Widerruf 7 s später im Fenster ⇒ abgemeldet erst nach 33 s): ein
+  `sessions.*.delete`-Ereignis geht vorbei, alles andere wird ans Fensterende
+  geschoben (`accountVerifyAt`). Der feste
   1-s-Reconnect in der Konsole kommt aus dem Appwrite-Web-SDK (es nullt
-  `reconnectAttempts` im `open`-Handler, erreicht seine Staffelung also nie);
-  unser eigener Backoff staffelt 1→15 s und ist nicht das Problem.
+  `reconnectAttempts` im `open`-Handler, erreicht seine Staffelung also nie).
+  Seit RT2 (2026-11-08) gibt es keinen eigenen Account-WS mehr — der
+  `account`-Channel läuft auf dem geteilten Socket (Regel: `appwrite.md`).

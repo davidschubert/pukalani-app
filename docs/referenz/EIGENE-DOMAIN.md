@@ -119,10 +119,10 @@ Drei Feinheiten mit Grund:
 
 ## 6. Bekannte Grenzen
 
-- **Der Konto-WebSocket fällt auf einer Kundendomain auf den 30-Sekunden-Poll
-  zurück.** Er ist bewusst cookie-nativ (daran hängt die Sofort-Abmeldung bei
-  Sitzungs-Widerruf), und CLAUDE.md verbietet die Konsolidierung auf JWT.
-  Row-Streams, Presence und Live-Theme laufen normal weiter.
+- ~~Der Konto-WebSocket fällt auf einer Kundendomain auf den 30-Sekunden-Poll
+  zurück.~~ Seit RT2 (2026-11-08) entfallen: der `account`-Channel läuft wie
+  Row-Streams, Presence und Live-Theme über den JWT-Socket, die Sofort-
+  Abmeldung funktioniert damit auf jeder Domain.
 - **Die Sitzung hängt am Host.** Nach der Umstellung meldet man sich auf der
   neuen Adresse neu an; ein Cookie auf eine fremde Domain mitzunehmen gibt es
   nicht und soll es nicht geben.

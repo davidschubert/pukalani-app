@@ -251,8 +251,8 @@ derselben **Root-Domain** liegen (Session-Cookie + authentifiziertes Realtime).
     Trägt, weil die Architektur SSR-first ist (CRUD server-seitig, Cookie ist
     First-Party auf der Site-Domain) und die geteilte Realtime **JWT-
     authentifiziert** ist (kein Cookie zum Appwrite-Host nötig). Einschränkung:
-    cookie-native Browser-Pfade (useRealtimeAccount-Instant-Revoke,
-    Presences-Cookie-GET) degradieren cross-root → brauchen JWT-/Server-Proxy-
+    cookie-native Browser-Pfade (Presences-Cookie-GET; der
+    useRealtimeAccount-Instant-Revoke läuft seit RT2 über JWT) degradieren cross-root → brauchen JWT-/Server-Proxy-
     Varianten oder Polling-Fallback. Option 1 später als „White-Label-API"-
     Premium-Feature anbieten. ⚠️ Option 2 ist eine UNVERIFIZIERTE ANNAHME
     und im Zweifel eine eigene Auth-/Realtime-Architektur — sie wird erst

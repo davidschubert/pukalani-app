@@ -10,6 +10,7 @@ import type {
 import {
   INSIGHTS_FORMATS,
   INSIGHTS_LOCALES,
+  INSIGHTS_QUESTION_HEADINGS_MIN,
   INSIGHTS_QUOTE_MAX,
   INSIGHTS_STATES,
   INSIGHTS_TOPICS,
@@ -399,6 +400,8 @@ const ISSUE_KEY: Record<string, string> = {
   disparagement: 'insights.editor.issue.disparagement',
   score_without_methodology: 'insights.editor.issue.scoreWithoutMethodology',
   brand_without_entity: 'insights.editor.issue.brandWithoutEntity',
+  text_without_closing_question: 'insights.editor.issue.textWithoutClosingQuestion',
+  text_without_question_headings: 'insights.editor.issue.textWithoutQuestionHeadings',
 }
 
 /**
@@ -422,7 +425,11 @@ function issueDetail(issue: InsightsReviewIssue): string {
 }
 
 function issueText(issue: InsightsReviewIssue): string {
-  return t(ISSUE_KEY[issue.code] ?? 'insights.editor.issue.quoteNotGrounded', { max: INSIGHTS_QUOTE_MAX, detail: issueDetail(issue) })
+  return t(ISSUE_KEY[issue.code] ?? 'insights.editor.issue.quoteNotGrounded', {
+    max: INSIGHTS_QUOTE_MAX,
+    min: INSIGHTS_QUESTION_HEADINGS_MIN,
+    detail: issueDetail(issue),
+  })
 }
 
 function issueWhere(issue: InsightsReviewIssue): string {

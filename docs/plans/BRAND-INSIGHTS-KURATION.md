@@ -1434,3 +1434,223 @@ Wahrscheinlichkeit für eine Schwelle.
 wieder keine `@shikijs`-Symlinks. Für Messungen gegen eine reine `shared/`-Regel
 lohnt ein kleiner Resolver-Hook: `node --experimental-strip-types` löst
 erweiterungslose relative TS-Importe nicht auf.
+
+---
+
+## 17. K6 gebaut (2026-11-09) — die SEO/GEO-Regeln sind eine Prompt-Fassung und EINE Prüfregel
+
+Davids Wunsch, wörtlich: „der Artikel soll alle SEO/GEO-relevanten Regeln
+beachten, gleichzeitig Freude beim Lesen bereiten und am Ende zum Diskutieren
+anregen." Gebaut ist das genau dort, wo §6 es verortet hat — in einer neuen
+Fassung des Entwurfs-Prompts (**`insights-d-3`**) und in der **siebten
+Prüfregel**, die von diesen Zusagen die beiden prüft, die sich wirklich
+rechnen lassen. Kein Schema, keine Migration, keine neue Spalte.
+
+> **Zusammen mit §16 (BI4) lesen — und BI4 war zuerst da.** Diese Fassung
+> bestellt MEHR Struktur (FAQ-Block, Diskussionsfrage) und damit längere
+> Antworten, also genau die Grenze, die BI4 vermessen hat. Beim Merge am
+> 2026-11-09 war BI4 schon auf `main`: `maxTokens` wird dort aus dem
+> bestellten Umfang GERECHNET (`insightsDraftMaxTokens`) statt fest auf 8.000
+> zu stehen — die Decke wächst also mit, wenn K6 mehr Struktur bestellt. Was
+> K6 dennoch verschiebt: BI4s Messung „ab welcher Wortzahl kippt es" entstand
+> unter `insights-d-2`, einem Prompt ohne FAQ-Block. Wer sie wiederholt, muss
+> sie unter `insights-d-3` wiederholen.
+>
+> BI4 hat ausserdem `insights-d-2` für die Anführungszeichen-Regel belegt.
+> Deshalb trägt K6 die Fassung **`insights-d-3`**: zwei verschiedene Aufträge
+> dürfen nicht denselben Namen tragen, sonst ist `draftPromptVersion` kein
+> Protokoll mehr, sondern eine Vermutung.
+
+### Was gebaut wurde
+
+| Stück | Datei | Was es tut |
+|---|---|---|
+| Prompt-Fassung `insights-d-3` | `packages/insights/shared/insightsPrompts.ts` | sechs SEO/GEO-Regeln als eigener Block `SEO_GEO_RULES`, VOR den vier Verboten eingehängt |
+| Die siebte Prüfregel | `packages/insights/shared/insightsPost.ts` | zwei Codes in `insightsReviewIssues`: `text_without_closing_question`, `text_without_question_headings` |
+| Die zwei puren Rechnungen | `packages/insights/shared/insightsPost.ts` | `insightsQuestionHeadings()`, `insightsEndsWithQuestion()`, Deckel `INSIGHTS_QUESTION_HEADINGS_MIN = 2` |
+| Anzeige im Editor | `packages/insights/app/components/InEditor.vue` | zwei Einträge in `ISSUE_KEY`, `min` im Meldungstext |
+| i18n | `packages/insights/i18n/locales/{de,en}.json` | `textWithoutClosingQuestion`, `textWithoutQuestionHeadings` |
+| Launch-Texte nachgezogen | `packages/insights/scripts/launch/{nike,adidas-vs-nike,ikea,ranking}.mjs` | je FAQ-Block (drei `###`-Fragen) und eine Diskussionsfrage als letzter Absatz, de+en |
+
+Die sechs Regeln im Prompt: die **Antwort im ersten Absatz** · **Zwischen­
+überschriften als Fragen** (mindestens zwei) · **definierende Sätze** („X ist
+…") · ein **FAQ-Block am Ende** mit drei bis fünf echten Fragen, jede als
+`###`-Überschrift · der **letzte Absatz ist eine Diskussionsfrage** · **keine
+Floskeln** (ausdrücklich kein „In der heutigen schnelllebigen Welt").
+
+### Die Entscheidungen, die drinstecken
+
+**DIE REGEL SITZT IM GATE, NICHT IM SCHEMA — und das ist die wichtigste.**
+`insightsPostRuleIssues` hätte gepasst (es ist eine Form-Regel, und die
+Form-Regeln gelten auch im Formular), aber es läuft im `superRefine` von
+`insightsPostSchema`, und durch dieses Schema geht JEDES Schreiben — auch das
+des Entwurfs-Laufs. Eine Regel dort hätte die Antwort eines BEZAHLTEN Laufs
+abgelehnt, sobald das Modell die Diskussionsfrage vergisst: Lauf weg, Geld
+weg, Redakteur ohne Text. Genau diese Bauart hat der K5-Nachtrag vom
+2026-10-28 schon einmal gekostet. Ein unvollständiger Entwurf ist kein Fehler,
+sondern Arbeit — er gehört in den Editor, wo die Liste ihn anzeigt, und
+blockiert erst den Weg nach `review`. Die Begründung steht ausführlich am Kopf
+von `insightsReviewIssues` UND als Warnung an `insightsPostRuleIssues`.
+
+**DER FAQ-BLOCK TRÄGT DIE FRAGEN ALS `###`-ÜBERSCHRIFTEN — dadurch braucht die
+Regel keine Format-Ausnahme.** Der naheliegende Weg wäre gewesen, das RANKING
+auszunehmen: seine Plätze stehen in den DATEN, nicht im Text
+(`FORMAT_BRIEFING.ranking` verbietet sie dort ausdrücklich), ein Ranking-Text
+hat also kaum Kapitel. Statt einer Ausnahme für genau ein Format koppelt der
+Prompt den FAQ-Block an `###`-Überschriften: damit hält JEDES Format die Regel
+mit seinem FAQ-Block, und die Regel gilt für alle vier gleich. Eine Regel mit
+Ausnahme für ein Format ist eine halbe Regel.
+
+**GEPRÜFT WIRD JEDE NICHT-LEERE FASSUNG, nicht nur die Grundfassung.** Eine
+leere zweite Fassung prüft die Regel NICHT (dieselbe Begründung wie bei
+`sourceTexts`: eine Prüfung ohne Text wäre eine Lüge) — sobald dort aber Text
+steht, gilt sie, sonst verlöre der englische Leser die Frage still.
+
+**GEZÄHLT, NICHT GERATEN.** Eine Überschrift zählt nur, wenn ihr Text mit
+einem Fragezeichen ENDET: „Warum? Drei Gründe" erwähnt eine Frage, stellt aber
+keine — und nur die gestellte ist der Aufhänger, den eine Antwortmaschine als
+Frage liest. Auszeichnung fällt auf beiden Seiten weg, `**Was heißt das?**`
+zählt also. Für die Schlussfrage gilt: die letzte nicht-leere Zeile, und eine
+ÜBERSCHRIFT zählt dort nicht — ein Text, der mit `## Und ihr?` aufhört,
+kündigt einen Absatz an, den niemand geschrieben hat.
+
+**VIER VERBOTE UNANGETASTET.** `HARD_RULES` ist die rechtliche Hälfte und
+über alle drei Fassungen wortgleich; die neuen Regeln sind ein EIGENER Block davor. Die
+zwei Sorten zu mischen hiesse, dass eine Lockerung an der Form („diesmal ohne
+FAQ") aussieht wie eine Lockerung an der Haftung. Ein Test nagelt beides fest,
+inklusive der Reihenfolge (die Verbote sind das Letzte vor dem Brief).
+
+**NUR ZWEI ZUSAGEN SIND PRÜFBAR, die anderen vier bleiben Prompt.** „Die
+Antwort im ersten Absatz", „definierende Sätze" und „keine Floskeln" sind
+BEWERTUNGEN — ein Regex darüber wäre eine Prüfung, die man austrickst, ohne
+besser zu schreiben. §6 sagt es genauso: „Alles Übrige ist Prompt und bleibt
+Prompt."
+
+**DIE FASSUNG WIRD HOCHGEZÄHLT, ALTE BEITRÄGE BEHALTEN IHRE.** `insights-d-3`
+bestellt inhaltlich etwas anderes als `-2` (Struktur) und als `-1` (gar keine
+der beiden Ergänzungen). Beiträge tragen ihre eigene Fassung weiter und sollen
+das auch — sonst behaupten zwei verschiedene Läufe dieselbe Herkunft.
+
+### Beweis
+
+* `pnpm --filter insights test` → **569/569** (22 Dateien), darunter:
+  * **Gegenprobe der Regel in beide Richtungen:** ein Text ohne Frage am Ende
+    fällt durch (zwei Befunde mit Stelle und Sprache), derselbe Text mit
+    Frage-Kapiteln und Schlussfrage besteht.
+  * **gezählt statt geraten:** Fragezeichen in der Mitte zählt nicht, `#`
+    (oberste Ebene) zählt nicht, Auszeichnung wird abgeschnitten, EINE
+    Frage-Überschrift ist zu wenig (der Deckel liegt bei zwei).
+  * **leere zweite Fassung** wird nicht geprüft; sobald sie Text trägt, melden
+    beide Befunde `detail: 'en'`.
+  * **alle vier Formate** halten die Regel — das Ranking mit seinem FAQ-Block.
+  * **die Prompt-Zusagen am Text festgenagelt** (wie
+    `insightsVideoBrief.test.ts` für `insights-b-1`): jede der sechs Regeln,
+    die `###`-Kopplung des FAQ-Blocks, Davids Floskel wörtlich, die vier
+    Verbote samt Reihenfolge, und dass jedes Format dieselben Regeln bekommt.
+* Repo-weit grün, Exit-Code getrennt von der Ausgabe gelesen (nicht aus einer
+  Pipe): `pnpm -r test` **exit 0** (569 + alle übrigen Pakete), `pnpm -r lint`
+  **exit 0**, `pnpm lint:scripts` **exit 0**, `pnpm -r typecheck` **exit 0**,
+  und die fünf Wächter von `lint.yml` (`check:manifests`, `check:i18n-keys`,
+  `check:bilanz`, `check:doc-links`, `check:single-copy`) jeder **exit 0**.
+* **KEIN echter Lauf** — ein Entwurfs-Lauf kostet Geld, und das ist Davids
+  Entscheidung (Angebot steht im Bericht: ein 700-Wörter-Entwurf liegt nach
+  den K5-Messungen deutlich unter einem Cent).
+
+### Gelernt
+
+**EINE NEUE PRÜFREGEL TRIFFT ALTEN INHALT — und das ist der eigentliche
+Beweis, dass sie beisst.** Nach dem Einbau war genau ein Test rot:
+`launchContent.test.ts` („die sechs Prüfregeln ohne Quelltexte: keine
+Treffer"). Keiner der vier Launch-Beiträge endete mit einer Frage (alle vier
+endeten auf den **Methodik:**-Satz), und das Markenprofil hatte überhaupt
+keine Zwischenüberschrift. Zwei Wege standen offen: die Regel an der
+Prompt-Fassung grandfathern (unsichtbar, und damit genau die Sorte stiller
+Ausnahme, die dieses Repo nicht mag) oder die Texte nachziehen. Nachgezogen
+ist richtig, weil es die Arbeit ist, die ein Redakteur ohnehin tun müsste —
+und weil der Test damit WEITER beweist, was er behauptet. Der
+**Methodik:**-Satz ist dabei eine Zeile nach oben gewandert: die
+Diskussionsfrage muss wirklich die letzte sein.
+
+**ACHTUNG BEIM NACHZIEHEN DER LAUNCH-TEXTE: der Namensfilter liest mit.** Der
+IKEA-Artikel ist um die Falle `von IKEA` → `vonikea` → enthält `nike`
+herumgeschrieben (§ `launchContent.test.ts`). Jeder neue FAQ-Satz läuft durch
+denselben Herabsetzungs- und Namensfilter wie der Rest; das Ranking darf in
+seinem FAQ keine Marke nennen, die nicht in `entries` steht. Die Tests haben
+das abgedeckt — aber nur, weil sie VOR dem Formulieren liefen.
+
+**DIE PROD-TEXTE SIND DAMIT NOCH NICHT NEU.** Die vier Beiträge liegen seit
+dem 2026-11-08 auf Prod (I6 Stufe 1). Geändert ist der SEED, nicht die
+Datenbank: die neuen FAQ-Blöcke und Diskussionsfragen kommen erst mit dem
+zweiten Seed-Lauf dorthin, der für Davids Brand-Checks ohnehin aussteht.
+Bis dahin bleiben die Live-Texte, wie sie sind — die Regel blockiert sie
+nicht, weil sie nur den Weg NACH `review` prüft und nicht den Weg zurück.
+
+### 16.1 Nachtrag (2026-11-09) — die Regel auch im Brief-Prompt, und ein Fehler in der Regel selbst
+
+Davids Auftrag nach dem BI4-Bericht: die Anführungszeichen-Regel gehört auch in
+den Brief-Prompt. Beim Hinlegen fiel auf, dass die Regel den Fehler, den sie
+verbietet, selbst vorgemacht hat.
+
+**DER BEFUND, GEMESSEN AN DEN BYTES.** Vier Fundstellen dieses Layers
+führten ein deutsches Anführungszeichen vor, das mit einem GERADEN `"`
+schliesst — also genau die Form, die einen JSON-String beendet:
+
+| Stelle | Text im Prompt |
+| --- | --- |
+| `JSON_QUOTE_RULE` (ihre eigenen Beispiele) | `„…"` im Deutschen, `"…"` im Englischen |
+| `HARD_RULES` (Entwurfs-Prompt) | `nicht „schlecht", „billig", „unseriös"` |
+| `BRIEF_RULES` (Brief-Prompt) | `„bei 12:40 argumentiert der Sprecher, dass …"` |
+| `SEO_GEO_RULES` (Entwurf, kam mit K6 am 2026-11-09 dazu) | `„Warum …?"`, `„X ist …"`, drei Floskel-Beispiele |
+
+Ein Modell lernt die FORM seiner Antwort aus den Beispielen im Auftrag, nicht
+aus dem Verbot daneben. Die Regel stand also neben ELF Vorlagen für genau das
+Zeichen, das sie ausschliessen sollte (sieben davon kamen am selben Tag mit den
+SEO/GEO-Regeln aus einer Nachbarsitzung dazu — der Rebase hat sie mitgebracht).
+Alle elf sind jetzt typografisch
+(`„…“`, `“…”`), und ein Test prüft es für alle drei Prompts gegen das Muster
+selbst — er wird rot, wenn jemand das alte Beispiel zurückschreibt
+(nachgewiesen: beide Tests schlagen fehl, wenn man den Zustand von vorher
+herstellt).
+
+**WAS GEBAUT WURDE.** `JSON_QUOTE_RULE` ist jetzt exportiert und wird von
+`insightsVideoBrief.ts` importiert — EINE Fassung für alle drei Prompts statt
+einer zweiten Kopie. Der Brief-Prompt trägt sie an derselben Stelle wie Entwurf
+und Übersetzung: unmittelbar vor der Formvorgabe. Fassungen hochgezählt:
+`insights-b-2` (neu dabei), `insights-d-4`/`insights-t-3` (die Regel selbst hat
+sich geändert, also hat sich der Auftrag geändert; `-d-3` gehört den
+SEO/GEO-Regeln aus K6, die am selben Tag aus einer Nachbarsitzung kamen).
+
+**DER BEZAHLTE BEWEIS — und was er NICHT zeigt.** Zwei echte Läufe gegen
+dasselbe Video (The Futur, `fkcW4VqJqbw`, „Why Your Brand Is Forgettable"),
+`google/gemini-3.1-flash-lite` auf `google-vertex/eu`, ZDR, `deny`, keine
+Fallbacks. Gelesen wurde wirklich (Abrechnung: 215.094 `video_tokens` +
+81.487 `audio_tokens`):
+
+| Lauf | Prompt | Dauer | `finish_reason` | Tokens | direkt parsbar | gerade `"` im Brief |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `insights-b-2` (mit Regel) | 57,1 s | `stop` | 542 | ja | **0** (24 typografische) |
+| 2 | Stand `insights-b-1` (ohne Regel, altes Beispiel zurück) | ~50 s | `stop` | 511 | ja | **0** |
+
+Der erste Lauf liefert einen brauchbaren Brief (1.901 Zeichen, 272 Wörter, drei
+Cluster) mit zwölf Begriffen in Anführungszeichen — `„Attribute Slider“`,
+`„Brand Swap Test“`, `„Mitte“` —, allesamt typografisch geschlossen. **Der
+zweite Lauf aber auch.** Damit ist ehrlich gesagt: auf dem Brief-Pfad ist der
+Defekt NIE beobachtet worden, und zwei Läufe zeigen keinen Unterschied. Die
+Regel steht hier als Vorsorge, die nichts kostet, nicht als bewiesene Kur; das
+Netz auf diesem Pfad ist und bleibt die Reparatur aus BI4, durch die der Brief
+seit `aiVideoJson` ohnehin läuft. Gemessen wurde der Defekt am ENTWURFS-Pfad
+(4 von 52 Läufen, anderes Modell: `claude-haiku-4.5`) — eine Rate für den
+Brief-Pfad zu messen, hätte bei zehn Cent je Lauf Geld für eine Vorsorge
+gekostet, die ohnehin bleibt.
+
+**EINE ZAHL KORRIGIERT:** ein Brief kostet nicht „rund 5 Cent", sondern bei
+einem langen Video **10,5 Cent** (`total_cost: 0.105020575` für 297.340 native
+Prompt-Tokens). Die 5 Cent aus §13 galten für ein 25-Minuten-Video mit weniger
+Bildrate-Last; der Deckel nach oben ist also doppelt so hoch wie notiert.
+
+**NEBENBEFUND, NICHT BEHOBEN:** dieselben kaputten Beispiele stehen in
+Prompt-Strings anderer Layer — `courses` (zwei Übersetzungs-Routen, `„Nuxt"`,
+`„TypeScript"`), `posts` (Kategorie-Übersetzung, `„GSAP"`, `„Nuxt"`) und
+`brand` (`brandMarkBrief`, `„${kind}"`). Alle laufen über `aiCompleteJson` und
+damit durch die Reparatur; der Schaden ist also gedeckelt. Als eigener kleiner
+Punkt notiert, nicht hier mitgeändert.

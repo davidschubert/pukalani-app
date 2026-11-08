@@ -458,8 +458,11 @@ Fallback dokumentiert: Custom Name (`app-session`) wenn kein authentifiziertes B
   der client-seitige `where`-Filter bleibt als Sicherheitsnetz).
   JWT via `GET /api/auth/realtime-token` (15 min, Client refresht);
   **Cookie-Client NIE mit JWT mischen** → Appwrite-403.
-- **AUSNAHME:** `useRealtimeAccount` bleibt bewusst cookie-nativer WS —
-  Instant-Session-Revoke hängt am Cookie-Close-Signal. NICHT konsolidieren.
+- **Auch der `account`-Channel** (`useRealtimeAccount`, Sofort-Abmeldung bei
+  Session-Widerruf) läuft seit RT2 (2026-11-08) über diesen Socket. Appwrite
+  ≥ 2.7 schließt beim Widerruf JEDE Verbindung der Session, JWT-Verbindungen
+  eingeschlossen (erst `account`-Event, dann 401-Frame). Der frühere eigene
+  Cookie-WS war in Prod ein Gast und bekam nichts.
 - **Presences API: self-hosted seit 1.9.5, vollständig umgesetzt** — EINE
   Presence pro User (`presenceId=userId`, metadata trägt scope/action/typing);
   der WRITE läuft server-seitig (`POST /api/presence/heartbeat`, Admin-Client),

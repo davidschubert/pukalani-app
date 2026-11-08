@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ACCOUNT_VERIFY_MIN_MS, accountVerifyDue, realtimeAllowed } from '../shared/realtimeGate'
+import { ACCOUNT_VERIFY_MIN_MS, accountVerifyAt, accountVerifyDue, realtimeAllowed } from '../shared/realtimeGate'
 
 /**
  * Das Realtime-Gate (F14, 2026-08-01) — die pure Regel hinter allen
@@ -69,5 +69,29 @@ describe('accountVerifyDue', () => {
     const now = 1_000_000
     expect(accountVerifyDue(now - ACCOUNT_VERIFY_MIN_MS, now)).toBe(true)
     expect(accountVerifyDue(now - 60_000, now)).toBe(true)
+  })
+})
+
+/**
+ * RT2-Nachtrag (2026-11-09, Prod-Messung auf demo): eine Prüfung beim
+ * Seitenladen ließ den Widerruf 7 s später ins Fenster fallen — verworfen,
+ * abgemeldet erst nach 33 s.
+ */
+describe('accountVerifyAt', () => {
+  const last = 1_000_000
+
+  it('prüft sofort, wenn fällig (auch beim allerersten Signal)', () => {
+    expect(accountVerifyAt(0, 5, false)).toBe(5)
+    expect(accountVerifyAt(last, last + ACCOUNT_VERIFY_MIN_MS, false)).toBe(last + ACCOUNT_VERIFY_MIN_MS)
+  })
+
+  it('ein Signal im Fenster wird ans Fensterende geschoben, nicht verworfen', () => {
+    expect(accountVerifyAt(last, last + 1_000, false)).toBe(last + ACCOUNT_VERIFY_MIN_MS)
+    expect(accountVerifyAt(last, last + ACCOUNT_VERIFY_MIN_MS - 1, false)).toBe(last + ACCOUNT_VERIFY_MIN_MS)
+  })
+
+  it('ein Session-Lösch-Ereignis (urgent) geht an der Bremse vorbei', () => {
+    expect(accountVerifyAt(last, last + 1_000, true)).toBe(last + 1_000)
+    expect(accountVerifyAt(last, last, true)).toBe(last)
   })
 })

@@ -25,9 +25,10 @@ These are intentional. Do NOT flag them, do NOT recommend "fixing" them:
 - Realtime EVENT-STRING matching uses the `databases.<DB>.tables.…` prefix while the
   SUBSCRIPTION CHANNEL uses `tablesdb.…`. Matching incoming events on the `databases.` prefix /
   the `.create|.update|.delete` suffix is correct — event strings keep the legacy prefix.
-- `useRealtimeAccount` is a deliberately cookie-native WebSocket, separate from the shared JWT
-  realtime socket. Do NOT recommend consolidating it — instant session-revoke depends on the
-  cookie close.
+- `useRealtimeAccount` subscribes the `account` channel on the SHARED realtime socket (since
+  RT2, 2026-11-08). Appwrite ≥ 2.7 closes JWT connections on session revoke too (401 frame →
+  `onRealtimeAccessEnded`). A separate cookie-native `new WebSocket` would be a finding: in prod
+  the host-only cookie never reaches `api.pukalani.app`, so it connects as a guest.
 - Login / Register / OTP are deliberately hand-rolled `UForm` implementations, NOT `UAuthForm`
   (2-step OTP, security phrase, shared email state, AGB gate). `UAuthForm` is only the visual
   template. Do NOT recommend replacing them with `UAuthForm`.
@@ -89,7 +90,8 @@ Each layer is a contract; files inherit their layer's contract. Check your slice
   `core/app/composables/useRealtimeClient.ts` (`sharedRealtime`, `realtimeCookieClient`,
   `ensureRealtimeJwt`). `useRealtimeRows`, presence and config-flags multiplex over it. JWT via
   `GET /api/auth/realtime-token` (15 min, client refreshes). Mixing the cookie client with a
-  JWT → Appwrite 403 = finding. (Exception: `useRealtimeAccount` — see §0.)
+  JWT → Appwrite 403 = finding (RT1 cookie fallback in `shared/realtimeAuth.ts` is the one
+  sanctioned switch).
 - Presence: ONE presence per user (`presenceId = userId`; metadata carries
   scope/action/typing/page/replyingTo/near). NO `presence` table. Writes are SERVER-side via
   `POST /api/presence/heartbeat` (admin client). A client-side presence write, or a presence

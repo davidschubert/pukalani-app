@@ -637,7 +637,7 @@ export default defineAppConfig({
      * Realtime-Gate (F14, 2026-08-01) — der EINE Schalter, mit dem eine App
      * ohne lebende Datenebene alle Realtime-Einstiege des Core loswird:
      * Row-Streams (useRealtimeRows → Config-/Branding-Plugin, Kommentare),
-     * Presence (usePresence/usePresenceState) und den Account-WS
+     * Presence (usePresence/usePresenceState) und den Account-Channel
      * (useRealtimeAccount). AUS heißt: kein Web-SDK nachgeladen, kein Socket,
      * kein `/api/auth/realtime-token`.
      *

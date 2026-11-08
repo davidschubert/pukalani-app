@@ -5,133 +5,80 @@ export interface AccountRealtimeEvent {
   payload: unknown
 }
 
-interface RealtimeMessage {
-  type: string
-  data: { events?: string[], payload?: unknown }
-}
-
 /**
  * Realtime auf dem `account`-Channel des eingeloggten Users — Session- und
  * Account-Änderungen (z.B. ein Admin beendet die Sessions, Login/Logout auf
  * einem anderen Gerät).
  *
- * BEWUSST ein eigener, COOKIE-authentifizierter nativer WebSocket — NICHT die
- * geteilte JWT-Realtime (useRealtimeClient), anders als useRealtimeRows. Grund:
- * das Instant-Session-Revoke-Signal hängt an der Cookie-Auth. Wird die Session
- * server-seitig widerrufen, schließt Appwrite genau diese cookie-gebundene WS
- * (→ onClose feuert sofort). Ein JWT bleibt bis zum Ablauf gültig; auf der
- * JWT-WS käme dieses Signal NICHT an. Daher hier nicht konsolidieren.
+ * ── AUF DEM GETEILTEN SOCKET (RT2, 2026-11-08 — vorher eigener Cookie-WS) ──
+ * Bis RT2 war das ein eigener, cookie-authentifizierter nativer WebSocket, mit
+ * der Begründung, nur ein Cookie-Socket werde beim Session-Widerruf
+ * geschlossen. Beides stimmt seit Appwrite 2.7 nicht mehr bzw. traf in Prod nie
+ * zu:
+ * - Das Session-Cookie ist host-only (`setSessionCookie`, kein `Domain`) und
+ *   erreicht `api.pukalani.app` nie — der Cookie-WS verband sich in Prod als
+ *   GAST (`connected`, `user: null`) und bekam weder Event noch Abbruch.
+ *   Gemessen 2026-11-08: Session widerrufen, Server 401 nach 1,2 s, der Tab
+ *   nach 98,5 s noch angemeldet. Lokal fiel es nicht auf, weil `localhost`
+ *   App und Appwrite dasselbe Cookie gibt.
+ * - Appwrite 2.7 bindet JEDE angemeldete Verbindung an ihre Session, auch die
+ *   JWT-Verbindung (`sessionId` aus dem JWT). Beim Widerruf stellt der Server
+ *   erst das `account`-Event zu, dann einen 401-Frame, dann schließt er
+ *   (`Realtime/Event/Handler.php`, `revalidateUser`).
+ * Der geteilte Socket ist in Prod per JWT und lokal per Cookie (RT1)
+ * angemeldet — beides session-gebunden. Ein Socket weniger je Tab, kein
+ * eigener Ping/Backoff mehr (die SDK pingt alle 20 s und verbindet neu).
+ *
+ * Zwei Signale, beide gehen an den Aufrufer:
+ * - `callback`: jedes Event auf `account` (Session angelegt/gelöscht, Profil …)
+ * - `onAccessEnded`: Appwrite hat dem Socket den Zugang entzogen (401-Frame,
+ *   `onRealtimeAccessEnded`) — kommt auch dann, wenn das Event fehlt.
  *
  * - SSR: no-op (import.meta.server Guard)
- * - Ping alle 20 s (`{"type":"ping"}`, wie jedes Appwrite-SDK): seit Appwrite
- *   2.7 schließt der Realtime-Server (Swoole `heartbeat_idle_time: 120`) jede
- *   Verbindung, die zwei Minuten lang NICHTS sendet (#15059). Ein reiner
- *   Zuhörer wie dieser WS flog sonst alle 2 min raus — jedes Mal mit
- *   onClose → Auth-Nachtrag (`/api/auth/me`) → Reconnect. 20 s statt knapp
- *   unter 120 s, weil Browser die Timer von Hintergrund-Tabs auf einmal pro
- *   Minute drosseln (Appwrites eigene Begründung für den Abstand).
- * - Reconnect mit Backoff, solange der Scope lebt
- * - Cleanup via onScopeDispose
+ * - Config-Gate `pukalani.realtime.enabled` + Endpoint/Projekt (F14)
+ * - Cleanup via onScopeDispose bzw. Rückgabewert
  */
 export function useRealtimeAccount(
   callback: (event: AccountRealtimeEvent) => void,
-  options: { onClose?: () => void } = {},
+  options: { onAccessEnded?: () => void } = {},
 ): () => void {
   if (import.meta.server) return () => {}
 
   const config = useRuntimeConfig()
-  // DIESELBE REGEL, ZWEITE TÜR (F14): dieser WS geht bewusst NICHT über das
-  // Web-SDK (Cookie-Auth, s. oben) — das Gate aus useRealtimeClient greift hier
-  // also nicht von selbst. Ohne Endpoint/Projekt (Apps ohne Appwrite-Instanz)
-  // liefe der Reconnect-Backoff sonst ewig gegen eine unsinnige URL.
   if (!realtimeAllowed(realtimeEnabled(), config.public.appwriteEndpoint, config.public.appwriteProjectId)) return () => {}
 
-  const base = config.public.appwriteEndpoint.replace(/^http/, 'ws')
-  const url = `${base}/realtime?project=${encodeURIComponent(config.public.appwriteProjectId)}&channels[]=account`
-
-  let socket: WebSocket | null = null
+  let sub: { unsubscribe?: () => void, close?: () => void } | undefined
   let disposed = false
-  let attempts = 0
-  // Stand schon mal eine Verbindung? onClose feuert nur dann als Auth-Signal —
-  // ein fehlgeschlagener Connect-Versuch (Netz/CSP) darf keinen Logout-Check auslösen.
-  let opened = false
-  let openedAt = 0
-  // Erst eine Verbindung, die so lange stand, gilt als stabil und resettet den
-  // Backoff. Ein open→sofort-close-Muster (z.B. degradierter Realtime-Worker)
-  // bliebe sonst in einem ewigen 1s-Reconnect-Loop hängen.
-  const STABLE_MS = 5_000
-  // Appwrite 2.7 trennt nach 120 s Stille; die SDKs pingen alle 20 s.
-  const PING_MS = 20_000
-  let pingTimer: ReturnType<typeof setInterval> | null = null
+  const stopAccessEnded = options.onAccessEnded ? onRealtimeAccessEnded(options.onAccessEnded) : undefined
 
-  function stopPing() {
-    if (pingTimer) clearInterval(pingTimer)
-    pingTimer = null
-  }
+  // SYNCHRON anstoßen (noch im Setup): liest die Runtime-Config, nach dem
+  // ersten await ist der Nuxt-Kontext weg (s. useRealtimeRows).
+  const jwtReady = ensureRealtimeJwt()
 
-  function handleMessage(raw: string) {
-    let message: RealtimeMessage
-    try {
-      message = JSON.parse(raw) as RealtimeMessage
-    }
-    catch {
-      return
-    }
-    if (message.type !== 'event') return
-    callback({ events: message.data.events ?? [], payload: message.data.payload })
-  }
-
-  function scheduleReconnect() {
+  void (async () => {
+    // Direkt destrukturiert — Tree-Shaking des SDK-Chunks (useRealtimeClient.ts).
+    const { Channel } = await import('appwrite')
+    const realtime = await sharedRealtime()
+    if (disposed || !realtime) return
+    // Angemeldet verbinden, BEVOR der Socket steht — als Gast bekäme der
+    // `account`-Channel nichts (Rolle `user:<id>` fehlt).
+    await jwtReady
     if (disposed) return
-    const delay = Math.min(1000 * 2 ** attempts, 15_000)
-    attempts += 1
-    setTimeout(connect, delay)
-  }
-
-  function connect() {
-    if (disposed) return
-    // new WebSocket() kann synchron werfen (CSP/mixed-content) → Backoff statt Crash.
     try {
-      socket = new WebSocket(url)
+      sub = await realtime.subscribe(Channel.account(), (event) => {
+        callback({ events: event.events ?? [], payload: event.payload })
+      })
+      if (disposed) { void (sub.unsubscribe ?? sub.close)?.(); sub = undefined }
     }
-    catch {
-      scheduleReconnect()
-      return
-    }
-    socket.onopen = () => {
-      opened = true
-      openedAt = Date.now()
-      stopPing()
-      const current = socket
-      pingTimer = setInterval(() => {
-        if (current?.readyState === WebSocket.OPEN) current.send(JSON.stringify({ type: 'ping' }))
-      }, PING_MS)
-    }
-    socket.onmessage = event => handleMessage(String(event.data))
-    socket.onclose = () => {
-      stopPing()
-      if (disposed) return
-      // Wird die eigene Session widerrufen, schließt der Server die Verbindung,
-      // bevor zuverlässig ein Event ankommt → onClose als zusätzliches Signal
-      // (der Consumer prüft dann den Auth-Status). Nur feuern, wenn vorher eine
-      // Verbindung stand — sonst löst ein bloß fehlgeschlagener Connect-Versuch
-      // fälschlich einen Logout-Check aus.
-      if (opened) {
-        opened = false
-        if (Date.now() - openedAt >= STABLE_MS) attempts = 0
-        options.onClose?.()
-      }
-      scheduleReconnect()
-    }
-  }
-
-  connect()
+    catch { /* Socket nicht verfügbar → /api/auth/me bei der nächsten Anfrage bleibt das Netz */ }
+  })()
 
   const close = () => {
     disposed = true
-    stopPing()
-    socket?.close()
-    socket = null
+    stopAccessEnded?.()
+    try { (sub?.unsubscribe ?? sub?.close)?.() }
+    catch { /* ignore */ }
+    sub = undefined
   }
 
   // Aufrufer außerhalb eines EffectScopes (z.B. Plugin mit manuellem

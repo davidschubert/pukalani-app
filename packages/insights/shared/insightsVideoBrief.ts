@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { InsightsLocale, InsightsSource, InsightsTopicKey } from './insightsPost'
 import { INSIGHTS_BRIEF_MAX, INSIGHTS_FORMATS, INSIGHTS_LOCALES, INSIGHTS_TOPICS, INSIGHTS_TOPIC_KEYS } from './insightsPost'
+import { JSON_QUOTE_RULE } from './insightsPrompts'
 import { insightsVideoUrl } from './insightsWatchlist'
 
 /**
@@ -47,7 +48,14 @@ import { insightsVideoUrl } from './insightsWatchlist'
  * Veröffentlichungsdatum.
  */
 
-export const INSIGHTS_BRIEF_PROMPT_VERSION = 'insights-b-1'
+/**
+ * `-2` seit dem 2026-11-09: der Brief-Prompt trägt jetzt `JSON_QUOTE_RULE`
+ * (BI4). Diesmal MIT Fassungs-Sprung, anders als bei der Zitat-Schärfung
+ * oben — `insights-b-1` ist seit dem 2026-10-27 live und steht an
+ * gespeicherten Briefen. Wer einen davon aufschlägt, soll sehen, dass er
+ * ohne diese Bitte entstanden ist.
+ */
+export const INSIGHTS_BRIEF_PROMPT_VERSION = 'insights-b-2'
 
 /**
  * WIE VIELE CLUSTER DER BRIEF VORSCHLAGEN DARF — dieselbe Vier wie das
@@ -196,7 +204,7 @@ function topicCatalog(): string {
  * Das erste Verbot ist das neue und das wichtigste (s. Kopf).
  */
 const BRIEF_RULES = [
-  'ERFINDE KEIN ZITAT UND SCHREIBE KEINES AUF. Gib gesprochene Aussagen IMMER in eigenen Worten wieder, mit Zeitmarke — „bei 12:40 argumentiert der Sprecher, dass …". Setze KEINE AUSSAGE aus dem Video in Anführungszeichen: wir können einen gesprochenen Satz nicht belegen, eine Zeitmarke kann jeder nachsehen. (Ein FACHBEGRIFF in Anführungszeichen ist in Ordnung — er behauptet nicht, dass jemand einen Satz gesagt hat.)',
+  'ERFINDE KEIN ZITAT UND SCHREIBE KEINES AUF. Gib gesprochene Aussagen IMMER in eigenen Worten wieder, mit Zeitmarke — „bei 12:40 argumentiert der Sprecher, dass …“. Setze KEINE AUSSAGE aus dem Video in Anführungszeichen: wir können einen gesprochenen Satz nicht belegen, eine Zeitmarke kann jeder nachsehen. (Ein FACHBEGRIFF in Anführungszeichen ist in Ordnung — er behauptet nicht, dass jemand einen Satz gesagt hat.)',
   'ERFINDE KEINE ZAHL. Jede Zahl aus dem Video bekommt ihre Zeitmarke. Zahlen, die nicht im Video fallen, gehören nicht in den Brief.',
   'SETZE NIEMANDEN HERAB. Keine wertenden Urteile über Menschen, Marken oder Kanäle; beschreibe, was gesagt und gezeigt wird.',
   'BEHAUPTE NICHTS ÜBER DAS, WAS DU NICHT GESEHEN HAST. Ist die Tonspur unverständlich oder das Video inhaltlich leer, schreibe das in den Brief, statt es zu füllen.',
@@ -237,6 +245,15 @@ export function buildInsightsVideoBriefPrompt(input: InsightsVideoBriefPromptInp
     `CLUSTER-KATALOG (nur diese Schlüssel, höchstens ${INSIGHTS_BRIEF_TOPICS_MAX}): ${topicCatalog()}`,
     '',
     `Der Brief ist höchstens ${INSIGHTS_BRIEF_MAX} Zeichen lang. Der Arbeitstitel ist kein Video-Titel-Echo, sondern benennt UNSERE These.`,
+    '',
+    // DIESELBE Fassung wie Entwurf und Übersetzung (`insightsPrompts.ts`).
+    // Sie steht NEBEN dem Zitat-Verbot aus BRIEF_RULES und widerspricht ihm
+    // nicht: dort geht es darum, WAS in Anführungszeichen stehen darf (eine
+    // Aussage nie, ein Fachbegriff schon), hier darum, WELCHE Zeichen das
+    // sind. Der Brief läuft über `aiVideoJson` und damit durch dieselbe
+    // Reparatur — er ist aber der TEUERSTE der drei Läufe (ein gelesenes
+    // Video, rund 5 Cent), also gehört die Vorsorge hier zuerst hin.
+    JSON_QUOTE_RULE,
     '',
     'Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in dieser Form, ohne Text davor oder dahinter:',
     '{"title": "Arbeitstitel unseres Beitrags", "brief": "Der Brief als Markdown", "topics": ["cluster-schluessel"]}',

@@ -43,6 +43,54 @@ Container Up, 0 Worker-Fehler; OTP an `delivered@resend.dev` → `success`
 Gegenprobe 404). Rückweg und Protokoll: Runbook APPWRITE-2-7-UPGRADE.md,
 Abschnitt „AW28“.
 
+### RT2 — Sofort-Abmeldung bei Session-Widerruf kam in Prod nie an ✅ 2026-11-09
+
+**Was:** `useRealtimeAccount` öffnete einen eigenen, cookie-nativen WebSocket
+auf dem `account`-Channel, damit ein Tab sich sofort abmeldet, wenn die
+Session anderswo beendet wird. Gemessen in Prod (Davids Chrome,
+`account.pukalani.app`, 2026-11-08): Session aus einem zweiten Tab beendet,
+der Server meldete nach 1,2 s 401 — **der Tab war nach 98,5 s noch
+angemeldet** und blieb auf `/de`.
+
+**Ursache:** Das Session-Cookie ist host-only (`setSessionCookie`, kein
+`Domain`) und erreicht `api.pukalani.app` nie — der Cookie-WS verband sich in
+Prod als GAST (`connected`, `user: null`) und bekam weder Event noch Abbruch.
+Lokal fiel es nicht auf, weil `localhost` App und Appwrite dasselbe Cookie
+gibt (dieselbe Wurzel wie RT1). Die Begründung „nur ein Cookie-Socket wird
+beim Widerruf geschlossen, also NICHT konsolidieren" stimmt seit Appwrite 2.7
+nicht mehr: 2.7.1 bindet JEDE angemeldete Verbindung an ihre Session, auch
+die JWT-Verbindung (`sessionId` aus dem JWT), und stellt beim Widerruf erst
+das `account`-Event zu, dann einen 401-Frame, dann schließt es
+(`src/Appwrite/Realtime/Event/Handler.php`, `revalidateUser`).
+
+**Fix (core, `b3bbcd17`, PR #90, live als Build `2767f819`; Davids Wahl
+„geteilter Socket"):** `useRealtimeAccount` abonniert `Channel.account()` auf
+dem EINEN geteilten SDK-Socket (Prod per JWT, lokal per Cookie nach RT1) —
+eigener WS, Ping und Backoff entfallen, ein Socket weniger je Tab. Ein
+401-Frame auf einem angemeldeten Socket ruft `onRealtimeAccessEnded`
+(`isRealtimeAccessEnded`, `core/shared/realtimeAuth.ts`), das Plugin prüft dann
+die Session — auch wenn das Event fehlt. Nebenbefund mitgefixt: ein
+JWT-Socket wird nach Ablauf SEINES JWT mit 401 geschlossen (das auslösende
+Event geht verloren); der 12-min-Refresh verbindet jetzt gezielt neu
+(`refreshJwtAndReconnect`). Regel in `.claude/rules/appwrite.md` und alle
+Doku-Stellen („Account-WS", „Konto-Socket fällt auf Poll zurück") nachgezogen.
+
+**Beweis:** Lokal per Playwright, Session per Admin-API widerrufen —
+Cookie-Modus abgemeldet nach **0,56 s**, JWT-Modus (Appwrite über
+`127.0.0.1`, wie Prod) Event + 401-Frame nach 0,10 s, abgemeldet nach
+**1,24 s**; 17-min-Dauerlauf ohne Eingriff: 0 Fehler-Frames, gezielter
+Neuaufbau nach 12,4 min, weiter angemeldet. **Prod nachher** (Davids Chrome,
+Build `2767f819`, 2026-11-09): `DELETE /api/auth/sessions/<current>` aus einem
+zweiten Tab, der angemeldete Tab stand nach **0,62 s** auf `/de/login` mit dem
+Toast „Deine Sitzung wurde beendet". Unit: `packages/core/tests/realtimeAuth.test.ts`
+(401-Erkennung + Verdrahtung).
+
+**Gelernt:** Eine Regel mit „NIE" braucht ihren Beweis im Ziel-Umfeld — die
+Konsolidierungs-Sperre war lokal richtig begründet und in Prod von Anfang an
+wirkungslos, weil das Cookie dort gar nicht ankam. Ein Sicherheits-Signal
+wird in Prod gemessen, nicht lokal. Und: ein Messpunkt im `window` stirbt mit
+dem Seitenwechsel, den er messen soll — `localStorage` überlebt ihn.
+
 ### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
 
 **Was.** Seit 2026-07-19 mountete `docker-compose.override.yml` eine gepatchte
@@ -59,7 +107,7 @@ EINEM Retry auf frischer Verbindung, wenn der gehaltene Socket tot ist (#14213).
   `success` 29,7 ms, in Mailpit.
 - **CI** trug den Patch nie (keine Override, leerer SMTP-Host).
 - **prod** vorbereitet: `ops/appwrite-aw28-drop-smtp-keepalive-patch.sh`,
-  an einer Kopie der Prod-Override geprüft — gelaufen als AW29 (oben).
+  an einer Kopie der Prod-Override geprüft — Lauf ist AW29 (Davids Ja).
 - Doku: Runbook APPWRITE-2-7-UPGRADE.md Abschnitt „AW28" (Zeitstempel-Tabelle,
   Rückweg), DEPLOYMENT.md Punkt 5 umgeschrieben.
 
@@ -243,6 +291,10 @@ Geldvernichtung — das ist die K5-Lehre, hier auf einen PARSER angewandt; und
 eine Fehlerklasse, die mit einer Grösse häufiger wird, ist bei der kleineren
 Grösse nicht abwesend, nur seltener gemeldet — wer nur den Rand prüft, hält
 eine Wahrscheinlichkeit für eine Schwelle.
+
+**Nachtrag 2026-11-09 — die Regel stand neben vier Gegenbeispielen.** Davids Auftrag, die Anführungszeichen-Regel auch in den Brief-Prompt zu legen, führte zu einem Befund an der Regel selbst: ihre EIGENEN Beispiele schlossen mit einem geraden `"` (`„…"` im Deutschen), und `HARD_RULES` (Entwurf) wie `BRIEF_RULES` (Brief) führten dasselbe vor — vier Vorlagen für genau das Zeichen, das die Regel verbietet. Alle vier sind jetzt typografisch, `JSON_QUOTE_RULE` ist exportiert und wird vom Brief-Prompt importiert (EINE Fassung für drei Prompts), Fassungen `insights-b-2` / `insights-d-4` / `insights-t-3` (`-d-3` gehört den SEO/GEO-Regeln aus K6, die am selben Tag aus einer Nachbarsitzung kamen und sieben weitere Gegenbeispiele mitbrachten — aus vier Fundstellen wurden elf). Ein Test prüft alle drei Prompts gegen das Muster und wird rot, wenn das alte Beispiel zurückkommt. Bezahlter Beweis: zwei echte Brief-Läufe gegen dasselbe Video (`google/gemini-3.1-flash-lite`, EU-gepinnt) — mit Regel ein brauchbarer Brief mit 24 typografischen und NULL geraden Anführungszeichen, OHNE Regel aber ebenfalls null. Auf dem Brief-Pfad ist der Defekt also nie beobachtet worden; die Regel bleibt als Vorsorge, die nichts kostet, das Netz ist die Reparatur. Nebenbei korrigiert: ein Brief kostet bei einem langen Video **10,5 Cent**, nicht die notierten 5. Dieselbe Falle in vier Prompts anderer Layer steht als `AI2` offen. Details: § 16.1 des Plans.
+
+**Gelernt (Nachtrag):** Ein Prompt lehrt mit seinen BEISPIELEN, nicht mit seinen Verboten — ein Gegenbeispiel im Auftragstext wiegt mehr als der Satz daneben, der es untersagt. Und: eine Gegenprobe, die NICHTS zeigt, gehört genauso aufgeschrieben wie eine, die etwas zeigt; sonst wird aus einer kostenlosen Vorsorge im Protokoll eine bewiesene Kur.
 
 ---
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   INSIGHTS_METHODOLOGY_PATH,
+  INSIGHTS_QUESTION_HEADINGS_MIN,
   INSIGHTS_SERVER_OWNED_FIELDS,
   INSIGHTS_STATES,
   INSIGHTS_TRANSITIONS,
@@ -198,12 +199,13 @@ describe('insightsAiLimits', () => {
 
 describe('insightsPrompts', () => {
   it('trägt die Fassungen aus dem Plan', () => {
-    // `-2` seit BI4 (2026-11-08): beide Prompts tragen die
-    // Anführungszeichen-Regel. Die Fassung steht je Beitrag in der Zeile —
-    // wer den Prompt inhaltlich ändert, zählt hoch, sonst behauptet ein alter
-    // Beitrag einen Auftrag, den er nie bekommen hat.
-    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-2')
-    expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-2')
+    // `-2` seit BI4 (2026-11-08): die Anführungszeichen-Regel in beiden
+    // Prompts. `-3` seit BI2 K6 (2026-11-09): die SEO/GEO-Regeln im Entwurf.
+    // Die Fassung steht je Beitrag in der Zeile — wer den Prompt inhaltlich
+    // ändert, zählt hoch, sonst behauptet ein alter Beitrag einen Auftrag,
+    // den er nie bekommen hat. Die Übersetzung blieb von K6 unberührt.
+    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-4')
+    expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-3')
   })
 
   it('bittet beide Prompts um typografische Anführungszeichen (BI4)', () => {
@@ -229,6 +231,17 @@ describe('insightsPrompts', () => {
       baseLocale: 'de',
     }, 'en')
     expect(translate).toContain('typografische Anführungszeichen')
+
+    // GEGENPROBE (2026-11-09): kein Prompt darf den Fehler VORMACHEN, den er
+    // verbietet. Die erste Fassung der Regel schrieb ihre Beispiele als `„…"`,
+    // `HARD_RULES` führte `nicht „schlecht", „billig"` vor und `SEO_GEO_RULES`
+    // sieben weitere („Warum …?", „X ist …", die drei Floskeln) — elf
+    // Vorlagen für genau das Zeichen, das den JSON-String beendet. Ein Modell
+    // lernt die Form seiner Antwort aus den Beispielen im Auftrag, nicht aus dem
+    // Verbot daneben.
+    const demonstratesTheBug = /\u201e[^\u201c"\n]{0,120}"/
+    expect(draft).not.toMatch(demonstratesTheBug)
+    expect(translate).not.toMatch(demonstratesTheBug)
   })
 
   describe('buildInsightsDraftPrompt', () => {
@@ -280,6 +293,72 @@ describe('insightsPrompts', () => {
       const prompt = buildInsightsDraftPrompt(input)
       expect(prompt).toContain('KEINE Tabellen')
       expect(prompt).toContain('~~')
+    })
+
+    /**
+     * DIE SEO/GEO-ZUSAGEN (BI2 K6, Plan §6) am TEXT festgenagelt — so wie
+     * `insightsVideoBrief.test.ts` es für `insights-b-1` tut. Ohne diese
+     * Prüfungen wären sie eine Behauptung im Dateikopf, und eine stille
+     * Prompt-Kürzung fiele niemandem auf.
+     */
+    it('bestellt die Antwort im ERSTEN Absatz', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('DIE ANTWORT STEHT IM ERSTEN ABSATZ')
+      expect(prompt).toContain('BEANTWORTET')
+    })
+
+    it('bestellt Frage-Überschriften, und zwar mindestens zwei', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('ZWISCHENÜBERSCHRIFTEN SIND FRAGEN')
+      expect(prompt).toContain(`Mindestens ${INSIGHTS_QUESTION_HEADINGS_MIN} Überschriften`)
+    })
+
+    it('bestellt definierende Sätze, FAQ-Block und Diskussionsfrage', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('SCHREIBE DEFINIERENDE SÄTZE')
+      // Typografisch geschlossen seit dem 2026-11-09: ein gerades `"` im
+      // Prompt ist eine Vorlage für genau das Zeichen, das die JSON-Antwort
+      // zerstört (BI4-Nachtrag, § 16.1).
+      expect(prompt).toContain('„X ist …“')
+      expect(prompt).toContain('EIN FAQ-BLOCK AM ENDE')
+      expect(prompt).toContain('drei bis fünf echte Fragen')
+      // Die FAQ-Fragen sind `###`-Überschriften — genau das ist die Kopplung
+      // an die siebte Prüfregel (sie zählt Frage-Überschriften).
+      expect(prompt).toContain('eigene Überschrift der Ebene ###')
+      expect(prompt).toContain('DER LETZTE ABSATZ IST EINE DISKUSSIONSFRAGE')
+    })
+
+    it('verbietet die Floskel, die David ausdrücklich genannt hat', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('KEINE FLOSKELN')
+      expect(prompt).toContain('In der heutigen schnelllebigen Welt')
+    })
+
+    /**
+     * GEGENPROBE ZUR ARBEITSTEILUNG: die vier Verbote sind die RECHTLICHE
+     * Hälfte und über alle Fassungen wortgleich. Die neue Fassung erweitert die
+     * Form, nicht die Haftung — fiele hier ein Verbot heraus, wäre das die
+     * teuerste stille Änderung dieses Produkts.
+     */
+    it('lässt die vier Verbote unverändert stehen', () => {
+      const prompt = buildInsightsDraftPrompt(input)
+      expect(prompt).toContain('ERFINDE KEIN ZITAT')
+      expect(prompt).toContain('ERFINDE KEINE ZAHL')
+      expect(prompt).toContain('SETZE NIEMANDEN HERAB')
+      expect(prompt).toContain('ERFINDE KEINEN AUTOR')
+      // Die Verbote stehen HINTER den Form-Regeln: das Letzte vor dem Brief.
+      expect(prompt.indexOf('ERFINDE KEIN ZITAT')).toBeGreaterThan(prompt.indexOf('KEINE FLOSKELN'))
+    })
+
+    it('gibt jedem Format dieselben SEO/GEO-Regeln — auch dem Ranking', () => {
+      for (const format of ['profile', 'duel', 'article', 'ranking'] as const) {
+        const prompt = buildInsightsDraftPrompt({ ...input, format })
+        expect(prompt, format).toContain('DER LETZTE ABSATZ IST EINE DISKUSSIONSFRAGE')
+        expect(prompt, format).toContain('EIN FAQ-BLOCK AM ENDE')
+      }
+      // Und das Ranking behält seine eigene Zusage: die Plätze stehen in den
+      // DATEN, nicht im Text.
+      expect(buildInsightsDraftPrompt({ ...input, format: 'ranking' })).toContain('schreibe sie NICHT in den Text')
     })
 
     it('sagt die Sprache der Grundfassung an', () => {

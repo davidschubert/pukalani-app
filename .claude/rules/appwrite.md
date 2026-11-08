@@ -32,9 +32,17 @@ paths:
   den SOCKET, sobald das host-only Session-Cookie den Realtime-Host selbst
   erreicht (lokal: `localhost` teilt Cookies über alle Ports) — dann schaltet
   der Tab auf Cookie-Auth um (RT1, `core/shared/realtimeAuth.ts`); in Prod
-  (`api.pukalani.app` ≠ App-Host) bleibt es beim JWT. AUSNAHME: useRealtimeAccount bleibt
-  bewusst cookie-nativer WS (Instant-Session-Revoke hängt am Cookie-Close) —
-  NICHT konsolidieren. Realtime braucht einen gesunden appwrite-realtime-
+  (`api.pukalani.app` ≠ App-Host) bleibt es beim JWT. AUCH der `account`-
+  Channel (useRealtimeAccount, Sofort-Abmeldung bei Session-Widerruf) läuft
+  seit RT2 (2026-11-08) über diesen Socket — der frühere eigene Cookie-WS war
+  in Prod ein GAST (host-only Cookie erreicht `api.pukalani.app` nie; Tab nach
+  98,5 s noch angemeldet). Appwrite ≥ 2.7 bindet JEDE angemeldete Verbindung,
+  auch die JWT-Verbindung, an ihre Session: beim Widerruf erst `account`-Event,
+  dann 401-Frame, dann Close (`onRealtimeAccessEnded`,
+  `core/shared/realtimeAuth.ts`). Folge: der 12-min-JWT-Refresh verbindet den
+  Socket NEU — Appwrite schließt sonst beim Ablauf des ERSTEN JWT (401, das
+  auslösende Event geht verloren). Keinen eigenen `new WebSocket` mehr bauen.
+  Realtime braucht einen gesunden appwrite-realtime-
   Container (Swoole-Crash → `docker compose up -d --no-deps appwrite-realtime`).
 - Session-Cookie: a_session_<PROJECT_ID>, httpOnly+secure+sameSite,
   Appwrite-Endpoint als Subdomain derselben Root-Domain
