@@ -65,6 +65,13 @@ Code von `@vue/language-core`. **Latent noch da:** weitere Komponenten-Attribute
 mit `//` (`ULink to="https://…"`, `placeholder="https://"` in courses, insights,
 pages, control) — harmlos, solange danach keine eingeengte Bindung folgt.
 
+**Nachtrag 2026-11-08 — die latenten Stellen sind auch weg.** Alle neun übrigen
+Komponenten-Props mit `//` (core: GeoCityPicker, SessionDetailsModal, SessionsTable;
+control, courses, insights, onboarding ×2, pages) binden jetzt eine Script-Konstante.
+Beweis: virtueller Code aller 564 Skript-Blöcke durch `ts.createSourceFile` —
+vorher 9 Dateien mit Syntaxfehlern, danach 0. Was an `//` in Props bleibt, sind echte
+Zeilenkommentare in `:ui="{…}"` (marketing, brand) — dafür ist die Ersetzung gemacht.
+
 ### RS1 g — DMARC für `pukalani.app` ✅ 2026-11-08
 
 **Was.** `_dmarc.pukalani.app` fehlte (Gmail und Yahoo erwarten DMARC von
