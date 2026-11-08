@@ -30,6 +30,41 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### TC1 — Typecheck auf main rot: vue-tsc zerlegt `//` in Komponenten-Props ✅ 2026-11-08
+
+**Befund.** Der Typecheck-Lauf auf `main` war seit `bf48544b` rot (sechsmal
+TS2339 „Property 'value' does not exist" in
+`packages/events/app/components/EventFormModal.vue`), lokal aber grün — die
+lokalen `node_modules` hingen auf vue-tsc 3.3.8, der Lockfile verlangt 3.3.14.
+
+**Ursache (upstream, @vue/language-core ab 3.3.9, Stand 3.3.14).** Zwei Neuerungen
+treffen sich: (1) Bindungen, die im Template irgendwo eingeengt werden
+(`v-if="form.access === 'paid'"`), bekommen überall ein `.value` angehängt und
+werden einmal per `__VLS_withDotValue(form, …)` zur Ref zugesichert. (2) Die
+Kopie der Komponenten-Props unter `// @ts-ignore` wandelt jedes `//` per Regex
+in einen Blockkommentar um (`codegen/template/element.js`) — ohne Rücksicht
+auf Strings. Aus `placeholder="https://"` wurde `placeholder: "https:/*", */ }));`,
+ein Syntaxfehler; danach verliert TypeScript die Zusicherung, und jedes
+`form.…` dahinter ist TS2339.
+
+**Fix** (`42352b8f`, eine Nachbarsitzung war schneller — der eigene,
+identische Commit ist verworfen). Der Platzhalter kommt aus einer
+Script-Konstante (`:placeholder="urlPlaceholder"`). Ein zweiter Fall stand
+verdeckt dahinter, weil `pnpm -r typecheck` beim ersten roten Paket abbricht:
+`packages/insights/app/pages/dashboard/insights/channels.vue` baute die
+YouTube-Adresse als Template-Literal im `:to` von ULink — jetzt ein `computed`
+(`previewChannelUrl`). Gesamtlauf mit `pnpm -r --no-bail typecheck` grün.
+Upstream: vuejs/language-tools#6240, Fix-PR #6241 noch offen (Stand 3.3.14) —
+nach dem Upstream-Fix dürfen die Umwege bleiben, sie schaden nicht.
+
+**Gelernt:** „Lokal grün, CI rot" heißt zuerst: lokale Toolchain gegen den
+Lockfile prüfen (`node -p "require('./apps/comments/node_modules/vue-tsc/package.json').version"`),
+dann `pnpm install --frozen-lockfile`. Der Fehlerort (`form.value`) war eine
+Spätfolge — die Ursache stand eine Zeile davor, sichtbar erst im generierten
+Code von `@vue/language-core`. **Latent noch da:** weitere Komponenten-Attribute
+mit `//` (`ULink to="https://…"`, `placeholder="https://"` in courses, insights,
+pages, control) — harmlos, solange danach keine eingeengte Bindung folgt.
+
 ### RS1 g — DMARC für `pukalani.app` ✅ 2026-11-08
 
 **Was.** `_dmarc.pukalani.app` fehlte (Gmail und Yahoo erwarten DMARC von
