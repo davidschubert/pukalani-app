@@ -204,8 +204,8 @@ describe('insightsPrompts', () => {
     // Die Fassung steht je Beitrag in der Zeile — wer den Prompt inhaltlich
     // ändert, zählt hoch, sonst behauptet ein alter Beitrag einen Auftrag,
     // den er nie bekommen hat. Die Übersetzung blieb von K6 unberührt.
-    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-3')
-    expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-2')
+    expect(INSIGHTS_DRAFT_PROMPT_VERSION).toBe('insights-d-4')
+    expect(INSIGHTS_TRANSLATE_PROMPT_VERSION).toBe('insights-t-3')
   })
 
   it('bittet beide Prompts um typografische Anführungszeichen (BI4)', () => {
@@ -231,6 +231,17 @@ describe('insightsPrompts', () => {
       baseLocale: 'de',
     }, 'en')
     expect(translate).toContain('typografische Anführungszeichen')
+
+    // GEGENPROBE (2026-11-09): kein Prompt darf den Fehler VORMACHEN, den er
+    // verbietet. Die erste Fassung der Regel schrieb ihre Beispiele als `„…"`,
+    // `HARD_RULES` führte `nicht „schlecht", „billig"` vor und `SEO_GEO_RULES`
+    // sieben weitere („Warum …?", „X ist …", die drei Floskeln) — elf
+    // Vorlagen für genau das Zeichen, das den JSON-String beendet. Ein Modell
+    // lernt die Form seiner Antwort aus den Beispielen im Auftrag, nicht aus dem
+    // Verbot daneben.
+    const demonstratesTheBug = /\u201e[^\u201c"\n]{0,120}"/
+    expect(draft).not.toMatch(demonstratesTheBug)
+    expect(translate).not.toMatch(demonstratesTheBug)
   })
 
   describe('buildInsightsDraftPrompt', () => {
@@ -305,7 +316,10 @@ describe('insightsPrompts', () => {
     it('bestellt definierende Sätze, FAQ-Block und Diskussionsfrage', () => {
       const prompt = buildInsightsDraftPrompt(input)
       expect(prompt).toContain('SCHREIBE DEFINIERENDE SÄTZE')
-      expect(prompt).toContain('„X ist …"')
+      // Typografisch geschlossen seit dem 2026-11-09: ein gerades `"` im
+      // Prompt ist eine Vorlage für genau das Zeichen, das die JSON-Antwort
+      // zerstört (BI4-Nachtrag, § 16.1).
+      expect(prompt).toContain('„X ist …“')
       expect(prompt).toContain('EIN FAQ-BLOCK AM ENDE')
       expect(prompt).toContain('drei bis fünf echte Fragen')
       // Die FAQ-Fragen sind `###`-Überschriften — genau das ist die Kopplung

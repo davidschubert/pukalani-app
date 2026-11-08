@@ -1584,3 +1584,73 @@ Datenbank: die neuen FAQ-Blöcke und Diskussionsfragen kommen erst mit dem
 zweiten Seed-Lauf dorthin, der für Davids Brand-Checks ohnehin aussteht.
 Bis dahin bleiben die Live-Texte, wie sie sind — die Regel blockiert sie
 nicht, weil sie nur den Weg NACH `review` prüft und nicht den Weg zurück.
+
+### 16.1 Nachtrag (2026-11-09) — die Regel auch im Brief-Prompt, und ein Fehler in der Regel selbst
+
+Davids Auftrag nach dem BI4-Bericht: die Anführungszeichen-Regel gehört auch in
+den Brief-Prompt. Beim Hinlegen fiel auf, dass die Regel den Fehler, den sie
+verbietet, selbst vorgemacht hat.
+
+**DER BEFUND, GEMESSEN AN DEN BYTES.** Vier Fundstellen dieses Layers
+führten ein deutsches Anführungszeichen vor, das mit einem GERADEN `"`
+schliesst — also genau die Form, die einen JSON-String beendet:
+
+| Stelle | Text im Prompt |
+| --- | --- |
+| `JSON_QUOTE_RULE` (ihre eigenen Beispiele) | `„…"` im Deutschen, `"…"` im Englischen |
+| `HARD_RULES` (Entwurfs-Prompt) | `nicht „schlecht", „billig", „unseriös"` |
+| `BRIEF_RULES` (Brief-Prompt) | `„bei 12:40 argumentiert der Sprecher, dass …"` |
+| `SEO_GEO_RULES` (Entwurf, kam mit K6 am 2026-11-09 dazu) | `„Warum …?"`, `„X ist …"`, drei Floskel-Beispiele |
+
+Ein Modell lernt die FORM seiner Antwort aus den Beispielen im Auftrag, nicht
+aus dem Verbot daneben. Die Regel stand also neben ELF Vorlagen für genau das
+Zeichen, das sie ausschliessen sollte (sieben davon kamen am selben Tag mit den
+SEO/GEO-Regeln aus einer Nachbarsitzung dazu — der Rebase hat sie mitgebracht).
+Alle elf sind jetzt typografisch
+(`„…“`, `“…”`), und ein Test prüft es für alle drei Prompts gegen das Muster
+selbst — er wird rot, wenn jemand das alte Beispiel zurückschreibt
+(nachgewiesen: beide Tests schlagen fehl, wenn man den Zustand von vorher
+herstellt).
+
+**WAS GEBAUT WURDE.** `JSON_QUOTE_RULE` ist jetzt exportiert und wird von
+`insightsVideoBrief.ts` importiert — EINE Fassung für alle drei Prompts statt
+einer zweiten Kopie. Der Brief-Prompt trägt sie an derselben Stelle wie Entwurf
+und Übersetzung: unmittelbar vor der Formvorgabe. Fassungen hochgezählt:
+`insights-b-2` (neu dabei), `insights-d-4`/`insights-t-3` (die Regel selbst hat
+sich geändert, also hat sich der Auftrag geändert; `-d-3` gehört den
+SEO/GEO-Regeln aus K6, die am selben Tag aus einer Nachbarsitzung kamen).
+
+**DER BEZAHLTE BEWEIS — und was er NICHT zeigt.** Zwei echte Läufe gegen
+dasselbe Video (The Futur, `fkcW4VqJqbw`, „Why Your Brand Is Forgettable"),
+`google/gemini-3.1-flash-lite` auf `google-vertex/eu`, ZDR, `deny`, keine
+Fallbacks. Gelesen wurde wirklich (Abrechnung: 215.094 `video_tokens` +
+81.487 `audio_tokens`):
+
+| Lauf | Prompt | Dauer | `finish_reason` | Tokens | direkt parsbar | gerade `"` im Brief |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `insights-b-2` (mit Regel) | 57,1 s | `stop` | 542 | ja | **0** (24 typografische) |
+| 2 | Stand `insights-b-1` (ohne Regel, altes Beispiel zurück) | ~50 s | `stop` | 511 | ja | **0** |
+
+Der erste Lauf liefert einen brauchbaren Brief (1.901 Zeichen, 272 Wörter, drei
+Cluster) mit zwölf Begriffen in Anführungszeichen — `„Attribute Slider“`,
+`„Brand Swap Test“`, `„Mitte“` —, allesamt typografisch geschlossen. **Der
+zweite Lauf aber auch.** Damit ist ehrlich gesagt: auf dem Brief-Pfad ist der
+Defekt NIE beobachtet worden, und zwei Läufe zeigen keinen Unterschied. Die
+Regel steht hier als Vorsorge, die nichts kostet, nicht als bewiesene Kur; das
+Netz auf diesem Pfad ist und bleibt die Reparatur aus BI4, durch die der Brief
+seit `aiVideoJson` ohnehin läuft. Gemessen wurde der Defekt am ENTWURFS-Pfad
+(4 von 52 Läufen, anderes Modell: `claude-haiku-4.5`) — eine Rate für den
+Brief-Pfad zu messen, hätte bei zehn Cent je Lauf Geld für eine Vorsorge
+gekostet, die ohnehin bleibt.
+
+**EINE ZAHL KORRIGIERT:** ein Brief kostet nicht „rund 5 Cent", sondern bei
+einem langen Video **10,5 Cent** (`total_cost: 0.105020575` für 297.340 native
+Prompt-Tokens). Die 5 Cent aus §13 galten für ein 25-Minuten-Video mit weniger
+Bildrate-Last; der Deckel nach oben ist also doppelt so hoch wie notiert.
+
+**NEBENBEFUND, NICHT BEHOBEN:** dieselben kaputten Beispiele stehen in
+Prompt-Strings anderer Layer — `courses` (zwei Übersetzungs-Routen, `„Nuxt"`,
+`„TypeScript"`), `posts` (Kategorie-Übersetzung, `„GSAP"`, `„Nuxt"`) und
+`brand` (`brandMarkBrief`, `„${kind}"`). Alle laufen über `aiCompleteJson` und
+damit durch die Reparatur; der Schaden ist also gedeckelt. Als eigener kleiner
+Punkt notiert, nicht hier mitgeändert.
