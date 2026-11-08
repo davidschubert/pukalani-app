@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isJwtCookieConflict, isRealtimeAccessEnded } from '../shared/realtimeAuth'
+import { isJwtCookieConflict, isRealtimeAccessEnded, isSessionDeleteEvent } from '../shared/realtimeAuth'
 
 /**
  * RT1 (2026-11-08): der geteilte Realtime-Socket verband sich lokal im
@@ -100,7 +100,10 @@ describe('Sofort-Abmeldung hängt am geteilten Socket (RT2)', () => {
   })
 
   it('das Plugin prüft die Session bei Event UND bei Entzug', () => {
-    expect(plugin).toContain('useRealtimeAccount(() => verify(), { onAccessEnded: () => verify() })')
+    expect(plugin).toContain('useRealtimeAccount(event => verify(isSessionDeleteEvent(event.events)), { onAccessEnded: () => verify() })')
+    // Die Bremse verwirft nichts mehr — sie plant (accountVerifyAt).
+    expect(plugin).toContain('accountVerifyAt(lastVerifyAt, now, urgent)')
+    expect(plugin).not.toContain('accountVerifyDue(')
   })
 
   // Ohne Neuaufbau schließt Appwrite den Socket beim Ablauf des ERSTEN JWT
@@ -110,5 +113,21 @@ describe('Sofort-Abmeldung hängt am geteilten Socket (RT2)', () => {
     const fn = client.slice(client.indexOf('async function refreshJwtAndReconnect'), client.indexOf('async function refreshJwtAndReconnect') + 300)
     expect(fn).toContain('await fetchJwt()')
     expect(fn).toContain('reconnectSocket(')
+  })
+})
+
+describe('isSessionDeleteEvent', () => {
+  // Ereignisnamen wie Appwrite 2.7.1 sie auf `account` zustellt
+  // (Event-Frame `events[]`, im RT2-E2E mitgelesen).
+  it('erkennt das Löschen einer Session', () => {
+    expect(isSessionDeleteEvent(['users.6a5c.sessions.6af0.delete', 'users.*.sessions.*.delete', 'users.*'])).toBe(true)
+    expect(isSessionDeleteEvent(['users.6a5c.sessions.6af0.delete'])).toBe(true)
+  })
+
+  it('Gegenproben: Anlegen, Profil, Presence und leere Liste sind KEIN Widerruf', () => {
+    expect(isSessionDeleteEvent(['users.6a5c.sessions.6af0.create', 'users.*.sessions.*.create'])).toBe(false)
+    expect(isSessionDeleteEvent(['users.6a5c.update.prefs', 'users.6a5c.update'])).toBe(false)
+    expect(isSessionDeleteEvent(['users.6a5c.delete'])).toBe(false)
+    expect(isSessionDeleteEvent([])).toBe(false)
   })
 })

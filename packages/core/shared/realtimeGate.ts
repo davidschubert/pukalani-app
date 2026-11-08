@@ -39,10 +39,11 @@ export function realtimeAllowed(
 /**
  * ── WIE OFT DARF EIN VERBINDUNGSABBRUCH DEN AUTH-STAND NACHPRÜFEN? ──────────
  *
- * `realtime-account.client.ts` prüft nach jedem Schliessen des Account-WS, ob
- * die eigene Session noch lebt (`auth.refresh()` → `/api/auth/me` +
- * `/api/community/role`). Das ist richtig — ein Widerruf kappt genau diesen
- * cookie-gebundenen Socket, bevor zuverlässig ein Event ankommt.
+ * `realtime-account.client.ts` prüft nach jedem Account-Ereignis und jedem
+ * 401 des geteilten Sockets, ob die eigene Session noch lebt (`auth.refresh()`
+ * → `/api/auth/me` + `/api/community/role`). Bis RT2 (2026-11-08) hing das am
+ * Schliessen eines eigenen Cookie-Sockets; für den galt der Rest dieses
+ * Abschnitts, und für 401-Stürme gilt er weiter.
  *
  * Ohne Bremse ist es aber auch ein VERSTÄRKER: steht der Socket nicht (toter
  * `appwrite-realtime`-Container, geflappte Verbindung), wird aus jedem
@@ -50,11 +51,14 @@ export function realtimeAllowed(
  * Backoff (1 s → 15 s Deckel), also dauerhaft vier Doppel-Abrufe pro Minute,
  * je offenem Tab — für eine Frage, deren Antwort sich nicht ändert.
  *
- * 30 s, und der Verlust ist klein und benannt: ein Widerruf ist ein
- * EINMALIGES Ereignis. Nach einer normal stehenden Verbindung liegt die letzte
- * Prüfung lange zurück, die Bremse greift also gar nicht und die Abmeldung
- * kommt SOFORT. Nur wenn ohnehin gerade geflappt wird, kann sie sich um bis zu
- * 30 s verzögern — dort ist die Verbindung aber sowieso unbrauchbar.
+ * 30 s. Die alte Annahme „nach einer normal stehenden Verbindung liegt die
+ * letzte Prüfung lange zurück" war FALSCH (Prod-Messung 2026-11-09, demo):
+ * schon beim Laden der Seite lief eine Prüfung, der Widerruf 7 s später fiel
+ * ins Fenster und wurde VERWORFEN — abgemeldet erst 33 s danach, durch ein
+ * späteres 401 eines Reconnects. Deshalb seit RT2 zwei Regeln in
+ * `accountVerifyAt`: ein Session-Lösch-Ereignis umgeht die Bremse (selten,
+ * vom Nutzer ausgelöst, kein Sturm möglich), alles andere wird ans
+ * Fensterende GESCHOBEN statt verworfen.
  *
  * `0` heisst „noch nie geprüft" und ist AUSDRÜCKLICH immer fällig — nicht
  * verlassen auf „`Date.now()` ist ohnehin grösser als der Abstand". Sonst
@@ -67,4 +71,18 @@ export const ACCOUNT_VERIFY_MIN_MS = 30_000
 export function accountVerifyDue(lastVerifyAt: number, now: number): boolean {
   if (lastVerifyAt === 0) return true
   return now - lastVerifyAt >= ACCOUNT_VERIFY_MIN_MS
+}
+
+/**
+ * WANN läuft die nächste Prüfung (Zeitstempel)? RT2-Nachtrag (2026-11-09):
+ * - `urgent` (ein `users.*.sessions.*.delete`-Ereignis, `isSessionDeleteEvent`)
+ *   ⇒ sofort, die Bremse gilt nicht — das ist genau der Widerruf.
+ * - sonst ⇒ sofort, wenn fällig; im Fenster ans FENSTERENDE geschoben, nie
+ *   verworfen (sonst verschluckte ein Ereignis kurz davor das nächste).
+ * Die 400-ms-Entprellung (Event und 401-Frame kommen beim Widerruf direkt
+ * hintereinander) legt der Aufrufer obendrauf.
+ */
+export function accountVerifyAt(lastVerifyAt: number, now: number, urgent: boolean): number {
+  if (urgent || accountVerifyDue(lastVerifyAt, now)) return now
+  return lastVerifyAt + ACCOUNT_VERIFY_MIN_MS
 }

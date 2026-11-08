@@ -1,4 +1,5 @@
-import { accountVerifyDue } from '../../shared/realtimeGate'
+import { isSessionDeleteEvent } from '../../shared/realtimeAuth'
+import { accountVerifyAt } from '../../shared/realtimeGate'
 
 /**
  * Live-Session-Widerruf (#9): Beendet ein Admin die Sessions eines Users (oder
@@ -22,22 +23,30 @@ export default defineNuxtPlugin((nuxtApp) => {
   const i18n = nuxtApp.$i18n as { t: (key: string) => string }
   const scope = effectScope(true)
   let timer: ReturnType<typeof setTimeout> | undefined
-  // 0 = noch nie geprüft → der erste Abbruch prüft SOFORT (accountVerifyDue).
+  // Wann der geplante Abruf feuert (0 = keiner geplant) — ein späteres Signal
+  // darf einen früheren Termin nie nach hinten schieben.
+  let timerAt = 0
+  // 0 = noch nie geprüft → das erste Signal prüft SOFORT (accountVerifyAt).
   let lastVerifyAt = 0
 
   // Auth nachprüfen (entprellt): ist die eigene Session weg → Force-Logout.
   // Läuft bei Account-Events UND wenn Appwrite dem Socket den Zugang entzieht
   // (401-Frame beim Widerruf, RT2) — Event und Frame kommen beim Widerruf
   // direkt hintereinander, die Entprellung macht daraus EINEN Abruf.
-  function verify() {
+  function verify(urgent = false) {
+    const now = Date.now()
+    // Mindestabstand gegen 401-Stürme (Regel + Begründung in
+    // shared/realtimeGate.ts) — aber ein Session-Lösch-Ereignis geht vorbei,
+    // und was im Fenster ankommt, wird nachgeholt statt verworfen (RT2-
+    // Nachtrag: in Prod fiel der Widerruf so ins Fenster einer Prüfung beim
+    // Seitenladen, abgemeldet erst nach 33 s). Plus 400 ms Entprellung.
+    const at = Math.max(accountVerifyAt(lastVerifyAt, now, urgent), now) + 400
+    if (timerAt && timerAt <= at) return
     clearTimeout(timer)
+    timerAt = at
     timer = setTimeout(() => {
-      // Mindestabstand gegen Reconnect-Stürme (Regel + Begründung in
-      // shared/realtimeGate.ts): ohne ihn ist JEDER Verbindungsabbruch ein
-      // Doppel-Abruf — bei einem flappenden Socket dauerhaft und je Tab.
-      const now = Date.now()
-      if (!accountVerifyDue(lastVerifyAt, now)) return
-      lastVerifyAt = now
+      timerAt = 0
+      lastVerifyAt = Date.now()
       void nuxtApp.runWithContext(async () => {
         if (!auth.user) return
         await auth.refresh()
@@ -50,7 +59,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         })
         await navigateTo(localePath('/login'))
       })
-    }, 400)
+    }, at - now)
   }
 
   startWhenHostResolves(nuxtApp, () => {
@@ -61,7 +70,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       let stop: (() => void) | undefined
       watch(() => auth.user?.$id, (id) => {
         if (id && !stop) {
-          stop = useRealtimeAccount(() => verify(), { onAccessEnded: () => verify() })
+          stop = useRealtimeAccount(event => verify(isSessionDeleteEvent(event.events)), { onAccessEnded: () => verify() })
         }
         else if (!id && stop) {
           stop()
