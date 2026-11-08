@@ -56,16 +56,6 @@ function localized(entry: ChangelogEntry, field: 'title' | 'body') {
   return locale.value === 'en' ? (en || de) : (de || en)
 }
 
-// Datum in der SEITEN-Sprache. UChangelogVersion formatiert selbst, aber mit
-// der Sprache von Nuxt UI (`useLocale`), und die setzt keine unserer Apps —
-// auf /de/changelog stand deshalb „Oct 27, 2026" (CL1, 2026-11-06). Gleiche
-// Form wie Nuxt UI (dateStyle medium, UTC: `date` ist ein Kalendertag).
-const dateFormatter = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeZone: 'UTC' }))
-function formatEntryDate(iso: string) {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : dateFormatter.value.format(d)
-}
-
 function categoryColor(c: string) {
   return c === 'fix' ? 'error' : c === 'improvement' ? 'success' : 'primary'
 }
@@ -93,9 +83,6 @@ useBrandTitle(() => t('changelog.title'), { description: () => t('changelog.desc
           :title="localized(entry, 'title')"
           :date="entry.date"
         >
-          <template #date>
-            {{ formatEntryDate(entry.date) }}
-          </template>
           <template #badge>
             <div class="flex flex-wrap items-center gap-1.5">
               <UBadge :color="categoryColor(entry.category)" variant="subtle" size="sm">

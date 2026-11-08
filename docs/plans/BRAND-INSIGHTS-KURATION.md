@@ -936,10 +936,21 @@ Deckel (1.993), dasselbe Video lieferte neun Tage zuvor noch 2.027: die
 Streuung gehört zum LAUF, nicht zum Video. Entwürfe und Fundstücke danach
 wieder entfernt. Details und beide Log-Zeilen: COMPLETE „K5-Nachtrag".
 
-**Dabei aufgefallen (offen als `BI3`):** der 51-Minuten-Lauf brauchte 65,4 s,
-nginx gibt bei 60 auf. Der Klient bekommt `504`, der Server legt den Entwurf
-trotzdem an — kein Geld verloren, aber der Mensch sieht einen Fehler statt
-des Links zu seinem Entwurf. Kurze Videos (18,7 s) sind nicht betroffen.
+**Dabei aufgefallen — `BI3`, ERLEDIGT 2026-11-08:** der 51-Minuten-Lauf brauchte
+65,4 s, nginx gab bei 60 auf. Der Klient bekam `504`, der Server legte den
+Entwurf trotzdem an — kein Geld verloren, aber der Mensch sah einen Fehler
+statt des Links zu seinem Entwurf. Behoben mit einem eigenen nginx-Block
+(`brief`/`draft`/`translate`, `proxy_read_timeout 180s`); der Rest der Site
+bleibt bei 60s. Wortlaut im Runbook BRANDING-SUPPLY-SETUP.md § 7 — die
+vhost-Konfiguration liegt NUR in ploi, nicht im Repo. Einzelheiten und die
+Grenze des Beweises: COMPLETE „BI3". Der `brief`-Arm dieses Blocks wurde
+am selben Tag wirkungslos, weil §15 den Lauf hinter die Antwort gelegt hat;
+für `draft` und `translate` trägt er weiter.
+
+**Und ein neuer offener Punkt `BI4`:** `draft` erlaubt 2.000 Zielwörter, trägt
+aber nur 8.000 Tokens — am oberen Ende bricht die Antwort mitten im JSON ab
+und der bezahlte Lauf ist weg. Dieselbe Bauart wie der K5-Nachtrag, einmal
+gemessen, Schwelle noch unbekannt.
 
 ### Gelernt
 
@@ -1008,6 +1019,15 @@ diesem Weg heisst also oft „dieses Video nicht", nicht „Anbieter kaputt".
 ---
 
 ## 15. BI3 gebaut (2026-11-08) — „Brief aus Video" läuft dem Proxy nicht mehr davon
+
+> **Zur Einordnung:** BI3 wurde am 2026-11-08 von ZWEI Sitzungen angefasst.
+> Die andere hat den nginx-Block gesetzt (`brief`/`draft`/`translate`,
+> `proxy_read_timeout 180s`, §14 und COMPLETE „BI3"). Davids Entscheidung
+> nach dem Gegenlesen: **beides behalten.** Der Block deckt `draft` und
+> `translate`, die weiterhin synchron ein Modell rufen; nur sein
+> `brief`-Arm wird durch diesen Abschnitt wirkungslos. Es sind also nicht
+> zwei Mechaniken für eine Frage, sondern eine Decke für drei Routen und
+> die gründliche Antwort für die teuerste davon.
 
 Der Klick auf **„Erzeugen"** antwortet jetzt nach Millisekunden und sagt
 „der Lauf ist gestartet". Der bezahlte Lauf rechnet dahinter weiter und

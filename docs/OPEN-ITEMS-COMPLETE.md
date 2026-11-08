@@ -30,38 +30,191 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### UL1 — Nuxt UI spricht die Sprache der Seite ✅ 2026-11-08
+
+**Anlass.** Beim CL1-Nachzug (2026-11-06) stand auf `/de/changelog` das Datum
+englisch („Oct 27, 2026"). Ursache war nicht der Changelog: Nuxt UI hat eine
+EIGENE Sprache (`useLocale()`), die nur über `<UApp :locale>` hereinkommt —
+und keine App setzte sie. Ohne die Angabe ist Nuxt UI Englisch, egal was
+@nuxtjs/i18n sagt. Das traf jede App: „Collapse sidebar", „Search…", „No
+data", „Close", Kalender, Datumsformate.
+
+**Gebaut.** EINE Zuordnung in core (`app/utils/nuxtUiLocale.ts`,
+`nuxtUiLocaleFor(code)`: nur `de` und `en` eingebunden, Unbekanntes ⇒
+Englisch) und das Composable `useNuxtUiLocale()` (reaktiv auf
+`useI18n().locale`). Jede `apps/*/app/app.vue`, jedes Layer-Playground und
+`CoreErrorPage` (eigener UApp) geben es an `<UApp :locale="uiLocale">`. Der
+eigene `#date`-Slot aus 034f0868 in `packages/admin/app/pages/changelog.vue`
+ist wieder entfernt — `UChangelogVersion` formatiert jetzt selbst richtig.
+Wächter: `packages/core/tests/nuxtUiLocale.test.ts` (jede i18n-Sprache aus
+core hat ihr Nuxt-UI-Gegenstück; JEDE `<UApp>` in Apps, Playgrounds und
+CoreErrorPage trägt `:locale="uiLocale"` — eine neue App ohne fällt rot auf).
+
+**Beweise (lokal, Worktree-Server).** control `/de/changelog`: SSR
+„27.10.2026", `/changelog` „Oct 27, 2026"; im Browser Sprachwechsel DE→EN→DE
+per Link ohne Reload, Daten folgen (die Locale-Routen montieren die Seite neu,
+der beim Setup gebaute Formatter von `UChangelogVersion` ist deshalb kein
+Problem). comments `/de/dashboard/comments` (UTable + UPagination, als
+Demo-Admin): „Seitenleiste einklappen" und „Suchen…" im SSR-HTML UND nach der
+Hydration, keine Hydration-Warnung.
+
+**Gelernt:** Nuxt UI und @nuxtjs/i18n sind zwei getrennte Sprach-Welten — ohne
+Brücke bleibt Nuxt UI still Englisch, und kein Typecheck, Lint oder Test sieht
+es. Die Doku-Site hatte das schon am 2026-07-31 (C8) gelöst, nur dort und nur
+fest auf `de`. **Was `:locale` NICHT erreicht:** die aria-Labels der
+Paginierung („First Page", „Page 1", „Next Page") sind in reka-ui fest
+englisch verdrahtet, ebenso das Label der Toast-Region („Notifications (F8)",
+reka `ToastProvider`) — beide stehen nicht in Nuxt UIs Sprachpaketen.
+
+### RA2 — Frische Anmeldung auch beim Besitz-Übertragen und Stilllegen ✅ 2026-11-08
+
+**Anlass.** RA1 (2026-11-06) hat `requireRecentAuth` (Anmeldung höchstens
+10 Minuten alt) an das Konto-Löschen gehängt und drei weitere Stellen offen
+gelassen. Je Route entschieden; die Begründung steht jeweils im Kopf der
+Route selbst.
+
+**Entscheidungen.**
+- **Besitz übertragen — JA** (`onboarding/server/api/community/members/[id]/
+  transfer.post.ts`). Der Übertragende kann es nicht zurückholen: danach ist
+  er Admin, nur der NEUE Owner kann den Besitz zurückgeben, und mit dem
+  Besitz wandern Abrechnung, Stilllegen und die nächste Übergabe. Ein
+  gestohlenes Cookie könnte die Community sonst an ein Zweitkonto
+  verschenken, das vorher beigetreten ist.
+- **Community stilllegen — JA** (`onboarding/server/api/community/delete.post.ts`).
+  Die Daten bleiben, aber der Owner kann es nicht zurücknehmen: Host 404,
+  alle Mitgliedschaften 'removed', Labels eingezogen. Zurück geht es nur
+  über den Betreiber, und jedes Mitglied muss neu eingeladen werden.
+- **Rolle ändern / Zugang entziehen — NEIN** (`members/[id].patch.ts`,
+  `members/[id].delete.ts`, ebenso die Betreiber-Route
+  `admin/users/[id]/role.patch.ts`). Beides ist mit demselben Menü umkehrbar
+  (Rolle zurücksetzen, neu einladen), es ist Alltagsarbeit des Teams, und
+  `owner` lässt sich dort gar nicht vergeben. Gegen das Gefährliche stehen
+  schon Regeln (nie der letzte Owner/Admin, kein Selbst-Entzug, keine
+  Eskalation über die eigenen Rechte). Eine Klammer an jedem Handgriff würde
+  zur Routine, die man wegklickt.
+
+**Gebaut.**
+- Server: `await requireRecentAuth(event)` in beiden Routen NACH dem
+  Rollen-Gate (`requireCommunityTeamGate`) und VOR der Service-Naht ins
+  Control Plane. Nach dem Gate, damit ein Admin sein 403 bekommt, statt sich
+  erst neu anzumelden und dann abzuprallen. Vor der Naht, damit eine
+  Ablehnung im Control Plane nichts angefasst hat.
+- Client: RA1s `askForFreshSignIn` (bisher in `AccountDeleteCard`) ist jetzt
+  der EINE Weg `useRecentAuthPrompt().promptFreshSignIn(error, text)` in
+  core. Er erkennt `reauth_required`, erklärt es in einem Dialog, meldet ab
+  und schickt über `/login?redirect=…` an dieselbe Seite zurück. Die
+  Wiederholung ist ein zweiter Klick der Person: ein unumkehrbarer Vorgang,
+  der nach dem Login von allein liefe, wäre von niemandem bestätigt.
+  Konto-Löschen, Mitglieder-Seite und Community-Seite nutzen ihn. Titel und
+  Knopf liegen dafür als `auth.reauthTitle`/`auth.reauthConfirm` in core
+  (vorher `account.delete.*`), der Text je Stelle im eigenen Layer (de+en).
+- Wächter: `packages/onboarding/tests/recentAuthRoutes.test.ts` prüft die
+  Reihenfolge Gate → Klammer → Naht an beiden Routen, die bewusste
+  Abwesenheit an Rolle/Entziehen (samt Begründungs-Zeile an der Route), den
+  Client-Weg auf beiden Seiten und die Texte in de+en.
+
+**Beweis.** Unit: onboarding 112/112, core 1750/1750; Lint core+onboarding+
+admin, Typecheck core+platform, `check:i18n-keys`, `check:doc-links` grün.
+Gegenprobe: ohne die Zeile in `delete.post.ts` werden 2 Tests rot.
+Klick-Beweis (lokale Dev-Appwrite, control :3004 + platform :3006 beide aus
+dem Worktree; Wegwerf-Community über die echte Wizard-Route, Owner + zweites
+Konto als Admin, danach alles gelöscht). Die Community bekam lokal den Host
+`ra2-….localhost` — die Wizard-Route vergibt `*.pukalani.app`, und der Browser
+wäre damit auf die echte Domain gegangen. Mit der 12,7 Minuten alten
+Owner-Session: Übergabe und Stilllegen **403** `{"reason":"reauth_required"}`,
+kein `Set-Cookie`, `/api/auth/me` weiter 200, DB unverändert. Rolle ändern
+(admin → moderator → admin) mit derselben Session **200** — die Klammer sitzt
+nur an den beiden Stellen. Der Admin bekommt beim Übertragen ein schlichtes
+**403** ohne Grund, wird also nicht zum Login geschickt.
+Im Browser mit einer gut 10 Minuten alten Session: „Community löschen" → „Ja,
+Community löschen" ⇒ Dialog „Zur Sicherheit neu anmelden", kein Fehler-Toast;
+„Abbrechen" ⇒ Community weiter `active`. „Besitz übertragen" → bestätigen ⇒
+derselbe Dialog mit dem Übergabe-Text; „Neu anmelden" ⇒
+`/de/login?redirect=/de/dashboard/members`, nichts übertragen. Neu angemeldet
+⇒ zurück auf der Mitglieder-Seite, Übergabe wiederholt ⇒ „Besitz
+übertragen.", Rollen getauscht. Danach Stilllegen durch den neuen Owner mit
+frischer Anmeldung ⇒ Community `disabled`.
+
+**Offen ⇒ OPEN-ITEMS „RA3":** die Betreiber-Löschungen (Nutzer löschen in
+der Betreiber-Konsole, Mandant/Website löschen im Control Plane) sind
+ebenfalls endgültig und haben die Klammer noch nicht. RA2 sollte nur die drei
+Kunden-Stellen entscheiden, deshalb sind sie hier nicht mitgebaut.
+
+**Gelernt:** Eine Wegwerf-Community aus der Wizard-Route trägt lokal einen
+`*.pukalani.app`-Host. Skripte erreichen sie über den Host-Header, ein Browser
+ginge damit aber ins Netz. Für einen Klick-Beweis den Host vorher auf
+`*.localhost` umschreiben (Resolver-Cache 30 s abwarten).
+
+---
 ### BI3 — „Brief aus Video" lief dem Proxy davon: 504 statt Erfolgsmeldung ✅ 2026-11-08
 
-**Der Befund** (gemessen auf Prod am 2026-11-06, §14-Nachtrag): der Klick
-„Brief aus diesem Video" wartete, bis der Lauf fertig war. Ein 51-Minuten-Video
-brauchte 65,4 s, **nginx gibt nach 60 auf**. Der Node-Prozess lief weiter und
-legte den Entwurf korrekt an — der Mensch sah trotzdem einen Fehler-Toast und
-bekam den Link zu seinem Entwurf nie. Kein Geld verloren (der zweite Klick
-führte über `brief_exists` auf den vorhandenen Beitrag), aber die Meldung log.
-Kurze Videos (18,7 s) waren nicht betroffen.
+**Befund** (beim Prod-Beweis des K5-Nachtrags am 2026-11-06 aufgefallen): der
+Brief aus einem 51-Minuten-Video brauchte 65,4 Sekunden, `proxy_read_timeout`
+der ploi-Site stand auf 60s. Nginx gab auf und schickte dem Browser einen
+`504 Gateway Time-out` — während Nitro in Ruhe weiterrechnete und den Entwurf
+KORREKT anlegte. Kein Geld verloren (Stufe 3 der Route führte den zweiten
+Klick auf den vorhandenen Beitrag), aber der Mensch sah einen Fehler und bekam
+den Link zu seinem fertigen Entwurf nie.
 
-**Davids Richtung (2026-11-08):** NICHT `proxy_read_timeout` heraufsetzen —
-das verschiebt die Grenze nur, das nächste längere Video reisst sie wieder.
-Die Route soll sofort antworten und der Lauf im Hintergrund fertig werden.
+**ZWEI SITZUNGEN, ZWEI WEGE — UND BEIDE BLEIBEN, WEIL SIE VERSCHIEDENE
+FRAGEN BEANTWORTEN.** Der Punkt wurde am selben Tag doppelt bearbeitet (das
+ist der Fall, für den die `main`-Regel in CLAUDE.md steht). Davids
+Entscheidung am 2026-11-08 nach dem Gegenlesen: beides behalten, weil der
+nginx-Block DREI Routen deckt und nur sein `brief`-Arm wirkungslos wird.
 
-**Gebaut:** Die Route ist am GELD geteilt. Die Stufen 1–7 (bis einschliesslich
-Drossel) bleiben synchron und lehnen weiter mit `4xx` ab; dann stempelt sie
-`briefRunAt` an die Fundstück-Zeile und antwortet **`202`**. Der Anbieter-Aufruf
-und alles danach läuft in `runInsightsBrief()` hinter der Antwort, mit eigenem
-`catch` (ein besitzerloses Promise nähme unter pm2 den Prozess mit). Migration
-`insights-010` bringt zwei Spalten: `briefRunAt` (DATETIME) und `briefError`
-(VARCHAR 32, geschlossener Satz: `brief_failed` · `slug_taken`). Der ZUSTAND
-wird daraus GERECHNET und nie gespeichert (`insightsBriefState`: none ·
-running · stalled · failed · done), die Oberfläche zeigt vier Ansichten statt
-zwei und fragt alle 5 s nach, solange ein Lauf offen ist. i18n de/en, 30 neue
-Tests.
+#### Teil 1 — der nginx-Block (deckt `draft` und `translate` weiterhin)
+
+Ein eigener Regex-Block VOR `location /` — nginx prüft Regex vor dem Präfix,
+erster Treffer gewinnt — für genau die drei Routen, die ein Modell rufen
+(`brief`, `draft`, `translate`), mit `proxy_read_timeout 180s`. Der REST der
+Site bleibt bei 60s, damit ein hängendes Nitro weiterhin schnell auffällt.
+Wortlaut und Wiederherstellung: Runbook BRANDING-SUPPLY-SETUP.md § 7 — **die
+vhost-Konfiguration liegt NUR in ploi, nicht im Repo**, eine Neuanlage der
+Site verschluckt den Block sonst wortlos.
+
+**Warum 180s reichen — gemessen, nicht geraten.** Der Anbieter nimmt Videos
+nur bis etwa EINE STUNDE: 51 und 56 Minuten laufen durch, 66 und 85 Minuten
+antworten binnen einer halben Sekunde mit `502` und kosten nichts. Damit ist
+die längstmögliche Laufzeit gedeckelt; fünf echte Läufe lagen bei 18,7 / 58,9
+/ 59,1 / 59,2 / 65,4 Sekunden. 180s ist knapp das Dreifache des Ausreissers.
+
+**Beweis — und seine Grenze, ehrlich.** Verifiziert sind: der Block liegt auf
+der Platte vor `location /`; der Reload hat neue Worker gestartet (also wurde
+genau diese Datei geladen); die Regex trifft die drei echten URIs und sonst
+nichts; die Site antwortet weiter (`/api/health` 200, `/de` 200) und die
+Brief-Route reicht zu Nitro durch (401 ohne Konto, nicht 404). NICHT direkt
+beobachtet ist ein Lauf über 60 Sekunden, der jetzt 200 statt 504 liefert:
+danach landeten drei Läufe bei 59,1 / 59,2 / 58,9 Sekunden, und die 65,4 vom
+6.11. sind ein Ausreisser, der sich nicht auf Bestellung herstellen lässt —
+jeder Versuch kostet rund zehn Cent. Dafür fiel ein ZWEITER Live-Beweis des
+K5-Fixes ab: `briefRawChars 2265 → briefChars 1927`, sauberer Schluss.
+
+#### Teil 2 — der Brief-Lauf wandert hinter die Antwort
+
+Davids Richtung für diesen Teil: eine höhere Proxy-Grenze verschiebt sie nur,
+und die Antwortzeit dieser Route hängt an der Länge eines FREMDEN Videos. Die
+Route antwortet deshalb **sofort** und der Lauf rechnet dahinter weiter.
+
+**Die Teilung liegt genau am GELD.** Die Stufen 1–7 (bis einschliesslich
+Drossel) bleiben synchron und lehnen weiter mit `4xx` ab — der Mensch sieht
+es sofort. Dann stempelt die Route `briefRunAt` an die Fundstück-Zeile und
+antwortet **`202`**. Der Anbieter-Aufruf und alles danach läuft in
+`runInsightsBrief()` hinter der Antwort, mit eigenem `catch` (ein
+besitzerloses Promise nähme unter pm2 den Prozess mit).
+
+Migration `insights-010` bringt zwei Spalten an `insights_watchlist`:
+`briefRunAt` (DATETIME) und `briefError` (VARCHAR 32, geschlossener Satz:
+`brief_failed` · `slug_taken`). Der ZUSTAND wird daraus GERECHNET und nie
+gespeichert (`insightsBriefState`: none · running · stalled · failed · done);
+die Oberfläche zeigt vier Ansichten statt zwei und fragt alle 5 s nach,
+solange ein Lauf offen ist. i18n de/en, 30 neue Tests.
 
 **Warum kein Realtime:** die drei insights-Tabellen sind server-only
 (`permissions: []`, `rowSecurity: false`) — es gibt keine Session, die
-`insights_watchlist` abonnieren KÖNNTE. Realtime hiesse, eine Betreiber-Tabelle
-für Klient-Lesezugriff zu öffnen, für eine Seite, die EIN Mensch benutzt. Und
-es hätte die Spalten nicht erspart: Realtime trägt die ZEILE, also muss die
-Zeile „läuft" und „schiefgegangen" sagen können.
+`insights_watchlist` abonnieren KÖNNTE. Realtime hiesse, eine
+Betreiber-Tabelle für Klient-Lesezugriff zu öffnen, für eine Seite, die EIN
+Mensch benutzt. Und es hätte die Spalten nicht erspart: Realtime trägt die
+ZEILE, also muss die Zeile „läuft" und „schiefgegangen" sagen können.
 
 **Die zwei Zusagen, die nicht brechen durften:** (1) Der zweite Klick zahlt
 nicht zweimal — vorher hielt die offene Verbindung ihn auf, jetzt hängt die
@@ -77,25 +230,52 @@ unverändert beim START.
 10,08 s, Entwurf mit 1.875-Zeichen-Brief. Drei Klicks währenddessen ⇒ dreimal
 **409 `brief_running`**. **Regressionsbeweis mit 90-Sekunden-Stub:** 202 nach
 0,079 s, Zeile bei t+61 s und t+71 s noch „läuft" (jenseits des alten
-60-s-Deckels), Beitrag bei t+91 s, Log `durationMs: 90094`. Fehlschlag (502)
-⇒ `briefError: brief_failed` an der Zeile. Verwaist (5 min) ⇒ wieder startbar,
-30 s alt ⇒ gesperrt. Klick-Beweis im Browser: „Läuft" mit Spinner, dann von
-selbst „Zum Beitrag" plus Erfolgs-Toast MIT Link. Vier Checks und sechs
-Wächter grün. Details: [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) §15.
+60-s-Deckels, dort wo vorher der 504 kam), Beitrag bei t+91 s, Log
+`durationMs: 90094`. Fehlschlag (502) ⇒ `briefError: brief_failed` an der
+Zeile. Verwaist (5 min) ⇒ wieder startbar, 30 s alt ⇒ gesperrt. Klick-Beweis
+im Browser hinter dem Login: „Läuft" mit Spinner, dann von selbst „Zum
+Beitrag" plus Erfolgs-Toast MIT Link. Vier Checks und sechs Wächter grün.
+Details: [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) §15.
 
-**Gelernt:** **Eine Antwort, die auf einen fremden Dienst wartet, hat keine
-eigene Antwortzeit** — der 504 war kein Proxy-Problem, sondern eine Route,
-deren Dauer an der Länge eines fremden YouTube-Videos hing; jede Zahl dagegen
-ist geraten. Daraus drei Regeln: (a) **ein Zustand mit Zeitablauf gehört nicht
-in eine Spalte** — „läuft" wird zu „verschollen", ohne dass jemand klickt, und
-eine Spalte dafür bräuchte genau den Schreiber, der dann tot ist; gerechnet
-aus einem Zeitstempel braucht derselbe Übergang niemanden. (b) **Wer eine
-Wartezeit wegnimmt, nimmt auch eine Sperre weg** — die offene Verbindung war
-unbemerkt der Schutz gegen den Doppelklick, und das fällt beim Umbau nicht auf,
-weil nichts bricht, es wird nur teurer. (c) **Ein Beweis muss die Grenze
-überschreiten, um die es geht** — der echte Lauf war nach 10 s fertig und hätte
-den Befund nie berührt; erst der kostenlose 90-Sekunden-Stub hat gezeigt, dass
-die Zeile jenseits des alten Deckels noch lebt.
+**Nebenbefund mit eigenem Punkt (`BI4`):** derselbe nginx-Block deckt `draft`
+ab, und beim Testen zeigte sich dort ein Fehler DERSELBEN Bauart wie der
+K5-Nachtrag — `targetWords` erlaubt 2.000 Wörter, `maxTokens` steht fest auf
+8.000, die Antwort bricht mitten im JSON ab und der bezahlte Lauf ist weg.
+Einmal gemessen, Ursache plausibel, aber nicht bestätigt.
+
+**Gelernt:** **Ein Reverse Proxy ist eine zweite, unsichtbare Deadline.** Die
+Route hatte sechs Prüfstufen, eine Drossel, einen Kill-Switch und ein
+Kostenbudget — und scheiterte an einer Zahl, die in keiner Datei dieses
+Repositories steht. Wer eine Operation baut, die länger als eine Minute
+dauern DARF, prüft die Kette bis nach draussen: nginx
+(`proxy_read_timeout`, Default 60s), davor ggf. Cloudflare (100s im freien
+Tarif, nicht heraufsetzbar; branding.supply liegt grau, die Kette endet also
+bei nginx). **Und: eine Antwort, die auf einen fremden Dienst wartet, hat
+keine eigene Antwortzeit** — jede Zahl, die man dagegen setzt, ist geraten,
+solange die Dauer an fremder Eingabe hängt. Daraus vier Regeln:
+(a) **`reload`, nicht `restart`** — ein Reload mit kaputter Konfiguration wird
+von nginx VERWEIGERT, die alte bleibt in Betrieb; ein Restart hätte die Site
+mitgenommen (das Sicherheitsnetz, wenn kein passwortloses `sudo nginx -t` da
+ist). (b) **Ein Zustand mit Zeitablauf gehört nicht in eine Spalte** —
+„läuft" wird zu „verschollen", ohne dass jemand klickt, und eine Spalte
+dafür bräuchte genau den Schreiber, der dann tot ist; gerechnet aus einem
+Zeitstempel braucht derselbe Übergang niemanden. (c) **Wer eine Wartezeit
+wegnimmt, nimmt auch eine Sperre weg** — die offene Verbindung war unbemerkt
+der Schutz gegen den Doppelklick, und das fällt beim Umbau nicht auf, weil
+nichts bricht, es wird nur teurer. (d) **Ein Beweis muss die Grenze
+überschreiten, um die es geht** — der echte Lauf war nach 10 s fertig und
+hätte den Befund nie berührt; erst der kostenlose 90-Sekunden-Stub hat
+gezeigt, dass die Zeile jenseits des alten Deckels noch lebt.
+
+**Gelernt, zum Vorgang selbst:** zwei Sitzungen haben denselben Punkt am
+selben Tag angefasst. Die `main`-Regel („erst prüfen, dann anfangen") hat
+nicht getragen, weil die Nachbarsitzung ERST NACH meinem `git fetch` gepusht
+hat — eine Prüfung am Anfang reicht bei einem Punkt, der Stunden dauert,
+nicht. Gerettet hat es die zweite Prüfung VOR dem Merge; der eigene Commit
+lag da fertig und grün und wurde NICHT einfach gemergt, sondern David
+vorgelegt.
+
+---
 
 ### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
 
@@ -120,9 +300,12 @@ dort stand nur EIN Eintrag (AI-Runner, 2026-08-19).
   zuerst; in Chrome `/de/changelog` (`lang=de-DE`) und `/changelog`
   (`lang=en-US`) je 16 Überschriften in der richtigen Sprache, Markdown
   gerendert. Text: [CHANGELOG-CL1-FREIGABE.md](archiv/CHANGELOG-CL1-FREIGABE.md).
-- Nicht angefasst: der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-
-  Changelog) und das Datum, das auch auf `/de` englisch formatiert ist
-  („Oct 27, 2026") — beides als Beobachtung, nicht als Auftrag.
+- Nachgezogen 2026-11-08 (Davids Ja): das Datum stand auch auf `/de`
+  englisch („Oct 27, 2026") — `UChangelogVersion` formatiert mit der Sprache
+  von Nuxt UI, die keine App setzt; eigener `#date`-Slot (034f0868, live).
+  Der AI-Runner-Eintrag (Betreiber-Funktion im Kunden-Changelog, Row
+  `6a85680f0005d12698a1`) ist auf Prod unveröffentlicht, nicht gelöscht —
+  öffentlich seitdem 15 Einträge.
 
 **Gelernt:** Ein fertiger Text in `plans/` ist nach drei Monaten kein fertiger
 Text mehr — fünf seiner Aussagen stimmten nicht mehr. Die Kundenhilfe ist der
@@ -223,7 +406,7 @@ Löschen ⇒ „Account gelöscht.", `users.get` **404**.
 
 **Offen ⇒ OPEN-ITEMS „RA2":** dieselbe Klammer für die übrigen
 unumkehrbaren Stellen (Owner-Rolle übergeben, Community stilllegen) — nicht
-geprüft.
+geprüft. **Erledigt 2026-11-08, siehe „RA2" oben.**
 
 ---
 
@@ -12696,6 +12879,16 @@ vier Entwürfe; die Vorschau (`?preview=1`) rendert alle vier Formate — für P
 mit einem UNCOMMITTETEN lokalen Override von `publicFormats` (zurückgesetzt), weil die Seiten den
 Riegel auch in der Vorschau anwenden. Wächter: Lint insights, 496 Tests, Typecheck branding,
 check:doc-links. Prod unberührt.
+
+**Prod (2026-11-08, mit Davids Ja, nach Merge von PR #61 und Live-Build `bb380b92`):** `node
+--env-file=~/.appwrite-secrets/migrations/branding.env packages/insights/scripts/seed-launch.mjs`
+aus `packages/insights` — Dry-run 10× „angelegt (dry-run)", echter Lauf 10× angelegt (Marken
+`6aefb947…`, Beiträge `6aefb948…`), zweiter Lauf 10× unverändert. Gegenprobe per Admin-Key:
+`insights_posts` 6 Zeilen (zwei ältere Artikel-Entwürfe + die vier), `insights_brands` 6, alles
+`draft`. Die vier Ranking-Warnungen sind echt: `brand_checks` auf Prod hat sieben Zeilen (pukalani.*,
+zeitfuerbrot, freelancer.supply, branding.supply), keine zu nike/apple/anthropic/thebarn — die
+Bibliothek `lib-3` ist eine Datei, keine Check-Zeile. Davids Brand-Checks + ein zweiter Seed-Lauf
+füllen die Scores nach.
 
 **Zwei Befunde fürs Folgepaket (kein Gate):** (1) Die Duell-Vorschau antwortet 404, solange die beiden
 Marken-Zeilen `draft` sind (die Route verlangt `published` auch mit `?preview=1`) — David muss die

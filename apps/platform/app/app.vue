@@ -5,10 +5,13 @@
 // dem Core. Hier gilt zusätzlich pukalani.seo.originFromRequest: JEDER Mandanten-
 // Host kanonisiert auf sich selbst (Audit-Befund B1).
 useLocaleSeoHead()
+
+// Nuxt UI spricht die Sprache der Seite (Texte, Datum, Kalender) — core.
+const uiLocale = useNuxtUiLocale()
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="uiLocale">
     <!-- Demo-Banner lebt im default-LAYOUT (P3) — Auth-Seiten bleiben frei. -->
     <NuxtLayout>
       <NuxtPage />

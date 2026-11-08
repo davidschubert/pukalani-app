@@ -2,7 +2,8 @@
 
 > **AUSGEFÜHRT 2026-11-06** — von David freigegeben (alle 15, Offenlegungs-Satz
 > bleibt) und per Upsert mit fester Row-Id nach Prod (`admin`) geschrieben;
-> `admin.pukalani.app/changelog` zeigt seitdem 16 Einträge in de und en.
+> `admin.pukalani.app/changelog` zeigt seitdem 16 Einträge in de und en
+> (seit 2026-11-08 15: der AI-Runner-Eintrag ist unveröffentlicht).
 > Bericht: OPEN-ITEMS-COMPLETE „CL1".
 
 > Ersetzt `CHANGELOG-3.0.0-ENTWURF.md`. Ziel: `admin.pukalani.app/changelog`

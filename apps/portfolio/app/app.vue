@@ -61,10 +61,13 @@ const route = useRoute()
 const pageTransition = computed(() => route.meta.layout === 'site'
   ? { name: 'page', mode: 'out-in' as const }
   : false)
+
+// Nuxt UI spricht die Sprache der Seite (Texte, Datum, Kalender) — core.
+const uiLocale = useNuxtUiLocale()
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="uiLocale">
     <NuxtLayout>
       <NuxtPage :transition="pageTransition" />
     </NuxtLayout>
