@@ -1654,3 +1654,53 @@ Prompt-Strings anderer Layer — `courses` (zwei Übersetzungs-Routen, `„Nuxt"
 `brand` (`brandMarkBrief`, `„${kind}"`). Alle laufen über `aiCompleteJson` und
 damit durch die Reparatur; der Schaden ist also gedeckelt. Als eigener kleiner
 Punkt notiert, nicht hier mitgeändert.
+
+## 18. AI1 gemessen (2026-11-09) — der Textweg KANN in der EU rechnen, und der Preis steht
+
+Offen war die zweite Hälfte des AI1-Befunds: Bild und Video sind seit
+2026-10-27 auf `google-vertex/eu` gepinnt, der TEXTWEG nennt keinen Ort. In der
+alten Probe bediente **Amazon Bedrock** unser `anthropic/claude-haiku-4.5` —
+ZDR ja, Ort offen.
+
+**Gemessen, neun echte Aufrufe, Gesamtkosten unter einem Cent:**
+
+| Probe | `provider.only` | Ergebnis |
+| --- | --- | --- |
+| A | — (nur `zdr:true`, `data_collection:'deny'`, `allow_fallbacks:false`) | 200, **Amazon Bedrock** — bestätigt den Altbefund |
+| B | `amazon-bedrock/eu-west-1` | **200**, Amazon Bedrock |
+| C | `google-vertex/europe` | **200**, Google |
+| D | beide EU-Tags zusammen | **200** — eine Allowlist mit zwei EU-Endpunkten trägt |
+| E | `amazon-bedrock/us` | 200 — ein Regions-Pin bricht die ZDR-Klemme nicht |
+| **Gegenprobe** | `amazon-bedrock/eu-nirgendwo-9` | **404** „No allowed providers are available" — `only` wird WIRKLICH erzwungen, es gibt keinen stillen Rückfall |
+
+Damit ist die Frage beantwortet: **beide EU-Endpunkte sind unter unserer
+ZDR-Klemme erreichbar**, und `allow_fallbacks:false` + `only` ist derselbe
+Hebel, der Bild und Video schon hält.
+
+**DER PREIS IST GEMESSEN, NICHT GESCHÄTZT** (`/models/<slug>/endpoints`, alle
+acht Endpunkte): jeder REGIONS-gepinnte Endpunkt kostet **10 % mehr** als die
+`*/global`-Endpunkte — 1,10 statt 1,00 $ je Million Prompt-Tokens, 5,50 statt
+5,00 $ je Million Completion-Tokens, Cache-Preise im gleichen Verhältnis.
+Das gilt für `eu-west-1` und `us` GLEICH: wir zahlen den Zuschlag für
+„feste Region", nicht für „Europa". Verfügbarkeit (100 % über 24 h) und
+maximale Ausgabe (64.000 Tokens) sind auf allen acht Endpunkten identisch,
+implizites Caching ist überall aus, explizites überall bepreist — der Pin
+kostet also KEINE Funktion.
+
+**EINE FALLE AUFGESCHRIEBEN: `data_region` beweist nichts.** Die
+Generation-Metadaten (`GET /generation?id=…`) führen ein Feld `data_region`,
+und es stand bei JEDER Probe auf `"global"` — auch bei
+`only: ['google-vertex/eu']`, also bei dem Pin, der auf Prod seit zwei Wochen
+Bild und Video bedient. Das Feld ist eine Richtlinien-Kategorie, nicht der
+Ort der Rechnung. Wer es als Beleg in die Datenschutzerklärung schreibt,
+schreibt etwas Falsches. **Der Beleg ist der erzwungene Tag plus die 404er
+Gegenprobe**, nichts anderes — dieselbe Lehre wie in §13: der Beweis ist die
+Abrechnung und das Verhalten, nicht die Selbstauskunft.
+
+**ZU ENTSCHEIDEN (David):** EU pinnen und 10 % mehr zahlen, oder ungepinnt
+bleiben und „ZDR, Ort offen" so in die Datenschutzerklärung schreiben
+(BS1-Anwaltsrunde). Empfehlung: **pinnen, mit BEIDEN EU-Endpunkten in der
+Allowlist** — ein einzelner Pin macht einen Anbieter-Ausfall zum Totalausfall
+des Textwegs, zwei EU-Endpunkte geben Redundanz INNERHALB der EU (Probe D).
+Der Textweg verbraucht pro Lauf Bruchteile eines Cents; 10 % davon sind kein
+Argument gegen einen Satz, den man dem Anwalt sonst nicht sagen kann.
