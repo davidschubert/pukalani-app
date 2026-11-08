@@ -30,6 +30,42 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### UL1 — Nuxt UI spricht die Sprache der Seite ✅ 2026-11-08
+
+**Anlass.** Beim CL1-Nachzug (2026-11-06) stand auf `/de/changelog` das Datum
+englisch („Oct 27, 2026"). Ursache war nicht der Changelog: Nuxt UI hat eine
+EIGENE Sprache (`useLocale()`), die nur über `<UApp :locale>` hereinkommt —
+und keine App setzte sie. Ohne die Angabe ist Nuxt UI Englisch, egal was
+@nuxtjs/i18n sagt. Das traf jede App: „Collapse sidebar", „Search…", „No
+data", „Close", Kalender, Datumsformate.
+
+**Gebaut.** EINE Zuordnung in core (`app/utils/nuxtUiLocale.ts`,
+`nuxtUiLocaleFor(code)`: nur `de` und `en` eingebunden, Unbekanntes ⇒
+Englisch) und das Composable `useNuxtUiLocale()` (reaktiv auf
+`useI18n().locale`). Jede `apps/*/app/app.vue`, jedes Layer-Playground und
+`CoreErrorPage` (eigener UApp) geben es an `<UApp :locale="uiLocale">`. Der
+eigene `#date`-Slot aus 034f0868 in `packages/admin/app/pages/changelog.vue`
+ist wieder entfernt — `UChangelogVersion` formatiert jetzt selbst richtig.
+Wächter: `packages/core/tests/nuxtUiLocale.test.ts` (jede i18n-Sprache aus
+core hat ihr Nuxt-UI-Gegenstück; JEDE `<UApp>` in Apps, Playgrounds und
+CoreErrorPage trägt `:locale="uiLocale"` — eine neue App ohne fällt rot auf).
+
+**Beweise (lokal, Worktree-Server).** control `/de/changelog`: SSR
+„27.10.2026", `/changelog` „Oct 27, 2026"; im Browser Sprachwechsel DE→EN→DE
+per Link ohne Reload, Daten folgen (die Locale-Routen montieren die Seite neu,
+der beim Setup gebaute Formatter von `UChangelogVersion` ist deshalb kein
+Problem). comments `/de/dashboard/comments` (UTable + UPagination, als
+Demo-Admin): „Seitenleiste einklappen" und „Suchen…" im SSR-HTML UND nach der
+Hydration, keine Hydration-Warnung.
+
+**Gelernt:** Nuxt UI und @nuxtjs/i18n sind zwei getrennte Sprach-Welten — ohne
+Brücke bleibt Nuxt UI still Englisch, und kein Typecheck, Lint oder Test sieht
+es. Die Doku-Site hatte das schon am 2026-07-31 (C8) gelöst, nur dort und nur
+fest auf `de`. **Was `:locale` NICHT erreicht:** die aria-Labels der
+Paginierung („First Page", „Page 1", „Next Page") sind in reka-ui fest
+englisch verdrahtet, ebenso das Label der Toast-Region („Notifications (F8)",
+reka `ToastProvider`) — beide stehen nicht in Nuxt UIs Sprachpaketen.
+
 ### RA2 — Frische Anmeldung auch beim Besitz-Übertragen und Stilllegen ✅ 2026-11-08
 
 **Anlass.** RA1 (2026-11-06) hat `requireRecentAuth` (Anmeldung höchstens
