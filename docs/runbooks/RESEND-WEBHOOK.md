@@ -41,7 +41,9 @@ anderen Projekte gar nicht erreichen (kein Schlüssel dorthin).
 | `portfolio.pukalani.app` | `https://pukalani.studio/api/mail/resend-webhook` | `ecosystem-portfolio` |
 
 Je Eintrag die drei Ereignisse, eigenes Secret. Der freie Tarif hat vier
-Webhooks ohne Murren angenommen (Frage aus MAIL-ZUSTELLBARKEIT § 6).
+Webhooks ohne Murren angenommen (Frage aus MAIL-ZUSTELLBARKEIT § 6). Echter
+Bounce an `bounced@resend.dev` am 2026-11-08 17:42 UTC: auf allen vier Sites
+`mail.undeliverable` im pm2-Log (`grep <email_id> ~/.pm2/logs/*-out*.log`).
 
 Zwei Fallen beim Einrichten:
 - **Portfolio antwortet unter `pukalani.studio`**: `portfolio.pukalani.app`
@@ -204,3 +206,71 @@ zeigen (sonst hat man ihn versehentlich überall gesetzt).
 Lehre wie beim Webhook-Secret (§ 2, letzter Schritt): der Wächter läuft täglich
 in `production-watch.yml`, und ein Eintrag vorher öffnet jeden Tag einen
 bestellten `produktions-alarm`.
+
+---
+
+## 6 · Der SENDE-Schlüssel (SMTP) — `sending_access`, an `pukalani.app` gebunden (seit 2026-11-08)
+
+Bis zum 2026-11-08 war das SMTP-Passwort der `full_access`-Schlüssel
+„Pukalani App" — er durfte Domains und API-Keys lesen. Ersetzt durch
+**`pukalani-smtp-send`** (`sending_access`, nur Domain `pukalani.app`):
+`GET /domains` antwortet damit `401`, SMTP-Versand `250`. Der alte Schlüssel
+ist gelöscht. Die beiden anderen Pukalani-Schlüssel bleiben bewusst
+`full_access` und GETRENNT: `pukalani-budget-read` (§ 5, `GET /usage`) und
+`produktions-waechter` (GitHub-Secret von `production-watch.yml`).
+
+### 6.1 Wo der Schlüssel steckt — FÜNF Stellen, nicht vier
+
+| Stelle | Quelle, die wirklich gilt | Tausch | Wirksam |
+| --- | --- | --- | --- |
+| `branding.supply` | `.env` → `NUXT_SMTP_PASS` | Zeile ersetzen, Backup `.env.bak-<datum>-smtp` | `pm2 startOrReload …/ecosystem-branding.config.cjs --update-env` |
+| `admin.pukalani.app` | `.env` → `NUXT_SMTP_PASS` | dto. | `…/ecosystem-control.config.cjs` |
+| `portfolio.pukalani.app` | `.env` → `NUXT_SMTP_PASS` | dto. | `…/ecosystem-portfolio.config.cjs` |
+| `platform.pukalani.app` | **Ablage** `instance_secrets`, Zeile `smtp`, Projekt `account` — die `.env` hat seit 2026-08-19 KEIN `NUXT_SMTP_*` | Block entschlüsseln, nur `pass` tauschen, neu verschlüsseln (alter Umschlag als `instance_secrets-smtp.bak-<datum>-smtp.json` im Site-Ordner) — oder in der Konsole unter Instanz → Integrationen | ohne Reload, binnen 30 s (Mailer-Puffer) |
+| Appwrite-Instanz (`188.245.61.155`, `~/appwrite/.env`) | `_APP_SMTP_PASSWORD` (in Anführungszeichen) — OTP, Verifizierung, Passwort-Mails aller Projekte | Zeile ersetzen, Backup `.env.bak-<datum>-smtp` | `docker compose up -d` in `~/appwrite` — baut genau `appwrite` + `appwrite-worker` neu (vorher `--dry-run`), API ~11 s weg |
+
+Die Appwrite-PROJEKTE haben keine eigene SMTP (Feld `smtp` in
+`_console_projects` ist bei allen vier ein leerer Umschlag); geprüft
+2026-11-08.
+
+### 6.2 Beweis
+
+- **Wert, nicht Behauptung:** je Stelle Länge + `sha256`-Präfix des wirksamen
+  Werts vergleichen — Sites über `pm2 jlist` (`pm2_env.NUXT_SMTP_PASS`) bzw.
+  die entschlüsselte Ablage, Appwrite über
+  `docker exec appwrite printenv _APP_SMTP_PASSWORD` (und `appwrite-worker`).
+  NIE den Wert drucken.
+- **Echte Mail je Site:** mit genau den Einstellungen, die der Prozess
+  auflöst (Ablage mit `host` schlägt Env, wie `resolveMailerSettings`), über
+  das `nodemailer` aus dem Release-Ordner des Prozesses
+  (`dirname(pm2_env.pm_exec_path)/node_modules/nodemailer/dist/esm/…` — das
+  Nitro-Bündel enthält nur den ESM-Zweig, `require` scheitert) an
+  `delivered@resend.dev` → `250`.
+- **Appwrite:** Gast-`POST /v1/account/tokens/email` (Projekt `account`,
+  `userId` `probe-mail-<datum>`, `delivered@resend.dev`) → `201`, Worker-Log
+  `v1-mails` · `otp` · `success`; Probe-Nutzer danach löschen (`204`,
+  Gegenprobe `404`).
+- **Alter Schlüssel tot:** ein Wert aus einem `.env.bak-…-smtp` → SMTP
+  `535 Authentication credentials invalid`, `GET https://api.resend.com/domains`
+  `400` (ein GELÖSCHTER Schlüssel ist bei Resend `400`, ein zu schwacher `401`).
+- `pnpm ops:site-env` grün.
+
+### 6.3 Fallen
+
+- **Die `.env` ist nicht die Wahrheit.** `platform` liest aus der Ablage;
+  seine `.env` hat gar kein SMTP. Wer nur die vier `.env` tauscht, lässt die
+  Pool-App (alle Kunden-Communities) auf dem alten Schlüssel — und merkt es
+  erst, wenn der alte gelöscht ist.
+- **pm2 merkt sich alte Variablen.** `pm2_env` des platform-Prozesses trägt
+  noch `NUXT_SMTP_*` aus einer Zeit, als sie in der `.env` standen —
+  `--update-env` fügt hinzu, entfernt aber nichts. Seit dem Tausch ist das
+  nur noch der Rückfall „Ablage unlesbar", und der zeigt auf einen gelöschten
+  Schlüssel. Sauber würde es erst mit `pm2 delete` + Neustart aus der
+  Ecosystem-Datei (Ausfall von Sekunden) — bewusst nicht nebenbei gemacht.
+- **Start-Rauschen nach `compose up`:** der neue `appwrite-worker` meldete
+  einmal „ClickHouse insert failed: Broken pipe" und lehnte danach ~1 Minute
+  `v1-stats-usage`-Nachrichten ab („Usage events are not being written"),
+  dann 0. Nur Nutzungsstatistik, kein Mail- oder Datenpfad — abwarten und in
+  30-s-Fenstern zählen, nicht eingreifen.
+- **`pm_cwd` kann veraltet sein** (platform: Site-Ordner statt Release) —
+  den Code-Pfad aus `pm_exec_path` nehmen.

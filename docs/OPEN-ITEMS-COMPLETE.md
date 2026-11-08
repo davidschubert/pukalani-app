@@ -30,6 +30,109 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RS1 h — Der SMTP-Schlüssel darf nur noch senden ✅ 2026-11-08
+
+**Was.** `NUXT_SMTP_PASS` war der `full_access`-Schlüssel „Pukalani App"
+(angelegt 2026-07-18, eine Minute vor der Domain) — er durfte Domains und
+API-Keys lesen. Ersetzt durch **`pukalani-smtp-send`**: `sending_access`,
+gebunden an die Domain `pukalani.app`. Davids Ja vor dem Tausch (inkl.
+Appwrite-Neubau und Löschen), ausgeführt per Resend-MCP + SSH, Werte nie
+gedruckt (nur Länge + `sha256`-Präfix). Rezept und Stand:
+[RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md) § 6.
+
+**Fünf Stellen statt vier.** Die Bestandsaufnahme vor dem Tausch fand den
+Schlüssel (überall derselbe Wert) an fünf Stellen, und eine davon war nicht
+die `.env`:
+
+| Stelle | Wo er wirklich gilt | Tausch |
+| --- | --- | --- |
+| branding · admin · portfolio | `.env` → `NUXT_SMTP_PASS` | Zeile ersetzt, Backup `.env.bak-2026-11-08-smtp`, `pm2 startOrReload … --update-env` |
+| platform (Pool, alle Kunden-Communities) | Ablage `instance_secrets/smtp` im Projekt `account` — die `.env` hat seit 2026-08-19 gar kein SMTP | nur `pass` im verschlüsselten Block getauscht, Kennung + übrige Felder unverändert, alter Umschlag als `instance_secrets-smtp.bak-2026-11-08-smtp.json`; wirkt ohne Reload |
+| Appwrite-Instanz | `_APP_SMTP_PASSWORD` in `~/appwrite/.env` | Backup, `docker compose up -d` (Trockenlauf: genau `appwrite` + `appwrite-worker`), API nach **11 s** wieder `200` |
+
+Appwrite-Projekte haben keine eigene SMTP (Feld in `_console_projects` bei
+allen vier ein leerer Umschlag).
+
+**Beweis.** Neuer Schlüssel allein vorab: SMTP `250`, `GET /domains` `401`.
+Danach je Stelle der wirksame Wert `a0d50da6c8…` (Sites über `pm2 jlist` bzw.
+die entschlüsselte Ablage, Appwrite über `printenv` in beiden Containern) und
+eine echte Mail an `delivered@resend.dev` mit genau den Einstellungen, die der
+Prozess auflöst (Ablage vor Env): platform, portfolio, admin, branding je
+`250`. Appwrite: Gast-OTP im Projekt `account` → `201`, Worker `v1-mails` ·
+`otp` · `success` 1,79 s, Probe-Nutzer `probe-mail-20261108` gelöscht (`204`,
+Gegenprobe `404`). Nach dem Löschen von „Pukalani App": der alte Wert aus dem
+Backup bekommt SMTP `535 Authentication credentials invalid` und von der API
+`400`; die vier Sites senden mit dem neuen weiter `250`. `pnpm ops:site-env`
+für alle sechs Sites grün. Unangetastet: `pukalani-budget-read`,
+`produktions-waechter`, `hawaiifromthesky`.
+
+**Nebenbefund, nicht behoben:** `pm2_env` des platform-Prozesses trägt noch
+`NUXT_SMTP_*` aus der Zeit vor dem Umzug in die Ablage — `--update-env` fügt
+hinzu, entfernt aber nichts. Seit dem Tausch zeigt dieser Rückfall („Ablage
+unlesbar") auf einen gelöschten Schlüssel; sauber erst mit `pm2 delete` +
+Start aus der Ecosystem-Datei. Ebenso ist `pm_cwd` dort veraltet
+(Site-Ordner statt Release). Beides harmlos, solange die Ablage lesbar ist.
+
+**Gelernt:** Die Aufgabe hieß „vier `.env` tauschen" — gestimmt hätte das
+für drei von fünf Stellen. Hätten wir nur die `.env` getauscht und danach den
+alten Schlüssel gelöscht, wäre die Pool-App (jede Kunden-Community) und die
+Appwrite-Instanz (OTP, Verifizierung) still ohne Mail gewesen, während die
+`.env`-Probe grün war. Bei einem Geheimnis mit zwei Quellen ist die erste
+Frage nicht „wo steht es?", sondern „welche Quelle gewinnt in DIESEM
+Prozess?" — gemessen wird der wirksame Wert (Hash aus `pm2 jlist`, aus der
+entschlüsselten Ablage, aus `printenv` im Container), nicht die Datei. Und
+den alten Schlüssel löscht man erst, wenn KEINE Stelle mehr seinen Hash
+zeigt; der Test danach („alter Wert ⇒ 535") beweist zugleich, dass der
+richtige Schlüssel gelöscht wurde, denn die Resend-API verrät nicht, welcher
+Name zu welchem Wert gehört.
+
+### RT1 — Geteilter Realtime-Socket verband sich lokal jede Sekunde neu ✅ 2026-11-08
+
+**Was:** Im eingeloggten Tab (comments, localhost:3001, Demo-Admin) antwortete
+Appwrite dem geteilten SDK-Socket mit `403 JWT and cookie used in the same
+request` und schloss ihn — das Web-SDK verband sich sofort neu. Nebenbei beim
+Nuxt-UI-Locale-Paket (UL1) aufgefallen.
+
+**Ursache:** Seit Appwrite 2.7 prüft auch der Realtime-Server „gültige
+Cookie-Session UND JWT ⇒ 403 `user_jwt_and_cookie_set`"
+(`app/init/realtime/connection.php` im Container `appwrite-realtime`). Unser
+Session-Cookie ist HOST-ONLY (`setSessionCookie`, kein `Domain`), und Cookies
+kennen keine Ports: `a_session_reddit-comments` von `localhost:3001` geht beim
+Handshake an `localhost:80` mit — zusammen mit dem `&jwt=` aus der URL. Das
+SDK nullt seinen Reconnect-Zähler bei jedem `open`, daher kein Backoff.
+
+**Prod ist NICHT betroffen** (live gemessen aus Davids Chrome auf
+`https://account.pukalani.app`, angemeldet): alle Sites zeigen auf
+`https://api.pukalani.app/v1` (öffentliche Runtime-Config von comments, demo,
+my, admin, account, www, pukalani.studio, branding.supply abgefragt), das
+host-only Cookie erreicht diesen Host nicht. Der JWT-Handshake meldet
+`connected` MIT Nutzer und bleibt offen; derselbe Handshake nur mit Cookie
+meldet `connected` mit `user: null`.
+
+**Fix (core, `34522796`):** Appwrites Ablehnung IST der Beweis, dass das
+Cookie den Socket erreicht und gültig ist. `realtime.onError` erkennt genau
+diesen Fall (`isJwtCookieConflict`, `core/shared/realtimeAuth.ts`: Code 403 +
+Wortlaut), räumt den JWT vom Realtime-Client, stoppt den 12-min-Refresh und
+holt für diesen Tab keinen neuen; der Reconnect des SDK läuft per Cookie.
+Bewusst KEINE Vorhersage per Host-Vergleich — eine falsche Vorhersage hieße
+„stiller Gast-Socket", schlimmer als der laute Loop. `hasRealtimeJwt()` meldet
+im Cookie-Modus „angemeldet" (Presence-Upsert bleibt möglich).
+
+**Beweis** (Playwright gegen Worktree-Dev-Server, angemeldet, 60-s-Fenster,
+Admin-Client legt währenddessen einen Kommentar an):
+vorher **167 Sockets, alle 403, Kommentar-Event kam nicht an** — nachher pro
+Seitenladung EIN abgewiesener JWT-Socket, direkt danach Cookie-Socket als der
+Nutzer verbunden, **0 neue Sockets im Fenster, 0 Fehler-Frames, Event kam an**.
+Unit: `packages/core/tests/realtimeAuth.test.ts` (Wortlaut aus Appwrites
+`errors.php` + Gegenproben anderer 403 + Verdrahtung an den drei Stellen).
+
+**Gelernt:** Cookies kennen keine Ports — „lokal" ist für Cookies EIN Host,
+App und Appwrite teilen sich lokal das Cookie-Glas, in Prod nicht. Ein Fehler,
+der nur lokal auftritt, kann trotzdem echt sein (er verdeckte hier, dass lokal
+seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
+der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
+(`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
+
 ### MON2 — Alarmweg scharf: jeder Kanal ist einmal nachweislich angekommen ✅ 2026-11-08
 
 **Was.** MON1 (2026-10-28) baute den Wächter und den Alarm-Job; offen waren
@@ -275,9 +378,13 @@ pukalani.studio), je eigenes Secret in `/home/ploi/<site>/.env`
 Live-Beweis je Host: vorher 404, danach unsigniert **401**, selbst signiertes
 `email.delivered` **200**, fremdes Secret **401**; `/api/health` weiter
 `ok:true`. `NUXT_RESEND_WEBHOOK_SECRET` ist seitdem Pflicht in
-`verify-site-env.mjs` (Lauf gegen die Server grün). Nicht bewiesen: ein
-echtes Bounce-Ereignis aus Resend — es kommt mit dem ersten echten Bounce
-(Log `mail.undeliverable`).
+`verify-site-env.mjs` (Lauf gegen die Server grün). Ende-zu-Ende-Beweis
+(2026-11-08, 17:42 UTC): eine Mail von `noreply@pukalani.app` an
+`bounced@resend.dev` ⇒ Resend stellte DASSELBE Ereignis (eine `svix-id`) an
+alle vier Webhooks zu, und alle vier Sites loggten `mail.undeliverable`
+(`reason: bounce`, `subType: General`, `domain: resend.dev`) mit
+`outcomes.account: none` — branding.supply zusätzlich `insights: none`. Die
+Adresse gehört niemandem, die Wirkung blieb also aus, wie sie soll.
 
 **Gelernt:** Der Svix-Testvektor ist das billigste Beweisstück für eine
 selbst gebaute Signaturprüfung — er traf beim ersten Lauf, und ohne ihn hätte

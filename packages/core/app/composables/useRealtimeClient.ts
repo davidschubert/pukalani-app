@@ -1,5 +1,6 @@
 import type { Client, Realtime } from 'appwrite'
 import { realtimeAllowed } from '../../shared/realtimeGate'
+import { isJwtCookieConflict } from '../../shared/realtimeAuth'
 
 /**
  * EINE geteilte, JWT-authentifizierte Realtime-Verbindung für die ganze App.
@@ -16,6 +17,10 @@ import { realtimeAllowed } from '../../shared/realtimeGate'
  *   Appwrite verbietet „JWT und Cookie in derselben Anfrage".
  * - rtClient: MIT JWT → nur für die Realtime-WS. Ohne JWT verbindet sie sich als
  *   Gast und empfängt keine read("users")-Events; der WS-Presence-Upsert schlägt fehl.
+ *   AUSNAHME (RT1, 2026-11-08): erreicht das Session-Cookie den Realtime-Host
+ *   selbst (App und Appwrite auf demselben Host — lokal `localhost`), lehnt
+ *   Appwrite ≥ 2.7 JWT + Cookie mit 403 ab. Dann schaltet dieser Tab auf
+ *   Cookie-Auth um (`useCookieAuth`, s. `shared/realtimeAuth.ts`).
  *
  * SSR-Hinweis: erst bei erstem Zugriff (Client, in setup/onMounted) instanziiert.
  *
@@ -98,7 +103,13 @@ export function ensureRealtimeClients(): Promise<RealtimeClients | null> {
     clientsPromise = import('appwrite').then(({ Client, Realtime }) => {
       const cookieClient = new Client().setEndpoint(endpoint).setProject(project)
       const rtClient = new Client().setEndpoint(endpoint).setProject(project)
-      return { cookieClient, rtClient, realtime: new Realtime(rtClient) }
+      const realtime = new Realtime(rtClient)
+      // RT1: Appwrites Ablehnung „JWT und Cookie" beweist, dass das Cookie den
+      // Socket erreicht und gültig ist — ab dann trägt es den Socket allein.
+      realtime.onError((error, code) => {
+        if (isJwtCookieConflict(error?.message, code)) switchToCookieAuth(rtClient)
+      })
+      return { cookieClient, rtClient, realtime }
     })
   }
   return clientsPromise
@@ -124,6 +135,33 @@ const JWT_REFRESH_MS = 12 * 60_000
 let jwtPromise: Promise<void> | null = null
 let jwtReady = false
 let jwtTimer: ReturnType<typeof setInterval> | undefined
+
+/**
+ * ── COOKIE-AUTH STATT JWT (RT1, 2026-11-08) ─────────────────────────────────
+ * `true`, sobald Appwrite den JWT-Socket mit „JWT and cookie used in the same
+ * request" abgewiesen hat: das Session-Cookie erreicht den Realtime-Host dann
+ * selbst (App und Appwrite auf demselben Host, lokal `localhost` — Cookies
+ * kennen keine Ports) und authentifiziert den Socket allein. Ab dann holt
+ * dieser Tab keinen JWT mehr und setzt keinen; der Reconnect, den das SDK
+ * nach dem Server-Abbruch ohnehin startet, läuft ohne `&jwt=`.
+ *
+ * Bewusst pro Tab und NICHT zurückgesetzt bei Login/Logout: ob das Cookie den
+ * Host erreicht, ist eine Eigenschaft der Hosts, nicht der Session. In Prod
+ * (App `*.pukalani.app`, Appwrite `api.pukalani.app`, Cookie host-only) tritt
+ * der Fall nie ein, dort bleibt alles beim JWT. Kosten lokal: EIN abgewiesener
+ * Socket pro voller Seitenladung statt eines Sekunden-Loops.
+ */
+let useCookieAuth = false
+
+function switchToCookieAuth(rtClient: Client) {
+  if (useCookieAuth) return
+  useCookieAuth = true
+  rtClient.setJWT('')
+  stopJwtRefresh()
+  // Der Socket ist ab dem Reconnect per Cookie authentifiziert — für die
+  // Presence-Wache (hasRealtimeJwt) gilt das wie ein gültiger JWT.
+  jwtReady = hasSession()
+}
 
 /**
  * ── GAST-GATE (F11, 2026-08-01) ────────────────────────────────────────────
@@ -171,6 +209,12 @@ async function fetchJwt() {
     // `null` = Config-Gate aus (F14) — unerreichbar, weil ensureRealtimeJwt()
     // dann gar nicht erst hierher kommt; der nullable Typ verlangt die Zeile.
     if (!clients) return
+    // RT1: während des Abrufs kann die Cookie-Erkennung zugeschlagen haben —
+    // ein JETZT gesetzter JWT löste den 403 beim nächsten Reconnect erneut aus.
+    if (useCookieAuth) {
+      jwtReady = hasSession()
+      return
+    }
     clients.rtClient.setJWT(jwt) // NUR der Realtime-Client — nie der Cookie-Client
     jwtReady = true
   }
@@ -186,6 +230,8 @@ async function fetchJwt() {
  * Trägt der Realtime-Client aktuell einen (erfolgreich geholten) JWT? Gate für
  * Aktionen, die zwingend Auth brauchen (Presence-Upsert). Reine read("any")-
  * Row-Subscriptions funktionieren auch als Gast und brauchen dieses Gate nicht.
+ * Im Cookie-Modus (RT1) heißt `true`: das Session-Cookie authentifiziert den
+ * Socket — der Name blieb, die Frage ist dieselbe („ist der Socket angemeldet?").
  */
 export function hasRealtimeJwt(): boolean {
   return jwtReady
@@ -214,6 +260,11 @@ export function ensureRealtimeJwt(): Promise<void> {
   void ensureRealtimeClients()
   if (!hasSession()) {
     stopJwtRefresh()
+    return Promise.resolve()
+  }
+  // RT1: das Cookie trägt den Socket selbst — kein Token, kein Refresh-Timer.
+  if (useCookieAuth) {
+    jwtReady = true
     return Promise.resolve()
   }
   if (!jwtPromise) {
