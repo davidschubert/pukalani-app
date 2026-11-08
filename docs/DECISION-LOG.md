@@ -7,6 +7,41 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-08 — RS1 (Resend): Davids Antworten aus der zweiten Fragerunde und eine Kollision zweier Sitzungen
+
+**Anlass:** Zwei Sitzungen bearbeiteten am selben Vormittag RS1 Teil (b) (Bounce-Webhook).
+Die eine hatte PR #78 schon offen, als die andere `main` prüfte (dort noch nichts), David
+vier Fragen stellte und Route, Tests und den lokalen Ende-zu-Ende-Beweis fertigbaute. Als
+#78 und #81 gemergt waren, wurde die zweite Fassung nach der Regel „doppelte Arbeit fällt,
+nicht mergen" verworfen (OPEN-ITEMS-COMPLETE „RS1 b" ist die gebaute). Was bleibt, sind
+Davids Antworten — und zwei Punkte, an denen sie vom Gebauten abweichen.
+
+**Davids Antworten (2026-11-08, zweite Runde):**
+- **Stufe B jetzt, Prefs UND Newsletter-Abonnent.** Deckt sich mit dem Gebauten
+  (`registerMailUndeliverableHandler`, insights-Plugin).
+- **Tarif frei behalten, vor jedem Stapel per Usage-API anhalten.** Deckt sich mit seiner
+  Wahl in der Nachbarsitzung (PR #82, COMPLETE „RS1 a": frei + Bremse, Pro ab ~75 Abonnenten).
+- **Newsletter-Subdomain (e) später**, mit dem Newsletter-Schalter (BI1 I5).
+- **`suppression.added` wie ein Hard-Bounce behandeln** — auch Hand-Einträge in Resends
+  Sperrliste sollen das Konto stummschalten. **Abweichung:** gebaut ist `email.suppressed`
+  (Resend hat eine Mail an eine schon gesperrte Adresse übersprungen); `suppression.added`
+  fehlt in der Allowlist UND in den vier Webhook-Einträgen. Die Begründung der Bauerin
+  („Nutzlast nicht dokumentiert") ist durch die Messung überholt: die Ereignis-Seite nennt
+  `data.email`, `data.origin` (`bounce` | `complaint` | `manual`), `data.source_id`.
+  Offen als kleines Delta (Allowlist + Test + Runbook-Tabelle + vier Einträge in Resend),
+  liegt bei David.
+- **Ein Webhook (branding.supply)** war seine Antwort auf „der freie Tarif erlaubt laut
+  Preisseite einen Endpunkt". Überholt: die Nachbarsitzung hat mit seinem Auftrag vier
+  Endpunkte angelegt, Resend nahm sie an — die Preisseite beschreibt hier nicht die Grenze,
+  die das Konto durchsetzt. Es bleibt bei vier Endpunkten und der Pflicht-Variable auf vier Sites.
+
+**Gelernt (Regel verschärft, Memory):** `git log origin/main` sieht OFFENE PRs nicht. Vor
+jedem Durchgang und vor jeder Fragerunde zusätzlich `gh pr list --state open` lesen; eine
+Antwort Davids an eine Sitzung kann einer Freigabe an die andere widersprechen, und dann
+gehört die Differenz als EINE Frage zu ihm, nicht als zweiter Weg in den Code.
+
+---
+
 ## 2026-10-27 — Spam- und Bot-Schutz an den Mail-Routen: Textregel, Stundenfenster, Turnstile
 
 **Anlass:** Resend-Spam über `POST /api/auth/signup` (209 Verifizierungs-Mails mit Spamtext
