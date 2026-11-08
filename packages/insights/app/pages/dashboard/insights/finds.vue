@@ -8,11 +8,14 @@ import {
   insightsOpportunity,
   insightsPopularity,
 } from '../../../../shared/insightsPost'
-import type { InsightsVerdict, InsightsWatchItem } from '../../../../shared/insightsWatchlist'
+import type { InsightsBriefState, InsightsVerdict, InsightsWatchItem } from '../../../../shared/insightsWatchlist'
 import {
+  INSIGHTS_BRIEF_POLL_MS,
   INSIGHTS_VERDICTS,
   INSIGHTS_WATCHLIST_MAX,
   INSIGHTS_WATCH_NOTE_MAX,
+  insightsBriefPending,
+  insightsBriefState,
   insightsVideoUrl,
 } from '../../../../shared/insightsWatchlist'
 import type {
@@ -78,11 +81,35 @@ const configured = computed(() => data.value?.configured === true)
 const today = computed(() => data.value?.today ?? new Date().toISOString().slice(0, 10))
 const loading = computed(() => hydrated.value && status.value === 'pending')
 
+/**
+ * DIE UHR, GEGEN DIE DER BRIEF-ZUSTAND GERECHNET WIRD (BI3).
+ *
+ * Sie ist ein `ref` und keine `Date.now()`-Lesung im Rendern, aus zwei
+ * Gründen: ein Zeitstempel im Template wäre beim SSR ein anderer als im
+ * Browser (derselbe Hydration-Grund wie beim `today` aus der Antwort), und
+ * „läuft gerade" muss von SELBST zu „nicht zurückgekommen" werden, wenn
+ * niemand klickt — dazu braucht die Seite einen Takt und keine Momentaufnahme.
+ *
+ * Der Startwert ist 0 und nicht `Date.now()`: vor dem Mounten ist jede Zeile
+ * mit einem Lauf „läuft" (0 minus ein Zeitstempel ist negativ, also frisch) —
+ * die vorsichtige Richtung, die auch die pure Regel nimmt.
+ */
+const briefNow = ref(0)
+
 // ── Rechnen, filtern, sortieren ────────────────────────────────────────────
 
 interface FindRow extends InsightsWatchItem {
   ageDays: number
   opportunity: InsightsOpportunity
+  /**
+   * Der Brief-Zustand der Zeile (BI3) — GERECHNET, wie die Opportunity daneben.
+   *
+   * Er hängt an der Uhr (`briefRunAt` + Stall-Grenze), deshalb an `briefNow`
+   * und nicht an `Date.now()` im Rendern: so springt die ganze Liste in einem
+   * Takt um, und es gibt keine Zeile, die ihren Zustand aus einem anderen
+   * Augenblick zeigt als ihre Nachbarin.
+   */
+  briefState: InsightsBriefState
 }
 
 const allRows = computed<FindRow[]>(() => items.value.map((item) => {
@@ -90,6 +117,7 @@ const allRows = computed<FindRow[]>(() => items.value.map((item) => {
   return {
     ...item,
     ageDays,
+    briefState: insightsBriefState(item, briefNow.value),
     opportunity: insightsOpportunity({
       // OHNE ZAHLEN KEINE SIGNALE: ein verschwundenes Video hat keine
       // Popularität, und 0 wäre eine Bewertung statt einer Lücke.
@@ -183,7 +211,7 @@ async function remove(item: InsightsWatchItem): Promise<void> {
   }
 }
 
-// ── Brief aus einem Video (K5) ─────────────────────────────────────────────
+// ── Brief aus einem Video (K5, seit BI3 im Hintergrund) ────────────────────
 
 /**
  * DER TEUERSTE KNOPF DIESER OBERFLÄCHE — deshalb drei Dinge, die ein
@@ -192,10 +220,12 @@ async function remove(item: InsightsWatchItem): Promise<void> {
  *  1. EINE RÜCKFRAGE. Ein Lauf kostet echtes Geld (rund fünf Cent für ein
  *     25-Minuten-Video) und dauert bis zu drei Minuten. Ein versehentlicher
  *     Klick soll nicht beides ausgeben.
- *  2. EIN EIGENER LADE-ZUSTAND. `busyId` lässt die ganze Zeile warten — bei
- *     Minuten ist das richtig: in dieser Zeit darf niemand dieselbe Zeile
- *     noch einmal schicken.
- *  3. KEIN AUTOMATISCHES WEITERSPRINGEN. Der Beitrag ist angelegt, aber der
+ *  2. KEIN WARTEN AUF DAS ERGEBNIS (BI3). Die Route antwortet sofort mit
+ *     `202`; der Lauf läuft weiter und berichtet an die ZEILE. Vorher hing
+ *     dieser Klick bis zu drei Minuten an einer offenen Verbindung — und
+ *     starb nach 60 Sekunden am Proxy, mit einem Fehler-Toast über einen
+ *     Entwurf, der in Wahrheit korrekt angelegt wurde.
+ *  3. KEIN AUTOMATISCHES WEITERSPRINGEN. Der Beitrag entsteht, aber der
  *     Brief will gelesen werden; der Toast führt hin, statt die Liste unter
  *     den Händen wegzuziehen.
  */
@@ -206,19 +236,17 @@ async function makeBrief(item: InsightsWatchItem): Promise<void> {
   briefingId.value = item.videoId
   busyId.value = item.videoId
   try {
-    const result = await $fetch<InsightsBriefResponse>(
+    await $fetch<InsightsBriefResponse>(
       `/api/insights/watchlist/${item.videoId}/brief`,
       { method: 'POST' },
     )
+    // Die Antwort trägt die Zeile schon, aber die LISTE ist die Wahrheit —
+    // und sie muss den Lauf sehen, damit der Takt unten anläuft.
     await refresh()
     toast.add({
-      title: t('insights.finds.briefDone'),
-      description: t('insights.finds.briefDoneHint'),
-      color: 'success',
-      actions: [{
-        label: t('insights.finds.briefOpen'),
-        onClick: () => navigateTo(localePath(`/dashboard/insights/${result.id}`)),
-      }],
+      title: t('insights.finds.briefStarted'),
+      description: t('insights.finds.briefStartedHint'),
+      color: 'info',
     })
   }
   catch (error) {
@@ -227,6 +255,122 @@ async function makeBrief(item: InsightsWatchItem): Promise<void> {
   finally {
     briefingId.value = ''
     busyId.value = ''
+  }
+}
+
+/**
+ * SOLANGE EIN LAUF OFFEN IST, FRAGT DIE LISTE NACH (BI3).
+ *
+ * ── WARUM NACHFRAGEN UND NICHT REALTIME ─────────────────────────────────
+ * Die drei insights-Tabellen sind server-only (`permissions: []`), es gibt
+ * also keine Session, die `insights_watchlist` abonnieren könnte —
+ * `useRealtimeRows` hätte hier nichts zu lesen. Der Preis des Nachfragens ist
+ * klein und gedeckelt: EIN Mensch auf dieser Seite, ein Lauf von höchstens
+ * drei Minuten, alle fünf Sekunden eine Abfrage, und der Takt hört von selbst
+ * auf, sobald keine Zeile mehr „läuft" sagt.
+ *
+ * Der Takt tut ZWEI Dinge, und beide müssen in einem Takt liegen: er stellt
+ * die Uhr (`briefNow`, damit ein verschollener Lauf von selbst umspringt) und
+ * er holt die Liste. Nur die Uhr zu stellen hiesse, dass ein fertiger Brief
+ * erst beim nächsten Klick auftaucht; nur zu laden hiesse, dass ein
+ * verwaister Lauf bis zum Neuladen „läuft" anzeigt.
+ */
+const briefPolling = computed(() => insightsBriefPending(items.value, briefNow.value))
+
+/**
+ * WELCHE LÄUFE BEIM LETZTEN BLICK NOCH OFFEN WAREN.
+ *
+ * Daraus entsteht die Meldung: eine Zeile, die vorhin „läuft" war und jetzt
+ * einen Beitrag hat, ist GERADE fertig geworden — und genau dann gehört der
+ * Link zum Entwurf vor die Augen des Menschen. Das ist die Zusage, die BI3
+ * wiederherstellt; kaputt gemacht hat sie der 504, nicht der Lauf.
+ */
+const briefWatched = new Set<string>()
+
+/**
+ * UHR STELLEN UND MELDEN — aufgerufen beim Mounten und bei JEDER neuen Liste.
+ *
+ * Er hängt an der Liste und nicht am Takt, damit er auch dann greift, wenn
+ * die Liste aus einem anderen Grund neu kommt (Urteil geändert, Fundstück
+ * weggenommen) — und damit es nur EINE Stelle gibt, die den Übergang sieht.
+ */
+function syncBriefRuns(): void {
+  if (!hydrated.value) return
+  briefNow.value = Date.now()
+
+  for (const item of items.value) {
+    const state = insightsBriefState(item, briefNow.value)
+    if (state === 'running') {
+      briefWatched.add(item.videoId)
+      continue
+    }
+    // Nur wer VORHIN lief, hat gerade einen Übergang gemacht. Eine Zeile, die
+    // beim ersten Blick schon fertig war, meldet nichts — sonst stünde beim
+    // Seitenaufruf ein Toast für jeden alten Brief.
+    if (!briefWatched.delete(item.videoId)) continue
+
+    if (state === 'done') {
+      toast.add({
+        title: t('insights.finds.briefDone'),
+        description: t('insights.finds.briefDoneHint'),
+        color: 'success',
+        actions: [{
+          label: t('insights.finds.briefOpen'),
+          onClick: () => navigateTo(localePath(`/dashboard/insights/${item.briefPostId}`)),
+        }],
+      })
+      continue
+    }
+    // `failed` und `stalled` — der Grund steht an der Zeile, der Toast sagt
+    // nur, DASS es diesen Lauf erwischt hat. Wer die Seite weggeklickt hat,
+    // sieht ihn an der Zeile wieder.
+    toast.add({
+      title: t('insights.finds.briefFailed'),
+      description: briefHint({ ...item, briefState: state }),
+      color: 'error',
+    })
+  }
+}
+
+watch(items, syncBriefRuns)
+
+onMounted(() => {
+  syncBriefRuns()
+
+  let timer: ReturnType<typeof setInterval> | null = null
+  const stop = () => {
+    if (timer === null) return
+    clearInterval(timer)
+    timer = null
+  }
+
+  watchEffect(() => {
+    if (!briefPolling.value) {
+      stop()
+      return
+    }
+    if (timer !== null) return
+    timer = setInterval(() => {
+      // Die Uhr auch OHNE Antwort stellen: so springt ein verschollener Lauf
+      // um, selbst wenn das Nachfragen gerade scheitert.
+      briefNow.value = Date.now()
+      // Ein Fehlschlag des Nachfragens ist KEIN Toast: die Seite hat gerade
+      // keinen Auftrag des Menschen, und eine Netzschluckauf-Meldung alle
+      // fünf Sekunden wäre schlimmer als die Verzögerung.
+      void refresh().catch(() => {})
+    }, INSIGHTS_BRIEF_POLL_MS)
+  })
+
+  onBeforeUnmount(stop)
+})
+
+/** Was an der Zeile über ihren Lauf steht — ein Satz je Zustand. */
+function briefHint(row: Pick<FindRow, 'briefState' | 'briefError' | 'available'>): string {
+  switch (row.briefState) {
+    case 'running': return t('insights.finds.briefRunningHint')
+    case 'stalled': return t('insights.finds.briefStalledHint')
+    case 'failed': return t(`insights.finds.error.${row.briefError || 'generic'}`)
+    default: return row.available ? t('insights.finds.briefHint') : t('insights.finds.gone')
   }
 }
 
@@ -427,22 +571,43 @@ function formulaFor(opportunity: InsightsOpportunity): string {
             />
           </template>
 
+          <!--
+            VIER ANSICHTEN, WEIL ES SEIT BI3 VIER ZUSTÄNDE GIBT. Der Knopf
+            allein konnte nur „noch keiner" und „fertig" sagen; „läuft gerade"
+            und „schiefgegangen" sind die beiden, die der 504 verschwiegen hat.
+          -->
           <template #brief-cell="{ row }">
             <UButton
-              v-if="row.original.briefPostId"
+              v-if="row.original.briefState === 'done'"
               icon="i-ph-article"
               color="neutral" variant="subtle" size="xs"
               :to="localePath(`/dashboard/insights/${row.original.briefPostId}`)"
               :label="t('insights.finds.briefOpen')"
             />
+            <!--
+              Kein Knopf, solange der Lauf offen ist: er wäre eine Einladung
+              zum zweiten Mal zahlen. Die Route lehnt das ohnehin ab
+              (`brief_running`), aber eine Oberfläche, die etwas anbietet, das
+              der Server verweigert, ist eine falsche Auskunft.
+            -->
+            <span
+              v-else-if="row.original.briefState === 'running'"
+              class="inline-flex items-center gap-1.5 text-xs"
+              style="color: var(--ui-text-muted)"
+              :title="briefHint(row.original)"
+            >
+              <UIcon name="i-ph-spinner" class="animate-spin size-4" />
+              {{ t('insights.finds.briefRunning') }}
+            </span>
             <UButton
               v-else
-              icon="i-ph-sparkle"
-              color="primary" variant="ghost" size="xs"
+              :icon="row.original.briefState === 'none' ? 'i-ph-sparkle' : 'i-ph-arrow-counter-clockwise'"
+              :color="row.original.briefState === 'none' ? 'primary' : 'warning'"
+              variant="ghost" size="xs"
               :loading="briefingId === row.original.videoId"
               :disabled="busyId === row.original.videoId || !row.original.available"
-              :label="t('insights.finds.briefMake')"
-              :title="row.original.available ? t('insights.finds.briefHint') : t('insights.finds.gone')"
+              :label="row.original.briefState === 'none' ? t('insights.finds.briefMake') : t('insights.finds.briefRetry')"
+              :title="briefHint(row.original)"
               @click="makeBrief(row.original)"
             />
           </template>

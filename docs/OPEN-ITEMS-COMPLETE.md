@@ -30,6 +30,73 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BI3 — „Brief aus Video" lief dem Proxy davon: 504 statt Erfolgsmeldung ✅ 2026-11-08
+
+**Der Befund** (gemessen auf Prod am 2026-11-06, §14-Nachtrag): der Klick
+„Brief aus diesem Video" wartete, bis der Lauf fertig war. Ein 51-Minuten-Video
+brauchte 65,4 s, **nginx gibt nach 60 auf**. Der Node-Prozess lief weiter und
+legte den Entwurf korrekt an — der Mensch sah trotzdem einen Fehler-Toast und
+bekam den Link zu seinem Entwurf nie. Kein Geld verloren (der zweite Klick
+führte über `brief_exists` auf den vorhandenen Beitrag), aber die Meldung log.
+Kurze Videos (18,7 s) waren nicht betroffen.
+
+**Davids Richtung (2026-11-08):** NICHT `proxy_read_timeout` heraufsetzen —
+das verschiebt die Grenze nur, das nächste längere Video reisst sie wieder.
+Die Route soll sofort antworten und der Lauf im Hintergrund fertig werden.
+
+**Gebaut:** Die Route ist am GELD geteilt. Die Stufen 1–7 (bis einschliesslich
+Drossel) bleiben synchron und lehnen weiter mit `4xx` ab; dann stempelt sie
+`briefRunAt` an die Fundstück-Zeile und antwortet **`202`**. Der Anbieter-Aufruf
+und alles danach läuft in `runInsightsBrief()` hinter der Antwort, mit eigenem
+`catch` (ein besitzerloses Promise nähme unter pm2 den Prozess mit). Migration
+`insights-010` bringt zwei Spalten: `briefRunAt` (DATETIME) und `briefError`
+(VARCHAR 32, geschlossener Satz: `brief_failed` · `slug_taken`). Der ZUSTAND
+wird daraus GERECHNET und nie gespeichert (`insightsBriefState`: none ·
+running · stalled · failed · done), die Oberfläche zeigt vier Ansichten statt
+zwei und fragt alle 5 s nach, solange ein Lauf offen ist. i18n de/en, 30 neue
+Tests.
+
+**Warum kein Realtime:** die drei insights-Tabellen sind server-only
+(`permissions: []`, `rowSecurity: false`) — es gibt keine Session, die
+`insights_watchlist` abonnieren KÖNNTE. Realtime hiesse, eine Betreiber-Tabelle
+für Klient-Lesezugriff zu öffnen, für eine Seite, die EIN Mensch benutzt. Und
+es hätte die Spalten nicht erspart: Realtime trägt die ZEILE, also muss die
+Zeile „läuft" und „schiefgegangen" sagen können.
+
+**Die zwei Zusagen, die nicht brechen durften:** (1) Der zweite Klick zahlt
+nicht zweimal — vorher hielt die offene Verbindung ihn auf, jetzt hängt die
+Sperre an der Zeile (`brief_running`, SERVER-Uhr). (2) Ein Lauf, der im
+Hintergrund stirbt, blockiert die Zeile nicht für immer: nach
+`INSIGHTS_BRIEF_STALL_MS` (= Zeitgrenze des Laufs + 60 s, per Test echt
+grösser) gilt er als verschollen und ist wieder startbar. Die Drossel bucht
+unverändert beim START.
+
+**Beweise** (Wegwerf-Appwrite 2.7.1 auf Port 8099, Projekt `branding`):
+`insights_watchlist` 16 → 18 Spalten, beide `available`, zweiter Lauf
+„existiert bereits". Echter bezahlter Lauf: **202 nach 0,066 s**, fertig nach
+10,08 s, Entwurf mit 1.875-Zeichen-Brief. Drei Klicks währenddessen ⇒ dreimal
+**409 `brief_running`**. **Regressionsbeweis mit 90-Sekunden-Stub:** 202 nach
+0,079 s, Zeile bei t+61 s und t+71 s noch „läuft" (jenseits des alten
+60-s-Deckels), Beitrag bei t+91 s, Log `durationMs: 90094`. Fehlschlag (502)
+⇒ `briefError: brief_failed` an der Zeile. Verwaist (5 min) ⇒ wieder startbar,
+30 s alt ⇒ gesperrt. Klick-Beweis im Browser: „Läuft" mit Spinner, dann von
+selbst „Zum Beitrag" plus Erfolgs-Toast MIT Link. Vier Checks und sechs
+Wächter grün. Details: [BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) §15.
+
+**Gelernt:** **Eine Antwort, die auf einen fremden Dienst wartet, hat keine
+eigene Antwortzeit** — der 504 war kein Proxy-Problem, sondern eine Route,
+deren Dauer an der Länge eines fremden YouTube-Videos hing; jede Zahl dagegen
+ist geraten. Daraus drei Regeln: (a) **ein Zustand mit Zeitablauf gehört nicht
+in eine Spalte** — „läuft" wird zu „verschollen", ohne dass jemand klickt, und
+eine Spalte dafür bräuchte genau den Schreiber, der dann tot ist; gerechnet
+aus einem Zeitstempel braucht derselbe Übergang niemanden. (b) **Wer eine
+Wartezeit wegnimmt, nimmt auch eine Sperre weg** — die offene Verbindung war
+unbemerkt der Schutz gegen den Doppelklick, und das fällt beim Umbau nicht auf,
+weil nichts bricht, es wird nur teurer. (c) **Ein Beweis muss die Grenze
+überschreiten, um die es geht** — der echte Lauf war nach 10 s fertig und hätte
+den Befund nie berührt; erst der kostenlose 90-Sekunden-Stub hat gezeigt, dass
+die Zeile jenseits des alten Deckels noch lebt.
+
 ### CL1: Öffentlicher Changelog gefüllt — 16 Einträge in de und en ✅ 2026-11-06
 
 Anlass: Die Marketing-Seite verlinkt seit a77f79fd `admin.pukalani.app/changelog`,

@@ -1004,3 +1004,185 @@ Wörter, wer ablehnt, verliert den Lauf.
 `502` / `PERMISSION_DENIED` vom Anbieter — binnen 1,2 Sekunden und ohne
 Kosten. Nicht jedes öffentliche Video ist für Gemini lesbar; ein `502` auf
 diesem Weg heisst also oft „dieses Video nicht", nicht „Anbieter kaputt".
+
+---
+
+## 15. BI3 gebaut (2026-11-08) — „Brief aus Video" läuft dem Proxy nicht mehr davon
+
+Der Klick auf **„Erzeugen"** antwortet jetzt nach Millisekunden und sagt
+„der Lauf ist gestartet". Der bezahlte Lauf rechnet dahinter weiter und
+berichtet an die FUNDSTÜCK-ZEILE; die Liste fragt nach, solange er offen ist,
+und der Erfolgs-Toast mit dem Link zum Entwurf kommt, wenn er wirklich fertig
+ist.
+
+### Der Befund, der das ausgelöst hat
+
+Gemessen auf Prod am 2026-11-06 (Nachtrag zu §14): ein 51-Minuten-Video
+brauchte 65,4 s, **nginx gibt nach 60 auf**. Der Node-Prozess lief weiter und
+legte den Entwurf korrekt an — der Mensch sah trotzdem einen Fehler-Toast und
+bekam den Link nie. Kein Geld verloren (Stufe 3 führte den zweiten Klick auf
+den vorhandenen Beitrag), aber **die Meldung log**.
+
+### Die Entscheidung, die alles andere nach sich zieht
+
+**NICHT `proxy_read_timeout` HERAUFSETZEN** (Davids Richtung, 2026-11-08). Eine
+höhere Grenze verschiebt sie nur; das nächste längere Video reisst sie wieder,
+und zwar wieder erst auf Prod und wieder mitten in einem bezahlten Lauf. Die
+Antwortzeit dieser Route hängt an der Länge eines FREMDEN Videos — eine Zahl,
+die wir weder kennen noch begrenzen.
+
+### Wie der Mensch erfährt, dass der Brief fertig ist — und warum nicht per Realtime
+
+Die Frage war: ein Zustand an der Zeile plus Nachfragen, oder die bestehende
+Realtime-Naht (`pukalani.realtime.enabled` / `useRealtimeRows`)?
+
+**Realtime ist hier nicht „grösser", sondern VERSCHLOSSEN.** Alle drei
+insights-Tabellen sind server-only — `permissions: []`, `rowSecurity: false`
+(begründet im Kopf von `server/utils/insightsStore.ts`: die Grenze dieses
+Layers ist das Gate `insights.manage`, nicht eine Row-Permission). Es gibt
+also **keine Session, die `insights_watchlist` abonnieren könnte**. Realtime
+hiesse: eine Betreiber-Tabelle für Klient-Lesezugriff öffnen — eine
+Grenzverschiebung für eine Seite, die EIN Mensch benutzt und auf der EIN Lauf
+höchstens drei Minuten offen steht.
+
+Und es hätte die Spalten nicht einmal erspart: **Realtime trägt die ZEILE**,
+also muss die Zeile „läuft gerade" und „ist schiefgegangen" sagen können. Die
+Spalten sind der Kern, Realtime wäre nur eine andere Zustellung. Der kleinere
+Weg beantwortet die Frage ehrlich, also wurde er genommen.
+
+### Was gebaut wurde
+
+* **Migration `insights-010`:** zwei Spalten an `insights_watchlist` —
+  `briefRunAt` (DATETIME) und `briefError` (VARCHAR 32).
+* **Der Zustand wird GERECHNET, nicht gespeichert** (`insightsBriefState` in
+  `shared/insightsWatchlist.ts`, pur): `none` · `running` · `stalled` ·
+  `failed` · `done`, aus `briefPostId`, `briefError`, `briefRunAt` und der Uhr.
+  Dazu `insightsBriefStartable` (darf ein neuer, bezahlter Lauf starten?) und
+  `insightsBriefPending` (muss die Liste weiter nachfragen?). 30 Tests.
+* **Die Route** (`.../[videoId]/brief.post.ts`) ist geteilt: die Stufen 1–7
+  bleiben synchron, stempeln `briefRunAt` und antworten **`202`** mit der
+  Zeile. Der Anbieter-Aufruf und alles danach läuft in `runInsightsBrief()`
+  hinter der Antwort — mit Besitzer (`.catch`), damit eine unbehandelte
+  Ablehnung nicht unter pm2 den Prozess mitnimmt.
+* **Stufe 3 ist jetzt zweiteilig:** `brief_exists` (Beitrag da) UND
+  `brief_running` (Lauf offen).
+* **Die Antwort** trägt nur noch `{ item }` — der Beitrag existiert zu diesem
+  Zeitpunkt noch nicht, und ihn trotzdem zu behaupten wäre die Lüge von BI3
+  in einem Typ.
+* **Die Oberfläche** zeigt vier Zustände statt zwei (Knopf · „Läuft" mit
+  Spinner · „Nochmal" mit Grund im Titel · „Zum Beitrag"), fragt alle 5 s nach,
+  solange ein Lauf offen ist, und hört von selbst auf. i18n de/en.
+
+### Die Entscheidungen, die drinstecken
+
+**DIE TEILUNG LIEGT GENAU AM GELD.** Alles, was NICHTS kostet, bleibt
+synchron und lehnt weiterhin mit `4xx` ab — der Mensch sieht es sofort. Erst
+was den Lauf schon bezahlt hat, berichtet an die Zeile. Die K5-Entscheidung
+„die Reihenfolge der Prüfungen ist die eigentliche Arbeit" gilt damit
+unverändert; sie ist jetzt zugleich die Naht.
+
+**DER ZWEITE KLICK ZAHLT NICHT ZWEIMAL — UND DAS IST NEU ZU VERDIENEN.** Vor
+BI3 hielt die offene Verbindung den zweiten Klick auf: die Zeile lud, der
+Knopf war gesperrt. Jetzt antwortet die Route nach einer Sekunde und der Knopf
+wäre wieder da — drei Klicks wären drei bezahlte Läufe. Die Sperre hängt
+deshalb an der ZEILE (`brief_running`), nicht am Browser, und die SERVER-Uhr
+entscheidet. Die Oberfläche rechnet denselben Zustand nur für ihre Anzeige;
+bei einer schiefen Browser-Uhr gewinnt die Route.
+
+**EIN VERWAISTER LAUF LÖST SICH SELBST.** Genau DARUM wird der Zustand
+gerechnet statt gespeichert: ein Aufräumer, der eine Spalte `briefState` von
+„läuft" zurücksetzt, wäre der Prozess, der in diesem Fall gerade nicht mehr
+lebt (Neustart, Deploy, Container weg). Die Uhr braucht niemanden.
+`INSIGHTS_BRIEF_STALL_MS` ist deshalb aus `INSIGHTS_BRIEF_TIMEOUT_MS`
+ABGELEITET (+ 60 s für das Schreiben danach), und ein Test nagelt fest, dass
+sie echt grösser ist — eine Stall-Grenze UNTER der Zeitgrenze gäbe die Zeile
+frei, WÄHREND der erste Lauf noch bezahlt wird.
+
+**ZWEI GRÜNDE, NICHT FÜNF.** `briefError` trägt `brief_failed` oder
+`slug_taken`. `brief_failed` deckt bewusst drei Fälle in einem: Anbieter lehnt
+ab (nicht jedes öffentliche Video ist lesbar — gemessen drei von zehn),
+Zeitgrenze gerissen, Antwort kein JSON. Der Transport wirft für alle drei
+dasselbe `502`; eine feinere Auskunft wäre erfunden, und die Handlung des
+Menschen ist dieselbe. Die Diagnose-Kennung (`502 AI video failed`) bleibt im
+LOG.
+
+**DIE DROSSEL BUCHT WEITER BEIM START.** `insightsBeginAiRun` steht unverändert
+VOR der Antwort: sie bucht, was ANGESTOSSEN wurde, nicht was gelungen ist. Ein
+Deckel, der erst beim Erfolg zählt, hält einen verklemmten Knopf nicht auf.
+
+**DER STEMPEL STEHT VOR DEM LAUF.** Erst wenn `briefRunAt` geschrieben ist,
+geht der Anbieter-Aufruf los. Scheitert das Schreiben, gibt es keine Sperre —
+und der zweite Klick zahlte ein zweites Mal. Der Eimer ist dann gebucht und
+der Lauf nicht gemacht; das ist der richtige Weg herum.
+
+### Beweis (lokale Wegwerf-Instanz, ein echter Lauf + ein Stub)
+
+Wegwerf-Appwrite 2.7.1 (`docker compose -p bi3`, Port 8099), Projekt
+`branding`, Migrationen gefahren, Konto mit Label `admin`.
+
+* **Migration:** `insights_watchlist` 16 → **18 Spalten**, `briefRunAt`
+  (datetime) und `briefError` (varchar) beide `available`; zweiter Lauf
+  zweimal **„existiert bereits"**.
+* **Echter bezahlter Lauf** (`wJukFIpZybY`, dasselbe Video wie in §14):
+  **HTTP 202 nach 0,066 s**, der Lauf meldete sich 10,08 s später
+  (`insights.brief.completed`, `briefChars: 1875`). Beitrag `state: draft`,
+  Adresse `warum-pdfs-fuer-seo-und-ki-suche-keine-sackgasse-sind`,
+  `briefModel: google/gemini-3.1-flash-lite`, `briefPromptVersion:
+  insights-b-1`, `briefVideoId: wJukFIpZybY`, `topics: ["seo-geo"]`, Quelle mit
+  `quote: ""`.
+* **Der zweite Klick:** drei Klicks WÄHREND des Laufs ⇒ dreimal **409
+  `brief_running`** (0,036 / 0,018 / 0,013 s). Kein zweiter bezahlter Lauf.
+* **DER EIGENTLICHE REGRESSIONSBEWEIS — ein Lauf von 90 Sekunden** (Stub statt
+  Anbieter, kostenlos): **HTTP 202 nach 0,079 s**; die Zeile stand bei
+  **t+61 s und t+71 s** noch auf „läuft" — also JENSEITS des alten
+  60-Sekunden-Deckels, dort wo vorher der 504 kam — und trug bei t+91 s den
+  Beitrag. Log: `durationMs: 90094`. Unter der alten Fassung wäre genau dieser
+  Lauf ein Fehler-Toast gewesen.
+* **Fehlschlag:** Stub antwortet 502 ⇒ 202 nach 0,090 s, zwei Sekunden später
+  `briefError: brief_failed` an der Zeile, Log
+  `errorCode: "502 AI provider unavailable"`.
+* **Verwaist vs. gesperrt, dieselbe Zeile:** `briefRunAt` 30 s alt ⇒ **409
+  `brief_running`**; `briefRunAt` 5 min alt ⇒ **202** mit neuem Stempel.
+* **Klick-Beweis im Browser** (hinter dem Login, `/de/dashboard/insights/finds`):
+  Rückfrage bestätigt ⇒ Toast „Der Lauf ist gestartet.", Zelle zeigt **„Läuft"**
+  mit Spinner; ohne weiteres Zutun sprang sie auf **„Zum Beitrag"** um und der
+  Erfolgs-Toast „Der Brief steht." erschien MIT dem Link. Die beiden
+  Fehl-Zustände zeigen **„Nochmal"** mit unterschiedlichem Titel
+  („hat keinen Brief geliefert …" bzw. „ist nicht zurückgekommen …").
+* `pnpm -r test` (alle Pakete), `pnpm -r lint`, `pnpm lint:scripts`,
+  `pnpm -r typecheck` und die sechs `lint.yml`-Wächter grün — Exit-Codes aus
+  einer Statusdatei gelesen, nicht aus einer Pipe.
+
+### Gelernt
+
+**EINE ANTWORT, DIE AUF EINEN FREMDEN DIENST WARTET, HAT KEINE EIGENE
+ANTWORTZEIT.** Der 504 war kein Proxy-Problem, sondern eine Route, deren Dauer
+an der Länge eines YouTube-Videos hing. Jede Zahl, die man dagegen setzt, ist
+geraten. Die Frage ist nicht „wie lange darf es dauern?", sondern „wer hält den
+Zustand, während es dauert?" — und das kann nur etwas sein, das den Prozess
+überlebt.
+
+**EIN ZUSTAND MIT EINEM ZEITABLAUF GEHÖRT NICHT IN EINE SPALTE.** „Läuft" wird
+zu „verschollen", ohne dass jemand klickt. Eine Spalte `briefState` hätte
+genau den Schreiber gebraucht, der in diesem Fall tot ist. Gerechnet aus einem
+Zeitstempel braucht derselbe Übergang niemanden — und die Stall-Grenze muss
+dann aus der Zeitgrenze des Laufs ABGELEITET sein, sonst driften die beiden
+Zahlen auseinander und die kleinere gibt eine bezahlte Zeile zu früh frei.
+
+**WER EINE WARTEZEIT WEGNIMMT, NIMMT AUCH EINE SPERRE WEG.** Die offene
+Verbindung war unbemerkt der Schutz gegen den Doppelklick. Das fällt beim
+Umbau nicht auf, weil nichts bricht — es wird nur teurer. Beim Entkoppeln
+einer teuren Route gehört deshalb immer die Frage dazu, was die Synchronität
+nebenbei garantiert hat.
+
+**EIN BEWEIS MUSS DIE GRENZE ÜBERSCHREITEN, UM DIE ES GEHT.** Der echte Lauf
+war nach 10 Sekunden fertig und hätte den Befund nie berührt — er lag unter
+den 60 Sekunden. Erst der 90-Sekunden-Stub (kostenlos) hat gezeigt, dass die
+Zeile jenseits des alten Deckels noch „läuft" sagt und danach umspringt. Wer
+eine Zeitgrenze repariert, braucht einen Beweis, der sie reisst.
+
+**WERKZEUG:** Port 8080 war von `plane-proxy` belegt — die Wegwerf-Instanz
+nimmt ihre Ports aus der Env-Kopie (`_APP_HTTP_PORT`, `_APP_HTTPS_PORT`,
+`_APP_MQTT_PORT`, `_APP_MQTT_WSS_PORT`), hier 8099/8444/8885/8086. Und der
+Worktree brauchte wieder die `@shikijs`-Symlinks in `node_modules`, sonst
+antwortet jede Route 500.
