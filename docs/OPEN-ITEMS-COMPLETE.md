@@ -343,6 +343,22 @@ Paginierung („First Page", „Page 1", „Next Page") sind in reka-ui fest
 englisch verdrahtet, ebenso das Label der Toast-Region („Notifications (F8)",
 reka `ToastProvider`) — beide stehen nicht in Nuxt UIs Sprachpaketen.
 
+**Nachtrag 2026-11-08 — auch die aria-Labels sind deutsch.** Nicht selbst
+gebaut, sondern per Bump `@nuxt/ui` 4.11.1 → 4.12.0: 4.12 reicht
+`pagination.*` und `toaster.*` aus seinen Sprachpaketen an reka-ui durch
+(nuxt/ui#7151, #7163), unser `:locale` erreicht sie damit ohne eine Zeile Code.
+Der Bump zog `unhead`/`@unhead/vue` doppelt (3.4.0 von nuxt, 3.4.3 von
+Nuxt UI) — `check:single-copy` rot, behoben per `pnpm update -r --depth 100
+unhead @unhead/vue @unhead/bundler` (nuxts Range `^3.3.1` deckt 3.4.3).
+`@nuxt/kit`/`@nuxt/schema` 4.6.4 liegen als zweite Kopie neben nuxt 4.5.2
+(wie schon bei `@nuxt/image`, bewusst nicht im Wächter). Beweis comments
+`/de/dashboard/admin` (Demo-Admin): „Erste Seite", „Vorherige Seite",
+„Seite 1", „Nächste Seite", „Letzte Seite"; per `setLocale('en')` ohne Reload
+„First page" … „Page 1" und zurück; Toast-Region „Benachrichtigungen (F8)",
+Ansage „Benachrichtigung …". Seit 4.12 lädt der Toaster LAZY — die Region
+existiert erst, wenn ein Toast da ist. Nuxt UI 4.12 folgt der i18n-Sprache
+auch von selbst; unser explizites `:locale` gewinnt und bleibt der Vertrag.
+
 ### RA2 — Frische Anmeldung auch beim Besitz-Übertragen und Stilllegen ✅ 2026-11-08
 
 **Anlass.** RA1 (2026-11-06) hat `requireRecentAuth` (Anmeldung höchstens
