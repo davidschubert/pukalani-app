@@ -124,6 +124,24 @@ const GEO_CITIES_PATH = 'NUXT_GEO_CITIES_PATH'
  */
 const RESEND_WEBHOOK_SECRET = 'NUXT_RESEND_WEBHOOK_SECRET'
 
+/**
+ * Resend-Schlüssel für das Tagesbudget (RS1 a, `GET /usage`).
+ *
+ * PFLICHT NUR AUF `branding` — und das ist Absicht, keine Lücke: nur
+ * `apps/branding` hat den `insights`-Layer und damit überhaupt einen
+ * Newsletter. Die Bremse (`decideMailBatch`) wird nirgends sonst gefragt, und
+ * eine Pflicht-Variable, die eine Site nicht braucht, erzieht zum Weglesen.
+ *
+ * Fehlt sie DORT, geht keine Newsletter-Ausgabe raus (`budget_unknown`,
+ * fail-closed mit Begründung im Kopf von packages/core/shared/mailBudget.ts) —
+ * still, mit einem Satz in der Oberfläche und sonst nichts.
+ *
+ * Eingetragen ERST, nachdem der Wert auf dem Server stand (2026-11-08,
+ * bewiesen über `pm2 jlist`): derselbe Grund wie beim Webhook-Secret darüber.
+ * Runbook: docs/runbooks/RESEND-WEBHOOK.md § 5.
+ */
+const RESEND_BUDGET_KEY = 'NUXT_RESEND_API_KEY'
+
 const SITES = [
   {
     dir: 'platform.pukalani.app',
@@ -322,6 +340,7 @@ const SITES = [
       'NUXT_TURNSTILE_SECRET',
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       RESEND_WEBHOOK_SECRET,
+      RESEND_BUDGET_KEY,
       /**
        * STEHT HIER, obwohl die drei älteren Site-Blöcke ihn nicht führen: die
        * Database-Id hat keinen brauchbaren Default — ohne sie findet KEIN
