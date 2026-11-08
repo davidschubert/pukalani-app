@@ -62,10 +62,13 @@ useSeoMeta({
 useHead({
   bodyAttrs: { class: 'marketing-site' },
 })
+
+// Nuxt UI spricht die Sprache der Seite (Texte, Datum, Kalender) — core.
+const uiLocale = useNuxtUiLocale()
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="uiLocale">
     <NuxtLoadingIndicator />
 
     <MarketingHeader />
