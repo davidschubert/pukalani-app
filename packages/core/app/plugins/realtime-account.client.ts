@@ -10,8 +10,8 @@ import { accountVerifyDue } from '../../shared/realtimeGate'
  * Client-only, app-weit (detached EffectScope).
  *
  * NICHT AUF EINEM HOST, DEN ES NICHT GIBT (2026-08-03): dort antwortet jeder
- * Pfad 404, der Cookie-WS kann nie stehen, und das Nachprüfen unten wurde zum
- * Dauerläufer. Messung, Begründung und die Nachhol-Regel stehen in
+ * Pfad 404, der damalige Cookie-WS konnte nie stehen, und das Nachprüfen unten
+ * wurde zum Dauerläufer. Messung, Begründung und die Nachhol-Regel stehen in
  * `app/utils/hostGate.ts`.
  */
 export default defineNuxtPlugin((nuxtApp) => {
@@ -26,8 +26,9 @@ export default defineNuxtPlugin((nuxtApp) => {
   let lastVerifyAt = 0
 
   // Auth nachprüfen (entprellt): ist die eigene Session weg → Force-Logout.
-  // Läuft sowohl bei Account-Events als auch beim Schließen der Verbindung
-  // (Revocation kappt den Socket, bevor ein Event ankommt).
+  // Läuft bei Account-Events UND wenn Appwrite dem Socket den Zugang entzieht
+  // (401-Frame beim Widerruf, RT2) — Event und Frame kommen beim Widerruf
+  // direkt hintereinander, die Entprellung macht daraus EINEN Abruf.
   function verify() {
     clearTimeout(timer)
     timer = setTimeout(() => {
@@ -60,7 +61,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       let stop: (() => void) | undefined
       watch(() => auth.user?.$id, (id) => {
         if (id && !stop) {
-          stop = useRealtimeAccount(() => verify(), { onClose: () => verify() })
+          stop = useRealtimeAccount(() => verify(), { onAccessEnded: () => verify() })
         }
         else if (!id && stop) {
           stop()
