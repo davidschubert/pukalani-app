@@ -108,6 +108,22 @@ const GEO_CITY_DB_PATH = 'NUXT_GEO_CITY_DB_PATH'
  */
 const GEO_CITIES_PATH = 'NUXT_GEO_CITIES_PATH'
 
+/**
+ * Signatur-Secret des Resend-Webhooks (RS1 b, `POST /api/mail/resend-webhook`).
+ *
+ * PFLICHT AUF JEDER SITE MIT KONTEN — jede hat ihren EIGENEN Webhook-Eintrag in
+ * Resend (alle vier bekommen jedes Ereignis des Teams, jede schaut nur in ihr
+ * Projekt). Fehlt die Variable, antwortet die Route 404, Resend gibt nach
+ * einem Tag Wiederholungen auf — und tote Adressen bekommen weiter Mails, ohne
+ * dass irgendetwas rot wird. Exakt die F44-Sorte Loch.
+ *
+ * Eingetragen ERST, als alle vier Secrets standen (2026-11-08): dieser
+ * Wächter läuft täglich in production-watch.yml, ein Eintrag vorher hätte
+ * jeden Tag einen bestellten `produktions-alarm` geöffnet.
+ * Runbook: docs/runbooks/RESEND-WEBHOOK.md.
+ */
+const RESEND_WEBHOOK_SECRET = 'NUXT_RESEND_WEBHOOK_SECRET'
+
 const SITES = [
   {
     dir: 'platform.pukalani.app',
@@ -125,6 +141,7 @@ const SITES = [
       // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
       'NUXT_TURNSTILE_SECRET',
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
+      RESEND_WEBHOOK_SECRET,
       'NUXT_PLATFORM_CONTROL_KEY',
       'NUXT_ONBOARDING_SERVICE_SECRET',
       /**
@@ -200,6 +217,7 @@ const SITES = [
       // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
       'NUXT_TURNSTILE_SECRET',
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
+      RESEND_WEBHOOK_SECRET,
       'NUXT_CONTROL_ONBOARDING_SECRET',
       'NUXT_SMTP_HOST',
       'NUXT_SMTP_PORT',
@@ -259,6 +277,7 @@ const SITES = [
       // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
       'NUXT_TURNSTILE_SECRET',
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
+      RESEND_WEBHOOK_SECRET,
       'NUXT_ANALYTICS_STATS_API_KEY',
       /**
        * Erstgespräch-Wizard (W1, 2026-08-21): `POST /api/intro-call` stellt
@@ -302,6 +321,7 @@ const SITES = [
       // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
       'NUXT_TURNSTILE_SECRET',
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
+      RESEND_WEBHOOK_SECRET,
       /**
        * STEHT HIER, obwohl die drei älteren Site-Blöcke ihn nicht führen: die
        * Database-Id hat keinen brauchbaren Default — ohne sie findet KEIN
