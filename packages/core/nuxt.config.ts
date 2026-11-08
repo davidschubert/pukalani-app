@@ -270,6 +270,12 @@ export default defineNuxtConfig({
     smtpUser: '',
     smtpPass: '',
     smtpFrom: '',
+    // server-only! Env: NUXT_RESEND_WEBHOOK_SECRET — Signatur-Secret (whsec_…)
+    // des Resend-Webhooks DIESES Deployments (RS1 b, Route
+    // server/api/mail/resend-webhook.post.ts). Leer = Route antwortet 404.
+    // Ein Webhook je Deployment, jeder mit eigenem Secret
+    // (docs/runbooks/RESEND-WEBHOOK.md).
+    resendWebhookSecret: '',
     // server-only! Env: NUXT_TURNSTILE_SECRET — Secret Key von Cloudflare
     // Turnstile (Bot-Beweis an signup/otp/recovery, Vorfall 2026-10-27).
     // Leer = aus, ZUSAMMEN mit `public.turnstileSiteKey` der Schalter

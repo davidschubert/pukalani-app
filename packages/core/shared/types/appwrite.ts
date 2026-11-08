@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import type { DashboardNavPrefs } from '../dashboardNav'
+import type { MailUndeliverableMarker } from '../mailUndeliverable'
 
 /**
  * Basis für Domain-Types in Produkt Layern und Apps:
@@ -43,6 +44,14 @@ export interface PukalaniUserPrefs extends Models.Preferences {
    * über `PUT /api/auth/dashboard-nav`.
    */
   dashboardNav?: DashboardNavPrefs
+  /**
+   * Resend hat diese Adresse als unzustellbar gemeldet (RS1 b, Webhook
+   * `POST /api/mail/resend-webhook`). Gesetzt zusammen mit
+   * `emailNotifications: 'off'`; gebunden an den Hash der Adresse, damit eine
+   * geänderte E-Mail den Hinweis von selbst räumt. Gelesen wird IMMER über
+   * `undeliverableNoticeReason` (shared/mailUndeliverable.ts).
+   */
+  emailUndeliverable?: MailUndeliverableMarker
 }
 
 export type CurrentUser = Models.User<PukalaniUserPrefs>

@@ -9,6 +9,7 @@ import type {
 import * as newsletter from '../server/utils/insightsNewsletter'
 import { insightsDb, isInsightsRowConflict, isInsightsRowMissing } from '../server/utils/insightsStore'
 import { insightsStorageError } from '../server/utils/insightsPostsAdmin'
+import { applyInsightsNewsletterUnsubscribe } from '../server/utils/insightsNewsletterUnsubscribe'
 import { insightsNewsletterAllowed, insightsIpHash, insightsPublicMissing } from '../server/utils/insightsPublic'
 
 /**
@@ -142,6 +143,7 @@ vi.stubGlobal('hashInsightsNewsletterToken', newsletter.hashInsightsNewsletterTo
 vi.stubGlobal('maskInsightsNewsletterEmail', newsletter.maskInsightsNewsletterEmail)
 vi.stubGlobal('sendInsightsNewsletterConfirmMail', newsletter.sendInsightsNewsletterConfirmMail)
 vi.stubGlobal('insightsNewsletterRowIdFromToken', newsletter.insightsNewsletterRowIdFromToken)
+vi.stubGlobal('applyInsightsNewsletterUnsubscribe', applyInsightsNewsletterUnsubscribe)
 
 const subscribe = (await import('../server/api/insights/public/newsletter/subscribe.post'))
   .default as unknown as (event: H3Event) => Promise<InsightsNewsletterSubscribeResponse>

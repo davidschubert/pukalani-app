@@ -10,7 +10,12 @@ const { t, locale } = useI18n()
 const toast = useToast()
 const loading = ref(false)
 
-const { data } = await useFetch<{ emailNotifications: EmailMode, mailerConfigured: boolean }>('/api/auth/notification-prefs')
+const { data } = await useFetch<{
+  emailNotifications: EmailMode
+  mailerConfigured: boolean
+  /** RS1 b: Resend meldet die aktuelle Adresse als unzustellbar. */
+  undeliverable: 'bounce' | 'complaint' | 'suppressed' | null
+}>('/api/auth/notification-prefs')
 
 const mode = ref<EmailMode>('off')
 watchEffect(() => {
@@ -56,6 +61,16 @@ async function save() {
       variant="subtle"
       icon="i-ph-envelope-simple-open"
       :title="t('notifications.email.noSmtp')"
+    />
+
+    <UAlert
+      v-if="data?.undeliverable"
+      color="error"
+      variant="subtle"
+      icon="i-ph-envelope-simple-x"
+      :title="t('notifications.email.undeliverableTitle')"
+      :description="data.undeliverable === 'complaint' ? t('notifications.email.undeliverableComplaint') : t('notifications.email.undeliverableBounce')"
+      data-notification-undeliverable
     />
 
     <URadioGroup v-model="mode" :items="items" data-notification-mode />

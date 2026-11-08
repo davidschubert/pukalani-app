@@ -412,7 +412,10 @@
       "saved": "Notification settings saved.",
       "saveFailed": "Could not save settings.",
       "saveFailedDescription": "Your previous setting still applies. Check your connection and try again.",
-      "noSmtp": "Email delivery is not configured on this server — your choice is saved and takes effect once SMTP is set up."
+      "noSmtp": "Email delivery is not configured on this server — your choice is saved and takes effect once SMTP is set up.",
+      "undeliverableTitle": "Emails to your address don't arrive",
+      "undeliverableBounce": "Your address's mail server rejected our emails, so we turned email notifications off. Check your address or use a different one.",
+      "undeliverableComplaint": "One of our emails was reported as spam, so we turned email notifications off. You still see everything in the bell."
     }
   },
   "error": {
