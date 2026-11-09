@@ -30,6 +30,30 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### MCP-Rechte — Sperrliste für Ploi und Resend ✅ 2026-11-09
+
+**Was.** Anlass war die Frage, ob MCP1 (mcp1.com, MCP-Gateway von Appwrite)
+dem Projekt nützt. Antwort: nein (Begründung in
+[referenz/SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md), Abschnitt
+„MCP-Rechte"), aber die Prüfung fand eine echte Lücke: Für die beiden
+MCP-Server mit Schreibrechten auf Prod (Ploi: alle Server; Resend: Domains,
+Versand) gab es keine einzige Sperre, und die Sessions laufen im Bypass-Modus.
+Jetzt stehen in `~/.claude/settings.json` 25 `deny`-Regeln (unumkehrbar, nie
+gebraucht: `restart-server`, `remove-domain`, `send-broadcast`, API-Schlüssel …)
+und 51 `ask`-Regeln (Betrieb: Deploy, nginx-Reload, `.env`, Test-Mail).
+
+**Beweis.** Mit Fantasie-IDs, also ohne Wirkung gemessen: die 25 gesperrten
+Werkzeuge verschwanden noch in der laufenden Session aus der Werkzeugliste.
+`ploi restart-site-queue` (Rückfrage-Liste) lief im Bypass ohne Rückfrage
+durch, Antwort „Server not found".
+
+**Gelernt:** `ask` ist im Bypass-Modus wirkungslos, und ein `PreToolUse`-Hook
+mit `permissionDecision: "ask"` auch: er feuerte nachweislich (Sentinel-Datei),
+gefragt wurde trotzdem nicht. Im Bypass schützt NUR `deny`. Wer ein Werkzeug
+wirklich sperren will, setzt es auf `deny`; die `ask`-Liste ist eine Bremse für
+Sessions ohne Bypass (Davids Entscheidung: so lassen, damit Agenten weiter
+deployen können).
+
 ### RA3 — Frische Anmeldung auch an den Betreiber-Löschungen ✅ 2026-11-09
 
 **Was.** Drei endgültige Betreiber-Aktionen hatten die Klammer aus RA2 noch

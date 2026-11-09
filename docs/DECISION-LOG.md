@@ -3159,3 +3159,20 @@ löschen).
 Entscheidung „nach grüner CI-E2E auf 2.0" um 05:00 UTC gezogen — unter 12
 Minuten, Nachweise im Runbook. Beide Instanzen und beide SDKs stehen auf der
 2.0-Linie; AW2 ist damit komplett (OPEN-ITEMS-COMPLETE).
+
+## 2026-11-09 — MCP-Rechte: Sperrliste statt Gateway (MCP1 verworfen)
+
+**Frage:** Nützt MCP1 (mcp1.com, MCP-Gateway von Appwrite) dem Projekt?
+**Entscheidung (David):** Nein. Stattdessen eine Sperrliste in
+`~/.claude/settings.json`: 25 Ploi-/Resend-Werkzeuge auf `deny`, 51 auf `ask`.
+**Warum:** Ein Gateway für Teams ist für eine Person der falsche Zuschnitt,
+legt den Ploi-Token (alle Server) bei einem weiteren Anbieter ab und leitet
+lokale MCP-Server nicht weiter. Den Kern („gefährliche Tools sperren") leistet
+die Sperrliste ohne Drittanbieter.
+**Zweite Entscheidung:** Gemessen wirkt `ask` im Bypass-Modus nicht (auch
+nicht per Hook). David: „so lassen". Die 51 bleiben Rückfrage-Regeln, damit
+Agenten weiter deployen und nginx neu laden können; wirklich gesperrt ist nur
+die `deny`-Liste.
+**Wieder prüfen:** sobald eine zweite Person oder ein Agent (AI-Runner) eigene,
+begrenzte MCP-Zugänge mit Audit-Log braucht. Details:
+docs/referenz/SESSION-HYGIENE.md, Abschnitt „MCP-Rechte".
