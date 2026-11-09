@@ -1847,9 +1847,33 @@ Log-Tests. **Nicht abgedeckt** bleibt das Durchreichen IN der Route selbst
 (es hängt an `typecheck` und am Lesen) — derselbe Stand wie beim Textweg aus
 Nachtrag 1.
 
-**Kein echter Video-Lauf gefahren** (~5 Cent, braucht Davids Zustimmung): die
-Form der Antwort stammt aus der gemessenen Probe vom 2026-10-27, die in § 13
-protokolliert ist.
+**MIT ECHTEM BEZAHLTEM LAUF BEWIESEN** (Davids Zustimmung am 2026-11-09,
+Build `acd4bf1c` live): Fundstück „5 Design Principles in Context: Stripe"
+(NN/g, 4:26) auf Prod aufgenommen, Brief erzeugt, Entwurf
+`6af1c0f300064c6700d9` angelegt — und die Zeile sagt, was er gekostet hat:
+
+```json
+{"event":"insights.brief.completed","model":"google/gemini-3.1-flash-lite",
+ "promptVersion":"insights-b-2","durationMs":10509,"briefChars":1927,
+ "briefRawChars":2053,"promptTokens":24953,"completionTokens":563,
+ "videoTokens":17490,"cachedTokens":0,"finishReason":"stop"}
+```
+
+Drei Dinge liest man erst an echten Zahlen ab. (1) `videoTokens` 17.490 von
+24.953 gelesenen Tokens — **70 % der Eingabe war das Video**; das ist der
+Beweis, dass das Modell hingesehen hat und nicht den Titel paraphrasiert, und
+genau diese Aufteilung konnte vorher niemand sehen. (2) `cachedTokens` 0 beim
+ERSTEN Lauf eines Videos — die Zahl ist keine Zierde, sondern die Erklärung
+für den scheinbaren Preissturz in der Probe vom 2026-10-27 (§ 13), und sie
+steht hier korrekt auf null statt zu fehlen. (3) Ein kurzes Video ist der
+billigere Beweis: 4:26 statt der 25 Minuten, auf die sich die „~5 Cent"
+beziehen — rund ein Cent für dieselbe Aussage. Kurz gewählt, weil ein Beweis
+nicht teuer sein muss, um einer zu sein.
+
+Eine Falle kam auf dem Weg dazu: der Knopf „Erzeugen" fragt per nativem
+`confirm()` nach (`finds.vue`), und das friert den Renderer für jede
+Automatisierung ein — der Klick-Beweis lief deshalb über dieselbe Route, die
+der Knopf ruft, in der angemeldeten Sitzung.
 
 **Gelernt:** „eigenes Vorhaben, dieselbe Operation an einem zweiten
 Transport" war die richtige Beschreibung — aber die Lücke stand einen Tag lang
