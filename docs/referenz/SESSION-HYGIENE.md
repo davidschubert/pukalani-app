@@ -113,12 +113,86 @@ niemand aufruft, kostet ohne Gegenwert. Empfehlung je Server:
 | GitHub-MCP | aus | `gh` ist seit jeher die Regel (PRs, Issues, API); doppelter Weg |
 | Appwrite-API-MCP | **an, nur lokal und nur lesend** (Davids Entscheidung 2026-11-06) | zeigt den IST-Zustand (Spalten, Indizes, Rechte, Daten) beim Debuggen; seit dem Server-Stand vom 2026-10-27 nur fünf Meta-Werkzeuge im Kontext. Plugin-Optionen `http://localhost/v1` + `reddit-comments` (Pool), Schlüssel `claude-mcp-readonly` mit ausschließlich `*.read`-Scopes (ohne `keys`/`oauth2`/`providers`). NIE gegen Prod: die Sessions laufen ohne Rückfrage, die „destruktiv"-Annotation schützt dort nicht. Schema-Änderungen bleiben bei `pnpm migrate` und `scripts/ops/*` (node-appwrite) |
 | Appwrite-Docs, Nuxt-Docs, Nuxt-UI-Docs | an lassen | Nachschlagen ohne Kontextlast des Repos; nur bei Bedarf aufgerufen. Der Appwrite-Docs-Server `mcp-for-docs.appwrite.io` ist abgekündigt; sein Nachfolger `mcp.appwrite.io` meldet sich bei Appwrite Cloud an (für self-hosted nur als Doku-Suche brauchbar) |
-| ploi | an lassen | Deploy-Log und Site-Env ohne Browser; kein CLI-Ersatz vorhanden |
+| ploi | an lassen, **mit Sperrliste** (seit 2026-11-09, s. „MCP-Rechte") | Deploy-Log und Site-Env ohne Browser; kein CLI-Ersatz vorhanden |
+| Resend | an lassen, **mit Sperrliste** (seit 2026-11-09, s. „MCP-Rechte") | Logs, Zustellung und Domains ohne Browser |
 | Playwright-Plugin | aus, wenn der eingebaute Browser reicht | zweiter Browser-Werkzeugsatz neben Claude_Browser und Claude-in-Chrome |
 | Figma, Trello, Gmail, Kalender, Drive, Obsidian | aus für dieses Projekt | kein Repo-Bezug; Obsidian nur, wenn Notizen bewusst gebraucht werden |
 
 Umsetzung ist ein Klick je Connector in der Desktop-App bzw. `/mcp` im
 Terminal; im Repo ändert sich nichts.
+
+## MCP-Rechte: was ein Agent an Ploi und Resend NICHT darf (seit 2026-11-09)
+
+Ploi-MCP (`https://ploi.io/api/mcp`, Projekt-Scope) und Resend-MCP
+(`https://mcp.resend.com/mcp`, User-Scope) sind die beiden MCP-Server mit
+Schreibrechten auf Prod: Ploi steuert alle Server (Deploy, Neustart, nginx,
+`.env`), Resend die Domains und den Versand. Bis zum 2026-11-09 gab es keine
+einzige `deny`-Regel für MCP-Werkzeuge, und die Sessions laufen im Bypass-Modus.
+
+**Wo die Regeln stehen:** `~/.claude/settings.json` → `permissions.deny` und
+`permissions.ask` (User-Scope, gilt in jedem Worktree; Sicherung der Fassung
+davor: `~/.claude/settings.json.bak-2026-11-09`). Bewusst NICHT im Repo: der
+Resend-Server ist User-Scope, und die Liste soll nicht von einem Checkout
+abhängen.
+
+**`deny` — gesperrt, 25 Werkzeuge.** Unumkehrbar oder mit großem Radius, und
+nichts davon braucht ein Agent je:
+- Ploi: `create-server`, `restart-server`, `revoke-tenant-certificate`,
+  `reset-database-user-password`, `create-firewall-rule`,
+  `install-site-repository`, `update-deploy-script`, `toggle-quick-deploy`
+- Resend: `remove-domain`, `create-api-key`, `update-api-key`,
+  `remove-api-key`, `revoke-oauth-grant`, `rotate-webhook-signing-secret`,
+  `send-broadcast`, `send-batch-emails`, `remove-inbox`, `remove-webhook`,
+  `remove-segment`, `remove-template`, `remove-automation`, `remove-topic`,
+  `remove-contact-property`, `remove-suppression`, `batch-remove-suppressions`
+
+**`ask` — Rückfrage, 51 Werkzeuge.** Betrieb, den es manchmal wirklich
+braucht (Deploy, nginx-Reload nach einer vhost-Änderung, Test-Mail):
+- Ploi: `deploy-site`, `restart-server-service`, `reload-server-service`,
+  `restart-daemon`, `restart-site-queue`, `update-site-env`,
+  `update-nginx-config`, `update-tenant-nginx-config`, `request-certificate`,
+  `request-tenant-certificate`, `create-site`, `create-database`,
+  `create-database-user`, `attach-database-user`, `duplicate-database`,
+  `create-cronjob`, `add-site-aliases`, `add-site-tenants`,
+  `enable-`/`disable-`/`flush-fastcgi-cache`, `fix-`/`ignore-`/
+  `delete-server-insight`, `acknowledge-database`
+- Resend: `send-email`, `send-new-inbox-email`, `reply-to-inbox-thread-email`,
+  `forward-inbox-thread-email`, `send-inbox-draft`, `send-event`,
+  `cancel-email`, `create-`/`update-`/`remove-`/`cancel-broadcast`,
+  `create-`/`update-`/`verify-domain`, `create-`/`update-webhook`,
+  `replay-webhook-event`, `create-`/`update-automation`, `remove-contact`,
+  `create-contact-import`, `update-inbox-agent`, `remove-inbox-thread`,
+  `add-suppression`, `batch-add-suppressions`, `publish-template`
+
+Lesende Werkzeuge (`list-*`, `get-*`, Logs) bleiben frei.
+
+**Gemessen am 2026-11-09, mit Fantasie-IDs, also ohne Wirkung:**
+- `deny` wirkt sofort und auch im Bypass-Modus: die 25 Werkzeuge
+  verschwanden noch in der laufenden Session aus der Werkzeugliste.
+- `ask` wirkt im Bypass-Modus NICHT: `ploi restart-site-queue` lief ohne
+  Rückfrage durch (Antwort „Server not found"). Ein `PreToolUse`-Hook mit
+  `permissionDecision: "ask"` ändert daran nichts: der Hook feuerte
+  nachweislich (Sentinel-Datei), eine Rückfrage kam trotzdem nicht. Die
+  `ask`-Liste schützt also nur Sessions ohne Bypass. In Bypass-Sessions ist
+  der Aufruf Davids bewusste Freigabe (Davids Entscheidung 2026-11-09:
+  „so lassen" statt alles zu sperren, damit Agenten weiter deployen und
+  nginx neu laden können).
+
+**Neues Werkzeug, neuer Server:** Resend lädt Werkzeuge nach
+(`get_more_tools`), Ploi wächst ebenfalls. Kommt ein schreibendes Werkzeug
+dazu, wird es hier UND in `~/.claude/settings.json` eingeordnet. Ein neuer
+MCP-Server mit Schreibrechten auf Prod startet nie ohne eigene Sperrliste.
+
+**Geprüft und verworfen: MCP1 (mcp1.com, 2026-11-09).** Ein MCP-Gateway von
+Appwrite für Teams: eine URL je Team, Tokens beim Gateway statt auf dem
+Laptop, Regeln (nur lesend, zerstörerisch nur für Admins), Audit-Log,
+Frankfurt-Hosting, 1 Person kostenlos. Für uns nicht: (1) für eine Person der
+falsche Zuschnitt, (2) es legt den Ploi-Token, der alle Server steuert, bei
+einem weiteren, jungen Anbieter ab, (3) es leitet nur Remote-HTTP-Server
+weiter, der lokale Appwrite-MCP (Nur-lese-Schlüssel) und Obsidian kämen nicht
+durch. Die Sperrliste oben leistet den Kern („gefährliche Tools sperren")
+ohne Drittanbieter. **Wieder prüfen**, sobald eine zweite Person oder ein
+Agent wie der AI-Runner eigene, begrenzte MCP-Zugänge mit Audit-Log braucht.
 
 ## Bewusst nicht übernommen
 

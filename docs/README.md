@@ -37,7 +37,7 @@ gepflegt).
 | Datei | Thema |
 | --- | --- |
 | [referenz/WORKFLOW.md](referenz/WORKFLOW.md) | **Arbeitsablauf je Vorhaben** — Strategie→Konzeption→Prototyp→Umsetzung→Audit→Testing→Deploy→Docs; gilt für ALLE Projekte |
-| [referenz/SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md) | **Sitzungs-Hygiene** — Kontext, Nutzungslimit, Modell/Effort je Rolle, Ausgaben deckeln; 24 Video-Tipps bewertet, MCP-gegen-CLI-Vorschlag |
+| [referenz/SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md) | **Sitzungs-Hygiene** — Kontext, Nutzungslimit, Modell/Effort je Rolle, Ausgaben deckeln; 24 Video-Tipps bewertet, MCP-gegen-CLI-Vorschlag, MCP-Rechte (Sperrliste Ploi/Resend) |
 | [referenz/MULTI-SITE-PLATFORM-STRATEGIE.md](referenz/MULTI-SITE-PLATFORM-STRATEGIE.md) | Produkt-Manifeste, Layer/App-Komposition |
 | [referenz/PRODUKT-BILANZ.md](referenz/PRODUKT-BILANZ.md) | „Ein Konzept pro Produkt" — welche App welches Produkt montiert, wer durch die Datentür geht (ERZEUGT: `node scripts/produkt-bilanz.mjs`) |
 | [referenz/G0-PRODUKTVERTRAG.md](referenz/G0-PRODUKTVERTRAG.md) | Produktvertrag: Rollen, Tarif, Umfang |
