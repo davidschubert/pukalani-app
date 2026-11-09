@@ -19,6 +19,10 @@ import type { H3Event } from 'h3'
  *     ein base64-Video wären hunderte Megabyte in einem Request-Rumpf.
  *  5. KLEMMUNG: `aiVideoJson` schneidet auf das äussere Objekt zu und wirft
  *     bei Nicht-JSON eine 502.
+ *  6. DIE ABRECHNUNG (2026-11-09): `aiVideoDetailed`/`aiVideoJsonDetailed`
+ *     geben die Zahlen des Anbieters heraus — beide Richtungen plus die zwei
+ *     video-eigenen (`video_tokens`, `cached_tokens`) —, `0` wenn er keine
+ *     nennt, und die ALTEN Namen geben weiter nur Text bzw. Daten.
  */
 const appConfig: { pukalani: { ai: Record<string, unknown> } } = {
   pukalani: { ai: { enabled: false, videoModel: 'test/video', baseUrl: 'https://openrouter.test/api/v1' } },
@@ -47,7 +51,9 @@ vi.stubGlobal('resolveAiKey', async () => 'k-test')
 const {
   AI_VIDEO_MAX_VIDEOS,
   aiVideo,
+  aiVideoDetailed,
   aiVideoJson,
+  aiVideoJsonDetailed,
   aiVideoUrlAllowed,
   buildAiVideoRequestBody,
   getAiVideoConfig,
@@ -252,5 +258,87 @@ describe('aiVideo', () => {
       json: async () => ({}),
     }))
     await expect(aiVideo(event, [{ url: URL_ONE }], 'p')).rejects.toMatchObject({ statusCode: 502 })
+  })
+})
+
+/**
+ * WAS DER LAUF GEKOSTET HAT (2026-11-09).
+ *
+ * Der Video-Weg war der letzte bezahlte Weg des Monorepos, der seine
+ * `usage` wegwarf — und mit ~5 Cent je Lauf der teuerste. Geprüft wird am
+ * ERFOLGREICHEN Lauf, denn genau dort gingen die Zahlen verloren: ein
+ * gescheiterter Lauf kostet einmal, ein erfolgreicher läuft im Betrieb
+ * hundertmal.
+ */
+describe('aiVideoDetailed — die Zahlen der Abrechnung', () => {
+  /** Eine Antwort mit der Abrechnungs-Form, die die Probe vom 2026-10-27 gezeigt hat. */
+  function withUsage(): void {
+    fetchMock.mockImplementationOnce(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => '',
+      json: async () => ({
+        choices: [{ message: { content: '{"brief":"ok"}' }, finish_reason: 'stop' }],
+        usage: {
+          prompt_tokens: 135_000,
+          completion_tokens: 1200,
+          prompt_tokens_details: { video_tokens: 132_400, cached_tokens: 2000 },
+        },
+      }),
+    }))
+  }
+
+  it('gibt beide Richtungen UND die zwei video-eigenen Zahlen heraus', async () => {
+    withUsage()
+    const completion = await aiVideoDetailed(event, [{ url: URL_ONE }], 'p')
+    expect(completion).toMatchObject({
+      content: '{"brief":"ok"}',
+      finishReason: 'stop',
+      promptTokens: 135_000,
+      completionTokens: 1200,
+      // Der Beweis der Abrechnung: das Modell hat das Video gelesen, nicht
+      // nur seinen Titel paraphrasiert (Kopf von `aiVideo.ts`).
+      videoTokens: 132_400,
+      cachedTokens: 2000,
+    })
+  })
+
+  it('nennt 0, wenn der Anbieter keine `usage` mitschickt — nie `undefined`', async () => {
+    // Die Standard-Attrappe antwortet ohne `usage`. `0` heisst „nicht gesagt",
+    // nie „nichts verbraucht" — aber es ist eine ZAHL, über die man rechnen kann.
+    const completion = await aiVideoDetailed(event, [{ url: URL_ONE }], 'p')
+    expect(completion).toMatchObject({
+      finishReason: '',
+      promptTokens: 0,
+      completionTokens: 0,
+      videoTokens: 0,
+      cachedTokens: 0,
+    })
+  })
+
+  it('trägt die Zahlen auch durch den JSON-Weg', async () => {
+    withUsage()
+    const completion = await aiVideoJsonDetailed<{ brief: string }>(event, [{ url: URL_ONE }], 'p')
+    expect(completion.value.brief).toBe('ok')
+    expect(completion.promptTokens).toBe(135_000)
+    expect(completion.videoTokens).toBe(132_400)
+    expect(completion.cachedTokens).toBe(2000)
+    expect(completion.finishReason).toBe('stop')
+  })
+
+  /**
+   * GEGENPROBE: die alten Namen dürfen von der Erweiterung NICHTS merken.
+   * `aiVision`/`aiVisionJson` und jeder andere Konsument hängen daran.
+   */
+  it('GEGENPROBE: aiVideo gibt weiter nur den Text, aiVideoJson nur die Daten', async () => {
+    withUsage()
+    const text = await aiVideo(event, [{ url: URL_ONE }], 'p')
+    expect(text).toBe('{"brief":"ok"}')
+
+    withUsage()
+    const value = await aiVideoJson<{ brief: string }>(event, [{ url: URL_ONE }], 'p')
+    expect(value).toEqual({ brief: 'ok' })
+    expect(Object.keys(value)).not.toContain('promptTokens')
+    expect(Object.keys(value)).not.toContain('videoTokens')
   })
 })

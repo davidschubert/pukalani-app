@@ -308,6 +308,43 @@ interface InsightsBriefRun {
 }
 
 /**
+ * WAS DER LAUF VERBRAUCHT HAT, in der Form, die `insightsLogAi` nimmt.
+ *
+ * Ein eigener Typ, damit `failInsightsBrief` die Zahlen weiterreichen kann,
+ * ohne den Transport-Typ zu kennen: die `slug_taken`-Ablehnung kommt NACH dem
+ * bezahlten Aufruf, und gerade dort will man sehen, was der verworfene Lauf
+ * gekostet hat.
+ */
+interface InsightsBriefUsage {
+  promptTokens?: number
+  completionTokens?: number
+  videoTokens?: number
+  cachedTokens?: number
+  finishReason?: string
+}
+
+/**
+ * `undefined` statt `0`, wenn der Anbieter gar nicht geantwortet hat
+ * (Zeitüberschreitung, 502): `logEvent` lässt solche Schlüssel aus der Zeile,
+ * und eine `promptTokens: 0` wäre eine Behauptung über einen Verbrauch, den
+ * niemand gemessen hat.
+ *
+ * Der Parameter trägt den LOKALEN Typ, nicht `AiVideoJsonCompletion` aus dem
+ * Core: eine Antwort des Transports erfüllt ihn strukturell, und so braucht
+ * eine Route keinen Import quer durch die Layer-Grenze für eine Handvoll
+ * Zahlen.
+ */
+function briefUsage(completion: InsightsBriefUsage | undefined): InsightsBriefUsage {
+  return {
+    promptTokens: completion?.promptTokens,
+    completionTokens: completion?.completionTokens,
+    videoTokens: completion?.videoTokens,
+    cachedTokens: completion?.cachedTokens,
+    finishReason: completion?.finishReason,
+  }
+}
+
+/**
  * DER LAUF NACH DER ANTWORT — er wirft NIE.
  *
  * Jeder Ausgang landet an der Zeile, weil sie die einzige Stelle ist, an der
@@ -322,8 +359,12 @@ interface InsightsBriefRun {
  */
 async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<void> {
   let briefRawChars = 0
+  // AUSSERHALB des try, weil der `failed`-Zweig sie braucht: scheitert erst
+  // das SCHEMA, ist das Video gelesen, der Lauf bezahlt und die Zahlen stehen
+  // schon da (wörtlich dieselbe Teilung wie in `draft.post.ts`).
+  let completion
   try {
-    const answer = await aiVideoJson<unknown>(
+    completion = await aiVideoJsonDetailed<unknown>(
       event,
       [{ url: insightsVideoUrl(run.videoId) }],
       buildInsightsVideoBriefPrompt({
@@ -349,14 +390,14 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
     // wüsste niemand, wie oft das Modell über den Deckel schreibt — und genau
     // das ist die Frage, die man an den PROMPT stellen muss, nicht an die
     // Route (Kopf von `clampInsightsBrief`).
-    const answered = (answer as { brief?: unknown } | null | undefined)?.brief
+    const answered = (completion.value as { brief?: unknown } | null | undefined)?.brief
     briefRawChars = typeof answered === 'string' ? answered.length : 0
-    const brief = insightsVideoBriefSchema.parse(answer)
+    const brief = insightsVideoBriefSchema.parse(completion.value)
 
     const title = insightsBriefTitle(brief.title, run.item.title)
     const slug = await findFreeInsightsSlug(event, 'posts', title, '')
     if (!slug) {
-      await failInsightsBrief(event, run, 'slug_taken', briefRawChars)
+      await failInsightsBrief(event, run, 'slug_taken', briefRawChars, true, briefUsage(completion))
       return
     }
 
@@ -421,6 +462,7 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
       durationMs: Date.now() - run.startedAtMs,
       briefChars: post.brief.length,
       briefRawChars,
+      ...briefUsage(completion),
     })
   }
   catch (error) {
@@ -431,6 +473,7 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
       durationMs: Date.now() - run.startedAtMs,
       errorCode: insightsAiErrorCode(error),
       briefRawChars,
+      ...briefUsage(completion),
     })
     await failInsightsBrief(event, run, 'brief_failed', briefRawChars, false)
   }
@@ -451,6 +494,13 @@ async function failInsightsBrief(
   code: InsightsBriefError,
   briefRawChars: number,
   log = true,
+  /**
+   * Leer bei jedem Abbruch VOR dem Aufruf — dort gibt es nichts zu berichten.
+   * Nach dem Aufruf (`slug_taken`) ist das Video gelesen und bezahlt: dann
+   * gehören die Zahlen an die Zeile, sonst wäre genau der ärgerlichste Fall
+   * der einzige ohne Preis.
+   */
+  usage: InsightsBriefUsage = {},
 ): Promise<void> {
   if (log) {
     insightsLogAi('failed', 'brief', {
@@ -460,6 +510,7 @@ async function failInsightsBrief(
       durationMs: Date.now() - run.startedAtMs,
       errorCode: code,
       briefRawChars,
+      ...usage,
     })
   }
   await updateInsightsWatchRow(event, run.rowId, { briefError: code })

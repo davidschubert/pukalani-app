@@ -15,6 +15,11 @@ import { logEvent } from '../../core/server/utils/logEvent'
  * die Behauptung ist nicht „die Route ruft etwas auf", sondern „die Zahlen
  * stehen hinterher in der Zeile". Dazwischen liegt ein `JSON.stringify`, und
  * genau dessen Verhalten gegenüber `undefined` ist der zweite Test.
+ *
+ * Seit dem 2026-11-09 stehen die zwei VIDEO-eigenen Zahlen mit drin
+ * (`videoTokens`, `cachedTokens`): der Brief-Lauf aus K5 ist mit ~5 Cent der
+ * teuerste des Produkts und läuft seit BI3 im Hintergrund weiter, nachdem die
+ * Route geantwortet hat — dort schaut kein Mensch auf eine Antwort.
  */
 
 vi.stubGlobal('logEvent', logEvent)
@@ -103,6 +108,54 @@ describe('insightsLogAi — die Zahlen, die eine Rechnung erklären', () => {
     expect(Object.keys(line)).not.toContain('promptTokens')
     expect(Object.keys(line)).not.toContain('completionTokens')
     expect(Object.keys(line)).not.toContain('finishReason')
+  })
+
+  /**
+   * DER VIDEO-WEG (2026-11-09, nachgeholt) — die zwei Zahlen, die der
+   * Text-Weg nicht hat, am teuersten Lauf des Produkts (~5 Cent je Video).
+   * Dieser Lauf läuft seit BI3 im HINTERGRUND weiter, nachdem die Route mit
+   * 202 geantwortet hat: niemand sieht dort eine Antwort, die Zeile IST der
+   * einzige Zeuge.
+   */
+  it('trägt am Brief-Lauf auch die video-eigenen Zahlen', () => {
+    insightsLogAi('completed', 'brief', {
+      postId: 'post-2',
+      format: 'article',
+      model: 'google/gemini-2.5-flash',
+      promptVersion: 'insights-b-1',
+      durationMs: 97_000,
+      briefChars: 1887,
+      briefRawChars: 2194,
+      promptTokens: 135_000,
+      completionTokens: 1200,
+      videoTokens: 132_400,
+      cachedTokens: 2000,
+      finishReason: 'stop',
+    })
+
+    expect(lastLine()).toMatchObject({
+      event: 'insights.brief.completed',
+      promptTokens: 135_000,
+      completionTokens: 1200,
+      videoTokens: 132_400,
+      cachedTokens: 2000,
+    })
+  })
+
+  it('GEGENPROBE: ohne Video-Zahlen fehlen auch DIESE Schlüssel', () => {
+    // Ein ENTWURFS-Lauf hat kein Video. Eine `videoTokens: 0` an dieser Zeile
+    // wäre eine Aussage über etwas, das es dort nicht gibt.
+    insightsLogAi('completed', 'draft', {
+      postId: 'post-1',
+      model: 'anthropic/claude-haiku-4.5',
+      promptTokens: 2400,
+      completionTokens: 1100,
+    })
+
+    const line = lastLine()
+    expect(line).toMatchObject({ promptTokens: 2400 })
+    expect(Object.keys(line)).not.toContain('videoTokens')
+    expect(Object.keys(line)).not.toContain('cachedTokens')
   })
 
   it('schreibt NIE den Brief oder den Text — nur ihre Länge', () => {
