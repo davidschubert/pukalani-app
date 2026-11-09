@@ -30,6 +30,47 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KO1 — branding.supply: Kunden haben eine Kontoseite und eine Glocke ✅ 2026-11-09
+
+**Was.** Auf branding.supply bekam jedes Konto ohne `admin`/`moderator`-Label
+für den Menüpunkt „Konto" ein 403. Er zeigte seit der admin-Montage
+(`5777724e`, 2026-09-03) auf `/dashboard/settings`, und die Seite hängt seit
+ihrer Einführung (`2776f664`, 2026-06-15) an der admin-Middleware, die
+`dashboard.access` verlangt. Es war also NIE anders. Kunden hatten keine
+Profil-, Sicherheits-, Sitzungs-, Benachrichtigungs- oder Datenseite (den
+DSGVO-Export gab es nur als Route), und seit BI2 K7 entstehen für sie
+Antwort-Benachrichtigungen, die keine Glocke zeigte. Gefunden beim lokalen
+Klick-Beweis zu K7.
+
+**Davids Entscheidung (2026-11-09).** Eine eigene Kontoseite im brand-Layer,
+nicht die Dashboard-Seite für alle öffnen (die hätte jede App mit admin-Layer
+verändert und Kunden in eine Betreiber-Shell gesetzt). Dazu die Glocke per
+`pukalani.chrome.accountBell` (C17).
+
+**Gebaut.** `packages/brand/app/pages/account.vue` mit fünf Reitern (Profil,
+Sicherheit, Sitzungen, Benachrichtigungen, Daten). Jeder Reiter rendert
+dieselbe Core-Komponente wie das Dashboard und onboarding `/settings`
+(„zwei Hüllen, eine Implementierung"), Middleware nur `auth`. `BwSiteNav`:
+„Konto" → `/account` für alle, `NotificationBell` hinter dem Schalter;
+`apps/branding` schaltet `accountBell` an (Kopfzeile UND Dashboard-Shell).
+
+**Beweis (lokal, Port 3016, labelloses Testkonto).** Klick „Konto" im
+Avatar-Menü → `/de/account`, kein „Dashboard"-Eintrag; alle fünf Reiter
+rendern, `GET /api/auth/sessions`, `/api/auth/mfa/status`,
+`/api/auth/notification-prefs` und `/api/account/handle` → 200; Speichern der
+Mail-Einstellung `PUT /api/auth/notification-prefs` → 200; eine
+Probe-Benachrichtigung (`type: reply`, `communityId: ''` wie `notify()` sie im
+Silo schreibt) erscheint in der Glocke; englisch `/account/data` mit en-Texten;
+Gast → 302 auf `/login?redirect=…`; 375 px ohne Seiten-Überlauf. Testkonto und
+Probe-Zeile danach gelöscht. Der Prod-Beweis steht nach dem Deploy aus.
+
+**Gelernt:** Ein Menüpunkt, der „für jedes eingeloggte Konto" verspricht,
+ist erst bewiesen, wenn ein Konto OHNE Label hindurchklickt. Der damalige
+Beweis prüfte nur den Gast-Redirect, und der ist für Kunde und Betreiber
+identisch (Regel „RBAC mit dem schwächsten Konto testen"). Und: fünf Reiter
+passen auf 375 px nicht nebeneinander — Nuxt UI kürzt dann jede Beschriftung
+auf „S…", statt zu scrollen (`item: 'shrink-0'` + `overflow-x-auto`).
+
 ### AI3 — Live-Beweis: der Video-Weg nennt seinen Verbrauch ✅ 2026-11-09
 
 **Was.** Der teuerste bezahlte Lauf des Produkts — „Brief aus Video", rund

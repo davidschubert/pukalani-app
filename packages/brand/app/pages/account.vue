@@ -50,7 +50,10 @@ const links = computed<NavigationMenuItem[]>(() => [
         <p class="mt-1 text-sm" style="color: var(--bw-muted)">{{ t('brand.account.subtitle') }}</p>
       </div>
 
-      <UNavigationMenu :items="links" highlight class="-mx-1" />
+      <!-- Fünf Reiter passen auf 375 px nicht nebeneinander: ohne `shrink-0`
+           kürzt Nuxt UI jede Beschriftung auf „S…" (Klickbeweis 2026-11-09).
+           Die Leiste scrollt stattdessen seitlich, die Seite selbst nicht. -->
+      <UNavigationMenu :items="links" highlight class="-mx-1 overflow-x-auto" :ui="{ item: 'shrink-0' }" />
 
       <!-- Dieselben Abstände wie in den beiden anderen Hüllen: die Karten
            sind Geschwister eines flex-Containers, und AuthAccountDataPanel
