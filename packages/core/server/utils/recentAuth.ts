@@ -8,8 +8,10 @@ import { isRecentAuth, RECENT_AUTH_MAX_AGE_MS, REAUTH_REQUIRED_REASON } from '..
  * Wirft 403 mit `reason: reauth_required` — die Oberfläche meldet die Person
  * dann ab und schickt sie über `/login?redirect=…` zurück. Gehört an jede
  * Route, die etwas Unumkehrbares tut; heute: Konto löschen (RA1),
- * Besitz übertragen und Community stilllegen (RA2, onboarding-Layer). Die
- * Oberfläche fängt den Grund EINMAL ab: `useRecentAuthPrompt`.
+ * Besitz übertragen und Community stilllegen (RA2, onboarding-Layer), Nutzer
+ * löschen in der Betreiber-Konsole (RA3, admin) sowie Mandant löschen und
+ * Website austragen im Control Plane (RA3, control). Die Oberfläche fängt den
+ * Grund EINMAL ab: `useRecentAuthPrompt`.
  *
  * Das Alter kommt von Appwrite (`$createdAt` der aktuellen Session), nicht
  * aus einem Cookie oder Body — der Aufrufer kann es also nicht behaupten.
