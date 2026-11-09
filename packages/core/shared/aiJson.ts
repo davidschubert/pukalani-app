@@ -35,6 +35,54 @@
  */
 
 /**
+ * DIE VORSORGE VOR DEM AUFRUF: BITTE UM TYPOGRAFISCHE ANFÜHRUNGSZEICHEN
+ * (BI4 — AI2, 2026-11-09). Sie gehört in JEDEN Prompt, der ein
+ * JSON-Objekt mit Fliesstext zurückbekommt, und steht hier neben der
+ * Reparatur, weil beide dieselbe Fehlerklasse betreffen — die eine DAVOR,
+ * die andere DANACH.
+ *
+ * Gemessen (s. Kopf): 4 von 52 Entwurfs-Läufen schrieben `„Adidas"` und
+ * machten ihre eigene, bezahlte Antwort unparsbar. Streng ist man vor dem
+ * Aufruf, gerettet wird danach — eine Bitte kostet nichts und senkt die
+ * Häufigkeit, die Reparatur deckelt den Rest.
+ *
+ * ── DREI DINGE, DIE MAN HIER NICHT — AUCH NICHT GUT GEMEINT — ÄNDERT ────
+ * (1) **Die Beispiele schliessen typografisch.** Die erste Fassung dieser
+ *     Regel (im insights-Layer, 2026-11-08) schrieb sie als `„…"` und
+ *     `"…"` — also genau mit dem Zeichen, das der nächste Satz
+ *     verbietet. Ein Modell lernt die Form seiner Antwort aus den Beispielen
+ *     im Auftrag, nicht aus dem Verbot daneben; im Entwurfs-Prompt standen so
+ *     elf Vorlagen gegen eine Regel. Der Wächter
+ *     `scripts/check-prompt-quotes.mjs` hält das offen.
+ * (2) **Das gerade Zeichen steht nur in der Verbots-Zeile.** Es muss dort
+ *     stehen — ein Verbot, das sein Zeichen nicht nennt, ist keines.
+ * (3) **Sie ist EINE Zeichenkette für alle Layer.** Vorher lag sie im
+ *     insights-Layer; `courses`, `posts`, `comments`, `events`, `pages`,
+ *     `tickets`, `market` und `brand` rufen denselben Transport und hatten sie
+ *     nicht. Eine zweite Kopie würde genau so wieder auseinanderlaufen.
+ */
+export const AI_JSON_QUOTE_RULE = [
+  'ANFÜHRUNGSZEICHEN IM TEXT: benutze ausschliesslich typografische Anführungszeichen („…“ im Deutschen, “…” im Englischen).',
+  'Ein gerades ASCII-Anführungszeichen (") darf in keinem Textwert vorkommen — es beendet dort den JSON-String und macht deine Antwort unlesbar.',
+].join('\n')
+
+/**
+ * DIESELBE BITTE AUF ENGLISCH — für die Prompts, die auf Englisch
+ * geschrieben sind (`brand`, `market`). Eine Übersetzung, keine zweite Regel:
+ * eine deutsche Zeile mitten in einem englischen Auftrag liest ein Modell als
+ * Material und nicht als Anweisung.
+ *
+ * Im Englischen wiegt sie SCHWERER als im Deutschen: dort ist `"` das
+ * normale Anführungszeichen, ein Modell greift also von sich aus danach —
+ * während im Deutschen erst die Mischung aus typografisch auf und gerade zu
+ * den Fehler macht.
+ */
+export const AI_JSON_QUOTE_RULE_EN = [
+  'QUOTATION MARKS IN TEXT: use typographic quotation marks only (“…” in English, „…“ in German).',
+  'A straight ASCII double quote (") must never appear inside a text value — it ends the JSON string there and makes your answer unreadable.',
+].join('\n')
+
+/**
  * Schneidet eine Modell-Antwort auf das äußere JSON-Objekt zu: vom ERSTEN `{`
  * bis zum LETZTEN `}` — Zaun-Markierungen (```json) und Plauderei davor oder
  * dahinter fallen weg.

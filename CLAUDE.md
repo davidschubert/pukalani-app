@@ -155,7 +155,7 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
 - useToast kommt aus Nuxt UI — nicht im Core re-exportieren (schattet Auto-Import)
 - EINE Version je Kernabhängigkeit, Dependencies über den pnpm-Katalog, Nitros
   Routen-Typisierung ist AUS (jeder `$fetch` nennt seinen Antworttyp selbst), und
-  der Lint-Lauf ist mehr als `lint` — er fährt sechs Wächter davor. Zahlen,
+  der Lint-Lauf ist mehr als `lint` — er fährt sieben Wächter davor. Zahlen,
   Begründungen und die drei Bump-Kopplungen: `.claude/rules/deps-build.md`
 - pnpm, TypeScript strict (kein any), vollständige Dateien, keine Spekulation
 - Dependencies via pnpm Catalog: Versionen zentral in pnpm-workspace.yaml,

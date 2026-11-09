@@ -419,7 +419,7 @@ describe('POST /api/brand/check · was gespeichert wird', () => {
       host: 'kailua.coffee',
       locale: 'de',
       scoreVersion: 'score-1',
-      promptVersion: 'check-judge-2',
+      promptVersion: 'check-judge-3',
       model: 'anthropic/claude-haiku-4.5',
       band: 'exceptional',
     })

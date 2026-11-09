@@ -1,3 +1,4 @@
+import { AI_JSON_QUOTE_RULE } from '../../../../../core/shared/aiJson'
 import { categoryTranslateSchema } from '../../../../schemas/postCategory'
 import { MAX_CATEGORY_DESCRIPTION, MAX_CATEGORY_NAME, type CategoryTranslateResponse } from '../../../../shared/types/post'
 
@@ -37,10 +38,15 @@ function buildPrompt(name: string, description: string, locale: string): string 
     '',
     'Regeln:',
     `- Der Name bleibt kurz (höchstens ${MAX_CATEGORY_NAME} Zeichen), wie eine Menü-Beschriftung, ohne Satzzeichen am Ende.`,
-    '- Eigennamen, Produktnamen und Fachbegriffe, die auch im Zielland unübersetzt benutzt werden, bleiben stehen (z. B. „GSAP", „Nuxt").',
+    '- Eigennamen, Produktnamen und Fachbegriffe, die auch im Zielland unübersetzt benutzt werden, bleiben stehen (z. B. „GSAP“, „Nuxt“).',
     '- Ist der Text schon in der Zielsprache, gib ihn unverändert zurück.',
     `- Die Beschreibung bleibt ein Satz und höchstens ${MAX_CATEGORY_DESCRIPTION} Zeichen. Gibt es keine, gib "" zurück.`,
     '- Keine Erklärungen, keine Alternativen, keine Anführungszeichen um die Werte.',
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

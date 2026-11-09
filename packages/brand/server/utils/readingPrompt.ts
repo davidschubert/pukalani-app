@@ -7,6 +7,7 @@ import {
   BRAND_READING_SUMMARY_MAX,
   brandReadingVocabLines,
 } from '../../shared/brandReading'
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 
 /**
  * DER AUFTRAG DER LESUNG (Brand Design D2b, docs/archiv/BRAND-DESIGN.md §2.2
@@ -87,7 +88,7 @@ export function brandReadingPrompt(input: BrandReadingPromptInput): string {
     + 'describe how to rebuild the design. Describe only in vocabulary ids.'
     // Siehe dnaPrompt.ts: das Listen-Etikett „reference N" ist Prompt-Sprache,
     // der Satz an den Kunden nennt sein Bild in seiner Sprache.
-    + (language === 'German' ? ' In the German text, call an image „Vorbild N", never "reference".' : ''),
+    + (language === 'German' ? ' In the German text, call an image „Vorbild N“, never “reference”.' : ''),
     '',
     'BRAND FOUNDATION (the yardstick)',
     foundation,
@@ -119,6 +120,11 @@ export function brandReadingPrompt(input: BrandReadingPromptInput): string {
     + `or dropped. Max ${BRAND_READING_SUMMARY_LINE_MAX} characters per line, no "·" character.`,
     '',
     `LANGUAGE: write anchor, reason, suggestion and summary in ${language}. Ids stay as they are.`,
+    '',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
     '',
     'ANSWER FORMAT (JSON only)',
     '{"readings":[{"id":"<image id>","observed":[{"dimension":"<id>","value":"<id>"}],'

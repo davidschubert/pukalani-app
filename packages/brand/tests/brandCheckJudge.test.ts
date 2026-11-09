@@ -225,7 +225,8 @@ describe('brandCheckJudgeSystemPrompt · die Branchen-Liste', () => {
     expect(system).toContain('"industry"')
   })
 
-  it('die Fassung heisst `check-judge-2` — ein alter Check behauptet nichts Neues', () => {
-    expect(BRAND_CHECK_PROMPT_VERSION).toBe('check-judge-2')
+  it('die Fassung heisst `check-judge-3` — ein alter Check behauptet nichts Neues', () => {
+    // `-3` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`.
+    expect(BRAND_CHECK_PROMPT_VERSION).toBe('check-judge-3')
   })
 })

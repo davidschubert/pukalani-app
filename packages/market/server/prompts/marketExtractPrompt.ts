@@ -1,4 +1,5 @@
 import type { MarketFieldDefinition } from '../../shared/marketProfile'
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { MARKET_EVIDENCE_MAX, MARKET_FIELDS } from '../../shared/marketProfile'
 
 /**
@@ -30,7 +31,8 @@ import { MARKET_EVIDENCE_MAX, MARKET_FIELDS } from '../../shared/marketProfile'
  * bei fast allen Modellen mehr Gewicht.
  */
 
-export const MARKET_EXTRACT_PROMPT_VERSION = 'market-x-1'
+/** `+1` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`. */
+export const MARKET_EXTRACT_PROMPT_VERSION = 'market-x-2'
 
 /** Wie viele Ausgabe-Token die Extraktion höchstens braucht (zehn Felder). */
 export const MARKET_EXTRACT_MAX_TOKENS = 2_400
@@ -119,6 +121,11 @@ export function marketExtractPrompt(input: MarketExtractPromptInput): string {
     urls,
     '',
     'OUTPUT',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
+    '',
     'Return exactly this JSON shape and nothing else:',
     '{"fields":[{"fieldId":"pitch","value":"…","items":["…"],"evidence":{"quote":"…","sourceUrl":"…","confidence":"stated"}}]}',
     '"items" only for list fields. Omit "evidence" only when "value" is empty.',
