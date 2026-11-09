@@ -2087,3 +2087,31 @@ wie bei K5: **Migration VOR dem Code-Deploy**, und das Gate davor ist Davids
 Ja. Ein lokaler Klick-Beweis steht ebenfalls aus: dieser Worktree hat keine
 `apps/branding/.env` und damit keine lokale `branding`-Instanz (das Rezept
 dafür steht in der Notiz „branding Dev-Env & Prod-Ablage").
+
+### Auf Prod (2026-11-09, Davids Ja) — Migration NACH dem Code, ohne Schaden
+
+**Gefahren:** `comments-002…020` und `moderation-001…004` auf die
+`branding`-Instanz, alles ✔ ohne einen Fehler; `pnpm ops:schema-parity` danach
+**branding 49/49**, keine unbekannten Tabellen. Lesen antwortet jetzt
+(`GET /api/comments?targetType=insights&targetId=…` → 200, leere Liste;
+`/count` → `{count:0}`).
+
+**Die Reihenfolge war diesmal falsch.** K7 wurde in ZWEI Sitzungen parallel
+gebaut. PR #110 (diese Fassung, mit Gästen und Turnstile) wurde um 19:38 UTC
+gemergt und war ab 19:45 UTC live (Build `2508b191`); die Migration lief erst
+gegen 22:20 UTC aus der zweiten Sitzung, deren eigene Fassung (PR #111) damit
+doppelt war und geschlossen ist. Schaden: **keiner** — auf Prod ist noch kein
+Beitrag öffentlich (`/insights` verlinkt keinen), also hat keine Seite die
+Kommentarspalte gegen fehlende Tabellen gerendert. Aus #111 übernommen ist nur
+der Anmelde-Link mit Rückweg (`?redirect=`), den #110 nicht hatte.
+
+**Noch zu ist das Schreiben, und das ist ein Schalter, kein Fehler:**
+`app_config.commentsEnabled` steht auf der `branding`-Instanz auf `false`
+(seit 2026-09-09) — jeder Schreibversuch, auch der eines Gastes, antwortet 403
+`comments_disabled`. Umlegen ist Davids Entscheidung (Admin → Konfiguration).
+
+**Offen danach:** der Klick-Beweis AUF PROD, sobald der erste Artikel
+veröffentlicht und der Schalter an ist — Gast kommentiert (Turnstile),
+Antwort, Meldung, Ausblenden. Der lokale Klick-Beweis der zweiten Sitzung
+(PR #111, alle sieben Punkte grün) lief gegen die Variante OHNE Gäste und
+deckt den Gast-Weg deshalb nicht ab.

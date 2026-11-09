@@ -113,6 +113,23 @@ Sonst zeigt der Fuß auf eine Route, deren Tabelle es nicht gibt.
       (Default `''` = keine Betreiber-Mail). Der Absender bekommt seine
       Bestätigung unabhängig davon.
 
+- [x] **`comments` + `moderation` (BI2 K7; Prod-Migration GEFAHREN 2026-11-09 mit Davids Ja — comments-002…020 + moderation-001…004, alles ✔, Parität branding 49/49):**
+
+      ```
+      node --experimental-strip-types scripts/migrate.mjs --app branding \
+        --env-file ~/.appwrite-secrets/migrations/branding.env \
+        --layer comments --layer moderation
+      pnpm ops:schema-parity
+      ```
+
+      **`pnpm migrate … --env-file` geht NICHT mehr** (pnpm 10.29 wertet
+      `--env-file` offenbar selbst aus und meldet „…branding.env: not found", Exit 9) —
+      den Runner direkt mit node aufrufen. DIESMAL IN DER FALSCHEN
+      REIHENFOLGE: der Code (PR #110) war seit 19:45 UTC live, die Migration
+      lief erst gegen 22:20 UTC (Plan BRAND-INSIGHTS-KURATION §20 „Auf Prod").
+      Danach steht `app_config.commentsEnabled` auf Prod weiterhin auf
+      `false` — ein Produktschalter, den David umlegt, nicht die Migration.
+
 ## 3 · Monorepo (Claude — läuft bereits parallel)
 
 - [x] apps/branding (**Dev**-Port 3010 — anfangs 3006, das kollidierte
