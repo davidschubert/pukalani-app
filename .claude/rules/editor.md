@@ -98,7 +98,9 @@ paths:
   Konten. Beweis: `packages/core/scripts/verify-handle-search-boundary.mjs` —
   inkl. GEGENPROBE (Commit 3d074289: drei Mutationen, drei Rote — Gate,
   Publikums-Filter und Auflösungs-Filter fallen je einzeln).
-  `@tiptap/extension-mention` gehört EXAKT auf `3.27.1` gepinnt (Katalog, kein
-  Caret): ungepinnt löst pnpm neu auf und der Lockfile bewegt sich um 1898
+  `@tiptap/extension-mention` gehört EXAKT auf die Tiptap-Linie gepinnt
+  (Katalog, kein Caret; seit 2026-11-09 `3.33.0`, wandert GEMEINSAM mit den
+  `overrides` in pnpm-workspace.yaml — dort steht auch das Wechsel-Rezept):
+  ungepinnt löst pnpm neu auf und der Lockfile bewegt sich um 1898
   Zeilen statt um 6. Messung, Optionen, Nebenbefunde:
   docs/archiv/COMPOSER-UEDITOR.md.
