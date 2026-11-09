@@ -103,7 +103,8 @@ export async function insightsBeginAiRun(
 
 /**
  * DAS EREIGNIS-PROTOKOLL EINES LAUFS — Regel 1 aus `brandEvents.ts`: **nie
- * Prompt, nie Text**.
+ * Prompt, nie Text**. Eine TOKENZAHL ist kein Text: sie sagt, wie lang
+ * etwas war, nicht was darin stand.
  *
  * ── WARUM KEINE ZEILE IN `brand_events` ──────────────────────────────────
  * §9.4 nennt das brand-Events-MUSTER, und das Muster ist hier übernommen. Die
@@ -115,8 +116,11 @@ export async function insightsBeginAiRun(
  * Tabelle, keine Aufbewahrungsfrist und keinen GDPR-Beitrag.
  *
  * Geloggt wird, was eine Rechnung erklärt: Beitrag, Format, Modell,
- * Prompt-Fassung, Dauer, Fehlercode. Der Brief des Menschen und der erzeugte
- * Text stehen NICHT dabei — sie sind Inhalt, kein Betriebsdatum.
+ * Prompt-Fassung, Dauer, Fehlercode — und seit dem 2026-11-09 die beiden
+ * Tokenzahlen des Anbieters, ohne die „was eine Rechnung erklärt" ein
+ * Versprechen war, das die Zeile nicht halten konnte. Der Brief des
+ * Menschen und der erzeugte Text stehen NICHT dabei — sie sind Inhalt,
+ * kein Betriebsdatum.
  */
 /**
  * DER FEHLERCODE EINES GESCHEITERTEN LAUFS — für die Log-Zeile, nie für den
@@ -150,6 +154,25 @@ export function insightsLogAi(
      */
     briefChars?: number
     briefRawChars?: number
+    /**
+     * WAS DER LAUF VERBRAUCHT HAT (2026-11-09) — die Zahlen des Anbieters,
+     * nicht unsere Schätzung. `durationMs` sagt, wie lange es dauerte;
+     * diese drei sagen, was es kostete.
+     *
+     * Beide Richtungen, weil Eingabe und Ausgabe verschieden abgerechnet
+     * werden (bei Haiku 4.5 ist die Ausgabe das Fünffache) — eine Zahl
+     * allein trüge einen Preis, der falsch ist. `finishReason` steht
+     * daneben, weil ein `'length'` die Zahlen SOFORT anders lesen lässt:
+     * dann ist nicht der Text fertig, sondern die Decke gerissen (BI4).
+     *
+     * Hier und nicht an der Zeile: der Kopf dieser Datei begründet, warum
+     * Betriebsdaten eines Laufs in die Log-Zeile gehören und nicht in eine
+     * Tabelle — ein Beitrag hat viele Läufe, eine Spalte behielte nur den
+     * letzten, und niemand wertet diese Zahlen heute aus.
+     */
+    promptTokens?: number
+    completionTokens?: number
+    finishReason?: string
   },
 ): void {
   logEvent(phase === 'failed' ? 'warn' : 'info', `insights.${kind}.${phase}`, { ...data })

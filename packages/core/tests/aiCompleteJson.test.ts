@@ -23,15 +23,15 @@ vi.stubGlobal('createError', (init: Record<string, unknown>) => Object.assign(ne
 vi.stubGlobal('readInstanceSecret', async () => '')
 vi.stubGlobal('useRuntimeConfig', () => ({ aiKey: 'test-key' }))
 
-const { AI_TRUNCATED_CODE, aiCompleteDetailed, aiCompleteJson } = await import('../server/utils/aiComplete')
+const { AI_TRUNCATED_CODE, aiCompleteDetailed, aiCompleteJson, aiCompleteJsonDetailed } = await import('../server/utils/aiComplete')
 
 const event = {} as H3Event
 
 /** Eine Anbieter-Antwort, wie OpenRouter sie schickt. */
-function reply(content: string, finishReason = 'stop', completionTokens = 1234): void {
+function reply(content: string, finishReason = 'stop', completionTokens = 1234, promptTokens = 567): void {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
     choices: [{ message: { content }, finish_reason: finishReason }],
-    usage: { completion_tokens: completionTokens },
+    usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens },
   }), { status: 200 })))
 }
 
@@ -108,10 +108,11 @@ describe('aiCompleteJson — die abgeschnittene Antwort', () => {
 
 describe('aiCompleteDetailed — die Nebendaten kommen überhaupt an', () => {
   it('gibt finish_reason und Tokenzahl heraus', async () => {
-    reply('Text', 'length', 4321)
+    reply('Text', 'length', 4321, 765)
     await expect(aiCompleteDetailed(event, 'prompt')).resolves.toEqual({
       content: 'Text',
       finishReason: 'length',
+      promptTokens: 765,
       completionTokens: 4321,
     })
   })
@@ -123,7 +124,52 @@ describe('aiCompleteDetailed — die Nebendaten kommen überhaupt an', () => {
     await expect(aiCompleteDetailed(event, 'prompt')).resolves.toEqual({
       content: 'nur Text',
       finishReason: '',
+      promptTokens: 0,
       completionTokens: 0,
     })
+  })
+})
+
+/**
+ * DIE ZAHLEN AM ERFOLGREICHEN LAUF (2026-11-09).
+ *
+ * Bis hierher konnte nur ein GESCHEITERTER Lauf sagen, was er verbraucht hat
+ * — und der ist der seltene Fall. Die Gegenprobe gehört dazu: `aiCompleteJson`
+ * darf von dieser Erweiterung NICHTS mitbekommen, sonst wandert sie durch
+ * jeden anderen Konsumenten (Triage, Assist, Übersetzung, Brand-Wizard).
+ */
+describe('aiCompleteJsonDetailed — was der Lauf verbraucht hat', () => {
+  it('liefert die Daten UND beide Tokenzahlen', async () => {
+    reply(JSON.stringify({ body: 'fertig' }), 'stop', 1100, 2400)
+    await expect(aiCompleteJsonDetailed<{ body: string }>(event, 'prompt')).resolves.toEqual({
+      value: { body: 'fertig' },
+      finishReason: 'stop',
+      promptTokens: 2400,
+      completionTokens: 1100,
+    })
+  })
+
+  it('zählt auch den Lauf, der erst nach der Reparatur JSON war', async () => {
+    reply('{"body": "das Wort „Nike" allein"}', 'stop', 42, 99)
+    const result = await aiCompleteJsonDetailed<{ body: string }>(event, 'prompt')
+    expect(result.completionTokens).toBe(42)
+    expect(result.promptTokens).toBe(99)
+  })
+
+  it('nennt `0`, wenn der Anbieter keine Zahlen schickt — nicht `undefined`', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '{"body": "ohne usage"}' }, finish_reason: 'stop' }],
+    }), { status: 200 })))
+    await expect(aiCompleteJsonDetailed(event, 'prompt')).resolves.toEqual({
+      value: { body: 'ohne usage' },
+      finishReason: 'stop',
+      promptTokens: 0,
+      completionTokens: 0,
+    })
+  })
+
+  it('GEGENPROBE: `aiCompleteJson` gibt weiter NUR die Daten heraus', async () => {
+    reply(JSON.stringify({ body: 'fertig' }), 'stop', 1100, 2400)
+    await expect(aiCompleteJson<{ body: string }>(event, 'prompt')).resolves.toEqual({ body: 'fertig' })
   })
 })

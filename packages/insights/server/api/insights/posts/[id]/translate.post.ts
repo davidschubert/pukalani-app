@@ -52,8 +52,11 @@ export default defineEventHandler(async (event): Promise<InsightsTranslateRespon
   })
 
   let text
+  // Siehe `draft.post.ts`: ausserhalb des try, weil auch ein am Schema
+  // gescheiterter Lauf bezahlt ist und seine Zahlen schon kennt.
+  let completion
   try {
-    const raw = await aiCompleteJson<unknown>(event, buildInsightsTranslatePrompt(current, target), {
+    completion = await aiCompleteJsonDetailed<unknown>(event, buildInsightsTranslatePrompt(current, target), {
       model: run.model,
       providerRouting: run.providerRouting,
       label: 'insights',
@@ -65,7 +68,7 @@ export default defineEventHandler(async (event): Promise<InsightsTranslateRespon
     })
     // Ein Modell-Ergebnis ist eine Behauptung, bis ein Schema daraus Daten
     // macht (Kopf von `insightsPost.ts`). Die Deckel sind die des Vertrags.
-    text = insightsAiTextSchema.parse(raw)
+    text = insightsAiTextSchema.parse(completion.value)
   }
   catch (error) {
     insightsLogAi('failed', 'translate', {
@@ -75,6 +78,9 @@ export default defineEventHandler(async (event): Promise<InsightsTranslateRespon
       promptVersion: INSIGHTS_TRANSLATE_PROMPT_VERSION,
       durationMs: Date.now() - startedAt,
       errorCode: insightsAiErrorCode(error),
+      promptTokens: completion?.promptTokens,
+      completionTokens: completion?.completionTokens,
+      finishReason: completion?.finishReason,
     })
     throw error
   }
@@ -100,6 +106,9 @@ export default defineEventHandler(async (event): Promise<InsightsTranslateRespon
     model: run.model,
     promptVersion: INSIGHTS_TRANSLATE_PROMPT_VERSION,
     durationMs: Date.now() - startedAt,
+    promptTokens: completion.promptTokens,
+    completionTokens: completion.completionTokens,
+    finishReason: completion.finishReason,
   })
 
   return { post: toInsightsPost(saved) }

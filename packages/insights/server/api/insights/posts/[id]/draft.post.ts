@@ -74,8 +74,11 @@ export default defineEventHandler(async (event): Promise<InsightsDraftResponse> 
   })
 
   let text
+  // AUSSERHALB des try, weil der `failed`-Zweig sie braucht: scheitert erst
+  // das SCHEMA, ist der Lauf bezahlt und die Zahlen stehen schon da.
+  let completion
   try {
-    const raw = await aiCompleteJson<unknown>(event, buildInsightsDraftPrompt({
+    completion = await aiCompleteJsonDetailed<unknown>(event, buildInsightsDraftPrompt({
       format: current.format,
       baseLocale: current.baseLocale,
       brief: body.brief,
@@ -92,7 +95,7 @@ export default defineEventHandler(async (event): Promise<InsightsDraftResponse> 
       temperature: 0.5,
       timeoutMs: 120_000,
     })
-    text = insightsAiTextSchema.parse(raw)
+    text = insightsAiTextSchema.parse(completion.value)
   }
   catch (error) {
     insightsLogAi('failed', 'draft', {
@@ -102,6 +105,11 @@ export default defineEventHandler(async (event): Promise<InsightsDraftResponse> 
       promptVersion: INSIGHTS_DRAFT_PROMPT_VERSION,
       durationMs: Date.now() - startedAt,
       errorCode: insightsAiErrorCode(error),
+      // `undefined`, wenn der Anbieter selbst nicht antwortete — dann gibt
+      // es nichts zu berichten, und `logEvent` lässt die Schlüssel weg.
+      promptTokens: completion?.promptTokens,
+      completionTokens: completion?.completionTokens,
+      finishReason: completion?.finishReason,
     })
     throw error
   }
@@ -127,6 +135,9 @@ export default defineEventHandler(async (event): Promise<InsightsDraftResponse> 
     model: run.model,
     promptVersion: INSIGHTS_DRAFT_PROMPT_VERSION,
     durationMs: Date.now() - startedAt,
+    promptTokens: completion.promptTokens,
+    completionTokens: completion.completionTokens,
+    finishReason: completion.finishReason,
   })
 
   return { post: toInsightsPost(saved) }
