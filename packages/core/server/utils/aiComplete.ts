@@ -252,11 +252,23 @@ export async function getEffectiveAiConfig(event: H3Event): Promise<EffectiveAiC
  * einem Modell, das Unsinn geschrieben hat, nicht zu unterscheiden, und die
  * Diagnose von BI4 musste an OpenRouter vorbei gemessen werden statt im Log
  * zu stehen.
+ *
+ * ── WARUM AUCH DIE EINGABE-TOKENS (2026-11-09) ───────────────────────────
+ * BI4 brauchte nur die AUSGABE, weil nur sie an die Decke stößt. Für die
+ * Frage „was hat dieser Lauf gekostet?" reicht sie nicht: Anbieter rechnen
+ * Eingabe und Ausgabe zu VERSCHIEDENEN Preisen ab (bei Haiku 4.5 ist die
+ * Ausgabe das Fünffache), und der Prompt einer Redaktions-Route ist kein
+ * Rundungsfehler — er trägt Regelwerk, Brief und Markennamen. Mit nur einer
+ * der beiden Zahlen ist jede Kostenangabe eine Schätzung, die sich als
+ * Messung ausgibt. Beide sind `0`, wenn der Anbieter sie nicht nennt — ein
+ * `0` heißt hier „nicht gesagt", nie „nichts verbraucht".
  */
 export interface AiCompletion {
   content: string
   /** OpenAI-kompatibel: `'stop'`, `'length'`, … — oder `''`, wenn es fehlt. */
   finishReason: string
+  /** Gelesene Tokens laut Anbieter (Prompt + System) — `0`, wenn er keine nennt. */
+  promptTokens: number
   /** Erzeugte Tokens laut Anbieter — `0`, wenn er keine nennt. */
   completionTokens: number
 }
@@ -305,12 +317,13 @@ export async function aiCompleteDetailed(event: H3Event, prompt: string, options
     }
     const payload = await res.json() as {
       choices?: { message?: { content?: string }, finish_reason?: string }[]
-      usage?: { completion_tokens?: number }
+      usage?: { prompt_tokens?: number, completion_tokens?: number }
     }
     const choice = payload.choices?.[0]
     return {
       content: choice?.message?.content ?? '',
       finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
+      promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
       completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
     }
   }
@@ -348,8 +361,33 @@ export const AI_TRUNCATED_CODE = 'ai_truncated'
  * (manche Modelle wrappen trotz Anweisung in ```json) und parst. Der Aufrufer
  * validiert/klemmt die Felder selbst — T ist eine Behauptung, kein Beweis
  * (deshalb sinnvollerweise Partial<...> übergeben).
+ *
+ * DIE ALTE, UNVERÄNDERTE SCHNITTSTELLE für jeden Konsumenten, der nur die
+ * Daten will — dieselbe Teilung wie `aiComplete`/`aiCompleteDetailed`.
  */
 export async function aiCompleteJson<T = unknown>(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<T> {
+  return (await aiCompleteJsonDetailed<T>(event, prompt, options)).value
+}
+
+/**
+ * DASSELBE JSON, PLUS DIE ZAHLEN, DIE DIE RECHNUNG ERKLÄREN (2026-11-09).
+ *
+ * `aiCompleteJson` kannte `promptTokens`/`completionTokens` schon — es hat sie
+ * nur im ERFOLGSFALL weggeworfen und nur beim Scheitern ins Log geschrieben.
+ * Genau verkehrt: ein gescheiterter Lauf kostet einmal, ein erfolgreicher
+ * läuft im Betrieb hundertmal. Wer wissen will, was eine Route kostet, bekam
+ * deshalb nur eine Schätzung, obwohl der Anbieter die Zahl mitgeschickt hat
+ * (gemessen am 2026-11-09: der K6-Entwurf lieferte 827 Wörter gegen 700
+ * bestellte — die Abweichung war nachrechenbar, der Preis nicht).
+ *
+ * `value` statt `content`, weil hier Daten herauskommen und kein Text; der
+ * Rest ist `AiCompletion` ohne das Feld, das schon geparst wurde.
+ */
+export interface AiJsonCompletion<T> extends Omit<AiCompletion, 'content'> {
+  value: T
+}
+
+export async function aiCompleteJsonDetailed<T = unknown>(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<AiJsonCompletion<T>> {
   const label = options.label ?? 'core'
   const completion = await aiCompleteDetailed(event, prompt, options)
   const parsed: ModelJsonResult<T> | null = parseModelJson<T>(completion.content)
@@ -360,7 +398,12 @@ export async function aiCompleteJson<T = unknown>(event: H3Event, prompt: string
       // ein Blick auf den Prompt (BI4 hat ihm das Anführungszeichen beigebracht).
       console.warn(`[${label}] KI-Antwort war erst nach Reparatur JSON (${completion.completionTokens} Tokens)`)
     }
-    return parsed.value
+    return {
+      value: parsed.value,
+      finishReason: completion.finishReason,
+      promptTokens: completion.promptTokens,
+      completionTokens: completion.completionTokens,
+    }
   }
 
   // Ab hier ist der Lauf bezahlt und nichts zu retten. Die EINE Frage, die
