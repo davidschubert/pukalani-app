@@ -3176,3 +3176,33 @@ die `deny`-Liste.
 **Wieder prüfen:** sobald eine zweite Person oder ein Agent (AI-Runner) eigene,
 begrenzte MCP-Zugänge mit Audit-Log braucht. Details:
 docs/referenz/SESSION-HYGIENE.md, Abschnitt „MCP-Rechte".
+
+## 2026-11-09 — K7: Kommentare unter Insights-Artikeln werden in der App verdrahtet, nicht im Bauplan
+
+**Frage:** Die Komposition Artikel + Kommentare gehört nach der Regel in
+`packages/blueprint`. branding.supply trägt den Bauplan aber bewusst nicht: er
+zieht per `requires` posts/events/courses samt Tabellen, die Seiten /feed,
+/discussions, /events, /courses und ein eigenes Standard-Layout mit, das das
+Layout von branding.supply überschriebe. Wohin also?
+**Entscheidung (David):** In `apps/branding`. Der insights-Layer hält die
+Stelle frei (`InArticleComments.vue`, rendert ohne Override nichts), die App
+überschreibt sie mit `CommentSection` — dasselbe Muster wie
+`TicketModalComments` im tickets-Layer.
+**Warum:** Der Grund der Bauplan-Regel („Pool und Silo zeigen dasselbe") greift
+nicht: insights läuft auf genau EINER Site, die Verdrahtung existiert also auch
+so genau einmal. Verworfen: ein zweiter Kompositions-Layer (bricht „blueprint
+ist der einzige Layer, der mehrere Produkte kennt") und blueprint in branding
+(vier fremde Produkte samt Migrationen und Layout).
+**Sicherung:** Die Produkt-Bilanz listet App-Komponenten, die eine
+Layer-Komponente überschreiben, seit diesem Tag in einer eigenen Tabelle —
+vorher sah sie nur Seiten.
+**Wieder prüfen:** sobald insights auf einer zweiten Site läuft — dann zieht
+die Datei in einen Kompositions-Layer.
+
+**Zweite Entscheidung (David, selber Tag):** Die lokale OrbStack-Appwrite wurde
+geleert und frisch aufgesetzt, statt einen Schlüssel für das alte lokale
+Projekt zu besorgen („local ist alles veraltet"). Dump der alten DB:
+`~/Developer/orbstack/appwrite-maria/backup-pre-k7-wipe-2026-11-09.sql.gz`.
+Lokal gibt es seitdem nur das Projekt `branding`; die Keys in den übrigen
+`apps/*/.env` sind ungültig. Ein Spiegel von Prod nach lokal ist ein eigenes
+Vorhaben.

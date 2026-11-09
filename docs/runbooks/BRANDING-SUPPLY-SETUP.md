@@ -113,6 +113,22 @@ Sonst zeigt der Fuß auf eine Route, deren Tabelle es nicht gibt.
       (Default `''` = keine Betreiber-Mail). Der Absender bekommt seine
       Bestätigung unabhängig davon.
 
+- [ ] **`comments` + `moderation` (BI2 K7, 2026-11-09 — Plan
+      docs/plans/BRAND-INSIGHTS-KURATION.md §20; WARTET auf Davids Ja):**
+      comments-002…020 (19 Dateien, fünf Tabellen) + moderation-001…004
+      (Tabelle `reports`). Kein Bucket, also kein `files.*`-Scope nötig.
+
+      ```
+      pnpm migrate --app branding --env-file ~/.appwrite-secrets/migrations/branding.env --layer comments --layer moderation
+      pnpm ops:schema-parity                       # BRANDING_SOLL trägt jetzt COMMENTS_ + MODERATION_TABLES
+      ```
+
+      Gate-Reihenfolge: **Davids Ja** → Migration → Parität → Merge/Deploy →
+      `curl https://branding.supply/api/health` (Build-SHA) → einen
+      veröffentlichten Artikel unter `/insights/…` aufrufen: „Kommentare (0)"
+      steht unter dem Newsletter. Ohne die Tabellen antwortete JEDE
+      Artikelseite mit einer kaputten Kommentarspalte (Lehre K5/insights-009).
+
 ## 3 · Monorepo (Claude — läuft bereits parallel)
 
 - [x] apps/branding (**Dev**-Port 3010 — anfangs 3006, das kollidierte

@@ -343,7 +343,7 @@ Anwalt ist dafür kein Gate.
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
 | ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`). **Nachtrag 2026-10-28:** ein Brief über 2.000 Zeichen warf den bezahlten Lauf weg (2 von 6 gemessenen Läufen) — das Schema klemmt jetzt an einer Grenze statt abzulehnen | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | **K6** | **SEO/GEO-Artikelregeln** — Prompt `insights-d-2`, siebte Prüfregel | — | S |
-| **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
+| **K7** | **Kommentare unter Artikeln** — **GEBAUT 2026-11-09 (§20)**: `comments` + `moderation` in `apps/branding` montiert, Verdrahtung in der App (Davids Entscheidung), Schreib-Wächter in insights, lokaler Klick-Beweis. **Prod-Migration offen (Davids Ja, VOR dem Merge)** | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
 **Nach Davids Entscheidungen vom 2026-09-09 (§9):** K1 entfällt, K2 läuft
 sofort (kein Gate, keine Migration), K3 ist beauftragt und braucht ein Ja zur
@@ -1977,3 +1977,84 @@ Live-Beweis ist der erste bezahlte Lauf nach dem Deploy.
 Bundle, ein echter Insights-Entwurf lief um 10:41 UTC mit `finishReason: stop`
 durch — mit `allowFallbacks: false` geht das nur über einen EU-Endpunkt
 (Gegenprobe §18). Einzelheiten: COMPLETE „AI1 — Live-Beweis“.
+
+---
+
+## 20. K7 gebaut (2026-11-09) — Kommentare unter den Artikeln
+
+### Was gebaut ist
+
+* **Montiert:** `comments` und `moderation` im Site-Manifest, in `extends`
+  (kanonische Reihenfolge: nach `admin`, vor `brand`) und in `package.json`;
+  `pnpm check:manifests` grün. Beide Layer haben ihr PM1-Plugin schon.
+  `moderation` ist keine Wahl, sondern das `requires` von comments.
+* **Die Verdrahtung steht in der APP, nicht in `blueprint`** — Davids
+  Entscheidung 2026-11-09 (DECISION-LOG). Der Bauplan zieht per `requires`
+  posts/events/courses samt Tabellen, Seiten (/feed, /discussions, /events,
+  /courses) und eigenem Standard-Layout mit; branding.supply trägt ihn deshalb
+  bewusst nicht. insights läuft nur hier, die Verdrahtung existiert also auch
+  so genau einmal. Muster wie `TicketModalComments`: der Layer hält die Stelle
+  frei (`packages/insights/app/components/InArticleComments.vue`, rendert
+  ohne Override nichts), die App füllt sie
+  (`apps/branding/app/components/InArticleComments.vue`). Die Produkt-Bilanz
+  zeigt solche Überschreibungen jetzt in einer eigenen Tabelle (Generator
+  `scripts/produkt-bilanz.mjs`) — sie war für Komponenten blind.
+* **Nur Artikel, auch serverseitig:** `targetType` `insights-article`,
+  `targetId` = Row-Id des Beitrags (ein umbenannter Artikel behält seine
+  Diskussion). Der Schreib-Wächter `packages/insights/server/plugins/comment-target.ts`
+  hängt am Core-Vertrag `registerContentWriteGuard` und lässt nur zu, was
+  `insightsPostAcceptsComments` sagt: Format `article` UND öffentlich sichtbar.
+  Alles andere — Entwurf, Duell, Profil, Ranking, erfundene Id — bekommt die
+  neutrale 404 der Leseseite. Das Format steht eigens in der Regel: wird
+  `duel` eines Tages freigeschaltet, bleibt die Spalte trotzdem zu.
+* **Platz auf der Seite:** nach dem Newsletter-Eintrag (der gilt dem, der das
+  Stück zu Ende gelesen hat), nicht in der Vorschau.
+* **Nebenbei behoben (comments-Layer, alle Apps):** der „Anmelden"-Link der
+  Kommentarspalte trug kein `?redirect=` — wer kommentieren wollte, landete
+  nach der Anmeldung auf der Startseite.
+* Embed und Gast-Kommentare bleiben beim Layer-Default **aus**.
+* Paritäts-Soll `branding` + COMMENTS_TABLES (5) + MODERATION_TABLES (1).
+
+### Lokaler Klick-Beweis (2026-11-09, frische lokale Instanz)
+
+Die lokale Appwrite war ohne Schlüssel für `branding` (die K6-Session hatte das
+Projekt unter einem eigenen Console-Konto angelegt, und Appwrite ≥ 2.2 erlaubt
+self-hosted nur EINE Organisation). Mit Davids Ja neu aufgesetzt (Dump der alten
+DB vorher: `~/Developer/orbstack/appwrite-maria/backup-pre-k7-wipe-2026-11-09.sql.gz`),
+`pnpm migrate --app branding` komplett grün (inkl. 19 comments- und 4
+moderation-Migrationen), `seed:launch`, Artikel lokal veröffentlicht.
+
+1. Gast: Artikel zeigt „Kommentare (0)" und „Anmelden, um zu kommentieren",
+   kein Eingabefeld; Kommentare anderer sind lesbar.
+2. Lea angemeldet ⇒ Kommentar erscheint sofort, „Kommentare (1)".
+3. Wächter-Gegenprobe (derselbe POST, angemeldet): veröffentlichtes Duell,
+   Profil-Entwurf, Ranking, erfundene Id ⇒ je **404**; der Artikel ⇒ **201**.
+4. Max über den Link der Spalte angemeldet ⇒ zurück auf dem Artikel
+   (Rückweg-Fix), Antwort auf Lea eingerückt; Lea hat eine `reply`-Meldung mit
+   Link auf den Artikel.
+5. Max meldet einen Kommentar ⇒ Admin sieht ihn unter /dashboard/comments
+   (Reiter „Gemeldet"), blendet aus ⇒ Meldung erledigt, für Gäste weg.
+6. DSGVO-Export: Lea ⇒ `data.comments` mit beiden Kommentaren; Max ⇒ seine
+   Antwort plus `data.moderation.reports` (Status `resolved`).
+7. Gegenprobe Seiten: mit vorübergehend ALLEN Formaten freigeschaltet rendern
+   Duell, Markenprofil und Ranking (200, echter Titel) OHNE Kommentarspalte; der
+   Artikel mit. Freischaltung danach zurückgesetzt.
+
+### Befunde, die NICHT Teil von K7 sind
+
+* **Kundenkonten bekommen auf branding für `/dashboard/settings` ein 403.**
+  Die Seite hängt an `dashboard.access` (admin-Middleware), der Menüpunkt
+  „Konto" in `BwSiteNav` zeigt aber jedem Konto dorthin. Folge für K7: eine
+  Antwort-Benachrichtigung entsteht, aber ein Kunde hat keine Glocke, keine
+  Benachrichtigungs-Einstellung (also auch keine Mail) und keinen Export-Knopf
+  — der Export geht nur über die Route. Betrifft schon heute jedes Konto.
+* Die Moderations-Tabelle zeigt als Ziel `insights-article <id>` statt des
+  Artikeltitels.
+
+### Prod-Reihenfolge (Lehre aus K5/insights-009)
+
+1. Davids Ja.
+2. `pnpm migrate --app branding --env-file ~/.appwrite-secrets/migrations/branding.env --layer comments --layer moderation`.
+3. `pnpm ops:schema-parity` — branding erwartet jetzt 6 Tabellen mehr.
+4. Erst dann mergen; Live-Build-SHA über `/api/health` prüfen.
+
