@@ -111,6 +111,29 @@ export function insightsNewsletterSender(): string {
 }
 
 /**
+ * MIT WELCHEM ZUGANG SENDET DER NEWSLETTER? (RS1 e, 2026-11-09.)
+ *
+ * Die eigene Versand-Domain braucht zwingend einen eigenen Schlüssel —
+ * gemessen: ein domain-gebundener Resend-Schlüssel antwortet auf einen
+ * fremden Absender mit 403, und die Bindung ist nachträglich nicht zu
+ * ändern. `undefined` heisst „die normalen Zugangsdaten der App", also
+ * unverändert wie vor RS1.
+ *
+ * Anders als der Absender kommt das Passwort NICHT aus `app.config` — das
+ * wäre eine Config-Datei im Repository. Es kommt aus der `runtimeConfig`
+ * (`NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS`, server-only) und wird hier nur
+ * durchgereicht, nie geloggt.
+ *
+ * Der BENUTZERNAME bleibt der der Mailer-Einstellung: bei Resend ist er für
+ * jeden Schlüssel gleich, und ein zweites Feld dafür wäre eine Stelle mehr,
+ * an der jemand etwas falsch abschreiben kann.
+ */
+export function insightsNewsletterAuth(event?: H3Event): { pass: string } | undefined {
+  const pass = useRuntimeConfig(event).insightsNewsletterSmtpPass
+  return typeof pass === 'string' && pass.trim().length > 0 ? { pass: pass.trim() } : undefined
+}
+
+/**
  * „Gibt es diese Seite nicht." — EINE Antwort für alles.
  *
  * Unbekannter Slug, Entwurf, gesperrtes Format, unlesbare Zeile: derselbe

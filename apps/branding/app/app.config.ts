@@ -408,35 +408,42 @@ export default defineAppConfig({
       enabled: true,
 
       /**
-       * DIE EIGENE NEWSLETTER-DOMAIN STEHT — DIE ADRESSE STEHT NOCH NICHT
-       * (RS1 e, 2026-11-09). Absichtlich, und hier ist der Grund.
+       * DIE EIGENE NEWSLETTER-DOMAIN STEHT, DER WEG AUCH — ES FEHLT NUR NOCH
+       * DER SCHLÜSSEL AUF DEM SERVER (RS1 e, 2026-11-09, Davids Entscheidung
+       * „Variante B").
        *
        * `mail.branding.supply` ist bei Resend verifiziert (Region
        * **eu-west-1**, DKIM + SPF + MX + Return-Path, alle vier Einträge
        * DNS-only in der Cloudflare-Zone, von aussen über zwei Resolver
-       * gegengeprüft). Der Weg dorthin ist gebaut:
-       * `pukalani.insights.newsletter.from` reicht einen eigenen Absender bis
-       * an `sendMail` durch, und beide Newsletter-Mails nennen ihn.
+       * gegengeprüft). Im Code reicht `newsletter.from` den Absender und
+       * `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` den eigenen Zugang bis an beide
+       * Newsletter-Mails durch.
        *
-       * ── WARUM HIER TROTZDEM NICHTS STEHT ────────────────────────────────
-       * Der SMTP-Schlüssel ist seit RS1 h (2026-11-08) ein
-       * `sending_access`-Schlüssel, der an die Domain **`pukalani.app`**
-       * gebunden ist. Eine Mail mit Absender `@mail.branding.supply` lehnt
-       * Resend damit ab. Stünde die Adresse schon hier, wäre sie eine
-       * Zeitbombe: heute harmlos (der Riegel `newsletter.enabled` ist `false`),
-       * und in dem Moment scharf, in dem jemand nach den Rechtstexten den
-       * Riegel öffnet — der Newsletter fiele dann aus, ohne dass jemand die
-       * Zeile angefasst hätte.
+       * ── WARUM HIER TROTZDEM NOCH NICHTS STEHT ───────────────────────────
+       * GEMESSEN am 2026-11-09: ein Resend-Schlüssel, der an eine Domain
+       * gebunden ist, antwortet auf einen fremden Absender mit **403 „This
+       * API key is not authorized to send emails from …"** — und die Bindung
+       * lässt sich an einem bestehenden Schlüssel NICHT mehr ändern (die API
+       * kann dort nur den Namen umschreiben). Unser `pukalani-smtp-send`
+       * hängt seit RS1 h an `pukalani.app`. Stünde die Adresse schon hier,
+       * ohne dass daneben der eigene Schlüssel liegt, wäre sie eine
+       * Zeitbombe: heute harmlos (`newsletter.enabled` ist `false`), scharf
+       * in dem Moment, in dem jemand nach den Rechtstexten den Riegel
+       * öffnet.
        *
-       * ── WAS VORHER ENTSCHIEDEN WERDEN MUSS (Davids Wahl) ────────────────
-       * Entweder EIN Schlüssel für beide Domains (nimmt die Verengung von
-       * RS1 h teilweise zurück) ODER eigene SMTP-Zugangsdaten für den
-       * Newsletter (sauberer: der Massen-Schlüssel darf dann nur von der
-       * Massen-Domain senden, der Konten-Schlüssel nur von der Hauptdomain —
-       * kostet aber einen zweiten Transport im Core). Steht in OPEN-ITEMS
-       * unter RS1 (e).
+       * ── WAS ZU TUN IST, WENN DER RIEGEL AUFGEHT (zwei Handgriffe) ──────
+       * 1. In Resend einen `sending_access`-Schlüssel anlegen, der auf
+       *    `mail.branding.supply` gebunden ist, und ihn auf dieser Site als
+       *    `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen. EINE Stelle —
+       *    nicht die fünf aus Runbook § 6.1, denn der bestehende Schlüssel
+       *    bleibt unangetastet.
+       * 2. Hier die Adresse eintragen:
+       *    `newsletter: { from: 'Pukalani Brand Insights <insights@mail.branding.supply>' }`
+       *    (Wortlaut ist Davids Wahl).
        *
-       * Danach ist es EINE Zeile: `newsletter: { from: '…' }`.
+       * Beides gehört zusammen: der Absender ohne den Schlüssel ist genau
+       * der 403 von oben, der Schlüssel ohne den Absender bleibt wirkungslos.
+       * Runbook: RESEND-WEBHOOK.md § 7.
        */
 
       /**

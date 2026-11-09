@@ -75,6 +75,34 @@ export default defineNuxtConfig({
      * ein Wächter, der eine Dev-Hilfe anmahnt, erzieht zum Weglesen.
      */
     insightsYoutubeBaseUrl: 'https://www.googleapis.com/youtube/v3',
+    /**
+     * server-only! Env-Mapping: `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` — das
+     * SMTP-Passwort, mit dem NUR der Newsletter sendet (RS1 e, 2026-11-09).
+     *
+     * ── WARUM EIN ZWEITES PASSWORT ────────────────────────────────────────
+     * Der Newsletter geht von einer eigenen Versand-Domain
+     * (`mail.branding.supply`), damit eine Beschwerde über die Massenmail
+     * nicht die Zustellung der Anmelde- und OTP-Mails beschädigt. Gemessen am
+     * 2026-11-09: ein Resend-Schlüssel, der an eine Domain gebunden ist,
+     * antwortet auf einen fremden Absender mit **403**, und die Bindung lässt
+     * sich an einem bestehenden Schlüssel NICHT mehr ändern. Die eigene
+     * Domain braucht also zwingend einen eigenen Schlüssel.
+     *
+     * ── LEER IST DER DEFAULT, UND DAS IST DIE AUSSAGE ────────────────────
+     * Ohne Eintrag sendet der Newsletter wie bisher mit den normalen
+     * Zugangsdaten der App — es ändert sich also nichts, solange niemand
+     * etwas einträgt. Nur HOST und PORT bleiben in jedem Fall die der
+     * Mailer-Konfiguration: ein eigener Zugang heisst „anderes Konto beim
+     * selben Anbieter".
+     *
+     * ── ER STEHT BEWUSST NICHT IN DER PFLICHTLISTE DES ENV-WÄCHTERS ──────
+     * `pukalani.insights.newsletter.enabled` ist `false`, bis die
+     * Rechtstexte stehen; ein Wächter, der bis dahin rot ist, erzieht zum
+     * Weglesen (dieselbe Begründung wie beim YouTube-Stub darüber). Wer den
+     * Riegel öffnet, trägt BEIDES zusammen ein: diese Zeile und
+     * `newsletter.from` in `apps/branding`. Runbook: RESEND-WEBHOOK.md § 7.
+     */
+    insightsNewsletterSmtpPass: '',
   },
 
   /**

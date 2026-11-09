@@ -9,7 +9,7 @@ import { insightsPublicKopf } from '../../shared/insightsPost'
 // entscheidet, von welcher Domain eine Massenmail ausgeht. Ein Auto-Import,
 // den ein Testlauf nicht auflöst, wäre still ein leerer String gewesen — die
 // Mail ginge raus, nur wieder von der Hauptdomain, und kein Test sähe es.
-import { insightsNewsletterSender } from './insightsPublic'
+import { insightsNewsletterAuth, insightsNewsletterSender } from './insightsPublic'
 
 /**
  * DIE ZWEI TOKEN DES NEWSLETTERS UND DIE ZWEI MAILS, DIE ER VERSCHICKT —
@@ -242,6 +242,9 @@ export async function sendInsightsNewsletterConfirmMail(
       // durch die Eintragung ins Formular ausgelöst, also durch genau das,
       // was auch Beschwerden auslöst. Leer ⇒ unverändert `NUXT_SMTP_FROM`.
       from: insightsNewsletterSender(),
+      // Und der eigene Zugang dazu: ein eigener Absender OHNE den passenden
+      // Schlüssel ist genau der gemessene 403. Die beiden gehören zusammen.
+      auth: insightsNewsletterAuth(event),
     })
   }
   catch (error) {
@@ -322,6 +325,7 @@ export async function sendInsightsNewsletterIssueMail(
       text: copy.text,
       // Die eigene Versand-Subdomain (RS1) — leer ⇒ `NUXT_SMTP_FROM`.
       from: insightsNewsletterSender(),
+      auth: insightsNewsletterAuth(event),
       headers: {
         'List-Unsubscribe': `<${unsubscribeUrl}>`,
         'Resend-Idempotency-Key': insightsNewsletterIdempotencyKey(input.sendId, input.subscriberId),
