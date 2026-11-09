@@ -156,6 +156,12 @@ async function createFromModal(payload: BwNewBrandSubmit): Promise<void> {
  * ohne Konto. Jetzt: Initialen aus dem echten Konto (Name vor E-Mail),
  * Abmelden über den Core-Weg (useLogout), Gäste bekommen den Login-Knopf. */
 const { user, isLoggedIn } = useCurrentUser()
+/* Die Glocke hängt am C17-Schalter `pukalani.chrome.accountBell` (Core-
+ * Default aus) — dieselbe Frage, die das Core-Default-Layout stellt, das
+ * diese Kopfzeile auf branding.supply ersetzt. Was sie zeigt, entscheidet die
+ * Glocke selbst (core/shared/notificationScope.ts). */
+const appConfig = useAppConfig()
+const accountBell = computed(() => appConfig.pukalani?.chrome?.accountBell === true)
 const { logout } = useLogout()
 const initials = computed(() => {
   const source = (user.value?.name || user.value?.email || '').trim()
@@ -216,15 +222,22 @@ const userMenu = computed(() => [[
     })),
   },
 ], [
-  /* Seit der admin-Montage (2026-09-03) sind das ECHTE Ziele: die
-   * Konto-Seiten für jedes eingeloggte Konto, das Betreiber-Dashboard nur
-   * für Konten mit `admin`/`moderator`-Label (dieselbe RBAC-Matrix, die
-   * auch die Seite selbst durchsetzt — der Menüpunkt ist nur Sichtbarkeit,
-   * nie die Grenze). */
+  /* Seit der admin-Montage (2026-09-03) sind das ECHTE Ziele: das
+   * Betreiber-Dashboard nur für Konten mit `admin`/`moderator`-Label
+   * (dieselbe RBAC-Matrix, die auch die Seite selbst durchsetzt — der
+   * Menüpunkt ist nur Sichtbarkeit, nie die Grenze).
+   *
+   * „KONTO" ZEIGT SEIT 2026-11-09 AUF `/account` (Davids Entscheidung):
+   * bis dahin stand hier `/dashboard/settings` mit dem Versprechen „für jedes
+   * eingeloggte Konto" — aber die Seite hängt an der admin-Middleware
+   * (`dashboard.access`), und JEDES Kundenkonto bekam ein 403. Bewiesen war
+   * damals nur der Gast-Redirect. Jetzt hat jeder dasselbe Ziel: die
+   * Kunden-Kontoseite dieses Layers (pages/account.vue). Betreiber erreichen
+   * ihre Dashboard-Reiter weiter über „Dashboard". */
   ...(userHasCapability(user.value, 'dashboard.access')
     ? [{ label: t('brand.nav.dashboard'), icon: 'i-ph-squares-four', to: localePath('/dashboard') }]
     : []),
-  { label: t('brand.nav.account'), icon: 'i-ph-user-circle', to: localePath('/dashboard/settings') },
+  { label: t('brand.nav.account'), icon: 'i-ph-user-circle', to: localePath('/account') },
   { label: t('brand.nav.signOut'), icon: 'i-ph-sign-out', onSelect: () => { void logout() } },
 ]])
 </script>
@@ -282,6 +295,7 @@ const userMenu = computed(() => [[
         :content-locales="newBrandLocales" :loading="newBrandCreating" :failed="newBrandFailed"
         @submit="createFromModal"
       />
+      <NotificationBell v-if="isLoggedIn && accountBell" />
       <UDropdownMenu v-if="isLoggedIn" :items="userMenu">
         <button :aria-label="t('brand.nav.accountMenu')" class="grid place-items-center"><UAvatar :text="initials" size="md" /></button>
       </UDropdownMenu>

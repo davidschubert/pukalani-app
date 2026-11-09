@@ -3688,6 +3688,17 @@
         "lead": "{what} come out of your colour world, your font pair and your mark — all decided in Brand Design. Until then the kit delivers everything else: brand context, press kit, bundle.",
         "design": "Look at Brand Design"
       }
+    },
+    "account": {
+      "title": "Account",
+      "subtitle": "Profile, security, signed-in devices, notifications and data.",
+      "tabs": {
+        "profile": "Profile",
+        "security": "Security",
+        "sessions": "Sessions",
+        "notifications": "Notifications",
+        "data": "Data"
+      }
     }
   }
 }
