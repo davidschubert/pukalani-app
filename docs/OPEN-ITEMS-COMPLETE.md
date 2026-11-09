@@ -43,6 +43,11 @@ Container Up, 0 Worker-Fehler; OTP an `delivered@resend.dev` → `success`
 Gegenprobe 404). Rückweg und Protokoll: Runbook APPWRITE-2-7-UPGRADE.md,
 Abschnitt „AW28“.
 
+**Leerlauf-Beweis prod** 2026-11-09 02:04 UTC: 3 h ohne eine einzige Mail,
+der gehaltene Socket zu Resend stand in CLOSE_WAIT (von Resend geschlossen —
+der alte Verlustfall), die Probe kam mit `success` über einen neuen Socket
+raus, 0 Worker-Fehler.
+
 ### RT2 — Sofort-Abmeldung bei Session-Widerruf kam in Prod nie an ✅ 2026-11-09
 
 **Was:** `useRealtimeAccount` öffnete einen eigenen, cookie-nativen WebSocket
