@@ -182,7 +182,7 @@ export function launchFlagText(post, brandRows) {
   }
 }
 
-/** Die Vorab-Prüfung: alle sechs Regeln ausser dem Beleg-Abruf. */
+/** Die Vorab-Prüfung: alle sieben Regeln ausser dem Beleg-Abruf. */
 export function launchPostIssues(post, brandRows) {
   return insightsReviewIssues(post, {
     knownBrandIds: brandRows.filter(row => row.state !== 'removed').map(row => row.id),

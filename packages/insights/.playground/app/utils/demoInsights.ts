@@ -491,7 +491,7 @@ export function demoPost(slug: string, format?: string): InsightsPost | undefine
 
 /**
  * DER ENTWURF IM REDAKTIONS-SCREEN. Er steht bewusst auf `draft` und trägt
- * genau die Fehler, die die sechs Prüfregeln finden sollen: ein Zitat, das
+ * genau die Fehler, die die sieben Prüfregeln finden sollen: ein Zitat, das
  * NICHT in seiner Quelle steht, eine Fremdquelle ohne Datum wäre vom Schema
  * gar nicht angenommen worden (deshalb hier ein leerer Herausgeber-Fall über
  * die Prüfregel statt über das Schema), und eine genannte Marke ohne Zeile.

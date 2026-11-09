@@ -11,7 +11,7 @@ import type { InsightsPostStateResponse } from '../../../../../shared/types/insi
  *  1. IST DER ÜBERGANG ERLAUBT? — `insightsTransitionAllowed`, eine Tabelle
  *     im Vertrag. Sie sagt, was überhaupt ein Weg ist (und dass es aus
  *     `updated` nur zurück nach `draft` geht).
- *  2. HÄLT DER BEITRAG DIE SECHS PRÜFREGELN? — `insightsGateIssues`, MIT
+ *  2. HÄLT DER BEITRAG DIE SIEBEN PRÜFREGELN? — `insightsGateIssues`, MIT
  *     abgerufenen Quelltexten. Sie sagt, ob dieser Beitrag diesen Weg gehen
  *     DARF.
  *

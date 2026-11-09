@@ -421,7 +421,7 @@
       "evidenceFail": "Zitat nicht in der Quelle gefunden",
       "evidenceUnchecked": "Noch nicht geprüft",
       "rules": "Prüfregeln vor der Redaktion",
-      "rulesOk": "Alle sechs Regeln erfüllt.",
+      "rulesOk": "Alle sieben Regeln erfüllt.",
       "rulesBlocked": "Ein Punkt offen — der Übergang in die Redaktion ist gesperrt. | {count} Punkte offen — der Übergang in die Redaktion ist gesperrt.",
       "preview": "Vorschau",
       "toReview": "In die Redaktion geben",

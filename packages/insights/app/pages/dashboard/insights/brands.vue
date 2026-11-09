@@ -37,7 +37,7 @@ import { createInsightsBrandSchema } from '../../../utils/insightsForms'
  *
  * ── BEARBEITET WIRD IN EINEM USLIDEOVER, NICHT AUF EINER EIGENEN SEITE ───
  * Eine Marke ist ein FORMULAR, kein Dokument: keine zwei Sprachfassungen,
- * kein Fliesstext, kein Zustands-Gate mit sechs Prüfregeln. Der Beitrag hat
+ * kein Fliesstext, kein Zustands-Gate mit sieben Prüfregeln. Der Beitrag hat
  * dafür eine Vollseite, weil er all das hat. Eine dritte Adresse
  * (`/dashboard/insights/brands/<id>`) für zwanzig Felder wäre ein Rücksprung
  * pro Bearbeitung und ein zweiter Ladevorgang für die Liste dahinter.

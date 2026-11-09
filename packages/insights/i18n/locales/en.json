@@ -421,7 +421,7 @@
       "evidenceFail": "Quote not found in the source",
       "evidenceUnchecked": "Not checked yet",
       "rules": "Checks before the desk",
-      "rulesOk": "All six checks pass.",
+      "rulesOk": "All seven checks pass.",
       "rulesBlocked": "One open point — moving to the desk is blocked. | {count} open points — moving to the desk is blocked.",
       "preview": "Preview",
       "toReview": "Send to the desk",
