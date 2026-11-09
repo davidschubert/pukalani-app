@@ -300,6 +300,16 @@ Up, 0 Worker-Fehler. OTP-Probe `probe-aw28-20261108` → `201`,
 `worker.v1-mails · 1.58s · otp · smtp_type cloud · resend.dev · success`;
 Probe-Nutzer auf dem App-Server gelöscht (`GET 200` → `DELETE 204` → `GET 404`).
 
+**Leerlauf-Beweis prod** — 3 h nach dem Neustart (23:01:30 bis 2026-11-09
+02:04:22 UTC, **0** `v1-mails`-Spans im Fenster, Worker seit 23:00:55 ohne
+Neustart). Vor der Probe stand der gehaltene SMTP-Socket zu Resend (Port 587)
+in **`08` CLOSE_WAIT** — Resend hatte ihn selbst geschlossen, also genau der
+Fall, in dem 1.9.5–2.6 die Mail still verlor. Probe `probe-aw29-idle-20261109`
+02:04:24 → `201`, `worker.v1-mails · 1.59s · otp · smtp_type cloud ·
+resend.dev · success`; danach ein NEUER Socket (anderer Quellport) in `01`.
+0 Worker-Fehler im ganzen Fenster; Probe-Nutzer gelöscht (`204`, Gegenprobe
+`404`).
+
 **Künftige Upgrades:** keine Patchdatei mehr ziehen. Die Upgrade-Skripte
 `ops/appwrite-upgrade-2.*.sh` prüfen den Patch-Mount als Vorbedingung — ein
 NEUES Skript lässt diese Prüfung und den Mount-Dreh weg.
