@@ -30,6 +30,69 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AI3 — Live-Beweis: der Video-Weg nennt seinen Verbrauch ✅ 2026-11-09
+
+**Was.** Der teuerste bezahlte Lauf des Produkts — „Brief aus Video", rund
+5 Cent je 25-Minuten-Video — warf die Verbrauchszahlen des Anbieters weg:
+`aiVideo`/`aiVideoJson` gaben nur den Text zurück. Seit PR #103 (Build
+`acd4bf1c`) trägt die Zeile `insights.brief.completed` dieselben Zahlen wie der
+Textweg (PR #100) und zwei, die nur der Video-Weg hat: `videoTokens` (der
+Anteil des Videos an der Eingabe) und `cachedTokens`.
+
+**Wie.** `aiVideoDetailed` / `aiVideoJsonDetailed` in
+`packages/core/server/utils/aiVideo.ts` geben Inhalt UND `usage` zurück; die
+alten Namen behalten ihre Signatur und reichen durch. Bewusst KEINE
+Appwrite-Spalte: ein Beitrag hat viele Läufe, eine Spalte behielte nur den
+letzten (Begründung im Kopf von `insightsAi.ts`). Prompt und erzeugter Text
+bleiben draußen — eine Tokenzahl sagt, wie lang etwas war, nicht was darin
+stand.
+
+**Beweis** (echter bezahlter Lauf auf Prod, Davids Zustimmung 2026-11-09; NN/g
+„5 Design Principles in Context: Stripe", 4:26, Entwurf `6af1c0f3…`):
+`promptTokens 24953` · `completionTokens 563` · **`videoTokens 17490`** ·
+`cachedTokens 0` · `finishReason stop` · 10,5 s, Modell
+`google/gemini-3.1-flash-lite`, Prompt `insights-b-2`.
+
+**Gelernt:** `videoTokens` sind **70 % der Eingabe** — das ist der Beleg, dass
+das Modell das Video gelesen hat und nicht seinen Titel paraphrasiert. Und
+`cachedTokens 0` beim ERSTEN Lauf erklärt rückblickend den scheinbaren
+Preissturz der Probe vom 2026-10-27: ohne diese Zahl liest man denselben Lauf
+zweimal verschieden. Ein Beweis muss nicht teuer sein — ein 4:26-Video kostet
+rund einen Cent statt der fünf, und sagt dasselbe. Zwei Fallen auf dem Weg:
+die Beobachtungsliste war leer (ein Brief braucht ein Fundstück), und der Knopf
+„Erzeugen" ruft natives `confirm()`, das den Renderer für die Automatisierung
+einfriert — der Lauf ging deshalb über dieselbe Route per `fetch` in der
+angemeldeten Sitzung. Vor dem Auslösen das Prod-Log mitschreiben: bei einem
+202 ist die Zeile der einzige Zeuge.
+
+### BS1 R1c — Unternehmer-Bestätigung bei der Registrierung ✅ 2026-09-08 (nachgetragen 2026-11-09)
+
+**Was.** branding.supply verkauft nur an Unternehmen und Selbstständige
+(Davids Entscheidung 2026-09-08, Plan §9 Zeile 9). Das Registrierformular
+trägt neben dem AGB-Häkchen ein zweites Pflicht-Häkchen — „Ich handle als
+Unternehmer/in oder Selbstständige/r, nicht als Verbraucher/in" —, und die
+Bestätigung wird am Konto festgehalten wie die AGB-Fassung, damit später
+belegbar ist, WANN jemand sie gegeben hat.
+
+**Wo.** Schalter `pukalani.auth.businessOnly` (Core-Default AUS,
+`apps/branding` an) — bewusst ein EIGENER Schalter und nicht an `termsUrl`
+gehängt: die AGB sagen, welchem Text jemand zustimmt, der Kundenkreis ist eine
+andere Frage. Regel in `packages/core/shared/businessConfirmation.ts`,
+geschrieben an allen drei Anmeldewegen (`signup`, `otp/verify`,
+`oauth/callback`), Wächter
+`packages/core/scripts/verify-business-confirmation.mjs`.
+
+**Beweis.** Commit `55c4ec5c` (2026-09-08); am 2026-11-09 auf der lebenden
+Seite nachgeprüft — `/register` und `/de/register` zeigen beide Häkchen.
+
+**Gelernt:** das Paket war seit dem 2026-09-08 fertig und stand in OPEN-ITEMS
+zwei Monate lang als „läuft". Wer die Liste liest, hielt es für offene Arbeit —
+die Empfehlung „das baue ich als Nächstes" ging am 2026-11-09 genau darauf
+hin daneben, und nur ein Blick in den Code hat den Doppelbau verhindert. Ein
+Paket ist nicht erledigt, wenn der Code lebt, sondern wenn es hier steht. Bei
+einem TEILSTÜCK einer Sammelzeile fällt das Ausbuchen leichter aus als bei
+einer eigenen Zeile: die Zeile bleibt ja stehen, nur ihr Inhalt lügt.
+
 ### MCP-Rechte — Sperrliste für Ploi und Resend ✅ 2026-11-09
 
 **Was.** Anlass war die Frage, ob MCP1 (mcp1.com, MCP-Gateway von Appwrite)
