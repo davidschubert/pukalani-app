@@ -62,7 +62,13 @@ Mail-Einstellung `PUT /api/auth/notification-prefs` → 200; eine
 Probe-Benachrichtigung (`type: reply`, `communityId: ''` wie `notify()` sie im
 Silo schreibt) erscheint in der Glocke; englisch `/account/data` mit en-Texten;
 Gast → 302 auf `/login?redirect=…`; 375 px ohne Seiten-Überlauf. Testkonto und
-Probe-Zeile danach gelöscht. Der Prod-Beweis steht nach dem Deploy aus.
+Probe-Zeile danach gelöscht.
+
+**Auf Prod (2026-11-10).** PR #113, live ab Build `a332e2be`
+(`/api/health`). `/account`, `/de/account` und alle Reiter antworten einem
+Gast mit 302 auf `/login?redirect=…` statt 404, die Route ist also da. Der
+eingeloggte Klick mit einem Kundenkonto ohne Label gehört zum offenen
+K7-Klick-Beweis in OPEN-ITEMS BI2: ein Testkonto auf Prod legt nur David an.
 
 **Gelernt:** Ein Menüpunkt, der „für jedes eingeloggte Konto" verspricht,
 ist erst bewiesen, wenn ein Konto OHNE Label hindurchklickt. Der damalige
