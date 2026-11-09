@@ -127,8 +127,9 @@ Sonst zeigt der Fuß auf eine Route, deren Tabelle es nicht gibt.
       den Runner direkt mit node aufrufen. DIESMAL IN DER FALSCHEN
       REIHENFOLGE: der Code (PR #110) war seit 19:45 UTC live, die Migration
       lief erst gegen 22:20 UTC (Plan BRAND-INSIGHTS-KURATION §20 „Auf Prod").
-      Danach steht `app_config.commentsEnabled` auf Prod weiterhin auf
-      `false` — ein Produktschalter, den David umlegt, nicht die Migration.
+      Die Migration öffnet das Schreiben NICHT: `app_config.commentsEnabled`
+      stand auf `false` (403 `comments_disabled`) und ist ein eigener
+      Schalter — mit Davids Ja am 2026-11-09 auf `true` gesetzt.
 
 ## 3 · Monorepo (Claude — läuft bereits parallel)
 

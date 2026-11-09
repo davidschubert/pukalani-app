@@ -40,8 +40,9 @@ Gemergt als PR #110, live ab Build `2508b191`. Mit Davids Ja danach
 Parität 49/49, Lesen antwortet 200. Aus der parallelen Fassung PR #111
 (geschlossen, doppelt) übernommen: der Anmelde-Link der Kommentarspalte trägt
 jetzt `?redirect=` und führt nach der Anmeldung zurück zum Text — vorher
-landete man auf der Startseite, in JEDER App mit Kommentaren. Rest in
-OPEN-ITEMS BI2: `commentsEnabled` steht auf Prod auf `false`, Davids Schalter.
+landete man auf der Startseite, in JEDER App mit Kommentaren. Der Schalter
+`app_config.commentsEnabled` stand auf Prod auf `false` und ist mit Davids Ja
+seit 22:38 UTC an. Rest in OPEN-ITEMS BI2: der Klick-Beweis auf Prod.
 Details: Plan BRAND-INSIGHTS-KURATION §20 „Auf Prod".
 
 **Gelernt:** Zwei Sitzungen bauten dasselbe Paket, und die Reihenfolge

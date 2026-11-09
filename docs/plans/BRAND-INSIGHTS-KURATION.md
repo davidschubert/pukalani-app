@@ -2105,10 +2105,14 @@ Beitrag öffentlich (`/insights` verlinkt keinen), also hat keine Seite die
 Kommentarspalte gegen fehlende Tabellen gerendert. Aus #111 übernommen ist nur
 der Anmelde-Link mit Rückweg (`?redirect=`), den #110 nicht hatte.
 
-**Noch zu ist das Schreiben, und das ist ein Schalter, kein Fehler:**
-`app_config.commentsEnabled` steht auf der `branding`-Instanz auf `false`
-(seit 2026-09-09) — jeder Schreibversuch, auch der eines Gastes, antwortet 403
-`comments_disabled`. Umlegen ist Davids Entscheidung (Admin → Konfiguration).
+**Der Schalter war noch zu — jetzt ist er an.** `app_config.commentsEnabled`
+stand auf der `branding`-Instanz seit 2026-09-09 auf `false`: jeder
+Schreibversuch, auch der eines Gastes, antwortete 403 `comments_disabled`.
+Mit Davids Ja am 2026-11-09 um 22:38 UTC auf `true` gesetzt. Beweis: derselbe
+Gast-Aufruf, der vorher 403 bekam, scheitert jetzt erst an der Formularprüfung
+(400) — `assertCommentsWritable` steht in `guest.post.ts` VOR
+`readValidatedBody`, der Schalter lässt also durch. Ein echter Kommentar ist
+bewusst nicht geschrieben.
 
 **Offen danach:** der Klick-Beweis AUF PROD, sobald der erste Artikel
 veröffentlicht und der Schalter an ist — Gast kommentiert (Turnstile),
