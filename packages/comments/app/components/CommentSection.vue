@@ -251,8 +251,12 @@ function presenceLabel(u: PresenceUser): string {
         @click="() => embedLogin?.openLoginPopup()"
       />
     </div>
+    <!-- MIT Rückweg (K7, 2026-11-09): ohne `?redirect=` landete, wer hier auf
+         „Anmelden" klickte, nach der Anmeldung auf der Startseite statt wieder
+         unter dem Text, den er kommentieren wollte. Das Ziel prüft der Core
+         (`safeRedirectTarget` in useAuthRedirect) — nur interne Pfade. -->
     <p v-else class="text-sm text-muted">
-      <ULink :to="localePath('/login')" class="font-medium text-primary">{{ t('comments.loginLink') }}</ULink>{{ t('comments.loginSuffix') }}
+      <ULink :to="localePath({ path: '/login', query: { redirect: route.fullPath } })" class="font-medium text-primary">{{ t('comments.loginLink') }}</ULink>{{ t('comments.loginSuffix') }}
     </p>
 
     <div v-if="store.pendingCount" class="flex justify-center">
