@@ -50,7 +50,7 @@ export interface AiProviderRouting {
    * `readonly`, weil der Transport diese Liste nur LIEST (er kopiert sie beim
    * Request-Bau: `only: [...routing.only]`). Mit `string[]` liess sich ein
    * `as const`-Vertrag nicht übergeben — eine EU-gepinnte Konstante
-   * (`BRAND_PROVIDER_ROUTING_EU`) wurde so zum Typfehler an der Aufrufstelle,
+   * (`BRAND_PROVIDER_ROUTING_VERTEX_EU`) wurde so zum Typfehler an der Aufrufstelle,
    * und der naheliegende Ausweg wäre gewesen, dem Vertrag sein `as const` zu
    * nehmen. Genau das wäre der Fehler: die Konstante reist per Spread
    * (`{ ...ROUTING }`), und ein Spread kopiert die REFERENZ auf das Array —

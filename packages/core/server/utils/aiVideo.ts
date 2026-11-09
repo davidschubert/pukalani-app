@@ -46,7 +46,7 @@ import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
  * es steht zuletzt im `provider`-Objekt und lässt sich von aussen nicht
  * abschalten. `options.providerRouting` darf nur VERSCHÄRFEN (`zdr`, `only`,
  * `allowFallbacks`). Der Konsument in `insights` reicht
- * `BRAND_PROVIDER_ROUTING_EU` — dieselbe EU-gepinnte Fassung, die die
+ * `BRAND_PROVIDER_ROUTING_VERTEX_EU` — dieselbe EU-gepinnte Fassung, die die
  * Inspirationslesung benutzt.
  *
  * ── KEINE BYTES, NUR ADRESSEN ────────────────────────────────────────────

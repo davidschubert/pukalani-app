@@ -1704,3 +1704,96 @@ Allowlist** — ein einzelner Pin macht einen Anbieter-Ausfall zum Totalausfall
 des Textwegs, zwei EU-Endpunkte geben Redundanz INNERHALB der EU (Probe D).
 Der Textweg verbraucht pro Lauf Bruchteile eines Cents; 10 % davon sind kein
 Argument gegen einen Satz, den man dem Anwalt sonst nicht sagen kann.
+
+## 19. AI1 gebaut (2026-11-09) — der Textweg nennt jetzt seinen Ort
+
+Davids Entscheidung nach der Messung aus § 18: **pinnen, mit beiden Tags.**
+Umgesetzt an der einen Stelle, an der die Bedingungen leben
+(`packages/brand/server/utils/brandProviderRouting.ts`):
+
+```ts
+export const BRAND_PROVIDER_ROUTING = {
+  zdr: true,
+  dataCollection: 'deny',
+  allowFallbacks: false,
+  only: ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
+} as const
+```
+
+Damit laufen **alle zehn Textaufrufstellen** der Layer `brand`, `insights` und
+`market` in der EU — Wizard-Gespräch, Marken-Brief, Brand-Check-Urteil, DNA-
+Vorschlag, Zeichen-Entwürfe, Review, Marktvergleich und die drei
+Insights-Läufe. Sie teilen die Konstante, deshalb war es **eine** Zeile und
+nicht zehn.
+
+### Die Konstante hat einen neuen Namen bekommen
+
+`BRAND_PROVIDER_ROUTING_EU` heisst jetzt
+**`BRAND_PROVIDER_ROUTING_VERTEX_EU`** (17 Stellen, 7 Dateien). Grund: der
+Unterschied zwischen den beiden Fassungen ist nicht mehr „mit Ort / ohne Ort",
+sondern WELCHE Endpunkte — und ein Name, der „EU" sagt, während die Basis
+daneben auch EU ist, führt den nächsten Leser in die Irre. Der neue Name nennt
+den Endpunkt, den die Konstante enthält (`google-vertex/eu`), und wird von
+einem Modellwechsel nicht zur Lüge. **In `docs/archiv/**` und in
+OPEN-ITEMS-COMPLETE bleibt der alte Name stehen** — das ist ein Protokoll und
+kein Nachschlagewerk, dieselbe Regel wie bei `studio-NNN` ↔ `control-NNN`.
+
+### Der Wächter prüft jetzt den Ort, nicht nur die Erreichbarkeit
+
+`pnpm ops:ai-models` hatte eine Tabelle „dieses Feld braucht GENAU diesen
+Endpunkt". Das passt nicht mehr: `provider.only` ist eine **Allowlist**, der
+Aufruf gelingt mit MINDESTENS EINEM der Einträge. Die Tabelle trägt deshalb
+jetzt Listen, und die Prüfung heisst „einer genügt" — eine Liste mit einem
+Eintrag ist damit die strengste Form, nicht die schwächste.
+
+Drei Dinge waren dabei vorher ungedeckt:
+
+1. **`extractModel` und `reportModel`** (Marktvergleich) standen in keiner
+   Feldliste. Beide sind heute leer und waren deshalb unsichtbar — ein dort
+   eingetragener Slug ohne EU-Endpunkt wäre ein 404 ohne Vorwarnung gewesen.
+2. **`outsideViewModels`** ist ein ARRAY, und der Wächter kannte nur
+   `feld: '…'`. Genau dieses Feld lädt im eigenen Kopf dazu ein, zwei Modelle
+   verschiedener Anbieter einzutragen — die Einladung stand da, die Prüfung
+   nicht. Jetzt wird die Klammer gelesen und jeder Slug darin einzeln geprüft.
+3. **`ticketsAiModel` steht bewusst NICHT in der Ortstabelle.** Nachgeprüft:
+   Ticket-Triage und Moderations-Assist geben überhaupt kein
+   `providerRouting` mit. Ein Zwang für ein Feld zu erfinden, dessen Aufrufer
+   die Konstante nicht benutzt, hätte den Wächter unglaubwürdig gemacht.
+
+**Gegenprobe gefahren** (nicht nur behauptet): `reviewModel` testweise auf
+`google/gemini-3.1-flash-lite` gesetzt und `outsideViewModels` mit einem
+Gemini-Eintrag gefüllt ⇒ **zwei rote Befunde, Exit 1**, mit der Liste der
+vorhandenen Endpunkte daneben. Zurückgenommen, Lauf wieder grün: 6 von 6
+Modellwahlen erreichbar, die drei Textfelder ausdrücklich „inkl.
+amazon-bedrock/eu-west-1, google-vertex/europe".
+
+### Zwei Fallen, die beim Bauen zugeschlagen haben
+
+**`*/` in einem Block-Kommentar beendet den Kommentar.** Der Satz über den
+Preis schrieb die ortlosen Endpunkte als Glob — und damit stand der halbe
+Kommentar als Code da. Folge: 15 Testdateien des brand-Layers luden nicht
+mehr, mit einem Parse-Fehler, der auf eine Zeile ZEHN Zeilen weiter zeigte.
+Weder Lint noch Typecheck liefen zu dem Zeitpunkt, der Testlauf war der
+Finder. Wer in einem Kommentar über Pfade oder Globs schreibt, schreibt sie
+ohne Stern.
+
+**Ein ausgeschriebener Typ verschweigt ein neues Feld.**
+`InsightsAiRun.providerRouting` listete die drei Bedingungen einzeln
+(begründet: `as const` hätte einen Varianz-Fehler gegeben). Mit dem vierten
+Feld hätte das Objekt die Allowlist zur Laufzeit getragen und der Typ sie
+vergessen. Jetzt steht `only?: readonly string[]` mit dabei, und darüber der
+Satz, dass wer den Vertrag erweitert, diese Zeile mit erweitert.
+
+### Beweise
+
+`pnpm -r test` 3.193 + alle Layer grün (zwei Prüfungen mussten mit: die
+„SENDET DIE DATENSCHUTZ-BEDINGUNGEN WÖRTLICH"-Tests von `advisorGenerators`
+und `georgeContextGenerator` nennen das Objekt absichtlich wörtlich und sollen
+rot werden, wenn der Pin wandert — sie tun es, sie sind nachgezogen).
+`pnpm -r typecheck` grün, `pnpm lint` grün (6 Wächter), `pnpm ops:ai-models`
+grün mit Gegenprobe.
+
+**Was damit NICHT bewiesen ist:** dass ein echter Lauf auf Prod in der EU
+rechnet. Die neun Proben aus § 18 liefen gegen OpenRouter direkt, nicht durch
+unseren Code. Der Code-Beweis ist der Pin plus der grüne Wächter; der
+Live-Beweis ist der erste bezahlte Lauf nach dem Deploy.

@@ -141,7 +141,7 @@ export default defineAppConfig({
      * es ist das einzige video-fähige ZDR-Gemini mit einem
      * `google-vertex/eu`-Endpunkt — damit trägt EIN Modell die Lesung der
      * Kundenbilder und ab K5 das Videolesen der Redaktion, auf derselben,
-     * EU-gepinnten Route (`BRAND_PROVIDER_ROUTING_EU`). Belegt mit zwei
+     * EU-gepinnten Route (`BRAND_PROVIDER_ROUTING_VERTEX_EU`). Belegt mit zwei
      * echten Läufen: ein 64×64-PNG korrekt beschrieben (Farben + Muster),
      * zwei YouTube-Videos korrekt ausgelesen (Bild und Ton).
      */
@@ -169,7 +169,7 @@ export default defineAppConfig({
        * EU-Endpunkt. Ein 25-Minuten-Video kostet rund fünf Cent, eine
        * Folgefrage im Cache-Fenster unter einem.
        *
-       * Der Weg dorthin läuft über `BRAND_PROVIDER_ROUTING_EU` — der
+       * Der Weg dorthin läuft über `BRAND_PROVIDER_ROUTING_VERTEX_EU` — der
        * Transport klemmt `data_collection: 'deny'`, der Konsument legt `zdr`,
        * `allow_fallbacks: false` und den Ort darauf.
        */
