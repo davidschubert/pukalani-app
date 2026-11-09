@@ -135,9 +135,12 @@ const EMPTY_PROGRESS: BrandStepProgress = { requiredTotal: 0, requiredFilled: 0,
 
 /**
  * Womit gelesen wird. Beim SSR reicht die Seite `useRequestFetch()` herein
- * (Cookies!), im Browser bleibt es `$fetch` (s. Kopf).
+ * (Cookies!), im Browser bleibt es `$fetch` (s. Kopf). Seit Nuxt 4.6 hat
+ * `useRequestFetch()` einen eigenen Typ (`TypedFetch`); die Union mit Nitros
+ * `typeof $fetch` war danach nicht mehr aufrufbar (TS2349). `$fetch` ist dem
+ * Nuxt-Typ zuweisbar, also reicht der eine.
  */
-export type BrandFetcher = ReturnType<typeof useRequestFetch> | typeof $fetch
+export type BrandFetcher = ReturnType<typeof useRequestFetch>
 
 /** Die vier Formen, in denen ein HTTP-Fehler bei ofetch ankommt. */
 interface FetchLikeError {

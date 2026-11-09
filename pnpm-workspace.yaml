@@ -128,7 +128,11 @@ catalog:
   # sowie `tablesDB.cutoverMigration` `createCutover` (beide ungenutzt).
   node-appwrite: ^29.0.0
   '@types/node': ^22.18.0
-  nuxt: ^4.5.2
+  # 4.6.4 (2026-11-09) = Sicherheitsrelease vom 2026-11-02 (acht Nuxt-, drei
+  # Nitro-Fixes; Nitro 2.13.6): routeRules/Middleware-Umgehungen, SSR-Fehler-
+  # Lecks, Dev-Server-Dateizugriff; cache/swr/isr speichert nur noch GET/HEAD
+  # ohne Set-Cookie/private/no-store. Zog vue 3.5.45 + vue-router 5.4 nach.
+  nuxt: ^4.6.4
   # 4.12.0 (UL1-Nachtrag 2026-11-08): Paginierung + Toast-Region holen ihre aria-Labels aus dem Sprachpaket. Zog unhead doppelt — nach jedem Bump check:single-copy. 4.11.0 brachte USplitter (Werkstatt-Zonen im brand-Layer).
   '@nuxt/ui': ^4.12.0
   # EXAKT gepinnt, ohne Caret — und das ist hier keine Vorsicht, sondern die
@@ -172,12 +176,12 @@ catalog:
   # einzeln bewegt sich keines von beiden ohne unerfuellten Peer.
   '@pinia/nuxt': ^1.0.2
   pinia: ^4.0.3
-  # MUSS zu dem mitwandern, was nuxt intern verlangt (4.5.1 → @vue/shared
-  # ^3.5.40). Bleibt der Katalog darunter, hält pnpm für die Workspace-Pakete
+  # MUSS zu dem mitwandern, was nuxt intern verlangt (4.6.4 → vue
+  # ^3.5.44). Bleibt der Katalog darunter, hält pnpm für die Workspace-Pakete
   # die alte vue-Version und nuxt zieht daneben die neue: mit ZWEI vue-Kopien
   # läuft der Nitro-Externals-Tracer im Zyklus vue → @vue/server-renderer → vue
   # und der Prod-Build stirbt an ENAMETOOLONG.
-  vue: ^3.5.42
+  vue: ^3.5.45
   typescript: ^5.9.3
   vitest: ^4.1.11
   # GENAU GEPINNT, NICHT `^3.3.11` (2026-11-08, CI rot erwischt): 3.3.14
