@@ -14,7 +14,7 @@ import type { InsightsPostSavedResponse } from '../../../../shared/types/insight
  * ── DER KÖRPER TRÄGT NUR, WAS EIN MENSCH ENTSCHEIDET ─────────────────────
  * `insightsPostEditSchema` lässt die Server-eigenen Felder gar nicht erst
  * herein (`INSIGHTS_SERVER_OWNED_FIELDS`). Ein durchgereichtes
- * `state: 'published'` wäre die Freigabe an den sechs Prüfregeln vorbei, ein
+ * `state: 'published'` wäre die Freigabe an den sieben Prüfregeln vorbei, ein
  * durchgereichtes `reviewedBy` eine Unterschrift unter fremdem Namen. Der
  * Server setzt sie aus dem BESTAND der Zeile — nie aus dem Körper.
  *

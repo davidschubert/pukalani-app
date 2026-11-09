@@ -60,8 +60,12 @@ paths:
   2026-08-20 als eigener Schritt in lint.yml. Ein neues Skript dort ist also
   gelintet; vor dem Commit selbst laufen lassen, `pnpm -r lint` sieht es nicht.
 - DER LINT-LAUF IST MEHR ALS `lint` (2026-09-10 rot erwischt): `lint.yml` fährt
-  SECHS Wächter vor den beiden Lint-Schritten — `check:manifests`,
-  `check:i18n-keys`, `check:bilanz`, **`check:doc-links`**, `check:single-copy`.
+  SIEBEN Wächter vor den beiden Lint-Schritten — `check:manifests`,
+  `check:i18n-keys`, `check:bilanz`, **`check:doc-links`**, `check:single-copy`,
+  `check:prompt-quotes` (seit AI2, 2026-11-09: ein gerades `"` in einem
+  KI-PROMPT ist eine Vorlage für genau das Zeichen, das die JSON-Antwort des
+  Modells beendet — gemessen 4 von 52 bezahlten Läufen; Zeilen, die nicht in
+  einen Prompt gehen, tragen `prompt-quotes-ok` mit Grund).
   `check:doc-links` prüft JEDEN Datei-Pfad und Link in `docs/` und im README:
   ein Pfad, der ins Leere zeigt, ist ROT. In Protokoll-Dokumenten
   (OPEN-ITEMS-COMPLETE, `archiv/`) sind Pfade von damals geduldet — im

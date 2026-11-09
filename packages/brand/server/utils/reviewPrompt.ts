@@ -16,6 +16,7 @@ import type { BrandConverseHistoryTurn } from './conversePrompt'
  * Ausfuhren desselben Namens sind dort eine Warnung und ein Zufall darüber,
  * welche gewinnt.
  */
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { BRAND_CONVERSE_HISTORY_CHARS } from './georgePrompt'
 
 /**
@@ -72,7 +73,8 @@ import { BRAND_CONVERSE_HISTORY_CHARS } from './georgePrompt'
  * andere Aufgabe und eine andere Menge im Prompt. Ein eigener Modus hätte das
  * Zod-Schema um einen Zweig erweitert, den niemand anders liest.
  */
-export const BRAND_REVIEW_PROMPT_VERSION = 'review-3'
+/** `+1` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`. */
+export const BRAND_REVIEW_PROMPT_VERSION = 'review-4'
 
 /**
  * Die Antwort ist ein kleines JSON-Objekt: drei Listen von höchstens drei bis
@@ -238,12 +240,22 @@ function answerLines(mode: BrandReviewMode): string[] {
   if (mode === 'chapter') {
     return [
       '',
+      // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+      // straight `"` inside a text value ends the JSON string. The rescue
+      // AFTER it is `parseModelJson`, which this call already goes through.
+      AI_JSON_QUOTE_RULE_EN,
+      '',
       'ANSWER WITH JSON ONLY — no prose, no markdown, no code fences. Exactly this shape:',
       '{"goalReached": true, "missing": [], "notes": [], "findings": [], "nextSession": null}',
       'Only "findings" carries content in this mode. Leave the other four exactly as shown.',
     ]
   }
   return [
+    '',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
     '',
     'ANSWER WITH JSON ONLY — no prose, no markdown, no code fences. Exactly this shape:',
     '{"goalReached": <true|false>, "missing": ["…"], "notes": ["…"], "findings": [{"kind": '

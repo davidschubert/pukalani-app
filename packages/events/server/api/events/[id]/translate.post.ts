@@ -7,6 +7,7 @@ import {
   serializeUgcTranslations,
   ugcTranslationDayKey,
 } from '../../../../../core/shared/ugcTranslations'
+import { AI_JSON_QUOTE_RULE } from '../../../../../core/shared/aiJson'
 import { eventTranslateSchema } from '../../../../schemas/event'
 import { eventIsRedacted } from '../../../../shared/eventModerationPolicy'
 import {
@@ -83,6 +84,11 @@ function buildPrompt(row: EventRow, locale: string): string {
     '- Erwähnungen (@name), URLs, Datums- und Zeitangaben, Ortsnamen und Anschriften bleiben UNVERÄNDERT stehen.',
     '- Eigennamen, Produktnamen und Fachbegriffe, die auch in der Zielsprache unübersetzt benutzt werden, bleiben stehen.',
     '- Ist der Text bereits vollständig in der Zielsprache, übersetze NICHT: Antworte stattdessen NUR mit {"same": true} und wiederhole den Text nicht.',
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

@@ -18,7 +18,7 @@ import { insightsHost } from '../utils/insightsFormat'
  * Der Score ist der BESTEHENDE Brand-Check-Score, nicht ein zweiter. Er kommt
  * als Prop herein (der Vertrag zum brand-Layer zieht ihn ab I1 aus
  * `brand_checks`), und neben ihm steht IMMER der Link auf die Methodik. Ein
- * Score ohne Methodik-Link ist eine der sechs Prüfregeln vor `review` (§9.4
+ * Score ohne Methodik-Link ist eine der sieben Prüfregeln vor `review` (§9.4
  * Nr. 5) — die Oberfläche hält sich an dieselbe Regel wie der Server.
  *
  * ── DER SCORE-RING KOMMT ALS SLOT ───────────────────────────────────────

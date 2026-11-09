@@ -1,3 +1,4 @@
+import { AI_JSON_QUOTE_RULE } from '../../../../../core/shared/aiJson'
 import { POSTS_TABLE, type CommunityPost, type PostModerationAssist } from '../../../../shared/types/post'
 
 /**
@@ -38,6 +39,11 @@ function buildPrompt(post: CommunityPost, reports: { reason: string, note: strin
     '',
     `Meldungen (${reports.length}):`,
     ...reports.slice(0, 20).map(r => `- ${r.reason}${r.note ? `: ${r.note.slice(0, 300)}` : ''}`),
+    '',
+    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
+    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
+    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte NUR mit einem JSON-Objekt (kein Markdown, keine Erklärung außenrum):',
     '{',

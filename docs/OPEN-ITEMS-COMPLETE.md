@@ -30,6 +30,24 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW29 — SMTP-keepAlive-Patch auch auf prod entfernt ✅ 2026-11-08
+
+**Was.** Davids „Ja, prod jetzt“ zum vorbereiteten Skript
+`ops/appwrite-aw28-drop-smtp-keepalive-patch.sh` (AW28). Lauf 23:00:49–23:01:25
+UTC auf `api.pukalani.app`: Override gesichert (`.bak-aw28-20261108-2300`), NUR
+der `appwrite-worker`-Block entfernt (traefik/clickhouse unverändert), NUR der
+Worker neu erzeugt (15 s, API/Realtime/Console liefen durch). Beweise:
+keepAlive 372 `true`, 0 Patch-Mounts, Retry-Zeile da, Version 2.7.1, alle
+Container Up, 0 Worker-Fehler; OTP an `delivered@resend.dev` → `success`
+(1,58 s, smtp_type cloud); Probe-Nutzer auf dem App-Server gelöscht (204,
+Gegenprobe 404). Rückweg und Protokoll: Runbook APPWRITE-2-7-UPGRADE.md,
+Abschnitt „AW28“.
+
+**Leerlauf-Beweis prod** 2026-11-09 02:04 UTC: 3 h ohne eine einzige Mail,
+der gehaltene Socket zu Resend stand in CLOSE_WAIT (von Resend geschlossen —
+der alte Verlustfall), die Probe kam mit `success` über einen neuen Socket
+raus, 0 Worker-Fehler.
+
 ### RT2 — Sofort-Abmeldung bei Session-Widerruf kam in Prod nie an ✅ 2026-11-09
 
 **Was:** `useRealtimeAccount` öffnete einen eigenen, cookie-nativen WebSocket
@@ -72,11 +90,36 @@ zweiten Tab, der angemeldete Tab stand nach **0,62 s** auf `/de/login` mit dem
 Toast „Deine Sitzung wurde beendet". Unit: `packages/core/tests/realtimeAuth.test.ts`
 (401-Erkennung + Verdrahtung).
 
+**Nachtrag 2026-11-09 — die 30-s-Bremse verwarf den Widerruf (PR #88, Fix
+`f49a3499`, live als Build `37fcfc02`):** Der 0,62-s-Beweis oben ist echt,
+traf aber nur den Fall „letzte Prüfung liegt > 30 s zurück". Zweite Prod-
+Messung mit `2767f819` (Davids Chrome, demo.pukalani.app beobachtet,
+comments.pukalani.app widerruft): beim Seitenladen lief eine Prüfung
+(`/api/auth/me` + `/api/community/role`), der Widerruf 7 s später fiel ins
+Fenster von `accountVerifyDue` und wurde VERWORFEN — Event und 401 kamen an,
+abgemeldet erst nach **33 s** durch ein späteres 401 eines Reconnects. Fix:
+ein `users.*.sessions.*.delete`-Ereignis (`isSessionDeleteEvent`,
+`core/shared/realtimeAuth.ts`) geht an der Bremse vorbei; alles andere wird
+ans Fensterende geschoben statt verworfen (`accountVerifyAt`,
+`core/shared/realtimeGate.ts`); 401-Stürme bleiben bei einer Prüfung je 30 s.
+E2E `apps/comments/e2e/session-revoke.spec.ts` (läuft in CI): Gegenprobe
+andere Session, eigener Widerruf, Widerruf 2 s nach einem anderen
+Session-Ereignis — lokal im JWT-Modus 0,9 s, mit dem alten Plugin rot.
+**Prod nachher** (Build `37fcfc02`): demo-Tab neu geladen, Prüfung beim Laden
+um 23:55:39,5, Widerruf um 42,13 (also IM Fenster), `/api/auth/me` 401 um
+42,54, Tab auf `/de/login` mit Toast nach **0,4 s**; Gegenprobe: der
+widerrufende comments-Tab blieb angemeldet (`/api/auth/me` 200).
+
 **Gelernt:** Eine Regel mit „NIE" braucht ihren Beweis im Ziel-Umfeld — die
 Konsolidierungs-Sperre war lokal richtig begründet und in Prod von Anfang an
 wirkungslos, weil das Cookie dort gar nicht ankam. Ein Sicherheits-Signal
 wird in Prod gemessen, nicht lokal. Und: ein Messpunkt im `window` stirbt mit
-dem Seitenwechsel, den er messen soll — `localStorage` überlebt ihn.
+dem Seitenwechsel, den er messen soll — `localStorage` überlebt ihn. Eine
+Bremse, die Signale VERWIRFT statt sie zu verschieben, ist für ein seltenes
+Sicherheits-Signal ein Loch: „der Widerruf kommt meist nach langer Ruhe" war
+eine Annahme, die erste Messung direkt nach dem Seitenladen widerlegte sie —
+Messungen gehören auch in den ungünstigsten Zeitpunkt, nicht nur in den
+typischen.
 
 ### AW28 — Der SMTP-keepAlive-Patch wird ab Appwrite 2.7 nicht mehr gebraucht ✅ 2026-11-08
 
@@ -212,6 +255,64 @@ der nur lokal auftritt, kann trotzdem echt sein (er verdeckte hier, dass lokal
 seit dem 2.7-Sprung kein einziges Realtime-Event mehr ankam). Und umgekehrt:
 der Cookie-Gegenprobe-Socket zeigt, dass der cookie-native Account-WS
 (`useRealtimeAccount`) in Prod als GAST verbindet — eigener Punkt.
+### AI2 — die Anführungszeichen-Regel gilt jetzt für JEDEN JSON-Prompt ✅ 2026-11-09
+
+**Der Anlass.** Der BI4-Nachtrag fand elf Prompt-Beispiele im insights-Layer,
+die ein deutsches Anführungszeichen mit einem GERADEN `"` schlossen — also
+mit dem Zeichen, das in einem JSON-String den Wert beendet und eine bezahlte
+Antwort unlesbar macht (gemessen: 4 von 52 Entwurfs-Läufen). Die Regel dagegen
+lag im insights-Layer; `courses`, `posts`, `comments`, `events`, `pages`,
+`tickets`, `market` und `brand` rufen denselben Transport und hatten sie nicht.
+
+**Was gebaut wurde.**
+- `AI_JSON_QUOTE_RULE` (deutsch) und `AI_JSON_QUOTE_RULE_EN` (englisch) liegen
+  jetzt in `packages/core/shared/aiJson.ts` — neben der REPARATUR, weil beide
+  dieselbe Fehlerklasse betreffen: die eine VOR dem bezahlten Aufruf, die
+  andere danach. Zwei Sprachen, weil `brand` und `market` englische Prompts
+  schreiben und eine deutsche Zeile dort als Material gelesen würde; im
+  Englischen wiegt die Bitte schwerer, weil `"` dort das NORMALE
+  Anführungszeichen ist.
+- Die Regel steht in **17 Prompt-Stellen** von zehn Layern (insights holt sie
+  jetzt aus dem Core statt aus der eigenen Kopie).
+- **Zwei echte Funde dabei, die keine Kosmetik sind:** `dnaPrompt.ts` und
+  `readingPrompt.ts` BESTELLTEN die kaputte Form ausdrücklich
+  (`call a reference „Vorbild N"`) — der Prompt verlangte genau das
+  Zeichen, das seine eigene Antwort zerstört.
+- Fassungen hochgezählt, wo eine gespeichert wird: `check-judge-3`,
+  `check-judge-doc-2`, `review-4`, `market-ai-2`, `market-x-2`.
+- **Der Wächter** `scripts/check-prompt-quotes.mjs` (`pnpm
+  check:prompt-quotes`, siebter Schritt in `lint.yml`): er prüft die 42
+  Dateien, die einen KI-Transport rufen oder `*Prompt.ts` heissen, und nur
+  deren Zeichenketten-Zeilen. Zeilen, die nicht in einen Prompt gehen (ein
+  Ersatz-Text an die Oberfläche), tragen `prompt-quotes-ok` mit Grund — heute
+  genau eine.
+
+**Beweise.** `pnpm -r test` (3.199 Tests), `pnpm -r lint`, `pnpm lint:scripts`,
+`pnpm -r typecheck`, die sechs alten Wächter und der neue — alle Exit 0,
+einzeln gelesen. Gegenprobe zum Wächter: ein neu eingesetztes
+`„Rechnung"` in `ticketTriage.ts` färbt ihn rot, nach dem Rücknehmen
+wieder grün. Gegenprobe zur Regel-Quelle:
+`packages/core/tests/aiJsonQuoteRule.test.ts` nagelt beide Fassungen gegen das
+Muster selbst (das gerade Zeichen darf NUR in der Verbots-Zeile stehen — ein
+Verbot, das sein Zeichen nicht nennt, ist keines).
+
+**Erster Wächter-Entwurf war zu breit und wäre abgeschaltet worden:** er nahm
+jede Datei, in der irgendwo `Prompt(` stand, und meldete 47 deutsche
+INHALTS-Zeilen der Demo-Sitzungen (`brand/shared/sessionContent.ts`), die kein
+Modell je sieht. Die deutsche Haus-Typografie des Repos (`„…"` in
+Oberflächen-Texten und Locale-Dateien) bleibt unangetastet; der Wächter gilt
+NUR für Text, der zu einem Anbieter reist.
+
+**Gelernt:** Eine Regel gehört dorthin, wo der TRANSPORT liegt, nicht dorthin,
+wo sie zuerst gebraucht wurde — sonst hat sie genau ein Layer und neun andere
+rufen dieselbe API ohne sie. Und ein Wächter wird nach seiner FALSCH-Melderate
+beurteilt, nicht nach seiner Trefferrate: die erste Fassung fand alles Richtige
+und 47 Zeilen dazu, und ein Wächter, der zu viel meldet, wird abgeschaltet
+statt befolgt. Die Verengung (nur Dateien, die wirklich einen KI-Transport
+rufen) kostete drei Zeilen und machte aus 49 Meldungen drei echte.
+
+---
+
 ### BI4 — ein langer Entwurf warf den bezahlten Lauf weg ✅ 2026-11-08
 
 **Der Befund.** Mit `targetWords: 2000` meldete „Entwurf schreiben" `502 AI

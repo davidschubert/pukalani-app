@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import type { BrandSiteContent, BrandSiteSignals } from '../../shared/brandSiteAnalysis'
+import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { BRAND_CHECK_CRITERIA, type BrandCheckScoreValue } from '../../shared/brandCheck'
 import { brandIndustryPromptList, normalizeBrandIndustry } from '../../shared/brandIndustries'
 import { createBrandCheckJudgementSchema } from '../../schemas/brandCheck'
@@ -39,7 +40,8 @@ import { BRAND_PROVIDER_ROUTING } from './brandProviderRouting'
  * behauptet, nach den heutigen Fragen entstanden zu sein (dieselbe Rolle wie
  * `scoreVersion` für die Rechnung).
  */
-export const BRAND_CHECK_PROMPT_VERSION = 'check-judge-2'
+/** `+1` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`. */
+export const BRAND_CHECK_PROMPT_VERSION = 'check-judge-3'
 
 /**
  * DIE FASSUNG DES DOKUMENT-PROMPTS (§5b) — eine EIGENE, obwohl die Regeln
@@ -51,7 +53,8 @@ export const BRAND_CHECK_PROMPT_VERSION = 'check-judge-2'
  * beiden er beantwortet hat. Die REGELN daneben werden nicht kopiert — es ist
  * derselbe Systemtext mit einem anderen Hauptwort (s. `brandCheckJudgeKind`).
  */
-export const BRAND_CHECK_DOC_PROMPT_VERSION = 'check-judge-doc-1'
+/** `+1` seit AI2 (2026-11-09): der Prompt trägt `AI_JSON_QUOTE_RULE_EN`. */
+export const BRAND_CHECK_DOC_PROMPT_VERSION = 'check-judge-doc-2'
 
 /**
  * Wie viel Seitentext das Modell zu sehen bekommt. Der gelesene Text darf
@@ -151,6 +154,11 @@ export function brandCheckJudgeSystemPrompt(kind: BrandCheckJudgeKind = 'website
     // das das Modell ohnehin schon vor sich hat.
     'Also name the INDUSTRY of this brand. Pick exactly one id from this list; use "unknown" if the page does not make it clear. Never invent an id.',
     brandIndustryPromptList(),
+    '',
+    // The guard BEFORE the paid call (AI2, `core/shared/aiJson.ts`): a
+    // straight `"` inside a text value ends the JSON string. The rescue
+    // AFTER it is `parseModelJson`, which this call already goes through.
+    AI_JSON_QUOTE_RULE_EN,
     '',
     'Answer with JSON only, in this exact shape:',
     '{"industry":"agency","items":[{"id":"a1","score":0,"evidence":"...","note":"..."}]}',

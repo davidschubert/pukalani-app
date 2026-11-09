@@ -9,7 +9,7 @@ import type { InsightsEvidenceReason } from '../../shared/types/insightsApi'
 import { BrandSiteBlockedError, fetchBrandSiteForCheck } from '../contracts/brandContract'
 
 /**
- * DAS SERVER-GATE DER SECHS PRÜFREGELN (§9.4) — die Route, die einen
+ * DAS SERVER-GATE DER SIEBEN PRÜFREGELN (§9.4) — die Route, die einen
  * Zustandswechsel erlaubt, fragt HIER.
  *
  * ── WARUM DAS GATE AUF DEM SERVER SITZT UND NICHT IM EDITOR ──────────────
@@ -172,7 +172,7 @@ export function insightsFlagText(
 /**
  * DIE PRÜFREGELN OHNE ABRUF — was der Editor beim ÖFFNEN sieht.
  *
- * Fünf der sechs Regeln kosten nichts (Herausgeber, Datum, Lizenz,
+ * Sechs der sieben Regeln kosten nichts (Herausgeber, Datum, Lizenz,
  * Beleg-Zeiger, Marken-Zeile, Methodik-Link, Herabsetzung). Nur die
  * Beleg-Prüfung braucht fremde Server, und die soll nicht bei jedem Öffnen
  * zwanzig Anfragen auslösen. Fehlt `sourceTexts`, PRÜFT die Regel nicht — und

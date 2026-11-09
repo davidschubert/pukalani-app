@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { InsightsLocale, InsightsSource, InsightsTopicKey } from './insightsPost'
+import { AI_JSON_QUOTE_RULE } from '../../core/shared/aiJson'
 import { INSIGHTS_BRIEF_MAX, INSIGHTS_FORMATS, INSIGHTS_LOCALES, INSIGHTS_TOPICS, INSIGHTS_TOPIC_KEYS } from './insightsPost'
-import { JSON_QUOTE_RULE } from './insightsPrompts'
 import { insightsVideoUrl } from './insightsWatchlist'
 
 /**
@@ -49,7 +49,8 @@ import { insightsVideoUrl } from './insightsWatchlist'
  */
 
 /**
- * `-2` seit dem 2026-11-09: der Brief-Prompt trägt jetzt `JSON_QUOTE_RULE`
+ * `-2` seit dem 2026-11-09: der Brief-Prompt trägt jetzt die
+ * Anführungszeichen-Regel (`AI_JSON_QUOTE_RULE` aus dem Core)
  * (BI4). Diesmal MIT Fassungs-Sprung, anders als bei der Zitat-Schärfung
  * oben — `insights-b-1` ist seit dem 2026-10-27 live und steht an
  * gespeicherten Briefen. Wer einen davon aufschlägt, soll sehen, dass er
@@ -246,14 +247,14 @@ export function buildInsightsVideoBriefPrompt(input: InsightsVideoBriefPromptInp
     '',
     `Der Brief ist höchstens ${INSIGHTS_BRIEF_MAX} Zeichen lang. Der Arbeitstitel ist kein Video-Titel-Echo, sondern benennt UNSERE These.`,
     '',
-    // DIESELBE Fassung wie Entwurf und Übersetzung (`insightsPrompts.ts`).
+    // DIESELBE Fassung wie Entwurf und Übersetzung, seit AI2 aus dem Core.
     // Sie steht NEBEN dem Zitat-Verbot aus BRIEF_RULES und widerspricht ihm
     // nicht: dort geht es darum, WAS in Anführungszeichen stehen darf (eine
     // Aussage nie, ein Fachbegriff schon), hier darum, WELCHE Zeichen das
     // sind. Der Brief läuft über `aiVideoJson` und damit durch dieselbe
     // Reparatur — er ist aber der TEUERSTE der drei Läufe (ein gelesenes
     // Video, rund 5 Cent), also gehört die Vorsorge hier zuerst hin.
-    JSON_QUOTE_RULE,
+    AI_JSON_QUOTE_RULE,
     '',
     'Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in dieser Form, ohne Text davor oder dahinter:',
     '{"title": "Arbeitstitel unseres Beitrags", "brief": "Der Brief als Markdown", "topics": ["cluster-schluessel"]}',

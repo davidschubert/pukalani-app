@@ -176,7 +176,7 @@ describe('Launch-Inhalt: Beiträge', () => {
     }
   })
 
-  it('die sechs Prüfregeln ohne Quelltexte: keine Treffer', () => {
+  it('die sieben Prüfregeln ohne Quelltexte: keine Treffer', () => {
     for (const content of posts) {
       expect(launchPostIssues(buildPost(content), brandRows), content.slug).toEqual([])
     }

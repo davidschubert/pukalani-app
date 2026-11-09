@@ -96,7 +96,7 @@ Schema; ein Sprung 2.6.2 → 2.7.1 in EINEM Werkzeug-Lauf plus `migrate` reicht
   diesem Upgrade (Gürtel und Hosenträger; `registers.php` hat sich geändert —
   Redis-Timeouts —, keepAlive steht jetzt in **Zeile 372** statt 367, die
   Patchdatei wird wie immer aus dem Image gezogen). **Seit 2026-11-08 auf dev
-  entfernt (AW28)**, Beweis und Prod-Skript im Abschnitt „AW28" unten.
+  und prod entfernt (AW28/AW29)**, Beweis und Prod-Lauf im Abschnitt „AW28" unten.
 - **Server-Key-Rotation (#15198/#15199):** `_APP_OPENSSL_KEY_CURRENT`/`_OLDEST`
   (Werkzeug schreibt `1`/`1` = nichts ändert sich), `_APP_OPENSSL_KEY_V2` leer.
   Keine Handlung. Achtung für später: nach einer Konfigurationsänderung
@@ -288,6 +288,27 @@ eigentliche Leerlauf-Beweis auf prod ist dieselbe OTP-Probe nach ≥ 3 h
 Stille. **Rückweg:** `cp docker-compose.override.yml.bak-aw28-<TS>
 docker-compose.override.yml && docker compose up -d appwrite-worker` — die
 Patchdateien bleiben unter `patches/` liegen.
+
+**Prod-Lauf (AW29, Davids „Ja, prod jetzt“)** — 2026-11-08 23:00:49–23:01:25
+UTC, `ssh` mit Log `~/appwrite-aw28.log`, Sicherung
+`docker-compose.override.yml.bak-aw28-20261108-2300`. Diff genau wie an der
+Kopie geprüft (Kopf −10/+5, Block −3), Worker neu erzeugt in 15 s (die Zeile
+„Volume appwrite-builds Created“ ist nur Compose-Gerede — das Volume besteht
+seit 2026-09-08, API und Worker hängen beide daran). Beweise: keepAlive 372
+`true`, 0 Patch-Mounts, Retry-Zeile 1, `{"version":"2.7.1"}`, alle Container
+Up, 0 Worker-Fehler. OTP-Probe `probe-aw28-20261108` → `201`,
+`worker.v1-mails · 1.58s · otp · smtp_type cloud · resend.dev · success`;
+Probe-Nutzer auf dem App-Server gelöscht (`GET 200` → `DELETE 204` → `GET 404`).
+
+**Leerlauf-Beweis prod** — 3 h nach dem Neustart (23:01:30 bis 2026-11-09
+02:04:22 UTC, **0** `v1-mails`-Spans im Fenster, Worker seit 23:00:55 ohne
+Neustart). Vor der Probe stand der gehaltene SMTP-Socket zu Resend (Port 587)
+in **`08` CLOSE_WAIT** — Resend hatte ihn selbst geschlossen, also genau der
+Fall, in dem 1.9.5–2.6 die Mail still verlor. Probe `probe-aw29-idle-20261109`
+02:04:24 → `201`, `worker.v1-mails · 1.59s · otp · smtp_type cloud ·
+resend.dev · success`; danach ein NEUER Socket (anderer Quellport) in `01`.
+0 Worker-Fehler im ganzen Fenster; Probe-Nutzer gelöscht (`204`, Gegenprobe
+`404`).
 
 **Künftige Upgrades:** keine Patchdatei mehr ziehen. Die Upgrade-Skripte
 `ops/appwrite-upgrade-2.*.sh` prüfen den Patch-Mount als Vorbedingung — ein

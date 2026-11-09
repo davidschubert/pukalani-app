@@ -9,7 +9,7 @@ import type { InsightsPostDetailResponse } from '../../../../shared/types/insigh
  * offenen Prüfpunkte.
  *
  * ── DIE ISSUES KOMMEN OHNE BELEG-ABRUF ───────────────────────────────────
- * Fünf der sechs Regeln kosten nichts; nur „steht das Zitat wörtlich in der
+ * Sechs der sieben Regeln kosten nichts; nur „steht das Zitat wörtlich in der
  * Quelle?" braucht fremde Server. Die beim ÖFFNEN mitzuprüfen hiesse, für
  * jeden Blick in einen Beitrag bis zu zwanzig fremde Websites anzufragen — für
  * eine Auskunft, die der Redakteur an der Ampel gezielt holt und die das

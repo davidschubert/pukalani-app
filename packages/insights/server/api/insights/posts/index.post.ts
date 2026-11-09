@@ -15,7 +15,7 @@ import type { InsightsPostCreatedResponse } from '../../../../shared/types/insig
  * Er kommt nicht aus dem Körper, und das ist die halbe Sicherung dieses
  * Produkts: es gibt keinen Weg, eine Zeile in einem anderen Zustand ENTSTEHEN
  * zu lassen — jeder Wechsel läuft über `state.post.ts` und damit durch die
- * sechs Prüfregeln.
+ * sieben Prüfregeln.
  *
  * ── DIE ADRESSE ENTSTEHT AUS DEM TITEL, ÜBER DEN VERTRAG ─────────────────
  * `brandPublicationSlug` (brand-Layer, §9.2) macht sie; die Kollision löst

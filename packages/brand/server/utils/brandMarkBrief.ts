@@ -226,6 +226,8 @@ function stubBrief(sources: BrandMarkBriefSources): BrandMarkBriefRaw {
     ? {
         character: `Ersatz-Briefing für den Beweis — kein Sprachmodell beteiligt. `
           + `Das Zeichen für ${name} soll ruhig wirken und ohne Erklärung auskommen.`,
+        // Ersatz-TEXT für die Oberfläche, kein Prompt — hier gilt die deutsche
+        // Haus-Typografie des Repos: prompt-quotes-ok
         formLanguage: `Ersatz-Briefing: Formsprache passend zur Richtung „${kind}" — eine Idee, `
           + `keine Szene.`,
         noGos: 'Ersatz-Briefing: nicht verzerren, nicht schräg stellen, keinen Schatten, nie neu setzen.',
