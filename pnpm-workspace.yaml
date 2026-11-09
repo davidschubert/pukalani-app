@@ -203,8 +203,13 @@ catalog:
   # EventFormModal.vue, bei unverändertem Quelltext. Eine Caret-Range PINNT
   # NICHTS: Dependabot hob den Katalog auf `^3.3.11`, der nächste Lockfile-Lauf
   # zog 3.3.14, und damit war `main` rot, ohne dass jemand etwas am Code
-  # geändert hatte. Beim nächsten Bump prüfen, ob der Fehler weg ist.
-  vue-tsc: 3.3.11
+  # geändert hatte. NACHTRAG 2026-11-10: auf 3.3.14 gehoben, Typecheck über
+  # alle 34 Pakete grün — ABER EventFormModal.vue gibt es nicht mehr (Events/
+  # Kurse arbeiten seit b4924d4e mit Dialogen), der Auslöser ist also nur
+  # verschwunden, nicht bewiesen behoben. Darum bleibt der Pin EXAKT; taucht
+  # TS2339 „Property 'value'" an einem reactive()-Formular auf, ist es dieser
+  # Fehler — zurück auf 3.3.11 und Issue bei vuejs/language-tools.
+  vue-tsc: 3.3.14
   # 4.6.7 (2026-11-09): Speicher-DoS bei übergroßen begrenzten Listen behoben
   # (Advisory „<4.6.6“) — zod prüft bei uns die Request-Bodies im Server.
   zod: ^4.6.7
