@@ -187,8 +187,8 @@ catalog:
   '@nuxtjs/mdc': ^0.22.2
   # Fest gekoppelt: @pinia/nuxt 0.11.x verlangt pinia ^3, 1.0.x verlangt ^4 —
   # einzeln bewegt sich keines von beiden ohne unerfuellten Peer.
-  '@pinia/nuxt': ^1.0.2
-  pinia: ^4.0.3
+  '@pinia/nuxt': ^1.0.3
+  pinia: ^4.1.0
   # MUSS zu dem mitwandern, was nuxt intern verlangt (4.6.4 → vue
   # ^3.5.44). Bleibt der Katalog darunter, hält pnpm für die Workspace-Pakete
   # die alte vue-Version und nuxt zieht daneben die neue: mit ZWEI vue-Kopien
