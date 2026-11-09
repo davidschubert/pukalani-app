@@ -326,14 +326,38 @@ nichts — das war die Bedingung dafür, den Core anzufassen.
 
 ### 7.3 ZWEI DINGE FEHLEN NOCH, und beide sind Davids Entscheidung
 
-1. **Der Schlüssel passt noch nicht.** `pukalani-smtp-send` ist seit § 6 ein
-   `sending_access`-Schlüssel, der an `pukalani.app` GEBUNDEN ist — eine Mail
-   mit Absender `@mail.branding.supply` lehnt Resend damit ab. Entweder ein
+1. **Der Schlüssel passt noch nicht — GEMESSEN, nicht geschlossen
+   (2026-11-09).** `pukalani-smtp-send` ist seit § 6 ein
+   `sending_access`-Schlüssel, der an `pukalani.app` GEBUNDEN ist. Dass das
+   auch den VERSAND von einer anderen Domain verbietet, stand zuerst nur als
+   Schlussfolgerung da; nachgemessen mit einem Wegwerf-Schlüssel gleicher
+   Bauart (`sending_access`, `domainId` = `pukalani.app`):
+
+   | Absender | Antwort |
+   | --- | --- |
+   | `noreply@pukalani.app` | **angenommen**, `id` zurück |
+   | `insights@mail.branding.supply` | **403** „This API key is not authorized to send emails from mail.branding.supply" |
+
+   Die Bindung gilt also wirklich, und zwar mit einer eindeutigen Meldung —
+   kein stiller Ausfall. **Und sie ist nicht nachträglich zu lockern:** die
+   Resend-API kann an einem bestehenden Schlüssel nur den NAMEN ändern,
+   Berechtigung und Domain stehen seit der Anlage fest. Jede Lösung heisst
+   deshalb „neuer Schlüssel". Entweder ein
    Schlüssel für beide Domains (nimmt die Verengung aus § 6 teilweise
    zurück) oder eigene SMTP-Zugangsdaten für den Newsletter (sauberer: jeder
    Schlüssel darf nur von seiner Domain senden, kostet aber einen zweiten
-   Transport im Core). **Erst danach** die Adresse in
+   Zugang im Core-Mailer). **Erst danach** die Adresse in
    `apps/branding/app/app.config.ts` eintragen.
+
+   **WARUM DAS NICHT NEBENBEI GEHT:** beide Wege enden damit, dass ein
+   SMTP-Passwort auf die PRODUKTIONSHOSTS muss. Variante A ist eine
+   Rotation über die FÜNF Stellen aus § 6.1 — darunter die Ablage
+   `instance_secrets` des Projekts `account` und die `~/appwrite/.env` auf
+   der Appwrite-Maschine, also eine Datei auf dem Host. Variante B braucht
+   nur EINE neue Stelle, aber eben auch eine. Über Resend- und Ploi-API
+   allein ist das nicht vollständig zu machen; der Appwrite-Teil braucht
+   SSH. Das ist der Grund, warum dieser Punkt liegen bleibt und nicht, dass
+   er unklar wäre.
 2. **`branding.supply` hat gar kein DMARC** (gemessen 2026-11-09:
    `_dmarc.branding.supply` leer; nur `pukalani.app` hat einen Eintrag).
    Gmail und Yahoo verlangen für Massenversand mindestens `p=none`. Ein

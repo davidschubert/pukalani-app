@@ -415,8 +415,18 @@ zuerst:
   beide Newsletter-Mails durch — Ausgabe UND Anmelde-Bestätigung, weil die
   Bestätigung zum selben Strom gehört. Leer heisst unverändert
   `NUXT_SMTP_FROM`, also ändert sich ohne Eintrag nichts.
-  **Offen 1 — der Schlüssel:** `pukalani-smtp-send` ist seit (h) an die
-  Domain `pukalani.app` gebunden und lehnt `@mail.branding.supply` ab.
+  **Offen 1 — der Schlüssel (GEMESSEN 2026-11-09, nicht geschlossen):**
+  ein Wegwerf-Schlüssel gleicher Bauart nimmt `noreply@pukalani.app` an und
+  antwortet auf `insights@mail.branding.supply` mit **403 „This API key is
+  not authorized to send emails from mail.branding.supply"**. Die Bindung
+  gilt also wirklich — und sie ist nicht nachträglich zu lockern: an einem
+  bestehenden Resend-Schlüssel lässt sich nur der NAME ändern, Berechtigung
+  und Domain stehen seit der Anlage fest. Jede Lösung heisst „neuer
+  Schlüssel", und jeder neue Schlüssel muss auf die Produktionshosts —
+  Variante A über die fünf Stellen aus Runbook § 6.1 (darunter die Ablage
+  `instance_secrets` und die `~/appwrite/.env` auf der Appwrite-Maschine),
+  Variante B über eine neue Stelle. Über Resend- und Ploi-API allein ist das
+  NICHT vollständig zu machen; der Appwrite-Teil braucht SSH.
   Entweder EIN Schlüssel für beide Domains (nimmt (h) teilweise zurück) oder
   eigene SMTP-Zugangsdaten für den Newsletter (sauberer, kostet einen zweiten
   Transport im Core). Erst danach die Adresse in
