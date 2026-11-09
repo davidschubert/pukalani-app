@@ -22,7 +22,7 @@ import {
   insightsWatchVideoId,
 } from '../../../../../shared/insightsWatchlist'
 import type { InsightsBriefResponse } from '../../../../../shared/types/insightsApi'
-import { BRAND_PROVIDER_ROUTING_EU } from '../../../../contracts/brandContract'
+import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../../../../contracts/brandContract'
 
 /**
  * BRIEF AUS EINEM VIDEO (`insights.manage`, BI2 K5 — Plan
@@ -65,7 +65,7 @@ import { BRAND_PROVIDER_ROUTING_EU } from '../../../../contracts/brandContract'
  * keine fremden Texte.
  *
  * ── DIE EU-ROUTE IST HIER KEINE KÜR ──────────────────────────────────────
- * `BRAND_PROVIDER_ROUTING_EU` statt `BRAND_PROVIDER_ROUTING`: Davids
+ * `BRAND_PROVIDER_ROUTING_VERTEX_EU` statt `BRAND_PROVIDER_ROUTING`: Davids
  * Entscheidung vom 2026-10-27 („nur für Bild und Video pinnen"). `zdr: true`
  * allein sagt nichts über den ORT — in der Probe bediente Amazon Bedrock
  * unseren Textweg.
@@ -335,7 +335,7 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
       }),
       {
         model: run.model,
-        providerRouting: { ...BRAND_PROVIDER_ROUTING_EU },
+        providerRouting: { ...BRAND_PROVIDER_ROUTING_VERTEX_EU },
         label: 'insights',
         maxTokens: 4000,
         // Gemessen (Probe 2026-10-27): ein 25-Minuten-Video braucht deutlich

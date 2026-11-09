@@ -200,6 +200,10 @@ describe('Der Aufruf an den Transport gilt für JEDEN Berater', () => {
         zdr: true,
         dataCollection: 'deny',
         allowFallbacks: false,
+        // Seit AI1 (2026-11-09) nennt der Textweg seinen ORT mit. Die Liste
+        // steht hier WÖRTLICH und nicht als Import: diese Prüfung soll rot
+        // werden, wenn jemand den Pin ändert, nicht stumm mitwandern.
+        only: ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
       })
       expect(lastCall().options.label).toBe('brand')
       expect(lastCall().options.timeoutMs).toBe(120_000)

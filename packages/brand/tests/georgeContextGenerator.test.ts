@@ -130,6 +130,9 @@ describe('Der Aufruf an den Transport', () => {
       zdr: true,
       dataCollection: 'deny',
       allowFallbacks: false,
+      // Seit AI1 (2026-11-09) nennt der Textweg seinen ORT mit — wörtlich,
+      // damit eine Änderung am Pin hier auffällt statt mitzuwandern.
+      only: ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
     })
   })
 

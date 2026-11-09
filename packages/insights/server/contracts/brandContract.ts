@@ -258,7 +258,7 @@ export { fetchBrandSiteForCheck } from '../../../brand/server/utils/brandCheckFe
  * bekommt hier KEINE eigene Fassung: „wer auch immer ein Modell ruft, ruft es
  * unter diesen Bedingungen" (Kopf von `brandProviderRouting.ts`).
  *
- * ── `BRAND_PROVIDER_ROUTING_EU` — DIESELBEN BEDINGUNGEN, PLUS DER ORT ────
+ * ── `BRAND_PROVIDER_ROUTING_VERTEX_EU` — DIESELBEN BEDINGUNGEN, PLUS DER ORT ────
  * Dieselbe Klemme mit `only: ['google-vertex/eu']`, für die Läufe, die
  * fremdes MATERIAL hinreichen statt einer Fragestellung: die
  * Inspirationslesung im brand-Layer (Kundenbilder) und, seit BI2 K5, das
@@ -276,4 +276,4 @@ export { fetchBrandSiteForCheck } from '../../../brand/server/utils/brandCheckFe
  * Fundament ohnehin allen gibt.
  */
 export { readBrandAiEnabled } from '../../../brand/server/utils/brandGenerators'
-export { BRAND_PROVIDER_ROUTING, BRAND_PROVIDER_ROUTING_EU } from '../../../brand/server/utils/brandProviderRouting'
+export { BRAND_PROVIDER_ROUTING, BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../../../brand/server/utils/brandProviderRouting'

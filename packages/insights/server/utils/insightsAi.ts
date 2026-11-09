@@ -38,8 +38,20 @@ export interface InsightsAiRun {
    * `as const`, seine Felder wären damit `readonly true`/`readonly 'deny'` —
    * und ein Aufrufer, der sie an `aiCompleteJson` reicht, bekäme einen
    * Varianz-Fehler für einen Wert, der genau richtig ist.
+   *
+   * `only` STEHT HIER MIT, seit AI1 den Textweg auf die EU gepinnt hat
+   * (2026-11-09): ein ausgeschriebener Typ, der ein Feld des Vertrags
+   * verschweigt, lässt es beim Durchreichen still fallen — das Objekt trüge
+   * die Allowlist zur Laufzeit, der Typ hätte sie vergessen, und die nächste
+   * Änderung am Vertrag wäre an dieser Stelle unsichtbar. Wer den Vertrag
+   * erweitert, erweitert diese Zeile mit.
    */
-  providerRouting: { zdr: boolean, dataCollection: 'allow' | 'deny', allowFallbacks: boolean }
+  providerRouting: {
+    zdr: boolean
+    dataCollection: 'allow' | 'deny'
+    allowFallbacks: boolean
+    only?: readonly string[]
+  }
 }
 
 /**
