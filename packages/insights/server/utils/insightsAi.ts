@@ -118,9 +118,10 @@ export async function insightsBeginAiRun(
  * Geloggt wird, was eine Rechnung erklärt: Beitrag, Format, Modell,
  * Prompt-Fassung, Dauer, Fehlercode — und seit dem 2026-11-09 die beiden
  * Tokenzahlen des Anbieters, ohne die „was eine Rechnung erklärt" ein
- * Versprechen war, das die Zeile nicht halten konnte. Der Brief des
- * Menschen und der erzeugte Text stehen NICHT dabei — sie sind Inhalt,
- * kein Betriebsdatum.
+ * Versprechen war, das die Zeile nicht halten konnte (am selben Tag
+ * nachgezogen für den VIDEO-Weg, der mit ~5 Cent je Lauf der teuerste ist und
+ * zwei eigene Zahlen mitbringt). Der Brief des Menschen und der erzeugte Text
+ * stehen NICHT dabei — sie sind Inhalt, kein Betriebsdatum.
  */
 /**
  * DER FEHLERCODE EINES GESCHEITERTEN LAUFS — für die Log-Zeile, nie für den
@@ -173,6 +174,23 @@ export function insightsLogAi(
     promptTokens?: number
     completionTokens?: number
     finishReason?: string
+    /**
+     * NUR DER VIDEO-WEG HAT DIESE ZWEI (2026-11-09, nachgeholt).
+     *
+     * `videoTokens` ist der ANTEIL des Videos an `promptTokens` — und damit
+     * der Beweis, dass das Modell das Video gelesen hat und nicht bloss
+     * seinen Titel paraphrasiert (der Kopf von `aiVideo.ts` benennt die Zahl
+     * selbst so). `cachedTokens` sagt, welcher Teil der Eingabe aus dem
+     * Prompt-Cache kam und deshalb NICHT neu kostete; ohne sie liest man
+     * denselben Lauf zweimal verschieden — in der Probe vom 2026-10-27 sah
+     * der Cache wie der Spareffekt einer Einstellung aus.
+     *
+     * Beim Text-Weg bleiben sie weg: `logEvent` lässt `undefined`-Schlüssel
+     * aus der Zeile, eine `videoTokens: 0` an einem Entwurfs-Lauf wäre eine
+     * Aussage über etwas, das es dort nicht gibt.
+     */
+    videoTokens?: number
+    cachedTokens?: number
   },
 ): void {
   logEvent(phase === 'failed' ? 'warn' : 'info', `insights.${kind}.${phase}`, { ...data })

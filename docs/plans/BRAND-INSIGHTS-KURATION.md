@@ -1788,12 +1788,73 @@ TEUERSTE Lauf, den dieses Produkt hat (~5 Cent je Video, Frage C). Dort wären
 zusätzlich `prompt_tokens_details.video_tokens` und `cached_tokens` zu lesen,
 die der Kopf von `aiVideo.ts` selbst als den Beweis der Abrechnung benennt.
 Eigenes Vorhaben, dieselbe Operation an einem zweiten Transport.
+→ **Erledigt am selben Tag, siehe „Nachtrag 2" unten.**
 
 **Gelernt:** eine Zahl, die man „vorher sagt", ist eine Zusage — und wer sie
 hinterher nicht nachrechnen kann, hat nur geschätzt. Die Kostenangabe vor
 Davids Freigabe (0,5–1 Cent) lag neben dem Ergebnis (827 statt 700 Wörter,
 rund 1,3 Cent); der Anbieter hätte es beantworten können, der eigene Code hat
 die Antwort nur nicht aufgehoben.
+
+### Nachtrag 2: auch der Video-Weg ist nicht mehr blind (2026-11-09)
+
+Der Abschnitt davor endete mit „was weiter blind ist" — und nannte dabei
+genau den Lauf, der am meisten kostet. **Das ist jetzt geschlossen: der
+teuerste bezahlte Weg des Produkts nennt seinen Verbrauch in der Log-Zeile.**
+Dieselbe Operation an einem zweiten Transport, bewusst ohne neue Erfindung.
+
+Gebaut, in dieser Reihenfolge:
+
+1. **`AiVideoCompletion` + `aiVideoDetailed`** (`core/server/utils/aiVideo.ts`).
+   Der Transport las bisher nur `choices[0].message.content` und warf `usage`
+   komplett weg. Jetzt liest er `prompt_tokens`, `completion_tokens` und
+   `finish_reason` wie der Textweg — **und zwei Zahlen, die der Textweg nicht
+   hat**: `prompt_tokens_details.video_tokens` und `cached_tokens`.
+2. **`aiVideoJsonDetailed`** gibt Daten UND Nebendaten heraus. `aiVideo` und
+   `aiVideoJson` bleiben WORTGLEICH, was sie waren, und delegieren nur —
+   `aiVision`/`aiVisionJson` und jeder andere Konsument merken von der
+   Erweiterung nichts (per `grep` geprüft: der einzige echte Konsument des
+   Video-Wegs ist `brief.post.ts`).
+3. **`insightsLogAi` nimmt `videoTokens`/`cachedTokens`**, und `brief.post.ts`
+   reicht sie durch: im Erfolgs-, im Fehler- UND im `slug_taken`-Zweig. Der
+   letzte ist der Grund für den kleinen Umbau an `failInsightsBrief` — diese
+   Ablehnung kommt NACH dem bezahlten Aufruf, und gerade der ärgerlichste Fall
+   wäre sonst der einzige ohne Preis. Antwortet der Anbieter gar nicht,
+   bleiben die Schlüssel WEG statt als `0` einen Verbrauch zu behaupten.
+
+**Warum gerade diese zwei Zahlen:** der Kopf von `aiVideo.ts` benennt
+`video_tokens` SELBST als den Beweis der Abrechnung — ein Lauf, der dort eine
+Null trägt, hat das Video nicht gelesen, sondern bestenfalls seinen Titel
+paraphrasiert. Und `cachedTokens` ist die Erklärung für den scheinbaren
+Preissturz aus der Probe vom 2026-10-27: nicht `processing: 'static'` hat
+gespart, sondern der Prompt-Cache. Ohne diese Zahl liest man denselben Lauf
+zweimal verschieden — einmal als Erfolg einer Einstellung, einmal als Zufall.
+
+**Wieder KEINE Spalte, keine Migration** — die Begründung aus dem Kopf von
+`insightsAi.ts` gilt unverändert: ein Beitrag hat viele Läufe, eine Spalte
+behielte nur den letzten. Für den Brief-Lauf ist die Zeile sogar der einzige
+Zeuge überhaupt: er läuft seit BI3 im HINTERGRUND weiter, nachdem die Route
+mit 202 geantwortet hat — dort schaut kein Mensch auf eine Antwort.
+
+**Beweise:** `packages/core/tests/aiVideo.test.ts` (27 Tests, 4 neue: die
+Zahlen am ERFOLGREICHEN Lauf, `0` bei fehlender `usage`, die Zahlen durch den
+JSON-Weg, und als Gegenprobe, dass `aiVideo`/`aiVideoJson` weiter nur Text
+bzw. Daten herausgeben) und `packages/insights/tests/insightsAiLog.test.ts`
+(6 Tests, 2 neue — mit dem ECHTEN `logEvent`, nicht mit einer Attrappe).
+Gegenprobe gefahren: mit hart auf `0` verdrahteten Video-Zahlen werden 2 der
+Transport-Tests rot, mit aus der Log-Zeile entfernten Schlüsseln 1 der
+Log-Tests. **Nicht abgedeckt** bleibt das Durchreichen IN der Route selbst
+(es hängt an `typecheck` und am Lesen) — derselbe Stand wie beim Textweg aus
+Nachtrag 1.
+
+**Kein echter Video-Lauf gefahren** (~5 Cent, braucht Davids Zustimmung): die
+Form der Antwort stammt aus der gemessenen Probe vom 2026-10-27, die in § 13
+protokolliert ist.
+
+**Gelernt:** „eigenes Vorhaben, dieselbe Operation an einem zweiten
+Transport" war die richtige Beschreibung — aber die Lücke stand einen Tag lang
+im Plan, und es war die TEUERSTE. Wer eine Messung an einem Weg einbaut,
+sollte im selben Durchgang nachsehen, wie viele Wege es gibt.
 
 ## 19. AI1 gebaut (2026-11-09) — der Textweg nennt jetzt seinen Ort
 

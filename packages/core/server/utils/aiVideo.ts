@@ -302,9 +302,49 @@ export async function isAiVideoConfigured(event: H3Event): Promise<boolean> {
 }
 
 /**
- * EIN VIDEO LESEN. Wirft 503 ohne Modell oder Schlüssel — der Konsument prüft
- * das über `isAiVideoConfigured()` VOR dem Aufruf und macht daraus seinen
- * eigenen, ruhigen Satz.
+ * WAS EIN VIDEO-LAUF AUSSER DEM TEXT NOCH SAGT (2026-11-09).
+ *
+ * Dieselbe Erweiterung, die der Textweg einen Tag vorher bekommen hat
+ * (`AiCompletion`, Plan-Abschnitt „Nachtrag: die Tokenzahlen stehen jetzt in
+ * der Zeile") — nachgeholt an dem Transport, der sie am dringendsten braucht:
+ * ein Video ist der TEUERSTE Lauf dieses Monorepos (gemessen: ~135.000
+ * Prompt-Tokens und rund fünf Cent für 25 Minuten, gegen ~1,3 Cent beim
+ * Text-Entwurf). Bis hierher warf dieser Transport `usage` komplett weg und
+ * gab nur `choices[0].message.content` heraus — der teuerste Weg war damit der
+ * EINZIGE, dessen Kosten niemand nachlesen konnte.
+ *
+ * ── ZWEI ZAHLEN, DIE DER TEXTWEG NICHT HAT ───────────────────────────────
+ * `videoTokens` und `cachedTokens` stehen bei einem Video nicht aus Neugier
+ * dabei: der Kopf dieser Datei benennt `usage.prompt_tokens_details.
+ * video_tokens` SELBST als den Beweis, dass das Modell das Video wirklich
+ * gelesen hat (ein Lauf, der nur den Titel paraphrasiert, hat dort eine Null).
+ * Und `cachedTokens` ist die Erklärung für den scheinbaren Preissturz aus der
+ * Probe vom 2026-10-27: nicht `processing: 'static'` hat gespart, sondern der
+ * Prompt-Cache. Ohne diese Zahl liest man denselben Lauf zweimal
+ * verschieden — einmal als Erfolg einer Einstellung, einmal als Zufall.
+ *
+ * Jede Zahl ist `0`, wenn der Anbieter sie nicht nennt. `0` heisst „nicht
+ * gesagt", NIE „nichts verbraucht" — dieselbe Lesart wie im Textweg.
+ */
+export interface AiVideoCompletion {
+  content: string
+  /** OpenAI-kompatibel: `'stop'`, `'length'`, … — oder `''`, wenn es fehlt. */
+  finishReason: string
+  /** Gelesene Tokens laut Anbieter (Prompt + System + Video) — `0`, wenn er keine nennt. */
+  promptTokens: number
+  /** Erzeugte Tokens laut Anbieter — `0`, wenn er keine nennt. */
+  completionTokens: number
+  /** Der ANTEIL des Videos an `promptTokens` — der Beweis der Abrechnung. */
+  videoTokens: number
+  /** Der Anteil, den der Prompt-Cache getragen hat (und damit nicht neu kostete). */
+  cachedTokens: number
+}
+
+/**
+ * EIN VIDEO LESEN, OHNE die Nebendaten — die ALTE, unveränderte Schnittstelle
+ * für jeden Konsumenten, der nur den Text will. Wirft 503 ohne Modell oder
+ * Schlüssel; der Konsument prüft das über `isAiVideoConfigured()` VOR dem
+ * Aufruf und macht daraus seinen eigenen, ruhigen Satz.
  */
 export async function aiVideo(
   event: H3Event,
@@ -312,6 +352,15 @@ export async function aiVideo(
   prompt: string,
   options: AiVideoOptions = {},
 ): Promise<string> {
+  return (await aiVideoDetailed(event, videos, prompt, options)).content
+}
+
+export async function aiVideoDetailed(
+  event: H3Event,
+  videos: readonly AiVideoSource[],
+  prompt: string,
+  options: AiVideoOptions = {},
+): Promise<AiVideoCompletion> {
   // Mit `options.model` fragt hier NIEMAND die Datenbank: der Aufrufer hat
   // seine Wahl schon getroffen (derselbe Audit-Befund wie bei `aiVision`).
   const defaults = options.model ? getAiVideoConfig() : await getEffectiveAiVideoConfig(event)
@@ -370,8 +419,24 @@ export async function aiVideo(
       )
       throw createError({ status: 502, statusText: 'AI provider unavailable' })
     }
-    const payload = await res.json() as { choices?: { message?: { content?: string } }[] }
-    return payload.choices?.[0]?.message?.content ?? ''
+    const payload = await res.json() as {
+      choices?: { message?: { content?: string }, finish_reason?: string }[]
+      usage?: {
+        prompt_tokens?: number
+        completion_tokens?: number
+        prompt_tokens_details?: { video_tokens?: number, cached_tokens?: number }
+      }
+    }
+    const choice = payload.choices?.[0]
+    const details = payload.usage?.prompt_tokens_details
+    return {
+      content: choice?.message?.content ?? '',
+      finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
+      promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
+      completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
+      videoTokens: typeof details?.video_tokens === 'number' ? details.video_tokens : 0,
+      cachedTokens: typeof details?.cached_tokens === 'number' ? details.cached_tokens : 0,
+    }
   }
   catch (error) {
     if (error && typeof error === 'object' && 'statusCode' in error) throw error
@@ -393,6 +458,9 @@ export async function aiVideo(
  *
  * Die ROHE Antwort steht bewusst nicht im Log; was zur Diagnose bleibt, ist
  * ihre Länge.
+ *
+ * DIE ALTE, UNVERÄNDERTE SCHNITTSTELLE für jeden Konsumenten, der nur die
+ * Daten will — dieselbe Teilung wie `aiVideo`/`aiVideoDetailed`.
  */
 export async function aiVideoJson<T = unknown>(
   event: H3Event,
@@ -400,7 +468,32 @@ export async function aiVideoJson<T = unknown>(
   prompt: string,
   options: AiVideoOptions = {},
 ): Promise<T> {
-  const raw = await aiVideo(event, videos, prompt, options)
+  return (await aiVideoJsonDetailed<T>(event, videos, prompt, options)).value
+}
+
+/**
+ * DASSELBE JSON, PLUS DIE ZAHLEN, DIE DIE RECHNUNG ERKLÄREN (2026-11-09).
+ *
+ * `value` statt `content`, weil hier Daten herauskommen und kein Text; der
+ * Rest ist `AiVideoCompletion` ohne das Feld, das schon geparst wurde — genau
+ * wie `AiJsonCompletion` zu `AiCompletion` steht.
+ *
+ * Für K5 ist das kein Nachrüsten aus Ordnungsliebe: der Brief-Lauf läuft seit
+ * BI3 im HINTERGRUND weiter, nachdem die Route längst mit 202 geantwortet hat.
+ * Niemand sieht dort eine Antwort — die Log-Zeile IST der einzige Zeuge.
+ */
+export interface AiVideoJsonCompletion<T> extends Omit<AiVideoCompletion, 'content'> {
+  value: T
+}
+
+export async function aiVideoJsonDetailed<T = unknown>(
+  event: H3Event,
+  videos: readonly AiVideoSource[],
+  prompt: string,
+  options: AiVideoOptions = {},
+): Promise<AiVideoJsonCompletion<T>> {
+  const completion = await aiVideoDetailed(event, videos, prompt, options)
+  const raw = completion.content
   // SEIT BI4 (2026-11-08) ÜBER DIE GEMEINSAME REGEL (`core/shared/aiJson.ts`):
   // zuschneiden, parsen, und erst bei Misserfolg das nicht escapte
   // Anführungszeichen reparieren. Ein bezahlter Lauf stirbt nicht mehr an
@@ -412,10 +505,21 @@ export async function aiVideoJson<T = unknown>(
         `[${options.label ?? 'core'}] KI-Video-Antwort war erst nach Reparatur JSON (${raw.length} Zeichen)`,
       )
     }
-    return parsed.value
+    return {
+      value: parsed.value,
+      finishReason: completion.finishReason,
+      promptTokens: completion.promptTokens,
+      completionTokens: completion.completionTokens,
+      videoTokens: completion.videoTokens,
+      cachedTokens: completion.cachedTokens,
+    }
   }
+  // DIE EINE FRAGE, DIE WEITERHILFT (BI4): hat das Modell aufgehört, weil es
+  // fertig war, oder weil die Decke gerissen ist? Der Status bleibt 502 wie
+  // bisher — hier steht nur mehr in der Zeile, nicht Anderes in der Antwort.
   console.error(
-    `[${options.label ?? 'core'}] KI-Video-Antwort war kein JSON (${raw.length} Zeichen)`,
+    `[${options.label ?? 'core'}] KI-Video-Antwort war kein JSON `
+    + `(${raw.length} Zeichen, finish_reason=${completion.finishReason || 'unbekannt'})`,
   )
   throw createError({ status: 502, statusText: 'AI returned no JSON' })
 }
