@@ -11,6 +11,7 @@ const { formatDate } = useFormatDate()
 const localePath = useLocalePath()
 const toast = useToast()
 const confirm = useConfirm()
+const { promptFreshSignIn } = useRecentAuthPrompt()
 const auth = useAuthStore()
 const { user: me } = useCurrentUser()
 
@@ -289,6 +290,8 @@ async function runUserAction(type: UserAction, user: AdminUserRow) {
     await refresh()
   }
   catch (error) {
+    // RA3: Löschen verlangt eine frische Anmeldung — der EINE Weg aus core.
+    if (type === 'delete' && await promptFreshSignIn(error, t('admin.users.reauthText'))) return
     // `data.reason` (Fehler-Envelope): `data.data.code` kam nie an — s. [id].vue.
     // Die Zuordnung Grund → Text liegt in shared/userActionErrors.ts, damit
     // Liste, Detailseite und Test dieselben Schlüssel benutzen.

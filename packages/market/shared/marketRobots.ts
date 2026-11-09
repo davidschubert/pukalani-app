@@ -22,9 +22,9 @@
  * Server-Abhängigkeit — das Bibliotheks-Skript (`market-library-compute.mjs`)
  * lädt diese Datei direkt.
  */
-export type { BrandRobots as MarketRobots } from '../../brand/shared/brandRobots'
+export type { BrandRobots as MarketRobots } from '../../brand/shared/brandRobots.ts'
 export {
   BRAND_ROBOTS_ABSENT as MARKET_ROBOTS_ABSENT,
   brandRobotsAllows as marketRobotsAllows,
   parseBrandRobots as parseMarketRobots,
-} from '../../brand/shared/brandRobots'
+} from '../../brand/shared/brandRobots.ts'

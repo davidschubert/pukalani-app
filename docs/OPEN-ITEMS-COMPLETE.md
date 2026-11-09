@@ -30,6 +30,79 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RA3 — Frische Anmeldung auch an den Betreiber-Löschungen ✅ 2026-11-09
+
+**Was.** Drei endgültige Betreiber-Aktionen hatten die Klammer aus RA2 noch
+nicht: **Nutzer löschen** (`admin/users/[id]` DELETE → `deleteUserCompletely`),
+**Mandant löschen** (`control/tenants/[id]` DELETE, Host sofort offline) und
+**Website austragen** (`control/websites/[id]` DELETE, Register-Eintrag +
+Entitlements ohne Papierkorb). Alle drei rufen jetzt `requireRecentAuth(event)`
+— nach dem Rechte-Gate, vor dem ersten Schreiben (beim Nutzer nach den
+fachlichen 400ern Selbst/letzter Admin/404, damit niemand erst nach einem neuen
+Login erfährt, dass es ohnehin nicht geht). Die drei Oberflächen (Nutzerliste,
+Nutzer-Detail, Communities, Websites) reichen `reauth_required` an
+`useRecentAuthPrompt` durch, eigene Texte in de+en. Keine Route davon wird über
+die Service-Naht gerufen (`callControlPlane` kennt nur community/onboarding),
+eine Sitzung ist also immer da.
+
+**Beweis.** Quelltext-Wächter `packages/admin/tests/recentAuthRoutes.test.ts`
+(7) und `packages/control/tests/recentAuthRoutes.test.ts` (10), Gegenprobe
+gefahren: Aufruf aus `tenants/[id].delete.ts` entfernt ⇒ 2 rot. Typecheck
+branding + control grün, Lint admin/control/market grün. Ein Klick-Beweis
+hinter dem Login steht aus — es gibt keine E2E-Abdeckung dieser Flows; der
+Client-Weg ist derselbe wie in RA2 (dort live bewiesen).
+
+**Gelernt:** RA2 hatte die Rollen-Route bewusst ohne Klammer gelassen und das
+AN DER ROUTE begründet — genau so ließ sich hier in einer Minute entscheiden,
+dass `role.patch.ts` weiter ohne bleibt. Ausnahmen gehören an die Stelle, nicht
+in eine Liste.
+
+### MV1 Zeitplan — das Bibliotheks-Werkzeug lief seit zwei Monaten nicht ✅ 2026-11-09
+
+**Was.** Offen war nur „ein Cron für `--stale`". Beim ersten Lauf zeigte sich:
+`market-library-compute.mjs` brach **schon beim Start** mit
+`ERR_MODULE_NOT_FOUND` — seit BS1 R2b (2026-09-08) importierten
+`marketRobots.ts`, `marketCrawlRules.ts` und `marketProfile.ts` ihre Regeln
+über die Paketgrenze ohne `.ts`-Endung. Vite und Nitro ergänzen die Endung,
+pures Node nicht. Kur: Endungen gesetzt (`allowImportingTsExtensions` ist in
+allen generierten tsconfigs an), dazu der Test
+`packages/market/tests/marketLibraryScript.test.ts`, der das Werkzeug WIRKLICH
+startet (Gegenprobe: alter Import ⇒ 2 rot). Neu
+`.github/workflows/market-library-watch.yml`: montags 06:17 UTC `--stale`, bei
+Überfälligen EIN zugewiesenes Issue mit Label `marktvergleich-pflege`, das sich
+nach dem Neurechnen selbst schließt; ein Exit ≠ 0/1 (kaputtes Werkzeug) macht
+den Lauf rot statt „überfällig". Bewusst NICHT im Produktions-Wächter: Pflege
+ist kein Ausfall. Läuft ohne `pnpm install` (geprüft in einer Kopie ohne
+`node_modules`).
+
+**Befund für David:** alle vier Einträge (the-barn, apple, nike, anthropic;
+lib-5) sind vom 2026-09-06 und werden um den **2026-12-05** überfällig
+(`--stale --now 2026-12-10` ⇒ 4 × 95 Tage). Der Montags-Lauf meldet es dann.
+
+**Gelernt:** ein Werkzeug, das nur von Hand läuft, ist nach dem nächsten
+Umbau tot, und niemand merkt es — alle Tests liefen über Vite und sahen die
+fehlende Endung nie. Wer ein `.mjs` unter purem Node TS-Dateien laden lässt,
+braucht einen Test, der genau diesen Start fährt.
+
+### AI1 — Live-Beweis: der Textweg rechnet auf Prod in der EU ✅ 2026-11-09
+
+**Was.** Offen war nach dem Bau (Plan BRAND-INSIGHTS-KURATION §19) nur der
+erste echte Lauf nach dem Deploy. Er ist passiert, ohne dass ein zusätzlicher
+bezahlter Lauf nötig war: auf branding.supply, Build `d5bca4f5` (enthält
+`c1c6c4f2`, Release-Symlink 10:25), lief um **10:41:38 UTC ein
+Insights-Entwurf** (`insights.draft.completed`, `anthropic/claude-haiku-4.5`,
+`insights-d-4`, 1.332 + 1.652 Tokens, `finishReason: stop`, 11,6 s).
+
+**Beweiskette.** (1) Das ausgelieferte Bundle
+(`releases/branding/current/server/chunks/nitro/nitro.mjs`) trägt
+`only: ["amazon-bedrock/eu-west-1", "google-vertex/europe"]`. (2) Die
+Entwurfs-Route ruft mit `BRAND_PROVIDER_ROUTING` (`insightsAi.ts`), also mit
+genau dieser Allowlist und `allowFallbacks: false`. (3) Die Gegenprobe aus §18
+zeigt, dass OpenRouter eine Allowlist ohne passenden Endpunkt mit 404 ablehnt,
+statt still auszuweichen. Ein erfolgreicher Lauf mit `stop` heißt damit: ein
+EU-Endpunkt hat gerechnet. NICHT als Beleg verwendet: `data_region` (steht
+immer auf `global`, §18).
+
 ### AW29 — SMTP-keepAlive-Patch auch auf prod entfernt ✅ 2026-11-08
 
 **Was.** Davids „Ja, prod jetzt“ zum vorbereiteten Skript
