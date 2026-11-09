@@ -110,6 +110,14 @@ export default defineAppConfig({
         },
         insights: { labelKey: 'brand.nav.insights', to: '/insights', order: 25 },
       },
+      /**
+       * DIE GLOCKE (C17-Vertrag, Davids Entscheidung 2026-11-09): seit BI2 K7
+       * entstehen hier Antwort-Benachrichtigungen unter Insights-Artikeln, und
+       * branding.supply hat kein blueprint-Layout, also keine Glocke aus
+       * `utilities.notifications`. Dieser Schalter hängt sie in die
+       * Kopfzeile `BwSiteNav` (Kunden) UND in die Dashboard-Shell (Betreiber).
+       */
+      accountBell: true,
     },
     /**
      * BILDER LESEN (Brand Design, Vorbilder-Lesung — docs/archiv/BRAND-DESIGN.md
