@@ -1,0 +1,112 @@
+# Marktvergleich-Bibliothek: nichts älter als 90 Tage (MV1, 2026-11-09).
+#
+# Die Bibliothek (`packages/market/shared/library/index.ts`) liefert
+# vorgerechnete Außensichten fremder Marken aus. Die Regel aus dem Rechts-Check
+# (Runbook MARKTVERGLEICH-BIBLIOTHEK.md, Schritt 4): ein Eintrag, dessen
+# `computed.at` älter als 90 Tage ist, wird nicht mehr geprüft, sondern NEU
+# GERECHNET. Das Werkzeug kennt die Regel seit 2026-09-06
+# (`market-library-compute.mjs --stale`, Exit 1 bei Überfälligen) — nur hat es
+# nie jemand von selbst laufen lassen. Dieser Lauf tut es einmal pro Woche.
+#
+# KEIN Produktions-Alarm: ein überfälliger Eintrag ist Pflegearbeit, kein
+# Ausfall. Er bekommt deshalb ein EIGENES Label (`marktvergleich-pflege`)
+# statt `produktions-alarm` — sonst lernt man, Alarme zu überlesen.
+#   · überfällig ⇒ EIN offenes Issue (kein zweites, solange es offen ist),
+#                  zugewiesen, damit es als Mail ankommt (Lehre aus MON2)
+#   · alles frisch ⇒ ein offenes Issue wird mit „erledigt" geschlossen
+#
+# Das Werkzeug braucht weder Secrets noch `pnpm install`: es lädt nur die
+# TS-Dateien aus `shared/` (Node 22 entfernt die Typen selbst) und fasst im
+# Modus `--stale` kein Netz an. Dass es überhaupt LÄDT, sichert der Test
+# `packages/market/tests/marketLibraryScript.test.ts` — vom 2026-09-08 bis
+# 2026-11-09 brach es an einem Import ohne Endung, und niemand sah es.
+
+name: Marktvergleich-Bibliothek
+
+on:
+  schedule:
+    # Montags 06:17 UTC — krumme Minute, weil GitHub volle Stunden drosselt.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    # Öffentliches Repo: in einem Fork gibt es nichts zu pflegen.
+    if: github.event.repository.fork == false
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      LABEL: marktvergleich-pflege
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      ASSIGNEE: ${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Alter der Einträge prüfen
+        id: check
+        run: |
+          set +e
+          node packages/market/scripts/market-library-compute.mjs --stale > /tmp/stale.txt 2>&1
+          code=$?
+          set -e
+          cat /tmp/stale.txt
+          # 0 = frisch, 1 = überfällig. Alles andere ist ein kaputtes Werkzeug
+          # und soll den Lauf ROT machen, nicht als „überfällig" durchgehen.
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then
+            echo "::error::Werkzeug endete mit Exit $code — es läuft nicht, s. Ausgabe oben."
+            exit "$code"
+          fi
+          echo "stale=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Issue öffnen oder schließen
+        env:
+          STALE: ${{ steps.check.outputs.stale }}
+        run: |
+          set -euo pipefail
+          gh label create "$LABEL" --color FBCA04 --force \
+            --description 'Marktvergleich-Bibliothek: Einträge älter als 90 Tage — neu rechnen' >/dev/null
+          nummer=$(gh issue list --label "$LABEL" --state open --limit 1 --json number \
+            --jq 'if length > 0 then .[0].number | tostring else "" end')
+          stand=$(date -u +'%Y-%m-%d')
+
+          if [ "$STALE" = "1" ] && [ -z "$nummer" ]; then
+            {
+              echo "Die Marktvergleich-Bibliothek hat Einträge, die älter als 90 Tage sind."
+              echo "Sie werden nicht geprüft, sondern **neu gerechnet** (Runbook \`docs/runbooks/MARKTVERGLEICH-BIBLIOTHEK.md\`, Schritte 3–5)."
+              echo
+              echo '```'
+              cat /tmp/stale.txt
+              echo '```'
+              echo
+              echo "- Lauf: $RUN_URL"
+              echo "- Dieses Issue schließt der wöchentliche Lauf SELBST, sobald nichts mehr überfällig ist."
+              echo
+              echo "_Erzeugt von \`.github/workflows/market-library-watch.yml\` (MV1)._"
+            } > /tmp/issue-body.md
+            url=$(gh issue create --title "Marktvergleich-Bibliothek: Einträge überfällig ($stand)" \
+              --label "$LABEL" --assignee "$ASSIGNEE" --body-file /tmp/issue-body.md)
+            echo "Issue geöffnet: $url"
+          elif [ "$STALE" = "1" ]; then
+            echo "Issue #$nummer ist schon offen — nichts zu tun."
+          elif [ -n "$nummer" ]; then
+            gh issue comment "$nummer" --body "✅ Erledigt ($stand): nichts mehr überfällig. Lauf: $RUN_URL" >/dev/null
+            gh issue close "$nummer" --reason completed >/dev/null
+            echo "Issue #$nummer geschlossen."
+          else
+            echo "Alles frisch, kein offenes Issue."
+          fi

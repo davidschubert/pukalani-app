@@ -131,7 +131,10 @@ Für **jedes** Feld im Entwurf:
       geprüft, sondern neu gerechnet. Seit 2026-09-06 sagt das auch das Werkzeug:
       `--check` druckt je ausgeliefertem Eintrag sein Alter und markiert die
       überfälligen (Warnung, der Lauf bleibt grün), `--stale` listet nur sie und
-      endet mit Exit 1 — für einen späteren Cron.
+      endet mit Exit 1. Seit 2026-11-09 läuft `--stale` jeden Montag in der CI
+      (`.github/workflows/market-library-watch.yml`) und öffnet bei Überfälligen
+      EIN Issue mit Label `marktvergleich-pflege`, das sich nach dem Neurechnen
+      selbst schließt.
 
 Für den **Eintrag**:
 

@@ -27,7 +27,7 @@
  * trotzdem füllt, erfindet sie.
  */
 
-import { EVIDENCE_QUOTE_MAX } from '../../core/shared/evidenceGrounding'
+import { EVIDENCE_QUOTE_MAX } from '../../core/shared/evidenceGrounding.ts'
 
 /** Die zehn Felder, die man von AUSSEN über eine Marke sagen kann (§2.2). */
 export const MARKET_FIELD_IDS = [

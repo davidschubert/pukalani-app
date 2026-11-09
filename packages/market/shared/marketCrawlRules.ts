@@ -335,8 +335,8 @@ export function selectMarketPages(
  * Der market-seitige NAME bleibt: `marketFetch.ts`, die Bot-Seite und die
  * Tests des Marktvergleichs nennen ihn unverändert.
  */
-export type { BrandTdmSignals as MarketTdmSignals } from '../../brand/shared/brandTdm'
-export { brandTdmReserved as marketTdmReserved } from '../../brand/shared/brandTdm'
+export type { BrandTdmSignals as MarketTdmSignals } from '../../brand/shared/brandTdm.ts'
+export { brandTdmReserved as marketTdmReserved } from '../../brand/shared/brandTdm.ts'
 
 // ── Rohtext-Ablage ──────────────────────────────────────────────────────────
 
