@@ -1887,3 +1887,8 @@ grün mit Gegenprobe.
 rechnet. Die neun Proben aus § 18 liefen gegen OpenRouter direkt, nicht durch
 unseren Code. Der Code-Beweis ist der Pin plus der grüne Wächter; der
 Live-Beweis ist der erste bezahlte Lauf nach dem Deploy.
+
+**Live-Beweis erbracht 2026-11-09:** Build `d5bca4f5` trägt die Allowlist im
+Bundle, ein echter Insights-Entwurf lief um 10:41 UTC mit `finishReason: stop`
+durch — mit `allowFallbacks: false` geht das nur über einen EU-Endpunkt
+(Gegenprobe §18). Einzelheiten: COMPLETE „AI1 — Live-Beweis“.
