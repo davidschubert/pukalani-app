@@ -343,7 +343,7 @@ Anwalt ist dafür kein Gate.
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
 | ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`). **Nachtrag 2026-10-28:** ein Brief über 2.000 Zeichen warf den bezahlten Lauf weg (2 von 6 gemessenen Läufen) — das Schema klemmt jetzt an einer Grenze statt abzulehnen | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | ✅ **K6** | **SEO/GEO-Artikelregeln** — **GEBAUT UND LIVE 2026-11-09** (§17, Build `d5bca4f5`): sechs Regeln als Block `SEO_GEO_RULES` in der Prompt-Fassung **`insights-d-3`** (nicht `-d-2`, §17) und die siebte Prüfregel; mit echtem bezahlten Lauf bewiesen (827 statt 700 Wörter) | — | S |
-| **K7** | **Kommentare unter Artikeln** — `comments` in `apps/branding` montieren | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
+| ✅ **K7** | **Kommentare unter Artikeln** — **GEBAUT 2026-11-09** (§20): `comments` + `moderation` in `apps/branding`, Faden an der Row-Id, Schreib-Wächter `insights`, Gäste über den neuen Schalter `guestsOnPublicPages` mit Turnstile. **OFFEN: die 24 Prod-Migrationen** (Davids Ja, VOR dem Code-Deploy) | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
 **Nach Davids Entscheidungen vom 2026-09-09 (§9):** K1 entfällt, K2 läuft
 sofort (kein Gate, keine Migration), K3 ist beauftragt und braucht ein Ja zur
@@ -1977,3 +1977,113 @@ Live-Beweis ist der erste bezahlte Lauf nach dem Deploy.
 Bundle, ein echter Insights-Entwurf lief um 10:41 UTC mit `finishReason: stop`
 durch — mit `allowFallbacks: false` geht das nur über einen EU-Endpunkt
 (Gegenprobe §18). Einzelheiten: COMPLETE „AI1 — Live-Beweis“.
+
+## 20. K7 gebaut (2026-11-09) — Kommentare unter den Artikeln
+
+Das letzte Paket dieses Plans. Gebaut ist es; offen bleibt der eine Schritt,
+der Davids Hand braucht: **die Prod-Migration auf die `branding`-Instanz**.
+
+### Zwei Entscheidungen vorweg (David, 2026-11-09)
+
+**(1) „Wie geplant: `comments` montieren"** — nicht ein eigener schmaler Faden
+im `insights`-Layer. Der Anlass der Frage war ein WIDERSPRUCH zwischen zwei
+Steuerungsdokumenten: dieser Plan führt K7 als Paket, `BRAND-INSIGHTS.md` §7
+nannte „keine Kommentare oder Community-Funktionen unter den Beiträgen" als
+Nicht-Ziel. Beides stand gleichzeitig da. Aufgelöst ist es zugunsten dieses
+Plans, aus demselben Grund, aus dem der Satz überhaupt kippen durfte: er war
+LAUNCH-Zuschnitt, und in derselben Zeile steht „kein Newsletter im Launch" —
+den I5 längst gebaut hat. Der Satz in §7 ist nachgezogen, nicht gelöscht: er
+nennt jetzt sein Datum und seinen Nachfolger.
+
+Der Preis der Entscheidung ist benannt und angenommen: `comments` verlangt
+`moderation` in seinem `requires`, also kommen **beide** Layer und **24
+Migrationen** (`comments-002…020`, `moderation-001…004`) auf die
+`branding`-Instanz. Die Gegenrechnung — ein eigener Faden wäre schneller
+fertig — verliert gegen CONCEPT A14: ein Produkt existiert genau EINMAL, ein
+App-Duplikat wäre eine zweite Wahrheit über dieselbe Sache.
+
+**(2) „Gäste, sofort sichtbar"** — nicht „erst nach Freigabe" und nicht „nur
+angemeldete Konten". Die Begründung steht in der Frage: die Registrierung auf
+branding.supply ist Einladungs-Beta, „nur angemeldet" hieße dort **niemand**,
+und ein Faden, in dem jeder Beitrag auf eine Handbewegung wartet, ist kein
+Gespräch. Was die Freigabe getragen hätte, tragen jetzt Turnstile und der
+Stundeneimer `comments:guest`.
+
+### Was gebaut ist
+
+| Stück | Wo | Was |
+|---|---|---|
+| Layer montiert | `apps/branding/{site.manifest.ts,nuxt.config.ts,package.json}` | `comments` + `moderation` in der kanonischen `EXTENDS_ORDER`, also VOR `brand`/`market`/`insights`/`pages`; `pnpm check:manifests` grün (26 Layer, 9 Apps) |
+| Der Faden | `packages/insights/app/pages/insights/[slug].vue` | `CommentSection` unter dem Newsletter-Block, nicht in der Vorschau |
+| Der Begriff | `packages/insights/shared/insightsComments.ts` | `INSIGHTS_COMMENT_TARGET = 'insights'` + `insightsCommentUrl(slug)` — EINE Stelle für Seite, Wächter und Moderation |
+| Der Schreib-Wächter | `packages/insights/server/plugins/comments-target.ts` | `registerContentWriteGuard('insights', …)` ⇒ geschrieben werden darf genau dort, wo auch gelesen werden darf |
+| Gast-Träger | `packages/comments/shared/guestComments.ts` + beide Aufrufstellen | neuer Schalter `pukalani.comments.guestsOnPublicPages` (Core-Default AUS, `apps/branding` AN) |
+| Bot-Beweis | `packages/core/shared/turnstile.ts`, `GuestCommentForm.vue`, `guest.post.ts` | vierte Aktion `guest_comment` |
+| Soll-Liste | `scripts/ops/verify-schema-parity.mjs` | `BRANDING_SOLL` trägt `COMMENTS_TABLES` + `MODERATION_TABLES` |
+
+### Drei Dinge, die man nicht „vereinfachen" darf
+
+**Die Schreib-Regel IST die Lese-Regel.** Der Wächter fragt
+`insightsPostIsVisible` und sonst nichts. Daraus folgt die Zusage „Kommentare
+nur unter ARTIKELN", OHNE dass irgendwo eine zweite Formatliste gepflegt wird:
+`publicFormats` steht auf `['article']`, Markenprofil, Duell und Ranking sind
+für Leser 404 — und für Schreiber auch. Legt David den Riegel nach der
+Anwaltsantwort (BI1-3/BI1-4) um, wandert das Kommentieren von selbst mit.
+Eine eigene Liste wäre die zweite Stelle, an die sich an jenem Tag niemand
+erinnert.
+
+**Ohne diesen Wächter wäre der Entwurf offen.** `assertContentWritable` lässt
+einen NICHT angemeldeten Zieltyp durch (fail-open, Begründung im Kopf von
+`contentWritable.ts`), und der Gast-Weg schreibt über die Operator-Klinke.
+Ohne die Datei könnte ein Fremder an eine unveröffentlichte Redaktionsfassung
+schreiben, deren Id er nur erraten müsste. Deshalb ist eine fehlende Zeile hier
+ein NEIN — anders als beim `post`-Wächter des posts-Layers, wo 404 „es gibt
+nichts zu verbieten" heißt.
+
+**Der Faden hängt an der ROW-ID, nicht am Slug.** Ein Beitrag darf umbenannt
+werden, der alte Slug lebt in `slugHistory` weiter und leitet per 301 um (I3).
+Am Slug hinge der Faden genau bis zur ersten Umbenennung; danach wären die
+Kommentare noch da und niemand fände sie. `targetUrl` trägt trotzdem den
+heutigen Pfad — er wird nur für den Link in der Antwort-Benachrichtigung
+gebraucht, und dort führt die 301 den Leser ohnehin richtig.
+
+### Warum Turnstile und nicht ein Honigtopf
+
+Der Vorschlag an David hieß „Honigtopf und Drossel wie bei der Warteliste".
+Gebaut ist die STÄRKERE Hälfte davon, und der Honigtopf ist entfallen: ein
+öffentliches Gast-Formular ist genau die Fläche, über die am 2026-10-27 209
+Spam-Mails durch unser Resend-Konto liefen, und die Antwort darauf steht seit
+jenem Tag im Repo. `requireTurnstile(event, 'guest_comment', …)` verlangt einen
+Browser mit einem Menschen davor; der Eimer `comments:guest` drosselt weiterhin
+EINE Quelle. Ein Honigtopf daneben hätte eine dritte Hürde ergeben, deren
+Ausweichantwort („200, aber nichts geschrieben") beim Kommentieren eine
+Phantom-Zeile in der Liste bedeutet hätte — bei der Warteliste ist die
+Erfolgsmeldung ein Satz, hier ist sie ein sichtbarer Beitrag.
+
+Wo Turnstile nicht konfiguriert ist (Dev, CI, jede Instanz ohne die zwei
+Schlüssel), ist der Aufruf ein No-op (`mode: 'off'`) und das Widget rendert
+nichts — die Embed-E2E-Specs laufen unverändert.
+
+`autoHideReports` bleibt bei 0, und das ist kein Vergessen: die Schwelle zählt
+OFFENE MELDUNGEN, und melden kann nur, wer eine Sitzung hat. Auf einer Seite,
+deren Leser Gäste sind, wäre sie eine Zusage, die niemand einlösen kann. Sie
+gehört eingeschaltet, sobald die Beta offen ist.
+
+### Beweise
+
+`pnpm --filter @pukalani/comments test` 78 grün (die Gate-Prüfungen tragen den
+neuen Träger, inklusive der GEGENPROBE „geschlossene Community schlägt auch
+diesen Träger"), `pnpm --filter @pukalani/insights test` 604 grün (neu:
+`insightsComments.test.ts` — der Begriff, der Pfad und die vier Fälle der
+Schreib-Regel), `pnpm check:manifests`, `check:i18n-keys`, `check:doc-links`,
+`check:single-copy`, `check:prompt-quotes`, `lint:scripts` grün;
+`check:bilanz` nach `node scripts/produkt-bilanz.mjs` grün (die Bilanz nennt
+`branding` jetzt bei `comments` und `moderation`).
+
+**Was damit NICHT bewiesen ist:** dass auf branding.supply ein Kommentar
+ankommt. Die 24 Migrationen sind auf der Prod-Instanz noch nicht gefahren, und
+ohne sie bricht jeder Schreibversuch — deshalb gilt hier dieselbe Reihenfolge
+wie bei K5: **Migration VOR dem Code-Deploy**, und das Gate davor ist Davids
+Ja. Ein lokaler Klick-Beweis steht ebenfalls aus: dieser Worktree hat keine
+`apps/branding/.env` und damit keine lokale `branding`-Instanz (das Rezept
+dafür steht in der Notiz „branding Dev-Env & Prod-Ablage").

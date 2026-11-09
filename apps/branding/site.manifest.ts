@@ -25,6 +25,15 @@ export default {
     // Betreiber-Konsole + Konto-Seiten (Davids Entscheidung 2026-09-03,
     // „Dashboard-Zugang wie auf allen anderen Pukalani-Websites").
     'admin',
+    // Kommentare unter den öffentlichen Insights-Artikeln (BI2 K7,
+    // 2026-11-09 — Davids Entscheidung „wie geplant: comments montieren").
+    // `moderation` steht daneben, weil das Kommentar-Manifest es in
+    // `requires` nennt: Meldungen eskalieren dorthin. Beide stehen HIER und
+    // nicht neben `insights`, obwohl sie ihm dienen — die kanonische
+    // EXTENDS_ORDER setzt sie vor die Layer, die sie nicht kennt, und das
+    // Manifest soll die Reihenfolge der extends-Kette lesbar machen.
+    'comments',
+    'moderation',
     'brand',
     'market',
     // Der redaktionelle Bereich (BI1 I1, 2026-09-09 — Plan

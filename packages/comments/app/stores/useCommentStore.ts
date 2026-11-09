@@ -247,7 +247,13 @@ const commentStoreSetup = () => {
    * shared/guestComments.ts), damit die Zeile auch nach einem Neuladen da ist —
    * sonst wäre der Eintrag hier eine Anzeige ohne Deckung.
    */
-  async function addGuestComment(content: string, guestName: string, parentId?: string) {
+  /**
+   * `turnstileToken` kam mit BI2 K7 dazu: das Gast-Formular holt ihn am Widget
+   * (`AuthTurnstileWidget`, Aktion `guest_comment`) und reicht ihn nur durch.
+   * Ohne Turnstile-Schlüssel ist er `undefined` und die Route ein No-op —
+   * deshalb optional und nicht Pflicht.
+   */
+  async function addGuestComment(content: string, guestName: string, parentId?: string, turnstileToken?: string) {
     const now = new Date().toISOString()
     const parent = parentId ? rows.value.find(r => r.$id === parentId) : undefined
     const temp: Comment = {
@@ -276,7 +282,7 @@ const commentStoreSetup = () => {
         method: 'POST',
         // Kein `guestEmail` mehr (F18): der Server nimmt es nicht entgegen und
         // legt es nirgends ab — es zu senden wäre eine Adresse mehr im Netz.
-        body: { targetId: targetId.value, targetType: targetType.value, content, parentId, targetUrl: targetUrl.value || undefined, guestName },
+        body: { targetId: targetId.value, targetType: targetType.value, content, parentId, targetUrl: targetUrl.value || undefined, guestName, turnstileToken },
       })
       const alreadyPresent = rows.value.some(row => row.$id === created.$id)
       rows.value = rows.value.filter(row => row.$id !== temp.$id)

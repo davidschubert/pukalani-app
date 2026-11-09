@@ -482,7 +482,13 @@ const PORTFOLIO_SOLL = [
 // docs/plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md). Die sechs
 // pages-Migrationen gehören damit auf die branding-Instanz — Migration VOR
 // dem Code-Deploy (§2.3 des Plans).
-const BRANDING_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...BRAND_TABLES, ...MARKET_TABLES, ...INSIGHTS_TABLES, ...PAGES_TABLES]
+// Seit BI2 K7 (2026-11-09) zusätzlich mit `comments` UND `moderation`: unter
+// den öffentlichen Insights-Artikeln darf kommentiert werden (Davids
+// Entscheidung „wie geplant: comments montieren"). `moderation` steht dabei,
+// weil das Kommentar-Manifest es in `requires` nennt. Die 24 Migrationen
+// (comments-002…020, moderation-001…004) gehören damit auf die
+// branding-Instanz — Migration VOR dem Code-Deploy, Gate ist Davids Ja.
+const BRANDING_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...BRAND_TABLES, ...MARKET_TABLES, ...INSIGHTS_TABLES, ...PAGES_TABLES, ...COMMENTS_TABLES, ...MODERATION_TABLES]
 
 /**
  * photos (apps/photos) = themes admin media core system. NICHT ausgerollt

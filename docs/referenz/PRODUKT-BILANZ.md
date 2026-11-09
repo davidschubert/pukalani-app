@@ -20,7 +20,7 @@ Protokoll in [`docs/archiv/PRODUKT-BILANZ-2026-07-27.md`](../archiv/PRODUKT-BILA
 | **activity** | ✅ | comments | 2/2 über `tenantDb` | — | basic |
 | **analytics** | ✅ | comments, portfolio | 3/3 über `tenantDb` | ✅ | personal |
 | **brand** | — | branding | 0/96 über `tenantDb` · 47 roh | ✅ | — |
-| **comments** | ✅ | _template, comments | 18/19 über `tenantDb` | ✅ | — |
+| **comments** | ✅ | _template, branding, comments | 18/19 über `tenantDb` | ✅ | — |
 | **control** | — | control | 0/85 über `tenantDb` · 61 roh | ✅ | — |
 | **courses** | ✅ | _template, comments | 14/15 über `tenantDb` | ✅ | pro |
 | **domains** | — | comments, portfolio | 0/5 über `tenantDb` | — | — |
@@ -30,7 +30,7 @@ Protokoll in [`docs/archiv/PRODUKT-BILANZ-2026-07-27.md`](../archiv/PRODUKT-BILA
 | **market** | — | branding | 0/12 über `tenantDb` · 1 roh | ✅ | — |
 | **media** | ✅ | comments, photos | 5/5 über `tenantDb` | ✅ | personal |
 | **messages** | ✅ | comments | 0/13 über `tenantDb` | ✅ | personal |
-| **moderation** | ✅ | _template, comments | 3/4 über `tenantDb` | ✅ | — |
+| **moderation** | ✅ | _template, branding, comments | 3/4 über `tenantDb` | ✅ | — |
 | **pages** | ✅ | branding, control, portfolio | 7/12 über `tenantDb` | ✅ | — |
 | **posts** | ✅ | _template, comments | 27/32 über `tenantDb` | ✅ | personal |
 | **runner** | — | control | 0/21 über `tenantDb` · 21 roh | — | — |
@@ -56,7 +56,7 @@ holt seine Daten über die Naht eines anderen Layers.
 | `billing` | — | — | ✅ | ✅ | — | — | — | — | — |
 | `blueprint` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
 | `brand` | — | ✅ | — | — | — | — | — | — | — |
-| `comments` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
+| `comments` | ✅ | ✅ | ✅ | — | — | — | — | ✅ | — |
 | `control` | — | — | — | ✅ | — | — | — | — | — |
 | `courses` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
 | `domains` | — | — | ✅ | — | — | — | — | — | ✅ |
@@ -67,7 +67,7 @@ holt seine Daten über die Naht eines anderen Layers.
 | `marketing` | — | — | — | — | ✅ | ✅ | — | — | — |
 | `media` | — | — | ✅ | — | — | — | ✅ | ✅ | — |
 | `messages` | — | — | ✅ | — | — | — | — | ✅ | — |
-| `moderation` | ✅ | — | ✅ | — | — | — | — | ✅ | — |
+| `moderation` | ✅ | ✅ | ✅ | — | — | — | — | ✅ | — |
 | `onboarding` | — | — | — | — | — | — | — | ✅ | — |
 | `pages` | — | ✅ | — | ✅ | — | — | — | ✅ | ✅ |
 | `posts` | ✅ | — | ✅ | — | — | — | — | ✅ | — |

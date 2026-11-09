@@ -57,9 +57,24 @@ export default defineNuxtConfig({
    * den Produkten: seine dynamische Route `/[slug]` soll die niedrigste
    * Priorität haben und keine Wizard-Seite überlagern.
    *
-   * REIHENFOLGE: themes/admin vorn (kanonische EXTENDS_ORDER), dann brand,
-   * dann market, dann insights, dann pages (die vier kennt die EXTENDS_ORDER nicht, sie
-   * landen in der Reihenfolge des Site-Manifests am Ende der Produkte) —
+   * SEIT BI2 K7 (2026-11-09) MIT `comments` UND `moderation`: unter den
+   * ÖFFENTLICHEN Insights-Artikeln (`/insights/<slug>`) darf kommentiert
+   * werden. Davids Entscheidung vom 2026-11-09 lautet „wie geplant: comments
+   * montieren" statt eines eigenen schmalen Fadens im insights-Layer — ein
+   * Produkt existiert genau EINMAL, ein App-Duplikat wäre gegen CONCEPT A14.
+   * `moderation` kommt NICHT aus Bequemlichkeit mit, sondern weil das
+   * Kommentar-Manifest es in `requires` nennt (Meldungen eskalieren dorthin).
+   * Die 24 Migrationen (comments-002…020, moderation-001…004) gehören damit
+   * auf die branding-Instanz, Migration VOR dem Code-Deploy; die Soll-Liste im
+   * Schema-Parity-Wächter zieht mit. Der Nicht-Ziel-Satz in
+   * docs/plans/BRAND-INSIGHTS.md §7 („keine Kommentare unter den Beiträgen")
+   * ist damit überholt — er war Launch-Zuschnitt, wie „kein Newsletter im
+   * Launch" in derselben Zeile, den I5 längst gebaut hat.
+   *
+   * REIHENFOLGE: themes/admin/comments/moderation vorn (kanonische
+   * EXTENDS_ORDER), dann brand, dann market, dann insights, dann pages (die
+   * vier kennt die EXTENDS_ORDER nicht, sie landen in der Reihenfolge des
+   * Site-Manifests am Ende der Produkte) —
    * die Werkstatt-Optik kollidiert mit keiner admin-Datei (eigene
    * Bw-Präfixe, eigene Routen); das frühere App-Layout `dashboard.vue`
    * (Ersatz-Durchreiche) ist GELÖSCHT, damit die echte Shell des
@@ -67,7 +82,7 @@ export default defineNuxtConfig({
    * fordern seit demselben Tag das default-Layout an (Wizard-Nav) — sie
    * sind Kunden-Fläche, keine Betreiber-Fläche.
    */
-  extends: ['../../packages/themes', '../../packages/admin', '../../packages/brand', '../../packages/market', '../../packages/insights', '../../packages/pages', '../../packages/core', '../../packages/system'],
+  extends: ['../../packages/themes', '../../packages/admin', '../../packages/comments', '../../packages/moderation', '../../packages/brand', '../../packages/market', '../../packages/insights', '../../packages/pages', '../../packages/core', '../../packages/system'],
 
   // Port pro App eindeutig vergeben (3000–3009 vergeben — 3006 hält platform,
   // 3009 der brand-Playground; die erste Wahl 3006 kollidierte damit und ist

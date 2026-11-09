@@ -346,6 +346,35 @@ export default defineAppConfig({
      * hinein — hier richtig, denn der Betreiber dieser Instanz ist David.
      */
     admin: { instanceTabs: true },
+
+    /**
+     * KOMMENTARE UNTER DEN INSIGHTS-ARTIKELN (BI2 K7, 2026-11-09).
+     *
+     * GÄSTE DÜRFEN SCHREIBEN, UND IHR KOMMENTAR IST SOFORT SICHTBAR — Davids
+     * Entscheidung vom 2026-11-09, auf die Frage „wer darf schreiben?" mit
+     * drei Möglichkeiten (Freigabe vorweg · sofort sichtbar · nur Konten).
+     * Begründung der Wahl: die Artikel sind öffentliche Reichweiten-Inhalte,
+     * ihre Leser haben kein Konto (Einladungs-Beta), und ein Faden, in dem
+     * jeder Beitrag erst nach einer Handbewegung erscheint, ist kein Gespräch.
+     * Die Gegenseite der Wahl steht im Formular: Turnstile und der
+     * Stundeneimer `comments:guest` tragen die Last, die sonst die Freigabe
+     * getragen hätte.
+     *
+     * `autoHideReports` BLEIBT BEWUSST BEI 0 (Core-Default): das
+     * Auto-Ausblenden zählt OFFENE MELDUNGEN, und melden kann nur, wer eine
+     * Sitzung hat. Auf einer Seite, deren Leser Gäste sind, wäre die Schwelle
+     * eine Zusage, die niemand einlösen kann — sie gehört eingeschaltet, wenn
+     * die Beta offen ist und Leser Konten haben.
+     *
+     * Das EMBED bleibt aus: branding.supply bietet kein Widget für fremde
+     * Seiten an, und `embed.enabled` stellte eine öffentliche `/embed`-Seite
+     * plus eine `frame-ancestors`-Lockerung auf. Genau deshalb hat der
+     * Gast-Weg seit K7 einen eigenen Schalter.
+     */
+    comments: {
+      guestsOnPublicPages: true,
+    },
+
     pages: {
       draftNotice: ['imprint', 'privacy', 'terms'],
     },
