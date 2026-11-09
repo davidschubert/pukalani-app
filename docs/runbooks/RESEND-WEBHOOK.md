@@ -321,51 +321,47 @@ eine Einzelmail, gehört aber zum Newsletter-Strom, denn sie wird durch die
 Eintragung ins Formular ausgelöst, also durch genau das, was auch Beschwerden
 auslöst.
 
-Leer heisst unverändert `NUXT_SMTP_FROM`. Ohne Eintrag ändert sich also
-nichts — das war die Bedingung dafür, den Core anzufassen.
+Dazu der ZUGANG: `MailInput.auth` (Core) nimmt Zugangsdaten je Mail,
+`NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` ist die Env-Zeile, aus der der
+insights-Layer sie liest (`insightsNewsletterAuth()`). HOST und PORT bleiben
+in jedem Fall die der Mailer-Einstellung — ein eigener Zugang heisst „anderes
+Konto beim selben Anbieter", nicht „anderer Anbieter"; alles andere wäre eine
+Hintertür an der Konfiguration vorbei.
 
-### 7.3 ZWEI DINGE FEHLEN NOCH, und beide sind Davids Entscheidung
+Der Transporter-Puffer hält seither MEHRERE Zugänge nebeneinander (vorher ein
+einziger Platz). Ohne das hätten sich zwei Schlüssel auf einem Platz
+abgewechselt und jede Mail eine neue SMTP-Verbindung aufgebaut — kein
+sichtbarer Fehler, nur langsamer Versand und unnötig viele Anmeldungen.
 
-1. **Der Schlüssel passt noch nicht — GEMESSEN, nicht geschlossen
-   (2026-11-09).** `pukalani-smtp-send` ist seit § 6 ein
-   `sending_access`-Schlüssel, der an `pukalani.app` GEBUNDEN ist. Dass das
-   auch den VERSAND von einer anderen Domain verbietet, stand zuerst nur als
-   Schlussfolgerung da; nachgemessen mit einem Wegwerf-Schlüssel gleicher
-   Bauart (`sending_access`, `domainId` = `pukalani.app`):
+Leer heisst unverändert `NUXT_SMTP_FROM` und die normalen Zugangsdaten. Ohne
+Eintrag ändert sich also nichts — das war die Bedingung dafür, den Core
+anzufassen.
 
-   | Absender | Antwort |
-   | --- | --- |
-   | `noreply@pukalani.app` | **angenommen**, `id` zurück |
-   | `insights@mail.branding.supply` | **403** „This API key is not authorized to send emails from mail.branding.supply" |
+### 7.3 WAS NOCH FEHLT
 
-   Die Bindung gilt also wirklich, und zwar mit einer eindeutigen Meldung —
-   kein stiller Ausfall. **Und sie ist nicht nachträglich zu lockern:** die
-   Resend-API kann an einem bestehenden Schlüssel nur den NAMEN ändern,
-   Berechtigung und Domain stehen seit der Anlage fest. Jede Lösung heisst
-   deshalb „neuer Schlüssel". Entweder ein
-   Schlüssel für beide Domains (nimmt die Verengung aus § 6 teilweise
-   zurück) oder eigene SMTP-Zugangsdaten für den Newsletter (sauberer: jeder
-   Schlüssel darf nur von seiner Domain senden, kostet aber einen zweiten
-   Zugang im Core-Mailer). **Erst danach** die Adresse in
-   `apps/branding/app/app.config.ts` eintragen.
+**1. Der Schlüssel — EINE Stelle, nicht fünf (Davids Entscheidung
+2026-11-09: Variante B).** In Resend einen `sending_access`-Schlüssel
+anlegen, der an `mail.branding.supply` gebunden ist, und ihn auf der Site
+`branding.supply` als `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen.
+`pukalani-smtp-send` bleibt dabei **unangetastet** — die Verengung aus § 6
+gilt weiter, und jeder Schlüssel darf nur von SEINER Domain senden. Danach
+die Adresse in `apps/branding/app/app.config.ts` setzen
+(`newsletter: { from: '…' }`); beides gehört zusammen, einzeln bringt keines
+von beiden etwas.
 
-   **WARUM DAS NICHT NEBENBEI GEHT:** beide Wege enden damit, dass ein
-   SMTP-Passwort auf die PRODUKTIONSHOSTS muss. Variante A ist eine
-   Rotation über die FÜNF Stellen aus § 6.1 — darunter die Ablage
-   `instance_secrets` des Projekts `account` und die `~/appwrite/.env` auf
-   der Appwrite-Maschine, also eine Datei auf dem Host. Variante B braucht
-   nur EINE neue Stelle, aber eben auch eine. Über Resend- und Ploi-API
-   allein ist das nicht vollständig zu machen; der Appwrite-Teil braucht
-   SSH. Das ist der Grund, warum dieser Punkt liegen bleibt und nicht, dass
-   er unklar wäre.
-2. **`branding.supply` hat gar kein DMARC** (gemessen 2026-11-09:
-   `_dmarc.branding.supply` leer; nur `pukalani.app` hat einen Eintrag).
-   Gmail und Yahoo verlangen für Massenversand mindestens `p=none`. Ein
-   Klick, genau wie bei § RS1 (g): Cloudflare → `branding.supply` → Email →
-   DMARC Management → **Enable DMARC Management**. Cloudflare legt den
-   `_dmarc`-Eintrag mit eigener Berichts-Adresse selbst an.
+Warum nicht Variante A (ein Schlüssel ohne Domain-Bindung): die wäre eine
+Rotation über alle fünf Stellen aus § 6.1 — darunter die Ablage
+`instance_secrets` und die `~/appwrite/.env` auf der Appwrite-Maschine —, und
+ein geleakter Schlüssel könnte dann als JEDE verifizierte Domain senden.
+
+**2. `branding.supply` hat gar kein DMARC** (gemessen 2026-11-09:
+`_dmarc.branding.supply` leer; nur `pukalani.app` hat einen Eintrag). Gmail
+und Yahoo verlangen für Massenversand mindestens `p=none`. Ein Klick, genau
+wie bei RS1 (g): Cloudflare → `branding.supply` → Email → DMARC Management →
+**Enable DMARC Management**. Cloudflare legt den `_dmarc`-Eintrag mit eigener
+Berichts-Adresse selbst an.
 
 **Die Reihenfolge ist wichtig:** solange `newsletter.enabled` auf `false`
 steht, geht ohnehin nichts raus. Wer den Riegel nach den Rechtstexten öffnet,
-prüft vorher diese beiden Punkte — sonst fällt der Newsletter beim ersten
+erledigt vorher diese beiden Punkte — sonst fällt der Newsletter beim ersten
 Versand aus, ohne dass jemand eine Zeile angefasst hätte.

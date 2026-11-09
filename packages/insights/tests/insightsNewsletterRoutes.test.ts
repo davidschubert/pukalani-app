@@ -44,8 +44,9 @@ let rows: FakeRow[]
 let riegelOpen: boolean
 let storeBroken: boolean
 let mailWorks: boolean
-let mails: { to: string, subject: string, text: string, from?: string }[]
+let mails: { to: string, subject: string, text: string, from?: string, auth?: { pass: string } }[]
 let newsletterFrom: string
+let newsletterSmtpPass: string
 let logs: { level: string, name: string, data: Record<string, unknown> }[]
 let hits: Record<string, number>
 let body: Record<string, unknown>
@@ -104,6 +105,7 @@ const tablesDB = {
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useRuntimeConfig', () => ({
   appwriteKey: SECRET,
+  insightsNewsletterSmtpPass: newsletterSmtpPass,
   public: { appwriteDatabaseId: 'main', appwriteProjectId: 'branding', appUrl: 'https://branding.supply' },
 }))
 vi.stubGlobal('useAppConfig', () => ({
@@ -118,7 +120,7 @@ vi.stubGlobal('logEvent', (level: string, name: string, data: Record<string, unk
 vi.stubGlobal('readValidatedBody', async (_event: H3Event, parse: (input: unknown) => unknown) => parse(body))
 vi.stubGlobal('setHeader', () => {})
 vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
-vi.stubGlobal('sendMail', async (_event: H3Event, mail: { to: string, subject: string, text: string, from?: string }) => {
+vi.stubGlobal('sendMail', async (_event: H3Event, mail: { to: string, subject: string, text: string, from?: string, auth?: { pass: string } }) => {
   if (!mailWorks) return false
   mails.push(mail)
   return true
@@ -191,6 +193,7 @@ beforeEach(() => {
   rows = []
   riegelOpen = true
   newsletterFrom = ''
+  newsletterSmtpPass = ''
   storeBroken = false
   mailWorks = true
   mails = []
@@ -500,5 +503,39 @@ describe('Der Newsletter-Absender reist bis an die Mail', () => {
     await subscribe(event)
     expect(mails).toHaveLength(1)
     expect(mails[0]?.from).toBe('')
+  })
+})
+
+/**
+ * DER EIGENE ZUGANG REIST MIT (RS1 e, 2026-11-09).
+ *
+ * Warum das eine eigene Prüfung braucht, obwohl der Absender schon eine hat:
+ * gemessen antwortet ein domain-gebundener Resend-Schlüssel auf einen fremden
+ * Absender mit **403**. Ein `from` OHNE den passenden Schlüssel ist also
+ * nicht die halbe Lösung, sondern gar keine — die beiden müssen gemeinsam
+ * ankommen, und genau das steht hier.
+ */
+describe('Der eigene Newsletter-Zugang reist bis an die Mail', () => {
+  it('gibt das konfigurierte Passwort an sendMail weiter', async () => {
+    newsletterFrom = 'insights@mail.branding.supply'
+    newsletterSmtpPass = 're_newsletter_key'
+    await subscribe(event)
+    expect(mails).toHaveLength(1)
+    expect(mails[0]?.auth).toEqual({ pass: 're_newsletter_key' })
+    // Zusammen, nicht einzeln: der Absender ohne den Schlüssel wäre der 403.
+    expect(mails[0]?.from).toBe('insights@mail.branding.supply')
+  })
+
+  it('gibt ohne Eintrag gar keinen Zugang weiter — der Core nimmt dann die normalen Daten', async () => {
+    newsletterSmtpPass = ''
+    await subscribe(event)
+    expect(mails).toHaveLength(1)
+    expect(mails[0]?.auth).toBeUndefined()
+  })
+
+  it('behandelt ein Passwort aus Leerzeichen wie keines', async () => {
+    newsletterSmtpPass = '   '
+    await subscribe(event)
+    expect(mails[0]?.auth).toBeUndefined()
   })
 })
