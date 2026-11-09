@@ -1738,3 +1738,59 @@ nur alte Inhalte. Die Erfolgsmeldung im Editor sagte nach dem Deploy weiter
 Locale-Strings und fünfzehn Kommentare, die das Gate beschreiben). Typecheck,
 Lint und 582 Tests sehen davon nichts; gefunden hat es erst der Blick auf die
 Seite nach dem Deploy. Wer eine Regel hinzufügt, greppt nach ihrer ANZAHL.
+
+### Nachtrag: die Tokenzahlen stehen jetzt in der Zeile (2026-11-09)
+
+Der bezahlte Lauf oben hat eine Lücke sichtbar gemacht, die vorher niemandem
+auffiel: **die Kostenangabe war eine Schätzung, obwohl der Anbieter die Zahl
+mitgeschickt hat.** BI4 hatte `finishReason` und `completionTokens` in den
+Transport geholt — aber `aiCompleteJson` warf sie im ERFOLGSFALL weg und
+schrieb sie nur beim Scheitern ins Log. Genau verkehrt: ein gescheiterter Lauf
+kostet einmal, ein erfolgreicher läuft im Betrieb hundertmal.
+
+Dazu fehlte die halbe Rechnung. Der Transport las nur
+`usage.completion_tokens`; Eingabe und Ausgabe werden aber zu
+VERSCHIEDENEN Preisen abgerechnet (bei Haiku 4.5 ist die Ausgabe das
+Fünffache), und der Prompt einer Redaktions-Route ist kein Rundungsfehler —
+er trägt Regelwerk, Brief und Markennamen.
+
+Gebaut, in dieser Reihenfolge:
+
+1. **`AiCompletion` trägt `promptTokens`** (`core/server/utils/aiComplete.ts`),
+   gelesen aus `usage.prompt_tokens`. `0` heißt „nicht gesagt", nie „nichts
+   verbraucht".
+2. **`aiCompleteJsonDetailed`** gibt die Daten UND die Nebendaten heraus —
+   dieselbe Teilung, die BI4 für `aiComplete`/`aiCompleteDetailed` eingeführt
+   hat. `aiCompleteJson` bleibt WORTGLEICH, was es war, und delegiert nur: die
+   anderen Konsumenten (Triage, Assist, UGC-Übersetzung, Brand-Wizard) merken
+   von der Erweiterung nichts.
+3. **`insightsLogAi` nimmt `promptTokens`/`completionTokens`/`finishReason`**,
+   und beide bezahlten Routen (`draft.post.ts`, `translate.post.ts`) reichen
+   sie durch — auch im `failed`-Zweig: scheitert erst das SCHEMA, ist der Lauf
+   bezahlt und die Zahlen stehen schon da. Antwortet der Anbieter gar nicht,
+   bleiben die Schlüssel WEG statt als `null` einen Verbrauch zu behaupten,
+   den niemand gemessen hat.
+
+**KEINE Spalte, keine Migration** — und das ist nicht Bequemlichkeit, sondern
+die Begründung, die im Kopf von `insightsAi.ts` schon stand: ein Beitrag hat
+viele Läufe, eine Spalte behielte nur den letzten, und niemand wertet diese
+Zahlen heute aus. Die Log-Zeile ist die ehrlichere Ablage. Weil sie damit der
+EINZIGE Ort ist, an dem je nachzulesen ist, was ein Lauf gekostet hat, hat sie
+jetzt einen Wächter (`packages/insights/tests/insightsAiLog.test.ts`, 4 Tests):
+geprüft wird mit dem ECHTEN `logEvent`, nicht mit einer Attrappe, denn die
+Zusage ist „die Zahlen stehen hinterher in der Zeile" und nicht „die Route
+ruft etwas auf". Gegenprobe gefahren: mit absichtlich weggelassenen Feldern
+werden 2 der 4 Tests rot.
+
+**Was weiter blind ist:** der Video-Weg (`aiVideo`/`aiVideoJson`, Kern von K5)
+gibt nur den Text zurück und wirft `usage` komplett weg — und das ist der
+TEUERSTE Lauf, den dieses Produkt hat (~5 Cent je Video, Frage C). Dort wären
+zusätzlich `prompt_tokens_details.video_tokens` und `cached_tokens` zu lesen,
+die der Kopf von `aiVideo.ts` selbst als den Beweis der Abrechnung benennt.
+Eigenes Vorhaben, dieselbe Operation an einem zweiten Transport.
+
+**Gelernt:** eine Zahl, die man „vorher sagt", ist eine Zusage — und wer sie
+hinterher nicht nachrechnen kann, hat nur geschätzt. Die Kostenangabe vor
+Davids Freigabe (0,5–1 Cent) lag neben dem Ergebnis (827 statt 700 Wörter,
+rund 1,3 Cent); der Anbieter hätte es beantworten können, der eigene Code hat
+die Antwort nur nicht aufgehoben.
