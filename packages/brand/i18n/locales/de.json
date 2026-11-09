@@ -3688,6 +3688,17 @@
         "lead": "{what} entstehen aus eurer Farbwelt, eurem Schriftpaar und eurem Zeichen — die werden im Brand Design entschieden. Bis dahin liefert das Kit alles Übrige: Brand Context, Pressekit, Bündel.",
         "design": "Brand Design ansehen"
       }
+    },
+    "account": {
+      "title": "Konto",
+      "subtitle": "Profil, Sicherheit, angemeldete Geräte, Benachrichtigungen und Daten.",
+      "tabs": {
+        "profile": "Profil",
+        "security": "Sicherheit",
+        "sessions": "Sitzungen",
+        "notifications": "Benachrichtigungen",
+        "data": "Daten"
+      }
     }
   }
 }
