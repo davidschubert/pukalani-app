@@ -205,7 +205,9 @@ catalog:
   # zog 3.3.14, und damit war `main` rot, ohne dass jemand etwas am Code
   # geändert hatte. Beim nächsten Bump prüfen, ob der Fehler weg ist.
   vue-tsc: 3.3.11
-  zod: ^4.5.4
+  # 4.6.7 (2026-11-09): Speicher-DoS bei übergroßen begrenzten Listen behoben
+  # (Advisory „<4.6.6“) — zod prüft bei uns die Request-Bodies im Server.
+  zod: ^4.6.7
   jiti: ^2.7.0
   nodemailer: ^10.3.1
   ioredis: ^6.0.0
