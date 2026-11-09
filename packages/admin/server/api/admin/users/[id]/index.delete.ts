@@ -17,6 +17,11 @@ export default defineEventHandler(async (event) => {
   }
   // Den letzten Admin nicht löschen
   await assertNotLastAdmin(event, userId)
+  // RA3: unumkehrbar ⇒ frische Anmeldung (Regel: core/shared/recentAuth.ts).
+  // NACH den fachlichen 400ern (die braucht niemand erst nach einem neuen
+  // Login zu erfahren), VOR dem ersten Schreiben — `deleteUserCompletely`
+  // sperrt und löscht sofort.
+  await requireRecentAuth(event)
 
   const admin = createAdminClient(event)
   // Existenz-Check VOR dem Orchestrator: die Route soll 404 liefern; der

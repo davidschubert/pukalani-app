@@ -233,6 +233,7 @@
       "deleteUser": "Delete account",
       "deleted": "User deleted.",
       "deletedDesc": "The data snapshot stays available for 30 days under \"GDPR exports\".",
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete the person. Nothing has been deleted.",
       "lastAdmin": "At least one admin must remain.",
       "lastAdminDesc": "Make someone else an admin first — then this role can be given up.",
       "deletionIncomplete": "Only partly deleted — the account is blocked.",

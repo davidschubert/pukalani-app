@@ -15,6 +15,9 @@ export default defineEventHandler(async (event) => {
   if (!id) {
     throw createError({ status: 400, statusText: 'Missing site id' })
   }
+  // RA3: Register-Eintrag UND Entitlements verschwinden, ohne Papierkorb ⇒
+  // frische Anmeldung (core/shared/recentAuth.ts), VOR dem ersten Lesen.
+  await requireRecentAuth(event)
 
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
