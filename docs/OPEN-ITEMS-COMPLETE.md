@@ -72,9 +72,16 @@ eine Sitzung ist also immer da.
 **Beweis.** Quelltext-Wächter `packages/admin/tests/recentAuthRoutes.test.ts`
 (7) und `packages/control/tests/recentAuthRoutes.test.ts` (10), Gegenprobe
 gefahren: Aufruf aus `tenants/[id].delete.ts` entfernt ⇒ 2 rot. Typecheck
-branding + control grün, Lint admin/control/market grün. Ein Klick-Beweis
-hinter dem Login steht aus — es gibt keine E2E-Abdeckung dieser Flows; der
-Client-Weg ist derselbe wie in RA2 (dort live bewiesen).
+branding + control grün, Lint admin/control/market grün. **Klick-Beweis
+2026-11-09** (lokal, Control-Dev-Server aus dem Worktree gegen das lokale
+Appwrite, Wegwerf-Admin + Wegwerf-Nutzer/-Community/-Site): mit einer
+Session von 12:32 UTC um 16:18 UTC alle drei Löschungen ⇒ `403 Recent sign-in
+required`, je die Abfrage „Zur Sicherheit neu anmelden" mit IHREM Text („…
+Es wurde nichts ausgetragen."), Objekte danach unverändert da. „Neu anmelden"
+⇒ abgemeldet, `/login?redirect=/de/dashboard/websites`, nach dem Login zurück
+auf derselben Seite; dieselben drei Löschungen ⇒ `200 OK`, in Appwrite
+nachgeprüft 404. Nur die Nutzer-DETAILseite geklickt, nicht die Liste (dort
+derselbe Zweig). Testdaten danach gelöscht.
 
 **Gelernt:** RA2 hatte die Rollen-Route bewusst ohne Klammer gelassen und das
 AN DER ROUTE begründet — genau so ließ sich hier in einer Minute entscheiden,
@@ -97,7 +104,10 @@ startet (Gegenprobe: alter Import ⇒ 2 rot). Neu
 nach dem Neurechnen selbst schließt; ein Exit ≠ 0/1 (kaputtes Werkzeug) macht
 den Lauf rot statt „überfällig". Bewusst NICHT im Produktions-Wächter: Pflege
 ist kein Ausfall. Läuft ohne `pnpm install` (geprüft in einer Kopie ohne
-`node_modules`).
+`node_modules`). Erster echter Lauf per `workflow_dispatch` am 2026-11-09
+(Run 42617593408): grün, „Nichts überfällig (4 Einträge geprüft)", Zweig
+„alles frisch, kein offenes Issue". Der Issue-ÖFFNEN-Zweig ist noch nie
+gelaufen — sein erster Einsatz ist der Montag nach dem 2026-12-05.
 
 **Befund für David:** alle vier Einträge (the-barn, apple, nike, anthropic;
 lib-5) sind vom 2026-09-06 und werden um den **2026-12-05** überfällig
