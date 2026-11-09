@@ -71,6 +71,34 @@ identisch (Regel „RBAC mit dem schwächsten Konto testen"). Und: fünf Reiter
 passen auf 375 px nicht nebeneinander — Nuxt UI kürzt dann jede Beschriftung
 auf „S…", statt zu scrollen (`item: 'shrink-0'` + `overflow-x-auto`).
 
+---
+
+### BI2 K7 — Kommentare unter den Insights-Artikeln, Prod-Migration ✅ 2026-11-09
+
+**Was.** Das letzte Paket des Kurations-Plans: `comments` + `moderation` auf
+branding.supply montiert, Kommentare nur unter öffentlichen Artikeln (Wächter
+`packages/insights/server/plugins/comments-target.ts`), Gäste mit Turnstile.
+Gemergt als PR #110, live ab Build `2508b191`. Mit Davids Ja danach
+`comments-002…020` + `moderation-001…004` auf die `branding`-Instanz gefahren,
+Parität 49/49, Lesen antwortet 200. Aus der parallelen Fassung PR #111
+(geschlossen, doppelt) übernommen: der Anmelde-Link der Kommentarspalte trägt
+jetzt `?redirect=` und führt nach der Anmeldung zurück zum Text — vorher
+landete man auf der Startseite, in JEDER App mit Kommentaren. Der Schalter
+`app_config.commentsEnabled` stand auf Prod auf `false` und ist mit Davids Ja
+seit 22:38 UTC an. Rest in OPEN-ITEMS BI2: der Klick-Beweis auf Prod.
+Details: Plan BRAND-INSIGHTS-KURATION §20 „Auf Prod".
+
+**Gelernt:** Zwei Sitzungen bauten dasselbe Paket, und die Reihenfolge
+„Migration vor dem Merge" hielt keine von beiden: die eine wartete auf das Ja
+und mergte nicht, die andere wurde gemergt, während ihr eigener PR-Text die
+Migration als ausstehend nannte — und der Deploy feuert beim Merge. Schaden gab
+es nur deshalb keinen, weil auf Prod noch kein Artikel öffentlich war. Ein
+PR, der eine Prod-Migration VORAUSSETZT, gehört als Entwurf (draft) geöffnet,
+bis sie gelaufen ist — ein Satz im PR-Text hält keinen Merge-Knopf auf. Und
+`pnpm migrate … --env-file` scheitert seit pnpm 10.29 („…branding.env: not
+found", Exit 9; pnpm wertet die Option offenbar selbst aus): den Runner mit
+`node --experimental-strip-types scripts/migrate.mjs` aufrufen.
+
 ### AI3 — Live-Beweis: der Video-Weg nennt seinen Verbrauch ✅ 2026-11-09
 
 **Was.** Der teuerste bezahlte Lauf des Produkts — „Brief aus Video", rund
