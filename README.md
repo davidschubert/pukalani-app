@@ -13,7 +13,8 @@ packages/moderation      ← Fundament: generisches Melde-/Report-System
 packages/blueprint       ← KOMPOSITION: der EINZIGE Layer, der mehrere Produkte kennen darf
 packages/*               ← Ebene 2: Produkt-Layer (comments, posts, pages, events, courses,
                            messages, media, themes, analytics, domains, billing, admin,
-                           control, onboarding, activity, feedback, tickets)
+                           control, onboarding, activity, feedback, tickets, runner,
+                           marketing, brand, insights, market)
 apps/*                   ← Ebene 3: dünne Apps, komponieren via extends
 ```
 
@@ -31,7 +32,7 @@ export default defineNuxtConfig({
 - **Ein Deployment trägt viele Communities.** `apps/platform` ist die Mehr-Mandanten-App: alle
   Kunden-Communities teilen sich EIN Appwrite-Projekt, getrennt durch die Datentür
   (`tenantDb`) und Row-Permissions. Ein eigenes Projekt je Kunde ist die Ausnahme für
-  Enterprise (heute nur `portfolio`) — Isolation im CODE und im DEPLOYMENT sind zwei
+  Enterprise und Kunden-förmige Gründe (heute `portfolio` und `branding`) — Isolation im CODE und im DEPLOYMENT sind zwei
   Entscheidungen.
 - **Produkt-Layer** bringen eigenes Datenmodell und/oder eigene UI-Welt mit. Sie extenden den
   Core nicht selbst — die App komponiert beides.
@@ -42,8 +43,8 @@ export default defineNuxtConfig({
 | Technologie | Rolle |
 |---|---|
 | Nuxt 4 (SSR) + Nuxt UI 4 | Framework + UI-Komponenten |
-| Appwrite (self-hosted, aktuell 2.0.0, MariaDB, TablesDB) | Backend: Auth, Datenbank, Storage, Realtime, Presences |
-| node-appwrite / appwrite | Server SDK (CRUD via Server Routes) / Web SDK (Realtime + Presences API) |
+| Appwrite (self-hosted, 2.7.1 auf dev, CI und prod, MariaDB, TablesDB) | Backend: Auth, Datenbank, Storage, Realtime, Presences |
+| node-appwrite 29 / appwrite 27 | Server SDK (CRUD via Server Routes) / Web SDK (Realtime + Presences API) |
 | Pinia · Zod · @nuxtjs/i18n (de+en) | State · Validierung · Internationalisierung |
 | Tailwind CSS 4 · TypeScript strict | Styling · Typsicherheit |
 | pnpm Workspaces + Catalog | Monorepo, zentrale Versionsverwaltung |
@@ -52,7 +53,7 @@ Geteilte Dependency-Versionen sind ausschließlich im Catalog ([pnpm-workspace.y
 
 ## Setup
 
-Voraussetzungen: **Node 22** (`.nvmrc`), **pnpm 10** und eine laufende **Appwrite-Instanz ≥ 1.9.5** (self-hosted, z. B. via Docker/OrbStack). Empfohlener DB-Adapter: **MariaDB** (Appwrites dokumentierter Default; MongoDB ist als Multi-Adapter neuer/weniger erprobt).
+Voraussetzungen: **Node 22** (`.nvmrc`), **pnpm 10** und eine laufende **Appwrite-Instanz 2.7.x** (wie dev, CI und prod) (self-hosted, z. B. via Docker/OrbStack). Empfohlener DB-Adapter: **MariaDB** (Appwrites dokumentierter Default; MongoDB ist als Multi-Adapter neuer/weniger erprobt).
 
 ```bash
 pnpm install
@@ -109,7 +110,7 @@ Demo-Login (nach `--seed`): `uma@demo.local` / `Demo-Passw0rd!` (regulär), `mod
 
 ```
 maui-monorepo/
-├── packages/                     # 21 Layer — Fundament, Komposition, Produkte
+├── packages/                     # 26 Layer — Fundament, Komposition, Produkte
 │   ├── core/                     # Fundament: Auth, i18n, SEO, Realtime, Datentür, Verträge
 │   │   └── .playground/          # isolierte Dev-Umgebung
 │   ├── system/                   # Fundament: Infra-Tabellen (Migrationen, kein UI)
@@ -131,13 +132,19 @@ maui-monorepo/
 │   ├── domains/                  # eigene Domain je Community (DNS, Zertifikat)
 │   ├── billing/                  # Stripe (Checkout, Webhook, Entitlements, Portal)
 │   ├── feedback/                 # Feedback-Widget
-│   └── tickets/                  # Ticket-Board für den Betrieb
+│   ├── tickets/                  # Ticket-Board für den Betrieb
+│   ├── runner/                   # AI-Runner: Tickets als Claude-Code-Läufe auf einem registrierten Runner
+│   ├── marketing/                # Kopf und Fuß der Marke Pukalani (pukalani.app + help)
+│   ├── brand/                    # branding.supply: KI-Markenberater, Brand Foundation, Design, Book & Kit, Brand-Check
+│   ├── insights/                 # branding.supply: Redaktion (Markenprofile, Artikel, Newsletter, Themenradar)
+│   └── market/                   # branding.supply: Marktvergleich mit Zitat und Quelle
 ├── apps/                         # dünne Apps — komponieren nur via extends
 │   ├── platform/                 # DIE Mehr-Mandanten-App: alle Kunden-Communities + Kundenbereich
 │   ├── control/                  # Betreiber-Konsole (admin.pukalani.app) + interne Doku
 │   ├── marketing/                # pukalani.app — die Landingpage
 │   ├── help/                     # help.pukalani.app — Kunden-Hilfe (de + en)
-│   ├── portfolio/                # pukalani.studio — Davids eigene Site (einziges Silo)
+│   ├── portfolio/                # pukalani.studio — Davids eigene Site (Silo)
+│   ├── branding/                 # branding.supply — zweites Silo (eigenes Projekt `branding`)
 │   ├── comments/                 # E2E-Anker + Beweis der Studio-Form (kein Deployment mehr)
 │   ├── photos/                   # Klasse-A-Site (kein Deployment)
 │   └── _template/                # Kopiervorlage für neue Apps
@@ -154,7 +161,7 @@ maui-monorepo/
 └── CLAUDE.md                     # Regelwerk für Agenten (AGENTS.md zeigt nur darauf)
 ```
 
-Ports: Core-Playground **3000** · comments **3001** · _template **3002** · photos **3003** · control **3004** · portfolio **3005** · platform **3006** · marketing **3007** · help **3008** · Docs-Site **4000**
+Ports: Core-Playground **3000** · comments **3001** · _template **3002** · photos **3003** · control **3004** · portfolio **3005** · platform **3006** · marketing **3007** · help **3008** · branding **3010** · Docs-Site **4000**
 
 ## Status
 
@@ -265,8 +272,24 @@ Ports: Core-Playground **3000** · comments **3001** · _template **3002** · ph
 | 103 | **F57 Discussions-Mechaniken komplett** — badge-neutrale Reaktionen (8er-Emoji-Satz ohne 👍/❤️, Keys statt Glyphen; Beiträge, Antworten UND Kommentare — comments-019), Mitglieder-Einladungen 5/Woche (Zählung beim SENDEN, Widerruf zählt nicht zurück; control-037 VOR dem Deploy — createRow-Regel), Like-Tageslimit 50 als member_counters-Tageszähler (UTC, kein Rückerstatten) mit Trust-Staffel 50/50/75/100, Themen-Verlinkung `#<id>` als reiner Text (Parser unangetastet, „Verlinkt von"-Panel, posts-020), Campaigner/Champion über `invitedBy` (gutgeschrieben beim Stufen-Aufstieg des Eingeladenen, posts-021). Migrationen posts-017–021 nur gegen `account` | ✅ 2026-08-14 |
 | 104 | **TS2589-Strukturfix + Hygiene-Runde** — Nitros Routen-Typkarte AUS (`types:extend`-Hook leert `types.routes`): gemessen 7,5 Mio → 618k Typ-Instanziierungen (−92 %), Typecheck 10,7 s → 5,4 s; jeder gebundene `$fetch`/`useFetch` nennt seinen Antworttyp selbst (ESLint-Wächter, `$fetch<…, string>` verboten); als CLAUDE.md-Regel verankert. Dazu: 3 rohe NUL-Bytes in `badges.ts` als `\u0000`-Escapes geschrieben (Datei war für grep BINÄR — unsichtbar für jede Repo-Suche; Hash identisch, Bestands-Ids stabil) | ✅ 2026-08-15 |
 | 105 | **Kundenreise durchgespielt — elf Funde, öffentlich wie eingeloggt** ([Eintrag](docs/OPEN-ITEMS-COMPLETE.md)) — kein Audit über Code, sondern der Weg eines Kunden Station für Station im Browser: öffentlich auf der Produktion (Desktop + Handy, beide Sprachen), eingeloggt lokal gegen die Dev-Appwrite. Behoben: fehlende Symbole im Kundenbereich (Passwort-Prüfliste ohne Häkchen), Anwesenheits-404 für Gäste und im Kundenbereich (alle 20 s, pro Tab), überlappende Auth-Kopfzeile unter 768 px, Fehlerseiten ohne `lang`/`dir`, SSR-Abrufe die den Mandanten verloren (Events blieben leer — 4 Stellen, 2 fand erst der neue Wächter), Auth-Quer-Links ohne `?redirect=` (Einladungs-Rolle ging still verloren), Pro in der Testphase nicht kaufbar. Dazu die Hilfe auf **Englisch** (18 Seiten, `prefix_except_default`, Sprachwähler — den gab es nicht) und die Demo-Community gefüllt (4 Kategorien, 9 Themen, 15 Antworten, 3 Termine). Davids Entscheidung umgesetzt: der **Einladungs-Token öffnet die Registrierung** auf geschlossenen Communities — gebunden an die eingeladene Adresse (vier Angriffe belegt). **Gelernt:** fast jeder Fund war hinter einem `catch` versteckt — die Systeme liefen weiter, nur falsch | ✅ 2026-08-15 |
+| 106 | **Produkt vollständig geauditet + Kurse/Termine im Produkt** — Audit-Runden 5 und 6 über die letzten ungeprüften Layer, der Schema-Paritäts-Wächter prüft das Soll je Instanz über alle Layer (AU4), Medien im Community-Export; **F58:** Kurse und Termine sind aus dem Produkt heraus verwaltbar | ✅ 2026-08-16 |
+| 107 | **August-Runde: KI-Übersetzung, Demo-Spielwiesen, AI-Runner, Google-Login** — User-Content wird einmal übersetzt und je Sprache gecacht, drei Pool-Communities mit Leben gefüllt, Tickets setzen sich per AI-Runner selbst um (U21, Layer `runner`), Online-Zähler und Presence-Vorfahrt repariert, Zeitzone aus dem Ort (F59), Naht-Geheimnisse über die Konsole rotierbar (A0), Projekt `control` → `admin` (AH-4c), Anmelden mit Google (U14) | ✅ 2026-08-21 |
+| 108 | **Studio-Rebrand + Erstgespräch-Wizard** — pukalani.studio spricht als „wir, Pukalani Studio" (W1), `/erstgespraech` ist das eine Conversion-Ziel (W2) | ✅ 2026-08-22 |
+| 109 | **branding.supply live — das zweite Silo** — eigenes Appwrite-Projekt `branding`, eigene Domain, Beta im Invite-Modus, Startseite, About/Team, Warteliste mit Double-Opt-in; Deploy-Erkennung vergleicht gegen den ältesten Build aller Hosts ([Plan](docs/plans/BRANDING-SUPPLY-INFRA.md)) | ✅ 2026-09-01 |
+| 110 | **Brand-Wizard und Brand-Check (Layer `brand`)** — der KI-Markenberater führt durch die Brand Foundation (Werkstatt „Gespräch als Bühne", Branding-Atome BW2, Foundation als Markenhandbuch BF1); **Brand-Check:** Website → Brand Score in 8 Kategorien mit Ranking, Vergleich und Ergebnisseite (BC1) | ✅ 2026-09-07 |
+| 111 | **Marktvergleich (MV1, Layer `market`)** — die eigene Foundation neben das, was Wettbewerber öffentlich sagen, jede Aussage mit Zitat und Quelle, Bericht mit UWG-Riegel; seit 2026-11-09 läuft das Bibliotheks-Werkzeug wieder und frischt wöchentlich nach | ✅ 2026-09-06 |
+| 112 | **Appwrite 2.0 + Betreiber-Sicherheit + Token-Hygiene** — Server 2.0 auf dev und prod, SDKs node-appwrite 29 und appwrite 27 (AW2); zweiter Faktor auf allen Betreiber-Konten und Google-Login für die Konsole (S3); CLAUDE.md als Kern, Domänen-Regeln pfadgebunden unter `.claude/rules/` | ✅ 2026-09-08 |
+| 113 | **Brand Design, Discover Brands, Book & Kit, Navigation je Person** — Produkt 02 Brand Design (sechs Werkstatt-Kapitel, Farbwelt, Zeichen in drei Stufen), Galerie veröffentlichter Marken (DB1), Produkt 03 Book & Kit bis zur Lieferseite mit SVG und Zip (K0–K6), Dashboard-Navigation je Person (NAV1), Products-Seite (PS1) | ✅ 2026-09-09 |
+| 114 | **Brand Insights (Layer `insights`) I1–I4 + Manifest-Wächter** — Redaktions-Dashboard mit KI-Entwurf, Themenradar, öffentliche Seiten; `apiPrefixes` im Manifest erzwingt das Laufzeit-Plugin (PM1); mehrsprachige Betreiber-Seiten mit ehrlichem Fallback (F60) | ✅ 2026-09-10 |
+| 115 | **Betrieb im Herbst: zwei Vorfälle, zwei Appwrite-Sprünge** — Prod-Platte voll durch ClickHouse-Diagnose-Logs (2026-09-28) und acht Tage abgelaufenes TLS-Zertifikat (2026-10-24) behoben; Appwrite 2.6.1 (PHP-RCE, AW22) und 2.6.2 (Brotli-CVE, AW262) auf dev, CI und prod | ✅ 2026-10-27 |
+| 116 | **Registrierung als Spam-Relais geschlossen** — ein Skript setzte Spamtext als Namen, Appwrite schrieb ihn in die Verifizierungs-Mail an fremde Adressen; drei Schutzschichten, 207 Konten gelöscht, Turnstile scharf auf vier Sites | ✅ 2026-10-27 |
+| 117 | **Brand Insights: Newsletter, Kuration, Launch-Inhalt** — Newsletter mit Double-Opt-in und Versand (I5a/b), Kanalliste und eigene Video-Liste (BI2 K3/K4), Brief aus einem Video (K5), vier Launch-Beiträge als Seed (I6 Stufe 1, auf Prod seit 2026-11-08) | ✅ 2026-10-28 |
+| 118 | **Wächter gegen stille Ausfälle (MON1/MON2)** — Erreichbarkeit, Mail-Missbrauch und Bounces werden geprüft, rote Läufe öffnen ein Issue `produktions-alarm`, jeder Alarmkanal ist einmal nachweislich angekommen ([Runbook](docs/runbooks/PRODUKTIONS-ALARM.md)) | ✅ 2026-11-08 |
+| 119 | **Appwrite 2.7.1 + Realtime repariert** — 2.7.1 auf dev, CI und prod mit rotiertem Executor-Secret (AW27), SMTP-keepAlive-Patch überall entfernt (AW28/AW29); der geteilte Socket verband sich nicht mehr jede Sekunde neu (RT1), Sofort-Abmeldung bei Session-Widerruf kommt in Prod an (RT2) ([Runbook](docs/runbooks/APPWRITE-2-7-UPGRADE.md)) | ✅ 2026-11-09 |
+| 120 | **Konto- und Mail-Sicherheit** — frische Anmeldung vor Konto-Löschen, Besitz-Übertragen, Stilllegen und Betreiber-Löschungen (RA1–RA3); Resend: Bounce-Webhook, DMARC, Sende-Schlüssel nur noch senden und domain-gebunden (RS1); öffentlicher Changelog mit 16 Einträgen (CL1); Nuxt UI spricht die Sprache der Seite (UL1) | ✅ 2026-11-09 |
+| 121 | **Bezahlte KI-Läufe robust und in der EU** — lange Läufe laufen dem Proxy nicht mehr davon (BI3), lange Entwürfe werden geklemmt statt weggeworfen (BI4), SEO/GEO-Regeln als siebte Prüfregel (K6), auch der Textweg ist EU-gepinnt (AI1), die Anführungszeichen-Regel gilt für jeden JSON-Prompt (AI2), die Log-Zeile nennt beide Tokenzahlen | ✅ 2026-11-09 |
 
-Nachweise und Gelerntes pro Ausbaustufe: [docs/OPEN-ITEMS-COMPLETE.md](docs/OPEN-ITEMS-COMPLETE.md) · die `/goal`-Texte der Stufen 41–58 (dort eigene Zählung 21–27): [docs/GOALS.md](docs/GOALS.md) · Upgrade-Plan: [docs/archiv/APPWRITE-1.9.5-UPGRADE.md](docs/archiv/APPWRITE-1.9.5-UPGRADE.md) · Offene Punkte: [docs/OPEN-ITEMS.md](docs/OPEN-ITEMS.md)
+Nachweise und Gelerntes pro Ausbaustufe: [docs/OPEN-ITEMS-COMPLETE.md](docs/OPEN-ITEMS-COMPLETE.md) · die `/goal`-Texte der Stufen 41–58 (dort eigene Zählung 21–27): [docs/GOALS.md](docs/GOALS.md) · Aktuelles Appwrite-Runbook: [docs/runbooks/APPWRITE-2-7-UPGRADE.md](docs/runbooks/APPWRITE-2-7-UPGRADE.md) · Offene Punkte: [docs/OPEN-ITEMS.md](docs/OPEN-ITEMS.md)
 
 ## Konventionen
 
