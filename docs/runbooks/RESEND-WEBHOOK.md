@@ -274,3 +274,74 @@ Die Appwrite-PROJEKTE haben keine eigene SMTP (Feld `smtp` in
 - **`pm_cwd` kann veraltet sein** (reload übernimmt das `cwd` der
   Ecosystem-Datei nicht; `pm2-heal.sh` greift nur, wenn der Ordner fehlt) —
   den Code-Pfad aus `pm_exec_path` nehmen; geheilt wird es wie oben.
+
+
+## 7 · Die Newsletter-Subdomain `mail.branding.supply` (RS1 e, 2026-11-09)
+
+**Warum eine eigene Domain.** Massenmail und Einzelmail teilen sich sonst
+EINEN Ruf. Eine Beschwerde über den Newsletter beschädigt dann die Zustellung
+der Anmelde-, OTP- und Benachrichtigungs-Mails — und das sind die Mails, die
+ankommen müssen. Der Newsletter von branding.supply bekommt deshalb eine
+eigene, eigens verifizierte Versand-Subdomain; alles andere bleibt auf
+`pukalani.app`.
+
+### 7.1 Stand
+
+| | |
+| --- | --- |
+| Domain | `mail.branding.supply` |
+| Region | **eu-west-1** (wie `pukalani.app` — die EU-Frage aus (f)) |
+| Status | **verified** (alle vier Einträge) |
+| Versand / Empfang | sending `enabled` · receiving `disabled` |
+| Open- / Click-Tracking | beides **aus** — der datenschonende Default, bewusst nicht eingeschaltet |
+
+Die vier DNS-Einträge liegen in der Cloudflare-Zone `branding.supply`, alle
+**DNS-only** (nicht proxied — ein proxied CNAME bricht den Return-Path):
+
+| Typ | Name | Inhalt |
+| --- | --- | --- |
+| TXT | `resend._domainkey.mail` | DKIM-Schlüssel |
+| MX (10) | `send.mail` | `feedback-smtp.eu-west-1.amazonses.com` |
+| TXT | `send.mail` | `v=spf1 include:amazonses.com ~all` |
+| CNAME | `rsend.mail` | `send.forge.rmta.net` |
+
+Angelegt per BIND-Import (Cloudflare → DNS → Import), Haken „Proxy imported
+DNS records" AUS. Gegenprobe von aussen über `1.1.1.1` **und** `8.8.8.8`; der
+CNAME löst auf `send.forge.rmta.net` auf, nicht auf eine Cloudflare-IP — der
+Beweis, dass er wirklich DNS-only ist.
+
+### 7.2 Der Weg im Code
+
+`MailInput.from` (Core) überschreibt `NUXT_SMTP_FROM` für genau eine Mail;
+`pukalani.insights.newsletter.from` ist der Schlüssel, aus dem der
+Insights-Layer ihn liest (pure Regel `insightsNewsletterFrom`, Leser
+`insightsNewsletterSender()`). Beide Newsletter-Mails nennen ihn: die
+**Ausgabe** und die **Bestätigung der Anmeldung** — die Bestätigung ist zwar
+eine Einzelmail, gehört aber zum Newsletter-Strom, denn sie wird durch die
+Eintragung ins Formular ausgelöst, also durch genau das, was auch Beschwerden
+auslöst.
+
+Leer heisst unverändert `NUXT_SMTP_FROM`. Ohne Eintrag ändert sich also
+nichts — das war die Bedingung dafür, den Core anzufassen.
+
+### 7.3 ZWEI DINGE FEHLEN NOCH, und beide sind Davids Entscheidung
+
+1. **Der Schlüssel passt noch nicht.** `pukalani-smtp-send` ist seit § 6 ein
+   `sending_access`-Schlüssel, der an `pukalani.app` GEBUNDEN ist — eine Mail
+   mit Absender `@mail.branding.supply` lehnt Resend damit ab. Entweder ein
+   Schlüssel für beide Domains (nimmt die Verengung aus § 6 teilweise
+   zurück) oder eigene SMTP-Zugangsdaten für den Newsletter (sauberer: jeder
+   Schlüssel darf nur von seiner Domain senden, kostet aber einen zweiten
+   Transport im Core). **Erst danach** die Adresse in
+   `apps/branding/app/app.config.ts` eintragen.
+2. **`branding.supply` hat gar kein DMARC** (gemessen 2026-11-09:
+   `_dmarc.branding.supply` leer; nur `pukalani.app` hat einen Eintrag).
+   Gmail und Yahoo verlangen für Massenversand mindestens `p=none`. Ein
+   Klick, genau wie bei § RS1 (g): Cloudflare → `branding.supply` → Email →
+   DMARC Management → **Enable DMARC Management**. Cloudflare legt den
+   `_dmarc`-Eintrag mit eigener Berichts-Adresse selbst an.
+
+**Die Reihenfolge ist wichtig:** solange `newsletter.enabled` auf `false`
+steht, geht ohnehin nichts raus. Wer den Riegel nach den Rechtstexten öffnet,
+prüft vorher diese beiden Punkte — sonst fällt der Newsletter beim ersten
+Versand aus, ohne dass jemand eine Zeile angefasst hätte.

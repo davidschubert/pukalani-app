@@ -132,6 +132,32 @@ export interface MailInput {
   to: string
   subject: string
   text: string
+  /**
+   * ABSENDER NUR FÜR DIESE MAIL — überschreibt `NUXT_SMTP_FROM` (RS1,
+   * 2026-11-09).
+   *
+   * ── WOFÜR, UND WARUM NICHT EINFACH DIE EINE EINSTELLUNG ÄNDERN ──────────
+   * Massenmail und Einzelmail teilen sich sonst EINEN Ruf. Wer seinen
+   * Newsletter über dieselbe Absender-Domain schickt wie die Anmelde- und
+   * Benachrichtigungs-Mails, setzt mit jeder Beschwerde über den Newsletter
+   * die Zustellung der Passwort-Mail aufs Spiel — und das ist die Mail, die
+   * ankommen MUSS. Deshalb bekommt der Newsletter von branding.supply eine
+   * eigene, eigens verifizierte Versand-Subdomain, und deshalb reist der
+   * Absender hier je Mail statt in der Einstellung.
+   *
+   * ── ES IST EIN ÜBERSCHREIBEN, KEIN NEUER DEFAULT ───────────────────────
+   * Leer oder nicht gesetzt heisst unverändert `NUXT_SMTP_FROM` (und erst
+   * danach `noreply@<host>`). Jede Mail, die das Feld nicht nennt, verhält
+   * sich also wie vorher — das war die Bedingung dafür, es im Core
+   * anzufassen.
+   *
+   * ── WAS DIESES FELD NICHT PRÜFT ────────────────────────────────────────
+   * Ob die Domain beim Versanddienst verifiziert ist. Sie muss es sein, sonst
+   * lehnt er die Mail ab; das ist eine Betriebs-Zusage, keine Typfrage. Der
+   * Wert geht unverändert an nodemailer, darf also auch die Form
+   * `Name <adresse@domain>` haben.
+   */
+  from?: string
   /** Optional — ohne html geht die Mail als reiner Text raus */
   html?: string
   /**
@@ -179,7 +205,9 @@ export async function sendMail(event: H3Event | undefined, input: MailInput): Pr
   }
   const transporter = getTransporter(settings)
   await transporter.sendMail({
-    from: settings.from || `noreply@${settings.host}`,
+    // Reihenfolge mit Absicht: die Mail selbst schlägt die Einstellung,
+    // die Einstellung schlägt die Notlösung. Siehe `MailInput.from`.
+    from: input.from || settings.from || `noreply@${settings.host}`,
     to: input.to,
     subject: input.subject,
     text: input.text,
