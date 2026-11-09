@@ -38,8 +38,20 @@ export interface InsightsAiRun {
    * `as const`, seine Felder wären damit `readonly true`/`readonly 'deny'` —
    * und ein Aufrufer, der sie an `aiCompleteJson` reicht, bekäme einen
    * Varianz-Fehler für einen Wert, der genau richtig ist.
+   *
+   * `only` STEHT HIER MIT, seit AI1 den Textweg auf die EU gepinnt hat
+   * (2026-11-09): ein ausgeschriebener Typ, der ein Feld des Vertrags
+   * verschweigt, lässt es beim Durchreichen still fallen — das Objekt trüge
+   * die Allowlist zur Laufzeit, der Typ hätte sie vergessen, und die nächste
+   * Änderung am Vertrag wäre an dieser Stelle unsichtbar. Wer den Vertrag
+   * erweitert, erweitert diese Zeile mit.
    */
-  providerRouting: { zdr: boolean, dataCollection: 'allow' | 'deny', allowFallbacks: boolean }
+  providerRouting: {
+    zdr: boolean
+    dataCollection: 'allow' | 'deny'
+    allowFallbacks: boolean
+    only?: readonly string[]
+  }
 }
 
 /**
@@ -106,8 +118,9 @@ export async function insightsBeginAiRun(
  * Geloggt wird, was eine Rechnung erklärt: Beitrag, Format, Modell,
  * Prompt-Fassung, Dauer, Fehlercode — und seit dem 2026-11-09 die beiden
  * Tokenzahlen des Anbieters, ohne die „was eine Rechnung erklärt" ein
- * Versprechen war, das die Zeile nicht halten konnte. Der Brief des Menschen und der erzeugte
- * Text stehen NICHT dabei — sie sind Inhalt, kein Betriebsdatum.
+ * Versprechen war, das die Zeile nicht halten konnte. Der Brief des
+ * Menschen und der erzeugte Text stehen NICHT dabei — sie sind Inhalt,
+ * kein Betriebsdatum.
  */
 /**
  * DER FEHLERCODE EINES GESCHEITERTEN LAUFS — für die Log-Zeile, nie für den

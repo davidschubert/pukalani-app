@@ -88,7 +88,11 @@ export default defineAppConfig({
        * Modellen — ohne zwei Einträge gibt es sie nicht, und das ist besser
        * als eine ungeprüfte Einzelantwort neben belegten Feldern. Wer sie
        * einschaltet, trägt hier zwei Modelle VERSCHIEDENER Anbieter ein, die
-       * beide durch `BRAND_PROVIDER_ROUTING` (ZDR) erreichbar sind.
+       * beide durch `BRAND_PROVIDER_ROUTING` erreichbar sind — und das heisst
+       * seit AI1 (2026-11-09) ZDR **und** ein EU-Endpunkt: die Konstante
+       * pinnt den Textweg auf `amazon-bedrock/eu-west-1` bzw.
+       * `google-vertex/europe`, ein Modell ohne einen davon antwortet 404.
+       * `pnpm ops:ai-models` liest dieses Feld mit und sagt es vorher.
        */
       ai: {
         extractModel: '',

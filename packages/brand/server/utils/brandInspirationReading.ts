@@ -20,7 +20,7 @@ import {
   brandReadingImageLabel,
   brandReadingPrompt,
 } from './readingPrompt'
-import { BRAND_PROVIDER_ROUTING_EU } from './brandProviderRouting'
+import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from './brandProviderRouting'
 import { brandDevStubEnabled } from './brandGenerators'
 import { brandSlotPromptLabel } from './brandSlotPromptLabels'
 import {
@@ -323,7 +323,7 @@ export async function runBrandInspirationReading(
         // der Transport ohnehin selbst und lässt es sich nicht nehmen — `zdr`
         // und `allowFallbacks: false` verschärfen sie auf dieselbe Weise wie
         // bei jedem Text-Aufruf.
-        providerRouting: { ...BRAND_PROVIDER_ROUTING_EU },
+        providerRouting: { ...BRAND_PROVIDER_ROUTING_VERTEX_EU },
       },
     )
   }
