@@ -28,7 +28,24 @@ import {
  * hätte fröhlich weitergemacht und wäre erst am Transporter gescheitert.
  */
 
-let cached: { key: string, transporter: Transporter } | null = null
+/**
+ * EIN TRANSPORTER JE ZUGANG, NICHT EINER INSGESAMT (RS1 e, 2026-11-09).
+ *
+ * Bis hierher war das ein einziger Platz. Das stimmte, solange alle Mails
+ * dieselben Zugangsdaten benutzten — seit der Newsletter seine eigenen
+ * mitbringen kann, wechselten sich zwei Schlüssel auf diesem einen Platz ab
+ * und JEDE Mail hätte eine neue SMTP-Verbindung aufgebaut. Kein Fehler, den
+ * man sieht: nur langsamer Versand und unnötig viele Anmeldungen beim
+ * Anbieter.
+ *
+ * Die Map ist GEDECKELT. Der Schlüssel enthält das Passwort, und Passwörter
+ * drehen sich — ohne Deckel wüchse sie mit jeder Rotation um einen toten
+ * Eintrag. Zwei Zugänge sind der gedachte Fall, vier sind großzügig; was
+ * darüber hinaus kommt, verdrängt den ältesten Eintrag (dessen Transporter
+ * wird geschlossen, sonst bliebe sein Verbindungspool offen).
+ */
+const MAX_TRANSPORTERS = 4
+const transporters = new Map<string, Transporter>()
 
 /**
  * Was gerade gilt — Ablage vor Env, oder null wenn es keinen Versandweg gibt.
@@ -107,25 +124,72 @@ export function warnMailerMissingOnce(context: string): void {
 export function __resetMailerWarnings(): void {
   warnedMissingMailer = false
   settingsCache = null
-  cached = null
+  for (const transporter of transporters.values()) transporter.close()
+  transporters.clear()
 }
 
-function getTransporter(settings: MailerSettings): Transporter {
-  // Der Puffer-Schlüssel trägt jetzt auch das PASSWORT: wer es in der Konsole
-  // dreht, bekäme sonst weiter den alten Transporter — mit dem alten Passwort,
-  // und die Mails scheiterten still an der Anmeldung.
-  const key = `${settings.host}:${settings.port}:${settings.user}:${settings.pass}`
-  if (cached?.key === key) return cached.transporter
+function getTransporter(settings: MailerSettings, auth?: MailAuth): Transporter {
+  // Host und Port bleiben IMMER die der Einstellung: ein eigener Zugang heisst
+  // „anderes Konto beim selben Anbieter", nicht „anderer Anbieter". Wer
+  // wirklich woanders hin will, baut einen eigenen Transport — hier wäre es
+  // eine Hintertür an der Mailer-Konfiguration vorbei.
+  const user = auth?.user || settings.user
+  const pass = auth ? auth.pass : settings.pass
+
+  // Der Puffer-Schlüssel trägt auch das PASSWORT: wer es in der Konsole dreht,
+  // bekäme sonst weiter den alten Transporter — mit dem alten Passwort, und
+  // die Mails scheiterten still an der Anmeldung.
+  const key = `${settings.host}:${settings.port}:${user}:${pass}`
+  const known = transporters.get(key)
+  if (known) return known
+
   const port = Number(settings.port) || 587
   const transporter = createTransport({
     host: settings.host,
     port,
     // 465 = implizites TLS; sonst STARTTLS wenn der Server es anbietet
     secure: port === 465,
-    ...(settings.user ? { auth: { user: settings.user, pass: settings.pass } } : {}),
+    // BENUTZER ODER PASSWORT genügt, nicht „Benutzer" allein (RS1 e): mit
+    // `user ?` fiel ein mitgegebenes Passwort still unter den Tisch, sobald
+    // die Einstellung keinen Benutzernamen trug — die Mail wäre dann OHNE
+    // Anmeldung rausgegangen statt mit der falschen. Ein Zugang, der nicht
+    // vollständig ist, soll beim Anbieter scheitern und nicht hier
+    // verschwinden. Beide leer heisst weiterhin „gar keine Anmeldung", und
+    // das ist der unveränderte Normalfall.
+    ...(user || pass ? { auth: { user, pass } } : {}),
   })
-  cached = { key, transporter }
+  if (transporters.size >= MAX_TRANSPORTERS) {
+    const [oldestKey, oldest] = transporters.entries().next().value as [string, Transporter]
+    oldest.close()
+    transporters.delete(oldestKey)
+  }
+  transporters.set(key, transporter)
   return transporter
+}
+
+/**
+ * EIGENE ZUGANGSDATEN FÜR EINE MAIL — der zweite Teil der Ruf-Trennung
+ * (RS1 e, 2026-11-09).
+ *
+ * `MailInput.from` allein reicht NICHT. Gemessen am 2026-11-09: ein
+ * Resend-Schlüssel, der an eine Domain gebunden ist, antwortet auf einen
+ * fremden Absender mit **403 „This API key is not authorized to send emails
+ * from …"** — und die Bindung lässt sich an einem bestehenden Schlüssel nicht
+ * mehr ändern. Wer von einer zweiten Domain senden will, braucht also einen
+ * zweiten Schlüssel, und der muss bis an den Transport reisen.
+ *
+ * Es bleibt bewusst beim HOST der Einstellung (s. `getTransporter`): ein
+ * eigener Zugang heisst „anderes Konto beim selben Anbieter", nicht „anderer
+ * Anbieter". Sonst wäre dieses Feld eine Hintertür an der
+ * Mailer-Konfiguration vorbei.
+ *
+ * `user` ist optional, weil er bei einem Anbieter wie Resend für alle
+ * Schlüssel gleich ist; ohne ihn gilt der der Einstellung. `pass` ist
+ * Pflicht — ein Zugang ohne Passwort wäre keiner.
+ */
+export interface MailAuth {
+  user?: string
+  pass: string
 }
 
 export interface MailInput {
@@ -158,6 +222,17 @@ export interface MailInput {
    * `Name <adresse@domain>` haben.
    */
   from?: string
+  /**
+   * ZUGANGSDATEN NUR FÜR DIESE MAIL — s. `MailAuth`. Ohne das Feld meldet
+   * sich der Transport wie immer an, die Mail verhält sich also wie vorher.
+   *
+   * Fast immer reist es ZUSAMMEN mit `from`: ein eigener Schlüssel ohne
+   * eigenen Absender bringt nichts, und ein eigener Absender ohne den
+   * passenden Schlüssel ist genau der 403 von oben. Erzwungen wird die
+   * Paarung hier trotzdem nicht — der Transport entscheidet keine Policy,
+   * und es gibt den Fall „ein Konto, zwei verifizierte Domains".
+   */
+  auth?: MailAuth
   /** Optional — ohne html geht die Mail als reiner Text raus */
   html?: string
   /**
@@ -203,7 +278,7 @@ export async function sendMail(event: H3Event | undefined, input: MailInput): Pr
     warnMailerMissingOnce(`eine Mail an ${input.to.replace(/(.).*(@.*)/, '$1***$2')}`)
     return false
   }
-  const transporter = getTransporter(settings)
+  const transporter = getTransporter(settings, input.auth)
   await transporter.sendMail({
     // Reihenfolge mit Absicht: die Mail selbst schlägt die Einstellung,
     // die Einstellung schlägt die Notlösung. Siehe `MailInput.from`.

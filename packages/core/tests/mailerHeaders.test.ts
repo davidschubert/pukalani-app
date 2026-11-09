@@ -27,6 +27,11 @@ vi.mock('nodemailer', () => ({
       sentEnvelopes.push(envelope)
       return { messageId: 'test' }
     },
+    // `close()` gehört dazu, seit der Mailer mehrere Zugänge puffert: er
+    // schliesst einen verdrängten Transporter, damit dessen Verbindungspool
+    // nicht offen bleibt. Ein Mock ohne diese Methode wäre nicht „schlanker",
+    // sondern eine Attrappe, die einen echten Aufruf nicht aushält.
+    close: () => {},
   }),
 }))
 
