@@ -114,7 +114,7 @@ catalog:
   '@iconify-json/ph': ^1.2.2
   '@iconify-json/circle-flags': ^1.2.14
   '@iconify-json/lucide': ^1.2.152
-  '@nuxt/content': ^3.15.1
+  '@nuxt/content': ^3.16.2
   '@nuxt/eslint-config': ^1.17.0
   # MUSS zur Nuxt-Generation passen: 10.4 gehört zu Nuxt 4.4 und zieht
   # @unhead/vue 2 + vue-router 5.1 (und darüber pinia 3) in den Baum, während
@@ -184,7 +184,7 @@ catalog:
   # SSR-Seite 500 „Can't resolve 'tailwindcss'". Prod-Builds trifft es nicht —
   # der Defekt ist also nur lokal sichtbar und deshalb doppelt tückisch.
   tailwindcss: ^4.3.5
-  '@nuxtjs/mdc': ^0.22.2
+  '@nuxtjs/mdc': ^0.23.2
   # Fest gekoppelt: @pinia/nuxt 0.11.x verlangt pinia ^3, 1.0.x verlangt ^4 —
   # einzeln bewegt sich keines von beiden ohne unerfuellten Peer.
   '@pinia/nuxt': ^1.0.3
