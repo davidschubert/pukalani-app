@@ -72,9 +72,12 @@ import { join } from 'node:path'
  *                        media/billing (teils nur als Teilmengen). Deshalb wird
  *                        sein Soll unten EXPLIZIT gepflegt, nicht rein aus
  *                        Blöcken komponiert.
- *   branding         : themes admin brand market pages core system
+ *   branding         : themes admin comments moderation brand market
+ *                      insights pages core system
  *                      (Dashboard seit 2026-09-03, Marktvergleich seit
- *                       2026-09-05, Rechtsseiten seit 2026-09-07)
+ *                       2026-09-05, Rechtsseiten seit 2026-09-07, Insights
+ *                       seit 2026-09-09, Kommentare unter Artikeln seit
+ *                       BI2 K7 2026-11-09)
  *   photos           : themes admin media core system (noch nicht ausgerollt)
  *
  * GRUNDWAHRHEIT der Kuratierung: `account` und `control` sind gesund — ihr
@@ -191,7 +194,7 @@ const MESSAGES_TABLES = [
 /** `media`-Layer — Medienbibliothek. account + portfolio (+ photos künftig). */
 const MEDIA_TABLES = ['media_items']
 
-/** `moderation`-Layer — Meldungen. account + portfolio. */
+/** `moderation`-Layer — Meldungen. account + portfolio + branding (BI2 K7). */
 const MODERATION_TABLES = ['reports']
 
 /** `tickets`-Layer — Tickets + Anhänge + Listen + Beobachter. */
@@ -482,7 +485,14 @@ const PORTFOLIO_SOLL = [
 // docs/plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md). Die sechs
 // pages-Migrationen gehören damit auf die branding-Instanz — Migration VOR
 // dem Code-Deploy (§2.3 des Plans).
-const BRANDING_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...BRAND_TABLES, ...MARKET_TABLES, ...INSIGHTS_TABLES, ...PAGES_TABLES]
+// Seit BI2 K7 (2026-11-09) zusätzlich mit `comments` + `moderation`:
+// Kommentare unter den öffentlichen Insights-Artikeln (Plan
+// docs/plans/BRAND-INSIGHTS-KURATION.md §6). Der VOLLE comments-Block (fünf
+// Tabellen, auch embed_sites/guest_authors, obwohl Embed und Gäste auf
+// branding aus sind) — `pnpm migrate --app branding` fährt alle Migrationen
+// des Layers, ein Teil-Soll meldete die übrigen als „unbekannt". Migration
+// VOR dem Code-Deploy (Lehre aus K5/insights-009), Gate ist Davids Ja.
+const BRANDING_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...COMMENTS_TABLES, ...MODERATION_TABLES, ...BRAND_TABLES, ...MARKET_TABLES, ...INSIGHTS_TABLES, ...PAGES_TABLES]
 
 /**
  * photos (apps/photos) = themes admin media core system. NICHT ausgerollt

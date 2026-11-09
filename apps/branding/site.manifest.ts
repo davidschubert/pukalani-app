@@ -25,6 +25,15 @@ export default {
     // Betreiber-Konsole + Konto-Seiten (Davids Entscheidung 2026-09-03,
     // „Dashboard-Zugang wie auf allen anderen Pukalani-Websites").
     'admin',
+    // Kommentare unter den öffentlichen Insights-ARTIKELN (BI2 K7, 2026-11-09
+    // — Plan docs/plans/BRAND-INSIGHTS-KURATION.md §6). NUR dort: verdrahtet
+    // wird in `app/components/InArticleComments.vue` (Davids Entscheidung
+    // 2026-11-09: in der App, nicht über `blueprint`, der posts/events/courses
+    // mitbrächte). `moderation` kommt mit, weil comments es per `requires`
+    // verlangt — Meldungen und die Warteschlange unter /dashboard/comments.
+    // Beide stehen in der kanonischen EXTENDS_ORDER und landen damit VOR brand.
+    'comments',
+    'moderation',
     'brand',
     'market',
     // Der redaktionelle Bereich (BI1 I1, 2026-09-09 — Plan

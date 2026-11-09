@@ -285,6 +285,16 @@ const startTarget = computed(() => localePath(isLoggedIn.value ? '/dashboard/bra
       <div v-if="!isPreview" class="mx-auto mt-14 max-w-3xl">
         <InNewsletterForm :source="`post:${slug}`" compact />
       </div>
+
+      <!-- Die Diskussion (BI2 K7): dieser Layer hält nur die Stelle frei, die
+           App füllt sie (Kopf von InArticleComments). NACH dem Newsletter,
+           weil der Eintrag dem gilt, der das Stück zu Ende gelesen hat — hinter
+           einem langen Thread sähe ihn keiner mehr. Nicht in der Vorschau: ein
+           Entwurf nimmt keine Kommentare an (der Server lehnt sie ab), eine
+           Eingabe dafür wäre ein Knopf ins 404. -->
+      <div v-if="!isPreview" class="mx-auto max-w-3xl" data-insights-comments>
+        <InArticleComments :post-id="post.id" :path="route.path" />
+      </div>
     </div>
   </div>
 </template>

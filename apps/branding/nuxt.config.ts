@@ -57,7 +57,20 @@ export default defineNuxtConfig({
    * den Produkten: seine dynamische Route `/[slug]` soll die niedrigste
    * Priorität haben und keine Wizard-Seite überlagern.
    *
-   * REIHENFOLGE: themes/admin vorn (kanonische EXTENDS_ORDER), dann brand,
+   * SEIT BI2 K7 (2026-11-09) MIT `comments` + `moderation`: Kommentare unter
+   * den öffentlichen Insights-ARTIKELN (Plan
+   * docs/plans/BRAND-INSIGHTS-KURATION.md §6). Die Verdrahtung steht in
+   * `app/components/InArticleComments.vue` und NICHT in `blueprint` — Davids
+   * Entscheidung 2026-11-09 (DECISION-LOG): der Bauplan brächte die vier
+   * Produkte von oben samt Seiten und Standard-Layout mit, und insights läuft
+   * nur hier. `moderation` verlangt comments per `requires` (Meldungen, die
+   * Warteschlange unter /dashboard/comments). Embed und Gast-Kommentare bleiben
+   * beim Layer-Default AUS; die fünf comments- und die reports-Tabelle gehören
+   * auf die branding-Instanz (Migration VOR dem Code-Deploy). Beide stehen in
+   * der kanonischen EXTENDS_ORDER und landen damit vor brand.
+   *
+   * REIHENFOLGE: themes/admin vorn (kanonische EXTENDS_ORDER), dann
+   * comments/moderation (ebenfalls kanonisch), dann brand,
    * dann market, dann insights, dann pages (die vier kennt die EXTENDS_ORDER nicht, sie
    * landen in der Reihenfolge des Site-Manifests am Ende der Produkte) —
    * die Werkstatt-Optik kollidiert mit keiner admin-Datei (eigene
@@ -67,7 +80,7 @@ export default defineNuxtConfig({
    * fordern seit demselben Tag das default-Layout an (Wizard-Nav) — sie
    * sind Kunden-Fläche, keine Betreiber-Fläche.
    */
-  extends: ['../../packages/themes', '../../packages/admin', '../../packages/brand', '../../packages/market', '../../packages/insights', '../../packages/pages', '../../packages/core', '../../packages/system'],
+  extends: ['../../packages/themes', '../../packages/admin', '../../packages/comments', '../../packages/moderation', '../../packages/brand', '../../packages/market', '../../packages/insights', '../../packages/pages', '../../packages/core', '../../packages/system'],
 
   // Port pro App eindeutig vergeben (3000–3009 vergeben — 3006 hält platform,
   // 3009 der brand-Playground; die erste Wahl 3006 kollidierte damit und ist

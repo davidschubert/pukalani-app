@@ -115,6 +115,31 @@ function appOverrides(app) {
   return hits
 }
 
+/**
+ * App-KOMPONENTEN, die eine gleichnamige Komponente eines montierten Layers
+ * überschreiben (BI2 K7, 2026-11-09). Das ist der zweite Weg, auf dem eine
+ * App Produkte verdrahtet: der Layer hält eine Stelle frei
+ * (`TicketModalComments`, `InArticleComments`), die App füllt sie. Ohne diese
+ * Liste wäre so eine Verdrahtung in der Bilanz unsichtbar — die Seiten-Tabelle
+ * sieht nur Routen. Verglichen wird der Pfad unter `app/components/`, und das
+ * ist auch Nuxts Namensregel: gleicher Pfad ⇒ gleicher Komponentenname.
+ */
+function componentFiles(base) {
+  return new Set(walk(`${base}/app/components`).filter(f => f.endsWith('.vue')))
+}
+
+const layerComponents = Object.fromEntries(layers.map(layer => [layer, componentFiles(`packages/${layer}`)]))
+
+function appComponentOverrides(app) {
+  const products = siteManifest[app]?.products ?? []
+  const hits = []
+  for (const file of componentFiles(`apps/${app}`)) {
+    const from = products.filter(layer => layerComponents[layer]?.has(file))
+    if (from.length) hits.push({ component: file.replace(/\.vue$/, ''), from })
+  }
+  return hits
+}
+
 /** Kompositionen des Bauplans: welche Produkt-Seite überlagert er? */
 function blueprintCompositions() {
   return [...layerRoutes.blueprint.keys()].map((route) => {
@@ -226,6 +251,22 @@ if (overrides.length) {
   p('| App | Route | verdeckt Layer |')
   p('| --- | --- | --- |')
   for (const hit of overrides) p(`| \`${hit.app}\` | \`${hit.route}\` | ${hit.from.map(l => `\`${l}\``).join(', ')} |`)
+}
+else {
+  p('_Keine._')
+}
+p('')
+p('## App-Komponenten, die eine Layer-Komponente überschreiben')
+p('')
+p('Der zweite Weg einer App-Verdrahtung: der Layer hält eine Stelle frei, die App')
+p('füllt sie. Jeder Eintrag braucht einen Grund im Kopf der App-Datei — warum es')
+p('nicht in `blueprint` steht.')
+p('')
+const componentOverrides = matrixApps.flatMap(app => appComponentOverrides(app).map(hit => ({ app, ...hit })))
+if (componentOverrides.length) {
+  p('| App | Komponente | überschreibt Layer |')
+  p('| --- | --- | --- |')
+  for (const hit of componentOverrides) p(`| \`${hit.app}\` | \`${hit.component}\` | ${hit.from.map(l => `\`${l}\``).join(', ')} |`)
 }
 else {
   p('_Keine._')

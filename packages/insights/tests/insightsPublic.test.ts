@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import type { InsightsBrand, InsightsPost } from '../shared/insightsPost'
 import { insightsBrandSchema, insightsPostSchema, insightsPublicKopf } from '../shared/insightsPost'
 import {
+  INSIGHTS_ARTICLE_COMMENT_TARGET,
   INSIGHTS_POST_INTERNAL_FIELDS,
   insightsBrandIsVisible,
+  insightsPostAcceptsComments,
   insightsDuelCanonical,
   insightsDuelParts,
   insightsFormatIsPublic,
@@ -109,6 +111,36 @@ describe('insightsPostIsVisible — Zustand UND Riegel', () => {
     expect(insightsPostIsVisible(duel, allowed)).toBe(false)
     // Gegenprobe: mit Riegel ist derselbe Beitrag sichtbar.
     expect(insightsPostIsVisible(duel, ['article', 'duel'])).toBe(true)
+  })
+})
+
+describe('insightsPostAcceptsComments — nur öffentliche Artikel (K7)', () => {
+  it('ein veröffentlichter Artikel nimmt Kommentare an', () => {
+    expect(insightsPostAcceptsComments(post({ state: 'published' }), ['article'])).toBe(true)
+    expect(insightsPostAcceptsComments(post({ state: 'updated' }), ['article'])).toBe(true)
+  })
+
+  it('ein Entwurf nimmt KEINE an — Gegenprobe zum selben Artikel', () => {
+    expect(insightsPostAcceptsComments(post({ state: 'draft' }), ['article'])).toBe(false)
+    expect(insightsPostAcceptsComments(post({ state: 'review' }), ['article'])).toBe(false)
+  })
+
+  it('ein gesperrtes Artikel-Format nimmt keine an', () => {
+    expect(insightsPostAcceptsComments(post({ state: 'published' }), [])).toBe(false)
+  })
+
+  it('Duell, Profil und Ranking bleiben zu, AUCH wenn ihr Riegel offen ist', () => {
+    const all = ['article', 'duel', 'profile', 'ranking'] as const
+    for (const format of ['duel', 'profile', 'ranking'] as const) {
+      const row = { state: 'published' as const, format }
+      // Gegenprobe: sichtbar wäre der Beitrag — nur kommentierbar nicht.
+      expect(insightsPostIsVisible(row, all)).toBe(true)
+      expect(insightsPostAcceptsComments(row, all)).toBe(false)
+    }
+  })
+
+  it('der Andockpunkt heißt insights-article', () => {
+    expect(INSIGHTS_ARTICLE_COMMENT_TARGET).toBe('insights-article')
   })
 })
 

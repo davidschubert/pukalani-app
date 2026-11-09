@@ -331,6 +331,40 @@ export function insightsPostIsVisible(
 }
 
 /**
+ * DER KOMMENTAR-ANDOCKPUNKT EINES ARTIKELS (BI2 K7, 2026-11-09).
+ *
+ * Unter diesem `targetType` hängen die Kommentare an einem Artikel; die
+ * `targetId` ist die Row-Id des Beitrags, NICHT der Slug — ein umbenannter
+ * Artikel behält damit seine Diskussion (der alte Slug leitet per 301 weiter,
+ * die Id bleibt).
+ *
+ * Der Name steht HIER und nicht in der App, weil zwei Stellen ihn kennen
+ * müssen, die einander nicht kennen dürfen: der Schreib-Wächter dieses Layers
+ * (`server/plugins/comment-target.ts`) und die Verdrahtung in
+ * `apps/branding` (die einzige Stelle, die insights UND comments kennt —
+ * Davids Entscheidung 2026-11-09, DECISION-LOG). Zwei Literale wären ein
+ * Wächter, der für einen Typ zuständig ist, den niemand benutzt.
+ */
+export const INSIGHTS_ARTICLE_COMMENT_TARGET = 'insights-article'
+
+/**
+ * DARF UNTER DIESEM BEITRAG KOMMENTIERT WERDEN?
+ *
+ * Genau dann, wenn er ein ARTIKEL ist und öffentlich lesbar. Das Format steht
+ * eigens da, obwohl der Riegel heute nur `article` freigibt: Markenprofil,
+ * Duell und Ranking urteilen über FREMDE Marken, und eine Kommentarspalte
+ * darunter wäre eine zweite, ungeprüfte Bewertung derselben Marke — das hängt
+ * am Anwalt (BI1-3/BI1-4), nicht am Riegel. Wird `duel` eines Tages
+ * freigeschaltet, bleibt die Spalte trotzdem zu, bis jemand das hier ändert.
+ */
+export function insightsPostAcceptsComments(
+  post: Pick<InsightsPost, 'state' | 'format'>,
+  allowed: readonly InsightsFormat[],
+): boolean {
+  return post.format === 'article' && insightsPostIsVisible(post, allowed)
+}
+
+/**
  * IST DIESES MARKENPROFIL ÖFFENTLICH?
  *
  * `draft` ist ein 404 wie ein unbekannter Slug — die Redaktion arbeitet daran,
