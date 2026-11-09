@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@iconify-json/lucide": "catalog:",
-    "@iconify-json/simple-icons": "^1.2.91",
+    "@iconify-json/simple-icons": "^1.2.101",
     "@nuxt/content": "catalog:",
     "@nuxt/ui": "catalog:",
     "nuxt": "catalog:",
