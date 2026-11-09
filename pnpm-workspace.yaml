@@ -140,7 +140,7 @@ catalog:
   # und seit 29 heißt `Execution.functionId` `resourceId`/`resourceType`
   # sowie `tablesDB.cutoverMigration` `createCutover` (beide ungenutzt).
   node-appwrite: ^29.0.0
-  '@types/node': ^22.18.0
+  '@types/node': ^22.20.5
   # 4.6.4 (2026-11-09) = Sicherheitsrelease vom 2026-11-02 (acht Nuxt-, drei
   # Nitro-Fixes; Nitro 2.13.6): routeRules/Middleware-Umgehungen, SSR-Fehler-
   # Lecks, Dev-Server-Dateizugriff; cache/swr/isr speichert nur noch GET/HEAD
@@ -211,7 +211,7 @@ catalog:
   jiti: ^2.7.0
   nodemailer: ^10.4.0
   ioredis: ^6.0.0
-  '@types/nodemailer': ^7.0.0
+  '@types/nodemailer': ^8.0.2
   stripe: ^18.0.0
   '@playwright/test': ^1.65.0
   # MMDB-Leser für die City-Auflösung der Session-IPs (server/utils/geoCity.ts).
