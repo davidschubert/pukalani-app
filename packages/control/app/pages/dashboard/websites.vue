@@ -13,6 +13,7 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCap
 const { t, locale } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
+const { promptFreshSignIn } = useRecentAuthPrompt()
 
 useBrandTitle(() => t('control.websites.title'))
 
@@ -89,7 +90,9 @@ async function deregister(site: WebsiteRow) {
     if (!ok) return
     toast.add({ title: t('control.websites.deregistered', { name: site.name }), color: 'success' })
   }
-  catch {
+  catch (error) {
+    // RA3: Austragen verlangt eine frische Anmeldung — der EINE Weg aus core.
+    if (await promptFreshSignIn(error, t('control.websites.reauthText'))) return
     toast.add({ title: t('control.websites.deregisterFailed'), description: t('control.websites.deregisterFailedHint'), color: 'error' })
   }
   await refresh()

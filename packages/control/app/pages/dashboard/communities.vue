@@ -9,6 +9,7 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCap
 const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
+const { promptFreshSignIn } = useRecentAuthPrompt()
 useBrandTitle(() => t('control.tenants.title'))
 
 interface TenantDto { id: string, name: string, host: string, mode: TenantMode, projectId: string, tenantId: string, status: TenantStatus, wave: TenantWave, plan: TenantPlan, openRegistration: boolean, suspension: CommunitySuspension, suspensionReason: string, suspendedAt: string | null, pastDueSince: string | null }
@@ -181,7 +182,9 @@ async function removeTenant(tenant: TenantDto) {
     })
     await refresh()
   }
-  catch {
+  catch (error) {
+    // RA3: Löschen verlangt eine frische Anmeldung — der EINE Weg aus core.
+    if (await promptFreshSignIn(error, t('control.tenants.reauthText'))) return
     toast.add({ title: t('control.tenants.deleteFailed'), description: t('control.tenants.deleteFailedHint'), color: 'error' })
   }
 }

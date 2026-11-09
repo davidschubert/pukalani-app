@@ -233,6 +233,7 @@
       "deleteUser": "Account löschen",
       "deleted": "Benutzer gelöscht.",
       "deletedDesc": "Der Daten-Snapshot liegt noch 30 Tage unter „DSGVO-Exporte“.",
+      "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Person löschen. Es wurde nichts gelöscht.",
       "lastAdmin": "Es muss immer mindestens ein Admin übrig bleiben.",
       "lastAdminDesc": "Mach zuerst eine andere Person zum Admin — danach lässt sich diese Rolle abgeben.",
       "deletionIncomplete": "Nur teilweise gelöscht — der Account ist gesperrt.",

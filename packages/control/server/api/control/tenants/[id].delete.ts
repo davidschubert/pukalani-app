@@ -6,6 +6,9 @@ export default defineEventHandler(async (event) => {
   requirePermission(event, 'sites.manage')
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ status: 400, statusText: 'Missing tenant id' })
+  // RA3: der Host geht sofort offline, ein Zurück gibt es nicht ⇒ frische
+  // Anmeldung (core/shared/recentAuth.ts), VOR dem Löschen.
+  await requireRecentAuth(event)
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
   await admin.tablesDB.deleteRow({

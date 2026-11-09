@@ -10,6 +10,7 @@ const { t, te, locale } = useI18n()
 const localePath = useLocalePath()
 const toast = useToast()
 const confirm = useConfirm()
+const { promptFreshSignIn } = useRecentAuthPrompt()
 const auth = useAuthStore()
 const { user: me } = useCurrentUser()
 const { formatRelativeTime } = useFormatRelativeTime()
@@ -260,6 +261,8 @@ async function runUserAction(type: UserAction) {
     await refresh()
   }
   catch (error) {
+    // RA3: Löschen verlangt eine frische Anmeldung — der EINE Weg aus core.
+    if (type === 'delete' && await promptFreshSignIn(error, t('admin.users.reauthText'))) return
     // `data.reason` (Fehler-Envelope, core shared/types/error.ts). Vorher stand
     // hier `data.data.code` — das kam NIE an: der zentrale Handler verwirft die
     // rohe `data` eines Fehlers, seit 2026-07-29 reist ein geprüfter Grund als
