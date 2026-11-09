@@ -75,6 +75,9 @@ Schema; ein Sprung 2.6.2 → 2.7.1 in EINEM Werkzeug-Lauf plus `migrate` reicht
   Für uns kein Maß, aber der Grund, warum ein Nutzer mit sehr vielen Tabs „tote"
   Live-Aktualisierung melden könnte. Gäste zählen je IP (bzw. IPv6-/64) und
   Projekt — 128 reicht auch für die CI-E2E (alle Browser von `127.0.0.1`).
+  *Nachtrag 2026-11-09:* seit RT2 (s. oben) hält ein Tab nur noch EINE
+  Verbindung (Rows, Presence und `account` über den geteilten SDK-Socket) —
+  die Grenze greift damit erst ab dem 33. offenen Tab desselben Nutzers.
 - **Richtlinie „Deny realtime guests" (Auth > Policies > Realtime, #14945/
   #14996) BLEIBT AUS — Davids Linie seit der Changelog-Prüfung vom
   2026-10-29.** Gäste abonnieren bei uns ABSICHTLICH `read(any)`-Tabellen:
