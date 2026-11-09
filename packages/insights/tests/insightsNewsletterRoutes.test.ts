@@ -44,7 +44,8 @@ let rows: FakeRow[]
 let riegelOpen: boolean
 let storeBroken: boolean
 let mailWorks: boolean
-let mails: { to: string, subject: string, text: string }[]
+let mails: { to: string, subject: string, text: string, from?: string }[]
+let newsletterFrom: string
 let logs: { level: string, name: string, data: Record<string, unknown> }[]
 let hits: Record<string, number>
 let body: Record<string, unknown>
@@ -105,7 +106,9 @@ vi.stubGlobal('useRuntimeConfig', () => ({
   appwriteKey: SECRET,
   public: { appwriteDatabaseId: 'main', appwriteProjectId: 'branding', appUrl: 'https://branding.supply' },
 }))
-vi.stubGlobal('useAppConfig', () => ({ pukalani: { insights: { newsletter: { enabled: riegelOpen } } } }))
+vi.stubGlobal('useAppConfig', () => ({
+  pukalani: { insights: { newsletter: { enabled: riegelOpen, from: newsletterFrom } } },
+}))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
@@ -115,7 +118,7 @@ vi.stubGlobal('logEvent', (level: string, name: string, data: Record<string, unk
 vi.stubGlobal('readValidatedBody', async (_event: H3Event, parse: (input: unknown) => unknown) => parse(body))
 vi.stubGlobal('setHeader', () => {})
 vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
-vi.stubGlobal('sendMail', async (_event: H3Event, mail: { to: string, subject: string, text: string }) => {
+vi.stubGlobal('sendMail', async (_event: H3Event, mail: { to: string, subject: string, text: string, from?: string }) => {
   if (!mailWorks) return false
   mails.push(mail)
   return true
@@ -187,6 +190,7 @@ function unsubTokenFromMail(text: string): string {
 beforeEach(() => {
   rows = []
   riegelOpen = true
+  newsletterFrom = ''
   storeBroken = false
   mailWorks = true
   mails = []
@@ -470,5 +474,31 @@ describe('POST …/newsletter/unsubscribe', () => {
     body = { token: unsubToken('weg') }
 
     expect(await unsubscribe(event)).toEqual({ ok: true })
+  })
+})
+
+/**
+ * DER ABSENDER KOMMT WIRKLICH AM UMSCHLAG AN (RS1, 2026-11-09).
+ *
+ * Die pure Regel ist anderswo geprüft. Was sie NICHT prüft, ist die
+ * Verdrahtung: ob die Bestätigungs-Mail den konfigurierten Absender auch
+ * mitgibt. Genau das war die Falle beim Bauen — `insightsNewsletterSender()`
+ * hing zuerst am Auto-Import, der in einem Testlauf nicht aufgelöst wird; die
+ * Mail wäre still von der Hauptdomain gegangen, und kein Test hätte es
+ * gesehen. Darum diese zwei Fälle, mit Gegenprobe.
+ */
+describe('Der Newsletter-Absender reist bis an die Mail', () => {
+  it('gibt die konfigurierte Adresse an sendMail weiter', async () => {
+    newsletterFrom = 'Pukalani Brand Insights <insights@mail.branding.supply>'
+    await subscribe(event)
+    expect(mails).toHaveLength(1)
+    expect(mails[0]?.from).toBe('Pukalani Brand Insights <insights@mail.branding.supply>')
+  })
+
+  it('gibt ohne Konfiguration einen leeren Absender weiter — der Core nimmt dann NUXT_SMTP_FROM', async () => {
+    newsletterFrom = ''
+    await subscribe(event)
+    expect(mails).toHaveLength(1)
+    expect(mails[0]?.from).toBe('')
   })
 })

@@ -30,7 +30,7 @@ import {
   insightsNewsletterTokenExpired,
   insightsNewsletterTokenExpiry,
 } from '../shared/insightsNewsletter'
-import { insightsNewsletterEnabled } from '../shared/insightsPublic'
+import { insightsNewsletterEnabled, insightsNewsletterFrom } from '../shared/insightsPublic'
 import {
   insightsNewsletterUnsubToken,
   readInsightsNewsletterUnsubToken,
@@ -603,5 +603,31 @@ describe('insightsNewsletterIdempotencyKey (RS1 d)', () => {
   it('bleibt mit den längsten Appwrite-Ids (36 Zeichen) unter Resends Grenze von 256', () => {
     const id = 'x'.repeat(36)
     expect(insightsNewsletterIdempotencyKey(id, id).length).toBeLessThanOrEqual(256)
+  })
+})
+
+/**
+ * DER ABSENDER DES NEWSLETTERS — pure Regel (RS1, 2026-11-09).
+ *
+ * Die Regel ist bewusst fail-SOFT, anders als der Riegel: ein kaputter Wert
+ * ergibt den leeren String, und der heisst beim Core „nimm den normalen
+ * Absender". Der Newsletter fällt dadurch nicht aus, er verliert nur die
+ * Ruf-Trennung — das ist die richtige Richtung, denn eine Mail ganz OHNE
+ * Absender ginge gar nicht erst raus.
+ */
+describe('insightsNewsletterFrom — der Absender', () => {
+  it('gibt eine gesetzte Adresse unverändert zurück, auch mit Anzeigename', () => {
+    expect(insightsNewsletterFrom('Pukalani Brand Insights <insights@mail.branding.supply>'))
+      .toBe('Pukalani Brand Insights <insights@mail.branding.supply>')
+  })
+
+  it('trimmt — ein führendes Leerzeichen in der Config ist unsichtbar und bricht den Umschlag', () => {
+    expect(insightsNewsletterFrom('  insights@mail.branding.supply  ')).toBe('insights@mail.branding.supply')
+  })
+
+  it('macht aus allem anderen den leeren String — also „nimm den normalen Absender"', () => {
+    for (const raw of [undefined, null, '', '   ', 42, true, {}, ['a@b.c']]) {
+      expect(insightsNewsletterFrom(raw)).toBe('')
+    }
   })
 })

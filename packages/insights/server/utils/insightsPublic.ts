@@ -18,6 +18,7 @@ import {
   insightsBrandIsVisible,
   insightsDuelCanonical,
   insightsNewsletterEnabled,
+  insightsNewsletterFrom,
   insightsPostIsVisible,
   insightsPublicHref,
   insightsSlugResolution,
@@ -90,6 +91,23 @@ export function insightsPublicFormats(): InsightsFormat[] {
 export function insightsNewsletterAllowed(): boolean {
   const config = useAppConfig() as { pukalani?: { insights?: { newsletter?: { enabled?: unknown } } } }
   return insightsNewsletterEnabled(config.pukalani?.insights?.newsletter?.enabled)
+}
+
+/**
+ * VON WELCHER ADRESSE GEHT DER NEWSLETTER RAUS? (RS1, 2026-11-09.)
+ *
+ * Dieselbe Bauart wie der Riegel darüber: `useAppConfig()` ohne `event`, die
+ * pure Regel aus `shared/` entscheidet. Leer heisst „der normale Absender" —
+ * der Core setzt dann `NUXT_SMTP_FROM` ein, wie vor RS1.
+ *
+ * Beide Newsletter-Mails rufen sie: die Ausgabe und die Bestätigung der
+ * Anmeldung. Eine dritte Newsletter-Mail gehört hier ebenfalls hinein —
+ * sonst stünde die Hälfte des Stroms wieder auf der Hauptdomain, und die
+ * Ruf-Trennung ist nur so gut wie ihre unvollständigste Stelle.
+ */
+export function insightsNewsletterSender(): string {
+  const config = useAppConfig() as { pukalani?: { insights?: { newsletter?: { from?: unknown } } } }
+  return insightsNewsletterFrom(config.pukalani?.insights?.newsletter?.from)
 }
 
 /**

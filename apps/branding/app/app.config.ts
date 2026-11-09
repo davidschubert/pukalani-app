@@ -408,6 +408,38 @@ export default defineAppConfig({
       enabled: true,
 
       /**
+       * DIE EIGENE NEWSLETTER-DOMAIN STEHT — DIE ADRESSE STEHT NOCH NICHT
+       * (RS1 e, 2026-11-09). Absichtlich, und hier ist der Grund.
+       *
+       * `mail.branding.supply` ist bei Resend verifiziert (Region
+       * **eu-west-1**, DKIM + SPF + MX + Return-Path, alle vier Einträge
+       * DNS-only in der Cloudflare-Zone, von aussen über zwei Resolver
+       * gegengeprüft). Der Weg dorthin ist gebaut:
+       * `pukalani.insights.newsletter.from` reicht einen eigenen Absender bis
+       * an `sendMail` durch, und beide Newsletter-Mails nennen ihn.
+       *
+       * ── WARUM HIER TROTZDEM NICHTS STEHT ────────────────────────────────
+       * Der SMTP-Schlüssel ist seit RS1 h (2026-11-08) ein
+       * `sending_access`-Schlüssel, der an die Domain **`pukalani.app`**
+       * gebunden ist. Eine Mail mit Absender `@mail.branding.supply` lehnt
+       * Resend damit ab. Stünde die Adresse schon hier, wäre sie eine
+       * Zeitbombe: heute harmlos (der Riegel `newsletter.enabled` ist `false`),
+       * und in dem Moment scharf, in dem jemand nach den Rechtstexten den
+       * Riegel öffnet — der Newsletter fiele dann aus, ohne dass jemand die
+       * Zeile angefasst hätte.
+       *
+       * ── WAS VORHER ENTSCHIEDEN WERDEN MUSS (Davids Wahl) ────────────────
+       * Entweder EIN Schlüssel für beide Domains (nimmt die Verengung von
+       * RS1 h teilweise zurück) ODER eigene SMTP-Zugangsdaten für den
+       * Newsletter (sauberer: der Massen-Schlüssel darf dann nur von der
+       * Massen-Domain senden, der Konten-Schlüssel nur von der Hauptdomain —
+       * kostet aber einen zweiten Transport im Core). Steht in OPEN-ITEMS
+       * unter RS1 (e).
+       *
+       * Danach ist es EINE Zeile: `newsletter: { from: '…' }`.
+       */
+
+      /**
        * DER THEMENRADAR (BI1 I4, §9.6) — DIE KANALLISTE STEHT NICHT MEHR HIER.
        *
        * Bis BI2 K3 (2026-09-09) trug diese Config elf geprüfte Kanäle, und der

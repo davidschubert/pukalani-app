@@ -93,6 +93,28 @@ export function insightsNewsletterEnabled(raw: unknown): boolean {
   return raw === true
 }
 
+/**
+ * DER ABSENDER DES NEWSLETTERS — pure Regel zu
+ * `pukalani.insights.newsletter.from` (RS1, 2026-11-09).
+ *
+ * Leer, nur Leerzeichen oder gar kein String ⇒ leerer String, und der heisst
+ * beim Core „nimm den normalen Absender der App". Die Regel ist also
+ * fail-SOFT, und das ist hier die richtige Richtung — anders als beim Riegel
+ * eine Zeile darüber:
+ *
+ *  · Beim RIEGEL kostet ein Tippfehler eine Rechtsfrage, also ist zu.
+ *  · Beim ABSENDER kostet ein Tippfehler die ganze Zustellung. Eine Mail
+ *    ohne Absender geht gar nicht erst raus, eine mit dem gewohnten Absender
+ *    schon — nur ohne die Ruf-Trennung. Der Newsletter fällt dann nicht aus,
+ *    er wird nur wieder so verschickt wie vor RS1.
+ *
+ * Getrimmt wird, weil ein führendes Leerzeichen in einer Config-Zeile
+ * unsichtbar ist und den Umschlag kaputt machen würde.
+ */
+export function insightsNewsletterFrom(raw: unknown): string {
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
 // ── 2. Was hinausgeht ──────────────────────────────────────────────────────
 
 /**

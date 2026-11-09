@@ -94,6 +94,33 @@ export default defineAppConfig({
        */
       newsletter: {
         enabled: false,
+        /**
+         * DER ABSENDER DES NEWSLETTERS (RS1, 2026-11-09). LEER heisst „der
+         * normale Absender der App" (`NUXT_SMTP_FROM`), und das ist der
+         * Layer-Default aus demselben Grund wie oben: die ADRESSE gehört der
+         * App, die die Redaktion betreibt, nicht dem Layer.
+         *
+         * ── WARUM ES DIESEN SCHLÜSSEL ÜBERHAUPT GIBT ───────────────────────
+         * Massenmail und Einzelmail teilen sich sonst EINEN Ruf. Eine
+         * Beschwerde über den Newsletter beschädigt dann die Zustellung der
+         * Anmelde-Mail — und das ist die Mail, die ankommen MUSS. Für
+         * branding.supply ist deshalb `mail.branding.supply` als eigene
+         * Versand-Subdomain verifiziert (Resend, Region eu-west-1), und der
+         * Newsletter nennt sie hier.
+         *
+         * ── ER GILT FÜR BEIDE NEWSLETTER-MAILS ───────────────────────────
+         * Die Ausgabe UND die Bestätigungs-Mail der Anmeldung. Die
+         * Bestätigung ist zwar eine Einzelmail, gehört aber zum
+         * Newsletter-Strom: sie wird durch eine Eintragung ins Formular
+         * ausgelöst, also durch genau das, was auch Beschwerden auslöst. Wer
+         * sie auf der Hauptdomain liesse, hätte die Trennung halb gemacht.
+         *
+         * Form wie im Mailprogramm: `Name <adresse@domain>` oder nur die
+         * Adresse. Die Domain MUSS beim Versanddienst verifiziert sein —
+         * sonst lehnt er die Mail ab, und das sieht aus wie ein stiller
+         * Ausfall des Newsletters.
+         */
+        from: '',
       },
 
       /**

@@ -5,6 +5,11 @@ import type { InsightsNewsletterIntros, InsightsNewsletterLocale } from '../../s
 import { insightsNewsletterConfirmMailCopy, insightsNewsletterIdempotencyKey, insightsNewsletterIssueCopy } from '../../shared/insightsNewsletter'
 import type { InsightsPostHead } from '../../shared/insightsPost'
 import { insightsPublicKopf } from '../../shared/insightsPost'
+// AUSDRÜCKLICH importiert, nicht per Auto-Import wie `sendMail`: der Absender
+// entscheidet, von welcher Domain eine Massenmail ausgeht. Ein Auto-Import,
+// den ein Testlauf nicht auflöst, wäre still ein leerer String gewesen — die
+// Mail ginge raus, nur wieder von der Hauptdomain, und kein Test sähe es.
+import { insightsNewsletterSender } from './insightsPublic'
 
 /**
  * DIE ZWEI TOKEN DES NEWSLETTERS UND DIE ZWEI MAILS, DIE ER VERSCHICKT —
@@ -228,7 +233,16 @@ export async function sendInsightsNewsletterConfirmMail(
   })
 
   try {
-    return await sendMail(event, { to: input.to, subject: copy.subject, text: copy.text })
+    return await sendMail(event, {
+      to: input.to,
+      subject: copy.subject,
+      text: copy.text,
+      // Der Newsletter-Absender gilt AUCH hier (RS1): die Bestätigung ist
+      // zwar eine Einzelmail, gehört aber zum Newsletter-Strom — sie wird
+      // durch die Eintragung ins Formular ausgelöst, also durch genau das,
+      // was auch Beschwerden auslöst. Leer ⇒ unverändert `NUXT_SMTP_FROM`.
+      from: insightsNewsletterSender(),
+    })
   }
   catch (error) {
     // Ohne Adresse und ohne Token: das Log sagt DASS, nicht AN WEN und womit.
@@ -306,6 +320,8 @@ export async function sendInsightsNewsletterIssueMail(
       to: input.to,
       subject: copy.subject,
       text: copy.text,
+      // Die eigene Versand-Subdomain (RS1) — leer ⇒ `NUXT_SMTP_FROM`.
+      from: insightsNewsletterSender(),
       headers: {
         'List-Unsubscribe': `<${unsubscribeUrl}>`,
         'Resend-Idempotency-Key': insightsNewsletterIdempotencyKey(input.sendId, input.subscriberId),

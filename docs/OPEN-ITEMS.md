@@ -404,10 +404,31 @@ zuerst:
   [RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md)).
 - **(c) + (d) erledigt 2026-11-06** (Wächter auf Usage-/Metrics-API,
   Idempotenz-Schlüssel im Stapelversand) — OPEN-ITEMS-COMPLETE „RS1 c+d".
-- **(e) Eigene Newsletter-Subdomain.** Seit 2026-08-25 hat auch der freie
-  Tarif drei Domains: Newsletter von einer eigenen Subdomain schicken, damit
-  ihr Ruf die Anmelde-Mails nicht mitzieht. Die dritte Domain kann Staging
-  werden.
+- **(e) Eigene Newsletter-Subdomain — DOMAIN STEHT, WEG GEBAUT; offen sind
+  zwei Entscheidungen (2026-11-09).** Davids Name:
+  **`mail.branding.supply`**. Bei Resend angelegt und **verifiziert**, Region
+  **eu-west-1**; die vier Einträge (DKIM-TXT, SPF-TXT, MX auf
+  `feedback-smtp.eu-west-1.amazonses.com`, Return-Path-CNAME) liegen
+  DNS-only in der Cloudflare-Zone und sind von aussen über zwei Resolver
+  gegengeprüft. Im Code gebaut: `MailInput.from` (Core) und
+  `pukalani.insights.newsletter.from` reichen einen eigenen Absender bis an
+  beide Newsletter-Mails durch — Ausgabe UND Anmelde-Bestätigung, weil die
+  Bestätigung zum selben Strom gehört. Leer heisst unverändert
+  `NUXT_SMTP_FROM`, also ändert sich ohne Eintrag nichts.
+  **Offen 1 — der Schlüssel:** `pukalani-smtp-send` ist seit (h) an die
+  Domain `pukalani.app` gebunden und lehnt `@mail.branding.supply` ab.
+  Entweder EIN Schlüssel für beide Domains (nimmt (h) teilweise zurück) oder
+  eigene SMTP-Zugangsdaten für den Newsletter (sauberer, kostet einen zweiten
+  Transport im Core). Erst danach die Adresse in
+  `apps/branding/app/app.config.ts` eintragen — eine Zeile, der Grund steht
+  dort.
+  **Offen 2 — DMARC fehlt auf `branding.supply` ganz** (gemessen 2026-11-09:
+  `_dmarc.branding.supply` leer, nur `pukalani.app` hat einen). Gmail und
+  Yahoo verlangen für Massenversand mindestens `p=none`. Ein Klick:
+  Cloudflare → branding.supply → Email → DMARC Management → „Enable DMARC
+  Management" (wie (g) für `pukalani.app`); mein Versuch wurde von der
+  Sicherheitsabfrage für DNS-Änderungen abgelehnt, das gehört David.
+  Die dritte Resend-Domain kann Staging werden.
 - **(f) Rechtstexte.** Resend ist seit 2025-03-13 nach dem EU-US Data Privacy
   Framework zertifiziert, damit gilt der Angemessenheitsbeschluss. Das schließt
   die Lücke „SMTP/Resend ungeprüft" (G1/E12 in
