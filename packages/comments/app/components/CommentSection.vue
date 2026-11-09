@@ -42,11 +42,16 @@ const embedLogin = isEmbed ? useEmbedLogin() : null
 // Gast weder die Liste noch seinen eigenen Beitrag wieder — dieselbe Regel wie
 // in /api/comments/guest, damit hier kein Formular steht, dessen Absenden
 // garantiert 404 wird.
-const appConfig = useAppConfig() as { pukalani?: { comments?: { embed?: { guests?: boolean } } } }
+const appConfig = useAppConfig() as {
+  pukalani?: { comments?: { embed?: { guests?: boolean }, guestsOnPublicPages?: boolean } }
+}
 const { membersOnly } = useTenantAudience()
 const guestsEnabled = computed(() => guestCommentsAllowed({
   embedEnabled: isEmbed,
   guestsEnabled: !!appConfig.pukalani?.comments?.embed?.guests,
+  // BI2 K7: derselbe Gast-Weg auf den EIGENEN öffentlichen Seiten (Insights-
+  // Artikel) — ohne Embed, mit eigenem Schalter.
+  publicPagesEnabled: !!appConfig.pukalani?.comments?.guestsOnPublicPages,
   communityIsPublic: !membersOnly.value,
 }))
 

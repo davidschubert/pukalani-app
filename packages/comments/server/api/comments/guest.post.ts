@@ -20,9 +20,12 @@ import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared
  * ist keine Kontaktspur.
  *
  * Sicherheits-Leitplanken (unauth. Write in die geteilte, gepoolte Tabelle):
- *  - Dreifach-Gate: pukalani.comments.embed.enabled UND .guests müssen an sein
- *    UND die Community muss öffentlich sein (F4, guestCommentsAllowed) — sonst
- *    404 (keine Existenz-Preisgabe). Core-Default: beide Schalter aus.
+ *  - Gate: entweder Embed (`…embed.enabled` UND `…embed.guests`) oder die
+ *    eigenen öffentlichen Seiten (`…guestsOnPublicPages`, BI2 K7) — und IMMER
+ *    muss die Community öffentlich sein (F4, guestCommentsAllowed). Sonst 404
+ *    (keine Existenz-Preisgabe). Core-Default: alle drei Schalter aus.
+ *  - Bot-Beweis: Turnstile mit der Aktion `guest_comment` (BI2 K7) — ohne die
+ *    zwei Schlüssel ein No-op, s. unten.
  *  - Rate-Limit: eigener enger Bucket `comments:guest` (rate-limit.ts). Er
  *    arbeitet weiter mit der Client-IP — sie wird dort NICHT gespeichert,
  *    sondern nur für die Zählung im Redis-Fenster benutzt.
@@ -33,7 +36,13 @@ import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared
  */
 export default defineEventHandler(async (event) => {
   const appConfig = useAppConfig() as {
-    pukalani?: { comments?: { embed?: { enabled?: boolean, guests?: boolean }, operatorTargets?: string[] } }
+    pukalani?: {
+      comments?: {
+        embed?: { enabled?: boolean, guests?: boolean }
+        guestsOnPublicPages?: boolean
+        operatorTargets?: string[]
+      }
+    }
   }
   const embed = appConfig.pukalani?.comments?.embed
   // Die COMMUNITY entscheidet mit (F4): in einer Community mit Publikum
@@ -43,6 +52,7 @@ export default defineEventHandler(async (event) => {
   if (!guestCommentsAllowed({
     embedEnabled: !!embed?.enabled,
     guestsEnabled: !!embed?.guests,
+    publicPagesEnabled: !!appConfig.pukalani?.comments?.guestsOnPublicPages,
     communityIsPublic: communityContentIsPublic(useTenant(event)),
   })) {
     throw createError({ status: 404, statusText: 'Not Found' })
@@ -52,6 +62,21 @@ export default defineEventHandler(async (event) => {
   await assertPoolWriteQuota(event, { kind: 'comments', tableId: COMMENTS_TABLE })
 
   const body = await readValidatedBody(event, guestCommentSchema.parse)
+
+  /**
+   * DER BOT-BEWEIS (BI2 K7, 2026-11-09) — an derselben Stelle wie in den drei
+   * Auth-Routen: NACH den billigen Schaltern (ein geschlossenes Gate kostet
+   * keinen Netzaufruf nach Cloudflare) und VOR allem, was eine Zeile anlegt
+   * oder eine Mail auslöst.
+   *
+   * Warum hier überhaupt: seit K7 steht dieses Formular auf einer öffentlichen
+   * Artikel-Seite, und die Kommentare sind SOFORT sichtbar (Davids
+   * Entscheidung). Der Eimer `comments:guest` drosselt eine Quelle; gegen ein
+   * Skript, das die IP wechselt, half am 2026-10-27 nur Turnstile. Ohne die
+   * zwei Schlüssel ist der Aufruf ein No-op (`mode: 'off'`) — Dev, CI und die
+   * E2E-Specs laufen weiter ohne Cloudflare.
+   */
+  await requireTurnstile(event, 'guest_comment', body.turnstileToken)
 
   /**
    * Dieselbe Frage wie im regulären Pfad (F1 Stufe 3): nimmt dieses Ziel noch

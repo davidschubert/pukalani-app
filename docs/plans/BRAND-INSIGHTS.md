@@ -393,8 +393,15 @@ Kein zweiter Score neben dem Brand-Check · keine automatische Veröffentlichung
 ohne Davids Zeichen · kein Transkript-Scraping und keine Volltext-Übernahme aus
 Presse oder Wikipedia · keine fremden Logos, Bildmarken, Favicons oder
 Screenshots · keine erfundenen Autoren und kein Beraterteam als Autor · keine
-Gastautoren · **kein Newsletter im Launch** · keine Kommentare oder
-Community-Funktionen unter den Beiträgen · keine Leser-Auto-Übersetzung (Knopf
+Gastautoren · ~~**kein Newsletter im Launch**~~ (I5a/I5b gebaut 2026-10-24/27)
+· ~~keine Kommentare oder Community-Funktionen unter den Beiträgen~~ —
+**überholt 2026-11-09, Davids Entscheidung** zu BI2 K7: unter den
+ÖFFENTLICHEN Artikeln darf kommentiert werden (`comments` + `moderation` in
+`apps/branding`, Gäste sofort sichtbar; BRAND-INSIGHTS-KURATION.md § 20).
+Beide Sätze waren LAUNCH-Zuschnitt, kein Dauer-Nein — der Newsletter stand in
+derselben Zeile. „Community-Funktionen" bleibt sonst ein Nicht-Ziel: Profile,
+Folgen, Abstimmen über Beiträge gibt es hier nicht · keine
+Leser-Auto-Übersetzung (Knopf
 statt Automatik, wie beim UGC-Muster) · keine Bewertungsplattform- oder
 Social-Quellen (Plattform-AGB, PII — wie im Marktvergleich) · kein CMS-Produkt
 für Kunden (die Redaktion ist unsere, nicht ihre).

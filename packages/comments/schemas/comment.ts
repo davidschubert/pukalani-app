@@ -56,6 +56,19 @@ export function createGuestCommentSchema(t: TranslateFn = identity) {
       .trim()
       .min(2, t('comments.validation.guestNameRequired'))
       .max(60, t('comments.validation.guestNameMax')),
+    /**
+     * Der Turnstile-Einmal-Token (BI2 K7, 2026-11-09) — dieselbe Form wie in
+     * `signup.post.ts`: OPTIONAL und gedeckelt. Optional, weil Dev, CI und
+     * jede Instanz ohne die zwei Schlüssel `mode: 'off'` fahren und das
+     * Formular dann gar kein Widget zeigt; ob ein fehlender Token eine
+     * Ablehnung ist, entscheidet `requireTurnstile` und nicht dieses Schema.
+     * Gedeckelt, weil ein ungeprüftes Feld sonst 10.000 Zeichen Müll durch
+     * die Validierung trägt.
+     *
+     * Das FORMULAR nimmt ihn bewusst nicht in seine `pick()`-Teilmenge: dort
+     * wird er nie getippt, sondern vom Widget gesetzt.
+     */
+    turnstileToken: z.string().max(4096).optional(),
   })
 }
 

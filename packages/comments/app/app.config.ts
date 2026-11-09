@@ -146,6 +146,22 @@ export default defineAppConfig({
        *  automatisch (zweiphasig + Cascade) ausgeblendet — Meldungen bleiben
        *  offen, der Moderator entscheidet final. 0 = aus (Default). */
       autoHideReports: 0,
+      /**
+       * GÄSTE AUF DEN EIGENEN ÖFFENTLICHEN SEITEN (BI2 K7, 2026-11-09).
+       *
+       * Bis hierher war Kommentieren ohne Konto ein EMBED-Begriff — der Weg
+       * entstand fürs Widget auf fremden Seiten. Die Insights-Artikel von
+       * branding.supply sind unsere eigenen öffentlichen Seiten, und ihre Leser
+       * haben kein Konto: die Registrierung dort ist Einladungs-Beta, „nur
+       * angemeldet" hieße also niemand.
+       *
+       * Core-Default AUS, die App schaltet bewusst — und die Regel aus
+       * `shared/guestComments.ts` bleibt: Gäste schreiben nur, wo Gäste auch
+       * LESEN dürfen. Der Bot-Beweis am Formular (Turnstile, Aktion
+       * `guest_comment`) hängt NICHT an diesem Schalter, sondern an den zwei
+       * Turnstile-Schlüsseln der Instanz.
+       */
+      guestsOnPublicPages: false,
       /** iframe-Embed (Disqus-Modell, docs/archiv/EMBED-WIDGET.md): /embed-Seite
        *  + public/embed.js. Default aus — die App aktiviert explizit. */
       embed: {

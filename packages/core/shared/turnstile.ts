@@ -35,12 +35,21 @@ export function turnstileMode(siteKey: string, secret: string): TurnstileMode {
 }
 
 /**
- * Die drei Gast-Routen, die eine Mail auslösen — und zugleich die
+ * Die Gast-Routen, die ohne Konto etwas anstoßen — und zugleich die
  * `action`-Namen am Widget. Cloudflare gibt die `action` in der Prüfantwort
  * zurück; der Server vergleicht sie, damit ein Token aus dem
  * Passwort-vergessen-Formular nicht für die Registrierung taugt.
+ *
+ * `guest_comment` kam mit BI2 K7 dazu (2026-11-09): die Insights-Artikel von
+ * branding.supply nehmen Kommentare von GÄSTEN an, sofort sichtbar (Davids
+ * Entscheidung). Das ist dieselbe Angriffsfläche wie damals — ein öffentliches
+ * Formular ohne Konto —, und sie löst sogar Mail aus: eine Antwort auf einen
+ * angemeldeten Autor benachrichtigt ihn, und bei `emailNotifications: instant`
+ * ist das eine echte Mail über unser Resend-Konto. Der Stundeneimer
+ * `comments:guest` bleibt davor; er drosselt EINE Quelle, Turnstile verlangt
+ * einen Browser mit einem Menschen davor.
  */
-export const TURNSTILE_ACTIONS = ['signup', 'otp', 'recovery'] as const
+export const TURNSTILE_ACTIONS = ['signup', 'otp', 'recovery', 'guest_comment'] as const
 export type TurnstileAction = typeof TURNSTILE_ACTIONS[number]
 
 /** Die Grund-Schlüssel, die als `reason` im Fehler-Envelope reisen. */

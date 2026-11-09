@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { markdownHeadings } from '../../../../core/shared/markdown'
+import { INSIGHTS_COMMENT_TARGET, insightsCommentUrl } from '../../../shared/insightsComments'
 import type { InsightsLocale } from '../../../shared/insightsPost'
 import { insightsPublicFassung, insightsTopicLabel } from '../../../shared/insightsPost'
 import { insightsFormatIsPublic, insightsOgPath, readInsightsPublicFormats } from '../../../shared/insightsPublic'
@@ -284,6 +285,33 @@ const startTarget = computed(() => localePath(isLoggedIn.value ? '/dashboard/bra
            selbst eintragen können. -->
       <div v-if="!isPreview" class="mx-auto mt-14 max-w-3xl">
         <InNewsletterForm :source="`post:${slug}`" compact />
+      </div>
+
+      <!--
+        DER KOMMENTAR-FADEN (BI2 K7, 2026-11-09).
+
+        `target-id` ist die ROW-ID und nicht der Slug: ein Beitrag darf
+        umbenannt werden, der alte Slug lebt in `slugHistory` weiter und leitet
+        per 301 um (I3) — hinge der Faden am Slug, verwaiste er genau bei
+        dieser Umbenennung. `target-url` trägt trotzdem den heutigen Pfad: er
+        wird nur für den Link in der Antwort-Benachrichtigung gebraucht, und
+        dort führt die 301 den Leser ohnehin richtig.
+
+        NICHT IN DER VORSCHAU: ein Entwurf ist für den Schreib-Wächter
+        (`server/plugins/comments-target.ts`) nicht sichtbar und damit zu —
+        ein Formular zu zeigen, dessen Absenden garantiert 404 wird, ist genau
+        das, was `guestCommentsAllowed` an anderer Stelle verhindert.
+
+        KEIN `locked`: ob hier geschrieben werden darf, hängt nicht an diesem
+        Beitrag, sondern am Riegel `publicFormats` und am Zustand — und beides
+        prüft der Wächter serverseitig für JEDEN, der die Oberfläche umgeht.
+      -->
+      <div v-if="!isPreview" class="mx-auto mt-16 max-w-3xl">
+        <CommentSection
+          :target-id="post.id"
+          :target-type="INSIGHTS_COMMENT_TARGET"
+          :target-url="insightsCommentUrl(slug)"
+        />
       </div>
     </div>
   </div>

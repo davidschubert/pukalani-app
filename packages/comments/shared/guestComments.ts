@@ -26,12 +26,33 @@
  * PURE und an EINER Stelle, weil zwei Seiten dieselbe Antwort brauchen: die
  * Route (`/api/comments/guest` → 404) und die Ansicht (kein Composer). Liefen
  * sie auseinander, stünde ein Formular da, dessen Absenden garantiert scheitert.
+ *
+ * ── ZWEITER TRÄGER: DIE EIGENEN ÖFFENTLICHEN SEITEN (BI2 K7, 2026-11-09) ───
+ * Bis hierher war „Gast" ein EMBED-Begriff: der Weg entstand für das Widget
+ * auf fremden Seiten, und `embedEnabled` stand deshalb in der Bedingung. Die
+ * Insights-Artikel von branding.supply sind aber unsere EIGENEN öffentlichen
+ * Seiten, und ihre Leser haben kein Konto — die Registrierung ist
+ * Einladungs-Beta. „Nur angemeldet" hieße dort: niemand.
+ *
+ * Deshalb trägt der Schalter `pukalani.comments.guestsOnPublicPages`
+ * (Core-Default AUS) denselben Gast-Weg auf den Seiten der Site selbst. Was
+ * NICHT aufgeweicht wird, ist die Regel, aus der dieser Kopf entstand:
+ * **Gäste schreiben genau dort, wo Gäste auch LESEN dürfen** —
+ * `communityIsPublic` bleibt Vorbedingung für JEDEN Träger. Der Ausweg
+ * „einfach das Embed anschalten, damit der Gast-Weg aufgeht" wäre die
+ * schlechtere Antwort: er stellte eine öffentliche `/embed`-Seite und eine
+ * `frame-ancestors`-Lockerung auf eine Site, die kein Widget anbietet.
  */
 export interface GuestCommentGate {
   /** Läuft das im iframe-Embed? (`pukalani.comments.embed.enabled`) */
   embedEnabled: boolean
-  /** Hat der Betreiber Gast-Kommentare freigegeben? (`…embed.guests`) */
+  /** Hat der Betreiber Gast-Kommentare im Embed freigegeben? (`…embed.guests`) */
   guestsEnabled: boolean
+  /**
+   * Dürfen Gäste auf den EIGENEN öffentlichen Seiten dieser Site kommentieren?
+   * (`pukalani.comments.guestsOnPublicPages`, Core-Default aus.)
+   */
+  publicPagesEnabled: boolean
   /**
    * Sind die Inhalte dieser Community für Gäste lesbar? (C18,
    * `communityContentIsPublic`). Silo-Apps, Kontroll-Hosts und Playground haben
@@ -41,5 +62,7 @@ export interface GuestCommentGate {
 }
 
 export function guestCommentsAllowed(gate: GuestCommentGate): boolean {
-  return gate.embedEnabled && gate.guestsEnabled && gate.communityIsPublic
+  // Vorbedingung für jeden Träger: wer nicht lesen darf, schreibt ins Loch.
+  if (!gate.communityIsPublic) return false
+  return gate.publicPagesEnabled || (gate.embedEnabled && gate.guestsEnabled)
 }
