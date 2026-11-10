@@ -440,7 +440,7 @@ async function runUserAction(type: UserAction) {
               <SessionsTable v-else :sessions="data?.sessions ?? []" />
             </UPageCard>
 
-            <!-- Aktivitätsprotokoll (Appwrite users.listLogs — auch beendete Sessions) -->
+            <!-- Aktivitätsprotokoll — seit Appwrite 2.5 ohne Quelle, die Liste ist immer leer (s. server/api/admin/users/[id]/index.get.ts) -->
             <!-- min-w-0 wie bei den Sessions: sonst wächst die Karte auf
                  Inhaltsbreite der Tabelle statt sie scrollen zu lassen -->
             <UPageCard variant="subtle" :ui="{ container: 'min-w-0' }">

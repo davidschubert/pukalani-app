@@ -126,20 +126,24 @@ catalog:
   # Abhängigkeiten, läuft in Node und im Browser — gebraucht wird nur
   # `zipSync`/`strToU8` in `packages/brand/shared/brandKitZip.ts` (Server).
   fflate: ^0.8.3
-  # Web-SDK auf 27 (AW2 Stufe 4): setzt Response-Format 2.0.0 voraus, also
-  # Appwrite-Server 2.0 — dev läuft dort, prod zieht nach. Aufgefangene
-  # Brüche: `presences.list/get/upsert/update` sind nicht mehr generisch
-  # (`Models.DefaultPresence` entfällt — wir casten ohnehin selbst) und das
-  # `Theme`-Enum heißt `BrowserTheme` (avatars.getScreenshot, ungenutzt).
-  appwrite: ^27.0.0
-  # Server-SDK auf 29 (AW2 Stufe 4): sendet Response-Format 2.0.0, setzt also
-  # ebenfalls Appwrite-Server 2.0 voraus. Aufgefangene Brüche über alle
+  # Web-SDK auf 29.2 (2026-11-10): sendet Response-Format 2.6.2, Server läuft
+  # auf 2.7.1 (29.3 = erstes 2.7-Format, war beim Bump nur RC). Brüche über
+  # die Stufen: 27 — `presences.*` nicht mehr generisch, `Theme` heißt
+  # `BrowserTheme`; 29 — nullable Modellfelder sind `T | null`, fehlende
+  # Felder kommen mit Doku-Default (traf unseren Code nicht, Typecheck grün).
+  # Beweis Realtime: Session-Widerruf ⇒ Sofort-Abmeldung im Tab.
+  appwrite: ^29.2.0
+  # Server-SDK auf 31.1 (2026-11-10): sendet Response-Format 2.6.2 — der
+  # REST-Helfer core/server/utils/appwriteHealth.ts zieht mit. 30 entfernte
+  # `users.listLogs`; den Endpunkt hatte schon Server 2.5 gestrichen (2.7.1:
+  # 404, der Nachfolger `activities` existiert self-hosted nicht), das
+  # Admin-Aktivitätsprotokoll bleibt leer. Aufgefangene Brüche davor, über alle
   # Stufen: der `Health`-Service ist seit 27 weg (Ersatz: REST-Helfer in
   # core/server/utils/appwriteHealth.ts — dessen RESPONSE_FORMAT zieht mit),
   # `account.createJWT` seit 28 (Ersatz: `users.createJWT` am Admin-Client),
   # und seit 29 heißt `Execution.functionId` `resourceId`/`resourceType`
   # sowie `tablesDB.cutoverMigration` `createCutover` (beide ungenutzt).
-  node-appwrite: ^29.0.0
+  node-appwrite: ^31.1.0
   '@types/node': ^22.20.5
   # 4.6.4 (2026-11-09) = Sicherheitsrelease vom 2026-11-02 (acht Nuxt-, drei
   # Nitro-Fixes; Nitro 2.13.6): routeRules/Middleware-Umgehungen, SSR-Fehler-

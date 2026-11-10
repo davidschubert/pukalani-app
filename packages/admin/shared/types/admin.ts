@@ -58,7 +58,7 @@ export interface AdminUserSession {
   current: boolean
 }
 
-/** Ein Eintrag aus dem Appwrite-Aktivitätsprotokoll des Users (users.listLogs) */
+/** Ein Eintrag aus dem Appwrite-Aktivitätsprotokoll des Users (früher users.listLogs — seit Appwrite 2.5 ohne Quelle, die Liste ist immer leer; s. users/[id]/index.get.ts) */
 export interface AdminUserActivity {
   event: string
   time: string

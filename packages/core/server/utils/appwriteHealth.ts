@@ -47,14 +47,15 @@ export interface AppwriteHealthTime {
 const TIMEOUT_MS = 5_000
 
 /**
- * Antwort-Format, das node-appwrite 29 selbst mitschickt. Explizit gesetzt,
+ * Antwort-Format, das node-appwrite 31 selbst mitschickt. Explizit gesetzt,
  * damit dieser Helfer und das SDK GARANTIERT dieselben Formen sehen: ohne den
  * Header wendet der Server sein NEUESTES Format an — läge der Helfer damit auf
  * einem anderen Stand als jeder SDK-Aufruf daneben, und zwar lautlos. Beim
  * nächsten SDK-Bump mitziehen (Wert steht in dessen `dist/client.js`; das
- * Web-SDK 27 sendet denselben).
+ * Web-SDK 29.2 sendet denselben). 2.0.0 → 2.6.2 am 2026-11-10 (node-appwrite
+ * 29 → 31, appwrite 27 → 29.2; Server läuft auf 2.7.1).
  */
-const RESPONSE_FORMAT = '2.0.0'
+const RESPONSE_FORMAT = '2.6.2'
 
 async function fetchHealth<T>(endpoint: string, projectId: string, apiKey: string, path: string): Promise<T> {
   let response: Response
