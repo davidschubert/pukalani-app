@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
     subscription_data: { metadata: { userId: user.$id, planId: plan.id } },
     // F20: nur Karte — keine verzögert abrechnenden Methoden.
     // Begründung in shared/paymentMethods.ts.
-    payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
+    allowed_payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
     // §6: Stripe Tax (B2C) + Pflicht-Rechnungsadresse; Stripe-Invoicing genügt
     automatic_tax: { enabled: true },
     billing_address_collection: 'required',

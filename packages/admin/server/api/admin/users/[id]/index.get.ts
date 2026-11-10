@@ -45,22 +45,14 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
         .then(s => s.$id).catch(() => '')
     : ''
 
-  const [sessions, logs, targets, comments] = await Promise.all([
+  const [sessions, targets, comments] = await Promise.all([
     admin.users.listSessions({ userId }).catch(() => ({ sessions: [] as Models.Session[] })),
-    // Aktivitätsprotokoll (historisch, auch beendete Sessions): Logins,
-    // Session-/Account-Ereignisse mit Geo/Client/OS/Gerät je Event.
-    admin.users.listLogs({ userId, queries: [Query.limit(25)] }).catch(() => ({ logs: [] as Models.Log[] })),
     // Benachrichtigungskanäle (email/sms/push-Targets)
     admin.users.listTargets({ userId }).catch(() => ({ targets: [] as Models.Target[] })),
     tenantDb(event, { as: 'operator' }).list<CommentRow>('comments', [
       Query.equal('authorId', userId), Query.orderDesc('$createdAt'), Query.limit(10),
     ]).catch(() => ({ total: 0, rows: [] as CommentRow[] })),
   ])
-
-  // Appwrite liefert für nicht auflösbare (lokale/private) IPs 'Unknown' oder '--'
-  // als Land — auf leer normalisieren, damit die UI lokalisiert "Unbekannt" zeigt.
-  const normalizeCountry = (name: string): string =>
-    (!name || name === 'Unknown' || name === '--') ? '' : name
 
   const prefs = user.prefs as { bio?: string, avatarUrl?: string }
 
@@ -106,18 +98,15 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
       lastSeen,
     },
     sessions: safeSessions,
-    activity: logs.logs.map(log => ({
-      event: log.event,
-      time: log.time,
-      ip: log.ip,
-      countryCode: normalizeCountry(log.countryName) ? log.countryCode : '',
-      countryName: normalizeCountry(log.countryName),
-      clientName: log.clientName,
-      clientVersion: log.clientVersion,
-      osName: log.osName,
-      osVersion: log.osVersion,
-      deviceName: log.deviceName,
-    })),
+    // Aktivitätsprotokoll: LEER, und das nicht erst seit dem SDK-Bump
+    // (2026-11-10). Appwrite hat `GET /users/{id}/logs` mit Server 2.5
+    // entfernt — auf 2.7.1 antwortet der Endpunkt 404, der frühere Aufruf lief
+    // still in sein `.catch` und lieferte seitdem immer []. node-appwrite 30
+    // hat `users.listLogs` dann auch aus dem SDK genommen. Der Nachfolger
+    // `activities.listEvents` existiert self-hosted NICHT (2.7.1: 404). Feld
+    // und Typ bleiben, damit die Admin-Ansicht unverändert ihren Leerzustand
+    // zeigt; ob der Abschnitt ganz wegfällt, ist eine Produktentscheidung.
+    activity: [],
     targets: targets.targets.map(target => ({
       $id: target.$id,
       $createdAt: target.$createdAt,

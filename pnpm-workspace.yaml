@@ -112,35 +112,39 @@ ignoredOptionalDependencies:
 
 catalog:
   '@iconify-json/ph': ^1.2.2
-  '@iconify-json/circle-flags': ^1.2.5
-  '@iconify-json/lucide': ^1.2.118
-  '@nuxt/content': ^3.15.1
-  '@nuxt/eslint-config': ^1.15.2
+  '@iconify-json/circle-flags': ^1.2.14
+  '@iconify-json/lucide': ^1.2.152
+  '@nuxt/content': ^3.16.2
+  '@nuxt/eslint-config': ^1.17.0
   # MUSS zur Nuxt-Generation passen: 10.4 gehört zu Nuxt 4.4 und zieht
   # @unhead/vue 2 + vue-router 5.1 (und darüber pinia 3) in den Baum, während
   # Nuxt 4.5 auf unhead 3 + vue-router 5.2 steht. 10.6 verlangt @nuxt/kit
   # ^4.5.1, unhead ^3.2.3, vue-router ^5.2.0, h3 ^1.15.11 — dieselbe Linie.
   '@nuxtjs/i18n': ^10.6.0
-  eslint: ^10.8.0
+  eslint: ^10.14.0
   # In-Memory-Zip für das Brand-Kit-Bündel (BK1 K6, Konzept §2.17). Pur, ohne
   # Abhängigkeiten, läuft in Node und im Browser — gebraucht wird nur
   # `zipSync`/`strToU8` in `packages/brand/shared/brandKitZip.ts` (Server).
   fflate: ^0.8.3
-  # Web-SDK auf 27 (AW2 Stufe 4): setzt Response-Format 2.0.0 voraus, also
-  # Appwrite-Server 2.0 — dev läuft dort, prod zieht nach. Aufgefangene
-  # Brüche: `presences.list/get/upsert/update` sind nicht mehr generisch
-  # (`Models.DefaultPresence` entfällt — wir casten ohnehin selbst) und das
-  # `Theme`-Enum heißt `BrowserTheme` (avatars.getScreenshot, ungenutzt).
-  appwrite: ^27.0.0
-  # Server-SDK auf 29 (AW2 Stufe 4): sendet Response-Format 2.0.0, setzt also
-  # ebenfalls Appwrite-Server 2.0 voraus. Aufgefangene Brüche über alle
+  # Web-SDK auf 29.2 (2026-11-10): sendet Response-Format 2.6.2, Server läuft
+  # auf 2.7.1 (29.3 = erstes 2.7-Format, war beim Bump nur RC). Brüche über
+  # die Stufen: 27 — `presences.*` nicht mehr generisch, `Theme` heißt
+  # `BrowserTheme`; 29 — nullable Modellfelder sind `T | null`, fehlende
+  # Felder kommen mit Doku-Default (traf unseren Code nicht, Typecheck grün).
+  # Beweis Realtime: Session-Widerruf ⇒ Sofort-Abmeldung im Tab.
+  appwrite: ^29.2.0
+  # Server-SDK auf 31.1 (2026-11-10): sendet Response-Format 2.6.2 — der
+  # REST-Helfer core/server/utils/appwriteHealth.ts zieht mit. 30 entfernte
+  # `users.listLogs`; den Endpunkt hatte schon Server 2.5 gestrichen (2.7.1:
+  # 404, der Nachfolger `activities` existiert self-hosted nicht), das
+  # Admin-Aktivitätsprotokoll bleibt leer. Aufgefangene Brüche davor, über alle
   # Stufen: der `Health`-Service ist seit 27 weg (Ersatz: REST-Helfer in
   # core/server/utils/appwriteHealth.ts — dessen RESPONSE_FORMAT zieht mit),
   # `account.createJWT` seit 28 (Ersatz: `users.createJWT` am Admin-Client),
   # und seit 29 heißt `Execution.functionId` `resourceId`/`resourceType`
   # sowie `tablesDB.cutoverMigration` `createCutover` (beide ungenutzt).
-  node-appwrite: ^29.0.0
-  '@types/node': ^22.18.0
+  node-appwrite: ^31.1.0
+  '@types/node': ^22.20.5
   # 4.6.4 (2026-11-09) = Sicherheitsrelease vom 2026-11-02 (acht Nuxt-, drei
   # Nitro-Fixes; Nitro 2.13.6): routeRules/Middleware-Umgehungen, SSR-Fehler-
   # Lecks, Dev-Server-Dateizugriff; cache/swr/isr speichert nur noch GET/HEAD
@@ -183,43 +187,67 @@ catalog:
   # unter `.pnpm/node_modules/`, und dann wirft JEDER lokale Dev-Server auf JEDER
   # SSR-Seite 500 „Can't resolve 'tailwindcss'". Prod-Builds trifft es nicht —
   # der Defekt ist also nur lokal sichtbar und deshalb doppelt tückisch.
-  tailwindcss: ^4.3.2
-  '@nuxtjs/mdc': ^0.22.2
+  tailwindcss: ^4.3.5
+  '@nuxtjs/mdc': ^0.23.2
   # Fest gekoppelt: @pinia/nuxt 0.11.x verlangt pinia ^3, 1.0.x verlangt ^4 —
   # einzeln bewegt sich keines von beiden ohne unerfuellten Peer.
-  '@pinia/nuxt': ^1.0.2
-  pinia: ^4.0.3
+  '@pinia/nuxt': ^1.0.3
+  pinia: ^4.1.0
   # MUSS zu dem mitwandern, was nuxt intern verlangt (4.6.4 → vue
   # ^3.5.44). Bleibt der Katalog darunter, hält pnpm für die Workspace-Pakete
   # die alte vue-Version und nuxt zieht daneben die neue: mit ZWEI vue-Kopien
   # läuft der Nitro-Externals-Tracer im Zyklus vue → @vue/server-renderer → vue
   # und der Prod-Build stirbt an ENAMETOOLONG.
   vue: ^3.5.45
-  typescript: ^5.9.3
-  vitest: ^4.1.11
+  # 6.0 ist die DECKE, nicht 7 (2026-11-10 ausprobiert): TypeScript 7 ist der
+  # native Compiler und exportiert die klassische JS-API nicht mehr (Paket-
+  # Wurzel = nur `version.cjs`). vue-tsc stirbt an `./lib/tsc` (ERR_PACKAGE_
+  # PATH_NOT_EXPORTED), typescript-eslint meldet „does not support TS 7.0"
+  # und verlangt `<6.1.0`. Erst heben, wenn beide TS 7 können. Eine ZWEITE
+  # Kopie 5.9.3 bleibt im Baum: nuxt-component-meta hängt direkt an
+  # `typescript ^5.9.3` (Komponenten-Doku zur Build-Zeit) — harmlos, weil
+  # dort nichts Typen mit unserem Code austauscht.
+  typescript: ^6.0.3
+  vitest: ^5.1.0
   # GENAU GEPINNT, NICHT `^3.3.11` (2026-11-08, CI rot erwischt): 3.3.14
   # erzeugt für `reactive()`-Objekte im Template stellenweise `form.value.x`
   # und meldet dann TS2339 „Property 'value' does not exist" — sechsmal in
   # EventFormModal.vue, bei unverändertem Quelltext. Eine Caret-Range PINNT
   # NICHTS: Dependabot hob den Katalog auf `^3.3.11`, der nächste Lockfile-Lauf
   # zog 3.3.14, und damit war `main` rot, ohne dass jemand etwas am Code
-  # geändert hatte. Beim nächsten Bump prüfen, ob der Fehler weg ist.
-  vue-tsc: 3.3.11
+  # geändert hatte. NACHTRAG 2026-11-10: auf 3.3.14 gehoben, Typecheck über
+  # alle 34 Pakete grün — ABER EventFormModal.vue gibt es nicht mehr (Events/
+  # Kurse arbeiten seit b4924d4e mit Dialogen), der Auslöser ist also nur
+  # verschwunden, nicht bewiesen behoben. Darum bleibt der Pin EXAKT; taucht
+  # TS2339 „Property 'value'" an einem reactive()-Formular auf, ist es dieser
+  # Fehler — zurück auf 3.3.11 und Issue bei vuejs/language-tools.
+  vue-tsc: 3.3.14
   # 4.6.7 (2026-11-09): Speicher-DoS bei übergroßen begrenzten Listen behoben
   # (Advisory „<4.6.6“) — zod prüft bei uns die Request-Bodies im Server.
   zod: ^4.6.7
   jiti: ^2.7.0
-  nodemailer: ^10.3.1
+  nodemailer: ^10.4.0
   ioredis: ^6.0.0
-  '@types/nodemailer': ^7.0.0
-  stripe: ^18.0.0
-  '@playwright/test': ^1.50.0
+  '@types/nodemailer': ^8.0.2
+  # Das SDK PINNT die Stripe-API-Version selbst (wir setzen keine `apiVersion`):
+  # 18 sprach `2025-08-27.basil`, 23 spricht `2026-10-28.endive` — ein Major-
+  # Bump ist also auch ein API-Wechsel für jeden Request. Webhook-Endpunkte
+  # legen wir OHNE `api_version` an; ihre Events kommen weiter in der
+  # Konto-Standardversion, der Bump ändert ihre Form nicht. 18 → 23
+  # (2026-11-10): Checkout kennt `payment_method_types` nicht mehr ⇒
+  # `allowed_payment_method_types` (F20, shared/paymentMethods.ts),
+  # `accounts.retrieve()` ohne Id ⇒ `retrieveCurrent()`. Beweis im Testmodus:
+  # Checkout-Session mit Stripe Tax liefert `payment_method_types: ["card"]`.
+  # Wer stripe importiert, deklariert es (apps/control tat es nicht — im
+  # Worktree fand TypeScript dann die ALTE Kopie im Haupt-Checkout).
+  stripe: ^23.1.0
+  '@playwright/test': ^1.65.0
   # MMDB-Leser für die City-Auflösung der Session-IPs (server/utils/geoCity.ts).
   # Bewusst `mmdb-lib` und nicht `maxmind`: reines JavaScript, keine nativen
   # Abhängigkeiten und kein eigenes Datei-Handling — wir laden den Puffer
   # selbst und behalten damit die Kontrolle über Lazy-Load und Neu-Einlesen
   # nach dem monatlichen Datei-Tausch.
-  mmdb-lib: ^3.0.3
+  mmdb-lib: ^3.0.5
   # Karten-Overlay der Sessions-Seite (SessionDetailsModal): ein Pin auf die
   # Koordinaten der Session-IP, Kacheln von OpenStreetMap — kein API-Key, kein
   # Konto, keine Abrechnung. Geladen wird Leaflet AUSSCHLIESSLICH per

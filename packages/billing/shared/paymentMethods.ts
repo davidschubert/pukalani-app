@@ -21,6 +21,13 @@
  * können über 3-D-Secure ebenfalls in `unpaid` landen, und wer diese Liste
  * eines Tages erweitert, soll dabei keine stille Lücke aufreißen.
  *
+ * FELDNAME (2026-11-10, stripe 23 / API `2026-10-28.endive`): Checkout kennt
+ * `payment_method_types` nicht mehr, die Aufrufstellen setzen
+ * `allowed_payment_method_types`. Das ist ein FILTER über die im Dashboard
+ * eingeschalteten Methoden statt einer festen Liste — für „nur Karte" ist das
+ * strenger, nicht lockerer: eine im Dashboard eingeschaltete SEPA-Lastschrift
+ * fällt am Filter heraus, eine abgeschaltete Karte tauchte auch vorher nicht auf.
+ *
  * ERWEITERN: hier, nicht an den vier Aufrufstellen. Wer eine Methode
  * aufnimmt, muss vorher wissen, ob sie verzögert abrechnet — und wenn ja, was
  * der Käufer in der Zwischenzeit sieht.
