@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 10 offen · 5 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 11 offen · 5 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-10**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -35,6 +35,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 16 · RS1 | **Resend besser nutzen (Changelog-Durchsicht 2026-11-06).** (a) + (b) **erledigt 2026-11-08** — der Newsletter bremst sich selbst, Schlüssel steht auf branding, Bounce-Webhook auf allen vier Sites, SMTP-Schlüssel auf `sending_access` verengt (COMPLETE „RS1 a"/„RS1 b"/„RS1 h"). Offen: eigene Newsletter-Subdomain, DPF/EU-Region für die Rechtstexte. | Mittel | S | Ja: Entscheidungen | [Notiz RS1](#rs1) |
 | 17 · SC1 | **Stripe-Testkauf nach dem SDK-Sprung 18 → 23 einmal echt durchklicken.** Seit PR #119 heißt das Checkout-Feld `allowed_payment_method_types` (API `2026-10-28.endive`), control fragt `accounts.retrieveCurrent()`. Per Direktaufruf im Testmodus bewiesen (Feld angenommen, nur Karte) — Kauf im Browser + Webhook bis zur Freischaltung NICHT. Rezept: [STRIPE-TEST-WALKTHROUGH.md](runbooks/STRIPE-TEST-WALKTHROUGH.md) | Mittel | S | Nein | PR #119 |
 | 18 · AL1 | **Aktivitätsliste in der Admin-Nutzeransicht ist immer leer.** Appwrite hat `users.listLogs` mit 2.5 entfernt (auf 2.7.1: 404), `activities` gibt es self-hosted nicht; seit PR #119 liefert die Route `activity: []` statt zu scheitern. Entscheiden: Abschnitt entfernen oder eigene Quelle (z. B. Sessions-Verlauf) bauen. | Niedrig | S | **Ja** — Produktentscheidung | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
+| 19 · BI5 | **Den ersten Insights-Artikel veröffentlichen — danach steht der Kommentar-Beweis.** Kommentare unter Artikeln sind seit 2026-11-09 live (BI2 K7, Migrationen gefahren), aber `/api/insights/public/posts` ist leer — ohne öffentlichen Artikel gibt es keine Seite mit Faden. Zu entscheiden: die vier Launch-Entwürfe (I6 Stufe 1) oder der Video-Entwurf `6af1c0f3…`; dazu, ob das Fundstück `qooOXNmdCH4` aus dem Beweis vom 2026-11-09 stehen bleibt. Den Klick-Beweis fahre ich danach. | Mittel | S | **Ja: freigeben + entscheiden** | [KURATION § 20](plans/BRAND-INSIGHTS-KURATION.md) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
