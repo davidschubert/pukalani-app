@@ -199,7 +199,15 @@ catalog:
   # läuft der Nitro-Externals-Tracer im Zyklus vue → @vue/server-renderer → vue
   # und der Prod-Build stirbt an ENAMETOOLONG.
   vue: ^3.5.45
-  typescript: ^5.9.3
+  # 6.0 ist die DECKE, nicht 7 (2026-11-10 ausprobiert): TypeScript 7 ist der
+  # native Compiler und exportiert die klassische JS-API nicht mehr (Paket-
+  # Wurzel = nur `version.cjs`). vue-tsc stirbt an `./lib/tsc` (ERR_PACKAGE_
+  # PATH_NOT_EXPORTED), typescript-eslint meldet „does not support TS 7.0"
+  # und verlangt `<6.1.0`. Erst heben, wenn beide TS 7 können. Eine ZWEITE
+  # Kopie 5.9.3 bleibt im Baum: nuxt-component-meta hängt direkt an
+  # `typescript ^5.9.3` (Komponenten-Doku zur Build-Zeit) — harmlos, weil
+  # dort nichts Typen mit unserem Code austauscht.
+  typescript: ^6.0.3
   vitest: ^5.1.0
   # GENAU GEPINNT, NICHT `^3.3.11` (2026-11-08, CI rot erwischt): 3.3.14
   # erzeugt für `reactive()`-Objekte im Template stellenweise `form.value.x`
