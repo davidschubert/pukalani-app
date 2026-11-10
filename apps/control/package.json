@@ -37,6 +37,7 @@
     "nodemailer": "catalog:",
     "nuxt": "catalog:",
     "pinia": "catalog:",
+    "stripe": "catalog:",
     "vue": "catalog:",
     "zod": "catalog:"
   },

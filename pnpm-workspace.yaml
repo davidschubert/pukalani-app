@@ -221,7 +221,18 @@ catalog:
   nodemailer: ^10.4.0
   ioredis: ^6.0.0
   '@types/nodemailer': ^8.0.2
-  stripe: ^18.0.0
+  # Das SDK PINNT die Stripe-API-Version selbst (wir setzen keine `apiVersion`):
+  # 18 sprach `2025-08-27.basil`, 23 spricht `2026-10-28.endive` — ein Major-
+  # Bump ist also auch ein API-Wechsel für jeden Request. Webhook-Endpunkte
+  # legen wir OHNE `api_version` an; ihre Events kommen weiter in der
+  # Konto-Standardversion, der Bump ändert ihre Form nicht. 18 → 23
+  # (2026-11-10): Checkout kennt `payment_method_types` nicht mehr ⇒
+  # `allowed_payment_method_types` (F20, shared/paymentMethods.ts),
+  # `accounts.retrieve()` ohne Id ⇒ `retrieveCurrent()`. Beweis im Testmodus:
+  # Checkout-Session mit Stripe Tax liefert `payment_method_types: ["card"]`.
+  # Wer stripe importiert, deklariert es (apps/control tat es nicht — im
+  # Worktree fand TypeScript dann die ALTE Kopie im Haupt-Checkout).
+  stripe: ^23.1.0
   '@playwright/test': ^1.65.0
   # MMDB-Leser für die City-Auflösung der Session-IPs (server/utils/geoCity.ts).
   # Bewusst `mmdb-lib` und nicht `maxmind`: reines JavaScript, keine nativen

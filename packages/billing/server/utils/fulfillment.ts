@@ -134,7 +134,7 @@ export async function createSubscriptionCheckoutSession(event: H3Event, input: {
     subscription_data: { metadata },
     // F20: nur Karte — keine verzögert abrechnenden Methoden.
     // Begründung in shared/paymentMethods.ts.
-    payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
+    allowed_payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
     // §6: Stripe Tax + Pflicht-Rechnungsadresse (wie alle Checkouts)
     automatic_tax: { enabled: true },
     billing_address_collection: 'required',
@@ -181,7 +181,7 @@ export async function createPaymentCheckoutSession(event: H3Event, input: {
     metadata: { ...input.metadata, userId: user.$id },
     // F20: nur Karte — keine verzögert abrechnenden Methoden.
     // Begründung in shared/paymentMethods.ts.
-    payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
+    allowed_payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
     // §6: Stripe Tax an (B2C) + Pflicht-Rechnungsadresse
     automatic_tax: { enabled: true },
     billing_address_collection: 'required',

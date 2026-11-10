@@ -52,7 +52,7 @@ describe('F20 — Zahlungsarten', () => {
     expect(DEFERRED_PAYMENT_METHODS).not.toContain('card')
   })
 
-  it('JEDE Checkout-Erzeugung im Repo setzt payment_method_types', () => {
+  it('JEDE Checkout-Erzeugung im Repo setzt allowed_payment_method_types', () => {
     const files = [
       ...walk(resolve(REPO, 'packages')),
       ...walk(resolve(REPO, 'apps')),
@@ -67,7 +67,11 @@ describe('F20 — Zahlungsarten', () => {
     for (const file of withCheckout) {
       for (const block of checkoutCalls(readFileSync(file, 'utf8'))) {
         calls++
-        if (!block.includes('payment_method_types')) missing.push(file.slice(REPO.length + 1))
+        // `allowed_payment_method_types` seit stripe 23 / API 2026-10-28.endive:
+        // Checkout kennt `payment_method_types` nicht mehr. Ausdrücklich der
+        // NEUE Name — der alte steckt als Teilstring im neuen und ließe den
+        // Test sonst auch für einen Rückfall grün.
+        if (!/\ballowed_payment_method_types\b/.test(block)) missing.push(file.slice(REPO.length + 1))
       }
     }
     // Ohne diese Zeile wäre der Test auch dann grün, wenn der Scan nichts

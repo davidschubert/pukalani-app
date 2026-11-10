@@ -72,11 +72,11 @@ export default defineEventHandler(async (event) => {
 
   if (body.secretKey !== undefined) {
     try {
-      await stripeClientForKey(body.secretKey).accounts.retrieve()
+      await stripeClientForKey(body.secretKey).accounts.retrieveCurrent()
     }
     catch (error) {
       // Nur die TATSACHE ins Log, nie der Schlüssel und nie die rohe Meldung.
-      console.error('[control/stripe/keys] Secret-Key-Probe (accounts.retrieve) abgelehnt:', (error as { type?: string })?.type ?? 'unknown')
+      console.error('[control/stripe/keys] Secret-Key-Probe (accounts.retrieveCurrent) abgelehnt:', (error as { type?: string })?.type ?? 'unknown')
       throw createError({ status: 400, statusText: 'Stripe rejected this key', data: { code: 'key_invalid' } })
     }
   }
