@@ -30,6 +30,29 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AM1 — Prod-Appwrite lokal spiegeln ✅ 2026-11-09
+
+**Was.** Die lokale OrbStack-Appwrite ist jetzt ein wiederholbarer Spiegel von
+Prod (alle vier Projekte, Nutzer 1:1 mit Hashes, alle Buckets — Davids
+Entscheidungen, DECISION-LOG 2026-11-09). Werkzeug
+`scripts/ops/appwrite-mirror-prod-to-local.mjs` (fetch → restore → post →
+verify), Runbook `docs/runbooks/APPWRITE-PROD-SPIEGEL.md`. Zwei Läufe
+(22:30 und 22:50 UTC, je unter 2 min): 454 Tabellen, 439 zählgleich, 15
+Abweichungen und alle gewollt. Sechs Apps lesen mit neuen, NUR lokal gültigen
+Keys dieselben Nutzerzahlen wie Prod. `demo.pukalani.app` zeigt lokal denselben
+Seitentext wie Prod.
+
+**Gelernt:** Ein Spiegel braucht eine Liste dessen, was lokal ANDERS sein muss.
+Gefunden wurden sechs Dinge, keins davon ist im Dump zu sehen: Sessions,
+Prod-Domain-Regel, Prod-Keys, die fehlende `localhost`-Platform, Geheimnisse
+unter dem App-Umschlag und der Console-Zugang (nur EINE Organisation). Die
+`verify`-Phase erklärt jede Abweichung namentlich. Erst das trennt „gewollt
+geleert" von „verloren"; drei Zeilen sahen zuerst nach Verlust aus und waren die
+geleerten `instance_secrets`. Außerdem: `mariadb -N` ohne `-r` verdoppelt
+Backslashes in JSON-Spalten.
+
+---
+
 ### KO1 — branding.supply: Kunden haben eine Kontoseite und eine Glocke ✅ 2026-11-09
 
 **Was.** Auf branding.supply bekam jedes Konto ohne `admin`/`moderator`-Label

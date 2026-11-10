@@ -7,6 +7,31 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-09 — AM1: die lokale Appwrite wird ein Spiegel von Prod
+
+**Anlass:** Die lokale Appwrite war veraltet. Nach dem K7-Neuaufbau gab es dort nur
+noch `branding`. Davids Wunsch: „production zu local komplett spiegeln".
+
+**Davids Entscheidungen (Fragerunde 2026-11-09):**
+- **Weg: MariaDB-Dump über ssh**, lokal mit demselben `_APP_OPENSSL_KEY_V1`. Die
+  Migrations-API von Appwrite wurde verworfen: Prod braucht dafür einen neuen
+  Key (= Schreibzugriff), sie arbeitet Ressource für Ressource und lässt
+  Projekt-Einstellungen aus.
+- **Alle vier Projekte** (`account`, `admin`, `portfolio`, `branding`).
+- **Nutzer 1:1 mit Passwort-Hashes**, nicht anonymisiert. Echte Nutzerdaten auf
+  dem Mac sind damit eine bewusste Entscheidung. Abzüge liegen in einem
+  700er-Ordner, nur die letzten zwei bleiben.
+- **Alle Buckets** mitnehmen.
+
+**Was die Ausführung dazu festgelegt hat:** Die Mac-`.env` bekommen eigene, NUR
+lokal gültige Keys mit denselben Scopes. Die Prod-Keys werden lokal gelöscht.
+Den App-Umschlag (`NUXT_INSTANCE_SECRETS_KEY`, `NUXT_BILLING_SETTINGS_KEY`)
+bekommt der Mac NICHT. Die damit versiegelten Zeilen werden lokal geleert, damit
+Live-Stripe- und KI-Keys verschlossen bleiben. Begründung: Runbook
+`docs/runbooks/APPWRITE-PROD-SPIEGEL.md`.
+
+---
+
 ## 2026-11-08 — RS1 (Resend): Davids Antworten aus der zweiten Fragerunde und eine Kollision zweier Sitzungen
 
 **Anlass:** Zwei Sitzungen bearbeiteten am selben Vormittag RS1 Teil (b) (Bounce-Webhook).

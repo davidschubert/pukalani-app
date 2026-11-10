@@ -62,6 +62,7 @@ gepflegt).
 | [runbooks/ACCOUNT-CUTOVER.md](runbooks/ACCOUNT-CUTOVER.md) | AH-1: Projekt `pool` → `account` und Host `my.`/`start.` → `account.` in EINEM Fenster |
 | [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Appwrite-Key rotieren |
 | [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Wer hält welchen Schlüssel im Projekt `control` — und wie man das nachmisst |
+| [runbooks/APPWRITE-PROD-SPIEGEL.md](runbooks/APPWRITE-PROD-SPIEGEL.md) | Prod-Appwrite 1:1 in die lokale OrbStack-Appwrite spiegeln (Skript, was lokal bewusst anders ist, Rückweg) |
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
 | [runbooks/GOOGLE-LOGIN.md](runbooks/GOOGLE-LOGIN.md) | „Anmelden mit Google" scharfschalten (Google-Console, Appwrite-Console, die zwei Schalter) |
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
