@@ -30,6 +30,75 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BI2 K7 — Kommentare unter den Insights-Artikeln ✅ 2026-11-09 (auf Prod)
+
+**Was.** Das letzte Paket des Kurations-Plans. Unter den öffentlichen
+Insights-Artikeln von branding.supply darf kommentiert werden — von GÄSTEN, und
+sofort sichtbar. Zwei Entscheidungen Davids tragen es (2026-11-09): `comments`
+MONTIEREN statt eines eigenen schmalen Fadens im `insights`-Layer, und Gäste
+ohne Freigabe-Vorstufe. Der Anlass der ersten Frage war ein WIDERSPRUCH zwischen
+zwei Steuerungsdokumenten — der Kurations-Plan führte K7 als Paket, während
+`BRAND-INSIGHTS.md` §7 „keine Kommentare unter den Beiträgen" als Nicht-Ziel
+nannte. Aufgelöst zugunsten des Plans: der Satz war LAUNCH-Zuschnitt, und in
+derselben Zeile stand „kein Newsletter im Launch", den I5 längst gebaut hat.
+
+**Wie.** `comments` + `moderation` in `apps/branding` (das zweite kommt mit,
+weil das Kommentar-Manifest es in `requires` nennt). Drei Entscheidungen im
+Code, die man nicht „vereinfachen" darf:
+
+1. **Die Schreib-Regel IST die Lese-Regel.** Der Wächter
+   `packages/insights/server/plugins/comments-target.ts` fragt
+   `insightsPostIsVisible` und sonst nichts. Daraus folgt „Kommentare nur unter
+   ARTIKELN" ohne eine zweite Formatliste: `publicFormats` steht auf
+   `['article']`. Legt David den Riegel nach der Anwaltsantwort um, wandert das
+   Kommentieren von selbst mit.
+2. **Ohne den Wächter wäre der Entwurf offen.** `assertContentWritable` lässt
+   einen nicht angemeldeten Zieltyp durch (fail-open), und der Gast-Weg schreibt
+   über die Operator-Klinke — ein Fremder könnte an eine unveröffentlichte
+   Redaktionsfassung schreiben, deren Id er nur erraten müsste.
+3. **Der Faden hängt an der ROW-ID, nicht am Slug** (`slugHistory` + 301 seit
+   I3) — am Slug verwaiste er bei der ersten Umbenennung.
+
+Dazu ein ZWEITER TRÄGER für den Gast-Weg: `pukalani.comments.guestsOnPublicPages`
+(Core-Default aus, branding an). Bis dahin war „Gast" ein EMBED-Begriff, und der
+naheliegende Ausweg — das Embed anschalten, damit der Gast-Weg aufgeht — hätte
+eine öffentliche `/embed`-Seite und eine `frame-ancestors`-Lockerung auf eine
+Site gestellt, die kein Widget anbietet. Die Regel aus `guestComments.ts` bleibt
+unangetastet: Gäste schreiben nur, wo Gäste auch LESEN dürfen.
+
+**Turnstile statt Honigtopf.** Vorgeschlagen war „Honigtopf und Drossel wie bei
+der Warteliste"; gebaut ist die stärkere Hälfte — vierte Aktion `guest_comment`.
+Ein öffentliches Gast-Formular ist genau die Fläche, über die am 2026-10-27 209
+Spam-Mails durch das Resend-Konto liefen. Der Honigtopf entfiel aus einem
+handfesten Grund: seine Ausweichantwort muss wie Erfolg aussehen, und Erfolg ist
+hier ein SICHTBARER BEITRAG — es wäre eine Phantom-Zeile in der Liste geworden,
+nicht ein Satz wie bei der Warteliste. `autoHideReports` bleibt bei 0, weil die
+Schwelle offene MELDUNGEN zählt und nur melden kann, wer eine Sitzung hat.
+
+**Beweise.** `pnpm -r test` 8.129 grün, `lint` + `typecheck` grün, alle sieben
+Wächter grün (`check:bilanz` nach Neuerzeugung — die Bilanz nennt `branding`
+jetzt bei `comments` und `moderation`). Auf PROD, read-only nachgeprüft am
+2026-11-10: `ops:schema-parity` ⇒ `branding 49/49` (vorher 43, dazu kamen die
+fünf Kommentar-Tabellen und `reports`), `/api/platform/products` nennt
+`comments` und `moderation` (PM1-Live-Beweis), `GET /api/comments` antwortet 200
+mit leerer Liste statt eines Ablage-Fehlers. Live-Build `2fce270a`.
+
+**Offen (nicht Code, sondern Redaktion):** der KLICK-Beweis. Er braucht einen
+veröffentlichten Artikel, und `GET /api/insights/public/posts` antwortet heute
+`{"posts":[]}` — die vier Launch-Stücke und der Video-Entwurf stehen als
+Entwürfe.
+
+**Gelernt:** ein grüner PR sieht aus wie ein fertiger. #110 stand bewusst offen,
+weil vor dem Merge die Migrationen laufen mussten („Migration VOR dem
+Code-Deploy", die K5-Lektion) — und wurde ohne die Sitzung gemerged, die auf das
+Ja wartete. Gutgegangen ist es nur, weil kein Artikel veröffentlicht war: ohne
+öffentliche Seite ruft niemand die Kommentar-Routen. Wer einen PR offen lässt,
+dessen Merge eine VORBEDINGUNG hat, schreibt sie in den TITEL oder macht den PR
+zum Entwurf; im Text liest sie niemand, der nur die grünen Häkchen sieht.
+Zweite Lektion, dieselbe wie bei R1c einen Tag vorher: diese Datei hinkte der
+Wirklichkeit wieder einen Tag nach — „offen: die Migrationen" stand noch da,
+als sie längst gefahren waren.
+
 ### AM1 — Prod-Appwrite lokal spiegeln ✅ 2026-11-09
 
 **Was.** Die lokale OrbStack-Appwrite ist jetzt ein wiederholbarer Spiegel von

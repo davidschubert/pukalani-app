@@ -343,7 +343,7 @@ Anwalt ist dafür kein Gate.
 | ✅ **K4** | **Fundstücke + Schalter** — **GEBAUT UND AUF PROD 2026-10-27** (Migration `insights-007` gefahren, Parität branding 42/42) | — | M |
 | ✅ **K5** | **Brief aus Video** — **GEBAUT 2026-10-27** (§14): Core-Transport `aiVideo`, Prompt `insights-b-1`, Migration `insights-009`, Knopf auf den Fundstücken, Beitrag als Entwurf mit Video-Quelle. Klick-Beweis lokal, 0,05 $ je 25-Minuten-Video. **Auf PROD 2026-10-27** (Migration VOR dem Merge, Parität 43/43, Build `c97c4dea`). **Nachtrag 2026-10-28:** ein Brief über 2.000 Zeichen warf den bezahlten Lauf weg (2 von 6 gemessenen Läufen) — das Schema klemmt jetzt an einer Grenze statt abzulehnen | Entscheidung C (§13) ✔ · K4 ✔ | S–M |
 | ✅ **K6** | **SEO/GEO-Artikelregeln** — **GEBAUT UND LIVE 2026-11-09** (§17, Build `d5bca4f5`): sechs Regeln als Block `SEO_GEO_RULES` in der Prompt-Fassung **`insights-d-3`** (nicht `-d-2`, §17) und die siebte Prüfregel; mit echtem bezahlten Lauf bewiesen (827 statt 700 Wörter) | — | S |
-| ✅ **K7** | **Kommentare unter Artikeln** — **GEBAUT 2026-11-09** (§20): `comments` + `moderation` in `apps/branding`, Faden an der Row-Id, Schreib-Wächter `insights`, Gäste über den neuen Schalter `guestsOnPublicPages` mit Turnstile. **OFFEN: die 24 Prod-Migrationen** (Davids Ja, VOR dem Code-Deploy) | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
+| ✅ **K7** | **Kommentare unter Artikeln** — **GEBAUT 2026-11-09, AUF PROD 2026-11-09** (§20): `comments` + `moderation` in `apps/branding`, Faden an der Row-Id, Schreib-Wächter `insights`, Gäste über den neuen Schalter `guestsOnPublicPages` mit Turnstile. Migrationen gefahren (Parität branding **49/49**), Katalog nennt beide Produkte. **Offen ist nur noch der Klick-Beweis** — er braucht einen VERÖFFENTLICHTEN Artikel | **kein Gate mehr** — Artikel sind seit I3 öffentlich (`publicFormats: ['article']`) | M |
 
 **Nach Davids Entscheidungen vom 2026-09-09 (§9):** K1 entfällt, K2 läuft
 sofort (kein Gate, keine Migration), K3 ist beauftragt und braucht ein Ja zur
@@ -2080,13 +2080,35 @@ Schreib-Regel), `pnpm check:manifests`, `check:i18n-keys`, `check:doc-links`,
 `check:bilanz` nach `node scripts/produkt-bilanz.mjs` grün (die Bilanz nennt
 `branding` jetzt bei `comments` und `moderation`).
 
-**Was damit NICHT bewiesen ist:** dass auf branding.supply ein Kommentar
-ankommt. Die 24 Migrationen sind auf der Prod-Instanz noch nicht gefahren, und
-ohne sie bricht jeder Schreibversuch — deshalb gilt hier dieselbe Reihenfolge
-wie bei K5: **Migration VOR dem Code-Deploy**, und das Gate davor ist Davids
-Ja. Ein lokaler Klick-Beweis steht ebenfalls aus: dieser Worktree hat keine
-`apps/branding/.env` und damit keine lokale `branding`-Instanz (das Rezept
-dafür steht in der Notiz „branding Dev-Env & Prod-Ablage").
+### Auf Prod (2026-11-09/10)
+
+PR #110 ist am **2026-11-09 um 19:38 UTC** gemerged, und die **24 Migrationen
+sind gefahren** — nachgeprüft am 2026-11-10, read-only:
+
+* `pnpm ops:schema-parity` ⇒ `✔ branding alle 49 Soll-Tabellen da, keine
+  unbekannten` (vorher 43: dazu kamen `comments`, `comment_votes`,
+  `comment_reactions`, `embed_sites`, `guest_authors`, `reports`).
+* `GET https://branding.supply/api/platform/products` nennt **`comments` und
+  `moderation`** — der PM1-Live-Beweis, dass beide Produkte mit ihrem Manifest
+  registriert sind und der Runtime-Kill greifen würde.
+* `GET /api/comments?targetType=insights&targetId=…` antwortet **200** mit
+  leerer Liste statt eines Ablage-Fehlers; die Tabellen tragen also wirklich.
+* Live-Build `2fce270a` (enthält `2508b191`, den K7-Merge).
+
+**Was damit NICHT bewiesen ist:** dass ein Gast einen Kommentar abgeben kann.
+Dazu fehlt ein **VERÖFFENTLICHTER Artikel** — `GET /api/insights/public/posts`
+antwortet heute `{"posts":[]}`, die vier Launch-Stücke und der Video-Entwurf
+stehen noch als Entwürfe. Ohne öffentlichen Artikel gibt es keine Seite, auf
+der der Faden hängt; der Klick-Beweis wartet also auf eine REDAKTIONELLE
+Entscheidung, nicht auf Code.
+
+**Gelernt (Reihenfolge):** die Regel „Migration VOR dem Code-Deploy" hat
+gehalten, aber nicht durch den Plan — der PR stand bewusst offen und wurde ohne
+die Sitzung gemerged, die auf das Ja wartete. Gutgegangen ist es, weil kein
+Artikel veröffentlicht war: ohne öffentliche Seite ruft niemand die
+Kommentar-Routen. Wer einen PR offen lässt, dessen Merge eine Vorbedingung hat,
+schreibt die Vorbedingung in den PR-TITEL und nicht nur in den Text — oder
+macht ihn zum Entwurf. Ein grüner PR sieht aus wie ein fertiger.
 
 ### Auf Prod (2026-11-09, Davids Ja) — Migration NACH dem Code, ohne Schaden
 
