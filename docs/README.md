@@ -68,6 +68,7 @@ gepflegt).
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
 | [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
+| [runbooks/GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) | Gesamtaudit über alle zwölf Dimensionen mit Fable 5.2: Ablauf, Prompts je Phase, Rückführung; Ergebnisse liegen PRIVAT außerhalb des Repos |
 
 Die Häkchen in Runbooks sind **echt** — sie werden pro Durchlauf abgehakt und
 gehören dort hin.
