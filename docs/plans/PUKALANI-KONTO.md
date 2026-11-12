@@ -1,8 +1,9 @@
 # Pukalani-Konto — ein Konto für alle Seiten
 
 **Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-12 · Status: Konzept
-geschrieben, acht Entscheidungen offen (§ 10).** Nichts hiervon ist umgesetzt —
-keine Code-Änderung, keine Migration, nichts an Production.
+geschrieben, Davids Entscheidungen gefallen (§ 10) — der Bau beginnt erst nach
+dem Gesamtaudit.** Nichts hiervon ist umgesetzt — keine Code-Änderung, keine
+Migration, nichts an Production.
 
 Dieses Dokument setzt den [Account-Horizont](ACCOUNT-HORIZONT.md) fort. Der hat
 den Pool zu EINEM Konten-Stamm gemacht (Projekt `account`, Host
@@ -30,7 +31,13 @@ Pools**.
   gilt. Kontoweite Dinge (Passwort, Zahlung, Export, Löschung) gibt es nur an
   der zentralen Stelle. branding.supply behält sein eigenes Projekt und seine
   eigenen Daten, hängt sich aber an dasselbe Konto. Gebaut in fünf Etappen,
-  die erste ist ein kleiner Beweis.
+  davor steht ein kleiner Beweis (E0).
+- **Entschieden (David, 2026-11-12):** Weg (a). Davids Bild dafür: Man meldet
+  sich an einer zentralen Stelle an, und jede Seite bekommt nur eine
+  **Eintrittskarte**, die bei ihr allein gilt. Anmeldung immer zentral, Beitritt
+  mit sichtbarem Ja, Heikles nur zentral, Vorlieben je Seite, unter Kundendomains
+  mitmachen ja und verwalten nein, branding-Konten übernehmen. Start nach dem
+  Gesamtaudit. Alle Antworten: § 10.
 
 ---
 
@@ -139,6 +146,12 @@ Entscheidung 2026-08-11, ACCOUNT-HORIZONT „Die Vision"). Unumkehrbares verlang
 eine frische Anmeldung (`requireRecentAuth`,
 `packages/core/server/utils/recentAuth.ts:20`).
 
+**Vorlieben** hängen heute am Konto oder am Gerät, nicht an der Seite: Die
+Benachrichtigungs-Einstellung liegt in den Konto-Einstellungen
+(`notification-prefs.put.ts`, `account.updatePrefs`) und gilt damit für alle
+Communities zugleich; die Sprache merkt sich ein Cookie je Host
+(`i18n_redirected`, `packages/core/nuxt.config.ts:125`).
+
 Export und Löschung orchestriert der Core über Beiträger je Layer
 (`UserDataContributor`, `packages/core/server/utils/userData.ts:22-37`;
 vierzehn Layer haben einen angemeldet). Das reicht **so weit wie das Projekt**:
@@ -187,7 +200,7 @@ kommen darin nicht vor.
    gehört.
 2. **Die Konto-Hülle in jedem Dashboard.** Sie war 2026-08-11 Absicht. Mit
    „kontoweite Dinge nur zentral" wird ein Teil davon zurückgenommen — das
-   braucht Davids Entscheidung (§ 10, Frage 4).
+   brauchte Davids Entscheidung und hat sie bekommen (§ 10, Nr. 4).
 
 ---
 
@@ -201,7 +214,7 @@ Unabhängig vom Weg — daran wird jeder Vorschlag gemessen:
 2. **Anmeldedaten werden nur an einer Stelle eingegeben** — auf einem Host, der
    uns gehört.
 3. **Kontoweite Handlungen nur zentral:** Passwort, E-Mail, Zwei-Faktor,
-   Geräte-Liste, Zahlung des Kontos, Export, Löschung.
+   Geräte-Liste, Zahlung, Export, Löschung.
 4. **Beitritt ist sichtbar und gewollt.** Beim ersten Beitritt zu einer Seite
    sieht der Mensch, was die Seite von ihm erfährt, und stimmt zu. Die
    Zustimmung wird mit Datum und Fassung festgehalten.
@@ -213,6 +226,52 @@ Unabhängig vom Weg — daran wird jeder Vorschlag gemessen:
    abmelden" an der zentralen Stelle.
 8. **Die bestehenden Grenzen bleiben:** Datentür, A5, Lese-Labels, die
    Betreiber-Konsole als getrennte Welt.
+
+Aus Davids Antworten vom 2026-11-12 kommen drei Anforderungen dazu:
+
+9. **Das Konto zeigt je Verbindung, was dort gespeichert ist.** Nicht nur
+   „verbunden mit X", sondern auch: welche Daten liegen in diesem Raum über
+   mich oder von mir. Dienste wie branding.supply speichern ihre Daten bei
+   sich und verknüpfen sie mit dem zentralen Konto.
+10. **Vorlieben gehören zur Seite, nicht zum Konto.** Sprache und
+    Benachrichtigungen stellt man je Community oder Dienst ein: hier alles auf
+    Englisch und jede Benachrichtigung an, dort Deutsch und nur eine einzige.
+11. **Unter einer Kundendomain: mitmachen ja, verwalten nein.** Die
+    Eintrittskarte dort reicht zum Lesen, Schreiben und Moderieren. Verwaltet
+    wird unter einer Adresse, die uns gehört.
+
+### 4.1 Das Beispiel Anna
+
+Anna ist Mitglied im Yoga-Studio von Frau Berg. Das Studio läuft unter
+`yoga-berg.de` — die Adresse gehört Frau Berg, nicht uns. Anna betreibt
+außerdem selbst eine bezahlte Community, „Annas Kochschule".
+
+**Was Anna unter `yoga-berg.de` bekommt:** eine Eintrittskarte für das
+Yoga-Studio. Sie gilt nur unter dieser Adresse und nur für diese eine
+Community.
+
+| Mit der Karte von `yoga-berg.de` | |
+| --- | --- |
+| Im Yoga-Studio lesen, schreiben, Nachrichten dort sehen | **ja** |
+| Im Yoga-Studio moderieren (wenn Anna dort die Rolle hat) | **ja** |
+| Das Yoga-Studio verwalten (Team, Einstellungen, Zahlung) | **nein** — nur unter der Pukalani-Adresse des Studios |
+| Annas Kochschule sehen oder verwalten | **nein** — andere Community, andere Karte |
+| Nachrichten und Inhalte aus anderen Communities | **nein** |
+| Passwort, E-Mail, Zahlung, Export, Konto löschen | **nein** — nur auf `account.pukalani.app` |
+
+**Was das für die Adresse selbst heißt:** Eine Karte ist an Adresse **und**
+Community gebunden. Gehört die Adresse nicht mehr zur Community — abgeschaltet
+nach Plan-Ende, vom Owner entfernt, oder sie zeigt nicht mehr zu uns —, sind
+alle Karten dieser Adresse ungültig. Wer die Adresse später übernimmt, findet
+nichts vor, was über eine einzelne Mitgliedschaft im Yoga-Studio hinausginge,
+und auch das nur, solange die Karte läuft.
+
+**Frau Berg selbst** verwaltet ihr Studio unter der Pukalani-Adresse
+(`<name>.pukalani.app`), so wie ein Shop-Betreiber seinen Shop nicht unter der
+Shop-Domain verwaltet, sondern beim Anbieter. Die Pukalani-Adresse bleibt
+ohnehin dauerhaft bestehen ([EIGENE-DOMAIN.md](../referenz/EIGENE-DOMAIN.md) § 1).
+Heute leitet sie vollständig auf die Kundendomain um (`00.tenant.ts:113-116`);
+für das Dashboard wird daraus eine Ausnahme.
 
 ---
 
@@ -261,7 +320,7 @@ Host des Anbieters statt, jede Anwendung bekommt danach ihre eigene Sitzung.
   E-Mail, Zwei-Faktor, Sitzungs-Liste, Export und Löschung nicht mehr; die
   Oberfläche verlinkt zur zentralen Stelle.
 - *Beitritt mit Zustimmung.* Ein dritter Auslöser neben `registration` und
-  `contribution` (oder als Ersatz für `contribution`, § 10 Frage 3): der
+  `contribution` — entschieden als Ersatz für `contribution` (§ 10, Nr. 3): der
   ausdrückliche Beitritt an der zentralen Stelle. `decideJoin` bleibt die Regel.
 - *Verbundene Dienste.* branding.supply behält Projekt und Daten. Sein lokales
   Konto wird an die Pukalani-Konto-Id gebunden; das lokale Passwort entfällt.
@@ -438,7 +497,7 @@ Trennung zurück, die für branding.supply bewusst gewählt wurde.
   Kunden-Konten; ACCOUNT-HORIZONT nennt genau zwei Welten als Ziel — `account`
   (alle Menschen) und `admin` (Betreiber).
 - **pukalani.studio** (`portfolio`) — Davids eigene Site, kein Kunden-Stamm.
-  Kann später ein verbundener Dienst werden, muss es nicht (§ 10 Frage 6).
+  Kann später ein verbundener Dienst werden, muss es nicht.
 
 ---
 
@@ -450,15 +509,36 @@ Jede Etappe ist für sich nützlich und einzeln rückholbar. Vor jeder steht nac
 | # | Etappe | Ergebnis | Aufwand |
 | --- | --- | --- | --- |
 | **E0** | **Beweis im Kleinen** | Lokal gezeigt: versiegeltes Seiten-Cookie + eigene Sitzung je Host; die Live-Verbindung auf einem fremden Host; Zählung doppelter E-Mails zwischen `account` und `branding` (nur lesend, mit Davids Ja). Klärt die Fragen aus § 9. | S–M |
-| **E1** | **Sitzung je Seite (Pool)** | Jede Community-Seite und jede Kundendomain hat eine eigene Sitzung, die nur dort gilt. Abmelden wirkt je Seite. Der heutige Handoff stellt neue Sitzungen aus statt Kopien. Einmalige Abmeldung aller. | L |
-| **E2** | **Zentrale Anmeldung** | Anmelden, Registrieren, Code, Google, Zwei-Faktor und Wiederherstellung nur auf `account.pukalani.app`, im Kleid der jeweiligen Community. Passwort, E-Mail, Geräte, Export und Löschung nur dort. Einbettung umgehängt. | L |
-| **E3** | **Beitritt mit Zustimmung + „Verbunden mit"** | Beitritts-Schritt an der zentralen Stelle, Zustimmung festgehalten. Liste aller Verbindungen mit „Trennen". Klarer Hinweis vor Trennen und Löschen: was wird gelöscht, was bleibt. | M–L |
+| **E1** | **Eintrittskarte je Seite (Pool)** | Jede Community-Seite und jede Kundendomain hat eine eigene Sitzung, gebunden an Adresse und Community. Abmelden wirkt je Seite. Der heutige Handoff stellt neue Karten aus statt Kopien. Unter Kundendomains reicht die Karte zum Mitmachen; das Dashboard öffnet sich unter der Pukalani-Adresse (§ 4.1). Karten einer Adresse verfallen, wenn die Adresse nicht mehr zur Community gehört. Einmalige Abmeldung aller. | L |
+| **E2** | **Zentrale Anmeldung** | Anmelden, Registrieren, Code, Google, Zwei-Faktor und Wiederherstellung nur auf `account.pukalani.app`, im Kleid der jeweiligen Community. Passwort, E-Mail, Geräte, Zahlung, Export und Löschung nur dort. Einbettung umgehängt. | L |
+| **E3** | **Beitritt mit Zustimmung + „Verbunden mit" + Vorlieben je Seite** | Beitritts-Schritt an der zentralen Stelle, Zustimmung festgehalten; der stille Beitritt beim ersten Schreiben entfällt. Liste aller Verbindungen mit „Trennen" und mit der Auskunft, was dort gespeichert ist. Sprache und Benachrichtigungen je Community oder Dienst. Klarer Hinweis vor Trennen und Löschen: was wird gelöscht, was bleibt. | L |
 | **E4** | **branding.supply als verbundener Dienst** | Anmeldung über das Pukalani-Konto; Bestandskonten übernommen und verbunden; Export und Löschung erreichen den Dienst. Eigenes Projekt und eigene Daten bleiben. | L–XL |
 | **E5** | **Aufräumen** | Alte Wege entfernt, Referenz-Doku und Regeln nachgezogen, Hilfe-Texte für Kunden. | S–M |
 
 E1 und E2 gehören fachlich zusammen, werden aber getrennt ausgerollt: E1 ändert
 nur, **was im Cookie liegt** — die Formulare bleiben, wo sie sind. Erst E2
 verlegt sie.
+
+**Start (Davids Entscheidung 2026-11-12):** erst das Gesamtaudit abschließen.
+Danach wird dieses Vorhaben zusammen mit den Paketen aus dem Audit eingeplant;
+E0 ist dann der erste Schritt.
+
+**Was die Antworten an den Etappen ändern:**
+
+- *Zahlung nur zentral.* Das betrifft auch das Abo einer Community: Plan und
+  Rechnungen wandern vom Community-Dashboard an die zentrale Stelle. Der
+  Plan-Reiter ist heute das Rückkehr-Ziel von Stripe
+  (`.claude/rules/themes.md`, „Umbenennen nur mit Weiterleitung") — der Umzug
+  braucht also eine Weiterleitung. ACCOUNT-HORIZONT hatte Community-Abos
+  bewusst im Dashboard gelassen; das wird hier zurückgenommen.
+- *Vorlieben je Seite.* Die Benachrichtigungs-Einstellung zieht von den
+  Konto-Einstellungen an die Mitgliedschaft um; die Sprache wird je Seite am
+  Konto gemerkt statt nur im Cookie. Mails einer Community kommen dann in der
+  Sprache, die man für diese Community gewählt hat.
+- *Was dort gespeichert ist.* Jeder Layer, der Nutzerdaten hält, liefert neben
+  Export und Löschung eine kurze Auskunft („12 Kommentare, 3 Beiträge,
+  1 Marke"). Daraus entstehen sowohl die Anzeige je Verbindung als auch der
+  Hinweis vor dem Löschen.
 
 **Wie Davids weitere Entscheidungen hineinpassen:**
 
@@ -498,36 +578,29 @@ Technische Fragen, die sich nur am laufenden System beantworten lassen:
 
 ---
 
-## 10. Entscheidungen für David
+## 10. Entscheidungen (David, 2026-11-12)
 
-Empfehlung jeweils zuerst.
+Gestellt als Fragen mit Empfehlung; hier steht, was David geantwortet hat. Der
+Kurzeintrag steht im [DECISION-LOG](../DECISION-LOG.md).
 
-1. **Welcher Weg?**
-   **(a) Zentrale Anmeldung, Sitzung je Seite** · (c) nur die Brücke ·
-   (b) Silos ins Konto-Projekt.
-2. **Wo gibt man sein Passwort ein?**
-   **Immer auf `account.pukalani.app`** — ein Ablauf für alle Seiten ·
-   nur bei Kundendomains zentral, auf `*.pukalani.app` weiter direkt auf der
-   Seite.
-3. **Wann ist man einer zweiten Community beigetreten?**
-   **Beim Anmelden dort, mit sichtbarer Zustimmung** — dann gilt „angemeldet =
-   Mitglied", und der stille Beitritt beim ersten Schreiben entfällt ·
-   wie heute: anmelden ohne Beitritt, Beitritt still beim ersten Schreiben.
-4. **Konto-Einstellungen im Community-Dashboard?**
-   **Heikles nur noch zentral** (Passwort, E-Mail, Zwei-Faktor, Geräte, Export,
-   Löschung); Harmloses bleibt im Dashboard (Sprache, Benachrichtigungen) ·
-   alles nur noch zentral · alles bleibt, wie es ist (nimmt die Entscheidung
-   vom 2026-08-11 nicht zurück, erfüllt aber Anforderung 3 nicht).
-5. **branding.supply: was passiert mit bestehenden Konten?**
-   **Übernehmen und verbinden** — ein Konto, ein Passwort, vorher eine Mail ·
-   bestehen lassen und nur neue Anmeldungen über das Pukalani-Konto.
-6. **pukalani.studio: verbinden oder getrennt lassen?**
-   **Getrennt lassen** — eigene Site ohne Kunden-Stamm ·
-   später als verbundenen Dienst anhängen.
-7. **Kunden mit eigenem Silo (Enterprise): Pukalani-Konto oder eigener Stamm?**
-   **Der Kunde wählt beim Einrichten** — Standard ist das Pukalani-Konto, der
-   eigene Stamm bleibt das Enterprise-Versprechen · immer Pukalani-Konto ·
-   immer eigener Stamm.
-8. **Reihenfolge und Start.**
-   **E0 jetzt, danach E1 → E2 → E3 → E4** · erst branding.supply (E4), dann der
-   Pool · noch nicht anfangen, erst das Gesamtaudit abschließen.
+| # | Frage | Entscheidung |
+| --- | --- | --- |
+| 1 | Welcher Weg? | **(a) Zentrale Anmeldung, je Seite eine Eintrittskarte.** Dazu zwei Aufträge: das Beispiel Anna lösen (§ 4.1), und das Konto zeigt je Community und Dienst, was dort gespeichert ist (Anforderung 9). Dienste wie branding.supply speichern ihre Daten bei sich und verknüpfen sie mit dem zentralen Konto. |
+| 2 | Wo gibt man sein Passwort ein? | **Immer auf `account.pukalani.app`.** |
+| 3 | Wann ist man einer zweiten Community beigetreten? | **Beim Anmelden dort, mit sichtbarem Ja.** „Angemeldet" heißt „Mitglied"; der stille Beitritt beim ersten Schreiben entfällt. |
+| 4 | Konto-Einstellungen im Community-Dashboard? | **Heikles nur zentral** (Passwort, E-Mail, Zwei-Faktor, Geräte, Zahlung, Export, Löschung). Sprache und Benachrichtigungen bleiben bei der Seite — und zwar **je Seite eigene Werte** (Anforderung 10). Nimmt die Entscheidung vom 2026-08-11 zum Teil zurück. |
+| 5 | Was darf man unter einer Kundendomain? | **Mitmachen ja, verwalten nein.** Lesen, Schreiben, Moderieren dort; das Dashboard unter der Pukalani-Adresse (Anforderung 11, § 4.1). |
+| 6 | branding.supply: bestehende Konten? | **Übernehmen und verbinden** — ein Konto, ein Passwort, vorher eine Mail; verbunden wird nur bei bestätigter E-Mail. |
+| 7 | Kunden mit eigener Installation (Enterprise)? | **Stellt sich nicht:** Enterprise wird in der aktuellen Phase gar nicht angeboten. Weg (a) hält die Tür offen, gebaut wird dafür nichts. |
+| 8 | Womit anfangen, und wann? | **Erst das Gesamtaudit abschließen.** Danach E0 → E1 → E2 → E3 → E4 → E5. |
+
+**Nicht neu gefragt, bleibt wie entschieden:** pukalani.studio (`portfolio`) ist
+Davids eigene Site und bleibt unberührt (ACCOUNT-HORIZONT, 2026-08-11). Die
+Betreiber-Konsole (`admin`) bleibt eine getrennte Welt.
+
+**Beim Bau je Etappe zu fragen** (noch nicht entschieden, weil erst der Beweis
+aus E0 die Grundlage liefert):
+
+- Wie lange bleibt man an der zentralen Stelle wiedererkannt?
+- Live-Verbindung unter Kundendomains: welcher der drei Wege aus § 9, Punkt 1?
+- Wortlaut des Beitritts-Schritts und der Mail an die branding-Konten.

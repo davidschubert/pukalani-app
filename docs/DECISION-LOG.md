@@ -7,6 +7,38 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-12 — Pukalani-Konto: zentrale Anmeldung, je Seite eine Eintrittskarte
+
+**Anlass:** Davids Zielbild — ein Pukalani-Konto für alle Seiten, vergleichbar
+mit einer Apple-ID; wer sich auf einer Seite registriert, ist nur dieser Seite
+beigetreten. Konzept mit drei Wegen: [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md).
+
+**Davids Entscheidungen (acht Fragen, zwei Runden):**
+- **Der Weg:** zentrale Anmeldung auf `account.pukalani.app`; jede Seite
+  bekommt nur eine Eintrittskarte, die bei ihr allein gilt. Verworfen: die
+  Silos ins Konto-Projekt holen; nur eine Brücke „Mit Pukalani-Konto anmelden".
+- **Passwort-Eingabe immer zentral** — ein Ablauf für alle Seiten.
+- **Beitritt zu einer zweiten Community beim Anmelden, mit sichtbarem Ja.**
+  Der stille Beitritt beim ersten Schreiben (A5, Auslöser `contribution`)
+  entfällt damit.
+- **Heikles nur zentral:** Passwort, E-Mail, Zwei-Faktor, Geräte, Zahlung,
+  Export, Löschung. Das nimmt die Entscheidung vom 2026-08-11 (Konto-Hülle in
+  jedem Dashboard) zum Teil zurück. **Sprache und Benachrichtigungen sind
+  Vorlieben je Seite** — Davids Begründung: sie haben nichts mit dem Konto zu
+  tun, auf einer Community will man alles englisch und jede Benachrichtigung,
+  auf einer anderen Deutsch und nur eine.
+- **Unter Kundendomains: mitmachen ja, verwalten nein.** Das Dashboard öffnet
+  sich unter der Pukalani-Adresse.
+- **Das Konto zeigt je Community und Dienst, was dort gespeichert ist.**
+  Dienste wie branding.supply speichern ihre Daten bei sich und verknüpfen sie
+  mit dem zentralen Konto.
+- **branding.supply: bestehende Konten übernehmen und verbinden.**
+- **Enterprise wird in der aktuellen Phase nicht angeboten** — die Frage nach
+  dem Konten-Stamm eigener Kunden-Installationen stellt sich nicht.
+- **Start erst nach dem Gesamtaudit.**
+
+**Nichts gebaut.** OPEN-ITEMS führt das Vorhaben als PK1 unter „Geparkt".
+
 ## 2026-11-12 — branding.supply: offene Beta, mit Beta-Hinweis auf jeder Seite
 
 **Anlass:** In der Fragerunde zum Gesamtaudit kam heraus, dass die Site sich
