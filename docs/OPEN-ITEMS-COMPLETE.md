@@ -30,6 +30,49 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BS1 Datenschutz vorläufig — branding.supply sagt, was es heute tut ✅ 2026-11-12
+
+**Was.** Die Datenschutz-Seite von branding.supply trug seit BS1 R1 ein Gerüst
+mit `[AUSFÜLLEN: …]`-Markern. Seit die Anmeldung offen ist, steht dort eine
+**vorläufige Fassung** (de + en, Davids Entscheidung und Freigabe vom
+2026-11-12): ein Text in einfachen Worten, der im ersten Block sagt, dass er
+vorläufig ist, sein Datum trägt und nennt, was die Site verarbeitet und an wen
+Daten gehen. Die anwaltlich geprüfte Fassung (R2/R3) ersetzt ihn; Impressum und
+AGB bleiben Gerüst.
+
+**Wie.** PR #126. Der Text liegt in
+`apps/branding/scripts/legalPrivacyInterim.ts`, im Kopf steht je Aussage die
+Stelle im Repo, die sie belegt. Was das Repo nicht belegt, behauptet der Text
+nicht (Standort des Rechenzentrums, Fristen für Server-Protokolle und
+Sicherungskopien) und nennt auch keine Rechtsgrundlagen — das sagt er selbst.
+`seed-legal-pages.ts` hat den Schalter `--replace-scaffold=privacy` bekommen,
+und `privacy` steht nicht mehr in `pukalani.pages.draftNotice`.
+
+**Beweis.** Lokal: `pnpm --filter branding test` 37/37, Lint und Typecheck
+grün; das Skript gegen die lokale Appwrite (2 ersetzt · zweiter Lauf 0 ·
+abweichende Zeile unberührt · Tippfehler im Slug ⇒ Exit 1). Production: Build
+`7ca19ad9` live, danach der Lauf mit Davids Ja — „2 ersetzt, 4 übersprungen".
+`/de/privacy` und `/privacy` antworten 200 mit elf Abschnitten, null Treffern
+für „AUSFÜLLEN"/„FILL IN", ohne Kasten und ohne robots-Tag; `/de/imprint` und
+`/de/terms` unverändert mit Kasten und `noindex`.
+
+**Gelernt:** (1) **Ein Rechtstext im CMS geht nicht mit dem Merge live.** Das
+Seed-Skript fasst vorhandene Zeilen bewusst nie an — richtig, solange es nur
+anlegt, aber damit bliebe ein neuer Text im Repo und das Gerüst auf der Seite.
+Der Ausweg ist ein AUSDRÜCKLICHER Schalter mit einer Bedingung am Inhalt
+(„ersetze nur, was noch einen Gerüst-Marker trägt"), kein „überschreibe alles".
+(2) **Eine Datenschutz-Aussage braucht das GATE, nicht die Route.** Zwei Sätze
+des ersten Entwurfs waren falsch, obwohl der Code sie nahelegte: die
+Kommentar-Übersetzung (Route montiert, aber `pukalani.ai.enabled` ist auf
+branding der Core-Default `false`) und die Anmeldung per Code (Formular im
+Core, `auth.otp` aus). Beide flogen erst beim Nachlesen des Schalters und beim
+Blick auf die Live-Seite heraus. (3) **Reihenfolge beim Ausrollen:** erst der
+Code (Kasten weg), dann der Text — andersherum stünde ein Text, auf den man
+sich verlassen soll, unter dem Satz „hier steht nichts, worauf du dich
+verlassen kannst".
+
+---
+
 ### SC1 — Stripe-Testkauf nach dem SDK-Sprung 18 → 23 ✅ 2026-11-12
 
 **Was.** PR #119 hob das Stripe-SDK von 18 auf 23 (API `2026-10-28.endive`):
