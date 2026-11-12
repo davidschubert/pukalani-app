@@ -50,15 +50,27 @@ Die Übergabe läuft über `STATE.md` im Audit-Ordner, nicht über den Gespräch
 - [ ] Zwei lokale Audit-Testnutzer anlegen: einen ohne Labels und Rollen
       (least privilege), einen als Owner einer Test-Community. Zugang in
       `<Audit-Ordner>/.env.audit`. Nie Production-Zugänge, nie Keys aus
-      `~/.appwrite-secrets/`.
-- [ ] Werkzeuge entscheiden: `gitleaks` und `lighthouse` sind nicht installiert.
-      Erlaubnis oder Verbot in `inputs/context.md` eintragen, sonst fragt jede
-      Session erneut.
-- [ ] Rechte härten. Im Bypass-Modus wirkt nur `deny`, alle „nur nach
-      Rückfrage"-Regeln im Prompt sind dort nur Bitten. Für Audit-Sessions
-      deshalb **nicht** im Bypass-Modus arbeiten, oder zusätzlich `deny` auf
-      `Read(~/.appwrite-secrets/**)` und auf die schreibenden Appwrite-, Ploi-
-      und Resend-Werkzeuge setzen.
+      `~/.appwrite-secrets/`. Skript: `scripts/ops/seed-audit-testers.mjs`
+      (Aufruf im Kopf der Datei; bricht ohne localhost-Endpoint ab). Es legt
+      beide im Pool-Projekt `account` an und dazu einen Einladungs-Code mit
+      einer Nutzung. Der Owner legt seine Test-Community im Wizard selbst an;
+      das ist zugleich die Journey „Community anlegen".
+- [ ] Werkzeuge entscheiden: `gitleaks` ist seit 2026-11-11 per Homebrew auf dem
+      Mac, `lighthouse` läuft per `npx -y lighthouse`. Erlaubnis oder Verbot in
+      `inputs/context.md` eintragen, sonst fragt jede Session erneut.
+- [ ] Rechte-Modus entscheiden und in `inputs/context.md` eintragen. Im
+      Bypass-Modus wirkt nur `deny`, alle „nur nach Rückfrage"-Regeln im Prompt
+      sind dort nur Bitten. Zwei Wege:
+      - **Ohne Bypass:** jede heikle Aktion fragt nach. Sicher, aber David muss
+        dabeisitzen.
+      - **Bypass ohne Sperrliste** (Davids Wahl im Durchlauf 2026-11, damit die
+        Sessions am Stück laufen): Die Sessions fragen nicht nach. Was eine
+        Rückfrage bräuchte, bleibt ungetan und wird als Lücke notiert. Was
+        ohne Rückfrage erlaubt ist, steht als Liste in Abschnitt 12 der Charter
+        (`00-charter.md`). Kein technischer Riegel erzwingt das, nur der Prompt.
+        Wer einen Riegel will: zusätzlich `deny` auf
+        `Read(~/.appwrite-secrets/**)` und auf die schreibenden Appwrite-, Ploi-
+        und Resend-Werkzeuge.
 - [ ] Session im Repo-Root auf frischem `origin/main` starten (Desktop-App:
       Worktree; vorher `git fetch`), den Audit-Ordner als zusätzlichen Ordner
       freigeben (CLI: `--add-dir`), Fable 5.2 wählen, Effort `high`.
@@ -377,11 +389,11 @@ Ergebnis: delta-{{datum}}.md im Audit-Ordner, mit Scorecard im Vergleich zum ers
 | eigene Listen `DECISIONS.md`, Issues aus `findings.json` | während des Audits privat, danach OPEN-ITEMS + DECISION-LOG | Doku-Ordnung: eine offene-Punkte-Liste, keine Doppelpflege; Issues wären öffentlich |
 | Vorschläge für `CLAUDE.md` | `.claude/rules/`, `docs/referenz/`, CLAUDE.md nur kurz | Token-Hygiene: CLAUDE.md ist der Kern, Domänen-Regeln laden nur bei Bedarf |
 | Fable setzt selbst um | Opus-Subagent setzt um, Fable prüft | Davids Arbeitsteilung seit 2026-07-30 |
-| „Nur nach Rückfrage" als Schutz | zusätzlich kein Bypass-Modus oder `deny` | Im Bypass-Modus wirkt nur `deny` (gemessen 2026-11-09) |
+| „Nur nach Rückfrage" als Schutz | Rechte-Modus bewusst wählen: ohne Bypass, oder Bypass mit Vorab-Liste in der Charter und „ungetan + Lücke notieren" | Im Bypass-Modus wirkt nur `deny` (gemessen 2026-11-09) |
 | allgemeiner Prüfkatalog | Projektregeln, §0 des audit-worker und frühere Audits als Maßstab | Bewusste Abweichungen sind sonst Fehlalarme; Bekanntes nicht neu melden |
 
 ## Durchläufe
 
 | Durchlauf | Audit-Ordner | Stand |
 | --- | --- | --- |
-| 2026-11 | `~/Developer/Claude/Audits/pukalani-2026-11/` | angelegt 2026-11-11, `context.md` vorbefüllt, Session 1 offen |
+| 2026-11 | `~/Developer/Claude/Audits/pukalani-2026-11/` | angelegt 2026-11-11; Charter freigegeben, Bypass ohne Sperrliste, Sessions am Stück; Stand 2026-11-12: Sessions 1–4 fertig, Session 5 läuft (aktueller Stand immer in `STATE.md` dort) |
