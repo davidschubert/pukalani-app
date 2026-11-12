@@ -44,14 +44,20 @@ import { jsonLdScript } from '../utils/jsonLd'
  * ── WEICHE W1 ────────────────────────────────────────────────────────────
  * Eingeloggt führen „Neue Marke"/„Marken-Relaunch" direkt in die Anlage mit
  * vorgewähltem Pfad (`/dashboard/brands/new?path=relaunch` — die Seite liest
- * `?path=`); Gäste landen auf /invite. Der Pfad reist als Query weiter, damit
- * die Wahl nicht verloren geht.
+ * `?path=`). Gäste folgen der AUFNAHME (`useBrandAdmission`, offene Beta seit
+ * 2026-11-12): ist die Anmeldung offen, führt der Knopf zur Kontoanlage und
+ * trägt das Ziel als `?redirect=` mit; sonst wie bisher auf /invite. Der Pfad
+ * reist als Query weiter, damit die Wahl nicht verloren geht.
  *
  * Wie /about und /team in der APP, nicht im Layer.
  */
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 const { isLoggedIn } = useCurrentUser()
+// Gäste folgen der AUFNAHME (Davids Entscheidung 2026-11-12, „offene Beta"):
+// ist die Anmeldung offen, führen die Knöpfe zur Kontoanlage, sonst wie bisher
+// auf /invite. Eine Quelle für alle Seiten: `useBrandAdmission`.
+const { signupOpen } = await useBrandAdmission()
 
 /**
  * Die Beschreibung im Kopf kommt seit 2026-09-09 aus dem Sucheintrag
@@ -85,13 +91,25 @@ useHead({
   })]),
 })
 
-// Gäste landen ohne Query auf /invite: die Einladungs-Seite liest keinen
-// Pfad, und eine Query, die niemand liest, wäre ein Versprechen ohne Leser.
-function pathTarget(kind: 'new' | 'relaunch'): string {
-  return isLoggedIn.value
-    ? localePath({ path: '/dashboard/brands/new', query: { path: kind } })
+// Bei GESCHLOSSENER Aufnahme landen Gäste ohne Query auf /invite: die
+// Einladungs-Seite liest keinen Pfad, und eine Query, die niemand liest, wäre
+// ein Versprechen ohne Leser. Bei OFFENER Aufnahme gibt es den Leser — die
+// Kontoanlage folgt `?redirect=` (`useAuthRedirect`), also reist das Ziel mit.
+function guestTarget(destination: string): string {
+  return signupOpen.value
+    ? localePath({ path: '/register', query: { redirect: destination } })
     : localePath('/invite')
 }
+
+function pathTarget(kind: 'new' | 'relaunch'): string {
+  const destination = localePath({ path: '/dashboard/brands/new', query: { path: kind } })
+  return isLoggedIn.value ? destination : guestTarget(destination)
+}
+
+/** Der Abschluss-Knopf: eigene Marken, Kontoanlage oder Einladung. */
+const closingTarget = computed(() => isLoggedIn.value
+  ? localePath('/dashboard/brands')
+  : guestTarget(localePath('/dashboard/brands')))
 
 const process = ['process1', 'process2', 'process3', 'process4'] as const
 const capabilities = [
@@ -275,12 +293,12 @@ const KIT_FILES = ['logo.svg', 'wortmarke.svg', 'boilerplate.md', 'gruender.jpg'
         <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
           <UButton
             :label="isLoggedIn ? t('home.cta.brands') : t('home.ctaStart')"
-            :to="localePath(isLoggedIn ? '/dashboard/brands' : '/invite')"
+            :to="closingTarget"
             size="lg" icon="i-ph-plus" color="neutral" class="rounded-full"
           />
           <UButton :label="t('home.ctaAbout')" :to="localePath('/about')" size="lg" color="neutral" variant="ghost" class="rounded-full" />
         </div>
-        <p class="bw-label mx-auto mt-8 max-w-xl" style="color: var(--bw-muted)">{{ t('home.beta') }}</p>
+        <p class="bw-label mx-auto mt-8 max-w-xl" style="color: var(--bw-muted)">{{ t(signupOpen ? 'home.betaOpen' : 'home.beta') }}</p>
       </section>
     </div>
   </div>

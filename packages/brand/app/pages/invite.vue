@@ -48,6 +48,13 @@ const route = useRoute()
 const localePath = useLocalePath()
 const request = useRequestFetch()
 const { user, isLoggedIn } = useCurrentUser()
+/**
+ * OFFENE BETA (Davids Entscheidung 2026-11-12): ist die Anmeldung offen,
+ * braucht niemand mehr einen Code, um anzufangen. Die Seite bleibt für alle,
+ * die einen haben (er schaltet weiterhin ein Beta-Konto frei) — nur der
+ * Zustand OHNE Code zeigt dann die Kontoanlage statt der Warteliste.
+ */
+const { signupOpen } = await useBrandAdmission()
 
 useBrandTitle(() => t('brand.invite.title'))
 
@@ -265,8 +272,8 @@ async function submitCode(): Promise<void> {
           color="neutral"
           variant="subtle"
           icon="i-ph-envelope-simple"
-          :title="t('brand.invite.betaTitle')"
-          :description="t('brand.invite.betaText')"
+          :title="t(signupOpen ? 'brand.invite.openTitle' : 'brand.invite.betaTitle')"
+          :description="t(signupOpen ? 'brand.invite.openText' : 'brand.invite.betaText')"
         />
         <UFormField :label="t('brand.invite.codeLabel')" name="code">
           <UInput
@@ -293,7 +300,20 @@ async function submitCode(): Promise<void> {
              gab. Die Warteliste ist der Weg — unter dem Code-Feld, damit
              der Code-Besitzer sie nicht suchen muss und der Code-Lose nicht
              leer ausgeht. -->
-        <div class="pt-2" data-invite-waitlist>
+        <!-- OFFENE AUFNAHME: statt der Warteliste der direkte Weg zum Konto.
+             Eine Warteliste neben einer offenen Tür wäre ein Formular, auf das
+             nie eine Antwort käme. -->
+        <div v-if="signupOpen" class="pt-2" data-invite-open>
+          <p class="text-sm font-medium tracking-tight">{{ t('brand.invite.openNoCodeTitle') }}</p>
+          <p class="mt-1 text-sm text-muted">{{ t('brand.invite.openNoCodeText') }}</p>
+          <UButton
+            class="mt-4" variant="outline" color="neutral" icon="i-ph-user-plus"
+            :to="localePath('/register')"
+          >
+            {{ t('brand.invite.openCta') }}
+          </UButton>
+        </div>
+        <div v-else class="pt-2" data-invite-waitlist>
           <p class="text-sm font-medium tracking-tight">{{ t('brand.invite.noCodeTitle') }}</p>
           <p class="mt-1 text-sm text-muted">{{ t('brand.invite.noCodeText') }}</p>
           <div class="mt-4">

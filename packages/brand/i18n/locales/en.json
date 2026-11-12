@@ -395,6 +395,8 @@
       },
       "account": "Account",
       "accountMenu": "Account menu",
+      "beta": "Beta",
+      "betaHint": "Branding Supply is in beta. Features and content may still change.",
       "signOut": "Sign out",
       "signIn": "Sign in",
       "dashboard": "Dashboard",
@@ -1417,7 +1419,12 @@
       "deniedHint": "An invitation code only works for the address it was sent to. Are you signed in with the right account?",
       "retry": "Try again",
       "noCodeTitle": "No code yet?",
-      "noCodeText": "Join the waitlist — we open access in waves and will get in touch as soon as your spot is ready."
+      "noCodeText": "Join the waitlist — we open access in waves and will get in touch as soon as your spot is ready.",
+      "openTitle": "No code needed",
+      "openText": "The beta is open. If you received an invitation code, paste it here — it unlocks a beta account.",
+      "openNoCodeTitle": "Start without a code",
+      "openNoCodeText": "An account is all it takes: create it, confirm your email address, get going. The foundation is free.",
+      "openCta": "Create account"
     },
     "validation": {
       "contentLocale": "This content language is not available.",

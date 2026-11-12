@@ -408,15 +408,8 @@ const crew = BRAND_ADVISORS.filter(a => !advisorIsVoice(a.key)).map(a => ({
            /brand-check; hier steht nur der Verweis. -->
       <BwBrandCheckTeaser source="team" class="mt-28" />
 
-      <!-- 7 · Frühzugang: die Warteliste -->
-      <section class="bw-card mt-28 grid items-center gap-10 p-10 @lg:grid-cols-[minmax(0,1fr)_26rem] @lg:p-14">
-        <div class="min-w-0">
-          <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('lead.eyebrow') }}</p>
-          <h2 class="mt-3 max-w-lg text-balance text-3xl font-extralight leading-snug tracking-tight sm:text-4xl">{{ t('lead.title') }}</h2>
-          <p class="mt-4 max-w-lg text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('team.ctaText') }} {{ t('lead.body') }}</p>
-        </div>
-        <BwWaitlistForm source="team" />
-      </section>
+      <!-- 7 · Frühzugang: bei offener Aufnahme die Kontoanlage, sonst die Warteliste -->
+      <BwLeadSection source="team" :intro="t('team.ctaText')" />
     </div>
   </div>
 </template>
