@@ -383,8 +383,22 @@ export default defineAppConfig({
       guestsOnPublicPages: true,
     },
 
+    /**
+     * `privacy` STEHT SEIT DEM 2026-11-12 NICHT MEHR IN DIESER LISTE (Davids
+     * Entscheidung): die Seite trägt kein Gerüst mehr, sondern die vorläufige
+     * Fassung aus `scripts/legalPrivacyInterim.ts` — einen Text, der sagt, was
+     * heute geschieht. Der Kasten dieser Ansage sagt das Gegenteil („hier
+     * steht nichts, worauf du dich verlassen kannst") und setzt `noindex`;
+     * beides passt zu einem Gerüst, nicht zu diesem Text. Dass er VORLÄUFIG
+     * ist, sagt er selbst, im ersten Block und mit Datum.
+     *
+     * REIHENFOLGE BEIM AUSROLLEN: erst dieser Stand live, dann der Text
+     * (`seed:legal --replace-scaffold=privacy`). Andersherum stünde der neue
+     * Text kurz unter dem alten Kasten. Impressum und AGB bleiben Gerüst und
+     * bleiben hier.
+     */
     pages: {
-      draftNotice: ['imprint', 'privacy', 'terms'],
+      draftNotice: ['imprint', 'terms'],
     },
     /**
      * DER MARKTVERGLEICH GEHÖRT AUF DIESE SITE — ANGESCHALTET SEIT 2026-09-06

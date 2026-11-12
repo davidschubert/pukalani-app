@@ -13,8 +13,9 @@
  * über fremde Communities auf der eigenen Seite wäre schlechter als keiner.
  *
  * ── WAS HIER STEHT UND WAS AUSDRÜCKLICH NICHT ────────────────────────────
- * NUR das Gerüst: Überschriften plus je ein `[AUSFÜLLEN: …]`-Marker, der sagt,
- * was dort hingehört. **Kein erfundener Rechtstext, keine geratene Anschrift,
+ * Für Impressum und AGB NUR das Gerüst: Überschriften plus je ein
+ * `[AUSFÜLLEN: …]`-Marker, der sagt, was dort hingehört (Datenschutz: s. den
+ * Absatz „Vorläufige Fassung statt Gerüst" weiter unten). **Kein erfundener Rechtstext, keine geratene Anschrift,
  * keine erfundene Zusage.** Die Grundfassung liefert Davids Generator (Paket
  * R2), die drei Besonderheiten schreiben wir aus dem Faktenblatt (§1.2), und
  * geprüft wird alles beim Anwaltstermin (R3). Gefüllt wird im Dashboard unter
@@ -40,8 +41,27 @@
  * Je slug+locale: eine vorhandene Zeile bleibt UNBERÜHRT — auch und gerade,
  * wenn David sie schon gefüllt hat. Ein 409 aus einem Wettlauf gilt als
  * „schon da". Ein zweiter Lauf ändert deshalb nichts.
+ *
+ * ── DATENSCHUTZ: VORLÄUFIGE FASSUNG STATT GERÜST (2026-11-12) ────────────
+ * Seit die Anmeldung offen ist, trägt `privacy` kein Gerüst mehr, sondern den
+ * Übergangstext aus `legalPrivacyInterim.ts` (Davids Entscheidung vom
+ * 2026-11-12: ehrlich sagen, was heute geschieht; der Anwalt ersetzt ihn).
+ * Impressum und AGB bleiben Gerüst.
+ *
+ * Auf einer Instanz, auf der das Gerüst schon LIEGT, greift die Regel oben:
+ * die Zeile bleibt unberührt. Der Weg dorthin ist ein eigener, ausdrücklicher
+ * Schalter:
+ *
+ *   pnpm --filter branding seed:legal --replace-scaffold=privacy
+ *
+ * Er ersetzt den Text einer vorhandenen Zeile NUR, wenn sie noch einen
+ * Gerüst-Marker trägt (`[AUSFÜLLEN:` / `[FILL IN:`). Eine Zeile, die jemand
+ * im Dashboard bearbeitet hat, trägt keinen mehr — sie bleibt, wie sie ist,
+ * und der Lauf sagt es. Titel, Status und Reihenfolge fasst der Schalter nie
+ * an. Ein zweiter Lauf ändert nichts.
  */
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
+import { PRIVACY_INTERIM_BODY } from './legalPrivacyInterim.ts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -139,90 +159,9 @@ const SCAFFOLDS: Scaffold[] = [
     slug: 'privacy',
     sortOrder: 110,
     title: { de: 'Datenschutz', en: 'Privacy' },
-    body: {
-      de: `${DRAFT_NOTE.de}
-
-## Verantwortlicher
-
-[AUSFÜLLEN: wie im Impressum — Name, Anschrift, Kontakt]
-
-## Vertreter in der Union (Art. 27 DSGVO)
-
-[AUSFÜLLEN: offen — Antwort des Anwalts (Plan §9 Frage 3)]
-
-## Was wir verarbeiten
-
-[AUSFÜLLEN: die zwölf Verarbeitungen aus dem Faktenblatt (Plan §1.2) — Konto, Sitzungen, Wizard-Inhalte, KI-Aufrufe, Brand-Check, Marktvergleich, Share-Links, Warteliste, Mailversand, Server-Protokolle, Betreiber-Ereignisse; dazu je Zweck, Empfänger, Rechtsgrundlage und Speicherdauer]
-
-## KI-Verarbeitung deiner Markentexte
-
-[AUSFÜLLEN: Prüfpunkt für den Anwalt (Plan §9 Frage 2). Der Abschnitt sagt in einfachen Worten, dass Markentexte über OpenRouter an einen Modellanbieter gehen, unter welchen Bedingungen (Zero-Data-Retention, kein Fallback, kein Training) und wie lange das Ergebnis bei uns bleibt. Grundlage: das Faktenblatt, Zeile 4.]
-
-## Abruf fremder Websites
-
-[AUSFÜLLEN: Prüfpunkt für den Anwalt. Brand-Check und Marktvergleich rufen fremde Seiten ab; die Bot-Auskunft steht unter /market-bot, dazu der TDM-Vorbehalt und der PII-Filter. Grundlage: Faktenblatt, Zeilen 5 und 6.]
-
-## Öffentliche Bewertung fremder Marken
-
-[AUSFÜLLEN: Prüfpunkt für den Anwalt. Was der Brand-Score misst, wer im Ranking erscheint (Opt-in des Prüfenden) und welcher Korrekturweg offen steht.]
-
-## Empfänger und Unterauftragnehmer
-
-[AUSFÜLLEN: die Subprozessoren-Liste (Plan §2.2 Punkt 7) — mindestens Hetzner, ploi.io, OpenRouter samt der zugelassenen Modellanbieter, der SMTP-Anbieter, und nur beim Google-Login Google]
-
-## Was NICHT stattfindet
-
-[AUSFÜLLEN: kein Werbenetzwerk, kein eingebetteter Drittinhalt, keine fremden Schriften, keine Reichweitenmessung, kein Cookie-Banner — weil es nichts einzuwilligen gibt. Grundlage: Faktenblatt, Absatz nach der Tabelle.]
-
-## Speicherdauer
-
-[AUSFÜLLEN: je Verarbeitung; zwei Fristen sind heute offen (Server-Protokolle, Betreiber-Ereignisse)]
-
-## Deine Rechte
-
-[AUSFÜLLEN: Auskunft, Berichtigung, Löschung, Einschränkung, Übertragbarkeit, Widerspruch, Beschwerde bei einer Aufsichtsbehörde — und wo im Konto Export und Löschung liegen]`,
-      en: `${DRAFT_NOTE.en}
-
-## Controller
-
-[FILL IN: same as in the imprint — name, address, contact]
-
-## Representative in the Union (Art. 27 GDPR)
-
-[FILL IN: open — waiting for our lawyer's answer (plan §9 question 3)]
-
-## What we process
-
-[FILL IN: the twelve processing activities from the fact sheet (plan §1.2) — account, sessions, wizard content, AI calls, brand check, market comparison, share links, waiting list, email, server logs, operator events; each with purpose, recipients, legal basis and retention]
-
-## AI processing of your brand texts
-
-[FILL IN: review point for our lawyer (plan §9 question 2). This section says in plain words that brand texts go through OpenRouter to a model provider, under which conditions (zero data retention, no fallback, no training) and how long the result stays with us. Source: fact sheet, row 4.]
-
-## Fetching third-party websites
-
-[FILL IN: review point for our lawyer. Brand check and market comparison fetch third-party pages; the bot notice lives at /market-bot, plus the TDM reservation and the PII filter. Source: fact sheet, rows 5 and 6.]
-
-## Public scoring of third-party brands
-
-[FILL IN: review point for our lawyer. What the brand score measures, who appears in the ranking (opt-in by the person running the check) and which correction route is open.]
-
-## Recipients and sub-processors
-
-[FILL IN: the sub-processor list (plan §2.2 point 7) — at least Hetzner, ploi.io, OpenRouter including the allowed model providers, the SMTP provider, and Google only for the Google sign-in]
-
-## What does NOT happen
-
-[FILL IN: no ad network, no embedded third-party content, no third-party fonts, no analytics, no cookie banner — because there is nothing to consent to. Source: fact sheet, paragraph after the table.]
-
-## Retention
-
-[FILL IN: per processing activity; two retention periods are open today (server logs, operator events)]
-
-## Your rights
-
-[FILL IN: access, rectification, erasure, restriction, portability, objection, complaint to a supervisory authority — and where export and deletion live inside the account]`,
-    },
+    // KEIN Gerüst mehr: die vorläufige Fassung, die sagt, was die Site heute
+    // tut — Text, Belegregel und Datum in `legalPrivacyInterim.ts`.
+    body: PRIVACY_INTERIM_BODY,
   },
   {
     slug: 'terms',
@@ -319,8 +258,29 @@ const tablesDB = new TablesDB(new Client().setEndpoint(endpoint).setProject(proj
 
 console.log(`Rechtsseiten-Gerüst für branding.supply — ${projectId} @ ${endpoint}`)
 
+/**
+ * `--replace-scaffold=privacy[,imprint,…]` — s. Kopf. Unbekannte Slugs sind ein
+ * Abbruch und kein stilles Nichts: ein Tippfehler soll nicht wie „nichts zu
+ * tun" aussehen.
+ */
+const replaceArg = process.argv.find(arg => arg.startsWith('--replace-scaffold='))
+const replaceSlugs = new Set((replaceArg?.slice('--replace-scaffold='.length) ?? '').split(',').map(part => part.trim()).filter(Boolean))
+for (const slug of replaceSlugs) {
+  if (!SCAFFOLDS.some(scaffold => scaffold.slug === slug)) {
+    console.error(`✗ --replace-scaffold: unbekannter Slug „${slug}" (bekannt: ${SCAFFOLDS.map(scaffold => scaffold.slug).join(', ')}).`)
+    process.exit(1)
+  }
+}
+
+/** Trägt ein Text noch einen Gerüst-Marker? Nur dann darf er ersetzt werden. */
+const SCAFFOLD_MARKERS = ['[AUSFÜLLEN:', '[FILL IN:']
+function isScaffold(body: unknown): boolean {
+  return typeof body === 'string' && SCAFFOLD_MARKERS.some(marker => body.includes(marker))
+}
+
 let created = 0
 let skipped = 0
+let replaced = 0
 
 for (const locale of LOCALES) {
   for (const scaffold of SCAFFOLDS) {
@@ -333,9 +293,32 @@ for (const locale of LOCALES) {
         Query.limit(1),
       ],
     })
-    if (existing.rows[0]) {
-      console.log(`↷ ${scaffold.slug} (${locale}) existiert — unberührt`)
-      skipped++
+    const row = existing.rows[0]
+    if (row) {
+      if (!replaceSlugs.has(scaffold.slug)) {
+        console.log(`↷ ${scaffold.slug} (${locale}) existiert — unberührt`)
+        skipped++
+        continue
+      }
+      if (row.body === scaffold.body[locale]) {
+        console.log(`↷ ${scaffold.slug} (${locale}) trägt den Text schon — unberührt`)
+        skipped++
+        continue
+      }
+      if (!isScaffold(row.body)) {
+        console.log(`↷ ${scaffold.slug} (${locale}) ist kein Gerüst mehr (im Dashboard bearbeitet) — unberührt`)
+        skipped++
+        continue
+      }
+      // NUR der Text. Titel, Status und Reihenfolge gehören dem Dashboard.
+      await tablesDB.updateRow({
+        databaseId,
+        tableId: 'pages',
+        rowId: row.$id,
+        data: { body: scaffold.body[locale] },
+      })
+      console.log(`✔ ${scaffold.slug} (${locale}) — Gerüst durch den Text aus dem Repo ersetzt`)
+      replaced++
       continue
     }
 
@@ -355,7 +338,7 @@ for (const locale of LOCALES) {
           sortOrder: scaffold.sortOrder,
         },
       })
-      console.log(`✔ ${scaffold.slug} (${locale}) angelegt — Gerüst, veröffentlicht mit Entwurfs-Hinweis`)
+      console.log(`✔ ${scaffold.slug} (${locale}) angelegt — veröffentlicht`)
       created++
     }
     catch (error) {
@@ -369,5 +352,5 @@ for (const locale of LOCALES) {
   }
 }
 
-console.log(`\nFertig: ${created} angelegt, ${skipped} übersprungen.`)
+console.log(`\nFertig: ${created} angelegt, ${replaced} ersetzt, ${skipped} übersprungen.`)
 console.log('Füllen und prüfen: /dashboard/pages — die Texte kommen mit Paket R2, geprüft wird in R3.')
