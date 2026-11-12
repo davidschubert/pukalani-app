@@ -6,7 +6,9 @@ im Test-Modus beweisen** — ohne Bank, ohne Live-Aktivierung. Kauf (monatlich +
 jährlich), Plan-Wirkung, Portal/Kündigung (seit F49: nur-lesend) und
 Zahlungsverzug sind damit belegt; was beim Durchlauf anders war als in der
 Fassung vom 2026-08-02, ist HIER korrigiert und zusätzlich unten unter
-„Befunde des Durchlaufs 2026-08-08" gesammelt.
+„Befunde des Durchlaufs 2026-08-08" gesammelt. **Nachgeprüft 2026-11-12
+(SC1, lokal, stripe-SDK 23)** — s. „Durchlauf 2026-11-12" unten, dort auch
+das Rezept für den lokalen Weg.
 
 > **Wer klickt.** Anders als die alte Fassung behauptete, ist fast alles ohne
 > Handarbeit reproduzierbar: `packages/control/scripts/a2a-checkout-driver.mjs`
@@ -396,6 +398,62 @@ fehlen dann nur noch Bank und der Schlüssel-Tausch:
    Spiegel-Tabelle liest, soll das wissen.
 6. **Test Clocks nur für API-Kunden** — ein Checkout-Customer kann nie
    vorgespult werden. Für Zeit-Proben immer den Probe-6-Weg nehmen.
+
+## Durchlauf 2026-11-12 (SC1, lokal, stripe-SDK 23)
+
+Anlass: PR #119 (SDK 18 → 23, API `2026-10-28.endive`). Gefahren wurden die
+Proben 2, 3 und 5 sowie die Schlüssel-Probe der F55-Seite, diesmal **lokal**
+gegen den Prod-Spiegel (Projekte `account` + `admin`), weil die Testkarte nur
+auf localhost von Claude eingetippt werden darf. Abgenommen:
+
+- [x] Kauf im Browser (Personal monatlich, 4242) → Webhook →
+      `plan = personal`, `billingStatus = active`, Trial geräumt, Spiegel-Zeile
+      `active`; Checkout-Session `allowed_payment_method_types = ['card']`
+- [x] Plan-Seite zeigt Personal; `events` (Pro) 404, `posts` (Personal) 200
+- [x] zweiter Kauf 409 `already_subscribed`; Portal vor dem Kauf 409, danach
+      offen
+- [x] `POST /api/control/stripe/keys`: erfundener Key 400 `key_invalid`
+      (`accounts.retrieveCurrent()` lehnt ab), echter Test-Key 200
+- [x] Kündigung sofort per API → `basic` / `canceled` / `suspension = billing`
+
+**So läuft es lokal** (Dateien und Keys liegen im Haupt-Checkout, `.env` in den
+Worktree kopieren und danach wieder löschen):
+
+1. `stripe listen --api-key <sk_test aus apps/control/.env> --print-secret` →
+   `whsec_…`. Das `--api-key` ist nötig, sobald der CLI-Login abgelaufen ist
+   (2026-11-12: „Expired API Key").
+2. control: `NUXT_STRIPE_WEBHOOK_SECRET=<whsec> pnpm --filter control exec nuxi
+   dev --port 3024` (für die Schlüssel-Probe zusätzlich ein Wegwerf-
+   `NUXT_BILLING_SETTINGS_KEY=$(openssl rand -hex 32)`).
+3. platform: `NUXT_ONBOARDING_CONTROL_URL=http://localhost:3024 pnpm --filter
+   platform exec nuxi dev --port 3026`.
+4. `stripe listen --api-key … --forward-to
+   http://localhost:3024/api/stripe/webhook --events <die neun>`.
+5. Konto (mit Passwort) im `account`-Projekt, Code als Row, Community über
+   `POST /api/control/onboarding/site`. Danach den `host` der Row auf
+   `<slug>.localhost` umhängen, denn `<slug>.pukalani.app` erreicht der
+   lokale Browser nicht. Dann `http://<slug>.localhost:3026/dashboard/community/plan`.
+
+**Befunde:**
+
+1. **Webhooks kommen in API-Version 2022-11-15** — der Konto-Default, weil der
+   Endpunkt keine eigene Version trägt. Das SDK spricht `endive`. Der Code
+   liest deshalb beide Formen (`webhook.post.ts`: `invoice.subscription` UND
+   `parent.subscription_details`; `webhookMapping.ts`: `current_period_end`
+   oben UND am Item). Diese Rückfälle NICHT entfernen. Wer dem Endpunkt eine
+   Version gibt, prüft danach Probe 3 und Probe 6 neu.
+2. **Der Rücksprung nach dem Bezahlen scheitert lokal** (`https://<slug>.localhost`,
+   Zertifikatsfehler). Das ist erwartet, denn die URL baut der Server immer mit
+   `https://` aus `communities.host`. Der Webhook trägt das Ergebnis.
+3. **Ein lokaler Testkauf erreicht AUCH den Prod-Endpunkt**, weil es dasselbe
+   Stripe-Testkonto ist. Prod findet die Community nicht (404 → nichts zu tun)
+   und antwortet 200. Das ist harmlos, kann aber beim Lesen des Prod-Logs
+   verwirren.
+4. **Portal-URLs haben eine neue Form:** `billing.stripe.com/p/session?secret=test_…`
+   statt `/p/session/test_…`. Funktional gleich.
+5. **`a2a-checkout-driver.mjs` ist veraltet.** Er spricht `pool`/`control`,
+   `a_session_pool` und Schlüsseldateien, die es nicht mehr gibt
+   (OPEN-ITEMS `21 · SC2`).
 
 ## Troubleshooting
 
