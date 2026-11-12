@@ -30,6 +30,57 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### SC1 — Stripe-Testkauf nach dem SDK-Sprung 18 → 23 ✅ 2026-11-12
+
+**Was.** PR #119 hob das Stripe-SDK von 18 auf 23 (API `2026-10-28.endive`):
+das Checkout-Feld heißt `allowed_payment_method_types`, und control prüft
+eingetragene Schlüssel mit `accounts.retrieveCurrent()`. Bewiesen war nur ein
+Direktaufruf. Jetzt lief der ganze Weg einmal echt durch, LOKAL mit dem
+Stripe-Testschlüssel (Davids Grenze: Karte nur auf localhost eintippen):
+control und platform aus dem Worktree (:3024/:3026), `stripe listen` als
+Webhook-Weiterleitung, eine Wegwerf-Community über die echte Onboarding-Naht.
+
+**Beweise.**
+- Kauf im Browser: Knopf „Personal holen" auf `/dashboard/community/plan` →
+  Stripe-Checkout (Sandbox, 29,00 €/Monat) → Karte 4242. Die Session trägt
+  `allowed_payment_method_types = ['card']`, `payment_status: paid`, Metadata
+  `communityId`/`plan`/`userId` (auch auf der Subscription, Preis
+  `workspace_personal_monthly`).
+- Webhook: control loggt `Community … → Plan personal (Abo sub_…)`. Die
+  `communities`-Row trägt danach `plan: personal`, `billingStatus: active`,
+  `cus_…`/`sub_…`, `trialEndsAt` geräumt, keine Sperre; Spiegel-Zeile
+  `billing_subscriptions` `active`.
+- Plan-Seite zeigt „Personal — Aktueller Plan". Plan-Wirkung: `events` (ab Pro)
+  antwortet 404, `posts` (ab Personal) 200. In der Testphase (Pro) standen
+  Events und Kurse noch in der Seitenleiste.
+- Zweiter Kauf → 409 `already_subscribed`. Portal vorher 409 („No billing
+  account yet"), danach 200, und der Knopf „Portal öffnen" zeigt das Abo mit
+  Visa •••• 4242.
+- `accounts.retrieveCurrent()` über die echte Route
+  `POST /api/control/stripe/keys` (Wegwerf-Betreiber, Wegwerf-
+  `NUXT_BILLING_SETTINGS_KEY`): ein erfundener `sk_test_` → 400 `key_invalid`
+  (Log: `StripeAuthenticationError`), der echte Testschlüssel → 200, die
+  Statuskarte meldet danach `keySource: db`. Zeile danach wieder gelöscht.
+- Zugabe: sofortige Kündigung per API → `plan: basic`, `billingStatus:
+  canceled`, `suspension: billing` binnen Sekunden (F49 unverändert).
+
+Nichts brach, also kein Code-Fix. Aufgeräumt: Community, Mitgliedschaft, Code,
+Konto, Spiegel-Zeile, Stripe-Testkunde. Rezept und Befunde:
+[STRIPE-TEST-WALKTHROUGH.md § Durchlauf 2026-11-12](runbooks/STRIPE-TEST-WALKTHROUGH.md).
+Neuer kleiner Punkt daraus: `21 · SC2` (der Prod-Treiber ist veraltet).
+
+**Gelernt:** Die SDK-Version bestimmt nicht, in welcher Form die Webhooks
+ankommen. Der Endpunkt hat keine eigene API-Version, also schickt Stripe die
+Ereignisse im Konto-Default **2022-11-15**, während das SDK `endive` spricht.
+Der Webhook liest deshalb beide Formen (`invoice.subscription` UND
+`parent.subscription_details`, `current_period_end` oben UND am Item). Diese
+Rückfälle sind kein Altlast-Code und dürfen nicht „aufgeräumt" werden. Und: ein
+lokaler Testkauf geht zusätzlich an den Prod-Endpunkt (dasselbe Testkonto).
+Dort fehlt die Community, er antwortet trotzdem 200. Das ist harmlos, gehört
+aber in jedes Log-Lesen.
+
+---
+
 ### BI2 K7 — Kommentare unter den Insights-Artikeln ✅ 2026-11-09 (auf Prod)
 
 **Was.** Das letzte Paket des Kurations-Plans. Unter den öffentlichen
