@@ -13,7 +13,11 @@ die kleinen, verstreuten Beschlüsse.
 mit einer Apple-ID; wer sich auf einer Seite registriert, ist nur dieser Seite
 beigetreten. Konzept mit drei Wegen: [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md).
 
-**Davids Entscheidungen (acht Fragen, zwei Runden):**
+**Davids Grundsatz:** alle Seiten möglichst so lösen wie Apple, Microsoft und
+Google — man meldet sich an einer zentralen Stelle an, und jede Seite bekommt
+nur eine Eintrittskarte, die bei ihr allein gilt.
+
+**Davids Entscheidungen (zehn Fragen, drei Runden):**
 - **Der Weg:** zentrale Anmeldung auf `account.pukalani.app`; jede Seite
   bekommt nur eine Eintrittskarte, die bei ihr allein gilt. Verworfen: die
   Silos ins Konto-Projekt holen; nur eine Brücke „Mit Pukalani-Konto anmelden".
@@ -33,6 +37,11 @@ beigetreten. Konzept mit drei Wegen: [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md
   Dienste wie branding.supply speichern ihre Daten bei sich und verknüpfen sie
   mit dem zentralen Konto.
 - **branding.supply: bestehende Konten übernehmen und verbinden.**
+- **pukalani.studio hängt sich ebenfalls an** (verbundener Dienst, nach
+  branding.supply). Nimmt „bleibt unberührt" vom 2026-08-11 zurück.
+- **Die Betreiber-Konsole behält eigene Konten** — die eine Ausnahme vom
+  Grundsatz: ein Fehler an der zentralen Anmeldung öffnet sie nie, und sie
+  bleibt erreichbar, wenn die zentrale Anmeldung gestört ist.
 - **Enterprise wird in der aktuellen Phase nicht angeboten** — die Frage nach
   dem Konten-Stamm eigener Kunden-Installationen stellt sich nicht.
 - **Start erst nach dem Gesamtaudit.**

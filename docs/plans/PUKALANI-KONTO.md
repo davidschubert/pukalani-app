@@ -36,8 +36,9 @@ Pools**.
   sich an einer zentralen Stelle an, und jede Seite bekommt nur eine
   **Eintrittskarte**, die bei ihr allein gilt. Anmeldung immer zentral, Beitritt
   mit sichtbarem Ja, Heikles nur zentral, Vorlieben je Seite, unter Kundendomains
-  mitmachen ja und verwalten nein, branding-Konten übernehmen. Start nach dem
-  Gesamtaudit. Alle Antworten: § 10.
+  mitmachen ja und verwalten nein, branding-Konten übernehmen, pukalani.studio
+  hängt sich ebenfalls an, die Betreiber-Konsole behält eigene Konten. Start
+  nach dem Gesamtaudit. Alle Antworten: § 10.
 
 ---
 
@@ -493,11 +494,18 @@ Trennung zurück, die für branding.supply bewusst gewählt wurde.
 
 **Was bewusst getrennt bleibt:**
 
-- **Die Betreiber-Konsole** (`admin`). Betreiber-Konten sind keine
-  Kunden-Konten; ACCOUNT-HORIZONT nennt genau zwei Welten als Ziel — `account`
-  (alle Menschen) und `admin` (Betreiber).
-- **pukalani.studio** (`portfolio`) — Davids eigene Site, kein Kunden-Stamm.
-  Kann später ein verbundener Dienst werden, muss es nicht.
+- **Die Betreiber-Konsole** (`admin`) behält ihre eigenen Konten (Davids
+  Entscheidung 2026-11-12, § 10 Nr. 10). Zwei Gründe: Ein Fehler an der
+  zentralen Anmeldung öffnet so nie die Konsole, und der Betreiber kommt auch
+  dann hinein, wenn die zentrale Anmeldung gestört ist — die Konsole ist der
+  Ort, von dem aus man sie repariert. ACCOUNT-HORIZONT nennt genau diese zwei
+  Welten als Ziel: `account` (alle Menschen) und `admin` (Betreiber).
+
+**Was dazukommt:** **pukalani.studio** (`portfolio`) wird ein verbundener
+Dienst wie branding.supply (Davids Entscheidung 2026-11-12, § 10 Nr. 9) —
+Anmeldung zentral, eigene Eintrittskarte, die Daten bleiben im eigenen
+Projekt. Das nimmt den Satz aus ACCOUNT-HORIZONT zurück, das Studio bleibe
+unberührt. Es kommt als letzter Dienst, weil dort kaum Konten liegen.
 
 ---
 
@@ -512,7 +520,7 @@ Jede Etappe ist für sich nützlich und einzeln rückholbar. Vor jeder steht nac
 | **E1** | **Eintrittskarte je Seite (Pool)** | Jede Community-Seite und jede Kundendomain hat eine eigene Sitzung, gebunden an Adresse und Community. Abmelden wirkt je Seite. Der heutige Handoff stellt neue Karten aus statt Kopien. Unter Kundendomains reicht die Karte zum Mitmachen; das Dashboard öffnet sich unter der Pukalani-Adresse (§ 4.1). Karten einer Adresse verfallen, wenn die Adresse nicht mehr zur Community gehört. Einmalige Abmeldung aller. | L |
 | **E2** | **Zentrale Anmeldung** | Anmelden, Registrieren, Code, Google, Zwei-Faktor und Wiederherstellung nur auf `account.pukalani.app`, im Kleid der jeweiligen Community. Passwort, E-Mail, Geräte, Zahlung, Export und Löschung nur dort. Einbettung umgehängt. | L |
 | **E3** | **Beitritt mit Zustimmung + „Verbunden mit" + Vorlieben je Seite** | Beitritts-Schritt an der zentralen Stelle, Zustimmung festgehalten; der stille Beitritt beim ersten Schreiben entfällt. Liste aller Verbindungen mit „Trennen" und mit der Auskunft, was dort gespeichert ist. Sprache und Benachrichtigungen je Community oder Dienst. Klarer Hinweis vor Trennen und Löschen: was wird gelöscht, was bleibt. | L |
-| **E4** | **branding.supply als verbundener Dienst** | Anmeldung über das Pukalani-Konto; Bestandskonten übernommen und verbunden; Export und Löschung erreichen den Dienst. Eigenes Projekt und eigene Daten bleiben. | L–XL |
+| **E4** | **Verbundene Dienste: erst branding.supply, dann pukalani.studio** | Anmeldung über das Pukalani-Konto; Bestandskonten übernommen und verbunden; Export und Löschung erreichen den Dienst. Eigenes Projekt und eigene Daten bleiben. Das Studio folgt als zweiter Dienst auf demselben Weg (S–M, sobald branding.supply steht). | L–XL |
 | **E5** | **Aufräumen** | Alte Wege entfernt, Referenz-Doku und Regeln nachgezogen, Hilfe-Texte für Kunden. | S–M |
 
 E1 und E2 gehören fachlich zusammen, werden aber getrennt ausgerollt: E1 ändert
@@ -593,10 +601,12 @@ Kurzeintrag steht im [DECISION-LOG](../DECISION-LOG.md).
 | 6 | branding.supply: bestehende Konten? | **Übernehmen und verbinden** — ein Konto, ein Passwort, vorher eine Mail; verbunden wird nur bei bestätigter E-Mail. |
 | 7 | Kunden mit eigener Installation (Enterprise)? | **Stellt sich nicht:** Enterprise wird in der aktuellen Phase gar nicht angeboten. Weg (a) hält die Tür offen, gebaut wird dafür nichts. |
 | 8 | Womit anfangen, und wann? | **Erst das Gesamtaudit abschließen.** Danach E0 → E1 → E2 → E3 → E4 → E5. |
+| 9 | pukalani.studio: auch über das zentrale Konto? | **Ja, anhängen** — verbundener Dienst wie branding.supply, als letzter Dienst in E4. Nimmt „bleibt unberührt" aus ACCOUNT-HORIZONT (2026-08-11) zurück. |
+| 10 | Betreiber-Konsole: auch über das zentrale Konto? | **Nein, eigener Schlüssel bleibt.** Die Konsole behält eigene Konten: ein Fehler an der zentralen Anmeldung öffnet sie nie, und sie bleibt erreichbar, wenn die zentrale Anmeldung gestört ist. |
 
-**Nicht neu gefragt, bleibt wie entschieden:** pukalani.studio (`portfolio`) ist
-Davids eigene Site und bleibt unberührt (ACCOUNT-HORIZONT, 2026-08-11). Die
-Betreiber-Konsole (`admin`) bleibt eine getrennte Welt.
+Davids Grundsatz dazu (2026-11-12): alle Seiten möglichst so lösen wie Apple,
+Microsoft und Google — zentrale Anmeldung, je Seite eine Eintrittskarte. Die
+Betreiber-Konsole ist die eine begründete Ausnahme.
 
 **Beim Bau je Etappe zu fragen** (noch nicht entschieden, weil erst der Beweis
 aus E0 die Grundlage liefert):
