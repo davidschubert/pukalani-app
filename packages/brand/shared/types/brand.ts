@@ -1001,6 +1001,17 @@ export type { BrandNextSessionRef } from '../brandJourney'
 /** Jede Antwort der Konversations-Route, die KEIN Strom ist. */
 export type BrandConverseResponse = BrandConverseSkippedResponse
 
+/**
+ * „IST DIE ANMELDUNG OFFEN?" — die Antwort von `GET /api/brand/admission`.
+ * `signupOpen` ist die fertige Antwort für die Oberfläche (Modus `open` UND
+ * Kontoanlage an, s. `shared/brandAdmissionView.ts`); `mode` reist mit, damit
+ * ein Leser im Netzwerk-Tab sieht, warum sie so ausfiel.
+ */
+export interface BrandAdmissionResponse {
+  mode: 'closed' | 'invite' | 'open'
+  signupOpen: boolean
+}
+
 /** NEUTRAL: dieselbe Form für falsch, abgelaufen, widerrufen, verbraucht. */
 export interface BrandInviteCheckResponse {
   valid: boolean

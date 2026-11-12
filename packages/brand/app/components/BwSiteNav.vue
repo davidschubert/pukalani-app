@@ -260,6 +260,21 @@ const userMenu = computed(() => [[
         <UIcon name="i-ph-fingerprint" class="size-5" />
       </span>
       <span class="whitespace-nowrap text-[18px]" style="color: var(--bw-ink); font-weight: 400; letter-spacing: -0.01em">Branding Supply</span>
+      <!-- DAS BETA-SCHILDCHEN (Davids Entscheidung 2026-11-12): die Anmeldung
+           ist offen, das Produkt bleibt eine Beta — und das soll auf JEDER
+           Seite stehen, nicht nur in einem Satz am Fuß der Startseite. Ein
+           kleines Schildchen neben der Wortmarke ist die Form, die man von
+           anderen Produkten kennt; der Hinweistext hängt als Tooltip daran.
+           `@click.prevent`: das Schildchen sitzt IM Link zur Startseite, ein
+           Tippen darauf (Touch öffnet den Tooltip) soll nicht navigieren. -->
+      <UTooltip :text="t('brand.nav.betaHint')" :delay-duration="0">
+        <UBadge
+          :label="t('brand.nav.beta')" color="neutral" variant="outline" size="sm"
+          class="rounded-full uppercase tracking-wider" data-beta-badge
+          :aria-label="t('brand.nav.betaHint')"
+          @click.prevent
+        />
+      </UTooltip>
     </template>
 
     <!-- `unmount-on-hide=false` (2026-09-08): Reka rendert den Inhalt eines

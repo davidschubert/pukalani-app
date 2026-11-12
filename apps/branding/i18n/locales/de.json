@@ -70,7 +70,8 @@
       "login": "Anmelden",
       "invite": "Einladungscode einlösen"
     },
-    "beta": "Branding Supply ist in geschlossener Beta. Für ein eigenes Branding braucht ihr einen Einladungscode — oder einen Platz auf der Warteliste."
+    "beta": "Branding Supply ist in geschlossener Beta. Für ein eigenes Branding braucht ihr einen Einladungscode — oder einen Platz auf der Warteliste.",
+    "betaOpen": "Branding Supply ist in der offenen Beta: Jeder kann ein Konto anlegen und das Fundament kostenlos erarbeiten. Manches ändert sich noch — sagt uns, was fehlt."
   },
   "about": {
     "seoTitle": "Über Branding Supply — persönliche Markenberatung im Gespräch, von einem Team aus Markenexperten",
@@ -125,7 +126,7 @@
     "faq4Q": "Was passiert mit unseren Inhalten?",
     "faq4A": "Sie werden Markenfundament, nicht Trainingsmaterial. Markeninhalte gehen ausschließlich an KI-Anbieter, die sie nicht speichern — ist das nicht garantiert, läuft der Auftrag nicht.",
     "faq5Q": "Was kostet es?",
-    "faq5A": "Während der geschlossenen Beta nichts. Das Fundament bleibt auch danach kostenlos — bezahlt wird erst die Ableitung: Design, Brand Book, Kit.",
+    "faq5A": "Während der Beta nichts. Das Fundament bleibt auch danach kostenlos — bezahlt wird erst die Ableitung: Design, Brand Book, Kit.",
     "faq6Q": "Wer ist George?",
     "faq6A": "George ist euer persönlicher Markenberater — der eine Ansprechpartner, der den roten Faden hält, von der ersten Frage bis zum Dokument. Hinter ihm arbeitet ein Team aus Markenexperten mit klaren Zuständigkeiten.",
     "teamTeaserEyebrow": "Das Team",
@@ -169,7 +170,13 @@
   "lead": {
     "eyebrow": "Frühzugang",
     "title": "Sichert euch einen Platz in der Beta.",
-    "body": "Wir schalten in Wellen frei. Tragt euch ein — wir melden uns, sobald euer Zugang bereitsteht. Habt ihr schon einen Code? Dann direkt einlösen."
+    "body": "Wir schalten in Wellen frei. Tragt euch ein — wir melden uns, sobald euer Zugang bereitsteht. Habt ihr schon einen Code? Dann direkt einlösen.",
+    "open": {
+      "eyebrow": "Offene Beta",
+      "title": "Legt direkt los.",
+      "body": "Die Beta ist offen: Konto anlegen, Arbeitstitel wählen — euer Markenberater übernimmt. Das Fundament ist kostenlos. Habt ihr einen Einladungscode? Dann löst ihn ein.",
+      "cta": "Konto anlegen"
+    }
   },
   "products": {
     "common": {
@@ -228,11 +235,11 @@
     },
     "brandFoundation": {
       "seoTitle": "Brand Foundation — euer Markenfundament in etwa 45 Minuten",
-      "seoDescription": "Purpose, Werte, Archetyp, Stimme und Manifest: euer Markenberater führt euch durch jede Entscheidung, mit Begründung. Kostenlos in der geschlossenen Beta.",
+      "seoDescription": "Purpose, Werte, Archetyp, Stimme und Manifest: euer Markenberater führt euch durch jede Entscheidung, mit Begründung. Kostenlos in der Beta.",
       "level": "Build",
       "title": "Brand Foundation",
       "short": "Purpose, Werte, Archetyp, Stimme, Manifest — im Gespräch entschieden und begründet festgehalten.",
-      "priceShort": "Kostenlos — Beta per Einladung.",
+      "priceShort": "Kostenlos in der Beta.",
       "lead": "Das Fundament eurer Marke. Euer Markenberater stellt die Fragen, ihr bestätigt Feld für Feld — in etwa 45 Minuten steht es.",
       "cta": "Branding starten",
       "get1Title": "Ein Dokument, kein Foliensatz",
@@ -252,8 +259,8 @@
       "proofTitle": "Ein fertiges Fundament zum Anschauen.",
       "proofBody": "Kailua Coffee Co. ist ein Beispiel-Branding, gerendert von demselben Renderer wie jedes echte. So sieht eine abgenommene Foundation aus.",
       "proofLink": "Beispiel-Branding ansehen",
-      "price": "Kostenlos — in der geschlossenen Beta per Einladung oder Warteliste.",
-      "requirement": "ein Konto, per Einladungscode oder über die Warteliste."
+      "price": "Kostenlos in der Beta.",
+      "requirement": "ein Konto."
     },
     "marketComparison": {
       "seoTitle": "Marktvergleich — die Behauptungen eurer Wettbewerber im selben Raster",

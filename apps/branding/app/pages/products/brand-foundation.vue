@@ -8,9 +8,9 @@
  * jede Empfehlung mit Begründung, Bestätigung Feld für Feld, Inhaltssprache je
  * Branding fest (`pukalani.brand.contentLocales`).
  *
- * DER CTA FOLGT DER STARTSEITE: eingeloggt in die eigenen Brandings, sonst auf
- * `/invite` — die geschlossene Beta nimmt über Einladungscode oder Warteliste
- * auf, ein Knopf direkt in den Wizard wäre für Gäste eine Sackgasse.
+ * DER CTA FOLGT DER STARTSEITE: eingeloggt in die eigenen Brandings; Gäste bei
+ * offener Aufnahme zur Kontoanlage, sonst auf `/invite` (Einladungscode oder
+ * Warteliste) — ein Knopf direkt in den Wizard wäre für Gäste eine Sackgasse.
  */
 defineI18nRoute({
   paths: {
@@ -20,7 +20,10 @@ defineI18nRoute({
 })
 
 const { isLoggedIn } = useCurrentUser()
-const ctaTo = computed(() => (isLoggedIn.value ? '/dashboard/brands' : '/invite'))
+// Gäste folgen der Aufnahme (offene Beta seit 2026-11-12): Kontoanlage, wenn
+// die Anmeldung offen ist, sonst wie bisher die Einladungs-Seite.
+const { guestStartPath } = await useBrandAdmission()
+const ctaTo = computed(() => (isLoggedIn.value ? '/dashboard/brands' : guestStartPath.value))
 </script>
 
 <template>

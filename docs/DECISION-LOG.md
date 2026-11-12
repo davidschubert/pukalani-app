@@ -7,6 +7,40 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-12 — branding.supply: offene Beta, mit Beta-Hinweis auf jeder Seite
+
+**Anlass:** In der Fragerunde zum Gesamtaudit kam heraus, dass die Site sich
+selbst widersprach. Der Server stand schon auf offen (`brandAdmissionMode =
+open`, `registrationEnabled = true`, Spiegel vom 2026-11-09), die Oberfläche
+wusste nichts davon: jeder Start-Knopf führte Gäste auf `/invite`, und die
+Texte sagten „geschlossene Beta" und „Einladungscode".
+
+**Davids Entscheidung:** „Jeder soll sich anmelden dürfen. Die Anmeldung sollte
+offen sein." Dazu ein Hinweis, dass es weiterhin eine Beta ist — mit der
+Nuxt-UI-Komponente, die andere große Plattformen dafür nehmen.
+
+**Was daraus wurde:**
+- Die Oberfläche FRAGT den Server (`GET /api/brand/admission`) statt „offen"
+  fest zu verdrahten. „Offen" heißt: Modus `open` UND Kontoanlage an. Stellt
+  jemand den Modus zurück, zeigt die Site von selbst wieder Einladung und
+  Warteliste. Die pure Regel steht in `packages/brand/shared/brandAdmissionView.ts`.
+- Der Beta-Hinweis ist ein `UBadge` neben der Wortmarke, mit dem Satz dazu als
+  Tooltip. Er steht in jedem Modus da: eine Beta ist es so oder so.
+- Texte, die „geschlossen" oder „per Einladung" sagten, sind neutral gefasst
+  („Kostenlos in der Beta."), damit sie in beiden Modi stimmen.
+
+**Was sich NICHT ändert:** Ein Konto ohne Einladung ist kein Beta-Konto. Es
+bekommt das Fundament und die Gespräche mit dem Berater; die Ableitung (Design,
+Brand Book & Kit) bleibt gesperrt, bis der Betreiber freischaltet oder der Kauf
+gebaut ist (OPEN-ITEMS 12 · BS1). Ein Einladungscode schaltet weiterhin ein
+Beta-Konto frei, die Seite `/invite` bleibt dafür.
+
+**Bewusst offen gelassen:** Die Datenschutzseite trägt noch Platzhalter
+(OPEN-ITEMS 12 · BS1). Was die offene Anmeldung sonst dringlicher macht, plant
+das laufende Gesamtaudit ein, nicht dieses Paket.
+
+---
+
 ## 2026-11-09 — AM1: die lokale Appwrite wird ein Spiegel von Prod
 
 **Anlass:** Die lokale Appwrite war veraltet. Nach dem K7-Neuaufbau gab es dort nur

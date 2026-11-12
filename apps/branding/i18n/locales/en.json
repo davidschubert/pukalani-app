@@ -70,7 +70,8 @@
       "login": "Sign in",
       "invite": "Redeem invitation code"
     },
-    "beta": "Branding Supply is in closed beta. For your own branding you need an invitation code — or a spot on the waitlist."
+    "beta": "Branding Supply is in closed beta. For your own branding you need an invitation code — or a spot on the waitlist.",
+    "betaOpen": "Branding Supply is in open beta: anyone can create an account and work out the foundation for free. Some things will still change — tell us what is missing."
   },
   "about": {
     "seoTitle": "About Branding Supply — personal brand advice in a conversation, from a team of brand experts",
@@ -125,7 +126,7 @@
     "faq4Q": "What happens to our content?",
     "faq4A": "It becomes brand foundation, not training material. Brand content only ever goes to AI providers that do not retain it — where that is not guaranteed, the job does not run.",
     "faq5Q": "What does it cost?",
-    "faq5A": "Nothing during the closed beta. The foundation stays free afterwards, too — you only pay for what is derived from it: design, brand book, kit.",
+    "faq5A": "Nothing during the beta. The foundation stays free afterwards, too — you only pay for what is derived from it: design, brand book, kit.",
     "faq6Q": "Who is George?",
     "faq6A": "George is your personal brand advisor — the one contact who holds the thread, from the first question to the document. Behind him works a team of brand experts with clear responsibilities.",
     "teamTeaserEyebrow": "The team",
@@ -169,7 +170,13 @@
   "lead": {
     "eyebrow": "Early access",
     "title": "Secure your spot in the beta.",
-    "body": "We open access in waves. Sign up — we will get in touch as soon as your spot is ready. Already have a code? Redeem it right away."
+    "body": "We open access in waves. Sign up — we will get in touch as soon as your spot is ready. Already have a code? Redeem it right away.",
+    "open": {
+      "eyebrow": "Open beta",
+      "title": "Start right away.",
+      "body": "The beta is open: create an account, pick a working title — your brand consultant takes it from there. The foundation is free. Have an invitation code? Redeem it.",
+      "cta": "Create account"
+    }
   },
   "products": {
     "common": {
@@ -228,11 +235,11 @@
     },
     "brandFoundation": {
       "seoTitle": "Brand Foundation — your brand fundamentals in about 45 minutes",
-      "seoDescription": "Purpose, values, archetype, voice and manifesto: your brand consultant walks you through every decision, with reasoning. Free in the closed beta.",
+      "seoDescription": "Purpose, values, archetype, voice and manifesto: your brand consultant walks you through every decision, with reasoning. Free in the beta.",
       "level": "Build",
       "title": "Brand Foundation",
       "short": "Purpose, values, archetype, voice, manifesto — decided in conversation and written down with reasons.",
-      "priceShort": "Free — beta by invitation.",
+      "priceShort": "Free in the beta.",
       "lead": "The fundamentals of your brand. Your brand consultant asks the questions, you confirm field by field — in about 45 minutes it stands.",
       "cta": "Start a branding",
       "get1Title": "A document, not a slide deck",
@@ -252,8 +259,8 @@
       "proofTitle": "A finished foundation to look at.",
       "proofBody": "Kailua Coffee Co. is an example branding, rendered by the same renderer as every real one. This is what a signed-off foundation looks like.",
       "proofLink": "See the example branding",
-      "price": "Free — in the closed beta by invitation or from the waiting list.",
-      "requirement": "an account, by invite code or from the waiting list."
+      "price": "Free in the beta.",
+      "requirement": "an account."
     },
     "marketComparison": {
       "seoTitle": "Market Comparison — what your competitors claim, in the same grid",

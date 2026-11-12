@@ -395,6 +395,8 @@
       },
       "account": "Konto",
       "accountMenu": "Konto-Menü",
+      "beta": "Beta",
+      "betaHint": "Branding Supply ist in der Beta. Funktionen und Inhalte können sich noch ändern.",
       "signOut": "Abmelden",
       "signIn": "Anmelden",
       "dashboard": "Dashboard",
@@ -1417,7 +1419,12 @@
       "deniedHint": "Ein Einladungscode gilt nur für die Adresse, an die er verschickt wurde. Bist du mit dem richtigen Konto angemeldet?",
       "retry": "Erneut versuchen",
       "noCodeTitle": "Noch keinen Code?",
-      "noCodeText": "Tragt euch in die Warteliste ein — wir schalten in Wellen frei und melden uns, sobald euer Zugang bereitsteht."
+      "noCodeText": "Tragt euch in die Warteliste ein — wir schalten in Wellen frei und melden uns, sobald euer Zugang bereitsteht.",
+      "openTitle": "Kein Code nötig",
+      "openText": "Die Beta ist offen. Wer einen Einladungscode bekommen hat, fügt ihn hier ein — er schaltet ein Beta-Konto frei.",
+      "openNoCodeTitle": "Ohne Code starten",
+      "openNoCodeText": "Ein Konto genügt: anlegen, E-Mail-Adresse bestätigen, loslegen. Das Fundament ist kostenlos.",
+      "openCta": "Konto anlegen"
     },
     "validation": {
       "contentLocale": "Diese Inhaltssprache steht nicht zur Verfügung.",

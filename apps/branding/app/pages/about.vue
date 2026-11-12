@@ -211,15 +211,8 @@ const openFaq = ref<string | null>(null)
            mitnehmen). -->
       <BwBrandCheckTeaser source="about" class="mt-28" />
 
-      <!-- 8 · Frühzugang: die Warteliste -->
-      <section class="bw-card mt-28 grid items-center gap-10 p-10 @lg:grid-cols-[minmax(0,1fr)_26rem] @lg:p-14">
-        <div class="min-w-0">
-          <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('lead.eyebrow') }}</p>
-          <h2 class="mt-3 max-w-lg text-balance text-3xl font-extralight leading-snug tracking-tight sm:text-4xl">{{ t('lead.title') }}</h2>
-          <p class="mt-4 max-w-lg text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('lead.body') }}</p>
-        </div>
-        <BwWaitlistForm source="about" />
-      </section>
+      <!-- 8 · Frühzugang: bei offener Aufnahme die Kontoanlage, sonst die Warteliste -->
+      <BwLeadSection source="about" />
 
       <!-- 9 · Team-Teaser -->
       <section class="mt-16 flex flex-wrap items-center justify-between gap-6 px-2">
