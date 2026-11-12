@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 12 offen · 5 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 13 offen · 5 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-12**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -37,6 +37,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 19 · BI5 | **Den ersten Insights-Artikel veröffentlichen — danach steht der Kommentar-Beweis.** Kommentare unter Artikeln sind seit 2026-11-09 live (BI2 K7, Migrationen gefahren), aber `/api/insights/public/posts` ist leer — ohne öffentlichen Artikel gibt es keine Seite mit Faden. Zu entscheiden: die vier Launch-Entwürfe (I6 Stufe 1) oder der Video-Entwurf `6af1c0f3…`; dazu, ob das Fundstück `qooOXNmdCH4` aus dem Beweis vom 2026-11-09 stehen bleibt. Den Klick-Beweis fahre ich danach. | Mittel | S | **Ja: freigeben + entscheiden** | [KURATION § 20](plans/BRAND-INSIGHTS-KURATION.md) |
 | 20 · GA1 | **Gesamtaudit 2026-11 läuft.** Vorbereitung und Charter sind erledigt, die Audit-Sessions laufen am Stück im privaten Ordner `~/Developer/Claude/Audits/pukalani-2026-11/` (außerhalb des Repos, weil das Repo öffentlich ist; Stand in `STATE.md` dort). Danach Synthese, Review mit David, Umsetzung paketweise. | Mittel | L (viele Sessions) | **Ja: Review der Pakete** | [GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) |
 | 21 · SC2 | **Den Stripe-Test-Treiber auf die heutigen Projekte umstellen.** `a2a-checkout-driver.mjs` spricht noch die gelöschten Projekte `pool`/`control`, das Cookie `a_session_pool` und Schlüsseldateien, die es nicht mehr gibt — gegen Prod läuft er so nicht. Umstellen auf `account`/`admin` und über Env auch lokal fahrbar machen (das Rezept des lokalen SC1-Laufs steht im Runbook). | Niedrig | S | Nein (Prod-Probe nur mit Davids Ja) | [STRIPE-TEST-WALKTHROUGH.md § Durchlauf 2026-11-12](runbooks/STRIPE-TEST-WALKTHROUGH.md) |
+| 22 · PK1 | **Pukalani-Konto: ein Konto für alle Seiten — Konzept geschrieben (2026-11-12), acht Entscheidungen offen.** Empfehlung: zentrale Anmeldung auf `account.pukalani.app`, je Seite eine eigene Sitzung, kontoweite Dinge nur zentral, branding.supply hängt sich an dasselbe Konto. Fünf Etappen, nichts gebaut. | Hoch | XL (5 Etappen) | **Ja: acht Entscheidungen (§ 10)** | [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
