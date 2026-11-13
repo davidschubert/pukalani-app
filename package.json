@@ -29,6 +29,7 @@
     "check:nul-bytes": "node scripts/check-nul-bytes.mjs",
     "check:permissions": "node scripts/check-permissions.mjs",
     "check:secrets": "gitleaks git --no-banner --redact --verbose .",
+    "lint:prepare": "pnpm --filter \"./apps/*\" exec nuxi prepare",
     "lint:scripts": "pnpm check:nul-bytes && pnpm check:permissions && eslint scripts",
     "check:doc-links": "node scripts/ops/verify-doc-links.mjs",
     "ops:site-env": "node scripts/ops/verify-site-env.mjs",

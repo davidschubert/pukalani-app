@@ -174,6 +174,144 @@ const pukalaniPlugin = {
   },
 }
 
+/**
+ * LOSE PROMISES IM SERVER-CODE (SEC-023, 2026-11-13) — typisierte Regel
+ * `@typescript-eslint/no-floating-promises`.
+ *
+ * WARUM: eine asynchrone WACHE ohne `await` ist kein Typfehler, sondern ein
+ * Gate, das nicht hält — das Promise ist truthy, die Ablehnung kommt erst,
+ * wenn der Handler längst geantwortet hat. Genau so standen zwei Routen in
+ * `apps/control` vor `requireOnboardingCaller`. Der strukturelle Wächter
+ * (`packages/control/tests/onboardingCallerAwait.test.ts`) kennt nur diese
+ * eine Funktion; diese Regel kennt JEDES Promise.
+ *
+ * WOHER DIE TYPEN KOMMEN: die Regel braucht ein TypeScript-Programm. Nitros
+ * Auto-Importe (`createError`, `readBody`, alle `server/utils`) sind nur in
+ * den GENERIERTEN Server-tsconfigs der Apps typisiert
+ * (`apps/<app>/.nuxt/tsconfig.server.json`); Layer unter `packages/` haben
+ * keine eigene. Jeder Layer mit `server/` bekommt deshalb unten GENAU EINE
+ * App, deren Programm ihn enthält — je `eslint .`-Prozess (ein Paket) entsteht
+ * so genau ein Programm. App-eigene `server/`-Ordner nehmen die eigene App.
+ *
+ * VORBEDINGUNG: die tsconfigs entstehen erst mit `nuxi prepare`. Lokal liegen
+ * sie nach dem ersten `dev`/`typecheck` vor; frisch geklont oder in der CI
+ * zuerst `pnpm lint:prepare` (bereitet jede App vor). Fehlt die tsconfig, die
+ * das gerade gelintete Paket braucht, bricht dieser Config-Load mit genau
+ * diesem Hinweis ab — nie stilles Nicht-Prüfen.
+ *
+ * NEUER LAYER MIT `server/`: in `SERVER_LINT_PROGRAM` eintragen, mit einer
+ * App, die ihn per `extends` mitbringt. Ohne Eintrag bricht der Lint (wie die
+ * Topf-Prüfung oben); eine App, deren tsconfig den Layer nicht enthält, auch.
+ *
+ * OPTIONEN, bewusst die Standardwerte: `ignoreVoid: true` — `void promise`
+ * ist die ausdrückliche Aussage „Feuer und vergiss" (Log, Benachrichtigung,
+ * Aufräumen nach der Antwort) und genau das Zeichen, das die Durchsicht
+ * sehen soll. `ignoreIIFE: false` — eine asynchrone IIFE, die niemand
+ * abwartet, ist derselbe Fall und trägt ebenfalls `void`.
+ *
+ * NUR DIESE EINE REGEL: der Block setzt kein `no-restricted-syntax` und
+ * berührt damit weder die tablesDB-Sperre noch die `$fetch`-Regel (Flat
+ * Config ERSETZT diese Regel blockweise, siehe Kopf des letzten Blocks).
+ */
+const SERVER_LINT_PROGRAM = {
+  // Control Plane und die Betreiber-Produkte — nur apps/control bringt sie mit.
+  control: 'control', tickets: 'control', runner: 'control', billing: 'control', feedback: 'control',
+  // admin und themes: die Betreiber-Konsole bringt beide mit (dort leben ihre
+  // Dashboard-Seiten und der Theme-Katalog).
+  admin: 'control', themes: 'control',
+  // Pool-Produkte und Nähte der Platform-App.
+  comments: 'platform', posts: 'platform', events: 'platform', courses: 'platform', media: 'platform',
+  activity: 'platform', messages: 'platform', moderation: 'platform', pages: 'platform',
+  onboarding: 'platform', analytics: 'platform',
+  // Die Silo-Produkte von branding.supply.
+  brand: 'branding', market: 'branding', insights: 'branding',
+  marketing: 'marketing',
+  domains: 'portfolio',
+  // core und system stecken in JEDER App. `marketing` ist das kleinste
+  // Programm, das beide enthält (nur marketing+core+system) — der core-Lauf
+  // ist der größte Layer und zahlt damit am wenigsten Programm-Aufbau.
+  // Was core unter marketing typt, typt `nuxi typecheck` dort ebenso.
+  core: 'marketing', system: 'marketing',
+}
+
+const { createRequire } = await import('node:module')
+const { existsSync, readFileSync } = await import('node:fs')
+const repoRoot = fileURLToPath(new URL('.', import.meta.url))
+// `@typescript-eslint/*` ist nur über @nuxt/eslint-config im Baum (nicht im
+// Wurzel-node_modules gehoistet) — aufgelöst von DORT, damit Plugin und
+// Parser dieselben Instanzen sind, die der Block `nuxt/typescript/*`
+// registriert (ESLint verbietet, einen Plugin-Namen mit einer anderen
+// Instanz neu zu definieren).
+const requireFromNuxtConfig = createRequire(createRequire(import.meta.url).resolve('@nuxt/eslint-config'))
+const { pathToFileURL } = await import('node:url')
+const { default: tsPlugin } = await import(pathToFileURL(requireFromNuxtConfig.resolve('@typescript-eslint/eslint-plugin')).href)
+const { default: tsParser } = await import(pathToFileURL(requireFromNuxtConfig.resolve('@typescript-eslint/parser')).href)
+
+const serverTsconfigOf = app => resolvePath(repoRoot, 'apps', app, '.nuxt', 'tsconfig.server.json')
+const hasServerDir = (top, name) => existsSync(resolvePath(repoRoot, top, name, 'server'))
+
+{
+  const layersWithServer = layersOnDisk.filter(name => hasServerDir('packages', name))
+  const unmapped = layersWithServer.filter(name => !(name in SERVER_LINT_PROGRAM))
+  const stale = Object.keys(SERVER_LINT_PROGRAM).filter(name => !layersWithServer.includes(name))
+  if (unmapped.length || stale.length) {
+    throw new Error([
+      'eslint.config.mjs: SERVER_LINT_PROGRAM und die server/-Ordner unter packages/ laufen auseinander (SEC-023).',
+      unmapped.length ? `  ohne App für die typisierte Regel: ${unmapped.join(', ')} — eine App eintragen, die den Layer per extends mitbringt` : '',
+      stale.length ? `  eingetragen, aber ohne server/: ${stale.join(', ')}` : '',
+    ].filter(Boolean).join('\n'))
+  }
+}
+
+/**
+ * Prüft genau die tsconfig, die der LAUFENDE Prozess braucht: `pnpm -r lint`
+ * startet je Paket ein `eslint .` mit cwd = Paketordner. Vom Wurzelordner aus
+ * (`pnpm lint:scripts` lintet nur `scripts/`) wird nichts verlangt.
+ */
+{
+  const [top, name] = relativePath(repoRoot, process.cwd()).split(sep)
+  const app = top === 'packages' ? SERVER_LINT_PROGRAM[name]
+    : top === 'apps' && name && hasServerDir('apps', name) ? name
+      : undefined
+  if (app) {
+    const tsconfig = serverTsconfigOf(app)
+    if (!existsSync(tsconfig)) {
+      throw new Error(
+        `eslint.config.mjs: ${relativePath(repoRoot, tsconfig)} fehlt — erst \`pnpm lint:prepare\` `
+        + `(nuxi prepare je App). Die typisierte Regel no-floating-promises (SEC-023) braucht sie für ${top}/${name}.`)
+    }
+    if (top === 'packages') {
+      const { include = [] } = JSON.parse(readFileSync(tsconfig, 'utf8'))
+      if (!include.some(entry => entry.endsWith(`packages/${name}/server/**/*`))) {
+        throw new Error(
+          `eslint.config.mjs: apps/${app} bringt den Layer ${name} nicht (mehr) mit — `
+          + `SERVER_LINT_PROGRAM.${name} auf eine App zeigen lassen, deren tsconfig.server.json packages/${name}/server enthält (SEC-023).`)
+      }
+    }
+  }
+}
+
+/** Ein Block je Server-Ordner: genau EINE tsconfig, also genau ein Programm. */
+const floatingPromiseBlock = (serverDir, app) => ({
+  files: [`${serverDir}/**/*.ts`],
+  plugins: { '@typescript-eslint': tsPlugin },
+  languageOptions: {
+    parser: tsParser,
+    parserOptions: { project: [serverTsconfigOf(app)], tsconfigRootDir: repoRoot },
+  },
+  rules: {
+    '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true, ignoreIIFE: false }],
+  },
+})
+
+const serverTypedBlocks = [
+  ...Object.entries(SERVER_LINT_PROGRAM)
+    .map(([layer, app]) => floatingPromiseBlock(`packages/${layer}/server`, app)),
+  ...readdirSync(resolvePath(repoRoot, 'apps'), { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.') && hasServerDir('apps', entry.name))
+    .map(({ name }) => floatingPromiseBlock(`apps/${name}/server`, name)),
+]
+
 export default createConfigForNuxt({
   features: {
     stylistic: false,
@@ -667,3 +805,6 @@ export default createConfigForNuxt({
     ],
   },
 })
+// Lose Promises im Server-Code (SEC-023) — Begründung, Zuordnung Layer→App
+// und Vorbedingung `pnpm lint:prepare` stehen bei SERVER_LINT_PROGRAM oben.
+.append(...serverTypedBlocks)
