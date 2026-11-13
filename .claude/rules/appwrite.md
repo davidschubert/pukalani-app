@@ -59,6 +59,28 @@ paths:
   Runbook: docs/runbooks/ACCOUNT-CUTOVER.md.
 - Jede App: EIGENE Appwrite-Instanz, Config aus .env
   (NUXT_APPWRITE_KEY server-only, NUXT_PUBLIC_* für Endpoint/Project)
+- RECHTE AN ABLAGEN (SEC-001, seit 2026-11-13): Appwrite ist unter eigener
+  Adresse für jedes Konto direkt erreichbar. Ein Recht für `users`, `any` oder
+  ein Label an einem BUCKET gilt deshalb NEBEN unserer Route — und was die
+  Route prüft (Typ, Größe, Magic-Bytes), prüft Appwrite nicht. Buckets sind
+  darum verschlossen (`permissions: []`): geschrieben wird vom Server mit dem
+  Admin-Client NACH den Prüfungen, Leserechte trägt die einzelne Datei
+  (`fileSecurity`). Die Endungsliste eines Buckets ist nur das Netz: sie prüft
+  den NAMEN, nicht den Inhalt (Appwrite erkennt den Typ aus dem Inhalt und
+  speichert ihn, lehnt deswegen aber nichts ab). Eine AUSLIEFERUNGS-Route
+  reicht den gespeicherten Typ nie durch: Erlaubnisliste auf den gespeicherten
+  Typ, `Content-Type` aus dem selbst erkannten Inhalt, dazu auf jeder Antwort
+  `X-Content-Type-Options: nosniff` und `Content-Security-Policy: default-src
+  'none'; sandbox` (EINE Quelle: `core/shared/avatarImage.ts`). Wächter:
+  `pnpm check:permissions` (läuft mit `lint:scripts`) wird rot bei jedem
+  Bucket mit Schreibrecht für Konten in Migrationen und Bootstrap-Skripten.
+  REIHENFOLGE beim Schließen eines bestehenden Buckets: ERST der Code, der mit
+  dem Admin-Client schreibt, DANN die Migration (system-039) — umgekehrt
+  scheitert jeder Upload. `updateBucket` setzt Weggelassenes auf API-Defaults
+  ⇒ Bucket lesen und Unverändertes zurückschreiben. Der Runner fährt jede
+  Migration bei jedem Lauf erneut: ein „409 ⇒ Einstellungen nachziehen" in
+  einer ALTEN Migration stellt den Bucket bei jedem Lauf zurück (system-032
+  tat das) — nachziehen darf nur die jüngste.
 - Immer explizites Query.limit() (Default 25)
 - SDK-Generics nutzen: tablesDB.listRows<T>()
 - Migrations: idempotent (409 → skip), IMMER über den zentralen Runner
