@@ -42,6 +42,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) der Migrations-Runner baut bei jedem Lauf an drei Tabellen um, (d) vier Runbooks nennen einen Befehl, der nicht mehr geht, (e) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
 | 26 · P29 | **Anmelde-Regeln auf Production einschalten.** Code, Skript und Runbook sind da (2026-11-13). Offen: je Projekt ein Schlüssel mit `policies`-Recht, `ops:auth-policies --apply` in vier Projekten, `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server, die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten. | Mittel | S | Ja (jeder Schritt ändert Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
 | 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Offen: (a) **Klick-Probe auf Live**, abgemeldet und als Mitglied, (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
+| 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live** (Schreiben als Mitglied; ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -619,6 +620,36 @@ NICHT hier.
   übersprungen); ein Kommentar in `packages/courses/tests/redaction-actor.test.ts`
   und der Satz „nur Eingeloggte" oben in
   `docs/content/3.features/6.uebersetzungen.md` sind überholt.
+
+<a id="mm1"></a>
+
+**MM1 — Mitmachen nur für Mitglieder: Nacharbeiten (aus dem Gesamtaudit, Paket P05).**
+
+- **(a) Klick-Probe auf Live.** Geprüft ist lokal (Probe je Rolle, Beweis-
+  Skript, E2E gegen eine lokale Pool-Bühne). Auf einer Community: als Mitglied
+  kommentieren, liken, zusagen. Dann ein Test-Konto einladen, wieder entfernen
+  und mit ihm die Community öffnen: Hinweisseite, eine Nachricht an die
+  Leitung (Mail und Glocke beim Owner), neue Einladung annehmen.
+- **(b) Benachrichtigungen an entfernte Personen.** Nicht geprüft ist, ob eine
+  entfernte Person weiter Glocken-Einträge und Mails aus dieser Community
+  bekommt (Antworten auf alte Kommentare, Sammel-Mail). Die Links führten sie
+  nur auf die Hinweisseite.
+- **(c) Stimmen unter geschlossenen Themen.** Kommentieren ist dort zu, Likes
+  und Reaktionen an vorhandenen Kommentaren gehen weiter. Entscheiden, ob das
+  so bleiben soll.
+- **(d) Übersetzen.** Bleibt für jedes angemeldete Konto möglich, auch ohne
+  Mitgliedschaft; die Aufrufe zählen auf das Tages-Kontingent der Community.
+  Entscheiden, ob das Mitgliedern vorbehalten sein soll (dann fehlt Lesern
+  einer offenen Community der Knopf, bis sie etwas geschrieben haben).
+- **(e) Kleinigkeiten.** Eine Zusage zu einem inzwischen ausgeblendeten Termin
+  lässt sich nicht mehr zurücknehmen (404). `verify-site-authz.mjs` scheitert
+  ab dem dritten Lauf je Stunde an der Stunden-Bremse der Registrierung (eigene
+  Test-Adresse je Probe fehlt dort). Der Link in der Mail an die Leitung trägt
+  kein Sprach-Präfix. Der E2E-Test `community-removed.spec.ts` läuft nur
+  gegen eine lokale Pool-Bühne (Vorhaben „Tests über den echten Kundenpfad").
+  Der Kopf von `packages/messages/server/utils/messageGate.ts` sagt, jede
+  Schreib-Route rufe eine seiner Funktionen; für Löschen und Gelesen-Markieren
+  stimmt das nicht.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
