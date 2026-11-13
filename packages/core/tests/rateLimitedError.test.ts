@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isRateLimited, rateLimitRetrySeconds } from '../app/utils/fetchError'
+import { isRateLimited, rateLimitRetrySeconds, rateLimitWait } from '../app/utils/fetchError'
 
 /**
  * G7 — die Minuten-Sperre muss sich als solche zu erkennen geben.
@@ -56,5 +56,20 @@ describe('rateLimitRetrySeconds', () => {
     expect(rateLimitRetrySeconds(fetchErrorLike({ statusCode: 429, retryAfter: '0' }))).toBeNull()
     expect(rateLimitRetrySeconds(fetchErrorLike({ statusCode: 429, retryAfter: 'Wed, 21 Oct 2026 07:28:00 GMT' }))).toBeNull()
     expect(rateLimitRetrySeconds(new Error('offline'))).toBeNull()
+  })
+})
+
+describe('rateLimitWait (SEC-003: Konto-Bremse bis 15 Minuten)', () => {
+  it('bleibt bis 90 Sekunden bei Sekunden', () => {
+    expect(rateLimitWait(1)).toEqual({ unit: 'seconds', value: 1 })
+    expect(rateLimitWait(60)).toEqual({ unit: 'seconds', value: 60 })
+    expect(rateLimitWait(90)).toEqual({ unit: 'seconds', value: 90 })
+  })
+
+  it('meldet darüber Minuten, aufgerundet', () => {
+    expect(rateLimitWait(91)).toEqual({ unit: 'minutes', value: 2 })
+    expect(rateLimitWait(120)).toEqual({ unit: 'minutes', value: 2 })
+    expect(rateLimitWait(121)).toEqual({ unit: 'minutes', value: 3 })
+    expect(rateLimitWait(900)).toEqual({ unit: 'minutes', value: 15 })
   })
 })

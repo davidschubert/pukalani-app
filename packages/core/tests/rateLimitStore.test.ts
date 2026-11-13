@@ -43,6 +43,64 @@ describe('createMemoryRateLimitStore (Fixed-Window)', () => {
   })
 })
 
+describe('createMemoryRateLimitStore — refund/clear (SEC-003)', () => {
+  it('refund bucht genau einen Versuch zurück', async () => {
+    const store = createMemoryRateLimitStore()
+    await store.hit('k', 1000)
+    await store.hit('k', 1000)
+    await store.refund('k', 1000)
+    expect((await store.peek('k', 1000)).count).toBe(1)
+  })
+  it('refund geht nie unter 0', async () => {
+    const store = createMemoryRateLimitStore()
+    await store.hit('k', 1000)
+    await store.refund('k', 1000)
+    await store.refund('k', 1000)
+    expect((await store.peek('k', 1000)).count).toBe(0)
+    expect((await store.hit('k', 1000)).count).toBe(1)
+  })
+  it('refund legt keinen Schlüssel an und verändert das Fenster nicht', async () => {
+    vi.useFakeTimers()
+    try {
+      const store = createMemoryRateLimitStore()
+      await store.refund('neu', 60_000)
+      // Ein angelegter Eintrag hätte hier ein eigenes Fenster begonnen; der
+      // erste echte Treffer muss das volle Fenster sehen.
+      vi.advanceTimersByTime(30_000)
+      expect((await store.hit('neu', 60_000)).resetInMs).toBe(60_000)
+
+      const first = await store.hit('k', 60_000)
+      vi.advanceTimersByTime(10_000)
+      await store.refund('k', 60_000)
+      const after = await store.peek('k', 60_000)
+      expect(after.resetInMs).toBe(first.resetInMs - 10_000)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+  it('refund nach Ablauf des Fensters lässt den neuen Zähler in Ruhe', async () => {
+    vi.useFakeTimers()
+    try {
+      const store = createMemoryRateLimitStore()
+      await store.hit('k', 1000)
+      vi.advanceTimersByTime(1001)
+      await store.refund('k', 1000)
+      expect((await store.hit('k', 1000)).count).toBe(1)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+  it('clear löscht den Zähler', async () => {
+    const store = createMemoryRateLimitStore()
+    await store.hit('k', 1000)
+    await store.hit('k', 1000)
+    await store.clear('k')
+    expect((await store.peek('k', 1000)).count).toBe(0)
+  })
+})
+
 describe('createRedisRateLimitStore — fail-open', () => {
   it('toter Redis → In-Memory-Fallback drosselt weiter (kein Throw)', async () => {
     // Nicht-routbare TEST-NET-Adresse: Verbindung schlägt fehl, commandTimeout greift
@@ -59,4 +117,20 @@ describe('createRedisRateLimitStore — fail-open', () => {
       warn.mockRestore()
     }
   }, 15_000)
+
+  it('toter Redis → refund und clear werfen nicht und wirken auf den Fallback', async () => {
+    const store = createRedisRateLimitStore('redis://192.0.2.1:6399')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await store.hit('k', 60_000)
+      await store.hit('k', 60_000)
+      await store.refund('k', 60_000)
+      expect((await store.hit('k', 60_000)).count).toBe(2)
+      await store.clear('k')
+      expect((await store.hit('k', 60_000)).count).toBe(1)
+    }
+    finally {
+      warn.mockRestore()
+    }
+  }, 20_000)
 })

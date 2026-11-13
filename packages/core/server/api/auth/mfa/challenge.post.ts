@@ -31,6 +31,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
+  // Fehlversuche je KONTO (SEC-003). Die Kennung kommt aus der Challenge, also
+  // erst NACHDEM Appwrite die halbe Session als echt belegt hat — eine Kennung
+  // aus dem Cookie oder dem Rumpf wäre nur eine Behauptung, mit der ein Fremder
+  // ein fremdes Konto bremsen könnte.
+  await limitAccountAttempts(event, 'mfa', challenge.userId)
+
   try {
     // Die Antwort ist eine Session — aber ihr `secret` ist LEER (gemessen
     // 2026-08-13). Appwrite erweitert die BESTEHENDE Session um den Faktor,

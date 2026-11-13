@@ -30,6 +30,77 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P02 — Anmelde-Bremse: vorab zählen, je Konto zählen ✅ 2026-11-13
+
+**Was.** Drittes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
+SEC-003, BE-002). Vier Dinge:
+
+1. **Fehlversuche zählen vor der Prüfung (SEC-003).** Login, E-Mail-Code,
+   Zwei-Faktor, Reset-Bestätigung und die Token-Einlösungen zählen jeden
+   Versuch atomar VOR der Route; eine Antwort unter 400 bucht ihn zurück. Der
+   Deckel (5 je Minute und Adresse) hält damit auch für gleichzeitige Anfragen.
+   `GET /api/auth/site-session` stand in der Liste, wurde aber nie gezählt
+   (eine Methoden-Vorbedingung ließ jede GET-Route vorher heraus) — jetzt
+   zählt, was gelistet ist.
+2. **Fehlversuche zählen je Konto (SEC-003).** Passwort, E-Mail-Code und
+   Zwei-Faktor-Code zählen zusätzlich je Konto über alle Adressen: 10
+   Fehlversuche in 15 Minuten (Davids Entscheidung 2026-11-13), dann Pause bis
+   zum Ende des Fensters. Kein Dauerschloss; die Antwort ist für vorhandene und
+   nicht vorhandene Konten gleich; „Passwort zurücksetzen" bleibt offen und
+   hebt die Pause nach dem erfolgreichen Reset auf. Die Anmelde-Formulare
+   nennen die Wartezeit ab 90 Sekunden in Minuten.
+3. **Teure Wege haben eine Bremse (BE-002).** Konto-Export (2 je Minute),
+   Kontolöschung, Domain-Prüfung, Bezahl-Start und Kundenportal der Community,
+   Favicon-Upload, Löschen von Beitrag/Kommentar/Meldung, Themen-Zustand, die
+   beiden Moderations-Assistenten, `GET /api/comments/counts`, `PUT /api/pages`
+   — und ein Auffangnetz für jede sonst ungelistete DELETE-Route (120 je
+   Minute).
+4. **`/api/health` fragt Appwrite höchstens alle 5 Sekunden (BE-002).** Das
+   Ergebnis wird je Prozess gehalten, gleichzeitige Aufrufe teilen sich eine
+   Abfrage (befristet auf 10 s, damit eine hängende Abfrage die Route nicht
+   stumm macht). Bewusst KEINE 429 dort: Wächter, Deploy-Beweis und UptimeRobot
+   dürfen nie ausgesperrt werden. Das Feld `user` ist aus der Antwort entfallen.
+
+**Wie.** Der Store (`packages/core/server/utils/rateLimitStore.ts`) kann jetzt
+`refund` und `clear`; in Redis laufen Zählen und Zurückbuchen je als EIN
+Lua-Skript, das einen fehlenden Ablauf nachsetzt. Die Konto-Zählung steht in
+`packages/core/server/utils/accountAttempts.ts` und wird von fünf Routen
+aufgerufen; die Kennung ist gehasht. `mfa/challenge` zählt erst, nachdem
+Appwrite die Sitzung belegt hat (`challenge.userId`). Regel in
+`.claude/rules/appwrite.md` („Bremsen").
+
+**Beweis.** (a) Unit-Tests gegen den echten Handler mit einem Store, der Latenz
+hat: 20 gleichzeitige Fehlversuche einer Adresse ⇒ 5 erreichen die Route, 15
+bekommen 429 (gegen den alten Handler: alle 20 kommen durch, Test rot). Dazu
+`accountAttempts.test.ts` (20 Adressen, ein Konto ⇒ höchstens 10; Fenster läuft
+ab; Reset gibt frei), `health.test.ts`, `rateLimitStore.test.ts` und die
+Listen-Tests in `rateLimitRoutes.test.ts`. (b) Lokal gegen die lokale Appwrite
+mit den Testkonten, einmal mit dem Zähler im Prozess und einmal mit einem
+echten Redis: dieselben Zahlen wie im Unit-Test; das richtige Passwort
+bekommt während der Pause ebenfalls 429; nach „Passwort zurücksetzen" gelingt
+die Anmeldung sofort; acht erfolgreiche Anmeldungen nacheinander verbrauchen
+nichts; der dritte Export in einer Minute bekommt 429; 200 gleichzeitige
+Aufrufe von `/api/health` antworten alle 200. In Redis trägt jeder der 71
+Schlüssel einen Ablauf, keiner eine Adresse im Klartext.
+
+**Offen geblieben.** Ohne Redis zählt jeder Prozess für sich; das trägt mit
+`instances: 1` je App (Hinweis in `docs/runbooks/DEPLOYMENT.md`). Ob
+`NUXT_REDIS_URL` auf Production gesetzt ist, prüft kein Wächter. Die
+Größenprüfung VOR dem Lesen des Bodys bei Favicon und Event-Titelbild ist
+nicht Teil dieses Pakets.
+
+**Gelernt:** Eine Schutzmaßnahme, die nur nacheinander getestet ist, ist für
+gleichzeitige Anfragen ungetestet. „Lesen, Route laufen lassen, danach
+zählen" hat zwischen Lesen und Zählen eine Lücke, so breit wie die Route
+langsam ist — zählen und prüfen gehören in EINEN atomaren Schritt, und der
+Test dazu braucht `Promise.all` und einen Store mit Latenz. Zweitens: ein
+Eintrag in einer Liste beweist nicht, dass er wirkt. `site-session` stand
+in `FAILURE_LIMITED` und wurde von einer Bedingung drei Zeilen
+darüber aussortiert; erst ein Test, der das VERHALTEN der gelisteten Route
+prüft, hat es gezeigt.
+
+---
+
 ### GA1 P01 — Profilbild-Ablage: nur Bilder, nur über den Server ✅ 2026-11-13
 
 **Was.** Zweites Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings

@@ -21,6 +21,8 @@ export default defineEventHandler(async (event): Promise<MfaVerifyResponse> => {
   }
 
   const { code } = await readValidatedBody(event, mfaVerifySchema.parse)
+  // Fehlversuche je KONTO, über alle IPs (SEC-003).
+  await limitAccountAttempts(event, 'mfa', event.context.user.$id)
   const { account } = createSessionClient(event)
 
   try {

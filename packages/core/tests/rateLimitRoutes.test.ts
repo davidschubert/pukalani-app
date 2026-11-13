@@ -190,3 +190,80 @@ describe('Drossel-Liste in 05.rate-limit.ts', () => {
     expect(geprueft).toBeGreaterThan(50)
   })
 })
+
+/**
+ * Die Liste so auswerten, wie die Middleware es tut: `WRITE_LIMITED.find()`
+ * nimmt den ERSTEN passenden Eintrag. Gelesen werden die Regex-Literale in
+ * Quelltext-Reihenfolge — damit lässt sich prüfen, wer eine Route WIRKLICH
+ * bekommt, nicht nur, ob irgendwo eine Zeile für sie steht.
+ */
+function ersterTreffer(route: string): { bucket: string, max: number | null } | null {
+  const writeListe = listen.slice(listen.indexOf('const WRITE_LIMITED'))
+  for (const zeile of writeListe.split('\n')) {
+    const m = /\{ re: \/(.+)\/, bucket: '([^']+)'(?:, max: ([A-Z_]+|\d+))? \}/.exec(zeile)
+    if (!m) continue
+    if (!new RegExp(m[1] ?? '').test(route)) continue
+    const maxRoh = m[3]
+    if (maxRoh === undefined) return { bucket: m[2] ?? '', max: null }
+    const alsZahl = Number(maxRoh)
+    if (Number.isFinite(alsZahl)) return { bucket: m[2] ?? '', max: alsZahl }
+    const wert = new RegExp(`const ${maxRoh} = (\\d[\\d_]*)`).exec(quelle)?.[1]
+    return { bucket: m[2] ?? '', max: wert ? Number(wert.replace(/_/g, '')) : null }
+  }
+  return null
+}
+
+describe('Teure Wege ohne Bremse (BE-002)', () => {
+  it.each([
+    ['GET /api/auth/export', 'auth:export', 2],
+    ['DELETE /api/auth/account', 'auth:account-delete', 5],
+    ['POST /api/community/domain/verify', 'domains:verify', 10],
+    ['POST /api/site/domain/verify', 'domains:verify', 10],
+    ['POST /api/community/billing/checkout', 'community:checkout', 10],
+    ['POST /api/community/billing/portal', 'community:portal', 30],
+    ['POST /api/community/branding/favicon', 'community:favicon', 10],
+    ['DELETE /api/posts/p1', 'posts:delete', null],
+    ['DELETE /api/comments/c1', 'comments:delete', null],
+    ['DELETE /api/reports', 'reports:withdraw', null],
+    ['PATCH /api/posts/p1/state', 'posts:state', null],
+    ['POST /api/admin/comments/c1/assist', 'comments:assist', 10],
+    ['POST /api/posts/p1/assist', 'posts:assist', 10],
+    ['GET /api/comments/counts', 'comments:read', 120],
+    ['PUT /api/pages', 'pages:save', null],
+  ])('%s → Bucket %s, Deckel %s', (route, bucket, max) => {
+    expect(ersterTreffer(route)).toEqual({ bucket, max })
+  })
+
+  it('Konto- und Community-Abo teilen sich die Zahlen, nicht den Eimer', () => {
+    expect(ersterTreffer('POST /api/community/billing/checkout')?.max).toBe(ersterTreffer('POST /api/billing/checkout')?.max)
+    expect(ersterTreffer('POST /api/community/billing/portal')?.max).toBe(ersterTreffer('POST /api/billing/portal')?.max)
+    expect(ersterTreffer('POST /api/community/billing/checkout')?.bucket).not.toBe(ersterTreffer('POST /api/billing/checkout')?.bucket)
+  })
+
+  it('das DELETE-Auffangnetz steht zuletzt und fängt jede sonst ungelistete DELETE-Route', () => {
+    const zeilen = listen.slice(listen.indexOf('const WRITE_LIMITED')).split('\n').filter(z => z.includes('{ re: /'))
+    expect(zeilen.at(-1)).toContain("bucket: 'delete:other'")
+    expect(ersterTreffer('DELETE /api/community/branding/favicon')).toEqual({ bucket: 'delete:other', max: 120 })
+    expect(ersterTreffer('DELETE /api/irgendwas/x1')).toEqual({ bucket: 'delete:other', max: 120 })
+    // Kein GET, kein POST und nichts ausserhalb von /api/ läuft hinein.
+    expect(ersterTreffer('GET /api/irgendwas')).toBeNull()
+    expect(ersterTreffer('POST /api/irgendwas')).toBeNull()
+    expect(ersterTreffer('DELETE /irgendwas')).toBeNull()
+  })
+
+  it('das Auffangnetz schluckt keinen spezifischen DELETE-Eintrag davor', () => {
+    expect(ersterTreffer('DELETE /api/brand/profiles/b1/publication')?.bucket).toBe('brand:publish')
+    expect(ersterTreffer('DELETE /api/brand/profiles/b1/inspiration/i1')?.bucket).toBe('brand:inspiration')
+    expect(ersterTreffer('DELETE /api/brand/profiles/b1/mark/drafts/d1')?.bucket).toBe('brand:drafts-edit')
+    expect(ersterTreffer('DELETE /api/market/profiles/m1/competitors/c1')?.bucket).toBe('market:competitors')
+    expect(ersterTreffer('DELETE /api/auth/account')?.bucket).toBe('auth:account-delete')
+    expect(ersterTreffer('DELETE /api/posts/p1')?.bucket).toBe('posts:delete')
+  })
+
+  it('die neuen Zeilen verschieben keine bestehende Zuordnung', () => {
+    expect(ersterTreffer('PATCH /api/posts/p1')?.bucket).toBe('posts:edit')
+    expect(ersterTreffer('PATCH /api/comments/c1')?.bucket).toBe('comments:edit')
+    expect(ersterTreffer('GET /api/comments/count')?.bucket).toBe('comments:read')
+    expect(ersterTreffer('GET /api/community/export')?.bucket).toBe('community:export')
+  })
+})

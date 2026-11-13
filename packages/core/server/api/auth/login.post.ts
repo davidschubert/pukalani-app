@@ -5,6 +5,9 @@ import type { LoginResponse } from '../../../shared/types/auth-responses'
 
 export default defineEventHandler(async (event): Promise<LoginResponse> => {
   const { email, password } = await readValidatedBody(event, loginSchema.parse)
+  // Fehlversuche je KONTO, über alle IPs (SEC-003) — vor der Prüfung des
+  // Passworts; ein Erfolg bucht sich selbst zurück.
+  await limitAccountAttempts(event, 'login', email)
   const { account } = createAdminClient(event)
 
   let session

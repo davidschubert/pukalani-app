@@ -37,9 +37,12 @@ export function useAuthErrorMessage() {
       // Die Wartezeit nur nennen, wenn die Antwort sie wirklich hergibt —
       // eine geratene Minute wäre dieselbe Sorte Lüge wie „Passwort falsch".
       const seconds = rateLimitRetrySeconds(error)
-      return seconds === null
-        ? t('auth.rateLimited')
-        : t('auth.rateLimitedIn', seconds)
+      if (seconds === null) return t('auth.rateLimited')
+      // Die Konto-Bremse (SEC-003) wartet bis zu 15 Minuten — ab 90 s in Minuten.
+      const wait = rateLimitWait(seconds)
+      return wait.unit === 'minutes'
+        ? t('auth.rateLimitedInMinutes', wait.value)
+        : t('auth.rateLimitedIn', wait.value)
     }
     return fallback
   }

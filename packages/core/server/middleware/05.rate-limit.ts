@@ -1,11 +1,18 @@
 /**
  * Brute-Force-/Spam-Schutz (Konzept A2): Auth-Routen nutzen den AdminClient und
- * umgehen Appwrites eingebaute Rate Limits — hier drosselt Nitro selbst. Zwei
- * Klassen:
- *  - Auth (Login/Recovery/OTP): eng, 5/min und IP.
- *  - Schreib-Endpoints (Comments/Votes/Reports): weiter, da legitime Nutzung
- *    (v.a. Voten) deutlich frequenter ist — reiner Bot-/Spam-Schutz, kein
- *    Bremsen normaler Nutzung.
+ * umgehen Appwrites eingebaute Rate Limits — hier drosselt Nitro selbst. Drei
+ * Klassen, alle zählen VOR der Route (`store.hit`, atomar):
+ *  - Mail-Routen (`ALWAYS_LIMITED`): eng, 5/min und IP, jeder Request zählt.
+ *  - Prüf-Routen (`FAILURE_LIMITED`: Login, Codes, Token): 5/min und IP, ein
+ *    ERFOLG wird nach der Antwort zurückgebucht (SEC-003, Begründung dort).
+ *  - Schreib- und teure Lese-Routen (`WRITE_LIMITED`): je Bucket, meist weiter,
+ *    da legitime Nutzung (v.a. Voten) deutlich frequenter ist — reiner Bot-/
+ *    Spam-Schutz, kein Bremsen normaler Nutzung.
+ * Ungelistete Routen bleiben frei; für ungelistete DELETE-Routen gibt es ein
+ * großzügiges Auffangnetz am Ende von `WRITE_LIMITED` (BE-002).
+ *
+ * Zusätzlich zählt `server/utils/accountAttempts.ts` Fehlversuche je KONTO
+ * (über alle IPs) — das ruft die jeweilige Route selbst auf.
  *
  * Zählung läuft über den Rate-Limit-Store (server/utils/rateLimitStore.ts):
  * mit NUXT_REDIS_URL geteilt über alle Instanzen/Cluster-Worker (Fixed-
@@ -24,8 +31,8 @@
  * Adressrotation) — Einzelheiten bei `checkMailRouteBudget` unten. Den INHALT
  * des Hebels (Link im Namen) schließt die Regel shared/displayName.ts.
  */
-import type { H3Event } from 'h3'
 import type { RateLimitState, RateLimitStore } from '../utils/rateLimitStore'
+import { tooManyRequests } from '../utils/rateLimited'
 
 const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 5
@@ -73,9 +80,18 @@ const ALWAYS_LIMITED = new Set([
   // Minute bequem darunter.
   'POST /api/auth/signup',
 ])
-// Credential-/Code-/Token-Prüfung: nur FEHLgeschlagene Versuche zählen — ein
-// erfolgreicher Login/Reset (200) soll das Budget nicht aufbrauchen. Der
-// Reset-Confirm (PUT /recovery) versendet keine Mail → hier, nicht ALWAYS.
+// Credential-/Code-/Token-Prüfung: im Ergebnis zählen nur FEHLgeschlagene
+// Versuche — ein erfolgreicher Login/Reset (< 400) soll das Budget nicht
+// aufbrauchen. Der Reset-Confirm (PUT /recovery) versendet keine Mail → hier,
+// nicht ALWAYS.
+//
+// VORAB ZÄHLEN, BEI ERFOLG ZURÜCKBUCHEN (SEC-003): bis 2026-11 wurde hier nur
+// gelesen und erst nach einer 4xx-Antwort gezählt. Gleichzeitige Anfragen
+// sahen damit alle denselben alten Stand, der Deckel hielt nur für Anfragen
+// nacheinander. Jetzt zählt jeder Versuch atomar VOR der Route, und eine
+// Antwort < 400 bucht genau diesen einen Versuch zurück. Bekannter Preis: mehr
+// als fünf GLEICHZEITIG laufende erfolgreiche Anmeldungen von einer Adresse
+// sehen kurz eine 429 (die Rückbuchung kommt erst nach der Antwort).
 const FAILURE_LIMITED = new Set([
   'POST /api/auth/login',
   'POST /api/auth/otp/verify',
@@ -910,28 +926,66 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
   // (5 statt 3), weil bei einem echten Vorfall mehrere Menschen gleichzeitig
   // melden — und die kommen oft aus demselben Netz.
   { re: /^POST \/api\/abuse\/report$/, bucket: 'abuse:report', max: 5 },
+  /**
+   * TEURE WEGE OHNE BREMSE (BE-002, Audit 2026-11). Jede Zeile hier war bis
+   * dahin ungelistet und damit beliebig oft aufrufbar.
+   */
+  // Konto-Export (DSGVO): sammelt über alle registrierten Layer die Daten
+  // EINES Kontos ein — dieselbe Kostenklasse und derselbe Deckel wie der
+  // Community-Export. Ein Mensch lädt eine Datei, nicht drei je Minute.
+  { re: /^GET \/api\/auth\/export$/, bucket: 'auth:export', max: 2 },
+  // Konto löschen: orchestriert die Löschung über alle Layer. Gelingt sie,
+  // gibt es das Konto nicht mehr; wiederholte Aufrufe sind Fehlschläge oder
+  // ein Skript — fünf je Minute lassen einem Menschen jeden zweiten Versuch.
+  { re: /^DELETE \/api\/auth\/account$/, bucket: 'auth:account-delete', max: 5 },
+  // Domain-Prüfung (Community und Silo): jeder Lauf kostet DNS-Abfragen, einen
+  // Aufruf über die Service-Naht samt ploi und eine HTTPS-Probe auf der
+  // Kundendomain. EIN Bucket für beide, weil es dieselbe Prüfung ist. Die
+  // Community-Seite prüft selbst alle 30 s nach (useDomainAutoCheck, nur bei
+  // sichtbarem Tab) — zwei je Minute und Tab plus Klicks auf „Prüfen" bleiben
+  // mit 10/min weit darunter.
+  { re: /^POST \/api\/(community|site)\/domain\/verify$/, bucket: 'domains:verify', max: 10 },
+  // Community-Abo: dieselben Stripe-Anlege-Wege und dieselben Zahlen wie die
+  // Konto-Geschwister `billing:checkout`/`billing:portal` weiter oben.
+  { re: /^POST \/api\/community\/billing\/checkout$/, bucket: 'community:checkout', max: 10 },
+  { re: /^POST \/api\/community\/billing\/portal$/, bucket: 'community:portal', max: 30 },
+  // Favicon-Upload: bis 1 MB Binärdaten durch den Server in den Speicher,
+  // samt Prüfung des PNG-Inhalts.
+  // Ein Owner lädt ein Favicon hoch, keine zehn je Minute.
+  { re: /^POST \/api\/community\/branding\/favicon$/, bucket: 'community:favicon', max: 10 },
+  // Löschen und Zurückziehen von Inhalten: member-led, schreibt über die
+  // Datentür (teils kaskadierend) — Standard-Schreibdeckel, eigener Bucket je
+  // Zweck wie beim Anlegen.
+  { re: /^DELETE \/api\/posts\/[^/]+$/, bucket: 'posts:delete' },
+  { re: /^DELETE \/api\/comments\/[^/]+$/, bucket: 'comments:delete' },
+  { re: /^DELETE \/api\/reports$/, bucket: 'reports:withdraw' },
+  // Themen-Zustand (anheften, schließen, „gelöst"): ein Schreibvorgang je Klick.
+  { re: /^PATCH \/api\/posts\/[^/]+\/state$/, bucket: 'posts:state' },
+  // Moderations-Assist: je Aufruf ein bezahlter KI-Lauf — derselbe Deckel wie
+  // die Übersetzungen.
+  { re: /^POST \/api\/admin\/comments\/[^/]+\/assist$/, bucket: 'comments:assist', max: TOKEN_MAX },
+  { re: /^POST \/api\/posts\/[^/]+\/assist$/, bucket: 'posts:assist', max: TOKEN_MAX },
+  // Kommentar-Zähler für viele Seiten auf einmal: dieselbe öffentliche
+  // Lese-Klasse wie `count`, also derselbe Bucket.
+  { re: /^GET \/api\/comments\/counts$/, bucket: 'comments:read', max: READ_MAX },
+  // Seite speichern (pages-Layer): owner-/admin-gated, aber ein Editor lädt zum
+  // Speichern im Sekundentakt ein — wie Menü, Sucheintrag und Weiterleitungen.
+  { re: /^PUT \/api\/pages$/, bucket: 'pages:save' },
   // BEWUSST NICHT gelistet: POST /api/stripe/webhook — Stripe-Retries dürfen
   // nie in den 429-Bucket laufen; ungelistete Routen sind hier ohnehin frei,
   // der Schutz des Webhooks ist die Signatur-Verifikation (billing B4).
+  /**
+   * AUFFANGNETZ FÜR JEDE SONST UNGELISTETE DELETE-ROUTE (BE-002). MUSS DER
+   * LETZTE EINTRAG BLEIBEN: `find()` nimmt den ersten Treffer, und jeder
+   * spezifische DELETE-Eintrag darüber (brand, market, Inhalte, Konto) soll
+   * seinen eigenen Bucket und Deckel behalten.
+   *
+   * 120/min ist bewusst großzügig: keine Oberfläche schickt DELETE in einer
+   * Schleife (Stand 2026-11), ein Mensch räumt nicht zwei Dinge je Sekunde
+   * weg. Die Zeile stoppt nur das Skript, das eine Liste abarbeitet.
+   */
+  { re: /^DELETE \/api\//, bucket: 'delete:other', max: 120 },
 ]
-
-/**
- * 429 mit Retry-After und dem fachlichen Grund. Der GRUND reist als
- * `data.code` — der zentrale Handler (server/error.ts) hebt genau diesen
- * Schlüssel als `reason` ins Envelope. Ohne ihn konnten die Auth-Formulare eine
- * Sperre nicht von einem echten Fehlversuch unterscheiden und schrieben
- * „Passwort falsch" bzw. „bitte erneut versuchen" — beides falsch, und beides
- * fordert genau die Handlung, die gerade geblockt wird (Audit-Befund G7,
- * 2026-08-09). Der Status allein reicht dem Client nicht: eine 429 kann auch von
- * einem vorgelagerten Proxy kommen und trägt dann nicht unser Fenster.
- *
- * EIN Code für alle Fenster (Minute, Stunde, Notbremse): der Client soll nur
- * wissen, DASS er warten muss — wie lange, sagt Retry-After.
- */
-function tooManyRequests(event: H3Event, resetInMs: number): never {
-  setHeader(event, 'Retry-After', Math.max(1, Math.ceil(resetInMs / 1000)))
-  throw createError({ status: 429, statusText: 'Too Many Requests', data: { code: 'rate_limited' } })
-}
 
 /**
  * Die beiden zusätzlichen Fenster der Mail-Routen (Vorfall 2026-10-27, s. Kopf).
@@ -994,12 +1048,14 @@ async function checkMailRouteBudget(
 }
 
 export default defineEventHandler(async (event) => {
-  const isWriteMethod = event.method === 'POST' || event.method === 'PUT' || event.method === 'PATCH'
   const pathname = getRequestURL(event).pathname
   const route = `${event.method} ${pathname}`
-  // GET ist grundsätzlich frei — Ausnahme: explizit gelistete teure GETs (JWT-Mint).
+  // Gezählt wird nur, was gelistet ist — unabhängig von der Methode (seit
+  // SEC-003: vorher fiel jede GET-Route vor der Prüfung heraus, und der
+  // Eintrag `GET /api/auth/site-session` war wirkungslos). Ungelistete Routen,
+  // ob GET oder Schreiben, bleiben frei; ungelistete DELETE fängt das Netz am
+  // Ende von WRITE_LIMITED.
   const write = WRITE_LIMITED.find(w => w.re.test(route))
-  if (!isWriteMethod && !write) return
   const always = ALWAYS_LIMITED.has(route)
   const onFailure = FAILURE_LIMITED.has(route)
   if (!always && !onFailure && !write) return
@@ -1023,13 +1079,10 @@ export default defineEventHandler(async (event) => {
   const key = `${prefix}${ip}:${write ? write.bucket : route}`
   const max = write ? (write.max ?? WRITE_MAX) : MAX_ATTEMPTS
 
-  // Zähl-Routen (always/write): hit() zählt UND prüft in einem Schritt (kein
-  // peek/hit-Race, atomar in Redis) — der (max+1)-te Request im Fenster blockt.
-  // Failure-Routen: nur lesen; gezählt wird erst nach 4xx/5xx-Antwort.
-  const counting = always || Boolean(write)
-  const state = counting ? await store.hit(key, WINDOW_MS) : await store.peek(key, WINDOW_MS)
-
-  if (counting ? state.count > max : state.count >= max) tooManyRequests(event, state.resetInMs)
+  // Alle Klassen: hit() zählt UND prüft in einem Schritt (kein peek/hit-Race,
+  // atomar in Redis) — der (max+1)-te Request im Fenster blockt.
+  const state = await store.hit(key, WINDOW_MS)
+  if (state.count > max) tooManyRequests(event, state.resetInMs)
 
   // Mail-Routen: zusätzlich Stunde je IP + Notbremse über alle IPs (s. oben).
   if (always || (write && GUEST_MAIL_BUCKETS.has(write.bucket))) {
@@ -1037,10 +1090,11 @@ export default defineEventHandler(async (event) => {
     if (blocked) tooManyRequests(event, blocked.resetInMs)
   }
 
-  if (!always && !write) {
-    // Erst nach der Antwort entscheiden: nur 4xx/5xx (Fehlversuch) zählt.
+  if (onFailure && !always && !write) {
+    // Erfolg (< 400) bucht genau diesen einen Versuch zurück; ein Fehlversuch
+    // bleibt gezählt (SEC-003, s. FAILURE_LIMITED).
     event.node.res.once('finish', () => {
-      if (event.node.res.statusCode >= 400) void store.hit(key, WINDOW_MS)
+      if (event.node.res.statusCode < 400) void store.refund(key, WINDOW_MS)
     })
   }
 })
