@@ -126,7 +126,11 @@ const FAILURE_LIMITED = new Set([
 // Bucket-Name, damit z.B. Vote-Spam über viele Kommentar-IDs EIN Budget teilt
 // (statt je ID ein frisches). Jeder Request zählt. `reports/resolve` fehlt
 // bewusst: schon Moderator-gated, kein offener Abuse-Vektor.
-const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
+// `windowMs` (seit SEC-030 Teil 2, 2026-11-13): eigenes Fenster statt der
+// Standard-Minute — für Routen, deren sinnvolle Grenze „je Stunde" heißt.
+// Der Bucket-Name trennt die Zähler, ein langes Fenster teilt also nie einen
+// Schlüssel mit einem kurzen.
+const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: number }[] = [
   { re: /^POST \/api\/comments$/, bucket: 'comments:create' },
   // Gast-Kommentare (Embed E4): unauth. Write → enges Budget wie Feedback,
   // reiner Spam-Backstop (die harte Grenze ist zusätzlich das Tenant-Quota).
@@ -380,6 +384,15 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
    * dieselbe Datei deckelt die Registrierung längst bei 5/min je IP.
    */
   { re: /^POST \/api\/stats-event$/, bucket: 'stats:event', max: 30 },
+  /**
+   * NACHRICHT EINER ENTFERNTEN PERSON AN DIE LEITUNG (SEC-030 Teil 2,
+   * 2026-11-13; onboarding, removed-contact.post.ts). Jeder Aufruf kann
+   * Mails an Inhaber und Admins auslösen. Die FACHLICHE Grenze (eine Nachricht
+   * je Woche, Community und Konto) zählt die Route selbst; diese Zeile ist die
+   * Bremse je Adresse davor — 5 je Stunde, weil ein Mensch hier nicht mehr als
+   * einen Anlauf und ein paar Tippfehler braucht.
+   */
+  { re: /^POST \/api\/community\/removed-contact$/, bucket: 'community:removed-contact', max: 5, windowMs: 3_600_000 },
   // Feedback-Widget: auch Gäste dürfen senden → enges Budget gegen Spam
   { re: /^POST \/api\/feedback$/, bucket: 'feedback:create', max: 5 },
   /**
@@ -1081,7 +1094,7 @@ export default defineEventHandler(async (event) => {
 
   // Alle Klassen: hit() zählt UND prüft in einem Schritt (kein peek/hit-Race,
   // atomar in Redis) — der (max+1)-te Request im Fenster blockt.
-  const state = await store.hit(key, WINDOW_MS)
+  const state = await store.hit(key, write?.windowMs ?? WINDOW_MS)
   if (state.count > max) tooManyRequests(event, state.resetInMs)
 
   // Mail-Routen: zusätzlich Stunde je IP + Notbremse über alle IPs (s. oben).

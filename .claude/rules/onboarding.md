@@ -43,7 +43,13 @@ paths:
   Rolle UND Lese-Publikum: die Runtime-Route zieht danach `revokeCommunityLabel`
   (Labels gehören dem Pool-Projekt, das Control Plane hat dafür keinen
   Schlüssel) und merkt den Entzug kurz (`rememberCommunityAccessRevoked`), damit der
-  30-s-Rollen-Cache das Label nicht sofort wieder vergibt. Besitz übertragen
+  30-s-Rollen-Cache das Label nicht sofort wieder vergibt. Seit 2026-11-13
+  (SEC-030) sieht die entfernte Person angemeldet nur noch die HINWEISSEITE
+  (`onboarding/app/pages/removed.vue`, `/removed`) mit gebremstem Kontakt an
+  Owner und Admins (`removed-contact.post.ts`) und dem Rückweg per neuer
+  Einladung; alles andere auf dem Host antwortet 403 `community_removed`
+  (Regel und Erlaubnisliste: tenant-isolation.md, „ENTFERNT ⇒ KEIN ZUGRIFF").
+  Besitz übertragen
   läuft über `community.transfer` (Owner), NIE über die Rollen-Route — sonst wäre eine
   Owner-Capability per Admin-Capability erreichbar. `community.delete` IST gebaut
   (C16, 2026-07-31 — Kehrtwende zu Davids Entscheidung 3 vom 2026-07-29), aber als

@@ -110,6 +110,57 @@ function rememberDecision(communityId: string, userId: string, outcome: Communit
 /** Nur für Tests: Kurzzeit-Gedächtnis leeren. */
 export function __resetCommunityJoinMemory(): void {
   decided.clear()
+  readmitted.clear()
+}
+
+/**
+ * „GERADE WIEDER AUFGENOMMEN" (SEC-030 Teil 2, 2026-11-13) — die Gegen-Notiz
+ * zu `rememberCommunityAccessRevoked`, für die Sperre entfernter Konten
+ * (`server/utils/communityRemoval.ts`).
+ *
+ * Warum es sie braucht: „entfernt?" fragt zuletzt den gebündelten Resolver
+ * „ehemalig", und der cacht 60 s je Nutzer. Nimmt eine entfernte Person eine
+ * neue Einladung an, sagt dieser Cache bis zu eine Minute lang weiter „ja" —
+ * und der 30-s-Rollen-Cache kennt die neue Rolle noch nicht. Ohne diese Notiz
+ * stünde die zurückgeholte Person nach dem Klick auf „Annehmen" eine Minute
+ * lang wieder vor der Hinweisseite. 90 s decken beide Caches mit Abstand.
+ *
+ * Sie ist KEINE Zusage für den Beitritt: `joinCommunity` liest nur `decided`.
+ * Gilt wie die Entzugs-Notiz nur in DIESEM Prozess.
+ */
+const READMITTED_TTL_MS = 90_000
+const readmitted = new Map<string, number>()
+
+export function rememberCommunityAccessRestored(communityId: string, userId: string): void {
+  if (!communityId || !userId) return
+  const key = decisionKey(communityId, userId)
+  decided.delete(key)
+  readmitted.set(key, Date.now() + READMITTED_TTL_MS)
+  // Speicherhygiene wie bei `decided`.
+  if (readmitted.size > 5000) {
+    const oldest = readmitted.keys().next()
+    if (!oldest.done) readmitted.delete(oldest.value)
+  }
+}
+
+/**
+ * Was weiß das Kurzzeit-Gedächtnis über dieses Paar? Anders als
+ * `communityAccessRecentlyDenied` unterscheidet es die Gründe: `removed`
+ * (gezielt entzogen) ist etwas anderes als `closed` (geschlossene
+ * Registrierung — die Person war nie drin) — nur das erste führt auf die
+ * Hinweisseite.
+ */
+export function communityAccessMemory(communityId: string, userId: string): 'removed' | 'closed' | 'readmitted' | null {
+  const remembered = rememberedDecision(communityId, userId)
+  if (remembered === 'removed' || remembered === 'closed') return remembered
+  const key = decisionKey(communityId, userId)
+  const until = readmitted.get(key)
+  if (until === undefined) return null
+  if (until < Date.now()) {
+    readmitted.delete(key)
+    return null
+  }
+  return 'readmitted'
 }
 
 /**
@@ -127,6 +178,8 @@ export function __resetCommunityJoinMemory(): void {
  */
 export function rememberCommunityAccessRevoked(communityId: string, userId: string): void {
   if (!communityId || !userId) return
+  // Ein neuer Entzug schlägt eine frühere Rückkehr-Notiz (SEC-030 Teil 2).
+  readmitted.delete(decisionKey(communityId, userId))
   rememberDecision(communityId, userId, 'removed')
 }
 

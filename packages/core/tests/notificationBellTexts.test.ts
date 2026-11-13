@@ -92,9 +92,12 @@ describe('Glocken-Texte deckt jeden Absender (C17)', () => {
     // SEC-035 (2026-11-13): die Antwort eines Gastes hat einen eigenen Typ,
     // damit die Glocke ihn als Gast kennzeichnet.
     expect(types).toContain('reply.guest')
+    // SEC-030 Teil 2 (2026-11-13): die Nachricht einer entfernten Person an
+    // die Leitung ihrer Community (onboarding, removed-contact.post.ts).
+    expect(types).toContain('member.appeal')
   })
 
-  it.each(['reply', 'reply.guest', 'mention', 'post.mention', 'reminder', 'ticket', 'billing', 'siteInvite', 'invite.request', 'badge.awarded'])(
+  it.each(['reply', 'reply.guest', 'mention', 'post.mention', 'reminder', 'ticket', 'billing', 'siteInvite', 'invite.request', 'badge.awarded', 'member.appeal'])(
     "'%s' hat einen eigenen Lesetext in de UND en",
     (type) => {
       // 'reply' ist der Default-Zweig der Glocke ('notifications.replied') —

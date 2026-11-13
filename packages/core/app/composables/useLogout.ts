@@ -19,6 +19,7 @@ export function useLogout() {
   const localePath = useLocalePath()
   const auth = useAuthStore()
   const toast = useToast()
+  const communityRemoved = useCommunityRemoved()
   const loading = ref(false)
 
   async function endSession(returnTo: string | null, successTitle: string) {
@@ -33,6 +34,10 @@ export function useLogout() {
       }
       await $fetch('/api/auth/logout', { method: 'POST' })
       auth.setUser(null)
+      // Der Zustand „aus dieser Community entfernt" gehörte dem abgemeldeten
+      // Konto (SEC-030 Teil 2) — ein Folge-Login auf diesem Tab soll ihn nicht
+      // erben (er hielte z. B. das Realtime-Gate geschlossen).
+      communityRemoved.value = false
       toast.add({ title: successTitle, color: 'success', icon: 'i-ph-sign-out' })
       await navigateTo({
         path: localePath('/login'),

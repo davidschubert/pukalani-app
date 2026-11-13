@@ -891,5 +891,34 @@
     "verifyFirst": "Bestätige zuerst deine E-Mail-Adresse",
     "createAccountIntro": "Du hast noch kein Pukalani-Konto? Leg hier eins an — danach nimmst du die Einladung mit einem Klick an.",
     "noneTextAnonymous": "Dieser Einladungs-Link gilt nicht mehr. Er ist abgelaufen, wurde schon benutzt oder zurückgezogen — frag die Community-Leitung nach einer neuen Einladung."
+  },
+  "removedNotice": {
+    "title": "Kein Zugang mehr",
+    "lead": "Ein Administrator dieser Community hat dir den Zugang entzogen.",
+    "leadNamed": "Ein Administrator der Community {name} hat dir den Zugang entzogen.",
+    "noAccess": "Du kannst hier nichts mehr lesen oder schreiben. Deine bisherigen Beiträge bleiben stehen.",
+    "logout": "Abmelden",
+    "customerArea": "Zum Kundenbereich",
+    "invite": {
+      "title": "Du wurdest erneut eingeladen",
+      "description": "Nimm die Einladung an, um wieder Mitglied zu werden.",
+      "accept": "Einladung annehmen",
+      "unverified": "Bestätige zuerst deine E-Mail-Adresse, dann kannst du die Einladung annehmen.",
+      "failed": "Die Einladung konnte nicht angenommen werden. Versuche es später noch einmal."
+    },
+    "contact": {
+      "title": "Nachricht an die Leitung",
+      "label": "Deine Nachricht",
+      "hint": "Die Nachricht geht an die Leitung dieser Community. Sie sieht deinen Namen und deine E-Mail-Adresse, um dir antworten zu können. Eine Nachricht pro Woche.",
+      "send": "Nachricht senden",
+      "tooShort": "Bitte schreib mindestens {min} Zeichen.",
+      "tooLong": "Bitte höchstens {max} Zeichen.",
+      "sentTitle": "Deine Nachricht ist unterwegs.",
+      "sentText": "Die Leitung der Community antwortet dir per E-Mail, wenn sie möchte.",
+      "limitTitle": "Du hast diese Woche schon eine Nachricht geschickt.",
+      "limitText": "Eine weitere Nachricht ist in einigen Tagen wieder möglich.",
+      "limitUntil": "Eine weitere Nachricht ist ab {date} wieder möglich.",
+      "failed": "Die Nachricht konnte gerade nicht gesendet werden. Versuche es später noch einmal."
+    }
   }
 }

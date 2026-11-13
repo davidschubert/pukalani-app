@@ -61,6 +61,17 @@ export interface NotifyInput {
    * und Schreiben passt kein zweiter Lauf.
    */
   rowId?: string
+  /**
+   * DER MAIL-ZWEIG DIESER MELDUNG (SEC-030 Teil 2, 2026-11-13). Default
+   * `'preference'`: wie immer nach der Einstellung des Empfängers
+   * (`instant`/`digest`/`off`). `'skip'`: NUR die Glocken-Zeile — der Aufrufer
+   * verschickt seine eigene, eine Mail (heute: die Nachricht einer entfernten
+   * Person an die Leitung, die als Verwaltungs-Post unabhängig von der
+   * Einstellung und mit `Reply-To` rausgeht). Ohne diese Option käme sie bei
+   * `instant` doppelt an. Der Digest kennt solche Typen über
+   * `notificationMailedSeparately` (shared/communityRemoval.ts).
+   */
+  mail?: 'preference' | 'skip'
 }
 
 export interface NotifyResult {
@@ -70,6 +81,13 @@ export interface NotifyResult {
    * fehlschlug. In beiden Fällen ging auch keine Mail raus.
    */
   created: boolean
+  /**
+   * Nur bei `created: false`: der Idempotenz-Schlüssel war schon vergeben (die
+   * Meldung STEHT schon da) — im Unterschied zu einem Fehlschlag. Ein
+   * Aufrufer, der „schon gemeldet" anders behandelt als „Störung" (Kontingent
+   * zurückbuchen oder nicht), braucht diese Unterscheidung (SEC-030 Teil 2).
+   */
+  duplicate?: true
 }
 
 /** Appwrites „gibt es schon" — bei fester `rowId` die einzige Quelle eines 409. */
@@ -168,14 +186,14 @@ export async function notify(event: H3Event | undefined, input: NotifyInput): Pr
     })
     // Dublette ⇒ auch KEINE Mail. Der Schlüssel schützt beide Kanäle, sonst
     // stünde die Glocken-Zeile einmal da und die Mail käme stündlich neu.
-    if (duplicate) return { created: false }
+    if (duplicate) return { created: false, duplicate: true }
 
     // E-Mail-Zweig (Opt-in, Modus 'instant') — eigener best-effort-Pfad;
     // 'digest' sammelt der Sweep (server/plugins/email-digest.ts) ein.
     // Der Ablage-Wert reist MIT (D5): er entscheidet, auf welchen Host der
     // Link in der Mail zeigt — dieselbe Zahl, die eine Zeile weiter oben in
     // die Spalte geschrieben wurde, nie eine zweite Rechnung.
-    await maybeSendInstantEmail(event, input, tenantId)
+    if (input.mail !== 'skip') await maybeSendInstantEmail(event, input, tenantId)
     return { created: true }
   }
   catch {

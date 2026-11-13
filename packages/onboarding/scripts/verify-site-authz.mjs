@@ -54,10 +54,13 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
 
 const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
 const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+// Glocken-Zeilen der Kontakt-Route liegen im POOL-Projekt (SEC-030 Teil 2).
+const poolTables = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+const poolDatabaseId = process.env.POOL_DATABASE_ID || databaseId
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [], members: [], invites: [], comments: [], presences: [] }
+const cleanup = { users: [], codes: [], tenants: [], members: [], invites: [], comments: [], presences: [], notifications: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -105,7 +108,7 @@ function call(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
         let json = null
         try { json = JSON.parse(text) }
         catch { /* HTML-Fehlerseite */ }
-        resolve({ status: res.statusCode, json, text, setCookie: res.headers['set-cookie'] ?? [] })
+        resolve({ status: res.statusCode, json, text, headers: res.headers, setCookie: res.headers['set-cookie'] ?? [] })
       })
     })
     req.on('error', reject)
@@ -692,14 +695,18 @@ try {
   console.log('  b) Entfernen nimmt das Lese-Publikum wirklich weg')
   // Gegenprobe VOR dem Entzug: der Beigetretene sieht die Presence eines anderen
   // Mitglieds. Geschrieben wird sie über unsere echte Route (read("label:<communityId>")).
+  // Schreiber ist der heutige Owner (staff.admin, Übergabe in Abschnitt 8):
+  // der Moderator ist seit 9b ENTFERNT, und seit SEC-030 Teil 2 antwortet
+  // einem Entfernten auch der Heartbeat 403 community_removed.
+  const presenceWriter = staff.admin
   const beat = await call(host, '/api/presence/heartbeat', {
-    method: 'POST', cookie: staff.moderator.cookie, body: { scope: `a5:${Date.now()}` },
+    method: 'POST', cookie: presenceWriter.cookie, body: { scope: `a5:${Date.now()}` },
   })
   check('Heartbeat eines Mitglieds → 200', beat.status === 200, `Status ${beat.status}`)
-  cleanup.presences.push(staff.moderator.userId)
+  cleanup.presences.push(presenceWriter.userId)
   const joinerPresences = await presencesAs(joiner.userId)
   check('vor dem Entzug SIEHT das Mitglied die Anwesenheit der anderen',
-    await seesPresence(joinerPresences, staff.moderator.userId), 'Grenze sperrt eigene Leute aus!')
+    await seesPresence(joinerPresences, presenceWriter.userId), 'Grenze sperrt eigene Leute aus!')
 
   const removeJoiner = await call(host, `/api/community/members/${joinerRow?.$id}`, {
     method: 'DELETE', cookie: ownerCookie,
@@ -712,10 +719,10 @@ try {
     JSON.stringify(await labelsOf(joiner.userId)))
   const joinerAfterRemoval = await presencesAs(joiner.userId)
   check('read("members")-Inhalt ist nicht mehr lesbar (Presence unsichtbar)',
-    !(await seesPresence(joinerAfterRemoval, staff.moderator.userId)), 'Leseumfang blieb bestehen!')
+    !(await seesPresence(joinerAfterRemoval, presenceWriter.userId)), 'Leseumfang blieb bestehen!')
   const stillMember = await presencesAs(staff.viewer.userId)
   check('…während ein Mitglied sie WEITERHIN sieht (keine kollektive Sperre)',
-    await seesPresence(stillMember, staff.moderator.userId))
+    await seesPresence(stillMember, presenceWriter.userId))
 
   // Der Kern von Davids Auftrag: „beim nächsten Besuch kommt es NICHT zurück."
   await call(host, '/api/auth/me', { cookie: joinerCookie })
@@ -730,14 +737,135 @@ try {
   if (writeAfterRemoval.json?.$id) cleanup.comments.push(writeAfterRemoval.json.$id)
   // SEC-030: bis 2026-11-13 ging dieser Kommentar DURCH (die Datentür fragte
   // nach dem Beitritt, las die Antwort aber nicht) — nur die Mitgliedschaft kam
-  // nicht zurück. Jetzt ist schon das Schreiben zu.
-  check('SEC-030: nach dem Entzug ist Kommentieren zu (403 not_a_member)',
-    writeAfterRemoval.status === 403 && writeAfterRemoval.json?.reason === 'not_a_member',
+  // nicht zurück. Jetzt ist schon das Schreiben zu. Seit Teil 2 (Sperre für
+  // Entfernte) kommt die Ablehnung schon von der Core-Middleware, VOR der
+  // Wache der Route: Grund `community_removed` statt `not_a_member`.
+  check('SEC-030: nach dem Entzug ist Kommentieren zu (403 community_removed)',
+    writeAfterRemoval.status === 403 && writeAfterRemoval.json?.reason === 'community_removed',
     `Status ${writeAfterRemoval.status} ${writeAfterRemoval.text.slice(0, 160)}`)
   check('…und es entsteht KEIN Kommentar', !writeAfterRemoval.json?.$id, JSON.stringify(writeAfterRemoval.json ?? {}))
   check('auch ein neuer Schreibvorgang macht den Entzug NICHT rückgängig',
     (await memberRowOf(joiner.userId))?.status === 'removed' && !(await hasLabel(joiner.userId)),
     JSON.stringify(await labelsOf(joiner.userId)))
+
+  /**
+   * SEC-030 TEIL 2 (2026-11-13, Davids Entscheidung): wer entfernt wurde, hat
+   * KEINEN Zugriff mehr auf die Community — auch nicht lesend — und landet auf
+   * einer Hinweisseite, von der aus er der Leitung EINE Nachricht je Woche
+   * schicken kann. Eigene Client-IP für die Kontakt-Route: sie ist je Adresse
+   * auf 5 je Stunde gedrosselt, und mehrere Läufe in einer Stunde teilten sich
+   * sonst den ::1-Eimer.
+   */
+  console.log('  b2) Sperre und Hinweisseite für Entfernte (SEC-030 Teil 2)')
+  const removedRead = await call(host, `/api/comments?targetId=a5-read-${Date.now()}&targetType=verify`, { cookie: joinerCookie })
+  check('Entfernt: Inhalte lesen → 403 community_removed',
+    removedRead.status === 403 && removedRead.json?.reason === 'community_removed',
+    `Status ${removedRead.status} ${removedRead.text.slice(0, 160)}`)
+  const removedMe = await call(host, '/api/auth/me', { cookie: joinerCookie })
+  check('…der eigene Sitzungszustand bleibt erreichbar (Erlaubnisliste)', removedMe.status === 200, `Status ${removedMe.status}`)
+  const removedHome = await call(host, '/', { cookie: joinerCookie })
+  const homeLocation = String(removedHome.headers?.location ?? '')
+  check('Entfernt: die Startseite leitet auf die Hinweisseite um',
+    removedHome.status >= 300 && removedHome.status < 400 && /\/removed$/.test(homeLocation),
+    `Status ${removedHome.status} Location ${homeLocation}`)
+  const noticePage = await call(host, '/removed', { cookie: joinerCookie })
+  check('…und die Hinweisseite sagt, dass ein Administrator den Zugang entzogen hat',
+    noticePage.status === 200 && noticePage.text.includes('data-removed-notice')
+    && noticePage.text.includes('has removed your access'),
+    `Status ${noticePage.status}`)
+
+  // Damit die Mail-Seite prüfbar ist: Mails gehen nur an BESTÄTIGTE Adressen.
+  await poolUsers.updateEmailVerification({ userId: owner.userId, emailVerification: true })
+  const contactIp = `203.0.113.${1 + Math.floor(Math.random() * 250)}`
+  const contactBody = { message: 'Ich glaube, das war ein Versehen. Bitte meldet euch bei mir.' }
+  const contacted = await call(host, '/api/community/removed-contact', {
+    method: 'POST', cookie: joinerCookie, body: contactBody, clientIp: contactIp,
+  })
+  check('Kontakt an die Leitung → 200', contacted.status === 200 && contacted.json?.ok === true,
+    `Status ${contacted.status} ${contacted.text.slice(0, 160)}`)
+  check('…und die Antwort verrät nichts über die Empfänger',
+    JSON.stringify(contacted.json) === '{"ok":true}', JSON.stringify(contacted.json))
+  const contactedAgain = await call(host, '/api/community/removed-contact', {
+    method: 'POST', cookie: joinerCookie, body: contactBody, clientIp: contactIp,
+  })
+  check('zweite Nachricht in derselben Woche → 429 removed_contact_limit',
+    contactedAgain.status === 429 && contactedAgain.json?.reason === 'removed_contact_limit',
+    `Status ${contactedAgain.status} ${contactedAgain.text.slice(0, 160)}`)
+  const appealRows = await poolTables.listRows({
+    databaseId: poolDatabaseId,
+    tableId: 'notifications',
+    queries: [Query.equal('senderId', joiner.userId), Query.equal('type', 'member.appeal'), Query.limit(25)],
+  })
+  for (const row of appealRows.rows) cleanup.notifications.push(row.$id)
+  check('…in der Glocke der Leitung steht je Person GENAU EINE Meldung (Inhaber + Admin, kein Moderator)',
+    appealRows.total === 2
+    && new Set(appealRows.rows.map(row => row.recipientId)).size === 2
+    && appealRows.rows.every(row => row.recipientId === owner.userId || row.recipientId === staff.admin.userId),
+    JSON.stringify(appealRows.rows.map(row => row.recipientId)))
+
+  // Mail-Beweis über Mailpit (lokal; ohne erreichbares Mailpit nur ein Hinweis).
+  const mailpit = process.env.MAILPIT_URL || 'http://localhost:8025'
+  const appealMails = await (async () => {
+    for (let i = 0; i < 10; i++) {
+      const res = await fetch(`${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${owner.email}`)}&limit=20`).catch(() => null)
+      if (!res?.ok) return null
+      const found = ((await res.json()).messages ?? []).filter(m => (m.ReplyTo ?? []).some(r => r.Address === joiner.email))
+      if (found.length > 0) return found
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    return []
+  })()
+  if (appealMails === null) console.log('    ℹ Mailpit nicht erreichbar — Mail-Seite übersprungen')
+  else {
+    check('…und GENAU EINE Mail an den bestätigten Admin, Antwort-Adresse = die entfernte Person',
+      appealMails.length === 1, `${appealMails.length} Mails`)
+  }
+
+  const neverMember = await createPoolUser('never')
+  const neverCookie = await login(neverMember)
+  const neverContact = await call(host, '/api/community/removed-contact', {
+    method: 'POST', cookie: neverCookie, body: contactBody, clientIp: contactIp,
+  })
+  check('nie Mitglied: Kontakt-Route → 404 (kein allgemeines Formular)', neverContact.status === 404,
+    `Status ${neverContact.status}`)
+  const neverHome = await call(host, '/', { cookie: neverCookie })
+  check('…und auf der Startseite KEINE Umleitung', neverHome.status === 200,
+    `Status ${neverHome.status} Location ${neverHome.headers?.location ?? ''}`)
+
+  // Der Rückweg: eine neue Einladung, angenommen auf diesem Host — die Sperre
+  // ist danach SOFORT weg (Notiz „wieder aufgenommen" schlägt den 60-s-Cache
+  // „ehemalig").
+  await poolUsers.updateEmailVerification({ userId: joiner.userId, emailVerification: true })
+  const backInvite = await control.createRow({
+    databaseId,
+    tableId: 'community_invites',
+    rowId: ID.unique(),
+    data: {
+      communityId,
+      email: joiner.email,
+      role: 'viewer',
+      status: 'pending',
+      tokenHash: createHash('sha256').update(`p05-${ID.unique()}`, 'utf8').digest('hex'),
+      expiresAt: new Date(Date.now() + 7 * 86400_000).toISOString(),
+      invitedBy: owner.userId,
+    },
+  })
+  cleanup.invites.push(backInvite.$id)
+  const myInvites = await call(host, '/api/community/invites/mine', { cookie: joinerCookie })
+  check('Entfernt: die eigene neue Einladung ist sichtbar (Rückweg)',
+    myInvites.status === 200 && (myInvites.json?.invites ?? []).some(invite => invite.id === backInvite.$id),
+    `Status ${myInvites.status} ${myInvites.text.slice(0, 160)}`)
+  const backAccepted = await call(host, '/api/community/members/accept', {
+    method: 'POST', cookie: joinerCookie, body: { inviteId: backInvite.$id },
+  })
+  check('…und lässt sich annehmen → 200', backAccepted.status === 200,
+    `Status ${backAccepted.status} ${backAccepted.text.slice(0, 160)}`)
+  const readAfterReturn = await call(host, `/api/comments?targetId=a5-read-${Date.now()}&targetType=verify`, { cookie: joinerCookie })
+  check('nach der Annahme ist die Sperre SOFORT weg (Lesen → 200)', readAfterReturn.status === 200,
+    `Status ${readAfterReturn.status} ${readAfterReturn.text.slice(0, 160)}`)
+  const homeAfterReturn = await call(host, '/', { cookie: joinerCookie })
+  check('…und die Startseite leitet nicht mehr um', homeAfterReturn.status === 200,
+    `Status ${homeAfterReturn.status} Location ${homeAfterReturn.headers?.location ?? ''}`)
 
   console.log('  c) geschlossene Community: nur per Einladung')
   const closing = await call(host, '/api/community/registration', {
@@ -918,12 +1046,11 @@ finally {
   console.log('\n11. Aufräumen')
   // Kommentare liegen im POOL-Projekt, nicht im Control Plane — eigene
   // Verbindung, eigene Datenbank-Id (in der Praxis dieselbe; Override per Env).
-  if (cleanup.comments.length > 0) {
-    const poolDb = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
-    const poolDatabaseId = process.env.POOL_DATABASE_ID || databaseId
-    for (const id of cleanup.comments) {
-      await poolDb.deleteRow({ databaseId: poolDatabaseId, tableId: 'comments', rowId: id }).catch(() => {})
-    }
+  for (const id of cleanup.comments) {
+    await poolTables.deleteRow({ databaseId: poolDatabaseId, tableId: 'comments', rowId: id }).catch(() => {})
+  }
+  for (const id of cleanup.notifications) {
+    await poolTables.deleteRow({ databaseId: poolDatabaseId, tableId: 'notifications', rowId: id }).catch(() => {})
   }
   if (cleanup.presences.length > 0) {
     const poolPresences = new Presences(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))

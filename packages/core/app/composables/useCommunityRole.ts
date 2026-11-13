@@ -114,3 +114,20 @@ export function useRoleLabel() {
     return key ? t(key) : null
   })
 }
+
+/**
+ * WURDE ICH AUS DIESER COMMUNITY ENTFERNT? (SEC-030 Teil 2, 2026-11-13) —
+ * gespiegelt aus `event.context.communityRemoved`
+ * (server/middleware/06.community-removed.ts) über tenant-brand.server.ts,
+ * dieselbe Bauart wie die Rolle: kein zusätzlicher API-Aufruf.
+ *
+ * Leser: die globale Routen-Middleware (führt auf die Hinweisseite), das
+ * Realtime-Gate (`realtimeEnabled`: eine entfernte Person öffnet keinen
+ * Socket, holt keinen Token und schreibt keine Anwesenheit) und der zentrale
+ * 403-Leser (setzt ihn, wenn der Entzug mitten in der Sitzung passiert).
+ *
+ * NUR UX-Schicht: die Grenze ist die Server-Middleware.
+ */
+export function useCommunityRemoved() {
+  return useState<boolean>('pukalani-community-removed', () => false)
+}

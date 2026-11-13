@@ -134,6 +134,43 @@ paths:
   steht; dass sie in jedem Zweig greift, belegen die Proben je Paket
   (`tests/participation-guard.test.ts`, Prüfstand
   `core/tests/support/participationHarness.ts`).
+- ENTFERNT ⇒ KEIN ZUGRIFF, NUR DER HINWEIS (SEC-030 Teil 2, seit 2026-11-13 —
+  Davids Entscheidung 2026-11-12): wem ein Admin den Zugang entzogen hat
+  (`community_members.status='removed'` — eine POSITIVE Tatsache; „war nie
+  Mitglied" ist etwas anderes und sieht den Hinweis NICHT), der bekommt auf
+  dem Host dieser Community angemeldet nichts mehr. ERKENNEN:
+  `isRemovedFromCommunity(event)` (core/server/utils/communityRemoval.ts, pure
+  Reihenfolge `detectCommunityRemoval`): frische Notiz „gerade entzogen" ⇒ ja
+  (schlägt Rollen-Cache 30 s UND den Cache „ehemalig" 60 s) · frische Notiz
+  „wieder aufgenommen" ⇒ nein (`rememberCommunityAccessRestored` in
+  accept.post.ts, sonst bliebe eine neu Eingeladene bis zu 60 s draußen) ·
+  aktive Rolle ⇒ nein · sonst `resolveFormerMembers`. FAIL-SOFT: bei Störung
+  „nein" — die Sperre darf kein Mitglied auf Verdacht aussperren; die
+  Schreib-Wachen dahinter bleiben fail-closed. SPERREN:
+  `server/middleware/06.community-removed.ts` (nach `06.community-label`)
+  setzt `event.context.communityRemoved` und antwortet JEDER `/api/**`-Route
+  mit 403 `reason: community_removed`, außer der ERLAUBNISLISTE
+  (`removedApiAllowed`, fail-closed, Segmentgrenze): Core `/api/auth/me`,
+  `/api/auth/logout`, `/api/health`, `/api/_nuxt_icon`; Layer melden weitere
+  über `pukalani.community.removedAllowedApi` an (onboarding: Kontakt-Route und
+  die zwei Routen des Rückwegs per Einladung). NEUE ROUTE AUF DER LISTE ⇒ sie
+  darf nur über das EIGENE Konto antworten, nie etwas aus der Community.
+  ZEIGEN: der Zustand reist per SSR in den Client (`useCommunityRemoved`), die
+  globale Routen-Middleware `community-removed.global.ts` führt jede Seite auf
+  `pukalani.community.removedNoticePath` (onboarding: `/removed`), der zentrale
+  403-Leser lädt bei `community_removed` dorthin um (Entzug mitten in der
+  Sitzung). Realtime ist für Entfernte aus (`realtimeEnabled()`): kein Socket,
+  kein Token, kein Heartbeat. KONTAKT:
+  `POST /api/community/removed-contact` (onboarding) — nur für Entfernte (sonst
+  404), eine Nachricht je 7 Tage je (Community, Konto), atomar VOR dem Versand
+  gezählt (`store.hit`) plus dauerhaft über die `rowId` der Glocken-Zeile;
+  Glocke (`member.appeal`) und genau eine Mail je Owner/Admin mit `Reply-To`
+  der Person; die Antwort verrät nichts über die Empfänger. Abgemeldet liest
+  eine entfernte Person in einer ÖFFENTLICHEN Community weiter, was jeder Gast
+  liest — das ist die Bedeutung von „öffentlich", keine Lücke. Beweis:
+  Abschnitt 10 b2 in `packages/onboarding/scripts/verify-site-authz.mjs`,
+  E2E `apps/comments/e2e/community-removed.spec.ts` (nur gegen eine
+  Pool-Bühne, in der CI übersprungen).
 - KURSE: VORSCHAU FÜR ALLE, INHALT FÜR MITGLIEDER (SEC-029, seit 2026-11-13 —
   Davids Entscheidung 2026-11-12): Übersicht und Vorschau eines
   VERÖFFENTLICHTEN Kurses sieht jeder, auch ohne Konto und auch in einer

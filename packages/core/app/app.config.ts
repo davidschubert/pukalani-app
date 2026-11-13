@@ -671,6 +671,22 @@ export default defineAppConfig({
        * Vorhandensein.
        */
       memberInvitesPerWeek: 5,
+      /**
+       * ENTFERNTE KONTEN (SEC-030 Teil 2, 2026-11-13) — zwei Verträge mit
+       * den Layern, die Core-Defaults sind „nichts":
+       *
+       * `removedNoticePath`: die Hinweisseite, auf die eine entfernte Person
+       * von jeder Seite geführt wird (app/middleware/community-removed.global.ts).
+       * Der onboarding-Layer besitzt sie und setzt den Pfad; ohne Eintrag
+       * leitet niemand um (Core allein hat keine Seite).
+       *
+       * `removedAllowedApi`: API-Präfixe, die eine entfernte Person ZUSÄTZLICH
+       * zur Core-Liste (shared/communityRemoval.ts) erreicht — Arrays werden
+       * beim Mergen konkateniert. Nur eintragen, was nichts aus der Community
+       * verrät (der onboarding-Layer: seine Kontakt-Route).
+       */
+      removedNoticePath: '',
+      removedAllowedApi: [] as string[],
     },
     security: {
       /** CSRF-Origin-Check für unsichere Methoden auf /api/* (server/middleware/

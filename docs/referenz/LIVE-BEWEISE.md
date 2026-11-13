@@ -67,7 +67,7 @@ Control Plane laufen sie nicht.
 | `moderation/verify-report-boundary.mjs` | Meldungs-Grenze auf REALTIME-Ebene (Row-Permissions, nicht Route) | Platform-Server + 1 Community |
 | `onboarding/verify-control-host.mjs` | O3: Kontroll-Host vs. Community-Host vs. unbekannter Host | Platform-Server + `kunde-a` |
 | `onboarding/verify-dashboard-access.mjs` | N1: Site-Rollen öffnen das Kunden-Dashboard | Platform + Control-Server |
-| `onboarding/verify-site-authz.mjs` | O5: Autorisierung je Community, Team-Verwaltung, Mitgliedschaft als Ereignis | Platform-Server + Control Plane |
+| `onboarding/verify-site-authz.mjs` | O5: Autorisierung je Community, Team-Verwaltung, Mitgliedschaft als Ereignis; SEC-030: Mitmachen verlangt Zugehörigkeit, Sperre und Hinweisseite für Entfernte (10 b2, braucht Mailpit). Sendet je Lauf bis zu 40 Registrierungs-Proben: mehr als zwei Läufe je Stunde scheitern an der Stunden-Bremse der Registrierung (429 statt 403) | Platform-Server + Control Plane |
 | `onboarding/verify-site-branding.mjs` | Entscheidung 12 + B5: Theme/Variante/Grundton je Community | dito; wartet mehrfach 30 s Resolver-Cache aus |
 | `onboarding/verify-trial-notice.mjs` | M13: Hinweis auf die ablaufende Testphase | dito; ebenfalls Cache-Wartezeiten |
 | `onboarding/verify-my-overview.mjs` | F12: die Kunden-Übersicht auf `my.*` | Platform-Server mit drei Test-Hosts |

@@ -263,6 +263,18 @@ export interface MailInput {
    * Aufrufer, nodemailer kodiert sie.
    */
   headers?: Record<string, string>
+  /**
+   * ANTWORT-ADRESSE (`Reply-To`) NUR FÜR DIESE MAIL (SEC-030 Teil 2,
+   * 2026-11-13). Erster Nutzer: die Nachricht einer entfernten Person an die
+   * Leitung ihrer Community — „Antworten" im Mail-Programm soll bei der
+   * Person landen, nicht bei unserer Absender-Adresse, ohne dass ihre Adresse
+   * zum Absender wird (das bräche SPF/DKIM und gäbe ihr fremden Ruf).
+   *
+   * Rückwärtskompatibel: ohne Feld trägt der Umschlag nichts. Der Wert geht
+   * unverändert an nodemailer; ihn frei von Zeilenumbrüchen zu halten, ist
+   * Sache des Aufrufers (wie bei `headers`).
+   */
+  replyTo?: string
 }
 
 /**
@@ -287,6 +299,7 @@ export async function sendMail(event: H3Event | undefined, input: MailInput): Pr
     subject: input.subject,
     text: input.text,
     ...(input.html ? { html: input.html } : {}),
+    ...(input.replyTo ? { replyTo: input.replyTo } : {}),
     // Nur setzen, wenn es welche gibt: ein leeres `headers: {}` an jeder Mail
     // wäre ein Unterschied im Umschlag, den niemand beschlossen hat.
     ...(input.headers && Object.keys(input.headers).length > 0 ? { headers: input.headers } : {}),

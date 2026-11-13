@@ -1,3 +1,4 @@
+import { COMMUNITY_REMOVED_CODE } from '../../shared/communityRemoval'
 import { COMMUNITY_SUSPENDED_CODE } from '../../shared/communitySuspension'
 import { notAMemberNoticeApplies } from '../../shared/communityParticipation'
 import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchErrorBridge'
@@ -49,6 +50,20 @@ import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchError
  * `notAMemberNoticeApplies`: nur bei Schreibversuchen und nicht für Adressen,
  * deren Seiten es selbst erklären (Kurse — `pukalani.notices.
  * notAMemberSelfExplained`, sonst meldete die Einschreibung es doppelt).
+ *
+ * DRITTER GRUND, KEIN TOAST (SEC-030 Teil 2, 2026-11-13): `community_removed`.
+ * Wird jemand MITTEN in der Sitzung entfernt, antwortet die nächste
+ * API-Anfrage (oft eine im Hintergrund: Anwesenheit, Glocke, Realtime-Token)
+ * mit diesem Grund. Statt eines Toasts geht es auf die Hinweisseite — als
+ * VOLLES Neuladen, nicht als Navigation: erst der neue Seitenaufbau bringt
+ * den Zustand „entfernt" per SSR mit, und damit bleiben Socket, Token-Refresh
+ * und Heartbeat aus (Realtime-Gate). Eine Navigation ließe sie laufen, und
+ * jede weitere Antwort käme wieder hier an. Auf der Hinweisseite selbst und
+ * nach dem ersten Auslösen passiert nichts mehr (keine Schleife). Ohne
+ * angemeldete Hinweisseite (`pukalani.community.removedNoticePath`) bleibt es
+ * still — die Grenze ist ohnehin der Server. Und solange der Zustand gesetzt
+ * ist, schweigt auch der Hinweis `not_a_member`: für eine entfernte Person
+ * ist er die falsche Erklärung.
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const appConfig = useAppConfig() as { pukalani?: { notices?: { notAMemberSelfExplained?: string[] } } }
@@ -69,8 +84,28 @@ export default defineNuxtPlugin((nuxtApp) => {
     })
   }
 
+  const removedNoticePath = (useAppConfig() as { pukalani?: { community?: { removedNoticePath?: string } } })
+    .pukalani?.community?.removedNoticePath ?? ''
+  const removed = useCommunityRemoved()
+  let leaving = false
+  const leaveToRemovedNotice = () => {
+    removed.value = true
+    if (leaving || !removedNoticePath) return
+    nuxtApp.runWithContext(() => {
+      const noticeTarget = useLocalePath()(removedNoticePath)
+      const here = useRouter().currentRoute.value.path.replace(/\/+$/, '') || '/'
+      if (here === (noticeTarget.replace(/\/+$/, '') || '/')) return
+      leaving = true
+      reloadNuxtApp({ path: noticeTarget, persistState: false })
+    })
+  }
+
   const target = globalThis as unknown as Record<string, unknown>
   target[FETCH_ERROR_HOOK] = (notice: FetchErrorNotice) => {
+    if (notice.status === 403 && notice.reason === COMMUNITY_REMOVED_CODE) {
+      leaveToRemovedNotice()
+      return
+    }
     if (notice.status === 403 && notice.reason === COMMUNITY_SUSPENDED_CODE) {
       show({
         id: 'community-suspended',
@@ -80,7 +115,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       })
       return
     }
-    if (notAMemberNoticeApplies(notice, selfExplained)) {
+    if (!removed.value && notAMemberNoticeApplies(notice, selfExplained)) {
       show({
         id: 'community-not-a-member',
         title: 'error.notAMember',
