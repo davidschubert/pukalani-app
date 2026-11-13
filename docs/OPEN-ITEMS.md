@@ -43,6 +43,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 26 · P29 | **Anmelde-Regeln auf Production einschalten.** Code, Skript und Runbook sind da (2026-11-13). Offen: je Projekt ein Schlüssel mit `policies`-Recht, `ops:auth-policies --apply` in vier Projekten, `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server, die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten. | Mittel | S | Ja (jeder Schritt ändert Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
 | 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Offen: (a) **Klick-Probe auf Live**, abgemeldet und als Mitglied, (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
 | 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live** (Schreiben als Mitglied; ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
+| 29 · SI1 | **Sicherungen: Nacharbeiten.** Die vier Sicherungen aus dem Paket P06 sind seit 2026-11-14 live (COMPLETE „GA1 P06"). Offen: (a) **den stündlichen Label-Abgleich von „nur zählen" auf „aufräumen" stellen** (der erste Probelauf fand nichts), (b) **Klick-Probe auf Live** (Einladungslink aus einem Webmail-Fenster öffnen; „Zugang entziehen" mit einem Test-Konto), (c) was der Abgleich nicht findet, (d) Lint-Lauf schneller machen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) Freigabe, (b) selbst** | [Einzelheiten](#si1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -650,6 +651,37 @@ NICHT hier.
   Der Kopf von `packages/messages/server/utils/messageGate.ts` sagt, jede
   Schreib-Route rufe eine seiner Funktionen; für Löschen und Gelesen-Markieren
   stimmt das nicht.
+
+<a id="si1"></a>
+
+**SI1 — Sicherungen: Nacharbeiten (aus dem Gesamtaudit, Paket P06).**
+
+- **(a) Label-Abgleich auf „aufräumen" stellen.** Der Lauf steht in
+  `apps/platform/app/app.config.ts` auf `dry-run`: er zählt und schreibt eine
+  Zeile ins Log, ändert aber nichts. Der erste Lauf auf Production fand 0
+  Kandidaten. Umstellen auf `apply` ist eine Zeile und Davids Freigabe
+  (Runbook `docs/runbooks/LABEL-ABGLEICH.md`).
+- **(b) Klick-Probe auf Live.** Geprüft ist lokal. Auf einer Community: eine
+  Einladung an eine Test-Adresse schicken und den Link aus einem
+  Webmail-Fenster öffnen (die Seite muss die Einladung zeigen). Ein Test-Konto
+  entfernen und sehen, dass die Liste „entfernt" zeigt und kein Hinweis auf
+  einen offenen Lese-Zugang kommt.
+- **(c) Was der Abgleich nicht findet.** Ein Moderations-Label nach einer
+  Herabstufung (die Zeile bleibt aktiv; es fällt erst beim nächsten Besuch der
+  Person). Mitglieder, deren Umstellung beim Stilllegen einer Community im
+  Control Plane scheiterte. Der Lauf merkt sich seine Lesestelle nur im
+  Prozess. Die Reihenfolge je Konto gilt nur innerhalb eines Prozesses;
+  Platform-App und Betreiber-Konsole sind zwei.
+- **(d) Lint-Lauf.** Mit der typisierten Regel dauert `pnpm -r lint` lokal
+  etwa 43 s statt 18 s (in der CI rund 2,5 Minuten für den ganzen Job). Ein
+  eigener Durchgang mit einem TypeScript-Programm je App käme zusammen auf
+  etwa 28 s, nimmt die Regel aber aus dem Lint des einzelnen Pakets.
+- **(e) Kleinigkeiten.** Die Ops-Route `run-label-reconcile` steht nicht in
+  der Bremsen-Liste (wie die der Zahlungswarnung). Eine 503 trägt im Umschlag
+  den Code `INTERNAL_ERROR` (es gibt keinen eigenen für 503). Die Seite
+  `/invite` von branding.supply ist nach der Umstellung nur per Test und
+  Quelltext geprüft, nicht im Browser. README und DECISION-LOG nennen in
+  datierten Zeilen noch den entfernten Schalter `csrfOriginCheck`.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
