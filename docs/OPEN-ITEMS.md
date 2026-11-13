@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 16 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 17 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-13**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -41,6 +41,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 24 · KE3 | **Profilbild ohne Speichern bleibt als Datei liegen, ohne Protokoll-Eintrag.** In der Oberfläche lädt das Formular erst beim Speichern hoch; scheitert das Speichern danach (z. B. Telefonnummer schon vergeben) oder ruft jemand die Upload-Route direkt, liegt die Datei im Bucket `avatars` und ist per Adresse lesbar, bis das Konto gelöscht wird (dann räumt BE-001 auf). Kein Leck, aber Ablage-Müll. Entscheiden: Datei bei gescheitertem Speichern wieder löschen, einen Aufräum-Lauf bauen oder so lassen. | Niedrig | S | **Ja** — Entscheidung | `packages/core/app/components/user/UserProfileForm.vue` · `packages/core/server/api/storage/[bucket]/index.post.ts` |
 | 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) der Migrations-Runner baut bei jedem Lauf an drei Tabellen um, (d) vier Runbooks nennen einen Befehl, der nicht mehr geht, (e) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
 | 26 · P29 | **Anmelde-Regeln auf Production einschalten.** Code, Skript und Runbook sind da (2026-11-13). Offen: je Projekt ein Schlüssel mit `policies`-Recht, `ops:auth-policies --apply` in vier Projekten, `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server, die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten. | Mittel | S | Ja (jeder Schritt ändert Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
+| 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Offen: (a) **Klick-Probe auf Live**, abgemeldet und als Mitglied, (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -595,6 +596,29 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Kontroll- oder Community-Host. Und lokal tragen alle vier Projekte die neue
   Ablage: ein Checkout, der älter ist als `8b658900`, kann lokal kein
   Profilbild mehr hochladen (Haupt-Checkout aktualisieren).
+
+<a id="ku1"></a>
+
+**KU1 — Kurse: Nacharbeiten (aus dem Gesamtaudit, Paket P04).**
+Davids weitere Wünsche zur Kurs-Übersicht (Kategorien, Filter, Sortierung,
+„Best seller", einzelne bezahlte Kurse) sind ein eigenes Vorhaben und stehen
+NICHT hier.
+
+- **(a) Klick-Probe auf Live.** Geprüft ist lokal und in der CI. Auf einer
+  Community mit Kursen einmal abgemeldet die Kurs-Übersicht und eine Kursseite
+  öffnen (Knopf „Anmelden, um teilzunehmen"), dann als Mitglied eine Lektion.
+- **(b) Zugangsarten.** „Kostenlos" und „Mitglieder" verlangen beide die
+  Mitgliedschaft. Eine streichen oder ihr einen Unterschied geben.
+- **(c) Übersetzen-Knopf.** Er erscheint für jedes angemeldete Konto; wer kein
+  Mitglied ist, bekommt nach dem Klick nur die allgemeine Fehlermeldung.
+- **(d) Suchmaschinen.** Kurs-Vorschauen sind öffentliche Seiten, auch wenn
+  die Community auf „nur für Mitglieder" steht. Entscheiden, ob sie dort in
+  Suchmaschinen und in der Sitemap erscheinen sollen.
+- **(e) Kleinigkeiten.** `POST /api/lessons/:id/complete` prüft den Status des
+  Kurses nicht (Abschluss in einem zurückgezogenen Kurs möglich, Testfall
+  übersprungen); ein Kommentar in `packages/courses/tests/redaction-actor.test.ts`
+  und der Satz „nur Eingeloggte" oben in
+  `docs/content/3.features/6.uebersetzungen.md` sind überholt.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
