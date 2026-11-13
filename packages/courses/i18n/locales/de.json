@@ -38,7 +38,11 @@
       "progress": "{done} von {total} Lektionen ({percent} %)",
       "completed": "Abgeschlossen 🎉",
       "lessonsTitle": "Lektionen ({count})",
-      "noLessons": "Noch keine Lektionen."
+      "noLessons": "Noch keine Lektionen.",
+      "signInHint": "Melde dich an, um teilzunehmen und alle Lektionen zu öffnen.",
+      "signInToJoin": "Anmelden, um teilzunehmen",
+      "notMember": "Dieser Kurs ist nur für Mitglieder dieser Community.",
+      "notMemberHint": "Die Vorschau steht allen offen. Teilnehmen können nur Mitglieder — frag am besten die Leitung der Community nach einer Einladung."
     },
     "lesson": {
       "video": "Video ansehen",
@@ -47,7 +51,9 @@
       "done": "Lektion abgeschlossen!",
       "courseDone": "Kurs abgeschlossen — stark! 🎉",
       "failed": "Konnte den Fortschritt nicht speichern.",
-      "failedHint": "Die Lektion gilt weiterhin als offen. Klick noch einmal auf „Lektion abschließen“."
+      "failedHint": "Die Lektion gilt weiterhin als offen. Klick noch einmal auf „Lektion abschließen“.",
+      "notMemberHint": "Die Lektionen sind Mitgliedern vorbehalten. Die Kursübersicht zeigt dir, was der Kurs bietet.",
+      "backToCourse": "Zur Kursübersicht"
     },
     "admin": {
       "title": "Kurse",

@@ -44,8 +44,9 @@ export default defineEventHandler(async (event) => {
     authorName: user.name,
     lessonCount: 0,
   }, {
-    // published: Mitglieder lesen (read users); drafts nur Verwaltung
-    permissions: status === 'published' ? [COURSE_READ_USERS] : [],
+    // Kein Leserecht, auch veröffentlicht nicht (SEC-029, courseAccess.ts):
+    // ausgeliefert wird nur über die Routen.
+    permissions: [],
   }).catch((error) => {
     throw toH3Error(error, 'Could not create course')
   })

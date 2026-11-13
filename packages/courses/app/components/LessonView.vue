@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CourseDetailResponse, LessonRow, LessonTranslateResponse } from '../../shared/types/course'
+import { COURSE_NOT_A_MEMBER_CODE, type CourseDetailResponse, type LessonRow, type LessonTranslateResponse } from '../../shared/types/course'
 
 /**
  * LessonView: Markdown XSS-sicher (Core-Sink), optionaler Video-Link
@@ -16,7 +16,16 @@ const [{ data: lesson, error }, { data: course, refresh: refreshCourse }] = awai
   useFetch<LessonRow & { courseSlug: string }>(`/api/lessons/${route.params.id}`),
   useFetch<CourseDetailResponse>(`/api/courses/${route.params.slug}`),
 ])
-if (error.value || !lesson.value || !course.value) {
+/**
+ * Kein Mitglied dieser Community (SEC-029): die Kurs-Vorschau ist öffentlich,
+ * der Inhalt nicht. Statt einer Fehlerseite ein klarer Satz und der Weg
+ * zurück zur Vorschau — dort steht, was der Kurs bietet.
+ */
+const notMember = computed(() => {
+  const err = error.value as { statusCode?: number, data?: { reason?: string } } | null | undefined
+  return err?.statusCode === 403 && err.data?.reason === COURSE_NOT_A_MEMBER_CODE
+})
+if (!notMember.value && (error.value || !lesson.value || !course.value)) {
   throw createError({ status: 404, statusText: 'Lesson not found' })
 }
 
@@ -97,7 +106,21 @@ async function complete() {
 </script>
 
 <template>
-  <UContainer class="max-w-3xl py-8">
+  <UContainer v-if="notMember" class="max-w-3xl py-8">
+    <UAlert
+      color="warning" variant="subtle" icon="i-ph-lock"
+      :title="t('courses.detail.notMember')"
+      :description="t('courses.lesson.notMemberHint')"
+      data-testid="lesson-not-member"
+    >
+      <template #actions>
+        <UButton :to="localePath(`/courses/${route.params.slug}`)" color="neutral" variant="soft" size="sm" icon="i-ph-arrow-left">
+          {{ t('courses.lesson.backToCourse') }}
+        </UButton>
+      </template>
+    </UAlert>
+  </UContainer>
+  <UContainer v-else class="max-w-3xl py-8">
     <UButton
       :to="localePath(`/courses/${route.params.slug}`)"
       color="neutral" variant="ghost" size="sm" icon="i-ph-arrow-left" class="mb-4"

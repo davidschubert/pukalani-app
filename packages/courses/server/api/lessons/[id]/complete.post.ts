@@ -7,6 +7,8 @@ import { ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, type LessonPro
  * der Server enrollment.completedAt autoritativ + recordActivity
  * 'course.completed'.
  *
+ * Nur für MITGLIEDER dieser Community (SEC-029), vor jedem Datenbankzugriff.
+ *
  * Datentür als Operator: Lektionen/Progress/Enrollments tragen bewusst keine
  * breiten Rechte — die Tür belegt die Zugehörigkeit und stempelt den
  * Mandanten auf die Fortschritts-Zeile.
@@ -14,10 +16,9 @@ import { ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, type LessonPro
 export default defineEventHandler(async (event) => {
   // Produkt-Gate (P4): Kurse sind ab Plan pro enthalten.
   requirePlanProduct(event, 'courses')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // Mitglieder-Wache VOR dem ersten Datenbankzugriff (SEC-029): gleiche
+  // Antwort für vorhandene und nicht vorhandene Ids.
+  const user = await requireCourseMember(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {

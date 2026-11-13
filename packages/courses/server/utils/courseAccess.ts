@@ -3,24 +3,13 @@ import type { H3Event } from 'h3'
 import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, COURSES_TABLE, ENROLLMENTS_TABLE, LESSONS_TABLE, type CourseAccess, type CourseRow, type EnrollmentRow, type LessonRow } from '../../shared/types/course'
 
 /**
- * Row-Permission published-Kurse: Mitglieder-Katalog (kein Gast-Content).
- *
- * BEWUSST unverändert `Role.users()` — auch im Pool (Muster events
- * EVENT_READ_ANY). Zwei Gründe, beide praktisch:
- *  1. Das Publikum-Helferlein `tenantRowPermissions(event, {read:'members'})`
- *     würde im Pool `Role.label(communityId)` setzen — und dieses Label trägt seit A5
- *     (2026-07-29) genau wer eine Mitgliedschaft MIT ZUGANG hat. Für einen
- *     Kurs-Katalog ist das die falsche Grenze: er soll für alle eingeloggten
- *     Nutzer dieser Community sichtbar sein, auch bevor jemand beigetreten ist
- *     (der Beitritt entsteht ja erst beim ersten eigenen Schreibvorgang). Mit
- *     `label` sähe ein Neuankömmling einen leeren Katalog und hätte keinen
- *     Anlass, jemals etwas zu tun.
- *  2. Die Mandanten-Grenze ist ohnehin die Datentür: `list` filtert auf
- *     tenantId, `get` belegt die Zugehörigkeit VOR der Ausgabe. Die
- *     Row-Permission trennt hier Publikum (eingeloggt vs. Gast), nicht
- *     Mandanten — genau wie read(any) bei Events.
+ * RECHTE-MODELL „NUR SERVER-ZUGRIFF" (SEC-029, Muster `pages`/`lessons`):
+ * Kurs-Zeilen tragen KEIN Leserecht, auch veröffentlichte nicht: ein Recht an
+ * der Zeile gälte neben unseren Routen und wüsste nichts von Mitgliedschaft
+ * oder Feldauswahl. Die Routen lesen über die Operator-Klinke und sind die
+ * einzige Grenze: die Vorschau als Feldauswahl (shared/coursePreview.ts),
+ * alles Weitere hinter `requireCourseMember` (courseMembership.ts).
  */
-export const COURSE_READ_USERS = Permission.read(Role.users())
 
 /** Eigene Zeile lesbar (Buchung/Fortschritt) — mehr nicht. */
 export const ownRowRead = (userId: string): string[] => [Permission.read(Role.user(userId))]
@@ -64,7 +53,8 @@ export function isCourseAccessConfigured(): boolean {
 }
 
 /**
- * free/members = eingeloggt genügt · paid = delegiert an den App-Guard
+ * free/members = Mitglied genügt (geprüft VOR dem Aufruf, courseMembership.ts)
+ * · paid = delegiert an den App-Guard
  *
  * BEIDE 403 tragen einen fachlichen Grund (`data.code` → `reason` im Envelope,
  * Audit-Befund 2026-08-02). Ohne ihn konnte die Oberfläche „diese Instanz
