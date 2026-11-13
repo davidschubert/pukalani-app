@@ -188,12 +188,20 @@ export async function deleteUserCompletely(
     }
   }
 
-  // (5) CORE-EIGENE CLEANUPS (einzeln best effort; 404 = schon weg = Erfolg)
+  // (5) CORE-EIGENE CLEANUPS (einzeln best effort; 404 = schon weg = Erfolg;
+  // entscheiden NICHT über allOk/users.delete).
+  // Avatar (BE-001): ALLE Dateien des Kontos im Avatar-Bucket, nicht nur die
+  // aus prefs.avatarUrl — jeder Upload legt eine neue Datei an, ungespeicherte
+  // bleiben sonst liegen. Die Suche nach Rechten braucht nur die userId und
+  // läuft deshalb auch im Re-Run, wenn das Konto schon weg ist (dann fehlt nur
+  // avatarId). Ein Fehlschlag ist nicht mehr still, sondern eine Log-Zeile.
   const config = useRuntimeConfig(event)
+  const avatarsBucket = config.public.appwriteAvatarsBucket
   const prefs = user?.prefs as { avatarUrl?: string } | undefined
-  const avatarId = avatarFileId(prefs?.avatarUrl, config.public.appwriteAvatarsBucket)
-  if (avatarId) {
-    await admin.storage.deleteFile({ bucketId: config.public.appwriteAvatarsBucket, fileId: avatarId }).catch(() => {})
+  const avatarId = avatarFileId(prefs?.avatarUrl, avatarsBucket)
+  const avatarCleanup = await deleteAvatarFilesOf(admin.storage, avatarsBucket, userId, [avatarId])
+  if (avatarCleanup.failed > 0) {
+    logEvent('error', 'gdpr.avatar_cleanup_failed', { userId, failed: avatarCleanup.failed, deleted: avatarCleanup.deleted })
   }
   await admin.presences.delete({ presenceId: userId }).catch(() => {})
 
