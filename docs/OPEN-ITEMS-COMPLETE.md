@@ -83,11 +83,18 @@ nichts; der dritte Export in einer Minute bekommt 429; 200 gleichzeitige
 Aufrufe von `/api/health` antworten alle 200. In Redis trägt jeder der 71
 Schlüssel einen Ablauf, keiner eine Adresse im Klartext.
 
-**Offen geblieben.** Ohne Redis zählt jeder Prozess für sich; das trägt mit
-`instances: 1` je App (Hinweis in `docs/runbooks/DEPLOYMENT.md`). Ob
-`NUXT_REDIS_URL` auf Production gesetzt ist, prüft kein Wächter. Die
-Größenprüfung VOR dem Lesen des Bodys bei Favicon und Event-Titelbild ist
-nicht Teil dieses Pakets.
+**Live (2026-11-13).** PR #132, Merge `6a2a2939`; alle sechs Hosts melden den
+Commit unter `/api/health`, die Antwort trägt kein `user` mehr, die Wächter
+sind danach grün. Nachgesehen auf dem Server (nur Namen und Zählungen):
+`platform`, `admin` und `portfolio` zählen geteilt in Redis, jeder Schlüssel
+trägt einen Ablauf, kein Rückfall auf den Zähler im Prozess im Log;
+`branding.supply` hat `NUXT_REDIS_URL` nicht und zählt je Prozess (das trägt
+mit `instances: 1`, Hinweis in `docs/runbooks/DEPLOYMENT.md`).
+
+**Offen geblieben.** Steht als Punkt **AB1** in
+[OPEN-ITEMS.md](OPEN-ITEMS.md#ab1): Klick-Probe auf Live, Redis für
+branding.supply samt Wächter, Größenprüfung vor dem Einlesen bei zwei Uploads,
+zwei Fehlerwege, Mails je Empfänger, Kleinigkeiten.
 
 **Gelernt:** Eine Schutzmaßnahme, die nur nacheinander getestet ist, ist für
 gleichzeitige Anfragen ungetestet. „Lesen, Route laufen lassen, danach
