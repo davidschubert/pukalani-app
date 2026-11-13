@@ -22,12 +22,24 @@ import { createBlockSchema } from '../../../../schemas/message'
 export default defineEventHandler(async (event) => {
   requirePlanProduct(event, 'messages')
 
-  const user = event.context.user
-  if (!user) throw createError({ status: 401, statusText: 'Unauthorized' })
+  // SEC-030 (2026-11-13, Davids Entscheidung): wer aus der Community entfernt
+  // wurde, schreibt und liest hier nichts mehr — auch nicht in einem Gespräch,
+  // das schon besteht. Die Wache steht vor jedem Datenbankzugriff; im
+  // Silo/Einzelbetrieb gibt sie durch.
+  const user = await requireCommunityMembership(event)
 
   const body = await readValidatedBody(event, createBlockSchema().parse)
   if (body.userId === user.$id) {
     throw createError({ status: 400, statusText: 'You cannot block yourself' })
+  }
+
+  // SEC-036 (2026-11-13): gesperrt wird nur, wer HIER auflösbar ist (Handle
+  // hier oder gemeinsames Gespräch hier — `blockTargetResolvable`). Sonst
+  // 404, und zwar dieselbe für „gibt es nicht" und „gehört nicht hierher":
+  // die Route soll nicht bestätigen, dass hinter einer Id ein Konto steht.
+  const resolvable = await blockTargetsResolvableHere(event, user.$id, [body.userId])
+  if (!resolvable.has(body.userId)) {
+    throw createError({ status: 404, statusText: 'User not found' })
   }
 
   await blockUser(event, user.$id, body.userId, body.everywhere)

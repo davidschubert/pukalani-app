@@ -8,6 +8,7 @@ import {
   type CommunityAccessVia,
 } from '../../shared/communityAccess'
 import { isCommunityRole, type CommunityRole } from '../../shared/communityAuthz'
+import { COMMUNITY_NOT_A_MEMBER_CODE } from '../../shared/communityParticipation'
 import { trustLevelGrantsCapability } from '../../shared/trustLevel'
 
 /**
@@ -138,7 +139,7 @@ export async function resolveCommunityMembership(event: H3Event): Promise<boolea
 /**
  * Dasselbe als WACHE. 401 ohne Login, 403 mit fachlichem Grund für Fremde.
  *
- * Der Grund reist als `data: { code: 'not_a_member' }` — der zentrale Handler
+ * Der Grund reist als `data: { code: COMMUNITY_NOT_A_MEMBER_CODE }` — der zentrale Handler
  * hebt ihn als `reason` ins Envelope. Ein nackter 403 wäre hier besonders
  * ärgerlich: „verboten" beantwortet nicht, ob man sich vertan hat oder ob man
  * schlicht woanders zuhause ist.
@@ -147,7 +148,7 @@ export async function requireCommunityMembership(event: H3Event): Promise<Curren
   const user = event.context.user
   if (!user) throw createError({ status: 401, statusText: 'Unauthorized' })
   if (!(await resolveCommunityMembership(event))) {
-    throw createError({ status: 403, statusText: 'Not a member', data: { code: 'not_a_member' } })
+    throw createError({ status: 403, statusText: 'Not a member', data: { code: COMMUNITY_NOT_A_MEMBER_CODE } })
   }
   return user
 }

@@ -14,10 +14,10 @@ import { POSTS_TABLE, type CommunityPost } from '../../../shared/types/post'
 export default defineEventHandler(async (event) => {
   // Produkt-Gate (P4): der Posting-Feed ist ab Plan personal enthalten.
   requirePlanProduct(event, 'posts')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
+  // Community-Host angemeldet). Bewusst KEIN Beitritt — den eigenen Beitrag zu löschen macht
+  // niemanden zum Mitglied. 401 ohne Konto, 403 `not_a_member` für Fremde.
+  const user = await requireCommunityMembership(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {

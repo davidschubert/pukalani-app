@@ -53,10 +53,10 @@ const REACTION_LIMIT = 60
 const REACTION_WINDOW_MS = 60_000
 
 export default defineEventHandler(async (event): Promise<CommentReactionToggleResponse> => {
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   const targetId = getRouterParam(event, 'id')
   if (!targetId) {

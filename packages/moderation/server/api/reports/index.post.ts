@@ -26,10 +26,12 @@ import { REPORTS_TABLE, type Report } from '../../../shared/types/report'
  * Meldungen ALLER Communities.
  */
 export default defineEventHandler(async (event) => {
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: Melden verlangt Zugehörigkeit (ein Pool-Konto ist auf jedem
+  // Community-Host angemeldet; offene Registrierung: die Meldung ist der
+  // Beitritt). `openDuringSuspension`: Melden ist Moderation, kein Inhalt —
+  // in einer gesperrten Community melden Mitglieder weiter, Fremde treten
+  // dort aber nicht bei.
+  const user = await requireCommunityParticipant(event, { openDuringSuspension: true })
 
   const parsed = createReportSchema.safeParse(await readBody(event))
   if (!parsed.success) {

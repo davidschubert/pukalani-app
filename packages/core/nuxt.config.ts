@@ -39,6 +39,8 @@ if (typeof window !== 'undefined' && !globalThis.${FETCH_ERROR_HOOK}Wrapped) {
         globalThis.${FETCH_ERROR_HOOK}?.({
           status: context.response?.status ?? 0,
           reason: context.response?._data?.reason ?? '',
+          method: String(context.options?.method ?? 'GET').toUpperCase(),
+          url: typeof context.request === 'string' ? context.request : (context.request?.url ?? ''),
         })
       }
       catch {

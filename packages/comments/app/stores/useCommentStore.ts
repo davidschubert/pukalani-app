@@ -334,7 +334,10 @@ const commentStoreSetup = () => {
         method: 'POST',
         body: { value },
       })
-      upsertRow(response.comment)
+      // Die Antwort trägt NUR die Zähler (SEC-031, 2026-11-13) — sie werden in
+      // die aktuelle Zeile übernommen, alles andere bleibt, wie es ist.
+      const current = rows.value.find(row => row.$id === commentId) ?? snapshotRow
+      upsertRow({ ...current, ...response.comment })
       setVote(commentId, response.myVote)
     }
     catch (error) {

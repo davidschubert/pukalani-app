@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import type { ReactionCount, ReactionKey, ReactionSummary } from '../../../core/shared/reactions'
+import type { VoteCounts } from '../../../core/shared/voteCounts'
 
 export const COMMENTS_TABLE = 'comments'
 export const VOTES_TABLE = 'comment_votes'
@@ -162,9 +163,15 @@ export interface CommentListResponse {
   reactionsAllowed: ReactionKey[]
 }
 
-/** POST /:id/vote Response: frischer Zähler-Stand + eigener Vote (null = entfernt) */
+/**
+ * POST /:id/vote Response: frischer Zähler-Stand + eigener Vote (null = entfernt).
+ *
+ * NUR die Zähler (SEC-031, 2026-11-13): bis dahin stand hier der ganze
+ * Kommentar — gelesen über die Operator-Klinke, also auch für Kommentare, die
+ * das Konto nicht lesen darf. Der Store übernimmt die Zähler in seine Zeile.
+ */
 export interface VoteResponse {
-  comment: Comment
+  comment: VoteCounts
   myVote: VoteValue | null
 }
 

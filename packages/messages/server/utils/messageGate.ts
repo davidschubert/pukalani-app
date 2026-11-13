@@ -97,6 +97,14 @@ async function assertBudget(
   })
 }
 
+/** HTTP-Status eines geworfenen Fehlers (h3: `statusCode`, createError-Init: `status`). */
+function errorStatus(error: unknown): number | undefined {
+  const e = error as { statusCode?: unknown, status?: unknown } | null
+  if (typeof e?.statusCode === 'number') return e.statusCode
+  if (typeof e?.status === 'number') return e.status
+  return undefined
+}
+
 /**
  * EINE KONVERSATION ERÖFFNEN — die vollständige Prüfung.
  *
@@ -131,14 +139,26 @@ export async function requireMayOpenConversation(
     .catch((error: unknown) => {
       // 401 bleibt 401: „nicht angemeldet" ist keine Aussage über eine
       // Beziehung zwischen zwei Menschen und darf ehrlich durchgereicht
-      // werden. Alles andere wird zum EINEN Code (§ 2.3).
-      const status = error as { statusCode?: number, status?: number } | null
-      if (status?.statusCode === 401 || status?.status === 401) throw error
-      throw createError({
-        status: 403,
-        statusText: 'This person does not accept messages from you',
-        data: { code: RECIPIENT_UNAVAILABLE_CODE },
+      // werden. Ein 403 („kein Recht") wird zum EINEN Code (§ 2.3).
+      const status = errorStatus(error)
+      if (status === 401) throw error
+      if (status === 403) {
+        throw createError({
+          status: 403,
+          statusText: 'This person does not accept messages from you',
+          data: { code: RECIPIENT_UNAVAILABLE_CODE },
+        })
+      }
+      // SEC-036 (2026-11-13): ALLES ANDERE ist eine Störung (Rollen-Auflösung
+      // nicht erreichbar, 5xx, Unerwartetes) und keine Ablehnung. Bis hierhin
+      // wurde sie still zu „nimmt keine Nachrichten an" — für den Absender eine
+      // falsche Aussage über einen Menschen, für den Betrieb unsichtbar. Jetzt:
+      // eine Log-Zeile und ein neutrales 503, ohne Details nach außen.
+      logEvent('error', 'messages.permission_lookup_failed', {
+        status: status ?? 0,
+        message: error instanceof Error ? error.message : String(error),
       })
+      throw createError({ status: 503, statusText: 'Service unavailable' })
     })
 
   await assertNotBlocked(event, senderId, recipientId)

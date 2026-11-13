@@ -168,11 +168,20 @@ export interface JoinCommunityOptions {
  *  1. Nichts zu entscheiden? (kein Nutzer, kein Pool-Mandant, kein Handler) →
  *     `unavailable`. Silo/Kontroll-Host/Einzelbetrieb laufen hier vorbei: dort
  *     ist das PROJEKT die Grenze, eine Mitgliedschaft wäre Zeremonie.
- *  2. Schon eine aktive Rolle? Der Rollen-Resolver antwortet aus seinem
+ *  2. In DIESEM Request schon gefragt? Dann dieselbe Antwort (siehe
+ *     `answeredInRequest`).
+ *  3. Frisch abgelehnt? Aus dem Kurzzeit-Gedächtnis — und zwar VOR der Rolle
+ *     (SEC-030, 2026-11-13). Nach „Zugang entziehen" antwortet der
+ *     Rollen-Resolver bis zu 30 s weiter aus seinem Cache mit der alten Rolle,
+ *     die Notiz `rememberCommunityAccessRevoked` steht aber sofort. Solange die
+ *     Rolle zuerst gefragt wurde, gewann der Cache: die entfernte Person konnte
+ *     eine halbe Minute lang weiter schreiben und sich einschreiben. Der Rückweg
+ *     bleibt offen: eine angenommene Einladung wirft die Notiz weg
+ *     (`forgetCommunityAccessDecision` in accept.post.ts).
+ *  4. Schon eine aktive Rolle? Der Rollen-Resolver antwortet aus seinem
  *     30-s-Cache, meist ohne Netzwerk → `member`. Das ist der Normalfall (jedes
  *     bestehende Mitglied, das etwas schreibt) und kostet damit fast nichts.
- *  3. Frisch abgelehnt? Aus dem Kurzzeit-Gedächtnis.
- *  4. Sonst: das Control Plane fragen — und die ANTWORT am Label vollziehen.
+ *  5. Sonst: das Control Plane fragen — und die ANTWORT am Label vollziehen.
  */
 export async function joinCommunity(
   event: H3Event,
@@ -188,6 +197,49 @@ export async function joinCommunity(
 
   const communityId = tenant.communityId
 
+  const asked = answeredInRequest(event, communityId, userId)
+  if (asked) return asked
+  const outcome = await decideJoin(event, handler, communityId, userId, trigger, options)
+  rememberForRequest(event, communityId, userId, outcome)
+  return outcome
+}
+
+/**
+ * EINE Antwort je Request (SEC-030). Seit die Wache `requireCommunityParticipant`
+ * VOR der Route fragt und die Datentür beim Anlegen noch einmal (als Netz),
+ * käme ein Schreibvorgang sonst auf zwei Fragen — und bei einem frischen Beitritt
+ * auf zwei Roundtrips zum Control Plane, weil der Rollen-Cache das neue Mitglied
+ * erst nach 30 s kennt. Eine WeakMap am Event statt eines Felds in
+ * `event.context`: sie stirbt mit dem Request, und kein anderer Code kann sie
+ * versehentlich überschreiben.
+ */
+const perRequest = new WeakMap<H3Event, Map<string, CommunityJoinOutcome>>()
+
+function answeredInRequest(event: H3Event, communityId: string, userId: string): CommunityJoinOutcome | null {
+  return perRequest.get(event)?.get(decisionKey(communityId, userId)) ?? null
+}
+
+function rememberForRequest(event: H3Event, communityId: string, userId: string, outcome: CommunityJoinOutcome): void {
+  let answers = perRequest.get(event)
+  if (!answers) {
+    answers = new Map()
+    perRequest.set(event, answers)
+  }
+  answers.set(decisionKey(communityId, userId), outcome)
+}
+
+async function decideJoin(
+  event: H3Event,
+  handler: CommunityJoinHandler,
+  communityId: string,
+  userId: string,
+  trigger: CommunityJoinTrigger,
+  options: JoinCommunityOptions,
+): Promise<CommunityJoinOutcome> {
+  // Die gemerkte Ablehnung zuerst — sie ist jünger als jeder Rollen-Cache.
+  const remembered = rememberedDecision(communityId, userId)
+  if (remembered) return remembered
+
   // Bestehende Mitglieder gar nicht erst fragen. Nur möglich, wenn der Nutzer
   // AUCH der des Requests ist — bei der Anmeldung (options.userId) hat der
   // Resolver keinen Kontext-User zum Auflösen.
@@ -197,9 +249,6 @@ export async function joinCommunity(
   // werfender Resolver würde hier über die Datentür einen Kommentar zum 500
   // machen. Fail-closed wie in 06.community-label.ts: kein Wissen heißt keine Rolle.
   if (!options.userId && await resolveCommunityRole(event).catch(() => null)) return 'member'
-
-  const remembered = rememberedDecision(communityId, userId)
-  if (remembered) return remembered
 
   let outcome: CommunityJoinOutcome
   try {

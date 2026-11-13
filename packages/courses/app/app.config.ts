@@ -6,6 +6,15 @@
  */
 export default defineAppConfig({
   pukalani: {
+    /**
+     * SEC-030: die Kurs-Seiten erklären „kein Mitglied" SELBST (SEC-029 —
+     * eigener Satz und der Weg zurück zur Vorschau). Der zentrale Hinweis aus
+     * dem Core (community-suspended-notice.client.ts) schweigt für diese
+     * Adressen, sonst stünde beim Einschreiben derselbe Satz zweimal.
+     */
+    notices: {
+      notAMemberSelfExplained: ['/api/courses/', '/api/lessons/'],
+    },
     chrome: {
       nav: {
         // C4 (2026-07-31): stand bis dahin in apps/comments/app/app.config.ts —

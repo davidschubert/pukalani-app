@@ -2,7 +2,7 @@ import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { moderatorVisibleBody, shouldFreezeSnapshot } from '../../shared/messageReport'
 import { NOT_REPORTED_CODE } from '../../shared/messageErrors'
-import { otherParticipant } from '../../shared/conversations'
+import { isParticipant, otherParticipant } from '../../shared/conversations'
 import {
   CONVERSATIONS_TABLE,
   MESSAGES_TABLE,
@@ -81,12 +81,29 @@ export async function freezeReportedMessage(event: H3Event, messageId: string): 
   })
 }
 
-/** Gibt es diese Nachricht im aktuellen Mandanten? (Melde-Registry, fail-closed) */
+/**
+ * Darf das meldende Konto diese Nachricht melden? (Melde-Registry, fail-closed)
+ *
+ * NUR WER AM GESPRÄCH TEILNIMMT (SEC-031, 2026-11-13). Die Probe liest über
+ * die Moderations-Klinke, weil die Zeile kein Leserecht für die Community
+ * trägt — „gibt es die Zeile?" wäre damit für JEDE Id der Community wahr, und
+ * die erste Meldung friert den Text in die Moderations-Ansicht ein. Melden
+ * kann man deshalb nur, was man selbst lesen kann: eine Nachricht aus einem
+ * eigenen Gespräch. Für alle anderen ist die Antwort dieselbe wie für eine Id,
+ * die es nicht gibt.
+ */
 export async function messageExists(event: H3Event, messageId: string): Promise<boolean> {
-  const row = await moderationDb(event)
+  const userId = event.context.user?.$id
+  if (!userId) return false
+  const db = moderationDb(event)
+  const row = await db
     .get<PrivateMessage>(MESSAGES_TABLE, messageId, 'Message not found')
     .catch(() => null)
-  return !!row
+  if (!row) return false
+  const conversation = await db
+    .get<Conversation>(CONVERSATIONS_TABLE, row.conversationId, 'Conversation not found')
+    .catch(() => null)
+  return !!conversation && isParticipant(conversation.participants ?? [], userId)
 }
 
 /* ── Die Warteschlange ───────────────────────────────────────────────────── */

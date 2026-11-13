@@ -1,6 +1,7 @@
 import type { Models } from 'node-appwrite'
 import type { BadgeFacts, BadgeGroup } from '../badges'
 import type { ReactionCount, ReactionKey, ReactionSummary } from '../../../core/shared/reactions'
+import type { VoteCounts } from '../../../core/shared/voteCounts'
 import type { TrustLevelProgress } from '../trustLevels'
 import type { CategoryOrderEntry } from '../categoryOrder'
 
@@ -259,8 +260,14 @@ export interface PostVote extends Models.Row {
   value: PostVoteValue
 }
 
+/**
+ * Antwort von `POST /api/posts/:id/score`: NUR die Zähler und die eigene
+ * Stimme (SEC-031, 2026-11-13). Bis dahin stand hier der ganze Beitrag —
+ * gelesen über die Operator-Klinke, also an den Row-Permissions vorbei. Die
+ * Oberfläche übernimmt die Zähler in ihren Beitrag (`PostVoteButtons`).
+ */
 export interface PostVoteResponse {
-  post: CommunityPost
+  post: VoteCounts
   myVote: PostVoteValue | null
 }
 

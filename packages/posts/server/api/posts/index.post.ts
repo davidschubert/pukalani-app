@@ -11,10 +11,10 @@ import { POSTS_TABLE, type CommunityPost } from '../../../shared/types/post'
 export default defineEventHandler(async (event) => {
   // Produkt-Gate (P4): der Posting-Feed ist ab Plan personal enthalten.
   requirePlanProduct(event, 'posts')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   const appConfig = await getAppConfig(event)
   if (appConfig.maintenanceMode) {

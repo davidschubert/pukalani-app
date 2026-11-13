@@ -23,6 +23,9 @@
  *     read('members')-Inhalt (die Presence der anderen) nicht mehr lesbar, und
  *     beim nächsten Besuch kommt es NICHT zurück. Geschlossene Community: kein
  *     Auto-Beitritt, nur die Einladung führt hinein.
+ *   - verlangt MITMACHEN Zugehörigkeit (SEC-030, seit 2026-11-13)? Nach dem
+ *     Entzug und in der geschlossenen Community endet ein Kommentar mit 403
+ *     `not_a_member` (vorher legte er still eine Zeile an), ebenso eine Meldung.
  *
  * Räumt am Ende alles weg, was es angelegt hat.
  *
@@ -725,6 +728,13 @@ try {
     body: { targetId: `a5-back-${Date.now()}`, targetType: 'verify', content: 'Und jetzt?' },
   })
   if (writeAfterRemoval.json?.$id) cleanup.comments.push(writeAfterRemoval.json.$id)
+  // SEC-030: bis 2026-11-13 ging dieser Kommentar DURCH (die Datentür fragte
+  // nach dem Beitritt, las die Antwort aber nicht) — nur die Mitgliedschaft kam
+  // nicht zurück. Jetzt ist schon das Schreiben zu.
+  check('SEC-030: nach dem Entzug ist Kommentieren zu (403 not_a_member)',
+    writeAfterRemoval.status === 403 && writeAfterRemoval.json?.reason === 'not_a_member',
+    `Status ${writeAfterRemoval.status} ${writeAfterRemoval.text.slice(0, 160)}`)
+  check('…und es entsteht KEIN Kommentar', !writeAfterRemoval.json?.$id, JSON.stringify(writeAfterRemoval.json ?? {}))
   check('auch ein neuer Schreibvorgang macht den Entzug NICHT rückgängig',
     (await memberRowOf(joiner.userId))?.status === 'removed' && !(await hasLabel(joiner.userId)),
     JSON.stringify(await labelsOf(joiner.userId)))
@@ -748,6 +758,23 @@ try {
     (await memberRowOf(outsider2.userId)) === null)
   check('…und kein Site-Label', !(await hasLabel(outsider2.userId)),
     JSON.stringify(await labelsOf(outsider2.userId)))
+  // SEC-030: ein fremdes Konto ist auf diesem Host angemeldet, gehört aber
+  // nicht dazu — Schreiben und Melden sind zu, nicht nur der Beitritt.
+  check('SEC-030: fremdes Konto, geschlossen: Kommentar → 403 not_a_member',
+    closedWrite.status === 403 && closedWrite.json?.reason === 'not_a_member',
+    `Status ${closedWrite.status} ${closedWrite.text.slice(0, 160)}`)
+  check('…und es entsteht KEIN Kommentar', !closedWrite.json?.$id, JSON.stringify(closedWrite.json ?? {}))
+  const closedReport = await call(host, '/api/reports', {
+    method: 'POST',
+    cookie: outsider2Cookie,
+    body: { targetType: 'comment', targetId: joinerComment ?? `a5-none-${Date.now()}`, reason: 'spam' },
+  })
+  check('SEC-030: fremdes Konto, geschlossen: Melden → 403 not_a_member',
+    closedReport.status === 403 && closedReport.json?.reason === 'not_a_member',
+    `Status ${closedReport.status} ${closedReport.text.slice(0, 160)}`)
+  // Hinweis: diese Bühne legt keinen Termin an, deshalb fehlt hier die
+  // Zusage (`POST /api/events/<id>/rsvp`) — sie ist in den Routen-Proben
+  // (packages/events/tests/participation-guard.test.ts) gedeckt.
 
   /**
    * Audit-Befund 8 (NIEDRIG, Konten-Enumeration) — geprüft genau hier, weil es

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isBroadReadPermission, onlyOwnUserReads, splitBroadReads } from '../scripts/lib/broadReadPermissions'
 import { courseJoinVerdict, requireCourseMemberJoining } from '../server/utils/courseMembership'
+import { requireCommunityParticipant } from '../../core/server/utils/communityParticipation'
 import { toCoursePreview, toLessonSummary } from '../shared/coursePreview'
 import type { CourseRow, LessonRow } from '../shared/types/course'
 
@@ -73,6 +74,8 @@ describe('requireCourseMemberJoining', () => {
     const calls: string[] = []
     vi.stubGlobal('createError', (init: Record<string, unknown>) => Object.assign(new Error(String(init.statusText)), init))
     vi.stubGlobal('useTenant', () => ({ mode: 'pool', tenantId: 't-a', communityId: 'c-a', suspension: options.suspension ?? '' }))
+    // Seit SEC-030 delegiert das Einschreiben an die EINE Core-Wache.
+    vi.stubGlobal('requireCommunityParticipant', requireCommunityParticipant)
     vi.stubGlobal('joinCommunity', async () => {
       calls.push('join')
       return options.outcome ?? 'unavailable'

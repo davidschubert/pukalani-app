@@ -1,5 +1,6 @@
 import { vi } from 'vitest'
 import * as courseAccess from '../../server/utils/courseAccess'
+import { requireCommunityParticipant } from '../../../core/server/utils/communityParticipation'
 
 /**
  * PRÜFSTAND FÜR DIE KURS-ROUTEN (SEC-029).
@@ -170,6 +171,9 @@ export async function runRoute<T>(load: () => Promise<{ default: unknown }>, sce
     if (!isMember) throw error({ status: 403, statusText: 'Not a member', data: { code: 'not_a_member' } })
     return user
   })
+  // Die Mitmach-Wache läuft ECHT (seit SEC-030 delegiert das Einschreiben an
+  // sie) — über die nachgebildeten Bausteine darüber und darunter.
+  vi.stubGlobal('requireCommunityParticipant', requireCommunityParticipant)
   vi.stubGlobal('joinCommunity', async () => {
     joinCalls += 1
     if (!user || mode !== 'pool') return 'unavailable'

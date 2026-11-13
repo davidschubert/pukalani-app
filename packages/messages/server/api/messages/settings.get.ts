@@ -13,8 +13,11 @@
 export default defineEventHandler(async (event) => {
   requirePlanProduct(event, 'messages')
 
-  const user = event.context.user
-  if (!user) throw createError({ status: 401, statusText: 'Unauthorized' })
+  // SEC-030 (2026-11-13): Mitglied statt nur angemeldet. Der Client-Leser
+  // (`useMessagesEnabled`) ist fail-closed — wer nicht dazugehört, sieht
+  // schlicht keinen Schreib-Knopf, und genau das soll er nicht sehen. Im
+  // Silo/Einzelbetrieb gibt die Wache durch.
+  await requireCommunityMembership(event)
 
   return { enabled: await messagesEnabled(event) }
 })

@@ -1,5 +1,6 @@
 import { AppwriteException, Permission, Query, Role } from 'node-appwrite'
 import { eventVoteSchema } from '../../../../schemas/event'
+import { toVoteCounts } from '../../../../../core/shared/voteCounts'
 import { eventIsPubliclyVisible } from '../../../../shared/eventModerationPolicy'
 import { EVENT_VOTES_TABLE, EVENTS_TABLE, type EventRow, type EventVote, type EventVoteResponse, type EventVoteValue } from '../../../../shared/types/event'
 
@@ -18,10 +19,10 @@ import { EVENT_VOTES_TABLE, EVENTS_TABLE, type EventRow, type EventVote, type Ev
 export default defineEventHandler(async (event): Promise<EventVoteResponse> => {
   // Produkt-Gate (P4): Events sind ab Plan pro enthalten.
   requirePlanProduct(event, 'events')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   // Wartungsmodus friert JEDEN Mitglieds-Schreibweg ein (utils/eventPolicy.ts).
   await assertEventsWritable(event)
@@ -46,8 +47,14 @@ export default defineEventHandler(async (event): Promise<EventVoteResponse> => {
    * ein ausgeblendeter Termin wäre weiter bewertbar geblieben. Überall dort, wo
    * eine Route den Admin-Client benutzt, muss der Status die Sichtbarkeit
    * ausdrücklich nachbauen.
+   *
+   * SEIT SEC-031 (2026-11-13) liest die Route deshalb gar nicht mehr als
+   * Operator, sondern über die Mitglieder-Klinke: dort entscheidet das
+   * Leserecht der Zeile, ein Entwurf oder ein ausgeblendeter Termin ergibt
+   * dasselbe 404 wie eine erfundene Id, und `ops` wird erst danach berührt.
+   * Die Status-Prüfung bleibt als zweites Netz stehen.
    */
-  const target = await ops.get<EventRow>(EVENTS_TABLE, id, 'Event not found')
+  const target = await db.get<EventRow>(EVENTS_TABLE, id, 'Event not found')
   if (!eventIsPubliclyVisible(target.status)) {
     throw createError({ status: 409, statusText: 'Event not votable' })
   }
@@ -95,6 +102,8 @@ export default defineEventHandler(async (event): Promise<EventVoteResponse> => {
       upvotes, downvotes, score: upvotes - downvotes,
     })
 
-    return { event: updated, myVote }
+    // NUR die Zähler (SEC-031): die frisch geschriebene Zeile kam über die
+    // Operator-Klinke — Beschreibung, Link und Adresse gehören nicht hierher.
+    return { event: toVoteCounts(updated), myVote }
   })
 })

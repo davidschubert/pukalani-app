@@ -1,6 +1,7 @@
 import { AppwriteException, Permission, Query, Role } from 'node-appwrite'
 import { LIKE_LIMIT_REACHED } from '../../../../../core/shared/likeAllowance'
 import { upvoteDelta, type UpvoteState } from '../../../../../core/shared/upvoteDelta'
+import { toVoteCounts } from '../../../../../core/shared/voteCounts'
 import { voteSchema } from '../../../../schemas/comment'
 import {
   COMMENTS_TABLE,
@@ -25,10 +26,10 @@ import {
  *  - Zähler immer autoritativ → kein Increment-Drift bei parallelen/Doppel-Votes.
  */
 export default defineEventHandler(async (event): Promise<VoteResponse> => {
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   const commentId = getRouterParam(event, 'id')
   if (!commentId) {
@@ -55,7 +56,13 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
   // werden (UI blockt nur clientseitig). Sonst ließen sich Vote-Rows + Score
   // eines [gelöscht]-Platzhalters per direktem Request manipulieren.
   // `get` der Tür weist zugleich Stimmen auf fremde Mandanten ab.
-  const target = await ops.get<Comment>(COMMENTS_TABLE, commentId, 'Comment not found')
+  //
+  // ÜBER DIE MITGLIEDER-KLINKE (SEC-031, 2026-11-13): gelesen wird, wie das
+  // Konto liest — ein ausgeblendeter Kommentar trägt kein Leserecht mehr und
+  // ergibt dasselbe 404 wie eine erfundene Id. Erst danach zählt und schreibt
+  // `ops`. Vorher las die Route gleich als Operator, und ein 409 „nicht
+  // stimmbar" bestätigte einen Kommentar, den das Konto nie sehen sollte.
+  const target = await db.get<Comment>(COMMENTS_TABLE, commentId, 'Comment not found')
   if (target.status !== 'active') {
     throw createError({ status: 409, statusText: 'Comment not votable' })
   }
@@ -191,6 +198,8 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
       previousUpvotes: target.upvotes,
     })
 
-    return { comment, myVote }
+    // NUR die Zähler (SEC-031): die frisch geschriebene Zeile kam über die
+    // Operator-Klinke; der Store übernimmt die Zähler in seine eigene Zeile.
+    return { comment: toVoteCounts(comment), myVote }
   })
 })

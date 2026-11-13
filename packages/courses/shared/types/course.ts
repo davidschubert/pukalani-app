@@ -1,4 +1,5 @@
 import type { Models } from 'node-appwrite'
+import { COMMUNITY_NOT_A_MEMBER_CODE } from '../../../core/shared/communityParticipation'
 
 export const COURSES_TABLE = 'courses'
 export const LESSONS_TABLE = 'lessons'
@@ -136,11 +137,13 @@ export interface CoursePreview {
 }
 
 /**
- * Der Grund, mit dem eine Mitglieder-Route einen Fremden abweist — derselbe
- * Schlüssel, den core `requireCommunityMembership` setzt (dort ohne eigene
- * Konstante). Die Oberfläche liest ihn als `reason`.
+ * Der Grund, mit dem eine Mitglieder-Route einen Fremden abweist — DERSELBE
+ * Schlüssel, den die Core-Wachen setzen (`requireCommunityMembership`,
+ * `requireCommunityParticipant`). Seit SEC-030 ist er dort eine Konstante und
+ * wird hier nur unter dem Kurs-Namen weitergereicht, damit beide nie
+ * auseinanderlaufen. Die Oberfläche liest ihn als `reason`.
  */
-export const COURSE_NOT_A_MEMBER_CODE = 'not_a_member'
+export const COURSE_NOT_A_MEMBER_CODE = COMMUNITY_NOT_A_MEMBER_CODE
 
 export interface CourseDetailResponse extends CoursePreview {
   lessons: LessonSummary[]

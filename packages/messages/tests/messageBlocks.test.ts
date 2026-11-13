@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   blockAppliesIn,
   blockCoversPair,
+  blockTargetResolvable,
   isSelfBlock,
   myBlocksIn,
   pairIsBlocked,
@@ -82,5 +83,27 @@ describe('Selbst-Sperre', () => {
   it('ist keine Handlung, sondern ein Tippfehler', () => {
     expect(isSelfBlock('anna', 'anna')).toBe(true)
     expect(isSelfBlock('anna', 'bodo')).toBe(false)
+  })
+})
+
+describe('blockTargetResolvable (SEC-036)', () => {
+  const owners = new Map([['anna', 'u-anna'], ['bodo', 'u-bodo']])
+
+  it('Handle zeigt hier auf genau dieses Konto: auflösbar', () => {
+    expect(blockTargetResolvable({ userId: 'u-anna', handle: 'anna', handleOwners: owners, sharedConversation: false })).toBe(true)
+  })
+
+  it('Handle zeigt hier auf jemand anderen oder auf niemanden: nicht auflösbar', () => {
+    expect(blockTargetResolvable({ userId: 'u-carl', handle: 'anna', handleOwners: owners, sharedConversation: false })).toBe(false)
+    expect(blockTargetResolvable({ userId: 'u-carl', handle: 'carl', handleOwners: owners, sharedConversation: false })).toBe(false)
+    expect(blockTargetResolvable({ userId: 'u-carl', handle: '', handleOwners: owners, sharedConversation: false })).toBe(false)
+  })
+
+  it('gemeinsames Gespräch reicht auch ohne Handle', () => {
+    expect(blockTargetResolvable({ userId: 'u-carl', handle: '', handleOwners: owners, sharedConversation: true })).toBe(true)
+  })
+
+  it('leere Id ist nie auflösbar', () => {
+    expect(blockTargetResolvable({ userId: '', handle: '', handleOwners: new Map([['', '']]), sharedConversation: true })).toBe(false)
   })
 })

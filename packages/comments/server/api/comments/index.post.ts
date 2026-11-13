@@ -1,6 +1,7 @@
 import { Permission, Role } from 'node-appwrite'
 import { commentSchema } from '../../../schemas/comment'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
+import { assertReplyParent } from '../../utils/replyParent'
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user
@@ -15,6 +16,26 @@ export default defineEventHandler(async (event) => {
 
   const body = await readValidatedBody(event, commentSchema.parse)
 
+  // Operator-Targets (pukalani.comments.operatorTargets, z. B. 'ticket'): nur
+  // Operatoren dürfen schreiben, und die Rows sind NICHT read(any), sondern
+  // nur für admin/moderator lesbar — interne Diskussionen bleiben intern.
+  const appConfig = useAppConfig() as { pukalani?: { comments?: { operatorTargets?: string[] } } }
+  const operatorTarget = (appConfig.pukalani?.comments?.operatorTargets ?? []).includes(body.targetType)
+  /**
+   * ZWEI FRAGEN, sauber getrennt (SEC-030, 2026-11-13):
+   *  - Betreiber-Ziel ⇒ die Betreiber-Prüfung (globales Label). Hier schreibt
+   *    kein Mitglied in seine Community, sondern das Team in eine interne
+   *    Diskussion — Mitgliedschaft ist dafür die falsche Frage, und die
+   *    Klinke `operator` tritt auch nicht bei.
+   *  - Sonst ⇒ Mitmachen: ein Pool-Konto ist auf jedem Community-Host
+   *    angemeldet, wer hier kommentiert, muss dazugehören. Offene
+   *    Registrierung: der Kommentar IST der Beitritt (A5); geschlossen oder
+   *    entzogen: 403 `not_a_member`.
+   * Erst HIER und nicht ganz oben, weil das Ziel aus dem Body kommt.
+   */
+  if (operatorTarget) requirePermission(event, 'dashboard.access')
+  else await requireCommunityParticipant(event)
+
   /**
    * DARF AN DIESEM ZIEL ÜBERHAUPT NOCH GESCHRIEBEN WERDEN? (F1 Stufe 3,
    * Core-Vertrag `assertContentWritable`.) Heute beantwortet das nur der
@@ -22,19 +43,16 @@ export default defineEventHandler(async (event) => {
    * weiß davon nichts und soll es nicht wissen (A14). Für jeden Typ ohne
    * angemeldete Regel (Tickets, Kurse, fremde Andockpunkte) passiert nichts.
    *
-   * VOR der Klinken-Wahl und vor jedem Schreibvorgang: eine Ablehnung soll
-   * nichts hinterlassen. Und vor dem Operator-Zweig, weil „geschlossen" für
-   * ALLE gilt — ein Moderator öffnet das Thema mit einem Klick wieder, statt
-   * an ihm vorbeizuschreiben.
+   * VOR jedem Schreibvorgang: eine Ablehnung soll keine Zeile hinterlassen.
+   * Für BEIDE Zweige, weil „geschlossen" für ALLE gilt — ein Moderator öffnet
+   * das Thema mit einem Klick wieder, statt an ihm vorbeizuschreiben.
+   *
+   * NACH der Wache darüber (SEC-031, 2026-11-13): die Antwort hier hängt vom
+   * Zustand des Ziels ab. Stünde sie vor der Frage nach der Zugehörigkeit,
+   * könnte ein fremdes Konto an ihr ablesen, ob es ein Thema gibt und wie es
+   * steht.
    */
   await assertContentWritable(event, body.targetType, body.targetId)
-
-  // Operator-Targets (pukalani.comments.operatorTargets, z. B. 'ticket'): nur
-  // Operatoren dürfen schreiben, und die Rows sind NICHT read(any), sondern
-  // nur für admin/moderator lesbar — interne Diskussionen bleiben intern.
-  const appConfig = useAppConfig() as { pukalani?: { comments?: { operatorTargets?: string[] } } }
-  const operatorTarget = (appConfig.pukalani?.comments?.operatorTargets ?? []).includes(body.targetType)
-  if (operatorTarget) requirePermission(event, 'dashboard.access')
 
   // Operator-Rows tragen Role.label-Permissions — die kann nur der Admin-Client
   // setzen (Session-User dürfen fremde Label-Rollen nicht vergeben). Beide
@@ -50,6 +68,11 @@ export default defineEventHandler(async (event) => {
   let depth = 0
   if (body.parentId) {
     parent = await db.get<Comment>(COMMENTS_TABLE, body.parentId, 'Parent comment not found')
+    // SEC-035 (2026-11-13): nur an einen AKTIVEN Kommentar DESSELBEN Fadens —
+    // dieselbe Regel wie im Gast-Weg (shared/replyParent.ts). Vorher prüfte
+    // dieser Weg den Faden nicht: eine Antwort ließ sich in den Faden eines
+    // anderen Ziels hängen.
+    assertReplyParent(parent, body)
     rootId = parent.rootId ?? parent.$id
     depth = parent.depth + 1
     if (depth > MAX_COMMENT_DEPTH) {

@@ -102,12 +102,14 @@ onBeforeUnmount(() => {
 
 const { count: viewerCount } = useViewingPresence()
 
+// Beide Antworten tragen NUR Zähler (SEC-031, 2026-11-13) — sie werden in den
+// Termin übernommen, alles andere stammt weiter aus der Leseroute.
 function onRsvpUpdated(res: RsvpResponse) {
-  event.value = { ...res.event }
+  event.value = { ...event.value, ...res.event }
   myRsvp.value = res.myRsvp
 }
 function onVoted(res: EventVoteResponse) {
-  event.value = { ...res.event }
+  event.value = { ...event.value, ...res.event }
   myVote.value = res.myVote
 }
 

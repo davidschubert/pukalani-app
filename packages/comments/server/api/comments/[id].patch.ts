@@ -4,10 +4,10 @@ import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
 
 /** Eigenen Kommentar bearbeiten — Row-Permission erlaubt nur den Autor. */
 export default defineEventHandler(async (event) => {
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
+  // Community-Host angemeldet). Bewusst KEIN Beitritt — den eigenen Kommentar zu bearbeiten macht
+  // niemanden zum Mitglied. 401 ohne Konto, 403 `not_a_member` für Fremde.
+  const user = await requireCommunityMembership(event)
 
   const commentId = getRouterParam(event, 'id')
   if (!commentId) {

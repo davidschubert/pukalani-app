@@ -103,6 +103,37 @@ paths:
   (`trigger: 'legacy'`, umgeht den Schalter — kein Backfill-Skript, weil die
   Wahrheit im Runtime-Projekt und die Zeile im Control Plane liegt). Beweis:
   Abschnitt 10 in `packages/onboarding/scripts/verify-site-authz.mjs`.
+- MITMACHEN VERLANGT ZUGEHÖRIGKEIT (SEC-030, seit 2026-11-13 — Davids
+  Entscheidung 2026-11-12): ein Konto im Pool ist auf JEDEM Community-Host
+  angemeldet, „angemeldet" sagt also nichts über „gehört hierher". Bis dahin
+  fragte die Datentür zwar nach dem Beitritt, las die Antwort aber nicht —
+  geschlossene Registrierung und „Zugang entziehen" hielten niemanden vom
+  Schreiben ab. Jetzt ZÄHLT DER AUSGANG, an zwei Stellen: (1) jede schreibende
+  Route der Pool-Produkte ruft eine Wache, VOR dem ersten Datenbankzugriff —
+  `requireCommunityParticipant(event)` für alles, was ein erster eigener
+  Beitrag sein kann (Beitrag, Kommentar, Stimme, Reaktion, Zusage,
+  Einschreiben, Melden; bei OFFENER Registrierung ist das weiter der Beitritt,
+  A5), `requireCommunityMembership(event)` für eigenes Bearbeiten/Löschen und
+  alle Routen der privaten Nachrichten (kein Beitritt), oder ein Rollen-Gate;
+  (2) die Datentür wertet beim Anlegen denselben Ausgang als Netz dahinter.
+  `closed`/`removed` ⇒ 403 `reason: not_a_member`; `unavailable` ⇒ die
+  Mitgliedschaft entscheidet (Pool fail-closed, Silo durch — ein Ausfall des
+  Control Plane kostet ein Mitglied mit Label keinen Kommentar, einen
+  Erst-Beitritt schon). Melden bleibt in einer gesperrten Community offen
+  (`openDuringSuspension`), tritt dort aber nicht bei. ÜBERSETZEN ist Lesen,
+  nicht Mitmachen: die drei Routen (posts, comments, events) verlangen nur
+  die Anmeldung und lesen ihr Ziel über die Session-Klinke. Die gemerkte
+  Ablehnung schlägt in `joinCommunity` den Rollen-Cache (sonst schrieb eine
+  entfernte Person noch 30 s weiter). EINEN Leser für den Grund stellt der
+  Core (`community-suspended-notice.client.ts`, nur bei Schreibversuchen;
+  Layer mit eigenem Satz melden sich über
+  `pukalani.notices.notAMemberSelfExplained` ab). Wächter:
+  `packages/core/tests/participation-guard-routes.test.ts` zählt die Routen
+  selbst — eine neue schreibende Route ohne Wache wird rot, Ausnahmen stehen
+  mit Grund in der Liste. Der Wächter prüft nur, DASS eine Wache im Quelltext
+  steht; dass sie in jedem Zweig greift, belegen die Proben je Paket
+  (`tests/participation-guard.test.ts`, Prüfstand
+  `core/tests/support/participationHarness.ts`).
 - KURSE: VORSCHAU FÜR ALLE, INHALT FÜR MITGLIEDER (SEC-029, seit 2026-11-13 —
   Davids Entscheidung 2026-11-12): Übersicht und Vorschau eines
   VERÖFFENTLICHTEN Kurses sieht jeder, auch ohne Konto und auch in einer

@@ -1,5 +1,6 @@
 import { Permission, Query, Role } from 'node-appwrite'
 import { rsvpSchema } from '../../../../schemas/event'
+import { toEventRsvpCounts } from '../../../../shared/eventCounts'
 import { EVENT_RSVPS_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow, type RsvpResponse, type RsvpStatus } from '../../../../shared/types/event'
 
 /**
@@ -41,10 +42,10 @@ import { EVENT_RSVPS_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow, type
 export default defineEventHandler(async (event): Promise<RsvpResponse> => {
   // Produkt-Gate (P4): Events sind ab Plan pro enthalten.
   requirePlanProduct(event, 'events')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   // Wartungsmodus friert JEDEN Mitglieds-Schreibweg ein (utils/eventPolicy.ts).
   await assertEventsWritable(event)
@@ -60,7 +61,15 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
   // ein Mitglied. Die M13-Sperre nennt „Zu- und Absagen" ausdrücklich.
   const db = tenantDb(event, { as: 'operator', actor: 'member' })
 
-  const row = await db.get<EventRow>(EVENTS_TABLE, id, 'Event not found')
+  /**
+   * ERST LESEN, WIE DAS KONTO LIEST (SEC-031, 2026-11-13): den Termin über die
+   * Mitglieder-Klinke holen (Session-Client, Leserecht der Zeile), BEVOR die
+   * Operator-Klinke irgendetwas liest oder schreibt. Wer ihn nicht lesen darf
+   * (Entwurf, ausgeblendet, fremde Community), bekommt dasselbe 404 wie für
+   * eine erfundene Id — vorher gab die Route ihm den ganzen Termin zurück,
+   * samt Beschreibung, Link und Adresse.
+   */
+  const row = await tenantDb(event).get<EventRow>(EVENTS_TABLE, id, 'Event not found')
   if (row.status !== 'published') {
     throw createError({ status: 409, statusText: 'Event is not open for RSVPs' })
   }
@@ -209,7 +218,9 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
     myRsvp = target
   }
 
-  // Frischen Zustand zurückgeben — die UI ersetzt Event + RSVP atomar
+  // Frischen Zähler-Stand zurückgeben. NUR Teilnehmerzahl + eigene Zusage
+  // (SEC-031): `fresh` kommt über die Operator-Klinke, die ganze Zeile zeigte
+  // mehr als die Leseroute. Die Oberfläche übernimmt die Zahl in ihren Termin.
   const fresh = await db.get<EventRow>(EVENTS_TABLE, id, 'Event not found')
-  return { event: fresh, myRsvp }
+  return { event: toEventRsvpCounts(fresh), myRsvp }
 })

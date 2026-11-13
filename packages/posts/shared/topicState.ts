@@ -107,11 +107,33 @@ export function decideTopicStateChange(
  * öffnen es mit einem Klick wieder, und eine Ausnahme „außer für Moderatoren"
  * hieße, dass die Zusage „geschlossen" für Leser nicht mehr stimmt.
  *
- * Ein NICHT veröffentlichtes Thema ist hier ausdrücklich KEIN Fall: ob ein
- * ausgeblendeter Beitrag Kommentare annimmt, entscheidet die Moderation über
- * die Row-Permissions, nicht dieser Schalter. Diese Funktion beantwortet
- * genau eine Frage, sonst wird sie zur zweiten Moderations-Instanz.
+ * Diese Funktion beantwortet genau EINE Frage — „geschlossen?". Ob der
+ * Beitrag überhaupt veröffentlicht ist, beantwortet `topicWriteDenial` unten
+ * mit; der Schreib-Wächter fragt seit SEC-035 dort.
  */
 export function topicAcceptsWrites(subject: { closed: boolean }): boolean {
   return !subject.closed
+}
+
+/**
+ * Warum darf an diesem Beitrag KEIN Kommentar mehr entstehen? (SEC-035,
+ * seit 2026-11-13 — die Antwort des Schreib-Wächters `content-writable.ts`.)
+ *
+ * Kommentare gibt es nur unter VERÖFFENTLICHTEN Beiträgen. Bis dahin hieß es
+ * hier ausdrücklich, ein nicht veröffentlichter Beitrag sei kein Fall, das
+ * regelten die Row-Permissions — aber der Gast-Weg schreibt über die
+ * Operator-Klinke, und auch der Konto-Weg prüft nur den Eltern-KOMMENTAR,
+ * nie den Beitrag. Ein geplanter, ausgeblendeter oder gelöschter Beitrag nahm
+ * so weiter Kommentare an, die niemand moderiert, weil niemand sie sieht.
+ *
+ * Zwei Gründe, zwei Codes (beide 403, wie die bestehende Sperre):
+ * `topic_not_published` vor `topic_closed` — ein ausgeblendetes, zugleich
+ * geschlossenes Thema ist zuerst einmal nicht da.
+ */
+export type TopicWriteDenial = 'topic_not_published' | 'topic_closed'
+
+export function topicWriteDenial(subject: { status: string, closed: boolean }): TopicWriteDenial | null {
+  if (subject.status !== 'published') return 'topic_not_published'
+  if (!topicAcceptsWrites(subject)) return 'topic_closed'
+  return null
 }
