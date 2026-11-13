@@ -7,7 +7,10 @@
  *  - B sieht ihn NICHT (und umgekehrt),
  *  - die Anmeldung steht im Protokoll, aber nicht in der Liste,
  *  - die Antwort trägt einen ORT, aber nie die IP-Adresse,
- *  - ohne Anmeldung gibt es nichts.
+ *  - ohne Anmeldung gibt es nichts,
+ *  - ein FALSCHER Zwei-Faktor-Code bei der Anmeldung steht MIT Konto im
+ *    Protokoll und erscheint beim Betroffenen (KE2: bis 2026-11-13 wurde er
+ *    ohne Konto geschrieben und war damit für niemanden sichtbar).
  *
  * NUR LOKAL: das Skript legt Konten an und löscht sie samt ihren
  * Protokoll-Zeilen wieder. Es weigert sich, wenn der Appwrite-Endpunkt nicht
@@ -27,6 +30,7 @@
  * welche Zeilen es gibt und welche IP darin steht, liest das Skript mit dem
  * Server-Schlüssel direkt aus der Tabelle.
  */
+import { createHmac } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
 const keep = process.argv.includes('--keep')
@@ -77,6 +81,49 @@ function check(label, ok, detail = '') {
 async function findUser(email) {
   const { users: found } = await users.list({ queries: [Query.equal('email', email), Query.limit(1)] })
   return found[0] ?? null
+}
+
+/**
+ * TOTP nach RFC 6238 (SHA-1, 30 s, 6 Stellen — Appwrites Vorgabe), damit das
+ * Skript den zweiten Faktor einrichten und danach bewusst FALSCH und richtig
+ * antworten kann. `offset` verschiebt um ganze Zeitfenster.
+ */
+function totp(secretBase32, offset = 0) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = ''
+  for (const char of secretBase32.replace(/=+$/, '').toUpperCase()) {
+    bits += alphabet.indexOf(char).toString(2).padStart(5, '0')
+  }
+  const key = Buffer.from(bits.match(/.{8}/g).map(byte => Number.parseInt(byte, 2)))
+  const counter = Buffer.alloc(8)
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000) + offset))
+  const mac = createHmac('sha1', key).update(counter).digest()
+  const at = mac[mac.length - 1] & 0x0f
+  const number = ((mac[at] & 0x7f) << 24) | (mac[at + 1] << 16) | (mac[at + 2] << 8) | mac[at + 3]
+  return String(number % 1_000_000).padStart(6, '0')
+}
+
+/** Ein sechsstelliger Code, der in KEINEM der umliegenden Zeitfenster gilt. */
+function wrongTotp(secretBase32) {
+  const valid = new Set([-2, -1, 0, 1, 2].map(offset => totp(secretBase32, offset)))
+  let candidate = 111111
+  while (valid.has(String(candidate))) candidate++
+  return String(candidate)
+}
+
+/** Fehlversuche OHNE Verursacher seit `since` — die Spur des alten Fehlers. */
+async function orphanMfaFailuresSince(since) {
+  const { rows } = await tablesDB.listRows({
+    databaseId,
+    tableId: 'audit_logs',
+    queries: [
+      Query.equal('action', 'user.mfa_challenge_failed'),
+      Query.equal('actorId', ''),
+      Query.greaterThanEqual('$createdAt', since),
+      Query.limit(25),
+    ],
+  })
+  return rows
 }
 
 async function auditRowsOf(userId) {
@@ -144,6 +191,7 @@ if (cleanOnly) {
 
 console.log(`Konto-Ereignisse gegen ${BASE} / Appwrite ${endpoint} (${projectId})\n`)
 
+const startedAt = new Date().toISOString()
 const userA = await createAccount(A)
 await createAccount(B)
 
@@ -205,8 +253,47 @@ try {
   console.log('\nDer Aufrufer kann keinen anderen benennen')
   const spoof = await call(jarB, 'GET', `/api/account/activity?userId=${userA.$id}&actorId=${userA.$id}`)
   check('ein userId-Parameter ändert nichts', spoof.json?.account?.events?.length === 1 && !spoof.text.includes(auditRow?.$id ?? '—'))
+
+  console.log('\nZwei-Faktor: falscher Code bei der Anmeldung (KE2)')
+  const setup = await call(jarA, 'POST', '/api/auth/mfa/setup')
+  check('A: Einrichtung begonnen', setup.status === 200 && typeof setup.json?.secret === 'string', `Status ${setup.status}`)
+  const secret = setup.json?.secret ?? ''
+  const enabled = await call(jarA, 'POST', '/api/auth/mfa/verify', { code: totp(secret) })
+  check('A: Zwei-Faktor eingeschaltet', enabled.status === 200, `Status ${enabled.status} ${enabled.text.slice(0, 120)}`)
+
+  // Neue Anmeldung: jetzt verlangt Appwrite den zweiten Faktor, die Session
+  // ist nur halb — genau der Zustand, in dem `account.get()` 401 antwortet.
+  const half = { cookie: '' }
+  const relogin = await call(half, 'POST', '/api/auth/login', { email: A.email, password: PASSWORD })
+  check('A: neue Anmeldung verlangt den zweiten Faktor', relogin.status === 200 && relogin.json?.mfaRequired === true, JSON.stringify(relogin.json))
+
+  const wrong = await call(half, 'POST', '/api/auth/mfa/challenge', { mode: 'totp', code: wrongTotp(secret) })
+  check('falscher Code wird abgelehnt (401)', wrong.status === 401, `Status ${wrong.status} ${wrong.text.slice(0, 120)}`)
+
+  const failures = (await auditRowsOf(userA.$id)).filter(row => row.action === 'user.mfa_challenge_failed')
+  check('der Fehlversuch steht MIT dem Konto von A im Protokoll', failures.length === 1, `${failures.length} Zeilen mit actorId von A`)
+  const orphans = await orphanMfaFailuresSince(startedAt)
+  check('und es entsteht KEINE Zeile ohne Verursacher', orphans.length === 0, `${orphans.length} Zeilen mit leerer actorId`)
+  check('die Zeile trägt den Namen des Kontos (für die Betreiber-Ansicht)', failures[0]?.actorName === 'Konto Ereignis A2', `actorName=${JSON.stringify(failures[0]?.actorName)}`)
+
+  // Appwrite nimmt denselben Code kein zweites Mal an — der aktuelle wurde
+  // eben beim Einschalten verbraucht. Also das nächste Zeitfenster abwarten.
+  await new Promise(resolve => setTimeout(resolve, 30_000 - (Date.now() % 30_000) + 1_000))
+  const right = await call(half, 'POST', '/api/auth/mfa/challenge', { mode: 'totp', code: totp(secret) })
+  check('richtiger Code meldet an', right.status === 200, `Status ${right.status} ${right.text.slice(0, 120)}`)
+
+  const withMfa = await call(half, 'GET', '/api/account/activity')
+  const kinds = (withMfa.json?.account?.events ?? []).map(entry => entry.kind)
+  check('A sieht den Fehlversuch unter „Konto und Sicherheit"', kinds.includes('mfa_challenge_failed') && (withMfa.json.account.events.find(entry => entry.kind === 'mfa_challenge_failed')?.id === failures[0]?.$id), JSON.stringify(kinds))
+  check('A sieht auch „Zwei-Faktor eingeschaltet"', kinds.includes('mfa_enabled'), JSON.stringify(kinds))
+  const bystander = await call(jarB, 'GET', '/api/account/activity')
+  check('B sieht davon nichts', !(bystander.json?.account?.events ?? []).some(entry => entry.kind.startsWith('mfa_')), JSON.stringify(bystander.json?.account?.events))
 }
 finally {
+  // Zeilen ohne Verursacher gehören zu keinem Konto und blieben sonst liegen.
+  for (const row of await orphanMfaFailuresSince(startedAt).catch(() => [])) {
+    await tablesDB.deleteRow({ databaseId, tableId: 'audit_logs', rowId: row.$id }).catch(() => {})
+  }
   await removeAccount(B.email)
   if (keep) {
     console.log(`\n(--keep: Konto ${A.email} bleibt stehen — danach mit --clean entfernen)`)

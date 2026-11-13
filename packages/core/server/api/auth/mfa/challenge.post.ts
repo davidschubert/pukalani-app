@@ -50,8 +50,16 @@ export default defineEventHandler(async (event) => {
       // Ein falscher Code VERBRAUCHT die Challenge bei Appwrite nicht (sie
       // wird nur bei Erfolg gelöscht) — Bremse ist deshalb allein unsere
       // Drossel in middleware/05.rate-limit.ts, die auf Fehlversuche zählt.
-      const user = await account.get().catch(() => null)
-      await logAuthEvent(event, 'user.mfa_challenge_failed', { userId: user?.$id ?? '', method: mode })
+      //
+      // WEM der Fehlversuch gehört, sagt die CHALLENGE (KE2, 2026-11-13) —
+      // dieselbe von Appwrite belegte Kennung wie für die Konto-Bremse oben.
+      // Vorher stand hier `account.get()`: das antwortet mit einer halben
+      // Session IMMER 401 (genau deshalb ist `event.context.user` in dieser
+      // Route leer), die Kennung war also stets ''. Gemessen: es entstand
+      // GAR KEINE Zeile — der Fehlversuch stand weder beim Betroffenen noch
+      // in der Betreiber-Ansicht, obwohl er das eine Signal ist, für das es
+      // diese Aktion gibt.
+      await logAuthEvent(event, 'user.mfa_challenge_failed', { userId: challenge.userId, method: mode })
       throw createError({ status: 401, statusText: 'Invalid code', data: { code: 'mfa_invalid_code' } })
     }
     throw createError({ status: 401, statusText: 'Unauthorized' })
