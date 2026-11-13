@@ -37,6 +37,8 @@ export default defineEventHandler(async (event): Promise<MfaDisableResponse> => 
   }
 
   const { mode, code } = await readValidatedBody(event, mfaChallengeSchema.parse)
+  // Fehlversuche je KONTO, über alle IPs (SEC-003).
+  await limitAccountAttempts(event, 'mfa', event.context.user.$id)
   const { account } = createSessionClient(event)
 
   // Eine Challenge geht auch aus einer bereits vollwertigen Session heraus —

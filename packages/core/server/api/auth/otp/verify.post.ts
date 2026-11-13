@@ -10,6 +10,8 @@ import type { OtpVerifyResponse } from '../../../../shared/types/auth-responses'
  */
 export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
   const { userId, code } = await readValidatedBody(event, otpVerifySchema.parse)
+  // Fehlversuche je KONTO, über alle IPs (SEC-003) — vor jedem Appwrite-Aufruf.
+  await limitAccountAttempts(event, 'otp', userId)
 
   const { account, users } = createAdminClient(event)
 

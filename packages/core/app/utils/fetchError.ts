@@ -50,6 +50,22 @@ export function rateLimitRetrySeconds(error: unknown): number | null {
   return seconds
 }
 
+/** Ab hier nennt die Oberfläche Minuten statt Sekunden. */
+const RATE_LIMIT_MINUTES_FROM_SECONDS = 90
+
+/**
+ * Sekunden oder Minuten? (SEC-003): die Konto-Bremse hat ein Fenster von
+ * 15 Minuten, `Retry-After` kann also mehrere hundert Sekunden sein — „warte
+ * noch 742 Sekunden" liest niemand. Über 90 s wird in Minuten gemeldet,
+ * AUFGERUNDET: lieber eine Minute zu lang warten lassen als zu kurz und in
+ * die nächste 429 laufen.
+ */
+export function rateLimitWait(seconds: number): { unit: 'seconds' | 'minutes', value: number } {
+  return seconds > RATE_LIMIT_MINUTES_FROM_SECONDS
+    ? { unit: 'minutes', value: Math.ceil(seconds / 60) }
+    : { unit: 'seconds', value: seconds }
+}
+
 /**
  * Bot-Beweis abgelehnt (Turnstile, Vorfall 2026-10-27)? Liefert den Grund aus
  * dem Envelope (`reason`, gesetzt von server/utils/turnstile.ts), sonst

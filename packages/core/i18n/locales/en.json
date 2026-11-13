@@ -85,6 +85,7 @@
     },
     "rateLimited": "Too many attempts. Wait a moment, then try again.",
     "rateLimitedIn": "Too many attempts. Wait one more second, then try again. | Too many attempts. Wait {n} more seconds, then try again.",
+    "rateLimitedInMinutes": "Too many attempts. Wait one more minute, then try again. | Too many attempts. Wait {n} more minutes, then try again.",
     "verification": {
       "bannerMessage": "We sent you a confirmation link. We can only email you once your address is confirmed.",
       "resend": "Resend link",
