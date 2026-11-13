@@ -3,10 +3,12 @@ import { COURSES_TABLE, type CourseRow } from '../../../../shared/types/course'
 
 /**
  * Kurs bearbeiten (courses.manage; [slug]-Segment = Row-ID im Builder).
- * publish setzt read(users) + recordActivity; draft/archived entziehen es.
+ * publish schreibt recordActivity. Die Rechte der Zeile fasst der Status NICHT
+ * an: Kurs-Zeilen tragen kein Leserecht (SEC-029, courseAccess.ts), sichtbar
+ * macht ein Kurs erst die Route, die `status = published` filtert. Ein
+ * Alt-Leserecht aus der Zeit davor räumt Migration courses-008 ab.
  * Datentür als Operator: get/update belegen die Zugehörigkeit — ein fremder
- * Mandant bekommt 404. Die Tür trennt Daten- und Permission-Writes bewusst
- * (Muster events/posts): erst update, dann updatePermissions.
+ * Mandant bekommt 404.
  *
  * WER HANDELT (F17): Redaktion an INHALT — `actor` aus dem Gate (Rolle ⇒
  * 'member', also Inhalts-Sperre M13; Break-Glass ⇒ 'operator').
@@ -43,7 +45,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const publishing = body.status === 'published' && row.status !== 'published'
-  const unpublishing = body.status !== undefined && body.status !== 'published' && row.status === 'published'
 
   const data: Record<string, unknown> = {}
   if (body.title !== undefined) data.title = body.title
@@ -66,16 +67,6 @@ export default defineEventHandler(async (event) => {
   const updated = await db.update<CourseRow>(COURSES_TABLE, id, data, 'Course not found').catch((error) => {
     throw toH3Error(error, 'Could not update course')
   })
-  // Leserecht folgt dem Status: published = Mitglieder, sonst niemand
-  if (publishing) {
-    await db.updatePermissions(COURSES_TABLE, id, [...new Set([...row.$permissions, COURSE_READ_USERS])])
-      .catch((error) => { throw toH3Error(error, 'Could not update course') })
-  }
-  if (unpublishing) {
-    await db.updatePermissions(COURSES_TABLE, id, row.$permissions.filter(p => p !== COURSE_READ_USERS))
-      .catch((error) => { throw toH3Error(error, 'Could not update course') })
-  }
-
   if (publishing) {
     await recordActivity(event, {
       actorId: user.$id,

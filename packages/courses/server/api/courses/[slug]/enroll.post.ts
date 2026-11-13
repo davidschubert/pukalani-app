@@ -2,9 +2,12 @@ import { Query } from 'node-appwrite'
 import { COURSES_TABLE, ENROLLMENTS_TABLE, type CourseRow } from '../../../../shared/types/course'
 
 /**
- * Einschreiben (per Slug): free/members = eingeloggt; paid = App-Guard
- * (assertCourseAccess, fail-closed — im Pool heute IMMER zu, siehe
- * courseAccess.ts). Unique-Index macht Doppel-Enrolls idempotent.
+ * Einschreiben (per Slug): nur angemeldete MITGLIEDER dieser Community
+ * (SEC-029) — und weil Einschreiben Mitmachen ist, darf es in einer offenen
+ * Community der Beitritt sein (A5, `requireCourseMemberJoining`). Die Wache
+ * steht VOR dem ersten Datenbankzugriff. paid = App-Guard (assertCourseAccess,
+ * fail-closed — im Pool heute IMMER zu, siehe courseAccess.ts).
+ * Unique-Index macht Doppel-Enrolls idempotent.
  *
  * Datentür als Operator: enrollments tragen bewusst keine User-Schreibrechte;
  * find/create scopen bzw. stempeln den Mandanten — der Slug eines Nachbarn
@@ -13,10 +16,7 @@ import { COURSES_TABLE, ENROLLMENTS_TABLE, type CourseRow } from '../../../../sh
 export default defineEventHandler(async (event) => {
   // Produkt-Gate (P4): Kurse sind ab Plan pro enthalten.
   requirePlanProduct(event, 'courses')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  const user = await requireCourseMemberJoining(event)
 
   const slug = getRouterParam(event, 'slug')
   if (!slug) {

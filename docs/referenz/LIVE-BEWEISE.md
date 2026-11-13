@@ -62,7 +62,7 @@ Control Plane laufen sie nicht.
 | --- | --- | --- |
 | `events/verify-pool-isolation.mjs` | Produkt-Gate + Event-Isolation über die echte API | Platform-Server + 2 Communities |
 | `events/verify-site-authz.mjs` | N5a: Events gehören dem Site-Owner, nicht dem globalen Label | dito (`--silo` zusätzlich: comments-Server) |
-| `courses/verify-pool-isolation.mjs` | Kurs-Isolation + Operator-Break-Glass | dito |
+| `courses/verify-pool-isolation.mjs` | Kurs-Isolation + Operator-Break-Glass; seit 2026-11-13 auch Publikum und Mitgliedschaft (Vorschau für alle, Inhalt nur für Mitglieder, Direktweg an der Appwrite-REST-API) | dito; Abschnitt 7 braucht zusätzlich die Control-Naht (:3004) und einen Control-Schlüssel mit Schreibrecht (`NUXT_PLATFORM_CONTROL_KEY` beim Aufruf überschreiben), wartet zweimal 32 s Resolver-Cache |
 | `courses/verify-silo-unchanged.mjs` | Gegenprobe: im Silo ändert die Datentür nichts | comments-Dev-Server (KEINE Mandanten) |
 | `moderation/verify-report-boundary.mjs` | Meldungs-Grenze auf REALTIME-Ebene (Row-Permissions, nicht Route) | Platform-Server + 1 Community |
 | `onboarding/verify-control-host.mjs` | O3: Kontroll-Host vs. Community-Host vs. unbekannter Host | Platform-Server + `kunde-a` |

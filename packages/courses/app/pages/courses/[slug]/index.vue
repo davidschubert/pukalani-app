@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { COMMUNITY_SUSPENDED_CODE } from '../../../../../core/shared/communitySuspension'
-import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, type CourseDetailResponse, type CourseTranslateResponse } from '../../../../shared/types/course'
-
-definePageMeta({ middleware: ['auth'] })
+import { safeRedirectTarget } from '../../../../../core/shared/redirectTarget'
+import {
+  COURSE_NOT_A_MEMBER_CODE,
+  COURSE_PAID_UNAVAILABLE_CODE,
+  COURSE_UPGRADE_REQUIRED_CODE,
+  type CourseDetailResponse,
+  type CourseTranslateResponse,
+} from '../../../../shared/types/course'
 
 /**
- * Kurs-Übersicht: Beschreibung (Markdown), Enroll-CTA je Zugang, Fortschritt,
+ * Kurs-Vorschau: Beschreibung (Markdown), Enroll-CTA je Zugang, Fortschritt,
  * Lektions-Liste (Content erst nach Enrollment).
+ *
+ * ÖFFENTLICH (SEC-029, Davids Entscheidung 2026-11-12): Titel, Beschreibung
+ * und Gliederung sieht jeder, auch ohne Konto. Ein Gast bekommt statt
+ * „Einschreiben" den Weg zur Anmeldung mit Rücksprung hierher (wie die
+ * `auth`-Middleware des Cores); ein angemeldetes Nicht-Mitglied erfährt beim
+ * Einschreiben, dass der Kurs Mitgliedern gehört.
  *
  * DREI ABLEHNUNGEN, DREI SÄTZE (Audit-Befund 2026-08-02). Vorher wurde JEDER
  * 403 zu „Dieser Kurs gehört zu Pro" mit einem Knopf auf /pricing — und damit
@@ -30,6 +41,13 @@ const { t } = useI18n()
 const toast = useToast()
 const route = useRoute()
 const localePath = useLocalePath()
+const { isLoggedIn } = useCurrentUser()
+
+/** Anmelden mit Rücksprung — dieselbe Form wie core/app/middleware/auth.ts. */
+const loginTarget = computed(() => {
+  const redirect = safeRedirectTarget(route.fullPath)
+  return { path: localePath('/login'), ...(redirect ? { query: { redirect } } : {}) }
+})
 
 const { data: course, error, refresh } = await useFetch<CourseDetailResponse>(`/api/courses/${route.params.slug}`)
 if (error.value || !course.value) {
@@ -45,7 +63,7 @@ useBrandTitle(() => course.value?.title ?? '')
  *
  * Verlinkt wird die ROW-ID, nicht der Slug: der Builder adressiert per Id
  * (`/api/courses/:id/manage` liest sie so), und die Antwort trägt sie mit
- * (`CourseDetailResponse extends CourseRow`) — kein zweiter Abruf nötig.
+ * (`CourseDetailResponse extends CoursePreview`) — kein zweiter Abruf nötig.
  */
 const canManage = useCapability('courses.manage')
 
@@ -120,6 +138,10 @@ async function enroll() {
       enrollBlock.value = 'unavailable'
       return
     }
+    if (reason === COURSE_NOT_A_MEMBER_CODE) {
+      toast.add({ title: t('courses.detail.notMember'), description: t('courses.detail.notMemberHint'), color: 'warning' })
+      return
+    }
     toast.add({ title: t('courses.detail.enrollFailed'), description: t('courses.detail.enrollFailedHint'), color: 'error' })
   }
   finally {
@@ -186,7 +208,14 @@ async function enroll() {
 
     <!-- Enroll / Fortschritt -->
     <div class="mt-6 rounded-xl border border-default p-4" data-testid="course-cta">
-      <template v-if="!course!.enrolled">
+      <!-- Gast: die Vorschau ist offen, Teilnehmen verlangt ein Konto -->
+      <div v-if="!isLoggedIn" class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-muted">{{ t('courses.detail.signInHint') }}</p>
+        <UButton :to="loginTarget" icon="i-ph-sign-in" data-testid="course-sign-in">
+          {{ t('courses.detail.signInToJoin') }}
+        </UButton>
+      </div>
+      <template v-else-if="!course!.enrolled">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="text-sm text-muted">{{ t('courses.detail.enrollHint') }}</p>
           <UButton :loading="enrolling" icon="i-ph-play" data-testid="enroll-button" @click="enroll">

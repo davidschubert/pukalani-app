@@ -31,15 +31,18 @@ import {
  * INHALTS-Produkt.
  *
  * ── DIESELBEN VORPRÜFUNGEN WIE DIE LESEROUTE ──────────────────────────────
- * Wer den Kurs nicht LESEN darf, darf ihn nicht übersetzen. Deshalb steht hier
- * Zeile für Zeile, was auch `[slug].get.ts` tut: Session-Pflicht, Suche über
- * die MITGLIEDER-Klinke (der Slug eines Nachbarn ist im Pool nicht auffindbar,
- * und die Row-Permissions sind die zweite Grenze) und `status === 'published'`.
- * Ein Entwurf gehört bis zur Veröffentlichung niemandem außer seiner Redaktion.
+ * Wer den Kurs nicht LESEN darf, darf ihn nicht übersetzen. Die Vorschau ist
+ * zwar öffentlich, Übersetzen kostet aber einen bezahlten KI-Aufruf — es ist
+ * deshalb MITGLIEDERN vorbehalten (SEC-029, `requireCourseMember` VOR jedem
+ * Datenbankzugriff). Danach dieselbe Suche wie `[slug].get.ts`: Operator-Klinke
+ * (Kurs-Zeilen tragen kein Leserecht, courseAccess.ts; der Slug eines Nachbarn
+ * ist über den Mandanten-Scope der Tür nicht auffindbar) und
+ * `status === 'published'`. Ein Entwurf gehört bis zur Veröffentlichung
+ * niemandem außer seiner Redaktion.
  *
- * KEIN Enrollment-Gate, und das ist der Unterschied zur Lektion: die
- * Kurs-Übersicht steht jedem eingeloggten Mitglied offen (genau darum entscheidet
- * man dort, ob man sich einschreibt). Erst der INHALT liegt hinter dem Tor.
+ * KEIN Enrollment-Gate, und das ist der Unterschied zur Lektion: Titel und
+ * Beschreibung sind Vorschau (genau darum entscheidet man dort, ob man sich
+ * einschreibt). Erst der INHALT liegt hinter dem Tor.
  *
  * ── `[slug]` HEISST HIER WIRKLICH SLUG ────────────────────────────────────
  * Im selben Ordner liegen Routen, in denen dasselbe Segment die ROW-ID trägt
@@ -104,10 +107,8 @@ export default defineEventHandler(async (event): Promise<CourseTranslateResponse
   // 'ai' — Begründung im Kopf.
   requirePlanProduct(event, 'courses')
 
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // Nur Mitglieder, vor jedem Datenbankzugriff (siehe Kopf).
+  const user = await requireCourseMember(event)
 
   const slug = getRouterParam(event, 'slug')
   if (!slug) {
@@ -123,7 +124,7 @@ export default defineEventHandler(async (event): Promise<CourseTranslateResponse
   const { locale } = await readValidatedBody(event, courseTranslateSchema.parse)
 
   // Wort für Wort die Vorprüfung der Leseroute (siehe Kopf).
-  const course = await tenantDb(event).find<CourseRow>(COURSES_TABLE, [Query.equal('slug', slug)])
+  const course = await tenantDb(event, { as: 'operator' }).find<CourseRow>(COURSES_TABLE, [Query.equal('slug', slug)])
     .catch((error) => { throw toH3Error(error, 'Course not found') })
   if (!course || course.status !== 'published') {
     throw createError({ status: 404, statusText: 'Course not found' })

@@ -1,8 +1,9 @@
 import type { LessonRow } from '../../../shared/types/course'
 
 /**
- * Lektions-CONTENT: nur nach Enrollment + Access-Check (paid → App-Guard).
- * Titel-Listen liefert die Kurs-Übersicht; der Inhalt bleibt hinter dem Tor.
+ * Lektions-CONTENT: nur für MITGLIEDER dieser Community (SEC-029), nach
+ * Enrollment + Access-Check (paid → App-Guard). Titel-Listen liefert die
+ * öffentliche Kurs-Vorschau; der Inhalt bleibt hinter dem Tor.
  *
  * Datentür als Operator (publishedLessonWithCourse): Lektionen tragen bewusst
  * KEINE Read-Permission, der Admin-Client umgeht sie — die Tür ist hier die
@@ -11,10 +12,9 @@ import type { LessonRow } from '../../../shared/types/course'
 export default defineEventHandler(async (event): Promise<LessonRow & { courseSlug: string }> => {
   // Produkt-Gate (P4): Kurse sind ab Plan pro enthalten.
   requirePlanProduct(event, 'courses')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // Mitglieder-Wache VOR dem ersten Datenbankzugriff (SEC-029): gleiche
+  // Antwort für vorhandene und nicht vorhandene Ids.
+  const user = await requireCourseMember(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {

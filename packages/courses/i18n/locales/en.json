@@ -38,7 +38,11 @@
       "progress": "{done} of {total} lessons ({percent}%)",
       "completed": "Completed 🎉",
       "lessonsTitle": "Lessons ({count})",
-      "noLessons": "No lessons yet."
+      "noLessons": "No lessons yet.",
+      "signInHint": "Sign in to take part and unlock all lessons.",
+      "signInToJoin": "Sign in to take part",
+      "notMember": "This course is only for members of this community.",
+      "notMemberHint": "Anyone can see the preview. Only members can take part — ask the people running this community for an invitation."
     },
     "lesson": {
       "video": "Watch video",
@@ -47,7 +51,9 @@
       "done": "Lesson completed!",
       "courseDone": "Course completed — well done! 🎉",
       "failed": "Could not save your progress.",
-      "failedHint": "The lesson still counts as open. Click “Complete lesson” again."
+      "failedHint": "The lesson still counts as open. Click “Complete lesson” again.",
+      "notMemberHint": "The lessons are for members only. The course overview shows you what the course offers.",
+      "backToCourse": "Back to the course overview"
     },
     "admin": {
       "title": "Courses",

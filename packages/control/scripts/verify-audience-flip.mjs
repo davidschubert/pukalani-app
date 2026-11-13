@@ -18,8 +18,8 @@
  * BEWUSST NICHT dabei: `activities`, `notifications` und Presence sind
  * mitglieder-intern BY DESIGN und dürfen von einer öffentlichen Community NIE
  * aufgemacht werden — die Begründung steht in
- * packages/core/server/utils/audienceRepermission.ts. Ebenso `courses`
- * (nie öffentlich) und `pages` (Zeilen ohne Permissions).
+ * packages/core/server/utils/audienceRepermission.ts. Ebenso `courses` und
+ * `pages` (Zeilen ohne Leserechte, die Routen sind die Grenze).
  *
  * Der Umzug benutzt die ECHTE Regel (`repermissionRow` aus
  * packages/core/shared/communityAudience.ts, per --experimental-strip-types

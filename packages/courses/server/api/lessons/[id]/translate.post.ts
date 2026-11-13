@@ -33,7 +33,8 @@ import {
  * ── DIESELBEN VORPRÜFUNGEN WIE DIE LESEROUTE, IN DERSELBEN REIHENFOLGE ────
  * Wer die Lektion nicht LESEN darf, darf sie nicht übersetzen. Also Zeile für
  * Zeile das, was `lessons/[id].get.ts` tut:
- *   1. Session-Pflicht,
+ *   1. Mitglieder-Wache (`requireCourseMember`, SEC-029) VOR jedem
+ *      Datenbankzugriff,
  *   2. `publishedLessonWithCourse` (Datentür als Operator — Lektionen tragen
  *      bewusst KEINE Read-Permission; die Tür ist hier die einzige
  *      Mandanten-Grenze und wirft bei einem Entwurf 404),
@@ -98,10 +99,8 @@ export default defineEventHandler(async (event): Promise<LessonTranslateResponse
   // 'ai' — Begründung im Kopf.
   requirePlanProduct(event, 'courses')
 
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // Vorprüfung 1 (siehe Kopf): nur Mitglieder, vor jedem Datenbankzugriff.
+  const user = await requireCourseMember(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {

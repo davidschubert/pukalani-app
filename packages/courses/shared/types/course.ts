@@ -103,7 +103,7 @@ export interface LessonProgressRow extends Models.Row {
   completedAt: string
 }
 
-/** Lektions-Metadaten für die Kursübersicht (Titel öffentlich, Content nicht) */
+/** Gliederung der Vorschau: Titel öffentlich, Inhalt/Video/Übersetzungen nicht */
 export interface LessonSummary {
   $id: string
   title: string
@@ -111,7 +111,38 @@ export interface LessonSummary {
   status: LessonStatus
 }
 
-export interface CourseDetailResponse extends CourseRow {
+/**
+ * VORSCHAU EINES VERÖFFENTLICHTEN KURSES (SEC-029) — das, was jeder sehen darf,
+ * auch ohne Konto. Eine AUSWAHL, keine Teilmenge per Weglassen: ein neues Feld
+ * an der Zeile wird so nie von selbst öffentlich. Gebaut ausschließlich von
+ * `toCoursePreview` (shared/coursePreview.ts).
+ *
+ * `translations` gehört dazu: es ist der Cache der Übersetzungen von Titel und
+ * Beschreibung, also selbst Vorschau. NICHT dabei: Autor-Id, Mandant,
+ * Bezahl-Produkt und die Appwrite-Metadaten der Zeile.
+ */
+export interface CoursePreview {
+  $id: string
+  $createdAt: string
+  $updatedAt: string
+  title: string
+  slug: string
+  description: string
+  status: CourseStatus
+  access: CourseAccess
+  authorName: string
+  lessonCount: number
+  translations?: string
+}
+
+/**
+ * Der Grund, mit dem eine Mitglieder-Route einen Fremden abweist — derselbe
+ * Schlüssel, den core `requireCommunityMembership` setzt (dort ohne eigene
+ * Konstante). Die Oberfläche liest ihn als `reason`.
+ */
+export const COURSE_NOT_A_MEMBER_CODE = 'not_a_member'
+
+export interface CourseDetailResponse extends CoursePreview {
   lessons: LessonSummary[]
   enrolled: boolean
   completedLessonIds: string[]
@@ -151,7 +182,7 @@ export interface LessonTranslateResponse {
 }
 
 export interface CourseListResponse {
-  rows: Array<CourseRow & { enrolled: boolean }>
+  rows: Array<CoursePreview & { enrolled: boolean }>
   nextCursor: string | null
 }
 

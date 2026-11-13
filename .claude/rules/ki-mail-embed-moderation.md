@@ -33,7 +33,10 @@ paths:
   nichts kostet, kostet kein Kontingent); (2) `translatedPollOptions` nimmt
   nur ein Array EXAKT gleicher Länge — die Stimme hängt am Index; (3) Lesen
   über die Session-Klinke (Row-Permissions = Sichtbarkeit), Cache-Schreiben
-  als operator/actor:'operator' (kein M13, kein A5-Beitritt); (4) Übersetzen
+  als operator/actor:'operator' (kein M13, kein A5-Beitritt) — AUSNAHME Kurse
+  und Lektionen (SEC-029, 2026-11-13): ihre Zeilen tragen kein Leserecht, beide
+  Übersetzungs-Routen lesen über die Operator-Klinke und stellen
+  `requireCourseMember` VOR den ersten Datenbankzugriff; (4) Übersetzen
   zeigt nie mehr als Lesen — die Lesson-Route trägt ALLE Vorprüfungen ihrer
   GET-Route, die Event-Schwärzung LEERT den Cache mit; (5) echte Bearbeitung
   leert, No-op-Speichern nicht; (6) SCHON IN DER ZIELSPRACHE (2026-08-21,

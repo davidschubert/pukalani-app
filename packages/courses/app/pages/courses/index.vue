@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { CourseListResponse, CourseRow } from '../../../shared/types/course'
 
-definePageMeta({ middleware: ['auth'] })
-
-/** Kurs-Galerie (Mitglieder): Karten mit Zugang-Badge + Enrolled-Status. */
+/**
+ * Kurs-Galerie: öffentlich, auch für Gäste (SEC-029) — Karten mit
+ * Zugang-Badge, für Mitglieder zusätzlich der Einschreibe-Status.
+ */
 const { t } = useI18n()
 const localePath = useLocalePath()
 
@@ -30,7 +31,7 @@ const { data, status } = await useFetch<CourseListResponse>('/api/courses')
  * nach dem Formular fertig ist.
  *
  * „Verwalten" BLEIBT ein Link und beantwortet die andere Frage: ENTWÜRFE
- * stehen nicht in dieser Galerie (sie tragen bewusst keine Read-Permission),
+ * stehen nicht in dieser Galerie (die Route liefert nur veröffentlichte),
  * archivierte Kurse ebenso wenig.
  */
 const canManage = useCapability('courses.manage')
