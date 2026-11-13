@@ -37,7 +37,8 @@ paths:
   `/api/auth/me` + `/api/community/role` nach (gemessen: 66 WS + 15 Requests in
   60 s, jetzt 1 + 0). JEDES neue client-Realtime-Plugin gehört in diese Klammer
   (heute: realtime-account, realtime-config, realtime-themes; realtime-branding
-  steigt ohne `useSiteId()` ohnehin aus). Bedingung ist `isUnknownHostError`,
+  steigt ohne `useSiteId()` ohnehin aus). Bedingung ist `isHostUnservedError`
+  (unbekannter Host ODER seit SEC-025 die 503 „Trennung ohne Resolver"),
   NICHT `useError()` — auf einer Tippfehler-404 einer GESUNDEN Community läuft
   Realtime weiter, sonst verlöre man dort die Sofort-Abmeldung bei
   Session-Widerruf. Nachgeholt, sobald `clearError()` räumt. Der Auth-Nachtrag

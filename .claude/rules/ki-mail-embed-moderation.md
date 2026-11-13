@@ -62,7 +62,8 @@ paths:
   (enabled/allowedOrigins, Default aus) → /embed-Seite + public/embed.js.
   frame-ancestors via core-Registry registerEmbeddableRoute (Default 'self'
   auf ALLEN SSR-Seiten); csrf-origin.ts-Middleware (pukalani.security.
-  csrfOriginCheck) wird PFLICHT, sobald E2-Partitioned-Cookies kommen.
+  csrfOriginCheck) wird PFLICHT, sobald E2-Partitioned-Cookies kommen
+  (seit SEC-004 Ziel überall an — hosts-ops.md, „HERKUNFTSPRÜFUNG").
   Transparenter Hintergrund NUR bei theme=auto. localhost:PORT↔PORT ist
   same-SITE — echtes Cross-Site-Gastverhalten braucht echte Domains.
 - Moderation: Zweiphasen-Hide + Cascade gehören dem comments-Layer
