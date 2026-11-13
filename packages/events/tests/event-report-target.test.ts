@@ -66,9 +66,18 @@ describe('Termine sind ein angemeldeter Melde-Typ', () => {
 })
 
 describe('die Prüfung läuft durch die Datentür — nicht am Mandanten vorbei', () => {
-  it('fragt die events-Tabelle mit der OPERATOR-Klinke und der echten Id', async () => {
+  it('fragt die events-Tabelle mit der MITGLIEDER-Klinke und der echten Id', async () => {
+    // SEC-031 (2026-11-13): bis dahin die Operator-Klinke — die Melde-Route
+    // unterschied damit „gibt es" von „gibt es nicht" auch für Termine, die
+    // das Konto nicht lesen darf (Entwurf, ausgeblendet). Jetzt entscheidet
+    // das Leserecht der Zeile, und beides ergibt dasselbe „nicht vorhanden".
     await stubs.registered.get('event')!(event, 'e-42')
-    expect(stubs.getCalls).toEqual([{ table: 'events', id: 'e-42', as: 'operator' }])
+    expect(stubs.getCalls).toEqual([{ table: 'events', id: 'e-42', as: undefined }])
+  })
+
+  it('ein Termin, den das Konto nicht lesen darf, ist „nicht vorhanden"', async () => {
+    stubs.getResult = () => { throw Object.assign(new Error('Event not found'), { status: 404 }) }
+    await expect(stubs.registered.get('event')!(event, 'e-draft')).resolves.toBe(false)
   })
 
   it('ein Termin aus einer FREMDEN Community ist „nicht vorhanden"', async () => {

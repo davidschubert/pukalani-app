@@ -22,13 +22,16 @@ import { COMMENTS_TABLE } from '../../shared/types/comment'
  */
 export default defineNitroPlugin(() => {
   /**
-   * MELDBAR: Kommentare. Die Prüfung läuft durch die Datentür als Operator —
-   * ein Kommentar aus einer FREMDEN Community ist damit „nicht vorhanden", und
-   * eine erfundene Id ebenso. Tombstones (`status: 'deleted'`) bleiben meldbar:
-   * die Zeile existiert noch und kann Anlass zur Moderation geben.
+   * MELDBAR: Kommentare. Die Prüfung läuft durch die Datentür über die
+   * MITGLIEDER-Klinke (SEC-031, 2026-11-13 — vorher als Operator): gemeldet
+   * werden kann, was das Konto LESEN darf. Ein Kommentar aus einer FREMDEN
+   * Community, ein ausgeblendeter (kein Leserecht mehr) und eine erfundene Id
+   * sind damit gleichermaßen „nicht vorhanden" — die Melde-Route verrät keine
+   * Existenz mehr. Tombstones (`status: 'deleted'`) bleiben meldbar, solange
+   * ihre Zeile lesbar ist: sie kann Anlass zur Moderation geben.
    */
   registerReportTarget('comment', async (event, targetId) => {
-    const row = await tenantDb(event, { as: 'operator' })
+    const row = await tenantDb(event)
       .get<ModeratableCommentRow>(COMMENTS_TABLE, targetId, 'Comment not found')
       .catch(() => null)
     return !!row

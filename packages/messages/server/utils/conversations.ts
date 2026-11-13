@@ -96,6 +96,38 @@ export async function findConversation(event: H3Event, participants: readonly st
   ])
 }
 
+/**
+ * Mit welchen dieser Menschen hat `userId` IN DIESER Community ein Gespräch?
+ *
+ * Für die Sperrliste (SEC-036, 2026-11-13): ein gemeinsames Gespräch ist einer
+ * der zwei Wege, auf denen ein Konto hier „auflösbar" ist. EINE Abfrage über
+ * den Paar-Schlüssel, gescopt durch die Datentür — ein Gespräch in einer
+ * anderen Community zählt nicht. Auch ein für mich entferntes Gespräch zählt,
+ * solange die Zeile besteht: wer mir geschrieben hat, bleibt sperrbar.
+ */
+export async function conversationPartnersAmong(
+  event: H3Event,
+  userId: string,
+  partnerIds: readonly string[],
+): Promise<Set<string>> {
+  const candidates = [...new Set(partnerIds.filter(id => id && id !== userId))]
+  const found = new Set<string>()
+  // `Query.equal` fasst 100 Werte — in Stapeln.
+  for (let i = 0; i < candidates.length; i += 100) {
+    const batch = candidates.slice(i, i + 100)
+    const byKey = new Map(batch.map(id => [conversationPairKey([userId, id]), id]))
+    const { rows } = await readDb(event).list<Conversation>(CONVERSATIONS_TABLE, [
+      Query.equal('pairKey', [...byKey.keys()]),
+      Query.limit(batch.length),
+    ])
+    for (const row of rows) {
+      const partner = byKey.get(row.pairKey)
+      if (partner) found.add(partner)
+    }
+  }
+  return found
+}
+
 /** Die Mitglieds-Zeile eines Menschen in einer Konversation (oder null). */
 export async function findMember(
   event: H3Event,

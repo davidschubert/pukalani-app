@@ -60,6 +60,14 @@ export default defineEventHandler(async (event) => {
 
   const isAuthor = row.authorId === user.$id
 
+  // SEC-030: der AUTOR handelt als Mitglied — und muss eines sein (ein
+  // Pool-Konto ist auf jedem Community-Host angemeldet; wer entfernt wurde,
+  // bearbeitet hier nichts mehr). Bewusst KEIN Beitritt. Erst nach dem Lesen
+  // der Zeile, weil erst sie sagt, ob hier der Autor steht: Kuratieren und
+  // Überarbeiten fragt darunter die Rolle bzw. den protokollierten
+  // Betreiber-Break-Glass, und der Betreiber ist kein Mitglied.
+  if (isAuthor) await requireCommunityMembership(event)
+
   /**
    * WER IST DAS HIER? — die Stufen-Rechte werden NUR gefragt, wenn es nicht der
    * Autor ist. Für ihn ändert sich nichts (er darf alles, wie immer), und die

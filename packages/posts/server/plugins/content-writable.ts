@@ -1,4 +1,4 @@
-import { topicAcceptsWrites } from '../../shared/topicState'
+import { topicWriteDenial } from '../../shared/topicState'
 import { POSTS_TABLE, type CommunityPost } from '../../shared/types/post'
 
 /**
@@ -53,15 +53,24 @@ export default defineNitroPlugin(() => {
         throw error
       })
 
-    if (!row || topicAcceptsWrites(row)) return
+    if (!row) return
+    const denial = topicWriteDenial(row)
+    if (!denial) return
 
+    /**
+     * NUR UNTER VERÖFFENTLICHTEN BEITRÄGEN (SEC-035, 2026-11-13): geplant,
+     * ausgeblendet oder gelöscht ⇒ 403 `topic_not_published` — derselbe
+     * Statuscode wie „geschlossen", ein eigener Grund. Diese Prüfung trägt
+     * auch den Gast-Weg, der über die Operator-Klinke schreibt und deshalb
+     * kein Leserecht hat, das ihn bremsen würde.
+     */
     throw createError({
       status: 403,
-      statusText: 'This topic is closed',
+      statusText: denial === 'topic_closed' ? 'This topic is closed' : 'This topic is not published',
       // Fachlicher Grund für den Client: der zentrale Handler hebt ihn als
       // `reason` ins Envelope (core/server/error.ts), die Kommentar-Oberfläche
-      // zeigt daraufhin „Thema geschlossen" statt einer nackten 403.
-      data: { code: 'topic_closed' },
+      // kann daraufhin „Thema geschlossen" statt einer nackten 403 zeigen.
+      data: { code: denial },
     })
   })
 })

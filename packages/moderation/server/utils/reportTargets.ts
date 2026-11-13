@@ -22,13 +22,28 @@ import { TARGET_NOT_FOUND_CODE, UNKNOWN_TARGET_CODE } from '../../shared/reportE
  * dabei die Datentür des Konsumenten, nicht diese Datei: ein Ziel aus einer
  * fremden Community ist für den Melder schlicht nicht vorhanden.
  *
+ * DIE FRAGE IST „DARF DIESES KONTO DAS ZIEL LESEN?", nicht „gibt es die Zeile?"
+ * (SEC-031, 2026-11-13). Bis dahin prüften alle Konsumenten mit der
+ * Operator-Klinke, die an den Row-Permissions vorbeiliest: die Route antwortete
+ * 404 für eine erfundene Id und 200/409 für einen Entwurf oder einen
+ * ausgeblendeten Inhalt, den der Melder nie sehen sollte — eine Existenz-Probe
+ * für jedes Konto. Deshalb prüft eine Probe über die Mitglieder-Klinke
+ * (`tenantDb(event)`, Session-Client): „gibt es nicht" und „darf ich nicht
+ * lesen" ergeben dieselbe Antwort. Zielarten, deren Zeilen bewusst KEIN
+ * Leserecht für Konten tragen (private Nachrichten, Kurse/Lektionen), brauchen
+ * statt dessen die FACHLICHE Lese-Regel ihres Layers (z. B. „ist Teilnehmer
+ * des Gesprächs") — nie die rohe Operator-Klinke allein.
+ *
  * KEIN REGISTRIERTER TYP ⇒ 400 (`unknown_target`). Das ist bewusst hart: ein
  * Produkt-Layer, der Melden anbietet, ist genau die Stelle, die auch die Queue
  * baut — vergisst er die Registrierung, soll es beim ersten Klick auffallen und
  * nicht in einem halben Jahr beim Zählen der Karteileichen.
  */
 
-/** Gibt es dieses Ziel im aktuellen Mandanten? (Fehler = „nein", fail-closed) */
+/**
+ * Darf das meldende Konto dieses Ziel im aktuellen Mandanten sehen?
+ * (Fehler = „nein", fail-closed; SEC-031: über die Mitglieder-Klinke prüfen.)
+ */
 export type ReportTargetProbe = (event: H3Event, targetId: string) => Promise<boolean> | boolean
 
 const targets = new Map<string, ReportTargetProbe>()
@@ -55,8 +70,9 @@ export function registeredReportTargets(): string[] {
 /**
  * Ziel prüfen, BEVOR eine Meldung entsteht.
  *  - unbekannter Typ → 400 `unknown_target`
- *  - bekannter Typ, aber kein Ziel (gelöscht, erfunden, fremder Mandant)
- *    → 404 `target_not_found`
+ *  - bekannter Typ, aber kein Ziel (gelöscht, erfunden, fremder Mandant,
+ *    für dieses Konto nicht lesbar) → 404 `target_not_found` — für alle Fälle
+ *    DIESELBE Antwort, sonst wäre die Route eine Existenz-Probe (SEC-031)
  *
  * Die Gründe reisen als `data.code` und kommen über den zentralen
  * Fehler-Handler als `reason` beim Client an (core/shared/types/error.ts).

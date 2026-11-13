@@ -1,4 +1,5 @@
 import type { Models } from 'node-appwrite'
+import type { VoteCounts } from '../../../core/shared/voteCounts'
 
 export const EVENTS_TABLE = 'events'
 export const EVENT_RSVPS_TABLE = 'event_rsvps'
@@ -206,8 +207,13 @@ export interface EventVote extends Models.Row {
   value: EventVoteValue
 }
 
+/**
+ * Antwort von `POST /api/events/:id/score`: NUR Zähler + eigene Stimme
+ * (SEC-031, 2026-11-13 — vorher der ganze Termin, gelesen an den
+ * Row-Permissions vorbei). Die Oberfläche übernimmt die Zähler.
+ */
 export interface EventVoteResponse {
-  event: EventRow
+  event: VoteCounts
   myVote: EventVoteValue | null
 }
 
@@ -254,8 +260,14 @@ export interface EventListResponse {
   nextCursor: string | null
 }
 
+/**
+ * Antwort von `POST /api/events/:id/rsvp`: NUR die Teilnehmerzahl + eigene
+ * Zusage (SEC-031, 2026-11-13 — vorher der ganze Termin samt Beschreibung,
+ * Link und Adresse, gelesen an den Row-Permissions vorbei). Feldauswahl:
+ * `toEventRsvpCounts` (shared/eventCounts.ts).
+ */
 export interface RsvpResponse {
-  event: EventRow
+  event: Pick<EventRow, '$id' | 'attendeeCount'>
   myRsvp: RsvpStatus | null
 }
 

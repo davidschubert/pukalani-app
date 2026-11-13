@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { blockAppliesIn, isSelfBlock, pairIsBlocked, type BlockFacts } from '../../shared/messageBlocks'
+import { normalizeHandle } from '../../../core/shared/handles'
+import { blockAppliesIn, blockTargetResolvable, isSelfBlock, pairIsBlocked, type BlockFacts } from '../../shared/messageBlocks'
 import { MESSAGE_BLOCKS_TABLE, type BlockScope, type MessageBlock } from '../../shared/types/message'
 
 /**
@@ -168,6 +169,38 @@ export async function blockUser(
   // Client, und ein Realtime-Ereignis darüber wäre genau die Auskunft, die
   // § 2.3 ausschließt („Der Blockierte erfährt es nicht").
   await db.create(MESSAGE_BLOCKS_TABLE, { blockerId, blockedId, scope }, { permissions: [] })
+}
+
+/**
+ * Welche dieser Konten sind IN DIESER Community auflösbar? (SEC-036,
+ * 2026-11-13 — die Regel steht pur in `blockTargetResolvable`.)
+ *
+ * Gebündelt, nie je Person: Handle → Rück-Auflösung (zwei Abfragen für alle)
+ * und gemeinsame Gespräche (eine Abfrage). Die Rück-Auflösung ist der Kern —
+ * `resolveUserHandles` allein filtert die Community NICHT (Vertrag in
+ * `core/server/utils/accountHandles.ts`), `resolveHandleOwners` sehr wohl.
+ */
+export async function blockTargetsResolvableHere(
+  event: H3Event,
+  callerId: string,
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  const wanted = [...new Set(userIds.filter(Boolean))]
+  if (wanted.length === 0) return new Set()
+
+  const handles = await resolveUserHandles(event, wanted)
+  const normalized = new Map(wanted.map(id => [id, normalizeHandle(handles.get(id) ?? '')]))
+  const [owners, shared] = await Promise.all([
+    resolveHandleOwners(event, [...normalized.values()].filter(Boolean)),
+    conversationPartnersAmong(event, callerId, wanted),
+  ])
+
+  return new Set(wanted.filter(userId => blockTargetResolvable({
+    userId,
+    handle: normalized.get(userId) ?? '',
+    handleOwners: owners,
+    sharedConversation: shared.has(userId),
+  })))
 }
 
 /** Aufheben. Fremde Zeilen sind für den Aufrufer schlicht nicht vorhanden. */

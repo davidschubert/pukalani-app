@@ -11,10 +11,10 @@ import { POLL_VOTES_TABLE, POSTS_TABLE, type CommunityPost, type PollVote } from
 export default defineEventHandler(async (event) => {
   // Produkt-Gate (P4): der Posting-Feed ist ab Plan personal enthalten.
   requirePlanProduct(event, 'posts')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {
@@ -37,7 +37,15 @@ export default defineEventHandler(async (event) => {
   // ausdrücklich — über die Klinke lief die Stimme still daran vorbei.
   const db = tenantDb(event, { as: 'operator', actor: 'member' })
 
-  const post = await db.get<CommunityPost>(POSTS_TABLE, id, 'Post not found')
+  /**
+   * ERST LESEN, WIE DAS KONTO LIEST (SEC-031, 2026-11-13): die Umfrage über
+   * die Mitglieder-Klinke (Session-Client, Leserecht der Zeile) holen, BEVOR
+   * die Operator-Klinke irgendetwas liest oder schreibt. Wer den Beitrag nicht
+   * lesen darf, bekommt dasselbe 404 wie für eine erfundene Id — vorher
+   * verrieten 409 „Not an open poll" und die Antwort mit Optionen und
+   * Zwischenstand eine Umfrage, die das Konto nie sehen sollte.
+   */
+  const post = await tenantDb(event).get<CommunityPost>(POSTS_TABLE, id, 'Post not found')
   if (post.type !== 'poll' || post.status !== 'published') {
     throw createError({ status: 409, statusText: 'Not an open poll' })
   }
@@ -86,7 +94,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Frischen Zustand zurückgeben — die UI ersetzt ihren Poll-State atomar
+  // Frischen Zustand zurückgeben — die UI ersetzt ihren Poll-State atomar.
+  // Nur der Umfrage-Zustand (Optionen, Zähler, eigene Stimme), nie der
+  // Beitrag; sichtbar ist er erst NACH der Lese-Prüfung oben (SEC-031).
   const states = await pollStatesFor(event, [post], user.$id)
   return { poll: states.get(post.$id) }
 })

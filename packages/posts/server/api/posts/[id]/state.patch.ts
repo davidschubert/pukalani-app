@@ -96,6 +96,12 @@ export default defineEventHandler(async (event) => {
    * einer gesperrten Community durch. Ihn anders zu behandeln als bei jeder
    * anderen seiner Handlungen wäre schwerer zu erklären als der Sonderfall.
    */
+  // SEC-030: wer nicht über das Moderationsrecht kommt (Rolle oder
+  // protokollierter Betreiber-Break-Glass), handelt als Mitglied — und muss
+  // eines sein. Bewusst KEIN Beitritt: ein Thema umzustellen ist kein erster
+  // Beitrag. 403 `not_a_member` für Fremde.
+  if (!isStaff) await requireCommunityMembership(event)
+
   /**
    * WARTUNGSMODUS — und zwar NUR für den Nicht-Moderator (S10b).
    *

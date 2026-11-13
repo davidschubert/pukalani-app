@@ -68,6 +68,34 @@ export function myBlocksIn(rows: readonly BlockFacts[], userId: string, communit
 }
 
 /**
+ * IST DIESES KONTO HIER AUFLÖSBAR? (SEC-036, 2026-11-13)
+ *
+ * Sperren lässt sich nur, wen man IN DIESER Community kennen kann — und nur
+ * für so jemanden nennt die Sperrliste Name und Handle. Zwei Wege, mehr nicht:
+ *  1. Sein Handle zeigt hier auf ihn (die Rück-Auflösung über
+ *     `resolveHandleOwners` filtert die Zugehörigkeit zu dieser Community).
+ *  2. Es gibt hier ein gemeinsames Gespräch mit dem Aufrufer.
+ *
+ * Grund: die Sperr-Route nahm jede beliebige Id an, und die Liste löste danach
+ * Name und Handle über den Admin-Client auf — auch für Konten, die mit dieser
+ * Community nichts zu tun haben. Eine Liste, die zu jeder eingegebenen Id
+ * einen Namen nennt, ist ein Verzeichnis.
+ *
+ * `handle` ist der NORMALISIERTE Handle des Kontos ('' wenn keiner),
+ * `handleOwners` die Rück-Auflösung (normalisierter Handle → userId).
+ */
+export function blockTargetResolvable(input: {
+  userId: string
+  handle: string
+  handleOwners: ReadonlyMap<string, string>
+  sharedConversation: boolean
+}): boolean {
+  if (!input.userId) return false
+  if (input.sharedConversation) return true
+  return input.handle !== '' && input.handleOwners.get(input.handle) === input.userId
+}
+
+/**
  * Sich selbst sperren ist keine Handlung, sondern ein Tippfehler — und eine
  * Zeile dafür würde jede Selbst-Konversation still unmöglich machen.
  */

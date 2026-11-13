@@ -2,6 +2,7 @@ import { communityContentIsPublic } from '../../../../core/shared/communityAudie
 import { guestCommentSchema } from '../../../schemas/comment'
 import { guestCommentsAllowed } from '../../../shared/guestComments'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
+import { assertReplyParent } from '../../utils/replyParent'
 
 /**
  * Gast-Kommentar (Embed E4, Task 20): Kommentieren OHNE Account (nur ein frei
@@ -117,9 +118,12 @@ export default defineEventHandler(async (event) => {
   if (body.parentId) {
     parent = await db.get<Comment>(COMMENTS_TABLE, body.parentId, 'Parent comment not found')
     // Nur innerhalb desselben Targets antworten — kein Cross-Thread-Einschmuggeln.
-    if (parent.targetId !== body.targetId || parent.targetType !== body.targetType) {
-      throw createError({ status: 422, statusText: 'Parent belongs to a different thread' })
-    }
+    // Und nur an einen AKTIVEN Kommentar (SEC-035, 2026-11-13): dieser Weg
+    // liest mit der Operator-Klinke, ein ausgeblendeter Kommentar wäre hier
+    // also sichtbar gewesen und sein Autor benachrichtigt worden. Nicht aktiv
+    // ⇒ 404 wie „nicht gefunden". Die Regel teilen beide Schreibwege
+    // (shared/replyParent.ts).
+    assertReplyParent(parent, body)
     rootId = parent.rootId ?? parent.$id
     depth = parent.depth + 1
     if (depth > MAX_COMMENT_DEPTH) {
@@ -177,9 +181,22 @@ export default defineEventHandler(async (event) => {
   // Antwort auf einen echten Nutzer → benachrichtigen (Gäste haben keine
   // userId, senderId bleibt leer). Gast-Eltern können nicht benachrichtigt
   // werden (kein Konto) — kein Mail-Relay-Missbrauch über fremde Adressen.
+  //
+  // EIGENER TYP `reply.guest` (SEC-035, 2026-11-13): der Titel ist der frei
+  // gewählte Gast-Name. Unter dem Typ 'reply' las die Glocke „<Name> hat auf
+  // deinen Kommentar geantwortet" — nicht von einem Konto mit diesem Namen zu
+  // unterscheiden. Der eigene Typ kennzeichnet den Gast in Glocke UND Mail
+  // (NotificationBell `messageKey`, core/server/utils/notificationEmail.ts).
   if (parent && parent.authorId && parent.authorKind !== 'guest') {
     // scope 'tenant' (C15): gehört in die Community des Threads.
-    await notify(event, { recipientId: parent.authorId, type: 'reply', title: body.guestName, body: snippet, link, scope: 'tenant' })
+    await notify(event, {
+      recipientId: parent.authorId,
+      type: 'reply.guest',
+      title: body.guestName,
+      body: snippet,
+      link,
+      scope: 'tenant',
+    })
   }
 
   setResponseStatus(event, 201)

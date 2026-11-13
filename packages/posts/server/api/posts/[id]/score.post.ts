@@ -1,6 +1,7 @@
 import { AppwriteException, Permission, Query, Role } from 'node-appwrite'
 import { LIKE_LIMIT_REACHED } from '../../../../../core/shared/likeAllowance'
 import { upvoteDelta, type UpvoteState } from '../../../../../core/shared/upvoteDelta'
+import { toVoteCounts } from '../../../../../core/shared/voteCounts'
 import { scoreVoteSchema } from '../../../../schemas/post'
 import { POSTS_TABLE, POST_VOTES_TABLE, type CommunityPost, type PostVote, type PostVoteResponse, type PostVoteValue } from '../../../../shared/types/post'
 
@@ -14,10 +15,10 @@ import { POSTS_TABLE, POST_VOTES_TABLE, type CommunityPost, type PostVote, type 
 export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
   // Produkt-Gate (P4): der Posting-Feed ist ab Plan personal enthalten.
   requirePlanProduct(event, 'posts')
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
+  // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
+  // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
+  const user = await requireCommunityParticipant(event)
 
   const postId = getRouterParam(event, 'id')
   if (!postId) {
@@ -40,9 +41,19 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
   const db = tenantDb(event)
   const ops = tenantDb(event, { as: 'operator' })
 
-  // Nur published-Posts sind votbar (UI blockt nur clientseitig); get belegt
-  // die Zugehörigkeit — ein fremder Mandant bekommt 404.
-  const target = await ops.get<CommunityPost>(POSTS_TABLE, postId, 'Post not found')
+  /**
+   * ERST LESEN, WIE DAS KONTO LIEST (SEC-031, 2026-11-13). Die Mitglieder-
+   * Klinke liest mit dem Session-Client — dort entscheidet das Leserecht der
+   * Zeile. Wer den Beitrag nicht lesen darf (geplant, ausgeblendet, fremde
+   * Community), bekommt dasselbe 404 wie für eine erfundene Id, und die
+   * Operator-Klinke unten wird nie berührt. Vorher las die Route gleich mit
+   * der Operator-Klinke: ein 409 „nicht stimmbar" bestätigte dann die
+   * Existenz eines Beitrags, den das Konto nie sehen sollte.
+   *
+   * Nur published-Posts sind votbar (UI blockt nur clientseitig); get belegt
+   * die Zugehörigkeit — ein fremder Mandant bekommt 404.
+   */
+  const target = await db.get<CommunityPost>(POSTS_TABLE, postId, 'Post not found')
   if (target.status !== 'published') {
     throw createError({ status: 409, statusText: 'Post not votable' })
   }
@@ -116,6 +127,8 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
     ])
     const myVote: PostVoteValue | null = mine?.value === -1 ? -1 : mine ? 1 : null
 
+    // Die Zähler schreibt die Operator-Klinke (post_votes und die Zähler-
+    // Spalten tragen bewusst kein Schreibrecht für Konten).
     const post = await ops.update<CommunityPost>(POSTS_TABLE, postId, {
       upvotes,
       downvotes,
@@ -168,6 +181,9 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
       previousUpvotes: target.upvotes,
     })
 
-    return { post, myVote }
+    // NUR die Zähler (SEC-031): die frisch geschriebene Zeile kam über die
+    // Operator-Klinke — vollständig zurückgegeben, zeigte sie mehr, als die
+    // Leseroute derselben Person zeigt. Feste Feldauswahl in core/shared.
+    return { post: toVoteCounts(post), myVote }
   })
 })

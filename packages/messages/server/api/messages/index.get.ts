@@ -29,8 +29,11 @@ export default defineEventHandler(async (event): Promise<{ conversations: Conver
   // member_counters keine Vertrauensstufe, ohne Stufe kein Absender).
   requirePlanProduct(event, 'messages')
 
-  const user = event.context.user
-  if (!user) throw createError({ status: 401, statusText: 'Unauthorized' })
+  // SEC-030 (2026-11-13, Davids Entscheidung): wer aus der Community entfernt
+  // wurde, schreibt und liest hier nichts mehr — auch nicht in einem Gespräch,
+  // das schon besteht. Die Wache steht vor jedem Datenbankzugriff; im
+  // Silo/Einzelbetrieb gibt sie durch.
+  const user = await requireCommunityMembership(event)
 
   // Der Owner-Schalter gilt auch fürs LESEN: ist das Produkt aus, gibt es hier
   // nichts — sonst stünde ein Posteingang offen, den die Community nie

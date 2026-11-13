@@ -24,10 +24,10 @@ import { REPORTS_TABLE, type Report } from '../../../shared/types/report'
  * fremder Report ist auf diesem Weg nicht erreichbar.
  */
 export default defineEventHandler(async (event) => {
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
+  // Community-Host angemeldet). Bewusst KEIN Beitritt — die eigene Meldung zurückzuziehen macht
+  // niemanden zum Mitglied. 401 ohne Konto, 403 `not_a_member` für Fremde.
+  const user = await requireCommunityMembership(event)
 
   const query = getQuery(event)
   const targetType = typeof query.targetType === 'string' ? query.targetType : ''
