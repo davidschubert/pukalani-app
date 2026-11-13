@@ -1,8 +1,8 @@
 # Offene Punkte
 
-**Stand: 13 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 17 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
-Stand: **2026-11-12**. Hier steht **nur, was noch offen ist** — in der
+Stand: **2026-11-13**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
 Beweis und den gelernten Lektionen) steht final in
 **[OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md)**.
@@ -33,11 +33,15 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 12 · BS1 | **branding.supply: Rechtstexte + Bezahlweg — 8 Entscheidungen GEFALLEN (2026-09-07), in Umsetzung.** **R0 + R1 + R1b + Z0 GEBAUT und LIVE** (2026-09-07/08; Prod-Migrationen pages-001…006 und brand-021 mit Davids Ja GEFAHREN, Geo-Env gesetzt): der 404 am Erstgespräch-Knopf ist weg, der `pages`-Layer ist montiert, die drei Rechtsseiten stehen als Entwurfs-Gerüst mit Hinweis „Entwurf, in anwaltlicher Prüfung" und `noindex`, der Fuß verlinkt sie, das AGB-Häkchen steht — und die Fassung wird am Konto festgehalten (Core). **Seit 2026-11-12 trägt die Datenschutz-Seite eine vorläufige Fassung statt des Gerüsts** (de+en, live; COMPLETE „BS1 Datenschutz vorläufig") — Impressum und AGB bleiben Gerüst, die geprüfte Fassung kommt weiter mit R2/R3. **R1b GEBAUT** (2026-09-07): die versprochenen 24 Monate der Funnel-Ereignisse haben jetzt einen Sweep, und der Env-Wächter verlangt für branding die zwei `GEO_*`-Pfade — **David setzt sie in der Server-`.env` (ploi-Site 402929) + Reload**, bis dahin bleibt `pnpm ops:site-env` rot. **R2a GEBAUT** (2026-09-07): die Methodik-Seite zum Brand-Score steht unter `/brand-check/methodik` (de+en, ohne Konto, verlinkt als vierter Reiter und von Start/Ranking/Ergebnis) — damit darf der Datenschutz-Abschnitt „Öffentliche Bewertung fremder Marken“ live gehen. **R2b GEBAUT** (2026-09-08, Davids Entscheidung): der Befund aus R2a ist erledigt — der Brand-Check holt jetzt `robots.txt` und prüft den TDM-Vorbehalt (dieselben Regeln wie der Marktvergleich, eigener Absender `PukalaniBrandCheck`, Verbot ⇒ 409 ohne gespeicherte Zeile); der Wizard-Weg für die EIGENE Website bleibt bewusst ausgenommen. **Z0 GEBAUT** (2026-09-07): `/erstgespraech` lebt im brand-Layer, der Trichter springt nicht mehr auf pukalani.studio — offen ist **Davids Ja zur Prod-Migration `brand-021`** (vor dem Code-Deploy) und, falls die Anfragen ins Postfach sollen, ein `introCallNotify` in `apps/branding/app/app.config.ts`. Offen: **Prod-Migration `pages` auf `branding` GEFAHREN 2026-09-07** (Migration VOR dem Code-Deploy) · **R2 wartet auf Davids Generator-Texte** (dazu neu: der Abschnitt „Reichweitenmessung") · **R2c = Plausible einschalten** (beschlossen 2026-09-08 mit BI1; David legt die Plausible-Site an, Text vor Schalter) · R3 = Anwaltstermin · Z1 braucht `4 · A2`. **Drei Entscheidungen vom 2026-09-08** (Plan §9): **Kundenkreis nur B2B** (Unternehmen + Selbstständige — kein Verbraucher-Widerruf, keine Verbraucherstreitbeilegung, Preise netto; das Häkchen „Ich handle als Unternehmer/in" bei der Registrierung ist Paket **R1c** — **GEBAUT und LIVE** seit 2026-09-08, Commit `55c4ec5c`, am 2026-11-09 auf `/register` und `/de/register` nachgeprüft, COMPLETE „BS1 R1c") · **Generator = activeMind** für die Erstfassung, später eRecht24 Premium (activeMind verlangt Quellennennung im Text) · **Art.-27-Vertreter verschoben** in die eigene Zeile `A27`. Vorbedingung fürs Öffnen der Beta. | **Hoch** | M | Ja: Migration, Texte, Anwalt, Preis | [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) |
 | 14 · BK1 | **Brand Book & Kit (Produkt 03) — Strategie FREIGEGEBEN, Konzeption GESCHRIEBEN + sechs Konzept-Fragen beantwortet (alles 2026-09-09, DECISION-LOG).** EIN Produkt als dritte Schicht in `brand` (Kapitel Nomenklatur/AI-Guidelines/Pressekit + Lieferseite `/brand/:id/kit`), Kit = `brand.md` + `brand.json` + `tokens.json` (DTCG, hell/dunkel als Gruppen) + `tokens.css` + Zeichen-SVGs + `LICENSES.md` + Zip, Freischaltung „Ableitung" als Feld brand-025 (Beta/Betreiber/Z1), Preis 149 € netto erst mit Z1 sichtbar. **Konzept + PROTOTYP FREIGEGEBEN 2026-09-09 (§3), Pakete K0–K8 verbindlich (§2.18). K0 Gerüst, K1 Freischaltung (brand-025 auf Prod mit Davids Ja, `verify:kit` 40/40 gegen Prod) K2 Token-Modell (inkl. §2.20 Nr. 7 Dunkelmodus-Akzent), K3 Brand Context, K4 Book-Kapitel K5 Werkstatt-Kapitel (Otto/Nika/Pressekit) und **K6 Lieferseite + Bündel (`/brand/:id/kit`, Zeichen-Route, Zip, Export-Karte echt; `verify:kit` 58/58) GEBAUT** und auf main. **Nächster Schritt: K7 Beispiel + Copy in einer NEUEN Session** (WORKFLOW „ein Paket = eine Session"), danach K8.** Gates für David: Blick auf Kailuas `brand.md` (K3, Dateien liegen vor) + Leseansicht (K4: eigene Marke unter `/dashboard/brand-unlocks` freischalten, dann `/brand/:id/foundation`), Inhalts-Gate Otto/Nika (K5) FREIGEGEBEN 2026-09-09, **Lieferseite (K6) liegt David vor**, Copy (K7), Abnahme (K8). Offen aus K5: Verify-Zusagen 31–33 gegen Prod (Davids Ja + Aufräumen), Persona-Audit ⇒ K8. Vermerk: „Brand Extract" wird eigener Baustein NACH BK1. | Mittel | L | Ja: Migrations-Ja, Inhalts-Gates, Abnahme | [BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) |
 | 16 · RS1 | **Resend besser nutzen (Changelog-Durchsicht 2026-11-06).** (a) + (b) **erledigt 2026-11-08** — der Newsletter bremst sich selbst, Schlüssel steht auf branding, Bounce-Webhook auf allen vier Sites, SMTP-Schlüssel auf `sending_access` verengt (COMPLETE „RS1 a"/„RS1 b"/„RS1 h"). Offen: eigene Newsletter-Subdomain, DPF/EU-Region für die Rechtstexte. | Mittel | S | Ja: Entscheidungen | [Notiz RS1](#rs1) |
-| 18 · AL1 | **Aktivitätsliste in der Admin-Nutzeransicht ist immer leer.** Appwrite hat `users.listLogs` mit 2.5 entfernt (auf 2.7.1: 404), `activities` gibt es self-hosted nicht; seit PR #119 liefert die Route `activity: []` statt zu scheitern. Entscheiden: Abschnitt entfernen oder eigene Quelle (z. B. Sessions-Verlauf) bauen. | Niedrig | S | **Ja** — Produktentscheidung | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
+| 18 · AL1 | **Aktivitätsliste in der Admin-Nutzeransicht ist immer leer.** Appwrite hat `users.listLogs` mit 2.5 entfernt (auf 2.7.1: 404), `activities` gibt es self-hosted nicht; seit PR #119 liefert die Route `activity: []` statt zu scheitern. Entscheiden: Abschnitt entfernen oder eigene Quelle (z. B. Sessions-Verlauf) bauen. **Seit 2026-11-13 gibt es eine fertige Quelle:** `readAccountEvents` (core, KE1) liest die Konto-Ereignisse eines Nutzers aus `audit_logs` — eine mögliche Quelle für den Abschnitt (An- und Abmeldungen lässt sie bewusst aus; für die Betreiber-Sicht wäre die Aktionsliste zu erweitern). | Niedrig | S | **Ja** — Produktentscheidung | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
 | 19 · BI5 | **Den ersten Insights-Artikel veröffentlichen — danach steht der Kommentar-Beweis.** Kommentare unter Artikeln sind seit 2026-11-09 live (BI2 K7, Migrationen gefahren), aber `/api/insights/public/posts` ist leer — ohne öffentlichen Artikel gibt es keine Seite mit Faden. Zu entscheiden: die vier Launch-Entwürfe (I6 Stufe 1) oder der Video-Entwurf `6af1c0f3…`; dazu, ob das Fundstück `qooOXNmdCH4` aus dem Beweis vom 2026-11-09 stehen bleibt. Den Klick-Beweis fahre ich danach. | Mittel | S | **Ja: freigeben + entscheiden** | [KURATION § 20](plans/BRAND-INSIGHTS-KURATION.md) |
 | 20 · GA1 | **Gesamtaudit 2026-11 läuft.** Vorbereitung und Charter sind erledigt, die Audit-Sessions laufen am Stück im privaten Ordner `~/Developer/Claude/Audits/pukalani-2026-11/` (außerhalb des Repos, weil das Repo öffentlich ist; Stand in `STATE.md` dort). Danach Synthese, Review mit David, Umsetzung paketweise. | Mittel | L (viele Sessions) | **Ja: Review der Pakete** | [GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) |
 | 21 · SC2 | **Den Stripe-Test-Treiber auf die heutigen Projekte umstellen.** `a2a-checkout-driver.mjs` spricht noch die gelöschten Projekte `pool`/`control`, das Cookie `a_session_pool` und Schlüsseldateien, die es nicht mehr gibt — gegen Prod läuft er so nicht. Umstellen auf `account`/`admin` und über Env auch lokal fahrbar machen (das Rezept des lokalen SC1-Laufs steht im Runbook). | Niedrig | S | Nein (Prod-Probe nur mit Davids Ja) | [STRIPE-TEST-WALKTHROUGH.md § Durchlauf 2026-11-12](runbooks/STRIPE-TEST-WALKTHROUGH.md) |
-| 22 · P29 | **Anmelde-Regeln auf Production einschalten.** Code, Skript und Runbook sind da (2026-11-13). Offen: je Projekt ein Schlüssel mit `policies`-Recht, `ops:auth-policies --apply` in vier Projekten, `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server, die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten. | Mittel | S | Ja (jeder Schritt ändert Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
+| 22 · AB1 | **Anmelde-Bremse: Nacharbeiten.** Die Bremse ist seit 2026-11-13 live (COMPLETE „GA1 P02"). Offen: (a) **Klick-Probe auf Live** mit einem eigenen Konto, (b) **Redis-Einstellung für branding.supply** und die Variable in die Pflichtliste des Wächters, (c) Uploads prüfen die Größe vor dem Einlesen, (d) zwei Fehlerwege an Anmeldung und Reset sauber trennen, (e) Mails je Empfänger begrenzen, (f) drei Kleinigkeiten. | Mittel | S je Teil | **Ja: (a) selbst, (b) Server-Einstellung** | [Einzelheiten](#ab1) |
+| 23 · KE2 | **Falscher Zwei-Faktor-Code bei der Anmeldung steht ohne Konto im Protokoll.** `mfa/challenge.post.ts` fragt nach dem Fehlversuch `account.get()`; solange der zweite Faktor fehlt, antwortet Appwrite darauf mit 401, die Zeile bekommt also keine `actorId`. Folge: der Eintrag erscheint weder beim Betroffenen unter „Konto und Sicherheit" noch mit Namen in der Betreiber-Ansicht (sichtbar ist nur der Fehlversuch beim Abschalten). Aus dem Code gelesen, noch nicht gemessen. Lösung ist eine Zeile: `challenge.userId` nehmen — dieselbe belegte Kennung, die die Konto-Bremse (PR #132) dort schon nutzt. Danach messen: Konto mit Zwei-Faktor, falscher Code, Eintrag ansehen. | Mittel | S | **Ja** — ändert, was protokolliert wird | `packages/core/server/api/auth/mfa/challenge.post.ts` |
+| 24 · KE3 | **Profilbild ohne Speichern bleibt als Datei liegen, ohne Protokoll-Eintrag.** In der Oberfläche lädt das Formular erst beim Speichern hoch; scheitert das Speichern danach (z. B. Telefonnummer schon vergeben) oder ruft jemand die Upload-Route direkt, liegt die Datei im Bucket `avatars` und ist per Adresse lesbar, bis das Konto gelöscht wird (dann räumt BE-001 auf). Kein Leck, aber Ablage-Müll. Entscheiden: Datei bei gescheitertem Speichern wieder löschen, einen Aufräum-Lauf bauen oder so lassen. | Niedrig | S | **Ja** — Entscheidung | `packages/core/app/components/user/UserProfileForm.vue` · `packages/core/server/api/storage/[bucket]/index.post.ts` |
+| 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) der Migrations-Runner baut bei jedem Lauf an drei Tabellen um, (d) vier Runbooks nennen einen Befehl, der nicht mehr geht, (e) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
+| 26 · P29 | **Anmelde-Regeln auf Production einschalten.** Code, Skript und Runbook sind da (2026-11-13). Offen: je Projekt ein Schlüssel mit `policies`-Recht, `ops:auth-policies --apply` in vier Projekten, `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server, die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten. | Mittel | S | Ja (jeder Schritt ändert Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -496,6 +500,102 @@ Appwrite verfügbar, und die Insights-Basis ist so groß, dass Volltext nicht
 mehr reicht (grob einige hundert Einträge). Dann in derselben Strategie-Runde
 VectorsDB gegen pgvector im eigenen Postgres und gegen einen externen
 Embedding-Dienst abwägen.
+
+<a id="ab1"></a>
+
+**AB1 — Anmelde-Bremse: Nacharbeiten (aus dem Gesamtaudit, Paket P02).**
+Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
+Sitzungen. Schon woanders eingeplant und deshalb NICHT hier: die Ausnahme für
+bekannte Geräte bei einer Konto-Pause (Audit-Paket P29, zugeschnitten), die
+Pflicht-Prüfungen vor dem Zusammenführen auf GitHub (Paket P08) und
+Laufzeit-Tests über einen echten Community-Host (Paket P27).
+
+- **(a) Klick-Probe auf Live.** Geprüft ist die Bremse lokal und in Tests, auf
+  Production nicht. Mit einem eigenen Konto: sechsmal hintereinander ein
+  falsches Passwort eingeben ⇒ die Meldung „Zu viele Versuche" mit Wartezeit
+  erscheint; nach der Wartezeit geht die Anmeldung wieder. Dabei auch die neue
+  Minuten-Meldung ansehen (kommt nach zehn Fehlversuchen in 15 Minuten).
+- **(b) Redis für branding.supply.** `platform`, `admin` und `portfolio` zählen
+  geteilt in Redis (nachgesehen 2026-11-13), `branding.supply` hat
+  `NUXT_REDIS_URL` nicht. Die Bremse hält dort trotzdem, weil die App mit einem
+  Prozess läuft; ihre Zähler beginnen aber bei jedem Deploy neu. Eintragen
+  (Server-Einstellung, Davids Ja) und die Variable in die Pflichtliste von
+  `scripts/ops/verify-site-env.mjs` aufnehmen, für alle Sites mit Konten.
+- **(c) Größe vor dem Einlesen prüfen.** Favicon-Upload und Event-Titelbild
+  lesen die ganze Datei, bevor ihre Grenze greift; der Medien-Upload prüft
+  vorher `Content-Length`. Dasselbe Muster übernehmen.
+- **(d) Zwei Fehlerwege trennen.** Die Reset-Anforderung antwortet bewusst immer
+  gleich, schreibt aber auch dann nichts ins Log, wenn Appwrite die Anfrage aus
+  einem Konfigurationsgrund ablehnt (lokal so gesehen: keine Mail, keine Zeile).
+  Und Anmeldung und Code-Prüfung werten einen Ausfall von Appwrite wie einen
+  Fehlversuch. Beides: den Grund unterscheiden, ins Log schreiben, einen
+  Ausfall nicht zählen.
+- **(e) Mails je Empfänger.** Code- und Reset-Mails sind je Absender-Adresse und
+  insgesamt je Stunde begrenzt, nicht je Empfänger. Eine Grenze je Empfänger
+  ergänzen (das Muster steht in `packages/core/server/utils/accountAttempts.ts`).
+- **(f) Kleinigkeiten.** `verify-control-exit.mjs` bekommt je Lauf eine eigene
+  Absender-Adresse wie `verify-site-authz.mjs` (seit P02 wird die Route gezählt,
+  ein zweiter Lauf in derselben Minute kann 429 sehen). Zwei verrutschte
+  Kommentare in `05.rate-limit.ts` und ein Testtitel. Der Dev-Server warnt bei
+  Node 22.18 (verlangt 22.21 oder neuer).
+
+<a id="pb1"></a>
+
+**PB1 — Profilbild-Ablage: Nacharbeiten (aus dem Gesamtaudit, Paket P01).**
+Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
+Sitzungen: an keinem der Punkte unten wird gerade gearbeitet. Schon woanders
+eingeplant und deshalb NICHT hier: der Wächter für Rechte an TABELLEN (Paket
+P13, „Schreiben nur noch über den Server") und hochgeladene Bilder, die
+ohne gespeichertes Profil liegen bleiben (Punkt KE3 oben). Beim Abgleich erledigt: der echte
+Upload auf `account.pukalani.app` ist gemessen (COMPLETE „GA1 P01", Beweis h),
+und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
+`apps/comments/e2e/themes-visual.spec.ts`, die mit Absicht nur lokal laufen.
+
+- **(a) Upload auf den drei anderen Seiten.** Die Upload-Route schreibt seit
+  P01 mit dem Laufzeit-Schlüssel der jeweiligen Site. Gemessen ist das im
+  Projekt `account`. Auf `admin.pukalani.app`, `portfolio.pukalani.app` und
+  `branding.supply` je einmal ein Profilbild hochladen (wo die Seite eines
+  anbietet). Scheitert es, fehlt dem Schlüssel dort das Schreibrecht für
+  Dateien ([APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md)).
+- **(b) Schlüssel der Migrations-Envs.** In drei der vier Dateien steht der
+  Schlüssel unter `NUXT_APPWRITE_KEY` statt unter
+  `NUXT_APPWRITE_MIGRATIONS_KEY`; jeder Lauf warnt deshalb „Fallback". Und drei
+  der vier Schlüssel dürfen keine Dateilisten lesen: der Bestand der
+  Profilbild-Ablage ist nur in `account` nachgesehen (12 Dateien, alles
+  Bilder), in `admin`, `portfolio` und `branding` nicht. Namen angleichen;
+  das Leserecht ergänzen oder bewusst weglassen (Änderung am Schlüssel, Davids
+  Ja).
+- **(c) Der Runner baut bei jedem Lauf um.** `scripts/migrate.mjs` führt kein
+  Register und fährt jede Migration jedes Mal. Im Layer `system` legen ältere
+  Migrationen Spalten an, die spätere wieder entfernen (`app_config.features`,
+  `app_config.entitlements`, `activities.tenantId`, `notifications.tenantId`
+  samt Index) — bei JEDEM Lauf, lokal in allen vier Projekten gesehen. Auf
+  Production baut damit jede neue `system`-Migration kurz an drei Tabellen um.
+  Abhilfe: die Anlege-Migrationen prüfen, ob eine spätere die Spalte entfernt
+  hat, oder ein Register. Passt zum Audit-Paket P21 (Migrationen), steht dort
+  aber nicht im Zuschnitt. Bis dahin: eine einzeln freigegebene Migration als
+  Datei direkt fahren, nicht über den Runner (so bei `system-039` geschehen).
+- **(d) Vier Runbooks nennen einen Befehl, der nicht mehr geht.**
+  `pnpm migrate … --env-file <pfad>` scheitert seit pnpm 10.29 (pnpm wertet
+  die Option selbst aus, Exit 9). So steht es noch in
+  [ADMIN-PROJEKT-CUTOVER.md](runbooks/ADMIN-PROJEKT-CUTOVER.md),
+  [CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md),
+  [DEPLOYMENT.md](runbooks/DEPLOYMENT.md) und
+  [MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md). Die
+  richtige Form steht in
+  [BRANDING-SUPPLY-SETUP.md](runbooks/BRANDING-SUPPLY-SETUP.md):
+  `node --experimental-strip-types scripts/migrate.mjs --app <app> --env-file <pfad>`.
+- **(e) Kleinigkeiten.** Die Upload-Route fängt einen Fehler von Appwrite nicht
+  ab; er wird zu einer allgemeinen 500 statt zu einer verständlichen Meldung
+  (`packages/core/server/api/storage/[bucket]/index.post.ts`). Die fünf
+  Bootstrap-Skripte und `system-032` legen die Ablage verschieden an
+  (Verschlüsselung und Virenprüfung nur in der Migration) — beim
+  Zusammenführen der Bootstrap-Skripte (Audit-Paket P26) angleichen. In
+  `.claude/rules/tests.md` fehlt der Hinweis, dass `platform.pukalani.app` nur
+  `/api/health` beantwortet: eine Live-Probe einer Route gehört auf einen
+  Kontroll- oder Community-Host. Und lokal tragen alle vier Projekte die neue
+  Ablage: ein Checkout, der älter ist als `8b658900`, kann lokal kein
+  Profilbild mehr hochladen (Haupt-Checkout aktualisieren).
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
