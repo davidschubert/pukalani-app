@@ -1,5 +1,6 @@
 import { isBotCheckReason, type BotCheckReason } from '../../shared/turnstile'
 import { REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
+import { isPasswordPolicyReason, type PasswordPolicyReason } from '../../shared/passwordPolicy'
 
 /**
  * Hat der Server eine FRISCHE Anmeldung verlangt (`requireRecentAuth`, RA1)?
@@ -75,4 +76,15 @@ export function rateLimitWait(seconds: number): { unit: 'seconds' | 'minutes', v
 export function botCheckReason(error: unknown): BotCheckReason | null {
   const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
   return isBotCheckReason(reason) ? reason : null
+}
+
+/**
+ * Passwort oder Adresse von den Anmelde-Regeln des Projekts abgelehnt (P29)?
+ * Liefert den Grund aus dem Envelope (gesetzt über shared/passwordPolicy.ts),
+ * sonst `null`. Wie beim Bot-Beweis NUR über den Grund: 422 und 503 heißen an
+ * denselben Routen auch anderes.
+ */
+export function passwordPolicyReason(error: unknown): PasswordPolicyReason | null {
+  const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
+  return isPasswordPolicyReason(reason) ? reason : null
 }

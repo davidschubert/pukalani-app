@@ -2,6 +2,7 @@ import { Account, AppwriteException, Client, ID, Query } from 'node-appwrite'
 import { z } from 'zod'
 import { createAdminClient, requestLocale, setSessionCookie } from '../../lib/appwrite'
 import { registerSchema } from '../../../schemas/auth'
+import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
 
 /**
  * Der Token gehört NICHT ins geteilte `registerSchema`: das trägt auch das
@@ -102,6 +103,13 @@ export default defineEventHandler(async (event) => {
       if (error.code === 409) {
         throw createError({ status: 409, statusText: 'Email already registered' })
       }
+      // Anmelde-Regeln des Projekts (P29): Leak-Abgleich, persönliche Daten,
+      // Wegwerf-Adresse — mit eigenem Grund, damit das Formular den RICHTIGEN
+      // Satz zeigt. Nach außen geht nur der eigene Code (shared/passwordPolicy.ts).
+      const rejection = passwordPolicyRejection(error.type)
+      if (rejection) {
+        throw createError({ status: rejection.status, statusText: 'Registration rejected', data: { code: rejection.code } })
+      }
       // Das E-Mail-Format ist bereits Zod-validiert → ein 4xx von Appwrite hier
       // ist faktisch eine Email-Policy-Ablehnung (Wegwerf-/Free-Provider, seit
       // Appwrite 1.9.5 in Auth → Security konfigurierbar). 422 → eigene Meldung.
@@ -113,6 +121,9 @@ export default defineEventHandler(async (event) => {
   }
 
   setSessionCookie(event, session.secret, session.expire)
+  // Bekanntes Gerät (P29): wer hier sein Konto angelegt hat, ist in diesem
+  // Browser angemeldet. Wirft nie.
+  rememberKnownDevice(event, { email, userId: session.userId })
   await logAuthEvent(event, 'user.login', { userId: session.userId, name, method: 'signup' })
 
   /**

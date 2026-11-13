@@ -4,6 +4,7 @@ import { createPasswordChangeSchema, type PasswordChangeInput } from '../../../s
 
 const { t } = useI18n()
 const toast = useToast()
+const { authErrorMessage } = useAuthErrorMessage()
 
 const loading = ref(false)
 const showCurrent = ref(false)
@@ -34,7 +35,8 @@ async function onSubmit(event: FormSubmitEvent<PasswordChangeInput>) {
   }
   catch (error) {
     toast.add({
-      title: isNetworkError(error) ? t('auth.networkError') : t('account.password.failed'),
+      // Netzwerk, Sperre und abgelehntes Passwort (P29) nennen sich selbst.
+      title: authErrorMessage(error, t('account.password.failed')),
       description: t('account.password.failedDescription'),
       color: 'error',
     })

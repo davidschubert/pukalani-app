@@ -47,6 +47,9 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
       return { ok: true, mfaRequired: true }
     }
 
+    // Bekanntes Gerät (P29): erst nach vollständiger Anmeldung. Die Adresse
+    // kommt aus dem `users.get` oben (kein zusätzlicher Aufruf). Wirft nie.
+    if (before) rememberKnownDevice(event, { email: before.email, userId: session.userId })
     await logAuthEvent(event, 'user.login', { userId: session.userId, method: 'otp' })
 
     if (isFirstJoin) {

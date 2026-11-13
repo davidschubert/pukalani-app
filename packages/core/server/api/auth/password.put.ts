@@ -1,5 +1,7 @@
 import { createSessionClient } from '../../lib/appwrite'
+import { AppwriteException } from 'node-appwrite'
 import { passwordChangeServerSchema } from '../../../schemas/auth'
+import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
 
 /**
  * Passwort ändern (eingeloggter User) — läuft als der User selbst (SessionClient).
@@ -16,7 +18,13 @@ export default defineEventHandler(async (event) => {
   try {
     await account.updatePassword({ password, oldPassword: currentPassword })
   }
-  catch {
+  catch (error) {
+    // Anmelde-Regeln des Projekts (P29) mit eigenem Grund — alles andere
+    // (falsches aktuelles Passwort, …) bleibt die generische 400.
+    const rejection = error instanceof AppwriteException ? passwordPolicyRejection(error.type) : null
+    if (rejection) {
+      throw createError({ status: rejection.status, statusText: 'Password rejected', data: { code: rejection.code } })
+    }
     throw createError({ status: 400, statusText: 'Password update failed' })
   }
 

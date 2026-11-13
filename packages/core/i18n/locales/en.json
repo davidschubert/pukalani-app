@@ -83,6 +83,13 @@
       "failed": "The robot check failed, please try again.",
       "unavailable": "The robot check is unavailable right now, please try again in a few minutes."
     },
+    "passwordPolicy": {
+      "breached": "This password has shown up in known data breaches. Please choose a different one.",
+      "personalData": "The password contains your name or email address. Please choose a different one.",
+      "recentlyUsed": "You used this password recently. Please choose a new one.",
+      "checkUnavailable": "We can't check the password right now. Please try again in a few minutes.",
+      "emailNotAllowed": "This email address is not allowed (e.g. a disposable address). Please use a different one."
+    },
     "rateLimited": "Too many attempts. Wait a moment, then try again.",
     "rateLimitedIn": "Too many attempts. Wait one more second, then try again. | Too many attempts. Wait {n} more seconds, then try again.",
     "rateLimitedInMinutes": "Too many attempts. Wait one more minute, then try again. | Too many attempts. Wait {n} more minutes, then try again.",

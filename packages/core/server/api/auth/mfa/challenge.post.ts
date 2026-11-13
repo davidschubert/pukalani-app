@@ -62,6 +62,8 @@ export default defineEventHandler(async (event) => {
   // Faktoren der Session, nicht in dieser Route — also nachsehen statt
   // `password` zu behaupten (bis 2026-10-24 stand hier fest `password+…`).
   const user = await account.get()
+  // Bekanntes Gerät (P29): die Anmeldung ist jetzt vollständig. Wirft nie.
+  rememberKnownDevice(event, { email: user.email, userId: user.$id })
   const factors = await account.getSession({ sessionId: 'current' }).then(s => s.factors).catch(() => [])
   await logAuthEvent(event, 'user.login', { userId: user.$id, name: user.name, method: mfaLoginMethod(factors, mode) })
   return { ok: true }
