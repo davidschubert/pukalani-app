@@ -19,9 +19,10 @@ import { useTenant } from './tenant'
  * MUSS sich hier eintragen, sonst bleibt sein Bestand beim Umschalten stehen.
  *
  * WAS NICHT HIERHER GEHÖRT und warum:
- *  - `courses`: veröffentlichte Kurse tragen `read("users")`, nicht
- *    `read("any")` — sie waren nie öffentlich (courseAccess.ts begründet das
- *    ausführlich). Ein Umschalten hat dort nichts zu tun.
+ *  - `courses`: die Zeilen tragen wie `pages` KEINE Leserechte (SEC-029,
+ *    courseAccess.ts). Die Grenze sind die Routen: die Vorschau eines
+ *    veröffentlichten Kurses ist für jeden lesbar, alles Weitere nur für
+ *    Mitglieder. Ein Umschalten hat dort nichts umzuziehen.
  *  - `pages`: die Zeilen tragen ÜBERHAUPT keine Permissions; öffentlich macht
  *    sie eine Route mit der Operator-Türklinke. Dort ist die Grenze
  *    `assertCommunityContentReadable()` (utils/communityAudience.ts), nicht ein
