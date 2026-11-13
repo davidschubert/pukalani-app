@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ACCOUNT_ACTIVITY_KINDS } from '../../core/shared/accountActivity'
+import { ACCOUNT_EVENT_KINDS, ACCOUNT_EVENT_PROFILE_FIELDS } from '../../core/shared/accountEvents'
 import { isAllowedControlPath } from '../../core/shared/controlCenter'
 import { isControlOnlyPath } from '../shared/controlOnlyPaths'
 
@@ -37,6 +38,41 @@ describe('Aktivitäts-Arten haben Texte', () => {
     for (const locale of ['de', 'en'] as const) {
       expect(Object.keys(messages(locale)).sort()).toEqual([...ACCOUNT_ACTIVITY_KINDS].sort())
     }
+  })
+})
+
+/**
+ * Dasselbe Netz für den Abschnitt „Konto und Sicherheit" (2026-11-13): zwei
+ * geschlossene Listen — die Arten der Konto-Ereignisse und die Namen der
+ * Profil-Felder —, jede mit Text in beiden Sprachen und ohne Überzählige.
+ */
+describe('Konto-Ereignisse haben Texte', () => {
+  function section(locale: 'de' | 'en', key: 'events' | 'fields'): Record<string, string> {
+    const json = JSON.parse(readFileSync(resolve(LOCALES, `${locale}.json`), 'utf8')) as {
+      onboarding?: { account?: { activity?: { account?: Record<string, Record<string, string>> } } }
+    }
+    return json.onboarding?.account?.activity?.account?.[key] ?? {}
+  }
+
+  for (const locale of ['de', 'en'] as const) {
+    it(`jede Art und jedes Feld hat einen ${locale}-Text, und keinen zu viel`, () => {
+      expect(Object.keys(section(locale, 'events')).sort()).toEqual([...ACCOUNT_EVENT_KINDS].sort())
+      expect(Object.keys(section(locale, 'fields')).sort()).toEqual([...ACCOUNT_EVENT_PROFILE_FIELDS].sort())
+      for (const text of [...Object.values(section(locale, 'events')), ...Object.values(section(locale, 'fields'))]) {
+        expect(text).toBeTruthy()
+      }
+    })
+  }
+
+  it('die Feld-Liste deckt, was `auth/profile.put.ts` ins Protokoll schreibt', () => {
+    // Die Route schreibt die Namen als Literale in `changedFields`. Kommt dort
+    // ein Feld dazu, fiele es hier still unter den Tisch (unbekannte Namen
+    // werden verworfen) — dieser Vergleich macht es laut.
+    const source = readFileSync(resolve(import.meta.dirname, '../../core/server/api/auth/profile.put.ts'), 'utf8')
+    const block = source.slice(source.indexOf('const changedFields = ['), source.indexOf('if (changedFields.length > 0)'))
+    const written = [...block.matchAll(/\? \['([a-z]+)'\]/g)].map(match => match[1]!)
+    expect(written.length).toBeGreaterThan(0)
+    expect(written.sort()).toEqual([...ACCOUNT_EVENT_PROFILE_FIELDS].sort())
   })
 })
 

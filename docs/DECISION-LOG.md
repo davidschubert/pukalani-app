@@ -3316,3 +3316,24 @@ die `deny`-Liste.
 **Wieder prüfen:** sobald eine zweite Person oder ein Agent (AI-Runner) eigene,
 begrenzte MCP-Zugänge mit Audit-Log braucht. Details:
 docs/referenz/SESSION-HYGIENE.md, Abschnitt „MCP-Rechte".
+
+## 2026-11-13 — Aktivität zeigt auch Konto-Ereignisse („Konto und Sicherheit")
+
+**Anlass:** David hat auf `account.pukalani.app` sein Profilbild geändert und
+fand davon nichts unter `/profile/activity` — dort standen seit AH-3 nur eigene
+Inhalte (Beiträge, Kommentare, Zusagen, Einschreibungen). Geschrieben wurden
+die Konto-Ereignisse längst (`logAuthEvent` → `audit_logs`), lesen durfte sie
+nur der Betreiber.
+**Entscheidung (David, drei Fragen zum Anklicken):**
+1. **Welche Ereignisse:** Änderungen und Sicherheits-Signale — Profil geändert,
+   Passwort geändert / über den Mail-Link neu gesetzt, Zurücksetzen angefordert,
+   E-Mail bestätigt, Zwei-Faktor an/aus, falscher Zwei-Faktor-Code. **Keine**
+   normalen An- und Abmeldungen (sie begraben die wichtigen Einträge; wo man
+   angemeldet ist, zeigt die Sitzungsliste).
+2. **Wo:** ein **eigener Abschnitt** „Konto und Sicherheit" über den
+   Communities — keine gemischte Zeitleiste.
+3. **Herkunft:** **nur der Ort** (Stadt, Region), nie die IP-Adresse.
+**Folgen im Code:** zweiter Vertrag neben `ACCOUNT_ACTIVITY_KINDS`
+(`core/shared/accountEvents.ts`, Begründung dort), Leseweg in core an derselben
+Grenze wie `logAuthEvent` (kein Weg über den admin-Layer), dieselbe Route.
+Unverändert: was geschrieben wird, die Betreiber-Ansicht, der Community-Feed.

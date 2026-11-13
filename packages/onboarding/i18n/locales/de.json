@@ -128,6 +128,28 @@
           "comment": "Kommentar geschrieben",
           "rsvp": "Zugesagt",
           "enrollment": "Eingeschrieben"
+        },
+        "communitiesEmpty": "In deinen Communities gibt es noch nichts von dir. Sobald du etwas schreibst, zusagst oder dich einschreibst, steht es hier.",
+        "account": {
+          "title": "Konto und Sicherheit",
+          "truncated": "Es gibt ältere Einträge. Hier stehen die neuesten.",
+          "events": {
+            "profile_updated": "Profil geändert",
+            "password_changed": "Passwort geändert",
+            "password_reset": "Passwort über den Link aus der E-Mail neu gesetzt",
+            "recovery_requested": "Link zum Zurücksetzen des Passworts angefordert",
+            "email_verified": "E-Mail-Adresse bestätigt",
+            "mfa_enabled": "Zwei-Faktor eingeschaltet",
+            "mfa_disabled": "Zwei-Faktor abgeschaltet",
+            "mfa_challenge_failed": "Falscher Zwei-Faktor-Code eingegeben"
+          },
+          "fields": {
+            "name": "Name",
+            "avatar": "Profilbild",
+            "bio": "Bio",
+            "phone": "Telefonnummer",
+            "location": "Standort"
+          }
         }
       },
       "settings": {
