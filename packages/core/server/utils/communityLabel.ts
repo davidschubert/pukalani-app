@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { isRole } from '../../shared/authz'
 import { communityModeratorLabel } from '../../shared/communityModeratorLabel'
+import { mutateUserLabels, type UserLabelsFailure, type UserLabelsResult } from './userLabels'
 
 /**
  * Das Community-Label des Mitglieds (H3-Naht 4) — der Schlüssel, mit dem Appwrite
@@ -34,6 +35,14 @@ import { communityModeratorLabel } from '../../shared/communityModeratorLabel'
  *
  * ADDITIV: bestehende Labels bleiben (ein Mitglied kann in mehreren Communities
  * sein, und `admin`/`moderator` des Betreibers dürfen nicht verloren gehen).
+ *
+ * EIN SCHREIBER, ZWEI HALTUNGEN (SEC-024, seit 2026-11-13): geschrieben wird
+ * über `mutateUserLabels` (userLabels.ts — serialisiert je Konto, liest frisch,
+ * prüft nach, wiederholt einmal). Die VERGABE bleibt nach außen fail-soft: sie
+ * ist additiv und heilt sich beim nächsten Request selbst, und sie darf nie
+ * einen Request brechen. Der ENTZUG dagegen gibt sein Ergebnis ZURÜCK
+ * (`{ revoked }`): „Zugang entziehen" darf nur `ok` sagen, wenn das
+ * Lese-Publikum nachweislich weg ist.
  */
 
 /** Appwrite akzeptiert für Labels nur Alphanumerik — ID.unique() liefert genau das. */
@@ -73,58 +82,62 @@ function labelUsable(communityId: string): boolean {
  * GEMEINSAM in EINEM `updateLabels` — zwei Schreibvorgänge hintereinander
  * wären zwei Gelegenheiten, sich gegenseitig zu überschreiben.
  *
- * Wirft NIE: ein Fehlschlag heißt „noch nicht sichtbar", nie „Seite kaputt".
+ * Gibt das Ergebnis des EINEN Schreibers zurück (SEC-024) und protokolliert
+ * es; ob ein Fehlschlag den Request bricht, entscheidet der Aufrufer. Wirft
+ * NIE (auch `mutateUserLabels` wirft nie).
  */
 async function writeLabels(
-  event: H3Event,
+  event: H3Event | undefined,
   targetId: string,
   { add = [], remove = [] }: { add?: string[], remove?: string[] },
   action: 'granted' | 'revoked',
-): Promise<void> {
-  const user = event.context.user
+): Promise<UserLabelsResult> {
+  const user = event?.context.user
   const isRequestUser = targetId === user?.$id
   const usable = add.filter(labelUsable)
-  if (usable.length === 0 && remove.length === 0) return
+  if (usable.length === 0 && remove.length === 0) {
+    return { ok: true, changed: false, labels: [...(isRequestUser ? user?.labels ?? [] : [])] }
+  }
 
   // Billiger Vorab-Ausschluss aus dem Request-Kontext: nach dem ersten Kontakt
-  // ist das der Normalfall und kostet KEINEN Appwrite-Roundtrip.
+  // ist das der Normalfall und kostet KEINEN Appwrite-Roundtrip. Gilt nur für
+  // den Nutzer DIESES Requests — seine Labels hat 02.auth.ts gerade frisch
+  // gelesen.
   if (isRequestUser) {
     const have = user?.labels ?? []
     const nothingToAdd = usable.every(label => have.includes(label))
     const nothingToRemove = remove.every(label => !have.includes(label))
-    if (nothingToAdd && nothingToRemove) return
+    if (nothingToAdd && nothingToRemove) return { ok: true, changed: false, labels: [...have] }
   }
 
-  try {
-    const { users } = createAdminClient(event)
-    // FRISCH lesen statt event.context.user zu vertrauen: `updateLabels` setzt
-    // das ganze Array. Wer parallel auf ZWEI Communities unterwegs ist, hätte
-    // sonst zwei Requests, die beide vom selben (alten) Stand ausgehen — der
-    // zweite überschriebe das Label des ersten. Das Fenster wird damit auf
-    // wenige Millisekunden klein; ginge es trotzdem verloren, heilt der
-    // nächste Request auf jenem Host es wieder (die Vergabe ist idempotent).
-    const fresh = await users.get({ userId: targetId })
-    const labels = fresh.labels ?? []
-    const next = [...labels.filter(label => !remove.includes(label))]
-    for (const label of usable) if (!next.includes(label)) next.push(label)
-    if (next.length === labels.length && next.every((label, i) => label === labels[i])) return
-    await users.updateLabels({ userId: targetId, labels: next })
+  // FRISCH lesen, rechnen, schreiben, nachlesen — alles im einen Schreiber.
+  const result = await mutateUserLabels(event, targetId, { add: usable, remove })
+  if (result.ok) {
     // Der laufende Request sieht seinen neuen Stand sofort (nachgelagerte
     // Autorisierung/Permission-Bauer lesen aus dem Kontext, nicht aus Appwrite).
-    if (isRequestUser && user) user.labels = next
-    logEvent('info', `community_label.${action}`, {
-      labels: (action === 'granted' ? usable : remove).join(','),
-      userId: targetId,
-    })
+    if (isRequestUser && user) user.labels = result.labels
+    if (result.changed) {
+      logEvent('info', `community_label.${action}`, {
+        labels: (action === 'granted' ? usable : remove).join(','),
+        userId: targetId,
+      })
+    }
+    return result
   }
-  catch (error) {
-    logEvent('error', `community_label.${action === 'granted' ? 'failed' : 'revoke_failed'}`, {
-      labels: [...usable, ...remove].join(','),
-      userId: targetId,
-      message: error instanceof Error ? error.message : String(error),
-    })
-  }
+  logEvent('error', `community_label.${action === 'granted' ? 'failed' : 'revoke_failed'}`, {
+    labels: [...usable, ...remove].join(','),
+    userId: targetId,
+    reason: result.reason,
+    ...(result.message ? { message: result.message } : {}),
+  })
+  return result
 }
+
+/** Ergebnis eines Entzugs (SEC-024). `revoked: true` heißt: nachweislich weg —
+ *  auch „war nie da" und „Konto gibt es nicht mehr". */
+export type CommunityLabelRevokeResult =
+  | { revoked: true }
+  | { revoked: false, reason: UserLabelsFailure | 'no_user' }
 
 /**
  * Community-Label vergeben. `userId` nur angeben, wenn es NICHT der Nutzer des
@@ -133,6 +146,7 @@ async function writeLabels(
 export async function grantCommunityLabel(event: H3Event, communityId: string, userId?: string): Promise<void> {
   const targetId = userId ?? event.context.user?.$id
   if (!targetId || !communityId) return
+  // Fail-soft: das Ergebnis ist protokolliert, der Request läuft weiter.
   await writeLabels(event, targetId, { add: [communityId] }, 'granted')
 }
 
@@ -182,8 +196,17 @@ export async function setCommunityModeratorLabel(
  * Aufrufern (Entfernen-Route, Community-Löschung, Selbstheilung).
  *
  * Kein Fehler, wenn nichts wegzunehmen ist (idempotent): der Entzug läuft an
- * zwei Stellen — sofort in der Entfernen-Route und als Selbstheilung in der
- * Label-Middleware, falls der erste Versuch danebenging.
+ * drei Stellen — sofort in der Entfernen-Route, als Selbstheilung in der
+ * Label-Middleware und im stündlichen Abgleich-Lauf
+ * (onboarding/server/utils/labelReconcile.ts).
+ *
+ * DAS ERGEBNIS ZÄHLT (SEC-024, seit 2026-11-13): die Funktion gibt zurück, ob
+ * das Lese-Publikum NACHWEISLICH weg ist (nachgelesen, einmal wiederholt). Die
+ * Entfernen-Route macht aus `revoked: false` einen Fehler statt `ok`; die
+ * Selbstheilung und der Beitritt bleiben still und protokollieren. „Nichts
+ * wegzunehmen" und „Konto gibt es nicht mehr" sind Erfolg. `event` darf
+ * fehlen (Abgleich-Lauf ohne Request) — dann schreibt der Admin-Client ohne
+ * Request-Kontext.
  *
  * ── SEIT AH-7 FÄLLT DER @NAME MIT AUS DEM BLICKFELD ───────────────────────
  * Ein Handle gehört seit 2026-08-11 dem KONTO (`account_handles`), nicht mehr
@@ -195,17 +218,30 @@ export async function setCommunityModeratorLabel(
  * hat. Fail-soft (siehe Implementierung): der Label-Entzug ist die Grenze,
  * dies hier räumt die Anzeige nach.
  */
-export async function revokeCommunityLabel(event: H3Event, communityId: string, userId?: string): Promise<void> {
-  const targetId = userId ?? event.context.user?.$id
-  if (!targetId || !communityId) return
-  if (!labelUsable(communityId)) return
+export async function revokeCommunityLabel(
+  event: H3Event | undefined,
+  communityId: string,
+  userId?: string,
+): Promise<CommunityLabelRevokeResult> {
+  const targetId = userId ?? event?.context.user?.$id
+  if (!targetId) return { revoked: false, reason: 'no_user' }
+  // Ein Wert, der kein Community-Label sein kann, wird NICHT angefasst — und
+  // auch nicht als Erfolg gemeldet: wer `admin` als Community-Id einzieht,
+  // hat einen Datenfehler, keinen Entzug.
+  if (!communityId || !labelUsable(communityId)) return { revoked: false, reason: 'invalid_label' }
 
   const modLabel = communityModeratorLabel(communityId)
-  await writeLabels(
+  const result = await writeLabels(
     event,
     targetId,
     { remove: modLabel ? [communityId, modLabel] : [communityId] },
     'revoked',
   )
+  // Die Anzeige räumt auch nach einem gescheiterten Label-Entzug auf (fail-soft,
+  // siehe oben) — die GRENZE ist das Label, und über das berichtet das Ergebnis.
   await revokeAccountHandleAudience(event, targetId, communityId)
+  // Ein gelöschtes Konto trägt kein Label mehr — das ist „weg".
+  if (!result.ok && result.reason === 'not_found') return { revoked: true }
+  if (!result.ok) return { revoked: false, reason: result.reason }
+  return { revoked: true }
 }

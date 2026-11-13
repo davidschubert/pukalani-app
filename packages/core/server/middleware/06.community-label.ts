@@ -69,7 +69,17 @@ export default defineEventHandler(async (event) => {
   // Loch, in dem dieselbe Middleware das Publikum wieder vergibt.
   // (revokeCommunityLabel nimmt Zugehörigkeit UND Moderations-Label zusammen.)
   if (communityAccessRecentlyDenied(tenant.communityId, user.$id)) {
-    await revokeCommunityLabel(event, tenant.communityId)
+    // Selbstheilung: wirft NIE (eine Seite bricht nicht an einem Label), aber
+    // seit SEC-024 kommt der Fehlschlag als eigene Zeile ins Log — der
+    // stündliche Abgleich holt ihn nach (onboarding/utils/labelReconcile.ts).
+    const result = await revokeCommunityLabel(event, tenant.communityId)
+    if (!result.revoked) {
+      logEvent('error', 'community_label.self_heal_failed', {
+        communityId: tenant.communityId,
+        userId: user.$id,
+        reason: result.reason,
+      })
+    }
     return
   }
 

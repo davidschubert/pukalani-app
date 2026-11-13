@@ -66,7 +66,7 @@ function hasCode(error: unknown, code: number): boolean {
 }
 
 /** Tabelle + Datenbank an einem Ort — jeder Zugriff hier geht darüber. */
-function accountHandleDb(event: H3Event) {
+function accountHandleDb(event: H3Event | undefined) {
   const { tablesDB } = createAdminClient(event)
   const databaseId = useRuntimeConfig(event).public.appwriteDatabaseId
   return { tablesDB, databaseId, tableId: ACCOUNT_HANDLES_TABLE }
@@ -246,7 +246,9 @@ const AUDIENCE_PAGE_SIZE = 100
 const AUDIENCE_MAX_PAGES = 100
 
 export async function revokeAccountHandleAudience(
-  event: H3Event,
+  // `undefined` = ohne Request (stündlicher Label-Abgleich, SEC-024): der
+  // Admin-Client und die Runtime-Config kommen dann aus der App selbst.
+  event: H3Event | undefined,
   userId: string,
   communityId: string,
 ): Promise<void> {
