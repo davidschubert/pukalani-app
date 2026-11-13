@@ -71,8 +71,10 @@ Protokoll, aber nicht in der Liste, ein `userId`-Parameter ändert nichts.
 (d) Gates grün, zweimal (vor und nach dem Rebase auf PR #132). (e) PR #133,
 Merge `a4a0a08c`; Test, Lint, Typecheck und E2E auf `main` grün;
 `https://account.pukalani.app/api/health` → `.build` = `a4a0a08c` (vorher
-`6a2a2939`). Der Klick hinter dem Login auf Prod ist Davids: sein
-Profilbild-Wechsel vom selben Tag muss dort jetzt stehen.
+`6a2a2939`). (f) Klick hinter dem Login auf Prod, in Davids angemeldetem
+Browser: über der Community steht „Konto und Sicherheit · Profil geändert ·
+Profilbild" mit Ort und dem 13.11.2026 — genau der Wechsel, der den Anlass gab
+(die Zeile lag seit dem Morgen im Protokoll, sie war nur nicht lesbar).
 
 **Offen daraus** (OPEN-ITEMS KE2, KE3): der Fehlversuch beim zweiten Faktor
 WÄHREND der Anmeldung wird ohne Konto protokolliert und erscheint deshalb nie;
