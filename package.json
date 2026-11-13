@@ -27,6 +27,7 @@
     "check:single-copy": "node scripts/check-single-copy.mjs",
     "check:prompt-quotes": "node scripts/check-prompt-quotes.mjs",
     "check:nul-bytes": "node scripts/check-nul-bytes.mjs",
+    "check:secrets": "gitleaks git --no-banner --redact --verbose .",
     "lint:scripts": "pnpm check:nul-bytes && eslint scripts",
     "check:doc-links": "node scripts/ops/verify-doc-links.mjs",
     "ops:site-env": "node scripts/ops/verify-site-env.mjs",
