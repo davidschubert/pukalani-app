@@ -162,14 +162,15 @@ paths:
   Pflicht-Liste (vorher nur der Schlüssel). Kein Schalter stellt das ab.
 - Neue Namen IMMER in RESERVED_SUBDOMAINS (packages/control/schemas/tenant.ts),
   sonst kann ein Selbstbedienungs-Kunde sie beantragen.
-- HERKUNFTSPRÜFUNG (SEC-004, Stufe 1 seit 2026-11-13): alle Hosts unter
+- HERKUNFTSPRÜFUNG (SEC-004, seit 2026-11-13 ÜBERALL AN): alle Hosts unter
   `*.pukalani.app` sind same-site zueinander, `SameSite=Lax` trennt sie nicht.
   Regel (`core/server/utils/csrfOrigin.ts`, Middleware `03.csrf-origin.ts`):
   schreibende `/api`-Aufrufe mit `Sec-Fetch-Site: cross-site` ⇒ 403; `same-site`
   oder fehlender `Sec-Fetch-Site` MIT `Origin` ⇒ Origin-Host samt Port muss der
   Request-Host sein; ohne beide Kopfzeilen (Server, Webhooks, Runner) ⇒ durch.
-  Ziel „von Haus aus an": heute an in platform, comments, control, `_template`;
-  Stufe 2 dreht den Core-Default und entfernt den Schalter. AUSNAHMEN nur als
+  Gilt in JEDER App, die den Core erweitert — KEIN Schalter (Davids
+  Entscheidung; der frühere `pukalani.security.csrfOriginCheck` ist mit Stufe 2
+  entfernt und darf in keiner `app.config.ts` zurückkehren). AUSNAHMEN nur als
   einzelne Route mit Grund in `core/shared/csrfOriginExempt.ts`
   (`CSRF_ORIGIN_EXEMPT_ROUTES`, heute leer; NIE für Routen mit Sitzungs-Cookie);
   daneben `CSRF_ORIGINLESS_CALLERS` = warum Naht, Webhooks und Runner ohne
@@ -180,5 +181,6 @@ paths:
   Aufrufe beim Server-Rendern: `server: false`, `onMounted` oder Handler, die
   Seite zeigt bis dahin ihren Ladezustand. Wächter in `packages/core/tests/`:
   `ssr-write-fetch.test.ts` (SSR-Schreibaufrufe, TS-Parser),
-  `csrf-origin-routes.test.ts` (origin-lose Aufrufer je Klasse gezählt + App-Liste
-  mit Übergangsliste Stufe 2), `csrfOriginExempt.test.ts`.
+  `csrf-origin-routes.test.ts` (origin-lose Aufrufer je Klasse gezählt; Teil B
+  wird rot bei einem Config-Gate in der Middleware oder dem Schlüssel
+  `csrfOriginCheck` in irgendeiner `app.config.ts`), `csrfOriginExempt.test.ts`.
