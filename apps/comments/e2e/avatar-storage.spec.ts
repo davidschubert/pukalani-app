@@ -79,7 +79,7 @@ test.describe('Profilbild-Ablage: nur über die Route, nur Bilder (SEC-001)', ()
 
   test('die Route nimmt ein Bild und liefert es geschützt aus', async ({ request, baseURL }) => {
     const headers = {
-      // Die App prüft bei unsicheren Methoden die Herkunft (csrfOriginCheck).
+      // Die App prüft bei unsicheren Methoden die Herkunft (core 03.csrf-origin.ts).
       'Origin': new URL(baseURL!).origin,
       'Cookie': `a_session_${projectId}=${sessionSecret}`,
     }
