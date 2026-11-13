@@ -166,3 +166,17 @@ describe('Fehlversuchs-Routen: nacheinander', () => {
     }
   })
 })
+
+describe('Teure Lese-Routen (BE-002)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-13T10:00:00Z'))
+    store = createMemoryRateLimitStore()
+  })
+
+  it('der dritte Konto-Export in einer Minute bekommt 429', async () => {
+    expect(await call(fakeEvent('203.0.113.12', '/api/auth/export', 'GET'))).toBeNull()
+    expect(await call(fakeEvent('203.0.113.12', '/api/auth/export', 'GET'))).toBeNull()
+    expect((await call(fakeEvent('203.0.113.12', '/api/auth/export', 'GET')))?.status).toBe(429)
+  })
+})

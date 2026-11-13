@@ -926,6 +926,65 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number }[] = [
   // (5 statt 3), weil bei einem echten Vorfall mehrere Menschen gleichzeitig
   // melden — und die kommen oft aus demselben Netz.
   { re: /^POST \/api\/abuse\/report$/, bucket: 'abuse:report', max: 5 },
+  /**
+   * TEURE WEGE OHNE BREMSE (BE-002, Audit 2026-11). Jede Zeile hier war bis
+   * dahin ungelistet und damit beliebig oft aufrufbar.
+   */
+  // Konto-Export (DSGVO): sammelt über alle registrierten Layer die Daten
+  // EINES Kontos ein — dieselbe Kostenklasse und derselbe Deckel wie der
+  // Community-Export. Ein Mensch lädt eine Datei, nicht drei je Minute.
+  { re: /^GET \/api\/auth\/export$/, bucket: 'auth:export', max: 2 },
+  // Konto löschen: orchestriert die Löschung über alle Layer. Gelingt sie,
+  // gibt es das Konto nicht mehr; wiederholte Aufrufe sind Fehlschläge oder
+  // ein Skript — fünf je Minute lassen einem Menschen jeden zweiten Versuch.
+  { re: /^DELETE \/api\/auth\/account$/, bucket: 'auth:account-delete', max: 5 },
+  // Domain-Prüfung (Community und Silo): jeder Lauf kostet DNS-Abfragen, einen
+  // Aufruf über die Service-Naht samt ploi und eine HTTPS-Probe auf der
+  // Kundendomain. EIN Bucket für beide, weil es dieselbe Prüfung ist. Die
+  // Community-Seite prüft selbst alle 30 s nach (useDomainAutoCheck, nur bei
+  // sichtbarem Tab) — zwei je Minute und Tab plus Klicks auf „Prüfen" bleiben
+  // mit 10/min weit darunter.
+  { re: /^POST \/api\/(community|site)\/domain\/verify$/, bucket: 'domains:verify', max: 10 },
+  // Community-Abo: dieselben Stripe-Anlege-Wege und dieselben Zahlen wie die
+  // Konto-Geschwister `billing:checkout`/`billing:portal` weiter oben.
+  { re: /^POST \/api\/community\/billing\/checkout$/, bucket: 'community:checkout', max: 10 },
+  { re: /^POST \/api\/community\/billing\/portal$/, bucket: 'community:portal', max: 30 },
+  // Favicon-Upload: bis 1 MB Binärdaten durch den Server in den Speicher,
+  // samt Prüfung des PNG-Inhalts.
+  // Ein Owner lädt ein Favicon hoch, keine zehn je Minute.
+  { re: /^POST \/api\/community\/branding\/favicon$/, bucket: 'community:favicon', max: 10 },
+  // Löschen und Zurückziehen von Inhalten: member-led, schreibt über die
+  // Datentür (teils kaskadierend) — Standard-Schreibdeckel, eigener Bucket je
+  // Zweck wie beim Anlegen.
+  { re: /^DELETE \/api\/posts\/[^/]+$/, bucket: 'posts:delete' },
+  { re: /^DELETE \/api\/comments\/[^/]+$/, bucket: 'comments:delete' },
+  { re: /^DELETE \/api\/reports$/, bucket: 'reports:withdraw' },
+  // Themen-Zustand (anheften, schließen, „gelöst"): ein Schreibvorgang je Klick.
+  { re: /^PATCH \/api\/posts\/[^/]+\/state$/, bucket: 'posts:state' },
+  // Moderations-Assist: je Aufruf ein bezahlter KI-Lauf — derselbe Deckel wie
+  // die Übersetzungen.
+  { re: /^POST \/api\/admin\/comments\/[^/]+\/assist$/, bucket: 'comments:assist', max: TOKEN_MAX },
+  { re: /^POST \/api\/posts\/[^/]+\/assist$/, bucket: 'posts:assist', max: TOKEN_MAX },
+  // Kommentar-Zähler für viele Seiten auf einmal: dieselbe öffentliche
+  // Lese-Klasse wie `count`, also derselbe Bucket.
+  { re: /^GET \/api\/comments\/counts$/, bucket: 'comments:read', max: READ_MAX },
+  // Seite speichern (pages-Layer): owner-/admin-gated, aber ein Editor lädt zum
+  // Speichern im Sekundentakt ein — wie Menü, Sucheintrag und Weiterleitungen.
+  { re: /^PUT \/api\/pages$/, bucket: 'pages:save' },
+  // BEWUSST NICHT gelistet: POST /api/stripe/webhook — Stripe-Retries dürfen
+  // nie in den 429-Bucket laufen; ungelistete Routen sind hier ohnehin frei,
+  // der Schutz des Webhooks ist die Signatur-Verifikation (billing B4).
+  /**
+   * AUFFANGNETZ FÜR JEDE SONST UNGELISTETE DELETE-ROUTE (BE-002). MUSS DER
+   * LETZTE EINTRAG BLEIBEN: `find()` nimmt den ersten Treffer, und jeder
+   * spezifische DELETE-Eintrag darüber (brand, market, Inhalte, Konto) soll
+   * seinen eigenen Bucket und Deckel behalten.
+   *
+   * 120/min ist bewusst großzügig: keine Oberfläche schickt DELETE in einer
+   * Schleife (Stand 2026-11), ein Mensch räumt nicht zwei Dinge je Sekunde
+   * weg. Die Zeile stoppt nur das Skript, das eine Liste abarbeitet.
+   */
+  { re: /^DELETE \/api\//, bucket: 'delete:other', max: 120 },
 ]
 
 /**
