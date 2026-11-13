@@ -34,7 +34,7 @@ test.describe('Session-Widerruf meldet sofort ab (RT2)', () => {
 
   test.beforeAll(async () => {
     users = new Users(new Client().setEndpoint(endpoint!).setProject(projectId!).setKey(apiKey!))
-    const user = await users.create({ userId: ID.unique(), email: `e2e-rt2-${ID.unique()}@example.com`, name: 'E2E RT2' })
+    const user = await users.create({ userId: ID.unique(), email: `e2e-rt2-${ID.unique()}@example.test`, name: 'E2E RT2' })
     userId = user.$id
   })
 

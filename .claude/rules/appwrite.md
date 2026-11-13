@@ -109,6 +109,21 @@ paths:
   trägt, solange pm2 je App `instances: 1` fährt. Beweis-Muster für jede
   Bremse: ein Test mit GLEICHZEITIGEN Anfragen
   (`core/tests/rateLimitFailureRoutes.test.ts`, `accountAttempts.test.ts`).
+  BEKANNTES GERÄT (P29, seit 2026-11-13): damit ein Fremder den Besitzer
+  nicht über die Konto-Pause aussperrt, setzt der Server nach einer
+  VOLLSTÄNDIGEN Anmeldung (kein zweiter Faktor offen) das signierte Cookie
+  `pk_known_device` (`core/server/utils/knownDevice.ts`); ein Browser mit
+  gültigem Merkzeichen für GENAU dieses Konto zählt in einem eigenen Topf mit
+  demselben Deckel. Neue Anmelde-Route ⇒ `rememberKnownDevice` nach dem
+  Erfolg, nie im Zweig „zweiter Faktor steht aus".
+- ANMELDE-REGELN DES PROJEKTS (P29): Passwort-Wörterbuch, persönliche Daten,
+  Datenleck-Abgleich, Verlauf, Wegwerf-Adressen und Anmelde-Mail sind
+  Appwrite-Einstellungen JE PROJEKT. Das Soll steht in
+  `scripts/ops/appwrite-auth-policies.mjs` (`pnpm ops:auth-policies`, mit
+  `--apply` setzen), nie nur in der Konsole. Sie greifen auch bei Aufrufen mit
+  API-Schlüssel. Appwrites Ablehnung wird über `core/shared/passwordPolicy.ts`
+  zu einem fachlichen Grund; eine neue Route, die ein Passwort setzt, nutzt
+  dieselbe Funktion. Runbook: docs/runbooks/ANMELDE-REGELN.md.
 - Immer explizites Query.limit() (Default 25)
 - SDK-Generics nutzen: tablesDB.listRows<T>()
 - Migrations: idempotent (409 → skip), IMMER über den zentralen Runner

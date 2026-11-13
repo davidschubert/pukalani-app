@@ -33,6 +33,18 @@ export function useAuthErrorMessage() {
     if (botReason === 'bot_check_required') return t('auth.botCheck.required')
     if (botReason === 'bot_check_failed') return t('auth.botCheck.failed')
     if (botReason === 'bot_check_unavailable') return t('auth.botCheck.unavailable')
+    /**
+     * ANMELDE-REGELN DES PROJEKTS (P29): ein abgelehntes Passwort oder eine
+     * abgelehnte Adresse nennt den Grund — beim Registrieren, Ändern und
+     * Zurücksetzen gleich. Ohne diesen Zweig hieß ein geleaktes Passwort beim
+     * Reset „der Link ist möglicherweise abgelaufen".
+     */
+    const policyReason = passwordPolicyReason(error)
+    if (policyReason === 'password_breached') return t('auth.passwordPolicy.breached')
+    if (policyReason === 'password_personal_data') return t('auth.passwordPolicy.personalData')
+    if (policyReason === 'password_recently_used') return t('auth.passwordPolicy.recentlyUsed')
+    if (policyReason === 'password_check_unavailable') return t('auth.passwordPolicy.checkUnavailable')
+    if (policyReason === 'email_not_allowed') return t('auth.passwordPolicy.emailNotAllowed')
     if (isRateLimited(error)) {
       // Die Wartezeit nur nennen, wenn die Antwort sie wirklich hergibt —
       // eine geratene Minute wäre dieselbe Sorte Lüge wie „Passwort falsch".

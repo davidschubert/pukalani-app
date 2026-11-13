@@ -83,6 +83,13 @@
       "failed": "Die Roboter-Prüfung ist fehlgeschlagen, bitte versuche es erneut.",
       "unavailable": "Die Roboter-Prüfung ist gerade nicht erreichbar, bitte versuche es in ein paar Minuten noch einmal."
     },
+    "passwordPolicy": {
+      "breached": "Dieses Passwort ist in bekannten Datenlecks aufgetaucht. Bitte wähle ein anderes.",
+      "personalData": "Das Passwort enthält deinen Namen oder deine E-Mail-Adresse. Bitte wähle ein anderes.",
+      "recentlyUsed": "Dieses Passwort hast du vor Kurzem schon benutzt. Bitte wähle ein neues.",
+      "checkUnavailable": "Wir können das Passwort gerade nicht prüfen. Bitte versuche es in ein paar Minuten noch einmal.",
+      "emailNotAllowed": "Diese E-Mail-Adresse ist nicht zulässig (z. B. eine Wegwerf-Adresse). Bitte nimm eine andere."
+    },
     "rateLimited": "Zu viele Versuche. Warte kurz und versuch es dann noch einmal.",
     "rateLimitedIn": "Zu viele Versuche. Warte noch eine Sekunde und versuch es dann noch einmal. | Zu viele Versuche. Warte noch {n} Sekunden und versuch es dann noch einmal.",
     "rateLimitedInMinutes": "Zu viele Versuche. Warte noch eine Minute und versuch es dann noch einmal. | Zu viele Versuche. Warte noch {n} Minuten und versuch es dann noch einmal.",

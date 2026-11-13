@@ -114,6 +114,10 @@ let apiKey
     // `verify-presence-boundary` in CI mit „missing scopes" ab, obwohl der
     // Code stimmt. Nachgetragen 2026-08-02, als der Beweis in die CI zog.
     'presences.read', 'presences.write',
+    // Anmelde-Regeln des Projekts (P29): `scripts/ops/appwrite-auth-policies.mjs`
+    // setzt sie nach dem Setup, damit die CI dieselben Regeln fährt wie
+    // Production (Passwort-Wörterbuch, persönliche Daten, …).
+    'policies.read', 'policies.write',
   ]
   const { status, json } = await api(`/projects/${projectId}/keys`, 'POST', {
     keyId: 'ci-key', name: 'ci-key', scopes,

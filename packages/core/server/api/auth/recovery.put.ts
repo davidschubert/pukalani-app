@@ -1,5 +1,7 @@
 import { createAdminClient, createSessionClient } from '../../lib/appwrite'
+import { AppwriteException } from 'node-appwrite'
 import { resetServerSchema } from '../../../schemas/auth'
+import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
 
 /** Passwort mit userId+secret aus der Recovery-Mail setzen (Guest-Endpoint). */
 export default defineEventHandler(async (event) => {
@@ -11,7 +13,14 @@ export default defineEventHandler(async (event) => {
     await account.updateRecovery({ userId, secret, password })
     await logAuthEvent(event, 'user.password_changed', { userId, method: 'recovery' })
   }
-  catch {
+  catch (error) {
+    // Anmelde-Regeln des Projekts (P29): der Link war gültig, nur das neue
+    // Passwort nicht — dann der eigene Grund, damit der Mensch ein anderes
+    // wählt, statt einen neuen Link anzufordern.
+    const rejection = error instanceof AppwriteException ? passwordPolicyRejection(error.type) : null
+    if (rejection) {
+      throw createError({ status: rejection.status, statusText: 'Password rejected', data: { code: rejection.code } })
+    }
     // Abgelaufenes/falsches Secret — generisch antworten
     throw createError({ status: 400, statusText: 'Invalid or expired recovery link' })
   }

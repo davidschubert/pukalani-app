@@ -136,6 +136,14 @@ jobs:
       - name: Bootstrap (DB, Bucket, Migrationen) + Seed
         run: pnpm --filter comments run bootstrap --seed
 
+      # Anmelde-Regeln (P29): dieselben wie in Production, damit Beweise und
+      # Playwright-Suite unter ihnen laufen. NACH dem Seed (dessen Konten
+      # entstehen ohne Regeln) und mit Zurücklesen — eine Regel, die sich nicht
+      # setzen lässt, macht den Schritt rot. Der Leak-Abgleich lehnt hier
+      # nichts ab: die CI-Instanz hat keinen Leak-Dienst konfiguriert.
+      - name: Anmelde-Regeln setzen (Passwort/Adresse)
+        run: node --env-file=apps/comments/.env scripts/ops/appwrite-auth-policies.mjs --apply
+
       # Der GELDPFAD gegen die frisch migrierte Instanz (Audit-Befund
       # 2026-08-02). Warum hier und nicht als Unit-Test: `grantEventTicket`
       # schrieb monatelang eine Spalte, die es nach E8-3 nicht mehr gab —

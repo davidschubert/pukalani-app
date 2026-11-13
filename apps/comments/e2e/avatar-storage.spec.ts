@@ -39,7 +39,7 @@ test.describe('Profilbild-Ablage: nur über die Route, nur Bilder (SEC-001)', ()
     const client = new Client().setEndpoint(endpoint!).setProject(projectId!).setKey(apiKey!)
     users = new Users(client)
     storage = new Storage(client)
-    const user = await users.create({ userId: ID.unique(), email: `e2e-sec001-${ID.unique()}@example.com`, name: 'E2E SEC001' })
+    const user = await users.create({ userId: ID.unique(), email: `e2e-sec001-${ID.unique()}@example.test`, name: 'E2E SEC001' })
     userId = user.$id
     const session = await users.createSession({ userId })
     sessionId = session.$id

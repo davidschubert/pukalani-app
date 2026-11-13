@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { H3Event } from 'h3'
+import { knownDeviceId } from './knownDevice'
 import { tooManyRequests } from './rateLimited'
 
 /**
@@ -22,6 +23,16 @@ import { tooManyRequests } from './rateLimited'
  *  - Im Schlüssel steht nie eine E-Mail im Klartext (Redis ist geteilt).
  *  - Der Ausweg aus einer Pause ist „Passwort zurücksetzen": nach einem
  *    erfolgreichen Reset löscht `recovery.put.ts` den Login-Zähler.
+ *
+ * BEKANNTES GERÄT (P29): ein Browser, in dem sich GENAU dieses Konto schon
+ * einmal vollständig angemeldet hat, trägt ein signiertes Merkzeichen
+ * (`knownDevice.ts`) und zählt in einem EIGENEN Topf (`…:dev:<geräte-kennung>`)
+ * — mit demselben Deckel und demselben Fenster. So füllen Fremde nur den
+ * gemeinsamen Topf und pausieren den echten Besitzer nicht; das bekannte
+ * Gerät ist selbst gedeckelt (auch ein entwendetes Merkzeichen gibt nicht mehr
+ * als 10 Versuche je Fenster) und füllt den gemeinsamen Topf nicht. Ohne
+ * gültiges Merkzeichen — oder mit einem für ein anderes Konto — bleibt alles
+ * wie oben.
  */
 
 /**
@@ -55,7 +66,9 @@ export function accountAttemptKey(prefix: string, scope: AccountAttemptScope, ac
  */
 export async function limitAccountAttempts(event: H3Event, scope: AccountAttemptScope, account: string): Promise<void> {
   const { store, prefix } = useRateLimitStore(event)
-  const key = accountAttemptKey(prefix, scope, account)
+  const device = knownDeviceId(event, scope, account)
+  const shared = accountAttemptKey(prefix, scope, account)
+  const key = device ? `${shared}:dev:${device}` : shared
   const state = await store.hit(key, ACCOUNT_ATTEMPT_WINDOW_MS)
 
   if (state.count > ACCOUNT_ATTEMPT_MAX) {
@@ -70,7 +83,10 @@ export async function limitAccountAttempts(event: H3Event, scope: AccountAttempt
   })
 }
 
-/** Den Zähler eines Kontos sofort löschen (nach erfolgreichem Passwort-Reset). */
+/**
+ * Den GEMEINSAMEN Zähler eines Kontos sofort löschen (nach erfolgreichem
+ * Passwort-Reset). Die Töpfe bekannter Geräte laufen ihr Fenster aus.
+ */
 export async function clearAccountAttempts(event: H3Event, scope: AccountAttemptScope, account: string): Promise<void> {
   const { store, prefix } = useRateLimitStore(event)
   await store.clear(accountAttemptKey(prefix, scope, account))

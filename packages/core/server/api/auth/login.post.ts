@@ -38,6 +38,9 @@ export default defineEventHandler(async (event): Promise<LoginResponse> => {
     return { ok: true, mfaRequired: true }
   }
 
+  // Bekanntes Gerät (P29): erst JETZT, nach vollständiger Anmeldung — eigener
+  // Topf der Konto-Bremse für diesen Browser. Wirft nie.
+  rememberKnownDevice(event, { email, userId: session.userId })
   await logAuthEvent(event, 'user.login', { userId: session.userId, method: 'password' })
   return { ok: true, mfaRequired: false }
 })

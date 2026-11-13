@@ -66,6 +66,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
 | [runbooks/GOOGLE-LOGIN.md](runbooks/GOOGLE-LOGIN.md) | „Anmelden mit Google" scharfschalten (Google-Console, Appwrite-Console, die zwei Schalter) |
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
+| [runbooks/ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) | Appwrites Regeln für Passwort, Adresse und Sitzung: Soll-Liste, Prüf-Skript, Datenleck-Abgleich, bekanntes Gerät, Notfall-Knöpfe |
 | [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
 | [runbooks/GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) | Gesamtaudit über alle zwölf Dimensionen mit Fable 5.2: Ablauf, Prompts je Phase, Rückführung; Ergebnisse liegen PRIVAT außerhalb des Repos |
