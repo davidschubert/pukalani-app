@@ -191,6 +191,10 @@ export default defineAppConfig({
     // auf den Home-Bildschirm — ohne /icon/<key>.png landet dort ein
     // Screenshot der Seite statt der Bildmarke.
     seo: { originFromRequest: true, tenantFavicon: true, tenantOgImage: true, tenantAppIcon: true },
+    // Stündlicher Label-Abgleich (SEC-024, 2026-11-13): erst als PROBELAUF —
+    // er zählt und loggt nur. Umstellen auf 'apply' ist Davids Schritt, nach
+    // einem Blick ins Log (Runbook docs/runbooks/LABEL-ABGLEICH.md).
+    community: { labelReconcile: 'dry-run' },
     // DIE Multi-Tenant-App (Horizont 3): das Tenant-Gate ist hier AN — die
     // Middleware 00.tenant.ts (core) löst jeden Request-Host über den in
     // server/plugins/tenant-resolver.ts registrierten Resolver auf.

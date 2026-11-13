@@ -333,6 +333,18 @@ async function removeMember(member: CommunityMemberView) {
     await refresh()
   }
   catch (error) {
+    // SEC-024: die Mitgliedschaft IST entfernt, nur das Lese-Recht hing noch.
+    // Eigener Satz (kein „fehlgeschlagen" — der wichtigste Teil ist geschehen)
+    // und die Liste neu laden, denn dort steht die Person schon als entfernt.
+    if ((error as { data?: { reason?: string } })?.data?.reason === 'label_revoke_failed') {
+      toast.add({
+        title: t('members.remove.labelPendingTitle'),
+        description: t('members.remove.labelPending'),
+        color: 'warning',
+      })
+      await refresh()
+      return
+    }
     toast.add({ ...ruleMessage(error), color: 'error' })
   }
 }

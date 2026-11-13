@@ -26,6 +26,10 @@
  *   - verlangt MITMACHEN Zugehörigkeit (SEC-030, seit 2026-11-13)? Nach dem
  *     Entzug und in der geschlossenen Community endet ein Kommentar mit 403
  *     `not_a_member` (vorher legte er still eine Zeile an), ebenso eine Meldung.
+ *   - räumt der LABEL-ABGLEICH auf (Abschnitt 10 c, SEC-024)? Ein Label, das
+ *     nach dem Entzug wieder steht, entfernt der Lauf über die Ops-Route
+ *     (`dryRun:false`) — nur wenn `pukalani.community.labelReconcile: 'apply'`
+ *     gesetzt ist, sonst wird der Schreib-Teil übersprungen.
  *
  * Räumt am Ende alles weg, was es angelegt hat.
  *
@@ -1037,6 +1041,73 @@ try {
   check('…das Label wird eingezogen, die Zeile NICHT wiederbelebt',
     !(await hasLabel(ghost.userId)) && (await memberRowOf(ghost.userId))?.status === 'removed',
     JSON.stringify(await labelsOf(ghost.userId)))
+
+  // 10 c. LABEL-ABGLEICH (SEC-024, 2026-11-13): ein Label, das nach dem Entzug
+  // von Hand wieder gesetzt wurde (oder hängen blieb), entfernt der stündliche
+  // Lauf — OHNE dass die entfernte Person den Host besucht (der Weg oben über
+  // die Middleware braucht genau diesen Besuch). Ausgelöst über die Ops-Route
+  // statt durch Warten. Braucht die Control-Env der Platform-App
+  // (NUXT_PLATFORM_CONTROL_*) und `pukalani.community.labelReconcile: 'apply'`;
+  // steht der Schalter anders, antwortet `dryRun: false` mit 409
+  // `label_reconcile_not_apply`, und der Schreib-Teil wird ÜBERSPRUNGEN (der
+  // Probelauf läuft trotzdem).
+  console.log('  c) Label-Abgleich: hängendes Label nach Entzug ⇒ der Lauf entfernt es (SEC-024)')
+  const stale = await createPoolUser('stale')
+  const staleRow = await control.createRow({
+    databaseId, tableId: 'community_members', rowId: ID.unique(),
+    data: {
+      communityId,
+      runtimeProjectId: poolProject,
+      runtimeUserId: stale.userId,
+      role: 'viewer',
+      status: 'removed',
+      email: stale.email,
+      removedAt: new Date().toISOString(),
+    },
+  })
+  cleanup.members.push(staleRow.$id)
+  // Daneben ein Bestand OHNE Zeile (A4-Zeit): sein Label ist legitim und muss bleiben.
+  const bystander = await createPoolUser('bystander')
+  await poolUsers.updateLabels({ userId: stale.userId, labels: [communityId] })
+  await poolUsers.updateLabels({ userId: bystander.userId, labels: [communityId] })
+
+  // Betreiber (system.manage): ein Pool-Konto mit dem Label `admin`.
+  const operator = await createPoolUser('reconcile-operator')
+  await poolUsers.updateLabels({ userId: operator.userId, labels: ['admin'] })
+  const operatorCookie = await login(operator)
+
+  const probe = await call(host, '/api/community/members/run-label-reconcile', {
+    method: 'POST', cookie: operatorCookie, body: { dryRun: true },
+  })
+  check('Probelauf → 200 mit Anzahlen, mindestens eine Abweichung',
+    probe.status === 200 && probe.json?.mode === 'dry-run' && probe.json?.stale >= 1,
+    `Status ${probe.status} ${probe.text.slice(0, 200)}`)
+  check('…der Probelauf schreibt nichts (Label steht noch)', await hasLabel(stale.userId),
+    JSON.stringify(await labelsOf(stale.userId)))
+
+  const applied = await call(host, '/api/community/members/run-label-reconcile', {
+    method: 'POST', cookie: operatorCookie, body: { dryRun: false },
+  })
+  if (applied.status === 409 && applied.json?.reason === 'label_reconcile_not_apply') {
+    console.log('    ↷ übersprungen: pukalani.community.labelReconcile steht nicht auf \'apply\'')
+  }
+  else {
+    check('Lauf mit dryRun:false → 200, mindestens ein Entzug',
+      applied.status === 200 && applied.json?.mode === 'apply' && applied.json?.revoked >= 1,
+      `Status ${applied.status} ${applied.text.slice(0, 200)}`)
+    check('…das hängende Label ist weg, die Zeile bleibt „removed"',
+      !(await hasLabel(stale.userId)) && (await memberRowOf(stale.userId))?.status === 'removed',
+      JSON.stringify(await labelsOf(stale.userId)))
+    check('…der Bestand ohne Zeile behält sein Label', await hasLabel(bystander.userId),
+      JSON.stringify(await labelsOf(bystander.userId)))
+    check('…die Betreiber-Rolle bleibt unberührt', (await labelsOf(operator.userId)).includes('admin'))
+    const again = await call(host, '/api/community/members/run-label-reconcile', {
+      method: 'POST', cookie: operatorCookie, body: { dryRun: false },
+    })
+    check('zweiter Lauf: nichts mehr zu tun für dieses Konto',
+      again.status === 200 && !(await hasLabel(stale.userId)),
+      `Status ${again.status} ${again.text.slice(0, 200)}`)
+  }
 }
 catch (error) {
   fail++

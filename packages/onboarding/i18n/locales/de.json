@@ -48,6 +48,7 @@
         "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Community löschen. Es wurde nichts gelöscht.",
         "done": "Community stillgelegt.",
         "doneDesc": "Die Adresse antwortet binnen einer halben Minute nicht mehr. Inhalte bleiben gespeichert.",
+        "labelsPending": "Die Community ist stillgelegt. Bei {count} Person(en) konnte der Lese-Zugang gerade nicht entzogen werden; das wird automatisch nachgeholt.",
         "errors": {
           "subscription_active": "Es läuft noch ein Abo. Kündige es zuerst unter „Plan & Rechnung\", danach lässt sich die Community löschen.",
           "already_disabled": "Diese Community ist bereits stillgelegt.",
@@ -851,7 +852,9 @@
       "title": "{name} den Zugang entziehen?",
       "text": "Die Person gehört danach nicht mehr zu dieser Community: sie sieht keine Mitglieder-Inhalte mehr und erscheint nicht mehr unter den Anwesenden. Zurück kommt sie nur über eine neue Einladung — auch dann nicht, wenn die Registrierung offen ist. Ihre Beiträge, Kommentare und Kursfortschritte BLEIBEN erhalten und behalten ihren Namen; hinter dem Namen steht künftig „Ehemaliges Mitglied\". Ein Konto löschen ist ein anderer Vorgang.",
       "confirm": "Zugang entziehen",
-      "done": "Zugang entzogen."
+      "done": "Zugang entzogen.",
+      "labelPendingTitle": "Mitgliedschaft entfernt.",
+      "labelPending": "Die Mitgliedschaft ist entfernt. Der Lese-Zugang konnte gerade nicht entzogen werden; das wird automatisch nachgeholt. Bitte später erneut prüfen."
     },
     "transfer": {
       "title": "Besitz an {name} übertragen?",

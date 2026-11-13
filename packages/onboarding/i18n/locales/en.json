@@ -48,6 +48,7 @@
         "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete the community. Nothing has been deleted.",
         "done": "Community shut down.",
         "doneDesc": "The address stops answering within half a minute. Content stays stored.",
+        "labelsPending": "The community is shut down. For {count} person(s), read access could not be removed just now; this will be done automatically later.",
         "errors": {
           "subscription_active": "A subscription is still running. Cancel it under \"Plan & billing\" first, then the community can be deleted.",
           "already_disabled": "This community is already shut down.",
@@ -851,7 +852,9 @@
       "title": "Revoke access for {name}?",
       "text": "They no longer belong to this community: no more members-only content, and they stop showing up among the people present. They can only come back through a new invitation — not even when registration is open. Their posts, comments and course progress REMAIN and keep their name; from now on it shows \"Former member\" next to it. Deleting an account is a different matter.",
       "confirm": "Revoke access",
-      "done": "Access revoked."
+      "done": "Access revoked.",
+      "labelPendingTitle": "Membership removed.",
+      "labelPending": "The membership is removed. Read access could not be taken away just now; this will be done automatically later. Please check again later."
     },
     "transfer": {
       "title": "Transfer ownership to {name}?",
