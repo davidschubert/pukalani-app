@@ -95,3 +95,45 @@ export function isUnknownHostError(error: UnknownHostErrorLike | null | undefine
   if (codeOf(error.data) === UNKNOWN_HOST_CODE) return true
   return error.statusMessage === UNKNOWN_HOST_STATUS_TEXT || error.statusText === UNKNOWN_HOST_STATUS_TEXT
 }
+
+/**
+ * ── TRENNUNG AN, ABER NIEMAND, DER SIE PRÜFEN KANN (SEC-025, 2026-11-13) ──
+ *
+ * Die zweite Antwort derselben Middleware, an der wieder zwei Seiten hängen:
+ * `00.tenant.ts` wirft sie, `CoreErrorPage` und `startWhenHostResolves()`
+ * erkennen sie. Fall: `pukalani.tenancy.enabled` ist an, aber die App hat
+ * keinen Resolver registriert (Platform-App ohne `NUXT_PLATFORM_CONTROL_*`).
+ * Davids Entscheidung: „Eine Sicherung, die nicht prüfen kann, lehnt ab" —
+ * 503 für jeden Host und jeden Pfad statt eines Betriebs ohne Trennung.
+ *
+ * Der Statustext bleibt (wie beim unbekannten Host) englisch und nennt KEINE
+ * Variable: er steht in der Statuszeile, und welche Einstellung fehlt, sagt
+ * nur das Server-Log.
+ */
+export const TENANT_RESOLVER_MISSING_STATUS_TEXT = 'Tenant resolution unavailable'
+
+/** Fachlicher Grund für `error.data.code` und für `reason` in `/api/health`. */
+export const TENANT_RESOLVER_MISSING_CODE = 'tenant_resolver_missing'
+
+/**
+ * Ist das die 503 „Trennung kann nicht geprüft werden"? Dieselben zwei
+ * Merkmale wie bei `isUnknownHostError` (Code ODER Statustext, weil `data.code`
+ * die Serialisierung zur Fehlerseite nicht zuverlässig überlebt) — und 503 ist
+ * Pflicht, damit kein anderer Fehler diesen Satz bekommt.
+ */
+export function isTenantResolverMissingError(error: UnknownHostErrorLike | null | undefined): boolean {
+  if (!error) return false
+  if (statusOf(error) !== 503) return false
+  if (codeOf(error.data) === TENANT_RESOLVER_MISSING_CODE) return true
+  return error.statusMessage === TENANT_RESOLVER_MISSING_STATUS_TEXT || error.statusText === TENANT_RESOLVER_MISSING_STATUS_TEXT
+}
+
+/**
+ * Kann dieser Host gerade GAR NICHTS bedienen? Unbekannter Host (404) oder
+ * Trennung ohne Resolver (503) — in beiden Fällen antwortet jede API mit
+ * demselben Fehler, und ein Plugin, das trotzdem startet, läuft nur in einen
+ * Wiederholungs-Takt (s. `startWhenHostResolves`).
+ */
+export function isHostUnservedError(error: UnknownHostErrorLike | null | undefined): boolean {
+  return isUnknownHostError(error) || isTenantResolverMissingError(error)
+}

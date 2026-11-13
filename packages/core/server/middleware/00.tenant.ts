@@ -4,6 +4,9 @@
  * RUHEND per Config-Gate: pukalani.tenancy.enabled ist Core-Default AUS — dann ist
  * diese Middleware ein sofortiger No-Op (heutiger Single-Tenant-Betrieb).
  * Aktiv (Platform-App) gilt die Spike-Semantik (s5-pool-silo):
+ *  - KEIN Resolver    → 503 `tenant_resolver_missing` für jeden Host und Pfad
+ *    (SEC-025, s. unten) — bis 2026-11-13 stand hier „dokumentiertes
+ *    fail-open": die App lief dann ohne Trennung weiter
  *  - bekannter Host  → event.context.tenant = TenantContext (pool | silo)
  *  - unbekannter Host → 404 (KEINE Default-Site — nichts leakt an Fremd-Hosts);
  *    AUSNAHME ist Nuxts interner Fehlerseiten-Renderpass, s. unten (C12b)
@@ -15,8 +18,17 @@
 // shared/*.ts wird im server-Verzeichnis NICHT auto-importiert (nur
 // shared/utils + shared/types) — deshalb explizit.
 import { isControlHost } from '../../shared/controlCenter'
-import { UNKNOWN_HOST_CODE, UNKNOWN_HOST_STATUS_TEXT, isErrorPageRenderPass } from '../../shared/unknownHost'
+import {
+  TENANT_RESOLVER_MISSING_CODE,
+  TENANT_RESOLVER_MISSING_STATUS_TEXT,
+  UNKNOWN_HOST_CODE,
+  UNKNOWN_HOST_STATUS_TEXT,
+  isErrorPageRenderPass,
+} from '../../shared/unknownHost'
 import { canonicalRedirectStatus, canonicalRedirectTarget } from '../../shared/canonicalHost'
+
+/** Die Fehlerzeile „Trennung ohne Resolver" steht EINMAL je Prozess im Log. */
+let resolverMissingReported = false
 
 export default defineEventHandler(async (event) => {
   const appConfig = useAppConfig() as {
@@ -24,19 +36,57 @@ export default defineEventHandler(async (event) => {
   }
   if (appConfig.pukalani?.tenancy?.enabled !== true) return
 
-  const resolver = getTenantResolver()
-  // Gate an, aber (noch) kein Resolver registriert → dokumentiertes fail-open
-  // auf heutiges Verhalten (Single-Tenant); die App merkt es beim Aktivieren.
-  if (!resolver) return
-
-  // Host-unabhängige Infra-Pfade — beide tenant-agnostisch, nichts leakt:
+  // Host-unabhängige Infra-Pfade — tenant-agnostisch, nichts leakt. Sie stehen
+  // VOR der Resolver-Prüfung, weil sie auch im Fehlerfall antworten MÜSSEN:
   // - /api/health: Deploy-Verify + Monitoring pollen den kanonischen Site-Host,
-  //   der selbst KEIN Tenant ist (buildSha/Uptime).
+  //   der selbst KEIN Tenant ist (buildSha/Uptime). Ohne Resolver meldet sie
+  //   `ok:false` mit Grund — der Fehler wird so SICHTBAR, statt als Ausfall
+  //   ohne Erklärung zu erscheinen.
   // - /_i18n/: nuxt-i18n lädt Locale-Messages im Prod-Build per INTERNEM
   //   self-fetch OHNE Host-Header — ein 404 hier ließe jede Seite mit rohen
   //   i18n-Keys rendern (Prod-Befund 2026-07-23). Inhalte sind build-statisch.
   const path = event.path.split('?')[0] ?? ''
   if (path === '/api/health' || path.startsWith('/_i18n/')) return
+
+  const resolver = getTenantResolver()
+  /**
+   * SEC-025 (2026-11-13, Davids Entscheidung): „Eine Sicherung, die nicht
+   * prüfen kann, lehnt ab." Gate an, aber KEIN Resolver registriert (die
+   * Platform-App ohne vollständige `NUXT_PLATFORM_CONTROL_*`) ⇒ 503 für JEDEN
+   * Host und JEDEN Pfad.
+   *
+   * Bis dahin kehrte die Middleware hier stumm zurück („dokumentiertes
+   * fail-open"): kein Mandant, kein 404 für fremde Hosts, kein Kontroll-Host
+   * — und weil die Datentür ohne Mandant nichts scopt, lief die App OHNE
+   * Trennung der Communities weiter, während `/api/health` grün meldete.
+   *
+   * Es gibt bewusst KEINEN Schalter, der das wieder abstellt. Der
+   * Kontroll-Host kommt ebenfalls nicht durch: er wird erst NACH dieser
+   * Prüfung erkannt, und ohne Resolver kann auch niemand belegen, dass ein
+   * Host KEIN Mandant ist.
+   *
+   * Durch kommt nur Nuxts interner Fehlerseiten-Durchgang (C12b, dieselbe
+   * Begründung wie unten beim unbekannten Host): sonst gäbe Nuxt seinen
+   * Renderer auf, und statt der gebrandeten CoreErrorPage stünde sein
+   * Notfall-Template vor dem Besucher.
+   */
+  if (!resolver) {
+    if (isErrorPageRenderPass(path)) return
+    if (!resolverMissingReported) {
+      resolverMissingReported = true
+      // Die NAMEN der fehlenden Variablen nennt das Plugin der App beim Start
+      // (apps/platform/server/plugins/tenant-resolver.ts); der Core kennt sie
+      // nicht (A14) und sagt deshalb nur, was jetzt passiert.
+      logEvent('error', 'tenancy.resolver_missing', {
+        message: 'pukalani.tenancy.enabled ist an, aber kein Tenant-Resolver registriert — alle Anfragen außer /api/health werden mit 503 abgelehnt',
+      })
+    }
+    throw createError({
+      status: 503,
+      statusText: TENANT_RESOLVER_MISSING_STATUS_TEXT,
+      data: { code: TENANT_RESOLVER_MISSING_CODE },
+    })
+  }
 
   const host = normalizeHost(getHeader(event, 'host'))
 

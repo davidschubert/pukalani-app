@@ -14,7 +14,9 @@ import type { TenantContext } from '../../shared/types/tenant'
  */
 
 /** Tenant des Requests — gesetzt von server/middleware/00.tenant.ts (Naht 1),
- *  null im Single-Tenant-Betrieb (Gate aus / kein Resolver). */
+ *  null im Single-Tenant-Betrieb (Gate aus) und auf Kontroll-Hosts. Gate an
+ *  OHNE Resolver erreicht keine Route mehr — 00.tenant.ts lehnt mit 503 ab
+ *  (SEC-025). */
 export function useTenant(event: H3Event): TenantContext | null {
   return event.context.tenant ?? null
 }

@@ -476,8 +476,9 @@ export default defineAppConfig({
       /** Horizont-3 Mandanten-Auflösung (Naht 1): Host → TenantContext via
        *  registriertem Resolver (registerTenantResolver, Nitro-Plugin der
        *  Platform-App). Core-Default AUS — Single-Tenant-Apps (heutiger
-       *  Betrieb) tragen null Overhead; bei aktivem Gate ohne Resolver bleibt
-       *  die Middleware ein No-Op (fail-open auf heutiges Verhalten). */
+       *  Betrieb) tragen null Overhead. Bei aktivem Gate OHNE Resolver lehnt
+       *  die App jede Anfrage mit 503 ab, nur /api/health meldet ok:false
+       *  (SEC-025, 2026-11-13 — vorher fail-open ohne Trennung). */
       enabled: false,
       /**
        * KONTROLL-Hosts: Hostnamen derselben App, die bewusst KEIN Mandant sind
@@ -687,12 +688,25 @@ export default defineAppConfig({
        */
       removedNoticePath: '',
       removedAllowedApi: [] as string[],
+      /**
+       * STÜNDLICHER LABEL-ABGLEICH (SEC-024, 2026-11-13): zieht einem Konto
+       * das Lese-Publikum einer Community ab, wenn seine Mitgliedschaft dort
+       * `removed` ist und das Label trotzdem noch hängt. Läuft nur in einer
+       * App, die ihn verdrahtet (apps/platform/server/plugins/label-reconcile.ts).
+       * `'off'` = kein Takt · `'dry-run'` = nur zählen und loggen ·
+       * `'apply'` = entziehen. Ein ungültiger Wert gilt als `'off'` und
+       * schreibt eine Fehlerzeile. Core-Default AUS — eine App schaltet ihn
+       * bewusst ein. Runbook: docs/runbooks/LABEL-ABGLEICH.md.
+       */
+      labelReconcile: 'off' as 'off' | 'dry-run' | 'apply',
     },
     security: {
-      /** CSRF-Origin-Check für unsichere Methoden auf /api/* (server/middleware/
-       *  csrf-origin.ts). PFLICHT, sobald eine App das partitionierte
-       *  Embed-Session-Cookie (SameSite=None, Embed-Plan E2) aktiviert —
-       *  bis dahin schützt sameSite:'strict' und der Check bleibt aus. */
+      /** Herkunftsprüfung für unsichere Methoden auf /api/* (server/middleware/
+       *  03.csrf-origin.ts). ÜBERGANG (SEC-004, Stufe 1): an in platform,
+       *  comments, control und `_template`; hier noch aus, damit sich
+       *  marketing, portfolio, branding, help und photos nicht ändern.
+       *  STUFE 2 ENTFERNT DIESEN SCHALTER — die Prüfung gilt dann überall,
+       *  Ausnahmen nur als Route mit Grund in shared/csrfOriginExempt.ts. */
       csrfOriginCheck: false,
     },
     observability: {

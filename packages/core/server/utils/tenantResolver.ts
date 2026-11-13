@@ -24,6 +24,17 @@ export function getTenantResolver(): TenantResolver | null {
 }
 
 /**
+ * Trennung eingeschaltet, aber niemand, der sie prüfen kann? (SEC-025)
+ * Dann lehnt `00.tenant.ts` jede Anfrage mit 503 ab, und `/api/health` meldet
+ * `ok:false`. Beide lesen dasselbe Register (`resolver` oben) und dasselbe
+ * Gate, behaupten also nie Verschiedenes; die Middleware braucht den Resolver
+ * danach selbst und fragt deshalb `getTenantResolver()` direkt.
+ */
+export function tenancyWithoutResolver(tenancyEnabled: boolean | undefined): boolean {
+  return tenancyEnabled === true && !resolver
+}
+
+/**
  * Host-Header normalisieren (pure, unit-getestet): Kleinschreibung, Port und
  * trailing dot weg. IPv6-Literale ([::1]:3000) behalten ihre Klammern.
  * Leerer/fehlender Header → '' (der Resolver entscheidet, was das bedeutet).
