@@ -8,6 +8,13 @@ import type { H3Event } from 'h3'
  * (audit.read), IP-behaftet, bei GDPR-Löschung pseudonymisiert statt
  * gelöscht — genau die Garantien, die der Community-Feed (activities,
  * Hard-Delete) bewusst NICHT hat.
+ *
+ * ZWEITER LESER (seit 2026-11-13): der Nutzer selbst sieht eine AUSWAHL seiner
+ * eigenen Zeilen unter `/profile/activity` („Konto und Sicherheit") — ohne
+ * An-/Abmeldungen, mit Ort statt IP. Leseweg: `server/utils/accountEvents.ts`,
+ * Regeln: `shared/accountEvents.ts`. Wer hier eine Aktion ergänzt, entscheidet
+ * dort, ob sie dazugehört; wer ein Profil-FELD ergänzt, trägt es in
+ * `ACCOUNT_EVENT_PROFILE_FIELDS` ein (ein Wächter-Test meldet es sonst).
  */
 export type AuthAuditAction =
   | 'user.login'

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AccountActivityEntry, AccountActivityResponse } from '../../../../core/shared/accountActivity'
+import type { AccountEventEntry } from '../../../../core/shared/accountEvents'
 
 /**
  * `/profile/activity` — was ich getan habe, über alle Communities hinweg
@@ -10,6 +11,15 @@ import type { AccountActivityEntry, AccountActivityResponse } from '../../../../
  * hart auf seine Besitz-Spalte — diese Seite kann fremden Inhalt gar nicht
  * anzeigen, weil sie ihn nie bekommt. Die Community-Grenzen bleiben also
  * unberührt: sie zeigt eine Selbstauskunft, keinen Querblick.
+ *
+ * ZWEI TEILE (seit 2026-11-13, Davids Entscheidung): oben „Konto und
+ * Sicherheit" — was an MEINEM KONTO geschah (Profil, Passwort, Zwei-Faktor),
+ * aus dem Protokoll, das `logAuthEvent` ohnehin schreibt; darunter wie bisher
+ * die eigenen Inhalte je Community. Der Konto-Teil ist ein eigener Block und
+ * keine Schein-Community in der Zeitleiste: er hat keinen Host, kein
+ * Sprungziel und eine andere Frage („war ich das?" statt „wo steht das?").
+ * Gezeigt wird der ORT, nie die IP-Adresse, und bei Profil-Änderungen nur die
+ * NAMEN der Felder — Werte stehen gar nicht im Protokoll.
  *
  * GRUPPIERTE LISTE STATT `UTable`, bewusst abweichend von Davids Regel B6.
  * Drei Gründe, alle spezifisch:
@@ -35,7 +45,12 @@ const { t } = useI18n()
 const localePath = useLocalePath()
 
 const { data, status, error } = await useFetch<AccountActivityResponse>('/api/account/activity', {
-  default: () => ({ groups: [], truncated: false, unavailable: [] } as AccountActivityResponse),
+  default: () => ({
+    account: { events: [], truncated: false },
+    groups: [],
+    truncated: false,
+    unavailable: [],
+  } as AccountActivityResponse),
 })
 
 /**
@@ -60,6 +75,8 @@ const namesByHost = computed(() => {
 })
 
 const groups = computed(() => data.value?.groups ?? [])
+const accountEvents = computed(() => data.value?.account?.events ?? [])
+const hasAnything = computed(() => groups.value.length > 0 || accountEvents.value.length > 0)
 
 /**
  * Datum über `useFormatDate()` statt über die rohe Util (U15 Teil 5): der
@@ -88,12 +105,35 @@ const KIND_ICONS: Record<AccountActivityEntry['kind'], string> = {
   enrollment: 'i-ph-graduation-cap',
 }
 
+const EVENT_ICONS: Record<AccountEventEntry['kind'], string> = {
+  profile_updated: 'i-ph-user-circle',
+  password_changed: 'i-ph-key',
+  password_reset: 'i-ph-key',
+  recovery_requested: 'i-ph-envelope-simple',
+  email_verified: 'i-ph-seal-check',
+  mfa_enabled: 'i-ph-shield-check',
+  mfa_disabled: 'i-ph-shield-slash',
+  mfa_challenge_failed: 'i-ph-shield-warning',
+}
+
+/**
+ * Die zweite Zeile eines Konto-Ereignisses: geänderte Felder (nur bei
+ * „Profil geändert") und der Ort, mit demselben Punkt-Trenner wie auf der
+ * Sitzungsliste. Leer ⇒ die Zeile entfällt ganz.
+ */
+function eventDetail(entry: AccountEventEntry): string {
+  const fields = entry.fields
+    .map(field => t(`onboarding.account.activity.account.fields.${field}`))
+    .join(', ')
+  return [fields, entry.place].filter(Boolean).join(' · ')
+}
+
 useBrandTitle(() => t('onboarding.account.activity.title'))
 </script>
 
 <template>
   <div class="space-y-6" data-account-activity>
-    <div v-if="status === 'pending' && !groups.length" class="space-y-3">
+    <div v-if="status === 'pending' && !hasAnything" class="space-y-3">
       <USkeleton v-for="i in 3" :key="i" class="h-20 w-full rounded-xl" />
     </div>
 
@@ -106,21 +146,12 @@ useBrandTitle(() => t('onboarding.account.activity.title'))
       :description="t('onboarding.account.activity.errorText')"
     />
 
-    <CoreEmptyState
-      v-else-if="!groups.length"
-      icon="i-ph-clock-counter-clockwise"
-      :title="t('onboarding.account.activity.emptyTitle')"
-      :description="t('onboarding.account.activity.emptyText')"
-      :action-label="t('onboarding.account.activity.emptyAction')"
-      action-icon="i-ph-users-three"
-      :action-to="localePath('/communities')"
-    />
-
     <template v-else>
       <!--
-        Ein ausgefallener Layer wird BENANNT, nicht verschwiegen: eine leere
+        Ein ausgefallener Teil wird BENANNT, nicht verschwiegen: eine leere
         Liste und eine nicht geladene Liste sehen gleich aus, sagen aber das
-        Gegenteil.
+        Gegenteil. Deshalb steht der Hinweis VOR dem Leer-Zustand und nicht
+        mehr nur neben gefüllten Gruppen.
       -->
       <UAlert
         v-if="data?.unavailable.length"
@@ -130,6 +161,64 @@ useBrandTitle(() => t('onboarding.account.activity.title'))
         :description="t('onboarding.account.activity.unavailable')"
         data-activity-unavailable
       />
+
+      <CoreEmptyState
+        v-if="!hasAnything"
+        icon="i-ph-clock-counter-clockwise"
+        :title="t('onboarding.account.activity.emptyTitle')"
+        :description="t('onboarding.account.activity.emptyText')"
+        :action-label="t('onboarding.account.activity.emptyAction')"
+        action-icon="i-ph-users-three"
+        :action-to="localePath('/communities')"
+      />
+
+      <!--
+        Konto und Sicherheit. Kein Link je Zeile: es gibt nichts, wohin ein
+        Klick führen könnte. Der Fehlversuch beim zweiten Faktor ist das eine
+        WARN-Signal der Liste und bekommt als einziger eine Farbe.
+      -->
+      <section v-if="accountEvents.length" class="space-y-3" data-activity-account>
+        <h2 class="font-semibold text-highlighted">{{ t('onboarding.account.activity.account.title') }}</h2>
+
+        <ul class="divide-y divide-default overflow-hidden rounded-xl border border-default">
+          <li
+            v-for="entry in accountEvents"
+            :key="entry.id"
+            class="flex items-start gap-3 p-4"
+            :data-account-event="entry.kind"
+          >
+            <UIcon
+              :name="EVENT_ICONS[entry.kind]"
+              class="mt-0.5 size-5 shrink-0"
+              :class="entry.kind === 'mfa_challenge_failed' ? 'text-warning' : 'text-dimmed'"
+            />
+            <span class="min-w-0 flex-1 space-y-1">
+              <span class="block text-sm font-medium text-highlighted">
+                {{ t(`onboarding.account.activity.account.events.${entry.kind}`) }}
+              </span>
+              <span v-if="eventDetail(entry)" class="block truncate text-sm text-muted" data-account-event-detail>
+                {{ eventDetail(entry) }}
+              </span>
+            </span>
+            <time :datetime="entry.createdAt" class="shrink-0 text-sm text-dimmed">
+              {{ formatDate(entry.createdAt) }}
+            </time>
+          </li>
+        </ul>
+
+        <p v-if="data?.account?.truncated" class="text-sm text-muted" data-activity-account-truncated>
+          {{ t('onboarding.account.activity.account.truncated') }}
+        </p>
+      </section>
+
+      <!--
+        Konto-Ereignisse da, Communities leer: der große Leer-Zustand oben
+        („Noch keine Aktivität") wäre jetzt falsch, ein fehlender zweiter Teil
+        ohne ein Wort aber auch.
+      -->
+      <p v-if="accountEvents.length && !groups.length" class="text-sm text-muted" data-activity-communities-empty>
+        {{ t('onboarding.account.activity.communitiesEmpty') }}
+      </p>
 
       <section
         v-for="group in groups"

@@ -1,9 +1,11 @@
 import {
+  ACCOUNT_EVENTS_SOURCE_ID,
   groupAccountActivityByCommunity,
   mergeAccountActivity,
   type AccountActivityEntry,
   type AccountActivityResponse,
 } from '../../../../core/shared/accountActivity'
+import type { AccountEventsSection } from '../../../../core/shared/accountEvents'
 
 /**
  * `GET /api/account/activity` — die eigene Aktivität über alle Communities
@@ -32,6 +34,14 @@ import {
  *     dem Kontroll-Host keine Datentür existiert, die scopen könnte — und
  *     ersetzt wird sie durch die Besitz-Spalte, nicht durch Vertrauen.
  *
+ * DER ABSCHNITT „KONTO UND SICHERHEIT" (seit 2026-11-13) hängt an denselben
+ * drei Sicherungen: `listAccountEvents` (core) bekommt dieselbe `userId` aus
+ * der Session, filtert das Protokoll hart auf `actorId` und prüft jede Zeile
+ * nach. Er läuft NICHT über die Contributor-Registry — warum, steht in
+ * core/shared/accountEvents.ts — und reist trotzdem in DIESER Antwort mit:
+ * eine zweite Route bräuchte einen zweiten Eintrag in `controlApiPrefixes`
+ * und die Seite zwei Abrufe für eine Ansicht.
+ *
  * WAS DIE ANTWORT ABSICHTLICH NICHT TUT: sie prüft NICHT, ob der Nutzer heute
  * noch Mitglied der jeweiligen Community ist. Es sind seine eigenen Texte, und
  * eine Selbstauskunft, die entfernten Mitgliedern ihre eigene Vergangenheit
@@ -49,6 +59,13 @@ import {
  */
 const PER_CONTRIBUTOR = 20
 const TOTAL = 50
+/**
+ * Konto-Ereignisse: ein eigenes, kleineres Fenster. Sie sind selten (An- und
+ * Abmeldungen zählen nicht dazu), und der Abschnitt steht ÜBER den
+ * Communities — zwanzig Zeilen dort schöben die eigentliche Aktivität aus dem
+ * Bild.
+ */
+const ACCOUNT_EVENTS = 10
 
 export default defineEventHandler(async (event): Promise<AccountActivityResponse> => {
   // Diese Seite gehört dem Kundenbereich. Auf einem Mandanten-Host hat sie
@@ -70,9 +87,17 @@ export default defineEventHandler(async (event): Promise<AccountActivityResponse
    * WIRD gemeldet. Ein stilles `catch(() => [])` liest sich als „du hast dort
    * nichts getan", und das ist eine andere Aussage als „konnte nicht laden".
    */
-  const settled = await Promise.allSettled(
-    contributors.map(contributor => contributor.listAccountActivity(event, userId, PER_CONTRIBUTOR)),
-  )
+  const [settled, accountSettled] = await Promise.all([
+    Promise.allSettled(
+      contributors.map(contributor => contributor.listAccountActivity(event, userId, PER_CONTRIBUTOR)),
+    ),
+    // Dieselbe Regel für den Konto-Abschnitt: sein Ausfall nimmt weder die
+    // Communities mit noch verschwindet er still.
+    listAccountEvents(event, userId, ACCOUNT_EVENTS).then(
+      (value): { ok: true, value: AccountEventsSection } => ({ ok: true, value }),
+      (reason: unknown): { ok: false, reason: unknown } => ({ ok: false, reason }),
+    ),
+  ])
 
   const batches: AccountActivityEntry[][] = []
   const unavailable: string[] = []
@@ -86,6 +111,15 @@ export default defineEventHandler(async (event): Promise<AccountActivityResponse
     console.error(`[account/activity] Contributor '${id}' fehlgeschlagen:`, result.reason)
   })
 
+  let account: AccountEventsSection = { events: [], truncated: false }
+  if (accountSettled.ok) {
+    account = accountSettled.value
+  }
+  else {
+    unavailable.push(ACCOUNT_EVENTS_SOURCE_ID)
+    console.error('[account/activity] Konto-Ereignisse fehlgeschlagen:', accountSettled.reason)
+  }
+
   const entries = mergeAccountActivity(batches, TOTAL)
   const total = batches.reduce((sum, batch) => sum + batch.length, 0)
 
@@ -98,6 +132,7 @@ export default defineEventHandler(async (event): Promise<AccountActivityResponse
   const hosts = await resolveCommunityHosts(entries.map(entry => entry.communityId))
 
   return {
+    account,
     groups: groupAccountActivityByCommunity(entries, hosts),
     // Zwei Gründe, ehrlich zu sein: mehr Einträge als das Gesamtbudget, ODER
     // ein Layer, der sein eigenes Fenster voll ausgeschöpft hat (dann liegt

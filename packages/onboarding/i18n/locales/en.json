@@ -128,6 +128,28 @@
           "comment": "Wrote a comment",
           "rsvp": "Said yes",
           "enrollment": "Enrolled"
+        },
+        "communitiesEmpty": "Nothing from you in your communities yet. As soon as you write something, RSVP or enrol, it shows up here.",
+        "account": {
+          "title": "Account and security",
+          "truncated": "There are older entries. This list holds the most recent ones.",
+          "events": {
+            "profile_updated": "Profile changed",
+            "password_changed": "Password changed",
+            "password_reset": "Password reset through the link from the email",
+            "recovery_requested": "Password reset link requested",
+            "email_verified": "Email address verified",
+            "mfa_enabled": "Two-factor turned on",
+            "mfa_disabled": "Two-factor turned off",
+            "mfa_challenge_failed": "Wrong two-factor code entered"
+          },
+          "fields": {
+            "name": "Name",
+            "avatar": "Profile picture",
+            "bio": "Bio",
+            "phone": "Phone number",
+            "location": "Location"
+          }
         }
       },
       "settings": {
