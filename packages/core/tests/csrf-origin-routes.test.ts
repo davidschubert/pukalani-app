@@ -15,9 +15,9 @@ import { CSRF_ORIGINLESS_CALLERS } from '../shared/csrfOriginExempt'
  * festgehaltenen Erwartung. Eine neue Route mit eigenem Ausweis, die in keiner
  * Klasse steht, wird rot — ebenso eine verschwundene.
  *
- * Teil B — WELCHE APP HAT DIE PRÜFUNG AN? Jede App mit Anmeldung muss sie an
- * haben; die Apps, die in Stufe 1 noch aus sind, stehen begründet in
- * `STAGE2_PENDING`. Stufe 2 leert diese Liste und dreht den Core-Default.
+ * Teil B — KEIN SCHALTER: die Prüfung gilt seit Stufe 2 in jeder App. Die
+ * Middleware liest keine App-Config, und keine `app.config.ts` darf den
+ * früheren Schlüssel `csrfOriginCheck` wieder einführen.
  *
  * Gesucht wird im Quelltext OHNE Kommentare.
  */
@@ -189,74 +189,33 @@ describe('Teil A — jede Route ruft ihren Ausweis wirklich auf', () => {
 
 // ── Teil B ──────────────────────────────────────────────────────────────────
 
-/** Muss an sein — ohne Ausnahme. */
-const MUST_BE_ON = ['comments', 'control', 'platform', '_template'] as const
+const FORBIDDEN_KEY = /\bcsrfOriginCheck\b/
 
-/**
- * ÜBERGANGSLISTE STUFE 2: Apps, in denen die Prüfung in Stufe 1 noch aus ist.
- * Stufe 2 leert diese Liste und dreht den Core-Default. `accounts` hält fest,
- * ob die App Konten hat (erkennt der Test am admin-Layer im `extends`).
- */
-const STAGE2_PENDING: Record<string, { accounts: boolean, reason: string }> = {
-  marketing: {
-    accounts: false,
-    reason: 'Ohne Konten (Anmeldung liegt auf account.pukalani.app); Stufe 2 schaltet mit dem Core-Default ein.',
-  },
-  help: {
-    accounts: false,
-    reason: 'Ohne Konten und ohne eigene schreibende Routen; Stufe 2 schaltet mit dem Core-Default ein.',
-  },
-  portfolio: {
-    accounts: true,
-    reason: 'Silo mit Dashboard; Formular /api/intro-call und SSR-Aufrufe werden vor Stufe 2 geprüft.',
-  },
-  branding: {
-    accounts: true,
-    reason: 'Silo mit Konten; /invite rief beim SSR schreibend (seit SEC-004 nur im Browser), Rest vor Stufe 2 prüfen.',
-  },
-  photos: {
-    accounts: true,
-    reason: 'Silo mit Dashboard; Formular /api/contact wird vor Stufe 2 geprüft.',
-  },
-}
+/** Alle `app.config.ts` unter `apps/*` und `packages/*` (im Ordner `app/` und im Paket-Wurzelordner). */
+const appConfigs = (['packages', 'apps'] as const).flatMap(top =>
+  topDirs(top).flatMap(name => ['app/app.config.ts', 'app.config.ts']
+    .map(file => resolve(REPO, top, name, file))
+    .filter(path => existsSync(path))))
 
-const apps = topDirs('apps').filter(name => existsSync(resolve(REPO, 'apps', name, 'nuxt.config.ts')))
-
-function checkIsOn(app: string): boolean {
-  const path = resolve(REPO, 'apps', app, 'app/app.config.ts')
-  if (!existsSync(path)) return false
-  return /\bcsrfOriginCheck\s*:\s*true\b/.test(stripComments(readFileSync(path, 'utf8')))
-}
-
-function hasAccounts(app: string): boolean {
-  const config = stripComments(readFileSync(resolve(REPO, 'apps', app, 'nuxt.config.ts'), 'utf8'))
-  return /['"]\.\.\/\.\.\/packages\/admin['"]/.test(config)
-}
-
-describe('Teil B — Herkunftsprüfung je App', () => {
-  it('findet die Apps', () => {
-    expect(apps.length).toBeGreaterThanOrEqual(9)
-    for (const app of [...MUST_BE_ON, ...Object.keys(STAGE2_PENDING)]) expect(apps, app).toContain(app)
+describe('Teil B — Herkunftsprüfung überall an, kein Schalter', () => {
+  it('die Middleware hat kein Config-Gate (weder `csrfOriginCheck` noch `useAppConfig`)', () => {
+    const code = stripComments(readFileSync(
+      resolve(REPO, 'packages/core/server/middleware/03.csrf-origin.ts'), 'utf8'))
+    expect(code).not.toMatch(FORBIDDEN_KEY)
+    expect(code).not.toMatch(/\buseAppConfig\b/)
+    // Selbsttest: die Middleware ruft die Regel wirklich auf.
+    expect(code).toMatch(/csrfOriginVerdict\(/)
   })
 
-  it.each(MUST_BE_ON)('%s hat die Prüfung an', (app) => {
-    expect(checkIsOn(app)).toBe(true)
+  it('findet die App-Configs (kein grüner Wächter ohne Treffer)', () => {
+    expect(appConfigs.length).toBeGreaterThanOrEqual(10)
+    expect(appConfigs.some(p => p.endsWith('packages/core/app/app.config.ts'))).toBe(true)
   })
 
-  it.each(apps)('%s: an, oder begründet auf der Übergangsliste', (app) => {
-    const pending = STAGE2_PENDING[app]
-    if (!pending) {
-      expect(checkIsOn(app), `${app}: Prüfung einschalten (security.csrfOriginCheck: true)`).toBe(true)
-      return
-    }
-    expect(pending.reason.length).toBeGreaterThan(20)
-    expect(hasAccounts(app), `${app}: Konten-Angabe der Übergangsliste stimmt nicht mehr`).toBe(pending.accounts)
-    // Eingeschaltet? Dann gehört die App von der Liste.
-    expect(checkIsOn(app), `${app} ist schon an — aus STAGE2_PENDING streichen`).toBe(false)
-  })
-
-  it('jede App mit Konten, die nicht auf der Übergangsliste steht, hat die Prüfung an', () => {
-    const missing = apps.filter(app => hasAccounts(app) && !STAGE2_PENDING[app] && !checkIsOn(app))
-    expect(missing).toEqual([])
+  it('keine app.config.ts führt den Schlüssel `csrfOriginCheck` (ein Aus-Schalter wird rot)', () => {
+    const offenders = appConfigs
+      .filter(path => FORBIDDEN_KEY.test(stripComments(readFileSync(path, 'utf8'))))
+      .map(path => relative(REPO, path))
+    expect(offenders, 'Ausnahmen nur als Route mit Grund in core/shared/csrfOriginExempt.ts').toEqual([])
   })
 })

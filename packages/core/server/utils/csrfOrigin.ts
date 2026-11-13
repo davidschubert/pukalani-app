@@ -27,10 +27,10 @@
  *  - Requests OHNE Sec-Fetch-Site UND ohne Origin (Server-zu-Server, z. B. der
  *    Stripe-Webhook, curl): sie tragen kein Browser-Cookie.
  *
- * WO SIE GILT (SEC-004): Ziel ist „überall von Haus aus an". Stufe 1 hat sie
- * in platform, comments, control und der Vorlage `_template` an; in Stufe 2
- * fällt der Schalter `pukalani.security.csrfOriginCheck` weg. Ausnahmen gibt es
- * nur als einzelne Route mit Grund (shared/csrfOriginExempt.ts, heute leer).
+ * WO SIE GILT (SEC-004, Stufe 2): ÜBERALL — in jeder App, die den Core
+ * erweitert, ohne Schalter (früher `pukalani.security.csrfOriginCheck`).
+ * Ausnahmen gibt es nur als einzelne Route mit Grund
+ * (shared/csrfOriginExempt.ts, heute leer).
  * Schreibende Aufrufe beim SERVER-RENDERN brechen an dieser Regel (Nuxt reicht
  * `sec-fetch-site` der Navigation durch) — sie gehören in den Browser.
  *

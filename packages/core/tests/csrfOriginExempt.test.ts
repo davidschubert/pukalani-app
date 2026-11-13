@@ -99,13 +99,13 @@ interface FakeEvent {
 }
 type Thrown = { statusCode?: number }
 
-let checkOn: boolean | undefined
 let middleware: (event: FakeEvent) => unknown
 
 beforeEach(async () => {
-  checkOn = true
+  // Bewusst KEIN `useAppConfig`-Stub: die Prüfung hat seit Stufe 2 keinen
+  // Schalter mehr. Läse die Middleware die App-Config, schlüge der Aufruf
+  // hier mit „useAppConfig is not defined" fehl.
   vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
-  vi.stubGlobal('useAppConfig', () => ({ pukalani: { security: { csrfOriginCheck: checkOn } } }))
   vi.stubGlobal('getRequestURL', (event: FakeEvent) => new URL(event.url))
   vi.stubGlobal('getHeader', (event: FakeEvent, name: string) => event.headers[name])
   vi.stubGlobal('createError', (init: { status: number, statusText: string }) =>
@@ -168,8 +168,15 @@ describe('03.csrf-origin — die SSR-Falle', () => {
     expect(run({ method: 'POST', url: `${HOST}/join`, headers: { 'sec-fetch-site': 'cross-site' } })).toBeNull()
   })
 
-  it('Schalter aus ⇒ No-Op (Stufe 1: marketing, portfolio, branding, help, photos)', () => {
-    checkOn = false
-    expect(run({ method: 'POST', url: `${HOST}/api/x`, headers: { 'sec-fetch-site': 'cross-site' } })).toBeNull()
+})
+
+describe('03.csrf-origin — überall an, kein Schalter (Stufe 2)', () => {
+  it('lehnt OHNE jede App-Config ab: cross-site ⇒ 403', () => {
+    const thrown = run({
+      method: 'POST',
+      url: `${HOST}/api/x`,
+      headers: { 'sec-fetch-site': 'cross-site', 'origin': 'https://fremd.example' },
+    })
+    expect(thrown?.statusCode).toBe(403)
   })
 })
