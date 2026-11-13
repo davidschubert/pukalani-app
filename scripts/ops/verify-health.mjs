@@ -101,7 +101,14 @@ async function pruefe({ host, kind, url: fest }) {
     if (typeof json?.version !== 'string' || !json.version) return { ok: false, grund: 'keine Versionsangabe' }
     return { ok: true, info: `Appwrite ${json.version}` }
   }
-  if (json?.ok !== true) return { ok: false, grund: `ok:${JSON.stringify(json?.ok)}${json?.code ? ` (${json.code})` : ''}` }
+  // `reason` = benannter Grund der App selbst (seit SEC-025:
+  // `tenant_resolver_missing` — Trennung an, aber kein Resolver; die App lehnt
+  // dann alles außer /api/health mit 503 ab). `code` stammt aus dem
+  // Fehler-Envelope, falls die Route selbst geworfen hat.
+  if (json?.ok !== true) {
+    const grund = json?.reason || json?.code
+    return { ok: false, grund: `ok:${JSON.stringify(json?.ok)}${grund ? ` (${grund})` : ''}` }
+  }
   return { ok: true, info: `build ${String(json.build || '—').slice(0, 8)}` }
 }
 

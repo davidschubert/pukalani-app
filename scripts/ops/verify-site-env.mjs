@@ -53,6 +53,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const SERVER = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
 
@@ -142,7 +143,7 @@ const RESEND_WEBHOOK_SECRET = 'NUXT_RESEND_WEBHOOK_SECRET'
  */
 const RESEND_BUDGET_KEY = 'NUXT_RESEND_API_KEY'
 
-const SITES = [
+export const SITES = [
   {
     dir: 'platform.pukalani.app',
     name: 'platform',
@@ -160,6 +161,19 @@ const SITES = [
       'NUXT_TURNSTILE_SECRET',
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       RESEND_WEBHOOK_SECRET,
+      /**
+       * DIE TRENNUNG DER COMMUNITIES (SEC-025, 2026-11-13) — alle VIER, nicht
+       * nur der Schlüssel. Fehlt EINE, registriert
+       * `apps/platform/server/plugins/tenant-resolver.ts` keinen
+       * Mandanten-Resolver, und `00.tenant.ts` lehnt seither JEDE Anfrage auf
+       * JEDEM Host mit 503 ab (Davids Entscheidung: „Eine Sicherung, die nicht
+       * prüfen kann, lehnt ab"; vorher lief die App dann still OHNE Trennung).
+       * Bis dahin stand hier nur `…_KEY` — Endpunkt, Projekt und Database-Id
+       * konnten fehlen, ohne dass dieser Wächter es sah.
+       */
+      'NUXT_PLATFORM_CONTROL_ENDPOINT',
+      'NUXT_PLATFORM_CONTROL_PROJECT_ID',
+      'NUXT_PLATFORM_CONTROL_DATABASE_ID',
       'NUXT_PLATFORM_CONTROL_KEY',
       'NUXT_ONBOARDING_SERVICE_SECRET',
       /**
@@ -537,82 +551,102 @@ const RETIRED_PROJECTS = {
   studio: 'gelöscht beim Control-Cutover (2026-07-30) — die Wahrheit liegt in `control`',
 }
 
-const only = process.argv[2]
-const sites = only ? SITES.filter(s => s.name === only || s.dir === only) : SITES
-if (sites.length === 0) {
-  console.error(`Keine Site namens "${only}". Bekannt: ${SITES.map(s => s.name).join(', ')}`)
-  process.exit(2)
+/**
+ * Pflicht-Variablen einer Site (nach `name` oder `dir`) — PURE, damit die
+ * Liste ohne ssh prüfbar ist (`packages/core/tests/verifySiteEnv.test.ts`).
+ * Unbekannte Site ⇒ `null`.
+ */
+export function requiredKeysFor(site) {
+  const entry = SITES.find(s => s.name === site || s.dir === site)
+  return entry ? [...entry.required] : null
 }
 
-let broken = 0
-for (const site of sites) {
-  let present
-  try {
-    present = readKeyNames(site.dir)
-  }
-  catch (error) {
-    console.log(`✖ ${site.name.padEnd(10)} ssh/Lesen fehlgeschlagen — ${(error && error.message) || error}`)
-    broken++
-    continue
-  }
-  if (present === null) {
-    // Keine Datei ist nur dann ein Fehler, wenn die Site etwas braucht.
-    if (site.required.length === 0) {
-      console.log(`✔ ${site.name.padEnd(10)} keine .env nötig (${site.note})`)
-      continue
-    }
-    console.log(`✖ ${site.name.padEnd(10)} KEINE .env vorhanden, ${site.required.length} Pflicht-Variablen erwartet`)
-    broken++
-    continue
-  }
-  const missing = site.required.filter(key => !present.has(key))
-  if (missing.length === 0) {
-    console.log(`✔ ${site.name.padEnd(10)} ${site.required.length} Pflicht-Variablen gesetzt (${site.note})`)
-  }
-  else {
-    console.log(`✖ ${site.name.padEnd(10)} FEHLT: ${missing.join(', ')}`)
-    console.log(`  ${' '.repeat(10)} ${site.note}`)
-    broken++
-  }
-
-  // ── E1b: zeigen die lokalen Dateien auf dasselbe Projekt wie der Server? ──
-  if (!site.localProjectFiles?.length) continue
-  let serverProject
-  try {
-    serverProject = readServerProjectId(site.dir)
-  }
-  catch (error) {
-    console.log(`  ${' '.repeat(10)} ⚠ Projekt-Id des Servers nicht lesbar — ${(error && error.message) || error}`)
-    continue
-  }
-  if (!serverProject) {
-    console.log(`  ${' '.repeat(10)} ⚠ Server nennt kein NUXT_PUBLIC_APPWRITE_PROJECT_ID`)
-    continue
-  }
-
-  for (const file of site.localProjectFiles) {
-    const local = readLocalProjectId(file)
-    // Fehlt die Datei, ist nichts falsch — sie liegt nur nicht auf DIESEM
-    // Rechner (Worktree ohne .env.production, fremde Maschine, CI).
-    if (local.missing) {
-      console.log(`  ${' '.repeat(10)} · ${file} — nicht vorhanden (nichts zu vergleichen)`)
-      continue
-    }
-    if (local.projectId === serverProject) {
-      console.log(`  ${' '.repeat(10)} ✔ ${file} → ${serverProject}`)
-      continue
-    }
-    const retired = RETIRED_PROJECTS[local.projectId]
-    console.log(`  ${' '.repeat(10)} ✖ ${file} zeigt auf „${local.projectId || '(leer)'}", der Server auf „${serverProject}"`)
-    if (retired) console.log(`  ${' '.repeat(10)}   ${local.projectId}: ${retired}`)
-    console.log(`  ${' '.repeat(10)}   Ein Migrations-Lauf gegen diese Datei schreibt ins FALSCHE Projekt — und zwar ohne Fehler.`)
-    broken++
-  }
+/** Welche Pflicht-Variablen fehlen in dieser Schlüsselmenge? (pure) */
+export function missingKeys(site, present) {
+  return site.required.filter(key => !present.has(key))
 }
 
-if (broken > 0) {
-  console.log(`\n${broken} Befund(e). Fehlende Variablen erklärt die jeweilige apps/<app>/.env.example;`)
-  console.log('ein Projekt-Unterschied gehört korrigiert, BEVOR jemand damit migriert (docs/OPEN-ITEMS.md, E1b).')
-  process.exit(1)
+/** Der Lauf gegen den Server (ssh). Nur beim direkten Aufruf, nie beim Import (Test). */
+function main() {
+  const only = process.argv[2]
+  const sites = only ? SITES.filter(s => s.name === only || s.dir === only) : SITES
+  if (sites.length === 0) {
+    console.error(`Keine Site namens "${only}". Bekannt: ${SITES.map(s => s.name).join(', ')}`)
+    process.exit(2)
+  }
+
+  let broken = 0
+  for (const site of sites) {
+    let present
+    try {
+      present = readKeyNames(site.dir)
+    }
+    catch (error) {
+      console.log(`✖ ${site.name.padEnd(10)} ssh/Lesen fehlgeschlagen — ${(error && error.message) || error}`)
+      broken++
+      continue
+    }
+    if (present === null) {
+      // Keine Datei ist nur dann ein Fehler, wenn die Site etwas braucht.
+      if (site.required.length === 0) {
+        console.log(`✔ ${site.name.padEnd(10)} keine .env nötig (${site.note})`)
+        continue
+      }
+      console.log(`✖ ${site.name.padEnd(10)} KEINE .env vorhanden, ${site.required.length} Pflicht-Variablen erwartet`)
+      broken++
+      continue
+    }
+    const missing = missingKeys(site, present)
+    if (missing.length === 0) {
+      console.log(`✔ ${site.name.padEnd(10)} ${site.required.length} Pflicht-Variablen gesetzt (${site.note})`)
+    }
+    else {
+      console.log(`✖ ${site.name.padEnd(10)} FEHLT: ${missing.join(', ')}`)
+      console.log(`  ${' '.repeat(10)} ${site.note}`)
+      broken++
+    }
+
+    // ── E1b: zeigen die lokalen Dateien auf dasselbe Projekt wie der Server? ──
+    if (!site.localProjectFiles?.length) continue
+    let serverProject
+    try {
+      serverProject = readServerProjectId(site.dir)
+    }
+    catch (error) {
+      console.log(`  ${' '.repeat(10)} ⚠ Projekt-Id des Servers nicht lesbar — ${(error && error.message) || error}`)
+      continue
+    }
+    if (!serverProject) {
+      console.log(`  ${' '.repeat(10)} ⚠ Server nennt kein NUXT_PUBLIC_APPWRITE_PROJECT_ID`)
+      continue
+    }
+
+    for (const file of site.localProjectFiles) {
+      const local = readLocalProjectId(file)
+      // Fehlt die Datei, ist nichts falsch — sie liegt nur nicht auf DIESEM
+      // Rechner (Worktree ohne .env.production, fremde Maschine, CI).
+      if (local.missing) {
+        console.log(`  ${' '.repeat(10)} · ${file} — nicht vorhanden (nichts zu vergleichen)`)
+        continue
+      }
+      if (local.projectId === serverProject) {
+        console.log(`  ${' '.repeat(10)} ✔ ${file} → ${serverProject}`)
+        continue
+      }
+      const retired = RETIRED_PROJECTS[local.projectId]
+      console.log(`  ${' '.repeat(10)} ✖ ${file} zeigt auf „${local.projectId || '(leer)'}", der Server auf „${serverProject}"`)
+      if (retired) console.log(`  ${' '.repeat(10)}   ${local.projectId}: ${retired}`)
+      console.log(`  ${' '.repeat(10)}   Ein Migrations-Lauf gegen diese Datei schreibt ins FALSCHE Projekt — und zwar ohne Fehler.`)
+      broken++
+    }
+  }
+
+  if (broken > 0) {
+    console.log(`\n${broken} Befund(e). Fehlende Variablen erklärt die jeweilige apps/<app>/.env.example;`)
+    console.log('ein Projekt-Unterschied gehört korrigiert, BEVOR jemand damit migriert (docs/OPEN-ITEMS.md, E1b).')
+    process.exit(1)
+  }
+  console.log('\nAlle Sites vollständig konfiguriert, alle lokalen Dateien zeigen aufs richtige Projekt.')
 }
-console.log('\nAlle Sites vollständig konfiguriert, alle lokalen Dateien zeigen aufs richtige Projekt.')
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

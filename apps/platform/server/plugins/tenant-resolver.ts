@@ -28,18 +28,31 @@ import { createCommunityJoinDatesResolver } from '../../../../packages/control/s
  *    läuft; Cache 60 s, fail-soft (kein Host ⇒ App-Basis, nie eine verworfene
  *    Mail).
  *
- * Ohne NUXT_PLATFORM_CONTROL_*-Env (z. B. CI-Build) wird KEIN Resolver
- * registriert → die Tenant-Middleware ist dokumentiert fail-open (No-Op) und
- * requireCommunityPermission fail-closed (kein Resolver → 403); die Warnung macht
- * die Fehlkonfiguration im Log sichtbar.
+ * OHNE VOLLSTÄNDIGE NUXT_PLATFORM_CONTROL_*-Env wird KEIN Resolver
+ * registriert — und seit SEC-025 (2026-11-13, Davids Entscheidung: „Eine
+ * Sicherung, die nicht prüfen kann, lehnt ab") LEHNT DIE APP DANN JEDE ANFRAGE
+ * AB: `00.tenant.ts` (core) antwortet mit 503 `tenant_resolver_missing`, nur
+ * `/api/health` antwortet (mit `ok:false` und diesem Grund). Vorher lief sie
+ * an dieser Stelle still OHNE Trennung der Communities weiter. Die Zeile
+ * unten nennt die NAMEN der fehlenden Variablen (nie Werte); die vier stehen
+ * auch auf der Pflicht-Liste von `scripts/ops/verify-site-env.mjs`.
+ * Ein Build braucht sie nicht (die Plugins laufen erst beim Start).
  */
+const CONTROL_ENV_KEYS = [
+  'NUXT_PLATFORM_CONTROL_ENDPOINT',
+  'NUXT_PLATFORM_CONTROL_PROJECT_ID',
+  'NUXT_PLATFORM_CONTROL_DATABASE_ID',
+  'NUXT_PLATFORM_CONTROL_KEY',
+] as const
+
 export default defineNitroPlugin(() => {
   const endpoint = process.env.NUXT_PLATFORM_CONTROL_ENDPOINT
   const projectId = process.env.NUXT_PLATFORM_CONTROL_PROJECT_ID
   const databaseId = process.env.NUXT_PLATFORM_CONTROL_DATABASE_ID
   const apiKey = process.env.NUXT_PLATFORM_CONTROL_KEY
   if (!endpoint || !projectId || !databaseId || !apiKey) {
-    console.warn('[platform] NUXT_PLATFORM_CONTROL_* unvollständig — kein Tenant-/Site-Rollen-Resolver registriert (alle Hosts laufen als Single-Tenant)')
+    const missing = CONTROL_ENV_KEYS.filter(key => !process.env[key])
+    console.error(`[platform] FEHLER: ${missing.join(', ')} nicht gesetzt — kein Tenant-Resolver registriert. Die App lehnt deshalb ALLE Anfragen mit 503 ab (nur /api/health antwortet, mit ok:false). SEC-025`)
     return
   }
   registerTenantResolver(createTenantsTableResolver({ endpoint, projectId, apiKey, databaseId }))
