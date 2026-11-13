@@ -1,5 +1,10 @@
 # Changelog
 
+> **Wird seit dem 2026-11-13 nicht mehr fortgeschrieben.** Davids Entscheidung
+> vom 2026-11-12: release-please ist abgeschaltet. Stand dieser Datei ist
+> Version 4.0.0. Was sich seitdem ändert, steht in der Git-Historie
+> (Conventional Commits) und in `docs/OPEN-ITEMS-COMPLETE.md`.
+
 ## [4.0.0](https://github.com/davidschubert/pukalani.app/compare/v3.0.0...v4.0.0) (2026-10-27)
 
 
