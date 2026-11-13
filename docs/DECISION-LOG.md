@@ -7,6 +7,46 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-12 — Alle vier Prüfungen halten das Ausliefern auf; kein Release-Automat mehr (P07)
+
+**Anlass:** Gesamtaudit 2026-11 (Paket P07, Findings OPS-006, OPS-013, SEC-044,
+SEC-040). Der Deploy wartete nur auf „Test" und „E2E"; „Lint" und „Typecheck"
+meldeten bloß. Inzwischen laufen im Lint-Workflow aber die Wächter des
+Projekts (Manifeste, Datentür-Regel, eine Kopie je Kernabhängigkeit,
+Prompt-Anführungszeichen …).
+
+**Davids Entscheidungen (2026-11-12, im Review des Audits):**
+- **Alle vier Prüfungen (Test, Lint, Typecheck, E2E) müssen grün sein, bevor
+  ausgeliefert wird.** Das **ersetzt den Beschluss A.10 Nr. 9** aus dem
+  Go-Live-Plan vom Juli 2026 („Nur ‚Test' grün gated den Deploy; Typecheck/Lint
+  bleiben Warnlampen", `docs/archiv/PHASE-17-PRODUCTION.md`). Verworfen: nur
+  die Regel-Prüfung als Tor und die Typ-Prüfung weiter als Warnung; alles so
+  lassen.
+- **Versionsnummern mit Änderungslisten werden nicht gebraucht** —
+  release-please ist abgeschaltet. Verworfen: behalten und bei jedem Abschluss
+  mitpflegen. Releases steuerten hier nichts (ausgeliefert wird je Push auf
+  `main`), ihre Prüfläufe warteten 30 Tage auf eine Freigabe und verfielen
+  dann rot.
+
+**Die Regel dahinter:** Eine Prüfung, die eine Projektregel sichert, hält das
+Ausliefern auf. Ein Signal, das niemanden erreicht, zählt nicht als Sicherung.
+
+**Umsetzung (2026-11-13):**
+- `deploy.yml`, Job `gate`: die Vorprüfung fragt alle vier Workflows desselben
+  Commits ab. Auslöser bleiben „Test" und „E2E" — die Vorprüfung wartet ohnehin
+  auf alle, zwei weitere Auslöser brächten nur zwei weitere verdrängte Läufe
+  je Push. Der manuelle Start bleibt der Notausgang ohne Vorprüfung.
+- Wird eine rote Prüfung per „Re-run" nachträglich grün, feuert der Deploy
+  nicht von selbst: den zugehörigen Deploy-Lauf ebenfalls neu starten.
+- Im Lint-Workflow laufen zwei Dinge neu mit: die Schlüssel-Suche `gitleaks`
+  über die ganze Historie (Job `secrets`, Ausnahmeliste `.gitleaksignore`) und
+  der Wächter `check:nul-bytes` (kein literales NUL-Zeichen in Quelltext — eine
+  solche Datei gilt für git als binär, ihr Diff ist in keinem Review sichtbar).
+- `CHANGELOG.md` bleibt als Historie bis 4.0.0 stehen; Conventional Commits
+  bleiben Pflicht.
+
+---
+
 ## 2026-11-12 — Pukalani-Konto: zentrale Anmeldung, je Seite eine Eintrittskarte
 
 **Anlass:** Davids Zielbild — ein Pukalani-Konto für alle Seiten, vergleichbar

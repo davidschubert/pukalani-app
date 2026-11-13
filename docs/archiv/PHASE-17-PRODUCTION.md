@@ -376,7 +376,7 @@ DEPLOYMENT.md §5 hat den Schritt schon).
 | 6 | **`/console`-IP-Restriktion** | **Whitelist reicht** (`_APP_CONSOLE_WHITELIST_EMAILS=mail@davidschubert.com`); IP-Allowlist = Stufe 2 bei Bedarf |
 | 7 | **Appwrite Function `changelog-draft`** | **Follow-up Woche 2** nach Go-Live |
 | 8 | **Observability-Gate** | **Direkt nach Go-Live** (Woche 1: Sentry am pukalani.observability-Gate andocken) |
-| 9 | **CI-Gate-Umfang** | **Nur „Test" grün gated den Deploy**; Typecheck/Lint bleiben Warnlampen |
+| 9 | **CI-Gate-Umfang** | **Nur „Test" grün gated den Deploy**; Typecheck/Lint bleiben Warnlampen — **ERSETZT 2026-11-13:** alle vier Prüfungen müssen grün sein (DECISION-LOG 2026-11-12) |
 | 10 | **www/Root-Redirect** | **Vorerst Redirect auf die App**, Plattform-Landingpage später |
 
 Alerts (UptimeRobot, Watchdog, Health-Sweep): **mail@davidschubert.com**.
