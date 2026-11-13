@@ -1,4 +1,6 @@
 import { createAdminClient } from '../lib/appwrite'
+import { tenancyWithoutResolver } from '../utils/tenantResolver'
+import { TENANT_RESOLVER_MISSING_CODE } from '../../shared/unknownHost'
 
 /**
  * Health-Check gegen die Appwrite-Instanz via AdminClient (Scope: health.read).
@@ -52,11 +54,30 @@ function appwriteHealthy(event: Parameters<typeof createAdminClient>[0]): Promis
 }
 
 export default defineEventHandler(async (event) => {
+  // Deployter Commit (Build-Zeit) — Basis der Deploy-Verifikation (A.5)
+  const build = useRuntimeConfig(event).public.buildSha || null
+
+  /**
+   * SEC-025 (2026-11-13): Mandanten-Trennung an, aber kein Resolver ⇒ die
+   * App lehnt jede andere Anfrage mit 503 ab (`00.tenant.ts`). Diese Route
+   * kommt dort bewusst durch und sagt WARUM: `ok:false` mit `reason`
+   * (derselbe Schlüsselname wie im Fehler-Envelope, core/server/error.ts).
+   * Welche Variable fehlt, steht nur im Server-Log — nie hier.
+   *
+   * HTTP bleibt 200 wie bei jedem anderen `ok:false`: der Deploy-Beweis liest
+   * `.build` per `curl -f`, ein 5xx machte den Build-SHA unlesbar. Rot wird
+   * es trotzdem überall — `verify-health.mjs` und UptimeRobot verlangen
+   * `"ok":true`. Appwrite wird dann gar nicht erst gefragt: die Antwort steht
+   * ohnehin fest, und die Prüfung ist ein Speicherzugriff (kein Zwischenspeicher
+   * nötig).
+   */
+  const tenancyEnabled = (useAppConfig() as { pukalani?: { tenancy?: { enabled?: boolean } } })
+    .pukalani?.tenancy?.enabled
+  if (tenancyWithoutResolver(tenancyEnabled)) {
+    return { ok: false, build, reason: TENANT_RESOLVER_MISSING_CODE }
+  }
+
   const ok = await appwriteHealthy(event)
 
-  return {
-    ok,
-    // Deployter Commit (Build-Zeit) — Basis der Deploy-Verifikation (A.5)
-    build: useRuntimeConfig(event).public.buildSha || null,
-  }
+  return { ok, build }
 })

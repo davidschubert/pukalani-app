@@ -52,20 +52,29 @@ export default defineEventHandler(async (event) => {
     await assertNotLastAdmin(event, userId)
   }
 
-  // Nur die Rollen-Labels ersetzen; etwaige Nicht-Rollen-Labels bleiben erhalten.
-  const roleLabels = new Set<string>(ROLES)
-  const preserved = (target.labels ?? []).filter(label => !roleLabels.has(label))
-  const nextLabels = [...new Set([...preserved, ...nextRoles])]
-
-  const updated = await admin.users.updateLabels({ userId, labels: nextLabels })
+  // NUR die Rollen-Labels tauschen — „diese Rollen raus, jene rein" (SEC-024).
+  // Bis 2026-11-13 schrieb die Route die GANZE Liste aus dem oben gelesenen
+  // Stand zurück; ein Community-Label, das dazwischen vergeben oder entzogen
+  // wurde (Beitritt, „Zugang entziehen"), ging dabei verloren bzw. kam zurück.
+  // Der EINE Schreiber liest frisch, ändert nur die genannten Labels,
+  // serialisiert je Konto und prüft nach.
+  const result = await mutateUserLabels(event, userId, {
+    remove: ROLES.filter(role => !nextRoles.includes(role)),
+    add: nextRoles,
+  })
+  if (!result.ok) {
+    throw result.reason === 'not_found'
+      ? createError({ status: 404, statusText: 'User not found' })
+      : createError({ status: 502, statusText: 'Roles could not be updated' })
+  }
 
   await recordAudit(event, {
     action: 'user.roles_updated',
     targetType: 'user',
-    targetId: updated.$id,
-    targetName: updated.name,
+    targetId: userId,
+    targetName: target.name,
     metadata: { before: currentRoles, after: nextRoles },
   })
 
-  return { $id: updated.$id, labels: updated.labels }
+  return { $id: userId, labels: result.labels }
 })

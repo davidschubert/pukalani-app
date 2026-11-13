@@ -60,11 +60,15 @@ const SERVICE_HEADER = 'x-pukalani-onboarding-secret'
  *
  * ── SEITHER ASYNC — UND DAS `await` IST PFLICHT ───────────────────────────
  * Die Konsolen-Ablage zu lesen ist ein Appwrite-Ruf. Ein vergessenes `await`
- * an einer der ~50 Aufrufstellen wäre kein Typfehler, sondern ein FAIL-OPEN
+ * an einer der Aufrufstellen wäre kein Typfehler, sondern ein FAIL-OPEN
  * (ein Promise ist truthy, geworfen wird erst später ins Leere) — genau die
  * Falle, vor der CLAUDE.md bei `requireCommunityPermission` warnt. Deshalb
  * nagelt `packages/control/tests/onboardingCallerAwait.test.ts` jede
- * Aufrufstelle strukturell auf `await` fest.
+ * Aufrufstelle in JEDEM `server/` unter `packages/*` und `apps/*` strukturell
+ * auf `await` fest (bis SEC-023 nur in diesem Layer — zwei Routen in
+ * `apps/control` liefen daran vorbei), und die typisierte Lint-Regel
+ * `@typescript-eslint/no-floating-promises` meldet jedes lose Promise im
+ * Server-Code (eslint.config.mjs, SERVER_LINT_PROGRAM).
  */
 export async function requireOnboardingCaller(event: H3Event): Promise<void> {
   const config = useRuntimeConfig(event) as { controlOnboardingSecret?: string }

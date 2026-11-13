@@ -21,11 +21,23 @@ import { requireCommunityTeamGate } from '../../../utils/communityTeamGate'
  * „letzter Owner"), dann das Label. Der umgekehrte Weg hätte einem Mitglied nach
  * einer abgelehnten Entfernung das Publikum genommen.
  *
- * Der Label-Entzug ist BEST-EFFORT und darf die Antwort nicht kippen: die
- * Mitgliedschaft ist entzogen, das ist die Wahrheit. Bleibt das Label hängen,
- * heilt die Label-Middleware es beim nächsten Besuch der entfernten Person
- * (06.community-label.ts: Label ohne aktive Zeile → das Control Plane sagt 'removed' →
- * Label weg). Zurück kommt der Zugang nie von selbst.
+ * DER ENTZUG WIRD NACHGEPRÜFT (SEC-024, seit 2026-11-13 — Davids
+ * Entscheidung „Eine Sicherung, die nicht prüfen kann, lehnt ab"): bis dahin
+ * war er best-effort, die Route sagte `ok`, und ein hängendes Label heilte erst
+ * der nächste Besuch der ENTFERNTEN Person — die das gerade nicht will.
+ * Jetzt liest `revokeCommunityLabel` nach und wiederholt einmal; ist das Label
+ * danach noch da, antwortet die Route mit einem Fehler (502,
+ * `reason: label_revoke_failed`), nicht mit `ok`. Die Mitgliedschaft IST
+ * trotzdem entfernt (Schritt 1 ist geschehen, ein Zurückrollen wäre ein
+ * zweiter Schreibvorgang, der ebenso scheitern kann) — die Oberfläche sagt
+ * das und lädt die Liste neu. Den hängenden Rest holt der stündliche Abgleich
+ * nach (onboarding/server/utils/labelReconcile.ts).
+ *
+ * WARUM 502: der Request war gültig und der eigene Teil gelang; gescheitert
+ * ist der nachgelagerte Dienst (Appwrite, Users-API). 500 hieße „Fehler in
+ * dieser Route", 503 „versuch es gleich noch einmal" — ein zweiter Klick
+ * fände die Person aber schon als entfernt vor (Control Plane: 404/409) und
+ * führte nie mehr zum Entzug. Nachholen ist Aufgabe des Abgleichs.
  *
  * BEWUSST OHNE FRISCHE ANMELDUNG (RA2, 2026-11-08): `requireRecentAuth` gehört
  * an Unumkehrbares (Konto löschen, Besitz übertragen, Community stilllegen).
@@ -59,7 +71,19 @@ export default defineEventHandler(async (event) => {
     // diese Notiz vergäbe die Label-Middleware das Publikum beim nächsten
     // Request der entfernten Person sofort wieder (siehe communityJoin.ts).
     rememberCommunityAccessRevoked(communityId, result.runtimeUserId)
-    await revokeCommunityLabel(event, communityId, result.runtimeUserId)
+    const revoke = await revokeCommunityLabel(event, communityId, result.runtimeUserId)
+    if (!revoke.revoked) {
+      logEvent('error', 'community.member_remove_label_failed', {
+        communityId,
+        userId: result.runtimeUserId,
+        reason: revoke.reason,
+      })
+      throw createError({
+        status: 502,
+        statusText: 'Membership removed, but read access could not be revoked yet',
+        data: { code: 'label_revoke_failed' },
+      })
+    }
   }
 
   return { ok: result.ok, memberId: result.memberId, status: result.status }

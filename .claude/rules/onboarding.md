@@ -43,7 +43,14 @@ paths:
   Rolle UND Lese-Publikum: die Runtime-Route zieht danach `revokeCommunityLabel`
   (Labels gehören dem Pool-Projekt, das Control Plane hat dafür keinen
   Schlüssel) und merkt den Entzug kurz (`rememberCommunityAccessRevoked`), damit der
-  30-s-Rollen-Cache das Label nicht sofort wieder vergibt. Seit 2026-11-13
+  30-s-Rollen-Cache das Label nicht sofort wieder vergibt. Seit SEC-024
+  (2026-11-13) ist der Entzug NACHGEPRÜFT: `revokeCommunityLabel` liest nach,
+  wiederholt einmal und gibt `{ revoked }` zurück; bleibt das Label, antwortet
+  die Route 502 `label_revoke_failed` (Mitgliedschaft IST entfernt — die Seite
+  sagt das in einem eigenen Satz und lädt die Liste neu), Stilllegen meldet
+  `labels: { total, revoked, failed }`. Den Rest holt der stündliche
+  Label-Abgleich der Platform-App nach (tenant-isolation.md, SITE-LABEL;
+  Runbook docs/runbooks/LABEL-ABGLEICH.md). Seit 2026-11-13
   (SEC-030) sieht die entfernte Person angemeldet nur noch die HINWEISSEITE
   (`onboarding/app/pages/removed.vue`, `/removed`) mit gebremstem Kontakt an
   Owner und Admins (`removed-contact.post.ts`) und dem Rückweg per neuer

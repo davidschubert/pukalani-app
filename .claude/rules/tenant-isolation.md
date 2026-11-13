@@ -34,6 +34,20 @@ paths:
 - Warum: Isolation hing an drei Dingen, an die man sich erinnern musste
   (scopeQuery/scopeRow/ID-Prüfung). Am 2026-07-26 hat genau das versagt (drei
   Moderations-Routen lasen fremde Zeilen per ID, commit 1cc4855).
+- OHNE RESOLVER LEHNT DIE PLATTFORM AB (SEC-025, seit 2026-11-13 — Davids
+  Entscheidung „Eine Sicherung, die nicht prüfen kann, lehnt ab"): die Tür
+  scopt nur, wenn `00.tenant.ts` einen Mandanten gesetzt hat. Ist
+  `pukalani.tenancy.enabled` an, aber kein Resolver registriert (fehlende
+  Control-Env), kehrte die Middleware bis dahin STILL zurück — kein Mandant,
+  kein 404, also keine Trennung, und `/api/health` war grün. Jetzt: 503
+  `tenant_resolver_missing` für jeden Host und Pfad, auch für Kontroll-Hosts
+  (ohne Resolver belegt niemand, dass ein Host KEIN Mandant ist). Durch kommen
+  nur `/api/health` (meldet `ok:false` mit diesem Grund), `/_i18n/` und Nuxts
+  Fehlerseiten-Durchgang (gebrandete Seite mit eigenem Satz; Realtime startet
+  dort nicht, `isHostUnservedError`). Kein Schalter, kein Rückfall auf
+  „Single-Tenant". Ein ZWEITES Netz in der Tür selbst gibt es bewusst nicht:
+  Exporte, Spiegel und Sweeps rufen sie mit Ereignissen ohne Mandant, die
+  Prüfung bräche sie. Beweis: `packages/core/tests/tenantMiddleware.test.ts`.
 - AUSSERHALB der Tür erlaubt (per Definition mandantenübergreifend):
   Migrationen, Sweeps/Intervall-Plugins, GDPR-Orchestrierung, Control Plane.
 - Die Mandanten-Id kommt NIE vom Aufrufer (`stripTenantKey` entfernt BEIDE
@@ -83,6 +97,22 @@ paths:
   core/server/utils/communityLabel.ts). Ein Label ist ein LESE-Publikum, KEINE Rolle —
   Autorisierung läuft über requireCommunityPermission/Site-Rollen, `hasCapability`
   kennt nur 'admin'/'moderator' (grantCommunityLabel verweigert solche Labels).
+  EIN SCHREIBER, ENTZUG WIRD NACHGEPRÜFT (SEC-024, seit 2026-11-13 — Davids
+  Entscheidung „Eine Sicherung, die nicht prüfen kann, lehnt ab"): JEDER
+  Schreibvorgang auf Konto-Labels (Community-Labels UND Betreiber-Rollen der
+  admin-Routen) läuft über `mutateUserLabels` (core/server/utils/userLabels.ts):
+  je Konto im Prozess serialisiert, frisch gelesen, NUR die genannten Labels
+  hinzu/weg, nachgelesen, einmal wiederholt, Ergebnis zurück statt nur Log —
+  `updateLabels` setzt die ganze Liste, und zwei Schreiber vom selben alten
+  Stand überschrieben einander. Vergabe bleibt fail-soft; `revokeCommunityLabel`
+  gibt `{ revoked }` zurück, und „Zugang entziehen" antwortet bei `false` mit
+  502 `label_revoke_failed` statt `ok` (Stilllegen zählt `labels.failed`).
+  Zwischen PROZESSEN hilft die Kette nicht — dafür gleicht ein stündlicher Lauf
+  der Platform-App nach (`onboarding/server/utils/labelReconcile.ts`, Schalter
+  `pukalani.community.labelReconcile` off/dry-run/apply): nur Labels mit
+  `removed`-Zeile und ohne Zeile MIT Zugang, nie Betreiber-Rollen, nie Bestand
+  ohne Zeile. Das Label ist `communities.$id` (= `community_members.communityId`),
+  NICHT `tenantId`. Runbook: docs/runbooks/LABEL-ABGLEICH.md.
 - MITGLIEDSCHAFT IST EIN EREIGNIS (A5): Vertrag `core/shared/communityJoin.ts` +
   Registry `core/server/utils/communityJoin.ts` (`registerCommunityJoinHandler` — die
   Naht zum Control Plane besitzt der onboarding-Layer, A14), Regel `decideJoin`

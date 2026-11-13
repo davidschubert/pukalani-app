@@ -41,9 +41,12 @@ export default defineEventHandler(async (event) => {
   })
 
   if (roles.length > 0) {
-    await admin.users.updateLabels({ userId: user.$id, labels: roles }).catch((error) => {
-      throw toH3Error(error, 'User created, but roles could not be set')
-    })
+    // Über den EINEN Schreiber für Konto-Labels (SEC-024): nur hinzufügen,
+    // frisch gelesen, nachgeprüft — dieselbe Regel wie überall.
+    const result = await mutateUserLabels(event, user.$id, { add: roles })
+    if (!result.ok) {
+      throw createError({ status: 502, statusText: 'User created, but roles could not be set' })
+    }
   }
 
   await recordAudit(event, {

@@ -75,9 +75,17 @@ const queryCode = computed(() => {
 const code = computed(() => queryCode.value || inviteCookie.value?.trim() || '')
 
 /**
- * EINMAL fragen, ob der Code taugt. Über `useRequestFetch`, damit der Abruf
- * beim SSR dieselbe Herkunft trägt wie der Seitenaufruf (die Route ist
- * gedrosselt, Bucket `brand:invite`).
+ * EINMAL fragen, ob der Code taugt (die Route ist gedrosselt, Bucket
+ * `brand:invite`).
+ *
+ * NUR IM BROWSER (`server: false`, SEC-004): die Prüfung ist ein POST. Beim
+ * Server-Rendern reichte `useRequestFetch` die Kopfzeilen der Navigation durch
+ * — kam der Link aus einem Webmail (`sec-fetch-site: cross-site`), lehnte die
+ * Herkunftsprüfung den Aufruf ab, und die Seite sagte „ungültig". Im Browser
+ * ist er `same-origin` (`useRequestFetch` ist dort schlicht `$fetch`; es bleibt
+ * stehen, weil core/tests/ssrTenantFetch.test.ts es in `useAsyncData`
+ * verlangt). Bis zur Antwort zeigt die Seite `checking` (s. unten), beim SSR
+ * und beim Hydrieren gleich — kein Hydration-Unterschied.
  *
  * Ein Fehler ist hier KEIN Fehler, sondern ein `false`: die Route antwortet
  * ohnehin neutral, und ein 429 oder ein Netzabbruch darf keine Fehlerseite
@@ -97,7 +105,7 @@ const { data: check, status: checkStatus } = await useAsyncData<BrandInviteCheck
       return { valid: false }
     }
   },
-  { watch: [code], default: () => ({ valid: false }) },
+  { watch: [code], default: () => ({ valid: false }), server: false },
 )
 
 /**
@@ -139,8 +147,13 @@ const state = computed(() => inviteViewState({
   redeemed: redeemed.value,
 }))
 
-/** Solange geprüft wird, ist noch nichts entschieden — Ladeanzeige statt Urteil. */
-const checking = computed(() => checkStatus.value === 'pending')
+/**
+ * Solange geprüft wird, ist noch nichts entschieden — Ladeanzeige statt Urteil.
+ * `idle` zählt mit: beim SSR und bis zum Mounten läuft die Prüfung noch gar
+ * nicht (`server: false`); ohne Code gibt es nichts zu prüfen.
+ */
+const checking = computed(() =>
+  Boolean(code.value) && (checkStatus.value === 'idle' || checkStatus.value === 'pending'))
 
 /** Die eigene Adresse MIT Code — Ziel nach Anmeldung und nach Kontoanlage. */
 const selfPath = computed(() =>

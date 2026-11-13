@@ -33,9 +33,9 @@ export default defineNitroPlugin(() => {
   const databaseId = process.env.NUXT_PLATFORM_CONTROL_DATABASE_ID
   const apiKey = process.env.NUXT_PLATFORM_CONTROL_KEY
   if (!endpoint || !projectId || !databaseId || !apiKey) {
-    // Dieselbe Bedingung wie beim Tenant-Resolver: ohne Control-Env läuft diese
-    // App als Single-Tenant, dann gibt es keine Community-Abos zu melden.
-    // Die Warnung dort genügt — zwei identische Zeilen im Boot-Log helfen nicht.
+    // Dieselbe Bedingung wie beim Tenant-Resolver: ohne Control-Env lehnt diese
+    // App jede Anfrage ab (SEC-025), und ohne Lesezugang gibt es nichts zu
+    // melden. Die Fehlerzeile dort genügt — zwei Zeilen im Boot-Log helfen nicht.
     return
   }
 

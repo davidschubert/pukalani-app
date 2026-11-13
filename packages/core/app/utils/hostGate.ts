@@ -1,5 +1,5 @@
 import type { NuxtApp } from '#app'
-import { isUnknownHostError } from '../../shared/unknownHost'
+import { isHostUnservedError } from '../../shared/unknownHost'
 
 /**
  * ── STARTE NICHTS AUF EINER ADRESSE, DIE ES NICHT GIBT ──────────────────────
@@ -28,6 +28,11 @@ import { isUnknownHostError } from '../../shared/unknownHost'
  * wählen (`CoreErrorPage`, shared/unknownHost.ts) — Seite und Verhalten
  * behaupten damit garantiert dasselbe.
  *
+ * SEIT SEC-025 (2026-11-13) AUCH BEI DER 503 „Trennung ohne Resolver"
+ * (`isHostUnservedError`, shared/unknownHost.ts): dort antwortet ebenfalls
+ * JEDE API mit demselben Fehler, ein gestartetes Plugin liefe in denselben
+ * Wiederholungs-Takt.
+ *
  * NACHGEHOLT, NICHT VERWORFEN: räumt `clearError()` den Fehler, startet das
  * Abonnement doch noch. Ein blosses `return` würde einen Tab, der EINMAL auf
  * einer 404 gelandet ist, für den Rest der Sitzung ohne Realtime lassen —
@@ -42,13 +47,13 @@ export function startWhenHostResolves(nuxtApp: NuxtApp, start: () => void): void
   const error = useError()
   const run = () => { void nuxtApp.runWithContext(start) }
 
-  if (!isUnknownHostError(error.value)) {
+  if (!isHostUnservedError(error.value)) {
     run()
     return
   }
 
   const stop = watch(error, (current) => {
-    if (isUnknownHostError(current)) return
+    if (isHostUnservedError(current)) return
     stop()
     run()
   })

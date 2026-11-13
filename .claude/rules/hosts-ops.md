@@ -150,5 +150,35 @@ paths:
   verworfenen Versand einmal ins Log schreibt. Warnungen gehören dorthin, wo
   etwas verworfen wird — NIE in ein Prädikat wie `isMailerConfigured()`, das
   auch mail-lose Apps (help, marketing, portfolio) beim Start abfragen.
+  ANDERS BEI DER TRENNUNG DER COMMUNITIES (SEC-025, seit 2026-11-13 — Davids
+  Entscheidung „Eine Sicherung, die nicht prüfen kann, lehnt ab"): fehlt auf
+  `platform` eine der VIER `NUXT_PLATFORM_CONTROL_*` (Endpunkt, Projekt,
+  Database-Id, Schlüssel), wird nicht gewarnt und weitergelaufen, sondern
+  ABGELEHNT — jede Anfrage auf jedem Host 503, nur `/api/health` antwortet
+  mit `ok:false` und `reason: tenant_resolver_missing` (HTTP 200, `.build`
+  bleibt für den Deploy lesbar; `verify-health` und UptimeRobot werden rot).
+  Die Namen der fehlenden Variablen stehen beim Start als Fehlerzeile im
+  pm2-Log, nie in einer Antwort. Alle vier stehen seitdem auf der
+  Pflicht-Liste (vorher nur der Schlüssel). Kein Schalter stellt das ab.
 - Neue Namen IMMER in RESERVED_SUBDOMAINS (packages/control/schemas/tenant.ts),
   sonst kann ein Selbstbedienungs-Kunde sie beantragen.
+- HERKUNFTSPRÜFUNG (SEC-004, Stufe 1 seit 2026-11-13): alle Hosts unter
+  `*.pukalani.app` sind same-site zueinander, `SameSite=Lax` trennt sie nicht.
+  Regel (`core/server/utils/csrfOrigin.ts`, Middleware `03.csrf-origin.ts`):
+  schreibende `/api`-Aufrufe mit `Sec-Fetch-Site: cross-site` ⇒ 403; `same-site`
+  oder fehlender `Sec-Fetch-Site` MIT `Origin` ⇒ Origin-Host samt Port muss der
+  Request-Host sein; ohne beide Kopfzeilen (Server, Webhooks, Runner) ⇒ durch.
+  Ziel „von Haus aus an": heute an in platform, comments, control, `_template`;
+  Stufe 2 dreht den Core-Default und entfernt den Schalter. AUSNAHMEN nur als
+  einzelne Route mit Grund in `core/shared/csrfOriginExempt.ts`
+  (`CSRF_ORIGIN_EXEMPT_ROUTES`, heute leer; NIE für Routen mit Sitzungs-Cookie);
+  daneben `CSRF_ORIGINLESS_CALLERS` = warum Naht, Webhooks und Runner ohne
+  Browser-Kopfzeilen durchgehen. SSR-FALLE: beim Server-Rendern reicht Nuxt die
+  Kopfzeilen der Navigation (auch `sec-fetch-site`, ohne `Origin`) an interne
+  Aufrufe weiter — ein schreibender Aufruf beim Rendern scheitert, sobald die
+  Seite über einen fremden Link kam (so `/join` aus Webmail). KEINE schreibenden
+  Aufrufe beim Server-Rendern: `server: false`, `onMounted` oder Handler, die
+  Seite zeigt bis dahin ihren Ladezustand. Wächter in `packages/core/tests/`:
+  `ssr-write-fetch.test.ts` (SSR-Schreibaufrufe, TS-Parser),
+  `csrf-origin-routes.test.ts` (origin-lose Aufrufer je Klasse gezählt + App-Liste
+  mit Übergangsliste Stufe 2), `csrfOriginExempt.test.ts`.

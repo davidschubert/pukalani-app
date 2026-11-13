@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { groupTimezonesByRegion, supportedTimezones } from '../../../../../core/shared/timezone'
 import { createCommunityProfileSchema } from '../../../../../control/schemas/communityProfile'
+import type { CommunityDeleteResponse } from '../../../../shared/types/communityDelete'
 
 /**
  * COMMUNITY-EINSTELLUNGEN → ALLGEMEIN: die Schalter, die der KUNDIN gehören
@@ -409,13 +410,16 @@ const deleted = ref(false)
  */
 async function deleteCommunity() {
   if (deleting.value || deleted.value) return
+  // Ein Halter statt `let`: TypeScript verfolgt Zuweisungen in der
+  // `action`-Closure nicht und hielte die Variable danach für immer `null`.
+  const outcome: { response: CommunityDeleteResponse | null } = { response: null }
   const ok = await confirm({
     title: t('dashboard.community.danger.confirmTitle', { name: communityName.value }),
     description: t('dashboard.community.danger.confirmText'),
     confirmLabel: t('dashboard.community.danger.confirm'),
     action: async () => {
       deleting.value = true
-      await $fetch('/api/community/delete', { method: 'POST' })
+      outcome.response = await $fetch<CommunityDeleteResponse>('/api/community/delete', { method: 'POST' })
     },
   }).catch(async (error: unknown) => {
     // Erst die frische Anmeldung (RA2): dann erklärt ein eigener Dialog den
@@ -435,11 +439,21 @@ async function deleteCommunity() {
 
   if (!ok) return
   deleted.value = true
-  toast.add({
-    title: t('dashboard.community.danger.done'),
-    description: t('dashboard.community.danger.doneDesc'),
-    color: 'success',
-  })
+  // SEC-024: stillgelegt ist sie in jedem Fall. Hing bei jemandem das
+  // Lese-Recht noch, sagt der Toast es, statt reinen Erfolg zu melden — der
+  // stündliche Abgleich holt es nach.
+  const labelsFailed = outcome.response?.labels?.failed ?? 0
+  toast.add(labelsFailed > 0
+    ? {
+        title: t('dashboard.community.danger.done'),
+        description: t('dashboard.community.danger.labelsPending', { count: labelsFailed }),
+        color: 'warning',
+      }
+    : {
+        title: t('dashboard.community.danger.done'),
+        description: t('dashboard.community.danger.doneDesc'),
+        color: 'success',
+      })
 }
 </script>
 

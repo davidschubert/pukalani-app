@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -12,26 +12,48 @@ import { describe, expect, it } from 'vitest'
  * unbehandelten Ablehnung, während der Handler längst weitergelaufen ist.
  * Genau davor warnt CLAUDE.md bei `requireCommunityPermission` („die ist
  * synchron und wird ohne await gerufen") — nur ist es hier umgekehrt: die
- * Funktion ist jetzt asynchron, und die 49 Aufrufstellen müssen es wissen.
+ * Funktion ist jetzt asynchron, und jede Aufrufstelle muss es wissen.
  *
  * Die Prüfung ist STRUKTURELL, weil der Fehler strukturell wäre: kein Typ und
  * kein Test einer einzelnen Route fällt darüber (der Aufruf ist syntaktisch
  * gültig, der Test einer Route mit gültigem Secret bleibt grün). Eine NEUE
  * Service-Route ohne `await` bricht dagegen genau hier.
+ *
+ * ── ALLE SERVER-ORDNER, NICHT NUR DIESER LAYER (SEC-023, 2026-11-13) ──────
+ * Bis dahin las der Wächter nur `packages/control/server/api/control`. Routen
+ * liegen aber auch in den APPS (`apps/control/server/api/control/billing/…`),
+ * und genau dort standen zwei Aufrufe ohne `await`. Gelesen wird deshalb
+ * jedes `server/` unter `packages/*` UND `apps/*`, rekursiv — ein neuer Ort
+ * für Routen braucht hier keinen Eintrag. Zweites Netz seit demselben Tag:
+ * die typisierte Lint-Regel `@typescript-eslint/no-floating-promises` über
+ * alle Server-Ordner (eslint.config.mjs).
  */
 
-const apiDir = fileURLToPath(new URL('../server/api/control', import.meta.url))
+const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
 
-function routeFiles(dir: string, prefix = ''): string[] {
+function tsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    if (entry.isDirectory()) return routeFiles(`${dir}/${entry.name}`, `${prefix}${entry.name}/`)
-    return entry.name.endsWith('.ts') ? [`${prefix}${entry.name}`] : []
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) return []
+    const path = `${dir}/${entry.name}`
+    if (entry.isDirectory()) return tsFiles(path)
+    return entry.name.endsWith('.ts') ? [path] : []
   })
 }
 
-const callers = routeFiles(apiDir)
-  .map(file => ({ file, source: readFileSync(`${apiDir}/${file}`, 'utf8') }))
-  .filter(({ source }) => source.includes('requireOnboardingCaller('))
+/** Jedes `server/` unter `packages/*` und `apps/*` — abgeleitet, nicht gepflegt. */
+const serverDirs = ['packages', 'apps'].flatMap(top =>
+  readdirSync(`${repoRoot}${top}`, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map(entry => `${repoRoot}${top}/${entry.name}/server`)
+    .filter(dir => existsSync(dir)))
+
+// Die Definition selbst (`function requireOnboardingCaller(`) ist kein Aufruf.
+const CALL = /(?<!function )requireOnboardingCaller\(/g
+const AWAITED_CALL = /await requireOnboardingCaller\(/g
+
+const callers = serverDirs.flatMap(tsFiles)
+  .map(path => ({ file: path.slice(repoRoot.length), source: readFileSync(path, 'utf8') }))
+  .filter(({ source }) => (source.match(CALL)?.length ?? 0) > 0)
 
 describe('Service-Naht: das Gate wird immer abgewartet', () => {
   it('findet die Service-Routen überhaupt', () => {
@@ -42,8 +64,8 @@ describe('Service-Naht: das Gate wird immer abgewartet', () => {
 
   it.each(callers.map(c => c.file))('%s ruft `await requireOnboardingCaller`', (file) => {
     const source = callers.find(c => c.file === file)!.source
-    const calls = source.match(/requireOnboardingCaller\(/g)?.length ?? 0
-    const awaited = source.match(/await requireOnboardingCaller\(/g)?.length ?? 0
+    const calls = source.match(CALL)?.length ?? 0
+    const awaited = source.match(AWAITED_CALL)?.length ?? 0
     expect(awaited).toBe(calls)
   })
 })

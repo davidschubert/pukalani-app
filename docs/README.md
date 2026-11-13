@@ -69,6 +69,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) | Appwrites Regeln für Passwort, Adresse und Sitzung: Soll-Liste, Prüf-Skript, Datenleck-Abgleich, bekanntes Gerät, Notfall-Knöpfe |
 | [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
+| [runbooks/LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md) | Stündlicher Label-Abgleich (SEC-024): was er tut und nie tut, Schalter, Probelauf, Log lesen, Ops-Route, Rückweg |
 | [runbooks/GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) | Gesamtaudit über alle zwölf Dimensionen mit Fable 5.2: Ablauf, Prompts je Phase, Rückführung; Ergebnisse liegen PRIVAT außerhalb des Repos |
 
 Die Häkchen in Runbooks sind **echt** — sie werden pro Durchlauf abgehakt und

@@ -67,6 +67,13 @@ jobs:
       # Katalog passen — Regenerieren darf kein Diff erzeugen.
       - run: pnpm --filter @pukalani/themes check:themes
 
+      # Die typisierte Regel no-floating-promises (SEC-023) liest ihre Typen aus
+      # den generierten Server-tsconfigs der Apps (`apps/*/.nuxt/`) — die gibt
+      # es nach `pnpm install` noch nicht (kein postinstall). Ohne diesen
+      # Schritt bricht der Lint mit „erst `pnpm lint:prepare`" ab, statt still
+      # nichts zu prüfen. Kalt gemessen ~7 s für alle Apps (2026-11-13).
+      - run: pnpm lint:prepare
+
       - run: pnpm -r lint
       # `pnpm -r lint` läuft NUR über die Workspace-Pakete — die 23 Dateien in
       # scripts/ (Migrations-Runner, ops-Wächter, CI-Aufbau) sah bis 2026-08-19

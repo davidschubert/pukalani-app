@@ -433,6 +433,7 @@
     "generic": "Da ist etwas schiefgelaufen.",
     "backHome": "Zur Startseite",
     "unknownHost": "Diese Adresse gehört zu keiner Community.",
+    "temporarilyUnavailable": "Diese Seite ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten noch einmal.",
     "toOperatorSite": "Mehr über {brand}",
     "communitySuspended": "Diese Community ist gerade schreibgeschützt",
     "communitySuspendedHint": "Neue Beiträge sind vorübergehend nicht möglich. Die Verantwortlichen der Community sind informiert — sobald das geklärt ist, geht es weiter. Dein Text bleibt stehen.",

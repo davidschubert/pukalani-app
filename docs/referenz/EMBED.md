@@ -145,9 +145,12 @@ auch ohne Widget-iframe auf der Seite (das Script allein genügt).
   (Industrie-Standard, wie Disqus): die Anmeldung gilt **pro Einbetter-Domain**.
   Browser, die das partitionierte Cookie verwerfen, bleiben read-only und
   zeigen einen Hinweis mit Deep-Link zur Widget-Domain.
-  Sicherheit: die Schreib-Routen sind zusätzlich durch den
-  CSRF-Origin-Check geschützt (`pukalani.security.csrfOriginCheck` — PFLICHT,
-  sobald `pukalani.auth.embedSession` an ist); das Handoff-Token ist
+  Sicherheit: die Schreib-Routen sind zusätzlich durch die
+  Herkunftsprüfung geschützt (`pukalani.security.csrfOriginCheck` — PFLICHT,
+  sobald `pukalani.auth.embedSession` an ist; seit SEC-004 soll sie ohnehin
+  überall an sein, Ausnahmen nur als einzelne Route mit Grund in
+  `packages/core/shared/csrfOriginExempt.ts` — das Embed braucht keine, weil
+  iframe und Popup same-origin rufen und `embed.js` nur GET macht); das Handoff-Token ist
   verschlüsselt, 60 s gültig und wird vor dem Cookie-Setzen gegen Appwrite
   validiert.
 - **SEO**: Kommentare leben im iframe unter der Widget-Origin — Crawler der

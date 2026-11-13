@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NuxtError } from '#app'
-import { isUnknownHostError } from '../../../shared/unknownHost'
+import { isTenantResolverMissingError, isUnknownHostError } from '../../../shared/unknownHost'
 
 /**
  * Core-Fehlerseite. Nuxt löst error.vue NICHT aus Layern auf — jede App
@@ -27,8 +27,15 @@ const status = computed(() => props.error?.statusCode ?? 500)
  * (shared/unknownHost.ts).
  */
 const unknownHost = computed(() => isUnknownHostError(props.error))
+/**
+ * Trennung an, aber kein Resolver (SEC-025): die ganze App lehnt mit 503 ab.
+ * Ein eigener Satz ohne Technik (keine Variable, kein „Resolver") — und KEIN
+ * „Zur Startseite", der führte in dieselbe 503 zurück.
+ */
+const resolverMissing = computed(() => isTenantResolverMissingError(props.error))
 const description = computed(() => {
   if (unknownHost.value) return t('error.unknownHost')
+  if (resolverMissing.value) return t('error.temporarilyUnavailable')
   return status.value === 404 ? t('error.notFound') : t('error.generic')
 })
 /** Ausweg für den unbekannten Host: die Betreiber-Seite, sofern die App eine kennt. */
@@ -75,7 +82,7 @@ const uiLocale = useNuxtUiLocale()
         external
       >{{ t('error.toOperatorSite', { brand }) }}</UButton>
       <UButton
-        v-else-if="!unknownHost"
+        v-else-if="!unknownHost && !resolverMissing"
         @click="clearError({ redirect: localePath('/') })"
       >{{ t('error.backHome') }}</UButton>
     </main>

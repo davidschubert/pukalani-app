@@ -327,7 +327,12 @@ async function decideJoin(
     // Wer nicht (mehr) dazugehört, verliert das Lese-Publikum sofort — auch
     // wenn `remove` es schon getan hat (idempotent). Das ist die zweite Sperre
     // dafür, dass „draußen" nicht beim nächsten Besuch zurückgenommen wird.
-    await revokeCommunityLabel(event, communityId, userId)
+    // `joinCommunity` wirft nie — ein gescheiterter Entzug wird nur gemeldet
+    // (SEC-024); der stündliche Abgleich holt ihn nach.
+    const revoke = await revokeCommunityLabel(event, communityId, userId)
+    if (!revoke.revoked) {
+      logEvent('error', 'community_label.join_revoke_failed', { communityId, userId, reason: revoke.reason })
+    }
   }
 
   return outcome

@@ -66,6 +66,25 @@ paths:
   2026-11-13 fährt `lint:scripts` `check:permissions` (SEC-001): rot bei jedem
   Bucket mit Schreibrecht für Konten in einer Migration oder einem
   Bootstrap-Skript (Regel in `.claude/rules/appwrite.md`, „Rechte an Ablagen").
+- LOSE PROMISES IM SERVER-CODE SIND ROT (SEC-023, seit 2026-11-13): für jedes
+  `packages/*/server/**/*.ts` und `apps/*/server/**/*.ts` gilt die TYPISIERTE
+  Regel `@typescript-eslint/no-floating-promises`. Eine Wache oder ein
+  Schreibvorgang, dessen Ergebnis die Antwort trägt, bekommt `await`; bewusstes
+  „Feuer und vergiss" (Log, Benachrichtigung, Aufräumen nach der Antwort,
+  Intervall-Läufe) bekommt `void` davor — das ist die sichtbare Aussage, nicht
+  ein `eslint-disable`. Die Typen kommen aus den GENERIERTEN Server-tsconfigs
+  der Apps (`apps/<app>/.nuxt/tsconfig.server.json`, nur dort sind Nitros
+  Auto-Importe typisiert); Layer haben keine eigene. Deshalb: (1) ohne
+  `.nuxt` erst `pnpm lint:prepare` (`nuxi prepare` je App, kalt ~7 s; in
+  `lint.yml` als Schritt vor `pnpm -r lint`) — fehlt die tsconfig, bricht der
+  Lint mit genau diesem Hinweis ab. (2) Jeder Layer mit `server/` steht in
+  `SERVER_LINT_PROGRAM` (eslint.config.mjs) mit GENAU EINER App, die ihn per
+  `extends` mitbringt — je `eslint .`-Prozess entsteht so ein Programm.
+  App-eigene `server/`-Ordner nehmen die eigene App automatisch. NEUER LAYER
+  MIT `server/` ⇒ dort eintragen; ohne Eintrag (oder mit einer App, deren
+  tsconfig ihn nicht enthält) ist der Lint rot. Preis: `pnpm -r lint` rund
+  2,5× so lang (gemessen 18 s → 45 s real), weil jedes Paket ein ganzes
+  App-Programm aufbaut.
 - DER LINT-LAUF IST MEHR ALS `lint` (2026-09-10 rot erwischt): `lint.yml` fährt
   SIEBEN Wächter vor den beiden Lint-Schritten — `check:manifests`,
   `check:i18n-keys`, `check:bilanz`, **`check:doc-links`**, `check:single-copy`,
