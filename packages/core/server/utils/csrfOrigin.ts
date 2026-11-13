@@ -27,8 +27,15 @@
  *  - Requests OHNE Sec-Fetch-Site UND ohne Origin (Server-zu-Server, z. B. der
  *    Stripe-Webhook, curl): sie tragen kein Browser-Cookie.
  *
- * DER EMBED-FLUSS BRICHT NICHT (nachgeprüft, apps/comments ist der einzige
- * aktive Konsument mit `csrfOriginCheck: true`): alle unsicheren Embed-Routen
+ * WO SIE GILT (SEC-004): Ziel ist „überall von Haus aus an". Stufe 1 hat sie
+ * in platform, comments, control und der Vorlage `_template` an; in Stufe 2
+ * fällt der Schalter `pukalani.security.csrfOriginCheck` weg. Ausnahmen gibt es
+ * nur als einzelne Route mit Grund (shared/csrfOriginExempt.ts, heute leer).
+ * Schreibende Aufrufe beim SERVER-RENDERN brechen an dieser Regel (Nuxt reicht
+ * `sec-fetch-site` der Navigation durch) — sie gehören in den Browser.
+ *
+ * DER EMBED-FLUSS BRICHT NICHT (nachgeprüft in apps/comments, wo das Embed
+ * lebt): alle unsicheren Embed-Routen
  * werden aus einem Dokument DERSELBEN Origin gerufen — das iframe zeigt auf
  * `<widget-host>/embed` und ruft `<widget-host>/api/*`, das Login-Popup ruft
  * `/api/auth/embed-handoff` von der Widget-Origin aus, das iframe danach

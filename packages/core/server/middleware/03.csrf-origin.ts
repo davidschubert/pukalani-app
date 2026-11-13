@@ -1,14 +1,33 @@
 import { csrfOriginVerdict } from '../utils/csrfOrigin'
+import { isCsrfOriginExempt } from '../../shared/csrfOriginExempt'
 
 /**
- * CSRF-Origin-Check (Embed-Vorarbeit E0, § 3b des Embed-Plans): Sobald eine
- * App das partitionierte Embed-Session-Cookie (SameSite=None) einführt,
- * schützt sameSite nicht mehr vor cross-site Form-POSTs — dann MUSS dieser
- * Check aktiv sein (pukalani.security.csrfOriginCheck: true).
+ * HERKUNFTSPRÜFUNG für unsichere Methoden (POST/PUT/PATCH/DELETE) auf /api/*.
  *
- * Prüft unsichere Methoden auf /api/*. Die ENTSCHEIDUNG selbst ist pure und
- * steht mit ihrer Begründung in server/utils/csrfOrigin.ts — hier kommt nur
- * das Gate und das Auslesen der Header dazu. Default aus (no-op).
+ * Regel in einem Satz: eine fremde Seite darf hier nichts Schreibendes
+ * auslösen — `cross-site` wird abgelehnt, `same-site` (und ein fehlender
+ * `Sec-Fetch-Site` MIT `Origin`) nur durchgelassen, wenn der Origin-Host samt
+ * Port dem Request-Host gleicht. Die ENTSCHEIDUNG ist pure und steht mit ihrer
+ * Begründung in server/utils/csrfOrigin.ts; hier stehen nur Gate, Ausnahmen
+ * und das Auslesen der Kopfzeilen.
+ *
+ * WARUM ÜBERALL (SEC-004): alle Hosts unter `*.pukalani.app` sind same-site
+ * zueinander, `SameSite=Lax` an den Session-Cookies trennt sie also nicht.
+ * Ziel ist „von Haus aus an". Rollout in Stufen: heute noch hinter
+ * `pukalani.security.csrfOriginCheck` (an in platform, comments, control und
+ * der Vorlage `_template`); in Stufe 2 fällt der Schalter weg.
+ *
+ * AUSNAHMEN sind EINZELNE ROUTEN mit Grund in
+ * `shared/csrfOriginExempt.ts` (`CSRF_ORIGIN_EXEMPT_ROUTES`, heute leer) —
+ * kein Schalter je App. Server, Webhooks und Daemons brauchen keine: sie
+ * tragen weder `Origin` noch `Sec-Fetch-Site` und passieren die Regel.
+ *
+ * SSR-FALLE: beim Server-Rendern reicht Nuxt die Kopfzeilen der Navigation an
+ * interne `$fetch`-Aufrufe weiter, auch `sec-fetch-site`. Ein schreibender
+ * Aufruf beim Rendern wird deshalb abgelehnt, sobald die Seite über einen
+ * fremden Link geöffnet wurde. Schreibende Aufrufe gehören in den Browser
+ * (`server: false`, `onMounted`, Handler) — Wächter:
+ * tests/ssr-write-fetch.test.ts.
  */
 export default defineEventHandler((event) => {
   const method = event.method
@@ -19,6 +38,7 @@ export default defineEventHandler((event) => {
 
   const url = getRequestURL(event)
   if (!url.pathname.startsWith('/api/')) return
+  if (isCsrfOriginExempt(method, url.pathname)) return
 
   const verdict = csrfOriginVerdict({
     secFetchSite: getHeader(event, 'sec-fetch-site'),
