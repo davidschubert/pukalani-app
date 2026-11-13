@@ -394,6 +394,7 @@
     "title": "Notifications",
     "empty": "You're all caught up.",
     "replied": "{name} replied to your comment",
+    "repliedByGuest": "{name} (guest) replied to your comment",
     "mentioned": "{name} mentioned you in a comment",
     "mentionedInPost": "{name} mentioned you in a post",
     "reminder": "Reminder: {name} starts soon",
@@ -433,7 +434,9 @@
     "unknownHost": "This address does not belong to any community.",
     "toOperatorSite": "Learn about {brand}",
     "communitySuspended": "This community is read-only right now",
-    "communitySuspendedHint": "New contributions are paused for the moment. The people who run this community have been notified — it will continue once that is sorted out. Your text is still here."
+    "communitySuspendedHint": "New contributions are paused for the moment. The people who run this community have been notified — it will continue once that is sorted out. Your text is still here.",
+    "notAMember": "You are not a member of this community",
+    "notAMemberHint": "Only members can take part here, and this community welcomes new members by invitation. Your best bet is to ask the people who run it."
   },
   "demo": {
     "banner": "This is a demo community with sample content.",

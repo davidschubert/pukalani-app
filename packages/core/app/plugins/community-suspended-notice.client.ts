@@ -1,4 +1,5 @@
 import { COMMUNITY_SUSPENDED_CODE } from '../../shared/communitySuspension'
+import { notAMemberNoticeApplies } from '../../shared/communityParticipation'
 import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchErrorBridge'
 
 /**
@@ -38,22 +39,54 @@ import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchError
  * der im `catch` danach folgt — der Hinweis steht davor und beantwortet die
  * Frage, die der allgemeine offenlässt. Wer so eine Stelle ohnehin anfasst,
  * prüft `error.data.reason === COMMUNITY_SUSPENDED_CODE` und schweigt dann.
+ *
+ * ZWEITER GRUND, DERSELBE LESER (SEC-030, 2026-11-13): `not_a_member`. Seit
+ * Schreiben, Abstimmen, Zusagen und Melden Zugehörigkeit verlangen, bekommt ein
+ * Konto aus einer anderen Community dort ein 403 — und sah bis dahin nur den
+ * generischen Toast seines Layers. Es ist derselbe Haken, weil es nur EINEN
+ * gibt (`FETCH_ERROR_HOOK` ist ein einzelner Platz; ein zweites Plugin würde
+ * diesen überschreiben). Wann der Hinweis erscheint, sagt die pure Regel
+ * `notAMemberNoticeApplies`: nur bei Schreibversuchen und nicht für Adressen,
+ * deren Seiten es selbst erklären (Kurse — `pukalani.notices.
+ * notAMemberSelfExplained`, sonst meldete die Einschreibung es doppelt).
  */
 export default defineNuxtPlugin((nuxtApp) => {
-  const target = globalThis as unknown as Record<string, unknown>
-  target[FETCH_ERROR_HOOK] = (notice: FetchErrorNotice) => {
-    if (notice.status !== 403 || notice.reason !== COMMUNITY_SUSPENDED_CODE) return
+  const appConfig = useAppConfig() as { pukalani?: { notices?: { notAMemberSelfExplained?: string[] } } }
+  const selfExplained = appConfig.pukalani?.notices?.notAMemberSelfExplained ?? []
+
+  const show = (toast: { id: string, title: string, description: string, icon: string }) => {
     nuxtApp.runWithContext(() => {
       // `nuxtApp.$i18n` statt useI18n(): der Haken läuft außerhalb jedes
       // Komponenten-Setups, useI18n() würde dort werfen.
       const { t } = nuxtApp.$i18n as { t: (key: string) => string }
       useToast().add({
-        id: 'community-suspended',
-        title: t('error.communitySuspended'),
-        description: t('error.communitySuspendedHint'),
+        id: toast.id,
+        title: t(toast.title),
+        description: t(toast.description),
         color: 'warning',
-        icon: 'i-ph-lock-simple',
+        icon: toast.icon,
       })
     })
+  }
+
+  const target = globalThis as unknown as Record<string, unknown>
+  target[FETCH_ERROR_HOOK] = (notice: FetchErrorNotice) => {
+    if (notice.status === 403 && notice.reason === COMMUNITY_SUSPENDED_CODE) {
+      show({
+        id: 'community-suspended',
+        title: 'error.communitySuspended',
+        description: 'error.communitySuspendedHint',
+        icon: 'i-ph-lock-simple',
+      })
+      return
+    }
+    if (notAMemberNoticeApplies(notice, selfExplained)) {
+      show({
+        id: 'community-not-a-member',
+        title: 'error.notAMember',
+        description: 'error.notAMemberHint',
+        icon: 'i-ph-users-three',
+      })
+    }
   }
 })

@@ -89,9 +89,12 @@ describe('Glocken-Texte deckt jeden Absender (C17)', () => {
     // 2026-08-04 — der neueste Absender und damit der nächste Kandidat für
     // genau das Loch, das dieser Test zumacht.
     expect(types).toContain('badge.awarded')
+    // SEC-035 (2026-11-13): die Antwort eines Gastes hat einen eigenen Typ,
+    // damit die Glocke ihn als Gast kennzeichnet.
+    expect(types).toContain('reply.guest')
   })
 
-  it.each(['reply', 'mention', 'post.mention', 'reminder', 'ticket', 'billing', 'siteInvite', 'invite.request', 'badge.awarded'])(
+  it.each(['reply', 'reply.guest', 'mention', 'post.mention', 'reminder', 'ticket', 'billing', 'siteInvite', 'invite.request', 'badge.awarded'])(
     "'%s' hat einen eigenen Lesetext in de UND en",
     (type) => {
       // 'reply' ist der Default-Zweig der Glocke ('notifications.replied') —

@@ -38,4 +38,11 @@ export interface FetchErrorNotice {
   status: number
   /** Der geparste Antwort-Körper: unser Fehler-Envelope (core/server/error.ts). */
   reason: string
+  /**
+   * HTTP-Methode in Großbuchstaben (seit SEC-030). Optional, damit ein älterer
+   * Aufrufer nichts bricht: ohne Angabe gilt `GET`.
+   */
+  method?: string
+  /** Adresse der Anfrage, wie `$fetch` sie bekam (relativ oder absolut). */
+  url?: string
 }

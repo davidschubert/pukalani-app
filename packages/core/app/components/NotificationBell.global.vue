@@ -105,6 +105,11 @@ function safeLink(link?: string): string {
 // erster Konsument: events (Phase 27). 'ticket' = Board-Updates (tickets),
 // 'billing' = Zahlungsprobleme (billing) — je {name} = Ticket-/Plan-Titel.
 function messageKey(type: string): string {
+  // 'reply.guest' = Antwort eines GASTES ({name} = sein frei gewählter Name).
+  // Ein eigener Text mit Gast-Kennzeichen (SEC-035, 2026-11-13): unter
+  // 'replied' sah der Name aus wie ein Konto — die Kommentarliste zeigt das
+  // Kennzeichen, die Glocke zeigte es nicht.
+  if (type === 'reply.guest') return 'notifications.repliedByGuest'
   if (type === 'mention') return 'notifications.mentioned'
   if (type === 'reminder') return 'notifications.reminder'
   if (type === 'ticket') return 'notifications.ticket'

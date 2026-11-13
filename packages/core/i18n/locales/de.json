@@ -394,6 +394,7 @@
     "title": "Benachrichtigungen",
     "empty": "Alles gelesen.",
     "replied": "{name} hat auf deinen Kommentar geantwortet",
+    "repliedByGuest": "{name} (Gast) hat auf deinen Kommentar geantwortet",
     "mentioned": "{name} hat dich in einem Kommentar erwähnt",
     "mentionedInPost": "{name} hat dich in einem Beitrag erwähnt",
     "reminder": "Erinnerung: {name} beginnt bald",
@@ -433,7 +434,9 @@
     "unknownHost": "Diese Adresse gehört zu keiner Community.",
     "toOperatorSite": "Mehr über {brand}",
     "communitySuspended": "Diese Community ist gerade schreibgeschützt",
-    "communitySuspendedHint": "Neue Beiträge sind vorübergehend nicht möglich. Die Verantwortlichen der Community sind informiert — sobald das geklärt ist, geht es weiter. Dein Text bleibt stehen."
+    "communitySuspendedHint": "Neue Beiträge sind vorübergehend nicht möglich. Die Verantwortlichen der Community sind informiert — sobald das geklärt ist, geht es weiter. Dein Text bleibt stehen.",
+    "notAMember": "Du bist kein Mitglied dieser Community",
+    "notAMemberHint": "Mitmachen können hier nur Mitglieder, und Mitglied wird man in dieser Community per Einladung. Frag am besten die Leitung der Community."
   },
   "demo": {
     "banner": "Das ist eine Demo-Community mit Beispiel-Inhalten.",

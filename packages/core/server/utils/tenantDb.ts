@@ -4,6 +4,7 @@ import type { Models } from 'node-appwrite'
 import { rowBelongsToTenant, scopeQuery, scopeRowFor, useTenant } from './tenant'
 import { tenantRowPermissions, type TenantRowPermissionOptions } from './tenantRowPermissions'
 import { COMMUNITY_SUSPENDED_CODE, memberWritesAllowedFor } from '../../shared/communitySuspension'
+import { COMMUNITY_NOT_A_MEMBER_CODE, participationVerdict } from '../../shared/communityParticipation'
 
 /**
  * DIE mandantensichere Datentür (Horizont-3, Ablösung der Konvention).
@@ -177,6 +178,14 @@ export function tenantDb(event: H3Event, options: TenantDbOptions = {}) {
     })
   }
 
+  /** Netz hinter den Routen (SEC-030) — Begründung am Aufruf in `create`. */
+  async function assertMayContribute(): Promise<void> {
+    const verdict = participationVerdict(await joinCommunity(event, 'contribution'))
+    if (verdict === 'allow') return
+    if (verdict === 'ask-membership' && await resolveCommunityMembership(event)) return
+    throw createError({ status: 403, statusText: 'Not a member', data: { code: COMMUNITY_NOT_A_MEMBER_CODE } })
+  }
+
   /** Zeile per ID holen UND ihre Zugehörigkeit belegen. 404 statt 403: ein 403
    *  würde bestätigen, dass die ID existiert. */
   async function get<T extends Models.Row>(tableId: string, rowId: string, notFound = 'Not found'): Promise<T> {
@@ -251,10 +260,22 @@ export function tenantDb(event: H3Event, options: TenantDbOptions = {}) {
        * Appwrite die Row-Permissions dieser Zeile auswertet — sonst könnte der
        * Autor seinen eigenen Beitrag im nächsten Listenaufruf nicht lesen.
        *
-       * Wirft nie und blockiert nie: joinCommunity() schluckt jeden Fehler
-       * ('unavailable'). Ein Beitritt darf keinen Kommentar kosten.
+       * DER AUSGANG ZÄHLT (SEC-030, 2026-11-13). Bis dahin stand hier „wirft
+       * nie und blockiert nie" — die Tür fragte nach dem Beitritt und las die
+       * Antwort nicht. Weil ein Pool-Konto auf JEDEM Community-Host angemeldet
+       * ist, schrieb damit jedes Konto in jede Community, auch in eine
+       * geschlossene und nach entzogenem Zugang. Die Routen stellen dafür
+       * `requireCommunityParticipant` vor ihre Schreibvorgänge; die Tür ist das
+       * NETZ dahinter, für die Route, die es vergisst:
+       *  - gewährt ⇒ anlegen;
+       *  - geschlossen/entzogen ⇒ 403 `not_a_member`, KEINE Zeile;
+       *  - keine Aussage (`unavailable`: Silo, kein Handler, Störung der Naht)
+       *    ⇒ die Mitgliedschaft entscheidet — im Pool fail-closed, im Silo durch.
+       * `joinCommunity()` selbst wirft weiterhin nie (eine gestörte Naht ist
+       * `unavailable`, keine Ausnahme); es merkt sich den Ausgang je Request, die
+       * zweite Frage nach der Wache kostet also nichts.
        */
-      if (actorJoinsByWriting(actor)) await joinCommunity(event, 'contribution')
+      if (actorJoinsByWriting(actor)) await assertMayContribute()
 
       return tablesDB.createRow<T>({
         databaseId,
