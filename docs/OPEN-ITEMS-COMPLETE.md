@@ -30,6 +30,89 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P01 — Profilbild-Ablage: nur Bilder, nur über den Server ✅ 2026-11-13
+
+**Was.** Zweites Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
+SEC-001, BE-001). Drei Dinge:
+
+1. **Die Auslieferung gibt nur Bilder heraus (SEC-001).**
+   `/api/storage/<bucket>/<id>` liefert nur PNG, JPEG, WebP und GIF. Der
+   `Content-Type` kommt aus dem selbst erkannten Inhalt, nicht mehr aus dem
+   gespeicherten Typ; jede Antwort trägt `X-Content-Type-Options: nosniff` und
+   `Content-Security-Policy: default-src 'none'; sandbox`. Alles andere
+   antwortet 404 wie eine fehlende Datei.
+2. **Die Ablage nimmt nur, was der Server schreibt (SEC-001).** Der Bucket
+   `avatars` trägt kein Recht mehr für Konten, dazu eine Endungsliste für
+   Bilder und höchstens 5 MiB (Migration **system-039**). Die Upload-Route
+   prüft wie bisher (Typ, Magic-Bytes, 5 MB) und schreibt danach mit dem
+   Admin-Client; der gespeicherte Dateiname kommt aus dem erkannten Typ.
+3. **Die Kontolöschung räumt alle Bilder des Kontos ab (BE-001).** Bisher
+   nur die Datei, auf die das Profil zeigt. Jeder Upload legt aber eine neue
+   Datei an; jetzt gehen alle, deren Rechte auf das Konto zeigen.
+
+**Wie.** Die Bildregel steht an EINER Stelle
+(`packages/core/shared/avatarImage.ts`: Typ-Tabelle, Magic-Bytes, Dateiname,
+Schutz-Kopfzeilen), beide Routen lesen sie. `system-039` liest den Bucket und
+schreibt Unverändertes zurück; `system-032` legt ihn nur noch an und stellt
+einen bestehenden nicht mehr zurück. Die fünf Bootstrap-Skripte legen ihn ohne
+Bucket-Rechte an. Die Löschung blättert den Bucket ganz durch
+(`deleteAvatarFilesOf`, `packages/core/server/utils/avatarFile.ts`), weil sich
+die Dateiliste von Appwrite nicht nach Rechten filtern lässt; ein Fehlschlag
+steht als `gdpr.avatar_cleanup_failed` im Log. Neuer Wächter
+`pnpm check:permissions` (läuft mit `lint:scripts`): rot bei jedem Bucket mit
+Schreibrecht für Konten in einer Migration oder einem Bootstrap-Skript. Regel
+in `.claude/rules/appwrite.md` („Rechte an Ablagen").
+
+**Beweis.** (a) Unit-Tests der beiden Routen, der Bildregel und der Löschung
+(`storageRoutes`, `avatarImage`, `avatarBucketMigration`, `avatarCleanup`);
+gegen den alten Routen-Code sind 6 von 12 rot, gegen das alte Lösch-Verhalten
+4 von 11. (b) Wächter: mit der alten `system-032` Exit 1 mit `pfad:zeile`,
+aktueller Stand Exit 0 (23 Bucket-Definitionen). (c) Lokal gegen die lokale
+Appwrite mit einem Testnutzer: der direkte Upload an der Route vorbei
+antwortet nach `system-039` mit 401 (vorher 201); die Route lehnt eine
+Nicht-Bild-Datei mit 415 ab, nimmt ein Bild an und liefert es mit beiden
+Kopfzeilen aus; eine Nicht-Bild-Datei im Bucket antwortet 404. Dieselbe Probe
+läuft mit dem neuen Code auch gegen den Bucket im ALTEN Zustand. Zweiter Lauf
+der Migration: „bereits im Zielzustand". (d) Löschung lokal: Wegwerf-Konto,
+zwei Uploads, einer im Profil ⇒ nach der Löschung sind beide weg, die Datei
+eines anderen Kontos ist noch da. (e) Neuer E2E-Spec
+`apps/comments/e2e/avatar-storage.spec.ts` (drei API-Tests), in der CI 3/3.
+(f) **Live (2026-11-13):** PR #130, Merge `8b658900`. Alle vier Prüfungen auf `main` grün,
+`/api/health` → `.build` = `8b658900` auf allen sechs Hosts (vorher
+`18d9cf27`). Am Kontroll-Host `account.pukalani.app` werden alle 11
+vorhandenen Profilbilder weiter ausgeliefert (Original und Vorschau), jetzt
+mit beiden Kopfzeilen; eine unbekannte Datei antwortet 404 mit denselben
+Kopfzeilen.
+(g) **Production (2026-11-13, Davids Ja):** Bestand vorher nachgesehen (Projekt
+`account`: 11 Dateien, alles Bilder, keine über 5 MB), dann `system-039` in
+allen vier Projekten (`account`, `admin`, `portfolio`, `branding`) NACH dem
+Deploy gefahren; zweiter Lauf „bereits im Zielzustand"; die 11 Bilder werden
+danach weiter ausgeliefert. Gefahren wurde nur diese eine Migration, nicht der
+ganze `system`-Layer.
+
+**Bewusst nicht getan.** Keine Mengengrenze je Konto für Uploads; keine
+Änderung an den vier anderen Auslieferungs-Routen (Events-Cover, Medien,
+Ticket- und Runner-Dateien) — sie gehören zu späteren Paketen. Die Regeln des
+Wächters für TABELLEN kommen mit dem Paket „Schreiben nur noch über den
+Server".
+
+**Gelernt:** (1) **Ein Recht am Bucket gilt neben der Route.** Appwrite ist
+unter eigener Adresse erreichbar; was die Route prüft, prüft Appwrite nicht.
+Die Endungsliste eines Buckets prüft nur den NAMEN — Appwrite erkennt den Typ
+aus dem Inhalt und speichert ihn, lehnt deswegen aber nichts ab. (2) **Eine
+alte Migration, die bei 409 „nachzieht", stellt bei JEDEM Lauf zurück.** Der
+Runner fährt alle Migrationen jedes Mal; `system-032` hätte den Bucket nach
+`system-039` bei jedem Lauf kurz wieder geöffnet. Nachziehen darf nur die
+jüngste. (3) **Reihenfolge beim Schließen: erst der Code, dann die
+Migration.** Umgekehrt scheitert jeder Upload (am 2026-08-17 schon einmal
+erlebt, in die andere Richtung). (4) **Zwei Sicherungen, die voneinander
+abhängen, brauchen einen Test, der sie zusammenhält:** die Löschung findet
+Dateien über genau die Rechte, die der Upload vergibt
+(`storageRoutes.test.ts`), und die Migration trägt dieselben Werte wie die
+Route (`avatarBucketMigration.test.ts`).
+
+---
+
 ### GA1 P07 — Tor vor dem Ausliefern: alle vier Prüfungen halten auf ✅ 2026-11-13
 
 **Was.** Erstes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings OPS-006,
