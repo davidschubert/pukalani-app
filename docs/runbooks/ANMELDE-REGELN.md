@@ -41,6 +41,12 @@ und liest sie zurück.
 - **Je Projekt einzeln:** `account`, `admin`, `branding`, `portfolio`. Auf
   Production nur mit Davids Ja.
 - **CI:** `e2e.yml` setzt die Regeln nach dem Seed, die Suite läuft darunter.
+- **Falle `@example.com`:** Appwrites Liste der Wegwerf-Adressen enthält
+  `example.com`. Test-Konten nehmen deshalb `@example.test` (in der CI am
+  2026-11-13 so erwischt). Mehrere Beweis-Skripte legen noch Konten mit
+  `@example.com` an (`verify-mfa`, `verify-session-ip`, `verify-geo-cities`,
+  `verify-turnstile`, die brand-Skripte `invite`/`revoke`); gegen ein Projekt
+  mit eingeschalteter Regel scheitern sie, bis sie umgestellt sind.
 
 ## Abgleich mit Datenlecks
 
