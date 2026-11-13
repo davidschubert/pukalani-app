@@ -127,6 +127,11 @@ function messageKey(type: string): string {
   // control-034) — {name} = der gemeldete Host. Empfänger sind ausschließlich
   // Betreiber-Konten (scope 'account'), gelesen wird sie also in apps/control.
   if (type === 'abuse.report') return 'notifications.abuseReport'
+  // 'member.appeal' = Nachricht einer aus dieser Community ENTFERNTEN Person
+  // an die Leitung (SEC-030 Teil 2, 2026-11-13; onboarding,
+  // removed-contact.post.ts) — {name} = ihr Name, der Text gekürzt im Body.
+  // Empfänger sind Inhaber und Admins; die volle Nachricht kommt per Mail.
+  if (type === 'member.appeal') return 'notifications.memberAppeal'
   // 'badge.awarded' = ein verdientes Abzeichen (F1 Teilpaket 2) — {name} ist
   // sein NAME, und der steht in der Zeile als i18n-Schlüssel (siehe
   // `displayText`). Der Link führt in die Abzeichen-Galerie.

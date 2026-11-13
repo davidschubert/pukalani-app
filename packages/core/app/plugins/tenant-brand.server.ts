@@ -79,6 +79,13 @@
  *     seinem eigenen Account-Objekt, und sie benennt nur die Site, auf der er
  *     ohnehin steht. Für Gäste ebenfalls harmlos (sie schreiben keine
  *     Presence) — der Wert reist bewusst nicht rollenabhängig.
+ *   - `communityRemoved` → useCommunityRemoved() (SEC-030 Teil 2, 2026-11-13):
+ *     EIN Boolean, „der EINGELOGGTE Mensch wurde aus DIESER Community
+ *     entfernt" (server/middleware/06.community-removed.ts). Leser: die
+ *     Routen-Middleware community-removed.global.ts (führt auf die
+ *     Hinweisseite) und das Realtime-Gate (kein Socket, kein Token, keine
+ *     Anwesenheit). Kein fremdes Datum: es sagt nur der betroffenen Person
+ *     etwas über sie selbst, Gäste und alle anderen bekommen false.
  * NICHT gespiegelt (kein Client-Leser): projectId, limits, mode.
  * Neues Feld hier hinein nur MIT nachgewiesenem Client-Leser.
  */
@@ -150,4 +157,8 @@ export default defineNuxtPlugin(() => {
   // (useCommunityRole), die Autorität bleibt die Server-Route.
   const communityTrustLevel = useState<TrustLevel>('pukalani-community-trust-level', () => 0)
   communityTrustLevel.value = event?.context.communityTrustLevel ?? 0
+  // Entfernt (SEC-030 Teil 2) — explizite Zuweisung aus demselben Grund wie
+  // bei der Rolle: ein früher laufender Leser kann den Key schon angelegt haben.
+  const communityRemoved = useCommunityRemoved()
+  communityRemoved.value = event?.context.communityRemoved === true
 })

@@ -20,6 +20,15 @@ declare module 'h3' {
      */
     communityRole?: CommunityRole | null
     /**
+     * Der eingeloggte User wurde aus der Community DIESES Hosts entfernt
+     * (SEC-030 Teil 2, 2026-11-13) — gesetzt von
+     * server/middleware/06.community-removed.ts, für Seiten UND API. Nur
+     * `true` oder undefined: „nicht entfernt" ist kein eigener Zustand.
+     * Leser: tenant-brand.server.ts (Spiegel in den Client) und die
+     * Kontakt-Route des onboarding-Layers (NUR für Entfernte).
+     */
+    communityRemoved?: true
+    /**
      * Vertrauensstufe des eingeloggten Users in DIESER Community (F1 Teilpaket
      * 3) — gesetzt von derselben Middleware wie `communityRole` und aus
      * demselben Grund: das Dashboard und die Themen-Menüs blenden Knöpfe nach

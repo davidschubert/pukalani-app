@@ -76,6 +76,15 @@ let clientsPromise: Promise<RealtimeClients> | null = null
 let gateOpen: boolean | undefined
 
 export function realtimeEnabled(): boolean {
+  // ENTFERNT (SEC-030 Teil 2, 2026-11-13): wer aus der Community dieses Hosts
+  // entfernt wurde, öffnet keinen Socket, holt keinen Token und schreibt keine
+  // Anwesenheit — alle drei Wege wären ohnehin gesperrt (403
+  // community_removed), und jeder Versuch wäre eine Hintergrund-Anfrage ohne
+  // Sinn. NICHT memoisiert wie das Config-Gate darunter: der Zustand gehört
+  // zur Sitzung, nicht zur App. Gesetzt wird er per SSR (tenant-brand.server.ts),
+  // ein Entzug mitten in der Sitzung lädt die Seite neu
+  // (community-suspended-notice.client.ts) — dann fragt jeder Einstieg neu.
+  if (tryUseNuxtApp() && useCommunityRemoved().value) return false
   if (gateOpen !== undefined) return gateOpen
   if (!tryUseNuxtApp()) return true
   const pukalani = useAppConfig().pukalani as { realtime?: { enabled?: boolean } } | undefined

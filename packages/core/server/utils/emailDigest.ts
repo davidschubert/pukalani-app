@@ -1,4 +1,5 @@
 import { Query, type Models } from 'node-appwrite'
+import { notificationMailedSeparately } from '../../shared/communityRemoval'
 import { communityIdsNeedingHost } from '../../shared/notificationLinks'
 import { resolveCommunityHosts } from './communityHost'
 
@@ -114,7 +115,9 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
         if (lastAt && Date.now() - lastAt < DIGEST_MIN_INTERVAL_MS) { result.skipped++; continue }
         // Nur NEUE Einträge seit dem letzten Digest — sonst wiederholt sich
         // eine liegengebliebene ungelesene Notification in jeder Mail.
-        const fresh = rows.filter(row => Date.parse(row.$createdAt) > lastAt)
+        // Typen, deren Mail ihr Absender selbst verschickt (SEC-030 Teil 2,
+        // `notificationMailedSeparately`), kämen sonst ein zweites Mal an.
+        const fresh = rows.filter(row => Date.parse(row.$createdAt) > lastAt && !notificationMailedSeparately(row.type))
         if (fresh.length === 0) { result.skipped++; continue }
 
         const mail = buildDigestEmail({ appBase, hosts }, prefs.emailLocale, fresh.slice(0, DIGEST_MAX_ITEMS))
