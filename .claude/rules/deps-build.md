@@ -62,7 +62,10 @@ paths:
   Seit 2026-11-13 fährt `lint:scripts` davor `check:nul-bytes` (SEC-044): ein
   LITERALES NUL-Zeichen in einer Quelldatei macht sie für git binär — ihr Diff
   ist dann in keinem Review sichtbar, und `grep` ohne `-a` findet in ihr
-  nichts. Im Code steht das Zeichen als Escape `\u0000`.
+  nichts. Im Code steht das Zeichen als Escape `\u0000`. Ebenfalls seit
+  2026-11-13 fährt `lint:scripts` `check:permissions` (SEC-001): rot bei jedem
+  Bucket mit Schreibrecht für Konten in einer Migration oder einem
+  Bootstrap-Skript (Regel in `.claude/rules/appwrite.md`, „Rechte an Ablagen").
 - DER LINT-LAUF IST MEHR ALS `lint` (2026-09-10 rot erwischt): `lint.yml` fährt
   SIEBEN Wächter vor den beiden Lint-Schritten — `check:manifests`,
   `check:i18n-keys`, `check:bilanz`, **`check:doc-links`**, `check:single-copy`,

@@ -70,7 +70,9 @@ console.log(`Bootstrap gegen ${endpoint} / Projekt ${projectId}\n`)
 {
   const { status, json } = await api('/storage/buckets', 'POST', {
     bucketId, name: 'avatars',
-    permissions: ['create("users")', 'read("any")'],
+    // Keine Bucket-Rechte: jede Datei trägt ihre Rechte selbst (fileSecurity),
+    // geschrieben wird nur vom Server nach seinen Prüfungen (SEC-001).
+    permissions: [],
     fileSecurity: true, enabled: true,
     maximumFileSize: 5 * 1024 * 1024,
     allowedFileExtensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'],

@@ -9,13 +9,16 @@
  * auf jeder Instanz laufen — deshalb liegt die Migration im system-Layer.
  *
  * Die Einstellungen sind am 2026-08-12 aus der Prod-Instanz `account`
- * ABGELESEN — mit EINEM Fehler, der dabei mitkopiert wurde: `avatars` stand
- * dort ohne `create("users")`, womit jeder Profilbild-Upload scheiterte
- * (2026-08-17 live erwischt, Details am avatars-Schritt unten). Der Rest
- * stimmt: beide fileSecurity (Row-Permissions je Datei — ein GDPR-Snapshot
- * gehört genau einem Konto, ein Avatar seinem Besitzer), 30 MB, keine
- * Extension-Liste (Magic-Bytes prüft die Route), Encryption+Antivirus an.
- * `gdpr-exports` bleibt ohne Bucket-Permissions (schreibt nur der Server).
+ * abgelesen. Beide Buckets: fileSecurity (Rechte je Datei — ein GDPR-Snapshot
+ * gehört genau einem Konto, ein Avatar seinem Besitzer), Encryption+Antivirus
+ * an, und KEINE Bucket-Rechte (`permissions: []`): geschrieben wird nur vom
+ * Server. `avatars` entsteht im Zielzustand von system-039 (5 MiB,
+ * Endungsliste); `gdpr-exports` mit 30 MB ohne Endungsliste.
+ *
+ * Bei 409 wird NUR übersprungen: der Runner fährt bei jedem Lauf ALLE
+ * Migrationen erneut, ein Nachziehen hier stellte den Bucket jedes Mal auf
+ * diesen alten Stand zurück. Den Zustand BESTEHENDER `avatars`-Buckets besitzt
+ * system-039.
  *
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/system/scripts/migrations/032-core-buckets.ts
@@ -60,33 +63,23 @@ async function step(label: string, run: () => Promise<unknown>) {
 console.log(`Migration system-032 gegen ${endpoint} / Projekt ${projectId}`)
 
 /**
- * `create("users")` ist PFLICHT: die Upload-Route (core/server/api/storage/
- * [bucket]/index.post.ts) läuft mit dem SESSION-Client — ohne Bucket-Create-
- * Recht scheitert JEDER Profilbild-Upload (Appwrite-401 → generisches 500 an
- * der Route, 2026-08-17 auf allen drei Prod-Instanzen live erwischt). Die
- * ursprüngliche Fassung hatte `permissions: []` von der Prod-Instanz
- * ABGELESEN — und damit deren Fehlstand kopiert. Datei-Rechte bleiben pro
- * Datei beim Besitzer (fileSecurity, die Route setzt read(any) +
- * update/delete(user)). Der 409-Zweig zieht BESTEHENDE Buckets nach, sonst
- * bliebe jede schon migrierte Instanz kaputt.
+ * `avatars` — NEUANLAGE im Zielzustand (Werte wie system-039, die sie aus
+ * core/shared/avatarImage.ts spiegelt). Ab 2026-08-17 trug der Bucket hier
+ * `create("users")`, weil die Upload-Route damals mit dem Session-Client
+ * schrieb; seit system-039 schreibt sie mit dem Admin-Client, und der Bucket
+ * trägt kein Recht.
+ * Datei-Rechte setzt die Route je Datei (read(any) + update/delete(user)).
  */
-const avatarsSettings = {
+await step(`Bucket 'avatars'`, () => storage.createBucket({
+  bucketId: 'avatars',
   name: 'avatars',
-  permissions: ['create("users")'],
+  permissions: [],
   fileSecurity: true,
-  maximumFileSize: 30_000_000,
+  maximumFileSize: 5 * 1024 * 1024,
+  allowedFileExtensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
   encryption: true,
   antivirus: true,
-}
-try {
-  await storage.createBucket({ bucketId: 'avatars', ...avatarsSettings })
-  console.log(`✔ Bucket 'avatars'`)
-}
-catch (error) {
-  if (!hasCode(error, 409)) throw error
-  await storage.updateBucket({ bucketId: 'avatars', enabled: true, ...avatarsSettings })
-  console.log(`↷ Bucket 'avatars' (existierte — Permissions nachgezogen)`)
-}
+}))
 
 await step(`Bucket 'gdpr-exports'`, () => storage.createBucket({
   bucketId: 'gdpr-exports',
