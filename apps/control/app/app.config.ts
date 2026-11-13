@@ -104,6 +104,13 @@ export default defineAppConfig({
     // es hier kein Community-Chrome, das die Glocke registriert; der Schalter
     // hängt sie in beide Shells (core-default-Layout + Dashboard).
     chrome: { accountBell: true },
+    // HERKUNFTSPRÜFUNG (SEC-004, Stufe 1): alle Hosts unter `*.pukalani.app`
+    // sind same-site zueinander — `SameSite=Lax` an der Sitzung trennt eine
+    // Mandanten-Seite also nicht von der Betreiber-Konsole. Die Prüfung lehnt
+    // schreibende /api-Aufrufe ab, die von einer fremden Herkunft kommen.
+    // Dienst-Naht, Stripe und der Runner tragen keine Browser-Kopfzeilen und
+    // passieren sie (core/shared/csrfOriginExempt.ts).
+    security: { csrfOriginCheck: true },
     // Footer-Rechtslinks → die editierbaren pages-Seiten (Layer pages).
     legalLinks: [
       { to: '/imprint', labelKey: 'legal.imprint' },

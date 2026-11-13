@@ -79,17 +79,30 @@ const { data: mine } = await useFetch<{ invites: { id: string, role: string, exp
  * Wem gehört dieser Token? Beantwortet auch OHNE Konto — das ist der ganze
  * Zweck: erst dadurch kann die Seite sagen, als was man eingeladen ist und an
  * welche Adresse das Konto gehört.
+ *
+ * NUR IM BROWSER (`server: false`, SEC-004): beim Server-Rendern reicht Nuxt
+ * die Kopfzeilen der Navigation an den internen POST weiter. Kam die Person
+ * über den Link in ihrem Webmail, trägt er `sec-fetch-site: cross-site`, und
+ * die Herkunftsprüfung lehnt ihn ab — die Seite sagte dann „keine Einladung".
+ * Im Browser ist der Aufruf `same-origin`. Bis die Antwort da ist, zeigt die
+ * Seite ihren Ladezustand (`pruefeEinladung`), kein Urteil: der Status ist beim
+ * SSR und beim Hydrieren gleich `idle`, also kein Hydration-Unterschied.
  */
-const { data: einladung } = await useFetch<{ ok: boolean, email: string, role: string }>(
+const { data: einladung, status: einladungStatus } = await useFetch<{ ok: boolean, email: string, role: string }>(
   '/api/community/invites/preview',
   {
     method: 'POST',
     body: computed(() => ({ token: token.value })),
     immediate: Boolean(token.value),
+    server: false,
     // Ein ungültiger Token ist keine Ausnahme, sondern eine Antwort.
     default: () => ({ ok: false, email: '', role: '' }),
   },
 )
+
+/** Mit Token und noch ohne Antwort: noch nichts entschieden — Ladezustand statt „ungültig". */
+const pruefeEinladung = computed(() =>
+  Boolean(token.value) && (einladungStatus.value === 'idle' || einladungStatus.value === 'pending'))
 
 /** Angemeldet? Dann annehmen. Sonst: Konto anlegen — hier, auf dieser Seite. */
 const brauchtKonto = computed(() => !auth.isLoggedIn && Boolean(token.value) && Boolean(einladung.value?.ok))
@@ -176,7 +189,18 @@ async function accept() {
         die Register-Seite hülfe nicht — auf einer geschlossenen Community sagt
         die „Nur auf Einladung".
       -->
-      <div v-if="brauchtKonto" class="space-y-4" data-join-register-box>
+      <!--
+        Die Vorschau läuft nur im Browser (s. Skript). Angemeldet steht der
+        Annehmen-Knopf ohnehin; wer OHNE Konto kommt, sieht bis zur Antwort
+        diesen Platzhalter statt „keine Einladung".
+      -->
+      <div v-if="pruefeEinladung && !hasSomething" class="space-y-3" aria-busy="true" data-join-checking>
+        <USkeleton class="h-4 w-3/4" />
+        <USkeleton class="h-4 w-1/2" />
+        <USkeleton class="h-9 w-40" />
+      </div>
+
+      <div v-else-if="brauchtKonto" class="space-y-4" data-join-register-box>
         <p class="text-sm text-muted">
           {{ t('join.roleNote', { role: t(`members.roles.${rolle}`) }) }}
         </p>
