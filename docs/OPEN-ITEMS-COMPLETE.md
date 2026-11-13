@@ -228,6 +228,14 @@ allen vier Projekten (`account`, `admin`, `portfolio`, `branding`) NACH dem
 Deploy gefahren; zweiter Lauf „bereits im Zielzustand"; die 11 Bilder werden
 danach weiter ausgeliefert. Gefahren wurde nur diese eine Migration, nicht der
 ganze `system`-Layer.
+(h) **Echter Upload auf Live (2026-11-13):** David hat auf
+`account.pukalani.app` ein Profilbild hochgeladen. Nachgelesen (nur lesend):
+eine neue PNG-Datei mit vom Server vergebenem Namen und Rechten nur für das
+eine Konto, Bestand 12, alle 12 werden mit beiden Kopfzeilen ausgeliefert. Ein
+erstes Nachlesen vier Minuten VOR dem Upload zeigte nichts Neues und sah kurz
+wie ein Fehlschlag aus — bei einem Live-Beweis die Uhrzeit beider Seiten in
+derselben Zeitzone vergleichen. Offen geblieben ist der Upload auf den drei
+anderen Sites: OPEN-ITEMS „PB1".
 
 **Bewusst nicht getan.** Keine Mengengrenze je Konto für Uploads; keine
 Änderung an den vier anderen Auslieferungs-Routen (Events-Cover, Medien,
