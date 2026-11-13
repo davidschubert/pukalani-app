@@ -30,6 +30,67 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KE1 — Aktivität zeigt eigene Konto-Ereignisse („Konto und Sicherheit") ✅ 2026-11-13
+
+**Was.** David hatte auf `account.pukalani.app` sein Profilbild geändert und
+fand davon nichts unter `/profile/activity` — dort standen seit AH-3 nur eigene
+Inhalte. Jetzt steht über den Communities ein eigener Abschnitt „Konto und
+Sicherheit": Profil geändert (mit dem Namen des Feldes), Passwort geändert oder
+über den Mail-Link neu gesetzt, Zurücksetzen angefordert, E-Mail bestätigt,
+Zwei-Faktor an/aus, falscher Zwei-Faktor-Code. Mit Ort (Stadt, Region), ohne
+IP-Adresse, ohne normale An- und Abmeldungen — Davids drei Antworten stehen im
+DECISION-LOG (2026-11-13).
+
+**Wie.** Die Daten gab es schon: `logAuthEvent` schreibt sie nach `audit_logs`,
+lesen durfte sie nur der Betreiber. Neu ist nur der Weg zum Nutzer:
+
+- `packages/core/shared/accountEvents.ts` — ein ZWEITER Vertrag neben
+  `ACCOUNT_ACTIVITY_KINDS`, keine neuen Arten dort: ein Konto-Ereignis hat
+  keine Community, keinen Titel und kein Sprungziel. Zwei geschlossene Listen
+  (Arten, Profil-Felder) und die Besitz-Prüfung an der Zeile.
+- `packages/core/server/utils/accountEvents.ts` — der Leseweg, an derselben
+  Grenze wie `logAuthEvent` (direkt, nicht über den admin-Layer). Die Abfrage
+  filtert hart auf `actorId` und auf die Konto-Aktionen; jede gelesene Zeile
+  wird nachgeprüft (`actorId` = Nutzer aus der Session, kein Ziel).
+- Dieselbe Route `/api/account/activity` liefert den Abschnitt mit — kein
+  neuer Eintrag in `controlApiPrefixes`. Ein Ausfall wird als `unavailable`
+  gemeldet; der Hinweis steht jetzt auch VOR dem Leer-Zustand (vorher sah
+  „alles leer und ein Layer ausgefallen" aus wie „noch nichts getan").
+- Nicht geändert: was geschrieben wird, die Betreiber-Ansicht, der
+  Community-Feed `activities`. Keine Migration, keine neue Env.
+
+**Beweis.** (a) `packages/core/tests/accountEvents.test.ts`: fremde Zeilen
+erscheinen auch dann nicht, wenn die Abfrage sie liefert; Gegenprobe — ohne die
+Nachprüfung an der Zeile werden drei Tests rot. Nur Feldnamen, keine IP in der
+Antwort. (b) Wächter in `packages/onboarding/tests/accountActivityTexts.test.ts`:
+jede Art und jedes Feld hat Text in de + en, und die Feldliste wird gegen
+`auth/profile.put.ts` verglichen. (c) Lokal gegen echte Appwrite:
+`packages/onboarding/scripts/verify-account-events.mjs` **22/22** — A ändert
+sein Profil und sieht den Eintrag, B sieht ihn nicht, die Anmeldung steht im
+Protokoll, aber nicht in der Liste, ein `userId`-Parameter ändert nichts.
+(d) Gates grün, zweimal (vor und nach dem Rebase auf PR #132). (e) PR #133,
+Merge `a4a0a08c`; Test, Lint, Typecheck und E2E auf `main` grün;
+`https://account.pukalani.app/api/health` → `.build` = `a4a0a08c` (vorher
+`6a2a2939`). (f) Klick hinter dem Login auf Prod, in Davids angemeldetem
+Browser: über der Community steht „Konto und Sicherheit · Profil geändert ·
+Profilbild" mit Ort und dem 13.11.2026 — genau der Wechsel, der den Anlass gab
+(die Zeile lag seit dem Morgen im Protokoll, sie war nur nicht lesbar).
+
+**Offen daraus** (OPEN-ITEMS KE2, KE3): der Fehlversuch beim zweiten Faktor
+WÄHREND der Anmeldung wird ohne Konto protokolliert und erscheint deshalb nie;
+ein Profilbild, dessen Speichern nach dem Upload scheitert, bleibt ohne
+Protokoll-Eintrag als Datei liegen. Und: der neue Leseweg ist eine mögliche
+Quelle für AL1 (leere Aktivitätsliste in der Admin-Nutzeransicht).
+
+**Gelernt:** Eine Schleife über Befehle mit Leerzeichen läuft in zsh anders als
+in bash: `for g in "-r test" …; do pnpm $g` übergibt `-r test` als EIN Wort,
+pnpm zeigt seine Hilfe und endet mit 2 — drei von fünf Gates liefen gar nicht.
+Aufgefallen ist es nur, weil jeder Exit-Code einzeln in eine Datei geschrieben
+wurde; ein gemeinsames „fertig" am Ende hätte es geschluckt. Gates deshalb
+ausgeschrieben hintereinander fahren und je Gate den Status notieren.
+
+---
+
 ### GA1 P02 — Anmelde-Bremse: vorab zählen, je Konto zählen ✅ 2026-11-13
 
 **Was.** Drittes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
