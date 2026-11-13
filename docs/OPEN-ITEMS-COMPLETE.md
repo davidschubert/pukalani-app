@@ -30,6 +30,52 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KE2 — Falscher Zwei-Faktor-Code bei der Anmeldung steht jetzt im Protokoll ✅ 2026-11-13
+
+**Was.** Nebenbefund aus KE1, mit Davids Ja behoben (es ändert, was
+protokolliert wird). Tippte jemand bei der Anmeldung einen falschen
+Zwei-Faktor-Code, sollte `user.mfa_challenge_failed` ins Protokoll — das eine
+Signal dafür, dass jemand mit gültigem Passwort am zweiten Faktor rät.
+Tatsächlich entstand **keine Zeile**: weder beim Betroffenen noch in der
+Betreiber-Ansicht. Sichtbar war nur der Fehlversuch beim Abschalten.
+
+**Ursache.** `mfa/challenge.post.ts` fragte nach dem Fehlversuch
+`account.get()`, um das Konto zu erfahren. Solange der zweite Faktor fehlt,
+antwortet Appwrite darauf immer 401 — die Kennung war also stets leer, und
+es entstand keine Zeile. Laut wurde das nie: `logAuthEvent` schluckt
+Schreibfehler bewusst (es darf die Anmeldung nie blockieren).
+
+**Wie.** Eine Zeile: die Kennung kommt aus der Challenge (`challenge.userId`)
+— dieselbe von Appwrite belegte Kennung, die die Konto-Bremse (GA1 P02) an
+derselben Stelle schon nutzt. Das `account.get()` entfällt.
+
+**Beweis.** (a) `packages/core/tests/mfaChallengeAudit.test.ts` (6) baut den
+Zustand nach, in dem `account.get()` wirft; gegen den alten Code sind drei
+Tests rot. (b) Lokal gegen echte Appwrite, `packages/onboarding/scripts/
+verify-account-events.mjs`: das Skript richtet Zwei-Faktor ein, meldet neu an,
+antwortet falsch und liest die Zeile direkt aus der Tabelle. Vorher 0 Zeilen
+für das Konto und auch keine ohne Verursacher; nachher eine Zeile mit Konto
+und Namen, sichtbar unter „Konto und Sicherheit", nicht beim zweiten Nutzer —
+33/33. (c) Gates grün, zweimal (vor und nach dem Rebase auf PR #137). (d) PR
+#138, Merge `f81a6df6`; Test, Lint, Typecheck und E2E auf `main` grün;
+`https://account.pukalani.app/api/health` → `.build` = `f81a6df6` (vorher
+`a4a0a08c`). **Nicht auf Prod ausgelöst:** dafür bräuchte es eine Anmeldung
+mit Zwei-Faktor und einen absichtlich falschen Code — das kann nur ein
+Kontoinhaber selbst.
+
+**Gelernt:** (1) „Aus dem Code gelesen" war hier zu milde: die Vermutung
+lautete „Zeile ohne Konto", die Messung ergab „gar keine Zeile". Ein Befund
+über ein Protokoll wird an der Tabelle geprüft, nicht am Aufruf. (2) GitHub
+meldete den PR als „ohne Konflikt", obwohl ein Nachbar-PR (#137) inzwischen
+einen neuen Aufruf in dieselbe Route gelegt hatte — der neue Test stubbt die
+Nitro-Globals von Hand und kannte ihn nicht. Vor jedem Merge `git fetch`,
+auf das neue `main` rebasen und die Tests dort fahren; „mergeable" sagt nur
+etwas über Textzeilen. (3) Appwrite nimmt denselben TOTP-Code kein zweites Mal
+an: ein Skript, das mit dem aktuellen Code einschaltet, muss für die nächste
+Antwort das folgende Zeitfenster abwarten.
+
+---
+
 ### KE1 — Aktivität zeigt eigene Konto-Ereignisse („Konto und Sicherheit") ✅ 2026-11-13
 
 **Was.** David hatte auf `account.pukalani.app` sein Profilbild geändert und
@@ -76,7 +122,7 @@ Browser: über der Community steht „Konto und Sicherheit · Profil geändert �
 Profilbild" mit Ort und dem 13.11.2026 — genau der Wechsel, der den Anlass gab
 (die Zeile lag seit dem Morgen im Protokoll, sie war nur nicht lesbar).
 
-**Offen daraus** (OPEN-ITEMS KE2, KE3): der Fehlversuch beim zweiten Faktor
+**Offen daraus** (KE2 inzwischen erledigt, s. oben; KE3 steht in OPEN-ITEMS): der Fehlversuch beim zweiten Faktor
 WÄHREND der Anmeldung wird ohne Konto protokolliert und erscheint deshalb nie;
 ein Profilbild, dessen Speichern nach dem Upload scheitert, bleibt ohne
 Protokoll-Eintrag als Datei liegen. Und: der neue Leseweg ist eine mögliche
