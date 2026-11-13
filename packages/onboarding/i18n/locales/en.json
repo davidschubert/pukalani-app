@@ -891,5 +891,34 @@
     "verifyFirst": "Please confirm your email address first",
     "createAccountIntro": "Don't have a Pukalani account yet? Create one here — then you accept the invitation with one click.",
     "noneTextAnonymous": "This invitation link is no longer valid. It has expired, been used already or been withdrawn — ask the community team for a new invitation."
+  },
+  "removedNotice": {
+    "title": "No access anymore",
+    "lead": "An administrator of this community has removed your access.",
+    "leadNamed": "An administrator of the community {name} has removed your access.",
+    "noAccess": "You can no longer read or write here. Your earlier contributions stay in place.",
+    "logout": "Sign out",
+    "customerArea": "Go to your account",
+    "invite": {
+      "title": "You have been invited again",
+      "description": "Accept the invitation to become a member again.",
+      "accept": "Accept invitation",
+      "unverified": "Please confirm your email address first, then you can accept the invitation.",
+      "failed": "The invitation could not be accepted. Please try again later."
+    },
+    "contact": {
+      "title": "Message to the community leads",
+      "label": "Your message",
+      "hint": "Your message goes to the leads of this community. They see your name and email address so they can reply. One message per week.",
+      "send": "Send message",
+      "tooShort": "Please write at least {min} characters.",
+      "tooLong": "Please use at most {max} characters.",
+      "sentTitle": "Your message is on its way.",
+      "sentText": "The community leads will reply by email if they wish.",
+      "limitTitle": "You already sent a message this week.",
+      "limitText": "Another message will be possible again in a few days.",
+      "limitUntil": "Another message will be possible again from {date}.",
+      "failed": "The message could not be sent right now. Please try again later."
+    }
   }
 }

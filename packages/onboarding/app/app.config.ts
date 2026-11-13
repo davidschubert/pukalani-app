@@ -346,5 +346,32 @@ export default defineAppConfig({
         },
       },
     },
+    community: {
+      /**
+       * ENTFERNTE KONTEN (SEC-030 Teil 2, 2026-11-13): die Hinweisseite gehört
+       * diesem Layer (`app/pages/removed.vue`), weil ihr Kontaktformular die
+       * Service-Naht zum Control Plane braucht (Team der Community) — und die
+       * besitzt onboarding. Silo-Apps ohne diesen Layer leiten deshalb niemanden
+       * um; dort gibt es auch keine Mitgliedschaft.
+       *
+       * `removedAllowedApi` — drei Pfade, jeder ohne Inhalt der Community:
+       *  - die Kontakt-Route: Antwort immer `{ ok: true }`, sie prüft selbst,
+       *    dass nur Entfernte sie benutzen;
+       *  - `/api/community/invites/mine` + `/api/community/members/accept`:
+       *    der RÜCKWEG. Eine entfernte Person kommt nur per neuer Einladung
+       *    zurück (A5) — und die nimmt sie auf diesem Host an. Ohne diese
+       *    beiden wäre jede Einladung an sie wirkungslos: `/join` führt sie auf
+       *    die Hinweisseite, und dort zeigt die Seite ihre EIGENEN offenen
+       *    Einladungen (Id, Rolle, Ablauf; dazu der öffentliche Name der
+       *    Community) mit einem Knopf „Annehmen". Beide Routen antworten nur
+       *    über das eigene Konto (JWT, geprüfte Adresse im Control Plane).
+       */
+      removedNoticePath: '/removed',
+      removedAllowedApi: [
+        '/api/community/removed-contact',
+        '/api/community/invites/mine',
+        '/api/community/members/accept',
+      ],
+    },
   },
 })

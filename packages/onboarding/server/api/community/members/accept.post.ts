@@ -55,7 +55,13 @@ export default defineEventHandler(async (event) => {
     // zieht die Label-Middleware das Publikum bis zu einer Minute lang wieder ab
     // (siehe rememberCommunityAccessRevoked).
     const userId = event.context.user?.$id
-    if (userId) forgetCommunityAccessDecision(result.communityId, userId)
+    if (userId) {
+      forgetCommunityAccessDecision(result.communityId, userId)
+      // …und die Sperre für Entfernte sofort lösen (SEC-030 Teil 2): der
+      // Cache „ehemalig" sagt sonst bis zu 60 s weiter „ja", und die gerade
+      // zurückgeholte Person stünde wieder vor der Hinweisseite.
+      rememberCommunityAccessRestored(result.communityId, userId)
+    }
     await grantCommunityLabel(event, result.communityId)
 
     /**
