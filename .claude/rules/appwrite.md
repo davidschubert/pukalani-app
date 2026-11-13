@@ -81,6 +81,34 @@ paths:
   Migration bei jedem Lauf erneut: ein „409 ⇒ Einstellungen nachziehen" in
   einer ALTEN Migration stellt den Bucket bei jedem Lauf zurück (system-032
   tat das) — nachziehen darf nur die jüngste.
+- BREMSEN (SEC-003/BE-002, seit 2026-11-13): Auth-Routen laufen über den
+  Admin-Client, Appwrites eigene Grenzen gelten dort NICHT — gebremst wird in
+  `core/server/middleware/05.rate-limit.ts`. Gezählt wird nur, was GELISTET
+  ist (unabhängig von der Methode). Drei Regeln für neue Routen: (1) Prüft
+  eine Route ein GEHEIMNIS (Passwort, Code, Token), gehört sie in
+  `FAILURE_LIMITED`: gezählt wird VOR der Route (`store.hit`, atomar), eine
+  Antwort < 400 bucht den eigenen Versuch zurück. „Erst lesen, nach der
+  Antwort zählen" hält nur für Anfragen NACHEINANDER — gleichzeitige sehen
+  alle denselben alten Stand. (2) Kennt die Route das KONTO (E-Mail, userId),
+  ruft sie zusätzlich `limitAccountAttempts(event, scope, konto)` aus
+  `core/server/utils/accountAttempts.ts`: 10 Fehlversuche in 15 Minuten je
+  Konto über alle Adressen (Davids Entscheidung), festes Fenster, keine
+  Dauersperre, dieselbe 429 für vorhandene und nicht vorhandene Konten, im
+  Schlüssel nur ein Hash. Die Kennung muss BELEGT sein, bevor sie zählt
+  (`mfa/challenge` nimmt `challenge.userId`, nicht das Cookie) — sonst bremst
+  ein Fremder ein fremdes Konto. Ausweg aus der Pause ist „Passwort
+  zurücksetzen": `recovery.put.ts` löscht den Login-Zähler, die
+  Recovery-Routen zählen NICHT je Konto. (3) Teure Wege (Export, bezahlte
+  Aufrufe bei Stripe/ploi/KI, Uploads) bekommen eine Zeile in `WRITE_LIMITED`;
+  ungelistete DELETE fängt das Netz `delete:other` am ENDE der Liste (`find()`
+  nimmt den ersten Treffer). `/api/health` bekommt NIE eine 429 (Wächter,
+  Deploy-Beweis, UptimeRobot) — dort bremst ein Zwischenspeicher von 5 s je
+  Prozess, und die Antwort trägt keine Sitzungsdaten. Der Store zählt in
+  Redis mit EINEM Lua-Skript je Zugriff (ein Schlüssel ohne Ablauf wäre eine
+  Dauersperre); ohne `NUXT_REDIS_URL` zählt jeder PROZESS für sich — das
+  trägt, solange pm2 je App `instances: 1` fährt. Beweis-Muster für jede
+  Bremse: ein Test mit GLEICHZEITIGEN Anfragen
+  (`core/tests/rateLimitFailureRoutes.test.ts`, `accountAttempts.test.ts`).
 - Immer explizites Query.limit() (Default 25)
 - SDK-Generics nutzen: tablesDB.listRows<T>()
 - Migrations: idempotent (409 → skip), IMMER über den zentralen Runner

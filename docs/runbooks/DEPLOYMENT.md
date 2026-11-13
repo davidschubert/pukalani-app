@@ -244,7 +244,11 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > mitinstalliert); Keys sind pro Appwrite-Projekt gescoped (`rl:<projekt>:…`),
 > mehrere Sites teilen also gefahrlos EINE Redis-Instanz. Leer = In-Memory
 > pro Instanz (Dev). Fail-open: stirbt Redis, drosselt der In-Memory-Fallback
-> weiter (lautes Log) — nie 500er wegen Redis.
+> weiter (lautes Log) — nie 500er wegen Redis. Ohne Redis zählt jeder PROZESS
+> für sich: das trägt, solange pm2 je App `instances: 1` fährt
+> (`ops/ecosystem-*.config.cjs`). Wer `instances` erhöht, braucht
+> `NUXT_REDIS_URL`, sonst gilt jeder Deckel je Worker — auch die Konto-Pause
+> nach Fehlversuchen (SEC-003, `.claude/rules/appwrite.md` „Bremsen").
 > **NICHT** auf den Server: `NUXT_APPWRITE_MIGRATIONS_KEY`. Der gehört nur zum
 > Migrationslauf (Schritt 2). Nach Env-Änderungen: `pm2 startOrReload
 > /home/ploi/comments.pukalani.app/ops/ecosystem-comments.config.cjs
