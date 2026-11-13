@@ -700,15 +700,6 @@ export default defineAppConfig({
        */
       labelReconcile: 'off' as 'off' | 'dry-run' | 'apply',
     },
-    security: {
-      /** Herkunftsprüfung für unsichere Methoden auf /api/* (server/middleware/
-       *  03.csrf-origin.ts). ÜBERGANG (SEC-004, Stufe 1): an in platform,
-       *  comments, control und `_template`; hier noch aus, damit sich
-       *  marketing, portfolio, branding, help und photos nicht ändern.
-       *  STUFE 2 ENTFERNT DIESEN SCHALTER — die Prüfung gilt dann überall,
-       *  Ausnahmen nur als Route mit Grund in shared/csrfOriginExempt.ts. */
-      csrfOriginCheck: false,
-    },
     observability: {
       /** Strukturierte JSON-Error-Logs für unbehandelte Server-Fehler (5xx)
        *  am zentralen Nitro-Error-Hook. Sentry-Andockpunkt: server/utils/logEvent.ts */

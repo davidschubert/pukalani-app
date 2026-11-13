@@ -146,9 +146,9 @@ auch ohne Widget-iframe auf der Seite (das Script allein genügt).
   Browser, die das partitionierte Cookie verwerfen, bleiben read-only und
   zeigen einen Hinweis mit Deep-Link zur Widget-Domain.
   Sicherheit: die Schreib-Routen sind zusätzlich durch die
-  Herkunftsprüfung geschützt (`pukalani.security.csrfOriginCheck` — PFLICHT,
-  sobald `pukalani.auth.embedSession` an ist; seit SEC-004 soll sie ohnehin
-  überall an sein, Ausnahmen nur als einzelne Route mit Grund in
+  Herkunftsprüfung geschützt (seit SEC-004 in jeder App an, ohne Schalter —
+  der frühere `pukalani.security.csrfOriginCheck` ist entfernt; Ausnahmen nur
+  als einzelne Route mit Grund in
   `packages/core/shared/csrfOriginExempt.ts` — das Embed braucht keine, weil
   iframe und Popup same-origin rufen und `embed.js` nur GET macht); das Handoff-Token ist
   verschlüsselt, 60 s gültig und wird vor dem Cookie-Setzen gegen Appwrite

@@ -16,7 +16,7 @@
  *     `frame-ancestors` von /embed — und der Host der ANDEREN Community
  *     steht dort nicht. Das ist die harte Grenze des Widgets.
  *
- * Dazu Abschnitt 7: `security.csrfOriginCheck` ist im Pool NEU an. Unter der
+ * Dazu Abschnitt 7: die Herkunftsprüfung gilt im Pool (heute in jeder App). Unter der
  * Wildcard ist jeder Mandanten-Host `same-site` zum anderen — der Beweis, dass
  * die F32-Härtung das abweist und den (same-origin) Embed-Fluss nicht bricht,
  * wird hier für den POOL neu geführt statt aus dem Silo übernommen.
@@ -318,12 +318,12 @@ try {
     String(cspB2.headers['content-security-policy'] ?? '').slice(0, 200))
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 7. csrfOriginCheck IM POOL. Die F32-Härtung behandelt `same-site` streng —
+  // 7. HERKUNFTSPRÜFUNG IM POOL. Die F32-Härtung behandelt `same-site` streng —
   //    und unter der Wildcard ist jeder Mandanten-Host same-site zum anderen.
   //    Der Embed-Fluss läuft trotzdem, weil er same-ORIGIN ist. Das wird hier
   //    für den Pool neu belegt, nicht aus dem Silo übernommen.
   // ──────────────────────────────────────────────────────────────────────────
-  console.log('\n7. csrfOriginCheck im Pool (F32-Härtung an der Wildcard)')
+  console.log('\n7. Herkunftsprüfung im Pool (F32-Härtung an der Wildcard)')
   const sameOrigin = await call(a.host, '/api/admin/embed-sites', {
     method: 'POST',
     cookie: cookieA,

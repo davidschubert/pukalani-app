@@ -103,7 +103,8 @@ export default defineAppConfig({
      *
      * `embedSession`: der Popup-Handoff, mit dem ein Angemeldeter IM iframe
      * kommentieren kann (CHIPS-partitioniertes Cookie). Gehört zwingend zum
-     * Embed-Produkt unten — und zwingend zu `security.csrfOriginCheck`.
+     * Embed-Produkt unten — und zur Herkunftsprüfung, die seit SEC-004
+     * Stufe 2 im Core für jede App gilt (kein Schalter mehr).
      */
     /**
      * `providers: ['google']` sagt nur „diese App BIETET Google an" — wirksam
@@ -113,29 +114,11 @@ export default defineAppConfig({
      * diese Config erben, ohne Env-Schalter unsichtbar statt tot.
      */
     auth: { otp: true, embedSession: true, providers: ['google'] },
-    /**
-     * PFLICHT, sobald `auth.embedSession` an ist: das partitionierte Cookie
-     * ist `SameSite=None`, sameSite schützt also nicht mehr vor fremden
-     * Formular-POSTs.
-     *
-     * NEU GEPRÜFT FÜR DEN POOL (nicht aus dem Silo übernommen): die Härtung
-     * F32 behandelt `Sec-Fetch-Site: same-site` seit heute streng, und unter
-     * der Wildcard `*.pukalani.app` ist JEDER Mandanten-Host same-site zu jedem
-     * anderen — genau deshalb wurde sie verschärft. Was hier durch muss, geht
-     * trotzdem durch:
-     *  - Browser-Requests dieser App sind ausnahmslos RELATIV (kein einziger
-     *    absoluter $fetch im App-Code) → `same-origin`.
-     *  - Der Embed-Fluss läuft same-origin: das iframe zeigt auf
-     *    `<community-host>/embed` und ruft `<community-host>/api/*`; das
-     *    Login-Popup ist unsere eigene Seite auf demselben Host. `embed.js` auf
-     *    der GASTGEBER-Seite macht nur GET (Zähler) — unsichere Methoden fasst
-     *    die Regel nicht an.
-     *  - Server-zu-Server (Naht zum Control Plane, Beweis-Skripte) trägt weder
-     *    Origin noch Sec-Fetch-Site → erlaubt, und ohne Browser-Cookie.
-     * Was NICHT mehr durchgeht, ist genau der Fall, für den die Härtung da ist:
-     * ein Formular auf `boese.pukalani.app` gegen `kunde.pukalani.app/api/*`.
-     */
-    security: { csrfOriginCheck: true },
+    // HERKUNFTSPRÜFUNG: gilt seit SEC-004 Stufe 2 im Core für JEDE App, ohne
+    // Schalter. Für diese App wichtig: unter der Wildcard `*.pukalani.app` ist
+    // jeder Mandanten-Host same-site zu jedem anderen, und das Embed-Cookie
+    // ist `SameSite=None`. Warum der Embed-Fluss trotzdem durchgeht:
+    // core/server/utils/csrfOrigin.ts.
     comments: {
       // Moderations-Demo: ab 3 offenen Meldungen verschwindet ein Kommentar
       // automatisch aus der öffentlichen Ansicht (zweiphasiges Hide).

@@ -61,9 +61,9 @@ paths:
 - Embed (Read-only-MVP, docs/referenz/EMBED.md): Gate pukalani.comments.embed
   (enabled/allowedOrigins, Default aus) → /embed-Seite + public/embed.js.
   frame-ancestors via core-Registry registerEmbeddableRoute (Default 'self'
-  auf ALLEN SSR-Seiten); csrf-origin.ts-Middleware (pukalani.security.
-  csrfOriginCheck) wird PFLICHT, sobald E2-Partitioned-Cookies kommen
-  (seit SEC-004 Ziel überall an — hosts-ops.md, „HERKUNFTSPRÜFUNG").
+  auf ALLEN SSR-Seiten); die Herkunftsprüfung (Middleware
+  `03.csrf-origin.ts`) schützt die partitionierten E2-Cookies — seit SEC-004
+  in jeder App an, ohne Schalter (hosts-ops.md, „HERKUNFTSPRÜFUNG").
   Transparenter Hintergrund NUR bei theme=auto. localhost:PORT↔PORT ist
   same-SITE — echtes Cross-Site-Gastverhalten braucht echte Domains.
 - Moderation: Zweiphasen-Hide + Cascade gehören dem comments-Layer

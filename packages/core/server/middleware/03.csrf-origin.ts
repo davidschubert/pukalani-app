@@ -8,16 +8,17 @@ import { isCsrfOriginExempt } from '../../shared/csrfOriginExempt'
  * auslösen — `cross-site` wird abgelehnt, `same-site` (und ein fehlender
  * `Sec-Fetch-Site` MIT `Origin`) nur durchgelassen, wenn der Origin-Host samt
  * Port dem Request-Host gleicht. Die ENTSCHEIDUNG ist pure und steht mit ihrer
- * Begründung in server/utils/csrfOrigin.ts; hier stehen nur Gate, Ausnahmen
- * und das Auslesen der Kopfzeilen.
+ * Begründung in server/utils/csrfOrigin.ts; hier stehen nur Methode, Pfad,
+ * Ausnahmen und das Auslesen der Kopfzeilen.
  *
- * WARUM ÜBERALL (SEC-004): alle Hosts unter `*.pukalani.app` sind same-site
- * zueinander, `SameSite=Lax` an den Session-Cookies trennt sie also nicht.
- * Ziel ist „von Haus aus an". Rollout in Stufen: heute noch hinter
- * `pukalani.security.csrfOriginCheck` (an in platform, comments, control und
- * der Vorlage `_template`); in Stufe 2 fällt der Schalter weg.
+ * ÜBERALL AN, KEIN SCHALTER (SEC-004, Stufe 2): alle Hosts unter
+ * `*.pukalani.app` sind same-site zueinander, `SameSite=Lax` an den
+ * Session-Cookies trennt sie also nicht. Die Prüfung gilt deshalb in JEDER
+ * App, die den Core erweitert, und liest keine App-Config (früher
+ * `pukalani.security.csrfOriginCheck`; Wächter gegen die Rückkehr eines
+ * Aus-Schalters: tests/csrf-origin-routes.test.ts, Teil B).
  *
- * AUSNAHMEN sind EINZELNE ROUTEN mit Grund in
+ * AUSNAHMEN NUR ÜBER DIE LISTE: einzelne Routen mit Grund in
  * `shared/csrfOriginExempt.ts` (`CSRF_ORIGIN_EXEMPT_ROUTES`, heute leer) —
  * kein Schalter je App. Server, Webhooks und Daemons brauchen keine: sie
  * tragen weder `Origin` noch `Sec-Fetch-Site` und passieren die Regel.
@@ -32,9 +33,6 @@ import { isCsrfOriginExempt } from '../../shared/csrfOriginExempt'
 export default defineEventHandler((event) => {
   const method = event.method
   if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH' && method !== 'DELETE') return
-
-  const appConfig = useAppConfig(event) as { pukalani?: { security?: { csrfOriginCheck?: boolean } } }
-  if (!appConfig.pukalani?.security?.csrfOriginCheck) return
 
   const url = getRequestURL(event)
   if (!url.pathname.startsWith('/api/')) return
