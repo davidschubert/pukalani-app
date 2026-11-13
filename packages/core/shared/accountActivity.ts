@@ -11,6 +11,7 @@
  * vier Quellen eine Reihenfolge bekommen, und eine falsche Reihenfolge sieht
  * man einer Liste nicht an. Pur heißt: mit Tests festnagelbar, ohne Instanz.
  */
+import type { AccountEventsSection } from './accountEvents'
 
 /**
  * Die Arten, die es gibt — BEWUSST eine geschlossene Union.
@@ -22,6 +23,11 @@
  *
  * Es sind vier, und zwar GENAU die vier, die Davids AH-3-Beschreibung nennt:
  * eigene Beiträge, eigene Kommentare, Event-Zusagen, Kurs-Einschreibungen.
+ *
+ * KONTO-EREIGNISSE („Profilbild geändert", „Passwort geändert") gehören NICHT
+ * hierher, obwohl sie seit 2026-11-13 auf derselben Seite stehen: sie haben
+ * keine Community, keinen Titel und kein Sprungziel. Ihr eigener Vertrag samt
+ * Begründung: `shared/accountEvents.ts`.
  */
 export const ACCOUNT_ACTIVITY_KINDS = ['post', 'comment', 'rsvp', 'enrollment'] as const
 export type AccountActivityKind = (typeof ACCOUNT_ACTIVITY_KINDS)[number]
@@ -29,6 +35,13 @@ export type AccountActivityKind = (typeof ACCOUNT_ACTIVITY_KINDS)[number]
 export function isAccountActivityKind(value: string): value is AccountActivityKind {
   return (ACCOUNT_ACTIVITY_KINDS as readonly string[]).includes(value)
 }
+
+/**
+ * Unter diesem Namen meldet die Route den Konto-Abschnitt als `unavailable`.
+ * Mit Bindestrich, damit er nie mit einer Contributor-Id (Layer-Name)
+ * zusammenfällt.
+ */
+export const ACCOUNT_EVENTS_SOURCE_ID = 'account-events'
 
 /** Ein einzelner Beleg eigener Aktivität. */
 export interface AccountActivityEntry {
@@ -69,6 +82,11 @@ export interface AccountActivityGroup {
 }
 
 export interface AccountActivityResponse {
+  /**
+   * Der Abschnitt „Konto und Sicherheit" — eigene Konto-Ereignisse aus dem
+   * Protokoll, OHNE Community und deshalb neben `groups`, nicht darin.
+   */
+  account: AccountEventsSection
   groups: AccountActivityGroup[]
   /**
    * Es gab mehr Einträge als das Budget — die Seite sagt das, statt eine
@@ -76,7 +94,8 @@ export interface AccountActivityResponse {
    */
   truncated: boolean
   /**
-   * Contributor-Ids, deren Abfrage fehlgeschlagen ist. FAIL-SOFT mit ANSAGE:
+   * Quellen, deren Abfrage fehlgeschlagen ist: Contributor-Ids, dazu
+   * `ACCOUNT_EVENTS_SOURCE_ID` für den Konto-Abschnitt. FAIL-SOFT mit ANSAGE:
    * die anderen Quellen erscheinen, und die Seite schreibt hin, dass etwas
    * fehlt. Ein stilles `catch(() => [])` liest sich hier als „du hast dort
    * nichts getan" — das ist der Unterschied zwischen leer und unbekannt.
