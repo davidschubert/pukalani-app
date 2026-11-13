@@ -66,7 +66,13 @@ grünen Prüfungen sagen beide „Deploy startet". (b) Wächter: eine Probe-Date
 mit NUL-Zeichen ⇒ Exit 1 mit `pfad:zeile`, ohne sie Exit 0. (c) Schlüssel-Suche:
 mit Ausnahmeliste Exit 0, ohne sie zwölf Funde, mit einer fehlenden Zeile genau
 einer. (d) Lokal grün: alle Wächter, `pnpm -r lint`, `pnpm lint:scripts`,
-`pnpm -r typecheck`, `pnpm -r test`.
+`pnpm -r typecheck`, `pnpm -r test`. (e) **Live (2026-11-13):** PR #128,
+Merge `18d9cf27`. Der Deploy dieses Stands lief schon mit dem neuen Tor: die
+Vorprüfung wartete sechs Runden (Test fertig, dann Lint, Typecheck, zuletzt
+E2E), meldete „Alle vier grün" und lieferte aus; der zweite Deploy-Lauf fand
+denselben Build vor und übersprang. `/api/health` → `.build` = `18d9cf27` auf
+allen sechs Hosts (vorher `7ca19ad9`). Der erste CI-Lauf der Schlüssel-Suche:
+Prüfsumme „OK", 2762 Commits gelesen, kein Fund.
 
 **Bewusst nicht getan.** Kein absichtlich roter Stand auf `main` als Probe —
 die Probe (a) zeigt dasselbe ohne Risiko. Der Changelog-Entwurf für Kunden
