@@ -30,6 +30,65 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P07 — Tor vor dem Ausliefern: alle vier Prüfungen halten auf ✅ 2026-11-13
+
+**Was.** Erstes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings OPS-006,
+OPS-013, SEC-044, dazu der CI-Teil von SEC-040/SEC-012). Davids Entscheidungen
+vom 2026-11-12 stehen im [DECISION-LOG](DECISION-LOG.md). Vier Dinge:
+
+1. **Das Tor (OPS-006).** Der Deploy wartete nur auf „Test" und „E2E"; „Lint"
+   und „Typecheck" meldeten bloß. Jetzt müssen alle vier für denselben Commit
+   grün sein. Das ersetzt den Juli-Beschluss „Warnlampen" (A.10 Nr. 9).
+2. **Kein Release-Automat mehr (OPS-013).** release-please ist entfernt
+   (Workflow, Konfiguration, Manifest); `CHANGELOG.md` bleibt als Historie bis
+   4.0.0.
+3. **Kein unsichtbares Zeichen in Quelltext (SEC-044).** Sechs Dateien trugen
+   ein literales NUL-Zeichen als Trenner in einer Zeichenkette. Es steht jetzt
+   als Escape `\u0000` da (zur Laufzeit dasselbe Zeichen), und der Wächter
+   `check:nul-bytes` läuft mit `pnpm lint:scripts`.
+4. **Schlüssel-Suche in der CI (SEC-040).** `gitleaks` liest bei jedem Push
+   und jedem Pull Request die ganze Historie (Job `secrets` im Lint-Workflow,
+   als Binärdatei mit Prüfsumme gepinnt). Zwölf geprüfte Testwerte stehen in
+   `.gitleaksignore`.
+
+**Wie.** `deploy.yml`: die Vorprüfung im Job `gate` fragt vier statt zwei
+Workflows ab; Auslöser und Notausgang (manueller Start ohne Vorprüfung)
+bleiben. `scripts/check-nul-bytes.mjs` prüft versionierte und neue, nicht
+ignorierte Text-Dateien nach Endung. Regeln nachgezogen in `CLAUDE.md`,
+`.claude/rules/deps-build.md` und im Doku-Guide „Tests und CI".
+
+**Beweis.** (a) Der `run`-Block der Vorprüfung, wörtlich aus der Workflow-Datei
+gezogen und lokal gegen die echten Läufe auf GitHub ausgeführt: für fünf
+frühere Stände, die mit roter Typ- oder Regel-Prüfung ausgeliefert wurden
+(`f805ac64`, `f92174a4`, `17bf76ab`, `188a5b4e`, `ed6b11ab`), sagt die alte
+Fassung „Deploy startet", die neue „kein Deploy"; für einen Stand mit vier
+grünen Prüfungen sagen beide „Deploy startet". (b) Wächter: eine Probe-Datei
+mit NUL-Zeichen ⇒ Exit 1 mit `pfad:zeile`, ohne sie Exit 0. (c) Schlüssel-Suche:
+mit Ausnahmeliste Exit 0, ohne sie zwölf Funde, mit einer fehlenden Zeile genau
+einer. (d) Lokal grün: alle Wächter, `pnpm -r lint`, `pnpm lint:scripts`,
+`pnpm -r typecheck`, `pnpm -r test`.
+
+**Bewusst nicht getan.** Kein absichtlich roter Stand auf `main` als Probe —
+die Probe (a) zeigt dasselbe ohne Risiko. Der Changelog-Entwurf für Kunden
+(`pnpm changelog:draft`) bleibt; er gehört ins Aufräum-Paket. Die sechs
+Meldungen aus `pnpm audit` (SEC-012) erledigen sich mit dem nächsten Heben der
+Werkzeug-Pakete.
+
+**Gelernt:** (1) **Wer einen Wächter in einen Lauf legt, fragt: hält dieser
+Lauf das Ausliefern auf?** Die Frage wurde im Juli einmal beantwortet, als
+Lint nur Stil prüfte — danach zogen die wichtigsten Sicherungen in genau
+diesen Lauf ein. (2) **Das NUL-Zeichen hat sich beim Beheben selbst
+vorgeführt:** `git diff | grep` zeigte für die Korrektur nichts, weil `grep`
+die Ausgabe wegen der alten Seite als binär verwarf; erst `grep -a` und
+`git diff --text` zeigten die Zeilen. (3) **git prüft nur den Anfang einer
+Datei auf Binärinhalt.** Eine der sechs Dateien trug ihr NUL erst in Zeile 548
+und galt deshalb nie als binär — der Wächter liest die ganze Datei. (4) **Ein
+Lauf, der auf Freigabe wartet, lässt sich nicht abbrechen** (er gilt als
+beendet); die alten Läufe des Release-Automaten verfallen nach 30 Tagen rot,
+wenn sie niemand löscht.
+
+---
+
 ### BS1 Datenschutz vorläufig — branding.supply sagt, was es heute tut ✅ 2026-11-12
 
 **Was.** Die Datenschutz-Seite von branding.supply trug seit BS1 R1 ein Gerüst

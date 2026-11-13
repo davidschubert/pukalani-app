@@ -59,6 +59,10 @@ paths:
   (Migrations-Runner, ops-Wächter, CI-Aufbau) deckt `pnpm lint:scripts` ab, seit
   2026-08-20 als eigener Schritt in lint.yml. Ein neues Skript dort ist also
   gelintet; vor dem Commit selbst laufen lassen, `pnpm -r lint` sieht es nicht.
+  Seit 2026-11-13 fährt `lint:scripts` davor `check:nul-bytes` (SEC-044): ein
+  LITERALES NUL-Zeichen in einer Quelldatei macht sie für git binär — ihr Diff
+  ist dann in keinem Review sichtbar, und `grep` ohne `-a` findet in ihr
+  nichts. Im Code steht das Zeichen als Escape `\u0000`.
 - DER LINT-LAUF IST MEHR ALS `lint` (2026-09-10 rot erwischt): `lint.yml` fährt
   SIEBEN Wächter vor den beiden Lint-Schritten — `check:manifests`,
   `check:i18n-keys`, `check:bilanz`, **`check:doc-links`**, `check:single-copy`,
@@ -72,3 +76,10 @@ paths:
   DECISION-LOG, in `plans/`, `referenz/`, `runbooks/` und im README nicht. Wer
   in einer dieser Dateien einen Pfad nennt (oder eine Datei löscht, die dort
   genannt ist), fährt vorher `pnpm check:doc-links`.
+- ALLE VIER PRÜFUNGEN HALTEN DEN DEPLOY AUF (seit 2026-11-13, P07, Davids
+  Entscheidung 2026-11-12): Test, Lint, Typecheck, E2E. Ein roter Wächter im
+  Lint-Lauf ist damit kein Hinweis mehr, sondern ein Stopp. Im Lint-Workflow
+  läuft dazu der Job `secrets`: `gitleaks` über die ganze Historie, als
+  Binärdatei mit Prüfsumme gepinnt, Ausnahmen in `.gitleaksignore` (nur
+  geprüfte Testwerte; ein echtes Geheimnis wird rotiert, nie eingetragen).
+  Lokal: `pnpm check:secrets` (braucht `brew install gitleaks`).
