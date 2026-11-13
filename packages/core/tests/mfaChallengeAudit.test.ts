@@ -43,6 +43,8 @@ beforeEach(async () => {
     Object.assign(new Error(input.statusText), input))
   vi.stubGlobal('logAuthEvent', logAuthEvent)
   vi.stubGlobal('limitAccountAttempts', limitAccountAttempts)
+  // Erfolgsweg (P29): merkt sich das Gerät, wirft nie — hier ohne Belang.
+  vi.stubGlobal('rememberKnownDevice', () => {})
 
   for (const mock of [createMFAChallenge, updateMFAChallenge, accountGet, getSession, logAuthEvent, limitAccountAttempts]) {
     mock.mockReset()
