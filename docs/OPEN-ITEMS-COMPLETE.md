@@ -137,6 +137,85 @@ ausgeschrieben hintereinander fahren und je Gate den Status notieren.
 
 ---
 
+### GA1 P05 — Mitmachen nur für Mitglieder, Hinweisseite für Entfernte ✅ 2026-11-13
+
+**Was.** Fünftes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
+SEC-030, SEC-031, SEC-035, SEC-036), in zwei Pull Requests. Davids
+Entscheidungen vom 2026-11-12: Schreiben darf nur, wer dazugehört; wer aus
+einer Community entfernt wurde, hat dort keinen Zugriff mehr und sieht einen
+Hinweis mit einem Weg zur Leitung. Kontaktweg (2026-11-13): kurzes Formular,
+E-Mail und Glocke an Owner und Admins, eine Nachricht pro Woche.
+
+1. **Eine Wache für alle Mitmach-Routen.** `requireCommunityParticipant`
+   (Core) steht vor jedem Schreibvorgang, der ein erster eigener Beitrag sein
+   kann: Beitrag, Kommentar, Stimme, Reaktion, Zusage, Einschreiben, Melden.
+   Bei offener Registrierung bleibt „Mitmachen ist Beitreten" (A5), sonst 403
+   mit `reason: not_a_member`. Eigenes Bearbeiten und Löschen sowie alle
+   Routen der privaten Nachrichten verlangen die Mitgliedschaft ohne Beitritt.
+   Die Datentür wertet denselben Ausgang beim Anlegen als Netz dahinter.
+2. **Antworten nur mit Zählern.** Like-, Umfrage- und Zusage-Routen lesen ihr
+   Ziel zuerst über die Mitglieder-Klinke und antworten nur noch mit Zählern
+   und dem eigenen Zustand. Die Melde-Proben prüfen ebenfalls das Leserecht;
+   eine private Nachricht kann nur melden, wer am Gespräch teilnimmt.
+3. **Kommentare.** Eine gemeinsame Prüfung des Eltern-Kommentars für Konto-
+   und Gast-Weg (aktiv, selber Faden), Kommentare nur unter veröffentlichten
+   Beiträgen, Antworten von Gästen als eigener Benachrichtigungs-Typ.
+4. **Private Nachrichten.** Sperren nur für Konten mit Bezug zur Community,
+   Owner-Schalter vor der Handle-Auflösung, eine Störung der Rechteprüfung
+   wird protokolliert und als 503 gemeldet statt als Ablehnung.
+5. **Zugriffssperre für Entfernte.** Die Middleware `06.community-removed`
+   erkennt einen entzogenen Zugang (`status='removed'`, nicht „war nie
+   Mitglied") und beantwortet jede API-Route außer einer kleinen
+   Erlaubnisliste mit 403 `community_removed`; jede Seite führt auf die
+   Hinweisseite `/removed`. Realtime bleibt aus.
+6. **Hinweisseite und Kontakt.** Hinweis ohne Namen des Administrators,
+   Abmelden, Link zum Kundenbereich, Annahme einer neuen Einladung.
+   `POST /api/community/removed-contact`: eine Nachricht je Woche je Community
+   und Konto, Glocke (`member.appeal`) und eine E-Mail je Owner und Admin mit
+   Antwort-Adresse; die Antwort nennt keine Empfänger.
+7. **Wächter.** `packages/core/tests/participation-guard-routes.test.ts`
+   zählt die schreibenden Routen der Pool-Produkte selbst; eine neue Route
+   ohne Wache wird rot.
+
+Keine Migration, kein neues Paket. Übersetzen bleibt für alle Angemeldeten
+möglich (Lesen, nicht Mitmachen).
+
+**Beweis.** Unit-Tests je Route mit den Rollen Mitglied, fremdes Konto,
+entferntes Konto (vorher rot, nachher grün); lokal gegen zwei
+Wegwerf-Communities eine Probe je Rolle (69 von 69) und
+`packages/onboarding/scripts/verify-site-authz.mjs` mit den neuen Gegenproben
+und Abschnitt 10 b2; E2E `apps/comments/e2e/community-removed.spec.ts` lokal
+gegen die Pool-Bühne (in der CI übersprungen: dort gibt es keinen
+Pool-Mandanten).
+
+**Live.** Teil 1: PR 142, Merge `5df87377`. Teil 2: PR 143, Merge `af151500`.
+Beide am 2026-11-13 ausgeliefert (`/api/health` → `.build`). Auf Live ist
+nur der Build belegt, keine Route und keine Seite — das und die übrigen
+Nacharbeiten stehen als Punkt MM1 in [OPEN-ITEMS.md](OPEN-ITEMS.md).
+
+**Gelernt:** (1) **Eine Antwort, die niemand liest, ist keine Sicherung.** Die
+Datentür fragte seit Juli nach dem Beitritt und warf die Antwort weg; „wirft
+nie" stand als Tugend im Kommentar. Wer eine Frage stellt, deren Antwort
+„nein" heißen kann, muss das „nein" behandeln. (2) **Ein Zwischenspeicher
+schlägt eine frische Tatsache, wenn er zuerst gefragt wird.** Nach „Zugang
+entziehen" antwortete der Rollen-Cache noch 30 Sekunden „Mitglied"; die
+Notiz über den Entzug stand sofort, wurde aber erst danach gelesen.
+Reihenfolge: erst das Frische, dann der Cache — und für den Rückweg (neue
+Einladung) eine eigene frische Notiz. (3) **Wer den Admin-Client zum Zählen
+braucht, liest nicht mit ihm.** Erst über die Sitzung des Nutzers lesen, dann
+zählen, und nur Zähler zurückgeben. (4) **Bremsen treffen auch die eigenen
+Beweise.** Drei Läufe des Beweis-Skripts in einer Stunde scheiterten an der
+Stunden-Bremse der Registrierung, der E2E-Test an der Bremse der
+Kontakt-Route. Probe-Skripte brauchen eine eigene Test-Adresse je Lauf. (5)
+**Im E2E erst klicken, wenn die Feldmeldung weg ist.** Ein Klick im selben
+Augenblick, in dem eine Fehlermeldung verschwindet, trifft einen Knopf, der
+gerade verrutscht; dazu die bekannte Falle „fill() vor der Hydration". (6)
+**Appwrite nimmt als Label nur Buchstaben und Ziffern.** Eine
+Wegwerf-Community mit Bindestrich in der Kennung bekommt kein Label, und die
+Probe sieht aus wie ein Fehler der neuen Arbeit.
+
+---
+
 ### GA1 P04 — Kurse: Vorschau für alle, Inhalt nur für Mitglieder ✅ 2026-11-13
 
 **Was.** Viertes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Finding
