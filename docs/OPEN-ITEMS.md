@@ -1,8 +1,8 @@
 # Offene Punkte
 
-**Stand: 15 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 16 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
-Stand: **2026-11-12**. Hier steht **nur, was noch offen ist** — in der
+Stand: **2026-11-13**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
 Beweis und den gelernten Lektionen) steht final in
 **[OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md)**.
@@ -40,6 +40,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 22 · AB1 | **Anmelde-Bremse: Nacharbeiten.** Die Bremse ist seit 2026-11-13 live (COMPLETE „GA1 P02"). Offen: (a) **Klick-Probe auf Live** mit einem eigenen Konto, (b) **Redis-Einstellung für branding.supply** und die Variable in die Pflichtliste des Wächters, (c) Uploads prüfen die Größe vor dem Einlesen, (d) zwei Fehlerwege an Anmeldung und Reset sauber trennen, (e) Mails je Empfänger begrenzen, (f) drei Kleinigkeiten. | Mittel | S je Teil | **Ja: (a) selbst, (b) Server-Einstellung** | [Einzelheiten](#ab1) |
 | 23 · KE2 | **Falscher Zwei-Faktor-Code bei der Anmeldung steht ohne Konto im Protokoll.** `mfa/challenge.post.ts` fragt nach dem Fehlversuch `account.get()`; solange der zweite Faktor fehlt, antwortet Appwrite darauf mit 401, die Zeile bekommt also keine `actorId`. Folge: der Eintrag erscheint weder beim Betroffenen unter „Konto und Sicherheit" noch mit Namen in der Betreiber-Ansicht (sichtbar ist nur der Fehlversuch beim Abschalten). Aus dem Code gelesen, noch nicht gemessen. Lösung ist eine Zeile: `challenge.userId` nehmen — dieselbe belegte Kennung, die die Konto-Bremse (PR #132) dort schon nutzt. Danach messen: Konto mit Zwei-Faktor, falscher Code, Eintrag ansehen. | Mittel | S | **Ja** — ändert, was protokolliert wird | `packages/core/server/api/auth/mfa/challenge.post.ts` |
 | 24 · KE3 | **Profilbild ohne Speichern bleibt als Datei liegen, ohne Protokoll-Eintrag.** In der Oberfläche lädt das Formular erst beim Speichern hoch; scheitert das Speichern danach (z. B. Telefonnummer schon vergeben) oder ruft jemand die Upload-Route direkt, liegt die Datei im Bucket `avatars` und ist per Adresse lesbar, bis das Konto gelöscht wird (dann räumt BE-001 auf). Kein Leck, aber Ablage-Müll. Entscheiden: Datei bei gescheitertem Speichern wieder löschen, einen Aufräum-Lauf bauen oder so lassen. | Niedrig | S | **Ja** — Entscheidung | `packages/core/app/components/user/UserProfileForm.vue` · `packages/core/server/api/storage/[bucket]/index.post.ts` |
+| 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) der Migrations-Runner baut bei jedem Lauf an drei Tabellen um, (d) vier Runbooks nennen einen Befehl, der nicht mehr geht, (e) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -536,6 +537,64 @@ Laufzeit-Tests über einen echten Community-Host (Paket P27).
   ein zweiter Lauf in derselben Minute kann 429 sehen). Zwei verrutschte
   Kommentare in `05.rate-limit.ts` und ein Testtitel. Der Dev-Server warnt bei
   Node 22.18 (verlangt 22.21 oder neuer).
+
+<a id="pb1"></a>
+
+**PB1 — Profilbild-Ablage: Nacharbeiten (aus dem Gesamtaudit, Paket P01).**
+Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
+Sitzungen: an keinem der Punkte unten wird gerade gearbeitet. Schon woanders
+eingeplant und deshalb NICHT hier: der Wächter für Rechte an TABELLEN (Paket
+P13, „Schreiben nur noch über den Server") und hochgeladene Bilder, die
+ohne gespeichertes Profil liegen bleiben (Punkt KE3 oben). Beim Abgleich erledigt: der echte
+Upload auf `account.pukalani.app` ist gemessen (COMPLETE „GA1 P01", Beweis h),
+und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
+`apps/comments/e2e/themes-visual.spec.ts`, die mit Absicht nur lokal laufen.
+
+- **(a) Upload auf den drei anderen Seiten.** Die Upload-Route schreibt seit
+  P01 mit dem Laufzeit-Schlüssel der jeweiligen Site. Gemessen ist das im
+  Projekt `account`. Auf `admin.pukalani.app`, `portfolio.pukalani.app` und
+  `branding.supply` je einmal ein Profilbild hochladen (wo die Seite eines
+  anbietet). Scheitert es, fehlt dem Schlüssel dort das Schreibrecht für
+  Dateien ([APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md)).
+- **(b) Schlüssel der Migrations-Envs.** In drei der vier Dateien steht der
+  Schlüssel unter `NUXT_APPWRITE_KEY` statt unter
+  `NUXT_APPWRITE_MIGRATIONS_KEY`; jeder Lauf warnt deshalb „Fallback". Und drei
+  der vier Schlüssel dürfen keine Dateilisten lesen: der Bestand der
+  Profilbild-Ablage ist nur in `account` nachgesehen (12 Dateien, alles
+  Bilder), in `admin`, `portfolio` und `branding` nicht. Namen angleichen;
+  das Leserecht ergänzen oder bewusst weglassen (Änderung am Schlüssel, Davids
+  Ja).
+- **(c) Der Runner baut bei jedem Lauf um.** `scripts/migrate.mjs` führt kein
+  Register und fährt jede Migration jedes Mal. Im Layer `system` legen ältere
+  Migrationen Spalten an, die spätere wieder entfernen (`app_config.features`,
+  `app_config.entitlements`, `activities.tenantId`, `notifications.tenantId`
+  samt Index) — bei JEDEM Lauf, lokal in allen vier Projekten gesehen. Auf
+  Production baut damit jede neue `system`-Migration kurz an drei Tabellen um.
+  Abhilfe: die Anlege-Migrationen prüfen, ob eine spätere die Spalte entfernt
+  hat, oder ein Register. Passt zum Audit-Paket P21 (Migrationen), steht dort
+  aber nicht im Zuschnitt. Bis dahin: eine einzeln freigegebene Migration als
+  Datei direkt fahren, nicht über den Runner (so bei `system-039` geschehen).
+- **(d) Vier Runbooks nennen einen Befehl, der nicht mehr geht.**
+  `pnpm migrate … --env-file <pfad>` scheitert seit pnpm 10.29 (pnpm wertet
+  die Option selbst aus, Exit 9). So steht es noch in
+  [ADMIN-PROJEKT-CUTOVER.md](runbooks/ADMIN-PROJEKT-CUTOVER.md),
+  [CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md),
+  [DEPLOYMENT.md](runbooks/DEPLOYMENT.md) und
+  [MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md). Die
+  richtige Form steht in
+  [BRANDING-SUPPLY-SETUP.md](runbooks/BRANDING-SUPPLY-SETUP.md):
+  `node --experimental-strip-types scripts/migrate.mjs --app <app> --env-file <pfad>`.
+- **(e) Kleinigkeiten.** Die Upload-Route fängt einen Fehler von Appwrite nicht
+  ab; er wird zu einer allgemeinen 500 statt zu einer verständlichen Meldung
+  (`packages/core/server/api/storage/[bucket]/index.post.ts`). Die fünf
+  Bootstrap-Skripte und `system-032` legen die Ablage verschieden an
+  (Verschlüsselung und Virenprüfung nur in der Migration) — beim
+  Zusammenführen der Bootstrap-Skripte (Audit-Paket P26) angleichen. In
+  `.claude/rules/tests.md` fehlt der Hinweis, dass `platform.pukalani.app` nur
+  `/api/health` beantwortet: eine Live-Probe einer Route gehört auf einen
+  Kontroll- oder Community-Host. Und lokal tragen alle vier Projekte die neue
+  Ablage: ein Checkout, der älter ist als `8b658900`, kann lokal kein
+  Profilbild mehr hochladen (Haupt-Checkout aktualisieren).
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
