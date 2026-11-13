@@ -29,8 +29,8 @@ niemand weiß, ob ein Häkchen noch Arbeit bedeutet.
 Dazu im Repo-Wurzelverzeichnis: [../README.md](../README.md) (Einstieg +
 Phasen-Statustabelle), [../CLAUDE.md](../CLAUDE.md) (die Regeln für
 KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
-[../CHANGELOG.md](../CHANGELOG.md) (Release-Historie, von release-please
-gepflegt).
+[../CHANGELOG.md](../CHANGELOG.md) (Release-Historie bis 4.0.0 — seit
+2026-11-13 nicht mehr fortgeschrieben, release-please abgeschaltet).
 
 ## Referenz — wie ist es gebaut
 
@@ -47,7 +47,7 @@ gepflegt).
 | [referenz/AUTH-FORMS.md](referenz/AUTH-FORMS.md) | Warum Login/Register eigene UForms sind |
 | [referenz/EMBED.md](referenz/EMBED.md) | Embed-Widget: Gates, CSP, Cookie-Verhalten |
 | [referenz/EIGENE-DOMAIN.md](referenz/EIGENE-DOMAIN.md) | Kundendomains: Pool-Tenant vs. Silo-Alias, Zustandskette, kanonischer Host |
-| [referenz/CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) | Release-Please + Kunden-Changelog |
+| [referenz/CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) | Kunden-Changelog (Entwurf → Dashboard); Entwickler-CHANGELOG/release-please seit 2026-11-13 abgeschaltet |
 | [referenz/LIVE-BEWEISE.md](referenz/LIVE-BEWEISE.md) | Welche Beweis-Skripte es gibt und wogegen sie laufen |
 | [referenz/FIGMA-KORREKTURFLAECHE.md](referenz/FIGMA-KORREKTURFLAECHE.md) | Figma als Korrekturfläche: Zyklus, Token-Brücke, die vier Diff-Klassen |
 

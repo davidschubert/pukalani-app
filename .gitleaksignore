@@ -1,0 +1,28 @@
+# Ausnahmeliste der Schlüssel-Suche gitleaks (Job `secrets` in
+# .github/workflows/lint.yml). Format je Zeile: commit:datei:regel:zeile.
+# Hier stehen NUR Fingerprints, nie Werte.
+#
+# Jeder Eintrag ist ein geprüfter Test- oder Platzhalterwert (Stand 2026-11-13):
+# - packages/core/tests/mailUndeliverable.test.ts: öffentlicher Testvektor aus der Svix-Doku
+# - ops/appwrite-upgrade-2.7.1.sh: Beispiel-Nonce aus RFC 6455 im WebSocket-Handshake
+# - packages/brand/scripts/verify-brand-share.mjs: Erkennungsmarken eines Beweisskripts
+# - packages/billing/tests/stripe-keys.test.ts: Stripe-Schlüssel-Attrappen im Unit-Test
+# - ops/realtime-watchdog.sh: fester Nonce im WebSocket-Handshake des Wächters
+#
+# Regel für Neues: ein neuer Fund wird NICHT hier eingetragen, bevor geklärt
+# ist, dass er kein echtes Geheimnis ist. Ein echtes Geheimnis wird beim
+# Anbieter rotiert (und aus dem Code genommen), nicht ignoriert — das Repo ist
+# öffentlich, die Historie also auch.
+
+0ab5b6a9e8f4f618aeebecaf6c753835d491d517:packages/core/tests/mailUndeliverable.test.ts:generic-api-key:129
+5a92941e2b31b3a89cad36cfe7236f2686dd8f23:ops/appwrite-upgrade-2.7.1.sh:generic-api-key:86
+c9d7c2a7da26ec2aa51da339c8adbc3dd2be8bfc:packages/brand/scripts/verify-brand-share.mjs:generic-api-key:177
+c9d7c2a7da26ec2aa51da339c8adbc3dd2be8bfc:packages/brand/scripts/verify-brand-share.mjs:generic-api-key:178
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:11
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:27
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:49
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:50
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:58
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:64
+91d75b054f6c3afdc16e6cff4c58965e65fb6242:packages/billing/tests/stripe-keys.test.ts:stripe-access-token:76
+596aa7793471c74e843c094d32d948bfe831769f:ops/realtime-watchdog.sh:generic-api-key:34

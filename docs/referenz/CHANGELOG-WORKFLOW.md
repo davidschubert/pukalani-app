@@ -1,29 +1,26 @@
 # Changelog-Workflow
 
-Zwei getrennte Spuren — bewusst **release-basiert**, nicht pro Push (jeder Push
-wäre WIP-Rauschen für Endnutzer).
+Zwei getrennte Spuren, nicht pro Push (jeder Push wäre WIP-Rauschen für
+Endnutzer). Track 1 ist seit 2026-11-13 abgeschaltet; es gibt keine neuen
+Releases mehr.
 
-## Track 1 — Entwickler-`CHANGELOG.md` (voll automatisch)
+## Track 1 — Entwickler-`CHANGELOG.md` (ABGESCHALTET seit 2026-11-13)
 
-Aus den Conventional Commits via **release-please**
-([`.github/workflows/release-please.yml`](../../.github/workflows/release-please.yml)).
+Von 2026-07-08 bis 2026-11-13 schrieb **release-please** aus den Conventional
+Commits einen Release-PR mit Versionsnummer und Änderungsliste; sein Merge
+erzeugte Git-Tag + GitHub-Release. Davids Entscheidung vom 2026-11-12: das
+wird nicht gebraucht, der Automat ist abgeschaltet (Workflow, Konfiguration und
+Versions-Manifest gelöscht).
 
-- Bei Push auf `main` pflegt release-please einen **Release-PR**: sammelt
-  `feat`/`fix`/`perf`/`refactor`, schreibt `CHANGELOG.md` fort, schlägt die
-  nächste SemVer-Version vor.
-- **Merge des PRs** erzeugt Git-Tag + GitHub-Release.
-- Kein DB-Zugriff, keine Secrets — nutzt den eingebauten `GITHUB_TOKEN`.
-- Konfiguration: [`release-please-config.json`](../../release-please-config.json),
-  Stand der Versionen: [`.release-please-manifest.json`](../../.release-please-manifest.json)
-  (gestartet bei `1.4.0`, passend zum bisherigen Produkt-Changelog → nächstes
-  `feat` ⇒ `1.5.0`).
-- `bootstrap-sha` begrenzt den ersten Lauf auf Commits **nach** dem
-  Backfill-Commit (`466be65e…`, volle SHA nötig — als Kurz-SHA wirkungslos),
-  damit die History nicht doppelt in `CHANGELOG.md` landet.
-- Voraussetzung (Repo-Setting, 2026-07-08 aktiviert): *Settings → Actions →
-  General → „Allow GitHub Actions to create and approve pull requests"* —
-  ohne das schlägt jeder Lauf mit „GitHub Actions is not permitted to create
-  or approve pull requests" fehl und es entsteht nie ein Release-PR.
+- **Warum:** Releases steuern hier nichts — ausgeliefert wird je Push auf
+  `main`. Der Release-PR lag monatelang offen, und seine Prüfläufe warteten
+  30 Tage auf eine Freigabe und verfielen dann als rote Läufe, die nichts
+  bedeuteten.
+- **Was bleibt:** [`CHANGELOG.md`](../../CHANGELOG.md) als Historie bis
+  Version **4.0.0** (letztes Release, veröffentlicht 2026-11-07), nicht mehr fortgeschrieben.
+  **Conventional Commits bleiben Pflicht** — die Git-Historie ist jetzt das
+  Entwickler-Änderungsprotokoll, Erledigtes steht zusätzlich in
+  `docs/OPEN-ITEMS-COMPLETE.md`.
 
 ## Track 2 — Produkt-„Was ist neu" (kuratiert, assistiert)
 
@@ -55,6 +52,12 @@ Läuft **lokal**. `pnpm changelog:draft` liest seine vier Variablen
 Prod denselben Aufruf mit `node --env-file=<prod-env des Projekts admin>
 packages/admin/scripts/changelog-draft.mjs …` fahren; der Schlüssel braucht
 `rows.write` auf der Tabelle `changelog`.
+
+**Seit Track 1 abgeschaltet ist (2026-11-13):** es entstehen keine neuen
+Releases und keine neuen Tags mehr. Ohne `--since` liest das Skript die
+Commits seit dem letzten Tag (`git describe --tags`) — das bleibt `v4.0.0`,
+der Bereich wächst also mit jedem Commit. Für einen sinnvollen Entwurf
+`--since=<SHA oder Datum des letzten veröffentlichten Eintrags>` angeben.
 
 ### Zwei Fallen beim Veröffentlichen (CL1, 2026-11-06)
 

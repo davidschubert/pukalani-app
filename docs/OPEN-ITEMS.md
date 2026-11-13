@@ -114,7 +114,8 @@ Zero-Downtime Stufe 2, Alerting, GDPR, pages-Layer
 (/imprint,/terms,/privacy editierbar + Footer-Links). M1–M9 komplett,
 Self-Service-Onboarding komplett, **alle sechs Kundenprodukte durch die
 Datentür** (comments, posts, pages, moderation, events, courses).
-Release **v3.0.0** (2026-07-28).
+Letztes Release **v4.0.0** (2026-11-07) — seit 2026-11-13 gibt es keinen
+Release-Automaten mehr (P07, DECISION-LOG 2026-11-12).
 
 **Dazu seit der Woche 2026-08-04..09:** **eigene Kundendomains** (Pool ab Pro,
 Silo je Site) mit `www.pukalani.studio` als erstem echten Fall — Rest siehe

@@ -180,9 +180,12 @@ Ist die Arbeit doppelt, wird der EIGENE Commit fallen gelassen, nicht gegen die
 fremde Lösung gemergt. Was der Nachbar uncommittet offen hat, wird NIE
 angefasst (kein stash, kein reset) — notfalls warten.
 
-NACH JEDEM main-PUSH: vier Checks (Test/Lint/Typecheck/E2E); der Deploy feuert
-per workflow_run auf Test UND E2E, startet also ZWEIMAL — einer der Läufe endet
-per Concurrency „cancelled", das ist KEIN Fehler. Der einzige Prod-Beweis ist
+NACH JEDEM main-PUSH: vier Checks (Test/Lint/Typecheck/E2E) — seit 2026-11-13
+müssen ALLE VIER grün sein, sonst wird nicht ausgeliefert (P07; vorher hielten
+nur Test und E2E auf). Der Deploy feuert per workflow_run auf Test UND E2E,
+startet also ZWEIMAL — einer der Läufe endet per Concurrency „cancelled", das
+ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, den Deploy-Lauf
+ebenfalls neu starten (er feuert nicht von selbst). Der einzige Prod-Beweis ist
 der Live-Build-SHA: `curl https://<host>/api/health` → `.build`. Ein späterer
 Deploy ohne App-Änderung überspringt und lässt den SHA des Vorgängers stehen.
 
