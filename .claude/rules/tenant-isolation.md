@@ -103,6 +103,31 @@ paths:
   (`trigger: 'legacy'`, umgeht den Schalter — kein Backfill-Skript, weil die
   Wahrheit im Runtime-Projekt und die Zeile im Control Plane liegt). Beweis:
   Abschnitt 10 in `packages/onboarding/scripts/verify-site-authz.mjs`.
+- KURSE: VORSCHAU FÜR ALLE, INHALT FÜR MITGLIEDER (SEC-029, seit 2026-11-13 —
+  Davids Entscheidung 2026-11-12): Übersicht und Vorschau eines
+  VERÖFFENTLICHTEN Kurses sieht jeder, auch ohne Konto und auch in einer
+  Community „nur für Mitglieder"; Lektions-Inhalt, Einschreiben, Fortschritt
+  und Übersetzen gibt es nur für angemeldete Mitglieder. Rechte-Modell „nur
+  Server-Zugriff" wie bei `pages`: Zeilen in `courses` und `lessons` tragen
+  KEIN Leserecht (auch veröffentlichte nicht), die Routen lesen über die
+  Operator-Klinke und sind die EINZIGE Grenze. Deshalb gibt es für Kurse auch
+  keinen Eintrag beim Publikums-Wechsel (kein Recht, das umziehen könnte).
+  Drei Dinge, die eine neue Kurs-Route braucht: (1) öffentliche Antworten
+  NUR über die Feldauswahl `toCoursePreview`/`toLessonSummary`
+  (`courses/shared/coursePreview.ts`) — nie die rohe Zeile, ein neues Feld
+  wird sonst von selbst öffentlich; (2) alles hinter der Vorschau ruft
+  `requireCourseMember(event)` VOR dem ersten Datenbankzugriff (gleiche
+  Antwort für vorhandene und unbekannte Ids; 403 mit `reason: not_a_member`);
+  (3) nur das EINSCHREIBEN darf der Beitritt sein
+  (`requireCourseMemberJoining`: erst Inhalts-Sperre, dann
+  `joinCommunity('contribution')`, und der AUSGANG zählt — direkt nach einem
+  frischen Beitritt sagt der Mitgliedschafts-Cache noch bis zu 30 s „nein").
+  WARUM KEIN LESERECHT AN DER ZEILE: ein Recht an der Zeile gilt NEBEN den
+  Routen und weiß nichts von Mitgliedschaft oder Feldauswahl; im Pool ist
+  `Role.users()` außerdem kein Publikum einer Community. Wächter: `packages/courses/tests/course-server-only-read.test.ts`
+  (kein `Permission.read` außer `ownRowRead`, keine Route über die
+  Mitglieder-Klinke); Live-Beweis: Abschnitt 7 in
+  `packages/courses/scripts/verify-pool-isolation.mjs`.
 - BENACHRICHTIGUNGEN sind ABLAGE, nicht Zugriff (C15, seit 2026-07-29):
   `notifications.communityId` (system-022, seit E8-3 so benannt) entscheidet, in WELCHER Glocke eine
   Meldung erscheint — wer sie lesen darf, bleiben die Row-Permissions (nur

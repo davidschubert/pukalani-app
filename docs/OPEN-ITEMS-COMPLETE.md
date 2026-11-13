@@ -91,6 +91,58 @@ ausgeschrieben hintereinander fahren und je Gate den Status notieren.
 
 ---
 
+### GA1 P04 — Kurse: Vorschau für alle, Inhalt nur für Mitglieder ✅ 2026-11-13
+
+**Was.** Viertes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Finding
+SEC-029). Davids Entscheidung vom 2026-11-12: Übersicht und Vorschau eines
+veröffentlichten Kurses sieht jeder, auch ohne Konto; Lektionen ansehen und
+sich einschreiben darf nur, wer angemeldet und Mitglied der Community ist.
+
+1. **Rechte-Modell „nur Server-Zugriff".** Kurs-Zeilen tragen kein Leserecht
+   mehr. Ausgeliefert
+   wird nur noch über die Routen, über die Operator-Klinke der Datentür —
+   dasselbe Muster wie bei `pages` und `lessons`.
+2. **Vorschau als Feldauswahl.** `GET /api/courses` und
+   `GET /api/courses/:slug` brauchen keine Anmeldung mehr und antworten nur
+   noch mit einer festen Auswahl (`toCoursePreview`, `toLessonSummary`): Titel,
+   Beschreibung, Zugangsart, Autor-Name, Zahl der Lektionen, Gliederung mit
+   Lektions-Titeln. Kein Lektions-Inhalt, kein Video-Link, keine internen
+   Kennungen. Einschreibung und Fortschritt stehen nur für Mitglieder drin.
+3. **Mitglieder-Wache.** Lektion lesen, Lektion abschließen und beide
+   Übersetzungs-Routen rufen `requireCourseMember` vor dem ersten
+   Datenbankzugriff. Einschreiben ist „Mitmachen" (A5) und darf in einer
+   Community mit offener Registrierung der Beitritt sein
+   (`requireCourseMemberJoining`); sonst 403 mit `reason: not_a_member`.
+4. **Oberfläche.** Kurs-Übersicht und Kursseite sind ohne Anmeldung erreichbar
+   (Menüpunkt ohne `requiresAuth`); Gäste sehen „Anmelden, um teilzunehmen",
+   Nicht-Mitglieder einen klaren Satz statt einer Fehlerseite.
+5. **Migration `courses-008`** nimmt dem Bestand die breiten Leserechte ab,
+   wiederholbar, mit Probelauf (`DRY_RUN=1`). **Reihenfolge: erst Code
+   ausliefern, dann Migration** — der neue Code braucht sie nicht, der alte
+   hätte nach ihr einen leeren Katalog gezeigt.
+
+**Beweis.** Unit-Tests je Route (vorher 22 rot, nachher 163 grün im Paket),
+Wächter am Quelltext, E2E `courses-preview.spec.ts`, und der Live-Beweis
+`packages/courses/scripts/verify-pool-isolation.mjs` mit neuem Abschnitt 7
+(56 von 56 lokal): Gast, fremdes Konto, Mitglied, Entwurf, Direktweg an der
+Appwrite-REST-API, Beitritt durch Einschreiben.
+
+**Gelernt:** (1) **Ein Leserecht an der Zeile gilt neben den Routen.** Die
+Datentür ist nur im eigenen Server eine Grenze, und im Pool ist `Role.users()`
+kein Publikum einer Community. Wo eine Route ohnehin auswählt, was sie zeigt,
+gehört gar kein Leserecht an die Zeile.
+(2) **Eine Liste, bei der man sich anmelden muss, hat stille Lücken.** Kurse
+fehlten beim Publikums-Wechsel, weil niemand sie eingetragen hatte; mit „kein
+Leserecht" gibt es nichts mehr, das man vergessen kann. (3) **Reihenfolge von
+Migration und Auslieferung vorher an beiden Codeständen prüfen:** „alter Code
+mit neuen Rechten" und „neuer Code mit alten Rechten" sind zwei Fragen, und
+hier lautete die Antwort ausnahmsweise „erst ausliefern". (4) **Direkt nach
+einem Beitritt kennt der Mitgliedschafts-Cache das neue Mitglied noch nicht**
+(bis 30 s) — wer in derselben Anfrage beitreten lässt und dann prüft, muss den
+Ausgang des Beitritts nehmen, nicht die Mitgliedschafts-Frage.
+
+---
+
 ### GA1 P02 — Anmelde-Bremse: vorab zählen, je Konto zählen ✅ 2026-11-13
 
 **Was.** Drittes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
