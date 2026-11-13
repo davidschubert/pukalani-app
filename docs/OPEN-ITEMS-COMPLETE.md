@@ -173,6 +173,13 @@ Wächter am Quelltext, E2E `courses-preview.spec.ts`, und der Live-Beweis
 (56 von 56 lokal): Gast, fremdes Konto, Mitglied, Entwurf, Direktweg an der
 Appwrite-REST-API, Beitritt durch Einschreiben.
 
+**Live.** PR 139, Merge `42987ae7`, am 2026-11-13 auf allen sechs Hosts
+(`/api/health` → `.build`). Migration `courses-008` am selben Tag auf Production
+im Projekt `account` gefahren (Davids Ja, nach dem Ausliefern): Probelauf 3,
+echter Lauf 3 geändert, zweiter Lauf 0 geändert; zurückgelesen: kein Kurs trägt
+mehr ein Leserecht. Nicht auf Live geprüft sind die Seiten selbst — das und die
+übrigen Nacharbeiten stehen als Punkt KU1 in [OPEN-ITEMS.md](OPEN-ITEMS.md).
+
 **Gelernt:** (1) **Ein Leserecht an der Zeile gilt neben den Routen.** Die
 Datentür ist nur im eigenen Server eine Grenze, und im Pool ist `Role.users()`
 kein Publikum einer Community. Wo eine Route ohnehin auswählt, was sie zeigt,
