@@ -545,7 +545,7 @@ function shapeClaims(
     }
 
     // Zweimal dasselbe Feld mit derselben Aussage: der erste gewinnt.
-    const key = `${claim.fieldId} ${claim.statement.toLowerCase()}`
+    const key = `${claim.fieldId}\u0000${claim.statement.toLowerCase()}`
     if (seen.has(key)) continue
     seen.add(key)
 
