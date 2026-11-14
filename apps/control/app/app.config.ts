@@ -95,7 +95,10 @@ export default defineAppConfig({
     // Das Mapping gehört HIERHER und nicht in den runner-Layer (A14): nur DIESE
     // App komponiert runner UND tickets, der Layer kennt tickets nicht. Der
     // Absender (finish.post.ts) hängt die subjectId ans Präfix.
-    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' } },
+    // Aufräum-Lauf (BE-025): zuerst nur ZÄHLEN. Auf 'apply' stellt eine spätere
+    // Änderung, nachdem die Zahlen der stündlichen Log-Zeile `runner.retention`
+    // durchgesehen sind — Löschen ist nicht umkehrbar.
+    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'dry-run' },
     // C17: DIESE App ist der Leser der kontobezogenen Meldungen. Beide
     // `scope: 'account'`-Absender leben hier (Stripe-Webhook im billing-Layer,
     // Early-Access-Anfragen im control-Layer) und schreiben in DIESES
