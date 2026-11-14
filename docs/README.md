@@ -61,6 +61,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md) | Control-Host-Umzug (+ die drei Restkrümel) |
 | [runbooks/ACCOUNT-CUTOVER.md](runbooks/ACCOUNT-CUTOVER.md) | AH-1: Projekt `pool` → `account` und Host `my.`/`start.` → `account.` in EINEM Fenster |
 | [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Appwrite-Key rotieren |
+| [runbooks/CI-SCHLUESSEL-TAUSCHEN.md](runbooks/CI-SCHLUESSEL-TAUSCHEN.md) | Die zwei SSH-Schlüssel der CI (Ausliefern, Wächter): wo sie liegen, was sie dürfen, tauschen ohne Stillstand, Tor-Skript auf appwrite-prod |
 | [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Wer hält welchen Schlüssel im Projekt `control` — und wie man das nachmisst |
 | [runbooks/APPWRITE-PROD-SPIEGEL.md](runbooks/APPWRITE-PROD-SPIEGEL.md) | Prod-Appwrite 1:1 in die lokale OrbStack-Appwrite spiegeln (Skript, was lokal bewusst anders ist, Rückweg) |
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |

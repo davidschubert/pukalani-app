@@ -13,15 +13,16 @@
 # Prüfung, die eine Projektregel sichert, muss das Ausliefern aufhalten,
 # nicht nur melden. `workflow_dispatch` als manueller Hebel bleibt.
 #
-# Zugang: dedizierter SSH-Deploy-Key (Repo-Secret PLOI_SSH_KEY, ploi-User,
-# authorized_keys auf app-prod); Host-Key ist unten GEPINNT (kein blindes
-# ssh-keyscan zur Laufzeit). Ohne Secret ist der Deploy ein no-op.
+# Zugang: eigener SSH-Schlüssel NUR für das Ausliefern (Secret
+# DEPLOY_SSH_KEY in der Umgebung `production`, die nur den Zweig `main`
+# zulässt; auf app-prod als ploi-User mit `restrict` in authorized_keys). Die
+# Wächter haben einen anderen (production-watch.yml). Der Host-Key ist unten
+# GEPINNT (kein blindes ssh-keyscan zur Laufzeit). Ohne Secret wird der Lauf
+# rot. Schlüssel tauschen: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md
 #
 # FALLBACK (Server baut selbst): die ploi-Deploy-Scripts der 4 Sites sind
 # unverändert funktionsfähig — im Notfall (Actions down) in ploi den
-# Deploy-Button drücken oder die Webhooks feuern
-# (Secrets PLOI_DEPLOY_WEBHOOK_* existieren weiter, werden hier aber
-# nicht mehr benutzt).
+# Deploy-Button drücken.
 #
 # Env Vars (NUXT_APPWRITE_KEY etc.) leben als Server-.env je Site —
 # NIE im Repo; ploi „Quick Deploy" bleibt AUS.
@@ -72,6 +73,16 @@ concurrency:
 env:
   SERVER: 49.13.211.173
   SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
+  EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  # DIE EINE APP→HOST-LISTE (2026-09-01). Sie speist BEIDE Schritte, die
+  # Hosts kennen muessen: die Change-Detection („welcher Build laeuft wo?")
+  # und die Auslieferung („wohin rsyncen, wen fragen?"). Genau eine zweite,
+  # getrennt gepflegte Liste war die Luecke, durch die branding gefallen
+  # ist: die Auslieferung kannte den Host, die Diff-Basis nicht — und was
+  # keine Diff-Basis ist, kann auch nie als „haengt zurueck" auffallen.
+  # Neue App ⇒ HIER eintragen, nirgends sonst.
+  APP_HOSTS: 'portfolio=portfolio.pukalani.app control=admin.pukalani.app platform=platform.pukalani.app marketing=pukalani.app help=help.pukalani.app branding=branding.supply'
 
 jobs:
   # ── Vorprüfung: ALLE VIER Prüf-Workflows müssen für DIESEN Commit grün sein ─
@@ -90,8 +101,8 @@ jobs:
     # Prüfläufe fremder Pull Requests, und der Filter `branches: [main]` greift
     # dabei auf den HEAD-Branch des Auslösers — ein Fork, dessen Branch „main"
     # heißt, passiert ihn. Der Deploy läuft aber im Kontext DIESES Repos, also
-    # MIT `PLOI_SSH_KEY`. Ohne die beiden Zusatzbedingungen könnte ein Fremder
-    # damit eigenen Code auf den Produktionsserver schieben.
+    # MIT dem Ausliefer-Schlüssel. Ohne die beiden Zusatzbedingungen könnte ein
+    # Fremder damit eigenen Code auf den Produktionsserver schieben.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -151,29 +162,23 @@ jobs:
           fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
 
-  deploy:
+  # ── Plan: gehört der Commit zu main, und gibt es etwas auszuliefern? ─────
+  # Ohne Secret. Entscheidet für ALLE folgenden Jobs, ob sie laufen.
+  plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     needs: gate
     if: needs.gate.outputs.go == 'true'
-    env:
-      EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
-      # DIE EINE APP→HOST-LISTE (2026-09-01). Sie speist BEIDE Schritte, die
-      # Hosts kennen muessen: die Change-Detection („welcher Build laeuft wo?")
-      # und die Auslieferung („wohin rsyncen, wen fragen?"). Genau eine zweite,
-      # getrennt gepflegte Liste war die Luecke, durch die branding gefallen
-      # ist: die Auslieferung kannte den Host, die Diff-Basis nicht — und was
-      # keine Diff-Basis ist, kann auch nie als „haengt zurueck" auffallen.
-      # Neue App ⇒ HIER eintragen, nirgends sonst.
-      APP_HOSTS: 'portfolio=portfolio.pukalani.app control=admin.pukalani.app platform=platform.pukalani.app marketing=pukalani.app help=help.pukalani.app branding=branding.supply'
+    outputs:
+      skip: ${{ steps.changes.outputs.skip }}
     steps:
       - name: Repo auschecken
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.EXPECTED_SHA }}
           fetch-depth: 0
+
 
       # Zweiter, unabhängiger Riegel: egal wie der Lauf zustande kam — was
       # nicht auf origin/main liegt, wird nicht ausgeliefert. Das hält auch
@@ -267,68 +272,214 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+  # ── DER SCHLÜSSEL LIEGT NIE NEBEN FREMDEM CODE (SEC-042, 2026-11-14) ─────
+  # Bis dahin war das EIN Job: der Schlüssel zum Server lag auf der Platte,
+  # während `pnpm install` und sechs Builds liefen — alles, was dabei
+  # ausgeführt wird (Build-Werkzeuge, Module, deren Abhängigkeiten), konnte ihn
+  # lesen. Jetzt sind es drei Jobs auf drei frischen Maschinen:
+  #   fonts    MIT Schlüssel, ohne Checkout und ohne Installieren: holt nur den
+  #            Font-Cache vom Server und reicht ihn als Artefakt weiter.
+  #   build    OHNE jedes Secret: installiert, baut, packt die sechs `.output`.
+  #   deliver  MIT Schlüssel, ohne `pnpm` und ohne `node_modules`: entpackt
+  #            und liefert aus.
+  # Der Schlüssel steht in der Umgebung `production`; die lässt nur den Zweig
+  # `main` zu (SEC-041). Ein Lauf von einem anderen Zweig bekommt ihn nicht.
+  # Die Artefakte eines öffentlichen Repos sind für jedes angemeldete
+  # GitHub-Konto abrufbar: sie enthalten nur, was sich aus dem öffentlichen
+  # Repo ohnehin bauen lässt (der Build läuft ohne `.env`, die Geheimnisse der
+  # Apps liegen ausschließlich auf dem Server). Deshalb darf hier NIE ein
+  # Secret oder eine `.env` in den Build-Job wandern.
+  #
+  # FONT-CACHE VOM SERVER (2026-08-11, vier rote Deploys an einem Tag):
+  # @nuxt/fonts löst Google-Font-URLs beim Build LIVE auf, und Googles
+  # CDN/Metadaten liefen auseinander — die Runner bekamen tote URLs
+  # (FetchError 404 auf fonts.gstatic), während dieselbe Auflösung von
+  # anderswo funktionierte. Der Cache (…/node_modules/.cache/nuxt/fonts)
+  # trägt BEIDES: die WOFF2s UND die aufgelösten Metadaten (meta/*-data
+  # .json) — gesät ist der Build für bekannte Familien komplett offline.
+  # Gespeist wird er vom Prod-Server (~/fonts-cache), NICHT von
+  # actions/cache: das Seed kam von einer Maschine mit gesunder Auflösung,
+  # und genau das darf ein Runner nie überschreiben — deshalb unten das
+  # RÜCKSCHREIBEN NUR ADDITIV (--ignore-existing): neue Familien kommen
+  # dazu, eine vom Runner stale aufgelöste Datei ersetzt nie eine gute.
+  # Fail-soft (|| true): ohne Cache baut es wie bisher — nur eben mit
+  # Google-Risiko.
+  fonts:
+    runs-on: ubuntu-latest
+    permissions: {}
+    needs: plan
+    if: needs.plan.outputs.skip != 'true'
+    environment:
+      name: production
+      # Nur die Secrets der Umgebung, kein Eintrag in der Deployment-Liste —
+      # den schreibt der Job `deliver`.
+      deployment: false
+    steps:
       - name: SSH einrichten (gepinnter Host-Key)
-        if: steps.changes.outputs.skip != 'true'
         env:
-          SSH_KEY: ${{ secrets.PLOI_SSH_KEY }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           set -u
           if [ -z "$SSH_KEY" ]; then
-            echo "::error::Secret PLOI_SSH_KEY fehlt — CI-Build-Deploy kann nicht ausliefern."
+            echo "::error::Secret DEPLOY_SSH_KEY fehlt in der Umgebung production — CI-Build-Deploy kann nicht ausliefern."
             exit 1
           fi
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$SERVER_HOSTKEY" > ~/.ssh/known_hosts
-          printf 'Host prod\n  HostName %s\n  User ploi\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n' "$SERVER" >> ~/.ssh/config
+          printf 'Host prod\n  HostName %s\n  User ploi\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  BatchMode yes\n  ConnectTimeout 20\n' "$SERVER" >> ~/.ssh/config
+
+      # Fail-soft (|| true): ohne Cache baut es wie bisher — nur eben mit
+      # Google-Risiko. Das Archiv entsteht IMMER (notfalls leer), sonst fände
+      # der Build-Job kein Artefakt und der Deploy stünde.
+      - name: Font-Cache vom Server holen
+        run: |
+          set -eu
+          mkdir -p fonts-seed
+          rsync -a "prod:/home/ploi/fonts-cache/" fonts-seed/ || true
+          tar -C fonts-seed -cf fonts-seed.tar .
+
+      # Der Schlüssel verlässt die Platte, bevor der nächste fremde Baustein
+      # (hier: die Artefakt-Action) läuft — und auch dann, wenn ein Schritt
+      # davor rot wurde.
+      - name: Schlüssel von der Platte nehmen
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fonts-seed
+          path: fonts-seed.tar
+          retention-days: 1
+          overwrite: true
+
+  build:
+    runs-on: ubuntu-latest
+    # KEIN `environment`, KEIN `secrets.` — siehe Kopf oben.
+    permissions:
+      contents: read
+    needs: [plan, fonts]
+    if: needs.plan.outputs.skip != 'true'
+    steps:
+      # Ohne `fetch-depth: 0`: der Build liest nur `git rev-parse HEAD` (die
+      # Build-Kennung in /api/health), und HEAD ist genau dieser Commit.
+      - name: Repo auschecken
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.EXPECTED_SHA }}
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        if: steps.changes.outputs.skip != 'true'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.changes.outputs.skip != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install
-        if: steps.changes.outputs.skip != 'true'
         run: pnpm install --frozen-lockfile
 
-      # FONT-CACHE VOM SERVER (2026-08-11, vier rote Deploys an einem Tag):
-      # @nuxt/fonts löst Google-Font-URLs beim Build LIVE auf, und Googles
-      # CDN/Metadaten liefen auseinander — die Runner bekamen tote URLs
-      # (FetchError 404 auf fonts.gstatic), während dieselbe Auflösung von
-      # anderswo funktionierte. Der Cache (…/node_modules/.cache/nuxt/fonts)
-      # trägt BEIDES: die WOFF2s UND die aufgelösten Metadaten (meta/*-data
-      # .json) — gesät ist der Build für bekannte Familien komplett offline.
-      # Gespeist wird er vom Prod-Server (~/fonts-cache), NICHT von
-      # actions/cache: das Seed kam von einer Maschine mit gesunder Auflösung,
-      # und genau das darf ein Runner nie überschreiben — deshalb unten das
-      # RÜCKSCHREIBEN NUR ADDITIV (--ignore-existing): neue Familien kommen
-      # dazu, eine vom Runner stale aufgelöste Datei ersetzt nie eine gute.
-      # Fail-soft (|| true): ohne Cache baut es wie bisher — nur eben mit
-      # Google-Risiko.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: fonts-seed
+          path: ${{ runner.temp }}/fonts-seed
+
       - name: Font-Cache herstellen
-        if: steps.changes.outputs.skip != 'true'
         run: |
           set -eu
-          for app in portfolio control platform marketing help branding; do
+          for pair in $APP_HOSTS; do
+            app="${pair%%=*}"
             mkdir -p "apps/$app/node_modules/.cache/nuxt/fonts"
-            rsync -a "prod:/home/ploi/fonts-cache/" "apps/$app/node_modules/.cache/nuxt/fonts/" || true
+            tar -C "apps/$app/node_modules/.cache/nuxt/fonts" -xf "$RUNNER_TEMP/fonts-seed/fonts-seed.tar"
           done
 
       # Alle Apps auf DIESEM Runner bauen (sequenziell, 4c/16GB — kein
       # Server-RAM-Druck mehr), dann je App ausliefern + verifizieren.
       - name: Apps bauen
-        if: steps.changes.outputs.skip != 'true'
         run: |
           set -eu
-          for app in portfolio control platform marketing help branding; do
+          for pair in $APP_HOSTS; do
+            app="${pair%%=*}"
             echo "::group::Build $app"
             pnpm --filter "$app" build
             echo "::endgroup::"
           done
+
+      # Je App EIN tar: die Artefakt-Ablage behält weder Dateirechte noch
+      # Symlinks, ein tar schon — auf dem Server kommt damit byte-genau an,
+      # was vorher direkt aus dem Build-Verzeichnis rsynct wurde. Der
+      # Font-Cache reist mit, damit `deliver` ihn zurückschreiben kann.
+      - name: Ergebnis packen
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          for pair in $APP_HOSTS; do
+            app="${pair%%=*}"
+            test -f "apps/$app/.output/server/index.mjs" || { echo "::error::apps/$app/.output fehlt nach dem Build."; exit 1; }
+            tar -C "apps/$app" -cf - .output | zstd -T0 -3 -q -o "$RUNNER_TEMP/out/$app.tar.zst"
+            tar -C "apps/$app/node_modules/.cache/nuxt" -cf "$RUNNER_TEMP/out/$app.fonts.tar" fonts
+          done
+          ls -lh "$RUNNER_TEMP/out"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-output
+          path: ${{ runner.temp }}/out
+          retention-days: 1
+          compression-level: 0
+          overwrite: true
+          if-no-files-found: error
+
+  deliver:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [plan, build]
+    if: needs.plan.outputs.skip != 'true'
+    environment: production
+    steps:
+      # Nur `ops/` (Ecosystem-Dateien, pm2-heal.sh) — aus git, nicht aus dem
+      # Build-Artefakt: was auf dem Server AUSGEFÜHRT wird, kommt nicht durch
+      # den Job, der fremden Code laufen lässt.
+      - name: ops/ auschecken
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.EXPECTED_SHA }}
+          sparse-checkout: ops
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build-output
+          path: ${{ runner.temp }}/out
+
+      - name: Ergebnis entpacken
+        run: |
+          set -euo pipefail
+          for pair in $APP_HOSTS; do
+            app="${pair%%=*}"
+            mkdir -p "apps/$app" "fonts/$app"
+            zstd -dc "$RUNNER_TEMP/out/$app.tar.zst" | tar -C "apps/$app" -xf -
+            tar -C "fonts/$app" -xf "$RUNNER_TEMP/out/$app.fonts.tar"
+            test -f "apps/$app/.output/server/index.mjs" || { echo "::error::apps/$app/.output fehlt nach dem Entpacken."; exit 1; }
+          done
+
+      # AB HIER liegt der Schlüssel auf der Platte — und ab hier läuft nur
+      # noch rsync, ssh, curl und jq. Kein `pnpm`, kein `node`, keine weitere
+      # Action.
+      - name: SSH einrichten (gepinnter Host-Key)
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -u
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::Secret DEPLOY_SSH_KEY fehlt in der Umgebung production — CI-Build-Deploy kann nicht ausliefern."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SERVER_HOSTKEY" > ~/.ssh/known_hosts
+          printf 'Host prod\n  HostName %s\n  User ploi\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  BatchMode yes\n  ConnectTimeout 20\n' "$SERVER" >> ~/.ssh/config
 
       # ZWEI Durchgänge mit Grund (Krümel vom 2026-08-12 — der Seed wäre am
       # 2026-08-18 still verfallen): die unifont-METADATEN tragen eine
@@ -340,15 +491,14 @@ jobs:
       # Gefahrlos, weil dieser Schritt NACH einem GRÜNEN Build läuft — wessen
       # Auflösung scheiterte, dessen Deploy stirbt vorher.
       - name: Font-Cache zurückschreiben (Blobs additiv, Metadaten aktualisierend)
-        if: steps.changes.outputs.skip != 'true'
         run: |
-          for app in portfolio control platform marketing help branding; do
-            rsync -a --ignore-existing "apps/$app/node_modules/.cache/nuxt/fonts/" "prod:/home/ploi/fonts-cache/" || true
-            rsync -a --include='meta/' --include='meta/**' --exclude='*' "apps/$app/node_modules/.cache/nuxt/fonts/" "prod:/home/ploi/fonts-cache/" || true
+          for pair in $APP_HOSTS; do
+            app="${pair%%=*}"
+            rsync -a --ignore-existing "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
+            rsync -a --include='meta/' --include='meta/**' --exclude='*' "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
           done
 
       - name: Ausliefern + verifizieren (rsync → Symlink-Flip → pm2 reload)
-        if: steps.changes.outputs.skip != 'true'
         run: |
           set -eu
           # SITE  = ploi-Site: VERZEICHNIS auf dem Server (/home/ploi/$site/ops)
@@ -443,8 +593,14 @@ jobs:
               ln -s '$RELEASE' '$RELEASES/current.tmp'
               mv -Tf '$RELEASES/current.tmp' '$RELEASES/current'
               bash /home/ploi/$site/ops/pm2-heal.sh $PROC
-              pm2 startOrReload /home/ploi/$site/ops/ecosystem-$app.config.cjs --update-env
-              pm2 save
+              # ÖFFENTLICHES PROTOKOLL (SEC-043): pm2 antwortet mit der Tabelle
+              # ALLER Prozesse samt Prozess-Nummern, Speicher und Host-Last. Die
+              # gehört nicht in ein Protokoll, das jedes GitHub-Konto liest —
+              # gezeigt wird sie nur, wenn der Befehl scheitert (dann ohne die
+              # Tabellenzeilen).
+              pm2 startOrReload /home/ploi/$site/ops/ecosystem-$app.config.cjs --update-env >/tmp/pm2-deploy.out 2>&1 || { grep -v -e \"│\" -e \"host metrics\" /tmp/pm2-deploy.out; rm -f /tmp/pm2-deploy.out; exit 1; }
+              rm -f /tmp/pm2-deploy.out
+              pm2 save >/dev/null
               ls -1dt $RELEASES/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf
               echo '$app geflippt auf $EXPECTED_SHA'"
             echo "::endgroup::"
@@ -477,12 +633,30 @@ jobs:
             fi
           done
 
-      # TLS-Nachkontrolle: liefert JEDER Host noch ein passendes Zertifikat?
-      # Die Health-Probe oben prüft nur die Hosts, die gerade deployt wurden —
-      # ein zerschossenes Zertifikat auf einem ANDEREN Host (geteilte
-      # certbot-Lineage, Vorfall 2026-07-27) bliebe sonst unentdeckt.
-      # Läuft auch, wenn ein App-Schritt vorher rot war: dann ist die
-      # TLS-Aussage besonders wichtig.
+      # Der Schlüssel verlässt die Platte, auch wenn ein Schritt davor rot wurde.
+      - name: Schlüssel von der Platte nehmen
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  # TLS-Nachkontrolle: liefert JEDER Host noch ein passendes Zertifikat?
+  # Die Health-Probe oben prüft nur die Hosts, die gerade deployt wurden —
+  # ein zerschossenes Zertifikat auf einem ANDEREN Host (geteilte
+  # certbot-Lineage, Vorfall 2026-07-27) bliebe sonst unentdeckt.
+  # Läuft auch, wenn ein App-Schritt vorher rot war: dann ist die
+  # TLS-Aussage besonders wichtig.
+  tls:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [plan, deliver]
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.skip != 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.EXPECTED_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
       - name: TLS aller Hosts prüfen
-        if: always() && steps.changes.outputs.skip != 'true'
         run: node scripts/ops/verify-tls.mjs

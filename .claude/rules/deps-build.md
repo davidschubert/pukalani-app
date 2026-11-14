@@ -71,6 +71,12 @@ paths:
   eingebunden (`uses: owner/repo@<40 Hex> # vX.Y.Z` — ein Tag lässt sich
   umhängen, ein Commit nicht), auf Workflow-Ebene steht `permissions: {}`, und
   JEDER Job nennt seine eigenen Rechte. Neuer Job ohne `permissions:` ⇒ rot.
+  Dazu zwei Regeln für Secrets (SEC-041/SEC-042): ein Job, der `secrets.…`
+  liest, nennt eine UMGEBUNG (`environment:` — `production` fürs Ausliefern,
+  `production-watch` für die Wächter; beide lassen nur `main` zu, auf
+  Repo-Ebene liegt kein Secret), und ein Job mit Umgebung installiert und
+  baut nichts (kein `pnpm`/`npm`/`npx`) — gebaut wird in einem Job ohne
+  Umgebung, das Ergebnis reist als Artefakt weiter.
   Den Commit zu einem Tag liefert `gh api repos/<owner>/<repo>/commits/<tag>
   --jq .sha`; aktuell hält die Einträge Dependabot (ein Sammel-PR je Woche).
 - LOSE PROMISES IM SERVER-CODE SIND ROT (SEC-023, seit 2026-11-13): für jedes
