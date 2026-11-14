@@ -353,13 +353,16 @@ Nuxt-App, gehört nicht nach `apps/`.
       "path": "/Users/davidschubert/Developer/Projects/nuxt/maui-monorepo",
       "protectedBranches": ["main"],
       "allowedModes": ["plan", "acceptEdits", "auto"],
-      "maxBudgetUsd": 5
+      "maxBudgetUsd": 5,
+      "testCommands": ["pnpm install --frozen-lockfile", "pnpm lint"]
     }
   }
 }
 ```
 
-Das ist die **wichtigste Einzelregel des ganzen Systems** (§8.1).
+Das ist die **wichtigste Einzelregel des ganzen Systems** (§8.1). Seit
+2026-11-14 (SEC-037) gehören auch die Testbefehle dazu: `testCommands` je Repo
+ist die Liste, aus der ein Lauf wählen darf.
 
 ### 7.2 Ablauf eines headless Laufs
 
@@ -468,7 +471,7 @@ Node-Paket (nur `node:`-Builtins + globales `fetch`), das mit
 Naht-Typen liegen dort als bewusste KOPIE (`src/protocol.ts`): die Layer-Typen
 hängen an `node-appwrite`, und das SDK hat auf einem Rechner mit
 Dateisystem-Zugriff nichts zu suchen. Der Beweis ist `scripts/smoke.mjs`
-(48 Prüfungen, ohne Netz/Agent/Commit) — er lädt jede Datei UND prüft die
+(86 Prüfungen, ohne Netz/Agent/Commit) — er lädt jede Datei UND prüft die
 puren Sicherungen einzeln: Kappen gegen die lokale Allowlist,
 `needs_input`-Ableitung, Zerlegen der Testbefehle, Säubern der Anhang-Namen,
 Schrumpfen des Berichts auf das 6000er-Spaltenbudget. Zwei Fallen, die dabei
@@ -500,9 +503,11 @@ Weg aus `needs_input` heraus vollständig — kein offener Punkt mehr.
 ### 8.1 Die Grenze liegt auf dem Mac, nicht in der Website
 
 Die Datenbank darf **auswählen**, was der Runner **erlaubt** — nie umgekehrt.
-Erlaubte Repo-Pfade, Modelle, Modi, Budget-Deckel und geschützte Branches
-stehen in der lokalen Config. Deshalb reist auch nur ein `repoKey` über die
-Naht, nie ein Pfad.
+Erlaubte Repo-Pfade, Modelle, Modi, Budget-Deckel, geschützte Branches und
+Testbefehle stehen in der lokalen Config. Deshalb reist auch nur ein `repoKey`
+über die Naht, nie ein Pfad, und bei den Testbefehlen nur eine Auswahl aus der
+lokalen Liste (wortgleicher Vergleich; ein nicht gelisteter Befehl lehnt den
+ganzen Auftrag ab — SEC-037, seit 2026-11-14).
 
 Warum das nicht verhandelbar ist: ein Auftrag an diesen Runner ist
 Code-Ausführung auf Davids Rechner mit Dateisystem-Zugriff. Läge die
@@ -526,8 +531,13 @@ ein Ticket. Baut man den Agent-Auftrag später aus `ticket.description`, kann
 ein fremder Text Anweisungen enthalten. Dass ein Mensch auf „Übernehmen"
 klickt, ist kein Schutz — er liest nicht jede Zeile.
 
-Regel: Läufe zu einem Ticket mit `feedbackId !== ''` bekommen
-`promptTrusted: false`. Dann gilt:
+Regel (Fassung seit 2026-11-14, SEC-038): Ob ein Lauf als geprüft gilt,
+bestimmt der SERVER aus der Herkunft des Tickets (`tickets.origin`), nie der
+Aufrufer. Geprüft ist nur `operator`; `staff`, `feedback`, `dependency` und
+Altbestand ohne Herkunft bekommen `promptTrusted: false`. Die Herkunft wandert
+beim Duplizieren mit und wird nie besser. (Die erste Fassung hängte die Regel
+an `feedbackId !== ''` und ließ sie den Browser rechnen; eine Kopie galt
+dadurch als geprüft.) Dann gilt:
 
 - Der Feedback-Text wird in `prompt.md` als **Daten** gerahmt (abgesetzter
   Block mit einem Satz davor, der sagt, dass es ein Zitat ist), nie als
@@ -536,6 +546,8 @@ Regel: Läufe zu einem Ticket mit `feedbackId !== ''` bekommen
   `bypassPermissions` und `dontAsk` sind gesperrt.
 - Die Sperre sitzt **serverseitig** beim Anlegen des Laufs UND im Runner. Eine
   UI, die den Knopf ausgraut, ist keine Sicherung.
+- Ein ungeprüfter Auftrag führt **keine Testbefehle** aus: sie liefen auf dem
+  Stand, den der Agent gerade nach diesem Text geschrieben hat.
 
 ---
 
