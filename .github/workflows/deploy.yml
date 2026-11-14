@@ -410,7 +410,7 @@ jobs:
       # Font-Cache reist mit, damit `deliver` ihn zurückschreiben kann.
       - name: Ergebnis packen
         run: |
-          set -eu
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/out"
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
@@ -454,7 +454,7 @@ jobs:
 
       - name: Ergebnis entpacken
         run: |
-          set -eu
+          set -euo pipefail
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
             mkdir -p "apps/$app" "fonts/$app"
