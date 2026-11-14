@@ -30,6 +30,72 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P03 — Runner: Testbefehle nur aus der Liste, Herkunft vom Server, Fristen ✅ 2026-11-14
+
+**Was.** Siebtes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
+SEC-037, SEC-038, BE-025), in zwei Pull Requests (149: Umbau, 150: Schalter
+und dieser Eintrag). Davids Entscheidungen vom 2026-11-12/13: Der Dienst auf
+dem Mac führt nur aus, was in seiner Liste steht; ob ein Auftrag als geprüft
+gilt, bestimmt der Server aus der Herkunft des Tickets; Protokolle 30 Tage,
+Ereignisse 90 Tage.
+
+1. **Testbefehle sind eine Auswahl (SEC-037).** Der Dienst
+   (`tools/ai-runner`) führt nur Befehle aus, die wortgleich in
+   `repos.<key>.testCommands` seiner Einstellungs-Datei stehen. Ein Auftrag
+   mit einem anderen Befehl, mit unlesbarem Feld oder mit Testbefehlen bei
+   ungeprüftem Text wird als Ganzes abgelehnt, bevor Material geladen oder der
+   Agent gestartet wird (`test_command_not_allowed` u. a., Fehler-Ereignis und
+   Log). Der Heartbeat meldet die Liste; das Formular hat eine Mehrfach-Auswahl
+   statt des Textfelds, und die Anlege- wie die Fortsetzungs-Route prüfen
+   dagegen. Die Lauf-Id wird geprüft, bevor sie in einen Pfad geht.
+2. **„Geprüft" bestimmt der Server (SEC-038).** Tickets tragen eine Herkunft
+   (`tickets.origin`, Migration `tickets-004`), die jeder Schreibweg
+   serverseitig setzt; Duplizieren kopiert sie, sie wird nie besser. Die
+   Routen des Runners fragen den Vertrag `resolveRunSubjectTrust`, den
+   `apps/control` für Tickets verdrahtet. Ungeprüft heißt: zwei Arbeitsweisen,
+   keine Testbefehle, Text als Zitat gerahmt.
+3. **Fristen (BE-025).** Stündlicher Lauf in der Betreiber-Konsole
+   (`pukalani.runner.retention`, Ops-Route `POST /api/runner/retention/run`);
+   der Dienst räumt seine Ablage auf dem Rechner selbst auf.
+
+**Reihenfolge.** Migration (Davids Ja) → Merge → Ausliefern → Rechner
+(Haupt-Checkout aktualisieren, Liste eintragen, Neustart; Davids Ja). In der
+Zeit dazwischen ließ der neue Server über die Konsole keinen Testbefehl
+durch, weil der alte Dienst keine Liste meldete.
+
+**Live.** PR 149, Merge `e4ad3295`, auf allen acht Hosts (`/api/health` →
+`.build`, überall `ok:true`). Der Dienst läuft mit sieben freigegebenen
+Befehlen und meldet sie; ein Probe-Auftrag mit einem nicht gelisteten Befehl
+wurde am echten Dienst nach einer Sekunde abgelehnt, ohne dass etwas startete.
+Der Probelauf des Aufräumens zählte auf Production zweimal 10 Protokolle und
+0 Ereignisse; seit PR 150 löscht er. Auf dem Rechner sind 13 alte Lauf-Ordner
+gelöscht. Runbook: `docs/runbooks/AI-RUNNER-BETRIEB.md`. Nacharbeiten: RU1 in
+`docs/OPEN-ITEMS.md`.
+
+**Gelernt: Eine Sicherung deckt nur die Felder, die es beim Entwurf gab.**
+Repo, Modus, Modell und Budget prüfte der Dienst von Anfang an gegen seine
+lokale Datei; die Testbefehle kamen später dazu und liefen an genau dieser
+Prüfung vorbei. Ein neues Feld, das der Dienst ausführt oder in einen Pfad
+setzt, braucht dieselbe Prüfung, und die Regel steht jetzt in
+`.claude/rules/ai-runner.md`.
+
+**Gelernt: Ein `.trim()` im Schema unterläuft einen wortgleichen Vergleich.**
+Das Server-Schema schnitt Leerraum an den Testbefehlen ab, bevor verglichen
+wurde; ` pnpm lint` wäre so still zu einem gelisteten Befehl geworden. Wer
+„exakt" zusagt, darf vor dem Vergleich nichts glätten.
+
+**Gelernt: Der Probelauf gegen echte Daten fand, was die Test-Doppel nicht
+kannten.** Im Spiegel lag ein Protokoll, dessen Lauf es nicht mehr gab. Der
+Lösch-Lauf erkannte Protokolle zuerst am vorhandenen Lauf und hätte diese
+Datei nie gelöscht. Jetzt erkennt er sie am Namen (`run-<eigene Id>.jsonl`).
+
+**Gelernt: Eigene Prozesse stoppt man über ihre Nummer, nie über den
+Programmnamen.** Ein `pkill -f` auf den Namen der Start-Datei traf beim
+Abbau der Test-Instanz auch den echten Dienst auf dem Mac; launchd startete
+ihn sofort neu, es lief kein Auftrag. Bei einer Test-Instanz neben dem
+Original die Prozess-Nummer merken (oder über den Port suchen) und nur die
+beenden.
+
 ### GA1 P06 — Sicherungen, die nicht prüfen können, lehnen ab ✅ 2026-11-14
 
 **Was.** Sechstes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings

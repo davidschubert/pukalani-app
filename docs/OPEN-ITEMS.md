@@ -44,6 +44,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Offen: (a) **Klick-Probe auf Live**, abgemeldet und als Mitglied, (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
 | 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live** (Schreiben als Mitglied; ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
 | 29 · SI1 | **Sicherungen: Nacharbeiten.** Die vier Sicherungen aus dem Paket P06 sind seit 2026-11-14 live (COMPLETE „GA1 P06"). Der stündliche Label-Abgleich räumt seit dem 2026-11-14 auf. Offen: (a) **Klick-Probe auf Live** (Einladungslink aus einem Webmail-Fenster öffnen; „Zugang entziehen" mit einem Test-Konto), (b) was der Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#si1) |
+| 30 · RU1 | **Runner: Nacharbeiten.** Testbefehle nur aus der Liste des Rechners, Herkunft vom Server und die Fristen sind seit 2026-11-14 live (COMPLETE „GA1 P03"). Offen: (a) **ein echter Lauf über das Formular** mit Auswahl eines Testbefehls, (b) den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#ru1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -651,6 +652,35 @@ NICHT hier.
   Der Kopf von `packages/messages/server/utils/messageGate.ts` sagt, jede
   Schreib-Route rufe eine seiner Funktionen; für Löschen und Gelesen-Markieren
   stimmt das nicht.
+
+<a id="ru1"></a>
+
+**RU1 — Runner: Nacharbeiten (aus dem Gesamtaudit, Paket P03).**
+
+- **(a) Ein echter Lauf über das Formular.** Geprüft ist lokal mit einer
+  Test-Instanz und einer Agenten-Attrappe, auf Production die Ablehnung am
+  echten Dienst. Noch nicht gelaufen: ein Lauf mit echtem Agenten, gestartet im
+  Formular, mit einem Testbefehl aus der Auswahl. Dabei auch ansehen: ein
+  älteres Ticket zeigt „Ungeprüfter Auftrag" und bietet nur zwei Arbeitsweisen.
+- **(b) Den Auftragstext baut der Browser.** Der Server bestimmt aus dem
+  Ticket, ob ein Lauf als geprüft gilt; den Text selbst (Titel, Beschreibung,
+  offene Checkliste) setzt weiter die Seite zusammen und schickt ihn mit.
+  Sauberer wäre, der Server baute ihn aus der Ticket-Zeile.
+- **(c) Was keine Frist hat.** Die Zeilen der Läufe (Auftragstext, Bericht)
+  und Anhänge von Läufen bleiben liegen; es gibt keinen Löschen-Knopf je Lauf,
+  und der Layer hat keinen Beitrag zu Auskunft und Löschung eines Kontos
+  (`runs.createdBy`, nur Betreiber-Konten). Auf dem Rechner bleiben die
+  Arbeits-Zweige alter Läufe und das Log des Dienstes.
+- **(d) Alte Tickets.** Tickets von vor dem 2026-11-14 haben keine Herkunft
+  und gelten als ungeprüft (auf Production acht, alle geschlossen). Einen
+  Knopf „als geprüft übernehmen" gibt es nicht; der Weg ist ein neues Ticket.
+- **(e) Kleinigkeiten.** Ein ungeprüfter Lauf wird vom Dienst weiter
+  committet (nur die Testbefehle entfallen). Die Herkunft wird beim Bearbeiten
+  gelesen und dann geschrieben, ohne Sperre dazwischen. `extraPath` in der
+  Einstellungs-Datei des Dienstes verwirft ungültige Einträge still. Zwei alte
+  Läufe mit Rückfrage tragen Testbefehle, die heute nicht in der Liste stehen;
+  ihre Fortsetzung wird abgelehnt. Der Schlüssel der Migrations-Ablage für
+  `admin` kann weder Dateien noch Konten lesen (siehe PB1).
 
 <a id="si1"></a>
 
