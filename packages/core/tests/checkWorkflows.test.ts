@@ -70,6 +70,61 @@ describe('check-workflows — Rechte', () => {
   })
 })
 
+describe('check-workflows — Secrets und Umgebung', () => {
+  function job(lines: string[]): string {
+    return [
+      'name: Beispiel',
+      'on:',
+      '  push:',
+      'permissions: {}',
+      'jobs:',
+      '  liefern:',
+      '    runs-on: ubuntu-latest',
+      '    permissions: {}',
+      ...lines,
+      '',
+    ].join('\n')
+  }
+  const secretStep = [
+    '    steps:',
+    '      - name: Schlüssel',
+    '        env:',
+    '          KEY: ${{ secrets.DEPLOY_SSH_KEY }}',
+    '        run: echo ok',
+  ]
+
+  it('meldet ein Secret in einem Job ohne Umgebung', () => {
+    const findings = checkWorkflow('x.yml', job(secretStep))
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain('liest ein Secret ohne Umgebung')
+  })
+
+  it('nimmt dasselbe Secret mit Umgebung an (Kurz- und Langform)', () => {
+    expect(checkWorkflow('x.yml', job(['    environment: production', ...secretStep]))).toEqual([])
+    expect(checkWorkflow('x.yml', job(['    environment:', '      name: production', '      deployment: false', ...secretStep]))).toEqual([])
+  })
+
+  it('zählt github.token und einen Kommentar nicht als Secret', () => {
+    const lines = ['    steps:', '      # früher: secrets.PLOI_SSH_KEY', '      - run: echo ok', '        env:', '          GH_TOKEN: ${{ github.token }}']
+    expect(checkWorkflow('x.yml', job(lines))).toEqual([])
+  })
+
+  it.each([
+    ['pnpm install', '      - run: pnpm install --frozen-lockfile'],
+    ['einen Build', '      - run: pnpm --filter app build'],
+    ['npx', '      - run: npx playwright install'],
+    ['die pnpm-Action', '      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1'],
+  ])('meldet %s in einem Job mit Umgebung', (_label, line) => {
+    const findings = checkWorkflow('x.yml', job(['    environment: production', ...secretStep, line]))
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain('installiert oder baut')
+  })
+
+  it('lässt ein eigenes Skript ohne Abhängigkeiten in einem Job mit Umgebung zu', () => {
+    expect(checkWorkflow('x.yml', job(['    environment: production', ...secretStep, '      - run: node scripts/ops/verify-site-env.mjs']))).toEqual([])
+  })
+})
+
 describe('check-workflows — die echten Workflows', () => {
   const dir = join(import.meta.dirname, '..', '..', '..', '.github', 'workflows')
   const files = readdirSync(dir).filter(file => /\.ya?ml$/.test(file))
