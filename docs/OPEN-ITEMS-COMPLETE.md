@@ -30,6 +30,108 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P06 — Sicherungen, die nicht prüfen können, lehnen ab ✅ 2026-11-14
+
+**Was.** Sechstes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
+SEC-004, SEC-023, SEC-024, SEC-025), in zwei Pull Requests. Davids
+Entscheidung vom 2026-11-12: „Eine Sicherung, die nicht prüfen kann, lehnt
+ab." Vier Stellen, an denen eine Prüfung bisher still ausfallen konnte, enden
+jetzt in einem Fehler statt in einem Durchlass.
+
+1. **Die Naht-Prüfung wird abgewartet (SEC-023).** Checkout und Kundenportal
+   der Community rufen `requireOnboardingCaller` jetzt mit `await`. Der
+   Wächter-Test durchsucht alle Server-Ordner unter `packages/` und `apps/`
+   statt eines Pfades. Neu ist die typisierte Lint-Regel
+   `@typescript-eslint/no-floating-promises` für allen Server-Code; sie fand
+   außer den zwei Routen keine weitere Stelle. Sie braucht die generierten
+   Server-tsconfigs der Apps (`pnpm lint:prepare`, in `lint.yml` vor dem
+   Lint), kein neues Paket.
+2. **Ohne Resolver lehnt die Plattform ab (SEC-025).** Ist die Trennung der
+   Communities eingeschaltet, aber kein Resolver registriert (eine der vier
+   `NUXT_PLATFORM_CONTROL_*` fehlt), antwortet jede Anfrage auf jedem Host mit
+   503 `tenant_resolver_missing`. `/api/health` antwortet weiter und meldet
+   `ok:false` mit diesem Grund; der Build-SHA bleibt lesbar. Das Plugin nennt
+   beim Start die Namen der fehlenden Variablen. `verify-site-env.mjs` führt
+   alle vier als Pflicht.
+3. **„Zugang entziehen" prüft nach (SEC-024).** Jeder Schreibvorgang auf
+   Konto-Labels läuft über `mutateUserLabels` (Core): je Konto im Prozess
+   nacheinander, nur die genannten Labels, nachlesen, einmal wiederholen,
+   Ergebnis zurück. Bleibt das Lese-Publikum nach dem Entfernen stehen,
+   antwortet die Route 502 `label_revoke_failed`, und die Mitglieder-Seite
+   sagt das in einem eigenen Satz. Stilllegen zählt die Fehlschläge. Ein
+   stündlicher Lauf der Platform-App gleicht nach (Schalter
+   `pukalani.community.labelReconcile`: `off`, `dry-run`, `apply`; Runbook
+   `docs/runbooks/LABEL-ABGLEICH.md`). Er startet als Probelauf.
+4. **Herkunftsprüfung überall an (SEC-004).** Stufe 1: Betreiber-Konsole und
+   App-Vorlage. Stufe 2: Die Prüfung gilt im Core für jede App, der Schalter
+   `pukalani.security.csrfOriginCheck` ist entfernt. Ausnahmen gibt es nur als
+   einzelne Route mit Grund (`core/shared/csrfOriginExempt.ts`, leer). Tests
+   halten fest, welche Routen ohne Browser-Herkunft gerufen werden (Dienst-Naht
+   52, Runner 6, zwei Webhooks, Domain-Abschluss, Erinnerungs-Lauf), dass kein
+   Aus-Schalter zurückkehrt und dass keine Seite beim Server-Rendern schreibend
+   ruft.
+5. **Einladungslinks aus dem Webmail gehen wieder.** Beim Bauen gefunden: Die
+   Seite `/join` prüfte die Einladung beim Server-Rendern mit einem POST. Kam
+   die Person über einen Link von einer fremden Seite, lehnte die
+   Herkunftsprüfung diesen internen Aufruf ab, und die Seite zeigte „Keine
+   offene Einladung". Das betraf die Plattform, seit die Prüfung dort an ist.
+   `/join` und `/invite` (branding) prüfen jetzt im Browser und zeigen bis
+   dahin einen Ladezustand.
+
+**Reihenfolge.** Vor dem ersten Merge nachgesehen (Davids Ja per Klick, nur
+Namen): Auf der Site `platform` sind alle vier Variablen gesetzt und nicht
+leer, der laufende Prozess weist unbekannte Hosts ab, und alle sechs Sites
+reichen den Host an die App weiter. Dann PR 145 (Merge `e456e946`: alle vier
+Findings, Herkunftsprüfung Stufe 1), live belegt, danach PR 146 (Merge
+`ff76585f`: Stufe 2). Keine Migration, kein neues Paket.
+
+**Beweis.** Lokal alle Gates mit Exit 0 (`pnpm -r test`, `pnpm -r lint`,
+`pnpm lint:scripts`, `pnpm -r typecheck`, acht Wächter). Jeder neue Test war
+vor der Änderung rot. Laufzeitproben mit lokalen Production-Builds: die zwei
+Routen antworten ohne oder mit falschem Geheimnis mit 401 (vorher 401/403 aus
+den späteren Prüfungen und eine unbehandelte Ablehnung je Aufruf im Log); die
+Platform-App antwortet ohne `NUXT_PLATFORM_CONTROL_DATABASE_ID` überall mit
+503 und auf `/api/health` mit `ok:false` (vorher 200 und Zeilen aus zwei
+Communities); die Betreiber-Konsole lehnt eine fremde Herkunft mit 403 ab,
+eigene Aufrufe, Naht und Webhook gehen durch; `/join` vorher und nachher im
+Browser. `packages/onboarding/scripts/verify-site-authz.mjs`: 142 ✔, mit dem
+Schalter auf `apply` in einem Probe-Build 147 ✔ (Abschnitt 10 c: Probelauf
+schreibt nichts, der Lauf entfernt genau das hängende Label, Betreiber-Rolle
+und Bestand ohne Zeile bleiben).
+
+**Live.** Nach beiden Merges vier Prüfungen auf `main` grün, alle acht Hosts
+mit dem Merge-Commit und `ok:true`. Eine Test-Anfrage an die
+Betreiber-Konsole (ohne Anmeldung, fremde Herkunft): 403. Erster Probelauf
+des Label-Abgleichs auf Production: 0 Kandidaten, 0 Abweichungen.
+
+**Reste.** Als Punkt SI1 in OPEN-ITEMS: den Abgleich auf `apply` stellen,
+Klick-Probe auf Live, was der Abgleich nicht findet, Lint-Laufzeit.
+
+**Gelernt:** (1) **Ein Wächter, der einen Pfad prüft, sieht nur, was dort
+liegt.** Der Test für das `await` kannte den Ordner des Layers, die zwei
+betroffenen Routen lagen in der App. Wächter leiten ihre Liste aus dem
+Dateisystem ab oder prüfen eine Eigenschaft (hier: der Typ „Promise"). (2)
+**Eine Prüfung trifft auch die eigenen internen Aufrufe.** Nuxt reicht beim
+Server-Rendern die Kopfzeilen der Navigation an interne Aufrufe weiter. Eine
+Seite, die beim Rendern schreibend ruft, bricht, sobald sie über einen
+fremden Link geöffnet wird, und sie bricht still (die Seite zeigt ihren
+Leerzustand). Regel: keine schreibenden Aufrufe beim Server-Rendern;
+Wächter `ssr-write-fetch.test.ts`. (3) **„Wirft nie" ist für einen Entzug die
+falsche Tugend.** Vergabe darf fail-soft sein, weil sie sich heilt; ein
+Entzug, der scheitert, ist eine Zugangsfrage und gehört als Ergebnis zurück
+an den Aufrufer. (4) **Fail-closed braucht einen Beweis vor dem Merge.** Der
+Start-Wächter hätte die Plattform lahmgelegt, wenn auf dem Server eine
+Variable gefehlt hätte. Erst die Namen auf dem Server lesen (und prüfen, dass
+sie nicht leer sind), dann zusammenführen. (5) **zsh trennt eine Variable
+nicht an Leerzeichen.** `for h in $HOSTS` lief als EIN Durchgang mit allen
+Hosts in einem Wort; die Warteschleife auf den Live-Build lief so 45 Minuten
+ins Leere, obwohl längst ausgeliefert war. Hosts in der Schleife ausschreiben
+oder ein Array nehmen. (6) **Typisiertes Linten kostet ein Programm je
+Paket.** Der Lint-Lauf dauert lokal 43 s statt 18 s; ein eigener Durchgang
+mit einem Programm je App käme auf zusammen etwa 28 s.
+
+---
+
 ### KE2 — Falscher Zwei-Faktor-Code bei der Anmeldung steht jetzt im Protokoll ✅ 2026-11-13
 
 **Was.** Nebenbefund aus KE1, mit Davids Ja behoben (es ändert, was
