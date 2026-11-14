@@ -62,11 +62,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  # Für die Vorprüfung: den Ausgang der ANDEREN Workflows desselben Commits
-  # nachschlagen.
-  actions: read
+# Rechte stehen je Job (SEC-041): ohne eigene Angabe hat ein Job keine.
+permissions: {}
 
 concurrency:
   group: deploy-sites
@@ -86,6 +83,9 @@ jobs:
   # das hier idempotent und deployt trotzdem nur EINMAL.
   gate:
     runs-on: ubuntu-latest
+    # Nur lesen, was die ANDEREN Workflows desselben Commits ergeben haben.
+    permissions:
+      actions: read
     # ÖFFENTLICHES REPO (seit 2026-08-03): `workflow_run` feuert AUCH für
     # Prüfläufe fremder Pull Requests, und der Filter `branches: [main]` greift
     # dabei auf den HEAD-Branch des Auslösers — ein Fork, dessen Branch „main"
@@ -153,6 +153,8 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: gate
     if: needs.gate.outputs.go == 'true'
     env:
@@ -168,7 +170,7 @@ jobs:
       APP_HOSTS: 'portfolio=portfolio.pukalani.app control=admin.pukalani.app platform=platform.pukalani.app marketing=pukalani.app help=help.pukalani.app branding=branding.supply'
     steps:
       - name: Repo auschecken
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.EXPECTED_SHA }}
           fetch-depth: 0
@@ -281,9 +283,9 @@ jobs:
           printf '%s\n' "$SERVER_HOSTKEY" > ~/.ssh/known_hosts
           printf 'Host prod\n  HostName %s\n  User ploi\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n' "$SERVER" >> ~/.ssh/config
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: steps.changes.outputs.skip != 'true'
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.changes.outputs.skip != 'true'
         with:
           node-version-file: .nvmrc
