@@ -430,6 +430,11 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
    * Claim davor ist bereits gedeckelt.
    */
   { re: /^POST \/api\/runner\/runs\/claim$/, bucket: 'runner:claim', max: 30 },
+  // Aufräum-Lauf des Runners von Hand (BE-025): jeder Aufruf blättert bis zu
+  // einigen tausend Dateien und Zeilen durch und löscht im Modus `apply`. Ein
+  // Betreiber prüft ein Ergebnis, er hämmert nicht — derselbe Deckel wie die
+  // KI-Läufe von Brand Design.
+  { re: /^POST \/api\/runner\/retention\/run$/, bucket: 'runner:retention', max: 6 },
   // E10, Davids Entscheidung 8 („volle Notbremse in Fassung 1"): Wählen und
   // Kommentieren sind session-gated, aber sie schreiben ins BETREIBER-System
   // eines anderen Projekts — ein Skript soll daraus keinen Hebel machen.
