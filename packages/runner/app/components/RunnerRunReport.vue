@@ -118,6 +118,21 @@ function reasonOf(error: unknown): string {
   return (error as { data?: { reason?: string } })?.data?.reason ?? ''
 }
 
+/**
+ * Fachlicher Grund ⇒ Meldung. Die Fortsetzung prüft seit SEC-037/SEC-038 auch
+ * die geerbten Testbefehle und die HEUTIGE Herkunft des Subjekts — deren
+ * Absagen bekommen einen eigenen Satz statt „ging nicht".
+ */
+const RESUME_ERROR_KEYS: Record<string, string> = {
+  not_resumable: 'runner.report.errors.notResumable',
+  mode_not_allowed_untrusted: 'runner.report.errors.mode',
+  runner_unavailable: 'runner.report.errors.runner',
+  tests_need_runner: 'runner.report.errors.testsNeedRunner',
+  tests_not_allowed_untrusted: 'runner.report.errors.testsUntrusted',
+  test_command_not_listed: 'runner.report.errors.testNotListed',
+  subject_trust_unavailable: 'runner.report.errors.trustUnavailable',
+}
+
 async function submitAnswer() {
   const text = answer.value.trim()
   if (!text || submitting.value) return
@@ -134,14 +149,7 @@ async function submitAnswer() {
     toast.add({ title: t('runner.report.resumed'), description: t('runner.report.resumedHint'), color: 'success', icon: 'i-ph-rocket-launch' })
   }
   catch (error) {
-    const reason = reasonOf(error)
-    const key = reason === 'not_resumable'
-      ? 'runner.report.errors.notResumable'
-      : reason === 'mode_not_allowed_untrusted'
-        ? 'runner.report.errors.mode'
-        : reason === 'runner_unavailable'
-          ? 'runner.report.errors.runner'
-          : 'runner.report.errors.resume'
+    const key = RESUME_ERROR_KEYS[reasonOf(error)] ?? 'runner.report.errors.resume'
     toast.add({ title: t(key), description: t('runner.report.errors.resumeHint'), color: 'error' })
   }
   finally {

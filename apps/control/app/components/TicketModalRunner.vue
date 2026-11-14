@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { parseTicketChecklist } from '../../../../packages/tickets/app/utils/ticketMarkdown'
 import type { TicketFilesResponse, TicketFileRow, TicketRow } from '../../../../packages/tickets/shared/types/ticket'
+import { isOperatorWritten, normalizeTicketOrigin } from '../../../../packages/tickets/shared/ticketOrigin'
+import { stripTriageBlock } from '../../../../packages/tickets/shared/triageBlock'
 import type { RunAttachmentSource } from '../../../../packages/runner/shared/types/runner'
 
 /**
@@ -12,7 +14,7 @@ import type { RunAttachmentSource } from '../../../../packages/runner/shared/typ
  * `TicketModalComments` vorgesehen.
  *
  * Die Aufgabe der Komponente ist genau eine: aus einem TICKET einen AUFTRAG
- * machen — und die Frage nach der Herkunft des Textes beantworten.
+ * machen. Ob er als geprüft gilt, entscheidet der Server (siehe unten).
  */
 const props = defineProps<{ ticket: TicketRow }>()
 
@@ -27,6 +29,11 @@ const { t } = useI18n()
  * liest Markdown besser als jede Umformung. Sie hier durch den HTML-Renderer
  * zu schicken hiesse, Struktur wegzuwerfen und Tags einzuführen.
  *
+ * OHNE DEN KI-TRIAGE-ABSCHNITT (`stripTriageBlock`): den hat ein Modell an die
+ * Beschreibung gehängt, kein Mensch hat ihn geschrieben — er gehört nicht in
+ * einen Auftrag an einen Agenten. Deshalb ändert die Triage auch die Herkunft
+ * des Tickets nicht (SEC-038).
+ *
  * ERLEDIGTE Punkte bleiben draussen: sie sind Vergangenheit, und im Auftrag
  * würden sie wie Arbeit aussehen. Ist die ganze Checkliste abgehakt, fehlt der
  * Abschnitt.
@@ -39,7 +46,7 @@ const { t } = useI18n()
 const promptSource = computed(() => {
   const lines: string[] = [`# ${props.ticket.title}`, '']
 
-  const description = props.ticket.description.trim()
+  const description = stripTriageBlock(props.ticket.description).trim()
   if (description) lines.push(description, '')
 
   const open = parseTicketChecklist(props.ticket.checklist).filter(item => !item.done)
@@ -53,23 +60,20 @@ const promptSource = computed(() => {
 })
 
 /**
- * DIE HERKUNFTS-REGEL AUS § 8.2, und sie ist der Grund, warum dieser Override
- * überhaupt eine Entscheidung trifft:
+ * DIE HERKUNFT DES TEXTES (§ 8.2) — hier NUR NOCH ANZEIGE.
  *
- * `feedbackId !== ''` heisst, dass dieses Ticket aus einer Rückmeldung
- * entstanden ist (`createTicketFromFeedback`) — und Rückmeldungen nimmt
- * `feedback/index.post.ts` BEWUSST auch von Gästen an. Im Beschreibungstext
- * kann dann fremder Text stehen, und fremder Text in einem Agenten-Auftrag ist
- * ein Prompt-Injection-Pfad. Dass ein Mensch auf „Übernehmen" geklickt hat,
- * ist kein Schutz: er liest nicht jede Zeile.
+ * Ob ein Auftrag als geprüft gilt, ENTSCHEIDET DER SERVER (SEC-038): die
+ * Anlege-Route fragt über `resolveRunSubjectTrust` die Herkunft des Tickets ab
+ * (`server/plugins/runner-ticket-trust.ts`) und nimmt nichts aus dem Body.
+ * Früher rechnete diese Komponente `feedbackId === ''` und schickte das
+ * Ergebnis mit — die Kopie eines Feedback-Tickets galt so als geprüft.
  *
- * Folge: `promptTrusted: false` ⇒ nur `plan` und `acceptEdits` (das Formular
- * zeigt nur die zwei, die Route weist die anderen ab, und der Runner prüft es
- * ein drittes Mal). Das RAHMEN des fremden Textes als Zitat in `prompt.md`
- * macht der RUNNER — hier wird nur die Herkunft gemeldet, nicht der Text
- * umgebaut.
+ * Dieselbe Regel wird hier nur gerechnet, damit das Formular ehrlich ist:
+ * ungeprüft ⇒ es bietet nur `plan` und `acceptEdits` an und keine
+ * Testbefehle. Weicht die Anzeige je ab (die Karte ist veraltet), sagt der
+ * Server nein — nicht umgekehrt.
  */
-const promptTrusted = computed(() => props.ticket.feedbackId === '')
+const promptTrusted = computed(() => isOperatorWritten(normalizeTicketOrigin(props.ticket.origin)))
 
 /**
  * Die Anhänge des Tickets als LAZY Quellen: geladen wird eine Datei erst,

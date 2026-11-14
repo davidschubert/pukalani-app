@@ -93,15 +93,15 @@
       "budget": "Budget (USD)",
       "budgetHelp": "Leave empty = the machine uses its own cap.",
       "tests": "Test commands",
-      "testsHelp": "One command per line, ten at most. They run in the worktree after the work.",
-      "testsPlaceholder": "pnpm lint",
+      "testsHelp": "Only commands this machine has approved for this project. They run in the worktree after the work.",
+      "testsPlaceholder": "Pick test commands …",
       "interactive": "Interactive (terminal to watch)",
       "interactiveHelp": "The machine opens a terminal window and runs Claude Code in the foreground — you watch and approve every step.",
       "interactiveRemote": "Only on a local machine — a remote machine cannot open a window.",
       "start": "Start run",
       "attachments": "{count} attachment(s) will be sent along",
-      "untrustedTitle": "Text from guest feedback",
-      "untrustedText": "This job contains text from someone else. That is why only the two careful modes are offered — the server would not accept the others anyway.",
+      "untrustedTitle": "Unverified job",
+      "untrustedText": "This ticket’s origin is not “written by the operator”. That is why only the two careful ways of working are offered and no test commands — the server decides this, not this form.",
       "noRunnersTitle": "No active machine",
       "noRunnersText": "A run needs a machine to pick it up. Register one first.",
       "noRunnersAction": "Go to machines",
@@ -109,11 +109,14 @@
       "errors": {
         "runner": "Pick a machine.",
         "model": "Pick a model.",
-        "mode": "This mode is blocked for a job containing foreign text.",
+        "mode": "This mode is blocked for an unverified job.",
         "repo": "Pick a project.",
         "budget": "A number between 0 and 100.",
-        "tests": "Too many test commands — shorten the list."
-      }
+        "tests": "Ten test commands at most."
+      },
+      "testsNoneOffered": "This machine has not approved any test commands. The list lives in its local configuration.",
+      "testsPickRunner": "Pick a machine first — the test commands come from its list.",
+      "testsUntrusted": "An unverified job gets no test commands."
     },
     "panel": {
       "loadFailed": "The runs could not be loaded — your session may have expired.",
@@ -131,11 +134,16 @@
       "errors": {
         "start": "The run was not started.",
         "startHint": "Nothing was created — your entries are still in the form.",
-        "mode": "This mode is blocked for a job containing foreign text.",
+        "mode": "This mode is blocked for an unverified job.",
         "runner": "The chosen machine is not available.",
         "tooManyFiles": "Too many attachments for one run.",
         "fileType": "One attachment has a format that cannot be sent along.",
-        "cancel": "The run was not cancelled — it stays as it was."
+        "cancel": "The run was not cancelled — it stays as it was.",
+        "testsNeedRunner": "Test commands require a specific machine.",
+        "testsUntrusted": "An unverified job cannot take test commands along.",
+        "testNotListed": "A test command is not (or no longer) on the machine’s list.",
+        "subjectNotFound": "The ticket for this run no longer exists.",
+        "trustUnavailable": "The ticket’s origin could not be checked right now. Try again in a moment."
       }
     },
     "report": {
@@ -164,8 +172,12 @@
         "resume": "The continuation was not started.",
         "resumeHint": "Nothing was created — your answer is still in the field.",
         "notResumable": "This run can no longer be resumed.",
-        "mode": "The inherited mode is blocked for a job containing foreign text.",
-        "runner": "The predecessor's machine is not available."
+        "mode": "The inherited mode is blocked for an unverified job.",
+        "runner": "The predecessor's machine is not available.",
+        "testsNeedRunner": "The inherited test commands require a specific machine.",
+        "testsUntrusted": "The job no longer counts as verified — the inherited test commands cannot come along.",
+        "testNotListed": "An inherited test command is no longer on the machine’s list.",
+        "trustUnavailable": "The ticket’s origin could not be checked right now. Try again in a moment."
       }
     },
     "timeline": {

@@ -10,8 +10,8 @@ const identity: TranslateFn = key => key
  * `createRunSchema` in `schemas/run.ts`, das den ROUTEN-Körper prüft.
  *
  * Zwei Schemas, weil es zwei verschiedene Dinge sind: das Formular kennt
- * `testCommandsText` (ein Textfeld, eine Zeile je Befehl) und kennt weder
- * `promptSource` noch `subjectId` — die stellt der Einbindende. Was BEIDE
+ * `maxBudgetText` (ein Textfeld) und kennt weder `promptSource` noch
+ * `subjectId` — die stellt der Einbindende. Was BEIDE
  * kennen, ist die Modus-Sperre aus § 8.2, und die steht hier NUR als
  * Höflichkeit: sie sagt dem Benutzer sofort, was nicht geht. Die SICHERUNG
  * sitzt serverseitig in `runs/index.post.ts` und noch einmal im Runner —
@@ -38,8 +38,14 @@ export function createRunStartSchema(t: TranslateFn = identity, options: { promp
       value => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100),
       { message: t('runner.form.errors.budget') },
     ),
-    /** Eine Zeile je Befehl — der Bereich macht daraus `string[]` */
-    testCommandsText: z.string().max(2000, t('runner.form.errors.tests')),
+    /**
+     * AUSGEWÄHLT, nicht getippt (SEC-037): nur Befehle, die der gewählte
+     * Rechner für das gewählte Repo meldet, stehen zur Wahl. Freitext gibt es
+     * nicht mehr — die Grenze ist die lokale Liste des Rechners, und die
+     * Anlege-Route prüft jeden Eintrag noch einmal exakt dagegen. Höchstens
+     * zehn, wie das Routen-Schema.
+     */
+    testCommands: z.array(z.string()).max(10, t('runner.form.errors.tests')),
     /** true ⇒ interaktiver Lauf: der Runner öffnet ein Terminal (§ 7.3) */
     interactive: z.boolean(),
   })

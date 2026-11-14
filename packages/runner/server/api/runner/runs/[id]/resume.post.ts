@@ -1,6 +1,8 @@
 import { ID } from 'node-appwrite'
 import { resumeRunSchema } from '../../../../../schemas/run'
 import { buildResumeRunFields, permissionModeAllowed, runResumeAllowed } from '../../../../../shared/runGuards'
+import { checkRequestedTestCommands, offeredTestCommands, parseStoredTestCommands } from '../../../../../shared/testCommands'
+import { resolveRunSubjectTrust } from '../../../../utils/runSubjectTrust'
 import { RUNNERS_TABLE, RUNS_TABLE, type RunRow, type RunnerRow } from '../../../../../shared/types/runner'
 
 /**
@@ -16,7 +18,9 @@ import { RUNNERS_TABLE, RUNS_TABLE, type RunRow, type RunnerRow } from '../../..
  * fremden Lauf als Anker unterschieben, und alle Ausführungs-Felder (Rechner,
  * Repo, Modell, Modus, Budget, Testbefehle UND `promptTrusted`) ERBT der neue
  * Lauf aus dem Vorgänger (`buildResumeRunFields`) — nie aus dem Aufrufer
- * (§ 8.2: eine Fortsetzung wäscht die Herkunft nicht rein).
+ * (§ 8.2: eine Fortsetzung wäscht die Herkunft nicht rein). `promptTrusted`
+ * ist dabei höchstens so gut wie beim Vorgänger UND wie die HEUTIGE Herkunft
+ * des Subjekts (SEC-038) — siehe unten.
  */
 export default defineEventHandler(async (event): Promise<RunRow> => {
   const user = requirePermission(event, 'runner.manage')
@@ -45,7 +49,18 @@ export default defineEventHandler(async (event): Promise<RunRow> => {
     throw createError({ status: 409, statusText: 'Run cannot be resumed', data: { code: 'not_resumable' } })
   }
 
-  const fields = buildResumeRunFields(predecessor, body.answer)
+  /**
+   * DER VERTRAUENS-WERT DER FORTSETZUNG (SEC-038):
+   * nie besser als der Vorgänger UND nie besser als die heutige Herkunft des
+   * Subjekts. Wurde das Ticket seit dem ersten Lauf von einem Konto ohne
+   * Betreiber-Rolle umgeschrieben, ist auch die Antwort darauf kein geprüfter
+   * Auftrag mehr. Ein inzwischen gelöschtes Subjekt macht die Fortsetzung
+   * ungeprüft, nicht unmöglich (die Rückfrage hängt am Lauf, nicht am Ticket).
+   * Ein Resolver-Ausfall wird als 503 durchgereicht — nicht geraten.
+   */
+  const subject = await resolveRunSubjectTrust(event, predecessor.subjectType, predecessor.subjectId)
+  // Die UND-Verknüpfung mit dem Vorgänger macht `buildResumeRunFields` (pur, getestet).
+  const fields = buildResumeRunFields(predecessor, body.answer, subject.found && subject.trusted)
 
   /**
    * Die Modus-Sperre aus § 8.2 auch hier — sie hing schon am Vorgänger, aber
@@ -67,13 +82,34 @@ export default defineEventHandler(async (event): Promise<RunRow> => {
    * die niemand leert — lieber sofort ein klares 400 als ein stummes Warten.
    * `runnerId: ''` (Alt-Daten ohne Ziel) bleibt wie bei `runs` ungeprüft.
    */
+  let runner: RunnerRow | null = null
   if (fields.runnerId) {
-    const runner = await tablesDB.getRow<RunnerRow>({
+    runner = await tablesDB.getRow<RunnerRow>({
       databaseId, tableId: RUNNERS_TABLE, rowId: fields.runnerId,
     }).catch(() => null)
     if (!runner || runner.status !== 'active') {
       throw createError({ status: 400, statusText: 'Runner unavailable', data: { code: 'runner_unavailable' } })
     }
+  }
+
+  /**
+   * DIE GEERBTEN TESTBEFEHLE gehen durch dieselbe Prüfung wie beim Anlegen
+   * (SEC-037) — mit dem Vertrauens-Wert DIESER Fortsetzung und der HEUTIGEN
+   * Liste des Rechners. Ein kaputter gespeicherter Wert wird abgelehnt wie ein
+   * nicht gelisteter Befehl, statt still als „keine Tests" weiterzulaufen.
+   */
+  const inheritedTests = parseStoredTestCommands(fields.testCommands)
+  if (inheritedTests === null) {
+    throw createError({ status: 400, statusText: 'Test commands not allowed', data: { code: 'test_command_not_listed' } })
+  }
+  const testCheck = checkRequestedTestCommands({
+    requested: inheritedTests,
+    offered: runner ? offeredTestCommands(runner.capabilitiesJson, fields.repoKey) : [],
+    promptTrusted: fields.promptTrusted,
+    runnerSelected: runner !== null,
+  })
+  if (!testCheck.ok) {
+    throw createError({ status: 400, statusText: 'Test commands not allowed', data: { code: testCheck.code } })
   }
 
   /**
