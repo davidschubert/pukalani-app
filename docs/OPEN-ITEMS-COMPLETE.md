@@ -61,7 +61,8 @@ jetzt in einem Fehler statt in einem Durchlass.
    sagt das in einem eigenen Satz. Stilllegen zählt die Fehlschläge. Ein
    stündlicher Lauf der Platform-App gleicht nach (Schalter
    `pukalani.community.labelReconcile`: `off`, `dry-run`, `apply`; Runbook
-   `docs/runbooks/LABEL-ABGLEICH.md`). Er startet als Probelauf.
+   `docs/runbooks/LABEL-ABGLEICH.md`). Er lief zuerst als Probelauf und räumt
+   seit dem 2026-11-14 auf (Davids Freigabe, PR 148).
 4. **Herkunftsprüfung überall an (SEC-004).** Stufe 1: Betreiber-Konsole und
    App-Vorlage. Stufe 2: Die Prüfung gilt im Core für jede App, der Schalter
    `pukalani.security.csrfOriginCheck` ist entfernt. Ausnahmen gibt es nur als
@@ -104,7 +105,7 @@ mit dem Merge-Commit und `ok:true`. Eine Test-Anfrage an die
 Betreiber-Konsole (ohne Anmeldung, fremde Herkunft): 403. Erster Probelauf
 des Label-Abgleichs auf Production: 0 Kandidaten, 0 Abweichungen.
 
-**Reste.** Als Punkt SI1 in OPEN-ITEMS: den Abgleich auf `apply` stellen,
+**Reste.** Als Punkt SI1 in OPEN-ITEMS:
 Klick-Probe auf Live, was der Abgleich nicht findet, Lint-Laufzeit.
 
 **Gelernt:** (1) **Ein Wächter, der einen Pfad prüft, sieht nur, was dort
