@@ -30,6 +30,89 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P08 — Ausliefer-Weg: getrennte Schlüssel, Geheimnisse nur für den Hauptzweig ✅ 2026-11-14
+
+**Was.** Neuntes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
+SEC-041, SEC-042, SEC-043), Pull Requests 154 und 158. Davids Entscheidung
+vom 2026-11-12: umsetzen, Geheimnisse nur für den Hauptzweig, getrennte
+Schlüssel. Vier weitere Antworten am 2026-11-14 (DECISION-LOG).
+
+1. **Fremde Actions über einen Commit** (PR 154). Alle 24 Einbindungen nennen
+   den Commit, die Version steht als Kommentar dahinter. Dependabot hebt
+   beides gemeinsam, ein Sammel-PR je Woche. Bei GitHub sind nur noch die
+   Actions von GitHub selbst und `pnpm/action-setup` erlaubt, und nur über
+   einen Commit.
+2. **Rechte je Job** (PR 154). Auf Workflow-Ebene steht `permissions: {}`,
+   jeder Job nennt seine eigenen.
+3. **Geheimnisse nur für `main`** (PR 158). Zwei GitHub-Umgebungen,
+   `production` (Ausliefern) und `production-watch` (Wächter), beide lassen
+   nur den Zweig `main` zu. Auf Repo-Ebene liegen nur noch die zwei
+   Mail-Einträge des Wächters (offen, OPEN-ITEMS CI1).
+4. **Der Schlüssel liegt nie neben fremdem Code** (PR 158). `deploy.yml` hat
+   fünf Jobs statt einem: `plan` (wird ausgeliefert?), `fonts` (mit
+   Schlüssel, holt nur den Font-Cache), `build` (ohne jedes Secret:
+   installiert, baut, packt), `deliver` (mit Schlüssel, ohne `pnpm`:
+   entpackt, liefert aus), `tls`. Das Ergebnis reist als Artefakt.
+5. **Zwei Schlüssel statt einem.** Ausliefern und Wächter haben getrennte
+   Schlüssel. Auf dem App-Server stehen beide mit `restrict` in der Liste,
+   auf dem Appwrite-Server nur der Wächter-Schlüssel und nur mit festem
+   Befehl (`ops/appwrite-cert-gate.sh`). Der alte gemeinsame Schlüssel ist
+   ausgetragen, sein Secret und die lokale Kopie sind gelöscht.
+6. **Öffentliche Protokolle** (beide PRs). Der Notfall-Job für das
+   Appwrite-Zertifikat schickt nur noch ein Wort; gefiltert wird im
+   Tor-Skript auf dem Server. Der Alarm-Job schreibt keine Empfänger-Adresse
+   mehr, das Ausliefern keine Prozess-Tabelle des Servers.
+7. **Pflicht-Prüfungen.** `test`, `lint`, `secrets`, `typecheck` und `e2e`
+   sind bei GitHub Pflicht für `main`; der direkte Push des Besitzers bleibt
+   als Notausgang.
+8. **Wächter `pnpm check:workflows`** (läuft mit `lint:scripts`): jede Action
+   über einen Commit, Rechte je Job, ein Job mit Secret nennt eine Umgebung,
+   ein Job mit Umgebung installiert und baut nichts. 25 Tests mit
+   Gegenbeispielen.
+
+**Reihenfolge, die getragen hat.** Erst das Risikoarme (PR 154, kein
+Schlüssel berührt, echter Ausliefer-Lauf als Beweis). Dann: neue Schlüssel
+ZUSÄTZLICH auf die Server → mit ihnen prüfen → Umgebungen und Secrets →
+Probe von einem Wegwerf-Zweig → PR 158 → echter Ausliefer-Lauf, Wächter-Lauf,
+Probe des Notfall-Jobs, Probealarm → erst dann alter Schlüssel, alte Secrets
+und die GitHub-Schalter. Bis zum letzten Schritt hätte ein Revert genügt.
+
+**Beweis.** Alle acht Hosts melden nach PR 158 `.build` = `4fd91073` und
+`ok:true` (Deploy-Lauf 43626887598, sechs Jobs grün). Wächter-Lauf
+43626803879 grün über den neuen Schlüssel. Notfall-Probe 43626911256 grün.
+Probealarm 43628048781 ⇒ Issue 159 ⇒ Entwarnung 43628164578. Ein Lauf von
+einem Wegwerf-Zweig wurde von beiden Umgebungen abgewiesen, ein Job ohne
+Umgebung bekam leere Secrets. Die Schlüssel-Listen beider Server sind nach
+dem Austragen zurückgelesen. Dependabots eigener Lauf lief unter den neuen
+Schaltern grün.
+
+**Nicht geprüft / offen** (OPEN-ITEMS CI1): die zwei Mail-Einträge des
+Wächters; ein engerer Wächter-Zugang auf dem App-Server; ob die Mails des
+Probealarms im Postfach lagen.
+
+**Gelernt:** (1) **Der Notfall-Job war seit seinem Bau ohne Funktion.** Der
+CI-Schlüssel war auf dem Appwrite-Server nie eingetragen, und der Umweg über
+den App-Server trug auch nicht. Ein Hebel „für den Moment, in dem keine Zeit
+ist" gehört einmal gezogen, bevor man ihn braucht — die Probe ist jetzt Teil
+des Rezepts. (2) **Eine Variable ist kein Secret.** `vars.*` wird im
+Protokoll nicht maskiert; die Empfänger-Adresse stand deshalb bei jedem
+Wechsel im Klartext im öffentlichen Lauf. (3) **Was nicht ins Protokoll
+darf, filtert man dort, wo es entsteht.** Ein Filter im Workflow hält nur,
+bis jemand den Workflow ändert; das Tor-Skript auf dem Server gibt gar nicht
+erst mehr aus. (4) **`deployment: false` nimmt nur den Listeneintrag weg.**
+Die Zweig-Regel einer Umgebung greift trotzdem — gemessen mit einem
+Wegwerf-Zweig, bevor die Workflows sich darauf verließen. Dieselbe Probe hat
+die Schreibweise geprüft: eine ungültige Workflow-Datei auf `main` hätte das
+Ausliefern still angehalten. (5) **GitHub gibt ein gespeichertes Secret nicht
+heraus.** „Umziehen" heißt neu erzeugen oder neu eintragen; das gehört vor
+dem Umbau in die Liste der Dinge, die jemand mit Anmeldung tun muss.
+(6) **Die Doku nannte für die lokale Schlüssel-Kopie einen Ordner, den es
+nicht gab** (Umbenennung des Projekts; die Datei lag unter dem alten Namen).
+Gefunden über den Fingerabdruck, nicht über den Pfad. (7) **zsh trennt eine
+Variable nicht an Leerzeichen und liest `$name:r` als Kürzel.** Beides hat
+je einen Versuch gekostet: Optionen als Array, Variablen vor einem
+Doppelpunkt in geschweifte Klammern.
+
 ### GA1 P09 — Zeichen-Entwürfe: eigene Anbieter-Liste, Hinweis zum Modell, Wächter ✅ 2026-11-14
 
 **Was.** Achtes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Finding BE-004),

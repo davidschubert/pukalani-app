@@ -3337,3 +3337,30 @@ nur der Betreiber.
 (`core/shared/accountEvents.ts`, Begründung dort), Leseweg in core an derselben
 Grenze wie `logAuthEvent` (kein Weg über den admin-Layer), dieselbe Route.
 Unverändert: was geschrieben wird, die Betreiber-Ansicht, der Community-Feed.
+
+## 2026-11-14 — Prüfungen sind Pflicht für `main`, Geheimnisse nur für den Hauptzweig
+
+**Anlass:** Gesamtaudit 2026-11, Paket P08 (SEC-041, SEC-042, SEC-043). Die
+vier Prüfungen hielten seit dem 2026-11-13 das Ausliefern auf, aber nicht das
+Zusammenführen: „erst grün, dann mergen" hielt nur, wer sich daran hielt.
+**Entscheidung (David, vier Fragen zum Anklicken):**
+1. **Pflicht-Prüfungen: Ja, mit Notausgang.** Ein Pull Request geht erst bei
+   grünem `test`, `lint`, `secrets`, `typecheck` und `e2e` in den Hauptzweig.
+   Direkte Pushes des Besitzers bleiben möglich (Ausnahme für die Rolle
+   Repository-Admin). Streng ohne Ausnahme wurde angeboten und nicht gewählt:
+   jede Doku-Zeile bräuchte dann einen Pull Request und die Wartezeit.
+2. **Geheimnisse nur für den Hauptzweig.** Zwei GitHub-Umgebungen
+   (`production`, `production-watch`), beide nur für `main`; auf Repo-Ebene
+   bleibt kein Secret. Ausliefern und Wächter haben getrennte Schlüssel.
+3. **Nur ausgewählte Bausteine, nur über einen Commit.** Erlaubt sind die
+   Actions von GitHub selbst und `pnpm/action-setup`.
+4. **Die drei unbenutzten Einträge** (alte Ploi-Auslöser) sind gelöscht.
+**Folgen im Alltag:** `gh pr merge` wartet nicht mehr auf Disziplin, sondern
+lehnt bei offenen oder roten Prüfungen ab. Ein Lauf von Hand von einem
+Arbeitszweig bekommt kein Secret (Wächter, Notfall-Job und Deploy laufen von
+`main`). Ein Zweig mit Workflow-Dateien von vor dem 2026-11-14 braucht erst
+`git merge origin/main`. Einzelheiten: `.claude/rules/hosts-ops.md`,
+docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
+**Wieder prüfen:** sobald eine zweite Person Schreibrecht bekommt (dann ist
+die Ausnahme für den Besitzer neu zu bewerten und eine Freigabe-Pflicht für
+die Umgebungen sinnvoll).

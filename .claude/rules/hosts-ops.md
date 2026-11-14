@@ -141,6 +141,33 @@ paths:
   und den Umfang rät man auch nicht am Variablen-NAMEN ab. Runbook
   docs/runbooks/ZUGAENGE-AUFRAEUMEN.md.
   Details: docs/content/2.architektur/6.hosts-und-ports.md
+- ZWEI CI-SCHLÜSSEL, ZWEI UMGEBUNGEN (GA1 P08, seit 2026-11-14): GitHub
+  Actions erreicht die Server über ZWEI getrennte SSH-Schlüssel, und beide
+  liegen nicht mehr auf Repo-Ebene, sondern in GitHub-Umgebungen, die nur den
+  Zweig `main` zulassen — `production` (`DEPLOY_SSH_KEY`, nur `deploy.yml`) und
+  `production-watch` (`WATCH_SSH_KEY`, Mail-Zugang, Heartbeat; nur
+  `production-watch.yml`). Ein Lauf von einem Arbeitszweig wird von der
+  Umgebung abgewiesen („not allowed to deploy to … due to environment
+  protection rules") — das ist die Sperre, kein Fehler; ein Job OHNE Umgebung
+  bekommt auf keinem Zweig ein Secret. `deployment: false` an einem Job nimmt
+  nur den Eintrag in der Deployment-Liste weg, die Zweig-Regel greift
+  trotzdem (gemessen). Auf app-prod stehen beide Schlüssel mit `restrict` in
+  `authorized_keys` (kein Terminal, keine Weiterleitung), auf appwrite-prod
+  NUR der Wächter-Schlüssel und nur mit festem Befehl: sshd führt dafür immer
+  `~/bin/pukalani-cert-gate.sh` aus (Quelle `ops/appwrite-cert-gate.sh`,
+  erlaubt `probe`, `renew`, `reset-account`; Einspielen nur von Hand). Vom
+  App-Server führt KEIN SSH-Weg zum Appwrite-Server. DER SCHLÜSSEL LIEGT NIE
+  NEBEN FREMDEM CODE: `deploy.yml` baut im Job `build` ohne jedes Secret und
+  liefert im Job `deliver` ohne `pnpm` aus; `pnpm check:workflows` hält das
+  (Job mit Secret ⇒ Umgebung; Job mit Umgebung ⇒ kein Installieren). DIE
+  PROTOKOLLE DER LÄUFE SIND ÖFFENTLICH (jedes GitHub-Konto, 90 Tage): kein
+  Server-Protokoll, keine Dateiliste, keine Konfiguration, keine Mail-Adresse
+  hinein — gefiltert wird dort, wo die Ausgabe entsteht (im Tor-Skript auf dem
+  Server), nicht im Workflow. Eine `vars.*`-Variable wird NICHT maskiert.
+  Ploi schreibt eigene Schlüssel mit einer Kommentarzeile in dieselbe
+  `authorized_keys`; die CI-Zeilen sind von Hand eingetragen (Ploi kennt keine
+  Optionen) und nach jeder Schlüssel-Änderung im Panel zurückzulesen.
+  Tauschen, Tor aktualisieren, Fallen: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md
 - EINE FEHLENDE ENV-VARIABLE WIRD NICHT ROT (F44, 2026-08-02): `platform`
   hatte kein `NUXT_SMTP_*`, also ging für JEDE Kunden-Community nie eine
   Benachrichtigungs-Mail raus — die App lief, die Seiten antworteten, nur die

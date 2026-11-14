@@ -188,6 +188,13 @@ ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, den Deploy-Lauf
 ebenfalls neu starten (er feuert nicht von selbst). Der einzige Prod-Beweis ist
 der Live-Build-SHA: `curl https://<host>/api/health` → `.build`. Ein späterer
 Deploy ohne App-Änderung überspringt und lässt den SHA des Vorgängers stehen.
+Seit 2026-11-14 (P08, Davids Entscheidung) sind die Prüf-Jobs `test`, `lint`,
+`secrets`, `typecheck` und `e2e` bei GitHub PFLICHT für `main`: ein Pull
+Request lässt sich erst zusammenführen, wenn alle grün sind (`gh pr merge`
+lehnt vorher ab). Der direkte Push bleibt als Notausgang für den Besitzer;
+`gh pr merge --admin` ist derselbe Notausgang und nie der Normalweg. Fremde
+Actions laufen nur noch über einen Commit (`pnpm check:workflows`) — ein
+Zweig mit alten Workflow-Dateien wird erst nach `git merge origin/main` grün.
 
 ## Doku-Ordnung (seit 2026-07-28) — Karte: docs/README.md
 Vier Sorten, jede mit genau EINEM Zuhause: **Steuerung** `docs/` (darin ist

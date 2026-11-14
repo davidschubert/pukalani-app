@@ -1,8 +1,8 @@
 # Offene Punkte
 
-**Stand: 17 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 18 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
-Stand: **2026-11-13**. Hier steht **nur, was noch offen ist** — in der
+Stand: **2026-11-14**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
 Beweis und den gelernten Lektionen) steht final in
 **[OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md)**.
@@ -45,6 +45,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live** (Schreiben als Mitglied; ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
 | 29 · SI1 | **Sicherungen: Nacharbeiten.** Die vier Sicherungen aus dem Paket P06 sind seit 2026-11-14 live (COMPLETE „GA1 P06"). Der stündliche Label-Abgleich räumt seit dem 2026-11-14 auf. Offen: (a) **Klick-Probe auf Live** (Einladungslink aus einem Webmail-Fenster öffnen; „Zugang entziehen" mit einem Test-Konto), (b) was der Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#si1) |
 | 30 · RU1 | **Runner: Nacharbeiten.** Testbefehle nur aus der Liste des Rechners, Herkunft vom Server und die Fristen sind seit 2026-11-14 live (COMPLETE „GA1 P03"). Offen: (a) **ein echter Lauf über das Formular** mit Auswahl eines Testbefehls, (b) den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#ru1) |
+| 31 · CI1 | **Ausliefer-Weg: Nacharbeiten.** Getrennte Schlüssel für Ausliefern und Wächter, Geheimnisse nur für den Hauptzweig und die Pflicht-Prüfungen sind seit 2026-11-14 live (COMPLETE „GA1 P08"). Offen: (a) **Mail-Zugang des Wächters** in den geschützten Bereich umziehen, (b) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (c) Ausliefern über ein festes Skript, (d) Kleinigkeiten. | Niedrig | S, (b) und (c) M | **Ja: (a) Anmeldung bei Resend** | [Einzelheiten](#ci1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -510,8 +511,8 @@ Embedding-Dienst abwägen.
 Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
 Sitzungen. Schon woanders eingeplant und deshalb NICHT hier: die Ausnahme für
 bekannte Geräte bei einer Konto-Pause (Audit-Paket P29, zugeschnitten), die
-Pflicht-Prüfungen vor dem Zusammenführen auf GitHub (Paket P08) und
-Laufzeit-Tests über einen echten Community-Host (Paket P27).
+Pflicht-Prüfungen vor dem Zusammenführen auf GitHub (Paket P08, erledigt am
+2026-11-14) und Laufzeit-Tests über einen echten Community-Host (Paket P27).
 
 - **(a) Klick-Probe auf Live.** Geprüft ist die Bremse lokal und in Tests, auf
   Production nicht. Mit einem eigenen Konto: sechsmal hintereinander ein
@@ -707,6 +708,34 @@ NICHT hier.
   `/invite` von branding.supply ist nach der Umstellung nur per Test und
   Quelltext geprüft, nicht im Browser. README und DECISION-LOG nennen in
   datierten Zeilen noch den entfernten Schalter `csrfOriginCheck`.
+
+<a id="ci1"></a>
+
+**CI1 — Ausliefer-Weg: Nacharbeiten (aus dem Gesamtaudit, Paket P08).**
+
+- **(a) Mail-Zugang des Wächters umziehen.** Zwei Einträge
+  (`PRODUCTION_ALARM_RESEND_KEY`, `PRODUCTION_WATCH_RESEND_KEY`) liegen noch
+  auf Repo-Ebene, weil GitHub gespeicherte Werte nicht herausgibt und ein
+  neuer Schlüssel Davids Anmeldung bei Resend braucht. Neu anlegen, mit
+  `--env production-watch` setzen, die zwei alten Einträge und den alten
+  Schlüssel bei Resend löschen, danach ein Probealarm
+  ([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md)).
+- **(b) Wächter-Zugang auf dem App-Server enger fassen.** Der
+  Wächter-Schlüssel hat dort eine Shell (ohne Terminal und Weiterleitung),
+  weil zwei Prüf-Skripte sich selbst hinüberkopieren. Enger ginge es wie auf
+  dem Appwrite-Server: feste Worte über ein Tor-Skript, die Prüf-Skripte
+  liefert der Deploy mit. Ändert vier Skripte in `scripts/ops/`.
+- **(c) Ausliefern über ein festes Skript.** Dasselbe für den
+  Ausliefer-Schlüssel: Symlink-Wechsel und `pm2` als ein Skript auf dem
+  Server statt freier Befehle. Passt zum Vorhaben „Rückweg bei einer
+  schlechten Version".
+- **(d) Kleinigkeiten.** Die alten Deploy-Auslöser in Ploi neu erzeugen (die
+  Adressen standen nur in den gelöschten Einträgen; ein Klick je Site im
+  Panel). Ob die zwei Mails des Probealarms im Postfach lagen, ist nicht
+  nachgesehen. Dependabot hat am 2026-11-14 drei Pull Requests geöffnet
+  (155 bis 157); sie warten auf eine Entscheidung. Das Tor-Skript auf dem
+  Appwrite-Server wird von Hand eingespielt; ein Wächter, der die Datei dort
+  mit `ops/appwrite-cert-gate.sh` vergleicht, fehlt.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
