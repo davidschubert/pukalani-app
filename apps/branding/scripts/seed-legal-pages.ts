@@ -59,9 +59,19 @@
  * im Dashboard bearbeitet hat, trägt keinen mehr — sie bleibt, wie sie ist,
  * und der Lauf sagt es. Titel, Status und Reihenfolge fasst der Schalter nie
  * an. Ein zweiter Lauf ändert nichts.
+ *
+ * ── DEN ÜBERGANGSTEXT NACHZIEHEN (2026-11-14) ────────────────────────────
+ * Derselbe Schalter ersetzt auch eine Zeile, die WORTGLEICH eine frühere
+ * Fassung aus dem Repo trägt (`PRIVACY_INTERIM_SUPERSEDED_SHA256`, Prüfsumme
+ * über den ganzen Text). Das ist der Weg, auf dem eine geänderte Aussage im
+ * Übergangstext auf eine Instanz kommt, auf der die Fassung davor schon
+ * liegt. Die Regel dahinter bleibt dieselbe: ersetzt wird nur, was nachweislich
+ * unverändert aus dem Repo stammt — ein im Dashboard geändertes Zeichen, und
+ * die Zeile bleibt unberührt.
  */
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
-import { PRIVACY_INTERIM_BODY } from './legalPrivacyInterim.ts'
+import { createHash } from 'node:crypto'
+import { PRIVACY_INTERIM_BODY, PRIVACY_INTERIM_SUPERSEDED_SHA256 } from './legalPrivacyInterim.ts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -278,6 +288,17 @@ function isScaffold(body: unknown): boolean {
   return typeof body === 'string' && SCAFFOLD_MARKERS.some(marker => body.includes(marker))
 }
 
+/**
+ * Trägt die Zeile WORTGLEICH eine frühere Fassung aus dem Repo? Heute gibt es
+ * frühere Fassungen nur für `privacy` (s. Kopf); für jeden anderen Slug ist
+ * die Antwort nein.
+ */
+function isSupersededRepoText(slug: string, locale: 'de' | 'en', body: unknown): boolean {
+  if (slug !== 'privacy' || typeof body !== 'string') return false
+  const hash = createHash('sha256').update(body, 'utf8').digest('hex')
+  return PRIVACY_INTERIM_SUPERSEDED_SHA256[locale].includes(hash)
+}
+
 let created = 0
 let skipped = 0
 let replaced = 0
@@ -305,8 +326,9 @@ for (const locale of LOCALES) {
         skipped++
         continue
       }
-      if (!isScaffold(row.body)) {
-        console.log(`↷ ${scaffold.slug} (${locale}) ist kein Gerüst mehr (im Dashboard bearbeitet) — unberührt`)
+      const superseded = isSupersededRepoText(scaffold.slug, locale, row.body)
+      if (!isScaffold(row.body) && !superseded) {
+        console.log(`↷ ${scaffold.slug} (${locale}) ist weder Gerüst noch eine frühere Fassung aus dem Repo (im Dashboard bearbeitet) — unberührt`)
         skipped++
         continue
       }
@@ -317,7 +339,9 @@ for (const locale of LOCALES) {
         rowId: row.$id,
         data: { body: scaffold.body[locale] },
       })
-      console.log(`✔ ${scaffold.slug} (${locale}) — Gerüst durch den Text aus dem Repo ersetzt`)
+      console.log(superseded
+        ? `✔ ${scaffold.slug} (${locale}) — frühere Fassung aus dem Repo durch die aktuelle ersetzt`
+        : `✔ ${scaffold.slug} (${locale}) — Gerüst durch den Text aus dem Repo ersetzt`)
       replaced++
       continue
     }

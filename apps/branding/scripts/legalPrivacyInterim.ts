@@ -20,9 +20,13 @@
  *    Aufrufer in brand, market und insights reichen genau diese Konstanten
  *    durch. Modelle: `packages/core/app/app.config.ts` (`ai.model`),
  *    `apps/branding/app/app.config.ts` (`ai.visionModel`, `ai.imageModel`).
- *  · Bilder ERZEUGEN        → das Bildmodell hat bei OpenRouter nur einen
- *    Endpunkt ohne festen Ort (`pnpm ops:ai-models`); der Text sagt deshalb
- *    keine EU-Verarbeitung zu.
+ *  · Bilder ERZEUGEN        → `BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL` (dieselbe
+ *    Datei): das Bildmodell hat bei OpenRouter nur den Endpunkt
+ *    `google-vertex/global`, ohne festen Ort (`pnpm ops:ai-models` hält ihn
+ *    nach); der Text sagt deshalb keine EU-Verarbeitung zu. Was in die
+ *    Anfrage geht: `packages/brand/server/utils/markPrompt.ts`. Der MODELLNAME
+ *    steht im Text — der Test hält ihn an `ai.imageModel` der App fest. Der
+ *    Hinweis vor dem Auslösen: `BwDraftsPanel.vue` (`brand.mark.drafts.notice`).
  *  · Kommentar-Übersetzung und Moderations-Hilfe → AUS: beide hängen an
  *    `isAiConfigured()`, und `pukalani.ai.enabled` ist hier der Core-Default
  *    (`false`). Der Text nennt sie deshalb nicht. WER DEN SCHALTER EINSCHALTET,
@@ -60,12 +64,31 @@
  */
 
 /** Stand des Textes. Ändert sich eine Aussage, ändert sich dieses Datum mit. */
-export const PRIVACY_INTERIM_DATE = '2026-11-12'
+export const PRIVACY_INTERIM_DATE = '2026-11-14'
+
+/**
+ * FRÜHERE FASSUNGEN DIESES TEXTES — als SHA-256 des ganzen Textes je Sprache.
+ *
+ * Wofür: `seed:legal --replace-scaffold=privacy` ersetzt eine vorhandene Zeile
+ * nur, wenn sie noch ein Gerüst trägt ODER wortgleich eine dieser früheren
+ * Fassungen ist. So lässt sich der Übergangstext nachziehen, ohne je einen Text
+ * zu überschreiben, den jemand im Dashboard bearbeitet hat: schon ein
+ * geändertes Zeichen ergibt eine andere Prüfsumme, und die Zeile bleibt.
+ *
+ * WER DEN TEXT ÄNDERT, trägt die Prüfsumme der BISHERIGEN Fassung hier ein
+ * (vor der Änderung berechnen) und zieht das Datum oben nach. Der Test prüft,
+ * dass die aktuelle Fassung nicht in dieser Liste steht.
+ */
+export const PRIVACY_INTERIM_SUPERSEDED_SHA256: Record<'de' | 'en', readonly string[]> = {
+  // Fassung vom 2026-11-12 (erste Übergangsfassung).
+  de: ['6c2623eef8eababa63ec65041a5a3e34b0876a63d9561af57fc07c6a5c92f18e'],
+  en: ['8ae6fa07221ac78bb421f76a303166ab0d6247796b8344f663d35ab758a3699e'],
+}
 
 /** Woran das Einspiel-Skript und der Test die Übergangsfassung erkennen. */
 export const PRIVACY_INTERIM_MARKER: Record<'de' | 'en', string> = {
-  de: '> **Vorläufige Fassung, Stand 12. November 2026.**',
-  en: '> **Provisional version, as of 12 November 2026.**',
+  de: '> **Vorläufige Fassung, Stand 14. November 2026.**',
+  en: '> **Provisional version, as of 14 November 2026.**',
 }
 
 export const PRIVACY_INTERIM_BODY: Record<'de' | 'en', string> = {
@@ -107,7 +130,7 @@ Der Markenberater, die Entwürfe, der Prüfblick, das Urteil im Brand-Check und 
 
 - **Texte:** ausschließlich auf einem von zwei Endpunkten in der EU, bei Amazon Bedrock (Region eu-west-1, Irland) oder bei Google Cloud Vertex AI (Europa). Voreingestellt ist ein Claude-Modell von Anthropic, das bei diesen beiden Anbietern läuft.
 - **Hochgeladene Bilder lesen:** ein Gemini-Modell von Google, ausschließlich auf dem EU-Endpunkt von Google Cloud Vertex AI.
-- **Zeichen-Entwürfe erzeugen:** ein Gemini-Bildmodell von Google. Für dieses Modell gibt es bei OpenRouter derzeit keinen Endpunkt mit festem Rechenort in der EU. Eine Verarbeitung in der EU können wir hier deshalb nicht zusagen.
+- **Zeichen-Entwürfe erzeugen:** das Bildmodell Gemini 2.5 Flash Image von Google, bei Google Cloud Vertex AI. Für dieses Modell gibt es bei OpenRouter nur einen Endpunkt ohne festen Rechenort („global“). Eine Verarbeitung in der EU können wir hier deshalb nicht zusagen. In die Anfrage gehen Markenname, Briefing, Farben und Schriftname, keine hochgeladenen Bilder und keine Kontodaten. Der Schritt ist freiwillig: Vor dem Erzeugen steht ein Hinweis auf das Modell, und das Kapitel lässt sich ohne Entwürfe abschließen.
 
 **Drei feste Einstellungen.** Sie gelten für jede Anfrage aus der Werkstatt, dem Brand-Check und dem Marktvergleich:
 
@@ -182,7 +205,7 @@ Je nachdem, wo du lebst, hast du Rechte an deinen Daten. Nach der DSGVO sind das
 
 ## Änderungen
 
-Stand: 12. November 2026. Ändert sich etwas an den Empfängern oder an dem, was wir verarbeiten, ändern wir diesen Text und das Datum.`,
+Stand: 14. November 2026. Ändert sich etwas an den Empfängern oder an dem, was wir verarbeiten, ändern wir diesen Text und das Datum.`,
 
   en: `${PRIVACY_INTERIM_MARKER.en} This text describes what actually happens to your data on branding.supply today and who receives it. It has not been reviewed by our lawyer yet, which is why it does not name legal bases yet. The reviewed version will replace it.
 
@@ -222,7 +245,7 @@ The brand advisor, the drafts, the review, the verdict of the brand check and th
 
 - **Text:** only on one of two endpoints in the EU, at Amazon Bedrock (region eu-west-1, Ireland) or at Google Cloud Vertex AI (Europe). The default is a Claude model by Anthropic that runs at these two providers.
 - **Reading uploaded images:** a Gemini model by Google, only on the EU endpoint of Google Cloud Vertex AI.
-- **Generating mark drafts:** a Gemini image model by Google. OpenRouter currently offers no endpoint with a fixed location in the EU for this model. We therefore cannot promise processing in the EU here.
+- **Generating mark drafts:** the image model Gemini 2.5 Flash Image by Google, at Google Cloud Vertex AI. OpenRouter offers only one endpoint for this model, without a fixed processing location (“global”). We therefore cannot promise processing in the EU here. The request contains the brand name, briefing, colours and typeface name, no uploaded images and no account data. This step is optional: a notice about the model appears before generating, and the chapter can be completed without drafts.
 
 **Three fixed settings.** They apply to every request from the workshop, the brand check and the market comparison:
 
@@ -297,5 +320,5 @@ Depending on where you live, you have rights over your data. Under the GDPR thes
 
 ## Changes
 
-As of 12 November 2026. If the recipients or what we process change, we change this text and the date.`,
+As of 14 November 2026. If the recipients or what we process change, we change this text and the date.`,
 }
