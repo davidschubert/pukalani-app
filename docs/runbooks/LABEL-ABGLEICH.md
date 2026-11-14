@@ -42,9 +42,10 @@ Regel: `.claude/rules/tenant-isolation.md`, Absatz SITE-LABEL.
 | `apply` | entzieht |
 
 Ein ungültiger Wert gilt als `off` und schreibt die Fehlerzeile
-`community_label.reconcile_invalid_mode`. Die Platform-App steht anfangs auf
-`dry-run`. Umstellen ist eine Code-Änderung in
-`apps/platform/app/app.config.ts` mit Deploy.
+`community_label.reconcile_invalid_mode`. Die Platform-App steht seit dem
+2026-11-14 auf `apply` (Davids Freigabe nach dem ersten Probelauf auf
+Production: 0 Kandidaten); davor lief sie einen Tag auf `dry-run`. Umstellen
+ist eine Code-Änderung in `apps/platform/app/app.config.ts` mit Deploy.
 
 ## Probelauf
 
