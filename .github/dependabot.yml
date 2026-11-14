@@ -1,10 +1,17 @@
 version: 2
 updates:
-  # GitHub-Action-Versionen aktuell halten (Supply-Chain: floating @vN-Tags)
+  # GitHub-Actions aktuell halten. Seit 2026-11-14 (SEC-041) ist jede Action
+  # über einen COMMIT eingebunden, die Version steht als Kommentar dahinter
+  # (`uses: owner/repo@<commit> # v7.0.1`; Wächter `pnpm check:workflows`).
+  # Dependabot hebt Commit und Kommentar gemeinsam. EIN Pull Request für alle
+  # Actions (`groups`), damit das Heben eine Prüfung ist und nicht sechs.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
     commit-message:
       prefix: ci
 

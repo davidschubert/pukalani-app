@@ -148,8 +148,8 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: read
+# Rechte stehen je Job (SEC-041): ohne eigene Angabe hat ein Job keine.
+permissions: {}
 
 concurrency:
   # Ein manueller Appwrite-Lauf darf den Halbstunden-Takt nicht abschießen
@@ -164,12 +164,14 @@ jobs:
   # Deploy-Schlüssel fehlt.
   tls:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: >
       github.event.repository.fork == false &&
       !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
 
@@ -205,6 +207,8 @@ jobs:
   # ── TÄGLICH ──────────────────────────────────────────────────────────────
   server:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # NEGATIV formuliert, und das ist Absicht: „alles ausser dem
     # Halbstunden-Takt" überlebt eine Änderung der TÄGLICHEN cron-Zeile. Stünde
     # hier `== '17 4 * * *'`, liefe dieser Job nach einer Verschiebung der
@@ -218,8 +222,8 @@ jobs:
       SERVER: '49.13.211.173'
       SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
 
@@ -294,8 +298,8 @@ jobs:
       always() && !cancelled() &&
       github.event.repository.fork == false &&
       !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
+    # Kein Checkout: nur Issues lesen und schreiben.
     permissions:
-      contents: read
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
@@ -407,11 +411,16 @@ jobs:
           code=$(curl -sS -o /tmp/mail-out.json -w '%{http_code}' -m 20 \
             -H "Authorization: Bearer $RESEND_KEY" -H 'Content-Type: application/json' \
             --data @/tmp/mail.json https://api.resend.com/emails)
+          # ÖFFENTLICHES PROTOKOLL (SEC-043): weder die Empfänger-Adresse noch
+          # die rohe Antwort von Resend ausgeben — eine Fehlermeldung zitiert
+          # dort das abgelehnte Feld, also die Adresse. Der Name des Fehlers
+          # reicht für die Diagnose.
           if [ "$code" != "200" ]; then
-            echo "::error::Resend antwortet HTTP $code — Alarm-Mail NICHT raus (Schlüssel widerrufen?):"; cat /tmp/mail-out.json; echo
+            grund=$(jq -r '.name // "unbekannt"' /tmp/mail-out.json 2>/dev/null || echo unbekannt)
+            echo "::error::Resend antwortet HTTP $code ($grund) — Alarm-Mail NICHT raus (Schlüssel widerrufen?)."
             exit 1
           fi
-          echo "Mail an $MAIL_TO: $betreff"
+          echo "Mail gesendet: $betreff"
 
       # Heartbeat NUR bei grün — bleibt er aus (rot ODER Workflow läuft gar
       # nicht mehr), meldet UptimeRobot nach dem dort eingestellten Fenster.
@@ -437,11 +446,22 @@ jobs:
   #
   # Zugang: derselbe Deploy-Key wie oben (PLOI_SSH_KEY). Ob er auf appwrite-
   # prod freigeschaltet ist, zeigt die Probe — sie scheitert dann sichtbar.
-  # Host-Key von appwrite-prod ist NICHT gepinnt (es gibt keinen bekannten
-  # Wert im Repo); `accept-new` ist hier bewusst — die Probe gibt den
-  # Fingerprint aus, damit er beim nächsten Mal gepinnt werden kann.
+  # Die Host-Keys BEIDER Server sind gepinnt (appwrite-prod seit 2026-11-14;
+  # vorher `accept-new`, also Vertrauen beim ersten Kontakt — und jeder Lauf
+  # auf einem frischen Runner IST ein erster Kontakt).
+  #
+  # DAS PROTOKOLL DIESES LAUFS IST ÖFFENTLICH (SEC-043, 2026-11-14): jedes
+  # angemeldete GitHub-Konto liest es 90 Tage lang. Deshalb gibt der Job vom
+  # Server nur aus, was die Diagnose braucht: erreichbar ja/nein, Container
+  # gezählt (Namen nur von denen, die nicht laufen), und vom Worker NUR Zeilen
+  # des Zertifikats-Auftrags, mit maskierten Mail-Adressen. Seit Appwrite 2.2
+  # schreibt EIN Worker alle Warteschlangen (Mails, Löschungen, Functions) —
+  # sein ungefiltertes Protokoll enthält Empfänger-Adressen. Keine
+  # Dateilisten, keine Konfigurationsdateien, kein `set -x`.
   appwrite-cert:
     runs-on: ubuntu-latest
+    # Kein Checkout, kein API-Zugriff: dieser Job braucht kein Recht am Repo.
+    permissions: {}
     if: >
       github.event_name == 'workflow_dispatch' &&
       (inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
@@ -449,7 +469,11 @@ jobs:
       APPWRITE_SERVER: '188.245.61.155'
       APPWRITE_DOMAIN: 'api.pukalani.app'
       APP_SERVER: '49.13.211.173'
+      # Der EINE Filter für alles, was vom Worker ins Protokoll darf (s. Kopf).
+      CERT_ZEILEN: 'certificate|certbot|acme|letsencrypt'
+      ADRESSEN_MASKIEREN: 's/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/<adresse>/g'
       APP_SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
+      APPWRITE_SERVER_HOSTKEY: '188.245.61.155 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF5ARmxcJgO7pLIhHLdfFQkg/mMTcp+Xl7aC8snX/rCs'
     steps:
       - name: SSH einrichten
         env:
@@ -463,9 +487,9 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/ops_key
           chmod 600 ~/.ssh/ops_key
-          printf '%s\n' "$APP_SERVER_HOSTKEY" > ~/.ssh/known_hosts
-          printf 'IdentityFile ~/.ssh/ops_key\nIdentitiesOnly yes\nBatchMode yes\nConnectTimeout 20\n' >> ~/.ssh/config
-          printf 'Host appwrite-prod\n  HostName %s\n  User ploi\n  StrictHostKeyChecking accept-new\n' "$APPWRITE_SERVER" >> ~/.ssh/config
+          printf '%s\n%s\n' "$APP_SERVER_HOSTKEY" "$APPWRITE_SERVER_HOSTKEY" > ~/.ssh/known_hosts
+          printf 'IdentityFile ~/.ssh/ops_key\nIdentitiesOnly yes\nBatchMode yes\nConnectTimeout 20\nStrictHostKeyChecking yes\n' >> ~/.ssh/config
+          printf 'Host appwrite-prod\n  HostName %s\n  User ploi\n' "$APPWRITE_SERVER" >> ~/.ssh/config
           printf 'Host app-prod\n  HostName %s\n  User ploi\n' "$APP_SERVER" >> ~/.ssh/config
 
       - name: Zertifikat von außen (vorher)
@@ -477,22 +501,23 @@ jobs:
         if: inputs.appwrite_probe
         run: |
           set -u
-          echo "Host-Key appwrite-prod (zum Pinnen):"
-          ssh-keyscan -t ed25519 -T 10 "$APPWRITE_SERVER" 2>/dev/null | sed 's/^/  /' || true
-          echo
           echo "::group::Direkt: ploi@appwrite-prod"
-          if ssh appwrite-prod 'hostname; uptime; df -h / | tail -1; cd ~/appwrite && docker compose ps --format "{{.Name}}\t{{.Status}}" | sort'; then
+          if ssh appwrite-prod 'uptime; df -h / | tail -1 | awk "{print \"Platte belegt: \" \$5}"; PS=$(cd ~/appwrite && docker compose ps -a --format "{{.Name}} {{.State}}") || exit 3; echo "Container: $(printf "%s\n" "$PS" | grep -c " running$") laufen, $(printf "%s\n" "$PS" | grep -vc " running$") nicht"; printf "%s\n" "$PS" | grep -v " running$" || true'; then
             echo "DIREKT: ok"
           else
             echo "DIREKT: fehlgeschlagen (Key dort nicht freigeschaltet oder Host nicht erreichbar)"
           fi
           echo "::endgroup::"
-          echo "::group::Hop über app-prod"
-          ssh app-prod 'ls -la ~/.ssh 2>/dev/null; echo "--- config ---"; cat ~/.ssh/config 2>/dev/null; echo "--- hop ---"; ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new ploi@188.245.61.155 hostname' \
-            || echo "HOP: fehlgeschlagen"
-          echo "::endgroup::"
-          echo "::group::Zertifikats-Worker (letzte 40 Zeilen)"
-          ssh appwrite-prod 'cd ~/appwrite && SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1) && echo "Worker-Dienst: $SVC" && docker compose logs --tail 40 "$SVC"' || true
+          # Der Umweg über app-prod: nur ob er trägt. Ausgaben beider Seiten
+          # werden verworfen (kein Hostname, keine Dateiliste, keine Konfiguration).
+          if ssh app-prod 'ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new ploi@188.245.61.155 true' >/dev/null 2>&1; then
+            echo "HOP über app-prod: ok"
+          else
+            echo "HOP über app-prod: fehlgeschlagen"
+          fi
+          echo "::group::Zertifikats-Auftrag im Worker (gefiltert, letzte 40 Zeilen)"
+          ssh appwrite-prod 'cd ~/appwrite && SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1) && docker compose logs --no-log-prefix --tail 2000 "$SVC" 2>&1' \
+            | grep -iE "$CERT_ZEILEN" | sed -E "$ADRESSEN_MASKIEREN" | tail -n 40 || true
           echo "::endgroup::"
 
       - name: Let's-Encrypt-Konto beiseitelegen
@@ -501,14 +526,15 @@ jobs:
           set -u
           ssh appwrite-prod 'set -u; cd ~/appwrite
             SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1)
-            echo "Worker-Dienst: $SVC"
             grep -c "^_APP_SYSTEM_SECURITY_EMAIL_ADDRESS=.\+" .env >/dev/null || { echo "::error::_APP_SYSTEM_SECURITY_EMAIL_ADDRESS fehlt in .env — ohne Adresse kann certbot kein neues Konto anlegen."; exit 1; }
             DIRS=$(docker compose exec -T "$SVC" sh -c "find / -maxdepth 8 -type d -name acme-v02.api.letsencrypt.org -path \"*accounts*\" 2>/dev/null")
             if [ -z "$DIRS" ]; then echo "Kein gespeichertes ACME-Konto gefunden — nichts beiseitezulegen."; exit 0; fi
+            n=0
             for D in $DIRS; do
-              echo "Lege beiseite: $D -> $D.alt-$(date +%Y%m%d%H%M)"
               docker compose exec -T "$SVC" sh -c "mv \"$D\" \"$D.alt-$(date +%Y%m%d%H%M)\""
-            done'
+              n=$((n + 1))
+            done
+            echo "Beiseitegelegt: $n gespeicherte(s) ACME-Konto/Konten."'
 
       - name: Zertifikat erneuern
         if: inputs.appwrite_renew || inputs.appwrite_reset_account
@@ -517,9 +543,10 @@ jobs:
           ssh appwrite-prod 'set -u; cd ~/appwrite
             SVC=$(docker compose ps --services | grep -E "^appwrite-worker(-certificates)?$" | head -1)
             echo "ssl --domain='"$APPWRITE_DOMAIN"'"
-            docker compose exec -T appwrite ssl --domain="'"$APPWRITE_DOMAIN"'" || true
+            docker compose exec -T appwrite ssl --domain="'"$APPWRITE_DOMAIN"'" >/dev/null 2>&1 || echo "ssl-Kommando endete mit Fehler"
             echo "warte 60 s auf den Worker …"; sleep 60
-            echo "::group::Worker-Log"; docker compose logs --since 3m "$SVC"; echo "::endgroup::"'
+            docker compose logs --no-log-prefix --since 3m "$SVC" 2>&1' \
+            | grep -iE "$CERT_ZEILEN" | sed -E "$ADRESSEN_MASKIEREN" | tail -n 60 || true
 
       - name: Zertifikat von außen (nachher) — muss gültig sein
         if: inputs.appwrite_renew || inputs.appwrite_reset_account

@@ -66,6 +66,13 @@ paths:
   2026-11-13 fährt `lint:scripts` `check:permissions` (SEC-001): rot bei jedem
   Bucket mit Schreibrecht für Konten in einer Migration oder einem
   Bootstrap-Skript (Regel in `.claude/rules/appwrite.md`, „Rechte an Ablagen").
+  Seit 2026-11-14 fährt `lint:scripts` auch `check:workflows` (SEC-041): in
+  `.github/workflows/*.yml` ist jede fremde Action über einen COMMIT
+  eingebunden (`uses: owner/repo@<40 Hex> # vX.Y.Z` — ein Tag lässt sich
+  umhängen, ein Commit nicht), auf Workflow-Ebene steht `permissions: {}`, und
+  JEDER Job nennt seine eigenen Rechte. Neuer Job ohne `permissions:` ⇒ rot.
+  Den Commit zu einem Tag liefert `gh api repos/<owner>/<repo>/commits/<tag>
+  --jq .sha`; aktuell hält die Einträge Dependabot (ein Sammel-PR je Woche).
 - LOSE PROMISES IM SERVER-CODE SIND ROT (SEC-023, seit 2026-11-13): für jedes
   `packages/*/server/**/*.ts` und `apps/*/server/**/*.ts` gilt die TYPISIERTE
   Regel `@typescript-eslint/no-floating-promises`. Eine Wache oder ein
