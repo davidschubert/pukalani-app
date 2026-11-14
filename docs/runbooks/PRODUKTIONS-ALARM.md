@@ -156,10 +156,17 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       Browser (Schlüssel nur als Eingabe, nie in Chat, Datei oder Commit):
 
       ```bash
-      gh secret set PRODUCTION_ALARM_RESEND_KEY --repo davidschubert/pukalani-app
-      gh secret set PRODUCTION_WATCH_RESEND_KEY --repo davidschubert/pukalani-app
+      gh secret set PRODUCTION_ALARM_RESEND_KEY --env production-watch --repo davidschubert/pukalani-app
+      gh secret set PRODUCTION_WATCH_RESEND_KEY --env production-watch --repo davidschubert/pukalani-app
       gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani-app --body "mail@…"
       ```
+
+      **Seit 2026-11-14 (GA1 P08) gehören alle Secrets des Wächters in die
+      Umgebung `production-watch`** (`--env production-watch`; im Browser:
+      Settings → Environments → production-watch), nicht mehr auf
+      Repo-Ebene. Die Umgebung lässt nur den Zweig `main` zu. Die Variable
+      `PRODUCTION_ALARM_MAIL_TO` bleibt auf Repo-Ebene; ihr Wert steht seit
+      demselben Tag nicht mehr im Protokoll des Laufs.
 - [x] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
       GitHub). ✅ 2026-11-08: zehn Keyword-Monitore, alle mit den Kontakten
       #8632224 (Mail) und #8862802 (iPhone-Push): platform #804590660,
@@ -219,9 +226,9 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       dauert Period + Grace = 2 h. https://healthchecks.io (kostenlos, 20 Checks): Check
       `production-watch`, Period 1 h, Grace 1 h, Mail + App als Kanal; die
       Ping-URL als Secret `PRODUCTION_WATCH_HEARTBEAT_URL` eintragen
-      (`gh secret set PRODUCTION_WATCH_HEARTBEAT_URL --repo
-      davidschubert/pukalani-app` oder Repo → Settings → Secrets and
-      variables → Actions). UptimeRobot-Heartbeats sind im
+      (`gh secret set PRODUCTION_WATCH_HEARTBEAT_URL --env production-watch
+      --repo davidschubert/pukalani-app` oder Repo → Settings →
+      Environments → production-watch; seit 2026-11-14 dort, s. o.). UptimeRobot-Heartbeats sind im
       Gratis-Tarif nicht bestätigt; `uptimerobot-sync.mjs --heartbeat`
       versucht es und zeigt die Antwort. Beweis: der nächste grüne Lauf zeigt
       „Heartbeat gesendet"; ein Probealarm lässt den Ping aus, nach dem
@@ -243,9 +250,16 @@ curl -s https://api.pukalani.app/v1/health/version; echo; node scripts/ops/verif
 
 - Zertifikat abgelaufen/kurz davor: Appwrite erneuert NICHT von selbst, sobald
   die Domain-Regel einmal `unverified` ist (Vorfall 2026-10-16). Weg A ohne
-  Mac: Actions → Produktions-Wächter → *Run workflow* → Haken
+  Mac: Actions → Produktions-Wächter → *Run workflow* (Zweig `main` — von
+  einem anderen Zweig weist die Umgebung den Lauf ab) → Haken
   `appwrite_probe` (nur lesen), dann `appwrite_renew`; scheitert es an „Account
-  not found", `appwrite_reset_account`. Weg B auf `ploi@188.245.61.155` in
+  not found", `appwrite_reset_account`. Der Job schickt seit 2026-11-14 nur
+  noch das Wort; auf dem Server führt sshd dafür das Tor-Skript aus
+  (`ops/appwrite-cert-gate.sh`), und das Protokoll zeigt bewusst wenig:
+  erreichbar, Last, Platte, Container gezählt, vom Worker nur Zeilen des
+  Zertifikats-Auftrags. Mehr sieht man nur am Server selbst (Weg B). Der Weg
+  ist seit dem 2026-11-14 erstmals bewiesen (Lauf 43626911256); davor war der
+  CI-Schlüssel auf diesem Server nie eingetragen. Weg B auf `ploi@188.245.61.155` in
   `~/appwrite`: Regel in `_console_rules` auf `verified`, Redis-Schlüssel der
   Regel löschen, `docker compose restart appwrite-worker`, dann
   `docker exec appwrite php app/cli.php ssl --domain=api.pukalani.app --skip-check=true`

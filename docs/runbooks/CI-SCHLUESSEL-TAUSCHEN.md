@@ -12,9 +12,21 @@ Ausliefern anzuhalten. Stand: 2026-11-14 (GA1 P08, SEC-041/SEC-042).
 | Wächter | `WATCH_SSH_KEY` | `production-watch` | app-prod, Benutzer `ploi` | wie oben (`restrict`) |
 | Wächter | derselbe | `production-watch` | appwrite-prod, Benutzer `ploi` | nur das Tor-Skript (`command=…`, `restrict`) |
 
-Dazu in `production-watch`: `PRODUCTION_WATCH_RESEND_KEY`,
-`PRODUCTION_ALARM_RESEND_KEY`, `PRODUCTION_WATCH_HEARTBEAT_URL`
-(Klickliste: [PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md)).
+Dazu in `production-watch`: `PRODUCTION_WATCH_HEARTBEAT_URL`, und sobald sie
+umgezogen sind (OPEN-ITEMS CI1) `PRODUCTION_WATCH_RESEND_KEY` und
+`PRODUCTION_ALARM_RESEND_KEY` (Klickliste:
+[PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md)).
+
+**Fingerabdrücke der Schlüssel vom 2026-11-14** (zum Vergleichen beim
+Zurücklesen; `ssh-keygen -lf ~/.ssh/authorized_keys` zeigt je Zeile einen):
+
+| Schlüssel | Kommentar | Fingerabdruck |
+| --- | --- | --- |
+| Ausliefern | `pukalani-ci-deploy-2026-11` | `SHA256:vRl1AXpGZaZ72cINl+vE1tfpE+Kro4xSl6AU+t2VeK0` |
+| Wächter | `pukalani-ci-watch-2026-11` | `SHA256:nXN3MAVRQJGHJluwLakPsdcg9vSuGiotFSirwX/mDSo` |
+
+Eine lokale Kopie der privaten Schlüssel gibt es nicht. Wer einen braucht,
+tauscht ihn (§ 2).
 
 **Drei Regeln, die der Wächter `pnpm check:workflows` hält:**
 
@@ -129,3 +141,9 @@ Der Deploy kopiert `ops/` nur auf app-prod.
   gewollt.
 - **Umgebung und Zweig.** Ein Lauf von Hand von einem Arbeitszweig scheitert
   an der Umgebung. Das ist die Sperre, kein Fehler.
+- **GitHub gibt ein gespeichertes Secret nicht heraus.** Ein Secret zieht
+  man nicht um, man setzt es neu: Wert neu erzeugen oder an der Quelle neu
+  kopieren, mit `--env <umgebung>` setzen, erst nach einem grünen Lauf den
+  alten Eintrag löschen.
+- **zsh.** `ssh $OPTIONEN …` reicht die Optionen als EIN Wort durch (Array
+  nehmen), und `$commit:refs/…` liest `:r` als Kürzel (`${commit}:refs/…`).
