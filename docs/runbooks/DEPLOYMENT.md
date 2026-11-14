@@ -263,14 +263,22 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
   fertige `.output` per rsync nach `/home/ploi/releases/<app>/<sha>/`,
   dann der bekannte ZDT-Flip (Symlink + `pm2 startOrReload` + Prune) und
   Health-Verify je App. **Der App-Server baut damit NICHTS mehr** — die
-  RAM-Regel oben gilt nur noch für den Fallback. Zugang: dedizierter
-  SSH-Deploy-Key (Repo-Secret `PLOI_SSH_KEY`, gepinnter Host-Key im
-  Workflow; Schlüsselpaar lokal in `~/.pukalani-secrets/gh-deploy-key`).
+  RAM-Regel oben gilt nur noch für den Fallback. Zugang seit 2026-11-14
+  (GA1 P08): eigener Schlüssel nur für das Ausliefern, Secret
+  `DEPLOY_SSH_KEY` in der GitHub-Umgebung `production` (lässt nur den Zweig
+  `main` zu), auf dem Server mit `restrict` eingetragen, gepinnter Host-Key
+  im Workflow. Eine lokale Kopie des privaten Schlüssels gibt es nicht —
+  er wird getauscht, nicht aufbewahrt:
+  [CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md).
+  Der Workflow hat seitdem DREI Maschinen statt einer: `fonts` (mit
+  Schlüssel, holt nur den Font-Cache), `build` (ohne jedes Secret:
+  installiert und baut), `deliver` (mit Schlüssel, ohne `pnpm`: entpackt
+  und liefert aus). Der Schlüssel liegt damit nie neben fremdem Code.
   Das `git pull` im Site-Checkout hält nur noch ops-Configs aktuell.
 - **Fallback (Server baut selbst):** die ploi-Deploy-Scripts der 4 Sites
   sind unverändert funktionsfähig — bei Actions-Ausfall in ploi den
-  Deploy-Button drücken (oder Webhooks feuern; Secrets
-  `PLOI_DEPLOY_WEBHOOK_*` existieren weiter). Dann gilt die RAM-Regel
+  Deploy-Button drücken (die Secrets `PLOI_DEPLOY_WEBHOOK_*` sind seit
+  2026-11-14 gelöscht; kein Workflow las sie mehr). Dann gilt die RAM-Regel
   (sequenziell, platform braucht 3584 MB Heap).
   ploi Quick Deploy bleibt bewusst AUS, „Restart after deployment" AUS.
   Hinweis platform: `/api/health` ist bei aktiver Tenancy bewusst von der
