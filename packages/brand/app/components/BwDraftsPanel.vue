@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { BRAND_DESIGN_DRAFTS_DAILY_LIMIT, brandAiRejectionMessageKey } from '../../shared/brandAiLimits'
+import { resolveBrandLegalLinks } from '../../shared/brandLegalLinks'
 import {
   BRAND_MARK_DRAFTS_MAX,
   BRAND_MARK_DRAFTS_PER_RUN,
   type BrandMarkDraftEntry,
+  brandImageModelLabel,
 } from '../../shared/brandMarkDrafts'
 import type {
   BrandMarkDraftWriteResponse,
@@ -40,6 +42,14 @@ import type {
  * (§2.19 Frage 1). Der Abschnitt sagt dann EINEN Satz und verschwindet nicht:
  * eine Fläche, die je nach Konfiguration da ist oder nicht, ist für den
  * Betreiber nicht nachvollziehbar.
+ *
+ * ── DAS MODELL STEHT VOR DEM KNOPF (Davids Entscheidung 2026-11-13) ──────
+ * Welches Modell arbeitet, über wen die Anfrage geht und dass es keinen festen
+ * Rechenort in der EU gibt, steht in einem Kasten ZWISCHEN Einleitung und
+ * Knopf — für jeden, nicht erst nach dem ersten Lauf. Der Modellname kommt vom
+ * SERVER (`GET …/mark/drafts` → `imageModel`); ohne Bildmodell bleibt der
+ * Kasten weg. Solange die Liste lädt, ist der Knopf gesperrt: sonst liesse
+ * sich auslösen, bevor der Hinweis überhaupt dasteht.
  */
 const props = defineProps<{
   profileId: string
@@ -50,7 +60,9 @@ const props = defineProps<{
 const { t, locale } = useI18n()
 
 const drafts = useBrandMarkDrafts(props.profileId)
-const { items, kept, full } = drafts
+const { items, kept, full, imageModel } = drafts
+const localePath = useLocalePath()
+const appConfig = useAppConfig()
 
 const loading = ref(!drafts.loaded.value)
 const running = ref(false)
@@ -62,6 +74,17 @@ const remaining = ref<number | null>(null)
 const lastModel = ref('')
 
 const canAct = computed(() => !props.disabled && !running.value && !busyId.value)
+
+/** Der Anzeigename des Bildmodells — leer, solange es keines gibt. */
+const imageModelLabel = computed(() => imageModel.value ? brandImageModelLabel(imageModel.value) : '')
+
+/**
+ * Der Link in den Datenschutztext — nur, wenn die App einen hat. Dieselbe
+ * Quelle wie im Erstgespräch: eine App ohne `pages`-Layer hat `/privacy` nicht,
+ * und ein Link ins 404 wäre schlechter als keiner.
+ */
+const privacyLink = computed(() =>
+  resolveBrandLegalLinks(appConfig.pukalani?.brand?.legalLinks).find(link => link.id === 'privacy') ?? null)
 
 interface FetchErrorLike {
   status?: number
@@ -107,7 +130,7 @@ async function load(): Promise<void> {
 onMounted(load)
 
 async function run(): Promise<void> {
-  if (!canAct.value || full.value) return
+  if (!canAct.value || full.value || loading.value) return
   running.value = true
   errorKey.value = ''
   try {
@@ -184,6 +207,30 @@ function createdLabel(entry: BrandMarkDraftEntry): string {
     </div>
     <p class="bw-doc-text mt-2">{{ t('brand.mark.drafts.intro') }}</p>
 
+    <!-- DER MODELL-HINWEIS — VOR dem Knopf, für alle (s. Kopf). -->
+    <div
+      v-if="imageModelLabel"
+      class="bw-frame mt-3 flex items-start gap-3 px-5 py-4" style="background: var(--bw-surface)"
+      data-drafts-model-notice
+    >
+      <UIcon name="i-ph-info" class="mt-0.5 size-4 flex-none" style="color: var(--bw-muted)" />
+      <div class="min-w-0">
+        <p class="text-sm font-medium">{{ t('brand.mark.drafts.notice.title') }}</p>
+        <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
+          {{ t('brand.mark.drafts.notice.model', { model: imageModelLabel }) }}
+        </p>
+        <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
+          {{ t('brand.mark.drafts.notice.location') }}
+        </p>
+        <p class="bw-label mt-2" style="color: var(--bw-muted)">
+          {{ t('brand.mark.drafts.notice.optional') }}
+          <NuxtLink
+            v-if="privacyLink" :to="localePath(privacyLink.to)" class="underline underline-offset-2"
+          >{{ t('brand.mark.drafts.notice.link') }}</NuxtLink>
+        </p>
+      </div>
+    </div>
+
     <div class="mt-3 flex flex-col gap-2">
       <div class="flex flex-wrap items-center gap-2">
         <UButton
@@ -193,7 +240,7 @@ function createdLabel(entry: BrandMarkDraftEntry): string {
           style="background: var(--bw-surface-hi)"
           data-drafts-run
           :loading="running"
-          :disabled="!canAct || full"
+          :disabled="!canAct || full || loading"
           @click="run"
         />
         <p v-if="running" class="bw-pending">{{ t('brand.mark.drafts.running') }}</p>

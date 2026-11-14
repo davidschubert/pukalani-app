@@ -1,10 +1,15 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { BRAND_MARK_DRAFTS_ENDPOINT, brandImageModelLabel } from '../../../packages/brand/shared/brandMarkDrafts'
 import { parseMarkdown } from '../../../packages/core/shared/markdown'
 import { MAX_PAGE_BODY } from '../../../packages/pages/schemas/page'
 import {
   PRIVACY_INTERIM_BODY,
   PRIVACY_INTERIM_DATE,
   PRIVACY_INTERIM_MARKER,
+  PRIVACY_INTERIM_SUPERSEDED_SHA256,
 } from '../scripts/legalPrivacyInterim'
 
 /**
@@ -18,6 +23,12 @@ import {
  *  4. Beide Sprachen haben dieselbe Gliederung — ein Abschnitt, der nur in
  *     einer Sprache steht, ist eine Auskunft, die die andere nicht bekommt.
  *  5. Jeder Empfänger steht in beiden Sprachen.
+ *  6. Das BILDMODELL der Zeichen-Entwürfe steht mit Namen und Betreiber da —
+ *     und zwar das, das die App wirklich konfiguriert (BE-004). Wer das Modell
+ *     wechselt, wird hier rot, bis der Text nachgezogen ist.
+ *  7. Frühere Fassungen sind als Prüfsumme geführt, die aktuelle steht nicht
+ *     darunter — sonst ersetzte das Einspiel-Skript sie durch sich selbst
+ *     oder, schlimmer, hielte einen alten Text für den neuen.
  */
 
 const LOCALES = ['de', 'en'] as const
@@ -81,6 +92,38 @@ describe('branding: vorläufige Datenschutzerklärung', () => {
     const recipients = ['Hetzner', 'Ploi', 'OpenRouter', 'Amazon', 'Google Cloud', 'Resend', 'Cloudflare', 'hello@branding.supply']
     for (const locale of LOCALES) {
       for (const name of recipients) expect(PRIVACY_INTERIM_BODY[locale]).toContain(name)
+    }
+  })
+
+  it('nennt das Bildmodell, das die App konfiguriert, mit Betreiber und offenem Ort', () => {
+    // Aus der Quelle gelesen und nicht importiert: `app.config.ts` braucht
+    // Nuxts `defineAppConfig`, das es in einem Unit-Test nicht gibt.
+    const config = readFileSync(fileURLToPath(new URL('../app/app.config.ts', import.meta.url)), 'utf8')
+    const slug = /[{\s]imageModel:\s*'([^']+)'/.exec(config)?.[1] ?? ''
+    expect(slug).not.toBe('')
+    const label = brandImageModelLabel(slug)
+    // Ein Modell ohne Anzeigenamen erschiene im Hinweis als roher Slug — dann
+    // fehlt der Eintrag in `BRAND_IMAGE_MODEL_LABELS`.
+    expect(label).not.toBe(slug)
+    // Der Pin ist ortlos; nur dann stimmt der Satz „keine EU-Zusage".
+    expect(BRAND_MARK_DRAFTS_ENDPOINT).toBe('google-vertex/global')
+    for (const locale of LOCALES) {
+      const body = PRIVACY_INTERIM_BODY[locale]
+      const bullet = body.split('\n').find(line => line.includes(label)) ?? ''
+      expect(bullet).toContain('Google Cloud Vertex AI')
+      expect(bullet).toContain('OpenRouter')
+      expect(bullet).toMatch(locale === 'de' ? /nicht zusagen/ : /cannot promise/)
+      expect(bullet).toMatch(locale === 'de' ? /freiwillig/ : /optional/)
+    }
+  })
+
+  it('führt frühere Fassungen als Prüfsumme und die aktuelle nicht darunter', () => {
+    for (const locale of LOCALES) {
+      const superseded = PRIVACY_INTERIM_SUPERSEDED_SHA256[locale]
+      expect(superseded.length).toBeGreaterThanOrEqual(1)
+      for (const hash of superseded) expect(hash).toMatch(/^[0-9a-f]{64}$/)
+      const current = createHash('sha256').update(PRIVACY_INTERIM_BODY[locale], 'utf8').digest('hex')
+      expect(superseded).not.toContain(current)
     }
   })
 })

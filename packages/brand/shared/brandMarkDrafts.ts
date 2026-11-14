@@ -55,6 +55,36 @@ export const BRAND_MARK_DRAFTS_MAX = 12
 export const BRAND_MARK_DRAFT_TITLE_MAX = 120
 
 /**
+ * DER EINE ENDPUNKT, ÜBER DEN DIE ENTWÜRFE ENTSTEHEN (Davids Entscheidung
+ * 2026-11-13, Finding BE-004).
+ *
+ * EINE Quelle für drei Leser: den Pin `BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL`
+ * (server/utils/brandProviderRouting.ts), die Tabelle des Wächters
+ * (`scripts/ops/ai-model-endpoints.mjs`, per Test an diesen Wert gebunden) und
+ * den Hinweis in der Werkstatt, der den Betreiber (Google Cloud Vertex AI)
+ * nennt. Ortlos (`/global`): einen EU-Endpunkt hat das Bildmodell nicht —
+ * Begründung am Pin.
+ */
+export const BRAND_MARK_DRAFTS_ENDPOINT = 'google-vertex/global'
+
+/**
+ * ANZEIGENAMEN DER BILDMODELLE — für den Hinweis VOR dem Auslösen.
+ *
+ * Eine kleine Tabelle und kein Raten aus dem Slug: „Gemini 2.5 Flash Image"
+ * ist der Name, unter dem Google das Modell führt, und ein aus
+ * `gemini-2.5-flash-image` gebauter Name wäre eine Erfindung. Ein Slug, der
+ * hier fehlt, erscheint WÖRTLICH — ehrlich und nachprüfbar, nie leer.
+ */
+const BRAND_IMAGE_MODEL_LABELS: Readonly<Record<string, string>> = {
+  'google/gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
+}
+
+export function brandImageModelLabel(slug: string): string {
+  const key = slug.trim()
+  return BRAND_IMAGE_MODEL_LABELS[key] ?? key
+}
+
+/**
  * EIN ENTWURF, wie ihn die Werkstatt sieht. KEIN Bild-Inhalt: das Bild holt
  * die Ausliefer-Route einzeln, und zwar nur für den Besitzer (§2.13).
  */

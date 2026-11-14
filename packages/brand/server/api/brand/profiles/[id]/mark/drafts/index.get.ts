@@ -1,5 +1,5 @@
 import { BRAND_MARK_DRAFTS_MAX } from '../../../../../../../shared/brandMarkDrafts'
-import type { BrandMarkDraftsListResponse } from '../../../../../../../shared/types/brand'
+import type { BrandMarkDraftsIndexResponse } from '../../../../../../../shared/types/brand'
 import { requireBrandMarkContext } from '../../../../../../utils/brandMarkBrief'
 import { listBrandMarkDrafts } from '../../../../../../utils/brandMarkDrafts'
 
@@ -14,12 +14,24 @@ import { listBrandMarkDrafts } from '../../../../../../utils/brandMarkDrafts'
  * OHNE BILD-MODELL ANTWORTET SIE TROTZDEM 200 mit dem, was da liegt: die
  * Entwürfe von gestern verschwinden nicht, weil der Betreiber heute das Modell
  * ausgetragen hat. Das 503 gehört dem LAUF, nicht der Liste.
+ *
+ * ── DAS BILDMODELL STEHT MIT DRIN (Davids Entscheidung 2026-11-13) ───────
+ * Die Werkstatt nennt es VOR dem Knopf. Gemeint ist das Modell, das ein Lauf
+ * auf dieser Instanz WIRKLICH riefe (`getEffectiveAiImageConfig`, inklusive
+ * Laufzeit-Override) — bewusst unabhängig vom Dev-Ersatz: der Hinweis ist
+ * eine Auskunft über das Produkt, nicht über die Beweis-Umgebung. Kein
+ * Bildmodell eingetragen ⇒ leer, und der Hinweis erscheint nicht.
  */
-export default defineEventHandler(async (event): Promise<BrandMarkDraftsListResponse> => {
+export default defineEventHandler(async (event): Promise<BrandMarkDraftsIndexResponse> => {
   const { userId, betaAccount } = await requireBrandAccess(event)
   const { profile } = await requireBrandMarkContext(event, userId, betaAccount)
+  const [items, imageConfig] = await Promise.all([
+    listBrandMarkDrafts(event, profile.$id),
+    getEffectiveAiImageConfig(event),
+  ])
   return {
-    items: await listBrandMarkDrafts(event, profile.$id),
+    items,
     max: BRAND_MARK_DRAFTS_MAX,
+    imageModel: imageConfig.enabled ? imageConfig.model : '',
   }
 })

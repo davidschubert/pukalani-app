@@ -22,6 +22,31 @@ paths:
   pukalani.ai. Konsumenten: Ticket-Triage, Moderations-Assist (Kommentare
   /api/admin/comments/:id/assist + Posts /api/posts/:id/assist — advisory,
   Mensch entscheidet; UI-Flag isAiAvailable()).
+- ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
+  brand, market und insights geben eine von DREI Konstanten mit
+  (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,
+  `dataCollection: 'deny'`, `allowFallbacks: false`: TEXT (`aiComplete*`) ⇒
+  `BRAND_PROVIDER_ROUTING` (zwei EU-Endpunkte); Bild- und Videolesen
+  (`aiVision`, `aiVideo`) ⇒ `…_VERTEX_EU`; Bild-ERZEUGEN (`aiImage`) ⇒
+  `…_VERTEX_GLOBAL` (`google-vertex/global` — das Bildmodell hat keinen
+  EU-Endpunkt; Davids Entscheidung 2026-11-13 „ohne festen Ort, wie bisher").
+  Eine Liste ohne passenden Endpunkt ist kein langsamer, sondern ein TOTER Weg
+  (404 beim Vermittler): AI1 gab der Basis einen Ort, der Bild-Aufruf erbte ihn
+  still, und jeder Lauf der Zeichen-Entwürfe wäre gescheitert, ohne dass
+  irgendetwas rot wurde. Drei Netze: (1)
+  `packages/brand/tests/brandAiCallSites.test.ts` hält je Aufrufstelle
+  Transport und Konstante gegeneinander (neue Aufrufstelle ⇒ dort mitzählen);
+  (2) die Wächter-Tabelle `scripts/ops/ai-model-endpoints.mjs` ist per Test an
+  die drei Konstanten gebunden, `pnpm ops:ai-models` läuft täglich im
+  Produktions-Wächter; (3) WER DEN ORT ÄNDERT, ändert drei Texte mit: den
+  Hinweis vor dem Knopf (`brand.mark.drafts.notice.*`, steht für ALLE
+  Besucher vor dem Auslösen — Davids Wortlaut), den Datenschutztext
+  (`apps/branding/scripts/legalPrivacyInterim.ts`, liegt auf Production als
+  Zeile und wird eigens eingespielt) und den Anzeigenamen
+  (`brandImageModelLabel`). KEIN ERGEBNIS, KEIN SICHTBARER VERBRAUCH: endet
+  ein Entwurfs-Lauf ohne ein abgelegtes Bild, bucht die Route den
+  Marken-Tageszähler zurück (`refundBrandAiQuota`); Konto- und Instanz-Deckel
+  bleiben gebucht (Missbrauchsnetz). Ein Teil-Erfolg ist ein Lauf.
 - UGC-ÜBERSETZUNG (2026-08-18, Davids Entscheidungen): Knopf statt Automatik,
   Gate = das jeweilige INHALTS-Produkt (bewusst NICHT 'ai'), nur Eingeloggte.
   Alle fünf Inhaltsarten (posts, comments inkl. Umfrage-Optionen, events,

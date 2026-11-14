@@ -27,7 +27,7 @@ import {
 } from '../../shared/brandMarkDrafts'
 import { BRAND_MARK_STEP_KEY } from './brandMarkBrief'
 import { brandDevStubEnabled } from './brandGenerators'
-import { BRAND_PROVIDER_ROUTING } from './brandProviderRouting'
+import { BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL } from './brandProviderRouting'
 import {
   BRAND_STEPS_TABLE,
   type BrandProfileRow,
@@ -531,6 +531,13 @@ export interface BrandMarkDraftsRunResult {
   /** Modell-Kennung ohne Schlüssel — für Zeile, Antwort und Ereignis. */
   readonly model?: string
   readonly ms?: number
+  /**
+   * Wie viele der Aufrufe beim Anbieter SCHEITERTEN (Wurf, nicht „kein
+   * Bild"). Nur eine Zahl fürs Log der Route (`brand.mark_drafts_failed`) —
+   * sie unterscheidet „Anbieter antwortet nicht" (4 von 4) von „Modell
+   * lieferte Text statt Bild" (0 von 4), ohne dass ein Inhalt ins Log geht.
+   */
+  readonly failedCalls?: number
 }
 
 const EXTENSION_BY_MIME: Readonly<Record<string, string>> = {
@@ -701,14 +708,21 @@ export async function runBrandMarkDrafts(
    * gescheiterter Aufruf schreibt eine Warnung mit der MELDUNG des Anbieters,
    * nie mit dem Prompt (er trägt Foundation-Inhalte).
    */
+  let failedCalls = 0
   const results = await Promise.all(prompts.map(prompt =>
     aiImage(event, prompt, {
       model,
       label: 'brand-mark-drafts',
-      // Die ZDR-Bedingungen dieses Layers, wie bei jedem anderen Aufruf. Der
-      // Transport klemmt `data_collection: 'deny'` ohnehin selbst.
-      providerRouting: { ...BRAND_PROVIDER_ROUTING },
+      // DIE BILD-FASSUNG, NICHT DIE BASIS (Finding BE-004): die Basis nennt
+      // seit AI1 die zwei EU-Endpunkte des TEXTmodells, und das Bildmodell hat
+      // keinen davon — jeder Aufruf war ein 404. Diese Fassung erbt ZDR,
+      // `deny` und „kein Ausweichen" und pinnt auf den EINEN Endpunkt des
+      // Bildmodells (`google-vertex/global`, Begründung am Pin). Der
+      // Aufrufstellen-Test (`brandAiCallSites.test.ts`) hält fest, dass jeder
+      // `aiImage`-Aufruf genau diese Konstante mitgibt.
+      providerRouting: { ...BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL },
     }).catch((error: unknown) => {
+      failedCalls += 1
       logEvent('warn', 'brand.mark_drafts_provider_error', {
         profileId: profile.$id,
         message: error instanceof Error ? error.message : 'unknown',
@@ -731,9 +745,9 @@ export async function runBrandMarkDrafts(
   }
 
   if (images.length === 0) {
-    return { failure: 'no_images', promptHash, model, ms: Date.now() - started }
+    return { failure: 'no_images', promptHash, model, ms: Date.now() - started, failedCalls }
   }
-  return { images, promptHash, model, ms: Date.now() - started }
+  return { images, promptHash, model, ms: Date.now() - started, failedCalls }
 }
 
 /** Wie viele Entwürfe noch Platz haben — der Deckel je Marke (§2.5 Stufe 3). */

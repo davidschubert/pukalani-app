@@ -42,6 +42,19 @@
 #      VOR dem Limit — RS1 c) und
 #      Blick 3 (MZ1): ≥ 3 Bounces oder ≥ 1 Spam-Beschwerde in 24 h ⇒ rot.
 #
+#   6. KI-MODELLE (`verify-ai-models.mjs`), TÄGLICH (BE-004, 2026-11-14). Ein
+#      Modell-Slug bei OpenRouter ist ein Angebot, kein Versprechen: verliert
+#      ein konfiguriertes Modell den Endpunkt, auf den unser Code es festlegt
+#      (zwei EU-Endpunkte für Text, `google-vertex/eu` für Bild- und
+#      Videolesen, `google-vertex/global` für das Bild-Erzeugen), antwortet
+#      jeder Aufruf 404 — die Funktion ist nicht aus, sie scheitert, und nur
+#      eine Warnzeile im Server-Log sagt es. Die Zeichen-Entwürfe von
+#      branding.supply waren so ab dem 2026-11-09 ohne Ergebnis, und der
+#      Wächter lief bis dahin nur von Hand. Braucht weder ssh noch Secret
+#      (öffentliche Modell-Liste). „OpenRouter nicht erreichbar" ist KEIN
+#      Befund (Exit 2 ⇒ Warnung, der Lauf bleibt grün) — rot wird nur ein
+#      Modell, das unter unseren Bedingungen nachweislich keinen Weg mehr hat.
+#
 # ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
 # Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft
 # in 11 Tagen ab") war jeder Lauf rot — rund 900 Stück bis zum 2026-10-24,
@@ -252,6 +265,22 @@ jobs:
           PUKALANI_OPS_SSH: ploi@49.13.211.173
           RESEND_API_KEY: ${{ secrets.PRODUCTION_WATCH_RESEND_KEY }}
         run: node scripts/ops/verify-mail-breaker.mjs --ssh --resend --strict
+
+      # Blick 6 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Modell-Liste
+      # von OpenRouter. Exit 1 = ein Modell hat keinen passenden Endpunkt mehr
+      # (rot). Exit 2 = OpenRouter war nicht erreichbar, also keine Aussage —
+      # das ist eine Warnung und kein Alarm; der nächste Tageslauf prüft neu.
+      - name: KI-Modelle unter unseren Bedingungen erreichbar?
+        if: always()
+        run: |
+          set -u
+          code=0
+          node scripts/ops/verify-ai-models.mjs || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::OpenRouter war nicht erreichbar — keine Aussage über die KI-Modelle. Kein Alarm; der nächste Tageslauf prüft neu."
+            exit 0
+          fi
+          exit "$code"
 
   # ── ALARMWEG: AUS EINEM ROTEN LAUF EINEN ZUSTAND MACHEN ─────────────────
   # Läuft nach JEDEM Wächter-Lauf (nicht nach den manuellen Appwrite-Jobs).

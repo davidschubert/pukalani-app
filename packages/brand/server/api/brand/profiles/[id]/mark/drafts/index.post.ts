@@ -4,7 +4,12 @@ import {
   BRAND_MARK_DRAFTS_PER_RUN,
 } from '../../../../../../../shared/brandMarkDrafts'
 import type { BrandMarkDraftsRunResponse } from '../../../../../../../shared/types/brand'
-import { type BrandAiQuotaMeasurement, bookBrandAiQuota } from '../../../../../../utils/brandAiQuota'
+import {
+  type BrandAiQuotaMeasurement,
+  type BrandAiQuotaRequest,
+  bookBrandAiQuota,
+  refundBrandAiQuota,
+} from '../../../../../../utils/brandAiQuota'
 import { recordBrandEvent } from '../../../../../../utils/brandEvents'
 import { readBrandAiEnabled, retainBrandGeneration } from '../../../../../../utils/brandGenerators'
 import { requireBrandMarkContext } from '../../../../../../utils/brandMarkBrief'
@@ -54,6 +59,16 @@ import {
  * ein Bild, NIE der Prompt, NIE ein Briefing-Feld (Regel 1 im Kopf von
  * `brandEvents.ts`). Der HASH darf mit: er ist die Herkunfts-Auskunft, die
  * auch auf der Karte steht.
+ *
+ * ── KEIN ENTWURF ⇒ DER SICHTBARE LAUF ZÄHLT NICHT (Finding BE-004) ────────
+ * Endet der Lauf, ohne dass EIN Entwurf abgelegt wurde (`no_images`,
+ * `empty_result`, `no_brief`, ein Wurf beim Ablegen vor dem ersten Bild),
+ * bucht das `finally` den ENGEN Zähler zurück — den, den der Mensch als „Noch
+ * X von 3 Läufen heute" sieht. Konto- und Instanz-Deckel bleiben gebucht:
+ * sie sind das Missbrauchsnetz, sonst wäre ein provozierter Leer-Lauf ein
+ * unbegrenzt wiederholbarer Freilauf (Kopf von `brandAiQuota.ts`). Ein
+ * TEILERFOLG (1 von 4) ist ein Lauf und bleibt gebucht. Nach einer 429 gibt
+ * es nichts zurückzubuchen — `booked` ist dann nie gesetzt.
  */
 export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunResponse> => {
   const { userId, betaAccount } = await requireBrandAccess(event)
@@ -108,13 +123,14 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
    * Anbieterfehler, Abbruch. Der Platz gehört dem Lauf, nicht seinem Ergebnis.
    */
   const burst = retainBrandGeneration(userId)
+  const quotaRequest: BrandAiQuotaRequest = { userId, profileId: profile.$id, kind: 'drafts' }
+  /** Die Buchung ging durch — erst dann gibt es etwas zurückzubuchen. */
+  let booked = false
+  /** Wirklich abgelegte Entwürfe; 0 am Ende ⇒ Rückbuchung (s. Kopf). */
+  let created = 0
   try {
     const measurement: BrandAiQuotaMeasurement = { narrowCount: 0, narrowResetSec: 0 }
-    const rejection = await bookBrandAiQuota(
-      event,
-      { userId, profileId: profile.$id, kind: 'drafts' },
-      measurement,
-    )
+    const rejection = await bookBrandAiQuota(event, quotaRequest, measurement)
     if (rejection) {
       logEvent('info', 'brand.mark_drafts_throttled', { profileId: profile.$id, code: rejection.code })
       setHeader(event, 'Retry-After', rejection.retryAfterSec)
@@ -124,6 +140,7 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
         data: { code: rejection.code },
       })
     }
+    booked = true
     const used = Math.min(measurement.narrowCount, BRAND_DESIGN_DRAFTS_DAILY_LIMIT)
     const quota = {
       used,
@@ -136,11 +153,24 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
     const result = await runBrandMarkDrafts(event, profile, stepRows, model)
 
     if (result.failure || !result.images?.length) {
+      const failure = result.failure ?? 'empty_result'
+      // EINE Zeile für den Betreiber — Kennzahlen, nie Prompt oder Inhalt.
+      // Ohne sie war der Ausfall nur als Folge von Warnungen je Aufruf zu
+      // sehen, nicht als „dieser Lauf lieferte nichts". `no_brief` ist KEIN
+      // Fehler der Instanz (dem Menschen fehlt ein Schritt, die Antwort ist
+      // eine 409) und bleibt deshalb eine Info-Zeile.
+      logEvent(failure === 'no_brief' ? 'info' : 'error', 'brand.mark_drafts_failed', {
+        profileId: profile.$id,
+        model,
+        failure,
+        failedCalls: result.failedCalls ?? 0,
+      })
       await recordBrandEvent(event, {
         type: 'design.drafts.run',
         profileId: profile.$id,
         userId,
-        payload: { images: 0, failure: result.failure ?? 'empty_result', model },
+        // `refunded`: der enge Zähler geht im `finally` zurück (s. Kopf).
+        payload: { images: 0, failure, model, refunded: true },
       })
       if (result.failure === 'no_brief') {
         throw createError({
@@ -161,7 +191,6 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
      * Marke weiter („Entwurf 5"), und vier gleichzeitige Anlagen läsen alle
      * denselben Stand. Es sind vier Dateien, keine vierhundert.
      */
-    let created = 0
     for (const [index, image] of result.images.entries()) {
       await createBrandMarkDraft(event, {
         profileId: profile.$id,
@@ -204,6 +233,10 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
     }
   }
   finally {
+    // Kein einziger Entwurf abgelegt ⇒ den sichtbaren Lauf zurückgeben. Fail-
+    // soft in `refundBrandAiQuota` selbst: eine gestörte Drossel darf die
+    // Antwort dieses Laufs nicht ersetzen.
+    if (booked && created === 0) await refundBrandAiQuota(event, quotaRequest)
     burst.release()
   }
 })

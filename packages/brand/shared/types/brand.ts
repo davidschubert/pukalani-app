@@ -2333,6 +2333,19 @@ export interface BrandMarkDraftsRunResponse extends BrandMarkDraftsListResponse 
   quota: { used: number, limit: number, remaining: number }
 }
 
+/**
+ * DIE ANTWORT DES LESENS (`GET …/mark/drafts`) — die Liste plus das Bildmodell.
+ *
+ * `imageModel` ist der EFFEKTIVE Slug (`getEffectiveAiImageConfig`, inklusive
+ * Laufzeit-Override), leer, wenn kein Bildmodell eingetragen ist. Die
+ * Werkstatt nennt ihn VOR dem Auslösen, damit niemand erst nach dem Klick
+ * erfährt, welches Modell arbeitet. Ein eigener Typ, damit Lauf- und
+ * Schreib-Antworten unberührt bleiben.
+ */
+export interface BrandMarkDraftsIndexResponse extends BrandMarkDraftsListResponse {
+  imageModel: string
+}
+
 /** Die Antwort von `PATCH`/`DELETE` — `item` ist beim Entfernen `null`. */
 export interface BrandMarkDraftWriteResponse extends BrandMarkDraftsListResponse {
   ok: true
