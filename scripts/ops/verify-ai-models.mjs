@@ -27,9 +27,20 @@
  * dass ein Aufruf gelingt — das kann nur eine echte Anfrage. Es beweist die
  * notwendige Bedingung, und die war beide Male die gerissene.
  *
- * Exit 0 = alles gut · Exit 1 = mindestens ein Slug ist nicht erreichbar.
+ * Exit 0 = alles gut · Exit 1 = mindestens ein Slug ist nicht erreichbar ·
+ * Exit 2 = OpenRouter selbst war nicht erreichbar. Der dritte Fall sagt
+ * nichts über die Modelle: bis 2026-11-13 wurde ein gescheiterter
+ * Endpunkt-Abruf still als „hat keinen der verlangten Endpunkte" gewertet,
+ * und eine Netz-Störung sah aus wie ein totes Modell.
  */
 import { globSync, readFileSync } from 'node:fs'
+import {
+  MODEL_FIELDS,
+  MODEL_LIST_FIELDS,
+  REQUIRED_ENDPOINT,
+  isEuEndpoint,
+  isLocationlessEndpoint,
+} from './ai-model-endpoints.mjs'
 
 const MODELS_URL = 'https://openrouter.ai/api/v1/models?zdr=true'
 const ENDPOINTS_URL = slug => `https://openrouter.ai/api/v1/models/${slug}/endpoints`
@@ -42,74 +53,10 @@ const ENDPOINTS_URL = slug => `https://openrouter.ai/api/v1/models/${slug}/endpo
  */
 const CONFIG_GLOBS = ['packages/*/app/app.config.ts', 'apps/*/app/app.config.ts']
 
-/**
- * Felder, die einen Modell-Slug tragen. Ein NEUES Modell-Feld gehört hier
- * hinein, sonst ist es ungedeckt — dieselbe Regel wie bei der
- * `FIELDS`-Tabelle von `check-i18n-keys.mjs`.
- */
-const MODEL_FIELDS = [
-  'model',
-  'visionModel',
-  'imageModel',
-  'videoModel',
-  'reviewModel',
-  'ticketsAiModel',
-  // Seit AI1 mitgeprüft: beide waren LEER und damit unsichtbar, aber sie sind
-  // echte Konfigurationsfelder (`pukalani.market.ai`) und gehen über
-  // `BRAND_PROVIDER_ROUTING` — ein dort eingetragener Slug ohne EU-Endpunkt
-  // wäre ein 404 ohne Wächter.
-  'extractModel',
-  'reportModel',
-]
-
-/**
- * FELDER, DIE EINE LISTE TRAGEN. `outsideViewModels` ist das einzige heute:
- * die KI-Aussensicht des Marktvergleichs verlangt zwei Modelle VERSCHIEDENER
- * Anbieter, und der Kopf von `packages/market/app/app.config.ts` lädt dazu
- * ein. Ein Wächter, der nur `feld: '…'` kennt, hätte genau diese Einladung
- * nicht gesehen.
- */
-const MODEL_LIST_FIELDS = ['outsideViewModels']
-
-/**
- * WER EINEN ORT VERLANGT — und WELCHE Orte reichen.
- *
- * Der Wert ist eine LISTE, weil `provider.only` eine Allowlist ist: der
- * Aufruf gelingt, sobald das Modell MINDESTENS EINEN dieser Endpunkte hat.
- * Eine Liste mit einem Eintrag ist deshalb die strengste Form, nicht die
- * schwächste — sie lässt genau eine Route zu.
- *
- * - `visionModel` / `videoModel` reichen Kundenmaterial hin und gehen über
- *   `BRAND_PROVIDER_ROUTING_VERTEX_EU` (`only: ['google-vertex/eu']`) —
- *   Davids Entscheidung 2026-10-27.
- * - Die TEXT-Felder gehen seit AI1 (Davids Entscheidung 2026-11-09) über die
- *   Basis `BRAND_PROVIDER_ROUTING` mit BEIDEN EU-Endpunkten des Textmodells.
- *   Für sie genügt „irgendwo ZDR" nicht mehr: ohne einen dieser zwei
- *   Endpunkte antwortet jeder Aufruf 404.
- *
- * NICHT HIER DRIN steht `ticketsAiModel` — die Ticket-Triage und der
- * Moderations-Assist geben GAR KEIN `providerRouting` mit (nachgeprüft
- * 2026-11-09), für sie ist also auch kein Ort verlangt. Ein Feld hier
- * einzutragen, dessen Aufrufer die Konstante nicht benutzt, würde einen
- * Zwang erfinden, den der Code nicht kennt.
- *
- * MITFÜHREN, wenn sich das Pinning in
- * `packages/brand/server/utils/brandProviderRouting.ts` ändert. Das ist eine
- * Verabredung, kein Beweis — ein Skript kann nicht sehen, welche Konstante
- * ein Aufrufer mitgibt.
- */
-const TEXT_EU_ENDPOINTS = ['amazon-bedrock/eu-west-1', 'google-vertex/europe']
-
-const REQUIRED_ENDPOINT = {
-  visionModel: ['google-vertex/eu'],
-  videoModel: ['google-vertex/eu'],
-  model: TEXT_EU_ENDPOINTS,
-  reviewModel: TEXT_EU_ENDPOINTS,
-  extractModel: TEXT_EU_ENDPOINTS,
-  reportModel: TEXT_EU_ENDPOINTS,
-  outsideViewModels: TEXT_EU_ENDPOINTS,
-}
-
+// Die Tabellen (Modell-Felder, verlangte Endpunkte) stehen seit 2026-11-13 in
+// einem eigenen Daten-Modul — ein Test bindet sie dort an die Routing-
+// Konstanten des Codes (Finding BE-004: `imageModel` fehlte hier, und der
+// Wächter blieb grün, während jeder Bild-Aufruf 404 antwortete).
 /** Alle gesetzten Slugs aus den Konfigurationen — leere Werte heißen „aus". */
 function collectSlugs() {
   const found = []
@@ -144,10 +91,41 @@ function collectSlugs() {
   return found
 }
 
+/** Drei Versuche, kurzer Abstand — eine einzelne Netz-Störung ist kein Befund. */
+const FETCH_ATTEMPTS = 3
+const FETCH_PAUSE_MS = 1500
+
 async function fetchJson(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`)
-  return res.json()
+  let lastError
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`)
+      return await res.json()
+    }
+    catch (error) {
+      lastError = error
+      if (attempt < FETCH_ATTEMPTS) await new Promise(resolve => setTimeout(resolve, FETCH_PAUSE_MS))
+    }
+  }
+  throw lastError
+}
+
+/**
+ * DER EIGENE AUSGANG FÜR „OPENROUTER NICHT ERREICHBAR" — Exit 2, nicht 1.
+ * Die Meldung sagt, dass über die Modelle NICHTS bekannt ist: ein Mensch soll
+ * hier nicht nach einem Ersatzmodell suchen, sondern den Lauf wiederholen.
+ * Der eigene Code trennt das auch für Maschinen: `production-watch.yml` wertet
+ * Exit 2 als Warnung (Lauf bleibt grün) und nur Exit 1 als Befund — sonst
+ * öffnete jede Netz-Störung bei OpenRouter ein Produktions-Alarm-Issue.
+ */
+function unreachable(url, error) {
+  console.log()
+  console.log('✖ OpenRouter nicht erreichbar, keine Aussage über die Modelle.')
+  console.log(`   ${url}`)
+  console.log(`   ${error instanceof Error ? error.message : String(error)} (nach ${FETCH_ATTEMPTS} Versuchen)`)
+  console.log('   Lauf später wiederholen — das ist KEIN Befund über eine Modell-Wahl.')
+  process.exit(2)
 }
 
 const slugs = collectSlugs()
@@ -156,7 +134,7 @@ if (slugs.length === 0) {
   process.exit(0)
 }
 
-const zdr = await fetchJson(MODELS_URL)
+const zdr = await fetchJson(MODELS_URL).catch(error => unreachable(MODELS_URL, error))
 const zdrIds = new Set((zdr.data ?? []).map(entry => entry.id))
 console.log(`OpenRouter meldet ${zdrIds.size} Modelle mit Zero-Data-Retention.\n`)
 
@@ -182,10 +160,21 @@ for (const { file, field, slug } of slugs) {
   }
 
   if (!endpointCache.has(slug)) {
-    endpointCache.set(slug, await fetchJson(ENDPOINTS_URL(slug)).catch(() => null))
+    endpointCache.set(
+      slug,
+      await fetchJson(ENDPOINTS_URL(slug)).catch(error => unreachable(ENDPOINTS_URL(slug), error)),
+    )
   }
   const data = endpointCache.get(slug)
   const tags = (data?.data?.endpoints ?? []).map(endpoint => endpoint.tag)
+  // NUR EINE INFO, kein Befund: verlangt das Feld ausschließlich ortlose
+  // Endpunkte (heute `imageModel` → `google-vertex/global`) und hat das Modell
+  // inzwischen einen EU-Endpunkt, ist eine bewusste Entscheidung fällig —
+  // umpinnen UND die Hinweistexte (Werkstatt, Datenschutztext) anpassen.
+  const euTags = needed.every(isLocationlessEndpoint) ? tags.filter(isEuEndpoint) : []
+  const euInfo = euTags.length > 0
+    ? `   ℹ EU-Endpunkt vorhanden: ${euTags.join(', ')} — Pin und Hinweistexte prüfen\n`
+    : ''
   // EINER genügt: `provider.only` ist eine Allowlist, OpenRouter wählt
   // darin. Fehlen ALLE, ist der Aufruf ein 404.
   const usable = needed.filter(tag => tags.includes(tag))
@@ -196,9 +185,11 @@ for (const { file, field, slug } of slugs) {
     console.log('   ist ZDR-fähig, hat aber keinen der verlangten Endpunkte — der Pin')
     console.log(`   macht daraus ein 404. verlangt (einer genügt): ${needed.join(', ')}`)
     console.log(`   vorhanden: ${tags.join(', ') || '—'}\n`)
+    if (euInfo) console.log(euInfo)
     continue
   }
   console.log(`✔ ${slug} (${where}) — inkl. ${usable.join(', ')}`)
+  if (euInfo) console.log(euInfo)
 }
 
 console.log()

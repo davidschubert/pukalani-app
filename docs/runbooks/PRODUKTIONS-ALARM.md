@@ -28,6 +28,21 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Tote Zugänge | `scripts/ops/verify-stale-keys.mjs` | täglich | Schlüssel auf ein gelöschtes Projekt |
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
+| KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
+
+**KI-Modelle (seit 2026-11-14, BE-004).** Ein roter Blick heißt: eine
+KI-Funktion scheitert gerade bei JEDEM Aufruf, obwohl sie eingeschaltet ist
+(der Aufruf endet beim Vermittler mit 404, die Oberfläche sagt nur „hat nicht
+geklappt"). Die Ausgabe nennt Modell, Konfigurationsdatei und Feld, die
+verlangten und die vorhandenen Endpunkte. Reparatur: entweder ein Modell
+wählen, das den verlangten Endpunkt hat, oder die Anbieter-Liste in
+`packages/brand/server/utils/brandProviderRouting.ts` anpassen — dann aber
+auch die Tabelle `scripts/ops/ai-model-endpoints.mjs` (ein Test hält beide
+zusammen), den Hinweis vor dem Bild-Erzeugen und den Datenschutztext von
+branding.supply, denn alle drei nennen den Ort. Lokal: `pnpm ops:ai-models`.
+Die Zeile „ℹ EU-Endpunkt vorhanden" ist kein Alarm, sondern die Nachricht,
+dass das Bildmodell inzwischen auch in der EU zu haben ist — dann lohnt der
+Wechsel der Liste.
 
 Die Mail-Notbremse selbst (60 je Stunde und Route über alle IPs) lebt in
 `packages/core/server/middleware/05.rate-limit.ts`; sie STOPPT den Versand und
