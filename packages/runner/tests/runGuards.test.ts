@@ -174,7 +174,7 @@ describe('buildResumeRunFields (§ 8.2-Vererbung)', () => {
   }
 
   it('erbt alle Ausführungs-Felder aus dem Vorgänger, NUR der Text ist neu', () => {
-    const fields = buildResumeRunFields(predecessor, 'Ja, bitte fortfahren.')
+    const fields = buildResumeRunFields(predecessor, 'Ja, bitte fortfahren.', true)
     expect(fields.subjectType).toBe('ticket')
     expect(fields.subjectId).toBe('t-1')
     expect(fields.runnerId).toBe('r-1')
@@ -194,14 +194,30 @@ describe('buildResumeRunFields (§ 8.2-Vererbung)', () => {
    * die Modus-Sperre zu umgehen. Wer die Vererbung „vereinfacht", wird hier rot.
    */
   it('vererbt promptTrusted=false und wäscht die Herkunft NICHT rein', () => {
-    expect(buildResumeRunFields(predecessor, 'x').promptTrusted).toBe(false)
-    expect(buildResumeRunFields({ ...predecessor, promptTrusted: true }, 'x').promptTrusted).toBe(true)
+    // Auch ein heute geprüftes Subjekt hebt einen ungeprüften Vorgänger nicht an.
+    expect(buildResumeRunFields(predecessor, 'x', true).promptTrusted).toBe(false)
+    expect(buildResumeRunFields(predecessor, 'x', false).promptTrusted).toBe(false)
+    expect(buildResumeRunFields({ ...predecessor, promptTrusted: true }, 'x', true).promptTrusted).toBe(true)
+  })
+
+  /**
+   * SEC-038: ein geprüfter Vorgänger bleibt nur geprüft, solange das Subjekt es
+   * HEUTE noch ist — wurde das Ticket inzwischen von fremder Hand umgeschrieben
+   * (oder gelöscht), ist die Fortsetzung ungeprüft.
+   */
+  it('stuft ab, wenn das Subjekt heute nicht mehr geprüft ist', () => {
+    expect(buildResumeRunFields({ ...predecessor, promptTrusted: true }, 'x', false).promptTrusted).toBe(false)
+  })
+
+  it('zählt nur ein boolesches true des Vorgängers (Alt-Daten)', () => {
+    const odd = { ...predecessor, promptTrusted: 'true' as unknown as boolean }
+    expect(buildResumeRunFields(odd, 'x', true).promptTrusted).toBe(false)
   })
 
   it('lässt einen ungeprüften Vorgänger nur harmlose Modi weitertragen (§ 8.2)', () => {
     // Ein ungeprüfter Lauf hätte nie `bypassPermissions` bekommen; wäre er es
     // doch (Alt-Daten), fiele die Fortsetzung an derselben Sperre.
-    const fields = buildResumeRunFields({ ...predecessor, permissionMode: 'bypassPermissions' }, 'x')
+    const fields = buildResumeRunFields({ ...predecessor, permissionMode: 'bypassPermissions' }, 'x', true)
     expect(permissionModeAllowed(fields.permissionMode, fields.promptTrusted)).toBe(false)
   })
 })

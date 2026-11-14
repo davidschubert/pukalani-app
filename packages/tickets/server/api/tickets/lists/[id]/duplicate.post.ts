@@ -1,5 +1,6 @@
 import { ID, Query } from 'node-appwrite'
 import { TICKETS_TABLE, TICKET_LISTS_TABLE, type TicketListRow, type TicketRow } from '../../../../../shared/types/ticket'
+import { originForCopy } from '../../../../../shared/ticketOrigin'
 
 /** Liste inklusive aller Karten kopieren — Kopie direkt rechts daneben. */
 export default defineEventHandler(async (event): Promise<TicketListRow> => {
@@ -46,7 +47,9 @@ export default defineEventHandler(async (event): Promise<TicketListRow> => {
         doneAt: null,
         dueRemindedAt: null,
         position: card.position,
+        // Dedup-Schlüssel wird geleert, die HERKUNFT reist mit (SEC-038).
         feedbackId: '',
+        origin: originForCopy(card.origin),
         createdBy: user.$id,
         createdByName: user.name ?? '',
       },

@@ -8,7 +8,8 @@
     "start": "node --experimental-strip-types src/main.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "smoke": "node --experimental-strip-types scripts/smoke.mjs"
+    "smoke": "node --experimental-strip-types scripts/smoke.mjs",
+    "test": "node --experimental-strip-types scripts/smoke.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",

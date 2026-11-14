@@ -93,15 +93,15 @@
       "budget": "Budget (USD)",
       "budgetHelp": "Leer lassen = der Rechner nimmt seinen eigenen Deckel.",
       "tests": "Testbefehle",
-      "testsHelp": "Ein Befehl je Zeile, höchstens zehn. Sie laufen nach der Arbeit im Worktree.",
-      "testsPlaceholder": "pnpm lint",
+      "testsHelp": "Nur Befehle, die dieser Rechner für dieses Projekt freigegeben hat. Sie laufen nach der Arbeit im Worktree.",
+      "testsPlaceholder": "Testbefehle wählen …",
       "interactive": "Interaktiv (Terminal zum Zuschauen)",
       "interactiveHelp": "Der Rechner öffnet ein Terminal-Fenster und lässt Claude Code im Vordergrund laufen — du schaust zu und genehmigst jeden Schritt.",
       "interactiveRemote": "Nur auf einem lokalen Rechner möglich — ein entfernter Rechner kann kein Fenster öffnen.",
       "start": "Lauf starten",
       "attachments": "{count} Anhang/Anhänge werden mitgeschickt",
-      "untrustedTitle": "Text aus Gast-Feedback",
-      "untrustedText": "In diesem Auftrag steckt fremder Text. Deshalb stehen nur die beiden vorsichtigen Modi zur Wahl — der Server lässt die anderen ohnehin nicht durch.",
+      "untrustedTitle": "Ungeprüfter Auftrag",
+      "untrustedText": "Die Herkunft dieses Tickets ist nicht „vom Betreiber geschrieben“. Deshalb stehen nur die beiden vorsichtigen Arbeitsweisen zur Wahl und keine Testbefehle — das entscheidet der Server, nicht dieses Formular.",
       "noRunnersTitle": "Kein aktiver Rechner",
       "noRunnersText": "Ein Lauf braucht einen Rechner, der ihn abholt. Registrier zuerst einen.",
       "noRunnersAction": "Zu den Rechnern",
@@ -109,11 +109,14 @@
       "errors": {
         "runner": "Wähl einen Rechner.",
         "model": "Wähl ein Modell.",
-        "mode": "Dieser Modus ist für einen Auftrag mit fremdem Text gesperrt.",
+        "mode": "Dieser Modus ist für einen ungeprüften Auftrag gesperrt.",
         "repo": "Wähl ein Projekt.",
         "budget": "Eine Zahl zwischen 0 und 100.",
-        "tests": "Zu viele Testbefehle — kürz die Liste."
-      }
+        "tests": "Höchstens zehn Testbefehle."
+      },
+      "testsNoneOffered": "Dieser Rechner hat keine Testbefehle freigegeben. Die Liste steht in seiner lokalen Konfiguration.",
+      "testsPickRunner": "Wähl zuerst einen Rechner — die Testbefehle kommen aus seiner Liste.",
+      "testsUntrusted": "Für einen ungeprüften Auftrag gibt es keine Testbefehle."
     },
     "panel": {
       "loadFailed": "Die Läufe konnten nicht geladen werden — möglicherweise ist deine Sitzung abgelaufen.",
@@ -131,11 +134,16 @@
       "errors": {
         "start": "Der Lauf wurde nicht gestartet.",
         "startHint": "Es wurde nichts angelegt — deine Eingaben stehen noch im Formular.",
-        "mode": "Dieser Modus ist für einen Auftrag mit fremdem Text gesperrt.",
+        "mode": "Dieser Modus ist für einen ungeprüften Auftrag gesperrt.",
         "runner": "Der gewählte Rechner steht nicht bereit.",
         "tooManyFiles": "Zu viele Anhänge für einen Lauf.",
         "fileType": "Ein Anhang hat ein Format, das nicht mitgeschickt werden kann.",
-        "cancel": "Der Lauf wurde nicht abgebrochen — er steht weiter auf dem bisherigen Stand."
+        "cancel": "Der Lauf wurde nicht abgebrochen — er steht weiter auf dem bisherigen Stand.",
+        "testsNeedRunner": "Testbefehle gibt es nur mit einem bestimmten Rechner.",
+        "testsUntrusted": "Ein ungeprüfter Auftrag darf keine Testbefehle mitnehmen.",
+        "testNotListed": "Ein Testbefehl steht nicht (mehr) in der Liste des Rechners.",
+        "subjectNotFound": "Das Ticket zu diesem Lauf gibt es nicht mehr.",
+        "trustUnavailable": "Die Herkunft des Tickets konnte gerade nicht geprüft werden. Versuch es gleich noch einmal."
       }
     },
     "report": {
@@ -164,8 +172,12 @@
         "resume": "Die Fortsetzung wurde nicht gestartet.",
         "resumeHint": "Es wurde nichts angelegt — deine Antwort steht noch im Feld.",
         "notResumable": "Dieser Lauf lässt sich nicht mehr fortsetzen.",
-        "mode": "Der geerbte Modus ist für einen Auftrag mit fremdem Text gesperrt.",
-        "runner": "Der Rechner des Vorgängers steht nicht bereit."
+        "mode": "Der geerbte Modus ist für einen ungeprüften Auftrag gesperrt.",
+        "runner": "Der Rechner des Vorgängers steht nicht bereit.",
+        "testsNeedRunner": "Die geerbten Testbefehle brauchen einen bestimmten Rechner.",
+        "testsUntrusted": "Der Auftrag gilt nicht mehr als geprüft — die geerbten Testbefehle dürfen nicht mit.",
+        "testNotListed": "Ein geerbter Testbefehl steht nicht mehr in der Liste des Rechners.",
+        "trustUnavailable": "Die Herkunft des Tickets konnte gerade nicht geprüft werden. Versuch es gleich noch einmal."
       }
     },
     "timeline": {

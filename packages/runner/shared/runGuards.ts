@@ -42,8 +42,9 @@ export function isTerminalRunStatus(status: RunStatus): boolean {
 /**
  * Die Modi, die ein Lauf mit UNGEPRÜFTEM Auftragstext haben darf (§ 8.2).
  *
- * `promptTrusted: false` heißt: im Text steckt Fremdmaterial — Gast-Feedback,
- * aus dem per „Übernehmen" ein Ticket wurde. Das ist ein Prompt-Injection-Pfad,
+ * `promptTrusted: false` heißt: der Text ist nicht nachweislich vom Betreiber
+ * geschrieben — z. B. Gast-Feedback, aus dem per „Übernehmen" ein Ticket wurde.
+ * Bestimmt wird der Wert vom SERVER aus der Herkunft des Subjekts (SEC-038). Das ist ein Prompt-Injection-Pfad,
  * und dass ein Mensch geklickt hat, ist kein Schutz (er liest nicht jede
  * Zeile). `plan` schreibt gar nichts, `acceptEdits` schreibt nur Dateien im
  * Worktree; `dontAsk` und `bypassPermissions` würden einem fremden Text die
@@ -136,7 +137,7 @@ export interface ResumePredecessor {
   baseBranch: string
   model: string
   permissionMode: PermissionMode
-  /** WIRD VERERBT (§ 8.2) — nie neu aus einem Body gelesen. */
+  /** Obergrenze der Fortsetzung (§ 8.2) — nie neu aus einem Body gelesen. */
   promptTrusted: boolean
   testCommands: string
   maxBudgetUsd: number
@@ -184,12 +185,16 @@ export function runResumeAllowed(predecessor: Pick<ResumePredecessor, 'status' |
  * Modus, Testbefehle, Budget. NUR der Auftragstext ist neu (die Antwort), und
  * `resumeSessionId` verweist auf die Vorgänger-Session.
  *
- * `promptTrusted` WIRD VERERBT, nicht neu bestimmt (§ 8.2): war der Ursprung
- * ungeprüftes Gast-Feedback, bleibt die Fortsetzung ungeprüft — sonst wäre die
- * Antwort ein Weg, die Modus-Sperre zu umgehen. Deshalb nimmt diese Funktion
- * `promptTrusted` aus dem Vorgänger und NIE aus einem Aufrufer-Body.
+ * `promptTrusted` WIRD NIE BESSER (§ 8.2, SEC-038): die Fortsetzung ist
+ * geprüft, wenn der Vorgänger es war UND das Subjekt es HEUTE noch ist
+ * (`subjectTrusted`, vom Server über `resolveRunSubjectTrust` bestimmt). War
+ * der Ursprung ungeprüft, bleibt die Fortsetzung ungeprüft — sonst wäre die
+ * Antwort ein Weg, die Modus-Sperre zu umgehen; und ist das Ticket seither von
+ * fremder Hand umgeschrieben, wird sie es. Ein Aufrufer-Body kommt hier nie an.
+ * Verglichen wird strikt mit `true`: ein Alt-Wert, der kein Boolean ist, zählt
+ * als ungeprüft.
  */
-export function buildResumeRunFields(predecessor: ResumePredecessor, answer: string): ResumeRunFields {
+export function buildResumeRunFields(predecessor: ResumePredecessor, answer: string, subjectTrusted: boolean): ResumeRunFields {
   return {
     subjectType: predecessor.subjectType,
     subjectId: predecessor.subjectId,
@@ -198,7 +203,7 @@ export function buildResumeRunFields(predecessor: ResumePredecessor, answer: str
     baseBranch: predecessor.baseBranch,
     model: predecessor.model,
     permissionMode: predecessor.permissionMode,
-    promptTrusted: predecessor.promptTrusted,
+    promptTrusted: predecessor.promptTrusted === true && subjectTrusted === true,
     promptSource: answer,
     testCommands: predecessor.testCommands,
     maxBudgetUsd: predecessor.maxBudgetUsd,

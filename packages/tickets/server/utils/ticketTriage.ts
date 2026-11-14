@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { AI_JSON_QUOTE_RULE } from '../../../core/shared/aiJson'
 import { TICKETS_TABLE, type TicketChecklistItem, type TicketRow } from '../../shared/types/ticket'
+import { TRIAGE_MARKER, stripTriageBlock } from '../../shared/triageBlock'
 
 /** Defensive Kopie des Client-Parsers — Server importiert nicht aus app/ */
 function parseChecklist(raw: string): TicketChecklistItem[] {
@@ -22,7 +23,9 @@ function parseChecklist(raw: string): TicketChecklistItem[] {
  * die Vorschläge stehen im Text, der Mensch entscheidet.
  */
 
-const TRIAGE_MARKER = '\n\n---\n\n**🤖 KI-Triage'
+// Der Marker und das Abschneiden stehen in shared/triageBlock.ts — derselbe
+// Schnitt wird auch für den Runner-Auftrag gebraucht (apps/control), und eine
+// zweite Kopie liefe irgendwann auseinander.
 
 interface TicketsAiConfig {
   enabled: boolean
@@ -99,7 +102,7 @@ function buildPrompt(ticket: TicketRow): string {
     ticket.effort ? `Gesetzter Aufwand: ${ticket.effort}` : '',
     '',
     'Beschreibung:',
-    ticket.description.split(TRIAGE_MARKER)[0] || '(leer)',
+    stripTriageBlock(ticket.description) || '(leer)',
     checklist.length ? `\nCheckliste:\n${checklist.map(i => `- ${i.text}`).join('\n')}` : '',
     '',
     // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
@@ -189,8 +192,13 @@ export async function triageTicket(event: H3Event, ticketId: string): Promise<Ti
   ].join('\n')
 
   // Alte Triage ersetzen (Marker bis Ende — Triage steht immer als letzter Block)
-  const base = ticket.description.split(TRIAGE_MARKER)[0] ?? ''
+  const base = stripTriageBlock(ticket.description)
   const description = `${base}${section}`.slice(0, 10000)
+
+  // `origin` bleibt UNVERÄNDERT (SEC-038): der Abschnitt ist Text eines
+  // Modells, aber er reist nicht in einen Runner-Auftrag — der Auftrag schneidet
+  // ihn mit `stripTriageBlock` ab. Eine Abstufung hier würde jedes triagierte
+  // Betreiber-Ticket für den Runner unbrauchbar machen, ohne etwas zu schützen.
 
   return await tablesDB.updateRow<TicketRow>({
     databaseId, tableId: TICKETS_TABLE, rowId: ticketId, data: { description },

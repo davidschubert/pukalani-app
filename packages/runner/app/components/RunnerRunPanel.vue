@@ -8,9 +8,10 @@ import { RUNS_TABLE, RUN_EVENTS_TABLE, type RunAttachmentAddedResponse, type Run
  *
  * ER KENNT KEIN TICKET (A14). Was ausgeführt wird, kommt vollständig über
  * Props: ein SUBJEKT (`subjectType`/`subjectId` — heute `'ticket'`, später ein
- * Roadmap-Eintrag oder ein GitHub-Issue), der fertige AUFTRAGSTEXT und die
- * Antwort auf die eine Sicherheitsfrage (§ 8.2: stammt darin etwas aus
- * Gast-Feedback?). Wer den Bereich einbindet, baut den Text — dieser Layer
+ * Roadmap-Eintrag oder ein GitHub-Issue), der fertige AUFTRAGSTEXT und zur
+ * ANZEIGE die Antwort auf die eine Sicherheitsfrage (§ 8.2: gilt der Text als
+ * geprüft?). Entschieden wird sie vom Server aus der Herkunft des Subjekts
+ * (SEC-038) — sie reist deshalb nicht im Body. Wer den Bereich einbindet, baut den Text — dieser Layer
  * baut ihn nie selbst, sonst müsste er das Board kennen.
  *
  * DREI ZUSTÄNDE, und der Lauf entscheidet, welcher gilt:
@@ -29,7 +30,11 @@ const props = defineProps<{
   subjectId: string
   /** Der fertige Auftrag, wie er abgeschickt wird — gebaut vom Einbindenden */
   promptSource: string
-  /** false = im Text steckt Fremdmaterial (§ 8.2). Der Server prüft es erneut. */
+  /**
+   * NUR ANZEIGE: false = der Text gilt nicht als vom Betreiber geschrieben
+   * (§ 8.2) — das Formular bietet dann weniger an. Die Entscheidung trifft der
+   * Server selbst (SEC-038); dieser Wert wird nicht mitgeschickt.
+   */
   promptTrusted: boolean
   /** LAZY: `blob()` läuft erst beim Start, nicht beim Anzeigen */
   attachments?: RunAttachmentSource[]
@@ -143,6 +148,21 @@ function reasonOf(error: unknown): string {
   return (error as { data?: { reason?: string } })?.data?.reason ?? ''
 }
 
+/**
+ * Fachlicher Grund ⇒ Meldung. Eine Tabelle statt einer Ternär-Kette: mit den
+ * Gründen aus SEC-037/SEC-038 waren es zu viele Zweige, um sie zu lesen.
+ */
+const START_ERROR_KEYS: Record<string, string> = {
+  mode_not_allowed_untrusted: 'runner.panel.errors.mode',
+  runner_unavailable: 'runner.panel.errors.runner',
+  too_many_files: 'runner.panel.errors.tooManyFiles',
+  tests_need_runner: 'runner.panel.errors.testsNeedRunner',
+  tests_not_allowed_untrusted: 'runner.panel.errors.testsUntrusted',
+  test_command_not_listed: 'runner.panel.errors.testNotListed',
+  subject_not_found: 'runner.panel.errors.subjectNotFound',
+  subject_trust_unavailable: 'runner.panel.errors.trustUnavailable',
+}
+
 async function start(options: RunStartOptions) {
   busy.value = true
   let draft: RunRow | null = null
@@ -153,9 +173,8 @@ async function start(options: RunStartOptions) {
         subjectType: props.subjectType,
         subjectId: props.subjectId,
         promptSource: props.promptSource,
-        // Die HERKUNFT des Textes, nicht die Wahl des Benutzers (§ 8.2) —
-        // der Server prüft die Modus-Sperre damit noch einmal selbst.
-        promptTrusted: props.promptTrusted,
+        // KEIN `promptTrusted`: ob der Auftrag als geprüft gilt, bestimmt der
+        // Server aus der Herkunft des Subjekts (SEC-038), nie aus dem Body.
         ...options,
       },
     })
@@ -187,13 +206,7 @@ async function start(options: RunStartOptions) {
 
     const reason = reasonOf(error)
     const status = (error as { statusCode?: number })?.statusCode
-    const key = reason === 'mode_not_allowed_untrusted'
-      ? 'runner.panel.errors.mode'
-      : reason === 'runner_unavailable'
-        ? 'runner.panel.errors.runner'
-        : reason === 'too_many_files'
-          ? 'runner.panel.errors.tooManyFiles'
-          : status === 415 ? 'runner.panel.errors.fileType' : 'runner.panel.errors.start'
+    const key = START_ERROR_KEYS[reason] ?? (status === 415 ? 'runner.panel.errors.fileType' : 'runner.panel.errors.start')
     toast.add({ title: t(key), description: t('runner.panel.errors.startHint'), color: 'error' })
   }
   finally {

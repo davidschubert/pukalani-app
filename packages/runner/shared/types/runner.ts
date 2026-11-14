@@ -136,7 +136,13 @@ export interface RunRow extends Models.Row {
    */
   promptSource: string
   /**
-   * false, wenn Text aus GAST-Feedback stammt (§ 8.2). Gast-Feedback ist ein
+   * BESTIMMT VOM SERVER (SEC-038): die Anlege-Route fragt die Herkunft des
+   * Subjekts über `resolveRunSubjectTrust` ab — beim Ticket ist nur die
+   * Herkunft `operator` geprüft —, und eine Fortsetzung ist nie besser als ihr
+   * Vorgänger und die heutige Herkunft. Aus einem Body wird der Wert nie
+   * gelesen.
+   *
+   * false z. B., wenn Text aus GAST-Feedback stammt (§ 8.2). Gast-Feedback ist ein
    * Prompt-Injection-Pfad: `feedback/index.post.ts` nimmt bewusst auch Gäste
    * an, und daraus wird per „Übernehmen" ein Ticket. Dass ein Mensch geklickt
    * hat, ist kein Schutz — er liest nicht jede Zeile. Bei false wird der
@@ -339,7 +345,7 @@ export interface RunnerUpdatedResponse {
  * der den Bereich einbindet (das Ticket-Modal), nicht aus dem Formular. Wer
  * den Auftrag WÄHLT und wer ihn STELLT, sind zwei verschiedene Rollen — und
  * `promptTrusted` aus einem Formular entgegenzunehmen wäre § 8.2 verkehrt
- * herum (der Server prüft es ohnehin noch einmal).
+ * herum. Seit SEC-038 bestimmt es ohnehin allein der Server.
  */
 export interface RunStartOptions {
   runnerId: string

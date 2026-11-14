@@ -43,21 +43,28 @@ export const createRunSchema = z.object({
   model: z.string().trim().min(1).max(64),
   permissionMode: z.enum(PERMISSION_MODES),
   promptSource: z.string().min(1).max(MAX_PROMPT_CHARS),
-  /**
-   * KEIN Default. Wer einen Lauf anlegt, muss sagen, woher der Text kommt —
-   * ein geratenes `true` wäre genau die stille Aufweichung, gegen die § 8.2
-   * geschrieben ist. (Die SPALTE hat trotzdem den Default `false`: fällt das
-   * Feld später einmal aus, ist der vorsichtige Fall der eingestellte.)
+  /*
+   * `promptTrusted` STEHT HIER BEWUSST NICHT MEHR (SEC-038). Ob ein Auftrag als
+   * geprüft gilt, bestimmt der SERVER aus der Herkunft des Subjekts
+   * (`resolveRunSubjectTrust`, server/utils/runSubjectTrust.ts) — ein Wert aus
+   * dem Body wäre die Selbstauskunft des Aufrufers. Schickt ein Client das Feld
+   * trotzdem mit, verwirft Zod es (z.object entfernt unbekannte Schlüssel), und
+   * keine Route liest es (Wächter in tests/runRoutes.test.ts).
    */
-  promptTrusted: z.boolean(),
   /**
    * true ⇒ interaktiver Lauf: der Runner öffnet ein Terminal (§ 7.3). Optional
    * mit Default `false` (die SPALTE hat denselben Default) — fällt das Feld
    * einmal aus, ist der vorsichtige, headless Fall der eingestellte.
    */
   interactive: z.boolean().optional().default(false),
-  /** Wird als JSON in `runs.testCommands` (1000 Zeichen) gespeichert */
-  testCommands: z.array(z.string().trim().min(1).max(200)).max(10).optional().default([]),
+  /**
+   * Wird als JSON in `runs.testCommands` (1000 Zeichen) gespeichert. Jeder
+   * Eintrag muss EXAKT in der Liste stehen, die der gewählte Rechner meldet
+   * (SEC-037, `checkRequestedTestCommands`) — deshalb hier KEIN `.trim()`:
+   * eine stille Umformung würde aus einem nicht gelisteten Befehl einen
+   * gelisteten machen.
+   */
+  testCommands: z.array(z.string().min(1).max(200)).max(10).optional().default([]),
   /** 0 = kein eigener Deckel; der Runner kappt ohnehin gegen seinen (§ 7.2) */
   maxBudgetUsd: z.number().nonnegative().max(100).optional().default(0),
   baseBranch: z.string().trim().max(255).optional().default(''),
@@ -65,9 +72,10 @@ export const createRunSchema = z.object({
 
 /**
  * Eine Antwort auf eine `needs_input`-Rückfrage (§ 9). NUR der Antworttext —
- * alles andere (Rechner, Repo, Modell, Modus, Budget, Testbefehle UND
- * `promptTrusted`) erbt die Fortsetzungs-Route aus dem Vorgänger-Lauf, nie aus
- * diesem Body (§ 8.2: eine Fortsetzung wäscht die Herkunft nicht rein). Der
+ * alles andere (Rechner, Repo, Modell, Modus, Budget, Testbefehle) erbt die
+ * Fortsetzungs-Route aus dem Vorgänger-Lauf, nie aus diesem Body; `promptTrusted`
+ * ist höchstens so gut wie beim Vorgänger UND wie die heutige Herkunft des
+ * Subjekts (§ 8.2, SEC-038: eine Fortsetzung wäscht die Herkunft nicht rein). Der
  * Vorgänger steckt in der Route (`:id`), nicht im Body — man kann sich keinen
  * fremden Lauf als Anker unterschieben.
  */

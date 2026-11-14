@@ -1,6 +1,7 @@
 import { ID } from 'node-appwrite'
 import { ticketCreateSchema } from '../../../schemas/ticket'
 import { TICKETS_TABLE, type TicketRow } from '../../../shared/types/ticket'
+import { hasOperatorRole, originForNewTicket } from '../../../shared/ticketOrigin'
 
 /** Ticket anlegen — ans Ende der Ziel-Liste. */
 export default defineEventHandler(async (event): Promise<TicketRow> => {
@@ -32,6 +33,8 @@ export default defineEventHandler(async (event): Promise<TicketRow> => {
       dueRemindedAt: null,
       position,
       feedbackId: '',
+      // Herkunft aus dem KONTO, nie aus dem Body (SEC-038, shared/ticketOrigin.ts).
+      origin: originForNewTicket(hasOperatorRole(user.labels)),
       createdBy: user.$id,
       createdByName: user.name ?? '',
     },

@@ -10,7 +10,7 @@ import type { RepoRule, RunnerConfig } from './config.ts'
 import { EventPump, FLUSH_AT_EVENTS } from './events.ts'
 import { buildPromptFile, downloadAttachments } from './files.ts'
 import { buildCommitMessage, commitWorktree, currentBranch } from './git.ts'
-import { childEnv, hasShellSyntax, lastLines, runCommand, splitCommand } from './exec.ts'
+import { childEnv, hasShellSyntax, lastLines, runCommand } from './exec.ts'
 import {
   buildHookScript,
   buildHookSettings,
@@ -20,8 +20,9 @@ import {
 } from './interactive.ts'
 import { log } from './log.ts'
 import { buildNotificationArgs, showNotification } from './notify.ts'
-import { parseTestCommands, type RunFinalStatus, type RunPayload } from './protocol.ts'
+import { isSafeRunId, type RunFinalStatus, type RunPayload } from './protocol.ts'
 import { buildResultJson, type RunReport, type TestOutcome } from './result.ts'
+import { decideTestCommands, type AllowedTestCommand } from './testCommands.ts'
 import {
   condenseStreamLine,
   deriveFinalStatus,
@@ -71,6 +72,24 @@ const MAX_STDERR_EVENTS = 50
 const MAX_TRANSCRIPT_BYTES = 10 * 1024 * 1024
 
 export async function executeRun(ctx: RunContext, run: RunPayload): Promise<void> {
+  /**
+   * SCHRITT 0: die Lauf-Id prüfen, BEVOR sie in einen Pfad (`runs/<id>`),
+   * einen Worktree-Namen (`ai-<id>`) oder eine Naht-URL geht. Eine Id, die
+   * das nicht besteht, bekommt KEINEN Aufruf, keinen Ordner, keinen Prozess —
+   * auch kein `finish`, denn dessen URL trüge dieselbe Id.
+   *
+   * BEWUSSTE AUSNAHME von „jeder Weg endet in genau einem finish": der Lauf
+   * bleibt serverseitig auf `claimed` stehen. Die Kur ist dieselbe wie beim
+   * gestorbenen Daemon — der Abbrechen-Knopf im Board.
+   */
+  // `unknown`: der Typ sagt string, die Naht garantiert es nicht.
+  const rawId: unknown = run.$id
+  if (!isSafeRunId(rawId)) {
+    const shown = typeof rawId === 'string' ? JSON.stringify(rawId.slice(0, 40)) : typeof rawId
+    log.error(`Lauf mit unzulässiger Id ${shown} übernommen — wird nicht ausgeführt (im Board abbrechen)`)
+    return
+  }
+
   /**
    * SCHRITT 1 (§ 7.2): die Session-Id wird VOR dem Start gewürfelt und SOFORT
    * gemeldet. Damit kennt das Ticket seine Session ab Sekunde null, und
@@ -204,7 +223,9 @@ async function performRun(
     requestedMode: run.permissionMode,
     requestedModel: run.model,
     requestedBudgetUsd: run.maxBudgetUsd,
-    promptTrusted: run.promptTrusted,
+    // STRIKT: nur das boolesche `true` gilt als geprüft — ein fehlendes oder
+    // verdrehtes Feld aus der Naht ist „ungeprüft", nie „geprüft".
+    promptTrusted: run.promptTrusted === true,
   }, repo)
   for (const note of decision.notes) pump.status(note)
   if (decision.rejection) {
@@ -212,6 +233,28 @@ async function performRun(
     throw new RunFailure(decision.rejection.code)
   }
   pump.status(`Repo „${repo.key}", Modus ${decision.mode}, Budget ${decision.budgetUsd} USD`)
+
+  /**
+   * SCHRITT 3b (SEC-037): Testbefehle gegen die LOKALE Liste entscheiden —
+   * HIER, vor Material und Agent, damit ein abgelehnter Auftrag nichts
+   * startet, nichts lädt und kein Budget kostet. Abgelehnt wird der GANZE
+   * Auftrag, nicht nur der eine Befehl (Begründung in testCommands.ts).
+   */
+  const testDecision = decideTestCommands({
+    raw: run.testCommands,
+    promptTrusted: run.promptTrusted === true,
+    allowed: repo.allowedTestCommands,
+    repoKey: repo.key,
+  })
+  if (!testDecision.ok) {
+    pump.error(testDecision.message)
+    log.warn(`Lauf ${run.$id} abgelehnt (${testDecision.code}): ${testDecision.message}`)
+    throw new RunFailure(testDecision.code)
+  }
+  const testCommands = testDecision.commands
+  if (testCommands.length) {
+    pump.status(`${testCommands.length} Testbefehl${testCommands.length === 1 ? '' : 'e'} aus der lokalen Liste freigegeben`)
+  }
 
   // SCHRITT 4: Material holen (§ 6).
   const runDir = join(ctx.config.stateDir, 'runs', run.$id)
@@ -225,7 +268,10 @@ async function performRun(
   if (downloaded.length) pump.status(`${downloaded.length} Anhänge geladen`)
 
   const promptPath = join(runDir, 'prompt.md')
-  await writeFile(promptPath, buildPromptFile(run.promptSource, downloaded.map(entry => entry.path)), 'utf8')
+  await writeFile(promptPath, buildPromptFile(run.promptSource, downloaded.map(entry => entry.path), {
+    // § 8.2: ungeprüfter Text wird als Zitat gerahmt (files.ts).
+    trusted: run.promptTrusted === true,
+  }), 'utf8')
 
   // SCHRITT 5: starten. Der Worktree kommt von der CLI, nicht von uns (§ 11).
   const worktreeName = `ai-${run.$id}`
@@ -239,7 +285,7 @@ async function performRun(
    */
   if (run.interactive) {
     await performInteractiveRun(ctx, run, pump, {
-      sessionId, startedAt, decision, promptPath, filesDir, worktreeName, runDir, repo, hooks,
+      sessionId, startedAt, decision, promptPath, filesDir, worktreeName, runDir, repo, hooks, testCommands,
     })
     return
   }
@@ -486,7 +532,7 @@ async function performRun(
   // Testbefehle. Ein Fehlschlag bricht die Kette NICHT ab — der Bericht soll
   // alle Ergebnisse zeigen, nicht nur bis zum ersten Roten.
   const tests = existsSync(worktree) && !state.timedOut
-    ? await runTestCommands(run, worktree, ctx.config, pump)
+    ? await runTestCommands(testCommands, worktree, ctx.config, pump)
     : []
 
   // SCHRITT 9: Transkript hochladen, dann `finish`.
@@ -533,6 +579,8 @@ interface InteractiveContext {
   runDir: string
   repo: RepoRule
   hooks: RunHooks
+  /** Die in performRun ENTSCHIEDENE Liste (testCommands.ts) — nie neu aus der Naht gelesen */
+  testCommands: AllowedTestCommand[]
 }
 
 /**
@@ -550,7 +598,7 @@ interface InteractiveContext {
  * Abbruch am Status und HÖRT AUF zu warten — committet dann aber nichts.
  */
 async function performInteractiveRun(ctx: RunContext, run: RunPayload, pump: EventPump, ictx: InteractiveContext): Promise<void> {
-  const { sessionId, startedAt, decision, promptPath, filesDir, worktreeName, runDir, repo, hooks } = ictx
+  const { sessionId, startedAt, decision, promptPath, filesDir, worktreeName, runDir, repo, hooks, testCommands } = ictx
 
   // Hook, Settings, Wrapper schreiben (Bau ist pur — interactive.ts).
   const hookPath = join(runDir, 'session-end-hook.sh')
@@ -670,7 +718,7 @@ async function performInteractiveRun(ctx: RunContext, run: RunPayload, pump: Eve
 
   // SCHRITT 7: Testbefehle im committeten Stand.
   const tests = existsSync(worktree)
-    ? await runTestCommands(run, worktree, ctx.config, pump)
+    ? await runTestCommands(testCommands, worktree, ctx.config, pump)
     : []
 
   /**
@@ -783,26 +831,33 @@ function runPathPrefix(config: RunnerConfig): string[] {
   return [...(binDir ? [binDir] : []), ...config.extraPath]
 }
 
-async function runTestCommands(run: RunPayload, worktree: string, config: RunnerConfig, pump: EventPump): Promise<TestOutcome[]> {
+/**
+ * Fährt die in performRun ENTSCHIEDENEN Testbefehle (testCommands.ts). Diese
+ * Funktion liest `run.testCommands` bewusst NICHT: sie kennt nur Einträge der
+ * lokalen Liste samt deren Zerlegung.
+ */
+async function runTestCommands(commands: AllowedTestCommand[], worktree: string, config: RunnerConfig, pump: EventPump): Promise<TestOutcome[]> {
   const outcomes: TestOutcome[] = []
-  for (const command of parseTestCommands(run.testCommands)) {
+  for (const { command, argv } of commands) {
     /**
      * KEIN automatisches `pnpm install` (§ 11): ein Worktree hat weder
      * `node_modules` noch `.env`, das Nachinstallieren kostet Minuten und
      * landet in jedem Budget. Wer Abhängigkeiten braucht, schreibt den
      * Install als ERSTEN Testbefehl — sichtbar, gewollt, gemessen.
+     *
+     * Die Shell-Prüfung ist hier das ZWEITE Netz: die lokale Liste lässt
+     * solche Einträge schon beim Laden nicht zu (config.ts).
      */
     if (hasShellSyntax(command)) {
       pump.error(`Testbefehl „${command}" enthält Shell-Zeichen — es gibt keine Shell, er wird nicht ausgeführt`)
       outcomes.push({ cmd: command, exit: -1, tail: 'Nicht ausgeführt: Shell-Syntax wird nicht unterstützt (keine Shell).' })
       continue
     }
-    const parts = splitCommand(command)
-    const bin = parts[0]
+    const bin = argv[0]
     if (!bin) continue
 
     pump.status(`Test läuft: ${command}`)
-    const result = await runCommand(bin, parts.slice(1), {
+    const result = await runCommand(bin, argv.slice(1), {
       cwd: worktree,
       timeoutMs: config.maxRunMinutes * 60_000,
       pathPrefix: runPathPrefix(config),

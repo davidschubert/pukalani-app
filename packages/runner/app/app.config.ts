@@ -73,6 +73,14 @@ export default defineAppConfig({
        * konkatenieren.
        */
       subjectLinks: {} as Record<string, string>,
+      /**
+       * AUFRÄUM-LAUF (BE-025): Protokolle 30 Tage nach Laufende, Ereignisse
+       * nach 90 Tagen löschen (server/utils/runRetention.ts). 'dry-run' zählt
+       * nur, 'apply' löscht. Layer-Default AUS — Löschen ist nicht umkehrbar,
+       * die App schaltet bewusst ein. Die FRISTEN sind kein Regler, sie stehen
+       * als Konstanten in shared/runRetention.ts.
+       */
+      retention: 'off' as 'off' | 'dry-run' | 'apply',
     },
   },
 })

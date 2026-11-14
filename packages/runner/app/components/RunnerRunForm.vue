@@ -3,6 +3,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { createRunStartSchema } from '../../schemas/runStart'
 import { UNTRUSTED_PERMISSION_MODES } from '../../shared/runGuards'
+import { offeredTestCommands } from '../../shared/testCommands'
 import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type RunnerPublic, type RunnersListResponse } from '../../shared/types/runner'
 
 /**
@@ -10,9 +11,9 @@ import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type Runne
  * (docs/plans/AI-RUNNER.md § 9).
  *
  * DAS FORMULAR KENNT DEN AUFTRAG NICHT — es wählt nur, WIE gelaufen wird. Was
- * gelaufen wird (`promptSource`) und woher der Text stammt (`promptTrusted`)
- * bringt der Einbindende mit; hier reist es nur als Prop durch, damit die
- * Modus-Liste ehrlich ist.
+ * gelaufen wird (`promptSource`) bringt der Einbindende mit; `promptTrusted`
+ * reist nur als ANZEIGE-Prop durch, damit Modus-Liste und Testbefehle ehrlich
+ * sind — entschieden wird es auf dem Server (SEC-038).
  *
  * MODELLE UND REPOS KOMMEN AUS DER `app.config` (`pukalani.runner.*`), nicht
  * aus dem Markup: eine neue Modell-Generation soll eine Config-Zeile sein.
@@ -20,7 +21,7 @@ import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type Runne
  * Allowlist auf dem Rechner (§ 8.1).
  */
 const props = defineProps<{
-  /** false = im Text steckt Fremdmaterial (§ 8.2) — dann nur `plan`/`acceptEdits` */
+  /** false = Text gilt nicht als vom Betreiber geschrieben (§ 8.2) — dann nur `plan`/`acceptEdits`, keine Testbefehle */
   promptTrusted: boolean
   /** Wie viele Dateien mitgeschickt werden — nur zur Anzeige */
   attachmentCount: number
@@ -97,7 +98,7 @@ const state = reactive<FormInput>({
   permissionMode: 'plan',
   repoKey: repoItems.value[0]?.value ?? '',
   maxBudgetText: '',
-  testCommandsText: '',
+  testCommands: [],
   // headless ist die Vorgabe; interaktiv (Terminal, § 7.3) wählt man bewusst.
   interactive: false,
 })
@@ -118,6 +119,31 @@ const selectedRunner = computed<RunnerPublic | null>(() =>
 const interactiveAvailable = computed(() => selectedRunner.value?.kind === 'local')
 watch(interactiveAvailable, (ok) => { if (!ok) state.interactive = false })
 
+/**
+ * TESTBEFEHLE NUR AUS DER LISTE DES RECHNERS (SEC-037). Der gewählte Rechner
+ * meldet im Heartbeat je Repo, was er ausführen würde — genau das steht hier
+ * zur Wahl, sonst nichts (auch kein „eigenen Eintrag anlegen"). Ein alter
+ * Dienst meldet nichts ⇒ nichts wählbar. Die Anzeige-Kopie ist keine
+ * Erlaubnis: die Route prüft jeden Eintrag noch einmal, der Rechner ein
+ * drittes Mal gegen seine lokale Liste.
+ */
+const offeredTests = computed<string[]>(() =>
+  selectedRunner.value ? offeredTestCommands(selectedRunner.value.capabilitiesJson, state.repoKey) : [])
+const testItems = computed(() => offeredTests.value.map(command => ({ label: command, value: command })))
+
+// Wechselt Rechner oder Repo, fällt weg, was dort nicht mehr angeboten wird —
+// sonst stünde eine Wahl im Body, die der Server mit `test_command_not_listed`
+// ablehnt. Bei ungeprüftem Auftrag gibt es gar keine Testbefehle.
+watch([offeredTests, () => props.promptTrusted], ([offered, trusted]) => {
+  const next = trusted ? state.testCommands.filter(command => offered.includes(command)) : []
+  if (next.length !== state.testCommands.length) state.testCommands = next
+}, { immediate: true })
+
+const testsHelp = computed(() => {
+  if (!selectedRunner.value) return t('runner.form.testsPickRunner')
+  return testItems.value.length ? t('runner.form.testsHelp') : t('runner.form.testsNoneOffered')
+})
+
 function onSubmit(event: FormSubmitEvent<FormInput>) {
   emit('start', {
     runnerId: event.data.runnerId,
@@ -125,9 +151,11 @@ function onSubmit(event: FormSubmitEvent<FormInput>) {
     permissionMode: event.data.permissionMode,
     repoKey: event.data.repoKey,
     maxBudgetUsd: event.data.maxBudgetText === '' ? 0 : Number(event.data.maxBudgetText),
-    // Eine Zeile je Befehl; Leerzeilen fallen weg, der Deckel steht im
-    // Routen-Schema (10 Einträge à 200 Zeichen).
-    testCommands: event.data.testCommandsText.split('\n').map(line => line.trim()).filter(Boolean).slice(0, 10),
+    // In der Reihenfolge der gemeldeten Liste (nicht der Klick-Reihenfolge) und
+    // nur, was gerade angeboten wird; ungeprüft ⇒ keine.
+    testCommands: props.promptTrusted
+      ? offeredTests.value.filter(command => event.data.testCommands.includes(command))
+      : [],
     // Nur echt interaktiv, wenn der Rechner es auch kann.
     interactive: event.data.interactive && interactiveAvailable.value,
   })
@@ -158,9 +186,9 @@ function onSubmit(event: FormSubmitEvent<FormInput>) {
     />
 
     <UForm v-else :schema="schema" :state="state" class="space-y-3" data-runner-form @submit="onSubmit">
-      <!-- § 8.2: der Text stammt aus Gast-Feedback. Der Hinweis erklärt, warum
-           hier zwei Modi fehlen — ein Feld, das ohne Grund weniger anbietet,
-           sieht wie ein Fehler aus. -->
+      <!-- § 8.2: der Text gilt nicht als vom Betreiber geschrieben. Der Hinweis
+           erklärt, warum hier Modi und Testbefehle fehlen — ein Feld, das ohne
+           Grund weniger anbietet, sieht wie ein Fehler aus. -->
       <UAlert
         v-if="!promptTrusted"
         color="warning"
@@ -190,8 +218,25 @@ function onSubmit(event: FormSubmitEvent<FormInput>) {
         <UInput v-model="state.maxBudgetText" type="number" min="0" max="100" step="0.5" size="sm" class="w-full sm:w-40" />
       </UFormField>
 
-      <UFormField name="testCommandsText" :label="t('runner.form.tests')" :help="t('runner.form.testsHelp')">
-        <UTextarea v-model="state.testCommandsText" :rows="2" size="sm" class="w-full" :placeholder="t('runner.form.testsPlaceholder')" />
+      <!-- SEC-037: Auswahl aus der Liste des Rechners, kein Freitext. Ungeprüft
+           gibt es keine Testbefehle — dann ein Satz statt eines toten Felds. -->
+      <UFormField
+        name="testCommands"
+        :label="t('runner.form.tests')"
+        :help="promptTrusted ? testsHelp : t('runner.form.testsUntrusted')"
+      >
+        <USelectMenu
+          v-if="promptTrusted"
+          v-model="state.testCommands"
+          multiple
+          value-key="value"
+          :items="testItems"
+          :disabled="!testItems.length"
+          :placeholder="t('runner.form.testsPlaceholder')"
+          size="sm"
+          class="w-full"
+          data-runner-tests
+        />
       </UFormField>
 
       <!-- § 7.3: interaktiv öffnet der Runner ein Terminal zum Zuschauen und
