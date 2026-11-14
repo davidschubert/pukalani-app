@@ -54,8 +54,22 @@ export interface TicketRow extends Models.Row {
   status: 'open' | 'done'
   doneAt: string | null
   position: number
-  /** Herkunft Feedback-Ingestion (P2), '' = manuell angelegt */
+  /**
+   * Externe Referenz + Doppel-Anlage-Sperre (Feedback-Übernahme P2, `dep:`-
+   * Schlüssel der Update-Tickets); '' = keine. NICHT die Herkunft: beim
+   * Kopieren wird sie geleert — die Herkunft steht in `origin`.
+   */
   feedbackId: string
+  /**
+   * HERKUNFT des Textes (Migration tickets-004, SEC-038): `operator` | `staff`
+   * | `feedback` | `dependency`, '' = unbekannt (Altbestand). Wird NUR
+   * serverseitig gesetzt und nie besser — Regeln und Bedeutung in
+   * `shared/ticketOrigin.ts`. Bestimmt, ob ein Runner-Auftrag aus diesem
+   * Ticket als geprüft gilt (nur `operator`). `string` und nicht der
+   * Union-Typ: eine Zeile kann Werte tragen, die dieser Code nicht kennt —
+   * gelesen wird deshalb immer über `normalizeTicketOrigin`.
+   */
+  origin: string
   createdBy: string
   createdByName: string
   /** Fälligkeits-Reminder verschickt (P4-Sweep, idempotent) */

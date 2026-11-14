@@ -1,5 +1,6 @@
 import { ID } from 'node-appwrite'
 import { TICKETS_TABLE, type TicketRow } from '../../../../shared/types/ticket'
+import { originForCopy } from '../../../../shared/ticketOrigin'
 
 /** Ticket kopieren — Kopie landet direkt unter dem Original (position + 1). */
 export default defineEventHandler(async (event): Promise<TicketRow> => {
@@ -34,7 +35,10 @@ export default defineEventHandler(async (event): Promise<TicketRow> => {
       doneAt: null,
       dueRemindedAt: null,
       position: source.position + 1,
+      // `feedbackId` ist der Dedup-Schlüssel der Übernahme und wird geleert —
+      // die HERKUNFT dagegen reist mit und wird nie besser (SEC-038).
       feedbackId: '',
+      origin: originForCopy(source.origin),
       createdBy: user.$id,
       createdByName: user.name ?? '',
     },

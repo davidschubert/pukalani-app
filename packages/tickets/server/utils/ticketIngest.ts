@@ -7,6 +7,7 @@ import {
   dependencyTicketTitle,
   type DependencyTicketInput,
 } from '../../shared/dependencyTicket'
+import type { TicketOrigin } from '../../shared/ticketOrigin'
 
 /**
  * P2 Feedback-Ingestion (Plan §7): erzeugt aus einem Feedback-Inhalt ein
@@ -84,6 +85,9 @@ export async function createTicketFromFeedback(event: H3Event, input: FeedbackTi
       dueRemindedAt: null,
       position,
       feedbackId: input.feedbackId,
+      // Rückmeldungen nimmt die Plattform auch von Gästen an — fremder Text
+      // (SEC-038). Wer auf „Übernehmen" klickte, ändert daran nichts.
+      origin: 'feedback' satisfies TicketOrigin,
       createdBy: user.$id,
       createdByName: user.name ?? '',
     },
@@ -157,6 +161,8 @@ export async function createTicketFromDependency(event: H3Event, input: Dependen
       dueRemindedAt: null,
       position,
       feedbackId: key,
+      // Maschinell erzeugt, kein Betreiber hat den Text geschrieben (SEC-038).
+      origin: 'dependency' satisfies TicketOrigin,
       createdBy: user.$id,
       createdByName: user.name ?? '',
     },

@@ -1,5 +1,6 @@
 import { ticketPatchSchema } from '../../../schemas/ticket'
 import { TICKETS_TABLE, type TicketMember, type TicketRow } from '../../../shared/types/ticket'
+import { hasOperatorRole, originAfterTextEdit } from '../../../shared/ticketOrigin'
 
 /**
  * Ticket ändern — Felder, Erledigt-Toggle und Move (listId und/oder position)
@@ -39,9 +40,25 @@ export default defineEventHandler(async (event): Promise<TicketRow> => {
     throw createError({ status: 400, statusText: 'Empty patch' })
   }
 
-  // Vorzustand nur laden, wenn benachrichtigungsrelevante Felder dabei sind
+  /**
+   * HERKUNFT NACH EINER TEXT-BEARBEITUNG (SEC-038). Titel, Beschreibung und
+   * Checkliste sind die drei Felder, die in einen Runner-Auftrag wandern —
+   * schreibt sie ein Konto ohne Betreiber-Rolle, ist ein `operator`-Ticket
+   * danach nur noch `staff`. Eine Betreiber-Bearbeitung hebt NICHTS an
+   * (`originAfterTextEdit`). Alle anderen Felder (Position, Status,
+   * Fälligkeit …) lassen `origin` in Ruhe. `origin` selbst nimmt das Schema
+   * nicht an — es kommt hier und nur hier in `data`.
+   */
+  const textEdited = body.title !== undefined || body.description !== undefined || body.checklist !== undefined
+
+  // Vorzustand nur laden, wenn benachrichtigungs- oder herkunftsrelevante Felder dabei sind
   const notifyRelevant = body.listId !== undefined || body.status !== undefined || body.members !== undefined
-  const before = notifyRelevant ? await requireTicketExists(event, id) : null
+  const before = notifyRelevant || textEdited ? await requireTicketExists(event, id) : null
+
+  if (textEdited && before) {
+    const nextOrigin = originAfterTextEdit(before.origin, hasOperatorRole(user.labels))
+    if (nextOrigin !== before.origin) data.origin = nextOrigin
+  }
 
   const config = useRuntimeConfig(event)
   const { tablesDB } = createAdminClient(event)
@@ -56,7 +73,7 @@ export default defineEventHandler(async (event): Promise<TicketRow> => {
   })
 
   // Benachrichtigungen best-effort im Hintergrund (Antwort nicht verzögern)
-  if (before) {
+  if (before && notifyRelevant) {
     void (async () => {
       if (targetList && before.listId !== updated.listId) {
         await notifyTicketPeople(event, updated, {
