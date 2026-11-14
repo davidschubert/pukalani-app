@@ -30,6 +30,78 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P09 — Zeichen-Entwürfe: eigene Anbieter-Liste, Hinweis zum Modell, Wächter ✅ 2026-11-14
+
+**Was.** Achtes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Finding BE-004),
+Pull Request 151. Davids Entscheidungen vom 2026-11-12/13: direkt reparieren;
+die Bild-Erzeugung läuft weiter ohne festen Ort in Europa, aber vor dem
+Auslösen steht, um welches Modell es sich handelt, damit man die Funktion
+nutzen oder überspringen kann.
+
+1. **Ursache.** Die KI-Entwürfe im Kapitel „Zeichen" gaben dem Bildmodell die
+   Anbieter-Liste des Textwegs mit. Seit AI1 (2026-11-09) nennt diese Liste
+   zwei EU-Endpunkte; das Bildmodell `google/gemini-2.5-flash-image` hat bei
+   OpenRouter nur `google-vertex/global`. Mit „kein Ausweichen" antwortete der
+   Vermittler 404 („No allowed providers"), der Lauf endete ohne Bild, und
+   der Tageszähler war trotzdem gebucht. In der Zeit lief auf Production
+   kein Entwurfs-Lauf; betroffen war niemand.
+2. **Reparatur.** Dritte Konstante `BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL`
+   (`packages/brand/server/utils/brandProviderRouting.ts`): dieselben drei
+   Bedingungen (keine Speicherung, kein Sammeln, kein Ausweichen), festgelegt
+   auf den einen Endpunkt des Bildmodells. Der Textweg und das Bild- und
+   Videolesen bleiben unverändert auf ihren EU-Endpunkten.
+3. **Kein Ergebnis, kein sichtbarer Verbrauch.** „Gebucht" heißt hier: drei
+   Zähler mit 24 Stunden Laufzeit, kein Geld. Endet ein Lauf ohne ein
+   abgelegtes Bild, bucht die Route den Marken-Tageszähler zurück
+   (`refundBrandAiQuota`); Konto- und Instanz-Deckel bleiben gebucht, sonst
+   wäre ein provozierter Leer-Lauf beliebig oft wiederholbar. Eine Fehlerzeile
+   `brand.mark_drafts_failed` nennt Modell, Grund und Zahl der gescheiterten
+   Aufrufe; der Text in der Oberfläche sagt, dass der Lauf nicht zählt.
+4. **Hinweis vor dem Knopf.** Ein Kasten über „Vier Entwürfe erzeugen", für
+   alle Besucher (der Ort eines Besuchers lässt sich nicht verlässlich
+   bestimmen): Modell, Betreiber, Vermittler, was in die Anfrage geht, dass es
+   keinen festen Rechenort in der EU gibt, und dass die Stufe freiwillig ist.
+   Der Modellname kommt vom Server (`GET …/mark/drafts` → `imageModel`).
+   Wortlaut de und en von David freigegeben.
+5. **Wächter.** `pnpm ops:ai-models` führt das Bildmodell mit; seine Tabelle
+   (`scripts/ops/ai-model-endpoints.mjs`) ist per Test an die drei Konstanten
+   gebunden. Der tägliche Produktions-Wächter fährt ihn als siebten Blick,
+   ohne ssh und ohne Secret. „OpenRouter nicht erreichbar" ist Exit 2 und dort
+   eine Warnung, kein Alarm.
+6. **Datenschutztext.** Die vorläufige Fassung von branding.supply nennt das
+   Bildmodell beim Namen, den Betreiber und den offenen Rechenort (Stand
+   14. November 2026). Das Einspiel-Skript ersetzt jetzt auch eine Zeile, die
+   wortgleich eine frühere Fassung aus dem Repo trägt (Prüfsumme über den
+   ganzen Text); ein im Dashboard geänderter Text bleibt unberührt.
+
+**Beweise.** Vor der Reparatur: eine Anfrage mit der alten Liste ⇒ 404 beim
+Vermittler. Danach: ein echter Lauf lokal (vier Bilder, 0,16 US-Dollar) und
+ein echter Lauf auf Production mit einem Wegwerf-Konto (vier Bilder in knapp
+sechs Sekunden, danach alles gelöscht). Tests: je Aufrufstelle Transport gegen
+Konstante (`brandAiCallSites.test.ts`, mit Gegenproben), Rückbuchung
+(`brandMarkDraftsRefund.test.ts`), das Kapitel ist ohne Entwürfe abschließbar
+(`brandMarkDraftsNotice.test.ts`). Wächter: 40 Stichproben in einer Stunde,
+keine Falschmeldung; Gegenprobe rot.
+
+**Live.** Merge `99cbce1e`, auf allen acht Hosts (`/api/health` → `.build`,
+überall `ok:true`). Datenschutztext mit Davids Ja eingespielt und auf
+`/de/privacy` und `/privacy` zurückgelesen. Probealarm nach der
+Workflow-Änderung: Issue ging auf und wieder zu, der neue Schritt war grün.
+
+**Gelernt:** Eine geteilte Konstante bekam eine Bedingung dazu (den Ort), und
+geprüft wurden die Aufrufer, an die man dachte. Der elfte war der Bild-Aufruf,
+und der Kommentar daneben behauptete das Gegenteil des Codes („gar nicht
+gepinnt"). Zwei Regeln daraus: (1) Wer eine geteilte Konstante verschärft,
+zählt ihre Aufrufer – am besten zählt sie ein Test, der je Aufrufstelle
+Transport und Konstante gegeneinander hält. (2) Ein Wächter mit einer von Hand
+geführten Tabelle sieht nur, was in der Tabelle steht: das Bildmodell fehlte
+dort, also war er grün, während jeder Lauf gescheitert wäre. Die Tabelle
+gehört an den Code gebunden, und der Wächter gehört in einen Lauf, der von
+selbst läuft und dessen Ergebnis jemanden erreicht. Nebenbei: Ein Zugang, der
+lokal reicht, reicht auf Production nicht zwingend (der Migrations-Zugang darf
+dort keine Konten anlegen) – ein Skript, das zuerst das Konto anlegt, scheitert
+dann, bevor es etwas hinterlässt.
+
 ### GA1 P03 — Runner: Testbefehle nur aus der Liste, Herkunft vom Server, Fristen ✅ 2026-11-14
 
 **Was.** Siebtes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
