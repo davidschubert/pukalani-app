@@ -3,7 +3,7 @@ import {
   BRAND_MARK_DRAFTS_PER_RUN,
   type BrandMarkDraftEntry,
 } from '../../shared/brandMarkDrafts'
-import type { BrandMarkDraftsListResponse } from '../../shared/types/brand'
+import type { BrandMarkDraftsIndexResponse } from '../../shared/types/brand'
 
 /**
  * DIE KI-ENTWÜRFE EINER MARKE — der Zustand des Stufe-3-Abschnitts (Brand
@@ -29,6 +29,12 @@ import type { BrandMarkDraftsListResponse } from '../../shared/types/brand'
 export function useBrandMarkDrafts(profileId: string) {
   const items = useState<BrandMarkDraftEntry[]>(`brand-mark-drafts:${profileId}`, () => [])
   const loaded = useState<boolean>(`brand-mark-drafts-loaded:${profileId}`, () => false)
+  /**
+   * Das Bildmodell, das ein Lauf auf dieser Instanz riefe — vom SERVER, nicht
+   * aus der Config des Browsers (der Laufzeit-Override steht nur dort). Leer
+   * ⇒ kein Bildmodell, und der Hinweis vor dem Knopf erscheint nicht.
+   */
+  const imageModel = useState<string>(`brand-mark-drafts-model:${profileId}`, () => '')
 
   const base = `/api/brand/profiles/${encodeURIComponent(profileId)}/mark/drafts`
 
@@ -44,7 +50,8 @@ export function useBrandMarkDrafts(profileId: string) {
   }
 
   async function load(): Promise<void> {
-    const res = await $fetch<BrandMarkDraftsListResponse>(base)
+    const res = await $fetch<BrandMarkDraftsIndexResponse>(base)
+    imageModel.value = typeof res.imageModel === 'string' ? res.imageModel : ''
     setItems(res.items)
   }
 
@@ -57,5 +64,5 @@ export function useBrandMarkDrafts(profileId: string) {
     return `${base}/${encodeURIComponent(entry.id)}/image?v=${encodeURIComponent(entry.createdAt)}`
   }
 
-  return { base, items, loaded, kept, full, setItems, load, imageUrl }
+  return { base, items, loaded, imageModel, kept, full, setItems, load, imageUrl }
 }

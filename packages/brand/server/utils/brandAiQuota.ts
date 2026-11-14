@@ -46,6 +46,17 @@ import { countActiveBrandGenerations } from './brandGenerators'
  * Deckel steht — wer jeden Lauf nach zwei Sekunden abbricht, hätte unbegrenzt
  * viele freie Läufe. Erfolg ist keine Bedingung fürs Bezahlen.
  *
+ * EINE BEGRÜNDETE AUSNAHME (Finding BE-004, 2026-11-13): die Zeichen-Entwürfe
+ * buchen den ENGEN Zähler zurück (`refundBrandAiQuota`), wenn ein Lauf ohne
+ * einen einzigen abgelegten Entwurf endet. Dort war ein Lauf wochenlang IMMER
+ * leer (falscher Pin ⇒ 404 je Aufruf), und der Mensch sah „Noch 0 von 3
+ * Läufen heute" für null Bilder. Zurück geht NUR der enge Eimer — der Zähler,
+ * den der Mensch sieht. Konto-Tageszähler und Instanz-Deckel BLEIBEN gebucht:
+ * sie sind das Missbrauchsnetz, und ohne sie wäre ein provozierter Leer-Lauf
+ * wieder genau das Geschenk, gegen das dieser Absatz steht — unbegrenzt
+ * viele freie Läufe. So kostet ein leerer Lauf weiter einen Platz im
+ * Konto-Deckel, aber nicht mehr einen der drei sichtbaren Läufe.
+ *
  * ── WAS NICHT ZÄHLT (Plan §6, hier festgehalten für P3+) ──────────────────
  *  · CACHE-TREFFER. Heute ist das der Idempotenz-Fall (derselbe Knopfdruck,
  *    derselbe Schlüssel) — die Route prüft ihn VOR dieser Buchung. Der
@@ -157,23 +168,10 @@ export async function bookBrandAiQuota(
 
   const { store, prefix } = useRateLimitStore(event)
 
-  /**
-   * DER ENGE EIMER — genau EINER, nie beide. Ein Gesprächszug, der zusätzlich
-   * den Slot-Eimer anfasste, nähme dem Menschen die Entwürfe für das Feld, für
-   * das er gerade geantwortet hat (und eine freie Frage hätte gar keinen Slot).
-   */
-  const narrowKey = request.kind === 'talk'
-    ? brandAiTalkDayKey(request.profileId)
-    : request.kind === 'review'
-      ? brandAiReviewDayKey(request.profileId)
-      : request.kind === 'reading'
-        ? brandDesignReadingDayKey(request.profileId)
-        : request.kind === 'drafts'
-          ? brandDesignDraftsDayKey(request.profileId)
-          : brandAiSlotDayKey(request.profileId, request.slotId ?? '')
+  const narrowKey = brandAiNarrowKey(request)
   // Das GEWICHT (s. `weight`): mehrere Treffer auf denselben Schlüssel, aber
   // EIN Aufruf — entschieden wird nach dem letzten Stand, nicht nach jedem.
-  const weight = Math.max(1, Math.trunc(request.weight ?? 1))
+  const weight = brandAiQuotaWeight(request)
   let narrowState = await store.hit(`${prefix}${narrowKey}`, BRAND_AI_DAY_WINDOW_MS)
   for (let extra = 1; extra < weight; extra++) {
     narrowState = await store.hit(`${prefix}${narrowKey}`, BRAND_AI_DAY_WINDOW_MS)
@@ -205,6 +203,66 @@ export async function bookBrandAiQuota(
   counts.instanceDay = instanceState.count
   const instance = decideBrandAiQuota(counts, limits)
   return instance ? { code: instance, retryAfterSec: retryAfter(instanceState.resetInMs) } : null
+}
+
+/**
+ * DER ENGE EIMER — genau EINER, nie beide. Ein Gesprächszug, der zusätzlich
+ * den Slot-Eimer anfasste, nähme dem Menschen die Entwürfe für das Feld, für
+ * das er gerade geantwortet hat (und eine freie Frage hätte gar keinen Slot).
+ *
+ * EINE Funktion für Buchung UND Rückbuchung: zwei Kopien dieser Weiche wären
+ * zwei Stellen, an denen eine neue `kind` vergessen werden kann — und eine
+ * Rückbuchung auf den falschen Schlüssel schenkte still einen fremden Lauf.
+ */
+function brandAiNarrowKey(request: BrandAiQuotaRequest): string {
+  return request.kind === 'talk'
+    ? brandAiTalkDayKey(request.profileId)
+    : request.kind === 'review'
+      ? brandAiReviewDayKey(request.profileId)
+      : request.kind === 'reading'
+        ? brandDesignReadingDayKey(request.profileId)
+        : request.kind === 'drafts'
+          ? brandDesignDraftsDayKey(request.profileId)
+          : brandAiSlotDayKey(request.profileId, request.slotId ?? '')
+}
+
+/** Wie viele Treffer ein Aufruf auf dem engen Eimer zählt (s. `weight`). */
+function brandAiQuotaWeight(request: BrandAiQuotaRequest): number {
+  return Math.max(1, Math.trunc(request.weight ?? 1))
+}
+
+/**
+ * DEN ENGEN EIMER ZURÜCKBUCHEN — die eine Ausnahme aus dem Kopf („gebucht
+ * wird beim Start"), heute nur für die Zeichen-Entwürfe ohne Ergebnis.
+ *
+ * NUR der enge Schlüssel, und zwar mit demselben Gewicht wie die Buchung;
+ * Konto und Instanz bleiben gebucht (Begründung im Kopf). Der Aufrufer ruft
+ * das NUR nach einer durchgegangenen Buchung — nach einer 429 gäbe es nichts
+ * Eigenes zurückzugeben.
+ *
+ * FAIL-SOFT: ein Fehler beim Zurückbuchen kostet den Menschen höchstens einen
+ * sichtbaren Lauf; er darf die Antwort (die 502 mit ihrem Grund) nicht in
+ * eine 500 verwandeln. Er landet als Warnung im Log.
+ */
+export async function refundBrandAiQuota(
+  event: H3Event,
+  request: BrandAiQuotaRequest,
+): Promise<void> {
+  try {
+    const { store, prefix } = useRateLimitStore(event)
+    const key = `${prefix}${brandAiNarrowKey(request)}`
+    const weight = brandAiQuotaWeight(request)
+    for (let step = 0; step < weight; step++) {
+      await store.refund(key, BRAND_AI_DAY_WINDOW_MS)
+    }
+  }
+  catch (error) {
+    logEvent('warn', 'brand.ai_quota_refund_failed', {
+      profileId: request.profileId,
+      kind: request.kind,
+      message: error instanceof Error ? error.message : 'unknown',
+    })
+  }
 }
 
 /** Der laufende Entwurf ist in Sekunden fertig — so lange, nicht länger. */

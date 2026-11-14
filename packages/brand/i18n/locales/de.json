@@ -3342,6 +3342,13 @@
         "discard": "Verwerfen",
         "trademark": "Markenrecht: Ein Entwurf sagt nichts über Schutzfähigkeit oder Ähnlichkeit zu bestehenden Marken. Vor der Anmeldung prüft das eine Anwältin — wir prüfen es nicht.",
         "private": "Behaltene Entwürfe bleiben privat: sie stehen in diesem Kapitel und im Briefing — nie im Foundation-Snapshot und nie im geteilten Link.",
+        "notice": {
+          "title": "Vor dem Erzeugen: welches Modell hier arbeitet",
+          "model": "Die Entwürfe erzeugt das Bildmodell {model} von Google. Dafür gehen Markenname, Briefing, Farben und Schrift über den Vermittler OpenRouter (USA) an Google Cloud Vertex AI. Hochgeladene Bilder und Kontodaten gehen nicht mit.",
+          "location": "Zugelassen ist nur ein Zugang, bei dem der Anbieter die Anfrage nicht speichert und nicht zum Training nutzt. Einen festen Rechenort in der EU gibt es für dieses Modell aber nicht: wo gerechnet wird, ist offen.",
+          "optional": "Diese Stufe ist freiwillig. Wer das nicht möchte, lässt sie aus – das Kapitel lässt sich ohne KI-Entwürfe abschließen.",
+          "link": "Mehr im Datenschutztext"
+        },
         "run": {
           "first": "Vier Entwürfe erzeugen",
           "again": "Vier weitere Entwürfe"
@@ -3350,7 +3357,7 @@
           "unavailable": "Entwürfe lassen sich hier gerade nicht erzeugen. Das Kapitel läuft ohne sie weiter — Richtung, Briefing und die gesetzten Beispiele bleiben, wie sie sind.",
           "noBrief": "Dafür fehlt noch das Briefing. Erzeugt es eine Stufe weiter oben — daraus entstehen die Entwürfe.",
           "limitReached": "Es liegen schon genug Entwürfe. Verwerft ein paar, dann geht der nächste Lauf.",
-          "failed": "Der Lauf hat kein brauchbares Bild geliefert. Versucht es später noch einmal.",
+          "failed": "Der Lauf hat kein brauchbares Bild geliefert und zählt deshalb nicht auf das Tageskontingent. Später noch einmal versuchen.",
           "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
           "notFound": "Diesen Entwurf gibt es nicht mehr.",
           "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."

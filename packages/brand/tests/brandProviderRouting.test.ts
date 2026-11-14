@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { BRAND_PROVIDER_ROUTING, BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../server/utils/brandProviderRouting'
+import {
+  BRAND_PROVIDER_ROUTING,
+  BRAND_PROVIDER_ROUTING_VERTEX_EU,
+  BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL,
+} from '../server/utils/brandProviderRouting'
+import { BRAND_MARK_DRAFTS_ENDPOINT } from '../shared/brandMarkDrafts'
 
 /**
  * DIE ZWEI FASSUNGEN DER DATENSCHUTZ-BEDINGUNGEN — und der Unterschied, der
@@ -56,5 +61,34 @@ describe('BRAND_PROVIDER_ROUTING_VERTEX_EU', () => {
   it('bleibt ohne Ausweichweg — sonst wäre der Pin nur ein Wunsch', () => {
     expect(BRAND_PROVIDER_ROUTING_VERTEX_EU.allowFallbacks).toBe(false)
     expect(BRAND_PROVIDER_ROUTING_VERTEX_EU.zdr).toBe(true)
+  })
+})
+
+/**
+ * DIE BILD-FASSUNG (Finding BE-004, Davids Entscheidung 2026-11-13).
+ *
+ * Bis zum 2026-11-13 gaben die Zeichen-Entwürfe die BASIS mit — und die nennt
+ * seit AI1 zwei Endpunkte, die das Bildmodell nicht hat. Jeder Aufruf war ein
+ * 404. Die Fassung hier erbt den Schutz und ersetzt NUR den Ort durch den
+ * einen Endpunkt des Bildmodells.
+ */
+describe('BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL', () => {
+  it('erbt ZDR, `deny` und kein Ausweichen und ERSETZT nur den Ort', () => {
+    const { only, ...rest } = BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL
+    const { only: baseOnly, ...baseRest } = BRAND_PROVIDER_ROUTING
+    expect(rest).toEqual(baseRest)
+    expect(rest).toEqual({ zdr: true, dataCollection: 'deny', allowFallbacks: false })
+    expect(only).toEqual(['google-vertex/global'])
+    expect(only).not.toEqual(baseOnly)
+    expect(only).not.toEqual(BRAND_PROVIDER_ROUTING_VERTEX_EU.only)
+  })
+
+  it('nimmt den Endpunkt aus der EINEN Quelle in shared/', () => {
+    expect(BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL.only).toEqual([BRAND_MARK_DRAFTS_ENDPOINT])
+  })
+
+  it('der Text-Weg bleibt dabei unverändert (die Basis ist nicht angefasst)', () => {
+    expect(BRAND_PROVIDER_ROUTING.only).toEqual(['amazon-bedrock/eu-west-1', 'google-vertex/europe'])
+    expect(BRAND_PROVIDER_ROUTING_VERTEX_EU.only).toEqual(['google-vertex/eu'])
   })
 })

@@ -1,3 +1,5 @@
+import { BRAND_MARK_DRAFTS_ENDPOINT } from '../../shared/brandMarkDrafts'
+
 /**
  * DIE DATENSCHUTZ-BEDINGUNGEN JEDES BRAND-AUFRUFS — an EINER Stelle.
  *
@@ -96,13 +98,50 @@ export const BRAND_PROVIDER_ROUTING = {
  * Ausfall der Funktion — lieber „gerade nicht verfügbar" als „irgendwo
  * gerechnet".
  *
- * ── UND WARUM BILDER-ERZEUGEN GAR NICHT GEPINNT IST ──────────────────────
- * `google/gemini-2.5-flash-image`, mit dem die Zeichen-Entwürfe entstehen,
- * hat als einzigen Endpunkt `google-vertex/global`. Ein EU-Pin würde die
- * Funktion dort nicht schützen, sondern abschalten. Gemessen, nicht vermutet
- * — und `pnpm ops:ai-models` hält es nach.
+ * ── BILDER-ERZEUGEN HAT SEINE EIGENE FASSUNG (Finding BE-004, 2026-11-14) ─
+ * Hier stand bis zum 2026-11-14 „Bilder-Erzeugen ist gar nicht gepinnt“. Das
+ * stimmte nur bis AI1: die Zeichen-Entwürfe gaben die BASIS mit, und seit die
+ * Basis die zwei Text-Endpunkte nennt, verlangte jeder Bild-Aufruf einen Ort,
+ * den `google/gemini-2.5-flash-image` nicht hat — 404, `no_images`, 502, und
+ * der Tageszähler war trotzdem gebucht. Der Satz war also falsch, und genau
+ * deshalb fiel es niemandem auf. Die Bild-Fassung steht jetzt unten als
+ * `BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL`.
  */
 export const BRAND_PROVIDER_ROUTING_VERTEX_EU = {
   ...BRAND_PROVIDER_ROUTING,
   only: ['google-vertex/eu'],
+} as const
+
+/**
+ * DERSELBE SCHUTZ, OHNE FESTEN ORT — die Fassung für das BILDER-ERZEUGEN
+ * (Zeichen-Entwürfe, D5c).
+ *
+ * Davids Entscheidung vom 2026-11-13: „ohne festen Ort in Europa, wie
+ * bisher“. `google/gemini-2.5-flash-image` hat bei OpenRouter genau EINEN
+ * Endpunkt, `google-vertex/global` (nachgeprüft 2026-11-14, steht auch in der
+ * ZDR-Liste). Ein EU-Pin schützt diese Funktion nicht, er schaltet sie ab.
+ *
+ * WAS BLEIBT: `zdr`, `dataCollection: 'deny'` und `allowFallbacks: false` —
+ * geerbt per Spread, wie bei der Schwester oben. Nur der Ort wird ersetzt.
+ *
+ * WARUM TROTZDEM GEPINNT, wenn der Ort ohnehin offen ist: der Pin auf den
+ * EINEN Endpunkt legt den BETREIBER fest (Google Cloud Vertex AI). Genau das
+ * sagen der Hinweis in der Werkstatt (`brand.mark.drafts.notice.*`) und der
+ * Datenschutztext — ohne Pin dürfte OpenRouter jeden ZDR-Anbieter nehmen, den
+ * das Modell künftig bekommt, und der Satz wäre unbelegt. Ein neuer Endpunkt
+ * (etwa ein EU-Endpunkt) wird hier also NICHT still mitbenutzt; der Wächter
+ * `pnpm ops:ai-models` meldet ihn als Hinweis, und dann wird bewusst
+ * umgestellt — Pin UND Hinweistexte.
+ *
+ * WAS IN DEN PROMPT GEHT (`markPrompt.ts`): Markenname, Initiale, Briefing
+ * (Charakter, Formensprache), Farben und Schriftname. KEIN hochgeladenes
+ * Material — die Vorbilder reisen nie in einen Prompt (§2.13).
+ *
+ * Der Endpunkt-Tag hat EINE Quelle in `shared/brandMarkDrafts.ts`
+ * (`BRAND_MARK_DRAFTS_ENDPOINT`), damit Pin, Wächter-Tabelle und Test
+ * denselben Wert lesen.
+ */
+export const BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL = {
+  ...BRAND_PROVIDER_ROUTING,
+  only: [BRAND_MARK_DRAFTS_ENDPOINT],
 } as const
