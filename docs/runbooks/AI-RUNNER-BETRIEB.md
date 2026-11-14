@@ -95,7 +95,9 @@ Er fasst nichts an, was zu einem noch laufenden Auftrag gehört, und keine
 Anhänge. Die Zeile des Laufs mit dem Bericht bleibt.
 
 Schalter `pukalani.runner.retention` (`apps/control/app/app.config.ts`):
-`off` · `dry-run` (zählt nur) · `apply` (löscht). Die Fristen sind fest
+`off` · `dry-run` (zählt nur) · `apply` (löscht). Er steht seit 2026-11-14 auf
+`apply`; davor zählte der Lauf auf Production zweimal nur mit (10 Protokolle,
+0 Ereignisse). Die Fristen sind fest
 (`packages/runner/shared/runRetention.ts`).
 
 Jeder Lauf schreibt eine Zeile `runner.retention` mit Zahlen ins Log der App
@@ -110,7 +112,7 @@ Der Dienst räumt seine Ablage selbst auf (`<stateDir>/runs/<Lauf>/`, darin
 Auftrag, Anhänge und Protokoll): beim Start und danach alle 24 Stunden.
 Einstellung `runRetention` in der Datei auf dem Rechner:
 `{ "mode": "dry-run" | "apply" | "off", "days": 30 }`. Ohne Eintrag zählt er
-nur (`dry-run`). Die Zeile „Ablage-Aufräumen" im Log des Dienstes nennt die
+nur (`dry-run`). Auf Davids Rechner steht sie seit 2026-11-14 auf `apply`. Die Zeile „Ablage-Aufräumen" im Log des Dienstes nennt die
 Zahlen.
 
 ## 4. Nach einer Änderung am Dienst
