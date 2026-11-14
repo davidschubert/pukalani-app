@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
+import { hasShellSyntax } from './exec.ts'
 import { PERMISSION_MODES, type PermissionMode } from './protocol.ts'
 
 /**
@@ -8,8 +9,9 @@ import { PERMISSION_MODES, type PermissionMode } from './protocol.ts'
  *
  * DIE WICHTIGSTE EINZELREGEL DES GANZEN SYSTEMS: die Datenbank darf
  * AUSWÄHLEN, was diese Datei ERLAUBT — nie umgekehrt. Deshalb reist über die
- * Naht nur ein `repoKey`, nie ein Pfad; erlaubte Modi, Modelle, Budget-Deckel
- * und geschützte Branches stehen ausschliesslich hier. Läge die Allowlist in
+ * Naht nur ein `repoKey`, nie ein Pfad; erlaubte Modi, Modelle, Budget-Deckel,
+ * geschützte Branches und Testbefehle stehen ausschliesslich hier (über die
+ * Naht reist bei Testbefehlen nur eine AUSWAHL, SEC-037). Läge die Allowlist in
  * der Datenbank, wäre jede Lücke in der Betreiber-Konsole eine
  * Remote-Code-Execution auf diesem Laptop.
  *
@@ -33,7 +35,32 @@ export interface RepoRule {
   /** null = keine Einschränkung; sonst gewinnt der erste Eintrag als Rückfall */
   allowedModels: string[] | null
   maxBudgetUsd: number
+  /**
+   * Die Testbefehle, die dieser Rechner in diesem Repo ausführen darf
+   * (SEC-037). Über die Naht reist höchstens eine AUSWAHL daraus — ein
+   * Befehl, der hier nicht wortgleich steht, lehnt den ganzen Auftrag ab
+   * (testCommands.ts). Leer = keine Testbefehle; das ist auch die Vorgabe,
+   * wenn das Feld in der Datei fehlt.
+   */
+  allowedTestCommands: string[]
 }
+
+/** Was mit alten Lauf-Ordnern geschieht (BE-025, cleanup.ts). */
+export const RUN_RETENTION_MODES = ['off', 'dry-run', 'apply'] as const
+export type RunRetentionMode = (typeof RUN_RETENTION_MODES)[number]
+
+export interface RunRetention {
+  /** `dry-run` zählt nur, `apply` löscht, `off` tut nichts */
+  mode: RunRetentionMode
+  /** Ordner, deren jüngste Änderung älter ist, gelten als abgelaufen */
+  days: number
+}
+
+export const DEFAULT_RUN_RETENTION: Readonly<RunRetention> = { mode: 'dry-run', days: 30 }
+
+/** Grenzen der lokalen Testbefehl-Liste — eine Liste, die ein Mensch pflegt, nicht ein Generator. */
+export const MAX_TEST_COMMAND_ENTRIES = 50
+export const MAX_TEST_COMMAND_CHARS = 200
 
 export interface RunnerConfig {
   endpoint: string
@@ -68,6 +95,8 @@ export interface RunnerConfig {
    * Abbrechende weiß es schon).
    */
   macosNotifications: boolean
+  /** Aufräumen von `<stateDir>/runs/` (BE-025); Vorgabe: nur zählen, 30 Tage */
+  runRetention: RunRetention
   repos: Record<string, RepoRule>
 }
 
@@ -128,6 +157,77 @@ function readStringArray(source: Record<string, unknown>, key: string, where: st
     throw new ConfigError(`${where}.${key}: erwartet eine Liste nicht-leerer Zeichenketten`)
   }
   return (value as string[]).map(entry => entry.trim())
+}
+
+/**
+ * `repos.<key>.testCommands` — die lokale Liste der erlaubten Testbefehle
+ * (SEC-037). ANDERS als die übrigen Listen wird hier NICHTS still bereinigt:
+ * verglichen wird später wortgleich, und ein Eintrag mit Rand-Leerraum oder
+ * doppeltem Leerzeichen sähe in der Datei richtig aus und passte trotzdem nie.
+ * Ein Tippfehler soll beim Start auffallen, nicht beim ersten abgelehnten Lauf.
+ *
+ * Steuerzeichen und anderer Leerraum als das einfache Leerzeichen sind
+ * verboten, weil der Befehl an Leerraum zerlegt wird (`splitCommand`) — was
+ * ein Mensch als ein Wort liest, muss auch eines bleiben. Shell-Zeichen sind
+ * verboten, weil es keine Shell gibt (exec.ts): so ein Eintrag liefe nie so,
+ * wie er aussieht.
+ */
+function readTestCommands(source: Record<string, unknown>, where: string): string[] {
+  const value = source.testCommands
+  if (value === undefined) return []
+  const field = `${where}.testCommands`
+  if (!Array.isArray(value)) {
+    throw new ConfigError(`${field}: erwartet eine Liste von Befehlen (z. B. ["pnpm lint"])`)
+  }
+  if (value.length > MAX_TEST_COMMAND_ENTRIES) {
+    throw new ConfigError(`${field}: höchstens ${MAX_TEST_COMMAND_ENTRIES} Einträge`)
+  }
+  const seen = new Set<string>()
+  value.forEach((entry: unknown, index: number) => {
+    const at = `${field}[${index}]`
+    if (typeof entry !== 'string' || !entry.length) {
+      throw new ConfigError(`${at}: erwartet eine nicht-leere Zeichenkette`)
+    }
+    if (entry.length > MAX_TEST_COMMAND_CHARS) {
+      throw new ConfigError(`${at}: länger als ${MAX_TEST_COMMAND_CHARS} Zeichen`)
+    }
+    // eslint-disable-next-line no-control-regex -- genau die sind gemeint
+    if (/[\u0000-\u001F\u007F]/.test(entry) || /[^\S ]/.test(entry)) {
+      throw new ConfigError(`${at}: enthält Steuerzeichen, Tabulator oder Zeilenumbruch — nur einfache Leerzeichen trennen die Wörter`)
+    }
+    if (entry !== entry.trim()) {
+      throw new ConfigError(`${at}: beginnt oder endet mit Leerraum — verglichen wird wortgleich, bitte entfernen`)
+    }
+    if (entry.includes('  ')) {
+      throw new ConfigError(`${at}: enthält mehrere Leerzeichen hintereinander — verglichen wird wortgleich, bitte auf eines kürzen`)
+    }
+    if (hasShellSyntax(entry)) {
+      throw new ConfigError(`${at}: enthält Shell-Zeichen — es gibt keine Shell; eine Pipeline gehört in ein Skript im Repo`)
+    }
+    if (seen.has(entry)) {
+      throw new ConfigError(`${at}: steht doppelt in der Liste`)
+    }
+    seen.add(entry)
+  })
+  return [...seen]
+}
+
+function readRunRetention(root: Record<string, unknown>): RunRetention {
+  if (root.runRetention === undefined) return { ...DEFAULT_RUN_RETENTION }
+  const where = 'config.json.runRetention'
+  const source = asRecord(root.runRetention, where)
+
+  const mode = source.mode === undefined ? DEFAULT_RUN_RETENTION.mode : source.mode
+  if (typeof mode !== 'string' || !(RUN_RETENTION_MODES as readonly string[]).includes(mode)) {
+    throw new ConfigError(`${where}.mode: erwartet einen von ${RUN_RETENTION_MODES.join(', ')}`)
+  }
+
+  const days = source.days === undefined ? DEFAULT_RUN_RETENTION.days : source.days
+  if (typeof days !== 'number' || !Number.isInteger(days) || days < 1) {
+    throw new ConfigError(`${where}.days: erwartet eine ganze Zahl ab 1`)
+  }
+
+  return { mode: mode as RunRetentionMode, days }
 }
 
 /**
@@ -211,10 +311,13 @@ export function parseRunnerConfig(raw: unknown, home: string): RunnerConfig {
       allowedModes: modes as PermissionMode[],
       allowedModels,
       maxBudgetUsd: maxBudget,
+      allowedTestCommands: readTestCommands(entry, where),
     }
   }
 
-  return { endpoint, secretFile, pollSeconds, heartbeatSeconds, maxRunMinutes, stateDir, claudeBin, claudeTokenFile, extraPath, macosNotifications, repos }
+  const runRetention = readRunRetention(root)
+
+  return { endpoint, secretFile, pollSeconds, heartbeatSeconds, maxRunMinutes, stateDir, claudeBin, claudeTokenFile, extraPath, macosNotifications, runRetention, repos }
 }
 
 /**
@@ -291,6 +394,7 @@ export function describeConfig(config: RunnerConfig, configPath: string): string
     `Ablage:        ${config.stateDir}`,
     `CLI:           ${config.claudeBin}`,
     `Mitteilungen:  ${config.macosNotifications ? 'an' : 'aus'} (macOS)`,
+    `Aufräumen:     ${config.runRetention.mode} (Lauf-Ordner älter als ${config.runRetention.days} Tage)`,
     'Repos:',
   ]
   for (const repo of Object.values(config.repos)) {
@@ -300,15 +404,53 @@ export function describeConfig(config: RunnerConfig, configPath: string): string
     lines.push(`    Modi:      ${repo.allowedModes.join(', ')}`)
     lines.push(`    Modelle:   ${repo.allowedModels ? repo.allowedModels.join(', ') : 'alle'}`)
     lines.push(`    Budget:    max ${repo.maxBudgetUsd} USD`)
+    if (repo.allowedTestCommands.length) {
+      lines.push('    Testbefehle:')
+      for (const command of repo.allowedTestCommands) lines.push(`      ${command}`)
+    }
+    else {
+      lines.push('    Testbefehle: —')
+    }
   }
   return lines.join('\n')
 }
 
-/** Was der Heartbeat meldet — ANZEIGE-KOPIE, keine Wahrheit (§ 8.1). */
+/**
+ * Die Spalte `runners.capabilitiesJson` fasst 4000 Zeichen; darüber lehnt
+ * der Heartbeat mit 400 ab (`capabilities_too_large`), und der Rechner sähe
+ * im Board für immer „offline" aus. Die lokale Liste darf größer sein
+ * (50 × 200 Zeichen) — die ANZEIGE-Kopie wird dann gekürzt, nicht der
+ * Heartbeat geopfert.
+ */
+export const MAX_CAPABILITIES_CHARS = 4000
+
+/**
+ * Was der Heartbeat meldet — ANZEIGE-KOPIE, keine Wahrheit (§ 8.1).
+ * `testCommands` füllt die Auswahl im Lauf-Formular; geprüft wird trotzdem
+ * jeder Auftrag gegen die lokale Liste (testCommands.ts). Passt die Kopie
+ * nicht in die Spalte, fallen Einträge vom Ende weg und
+ * `testCommandsIncomplete` sagt es.
+ */
 export function capabilitiesOf(config: RunnerConfig, version: string): Record<string, unknown> {
   const modes = new Set<string>()
+  const testCommands: Record<string, string[]> = {}
   for (const repo of Object.values(config.repos)) {
     for (const mode of repo.allowedModes) modes.add(mode)
+    testCommands[repo.key] = [...repo.allowedTestCommands]
   }
-  return { repos: Object.keys(config.repos), modes: [...modes], version }
+  const capabilities: Record<string, unknown> = { repos: Object.keys(config.repos), modes: [...modes], version, testCommands }
+
+  let incomplete = false
+  while (JSON.stringify(capabilities).length > MAX_CAPABILITIES_CHARS) {
+    // Immer aus der längsten Liste kürzen — so behält jedes Repo möglichst viel.
+    const longest = Object.values(testCommands).reduce<string[] | null>(
+      (best, list) => (!best || list.length > best.length ? list : best), null)
+    if (!longest || !longest.length) break
+    longest.pop()
+    if (!incomplete) {
+      incomplete = true
+      capabilities.testCommandsIncomplete = true
+    }
+  }
+  return capabilities
 }

@@ -130,19 +130,16 @@ export interface HeartbeatResponse {
 }
 
 /**
- * `runs.testCommands` ist eine JSON-Zeichenkette und kommt von der anderen
- * Seite der Naht. DEFENSIV: '' und kaputtes JSON ergeben eine leere Liste, nie
- * einen Fehler — ein verstümmelter Wert soll den Lauf ohne Tests fahren
- * lassen, nicht ihn abschiessen (dasselbe Muster wie `parseRunAttachments`).
+ * Ist diese Lauf-Id als Pfad-, Worktree- und URL-Bestandteil unbedenklich?
+ *
+ * Die Id kommt über die Naht und landet in `<stateDir>/runs/<id>/`, im
+ * Worktree-Namen `ai-<id>` und in jeder Naht-URL. Appwrite-Ids erfüllen die
+ * Form ohnehin (höchstens 36 Zeichen, Buchstaben, Ziffern, `.`, `_`, `-`, nicht
+ * mit Sonderzeichen beginnend) — geprüft wird trotzdem HIER, weil ein Pfad
+ * nicht davon sicher wird, dass die Gegenseite sich an ihre eigenen Regeln
+ * hält. Kein `/`, kein führender Punkt ⇒ kein `..`, kein Ausbruch aus dem
+ * Ordner.
  */
-export function parseTestCommands(raw: string): string[] {
-  try {
-    const parsed: unknown = JSON.parse(raw || '[]')
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
-      .map(entry => entry.trim())
-  }
-  catch {
-    return []
-  }
+export function isSafeRunId(id: unknown): id is string {
+  return typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/.test(id)
 }

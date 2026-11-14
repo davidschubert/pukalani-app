@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { nextBackoffSeconds, RunnerApi } from './api.ts'
+import { sweepRunDirs } from './cleanup.ts'
 import { capabilitiesOf, ConfigError, describeConfig, loadRunnerConfig, type RunnerConfig } from './config.ts'
 import { log } from './log.ts'
+import { isSafeRunId } from './protocol.ts'
 import { executeRun } from './run.ts'
 
 /**
@@ -45,6 +47,21 @@ function sleep(seconds: number): Promise<void> {
 
 interface DaemonState {
   shuttingDown: boolean
+  /** Id des gerade laufenden Auftrags — das Aufräumen fasst ihn nie an */
+  activeRunId: string | null
+}
+
+/** Ablage-Aufräumen (BE-025): einmal nach dem Start, danach alle 24 Stunden. */
+const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+async function sweepSafely(config: RunnerConfig, state: DaemonState): Promise<void> {
+  try {
+    await sweepRunDirs(config, () => state.activeRunId)
+  }
+  catch (error) {
+    // Aufräumen ist Pflege, kein Betrieb: ein Fehler darf den Claim-Loop nicht anhalten.
+    log.warn(`Ablage-Aufräumen fehlgeschlagen: ${(error as Error).message}`)
+  }
 }
 
 async function main(): Promise<number> {
@@ -72,7 +89,7 @@ async function main(): Promise<number> {
 
   const api = new RunnerApi(config.endpoint, token)
   const version = readVersion()
-  const state: DaemonState = { shuttingDown: false }
+  const state: DaemonState = { shuttingDown: false, activeRunId: null }
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
@@ -94,6 +111,12 @@ async function main(): Promise<number> {
   }, config.heartbeatSeconds * 1000)
   heartbeat.unref?.()
 
+  await sweepSafely(config, state)
+  const sweep = setInterval(() => {
+    void sweepSafely(config, state)
+  }, SWEEP_INTERVAL_MS)
+  sweep.unref?.()
+
   let backoff = 0
   do {
     try {
@@ -101,8 +124,17 @@ async function main(): Promise<number> {
       backoff = 0
 
       if (run) {
-        log.info(`Lauf ${run.$id} übernommen (${run.subjectType} ${run.subjectId}, Repo ${run.repoKey})`)
-        await executeRun({ api, config, shutdownRequested: () => state.shuttingDown }, run)
+        // Eine unzulässige Id druckt erst executeRun — gekürzt (isSafeRunId).
+        if (isSafeRunId(run.$id)) {
+          log.info(`Lauf ${run.$id} übernommen (${run.subjectType} ${run.subjectId}, Repo ${run.repoKey})`)
+          state.activeRunId = run.$id
+        }
+        try {
+          await executeRun({ api, config, shutdownRequested: () => state.shuttingDown }, run)
+        }
+        finally {
+          state.activeRunId = null
+        }
       }
       else if (!flags.once) {
         await sleep(config.pollSeconds)
@@ -117,6 +149,7 @@ async function main(): Promise<number> {
   } while (!flags.once && !state.shuttingDown)
 
   clearInterval(heartbeat)
+  clearInterval(sweep)
   return 0
 }
 
