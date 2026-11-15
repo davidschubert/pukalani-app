@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { scrubClientErrorReport } from '../../../shared/logAddress'
 
 const clientErrorSchema = z.object({
   source: z.string().min(1).max(64),
@@ -13,6 +14,11 @@ const clientErrorSchema = z.object({
  * aktiv, wenn die App pukalani.observability.enabled + clientErrors gesetzt hat —
  * sonst 404. Rate-limited (rate-limit.ts, Bucket telemetry:error). Es wird
  * bewusst NUR das validierte Payload geloggt (keine Header/Cookies — PII).
+ *
+ * ADRESSEN OHNE QUERY UND FRAGMENT (SEC-013): die Route nimmt Text von jedem
+ * an — also wird hier gekürzt, nicht nur im Plugin davor. `url` behält Schema,
+ * Host und Pfad; Adressen in `message` und `stack` ebenso
+ * (`shared/logAddress.ts`, dieselbe Rechnung wie in `server/error.ts`).
  */
 export default defineEventHandler(async (event) => {
   const gate = useAppConfig().pukalani?.observability
@@ -23,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const payload = await readValidatedBody(event, clientErrorSchema.parse)
 
   logEvent('error', 'client.error', {
-    ...payload,
+    ...scrubClientErrorReport(payload),
     // userId hilft beim Zuordnen von Sessions-Fehlern; anonyme Gäste bleiben leer
     userId: event.context.user?.$id ?? '',
   })

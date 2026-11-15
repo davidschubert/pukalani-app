@@ -1,3 +1,5 @@
+import { stripAddressesInText } from '../../shared/logAddress'
+
 /**
  * Client-Error-Reporting (pukalani.observability.clientErrors): meldet Browser-
  * Fehler (Vue-Render/Setup, unbehandelte Promise-Rejections, window.onerror)
@@ -5,6 +7,10 @@
  * im Server-Log. Dedupliziert pro Message, hart auf 10 Meldungen/Session
  * begrenzt (ein Fehler in einer Render-Schleife darf keinen Request-Sturm
  * auslösen); die Route ist zusätzlich rate-limited.
+ *
+ * Adressen reisen ohne Query und Fragment (SEC-013): `url` ist nur der Pfad,
+ * und was in Meldung oder Stack wie eine Adresse aussieht, wird vor dem
+ * Senden gekürzt — die Route kürzt noch einmal.
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const gate = useAppConfig().pukalani?.observability
@@ -23,8 +29,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       method: 'POST',
       body: {
         source,
-        message: message.slice(0, 2000),
-        stack: stack?.split('\n').slice(0, 12).join('\n'),
+        message: stripAddressesInText(message).slice(0, 2000),
+        stack: stack === undefined ? undefined : stripAddressesInText(stack.split('\n').slice(0, 12).join('\n')),
         url: window.location.pathname,
       },
     }).catch(() => {}) // Reporting darf nie selbst stören
