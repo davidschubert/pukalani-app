@@ -8,6 +8,9 @@
  * zweiten Sprache falsch.
  */
 
+import { safeExternalHref } from '../../../core/shared/safeHref'
+import type { InsightsSource } from '../../shared/insightsPost'
+
 /**
  * DER KALENDERTAG AUS EINEM ISO-WERT — `2026-09-08` ebenso wie
  * `2026-09-08T10:00:00.000+00:00`.
@@ -49,6 +52,25 @@ export function insightsDay(isoDate: string, locale: string): string {
 /** Die Adresse, wie ein Mensch sie liest — ohne Schema, ohne Schrägstrich am Ende. */
 export function insightsHost(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+}
+
+/**
+ * DAS LINK-ZIEL EINER QUELLE — nur wenn die gespeicherte Adresse http(s) ist
+ * (SEC-021). Ein Altwert mit anderem Schema ergibt `undefined`: dann zeigt
+ * die Liste die Adresse als Text, nicht als Link. Die Prototyp-Naht
+ * `resolveHref` greift nur bei einer gültigen Quelle.
+ */
+export function insightsSourceHref(
+  source: InsightsSource,
+  resolveHref?: (source: InsightsSource) => string,
+): string | undefined {
+  if (!safeExternalHref(source.url)) return undefined
+  return resolveHref ? resolveHref(source) : source.url
+}
+
+/** Der Lizenz-Link einer Quelle — nur als http(s)-Adresse, sonst keiner (SEC-021). */
+export function insightsLicenseHref(source: Pick<InsightsSource, 'license'>): string | undefined {
+  return safeExternalHref(source.license)
 }
 
 /** Grosse Zahlen des Radars. `Intl.NumberFormat` ist auf beiden Seiten gleich. */

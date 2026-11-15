@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../core/shared/safeHref'
 import type { MarketFrequency, MarketProfileField, MarketSourceOption } from './marketProfile'
 import { MARKET_EVIDENCE_MAX, MARKET_FIELD_IDS } from './marketProfile'
 import { MARKET_MAX_PAGES } from './marketCrawlRules'
@@ -87,7 +88,7 @@ export const marketLibraryFieldSchema = z.object({
   fieldId: fieldIdSchema,
   value: z.string().trim().min(1).max(2000),
   items: z.array(z.string().trim().min(1).max(200)).max(10).optional(),
-  sourceUrl: z.url().max(512),
+  sourceUrl: z.url({ protocol: HTTP_URL_PROTOCOL }).max(512),
   quote: z.string().trim().min(1).max(MARKET_EVIDENCE_MAX).optional(),
   confidence: z.enum(['stated', 'implied']).optional(),
   /**
@@ -127,7 +128,7 @@ export const marketLibraryEntrySchema = z.object({
   status: z.literal('verified'),
   name: z.string().trim().min(1).max(200),
   /** Die Adresse der Marke — Herkunft der Belege, kein Abruf-Ziel. */
-  homepage: z.url().max(512),
+  homepage: z.url({ protocol: HTTP_URL_PROTOCOL }).max(512),
   /** Grobe Einordnung für den Quellen-Wähler (M4). */
   category: z.string().trim().max(120).default(''),
   /** WANN ein Mensch das geprüft hat — ohne Datum ist es keine Handprüfung. */
@@ -161,7 +162,7 @@ export const marketLibraryDraftSchema = marketLibraryEntrySchema.extend({
     mode: z.enum(['stub', 'paid']),
     tool: z.string().min(1).max(120),
     /** Die Seiten, aus denen die Belege stammen — der Prüfpfad des Menschen. */
-    pages: z.array(z.url().max(512)).max(MARKET_MAX_PAGES),
+    pages: z.array(z.url({ protocol: HTTP_URL_PROTOCOL }).max(512)).max(MARKET_MAX_PAGES),
   }),
 })
 

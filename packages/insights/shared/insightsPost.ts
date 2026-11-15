@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { EVIDENCE_QUOTE_MAX, evidenceIsGrounded } from '../../core/shared/evidenceGrounding'
+import { HTTP_URL_PROTOCOL } from '../../core/shared/safeHref'
 
 /**
  * DER REDAKTIONS-VERTRAG VON BRAND INSIGHTS (Plan §9.3,
@@ -193,13 +194,13 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD')
  * Beleg-Riegel des Fundaments (`core/shared/evidenceGrounding.ts`, BI1 I1a).
  */
 export const insightsSourceSchema = z.object({
-  url: z.url().max(512),
+  url: z.url({ protocol: HTTP_URL_PROTOCOL }).max(512),
   publisher: z.string().max(160).default(''),
   date: z.union([dateSchema, z.literal('')]).default(''),
   kind: z.enum(INSIGHTS_SOURCE_KINDS),
   quote: z.string().max(INSIGHTS_QUOTE_MAX).default(''),
   /** CC-BY-SA-Link — Pflicht genau bei `wikipedia`. */
-  license: z.string().max(200).default(''),
+  license: z.union([z.url({ protocol: HTTP_URL_PROTOCOL }).max(200), z.literal('')]).default(''),
 }).superRefine((source, ctx) => {
   if (source.kind !== 'own-data') {
     if (!source.publisher) ctx.addIssue({ code: 'custom', path: ['publisher'], message: 'Fremdquelle ohne Herausgeber' })
@@ -995,7 +996,7 @@ const insightsBrandFields = {
   slug: z.string().min(1).max(160),
   slugHistory: z.array(z.string().max(160)).max(INSIGHTS_SLUG_HISTORY_MAX).default([]),
   name: z.string().min(1).max(200),
-  homepage: z.string().max(512).default(''),
+  homepage: z.union([z.url({ protocol: HTTP_URL_PROTOCOL }).max(512), z.literal('')]).default(''),
   libraryKey: z.string().max(64).default(''),
   checkId: z.string().max(64).default(''),
   publicationId: z.string().max(64).default(''),

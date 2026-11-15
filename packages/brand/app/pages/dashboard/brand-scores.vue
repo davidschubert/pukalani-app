@@ -6,6 +6,7 @@ import type {
   BrandProfileScores,
   BrandProfileScoresResponse,
 } from '../../../shared/types/brand'
+import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 /**
  * „MEINE BRANDS & SCORES" ALS LISTE — `/dashboard/brand-scores`
@@ -396,9 +397,10 @@ useBrandTitle(() => t('brand.myScores.list.title'))
                profiles/:id`), und ein zweites Formular in einer Tabellenzelle
                wäre dieselbe Sache an zwei Stellen. -->
           <template #website-cell="{ row }">
+            <!-- Link nur mit http(s)-Ziel (SEC-021). -->
             <a
-              v-if="row.original.websiteUrl"
-              :href="row.original.websiteUrl" target="_blank" rel="noopener noreferrer nofollow"
+              v-if="safeExternalHref(row.original.websiteUrl)"
+              :href="safeExternalHref(row.original.websiteUrl)" target="_blank" rel="noopener noreferrer nofollow"
               class="text-sm hover:underline" style="color: var(--bw-ink-soft)"
             >{{ hostOf(row.original.websiteUrl) }}</a>
             <NuxtLink

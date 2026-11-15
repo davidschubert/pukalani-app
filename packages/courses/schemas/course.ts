@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../core/shared/safeHref'
 import { LOCALE_CODE_PATTERN } from '../../core/shared/ugcTranslations'
 import { COURSE_ACCESS, MAX_COURSE_DESCRIPTION, MAX_COURSE_TITLE, MAX_LESSON_CONTENT } from '../shared/types/course'
 
@@ -48,7 +49,7 @@ export function createLessonSchema(t: TranslateFn = identity) {
   return z.object({
     title: z.string().trim().min(1, t('courses.validation.titleRequired')).max(MAX_COURSE_TITLE, t('courses.validation.titleMax')),
     content: z.string().trim().min(1, t('courses.validation.contentRequired')).max(MAX_LESSON_CONTENT, t('courses.validation.contentMax')),
-    videoUrl: z.url(t('courses.validation.urlInvalid')).max(500).nullish(),
+    videoUrl: z.url({ protocol: HTTP_URL_PROTOCOL, error: t('courses.validation.urlInvalid') }).max(500).nullish(),
     status: z.enum(['draft', 'published']).optional(),
   })
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { COURSE_NOT_A_MEMBER_CODE, type CourseDetailResponse, type LessonRow, type LessonTranslateResponse } from '../../shared/types/course'
+import { safeExternalHref } from '../../../core/shared/safeHref'
 
 /**
  * LessonView: Markdown XSS-sicher (Core-Sink), optionaler Video-Link
@@ -136,8 +137,8 @@ async function complete() {
     <h1 class="text-2xl font-bold">{{ shownTitle }}</h1>
 
     <UButton
-      v-if="lesson!.videoUrl"
-      :href="lesson!.videoUrl" external target="_blank"
+      v-if="safeExternalHref(lesson!.videoUrl)"
+      :href="safeExternalHref(lesson!.videoUrl)" external target="_blank"
       color="neutral" variant="soft" size="sm" icon="i-ph-video-camera" class="mt-4"
       data-testid="lesson-video"
     >

@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../../../../core/shared/safeHref'
 import { WEBSITES_TABLE, WEBSITE_STATUSES, type WebsiteRow } from '../../../../shared/types/website'
 
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   slug: z.string().regex(/^[a-z][a-z0-9-]*$/).max(64).optional(),
-  appUrl: z.string().url().max(256).or(z.literal('')).optional(),
+  appUrl: z.url({ protocol: HTTP_URL_PROTOCOL }).max(256).or(z.literal('')).optional(),
   status: z.enum(WEBSITE_STATUSES).optional(),
   notes: z.string().max(1000).optional(),
   /**

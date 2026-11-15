@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../../core/shared/safeHref'
 import type { MarketCandidateSource } from '../marketProfile'
 import {
   MARKET_CANDIDATE_SOURCES,
@@ -118,7 +119,7 @@ const sourceSchema = z.enum(
  */
 export const marketEvidenceSchema = z.object({
   quote: z.string().min(1).max(MARKET_EVIDENCE_MAX),
-  sourceUrl: z.url().max(512),
+  sourceUrl: z.url({ protocol: HTTP_URL_PROTOCOL }).max(512),
   fetchedAt: z.string().min(1).max(40),
   confidence: z.enum(['stated', 'implied']),
 })

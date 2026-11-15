@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../../../../core/shared/safeHref'
 import type { InsightsBrand } from '../../../../shared/insightsPost'
 import type { InsightsBrandCreatedResponse } from '../../../../shared/types/insightsApi'
 
@@ -25,7 +26,7 @@ import type { InsightsBrandCreatedResponse } from '../../../../shared/types/insi
  */
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(200),
-  homepage: z.union([z.url().max(512), z.literal('')]).default(''),
+  homepage: z.union([z.url({ protocol: HTTP_URL_PROTOCOL }).max(512), z.literal('')]).default(''),
   industry: z.string().trim().max(40).default(''),
 })
 

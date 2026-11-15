@@ -1,3 +1,4 @@
+import { isHttpUrl } from '../../../core/shared/safeHref'
 import type { EventRow } from '../../shared/types/event'
 
 /** Text nach RFC 5545 escapen (Backslash, Semikolon, Komma, Zeilenumbruch) */
@@ -34,7 +35,8 @@ export function buildEventIcs(row: Pick<EventRow, '$id' | '$updatedAt' | 'title'
     `SUMMARY:${escapeIcsText(row.title)}`,
     ...(row.description ? [`DESCRIPTION:${escapeIcsText(row.description)}`] : []),
     ...(row.location ? [`LOCATION:${escapeIcsText(row.location)}`] : []),
-    ...(row.url ? [`URL:${escapeIcsText(row.url)}`] : []),
+    // Nur eine http(s)-Adresse kommt als Link in die Datei (SEC-021).
+    ...(isHttpUrl(row.url) ? [`URL:${escapeIcsText(row.url)}`] : []),
     `STATUS:${row.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}`,
     'END:VEVENT',
     'END:VCALENDAR',

@@ -3,6 +3,7 @@ import type { EventDetailResponse, EventRow, EventTranslateResponse, EventVoteRe
 import { effectiveAccess, effectiveLocationType, EVENTS_TABLE } from '../../shared/types/event'
 import { detectLiveProvider } from '../../shared/liveProvider'
 import { eventIsEditable, eventIsRedacted } from '../../shared/eventModerationPolicy'
+import { safeExternalHref } from '../../../core/shared/safeHref'
 
 /**
  * Landing Page (Meetup-Muster): Zurück-Link, links Titel/Host/Details
@@ -451,9 +452,10 @@ const startDayNumber = computed(() => formatDayNumber(event.value.startAt))
               </div>
             </div>
 
-            <div v-if="event.url && locationType === 'online' && !joinOpen" class="flex items-center gap-2">
+            <!-- Links aus der Zeile nur mit http(s)-Ziel (SEC-021); sonst kein Link. -->
+            <div v-if="safeExternalHref(event.url) && locationType === 'online' && !joinOpen" class="flex items-center gap-2">
               <UIcon name="i-ph-link" class="size-4 shrink-0 text-muted" />
-              <a :href="event.url" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">
+              <a :href="safeExternalHref(event.url)" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">
                 {{ t('events.detail.link') }}
               </a>
             </div>
@@ -506,8 +508,8 @@ const startDayNumber = computed(() => formatDayNumber(event.value.startAt))
 
             <ClientOnly>
               <UButton
-                v-if="joinOpen && myRsvp === 'going'"
-                :href="event.url!" external target="_blank"
+                v-if="joinOpen && myRsvp === 'going' && safeExternalHref(event.url)"
+                :href="safeExternalHref(event.url)" external target="_blank"
                 color="primary" size="lg" icon="i-ph-broadcast" block
                 data-testid="event-join-live"
               >
@@ -516,8 +518,8 @@ const startDayNumber = computed(() => formatDayNumber(event.value.startAt))
             </ClientOnly>
 
             <UButton
-              v-if="event.replayUrl"
-              :href="event.replayUrl" external target="_blank"
+              v-if="safeExternalHref(event.replayUrl)"
+              :href="safeExternalHref(event.replayUrl)" external target="_blank"
               color="neutral" variant="soft" size="sm" icon="i-ph-play-circle" block
               data-testid="event-replay"
             >
