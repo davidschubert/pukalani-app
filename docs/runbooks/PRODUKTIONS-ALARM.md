@@ -56,7 +56,7 @@ schreibt eine Zeile — der Wächter liest diese Zeile.
    „Entwarnung" und schließt es. **Offenes Issue = Alarm aktiv.** Braucht
    kein Secret — nur `issues: write` des Workflow-Tokens.
 2. **Mail bei jedem Wechsel** (Alarm / Entwarnung, nie im Takt) über Resend —
-   sobald Secret `PRODUCTION_ALARM_RESEND_KEY` und Variable
+   sobald die Secrets `PRODUCTION_ALARM_RESEND_KEY` und
    `PRODUCTION_ALARM_MAIL_TO` gesetzt sind (Klickliste). Vorher steht im Lauf
    eine gelbe Warnung „Mail-Alarm nicht eingerichtet".
 3. **Heartbeat bei jedem grünen Lauf** an `PRODUCTION_WATCH_HEARTBEAT_URL`
@@ -149,7 +149,7 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       Settings → Secrets and variables → Actions:
       Secret `PRODUCTION_ALARM_RESEND_KEY` = der Schlüssel,
       Secret `PRODUCTION_WATCH_RESEND_KEY` = derselbe Schlüssel,
-      Variable (Reiter *Variables*) `PRODUCTION_ALARM_MAIL_TO` = deine
+      Secret `PRODUCTION_ALARM_MAIL_TO` (bis 2026-11-15 eine Variable) = deine
       Adresse. Absender ist `noreply@pukalani.app` (Domain bei Resend
       verifiziert). Beweis: Probealarm ⇒ Mail „🔴 Produktions-Alarm";
       täglicher Lauf zeigt „Resend: n Mails in 24 h". Im Terminal statt im
@@ -158,15 +158,17 @@ Reihenfolge nach Wirkung. Jede Zeile ist unabhängig von den anderen.
       ```bash
       gh secret set PRODUCTION_ALARM_RESEND_KEY --env production-watch --repo davidschubert/pukalani-app
       gh secret set PRODUCTION_WATCH_RESEND_KEY --env production-watch --repo davidschubert/pukalani-app
-      gh variable set PRODUCTION_ALARM_MAIL_TO --repo davidschubert/pukalani-app --body "mail@…"
+      gh secret set PRODUCTION_ALARM_MAIL_TO --env production-watch --repo davidschubert/pukalani-app
       ```
 
       **Seit 2026-11-14 (GA1 P08) gehören alle Secrets des Wächters in die
       Umgebung `production-watch`** (`--env production-watch`; im Browser:
       Settings → Environments → production-watch), nicht mehr auf
-      Repo-Ebene. Die Umgebung lässt nur den Zweig `main` zu. Die Variable
-      `PRODUCTION_ALARM_MAIL_TO` bleibt auf Repo-Ebene; ihr Wert steht seit
-      demselben Tag nicht mehr im Protokoll des Laufs.
+      Repo-Ebene. Die Umgebung lässt nur den Zweig `main` zu. Auch die
+      Empfänger-Adresse `PRODUCTION_ALARM_MAIL_TO` ist seit dem 2026-11-15
+      ein SECRET dort und keine Variable mehr: GitHub druckt das `env:` eines
+      Schritts in das öffentliche Protokoll, ein Secret als `***`, eine
+      Variable im Klartext.
 - [x] **UptimeRobot → Keyword-Monitore** (externer Poller, unabhängig von
       GitHub). ✅ 2026-11-08: zehn Keyword-Monitore, alle mit den Kontakten
       #8632224 (Mail) und #8862802 (iPhone-Push): platform #804590660,

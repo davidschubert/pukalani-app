@@ -12,10 +12,12 @@ Ausliefern anzuhalten. Stand: 2026-11-14 (GA1 P08, SEC-041/SEC-042).
 | Wächter | `WATCH_SSH_KEY` | `production-watch` | app-prod, Benutzer `ploi` | wie oben (`restrict`) |
 | Wächter | derselbe | `production-watch` | appwrite-prod, Benutzer `ploi` | nur das Tor-Skript (`command=…`, `restrict`) |
 
-Dazu in `production-watch`: `PRODUCTION_WATCH_HEARTBEAT_URL`, und sobald sie
-umgezogen sind (OPEN-ITEMS CI1) `PRODUCTION_WATCH_RESEND_KEY` und
-`PRODUCTION_ALARM_RESEND_KEY` (Klickliste:
-[PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md)).
+Dazu in `production-watch`: `PRODUCTION_WATCH_HEARTBEAT_URL`,
+`PRODUCTION_WATCH_RESEND_KEY`, `PRODUCTION_ALARM_RESEND_KEY` (seit
+2026-11-15 ein neuer Resend-Schlüssel `produktions-waechter-2026-11`) und
+`PRODUCTION_ALARM_MAIL_TO` (Klickliste:
+[PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md)). Auf Repo-Ebene liegt kein
+Secret und keine Variable mehr.
 
 **Fingerabdrücke der Schlüssel vom 2026-11-14** (zum Vergleichen beim
 Zurücklesen; `ssh-keygen -lf ~/.ssh/authorized_keys` zeigt je Zeile einen):
