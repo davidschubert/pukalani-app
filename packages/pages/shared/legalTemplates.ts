@@ -188,7 +188,14 @@ Gespeichert werden nur zusammengefasste Angaben: die aufgerufene Seite, die Herk
 ## Speicherdauer
 
 Konto- und Inhaltsdaten bleiben, solange das Konto besteht; nach einer Löschung
-werden sie entfernt oder von der Person gelöst.
+werden sie entfernt oder von der Person gelöst. Was die Plattform dabei von
+sich aus tut:
+
+- Was die Person geschrieben hat, wird geleert; wo ein Gespräch sonst zerreißen würde, bleibt ein Platzhalter ohne Namen.
+- Vor einer Kontolöschung legt die Plattform eine Sicherungskopie der Daten ab, die nur ihr Betreiber öffnen kann. Nach 30 Tagen wird sie automatisch gelöscht.
+- Die E-Mail-Adresse zu einer Meldung an die Plattform wird spätestens 90 Tage nach der Meldung gelöscht. Eine gemeldete private Nachricht bleibt bis zu 90 Tage als Beleg gespeichert.
+- Im Protokoll über Anmeldungen und Änderungen am Konto bleibt nach der Löschung die Konto-Kennung stehen, ohne Namen und ohne IP-Adresse.
+
 [AUSFÜLLEN: Fristen für Protokolle, Sicherungen und gesetzliche Aufbewahrungspflichten ergänzen]
 
 ## Deine Rechte
@@ -272,7 +279,14 @@ Only aggregated information is stored: the page opened, the source (referring si
 ## Retention
 
 Account and content data remain for as long as the account exists; after a
-deletion they are removed or detached from the person.
+deletion they are removed or detached from the person. What the platform does
+on its own:
+
+- What the person wrote is emptied; where a conversation would otherwise fall apart, a placeholder without a name remains.
+- Before an account is deleted, the platform stores a backup copy of the data that only its operator can open. It is deleted automatically after 30 days.
+- The email address given with a report to the platform is deleted no later than 90 days after the report. A reported private message is kept as evidence for up to 90 days.
+- In the log of sign-ins and account changes, the account identifier remains after the deletion, without name and without IP address.
+
 [FILL IN: add retention periods for logs, backups and statutory obligations]
 
 ## Your rights
