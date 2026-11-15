@@ -106,7 +106,11 @@ schon in einer Datei stehen.
   registrieren ihre Admin-Seiten hier (expliziter Vertrag statt Kopplung)
 - GDPR: **neue Layer mit User-Daten MÜSSEN einen Contributor registrieren**
   (`registerUserDataContributor`, Nitro-Plugin `server/plugins/user-data.ts`);
-  core orchestriert Export und Löschung (users.delete nur bei Voll-Erfolg)
+  core orchestriert Export und Löschung (users.delete nur bei Voll-Erfolg).
+  JEDE TABELLE braucht eine Entscheidung in
+  `core/tests/support/userDataTables.ts` (Wächter-Test, seit P14), ein
+  Lesefehler bricht die Löschung ab (nie `.catch(() => [])`), Fristen setzt ein
+  Lauf durch — Regeln, Fristen, Läufe: docs/referenz/EXPORT-UND-LOESCHUNG.md
 - app.config.ts wird tief gemergt — App überschreibt nur was nötig
 
 ## Pläne & Produkte

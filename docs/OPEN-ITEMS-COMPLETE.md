@@ -30,6 +30,90 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P14 — Export und Löschung vollständig ✅ 2026-11-15
+
+**Was.** Zweites Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Findings SEC-014, SEC-015, SEC-026, SEC-027, SEC-032, SEC-009,
+BE-024), Pull Requests 173, 174 und 175. Davids Entscheidung vom 2026-11-12:
+umsetzen; Export und Löschung erreichen alle Tabellen mit Personenbezug. Am
+2026-11-15 dazu, per Klick: Prüfergebnisse werden versteckt und nach 90 Tagen
+gelöscht (ohne Knopf zum Zurückholen); 30 Tage für die Kopie und 90 Tage für
+versteckte Reste bleiben nebeneinander; Termine einer gelöschten Person werden
+abgesagt und geleert.
+
+1. **Zugriff (SEC-014, SEC-027).** Das Prüfergebnis einer nicht
+   veröffentlichten Marke sieht nur noch deren Besitzerin; Fremde bekommen
+   dieselbe Antwort wie für eine unbekannte Adresse (eine Regel in
+   `brandCheckVisibility.ts` für Ergebnis-Route, Korrekturvorschlag und
+   Galerie). Die zwei Feedback-Routen der Naht prüfen das genannte Projekt.
+2. **Lesefehler brechen ab (SEC-026).** In elf Beiträgen und im Core stand
+   `.catch(() => [])` oder `.catch(() => null)`: ein Aussetzer wurde zu „keine
+   Zeilen", die Löschung meldete Erfolg, das Konto verschwand, die Zeilen
+   blieben. Jetzt gilt nur eine fehlende Tabelle als leer
+   (`listAllRowsIfTableExists`), und nur `user_not_found` als „Konto schon
+   weg".
+3. **Jede Tabelle (SEC-015, SEC-026).** Neu in Auskunft und Löschung:
+   Prüfergebnisse, Korrektur-Meldungen, Warteliste, selbst abgegebene
+   Meldungen, die Adresse am Einladungscode, Betreiber-Spalten des Control
+   Plane, Läufe des Runners, Gesprächsanfragen auf pukalani.studio, das
+   Protokoll. `core/tests/support/userDataTables.ts` nennt für jede der 100
+   Tabellen und 10 Ablagen eine Datei oder einen Grund; ein Test hält die
+   Liste gegen die Soll-Tabellen und die Dateien.
+4. **Wirklich geleert (SEC-032).** Ein selbst gelöschter Kommentar wird zum
+   leeren Platzhalter (auch in der Datenbank, auch die Übersetzungen); die
+   Liste liefert für Gelöschtes nur die Struktur und nie Rechte.
+   Kontolöschung leert Übersetzungen, Umfrage-Optionen und Konto-Ids, setzt
+   die Vorschau einer Unterhaltung neu, schwärzt Termine. Ausschnitte im
+   Verlauf und Benachrichtigungen mit Textauszug fallen mit.
+5. **Fristen mit Lauf (SEC-009, SEC-015).** Stündlich: Kopien gelöschter
+   Konten nach 30 Tagen (Core, jede App mit Bucket), versteckte Prüfergebnisse
+   und Adressen an Korrektur-Meldungen nach 90 Tagen (brand, Schalter
+   `pukalani.brand.checkErasure`). Beide mit Sperre, Zählung, Fehlerzeile und
+   einer Hand-Route, die ohne Angabe nur zählt. Die Adresse am Einladungscode
+   fällt jetzt mit der Zugangs-Anfrage.
+6. **Tickets (BE-024).** Ticket- und Listen-Löschung räumen Anhänge und
+   Beobachter vollständig; bleibt etwas hängen, bleibt das Ticket und die
+   Oberfläche sagt es.
+7. **Hinweis vor dem Löschen.** Über dem Knopf steht in einfachen Worten
+   (de/en), was sofort weg ist, was 30 bzw. 90 Tage bleibt und dass es
+   endgültig ist; Layer hängen eigene Zeilen an
+   (`pukalani.account.deleteNotices`).
+
+**Production.** Migration `brand-026` (eine Spalte) vor dem Merge von Teil 2
+gefahren und zurückgelesen. Altbestand gezählt (nur lesend): ein
+Verlaufs-Eintrag zu einem gelöschten Inhalt, mit Davids Ja gelöscht; zehn
+Kopien gelöschter Konten, alle älter als 30 Tage, räumt der neue Lauf.
+
+**Beweise.** Je Punkt Tests, die gegen den alten Code rot waren. Lokal mit
+Wegwerf-Konten gegen den Spiegel: Zugriff je Rolle; ein erzwungener Lesefehler
+bricht die Kontolöschung ab und lässt das Konto bestehen; Auskunft enthält
+alles aus der Liste; nach der Löschung steht in keiner betroffenen Zeile mehr
+Lesbares (direkt an der Datenbank nachgelesen); beide Läufe über ihre
+Hand-Routen. Reste: OPEN-ITEMS EL1. Referenz:
+[EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
+
+**Gelernt:** (1) **Ein `catch`, der einen Lesefehler zu „nichts gefunden"
+macht, ist in einem Lösch-Weg kein Schönheitsfehler, sondern das Gegenteil
+der Zusage** — und er vermehrt sich durch Abschreiben: elf Beiträge hatten
+ihn, einer (courses) nicht, und der sagte es im Kommentar. (2) **„Gibt es
+nicht" ist nur, was die Fehler-ART sagt.** Ein 404 ohne Art kommt vom Proxy,
+wenn Appwrite dahinter fehlt; der erste Entwurf hätte genau dann „Konto schon
+weg" angenommen. An der echten Instanz nachmessen, was sie antwortet.
+(3) **Eine neue Spalte mit Inhalt braucht einen Eintrag in jedem Lösch-Weg**
+— der Übersetzungs-Cache kam im August dazu und stand danach in jedem
+„gelöschten" Kommentar. Der Listen-Test sieht Tabellen, keine Spalten.
+(4) **Ein Skript, das Regeln des Codes nachrechnet, braucht einen Test, der
+die Zahl bindet.** Das Zähl-Skript rechnete die Vorschau mit 120 statt 160
+Zeichen nach und meldete 4 von 20 Unterhaltungen als veraltet; ohne den Blick
+auf die Konstante wären sie „aufgeräumt" worden. (5) **Der Standard-Slot einer
+Karte rendert nach ihrem Fuß** — die Liste „über dem Knopf" stand im Browser
+unter ihm; gesehen hat es nur der Blick auf die Seite, kein Test.
+(6) **Zählen vor dem Fragen spart die Frage fast ein:** auf Production war ein
+einziger Eintrag aufzuräumen. Ohne die Zahl wäre es eine Grundsatzdebatte
+gewesen.
+
+---
+
 ### GA1 P17 — KI-Aufrufe: Schutz als Voreinstellung ✅ 2026-11-15
 
 **Was.** Erstes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
