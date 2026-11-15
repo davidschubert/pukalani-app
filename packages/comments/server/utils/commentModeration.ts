@@ -1,6 +1,7 @@
 import { Query, type Models } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { COMMENTS_TABLE } from '../../shared/types/comment'
+import { commentNotificationCommunityId, removeCommentNotifications } from './commentNotifications'
 
 /**
  * Server-Vertrag des comments-Layers fürs Ausblenden (Moderation): die
@@ -76,7 +77,36 @@ export async function hideCommentRow(
       })
   }
   await removeActivitiesForObject(event, { objectType: 'comment', objectId: row.$id })
+  await removeHiddenCommentNotifications(event, updated)
   return updated
+}
+
+type NotifyingCommentFields = { authorId?: string | null, authorKind?: string | null, parentId?: string | null }
+
+/**
+ * Die Meldungen mit Auszug (`reply`, `mention`, `reply.guest`) gehen mit, wie
+ * der Feed-Eintrag eine Zeile darüber (SEC-032, utils/commentNotifications.ts).
+ * Die Kaskade läuft über `hideCommentRow` je Nachfahre und räumt damit auch
+ * deren Meldungen. Bei einer GAST-Antwort gibt es keinen Absender, aber einen
+ * bekannten Empfänger: den Autor des Eltern-Kommentars — er wird über dieselbe
+ * Tür nachgelesen. Wirft nie: das Ausblenden ist schon geschehen.
+ */
+async function removeHiddenCommentNotifications(event: H3Event, row: Models.Row & NotifyingCommentFields): Promise<void> {
+  const authorId = row.authorId ?? ''
+  let parentAuthorId: string | null = null
+  if (!authorId && row.authorKind === 'guest' && row.parentId) {
+    const parent = await tenantDb(event, { as: 'operator' })
+      .get<Models.Row & { authorId?: string | null }>(COMMENTS_TABLE, row.parentId, 'Comment not found')
+      .catch(() => null)
+    parentAuthorId = parent?.authorId || null
+  }
+  if (!authorId && !parentAuthorId) return
+  await removeCommentNotifications(event, {
+    commentId: row.$id,
+    communityId: commentNotificationCommunityId(event),
+    authorId,
+    parentAuthorId,
+  })
 }
 
 /**
