@@ -56,19 +56,19 @@ export const BRAND_USER_DATA_ID = 'brand'
 /** Der Marker, der an die Stelle der Adresse tritt. Keine Rück-Rechnung möglich. */
 const ANONYMIZED_EMAIL = 'deleted@invalid'
 
+/**
+ * Alle Zeilen — leer NUR, wenn die Tabelle fehlt. Vorher verzieh diese Stelle
+ * JEDES 404 (`isAppwriteNotFound`); seit SEC-026 (Teil 2) ist es genau das
+ * 404 „Tabelle fehlt" aus dem Core (`listAllRowsIfTableExists`), jeder andere
+ * Lesefehler bricht Export und Löschung ab.
+ */
 async function safeListAll<T extends Models.Row>(
   event: H3Event,
   tableId: string,
   filters: string[],
 ): Promise<T[]> {
   const { tablesDB, databaseId } = brandDb(event)
-  try {
-    return await listAllRows<T>(tablesDB, databaseId, tableId, filters)
-  }
-  catch (error) {
-    if (isAppwriteNotFound(error)) return []
-    throw error
-  }
+  return await listAllRowsIfTableExists<T>(tablesDB, databaseId, tableId, filters)
 }
 
 /**
@@ -98,11 +98,17 @@ async function accountEmailLower(event: H3Event, userId: string): Promise<string
     const user = await users.get({ userId })
     return (user.email ?? '').toLowerCase() || null
   }
-  catch {
-    // Konto schon weg (Löschreihenfolge) ⇒ keine Einladungs-Zeilen auffindbar.
-    // Das ist kein Fehlschlag: was nicht mehr adressierbar ist, kann auch nicht
-    // mehr zugeordnet werden.
-    return null
+  catch (error) {
+    // Konto schon weg (404, Löschreihenfolge) ⇒ keine Einladungs-Zeilen
+    // auffindbar. Das ist kein Fehlschlag: was nicht mehr adressierbar ist,
+    // kann auch nicht mehr zugeordnet werden.
+    //
+    // NUR das 404 (SEC-026, Nachtrag): hier stand ein `catch` ohne Prüfung,
+    // und jeder Wackler hiess „Konto weg" — die Einladungen und
+    // Gesprächsanfragen unter der Adresse blieben dann still stehen, während
+    // die Löschung Erfolg meldete.
+    if (isAppwriteUserMissing(error)) return null
+    throw error
   }
 }
 
@@ -282,8 +288,13 @@ export async function brandDeleteUserData(event: H3Event, userId: string): Promi
     // Die Mitläufer anderer Layer an derselben `profileId` (MV1 M1) — dieselbe
     // Registry und dieselbe Stelle wie in der Löschroute. Ohne sie bliebe nach
     // einer Konto-Löschung Inhalt liegen, den keine Route mehr erreicht.
+    //
+    // Scheitert einer, WIRFT `runBrandProfileCascades` (SEC-026, Teil 2) und
+    // das Profil bleibt stehen: seine Mitläufer-Zeilen findet man nur über
+    // das Profil. Der Fehler geht bewusst nach oben — `deleteUserCompletely`
+    // löscht das Konto dann nicht, und ein Re-Run räumt den Rest ab.
     for (const count of Object.values(await runBrandProfileCascades(event, profile.$id))) {
-      if (count > 0) deleted += count
+      deleted += count
     }
     await remove(BRAND_PROFILES_TABLE, profile.$id)
   }

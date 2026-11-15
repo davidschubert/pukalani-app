@@ -21,6 +21,12 @@ import type { H3Event } from 'h3'
  * keinen Empfänger. Query degradiert auf leere Menge, solange die Table
  * auf einer Instanz noch nicht existiert (Migration ausstehend).
  *
+ * LESEFEHLER SIND FEHLER (SEC-026, Teil 2): „degradiert" heisst seither GENAU
+ * „die Tabelle fehlt" (`listAllRowsIfTableExists`, Appwrite-404 für die
+ * Tabelle). Vorher stand dort `.catch(() => [])` — ein 500 wurde zu „keine
+ * Zeilen", die Löschung meldete Erfolg, das Konto verschwand und der Name
+ * blieb, ohne dass ein zweiter Lauf ihn noch finden konnte.
+ *
  * community_handles (Migration 029) + account_handles (Migration 031, AH-7):
  * Export + Hard-Delete, über ALLE Communities (der Mensch kann im Alt-Bestand
  * in mehreren einen Namen haben) und über beide Status — auch die
@@ -75,27 +81,28 @@ export async function systemExportUserData(event: H3Event, userId: string): Prom
     NOTIFICATIONS,
     [Query.equal('recipientId', userId)],
   )
-  // Degradiert auf leer, solange Migration 014 auf der Instanz aussteht
-  const activities = await listAllRows<ActivityRow>(
+  // Leer NUR, solange die Tabelle fehlt (Migration 014) — jeder andere
+  // Lesefehler bricht den Export ab, statt ihn unvollständig zu liefern.
+  const activities = await listAllRowsIfTableExists<ActivityRow>(
     tablesDB,
     config.public.appwriteDatabaseId,
     ACTIVITIES,
     [Query.equal('actorId', userId)],
-  ).catch(() => [] as ActivityRow[])
-  // Degradiert auf leer, solange Migration 029 auf der Instanz aussteht
-  const handles = await listAllRows<HandleRow>(
+  )
+  // Dasselbe für Migration 029 …
+  const handles = await listAllRowsIfTableExists<HandleRow>(
     tablesDB,
     config.public.appwriteDatabaseId,
     HANDLES,
     [Query.equal('userId', userId)],
-  ).catch(() => [] as HandleRow[])
-  // Degradiert auf leer, solange Migration 031 auf der Instanz aussteht
-  const accountHandles = await listAllRows<AccountHandleRow>(
+  )
+  // … und Migration 031.
+  const accountHandles = await listAllRowsIfTableExists<AccountHandleRow>(
     tablesDB,
     config.public.appwriteDatabaseId,
     ACCOUNT_HANDLES,
     [Query.equal('userId', userId)],
-  ).catch(() => [] as AccountHandleRow[])
+  )
   return {
     notifications: received.map(r => ({
       type: r.type,
@@ -176,11 +183,12 @@ export async function systemDeleteUserData(event: H3Event, userId: string): Prom
   // Voll-Erfolg — ein geschluckter Fehler würde Erfolg melden, obwohl
   // Empfänger-Rows überleben).
   const received = await listAllRows<NotificationRow>(tablesDB, databaseId, NOTIFICATIONS, [Query.equal('recipientId', userId)])
-  // Notifications als Verursacher → Hard-Delete. NUR dieser Query darf
-  // degradieren: vor Migration 008 fehlt die senderId-Spalte (akzeptierte
-  // E8-Lücke) → wie leere Menge behandeln.
+  // Notifications als Verursacher → Hard-Delete. Ebenfalls STRIKT (SEC-026,
+  // Teil 2): hier stand `.catch(() => [])` mit der Begründung, vor Migration
+  // 008 fehle die senderId-Spalte. Dieselbe Zeile schluckte aber auch jeden
+  // 500 — und 008 läuft längst überall. Eine Instanz OHNE die Spalte soll die
+  // Löschung laut anhalten, nicht still die Hälfte überspringen.
   const sent = await listAllRows<NotificationRow>(tablesDB, databaseId, NOTIFICATIONS, [Query.equal('senderId', userId)])
-    .catch(() => [] as NotificationRow[])
   const notificationRows = new Map<string, NotificationRow>()
   for (const row of [...received, ...sent]) notificationRows.set(row.$id, row)
   for (const row of notificationRows.values()) {
@@ -188,22 +196,21 @@ export async function systemDeleteUserData(event: H3Event, userId: string): Prom
     deleted++
   }
 
-  // Activity-Feed-Einträge als Verursacher → Hard-Delete. Nur der LIST-Query
-  // degradiert (Table fehlt vor Migration 014 → leere Menge); die Deletes
-  // selbst bleiben strikt — ein Fehler muss die Löschung stoppen.
-  const activities = await listAllRows<ActivityRow>(tablesDB, databaseId, ACTIVITIES, [Query.equal('actorId', userId)])
-    .catch(() => [] as ActivityRow[])
+  // Activity-Feed-Einträge als Verursacher → Hard-Delete. Der LIST-Query
+  // degradiert NUR bei fehlender Tabelle (vor Migration 014 → leere Menge);
+  // jeder andere Lesefehler und jeder Delete-Fehler stoppt die Löschung.
+  const activities = await listAllRowsIfTableExists<ActivityRow>(tablesDB, databaseId, ACTIVITIES, [Query.equal('actorId', userId)])
   for (const row of activities) {
     await tablesDB.deleteRow({ databaseId, tableId: ACTIVITIES, rowId: row.$id })
     deleted++
   }
 
   // Handles über ALLE Communities und BEIDE Status → Hard-Delete (Begründung
-  // und die bewusst hingenommene Folge stehen im Kopf dieser Datei). Nur der
-  // LIST-Query degradiert (Table fehlt vor Migration 029); die Deletes bleiben
-  // strikt, sonst meldete die Löschung Erfolg, während der Name überlebt.
-  const handles = await listAllRows<HandleRow>(tablesDB, databaseId, HANDLES, [Query.equal('userId', userId)])
-    .catch(() => [] as HandleRow[])
+  // und die bewusst hingenommene Folge stehen im Kopf dieser Datei). Der
+  // LIST-Query degradiert nur bei fehlender Tabelle (vor Migration 029); alles
+  // andere bleibt strikt, sonst meldete die Löschung Erfolg, während der Name
+  // überlebt.
+  const handles = await listAllRowsIfTableExists<HandleRow>(tablesDB, databaseId, HANDLES, [Query.equal('userId', userId)])
   for (const row of handles) {
     await tablesDB.deleteRow({ databaseId, tableId: HANDLES, rowId: row.$id })
     deleted++
@@ -211,8 +218,7 @@ export async function systemDeleteUserData(event: H3Event, userId: string): Prom
 
   // Dasselbe für das konto-weite Register (AH-7). Ohne diesen Griff überlebte
   // der Name die Löschung — und zwar der EINE, den der Mensch überall trug.
-  const accountHandles = await listAllRows<AccountHandleRow>(tablesDB, databaseId, ACCOUNT_HANDLES, [Query.equal('userId', userId)])
-    .catch(() => [] as AccountHandleRow[])
+  const accountHandles = await listAllRowsIfTableExists<AccountHandleRow>(tablesDB, databaseId, ACCOUNT_HANDLES, [Query.equal('userId', userId)])
   for (const row of accountHandles) {
     await tablesDB.deleteRow({ databaseId, tableId: ACCOUNT_HANDLES, rowId: row.$id })
     deleted++

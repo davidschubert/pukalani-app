@@ -23,13 +23,25 @@ import type { H3Event } from 'h3'
  * `registerUserDataContributor` (core, CONCEPT A14) und
  * `registerReportEscalationHandler` (moderation).
  *
- * ── FAIL-SOFT, UND ZWAR MIT ANSAGE ────────────────────────────────────────
- * Ein Mitläufer, der wirft, darf die Löschung des Brandings nicht verhindern:
- * sonst hinge das Löschen eines Kunden-Brandings an der Verfügbarkeit eines
- * Zusatzprodukts. Der Fehler wird geloggt und die Kaskade läuft weiter — was
- * liegenbleibt, findet der nächste Lauf (jeder Mitläufer ist idempotent, wie
- * die Kaskade selbst). Ein STILLES Verschlucken wäre das Gegenteil davon:
- * deshalb `logEvent('error', …)` mit dem Namen des Mitläufers.
+ * ── EIN SCHEITERNDER MITLÄUFER HÄLT DAS PROFIL FEST (SEC-026, Teil 2) ────
+ * Bis dahin war die Kaskade fail-soft: ein werfender Mitläufer wurde geloggt,
+ * bekam `-1`, und Löschroute wie GDPR-Contributor löschten danach das PROFIL.
+ * Die Begründung damals: „was liegenbleibt, findet der nächste Lauf". Das
+ * stimmte nicht — die Zeilen des anderen Layers findet man NUR über das
+ * Profil, und das war weg. Kein Lauf erreichte sie je wieder.
+ *
+ * Jetzt: ALLE Mitläufer laufen (jeder ist idempotent, ein gesunder soll seinen
+ * Teil erledigen, auch wenn ein anderer scheitert), jeder Fehler wird mit dem
+ * Namen des Mitläufers geloggt — und danach WIRFT `runBrandProfileCascades`
+ * einen `BrandProfileCascadeError`. Die Aufrufer löschen das Profil dann
+ * nicht; die Löschung lässt sich wiederholen, bis alle Mitläufer durch sind.
+ * Der Preis — das Löschen eines Brandings hängt an der Verfügbarkeit eines
+ * Zusatzprodukts — ist der richtige: ein sichtbar unfertiges Branding ist
+ * heilbar, unsichtbarer Inhalt ohne Kopf nicht.
+ *
+ * Die alte `-1` in der Rückgabe gibt es nicht mehr: beide Aufrufer brauchten
+ * sie nicht als Zahl, sondern als „abbrechen", und das sagt ein Fehler
+ * deutlicher als eine Zahl, die man beim Summieren übersehen kann.
  */
 
 export interface BrandProfileCascade {
@@ -46,6 +58,22 @@ export interface BrandProfileCascade {
 
 const cascades = new Map<string, BrandProfileCascade>()
 
+/**
+ * Mindestens ein Mitläufer ist gescheitert — das Profil darf NICHT gelöscht
+ * werden. Trägt nur die Namen der Mitläufer (stabile Kennungen wie `market`),
+ * keine Profil-Id und keinen Fehlertext: die stehen schon in der Log-Zeile
+ * `brand.profile_cascade_failed`.
+ */
+export class BrandProfileCascadeError extends Error {
+  readonly failed: string[]
+
+  constructor(failed: string[]) {
+    super(`brand profile cascade incomplete: ${failed.join(', ')}`)
+    this.name = 'BrandProfileCascadeError'
+    this.failed = failed
+  }
+}
+
 /** Registrierung ist idempotent (HMR/Doppel-Plugin überschreibt nur sich selbst). */
 export function registerBrandProfileCascade(cascade: BrandProfileCascade): void {
   cascades.set(cascade.id, cascade)
@@ -53,7 +81,9 @@ export function registerBrandProfileCascade(cascade: BrandProfileCascade): void 
 
 /**
  * Alle eingetragenen Mitläufer laufen lassen. Rückgabe: je Mitläufer die Zahl
- * der entfernten Zeilen — für das Log der aufrufenden Stelle.
+ * der entfernten Zeilen — für das Log der aufrufenden Stelle. Ist einer
+ * gescheitert, laufen die übrigen trotzdem zu Ende, dann wirft die Funktion
+ * `BrandProfileCascadeError` (s. Kopf) — das Profil bleibt stehen.
  *
  * WIRD NACH DEN EIGENEN KINDERN UND VOR DEM PROFIL AUFGERUFEN: dieselbe
  * Reihenfolge-Begründung wie dort (Kopf zuletzt, damit ein Abbruch sichtbaren
@@ -64,12 +94,13 @@ export async function runBrandProfileCascades(
   profileId: string,
 ): Promise<Record<string, number>> {
   const removed: Record<string, number> = {}
+  const failed: string[] = []
   for (const cascade of cascades.values()) {
     try {
       removed[cascade.id] = await cascade.removeProfileData(event, profileId)
     }
     catch (error) {
-      removed[cascade.id] = -1
+      failed.push(cascade.id)
       logEvent('error', 'brand.profile_cascade_failed', {
         cascade: cascade.id,
         profileId,
@@ -77,5 +108,6 @@ export async function runBrandProfileCascades(
       })
     }
   }
+  if (failed.length > 0) throw new BrandProfileCascadeError(failed)
   return removed
 }

@@ -41,22 +41,22 @@ export async function postsExportUserData(event: H3Event, userId: string) {
 
   const posts = await listAllRows<CommunityPost>(tablesDB, databaseId, POSTS_TABLE, [Query.equal('authorId', userId)])
   const votes = await listAllRows<PollVote>(tablesDB, databaseId, POLL_VOTES_TABLE, [Query.equal('userId', userId)])
-  // Degradiert auf leer, solange Migration 003 auf einer Instanz aussteht
-  const postVotes = await listAllRows<PostVote>(tablesDB, databaseId, POST_VOTES_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as PostVote[])
+  // Degradiert auf leer, solange Migration 003 auf einer Instanz aussteht —
+  // und NUR dann (SEC-026, Teil 2): „degradiert" heisst überall in dieser
+  // Datei „die Tabelle fehlt" (`listAllRowsIfTableExists`). Vorher schluckte
+  // ein `catch` auf leer auch jeden 500, und Export wie Löschung meldeten
+  // „vollständig", obwohl sie nichts gelesen hatten.
+  const postVotes = await listAllRowsIfTableExists<PostVote>(tablesDB, databaseId, POST_VOTES_TABLE, [Query.equal('userId', userId)])
   // Degradiert auf leer, solange posts-013 auf einer Instanz aussteht.
-  const counters = await listAllRows<MemberCounters>(tablesDB, databaseId, MEMBER_COUNTERS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as MemberCounters[])
+  const counters = await listAllRowsIfTableExists<MemberCounters>(tablesDB, databaseId, MEMBER_COUNTERS_TABLE, [Query.equal('userId', userId)])
   // Abzeichen fehlten seit Stufe 4 in der Auskunft (Nebenbefund beim
   // Zähler-Bau, 2026-08-04) — sie sind Aussagen ÜBER diesen Menschen und
   // gehören hinein. Degradiert auf leer, solange posts-012 aussteht.
-  const badges = await listAllRows<UserBadge>(tablesDB, databaseId, USER_BADGES_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as UserBadge[])
+  const badges = await listAllRowsIfTableExists<UserBadge>(tablesDB, databaseId, USER_BADGES_TABLE, [Query.equal('userId', userId)])
   // F57: abgegebene Emoji-Reaktionen sind Verhaltens-Daten dieses Menschen —
   // dieselbe Sorte wie eine Stimme. Degradiert auf leer, solange posts-017
   // auf einer Instanz aussteht.
-  const reactions = await listAllRows<DiscussionReaction>(tablesDB, databaseId, DISCUSSION_REACTIONS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as DiscussionReaction[])
+  const reactions = await listAllRowsIfTableExists<DiscussionReaction>(tablesDB, databaseId, DISCUSSION_REACTIONS_TABLE, [Query.equal('userId', userId)])
 
   return {
     posts: posts.map(p => ({
@@ -105,9 +105,9 @@ export async function postsDeleteUserData(event: H3Event, userId: string): Promi
   }
 
   // Up-/Downvotes ebenso Hard-Delete (Zähler-Drift bis zum nächsten Vote
-  // akzeptiert — Präzedenzfall comments). List degradiert vor Migration 003.
-  const scoreVotes = await listAllRows<PostVote>(tablesDB, databaseId, POST_VOTES_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as PostVote[])
+  // akzeptiert — Präzedenzfall comments). List degradiert vor Migration 003
+  // (fehlende Tabelle) — jeder andere Lesefehler hält die Löschung an.
+  const scoreVotes = await listAllRowsIfTableExists<PostVote>(tablesDB, databaseId, POST_VOTES_TABLE, [Query.equal('userId', userId)])
   for (const vote of scoreVotes) {
     await tablesDB.deleteRow({ databaseId, tableId: POST_VOTES_TABLE, rowId: vote.$id })
     deleted++
@@ -121,11 +121,11 @@ export async function postsDeleteUserData(event: H3Event, userId: string): Promi
    * Gegenstand mehr. Ein Grabstein wäre hier sinnlos.
    *
    * Die Liste degradiert auf leer, solange posts-013 auf einer Instanz
-   * aussteht; die Löschungen selbst sind STRIKT (Muster der Stimmen darüber),
-   * weil `deleteUserCompletely` das Konto nur bei Voll-Erfolg entfernt.
+   * aussteht (fehlende Tabelle, sonst nichts); die Löschungen selbst sind
+   * STRIKT (Muster der Stimmen darüber), weil `deleteUserCompletely` das
+   * Konto nur bei Voll-Erfolg entfernt.
    */
-  const counters = await listAllRows<MemberCounters>(tablesDB, databaseId, MEMBER_COUNTERS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as MemberCounters[])
+  const counters = await listAllRowsIfTableExists<MemberCounters>(tablesDB, databaseId, MEMBER_COUNTERS_TABLE, [Query.equal('userId', userId)])
   for (const row of counters) {
     await tablesDB.deleteRow({ databaseId, tableId: MEMBER_COUNTERS_TABLE, rowId: row.$id })
     deleted++
@@ -134,8 +134,7 @@ export async function postsDeleteUserData(event: H3Event, userId: string): Promi
   // Abzeichen: Hard-Delete aus demselben Grund wie die Zähler — Aussagen über
   // genau diesen Menschen, ohne ihn gegenstandslos. Fehlten seit Stufe 4
   // (Nebenbefund 2026-08-04). Liste degradiert vor posts-012, Löschung strikt.
-  const badges = await listAllRows<UserBadge>(tablesDB, databaseId, USER_BADGES_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as UserBadge[])
+  const badges = await listAllRowsIfTableExists<UserBadge>(tablesDB, databaseId, USER_BADGES_TABLE, [Query.equal('userId', userId)])
   for (const row of badges) {
     await tablesDB.deleteRow({ databaseId, tableId: USER_BADGES_TABLE, rowId: row.$id })
     deleted++
@@ -151,8 +150,7 @@ export async function postsDeleteUserData(event: H3Event, userId: string): Promi
    *
    * Liste degradiert vor posts-017, Löschung strikt (Muster der Stimmen).
    */
-  const reactions = await listAllRows<DiscussionReaction>(tablesDB, databaseId, DISCUSSION_REACTIONS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as DiscussionReaction[])
+  const reactions = await listAllRowsIfTableExists<DiscussionReaction>(tablesDB, databaseId, DISCUSSION_REACTIONS_TABLE, [Query.equal('userId', userId)])
   for (const row of reactions) {
     await tablesDB.deleteRow({ databaseId, tableId: DISCUSSION_REACTIONS_TABLE, rowId: row.$id })
     deleted++

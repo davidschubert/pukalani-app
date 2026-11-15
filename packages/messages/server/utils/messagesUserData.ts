@@ -1,4 +1,4 @@
-import { Query } from 'node-appwrite'
+import { AppwriteException, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { evidenceStillProtected } from '../../shared/messageReport'
 import { otherParticipant } from '../../shared/conversations'
@@ -60,7 +60,18 @@ import {
  * Der Vertrag verlangt es ausdrücklich: ein Re-Run nach Teilfehler findet
  * Restdaten oder nichts und endet erfolgreich. Bereits geleerte Nachrichten
  * werden übersprungen, bereits gelöschte Zeilen sind schlicht nicht mehr da.
+ *
+ * ── LESEN IST STRENG (SEC-026, Teil 2) ───────────────────────────────────
+ * Jeder Lesevorgang hier trug ein `catch` auf leer bzw. `null`: ein 500 auf
+ * `messages` hiess „dieser Mensch hat nie geschrieben", die Löschung meldete
+ * Erfolg, das Konto verschwand — und die Nachrichten blieben, ohne dass ein
+ * zweiter Lauf sie über das Konto noch fand. Die Tabellen gehören zum Layer
+ * und existieren, wo er läuft: ein Lesefehler ist ein Fehler.
  */
+
+function isNotFound(error: unknown): boolean {
+  return error instanceof AppwriteException && error.code === 404
+}
 
 function admin(event: H3Event) {
   const config = useRuntimeConfig(event)
@@ -76,27 +87,32 @@ export async function messagesExportUserData(event: H3Event, userId: string) {
   // Array-Spalte und in Appwrite nicht abfragbar (Kopf von
   // shared/types/message.ts). Dieselbe Einschränkung, derselbe Weg wie im
   // Posteingang.
-  const memberships = await listAllRows<ConversationMember>(tablesDB, databaseId, CONVERSATION_MEMBERS_TABLE, [
+  const memberships = await listAllRowsIfTableExists<ConversationMember>(tablesDB, databaseId, CONVERSATION_MEMBERS_TABLE, [
     Query.equal('userId', userId),
-  ]).catch(() => [] as ConversationMember[])
+  ])
 
-  const blocks = await listAllRows<MessageBlock>(tablesDB, databaseId, MESSAGE_BLOCKS_TABLE, [
+  const blocks = await listAllRowsIfTableExists<MessageBlock>(tablesDB, databaseId, MESSAGE_BLOCKS_TABLE, [
     Query.equal('blockerId', userId),
-  ]).catch(() => [] as MessageBlock[])
+  ])
 
   const exported = []
   const partnerIds: string[] = []
   const rawConversations: { conversation: Conversation, messages: PrivateMessage[] }[] = []
 
   for (const membership of memberships) {
+    // Eine Mitglieds-Zeile ohne Konversation (404) ist ein verwaister Rest,
+    // kein Inhalt — sie fehlt im Export. Jeder andere Fehler bricht ab.
     const conversation = await tablesDB.getRow<Conversation>({
       databaseId, tableId: CONVERSATIONS_TABLE, rowId: membership.conversationId,
-    }).catch(() => null)
+    }).catch((error: unknown) => {
+      if (isNotFound(error)) return null
+      throw error
+    })
     if (!conversation) continue
 
-    const messages = await listAllRows<PrivateMessage>(tablesDB, databaseId, MESSAGES_TABLE, [
+    const messages = await listAllRowsIfTableExists<PrivateMessage>(tablesDB, databaseId, MESSAGES_TABLE, [
       Query.equal('conversationId', conversation.$id),
-    ]).catch(() => [] as PrivateMessage[])
+    ])
 
     rawConversations.push({ conversation, messages })
     partnerIds.push(otherParticipant(conversation.participants ?? [], userId))
@@ -153,9 +169,9 @@ export async function messagesDeleteUserData(event: H3Event, userId: string): Pr
    * Kontaktspur, an der `guest_authors` gescheitert ist.
    */
   for (const column of ['blockerId', 'blockedId'] as const) {
-    const rows = await listAllRows<MessageBlock>(tablesDB, databaseId, MESSAGE_BLOCKS_TABLE, [
+    const rows = await listAllRowsIfTableExists<MessageBlock>(tablesDB, databaseId, MESSAGE_BLOCKS_TABLE, [
       Query.equal(column, userId),
-    ]).catch(() => [] as MessageBlock[])
+    ])
     for (const row of rows) {
       await tablesDB.deleteRow({ databaseId, tableId: MESSAGE_BLOCKS_TABLE, rowId: row.$id })
       deleted++
@@ -166,9 +182,9 @@ export async function messagesDeleteUserData(event: H3Event, userId: string): Pr
    * Eigene Nachrichten. Der Regelfall ist der harte Löschvorgang; die
    * Ausnahme ist der geschützte Beleg (siehe Kopf).
    */
-  const mine = await listAllRows<PrivateMessage>(tablesDB, databaseId, MESSAGES_TABLE, [
+  const mine = await listAllRowsIfTableExists<PrivateMessage>(tablesDB, databaseId, MESSAGES_TABLE, [
     Query.equal('authorId', userId),
-  ]).catch(() => [] as PrivateMessage[])
+  ])
 
   const touchedConversations = new Set<string>()
   for (const message of mine) {
@@ -197,9 +213,9 @@ export async function messagesDeleteUserData(event: H3Event, userId: string): Pr
    * diesen Menschen und sind ohne ihn gegenstandslos. Ihr Verschwinden nimmt
    * ihm zugleich den Posteingang, den er ohnehin nicht mehr öffnen wird.
    */
-  const memberships = await listAllRows<ConversationMember>(tablesDB, databaseId, CONVERSATION_MEMBERS_TABLE, [
+  const memberships = await listAllRowsIfTableExists<ConversationMember>(tablesDB, databaseId, CONVERSATION_MEMBERS_TABLE, [
     Query.equal('userId', userId),
-  ]).catch(() => [] as ConversationMember[])
+  ])
   for (const membership of memberships) {
     touchedConversations.add(membership.conversationId)
     await tablesDB.deleteRow({ databaseId, tableId: CONVERSATION_MEMBERS_TABLE, rowId: membership.$id })
@@ -211,28 +227,51 @@ export async function messagesDeleteUserData(event: H3Event, userId: string): Pr
    * genau Davids Formulierung. Steht noch eine des Gegenübers, BLEIBT sie:
    * sie ist dessen Erinnerung, und die Oberfläche zeigt dort „Dieses Konto
    * wurde gelöscht" (der Name löst nicht mehr auf).
+   *
+   * Die Rest-Abfrage ist STRENG: hier stand ein `catch` auf `null`, und ein
+   * Lesefehler hiess „überspringen" — die leere Konversation blieb liegen,
+   * während die Löschung Erfolg meldete.
+   *
+   * Die Löschungen dieses Abschnitts sammeln ihre Fehler, statt beim ersten
+   * abzubrechen: ein 404 ist „schon weg" und damit Erfolg; jeder andere Fehler
+   * wird gezählt, die übrigen (idempotenten) Aufräum-Schritte laufen zu Ende,
+   * und am Schluss wirft EIN Fehler. Er nennt nur Anzahlen — keine Ids und
+   * keinen Text, denn die Meldung landet im Log der Orchestrierung. Ein
+   * zweiter Lauf räumt den Rest ab (das Konto bleibt bis dahin gesperrt).
    */
+  let cleanupFailures = 0
+  async function removeQuietly(tableId: string, rowId: string): Promise<void> {
+    try {
+      await tablesDB.deleteRow({ databaseId, tableId, rowId })
+      deleted++
+    }
+    catch (error) {
+      if (!isNotFound(error)) cleanupFailures++
+    }
+  }
+
   for (const conversationId of touchedConversations) {
     const rest = await tablesDB.listRows({
       databaseId, tableId: MESSAGES_TABLE,
       queries: [Query.equal('conversationId', conversationId), Query.limit(1)],
-    }).catch(() => null)
-    if (!rest || rest.total > 0) continue
+    })
+    if (rest.total > 0) continue
 
     // Auch die verbliebenen Mitglieds-Zeilen gehen mit — eine Zeile ohne
     // Konversation wäre ein Eintrag im Posteingang, der ins Leere führt.
-    const orphans = await listAllRows<ConversationMember>(tablesDB, databaseId, CONVERSATION_MEMBERS_TABLE, [
+    const orphans = await listAllRowsIfTableExists<ConversationMember>(tablesDB, databaseId, CONVERSATION_MEMBERS_TABLE, [
       Query.equal('conversationId', conversationId),
-    ]).catch(() => [] as ConversationMember[])
+    ])
     for (const orphan of orphans) {
-      await tablesDB.deleteRow({ databaseId, tableId: CONVERSATION_MEMBERS_TABLE, rowId: orphan.$id })
-        .then(() => { deleted++ }).catch(() => {})
+      await removeQuietly(CONVERSATION_MEMBERS_TABLE, orphan.$id)
     }
 
-    await tablesDB.deleteRow({ databaseId, tableId: CONVERSATIONS_TABLE, rowId: conversationId })
-      // Idempotent: ein zweiter Lauf findet sie nicht mehr.
-      .then(() => { deleted++ })
-      .catch(() => {})
+    // Idempotent: ein zweiter Lauf findet sie nicht mehr (404 = Erfolg).
+    await removeQuietly(CONVERSATIONS_TABLE, conversationId)
+  }
+
+  if (cleanupFailures > 0) {
+    throw new Error(`messages: ${cleanupFailures} Aufräum-Löschung(en) fehlgeschlagen, ${deleted} Zeile(n) entfernt — erneut ausführen`)
   }
 
   return { deleted, anonymized }

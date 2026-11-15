@@ -1,0 +1,75 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { H3Event } from 'h3'
+import { AppwriteException } from 'node-appwrite'
+import { isAppwriteUserMissing } from '../../core/server/utils/userDataOrchestration'
+
+/**
+ * „KONTO WEG" IST EIN 404, NICHT JEDER FEHLER (SEC-026, Nachtrag).
+ *
+ * `erasureIdentity` las das Konto mit `.catch(() => null)`. Jeder Fehler —
+ * ein 500, ein Netz-Wackler — hiess damit „Konto schon weg, keine Adresse",
+ * und die Löschung im Control Plane lief OHNE Adresse: Einladungen an diese
+ * Adresse und Early-Access-Anfragen blieben still stehen. Jetzt ist nur das
+ * 404 für den Nutzer „weg"; alles andere bricht die Löschung ab.
+ *
+ * Der Export darf weiter degradieren, wenn das Control Plane nicht antwortet
+ * — aber SICHTBAR: `{ unavailable: true }` statt eines leeren Objekts, das wie
+ * „keine Mitgliedschaften" aussieht.
+ */
+
+let getUser: () => Promise<unknown>
+let controlError: unknown
+const controlCalls: { path: string, body: Record<string, unknown> }[] = []
+
+vi.mock('../server/utils/controlPlane', () => ({
+  callControlPlane: async (_event: H3Event, path: string, body: Record<string, unknown>) => {
+    controlCalls.push({ path, body })
+    if (controlError) throw controlError
+    if (path.endsWith('user-erase')) {
+      return { deleted: 1, invitesDeleted: 0, inviteRequestsDeleted: 0, anonymized: 0, invitesAnonymized: 0, retained: [] }
+    }
+    return { memberships: [] }
+  },
+}))
+
+vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteProjectId: 'account' } }))
+vi.stubGlobal('createAdminClient', () => ({ users: { get: async () => getUser() } }))
+vi.stubGlobal('controlServiceAvailable', async () => true)
+vi.stubGlobal('isAppwriteUserMissing', isAppwriteUserMissing)
+vi.stubGlobal('logEvent', () => {})
+
+const { communityDeleteUserData, communityExportUserData } = await import('../server/utils/communityUserData')
+
+const event = { context: {} } as unknown as H3Event
+
+beforeEach(() => {
+  getUser = async () => ({ $id: 'u1', email: 'a@example.com', emailVerification: true })
+  controlError = undefined
+  controlCalls.length = 0
+})
+
+describe('communityDeleteUserData', () => {
+  it('Normalfall: die bestätigte Adresse geht mit', async () => {
+    await communityDeleteUserData(event, 'u1')
+    expect(controlCalls[0]!.body.email).toBe('a@example.com')
+  })
+
+  it('users.get mit 500 ⇒ Abbruch, das Control Plane wird NICHT ohne Adresse gerufen', async () => {
+    getUser = async () => { throw new AppwriteException('Server Error', 500, 'general_unknown') }
+    await expect(communityDeleteUserData(event, 'u1')).rejects.toThrow('Server Error')
+    expect(controlCalls).toEqual([])
+  })
+
+  it('users.get mit 404 ⇒ Konto weg, Löschung läuft ohne Adresse weiter', async () => {
+    getUser = async () => { throw new AppwriteException('User not found', 404, 'user_not_found') }
+    await expect(communityDeleteUserData(event, 'u1')).resolves.toMatchObject({ deleted: 1 })
+    expect(controlCalls[0]!.body.email).toBeUndefined()
+  })
+})
+
+describe('communityExportUserData', () => {
+  it('Control Plane nicht erreichbar ⇒ sichtbar „nicht verfügbar"', async () => {
+    controlError = new Error('fetch failed')
+    expect(await communityExportUserData(event, 'u1')).toEqual({ unavailable: true })
+  })
+})

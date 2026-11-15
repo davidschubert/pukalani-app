@@ -323,12 +323,26 @@ export async function deleteBrandMarkDraft(
  * löscht, ist gewollt: ein sichtbar unfertiger Lauf lässt sich wiederholen,
  * ein stiller Rest im Bucket nicht mehr finden. Wörtlich dieselbe Begründung
  * wie bei `purgeBrandInspiration`.
+ *
+ * DIE LISTE IST VOLLSTÄNDIG UND STRENG (SEC-026, Teil 2) — ebenfalls wörtlich
+ * wie dort: die Löschung las über die 50er-Seite der Oberfläche und machte
+ * jeden Lesefehler zu „nichts da". Jetzt ALLE Zeilen (paginiert), leer nur bei
+ * fehlender Tabelle, jeder andere Lesefehler wirft (503).
  */
 export async function purgeBrandMarkDrafts(event: H3Event, profileId: string): Promise<number> {
-  const entries = await listBrandMarkDrafts(event, profileId).catch(() => [])
+  const { tablesDB, databaseId } = brandDb(event)
+  let rows: BrandMarkDraftRow[]
+  try {
+    rows = await listAllRowsIfTableExists<BrandMarkDraftRow>(
+      tablesDB, databaseId, BRAND_MARK_DRAFTS_TABLE, [Query.equal('profileId', profileId)],
+    )
+  }
+  catch (error) {
+    throw brandMarkDraftsUnavailable(error, { profileId, stage: 'purge_list' })
+  }
   let removed = 0
-  for (const entry of entries) {
-    await deleteBrandMarkDraft(event, profileId, entry.id, { strictFile: true })
+  for (const row of rows) {
+    await deleteBrandMarkDraft(event, profileId, row.$id, { strictFile: true })
     removed += 1
   }
   return removed
