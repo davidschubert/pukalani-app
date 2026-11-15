@@ -80,7 +80,9 @@ describe('isBrandMarkSvg — Kopplung an den Erzeuger', () => {
       }
     }
     expect(count).toBeGreaterThan(1000)
-  })
+    // Mehrere tausend Setzungen: allein ~1 s, im vollen Lauf neben allen
+    // anderen Paketen über dem Standard-Budget von 5 s (lokal gemessen 6 s).
+  }, 60_000)
 
   it('lässt die Zeichen-Dateien des Kits durch (mit eingesetztem Titel)', () => {
     for (const name of NAMES) {
