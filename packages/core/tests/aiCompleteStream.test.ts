@@ -126,9 +126,14 @@ describe('decodeSseFrame — was ignoriert und was gemeldet wird', () => {
       .toEqual([{ kind: 'delta', text: 'weiter' }])
   })
 
-  it('meldet ein Anbieter-FEHLERFRAME als Fehler', () => {
-    expect(decodeSseFrame('data: {"error":{"message":"rate limited","code":429}}'))
-      .toEqual([{ kind: 'error', message: 'rate limited' }])
+  it('meldet ein Anbieter-FEHLERFRAME als Fehler — mit Kennung, OHNE seinen Text (P17)', () => {
+    expect(decodeSseFrame('data: {"error":{"message":"rate limited","code":"rate_limit_exceeded"}}'))
+      .toEqual([{ kind: 'error', tag: 'rate_limit_exceeded' }])
+    // Eine Zahl ist auch eine Kennung, Fliesstext in `code` ist keine.
+    expect(decodeSseFrame('data: {"error":{"message":"x","code":429}}'))
+      .toEqual([{ kind: 'error', tag: '429' }])
+    expect(decodeSseFrame('data: {"error":{"message":"x","code":"mein geheimer Text"}}'))
+      .toEqual([{ kind: 'error', tag: 'stream_error' }])
   })
 
   it('verbindet mehrzeilige data-Felder mit Zeilenumbruch (SSE-Regel)', () => {
@@ -230,10 +235,15 @@ describe('aiCompleteStream', () => {
     expect(rest).toEqual(plain)
   })
 
-  it('ohne Routing sendet der Streaming-Body kein provider-Feld', async () => {
+  it('ohne Routing sendet auch der Streaming-Body die volle Bindung (P17)', async () => {
     fetchMock.mockResolvedValue(streamingResponse([STREAM]))
     await aiCompleteStream(event, 'Frage')
-    expect(sentBody(0)).not.toHaveProperty('provider')
+    expect(sentBody(0).provider).toEqual({
+      zdr: true,
+      data_collection: 'deny',
+      only: ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
+      allow_fallbacks: false,
+    })
   })
 
   it('ABBRUCH ist ein Ergebnis, kein Fehler — der Teiltext bleibt erhalten', async () => {

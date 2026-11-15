@@ -1,16 +1,32 @@
 import type { H3Event } from 'h3'
 import type { ModelJsonResult } from '../../shared/aiJson'
 import { extractJsonObject as extractJsonObjectRule, parseModelJson } from '../../shared/aiJson'
+import { AI_TEXT_EU_ENDPOINTS } from '../../shared/aiProviderRouting'
+import {
+  type AiRunContext,
+  aiCallFailed,
+  aiHttpFailure,
+  aiLogLine,
+  aiProviderErrorCode,
+  aiRoutingInvalidError,
+  aiRunMs,
+  assertAiRouteOnly,
+  startAiRun,
+} from './aiLog'
 
 /**
  * Generischer KI-Completion-Client (Core): EIN Transport für alle Server-
  * seitigen KI-Produkte (Ticket-Triage, Moderations-Assist, …) über eine
  * OpenAI-kompatible Chat-Completions-API (Default: OpenRouter).
  *
- * Policy bleibt beim Konsumenten: aiComplete() prüft nur, ob ein Key da ist —
  * Gates (pukalani.ai.enabled bzw. Layer-eigene wie pukalani.tickets.ai) und die
  * Validierung der Antwort gehören in den aufrufenden Layer. Key-Auflösung:
  * options.apiKey (Layer-eigener Key) sonst NUXT_AI_KEY (Core).
+ *
+ * EINE Policy trägt der Transport seit P17 (SEC-005) selbst: die
+ * Datenschutz-Bindung (keine Speicherung, kein Sammeln, kein Ausweichen,
+ * Rechenort Europa, `core/shared/aiProviderRouting.ts`) geht mit JEDEM Aufruf
+ * raus, und das Log trägt nur Kennungen (SEC-017, `aiLog.ts`).
  */
 
 const DEFAULT_TIMEOUT_MS = 45_000
@@ -25,27 +41,22 @@ export interface AiConfig {
  * OpenRouter-PROVIDER-ROUTING — „welcher Anbieter darf diesen Prompt sehen,
  * und unter welchen Bedingungen".
  *
- * Warum das in den Transport gehört und trotzdem keine Policy ist: die Felder
- * reisen im REQUEST, ein Konsument kann sie also nicht nachträglich anlegen.
- * Der Transport übersetzt sie nur in OpenRouters Schreibweise
- * (`data_collection`, `allow_fallbacks`) und setzt KEINE Vorgaben: ohne diese
- * Option ändert sich der Request um kein Byte, und wer sie setzt, bekommt
- * genau das gesendet, was er geschrieben hat — auch eine leere Allowlist wird
- * nicht stillschweigend weggelassen (ein weggelassener `only`-Eintrag wäre
- * fail-OPEN, und diese Entscheidung gehört dem Aufrufer).
- *
- * Der erste Konsument ist der Brand-Wizard: `zdr: true`,
- * `dataCollection: 'deny'`, geprüfte `only`-Allowlist, `allowFallbacks: false`
- * — fail-closed, lieber „gerade nicht verfügbar" als ein stiller Ausweich auf
- * einen Nicht-ZDR-Anbieter.
+ * SEIT P17 (2026-11-15) NICHT MEHR „POLICY-FREI OHNE VORGABEN": `zdr: true`,
+ * `data_collection: 'deny'` und `allow_fallbacks: false` setzen ALLE fünf
+ * Transporte fest — ein übergebenes `zdr: false`, `dataCollection: 'allow'`
+ * oder `allowFallbacks: true` wird überschrieben. Die drei Felder bleiben im
+ * Typ, weil die brand-Konstanten sie tragen; wirksam ist von dieser Option nur
+ * noch `only`, der ORT. Beim Text-Weg ersetzt sie die EU-Voreinstellung, bei
+ * Bild/Vision/Video ist sie Pflicht. Eine LEERE Liste ist ein Fehler vor dem
+ * Senden — weder ein stiller Rückfall noch ein Request.
  */
 export interface AiProviderRouting {
-  /** Nur Anbieter mit Zero-Data-Retention. */
+  /** Wird überschrieben: der Transport sendet immer `zdr: true`. */
   zdr?: boolean
-  /** `'deny'` = der Anbieter darf den Inhalt nicht zum Training sammeln. */
+  /** Wird überschrieben: der Transport sendet immer `'deny'`. */
   dataCollection?: 'allow' | 'deny'
   /**
-   * Allowlist von Anbieter-Slugs — wörtlich übernommen.
+   * Der ORT: Allowlist von Endpunkt-Tags — wörtlich übernommen.
    *
    * `readonly`, weil der Transport diese Liste nur LIEST (er kopiert sie beim
    * Request-Bau: `only: [...routing.only]`). Mit `string[]` liess sich ein
@@ -62,7 +73,7 @@ export interface AiProviderRouting {
    * wer diese Liste ändern will, baut eine neue.
    */
   only?: readonly string[]
-  /** `false` = kein Ausweichen auf einen Anbieter außerhalb der Bedingungen. */
+  /** Wird überschrieben: der Transport sendet immer `allow_fallbacks: false`. */
   allowFallbacks?: boolean
 }
 
@@ -83,24 +94,13 @@ export interface AiProviderRouting {
  * eine leere Zeichenkette: eine Zeile ohne Kennung ist ehrlicher als eine mit
  * geratenem Inhalt.
  *
- * DER TEXT-WEG (`aiComplete`, unten) loggt seinen Rumpf VORERST WEITER — er
- * war nicht Teil des Audit-Befundes vom 2026-09-09, und ihn hier mitzuändern
- * hiesse, den meistgenutzten Diagnose-Pfad des Core in einem Nebensatz
- * umzustellen. Diese Funktion steht trotzdem hier und nicht bei den Bildern:
- * sie gehört zur Antwort-FORM dieser API-Familie, nicht zu einem ihrer drei
- * Transporte.
+ * Seit P17 loggen ALLE fünf Transporte so, auch der Text-Weg — über das Feld
+ * `tag=` von `aiLogLine` (`aiProviderErrorCode` in `aiLog.ts`); diese
+ * Schreibweise in Klammern bleibt für bestehende Leser stehen.
  */
 export function aiProviderErrorTag(body: string): string {
-  try {
-    const parsed = JSON.parse(body) as { error?: { code?: unknown, type?: unknown } }
-    const code = typeof parsed.error?.code === 'string' ? parsed.error.code : ''
-    const type = typeof parsed.error?.type === 'string' ? parsed.error.type : ''
-    const parts = [code, type].filter(part => part.length > 0 && part.length <= 64)
-    return parts.length > 0 ? ` (${parts.join('/')})` : ''
-  }
-  catch {
-    return ''
-  }
+  const code = aiProviderErrorCode(body)
+  return code ? ` (${code})` : ''
 }
 
 export interface AiCompleteOptions {
@@ -136,6 +136,10 @@ export interface AiRequestBodyInput {
  * spätere Streaming-Variante (`stream: true`) baut ihren Body durch DIESELBE
  * Funktion — sonst driften die Datenschutz-Felder auseinander, und ausgerechnet
  * der Streaming-Pfad (der Brand-Wizard) führe ohne ZDR-Bedingungen.
+ *
+ * Der `provider`-Block steht IMMER da (P17): die drei Zusagen fest, der Ort
+ * aus `providerRouting.only` oder die EU-Voreinstellung. Die Reihenfolge der
+ * Schlüssel ist die der brand-Aufrufe vor P17 — deren Body bleibt gleich.
  */
 export function buildAiRequestBody(input: AiRequestBodyInput): Record<string, unknown> {
   const body: Record<string, unknown> = {
@@ -148,17 +152,9 @@ export function buildAiRequestBody(input: AiRequestBodyInput): Record<string, un
     max_tokens: input.maxTokens ?? 700,
   }
 
-  const routing = input.providerRouting
-  if (routing) {
-    const provider: Record<string, unknown> = {}
-    if (routing.zdr !== undefined) provider.zdr = routing.zdr
-    if (routing.dataCollection !== undefined) provider.data_collection = routing.dataCollection
-    if (routing.only !== undefined) provider.only = [...routing.only]
-    if (routing.allowFallbacks !== undefined) provider.allow_fallbacks = routing.allowFallbacks
-    // Ein leeres Routing-Objekt darf kein leeres `provider` senden — das wäre
-    // eine Behauptung ohne Inhalt.
-    if (Object.keys(provider).length > 0) body.provider = provider
-  }
+  const only = input.providerRouting?.only ?? AI_TEXT_EU_ENDPOINTS
+  if (only.length === 0) throw aiRoutingInvalidError()
+  body.provider = { zdr: true, data_collection: 'deny', only: [...only], allow_fallbacks: false }
 
   if (input.stream) body.stream = true
 
@@ -283,14 +279,28 @@ export async function aiComplete(event: H3Event, prompt: string, options: AiComp
 }
 
 export async function aiCompleteDetailed(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<AiCompletion> {
+  return (await runAiCompletion(event, prompt, options)).completion
+}
+
+/** Ein Lauf plus das, was seine Log-Zeilen verbindet (`run=`, `gen=`, Status). */
+interface AiCompletionRun {
+  completion: AiCompletion
+  ctx: AiRunContext
+  status: number
+  /** Generation-Id des Anbieters (`id`), wenn er eine nennt. */
+  gen: string | undefined
+}
+
+async function runAiCompletion(event: H3Event, prompt: string, options: AiCompleteOptions): Promise<AiCompletionRun> {
   const defaults = getAiConfig()
-  const label = options.label ?? 'core'
   const model = options.model ?? defaults.model
   const baseUrl = (options.baseUrl ?? defaults.baseUrl).replace(/\/$/, '')
   const apiKey = options.apiKey || await resolveAiKey(event)
   if (!apiKey) {
     throw createError({ status: 503, statusText: 'AI not configured' })
   }
+  const ctx = startAiRun(options.label ?? 'core', model)
+  if (options.providerRouting?.only) assertAiRouteOnly(options.providerRouting.only, ctx)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
@@ -311,26 +321,27 @@ export async function aiCompleteDetailed(event: H3Event, prompt: string, options
         providerRouting: options.providerRouting,
       })),
     })
-    if (!res.ok) {
-      console.error(`[${label}] KI-API ${res.status}: ${(await res.text()).slice(0, 300)}`)
-      throw createError({ status: 502, statusText: 'AI provider unavailable' })
-    }
+    if (!res.ok) await aiHttpFailure(res, ctx, 'KI-API-Fehler')
     const payload = await res.json() as {
+      id?: unknown
       choices?: { message?: { content?: string }, finish_reason?: string }[]
       usage?: { prompt_tokens?: number, completion_tokens?: number }
     }
     const choice = payload.choices?.[0]
     return {
-      content: choice?.message?.content ?? '',
-      finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
-      promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
-      completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
+      completion: {
+        content: choice?.message?.content ?? '',
+        finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
+        promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
+        completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
+      },
+      ctx,
+      status: res.status,
+      gen: typeof payload.id === 'string' ? payload.id : undefined,
     }
   }
   catch (error) {
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    console.error(`[${label}] KI-Completion fehlgeschlagen:`, error)
-    throw createError({ status: 502, statusText: 'AI completion failed' })
+    return aiCallFailed(error, ctx, 'KI-Aufruf fehlgeschlagen', 'AI completion failed')
   }
   finally {
     clearTimeout(timeout)
@@ -388,15 +399,25 @@ export interface AiJsonCompletion<T> extends Omit<AiCompletion, 'content'> {
 }
 
 export async function aiCompleteJsonDetailed<T = unknown>(event: H3Event, prompt: string, options: AiCompleteOptions = {}): Promise<AiJsonCompletion<T>> {
-  const label = options.label ?? 'core'
-  const completion = await aiCompleteDetailed(event, prompt, options)
+  const { completion, ctx, status, gen } = await runAiCompletion(event, prompt, options)
   const parsed: ModelJsonResult<T> | null = parseModelJson<T>(completion.content)
+  // Was jede Zeile dieses Laufs nennt — Zahlen und Kennungen, nie der Text.
+  const facts = {
+    status,
+    model: ctx.model,
+    ms: aiRunMs(ctx),
+    chars: completion.content.length,
+    in: completion.promptTokens,
+    out: completion.completionTokens,
+    run: ctx.run,
+    gen,
+  }
 
   if (parsed) {
     if (parsed.repaired) {
       // Kein Fehler, aber eine Zahl, die man sehen will: steigt sie, lohnt
       // ein Blick auf den Prompt (BI4 hat ihm das Anführungszeichen beigebracht).
-      console.warn(`[${label}] KI-Antwort war erst nach Reparatur JSON (${completion.completionTokens} Tokens)`)
+      console.warn(aiLogLine(ctx.label, 'KI-Antwort erst nach Reparatur JSON', facts))
     }
     return {
       value: parsed.value,
@@ -410,7 +431,7 @@ export async function aiCompleteJsonDetailed<T = unknown>(event: H3Event, prompt
   // dem Menschen weiterhilft: hat das Modell aufgehört, weil es fertig war,
   // oder weil die Decke gerissen ist?
   if (completion.finishReason === 'length') {
-    console.error(`[${label}] KI-Antwort an der Token-Decke abgeschnitten (${completion.completionTokens} Tokens)`)
+    console.error(aiLogLine(ctx.label, 'KI-Antwort abgeschnitten', { ...facts, finish: 'length' }))
     throw createError({
       status: 502,
       statusText: 'AI response truncated',
@@ -418,6 +439,6 @@ export async function aiCompleteJsonDetailed<T = unknown>(event: H3Event, prompt
     })
   }
 
-  console.error(`[${label}] KI-Antwort war kein JSON (finish_reason=${completion.finishReason || 'unbekannt'}): ${completion.content.slice(0, 300)}`)
+  console.error(aiLogLine(ctx.label, 'KI-Antwort ohne JSON', { ...facts, finish: completion.finishReason || undefined }))
   throw createError({ status: 502, statusText: 'AI returned no JSON' })
 }

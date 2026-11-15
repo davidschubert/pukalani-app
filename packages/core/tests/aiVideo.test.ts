@@ -50,16 +50,30 @@ vi.stubGlobal('resolveAiKey', async () => 'k-test')
 
 const {
   AI_VIDEO_MAX_VIDEOS,
-  aiVideo,
-  aiVideoDetailed,
-  aiVideoJson,
-  aiVideoJsonDetailed,
+  aiVideo: aiVideoUnbound,
+  aiVideoDetailed: aiVideoDetailedUnbound,
+  aiVideoJson: aiVideoJsonUnbound,
+  aiVideoJsonDetailed: aiVideoJsonDetailedUnbound,
   aiVideoUrlAllowed,
-  buildAiVideoRequestBody,
+  buildAiVideoRequestBody: buildUnbound,
   getAiVideoConfig,
   getEffectiveAiVideoConfig,
   isAiVideoConfigured,
 } = await import('../server/utils/aiVideo')
+
+/**
+ * SEIT P17 IST DER ORT PFLICHT des Aufrufers — ohne `only` geht nichts raus
+ * (geprüft in `aiTransportPolicy.test.ts`). Die Fälle hier rufen deshalb mit
+ * dem Pin, den die Redaktion wirklich mitgibt.
+ */
+const ROUTE = { only: ['google-vertex/eu'] } as const
+const aiVideo: typeof aiVideoUnbound = (e, v, p, o = {}) => aiVideoUnbound(e, v, p, { providerRouting: ROUTE, ...o })
+const aiVideoDetailed: typeof aiVideoDetailedUnbound = (e, v, p, o = {}) => aiVideoDetailedUnbound(e, v, p, { providerRouting: ROUTE, ...o })
+const aiVideoJson = <T = unknown>(...[e, v, p, o = {}]: Parameters<typeof aiVideoJsonUnbound>) =>
+  aiVideoJsonUnbound<T>(e, v, p, { providerRouting: ROUTE, ...o })
+const aiVideoJsonDetailed = <T = unknown>(...[e, v, p, o = {}]: Parameters<typeof aiVideoJsonDetailedUnbound>) =>
+  aiVideoJsonDetailedUnbound<T>(e, v, p, { providerRouting: ROUTE, ...o })
+const buildAiVideoRequestBody: typeof buildUnbound = input => buildUnbound({ providerRouting: ROUTE, ...input })
 
 const event = {} as H3Event
 const URL_ONE = 'https://www.youtube.com/watch?v=jNQXAC9IVRw'
@@ -122,19 +136,20 @@ describe('buildAiVideoRequestBody', () => {
    * DIE KLEMME UND IHRE GEGENPROBE — die eine Zusage, die das Produkt trägt.
    * Ein Aufrufer, der `allow` übergibt, bekommt trotzdem `deny` geschickt.
    */
-  it('klemmt data_collection immer auf deny, auch ohne Routing-Option', () => {
+  it('klemmt data_collection immer auf deny, auch ohne weitere Angaben', () => {
     const body = buildAiVideoRequestBody({ model: 'm', prompt: 'p', videos: [{ url: URL_ONE }] })
     expect((body.provider as Record<string, unknown>).data_collection).toBe('deny')
   })
 
-  it('überschreibt ein übergebenes dataCollection: allow', () => {
+  it('überschreibt dataCollection: allow, zdr: false und allowFallbacks: true', () => {
     const body = buildAiVideoRequestBody({
       model: 'm', prompt: 'p', videos: [{ url: URL_ONE }],
-      providerRouting: { dataCollection: 'allow', zdr: true },
+      providerRouting: { dataCollection: 'allow', zdr: false, allowFallbacks: true, only: ['google-vertex/eu'] },
     })
     const provider = body.provider as Record<string, unknown>
     expect(provider.data_collection).toBe('deny')
     expect(provider.zdr).toBe(true)
+    expect(provider.allow_fallbacks).toBe(false)
   })
 
   it('reicht zdr, only und allowFallbacks wörtlich durch — und kopiert die Allowlist', () => {
@@ -253,8 +268,10 @@ describe('aiVideo', () => {
   })
 
   it('wirft 502, wenn der Anbieter nicht ok antwortet', async () => {
+    // 404 ist seit P17 „kein Endpunkt unter der Bindung" (503) — dafür
+    // `aiTransportPolicy.test.ts`; hier ein gewöhnlicher Anbieterfehler.
     fetchMock.mockImplementationOnce(async () => ({
-      ok: false, status: 404, text: async () => '{"error":{"code":404}}',
+      ok: false, status: 500, text: async () => '{"error":{"code":500}}',
       json: async () => ({}),
     }))
     await expect(aiVideo(event, [{ url: URL_ONE }], 'p')).rejects.toMatchObject({ statusCode: 502 })

@@ -2,19 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
 
 /**
- * PROVIDER-ROUTING — der Nachweis, dass die Datenschutz-Bedingungen wirklich im
- * REQUEST landen und nicht nur in einem Typ stehen.
+ * PROVIDER-ROUTING DES TEXT-WEGES — seit P17 (SEC-005) sendet der TRANSPORT
+ * die Bindung selbst: keine Speicherung (`zdr`), kein Sammeln
+ * (`data_collection: 'deny'`), kein Ausweichen (`allow_fallbacks: false`) und
+ * ein Rechenort in Europa (`only`). Keine Aufrufstelle muss daran denken,
+ * keine kann es weglassen.
  *
- * Das ist die Voraussetzung für den ZDR-Betrieb des Brand-Wizards
- * (BRAND-WIZARD-PHASE-1 §9b.4): `zdr: true`, `data_collection: "deny"`,
- * Anbieter-Allowlist, `allow_fallbacks: false`. Eine Option, die unterwegs
- * verloren geht, sähe im Code korrekt aus und schickte den Prompt trotzdem an
- * einen beliebigen Anbieter — deshalb wird hier der tatsächlich abgeschickte
- * Body gelesen, nicht der Aufruf.
+ * Geprüft wird der tatsächlich abgeschickte Body, nicht der Aufruf — eine
+ * Option, die unterwegs verloren geht, sähe im Code korrekt aus.
  *
- * Der zweite geprüfte Satz ist der Gegenpol: OHNE Option ändert sich der
- * Request um kein Byte (der Transport bleibt policy-frei).
+ * Die EU-Liste steht hier WÖRTLICH und nicht als Import: der Test soll auch
+ * dann etwas sagen, wenn die Konstante im Core verrutscht.
  */
+const EU = ['amazon-bedrock/eu-west-1', 'google-vertex/europe']
+const BOUND = { zdr: true, data_collection: 'deny', only: EU, allow_fallbacks: false }
+
 const appConfig = { pukalani: { ai: { enabled: true, model: 'test/model', baseUrl: 'https://openrouter.test/api/v1' } } }
 vi.stubGlobal('useAppConfig', () => appConfig)
 vi.stubGlobal('createError', (init: Record<string, unknown>) => Object.assign(new Error(String(init.statusText)), init))
@@ -22,6 +24,7 @@ vi.stubGlobal('readInstanceSecret', async () => '')
 vi.stubGlobal('useRuntimeConfig', () => ({ aiKey: '' }))
 
 const { aiComplete, aiCompleteJson, buildAiRequestBody } = await import('../server/utils/aiComplete')
+const { aiCompleteStream } = await import('../server/utils/aiCompleteStream')
 
 const event = {} as H3Event
 
@@ -33,65 +36,82 @@ const fetchMock = vi.fn(async () => ({
 }))
 vi.stubGlobal('fetch', fetchMock)
 
-function sentBody(): Record<string, unknown> {
-  const init = fetchMock.mock.calls[0]?.[1] as unknown as { body: string }
+function sentBody(call = 0): Record<string, unknown> {
+  const init = fetchMock.mock.calls[call]?.[1] as unknown as { body: string }
   return JSON.parse(init.body) as Record<string, unknown>
+}
+
+function streamResponse() {
+  const encoder = new TextEncoder()
+  const pieces = ['data: {"choices":[{"delta":{"content":"x"}}]}\n\n', 'data: [DONE]\n\n']
+  let index = 0
+  return {
+    ok: true,
+    status: 200,
+    text: async () => '',
+    body: {
+      getReader: () => ({
+        read: async () => (index < pieces.length
+          ? { done: false, value: encoder.encode(pieces[index++]!) }
+          : { done: true, value: undefined }),
+      }),
+    },
+  }
 }
 
 beforeEach(() => {
   fetchMock.mockClear()
+  vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-describe('buildAiRequestBody', () => {
-  it('sendet OHNE Option KEIN provider-Feld', () => {
+describe('buildAiRequestBody — die Bindung ist die Voreinstellung', () => {
+  it('OHNE Option trägt der Body den vollen Block mit den zwei EU-Endpunkten', () => {
     const body = buildAiRequestBody({ model: 'm', prompt: 'p' })
-    expect('provider' in body).toBe(false)
     expect(body).toEqual({
       model: 'm',
       messages: [{ role: 'user', content: 'p' }],
       temperature: 0.2,
       max_tokens: 700,
+      provider: BOUND,
     })
   })
 
-  it('übersetzt alle vier Felder in OpenRouters Schreibweise', () => {
+  it('Schlüsselreihenfolge wie bisher bei den brand-Aufrufen (zdr, data_collection, only, allow_fallbacks)', () => {
+    const provider = buildAiRequestBody({ model: 'm', prompt: 'p' }).provider as Record<string, unknown>
+    expect(Object.keys(provider)).toEqual(['zdr', 'data_collection', 'only', 'allow_fallbacks'])
+  })
+
+  it('die drei Zusagen lassen sich NICHT abschalten', () => {
     const body = buildAiRequestBody({
       model: 'm',
       prompt: 'p',
-      providerRouting: { zdr: true, dataCollection: 'deny', only: ['anthropic'], allowFallbacks: false },
+      providerRouting: { zdr: false, dataCollection: 'allow', allowFallbacks: true },
     })
-    expect(body.provider).toEqual({
-      zdr: true,
-      data_collection: 'deny',
-      only: ['anthropic'],
-      allow_fallbacks: false,
+    expect(body.provider).toEqual(BOUND)
+  })
+
+  it('eine eigene `only`-Liste ersetzt NUR den Ort', () => {
+    const body = buildAiRequestBody({
+      model: 'm',
+      prompt: 'p',
+      providerRouting: { zdr: false, allowFallbacks: true, only: ['google-vertex/eu'] },
     })
+    expect(body.provider).toEqual({ ...BOUND, only: ['google-vertex/eu'] })
   })
 
-  it('nimmt nur gesetzte Felder auf', () => {
-    const body = buildAiRequestBody({ model: 'm', prompt: 'p', providerRouting: { zdr: true } })
-    expect(body.provider).toEqual({ zdr: true })
-  })
-
-  it('sendet für ein LEERES Routing-Objekt kein provider-Feld', () => {
-    expect('provider' in buildAiRequestBody({ model: 'm', prompt: 'p', providerRouting: {} })).toBe(false)
-  })
-
-  it('lässt eine leere Allowlist NICHT still verschwinden', () => {
-    // Ein weggelassenes `only` wäre fail-open — welche Anbieter zulässig sind,
-    // entscheidet der Aufrufer, nicht der Transport.
-    const body = buildAiRequestBody({ model: 'm', prompt: 'p', providerRouting: { only: [] } })
-    expect(body.provider).toEqual({ only: [] })
+  it('eine LEERE Liste ist ein Fehler vor dem Senden, kein stiller Rückfall', () => {
+    expect(() => buildAiRequestBody({ model: 'm', prompt: 'p', providerRouting: { only: [] } }))
+      .toThrow(expect.objectContaining({ status: 500, statusText: 'AI routing invalid' }))
   })
 
   it('kopiert die Allowlist, statt die Aufrufer-Liste zu verlinken', () => {
-    const only = ['anthropic']
+    const only = ['google-vertex/eu']
     const body = buildAiRequestBody({ model: 'm', prompt: 'p', providerRouting: { only } })
     only.push('someone-else')
-    expect((body.provider as { only: string[] }).only).toEqual(['anthropic'])
+    expect((body.provider as { only: string[] }).only).toEqual(['google-vertex/eu'])
   })
 
-  it('trägt `stream` nur, wenn wahr — der Non-Streaming-Body bleibt unverändert', () => {
+  it('trägt `stream` nur, wenn wahr', () => {
     expect('stream' in buildAiRequestBody({ model: 'm', prompt: 'p' })).toBe(false)
     expect('stream' in buildAiRequestBody({ model: 'm', prompt: 'p', stream: false })).toBe(false)
     expect(buildAiRequestBody({ model: 'm', prompt: 'p', stream: true }).stream).toBe(true)
@@ -105,29 +125,46 @@ describe('buildAiRequestBody', () => {
   })
 })
 
-describe('aiComplete', () => {
-  it('schickt zdr/data_collection/only/allow_fallbacks WIRKLICH mit', async () => {
+describe('der WIRKLICH abgeschickte Body — ohne jede Option', () => {
+  it('aiComplete', async () => {
+    await aiComplete(event, 'p', { apiKey: 'k' })
+    expect(sentBody().provider).toEqual(BOUND)
+  })
+
+  it('aiCompleteJson', async () => {
+    await aiCompleteJson(event, 'p', { apiKey: 'k' })
+    expect(sentBody().provider).toEqual(BOUND)
+  })
+
+  it('aiCompleteStream', async () => {
+    fetchMock.mockResolvedValueOnce(streamResponse() as never)
+    await aiCompleteStream(event, 'p', { apiKey: 'k' })
+    expect(sentBody().provider).toEqual(BOUND)
+    expect(sentBody().stream).toBe(true)
+  })
+
+  it('eine Aufrufstelle mit der brand-Konstante sendet denselben Body wie eine ohne', async () => {
+    await aiComplete(event, 'p', { apiKey: 'k' })
     await aiComplete(event, 'p', {
       apiKey: 'k',
-      providerRouting: { zdr: true, dataCollection: 'deny', only: ['anthropic'], allowFallbacks: false },
+      providerRouting: { zdr: true, dataCollection: 'deny', allowFallbacks: false, only: EU },
     })
-    expect(sentBody().provider).toEqual({
-      zdr: true,
-      data_collection: 'deny',
-      only: ['anthropic'],
-      allow_fallbacks: false,
-    })
+    // Der Rumpf als ZEICHENKETTE — also auch die Reihenfolge der Schlüssel.
+    const raw = (call: number) => (fetchMock.mock.calls[call]?.[1] as unknown as { body: string }).body
+    expect(raw(1)).toBe(raw(0))
+  })
+})
+
+describe('leere Ortsliste — kein Request', () => {
+  it('aiComplete: 500 und KEIN fetch', async () => {
+    await expect(aiComplete(event, 'p', { apiKey: 'k', providerRouting: { only: [] } }))
+      .rejects.toMatchObject({ status: 500, statusText: 'AI routing invalid' })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('sendet ohne die Option keinerlei provider-Feld', async () => {
-    await aiComplete(event, 'p', { apiKey: 'k' })
-    expect('provider' in sentBody()).toBe(false)
-  })
-
-  it('reicht das Routing auch über aiCompleteJson durch', async () => {
-    // Die JSON-Variante ist der Pfad, den strukturierte KI-Produkte nehmen —
-    // sie darf die Bedingungen nicht unterwegs verlieren.
-    await aiCompleteJson(event, 'p', { apiKey: 'k', providerRouting: { zdr: true, allowFallbacks: false } })
-    expect(sentBody().provider).toEqual({ zdr: true, allow_fallbacks: false })
+  it('aiCompleteStream: 500 und KEIN fetch', async () => {
+    await expect(aiCompleteStream(event, 'p', { apiKey: 'k', providerRouting: { only: [] } }))
+      .rejects.toMatchObject({ status: 500, statusText: 'AI routing invalid' })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

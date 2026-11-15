@@ -1,6 +1,16 @@
 import type { H3Event } from 'h3'
 import { parseModelJson } from '../../shared/aiJson'
-import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
+import type { AiProviderRouting } from './aiComplete'
+import {
+  type AiRunContext,
+  aiCallFailed,
+  aiHttpFailure,
+  aiLogLine,
+  aiRoutingInvalidError,
+  aiRunMs,
+  assertAiRouteOnly,
+  startAiRun,
+} from './aiLog'
 
 /**
  * VIDEOS LESEN — der vierte Transport des Core, neben `aiComplete` (Text),
@@ -42,10 +52,10 @@ import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
  *    Video.
  *
  * ── DIE ZDR-KLEMME IST NICHT VERHANDELBAR ────────────────────────────────
- * Wörtlich wie bei `aiVision`: `data_collection: 'deny'` setzt der TRANSPORT,
- * es steht zuletzt im `provider`-Objekt und lässt sich von aussen nicht
- * abschalten. `options.providerRouting` darf nur VERSCHÄRFEN (`zdr`, `only`,
- * `allowFallbacks`). Der Konsument in `insights` reicht
+ * Wörtlich wie bei `aiVision`: `zdr`, `data_collection: 'deny'` und
+ * `allow_fallbacks: false` setzt der TRANSPORT (seit P17 alle drei) und sie
+ * lassen sich von aussen nicht abschalten. Der Ort (`only`) kommt aus
+ * `options.providerRouting` und ist Pflicht. Der Konsument in `insights` reicht
  * `BRAND_PROVIDER_ROUTING_VERTEX_EU` — dieselbe EU-gepinnte Fassung, die die
  * Inspirationslesung benutzt.
  *
@@ -58,9 +68,9 @@ import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
  * Entscheidung dazu.
  *
  * ── WAS INS LOG GEHT ─────────────────────────────────────────────────────
- * Nie der Prompt, nie die Antwort. Die ADRESSE schon: sie ist öffentlich (das
- * ist die Bedingung, unter der ein Modell sie überhaupt lesen kann) und ohne
- * sie wäre ein Fehlschlag nicht zuzuordnen.
+ * Nie der Prompt, nie die Antwort, seit P17 auch keine Adresse mehr: nur
+ * Kennungen und Zahlen (`aiLog.ts`). Zuordnen lässt sich ein Fehlschlag über
+ * `run=` und die Zeile der aufrufenden Route.
  */
 
 /**
@@ -135,9 +145,9 @@ export interface AiVideoOptions {
   /** Log-Präfix des Aufrufers — Fehler bleiben zuordenbar. */
   label?: string
   /**
-   * ZUSÄTZLICHE Bedingungen (`zdr`, `only`, `allowFallbacks`). Sie
-   * VERSCHÄRFEN nur: `dataCollection` setzt der Transport selbst auf `'deny'`
-   * und lässt sich nicht überschreiben (s. Kopf).
+   * PFLICHT: der Ort (`only`, nicht leer). `zdr`, `dataCollection` und
+   * `allowFallbacks` setzt der Transport fest und lässt sich nicht lockern
+   * (P17); fehlt der Ort, geht nichts raus.
    */
   providerRouting?: AiProviderRouting
 }
@@ -199,16 +209,14 @@ export function buildAiVideoRequestBody(
   }
 
   /**
-   * DIE KLEMME. `data_collection` steht ZULETZT im Objekt und wird deshalb
-   * auch dann gesetzt, wenn der Aufrufer etwas anderes übergeben hat — die
-   * Reihenfolge ist hier die Durchsetzung, nicht Kosmetik.
+   * DIE KLEMME (seit P17 vollständig): `zdr`, `allow_fallbacks: false` und
+   * `data_collection: 'deny'` setzt der Transport selbst, was der Aufrufer
+   * dazu übergibt, zählt nicht. Der ORT bleibt seine Sache — aber Pflicht:
+   * ohne `only` wird kein Body gebaut.
    */
-  const routing = input.providerRouting
-  const provider: Record<string, unknown> = {}
-  if (routing?.zdr !== undefined) provider.zdr = routing.zdr
-  if (routing?.only !== undefined) provider.only = [...routing.only]
-  if (routing?.allowFallbacks !== undefined) provider.allow_fallbacks = routing.allowFallbacks
-  provider.data_collection = 'deny'
+  const only = input.providerRouting?.only
+  if (!only || only.length === 0) throw aiRoutingInvalidError()
+  const provider = { zdr: true, only: [...only], allow_fallbacks: false, data_collection: 'deny' }
 
   return {
     model: input.model,
@@ -361,10 +369,18 @@ export async function aiVideoDetailed(
   prompt: string,
   options: AiVideoOptions = {},
 ): Promise<AiVideoCompletion> {
+  return (await runAiVideo(event, videos, prompt, options)).completion
+}
+
+async function runAiVideo(
+  event: H3Event,
+  videos: readonly AiVideoSource[],
+  prompt: string,
+  options: AiVideoOptions,
+): Promise<{ completion: AiVideoCompletion, ctx: AiRunContext, status: number, gen: string | undefined }> {
   // Mit `options.model` fragt hier NIEMAND die Datenbank: der Aufrufer hat
   // seine Wahl schon getroffen (derselbe Audit-Befund wie bei `aiVision`).
   const defaults = options.model ? getAiVideoConfig() : await getEffectiveAiVideoConfig(event)
-  const label = options.label ?? 'core'
   const model = options.model ?? defaults.model
   const baseUrl = (options.baseUrl ?? defaults.baseUrl).replace(/\/$/, '')
   if (!model) {
@@ -380,15 +396,18 @@ export async function aiVideoDetailed(
 
   // Die Transport-Klemmen, VOR dem Netzaufruf. Ein Video-Aufruf ist der
   // teuerste Weg dieses Monorepos — was hier durchfällt, kostet nichts.
+  const ctx = startAiRun(options.label ?? 'core', model)
   if (videos.length > AI_VIDEO_MAX_VIDEOS) {
-    console.error(`[${label}] KI-Video abgewiesen: ${videos.length} Videos (max ${AI_VIDEO_MAX_VIDEOS})`)
+    console.error(aiLogLine(ctx.label, 'KI-Video abgewiesen', { videos: videos.length, max: AI_VIDEO_MAX_VIDEOS, run: ctx.run }))
     throw createError({ status: 413, statusText: 'AI video got too many videos' })
   }
-  const rejected = videos.find(video => !aiVideoUrlAllowed(video.url))
-  if (rejected) {
-    console.error(`[${label}] KI-Video abgewiesen: Adresse nicht erlaubt (${rejected.url.slice(0, 40)}…)`)
+  // Von einer abgewiesenen Adresse steht nichts im Log (P17) — nur, DASS es eine war.
+  if (videos.some(video => !aiVideoUrlAllowed(video.url))) {
+    console.error(aiLogLine(ctx.label, 'KI-Video abgewiesen', { reason: 'url', videos: videos.length, run: ctx.run }))
     throw createError({ status: 400, statusText: 'AI video got an unsupported url' })
   }
+  assertAiRouteOnly(options.providerRouting?.only, ctx)
+  const counts = { videos: videos.length }
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
@@ -410,16 +429,11 @@ export async function aiVideoDetailed(
         providerRouting: options.providerRouting,
       })),
     })
-    if (!res.ok) {
-      // STATUS UND KENNUNG, NIE DER RUMPF (`aiProviderErrorTag`) — ein
-      // Fehler-Rumpf zitiert je nach Anbieter Teile der Anfrage zurück.
-      console.error(
-        `[${label}] KI-Video-API ${res.status}${aiProviderErrorTag(await res.text())} `
-        + `(${videos.length} Video(s))`,
-      )
-      throw createError({ status: 502, statusText: 'AI provider unavailable' })
-    }
+    // STATUS UND KENNUNG, NIE DER RUMPF — ein Fehler-Rumpf zitiert je nach
+    // Anbieter Teile der Anfrage zurück (`aiLog.ts`).
+    if (!res.ok) await aiHttpFailure(res, ctx, 'KI-Video-API-Fehler', counts)
     const payload = await res.json() as {
+      id?: unknown
       choices?: { message?: { content?: string }, finish_reason?: string }[]
       usage?: {
         prompt_tokens?: number
@@ -430,21 +444,21 @@ export async function aiVideoDetailed(
     const choice = payload.choices?.[0]
     const details = payload.usage?.prompt_tokens_details
     return {
-      content: choice?.message?.content ?? '',
-      finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
-      promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
-      completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
-      videoTokens: typeof details?.video_tokens === 'number' ? details.video_tokens : 0,
-      cachedTokens: typeof details?.cached_tokens === 'number' ? details.cached_tokens : 0,
+      completion: {
+        content: choice?.message?.content ?? '',
+        finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
+        promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
+        completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
+        videoTokens: typeof details?.video_tokens === 'number' ? details.video_tokens : 0,
+        cachedTokens: typeof details?.cached_tokens === 'number' ? details.cached_tokens : 0,
+      },
+      ctx,
+      status: res.status,
+      gen: typeof payload.id === 'string' ? payload.id : undefined,
     }
   }
   catch (error) {
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    console.error(
-      `[${label}] KI-Video fehlgeschlagen (${videos.length} Video(s)):`,
-      error instanceof Error ? error.message : 'unknown',
-    )
-    throw createError({ status: 502, statusText: 'AI video failed' })
+    return aiCallFailed(error, ctx, 'KI-Video fehlgeschlagen', 'AI video failed', counts)
   }
   finally {
     clearTimeout(timeout)
@@ -492,19 +506,25 @@ export async function aiVideoJsonDetailed<T = unknown>(
   prompt: string,
   options: AiVideoOptions = {},
 ): Promise<AiVideoJsonCompletion<T>> {
-  const completion = await aiVideoDetailed(event, videos, prompt, options)
+  const { completion, ctx, status, gen } = await runAiVideo(event, videos, prompt, options)
   const raw = completion.content
+  const facts = {
+    status,
+    model: ctx.model,
+    ms: aiRunMs(ctx),
+    chars: raw.length,
+    in: completion.promptTokens,
+    out: completion.completionTokens,
+    run: ctx.run,
+    gen,
+  }
   // SEIT BI4 (2026-11-08) ÜBER DIE GEMEINSAME REGEL (`core/shared/aiJson.ts`):
   // zuschneiden, parsen, und erst bei Misserfolg das nicht escapte
   // Anführungszeichen reparieren. Ein bezahlter Lauf stirbt nicht mehr an
   // `„Adidas"` — die vollständige Begründung steht in jener Datei.
   const parsed = parseModelJson<T>(raw)
   if (parsed) {
-    if (parsed.repaired) {
-      console.warn(
-        `[${options.label ?? 'core'}] KI-Video-Antwort war erst nach Reparatur JSON (${raw.length} Zeichen)`,
-      )
-    }
+    if (parsed.repaired) console.warn(aiLogLine(ctx.label, 'KI-Antwort erst nach Reparatur JSON', facts))
     return {
       value: parsed.value,
       finishReason: completion.finishReason,
@@ -517,9 +537,6 @@ export async function aiVideoJsonDetailed<T = unknown>(
   // DIE EINE FRAGE, DIE WEITERHILFT (BI4): hat das Modell aufgehört, weil es
   // fertig war, oder weil die Decke gerissen ist? Der Status bleibt 502 wie
   // bisher — hier steht nur mehr in der Zeile, nicht Anderes in der Antwort.
-  console.error(
-    `[${options.label ?? 'core'}] KI-Video-Antwort war kein JSON `
-    + `(${raw.length} Zeichen, finish_reason=${completion.finishReason || 'unbekannt'})`,
-  )
+  console.error(aiLogLine(ctx.label, 'KI-Antwort ohne JSON', { ...facts, finish: completion.finishReason || undefined }))
   throw createError({ status: 502, statusText: 'AI returned no JSON' })
 }

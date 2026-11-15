@@ -50,14 +50,23 @@ vi.stubGlobal('resolveAiKey', async () => 'k-test')
 
 const {
   AI_IMAGE_MAX_BYTES,
-  aiImage,
-  buildAiImageRequestBody,
+  aiImage: aiImageUnbound,
+  buildAiImageRequestBody: buildUnbound,
   clampAiImages,
   getAiImageConfig,
   getEffectiveAiImageConfig,
   isAiImageConfigured,
   parseAiImageDataUrl,
 } = await import('../server/utils/aiImage')
+
+/**
+ * SEIT P17 IST DER ORT PFLICHT des Aufrufers — ohne `only` geht nichts raus
+ * (geprüft in `aiTransportPolicy.test.ts`). Die Fälle hier rufen deshalb mit
+ * dem Pin, den die Zeichen-Entwürfe wirklich mitgeben.
+ */
+const ROUTE = { only: ['google-vertex/global'] } as const
+const aiImage: typeof aiImageUnbound = (e, p, o = {}) => aiImageUnbound(e, p, { providerRouting: ROUTE, ...o })
+const buildAiImageRequestBody: typeof buildUnbound = input => buildUnbound({ providerRouting: ROUTE, ...input })
 
 const event = {} as H3Event
 
@@ -108,16 +117,21 @@ describe('buildAiImageRequestBody', () => {
     expect((buildAiImageRequestBody({ model: 'm', prompt: 'p' }).messages as unknown[])).toHaveLength(1)
   })
 
-  it('ZDR: `data_collection: "deny"` steht auch OHNE providerRouting da', () => {
+  it('die Bindung steht fest: zdr, deny, kein Ausweichen — nur der Ort kommt vom Aufrufer', () => {
     expect(buildAiImageRequestBody({ model: 'm', prompt: 'p' }).provider)
-      .toEqual({ data_collection: 'deny' })
+      .toEqual({
+        zdr: true,
+        only: ['google-vertex/global'],
+        allow_fallbacks: false,
+        data_collection: 'deny',
+      })
   })
 
   it('GEGENPROBE: ein übergebenes `dataCollection: "allow"` wird überschrieben', () => {
     const body = buildAiImageRequestBody({
       model: 'm',
       prompt: 'p',
-      providerRouting: { dataCollection: 'allow', zdr: true, allowFallbacks: false, only: ['a'] },
+      providerRouting: { dataCollection: 'allow', zdr: false, allowFallbacks: true, only: ['a'] },
     })
     expect(body.provider).toEqual({
       zdr: true,
@@ -218,7 +232,12 @@ describe('aiImage', () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }]
     expect(url).toBe('https://openrouter.test/api/v1/chat/completions')
     expect(init.headers.Authorization).toBe('Bearer k-test')
-    expect(sentBody().provider).toEqual({ data_collection: 'deny' })
+    expect(sentBody().provider).toEqual({
+        zdr: true,
+        only: ['google-vertex/global'],
+        allow_fallbacks: false,
+        data_collection: 'deny',
+      })
   })
 
   it('GATE AUS: ohne Modell 503 — und KEIN Netzaufruf', async () => {
@@ -272,7 +291,7 @@ describe('aiImage', () => {
     }) as never)
     await expect(aiImage(event, 'p', { label: 'test' })).rejects.toMatchObject({ statusCode: 502 })
     spy.mockRestore()
-    expect(logged.join('\n')).toContain('400 (invalid_request_error)')
+    expect(logged.join('\n')).toContain('status=400 tag=invalid_request_error')
     expect(logged.join('\n')).not.toContain('GEHEIM')
   })
 

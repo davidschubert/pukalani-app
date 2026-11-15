@@ -1,6 +1,16 @@
 import type { H3Event } from 'h3'
 import { parseModelJson } from '../../shared/aiJson'
-import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
+import type { AiProviderRouting } from './aiComplete'
+import {
+  type AiRunContext,
+  aiCallFailed,
+  aiHttpFailure,
+  aiLogLine,
+  aiRoutingInvalidError,
+  aiRunMs,
+  assertAiRouteOnly,
+  startAiRun,
+} from './aiLog'
 
 /**
  * BILDER LESEN — der Vision-Transport des Core (Konzept
@@ -118,9 +128,9 @@ export interface AiVisionOptions {
   /** Log-Präfix des Aufrufers — Fehler bleiben zuordenbar. */
   label?: string
   /**
-   * ZUSÄTZLICHE Bedingungen (`zdr`, `only`, `allowFallbacks`). Sie
-   * VERSCHÄRFEN nur: `dataCollection` setzt der Transport selbst auf `'deny'`
-   * und lässt sich nicht überschreiben (s. Kopf).
+   * PFLICHT: der Ort (`only`, nicht leer). `zdr`, `dataCollection` und
+   * `allowFallbacks` setzt der Transport fest und lässt sich nicht lockern
+   * (P17); fehlt der Ort, geht nichts raus.
    */
   providerRouting?: AiProviderRouting
 }
@@ -163,16 +173,14 @@ export function buildAiVisionRequestBody(
   }
 
   /**
-   * DIE KLEMME. `data_collection` steht ZULETZT im Objekt und wird deshalb
-   * auch dann gesetzt, wenn der Aufrufer etwas anderes übergeben hat — die
-   * Reihenfolge ist hier die Durchsetzung, nicht Kosmetik.
+   * DIE KLEMME (seit P17 vollständig): `zdr`, `allow_fallbacks: false` und
+   * `data_collection: 'deny'` setzt der Transport selbst, was der Aufrufer
+   * dazu übergibt, zählt nicht. Der ORT bleibt seine Sache — aber Pflicht:
+   * ohne `only` wird kein Body gebaut.
    */
-  const routing = input.providerRouting
-  const provider: Record<string, unknown> = {}
-  if (routing?.zdr !== undefined) provider.zdr = routing.zdr
-  if (routing?.only !== undefined) provider.only = [...routing.only]
-  if (routing?.allowFallbacks !== undefined) provider.allow_fallbacks = routing.allowFallbacks
-  provider.data_collection = 'deny'
+  const only = input.providerRouting?.only
+  if (!only || only.length === 0) throw aiRoutingInvalidError()
+  const provider = { zdr: true, only: [...only], allow_fallbacks: false, data_collection: 'deny' }
 
   return {
     model: input.model,
@@ -283,6 +291,15 @@ export async function aiVision(
   prompt: string,
   options: AiVisionOptions = {},
 ): Promise<string> {
+  return (await runAiVision(event, images, prompt, options)).content
+}
+
+async function runAiVision(
+  event: H3Event,
+  images: readonly AiVisionImage[],
+  prompt: string,
+  options: AiVisionOptions,
+): Promise<{ content: string, ctx: AiRunContext, status: number, gen: string | undefined }> {
   /**
    * Das Modell darf explizit übergeben werden, sonst gilt die EFFEKTIVE
    * Config — dieselbe Quelle, die `isAiVisionConfigured()` liest.
@@ -296,7 +313,6 @@ export async function aiVision(
    * ist in beiden Fassungen dieselbe.
    */
   const defaults = options.model ? getAiVisionConfig() : await getEffectiveAiVisionConfig(event)
-  const label = options.label ?? 'core'
   const model = options.model ?? defaults.model
   const baseUrl = (options.baseUrl ?? defaults.baseUrl).replace(/\/$/, '')
   if (!model) {
@@ -312,16 +328,18 @@ export async function aiVision(
 
   // Nur KENNZAHLEN — nie die Bytes, nie den Prompt (s. Kopf).
   const totalBytes = images.reduce((sum, image) => sum + image.bytes.length, 0)
+  const ctx = startAiRun(options.label ?? 'core', model)
+  const counts = { images: images.length, bytes: totalBytes }
 
   // Die Transport-Klemme, VOR dem Netzaufruf (s. `AI_VISION_MAX_IMAGES`).
-  if (images.length > AI_VISION_MAX_IMAGES) {
-    console.error(`[${label}] KI-Vision abgewiesen: ${images.length} Bilder (max ${AI_VISION_MAX_IMAGES})`)
-    throw createError({ status: 413, statusText: 'AI vision got too many images' })
+  if (images.length > AI_VISION_MAX_IMAGES || totalBytes > AI_VISION_MAX_BYTES) {
+    console.error(aiLogLine(ctx.label, 'KI-Vision abgewiesen', { ...counts, maxImages: AI_VISION_MAX_IMAGES, maxBytes: AI_VISION_MAX_BYTES, run: ctx.run }))
+    throw createError({
+      status: 413,
+      statusText: images.length > AI_VISION_MAX_IMAGES ? 'AI vision got too many images' : 'AI vision got too many bytes',
+    })
   }
-  if (totalBytes > AI_VISION_MAX_BYTES) {
-    console.error(`[${label}] KI-Vision abgewiesen: ${totalBytes} Bytes (max ${AI_VISION_MAX_BYTES})`)
-    throw createError({ status: 413, statusText: 'AI vision got too many bytes' })
-  }
+  assertAiRouteOnly(options.providerRouting?.only, ctx)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
@@ -343,26 +361,20 @@ export async function aiVision(
         providerRouting: options.providerRouting,
       })),
     })
-    if (!res.ok) {
-      // STATUS UND KENNUNG, NIE DER RUMPF: ein Fehler-Rumpf zitiert je nach
-      // Anbieter Teile der Anfrage zurück — hier also Kunden-Bilder
-      // (`aiProviderErrorTag`, Audit-Befund 2026-09-09).
-      console.error(
-        `[${label}] KI-Vision-API ${res.status}${aiProviderErrorTag(await res.text())} `
-        + `(${images.length} Bilder, ${totalBytes} Bytes)`,
-      )
-      throw createError({ status: 502, statusText: 'AI provider unavailable' })
+    // STATUS UND KENNUNG, NIE DER RUMPF: ein Fehler-Rumpf zitiert je nach
+    // Anbieter Teile der Anfrage zurück — hier also Kunden-Bilder
+    // (Audit-Befund 2026-09-09, seit P17 `aiLog.ts`).
+    if (!res.ok) await aiHttpFailure(res, ctx, 'KI-Vision-API-Fehler', counts)
+    const payload = await res.json() as { id?: unknown, choices?: { message?: { content?: string } }[] }
+    return {
+      content: payload.choices?.[0]?.message?.content ?? '',
+      ctx,
+      status: res.status,
+      gen: typeof payload.id === 'string' ? payload.id : undefined,
     }
-    const payload = await res.json() as { choices?: { message?: { content?: string } }[] }
-    return payload.choices?.[0]?.message?.content ?? ''
   }
   catch (error) {
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    console.error(
-      `[${label}] KI-Vision fehlgeschlagen (${images.length} Bilder, ${totalBytes} Bytes):`,
-      error instanceof Error ? error.message : 'unknown',
-    )
-    throw createError({ status: 502, statusText: 'AI vision failed' })
+    return aiCallFailed(error, ctx, 'KI-Vision fehlgeschlagen', 'AI vision failed', counts)
   }
   finally {
     clearTimeout(timeout)
@@ -383,22 +395,17 @@ export async function aiVisionJson<T = unknown>(
   prompt: string,
   options: AiVisionOptions = {},
 ): Promise<T> {
-  const raw = await aiVision(event, images, prompt, options)
+  const { content: raw, ctx, status, gen } = await runAiVision(event, images, prompt, options)
+  const facts = { status, model: ctx.model, ms: aiRunMs(ctx), chars: raw.length, run: ctx.run, gen }
   // SEIT BI4 (2026-11-08) ÜBER DIE GEMEINSAME REGEL (`core/shared/aiJson.ts`):
   // zuschneiden, parsen, und erst bei Misserfolg das nicht escapte
   // Anführungszeichen reparieren. Ein bezahlter Lauf stirbt nicht mehr an
   // `„Adidas"` — die vollständige Begründung steht in jener Datei.
   const parsed = parseModelJson<T>(raw)
   if (parsed) {
-    if (parsed.repaired) {
-      console.warn(
-        `[${options.label ?? 'core'}] KI-Vision-Antwort war erst nach Reparatur JSON (${raw.length} Zeichen)`,
-      )
-    }
+    if (parsed.repaired) console.warn(aiLogLine(ctx.label, 'KI-Antwort erst nach Reparatur JSON', facts))
     return parsed.value
   }
-  console.error(
-    `[${options.label ?? 'core'}] KI-Vision-Antwort war kein JSON (${raw.length} Zeichen)`,
-  )
+  console.error(aiLogLine(ctx.label, 'KI-Antwort ohne JSON', facts))
   throw createError({ status: 502, statusText: 'AI returned no JSON' })
 }
