@@ -209,7 +209,8 @@ export default defineEventHandler(async (event): Promise<BrandProfileScoresRespo
   const sorted = [...rows.values()].sort((a, b) => b.$createdAt.localeCompare(a.$createdAt))
   for (const row of sorted) {
     const facts = brandCheckRankingFacts(row)
-    if (facts.hidden) continue
+    // Ausgeblendet oder gelöscht (brand-026) ⇒ keine Zahl auf der Karte.
+    if (facts.hidden || facts.erased) continue
 
     const targets = facts.profileId && items.has(facts.profileId)
       ? [facts.profileId]

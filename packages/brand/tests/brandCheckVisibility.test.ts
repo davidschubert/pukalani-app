@@ -11,21 +11,21 @@ import { canReadBrandCheck } from '../server/utils/brandCheckVisibility'
  */
 describe('canReadBrandCheck', () => {
   it('Dokument, fremd, ohne Häkchen ⇒ nein', () => {
-    expect(canReadBrandCheck({ source: 'document', rankingOptIn: false, hidden: false, isOwner: false })).toBe(false)
+    expect(canReadBrandCheck({ source: 'document', rankingOptIn: false, hidden: false, erased: false, isOwner: false })).toBe(false)
   })
 
   it('Dokument, Besitzerin ⇒ ja', () => {
-    expect(canReadBrandCheck({ source: 'document', rankingOptIn: false, hidden: false, isOwner: true })).toBe(true)
+    expect(canReadBrandCheck({ source: 'document', rankingOptIn: false, hidden: false, erased: false, isOwner: true })).toBe(true)
   })
 
   it('Dokument mit Ranking-Häkchen ⇒ ja, auch für Fremde', () => {
-    expect(canReadBrandCheck({ source: 'document', rankingOptIn: true, hidden: false, isOwner: false })).toBe(true)
+    expect(canReadBrandCheck({ source: 'document', rankingOptIn: true, hidden: false, erased: false, isOwner: false })).toBe(true)
   })
 
   it('Website ⇒ ja, unabhängig von Besitz und Häkchen', () => {
     for (const isOwner of [true, false]) {
       for (const rankingOptIn of [true, false]) {
-        expect(canReadBrandCheck({ source: 'website', rankingOptIn, hidden: false, isOwner })).toBe(true)
+        expect(canReadBrandCheck({ source: 'website', rankingOptIn, hidden: false, erased: false, isOwner })).toBe(true)
       }
     }
   })
@@ -34,7 +34,17 @@ describe('canReadBrandCheck', () => {
     for (const source of ['website', 'document'] as const) {
       for (const isOwner of [true, false]) {
         for (const rankingOptIn of [true, false]) {
-          expect(canReadBrandCheck({ source, rankingOptIn, hidden: true, isOwner })).toBe(false)
+          expect(canReadBrandCheck({ source, rankingOptIn, hidden: true, erased: false, isOwner })).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('gelöscht (Konto oder Marke, SEC-015) ⇒ immer nein, auch für die Besitzerin', () => {
+    for (const source of ['website', 'document'] as const) {
+      for (const isOwner of [true, false]) {
+        for (const rankingOptIn of [true, false]) {
+          expect(canReadBrandCheck({ source, rankingOptIn, hidden: false, erased: true, isOwner })).toBe(false)
         }
       }
     }

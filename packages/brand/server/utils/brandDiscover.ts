@@ -206,7 +206,10 @@ export async function loadDiscoverCheckFacts(
 
   for (const row of rows) {
     const facts = brandCheckRankingFacts(row)
-    if (facts.hidden || !facts.profileId) continue
+    // Ausgeblendet (Betreiber) oder gelöscht (Konto/Marke, brand-026) ⇒ keine
+    // Zahl. Ein älterer Check derselben Marke darf dann nachrücken: er ist
+    // weiterhin eine gültige Auskunft.
+    if (facts.hidden || facts.erased || !facts.profileId) continue
     const kind = facts.source === 'document' ? 'document' : 'website'
     const list = out.get(facts.profileId) ?? []
     // Je Art die JÜNGSTE: die Abfrage liefert absteigend, die erste gewinnt.
@@ -279,7 +282,8 @@ export function parseDiscoverSnapshot(raw: string | null | undefined): BrandShar
  * Marke und verlinkt für alles Weitere auf `/brand-check/<id>` — die Seite,
  * die diese Auskunft ohnehin öffentlich gibt.
  *
- * Ein AUSGEBLENDETER Check ergibt `null`, wie überall (§3 „Recht").
+ * Ein AUSGEBLENDETER Check ergibt `null`, wie überall (§3 „Recht"); ein
+ * GELÖSCHTER (Konto oder Marke gelöscht, brand-026) ebenso.
  */
 export async function loadDiscoverCheck(
   event: H3Event,
@@ -291,15 +295,19 @@ export async function loadDiscoverCheck(
     const row = await tablesDB.getRow<BrandCheckRow>({
       databaseId, tableId: BRAND_CHECKS_TABLE, rowId: checkId,
     })
-    if (row.hidden === true) return null
     const facts = brandCheckRankingFacts(row)
+    if (facts.hidden || facts.erased) return null
     return {
       id: row.$id,
       score: row.score ?? 0,
       band: row.band ?? '',
       // Die EINE Lese-Regel, gefragt für „niemand Bestimmtes" (SEC-014).
       linkable: canReadBrandCheck({
-        source: facts.source, rankingOptIn: facts.rankingOptIn, hidden: facts.hidden, isOwner: false,
+        source: facts.source,
+        rankingOptIn: facts.rankingOptIn,
+        hidden: facts.hidden,
+        erased: facts.erased,
+        isOwner: false,
       }),
       categories: toDiscoverCategories(row.categories),
     }

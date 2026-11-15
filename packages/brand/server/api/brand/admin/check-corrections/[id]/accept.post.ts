@@ -74,6 +74,13 @@ export default defineEventHandler(async (event): Promise<BrandCheckCorrectionDec
   // `loadBrandCheckRow`; ein ausgeblendeter Check kommt bewusst zurück (der
   // Betreiber darf auch dort noch aufräumen).
   const check = await loadBrandCheckRow(event, row.checkId)
+  // GELÖSCHT (Konto oder Marke, brand-026) ⇒ derselbe 404 wie ein fehlender
+  // Check. Eine Korrektur an einem Ergebnis, das für niemanden mehr sichtbar
+  // ist und nach der Frist abgeräumt oder anonymisiert wird, korrigiert
+  // nichts — der Vorschlag lässt sich weiterhin ablehnen.
+  if (check.erasedAt) {
+    throw createError({ status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } })
+  }
 
   const { tablesDB, databaseId } = brandDb(event)
   try {

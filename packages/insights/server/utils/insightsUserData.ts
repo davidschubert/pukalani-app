@@ -118,6 +118,10 @@ async function accountEmailLower(event: H3Event, userId: string): Promise<string
   try {
     const { users } = createAdminClient(event)
     const user = await users.get({ userId })
+    // NUR eine BESTÄTIGTE Adresse ist ein Schlüssel: mit einer unbestätigten
+    // bekäme ein Konto unter fremder Adresse die Zeilen eines anderen Menschen
+    // in den Export — oder löschte sie (dieselbe Regel wie im onboarding-Layer).
+    if (!user.emailVerification) return null
     return (user.email ?? '').toLowerCase() || null
   }
   catch (error) {

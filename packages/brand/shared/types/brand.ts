@@ -1788,6 +1788,13 @@ export interface BrandCheckCorrection {
   decisionNote: string
   decidedAt: string
   createdAt: string
+  /**
+   * Wann Konto oder Marke hinter dem Check gelöscht wurden (brand-026) —
+   * leer, wenn nicht. Der Betreiber sieht den Check weiterhin (er ist der
+   * Einzige, der ihn in der Frist von Hand zurückholen kann), aber er sieht,
+   * dass er für alle anderen verschwunden ist und keine Korrektur mehr annimmt.
+   */
+  checkErasedAt: string
 }
 
 export interface BrandCheckCorrectionListResponse {

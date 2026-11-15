@@ -1,6 +1,7 @@
 import type { Models } from 'node-appwrite'
 import { Query } from 'node-appwrite'
 import type { BrandProfileDeleteResponse } from '../../../../../shared/types/brand'
+import { markBrandChecksErased } from '../../../../utils/brandCheckErasure'
 import { BRAND_FINDINGS_TABLE } from '../../../../utils/brandFindingsStore'
 import { purgeBrandInspiration } from '../../../../utils/brandInspirationStore'
 import { purgeBrandMarkDrafts } from '../../../../utils/brandMarkDrafts'
@@ -75,6 +76,34 @@ export default defineEventHandler(async (event): Promise<BrandProfileDeleteRespo
       }
     }
     return removed
+  }
+
+  /**
+   * DIE CHECKS DER MARKE (brand-026, SEC-015) — ZUERST, und sie werden nur
+   * MARKIERT: ab jetzt sieht sie niemand mehr, nach 90 Tagen räumt ein Lauf
+   * sie ab (Davids Entscheidung, `brandCheckErasure.ts`). Gefunden über
+   * `profileId` und den Dokument-Schlüssel `doc:<profileId>` — beides geht nur
+   * mit der Profil-Id, also vor dem Kopf.
+   *
+   * Scheitert es, bleibt ALLES stehen und die Antwort ist dieselbe 502 wie
+   * bei einem scheiternden Mitläufer: ein „gelöscht" mit weiter sichtbaren
+   * Ergebnissen wäre die falsche Meldung. Ein zweiter Versuch ist gefahrlos —
+   * ein schon gesetzter Zeitpunkt wird nicht verschoben.
+   */
+  let checksErased: number
+  try {
+    checksErased = await markBrandChecksErased(event, { profileId })
+  }
+  catch (error) {
+    logEvent('warn', 'brand.profile_checks_erase_failed', {
+      profileId,
+      message: error instanceof Error ? error.message : 'unknown',
+    })
+    throw createError({
+      status: 502,
+      statusText: 'Brand profile could not be deleted completely',
+      data: { code: 'profile_delete_incomplete' },
+    })
   }
 
   const steps = await purge(BRAND_STEPS_TABLE)
@@ -155,7 +184,7 @@ export default defineEventHandler(async (event): Promise<BrandProfileDeleteRespo
   // Ereignis über ein gelöschtes Profil wäre der einzige Rest, der bliebe.
   logEvent('info', 'brand.profile_deleted', {
     profileId, steps, messages, shares, events, findings, publications, publicationReports,
-    inspiration, markDrafts, ...cascades,
+    inspiration, markDrafts, checksErased, ...cascades,
   })
 
   return { deleted: true, removed: { steps, messages, shares, events, findings } }

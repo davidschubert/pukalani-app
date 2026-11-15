@@ -3720,7 +3720,8 @@
         "sessions": "Sessions",
         "notifications": "Notifications",
         "data": "Data"
-      }
+      },
+      "deleteNotice": "Your brands and everything in them are deleted right away. From then on, nobody can see your check results; after 90 days they are deleted for good. Results about public websites stay after that, with no link to you."
     }
   }
 }

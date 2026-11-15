@@ -58,12 +58,15 @@ import {
  * (4) Das Schema deckelt JEDES Feld — eine offene Schreibroute ohne Längen ist
  *     ein Speicher-Angebot.
  *
- * ── PERSONENBEZOGENE DATEN OHNE KONTO — BEKANNTE GRENZE ───────────────────
+ * ── PERSONENBEZOGENE DATEN: MIT KONTO ERFASST, OHNE KONTO NOCH OFFEN ─────
  * Eine Zeile trägt eine Adresse und optional Name/Firma, aber keine `userId`;
- * sie entsteht, bevor es ein Konto gibt. `registerUserDataContributor`
- * (core-Vertrag für GDPR-Export und -Löschung) greift deshalb NICHT — er hängt
- * an einer userId, die es hier nicht gibt. Löschung auf Zuruf ist heute ein
- * Handgriff in der Appwrite-Konsole (Zeile über `emailLower`).
+ * sie entsteht, bevor es ein Konto gibt. Seit SEC-015 findet der
+ * GDPR-Contributor des Layers (`brandUserData.ts`) sie trotzdem — über die
+ * ADRESSE des Kontos (`emailLower`): Export und Konto-Löschung nehmen den
+ * Eintrag mit. Ohne Konto gibt es weiterhin KEINE Frist und keinen Weg der
+ * Person selbst: ein Eintrag, zu dem nie ein Konto entsteht, bleibt liegen,
+ * bis ihn jemand von Hand entfernt. Das ist ein offener Punkt, keine
+ * Entscheidung.
  * UNBESTÄTIGTE ZEILEN BLEIBEN LIEGEN: es gibt bewusst KEINEN Sweep, der
  * `pending` nach Fristablauf wegräumt — das wäre ein zweiter Schreibweg auf
  * eine Tabelle, die heute niemand beobachtet, und der Nutzen (ein paar tote
