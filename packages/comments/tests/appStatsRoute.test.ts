@@ -16,14 +16,15 @@ import { createMicrocache } from '../../core/server/utils/microcache'
  *  3. Eine zuvor ohne Mandant gecachte Antwort erreicht keinen Mandanten-Host.
  *
  * WARUM DER TEST HIER LIEGT: `apps/comments` hat keinen eigenen Test-Lauf
- * (kein vitest im Paket), und sie ist die Test-App DIESES Layers — hier läuft
- * der Test in `pnpm -r test` mit. Den Handler lädt er über den relativen Pfad.
+ * (kein vitest im Paket). Die Route dort ist ein Einzeiler; die Logik liegt
+ * als `readProjectStats` im Layer und wird HIER geladen. Eine Datei unter
+ * `apps/` lädt der Test bewusst nicht: deren tsconfig zeigt auf `.nuxt/`,
+ * das es im Job `test` der CI nicht gibt (so beim ersten Anlauf rot).
  */
 
 const listRows = vi.fn(async () => ({ total: 7, rows: [] }))
 const usersList = vi.fn(async () => ({ total: 3, users: [] }))
 
-vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('createMicrocache', createMicrocache)
 vi.stubGlobal('useTenant', useTenant)
 vi.stubGlobal('tenantCacheScope', tenantCacheScope)
@@ -32,8 +33,7 @@ vi.stubGlobal('createAdminClient', () => ({ tablesDB: { listRows }, users: { lis
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
 
-type Handler = (event: H3Event) => Promise<{ comments: number, members: number }>
-const { default: handler } = await import('../../../apps/comments/server/api/stats.get') as unknown as { default: Handler }
+const { readProjectStats: handler } = await import('../server/utils/projectStats')
 
 function eventFor(tenant: TenantContext | null): H3Event {
   return { context: tenant ? { tenant } : {} } as unknown as H3Event
