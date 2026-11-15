@@ -30,6 +30,121 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P21 — Migrationen: Skripte prüfen ihr Ziel, jede Seite meldet den Datenbank-Stand ✅ 2026-11-16
+
+**Was.** Viertes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Findings OPS-002 und OPS-008), drei Pull Requests: 183 (Merge
+`6b3812cf`), 184 (Merge `c56711c7`) und 186 (Merge `71fc616c`). Davids
+Entscheidungen vom 2026-11-12: „Skripte, die in eine Datenbank schreiben,
+prüfen vorher, ob es die richtige ist" und „Die Plattform zeigt an, ob die
+Datenbank zum ausgerollten Programm passt, und der tägliche Wächter prüft es",
+dazu Ja zum täglichen Kontroll-Lauf mit nur lesenden Schlüsseln. Am
+2026-11-15 per Klick: die vier Schlüssel legt Claude im Browser an, Nachsehen
+auf Production (nur lesen), Probealarm.
+
+**Teil 1 — Ziel prüfen (OPS-002).** Gemessen vor dem Bau: 149 Skripte, 105
+können schreiben, DREI prüften ihr Ziel; alle 210 Migrationen bauen ihren
+Zugang selbst, eine gemeinsame Stelle gab es nicht. Am 2026-08-31 hatte ein
+Lauf mit der falschen Env-Datei 18 fremde Tabellen im Projekt `branding`
+angelegt.
+
+- **Eine Regel für alle** (`scripts/lib/target.mjs`): lokaler Endpunkt läuft
+  durch, jeder andere nur mit ausdrücklicher Bestätigung.
+- **Der Runner** (`scripts/migrate.mjs`): jede App nennt in `site.manifest.ts`
+  ihre erlaubten Projekte (`appwriteProjects`); zeigt die Env-Datei auf ein
+  anderes, bricht er ab und nennt beide. Ein nicht ladbares Manifest ist ein
+  Abbruch (vorher: Warnung, dann alle Layer). `--env-file` ohne `--app` gibt
+  es nicht mehr. Gegen einen entfernten Endpunkt braucht es `--prod`.
+  `--dry-run` zeigt App, Projekt, Endpunkt und die Dateien und schreibt
+  nichts. `--only <layer>-<NNN>` fährt genau eine Migration.
+- **Jede Migration** beginnt mit dem Import der Ziel-Prüfung. Direkt gestartet
+  läuft sie lokal weiter, gegen Production scheitert sie ohne Bestätigung.
+  Das war nötig, weil der Direktaufruf der Datei bis dahin der übliche Weg auf
+  Production war — eine Prüfung nur im Runner hätte genau ihn nicht gedeckt.
+- **Jedes andere Skript mit Schlüssel** verlangt gegen einen entfernten
+  Endpunkt `PUKALANI_TARGET_CONFIRM=<Projekt-Id>`: wer es setzt, nennt das
+  gemeinte Projekt. `ensure-prices` verlangt bei einem Live-Schlüssel `--live`.
+- **Wächter:** `packages/core/tests/scriptTargetGuard.test.ts` — jede Datei,
+  die einen Schlüssel in die Hand nimmt, ruft die Prüfung oder steht mit Grund
+  auf der Ausnahmeliste; eine veraltete Ausnahme wird ebenfalls rot.
+
+**Der neue Aufruf.** Lokal unverändert `pnpm migrate --app <app>`. Production:
+
+```bash
+pnpm migrate --app branding --env ~/.appwrite-secrets/migrations/branding.env --only brand-026 --dry-run
+pnpm migrate --app branding --env ~/.appwrite-secrets/migrations/branding.env --only brand-026 --prod
+```
+
+**Teil 2 — Stand anzeigen (OPS-008).** Jeder Layer mit Migrationen nennt in
+`product.manifest.ts` eine Probe (`schema.probe`): eine Tabelle oder Spalte,
+die es nach seiner jüngsten ablesbaren Migration geben muss. Die App fragt die
+Proben aller einkompilierten Layer mit ihrem eigenen Zugang ab, und
+`/api/health` meldet neben `ok` das Feld `schema: { state, expected, found }`
+(`ok`, `behind`, `unknown`). Wer es auswertet:
+
+- der **Halbstunden-Wächter** (`verify-health.mjs`): rot bei `behind`, bei
+  anhaltendem `unknown` und wenn das Feld fehlt;
+- die **Probe des Deploys**: bei `behind` werden alle Apps ausgeliefert, der
+  Lauf endet rot. Aufgehalten wird nichts;
+- der **tägliche Abgleich** (`verify-schema-parity.mjs --ci`): liest je
+  Projekt Tabellen und Spalten und nennt die fehlende Migration. Dafür liegen
+  vier Schlüssel `watch-schema-readonly` in der Umgebung `production-watch`,
+  jeder nur mit `tables.read` und `columns.read`.
+
+**Warum kein Zeiger.** Das Finding schlug eine Tabelle `schema_version` vor,
+die der Runner am Ende setzt. Verworfen: Production-Migrationen laufen
+einzeln von Hand, ein Zeiger hätte dann gelogen (Dauer-Fehlalarm oder ein
+grüner Zeiger über einer fehlenden Spalte); er hätte eine neue Tabelle in
+vier Projekten und eine Migration vor dem Merge gebraucht; und der Code, der
+die Abweichung meldet, hinge selbst an dieser Tabelle. Die Probe liest, was
+wirklich da ist, mit dem Zugang, den die App ohnehin hat — ohne jeden Eingriff
+auf Production.
+
+**Beweise.** Lokal: falsche Env-Datei ⇒ Abbruch mit beiden Projekten, passende
+⇒ läuft; `--prod` gegen lokal ⇒ Abbruch; Migration direkt gegen einen
+entfernten Endpunkt ⇒ Abbruch. Eine Wegwerf-Migration zurückgehalten ⇒ die
+Seite meldet `behind` (3 von 4), `ok` bleibt `true`, im Server-Log steht
+`schema.behind` mit der Migration, der Wächter-Schritt endet mit Exit 1; nach
+der Migration über den Runner nach 24 Sekunden wieder `ok`, Exit 0. Auf
+Production (nur gelesen): alle 30 Proben vorhanden. Live auf acht Hosts:
+Build `c56711c7`, überall `ok:true`, die sechs Hosts mit Appwrite melden
+`schema.state: ok` (11/11, 11/11, 11/11, 7/7, 4/4, 8/8); Landing und Hilfe
+haben keine Datenbank und kein Feld. Wächter-Lauf von Hand mit dem neuen
+täglichen Schritt grün (Lauf 43776935367), Probealarm rot wie gewollt (Lauf
+43777080145, Issue 188 „Probealarm", Mail-Schritt erfolgreich), Aufräum-Lauf
+danach grün.
+
+**Nicht gebaut, bewusst.** Ein Tor, das das Ausliefern aufhält, solange die
+Datenbank zurückhängt, und Migrationen, die von selbst laufen — beides wäre
+eine neue Entscheidung (OPEN-ITEMS „MG1"). Ein voller Runner-Lauf baut im
+`system`-Layer weiter um (OPEN-ITEMS „PB1" c); für eine einzelne Migration
+gibt es jetzt `--only`.
+
+**Gelernt:** (1) **Vor dem Bauen fragen, welchen Weg die Leute wirklich
+nehmen.** Das Finding nannte den Runner; gemessen lief auf Production fast
+jede Migration am Runner vorbei, als Datei direkt. Eine Sicherung im Runner
+allein hätte den Hauptweg offen gelassen. (2) **Ein Zeiger ist eine
+Behauptung, eine Probe ist eine Messung.** „Der Runner lief bis 026" sagt
+nichts darüber, ob die Spalte da ist. Wo der wirkliche Zustand mit dem
+vorhandenen Zugang lesbar ist, schlägt das Lesen jedes Register — und spart
+die Migration, die das Register gebraucht hätte. (3) **Nicht pnpm frisst
+`--env-file`, sondern Node.** Die Diagnose vom Oktober stand in vier
+Notizen; Node wertet die Angabe an jeder Stelle der Kommandozeile aus, bevor
+das Skript sie sieht. Die Abhilfe ist ein zweiter Name (`--env`). (4) **Ein
+neues Feld erst zeigen, dann auswerten.** Der Wächter verlangt das Feld;
+wäre er mit der Anzeige in einem Zug auf `main` gegangen, hätte der nächste
+Halbstunden-Lauf vor dem Ausliefern einen Alarm geöffnet. Deshalb zwei Pull
+Requests, der zweite als Entwurf mit der Vorbedingung im Titel. (5) **Ein
+eigener Prüf-Lauf kann einen fremden Test kippen.** Nach dem ersten Merge war
+`rollbackScript.test.ts` auf `main` einmal rot (leere Ausgabe, im Pull
+Request grün, lokal nicht nachstellbar), und das Ausliefern startete nicht.
+Wer Tests mitbringt, die viele Prozesse starten, sieht nach dem Merge auf die
+Prüfungen von `main`, nicht nur auf die des Pull Requests. (6) **`git checkout
+-- datei` wirft auch fremde, noch nicht committete Arbeit weg.** Beim
+Aufräumen der lokalen Probe ging so eine Zeile verloren, die ein Bau-Schritt
+kurz vorher geschrieben hatte; sie fiel nur auf, weil die Datei danach
+gelesen wurde. Zurücknehmen heißt: die eigene Änderung von Hand zurückdrehen.
+
 ### GA1 Handgriffe — OpenRouter-Schalter, Anmelde-Regeln auf Production, Klick-Proben ✅ 2026-11-15
 
 Drei Dinge, die nach den Paketen des Gesamtaudits als Handgriffe offen waren.

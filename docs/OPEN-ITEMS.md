@@ -39,7 +39,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 21 · SC2 | **Den Stripe-Test-Treiber auf die heutigen Projekte umstellen.** `a2a-checkout-driver.mjs` spricht noch die gelöschten Projekte `pool`/`control`, das Cookie `a_session_pool` und Schlüsseldateien, die es nicht mehr gibt — gegen Prod läuft er so nicht. Umstellen auf `account`/`admin` und über Env auch lokal fahrbar machen (das Rezept des lokalen SC1-Laufs steht im Runbook). | Niedrig | S | Nein (Prod-Probe nur mit Davids Ja) | [STRIPE-TEST-WALKTHROUGH.md § Durchlauf 2026-11-12](runbooks/STRIPE-TEST-WALKTHROUGH.md) |
 | 22 · AB1 | **Anmelde-Bremse: Nacharbeiten.** Die Bremse ist seit 2026-11-13 live (COMPLETE „GA1 P02"). Offen: (a) **Klick-Probe auf Live** mit einem eigenen Konto, (b) **Redis-Einstellung für branding.supply** und die Variable in die Pflichtliste des Wächters, (c) Uploads prüfen die Größe vor dem Einlesen, (d) zwei Fehlerwege an Anmeldung und Reset sauber trennen, (e) Mails je Empfänger begrenzen, (f) drei Kleinigkeiten. | Mittel | S je Teil | **Ja: (a) selbst, (b) Server-Einstellung** | [Einzelheiten](#ab1) |
 | 24 · KE3 | **Profilbild ohne Speichern bleibt als Datei liegen, ohne Protokoll-Eintrag.** In der Oberfläche lädt das Formular erst beim Speichern hoch; scheitert das Speichern danach (z. B. Telefonnummer schon vergeben) oder ruft jemand die Upload-Route direkt, liegt die Datei im Bucket `avatars` und ist per Adresse lesbar, bis das Konto gelöscht wird (dann räumt BE-001 auf). Kein Leck, aber Ablage-Müll. Entscheiden: Datei bei gescheitertem Speichern wieder löschen, einen Aufräum-Lauf bauen oder so lassen. | Niedrig | S | **Ja** — Entscheidung | `packages/core/app/components/user/UserProfileForm.vue` · `packages/core/server/api/storage/[bucket]/index.post.ts` |
-| 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) der Migrations-Runner baut bei jedem Lauf an drei Tabellen um, (d) vier Runbooks nennen einen Befehl, der nicht mehr geht, (e) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
+| 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) ein VOLLER Lauf des Migrations-Runners baut an drei Tabellen um (eine einzelne Migration läuft seit 2026-11-16 mit `--only`), (d) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
 | 26 · P29 | **Anmelde-Regeln auf Production: Reste.** Die Regeln sind seit 2026-11-15 in allen vier Projekten eingeschaltet und zurückgelesen (COMPLETE „GA1 Handgriffe"). Offen: `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server (bis dahin lehnt der Abgleich mit Datenlecks nichts ab), die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten, je Projekt ein Schlüssel mit `policies`-Recht für den Skript-Lauf. | Mittel | S | Ja (Server-Einstellung und Schlüssel ändern Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
 | 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Die Klick-Probe auf Live ist am 2026-11-15 gemacht (COMPLETE „GA1 Handgriffe"). Offen: (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
 | 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live, zweiter Teil** (ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen; das Schreiben als Mitglied ist am 2026-11-15 geklickt), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
@@ -53,6 +53,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 36 · AR1 | **Aufräumen: Nacharbeiten.** Altlasten sind seit 2026-11-15 weg: Versuchsordner, erledigte Umzugs-Werkzeuge, die alte Changelog-Automatik; es gibt ein Start-Skript statt fünf, und der Server bekommt nur noch die Dateien, die er braucht (COMPLETE „GA1 P26"). Offen: (a) **die Adresse `changelog.pukalani.app` bei Cloudflare löschen**, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) zwei erledigte Umzugs-Anleitungen ins Archiv?, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare, (c) entscheiden** | [Einzelheiten](#ar1) |
 | 37 · WH1 | **Gelöschte Marke zurückholen (Papierkorb).** Auf branding.supply fehlt der Knopf „Marke löschen"; kommt er, verschwindet die Marke sofort überall, liegt 90 Tage unter „Gelöschte Marken" zum Selbst-Zurückholen und wird danach endgültig gelöscht. Davids Entscheidungen vom 2026-11-15 stehen im Plan. **Konten** bleiben vorerst nicht zurückholbar; das wird mit dem Pukalani-Konto (PK1) entschieden. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
 | 38 · SR1 | **Kleine Sicherheitsriegel: Nacharbeiten.** Sieben kleine Korrekturen sind seit 2026-11-15 live (COMPLETE „GA1 P25"): Bot-Prüfung und eine Grenze je Empfänger an den öffentlichen Formularen von branding.supply, ein eigenes Geheimnis für Abmelde-Links, Links nur mit http(s), strengere Prüfung gespeicherter Zeichen-Grafiken, Einladungen nur mit bestätigter Adresse. Offen: (a) **Klick-Probe auf Live** (beide Formulare), (b) **Datenschutztext** nennt die Bot-Prüfung an zwei Formularen noch nicht, (c) dieselbe Grenze für Code- und Reset-Mails (gehört zu AB1 e), (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) einmal klicken, (b) Text freigeben** | [Einzelheiten](#sr1) |
+| 39 · MG1 | **Migrationen: Nacharbeiten.** Seit 2026-11-16 prüfen schreibende Skripte ihr Ziel, und jede Seite meldet, ob die Datenbank zum Programm passt (COMPLETE „GA1 P21"). Offen: (a) ein **Tor, das das Ausliefern aufhält**, solange die Datenbank zurückhängt, wäre eine neue Entscheidung, (b) ein Test des Rückweg-Skripts war auf `main` **einmal ohne Grund rot**, (c) vier Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) entscheiden** | [Einzelheiten](#mg1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -576,27 +577,18 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Bilder), in `admin`, `portfolio` und `branding` nicht. Namen angleichen;
   das Leserecht ergänzen oder bewusst weglassen (Änderung am Schlüssel, Davids
   Ja).
-- **(c) Der Runner baut bei jedem Lauf um.** `scripts/migrate.mjs` führt kein
-  Register und fährt jede Migration jedes Mal. Im Layer `system` legen ältere
-  Migrationen Spalten an, die spätere wieder entfernen (`app_config.features`,
-  `app_config.entitlements`, `activities.tenantId`, `notifications.tenantId`
-  samt Index) — bei JEDEM Lauf, lokal in allen vier Projekten gesehen. Auf
-  Production baut damit jede neue `system`-Migration kurz an drei Tabellen um.
-  Abhilfe: die Anlege-Migrationen prüfen, ob eine spätere die Spalte entfernt
-  hat, oder ein Register. Passt zum Audit-Paket P21 (Migrationen), steht dort
-  aber nicht im Zuschnitt. Bis dahin: eine einzeln freigegebene Migration als
-  Datei direkt fahren, nicht über den Runner (so bei `system-039` geschehen).
-- **(d) Vier Runbooks nennen einen Befehl, der nicht mehr geht.**
-  `pnpm migrate … --env-file <pfad>` scheitert seit pnpm 10.29 (pnpm wertet
-  die Option selbst aus, Exit 9). So steht es noch in
-  [ADMIN-PROJEKT-CUTOVER.md](runbooks/ADMIN-PROJEKT-CUTOVER.md),
-  [CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md),
-  [DEPLOYMENT.md](runbooks/DEPLOYMENT.md) und
-  [MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md). Die
-  richtige Form steht in
-  [BRANDING-SUPPLY-SETUP.md](runbooks/BRANDING-SUPPLY-SETUP.md):
-  `node --experimental-strip-types scripts/migrate.mjs --app <app> --env-file <pfad>`.
-- **(e) Kleinigkeiten.** Die Upload-Route fängt einen Fehler von Appwrite nicht
+- **(c) Ein voller Lauf des Runners baut um.** `scripts/migrate.mjs` führt kein
+  Register und fährt ohne `--only` jede Migration der App jedes Mal. Im Layer
+  `system` legen ältere Migrationen Spalten an, die spätere wieder entfernen
+  (`app_config.features`, `app_config.entitlements`, `activities.tenantId`,
+  `notifications.tenantId` samt Index) — bei JEDEM vollen Lauf, lokal in allen
+  vier Projekten gesehen. Seit GA1 P21 (2026-11-16) gibt es den geprüften Weg
+  für EINE Migration: `pnpm migrate --app <app> --env <datei> --only
+  <layer>-<NNN> --prod`; damit baut ein Production-Lauf nichts mehr um. Offen
+  bleibt der volle Lauf (neues Projekt, lokaler Spiegel). Abhilfe: die
+  Anlege-Migrationen prüfen, ob eine spätere die Spalte entfernt hat, oder ein
+  Register.
+- **(d) Kleinigkeiten.** Die Upload-Route fängt einen Fehler von Appwrite nicht
   ab; er wird zu einer allgemeinen 500 statt zu einer verständlichen Meldung
   (`packages/core/server/api/storage/[bucket]/index.post.ts`). In
   `.claude/rules/tests.md` fehlt der Hinweis, dass `platform.pukalani.app` nur
@@ -807,6 +799,36 @@ NICHT hier.
   behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
   gehören zu BK1 d). Der lokale Lauf der Playwright-Suite braucht einen
   Browser-Download.
+
+<a id="mg1"></a>
+
+**MG1 — Migrationen: Nacharbeiten (aus dem Gesamtaudit, Paket P21).**
+
+- **(a) Ein Tor vor dem Ausliefern.** Heute SAGT die Plattform, wenn Programm
+  vor seiner Migration live geht: `/api/health` meldet `schema: behind`, der
+  Deploy-Lauf endet rot, der Halbstunden-Wächter öffnet ein Issue. Aufgehalten
+  wird nichts — der neue Stand steht dann schon. Möglich wäre ein Tor, das
+  VOR dem Ausliefern mit den lesenden Schlüsseln nachsieht, ob die Proben des
+  neuen Stands in der Datenbank da sind, und sonst nicht ausliefert. Das ist
+  eine eigene Entscheidung (ein Fehlalarm hielte jedes Ausliefern auf, und die
+  Schlüssel lägen dann auch in der Umgebung des Ausliefern) und bewusst nicht
+  gebaut.
+- **(b) Ein fremder Test war einmal rot.** Nach dem ersten Merge von P21
+  scheiterte auf `main` `packages/core/tests/rollbackScript.test.ts` („legt den
+  Verweis um …") mit leerer Ausgabe; im Pull Request und im zweiten Versuch
+  war er grün, lokal in 22 Läufen nicht nachstellbar. Das Ausliefern hat
+  deshalb einmal nicht gestartet. Verdacht: Last auf dem Runner (P21 bringt
+  Tests mit, die viele Prozesse starten). Kommt es wieder: Ausgabe UND
+  Exit-Code des Skripts im Test mit ausgeben, dann die Ursache suchen. Gehört
+  zu [RW1](#rw1).
+- **(c) Kleinigkeiten.** `packages/control/scripts/a2a-checkout-driver.mjs`
+  nennt das Projekt `control` fest, auf Production heißt es seit AH-4c
+  `admin` — das Skript ist vermutlich veraltet. Die `migrate`-Skripte in den
+  `package.json` der Layer rufen den Runner ohne `--app` und scheitern (schon
+  vorher). Die Probe je Layer sieht nur Tabellen und Spalten, keine Indizes,
+  Rechte oder Daten, und je Layer nur die jüngste ablesbare Stelle; die volle
+  Spaltenliste als Soll gehört zu Paket P20 (Wächter erzeugen ihre Listen
+  selbst). Die lesenden Schlüssel haben kein Ablaufdatum.
 
 <a id="sr1"></a>
 
