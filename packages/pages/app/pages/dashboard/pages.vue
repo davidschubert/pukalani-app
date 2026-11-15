@@ -371,7 +371,10 @@ async function translateWithAi() {
       color: 'success',
     })
   }
-  catch {
+  catch (error) {
+    // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
+    // Fehler-Leser (P17) — eine zweite Meldung hier wäre doppelt.
+    if (isAiEndpointUnavailable(error)) return
     toast.add({
       title: t('pages.admin.translateFailed'),
       description: t('pages.admin.translateFailedHint'),

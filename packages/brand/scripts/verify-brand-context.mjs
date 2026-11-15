@@ -189,8 +189,14 @@ async function complete(system, user, { json = false } = {}) {
       ],
       max_tokens: 800,
       temperature: 0.4,
-      // Dieselben Bedingungen wie jeder Brand-Aufruf (BRAND_PROVIDER_ROUTING).
-      provider: { zdr: true, data_collection: 'deny', allow_fallbacks: false },
+      // Dieselben Bedingungen wie jeder Text-Aufruf (`core/shared/aiProviderRouting.ts`),
+      // wörtlich, weil dieses Skript ohne Nitro läuft; `pnpm check:ai-routing` hält sie fest.
+      provider: {
+        zdr: true,
+        data_collection: 'deny',
+        only: ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
+        allow_fallbacks: false,
+      },
       ...(json ? { response_format: { type: 'json_object' } } : {}),
     }),
   })

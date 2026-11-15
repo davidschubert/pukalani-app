@@ -16,12 +16,51 @@ paths:
 - KI: aiComplete()/aiCompleteJson() (core/server/utils/aiComplete.ts) = EIN
   Transport für OpenAI-kompatible APIs (Default OpenRouter). Gate pukalani.ai
   (enabled/model/baseUrl, Core-Default aus) + server-only NUXT_AI_KEY;
-  Transport ist policy-frei — Gates + Antwort-Klemmung beim Konsumenten.
+  Gates + Antwort-Klemmung beim Konsumenten — die Datenschutz-Bindung und das
+  Protokoll trägt seit P17 der Transport selbst (nächster Punkt).
   Laufzeit-Override-Kette: app_config.ticketsAiModel > app_config.aiModel
   (system-016, Admin-Config-Seite, getEffectiveAiConfig) > pukalani.tickets.ai >
   pukalani.ai. Konsumenten: Ticket-Triage, Moderations-Assist (Kommentare
   /api/admin/comments/:id/assist + Posts /api/posts/:id/assist — advisory,
   Mensch entscheidet; UI-Flag isAiAvailable()).
+- BINDUNG ALS VOREINSTELLUNG (SEC-005, seit 2026-11-15 — Davids Entscheidung
+  „‚keine Speicherung, Europa' gilt für jeden KI-Aufruf von selbst"): ALLE
+  fünf Transporte senden `zdr: true`, `data_collection: 'deny'` und
+  `allow_fallbacks: false` FEST — keine Aufrufstelle kann sie abschalten. Der
+  TEXT-Weg (`aiComplete*`, `aiCompleteStream`) setzt dazu ohne Angabe den Ort
+  selbst: die zwei EU-Endpunkte aus `core/shared/aiProviderRouting.ts`
+  (`AI_TEXT_PROVIDER_ROUTING`, die EINE Quelle; `BRAND_PROVIDER_ROUTING` ist
+  dieselbe Konstante). Eine neue Text-Aufrufstelle gibt also NICHTS mit. Bild,
+  Vision und Video haben keinen gemeinsamen Ort (je Modell verschieden): dort
+  ist `providerRouting.only` PFLICHT, fehlt es oder ist es leer, geht nichts
+  raus (500 `AI routing invalid`). Von `providerRouting` wirkt nur noch `only`,
+  und das nur als BENANNTE Konstante: `pnpm check:ai-routing` (läuft mit
+  `lint:scripts`) listet jede Aufrufstelle mit Transport, Bindung und Orten und
+  wird rot bei einem losen Objekt, einer unbekannten Konstante, einem Ort
+  außerhalb der EU ohne eingetragene Ausnahme (heute genau eine:
+  Bild-Erzeugen, s. u.) und bei jedem `chat/completions` am Transport vorbei.
+  Neue Konstante ⇒ in `ROUTING_CONSTANTS` des Wächters eintragen. KEIN
+  ENDPUNKT UNTER DER BINDUNG SCHEITERT LAUT: antwortet der Vermittler 404,
+  wirft der Transport 503 mit `data.code: 'ai_endpoint_unavailable'` — kein
+  Wechsel auf ein anderes Modell. Den Hinweis dazu zeigt der eine zentrale
+  Leser (`community-suspended-notice.client.ts`); lokale „fehlgeschlagen"-
+  Meldungen schweigen dann (`isAiEndpointUnavailable`). Preis: der Orts-Pin
+  kostet rund 10 %, und er ist eine Bedingung an die MODELLWAHL — ein Modell
+  ohne die zwei Endpunkte (auch ein per Konsole eingetragenes
+  `app_config.aiModel`) läuft nicht langsamer, sondern gar nicht;
+  `pnpm ops:ai-models` prüft die konfigurierten Slugs täglich, seit P17 auch
+  `ticketsAiModel`. Die Basis-Adresse ist OpenRouter; ein anderer Vermittler
+  kennt den `provider`-Block nicht und müsste eigens gebaut werden.
+- PROTOKOLL NUR MIT KENNUNGEN (SEC-017, seit 2026-11-15): kein Transport
+  schreibt Antworttext, Fehlerrumpf des Anbieters oder ein rohes Fehlerobjekt
+  ins Log (ein `SyntaxError` aus `res.json()` zitiert die Antwort). Jede Zeile
+  kommt aus `aiLogLine` (`core/server/utils/aiLog.ts`): feste Art, dazu nur
+  Zahlen und kurze Kennungen — Status, `tag` (`error.code`/`type` des
+  Anbieters), Modell, `ms`, `finish`, `chars`, Tokens, `run` (Kennung je
+  Aufruf) und `gen` (Generation-Id des Vermittlers). Alles andere wird zu `?`.
+  Einen Schalter, der den Rumpf wieder einschaltet, gibt es bewusst nicht.
+  Konsumenten loggen weiter `message` des geworfenen Fehlers — das ist der
+  feste `statusText` des Transports. Wer dort etwas Neues wirft, hält ihn fest.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,

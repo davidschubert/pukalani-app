@@ -45,8 +45,9 @@ export const MODEL_FIELDS = [
 export const MODEL_LIST_FIELDS = ['outsideViewModels']
 
 /**
- * Die zwei EU-Endpunkte des Textweges — `BRAND_PROVIDER_ROUTING.only`
- * (Davids Entscheidung 2026-11-09, AI1).
+ * Die zwei EU-Endpunkte des Textweges — `AI_TEXT_EU_ENDPOINTS` im Core
+ * (Davids Entscheidung 2026-11-09, AI1; seit P17 die Voreinstellung jedes
+ * Textaufrufs).
  */
 export const TEXT_EU_ENDPOINTS = ['amazon-bedrock/eu-west-1', 'google-vertex/europe']
 
@@ -72,11 +73,11 @@ export const TEXT_EU_ENDPOINTS = ['amazon-bedrock/eu-west-1', 'google-vertex/eur
  *   Für sie genügt „irgendwo ZDR" nicht mehr: ohne einen dieser zwei
  *   Endpunkte antwortet jeder Aufruf 404.
  *
- * NICHT HIER DRIN steht `ticketsAiModel` — die Ticket-Triage und der
- * Moderations-Assist geben GAR KEIN `providerRouting` mit (nachgeprüft
- * 2026-11-09), für sie ist also auch kein Ort verlangt. Ein Feld hier
- * einzutragen, dessen Aufrufer die Konstante nicht benutzt, würde einen
- * Zwang erfinden, den der Code nicht kennt.
+ * SEIT P17 (2026-11-15) AUCH `ticketsAiModel`: der Text-Transport sendet die
+ * EU-Bindung selbst, also verlangt JEDER Textaufruf einen dieser Endpunkte —
+ * auch die Ticket-Triage und der Moderations-Assist, die keine Konstante
+ * mitgeben. Welche Aufrufstelle welche Bindung trägt, listet
+ * `pnpm check:ai-routing`.
  *
  * GEBUNDEN an `brandProviderRouting.ts` durch
  * `packages/brand/tests/aiModelEndpoints.test.ts`; dass jeder Aufrufer die
@@ -91,6 +92,7 @@ export const REQUIRED_ENDPOINT = {
   extractModel: TEXT_EU_ENDPOINTS,
   reportModel: TEXT_EU_ENDPOINTS,
   outsideViewModels: TEXT_EU_ENDPOINTS,
+  ticketsAiModel: TEXT_EU_ENDPOINTS,
 }
 
 /**

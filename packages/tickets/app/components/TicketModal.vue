@@ -451,7 +451,13 @@ async function runTriage() {
     emit('refresh')
     toast.add({ id: 'ticket-triage', title: t('tickets.triage.done'), color: 'success', icon: 'i-ph-sparkle' })
   }
-  catch {
+  catch (error) {
+    // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
+    // Fehler-Leser (P17); hier nur den „läuft"-Toast wegräumen.
+    if (isAiEndpointUnavailable(error)) {
+      toast.remove('ticket-triage')
+      return
+    }
     toast.add({ id: 'ticket-triage', title: t('tickets.triage.failed'), description: t('tickets.triage.failedHint'), color: 'error' })
   }
   finally {
