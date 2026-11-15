@@ -3134,7 +3134,7 @@ Spamtext, `email` = eine fremde Adresse — und meldete sich danach per
 der Verifizierungs-Mail, unser Resend-Konto war damit ein Spam-Relais: 15
 Probeläufe am 2026-10-25 (drei IPs, darunter ein verifiziertes Testkonto und
 ein Versuch über `PUT /api/auth/profile` + `POST /api/auth/verification`),
-209 Mails in der Nacht zum 2026-10-27 von einer IP (138.124.33.231). Der
+209 Mails in der Nacht zum 2026-10-27 von einer IP (198.51.100.23, Beispiel-Adresse). Der
 Takt lag knapp unter unserem Limit von 5/min je IP — das einzige Fenster
 der Middleware war eine Minute. Appwrites eigene Abuse-Limits greifen für
 Admin-Key-Aufrufe nicht (der Kommentar in `05.rate-limit.ts` stimmt).
@@ -3379,7 +3379,7 @@ prod (Skript `ops/appwrite-upgrade-2.6.sh`, Lauf durch die Elternsitzung)
 Werkzeug-Aufruf bis Beweise **71 s**, Dump 22,2 MB / 800 Tabellen, Migration
 16,6 s, alle zwölf Hosts `/api/health ok:true`, Zertifikat bis 2027-01-22,
 `verify-tls` 6/6, `schema-parity` 69/42/41/39, OTP-Mail nach Leerlauf 1,61 s
-`success`, Session-IP = Davids Mac (72.234.42.6, Hawaii), nicht der
+`success`, Session-IP = Davids Mac (203.0.113.6, Beispiel-Adresse), nicht der
 Web-Server; CI-E2E auf der 2.6.1-Wegwerf-Instanz 16/16, F19 9/9. Runbook: [APPWRITE-2-6-UPGRADE.md](runbooks/APPWRITE-2-6-UPGRADE.md).
 
 **Gelernt:** (1) Seit 2.4 ist die Client-IP der RECHTESTE nicht vertraute

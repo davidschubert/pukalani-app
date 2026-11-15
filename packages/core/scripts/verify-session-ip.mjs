@@ -149,9 +149,11 @@ else {
     `route=${current1?.region}, datei=${wantGoogle.region}`)
 
   // Zweite Adresse, damit nicht ein einzelner Zufallstreffer den Beweis trägt.
-  // 72.234.42.6 hat in der City-Lite belastbare Stadt-Daten (Pukalani, Hawaii);
-  // der Direkt-Read prüft das trotzdem, statt es zu behaupten.
-  const secondIp = '72.234.42.6'
+  // 9.9.9.9 (öffentlicher DNS-Resolver) hat in der City-Lite belastbare
+  // Stadt-Daten und liegt in einer anderen Stadt als 8.8.8.8; der Direkt-Read
+  // prüft das trotzdem, statt es zu behaupten. Bewusst eine Adresse öffentlicher
+  // Infrastruktur — nie die eines Menschen (`pnpm check:public-ips`).
+  const secondIp = '9.9.9.9'
   const wantSecond = expected(secondIp)
   check(`Direkt-Read ${secondIp} liefert eine Stadt`, Boolean(wantSecond.city), `city=${wantSecond.city}`)
 
