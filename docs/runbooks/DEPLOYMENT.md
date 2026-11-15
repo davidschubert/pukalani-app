@@ -63,7 +63,7 @@ Lint, Typecheck, E2E) für genau diesen Commit grün sind
 4. `deliver` — je App: Build-Ergebnis nach `/home/ploi/releases/<app>/<commit>/`,
    `ops/` nach `/home/ploi/<site>/ops/`, Verweis `current` atomar umlegen,
    `pm2 startOrReload` (der alte Prozess antwortet, bis der neue bereit ist),
-   ältere Stände stutzen. Danach die Probe: dreimal in Folge der erwartete
+   ältere Stände stutzen (es bleiben vier je App). Danach die Probe: dreimal in Folge der erwartete
    Commit auf `https://<site>/api/health`.
 5. `tls` — liefert jeder Host noch ein passendes Zertifikat?
 
@@ -124,12 +124,19 @@ Das Skript löscht nichts.
 - **Läuft gerade ein Ausliefern?** `gh run list --workflow deploy.yml --limit 3`.
   Ein laufender Lauf legt den Verweis wieder nach vorn — abwarten oder
   abbrechen (`gh run cancel <id>`), dann zurückstellen.
+- **Wie lange dauert es?** Gemessen am 2026-11-15 an der Hilfe-Seite: 12
+  Sekunden vom Befehl bis zur dritten bestätigten Antwort.
 
 **Alle sechs Apps auf einmal, oder der gute Stand liegt nicht mehr auf dem
 Server:** der manuelle Start mit Eingabe (A2). Er baut den älteren Commit
 neu und liefert ihn auf alle Apps aus; das dauert so lange wie jedes
 Ausliefern und braucht GitHub Actions. `ops/` und die App-Liste kommen dabei
-von der Spitze von `main`, nur das Programm vom alten Commit.
+von der Spitze von `main`, nur das Programm vom alten Commit. Nach dem Start
+nachsehen, dass der Lauf wirklich läuft (`gh run list --workflow deploy.yml
+--limit 3`): GitHub hält je Warteschlange nur EINEN wartenden Lauf. Startet
+man, während ein Ausliefern läuft, wartet der eigene Lauf — und der nächste
+wartende (ein Push einer anderen Sitzung) verdrängt ihn ohne Meldung
+(„cancelled“, am 2026-11-15 so gesehen).
 
 ### Schritt 2 — `git revert` auf `main`
 
@@ -161,8 +168,9 @@ Erst jetzt. Die Seite läuft, `main` ist sauber, es eilt nicht mehr.
   schlechter laufen als der neue — dann vor dem Zurückstellen die Migration
   lesen. Daten, die der schlechte Stand geschrieben hat, bleiben.
 - **Nur was noch auf dem Server liegt.** Jedes Ausliefern stutzt die älteren
-  Stände je App; es bleiben nur die letzten. Für alles davor: der manuelle
-  Start mit Eingabe.
+  Stände je App; es bleiben die letzten VIER (gezählt am 2026-11-15, der
+  aktive eingeschlossen). Bei mehreren Merges am Tag reicht das nur Stunden
+  zurück. Für alles davor: der manuelle Start mit Eingabe.
 - **Die `.env` wird neu gelesen.** Wer seit dem letzten Neuladen etwas in der
   `.env` der Site geändert hat, macht es mit dem Rückweg wirksam.
 - **`ops/` bleibt, wie es zuletzt ausgeliefert wurde.** Das Skript nimmt die
@@ -176,22 +184,34 @@ Erst jetzt. Die Seite läuft, `main` ist sauber, es eilt nicht mehr.
 
 | Was ausfällt | Zurück auf einen Stand, der auf dem Server liegt | Etwas Neues ausliefern |
 | --- | --- | --- |
-| nur GitHub Actions | `ops/rollback.sh`, alle sechs Apps | Nur für Sites mit Repository in ploi (Deploy-Knopf im Panel, der Server baut selbst — nacheinander, nie zwei Builds zugleich, sonst geht dem Server der Speicher aus). Für `control`, `help` und `branding` gibt es diesen Weg nicht. |
+| nur GitHub Actions | `ops/rollback.sh`, alle sechs Apps | Auf dem Papier nur für `portfolio` und `platform`: Nur diese zwei Sites haben auf dem Server noch einen Checkout des Repos (Deploy-Knopf im ploi-Panel, der Server baut selbst — nacheinander, nie zwei Builds zugleich, sonst geht dem Server der Speicher aus). Für `control`, `marketing`, `help` und `branding` gibt es diesen Weg nicht. |
 | GitHub ganz (auch `git pull`) | `ops/rollback.sh`, alle sechs Apps | Für keine App. Auch der Deploy-Knopf in ploi holt den Code von GitHub. |
 
 Das Skript braucht nur das lokale Repo (für `ops/apps.conf`) und den eigenen
-SSH-Zugang. Der Deploy-Knopf in ploi ist seit der Umstellung auf das Bauen
-bei GitHub (2026-07-23) nicht mehr benutzt worden; ob er heute noch
-durchläuft, ist nicht geprüft.
+SSH-Zugang. **Der Deploy-Knopf in ploi ist kein geprüfter Weg:** Die zwei
+Checkouts stehen auf dem Stand vom 2026-07-26 (nachgesehen am 2026-11-15),
+seit der Umstellung auf das Bauen bei GitHub hat ihn niemand gedrückt. Wer
+sich im Ernstfall darauf verlässt, übt zum ersten Mal. Verlässlich ohne
+GitHub Actions ist heute nur der Weg ZURÜCK.
 
 ### Protokoll der Übungen
 
 Ein Rückweg, der nie gegangen wurde, ist keiner. Jede Übung und jeder
 Ernstfall bekommt hier eine Zeile.
 
-| Datum | Was | Dauer | Ergebnis |
+| Datum (UTC) | Was | Dauer | Ergebnis |
 | --- | --- | --- | --- |
-| — | noch nicht geübt (Skript und Eingabe seit 2026-11-15 im Repo) | — | — |
+| 2026-11-15 02:19 | Übung: `ops/rollback.sh help 1b833864… --apply` — `help.pukalani.app` vom Stand `90b797e1` auf den vorigen `1b833864` | 12 s | dreimal in Folge `1b833864` und `ok:true`; die sieben anderen Hosts unverändert auf `90b797e1` |
+| 2026-11-15 02:20 | Übung: wieder vor — `ops/rollback.sh help 90b797e1… --apply` | 12 s | alle acht Hosts auf `90b797e1`, `ok:true`; kein Stand gelöscht |
+| 2026-11-15 02:19 | Gegenprobe: ein Commit, der nicht auf dem Server liegt, mit `--apply` | sofort | Abbruch (Exit 3), Verweis und Prozess unverändert |
+| 2026-11-15 02:21 | Über GitHub: `gh workflow run deploy.yml -f sha=1b833864…` — der vorige Commit auf alle sechs Apps (erster manueller Start auf dem Weg mit fünf Jobs) | 12 min 22 s | alle acht Hosts auf `1b833864`, `ok:true`; Programm vom alten Commit, `ops/` von der Spitze von `main` |
+| 2026-11-15 02:34 | Über GitHub: `gh workflow run deploy.yml` ohne Eingabe — zurück auf die Spitze von `main` | 12 min 44 s | alle acht Hosts auf `90b797e1`, `ok:true`; `help` dabei jede Sekunde gefragt: 674 Antworten, keine ohne 200 und `ok:true` |
+| 2026-11-15 02:20 | Gegenproben am manuellen Start: Eingabe `abc123`; ein Commit, der nicht auf `main` liegt | je unter 1 min | beide im Job `plan` rot, nichts gebaut, nichts ausgeliefert |
+
+Der vorige und der heutige Stand unterschieden sich bei dieser Übung nur in
+Betriebs-Dateien und Tests, nicht im Programm der Apps. Nicht geübt ist ein
+Rückweg über eine Datenbank-Änderung hinweg und der Rückweg an einer App mit
+Appwrite unter Last (`platform`).
 
 ---
 

@@ -191,11 +191,20 @@ paths:
   gelöschten Prozess). DER RÜCKWEG HÄLT NUR BIS ZUM NÄCHSTEN PUSH AUF `main`
   (auch ein reiner Doku-Push: die Diff-Basis ist der älteste lebende Build),
   die Datenbank geht nicht mit zurück (Migrationen haben keinen Rückweg), und
-  jedes Neuladen liest die `.env` neu. Der Deploy prüft seitdem auch `ok`:
+  jedes Neuladen liest die `.env` neu. Auf dem Server liegen je App nur VIER
+  Stände (gezählt 2026-11-15; das Stutzen zählt den Verweis mit). ETWAS NEUES
+  ausliefern ohne GitHub Actions geht praktisch nicht: einen Checkout für den
+  ploi-Knopf haben nur noch `portfolio` und `platform` (Stand Juli, nie
+  geübt). Ein manueller Start, der hinter einem laufenden Ausliefern WARTET,
+  wird vom nächsten wartenden Lauf verdrängt („cancelled") — nach dem Start
+  nachsehen. Der Deploy prüft seitdem auch `ok`:
   Build falsch ⇒ Abbruch wie bisher; Build richtig, `ok` nicht true ⇒ die
   übrigen Apps werden trotzdem ausgeliefert und der Lauf endet rot. Von
-  selbst zurückgestellt wird nie. Runbook mit Grenzen, Notweg ohne GitHub und
-  dem Protokoll der Übungen: docs/runbooks/DEPLOYMENT.md, Abschnitt A3.
+  selbst zurückgestellt wird nie (Davids Entscheidung 2026-11-15,
+  DECISION-LOG). Geübt am 2026-11-15: `help` zurück und vor je 12 s, ein
+  älterer Commit über GitHub auf alle sechs Apps 12 min. Runbook mit Grenzen,
+  Notweg ohne GitHub und dem Protokoll der Übungen:
+  docs/runbooks/DEPLOYMENT.md, Abschnitt A3.
 - EINE FEHLENDE ENV-VARIABLE WIRD NICHT ROT (F44, 2026-08-02): `platform`
   hatte kein `NUXT_SMTP_*`, also ging für JEDE Kunden-Community nie eine
   Benachrichtigungs-Mail raus — die App lief, die Seiten antworteten, nur die

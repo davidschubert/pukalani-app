@@ -46,6 +46,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 29 · SI1 | **Sicherungen: Nacharbeiten.** Die vier Sicherungen aus dem Paket P06 sind seit 2026-11-14 live (COMPLETE „GA1 P06"). Der stündliche Label-Abgleich räumt seit dem 2026-11-14 auf. Offen: (a) **Klick-Probe auf Live** (Einladungslink aus einem Webmail-Fenster öffnen; „Zugang entziehen" mit einem Test-Konto), (b) was der Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#si1) |
 | 30 · RU1 | **Runner: Nacharbeiten.** Testbefehle nur aus der Liste des Rechners, Herkunft vom Server und die Fristen sind seit 2026-11-14 live (COMPLETE „GA1 P03"). Offen: (a) **ein echter Lauf über das Formular** mit Auswahl eines Testbefehls, (b) den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#ru1) |
 | 31 · CI1 | **Ausliefer-Weg: Nacharbeiten.** Getrennte Schlüssel für Ausliefern und Wächter, Geheimnisse nur für den Hauptzweig und die Pflicht-Prüfungen sind seit 2026-11-14 live (COMPLETE „GA1 P08"). Offen: (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
+| 32 · RW1 | **Rückweg: Nacharbeiten.** Zurückstellen per Skript, ein älterer Stand über GitHub und die Anleitung sind seit 2026-11-15 live und einmal geübt (COMPLETE „GA1 P10"). Offen: (a) **Notweg ohne GitHub** für das Ausliefern von etwas Neuem (heute nur der Weg zurück), (b) es liegen nur **vier Stände** je Seite, (c) Kleinigkeiten. | Niedrig | (a) M, (b) S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#rw1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -708,6 +709,29 @@ NICHT hier.
   `/invite` von branding.supply ist nach der Umstellung nur per Test und
   Quelltext geprüft, nicht im Browser. README und DECISION-LOG nennen in
   datierten Zeilen noch den entfernten Schalter `csrfOriginCheck`.
+
+<a id="rw1"></a>
+
+**RW1 — Rückweg: Nacharbeiten (aus dem Gesamtaudit, Paket P10).**
+
+- **(a) Etwas Neues ausliefern, wenn GitHub Actions ausfällt.** Der Weg
+  zurück geht ohne GitHub für alle sechs Apps (`ops/rollback.sh`). Für den
+  Weg nach vorn gibt es nur den Deploy-Knopf in ploi, und nur für `portfolio`
+  und `platform`: Nur diese zwei Sites haben auf dem Server noch einen
+  Checkout (Stand 2026-07-26), seit Juli hat ihn niemand benutzt. Zu
+  entscheiden: so lassen (bewusstes Risiko), den Knopf an einer Seite einmal
+  üben, oder ein Skript, das vom Mac baut und ausliefert.
+- **(b) Vier Stände je App.** Das Stutzen zählt den Verweis mit, es bleiben
+  vier statt der gedachten fünf. An einem Tag mit vielen Merges reicht das
+  nur Stunden zurück. Zu entscheiden: mehr Stände behalten (Platz auf dem
+  Server prüfen) oder nach Alter statt nach Zahl stutzen.
+- **(c) Kleinigkeiten.** Ein manueller Start mit dem Commit, der gerade live
+  ist, schreibt in das Verzeichnis des laufenden Prozesses (besser: in ein
+  frisches Verzeichnis oder überspringen). Die Übung wiederholen, sobald
+  sich am Ausliefer-Weg etwas ändert, und einmal an einer App mit Datenbank
+  (`platform`). Der Punkt CI1 (c) „Ausliefern über ein festes Skript" würde
+  die Handgriffe von Ausliefern und Rückweg an einer Stelle zusammenführen;
+  heute stehen sie zweimal da (Workflow und `ops/rollback.sh`).
 
 <a id="ci1"></a>
 

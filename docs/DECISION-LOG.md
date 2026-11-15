@@ -3364,3 +3364,31 @@ docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
 **Wieder prüfen:** sobald eine zweite Person Schreibrecht bekommt (dann ist
 die Ausnahme für den Besitzer neu zu bewerten und eine Freigabe-Pflicht für
 die Umgebungen sinnvoll).
+
+## 2026-11-15 — Ein schlechter Stand wird gemeldet, nicht von selbst zurückgestellt
+
+**Anlass:** Gesamtaudit 2026-11, Paket P10 (OPS-007). Für das Zurücknehmen
+einer schlechten Version gab es einen veralteten Satz im Runbook. Davids
+Entscheidung vom 2026-11-12: umsetzen und einmal an der Hilfe-Seite üben.
+Seit dem 2026-11-15 gibt es `ops/rollback.sh`, eine Eingabe für einen älteren
+Commit am manuellen Start, und das Ausliefern liest auch `ok`.
+**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-15):**
+1. **Übung an der Hilfe-Seite: „Ja, jetzt üben".** Nachsehen auf dem Server,
+   `help.pukalani.app` auf den vorigen Stand und wieder vor, Gegenprobe mit
+   einem Stand, den es nicht gibt.
+2. **Der Weg über GitHub: „Ja, mit vorigem Stand".** Der vorige Commit auf
+   alle sechs Apps, danach wieder der heutige — der Beweis, dass ein älterer
+   Stand wirklich ankommt, nicht nur, dass der Knopf geht.
+3. **Kein Automat: „Nein, nur melden".** Meldet eine App nach dem Ausliefern
+   nicht `ok:true`, endet der Lauf rot (Mail von GitHub); zurückgestellt wird
+   von Hand. Grund: Meist liegt es nicht am neuen Stand (Appwrite nicht
+   erreichbar, Einstellung fehlt), und ein alter Stand passt nicht immer zur
+   Datenbank. Angeboten und nicht gewählt: automatisch die betroffene App
+   zurückstellen, wenn sie vorher gesund war.
+**Folgen im Alltag:** Bei einem schlechten Stand gilt die Reihenfolge
+zurückstellen → `git revert` → Ursache
+([DEPLOYMENT.md](runbooks/DEPLOYMENT.md), Abschnitt A3). Ein roter
+Deploy-Lauf mit „Ausgeliefert, aber nicht gesund" heißt: Der Stand ist live,
+die Entscheidung liegt beim Menschen.
+**Wieder prüfen:** wenn ein schlechter Stand einmal länger live blieb, weil
+niemand die rote Meldung sah — dann ist der Automat neu zu bewerten.
