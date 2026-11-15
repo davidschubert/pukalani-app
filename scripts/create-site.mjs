@@ -93,6 +93,10 @@ cpSync(join(ROOT, 'apps', '_template'), appDir, {
   const pkg = JSON.parse(readFileSync(p, 'utf8'))
   pkg.name = name
   pkg.scripts.dev = `nuxi dev --port ${port}`
+  // Das EINE Bootstrap-Skript (scripts/bootstrap.mjs, BE-026) nimmt die App
+  // per --app — die Vorlage zeigt auf `_template`, die Kopie auf sich selbst.
+  // Ohne diese Zeile migrierte `pnpm --filter <name> bootstrap` die Vorlage.
+  pkg.scripts.bootstrap = `node --env-file=.env ../../scripts/bootstrap.mjs --app ${name}`
   for (const dep of Object.keys(pkg.dependencies)) {
     if (dep.startsWith('@pukalani/')) delete pkg.dependencies[dep]
   }
@@ -251,7 +255,8 @@ if (!skipAppwrite && consoleEmail && consolePassword) {
   }
 
   // Web-Platform localhost — platformId GLOBAL eindeutig: auf der Haupt-Instanz
-  // kollidieren Platform-IDs projektübergreifend (G2-Befund 2, spikes/s3-minimal);
+  // kollidieren Platform-IDs projektübergreifend (G2-Befund 2, Spike vom 2026-07-15 —
+  // Gate G2 in docs/referenz/MULTI-SITE-PLATFORM-STRATEGIE.md);
   // ein 409 hieße hier „Platform liegt in einem ANDEREN Projekt", das eigene
   // bliebe ohne Platform (Origin-Checks schlagen fehl).
   {
@@ -303,8 +308,8 @@ if (runtimeKey) {
   console.log('\n— Bootstrap (DB, Buckets, Platform, Migrationen der gewählten Produkte) —')
   const result = spawnSync(
     process.execPath,
-    ['--experimental-strip-types', `--env-file=${join(appDir, '.env')}`, join(appDir, 'scripts', 'bootstrap.ts')],
-    { stdio: 'inherit', cwd: appDir },
+    [`--env-file=${join(appDir, '.env')}`, join(ROOT, 'scripts', 'bootstrap.mjs'), '--app', name],
+    { stdio: 'inherit', cwd: ROOT },
   )
   if (result.status !== 0) fail('Bootstrap fehlgeschlagen')
 }
@@ -326,7 +331,7 @@ ${runtimeKey ? `  Appwrite:  Projekt ${projectId} auf ${endpoint}` : `
     2. Zwei API-Keys (alle Scopes): runtime-${name} + migrations-${name}
     3. Web-Platform hostname localhost
     4. apps/${name}/.env aus .env.example füllen
-    5. node --experimental-strip-types --env-file=apps/${name}/.env apps/${name}/scripts/bootstrap.ts`}
+    5. pnpm --filter ${name} bootstrap`}
 
   Für PROD später (Phase 17): ploi-Site + DNS (A-Records app/api auf
   derselben Root-Domain) + Deploy-Webhook — Checkliste in

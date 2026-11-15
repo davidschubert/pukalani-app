@@ -2,8 +2,9 @@
  * CI-Setup für eine FRISCHE Appwrite-Instanz (Idee 4): erledigt die sonst
  * interaktiven Console-Schritte per REST — Account (erster User, Whitelist
  * ROOT), Organisation, Projekt mit fester ID, API-Key mit allen Scopes,
- * Web-Platform — und schreibt die App-.env. Danach übernimmt das bestehende
- * `pnpm bootstrap --seed` (DB, Bucket, Migrationen, Demo-Daten).
+ * Web-Platform — und schreibt die App-.env. Danach übernimmt
+ * `pnpm --filter <app> bootstrap --seed` (das eine Skript scripts/bootstrap.mjs:
+ * Frische-Prüfung, DB, Buckets, Migrationen, Demo-Daten).
  *
  *   node scripts/ci/appwrite-setup.mjs \
  *     --endpoint http://localhost:8080/v1 --app apps/comments

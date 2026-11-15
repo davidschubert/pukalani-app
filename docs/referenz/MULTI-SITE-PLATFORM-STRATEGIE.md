@@ -63,7 +63,7 @@ Leitplanken aus der Abstimmung mit David (2026-07-14):
 | Runtime-Config-Kanal existiert: `app_config`-Row + `useRuntimeFlags()` + Realtime-Push ohne Reload | `packages/core/server/utils/appConfig.ts`, `plugins/realtime-config.client.ts` |
 | Laufzeit-Override-Muster existiert: `getEffectiveAiConfig()` (Build-Default < DB-Override) | `core/server/utils/aiComplete.ts` |
 | Billing-Layer (Stripe Checkout/Portal/Webhook/Entitlements) fertig | GOALS Phase 23 |
-| `apps/_template` + Bootstrap-Script als Scaffold | `apps/_template/scripts/bootstrap.ts` |
+| `apps/_template` + Bootstrap-Script als Scaffold | `apps/_template`, `scripts/bootstrap.mjs` (seit 2026-11-15 EIN Skript für alle Apps) |
 
 ### Kollidiert mit dem SaaS-Ziel (bewusste Alt-Entscheidungen)
 

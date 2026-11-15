@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "nuxi preview",
     "typecheck": "nuxi typecheck",
-    "bootstrap": "node --experimental-strip-types --env-file=.env scripts/bootstrap.ts",
+    "bootstrap": "node --env-file=.env ../../scripts/bootstrap.mjs --app portfolio",
     "seed:legal": "node --experimental-strip-types --env-file=.env ../../packages/pages/scripts/seed-legal-pages.ts",
     "ensure:intro-requests": "node --env-file=.env scripts/ensure-intro-requests.mjs",
     "test": "nuxi prepare && vitest run",
