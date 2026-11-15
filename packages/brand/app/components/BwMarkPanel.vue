@@ -6,7 +6,7 @@ import {
   brandMarkMeasuresText,
 } from '../../shared/brandDesignMark'
 import { BRAND_MARK_KINDS, BRAND_MARK_SETTINGS, BRAND_MARK_VARIANTS, brandTermLabel } from '../../shared/brandDesignVocab'
-import { brandMarkSettingSvg } from '../../shared/brandMarkSvg'
+import { brandMarkSettingSvg, isBrandMarkSvg } from '../../shared/brandMarkSvg'
 import type { BrandMarkBriefResponse } from '../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
 
@@ -87,10 +87,12 @@ const showClearSpace = ref(true)
 const variantNote = computed(() => t(`brand.mark.variant.note.${variantId.value}`))
 
 function settingSvg(settingId: string): string {
-  return brandMarkSettingSvg(spec.value, settingId, variantId.value, {
+  const svg = brandMarkSettingSvg(spec.value, settingId, variantId.value, {
     clearSpace: showClearSpace.value,
     title: t(`brand.mark.setting.title.${settingId}`, { brand: wordmark.value }),
   })
+  // Derselbe Riegel wie vor jedem anderen `v-html` mit Zeichen-SVG (SEC-019).
+  return isBrandMarkSvg(svg) ? svg : ''
 }
 
 const measures = computed(() => brandMarkMeasuresText(spec.value, contentLocale.value))

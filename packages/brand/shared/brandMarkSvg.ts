@@ -78,17 +78,143 @@ export interface BrandMarkSvgOptions {
  * Die Setzungen stehen als fertige Zeichenketten im PRESET und werden von der
  * Oberfläche mit `v-html` gesetzt — im Kapitel 10, im Ergebnis-Board und, das
  * ist der Punkt, aus einem EINGEFRORENEN Snapshot. Was aus einer Ablage kommt,
- * wird geprüft, bevor es als Markup gilt: eine Zeichenkette, die nicht mit
- * `<svg` beginnt oder ein `<script` enthält, ist keine Setzung dieser Datei
- * und wird nicht gerendert.
+ * wird geprüft, bevor es als Markup gilt.
+ *
+ * ── EINE ERLAUBNISLISTE, KEINE SPERRLISTE (Audit-Befund SEC-019) ─────────
+ * Gültig ist NUR, was aus genau den Elementen, Attributen und Wertformen
+ * besteht, die diese Datei (und `withTitle` in `brandKitMarks.ts`) schreibt:
+ * `<svg>` mit `<title>` (nur als erstes Kind), `<rect … />` und `<text>`,
+ * Attribute in doppelten Anführungszeichen, Werte als Zahl, Hex-Farbe, festes
+ * Schlüsselwort oder Schrift-Stack, Textinhalt nur mit den fünf Entities aus
+ * `escapeXml`. Alles andere — fremde Elemente, unbekannte Attribute, andere
+ * Werte, Kommentare, CDATA, Text nach dem Ende — heißt `false`. Fail-closed:
+ * was der kleine Leser unten nicht kennt, wird nicht gerendert. Kein
+ * DOM-Parser, weil die Funktion pur in `shared/` liegt (App UND Server).
+ *
+ * WER DEN ERZEUGER ÄNDERT, ZIEHT DIE LISTE NACH: `brandMarkSvgAllowlist.test.ts`
+ * schickt jede erzeugbare Setzung durch diesen Riegel und wird sonst rot.
  *
  * Sie ersetzt die Escapes NICHT (der Markenname bleibt escaped, s. u.): sie ist
  * die zweite Masche für den Fall, dass jemals etwas anderes als diese Datei in
  * das Feld schreibt.
  */
 export function isBrandMarkSvg(value: string): boolean {
-  const text = value.trim()
-  return text.startsWith('<svg') && text.endsWith('</svg>') && !/<\s*script/i.test(text)
+  const src = value.trim()
+  let pos = 0
+
+  const head = readTag(src, pos)
+  if (!head || head.name !== 'svg' || head.selfClosing || !attrsAllowed('svg', head.attrs)) return false
+  if (!head.attrs.has('xmlns') || !head.attrs.has('viewBox')) return false
+  pos = head.end
+
+  let children = 0
+  while (pos < src.length) {
+    pos = skipSpace(src, pos)
+    if (src.startsWith('</svg>', pos)) return pos + '</svg>'.length === src.length
+    const tag = readTag(src, pos)
+    if (!tag || !attrsAllowed(tag.name, tag.attrs)) return false
+    if (tag.name === 'rect') {
+      if (!tag.selfClosing) return false
+      pos = tag.end
+    }
+    else if (tag.name === 'title' || tag.name === 'text') {
+      if (tag.selfClosing || (tag.name === 'title' && children > 0)) return false
+      const body = new RegExp(`(?:${SAFE_CHAR})*</${tag.name}>`, 'y')
+      body.lastIndex = tag.end
+      if (!body.test(src)) return false
+      pos = body.lastIndex
+    }
+    else {
+      return false
+    }
+    children++
+  }
+  return false
+}
+
+// ── Der Leser hinter `isBrandMarkSvg` ──────────────────────────────────────
+
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
+/** Ein Zeichen im Textinhalt oder im `aria-label` — wie `escapeXml` es schreibt. */
+const SAFE_CHAR = `[^<>&"']|&(?:amp|lt|gt|quot|apos);`
+const SAFE_TEXT = new RegExp(`^(?:${SAFE_CHAR})*$`)
+/** Wie `num()` und die festen Zahlen schreiben: kein Exponent, keine Einheit. */
+const NUMBER = /^-?\d+(?:\.\d+)?$/
+const HEX = /^#[0-9a-fA-F]{6}$/
+/** Ein Schrift-Stack aus dem Katalog, escaped: Namen, Kommata, Bindestriche. */
+const FONT_STACK = /^(?:[A-Za-z0-9 ,-]|&apos;|&quot;)+$/
+
+const isNumber = (value: string) => NUMBER.test(value)
+const isHex = (value: string) => HEX.test(value)
+
+/** JE ELEMENT die erlaubten Attribute und die Form ihres Wertes. */
+const ALLOWED: Readonly<Record<string, Readonly<Record<string, (value: string) => boolean>>>> = {
+  svg: {
+    'xmlns': value => value === SVG_NAMESPACE,
+    'viewBox': value => /^0 0 \d+ \d+$/.test(value),
+    'role': value => value === 'img',
+    'aria-label': value => SAFE_TEXT.test(value),
+  },
+  title: {},
+  rect: {
+    'x': isNumber,
+    'y': isNumber,
+    'width': isNumber,
+    'height': isNumber,
+    'rx': isNumber,
+    'fill': value => value === 'none' || isHex(value),
+    'stroke': isHex,
+    'stroke-width': isNumber,
+    'stroke-dasharray': value => /^\d+(?:\.\d+)? \d+(?:\.\d+)?$/.test(value),
+  },
+  text: {
+    'x': isNumber,
+    'y': isNumber,
+    'text-anchor': value => value === 'middle',
+    'fill': isHex,
+    'font-family': value => FONT_STACK.test(value),
+    'font-size': isNumber,
+    'font-weight': isNumber,
+    'letter-spacing': isNumber,
+  },
+}
+
+interface MarkTag {
+  readonly name: string
+  readonly attrs: ReadonlyMap<string, string>
+  readonly selfClosing: boolean
+  readonly end: number
+}
+
+const TAG = /<([a-z]+)((?:\s+[a-zA-Z][a-zA-Z:-]*="[^"<>]*")*)\s*(\/?)>/y
+const ATTR = /\s+([a-zA-Z][a-zA-Z:-]*)="([^"<>]*)"/g
+
+/** Ein öffnendes Tag genau an `pos` — `null`, wenn dort keines steht oder ein Attribut doppelt ist. */
+function readTag(src: string, pos: number): MarkTag | null {
+  TAG.lastIndex = pos
+  const match = TAG.exec(src)
+  if (!match) return null
+  const attrs = new Map<string, string>()
+  for (const [, name, value] of match[2]!.matchAll(ATTR)) {
+    if (attrs.has(name!)) return null
+    attrs.set(name!, value!)
+  }
+  return { name: match[1]!, attrs, selfClosing: match[3] === '/', end: TAG.lastIndex }
+}
+
+function attrsAllowed(element: string, attrs: ReadonlyMap<string, string>): boolean {
+  const allowed = Object.hasOwn(ALLOWED, element) ? ALLOWED[element] : undefined
+  if (!allowed) return false
+  for (const [name, value] of attrs) {
+    const check = Object.hasOwn(allowed, name) ? allowed[name] : undefined
+    if (!check || !check(value)) return false
+  }
+  return true
+}
+
+function skipSpace(src: string, pos: number): number {
+  while (pos < src.length && /\s/.test(src[pos]!)) pos++
+  return pos
 }
 
 /** Text für den XML-Inhalt entschärfen (s. Kopf: die einzige fremde Eingabe). */

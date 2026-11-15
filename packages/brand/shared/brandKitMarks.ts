@@ -99,13 +99,18 @@ export function renderBrandMarkFiles(
     if (!variant || !setting) break
     // Was nicht aus `brandMarkSvg.ts` stammt, wird nicht ausgeliefert (D8).
     if (typeof svg !== 'string' || !isBrandMarkSvg(svg)) continue
+    const titled = withTitle(svg.trim(), `${input.title.trim() || 'Brand'} — ${setting.id} ${variant.id}`)
+    // Auch das ERGEBNIS geht durch den Riegel: es landet in `kit.vue` per
+    // `v-html` und im Bündel (SEC-019). Fällt es durch, stimmt `withTitle`
+    // nicht mehr mit der Erlaubnisliste — der Test dazu wird dann rot.
+    if (!isBrandMarkSvg(titled)) continue
     const filename = `${slug}-${setting.id}-${variant.id}.svg`
     files.push({
       id: `${BRAND_KIT_MARKS_PREFIX}${filename}`,
       filename,
       setting: setting.id,
       variant: variant.id,
-      svg: withTitle(svg.trim(), `${input.title.trim() || 'Brand'} — ${setting.id} ${variant.id}`),
+      svg: titled,
     })
   }
   return files
