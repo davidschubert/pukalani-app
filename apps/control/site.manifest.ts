@@ -22,4 +22,8 @@ export default {
     'runner',
     'pages',
   ],
+  // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der
+  // Migrations-Runner im Namen dieser App schreiben.
+  // `admin` = das Projekt des Control Plane.
+  appwriteProjects: ['admin'],
 } satisfies SiteManifest

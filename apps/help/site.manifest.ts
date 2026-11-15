@@ -38,4 +38,7 @@ export default {
   // Entscheidung 2026-08-18). Produkt-Layer mit Datenmodell bleiben bewusst
   // draußen — die Seite liest nichts aus Appwrite.
   products: ['marketing'],
+  // Keine eigene Appwrite-Instanz (die Seite liest nichts aus Appwrite) —
+  // der Migrations-Runner lehnt jede Env-Datei ab (OPS-002).
+  appwriteProjects: [],
 } satisfies SiteManifest

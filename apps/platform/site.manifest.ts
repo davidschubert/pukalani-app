@@ -62,4 +62,8 @@ export default {
     // (analytics-001).
     'analytics',
   ],
+  // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der
+  // Migrations-Runner im Namen dieser App schreiben.
+  // `account` = das geteilte Pool-Projekt aller Communities und Konten.
+  appwriteProjects: ['account'],
 } satisfies SiteManifest

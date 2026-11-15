@@ -38,4 +38,7 @@ export default {
     'courses',
     'moderation',
   ],
+  // Ziel-Prüfung (OPS-002): create-site trägt hier die Projekt-Id der neuen
+  // Site ein; leer = der Migrations-Runner lehnt jede Env-Datei ab.
+  appwriteProjects: [],
 } satisfies SiteManifest
