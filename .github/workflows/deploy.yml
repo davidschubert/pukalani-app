@@ -651,7 +651,14 @@ jobs:
             # BRANDING-SUPPLY-SETUP.md sowie docs/archiv/HELP-GO-LIVE.md;
             # zurueck auf einen liegenden Stand geht fuer ALLE sechs mit
             # ops/rollback.sh.)
-            rsync -az ops/ "prod:/home/ploi/$site/ops/"
+            # NUR DIE ZWEI DATEIEN, die der Server braucht (OPS-005, 2026-11-15):
+            # die Ecosystem-Datei DIESER App und pm2-heal.sh. Bis dahin ging der
+            # ganze Ordner ops/ in jede Site — samt Backup-, Wiederherstellungs-
+            # und Rueckweg-Skript, die dort nie laufen. Was in ops/ sonst liegt,
+            # gehoert auf den Appwrite-Server (von Hand eingespielt) oder auf
+            # den eigenen Rechner. ops/rollback.sh verlaesst sich auf genau
+            # diese zwei Dateien.
+            rsync -az --mkpath "ops/ecosystem-$app.config.cjs" ops/pm2-heal.sh "prod:/home/ploi/$site/ops/"
             # Flip + Reload (ZDT Stufe 2). pm2 startOrReload findet den Prozess
             # ueber den NAMEN in der Ecosystem-Datei — bei einer Umbenennung
             # ersetzt es also NICHT, sondern startet daneben (zwei Prozesse,
