@@ -73,6 +73,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) | Appwrites Regeln für Passwort, Adresse und Sitzung: Soll-Liste, Prüf-Skript, Datenleck-Abgleich, bekanntes Gerät, Notfall-Knöpfe |
 | [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
+| [runbooks/NEWSLETTER-ABMELDE-LINKS.md](runbooks/NEWSLETTER-ABMELDE-LINKS.md) | Eigenes Geheimnis der Abmelde-Links auf branding.supply (SEC-020): setzen, wechseln, was bei einem Tausch des API-Schlüssels passiert |
 | [runbooks/LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md) | Stündlicher Label-Abgleich (SEC-024): was er tut und nie tut, Schalter, Probelauf, Log lesen, Ops-Route, Rückweg |
 | [runbooks/GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) | Gesamtaudit über alle zwölf Dimensionen mit Fable 5.2: Ablauf, Prompts je Phase, Rückführung; Ergebnisse liegen PRIVAT außerhalb des Repos |
 

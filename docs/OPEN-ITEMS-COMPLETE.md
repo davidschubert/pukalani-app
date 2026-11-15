@@ -30,6 +30,96 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P25 — Kleine Sicherheitsriegel: sieben zweite Sicherungen ✅ 2026-11-15
+
+**Was.** Viertes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Findings SEC-011, SEC-013, SEC-018, SEC-019, SEC-020, SEC-021,
+SEC-028, alle „Niedrig"). Zwei Pull Requests: 179 (Merge `bb0cc1e2`) und 180
+(Merge `@@PR180@@`). Davids Entscheidungen vom 2026-11-12 je Punkt, dazu drei
+per Klick am 2026-11-15 (DECISION-LOG).
+
+1. **Beispiel-Adressen statt echter (SEC-011).** Zwei Doku-Stellen und ein
+   Prüfskript nannten eine private Internet-Adresse, eine weitere Stelle die
+   Adresse eines Dritten. Jetzt stehen dort Adressen aus den
+   Dokumentations-Bereichen bzw. ein öffentlicher DNS-Resolver. Neu:
+   `pnpm check:public-ips` (läuft mit `lint:scripts`) wird bei jeder
+   öffentlichen IPv4 außerhalb einer begründeten Erlaubnisliste rot. Die
+   Historie bleibt (Davids Entscheidung).
+2. **Protokoll ohne den hinteren Teil der Adresse (SEC-013).** Die
+   Fehler-Annahme für Browser-Fehler, das Plugin davor und die zentrale Zeile
+   für Server-Fehler kürzen jede Adresse auf Schema, Host und Pfad — auch
+   Adressen, die in einer Fehlermeldung oder einem Stack stehen. Eine
+   Rechnung für alle drei: `core/shared/logAddress.ts`.
+3. **Bot-Prüfung und Grenze je Empfänger (SEC-018).** Erstgespräch und
+   Warteliste auf branding.supply verlangen die Bot-Prüfung (dieselbe wie an
+   der Registrierung); beide Formulare zeigen das Prüf-Feld. Neu im Core:
+   `allowRecipientMail` — höchstens drei Mails je Adresse, Formular und Tag,
+   gezählt im vorhandenen Bremsen-Speicher. Über der Grenze bleibt die Antwort
+   gleich, es geht keine Mail hinaus und kein neuer Link entsteht. Dieselbe
+   Grenze steht an der Newsletter-Anmeldung. Die Bestätigung einer
+   Erstgespräch-Anfrage druckt die Nachricht nicht mehr ab.
+4. **Erlaubnisliste für Zeichen-Grafiken (SEC-019).** Der Riegel vor der
+   Ausgabe gespeicherter SVG-Zeichen lässt nur noch die Elemente, Attribute
+   und Wertformen durch, die der eigene Erzeuger schreibt; alles andere wird
+   nicht angezeigt. Derselbe Riegel steht jetzt vor jeder dieser Ausgaben,
+   auch im Kit. Ein Test schickt jede erzeugbare Setzung hindurch.
+5. **Eigenes Geheimnis für Abmelde-Links (SEC-020).** Signiert wird mit
+   `NUXT_INSIGHTS_NEWSLETTER_SECRET` statt mit dem API-Schlüssel der App;
+   ältere Links gelten weiter, ein Wechsel behält den vorherigen Wert zum
+   Prüfen. Ein Link, den kein Schlüssel bestätigt, zeigt „Nicht abgemeldet"
+   mit dem Weg zur Abmeldung (de und en) statt „Abgemeldet". Der Wert steht
+   seit dem 2026-11-15 auf dem Server (@@SERVER@@). Anleitung:
+   [NEWSLETTER-ABMELDE-LINKS.md](runbooks/NEWSLETTER-ABMELDE-LINKS.md).
+6. **Links nur mit http oder https (SEC-021).** Eine Prüfung im Core
+   (`core/shared/safeHref.ts`) für beide Enden: Die Link-Felder in Insights,
+   Events, Kursen, Marktvergleich und der Betreiber-Konsole nehmen beim
+   Speichern nur noch http(s) an, und jede Ausgabestelle bindet einen Link
+   nur, wenn das gespeicherte Ziel http(s) ist — sonst steht der Text da.
+   Bestandsdaten bleiben unverändert. Der Test
+   `core/tests/hrefBindingsGuard.test.ts` zählt jede `:href`-Bindung in allen
+   Apps und Layern; eine neue ohne die Prüfung wird rot.
+7. **Einladungen (SEC-028).** Die Liste der eigenen offenen Einladungen bleibt
+   leer, solange die Adresse des Kontos nicht bestätigt ist; die
+   Beitritts-Seite zeigt dann „Bestätige zuerst deine E-Mail-Adresse". Widerruf
+   und erneutes Einladen suchen gezielt statt in der auf 100 gekürzten
+   Anzeige-Liste. Stilllegen zieht offene Einladungen zurück, die Annahme
+   verlangt eine aktive Community. Die Antwort beim Einladen sagt nicht mehr,
+   ob es zur Adresse ein Konto gibt; der Hinweistext stimmt für beide Fälle.
+
+**Beweis.** Je Punkt ein Test, der vorher rot war. Lokal: beide Formulare im
+Browser mit eingeschalteter Bot-Prüfung abgeschickt (Test-Schlüssel von
+Cloudflare); ohne Prüf-Token 403; vier Anfragen für eine Adresse ⇒ drei Mails
+im Test-Postfach, vierte Antwort wortgleich; die Bestätigung enthält den Text
+des Absenders nicht. Im lokalen Spiegel gelesen: kein gespeicherter Link mit
+anderem Schema, kein gespeichertes Zeichen-SVG, das der neue Riegel abweist.
+Fünf Pflicht-Prüfungen je Pull Request grün, vier auf `main` grün, alle acht
+Hosts `ok:true`. Keine Migration, kein neues Paket.
+
+**Nicht geprüft.** Auf Production wurde kein Formular abgeschickt und hinter
+der Anmeldung nichts geklickt. Die englischen Hinweise sind nicht im Browser
+gesehen. Reste: OPEN-ITEMS SR1.
+
+**Gelernt:** (1) **`z.url()` klingt nach „Web-Adresse" und nimmt jedes
+Schema.** Die sichere Prüfung gab es im Core schon, aber nur der
+Markdown-Weg nutzte sie. Eine Prüfung, die nur beim Speichern steht, schützt
+keinen Bestand — sie gehört auch an die Ausgabe, und ein Listen-Test zählt die
+Stellen. (2) **Eine Sperrliste mit einem Eintrag ist keine zweite Sicherung.**
+Vor einer Ausgabe als Markup steht eine Erlaubnisliste, und ein Test koppelt
+sie an den Erzeuger, damit eine Änderung dort nicht still leere Flächen
+zeigt. (3) **Ein Geheimnis für zwei Zwecke rächt sich beim Tausch.** Der
+API-Schlüssel signierte nebenbei Abmelde-Links; jeder Tausch hätte sie still
+entwertet, und die Seite hätte „abgemeldet" gesagt. Eine stille Erfolgs-Antwort
+ist für „schon erledigt" richtig und für „entwertet" falsch. (4) **Die Regel
+am Schreibweg gilt nicht von selbst am Leseweg.** „Nur mit bestätigter
+Adresse" stand am Annehmen, nicht am Ansehen. (5) **Eine neue Pflicht-Variable
+kommt erst in die Liste, wenn der Wert steht** — der Wächter läuft täglich.
+Der Code braucht deshalb einen Rückfall, mit dem die Seite ohne den Wert
+gesund startet. (6) **Ein großer Test braucht sein Zeitbudget im vollen
+Lauf:** allein eine Sekunde, neben allen anderen Paketen sechs — über dem
+Standard von fünf. (7) **`pnpm -r test` und `pnpm -r lint` brechen beim
+ersten roten Paket ab;** was dahinter liegt, ist dann ungeprüft. Für den
+ganzen Stand `--no-bail`.
+
 ### GA1 P26 — Aufräumen: Altlasten weg, ein Start-Skript, Test-App ohne Entwickler-Einstellungen ✅ 2026-11-15
 
 **Was.** Drittes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit

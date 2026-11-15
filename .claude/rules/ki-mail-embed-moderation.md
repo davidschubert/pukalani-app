@@ -159,6 +159,38 @@ paths:
   Kandidaten aus UNGELESENEN notifications-Rows (kein User-Scan), max 1
   Mail/Tag (prefs.emailDigestLastAt, merge!), Intervall-Plugin 30 min +
   POST /api/notifications/run-digest (system.manage).
+- ÖFFENTLICHES FORMULAR, DAS EINE MAIL AUSLÖST (SEC-018, seit 2026-11-15 —
+  Davids Entscheidung): drei Dinge, immer zusammen. (1) BOT-PRÜFUNG:
+  `requireTurnstile(event, aktion, body.turnstileToken)` nach dem Honigtopf
+  und vor Datenbank und Mail; die Aktion steht in `TURNSTILE_ACTIONS`
+  (`core/shared/turnstile.ts`), das Formular zeigt `AuthTurnstileWidget` mit
+  derselben Aktion und setzt es nach jedem Fehlschlag zurück (Muster:
+  `comments/app/components/GuestCommentForm.vue`). Ohne Schlüssel ein No-op —
+  aber JEDER Einstieg in dieselbe Route braucht das Widget, sonst lehnt der
+  Server dort ab, sobald die Schlüssel gesetzt sind. (2) GRENZE JE EMPFÄNGER:
+  `allowRecipientMail(event, bereich, adresse)`
+  (`core/server/utils/recipientMailLimit.ts`) vor der Mail an die
+  EINGETRAGENE Adresse — drei je Adresse, Bereich und 24 h, gezählt im
+  Bremsen-Speicher, im Schlüssel nur ein Hash. `false` ⇒ keine Mail, KEIN
+  neuer Link (sonst entwertet ein Fremder den aus der letzten echten Mail),
+  und die Antwort bleibt wortgleich zum Erfolg (sie verrät nicht, ob eine
+  Adresse bekannt ist). (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
+  eine frei eingetragene Adresse: der Name läuft durch `displayNameProblem`,
+  eine Nachricht wird nicht zitiert. Heute so: Erstgespräch und Warteliste
+  (brand), Newsletter-Anmeldung (insights, nur die Grenze). Die Meldung an
+  den BETREIBER hat keine eigene Grenze (feste Adresse; davor stehen
+  Bot-Prüfung und die Drossel je Leitung).
+- ABMELDE-LINKS DES NEWSLETTERS (SEC-020, seit 2026-11-15): signiert mit
+  `NUXT_INSIGHTS_NEWSLETTER_SECRET` (nur `branding`); beim Wechsel wandert der
+  alte Wert nach `…_PREVIOUS` und prüft weiter. Links aus der Zeit davor
+  (signiert mit dem API-Schlüssel) gelten ohne Frist (Davids Entscheidung).
+  Ohne das Geheimnis signiert die App wie bisher — die Seite startet auch
+  ohne den Wert. Ein Geheimnis NIE für einen zweiten Zweck wiederverwenden:
+  ein Tausch entwertet sonst still etwas Drittes. Ein Link, den kein
+  Schlüssel bestätigt, antwortet 400 `unsubscribe_link_invalid`, und die
+  Seite sagt „nicht abgemeldet" — eine stille 200 ist für „schon erledigt"
+  richtig und für „entwertet" falsch. Runbook:
+  docs/runbooks/NEWSLETTER-ABMELDE-LINKS.md.
 - Embed (Read-only-MVP, docs/referenz/EMBED.md): Gate pukalani.comments.embed
   (enabled/allowedOrigins, Default aus) → /embed-Seite + public/embed.js.
   frame-ancestors via core-Registry registerEmbeddableRoute (Default 'self'

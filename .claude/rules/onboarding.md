@@ -56,6 +56,16 @@ paths:
   Owner und Admins (`removed-contact.post.ts`) und dem Rückweg per neuer
   Einladung; alles andere auf dem Host antwortet 403 `community_removed`
   (Regel und Erlaubnisliste: tenant-isolation.md, „ENTFERNT ⇒ KEIN ZUGRIFF").
+  EINLADUNGEN: LESEN WIE ANNEHMEN (SEC-028, seit 2026-11-15): die eigene
+  Liste (`invites/mine`) bleibt LEER, solange die Adresse des Kontos nicht
+  bestätigt ist — dieselbe Bedingung wie beim Annehmen; `/join` ohne Token
+  zeigt dann den Kasten „bestätige zuerst". Der Link aus der Mail (mit Token)
+  hängt nicht daran. Widerruf und erneutes Einladen suchen GEZIELT (`getRow`
+  mit Prüfung der Community bzw. Abfrage nach Community + Adresse + offen) —
+  `listCommunityInvites` ist auf 100 gekappt und nur noch Anzeige. Stilllegen
+  zieht offene Einladungen zurück, die Annahme verlangt
+  `communities.status === 'active'`. Die Antwort der Einladen-Route sagt
+  NICHT, ob es zur Adresse ein Konto gibt (ein Hinweistext für beide Fälle).
   Besitz übertragen
   läuft über `community.transfer` (Owner), NIE über die Rollen-Route — sonst wäre eine
   Owner-Capability per Admin-Capability erreichbar. `community.delete` IST gebaut

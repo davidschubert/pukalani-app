@@ -52,6 +52,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 35 · EL1 | **Export und Löschung: Nacharbeiten.** Seit 2026-11-15 erreichen Auskunft und Löschung jede Tabelle mit Personenbezug, Gelöschtes ist wirklich leer, und Fristen setzt ein stündlicher Lauf durch (COMPLETE „GA1 P14"). Offen: (a) **Klick-Probe auf Live** mit einem Wegwerf-Konto, (b) **Datenschutztexte**: Fristen und Hinweise, (c) **Fristen für Einträge ohne Konto bauen** (entschieden 2026-11-15: Warteliste 30/90 Tage/12 Monate, Erstgespräch und Protokoll 12 Monate), (d) Kleinigkeiten. Das Zurückholen binnen 90 Tagen ist ein eigener Punkt (WH1). | Niedrig | S je Teil, (c) M | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#el1) |
 | 36 · AR1 | **Aufräumen: Nacharbeiten.** Altlasten sind seit 2026-11-15 weg: Versuchsordner, erledigte Umzugs-Werkzeuge, die alte Changelog-Automatik; es gibt ein Start-Skript statt fünf, und der Server bekommt nur noch die Dateien, die er braucht (COMPLETE „GA1 P26"). Offen: (a) **die Adresse `changelog.pukalani.app` bei Cloudflare löschen**, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) zwei erledigte Umzugs-Anleitungen ins Archiv?, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare, (c) entscheiden** | [Einzelheiten](#ar1) |
 | 37 · WH1 | **Gelöschte Marke zurückholen (Papierkorb).** Auf branding.supply fehlt der Knopf „Marke löschen"; kommt er, verschwindet die Marke sofort überall, liegt 90 Tage unter „Gelöschte Marken" zum Selbst-Zurückholen und wird danach endgültig gelöscht. Davids Entscheidungen vom 2026-11-15 stehen im Plan. **Konten** bleiben vorerst nicht zurückholbar; das wird mit dem Pukalani-Konto (PK1) entschieden. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
+| 38 · SR1 | **Kleine Sicherheitsriegel: Nacharbeiten.** Sieben kleine Korrekturen sind seit 2026-11-15 live (COMPLETE „GA1 P25"): Bot-Prüfung und eine Grenze je Empfänger an den öffentlichen Formularen von branding.supply, ein eigenes Geheimnis für Abmelde-Links, Links nur mit http(s), strengere Prüfung gespeicherter Zeichen-Grafiken, Einladungen nur mit bestätigter Adresse. Offen: (a) **Klick-Probe auf Live** (beide Formulare), (b) **Datenschutztext** nennt die Bot-Prüfung an zwei Formularen noch nicht, (c) dieselbe Grenze für Code- und Reset-Mails (gehört zu AB1 e), (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) einmal klicken, (b) Text freigeben** | [Einzelheiten](#sr1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -809,6 +810,39 @@ NICHT hier.
   behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
   gehören zu BK1 d). Der lokale Lauf der Playwright-Suite braucht einen
   Browser-Download.
+
+<a id="sr1"></a>
+
+**SR1 — Kleine Sicherheitsriegel: Nacharbeiten (aus dem Gesamtaudit, Paket P25).**
+
+- **(a) Klick-Probe auf Live.** Auf branding.supply einmal das
+  Erstgespräch-Formular und einmal die Warteliste abschicken (eigene Adresse).
+  Erwartet: das Feld der Bot-Prüfung erscheint, die Anfrage geht durch, die
+  Bestätigung kommt ohne den eigenen Text. Lokal ist beides mit eingeschalteter
+  Bot-Prüfung geklickt und gezählt; auf Production wurde nichts abgeschickt.
+- **(b) Datenschutztext.** Der Text von branding.supply nennt die Bot-Prüfung
+  für Registrierung, Passwort zurücksetzen und Kommentare. Seit 2026-11-15
+  steht sie auch am Erstgespräch und an der Warteliste. Zu tun: die zwei
+  Formulare im Text ergänzen (`apps/branding/scripts/legalPrivacyInterim.ts`,
+  de und en) — Rechtstext, deshalb Davids Freigabe.
+- **(c) Dieselbe Grenze für Code- und Reset-Mails.** Der Baustein
+  `allowRecipientMail` passt an der Reset-Anforderung in eine Zeile (die
+  Antwort ist dort schon für jede Adresse gleich); bei der Code-Anmeldung
+  trägt die Antwort Angaben aus dem Vorgang, das ist mehr als eine Zeile.
+  Gehört zu [AB1 (e)](#ab1).
+- **(d) Kleinigkeiten.** Das Korrektur-Formular der Insights hat weiter nur
+  Honigtopf und Drossel (kein Mailversand; Nachbarschaft zum Paket P19). Die
+  Redaktions-Formulare der Insights zeigen bei einem abgelehnten Link nur
+  die Fehlermeldung des Servers, keinen Hinweis am Feld. Die Liste der
+  offenen Einladungen zeigt höchstens 100 und sagt nichts, wenn es mehr sind.
+  Die Hinweise der Bot-Prüfung sprechen mit „du", die Formulare von
+  branding.supply mit „ihr". Das Prüfskript
+  `packages/onboarding/scripts/verify-member-invites.mjs` ist an die neue
+  Antwort angepasst, aber nicht gelaufen. Die Meldung an den Betreiber beim
+  Erstgespräch hat keine eigene Grenze je Tag (davor stehen Bot-Prüfung und
+  Drossel). `packages/core/scripts/verify-session-ip.mjs` ist mit der neuen
+  zweiten Adresse nicht gelaufen. Eine Kennung im PFAD einer Adresse bleibt
+  im Protokoll stehen (gekürzt werden Query und Fragment).
 
 <a id="el1"></a>
 

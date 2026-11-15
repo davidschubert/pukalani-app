@@ -266,6 +266,12 @@ paths:
   Die Namen der fehlenden Variablen stehen beim Start als Fehlerzeile im
   pm2-Log, nie in einer Antwort. Alle vier stehen seitdem auf der
   Pflicht-Liste (vorher nur der Schlüssel). Kein Schalter stellt das ab.
+  REIHENFOLGE BEI EINER NEUEN VARIABLE (zuletzt
+  `NUXT_INSIGHTS_NEWSLETTER_SECRET`, SEC-020, 2026-11-15): der Code läuft mit
+  einem Rückfall, bis der Wert steht — erst ausliefern, dann den Wert auf dem
+  Server setzen (Davids Ja; neu laden über die Ecosystem-Datei, zurücklesen),
+  und ERST DANN der Eintrag in die Pflicht-Liste. Der Wächter läuft täglich:
+  ein Eintrag vor dem Setzen öffnet jeden Tag einen Alarm.
 - Neue Namen IMMER in RESERVED_SUBDOMAINS (packages/control/schemas/tenant.ts),
   sonst kann ein Selbstbedienungs-Kunde sie beantragen.
 - HERKUNFTSPRÜFUNG (SEC-004, seit 2026-11-13 ÜBERALL AN): alle Hosts unter

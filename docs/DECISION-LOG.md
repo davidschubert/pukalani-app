@@ -7,6 +7,38 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-15 — Kleine Sicherheitsriegel (P25): alte Abmelde-Links, Bestätigungs-Mail, neues Geheimnis
+
+**Anlass:** Gesamtaudit, Paket P25 — sieben kleine Korrekturen. Drei Fragen
+ließen sich nicht aus den vorhandenen Entscheidungen beantworten.
+
+**Davids Entscheidungen (eine Runde zum Anklicken, je die empfohlene Antwort):**
+- **Abmelde-Links aus älteren Newsletter-Mails gelten ohne Frist weiter.** Wer
+  sich abmelden will, soll das immer können. Der bisherige Schlüssel bleibt
+  deshalb in der PRÜFUNG, signiert wird mit dem eigenen Geheimnis. Verworfen:
+  zwölf Monate Übergang; sofort ungültig.
+- **Die Bestätigung einer Erstgespräch-Anfrage druckt die Nachricht nicht mehr
+  ab.** Die Mail geht an eine frei eingetragene Adresse; der einzige freie
+  Text darin ist jetzt ein geprüfter Name. Die Nachricht sieht der Betreiber
+  weiter im Dashboard und in seiner eigenen Mail. Verworfen: weiter abdrucken
+  und sich auf Bot-Prüfung und Grenze verlassen.
+- **Das eigene Geheimnis für die Abmelde-Links wird auf dem Server von
+  branding.supply angelegt** (dort erzeugt, nie angezeigt). Anleitung:
+  [NEWSLETTER-ABMELDE-LINKS.md](runbooks/NEWSLETTER-ABMELDE-LINKS.md).
+
+**Beim Zuschnitt entschieden (ohne Frage, durch die Paket-Entscheidungen gedeckt):**
+- Die Grenze je Empfänger ist drei Mails je Adresse, Formular und Tag. Über
+  der Grenze bleibt die Antwort gleich, und es entsteht kein neuer Link.
+- Die Liste der eigenen Einladungen bleibt bei unbestätigter Adresse leer;
+  die Seite sagt dann „bestätige zuerst deine Adresse", unabhängig davon, ob
+  eine Einladung wartet.
+- Links aus gespeicherten Daten werden beim Speichern abgelehnt UND beim
+  Anzeigen geprüft; Bestandsdaten werden nicht umgeschrieben.
+- Die private Adresse im Repo ist ersetzt, die Historie bleibt (Davids
+  Entscheidung vom 2026-11-13).
+
+---
+
 ## 2026-11-15 — Löschen und Fristen: was nach dem Löschen bleibt, und wie lange (P14)
 
 **Anlass:** Gesamtaudit, Paket P14 „Export und Löschung vollständig". Beim
