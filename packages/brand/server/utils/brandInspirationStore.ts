@@ -486,17 +486,33 @@ export async function deleteBrandInspiration(
  * wiederholen lässt, als ein stiller Rest ohne Eigentümer. `removed` zählt
  * erst NACH dem erfolgreichen Löschen.
  *
- * Die Bilder-LISTE bleibt fail-soft: eine (noch) nicht angelegte Tabelle ist
- * eine Null, kein Abbruch — das ist der Idempotenz-Vertrag oben und keine
- * verschwiegene Datei.
+ * DIE LISTE IST VOLLSTÄNDIG UND STRENG (SEC-026, Teil 2). Bis dahin las die
+ * Löschung über `listBrandInspiration` — die Liste der Oberfläche: EINE Seite
+ * mit `Query.limit(50)`, und ein `catch` auf leer machte jeden Lesefehler zu
+ * „nichts zu löschen". Ab der 51. Zeile blieb der Rest im Bucket, und ein 500
+ * meldete eine vollständige Löschung, die gar nicht begonnen hatte. Jetzt
+ * liest sie ALLE Zeilen (paginiert, `listAllRowsIfTableExists`), und nur eine
+ * (noch) nicht angelegte Tabelle ist eine Null — das ist der
+ * Idempotenz-Vertrag oben und keine verschwiegene Datei. Jeder andere
+ * Lesefehler wirft (503 wie die Liste). Die Liste der Oberfläche bleibt, wie
+ * sie ist: dort ist die Seite ein Deckel für die Anzeige, keine Zusage.
  */
 export async function purgeBrandInspiration(event: H3Event, profileId: string): Promise<number> {
-  const entries = await listBrandInspiration(event, profileId).catch(() => [])
+  const { tablesDB, databaseId } = brandDb(event)
+  let rows: BrandInspirationRow[]
+  try {
+    rows = await listAllRowsIfTableExists<BrandInspirationRow>(
+      tablesDB, databaseId, BRAND_INSPIRATION_TABLE, [Query.equal('profileId', profileId)],
+    )
+  }
+  catch (error) {
+    throw brandInspirationUnavailable(error, { profileId, stage: 'purge_list' })
+  }
   let removed = 0
-  for (const entry of entries) {
+  for (const row of rows) {
     // Kein `catch` mehr: `deleteBrandInspiration` schluckt das 404 schon
     // selbst (Zeile wie Datei), und alles andere GEHÖRT nach oben.
-    await deleteBrandInspiration(event, profileId, entry.id, { strictFile: true })
+    await deleteBrandInspiration(event, profileId, row.$id, { strictFile: true })
     removed += 1
   }
   return removed

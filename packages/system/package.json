@@ -6,7 +6,8 @@
   "main": "./nuxt.config.ts",
   "scripts": {
     "lint": "eslint .",
-    "migrate": "node ../../scripts/migrate.mjs --layer system"
+    "migrate": "node ../../scripts/migrate.mjs --layer system",
+    "test": "vitest run"
   },
   "dependencies": {
     "node-appwrite": "catalog:"
@@ -16,6 +17,7 @@
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "vue": "catalog:"
   }
 }

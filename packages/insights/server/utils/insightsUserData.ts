@@ -101,13 +101,10 @@ async function safeListAll<T extends Models.Row>(
   filters: string[],
 ): Promise<T[]> {
   const { tablesDB, databaseId } = insightsDb(event)
-  try {
-    return await listAllRows<T>(tablesDB, databaseId, tableId, filters)
-  }
-  catch (error) {
-    if (isInsightsRowMissing(error)) return []
-    throw error
-  }
+  // Leer NUR, wenn die Tabelle fehlt (SEC-026, Teil 2). Vorher verzieh diese
+  // Stelle jedes 404 (`isInsightsRowMissing`); jetzt ist es genau das 404
+  // „Tabelle fehlt" aus dem Core, jeder andere Lesefehler bricht ab.
+  return await listAllRowsIfTableExists<T>(tablesDB, databaseId, tableId, filters)
 }
 
 /**
@@ -123,8 +120,12 @@ async function accountEmailLower(event: H3Event, userId: string): Promise<string
     const user = await users.get({ userId })
     return (user.email ?? '').toLowerCase() || null
   }
-  catch {
-    return null
+  catch (error) {
+    // NUR das 404 heisst „Konto weg" (SEC-026, Nachtrag). Ein `catch` ohne
+    // Prüfung machte jeden Wackler dazu — Korrekturen und Newsletter unter der
+    // Adresse blieben dann still stehen, und die Löschung meldete Erfolg.
+    if (isAppwriteUserMissing(error)) return null
+    throw error
   }
 }
 

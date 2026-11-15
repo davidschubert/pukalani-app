@@ -2030,6 +2030,13 @@ export interface BrandDiscoverCheck {
   id: string
   score: number
   band: string
+  /**
+   * Darf die Anatomie auf `/brand-check/<id>` verlinken? Nur, wenn diese Seite
+   * den Check JEDEM zeigt (SEC-014): ein Website-Check immer, ein
+   * Dokument-Check nur mit Ranking-Häkchen. Sonst zeigt die Anatomie die
+   * Zahlen ohne Verweis — ein Link ins „nicht gefunden" wäre keiner.
+   */
+  linkable: boolean
   categories: { id: string, score: number | null }[]
 }
 

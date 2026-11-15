@@ -208,7 +208,15 @@ async function deleteList() {
     if (!ok) return
     emit('refresh')
   }
-  catch {
+  catch (error) {
+    // Eigener Satz, wenn Anhänge hängen blieben: dann sind einige Karten
+    // vielleicht schon weg, „unverändert" wäre falsch. Neu laden, damit das
+    // Board den echten Stand zeigt.
+    if (isTicketCleanupIncomplete(error)) {
+      toast.add({ title: t('tickets.errors.action'), description: t('tickets.errors.listCleanupIncomplete'), color: 'error' })
+      emit('refresh')
+      return
+    }
     toast.add({ title: t('tickets.errors.action'), description: t('tickets.errors.listDelete'), color: 'error' })
   }
 }

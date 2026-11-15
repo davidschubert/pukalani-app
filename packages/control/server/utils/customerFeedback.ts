@@ -445,37 +445,50 @@ export async function updateFeedback(
  * User-Id in zwei Projekten sind zwei verschiedene Menschen.
  */
 
-function scopedUserQueries(projectId: string, userId: string, limit: number): string[] {
+function scopedUserFilters(projectId: string, userId: string): string[] {
   return [
     Query.equal('runtimeProjectId', projectId),
     Query.equal('authorUserId', userId),
-    Query.limit(limit),
   ]
 }
 
+/** Die Stimmen der Person — gefunden über `voterKey`, nicht über `authorUserId`. */
+function voterFilters(projectId: string, userId: string): string[] {
+  return [Query.equal('voterKey', voterKeyFor(projectId, userId))]
+}
+
+/**
+ * VOLLSTÄNDIG ODER GAR NICHT (SEC-026, 2026-11-15): alle drei Tabellen werden
+ * per `listAllRows` ganz gelesen, und ein Lesefehler wirft. Vorher las die
+ * Auskunft EINE Seite von 500 Zeilen und machte aus einem Fehler eine leere
+ * Liste — eine Auskunft, die vollständig aussah und es nicht war. Die STIMMEN
+ * gehören dazu: sie sind eine persönliche Handlung der Person (voterKey trägt
+ * ihre User-Id), ebenso Name und Adresse ihrer eigenen Einträge.
+ */
 export async function exportFeedbackUserData(
   event: H3Event,
   projectId: string,
   userId: string,
-): Promise<{ customerFeedback: unknown[], customerFeedbackComments: unknown[] }> {
-  if (!projectId || !userId) return { customerFeedback: [], customerFeedbackComments: [] }
+): Promise<{ customerFeedback: unknown[], customerFeedbackComments: unknown[], customerFeedbackVotes: unknown[] }> {
+  if (!projectId || !userId) return { customerFeedback: [], customerFeedbackComments: [], customerFeedbackVotes: [] }
   const { tablesDB } = createAdminClient(event)
   const db = databaseId(event)
 
-  const entries = await tablesDB.listRows<CustomerFeedbackRow>({
-    databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, queries: scopedUserQueries(projectId, userId, 500),
-  }).catch(() => null)
-  const comments = await tablesDB.listRows<CustomerFeedbackCommentRow>({
-    databaseId: db, tableId: CUSTOMER_FEEDBACK_COMMENTS_TABLE, queries: scopedUserQueries(projectId, userId, 500),
-  }).catch(() => null)
+  const entries = await listAllRows<CustomerFeedbackRow>(tablesDB, db, CUSTOMER_FEEDBACK_TABLE, scopedUserFilters(projectId, userId))
+  const comments = await listAllRows<CustomerFeedbackCommentRow>(tablesDB, db, CUSTOMER_FEEDBACK_COMMENTS_TABLE, scopedUserFilters(projectId, userId))
+  const votes = await listAllRows<CustomerFeedbackVoteRow>(tablesDB, db, CUSTOMER_FEEDBACK_VOTES_TABLE, voterFilters(projectId, userId))
 
   return {
-    customerFeedback: (entries?.rows ?? []).map(row => ({
+    customerFeedback: entries.map(row => ({
       area: row.area, productKey: row.productKey, title: row.title, message: row.message,
-      state: row.state, page: row.page, voteCount: row.voteCount, createdAt: row.$createdAt,
+      state: row.state, page: row.page, voteCount: row.voteCount,
+      authorName: row.authorName, authorEmail: row.authorEmail, createdAt: row.$createdAt,
     })),
-    customerFeedbackComments: (comments?.rows ?? []).map(row => ({
-      feedbackId: row.feedbackId, body: row.body, createdAt: row.$createdAt,
+    customerFeedbackComments: comments.map(row => ({
+      feedbackId: row.feedbackId, body: row.body, authorName: row.authorName, createdAt: row.$createdAt,
+    })),
+    customerFeedbackVotes: votes.map(row => ({
+      feedbackId: row.feedbackId, createdAt: row.$createdAt,
     })),
   }
 }
@@ -495,6 +508,16 @@ export async function exportFeedbackUserData(
  * persönliche Handlung ohne fremden Kontext, und sie ist der einzige Rest, der
  * die Person danach noch identifizierbar machen würde (voterKey enthält die
  * User-Id). Die Zähler werden dabei mitgezogen.
+ *
+ * STRIKT, AUCH BEIM LESEN (SEC-026, 2026-11-15): `deleteUserCompletely` löscht
+ * das Konto nur, wenn JEDER Beitrag Erfolg meldet. Vorher machte ein Lesefehler
+ * hier `{ deleted: 0, anonymized: 0 }` — ein Erfolg für den Orchestrator, und
+ * das Konto verschwand, während Name, Adresse und Stimmen stehen blieben.
+ * Jetzt wirft jeder Lese- und Schreibfehler; der Beitrag gilt als gescheitert,
+ * das Konto bleibt gesperrt stehen, und der Lauf lässt sich wiederholen (jeder
+ * Schritt ist idempotent: eine anonymisierte Zeile wird nicht mehr gefunden,
+ * eine gelöschte Stimme auch nicht). Gelesen wird alles per `listAllRows`,
+ * nicht eine Seite von 500.
  */
 export async function eraseFeedbackUserData(
   event: H3Event,
@@ -507,12 +530,8 @@ export async function eraseFeedbackUserData(
   let deleted = 0
   let anonymized = 0
 
-  // STRIKT (kein catch um die Schreibvorgänge) — deleteUserCompletely gated
-  // users.delete auf Voll-Erfolg. Nur das Lesen darf degradieren.
-  const entries = await tablesDB.listRows<CustomerFeedbackRow>({
-    databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, queries: scopedUserQueries(projectId, userId, 500),
-  }).catch(() => null)
-  for (const row of entries?.rows ?? []) {
+  const entries = await listAllRows<CustomerFeedbackRow>(tablesDB, db, CUSTOMER_FEEDBACK_TABLE, scopedUserFilters(projectId, userId))
+  for (const row of entries) {
     await tablesDB.updateRow({
       databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, rowId: row.$id,
       data: { authorUserId: '', authorName: '', authorEmail: '' },
@@ -520,10 +539,8 @@ export async function eraseFeedbackUserData(
     anonymized++
   }
 
-  const comments = await tablesDB.listRows<CustomerFeedbackCommentRow>({
-    databaseId: db, tableId: CUSTOMER_FEEDBACK_COMMENTS_TABLE, queries: scopedUserQueries(projectId, userId, 500),
-  }).catch(() => null)
-  for (const row of comments?.rows ?? []) {
+  const comments = await listAllRows<CustomerFeedbackCommentRow>(tablesDB, db, CUSTOMER_FEEDBACK_COMMENTS_TABLE, scopedUserFilters(projectId, userId))
+  for (const row of comments) {
     await tablesDB.updateRow({
       databaseId: db, tableId: CUSTOMER_FEEDBACK_COMMENTS_TABLE, rowId: row.$id,
       data: { authorUserId: '', authorName: '' },
@@ -531,29 +548,33 @@ export async function eraseFeedbackUserData(
     anonymized++
   }
 
-  const votes = await tablesDB.listRows<CustomerFeedbackVoteRow>({
-    databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE,
-    queries: [Query.equal('voterKey', voterKeyFor(projectId, userId)), Query.limit(500)],
-  }).catch(() => null)
+  const votes = await listAllRows<CustomerFeedbackVoteRow>(tablesDB, db, CUSTOMER_FEEDBACK_VOTES_TABLE, voterFilters(projectId, userId))
   const touched = new Set<string>()
-  for (const row of votes?.rows ?? []) {
+  for (const row of votes) {
     // destruktiv-ok: eine Stimme ist eine persönliche Handlung ohne fremden
     // Kontext — sie zu behalten hieße, die Person weiter zu führen.
     await tablesDB.deleteRow({ databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE, rowId: row.$id })
     touched.add(row.feedbackId)
     deleted++
   }
+
+  // DER ZÄHLER DARF DEGRADIEREN — als einziger Schritt: `voteCount` ist eine
+  // Zahl ohne Personenbezug, ein veralteter Wert lässt nichts von der Person
+  // zurück. Ihn strikt zu machen, hielte ein Konto wegen einer Anzeige fest.
+  // Die nächste Stimme auf dem Eintrag zählt ohnehin neu.
   for (const feedbackId of touched) {
-    const rest = await tablesDB.listRows<CustomerFeedbackVoteRow>({
-      databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE,
-      queries: [Query.equal('feedbackId', feedbackId), Query.limit(1)],
-    }).catch(() => null)
-    if (!rest) continue
-    await tablesDB.updateRow({
-      databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, rowId: feedbackId, data: { voteCount: rest.total },
-    }).catch(() => {
+    try {
+      const rest = await tablesDB.listRows<CustomerFeedbackVoteRow>({
+        databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE,
+        queries: [Query.equal('feedbackId', feedbackId), Query.limit(1)],
+      })
+      await tablesDB.updateRow({
+        databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, rowId: feedbackId, data: { voteCount: rest.total },
+      })
+    }
+    catch {
       logEvent('warn', 'feedback.vote_count_stale', { feedbackId })
-    })
+    }
   }
 
   return { deleted, anonymized }

@@ -1,9 +1,17 @@
-import { Query } from 'node-appwrite'
-import { TICKETS_TABLE, TICKET_FILES_BUCKET, TICKET_FILES_TABLE, TICKET_WATCHERS_TABLE, type TicketFileRow, type TicketWatcherRow } from '../../../shared/types/ticket'
+import { TICKETS_TABLE } from '../../../shared/types/ticket'
+import { requireTicketCleanup } from '../../utils/ticketCleanup'
 
 /**
  * Ticket endgültig löschen (Zurückstellen = Verschieben, kein Delete) —
  * kaskadiert auf Watcher, Anhang-Metadaten und Storage-Dateien (P4).
+ *
+ * ERST AUFRÄUMEN, DANN DAS TICKET (BE-024, 2026-11-15): bleibt beim Aufräumen
+ * etwas hängen (`failed > 0`) oder scheitert schon das Lesen, bleibt das
+ * Ticket STEHEN und die Route antwortet 502 `ticket_cleanup_incomplete`.
+ * Vorher wurden alle Fehler geschluckt und das Ticket trotzdem gelöscht —
+ * zurück blieben Dateien im Bucket, die keine Oberfläche mehr erreicht. So
+ * bleibt das Ticket der Griff, über den ein zweiter Versuch den Rest findet;
+ * jeder Schritt ist idempotent (404 zählt als „schon weg").
  */
 export default defineEventHandler(async (event) => {
   requirePermission(event, 'tickets.manage')
@@ -14,21 +22,7 @@ export default defineEventHandler(async (event) => {
   const admin = createAdminClient(event)
   const databaseId = config.public.appwriteDatabaseId
 
-  const [watchers, files] = await Promise.all([
-    admin.tablesDB.listRows<TicketWatcherRow>({
-      databaseId, tableId: TICKET_WATCHERS_TABLE, queries: [Query.equal('ticketId', id), Query.limit(200)],
-    }).catch(() => ({ rows: [] as TicketWatcherRow[] })),
-    admin.tablesDB.listRows<TicketFileRow>({
-      databaseId, tableId: TICKET_FILES_TABLE, queries: [Query.equal('ticketId', id), Query.limit(100)],
-    }).catch(() => ({ rows: [] as TicketFileRow[] })),
-  ])
-  for (const watcher of watchers.rows) {
-    await admin.tablesDB.deleteRow({ databaseId, tableId: TICKET_WATCHERS_TABLE, rowId: watcher.$id }).catch(() => {})
-  }
-  for (const file of files.rows) {
-    await admin.storage.deleteFile({ bucketId: TICKET_FILES_BUCKET, fileId: file.fileId }).catch(() => {})
-    await admin.tablesDB.deleteRow({ databaseId, tableId: TICKET_FILES_TABLE, rowId: file.$id }).catch(() => {})
-  }
+  const cleanup = await requireTicketCleanup(admin, databaseId, id)
 
   await admin.tablesDB.deleteRow({
     databaseId,
@@ -38,5 +32,6 @@ export default defineEventHandler(async (event) => {
     throw toH3Error(error, 'Could not delete ticket')
   })
 
-  return { ok: true }
+  return { ok: true, files: cleanup.files, watchers: cleanup.watchers }
 })
+

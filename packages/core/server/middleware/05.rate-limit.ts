@@ -359,6 +359,8 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // Betreiber-Sitzung schreibt sonst ungebremst Gigabyte. Deckel 30/min wie media.
   { re: /^POST \/api\/events\/[^/]+\/cover$/, bucket: 'events:cover', max: 30 },
   { re: /^POST \/api\/tickets\/[^/]+\/files$/, bucket: 'tickets:files', max: 30 },
+  // KI-Triage (BE-024): ein bezahlter Modell-Aufruf je Klick — gleiche Klasse wie `brand:generate`, also 6/min.
+  { re: /^POST \/api\/tickets\/[^/]+\/triage$/, bucket: 'tickets:triage', max: 6 },
   // Stripe-Anlege-Routen (Audit-Runde 5, 2026-08-16): jeder Ruf legt bei Stripe
   // an — checkout: Customer + Checkout-Session, portal: Portal-Session. Session-
   // gated, aber ohne Deckel könnte ein eingeloggter Nutzer unbegrenzt

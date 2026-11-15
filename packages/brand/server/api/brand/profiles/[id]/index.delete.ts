@@ -4,7 +4,7 @@ import type { BrandProfileDeleteResponse } from '../../../../../shared/types/bra
 import { BRAND_FINDINGS_TABLE } from '../../../../utils/brandFindingsStore'
 import { purgeBrandInspiration } from '../../../../utils/brandInspirationStore'
 import { purgeBrandMarkDrafts } from '../../../../utils/brandMarkDrafts'
-import { runBrandProfileCascades } from '../../../../utils/brandProfileCascade'
+import { BrandProfileCascadeError, runBrandProfileCascades } from '../../../../utils/brandProfileCascade'
 import {
   BRAND_PUBLICATIONS_TABLE,
   BRAND_PUBLICATION_REPORTS_TABLE,
@@ -123,10 +123,25 @@ export default defineEventHandler(async (event): Promise<BrandProfileDeleteRespo
   }
   // Die Mitläufer ANDERER Layer (MV1 M1): heute `market` mit seinen drei
   // Tabellen an derselben `profileId`. Sie laufen NACH den eigenen Kindern und
-  // VOR dem Kopf — dieselbe Reihenfolge-Begründung wie oben. Fail-soft: ein
-  // Zusatzprodukt darf das Löschen eines Brandings nicht verhindern
-  // (`brandProfileCascade.ts`).
-  const cascades = await runBrandProfileCascades(event, profileId)
+  // VOR dem Kopf — dieselbe Reihenfolge-Begründung wie oben.
+  //
+  // Scheitert einer, BLEIBT DAS PROFIL (SEC-026, Teil 2): seine Zeilen findet
+  // man nur über das Profil, ohne Kopf wären sie für immer unerreichbar. Die
+  // Antwort ist ein 502 mit eigenem Grund; der Mensch kann erneut löschen —
+  // jeder Schritt davor ist idempotent. Welcher Mitläufer scheiterte, steht
+  // in `brand.profile_cascade_failed` (die Kaskade loggt es selbst).
+  let cascades: Record<string, number>
+  try {
+    cascades = await runBrandProfileCascades(event, profileId)
+  }
+  catch (error) {
+    if (!(error instanceof BrandProfileCascadeError)) throw toH3Error(error, 'Brand profile could not be deleted')
+    throw createError({
+      status: 502,
+      statusText: 'Brand profile could not be deleted completely',
+      data: { code: 'profile_delete_incomplete' },
+    })
+  }
 
   try {
     await tablesDB.deleteRow({ databaseId, tableId: BRAND_PROFILES_TABLE, rowId: profileId })

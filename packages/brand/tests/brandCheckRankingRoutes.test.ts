@@ -35,6 +35,8 @@ interface FakeRow { $id: string, $createdAt: string, [key: string]: unknown }
 let checks: FakeRow[]
 /** `brand_check_corrections` */
 let corrections: FakeRow[]
+/** `brand_profiles` — nur für die Besitz-Frage eines Dokument-Checks (SEC-014). */
+let profiles: FakeRow[]
 let storeBroken: boolean
 let logs: { level: string, event: string, data: Record<string, unknown> }[]
 let headers: Record<string, string>
@@ -52,6 +54,7 @@ function parse(queries: string[]): ParsedQuery[] {
 }
 
 function tableOf(tableId: string): FakeRow[] {
+  if (tableId === 'brand_profiles') return profiles
   return tableId === 'brand_checks' ? checks : corrections
 }
 
@@ -148,6 +151,9 @@ vi.stubGlobal('setHeader', (_event: H3Event, key: string, value: string) => {
   headers[key] = value
 })
 vi.stubGlobal('trustedClientIp', () => '203.0.113.9')
+// Die ECHTE Besitz-Regel (Nitro-Auto-Import): die Sichtbarkeit eines
+// Dokument-Checks hängt an ihr, eine Attrappe prüfte hier nur sich selbst.
+vi.stubGlobal('assertBrandOwnerAccess', (await import('../server/utils/brandOwnership')).assertBrandOwnerAccess)
 vi.stubGlobal('useRateLimitStore', () => ({
   prefix: 'rl:',
   store: {
@@ -220,6 +226,7 @@ function check(overrides: Partial<FakeRow> = {}): FakeRow {
 beforeEach(() => {
   checks = []
   corrections = []
+  profiles = []
   storeBroken = false
   logs = []
   headers = {}
@@ -542,5 +549,79 @@ describe('PATCH /api/brand/admin/checks/<id> · der Entfernen-Weg', () => {
     body = { hidden: true }
     await hiddenHandler(event)
     await expect(rankingHandler(event)).resolves.toMatchObject({ items: [], total: 0 })
+  })
+})
+
+/**
+ * DER KORREKTURVORSCHLAG ZU EINEM DOKUMENT-CHECK (SEC-014).
+ *
+ * Davids Entscheidung: das Prüfergebnis einer nicht veröffentlichten Marke
+ * sieht nur ihre Besitzerin. Die Korrektur-Route ist ohne Konto erreichbar —
+ * sie darf deshalb für einen Fremden nicht anders antworten als für eine Id,
+ * die es nicht gibt, sonst bestätigte schon der Unterschied die Existenz.
+ */
+describe('POST /api/brand/check/<id>/correction · Dokument-Check', () => {
+  function documentCheck(overrides: Partial<FakeRow> = {}): FakeRow {
+    return check({
+      $id: 'd1',
+      urlKey: 'doc:p1',
+      host: 'Kailua Brand',
+      source: 'document',
+      profileId: 'p1',
+      rankingOptIn: false,
+      ...overrides,
+    })
+  }
+
+  function session(userId: string | null) {
+    ;(event as unknown as { context: Record<string, unknown> }).context = userId ? { user: { $id: userId } } : {}
+  }
+
+  beforeEach(() => {
+    profiles = [{ $id: 'p1', $createdAt: '2026-09-01T09:00:00.000Z', ownerType: 'user', ownerId: 'u-owner' }]
+    body = { field: 'industry', proposed: 'agency', reason: 'Das ist eine Agentur.' }
+    session(null)
+  })
+
+  it('Fremder ohne Session ⇒ DASSELBE 404 wie eine unbekannte Id, nichts geschrieben', async () => {
+    checks = [documentCheck()]
+    routeId = 'gibtsnicht'
+    const unknown = await correctionHandler(event).catch((error: unknown) => error) as Record<string, unknown>
+
+    routeId = 'd1'
+    const hidden = await correctionHandler(event).catch((error: unknown) => error) as Record<string, unknown>
+
+    expect(hidden).toMatchObject({ status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } })
+    expect({ status: hidden.status, statusText: hidden.statusText, data: hidden.data })
+      .toEqual({ status: unknown.status, statusText: unknown.statusText, data: unknown.data })
+    expect(corrections).toHaveLength(0)
+  })
+
+  it('fremde Session ⇒ dasselbe 404', async () => {
+    checks = [documentCheck()]
+    routeId = 'd1'
+    session('u-stranger')
+    await expect(correctionHandler(event)).rejects.toMatchObject({
+      status: 404,
+      data: { code: 'check_not_found' },
+    })
+    expect(corrections).toHaveLength(0)
+    session(null)
+  })
+
+  it('die Besitzerin darf einen Vorschlag einreichen', async () => {
+    checks = [documentCheck()]
+    routeId = 'd1'
+    session('u-owner')
+    await expect(correctionHandler(event)).resolves.toEqual({ ok: true })
+    expect(corrections).toHaveLength(1)
+    session(null)
+  })
+
+  it('mit Ranking-Häkchen ist er öffentlich — auch ohne Session', async () => {
+    checks = [documentCheck({ rankingOptIn: true })]
+    routeId = 'd1'
+    await expect(correctionHandler(event)).resolves.toEqual({ ok: true })
+    expect(corrections).toHaveLength(1)
   })
 })

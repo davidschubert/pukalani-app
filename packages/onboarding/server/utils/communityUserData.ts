@@ -31,6 +31,10 @@ import { callControlPlane } from './controlPlane'
  * Voll-Erfolgs-Gate von `deleteUserCompletely` verhindern soll. Ist die Naht
  * nicht erreichbar, scheitert sie laut — der Account bleibt gesperrt stehen und
  * ein Re-Run räumt den Rest ab.
+ *
+ * DIE DEGRADATION IST SICHTBAR (SEC-026, Nachtrag): der Abschnitt hiess bei
+ * einer nicht erreichbaren Naht `{}` — von „keine Mitgliedschaften" nicht zu
+ * unterscheiden. Jetzt steht dort `{ unavailable: true }`.
  */
 
 const USER_DATA_PATH = '/api/control/community/members/user-data'
@@ -58,16 +62,31 @@ async function erasureIdentity(event: H3Event, userId: string): Promise<{
   const runtimeProjectId = useRuntimeConfig(event).public.appwriteProjectId
   // 404 = Konto schon weg (Orphan-Cleanup-Modus des Orchestrators) → ohne
   // Adresse weitermachen, die Mitgliedschaften findet das Paar auch so.
-  const user = await createAdminClient(event).users.get({ userId }).catch(() => null)
+  // NUR das 404 (SEC-026, Nachtrag): vorher galt JEDER Fehler als „weg", und
+  // ein Wackler liess Einladungen und Early-Access-Anfragen unter dieser
+  // Adresse still stehen, während die Löschung Erfolg meldete. Jeder andere
+  // Fehler bricht ab; der Re-Run findet das Konto dann wieder.
+  const user = await createAdminClient(event).users.get({ userId }).catch((error: unknown) => {
+    if (isAppwriteUserMissing(error)) return null
+    throw error
+  })
   const email = user?.emailVerification && user.email ? user.email : ''
 
   return { runtimeProjectId, runtimeUserId: userId, ...(email ? { email } : {}) }
 }
 
-export async function communityExportUserData(event: H3Event, userId: string): Promise<CommunityUserDataExport | Record<string, never>> {
+export async function communityExportUserData(
+  event: H3Event,
+  userId: string,
+): Promise<CommunityUserDataExport | Record<string, never> | { unavailable: true }> {
+  // Ohne konfigurierte Naht gibt es hier keine Mitgliedschaften (Silo ohne
+  // Control Plane) — das leere Objekt ist dann die wahre Antwort.
   if (!await controlServiceAvailable(event)) return {}
   const identity = await erasureIdentity(event, userId)
-  return await callControlPlane<CommunityUserDataExport>(event, USER_DATA_PATH, identity).catch(() => ({}))
+  // Naht konfiguriert, aber nicht erreichbar: die Auskunft geht ohne diesen
+  // Abschnitt raus, SAGT es aber — `{ unavailable: true }` statt `{}`.
+  return await callControlPlane<CommunityUserDataExport>(event, USER_DATA_PATH, identity)
+    .catch(() => ({ unavailable: true as const }))
 }
 
 export async function communityDeleteUserData(event: H3Event, userId: string): Promise<UserDataDeleteResult> {

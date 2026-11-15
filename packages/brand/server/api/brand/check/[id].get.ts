@@ -21,21 +21,34 @@ import {
   brandDb,
   isAppwriteNotFound,
 } from '../../../utils/brandStore'
+import { isBrandCheckReadable } from '../../../utils/brandCheckVisibility'
 
 /**
  * EIN GESPEICHERTES CHECK-ERGEBNIS — öffentlich lesbar, unter genau der
  * Adresse, die der Anstoss zurückgegeben hat (`/brand-check/<id>`, Plan §4).
  *
  * ── WARUM SIE OHNE JEDEN BEWEIS ANTWORTET ─────────────────────────────────
- * Weil das Ergebnis TEILBAR sein soll (Davids Entscheidung 2026-09-05). Es
- * enthält nichts, was nicht ohnehin öffentlich wäre: die geprüfte Adresse und
- * Urteile über eine öffentlich erreichbare Startseite. Was NICHT drinsteht,
+ * Weil das Ergebnis TEILBAR sein soll (Davids Entscheidung 2026-09-05). Ein
+ * WEBSITE-Check enthält nichts, was nicht ohnehin öffentlich wäre: die
+ * geprüfte Adresse und Urteile über eine öffentlich erreichbare Startseite.
+ * Was NICHT drinsteht,
  * ist der Grund, warum das trägt — kein Seitentext, kein `ipHash`, kein
  * `textHash`, kein Modellname. Die Zeile trägt mehr, als diese Antwort zeigt,
  * und das ist Absicht: `ipHash` ist ein (pseudonymer) Personenbezug und geht
  * niemanden ausser dem Deckel etwas an.
  *
  * Die Seite dazu trägt `noindex` (Client) — geteilt heisst nicht indexiert.
+ *
+ * ── EIN DOKUMENT-CHECK GEHÖRT SEINER BESITZERIN (SEC-014) ─────────────────
+ * Seit dem Fundament-Check liegen in derselben Tabelle Urteile über eine NICHT
+ * veröffentlichte Brand Foundation, mit wörtlichen Belegstellen daraus. Davids
+ * Entscheidung: „Das Prüfergebnis einer nicht veröffentlichten Marke sieht nur
+ * noch deren Besitzerin." Ein Dokument-Check geht deshalb nur an die
+ * angemeldete Besitzerin seines Profils — oder an jeden, wenn sie ihn mit dem
+ * Ranking-Häkchen freigegeben hat (der Link aus dem Ranking muss tragen). Alle
+ * anderen bekommen dasselbe 404 wie für eine unbekannte Id, auch wenn die
+ * Besitz-Frage selbst scheitert. Die Regel steht EINMAL in
+ * `brandCheckVisibility.ts` und gilt genauso für den Korrekturvorschlag.
  *
  * ── DIE ID IST DAS GANZE GEHEIMNIS, ALSO WIRD SIE GEMESSEN ────────────────
  * Sie kommt aus der Adresszeile. Eine ungeprüfte Zeichenkette in einem
@@ -93,6 +106,12 @@ export default defineEventHandler(async (event): Promise<BrandCheckResult> => {
   // der Beleg dafür, was wann behauptet wurde, und ein Löschen brächte den
   // Check beim nächsten Aufruf derselben Adresse frisch zurück.
   if (row.hidden === true) {
+    throw createError({ status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } })
+  }
+
+  // NICHT FREIGEGEBENER DOKUMENT-CHECK, und die Anfrage kommt nicht von seiner
+  // Besitzerin ⇒ dasselbe 404 wie „gibt es nicht" (Kopf, SEC-014).
+  if (!(await isBrandCheckReadable(event, row))) {
     throw createError({ status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } })
   }
 

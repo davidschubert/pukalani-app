@@ -381,8 +381,11 @@ async function remove() {
     emit('refresh')
     open.value = false
   }
-  catch {
-    toast.add({ title: t('tickets.errors.action'), description: t('tickets.errors.ticketDelete'), color: 'error' })
+  catch (error) {
+    const description = isTicketCleanupIncomplete(error)
+      ? t('tickets.errors.ticketCleanupIncomplete')
+      : t('tickets.errors.ticketDelete')
+    toast.add({ title: t('tickets.errors.action'), description, color: 'error' })
   }
 }
 

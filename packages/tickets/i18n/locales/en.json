@@ -113,7 +113,9 @@
       "cardAdd": "The card was not created. Your title is still in the field — press Enter again.",
       "save": "Your change only exists in this form. Change a field again to save it — don't close the card before that.",
       "ticketDuplicate": "The copy was not created — the ticket is unchanged.",
-      "ticketDelete": "The ticket was not deleted and is still on the board."
+      "ticketDelete": "The ticket was not deleted and is still on the board.",
+      "ticketCleanupIncomplete": "The attachments could not be removed completely. The ticket was not deleted — please try again.",
+      "listCleanupIncomplete": "The attachments of a card could not be removed completely. The list is still there, some cards may already be deleted — please try again."
     },
     "triage": {
       "run": "Run AI triage",

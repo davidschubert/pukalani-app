@@ -113,7 +113,9 @@
       "cardAdd": "Die Karte wurde nicht angelegt. Dein Titel steht noch im Feld — drück noch einmal Enter.",
       "save": "Deine Änderung steht nur in diesem Formular. Ändere ein Feld erneut, damit sie gespeichert wird — schließ die Karte vorher nicht.",
       "ticketDuplicate": "Die Kopie wurde nicht angelegt — das Ticket ist unverändert.",
-      "ticketDelete": "Das Ticket wurde nicht gelöscht und steht weiter auf dem Board."
+      "ticketDelete": "Das Ticket wurde nicht gelöscht und steht weiter auf dem Board.",
+      "ticketCleanupIncomplete": "Die Anhänge ließen sich nicht vollständig entfernen. Das Ticket wurde nicht gelöscht — bitte versuch es noch einmal.",
+      "listCleanupIncomplete": "Die Anhänge einer Karte ließen sich nicht vollständig entfernen. Die Liste steht noch, einige Karten sind vielleicht schon gelöscht — bitte versuch es noch einmal."
     },
     "triage": {
       "run": "KI-Triage ausführen",

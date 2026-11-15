@@ -31,6 +31,8 @@ let stored: FakeRow[]
 /** `brand_profiles` — nur für die Besitz-Prüfung des optionalen `profileId`. */
 let profiles: FakeRow[]
 let storeBroken: boolean
+/** Nur `brand_profiles` fällt aus — die Besitz-Frage eines Dokument-Checks (SEC-014). */
+let profileLookupBroken: boolean
 let createBroken: boolean
 let fetchOutcome: 'ok' | 'blocked' | 'failed' | 'robots' | 'tdm'
 let judgeBroken: boolean
@@ -94,6 +96,7 @@ const tablesDB = {
   }),
   getRow: vi.fn(async ({ tableId, rowId }: { tableId: string, rowId: string }) => {
     if (storeBroken) throw new AppwriteException('Table not found', 404)
+    if (profileLookupBroken && tableId === 'brand_profiles') throw new AppwriteException('Server error', 500)
     const table = tableId === 'brand_profiles' ? profiles : stored
     const row = table.find(entry => entry.$id === rowId)
     if (!row) throw new AppwriteException('Row not found', 404)
@@ -184,6 +187,9 @@ vi.stubGlobal('logEvent', (level: string, event: string, data: Record<string, un
   logs.push({ level, event, data })
 })
 vi.stubGlobal('setHeader', () => {})
+// Die ECHTE Besitz-Regel (Nitro-Auto-Import): die Sichtbarkeit eines
+// Dokument-Checks hängt an ihr, eine Attrappe prüfte hier nur sich selbst.
+vi.stubGlobal('assertBrandOwnerAccess', (await import('../server/utils/brandOwnership')).assertBrandOwnerAccess)
 vi.stubGlobal('readValidatedBody', async (_event: H3Event, parse: (input: unknown) => unknown) => parse(body))
 vi.stubGlobal('getRouterParam', () => routerId)
 vi.stubGlobal('trustedClientIp', () => clientIp)
@@ -218,6 +224,7 @@ beforeEach(() => {
   stored = []
   profiles = []
   storeBroken = false
+  profileLookupBroken = false
   createBroken = false
   fetchOutcome = 'ok'
   judgeBroken = false
@@ -961,5 +968,103 @@ describe('GET /api/brand/check/<id> · ausgeblendet', () => {
       status: 404,
       data: { code: 'check_not_found' },
     })
+  })
+})
+
+/**
+ * EIN DOKUMENT-CHECK GEHÖRT SEINER BESITZERIN (SEC-014).
+ *
+ * Seit dem Fundament-Check schreibt dieselbe Tabelle Urteile über eine NICHT
+ * veröffentlichte Brand Foundation — mit wörtlichen Belegstellen daraus. Davids
+ * Entscheidung: das Ergebnis einer nicht veröffentlichten Marke sieht nur ihre
+ * Besitzerin. Mit Ranking-Häkchen hat sie der Veröffentlichung zugestimmt;
+ * dann bleibt der Link aus dem Ranking lesbar.
+ *
+ * Alle Absagen sind DASSELBE 404 wie „gibt es nicht" — ohne Session, mit
+ * fremder Session und wenn die Besitz-Frage selbst scheitert. Ein anderer
+ * Status wäre die Auskunft, dass es die Id gibt.
+ */
+describe('GET /api/brand/check/<id> · Dokument-Check', () => {
+  function documentRow(overrides: Partial<FakeRow> = {}): FakeRow {
+    return {
+      $id: 'd1',
+      $createdAt: new Date().toISOString(),
+      urlKey: 'doc:p1',
+      url: '',
+      host: 'Kailua Brand',
+      locale: 'de',
+      score: 64,
+      band: 'strong',
+      scoreVersion: 'doc-score-1',
+      source: 'document',
+      profileId: 'p1',
+      rankingOptIn: false,
+      hidden: false,
+      categories: '[]',
+      criteria: '[]',
+      findings: '[]',
+      ...overrides,
+    }
+  }
+
+  const NOT_FOUND = { status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } }
+
+  beforeEach(() => {
+    profiles = [{ $id: 'p1', $createdAt: new Date().toISOString(), ownerType: 'user', ownerId: 'u-owner' }]
+    stored = [documentRow()]
+    routerId = 'd1'
+  })
+
+  it('ohne Session ⇒ 404 `check_not_found`, identisch mit einer unbekannten Id', async () => {
+    const hidden = await getHandler(event).catch((error: unknown) => error) as Record<string, unknown>
+    routerId = 'gibtesnicht'
+    const unknown = await getHandler(event).catch((error: unknown) => error) as Record<string, unknown>
+
+    expect(hidden).toMatchObject(NOT_FOUND)
+    expect({ status: hidden.status, statusText: hidden.statusText, data: hidden.data })
+      .toEqual({ status: unknown.status, statusText: unknown.statusText, data: unknown.data })
+  })
+
+  it('fremde Session ⇒ dasselbe 404', async () => {
+    login('u-stranger')
+    await expect(getHandler(event)).rejects.toMatchObject(NOT_FOUND)
+  })
+
+  it('die Besitzerin ⇒ 200 mit dem Ergebnis', async () => {
+    login('u-owner')
+    const result = await getHandler(event)
+    expect(result).toMatchObject({ id: 'd1', source: 'document', host: 'Kailua Brand', score: 64 })
+  })
+
+  it('mit Ranking-Häkchen ⇒ 200 auch ohne Session (der Link aus dem Ranking)', async () => {
+    stored = [documentRow({ rankingOptIn: true })]
+    const result = await getHandler(event)
+    expect(result).toMatchObject({ id: 'd1', source: 'document' })
+  })
+
+  it('die Besitz-Frage scheitert ⇒ 404, kein 5xx (fail-closed)', async () => {
+    login('u-owner')
+    profileLookupBroken = true
+    await expect(getHandler(event)).rejects.toMatchObject(NOT_FOUND)
+  })
+
+  it('das Profil gibt es nicht mehr ⇒ 404', async () => {
+    login('u-owner')
+    profiles = []
+    await expect(getHandler(event)).rejects.toMatchObject(NOT_FOUND)
+  })
+
+  it('GEGENPROBE: ein Website-Check bleibt ohne Session lesbar', async () => {
+    stored = [documentRow({ $id: 'w1', source: 'website', urlKey: 'kailua.coffee', url: 'https://kailua.coffee/', host: 'kailua.coffee', profileId: 'p1' })]
+    routerId = 'w1'
+    const result = await getHandler(event)
+    expect(result).toMatchObject({ id: 'w1', source: 'website' })
+  })
+
+  it('GEGENPROBE: eine Zeile ohne `source` (Bestand) liest sich als Website-Check', async () => {
+    stored = [documentRow({ $id: 'w2', source: undefined, urlKey: 'kailua.coffee' })]
+    routerId = 'w2'
+    const result = await getHandler(event)
+    expect(result).toMatchObject({ id: 'w2', source: 'website' })
   })
 })

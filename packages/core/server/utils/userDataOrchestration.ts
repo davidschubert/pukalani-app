@@ -1,4 +1,4 @@
-import { ID, Permission, Role } from 'node-appwrite'
+import { AppwriteException, ID, Permission, Role } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import type { H3Event } from 'h3'
@@ -21,6 +21,14 @@ export interface UserDataExport {
   exportedAt: string
   account: ReturnType<typeof mapExportAccount>
   sessions: ReturnType<typeof mapExportSessions>
+  /**
+   * Nur im Selbst-Export (`via: 'session'`): die Sitzungsliste war nicht
+   * lesbar, `sessions` ist deshalb leer, OHNE dass es keine gäbe. Der Export
+   * bleibt dort nachsichtig (ein Wackler soll die Auskunft nicht verhindern),
+   * sagt es aber — ein leerer Abschnitt sähe sonst aus wie „keine Sitzungen".
+   * Im Admin-Pfad gibt es das Feld nicht: dort bricht der Fehler ab.
+   */
+  sessionsUnavailable?: true
   data: Record<string, unknown>
 }
 
@@ -54,6 +62,22 @@ export interface DeleteUserResult {
   results: ContributorRunResult[]
 }
 
+/**
+ * Ist das Appwrites „dieses Konto gibt es nicht"? Nur ein `AppwriteException`
+ * mit 404 UND der Art `user_not_found`. Ein 404 ohne Art zählt nicht: so
+ * antwortet der Proxy vor Appwrite, wenn der Dienst dahinter fehlt.
+ *
+ * Für jeden, der aus `users.get` „Konto schon weg" schliesst (SEC-026,
+ * Nachtrag): vorher stand dort `.catch(() => null)`, und JEDER Fehler — ein
+ * 500, ein Netz-Wackler — galt als „weg". Im Orchestrator hiess das: kein
+ * Snapshot, keine Sperre, aber die Contributors löschten trotzdem; in den
+ * Layern: Einladungen und Anfragen unter der Adresse blieben still stehen.
+ */
+export function isAppwriteUserMissing(error: unknown): boolean {
+  if (!(error instanceof AppwriteException) || error.code !== 404) return false
+  return error.type === 'user_not_found'
+}
+
 /** Aufbewahrungsfrist der Snapshots (Lazy-Cleanup, Plan §4.8) */
 export const GDPR_EXPORT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -72,9 +96,24 @@ export async function exportUserCompletely(
     throw createError({ status: 404, statusText: 'User not found' })
   }
 
-  const sessions = opts.via === 'session'
-    ? await createSessionClient(event).account.listSessions().catch(() => ({ sessions: [] as Models.Session[] }))
-    : await admin.users.listSessions({ userId }).catch(() => ({ sessions: [] as Models.Session[] }))
+  // Sitzungen: im ADMIN-Pfad streng — er liefert den Snapshot vor der
+  // Löschung und den Betreiber-Export, und beide müssen vollständig sein (ein
+  // leerer Abschnitt wäre eine Auskunft, die nicht stimmt). Im SELBST-Export
+  // bleibt der Rückfall auf leer, aber gekennzeichnet (`sessionsUnavailable`).
+  let sessions: Models.Session[]
+  let sessionsUnavailable = false
+  if (opts.via === 'session') {
+    try {
+      sessions = (await createSessionClient(event).account.listSessions()).sessions
+    }
+    catch {
+      sessions = []
+      sessionsUnavailable = true
+    }
+  }
+  else {
+    sessions = (await admin.users.listSessions({ userId })).sessions
+  }
 
   const data: Record<string, unknown> = {}
   for (const contributor of listUserDataContributors()) {
@@ -86,7 +125,8 @@ export async function exportUserCompletely(
   return {
     exportedAt: new Date().toISOString(),
     account: mapExportAccount(account),
-    sessions: mapExportSessions(sessions.sessions),
+    sessions: mapExportSessions(sessions),
+    ...(sessionsUnavailable ? { sessionsUnavailable: true as const } : {}),
     data,
   }
 }
@@ -144,7 +184,13 @@ export async function deleteUserCompletely(
 
   // (0) Existiert der Auth-User noch? 404 → Orphan-Cleanup-Modus (Re-Run,
   // defensiv): Snapshot/Sperren/Audit überspringen, nur noch aufräumen.
-  const user = await admin.users.get({ userId }).catch(() => null)
+  // NUR das 404: jeder andere Fehler bricht hier ab, VOR allem Zerstörerischen.
+  // Bis SEC-026 (Nachtrag) schaltete jeder Wackler in den Orphan-Modus — die
+  // Contributors löschten dann ohne Snapshot und ohne Sperre.
+  const user = await admin.users.get({ userId }).catch((error: unknown) => {
+    if (isAppwriteUserMissing(error)) return null
+    throw error
+  })
 
   let exportFileId: string | undefined
   if (user) {

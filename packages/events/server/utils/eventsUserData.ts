@@ -1,4 +1,4 @@
-import { Query } from 'node-appwrite'
+import { AppwriteException, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { EVENT_RSVPS_TABLE, EVENT_TICKETS_TABLE, EVENT_VOTES_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow, type EventTicketRow, type EventVote } from '../../shared/types/event'
 
@@ -17,12 +17,12 @@ export async function eventsExportUserData(event: H3Event, userId: string) {
 
   const rsvps = await listAllRows<EventRsvpRow>(tablesDB, databaseId, EVENT_RSVPS_TABLE, [Query.equal('userId', userId)])
   const organized = await listAllRows<EventRow>(tablesDB, databaseId, EVENTS_TABLE, [Query.equal('organizerId', userId)])
-  // Degradiert auf leer, solange Migration 003 auf einer Instanz aussteht
-  const votes = await listAllRows<EventVote>(tablesDB, databaseId, EVENT_VOTES_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as EventVote[])
+  // Degradiert auf leer, solange Migration 003 auf einer Instanz aussteht —
+  // NUR dann (fehlende Tabelle, SEC-026 Teil 2). Vorher schluckte ein `catch`
+  // auf leer auch jeden 500, und der Export sah vollständig aus.
+  const votes = await listAllRowsIfTableExists<EventVote>(tablesDB, databaseId, EVENT_VOTES_TABLE, [Query.equal('userId', userId)])
   // Kauf-Metadaten (Rechnungen liegen bei Stripe); degradiert vor Migration 004
-  const tickets = await listAllRows<EventTicketRow>(tablesDB, databaseId, EVENT_TICKETS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as EventTicketRow[])
+  const tickets = await listAllRowsIfTableExists<EventTicketRow>(tablesDB, databaseId, EVENT_TICKETS_TABLE, [Query.equal('userId', userId)])
 
   return {
     rsvps: rsvps.map(r => ({ eventId: r.eventId, status: r.status, createdAt: r.$createdAt })),
@@ -43,8 +43,14 @@ export async function eventsDeleteUserData(event: H3Event, userId: string): Prom
   let anonymized = 0
 
   // RSVPs: Hard-Delete. STRIKT — deleteUserCompletely gated users.delete auf
-  // Voll-Erfolg, ein geschluckter Fehler wäre eine Lücke. Nur der Zähler-
-  // Decrement degradiert bei bereits verschwundenem Event (404).
+  // Voll-Erfolg, ein geschluckter Fehler wäre eine Lücke.
+  //
+  // Der Zähler-Decrement ist die EINE bewusste Ausnahme und bleibt best
+  // effort: `attendeeCount` ist eine Zahl über den TERMIN, kein Datum über
+  // diesen Menschen — ein veralteter Zähler hinterlässt nichts Persönliches,
+  // und an ihm darf die Löschung nicht hängen. Still ist er aber nicht mehr:
+  // ein 404 heisst „Termin schon weg" (nichts zu tun), jeder andere Fehler
+  // steht als Zeile im Log, damit der Drift auffindbar bleibt.
   const rsvps = await listAllRows<EventRsvpRow>(tablesDB, databaseId, EVENT_RSVPS_TABLE, [Query.equal('userId', userId)])
   for (const rsvp of rsvps) {
     await tablesDB.deleteRow({ databaseId, tableId: EVENT_RSVPS_TABLE, rowId: rsvp.$id })
@@ -52,24 +58,26 @@ export async function eventsDeleteUserData(event: H3Event, userId: string): Prom
     if (rsvp.status === 'going') {
       await tablesDB.decrementRowColumn({
         databaseId, tableId: EVENTS_TABLE, rowId: rsvp.eventId, column: 'attendeeCount', value: 1, min: 0,
-      }).catch(() => {})
+      }).catch((error: unknown) => {
+        if (error instanceof AppwriteException && error.code === 404) return
+        logEvent('warn', 'events.gdpr_attendee_count_failed', { eventId: rsvp.eventId })
+      })
     }
   }
 
   // Up-/Downvotes: Hard-Delete (Zähler-Drift bis zum nächsten Vote
   // akzeptiert — Präzedenzfall posts/comments). List degradiert vor
-  // Migration 003.
-  const votes = await listAllRows<EventVote>(tablesDB, databaseId, EVENT_VOTES_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as EventVote[])
+  // Migration 003 (fehlende Tabelle) — jeder andere Lesefehler hält an.
+  const votes = await listAllRowsIfTableExists<EventVote>(tablesDB, databaseId, EVENT_VOTES_TABLE, [Query.equal('userId', userId)])
   for (const vote of votes) {
     await tablesDB.deleteRow({ databaseId, tableId: EVENT_VOTES_TABLE, rowId: vote.$id })
     deleted++
   }
 
   // Tickets: Hard-Delete (Kauf-Metadaten des Users; die steuerliche
-  // Wahrheit liegt bei Stripe). List degradiert vor Migration 004.
-  const tickets = await listAllRows<EventTicketRow>(tablesDB, databaseId, EVENT_TICKETS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as EventTicketRow[])
+  // Wahrheit liegt bei Stripe). List degradiert vor Migration 004 (fehlende
+  // Tabelle) — jeder andere Lesefehler hält an.
+  const tickets = await listAllRowsIfTableExists<EventTicketRow>(tablesDB, databaseId, EVENT_TICKETS_TABLE, [Query.equal('userId', userId)])
   for (const ticket of tickets) {
     await tablesDB.deleteRow({ databaseId, tableId: EVENT_TICKETS_TABLE, rowId: ticket.$id })
     deleted++
