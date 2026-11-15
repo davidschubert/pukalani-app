@@ -35,7 +35,7 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 **Was.** Viertes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
 2026-11 (Findings SEC-011, SEC-013, SEC-018, SEC-019, SEC-020, SEC-021,
 SEC-028, alle „Niedrig"). Zwei Pull Requests: 179 (Merge `bb0cc1e2`) und 180
-(Merge `@@PR180@@`). Davids Entscheidungen vom 2026-11-12 je Punkt, dazu drei
+(Merge `787b4e00`). Davids Entscheidungen vom 2026-11-12 je Punkt, dazu drei
 per Klick am 2026-11-15 (DECISION-LOG).
 
 1. **Beispiel-Adressen statt echter (SEC-011).** Zwei Doku-Stellen und ein
@@ -68,7 +68,7 @@ per Klick am 2026-11-15 (DECISION-LOG).
    ältere Links gelten weiter, ein Wechsel behält den vorherigen Wert zum
    Prüfen. Ein Link, den kein Schlüssel bestätigt, zeigt „Nicht abgemeldet"
    mit dem Weg zur Abmeldung (de und en) statt „Abgemeldet". Der Wert steht
-   seit dem 2026-11-15 auf dem Server (@@SERVER@@). Anleitung:
+   seit dem 2026-11-15 auf dem Server (dort erzeugt, nie angezeigt; nach dem Neuladen im Prozess zurückgelesen, Seite gesund; seitdem steht der Name in der Pflicht-Liste des Env-Wächters). Anleitung:
    [NEWSLETTER-ABMELDE-LINKS.md](runbooks/NEWSLETTER-ABMELDE-LINKS.md).
 6. **Links nur mit http oder https (SEC-021).** Eine Prüfung im Core
    (`core/shared/safeHref.ts`) für beide Enden: Die Link-Felder in Insights,
