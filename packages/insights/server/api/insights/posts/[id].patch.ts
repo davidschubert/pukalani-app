@@ -1,6 +1,7 @@
 import type { InsightsPost } from '../../../../shared/insightsPost'
 import {
   insightsBodyOf,
+  insightsIsPublic,
   insightsPostEditSchema,
   insightsReadingMinutes,
   insightsTitleOf,
@@ -34,6 +35,25 @@ import type { InsightsPostSavedResponse } from '../../../../shared/types/insight
  * der Grundfassung. Erlaubt ist das Häkchen deshalb nur, wenn es eine zweite
  * Fassung GIBT: entweder maschinell erzeugt (`translatedAt`) oder von Hand
  * geschrieben (Titel UND Text der Nicht-Grundsprache gefüllt).
+ *
+ * ── EIN VERÖFFENTLICHTER ARTIKEL WIRD ERST GEPRÜFT, DANN GEÄNDERT (BE-009) ─
+ * Steht der Beitrag auf `published` oder `updated`, ist jede gespeicherte
+ * Änderung SOFORT öffentlich. Bis BE-009 lief sie an den sieben Prüfregeln
+ * vorbei — die liefen nur beim Zustandswechsel. Jetzt geht der neue Stand
+ * vorher durch dasselbe Gate (`insightsPublicationGate`) wie die
+ * Veröffentlichung, mit einem Unterschied: abgerufen werden nur die Belege,
+ * die neu oder geändert sind (Begründung an `insightsSourcesToFetch`).
+ *
+ * Besteht er nicht, wird NICHTS geschrieben — online bleibt die geprüfte
+ * Fassung stehen, und die Antwort trägt sie (`saved: false`) samt der Liste.
+ * 200 statt 409 aus demselben Grund wie beim Zustandswechsel: die Liste käme
+ * in einem Fehler-Körper nie an (`InsightsPostStateResponse`).
+ *
+ * WARUM KEIN ENTWURF NEBEN DEM ÖFFENTLICHEN STAND: das Datenmodell trägt EINE
+ * Zeile je Beitrag. Eine Arbeitsfassung daneben wäre eine Migration (zweiter
+ * Satz Spalten oder zweite Tabelle) und eine zweite Wahrheit darüber, was
+ * gilt. Wer einen Zwischenstand speichern will, der die Regeln (noch) nicht
+ * hält, zieht den Beitrag zurück — als Entwurf lässt sich alles speichern.
  */
 export default defineEventHandler(async (event): Promise<InsightsPostSavedResponse> => {
   requirePermission(event, 'insights.manage')
@@ -82,9 +102,20 @@ export default defineEventHandler(async (event): Promise<InsightsPostSavedRespon
     readingMinutes: insightsReadingMinutes(insightsBodyOf(body, body.baseLocale)),
   }
 
-  const saved = await saveInsightsPostRow(event, id, next)
-  const post = toInsightsPost(saved)
+  // EINMAL gelesen: das Gate braucht sie (Regeln 4 und 6) und die Antwort auch.
   const brandRows = await listInsightsBrandRows(event, INSIGHTS_BRANDS_LIMIT)
 
-  return { post, issues: insightsFormIssues(post, brandRows) }
+  if (insightsIsPublic(current)) {
+    const verdict = await insightsPublicationGate({ next, published: current, brandRows })
+    if (!verdict.passed) {
+      // Nichts geschrieben: online steht weiter die geprüfte Fassung.
+      return { post: current, issues: verdict.issues, saved: false }
+    }
+    const saved = await saveInsightsPostRow(event, id, next, verdict.clearance)
+    return { post: toInsightsPost(saved), issues: [], saved: true }
+  }
+
+  const saved = await saveInsightsPostRow(event, id, next)
+  const post = toInsightsPost(saved)
+  return { post, issues: insightsFormIssues(post, brandRows), saved: true }
 })
