@@ -828,8 +828,7 @@
       "emailHelp": "Hat die Person schon ein Pukalani-Konto, ist sie nach dem Anmelden mit einem Klick dabei. Sonst legt sie über den Link eins an.",
       "roleLabel": "Rolle",
       "submit": "Einladung senden",
-      "sent": "Einladung an {email} verschickt.",
-      "sentExisting": "{email} hat ein Konto — Einladung verschickt, ein Klick genügt.",
+      "sent": "Einladung an {email} ist unterwegs. Wer schon ein Konto hat, findet sie auch nach der Anmeldung — alle anderen legen über den Link eines an.",
       "sentHint": "Der Link gilt 7 Tage. Bis dahin steht die Einladung unten unter „Offene Einladungen\" und lässt sich widerrufen.",
       "failed": "Die Einladung konnte nicht verschickt werden."
     },

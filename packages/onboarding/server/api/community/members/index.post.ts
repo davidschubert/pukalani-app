@@ -15,9 +15,12 @@ import { requireCommunityTeamGate } from '../../../utils/communityTeamGate'
  *  - **Kein Konto**: nur die Mail; der Link führt über Registrierung → Annahme.
  *
  * Die Konto-Prüfung kann NUR hier passieren — das Control Plane hat keinen
- * Zugriff auf die Nutzer des Pool-Projekts. Sie ist bewusst nur Komfort: die
- * Antwort verrät dem Betreiber, was passiert ist, nicht mehr (kein Konto-Orakel
- * über fremde Adressen — er lädt ja selbst gerade jemanden ein).
+ * Zugriff auf die Nutzer des Pool-Projekts. Sie bleibt INTERN (SEC-028,
+ * 2026-11-15): sie entscheidet nur, ob zusätzlich eine Glocken-Meldung
+ * entsteht. In der Antwort stand bis dahin `existingAccount` — damit konnte
+ * jedes einladende Mitglied (seit F57 auch ein `viewer`, fünfmal die Woche)
+ * erfahren, ob es zu einer Adresse ein Pukalani-Konto gibt. Die Oberfläche
+ * zeigt seitdem einen Satz, der für beide Fälle stimmt.
  *
  * 'owner' lehnt das Control Plane ab (decideInvite) — Besitz entsteht durch
  * Gründung oder Übergabe.
@@ -44,7 +47,7 @@ const bodySchema = z.object({
  * unten abgeschnitten (AU1) — die Begründung steht am `return` und im Typ
  * `CommunityInviteResponse`.
  */
-type InviteResult = Omit<CommunityInviteResponse, 'existingAccount'> & { delivered: boolean }
+type InviteResult = CommunityInviteResponse & { delivered: boolean }
 
 export default defineEventHandler(async (event): Promise<CommunityInviteResponse> => {
   const { communityId, jwt } = await requireCommunityTeamGate(event, 'members.invite')
@@ -62,21 +65,18 @@ export default defineEventHandler(async (event): Promise<CommunityInviteResponse
   )
 
   // Existiert ein Konto? Dann zusätzlich in-app benachrichtigen — best-effort,
-  // notify() wirft nie.
-  let existingAccount = false
+  // notify() wirft nie. Das Ergebnis der Konto-Frage verlässt diese Route nicht.
   try {
     const admin = createAdminClient(event)
     const found = await admin.users.list({ queries: [Query.equal('email', email), Query.limit(1)] })
     const invitee = found.users[0]
     if (invitee) {
       // AU1: die Konto-Frage wird IMMER gestellt, auch auf dem stillen Weg —
-      // `existingAccount` ist Teil der Antwort und darf sich zwischen den
-      // beiden Wegen nicht unterscheiden. Nur die BENACHRICHTIGUNG hängt an
-      // `delivered`: eine Glocke „Einladung zu X" an jemanden, der in X längst
-      // Mitglied ist, wäre eine Meldung ins Leere — und, fünfmal die Woche
-      // wiederholt, ein Belästigungs-Werkzeug für genau die Person, deren
-      // Mitgliedschaft gerade sondiert wurde.
-      existingAccount = true
+      // so bleibt der Ablauf beider Wege gleich. Nur die BENACHRICHTIGUNG
+      // hängt an `delivered`: eine Glocke „Einladung zu X" an jemanden, der
+      // in X längst Mitglied ist, wäre eine Meldung ins Leere — und, fünfmal
+      // die Woche wiederholt, ein Belästigungs-Werkzeug für genau die Person,
+      // deren Mitgliedschaft gerade sondiert wurde.
       const tenant = useTenant(event)
       // `title` ist der {name}-Platzhalter der Glocken-Meldung („Einladung zu
       // {name}") — deshalb steht dort der Community-Name, nicht ein Satz. Der
@@ -110,7 +110,8 @@ export default defineEventHandler(async (event): Promise<CommunityInviteResponse
    * (AU1). Es ist das einzige Feld, an dem sich eine stille Einladung von
    * einer echten unterscheiden liesse — der Rückgabetyp
    * `CommunityInviteResponse` kennt es nicht, ein `...result` mit dem Feld
-   * wäre also ein Typfehler und keine stille Regression.
+   * wäre also ein Typfehler und keine stille Regression. Dasselbe gilt seit
+   * SEC-028 für `existingAccount`: der Typ kennt es nicht mehr.
    */
-  return { ...result, existingAccount }
+  return result
 })

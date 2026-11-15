@@ -1,11 +1,11 @@
-import { ID } from 'node-appwrite'
+import { ID, Query } from 'node-appwrite'
 import { z } from 'zod'
 import { decideInvite, decideInviteDelivery } from '../../../../../shared/communityTeam'
 import { decideMemberInvite, memberInviteQuota, memberInviteWindowStart } from '../../../../../shared/communityInviteQuota'
 import { COMMUNITY_INVITES_TABLE, COMMUNITY_INVITE_TTL_MS, type CommunityInviteRow } from '../../../../../shared/types/communityInvite'
 import { resolveTenantMemberInvitesEnabled } from '../../../../../shared/types/tenantRecord'
 import { COMMUNITY_ROLES, communityRoleHasCapability } from '../../../../../../core/shared/communityAuthz'
-import { countCommunityInvitesBy, listCommunityInvites, memberInviteLimit, requireCommunityTeamContext, createCommunityInviteToken, memberFacts, throwOnDenied } from '../../../../utils/communityTeam'
+import { countCommunityInvitesBy, memberInviteLimit, requireCommunityTeamContext, createCommunityInviteToken, memberFacts, throwOnDenied } from '../../../../utils/communityTeam'
 import { sendCommunityInviteMail } from '../../../../utils/communityInviteMail'
 
 /**
@@ -159,8 +159,19 @@ export default defineEventHandler(async (event) => {
     // Vorherige offene Einladung derselben Adresse zurückziehen (nicht löschen —
     // die Spur bleibt, aber der alte Link ist tot). NUR auf dem echten Weg: eine
     // stillgelegte Einladung darf keine fremde, gültige mit sich reissen.
-    const previous = (await listCommunityInvites(event, body.communityId))
-      .filter(row => row.email.trim().toLowerCase() === email)
+    //
+    // GEZIELT gesucht (SEC-028), nicht aus der Anzeige-Liste gefischt: die ist
+    // auf 100 gekappt, und bei mehr offenen Einladungen blieb der ältere Link
+    // neben dem neuen gültig. `listAllRows` blättert, bis nichts mehr kommt —
+    // ohne Deckel, weil die Treffermenge die offenen Einladungen EINER Adresse
+    // sind (im Normalfall höchstens eine); der Index `idx_community_email`
+    // (control-019/023) deckt die beiden Gleichheits-Filter. Gespeichert wird
+    // die Adresse klein geschrieben, deshalb trifft `equal` genau.
+    const previous = await listAllRows<CommunityInviteRow>(admin.tablesDB, context.databaseId, COMMUNITY_INVITES_TABLE, [
+      Query.equal('communityId', body.communityId),
+      Query.equal('email', email),
+      Query.equal('status', 'pending'),
+    ]).catch((error) => { throw toH3Error(error, 'Could not read site invites') })
     for (const invite of previous) {
       await admin.tablesDB.updateRow({
         databaseId: context.databaseId, tableId: COMMUNITY_INVITES_TABLE, rowId: invite.$id,

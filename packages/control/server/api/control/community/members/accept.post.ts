@@ -102,10 +102,15 @@ export default defineEventHandler(async (event) => {
 
   // Die Community muss zu dem Projekt gehören, gegen das das JWT geprüft wurde —
   // sonst entstünde eine Mitgliedschaft mit fremder Runtime-Identität.
+  //
+  // … UND sie muss in Betrieb sein (SEC-028): eine stillgelegte Community
+  // (`status: 'disabled'`, `community/delete.post.ts`) nimmt niemanden mehr
+  // auf — dieselbe Regel wie der Host-Resolver (`status !== 'active'` ⇒ kein
+  // Mandant). Die Antwort ist die neutrale wie bei einer ungültigen Einladung.
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: invite.communityId,
   }).catch(() => null)
-  if (!tenant || tenant.projectId !== identity.projectId) {
+  if (!tenant || tenant.projectId !== identity.projectId || tenant.status !== 'active') {
     throw createError({ status: 400, statusText: 'Invalid or expired invitation' })
   }
 

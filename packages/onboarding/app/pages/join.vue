@@ -107,6 +107,17 @@ const pruefeEinladung = computed(() =>
 /** Angemeldet? Dann annehmen. Sonst: Konto anlegen — hier, auf dieser Seite. */
 const brauchtKonto = computed(() => !auth.isLoggedIn && Boolean(token.value) && Boolean(einladung.value?.ok))
 
+/**
+ * Eigene Adresse noch nicht bestätigt (SEC-028)? Dann liefert die
+ * Einladungs-Liste bewusst nichts — sie zeigt nur Einladungen an BESTÄTIGTE
+ * Adressen. Statt „keine Einladung" steht dann der Schritt, der fehlt. Das
+ * verrät nichts über Einladungen: es ist der Zustand des EIGENEN Kontos, und
+ * der Kasten erscheint unabhängig davon, ob eine Einladung wartet.
+ */
+const { user: currentUser } = useCurrentUser()
+const ownEmailUnverified = computed(() =>
+  auth.isLoggedIn && !token.value && currentUser.value?.emailVerification === false)
+
 const pending = computed(() => mine.value?.invites?.[0] ?? null)
 const siteName = computed(() => mine.value?.siteName ?? '')
 /**
@@ -231,6 +242,8 @@ async function accept() {
           {{ t('join.accept') }}
         </UButton>
       </div>
+
+      <AuthEmailVerifyRequired v-else-if="ownEmailUnverified" :title="t('join.verifyFirst')" />
 
       <UAlert
         v-else

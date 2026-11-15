@@ -11,7 +11,7 @@ import { verifyRuntimeIdentity } from '../../../../utils/onboardingService'
  * Konto hat, ist nach dem Anmelden EINEN Klick entfernt.
  *
  * KEIN `team.manage` — hier fragt die eingeladene Person nach sich selbst. Die
- * Grenze ist die geprüfte E-Mail-Adresse aus dem JWT: gefunden werden nur
+ * Grenze ist die BESTÄTIGTE E-Mail-Adresse aus dem JWT: gefunden werden nur
  * offene Einladungen an DIESE Adresse und NUR für die mitgegebene Site (der Host,
  * auf dem die Seite läuft). Damit ist die Route kein Verzeichnis fremder
  * Einladungen und kein Konto-Orakel.
@@ -39,6 +39,19 @@ export default defineEventHandler(async (event) => {
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }
+
+  /**
+   * NUR MIT BESTÄTIGTER ADRESSE (SEC-028, 2026-11-15) — dieselbe Bedingung wie
+   * beim Annehmen (`members/accept.post.ts`, `identity.emailVerified`). Eine
+   * Adresse im Pool-Konto ist erst eine BEHAUPTUNG, bis das Postfach sie
+   * bestätigt hat; wer sie nur behauptet, sieht auch keine Einladungen an sie.
+   *
+   * Die Antwort ist dieselbe wie „keine Einladungen" — kein eigener Fehler,
+   * kein Hinweis. Den Schritt „bestätige deine Adresse" kennt die Person aus
+   * ihrem eigenen Konto (Banner, /join), dafür braucht es diese Route nicht.
+   * Der Link aus der Einladungs-Mail (Token) hängt nicht an dieser Liste.
+   */
+  if (!identity.emailVerified) return { invites: [], siteName: tenant.name }
 
   const email = (identity.email ?? '').trim().toLowerCase()
   if (!email) return { invites: [], siteName: tenant.name }

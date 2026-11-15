@@ -508,9 +508,13 @@ try {
   check('eine Einladungs-Id kommt zurück (nicht leer)',
     typeof silent.json?.inviteId === 'string' && silent.json.inviteId.length > 0,
     String(silent.json?.inviteId))
-  check('auch `existingAccount` unterscheidet sich nicht in der FORM',
-    typeof silent.json?.existingAccount === 'boolean' && typeof realOne.json?.existingAccount === 'boolean',
-    `${silent.json?.existingAccount} / ${realOne.json?.existingAccount}`)
+  // SEC-028: ob die Adresse ein Konto hat, steht gar nicht mehr in der
+  // Antwort — beide Erfolgs-Antworten ohne das Feld (Bedingung wie oben bei
+  // `delivered`: erst Erfolg, dann Abwesenheit).
+  check('`existingAccount` steht NICHT in der Antwort an den Browser',
+    silent.status === 200 && realOne.status === 200
+      && !('existingAccount' in (silent.json ?? {})) && !('existingAccount' in (realOne.json ?? {})),
+    `${Object.keys(silent.json ?? {}).sort().join(',')} / ${Object.keys(realOne.json ?? {}).sort().join(',')}`)
 
   // DER PREIS: das Kontingent zählt beide Wege. Eine gleich aussehende, aber
   // gratis wiederholbare Antwort wäre ein langsameres Orakel, kein
