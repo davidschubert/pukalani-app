@@ -323,6 +323,22 @@ export default defineAppConfig({
        */
       notices: {} as PukalaniAuthNoticeConfig,
     },
+    account: {
+      /**
+       * „Was beim Löschen geschieht" (GA1 P14, Davids Entscheidung): die Karte
+       * AuthAccountDeleteCard zeigt vor dem Löschknopf eine kurze Liste. Die
+       * Core-Zeilen (sofort weg / Sicherungskopie / endgültig) stehen in der
+       * Karte selbst; was ein PRODUKT-Layer zusätzlich behält oder löscht,
+       * meldet er hier als i18n-Schlüssel an — eine Zeile je Eintrag, in
+       * extends-Reihenfolge. Der Core kennt die Produkte nicht (A14).
+       *
+       * Arrays werden beim Layer-Merge KONKATENIERT (wie `admin.modules`), ein
+       * Layer schreibt also nur seinen eigenen Schlüssel hin. Jeder Schlüssel
+       * ist ein Versprechen: `pnpm check:i18n-keys` prüft ihn in jeder App,
+       * die den Layer erbt, in de UND en.
+       */
+      deleteNotices: [] as string[],
+    },
     analytics: {
       enabled: false,
       provider: 'plausible' as 'plausible' | 'umami',

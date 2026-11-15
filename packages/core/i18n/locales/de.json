@@ -330,7 +330,7 @@
     },
     "export": {
       "title": "Deine Daten exportieren",
-      "description": "Lade eine JSON-Kopie deines Accounts, deiner Sitzungen und Kommentare herunter.",
+      "description": "Lade alles, was wir über dich speichern, als Datei herunter.",
       "button": "Daten exportieren",
       "success": "Export heruntergeladen.",
       "successDescription": "Die Datei my-data.json liegt jetzt in deinem Download-Ordner.",
@@ -339,16 +339,22 @@
     },
     "delete": {
       "title": "Account löschen",
-      "description": "Du möchtest deinen Account nicht mehr nutzen? Du kannst ihn hier löschen. Diese Aktion ist nicht umkehrbar — alle zugehörigen Daten werden dauerhaft entfernt.",
+      "description": "Du möchtest deinen Account nicht mehr nutzen? Hier kannst du ihn löschen.",
       "button": "Account löschen",
       "confirmTitle": "Account wirklich löschen?",
-      "confirmText": "Dein Account und alle zugehörigen Daten werden dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden.",
+      "confirmText": "Das lässt sich nicht rückgängig machen. Was genau geschieht, steht in der Liste über dem Knopf.",
       "confirm": "Endgültig löschen",
       "cancel": "Abbrechen",
       "success": "Account gelöscht.",
       "failed": "Löschen fehlgeschlagen — bitte erneut versuchen.",
-      "failedDescription": "Dein Account ist unverändert — es wurde nichts gelöscht. Versuche es gleich noch einmal.",
-      "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst deinen Account löschen. Es wurde nichts gelöscht."
+      "failedDescription": "Die Löschung wurde nicht abgeschlossen. Dein Account kann schon gesperrt und zum Teil geleert sein. Versuche es später noch einmal – klappt es dann nicht, melde dich bei uns.",
+      "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst deinen Account löschen. Es wurde nichts gelöscht.",
+      "notice": {
+        "title": "Was beim Löschen geschieht",
+        "now": "Sofort weg: dein Account, dein Profil und alle Anmeldungen. Was du geschrieben hast, wird geleert – wo ein Gespräch sonst zerreißen würde, bleibt ein Platzhalter ohne deinen Namen. Deine Stimmen, Reaktionen und Teilnahmen werden entfernt.",
+        "backup": "30 Tage: Wir bewahren eine Sicherungskopie deiner Daten auf. Nur der Betreiber kann sie öffnen. Danach wird sie automatisch gelöscht.",
+        "irreversible": "Das lässt sich nicht rückgängig machen. Dein Account kann nicht wiederhergestellt werden."
+      }
     },
     "twoFactor": {
       "title": "Zwei-Faktor",

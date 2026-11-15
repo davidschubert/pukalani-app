@@ -3,6 +3,8 @@ const { t } = useI18n()
 const localePath = useLocalePath()
 const toast = useToast()
 const auth = useAuthStore()
+const appConfig = useAppConfig()
+const runtimeConfig = useRuntimeConfig()
 
 const confirm = useConfirm()
 /**
@@ -11,6 +13,25 @@ const confirm = useConfirm()
  * wurde dabei nichts.
  */
 const { promptFreshSignIn } = useRecentAuthPrompt()
+
+/**
+ * „Was beim Löschen geschieht" (GA1 P14, Davids Entscheidung): VOR dem Knopf,
+ * in einfachen Worten, und nichts, was der Server nicht hält.
+ *
+ *  · `now` und `irreversible` gelten überall.
+ *  · `backup` NUR, wenn diese Instanz einen GDPR-Bucket hat — ohne ihn läuft
+ *    die Löschung ohne Sicherungskopie, und die Zeile wäre eine Lüge.
+ *  · danach je Produkt-Layer eine Zeile aus `pukalani.account.deleteNotices`
+ *    (Schlüssel, vom Layer angemeldet und von `check:i18n-keys` bewacht) —
+ *    der Core kennt die Produkte nicht (A14).
+ */
+const notices = computed<string[]>(() => {
+  const lines = [t('account.delete.notice.now')]
+  if (runtimeConfig.public.appwriteGdprBucket) lines.push(t('account.delete.notice.backup'))
+  for (const key of appConfig.pukalani.account.deleteNotices) lines.push(t(key))
+  lines.push(t('account.delete.notice.irreversible'))
+  return lines
+})
 
 async function deleteAccount() {
   try {
@@ -30,7 +51,9 @@ async function deleteAccount() {
     toast.add({
       title: isNetworkError(error) ? t('auth.networkError') : t('account.delete.failed'),
       // Der Titel nennt nur den Fehlschlag — die für den Nutzer entscheidende
-      // Frage ist, ob sein Account jetzt weg ist. Er ist es nicht.
+      // Frage ist, ob sein Account jetzt weg ist. Ehrliche Antwort: vielleicht
+      // halb. Bricht die Löschung mittendrin ab, ist der Account schon gesperrt
+      // und zum Teil geleert; der Text sagt das, statt „nichts passiert".
       description: t('account.delete.failedDescription'),
       color: 'error',
     })
@@ -44,8 +67,25 @@ async function deleteAccount() {
     :description="t('account.delete.description')"
     class="bg-linear-to-tl from-error/10 from-5% to-default"
   >
+    <!-- Liste UND Knopf im Fuß: der Standard-Slot der Karte rendert NACH dem
+         Fuß — die Liste stünde sonst unter dem Knopf, und der Bestätigungstext
+         verweist auf „die Liste über dem Knopf". -->
     <template #footer>
-      <UButton :label="t('account.delete.button')" color="error" @click="deleteAccount" />
+      <div class="space-y-4">
+        <section aria-labelledby="account-delete-notice-title" class="text-sm">
+          <h3 id="account-delete-notice-title" class="font-medium text-highlighted">
+            {{ t('account.delete.notice.title') }}
+          </h3>
+          <ul class="mt-2 space-y-1.5 text-muted">
+            <li v-for="(line, index) in notices" :key="index" class="flex gap-2">
+              <UIcon name="i-ph-dot-outline-bold" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>{{ line }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <UButton :label="t('account.delete.button')" color="error" @click="deleteAccount" />
+      </div>
     </template>
   </UPageCard>
 </template>

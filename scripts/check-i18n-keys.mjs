@@ -125,6 +125,13 @@ const FIELDS = [
     keys: p => Object.values(p.chrome?.nav ?? {}).flatMap(e => (e ? str(e.descriptionKey) : [])),
   },
   {
+    // GA1 P14 (2026-11-15): je Produkt-Layer eine Zeile in „Was beim Löschen
+    // geschieht" — der Text gehört dem Layer, gerendert wird er vom CORE.
+    pfad: 'pukalani.account.deleteNotices[]',
+    quelle: 'packages/core/app/components/auth/AccountDeleteCard.vue',
+    keys: p => arr(p.account?.deleteNotices).flatMap(k => str(k)),
+  },
+  {
     pfad: 'pukalani.admin.modules[].labelKey',
     quelle: 'packages/admin/app/layouts/dashboard.vue · packages/admin/app/components/DashboardUserMenu.vue',
     keys: p => arr(p.admin?.modules).flatMap(m => str(m?.labelKey)),
