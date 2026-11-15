@@ -6,7 +6,7 @@
  * `package.json` dagegen konsistent (CI).
  *
  * WICHTIG: Manifeste werden auch OHNE Nuxt geladen (Node
- * --experimental-strip-types, wie bootstrap.ts) — Manifest-Dateien dürfen
+ * --experimental-strip-types, wie scripts/migrate.mjs) — Manifest-Dateien dürfen
  * aus diesem Modul daher ausschließlich per `import type` importieren.
  */
 
