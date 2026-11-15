@@ -20,9 +20,19 @@
 # GEPINNT (kein blindes ssh-keyscan zur Laufzeit). Ohne Secret wird der Lauf
 # rot. Schlüssel tauschen: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md
 #
-# FALLBACK (Server baut selbst): die ploi-Deploy-Scripts der 4 Sites sind
-# unverändert funktionsfähig — im Notfall (Actions down) in ploi den
-# Deploy-Button drücken.
+# SCHLECHTER STAND LIVE (OPS-007, 2026-11-15) — drei Wege, in dieser Reihenfolge:
+#   1. `ops/rollback.sh <app> <commit> --apply` vom eigenen Rechner: stellt eine
+#      App auf einen Stand zurück, der noch auf dem Server liegt. Ohne GitHub.
+#   2. Manueller Start MIT der Eingabe `sha` (s. `workflow_dispatch` unten):
+#      baut und liefert einen älteren Commit von main auf alle Apps aus.
+#   3. `git revert` auf main — sonst liefert der nächste Push (auch ein reiner
+#      Doku-Push) wieder den schlechten Stand aus.
+# Anleitung, Grenzen und das Protokoll der Übung:
+# docs/runbooks/DEPLOYMENT.md, Abschnitt „Schlechter Stand live".
+#
+# FALLBACK (Server baut selbst, wenn GitHub Actions ausfällt): nur für die
+# Sites mit Repository in ploi (Deploy-Knopf im Panel). Für control, help und
+# branding gibt es ihn bewusst nicht — dort bleibt der Rückweg aus Punkt 1.
 #
 # Env Vars (NUXT_APPWRITE_KEY etc.) leben als Server-.env je Site —
 # NIE im Repo; ploi „Quick Deploy" bleibt AUS.
@@ -61,7 +71,18 @@ on:
     workflows: [Test, 'E2E (Appwrite)']
     types: [completed]
     branches: [main]
+  # MANUELLER START. Ohne Eingabe: die Spitze des gewählten Zweigs (wie
+  # bisher). Mit `sha`: genau dieser Commit — der Weg zu einem ÄLTEREN Stand
+  # (OPS-007). Der Riegel im Job `plan` bleibt: was nicht auf main liegt, wird
+  # nicht ausgeliefert. Die Vorprüfung entfällt beim manuellen Start (Notausgang).
+  #   gh workflow run deploy.yml -f sha="$(git rev-parse <commit>)"
   workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Älteren Stand ausliefern: vollständiger Commit von main (40 Zeichen). Leer = Spitze von main.'
+        required: false
+        type: string
+        default: ''
 
 # Rechte stehen je Job (SEC-041): ohne eigene Angabe hat ein Job keine.
 permissions: {}
@@ -73,16 +94,25 @@ concurrency:
 env:
   SERVER: 49.13.211.173
   SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
-  EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+  # WAS ausgeliefert wird: der Commit des auslösenden Prüflaufs, beim
+  # manuellen Start die Eingabe `sha`, sonst die Spitze des Zweigs.
+  EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.sha || github.sha }}
+  # WIE DER SERVER GEBAUT IST (App-Liste, ops/, TLS-Liste): derselbe Commit —
+  # AUSSER beim manuellen Start mit einem älteren `sha`. Dann kommt nur das
+  # PROGRAMM vom alten Commit; Site-Namen, Prozessnamen und Ecosystem-Dateien
+  # kommen von der Spitze von main. Ein alter Commit kennt womöglich noch
+  # einen Prozess, den es nicht mehr gibt — pm2 startete ihn DANEBEN (zwei
+  # Prozesse, ein Port). Genau so war der Rückweg schon einmal abgehängt.
+  OPS_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
   COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
-  # DIE EINE APP→HOST-LISTE (2026-09-01). Sie speist BEIDE Schritte, die
-  # Hosts kennen muessen: die Change-Detection („welcher Build laeuft wo?")
-  # und die Auslieferung („wohin rsyncen, wen fragen?"). Genau eine zweite,
-  # getrennt gepflegte Liste war die Luecke, durch die branding gefallen
-  # ist: die Auslieferung kannte den Host, die Diff-Basis nicht — und was
-  # keine Diff-Basis ist, kann auch nie als „haengt zurueck" auffallen.
-  # Neue App ⇒ HIER eintragen, nirgends sonst.
-  APP_HOSTS: 'portfolio=portfolio.pukalani.app control=admin.pukalani.app platform=platform.pukalani.app marketing=pukalani.app help=help.pukalani.app branding=branding.supply'
+  # DIE EINE APP→HOST-LISTE steht seit 2026-11-15 in `ops/apps.conf` (vorher
+  # hier als Workflow-Variable). Der Job `plan` liest sie und reicht sie als
+  # `APP_HOSTS` (Paare `app=site`) an `build` und `deliver` weiter; der
+  # Rückweg `ops/rollback.sh` liest dieselbe Datei. Sie speist ALLE Schritte,
+  # die Hosts kennen müssen — auch die Change-Detection: eine zweite,
+  # getrennt gepflegte Liste war die Lücke, durch die branding am 2026-09-01
+  # gefallen ist (die Auslieferung kannte den Host, die Diff-Basis nicht).
+  # Neue App ⇒ in ops/apps.conf eintragen, nirgends sonst.
 
 jobs:
   # ── Vorprüfung: ALLE VIER Prüf-Workflows müssen für DIESEN Commit grün sein ─
@@ -172,7 +202,27 @@ jobs:
     if: needs.gate.outputs.go == 'true'
     outputs:
       skip: ${{ steps.changes.outputs.skip }}
+      app_hosts: ${{ steps.apps.outputs.app_hosts }}
     steps:
+      # VOR dem Checkout: die Eingabe ist freier Text. Nur ein vollständiger
+      # Commit kommt weiter — kein Zweigname, kein Kürzel (die Build-Kennung
+      # in /api/health ist der vollständige Commit, ein Kürzel träfe nie).
+      - name: Eingabe prüfen (manueller Start)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$INPUT_SHA" ]; then
+            echo "Keine Eingabe — ausgeliefert wird die Spitze des Zweigs ($GITHUB_SHA)."
+            exit 0
+          fi
+          if ! printf '%s' "$INPUT_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::Die Eingabe sha muss ein vollständiger Commit sein (40 Zeichen aus 0-9 a-f): git rev-parse <commit>"
+            exit 1
+          fi
+          echo "Eingabe: ausgeliefert wird $INPUT_SHA (ops/ und App-Liste von $GITHUB_SHA)."
+
       - name: Repo auschecken
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -187,11 +237,36 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$EXPECTED_SHA" origin/main; then
-            echo "::error::$EXPECTED_SHA liegt NICHT auf origin/main — Deploy abgebrochen."
+          # Beide: der Commit, der ausgeliefert wird, UND der, von dem ops/
+          # und die App-Liste kommen (beim manuellen Start die Spitze des
+          # gewählten Zweigs — ein Arbeitszweig fällt hier durch).
+          for sha in "$EXPECTED_SHA" "$OPS_REF"; do
+            if ! git merge-base --is-ancestor "$sha" origin/main; then
+              echo "::error::$sha liegt NICHT auf origin/main — Deploy abgebrochen."
+              exit 1
+            fi
+            echo "✔ $sha ist Teil von origin/main."
+          done
+
+      # DIE EINE APP-LISTE (ops/apps.conf, je Zeile `<app> <site>`) → Paare
+      # `app=site`. Gelesen aus OPS_REF (s. Kopf), nicht aus dem Arbeitsbaum:
+      # beim Ausliefern eines älteren Commits gilt die Liste von HEUTE.
+      - name: App-Liste lesen (ops/apps.conf)
+        id: apps
+        run: |
+          set -euo pipefail
+          LIST=$(git show "$OPS_REF:ops/apps.conf" | sed -e 's/#.*//' | awk '
+            NF == 0 { next }
+            NF != 2 { bad = 1; exit }
+            { printf "%s%s=%s", sep, $1, $2; sep = " " }
+            END { if (bad) exit 3 }') || LIST=''
+          if ! printf '%s' "$LIST" | grep -Eq '^[a-z0-9-]+=[a-z0-9.-]+( [a-z0-9-]+=[a-z0-9.-]+)*$'; then
+            echo "::error::ops/apps.conf ist nicht lesbar (erwartet je Zeile: <app> <site>)."
             exit 1
           fi
-          echo "✔ $EXPECTED_SHA ist Teil von origin/main."
+          echo "Apps: $LIST"
+          echo "app_hosts=$LIST" >> "$GITHUB_OUTPUT"
+          echo "APP_HOSTS=$LIST" >> "$GITHUB_ENV"
 
       # Nur-Doku/CI/Meta-Änderungen erkennen → Deploy überspringen.
       - name: Deploy nötig?
@@ -361,6 +436,8 @@ jobs:
       contents: read
     needs: [plan, fonts]
     if: needs.plan.outputs.skip != 'true'
+    env:
+      APP_HOSTS: ${{ needs.plan.outputs.app_hosts }}
     steps:
       # Ohne `fetch-depth: 0`: der Build liest nur `git rev-parse HEAD` (die
       # Build-Kennung in /api/health), und HEAD ist genau dieser Commit.
@@ -436,14 +513,18 @@ jobs:
     needs: [plan, build]
     if: needs.plan.outputs.skip != 'true'
     environment: production
+    env:
+      APP_HOSTS: ${{ needs.plan.outputs.app_hosts }}
     steps:
       # Nur `ops/` (Ecosystem-Dateien, pm2-heal.sh) — aus git, nicht aus dem
       # Build-Artefakt: was auf dem Server AUSGEFÜHRT wird, kommt nicht durch
-      # den Job, der fremden Code laufen lässt.
+      # den Job, der fremden Code laufen lässt. Aus OPS_REF (s. Kopf): beim
+      # Ausliefern eines älteren Commits bleiben die Ecosystem-Dateien die
+      # von heute.
       - name: ops/ auschecken
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.EXPECTED_SHA }}
+          ref: ${{ env.OPS_REF }}
           sparse-checkout: ops
           persist-credentials: false
 
@@ -503,14 +584,16 @@ jobs:
           set -eu
           # SITE  = ploi-Site: VERZEICHNIS auf dem Server (/home/ploi/$site/ops)
           #         und Quelle des pm2-Prozessnamens.
-          # SLOT  = Release-Verzeichnis unter /home/ploi/releases.
+          # SLOT  = Release-Verzeichnis unter /home/ploi/releases — heisst
+          #         IMMER wie die App (Regel aus ops/apps.conf).
           # PROBE = der HOST, unter dem die App oeffentlich antwortet.
           #
-          # Die App→Host-Zuordnung kommt aus $APP_HOSTS (Job-env, ganz oben) —
-          # DIESELBE Liste, die auch die Change-Detection abfragt. Nie eine
-          # zweite hier anlegen: genau daran ist branding am 2026-09-01
-          # unsichtbar zurueckgeblieben. Die Reihenfolge der Auslieferung ist
-          # die Reihenfolge der Liste.
+          # Die App→Host-Zuordnung kommt aus $APP_HOSTS — vom Job `plan` aus
+          # ops/apps.conf gelesen, DIESELBE Liste, die auch die
+          # Change-Detection abfragt und die der Rueckweg ops/rollback.sh
+          # liest. Nie eine zweite hier anlegen: genau daran ist branding am
+          # 2026-09-01 unsichtbar zurueckgeblieben. Die Reihenfolge der
+          # Auslieferung ist die Reihenfolge der Liste.
           #
           # CONTROL heisst seit 2026-08-18 auch als ploi-SITE `admin.pukalani.app`
           # (Davids Panel-Umbenennung; ploi benennt dabei das Server-Verzeichnis
@@ -534,7 +617,10 @@ jobs:
           # 3006 der App: das ist die Portkarte des SERVERS, und dort haelt
           # help seit 2026-07-28 die 3006 (Begruendung in
           # ops/ecosystem-branding.config.cjs).
-          declare -A SLOT=( [portfolio]=portfolio [control]=control [platform]=platform [marketing]=marketing [help]=help [branding]=branding )
+          # Apps, die den neuen Stand tragen, aber nicht `ok:true` melden
+          # (s. Probe unten) — der Lauf endet dann rot, NACHDEM alle Apps
+          # ausgeliefert sind.
+          UNHEALTHY=""
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
             site="${pair#*=}"
@@ -542,7 +628,7 @@ jobs:
             # ihrer Site — kein eigenes Array mehr, das auseinanderlaufen kann.
             probe="$site"
             echo "::group::Deploy $app → $site"
-            RELEASES="/home/ploi/releases/${SLOT[$app]}"
+            RELEASES="/home/ploi/releases/$app"
             RELEASE="$RELEASES/$EXPECTED_SHA"
             # --mkpath, weil rsync sonst nur die LETZTE Pfadebene anlegt: beim
             # Erst-Deploy einer neuen App existiert /home/ploi/releases/<slot>
@@ -558,8 +644,10 @@ jobs:
             # (Die uebrigen Sites behalten ihre Checkouts fuer den ploi-
             # FALLBACK-Deploy — der macht sein eigenes git pull. Fuer control,
             # help und branding gibt es diesen Fallback bewusst nicht; Ersatz
-            # sind die Runbooks docs/runbooks/CONTROL-CUTOVER.md,
-            # HELP-GO-LIVE.md bzw. BRANDING-SUPPLY-SETUP.md.)
+            # sind die Runbooks docs/runbooks/CONTROL-CUTOVER.md und
+            # BRANDING-SUPPLY-SETUP.md sowie docs/archiv/HELP-GO-LIVE.md;
+            # zurueck auf einen liegenden Stand geht fuer ALLE sechs mit
+            # ops/rollback.sh.)
             rsync -az ops/ "prod:/home/ploi/$site/ops/"
             # Flip + Reload (ZDT Stufe 2). pm2 startOrReload findet den Prozess
             # ueber den NAMEN in der Ecosystem-Datei — bei einer Umbenennung
@@ -610,16 +698,41 @@ jobs:
             # nicht, dass alle ihn haben. Genau daran ist der Rename-Deploy
             # vorbeigelaufen: zwei Prozesse auf einem Port, einer alt, und die
             # erste Abfrage traf zufaellig den neuen.
-            echo "[$app] Erwarte Commit $EXPECTED_SHA auf https://$probe/api/health (3x in Folge) …"
-            ok=""; streak=0
+            #
+            # BUILD UND `ok` (OPS-007, 2026-11-15; vorher nur der Build). Zwei
+            # verschiedene Aussagen, zwei verschiedene Folgen:
+            #   Build falsch ⇒ das Ausliefern selbst ist gescheitert. Abbruch
+            #                  wie bisher, die restlichen Apps bleiben stehen.
+            #   Build richtig, `ok` nicht true ⇒ der Stand ist ausgeliefert,
+            #                  aber die Seite meldet sich nicht gesund (Appwrite
+            #                  nicht erreichbar, Pflicht-Variable fehlt, …). Die
+            #                  RESTLICHEN APPS WERDEN TROTZDEM AUSGELIEFERT —
+            #                  die Ursache liegt oft nicht im Stand, und ein
+            #                  Abbruch hielte auch die Korrektur fuer die
+            #                  anderen Apps auf. Der Lauf endet danach ROT.
+            # Zurueckgestellt wird NICHT von selbst: ob der alte Stand hilft,
+            # ist eine Entscheidung (docs/runbooks/DEPLOYMENT.md, „Schlechter
+            # Stand live").
+            echo "[$app] Erwarte Commit $EXPECTED_SHA und ok:true auf https://$probe/api/health (3x in Folge) …"
+            built=""; healthy=""; streak=0; reason=""
             for i in $(seq 1 20); do
-              BUILD=$(curl -fsS -m 15 "https://$probe/api/health" | jq -r '.build // empty' || true)
+              RESP=$(curl -fsS -m 15 "https://$probe/api/health" || true)
+              BUILD=$(printf '%s' "$RESP" | jq -r '.build // empty' 2>/dev/null || true)
+              OK=$(printf '%s' "$RESP" | jq -r '.ok // false' 2>/dev/null || true)
+              # `reason` landet im öffentlichen Protokoll: nur ein kurzes Kennwort
+              # (z. B. tenant_resolver_missing), nie freier Text vom Server.
+              reason=$(printf '%s' "$RESP" | jq -r '.reason // empty' 2>/dev/null | grep -Eox '[a-z0-9_]{1,40}' | head -n 1 || true)
               if [ "$BUILD" = "$EXPECTED_SHA" ]; then
                 streak=$((streak + 1))
                 if [ "$streak" -ge 3 ]; then
-                  echo "[$app] ✔ Prod läuft durchgängig auf $BUILD"; ok=1; break
+                  built=1
+                  if [ "$OK" = "true" ]; then
+                    echo "[$app] ✔ Prod läuft durchgängig auf $BUILD und meldet ok:true"; healthy=1; break
+                  fi
+                  echo "[$app]   ($i/20) Build stimmt, aber ok ist '$OK'${reason:+ (reason: $reason)} — warte 5 s …"
+                else
+                  echo "[$app]   ($i/20) Treffer $streak/3 …"
                 fi
-                echo "[$app]   ($i/20) Treffer $streak/3 …"
               else
                 [ "$streak" -gt 0 ] && echo "[$app]   ($i/20) Serie gerissen — '$BUILD' statt $EXPECTED_SHA (mehrere Prozesse am Port?)"
                 streak=0
@@ -627,11 +740,19 @@ jobs:
               fi
               sleep 5
             done
-            if [ -z "$ok" ]; then
+            if [ -z "$built" ]; then
               echo "::error::[$app] Prod hat $EXPECTED_SHA nicht stabil erreicht — pm2 list prüfen (verwaister Prozess am selben Port?)."
               exit 1
             fi
+            if [ -z "$healthy" ]; then
+              echo "::error::[$app] $EXPECTED_SHA ist ausgeliefert, aber https://$probe/api/health meldet nicht ok:true${reason:+ (reason: $reason)}."
+              UNHEALTHY="$UNHEALTHY $app"
+            fi
           done
+          if [ -n "$UNHEALTHY" ]; then
+            echo "::error::Ausgeliefert, aber nicht gesund:$UNHEALTHY — docs/runbooks/DEPLOYMENT.md, Abschnitt „Schlechter Stand live“."
+            exit 1
+          fi
 
       # Der Schlüssel verlässt die Platte, auch wenn ein Schritt davor rot wurde.
       - name: Schlüssel von der Platte nehmen
@@ -651,9 +772,10 @@ jobs:
     needs: [plan, deliver]
     if: always() && needs.plan.result == 'success' && needs.plan.outputs.skip != 'true'
     steps:
+      # Aus OPS_REF (s. Kopf): die Host-Liste des TLS-Wächters ist die von heute.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.EXPECTED_SHA }}
+          ref: ${{ env.OPS_REF }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

@@ -171,6 +171,31 @@ paths:
   `authorized_keys`; die CI-Zeilen sind von Hand eingetragen (Ploi kennt keine
   Optionen) und nach jeder Schlüssel-Änderung im Panel zurückzulesen.
   Tauschen, Tor aktualisieren, Fallen: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md
+- RÜCKWEG BEI EINEM SCHLECHTEN STAND (GA1 P10, seit 2026-11-15): die
+  Reihenfolge ist ZURÜCKSTELLEN → `git revert` → erst dann Ursache suchen.
+  `ops/rollback.sh <app>` zeigt die Stände, die auf app-prod liegen
+  (`/home/ploi/releases/<app>/<commit>`), `… <commit> --apply` legt den
+  Verweis um, lädt den pm2-Prozess neu und prüft dreimal Build UND `ok` — vom
+  eigenen Rechner über den eigenen SSH-Zugang, OHNE GitHub; ohne `--apply`
+  ändert es nichts, ein unbekannter Stand bricht vor jedem Handgriff ab.
+  Über GitHub: `gh workflow run deploy.yml -f sha=<vollständiger Commit>`
+  liefert einen älteren Commit von `main` auf alle Apps (Riegel „liegt auf
+  main" bleibt; `ops/` und die App-Liste kommen dabei von der Spitze von
+  `main`, nur das Programm vom alten Commit — ein alter Commit kennt
+  womöglich einen Prozess, den es nicht mehr gibt). DIE EINE APP-LISTE ist
+  `ops/apps.conf` (App, Site; Stände-Verzeichnis = App, Prozess = Site ohne
+  Punkte): `deploy.yml` und `rollback.sh` lesen beide sie, der Test
+  `packages/core/tests/deployApps.test.ts` hält Liste, Ecosystem-Dateien,
+  Workflow und Health-Wächter zusammen — eine Umbenennung, die nur die halbe
+  Kette nachzieht, wird dort rot (der Rückweg nannte drei Monate lang einen
+  gelöschten Prozess). DER RÜCKWEG HÄLT NUR BIS ZUM NÄCHSTEN PUSH AUF `main`
+  (auch ein reiner Doku-Push: die Diff-Basis ist der älteste lebende Build),
+  die Datenbank geht nicht mit zurück (Migrationen haben keinen Rückweg), und
+  jedes Neuladen liest die `.env` neu. Der Deploy prüft seitdem auch `ok`:
+  Build falsch ⇒ Abbruch wie bisher; Build richtig, `ok` nicht true ⇒ die
+  übrigen Apps werden trotzdem ausgeliefert und der Lauf endet rot. Von
+  selbst zurückgestellt wird nie. Runbook mit Grenzen, Notweg ohne GitHub und
+  dem Protokoll der Übungen: docs/runbooks/DEPLOYMENT.md, Abschnitt A3.
 - EINE FEHLENDE ENV-VARIABLE WIRD NICHT ROT (F44, 2026-08-02): `platform`
   hatte kein `NUXT_SMTP_*`, also ging für JEDE Kunden-Community nie eine
   Benachrichtigungs-Mail raus — die App lief, die Seiten antworteten, nur die
