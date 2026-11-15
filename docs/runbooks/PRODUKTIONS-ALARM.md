@@ -271,8 +271,15 @@ curl -s https://api.pukalani.app/v1/health/version; echo; node scripts/ops/verif
 **Ein einzelner Host `ok:false` / HTTP ≠ 200.** Auf `ploi@49.13.211.173`:
 `pm2 ls`, `pm2 logs <prozess> --lines 50` (Namen: `platformpukalaniapp`,
 `adminpukalaniapp`, `portfoliopukalaniapp`, `brandingsupply`, `pukalaniapp`,
-`helppukalaniapp`). Letzter Deploy rot? → `deploy.yml`-Lauf lesen;
+`helppukalaniapp`; die Quelle der Namen ist `ops/apps.conf`). Letzter
+Deploy rot? → `deploy.yml`-Lauf lesen;
 `pm2 startOrReload ops/ecosystem-<app>.config.cjs --update-env`.
+
+**Seit einem Ausliefern kaputt (Deploy rot mit „Ausgeliefert, aber nicht
+gesund“, oder die Seite läuft, aber falsch).** Nicht zuerst die Ursache
+suchen: zurückstellen mit `ops/rollback.sh <app>`, dann `git revert`. Die
+Reihenfolge, die Grenzen und was ohne GitHub geht:
+[DEPLOYMENT.md](DEPLOYMENT.md), Abschnitt A3 „Schlechter Stand live“.
 
 **TLS auf einem ploi-Host.** Hinweis am Ende des Wächter-Laufs; Regeln in
 `.claude/rules/hosts-ops.md` (Lineage-Falle: NIE auf `pukalani.app` oder

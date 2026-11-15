@@ -1,62 +1,217 @@
-# Deployment-Runbook — Prod-Sites (Phase 17 / H2)
+# Deployment-Runbook — Prod-Sites
 
-Stand: 2026-07-19 (Multi-Site). Praktischer Leitfaden, um Apps in
-Produktion zu bringen. Ergänzt [CONCEPT.md](../CONCEPT.md) (A9 Deployment,
-A11 Env, A3 Session-Cookie) und
-[plans/PHASE-17-PRODUCTION.md](../archiv/PHASE-17-PRODUCTION.md) (Checkliste +
-alle Go-Live-Learnings im Detail).
+Stand: 2026-11-15. Zwei Teile:
 
-> **Ist-Stand (pukalani.app), EIN App-Server (app-prod, 49.13.211.173):**
-> `portfolio.pukalani.app` (Site 390041, Port **3002** — das letzte
-> Silo-Deployment) ·
-> `admin.pukalani.app` (Site 392163, Port **3003** — die Betreiber-Konsole;
-> beim Cutover 2026-07-26 als `control.pukalani.app` NEU angelegt, die alte
-> studio-Site 390042 ist gelöscht. Seit **AH-4b (2026-08-18)** ist die
-> ploi-Site samt Server-Verzeichnis WIRKLICH auf `admin.pukalani.app`
-> umbenannt (Davids Panel-Klick, eigenes Zertifikat nur für admin); der
-> Altname `control.` antwortet seither bewusst **404** über die
-> Wildcard-Site, Release-Slot `releases/control`, pm2 `adminpukalaniapp`;
-> seit AH-4c am selben Tag auch Appwrite-Projekt `admin` — das Alt-Projekt
-> `control` liegt eingefroren als Rückweg) ·
-> `platform.pukalani.app` (Site 391312, Port **3004**, seit H3-Rollout
-> 2026-07-23 — Multi-Tenant-App: `server_name platform.pukalani.app
-> *.pukalani.app` + ploi-verwaltetes **Wildcard-TLS** `*.pukalani.app`
-> via DNS-Challenge; jede Kunden-Subdomain landet hier und wird über das
-> tenants-Register des Control-Plane aufgelöst) ·
-> dazu `pukalani.app` (Marketing, Apex — proxied über Cloudflare) und
-> `help.pukalani.app` (Hilfe-Site, Wildcard).
-> `comments.pukalani.app` ist seit F3 (2026-08-12) eine POOL-COMMUNITY —
-> ihre ploi-Site 389772 (Port 3001) ist am 2026-08-18 gelöscht, der Host
-> läuft wie jeder Mandant über die platform-Site. Appwrite
-> `api.pukalani.app` (appwrite-prod, 188.245.61.155, 1.9.6) mit **einem
-> Projekt je Silo-Site** (F6-Muster, je eigene nuxt-ssr-prod/migrations-
-> prod-Keys + Web-Platform) **plus** dem geteilten Projekt `account`
-> (Pool-Communities + Konten; die Vorgänger-Projekte `pool` und `comments`
-> sind gelöscht (2026-08-18/19) — Alt-Stände nur noch in den Offsite-Dumps).
-> Cloudflare DNS „DNS only" (nur Apex proxied) · Resend-SMTP · UptimeRobot ·
-> Storage Box `pukalani-backup` (Offsite-Backups; die MariaDB-Dumps decken
-> alle Projekte ab).
-> Die comments-Beispiele weiter unten in diesem Runbook sind das HISTORISCHE
-> Silo-Anlege-Rezept — das Muster gilt weiter (heute: portfolio), die
-> konkrete Site gibt es nicht mehr.
-> Bewährte Abweichungen vom ursprünglichen Plan: **pm2 Cluster-Mode über
-> `ops/ecosystem-<app>.config.cjs`** (seit A.10 Stufe 2 — parst die
-> Site-`.env`, Nitro liest zur Laufzeit KEINE .env), **corepack pnpm**,
-> `NODE_OPTIONS=--max-old-space-size=4096` im Deploy-Script (Node-Default-
-> Heap ~1,9 GB reicht dem Nuxt-Build nicht), HSTS als eigene Include-Datei
-> `/etc/nginx/ploi/<site>/server/hsts.conf`.
+- **Teil A — Betrieb heute:** was wo läuft, wie ausgeliefert wird, und was zu
+  tun ist, wenn ein schlechter Stand live ist.
+- **Teil B — Eine neue Silo-Site aufsetzen:** das Anlege-Rezept vom Juli 2026.
+  Die Beispiele dort nennen `comments` — die Site gibt es seit dem 2026-08-18
+  nicht mehr, das Muster gilt weiter (heute: portfolio, branding).
+
+Ergänzt [CONCEPT.md](../CONCEPT.md) (A9 Deployment, A11 Env, A3 Session-Cookie).
+Die Go-Live-Geschichte mit allen Lehren steht im Archiv:
+[PHASE-17-PRODUCTION.md](../archiv/PHASE-17-PRODUCTION.md). Alarmweg und
+erste Handgriffe bei einem Ausfall: [PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md).
+
+---
+
+# Teil A — Betrieb heute
+
+## A1. Was wo läuft
+
+EIN App-Server (`app-prod`, 49.13.211.173, ploi-verwaltet) mit sechs Apps;
+Appwrite daneben auf `appwrite-prod` (188.245.61.155) unter `api.pukalani.app`,
+self-hosted **2.7.1**, vier Projekte: `account` (Pool-Communities und Konten),
+`admin` (Betreiber-Konsole), `portfolio`, `branding`.
+
+| App (`apps/<app>`) | Site = Verzeichnis `/home/ploi/<site>` | antwortet auch auf | Port | pm2-Prozess |
+| --- | --- | --- | --- | --- |
+| `portfolio` | `portfolio.pukalani.app` | `pukalani.studio` (Kundendomain) | 3002 | `portfoliopukalaniapp` |
+| `control` | `admin.pukalani.app` | — | 3003 | `adminpukalaniapp` |
+| `platform` | `platform.pukalani.app` | `account.`, `demo.` und jede Kunden-Community (`*.pukalani.app`, Kundendomains) | 3004 | `platformpukalaniapp` |
+| `marketing` | `pukalani.app` | `www.pukalani.app` | 3005 | `pukalaniapp` |
+| `help` | `help.pukalani.app` | — | 3006 | `helppukalaniapp` |
+| `branding` | `branding.supply` | `www.branding.supply` | 3007 | `brandingsupply` |
+
+**Die eine Quelle dieser Namen ist [`ops/apps.conf`](../../ops/apps.conf)** (je
+Zeile App und Site). Das Ausliefern und der Rückweg lesen beide diese Datei.
+Zwei Regeln statt weiterer Spalten: Die Stände einer App liegen unter
+`/home/ploi/releases/<app>/<commit>` (Verweis `current`), und der pm2-Prozess
+heißt wie die Site ohne Punkte. Der Test
+`packages/core/tests/deployApps.test.ts` wird rot, wenn Liste, Ecosystem-Datei
+(`ops/ecosystem-<app>.config.cjs`), Workflow oder Health-Wächter
+auseinanderlaufen. Alle Hosts, Altnamen und die Zertifikats-Regeln:
+[Hosts & Ports](../content/2.architektur/6.hosts-und-ports.md).
+
+Was jede App zur Laufzeit braucht, liegt in `/home/ploi/<site>/.env` (nie im
+Repo). Nitro liest zur Laufzeit keine `.env`: Die Ecosystem-Datei hebt sie
+beim `pm2 startOrReload … --update-env` in den Prozess. Eine Änderung dort
+wirkt also erst mit dem nächsten Neuladen — und JEDES Neuladen (Ausliefern,
+Rückweg) macht sie wirksam.
+
+## A2. Ausliefern
+
+Jeder Merge auf `main` wird ausgeliefert, wenn die vier Prüfungen (Test,
+Lint, Typecheck, E2E) für genau diesen Commit grün sind
+(`.github/workflows/deploy.yml`). Fünf Jobs auf getrennten Maschinen:
+
+1. `plan` — liegt der Commit auf `main`? Gibt es etwas auszuliefern? Verglichen
+   wird gegen den ÄLTESTEN Build, den eine der sechs Apps gerade meldet; ändert
+   sich nur Doku, CI oder Meta, wird übersprungen.
+2. `fonts` — holt den Font-Cache vom Server (mit Schlüssel, ohne Installieren).
+3. `build` — installiert und baut alle sechs Apps, ohne jedes Secret.
+4. `deliver` — je App: Build-Ergebnis nach `/home/ploi/releases/<app>/<commit>/`,
+   `ops/` nach `/home/ploi/<site>/ops/`, Verweis `current` atomar umlegen,
+   `pm2 startOrReload` (der alte Prozess antwortet, bis der neue bereit ist),
+   ältere Stände stutzen. Danach die Probe: dreimal in Folge der erwartete
+   Commit auf `https://<site>/api/health`.
+5. `tls` — liefert jeder Host noch ein passendes Zertifikat?
+
+Vom Merge bis live vergehen rund 15 Minuten. Der Server baut nichts.
+
+**Die Probe liest seit dem 2026-11-15 auch `ok`.** Trägt eine App den neuen
+Commit, meldet aber nicht `ok:true`, werden die übrigen Apps trotzdem
+ausgeliefert und der Lauf endet rot („Ausgeliefert, aber nicht gesund“).
+Zurückgestellt wird nicht von selbst — dann gilt Abschnitt A3.
+
+**Der Beweis, dass etwas live ist,** ist nie der grüne Lauf, sondern
+`curl https://<host>/api/health` → `.build` (der vollständige Commit) und
+`ok`. Der Deploy startet je Push zweimal (einmal je Auslöser); einer der
+Läufe endet „cancelled“ oder findet nichts mehr zu tun.
+
+**Manueller Start** (Notausgang, ohne die vier Prüfungen):
+
+```bash
+gh workflow run deploy.yml                                    # Spitze von main, liefert immer aus
+gh workflow run deploy.yml -f sha="$(git rev-parse <commit>)" # genau dieser Commit von main
+```
+
+Schlüssel und Umgebungen (zwei SSH-Schlüssel, Secrets nur für `main`):
+[CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md). Datenbank-Migrationen
+sind NICHT Teil des Auslieferns: Sie laufen von Hand vor dem Merge (Teil B,
+Schritt 2) und sind additiv — der Stand davor muss den neuen Aufbau vertragen.
+
+## A3. Schlechter Stand live
+
+Die Reihenfolge ist der Inhalt dieses Abschnitts: **erst zurückstellen, dann
+`git revert`, erst danach die Ursache suchen.** Der Weg „Fehler finden,
+beheben, pushen“ dauert mindestens eine Viertelstunde und setzt voraus, dass
+man den Fehler schon versteht.
+
+### Schritt 1 — Zurückstellen (Minuten, ohne GitHub)
+
+Vom eigenen Rechner, im Repo, über den eigenen SSH-Zugang (`ploi@49.13.211.173`):
+
+```bash
+ops/rollback.sh                         # die sechs Apps
+ops/rollback.sh <app>                   # die Stände auf dem Server, neuester zuerst; ändert nichts
+ops/rollback.sh <app> <commit>          # zeigt, was passieren würde; ändert nichts
+ops/rollback.sh <app> <commit> --apply  # stellt um
+```
+
+`--apply` legt den Verweis `current` auf den gewählten Stand, lädt den
+pm2-Prozess der App neu und fragt die Seite, bis sie dreimal in Folge diesen
+Commit UND `ok:true` meldet (dieselbe Probe wie beim Ausliefern). Ein Stand,
+der nicht oder nur unvollständig auf dem Server liegt, bricht ab, bevor etwas
+angefasst wird. Scheitert der Neustart, geht der Verweis von selbst zurück.
+Das Skript löscht nichts.
+
+- **Welche App?** Ein Fehler in einem geteilten Layer (`packages/*`) steckt in
+  allen Apps, die ihn einbinden. Jede betroffene App einzeln zurückstellen,
+  die wichtigste zuerst (`platform` trägt alle Kunden-Communities).
+- **Welcher Stand?** In der Regel der zweite in der Liste (der vor dem
+  aktiven). Die Liste zeigt zu jedem Commit die erste Zeile der Commit-Nachricht.
+- **Läuft gerade ein Ausliefern?** `gh run list --workflow deploy.yml --limit 3`.
+  Ein laufender Lauf legt den Verweis wieder nach vorn — abwarten oder
+  abbrechen (`gh run cancel <id>`), dann zurückstellen.
+
+**Alle sechs Apps auf einmal, oder der gute Stand liegt nicht mehr auf dem
+Server:** der manuelle Start mit Eingabe (A2). Er baut den älteren Commit
+neu und liefert ihn auf alle Apps aus; das dauert so lange wie jedes
+Ausliefern und braucht GitHub Actions. `ops/` und die App-Liste kommen dabei
+von der Spitze von `main`, nur das Programm vom alten Commit.
+
+### Schritt 2 — `git revert` auf `main`
+
+```bash
+git revert <schlechter-commit>     # bei einem Merge-Commit: git revert -m 1 <merge>
+```
+
+als Pull Request (fünf Prüfungen) oder, wenn es eilt, als direkter Push des
+Besitzers. **Das ist kein Aufräumen, sondern Teil des Rückwegs:** Solange
+`main` den schlechten Commit trägt, liefert der nächste Push ihn wieder aus.
+Der Revert selbst wird normal ausgeliefert und bringt alle sechs Apps wieder
+auf denselben Stand.
+
+### Schritt 3 — Ursache suchen
+
+Erst jetzt. Die Seite läuft, `main` ist sauber, es eilt nicht mehr.
+
+### Was der Rückweg NICHT kann
+
+- **Er hält nur bis zum nächsten Push auf `main`.** Auch ein reiner
+  Doku-Push reicht: Der Job `plan` vergleicht gegen den ältesten Build, den
+  eine App meldet — das ist nach dem Zurückstellen der alte Stand, also sieht
+  er App-Änderungen und liefert `main` wieder aus. Hier laufen mehrere
+  Sitzungen gegen dasselbe `main`; deshalb Schritt 2 sofort.
+- **Die Datenbank geht nicht mit zurück.** Ein alter Stand trifft auf den
+  heutigen Aufbau der Tabellen; Migrationen haben keinen Rückweg. Solange
+  Migrationen additiv sind, verträgt der Stand davor den neuen Aufbau. Hat
+  eine Migration etwas entfernt oder umgedeutet, kann der alte Stand
+  schlechter laufen als der neue — dann vor dem Zurückstellen die Migration
+  lesen. Daten, die der schlechte Stand geschrieben hat, bleiben.
+- **Nur was noch auf dem Server liegt.** Jedes Ausliefern stutzt die älteren
+  Stände je App; es bleiben nur die letzten. Für alles davor: der manuelle
+  Start mit Eingabe.
+- **Die `.env` wird neu gelesen.** Wer seit dem letzten Neuladen etwas in der
+  `.env` der Site geändert hat, macht es mit dem Rückweg wirksam.
+- **`ops/` bleibt, wie es zuletzt ausgeliefert wurde.** Das Skript nimmt die
+  Ecosystem-Datei, die auf dem Server liegt. Ein Fehler dort (Port, Pfad,
+  Prozessname) geht mit einem älteren Stand nicht weg.
+- **Kein Fehler außerhalb der App.** Appwrite, Zertifikate, nginx, DNS:
+  [PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md), Abschnitt 4. Melden alle Apps
+  `ok:false`, ist es fast immer Appwrite und kein schlechter Stand.
+
+### Wenn GitHub selbst ausfällt
+
+| Was ausfällt | Zurück auf einen Stand, der auf dem Server liegt | Etwas Neues ausliefern |
+| --- | --- | --- |
+| nur GitHub Actions | `ops/rollback.sh`, alle sechs Apps | Nur für Sites mit Repository in ploi (Deploy-Knopf im Panel, der Server baut selbst — nacheinander, nie zwei Builds zugleich, sonst geht dem Server der Speicher aus). Für `control`, `help` und `branding` gibt es diesen Weg nicht. |
+| GitHub ganz (auch `git pull`) | `ops/rollback.sh`, alle sechs Apps | Für keine App. Auch der Deploy-Knopf in ploi holt den Code von GitHub. |
+
+Das Skript braucht nur das lokale Repo (für `ops/apps.conf`) und den eigenen
+SSH-Zugang. Der Deploy-Knopf in ploi ist seit der Umstellung auf das Bauen
+bei GitHub (2026-07-23) nicht mehr benutzt worden; ob er heute noch
+durchläuft, ist nicht geprüft.
+
+### Protokoll der Übungen
+
+Ein Rückweg, der nie gegangen wurde, ist keiner. Jede Übung und jeder
+Ernstfall bekommt hier eine Zeile.
+
+| Datum | Was | Dauer | Ergebnis |
+| --- | --- | --- | --- |
+| — | noch nicht geübt (Skript und Eingabe seit 2026-11-15 im Repo) | — | — |
+
+---
+
+# Teil B — Eine neue Silo-Site aufsetzen (Rezept, Juli 2026)
+
+> Die Schritte unten sind das Anlege-Rezept aus der Zeit, als `comments` die
+> erste Site war. Namen, Ports und Projekt-Ids in den Beispielen sind die von
+> damals; die Site `comments.pukalani.app` (Port 3001, Prozess
+> `commentspukalaniapp`) ist seit dem 2026-08-18 gelöscht. Das Muster gilt
+> weiter: pm2 im Cluster-Modus über `ops/ecosystem-<app>.config.cjs`, corepack
+> pnpm, HSTS als eigene Include-Datei `/etc/nginx/ploi/<site>/server/hsts.conf`.
+> Eine neue App kommt zusätzlich in `ops/apps.conf`.
 >
-> **RAM-Regel (2 Cores / 3,7 GB + 4,7 GB Swap):** ein Nuxt-Build braucht
-> ~3,4 GB — **nie zwei Builds parallel** (beobachteter OOM-Kill 137).
-> deploy.yml deployt die vier Sites deshalb SEQUENZIELL und wartet je Site
-> auf den buildSha-Beweis, bevor die nächste startet. Die platform-App
-> bündelt die meisten Layer und braucht im Deploy-Script
-> `--max-old-space-size=3584` (2560 und 3072 OOMten beim Nitro-Bundling,
-> beobachtet 2026-07-23 — der Überhang läuft in den Swap).
-
-> **Architektur:** Nuxt 4 (SSR) → Nitro Node-Server. Build erzeugt
-> `apps/comments/.output/server/index.mjs`. Backend = eigene self-hosted
-> Appwrite-Instanz. Hosting/Deploy über **ploi.io**.
+> **RAM-Regel, nur wenn der Server selbst baut (Notweg aus A3):** 2 Kerne,
+> 3,7 GB RAM. Ein Nuxt-Build braucht rund 3,4 GB — nie zwei Builds parallel
+> (beobachteter Abbruch mit Exit 137); `platform` braucht
+> `--max-old-space-size=3584`.
+>
+> **Architektur:** Nuxt 4 (SSR) → Nitro Node-Server, Einstieg
+> `.output/server/index.mjs`. Backend = eigene self-hosted Appwrite-Instanz.
 
 ---
 
@@ -257,48 +412,12 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 
 ## 4. Deploy auslösen
 
-- **CI-BUILD-DEPLOY (seit 2026-07-23, ersetzt den Webhook-Weg):** jeder
-  Push auf `main` → CI „Test" → Workflow „Deploy" **baut alle 4 Apps auf
-  dem Actions-Runner** (Node aus `.nvmrc`, pnpm-Cache) und schiebt nur das
-  fertige `.output` per rsync nach `/home/ploi/releases/<app>/<sha>/`,
-  dann der bekannte ZDT-Flip (Symlink + `pm2 startOrReload` + Prune) und
-  Health-Verify je App. **Der App-Server baut damit NICHTS mehr** — die
-  RAM-Regel oben gilt nur noch für den Fallback. Zugang seit 2026-11-14
-  (GA1 P08): eigener Schlüssel nur für das Ausliefern, Secret
-  `DEPLOY_SSH_KEY` in der GitHub-Umgebung `production` (lässt nur den Zweig
-  `main` zu), auf dem Server mit `restrict` eingetragen, gepinnter Host-Key
-  im Workflow. Eine lokale Kopie des privaten Schlüssels gibt es nicht —
-  er wird getauscht, nicht aufbewahrt:
-  [CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md).
-  Der Workflow hat seitdem DREI Maschinen statt einer: `fonts` (mit
-  Schlüssel, holt nur den Font-Cache), `build` (ohne jedes Secret:
-  installiert und baut), `deliver` (mit Schlüssel, ohne `pnpm`: entpackt
-  und liefert aus). Der Schlüssel liegt damit nie neben fremdem Code.
-  Das `git pull` im Site-Checkout hält nur noch ops-Configs aktuell.
-- **Fallback (Server baut selbst):** die ploi-Deploy-Scripts der 4 Sites
-  sind unverändert funktionsfähig — bei Actions-Ausfall in ploi den
-  Deploy-Button drücken (die Secrets `PLOI_DEPLOY_WEBHOOK_*` sind seit
-  2026-11-14 gelöscht; kein Workflow las sie mehr). Dann gilt die RAM-Regel
-  (sequenziell, platform braucht 3584 MB Heap).
-  ploi Quick Deploy bleibt bewusst AUS, „Restart after deployment" AUS.
-  Hinweis platform: `/api/health` ist bei aktiver Tenancy bewusst von der
-  Tenant-Pflicht ausgenommen (Middleware-Ausnahme in core), sonst könnte
-  das Deploy-Verify den kanonischen Site-Host nicht pollen.
-- **Härtung seit 2026-07-19:** ploi verschluckt Webhooks, die während eines
-  laufenden Deploys eintreffen (beobachtet bei zwei Pushes binnen ~3 min).
-  `/api/health` liefert deshalb den gebauten Commit (`build`, zur Build-Zeit
-  aus git), und der Deploy-Workflow pollt nach dem Webhook bis Prod den
-  erwarteten SHA meldet (~13 min Timeout) — ein verlorener Deploy macht den
-  Workflow ROT statt still zu bleiben. Abhilfe dann: Workflow re-runnen.
-- ploi-„Health check URL" der Site steht auf
-  `https://comments.pukalani.app/api/health` → Mail bei Nicht-200 nach Deploy.
-- **Zero-Downtime Stufe 2 (seit 2026-07-19):** Deploys erzeugen ein
-  eingefrorenes Release unter `/home/ploi/releases/comments/<sha>/` und
-  wechseln per Symlink-Flip + `pm2 reload` (Cluster-Mode). Beweis: curl-Loop
-  auf `/api/health` alle ~0,3 s über einen kompletten Deploy — 0 Nicht-200.
-  Rollback im Notfall: `current`-Symlink auf ein älteres Release zeigen
-  lassen + `pm2 reload commentspukalaniapp` (die letzten 5 Releases bleiben
-  liegen).
+Steht in Teil A: Ausliefern in A2, der Rückweg in A3. (Bis 2026-11-15 stand
+hier der Weg über die ploi-Webhooks vom Juli und ein Satz zum Rückweg, der
+einen gelöschten Prozess nannte.) Für die Probe gilt bei `platform`:
+`/api/health` ist bei aktiver Mandanten-Trennung bewusst von der
+Tenant-Pflicht ausgenommen, sonst könnte das Ausliefern den Site-Host nicht
+fragen.
 
 ## 5. Verifikation nach dem Deploy
 
