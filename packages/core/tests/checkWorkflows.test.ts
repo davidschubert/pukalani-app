@@ -120,6 +120,18 @@ describe('check-workflows — Secrets und Umgebung', () => {
     expect(findings[0]).toContain('installiert oder baut')
   })
 
+  it('meldet eine vars.-Variable (ihr Wert stünde im öffentlichen Protokoll)', () => {
+    const lines = ['    environment: production', '    steps:', '      - run: echo ok', '        env:', '          MAIL_TO: ${{ vars.PRODUCTION_ALARM_MAIL_TO }}']
+    const findings = checkWorkflow('x.yml', job(lines))
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain('im Klartext im öffentlichen Protokoll')
+  })
+
+  it('zählt vars. in einem Kommentar nicht', () => {
+    const lines = ['    steps:', '      # früher: ${{ vars.X }}', '      - run: echo ok']
+    expect(checkWorkflow('x.yml', job(lines))).toEqual([])
+  })
+
   it('lässt ein eigenes Skript ohne Abhängigkeiten in einem Job mit Umgebung zu', () => {
     expect(checkWorkflow('x.yml', job(['    environment: production', ...secretStep, '      - run: node scripts/ops/verify-site-env.mjs']))).toEqual([])
   })

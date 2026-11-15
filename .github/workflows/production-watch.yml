@@ -407,11 +407,17 @@ jobs:
           WECHSEL: ${{ steps.issue.outputs.wechsel }}
           ROT: ${{ steps.issue.outputs.rot }}
           RESEND_KEY: ${{ secrets.PRODUCTION_ALARM_RESEND_KEY }}
-          MAIL_TO: ${{ vars.PRODUCTION_ALARM_MAIL_TO }}
+          # SECRET, keine Variable (2026-11-15): GitHub druckt das `env:` eines
+          # Schritts in den Kopf des öffentlichen Protokolls. Ein Secret
+          # erscheint dort als `***`, eine `vars.*`-Variable im Klartext — die
+          # Adresse stand deshalb bei jedem Alarm und jeder Entwarnung im Lauf,
+          # auch ohne eigene echo-Zeile. `pnpm check:workflows` verbietet
+          # `vars.` in Workflows deshalb ganz.
+          MAIL_TO: ${{ secrets.PRODUCTION_ALARM_MAIL_TO }}
         run: |
           set -u
           if [ -z "$RESEND_KEY" ] || [ -z "$MAIL_TO" ]; then
-            echo "::warning::Mail-Alarm nicht eingerichtet (Secret PRODUCTION_ALARM_RESEND_KEY + Variable PRODUCTION_ALARM_MAIL_TO) — Klickliste: docs/runbooks/PRODUKTIONS-ALARM.md"
+            echo "::warning::Mail-Alarm nicht eingerichtet (Secrets PRODUCTION_ALARM_RESEND_KEY + PRODUCTION_ALARM_MAIL_TO in der Umgebung production-watch) — Klickliste: docs/runbooks/PRODUKTIONS-ALARM.md"
             exit 0
           fi
           if [ "$WECHSEL" = "alarm" ]; then

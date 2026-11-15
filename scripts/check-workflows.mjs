@@ -33,6 +33,14 @@
  *      einem Job OHNE Umgebung, das Ergebnis reist als Artefakt weiter.
  *      Eigene Skripte ohne Abhängigkeiten (`node scripts/ops/…`) sind erlaubt.
  *
+ *   5. EINE VARIABLE IM ÖFFENTLICHEN PROTOKOLL (SEC-043). GitHub druckt das
+ *      `env:` jedes Schritts in den Kopf des Protokolls, und das Protokoll
+ *      eines öffentlichen Repos liest jedes GitHub-Konto. Ein Secret erscheint
+ *      dort als `***`, eine `vars.*`-Variable im Klartext. Die Empfänger-
+ *      Adresse des Alarms stand so in jedem Lauf, der eine Mail schickte.
+ *      Regel: kein `vars.` in einem Workflow — was ein Lauf von außen
+ *      braucht, ist ein Secret in einer Umgebung.
+ *
  * Bewusst zeilenweise statt mit einem YAML-Parser: das Repo hat keinen als
  * direkte Abhängigkeit, und die Workflows sind einheitlich eingerückt (zwei
  * Leerzeichen je Ebene). Eine Datei, die davon abweicht, fällt hier als
@@ -74,6 +82,14 @@ export function checkWorkflow(name, text) {
     if (target.startsWith('./')) return
     if (!PINNED.test(target)) {
       findings.push(`${name}:${index + 1} — Action nicht über einen Commit eingebunden: „${target}" (erwartet: owner/repo@<40 Hex> # vX.Y.Z)`)
+    }
+  })
+
+  // ── 1b. Keine Variablen (ihr Wert stünde im öffentlichen Protokoll) ────
+  lines.forEach((line, index) => {
+    if (/^\s*#/.test(line)) return
+    if (/\$\{\{[^}]*\bvars\.[A-Za-z_]/.test(line)) {
+      findings.push(`${name}:${index + 1} — „vars.…" im Workflow: der Wert erscheint im Klartext im öffentlichen Protokoll (als Secret in einer Umgebung ablegen)`)
     }
   })
 
@@ -134,7 +150,7 @@ function main() {
     console.error('\nRegel und Begründung: Kopf von scripts/check-workflows.mjs')
     process.exit(1)
   }
-  console.log(`✔ check:workflows — ${files.length} Workflows: jede Action über einen Commit, Rechte je Job, Secrets nur mit Umgebung, kein Installieren neben einem Secret.`)
+  console.log(`✔ check:workflows — ${files.length} Workflows: jede Action über einen Commit, Rechte je Job, Secrets nur mit Umgebung, kein Installieren neben einem Secret, keine Variablen.`)
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main()
