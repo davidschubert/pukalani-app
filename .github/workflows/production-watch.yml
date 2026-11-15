@@ -71,6 +71,26 @@
 #      prüft diese Schwelle mit. Runbook:
 #      docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md, § 6.3.
 #
+#   8. DATENBANK-STAND (OPS-008, 2026-11-16), zwei Stufen. Zweimal ging neues
+#      Programm live, bevor seine Migration gelaufen war (BI2 K5 und K7), und
+#      im August war das Aufgaben-Board wochenlang kaputt, weil vier Tabellen
+#      nie angelegt waren — kein Lauf wurde rot. Der Deploy feuert beim Merge,
+#      Migrationen laufen von Hand; die Reihenfolge stand nur als Satz da.
+#        a) ALLE 30 MINUTEN, im Health-Blick (4): jede App mit Appwrite meldet
+#           in `/api/health` das Feld `schema` (ok | behind | unknown). Sie
+#           prüft je Layer eine Probe am wirklichen Schema, mit ihrem eigenen
+#           Laufzeit-Schlüssel. Rot bei `behind`, bei anhaltendem `unknown`
+#           und wenn das Feld fehlt. Braucht weder ssh noch Secret.
+#        b) TÄGLICH (`verify-schema-parity.mjs --ci`), FOLGT: liest je Projekt
+#           die Tabellen- und Spaltenliste und nennt die fehlende Migration.
+#           Der Schritt kommt in diesen Workflow, sobald je Projekt ein nur
+#           lesender Schlüssel in der Umgebung `production-watch` liegt
+#           (Davids Entscheidung 2026-11-12). Bis dahin läuft derselbe
+#           Abgleich am Mac: `pnpm ops:schema-parity`.
+#      Probealarm: `-f schema_drill=true` (täuscht für EINEN Host `behind`
+#      vor; an Production fehlt dabei nichts). Was bei Rot zu tun ist:
+#      docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm".
+#
 # ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
 # Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft
 # in 11 Tagen ab") war jeder Lauf rot — rund 900 Stück bis zum 2026-10-24,
@@ -151,6 +171,10 @@ on:
         description: 'PROBEALARM: Health-Blick absichtlich rot — prüft Issue/Mail/Heartbeat; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
+      schema_drill:
+        description: 'PROBEALARM DATENBANK-STAND: der Health-Blick tut so, als hätte ein Host „Datenbank passt nicht zum Programm“ gemeldet — prüft die Kette; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
       backup_drill:
         description: 'PROBEALARM BACKUP: verlangt ein Backup, das es nicht geben kann (Alter unter 0 h) — Backup-Blick rot, prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
@@ -222,6 +246,10 @@ jobs:
         if: always()
         env:
           PUKALANI_HEALTH_DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+          # Datenbank-Stand (OPS-008): derselbe Schritt liest `schema` aus
+          # `/api/health` und wird rot bei „behind". Der Schalter täuscht
+          # genau diese Antwort für EINEN Host vor.
+          PUKALANI_SCHEMA_DRILL: ${{ inputs.schema_drill && '1' || '0' }}
         run: node scripts/ops/verify-health.mjs
 
   # ── TÄGLICH ──────────────────────────────────────────────────────────────
@@ -390,7 +418,7 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
-      DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill) && '1' || '0' }}
       ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
       # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
@@ -428,7 +456,7 @@ jobs:
               echo "- Lauf: $RUN_URL"
               echo "- Was zuerst tun: \`docs/runbooks/PRODUKTIONS-ALARM.md\`, Abschnitt „Wenn ein Alarm kommt\" (Appwrite-Zertifikat, ok:false, Mail-Missbrauch)."
               echo "- Dieses Issue schließt der Wächter SELBST, sobald ein Lauf wieder grün ist. Solange es offen ist, ist der Alarm aktiv."
-              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über \`alarm_drill\`; der nächste Lauf ohne Schalter räumt auf."
+              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über \`alarm_drill\` oder \`schema_drill\`; der nächste Lauf ohne Schalter räumt auf."
               echo
               echo "_Erzeugt vom Job \`alarm\` in \`.github/workflows/production-watch.yml\` (MON1)._"
             } > /tmp/issue-body.md
