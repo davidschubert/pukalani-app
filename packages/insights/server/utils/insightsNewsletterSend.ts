@@ -370,8 +370,9 @@ export async function runInsightsNewsletterBatch(
       href: input.href,
       locale: insightsNewsletterLocaleOf(subscriber.locale),
     })
-    if (outcome === 'no_mailer') {
-      // Der Server, nicht die Adresse. Cursor NICHT vorrücken — diese Zeile ist
+    if (outcome === 'no_mailer' || outcome === 'unconfigured') {
+      // Der Server, nicht die Adresse (kein Mailer bzw. kein Schlüssel für den
+      // Abmelde-Link, SEC-020). Cursor NICHT vorrücken — diese Zeile ist
       // unberührt und muss beim Fortsetzen wieder dran sein.
       aborted = true
       break

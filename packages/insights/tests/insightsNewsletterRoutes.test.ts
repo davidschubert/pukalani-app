@@ -47,6 +47,9 @@ let mailWorks: boolean
 let mails: { to: string, subject: string, text: string, from?: string, auth?: { pass: string } }[]
 let newsletterFrom: string
 let newsletterSmtpPass: string
+let appwriteKey: string
+let newsletterSecret: string
+let newsletterSecretPrevious: string
 let logs: { level: string, name: string, data: Record<string, unknown> }[]
 let hits: Record<string, number>
 let body: Record<string, unknown>
@@ -104,7 +107,9 @@ const tablesDB = {
 // ── Die Nitro-Auto-Imports ─────────────────────────────────────────────────
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useRuntimeConfig', () => ({
-  appwriteKey: SECRET,
+  appwriteKey,
+  insightsNewsletterSecret: newsletterSecret,
+  insightsNewsletterSecretPrevious: newsletterSecretPrevious,
   insightsNewsletterSmtpPass: newsletterSmtpPass,
   public: { appwriteDatabaseId: 'main', appwriteProjectId: 'branding', appUrl: 'https://branding.supply' },
 }))
@@ -194,6 +199,9 @@ beforeEach(() => {
   riegelOpen = true
   newsletterFrom = ''
   newsletterSmtpPass = ''
+  appwriteKey = SECRET
+  newsletterSecret = ''
+  newsletterSecretPrevious = ''
   storeBroken = false
   mailWorks = true
   mails = []
@@ -463,13 +471,54 @@ describe('POST …/newsletter/unsubscribe', () => {
     expect(tablesDB.deleteRow).not.toHaveBeenCalled()
   })
 
-  it('antwortet 200 auf einen Token aus der Zeit vor einem Schlüsseltausch', async () => {
+  it('antwortet auf eine Signatur, die zu KEINEM Schlüssel passt, NICHT mit Erfolg (SEC-020)', async () => {
     rows = [pendingRow({ confirmedAt: '2026-10-02T00:00:00.000Z' })]
-    body = { token: newsletter.insightsNewsletterUnsubToken('n1', 'alter-schluessel') }
+    const token = newsletter.insightsNewsletterUnsubToken('n1', 'test-fremder-schluessel')
+    body = { token }
+
+    await expect(unsubscribe(event)).rejects.toMatchObject({
+      status: 400,
+      data: { code: 'unsubscribe_link_invalid' },
+    })
+    expect(rows[0]!.unsubscribedAt).toBe('')
+    expect(tablesDB.getRow).not.toHaveBeenCalled()
+    expect(tablesDB.updateRow).not.toHaveBeenCalled()
+    expect(tablesDB.deleteRow).not.toHaveBeenCalled()
+    expect(logs.map(entry => entry.name)).toContain('insights.newsletter_unsub_token_invalid')
+    // Der Token steht in keiner Log-Zeile.
+    expect(JSON.stringify(logs)).not.toContain(token)
+  })
+
+  it('meldet mit einem Link vom BISHERIGEN Schlüssel weiter ab, wenn das neue Geheimnis steht', async () => {
+    rows = [pendingRow({ confirmedAt: '2026-10-02T00:00:00.000Z' })]
+    body = { token: unsubToken('n1') }
+    newsletterSecret = 'test-geheimnis'
 
     expect(await unsubscribe(event)).toEqual({ ok: true })
+    expect(rows[0]!.unsubscribedAt).not.toBe('')
+  })
+
+  it('meldet mit einem Link vom VORHERIGEN Geheimnis weiter ab', async () => {
+    rows = [pendingRow({ confirmedAt: '2026-10-02T00:00:00.000Z' })]
+    body = { token: newsletter.insightsNewsletterUnsubToken('n1', 'test-geheimnis-vorher') }
+    newsletterSecret = 'test-geheimnis'
+    newsletterSecretPrevious = 'test-geheimnis-vorher'
+
+    expect(await unsubscribe(event)).toEqual({ ok: true })
+    expect(rows[0]!.unsubscribedAt).not.toBe('')
+  })
+
+  it('antwortet 503, wenn es gar keinen Schlüssel gibt — und rührt die Ablage nicht an', async () => {
+    rows = [pendingRow({ confirmedAt: '2026-10-02T00:00:00.000Z' })]
+    body = { token: newsletter.insightsNewsletterUnsubToken('n1', 'insights-newsletter') }
+    appwriteKey = ''
+
+    await expect(unsubscribe(event)).rejects.toMatchObject({
+      status: 503,
+      data: { code: 'newsletter_unconfigured' },
+    })
     expect(rows[0]!.unsubscribedAt).toBe('')
-    expect(logs.map(entry => entry.name)).toContain('insights.newsletter_unsub_token_invalid')
+    expect(tablesDB.getRow).not.toHaveBeenCalled()
   })
 
   it('antwortet 200, wenn die Zeile längst gelöscht ist', async () => {
@@ -477,6 +526,29 @@ describe('POST …/newsletter/unsubscribe', () => {
     body = { token: unsubToken('weg') }
 
     expect(await unsubscribe(event)).toEqual({ ok: true })
+  })
+})
+
+describe('Die Bestätigungs-Mail signiert mit dem richtigen Schlüssel (SEC-020)', () => {
+  it('nimmt das neue Geheimnis, sobald es gesetzt ist', async () => {
+    newsletterSecret = 'test-geheimnis'
+
+    await subscribe(event)
+
+    expect(unsubTokenFromMail(mails[0]!.text)).toBe(
+      newsletter.insightsNewsletterUnsubToken(rows[0]!.$id, 'test-geheimnis'),
+    )
+  })
+
+  it('schickt ohne jeden Schlüssel KEINE Mail mit erratbarem Link — 503 wie ein Mailer-Ausfall', async () => {
+    appwriteKey = ''
+
+    await expect(subscribe(event)).rejects.toMatchObject({
+      status: 503,
+      data: { code: 'newsletter_mail_failed' },
+    })
+    expect(mails).toHaveLength(0)
+    expect(logs.map(entry => entry.name)).toContain('insights.newsletter_unconfigured')
   })
 })
 

@@ -146,6 +146,8 @@
         "doneText": "We will not write to you again. Your address is deleted after twelve months — until then the entry stays as proof that the unsubscribe worked.",
         "missingTitle": "Link not usable",
         "missingText": "This link carries no valid identifier. You will find the right one at the end of every email we sent you.",
+        "invalidTitle": "Not unsubscribed",
+        "invalidText": "This link did NOT unsubscribe you — it is no longer valid. Use the unsubscribe link at the end of our most recent email, or simply reply to one of our emails and we will take you off the list.",
         "unavailableTitle": "Not possible right now",
         "unavailableText": "The unsubscribe did NOT go through. Please try again in a few minutes, or simply reply to one of our emails.",
         "toList": "To Brand Insights"

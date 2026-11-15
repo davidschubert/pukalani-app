@@ -29,9 +29,11 @@ import {
   insightsNewsletterRetentionAt,
   insightsNewsletterTokenExpired,
   insightsNewsletterTokenExpiry,
+  insightsNewsletterUnsubscribeFailureState,
 } from '../shared/insightsNewsletter'
 import { insightsNewsletterEnabled, insightsNewsletterFrom } from '../shared/insightsPublic'
 import {
+  insightsNewsletterSecrets,
   insightsNewsletterUnsubToken,
   readInsightsNewsletterUnsubToken,
 } from '../server/utils/insightsNewsletter'
@@ -278,6 +280,73 @@ describe('Der abgeleitete Abmelde-Token', () => {
   it('passt in das Token-Schema der Route', () => {
     const token = insightsNewsletterUnsubToken('65f0c2a1b2c3d4e5f6a7', secret)
     expect(createInsightsNewsletterTokenSchema().safeParse({ token }).success).toBe(true)
+  })
+
+  it('gilt, wenn EINER von mehreren Schlüsseln passt — und nur dann (SEC-020)', () => {
+    const token = insightsNewsletterUnsubToken('row-1', 'test-vorher')
+    expect(readInsightsNewsletterUnsubToken(token, ['test-neu', 'test-vorher', 'test-alt'])).toBe('row-1')
+    expect(readInsightsNewsletterUnsubToken(token, ['test-neu', 'test-alt'])).toBeNull()
+    expect(readInsightsNewsletterUnsubToken(token, [])).toBeNull()
+  })
+})
+
+/**
+ * WELCHER SCHLÜSSEL SIGNIERT, WELCHE PRÜFEN (SEC-020).
+ *
+ * Der Abmelde-Link hing bis hierhin am API-Schlüssel der App; die Regel gibt
+ * ihm ein eigenes Geheimnis, ohne dass die Seite ohne den neuen Wert anders
+ * läuft als vorher — und ohne je wieder auf einen festen, erratbaren Text
+ * zurückzufallen.
+ */
+describe('insightsNewsletterSecrets — die Schlüssel des Abmelde-Links', () => {
+  it('signiert mit dem neuen Geheimnis, sobald es gesetzt ist', () => {
+    const keys = insightsNewsletterSecrets({ current: 'test-neu', previous: 'test-vorher', legacy: 'test-api' })
+    expect(keys.sign).toBe('test-neu')
+    expect(keys.verify).toEqual(['test-neu', 'test-vorher', 'test-api'])
+  })
+
+  it('signiert ohne neues Geheimnis wie bisher mit dem API-Schlüssel', () => {
+    const keys = insightsNewsletterSecrets({ current: '', previous: '', legacy: 'test-api' })
+    expect(keys.sign).toBe('test-api')
+    expect(keys.verify).toEqual(['test-api'])
+  })
+
+  it('hat ohne jeden Schlüssel KEINEN Signier-Schlüssel — und nie einen festen Text', () => {
+    const keys = insightsNewsletterSecrets({ current: '', previous: '', legacy: '' })
+    expect(keys.sign).toBeNull()
+    expect(keys.verify).toEqual([])
+    expect(JSON.stringify(keys)).not.toContain('insights-newsletter')
+  })
+
+  it('signiert NIE mit dem vorherigen Geheimnis — es prüft nur', () => {
+    const keys = insightsNewsletterSecrets({ current: '', previous: 'test-vorher', legacy: '' })
+    expect(keys.sign).toBeNull()
+    expect(keys.verify).toEqual(['test-vorher'])
+  })
+
+  it('lässt Leere und Doppelte aus der Prüf-Liste weg', () => {
+    const keys = insightsNewsletterSecrets({ current: 'test-neu', previous: 'test-neu', legacy: '  ' })
+    expect(keys.verify).toEqual(['test-neu'])
+  })
+})
+
+describe('insightsNewsletterUnsubscribeFailureState — Fehler ⇒ Zustand der Seite (SEC-020)', () => {
+  it('macht aus einem entwerteten Link `invalid`, nicht „abgemeldet"', () => {
+    expect(insightsNewsletterUnsubscribeFailureState({
+      status: 400,
+      data: { ok: false, code: 'bad_request', reason: 'unsubscribe_link_invalid' },
+    })).toBe('invalid')
+  })
+
+  it('macht aus 503 `unavailable` — auch über `response.status`', () => {
+    expect(insightsNewsletterUnsubscribeFailureState({ status: 503 })).toBe('unavailable')
+    expect(insightsNewsletterUnsubscribeFailureState({ response: { status: 503 } })).toBe('unavailable')
+  })
+
+  it('macht aus jedem anderen Fehler `missing` (z. B. abgeschnittener Token)', () => {
+    expect(insightsNewsletterUnsubscribeFailureState({ status: 400, data: { reason: 'anders' } })).toBe('missing')
+    expect(insightsNewsletterUnsubscribeFailureState(null)).toBe('missing')
+    expect(insightsNewsletterUnsubscribeFailureState(new Error('netz'))).toBe('missing')
   })
 })
 

@@ -381,6 +381,34 @@ export function decideInsightsNewsletterUnsubscribe(
   return row.confirmedAt ? 'mark' : 'delete'
 }
 
+/**
+ * WELCHEN ZUSTAND ZEIGT DIE ABMELDE-SEITE NACH EINEM FEHLER? (SEC-020)
+ *
+ *  · `invalid` — die Route hat den Link geprüft und KEIN Schlüssel passt
+ *    (`reason: unsubscribe_link_invalid`). Die Abmeldung ist NICHT erfolgt;
+ *    ein „Abgemeldet" wäre hier die Lüge, die der Befund benannt hat.
+ *  · `unavailable` — 503 (Ablage krank oder Schlüssel fehlt auf dem Server).
+ *  · `missing` — alles andere, z. B. ein im Mail-Programm abgeschnittener
+ *    Token, der schon die Formprüfung nicht passiert.
+ *
+ * Pur und hier statt in der Seite, damit sie eine Gegenprobe hat — für
+ * Komponenten gibt es in diesem Layer keine Test-Infrastruktur.
+ */
+export type InsightsNewsletterUnsubscribeFailure = 'invalid' | 'missing' | 'unavailable'
+
+export function insightsNewsletterUnsubscribeFailureState(error: unknown): InsightsNewsletterUnsubscribeFailure {
+  const value = (error ?? null) as {
+    status?: number
+    statusCode?: number
+    response?: { status?: number }
+    data?: { reason?: unknown }
+  } | null
+  const status = value?.status ?? value?.statusCode ?? value?.response?.status ?? null
+  if (status === 503) return 'unavailable'
+  if (value?.data?.reason === 'unsubscribe_link_invalid') return 'invalid'
+  return 'missing'
+}
+
 // ── 7. Der Wortlaut der Bestätigungs-Mail ──────────────────────────────────
 
 export interface InsightsNewsletterMailLinks {

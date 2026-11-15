@@ -146,6 +146,8 @@
         "doneText": "Wir schreiben dir nicht mehr. Deine Adresse wird nach zwölf Monaten gelöscht — bis dahin bleibt der Eintrag als Nachweis stehen, dass die Abmeldung gewirkt hat.",
         "missingTitle": "Link unbrauchbar",
         "missingText": "Dieser Link trägt keine gültige Kennung. Den richtigen findest du am Ende jeder Mail, die wir dir geschickt haben.",
+        "invalidTitle": "Nicht abgemeldet",
+        "invalidText": "Dieser Link hat dich NICHT abgemeldet — er ist nicht mehr gültig. Nimm den Abmelde-Link am Ende der neuesten Mail von uns, oder antworte einfach auf eine unserer Mails, dann tragen wir dich aus.",
         "unavailableTitle": "Gerade nicht möglich",
         "unavailableText": "Die Abmeldung ist eben NICHT durchgegangen. Versuch es in ein paar Minuten noch einmal oder antworte einfach auf eine unserer Mails.",
         "toList": "Zu Brand Insights"
