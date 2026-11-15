@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest'
  *
  * market und insights beziehen die Konstanten über ihren
  * `server/contracts/brandContract.ts` — derselbe Name, dieselbe Konstante.
- * Zwei insights-Routen reichen `run.providerRouting` durch, das
+ * Drei insights-Routen reichen `run.providerRouting` durch, das
  * `insightsAi.ts` baut; diese DELEGATION steht unten ausdrücklich, und die
  * Quelle wird mitgeprüft — ein Durchreichen, das nirgends belegt ist, ist ein
  * Verstoss.
@@ -236,10 +236,11 @@ function readTree(): AiSource[] {
     })))
 }
 
-/** Die zwei Redaktions-Routen reichen `run.providerRouting` aus `insightsAi.ts` durch. */
+/** Die drei Redaktions-Routen reichen `run.providerRouting` aus `insightsAi.ts` durch. */
 const DELEGATES: Readonly<Record<string, string>> = {
   'packages/insights/server/api/insights/posts/[id]/draft.post.ts': 'packages/insights/server/utils/insightsAi.ts',
   'packages/insights/server/api/insights/posts/[id]/translate.post.ts': 'packages/insights/server/utils/insightsAi.ts',
+  'packages/insights/server/api/insights/posts/[id]/change-note.post.ts': 'packages/insights/server/utils/insightsAi.ts',
 }
 
 /**

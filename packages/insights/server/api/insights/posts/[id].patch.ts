@@ -4,6 +4,7 @@ import {
   insightsIsPublic,
   insightsPostEditSchema,
   insightsReadingMinutes,
+  insightsStampChangeNotes,
   insightsTitleOf,
 } from '../../../../shared/insightsPost'
 import { toInsightsPost } from '../../../../shared/insightsRows'
@@ -54,9 +55,26 @@ import type { InsightsPostSavedResponse } from '../../../../shared/types/insight
  * Satz Spalten oder zweite Tabelle) und eine zweite Wahrheit darüber, was
  * gilt. Wer einen Zwischenstand speichern will, der die Regeln (noch) nicht
  * hält, zieht den Beitrag zurück — als Entwurf lässt sich alles speichern.
+ *
+ * ── DAS SPEICHERN EINES ÖFFENTLICHEN STANDS IST EINE FREIGABE ───────────
+ * Besteht die Änderung das Gate, steht sie sofort draussen — sie ist damit
+ * eine Freigabe des NEUEN Stands und unterschreibt wie der Zustandswechsel:
+ * `reviewedAt = jetzt`, `reviewedBy = wer speichert`. Bis 2026-11-16 blieb
+ * der Name der ERSTEN Freigabe unter einem Stand stehen, den diese Person nie
+ * gesehen hat, und `dateModified` der öffentlichen Seite (liest `reviewedAt`)
+ * behauptete einen Stand, der nicht mehr galt. `publishedAt` bleibt: der
+ * Artikel ist nicht neu erschienen, er wurde geändert. An einem
+ * nicht-öffentlichen Beitrag bleibt alles wie zuvor.
+ *
+ * ── DIE ÄNDERUNGSHINWEISE: TEXT VOM FORMULAR, DATUM VOM SERVER ──────────
+ * `insightsStampChangeNotes` lässt ein gesendetes Datum nur gelten, wenn es
+ * im Bestand vorkommt; jeder andere Hinweis bekommt JETZT als Datum — und das
+ * nur an einem Beitrag, der schon einmal veröffentlicht war (`publishedAt`).
+ * So lässt sich keine Korrektur rückdatieren, und ein Entwurf sammelt keine
+ * Hinweise für Leser, die es noch nicht gibt.
  */
 export default defineEventHandler(async (event): Promise<InsightsPostSavedResponse> => {
-  requirePermission(event, 'insights.manage')
+  const user = requirePermission(event, 'insights.manage')
 
   const id = getRouterParam(event, 'id') ?? ''
   if (!id) throw insightsPostMissing()
@@ -77,6 +95,7 @@ export default defineEventHandler(async (event): Promise<InsightsPostSavedRespon
   }
 
   const { slug, slugHistory } = await applyInsightsSlugChange(event, 'posts', id, current, body.slug)
+  const now = new Date().toISOString()
 
   const next: InsightsPost = {
     ...body,
@@ -100,12 +119,17 @@ export default defineEventHandler(async (event): Promise<InsightsPostSavedRespon
     briefPromptVersion: current.briefPromptVersion,
     briefVideoId: current.briefVideoId,
     readingMinutes: insightsReadingMinutes(insightsBodyOf(body, body.baseLocale)),
+    changeNotes: insightsStampChangeNotes(current.changeNotes, body.changeNotes, now, current.publishedAt !== ''),
   }
 
   // EINMAL gelesen: das Gate braucht sie (Regeln 4 und 6) und die Antwort auch.
   const brandRows = await listInsightsBrandRows(event, INSIGHTS_BRANDS_LIMIT)
 
   if (insightsIsPublic(current)) {
+    // Die Unterschrift gehört zum geprüften Stand — VOR dem Gate gesetzt,
+    // denn das Zeichen deckt genau das Objekt, das geprüft wurde.
+    next.reviewedAt = now
+    next.reviewedBy = user.$id.slice(0, 64)
     const verdict = await insightsPublicationGate({ next, published: current, brandRows })
     if (!verdict.passed) {
       // Nichts geschrieben: online steht weiter die geprüfte Fassung.

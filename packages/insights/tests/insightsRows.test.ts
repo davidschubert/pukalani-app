@@ -93,6 +93,7 @@ function duelPost(): InsightsPost {
     briefVideoId: 'jNQXAC9IVRw',
     draftModel: 'gemini-2.5-flash',
     draftPromptVersion: 'insights-d-1',
+    changeNotes: [{ at: '2026-09-02T10:00:00.000Z', de: 'Quelle ergänzt.', en: 'Added a source.' }],
   }
 }
 

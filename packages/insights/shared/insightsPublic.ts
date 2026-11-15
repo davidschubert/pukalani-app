@@ -2,7 +2,9 @@ import type {
   InsightsBrand,
   InsightsBrandScore,
   InsightsBrandState,
+  InsightsChangeNote,
   InsightsFormat,
+  InsightsLocale,
   InsightsPost,
   InsightsPostHead,
 } from './insightsPost'
@@ -204,7 +206,44 @@ export function toInsightsPublicPost(id: string, post: InsightsPost): InsightsPu
     readingMinutes: post.readingMinutes,
     publishedAt: post.publishedAt,
     reviewedAt: post.reviewedAt,
+    // BEIDE Sprachen, wie bei Titel und Text: welche der Leser sieht, löst die
+    // Seite auf (`insightsPublicChangeNotes`). Ein Hinweis ohne jeden Text
+    // sagt nichts und geht gar nicht erst hinaus.
+    changeNotes: post.changeNotes.filter(note => note.de.trim() || note.en.trim()),
   }
+}
+
+/** Ein Änderungshinweis, wie der Leser ihn sieht: Datum und EIN Text. */
+export interface InsightsPublicChangeNote {
+  at: string
+  text: string
+}
+
+/**
+ * WELCHE ÄNDERUNGSHINWEISE SIEHT DER LESER — jüngste zuerst, je Hinweis der
+ * Text seiner Sprache, sonst der der anderen.
+ *
+ * Der Rückfall auf die andere Sprache ist hier richtig, anders als beim
+ * Fliesstext (§3.2): ein Hinweis ist ein Satz, den ein Mensch bestätigt hat —
+ * eine unredigierte Maschinenfassung kann er nicht sein. Fehlte er in der
+ * Lesersprache ganz, verschwiege die Seite eine Änderung, die die Redaktion
+ * ausdrücklich zeigen wollte. Ohne Text in beiden Sprachen entfällt er.
+ *
+ * Sortiert wird nach dem DATUM und nicht nach der Reihenfolge der Liste: das
+ * Formular darf sie in jeder Ordnung schicken, der Leser liest „neu zuerst".
+ */
+export function insightsPublicChangeNotes(
+  notes: readonly InsightsChangeNote[],
+  locale: InsightsLocale,
+): InsightsPublicChangeNote[] {
+  const shown: InsightsPublicChangeNote[] = []
+  for (const note of notes) {
+    const own = (locale === 'de' ? note.de : note.en).trim()
+    const other = (locale === 'de' ? note.en : note.de).trim()
+    const text = own || other
+    if (text) shown.push({ at: note.at, text })
+  }
+  return shown.sort((a, b) => b.at.localeCompare(a.at))
 }
 
 /**
@@ -215,7 +254,9 @@ export function toInsightsPublicPost(id: string, post: InsightsPost): InsightsPu
  * Die Liste zeigt bis zu zweihundert Zeilen. Jede trüge sonst ZWEI
  * vollständige Artikel-Fassungen über die Leitung, für eine Karte mit Titel
  * und Vorspann. Ein eigener Typ statt zweier leerer Felder, weil ein leeres
- * `bodyDe` von einem Beitrag ohne Text nicht zu unterscheiden wäre.
+ * `bodyDe` von einem Beitrag ohne Text nicht zu unterscheiden wäre. Die
+ * Änderungshinweise fehlen aus demselben Grund: sie stehen unter dem Artikel,
+ * nicht auf seiner Karte.
  *
  * ── WARUM ADRESSE UND FARBWELT VOM SERVER KOMMEN ────────────────────────
  * Beide brauchen etwas, das die Liste nicht hat: der Pfad eines Markenprofils
@@ -228,7 +269,7 @@ export function toInsightsPublicPost(id: string, post: InsightsPost): InsightsPu
  * Ein Pfad mit Präfix aus dem Server wäre die Sprache des Servers, nicht die
  * des Lesers.
  */
-export type InsightsPublicPostListItem = Omit<InsightsPublicPost, 'bodyDe' | 'bodyEn'> & {
+export type InsightsPublicPostListItem = Omit<InsightsPublicPost, 'bodyDe' | 'bodyEn' | 'changeNotes'> & {
   href: string
   gradient: readonly [string, string]
 }
