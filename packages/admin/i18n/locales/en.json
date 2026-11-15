@@ -244,7 +244,7 @@
         "block": "Really block {name}? The user will no longer be able to sign in.",
         "unblock": "Unblock {name} again?",
         "sessions": "End all active sessions of {name}?",
-        "delete": "Permanently delete {name}? ALL data will be removed or anonymized (comments, votes, reports, notifications, avatar). A data snapshot for admins is created first (available for 30 days). This cannot be undone."
+        "delete": "Permanently delete {name}? All personal data of this account is deleted or anonymized across all products. A backup copy stays available for 30 days under \"GDPR exports\". This cannot be undone."
       },
       "blocked": "User blocked.",
       "unblocked": "User unblocked.",

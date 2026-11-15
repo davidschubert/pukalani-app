@@ -244,7 +244,7 @@
         "block": "{name} wirklich blockieren? Der Benutzer kann sich nicht mehr anmelden.",
         "unblock": "{name} wieder entsperren?",
         "sessions": "Alle aktiven Sessions von {name} beenden?",
-        "delete": "{name} endgültig löschen? ALLE Daten werden entfernt bzw. anonymisiert (Kommentare, Votes, Meldungen, Benachrichtigungen, Avatar). Vorher wird ein Daten-Snapshot für Admins erstellt (30 Tage abrufbar). Nicht wiederherstellbar."
+        "delete": "{name} endgültig löschen? Alle persönlichen Daten dieses Accounts werden in allen Produkten gelöscht oder anonymisiert. Eine Sicherungskopie bleibt 30 Tage unter „DSGVO-Exporte“ abrufbar. Das lässt sich nicht rückgängig machen."
       },
       "blocked": "Benutzer blockiert.",
       "unblocked": "Benutzer entsperrt.",
