@@ -112,7 +112,10 @@ eigene Zugang vom Mac ist von alldem nicht berührt.
 
 Der Wächter-Schlüssel bekommt auf dem Appwrite-Server keine Shell. sshd
 führt für ihn immer `ops/appwrite-cert-gate.sh` aus; erlaubt sind die Worte
-`probe`, `renew` und `reset-account`. Das Skript filtert auch die Ausgabe:
+`probe`, `renew`, `reset-account` und (seit 2026-11-15) `backup-status`. Das
+vierte liest nur: eine Zeile mit Ergebnis, Alter und Größe des letzten
+nächtlichen Backups (`docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md`, § 6.3).
+Das Skript filtert auch die Ausgabe:
 Das Protokoll eines Laufs ist öffentlich, und der Worker schreibt seit
 Appwrite 2.2 alle Warteschlangen in ein Protokoll.
 

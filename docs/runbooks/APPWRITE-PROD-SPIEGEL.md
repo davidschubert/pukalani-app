@@ -12,13 +12,17 @@ spiegeln". Werkzeug: `scripts/ops/appwrite-mirror-prod-to-local.mjs`.
 | Weg | **MariaDB-Dump über ssh** + lokal derselbe `_APP_OPENSSL_KEY_V1` (nicht Appwrites Migrations-API) |
 | Projekte | **alle vier**: `account`, `admin`, `portfolio`, `branding` |
 | Nutzer | **1:1 mit Passwort-Hashes** (jeder meldet sich lokal mit seinem Prod-Passwort an) |
-| Dateien | **ja, alle Buckets** (Volumes uploads, functions, builds, sites) |
+| Dateien | **ja, alle Buckets** (Volumes uploads, functions, builds, sites — die Spalte `spiegeln` in `ops/appwrite-volumes.conf`, dieselbe Liste wie das Backup) |
 
 Warum Dump statt Migrations-API: der Dump ist 1:1 (IDs, Rechte, Teams, Labels,
 Projekt-Einstellungen, MFA) in EINER Transaktion und braucht auf Prod nur
 Lesezugriff. Die Migrations-API hätte einen neuen Key auf Prod gebraucht
 (= Schreibzugriff), läuft Ressource für Ressource und lässt Projekt-
 Einstellungen weg.
+
+**Nicht verwechseln:** Der Spiegel holt alles vom LEBENDEN Server und ist für
+die Entwicklung da. Ist der Server weg, hilft er nicht — dafür gibt es das
+nächtliche Backup und [APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md).
 
 ## Freigabe
 
@@ -138,6 +142,11 @@ liegen in `$RUN/apps-env-before/`.
 
 - **Gleiche Appwrite-Version ist Pflicht.** `fetch` bricht sonst ab: ein
   Dump trägt das Schema seiner Version.
+- **Volume-Namen kommen aus `docker compose config`,** auf beiden Seiten. Bis
+  zum 2026-11-15 setzte das Skript die Vorsilbe `appwrite_` selbst davor und
+  las bei `builds` einen alten Rest: seit 2.7 heißt das Volume ausdrücklich
+  `appwrite-builds`. Der Compose-Ordner auf Prod ist `/home/ploi/appwrite`
+  (`MIRROR_PROD_DIR`).
 - **`mariadb -N` ohne `-r` verdoppelt Backslashes.** JSON-Spalten wie
   `_permissions` (`team:…\/owner`) kämen beim Zurückschreiben verfälscht an.
   Beide SQL-Helfer laufen deshalb mit `-r`.

@@ -9,7 +9,8 @@
  *
  * PHASEN (einzeln wiederholbar, `--run <ordner>` nimmt einen älteren Abzug):
  *   fetch    Prod NUR LESEN: Zeilen-Zählung, mariadb-dump --single-transaction
- *            der Schema `appwrite`, Volumes uploads/functions/builds/sites als tar.
+ *            der Schema `appwrite`, dazu als tar die Volumes mit `spiegeln ja`
+ *            in ops/appwrite-volumes.conf (dieselbe Liste wie das Backup).
  *   restore  Lokal ÜBERSCHREIBEN (braucht --yes): Sicherung der lokalen DB +
  *            .env, Dienste stoppen, Schema ersetzen, Volumes ersetzen,
  *            `_APP_OPENSSL_KEY_V1` = Prod-Wert (frisch per ssh gelesen, nie
@@ -28,6 +29,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // ── Konfiguration ───────────────────────────────────────────────────────────
 const HOME = os.homedir()
@@ -36,7 +38,22 @@ const LOCAL_DIR = process.env.MIRROR_LOCAL_DIR ?? path.join(HOME, 'Developer/orb
 const BACKUP_ROOT = process.env.MIRROR_BACKUP_ROOT ?? path.join(HOME, 'Developer/orbstack/appwrite-maria/backups/prod-mirror')
 const CONSOLE_ENV = path.join(HOME, '.appwrite-secrets/local-console.env')
 const LOCAL_ENDPOINT = 'http://localhost/v1'
-const VOLUMES = ['uploads', 'functions', 'builds', 'sites']
+// Compose-Ordner auf Prod (für `docker compose config` — nur lesend).
+const PROD_DIR = process.env.MIRROR_PROD_DIR ?? '/home/ploi/appwrite'
+/**
+ * Welche Volumes der Spiegel holt, steht in ops/appwrite-volumes.conf (Spalte
+ * `spiegeln`) — EINE Liste für Backup, Wiederherstellung und Spiegel (OPS-001).
+ * Dort stehen die SCHLÜSSEL aus der docker-compose.yml; der echte Name kommt
+ * aus `docker compose config`, nie aus einer geratenen Vorsilbe: `appwrite-
+ * builds` heißt seit 2.7 auch als Volume so, und der alte Rest
+ * `appwrite_appwrite-builds` liegt daneben (bis 2026-11-15 las der Spiegel ihn).
+ */
+const VOLUMES_CONF = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'ops', 'appwrite-volumes.conf')
+const MIRROR_VOLUMES = fs.readFileSync(VOLUMES_CONF, 'utf8').split('\n')
+  .map(line => line.trim()).filter(line => line && !line.startsWith('#'))
+  .map(line => line.split(/\s+/)).filter(([, , mirror]) => mirror === 'ja').map(([key]) => key)
+/** Dateiname im Abzug: wie bisher ohne die Vorsilbe (ältere Abzüge bleiben lesbar). */
+const volumeFile = key => `volume-${key.replace(/^appwrite-/, '')}.tar.gz`
 // Dienste, die beim Einspielen laufen BLEIBEN (alles andere wird gestoppt).
 const KEEP_RUNNING = new Set(['mariadb', 'redis', 'clickhouse', 'traefik'])
 // Wie viele Abzüge im BACKUP_ROOT bleiben (jeder enthält Prod-Nutzerdaten).
@@ -125,6 +142,21 @@ function countAll(runSql) {
   return counts
 }
 
+/** Schlüssel → echter Volume-Name. Übertragen werden nur die Namen, nie die Compose-Datei. */
+function volumeNames(json, where) {
+  const names = JSON.parse(json)
+  for (const key of MIRROR_VOLUMES) {
+    if (!/^[\w.-]+$/.test(names[key] ?? '')) die(`Volume ${key} steht in ops/appwrite-volumes.conf, aber nicht in der Compose-Datei (${where})`)
+  }
+  return names
+}
+const prodVolumeNames = () => volumeNames(sh('ssh', ['-o', 'BatchMode=yes', PROD_SSH,
+  `cd ${PROD_DIR} && docker compose config --format json | jq -c '.volumes | map_values(.name)'`]), 'Prod')
+function localVolumeNames() {
+  const config = JSON.parse(sh('docker', ['compose', 'config', '--format', 'json'], { cwd: LOCAL_DIR }))
+  return volumeNames(JSON.stringify(Object.fromEntries(Object.entries(config.volumes ?? {}).map(([key, v]) => [key, v.name]))), 'lokal')
+}
+
 // ── Lauf-Ordner ─────────────────────────────────────────────────────────────
 function runDir() {
   const given = arg('--run')
@@ -169,11 +201,12 @@ async function fetchPhase() {
   if (!tail.includes('Dump completed')) die('Dump unvollständig (kein "Dump completed" am Ende)')
   log(`Dump ok: ${(fs.statSync(dumpFile).size / 1048576).toFixed(1)} MB gz`)
 
-  for (const v of VOLUMES) {
-    const file = path.join(RUN, `volume-${v}.tar.gz`)
+  const names = prodVolumeNames()
+  for (const key of MIRROR_VOLUMES) {
+    const file = path.join(RUN, volumeFile(key))
     await shToFile('ssh', ['-o', 'BatchMode=yes', PROD_SSH,
-      `docker run --rm -v appwrite_appwrite-${v}:/d:ro alpine tar czf - -C /d .`], file)
-    log(`Volume ${v}: ${(fs.statSync(file).size / 1048576).toFixed(1)} MB`)
+      `docker run --rm -v ${names[key]}:/d:ro alpine tar czf - -C /d .`], file)
+    log(`Volume ${key} (${names[key]}): ${(fs.statSync(file).size / 1048576).toFixed(1)} MB`)
   }
 
   writeMeta({ createdAt: new Date().toISOString(), prodVersion, projects, counts })
@@ -240,10 +273,11 @@ async function restorePhase() {
   log('Dump eingespielt')
 
   // 5) Volumes ersetzen.
-  for (const v of VOLUMES) {
-    await shFromFile('docker', ['run', '--rm', '-i', '-v', `appwrite_appwrite-${v}:/d`, 'alpine', 'sh', '-c', 'find /d -mindepth 1 -delete && tar xzf - -C /d'],
-      path.join(RUN, `volume-${v}.tar.gz`))
-    log(`Volume ${v} ersetzt`)
+  const names = localVolumeNames()
+  for (const key of MIRROR_VOLUMES) {
+    await shFromFile('docker', ['run', '--rm', '-i', '-v', `${names[key]}:/d`, 'alpine', 'sh', '-c', 'find /d -mindepth 1 -delete && tar xzf - -C /d'],
+      path.join(RUN, volumeFile(key)))
+    log(`Volume ${key} (${names[key]}) ersetzt`)
   }
 
   // 6) Lokal entschärfen: was nur auf Prod Sinn hat oder dort weiterleben soll.
