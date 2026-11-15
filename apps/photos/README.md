@@ -10,7 +10,9 @@ Migrations-Runner heraus (`scripts/migrate.mjs` ignoriert `_*`).
    ```bash
    cp -R apps/_template apps/<name>
    ```
-   - `package.json`: `"name": "<name>"` setzen
+   - `package.json`: `"name": "<name>"` setzen und im `bootstrap`-Skript
+     `--app _template` durch `--app <name>` ersetzen (sonst zielen die
+     Migrationen auf die Vorlage; `pnpm create-site <name>` erledigt beides)
    - `nuxt.config.ts`: `devServer.port` eindeutig vergeben (3002+, siehe CLAUDE.md)
    - `.env.example` → `NUXT_PUBLIC_APP_URL` an den Port anpassen
    - Nicht benötigte Produkt-Layer aus `extends` UND `package.json` entfernen
@@ -26,6 +28,10 @@ Migrations-Runner heraus (`scripts/migrate.mjs` ignoriert `_*`).
    pnpm install
    pnpm --filter <name> bootstrap   # DB + Bucket + Platform + alle Migrationen
    ```
+   Das ist EIN Skript für alle Apps (`scripts/bootstrap.mjs --app <name>`) und
+   nur für FRISCHE Instanzen: es prüft vor dem ersten Schreibzugriff, ob die
+   Datenbank leer ist, und bricht sonst ab (`--check` prüft nur, `--force`
+   erzwingt).
    Migrationen später einzeln: `pnpm migrate --app <name>`
    (nie ohne `--app`, sobald mehrere Apps existieren — der Runner erzwingt das).
 
@@ -46,3 +52,11 @@ Migrations-Runner heraus (`scripts/migrate.mjs` ignoriert `_*`).
 - `app.config.ts` gehört in `app/` (im Package-Root wird sie ignoriert)
 - Domain-Types in `shared/types/`, Zod-Schemas als Factories, i18n-Keys statt
   hartcodierter Strings — Details in CLAUDE.md und docs/CONCEPT.md
+
+## Was hier anders ist als in der Vorlage
+
+- **Kein globales `app.pageTransition`.** Die App bindet das Dashboard ein
+  (`packages/admin`); mit `mode: 'out-in'` bliebe dort nach der ersten
+  Client-Navigation der Seitenbereich leer (`UDashboardPanel` ist
+  mehrwurzelig). Der Fade läuft nur je Route über `<NuxtPage :transition>` im
+  Layout `site` (`app/app.vue`) — dasselbe Muster wie `apps/portfolio`.

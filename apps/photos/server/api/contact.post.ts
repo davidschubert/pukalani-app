@@ -4,8 +4,11 @@ const contactSchema = z.object({
   name: z.string().trim().min(1).max(100),
   email: z.string().trim().email().max(200),
   message: z.string().trim().min(5).max(2000),
-  // Honeypot: für Menschen unsichtbar — ausgefüllt heißt Bot
-  website: z.string().max(0).optional().default(''),
+  // Honeypot: für Menschen unsichtbar — ausgefüllt heißt Bot. BEWUSST freier
+  // Text (nur gedeckelt): ein `max(0)` lehnte ihn vorher mit 400 ab, BEVOR der
+  // Zweig „still schlucken" unten griff — der Bot erfuhr am 400, welches Feld
+  // auffällt. Jetzt antwortet er wie ein Mensch mit `{ ok: true }`.
+  website: z.string().max(2000).optional().default(''),
 }).strict()
 
 /**
@@ -51,7 +54,18 @@ export default defineEventHandler(async (event) => {
     to: config.contactEmail,
     subject: `Enquiry via maui.photos — ${body.name}`,
     text: `${body.message}\n\n— ${body.name} <${body.email}>`,
-  }).catch(() => false)
+  }).catch((error: unknown) => {
+    // Vorher still zu 502. Geloggt werden nur KENNUNGEN des Fehlers (Name,
+    // SMTP-Code, Antwort-Code) — keine Empfänger-Adresse, kein Nachrichtentext
+    // und keine Fehlermeldung, denn SMTP-Meldungen zitieren gern die Adresse.
+    const failure = error as { name?: unknown, code?: unknown, responseCode?: unknown } | null
+    logEvent('error', 'photos.contact_mail_failed', {
+      name: typeof failure?.name === 'string' ? failure.name : '?',
+      code: typeof failure?.code === 'string' ? failure.code : '?',
+      responseCode: typeof failure?.responseCode === 'number' ? failure.responseCode : '?',
+    })
+    return false
+  })
 
   if (!sent) {
     throw createError({ status: 502, statusText: 'Could not send message' })

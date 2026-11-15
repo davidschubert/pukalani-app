@@ -19,8 +19,16 @@ export default defineNuxtConfig({
     head: {
       meta: [{ name: 'theme-color', content: '#0b0c0e' }],
     },
-    pageTransition: { name: 'page', mode: 'out-in' },
   },
+
+  // KEINE globale `app.pageTransition` (BE-026, Muster aus apps/portfolio,
+  // CLAUDE.md): diese App bindet das Dashboard ein (packages/admin), und
+  // `UDashboardPanel` ist mehrwurzelig — mit `mode: 'out-in'` parkt Vue
+  // Suspense die neue Seite im versteckten Container, der Seitenbereich bleibt
+  // nach dem ersten Klick leer (nur im Prod-Build, ohne Fehler). Der Fade gilt
+  // nur auf der öffentlichen Site: app.vue setzt ihn je Route über
+  // `<NuxtPage :transition>` (Layout `site`); das CSS ist ohnehin auf
+  // `.photos-site` gescopet.
 
   runtimeConfig: {
     // Empfänger des Kontakt-Formulars (Override: NUXT_CONTACT_EMAIL);
