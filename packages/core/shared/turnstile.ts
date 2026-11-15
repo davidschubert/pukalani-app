@@ -48,8 +48,12 @@ export function turnstileMode(siteKey: string, secret: string): TurnstileMode {
  * ist das eine echte Mail über unser Resend-Konto. Der Stundeneimer
  * `comments:guest` bleibt davor; er drosselt EINE Quelle, Turnstile verlangt
  * einen Browser mit einem Menschen davor.
+ *
+ * `intro_call` und `waitlist` kamen mit SEC-018 dazu (2026-11-15): die zwei
+ * öffentlichen Formulare von branding.supply (Erstgespräch, Warteliste)
+ * schicken eine Mail an die eingetragene Adresse — dieselbe Angriffsfläche.
  */
-export const TURNSTILE_ACTIONS = ['signup', 'otp', 'recovery', 'guest_comment'] as const
+export const TURNSTILE_ACTIONS = ['signup', 'otp', 'recovery', 'guest_comment', 'intro_call', 'waitlist'] as const
 export type TurnstileAction = typeof TURNSTILE_ACTIONS[number]
 
 /** Die Grund-Schlüssel, die als `reason` im Fehler-Envelope reisen. */
