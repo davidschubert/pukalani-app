@@ -19,6 +19,7 @@
  * Das Skript legt einen WEGWERF-Betreiber an (Label `admin`), meldet sich über
  * die echte App-Route /api/auth/login an und löscht das Konto am Ende wieder.
  */
+import '../../../scripts/lib/assert-target.mjs'
 const BASE = process.env.PROBE_BASE ?? 'http://localhost:3004'
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID

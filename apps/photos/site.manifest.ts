@@ -12,4 +12,7 @@ export default {
     'admin',
     'media',
   ],
+  // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der
+  // Migrations-Runner im Namen dieser App schreiben.
+  appwriteProjects: ['photos-qgry'],
 } satisfies SiteManifest

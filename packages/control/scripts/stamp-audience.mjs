@@ -55,6 +55,7 @@
  *
  * Idempotent: steht der Wert schon so, passiert nichts.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 function arg(name) {

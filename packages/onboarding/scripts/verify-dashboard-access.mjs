@@ -26,6 +26,7 @@
  * (429 „RATE_LIMITED" beim Anlegen von kunde-a) — das ist die Schutzfunktion,
  * kein Fehlschlag des Beweises. Zwischen zwei Läufen ein paar Minuten warten.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

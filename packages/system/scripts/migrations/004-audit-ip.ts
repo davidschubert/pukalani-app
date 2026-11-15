@@ -6,6 +6,7 @@
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/system/scripts/migrations/004-audit-ip.ts
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

@@ -31,6 +31,7 @@
  *
  * `--dry-run` zeigt nur, was entstehen würde.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Permission, Query, Role, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

@@ -31,4 +31,7 @@ export default {
     // docs/plans/BRANDING-SUPPLY-INFRA.md §2). pukalani.studio ist wieder nur
     // der Studio-Trichter.
   ],
+  // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der
+  // Migrations-Runner im Namen dieser App schreiben.
+  appwriteProjects: ['portfolio'],
 } satisfies SiteManifest

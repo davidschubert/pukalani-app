@@ -24,6 +24,7 @@
  *
  * Benötigte Key-Scopes: tables.*, columns.*, rows.* (Migrations-Key).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, type Models } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

@@ -69,6 +69,7 @@
  * unverändert aus dem Repo stammt — ein im Dashboard geändertes Zeichen, und
  * die Zeile bleibt unberührt.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
 import { createHash } from 'node:crypto'
 import { PRIVACY_INTERIM_BODY, PRIVACY_INTERIM_SUPERSEDED_SHA256 } from './legalPrivacyInterim.ts'

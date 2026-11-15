@@ -15,6 +15,7 @@
  *   POOL_KEY=… node --env-file=apps/control/.env \
  *     packages/control/scripts/verify-invite-stock.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 

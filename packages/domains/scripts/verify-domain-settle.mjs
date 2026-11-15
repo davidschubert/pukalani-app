@@ -40,6 +40,7 @@
  * eigener Weg ist schon bewiesen, und ein zweiter Nuxt-Dev-Server derselben
  * App würde die Sitzung eines Nachbarn stören (`.nuxt` ist geteilt).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createServer } from 'node:http'
 
 const APP = process.env.SETTLE_APP_URL || 'http://localhost:3026'

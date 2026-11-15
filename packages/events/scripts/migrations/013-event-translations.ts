@@ -40,6 +40,7 @@
  * abgeschaltet). Lokal zusätzlich das Dev-Projekt der comments-App, die den
  * Layer als E2E-Anker weiterhin führt. NICHT `control` (kein events-Layer).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

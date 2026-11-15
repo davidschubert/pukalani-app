@@ -63,6 +63,7 @@
  * Fehler. Vor dem Lauf die eine Zeile lokal auf `true` stellen (und danach
  * NICHT mitcommitten, solange die Migration aussteht).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createServer, request } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'

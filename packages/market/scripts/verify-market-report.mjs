@@ -60,6 +60,7 @@
  *   BRANDING_PORT=3016 node --env-file=apps/branding/.env \
  *     packages/market/scripts/verify-market-report.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createServer, request } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'

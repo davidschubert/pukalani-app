@@ -16,6 +16,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { writeFileSync, chmodSync } from 'node:fs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { isLocalEndpoint } from '../lib/target.mjs'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const controlProject = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -29,7 +30,8 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolProject |
   console.error('✗ Env unvollständig.')
   process.exit(1)
 }
-if (!/^http:\/\/localhost(:\d+)?\/v1$/.test(endpoint)) {
+// Strenger als die geteilte Regel: KEINE Bestätigung öffnet hier Production.
+if (!isLocalEndpoint(endpoint)) {
   console.error(`✗ Kein lokaler Endpoint: ${endpoint}`)
   process.exit(1)
 }

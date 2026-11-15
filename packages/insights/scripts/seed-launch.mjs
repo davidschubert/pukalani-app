@@ -71,6 +71,7 @@
  * ODER Beitrags-Slug); die Marken, die ein Beitrag braucht, müssen dann schon
  * existieren oder werden mitgeplant, aber nur der genannte Slug wird geschrieben.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { existsSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { dirname, resolve as resolvePath } from 'node:path'

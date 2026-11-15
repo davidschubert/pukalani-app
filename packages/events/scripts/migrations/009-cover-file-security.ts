@@ -41,6 +41,7 @@
  * nur noch nicht.
  * Betroffen ist JEDE Instanz mit events (platform und comments).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Compression, Permission, Query, Role, Storage, TablesDB, type Models } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

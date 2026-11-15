@@ -26,8 +26,10 @@
  * Aus packages/events (dort löst node-appwrite auf):
  *   node --env-file=../../apps/platform/.env scripts/verify-pool-isolation.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { assertTarget, isLocalEndpoint } from '../../../scripts/lib/target.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3131)
 const HOST_A = process.env.TENANT_A_HOST || 'kunde-a.localhost'
@@ -46,6 +48,10 @@ if (!endpoint || !poolProject || !databaseId || !poolKey || !controlEndpoint || 
   console.error('✗ Env unvollständig — mit --env-file=../../apps/platform/.env aufrufen.')
   process.exit(1)
 }
+
+// Zweiter Endpunkt (Control Plane): die Bestätigung des ersten gilt für die
+// ganze Env-Datei — ist der Haupt-Endpunkt lokal, muss es dieser auch sein (OPS-002).
+assertTarget({ script: 'verify-pool-isolation (Control)', endpoint: controlEndpoint, projectId: controlProject, confirmed: !isLocalEndpoint(endpoint) })
 
 const pool = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
 const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))

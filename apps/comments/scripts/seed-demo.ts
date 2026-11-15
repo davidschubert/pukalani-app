@@ -10,6 +10,7 @@
  * angelegt, wenn das Target noch leer ist (oder --force). Benötigte Key-Scopes:
  * users.*, tables.*, rows.*.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, Users, TablesDB, ID, Permission, Role, Query, type Models } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

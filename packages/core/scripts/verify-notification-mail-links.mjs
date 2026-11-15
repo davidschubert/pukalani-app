@@ -41,6 +41,7 @@
  * (auch im Fehlerfall). Die Mails bleiben in Mailpit stehen — sie sind der
  * Beweis und tragen eindeutige Adressen.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { Client, ID, Permission, Role, TablesDB, Users } from 'node-appwrite'
 

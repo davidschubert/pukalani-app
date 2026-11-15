@@ -321,7 +321,7 @@ danach).
 
 Sobald FREMDE Silo-Projekte existieren, rollen Schema-Änderungen in **drei
 Wellen** aus; der **Pool migriert immer genau einmal** (ein geteiltes Projekt,
-`pnpm migrate --env-file <pool-migrations.env>`). Die Welle eines Tenants
+`pnpm migrate --app platform --env <pool-migrations.env> --prod`). Die Welle eines Tenants
 steht im tenants-Register (`wave`: internal → canary → stable, Control-UI
 „Update-Welle", nur für Silos wirksam; Bestand = stable).
 
@@ -332,10 +332,16 @@ node --experimental-strip-types --env-file="$HOME/.appwrite-secrets/migrations/c
   packages/control/scripts/list-silo-keys.ts        # [--wave <welle>] [--keys-dir <ordner>]
 
 # Silo-Projekte einer Welle migrieren (Reihenfolge: internal → canary → stable)
-pnpm migrate --wave internal --control-env ~/.appwrite-secrets/migrations/control.env
-pnpm migrate --wave canary   --control-env ~/.appwrite-secrets/migrations/control.env
-pnpm migrate --wave stable   --control-env ~/.appwrite-secrets/migrations/control.env
+# (erst ansehen: `--dry-run` statt `--prod` — zeigt Projekte und Dateien, schreibt nichts)
+pnpm migrate --wave internal --control-env ~/.appwrite-secrets/migrations/control.env --prod
+pnpm migrate --wave canary   --control-env ~/.appwrite-secrets/migrations/control.env --prod
+pnpm migrate --wave stable   --control-env ~/.appwrite-secrets/migrations/control.env --prod
 ```
+
+- **Ziel-Prüfung (seit 2026-11-16, GA1 P21):** jede Datei `<projectId>.env`
+  muss GENAU auf ihr Projekt zeigen, und ein Endpunkt, der nicht lokal ist,
+  braucht `--prod`. Stimmt eine Datei nicht, bricht der Lauf ab, bevor
+  irgendein Projekt migriert wird.
 
 - `--control-env` = Env der **Control-Plane-Instanz** (`control`) — daraus
   kommen die Silo-Projekte der Welle. Nie raten, immer explizit. Der Pfad ist

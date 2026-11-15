@@ -39,6 +39,7 @@
  *
  * Erwartet BEIDE Dev-Server: platform (3006) und control (3004).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

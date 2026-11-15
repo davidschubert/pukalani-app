@@ -28,6 +28,7 @@
  *      POOL_KEY (+ optional NUXT_PUBLIC_CONTROL_POOL_PROJECT, POOL_DATABASE_ID)
  *      = Runtime-Projekt, in dem die pages-Rows liegen.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
 // Cross-Layer als EXPLIZITER Vertrag (A14): der pages-Layer besitzt die Tabelle
 // UND die Vorlagen. Eine zweite Kopie hier würde garantiert auseinanderlaufen.

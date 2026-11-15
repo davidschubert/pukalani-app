@@ -43,6 +43,7 @@
  *
  * Legt einen Wegwerf-Nutzer an und räumt ihn (auch im Fehlerfall) wieder weg.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Presences, Users } from 'node-appwrite'
 

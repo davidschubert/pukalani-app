@@ -12,6 +12,7 @@
  *
  * Benötigte Key-Scopes: tables.*, columns.* (Migrations-Key). Idempotent.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

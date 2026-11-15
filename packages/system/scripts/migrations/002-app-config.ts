@@ -10,6 +10,7 @@
  *
  * Benötigte Key-Scopes: tables.*, columns.*, rows.* (Migrations-Key).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, type Models } from 'node-appwrite'
 
 interface AppConfigRow extends Models.Row {

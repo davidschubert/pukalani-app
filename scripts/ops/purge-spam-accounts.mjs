@@ -42,6 +42,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { assertTarget } from '../lib/target.mjs'
 
 const PAGE = 100
 const DEFAULT_SINCE = '2026-10-25'
@@ -170,6 +171,9 @@ async function main() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) throw new Error(`--since erwartet YYYY-MM-DD, nicht „${since}"`)
   const sinceIso = `${since}T00:00:00.000Z`
   const cfg = loadInstance(args.values.env)
+  // Nur `--execute` löscht: dann muss das Ziel aus der --env-Datei bestätigt
+  // sein (OPS-002) — geprüft VOR dem Lesen, damit der Abbruch nichts kostet.
+  if (execute) assertTarget({ script: 'purge-spam-accounts --execute', endpoint: cfg.endpoint, projectId: cfg.project })
 
   console.log(`Projekt ${cfg.project} @ ${cfg.endpoint} · Konten seit ${since} · ${execute ? 'LÖSCHEN' : 'Trockenlauf'}`)
   const candidates = await listUsersSince(cfg, sinceIso)

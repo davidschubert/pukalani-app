@@ -32,6 +32,7 @@
  * NUXT_APPWRITE_KEY) — dieselbe Herkunft wie bei verify-site-authz.mjs und
  * seed-local-tester.mjs. Die `--env-file` liefert nur das Control Plane.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

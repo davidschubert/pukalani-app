@@ -74,6 +74,7 @@
  *   BRANDING_PORT=3016 node --env-file=apps/branding/.env \
  *     packages/brand/scripts/verify-brand-design.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createHash, randomBytes } from 'node:crypto'
 import { request } from 'node:http'
 import { Client, ID, Query, Storage, TablesDB, Users } from 'node-appwrite'

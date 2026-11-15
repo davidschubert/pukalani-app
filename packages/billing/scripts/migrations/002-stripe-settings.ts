@@ -16,6 +16,7 @@
  * Idempotent (409 → skip). Aufruf über den Runner:
  *   pnpm migrate --app <app> --layer billing
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

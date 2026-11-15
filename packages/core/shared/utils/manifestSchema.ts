@@ -12,11 +12,24 @@ const manifestTextSchema = z.object({
   de: z.string().min(1),
 }).strict()
 
+const migrationNumber = z.string().regex(/^\d{3}$/)
+const appwriteId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/)
+
+export const productSchemaStateSchema = z.object({
+  latest: migrationNumber,
+  probe: z.object({
+    migration: migrationNumber,
+    table: appwriteId,
+    column: appwriteId.optional(),
+  }).strict(),
+}).strict()
+
 export const productManifestSchema = z.object({
   key: z.string().regex(keyPattern),
   tier: z.enum(['foundation', 'optional']),
   requires: z.array(z.string().regex(keyPattern)).optional(),
   hasMigrations: z.boolean(),
+  schema: productSchemaStateSchema.optional(),
   entitlementKey: z.string().regex(keyPattern).optional(),
   title: manifestTextSchema,
   description: manifestTextSchema,
@@ -27,4 +40,5 @@ export const productManifestSchema = z.object({
 export const siteManifestSchema = z.object({
   siteId: z.string().regex(keyPattern),
   products: z.array(z.string().regex(keyPattern)),
+  appwriteProjects: z.array(appwriteId),
 }).strict()

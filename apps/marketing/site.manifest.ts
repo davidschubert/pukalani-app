@@ -10,4 +10,7 @@ import type { SiteManifest } from '../../packages/core/shared/types/manifest'
 export default {
   siteId: 'marketing',
   products: ['marketing'],
+  // Keine eigene Appwrite-Instanz (öffentlich + statisch) — der
+  // Migrations-Runner lehnt jede Env-Datei ab (OPS-002).
+  appwriteProjects: [],
 } satisfies SiteManifest

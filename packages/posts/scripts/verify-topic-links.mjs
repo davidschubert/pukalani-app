@@ -38,6 +38,7 @@
  * Legt Wegwerf-Nutzer, -Kategorien und -Themen an und raeumt sie wieder weg,
  * auch im Fehlerfall.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
 

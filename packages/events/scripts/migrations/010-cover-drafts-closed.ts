@@ -43,6 +43,7 @@
  * ⚠️ SCHLÜSSEL: braucht `buckets.read`/`files.read`/`files.write` auf der
  * Instanz — derselbe Blocker wie bei events-009 (F36, auf `pool` fehlt er).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, Storage, TablesDB, type Models } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

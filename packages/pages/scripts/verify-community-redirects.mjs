@@ -53,6 +53,7 @@
  * `NUXT_APPWRITE_KEY` aus apps/platform/.env. Gebraucht für Test-Konten, das
  * Wegräumen der `community_redirects`-Row und die Gegenprobe in Abschnitt 11.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

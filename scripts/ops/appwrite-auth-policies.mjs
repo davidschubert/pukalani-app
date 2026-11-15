@@ -39,6 +39,7 @@
  * 1 = Abweichung, 2 = Aufruf- oder Verbindungsfehler.
  */
 import { pathToFileURL } from 'node:url'
+import { assertTarget } from '../lib/target.mjs'
 
 /**
  * DAS SOLL — je Regel nur die Felder, die wir festlegen. Verglichen werden
@@ -135,6 +136,8 @@ async function readPolicies(cfg) {
 async function main() {
   const apply = process.argv.includes('--apply')
   const cfg = config()
+  // Nur `--apply` schreibt; der Vergleich darf jede Instanz lesen (OPS-002).
+  if (apply) assertTarget({ script: 'appwrite-auth-policies --apply', endpoint: cfg.endpoint, projectId: cfg.project })
   console.log(`Anmelde-Regeln · Projekt ${cfg.project} @ ${cfg.endpoint}${apply ? ' · --apply' : ''}`)
 
   const before = comparePolicies(await readPolicies(cfg))

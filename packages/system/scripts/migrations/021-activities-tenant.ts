@@ -44,6 +44,7 @@
  * comments, photos, platform, control, help, marketing, portfolio. Reihenfolge
  * unkritisch: die Spalte ist additiv und ruhend, alter Code ignoriert sie.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

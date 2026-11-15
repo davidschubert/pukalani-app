@@ -65,6 +65,7 @@
  * Appwrite ab — das Ranking stünde dann leer, das Löschen eines Kontos
  * scheiterte am Schreiben des Zeitpunkts.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

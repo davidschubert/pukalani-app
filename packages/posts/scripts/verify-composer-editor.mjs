@@ -40,6 +40,7 @@
  * auch im Fehlerfall (Beiträge über den Admin-Client, damit auch ein
  * abgebrochener Lauf nichts liegen lässt).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
 /**

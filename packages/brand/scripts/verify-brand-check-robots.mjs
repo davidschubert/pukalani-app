@@ -53,6 +53,7 @@
  * die Demo-Server auf `127.0.0.1:<freier Port>` zu Recht ab. Auf einem Server
  * sind beide Schalter wirkungslos (`NODE_ENV`).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createServer, request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 

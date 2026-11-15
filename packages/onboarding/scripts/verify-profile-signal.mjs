@@ -29,6 +29,7 @@
  *     node --env-file=apps/control/.env \
  *     packages/onboarding/scripts/verify-profile-signal.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

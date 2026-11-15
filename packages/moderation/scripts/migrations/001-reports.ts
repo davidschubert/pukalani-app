@@ -9,6 +9,7 @@
  *
  * Benötigte Key-Scopes: tables.*, columns.*, indexes.* (Migrations-Key, A2).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, Permission, Role, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

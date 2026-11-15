@@ -43,6 +43,7 @@
  *
  *   pnpm migrate --app <app> --layer courses
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 // Der Retry-Helfer lebt seit dem Sammel-Hardening zentral (EINE Wahrheit für
 // alle Migrationen): scripts/migrations-lib/indexRetry.mts. Die Begründung des

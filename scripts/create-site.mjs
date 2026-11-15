@@ -7,7 +7,7 @@
  *
  *   pnpm create-site <name> [--products comments,posts,…]
  *                           [--endpoint http://localhost/v1] [--port 30xx]
- *                           [--skip-appwrite]
+ *                           [--project-id <name>-xxxx] [--skip-appwrite]
  *
  * Console-Zugang (fürs Anlegen von Projekt/Keys — NICHT die App-Keys):
  *   APPWRITE_CONSOLE_EMAIL / APPWRITE_CONSOLE_PASSWORD als Env-Vars.
@@ -17,11 +17,19 @@
  * Governance (F6): Projekt-ID = <name>-<shortid> (unveränderlich, Slug
  * bleibt getrennt); Key-IDs global eindeutig (runtime-<name>/…) — Learnings
  * aus Spike S0/S1.
+ *
+ * ZIEL-PRÜFUNG (OPS-002, GA1 P21): bevor irgendetwas geschrieben wird, prüft
+ * das Skript den Endpunkt — lokal geht durch, ein NICHT lokaler Endpunkt
+ * verlangt `--project-id <id>` UND `PUKALANI_TARGET_CONFIRM=<dieselbe id>`.
+ * Die Id wird deshalb VOR der Anlage festgelegt (sonst könnte niemand die
+ * zufällige Id vorab bestätigen) und landet als `appwriteProjects` im
+ * generierten `site.manifest.ts` — der Migrations-Runner vergleicht damit.
  */
 import { cpSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { assertTarget, CONFIRM_ENV, isLocalEndpoint } from './lib/target.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const FOUNDATION_ALWAYS = ['core', 'system']
@@ -41,13 +49,14 @@ const arg = (key, fallback) => {
 }
 const skipAppwrite = argv.includes('--skip-appwrite')
 const endpoint = arg('endpoint', 'http://localhost/v1').replace(/\/$/, '')
+const explicitProjectId = arg('project-id', null)
 
 function fail(message) {
   console.error(`✗ ${message}`)
   process.exit(1)
 }
 
-if (!name) fail('Nutzung: pnpm create-site <name> [--products a,b,c] [--endpoint URL] [--port 30xx] [--skip-appwrite]')
+if (!name) fail('Nutzung: pnpm create-site <name> [--products a,b,c] [--endpoint URL] [--port 30xx] [--project-id <name>-xxxx] [--skip-appwrite]')
 if (!/^[a-z][a-z0-9-]*$/.test(name)) fail(`Ungültiger Name „${name}" — erlaubt: kleinbuchstaben, ziffern, bindestriche`)
 const appDir = join(ROOT, 'apps', name)
 if (existsSync(appDir)) fail(`apps/${name} existiert bereits`)
@@ -77,6 +86,22 @@ if (!port) {
     if (m) max = Math.max(max, Number(m[1]))
   }
   port = max + 1
+}
+
+// ── Ziel-Prüfung (OPS-002) — VOR der ersten Ausgabe und dem ersten Schreiben
+// Console-Zugang (fürs Anlegen von Projekt/Keys — NICHT die App-Keys)
+const consoleEmail = process.env.APPWRITE_CONSOLE_EMAIL
+const consolePassword = process.env.APPWRITE_CONSOLE_PASSWORD
+const provision = Boolean(!skipAppwrite && consoleEmail && consolePassword)
+// Projekt-ID = <name>-<shortid> (F6: unveränderlich, lesbar, kollisionsfrei)
+// — jetzt schon festgelegt, damit Prüfung und Manifest dieselbe Id kennen.
+const projectId = explicitProjectId ?? `${name}-${Math.random().toString(36).slice(2, 6)}`
+if (!/^[a-z0-9][a-z0-9-]{0,35}$/.test(projectId)) fail(`Ungültige Projekt-Id „${projectId}" — erlaubt: kleinbuchstaben, ziffern, bindestriche (max. 36)`)
+if (provision) {
+  if (!isLocalEndpoint(endpoint) && !explicitProjectId) {
+    fail(`Der Endpunkt ist nicht lokal: ${endpoint}. Eine Site dort anzulegen braucht eine VORHER festgelegte und bestätigte Projekt-Id:\n  ${CONFIRM_ENV}=${name}-xxxx pnpm create-site ${name} --endpoint ${endpoint} --project-id ${name}-xxxx …`)
+  }
+  assertTarget({ script: 'create-site', endpoint, projectId })
 }
 
 console.log(`\n▸ Neue Site: apps/${name} · Port ${port} · Produkte: ${products.join(', ')} (+ core, system)\n`)
@@ -125,6 +150,11 @@ cpSync(join(ROOT, 'apps', '_template'), appDir, {
 // site.manifest.ts: Single Source der Produkt-Wahl
 {
   const body = products.map(f => `    '${f}',`).join('\n')
+  // Ziel-Prüfung (OPS-002): ohne Provisionierung bleibt die Liste leer, bis
+  // das Projekt von Hand angelegt ist (Checkliste am Ende).
+  const projects = provision
+    ? `  appwriteProjects: ['${projectId}'],`
+    : `  // Nach der Projekt-Anlage die Projekt-Id eintragen — leer lehnt der\n  // Migrations-Runner jede Env-Datei ab (OPS-002).\n  appwriteProjects: [],`
   writeFileSync(join(appDir, 'site.manifest.ts'), `import type { SiteManifest } from '../../packages/core/shared/types/manifest'
 
 /**
@@ -137,19 +167,17 @@ export default {
   products: [
 ${body}
   ],
+${projects}
 } satisfies SiteManifest
 `)
   console.log('✔ site.manifest.ts')
 }
 
 // ── 2) Appwrite: Projekt + Keys + Platform (Console-REST, Gate S1) ─────────
-const consoleEmail = process.env.APPWRITE_CONSOLE_EMAIL
-const consolePassword = process.env.APPWRITE_CONSOLE_PASSWORD
-let projectId = ''
 let runtimeKey = ''
 let migrationsKey = ''
 
-if (!skipAppwrite && consoleEmail && consolePassword) {
+if (provision) {
   let cookie = ''
   const consoleApi = async (path, method = 'GET', body) => {
     const res = await fetch(`${endpoint}${path}`, {
@@ -202,10 +230,8 @@ if (!skipAppwrite && consoleEmail && consolePassword) {
     }
   }
 
-  // Projekt-ID = <name>-<shortid> (F6: unveränderlich, lesbar, kollisionsfrei)
+  // Projekt anlegen — die Id steht seit der Ziel-Prüfung fest (s. oben)
   {
-    const shortid = Math.random().toString(36).slice(2, 6)
-    projectId = `${name}-${shortid}`
     const { status, json } = await consoleApi('/projects', 'POST', { projectId, name, teamId, region: 'default' })
     if (status === 201) {
       console.log(`✔ Projekt ${projectId} angelegt`)
@@ -291,7 +317,7 @@ else {
   const p = join(appDir, '.env.example')
   let src = readFileSync(p, 'utf8')
   src = src.replace(/NUXT_PUBLIC_APP_URL=.*/, `NUXT_PUBLIC_APP_URL=http://localhost:${port}`)
-  if (projectId) src = src.replace(/NUXT_PUBLIC_APPWRITE_PROJECT_ID=.*/, `NUXT_PUBLIC_APPWRITE_PROJECT_ID=${projectId}`)
+  if (provision) src = src.replace(/NUXT_PUBLIC_APPWRITE_PROJECT_ID=.*/, `NUXT_PUBLIC_APPWRITE_PROJECT_ID=${projectId}`)
   writeFileSync(p, src)
 }
 
@@ -331,7 +357,8 @@ ${runtimeKey ? `  Appwrite:  Projekt ${projectId} auf ${endpoint}` : `
     2. Zwei API-Keys (alle Scopes): runtime-${name} + migrations-${name}
     3. Web-Platform hostname localhost
     4. apps/${name}/.env aus .env.example füllen
-    5. pnpm --filter ${name} bootstrap`}
+    5. Projekt-Id in apps/${name}/site.manifest.ts unter appwriteProjects eintragen
+    6. pnpm --filter ${name} bootstrap`}
 
   Für PROD später (Phase 17): ploi-Site + DNS (A-Records app/api auf
   derselben Root-Domain) + Deploy-Webhook — Checkliste in

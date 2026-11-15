@@ -7,7 +7,13 @@
  * NUTZUNG (David, mit dem eigenen Key — Test ODER Live):
  *   STRIPE_KEY=sk_test_…  node scripts/stripe/ensure-prices.mjs          # Vorschau
  *   STRIPE_KEY=sk_test_…  node scripts/stripe/ensure-prices.mjs --apply  # anlegen
- *   STRIPE_KEY=sk_live_…  node scripts/stripe/ensure-prices.mjs --apply  # Live
+ *   STRIPE_KEY=sk_live_…  node scripts/stripe/ensure-prices.mjs --live           # Live-Vorschau
+ *   STRIPE_KEY=sk_live_…  node scripts/stripe/ensure-prices.mjs --live --apply   # Live
+ *
+ * `--live` MUSS zum Schlüssel passen (OPS-002, `scripts/lib/target.mjs`): ein
+ * Live-Schlüssel ohne `--live` bricht ab, `--live` mit Test-Schlüssel ebenso —
+ * auch in der Vorschau, damit derselbe Aufruf nicht erst beim `--apply`
+ * auffällt.
  *
  * Idempotent: existiert ein Price mit dem lookup_key UND dem richtigen
  * Betrag, wird er übersprungen. Weicht der BETRAG ab (Preisänderung), wird
@@ -25,6 +31,7 @@
  * Terminal-Rückfall und für die Vorschau ohne --apply.
  */
 import Stripe from 'stripe'
+import { checkStripeTarget } from '../lib/target.mjs'
 import { STRIPE_PRICE_CATALOG, STRIPE_PRICE_CURRENCY, STRIPE_PRICE_TAX_BEHAVIOR, decideStripePriceAction } from '../../packages/control/shared/stripePriceCatalog.ts'
 
 // Beträge, lookup_keys und Produktnamen stehen NICHT mehr hier, sondern in
@@ -38,11 +45,16 @@ const PRODUCTS = STRIPE_PRICE_CATALOG
 
 const key = process.env.STRIPE_KEY
 if (!key) {
-  console.error('✗ STRIPE_KEY fehlt. Aufruf: STRIPE_KEY=sk_test_… node scripts/stripe/ensure-prices.mjs [--apply]')
+  console.error('✗ STRIPE_KEY fehlt. Aufruf: STRIPE_KEY=sk_test_… node scripts/stripe/ensure-prices.mjs [--apply] (Live-Schlüssel: zusätzlich --live)')
   process.exit(1)
 }
 const apply = process.argv.includes('--apply')
-const mode = key.startsWith('sk_live_') ? 'LIVE' : 'TEST'
+const target = checkStripeTarget({ key, live: process.argv.includes('--live') })
+if (!target.ok) {
+  console.error(`✗ ensure-prices: ${target.message}`)
+  process.exit(1)
+}
+const mode = target.mode === 'live' ? 'LIVE' : 'TEST'
 const stripe = new Stripe(key)
 
 console.log(`Stripe ensure-prices — Modus ${mode}${apply ? ' (ANLEGEN)' : ' (Vorschau, --apply zum Anlegen)'}\n`)

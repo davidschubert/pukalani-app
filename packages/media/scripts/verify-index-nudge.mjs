@@ -31,6 +31,7 @@
  *
  *   node --env-file=apps/comments/.env packages/media/scripts/verify-index-nudge.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { execFileSync } from 'node:child_process'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../scripts/migrations-lib/indexRetry.mts'

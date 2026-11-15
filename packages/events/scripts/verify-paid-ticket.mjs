@@ -32,6 +32,7 @@
  * selbst-aufräumend (`finally`). Er braucht keinen Dev-Server: geprüft wird
  * die Server-Schicht, nicht die HTTP-Route darum.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { existsSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { dirname, resolve as resolvePath } from 'node:path'

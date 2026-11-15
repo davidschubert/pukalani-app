@@ -59,8 +59,8 @@ NUXT_BILLING_SETTINGS_KEY=<64 Hex-Zeichen>     # openssl rand -hex 32
 Das ist der **Entschlüsselungs**-Schlüssel. Die Stripe-Geheimnisse selbst
 liegen danach AES-256-GCM-verschlüsselt in der Appwrite-Tabelle
 `stripe_settings` (Migrationen **billing-002** und **billing-003**, vorher
-fahren: `pnpm migrate --app control --layer billing` — der Lauf nimmt beide
-mit). Ohne **billing-003** läuft alles, die Statuskarte kann dann aber die
+fahren: `pnpm migrate --app control --env ~/.appwrite-secrets/migrations/admin.env
+--layer billing --prod` — der Lauf nimmt beide mit). Ohne **billing-003** läuft alles, die Statuskarte kann dann aber die
 Herkunft des Signatur-Geheimnisses nie bestätigen und sagt dauerhaft
 „Herkunft unbestätigt". Was das leistet, genau gesagt:
 es schützt gegen ein **DB-Leck** (ein Dump enthält nur Ciphertext), **nicht**
@@ -243,9 +243,13 @@ nicht") statt 500 — eine bewusst nicht eingerichtete Route ist kein Ausfall.
 Der Key bleibt in der Shell, das Skript liest nur `STRIPE_KEY`:
 
 ```bash
-STRIPE_KEY=sk_live_… node scripts/stripe/ensure-prices.mjs           # Vorschau, ändert nichts
-STRIPE_KEY=sk_live_… node scripts/stripe/ensure-prices.mjs --apply   # legt an
+STRIPE_KEY=sk_live_… node scripts/stripe/ensure-prices.mjs --live           # Vorschau, ändert nichts
+STRIPE_KEY=sk_live_… node scripts/stripe/ensure-prices.mjs --live --apply   # legt an
 ```
+
+`--live` ist seit 2026-11-16 Pflicht, sobald der Schlüssel ein Live-Schlüssel
+ist (GA1 P21): ohne die Angabe bricht das Skript ab, und `--live` mit einem
+Test-Schlüssel ebenso. Aufruf und Schlüssel müssen zusammenpassen.
 
 Das Skript erkennt Live vs. Test am Key-Präfix und meldet den Modus. Bei
 **Betragsdrift** legt es einen neuen Price an, zieht den `lookup_key` per

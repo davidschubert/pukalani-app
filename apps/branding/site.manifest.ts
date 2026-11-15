@@ -55,4 +55,7 @@ export default {
     // überlagern (früher gelistet = höhere Priorität).
     'pages',
   ],
+  // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der
+  // Migrations-Runner im Namen dieser App schreiben.
+  appwriteProjects: ['branding'],
 } satisfies SiteManifest

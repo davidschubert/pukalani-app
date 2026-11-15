@@ -49,6 +49,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { decideFreshness } from './bootstrap-lib/freshness.mjs'
+import { assertTarget } from './lib/target.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const USAGE = 'Nutzung: node --env-file=apps/<app>/.env scripts/bootstrap.mjs --app <name> [--seed] [--force] [--check]'
@@ -155,6 +156,11 @@ async function checkFreshness() {
   }
 }
 
+// Ziel-Prüfung (OPS-002) vor der ersten Anfrage: lokal läuft durch, alles
+// andere braucht PUKALANI_TARGET_CONFIRM=<Projekt-Id>. `--check` liest nur und
+// bleibt deshalb überall erlaubt.
+const target = args.check ? null : assertTarget({ script: 'bootstrap', endpoint, projectId })
+
 console.log(`Bootstrap apps/${APP_NAME} gegen ${endpoint} / Projekt ${projectId} / Datenbank ${databaseId}`
   + `${args.seed ? ' · --seed' : ''}${args.force ? ' · --force' : ''}${args.check ? ' · --check' : ''}\n`)
 
@@ -228,10 +234,13 @@ console.log(`Bootstrap apps/${APP_NAME} gegen ${endpoint} / Projekt ${projectId}
 }
 
 // 4) Migrationen — zentraler Runner, explizit gegen DIESE App (nie die falsche
-// Instanz; die Layer-Skripte selbst sind idempotent).
+// Instanz; die Layer-Skripte selbst sind idempotent). Ein bestätigtes
+// entferntes Ziel reicht der Runner nur mit `--prod` weiter — er prüft dann
+// selbst noch einmal gegen das Manifest der App.
 console.log('\n— Migrationen —')
 {
-  const result = spawnSync(process.execPath, ['--experimental-strip-types', join(ROOT, 'scripts', 'migrate.mjs'), '--app', APP_NAME], { stdio: 'inherit', cwd: ROOT })
+  const prod = target && !target.local ? ['--prod'] : []
+  const result = spawnSync(process.execPath, ['--experimental-strip-types', join(ROOT, 'scripts', 'migrate.mjs'), '--app', APP_NAME, ...prod], { stdio: 'inherit', cwd: ROOT })
   if (result.status !== 0) {
     console.error(`✗ Migrationen fehlgeschlagen (Exit ${result.status ?? result.signal})`)
     process.exit(1)

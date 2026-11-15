@@ -40,6 +40,7 @@
  *   PLATFORM_PORT=3021 POOL_KEY=… node --env-file=apps/control/.env \
  *     packages/pages/scripts/verify-page-languages.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

@@ -36,6 +36,7 @@
  *
  * Erwartet BEIDE Dev-Server (platform 3006, control 3004) und Mailpit (8025).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 

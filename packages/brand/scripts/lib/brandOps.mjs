@@ -1,4 +1,5 @@
 import { Client, Query, TablesDB, Users } from 'node-appwrite'
+import { assertTarget } from '../../../../scripts/lib/target.mjs'
 
 /**
  * DAS GETEILTE STÜCK DER DREI BETREIBER-SKRIPTE (`brand:invite`,
@@ -37,6 +38,9 @@ export function readBrandOpsEnv() {
     console.error('    pnpm brand:invite <e-mail>   (liest apps/branding/.env)')
     process.exit(1)
   }
+  // Ziel-Prüfung (OPS-002): lokal durch, sonst PUKALANI_TARGET_CONFIRM=<Projekt-Id>.
+  // Hier und nicht in den drei Skripten — jedes holt seinen Client über diese Funktion.
+  assertTarget({ script: 'brand-ops', endpoint, projectId })
 
   const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey)
   return {

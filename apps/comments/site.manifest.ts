@@ -41,4 +41,9 @@ export default {
     // ueberlagern (Begruendung im Kopf von packages/domains/nuxt.config.ts).
     'domains',
   ],
+  // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der
+  // Migrations-Runner im Namen dieser App schreiben.
+  // Lokal zeigt die App auf das Spiegel-Projekt `account`; die Wegwerf-
+  // Instanz der CI (scripts/ci/appwrite-setup.mjs) legt das Projekt `comments` an.
+  appwriteProjects: ['account', 'comments'],
 } satisfies SiteManifest

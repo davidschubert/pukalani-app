@@ -19,6 +19,7 @@ import { request } from 'node:http'
 import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { Client, Account, Users, ID, AuthenticatorType } from 'node-appwrite'
+import { assertTarget } from '../../../scripts/lib/target.mjs'
 
 const PORT = Number(process.env.PORT || 3021)
 const HOST = process.env.HOST || 'localhost'
@@ -34,6 +35,8 @@ const env = Object.fromEntries(
 const ENDPOINT = env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const PROJECT = env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const API_KEY = env.NUXT_APPWRITE_KEY
+// Ziel-Prüfung (OPS-002) mit den Werten aus ENV_FILE — process.env ist hier leer.
+assertTarget({ script: 'verify-mfa', endpoint: ENDPOINT, projectId: PROJECT })
 
 let pass = 0
 let fail = 0

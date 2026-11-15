@@ -50,6 +50,7 @@
  * `--base=http://localhost:3016` tut dasselbe, wenn ein anderer Worktree den
  * Standard-Port belegt.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createHash, randomBytes } from 'node:crypto'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

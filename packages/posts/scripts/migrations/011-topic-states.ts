@@ -93,6 +93,7 @@
  *   pnpm migrate --app <app> --layer posts     # vor dem Deploy
  *   pnpm migrate --app <app> --layer posts     # noch einmal nach dem Deploy
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

@@ -20,6 +20,7 @@
  * Aufruf (Env wie beim Migrations-Runner):
  *   node --env-file=apps/comments/.env packages/posts/scripts/verify-trust-levels.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

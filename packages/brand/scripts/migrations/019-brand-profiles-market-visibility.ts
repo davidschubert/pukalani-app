@@ -53,6 +53,7 @@
  * laufen — ohne die Spalte lehnt Appwrite jedes Setzen des Opt-ins ab, und
  * das Schreiben ist an dieser Stelle NICHT fail-soft.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

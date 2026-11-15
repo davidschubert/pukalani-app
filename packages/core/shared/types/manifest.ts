@@ -28,6 +28,18 @@ export interface ProductManifest {
   requires?: string[]
   /** Hat der Layer eigene Appwrite-Migrationen (scripts/migrations/)? */
   hasMigrations: boolean
+  /**
+   * Stand des Schemas (OPS-008) — PFLICHT, sobald `hasMigrations` true ist.
+   * Daraus liest `/api/health`, ob die Datenbank zum ausgerollten Programm
+   * passt: je Layer EINE Probe am wirklichen Schema (gibt es die Tabelle bzw.
+   * Spalte?), kein Register und kein Zeiger. Ein Zeiger hätte gelogen, sobald
+   * eine Migration einzeln von Hand läuft — die Probe liest, was da ist.
+   *
+   * Neue Migration ⇒ `latest` nachziehen; legt sie eine Tabelle oder Spalte
+   * an, wandert auch `probe` dorthin. Der Wächter
+   * `packages/core/tests/schemaProbeManifests.test.ts` wird sonst rot.
+   */
+  schema?: ProductSchemaState
   /** Abrechnungs-Schlüssel fürs Control Plane (Default = key). */
   entitlementKey?: string
   /** Katalog-Texte (F7) — bewusst im Manifest, nicht in Layer-Locales:
@@ -45,6 +57,25 @@ export interface ProductManifest {
   apiPrefixes?: string[]
 }
 
+export interface ProductSchemaState {
+  /** Nummer der höchsten Migration des Layers (Dateipräfix, z. B. '026'). */
+  latest: string
+  /**
+   * Die jüngste Migration, deren Ergebnis sich am Schema ABLESEN lässt: eine
+   * Tabelle oder Spalte, die danach existiert und bleibt. Migrationen, die
+   * nur Indizes, Rechte, Ablagen oder Daten ändern, sind nicht ablesbar —
+   * dann bleibt die Probe auf der letzten ablesbaren stehen.
+   */
+  probe: {
+    /** Nummer der Migration, die das Geprüfte anlegt (≤ `latest`). */
+    migration: string
+    /** Tabellen-Id, die danach existieren muss. */
+    table: string
+    /** Spalten-Schlüssel in dieser Tabelle; ohne Angabe zählt nur die Tabelle. */
+    column?: string
+  }
+}
+
 export interface SiteManifest {
   /** Site-Kennung — App-Ordnername unter apps/ (ohne führenden Unterstrich). */
   siteId: string
@@ -53,4 +84,16 @@ export interface SiteManifest {
    * werden nicht gelistet.
    */
   products: string[]
+  /**
+   * Appwrite-Projekte, gegen die Skripte im Namen dieser App schreiben dürfen
+   * (OPS-002). Der Migrations-Runner vergleicht die Projekt-Id aus der
+   * Env-Datei damit und bricht bei Abweichung ab — ein vertauschter Dateiname
+   * legt so keine Tabellen mehr im falschen Projekt an (Vorfall 2026-08-31:
+   * 18 fremde Tabellen in `branding`). Leere Liste = die App hat keine eigene
+   * Appwrite-Instanz und wird nie migriert (help, marketing).
+   *
+   * Projekt-Ids sind öffentliche Kennungen (sie stehen in `NUXT_PUBLIC_*`).
+   * Schlüssel gehören NIE hierher.
+   */
+  appwriteProjects: string[]
 }

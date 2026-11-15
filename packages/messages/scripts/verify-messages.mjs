@@ -50,6 +50,7 @@
  *   MESSAGES_PORT=3021 node --env-file=apps/comments/.env \
  *     packages/messages/scripts/verify-messages.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'

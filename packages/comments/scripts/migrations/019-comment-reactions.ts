@@ -78,6 +78,7 @@
  * ZIEL-INSTANZEN: jede Instanz, deren App den comments-Layer traegt — heute
  * `platform` (Pool) und `comments`. NICHT `control` (kein comments-Layer).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Permission, Role, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

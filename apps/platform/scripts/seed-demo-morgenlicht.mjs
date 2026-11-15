@@ -47,6 +47,7 @@
  * admin/moderator-Labels, pages-Rows OHNE Permissions (server-only-Render),
  * Votes ohne Publikum. tenantId wird wie die Datentür gestempelt.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Permission, Query, Role, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

@@ -54,6 +54,7 @@
  * Selbst-aufräumend: Nutzer, Beitrag und Kommentar werden am Ende gelöscht
  * (auch im Fehlerfall).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { Client, Query, TablesDB, Users } from 'node-appwrite'
 

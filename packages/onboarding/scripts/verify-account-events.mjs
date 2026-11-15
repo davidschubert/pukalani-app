@@ -32,6 +32,7 @@
  */
 import { createHmac } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { isLocalEndpoint } from '../../../scripts/lib/target.mjs'
 
 const keep = process.argv.includes('--keep')
 const cleanOnly = process.argv.includes('--clean')
@@ -47,7 +48,8 @@ if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — mit --env-file=apps/platform/.env aufrufen.')
   process.exit(1)
 }
-if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//.test(endpoint)) {
+// Strenger als die geteilte Regel: KEINE Bestätigung öffnet hier Production.
+if (!isLocalEndpoint(endpoint)) {
   console.error(`✗ Nur lokal: ${endpoint} liegt nicht auf diesem Rechner.`)
   process.exit(1)
 }
