@@ -52,14 +52,24 @@ vi.stubGlobal('resolveAiKey', async () => 'k-test')
 const {
   AI_VISION_MAX_BYTES,
   AI_VISION_MAX_IMAGES,
-  aiVision,
+  aiVision: aiVisionUnbound,
   aiVisionImageUrl,
-  aiVisionJson,
-  buildAiVisionRequestBody,
+  aiVisionJson: aiVisionJsonUnbound,
+  buildAiVisionRequestBody: buildUnbound,
   getAiVisionConfig,
   getEffectiveAiVisionConfig,
   isAiVisionConfigured,
 } = await import('../server/utils/aiVision')
+
+/**
+ * SEIT P17 IST DER ORT PFLICHT des Aufrufers — ohne `only` geht nichts raus
+ * (geprüft in `aiTransportPolicy.test.ts`). Die Fälle hier prüfen anderes und
+ * rufen deshalb mit dem Pin, den die Aufrufer wirklich mitgeben.
+ */
+const ROUTE = { only: ['google-vertex/eu'] } as const
+const aiVision: typeof aiVisionUnbound = (e, i, p, o = {}) => aiVisionUnbound(e, i, p, { providerRouting: ROUTE, ...o })
+const aiVisionJson: typeof aiVisionJsonUnbound = (e, i, p, o = {}) => aiVisionJsonUnbound(e, i, p, { providerRouting: ROUTE, ...o })
+const buildAiVisionRequestBody: typeof buildUnbound = input => buildUnbound({ providerRouting: ROUTE, ...input })
 
 const event = {} as H3Event
 
@@ -122,11 +132,16 @@ describe('buildAiVisionRequestBody', () => {
     expect(content.map(part => part.type)).toEqual(['text', 'image_url'])
   })
 
-  it('ZDR: `data_collection: "deny"` steht auch OHNE providerRouting da', () => {
+  it('die Bindung steht fest: zdr, deny, kein Ausweichen — nur der Ort kommt vom Aufrufer', () => {
     const body = buildAiVisionRequestBody({
       model: 'm', prompt: 'p', images: [{ mime: 'image/png', bytes: png }],
     })
-    expect(body.provider).toEqual({ data_collection: 'deny' })
+    expect(body.provider).toEqual({
+      zdr: true,
+      only: ['google-vertex/eu'],
+      allow_fallbacks: false,
+      data_collection: 'deny',
+    })
   })
 
   it('GEGENPROBE: ein übergebenes `dataCollection: "allow"` wird überschrieben', () => {
@@ -134,7 +149,7 @@ describe('buildAiVisionRequestBody', () => {
       model: 'm',
       prompt: 'p',
       images: [{ mime: 'image/png', bytes: png }],
-      providerRouting: { dataCollection: 'allow', zdr: true, allowFallbacks: false, only: ['a'] },
+      providerRouting: { dataCollection: 'allow', zdr: false, allowFallbacks: true, only: ['a'] },
     })
     expect(body.provider).toEqual({
       zdr: true,
@@ -196,7 +211,12 @@ describe('aiVision', () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }]
     expect(url).toBe('https://openrouter.test/api/v1/chat/completions')
     expect(init.headers.Authorization).toBe('Bearer k-test')
-    expect(sentBody().provider).toEqual({ data_collection: 'deny' })
+    expect(sentBody().provider).toEqual({
+        zdr: true,
+        only: ['google-vertex/eu'],
+        allow_fallbacks: false,
+        data_collection: 'deny',
+      })
   })
 
   it('GATE AUS: ohne Modell 503 — und KEIN Netzaufruf', async () => {
@@ -257,7 +277,7 @@ describe('aiVision', () => {
     await expect(aiVision(event, [{ mime: 'image/png', bytes: png }], 'p', { label: 'test' }))
       .rejects.toMatchObject({ statusCode: 502 })
     spy.mockRestore()
-    expect(logged.join('\n')).toContain('400 (invalid_request_error/bad_request)')
+    expect(logged.join('\n')).toContain('status=400 tag=invalid_request_error/bad_request')
     expect(logged.join('\n')).not.toContain('GEHEIM')
     expect(logged.join('\n')).not.toContain('base64')
   })

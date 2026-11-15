@@ -1,6 +1,7 @@
 import { isBotCheckReason, type BotCheckReason } from '../../shared/turnstile'
 import { REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
 import { isPasswordPolicyReason, type PasswordPolicyReason } from '../../shared/passwordPolicy'
+import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../shared/aiProviderRouting'
 
 /**
  * Hat der Server eine FRISCHE Anmeldung verlangt (`requireRecentAuth`, RA1)?
@@ -31,6 +32,16 @@ export function isRateLimited(error: unknown): boolean {
   if (!shaped) return false
   if (shaped.data?.reason === 'rate_limited') return true
   return shaped.statusCode === 429 || shaped.status === 429
+}
+
+/**
+ * Kein KI-Modell unter der Datenschutz-Bindung erreichbar (P17)? Den Hinweis
+ * dazu zeigt der zentrale Fehler-Leser (`community-suspended-notice.client.ts`)
+ * — eine lokale „fehlgeschlagen"-Meldung schweigt in diesem Fall, sonst stünden
+ * zwei übereinander.
+ */
+export function isAiEndpointUnavailable(error: unknown): boolean {
+  return (error as { data?: { reason?: unknown } } | null)?.data?.reason === AI_ENDPOINT_UNAVAILABLE_CODE
 }
 
 /**

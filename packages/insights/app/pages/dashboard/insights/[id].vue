@@ -150,6 +150,9 @@ function isValidationError(error: unknown): boolean {
 }
 
 function fail(error: unknown): void {
+  // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
+  // Fehler-Leser (P17) — eine zweite Meldung hier wäre doppelt.
+  if (isAiEndpointUnavailable(error)) return
   const key = REASON_KEY[reasonOf(error)]
   const title = key
     ? t(key)

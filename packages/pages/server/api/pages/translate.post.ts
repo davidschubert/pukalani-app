@@ -17,12 +17,8 @@ import type { PageTranslateResponse } from '../../../shared/types/page'
  * Begründung des Kategorie-Vorschlags — dass 'ai' heute den höheren
  * Mindest-Plan trägt, ist eine KONFIGURATION der App und keine Garantie.
  *
- * ZDR, ANDERS ALS BEI DEN KATEGORIEN: dort geht eine Menü-Beschriftung an den
- * Anbieter, hier ein Rechtstext. Deshalb fail-closed — nur Anbieter mit
- * Zero-Data-Retention, kein Sammeln fürs Training, KEIN Ausweichen. Findet
- * sich keiner, ist „gerade nicht verfügbar" die richtige Antwort; ein stiller
- * Ausweich auf einen Anbieter ohne ZDR wäre eine Zusage, die wir dem Kunden
- * nicht halten.
+ * DATENSCHUTZ: keine Speicherung, kein Sammeln, kein Ausweichen und Rechenort
+ * Europa setzt seit P17 der Transport selbst (`core/shared/aiProviderRouting.ts`).
  *
  * DER DECKEL (12.000 Zeichen, `MAX_PAGE_TRANSLATE_BODY`) steht im Schema und
  * damit VOR dem Anbieter: was hier ankommt, ist schon bezahlt, sobald es
@@ -31,8 +27,6 @@ import type { PageTranslateResponse } from '../../../shared/types/page'
  * Die Drossel liegt in `core/server/middleware/05.rate-limit.ts`
  * (`pages:translate`, je IP, vor der Arbeit) — hier steht keine zweite.
  */
-const PROVIDER_ROUTING = { zdr: true, dataCollection: 'deny', allowFallbacks: false } as const
-
 function buildPrompt(title: string, body: string, locale: string): string {
   return [
     'Du übersetzt eine Inhaltsseite (z. B. Impressum, Nutzungsbedingungen, Datenschutzerklärung, Über-uns-Seite) einer Online-Community.',
@@ -93,7 +87,6 @@ export default defineEventHandler(async (event): Promise<PageTranslateResponse> 
     buildPrompt(body.title, body.body, body.locale),
     {
       model: aiConfig.model,
-      providerRouting: { ...PROVIDER_ROUTING },
       label: 'pages',
       /**
        * Ein Rechtstext ist lang. Der Vorgabewert schnitte die zweite Fassung

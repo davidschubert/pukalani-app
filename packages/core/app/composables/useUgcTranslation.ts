@@ -161,6 +161,9 @@ export function useUgcTranslation(source: UgcTranslationSource) {
       showing.value = true
     }
     catch (error) {
+      // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
+      // Fehler-Leser (P17) — eine zweite Meldung hier wäre doppelt.
+      if (isAiEndpointUnavailable(error)) return
       const status = (error as { status?: number, statusCode?: number } | null)?.status
         ?? (error as { statusCode?: number } | null)?.statusCode
       /**

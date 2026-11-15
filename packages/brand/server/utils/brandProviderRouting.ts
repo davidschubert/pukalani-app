@@ -1,3 +1,4 @@
+import { AI_TEXT_PROVIDER_ROUTING } from '../../../core/shared/aiProviderRouting'
 import { BRAND_MARK_DRAFTS_ENDPOINT } from '../../shared/brandMarkDrafts'
 
 /**
@@ -65,13 +66,11 @@ import { BRAND_MARK_DRAFTS_ENDPOINT } from '../../shared/brandMarkDrafts'
  * Der Typ bleibt bewusst ungenannt (`as const` statt `: AiProviderRouting`):
  * `AiProviderRouting` liegt im Core und wird per Auto-Import gefunden — ein
  * `import type` quer über die Layer-Grenze wäre der einzige in diesem Ordner.
+ *
+ * Die Werte wohnen seit P17 im Core (`core/shared/aiProviderRouting.ts`), weil
+ * seither JEDER Textaufruf sie vom Transport bekommt.
  */
-export const BRAND_PROVIDER_ROUTING = {
-  zdr: true,
-  dataCollection: 'deny',
-  allowFallbacks: false,
-  only: ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
-} as const
+export const BRAND_PROVIDER_ROUTING = AI_TEXT_PROVIDER_ROUTING
 
 /**
  * DERSELBE SCHUTZ, EIN ANDERER ORT — die Fassung für die GEMINI-Wege.

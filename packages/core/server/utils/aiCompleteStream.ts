@@ -1,15 +1,17 @@
 import type { H3Event } from 'h3'
 import type { AiCompleteOptions } from './aiComplete'
 import { buildAiRequestBody, getAiConfig, resolveAiKey } from './aiComplete'
+import { aiCallFailed, aiHttpFailure, aiLogLine, aiRunMs, assertAiRouteOnly, isAiTransportError, startAiRun } from './aiLog'
 
 /**
  * DIE STREAMING-VARIANTE DER KI-NAHT (Plan BRAND-WIZARD-PHASE-1 §6: „eine
  * STREAMING-Variante der KI-Naht — eigene SSE-Route, gleiche Gates/Drosseln/
  * Override-Kette, keine Gateway-Abhängigkeit").
  *
- * Sie ist POLICY-FREI wie `aiComplete()`: Gates (`pukalani.ai.enabled`,
- * `app_config.brandAiEnabled`), Drosseln und die Validierung der Antwort
- * gehören dem Konsumenten. Hier steht nur der Transport.
+ * Gates (`pukalani.ai.enabled`, `app_config.brandAiEnabled`), Drosseln und die
+ * Validierung der Antwort gehören dem Konsumenten. Wie `aiComplete()` trägt
+ * der Transport seit P17 die Datenschutz-Bindung selbst (über denselben
+ * Request-Bau) und loggt nur Kennungen (`aiLog.ts`).
  *
  * ── DERSELBE REQUEST-BAU, EINE ZEILE ANDERS ───────────────────────────────
  * Der Body kommt aus `buildAiRequestBody({ …, stream: true })` — NICHT aus
@@ -36,7 +38,9 @@ import { buildAiRequestBody, getAiConfig, resolveAiKey } from './aiComplete'
  * zum Fehler erhoben. Ein Keepalive, der den Lauf abbricht, wäre ein
  * selbstgebauter Ausfall. Ein Anbieter-FEHLER kommt dagegen als eigenes Frame
  * (`data: {"error": …}`) und wird als `error`-Ereignis gemeldet — das ist der
- * Unterschied zwischen „nichts drin" und „es ging schief".
+ * Unterschied zwischen „nichts drin" und „es ging schief". Das Ereignis trägt
+ * seit P17 nur die KENNUNG des Fehlers (`error.code`/`error.type`), nie seinen
+ * Text: der kann die Anfrage zurückzitieren.
  */
 
 const DEFAULT_STREAM_TIMEOUT_MS = 120_000
@@ -51,9 +55,9 @@ export interface AiStreamUsage {
 /** Was in EINEM SSE-Frame stehen kann. */
 export type AiStreamEvent
   = | { kind: 'delta', text: string }
-    | { kind: 'meta', model: string, provider: string }
+    | { kind: 'meta', model: string, provider: string, id?: string }
     | { kind: 'usage', usage: AiStreamUsage }
-    | { kind: 'error', message: string }
+    | { kind: 'error', tag: string }
     | { kind: 'done' }
 
 export interface AiSseDecodeResult {
@@ -80,13 +84,18 @@ function readUsage(raw: unknown): AiStreamUsage {
   }
 }
 
-function readErrorMessage(raw: unknown): string {
-  if (typeof raw === 'string') return raw
+const ERROR_TAG = /^[\w./:@-]{1,64}$/
+
+/** Die Kennung eines Fehler-Frames (`code`, sonst `type`) — nie `message`. */
+function readErrorTag(raw: unknown): string {
   if (raw && typeof raw === 'object') {
-    const message = (raw as { message?: unknown }).message
-    if (typeof message === 'string' && message) return message
+    for (const key of ['code', 'type'] as const) {
+      const value = (raw as Record<string, unknown>)[key]
+      const tag = typeof value === 'number' && Number.isInteger(value) ? String(value) : value
+      if (typeof tag === 'string' && ERROR_TAG.test(tag)) return tag
+    }
   }
-  return 'AI stream error'
+  return 'stream_error'
 }
 
 /**
@@ -119,6 +128,7 @@ export function decodeSseFrame(frame: string): AiStreamEvent[] {
 
   const record = parsed as {
     error?: unknown
+    id?: unknown
     model?: unknown
     provider?: unknown
     usage?: unknown
@@ -127,12 +137,13 @@ export function decodeSseFrame(frame: string): AiStreamEvent[] {
 
   // Ein Fehler-Frame beendet die Auswertung: was danach im selben Frame stünde,
   // wäre bestenfalls Rauschen.
-  if (record.error) return [{ kind: 'error', message: readErrorMessage(record.error) }]
+  if (record.error) return [{ kind: 'error', tag: readErrorTag(record.error) }]
 
   const events: AiStreamEvent[] = []
   const model = typeof record.model === 'string' ? record.model : ''
   const provider = typeof record.provider === 'string' ? record.provider : ''
-  if (model || provider) events.push({ kind: 'meta', model, provider })
+  const id = typeof record.id === 'string' ? record.id : ''
+  if (model || provider || id) events.push({ kind: 'meta', model, provider, ...(id ? { id } : {}) })
 
   const choice = record.choices?.[0]
   const content = choice?.delta?.content ?? choice?.message?.content
@@ -201,13 +212,16 @@ export async function aiCompleteStream(
   options: AiCompleteStreamOptions = {},
 ): Promise<AiCompleteStreamResult> {
   const defaults = getAiConfig()
-  const label = options.label ?? 'core'
   const model = options.model ?? defaults.model
   const baseUrl = (options.baseUrl ?? defaults.baseUrl).replace(/\/$/, '')
   const apiKey = options.apiKey || await resolveAiKey(event)
   if (!apiKey) {
     throw createError({ status: 503, statusText: 'AI not configured' })
   }
+  const ctx = startAiRun(options.label ?? 'core', model)
+  if (options.providerRouting?.only) assertAiRouteOnly(options.providerRouting.only, ctx)
+  let status = 0
+  let gen: string | undefined
 
   const controller = new AbortController()
   let timedOut = false
@@ -246,9 +260,10 @@ export async function aiCompleteStream(
       })),
     })
 
-    if (!res.ok || !res.body) {
-      const detail = res.body ? (await res.text()).slice(0, 300) : 'no body'
-      console.error(`[${label}] KI-Stream ${res.status}: ${detail}`)
+    status = res.status
+    if (!res.ok) await aiHttpFailure(res, ctx, 'KI-Stream-API-Fehler')
+    if (!res.body) {
+      console.error(aiLogLine(ctx.label, 'KI-Stream ohne Rumpf', { status, model, ms: aiRunMs(ctx), run: ctx.run }))
       throw createError({ status: 502, statusText: 'AI provider unavailable' })
     }
 
@@ -266,12 +281,21 @@ export async function aiCompleteStream(
         else if (item.kind === 'meta') {
           if (item.model) result.model = item.model
           if (item.provider) result.provider = item.provider
+          if (item.id) gen = item.id
         }
         else if (item.kind === 'usage') {
           result.usage = item.usage
         }
         else if (item.kind === 'error') {
-          console.error(`[${label}] KI-Stream-Fehlerframe: ${item.message.slice(0, 200)}`)
+          console.error(aiLogLine(ctx.label, 'KI-Stream-Fehlerframe', {
+            status,
+            tag: item.tag,
+            model,
+            ms: aiRunMs(ctx),
+            chars: result.text.length,
+            run: ctx.run,
+            gen,
+          }))
           throw createError({ status: 502, statusText: 'AI provider error' })
         }
         else {
@@ -293,16 +317,15 @@ export async function aiCompleteStream(
   catch (error) {
     if (isAbortError(error)) {
       if (timedOut) {
-        console.error(`[${label}] KI-Stream: Zeitüberschreitung`)
+        console.error(aiLogLine(ctx.label, 'KI-Stream Zeitüberschreitung', { model, ms: aiRunMs(ctx), chars: result.text.length, run: ctx.run, gen }))
         throw createError({ status: 502, statusText: 'AI stream timed out' })
       }
       // Von aussen abgebrochen — ein Ergebnis, kein Fehler (s. Kopf).
       result.aborted = true
       return result
     }
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    console.error(`[${label}] KI-Stream fehlgeschlagen:`, error)
-    throw createError({ status: 502, statusText: 'AI stream failed' })
+    if (isAiTransportError(error)) throw error
+    aiCallFailed(error, ctx, 'KI-Stream fehlgeschlagen', 'AI stream failed', { chars: result.text.length, gen })
   }
   finally {
     clearTimeout(timeout)

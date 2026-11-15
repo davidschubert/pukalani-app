@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
-import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
+import type { AiProviderRouting } from './aiComplete'
+import { aiCallFailed, aiHttpFailure, aiRoutingInvalidError, assertAiRouteOnly, startAiRun } from './aiLog'
 
 /**
  * BILDER ERZEUGEN — der Bild-Transport des Core (Konzept
@@ -42,9 +43,9 @@ import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
  * dazu, unter welcher Bedingung das erlaubt sein soll.
  *
  * ── DIE ZDR-KLEMME IST NICHT VERHANDELBAR ────────────────────────────────
- * Wörtlich wie in `aiVision.ts`: `provider.data_collection = 'deny'` setzt DER
- * TRANSPORT, steht ZULETZT im Objekt und lässt sich von aussen nur
- * VERSCHÄRFEN (`zdr`, `only`, `allowFallbacks`). Ein übergebenes
+ * Wörtlich wie in `aiVision.ts`: `zdr`, `data_collection: 'deny'` und
+ * `allow_fallbacks: false` setzt DER TRANSPORT (seit P17 alle drei), der Ort
+ * (`only`) kommt vom Aufrufer und ist Pflicht. Ein übergebenes
  * `dataCollection: 'allow'` wird überschrieben. Ein Schalter dafür wäre ein
  * Schalter, den irgendwann jemand umlegt, und ein Prompt, der die Marke,
  * die Farbwelt und das Briefing eines Kunden trägt, ist im Trainingsdatensatz
@@ -53,8 +54,9 @@ import { type AiProviderRouting, aiProviderErrorTag } from './aiComplete'
  * ── BILDER REISEN NIE INS LOG ─────────────────────────────────────────────
  * Weder der Prompt noch die Bytes noch ein `data:`-URI erscheinen in
  * `console.error` oder `logEvent`. Geloggt werden KENNZAHLEN: wie viele Bilder
- * und wie viele Bytes. Ein 2-MB-Base64-Block in einer Logzeile wäre ausserdem
- * allein durch seine Grösse ein Betriebsproblem.
+ * und wie viele Bytes, bei Fehlern nur Kennungen (`aiLog.ts`, P17). Ein
+ * 2-MB-Base64-Block in einer Logzeile wäre ausserdem allein durch seine
+ * Grösse ein Betriebsproblem.
  *
  * ── DIE ANTWORT WIRD GEKLEMMT, NICHT GEGLAUBT ────────────────────────────
  * Was zurückkommt, ist eine Zeichenkette von einem fremden Anbieter. Sie geht
@@ -118,9 +120,9 @@ export interface AiImageOptions {
   /** Log-Präfix des Aufrufers — Fehler bleiben zuordenbar. */
   label?: string
   /**
-   * ZUSÄTZLICHE Bedingungen (`zdr`, `only`, `allowFallbacks`). Sie
-   * VERSCHÄRFEN nur: `dataCollection` setzt der Transport selbst auf `'deny'`
-   * und lässt sich nicht überschreiben (s. Kopf).
+   * PFLICHT: der Ort (`only`, nicht leer). `zdr`, `dataCollection` und
+   * `allowFallbacks` setzt der Transport fest und lässt sich nicht lockern
+   * (P17); fehlt der Ort, geht nichts raus.
    */
   providerRouting?: AiProviderRouting
 }
@@ -148,16 +150,14 @@ export function buildAiImageRequestBody(
   input: AiImageRequestBodyInput,
 ): Record<string, unknown> {
   /**
-   * DIE KLEMME. `data_collection` steht ZULETZT im Objekt und wird deshalb
-   * auch dann gesetzt, wenn der Aufrufer etwas anderes übergeben hat — die
-   * Reihenfolge ist hier die Durchsetzung, nicht Kosmetik.
+   * DIE KLEMME (seit P17 vollständig): `zdr`, `allow_fallbacks: false` und
+   * `data_collection: 'deny'` setzt der Transport selbst, was der Aufrufer
+   * dazu übergibt, zählt nicht. Der ORT bleibt seine Sache — aber Pflicht:
+   * ohne `only` wird kein Body gebaut.
    */
-  const routing = input.providerRouting
-  const provider: Record<string, unknown> = {}
-  if (routing?.zdr !== undefined) provider.zdr = routing.zdr
-  if (routing?.only !== undefined) provider.only = [...routing.only]
-  if (routing?.allowFallbacks !== undefined) provider.allow_fallbacks = routing.allowFallbacks
-  provider.data_collection = 'deny'
+  const only = input.providerRouting?.only
+  if (!only || only.length === 0) throw aiRoutingInvalidError()
+  const provider = { zdr: true, only: [...only], allow_fallbacks: false, data_collection: 'deny' }
 
   return {
     model: input.model,
@@ -314,7 +314,6 @@ export async function aiImage(
    * 2026-09-09). Mit `options.model` fragt hier NIEMAND die Datenbank.
    */
   const defaults = options.model ? getAiImageConfig() : await getEffectiveAiImageConfig(event)
-  const label = options.label ?? 'core'
   const model = options.model ?? defaults.model
   const baseUrl = (options.baseUrl ?? defaults.baseUrl).replace(/\/$/, '')
   if (!model) {
@@ -327,6 +326,8 @@ export async function aiImage(
   if (!prompt.trim()) {
     throw createError({ status: 400, statusText: 'AI image needs a prompt' })
   }
+  const ctx = startAiRun(options.label ?? 'core', model)
+  assertAiRouteOnly(options.providerRouting?.only, ctx)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
@@ -347,29 +348,21 @@ export async function aiImage(
         providerRouting: options.providerRouting,
       })),
     })
-    if (!res.ok) {
-      // STATUS UND KENNUNG, NIE DER RUMPF: ein Fehler-Rumpf zitiert je nach
-      // Anbieter Teile der Anfrage zurück — hier also den Prompt, der
-      // Kundeninhalte trägt (`aiProviderErrorTag`, Audit-Befund 2026-09-09).
-      console.error(`[${label}] KI-Bild-API ${res.status}${aiProviderErrorTag(await res.text())}`)
-      throw createError({ status: 502, statusText: 'AI provider unavailable' })
-    }
+    // STATUS UND KENNUNG, NIE DER RUMPF: ein Fehler-Rumpf zitiert je nach
+    // Anbieter Teile der Anfrage zurück — hier also den Prompt, der
+    // Kundeninhalte trägt (Audit-Befund 2026-09-09, seit P17 `aiLog.ts`).
+    if (!res.ok) await aiHttpFailure(res, ctx, 'KI-Bild-API-Fehler')
     const payload = await res.json() as {
       choices?: { message?: { images?: unknown } }[]
     }
     const images = clampAiImages(payload.choices?.[0]?.message?.images)
     // Nur KENNZAHLEN — nie die Bytes, nie der Prompt (s. Kopf).
     const totalBytes = images.reduce((sum, image) => sum + image.bytes.length, 0)
-    logEvent('info', 'ai.image_run', { model, images: images.length, bytes: totalBytes })
+    logEvent('info', 'ai.image_run', { model, images: images.length, bytes: totalBytes, run: ctx.run })
     return images
   }
   catch (error) {
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
-    console.error(
-      `[${label}] KI-Bild fehlgeschlagen:`,
-      error instanceof Error ? error.message : 'unknown',
-    )
-    throw createError({ status: 502, statusText: 'AI image generation failed' })
+    return aiCallFailed(error, ctx, 'KI-Bild fehlgeschlagen', 'AI image generation failed')
   }
   finally {
     clearTimeout(timeout)

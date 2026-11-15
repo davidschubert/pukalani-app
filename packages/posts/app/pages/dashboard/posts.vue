@@ -71,7 +71,10 @@ async function requestAssist(post: CommunityPost) {
     const result = await $fetch<PostModerationAssist>(`/api/posts/${post.$id}/assist`, { method: 'POST' })
     assists.value.set(post.$id, result)
   }
-  catch {
+  catch (error) {
+    // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
+    // Fehler-Leser (P17) — eine zweite Meldung hier wäre doppelt.
+    if (isAiEndpointUnavailable(error)) return
     toast.add({ title: t('posts.moderation.assist.failed'), description: t('posts.moderation.assist.failedHint'), color: 'error' })
   }
   finally {

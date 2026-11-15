@@ -252,4 +252,22 @@ describe('Kurs übersetzen POST /api/courses/:slug/translate', () => {
     const run = await runRoute(courseTranslateRoute, { who: 'member', params: { slug: 'entwurf' }, body })
     expect(run.status).toBe(404)
   })
+
+  /**
+   * P17: findet der Vermittler unter der Datenschutz-Bindung kein Modell,
+   * wirft der Transport 503 `ai_endpoint_unavailable`. Die Route reicht ihn
+   * UNVERÄNDERT durch — der Grund ist es, was der zentrale Hinweis im Browser
+   * liest.
+   */
+  it('KI ohne Endpunkt unter der Bindung: 503 mit data.code kommt unverändert heraus', async () => {
+    const run = await runRoute(courseTranslateRoute, {
+      who: 'member',
+      params: { slug: 'wolken' },
+      body,
+      aiError: { status: 503, statusText: 'AI model unavailable under data routing', data: { code: 'ai_endpoint_unavailable' } },
+    })
+    expect(run.aiCalls).toBe(1)
+    expect(run.status).toBe(503)
+    expect(run.error?.data?.code).toBe('ai_endpoint_unavailable')
+  })
 })

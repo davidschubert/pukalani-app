@@ -438,7 +438,9 @@
     "communitySuspended": "This community is read-only right now",
     "communitySuspendedHint": "New contributions are paused for the moment. The people who run this community have been notified — it will continue once that is sorted out. Your text is still here.",
     "notAMember": "You are not a member of this community",
-    "notAMemberHint": "Only members can take part here, and this community welcomes new members by invitation. Your best bet is to ask the people who run it."
+    "notAMemberHint": "Only members can take part here, and this community welcomes new members by invitation. Your best bet is to ask the people who run it.",
+    "aiEndpointUnavailable": "AI is unavailable right now",
+    "aiEndpointUnavailableHint": "The configured AI model cannot be reached under our privacy rules (no data retention, processing in Europe) at the moment. Your text was not passed on to any AI model. Please try again later."
   },
   "demo": {
     "banner": "This is a demo community with sample content.",

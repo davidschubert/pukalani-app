@@ -1,3 +1,4 @@
+import { aiEndpointNoticeApplies } from '../../shared/aiProviderRouting'
 import { COMMUNITY_REMOVED_CODE } from '../../shared/communityRemoval'
 import { COMMUNITY_SUSPENDED_CODE } from '../../shared/communitySuspension'
 import { notAMemberNoticeApplies } from '../../shared/communityParticipation'
@@ -64,6 +65,13 @@ import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchError
  * still — die Grenze ist ohnehin der Server. Und solange der Zustand gesetzt
  * ist, schweigt auch der Hinweis `not_a_member`: für eine entfernte Person
  * ist er die falsche Erklärung.
+ *
+ * VIERTER GRUND (P17, 2026-11-15): `ai_endpoint_unavailable`. Jeder KI-Aufruf
+ * läuft unter der Datenschutz-Bindung (keine Speicherung, Rechenort Europa);
+ * hat das eingestellte Modell dort keinen Endpunkt, antwortet der Transport
+ * 503 statt auszuweichen. Ein Hinweis für ALLE KI-Knöpfe aller Layer — deren
+ * eigene „fehlgeschlagen"-Meldung schweigt in diesem Fall
+ * (`isAiEndpointUnavailable`). Regel: `aiEndpointNoticeApplies`.
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const appConfig = useAppConfig() as { pukalani?: { notices?: { notAMemberSelfExplained?: string[] } } }
@@ -104,6 +112,15 @@ export default defineNuxtPlugin((nuxtApp) => {
   target[FETCH_ERROR_HOOK] = (notice: FetchErrorNotice) => {
     if (notice.status === 403 && notice.reason === COMMUNITY_REMOVED_CODE) {
       leaveToRemovedNotice()
+      return
+    }
+    if (aiEndpointNoticeApplies(notice)) {
+      show({
+        id: 'ai-endpoint-unavailable',
+        title: 'error.aiEndpointUnavailable',
+        description: 'error.aiEndpointUnavailableHint',
+        icon: 'i-ph-shield-check',
+      })
       return
     }
     if (notice.status === 403 && notice.reason === COMMUNITY_SUSPENDED_CODE) {

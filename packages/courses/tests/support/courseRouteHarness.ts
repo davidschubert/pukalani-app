@@ -30,6 +30,8 @@ export interface Scenario {
   suspended?: boolean
   params?: Record<string, string>
   body?: unknown
+  /** Der KI-Transport wirft diesen Fehler (z. B. `ai_endpoint_unavailable`, P17). */
+  aiError?: Record<string, unknown>
 }
 
 type Row = Record<string, unknown> & { $id: string, $permissions: string[] }
@@ -158,6 +160,7 @@ export async function runRoute<T>(load: () => Promise<{ default: unknown }>, sce
   vi.stubGlobal('getEffectiveAiConfig', async () => ({ model: 'test-model' }))
   vi.stubGlobal('aiCompleteJson', async () => {
     aiCalls += 1
+    if (scenario.aiError) throw error(scenario.aiError)
     return { title: 'Übersetzt', body: 'Übersetzter Text' }
   })
   vi.stubGlobal('recordActivity', async () => {})

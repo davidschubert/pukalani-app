@@ -25,7 +25,7 @@ import {
  * der Verabredung eine Prüfung.
  */
 
-const TEXT_FIELDS = ['model', 'reviewModel', 'extractModel', 'reportModel', 'outsideViewModels'] as const
+const TEXT_FIELDS = ['model', 'reviewModel', 'extractModel', 'reportModel', 'outsideViewModels', 'ticketsAiModel'] as const
 
 describe('REQUIRED_ENDPOINT ⇔ brandProviderRouting.ts', () => {
   it('imageModel verlangt genau den Pin der Bild-Fassung', () => {
@@ -46,12 +46,11 @@ describe('REQUIRED_ENDPOINT ⇔ brandProviderRouting.ts', () => {
     for (const field of Object.keys(REQUIRED_ENDPOINT)) expect(known.has(field)).toBe(true)
   })
 
-  it('deckt jedes gepinnte Modell-Feld ab (ausser der Ticket-Triage ohne Routing)', () => {
-    // `ticketsAiModel` gibt bewusst kein `providerRouting` mit (Kopf des
-    // Daten-Moduls) — jedes ANDERE Feld braucht einen Eintrag, sonst ist es
-    // ungedeckt wie `imageModel` bis 2026-11-13.
-    const pinned = [...MODEL_FIELDS, ...MODEL_LIST_FIELDS].filter(field => field !== 'ticketsAiModel')
-    expect(Object.keys(REQUIRED_ENDPOINT).sort()).toEqual([...pinned].sort())
+  it('deckt JEDES Modell-Feld ab — seit P17 auch die Ticket-Triage', () => {
+    // Seit P17 bindet der Text-Transport selbst: jeder Textaufruf verlangt
+    // einen der EU-Endpunkte, also braucht jedes Feld einen Eintrag, sonst
+    // ist es ungedeckt wie `imageModel` bis 2026-11-13.
+    expect(Object.keys(REQUIRED_ENDPOINT).sort()).toEqual([...MODEL_FIELDS, ...MODEL_LIST_FIELDS].sort())
   })
 })
 

@@ -248,7 +248,10 @@ async function requestAssist(comment: ModeratedComment) {
     const result = await $fetch<ModerationAssist>(`/api/admin/comments/${comment.$id}/assist`, { method: 'POST' })
     assists.value.set(comment.$id, result)
   }
-  catch {
+  catch (error) {
+    // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
+    // Fehler-Leser (P17) — eine zweite Meldung hier wäre doppelt.
+    if (isAiEndpointUnavailable(error)) return
     toast.add({ title: t('admin.moderation.assist.failed'), description: t('comments.moderation.assistFailedHint'), color: 'error' })
   }
   finally {
