@@ -102,6 +102,10 @@ Reste nach `OPEN-ITEMS.md`. Ein Plan-Dokument ist nie eine To-do-Liste.
 
 ## Archiv — ausgeführt, nur noch Historie
 
+Erledigte Betriebs-Skripte (Appwrite-Upgrades) liegen unter
+[archiv/skripte/](archiv/skripte/README.md) — dort steht auch die Regel, wann
+ein Skript archiviert und wann es gelöscht wird.
+
 `archiv/` enthält 38 abgearbeitete Pläne (M1–M10, Phase 17, Themes-Vollausbau,
 Embed-Widget, Landingpage, SaaS-Roadmap, zuletzt das
 [Discussions-Konzept](archiv/DISCUSSIONS-KONZEPT.md) und den [Pool/Silo-Blueprint](archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md), …) und `archiv/audits/` die sechs

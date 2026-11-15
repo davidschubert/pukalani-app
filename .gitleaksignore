@@ -5,6 +5,8 @@
 # Jeder Eintrag ist ein geprüfter Test- oder Platzhalterwert (Stand 2026-11-13):
 # - packages/core/tests/mailUndeliverable.test.ts: öffentlicher Testvektor aus der Svix-Doku
 # - ops/appwrite-upgrade-2.7.1.sh: Beispiel-Nonce aus RFC 6455 im WebSocket-Handshake
+#   (die Datei liegt seit 2026-11-15 unter docs/archiv/skripte/; der Eintrag gilt
+#   für den Commit, der sie angelegt hat, und bleibt deshalb mit dem alten Pfad)
 # - packages/brand/scripts/verify-brand-share.mjs: Erkennungsmarken eines Beweisskripts
 # - packages/billing/tests/stripe-keys.test.ts: Stripe-Schlüssel-Attrappen im Unit-Test
 # - ops/realtime-watchdog.sh: fester Nonce im WebSocket-Handshake des Wächters

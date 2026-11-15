@@ -219,7 +219,7 @@ frisch installierten Worktree fahren; und Playwrights `webServer` läuft in die
 120-s-Grenze — Dev-Server vorher selbst starten (`PW_E2E=1 pnpm dev`, Worktree
 braucht den Shiki-Symlink).
 
-**Prod:** Skript [`ops/appwrite-upgrade-2.6.2.sh`](../../ops/appwrite-upgrade-2.6.2.sh)
+**Prod:** Skript [`appwrite-upgrade-2.6.2.sh`](../archiv/skripte/appwrite-upgrade-2.6.2.sh) (erledigt, seit 2026-11-15 im Archiv; lag unter `ops/`)
 (Aufruf im Kopf des Skripts: `scp` + `ssh -t … | tee ~/appwrite-upgrade-2.6.2.log`).
 Es prüft die Vorbedingungen (`.env` auf 2.6.1, Override auf der 2.6.1-Patchdatei,
 Trusted-Proxy-Eintrag), zieht Images und Patchdatei OHNE Downtime, dumpt,
