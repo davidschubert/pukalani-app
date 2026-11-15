@@ -339,6 +339,10 @@ export interface CommunityErasureResult {
   invitesAnonymized: number
   /** Gelöschte `invite_requests` (Adresse + Freitext = Personenbezug). */
   inviteRequestsDeleted: number
+  /** `invite_codes`, an denen die Adresse geleert wurde (`boundEmail`, und
+   *  aus `label` herausgenommen) — der Code selbst bleibt, siehe
+   *  `inviteCodeErasure`. */
+  inviteCodesAnonymized: number
   /** Klartext zu jeder zurückgehaltenen Zeile — gehört ins Log, nie in eine
    *  Browser-Antwort (es nennt fremde Communities). */
   retained: RetainedMembership[]
@@ -380,10 +384,117 @@ export interface InviteRequestExport {
   createdAt: string
 }
 
+/**
+ * Eine Einladung, die die Person SELBST verschickt (`invitedBy`) oder
+ * angenommen (`acceptedBy`) hat, wie die DSGVO-Auskunft sie zeigt.
+ *
+ * Bei VERSCHICKTEN Einladungen fehlt die Adresse der Eingeladenen bewusst: sie
+ * ist ein Datum über einen DRITTEN, und eine Auskunft an A ist keine Auskunft
+ * über B. Gemeldet wird nur, DASS eingeladen wurde, wann, mit welcher Rolle und
+ * in welche Community. Der Token-Hash reist nie mit.
+ *
+ * `lastChangedAt` statt eines Annahme-Zeitpunkts: die Tabelle hat dafür keine
+ * eigene Spalte, und `$updatedAt` ist nur „zuletzt geändert" — so heißt es
+ * auch, statt eine Genauigkeit vorzutäuschen.
+ */
+export interface CommunityInviteTraceExport {
+  communityId: string
+  communityName: string
+  role: CommunityRole
+  status: CommunityInviteStatus
+  createdAt: string
+  lastChangedAt: string
+}
+
+/**
+ * Ein Early-Access-Code, der an die Adresse der Person gebunden war, wie die
+ * DSGVO-Auskunft ihn zeigt. NIE der Code selbst und nie sein Hash — der
+ * Klartext existiert ohnehin nicht mehr, und der Hash ist ein Betriebsdatum.
+ */
+export interface InviteCodeExport {
+  boundEmail: string
+  label: string
+  status: string
+  createdAt: string
+  assignedAt: string | null
+  expiresAt: string
+  redeemed: boolean
+  redeemedAt: string | null
+}
+
+/**
+ * Eine Missbrauchsmeldung, die die Person unter ihrer Adresse abgegeben hat.
+ * Ohne `handledBy`/`note`: das ist die Arbeit des Betreibers an der Meldung,
+ * nicht ein Datum über die meldende Person.
+ */
+export interface AbuseReportExport {
+  host: string
+  category: string
+  url: string
+  message: string
+  status: string
+  createdAt: string
+}
+
 export interface CommunityUserDataExport {
   memberships: CommunityMembershipExport[]
   invites: CommunityInviteExport[]
   inviteRequests: InviteRequestExport[]
+  invitesSent: CommunityInviteTraceExport[]
+  invitesAccepted: CommunityInviteTraceExport[]
+  inviteCodes: InviteCodeExport[]
+  abuseReports: AbuseReportExport[]
+}
+
+/** Was die DSGVO-Löschung an einem `invite_codes`-Eintrag ändert. */
+export interface InviteCodePatch {
+  boundEmail?: string
+  label?: string
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Die Adresse aus einem Code-Eintrag nehmen (SEC-026, Davids Entscheidung
+ * „Die Kontolöschung leert auch die Adresse am Einladungscode").
+ *
+ * `assignCode` schreibt die Adresse an ZWEI Stellen: `boundEmail` und — bei
+ * einem frisch angelegten Code — das Etikett „Anfrage <adresse>". Beides wird
+ * leer bzw. ohne die Adresse; der Code SELBST bleibt, er ist ein Zähler im
+ * Vorrat des Betreibers (ausgegeben, eingelöst, abgelaufen). „Anfrage" ohne
+ * Adresse sagt weiter, woher der Code kam; ein Etikett, von dem nichts bleibt,
+ * wird '' — die Liste zeigt dafür ihr „ohne Etikett".
+ *
+ * Verglichen wird ohne Rücksicht auf Groß-/Kleinschreibung: die Anfrage-Route
+ * speichert kleingeschrieben, ein von Hand vergebenes Etikett kann anders
+ * aussehen.
+ *
+ * IDEMPOTENT: nach dem Patch passt nichts mehr, der zweite Lauf gibt `null`.
+ * Eine leere Adresse ergibt nie einen Treffer.
+ */
+export function inviteCodeErasure(
+  row: { boundEmail?: string | null, label?: string | null },
+  email: string,
+): InviteCodePatch | null {
+  const address = email.trim().toLowerCase()
+  if (!address) return null
+
+  const patch: InviteCodePatch = {}
+  if ((row.boundEmail ?? '').trim().toLowerCase() === address) patch.boundEmail = ''
+
+  const label = row.label ?? ''
+  if (label.toLowerCase().includes(address)) {
+    patch.label = label
+      .replace(new RegExp(escapeRegExp(address), 'gi'), '')
+      .replace(/[<>()[\]]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/[\s:,;–-]+$/, '')
+      .trim()
+  }
+
+  return Object.keys(patch).length > 0 ? patch : null
 }
 
 export interface InviteInput {

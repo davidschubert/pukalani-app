@@ -105,10 +105,11 @@ export async function communityDeleteUserData(event: H3Event, userId: string): P
   }
 
   // Einladungen und Early-Access-Anfragen zählen als gelöschte Zeilen — sie
-  // sind es. Gekappte Spuren in FREMDEN Einladungen zählen als anonymisiert:
-  // die Zeile bleibt, nur der Verweis auf das Konto fällt weg.
+  // sind es. Gekappte Spuren in FREMDEN Einladungen und geleerte Adressen an
+  // Early-Access-Codes zählen als anonymisiert: die Zeile bleibt, nur der
+  // Personenbezug fällt weg.
   return {
     deleted: result.deleted + result.invitesDeleted + result.inviteRequestsDeleted,
-    anonymized: result.anonymized + result.invitesAnonymized,
+    anonymized: result.anonymized + result.invitesAnonymized + result.inviteCodesAnonymized,
   }
 }

@@ -177,7 +177,8 @@
           "plan": "Plan",
           "state": "Zustand"
         }
-      }
+      },
+      "deleteNotice": "Hast du etwas gemeldet und dabei deine E-Mail-Adresse angegeben, bleibt sie bis zu 90 Tage nach der Meldung gespeichert und wird dann gelöscht."
     },
     "domain": {
       "navLabel": "Eigene Domain",

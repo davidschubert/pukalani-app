@@ -19,6 +19,8 @@ let tables: Record<string, Row[]>
 /** Fehler je Tabelle — oder je `tabelle:spalte` für eine einzelne Abfrage. */
 let errors: Record<string, unknown>
 let deleted: string[]
+let updates: { tableId: string, rowId: string, data: Record<string, unknown> }[]
+let queriesSeen: Record<string, string[][]>
 
 function equalFilters(queries: string[]): { attribute: string, values: unknown[] }[] {
   return queries
@@ -28,6 +30,7 @@ function equalFilters(queries: string[]): { attribute: string, values: unknown[]
 
 const tablesDB = {
   listRows: vi.fn(async ({ tableId, queries }: { tableId: string, queries: string[] }) => {
+    ;(queriesSeen[tableId] ??= []).push(queries)
     const filters = equalFilters(queries)
     const error = errors[tableId] ?? filters.map(f => errors[`${tableId}:${f.attribute}`]).find(Boolean)
     if (error) throw error
@@ -37,7 +40,12 @@ const tablesDB = {
   deleteRow: vi.fn(async ({ tableId, rowId }: { tableId: string, rowId: string }) => {
     deleted.push(`${tableId}/${rowId}`)
   }),
-  updateRow: vi.fn(async () => ({})),
+  updateRow: vi.fn(async ({ tableId, rowId, data }: { tableId: string, rowId: string, data: Record<string, unknown> }) => {
+    updates.push({ tableId, rowId, data })
+    const target = (tables[tableId] ?? []).find(entry => entry.$id === rowId)
+    if (target) Object.assign(target, data)
+    return {}
+  }),
 }
 
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'main' } }))
@@ -59,10 +67,19 @@ beforeEach(() => {
     activities: [row('a1', { actorId: 'u1' })],
     community_handles: [row('h1', { userId: 'u1' })],
     account_handles: [row('ah1', { userId: 'u1' })],
-    audit_logs: [],
+    audit_logs: [
+      row('l1', { actorId: 'u1', actorName: 'Ada', action: 'post.deleted', targetId: 'p1', targetType: 'post', targetName: 'P', metadata: '', ip: '10.0.0.1' }),
+      row('l2', { actorId: 'op9', actorName: 'Operator', action: 'user.role_changed', targetId: 'u1', targetType: 'user', targetName: 'Ada', metadata: '', ip: '10.9.9.9' }),
+    ],
+    instance_secrets: [
+      row('openrouter', { updatedBy: 'u1', value: 'SECRET-VALUE-1' }),
+      row('resend', { updatedBy: 'op9', value: 'SECRET-VALUE-2' }),
+    ],
   }
   errors = {}
   deleted = []
+  updates = []
+  queriesSeen = {}
 })
 
 describe('systemDeleteUserData', () => {
@@ -100,7 +117,68 @@ describe('systemDeleteUserData', () => {
   })
 })
 
+describe('systemDeleteUserData — instance_secrets.updatedBy (SEC-026)', () => {
+  it('leert updatedBy der Person, die Zeile und fremde Einträge bleiben', async () => {
+    await systemDeleteUserData(event, 'u1')
+    expect(updates.filter(u => u.tableId === 'instance_secrets')).toEqual([
+      { tableId: 'instance_secrets', rowId: 'openrouter', data: { updatedBy: '' } },
+    ])
+    expect(tables.instance_secrets!.map(r => r.updatedBy)).toEqual(['', 'op9'])
+    expect(deleted.some(d => d.startsWith('instance_secrets/'))).toBe(false)
+  })
+
+  it('liest nur $id und updatedBy — nie den Wert', async () => {
+    await systemDeleteUserData(event, 'u1')
+    for (const queries of queriesSeen.instance_secrets ?? []) {
+      const select = queries.map(q => JSON.parse(q) as { method: string, values?: unknown[] }).find(q => q.method === 'select')
+      expect(select?.values).toEqual(['$id', 'updatedBy'])
+    }
+    expect(queriesSeen.instance_secrets?.length).toBeGreaterThan(0)
+  })
+
+  it('zweiter Lauf schreibt an instance_secrets nichts mehr', async () => {
+    await systemDeleteUserData(event, 'u1')
+    updates = []
+    await systemDeleteUserData(event, 'u1')
+    expect(updates.filter(u => u.tableId === 'instance_secrets')).toEqual([])
+  })
+
+  it('fehlende Tabelle ⇒ Erfolg; ein 500 ⇒ Abbruch', async () => {
+    errors.instance_secrets = tableMissing()
+    await expect(systemDeleteUserData(event, 'u1')).resolves.toBeDefined()
+    errors.instance_secrets = serverError()
+    await expect(systemDeleteUserData(event, 'u1')).rejects.toThrow('Server Error')
+  })
+})
+
 describe('systemExportUserData', () => {
+  it('enthält das Audit-Protokoll: als Handelnde mit IP, als Ziel ohne Daten des Betreibers', async () => {
+    const result = await systemExportUserData(event, 'u1')
+    expect(result.auditLog).toEqual({
+      asActor: [{ action: 'post.deleted', targetType: 'post', ip: '10.0.0.1', createdAt: '2026-11-01T00:00:00.000Z' }],
+      asTarget: [{ action: 'user.role_changed', createdAt: '2026-11-01T00:00:00.000Z' }],
+    })
+    expect(JSON.stringify(result)).not.toContain('10.9.9.9')
+    expect(JSON.stringify(result)).not.toContain('Operator')
+  })
+
+  it('enthält actorName und metadata der eigenen Aktivitäten', async () => {
+    tables.activities = [row('a1', { actorId: 'u1', actorName: 'Ada', type: 'post.created', objectType: 'post', objectId: 'p1', link: '/p/1', metadata: '{"snippet":"Hallo"}' })]
+    const result = await systemExportUserData(event, 'u1')
+    expect(result.activities[0]).toMatchObject({ actorName: 'Ada', metadata: '{"snippet":"Hallo"}' })
+  })
+
+  it('nennt gesetzte Instanz-Schlüssel nur als Zahl, nie den Wert', async () => {
+    const result = await systemExportUserData(event, 'u1')
+    expect(result.instanceSecretsUpdated).toBe(1)
+    expect(JSON.stringify(result)).not.toContain('SECRET-VALUE')
+  })
+
+  it('ein 500 auf audit_logs ⇒ der Export bricht ab', async () => {
+    errors.audit_logs = serverError()
+    await expect(systemExportUserData(event, 'u1')).rejects.toThrow('Server Error')
+  })
+
   it('ein 500 auf activities ⇒ der Export bricht ab', async () => {
     errors.activities = serverError()
     await expect(systemExportUserData(event, 'u1')).rejects.toThrow('Server Error')
