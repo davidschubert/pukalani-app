@@ -138,11 +138,13 @@ export default defineAppConfig({
        * Bis F37 verlangte diese Seite `system.manage` — ein Instanz-Label,
        * das kein Kunde je trägt.
        *
-       * `allowedOrigins` sind ZUSÄTZLICHE, statische Origins zur Registry:
-       * localhost fürs Entwickeln und für die Beweis-Skripte. In Produktion
-       * praktisch wirkungslos (ein „Angreifer" bräuchte die Maschine des
-       * Nutzers); die echten Einbetter jeder Community kommen aus `embed_sites`
-       * und gelten nur für sie.
+       * `allowedOrigins` sind ZUSÄTZLICHE, statische Origins zur Registry —
+       * diese App braucht keine: die echten Einbetter jeder Community kommen
+       * aus `embed_sites` und gelten nur für sie. Bis 2026-11-15 standen hier
+       * `http://localhost:*` und `http://127.0.0.1:*` fürs Entwickeln, und der
+       * Produktions-Build lieferte sie mit aus (BE-023). Lokale Adressen setzt
+       * jetzt der comments-Layer selbst, NUR im Dev-Server oder mit
+       * `NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true` (auf keinem Server setzen).
        *
        * `guests` bleibt BEWUSST AUS (anders als im Silo) — aber seit F18
        * (2026-08-02) aus einem anderen Grund als bisher. Der alte lautete:
@@ -157,7 +159,7 @@ export default defineAppConfig({
        */
       embed: {
         enabled: true,
-        allowedOrigins: ['http://localhost:*', 'http://127.0.0.1:*'],
+        allowedOrigins: [],
       },
     },
     // Mehr-Host-Betrieb: canonical/hreflang/og:url müssen den Host tragen, der

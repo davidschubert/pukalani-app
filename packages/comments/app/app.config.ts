@@ -168,7 +168,10 @@ export default defineAppConfig({
         enabled: false,
         /** Einbetter-Origins für frame-ancestors (zusätzlich zu 'self').
          *  Leer = nur 'self' (kein Fremd-Framing) · ['*'] = jede Seite darf
-         *  einbetten (bewusste Betreiber-Entscheidung, Embed-Plan E7). */
+         *  einbetten (bewusste Betreiber-Entscheidung, Embed-Plan E7).
+         *  Lokale Adressen gehören NICHT hierher — die setzt der Layer selbst,
+         *  nur im Dev-Server oder per NUXT_COMMENTS_EMBED_LOCAL_ORIGINS
+         *  (BE-023, server/utils/embedStaticOrigins.ts). */
         allowedOrigins: [] as string[],
         /** Gast-Kommentare im Widget (Embed-Plan E4, Task 20): Kommentieren
          *  ohne Account (Name+E-Mail, keine Verifikation). Default aus — die

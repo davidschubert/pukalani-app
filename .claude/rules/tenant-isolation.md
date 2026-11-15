@@ -304,4 +304,6 @@ paths:
   Tenant-Gate an UND kein Kontroll-Host ⇒ Mandant), API via `useTenant(event)`.
   Die Chrome-Registry (`pukalani.chrome.changelogLink/whatsNew: false`) versteckt
   nur — jede neue Betreiber-Seite braucht BEIDE Sperren, Seite und Route.
-  Kontroll-Hosts und Silo-Apps (comments) bleiben unberührt.
+  Kontroll-Hosts und Silo-Apps (comments) bleiben unberührt. Dieselbe Sperre
+  trägt seit 2026-11-15 (BE-023) die App-Route `/api/stats` der Test-App: sie
+  zählt das ganze Projekt und antwortet mit Mandant 404.

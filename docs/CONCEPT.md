@@ -171,7 +171,7 @@ apps/       ← Vollständige, deploybare Nuxt-Applikationen
 | `packages/brand` | ✅ Aktiv | Brand-Wizard „George" (KI-Markenberater): geführte Brand Foundation — Purpose, Werte, Archetyp, Stimme, Manifest. Sieben `brand_*`-Tabellen, server-only (Permissions `[]`) und nur auf der `branding`-Instanz (branding.supply) — Plan: docs/plans/BRAND-WIZARD-PHASE-1.md |
 | `packages/runner` | ✅ Aktiv | AI-Runner-Board (nur Betreiber-Konsole): führt Tickets als Claude-Code-Läufe auf einem registrierten Rechner aus — Board-UI + Naht zum Daemon `tools/ai-runner`, Tables `runners`/`runs`/`run_events`, Capability `runner.manage` (nur admin) — Konzept: docs/plans/AI-RUNNER.md |
 | `packages/control` | ✅ Aktiv | **Control Plane** (nur auf der Betreiber-Site `admin.pukalani.app`): Register der Communities (`communities`, `community_members`, `community_invites`), Provisionierung, Health-Übersicht, Entitlements, Stripe-Webhook. Migrationen `control-NNN` |
-| `packages/appwrite-functions` | 🔜 Zukunft | Appwrite Functions (Webhooks, CRON, Events) — `functions/changelog-draft` existiert bereits standalone |
+| `packages/appwrite-functions` | 🔜 Zukunft | Appwrite Functions (Webhooks, CRON, Events) — heute gibt es keine: die einzige (`functions/changelog-draft`) ist seit 2026-11-15 entfernt |
 
 > v2.1: `packages/types`, `packages/utils` und `packages/config` gestrichen — zehn
 > Phasen haben sie nicht gebraucht (`shared/types` im Core + Root-ESLint-Config decken

@@ -141,7 +141,7 @@ mariadb-Container). Das umkopierte Builds-Volume stört den Rückweg nicht.
 | Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
 | --- | --- | --- | --- | --- | --- |
 | dev (OrbStack) | 2026-09-08 ~03:30 | 10,8 MB, 669 Tabellen | „Migration completed" | — | alle drei Fallen hier entdeckt |
-| prod (`api.pukalani.app`) | 2026-09-08 05:00 | 22,2 MB | „Migration completed" (providerBranches/-Paths-Skips wie bei 1.9.6) | Skript-Start bis Version-Check unter 12 min | Skript `~/appwrite-upgrade-2.0.sh` auf appwrite-prod, Log daneben |
+| prod (`api.pukalani.app`) | 2026-09-08 05:00 | 22,2 MB | „Migration completed" (providerBranches/-Paths-Skips wie bei 1.9.6) | Skript-Start bis Version-Check unter 12 min | Skript `~/appwrite-upgrade-2.0.sh` auf appwrite-prod (nie im Repo; am 2026-11-15 dort gelöscht, die Schritte stehen unter „Ablauf“), Log `~/appwrite-upgrade-2.0.log` liegt weiter dort |
 
 Nachweise prod (2026-09-08): `health/version` 2.0.0 · `health`, `health/db`,
 `health/cache`, `health/storage` je Projekt (account, admin, portfolio,

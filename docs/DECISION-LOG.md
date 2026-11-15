@@ -42,6 +42,55 @@ drei Fristen für Einträge ohne Konto sind entschieden, aber noch nicht gebaut
 
 **Wieder prüfen:** wenn das Pukalani-Konto (PK1) Export und Löschung an eine
 zentrale Stelle zieht — dann gehören die Fristen dorthin.
+## 2026-11-15 — Aufräumen (P26): was gelöscht wird, was ins Archiv zieht, und was nie in die app.config gehört
+
+**Anlass:** Gesamtaudit 2026-11 (Paket P26, Findings OPS-005, BE-023, BE-026,
+BE-027). Im Repo und auf den Servern lagen Versuche, erledigte Skripte und
+eine Function, die niemand mehr ausführte — jede davon wurde bei jeder Suche
+mitgelesen und für lebendig gehalten.
+
+**Davids Entscheidungen:**
+- **`spikes/` löschen, den automatischen Changelog-Entwurf entfernen,
+  `apps/photos` bleibt und wird weitergebaut** (2026-11-12, im Review des
+  Audits).
+- **Das Hand-Werkzeug `pnpm changelog:draft` geht mit** (2026-11-15, per
+  Klick). Verworfen: behalten und so reparieren, dass es einen Startpunkt
+  verlangt. Es wurde zuletzt im Juli benutzt; die Einträge seit CL1 entstanden
+  aus den Hilfe-Seiten. Einträge für „Was ist neu" entstehen von Hand im
+  Dashboard.
+- **Lokale Adressen dürfen auch in der Plattform nicht mehr einbetten**
+  (2026-11-15, per Klick). Verworfen: nur die Test-App ändern.
+- **Auf den Servern nachsehen und löschen, was alt ist** (2026-11-15, zwei
+  Klicks): die überzähligen Dateien in den `ops`-Ordnern des App-Servers,
+  fünf alte Upgrade-Skripte auf dem Datenbank-Server, der abgeschaltete
+  Webhook bei GitHub, der DNS-Eintrag `changelog.pukalani.app`.
+
+**Entschieden beim Bauen (nicht von David):**
+- **Archiv oder löschen — eine Regel für erledigte Skripte.** Klein und
+  Vorlage fürs nächste Mal (Appwrite-Upgrades) ⇒ `docs/archiv/skripte/`. Groß,
+  mit Schreibzugriff auf Production und ohne geplanten zweiten Lauf
+  (Umzugs-Werkzeuge) ⇒ löschen samt Tests; das Runbook nennt den letzten
+  Commit. Verworfen: alles ins Archiv — das F3-Werkzeug musste bei jeder neuen
+  `communities`-Spalte mitgepflegt werden, und ein Archiv mit lauffähigen
+  Werkzeugen ist keins.
+- **Die Wache des Start-Skripts schützt vor dem falschen Ziel, nicht vor
+  Migrationen.** Migrationen sind idempotent und laufen auf Production ohnehin
+  über `pnpm migrate`. Was ein Bootstrap gegen die falsche `.env` anrichtet,
+  sind Buckets und die Web-Plattform `localhost` in einem fremden Projekt.
+  Darum steht die Prüfung vor dem ersten Schreibzugriff, und „kann nicht
+  prüfen" ist ein Abbruch.
+- **Lokale Einbettung hängt am Entwicklungs-Server, nicht an einer Liste.**
+  `import.meta.dev` ist im Build falsch; die Variable
+  `NUXT_COMMENTS_EMBED_LOCAL_ORIGINS` ist der Ausweg für einen lokalen
+  Produktions-Build und wird auf keinem Server gesetzt.
+- **Der Deploy räumt den Server nicht selbst auf.** Er kopiert nur noch zwei
+  Dateien, löscht aber nichts (`rsync` ohne `--delete`); das einmalige
+  Entfernen der alten Kopien lief von Hand nach Davids Ja.
+
+**Wieder prüfen:** beim nächsten Appwrite-Upgrade, ob die Regel „Kopie aus dem
+Archiv, nach dem Lauf zurück ins Archiv" trägt.
+
+---
 
 ## 2026-11-12 — Alle vier Prüfungen halten das Ausliefern auf; kein Release-Automat mehr (P07)
 
@@ -257,7 +306,7 @@ Prod stand seit 08:59 UTC desselben Tages auf 2.6.1 — das Release hat uns um f
 **Entscheidung (Davids Auftrag „prüfen und installieren"):** 2.6.2 kommt auf dev, CI und prod, in
 dieser Reihenfolge wie immer; kein Schema, also ein kleines Fenster (Container-Neustart, keine
 Migration). Aus der Cloud-Sitzung sind nur CI, Skript und Runbook erreichbar (kein ssh, kein Netz zu
-`api.pukalani.app`) — prod und dev laufen von Davids Terminal: `ops/appwrite-upgrade-2.6.2.sh`, Runbook
+`api.pukalani.app`) — prod und dev laufen von Davids Terminal: `docs/archiv/skripte/appwrite-upgrade-2.6.2.sh` (damals unter `ops/`), Runbook
 `APPWRITE-2-6-UPGRADE.md` Abschnitt „2.6.1 → 2.6.2".
 
 **Was gegen den Code geprüft ist (2026-10-27):** Key-Anlage nur noch per Console-Session oder Key mit
@@ -270,7 +319,7 @@ byte-gleich, der KeepAlive-Patch (Zeile 367) bleibt Pflicht und wird trotzdem je
 gezogen.
 
 **Ausgeführt (2026-10-27, Davids Auftrag „erst dev, dann prod"):** dev 20:51–20:56 UTC, prod
-21:09–21:12 UTC über `ops/appwrite-upgrade-2.6.2.sh` per ssh — Werkzeug-Aufruf bis Beweise 81 s, davon
+21:09–21:12 UTC über `docs/archiv/skripte/appwrite-upgrade-2.6.2.sh` (damals unter `ops/`) per ssh — Werkzeug-Aufruf bis Beweise 81 s, davon
 `migrate` 19,6 s (V25 läuft idempotent erneut, 253 „already exists", 0 Fehler). Alle Beweise im Runbook
 („Durchläufe"); offen nur Davids eigene OTP-Anmeldung als Mail-Beweis. Zwei Beweis-Zeilen des Skripts
 waren falsch und sind korrigiert: `apk info -v PAKET` druckt die Beschreibung (grep über `apk info -v`),

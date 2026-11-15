@@ -43,6 +43,20 @@ function scrollToDemo() {
   demo.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+// /api/stats antwortet auf einem Mandanten-Host 404 (BE-023: Zahlen des
+// ganzen Projekts gehören nicht in eine Community). useFetch wirft dabei
+// nicht, `stats` bleibt null — dann fallen die zwei Projekt-Zahlen aus der
+// Box, statt als „0" etwas Falsches zu behaupten; „online" bleibt.
+const statItems = computed(() => [
+  ...(stats.value
+    ? [
+        { label: t('home.stats.comments'), value: stats.value.comments },
+        { label: t('home.stats.members'), value: stats.value.members },
+      ]
+    : []),
+  { label: t('home.stats.online'), value: online.value },
+])
+
 const fmt = (n: number | undefined) => (n ?? 0).toLocaleString()
 </script>
 
@@ -87,13 +101,9 @@ const fmt = (n: number | undefined) => (n ?? 0).toLocaleString()
     </section>
 
     <!-- Live-Statistik -->
-    <section class="grid grid-cols-3 gap-4">
+    <section class="grid gap-4" :class="statItems.length === 3 ? 'grid-cols-3' : 'grid-cols-1'">
       <div
-        v-for="item in [
-          { label: t('home.stats.comments'), value: stats?.comments },
-          { label: t('home.stats.members'), value: stats?.members },
-          { label: t('home.stats.online'), value: online },
-        ]"
+        v-for="item in statItems"
         :key="item.label"
         class="rounded-lg bg-elevated p-4 text-center"
       >

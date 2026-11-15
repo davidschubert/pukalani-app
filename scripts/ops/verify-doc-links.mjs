@@ -93,6 +93,11 @@ const PROTOCOL = [
   /^README\.md$/,
   /^CHANGELOG\.md$/,
   /^docs\/plans\//,
+  // Erledigte Umzugs-Runbooks, deren Werkzeug seit 2026-11-15 gelöscht ist
+  // (OPS-005): ihre Befehle und Pfade sind das Protokoll des Laufs. Neue
+  // Runbooks gehören NICHT hierher — nur solche, deren Umzug gelaufen ist.
+  /^docs\/runbooks\/F3-CUTOVER\.md$/,
+  /^docs\/runbooks\/ADMIN-PROJEKT-CUTOVER\.md$/,
 ]
 const isProtocol = file => PROTOCOL.some(pattern => pattern.test(file))
 

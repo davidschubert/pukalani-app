@@ -106,8 +106,8 @@ const alsoAllowed = (allowed = []) => ['core', 'system', ...allowed]
  * Verzeichnis der Quelldatei) und liest den Ziel-Layer aus dem Ergebnis. Damit
  * ist der Selbst-Import eines Layers automatisch erlaubt (Quelle und Ziel
  * ergeben denselben Ordner), egal wie tief er verschachtelt ist, und Importe
- * aus dem Repo-Wurzelwerkzeug (`scripts/migrations-lib/indexRetry.mts`,
- * `functions/**`) fallen gar nicht erst in den Geltungsbereich.
+ * aus dem Repo-Wurzelwerkzeug (`scripts/migrations-lib/indexRetry.mts`)
+ * fallen gar nicht erst in den Geltungsbereich.
  *
  * `allow` = die Ziel-Layer, die dieser Topf kennen darf (Gegenstück zu
  * `otherLayers`). `allowTypeFrom` = Layer, aus denen nur `import type` erlaubt

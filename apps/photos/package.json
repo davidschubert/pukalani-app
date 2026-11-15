@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "nuxi preview",
     "typecheck": "nuxi typecheck",
-    "bootstrap": "node --experimental-strip-types --env-file=.env scripts/bootstrap.ts"
+    "bootstrap": "node --env-file=.env ../../scripts/bootstrap.mjs --app photos"
   },
   "dependencies": {
     "@iconify-json/circle-flags": "catalog:",

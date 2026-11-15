@@ -1,5 +1,6 @@
 import { checkEmbedHost } from '../../../shared/embedOrigins'
 import { listEmbedSites } from '../../utils/embedSites'
+import { embedStaticOrigins } from '../../utils/embedStaticOrigins'
 
 /**
  * E3: Best-effort-Registry-Check für die /embed-Seite (SSR-intern aufgerufen).
@@ -20,5 +21,5 @@ export default defineEventHandler(async (event): Promise<{ verdict: string }> =>
   const url = typeof query.url === 'string' ? query.url : undefined
   const targetType = String(query.targetType ?? '')
   const sites = await listEmbedSites(event).catch(() => [])
-  return { verdict: checkEmbedHost(embed.allowedOrigins ?? [], sites, url, targetType) }
+  return { verdict: checkEmbedHost(embedStaticOrigins(event, embed.allowedOrigins), sites, url, targetType) }
 })

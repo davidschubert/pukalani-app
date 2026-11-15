@@ -9,7 +9,8 @@
  * Leserechte am Bucket bleiben erlaubt (z. B. `read("any")` für Schriften).
  *
  * Geprüft wird jede Bucket-Definition in `packages/<layer>/scripts/migrations/
- * *.ts` und `apps/<app>/scripts/bootstrap.ts`. Eine Bucket-Definition ist ein
+ * *.ts` und im EINEN Bootstrap-Skript `scripts/bootstrap.mjs` (seit BE-026,
+ * 2026-11-15; vorher je App eine Kopie unter `apps/<app>/scripts/`). Eine Bucket-Definition ist ein
  * Objekt-Literal mit dem Schlüssel `fileSecurity` (Tabellen tragen
  * `rowSecurity`). Ihr `permissions`-Feld muss als Array-Literal lesbar sein und
  * darf kein `create(`/`update(`/`delete(`/`write(` enthalten — weder als
@@ -35,24 +36,25 @@ const ALLOWED = []
 
 function listFiles() {
   const files = []
-  for (const group of ['packages', 'apps']) {
-    const base = join(ROOT, group)
-    if (!existsSync(base)) continue
-    for (const entry of readdirSync(base, { withFileTypes: true })) {
+  const packages = join(ROOT, 'packages')
+  if (existsSync(packages)) {
+    for (const entry of readdirSync(packages, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue
-      if (group === 'packages') {
-        const dir = join(base, entry.name, 'scripts', 'migrations')
-        if (!existsSync(dir)) continue
-        for (const name of readdirSync(dir)) {
-          if (name.endsWith('.ts')) files.push(join(dir, name))
-        }
-      }
-      else {
-        const file = join(base, entry.name, 'scripts', 'bootstrap.ts')
-        if (existsSync(file)) files.push(file)
+      const dir = join(packages, entry.name, 'scripts', 'migrations')
+      if (!existsSync(dir)) continue
+      for (const name of readdirSync(dir)) {
+        if (name.endsWith('.ts')) files.push(join(dir, name))
       }
     }
   }
+  // Das Bootstrap-Skript MUSS da sein: fehlte es still, sähe der Wächter
+  // seine Buckets nie und wäre trotzdem grün.
+  const bootstrap = join(ROOT, 'scripts', 'bootstrap.mjs')
+  if (!existsSync(bootstrap)) {
+    console.error('✖ scripts/bootstrap.mjs fehlt — der Wächter kann dessen Buckets nicht prüfen.')
+    process.exit(1)
+  }
+  files.push(bootstrap)
   return files.sort()
 }
 
@@ -195,6 +197,8 @@ function checkPermissions(perm) {
 
 const findings = []
 let checked = 0
+/** @type {Map<string, number>} */
+const perFile = new Map()
 
 for (const file of listFiles()) {
   const rel = relative(ROOT, file)
@@ -208,6 +212,7 @@ for (const file of listFiles()) {
     if (!block || seen.has(block.start)) continue
     seen.add(block.start)
     checked++
+    perFile.set(rel, (perFile.get(rel) ?? 0) + 1)
 
     const bucket = literalString(valueOf(code, noComments, block, 'bucketId'))
       ?? literalString(valueOf(code, noComments, block, 'name'))
@@ -238,4 +243,11 @@ vom Server mit dem Admin-Client nach seinen Prüfungen.`)
   process.exit(1)
 }
 
-console.log(`✔ Ablagen-Rechte: ${checked} Bucket-Definitionen geprüft, kein Schreibrecht`)
+// Sichtbar machen, dass das Bootstrap-Skript wirklich gelesen wurde: null
+// Definitionen dort hieße, der Wächter läuft an seinen Buckets vorbei.
+const bootstrapCount = perFile.get(join('scripts', 'bootstrap.mjs')) ?? 0
+if (bootstrapCount === 0) {
+  console.error('✖ scripts/bootstrap.mjs: keine Bucket-Definition gefunden — der Wächter sieht dessen Buckets nicht.')
+  process.exit(1)
+}
+console.log(`✔ Ablagen-Rechte: ${checked} Bucket-Definitionen geprüft (davon ${bootstrapCount} in scripts/bootstrap.mjs), kein Schreibrecht`)

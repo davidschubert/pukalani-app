@@ -48,7 +48,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [referenz/EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md) | Export und Löschung: der Vertrag, die Liste aller Tabellen, was „gelöscht" heißt, Fristen und ihre Läufe |
 | [referenz/EMBED.md](referenz/EMBED.md) | Embed-Widget: Gates, CSP, Cookie-Verhalten |
 | [referenz/EIGENE-DOMAIN.md](referenz/EIGENE-DOMAIN.md) | Kundendomains: Pool-Tenant vs. Silo-Alias, Zustandskette, kanonischer Host |
-| [referenz/CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) | Kunden-Changelog (Entwurf → Dashboard); Entwickler-CHANGELOG/release-please seit 2026-11-13 abgeschaltet |
+| [referenz/CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) | Kunden-Changelog (von Hand im Dashboard; Function und Entwurfs-Werkzeug seit 2026-11-15 entfernt); Entwickler-CHANGELOG/release-please seit 2026-11-13 abgeschaltet |
 | [referenz/LIVE-BEWEISE.md](referenz/LIVE-BEWEISE.md) | Welche Beweis-Skripte es gibt und wogegen sie laufen |
 | [referenz/FIGMA-KORREKTURFLAECHE.md](referenz/FIGMA-KORREKTURFLAECHE.md) | Figma als Korrekturfläche: Zyklus, Token-Brücke, die vier Diff-Klassen |
 
@@ -101,6 +101,10 @@ gehören dort hin.
 Reste nach `OPEN-ITEMS.md`. Ein Plan-Dokument ist nie eine To-do-Liste.
 
 ## Archiv — ausgeführt, nur noch Historie
+
+Erledigte Betriebs-Skripte (Appwrite-Upgrades) liegen unter
+[archiv/skripte/](archiv/skripte/README.md) — dort steht auch die Regel, wann
+ein Skript archiviert und wann es gelöscht wird.
 
 `archiv/` enthält 38 abgearbeitete Pläne (M1–M10, Phase 17, Themes-Vollausbau,
 Embed-Widget, Landingpage, SaaS-Roadmap, zuletzt das
