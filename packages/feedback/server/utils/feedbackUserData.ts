@@ -17,7 +17,10 @@ import { callFeedbackService, feedbackServiceReachable } from './feedbackGateway
  * darf nur ihre eigenen Leute anfassen.
  *
  * EXPORT degradiert (fehlt control, fehlt der Abschnitt — eine Auskunft ohne
- * einen Teil ist besser als gar keine). LÖSCHUNG NICHT: `deleteUserCompletely`
+ * einen Teil ist besser als gar keine), ABER SICHTBAR (SEC-026, 2026-11-15):
+ * statt `{}` steht dann `{ unavailable: true }` im Abschnitt. Ein leeres
+ * Objekt sah aus wie „diese Person hat kein Feedback" — eine Auskunft darf
+ * nicht vollständig aussehen, wenn sie es nicht ist. LÖSCHUNG NICHT: `deleteUserCompletely`
  * gated `users.delete` auf Voll-Erfolg, und eine stillschweigend
  * übersprungene Löschung wäre genau der Fehler, den dieses Gate verhindern
  * soll. Ist die Naht nicht erreichbar, scheitert sie laut.
@@ -27,12 +30,15 @@ function runtimeProjectId(event: H3Event): string {
   return useRuntimeConfig(event).public.appwriteProjectId
 }
 
-export async function feedbackExportUserData(event: H3Event, userId: string) {
-  if (!await feedbackServiceReachable(event)) return {}
+/** Der Abschnitt, wenn das Control Plane nicht geantwortet hat. */
+const FEEDBACK_EXPORT_UNAVAILABLE = { unavailable: true } as const
+
+export async function feedbackExportUserData(event: H3Event, userId: string): Promise<Record<string, unknown>> {
+  if (!await feedbackServiceReachable(event)) return { ...FEEDBACK_EXPORT_UNAVAILABLE }
   return await callFeedbackService<Record<string, unknown>>(event, FEEDBACK_SERVICE_PATHS.userData, {
     projectId: runtimeProjectId(event),
     userId,
-  }).catch(() => ({}))
+  }).catch(() => ({ ...FEEDBACK_EXPORT_UNAVAILABLE }))
 }
 
 export async function feedbackDeleteUserData(event: H3Event, userId: string): Promise<UserDataDeleteResult> {
