@@ -29,6 +29,17 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
+| Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
+
+**Nächtliches Backup (seit 2026-11-15, OPS-001).** Das Backup schreibt nach
+jedem Lauf sein Ergebnis in eine Stand-Datei auf dem Appwrite-Server; der
+Wächter liest sie über das Tor-Skript und bekommt genau eine Zeile zurück
+(Ergebnis, Schritt, Alter des letzten guten Laufs in Stunden, Größe, Zahl der
+Dateien). Die Schwelle steht im Workflow, nicht auf dem Server. Eigener
+Probealarm: `gh workflow run production-watch.yml -f backup_drill=true` verlangt
+ein Backup, das es nicht geben kann, und macht damit genau diesen Blick rot;
+der nächste Lauf ohne Haken räumt auf. Was die Schritte bedeuten und was zu
+tun ist: [APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md), § 6.3.
 
 **KI-Modelle (seit 2026-11-14, BE-004).** Ein roter Blick heißt: eine
 KI-Funktion scheitert gerade bei JEDEM Aufruf, obwohl sie eingeschaltet ist
@@ -294,6 +305,15 @@ in Appwrites `_audit`); Konten aufräumen mit `scripts/ops/purge-spam-accounts.m
 OPEN-ITEMS-COMPLETE „Resend-Spam" (2026-10-27). Hält die Notbremse eine ECHTE
 Anmeldewelle auf, Schwelle `MAIL_GLOBAL_HOUR_MAX` erhöhen — nicht die
 Notbremse entfernen.
+
+**Backup rot.** Die Fehlerzeile im Lauf nennt den Grund: „GESCHEITERT (Schritt:
+…)“ oder „… h alt“. Auf dem Appwrite-Server `~/ops/appwrite-backup.sh --status`
+und `tail -30 ~/ops/logs/appwrite-backup.log`; die Tabelle der Schritte steht in
+[APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md), § 6.3. Ein
+gescheiterter Lauf lässt alle früheren liegen — es eilt, aber es brennt nicht.
+Ist der Lauf nur zu alt und das Protokoll endet mit dem Vortag, lief der
+Zeitplan nicht: `crontab -l` dort ansehen, dann EIN Lauf von Hand
+(`… appwrite-backup.sh --run`, mit den Variablen aus der crontab-Zeile).
 
 **Env / Zugänge / Admin-Konto rot.** `docs/runbooks/ZUGAENGE-AUFRAEUMEN.md`
 bzw. die Pflichtliste in `scripts/ops/verify-site-env.mjs`.

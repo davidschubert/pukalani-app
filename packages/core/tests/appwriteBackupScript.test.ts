@@ -220,6 +220,7 @@ describe('ops/appwrite-backup.sh — ein Lauf', () => {
     expect(meta).toContain('tables=3\n')
     expect(meta).toContain('rows=236\n')
     expect(meta).toContain('appwrite_image=appwrite/appwrite:9.9.9\n')
+    expect(meta).toContain(`compose_dir=${compose}\n`)
     expect(meta).toContain(`key_fingerprint=${FPR}\n`)
     expect(meta).not.toContain('KLARTEXT')
     expect(state()).toMatchObject({ last_result: 'ok', last_step: 'fertig', last_ok_stamp: stamp, last_ok_files: '11' })

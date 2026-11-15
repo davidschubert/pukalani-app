@@ -47,6 +47,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 30 · RU1 | **Runner: Nacharbeiten.** Testbefehle nur aus der Liste des Rechners, Herkunft vom Server und die Fristen sind seit 2026-11-14 live (COMPLETE „GA1 P03"). Offen: (a) **ein echter Lauf über das Formular** mit Auswahl eines Testbefehls, (b) den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#ru1) |
 | 31 · CI1 | **Ausliefer-Weg: Nacharbeiten.** Getrennte Schlüssel für Ausliefern und Wächter, Geheimnisse nur für den Hauptzweig und die Pflicht-Prüfungen sind seit 2026-11-14 live (COMPLETE „GA1 P08"). Offen: (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
 | 32 · RW1 | **Rückweg: Nacharbeiten.** Zurückstellen per Skript, ein älterer Stand über GitHub und die Anleitung sind seit 2026-11-15 live und einmal geübt (COMPLETE „GA1 P10"). Offen: (a) **Notweg ohne GitHub** für das Ausliefern von etwas Neuem (heute nur der Weg zurück), (b) es liegen nur **vier Stände** je Seite, (c) Kleinigkeiten. | Niedrig | (a) M, (b) S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#rw1) |
+| 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt. Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -709,6 +710,35 @@ NICHT hier.
   `/invite` von branding.supply ist nach der Umstellung nur per Test und
   Quelltext geprüft, nicht im Browser. README und DECISION-LOG nennen in
   datierten Zeilen noch den entfernten Schalter `csrfOriginCheck`.
+
+<a id="bk1"></a>
+
+**BK1 — Backup der Datenbank: Nacharbeiten (aus dem Gesamtaudit, Paket P11).**
+
+- **(a) Wer außer David kommt an den Schlüssel?** Die Backups öffnet nur der
+  eine private Schlüssel; er liegt in Davids zwei Passwort-Managern. Fällt
+  David aus, kommt niemand an die Daten. Zu entscheiden: eine Vertrauensperson
+  benennen und ihr den Weg geben (gehört zum Punkt „Vertretung“ aus dem
+  Gesamtaudit), oder das Risiko bewusst tragen.
+- **(b) Die `.env`-Dateien der Apps.** Sie liegen nur auf dem App-Server und in
+  keinem Backup. Darin stehen eigene Schlüssel der Apps, auch die, mit denen
+  einzelne Einstellungen in der Datenbank versiegelt sind. Geht der App-Server
+  verloren, lassen sich diese Einstellungen nicht mehr lesen und müssen neu
+  eingegeben werden. Zu entscheiden: verschlüsselt mitsichern (derselbe
+  Schlüssel, dieselbe Box) oder bewusst lassen und die Liste der neu
+  einzugebenden Werte aufschreiben.
+- **(c) Übung wiederholen.** Einmal im Jahr und nach jeder Änderung an den
+  Skripten (Runbook `APPWRITE-WIEDERHERSTELLUNG.md`, § 7). Noch nie geübt:
+  ein voller Start mit allen Diensten, ein echter Ersatz-Server mit Umstellen
+  der Adresse, der Abruf von der Storage Box ohne den alten Server.
+- **(d) Kleinigkeiten.** Der nächtliche Zeitplan steht nur im crontab auf dem
+  Server und als Zeile im Runbook (als Vorlage ins Repo: eigener Punkt des
+  Gesamtaudits). Die Backups sind verschlüsselt, aber nicht signiert — wer
+  Zugang zur Box hat, könnte einen Lauf ersetzen; dagegen stehen die
+  Schnappschüsse und die Zählung beim Zurückspielen. Auf dem Appwrite-Server
+  liegen alte Sicherungskopien im Appwrite-Ordner und zwei Volume-Reste ohne
+  Eintrag in der Compose-Datei; beides aufräumen. Der Zugang zum Konto beim
+  Hoster gehört gehärtet (Einzelheiten privat).
 
 <a id="rw1"></a>
 
