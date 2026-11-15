@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 19 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 21 offen · 6 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-15**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -49,8 +49,9 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 32 · RW1 | **Rückweg: Nacharbeiten.** Zurückstellen per Skript, ein älterer Stand über GitHub und die Anleitung sind seit 2026-11-15 live und einmal geübt (COMPLETE „GA1 P10"). Offen: (a) **Notweg ohne GitHub** für das Ausliefern von etwas Neuem (heute nur der Weg zurück), (b) es liegen nur **vier Stände** je Seite, (c) Kleinigkeiten. | Niedrig | (a) M, (b) S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#rw1) |
 | 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt (COMPLETE „GA1 P11"). Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
 | 34 · KI1 | **KI-Schutz: Nacharbeiten.** Jeder KI-Aufruf läuft seit 2026-11-15 von selbst mit „keine Speicherung, Verarbeitung in Europa", das Protokoll enthält keinen Antworttext mehr, der Abschalter erreicht jeden bezahlten Weg, und abgeschnittene Berater-Antworten sind gekennzeichnet (COMPLETE „GA1 P17"). Offen: (a) **Klick-Probe auf Live** (einen Beitrag übersetzen), (b) **Datenschutztexte**: was sie jetzt über die KI sagen dürfen, (c) ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#ki1) |
-| 35 · EL1 | **Export und Löschung: Nacharbeiten.** Seit 2026-11-15 erreichen Auskunft und Löschung jede Tabelle mit Personenbezug, Gelöschtes ist wirklich leer, und Fristen setzt ein stündlicher Lauf durch (COMPLETE „GA1 P14"). Offen: (a) **Klick-Probe auf Live** mit einem Wegwerf-Konto, (b) **Datenschutztexte**: Fristen und Hinweise, (c) Einträge **ohne Konto und ohne Frist** (Warteliste, Gesprächsanfragen, Protokoll), (d) **Zurückholen binnen 90 Tagen** als eigenes Vorhaben, (e) Kleinigkeiten. | Niedrig | S je Teil, (d) L | **Ja: (a) selbst, (b) mit dem Anwalt, (c)+(d) entscheiden** | [Einzelheiten](#el1) |
+| 35 · EL1 | **Export und Löschung: Nacharbeiten.** Seit 2026-11-15 erreichen Auskunft und Löschung jede Tabelle mit Personenbezug, Gelöschtes ist wirklich leer, und Fristen setzt ein stündlicher Lauf durch (COMPLETE „GA1 P14"). Offen: (a) **Klick-Probe auf Live** mit einem Wegwerf-Konto, (b) **Datenschutztexte**: Fristen und Hinweise, (c) **Fristen für Einträge ohne Konto bauen** (entschieden 2026-11-15: Warteliste 30/90 Tage/12 Monate, Erstgespräch und Protokoll 12 Monate), (d) Kleinigkeiten. Das Zurückholen binnen 90 Tagen ist ein eigener Punkt (WH1). | Niedrig | S je Teil, (c) M | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#el1) |
 | 36 · AR1 | **Aufräumen: Nacharbeiten.** Altlasten sind seit 2026-11-15 weg: Versuchsordner, erledigte Umzugs-Werkzeuge, die alte Changelog-Automatik; es gibt ein Start-Skript statt fünf, und der Server bekommt nur noch die Dateien, die er braucht (COMPLETE „GA1 P26"). Offen: (a) **die Adresse `changelog.pukalani.app` bei Cloudflare löschen**, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) zwei erledigte Umzugs-Anleitungen ins Archiv?, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare, (c) entscheiden** | [Einzelheiten](#ar1) |
+| 37 · WH1 | **Gelöschte Marke zurückholen (Papierkorb).** Auf branding.supply fehlt der Knopf „Marke löschen"; kommt er, verschwindet die Marke sofort überall, liegt 90 Tage unter „Gelöschte Marken" zum Selbst-Zurückholen und wird danach endgültig gelöscht. Davids Entscheidungen vom 2026-11-15 stehen im Plan. **Konten** bleiben vorerst nicht zurückholbar; das wird mit dem Pukalani-Konto (PK1) entschieden. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -827,20 +828,19 @@ NICHT hier.
   gemeldete private Nachricht bis zu 90 Tage als Beleg. Im Protokoll
   (`audit_logs`) bleibt die Konto-Id ohne Namen stehen. Ob und wie die
   Erklärungen das sagen, entscheidet David mit dem Anwalt (Punkt 3 · A1 und
-  12 · BS1).
-- **(c) Einträge ohne Konto und ohne Frist.** Wer sich nur auf die Warteliste
-  setzt oder ein Erstgespräch anfragt (branding.supply und pukalani.studio),
-  hat kein Konto; diese Einträge bleiben, bis jemand sie von Hand löscht. Das
-  Protokoll hat ebenfalls keine Frist. Zu entscheiden: welche Frist, und ob
-  ein Lauf sie durchsetzt.
-- **(d) Zurückholen binnen 90 Tagen.** Davids Wunsch vom 2026-11-12: Konten
-  und Marken 90 Tage lang selbst zurückholen können. Gebaut ist nur das
-  Verstecken der Prüfergebnisse mit endgültigem Löschen nach 90 Tagen; in der
-  Zeit holt nur der Betreiber von Hand zurück (Feld `erasedAt` leeren). Ein
-  gelöschtes Konto und eine gelöschte Marke kommen nicht zurück. Hängt am
-  Pukalani-Konto (Etappe E3). Dazu: In der Oberfläche gibt es heute gar keinen
-  Knopf „Marke löschen" (nur die Route).
-- **(e) Kleinigkeiten.** Benachrichtigungen zu Kommentaren, die VOR dem
+  12 · BS1). **Schon nachgezogen (2026-11-15, Davids Auftrag):** der vorläufige
+  Text von branding.supply, der Entwurf auf pukalani.app und die Vorlage für
+  Communities nennen diese Fristen; die anwaltliche Prüfung steht aus.
+  pukalani.studio brauchte keine Änderung (keine Konten, keine Prüfergebnisse).
+  Auf branding.supply gibt es KEINE Sicherungskopie (kein Bucket eingetragen),
+  der Text nennt dort deshalb keine.
+- **(c) Fristen für Einträge ohne Konto bauen.** Entschieden am 2026-11-15
+  (DECISION-LOG): Warteliste nie bestätigt 30 Tage, eingeladen oder abgelehnt
+  90 Tage, noch wartend spätestens 12 Monate; Erstgespräch-Anfragen
+  (branding.supply und pukalani.studio) 12 Monate; Konto-Protokoll 12 Monate.
+  Noch zu bauen: je ein stündlicher Lauf nach dem Muster der vorhandenen
+  (erst zählen, dann löschen), danach die Datenschutztexte nachziehen.
+- **(d) Kleinigkeiten.** Benachrichtigungen zu Kommentaren, die VOR dem
   2026-11-15 entstanden, behalten ihren Textauszug, auch wenn der Kommentar
   gelöscht wird (neue werden mit aufgeräumt); Erinnerungen an einen Termin
   nennen dessen alten Titel. Ein Ausfall eines Laufs steht nur im Log der App

@@ -834,7 +834,7 @@
           },
           {
             "title": "Retention",
-            "body": "Deletion periods per data category will follow."
+            "body": "Your account and your content stay until you delete them. If you delete your account, we empty what you wrote right away; where a conversation would otherwise fall apart, a placeholder without your name remains. Before the deletion we store a backup copy of your data that only we as the operator can open; we delete it automatically after 30 days. If you reported something to us and gave your email address, we delete that address no later than 90 days after the report. A private message that was reported is kept as evidence for up to 90 days. In the log of sign-ins and account changes, the account identifier remains after the deletion, without your name and without your IP address. We will state the periods for server logs and backups with the binding version."
           },
           {
             "title": "Your rights",
