@@ -90,7 +90,13 @@ export default defineEventHandler(async (event): Promise<BrandCheckHistoryRespon
   }
 
   const items = [...rows.values()]
-    .filter(row => brandCheckRankingFacts(row).hidden === false)
+    // Ausgeblendet ODER gelöscht (brand-026: Konto oder Marke gelöscht) ⇒
+    // nicht im Verlauf. Über die Website-Adresse kann hier der Check einer
+    // anderen, gelöschten Marke derselben Adresse auftauchen.
+    .filter((row) => {
+      const facts = brandCheckRankingFacts(row)
+      return !facts.hidden && !facts.erased
+    })
     .sort((a, b) => b.$createdAt.localeCompare(a.$createdAt))
     .slice(0, HISTORY_LIMIT)
     .map(toHistoryItem)

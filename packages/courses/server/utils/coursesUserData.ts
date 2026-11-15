@@ -4,8 +4,8 @@ import { COURSES_TABLE, ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, type CourseRow
 
 /**
  * GDPR-Contributor des courses-Layers: Enrollments + Progress = reine
- * Verhaltensdaten des Users → Hard-Delete; auf verfassten Kursen wird der
- * authorName anonymisiert (der Kurs selbst ist Content der Community).
+ * Verhaltensdaten des Users → Hard-Delete; auf verfassten Kursen werden
+ * authorName und authorId geleert (der Kurs selbst ist Content der Community).
  */
 export async function coursesExportUserData(event: H3Event, userId: string) {
   const config = useRuntimeConfig(event)
@@ -47,10 +47,19 @@ export async function coursesDeleteUserData(event: H3Event, userId: string): Pro
     deleted++
   }
 
+  /**
+   * Verfasste Kurse: Name UND Konto-Id leeren (SEC-032, 2026-11-15 — vorher
+   * blieb `authorId` stehen, nur der Name fiel). Der Kurs selbst bleibt:
+   * Einschreibungen und Fortschritt ANDERER hängen an ihm.
+   *
+   * Idempotent über die Suche: gefunden wird über `authorId`, und genau das
+   * wird geleert — ein zweiter Lauf findet nichts. Der frühere Test „Name
+   * schon leer ⇒ weiter" fällt deshalb weg; er hätte Kurse aus der Zeit davor
+   * (Name leer, Konto-Id noch da) für immer übersprungen.
+   */
   const authored = await listAllRows<CourseRow>(tablesDB, databaseId, COURSES_TABLE, [Query.equal('authorId', userId)])
   for (const row of authored) {
-    if (row.authorName === '') continue
-    await tablesDB.updateRow({ databaseId, tableId: COURSES_TABLE, rowId: row.$id, data: { authorName: '' } })
+    await tablesDB.updateRow({ databaseId, tableId: COURSES_TABLE, rowId: row.$id, data: { authorName: '', authorId: '' } })
     anonymized++
   }
 

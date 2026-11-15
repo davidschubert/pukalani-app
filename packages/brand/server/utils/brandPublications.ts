@@ -304,8 +304,13 @@ export async function latestBrandCheckId(
     }
   }
 
+  // Ausgeblendet (Betreiber) oder gelöscht (Konto/Marke, brand-026) ⇒ kein
+  // Kandidat: ein Steckbrief darf auf keinen Check zeigen, der ein 404 ist.
   const visible = [...rows.values()]
-    .filter(row => !brandCheckRankingFacts(row).hidden)
+    .filter((row) => {
+      const facts = brandCheckRankingFacts(row)
+      return !facts.hidden && !facts.erased
+    })
     .sort((a, b) => b.$createdAt.localeCompare(a.$createdAt))
 
   const website = visible.find(row => brandCheckRankingFacts(row).source === 'website')
@@ -571,7 +576,10 @@ export async function loadBrandPublicationScores(
       tableId: BRAND_CHECKS_TABLE,
       queries: [Query.equal('$id', unique), Query.limit(100)],
     })
-    return new Map(res.rows.map(row => [row.$id, row]))
+    // Ein GELÖSCHTER Check (brand-026) liefert keine Zahl mehr — auch nicht in
+    // der Betreiber-Liste: die Zahl steht dort als Auskunft über die Marke, und
+    // die Person, von der sie stammt, hat sie gelöscht.
+    return new Map(res.rows.filter(row => !brandCheckRankingFacts(row).erased).map(row => [row.$id, row]))
   }
   catch (error) {
     logEvent('warn', 'brand.publication_admin_scores_failed', {

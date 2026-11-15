@@ -177,7 +177,8 @@
           "plan": "Plan",
           "state": "State"
         }
-      }
+      },
+      "deleteNotice": "If you reported something and gave your email address, we keep that address for up to 90 days after the report, then delete it."
     },
     "domain": {
       "navLabel": "Custom domain",

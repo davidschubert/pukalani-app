@@ -69,7 +69,9 @@ export function requireBrandCheckRouteId(event: H3Event): string {
  * Der 404 ist hier keine Tarnung: wer bis hierher kommt, hat `users.manage`
  * und darf wissen, dass es diese Zeile nicht (mehr) gibt. Ein AUSGEBLENDETER
  * Check kommt trotzdem zurück — der Betreiber muss ihn wieder einblenden
- * können, sonst wäre `hidden` eine Einbahnstrasse.
+ * können, sonst wäre `hidden` eine Einbahnstrasse. Ein GELÖSCHTER Check
+ * (`erasedAt`, brand-026) ebenso: der Betreiber sieht ihn als einziger, und
+ * was die Löschung für eine einzelne Aktion bedeutet, entscheidet die Route.
  */
 export async function loadBrandCheckRow(event: H3Event, id: string): Promise<BrandCheckRow> {
   const { tablesDB, databaseId } = brandDb(event)
@@ -264,6 +266,7 @@ export function toBrandCheckCorrection(
     decisionNote: row.decisionNote ?? '',
     decidedAt: row.decidedAt ?? '',
     createdAt: row.$createdAt,
+    checkErasedAt: check?.erasedAt ?? '',
   }
 }
 

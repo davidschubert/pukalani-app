@@ -1,7 +1,7 @@
 import { AppwriteException, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { evidenceStillProtected } from '../../shared/messageReport'
-import { otherParticipant } from '../../shared/conversations'
+import { messagePreview, otherParticipant } from '../../shared/conversations'
 import {
   CONVERSATIONS_TABLE,
   CONVERSATION_MEMBERS_TABLE,
@@ -250,12 +250,55 @@ export async function messagesDeleteUserData(event: H3Event, userId: string): Pr
     }
   }
 
+  /**
+   * DIE VORSCHAU IST EINE KOPIE DES LETZTEN TEXTES (SEC-032, 2026-11-15 —
+   * „… Vorschauen werden wirklich geleert"). `appendMessage` schreibt sie aus
+   * der jeweils letzten Nachricht in die Konversation — bleibt die
+   * Konversation stehen, weil das Gegenüber auch geschrieben hat, stand dort
+   * oft genau der Satz der gelöschten Person.
+   *
+   * Neu berechnet aus der neuesten VERBLEIBENDEN Nachricht, mit DERSELBEN
+   * Funktion wie beim Schreiben (`messagePreview`), dazu `lastMessageAt`.
+   * Ist die neueste verbleibende ein geschützter Beleg dieses Menschen, ist
+   * ihr `body` oben schon geleert — die Vorschau wird dann leer, nicht der
+   * Beleg-Text (`reportedBody` liest hier niemand).
+   *
+   * Nicht nachgeführt: `lastMessageAt` in den Mitglieds-Zeilen des
+   * Gegenübers (Sortier-Spiegel des Posteingangs) — ein Zeitpunkt, kein Text.
+   *
+   * Idempotent: nur schreiben, was sich ändert. Fehler zählen wie die
+   * Aufräum-Löschungen (404 = Konversation schon weg = Erfolg), der Lauf
+   * meldet sich am Ende als unvollständig und ist wiederholbar.
+   */
+  async function refreshConversationPreview(conversationId: string, newest: PrivateMessage): Promise<void> {
+    try {
+      const conversation = await tablesDB.getRow<Conversation>({ databaseId, tableId: CONVERSATIONS_TABLE, rowId: conversationId })
+      const preview = messagePreview(newest.body ?? '')
+      const data: Partial<Pick<Conversation, 'lastMessagePreview' | 'lastMessageAt'>> = {}
+      if ((conversation.lastMessagePreview ?? '') !== preview) data.lastMessagePreview = preview
+      if ((conversation.lastMessageAt ?? '') !== newest.$createdAt) data.lastMessageAt = newest.$createdAt
+      if (Object.keys(data).length === 0) return
+      // Nicht in `anonymized` gezählt: die Zeile gehört der Konversation, nicht
+      // diesem Menschen — gezählt wird, was über IHN gespeichert war.
+      await tablesDB.updateRow({ databaseId, tableId: CONVERSATIONS_TABLE, rowId: conversationId, data })
+    }
+    catch (error) {
+      if (!isNotFound(error)) cleanupFailures++
+    }
+  }
+
   for (const conversationId of touchedConversations) {
-    const rest = await tablesDB.listRows({
+    // Die NEUESTE verbleibende Nachricht — sie beantwortet beide Fragen:
+    // „bleibt die Konversation?" und „was zeigt ihre Vorschau jetzt?".
+    const rest = await tablesDB.listRows<PrivateMessage>({
       databaseId, tableId: MESSAGES_TABLE,
-      queries: [Query.equal('conversationId', conversationId), Query.limit(1)],
+      queries: [Query.equal('conversationId', conversationId), Query.orderDesc('$createdAt'), Query.limit(1)],
     })
-    if (rest.total > 0) continue
+    const newest = rest.rows[0]
+    if (rest.total > 0 && newest) {
+      await refreshConversationPreview(conversationId, newest)
+      continue
+    }
 
     // Auch die verbliebenen Mitglieds-Zeilen gehen mit — eine Zeile ohne
     // Konversation wäre ein Eintrag im Posteingang, der ins Leere führt.

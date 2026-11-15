@@ -27,11 +27,14 @@ import {
  * ohne KI, ohne einen einzigen Schreibvorgang.
  *
  * ── WAS HIER DRINSTEHT, IST EINE AUSSAGE ÜBER FREMDE MARKEN ───────────────
- * Deshalb sind vier Grenzen in der ABFRAGE und nicht in der Anzeige:
+ * Deshalb sind fünf Grenzen in der ABFRAGE und nicht in der Anzeige:
  *  · `rankingOptIn: true` — nur Checks, bei denen jemand das Häkchen gesetzt
  *    hat (Davids Entscheidung 1). Ohne Häkchen bleibt ein Check privat.
  *  · `hidden: false` — der Betreiber hat einem Entfernungswunsch nicht
  *    stattgegeben (§3 „Recht").
+ *  · `erasedAt` leer — Konto oder Marke des Prüfers wurden nicht gelöscht
+ *    (brand-026, SEC-015). In der Abfrage und nicht nur danach: gelöschte
+ *    Zeilen verbrauchten sonst das Lesefenster von 500.
  *  · `score > 0` — Fehlläufe gehören nicht in eine Bestenliste (§6). Eine 0
  *    heisst hier „nichts war bewertbar", nicht „schlecht".
  *  · je `urlKey` der JÜNGSTE Check — ältere sind Verlauf (§3). Ein veralteter
@@ -81,6 +84,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckRankingRespon
       queries: [
         Query.equal('rankingOptIn', true),
         Query.equal('hidden', false),
+        Query.isNull('erasedAt'),
         Query.greaterThan('score', 0),
         // Nach ZEIT, nicht nach Punkten: nur so ist „je Adresse der jüngste"
         // innerhalb des Fensters exakt — ein älterer Stand kann einen neueren
@@ -108,7 +112,11 @@ export default defineEventHandler(async (event): Promise<BrandCheckRankingRespon
     }
   }
 
-  const latest = pickLatestPerUrlKey(rows.map(toRankingRow))
+  // Noch einmal im Code, obwohl die Abfrage es schon ausschliesst: eine
+  // gelöschte Zeile in einer öffentlichen Liste wäre der eine Fehler, den man
+  // nicht zurückholen kann.
+  const visible = rows.filter(row => !brandCheckRankingFacts(row).erased)
+  const latest = pickLatestPerUrlKey(visible.map(toRankingRow))
   const filtered = filterBrandCheckRankingItems(
     latest.map(entry => entry.item),
     { industry: query.industry, band: query.band },

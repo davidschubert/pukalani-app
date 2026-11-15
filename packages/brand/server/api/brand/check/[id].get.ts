@@ -110,7 +110,9 @@ export default defineEventHandler(async (event): Promise<BrandCheckResult> => {
   }
 
   // NICHT FREIGEGEBENER DOKUMENT-CHECK, und die Anfrage kommt nicht von seiner
-  // Besitzerin ⇒ dasselbe 404 wie „gibt es nicht" (Kopf, SEC-014).
+  // Besitzerin ⇒ dasselbe 404 wie „gibt es nicht" (Kopf, SEC-014). Dieselbe
+  // Regel deckt GELÖSCHTE Checks ab (Konto oder Marke gelöscht, brand-026,
+  // SEC-015): sie sind für jeden ein 404, auch für die frühere Besitzerin.
   if (!(await isBrandCheckReadable(event, row))) {
     throw createError({ status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } })
   }
@@ -160,12 +162,12 @@ type BrandTablesDb = ReturnType<typeof brandDb>['tablesDB']
 /**
  * DER UNMITTELBARE VORGÄNGER DERSELBEN ADRESSE — eine Abfrage, eine Zeile.
  *
- * ── WARUM `hidden` NICHT IN DER ABFRAGE STEHT ─────────────────────────────
+ * ── WARUM `hidden` UND `erasedAt` NICHT IN DER ABFRAGE STEHEN ─────────────
  * Weil „der vorige Stand" genau EIN Eintrag ist. Filterte die Abfrage
  * ausgeblendete Zeilen weg, griffe sie automatisch weiter zurück und die Seite
  * sagte „+7 seit dem 3. Juli" über einen Vergleichswert, den der Betreiber
  * gerade aus der Welt genommen hat. Also: den einen holen — und wenn er
- * ausgeblendet ist, GAR NICHTS sagen.
+ * ausgeblendet oder gelöscht ist, GAR NICHTS sagen.
  *
  * Ein Dokument-Check kann hier nie mit einem Website-Check verglichen werden:
  * die Schlüssel sind verschieden gebaut (`doc:<profileId>` gegen Host+Pfad),
@@ -198,6 +200,9 @@ async function loadPrevious(
     // „+0 seit heute" wäre das plausibelste aller falschen Ergebnisse.
     if (!candidate || candidate.$id === row.$id || candidate.$createdAt >= row.$createdAt) return null
     if (candidate.hidden === true) return null
+    // Ein GELÖSCHTER Vorgänger (brand-026) sagt aus demselben Grund nichts:
+    // sein Wert ist für niemanden mehr eine Auskunft.
+    if (candidate.erasedAt) return null
     return {
       id: candidate.$id,
       score: candidate.score ?? 0,
@@ -213,8 +218,8 @@ async function loadPrevious(
 /**
  * DER PLATZ IM RANKING — gerechnet mit DERSELBEN Auswahl wie die Ranking-Seite.
  *
- * Vier Grenzen in der Abfrage (Häkchen, nicht ausgeblendet, Wert über 0,
- * jüngster je Adresse) und die Sortierung nach Gesamtwert kommen wörtlich aus
+ * Fünf Grenzen in der Abfrage (Häkchen, nicht ausgeblendet, nicht gelöscht,
+ * Wert über 0, jüngster je Adresse) und die Sortierung nach Gesamtwert kommen wörtlich aus
  * `ranking.get.ts` bzw. `shared/brandCheckRanking.ts`. Eine zweite Rangfolge
  * daneben hiesse, dass diese Seite „Platz 3" sagt und die Ranking-Seite den
  * Auftritt auf Platz 4 zeigt.
@@ -234,7 +239,7 @@ async function loadRank(
   row: BrandCheckRow,
   rankingOptIn: boolean,
 ): Promise<BrandCheckRank | null> {
-  if (!rankingOptIn || row.hidden === true || (row.score ?? 0) <= 0) return null
+  if (!rankingOptIn || row.hidden === true || row.erasedAt || (row.score ?? 0) <= 0) return null
   try {
     const res = await tablesDB.listRows<BrandCheckRow>({
       databaseId,
@@ -242,12 +247,16 @@ async function loadRank(
       queries: [
         Query.equal('rankingOptIn', true),
         Query.equal('hidden', false),
+        // Wörtlich wie `ranking.get.ts`: gelöschte Zeilen (brand-026) fallen
+        // schon in der Abfrage heraus, sonst verbrauchten sie das Lesefenster.
+        Query.isNull('erasedAt'),
         Query.greaterThan('score', 0),
         Query.orderDesc('$createdAt'),
         Query.limit(BRAND_CHECK_RANKING_SCAN_LIMIT),
       ],
     })
-    const latest = pickLatestPerUrlKey(res.rows.map(toRankingRow))
+    const visible = res.rows.filter(candidate => !brandCheckRankingFacts(candidate).erased)
+    const latest = pickLatestPerUrlKey(visible.map(toRankingRow))
     const sorted = sortBrandCheckRankingItems(latest.map(entry => entry.item), 'score')
     const index = sorted.findIndex(item => item.id === row.$id)
     if (index < 0) return null

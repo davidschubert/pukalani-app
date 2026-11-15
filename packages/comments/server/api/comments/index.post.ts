@@ -1,6 +1,7 @@
 import { Permission, Role } from 'node-appwrite'
 import { commentSchema } from '../../../schemas/comment'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
+import { commentSnippet } from '../../../shared/commentSnippet'
 import { assertReplyParent } from '../../utils/replyParent'
 
 export default defineEventHandler(async (event) => {
@@ -145,7 +146,7 @@ export default defineEventHandler(async (event) => {
    */
   await recordUserCounterEvents(event, [{ userId: user.$id, kind: 'repliesCreated', delta: 1 }])
 
-  const snippet = body.content.length > 140 ? `${body.content.slice(0, 140)}…` : body.content
+  const snippet = commentSnippet(body.content)
   // Link zur echten Seite des Kommentars: targetUrl des Replies (= Seite),
   // sonst die des Parents, sonst '/' (Bestandskommentare ohne targetUrl).
   const link = (body.targetUrl ?? parent?.targetUrl) ?? '/'

@@ -155,7 +155,12 @@ export async function runBrandCheck(
       tableId: BRAND_CHECKS_TABLE,
       queries: [Query.equal('urlKey', urlKey), Query.orderDesc('$createdAt'), Query.limit(1)],
     })
-    cached = mode.bypassCache ? undefined : found.rows[0]
+    // Ein GELÖSCHTER Treffer (Konto oder Marke gelöscht, brand-026) ist kein
+    // Zwischenspeicher: seine Id führte für jeden auf ein 404. Dann entsteht
+    // ein neuer Check — das ist gewollt. Geprüft im Code und nicht in der
+    // Abfrage, damit dieser Lesepfad nicht an der Spalte hängt.
+    const latest = found.rows[0]
+    cached = mode.bypassCache || latest?.erasedAt ? undefined : latest
   }
   catch (error) {
     // Fehlende Tabelle (Migration nicht gelaufen) oder kranke Appwrite. Beides

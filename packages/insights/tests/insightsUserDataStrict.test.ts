@@ -56,7 +56,7 @@ beforeEach(() => {
     insights_subscribers: [row('n1', { emailLower: 'a@example.com' })],
   }
   errors = {}
-  getUser = async () => ({ $id: 'u1', email: 'A@example.com' })
+  getUser = async () => ({ $id: 'u1', email: 'A@example.com', emailVerification: true })
 })
 
 describe('insightsDeleteUserData', () => {

@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
+import { postActivitySnippet } from '../../shared/postActivitySnippet'
 import { POLL_VOTES_TABLE, POSTS_TABLE, POST_VOTES_TABLE, type CommunityPost, type PollState, type PollVote, type PostVote, type PostVoteValue } from '../../shared/types/post'
 
 /**
@@ -89,7 +90,7 @@ export async function publishDuePosts(event: H3Event): Promise<void> {
         objectType: 'post',
         objectId: updated.$id,
         link: '/feed',
-        metadata: { snippet: updated.title || updated.body.slice(0, 140) },
+        metadata: { snippet: postActivitySnippet(updated) },
       })
     }
   }

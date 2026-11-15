@@ -19,6 +19,12 @@ import { type BrandCheckRow, brandCheckRankingFacts, loadOwnedProfile } from './
  * hat einem Entfernungswunsch stattgegeben, und die Seite antwortet dann für
  * alle gleich.
  *
+ * Gelöscht (`erased`, brand-026, SEC-015) schlägt ebenfalls alles: Konto oder
+ * Marke wurden gelöscht, und Davids Entscheidung ist „sofort für alle
+ * unsichtbar". Auch die frühere Besitzerin bekommt das 404 — sie hat die
+ * Löschung selbst ausgelöst, und eine Ausnahme für sie hiesse, dass ein
+ * gelöschtes Ergebnis über eine noch bestehende Session weiter abrufbar wäre.
+ *
  * ── WARUM ZWEI FUNKTIONEN ─────────────────────────────────────────────────
  * `canReadBrandCheck` ist die Regel, pur und als Tabelle testbar.
  * `isBrandCheckReadable` beschafft die eine Angabe, die die Regel nicht selbst
@@ -34,12 +40,14 @@ export interface BrandCheckVisibilityFacts {
   source: string
   rankingOptIn: boolean
   hidden: boolean
+  /** Konto oder Marke gelöscht (`erasedAt` gesetzt) — dann für niemanden. */
+  erased: boolean
   /** Ist die anfragende Session die Besitzerin des zugehörigen Profils? */
   isOwner: boolean
 }
 
 export function canReadBrandCheck(facts: BrandCheckVisibilityFacts): boolean {
-  if (facts.hidden) return false
+  if (facts.hidden || facts.erased) return false
   if (facts.source !== 'document') return true
   return facts.rankingOptIn || facts.isOwner
 }
@@ -58,7 +66,12 @@ export function canReadBrandCheck(facts: BrandCheckVisibilityFacts): boolean {
  */
 export async function isBrandCheckReadable(event: H3Event, row: BrandCheckRow): Promise<boolean> {
   const facts = brandCheckRankingFacts(row)
-  const base = { source: facts.source, rankingOptIn: facts.rankingOptIn, hidden: facts.hidden }
+  const base = {
+    source: facts.source,
+    rankingOptIn: facts.rankingOptIn,
+    hidden: facts.hidden,
+    erased: facts.erased,
+  }
 
   // Hängt die Antwort nicht am Besitz, wird er auch nicht erfragt.
   if (canReadBrandCheck({ ...base, isOwner: true }) === canReadBrandCheck({ ...base, isOwner: false })) {

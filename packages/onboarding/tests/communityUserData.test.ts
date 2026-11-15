@@ -26,7 +26,7 @@ vi.mock('../server/utils/controlPlane', () => ({
     controlCalls.push({ path, body })
     if (controlError) throw controlError
     if (path.endsWith('user-erase')) {
-      return { deleted: 1, invitesDeleted: 0, inviteRequestsDeleted: 0, anonymized: 0, invitesAnonymized: 0, retained: [] }
+      return { deleted: 1, invitesDeleted: 0, inviteRequestsDeleted: 0, anonymized: 0, invitesAnonymized: 0, inviteCodesAnonymized: 2, retained: [] }
     }
     return { memberships: [] }
   },
@@ -52,6 +52,10 @@ describe('communityDeleteUserData', () => {
   it('Normalfall: die bestätigte Adresse geht mit', async () => {
     await communityDeleteUserData(event, 'u1')
     expect(controlCalls[0]!.body.email).toBe('a@example.com')
+  })
+
+  it('geleerte Adressen an Early-Access-Codes zählen als anonymisiert (SEC-026)', async () => {
+    expect(await communityDeleteUserData(event, 'u1')).toEqual({ deleted: 1, anonymized: 2 })
   })
 
   it('users.get mit 500 ⇒ Abbruch, das Control Plane wird NICHT ohne Adresse gerufen', async () => {

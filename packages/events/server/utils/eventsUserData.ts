@@ -1,5 +1,6 @@
 import { AppwriteException, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
+import { redactEventContent } from './eventRedaction'
 import { EVENT_RSVPS_TABLE, EVENT_TICKETS_TABLE, EVENT_VOTES_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow, type EventTicketRow, type EventVote } from '../../shared/types/event'
 
 /**
@@ -7,8 +8,9 @@ import { EVENT_RSVPS_TABLE, EVENT_TICKETS_TABLE, EVENT_VOTES_TABLE, EVENTS_TABLE
  *
  * RSVPs → Hard-Delete (reine Verhaltens-Daten des Users); war die RSVP
  * 'going', sinkt der denormalisierte attendeeCount atomar mit.
- * Organisierte Events → cancelled + organizerName anonymisiert (der Termin
- * ist Kontext der Teilnehmer, wie Posts-Tombstones — Muster Phase 25).
+ * Organisierte Events → abgesagt und GESCHWÄRZT (der Termin ist Kontext der
+ * Teilnehmer, wie Posts-Tombstones — Muster Phase 25; die Schwärzung seit
+ * SEC-032, s. unten).
  */
 export async function eventsExportUserData(event: H3Event, userId: string) {
   const config = useRuntimeConfig(event)
@@ -31,6 +33,9 @@ export async function eventsExportUserData(event: H3Event, userId: string) {
     organizedEvents: organized.map(e => ({
       title: e.title, description: e.description, startAt: e.startAt, endAt: e.endAt,
       location: e.location, status: e.status, createdAt: e.$createdAt,
+      // SEC-032 (2026-11-15): auch diese Texte hat die Person gewählt — sie
+      // fehlten in der Auskunft, obwohl die Löschung sie jetzt leert.
+      address: e.address, locationNotes: e.locationNotes, url: e.url, replayUrl: e.replayUrl,
     })),
   }
 }
@@ -83,15 +88,37 @@ export async function eventsDeleteUserData(event: H3Event, userId: string): Prom
     deleted++
   }
 
-  // Organisierte Events: Soft-Cancel + Anonymisierung (idempotent)
+  /**
+   * Organisierte Events: ABSAGEN UND TEXTE LEEREN (Davids Entscheidung
+   * 2026-11-15, SEC-032). Bis hierher bekam der Termin nur `cancelled` und
+   * einen leeren Namen — Konto-Id, Titel, Beschreibung, Ort, Adresse, Links,
+   * Übersetzungen und das Titelbild blieben. Jetzt dieselbe Schwärzung wie
+   * bei der Moderation (`redactEventContent`, utils/eventRedaction.ts), dazu
+   * Status, Name und Konto-Id im SELBEN Schreibvorgang. Der Termin bleibt als
+   * abgesagter Platzhalter stehen: Zusagen und Tickets ANDERER hängen an ihm
+   * (deren Daten), sie sehen „abgesagt".
+   *
+   * `redactedAt` wird mitgesetzt: daran hängen die Platzhalter-Überschrift
+   * der Oberfläche, die Sperre des Übersetzens und die Moderations-Queue
+   * (kein zweites „Schwärzen" für einen leeren Termin).
+   *
+   * Das Titelbild STRIKT (`coverFailure: 'throw'`, 404 = schon weg = Erfolg):
+   * gelöscht wird es VOR dem Schreiben der Zeile, ein Fehler bricht also ab,
+   * während `organizerId` und `coverFileId` noch dastehen — das Konto bleibt
+   * gesperrt, ein zweiter Lauf findet den Termin wieder. Idempotent über die
+   * Suche: wer abgearbeitet ist, trägt keine `organizerId` mehr.
+   */
   const organized = await listAllRows<EventRow>(tablesDB, databaseId, EVENTS_TABLE, [Query.equal('organizerId', userId)])
   for (const row of organized) {
-    if (row.status === 'cancelled' && row.organizerName === '') continue
-    await tablesDB.updateRow({
-      databaseId,
-      tableId: EVENTS_TABLE,
-      rowId: row.$id,
-      data: { status: 'cancelled', organizerName: '' },
+    await redactEventContent(event, row, {
+      write: data => tablesDB.updateRow({ databaseId, tableId: EVENTS_TABLE, rowId: row.$id, data }),
+      extra: {
+        status: 'cancelled',
+        organizerName: '',
+        organizerId: '',
+        redactedAt: row.redactedAt || new Date().toISOString(),
+      },
+      coverFailure: 'throw',
     })
     anonymized++
   }

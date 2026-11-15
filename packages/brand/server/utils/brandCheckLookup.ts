@@ -80,6 +80,11 @@ export async function findBrandCheckForUrl(
     // Ein AUSGEBLENDETER Check (Betreiber-Weg, brand-017) ist keine Auskunft
     // mehr — auch nicht als Zahl neben einem fremden Namen.
     if (row.hidden === true) return null
+    // Ein GELÖSCHTER Check (Konto oder Marke gelöscht, brand-026) ebenso — er
+    // ist für niemanden mehr sichtbar, und seine Id führte auf ein 404. Es
+    // wird bewusst NICHT auf einen älteren zurückgegriffen: der Marktvergleich
+    // stösst dann einen neuen Check an, und das ist gewollt.
+    if (row.erasedAt) return null
     return {
       checkId: row.$id,
       score: row.score,

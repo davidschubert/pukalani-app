@@ -102,7 +102,10 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
       tableId: BRAND_CHECKS_TABLE,
       queries: [Query.equal('urlKey', urlKey), Query.orderDesc('$createdAt'), Query.limit(1)],
     })
-    cached = body.force ? undefined : found.rows[0]
+    // Ein GELÖSCHTER Treffer (brand-026) ist kein Zwischenspeicher — seine Id
+    // führte auf ein 404 (Begründung wörtlich wie in `brandCheckRun.ts`).
+    const latest = found.rows[0]
+    cached = body.force || latest?.erasedAt ? undefined : latest
   }
   catch (error) {
     logEvent('warn', 'brand.doc_check_unavailable', {

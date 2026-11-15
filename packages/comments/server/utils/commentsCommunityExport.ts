@@ -43,28 +43,41 @@ export async function commentsCommunityExport(event: H3Event) {
   // fehlt lieber die Zahl als das ganze Bündel.
   const votes = await db.count(VOTES_TABLE, []).catch(() => 0)
 
+  /**
+   * GELÖSCHTE KOMMENTARE ALS PLATZHALTER (SEC-032, 2026-11-15): ohne Text,
+   * Namen und Bearbeitungsmarke, aber MIT Platz im Baum. Weglassen hätte die
+   * Antworten darunter im Bündel zu Waisen gemacht (ihr `parentId` zeigte ins
+   * Leere) — die Oberfläche zeigt denselben Platzhalter. Neu gelöschte Zeilen
+   * sind ohnehin leer; das hier deckt den Bestand von davor ab, dessen Text
+   * sonst im Archiv eines Betreibers wieder auftauchte.
+   */
   return {
-    comments: comments.map(c => ({
-      id: c.$id,
-      createdAt: c.$createdAt,
-      editedAt: c.editedAt,
-      content: c.content,
-      authorName: c.authorName,
-      authorKind: c.authorKind,
-      targetType: c.targetType,
-      targetId: c.targetId,
-      targetUrl: c.targetUrl,
-      parentId: c.parentId,
-      rootId: c.rootId,
-      depth: c.depth,
-      status: c.status,
-      upvotes: c.upvotes,
-      downvotes: c.downvotes,
-      score: c.score,
-    })),
+    comments: comments.map(exportedComment),
     counts: {
       comments: comments.length,
       votes,
     },
+  }
+}
+
+function exportedComment(c: Comment) {
+  const deleted = c.status === 'deleted'
+  return {
+    id: c.$id,
+    createdAt: c.$createdAt,
+    editedAt: deleted ? null : c.editedAt,
+    content: deleted ? '' : c.content,
+    authorName: deleted ? '' : c.authorName,
+    authorKind: deleted ? undefined : c.authorKind,
+    targetType: c.targetType,
+    targetId: c.targetId,
+    targetUrl: c.targetUrl,
+    parentId: c.parentId,
+    rootId: c.rootId,
+    depth: c.depth,
+    status: c.status,
+    upvotes: c.upvotes,
+    downvotes: c.downvotes,
+    score: c.score,
   }
 }

@@ -47,28 +47,40 @@ export async function postsCommunityExport(event: H3Event) {
   const votes = await db.count(POST_VOTES_TABLE, []).catch(() => 0)
   const pollVotes = await db.count(POLL_VOTES_TABLE, []).catch(() => 0)
 
+  /**
+   * GELÖSCHTE BEITRÄGE ALS PLATZHALTER (SEC-032, 2026-11-15): Zeile mit Id,
+   * Zeitpunkten, Typ, Status und Zählern — ohne Titel, Text, Namen und
+   * Umfrage-Optionen. Platzhalter statt Weglassen, weil Kommentare im
+   * comments-Kapitel per `targetId` auf den Beitrag zeigen können; ein
+   * fehlender Eintrag sähe dort wie ein Lesefehler aus. Gelöscht hat der
+   * Autor — er behält im Produkt die eigene Historie, ein Archiv des
+   * BETREIBERS bekommt den Text deshalb nicht.
+   */
   return {
-    posts: posts.map(p => ({
-      id: p.$id,
-      createdAt: p.$createdAt,
-      type: p.type,
-      title: p.title,
-      body: p.body,
-      status: p.status,
-      authorName: p.authorName,
-      publishedAt: p.publishedAt,
-      scheduledAt: p.scheduledAt,
-      editedAt: p.editedAt,
-      categoryId: p.categoryId,
-      pinned: p.pinned,
-      closed: p.closed,
-      solved: p.solved,
-      upvotes: p.upvotes,
-      downvotes: p.downvotes,
-      score: p.score,
-      pollOptions: p.pollOptions,
-      pollEndsAt: p.pollEndsAt,
-    })),
+    posts: posts.map(p => {
+      const deleted = p.status === 'deleted'
+      return {
+        id: p.$id,
+        createdAt: p.$createdAt,
+        type: p.type,
+        title: deleted ? null : p.title,
+        body: deleted ? '' : p.body,
+        status: p.status,
+        authorName: deleted ? '' : p.authorName,
+        publishedAt: p.publishedAt,
+        scheduledAt: p.scheduledAt,
+        editedAt: deleted ? null : p.editedAt,
+        categoryId: p.categoryId,
+        pinned: p.pinned,
+        closed: p.closed,
+        solved: p.solved,
+        upvotes: p.upvotes,
+        downvotes: p.downvotes,
+        score: p.score,
+        pollOptions: deleted ? null : p.pollOptions,
+        pollEndsAt: p.pollEndsAt,
+      }
+    }),
     categories: categories.map(c => ({
       id: c.$id,
       name: c.name,

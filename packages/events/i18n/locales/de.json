@@ -230,7 +230,7 @@
     },
     "redacted": {
       "title": "Inhalt entfernt",
-      "notice": "Titel, Beschreibung und Titelbild dieses Events hat die Moderation entfernt. Die Absage bleibt bestehen.",
+      "notice": "Titel, Beschreibung und Titelbild dieses Events wurden entfernt. Die Absage bleibt bestehen.",
       "badge": "Geschwärzt"
     },
     "report": {

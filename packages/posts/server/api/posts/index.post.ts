@@ -1,5 +1,6 @@
 import { Permission, Role } from 'node-appwrite'
 import { postSchema } from '../../../schemas/post'
+import { postActivitySnippet } from '../../../shared/postActivitySnippet'
 import { POSTS_TABLE, type CommunityPost } from '../../../shared/types/post'
 
 /**
@@ -117,7 +118,7 @@ export default defineEventHandler(async (event) => {
       objectType: 'post',
       objectId: row.$id,
       link: '/feed',
-      metadata: { snippet: row.title || row.body.slice(0, 140) },
+      metadata: { snippet: postActivitySnippet(row) },
     })
     // Gescopt gezählt: der Meilenstein gehört DIESER Community, nicht dem
     // Pool (dieselbe Falle wie beim 1000-Kommentare-Meilenstein).

@@ -1,15 +1,21 @@
-import { Query } from 'node-appwrite'
+import { AppwriteException, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import {
   decideMembershipErasure,
+  inviteCodeErasure,
   inviteReferenceErasure,
+  type AbuseReportExport,
   type CommunityErasureResult,
   type CommunityInviteExport,
+  type CommunityInviteTraceExport,
   type CommunityMembershipExport,
   type CommunityUserDataExport,
+  type InviteCodeExport,
   type InviteRequestExport,
   type RetainedMembership,
 } from '../../shared/communityTeam'
+import { ABUSE_REPORTS_TABLE, type AbuseReportRow } from '../../shared/abuseReports'
+import { INVITE_CODES_TABLE, type InviteCodeRow } from '../../shared/types/inviteCode'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
 import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../shared/types/communityInvite'
 import { INVITE_REQUESTS_TABLE, type InviteRequestRow } from '../../shared/types/inviteRequest'
@@ -21,7 +27,11 @@ import { listCommunityMembers, memberFacts } from './communityTeam'
  * einen Runtime-Nutzer führt: seine Mitgliedschaften (`community_members`), die
  * Einladungen an seine Adresse (`community_invites`), die SPUREN, die er in
  * fremden Einladungen hinterlassen hat, und seine Early-Access-Anfrage
- * (`invite_requests`).
+ * (`invite_requests`). Seit SEC-026 (2026-11-15, Davids Entscheidung „Export
+ * und Löschung erreichen alle Tabellen mit Personenbezug") auch die Adresse an
+ * zugewiesenen Early-Access-Codes (`invite_codes.boundEmail`/`label`) und in
+ * der Auskunft die selbst verschickten/angenommenen Einladungen und die
+ * eigenen Missbrauchsmeldungen (`abuse_reports.reporterEmail`).
  *
  * WARUM DAS EINE EIGENE NAHT BRAUCHT: `deleteUserCompletely` läuft in der
  * RUNTIME (Pool-/Silo-App). Sie räumt ihr eigenes Appwrite-Projekt ab — die
@@ -57,7 +67,29 @@ import { listCommunityMembers, memberFacts } from './communityTeam'
  * entpersonalisiert); was bleibt, ist der Zahlungs-Verweis auf Stripe.
  */
 
-/** Communities einmal laden, nicht je Zeile — eine Person kann in vielen sein. */
+/**
+ * Ist das Appwrites „diese Zeile gibt es nicht"? Nur ein 404 mit der Art einer
+ * fehlenden ZEILE — eine fehlende Tabelle, ein Proxy-404 ohne Art oder ein 500
+ * sind Ausfälle, keine gelöschte Community.
+ */
+function isRowMissing(error: unknown): boolean {
+  if (!(error instanceof AppwriteException) || error.code !== 404) return false
+  return error.type === 'row_not_found' || error.type === 'document_not_found'
+}
+
+/**
+ * Communities einmal laden, nicht je Zeile — eine Person kann in vielen sein.
+ *
+ * `null` heißt AUSSCHLIESSLICH „die Community-Zeile gibt es nicht mehr".
+ * Bis SEC-026 (2026-11-15) wurde JEDER Lesefehler zu `null`, und die Löschung
+ * las `null` als „Community stillgelegt": `decideMembershipErasure` gab dann
+ * „löschen" aus und konnte die Zeile eines LETZTEN Owners entfernen, die als
+ * „letzter Owner" hätte bleiben müssen — weil Appwrite gerade einmal 500
+ * antwortete. Jetzt wirft ein Lesefehler, in der Löschung wie in der
+ * Auskunft. Die Auskunft wird dadurch nicht still unvollständig: der Aufrufer
+ * (communityUserData.ts im onboarding-Layer) macht aus dem Fehler sichtbar
+ * `{ unavailable: true }`.
+ */
 function communityLoader(event: H3Event) {
   const databaseId = useRuntimeConfig(event).public.appwriteDatabaseId
   const admin = createAdminClient(event)
@@ -66,9 +98,16 @@ function communityLoader(event: H3Event) {
   return async (communityId: string): Promise<TenantRow | null> => {
     const cached = cache.get(communityId)
     if (cached !== undefined) return cached
-    const row = await admin.tablesDB.getRow<TenantRow>({
-      databaseId, tableId: COMMUNITIES_TABLE, rowId: communityId,
-    }).catch(() => null)
+    let row: TenantRow | null
+    try {
+      row = await admin.tablesDB.getRow<TenantRow>({
+        databaseId, tableId: COMMUNITIES_TABLE, rowId: communityId,
+      })
+    }
+    catch (error) {
+      if (!isRowMissing(error)) throw error
+      row = null
+    }
     cache.set(communityId, row)
     return row
   }
@@ -195,12 +234,70 @@ async function listInviteRequestsForEmail(event: H3Event, email: string): Promis
 }
 
 /**
+ * Early-Access-Codes, die die Adresse dieser Person tragen — in `boundEmail`
+ * ODER im Etikett (`assignCode` schreibt „Anfrage <adresse>", ein Betreiber
+ * kann eine Adresse auch von Hand ins Etikett tippen).
+ *
+ * BEWUSST EIN VOLLER LAUF über die Tabelle statt einer Abfrage: das Etikett
+ * ist Freitext und über `Query.equal` nicht zu finden, und Groß-/Klein-
+ * schreibung muss egal sein. Die Tabelle ist der Vorrat EINES Betreibers
+ * (die Code-Liste liest sie in einem Abruf von 1000) und der Vorgang eine
+ * Kontolöschung, kein Anzeige-Pfad. `listAllRows` liest vollständig und wirft
+ * bei einem Lesefehler — ein „nichts gefunden" aus einem 500 ließe die
+ * Adresse stehen.
+ *
+ * Ungescopt nach Projekt, wie `invite_requests`: Codes entstehen vor jeder
+ * Community, und gebunden wird an die BESTÄTIGTE Adresse.
+ */
+async function listInviteCodesForEmail(event: H3Event, email: string): Promise<InviteCodeRow[]> {
+  const databaseId = useRuntimeConfig(event).public.appwriteDatabaseId
+  const admin = createAdminClient(event)
+  const rows = await listAllRows<InviteCodeRow>(admin.tablesDB, databaseId, INVITE_CODES_TABLE, [
+    Query.orderAsc('$createdAt'),
+  ])
+  return rows.filter(row => inviteCodeErasure(row, email) !== null)
+}
+
+/**
+ * Missbrauchsmeldungen, die unter dieser Adresse abgegeben wurden — NUR für
+ * die Auskunft. Die Melde-Route speichert die Adresse kleingeschrieben; beide
+ * Schreibweisen wie bei den Einladungen.
+ */
+async function listAbuseReportsForEmail(event: H3Event, email: string): Promise<AbuseReportRow[]> {
+  const databaseId = useRuntimeConfig(event).public.appwriteDatabaseId
+  const admin = createAdminClient(event)
+  const spellings = [...new Set([email, email.trim().toLowerCase()])]
+  return await listAllRows<AbuseReportRow>(admin.tablesDB, databaseId, ABUSE_REPORTS_TABLE, [
+    Query.equal('reporterEmail', spellings),
+    Query.orderAsc('$createdAt'),
+  ])
+}
+
+/** Eine Spur in einer Einladung, wie die Auskunft sie zeigt — ohne Adresse. */
+async function inviteTrace(
+  row: CommunityInviteRow,
+  loadCommunity: (id: string) => Promise<TenantRow | null>,
+): Promise<CommunityInviteTraceExport> {
+  const community = await loadCommunity(row.communityId)
+  return {
+    communityId: row.communityId,
+    communityName: communityLabel(community, row.communityId),
+    role: row.role,
+    status: row.status,
+    createdAt: row.$createdAt,
+    lastChangedAt: row.$updatedAt,
+  }
+}
+
+/**
  * DSGVO-AUSKUNFT: was das Control Plane über diese Person führt.
  *
  * Ohne Adresse (unbestätigte oder schon entfernte E-Mail) bleiben die
- * Einladungen UND die Early-Access-Anfragen leer — beide sind ausschließlich
- * über die Adresse auffindbar, und eine geratene wäre eine Auskunft über jemand
- * anders.
+ * Einladungen an die Person, die Early-Access-Anfragen, die Codes und die
+ * Missbrauchsmeldungen leer — sie sind ausschließlich über die Adresse
+ * auffindbar, und eine geratene wäre eine Auskunft über jemand anders. Die
+ * selbst verschickten und angenommenen Einladungen hängen an der userId und
+ * kommen immer mit.
  */
 export async function exportCommunityUserData(
   event: H3Event,
@@ -227,6 +324,8 @@ export async function exportCommunityUserData(
 
   const invites: CommunityInviteExport[] = []
   const inviteRequests: InviteRequestExport[] = []
+  const inviteCodes: InviteCodeExport[] = []
+  const abuseReports: AbuseReportExport[] = []
   if (email) {
     for (const row of await listInvitesForEmail(event, runtimeProjectId, email, loadCommunity)) {
       const community = await loadCommunity(row.communityId)
@@ -243,15 +342,52 @@ export async function exportCommunityUserData(
     for (const row of await listInviteRequestsForEmail(event, email)) {
       inviteRequests.push({ status: row.status, note: row.note, createdAt: row.$createdAt })
     }
+
+    // Der Code-WERT fehlt absichtlich (es gibt ihn nur noch als Hash, und
+    // auch der geht nicht raus) — gemeldet wird, was über die Person darin
+    // steht: an ihre Adresse gebunden, wann, ob eingelöst.
+    for (const row of await listInviteCodesForEmail(event, email)) {
+      inviteCodes.push({
+        boundEmail: row.boundEmail ?? '',
+        label: row.label,
+        status: row.status || 'active',
+        createdAt: row.$createdAt,
+        assignedAt: row.assignedAt ?? null,
+        expiresAt: row.expiresAt,
+        redeemed: Boolean(row.redeemedAt),
+        redeemedAt: row.redeemedAt ?? null,
+      })
+    }
+
+    for (const row of await listAbuseReportsForEmail(event, email)) {
+      abuseReports.push({
+        host: row.host,
+        category: row.category,
+        url: row.url ?? '',
+        message: row.message,
+        status: row.status,
+        createdAt: row.$createdAt,
+      })
+    }
   }
 
-  return { memberships, invites, inviteRequests }
+  // Spuren in fremden Einladungen: dieselbe Abfrage wie die Löschung, getrennt
+  // nach Rolle der Person. Eine Zeile kann in beiden Listen stehen.
+  const invitesSent: CommunityInviteTraceExport[] = []
+  const invitesAccepted: CommunityInviteTraceExport[] = []
+  for (const row of await listInviteReferences(event, runtimeProjectId, runtimeUserId, loadCommunity)) {
+    if (row.invitedBy === runtimeUserId) invitesSent.push(await inviteTrace(row, loadCommunity))
+    if (row.acceptedBy === runtimeUserId) invitesAccepted.push(await inviteTrace(row, loadCommunity))
+  }
+
+  return { memberships, invites, inviteRequests, invitesSent, invitesAccepted, inviteCodes, abuseReports }
 }
 
 /**
  * DSGVO-LÖSCHUNG: alle Mitgliedschaften dieses Runtime-Users auflösen, die
- * Einladungen an seine Adresse und seine Early-Access-Anfragen entfernen, und
- * die Spuren kappen, die er in FREMDEN Einladungen hinterlassen hat.
+ * Einladungen an seine Adresse und seine Early-Access-Anfragen entfernen, die
+ * Adresse an seinen Early-Access-Codes leeren, und die Spuren kappen, die er
+ * in FREMDEN Einladungen hinterlassen hat.
  *
  * IDEMPOTENT, weil der Orchestrator einen Re-Run nach Teilfehler vorsieht:
  * gelöschte Zeilen sind beim zweiten Lauf nicht mehr da, eine bereits
@@ -313,6 +449,7 @@ export async function eraseCommunityUserData(
 
   let invitesDeleted = 0
   let inviteRequestsDeleted = 0
+  let inviteCodesAnonymized = 0
   if (email) {
     for (const invite of await listInvitesForEmail(event, runtimeProjectId, email, loadCommunity)) {
       // HART GELÖSCHT, nicht auf 'revoked' gesetzt: der Personenbezug einer
@@ -332,6 +469,26 @@ export async function eraseCommunityUserData(
       await admin.tablesDB.deleteRow({ databaseId, tableId: INVITE_REQUESTS_TABLE, rowId: request.$id })
       inviteRequestsDeleted++
     }
+
+    for (const code of await listInviteCodesForEmail(event, email)) {
+      // GELEERT, nicht gelöscht: der Code ist ein Platz im Vorrat des
+      // Betreibers (ausgegeben/eingelöst), seine Zählung soll stimmen. Die
+      // Adresse geht aus `boundEmail` UND aus dem Etikett — die Code-Liste
+      // des Betreibers zeigte sie sonst nach der Löschung weiter.
+      const patch = inviteCodeErasure(code, email)
+      if (!patch) continue // Re-Run: schon geleert
+      await admin.tablesDB.updateRow<InviteCodeRow>({
+        databaseId, tableId: INVITE_CODES_TABLE, rowId: code.$id, data: patch,
+      })
+      inviteCodesAnonymized++
+    }
+
+    // `abuse_reports.reporterEmail` wird hier ABSICHTLICH NICHT geleert
+    // (Davids Entscheidung 2026-11-12): die Melder-Adresse bleibt, bis der
+    // 90-Tage-Lauf sie entfernt (abuseReportPrune.ts,
+    // REPORTER_EMAIL_RETENTION_DAYS). Sie steht in der Auskunft oben; die
+    // Frist gilt für jede Meldung gleich, ob mit Konto oder ohne. Nicht
+    // „nachrüsten".
   }
 
   // ZULETZT die Spuren in FREMDEN Einladungen — nach dem Löschschritt, damit
@@ -346,5 +503,5 @@ export async function eraseCommunityUserData(
     invitesAnonymized++
   }
 
-  return { deleted, anonymized, invitesDeleted, invitesAnonymized, inviteRequestsDeleted, retained }
+  return { deleted, anonymized, invitesDeleted, invitesAnonymized, inviteRequestsDeleted, inviteCodesAnonymized, retained }
 }

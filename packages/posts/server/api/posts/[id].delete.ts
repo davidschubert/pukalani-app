@@ -47,6 +47,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 403, statusText: 'Forbidden' })
   }
   if (row.status === 'deleted') {
+    // Idempotent — und ein zweiter Klick räumt nach, was ein Löschen VOR
+    // SEC-032 (oder ein gescheiterter Aufräum-Schritt) liegen ließ.
+    await removeActivitiesForObject(event, { objectType: 'post', objectId: id })
+    await removePostMentionNotifications(event, row)
     return { ok: true }
   }
 
@@ -59,6 +63,18 @@ export default defineEventHandler(async (event) => {
     Permission.update(Role.user(user.$id)),
     Permission.delete(Role.user(user.$id)),
   ]).catch((error) => { throw toH3Error(error, 'Could not delete post') })
+
+  /**
+   * WAS AUSSERHALB DER ZEILE VOM BEITRAG ERZÄHLT (SEC-032, 2026-11-15):
+   * der Feed-Eintrag (`metadata.snippet` = Titel bzw. Textanfang) und die
+   * Erwähnungs-Meldungen in den Glocken der Genannten (derselbe Auszug). Die
+   * ZEILE selbst bleibt bewusst wie sie ist — der Autor behält Leserecht auf
+   * seine eigene Historie (s. oben), für alle anderen ist sie schon
+   * unsichtbar. Beides best-effort und laut: der Beitrag ist gelöscht, ein
+   * Aufräum-Fehler darf das nicht als gescheitert melden.
+   */
+  await removeActivitiesForObject(event, { objectType: 'post', objectId: id })
+  await removePostMentionNotifications(event, row)
 
   return { ok: true }
 })

@@ -1,4 +1,4 @@
-import { Query } from 'node-appwrite'
+import { Query, type Models } from 'node-appwrite'
 import type { H3Event } from 'h3'
 
 /** Table-Id des Activity-Streams (Schema: system-Migration 014). */
@@ -107,37 +107,129 @@ export async function recordActivity(event: H3Event, input: ActivityInput): Prom
  * tenantId (vor system-021 geschrieben) würden von ihrer eigenen Aufräumung
  * nicht mehr gefunden — wegmoderierter Inhalt bliebe als metadata-Snippet im
  * Feed stehen. Fail-closed wäre hier das Leck.
+ *
+ * BIS ZUR LEEREN SEITE (SEC-032, 2026-11-15): vorher hörte die Schleife nach
+ * 10 × 25 Zeilen STILL auf — „pro Objekt nur eine Handvoll" war eine
+ * Annahme, und ein Rest wäre ein Snippet im Feed, von dem niemand erfährt.
+ * Jetzt wird gelesen, bis nichts mehr kommt (immer die ERSTE Seite: was
+ * gelöscht ist, fällt aus der Ergebnismenge, ein Cursor zeigte ins Leere).
+ * Der Deckel ist nur noch ein Notanker gegen eine Endlosschleife und LOGGT,
+ * wenn er greift. Rückgabe ist die Zahl der entfernten Einträge, für Tests
+ * und Aufrufer, die zählen wollen — werfen tut die Funktion weiterhin nicht:
+ * das Löschen eines eigenen Kommentars darf nicht am Feed scheitern.
  */
+const ACTIVITY_PAGE = 100
+const ACTIVITY_HARD_CAP = 10_000
+
 export async function removeActivitiesForObject(
   event: H3Event,
   input: { objectType: string, objectId: string },
-): Promise<void> {
+): Promise<number> {
+  let removed = 0
   try {
     const config = useRuntimeConfig(event)
+    const databaseId = config.public.appwriteDatabaseId
     const { tablesDB } = createAdminClient(event)
-    // Pro Objekt existieren höchstens eine Handvoll Einträge (created/…) —
-    // die Schleife ist nur ein Sicherheitsnetz, kein Pagination-Anspruch.
-    for (let page = 0; page < 10; page++) {
+    while (removed < ACTIVITY_HARD_CAP) {
       const res = await tablesDB.listRows({
-        databaseId: config.public.appwriteDatabaseId,
+        databaseId,
         tableId: ACTIVITIES_TABLE,
         queries: [
           Query.equal('objectType', input.objectType),
           Query.equal('objectId', input.objectId),
-          Query.limit(25),
+          Query.limit(ACTIVITY_PAGE),
         ],
       })
-      if (res.rows.length === 0) return
+      if (res.rows.length === 0) return removed
       await Promise.all(res.rows.map(row => tablesDB.deleteRow({
-        databaseId: config.public.appwriteDatabaseId,
+        databaseId,
         tableId: ACTIVITIES_TABLE,
         rowId: row.$id,
       })))
-      if (res.rows.length < 25) return
+      removed += res.rows.length
+      if (res.rows.length < ACTIVITY_PAGE) return removed
     }
+    console.error(`[core] Activity-Cleanup für ${input.objectType} ${input.objectId} am Notanker (${ACTIVITY_HARD_CAP}) abgebrochen — weitere Einträge können im Feed sichtbar bleiben`)
   }
   catch (error) {
     console.error(`[core] Activity-Cleanup für ${input.objectType} ${input.objectId} fehlgeschlagen — Einträge können im Feed sichtbar bleiben:`, error)
+  }
+  return removed
+}
+
+/**
+ * Zieht den Text-Schnappschuss (`metadata.snippet`) aller Feed-Einträge eines
+ * Objekts nach — das Gegenstück zu `removeActivitiesForObject` für die
+ * BEARBEITUNG (SEC-032, 2026-11-15). Der Eintrag ist ein Schnappschuss vom
+ * Zeitpunkt des Schreibens; ohne diesen Schritt stand der ALTE Text im Feed
+ * weiter da, auch nachdem ihn sein Autor geändert hatte — und gerade die
+ * Korrektur eines versehentlich geteilten Satzes soll dort ankommen.
+ *
+ * Gleiche Bauart wie die Nachbarin: Lookup über `idx_object`, Admin-Client,
+ * ohne Mandanten-Filter (gleiche Begründung). Nur Einträge, die schon einen
+ * Schnappschuss tragen, werden angefasst — ein Eintrag ohne bekommt keinen
+ * neuen (was dort steht, entscheidet `recordActivity`, nicht die
+ * Bearbeitung). Best-effort mit Log-Zeile, Rückgabe = geänderte Einträge.
+ */
+export async function updateActivitySnippetForObject(
+  event: H3Event,
+  objectType: string,
+  objectId: string,
+  snippet: string,
+): Promise<number> {
+  let updated = 0
+  try {
+    const config = useRuntimeConfig(event)
+    const databaseId = config.public.appwriteDatabaseId
+    const { tablesDB } = createAdminClient(event)
+    let cursor: string | undefined
+    let seen = 0
+    while (seen < ACTIVITY_HARD_CAP) {
+      const res = await tablesDB.listRows<Models.Row & { metadata?: string }>({
+        databaseId,
+        tableId: ACTIVITIES_TABLE,
+        queries: [
+          Query.equal('objectType', objectType),
+          Query.equal('objectId', objectId),
+          Query.limit(ACTIVITY_PAGE),
+          ...(cursor ? [Query.cursorAfter(cursor)] : []),
+        ],
+      })
+      for (const row of res.rows) {
+        const metadata = parseMetadata(row.metadata)
+        if (!metadata || typeof metadata.snippet !== 'string' || metadata.snippet === snippet) continue
+        const next = JSON.stringify({ ...metadata, snippet })
+        // Zu groß ⇒ ohne Zusatzdaten, wie beim Schreiben: lieber kein
+        // Schnappschuss als der alte.
+        await tablesDB.updateRow({
+          databaseId,
+          tableId: ACTIVITIES_TABLE,
+          rowId: row.$id,
+          data: { metadata: next.length > METADATA_MAX ? '' : next },
+        })
+        updated++
+      }
+      seen += res.rows.length
+      if (res.rows.length < ACTIVITY_PAGE) return updated
+      cursor = res.rows.at(-1)!.$id
+    }
+    console.error(`[core] Snippet-Nachzug für ${objectType} ${objectId} am Notanker (${ACTIVITY_HARD_CAP}) abgebrochen — ältere Einträge können den alten Text zeigen`)
+  }
+  catch (error) {
+    console.error(`[core] Snippet-Nachzug für ${objectType} ${objectId} fehlgeschlagen — der Feed kann den alten Text zeigen:`, error)
+  }
+  return updated
+}
+
+/** metadata-JSON fail-soft lesen — kaputtes oder leeres JSON ist „kein Objekt". */
+function parseMetadata(raw: string | undefined): Record<string, unknown> | null {
+  if (!raw) return null
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null
+  }
+  catch {
+    return null
   }
 }
 

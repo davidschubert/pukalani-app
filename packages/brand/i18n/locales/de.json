@@ -3720,7 +3720,8 @@
         "sessions": "Sitzungen",
         "notifications": "Benachrichtigungen",
         "data": "Daten"
-      }
+      },
+      "deleteNotice": "Deine Marken und alles darin werden sofort gelöscht. Deine Prüfergebnisse sieht ab sofort niemand mehr; nach 90 Tagen werden sie endgültig gelöscht. Ergebnisse über öffentliche Websites bleiben danach bestehen, ohne Bezug zu dir."
     }
   }
 }

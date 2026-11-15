@@ -330,7 +330,7 @@
     },
     "export": {
       "title": "Export your data",
-      "description": "Download a JSON copy of your account, sessions and comments.",
+      "description": "Download everything we store about you, as a file.",
       "button": "Export data",
       "success": "Export downloaded.",
       "successDescription": "The file my-data.json is now in your downloads folder.",
@@ -339,16 +339,22 @@
     },
     "delete": {
       "title": "Delete account",
-      "description": "No longer want to use your account? You can delete it here. This action is not reversible — all related data will be permanently removed.",
+      "description": "No longer want to use your account? You can delete it here.",
       "button": "Delete account",
       "confirmTitle": "Really delete your account?",
-      "confirmText": "Your account and all related data will be permanently deleted. This cannot be undone.",
+      "confirmText": "This cannot be undone. The list above the button shows exactly what happens.",
       "confirm": "Delete permanently",
       "cancel": "Cancel",
       "success": "Account deleted.",
       "failed": "Deletion failed — please try again.",
-      "failedDescription": "Your account is unchanged — nothing was deleted. Try again in a moment.",
-      "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete your account. Nothing has been deleted."
+      "failedDescription": "The deletion did not complete. Your account may already be locked and partly emptied. Try again later – if it still does not work, get in touch with us.",
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete your account. Nothing has been deleted.",
+      "notice": {
+        "title": "What happens when you delete",
+        "now": "Gone right away: your account, your profile and all sign-ins. What you wrote is emptied – where a conversation would otherwise fall apart, a placeholder without your name stays. Your votes, reactions and sign-ups are removed.",
+        "backup": "For 30 days: we keep a backup copy of your data. Only the operator can open it. After that, it is deleted automatically.",
+        "irreversible": "This cannot be undone. Your account cannot be restored."
+      }
     },
     "twoFactor": {
       "title": "Two-factor",

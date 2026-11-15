@@ -66,6 +66,10 @@ import type { BrandWorkspaceNavExtra } from '../shared/brandWorkspaceNav'
  */
 export default defineAppConfig({
   pukalani: {
+    account: {
+      /** Zeile in „Was beim Löschen geschieht" (AuthAccountDeleteCard, core): Marken und Prüfergebnisse (Brand Checks) — was mit ihnen beim Löschen des Kontos geschieht. */
+      deleteNotices: ['brand.account.deleteNotice'],
+    },
     /**
      * DIE KOPF-NAVIGATION DIESER SITE ALS REGISTRY (U15 Teil 3, Davids
      * Entscheidung 2026-09-08, DECISION-LOG „Navigation anpassen").

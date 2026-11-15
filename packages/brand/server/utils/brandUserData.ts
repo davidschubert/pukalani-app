@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
 import { Query } from 'node-appwrite'
 import { BRAND_ACCESS_TABLE } from './brandAccess'
+import { markBrandChecksErased } from './brandCheckErasure'
 import type { BrandInviteRow } from './brandInvites'
 import { BRAND_FINDINGS_TABLE } from './brandFindingsStore'
 import {
@@ -10,16 +11,26 @@ import {
 } from './brandInspirationStore'
 import { BRAND_MARK_DRAFTS_TABLE, purgeBrandMarkDrafts } from './brandMarkDrafts'
 import { runBrandProfileCascades } from './brandProfileCascade'
-import { BRAND_PUBLICATIONS_TABLE, BRAND_PUBLICATION_REPORTS_TABLE } from './brandPublications'
 import {
+  BRAND_PUBLICATIONS_TABLE,
+  BRAND_PUBLICATION_REPORTS_TABLE,
+  type BrandPublicationReportRow,
+} from './brandPublications'
+import {
+  BRAND_CHECKS_TABLE,
+  BRAND_CHECK_CORRECTIONS_TABLE,
   BRAND_EVENTS_TABLE,
   BRAND_INTRO_REQUESTS_TABLE,
   BRAND_MESSAGES_TABLE,
   BRAND_PROFILES_TABLE,
   BRAND_SHARES_TABLE,
   BRAND_STEPS_TABLE,
+  BRAND_WAITLIST_TABLE,
+  type BrandCheckCorrectionRow,
+  type BrandCheckRow,
   type BrandIntroRequestRow,
   type BrandProfileRow,
+  type BrandWaitlistRow,
   brandDb,
   isAppwriteNotFound,
 } from './brandStore'
@@ -43,6 +54,24 @@ import {
  * Zeilen-Id fiele weg). Verschwinden muss die PERSON, nicht der Vorgang: aus
  * `emailLower` wird ein Marker, `redeemedByUserId` wird geleert. Genau die
  * Aufteilung, die `UserDataDeleteResult` mit `deleted`/`anonymized` meint.
+ *
+ * ── DIE TABELLEN ──────────────────────────────────────────────────────────
+ * Je Profil: `brand_profiles`, `brand_steps`, `brand_messages`,
+ * `brand_shares`, `brand_events`, `brand_findings`, `brand_publications` mit
+ * den Meldungen ÜBER die Veröffentlichung (`brand_publication_reports`),
+ * `brand_inspiration`, `brand_mark_drafts` und die Mitläufer anderer Layer.
+ * Je Konto: `brand_access`, `brand_events`, `brand_intro_requests`
+ * (über `userId` UND Adresse) und `brand_checks` (über `userId`). Je Adresse:
+ * `brand_invites`, `brand_waitlist`, `brand_check_corrections` und die
+ * Meldungen, die die Person SELBST abgegeben hat (`brand_publication_reports`
+ * über `reporterEmail`).
+ *
+ * ── PRÜFERGEBNISSE WERDEN MARKIERT, NICHT SOFORT GELÖSCHT (SEC-015) ───────
+ * Davids Entscheidung (2026-11-12/15): die Checks des Kontos und seiner Marken
+ * sind ab der Löschung für alle unsichtbar (`erasedAt`, brand-026) und werden
+ * nach 90 Tagen von einem geplanten Lauf abgeräumt — Dokument-Checks
+ * gelöscht, Website-Checks ohne Personenbezug behalten
+ * (`brandCheckErasure.ts`). Das Markieren zählt deshalb als `anonymized`.
  *
  * ── IDEMPOTENT ────────────────────────────────────────────────────────────
  * Jeder Schritt verzeiht ein 404 (Vertrag: „ein Re-Run nach Teilfehler findet
@@ -96,6 +125,10 @@ async function accountEmailLower(event: H3Event, userId: string): Promise<string
   try {
     const { users } = createAdminClient(event)
     const user = await users.get({ userId })
+    // NUR eine BESTÄTIGTE Adresse ist ein Schlüssel: mit einer unbestätigten
+    // bekäme ein Konto unter fremder Adresse die Zeilen eines anderen Menschen
+    // in den Export — oder löschte sie (dieselbe Regel wie im onboarding-Layer).
+    if (!user.emailVerification) return null
     return (user.email ?? '').toLowerCase() || null
   }
   catch (error) {
@@ -189,6 +222,87 @@ export async function brandExportUserData(event: H3Event, userId: string): Promi
      * sähe wie zwei Anfragen aus.
      */
     introRequests: await introRequestRows(event, userId, emailLower),
+    /**
+     * DIE PRÜFERGEBNISSE, die dieses Konto ausgelöst hat (brand-016/017) —
+     * Website-Checks, Dokument-Checks und die Checks fremder Auftritte aus
+     * dem Marktvergleich. Ausgewählte Felder statt der rohen Zeile: `ipHash`
+     * ist der Tages-Stempel des Deckels, `textHash` und die Modell-Angaben
+     * sind Technik über den Lauf, keine Auskunft über die Person.
+     */
+    checks: (await safeListAll<BrandCheckRow>(event, BRAND_CHECKS_TABLE, [Query.equal('userId', userId)]))
+      .map(toExportedCheck),
+    /** Die Korrekturvorschläge unter dieser Adresse (brand-017) — ohne `ipHash`. */
+    checkCorrections: emailLower
+      ? (await safeListAll<BrandCheckCorrectionRow>(event, BRAND_CHECK_CORRECTIONS_TABLE, [
+          Query.equal('reporterEmail', emailLower),
+        ])).map(row => ({
+          id: row.$id,
+          checkId: row.checkId,
+          field: row.field,
+          proposed: row.proposed,
+          reason: row.reason,
+          status: row.status,
+          decidedAt: row.decidedAt ?? null,
+          createdAt: row.$createdAt,
+        }))
+      : [],
+    /**
+     * DER WARTELISTEN-EINTRAG dieser Adresse (brand-012/015) — ohne
+     * `tokenHash`: er ist das Geheimnis des Bestätigungs-Links, kein Datum
+     * über die Person.
+     */
+    waitlist: emailLower
+      ? (await safeListAll<BrandWaitlistRow>(event, BRAND_WAITLIST_TABLE, [Query.equal('emailLower', emailLower)]))
+          .map(row => ({
+            id: row.$id,
+            email: row.email,
+            name: row.name,
+            company: row.company,
+            website: row.website,
+            note: row.note,
+            locale: row.locale,
+            source: row.source,
+            status: row.status,
+            confirmedAt: row.confirmedAt ?? null,
+            createdAt: row.$createdAt,
+            updatedAt: row.$updatedAt,
+          }))
+      : [],
+    /**
+     * Die Meldungen, die diese Person ÜBER fremde Veröffentlichungen
+     * abgegeben hat (brand-020) — ohne `ipHash`. Meldungen ÜBER ihre eigenen
+     * Veröffentlichungen gehören nicht hierher: die stammen von anderen.
+     */
+    publicationReportsFiled: emailLower
+      ? (await safeListAll<BrandPublicationReportRow>(event, BRAND_PUBLICATION_REPORTS_TABLE, [
+          Query.equal('reporterEmail', emailLower),
+        ])).map(row => ({
+          id: row.$id,
+          publicationId: row.publicationId,
+          reason: row.reason ?? '',
+          status: row.status ?? '',
+          createdAt: row.$createdAt,
+        }))
+      : [],
+  }
+}
+
+/** Ein Check, wie er in den Export geht (s. `checks` oben). */
+function toExportedCheck(row: BrandCheckRow) {
+  return {
+    id: row.$id,
+    source: row.source || 'website',
+    url: row.url,
+    host: row.host,
+    score: row.score,
+    band: row.band,
+    locale: row.locale,
+    industry: row.industry ?? '',
+    rankingOptIn: row.rankingOptIn === true,
+    hidden: row.hidden === true,
+    erasedAt: row.erasedAt ?? null,
+    profileId: row.profileId ?? '',
+    createdAt: row.$createdAt,
   }
 }
 
@@ -243,6 +357,11 @@ export async function brandDeleteUserData(event: H3Event, userId: string): Promi
 
   for (const profile of profiles) {
     const filter = [Query.equal('profileId', profile.$id)]
+    // Die Checks der Marke ZUERST unsichtbar machen (brand-026, SEC-015) —
+    // über `profileId` und den Dokument-Schlüssel. Vor dem Profil, weil der
+    // Dokument-Schlüssel nur über die Profil-Id zu finden ist; scheitert es,
+    // wirft es, und das Profil bleibt für einen zweiten Lauf stehen.
+    anonymized += await markBrandChecksErased(event, { profileId: profile.$id })
     // Kinder zuerst — dieselbe Reihenfolge und derselbe Grund wie in der
     // Löschroute: ein Abbruch soll sichtbaren Rest hinterlassen, keinen
     // unsichtbaren.
@@ -309,6 +428,10 @@ export async function brandDeleteUserData(event: H3Event, userId: string): Promi
     await remove(BRAND_EVENTS_TABLE, row.$id)
   }
 
+  // Die Checks, die dieses Konto ausgelöst hat — auch ohne Marke (die
+  // Website-Checks fremder Auftritte aus dem Marktvergleich).
+  anonymized += await markBrandChecksErased(event, { userId })
+
   const emailLower = await accountEmailLower(event, userId)
   if (emailLower) {
     for (const invite of await safeListAll<BrandInviteRow>(event, BRAND_INVITES_TABLE, [Query.equal('emailLower', emailLower)])) {
@@ -344,6 +467,38 @@ export async function brandDeleteUserData(event: H3Event, userId: string): Promi
    */
   for (const row of await introRequestRows(event, userId, emailLower)) {
     await remove(BRAND_INTRO_REQUESTS_TABLE, row.$id)
+  }
+
+  if (emailLower) {
+    /**
+     * DER WARTELISTEN-EINTRAG WIRD GELÖSCHT — aus demselben Grund wie die
+     * Gesprächsanfrage darüber: er beweist nichts und schaltet nichts frei,
+     * er IST die Nachricht dieses Menschen (Name, Firma, Website, Notiz).
+     */
+    for (const row of await safeListAll<Models.Row>(event, BRAND_WAITLIST_TABLE, [
+      Query.equal('emailLower', emailLower),
+    ])) {
+      await remove(BRAND_WAITLIST_TABLE, row.$id)
+    }
+
+    /**
+     * KORREKTURVORSCHLÄGE UND SELBST ABGEGEBENE MELDUNGEN VERLIEREN NUR DIE
+     * ADRESSE. Die Zeilen sind die Arbeitsliste des Betreibers und der Beleg,
+     * dass um eine Korrektur oder Entfernung gebeten wurde — dieselbe
+     * Aufteilung wie bei den Einladungen. `ipHash` lässt sich keiner Person
+     * zuordnen und wird von einem Aufbewahrungs-Lauf behandelt, nicht hier.
+     */
+    for (const tableId of [BRAND_CHECK_CORRECTIONS_TABLE, BRAND_PUBLICATION_REPORTS_TABLE]) {
+      for (const row of await safeListAll<Models.Row>(event, tableId, [Query.equal('reporterEmail', emailLower)])) {
+        try {
+          await tablesDB.updateRow({ databaseId, tableId, rowId: row.$id, data: { reporterEmail: '' } })
+          anonymized++
+        }
+        catch (error) {
+          if (!isAppwriteNotFound(error)) throw error
+        }
+      }
+    }
   }
 
   return { deleted, anonymized }

@@ -15,10 +15,25 @@ import type { H3Event } from 'h3'
  * Integrität): actorName/ip/metadata.name leeren, actorId + Struktur
  * bleiben (nach users.delete keinem Menschen mehr zuordenbar); targetName
  * für Logs, die auf den User zeigen, ebenfalls leeren. Plan §4.6.
+ * `actorId`/`targetId` bleiben dabei als PSEUDONYMES Protokoll ohne Frist
+ * stehen — ob es eine bekommt, ist als offener Punkt geführt (SEC-026).
+ * Seit SEC-026 (2026-11-15) steht das Protokoll auch in der AUSKUNFT
+ * (`auditLog`): als Handelnde mit Aktion, Ziel-Art, Zeit und IP; als Ziel nur
+ * Aktion und Zeit — Name und IP des handelnden Betreibers sind ein Datum über
+ * jemand anders.
  *
  * activities (Migration 014): Export + Hard-Delete als Verursacher (per
  * actorId, idx_actor) — Feed-Einträge sind reine Verhaltens-Daten, es gibt
- * keinen Empfänger. Query degradiert auf leere Menge, solange die Table
+ * keinen Empfänger. Die Auskunft trägt seit SEC-026 auch `actorName` und
+ * `metadata` (dort steht der eigene Text-Ausschnitt der Person).
+ *
+ * instance_secrets (Migration system-036): nur `updatedBy` — wer einen
+ * Instanz-Schlüssel zuletzt gesetzt hat — wird auf '' geleert, die Zeile
+ * bleibt (sie IST die Konfiguration). Gelesen werden AUSSCHLIESSLICH `$id`
+ * und `updatedBy` (`Query.select`): die Werte sind Geheimnisse und gehören in
+ * keine Auskunft, kein Log und nicht einmal in den Speicher dieses Pfads. Die
+ * Tabelle gibt es nicht auf jeder Instanz (`listAllRowsIfTableExists`);
+ * gefiltert wird im Code, so hängt nichts an der Abfragbarkeit der Spalte. Query degradiert auf leere Menge, solange die Table
  * auf einer Instanz noch nicht existiert (Migration ausstehend).
  *
  * LESEFEHLER SIND FEHLER (SEC-026, Teil 2): „degradiert" heisst seither GENAU
@@ -52,6 +67,9 @@ import type { H3Event } from 'h3'
 
 type NotificationRow = Models.Row & { recipientId: string, type: string, title: string, body: string, link: string, read: boolean }
 type AuditRow = Models.Row & { actorId: string, actorName: string, action: string, targetId: string, targetName: string, metadata: string, ip: string }
+type AuditExportRow = AuditRow & { targetType: string }
+/** Nur was `Query.select` lädt — nie der Wert des Geheimnisses. */
+type SecretOwnerRow = Models.Row & { updatedBy?: string }
 type ActivityRow = Models.Row & { actorId: string, actorName: string, type: string, objectType: string, objectId: string, link: string, metadata: string, visibility: string }
 type HandleRow = Models.Row & { communityId: string, userId: string, handle: string, handleLower: string, status: string, changedAt: string }
 type AccountHandleRow = Models.Row & { userId: string, handle: string, handleLower: string, status: string, changedAt: string }
@@ -61,14 +79,35 @@ const AUDIT_LOGS = 'audit_logs'
 const ACTIVITIES = 'activities'
 const HANDLES = 'community_handles'
 const ACCOUNT_HANDLES = 'account_handles'
+const INSTANCE_SECRETS = 'instance_secrets'
 
 interface SystemUserDataExport {
   notifications: Array<{ type: string, title: string, body: string, link: string, read: boolean, createdAt: string }>
-  activities: Array<{ type: string, objectType: string, objectId: string, link: string, createdAt: string }>
+  activities: Array<{ type: string, actorName: string, objectType: string, objectId: string, link: string, metadata: string, createdAt: string }>
+  /** Audit-Protokoll: als Handelnde vollständig, als Ziel ohne Daten des Handelnden. */
+  auditLog: {
+    asActor: Array<{ action: string, targetType: string, ip: string, createdAt: string }>
+    asTarget: Array<{ action: string, createdAt: string }>
+  }
+  /** Wie viele Instanz-Schlüssel diese Person zuletzt gesetzt hat — nie die Werte. */
+  instanceSecretsUpdated: number
   /** Alt-Bestand je Community (system-029). */
   handles: Array<{ communityId: string, handle: string, status: string, changedAt: string, createdAt: string }>
   /** Der konto-weite Name (system-031, AH-7) — aktiv und früher. */
   accountHandles: Array<{ handle: string, status: string, changedAt: string, createdAt: string }>
+}
+
+/** Die `$id`s der Instanz-Schlüssel, die diese Person zuletzt gesetzt hat. */
+async function listSecretsUpdatedBy(event: H3Event, userId: string): Promise<string[]> {
+  const config = useRuntimeConfig(event)
+  const { tablesDB } = createAdminClient(event)
+  const rows = await listAllRowsIfTableExists<SecretOwnerRow>(
+    tablesDB,
+    config.public.appwriteDatabaseId,
+    INSTANCE_SECRETS,
+    [Query.select(['$id', 'updatedBy'])],
+  )
+  return rows.filter(row => row.updatedBy === userId).map(row => row.$id)
 }
 
 export async function systemExportUserData(event: H3Event, userId: string): Promise<SystemUserDataExport> {
@@ -103,6 +142,22 @@ export async function systemExportUserData(event: H3Event, userId: string): Prom
     ACCOUNT_HANDLES,
     [Query.equal('userId', userId)],
   )
+  // Audit-Protokoll vollständig (listAllRows wirft statt zu kappen). Die
+  // Tabelle gehört dem system-Layer und existiert überall, wo er läuft.
+  const auditAsActor = await listAllRows<AuditExportRow>(
+    tablesDB,
+    config.public.appwriteDatabaseId,
+    AUDIT_LOGS,
+    [Query.equal('actorId', userId), Query.orderAsc('$createdAt')],
+  )
+  const auditAsTarget = await listAllRows<AuditExportRow>(
+    tablesDB,
+    config.public.appwriteDatabaseId,
+    AUDIT_LOGS,
+    [Query.equal('targetId', userId), Query.equal('targetType', 'user'), Query.orderAsc('$createdAt')],
+  )
+  const secrets = await listSecretsUpdatedBy(event, userId)
+
   return {
     notifications: received.map(r => ({
       type: r.type,
@@ -114,11 +169,18 @@ export async function systemExportUserData(event: H3Event, userId: string): Prom
     })),
     activities: activities.map(r => ({
       type: r.type,
+      actorName: r.actorName,
       objectType: r.objectType,
       objectId: r.objectId,
       link: r.link,
+      metadata: r.metadata,
       createdAt: r.$createdAt,
     })),
+    auditLog: {
+      asActor: auditAsActor.map(r => ({ action: r.action, targetType: r.targetType, ip: r.ip, createdAt: r.$createdAt })),
+      asTarget: auditAsTarget.map(r => ({ action: r.action, createdAt: r.$createdAt })),
+    },
+    instanceSecretsUpdated: secrets.length,
     // Beide Status — ein FRÜHERER Name gehört genauso in die Auskunft.
     handles: handles.map(r => ({
       communityId: r.communityId,
@@ -250,6 +312,13 @@ export async function systemDeleteUserData(event: H3Event, userId: string): Prom
     const nextMetadata = stripPersonalMetadata(row.metadata)
     if (row.targetName === '' && nextMetadata === row.metadata) continue // idempotent
     await tablesDB.updateRow({ databaseId, tableId: AUDIT_LOGS, rowId: row.$id, data: { targetName: '', metadata: nextMetadata } })
+    anonymized++
+  }
+
+  // Instanz-Schlüssel: nur den Verweis auf das Konto leeren (Kopf der Datei).
+  // Kein Wert wird gelesen, geschrieben oder geloggt.
+  for (const rowId of await listSecretsUpdatedBy(event, userId)) {
+    await tablesDB.updateRow({ databaseId, tableId: INSTANCE_SECRETS, rowId, data: { updatedBy: '' } })
     anonymized++
   }
 

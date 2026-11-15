@@ -156,15 +156,50 @@ export async function postsDeleteUserData(event: H3Event, userId: string): Promi
     deleted++
   }
 
-  // Eigene Posts: Tombstone (idempotent — bereits geblankte überspringen)
+  /**
+   * `invitedBy` in FREMDEN Zähler-Zeilen (SEC-032, 2026-11-15): die eigene
+   * Zeile fällt oben ganz, aber wen dieser Mensch eingeladen hat, steht in
+   * DEREN Zeilen als seine Konto-Id. Geleert auf `''` (Spalten-Default,
+   * posts-021) — für die Eingeladenen heißt das „ohne Einlader", genau wie
+   * für jemanden, der selbst kam; ihre eigenen Zähler bleiben.
+   *
+   * Liste degradiert vor posts-013 (fehlende Tabelle), jeder andere
+   * Lesefehler hält an; Schreiben strikt. Idempotent: ein zweiter Lauf findet
+   * keine Zeile mehr mit dieser Id.
+   */
+  const invited = await listAllRowsIfTableExists<MemberCounters>(tablesDB, databaseId, MEMBER_COUNTERS_TABLE, [Query.equal('invitedBy', userId)])
+  for (const row of invited) {
+    await tablesDB.updateRow({ databaseId, tableId: MEMBER_COUNTERS_TABLE, rowId: row.$id, data: { invitedBy: '' } })
+    anonymized++
+  }
+
+  /**
+   * Eigene Posts: Tombstone.
+   *
+   * WIRKLICH LEER (SEC-032, 2026-11-15 — „… Übersetzungen und Vorschauen
+   * werden wirklich geleert"): bis hierher blieben `authorId`, die
+   * Umfrage-Optionen (vom Autor geschriebener Text) und der Übersetzungs-
+   * Cache (Titel und Text in bis zu sechs Sprachen) auf dem Grabstein. Die
+   * Umfrage-STIMMEN anderer bleiben in `poll_votes` (deren Daten), sie hängen
+   * am Index und verlieren mit den Optionen nur ihre Beschriftung.
+   *
+   * IDEMPOTENT ÜBER DIE SUCHE, nicht über einen Überspring-Test: gefunden
+   * wird über `authorId`, und genau das wird geleert — ein zweiter Lauf findet
+   * nichts mehr. Der frühere Test „schon geblankt ⇒ weiter" fällt deshalb weg;
+   * er hätte die Grabsteine aus der Zeit davor (Konto-Id, Optionen,
+   * Übersetzung noch da) für immer übersprungen.
+   *
+   * Wer brauchte `authorId` auf einem Grabstein? Die Moderations-Sicht zeigt
+   * gelöschte Beiträge nicht als handelbar (Ausblenden verlangt `published`),
+   * Bearbeiten/Löschen fragen nach dem Autor — der ist hier gelöscht. Niemand.
+   */
   const posts = await listAllRows<CommunityPost>(tablesDB, databaseId, POSTS_TABLE, [Query.equal('authorId', userId)])
   for (const post of posts) {
-    if (post.status === 'deleted' && post.body === '' && post.authorName === '') continue
     await tablesDB.updateRow({
       databaseId,
       tableId: POSTS_TABLE,
       rowId: post.$id,
-      data: { status: 'deleted', title: null, body: '', authorName: '' },
+      data: { status: 'deleted', title: null, body: '', authorName: '', authorId: '', pollOptions: null, translations: '' },
       // Niemand liest mehr; keine User-Rechte übrig (der Account verschwindet).
       // WER BLEIBT ÜBRIG: die Moderation DIESER Community — nicht das globale
       // Betreiber-Label (Audit-Befund 2026-08-02). `read(label('admin'))` ist
@@ -175,6 +210,10 @@ export async function postsDeleteUserData(event: H3Event, userId: string): Promi
       // `read: 'moderators'` (core/server/utils/tenantRowPermissions.ts).
       permissions: tombstonePermissions(post),
     })
+    // Der Feed-Eintrag mit dem Titel-Schnappschuss. Best-effort (Core-Vertrag,
+    // wirft nie); die Feed-Einträge dieses Menschen räumt zusätzlich der
+    // system-Contributor über `actorId` STRIKT ab.
+    await removeActivitiesForObject(event, { objectType: 'post', objectId: post.$id })
     anonymized++
   }
 

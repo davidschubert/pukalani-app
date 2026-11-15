@@ -21,6 +21,12 @@ const read = (relative: string): string =>
   readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8')
 
 const REDACT = read('../server/api/events/[id]/redact.post.ts')
+/**
+ * Die Schwärzung selbst (Feldliste, Titelbild, Feed) steht seit SEC-032
+ * (2026-11-15) in EINER Funktion, die auch die Kontolöschung nutzt. Die
+ * Prüfungen dazu lesen deshalb dort — und halten fest, dass die Route sie ruft.
+ */
+const REDACTION = read('../server/utils/eventRedaction.ts')
 const HIDE = read('../server/api/events/[id]/hide.post.ts')
 const RESTORE = read('../server/api/events/[id]/restore.post.ts')
 
@@ -81,6 +87,12 @@ describe('Schwärzen hält sich an die pure Regel und an die Datentür', () => {
     expect(REDACT).toContain('data: { code: verdict.reason }')
   })
 
+  it('die Route ruft die EINE Schwärzung, mit Marker und Datentür', () => {
+    expect(REDACT).toContain('await redactEventContent(event, row, {')
+    expect(REDACT).toContain('db.update<EventRow>(EVENTS_TABLE, id, data)')
+    expect(REDACT).toContain("coverFailure: 'log'")
+  })
+
   it('leert JEDEN vom Autor gewählten Text und setzt den Marker in EINEM Schreibvorgang', () => {
     // Die Liste ist der eigentliche Vertrag. Der erste Schnitt leerte nur Titel
     // und Beschreibung — die übrigen fünf Felder stehen auf DERSELBEN Seite,
@@ -88,12 +100,16 @@ describe('Schwärzen hält sich an die pure Regel und an die Datentür', () => {
     // anstößiger Titel. Wer hier eines wegnimmt, macht das Werkzeug durch die
     // Wahl des Feldes umgehbar; deshalb steht die Liste hier und nicht nur im
     // Kommentar.
-    for (const feld of ['title', 'description', 'location', 'address', 'locationNotes', 'url', 'replayUrl']) {
-      expect(REDACT).toMatch(new RegExp(`\\n\\s*${feld}: (''|null),`))
+    for (const feld of ['title', 'description', 'location', 'address', 'locationNotes', 'url', 'replayUrl', 'translations']) {
+      expect(REDACTION).toMatch(new RegExp(`\\n\\s*${feld}: (''|null),`))
     }
+    // Felder und Marker in EINEM Schreibvorgang.
+    expect(REDACTION).toContain('await options.write({ ...EVENT_REDACTED_FIELDS, ...options.extra })')
     expect(REDACT).toContain('redactedAt: new Date().toISOString()')
     // Gegenprobe: der Name des Organisators ist Identität, nicht Inhalt — ihn
-    // zu leeren nähme die Zurechenbarkeit.
+    // zu leeren nähme der MODERATION die Zurechenbarkeit (die Kontolöschung
+    // leert ihn selbst, eventsUserData.ts).
+    expect(REDACTION).not.toMatch(/\n\s*organizerName: /)
     expect(REDACT).not.toMatch(/\n\s*organizerName: /)
   })
 
@@ -101,10 +117,11 @@ describe('Schwärzen hält sich an die pure Regel und an die Datentür', () => {
     // Der Unterschied zum Ausblenden: die Row bleibt absichtlich lesbar, also
     // bliebe es auch die Datei. `applyEventCoverVisibility` wäre hier folgenlos
     // — wer es „der Einheitlichkeit halber" einsetzt, lässt das Bild stehen.
-    expect(REDACT).toContain('deleteFile({ bucketId: EVENT_COVERS_BUCKET')
+    expect(REDACTION).toContain('deleteFile({ bucketId: EVENT_COVERS_BUCKET')
     // Die AUFRUFSTELLE, nicht das Wort — der Kopfkommentar erklärt naturgemäß,
     // warum diese Funktion hier gerade NICHT benutzt wird.
     expect(REDACT).not.toContain('await applyEventCoverVisibility(')
+    expect(REDACTION).not.toContain('await applyEventCoverVisibility(')
     expect(HIDE).toContain('await applyEventCoverVisibility(')
   })
 
@@ -116,7 +133,7 @@ describe('Schwärzen hält sich an die pure Regel und an die Datentür', () => {
 
   it('räumt den Activity-Feed, der einen eigenen Titel-Schnappschuss hält', () => {
     // Ohne diesen Schritt stünde der geschwärzte Titel im Feed weiter da.
-    expect(REDACT).toContain('removeActivitiesForObject(event, { objectType: \'event\', objectId: id })')
+    expect(REDACTION).toContain('removeActivitiesForObject(event, { objectType: \'event\', objectId: row.$id })')
   })
 
   it('nimmt den zweiten Aufruf idempotent an, statt ihn abzulehnen', () => {

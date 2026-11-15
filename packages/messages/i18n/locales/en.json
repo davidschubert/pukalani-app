@@ -109,6 +109,9 @@
       "bodyRequired": "Write something.",
       "bodyTooLong": "At most {max} characters.",
       "recipientRequired": "Choose a recipient."
+    },
+    "account": {
+      "deleteNotice": "Private messages you wrote are deleted. If one of them was reported, it is kept as evidence for up to 90 days."
     }
   }
 }

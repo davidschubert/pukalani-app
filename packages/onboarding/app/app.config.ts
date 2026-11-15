@@ -27,6 +27,10 @@
  */
 export default defineAppConfig({
   pukalani: {
+    account: {
+      /** Zeile in „Was beim Löschen geschieht" (AuthAccountDeleteCard, core): die E-Mail-Adresse einer Meldung an den Betreiber bleibt bis zu 90 Tage. */
+      deleteNotices: ['onboarding.account.deleteNotice'],
+    },
     auth: {
       /**
        * DER EHRLICHE SATZ ÜBER DEM REGISTER-FORMULAR (U2, Audit-Befund K1).

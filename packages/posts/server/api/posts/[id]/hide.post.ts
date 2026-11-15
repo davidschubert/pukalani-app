@@ -55,6 +55,10 @@ export default defineEventHandler(async (event) => {
   // Feed-Einträge des Posts entfernen (core-Vertrag) — sonst bleibt sein
   // metadata-Snippet im Activity-Feed sichtbar, obwohl der Inhalt weg ist
   await removeActivitiesForObject(event, { objectType: 'post', objectId: id })
+  // Ebenso die Erwähnungs-Meldungen mit demselben Auszug in fremden Glocken
+  // (SEC-032, Zuordnung über den festen Schlüssel — `postMentionCleanup.ts`).
+  // Ein späteres Wiederherstellen schickt sie bewusst nicht neu.
+  await removePostMentionNotifications(event, row)
 
   return { ok: true }
 })

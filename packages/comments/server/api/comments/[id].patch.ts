@@ -1,5 +1,6 @@
 import { AppwriteException } from 'node-appwrite'
 import { commentUpdateSchema } from '../../../schemas/comment'
+import { commentSnippet } from '../../../shared/commentSnippet'
 import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
 
 /** Eigenen Kommentar bearbeiten — Row-Permission erlaubt nur den Autor. */
@@ -73,6 +74,14 @@ export default defineEventHandler(async (event) => {
      */
     if (contentEdited) {
       await recordUserCounterEvents(event, [{ userId: user.$id, kind: 'edits', delta: 1 }])
+      /**
+       * Der Feed-Eintrag trägt einen SCHNAPPSCHUSS des Textes (SEC-032,
+       * 2026-11-15) — er folgt der Bearbeitung, unter derselben Bedingung,
+       * unter der eine Zeile höher der Übersetzungs-Cache fällt. Sonst stünde
+       * ein korrigierter Satz im Feed weiter in seiner alten Fassung.
+       * Best-effort im Core-Vertrag (wirft nie, loggt).
+       */
+      await updateActivitySnippetForObject(event, 'comment', commentId, commentSnippet(content))
     }
 
     return updated

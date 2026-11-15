@@ -355,6 +355,15 @@ export type BrandCheckRow = Models.Row & {
   userId?: string
   profileId?: string
   source?: string
+  /**
+   * DAS LÖSCHEN DURCH DEN EIGENTÜMER (brand-026, SEC-015) — gesetzt, wenn
+   * Konto oder Marke gelöscht wurden. Das dritte Flag neben `rankingOptIn`
+   * (Prüfer) und `hidden` (Betreiber): ab diesem Zeitpunkt sieht den Check
+   * niemand mehr, nach 90 Tagen räumt ihn ein Lauf ab
+   * (`brandCheckErasure.ts`). Optional getypt, weil die Spalte ADDITIV
+   * dazukam — `undefined` und `null` heissen beide „nicht gelöscht".
+   */
+  erasedAt?: string | null
 }
 
 /**
@@ -393,6 +402,8 @@ export interface BrandCheckRankingFacts {
   userId: string
   profileId: string
   source: string
+  /** Konto oder Marke gelöscht (brand-026) — dann für niemanden sichtbar. */
+  erased: boolean
 }
 
 export function brandCheckRankingFacts(row: BrandCheckRow): BrandCheckRankingFacts {
@@ -400,6 +411,7 @@ export function brandCheckRankingFacts(row: BrandCheckRow): BrandCheckRankingFac
     industry: row.industry || BRAND_INDUSTRY_UNKNOWN,
     rankingOptIn: row.rankingOptIn === true,
     hidden: row.hidden === true,
+    erased: Boolean(row.erasedAt),
     userId: row.userId ?? '',
     profileId: row.profileId ?? '',
     source: row.source || 'website',
