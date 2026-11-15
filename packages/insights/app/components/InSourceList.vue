@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { InsightsSource, InsightsSourceKind } from '../../shared/insightsPost'
 import { INSIGHTS_QUOTE_MAX, insightsSourceIsThirdParty } from '../../shared/insightsPost'
-import { insightsDay, insightsHost } from '../utils/insightsFormat'
+import { insightsDay, insightsHost, insightsLicenseHref, insightsSourceHref } from '../utils/insightsFormat'
 
 /**
  * PROTOTYP (I0) — DIE QUELLENLISTE (§4.1, §9.3).
@@ -75,8 +75,10 @@ const KIND_KEY: Record<InsightsSourceKind, string> = {
           >{{ source.quote }}</blockquote>
 
           <p class="bw-label mt-2 flex flex-wrap items-center gap-3">
+            <!-- Link nur mit http(s)-Ziel (SEC-021); sonst steht die Adresse als Text da. -->
             <a
-              :href="resolveHref ? resolveHref(source) : source.url"
+              v-if="insightsSourceHref(source, resolveHref)"
+              :href="insightsSourceHref(source, resolveHref)"
               class="inline-flex items-center gap-1.5 underline decoration-dotted underline-offset-2"
               style="color: var(--bw-muted)"
               rel="nofollow noopener" target="_blank"
@@ -84,11 +86,13 @@ const KIND_KEY: Record<InsightsSourceKind, string> = {
               <UIcon name="i-ph-arrow-up-right" class="size-3.5" />
               {{ insightsHost(source.url) }}
             </a>
+            <span v-else style="color: var(--bw-muted)">{{ insightsHost(source.url) }}</span>
             <a
-              v-if="source.license"
-              :href="source.license" class="underline decoration-dotted underline-offset-2"
+              v-if="insightsLicenseHref(source)"
+              :href="insightsLicenseHref(source)" class="underline decoration-dotted underline-offset-2"
               style="color: var(--bw-muted)" rel="nofollow noopener" target="_blank"
             >{{ t('insights.sources.license') }}</a>
+            <span v-else-if="source.license" style="color: var(--bw-muted)">{{ t('insights.sources.license') }} · {{ source.license }}</span>
           </p>
         </div>
       </li>

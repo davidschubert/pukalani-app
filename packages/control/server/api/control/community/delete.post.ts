@@ -1,4 +1,6 @@
+import { Query } from 'node-appwrite'
 import { z } from 'zod'
+import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../../../shared/types/communityInvite'
 import { hasLiveSubscription } from '../../../../shared/communityBilling'
 import { decideCommunityDeletion } from '../../../../shared/communityTeam'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../shared/types/communityMember'
@@ -30,6 +32,8 @@ import { requireCommunityTeamContext, throwOnDenied } from '../../../utils/commu
  *     Pool-Projekt, und das Control Plane hat dafür keinen Schlüssel (dieselbe
  *     Trennung wie in `members/remove`). Der Label-Entzug passiert in
  *     packages/onboarding/server/api/community/delete.post.ts.
+ *  Danach (SEC-028) werden die offenen Einladungen zurückgezogen — siehe
+ *  Schritt 4 unten.
  *
  * Der OWNER behält seine Zeile (`role: 'owner'`, aber `status: 'removed'`):
  * er soll auffindbar bleiben, wenn der Betreiber die Community wieder
@@ -105,6 +109,48 @@ export default defineEventHandler(async (event) => {
 
   const complete = runtimeUserIds.length + failed === active.length && failed === 0
 
+  /**
+   * 4. Offene Einladungen zurückziehen (SEC-028). Ein Link aus einer alten
+   * Mail soll in einer stillgelegten Community niemanden mehr zum Mitglied
+   * machen — falls sie je wieder aufgeschlossen wird, entscheidet der Owner
+   * neu, wen er einlädt. Die Annahme prüft den Zustand der Community
+   * zusätzlich selbst (`members/accept.post.ts`); dieser Schritt räumt die
+   * Liste auf und lässt die Spur stehen ('revoked', nicht gelöscht).
+   *
+   * Fail-soft wie die Mitgliedschaften: die Community ist bereits zu, eine
+   * einzelne Zeile darf den Vorgang nicht kippen. Gelesen wird seitenweise
+   * (`listAllRows`, Index `idx_community_status`), nicht über die auf 100
+   * gekappte Anzeige-Liste.
+   */
+  const invites = { total: 0, revoked: 0, failed: 0 }
+  try {
+    const pending = await listAllRows<CommunityInviteRow>(admin.tablesDB, context.databaseId, COMMUNITY_INVITES_TABLE, [
+      Query.equal('communityId', body.communityId),
+      Query.equal('status', 'pending'),
+    ])
+    invites.total = pending.length
+    for (const invite of pending) {
+      try {
+        await admin.tablesDB.updateRow<CommunityInviteRow>({
+          databaseId: context.databaseId,
+          tableId: COMMUNITY_INVITES_TABLE,
+          rowId: invite.$id,
+          data: { status: 'revoked' },
+        })
+        invites.revoked++
+      }
+      catch {
+        invites.failed++
+      }
+    }
+  }
+  catch {
+    // Die Liste selbst war nicht lesbar: gezählt wird das als EIN Fehlschlag,
+    // damit `complete` nicht lügt. Die Annahme-Prüfung hält die Tür trotzdem zu.
+    invites.failed++
+    logEvent('warn', 'community.invites_revoke_unreadable', { communityId: body.communityId })
+  }
+
   logEvent('warn', 'community.deleted', {
     communityId: body.communityId,
     actor: context.identity.userId,
@@ -113,6 +159,9 @@ export default defineEventHandler(async (event) => {
     removed: runtimeUserIds.length,
     failed,
     complete,
+    invites: invites.total,
+    invitesRevoked: invites.revoked,
+    invitesFailed: invites.failed,
   })
 
   return {
@@ -122,5 +171,7 @@ export default defineEventHandler(async (event) => {
     /** Die Runtime zieht damit die Community-Labels ein (Labels = Pool-Projekt). */
     runtimeUserIds,
     members: { total: active.length, removed: runtimeUserIds.length, failed, complete },
+    /** Zurückgezogene offene Einladungen (SEC-028) — nur zur Auskunft. */
+    invites,
   }
 })

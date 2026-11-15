@@ -38,6 +38,7 @@ import type {
   BrandWaitlistInviteResponse,
   BrandWaitlistNoteResponse,
 } from '../../../shared/types/brand'
+import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 /**
  * DIE ERSTE SEITE DIESES LAYERS MIT DER BETREIBER-SHELL: `layout: 'dashboard'`
@@ -320,13 +321,15 @@ function rowActions(entry: BrandWaitlistAdminItem): DropdownMenuItem[][] {
         </template>
 
         <template #website-cell="{ row }">
+          <!-- Link nur mit http(s)-Ziel (SEC-021); sonst die Angabe als Text. -->
           <a
-            v-if="row.original.website"
-            :href="row.original.website"
+            v-if="safeExternalHref(row.original.website)"
+            :href="safeExternalHref(row.original.website)"
             target="_blank"
             rel="noopener noreferrer"
             class="text-sm hover:underline"
           >{{ websiteLabel(row.original.website) }}</a>
+          <span v-else-if="row.original.website" class="text-sm">{{ row.original.website }}</span>
           <span v-else class="text-dimmed">—</span>
         </template>
 

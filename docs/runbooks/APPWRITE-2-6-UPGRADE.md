@@ -425,7 +425,7 @@ stats-usage verarbeitet (396 Jobs in 4 min) · **Mail-Beweis** (Elternsitzung,
 smtp_type cloud, `mail.status success` in 1,61 s, Mail 10:35:13 in Davids
 Postfach („Account Anmeldung", noreply@pukalani.app) — die ERSTE Instanz-Mail
 nach Leerlauf, also genau der KeepAlive-Fall · **Standort-Beweis**
-(Elternsitzung): Session 10:38:40 mit `ip` 72.234.42.6 (Davids Mac, US),
+(Elternsitzung): Session 10:38:40 mit `ip` 203.0.113.6 (Beispiel-Adresse; in echt Davids Mac, US),
 NICHT 49.13.211.173 — der Trusted-Proxy-Eintrag wirkt; `/de/settings/sessions`
 (SSR mit Session, 200) zeigt „Pukalani, Hawaii · Vereinigte Staaten" für die
 Google-Sitzung von 10:44:48 (factors email, oauth2). Diese beiden Beweise hat

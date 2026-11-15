@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../../../../shared/types/communityInvite'
-import { listCommunityInvites, requireCommunityTeamContext } from '../../../../utils/communityTeam'
+import { requireCommunityTeamContext } from '../../../../utils/communityTeam'
 
 /**
  * Eine offene Einladung widerrufen — der Link stirbt sofort.
@@ -10,8 +10,11 @@ import { listCommunityInvites, requireCommunityTeamContext } from '../../../../u
  * genau das, was man sucht. Angezeigt wird sie nicht mehr (die Liste zeigt nur
  * pending).
  *
- * Die inviteId wird gegen die GESCOPTE Liste dieser Site geprüft, nie per getRow
- * geholt — eine fremde Id findet sich hier einfach nicht (404).
+ * Die Einladung wird GEZIELT geholt und dann gegen diese Community geprüft:
+ * gehört sie zu einer anderen Community, ist sie unbekannt oder nicht mehr
+ * offen, ist die Antwort dieselbe 404. (Bis SEC-028 wurde sie in der
+ * Anzeige-Liste gesucht — die ist auf 100 gekappt, und jede ältere offene
+ * Einladung liess sich dann nicht mehr zurückziehen.)
  */
 const bodySchema = z.object({
   jwt: z.string().min(1).max(4096),
@@ -24,13 +27,16 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
   const context = await requireCommunityTeamContext(event, body, 'team.manage')
 
-  const invites = await listCommunityInvites(event, body.communityId)
-  const invite = invites.find(row => row.$id === body.inviteId)
-  if (!invite) {
+  const admin = createAdminClient(event)
+  const invite = await admin.tablesDB.getRow<CommunityInviteRow>({
+    databaseId: context.databaseId,
+    tableId: COMMUNITY_INVITES_TABLE,
+    rowId: body.inviteId,
+  }).catch(() => null)
+  if (!invite || invite.communityId !== body.communityId || invite.status !== 'pending') {
     throw createError({ status: 404, statusText: 'Invitation not found' })
   }
 
-  const admin = createAdminClient(event)
   const row = await admin.tablesDB.updateRow<CommunityInviteRow>({
     databaseId: context.databaseId,
     tableId: COMMUNITY_INVITES_TABLE,

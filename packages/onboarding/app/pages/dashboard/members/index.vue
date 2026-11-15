@@ -264,9 +264,9 @@ async function sendInvite() {
       body: { email: inviteForm.email.trim(), role: canManageTeam.value ? inviteForm.role : 'viewer' },
     })
     toast.add({
-      title: result.existingAccount
-        ? t('members.invite.sentExisting', { email: result.email })
-        : t('members.invite.sent', { email: result.email }),
+      // EIN Satz für beide Fälle (SEC-028): ob die Adresse schon ein Konto
+      // hat, erfährt die einladende Person nicht.
+      title: t('members.invite.sent', { email: result.email }),
       // Die Frist steht sonst nirgends im Blickfeld — und sie ist der Grund,
       // warum eine Einladung später „nicht mehr gilt".
       description: t('members.invite.sentHint'),

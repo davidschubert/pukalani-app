@@ -7,6 +7,7 @@ import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import type { WebsiteRow } from '../../../shared/types/website'
 import type { ProductCatalogEntry, JobRow, SiteCreateJobPayload, SiteCreateJobResult } from '../../../shared/types/job'
 import type { SiteDomainState } from '../../../../core/shared/types/siteDomain'
+import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'sites.manage' })
 
@@ -377,7 +378,8 @@ const appUrlPlaceholder = 'http://localhost:3003'
             <p class="font-medium">{{ row.original.name }}</p>
             <p class="truncate text-xs text-muted">
               {{ row.original.projectId }} · {{ row.original.endpoint }}
-              <template v-if="row.original.appUrl"> · <a :href="row.original.appUrl" target="_blank" rel="noopener" class="underline">{{ row.original.appUrl }}</a></template>
+              <template v-if="safeExternalHref(row.original.appUrl)"> · <a :href="safeExternalHref(row.original.appUrl)" target="_blank" rel="noopener" class="underline">{{ row.original.appUrl }}</a></template>
+              <template v-else-if="row.original.appUrl"> · {{ row.original.appUrl }}</template>
             </p>
           </div>
         </template>
@@ -467,7 +469,8 @@ const appUrlPlaceholder = 'http://localhost:3003'
               <p class="text-xs text-muted">
                 <ClientOnly>{{ new Date(row.original.$createdAt).toLocaleString() }}</ClientOnly>
                 <template v-if="jobResult(row.original)?.projectId"> · {{ jobResult(row.original)!.projectId }}</template>
-                <template v-if="jobResult(row.original)?.appUrl"> · <a :href="jobResult(row.original)!.appUrl" target="_blank" rel="noopener" class="underline">{{ jobResult(row.original)!.appUrl }}</a></template>
+                <template v-if="safeExternalHref(jobResult(row.original)?.appUrl)"> · <a :href="safeExternalHref(jobResult(row.original)?.appUrl)" target="_blank" rel="noopener" class="underline">{{ jobResult(row.original)!.appUrl }}</a></template>
+                <template v-else-if="jobResult(row.original)?.appUrl"> · {{ jobResult(row.original)!.appUrl }}</template>
               </p>
               <pre v-if="expandedLog === row.original.$id" class="mt-2 max-h-64 overflow-auto rounded bg-elevated p-3 text-xs whitespace-pre-wrap" data-job-log>{{ row.original.log }}</pre>
             </div>

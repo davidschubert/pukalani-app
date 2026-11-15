@@ -828,8 +828,7 @@
       "emailHelp": "If the person already has a Pukalani account, one click after signing in is enough. Otherwise they create one via the link.",
       "roleLabel": "Role",
       "submit": "Send invitation",
-      "sent": "Invitation sent to {email}.",
-      "sentExisting": "{email} has an account — invitation sent, one click is enough.",
+      "sent": "Invitation to {email} is on its way. Anyone who already has an account also finds it after signing in — everyone else creates one via the link.",
       "sentHint": "The link is valid for 7 days. Until then the invitation sits below under “Open invitations” and can be revoked.",
       "failed": "The invitation could not be sent."
     },

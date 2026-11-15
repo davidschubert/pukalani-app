@@ -2,6 +2,7 @@
 import type { InsightsBrandScore } from '../../shared/insightsPost'
 import type { InsightsBrandProfileView } from '../../shared/insightsPublic'
 import { insightsHost } from '../utils/insightsFormat'
+import { safeExternalHref } from '../../../core/shared/safeHref'
 
 /**
  * PROTOTYP (I0) — DIE ENTITY-SEITE EINER FREMDEN MARKE (§2.1, §9.3
@@ -134,9 +135,11 @@ function tone(value: number): string {
                 <template v-if="brand.archetypeSecondary"> · {{ brand.archetypeSecondary }}</template>
               </li>
               <li v-if="brand.homepage">
-                <a :href="brand.homepage" rel="nofollow noopener" target="_blank" class="underline decoration-dotted underline-offset-2">
+                <!-- Link nur mit http(s)-Ziel (SEC-021); sonst nur die Adresse als Text. -->
+                <a v-if="safeExternalHref(brand.homepage)" :href="safeExternalHref(brand.homepage)" rel="nofollow noopener" target="_blank" class="underline decoration-dotted underline-offset-2">
                   {{ insightsHost(brand.homepage) }}
                 </a>
+                <template v-else>{{ insightsHost(brand.homepage) }}</template>
               </li>
             </ul>
           </div>

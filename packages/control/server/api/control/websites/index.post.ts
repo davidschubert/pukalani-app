@@ -1,13 +1,14 @@
 import { ID } from 'node-appwrite'
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../../../../core/shared/safeHref'
 import { WEBSITES_TABLE } from '../../../../shared/types/website'
 
 const registerSchema = z.object({
   name: z.string().trim().min(1).max(100),
   slug: z.string().regex(/^[a-z][a-z0-9-]*$/).max(64),
   projectId: z.string().regex(/^[a-z][a-z0-9-]*$/).max(64),
-  endpoint: z.string().url().max(256),
-  appUrl: z.string().url().max(256).optional().default(''),
+  endpoint: z.url({ protocol: HTTP_URL_PROTOCOL }).max(256),
+  appUrl: z.url({ protocol: HTTP_URL_PROTOCOL }).max(256).optional().default(''),
   notes: z.string().max(1000).optional().default(''),
 }).strict()
 

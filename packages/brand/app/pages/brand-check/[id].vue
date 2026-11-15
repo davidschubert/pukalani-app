@@ -7,6 +7,7 @@ import {
   brandCheckImprovementPlan,
 } from '../../../shared/brandCheckInsights'
 import type { BrandCheckCriterionResult, BrandCheckResult } from '../../../shared/types/brand'
+import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 /**
  * DIE ERGEBNISSEITE DES BRAND-CHECKS — `/brand-check/<id>`
@@ -526,7 +527,8 @@ const CARD_UI = {
               </p>
               <p class="bw-label break-words" style="color: var(--bw-muted)">
                 <!-- Eine FREMDE Adresse: kein Empfehlungssignal, kein Referrer. -->
-                <a v-if="result.url" :href="result.url" target="_blank" rel="noopener nofollow" class="underline underline-offset-4">{{ result.url }}</a>
+                <a v-if="safeExternalHref(result.url)" :href="safeExternalHref(result.url)" target="_blank" rel="noopener nofollow" class="underline underline-offset-4">{{ result.url }}</a>
+                <template v-else-if="result.url">{{ result.url }}</template>
                 <template v-else>{{ result.host }}</template>
               </p>
               <p class="bw-label" style="color: var(--bw-muted)">{{ formatDate(result.createdAt) }}</p>

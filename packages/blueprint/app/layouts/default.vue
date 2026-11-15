@@ -29,6 +29,7 @@ import { isProductStateEnabled } from '../../../core/shared/types/config'
 import type { PukalaniChromeUtility } from '../../../core/shared/types/chrome'
 import type { CommunityNavItem } from '../../../core/shared/communityNavigation'
 import { isLegalPageSlug, navMenuChildren } from '../../../core/shared/communityNavigation'
+import { safeExternalHref } from '../../../core/shared/safeHref'
 
 const { t } = useI18n()
 const localePath = useLocalePath()
@@ -181,7 +182,7 @@ const showChangelog = computed(() => chrome.value.changelogLink === true)
                    absolute Adresse selbst ergänzt. -->
               <a
                 v-else-if="item.external"
-                :href="item.to"
+                :href="safeExternalHref(item.to)"
                 target="_blank"
                 rel="noopener"
                 data-nav-external="true"

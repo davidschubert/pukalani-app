@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MarketEvidence } from '../../shared/marketProfile'
 import { marketDate, marketHost } from '../utils/marketFormat'
+import { safeExternalHref } from '../../../core/shared/safeHref'
 
 /**
  * PROTOTYP (M0) — Komponenten-Vorlage für M1–M4.
@@ -45,7 +46,9 @@ const { t, locale } = useI18n()
 const open = ref(props.defaultOpen)
 
 const host = computed(() => marketHost(props.evidence.sourceUrl))
-const href = computed(() => props.resolveHref(props.evidence.sourceUrl))
+// Link nur, wenn die gespeicherte Quelle http(s) ist (SEC-021); die
+// Prototyp-Naht `resolveHref` greift erst danach.
+const href = computed(() => safeExternalHref(props.evidence.sourceUrl) ? props.resolveHref(props.evidence.sourceUrl) : undefined)
 const fetched = computed(() => marketDate(props.evidence.fetchedAt, locale.value))
 </script>
 
@@ -74,12 +77,14 @@ const fetched = computed(() => marketDate(props.evidence.fetchedAt, locale.value
       </blockquote>
       <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
         <a
+          v-if="href"
           :href="href" target="_blank" rel="noopener noreferrer"
           class="bw-label inline-flex items-center gap-1 underline"
           style="color: var(--bw-ink-soft)"
         >
           <UIcon name="i-ph-link-simple" class="size-3.5 flex-none" />{{ host }}
         </a>
+        <span v-else class="bw-label" style="color: var(--bw-ink-soft)">{{ host }}</span>
         <span class="bw-label" style="color: var(--bw-muted)">{{ t('market.evidence.fetched', { date: fetched }) }}</span>
         <!-- Sicherheit NIE nur als Farbe (WCAG): sie steht als Wort da. -->
         <span class="bw-label" style="color: var(--bw-muted)">

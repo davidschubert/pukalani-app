@@ -6,6 +6,7 @@ import {
   type AbuseReportListResponse,
   type AbuseReportView,
 } from '../../../shared/abuseReports'
+import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 /**
  * Missbrauchs-Warteschlange (M13, Auslöser 3).
@@ -187,8 +188,8 @@ const STAT_KEYS = ['open', 'suspended', 'dismissed', 'total'] as const
           <div class="min-w-0 max-w-md">
             <p class="line-clamp-2 text-sm">{{ row.original.message }}</p>
             <a
-              v-if="isDisplayableReportUrl(row.original.url)"
-              :href="row.original.url"
+              v-if="isDisplayableReportUrl(row.original.url) && safeExternalHref(row.original.url)"
+              :href="safeExternalHref(row.original.url)"
               target="_blank"
               rel="noopener noreferrer"
               class="block truncate text-xs text-muted hover:underline"

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL } from '../../core/shared/safeHref'
 import { isSupportedTimezone } from '../../core/shared/timezone'
 import { LOCALE_CODE_PATTERN } from '../../core/shared/ugcTranslations'
 import {
@@ -24,11 +25,11 @@ const fields = (t: TranslateFn) => ({
   startAt: z.iso.datetime({ offset: true, error: t('events.validation.startRequired') }),
   endAt: z.iso.datetime({ offset: true }).nullish(),
   location: z.string().trim().max(MAX_EVENT_LOCATION, t('events.validation.locationMax')).nullish(),
-  url: z.url(t('events.validation.urlInvalid')).max(MAX_EVENT_URL, t('events.validation.urlMax')).nullish(),
+  url: z.url({ protocol: HTTP_URL_PROTOCOL, error: t('events.validation.urlInvalid') }).max(MAX_EVENT_URL, t('events.validation.urlMax')).nullish(),
   capacity: z.number().int().min(1, t('events.validation.capacityMin'))
     .max(MAX_EVENT_CAPACITY, t('events.validation.capacityMax')).nullish(),
   locationType: z.enum(['venue', 'online']).nullish(),
-  replayUrl: z.url(t('events.validation.urlInvalid')).max(MAX_EVENT_URL, t('events.validation.urlMax')).nullish(),
+  replayUrl: z.url({ protocol: HTTP_URL_PROTOCOL, error: t('events.validation.urlInvalid') }).max(MAX_EVENT_URL, t('events.validation.urlMax')).nullish(),
   address: z.string().trim().max(MAX_EVENT_LOCATION, t('events.validation.locationMax')).nullish(),
   locationNotes: z.string().trim().max(1000, t('events.validation.notesMax')).nullish(),
   access: z.enum(['free', 'paid']).nullish(),

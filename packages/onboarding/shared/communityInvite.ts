@@ -26,14 +26,8 @@ export interface CommunityInviteResponse {
   role: string
   expiresAt: string
   quota: MemberInviteQuotaView
-  /**
-   * Hat die eingeladene Adresse schon ein Pukalani-Konto?
-   *
-   * Reiner Komfort-Text („… bekommt zusätzlich eine Benachrichtigung"), und
-   * ausdrücklich KEIN Mitgliedschafts-Signal: ein Konto hat auch, wer in einer
-   * ganz anderen Community ist. Der Wert wird in der Runtime bestimmt (nur sie
-   * kennt die Nutzer ihres Appwrite-Projekts) und ist für beide Wege — echte
-   * Einladung wie stille — auf dieselbe Weise berechnet.
-   */
-  existingAccount: boolean
+  // Bewusst KEIN `existingAccount` mehr (SEC-028, 2026-11-15): ob es zur
+  // eingeladenen Adresse ein Konto gibt, ist eine Auskunft über eine fremde
+  // Person. Die Route nutzt sie intern (Glocken-Meldung), die Antwort trägt sie
+  // nicht — wer das Feld zurückbringen will, muss diesen Typ ändern.
 }

@@ -1,3 +1,4 @@
+import { stripAddressForLog } from '../shared/logAddress'
 import { domainReasonFrom, statusToErrorCode, type PukalaniErrorResponse } from '../shared/types/error'
 import { logEvent, shapeErrorLog } from './utils/logEvent'
 
@@ -44,7 +45,8 @@ export default defineNitroErrorHandler((error, event) => {
   try {
     const gate = useAppConfig().pukalani?.observability
     if (gate?.enabled) {
-      const shaped = shapeErrorLog(error, { path: event.path, method: event.method })
+      // `event.path` trägt die Query mit — ins Protokoll geht nur der Pfad (SEC-013).
+      const shaped = shapeErrorLog(error, { path: stripAddressForLog(event.path ?? ''), method: event.method })
       if (typeof shaped.status === 'number' && shaped.status >= 500) {
         logEvent('error', 'server.error', shaped)
       }
