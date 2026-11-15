@@ -76,6 +76,8 @@ export default defineEventHandler(async (event): Promise<InsightsPostCreatedResp
     briefVideoId: '',
     draftModel: '',
     draftPromptVersion: '',
+    // Ein neuer Beitrag hat nichts, was sich für einen Leser geändert hätte.
+    changeNotes: [],
   }
 
   const row = await createInsightsPostRow(event, post)

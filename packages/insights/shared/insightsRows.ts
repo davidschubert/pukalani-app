@@ -2,6 +2,7 @@ import type { Models } from 'node-appwrite'
 import type {
   InsightsBrand,
   InsightsBrandRef,
+  InsightsChangeNote,
   InsightsDuelFact,
   InsightsFormat,
   InsightsLocale,
@@ -15,7 +16,9 @@ import {
   INSIGHTS_FORMATS,
   INSIGHTS_LOCALES,
   INSIGHTS_STATES,
+  INSIGHTS_CHANGE_NOTES_MAX,
   INSIGHTS_TOPIC_KEYS,
+  insightsChangeNoteSchema,
 } from './insightsPost'
 import type {
   InsightsCorrection,
@@ -168,6 +171,11 @@ export type InsightsPostRow = Models.Row & {
   briefVideoId?: string
   draftModel?: string
   draftPromptVersion?: string
+  /**
+   * MEDIUMTEXT, JSON `InsightsChangeNote[]` (insights-011). Ohne Vorgabewert:
+   * eine Zeile von vor der Spalte liest `null` oder gar nichts.
+   */
+  changeNotes?: string | null
 }
 
 /** Ein Markenprofil einer FREMDEN Marke (insights-002). */
@@ -354,6 +362,25 @@ function parseJsonArray<T>(raw: string | null | undefined): T[] {
 }
 
 /**
+ * DIE ÄNDERUNGSHINWEISE aus ihrer Spalte — anders als `parseJsonArray` MIT
+ * Prüfung je Eintrag.
+ *
+ * Der Grund ist der Ort, an dem sie landen: sie werden ÖFFENTLICH unter dem
+ * Artikel gezeigt, und ein Eintrag ohne `de`/`en`-Text als Zeichenkette
+ * zerbräche die Anzeige. Ein kaputter Eintrag fällt deshalb einzeln weg,
+ * statt die ganze Liste (oder den Beitrag) mitzureissen; eine fehlende Spalte
+ * ist eine leere Liste.
+ */
+function parseChangeNotes(raw: string | null | undefined): InsightsChangeNote[] {
+  const notes: InsightsChangeNote[] = []
+  for (const entry of parseJsonArray<unknown>(raw)) {
+    const parsed = insightsChangeNoteSchema.safeParse(entry)
+    if (parsed.success) notes.push(parsed.data)
+  }
+  return notes.slice(0, INSIGHTS_CHANGE_NOTES_MAX)
+}
+
+/**
  * Ein Aufzählungswert aus einem varchar — mit Ersatzwert in die sichere
  * Richtung (s. Kopf).
  */
@@ -413,6 +440,7 @@ export function toInsightsPost(row: InsightsPostRow): InsightsPost {
     briefVideoId: row.briefVideoId ?? '',
     draftModel: row.draftModel ?? '',
     draftPromptVersion: row.draftPromptVersion ?? '',
+    changeNotes: parseChangeNotes(row.changeNotes),
   }
 }
 
@@ -457,6 +485,7 @@ export function fromInsightsPost(post: InsightsPost): InsightsPostRowData {
     briefVideoId: post.briefVideoId,
     draftModel: post.draftModel,
     draftPromptVersion: post.draftPromptVersion,
+    changeNotes: toJson(post.changeNotes),
   }
 }
 

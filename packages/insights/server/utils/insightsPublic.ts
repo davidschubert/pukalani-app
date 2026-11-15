@@ -621,7 +621,7 @@ export function toInsightsPublicListItem(
   const first = post.brandRefs[0]?.brandId ?? ''
   const brand = first ? brands.get(first) : undefined
   const view = toInsightsPublicPost(row.$id, post)
-  const { bodyDe: _bodyDe, bodyEn: _bodyEn, ...rest } = view
+  const { bodyDe: _bodyDe, bodyEn: _bodyEn, changeNotes: _changeNotes, ...rest } = view
   return {
     ...rest,
     href: insightsPublicHref(post.format, post.slug, brand?.slug ?? ''),

@@ -85,9 +85,13 @@ export const DELEGATES = {
     source: 'packages/insights/server/utils/insightsAi.ts',
     constant: 'BRAND_PROVIDER_ROUTING',
   },
+  'packages/insights/server/api/insights/posts/[id]/change-note.post.ts': {
+    source: 'packages/insights/server/utils/insightsAi.ts',
+    constant: 'BRAND_PROVIDER_ROUTING',
+  },
 }
 
-/** Stand 2026-11-15: 20 Text, 1 Vision, 1 Video, 1 Bild — als Untergrenzen mit Luft. */
+/** Stand 2026-11-16: 21 Text, 1 Vision, 1 Video, 1 Bild — als Untergrenzen mit Luft. */
 export const MINIMUM = { text: 15, vision: 1, video: 1, image: 1 }
 
 /**

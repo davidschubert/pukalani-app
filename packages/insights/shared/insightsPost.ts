@@ -293,6 +293,81 @@ export const insightsBrandRefSchema = z.object({
 
 export type InsightsBrandRef = z.infer<typeof insightsBrandRefSchema>
 
+// ── 3b. Änderungshinweise ──────────────────────────────────────────────────
+
+/** Höchstens zwanzig Hinweise je Beitrag, je Sprache höchstens 300 Zeichen. */
+export const INSIGHTS_CHANGE_NOTES_MAX = 20
+export const INSIGHTS_CHANGE_NOTE_MAX = 300
+
+/**
+ * EIN ÄNDERUNGSHINWEIS UNTER EINEM ARTIKEL (Davids Entscheidung 2026-11-16).
+ *
+ * Er sagt dem Leser, WAS sich an einem veröffentlichten Artikel geändert hat
+ * und WANN — klein, unter der Zeile. Er ist FREIWILLIG: die Redaktion
+ * entscheidet je Änderung (eine korrigierte Zahl ja, ein Tippfehler nein), und
+ * einen Text darf ein Modell nur VORSCHLAGEN — erscheinen tut er erst, wenn ein
+ * Mensch ihn mit dem Beitrag speichert.
+ *
+ * Text und Datum gehören verschiedenen Leuten: den Text schreibt, korrigiert
+ * und entfernt die Redaktion, das DATUM setzt der Server
+ * (`insightsStampChangeNotes`). Darum ist `changeNotes` als Ganzes KEIN
+ * Server-eigenes Feld (`INSIGHTS_SERVER_OWNED_FIELDS`), `at` aber schon.
+ */
+export const insightsChangeNoteSchema = z.object({
+  at: z.string().max(32).default(''),
+  de: z.string().max(INSIGHTS_CHANGE_NOTE_MAX).default(''),
+  en: z.string().max(INSIGHTS_CHANGE_NOTE_MAX).default(''),
+})
+
+export type InsightsChangeNote = z.infer<typeof insightsChangeNoteSchema>
+
+/**
+ * DAS DATUM GEHÖRT DEM SERVER — die Hinweise aus dem Formular gegen den
+ * Bestand gestempelt.
+ *
+ * ── WARUM DAS FORMULAR KEIN DATUM SETZEN DARF ───────────────────────────
+ * Ein Änderungshinweis ist eine Aussage über die Vergangenheit („am 3. März
+ * korrigiert"). Dürfte der Körper sie datieren, liesse sich eine Korrektur
+ * rückdatieren — der Artikel sähe dann aus, als hätte er die richtige Zahl
+ * schon länger getragen. Deshalb gilt ein gesendetes `at` NUR, wenn es im
+ * BESTAND vorkommt: dann ist es ein Hinweis, den der Server selbst gestempelt
+ * hat, und die Redaktion hat höchstens seinen Text korrigiert. Jedes
+ * Bestands-Datum wird dabei HÖCHSTENS EINMAL vergeben — wer denselben Hinweis
+ * zweimal schickt, bekommt nicht zwei alte Hinweise, sondern einen alten und
+ * einen neuen.
+ *
+ * Jeder andere gesendete Hinweis ist NEU (auch einer mit einem erfundenen
+ * Datum) und bekommt `now` — aber nur mit `allowNew`. Die Route setzt das nur
+ * an einem Beitrag, der schon einmal veröffentlicht war: ein Entwurf hat keine
+ * Leser, denen sich etwas geändert haben könnte.
+ *
+ * Ein Hinweis ohne Text in beiden Sprachen fällt weg — er sagte nichts. Was
+ * im Bestand stand und nicht mehr gesendet wird, ist ENTFERNT: das darf die
+ * Redaktion (ein falscher Hinweis ist schlimmer als keiner).
+ */
+export function insightsStampChangeNotes(
+  current: readonly InsightsChangeNote[],
+  sent: readonly InsightsChangeNote[],
+  now: string,
+  allowNew: boolean,
+): InsightsChangeNote[] {
+  const unused = new Set(current.map(note => note.at).filter(Boolean))
+  const stamped: InsightsChangeNote[] = []
+  for (const note of sent) {
+    const de = note.de.trim()
+    const en = note.en.trim()
+    if (!de && !en) continue
+    if (note.at && unused.has(note.at)) {
+      unused.delete(note.at)
+      stamped.push({ at: note.at, de, en })
+      continue
+    }
+    if (!allowNew) continue
+    stamped.push({ at: now, de, en })
+  }
+  return stamped.slice(0, INSIGHTS_CHANGE_NOTES_MAX)
+}
+
 // ── 4. Der Beitrag ─────────────────────────────────────────────────────────
 
 /**
@@ -352,6 +427,12 @@ const insightsPostFields = {
   briefVideoId: z.string().max(32).default(''),
   draftModel: z.string().max(120).default(''),
   draftPromptVersion: z.string().max(64).default(''),
+  /**
+   * DIE ÄNDERUNGSHINWEISE (2026-11-16) — Text der Redaktion, Datum des
+   * Servers (`insightsStampChangeNotes`). Im Formular änderbar, deshalb NICHT
+   * in `INSIGHTS_SERVER_OWNED_FIELDS`.
+   */
+  changeNotes: z.array(insightsChangeNoteSchema).max(INSIGHTS_CHANGE_NOTES_MAX).default([]),
 }
 
 /**
@@ -792,7 +873,7 @@ export const INSIGHTS_TEXT_FIELDS = ['titleDe', 'titleEn', 'dekDe', 'dekEn', 'bo
 export interface InsightsReviewIssue {
   code: InsightsReviewCode
   /** Woran es liegt — Quelle Nr. n, Faktenzeile Nr. n, Marken-Verweis Nr. n. */
-  at?: { kind: 'source' | 'fact' | 'brandRef' | 'text', index: number }
+  at?: { kind: 'source' | 'fact' | 'brandRef' | 'text' | 'changeNote', index: number }
   /** Die Stelle im Text bzw. der fehlende Schlüssel — nie eine ganze Fassung. */
   detail?: string
 }
@@ -899,6 +980,18 @@ export function insightsReviewIssues(post: InsightsPost, context: InsightsReview
       if (!text) continue
       for (const hit of context.flagText(text)) {
         issues.push({ code: 'disparagement', at: { kind: 'text', index }, detail: hit })
+      }
+    }
+    // Die Änderungshinweise sind ÖFFENTLICHER Text unter dem Artikel. Liefen
+    // sie an dieser Regel vorbei, wäre das genau das Loch von BE-009: ein
+    // Satz, der öffentlich wird, ohne geprüft zu sein. Beide Sprachen, je
+    // Hinweis eine Stelle.
+    for (const [index, note] of post.changeNotes.entries()) {
+      for (const text of [note.de, note.en]) {
+        if (!text) continue
+        for (const hit of context.flagText(text)) {
+          issues.push({ code: 'disparagement', at: { kind: 'changeNote', index }, detail: hit })
+        }
       }
     }
   }

@@ -7,6 +7,41 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-16 — Insights (P19): Änderungshinweis freiwillig, Vorschlag per Knopf, KI-Prüfung später
+
+**Anlass:** Gesamtaudit, Paket P19. Die Entscheidung „Änderungen an
+veröffentlichten Artikeln erst prüfen" war am 2026-11-12 gefallen; zu Davids
+zwei Wünschen aus derselben Antwort (Änderungshinweis, KI-Prüfung als Knopf)
+fehlte der Zuschnitt.
+
+**Davids Entscheidungen (eine Runde zum Anklicken, je die empfohlene Antwort):**
+- **Der Änderungshinweis wird jetzt gebaut.** Dafür bekommt die Datenbank von
+  branding.supply ein neues Feld (Migration `insights-011`, eigenes Ja vor
+  dem Einspielen).
+- **Die Redaktion entscheidet je Änderung, ob ein Hinweis erscheint.** Eine
+  korrigierte Zahl bekommt einen, ein Tippfehler nicht. Verworfen: Pflicht
+  bei jeder Änderung.
+- **Den Text schlägt die KI auf Knopfdruck vor.** Es kostet nur, wenn jemand
+  klickt; der Mensch ändert oder verwirft den Vorschlag. Verworfen: ein
+  Vorschlag bei jedem Speichern.
+- **Die KI-Prüfung als eigener Knopf kommt später**, als eigener Punkt
+  (OPEN-ITEMS 39 · IN1 a).
+
+**Beim Zuschnitt entschieden (ohne Frage, durch die Paket-Entscheidung gedeckt):**
+- Kein Entwurf neben der öffentlichen Fassung: ein abgelehntes Speichern
+  schreibt nichts, die Eingabe bleibt im Formular, „Zurückziehen" ist der Weg
+  zu einem Zwischenstand. Verworfen: eine Arbeitsfassung in eigenen Spalten
+  (Migration, zweite Wahrheit im Editor).
+- Jedes Speichern eines veröffentlichten Artikels wird geprüft, auch eines,
+  das nur die interne Notiz ändert. Verworfen: eine Liste „technischer
+  Felder" — sie wäre die Stelle, an der das nächste Feld durchrutscht.
+- Das Datum eines Hinweises setzt der Server; neue Hinweise nur an einem
+  Artikel, der schon einmal veröffentlicht war.
+- Ein bestandenes Speichern an einem veröffentlichten Artikel trägt Namen und
+  Zeit des speichernden Kontos als Freigabe.
+
+---
+
 ## 2026-11-15 — Kleine Sicherheitsriegel (P25): alte Abmelde-Links, Bestätigungs-Mail, neues Geheimnis
 
 **Anlass:** Gesamtaudit, Paket P25 — sieben kleine Korrekturen. Drei Fragen
