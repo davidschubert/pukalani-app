@@ -56,6 +56,8 @@ const aiPrompts: string[] = []
 const aiModels: string[] = []
 /** Jeder Treffer im Drossel-Eimer — die Länge IST das Gewicht. */
 const hits: string[] = []
+/** Der Zählerstand, den jeder Eimer meldet — 1 heisst „erster Lauf des Tages". */
+let hitCount = 1
 
 function stepRow(stepKey: string): FakeRow {
   return stepRows.find(row => row.stepKey === stepKey)!
@@ -136,7 +138,11 @@ vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
 vi.stubGlobal('toH3Error', (error: unknown) => error)
-vi.stubGlobal('logEvent', () => {})
+/** Was die Route ins Log schreibt — nur Ereignis und Felder. */
+const logs: { event: string, data: Record<string, unknown> }[] = []
+vi.stubGlobal('logEvent', (_level: string, event: string, data: Record<string, unknown> = {}) => {
+  logs.push({ event, data })
+})
 vi.stubGlobal('requireBrandAccess', async () => ({ userId: 'u1' }))
 vi.stubGlobal('assertBrandOwnerAccess', () => {})
 vi.stubGlobal('getRouterParam', (_event: H3Event, name: string) => {
@@ -153,7 +159,7 @@ vi.stubGlobal('useRateLimitStore', () => ({
   store: {
     hit: async (key: string) => {
       hits.push(key.replace('rl:test:', ''))
-      return { count: 1, resetInMs: 3_600_000 }
+      return { count: hitCount, resetInMs: 3_600_000 }
     },
   },
 }))
@@ -163,7 +169,10 @@ vi.stubGlobal('getEffectiveAiConfig', async () => ({
   baseUrl: '',
   defaultModel: 'george/model',
 }))
+/** Wie viele Läufe dieses Kontos belegt waren, WÄHREND das Modell rechnete. */
+const activeDuringCall: number[] = []
 vi.stubGlobal('aiCompleteJson', async (_event: H3Event, prompt: string, options: { model?: string }) => {
+  activeDuringCall.push(countActiveBrandGenerations('u1'))
   aiPrompts.push(prompt)
   aiModels.push(options.model ?? '')
   const next = aiQueue.shift()
@@ -185,6 +194,11 @@ const acceptance = (await import('../server/api/brand/profiles/[id]/steps/[stepK
 const complete = (await import('../server/api/brand/profiles/[id]/steps/[stepKey]/complete.post'))
   .default as unknown as (event: H3Event) => Promise<Record<string, unknown>>
 const { clearBrandChapterReviews } = await import('../server/utils/brandReview')
+const {
+  clearActiveBrandGenerations,
+  countActiveBrandGenerations,
+  retainBrandGeneration,
+} = await import('../server/utils/brandGenerators')
 
 const event = { context: {} } as unknown as H3Event
 
@@ -231,6 +245,10 @@ beforeEach(() => {
   aiPrompts.length = 0
   aiModels.length = 0
   hits.length = 0
+  hitCount = 1
+  logs.length = 0
+  activeDuringCall.length = 0
+  clearActiveBrandGenerations()
   findingRows = []
   findingSeq = 0
   clearBrandChapterReviews()
@@ -392,6 +410,66 @@ describe('Die zwei Stufen (§7, Davids Entscheidung)', () => {
     // Weder Gesprächs- noch Slot-Eimer werden angefasst.
     expect(hits.some(key => key.startsWith('brand-ai-talk-day:'))).toBe(false)
     expect(hits.some(key => key.startsWith('brand-ai-slot-day:'))).toBe(false)
+  })
+})
+
+/**
+ * DER PARALLEL-PLATZ (P17, BE-006): der Schliess-Aufruf buchte Kontingent,
+ * belegte aber als einziger der sieben bezahlten Wege keinen Platz. Jetzt
+ * gilt auch hier „erst belegen, dann buchen" — und freigegeben wird auf JEDEM
+ * Ausgang.
+ */
+describe('Der Parallel-Platz des Spezialisten', () => {
+  it('belegt WÄHREND des Aufrufs einen Platz und gibt ihn danach frei', async () => {
+    aiQueue = [answer()]
+    body = { revision: 2 }
+    await close(event)
+    expect(activeDuringCall).toEqual([1])
+    expect(countActiveBrandGenerations('u1')).toBe(0)
+  })
+
+  it('beide Stufen belegen je für sich — nie zwei auf einmal', async () => {
+    aiQueue = [answer({ findings: [CONFLICT] }), answer({ findings: [CONFLICT] })]
+    body = { revision: 2 }
+    await close(event)
+    expect(activeDuringCall).toEqual([1, 1])
+    expect(countActiveBrandGenerations('u1')).toBe(0)
+  })
+
+  it('gibt auch bei einem Anbieter-Fehler frei', async () => {
+    aiQueue = [new Error('provider down')]
+    body = { revision: 2 }
+    const result = await close(event)
+    expect(result.reviewed).toBe(false)
+    expect(countActiveBrandGenerations('u1')).toBe(0)
+  })
+
+  it('gibt auch frei, wenn die Buchung ablehnt (Tages-Deckel)', async () => {
+    hitCount = 10_000
+    body = { revision: 2 }
+    const result = await close(event)
+    expect(result.reviewed).toBe(false)
+    expect(aiPrompts).toHaveLength(0)
+    expect(countActiveBrandGenerations('u1')).toBe(0)
+  })
+
+  it('ein DRITTER gleichzeitiger Lauf wird abgewiesen (`brand_ai_busy`) — ohne Aufruf, ohne Buchung', async () => {
+    const first = retainBrandGeneration('u1')
+    const second = retainBrandGeneration('u1')
+    try {
+      body = { revision: 2 }
+      const result = await close(event)
+      expect(result.reviewed).toBe(false)
+      expect(aiPrompts).toHaveLength(0)
+      expect(hits).toHaveLength(0)
+      expect(logs.find(entry => entry.event === 'brand.review_throttled')?.data.code).toBe('brand_ai_busy')
+      // Der eigene Platz ist wieder frei, die zwei fremden stehen noch.
+      expect(countActiveBrandGenerations('u1')).toBe(2)
+    }
+    finally {
+      first.release()
+      second.release()
+    }
   })
 })
 

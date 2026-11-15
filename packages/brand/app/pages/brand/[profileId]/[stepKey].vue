@@ -744,6 +744,10 @@ interface StageTurn {
    * kommen aus dem Abschluss-Frame, nie aus dem Text.
    */
   confirm?: boolean
+  /** Die Antwort ist abgeschnitten (P17, BE-007) — ein ruhiger Hinweis darunter. */
+  truncated?: true
+  /** Nur bei einem Entwurfs-Zug: das Feld für „Noch einmal erzeugen". */
+  retrySlotId?: string
 }
 
 const streamed = computed<StageTurn[]>(() => store.streamMessages.map(message => ({
@@ -753,7 +757,31 @@ const streamed = computed<StageTurn[]>(() => store.streamMessages.map(message =>
   pending: message.pending,
   options: message.options,
   confirm: message.confirm,
+  truncated: message.truncated,
+  retrySlotId: message.retrySlotId,
 })))
+
+/**
+ * WELCHER ABGESCHNITTENE ZUG „NOCH EINMAL ERZEUGEN" ZEIGT (P17, BE-007) — nur
+ * die LETZTE Beraterblase des Verlaufs, und nur, solange nichts läuft. Ein
+ * älterer Entwurf neu zu erzeugen, nachdem schon weitergeredet wurde, wäre ein
+ * Sprung zurück; der Hinweis bleibt an jeder abgeschnittenen Blase stehen.
+ */
+const truncatedRetryTurnId = computed<string | null>(() => {
+  if (generation.streaming.value || conversation.pending.value) return null
+  const last = store.streamMessages.at(-1)
+  return last && last.role === 'george' && last.truncated && last.retrySlotId && !last.pending ? last.id : null
+})
+
+/**
+ * Der vorhandene Erzeugen-Weg des Feldes — dasselbe, was „Nochmal, mit
+ * Hinweis" auslöst, nur ohne Hinweis. Ein neuer Idempotenz-Schlüssel je Klick
+ * (`useBrandGeneration`), also kein Wiederverwenden des abgeschnittenen Entwurfs.
+ */
+async function regenerateTruncated(slotId: string): Promise<void> {
+  turnEnded.value = false
+  await generation.generate(slotId)
+}
 
 /**
  * DIE KATALOG-FRAGE STEHT NUR DA, WENN SIE NICHT SCHON GESTELLT WURDE (P3.2).
@@ -4184,6 +4212,26 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                  Sprachmodell und wird escaped gerendert. -->
             <p class="whitespace-pre-wrap">{{ turn.text }}<span v-if="turn.pending" class="bw-caret" aria-hidden="true">▍</span></p>
             <p v-if="turn.help" class="bw-msg-help">{{ turn.help }}</p>
+
+            <!-- ABGESCHNITTEN (P17, BE-007): das Modell hat seine Decke
+                 gerissen. Nichts wird verworfen — der Zug steht, darunter ein
+                 ruhiger Hinweis. Neu erzeugen lässt sich nur ein Entwurfs-Zug
+                 an der letzten Blase; ein Gesprächszug bekommt den Satz, dass
+                 eine neue Nachricht genügt. -->
+            <div v-if="turn.truncated && !turn.pending" class="mt-2 flex flex-wrap items-center gap-2">
+              <p class="bw-msg-help">
+                {{ t('brand.workspace.truncated.hint') }}
+                <template v-if="!turn.retrySlotId">
+                  {{ t('brand.workspace.truncated.writeAgain', { voice: voice.name }) }}
+                </template>
+              </p>
+              <UButton
+                v-if="turn.retrySlotId && turn.id === truncatedRetryTurnId"
+                size="sm" color="neutral" variant="soft" class="rounded-full" icon="i-ph-arrow-clockwise"
+                :label="t('brand.workspace.truncated.retry')"
+                @click="regenerateTruncated(turn.retrySlotId)"
+              />
+            </div>
 
             <!-- ANTWORT-MÖGLICHKEITEN (Davids Anforderung 2026-09-04): stellt
                  George eine Entweder-oder-Frage, steht sie in einer eigenen

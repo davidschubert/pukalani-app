@@ -171,6 +171,9 @@ function messageKey(error: unknown): string {
   // dem 409-Rückfall, der hier sonst „Dokument leer" sagen würde.
   if (reason === 'site_blocked') return 'siteBlocked'
   if (reason === 'fetch_failed') return 'fetchFailed'
+  // Der Abschalter (P17, BE-006) — ein eigener Satz, nicht „in ein paar
+  // Minuten noch einmal".
+  if (reason === 'check_paused') return 'paused'
   if (reason === 'check_unavailable') return 'unavailable'
   if (code === 429) return 'accountLimit'
   if (code === 409) return 'documentEmpty'

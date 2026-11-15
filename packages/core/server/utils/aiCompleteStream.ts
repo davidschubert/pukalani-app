@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type { AiCompleteOptions } from './aiComplete'
 import { buildAiRequestBody, getAiConfig, resolveAiKey } from './aiComplete'
 import { aiCallFailed, aiHttpFailure, aiLogLine, aiRunMs, assertAiRouteOnly, isAiTransportError, startAiRun } from './aiLog'
+import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
  * DIE STREAMING-VARIANTE DER KI-NAHT (Plan BRAND-WIZARD-PHASE-1 §6: „eine
@@ -58,6 +59,7 @@ export type AiStreamEvent
     | { kind: 'meta', model: string, provider: string, id?: string }
     | { kind: 'usage', usage: AiStreamUsage }
     | { kind: 'error', tag: string }
+    | { kind: 'finish', reason: string }
     | { kind: 'done' }
 
 export interface AiSseDecodeResult {
@@ -132,7 +134,7 @@ export function decodeSseFrame(frame: string): AiStreamEvent[] {
     model?: unknown
     provider?: unknown
     usage?: unknown
-    choices?: { delta?: { content?: unknown }, message?: { content?: unknown } }[]
+    choices?: { delta?: { content?: unknown }, message?: { content?: unknown }, finish_reason?: unknown }[]
   }
 
   // Ein Fehler-Frame beendet die Auswertung: was danach im selben Frame stünde,
@@ -148,6 +150,12 @@ export function decodeSseFrame(frame: string): AiStreamEvent[] {
   const choice = record.choices?.[0]
   const content = choice?.delta?.content ?? choice?.message?.content
   if (typeof content === 'string' && content.length > 0) events.push({ kind: 'delta', text: content })
+
+  // WARUM DER STROM ENDET (P17, BE-007) — meist im letzten Daten-Frame vor
+  // `[DONE]`, bei manchen Anbietern im Frame mit dem letzten Delta. `null`
+  // (jedes Zwischen-Frame) und Leeres zählen nicht.
+  const finish = choice?.finish_reason
+  if (typeof finish === 'string' && finish.length > 0) events.push({ kind: 'finish', reason: finish })
 
   if (record.usage) events.push({ kind: 'usage', usage: readUsage(record.usage) })
 
@@ -193,6 +201,13 @@ export interface AiCompleteStreamResult {
   provider: string
   /** Der Lauf wurde von aussen abgebrochen — `text` ist dann unvollständig. */
   aborted: boolean
+  /**
+   * `finish_reason` des Anbieters (P17, BE-007): `length` heisst „die Decke ist
+   * gerissen", der Text ist abgeschnitten. Leer, wenn der Anbieter keines nennt
+   * oder der Lauf von aussen abgebrochen wurde. Kein Fehler, kein Verwerfen —
+   * kennzeichnen ist Sache des Aufrufers.
+   */
+  finishReason: string
 }
 
 function isAbortError(error: unknown): boolean {
@@ -220,6 +235,8 @@ export async function aiCompleteStream(
   }
   const ctx = startAiRun(options.label ?? 'core', model)
   if (options.providerRouting?.only) assertAiRouteOnly(options.providerRouting.only, ctx)
+  // DER RIEGEL (P17, BE-006): ein angemeldeter Abschalter sagt „aus" ⇒ kein fetch.
+  await assertAiSwitchedOn(event, ctx)
   let status = 0
   let gen: string | undefined
 
@@ -236,6 +253,7 @@ export async function aiCompleteStream(
     model: '',
     provider: '',
     aborted: false,
+    finishReason: '',
   }
 
   try {
@@ -286,6 +304,9 @@ export async function aiCompleteStream(
         else if (item.kind === 'usage') {
           result.usage = item.usage
         }
+        else if (item.kind === 'finish') {
+          result.finishReason = item.reason
+        }
         else if (item.kind === 'error') {
           console.error(aiLogLine(ctx.label, 'KI-Stream-Fehlerframe', {
             status,
@@ -322,6 +343,7 @@ export async function aiCompleteStream(
       }
       // Von aussen abgebrochen — ein Ergebnis, kein Fehler (s. Kopf).
       result.aborted = true
+      result.finishReason = ''
       return result
     }
     if (isAiTransportError(error)) throw error

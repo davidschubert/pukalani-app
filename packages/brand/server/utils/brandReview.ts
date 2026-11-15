@@ -11,7 +11,7 @@ import type { BrandSessionReview } from '../../shared/types/brand'
 import { createBrandSessionReviewSchema } from '../../schemas/brandReview'
 import { bookBrandAiQuota } from './brandAiQuota'
 import { BRAND_PROVIDER_ROUTING } from './brandProviderRouting'
-import { brandDevStubEnabled, readBrandAiEnabled } from './brandGenerators'
+import { brandDevStubEnabled, readBrandAiEnabled, retainBrandGeneration } from './brandGenerators'
 import type { BrandConverseHistoryTurn } from './conversePrompt'
 import {
   BRAND_REVIEW_MAX_TOKENS,
@@ -286,8 +286,15 @@ interface StageResult {
 }
 
 /**
- * EINE STUFE: buchen, rufen, prüfen. Sie wirft NIE — jeder Ausgang ist entweder
- * ein geprüftes Urteil oder ein Grund fürs Log.
+ * EINE STUFE: belegen, buchen, rufen, prüfen. Sie wirft NIE — jeder Ausgang ist
+ * entweder ein geprüftes Urteil oder ein Grund fürs Log.
+ *
+ * DER PARALLEL-PLATZ (P17, BE-006): bis hierher buchte die Stufe Kontingent,
+ * belegte aber als einziger bezahlter Weg keinen Platz — gleichzeitige
+ * Schliess-Aufrufe liefen am Burst-Deckel vorbei. Jetzt wie in den Routen:
+ * erst belegen, dann buchen (Begründung im Kopf von `brandAiQuota.ts`), und
+ * freigegeben wird im `finally`, auf JEDEM Ausgang. Belegt wird je Stufe, nie
+ * über beide: Stufe 2 läuft erst, wenn Stufe 1 fertig ist.
  */
 async function runStage(
   request: BrandReviewRequest,
@@ -297,6 +304,21 @@ async function runStage(
 ): Promise<StageResult> {
   if (!model) return { failure: 'provider_error' }
 
+  const burst = retainBrandGeneration(request.userId)
+  try {
+    return await runStageCall(request, model, weight, prompt)
+  }
+  finally {
+    burst.release()
+  }
+}
+
+async function runStageCall(
+  request: BrandReviewRequest,
+  model: string,
+  weight: number,
+  prompt: string,
+): Promise<StageResult> {
   const rejection = await bookBrandAiQuota(request.event, {
     userId: request.userId,
     profileId: request.profileId,

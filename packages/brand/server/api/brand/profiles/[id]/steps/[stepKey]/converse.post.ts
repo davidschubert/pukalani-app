@@ -1132,6 +1132,9 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
             // ADDITIV wie `options`: ein nachgeladener Verlauf zeigt die zwei
             // Knöpfe wieder, statt sie beim Reload zu verlieren.
             ...(confirmOffered ? { confirm: true } : {}),
+            // Die Antwort ist abgeschnitten (P17, BE-007) — gekennzeichnet,
+            // nicht verworfen; ADDITIV und nur, wenn wahr.
+            ...(turn.truncated ? { truncated: true } : {}),
           }),
           generationId: turnId,
         },
@@ -1221,6 +1224,7 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
       ...(options.length ? { options } : {}),
       // Dasselbe für das Bestätigungs-Angebot (converse-14).
       ...(confirmOffered ? { confirm: true } : {}),
+      ...(turn.truncated ? { truncated: true as const } : {}),
       next: nextSession,
     })
     logEvent('info', 'brand.converse_completed', {
@@ -1228,6 +1232,8 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
       slotId: body.slotId ?? '',
       model: turn.model,
       provider: turn.provider,
+      // Kennung, kein Inhalt (P17, BE-007).
+      finishReason: turn.finishReason,
       hasNextQuestion: Boolean(next),
       ms: Date.now() - started,
     })

@@ -48,6 +48,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 31 · CI1 | **Ausliefer-Weg: Nacharbeiten.** Getrennte Schlüssel für Ausliefern und Wächter, Geheimnisse nur für den Hauptzweig und die Pflicht-Prüfungen sind seit 2026-11-14 live (COMPLETE „GA1 P08"). Offen: (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
 | 32 · RW1 | **Rückweg: Nacharbeiten.** Zurückstellen per Skript, ein älterer Stand über GitHub und die Anleitung sind seit 2026-11-15 live und einmal geübt (COMPLETE „GA1 P10"). Offen: (a) **Notweg ohne GitHub** für das Ausliefern von etwas Neuem (heute nur der Weg zurück), (b) es liegen nur **vier Stände** je Seite, (c) Kleinigkeiten. | Niedrig | (a) M, (b) S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#rw1) |
 | 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt (COMPLETE „GA1 P11"). Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
+| 34 · KI1 | **KI-Schutz: Nacharbeiten.** Jeder KI-Aufruf läuft seit 2026-11-15 von selbst mit „keine Speicherung, Verarbeitung in Europa", das Protokoll enthält keinen Antworttext mehr, der Abschalter erreicht jeden bezahlten Weg, und abgeschnittene Berater-Antworten sind gekennzeichnet (COMPLETE „GA1 P17"). Offen: (a) **Klick-Probe auf Live** (einen Beitrag übersetzen), (b) **Datenschutztexte**: was sie jetzt über die KI sagen dürfen, (c) ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#ki1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -743,6 +744,39 @@ NICHT hier.
   Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
   liegen die Vorgänger-Fassungen der Skripte als Weg zurück
   (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
+
+<a id="ki1"></a>
+
+**KI1 — KI-Schutz: Nacharbeiten (aus dem Gesamtaudit, Paket P17).**
+
+- **(a) Klick-Probe auf Live.** Angemeldet in einer Community einen Beitrag
+  oder Kommentar übersetzen lassen und als Moderator die KI-Einschätzung zu
+  einer Meldung holen. Erwartet: beides geht wie vorher. Lokal ist ein echter
+  Aufruf mit der neuen Voreinstellung durchgelaufen; auf Production wurde
+  hinter der Anmeldung nichts geklickt.
+- **(b) Datenschutztexte.** Übersetzung, Moderations-Hilfe, Ticket-Einordnung
+  und Seiten-Übersetzung laufen jetzt wie der Markenberater: der Anbieter
+  speichert nichts, trainiert nicht damit, und gerechnet wird in Europa
+  (Amazon Bedrock in Irland oder Google Vertex in Europa, vermittelt über
+  OpenRouter). Die EINE Ausnahme bleibt das Erzeugen der Zeichen-Entwürfe
+  (kein fester Ort, steht schon im Text von branding.supply). Ob und wie die
+  Datenschutzerklärungen das sagen, entscheidet David mit dem Anwalt
+  (Punkt 12 · BS1 und die Erhebung zu den Rechtstexten der Plattform).
+- **(c) Modell aus der Konsole.** Wer auf der Admin-Config-Seite ein Modell
+  einträgt, das keinen der zwei Europa-Endpunkte hat, bekommt keinen Hinweis
+  beim Speichern. Der erste Aufruf scheitert dann mit einem klaren Satz („KI
+  gerade nicht verfügbar"), es wird nichts woanders gerechnet. Besser wäre
+  die Prüfung schon beim Speichern. Der tägliche Wächter prüft nur die
+  Modelle aus dem Code.
+- **(d) Kleinigkeiten.** Bei einem Modell ohne Europa-Endpunkt zeigen
+  Markenberater und Marktvergleich weiter ihren allgemeinen Satz („gerade
+  nicht verfügbar"), nicht den neuen genauen. Der Feldwert eines
+  abgeschnittenen Entwurfs trägt kein Kennzeichen, nur die Sprechblase
+  darüber. Das Prüfskript `verify-brand-context.mjs` hat als Voreinstellung
+  ein Modell, das es unter unseren Bedingungen nicht mehr gibt. Ein
+  englisches Bildschirmfoto der neuen Hinweise fehlt. Die Kosten je Lauf und
+  der Anbieter stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für
+  KI-Ausfälle und Ausgaben" des Gesamtaudits).
 
 <a id="rw1"></a>
 

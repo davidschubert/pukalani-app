@@ -525,6 +525,10 @@ export default defineEventHandler(async (event) => {
       chat,
       options: spoken.options,
       outcome,
+      // P17 (BE-007): ein abgeschnittener Zug bleibt ein ENTWURF wie jeder
+      // andere — gespeichert wird dasselbe, nur Verlauf und Frame tragen das
+      // Kennzeichen (der Browser zeigt einen Hinweis und „noch einmal").
+      truncated: result.truncated === true,
       inputHash,
       generationId,
       result,
@@ -545,6 +549,9 @@ export default defineEventHandler(async (event) => {
       outcome,
       model: result.model,
       provider: result.provider,
+      // Eine Kennung, kein Inhalt: so ist ein abgeschnittener Zug im Log von
+      // einem vollständigen zu unterscheiden (P17, BE-007).
+      finishReason: result.finishReason ?? '',
       ms: Date.now() - started,
     })
     void recordBrandEvent(event, {
@@ -581,6 +588,8 @@ export default defineEventHandler(async (event) => {
     /** Antwort-Möglichkeiten zur Rückfrage — leer heisst „keine Chips". */
     options: readonly string[]
     outcome: BrandGenerationOutcome
+    /** Die Antwort ist abgeschnitten (`finish_reason: 'length'`) — nur Kennzeichen. */
+    truncated: boolean
     inputHash: string
     generationId: string
     result: { model: string, provider: string, promptVersion: string }
@@ -680,6 +689,8 @@ export default defineEventHandler(async (event) => {
               kind: input.outcome,
               slotId: input.entryBase.slotId,
               ...(input.options.length ? { options: input.options } : {}),
+              // ADDITIV wie `options` und nur, wenn wahr (P17, BE-007).
+              ...(input.truncated ? { truncated: true } : {}),
             }),
             generationId: input.generationId,
           },
@@ -723,6 +734,7 @@ export default defineEventHandler(async (event) => {
         // Rückwärts-Vertrag: fehlt das Feld, gibt es keine Chips — also genau
         // das Verhalten von vor dieser Runde.
         ...(input.options.length ? { options: input.options } : {}),
+        ...(input.truncated ? { truncated: true as const } : {}),
       }
     }
     catch (error) {

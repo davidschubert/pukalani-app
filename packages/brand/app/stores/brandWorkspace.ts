@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { swapBrandChoiceValueLine } from '../../shared/brandChoiceOptions'
+import { truncatedFromParts, truncatedRetrySlotFromParts } from '../../shared/brandGeneration'
 import type {
   BrandConfidence,
   BrandJourneyStep,
@@ -129,6 +130,18 @@ export interface BrandStreamMessage {
    * gewöhnliche Nachfrage; das ist der Normalfall.
    */
   confirm?: boolean
+  /**
+   * DIE ANTWORT IST ABGESCHNITTEN (P17, BE-007) — aus dem Abschluss-Frame bzw.
+   * beim Nachladen aus `parts`. Unter der Blase steht ein ruhiger Hinweis.
+   */
+  truncated?: true
+  /**
+   * Das Feld, dessen Entwurf sich über den vorhandenen Erzeugen-Weg neu
+   * schreiben lässt — nur bei einem abgeschnittenen Zug der GENERIERUNG. Ein
+   * Gesprächszug hat keins: ihn zu wiederholen schickte die Antwort des
+   * Menschen ein zweites Mal.
+   */
+  retrySlotId?: string
 }
 
 const EMPTY_PROGRESS: BrandStepProgress = { requiredTotal: 0, requiredFilled: 0, pct: 0 }
@@ -722,6 +735,17 @@ const setup = () => {
   }
 
   /**
+   * DAS KENNZEICHEN „ABGESCHNITTEN" AN SEINEN ZUG HÄNGEN (P17, BE-007) —
+   * dieselbe Bauart wie `setGeorgeMessageConfirm`, VOR dem Abschluss gerufen.
+   * `retrySlotId` nur für einen Zug der Generierung (s. `BrandStreamMessage`).
+   */
+  function setGeorgeMessageTruncated(generationId: string, retrySlotId?: string): void {
+    streamMessages.value = streamMessages.value.map(message => (message.id === generationId
+      ? { ...message, truncated: true as const, ...(retrySlotId ? { retrySlotId } : {}) }
+      : message))
+  }
+
+  /**
    * DIE GESTREAMTE BLASE SPRICHT DIE SPRACHE DER SEITE (Live-Fund 2026-09-04):
    * bei einem Choice-Slot streamt das Modell die Wert-Zeile mit — die rohe Id
    * (`sage`) stand wörtlich im Chat. Der Server tauscht sie nur in der
@@ -760,6 +784,12 @@ const setup = () => {
     if (!Array.isArray(raw)) return undefined
     const options = raw.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
     return options.length ? options : undefined
+  }
+
+  /** Das Feld eines abgeschnittenen Entwurfs-Zuges, als Spread (P17, BE-007). */
+  function retrySlotFrom(parts: unknown): { retrySlotId?: string } {
+    const slotId = truncatedRetrySlotFromParts(parts)
+    return slotId ? { retrySlotId: slotId } : {}
   }
 
   /** Dasselbe für das Bestätigungs-Angebot (`{ kind: 'reply', confirm: true }`). */
@@ -804,6 +834,9 @@ const setup = () => {
             : {}),
           ...(message.role === 'george' && confirmFromParts(message.parts)
             ? { confirm: true }
+            : {}),
+          ...(message.role === 'george' && truncatedFromParts(message.parts)
+            ? { truncated: true as const, ...retrySlotFrom(message.parts) }
             : {}),
         }))
       return response.messages.some(message => message.role === 'george')
@@ -1323,6 +1356,7 @@ const setup = () => {
     appendGeorgeDelta,
     setGeorgeMessageOptions,
     setGeorgeMessageConfirm,
+    setGeorgeMessageTruncated,
     localizeGeorgeChoiceMessage,
     endGeorgeMessage,
     mark,

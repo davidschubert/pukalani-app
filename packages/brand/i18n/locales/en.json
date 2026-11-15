@@ -1056,6 +1056,11 @@
       "confirmNeedsValue": "Draft it or write it yourself first — then you can accept it.",
       "confirmEmpty": "There is nothing here yet that could be confirmed.",
       "retryWithHint": "Again, with a hint",
+      "truncated": {
+        "hint": "This answer was cut off – the model stopped before it was finished.",
+        "retry": "Generate again",
+        "writeAgain": "Just write again and {voice} will answer anew."
+      },
       "submitChoice": "Submit",
       "save": {
         "rejected": "Not saved",
@@ -1485,6 +1490,7 @@
           "siteBlocked": "This website does not allow automated evaluation — we respect that. So there is no result here.",
           "rateLimited": "The free checks for today are used up. Tomorrow it continues — or sign up for the full report.",
           "unavailable": "The check is not reachable right now. Please try again in a few minutes.",
+          "paused": "The check is paused at the moment. Please come back later.",
           "generic": "That did not work just now. Please try again in a moment."
         },
         "ranking": "Add this check to the public ranking",
@@ -1708,6 +1714,7 @@
           "accountLimit": "Your 10 re-runs for today are used up. It continues tomorrow.",
           "notFound": "This brand does not exist for you.",
           "unavailable": "The check is unavailable right now. Try again in a few minutes.",
+          "paused": "The check is paused at the moment. Please come back later.",
           "generic": "That did not work just now. Give it another try in a moment."
         }
       }
@@ -1818,6 +1825,7 @@
         "fetchFailed": "The page did not answer. Check the address and try again in a moment.",
         "siteBlocked": "This website does not allow automated evaluation — we respect that. So there is no result here.",
         "unavailable": "The check is unavailable right now. Try again in a few minutes.",
+        "paused": "The check is paused at the moment. Please come back later.",
         "generic": "That did not work just now. Give it another try in a moment."
       }
     },

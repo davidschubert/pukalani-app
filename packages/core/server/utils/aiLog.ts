@@ -38,6 +38,7 @@ export type AiLogWhat
     | 'KI-Stream Zeitüberschreitung'
     | 'KI-Vision abgewiesen'
     | 'KI-Video abgewiesen'
+    | 'KI abgeschaltet'
 
 export type AiLogFields = Readonly<Record<string, string | number | undefined>>
 

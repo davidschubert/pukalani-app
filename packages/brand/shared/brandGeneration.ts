@@ -166,6 +166,13 @@ export interface BrandGenerationCompletedData {
    * Verhalten von vor BW2.
    */
   next?: BrandNextSessionRef | null
+  /**
+   * DIE ANTWORT IST ABGESCHNITTEN (P17, BE-007): das Modell hat seine Decke
+   * gerissen (`finish_reason: 'length'`). Der Zug bleibt, wie er kam — der
+   * Browser zeigt nur einen Hinweis darunter. OPTIONAL und nur `true`: fehlt
+   * es, ist der Zug vollständig, also exakt das Verhalten von vorher.
+   */
+  truncated?: true
 }
 
 export interface BrandGenerationFailedData {
@@ -410,4 +417,37 @@ export function findBrandGenerationByKey(
     if (entry.idempotencyKey === idempotencyKey && typeof entry.draft === 'string') return entry
   }
   return null
+}
+
+// ── Die abgeschnittene Antwort (P17, BE-007) ───────────────────────────────
+
+/** Der `finish_reason`, mit dem ein Anbieter sagt: „die Decke ist gerissen". */
+export const BRAND_TRUNCATED_FINISH_REASON = 'length'
+
+/** EINE Regel für Server und Test: nur `length` heisst abgeschnitten. */
+export function brandTurnTruncated(finishReason: string): boolean {
+  return finishReason === BRAND_TRUNCATED_FINISH_REASON
+}
+
+/**
+ * Das additive Kennzeichen eines gespeicherten Zuges (`parts.truncated`) —
+ * daneben stehen `optionsFromParts`/`confirmFromParts` im Store. Kaputtes JSON
+ * hat die Leseroute schon zu `null` gemacht.
+ */
+export function truncatedFromParts(parts: unknown): boolean {
+  if (parts === null || typeof parts !== 'object') return false
+  return (parts as { truncated?: unknown }).truncated === true
+}
+
+/**
+ * Lässt sich ein abgeschnittener Zug über den vorhandenen Erzeugen-Weg neu
+ * schreiben? Nur ein Zug der GENERIERUNG (`kind: 'draft' | 'question'`, aus
+ * `generate.post.ts`) mit seinem Feld — ein Gesprächszug nicht: ihn zu
+ * wiederholen hiesse, die Antwort des Menschen ein zweites Mal zu schicken.
+ */
+export function truncatedRetrySlotFromParts(parts: unknown): string | null {
+  if (!truncatedFromParts(parts)) return null
+  const { kind, slotId } = parts as { kind?: unknown, slotId?: unknown }
+  if (kind !== 'draft' && kind !== 'question') return null
+  return typeof slotId === 'string' && slotId.length > 0 ? slotId : null
 }

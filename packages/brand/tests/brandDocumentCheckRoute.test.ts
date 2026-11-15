@@ -47,6 +47,8 @@ let judgeBroken: boolean
 let body: Record<string, unknown>
 let buckets: Map<string, number>
 let logs: { level: string, event: string, data: Record<string, unknown> }[]
+/** Der KI-Riegel des Cores (`aiSwitchedOn`, P17 BE-006) — Standard: an. */
+let aiOn: boolean
 
 const tablesDB = {
   listRows: vi.fn(async ({ tableId, queries }: { tableId: string, queries: string[] }) => {
@@ -103,6 +105,7 @@ vi.stubGlobal('getRouterParam', () => 'p1')
 vi.stubGlobal('readBody', async () => body)
 vi.stubGlobal('setHeader', () => {})
 vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
+vi.stubGlobal('aiSwitchedOn', async () => aiOn)
 vi.stubGlobal('useRateLimitStore', () => ({
   prefix: 'rl:',
   store: {
@@ -116,6 +119,7 @@ vi.stubGlobal('useRateLimitStore', () => ({
 
 const handler = (await import('../server/api/brand/profiles/[id]/check.post'))
   .default as unknown as (event: H3Event) => Promise<BrandCheckStartResponse>
+const { judgeBrandCheck } = await import('../server/utils/brandCheckJudge')
 
 const event = { context: {} } as unknown as H3Event
 
@@ -155,6 +159,8 @@ beforeEach(() => {
   body = {}
   buckets = new Map()
   logs = []
+  aiOn = true
+  vi.mocked(judgeBrandCheck).mockClear()
   tablesDB.listRows.mockClear()
   tablesDB.createRow.mockClear()
   tablesDB.getRow.mockClear()
@@ -210,6 +216,34 @@ describe('POST /api/brand/profiles/:id/check · Zwischenspeicher und Deckel', ()
     expect(error.status).toBe(429)
     expect(error.data?.code).toBe('brand_check_account_limit')
     expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/brand/profiles/:id/check · KI abgeschaltet (P17, BE-006)', () => {
+  it('⇒ 503 `check_paused`, KEIN Modell, KEINE Buchung, keine Zeile', async () => {
+    aiOn = false
+
+    const error = await reject()
+
+    expect(error.status).toBe(503)
+    expect(error.data?.code).toBe('check_paused')
+    expect(judgeBrandCheck).not.toHaveBeenCalled()
+    expect(buckets.size).toBe(0)
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+    expect(logs.find(entry => entry.event === 'brand.doc_check_paused')?.data).toEqual({ profileId: 'p1' })
+  })
+
+  it('ein frischer Stand wird trotzdem ausgeliefert — er kostet nichts', async () => {
+    aiOn = false
+    checks = [{ $id: 'c9', $createdAt: new Date(Date.now() - 60_000).toISOString(), urlKey: 'doc:p1', score: 61 }]
+
+    expect(await handler(event)).toEqual({ ok: true, id: 'c9', cached: true })
+    expect(buckets.size).toBe(0)
+  })
+
+  it('GEGENPROBE: an ⇒ das Modell wird gefragt', async () => {
+    await handler(event)
+    expect(judgeBrandCheck).toHaveBeenCalledTimes(1)
   })
 })
 

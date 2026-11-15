@@ -1056,6 +1056,11 @@
       "confirmNeedsValue": "Erst entwerfen oder selbst schreiben — dann lässt sich das übernehmen.",
       "confirmEmpty": "Hier steht noch nichts, was sich bestätigen liesse.",
       "retryWithHint": "Nochmal, mit Hinweis",
+      "truncated": {
+        "hint": "Diese Antwort ist abgeschnitten – das Modell hat aufgehört, bevor es fertig war.",
+        "retry": "Noch einmal erzeugen",
+        "writeAgain": "Schreib einfach noch einmal, dann antwortet {voice} neu."
+      },
       "submitChoice": "Übermitteln",
       "save": {
         "rejected": "Nicht gespeichert",
@@ -1485,6 +1490,7 @@
           "siteBlocked": "Diese Website untersagt die automatische Auswertung — wir respektieren das. Deshalb gibt es hier kein Ergebnis.",
           "rateLimited": "Für heute sind die kostenlosen Checks aufgebraucht. Morgen geht es weiter — oder tragt euch für den vollständigen Report ein.",
           "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
+          "paused": "Der Check ist gerade pausiert. Schaut bitte später noch einmal vorbei.",
           "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
         },
         "ranking": "Diesen Check ins öffentliche Ranking aufnehmen",
@@ -1708,6 +1714,7 @@
           "accountLimit": "Heute sind die 10 Neu-Ermittlungen aufgebraucht. Morgen geht es weiter.",
           "notFound": "Diese Brand ist unter diesem Konto nicht verfügbar.",
           "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
+          "paused": "Der Check ist gerade pausiert. Schaut bitte später noch einmal vorbei.",
           "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
         }
       }
@@ -1818,6 +1825,7 @@
         "fetchFailed": "Die Seite hat nicht geantwortet. Prüft die Adresse und versucht es gleich noch einmal.",
         "siteBlocked": "Diese Website untersagt die automatische Auswertung — wir respektieren das. Deshalb gibt es hier kein Ergebnis.",
         "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
+        "paused": "Der Check ist gerade pausiert. Schaut bitte später noch einmal vorbei.",
         "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
       }
     },

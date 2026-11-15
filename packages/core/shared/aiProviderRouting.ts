@@ -40,3 +40,10 @@ export const AI_ENDPOINT_UNAVAILABLE_CODE = 'ai_endpoint_unavailable'
 export function aiEndpointNoticeApplies(notice: { status: number, reason: string }): boolean {
   return notice.status === 503 && notice.reason === AI_ENDPOINT_UNAVAILABLE_CODE
 }
+
+/**
+ * Fachlicher Grund (`data.code` ⇒ `reason`): ein angemeldeter Abschalter sagt
+ * „aus" (`aiKillSwitch.ts`, P17 BE-006). Derselbe Code, den insights und market
+ * für ihren eigenen Schalter schon benutzen — die Bedeutung ist dieselbe.
+ */
+export const AI_DISABLED_CODE = 'ai_disabled'

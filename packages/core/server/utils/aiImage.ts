@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import type { AiProviderRouting } from './aiComplete'
 import { aiCallFailed, aiHttpFailure, aiRoutingInvalidError, assertAiRouteOnly, startAiRun } from './aiLog'
+import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
  * BILDER ERZEUGEN — der Bild-Transport des Core (Konzept
@@ -328,6 +329,8 @@ export async function aiImage(
   }
   const ctx = startAiRun(options.label ?? 'core', model)
   assertAiRouteOnly(options.providerRouting?.only, ctx)
+  // DER RIEGEL (P17, BE-006): ein angemeldeter Abschalter sagt „aus" ⇒ kein fetch.
+  await assertAiSwitchedOn(event, ctx)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)

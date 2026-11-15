@@ -30,6 +30,68 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P17 — KI-Aufrufe: Schutz als Voreinstellung ✅ 2026-11-15
+
+**Was.** Erstes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Findings SEC-005, SEC-017, BE-006, BE-007), Pull Requests 171 und
+172. Davids Entscheidung vom 2026-11-12: umsetzen; „keine Speicherung,
+Europa" gilt für jeden KI-Aufruf von selbst.
+
+1. **Bindung im Transport (SEC-005).** Alle fünf KI-Transporte senden „keine
+   Speicherung, kein Sammeln, kein Ausweichen" fest. Der Text-Weg setzt ohne
+   Angabe die zwei Europa-Endpunkte (`core/shared/aiProviderRouting.ts`, eine
+   Quelle; die brand-Konstante ist dieselbe). Neun Aufrufstellen hatten vorher
+   gar keine Bindung (sechs Übersetzungen, zwei Moderations-Hilfen, die
+   Ticket-Einordnung), die Seiten-Übersetzung keinen Ort. Bei Bild, Vision und
+   Video ist der Ort Pflichtangabe. Kein Endpunkt unter der Bindung ⇒ 503
+   `ai_endpoint_unavailable` mit Hinweis in der Oberfläche; es wird nicht auf
+   ein anderes Modell gewechselt.
+2. **Wächter `pnpm check:ai-routing`.** Listet jede der 23 Aufrufstellen mit
+   Transport, Bindung und Orten; rot bei einer Bindung ohne benannte
+   Konstante, einem Ort außerhalb der EU ohne eingetragene Ausnahme (heute
+   eine: Bild-Erzeugen) und bei einem Aufruf am Transport vorbei.
+3. **Protokoll (SEC-017).** Log-Zeilen der Transporte tragen nur feste Arten,
+   Zahlen und kurze Kennungen (`aiLogLine`): Status, Kennung des Anbieters,
+   Modell, Dauer, `finish_reason`, Länge, Tokens, Lauf-Kennung.
+4. **Ein Riegel für den Abschalter (BE-006).** Layer melden ihren Abschalter
+   beim Core an, jeder Transport fragt ihn vor dem Senden. brand meldet
+   `brandAiEnabled` an. Öffentlicher Check und Dokument-Check fragen vor der
+   Buchung (`check_paused`, eigener Satz). Review-Läufe belegen einen
+   Parallel-Platz.
+5. **Abgeschnittene Antworten (BE-007).** Der Stream-Weg liest
+   `finish_reason`. Ein abgeschnittener Berater-Zug bleibt, trägt aber ein
+   Kennzeichen in `brand_messages.parts` und einen Hinweis in der Oberfläche,
+   beim Entwurf mit „Noch einmal erzeugen". Keine Migration.
+
+**Beweise.** Tests vorher rot, nachher grün (56 rote Tests im ersten Teil,
+39 im zweiten). Ein echter lokaler Aufruf ohne Routing-Option: die
+gesendete Anfrage trägt die volle Bindung, Antwort von Amazon Bedrock.
+Gegenprobe mit einem Ort, den es nicht gibt: 404 beim Vermittler, 503 aus dem
+Transport, im Log nur Kennungen. Lokal gegen den Dev-Server: Check bei
+ausgeschaltetem Schalter 503 `check_paused`, Hinweis auf der Seite, kein
+Kontingent verbraucht; beide Hinweise für abgeschnittene Züge gesehen.
+Nicht geprüft: Klicks hinter der Anmeldung auf Production. Reste: OPEN-ITEMS
+„KI1".
+
+**Gelernt:** (1) **Eine Sicherung, die jede Aufrufstelle selbst mitgeben
+muss, fehlt genau dort, wo niemand daran gedacht hat** — und die Stelle, die
+es richtig machte (Seiten-Übersetzung), hatte den Ort trotzdem vergessen.
+Voreinstellung im Transport plus ein Wächter, der jede Stelle auflistet.
+(2) **Ein Scan der Aufruf-Argumente reicht nicht:** Optionen lassen sich
+vorher in einer Variablen bauen, dann steht im Aufruf nichts. Der Wächter
+liest deshalb jeden Schlüssel `providerRouting` im Server-Code.
+(3) **`error.message` ist kein sicheres Log-Feld:** ein `SyntaxError` aus
+`res.json()` zitiert den Anfang der Antwort. Geloggt wird nur noch der Name.
+(4) **Zwei Drosseln, zwei Fenster:** bei der lokalen Probe kam nach drei
+Aufrufen eine 429 — von der Minuten-Drossel der Middleware, nicht vom
+Tages-Kontingent des Checks. Erst der Grund in der Antwort (`rate_limited`
+gegen den Code des Checks) sagt, welche es war. (5) Ein Prüfskript rief den
+Vermittler direkt und war seit AI1 ohne Ort; sein Standardmodell hat dort
+inzwischen gar keinen passenden Endpunkt mehr. Skripte gehören in denselben
+Wächter wie der Produktcode.
+
+---
+
 ### GA1 P11 — Backup der Datenbank: verschlüsselt, geprüft, einmal zurückgespielt ✅ 2026-11-15
 
 **Was.** Elftes und letztes Umsetzungs-Paket der Stufe „Jetzt" aus dem

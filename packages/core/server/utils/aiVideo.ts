@@ -11,6 +11,7 @@ import {
   assertAiRouteOnly,
   startAiRun,
 } from './aiLog'
+import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
  * VIDEOS LESEN — der vierte Transport des Core, neben `aiComplete` (Text),
@@ -407,6 +408,8 @@ async function runAiVideo(
     throw createError({ status: 400, statusText: 'AI video got an unsupported url' })
   }
   assertAiRouteOnly(options.providerRouting?.only, ctx)
+  // DER RIEGEL (P17, BE-006): ein angemeldeter Abschalter sagt „aus" ⇒ kein fetch.
+  await assertAiSwitchedOn(event, ctx)
   const counts = { videos: videos.length }
 
   const controller = new AbortController()
