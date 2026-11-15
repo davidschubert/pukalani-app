@@ -45,6 +45,7 @@
  *
  * `--json` gibt die Befunde maschinenlesbar aus (für ein Protokoll).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 const APPLY = process.argv.includes('--apply')

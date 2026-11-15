@@ -38,6 +38,7 @@
  *
  * B2B_PORT / PLAIN_PORT überschreiben die Ports.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, Users } from 'node-appwrite'
 

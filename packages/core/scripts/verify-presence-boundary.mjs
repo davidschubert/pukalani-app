@@ -38,6 +38,7 @@
  *   # Akt 2 zusätzlich: `pnpm --filter platform dev` in einem zweiten Terminal
  *   # (Hosts aus der lokalen tenants-Tabelle, Default kunde-a/kunde-b.localhost)
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Presences, Query, TablesDB, Users } from 'node-appwrite'
 

@@ -19,6 +19,7 @@
  *
  * TENANT_HOST überschreibt den geprüften Host (Default: der Kontroll-Host).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Users } from 'node-appwrite'
 
