@@ -15,11 +15,13 @@ export async function ticketsExportUserData(event: H3Event, userId: string) {
 
   const created = await listAllRows<TicketRow>(tablesDB, databaseId, TICKETS_TABLE, [Query.equal('createdBy', userId)])
   const memberOf = await listAllRows<TicketRow>(tablesDB, databaseId, TICKETS_TABLE, [Query.contains('membersJson', userId)])
-  // P4: Beobachtungen + hochgeladene Anhänge (degradieren vor Migration 003)
+  // P4: Beobachtungen + hochgeladene Anhänge. VOLLSTÄNDIG ODER GAR NICHT
+  // (BE-024, 2026-11-15): vorher wurde ein Lesefehler zu einer leeren Liste —
+  // eine Auskunft, die vollständig aussah und es nicht war. Die Tabellen gibt
+  // es seit Migration 003 auf jeder Instanz mit diesem Layer; ein Fehler hier
+  // ist eine Störung und lässt den Export scheitern (wie die Löschung unten).
   const watching = await listAllRows<TicketWatcherRow>(tablesDB, databaseId, TICKET_WATCHERS_TABLE, [Query.equal('userId', userId)])
-    .catch(() => [] as TicketWatcherRow[])
   const uploads = await listAllRows<TicketFileRow>(tablesDB, databaseId, TICKET_FILES_TABLE, [Query.equal('uploadedBy', userId)])
-    .catch(() => [] as TicketFileRow[])
 
   return {
     createdTickets: created.map(ticket => ({

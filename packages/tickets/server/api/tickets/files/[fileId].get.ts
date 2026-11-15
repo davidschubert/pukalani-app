@@ -5,8 +5,15 @@ import { TICKET_FILES_BUCKET, TICKET_FILES_TABLE, type TicketFileRow } from '../
  * Anhang ausliefern — Permission-geprüft über unsere Route (der Bucket hat
  * bewusst KEINE öffentlichen Permissions). Content-Disposition inline für
  * Bilder/PDF (Browser-Vorschau), attachment für den Rest.
+ *
+ * `X-Content-Type-Options: nosniff` auf JEDER Antwort dieser Route (BE-024,
+ * gesetzt vor der ersten Prüfung, damit auch Fehlerantworten ihn tragen): der
+ * Browser soll den Typ nehmen, den wir nennen, und nicht aus dem Inhalt raten.
+ * Bewusst KEINE Sandbox-CSP: PDFs werden inline gezeigt, und die eingebaute
+ * PDF-Ansicht des Browsers läuft unter `sandbox` nicht.
  */
 export default defineEventHandler(async (event) => {
+  setHeader(event, 'X-Content-Type-Options', 'nosniff')
   requirePermission(event, 'tickets.manage')
   const fileId = getRouterParam(event, 'fileId')
   if (!fileId) throw createError({ status: 400, statusText: 'Missing fileId' })
