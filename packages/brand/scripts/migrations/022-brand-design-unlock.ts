@@ -47,6 +47,7 @@
  * laufen — ohne die Spalten lehnt Appwrite jedes Anlegen eines Brandings ab
  * (`createRow` nennt im Layer JEDE Spalte ausdrücklich).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

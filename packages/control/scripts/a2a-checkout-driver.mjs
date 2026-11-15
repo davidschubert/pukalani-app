@@ -31,10 +31,16 @@ import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { assertTarget } from '../../../scripts/lib/target.mjs'
 
 const ENDPOINT = 'https://api.pukalani.app/v1'
 const CONTROL_HOST = 'https://admin.pukalani.app'
 const DATABASE_ID = 'main'
+
+// Der Endpunkt ist fest PRODUCTION — jeder Lauf braucht deshalb
+// PUKALANI_TARGET_CONFIRM=control (OPS-002). Geprüft wird das Haupt-Projekt;
+// `pool` liegt auf demselben Endpunkt.
+assertTarget({ script: 'a2a-checkout-driver', endpoint: ENDPOINT, projectId: 'control' })
 
 const secret = name => readFileSync(join(homedir(), '.appwrite-secrets', name), 'utf8').trim()
 

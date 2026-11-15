@@ -16,6 +16,7 @@
  *   STUDIO_URL          Default http://localhost:3004
  *   POOL_ENDPOINT/KEY   Default: dieselbe Instanz, Key aus NUXT_APPWRITE_KEY
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
 const STUDIO_URL = (process.env.STUDIO_URL || 'http://localhost:3004').replace(/\/+$/, '')

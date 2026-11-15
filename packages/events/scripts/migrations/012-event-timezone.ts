@@ -41,6 +41,7 @@
  * bei der E8-3-Umbenennung endlos wiederholte). Die Migration VORHER ist
  * gefahrlos: eine optionale Spalte, die niemand liest, tut nichts.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

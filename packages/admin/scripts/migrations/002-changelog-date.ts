@@ -7,6 +7,7 @@
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/admin/scripts/migrations/009-changelog-date.ts
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

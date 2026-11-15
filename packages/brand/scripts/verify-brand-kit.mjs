@@ -77,6 +77,7 @@
  *   BRANDING_PORT=3016 pnpm --filter @pukalani/brand verify:kit
  *   BRANDING_PORT=3016 pnpm --filter @pukalani/brand verify:kit -- --keep-kailua
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { strFromU8, unzipSync } from 'fflate'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

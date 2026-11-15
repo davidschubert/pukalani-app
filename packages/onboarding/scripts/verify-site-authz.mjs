@@ -36,6 +36,7 @@
  *   POOL_KEY=… node --env-file=apps/control/.env \
  *     packages/onboarding/scripts/verify-site-authz.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Presences, Query, TablesDB, Users } from 'node-appwrite'

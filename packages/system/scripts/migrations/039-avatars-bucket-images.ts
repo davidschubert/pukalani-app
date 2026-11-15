@@ -44,6 +44,7 @@
  * Benötigte Key-Scopes: buckets.* (Migrations-Key). Idempotent: steht der
  * Bucket schon im Zielzustand, wird nichts geschrieben.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Compression, Storage } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

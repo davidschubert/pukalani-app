@@ -1,3 +1,4 @@
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, Query } from 'node-appwrite'
 const c = new Client().setEndpoint(process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT).setProject(process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID).setKey(process.env.NUXT_APPWRITE_KEY)
 const db = new TablesDB(c); const DB = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID

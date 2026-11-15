@@ -72,6 +72,7 @@
  * laufen — ohne die Tabelle bleibt der Schliess-Aufruf fail-soft ohne Befunde
  * (`reviewed: false`), und das sähe wie ein kaputtes Modell aus.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

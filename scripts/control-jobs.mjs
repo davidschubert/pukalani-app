@@ -19,6 +19,7 @@ import { spawnSync } from 'node:child_process'
 import { hostname } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { assertTarget } from './lib/target.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const watch = process.argv.includes('--watch')
@@ -47,6 +48,8 @@ const projectId = env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
 const apiKey = env.NUXT_APPWRITE_KEY
 if (!endpoint || !projectId || !databaseId || !apiKey) fail('apps/control/.env unvollständig (Endpoint/Projekt/DB/Key)')
+// Ziel-Prüfung (OPS-002) mit den Werten aus der Datei, nicht aus process.env.
+assertTarget({ script: 'control-jobs', endpoint, projectId })
 
 async function api(path, method = 'GET', body) {
   const res = await fetch(`${endpoint}${path}`, {

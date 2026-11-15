@@ -51,6 +51,7 @@
  * Die Regel aus CLAUDE.md gilt: diese Migration MUSS vor dem Code-Deploy
  * laufen — ohne die Tabelle antwortet `POST /api/brand/check` mit 503.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

@@ -37,6 +37,7 @@
  *
  * `--dry-run` zeigt nur, was entstehen würde.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Permission, Query, Role, TablesDB } from 'node-appwrite'
 // Die URL-Regel wird IMPORTIERT, nicht nachgebaut: `discussionUrl.ts` sagt im
 // eigenen Kopf, dass Server und Client mit derselben Funktion rechnen, „sonst

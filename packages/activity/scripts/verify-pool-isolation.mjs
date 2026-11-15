@@ -27,6 +27,7 @@
  * Idempotent + selbst-aufräumend (auch im Fehlerfall). Läuft NUR gegen die in
  * der Env genannte Instanz — nie hartkodiert Prod.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

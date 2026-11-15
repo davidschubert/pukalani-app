@@ -36,6 +36,7 @@
  * Betroffene Prod-Instanzen: photos und comments (die einzigen mit media im
  * Manifest — nicht platform, control, help, marketing, portfolio).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Compression, Permission, Query, Role, Storage, TablesDB, type Models } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

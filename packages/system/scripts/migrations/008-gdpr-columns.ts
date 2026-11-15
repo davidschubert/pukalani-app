@@ -15,6 +15,7 @@
  * Benötigte Key-Scopes: columns.*, indexes.* (Migrations-Key). Idempotent
  * (409 → skip); Column wird vor der Index-Anlage auf 'available' gepollt.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

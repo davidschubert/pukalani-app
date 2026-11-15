@@ -41,6 +41,7 @@
  * Legt Wegwerf-Nutzer, -Beitraege und -Stimmen an und raeumt sie wieder weg,
  * auch im Fehlerfall.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 

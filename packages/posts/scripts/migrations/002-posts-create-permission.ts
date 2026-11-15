@@ -5,6 +5,7 @@
  * Zielzustand absolut. poll_votes bleibt bewusst OHNE User-Permissions
  * (Votes schreibt ausschließlich der Server, Plan P3/P6).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Permission, Role, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

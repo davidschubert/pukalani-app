@@ -25,6 +25,7 @@
  *   node --env-file=apps/platform/.env \
  *     packages/pages/scripts/seed-demo.mjs --community t-demo
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

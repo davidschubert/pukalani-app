@@ -30,6 +30,7 @@
  * Aufruf: pnpm migrate --app <app> --layer system
  * ZIEL-INSTANZEN: jede — der system-Layer läuft überall mit.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

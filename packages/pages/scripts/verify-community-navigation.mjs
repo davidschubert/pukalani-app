@@ -56,6 +56,7 @@
  * Test-Konten anlegen, die `community_navigation`-Row am Ende wegräumen und die
  * Gegenprobe „mit dem Admin-Key geht es doch" in Abschnitt 13.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'

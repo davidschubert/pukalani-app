@@ -14,6 +14,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { assertTarget } from '../lib/target.mjs'
 
 const args = process.argv.slice(2)
 function arg(name, fallback) {
@@ -26,6 +27,11 @@ const appDir = arg('app', 'apps/comments')
 const projectId = arg('project', 'comments')
 const EMAIL = 'ci@example.com'
 const PASSWORD = 'ci-console-password-2026'
+
+// Gedacht für Wegwerf-Instanzen: die CI ruft mit http://localhost:8080/v1 auf
+// (.github/workflows/e2e.yml). Alles andere braucht
+// PUKALANI_TARGET_CONFIRM=<Projekt-Id> (OPS-002).
+assertTarget({ script: 'ci/appwrite-setup', endpoint, projectId })
 
 let cookie = ''
 

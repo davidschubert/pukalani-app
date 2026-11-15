@@ -47,6 +47,7 @@
  *
  * Benötigte Key-Scopes: buckets.* (Migrations-Key). Idempotent (409 → skip).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Storage } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

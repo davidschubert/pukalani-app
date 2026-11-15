@@ -16,6 +16,7 @@
  *
  * Läuft komplett mit dem Runtime-Key (rows.write, keine Schema-Änderung).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, Query, type Models } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

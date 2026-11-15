@@ -32,6 +32,7 @@
  * system-037 (Bucket `favicons`) muss auf dem Pool gelaufen sein
  * (`pnpm migrate --app platform --layer system`).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Buffer } from 'node:buffer'

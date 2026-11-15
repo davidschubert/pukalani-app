@@ -46,6 +46,7 @@
  * ob das Control Plane antwortet. Ein Fail-soft-Test ohne diese Gegenprobe
  * wäre immer grün.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { startDnsStub } from '../../onboarding/scripts/lib/dnsStub.mjs'

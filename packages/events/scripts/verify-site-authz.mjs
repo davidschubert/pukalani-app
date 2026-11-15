@@ -25,8 +25,10 @@
  *   node --env-file=../../apps/platform/.env scripts/verify-site-authz.mjs
  *   node --env-file=../../apps/comments/.env scripts/verify-site-authz.mjs --silo
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { assertTarget, isLocalEndpoint } from '../../../scripts/lib/target.mjs'
 
 const SILO = process.argv.includes('--silo')
 const PORT = Number(SILO ? process.env.COMMENTS_PORT || 3144 : process.env.PLATFORM_PORT || 3143)
@@ -51,6 +53,10 @@ if (!SILO && (!controlEndpoint || !controlProject || !controlDb || !controlKey))
   console.error('✗ NUXT_PLATFORM_CONTROL_* fehlt — der Pool-Lauf braucht den Control-Plane-Zugang.')
   process.exit(1)
 }
+
+// Zweiter Endpunkt (Control Plane): die Bestätigung des ersten gilt für die
+// ganze Env-Datei — ist der Haupt-Endpunkt lokal, muss es dieser auch sein (OPS-002).
+if (!SILO) assertTarget({ script: 'verify-site-authz (Control)', endpoint: controlEndpoint, projectId: controlProject, confirmed: !isLocalEndpoint(endpoint) })
 
 const pool = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
 const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))

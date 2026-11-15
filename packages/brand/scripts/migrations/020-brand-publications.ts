@@ -78,6 +78,7 @@
  * laufen — ohne die Tabelle antwortet das Einreichen mit 503, und ohne die
  * Spalte lehnt Appwrite jedes Setzen des Opt-ins ab.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

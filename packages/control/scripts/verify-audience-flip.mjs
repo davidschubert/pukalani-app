@@ -37,6 +37,7 @@
  * Idempotent + selbst-aufräumend (fester Präfix, `finally`-Löschung). Läuft NUR
  * gegen die in der Env genannte Instanz — nie hartkodiert Prod.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Permission, Query, Role, Storage, TablesDB, Users } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { repermissionRow } from '../../core/shared/communityAudience.ts'

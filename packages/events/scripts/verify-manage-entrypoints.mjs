@@ -23,6 +23,7 @@
  * Aus packages/events:
  *   node --env-file=../../apps/comments/.env scripts/verify-manage-entrypoints.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 

@@ -17,6 +17,7 @@
  * Abbruch mittendrin wird beim Re-Run sauber fortgesetzt (Daten stehen dann
  * in body_tmp). Aufruf über den Runner: pnpm migrate --app <app> --layer pages
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

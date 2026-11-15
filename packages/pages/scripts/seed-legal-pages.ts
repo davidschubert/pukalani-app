@@ -28,6 +28,7 @@
  *   # andere Instanz (z. B. Prod): node --experimental-strip-types \
  *   #   --env-file=<pfad> packages/pages/scripts/seed-legal-pages.ts
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB } from 'node-appwrite'
 import { LEGAL_TEMPLATE_LOCALES, legalTemplates } from '../shared/legalTemplates.ts'
 

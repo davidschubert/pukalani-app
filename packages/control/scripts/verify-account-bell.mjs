@@ -31,6 +31,7 @@
  * (:3006). POOL_KEY = NUXT_APPWRITE_KEY aus apps/platform/.env (das Pool-
  * Projekt ist ein anderes Projekt — der control-Key kommt dort nicht hinein).
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { readFileSync } from 'node:fs'
 import { request as httpRequest } from 'node:http'
 import { fileURLToPath } from 'node:url'

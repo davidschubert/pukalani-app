@@ -36,6 +36,7 @@
  * ZIEL-INSTANZEN: wie courses-007 — jede Instanz mit courses-Layer (Prod heute
  * `platform`/Pool; lokal zusätzlich das Dev-Projekt der comments-App).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, type Models } from 'node-appwrite'
 import { onlyOwnUserReads, splitBroadReads } from '../lib/broadReadPermissions.ts'
 

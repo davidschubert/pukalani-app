@@ -16,9 +16,10 @@
  *
  * ZWEI STUFEN, IMMER IN DIESER REIHENFOLGE: ohne `--apply` wird nur gelesen
  * und gezählt. Erst mit den Zahlen entscheidet ein Mensch über `--apply`.
- * Gegen eine Instanz, die nicht `localhost` ist, verlangt `--apply` zusätzlich
- * `ERASURE_BACKFILL_CONFIRM=<Projekt-Id>` — ein versehentliches `--apply` mit
- * der falschen Env-Datei schreibt so nichts.
+ * Gegen eine Instanz, die nicht lokal ist, verlangt `--apply` zusätzlich
+ * `PUKALANI_TARGET_CONFIRM=<Projekt-Id>` (die geteilte Ziel-Prüfung,
+ * `scripts/lib/target.mjs`) — ein versehentliches `--apply` mit der falschen
+ * Env-Datei schreibt so nichts.
  *
  * WIEDERHOLBAR: jede Regel findet nur Zeilen, die noch nicht im Zielzustand
  * sind; ein zweiter Lauf zählt 0.
@@ -36,6 +37,7 @@
  * Eine Regel, deren Tabelle es auf der Instanz nicht gibt, meldet „Tabelle
  * fehlt" und zählt nicht — die Layer sind je Instanz verschieden.
  */
+import { assertTarget } from '../lib/target.mjs'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -51,12 +53,10 @@ const args = process.argv.slice(2)
 const APPLY = args.includes('--apply')
 const onlyAt = args.indexOf('--only')
 const ONLY = onlyAt >= 0 ? new Set((args[onlyAt + 1] || '').split(',').filter(Boolean)) : null
-const isLocal = /^http:\/\/localhost(:\d+)?\/v1$/.test(endpoint)
 
-if (APPLY && !isLocal && process.env.ERASURE_BACKFILL_CONFIRM !== projectId) {
-  console.error(`✗ --apply gegen ${endpoint} braucht ERASURE_BACKFILL_CONFIRM=${projectId}`)
-  process.exit(1)
-}
+// Nur `--apply` schreibt: der Zähl-Lauf darf überall hin, das Schreiben nur
+// lokal oder mit PUKALANI_TARGET_CONFIRM=<Projekt-Id> (OPS-002).
+if (APPLY) assertTarget({ script: 'erasure-backfill --apply', endpoint, projectId })
 
 const DAY = 24 * 60 * 60 * 1000
 const now = Date.now()

@@ -76,6 +76,7 @@
  * laufen — ohne die Spalten wirft `createRow` in `POST /api/brand/check`
  * (die Route zählt JEDE Spalte explizit auf), und der Check wäre tot.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

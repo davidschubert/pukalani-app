@@ -15,6 +15,7 @@
  *
  *   pnpm migrate --app control --layer runner
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Permission, Role, Storage, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

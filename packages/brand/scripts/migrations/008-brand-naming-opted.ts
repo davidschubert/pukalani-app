@@ -26,6 +26,7 @@
  *
  *   pnpm migrate --app branding --layer brand
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

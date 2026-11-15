@@ -37,6 +37,7 @@
  * Manifest). Reihenfolge unkritisch — die Spalte ist additiv und ruhend: alter
  * Code ignoriert sie, neuer Code stempelt sie, gefiltert wird erst im Pool.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

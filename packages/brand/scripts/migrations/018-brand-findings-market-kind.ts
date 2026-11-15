@@ -68,6 +68,7 @@
  * der eine spätere Migration einen VIERTEN Wert ergänzt hat, würde ihn
  * wortlos wieder entfernen.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

@@ -38,6 +38,7 @@
  *   node --env-file=apps/platform/.env packages/moderation/scripts/verify-report-boundary.mjs
  *   # Akt 2 zusätzlich: `pnpm --filter platform dev` in einem zweiten Terminal
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 

@@ -10,6 +10,7 @@
  */
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { isLocalEndpoint } from '../../../scripts/lib/target.mjs'
 
 const clean = process.argv.includes('--clean')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
@@ -21,6 +22,12 @@ const poolKey = process.env.POOL_KEY
 
 if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   console.error('✗ Env unvollständig (POOL_KEY nötig).')
+  process.exit(1)
+}
+// NUR LOKAL (Kopf): ein Konto mit bekanntem Passwort gehört nie auf eine
+// entfernte Instanz — hier öffnet auch keine Bestätigung den Weg (OPS-002).
+if (!isLocalEndpoint(endpoint)) {
+  console.error(`✗ Nur lokal: ${endpoint} liegt nicht auf diesem Rechner.`)
   process.exit(1)
 }
 

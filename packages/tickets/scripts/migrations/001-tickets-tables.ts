@@ -9,6 +9,7 @@
  *
  *   pnpm migrate --app <app> --layer tickets
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Permission, Role, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

@@ -50,6 +50,7 @@
  * ZIEL-INSTANZEN: jede Instanz, deren App den posts-Layer traegt — heute
  * `platform` (Pool) und `comments`. NICHT `control` (kein posts-Layer).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT

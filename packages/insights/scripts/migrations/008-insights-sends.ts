@@ -87,6 +87,7 @@
  * Spalten explizit, gegen ein altes Schema wäre das ein 400 aus Appwrite (die
  * Routen machen daraus 503 `storage_unavailable`).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

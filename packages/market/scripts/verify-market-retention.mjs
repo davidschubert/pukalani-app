@@ -59,6 +59,7 @@
  *   # Server mit dem COMMITTETEN Stand (Gate aus), dann:
  *   BOT_ONLY=1 BRANDING_PORT=3016 node packages/market/scripts/verify-market-retention.mjs
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { createServer, request } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'

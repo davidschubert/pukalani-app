@@ -13,6 +13,7 @@
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/comments/scripts/migrations/005-thread-fields.ts
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, TablesDBIndexType, Query, type Models } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

@@ -18,6 +18,7 @@
  *
  * Benötigte Key-Scopes: tables.*, columns.*, indexes.* (Migrations-Key, siehe A2).
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB, Permission, Role } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

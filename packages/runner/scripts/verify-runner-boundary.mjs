@@ -60,6 +60,7 @@
  *
  * Aufgeräumt wird im `finally` — auch wenn der Lauf rot ist.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { Client, ID, Query, TablesDB } from 'node-appwrite'

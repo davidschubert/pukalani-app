@@ -87,6 +87,7 @@
  * `POST /api/brand/intro-call` — die Route bleibt zwar am Leben (die Mail ist
  * der zweite Zustellweg), aber jede Anfrage lebte dann nur in einem Postfach.
  */
+import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
 

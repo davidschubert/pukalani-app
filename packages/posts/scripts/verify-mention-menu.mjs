@@ -33,6 +33,7 @@
  * Legt zwei Wegwerf-Nutzer samt Beiträgen an und räumt beides wieder weg —
  * auch im Fehlerfall.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
 /** Playwright wohnt in apps/comments — absoluter Pfad, siehe verify-handles-mentions.mjs. */

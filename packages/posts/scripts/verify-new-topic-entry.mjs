@@ -29,6 +29,7 @@
  * Legt einen Wegwerf-Nutzer und EIN Thema an und räumt beides wieder weg —
  * auch im Fehlerfall.
  */
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Users } from 'node-appwrite'
 

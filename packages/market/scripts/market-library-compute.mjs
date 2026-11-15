@@ -91,6 +91,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
 import { dirname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { assertTarget } from '../../../scripts/lib/target.mjs'
 import { spawnSync } from 'node:child_process'
 
 // DIE REGELN KOMMEN AUS DEM PRODUKT, NICHT AUS DIESER DATEI.
@@ -692,6 +693,9 @@ async function runCompute({ stub }) {
   if (!endpoint || !projectId || !databaseId || !apiKey) {
     fail('Env unvollständig — Aufruf mit --env-file=apps/branding/.env')
   }
+  // Nur `--compute` schreibt: Ziel-Prüfung erst hier (OPS-002) — `--check`,
+  // `--stale` und `--promote` brauchen weder Appwrite noch Bestätigung.
+  assertTarget({ script: 'market-library-compute --compute', endpoint, projectId })
 
   // Die Kandidaten dieses Laufs.
   let brands
