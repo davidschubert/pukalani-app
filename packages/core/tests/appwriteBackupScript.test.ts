@@ -157,7 +157,9 @@ beforeEach(() => {
     'done',
     'last="${@: -1}"',
     'if [ "$show" = 1 ]; then echo "fpr:::::::::$(tr -d "\\n" < "$last"):"; exit 0; fi',
-    '{ echo "GPG-STELLVERTRETER"; rev < "$last"; } > "$out"',
+    // base64 statt eines Zeichen-Werkzeugs: der Eingang ist binär (gzip), und
+    // `rev` bricht unter Linux an Bytes ab, die kein gültiges Zeichen sind.
+    '{ echo "GPG-STELLVERTRETER"; base64 < "$last"; } > "$out"',
   ].join('\n'))
   const realRsync = spawnSync('bash', ['-c', 'command -v rsync'], { encoding: 'utf8' }).stdout.trim()
   stub('rsync', `echo "rsync $*" >> "$STUB_DIR/rsync.log"\nexec ${realRsync} "$@"`)
