@@ -31,8 +31,11 @@
 # docs/runbooks/DEPLOYMENT.md, Abschnitt „Schlechter Stand live".
 #
 # FALLBACK (Server baut selbst, wenn GitHub Actions ausfällt): nur für die
-# Sites mit Repository in ploi (Deploy-Knopf im Panel). Für control, help und
-# branding gibt es ihn bewusst nicht — dort bleibt der Rückweg aus Punkt 1.
+# zwei Sites, die auf dem Server noch einen Checkout haben (portfolio,
+# platform — Deploy-Knopf im ploi-Panel; nachgesehen 2026-11-15, Stand der
+# Checkouts 2026-07-26, seit Juli nicht mehr benutzt). Für control,
+# marketing, help und branding gibt es ihn nicht — dort bleibt der Rückweg
+# aus Punkt 1.
 #
 # Env Vars (NUXT_APPWRITE_KEY etc.) leben als Server-.env je Site —
 # NIE im Repo; ploi „Quick Deploy" bleibt AUS.
@@ -641,9 +644,9 @@ jobs:
             # Checkout auf dem Server nur fuer zwei Config-Dateien ist keiner
             # mehr wert: die control-Site hat seit dem Cutover bewusst keinen,
             # die help-Site (2026-07-28) genauso.
-            # (Die uebrigen Sites behalten ihre Checkouts fuer den ploi-
+            # (portfolio und platform behalten ihre Checkouts fuer den ploi-
             # FALLBACK-Deploy — der macht sein eigenes git pull. Fuer control,
-            # help und branding gibt es diesen Fallback bewusst nicht; Ersatz
+            # marketing, help und branding gibt es diesen Fallback nicht; Ersatz
             # sind die Runbooks docs/runbooks/CONTROL-CUTOVER.md und
             # BRANDING-SUPPLY-SETUP.md sowie docs/archiv/HELP-GO-LIVE.md;
             # zurueck auf einen liegenden Stand geht fuer ALLE sechs mit

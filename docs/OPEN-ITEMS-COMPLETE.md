@@ -30,6 +30,76 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P10 — Rückweg bei einer schlechten Version ✅ 2026-11-15
+
+**Was.** Zehntes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Finding
+OPS-007), Pull Request 164 und ein Doku-Nachtrag. Davids Entscheidung vom
+2026-11-12: umsetzen und einmal an der Hilfe-Seite üben. Drei weitere
+Antworten am 2026-11-15 (DECISION-LOG).
+
+1. **Eine App-Liste.** `ops/apps.conf` nennt je Zeile App und Site. Das
+   Ausliefern (`deploy.yml`, Job `plan`) und der Rückweg lesen beide diese
+   Datei; die Workflow-Variable mit den sechs Paaren und das Feld `SLOT`
+   sind entfallen. Zwei Regeln statt weiterer Spalten: Die Stände liegen
+   unter `releases/<app>`, der Prozess heißt wie die Site ohne Punkte.
+2. **`ops/rollback.sh`.** Zeigt die Apps, die Stände einer App auf dem
+   Server und, mit App und Commit, was passieren würde. Erst `--apply`
+   stellt um: Verweis umlegen, pm2-Prozess neu laden, danach dreimal in
+   Folge Build UND `ok` auf `/api/health`. Läuft vom eigenen Rechner über
+   den eigenen SSH-Zugang, ohne GitHub. Ein Stand, der nicht oder
+   unvollständig auf dem Server liegt, bricht vor dem ersten Handgriff ab;
+   scheitert der Neustart, geht der Verweis zurück. Es löscht nichts.
+3. **Ein älterer Stand über GitHub.** Der manuelle Start hat die Eingabe
+   `sha` (vollständiger Commit von `main`). Das Programm kommt vom alten
+   Commit, `ops/` und die App-Liste von der Spitze von `main`.
+4. **Das Ausliefern liest auch `ok`.** Build falsch: Abbruch wie bisher.
+   Build richtig, `ok` nicht `true`: Die übrigen Apps werden trotzdem
+   ausgeliefert, der Lauf endet rot. Von selbst zurückgestellt wird nicht
+   (Davids Entscheidung).
+5. **Runbook.** `DEPLOYMENT.md` hat einen Teil „Betrieb heute" (sechs Apps,
+   heutige Prozessnamen, Appwrite 2.7.1) mit dem Abschnitt „Schlechter Stand
+   live": zurückstellen, `git revert`, erst dann die Ursache; was der
+   Rückweg nicht kann; was ohne GitHub geht; das Protokoll der Übungen.
+
+**Beweis.** Lokal: 18 Fälle gegen eine Attrappe (Ordner mit Ständen und
+Verweis, echter `pm2-heal.sh`, Stellvertreter für `pm2` und `curl`), ein
+Test, der Liste, Ecosystem-Dateien, Workflow und Health-Wächter
+zusammenhält, der geänderte Ausliefer-Schritt gegen Stellvertreter. Live am
+2026-11-15: `help.pukalani.app` auf den vorigen Stand (12 s) und wieder vor
+(12 s); Gegenprobe mit einem unbekannten Commit (Abbruch, nichts verändert);
+der vorige Commit über den manuellen Start auf alle sechs Apps (12 min) und
+wieder die Spitze von `main` (13 min, die Hilfe-Seite dabei jede Sekunde
+gefragt: 674 Antworten, alle 200 und `ok:true`); zwei Gegenproben der
+Eingabe (kein vollständiger Commit; Commit nicht auf `main`), beide rot vor
+dem Bauen. Am Ende alle acht Hosts auf `90b797e1`, `ok:true`.
+
+**Nicht geprüft.** Ein Rückweg über eine Datenbank-Änderung hinweg (der
+vorige und der heutige Stand waren im Programm gleich). Der rote Zweig
+„ausgeliefert, aber nicht gesund" auf Production (nur gegen Stellvertreter).
+Der Deploy-Knopf in ploi. Reste: OPEN-ITEMS RW1.
+
+**Gelernt:** (1) **Der Weg zurück altert, wenn seine Namen woanders stehen
+als die des Wegs nach vorn.** Das Ausliefern wurde nach jeder Umbenennung
+nachgezogen, der Satz im Runbook nie; er nannte drei Monate einen
+gelöschten Prozess. Abhilfe ist nicht „dran denken", sondern EINE Datei,
+die beide lesen, und ein Test, der bei halber Umbenennung rot wird.
+(2) **Was der Server ist, kommt von heute; nur das Programm von damals.**
+Liefert man einen alten Commit samt seiner Betriebs-Dateien aus, startet
+pm2 nach einer Umbenennung einen zweiten Prozess daneben. (3) **„Fünf
+Stände" waren vier:** `ls …/*/` folgt dem Verweis `current` und zählt ihn
+mit. Eine Zahl im Runbook ist erst eine Zahl, wenn jemand gezählt hat.
+(4) **Ein Notweg, den niemand geht, verfällt still:** Der „Deploy-Knopf für
+vier Sites" gilt noch für zwei, deren Checkout vom Juli stammt. (5) **GitHub
+hält je Warteschlange nur einen wartenden Lauf.** Ein manueller Start, der
+hinter einem laufenden Ausliefern wartet, wird vom nächsten Push verdrängt
+(„cancelled", ohne Meldung) — nach dem Start nachsehen, ob er läuft.
+(6) **Der Rückweg hält nur bis zum nächsten Push,** auch einem reinen
+Doku-Push: Verglichen wird gegen den ältesten lebenden Build. Deshalb ist
+`git revert` Teil des Rückwegs und nicht das Aufräumen danach. (7) In zsh
+gibt es kein `${PIPESTATUS[0]}` (dort `$pipestatus`): Der Exit-Code eines
+Schritts der Übung fehlt deshalb im Beleg; besser die Ausgabe in eine Datei
+und `$?` direkt lesen.
+
 ### GA1 P08 — Ausliefer-Weg: getrennte Schlüssel, Geheimnisse nur für den Hauptzweig ✅ 2026-11-14
 
 **Was.** Neuntes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Findings
