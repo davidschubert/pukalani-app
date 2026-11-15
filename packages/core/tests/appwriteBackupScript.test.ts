@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * OPS-001 (2026-11-15): das nächtliche Backup der Appwrite-Instanz
@@ -25,6 +25,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
  * Klartext abgelegt, ein Fehler gleicht nichts ab und lässt Früheres liegen,
  * kein `--delete` am Abgleich, die Aufbewahrung hält Unter- und Obergrenze.
  */
+// Jeder Test startet das Skript ein- bis dreimal als eigenen Prozess (je rund
+// eine Sekunde, dazu eine Sekunde Abstand, weil der Name eines Laufs die
+// Sekunde trägt). Die 5 s Standardfrist reichen dafür auf einem langsamen
+// Runner nicht — der erste Lauf auf `main` endete genau so.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 })
+
 const REPO = join(__dirname, '..', '..', '..')
 const BACKUP = join(REPO, 'ops', 'appwrite-backup.sh')
 const GATE = join(REPO, 'ops', 'appwrite-cert-gate.sh')
