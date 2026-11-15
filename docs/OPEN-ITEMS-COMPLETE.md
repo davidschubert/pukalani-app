@@ -46,8 +46,9 @@ Schlüssel. Vier weitere Antworten am 2026-11-14 (DECISION-LOG).
    jeder Job nennt seine eigenen.
 3. **Geheimnisse nur für `main`** (PR 158). Zwei GitHub-Umgebungen,
    `production` (Ausliefern) und `production-watch` (Wächter), beide lassen
-   nur den Zweig `main` zu. Auf Repo-Ebene liegen nur noch die zwei
-   Mail-Einträge des Wächters (offen, OPEN-ITEMS CI1).
+   nur den Zweig `main` zu. Auf Repo-Ebene liegt seit dem 2026-11-15 nichts
+   mehr: auch der Mail-Zugang des Wächters (neuer Resend-Schlüssel) und die
+   Empfänger-Adresse sind Secrets der Umgebung `production-watch`.
 4. **Der Schlüssel liegt nie neben fremdem Code** (PR 158). `deploy.yml` hat
    fünf Jobs statt einem: `plan` (wird ausgeliefert?), `fonts` (mit
    Schlüssel, holt nur den Font-Cache), `build` (ohne jedes Secret:
@@ -86,17 +87,27 @@ Umgebung bekam leere Secrets. Die Schlüssel-Listen beider Server sind nach
 dem Austragen zurückgelesen. Dependabots eigener Lauf lief unter den neuen
 Schaltern grün.
 
-**Nicht geprüft / offen** (OPEN-ITEMS CI1): die zwei Mail-Einträge des
-Wächters; ein engerer Wächter-Zugang auf dem App-Server; ob die Mails des
-Probealarms im Postfach lagen.
+**Nicht geprüft / offen** (OPEN-ITEMS CI1): ein engerer Wächter-Zugang auf
+dem App-Server; ob die Mails des Probealarms im Postfach lagen.
+
+**Nachtrag 2026-11-15.** Der Mail-Zugang ist umgezogen (Anmeldung bei Resend
+über Google, neuer Schlüssel, Probealarm ⇒ Issue 161 ⇒ Entwarnung, danach
+die alten Einträge gelöscht). Dabei fiel auf: die Empfänger-Adresse stand
+WEITER im Protokoll jedes Laufs, der eine Mail schickte — nicht mehr über die
+gestrichene echo-Zeile, sondern im `env:`-Kopf des Schritts. Seitdem ist sie
+ein Secret, und `check:workflows` verbietet `vars.` in Workflows.
 
 **Gelernt:** (1) **Der Notfall-Job war seit seinem Bau ohne Funktion.** Der
 CI-Schlüssel war auf dem Appwrite-Server nie eingetragen, und der Umweg über
 den App-Server trug auch nicht. Ein Hebel „für den Moment, in dem keine Zeit
 ist" gehört einmal gezogen, bevor man ihn braucht — die Probe ist jetzt Teil
-des Rezepts. (2) **Eine Variable ist kein Secret.** `vars.*` wird im
-Protokoll nicht maskiert; die Empfänger-Adresse stand deshalb bei jedem
-Wechsel im Klartext im öffentlichen Lauf. (3) **Was nicht ins Protokoll
+des Rezepts. (2) **Eine Variable ist kein Secret, und GitHub druckt das `env:` jedes
+Schritts ins Protokoll.** `vars.*` wird nicht maskiert; die Empfänger-Adresse
+stand deshalb bei jedem Wechsel im Klartext im öffentlichen Lauf. Der erste
+Fix strich nur die eigene echo-Zeile, und der Beweis dafür war ein Lauf, in
+dem der Mail-Schritt ÜBERSPRUNGEN war — er konnte die Adresse gar nicht
+zeigen. Ein „steht nicht mehr drin" gilt nur für einen Lauf, in dem der
+betroffene Schritt wirklich lief. (3) **Was nicht ins Protokoll
 darf, filtert man dort, wo es entsteht.** Ein Filter im Workflow hält nur,
 bis jemand den Workflow ändert; das Tor-Skript auf dem Server gibt gar nicht
 erst mehr aus. (4) **`deployment: false` nimmt nur den Listeneintrag weg.**

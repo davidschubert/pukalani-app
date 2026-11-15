@@ -163,7 +163,10 @@ paths:
   PROTOKOLLE DER LÄUFE SIND ÖFFENTLICH (jedes GitHub-Konto, 90 Tage): kein
   Server-Protokoll, keine Dateiliste, keine Konfiguration, keine Mail-Adresse
   hinein — gefiltert wird dort, wo die Ausgabe entsteht (im Tor-Skript auf dem
-  Server), nicht im Workflow. Eine `vars.*`-Variable wird NICHT maskiert.
+  Server), nicht im Workflow. Eine `vars.*`-Variable wird NICHT maskiert,
+  und GitHub druckt das `env:` JEDES Schritts in den Kopf des Protokolls — die
+  Empfänger-Adresse des Alarms stand so noch nach dem ersten Fix im Lauf
+  (2026-11-15 bemerkt). `check:workflows` verbietet `vars.` deshalb ganz.
   Ploi schreibt eigene Schlüssel mit einer Kommentarzeile in dieselbe
   `authorized_keys`; die CI-Zeilen sind von Hand eingetragen (Ploi kennt keine
   Optionen) und nach jeder Schlüssel-Änderung im Panel zurückzulesen.
