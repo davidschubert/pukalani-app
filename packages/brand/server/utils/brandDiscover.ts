@@ -21,6 +21,7 @@ import {
   brandDb,
   isAppwriteNotFound,
 } from './brandStore'
+import { canReadBrandCheck } from './brandCheckVisibility'
 import { BRAND_PUBLICATIONS_TABLE, type BrandPublicationRow } from './brandPublications'
 
 /**
@@ -291,10 +292,15 @@ export async function loadDiscoverCheck(
       databaseId, tableId: BRAND_CHECKS_TABLE, rowId: checkId,
     })
     if (row.hidden === true) return null
+    const facts = brandCheckRankingFacts(row)
     return {
       id: row.$id,
       score: row.score ?? 0,
       band: row.band ?? '',
+      // Die EINE Lese-Regel, gefragt für „niemand Bestimmtes" (SEC-014).
+      linkable: canReadBrandCheck({
+        source: facts.source, rankingOptIn: facts.rankingOptIn, hidden: facts.hidden, isOwner: false,
+      }),
       categories: toDiscoverCategories(row.categories),
     }
   }

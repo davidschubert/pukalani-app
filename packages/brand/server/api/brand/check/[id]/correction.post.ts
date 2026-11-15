@@ -10,6 +10,7 @@ import {
   brandDb,
   isAppwriteNotFound,
 } from '../../../../utils/brandStore'
+import { isBrandCheckReadable } from '../../../../utils/brandCheckVisibility'
 
 /**
  * „DA STIMMT ETWAS NICHT" — der Korrekturvorschlag zu einem Check
@@ -37,6 +38,11 @@ import {
  * Dieselbe Antwort wie beim Ergebnis-GET. Alles andere widerspräche sich
  * selbst: ein Check, den der Betreiber auf Wunsch entfernt hat, kann keine
  * Korrekturen mehr brauchen.
+ *
+ * Dasselbe gilt für einen nicht freigegebenen DOKUMENT-Check (SEC-014): ihn
+ * sieht nur die Besitzerin, also nimmt auch nur sie einen Vorschlag dazu ab —
+ * ein Fremder bekommt dieselbe Antwort wie für eine unbekannte Id. Die Regel
+ * ist die des Ergebnis-GET (`brandCheckVisibility.ts`), nicht eine zweite.
  *
  * ── WAS DIE ANTWORT NICHT SAGT ────────────────────────────────────────────
  * Nichts über den heutigen Wert und nichts über die Entscheidung. Der
@@ -99,7 +105,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckCorrectionRes
       data: { code: 'correction_unavailable' },
     })
   }
-  if (check.hidden === true) {
+  if (check.hidden === true || !(await isBrandCheckReadable(event, check))) {
     throw createError({ status: 404, statusText: 'Check not found', data: { code: 'check_not_found' } })
   }
 

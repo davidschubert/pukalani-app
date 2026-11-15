@@ -410,6 +410,7 @@ async function share(): Promise<void> {
                   {{ t('brand.discover.entry.fingerprint.title') }}
                 </p>
                 <NuxtLink
+                  v-if="check.linkable"
                   :to="localePath(`/brand-check/${check.id}`)"
                   class="bw-label inline-flex items-center gap-1.5" style="color: var(--bw-muted)"
                 >
