@@ -81,12 +81,13 @@
 #           prüft je Layer eine Probe am wirklichen Schema, mit ihrem eigenen
 #           Laufzeit-Schlüssel. Rot bei `behind`, bei anhaltendem `unknown`
 #           und wenn das Feld fehlt. Braucht weder ssh noch Secret.
-#        b) TÄGLICH (`verify-schema-parity.mjs --ci`), FOLGT: liest je Projekt
-#           die Tabellen- und Spaltenliste und nennt die fehlende Migration.
-#           Der Schritt kommt in diesen Workflow, sobald je Projekt ein nur
-#           lesender Schlüssel in der Umgebung `production-watch` liegt
-#           (Davids Entscheidung 2026-11-12). Bis dahin läuft derselbe
-#           Abgleich am Mac: `pnpm ops:schema-parity`.
+#        b) TÄGLICH (`verify-schema-parity.mjs --ci`): liest je Projekt die
+#           Tabellen- und Spaltenliste und vergleicht sie mit dem gepflegten
+#           Soll und mit denselben Proben — und NENNT die fehlende Migration.
+#           Dafür liegt je Projekt EIN Schlüssel in der Umgebung
+#           `production-watch`, der nur `tables.read` und `columns.read` hat
+#           (Davids Entscheidung 2026-11-12). Fehlt ein Schlüssel, ist der
+#           Blick rot. Im Protokoll stehen nur Namen, die im Repo stehen.
 #      Probealarm: `-f schema_drill=true` (täuscht für EINEN Host `behind`
 #      vor; an Production fehlt dabei nichts). Was bei Rot zu tun ist:
 #      docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm".
@@ -349,6 +350,19 @@ jobs:
             exit 0
           fi
           exit "$code"
+
+      # Blick 8 b (s. Kopf). Je Projekt ein Schlüssel, der NUR das Schema lesen
+      # darf (tables.read, columns.read). Kein ssh, kein Installieren: das
+      # Skript braucht nur Node. Die Schlüssel gelangen nie ins Protokoll (das
+      # Skript gibt weder Werte noch Antworten aus, nur Namen aus dem Repo).
+      - name: Passt die Datenbank zum Programm? (Schema je Projekt, nur lesend)
+        if: always()
+        env:
+          SCHEMA_WATCH_KEY_ACCOUNT: ${{ secrets.SCHEMA_WATCH_KEY_ACCOUNT }}
+          SCHEMA_WATCH_KEY_ADMIN: ${{ secrets.SCHEMA_WATCH_KEY_ADMIN }}
+          SCHEMA_WATCH_KEY_PORTFOLIO: ${{ secrets.SCHEMA_WATCH_KEY_PORTFOLIO }}
+          SCHEMA_WATCH_KEY_BRANDING: ${{ secrets.SCHEMA_WATCH_KEY_BRANDING }}
+        run: node --experimental-strip-types scripts/ops/verify-schema-parity.mjs --ci
 
       # Blick 7 (s. Kopf). Geschickt wird nur das WORT; was es ausgibt, steht
       # im Tor-Skript auf dem Server (ops/appwrite-cert-gate.sh) — eine Zeile

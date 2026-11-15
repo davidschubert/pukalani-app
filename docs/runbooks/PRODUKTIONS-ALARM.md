@@ -30,6 +30,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
+| Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte der gemeinsam gepflegten Tabellen oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
 
 **Datenbank-Stand (seit 2026-11-16, OPS-008).** Das Ausliefern läuft von
@@ -47,11 +48,15 @@ Stufen:
   die Zahlen. `ok` der Seite bleibt davon unberührt. Die Probe sieht Tabellen
   und Spalten, keine Indizes, Rechte oder Daten, und je Layer nur die jüngste
   ablesbare Stelle. Landing und Hilfe haben keine Datenbank und kein Feld.
-- *Gründlich.* `pnpm ops:schema-parity` am Mac liest je Projekt die Tabellen-
-  und Spaltenliste und nennt, was fehlt — auch die Migration hinter einer
-  fehlenden Probe (z. B. `brand-026`). Derselbe Abgleich kommt als täglicher
-  Wächter-Blick dazu, sobald je Projekt ein nur lesender Schlüssel bei GitHub
-  liegt.
+- *Gründlich, täglich.* `verify-schema-parity.mjs --ci` liest je Projekt die
+  Tabellen- und Spaltenliste und nennt, was fehlt. Dafür liegen in der
+  GitHub-Umgebung `production-watch` vier Schlüssel
+  (`SCHEMA_WATCH_KEY_ACCOUNT`, `…_ADMIN`, `…_PORTFOLIO`, `…_BRANDING`), je
+  einer pro Appwrite-Projekt, jeweils nur mit den Rechten `tables.read` und
+  `columns.read` (Name in der Konsole: `watch-schema-readonly`). Es gibt keine
+  lokale Kopie; tauschen heißt: in der Konsole neu anlegen, bei GitHub
+  überschreiben, den alten löschen. Am Mac läuft derselbe Abgleich weiter mit
+  `pnpm ops:schema-parity`.
 
 Auch das Ausliefern liest das Feld: Meldet eine App nach dem Ausliefern
 `behind`, werden die übrigen Apps trotzdem ausgeliefert und der Lauf endet rot
@@ -334,8 +339,8 @@ Migration gelaufen ist.
 
 1. Herausfinden, was fehlt: am Mac `pnpm ops:schema-parity` — die Zeile
    „MIGRATION FEHLT" nennt Projekt und Migration (z. B. `branding …
-   brand-027`). Ohne Mac: im pm2-Log der App steht `schema.behind` mit
-   derselben Angabe.
+   brand-027`). Ohne Mac: der tägliche Wächter-Lauf zeigt dieselbe Zeile, und
+   im pm2-Log der App steht `schema.behind` mit derselben Angabe.
 2. Ansehen, was der Runner tun würde (schreibt nichts):
    `pnpm migrate --app <app> --env ~/.appwrite-secrets/migrations/<projekt>.env --only <layer>-<NNN> --dry-run`
 3. Mit Davids Ja nachholen: derselbe Aufruf mit `--prod` statt `--dry-run`.
@@ -350,6 +355,12 @@ konnte die App ihre Proben nicht abfragen: pm2-Log ansehen, und ob der
 Laufzeit-Schlüssel der Site noch Zeilen lesen darf. Ist die Probe selbst
 falsch (ein Tippfehler im Manifest sieht aus wie eine fehlende Migration),
 zeigt das schon der lokale Lauf — Manifest korrigieren, ausliefern.
+
+**Täglicher Schema-Abgleich rot, Health-Blick grün.** Dann fehlt etwas, das die
+Proben nicht sehen (eine ältere Tabelle, eine Spalte der gemeinsam gepflegten
+Tabellen), oder ein Schlüssel: „Schlüssel … fehlt" bzw. „nicht lesbar" heißt,
+dass einer der vier `SCHEMA_WATCH_KEY_*` fehlt, gelöscht wurde oder seine
+Rechte verloren hat (siehe Abschnitt 1).
 
 **TLS auf einem ploi-Host.** Hinweis am Ende des Wächter-Laufs; Regeln in
 `.claude/rules/hosts-ops.md` (Lineage-Falle: NIE auf `pukalani.app` oder
