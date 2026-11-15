@@ -5,6 +5,8 @@ export default {
   tier: 'optional',
   requires: ['moderation'],
   hasMigrations: true,
+  // Schema-Probe (OPS-008): comments-020 legt comments.translations an.
+  schema: { latest: '020', probe: { migration: '020', table: 'comments', column: 'translations' } },
   apiPrefixes: ['/api/comments'],
   title: { en: 'Comments', de: 'Kommentare' },
   description: {

@@ -15,6 +15,8 @@ export default {
    */
   requires: ['moderation', 'posts'],
   hasMigrations: true,
+  // Schema-Probe (OPS-008): messages-001 legt als letzte Tabelle message_settings mit enabled an.
+  schema: { latest: '001', probe: { migration: '001', table: 'message_settings', column: 'enabled' } },
   apiPrefixes: ['/api/messages'],
   title: { en: 'Private messages', de: 'Private Nachrichten' },
   description: {

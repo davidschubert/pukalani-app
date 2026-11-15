@@ -4,6 +4,8 @@ export default {
   key: 'admin',
   tier: 'foundation',
   hasMigrations: true,
+  // Schema-Probe (OPS-008): admin-003 legt changelog.titleEn an.
+  schema: { latest: '003', probe: { migration: '003', table: 'changelog', column: 'titleEn' } },
   title: { en: 'Admin Dashboard', de: 'Admin-Dashboard' },
   description: {
     en: 'Dashboard shell with module registry, user management, moderation UI, global search and runtime configuration.',
