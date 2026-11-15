@@ -107,7 +107,7 @@ paths:
   ploi-Site `pukalani.app` — das überschreibt das Kunden-Wildcard. Neu
   anfordern nur auf der Site `platform.pukalani.app` mit `*.pukalani.app`.
   Wächter `node scripts/ops/verify-tls.mjs` (alle 30 min + nach jedem Deploy).
-- SIEBEN WÄCHTER, EIN WORKFLOW, EIN ALARMWEG (`.github/workflows/
+- ACHT WÄCHTER, EIN WORKFLOW, EIN ALARMWEG (`.github/workflows/
   production-watch.yml`, seit 2026-08-20; Alarmweg MON1 seit 2026-10-28): Job
   `tls` alle 30 min (`verify-tls.mjs` + `verify-health.mjs` — ok:true auf
   jedem Host, Appwrite-Version; weder ssh noch Secret), Job `server` täglich
@@ -209,6 +209,40 @@ paths:
   älterer Commit über GitHub auf alle sechs Apps 12 min. Runbook mit Grenzen,
   Notweg ohne GitHub und dem Protokoll der Übungen:
   docs/runbooks/DEPLOYMENT.md, Abschnitt A3.
+- BACKUP DER APPWRITE-INSTANZ (GA1 P11, seit 2026-11-15): jede Nacht 03:30 UTC
+  aus dem crontab von `ploi` auf appwrite-prod, `~/ops/appwrite-backup.sh
+  --run` (Quelle `ops/appwrite-backup.sh`; OHNE `--run` zeigt es nur die
+  Vorschau — ein Zeitplan ohne den Schalter sichert nichts). Ein Lauf ist ein
+  Ordner `runs/<Zeitstempel>/`: Dump, sechs Volumes, die Einstellungen und die
+  Zählung je Tabelle, alles mit dem ÖFFENTLICHEN Schlüssel
+  `ops/appwrite-backup.pub.asc` verschlüsselt. Der private Schlüssel liegt nur
+  in Davids Passwort-Managern — nie auf dem Server, der Storage Box oder im
+  Repo; der Server kann seine eigenen Backups nicht lesen. Die `.env` gehört
+  hinein: ohne `_APP_OPENSSL_KEY_V1` sind in einem Dump die API-Schlüssel der
+  Projekte, die Zwei-Faktor-Geheimnisse und alle verschlüsselten Buckets
+  unlesbar. DIE EINE VOLUME-LISTE ist `ops/appwrite-volumes.conf` (Backup,
+  Wiederherstellung UND Spiegel lesen sie); Volume-NAMEN kommen aus `docker
+  compose config`, nie aus einer Vorsilbe (`appwrite-builds` heißt auch als
+  Volume so, daneben liegt ein alter Rest `appwrite_appwrite-builds`). Ein
+  Volume in der Compose-Datei, das die Liste nicht kennt, bricht das Backup
+  ab. ABGEGLICHEN WIRD OHNE `--delete` (ein Test hält das); die Box hält 30
+  Tage, der Server 14, aufgeräumt wird auf der Box nur nach dem NAMEN mit
+  Unter- und Obergrenze, dazu tägliche Schnappschüsse der Box. Der Lauf prüft
+  sich selbst und schreibt eine Stand-Datei; der Wächter liest sie über das
+  Tor (`backup-status`). ZURÜCK: `ops/appwrite-restore.sh` spielt nur auf einen
+  Rechner OHNE Appwrite und überschreibt nie etwas — nie auf dem Mac mit der
+  Entwicklungs-Instanz laufen lassen (es weigert sich dort). Nach JEDER
+  Änderung an einem der Skripte oder der Liste: `ops/appwrite-backup-attrappe.sh`
+  (Wegwerf-Container mit eigenem Docker-Dienst, Gegenproben inklusive), dann
+  von Hand auf den Server (kein CI-Weg). Der Compose-Ordner dort ist
+  `/home/ploi/appwrite`; `/usr/src/code/appwrite` aus den Upgrade-Runbooks
+  ist derselbe Ordner von INNEN (Container des Upgrade-Werkzeugs). ZWEI
+  SHELL-FALLEN, beide hier erwischt: `docker compose exec -T` liest die
+  Standard-Eingabe leer (in einem Skript, das selbst von dort kommt,
+  verschluckt es den Rest ⇒ `</dev/null`), und `… | head -1` oder `… | grep
+  -q` schließt die Pipe früh — mit `pipefail` ein Scheinfehler (Exit 141),
+  und nur manchmal. Runbook mit Ernstfall, Betrieb und dem Protokoll der
+  Übung: docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md.
 - EINE FEHLENDE ENV-VARIABLE WIRD NICHT ROT (F44, 2026-08-02): `platform`
   hatte kein `NUXT_SMTP_*`, also ging für JEDE Kunden-Community nie eine
   Benachrichtigungs-Mail raus — die App lief, die Seiten antworteten, nur die
