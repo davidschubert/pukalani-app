@@ -414,6 +414,7 @@ noch berührt. Muss mit „Gescheitert: 0“ enden.
 | --- | --- | --- | --- |
 | 2026-11-15 | Attrappe (`ops/appwrite-backup-attrappe.sh`) | rund 5 min | bestanden, alle Gegenproben rot wie erwartet |
 | 2026-11-15 | Echtes Backup: Lauf vom selben Tag von der Storage Box geholt, in einer eigenen Linux-Maschine (OrbStack) zurückgespielt, nur Kern-Dienste | Herunterladen 14 s · Zurückspielen bis „gesund“ 168 s (58 s, wenn die Programme schon da sind) · die übrigen Programme für einen vollen Start 158 s · Maschine und Docker davor 47 s | 908 von 908 Tabellen zählgleich, Konten je Projekt gleich; https mit dem Zertifikat aus dem Backup; Demo-Konto meldet sich an; Profilbild byte-gleich mit dem Ursprungsbild. Gegenprobe ohne den Schlüssel aus der `.env`: Anmeldung 401, Datei unlesbar. Zwei Funde, beide im Skript behoben: Abruf der Programme riss ab; anderer Ordner als auf dem Server ⇒ ClickHouse startete nicht. Danach alles gelöscht |
+| 2026-11-15 | Zeitplan: die Zeile im crontab einmal wenige Minuten voraus gestellt, danach zurück auf 03:30 | 16 s | cron hat den Lauf selbst gestartet, Exit 0, auf der Box angekommen; crontab danach wortgleich mit vorher |
 
 Nicht geübt: ein voller Start mit Worker und Zeitplan-Diensten, ein echter
 Ersatz-Server mit Umstellen der Adresse, der Abruf von der Box ohne den alten

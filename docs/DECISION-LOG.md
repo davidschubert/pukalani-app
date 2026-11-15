@@ -3392,3 +3392,37 @@ Deploy-Lauf mit „Ausgeliefert, aber nicht gesund" heißt: Der Stand ist live,
 die Entscheidung liegt beim Menschen.
 **Wieder prüfen:** wenn ein schlechter Stand einmal länger live blieb, weil
 niemand die rote Meldung sah — dann ist der Automat neu zu bewerten.
+
+## 2026-11-15 — Backup der Datenbank: ein Schlüssel an zwei Orten, 30 Tage außer Haus, Schnappschüsse
+
+**Anlass:** Gesamtaudit 2026-11, Paket P11 (OPS-001). Das nächtliche Backup
+der Appwrite-Instanz lief, sicherte aber den Schlüssel nicht mit, mit dem
+Appwrite Daten verschlüsselt, lag im Klartext außer Haus, prüfte nichts und
+war nie zurückgespielt worden. Davids Entscheidung vom 2026-11-12: Schlüssel
+mitsichern, verschlüsselt ablegen, prüfen, einmal üben und aufschreiben.
+**Entscheidung (David, Fragen zum Anklicken am 2026-11-15):**
+1. **Der private Schlüssel liegt in NordPass und in Apple Passwörter** — an
+   zwei Orten bei zwei Anbietern, nicht auf dem Server, nicht auf der Storage
+   Box, nicht auf dem Mac. Angeboten und nicht gewählt: NordPass plus ein
+   Ausdruck auf Papier (die Empfehlung); nur NordPass.
+2. **Aufbewahrung: 14 Tage auf dem Server, 30 Tage außer Haus.** Angeboten
+   und nicht gewählt: 14 Tage überall (wie bisher); 90 Tage außer Haus.
+   Länger heißt: Daten gelöschter Konten liegen entsprechend länger im Backup.
+3. **Schnappschüsse der Storage Box: ja,** täglich, zehn Stände — das zweite
+   Netz, falls auf dem Server jemand Backups löscht.
+4. **Die Wiederherstellung mit echten Daten üben: ja,** in einer eigenen,
+   danach gelöschten Maschine; die Kopie startet ohne die Dienste, die etwas
+   verschicken.
+5. **Alte Klartext-Kopien löschen: ja,** nach der gelungenen Übung und
+   nachdem der Zeitplan das neue Backup einmal von selbst gestartet hat.
+**Folgen im Alltag:** Die Backups öffnet nur der eine Schlüssel — geht er an
+beiden Orten verloren, sind alle Läufe wertlos; wird er getauscht, bleiben
+ältere Läufe nur mit dem alten lesbar. Zurückgespielt wird nach
+[APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md), nie
+auf einen Rechner, auf dem schon eine Instanz läuft. Nach jeder Änderung an
+den Skripten läuft die Attrappe, danach kommt die Fassung von Hand auf den
+Server. Ein roter Backup-Blick im Wächter heißt: Der Lauf dieser Nacht fehlt
+oder ist gescheitert; frühere Läufe liegen unberührt.
+**Wieder prüfen:** sobald eine Vertrauensperson benannt ist (wer außer David
+kommt an den Schlüssel — OPEN-ITEMS BK1 a); und wenn die Datenbank so wächst,
+dass 30 Tage auf der Box spürbar Platz kosten.

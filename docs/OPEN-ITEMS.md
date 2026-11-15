@@ -47,7 +47,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 30 · RU1 | **Runner: Nacharbeiten.** Testbefehle nur aus der Liste des Rechners, Herkunft vom Server und die Fristen sind seit 2026-11-14 live (COMPLETE „GA1 P03"). Offen: (a) **ein echter Lauf über das Formular** mit Auswahl eines Testbefehls, (b) den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#ru1) |
 | 31 · CI1 | **Ausliefer-Weg: Nacharbeiten.** Getrennte Schlüssel für Ausliefern und Wächter, Geheimnisse nur für den Hauptzweig und die Pflicht-Prüfungen sind seit 2026-11-14 live (COMPLETE „GA1 P08"). Offen: (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
 | 32 · RW1 | **Rückweg: Nacharbeiten.** Zurückstellen per Skript, ein älterer Stand über GitHub und die Anleitung sind seit 2026-11-15 live und einmal geübt (COMPLETE „GA1 P10"). Offen: (a) **Notweg ohne GitHub** für das Ausliefern von etwas Neuem (heute nur der Weg zurück), (b) es liegen nur **vier Stände** je Seite, (c) Kleinigkeiten. | Niedrig | (a) M, (b) S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#rw1) |
-| 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt. Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
+| 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt (COMPLETE „GA1 P11"). Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -740,7 +740,9 @@ NICHT hier.
   Eintrag in der Compose-Datei; beides aufräumen. Der Zugang zum Konto beim
   Hoster gehört gehärtet (Einzelheiten privat). Ein Probealarm über
   `backup_drill` trägt im Titel des Issues nicht „(Probealarm)“ — das
-  Kennzeichen hängt nur am Schalter `alarm_drill`.
+  Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
+  liegen die Vorgänger-Fassungen der Skripte als Weg zurück
+  (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
 
 <a id="rw1"></a>
 
