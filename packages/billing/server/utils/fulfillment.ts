@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type Stripe from 'stripe'
 import type { SubscriptionStatus } from '../../shared/types/billing'
 import { CHECKOUT_PAYMENT_METHOD_TYPES } from '../../shared/paymentMethods'
+import { checkoutIdempotencyKey } from './checkoutIdempotency'
 
 /**
  * Erfüllungs-Vertrag für One-time-Checkouts (mode 'payment', §5b):
@@ -153,12 +154,19 @@ export async function createSubscriptionCheckoutSession(event: H3Event, input: {
  * Generische One-time-Checkout-Session (mode 'payment') für App-Kompositionen
  * — z. B. Event-Tickets: die APP-Route validiert das Zielobjekt (events-Layer)
  * und ruft dann diese Billing-Utility (kein Cross-Layer-Import nötig).
+ *
+ * `idempotencyScope` (BE-023): fachlicher Bereich eines Kaufs, den es je
+ * Konto nur EINMAL geben darf (z. B. `event-ticket:<eventId>`). Daraus wird
+ * ein Stripe-Idempotenz-Schlüssel — zwei schnelle Aufrufe bekommen dieselbe
+ * Session statt zwei bezahlbarer. Ohne Bereich wie bisher (kein Schlüssel).
+ * Begründung und Zusammensetzung: checkoutIdempotency.ts.
  */
 export async function createPaymentCheckoutSession(event: H3Event, input: {
   lookupKey: string
   metadata: Record<string, string>
   successUrl: string
   cancelUrl: string
+  idempotencyScope?: string
 }): Promise<string> {
   const user = event.context.user
   if (!user) {
@@ -173,12 +181,27 @@ export async function createPaymentCheckoutSession(event: H3Event, input: {
   const price = await resolveOneTimePrice(event, input.lookupKey)
   const stripe = await useStripe(event)
 
+  const metadata = { ...input.metadata, userId: user.$id }
+  const requestOptions = input.idempotencyScope
+    ? {
+        idempotencyKey: checkoutIdempotencyKey({
+          scope: input.idempotencyScope,
+          userId: user.$id,
+          customerId: customer.stripeCustomerId,
+          priceId: price.id,
+          successUrl: input.successUrl,
+          cancelUrl: input.cancelUrl,
+          metadata,
+        }),
+      }
+    : undefined
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     customer: customer.stripeCustomerId,
     line_items: [{ price: price.id, quantity: 1 }],
     client_reference_id: user.$id,
-    metadata: { ...input.metadata, userId: user.$id },
+    metadata,
     // F20: nur Karte — keine verzögert abrechnenden Methoden.
     // Begründung in shared/paymentMethods.ts.
     allowed_payment_method_types: [...CHECKOUT_PAYMENT_METHOD_TYPES],
@@ -188,7 +211,7 @@ export async function createPaymentCheckoutSession(event: H3Event, input: {
     customer_update: { address: 'auto', name: 'auto' },
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
-  }).catch(error => toStripeSafeError(error, 'checkout.sessions.create (payment) fehlgeschlagen'))
+  }, requestOptions).catch(error => toStripeSafeError(error, 'checkout.sessions.create (payment) fehlgeschlagen'))
 
   if (!session.url) {
     throw createError({ status: 502, statusText: 'Payment provider unavailable' })
