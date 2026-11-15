@@ -79,6 +79,13 @@ paths:
   Umgebung, das Ergebnis reist als Artefakt weiter.
   Den Commit zu einem Tag liefert `gh api repos/<owner>/<repo>/commits/<tag>
   --jq .sha`; aktuell hält die Einträge Dependabot (ein Sammel-PR je Woche).
+  Seit 2026-11-15 fährt `lint:scripts` auch `check:public-ips` (SEC-011):
+  das Repo ist öffentlich, eine echte IPv4 aus einem Log ist ein
+  personenbezogenes Datum. In Doku, Tests und Beispielen stehen Adressen aus
+  den Dokumentations-Bereichen (203.0.113.x, 198.51.100.x, 192.0.2.x); jede
+  andere öffentliche Adresse braucht einen Eintrag MIT GRUND in der
+  Erlaubnisliste des Skripts (eigene Server, öffentliche Resolver,
+  Test-Grenzwerte).
 - LOSE PROMISES IM SERVER-CODE SIND ROT (SEC-023, seit 2026-11-13): für jedes
   `packages/*/server/**/*.ts` und `apps/*/server/**/*.ts` gilt die TYPISIERTE
   Regel `@typescript-eslint/no-floating-promises`. Eine Wache oder ein

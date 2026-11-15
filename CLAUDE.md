@@ -156,6 +156,11 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   `data` bleibt draußen. Vor dem 2026-07-29 gab es das Feld nicht — Routen
   setzten `data.code`, es kam NIE an (der `last_admin`-Zweig der
   Nutzerverwaltung war deshalb toter Code).
+- LINK AUS GESPEICHERTEN DATEN (SEC-021, seit 2026-11-15): `:href` nur über
+  `safeExternalHref()`, Schema-Feld mit `z.url({ protocol: HTTP_URL_PROTOCOL })`
+  (`core/shared/safeHref.ts`) — `z.url()` allein nimmt JEDES Schema. Wächter:
+  `core/tests/hrefBindingsGuard.test.ts`. Eine ADRESSE IM PROTOKOLL geht durch
+  `stripAddressForLog()` (`core/shared/logAddress.ts`, ohne Query und Fragment).
 - useToast kommt aus Nuxt UI — nicht im Core re-exportieren (schattet Auto-Import)
 - EINE Version je Kernabhängigkeit, Dependencies über den pnpm-Katalog, Nitros
   Routen-Typisierung ist AUS (jeder `$fetch` nennt seinen Antworttyp selbst), und

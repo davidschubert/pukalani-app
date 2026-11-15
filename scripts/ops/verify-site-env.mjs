@@ -143,6 +143,21 @@ const RESEND_WEBHOOK_SECRET = 'NUXT_RESEND_WEBHOOK_SECRET'
  */
 const RESEND_BUDGET_KEY = 'NUXT_RESEND_API_KEY'
 
+/**
+ * Geheimnis der Newsletter-Abmelde-Links (SEC-020, 2026-11-15).
+ *
+ * PFLICHT NUR AUF `branding` — nur diese App hat den `insights`-Layer. Fehlt
+ * der Wert, signiert der Layer als Rückfall weiter mit `NUXT_APPWRITE_KEY`;
+ * jeder Tausch des API-Schlüssels entwertet dann alle bis dahin verschickten
+ * Abmelde-Links (die Seite sagt dann „nicht abgemeldet").
+ * `…_PREVIOUS` ist KEINE Pflicht: leer heisst „kein Wechsel".
+ *
+ * Eingetragen ERST, nachdem der Wert auf dem Server stand (2026-11-15,
+ * zurückgelesen über `pm2 jlist`) — derselbe Grund wie beim Webhook-Secret
+ * darüber. Runbook: docs/runbooks/NEWSLETTER-ABMELDE-LINKS.md.
+ */
+const INSIGHTS_NEWSLETTER_SECRET = 'NUXT_INSIGHTS_NEWSLETTER_SECRET'
+
 export const SITES = [
   {
     dir: 'platform.pukalani.app',
@@ -355,6 +370,7 @@ export const SITES = [
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       RESEND_WEBHOOK_SECRET,
       RESEND_BUDGET_KEY,
+      INSIGHTS_NEWSLETTER_SECRET,
       /**
        * STEHT HIER, obwohl die drei älteren Site-Blöcke ihn nicht führen: die
        * Database-Id hat keinen brauchbaren Default — ohne sie findet KEIN
