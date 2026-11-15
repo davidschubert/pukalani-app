@@ -84,6 +84,12 @@ const props = defineProps<{
   translating?: boolean
   drafting?: boolean
   transitioning?: boolean
+  /**
+   * Das letzte Speichern an einem VERÖFFENTLICHTEN Beitrag hat die Prüfregeln
+   * nicht bestanden (BE-009): nichts ist geschrieben, online steht weiter die
+   * geprüfte Fassung. Die Seite setzt es, der Editor sagt es.
+   */
+  saveBlocked?: boolean
   /** Welche Quelle gerade geprüft wird (Index), sonst `null`. */
   checkingIndex?: number | null
   /**
@@ -451,6 +457,25 @@ function transitionLabel(to: InsightsState): string {
   return from === 'review' ? t('insights.editor.backToDraft') : t('insights.editor.unpublish')
 }
 
+/**
+ * WELCHER ÜBERGANG AN UNGESPEICHERTEN ÄNDERUNGEN HÄNGT — alle ausser dem
+ * Rückweg nach `draft`.
+ *
+ * Ein Übergang nach vorn prüft den GESPEICHERTEN Stand; mit offenen Änderungen
+ * prüfte er etwas anderes als das, was auf dem Schirm steht. Der Rückweg hängt
+ * nicht am Inhalt — und er ist genau der Ausweg nach einem abgelehnten
+ * Speichern an einem veröffentlichten Beitrag (BE-009): zurückziehen, dann
+ * lässt sich jeder Zwischenstand als Entwurf speichern.
+ */
+function transitionLocked(to: InsightsState): boolean {
+  return dirty.value && to !== 'draft'
+}
+
+const someTransitionLocked = computed(() => transitions.value.some(transitionLocked))
+
+/** An einem öffentlichen Beitrag ist Speichern zugleich Veröffentlichen. */
+const savePublishes = computed(() => insightsIsPublic(props.post))
+
 function transitionIcon(to: InsightsState): string {
   if (to === 'review') return 'i-ph-arrow-right'
   if (to === 'published') return 'i-ph-check'
@@ -774,10 +799,23 @@ const urlPlaceholder = 'https://'
           {{ dirty ? t('insights.editor.dirty') : t('insights.editor.clean') }} ·
           {{ t('insights.editor.readingMinutes', { count: readingMinutes }) }}
         </p>
+        <p v-if="savePublishes" class="bw-label mt-2 text-center" style="color: var(--bw-muted)" data-insights-public-save-hint>
+          {{ t('insights.editor.publicSaveHint') }}
+        </p>
       </div>
 
       <div class="bw-card p-6">
         <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.rules') }}</p>
+
+        <p
+          v-if="saveBlocked"
+          class="mt-3 flex items-start gap-2 text-sm leading-snug"
+          style="color: var(--bw-stale)"
+          data-insights-save-blocked
+        >
+          <UIcon name="i-ph-prohibit-fill" class="mt-0.5 size-4 shrink-0" />
+          {{ t('insights.editor.saveBlockedNote') }}
+        </p>
 
         <p v-if="shownIssues.length === 0" class="mt-3 flex items-center gap-2 text-sm" style="color: var(--bw-accent)">
           <UIcon name="i-ph-check-circle-fill" class="size-4" />
@@ -803,14 +841,14 @@ const urlPlaceholder = 'https://'
           <UButton
             v-for="to in transitions" :key="to"
             :label="transitionLabel(to)" :icon="transitionIcon(to)"
-            :loading="transitioning" :disabled="dirty"
+            :loading="transitioning" :disabled="transitionLocked(to)"
             :color="to === 'draft' ? 'neutral' : 'primary'"
             :variant="to === 'draft' ? 'ghost' : 'solid'"
             class="rounded-full"
             :style="to === 'draft' ? 'background: var(--bw-surface)' : ''"
             @click="emit('changeState', to)"
           />
-          <p v-if="dirty" class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.saveFirst') }}</p>
+          <p v-if="someTransitionLocked" class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.saveFirst') }}</p>
           <UButton
             :label="t('insights.editor.preview')" icon="i-ph-eye"
             color="neutral" variant="ghost" class="rounded-full" style="background: var(--bw-surface)"

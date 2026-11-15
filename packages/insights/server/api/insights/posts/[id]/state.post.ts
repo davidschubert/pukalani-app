@@ -11,9 +11,12 @@ import type { InsightsPostStateResponse } from '../../../../../shared/types/insi
  *  1. IST DER ÜBERGANG ERLAUBT? — `insightsTransitionAllowed`, eine Tabelle
  *     im Vertrag. Sie sagt, was überhaupt ein Weg ist (und dass es aus
  *     `updated` nur zurück nach `draft` geht).
- *  2. HÄLT DER BEITRAG DIE SIEBEN PRÜFREGELN? — `insightsGateIssues`, MIT
- *     abgerufenen Quelltexten. Sie sagt, ob dieser Beitrag diesen Weg gehen
- *     DARF.
+ *  2. HÄLT DER BEITRAG DIE SIEBEN PRÜFREGELN? — `insightsPublicationGate`,
+ *     MIT abgerufenen Quelltexten (hier immer ALLE Belege — es gibt keinen
+ *     geprüften öffentlichen Stand, auf den man sich berufen könnte). Sie sagt,
+ *     ob dieser Beitrag diesen Weg gehen DARF, und stellt bei Ja das
+ *     Freigabe-Zeichen aus, ohne das `saveInsightsPostRow` keinen öffentlichen
+ *     Stand schreibt (BE-009).
  *
  * Die zweite Prüfung läuft vor JEDEM Ziel ausser `draft`. Der Rückweg ist
  * bewusst frei: einen Beitrag zurückzuziehen darf nie an einer Prüfregel
@@ -52,18 +55,8 @@ export default defineEventHandler(async (event): Promise<InsightsPostStateRespon
     })
   }
 
-  const brandRows = await listInsightsBrandRows(event, INSIGHTS_BRANDS_LIMIT)
-
-  if (to !== 'draft') {
-    const issues = await insightsGateIssues(current, brandRows)
-    if (issues.length > 0) {
-      // KEIN 409: die Liste käme dort nie an (Begründung am Typ
-      // `InsightsPostStateResponse`). Geschrieben wird nichts — der Zustand
-      // bleibt, was er war.
-      return { post: current, issues, changed: false }
-    }
-  }
-
+  // `next` ZUERST: die Regeln hängen nicht am Zustand, und geprüft wird genau
+  // das Objekt, das danach geschrieben wird — nur dafür gilt das Zeichen.
   const now = new Date().toISOString()
   const isPublic = to === 'published' || to === 'updated'
 
@@ -75,6 +68,22 @@ export default defineEventHandler(async (event): Promise<InsightsPostStateRespon
     reviewedBy: isPublic ? user.$id.slice(0, 64) : current.reviewedBy,
   }
 
-  const saved = await saveInsightsPostRow(event, id, next)
+  if (to === 'draft') {
+    // Zurückziehen ist frei (s. Kopf) und braucht kein Zeichen: ein Entwurf
+    // ist nicht öffentlich.
+    const saved = await saveInsightsPostRow(event, id, next)
+    return { post: toInsightsPost(saved), issues: [], changed: true }
+  }
+
+  const brandRows = await listInsightsBrandRows(event, INSIGHTS_BRANDS_LIMIT)
+  const verdict = await insightsPublicationGate({ next, brandRows })
+  if (!verdict.passed) {
+    // KEIN 409: die Liste käme dort nie an (Begründung am Typ
+    // `InsightsPostStateResponse`). Geschrieben wird nichts — der Zustand
+    // bleibt, was er war.
+    return { post: current, issues: verdict.issues, changed: false }
+  }
+
+  const saved = await saveInsightsPostRow(event, id, next, verdict.clearance)
   return { post: toInsightsPost(saved), issues: [], changed: true }
 })

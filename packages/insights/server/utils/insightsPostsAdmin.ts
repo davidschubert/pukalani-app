@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { ID, Query } from 'node-appwrite'
 import type { InsightsBrand, InsightsPost } from '../../shared/insightsPost'
-import { insightsSlugHistoryPush } from '../../shared/insightsPost'
+import { insightsIsPublic, insightsSlugHistoryPush } from '../../shared/insightsPost'
 import type { InsightsBrandRow, InsightsPostRow } from '../../shared/insightsRows'
 import {
   INSIGHTS_BRANDS_TABLE,
@@ -13,6 +13,8 @@ import {
 } from '../../shared/insightsRows'
 import type { InsightsBrandListItem, InsightsPostListItem } from '../../shared/types/insightsApi'
 import { brandPublicationSlug, brandPublicationSlugCandidate } from '../contracts/brandContract'
+import type { InsightsPublicClearance } from './insightsReview'
+import { insightsClearanceCovers } from './insightsReview'
 
 /**
  * DER ABLAGE-ZUGRIFF DER REDAKTION (BI1 I2) — alles, was mehr als eine Route
@@ -93,7 +95,21 @@ export async function loadInsightsPostRow(event: H3Event, id: string): Promise<I
   }
 }
 
+/**
+ * „Die Prüfung ist nicht gelaufen" — ein Fehler im CODE, nicht in der Eingabe.
+ *
+ * 500 und nicht 409: kein Mensch hat etwas falsch gemacht, eine Route hat die
+ * Sicherung vergessen. Geloggt werden nur Kennungen, nie der Inhalt.
+ */
+function insightsGateSkipped(id: string) {
+  logEvent('error', 'insights.gate_skipped', { rowId: id })
+  return createError({ status: 500, statusText: 'Publication gate skipped', data: { code: 'gate_skipped' } })
+}
+
 export async function createInsightsPostRow(event: H3Event, post: InsightsPost): Promise<InsightsPostRow> {
+  // Eine Zeile beginnt nie öffentlich: der einzige Weg dorthin ist der
+  // Zustandswechsel, und der schreibt über `saveInsightsPostRow`.
+  if (insightsIsPublic(post)) throw insightsGateSkipped('new')
   const { tablesDB, databaseId } = insightsDb(event)
   try {
     return await tablesDB.createRow<InsightsPostRow>({
@@ -108,7 +124,30 @@ export async function createInsightsPostRow(event: H3Event, post: InsightsPost):
   }
 }
 
-export async function saveInsightsPostRow(event: H3Event, id: string, post: InsightsPost): Promise<InsightsPostRow> {
+/**
+ * EINE BEITRAGS-ZEILE SCHREIBEN — für einen öffentlichen Stand NUR mit
+ * Freigabe-Zeichen (BE-009).
+ *
+ * ── SICHERUNGEN GEHÖREN IN DIE SCHNITTSTELLE, NICHT IN DIE DISZIPLIN ─────
+ * Bis BE-009 hing „was öffentlich steht, hat die sieben Regeln bestanden"
+ * daran, dass jede Route vor dem Schreiben das Gate RIEF — der PATCH tat es
+ * nicht, und jede Änderung an einem veröffentlichten Artikel war sofort
+ * draussen. Jetzt fragt die Schreib-Funktion selbst: ist der Stand öffentlich
+ * (`insightsIsPublic`) und deckt `clearance` GENAU dieses Objekt nicht
+ * (`insightsClearanceCovers`), wird NICHT geschrieben. Ein neuer Weg, der die
+ * Prüfung vergisst, scheitert hier laut, statt still zu veröffentlichen.
+ *
+ * Zeichen stellt nur `insightsReview.ts` aus: `insightsPublicationGate` nach
+ * bestandener Prüfung, `insightsHiddenTranslationClearance` für die
+ * ausgeblendete Maschinen-Fassung. Ein nicht-öffentlicher Stand braucht keins.
+ */
+export async function saveInsightsPostRow(
+  event: H3Event,
+  id: string,
+  post: InsightsPost,
+  clearance?: InsightsPublicClearance,
+): Promise<InsightsPostRow> {
+  if (insightsIsPublic(post) && !insightsClearanceCovers(clearance, post)) throw insightsGateSkipped(id)
   const { tablesDB, databaseId } = insightsDb(event)
   try {
     return await tablesDB.updateRow<InsightsPostRow>({
