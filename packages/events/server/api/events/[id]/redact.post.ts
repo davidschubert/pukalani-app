@@ -1,5 +1,6 @@
 import { canRedactEvent, eventIsRedacted } from '../../../../shared/eventModerationPolicy'
-import { EVENTS_TABLE, EVENT_COVERS_BUCKET, type EventRow } from '../../../../shared/types/event'
+import { EVENTS_TABLE, type EventRow } from '../../../../shared/types/event'
+import { redactEventContent } from '../../../utils/eventRedaction'
 
 /**
  * Moderation: den Text eines ABGESAGTEN Termins schwärzen (F46, 2026-08-03 —
@@ -27,8 +28,9 @@ import { EVENTS_TABLE, EVENT_COVERS_BUCKET, type EventRow } from '../../../../sh
  * behält ihr Publikum, und damit behielte es auch das Bild. Ein Aufruf von
  * `applyEventCoverVisibility` wäre hier also folgenlos, kein Schutz. Es gibt
  * keine zweite Wahrheit über Dateirechte, die man stattdessen setzen könnte;
- * bleibt nur, die Datei zu ENTFERNEN — wie `cover.delete.ts` es tut: erst die
- * Row (coverFileId null), dann die Datei best-effort.
+ * bleibt nur, die Datei zu ENTFERNEN, wie `cover.delete.ts` es tut. Seit
+ * SEC-032 in umgekehrter Reihenfolge (erst die Datei, dann die Row) —
+ * Begründung an `redactEventContent` (utils/eventRedaction.ts).
  *
  * DIE SCHWÄRZUNG IST UNUMKEHRBAR, und das ist Absicht. Es gibt kein
  * „restore" wie beim Ausblenden: eine Kopie des Originaltextes irgendwo
@@ -98,18 +100,12 @@ export default defineEventHandler(async (event) => {
   }
 
   /**
-   * EIN Schreibvorgang für Text UND Marker: sie sind dieselbe Aussage. Ein
-   * zweiter Schritt könnte scheitern und hinterließe entweder leeren Text ohne
-   * Erklärung oder eine Erklärung ohne Wirkung.
-   *
-   * GESCHWÄRZT WIRD JEDER TEXT, DEN DER AUTOR GEWÄHLT HAT (Davids Entscheidung
-   * 2026-08-03, erweitert nach dem ersten Schnitt): Titel, Beschreibung, Ort,
-   * Adresse, Ortshinweise UND die beiden Links. Der erste Schnitt hatte nur
-   * Titel und Beschreibung geleert und die übrigen fünf Felder als benannte
-   * Lücke stehen gelassen — das verschiebt das Problem aber nur eine Zeile
-   * tiefer: sie stehen auf derselben Seite, und ein Link auf eine anstößige
-   * Seite ist derselbe Fall wie ein anstößiger Titel. Ein Werkzeug, das man
-   * durch die Wahl des Feldes umgeht, ist keines.
+   * DIE SCHWÄRZUNG SELBST steht seit SEC-032 (2026-11-15) in EINER Funktion
+   * (`utils/eventRedaction.ts`), weil die Kontolöschung dieselbe braucht
+   * (Davids Entscheidung „Termine einer gelöschten Person: absagen und Texte
+   * leeren"). Dort stehen die Feldliste (jeder vom Autor gewählte Text, der
+   * Übersetzungs-Cache, das Titelbild), die Reihenfolge Datei → Zeile → Feed
+   * und ihre Begründungen.
    *
    * WARUM DAS BEI EINER ABSAGE VERTRETBAR IST: der Termin ist abgesagt. Der
    * Informationswert von Ort und Link ist damit erloschen — worauf die
@@ -120,39 +116,17 @@ export default defineEventHandler(async (event) => {
    * zu entfernen nähme die Zurechenbarkeit — mit dem Autor befasst man sich
    * über Mitgliedschaft und Rolle (A5), nicht über das Anonymisieren seines
    * abgesagten Termins.
+   *
+   * Das Titelbild: best-effort mit Log-Zeile (`coverFailure: 'log'`) — die
+   * Schwärzung soll nicht an einer Datei scheitern. Geschrieben wird über die
+   * Datentür, deren `get` oben die Zugehörigkeit belegt hat.
    */
-  await db.update<EventRow>(EVENTS_TABLE, id, {
-    title: '',
-    description: '',
-    location: null,
-    address: null,
-    locationNotes: null,
-    url: null,
-    replayUrl: null,
-    coverFileId: null,
-    /**
-     * DER ÜBERSETZUNGS-CACHE GEHÖRT ZUM TEXT (events-013, 2026-08-18).
-     *
-     * Er trägt Titel und Beschreibung wortgleich in bis zu sechs Sprachen. Ihn
-     * hier stehen zu lassen wäre keine Schwärzung, sondern eine Schwärzung mit
-     * Kopie daneben: der Knopf „Übersetzen" gäbe den geschwärzten Text als
-     * Cache-Treffer sofort und ohne KI-Aufruf wieder heraus. Wer diese Zeile
-     * entfernt, hebt F46 auf.
-     */
-    translations: '',
-    redactedAt: new Date().toISOString(),
-  }).catch((error) => { throw toH3Error(error, 'Could not redact event') })
-
-  // Die Datei danach und best-effort (Muster cover.delete.ts): die Row ist die
-  // Wahrheit, sie zeigt schon auf nichts mehr. Eine verwaiste Datei im Bucket
-  // ist Müll, kein Leck — der Weg zu ihr führte über `coverFileId`.
-  if (row.coverFileId) {
-    await createAdminClient(event).storage
-      .deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: row.coverFileId })
-      .catch((error) => {
-        console.error(`[events] Titelbild ${row.coverFileId} des geschwärzten Events ${id} konnte nicht gelöscht werden — die Datei bleibt im Bucket abrufbar:`, error)
-      })
-  }
+  await redactEventContent(event, row, {
+    write: data => db.update<EventRow>(EVENTS_TABLE, id, data)
+      .catch((error) => { throw toH3Error(error, 'Could not redact event') }),
+    extra: { redactedAt: new Date().toISOString() },
+    coverFailure: 'log',
+  })
 
   // Schwärzen schließt die offenen Meldungen (moderation-Vertrag) — der Anlass
   // ist erledigt. `resolution: 'redacted'` statt 'hidden': der Termin ist NICHT
@@ -160,16 +134,6 @@ export default defineEventHandler(async (event) => {
   // Best-effort wie beim Ausblenden: die Schwärzung ist bereits passiert.
   await resolveReportsForTarget(event, 'event', id, 'redacted', user.$id)
     .catch(error => console.error(`[events] Meldungen zu Event ${id} konnten nicht aufgelöst werden:`, error))
-
-  /**
-   * Auch der Activity-Feed muss den Text loswerden. Seine Einträge tragen einen
-   * eigenen metadata-SCHNAPPSCHUSS des Titels ('event.published',
-   * 'event.replay_published') — der überlebt jede Änderung an der Zeile. Ohne
-   * diesen Schritt stünde der geschwärzte Titel im Feed weiter da, und die
-   * Schwärzung wäre eine Attrappe. Dasselbe tut `hide.post.ts` aus demselben
-   * Grund.
-   */
-  await removeActivitiesForObject(event, { objectType: 'event', objectId: id })
 
   // Dieselbe Antwortform wie hide/restore — die Queue lädt danach neu.
   return { ok: true }

@@ -13,6 +13,7 @@ import { hotness } from '../../../shared/sort'
  * Vorsichtsmaßnahme.
  */
 import { allowedCommentReactionsFor, loadCommentReactionSummary } from '../../utils/commentReactions'
+import { toPublicCommentRow } from '../../utils/commentTombstone'
 import {
   COMMENTS_TABLE,
   VOTES_TABLE,
@@ -182,9 +183,14 @@ export default defineEventHandler(async (event): Promise<CommentListResponse> =>
   // Soft-gelöschte bleiben als Thread-Platzhalter in der Antwort, aber Inhalt/
   // Autor werden SERVER-seitig geblankt — der „[gelöscht]"-Text der UI wäre
   // sonst reine Kosmetik (Original-Content per direktem API-Call weiter lesbar).
-  const combined = [...topLevel, ...replies].map(row => row.status === 'deleted'
-    ? { ...row, content: '', authorName: '', authorId: '' }
-    : row)
+  //
+  // SEC-032 (2026-11-15): über eine FELDAUSWAHL statt `{ ...row, content: '' }`
+  // — die Kopie trug den Übersetzungs-Cache und `$permissions` (darin der
+  // Autor) mit. Seit demselben Tag ist ein neu gelöschter Kommentar auch in
+  // der Datenbank leer; die Auswahl hier deckt den BESTAND davor ab und jede
+  // künftige Spalte. `$permissions` fällt für JEDE Zeile dieser öffentlichen
+  // Antwort (Begründung an `toPublicCommentRow`).
+  const combined = [...topLevel, ...replies].map(toPublicCommentRow)
 
   // Avatar-URLs der Autoren aus den Account-prefs anreichern (gebündelt, immer aktuell)
   const authorIds = combined.filter(row => row.authorId).map(row => row.authorId)

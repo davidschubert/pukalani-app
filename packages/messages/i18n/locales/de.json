@@ -109,6 +109,9 @@
       "bodyRequired": "Schreib etwas.",
       "bodyTooLong": "Höchstens {max} Zeichen.",
       "recipientRequired": "Wähle eine Empfängerin oder einen Empfänger."
+    },
+    "account": {
+      "deleteNotice": "Private Nachrichten, die du geschrieben hast, werden gelöscht. Wurde eine davon gemeldet, bleibt sie bis zu 90 Tage als Beleg gespeichert."
     }
   }
 }

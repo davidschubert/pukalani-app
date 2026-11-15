@@ -1,6 +1,7 @@
-import { Permission, Query, Role } from 'node-appwrite'
+import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { COMMENTS_TABLE, COMMENT_REACTIONS_TABLE, VOTES_TABLE, type Comment, type CommentReaction, type CommentVote } from '../../shared/types/comment'
+import { COMMENT_TOMBSTONE_DATA, commentTombstonePermissions } from './commentTombstone'
 
 /**
  * GDPR-Contributor des comments-Layers (Vertrag: core/server/utils/userData.ts).
@@ -89,7 +90,11 @@ export async function commentsDeleteUserData(event: H3Event, userId: string): Pr
       databaseId,
       tableId: COMMENTS_TABLE,
       rowId: row.$id,
-      data: { authorId: '', authorName: '', content: '', status: 'deleted', editedAt: null },
+      // DERSELBE Grabstein wie beim eigenen Löschen (SEC-032,
+      // `commentTombstone.ts`) — seit 2026-11-15 mit leerem
+      // Übersetzungs-Cache: vorher blieb hier der Text in anderen Sprachen
+      // stehen, nachdem das Original geleert war.
+      data: { ...COMMENT_TOMBSTONE_DATA },
       // Owner-Permissions (update/delete des Ex-Users) abräumen; das
       // LESERECHT der Zeile bleibt unangetastet — der Tombstone ist so sichtbar
       // wie der Kommentar vorher war, enthält aber keine PII.
@@ -99,11 +104,13 @@ export async function commentsDeleteUserData(event: H3Event, userId: string): Pr
       // fasst Zeilen aus MEHREREN Communities an — ein festes read(any) hätte
       // die Tombstones einer geschlossenen Community öffentlich gemacht, und
       // ausgeblendete Kommentare (ohne Leserecht) wieder lesbar.
-      permissions: row.$permissions.filter(permission => (
-        permission !== Permission.update(Role.user(userId))
-        && permission !== Permission.delete(Role.user(userId))
-      )),
+      permissions: commentTombstonePermissions(row.$permissions, userId),
     })
+    // Der Feed-Eintrag mit dem Text-Schnappschuss. Best-effort (Core-Vertrag,
+    // wirft nie): die Feed-Einträge dieses Menschen räumt zusätzlich der
+    // system-Contributor über `actorId` STRIKT ab — hier geht es nur darum,
+    // dass der Schnappschuss nicht vom Ausgang jenes Laufs abhängt.
+    await removeActivitiesForObject(event, { objectType: 'comment', objectId: row.$id })
   }
 
   // Votes → Hard-Delete

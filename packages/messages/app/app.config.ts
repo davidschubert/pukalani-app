@@ -9,6 +9,10 @@
  */
 export default defineAppConfig({
   pukalani: {
+    account: {
+      /** Zeile in „Was beim Löschen geschieht" (AuthAccountDeleteCard, core): private Nachrichten werden gelöscht, gemeldete bleiben bis zu 90 Tage als Beleg. */
+      deleteNotices: ['messages.account.deleteNotice'],
+    },
     chrome: {
       /**
        * DER EINSTIEG NEBEN DEM NAMEN (F56, Konzept § 1) — die eine Zeile, mit

@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { decideCommunityAccess } from '../../../../core/shared/communityAccess'
 import { postEditSchema } from '../../../schemas/post'
+import { postActivitySnippet } from '../../../shared/postActivitySnippet'
 import { decidePostAuthorAction } from '../../../shared/postAuthorPolicy'
 import { postContentEdited } from '../../../shared/postEdit'
 import { mayEditPost, mayEditPostFields, type PostEditActor, type PostEditField } from '../../../shared/postEditRights'
@@ -245,6 +246,14 @@ export default defineEventHandler(async (event) => {
    * verlinkt hat.
    */
   if (contentEdited) {
+    /**
+     * Der Feed-Eintrag trägt einen SCHNAPPSCHUSS von Titel bzw. Textanfang
+     * (SEC-032, 2026-11-15) — er folgt der Bearbeitung unter derselben
+     * Bedingung, unter der eine Zeile höher der Übersetzungs-Cache fällt.
+     * Auch für Kuratoren: der Text ist der Text (Begründung beim Index
+     * darunter). Best-effort im Core-Vertrag (wirft nie, loggt).
+     */
+    await updateActivitySnippetForObject(event, 'post', id, postActivitySnippet(updated))
     const linked = await syncTopicLinks(event, updated).catch(() => ({ added: 0, removed: 0 }))
     if (linked.added > 0 && isAuthor) {
       await recordUserCounterEvents(event, [{ userId: user.$id, kind: 'linksMade', delta: linked.added }])

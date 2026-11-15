@@ -230,7 +230,7 @@
     },
     "redacted": {
       "title": "Content removed",
-      "notice": "Moderation removed the title, description and cover image of this event. The cancellation still stands.",
+      "notice": "The title, description and cover image of this event were removed. The cancellation still stands.",
       "badge": "Redacted"
     },
     "report": {
