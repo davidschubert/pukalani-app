@@ -130,7 +130,9 @@ services:
       - appwrite-certificates:/storage/certificates
       - appwrite-config:/storage/config
       - appwrite-cache:/storage/cache
-      - ./patches/logging.xml:/etc/logging.xml:ro
+      # Voller Pfad, wie auf Production — daran hängt, dass nur in denselben
+      # Ordner zurückgespielt werden kann.
+      - /srv/prod/appwrite/patches/logging.xml:/etc/logging.xml:ro
   redis:
     image: alpine
     command: sleep infinity
@@ -362,8 +364,10 @@ cp -r "$RUN" /tmp/kaputt && printf 'x' >> /tmp/kaputt/db.sql.gz.gpg
 expect "Beschädigte Datei" 1 'Prüfsummen stimmen nicht' restore /tmp/kaputt --key "$KEYS/richtig.private.asc" --target "$NEW" --apply
 cp -r "$RUN" /tmp/halb && rm /tmp/halb/config.tar.gz.gpg
 expect "Lauf ohne das Archiv der Einstellungen" 1 'Prüfsummen stimmen nicht' restore /tmp/halb --key "$KEYS/richtig.private.asc" --target "$NEW" --apply
-mkdir -p /srv/voll && echo x > /srv/voll/x
-expect "Zielordner nicht leer" 4 'ist nicht leer' restore "$RUN" --key "$KEYS/richtig.private.asc" --target /srv/voll --apply
+mkdir -p "$NEW" && echo x > "$NEW/x"
+expect "Zielordner nicht leer" 4 'ist nicht leer' restore "$RUN" --key "$KEYS/richtig.private.asc" --target "$NEW" --apply
+[ "$(ls -A "$NEW")" = x ] && ok "… und der Zielordner blieb, wie er war" || bad "Zielordner wurde verändert"
+rm -rf "$NEW"
 [ -z "$(docker ps -aq)" ] && [ -z "$(docker volume ls -q)" ] && ok "Gegenproben haben nichts angelegt" || bad "Gegenproben haben etwas angelegt"
 
 expect "Zurückspielen" 0 '✔ Zurückgespielt' restore "$RUN" --key "$KEYS/richtig.private.asc" --target "$NEW" --apply --services "mariadb appwrite"
