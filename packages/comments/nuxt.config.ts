@@ -26,6 +26,17 @@ export default defineNuxtConfig({
     '/de/dashboard/embed': { redirect: { to: '/de/dashboard/community/embed', statusCode: 301 } },
   },
 
+  runtimeConfig: {
+    /**
+     * server-only! Env: NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true — lässt
+     * `http://localhost:*` und `http://127.0.0.1:*` das Widget auch in einem
+     * GEBAUTEN Stand rahmen (BE-023). Im Dev-Server (`nuxi dev`) gilt das
+     * ohnehin; für einen lokalen Build-Test gedacht und auf KEINEM Server
+     * gesetzt. Entscheidung: shared/embedOrigins.ts (`embedLocalDevOriginsFor`).
+     */
+    commentsEmbedLocalOrigins: false,
+  },
+
   // Eigene Layer-Strings — mergen mit Core- und App-Locales (gleiche codes)
   i18n: {
     locales: [

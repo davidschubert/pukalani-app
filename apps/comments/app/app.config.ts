@@ -126,14 +126,17 @@ export default defineAppConfig({
       // Öffentlichkeit, bis die Moderation entscheidet (Meldungen bleiben offen)
       autoHideReports: 3,
       // iframe-Embed: seit E3 speist die SITE-REGISTRY (embed_sites,
-      // /dashboard/community/embed) die frame-ancestors-CSP — hier stehen nur noch
-      // statische Zusatz-Origins: localhost:* fürs Dev-/E2E-Umfeld
-      // (Port-Wildcard ist gültige CSP-host-source; in Prod praktisch
-      // wirkungslos, ein „Angreifer" bräuchte die Maschine des Users).
+      // /dashboard/community/embed) die frame-ancestors-CSP — hier stünden nur
+      // noch statische Zusatz-Origins, und diese App braucht keine.
+      // localhost:*/127.0.0.1:* fürs Dev-/E2E-Umfeld setzt der comments-Layer
+      // selbst, NUR im Dev-Server (`nuxi dev`, auch die E2E-Suite) oder per
+      // NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true (BE-023): hier eingetragen,
+      // hätte sie auch jeder Produktions-Build ausgeliefert — samt Anmeldung
+      // im Embed für jede Seite auf der Maschine eines Besuchers.
       // '*' bliebe die bewusste „offen wie Disqus"-Option (Plan § 6.7).
       embed: {
         enabled: true,
-        allowedOrigins: ['http://localhost:*', 'http://127.0.0.1:*'],
+        allowedOrigins: [],
         // Gast-Kommentare im Widget (Embed E4): Kommentieren ohne Account —
         // seit F18 (2026-08-02) nur noch ein ANZEIGENAME, keine E-Mail und kein
         // IP-Hash. Die alte Kontakt-Tabelle `guest_authors` hatte nie eine
