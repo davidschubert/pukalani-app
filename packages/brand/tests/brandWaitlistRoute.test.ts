@@ -3,6 +3,10 @@ import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
 import type { BrandWaitlistResponse } from '../shared/types/brand'
 import { hashBrandWaitlistToken } from '../server/utils/brandWaitlist'
+import { createMemoryRateLimitStore } from '../../core/server/utils/rateLimitStore'
+import type { RateLimitStore } from '../../core/server/utils/rateLimitStore'
+import { requireTurnstile } from '../../core/server/utils/turnstile'
+import { allowRecipientMail } from '../../core/server/utils/recipientMailLimit'
 
 /**
  * DIE WARTELISTE, DURCHGESPIELT — gefälschte Ablage, echter Handler.
@@ -65,10 +69,23 @@ const tablesDB = {
   }),
 }
 
+/**
+ * Die zwei Turnstile-Schlüssel dieses Laufs. Leer = aus (Dev/CI/E2E), beide
+ * gesetzt = an (Production). Geprüft wird mit dem ECHTEN `requireTurnstile`
+ * und der ECHTEN Empfänger-Grenze des Core (Memory-Store je Test).
+ */
+let turnstileKeys: { site: string, secret: string }
+let rateStore: RateLimitStore
+const siteverify = vi.fn()
+
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useRuntimeConfig', () => ({
-  public: { appwriteDatabaseId: 'main', appUrl: 'https://branding.supply' },
+  turnstileSecret: turnstileKeys.secret,
+  public: { appwriteDatabaseId: 'main', appUrl: 'https://branding.supply', turnstileSiteKey: turnstileKeys.site },
 }))
+vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
+vi.stubGlobal('$fetch', siteverify)
+vi.stubGlobal('useRateLimitStore', () => ({ store: rateStore, prefix: 'rl:test:' }))
 vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { waitlistNotify: notifyTo } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
@@ -85,6 +102,9 @@ vi.stubGlobal('sendMail', async (_event: H3Event, mail: { to: string, subject: s
   mails.push(mail)
   return true
 })
+
+vi.stubGlobal('requireTurnstile', requireTurnstile)
+vi.stubGlobal('allowRecipientMail', allowRecipientMail)
 
 const handler = (await import('../server/api/brand/waitlist.post'))
   .default as unknown as (event: H3Event) => Promise<BrandWaitlistResponse>
@@ -111,6 +131,9 @@ beforeEach(() => {
   mails = []
   logs = []
   body = { email: 'Aloha@Kailua.Coffee', name: 'Kai', company: 'Kailua Coffee', website: 'kailua.coffee', locale: 'de', source: 'about' }
+  turnstileKeys = { site: '', secret: '' }
+  rateStore = createMemoryRateLimitStore()
+  siteverify.mockReset()
   tablesDB.listRows.mockClear()
   tablesDB.createRow.mockClear()
   tablesDB.updateRow.mockClear()
@@ -290,5 +313,68 @@ describe('POST /api/brand/waitlist', () => {
       status: 503,
       data: { code: 'waitlist_mail_failed' },
     })
+  })
+})
+
+describe('Bot-Prüfung und Grenze je Empfänger-Adresse (SEC-018)', () => {
+  it('verlangt mit gesetzten Schlüsseln einen Token — ohne ihn 403, nichts gelesen, nichts gemailt', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    await expect(handler(event)).rejects.toMatchObject({
+      status: 403,
+      data: { code: 'bot_check_required' },
+    })
+    expect(tablesDB.listRows).not.toHaveBeenCalled()
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+    expect(mails).toHaveLength(0)
+  })
+
+  it('lässt mit gesetzten Schlüsseln und bestätigtem Token durch', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    siteverify.mockResolvedValue({ 'success': true, 'action': 'waitlist', 'error-codes': [] })
+    body = { ...body, turnstileToken: 'token-aus-dem-widget' }
+    expect(await handler(event)).toEqual({ ok: true, state: 'mail_sent' })
+    expect(siteverify).toHaveBeenCalledTimes(1)
+    expect(mails).toHaveLength(1)
+  })
+
+  it('läuft ohne Schlüssel wie bisher, auch ohne Token', async () => {
+    expect(await handler(event)).toEqual({ ok: true, state: 'mail_sent' })
+    expect(siteverify).not.toHaveBeenCalled()
+  })
+
+  it('der Honigtopf antwortet weiter still mit Erfolg — auch mit gesetzten Schlüsseln', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    body = { ...body, hp: 'gefüllt' }
+    expect(await handler(event)).toEqual({ ok: true, state: 'mail_sent' })
+    expect(tablesDB.listRows).not.toHaveBeenCalled()
+    expect(mails).toHaveLength(0)
+  })
+
+  it('über der Grenze: keine Mail, KEIN neuer Token, dieselbe Antwort', async () => {
+    const results: BrandWaitlistResponse[] = []
+    for (let i = 0; i < 3; i++) results.push(await handler(event))
+    expect(mails).toHaveLength(3)
+    const hashBefore = stored[0]!.tokenHash
+    const updatesBefore = tablesDB.updateRow.mock.calls.length
+
+    results.push(await handler(event))
+
+    expect(results[3]).toEqual(results[0])
+    expect(results[3]).toEqual({ ok: true, state: 'mail_sent' })
+    expect(mails).toHaveLength(3)
+    expect(tablesDB.updateRow.mock.calls.length).toBe(updatesBefore)
+    // Der Link aus der letzten echten Mail bleibt gültig.
+    expect(stored[0]!.tokenHash).toBe(hashBefore)
+    expect(stored[0]!.tokenHash).toBe(hashBrandWaitlistToken(tokenFromMail()))
+  })
+
+  it('eine bestätigte Adresse verbraucht nichts von der Grenze', async () => {
+    stored = [{ $id: 'w1', emailLower: 'aloha@kailua.coffee', status: 'confirmed' }]
+    for (let i = 0; i < 5; i++) {
+      expect(await handler(event)).toEqual({ ok: true, state: 'already_confirmed' })
+    }
+    stored = []
+    expect(await handler(event)).toEqual({ ok: true, state: 'mail_sent' })
+    expect(mails).toHaveLength(1)
   })
 })

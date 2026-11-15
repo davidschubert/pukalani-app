@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isBotCheckReason } from '../../../core/shared/turnstile'
 import type { BrandWaitlistResponse } from '../../shared/types/brand'
 
 /**
@@ -59,6 +60,19 @@ const status = ref<'idle' | 'sending' | 'done' | 'error'>('idle')
 const alreadyConfirmed = ref(false)
 
 /**
+ * BOT-BEWEIS (SEC-018), dasselbe Muster wie das Gast-Kommentar-Formular:
+ * solange ein Site-Key gesetzt ist, wartet der Knopf auf den Token des
+ * Widgets — sonst liefe der erste Klick garantiert in ein 403. Ohne Site-Key
+ * zeigt das Widget nichts und der Knopf bleibt offen (Dev, CI, E2E).
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+/** Der Text der Fehlerzeile — die drei Roboter-Gründe tragen die Texte des Core. */
+const errorKey = ref('brand.waitlist.error')
+
+/**
  * Die Vorbelegung kann NACH dem ersten Aufbau eintreffen (die Ergebnisseite
  * lädt ihren Check bei einer Navigation im Browser nach). Übernommen wird sie
  * nur in ein LEERES Feld — was jemand selbst getippt hat, überschreibt nichts.
@@ -67,7 +81,7 @@ watch(() => props.website, (value) => {
   if (value && !website.value) website.value = value
 })
 
-const canSend = computed(() => status.value !== 'sending' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
+const canSend = computed(() => status.value !== 'sending' && !waitingForBotCheck.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
 
 async function submit(): Promise<void> {
   if (!canSend.value) return
@@ -83,12 +97,20 @@ async function submit(): Promise<void> {
         locale: locale.value === 'de' ? 'de' : 'en',
         source: props.source,
         hp: hp.value,
+        ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}),
       },
     })
     alreadyConfirmed.value = result.state === 'already_confirmed'
     status.value = 'done'
   }
-  catch {
+  catch (error) {
+    // Ein Turnstile-Token ist EINMALIG: nach jedem Fehlschlag ein neuer, sonst
+    // scheitert der nächste Versuch an einem verbrauchten Token.
+    botCheck.value?.reset()
+    const reason = (error as { data?: { reason?: string } })?.data?.reason
+    errorKey.value = isBotCheckReason(reason)
+      ? `auth.botCheck.${reason === 'bot_check_required' ? 'required' : reason === 'bot_check_failed' ? 'failed' : 'unavailable'}`
+      : 'brand.waitlist.error'
     status.value = 'error'
   }
 }
@@ -133,6 +155,7 @@ async function submit(): Promise<void> {
       <div class="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
         <input v-model="hp" type="text" name="hp" tabindex="-1" autocomplete="off">
       </div>
+      <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="waitlist" />
       <div class="flex flex-wrap items-center gap-3">
         <UButton
           type="submit" size="lg" class="rounded-full" :disabled="!canSend" :loading="status === 'sending'"
@@ -143,7 +166,7 @@ async function submit(): Promise<void> {
           :label="t('brand.waitlist.haveCode')"
         />
       </div>
-      <p v-if="status === 'error'" class="text-sm" style="color: var(--bw-stale)">{{ t('brand.waitlist.error') }}</p>
+      <p v-if="status === 'error'" class="text-sm" style="color: var(--bw-stale)">{{ t(errorKey) }}</p>
       <p class="bw-label leading-relaxed" style="color: var(--bw-muted)">{{ t('brand.waitlist.consent') }}</p>
     </form>
   </div>

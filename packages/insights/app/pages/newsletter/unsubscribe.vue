@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { insightsNewsletterUnsubscribeFailureState } from '../../../shared/insightsNewsletter'
 import { insightsNewsletterEnabled } from '../../../shared/insightsPublic'
 import type { InsightsNewsletterUnsubscribeResponse } from '../../../shared/types/insightsApi'
 
@@ -10,15 +11,18 @@ import type { InsightsNewsletterUnsubscribeResponse } from '../../../shared/type
  * SELBST ab, sobald sie geladen ist, statt erst einen Knopf zu zeigen — wer
  * hier ankommt, hat den Knopf schon in der Mail gedrückt.
  *
- * ── VIER ZUSTÄNDE, UND DREI DAVON SIND „ERLEDIGT" ───────────────────────
- * Die Route antwortet auf alles 200: abgemeldet, schon abgemeldet, Zeile längst
- * gelöscht, Token aus der Zeit vor einem Schlüsseltausch. Diese Seite sagt
- * deshalb in all diesen Fällen denselben Satz — ein Mensch, der sich abmelden
- * will, darf nie in einer Sackgasse stehen.
+ * ── FÜNF ZUSTÄNDE, UND NUR EINER DAVON HEISST „ABGEMELDET" ─────────────
+ * Die Route antwortet 200 auf jeden ECHTEN Link: abgemeldet, schon
+ * abgemeldet, Zeile längst gelöscht. Diese Seite sagt dann denselben Satz.
  *
- * Nur zwei Fälle weichen ab:
- *  · GAR KEIN TOKEN in der Adresse (jemand ruft die Seite direkt auf) ⇒ der
- *    Satz, was zu tun ist: der Link steht in jeder Mail.
+ * Die anderen Fälle sehen bewusst NICHT wie Erfolg aus (Zuordnung:
+ * `insightsNewsletterUnsubscribeFailureState`, mit Gegenprobe):
+ *  · GAR KEIN TOKEN in der Adresse oder ein Token, der die Formprüfung nicht
+ *    passiert ⇒ `missing`: der Link steht in jeder Mail.
+ *  · Signatur passt zu keinem Schlüssel ⇒ `invalid` (SEC-020): „dieser Link
+ *    hat dich NICHT abgemeldet" — und der Weg heraus (neueste Mail oder eine
+ *    Antwort an uns). Ein Formular „mit Adresse abmelden" gibt es bewusst
+ *    nicht; es wäre ein Weg, Fremde abzumelden.
  *  · 503 ⇒ ehrlich „gerade nicht möglich", denn hier ist die Abmeldung
  *    NICHT erfolgt. Ein „erledigt" wäre an dieser Stelle eine Lüge über
  *    genau das, worauf sich jemand verlässt.
@@ -44,7 +48,7 @@ useSeoMeta({
 
 if (!open.value && requestEvent) setResponseStatus(requestEvent, 404)
 
-type State = 'checking' | 'done' | 'missing' | 'unavailable'
+type State = 'checking' | 'done' | 'missing' | 'invalid' | 'unavailable'
 const state = ref<State>('checking')
 
 const token = computed(() => {
@@ -63,12 +67,7 @@ onMounted(async () => {
     state.value = 'done'
   }
   catch (error) {
-    const value = error as { status?: number, statusCode?: number, response?: { status?: number } } | null
-    const code = value?.status ?? value?.statusCode ?? value?.response?.status ?? null
-    // 400 kann hier nur ein Token sein, der die Formprüfung nicht passiert
-    // (abgeschnitten im Mail-Programm). Für den Menschen ist das dasselbe wie
-    // „Link unbrauchbar" — und der Weg heraus ist derselbe.
-    state.value = code === 503 ? 'unavailable' : 'missing'
+    state.value = insightsNewsletterUnsubscribeFailureState(error)
   }
 })
 

@@ -66,6 +66,12 @@ import { BRAND_INTRO_REQUESTS_TABLE, brandDb } from '../../utils/brandStore'
  *     Mensch bekäme, und darin liegt ihr Zweck.
  * (3) Die MINDESTZEIT (`elapsedMs` < 3 s ⇒ 422). Bewusst schwach und
  *     fälschbar, s. `schemas/brandIntroCall.ts`.
+ * Seit SEC-018 (2026-11-15) dazu: der BOT-BEWEIS (Turnstile, Aktion
+ * `intro_call`, nach dem Honigtopf, vor Zeile und Mail) und die GRENZE JE
+ * EMPFÄNGER-ADRESSE (`allowRecipientMail`, 3 Bestätigungen je Adresse und
+ * Tag — über alle Quellen, nicht je IP). Die Betreiber-Meldung hat keine
+ * eigene Grenze: sie geht an EINE feste Adresse, und ihre Menge deckelt die
+ * Drossel je IP zusammen mit dem Bot-Beweis.
  * Dazu, wie überall: `.strict()` mit engen Längen — eine offene Schreibroute
  * ohne Deckel ist ein Speicher-Angebot.
  *
@@ -95,6 +101,10 @@ export default defineEventHandler(async (event): Promise<BrandIntroCallResponse>
     logEvent('info', 'brand.intro_call_honeypot', { source: body.source, locale: body.locale })
     return { ok: true, stored: true, mailed: true }
   }
+
+  // Bot-Beweis (SEC-018): NACH dem Honigtopf (der antwortet weiter still) und
+  // VOR jeder Zeile und jeder Mail. Ohne gesetzte Schlüssel ein No-op.
+  await requireTurnstile(event, 'intro_call', body.turnstileToken)
 
   // Die dritte Bremse. 422 und nicht 400: der Rumpf ist gültig, nur zu früh —
   // und das Formular soll „einen Moment noch" sagen können statt „ungültige
@@ -156,17 +166,28 @@ export default defineEventHandler(async (event): Promise<BrandIntroCallResponse>
   })()
 
   const mailInput = toBrandIntroMailInput(body, profileId)
+  /**
+   * GRENZE JE EMPFÄNGER-ADRESSE (SEC-018): höchstens drei Bestätigungen je
+   * Adresse und Tag. Darüber geht KEINE Mail an die eingetragene Adresse — die
+   * Zeile und die Betreiber-Meldung aber schon (die Anfrage ist der
+   * Gegenstand, s. Kopf). Die ANTWORT bleibt die einer verschickten Mail
+   * (`mailed: true`): sie darf nicht verraten, ob eine Adresse schon Mails
+   * bekommen hat.
+   */
+  const confirmAllowed = await allowRecipientMail(event, 'brand:intro-call', body.email)
   // Nebeneinander, nicht nacheinander: die zwei Mails gehen an verschiedene
   // Menschen und hängen nicht voneinander ab. Beide fangen ihre Fehler selbst.
   const [notified, confirmed] = await Promise.all([
     notifyBrandIntroOperator(event, mailInput),
-    sendBrandIntroConfirmMail(event, mailInput),
+    confirmAllowed ? sendBrandIntroConfirmMail(event, mailInput) : Promise.resolve(false),
   ])
 
   // Die BESTÄTIGUNG entscheidet, was das Formular sagen darf („schaut in euer
   // Postfach"). Die Betreiber-Meldung ist für den Absender unsichtbar und darf
   // seine Antwort deshalb nicht verändern — sie zählt nur für die Frage, ob
-  // die Anfrage überhaupt irgendwo angekommen ist.
+  // die Anfrage überhaupt irgendwo angekommen ist. Eine wegen der Grenze
+  // zurückgehaltene Bestätigung ist hier KEINE Zustellung: kamen weder Zeile
+  // noch Betreiber-Meldung an, ist die Anfrage nirgends — dann 503 wie sonst.
   if (!stored && !notified && !confirmed) {
     throw createError({
       status: 503,
@@ -198,7 +219,9 @@ export default defineEventHandler(async (event): Promise<BrandIntroCallResponse>
     stored,
     notified,
     confirmed,
+    // Nur ein Flag, keine Adresse — der Betreiber sieht, dass die Grenze griff.
+    ...(confirmAllowed ? {} : { recipientLimited: true }),
   })
 
-  return { ok: true, stored, mailed: confirmed }
+  return { ok: true, stored, mailed: confirmAllowed ? confirmed : true }
 })

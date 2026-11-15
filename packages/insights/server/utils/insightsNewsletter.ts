@@ -44,15 +44,14 @@ import { insightsNewsletterAuth, insightsNewsletterSender } from './insightsPubl
  *    (Zeitstempel plus wenige Zufallszeichen), und wer sie errät, meldete
  *    Fremde ab. Erst die Signatur macht daraus einen Beweis.
  *
- *    DER PREIS, UND ER IST BENANNT: wird `NUXT_APPWRITE_KEY` getauscht
- *    (Runbook „Key-Swap"), sind alle bis dahin verschickten Abmelde-Links tot.
- *    Deshalb antwortet die Seite auf einen ungültigen Token NICHT mit einem
- *    Fehler, sondern mit dem Satz „dann trag dich einfach nicht wieder ein"
- *    plus der Adresse der Redaktion — ein Mensch, der sich abmelden will, darf
- *    nie in einer Sackgasse stehen. Dieselbe Abhängigkeit hat `insightsIpHash`
- *    (er salzt mit demselben Geheimnis); ein EIGENER Env-Eintrag wäre ein
- *    weiterer Schlüssel, den eine Instanz vergessen kann — und ein vergessener
- *    Schlüssel wäre dasselbe Problem, nur sofort statt selten.
+ *    EIN EIGENES GEHEIMNIS (SEC-020, 2026-11-15): signiert wurde bis dahin
+ *    mit `NUXT_APPWRITE_KEY` — jeder Tausch des API-Schlüssels tötete still
+ *    alle verschickten Abmelde-Links. Jetzt signiert
+ *    `NUXT_INSIGHTS_NEWSLETTER_SECRET`, und ein Wechsel dieses Geheimnisses
+ *    behält das alte als `…_PREVIOUS` zum Prüfen. Die Regel steht in
+ *    `insightsNewsletterSecrets` (pur, mit Gegenprobe). Ein Link, den KEIN
+ *    Schlüssel bestätigt, meldet nicht ab und sieht auch nicht so aus — die
+ *    Seite sagt ehrlich „dieser Link hat dich nicht abgemeldet".
  *
  * ── DER TOKEN STEHT IN KEINER LOG-ZEILE ─────────────────────────────────
  * Auch nicht gekürzt, auch nicht im Fehlerfall — dieselbe Regel wie beim
@@ -69,16 +68,61 @@ export function hashInsightsNewsletterToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex')
 }
 
+export interface InsightsNewsletterSecretInput {
+  /** `runtimeConfig.insightsNewsletterSecret` — das Geheimnis der Links. */
+  current: string
+  /** `runtimeConfig.insightsNewsletterSecretPrevious` — das vor dem letzten Wechsel. */
+  previous: string
+  /** `runtimeConfig.appwriteKey` — der bisherige Schlüssel (Übergang). */
+  legacy: string
+}
+
+export interface InsightsNewsletterSecrets {
+  /** Damit wird ein NEUER Link gebaut; `null` = es gibt keinen. */
+  sign: string | null
+  /** Damit wird ein ankommender Link geprüft — in dieser Reihenfolge. */
+  verify: string[]
+}
+
 /**
- * DAS GEHEIMNIS DER ABLEITUNG — server-only, nie im Bündel des Browsers.
+ * DIE SCHLÜSSEL DES ABMELDE-LINKS (SEC-020) — pur, ohne Nitro.
  *
- * Der Rückfall ist eine Zeichenkette und NICHT leer: ein `hmac` mit leerem
- * Schlüssel wäre eine Signatur, die jeder nachrechnen kann. Ohne gesetzten
- * Schlüssel (lokaler Lauf ohne `.env`) sind die Links damit zwar
- * vorhersagbar — dort gibt es aber auch keine Empfänger.
+ * SIGNIEREN: das eigene Geheimnis, wenn gesetzt; sonst (Übergang, solange der
+ * Wert auf dem Server fehlt) der bisherige API-Schlüssel — die Seite läuft
+ * ohne den neuen Eintrag also genau wie vorher. Das VORHERIGE Geheimnis
+ * signiert nie, es prüft nur.
+ *
+ * PRÜFEN: neu, vorher, bisheriger API-Schlüssel — ohne Leere, ohne Doppelte.
+ * Der API-Schlüssel bleibt in der Prüfung OHNE FRIST (Davids Entscheidung
+ * 2026-11-15): ein Link aus einer älteren Mail meldet weiter ab. Das kostet
+ * nichts — geprüft wird nur, signiert wird damit nicht mehr, sobald das eigene
+ * Geheimnis gesetzt ist. Wird der API-Schlüssel selbst getauscht, sterben nur
+ * noch die Links aus der Zeit VOR dem eigenen Geheimnis.
+ *
+ * KEIN FESTER RÜCKFALL-TEXT mehr: bis SEC-020 stand hier
+ * `'insights-newsletter'` — eine Signatur, die jeder nachrechnen kann. Ist gar
+ * kein Schlüssel da, gibt es keinen Signier-Schlüssel; der Versand schickt
+ * dann keine Mail, und die Abmelde-Route antwortet 503.
  */
-function insightsNewsletterSecret(event?: H3Event): string {
-  return useRuntimeConfig(event).appwriteKey || 'insights-newsletter'
+export function insightsNewsletterSecrets(input: InsightsNewsletterSecretInput): InsightsNewsletterSecrets {
+  const current = input.current.trim()
+  const previous = input.previous.trim()
+  const legacy = input.legacy.trim()
+  const verify: string[] = []
+  for (const key of [current, previous, legacy]) {
+    if (key && !verify.includes(key)) verify.push(key)
+  }
+  return { sign: current || legacy || null, verify }
+}
+
+/** Dieselbe Regel, mit den Werten aus der Laufzeit-Konfiguration (server-only). */
+function insightsNewsletterSecretsFor(event?: H3Event): InsightsNewsletterSecrets {
+  const config = useRuntimeConfig(event)
+  return insightsNewsletterSecrets({
+    current: String(config.insightsNewsletterSecret ?? ''),
+    previous: String(config.insightsNewsletterSecretPrevious ?? ''),
+    legacy: String(config.appwriteKey ?? ''),
+  })
 }
 
 /** Die Signatur über eine Zeilen-Id — 32 hex, eigener Namensraum im Text. */
@@ -102,29 +146,54 @@ export function insightsNewsletterUnsubToken(rowId: string, secret: string): str
  * WELCHE ZEILE MEINT DIESER ABMELDE-TOKEN? `null` heisst „keine" — und zwar
  * für jeden Grund gleich: falsche Form, falsche Signatur, leere Id.
  *
+ * `secret` darf eine LISTE sein (SEC-020): der Token gilt, wenn EINE
+ * Signatur passt. Leere Liste ⇒ nichts gilt.
+ *
  * Verglichen wird mit `timingSafeEqual`. Nicht aus Angst vor einem echten
  * Timing-Angriff auf eine Abmelde-Route, sondern weil die Alternative (`===`)
  * an genau der Stelle steht, an der ein späterer Leser sie für ausreichend
  * hält und sie in die nächste Prüfung kopiert.
  */
-export function readInsightsNewsletterUnsubToken(token: string, secret: string): string | null {
+export function readInsightsNewsletterUnsubToken(token: string, secret: string | readonly string[]): string | null {
   const at = token.lastIndexOf('.')
   if (at <= 0) return null
   const rowId = token.slice(0, at)
-  const signature = token.slice(at + 1)
-  const expected = insightsNewsletterSignature(rowId, secret)
-  if (signature.length !== expected.length) return null
-  if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null
-  return rowId
+  const signature = Buffer.from(token.slice(at + 1))
+  const secrets = typeof secret === 'string' ? [secret] : secret
+  for (const key of secrets) {
+    const expected = Buffer.from(insightsNewsletterSignature(rowId, key))
+    if (signature.length === expected.length && timingSafeEqual(signature, expected)) return rowId
+  }
+  return null
 }
 
-/** Dasselbe, aber mit dem Geheimnis aus der Laufzeit-Konfiguration. */
-export function insightsNewsletterUnsubTokenFor(event: H3Event, rowId: string): string {
-  return insightsNewsletterUnsubToken(rowId, insightsNewsletterSecret(event))
+/**
+ * Der Token für eine Zeile, mit dem Signier-Schlüssel der Laufzeit.
+ * `null` = es gibt keinen Schlüssel — dann darf KEINE Mail mit Abmelde-Link
+ * gebaut werden (beide Aufrufer unten brechen ab).
+ */
+export function insightsNewsletterUnsubTokenFor(event: H3Event, rowId: string): string | null {
+  const { sign } = insightsNewsletterSecretsFor(event)
+  return sign ? insightsNewsletterUnsubToken(rowId, sign) : null
 }
 
+/**
+ * Welche Zeile meint dieser Token — geprüft gegen ALLE gültigen Schlüssel.
+ * Ohne jeden Schlüssel wirft sie 503 `newsletter_unconfigured`: dann lässt
+ * sich ein Link weder als gültig noch als ungültig erkennen, und „ungültig"
+ * wäre eine falsche Auskunft an jemanden mit einem echten Link.
+ */
 export function insightsNewsletterRowIdFromToken(event: H3Event, token: string): string | null {
-  return readInsightsNewsletterUnsubToken(token, insightsNewsletterSecret(event))
+  const { verify } = insightsNewsletterSecretsFor(event)
+  if (!verify.length) {
+    logEvent('error', 'insights.newsletter_unconfigured', { where: 'unsubscribe' })
+    throw createError({
+      status: 503,
+      statusText: 'Newsletter not configured',
+      data: { code: 'newsletter_unconfigured' },
+    })
+  }
+  return readInsightsNewsletterUnsubToken(token, verify)
 }
 
 /**
@@ -223,13 +292,17 @@ export async function sendInsightsNewsletterConfirmMail(
   event: H3Event,
   input: InsightsNewsletterConfirmMailInput,
 ): Promise<boolean> {
+  // Ohne Signier-Schlüssel KEINE Mail (SEC-020): ein Abmelde-Link mit
+  // erratbarer Signatur wäre ein Link, mit dem jeder Fremde abmeldet. `false`
+  // nimmt den vorhandenen Weg der Route (503, Zeile bleibt unbestätigt).
+  const unsubToken = insightsNewsletterUnsubTokenFor(event, input.rowId)
+  if (!unsubToken) {
+    logEvent('error', 'insights.newsletter_unconfigured', { where: 'confirm_mail' })
+    return false
+  }
   const copy = insightsNewsletterConfirmMailCopy(input.locale, {
     confirmUrl: insightsNewsletterConfirmUrl(event, input.token, input.locale),
-    unsubscribeUrl: insightsNewsletterUnsubscribeUrl(
-      event,
-      insightsNewsletterUnsubTokenFor(event, input.rowId),
-      input.locale,
-    ),
+    unsubscribeUrl: insightsNewsletterUnsubscribeUrl(event, unsubToken, input.locale),
   })
 
   try {
@@ -276,7 +349,7 @@ export interface InsightsNewsletterIssueMailInput {
 }
 
 /**
- * DREI AUSGÄNGE, UND DER UNTERSCHIED IST DER GANZE PUNKT.
+ * VIER AUSGÄNGE, UND DER UNTERSCHIED IST DER GANZE PUNKT.
  *
  *  · `'sent'` — draussen.
  *  · `'failed'` — DIESE Mail ging nicht (SMTP hat geworfen: Adresse abgelehnt,
@@ -293,6 +366,9 @@ export interface InsightsNewsletterIssueMailInput {
  *    fünfhundert Fehlschläge — nach aussen nicht unterscheidbar von fünfhundert
  *    kaputten Adressen, und der `cursor` stünde am Ende. Niemand bekäme dann
  *    je eine Mail, und ein Fortsetzen wäre unmöglich.
+ *  · `'unconfigured'` — es gibt keinen Schlüssel für den Abmelde-Link
+ *    (SEC-020). Ebenfalls ein Problem des SERVERS: der Lauf bricht ab wie bei
+ *    `'no_mailer'`, und es geht keine Mail mit erratbarem Link raus.
  *
  * `html` wird BEWUSST nicht gesetzt (Begründung am Wortlaut in `shared/`).
  * `List-Unsubscribe` trägt den Abmelde-Link DIESES Empfängers, in spitzen
@@ -303,16 +379,17 @@ export interface InsightsNewsletterIssueMailInput {
 export async function sendInsightsNewsletterIssueMail(
   event: H3Event,
   input: InsightsNewsletterIssueMailInput,
-): Promise<'sent' | 'failed' | 'no_mailer'> {
+): Promise<'sent' | 'failed' | 'no_mailer' | 'unconfigured'> {
+  const unsubToken = insightsNewsletterUnsubTokenFor(event, input.subscriberId)
+  if (!unsubToken) {
+    logEvent('error', 'insights.newsletter_unconfigured', { where: 'issue_mail' })
+    return 'unconfigured'
+  }
   // Welche FASSUNG geht raus? Dieselbe reine Entscheidung, die auch die Seite
   // trifft — der Link muss auf die Sprache zeigen, die in der Mail steht, nicht
   // auf die des Abonnenten (sonst `/de/...` mit englischem Text dahinter).
   const fassung = insightsPublicKopf(input.post, input.locale)
-  const unsubscribeUrl = insightsNewsletterUnsubscribeUrl(
-    event,
-    insightsNewsletterUnsubTokenFor(event, input.subscriberId),
-    input.locale,
-  )
+  const unsubscribeUrl = insightsNewsletterUnsubscribeUrl(event, unsubToken, input.locale)
   const copy = insightsNewsletterIssueCopy(input.post, input.intros, input.locale, {
     postUrl: insightsNewsletterPostUrl(event, input.href, fassung.locale),
     unsubscribeUrl,

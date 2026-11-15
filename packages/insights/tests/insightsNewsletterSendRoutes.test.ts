@@ -60,6 +60,8 @@ let tables: Record<string, FakeRow[]>
 let riegelOpen: boolean
 let formats: string[]
 let mailWorks: boolean
+/** Der bisherige Schlüssel der Abmelde-Links (SEC-020) — leer = gar keiner. */
+let appwriteKey: string
 /** Adressen, bei denen SMTP wirft (eine kaputte Adresse, kein Server-Problem). */
 let brokenAddresses: Set<string>
 let mails: { to: string, subject: string, text: string, headers?: Record<string, string> }[]
@@ -137,7 +139,7 @@ const tablesDB = {
 // ── Die Nitro-Auto-Imports ─────────────────────────────────────────────────
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useRuntimeConfig', () => ({
-  appwriteKey: 'test-schluessel',
+  appwriteKey,
   public: { appwriteDatabaseId: 'main', appwriteProjectId: 'branding', appUrl: 'https://branding.supply' },
 }))
 vi.stubGlobal('useAppConfig', () => ({
@@ -268,6 +270,7 @@ beforeEach(() => {
   riegelOpen = true
   formats = ['article']
   mailWorks = true
+  appwriteKey = 'test-schluessel'
   brokenAddresses = new Set()
   mails = []
   logs = []
@@ -461,6 +464,22 @@ describe('Fehlt der Mailer, bricht der Lauf ab — und niemand bekommt etwas dop
 
     expect(mails).toHaveLength(3)
     expect(hasDuplicates(recipientsOfMails())).toBe(false)
+  })
+})
+
+describe('Ohne Schlüssel für den Abmelde-Link geht keine Ausgabe raus (SEC-020)', () => {
+  it('bricht ab wie ohne Mailer — keine Mail, Cursor unberührt, Grund im Log', async () => {
+    appwriteKey = ''
+    putSubscribers([subscriber(1), subscriber(2)])
+
+    const result = await runBatch(event)
+    expect(result.aborted).toBe(true)
+    expect(result.sent).toBe(0)
+    expect(result.failed).toBe(0)
+    expect(result.send.state).toBe('failed')
+    expect(mails).toHaveLength(0)
+    expect(tables[INSIGHTS_SENDS_TABLE]?.[0]?.cursor).toBe('')
+    expect(logs.some(line => line.name === 'insights.newsletter_unconfigured')).toBe(true)
   })
 })
 

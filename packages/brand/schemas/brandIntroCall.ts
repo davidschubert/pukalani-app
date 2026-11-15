@@ -122,6 +122,12 @@ export function createBrandIntroCallSchema() {
      * dieselbe 200-Antwort wie sonst, nur ohne Zeile und ohne Mail.
      */
     hp: z.string().max(BRAND_INTRO_HONEYPOT_MAX).optional(),
+    /**
+     * Der Einmal-Token des Bot-Widgets (SEC-018). Optional: ohne gesetzte
+     * Turnstile-Schlüssel schickt das Formular keinen, und der Server prüft
+     * nicht (`requireTurnstile` ist dann ein No-op).
+     */
+    turnstileToken: z.string().max(4096).optional(),
   }).strict()
 }
 

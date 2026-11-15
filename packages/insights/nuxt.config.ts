@@ -103,6 +103,31 @@ export default defineNuxtConfig({
      * `newsletter.from` in `apps/branding`. Runbook: RESEND-WEBHOOK.md § 7.
      */
     insightsNewsletterSmtpPass: '',
+    /**
+     * server-only! Env-Mapping: `NUXT_INSIGHTS_NEWSLETTER_SECRET` — das
+     * Geheimnis, mit dem die Abmelde-Links des Newsletters signiert werden
+     * (SEC-020, 2026-11-15). Zufallswert, z. B. `openssl rand -hex 32`.
+     *
+     * ── WARUM EIN EIGENES ────────────────────────────────────────────────
+     * Bis dahin signierte `NUXT_APPWRITE_KEY` — jeder Tausch des
+     * API-Schlüssels machte still JEDEN verschickten Abmelde-Link ungültig.
+     *
+     * ── LEER IST DER ÜBERGANG, NICHT DER FEHLER ──────────────────────────
+     * Ohne Eintrag signiert der Layer wie bisher mit dem API-Schlüssel; die
+     * Prüfung nimmt beide an (Regel: `insightsNewsletterSecrets`). Links, die
+     * noch mit dem API-Schlüssel gebaut sind, gelten OHNE FRIST weiter
+     * (Davids Entscheidung 2026-11-15: wer sich abmelden will, soll das immer
+     * können). Pflicht im Env-Wächter erst, wenn der Wert auf dem Server
+     * steht (dieselbe Begründung wie bei `NUXT_RESEND_API_KEY` dort).
+     */
+    insightsNewsletterSecret: '',
+    /**
+     * server-only! Env-Mapping: `NUXT_INSIGHTS_NEWSLETTER_SECRET_PREVIOUS` —
+     * das Geheimnis VOR dem letzten Wechsel. Es PRÜFT nur, es signiert nie:
+     * wer das Geheimnis tauscht, schreibt den alten Wert hierher, damit die
+     * schon verschickten Links weiter abmelden. Leer = kein Wechsel.
+     */
+    insightsNewsletterSecretPrevious: '',
   },
 
   /**

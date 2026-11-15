@@ -57,6 +57,9 @@ import {
  *     gleichzeitig ankommen, entsteht höchstens eine Zeile.
  * (4) Das Schema deckelt JEDES Feld — eine offene Schreibroute ohne Längen ist
  *     ein Speicher-Angebot.
+ * Seit SEC-018 (2026-11-15) dazu: der BOT-BEWEIS (Turnstile, Aktion
+ * `waitlist`) und die GRENZE JE EMPFÄNGER-ADRESSE (`allowRecipientMail`, drei
+ * Links je Adresse und Tag, über alle Quellen).
  *
  * ── PERSONENBEZOGENE DATEN: MIT KONTO ERFASST, OHNE KONTO NOCH OFFEN ─────
  * Eine Zeile trägt eine Adresse und optional Name/Firma, aber keine `userId`;
@@ -91,6 +94,12 @@ export default defineEventHandler(async (event): Promise<BrandWaitlistResponse> 
     return { ok: true, state: 'mail_sent' }
   }
 
+  // Bot-Beweis (SEC-018): NACH dem Honigtopf (der antwortet weiter still) und
+  // VOR jedem Datenbankzugriff und jeder Mail. Ohne gesetzte Schlüssel ein
+  // No-op. `/confirm` bekommt bewusst keinen: es wird aus dem Mail-Link
+  // aufgerufen, und der Token dort ist selbst der Beweis.
+  await requireTurnstile(event, 'waitlist', body.turnstileToken)
+
   const { tablesDB, databaseId } = brandDb(event)
 
   const token = createBrandWaitlistToken()
@@ -116,6 +125,23 @@ export default defineEventHandler(async (event): Promise<BrandWaitlistResponse> 
         state: 'already_confirmed',
       })
       return { ok: true, state: 'already_confirmed' }
+    }
+
+    /**
+     * GRENZE JE EMPFÄNGER-ADRESSE (SEC-018): höchstens drei Links je Adresse
+     * und Tag. Gefragt erst HIER — eine bestätigte Adresse bekommt keine Mail
+     * und verbraucht nichts. Darüber: KEIN neuer Token (sonst entwertete ein
+     * Fremder den Link aus der letzten echten Mail), keine Zeile, keine Mail —
+     * und dieselbe Antwort wie bei einer verschickten Mail (s. Kopf: der
+     * Unterschied wäre eine Auskunft über eine fremde Adresse).
+     */
+    if (!(await allowRecipientMail(event, 'brand:waitlist', body.email))) {
+      logEvent('info', 'brand.waitlist_joined', {
+        source: body.source,
+        locale: body.locale,
+        state: 'recipient_limited',
+      })
+      return { ok: true, state: 'mail_sent' }
     }
 
     if (row) {

@@ -6,22 +6,34 @@ import type { InsightsNewsletterUnsubscribeResponse } from '../../../../../share
 /**
  * „SCHREIBT MIR NICHT MEHR" — der Abmelde-Weg (BI1 I5a).
  *
- * ── OHNE KONTO, NUR MIT TOKEN, UND IMMER MIT 200 ────────────────────────
+ * ── OHNE KONTO, NUR MIT TOKEN — UND 200 NUR, WENN DER LINK ECHT IST ─────
  * Jede Mail dieses Produkts trägt diesen Link — die Bestätigungs-Mail
- * eingeschlossen, wo er das „ich war das nicht" ist. Ein Mensch, der sich
- * abmelden will, darf deshalb NIE eine Fehlermeldung lesen: unbekannter Token,
- * zweiter Klick aus einer alten Mail, längst gelöschte Zeile — alles antwortet
- * dieselbe 200. Ein 409 auf „schon abgemeldet" wäre eine Rüge für etwas, das
- * erledigt ist, und ein 400 auf einen alten Link sähe aus wie „die Abmeldung
- * hat nicht gewirkt".
+ * eingeschlossen, wo er das „ich war das nicht" ist. Ist der Link ECHT (eine
+ * Signatur passt), antwortet die Route immer 200: zweiter Klick aus einer
+ * alten Mail, schon abgemeldet, längst gelöschte Zeile. Ein 409 auf „schon
+ * abgemeldet" wäre eine Rüge für etwas, das erledigt ist.
+ *
+ * Passt die Signatur zu KEINEM Schlüssel, ist es KEIN Erfolg (SEC-020, seit
+ * 2026-11-15): 400 mit `reason: unsubscribe_link_invalid`. Bis dahin stand
+ * hier auch dafür eine 200, und die Seite zeigte „Abgemeldet", während die
+ * Adresse weiter auf der Liste stand. Ein entwerteter Link darf nicht wie eine
+ * Abmeldung aussehen — die Seite sagt jetzt, dass er NICHT abgemeldet hat und
+ * wie es trotzdem geht. Ohne jeden Schlüssel auf dem Server: 503
+ * `newsletter_unconfigured` (aus `insightsNewsletterRowIdFromToken`).
  *
  * ── DER TOKEN IST ABGELEITET, NICHT GESPEICHERT ─────────────────────────
  * `<rowId>.<hmac>`; nachgerechnet wird er, statt ihn zu suchen (Begründung im
  * Kopf von `server/utils/insightsNewsletter.ts`). Das ist der Grund, warum
  * dieser Weg nach dem Bestätigen noch funktioniert: der Bestätigungs-Hash ist
- * dann gelöscht. Es ist AUCH der Grund, warum ein Schlüsseltausch alte
- * Abmelde-Links tötet — die Seite sagt dann, was zu tun ist, statt eine
- * Sackgasse zu zeigen.
+ * dann gelöscht. Geprüft wird gegen das eigene Geheimnis, das vorherige und
+ * (Übergang) den bisherigen API-Schlüssel — ein Wechsel tötet so keine Links.
+ *
+ * ── KEIN ONE-CLICK, ALSO KEIN AUFRUF OHNE MENSCH ────────────────────────
+ * `List-Unsubscribe` trägt nur die SEITE (kein `List-Unsubscribe-Post`). Ein
+ * Mail-Programm, das den Link vorab abruft, lädt nur das HTML; abgemeldet
+ * wird erst im Browser per POST. Der 400-Weg ändert dabei nichts: er
+ * schreibt nichts und meldet niemanden ab — er sagt nur ehrlich, dass nichts
+ * geschah.
  *
  * ── DREI AUSGÄNGE, EINE REGEL ───────────────────────────────────────────
  * `decideInsightsNewsletterUnsubscribe` entscheidet, nicht diese Route:
@@ -47,11 +59,15 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterUnsub
   const body = await readValidatedBody(event, createInsightsNewsletterTokenSchema().parse)
   const rowId = insightsNewsletterRowIdFromToken(event, body.token)
   if (!rowId) {
-    // Falsche Signatur oder ein Link aus der Zeit vor einem Schlüsseltausch.
-    // Die Antwort bleibt 200 (s. Kopf); das Log sagt, dass es passiert ist —
-    // häuft es sich, war es ein Tausch und nicht ein Angreifer.
+    // Keine Signatur passt — gefälscht oder entwertet. KEIN Erfolg (s. Kopf);
+    // das Log sagt, dass es passiert ist (ohne Token) — häuft es sich, fehlt
+    // ein Schlüssel in der Prüf-Liste und nicht ein Angreifer ist schuld.
     logEvent('info', 'insights.newsletter_unsub_token_invalid', {})
-    return { ok: true }
+    throw createError({
+      status: 400,
+      statusText: 'Unsubscribe link is not valid',
+      data: { code: 'unsubscribe_link_invalid' },
+    })
   }
 
   const { tablesDB, databaseId } = insightsDb(event)
