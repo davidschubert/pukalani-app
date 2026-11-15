@@ -30,6 +30,64 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 Handgriffe — OpenRouter-Schalter, Anmelde-Regeln auf Production, Klick-Proben ✅ 2026-11-15
+
+Drei Dinge, die nach den Paketen des Gesamtaudits als Handgriffe offen waren.
+Kein Code; alles über den Browser des Betreibers, jede Einstellung vorher
+gelesen und nachher zurückgelesen.
+
+**OpenRouter (Paket P00).** Der Schalter „keine Datenspeicherung" steht jetzt
+für alle fünf Gruppen auf an (neu: OpenAI, Google, SpaceXAI). Bei Google ist
+die Unterwahl „Allow Safety Retention" gesetzt: ohne sie fallen die
+Google-Modelle laut Anbieter weg, und Bild-Lesen, Video-Lesen und
+Bild-Erzeugen laufen über Google. Die Training-Schalter standen alle auf aus.
+Ein Monats-Limit je Schlüssel stand schon. Danach `pnpm ops:ai-models`
+(Exit 0, alle sechs Modell-Wahlen erreichbar) und drei echte Aufrufe auf
+Production (Übersetzung, Berater-Antwort, Brand Check).
+
+**Anmelde-Regeln (Paket P29).** In `account`, `admin`, `branding` und
+`portfolio` wichen je sechs von sieben Regeln vom Soll ab
+(`scripts/ops/appwrite-auth-policies.mjs`). Gesetzt in der Appwrite-Konsole
+(Auth → Policies → Passwords, Emails, Sessions), zurückgelesen: je sieben von
+sieben. Eine Registrierung unter den neuen Regeln ging in `account` und
+`branding` durch. Reste stehen in OPEN-ITEMS 26 · P29.
+
+**Klick-Proben.** Mit je einem Wegwerf-Konto:
+
+- *Community (EL1 a, KU1 a, MM1 a erster Teil, KI1 a erster Teil):* Kommentar
+  schreiben und löschen ⇒ leerer Platzhalter ohne Namen (Text, Name und
+  Konto-Id in der Antwort leer). Export enthält den Abschnitt der Kommentare.
+  Der Hinweis „Was beim Löschen geschieht" steht über dem Knopf (fünf Zeilen,
+  auch die 30-Tage-Zeile). Nach der Kontolöschung: beide Kommentare leere
+  Platzhalter, Sitzung weg, Konto in Appwrite nicht mehr vorhanden. Kurse:
+  abgemeldet Übersicht und Kursseite mit „Anmelden, um teilzunehmen", als
+  Mitglied einschreiben und eine Lektion öffnen. Übersetzen eines Kommentars
+  geht.
+- *branding.supply (EL1 a):* Marke anlegen, ein Brand Check mit Haken fürs
+  Ranking, Export enthält den Abschnitt `checks`, der Hinweis nennt die 90
+  Tage. Nach der Kontolöschung antwortet die Ergebnis-Adresse Wort für Wort
+  wie eine erfundene (404), das Ergebnis steht nicht mehr im Ranking, die
+  Marke ist weg.
+
+Nicht gemacht und weiter offen: AB1 (a), PB1 (a), SI1 (a), SR1 (a), der zweite
+Teil von MM1 (a) und KI1 (a).
+
+**Gelernt:** (1) Die Liste führte das Limit bei OpenRouter als offen, es stand
+längst. Erst den Ist-Zustand lesen, dann fragen. (2) „Keine Datenspeicherung"
+hat bei Google eine Unterwahl; die strenge schaltet die Modelle ab. (3) Der
+Abgleich mit Datenlecks lässt sich in der Konsole einschalten, wirkt aber erst
+mit der Server-Variable; ohne sie gilt jedes Passwort als sauber, und nichts
+scheitert (im Quelltext von 2.7.1 nachgelesen). (4) Auf branding.supply fehlt
+im Lösch-Hinweis die 30-Tage-Zeile, weil die Instanz keine Kopie schreibt. So
+ist es gebaut, es fiel erst im Vergleich der zwei Seiten auf. (5) Eine Stimme
+auf einem Demo-Kommentar ersetzt den gesetzten Demo-Zähler durch die echte
+Zahl der Stimmen, und er kommt nach dem Löschen des Kontos nicht zurück.
+Klick-Proben auf der Demo hinterlassen Spuren. (6) Die Bot-Prüfung läuft beim
+ersten Aufruf still und zeigt nach mehreren Aufrufen ihren Haken; den setzt
+ein Mensch.
+
+---
+
 ### GA1 P25 — Kleine Sicherheitsriegel: sieben zweite Sicherungen ✅ 2026-11-15
 
 **Was.** Viertes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
