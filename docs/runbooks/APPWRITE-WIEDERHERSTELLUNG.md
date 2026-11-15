@@ -351,7 +351,7 @@ früheren Läufe liegen und nennt den Schritt, an dem er scheiterte:
   Ordners: älter als 30 Tage, nie die jüngsten sieben, höchstens fünf je Lauf.
   Was nicht wie ein Lauf heißt, fasst es nicht an.
 - Zweites Netz: tägliche Schnappschüsse der Storage Box, eingeschaltet am
-  2026-11-15 (Hetzner-Konto → Storage Box → Snapshots: täglich 05:00 UTC, die
+  2026-11-15 (Hetzner-Konto → Storage Box → Snapshots: täglich 09:00 UTC, die
   letzten zehn bleiben). Ein Schnappschuss lässt sich vom Server aus nicht
   löschen. Im Ernstfall dort einen Stand öffnen, wenn auf der Box selbst etwas
   fehlt. Achtung: „Wiederherstellen“ eines älteren Schnappschusses löscht alle

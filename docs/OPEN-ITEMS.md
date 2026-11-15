@@ -738,7 +738,9 @@ NICHT hier.
   Schnappschüsse und die Zählung beim Zurückspielen. Auf dem Appwrite-Server
   liegen alte Sicherungskopien im Appwrite-Ordner und zwei Volume-Reste ohne
   Eintrag in der Compose-Datei; beides aufräumen. Der Zugang zum Konto beim
-  Hoster gehört gehärtet (Einzelheiten privat).
+  Hoster gehört gehärtet (Einzelheiten privat). Ein Probealarm über
+  `backup_drill` trägt im Titel des Issues nicht „(Probealarm)“ — das
+  Kennzeichen hängt nur am Schalter `alarm_drill`.
 
 <a id="rw1"></a>
 
