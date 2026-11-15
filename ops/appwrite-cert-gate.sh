@@ -24,15 +24,25 @@
 # Auftrags zurueck, Mail-Adressen sind maskiert, die Menge ist gedeckelt.
 # Keine Dateilisten, keine Konfiguration, keine Pfade.
 #
+# VIERTES WORT (OPS-001, 2026-11-15): `backup-status` liest die Stand-Datei des
+# nächtlichen Backups (ops/appwrite-backup.sh) und gibt GENAU EINE Zeile aus —
+# Ergebnis, Schritt, Alter des letzten guten Laufs in Stunden, Größe, Zahl der
+# Dateien. Nur lesend, kein docker. Ob das alt genug für einen Alarm ist,
+# entscheidet der Wächter (die Schwelle steht im Workflow, an EINER Stelle).
+# Jeder Wert wird hier auf seine Form geprüft, bevor er das Tor verlässt: was
+# in der Stand-Datei nicht wie ein Wort oder eine Zahl aussieht, wird nicht
+# durchgereicht.
+#
 # AUFRUF
-#   aus der CI:      ssh appwrite-prod probe | renew | reset-account
+#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status
 #   von Hand (Mac):  ssh ploi@<server> '~/bin/pukalani-cert-gate.sh probe'
 #
 # EINSPIELEN (nur von Hand, es gibt bewusst keinen CI-Weg auf diesen Server):
 #   docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, Abschnitt „Tor auf appwrite-prod"
 #
 # Exit: 0 ok · 3 Compose-Ordner fehlt · 4 Worker nicht gefunden ·
-#       5 Voraussetzung fehlt · 64 Befehl nicht erlaubt
+#       5 Voraussetzung fehlt · 6 kein lesbarer Backup-Stand ·
+#       64 Befehl nicht erlaubt
 set -u
 
 COMPOSE_DIR="${APPWRITE_COMPOSE_DIR:-$HOME/appwrite}"
@@ -40,6 +50,9 @@ COMPOSE_DIR="${APPWRITE_COMPOSE_DIR:-$HOME/appwrite}"
 DOMAIN='api.pukalani.app'
 CERT_LINES='certificate|certbot|acme|letsencrypt'
 MASK_ADDRESSES='s/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/<adresse>/g'
+
+# Stand-Datei des Backups (BACKUP_DIR/state/last-run).
+BACKUP_STATE_FILE="${BACKUP_STATE_FILE:-$HOME/backup/state/last-run}"
 
 # Von Hand als $1; mit festem Befehl (kein Argument) in SSH_ORIGINAL_COMMAND.
 REQUEST="${1:-${SSH_ORIGINAL_COMMAND:-}}"
@@ -106,8 +119,34 @@ case "$REQUEST" in
     echo "Beiseitegelegt: $COUNT gespeicherte(s) ACME-Konto/Konten."
     ;;
 
+  backup-status)
+    # ÖFFENTLICHES PROTOKOLL: eine Zeile, nur Wörter aus einer festen Form und
+    # Zahlen. Kein Pfad, kein Dateiname, kein Zeitstempel eines Laufs.
+    state_value() { grep -m1 "^$1=" "$BACKUP_STATE_FILE" 2>/dev/null | cut -d= -f2-; }
+    is_number() { case "$1" in ''|*[!0-9]*) return 1 ;; *) return 0 ;; esac; }
+    RESULT="$(state_value last_result)"
+    STEP="$(state_value last_step)"
+    OK_EPOCH="$(state_value last_ok_epoch)"
+    OK_BYTES="$(state_value last_ok_bytes)"
+    OK_FILES="$(state_value last_ok_files)"
+    case "$RESULT" in ok|fehler) ;; *) RESULT='' ;; esac
+    printf '%s' "$STEP" | grep -Eq '^[a-z-]{1,24}$' || STEP=''
+    if [ -z "$RESULT" ] || [ -z "$STEP" ]; then
+      echo "backup ergebnis=unbekannt"
+      exit 6
+    fi
+    # Noch nie ein guter Lauf: Alter „nie", damit der Wächter rot wird.
+    if is_number "$OK_EPOCH" && is_number "$OK_BYTES" && is_number "$OK_FILES"; then
+      AGE=$(( ($(date +%s) - OK_EPOCH) / 3600 ))
+      [ "$AGE" -ge 0 ] || AGE=0
+      echo "backup ergebnis=$RESULT schritt=$STEP alter_stunden=$AGE groesse_mb=$(( OK_BYTES / 1048576 )) dateien=$OK_FILES"
+    else
+      echo "backup ergebnis=$RESULT schritt=$STEP alter_stunden=nie groesse_mb=0 dateien=0"
+    fi
+    ;;
+
   *)
-    echo "Abgelehnt: erlaubt sind probe, renew, reset-account."
+    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status."
     exit 64
     ;;
 esac
