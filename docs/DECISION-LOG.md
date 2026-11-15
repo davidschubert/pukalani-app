@@ -221,7 +221,7 @@ Prod stand seit 08:59 UTC desselben Tages auf 2.6.1 — das Release hat uns um f
 **Entscheidung (Davids Auftrag „prüfen und installieren"):** 2.6.2 kommt auf dev, CI und prod, in
 dieser Reihenfolge wie immer; kein Schema, also ein kleines Fenster (Container-Neustart, keine
 Migration). Aus der Cloud-Sitzung sind nur CI, Skript und Runbook erreichbar (kein ssh, kein Netz zu
-`api.pukalani.app`) — prod und dev laufen von Davids Terminal: `ops/appwrite-upgrade-2.6.2.sh`, Runbook
+`api.pukalani.app`) — prod und dev laufen von Davids Terminal: `docs/archiv/skripte/appwrite-upgrade-2.6.2.sh` (damals unter `ops/`), Runbook
 `APPWRITE-2-6-UPGRADE.md` Abschnitt „2.6.1 → 2.6.2".
 
 **Was gegen den Code geprüft ist (2026-10-27):** Key-Anlage nur noch per Console-Session oder Key mit
@@ -234,7 +234,7 @@ byte-gleich, der KeepAlive-Patch (Zeile 367) bleibt Pflicht und wird trotzdem je
 gezogen.
 
 **Ausgeführt (2026-10-27, Davids Auftrag „erst dev, dann prod"):** dev 20:51–20:56 UTC, prod
-21:09–21:12 UTC über `ops/appwrite-upgrade-2.6.2.sh` per ssh — Werkzeug-Aufruf bis Beweise 81 s, davon
+21:09–21:12 UTC über `docs/archiv/skripte/appwrite-upgrade-2.6.2.sh` (damals unter `ops/`) per ssh — Werkzeug-Aufruf bis Beweise 81 s, davon
 `migrate` 19,6 s (V25 läuft idempotent erneut, 253 „already exists", 0 Fehler). Alle Beweise im Runbook
 („Durchläufe"); offen nur Davids eigene OTP-Anmeldung als Mail-Beweis. Zwei Beweis-Zeilen des Skripts
 waren falsch und sind korrigiert: `apk info -v PAKET` druckt die Beschreibung (grep über `apk info -v`),
