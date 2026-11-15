@@ -139,6 +139,8 @@ const tablesDB = {
 /** Was das Modell schreibt — je Test austauschbar. */
 let modelText: string
 let modelFails: Error | null
+/** Wie der Strom endete (`finish_reason`) — Standard: leer, wie ohne Angabe. */
+let modelFinish: string
 const aiCompleteStream = vi.fn(async (
   _event: unknown,
   prompt: string,
@@ -150,7 +152,7 @@ const aiCompleteStream = vi.fn(async (
   // In Stücken, wie ein echter Anbieter — der Putzer muss über die Grenzen hinweg
   // dasselbe Ergebnis liefern.
   for (const chunk of modelText.match(/[\s\S]{1,7}/g) ?? []) await options.onDelta?.(chunk)
-  return { text: modelText, model: 'test-model', provider: 'test', aborted: false }
+  return { text: modelText, model: 'test-model', provider: 'test', aborted: false, finishReason: modelFinish }
 })
 let lastPrompt = ''
 let lastSystem = ''
@@ -162,7 +164,10 @@ vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
 vi.stubGlobal('toH3Error', (error: unknown) => error)
-vi.stubGlobal('logEvent', () => {})
+const logs: { event: string, data: Record<string, unknown> }[] = []
+vi.stubGlobal('logEvent', (_level: string, event: string, data: Record<string, unknown> = {}) => {
+  logs.push({ event, data })
+})
 vi.stubGlobal('requireBrandAccess', async () => ({ userId: 'u1' }))
 vi.stubGlobal('assertBrandOwnerAccess', () => {})
 vi.stubGlobal('getRouterParam', (_event: H3Event, name: string) => (name === 'id' ? 'p1' : routeStepKey))
@@ -255,6 +260,8 @@ beforeEach(() => {
   routeStepKey = 'context'
   modelText = 'Das nehme ich mit. Was loben eure Kunden an euch?'
   modelFails = null
+  modelFinish = ''
+  logs.length = 0
   lastPrompt = ''
   lastSystem = ''
   appConfigRow = { $id: 'global', brandAiEnabled: true }
@@ -1666,5 +1673,38 @@ describe('Was die Kollegin beim Mitlesen gemerkt hat', () => {
     const { event } = fakeEvent()
     await handler(event)
     expect(lastPrompt).toContain('Vera read over')
+  })
+})
+
+/**
+ * DIE ABGESCHNITTENE ANTWORT (P17, BE-007): gekennzeichnet, nicht verworfen.
+ * Die Zeile trägt `truncated: true` ADDITIV in `parts`, das Abschluss-Frame
+ * ebenso, und das Log nennt den `finishReason` — sonst wäre ein abgeschnittener
+ * Zug im Protokoll nicht von einem vollständigen zu unterscheiden.
+ */
+describe('POST …/converse · abgeschnittene Antwort', () => {
+  it('`length` ⇒ Zeile und Abschluss-Frame tragen `truncated`, das Log den Grund', async () => {
+    modelText = 'Das nehme ich mit. Was loben eure Kunden an'
+    modelFinish = 'length'
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+
+    const george = messageRows.find(row => row.role === 'george')!
+    // Nichts verworfen: der Text ist der gelieferte.
+    expect(george.body).toBe(modelText)
+    expect(JSON.parse(String(george.parts))).toMatchObject({ kind: 'reply', truncated: true })
+    expect(readBack(chunks).at(-1)).toMatchObject({ type: 'generation.completed', truncated: true })
+    expect(logs.find(entry => entry.event === 'brand.converse_completed')?.data.finishReason).toBe('length')
+  })
+
+  it('GEGENPROBE: `stop` ⇒ nichts davon in `parts` und im Frame', async () => {
+    modelFinish = 'stop'
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+
+    const george = messageRows.find(row => row.role === 'george')!
+    expect(JSON.parse(String(george.parts))).toEqual({ kind: 'reply', slotId: 'a.origin' })
+    expect((readBack(chunks).at(-1) as { truncated?: unknown }).truncated).toBeUndefined()
+    expect(logs.find(entry => entry.event === 'brand.converse_completed')?.data.finishReason).toBe('stop')
   })
 })

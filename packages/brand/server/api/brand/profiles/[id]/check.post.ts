@@ -122,6 +122,13 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
     return { ok: true, id: cached.$id, cached: true }
   }
 
+  // (2b) DER ABSCHALTER (P17, BE-006) — nach dem Zwischenspeicher, vor der
+  // Buchung; derselbe eigene Code wie beim öffentlichen Check (`brandCheckRun.ts`).
+  if (!await aiSwitchedOn(event)) {
+    logEvent('info', 'brand.doc_check_paused', { profileId })
+    throw createError({ status: 503, statusText: 'Check paused', data: { code: 'check_paused' } })
+  }
+
   // (3) Das Material — bestätigte Felder, in Kapitel-Reihenfolge.
   const stepRows = await loadStepRows(event, profileId)
   const fields = brandDocumentCheckFields(profile, stepRows, betaAccount)

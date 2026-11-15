@@ -185,6 +185,17 @@ export async function runBrandCheck(
     ? await input.profileId()
     : input.profileId ?? ''
 
+  // (2b) DER ABSCHALTER (P17, BE-006) — NACH dem Zwischenspeicher (ein Treffer
+  // kostet nichts und bleibt erreichbar), VOR der Buchung: bei „aus" wird
+  // nichts gebucht. Ein eigener Code, denn `check_unavailable` sagt „in ein paar
+  // Minuten noch einmal", und das stimmt bei einem Abschalter nicht. Der
+  // Transport fragt denselben Riegel noch einmal; das Ergebnis ist je Anfrage
+  // gemerkt.
+  if (!await aiSwitchedOn(event)) {
+    logEvent('info', 'brand.check_paused', { host: hostOf(input.url) })
+    throw createError({ status: 503, statusText: 'Check paused', data: { code: 'check_paused' } })
+  }
+
   // (3) Die Deckel. Erst ab hier kostet der Aufruf etwas.
   const rejection = await bookBrandCheckQuota(event, {
     ipHash: brandCheckIpHash(event),

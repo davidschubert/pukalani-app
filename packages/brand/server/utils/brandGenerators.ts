@@ -180,6 +180,17 @@ export interface BrandGeneratorResult {
   promptVersion: string
   /** Der Lauf wurde abgebrochen; `draft` ist unvollständig und wird VERWORFEN. */
   aborted: boolean
+  /**
+   * `finish_reason` des Anbieters (P17, BE-007) — fürs Log. OPTIONAL: der
+   * Dev-Stub und künftige Generatoren ohne Strom kennen keinen.
+   */
+  finishReason?: string
+  /**
+   * Die Antwort ist abgeschnitten (`finish_reason: 'length'`). Der Entwurf wird
+   * NICHT verworfen, die Route kennzeichnet nur den Zug. Fehlt es, gilt
+   * „vollständig".
+   */
+  truncated?: boolean
 }
 
 export type BrandSlotGenerator = (context: BrandGeneratorContext) => Promise<BrandGeneratorResult>

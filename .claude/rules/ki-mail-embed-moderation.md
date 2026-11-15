@@ -61,6 +61,39 @@ paths:
   Einen Schalter, der den Rumpf wieder einschaltet, gibt es bewusst nicht.
   Konsumenten loggen weiter `message` des geworfenen Fehlers — das ist der
   feste `statusText` des Transports. Wer dort etwas Neues wirft, hält ihn fest.
+- EIN RIEGEL VOR JEDEM BEZAHLTEN AUFRUF (BE-006, seit 2026-11-15 — Davids
+  Entscheidung „Der Abschalter für KI-Kosten erreicht auch den öffentlichen
+  Check und die Prüf-Läufe"): ein Layer meldet seinen Abschalter per
+  Nitro-Plugin beim Core an (`registerAiKillSwitch`,
+  `core/server/utils/aiKillSwitch.ts`), und ALLE fünf Transporte fragen den
+  Riegel vor dem Senden (`assertAiSwitchedOn` ⇒ 503 `ai_disabled`, kein
+  `fetch`). brand meldet `app_config.brandAiEnabled` an
+  (`brand/server/plugins/ai-kill-switch.ts`) — auf branding.supply stoppt der
+  Schalter damit JEDEN Modell-Aufruf, auch die Core-Konsumenten und jede
+  künftige Route. Fail-closed (ein Schalter, der wirft, heißt „aus"), gelesen
+  je Anfrage einmal; eine App ohne den Layer hat kein Register und keinen
+  Riegel. Die frühen Abfragen der Routen BLEIBEN (schönere Antwort, nichts
+  gebucht): wer VOR einer Buchung fragen muss, ruft `aiSwitchedOn(event)`
+  selbst — so tun es der öffentliche Check und der Dokument-Check (nach dem
+  Zwischenspeicher, vor `bookBrandCheckQuota`; 503 `check_paused` mit eigenem
+  Satz, weil „in ein paar Minuten noch einmal" bei einem Abschalter nicht
+  stimmt). Netz: `core/tests/aiKillSwitchCoverage.test.ts` hält am Quelltext
+  fest, dass jeder Transport den Riegel VOR seinem `fetch` ruft; dass niemand
+  am Transport vorbei ruft, hält `check:ai-routing`. Review-Läufe belegen seit
+  demselben Tag einen Parallel-Platz wie alle anderen Wege (`runStage`).
+- ABGESCHNITTEN HEISST GEKENNZEICHNET, NICHT VERWORFEN (BE-007, seit
+  2026-11-15): auch der Stream-Weg liest `finish_reason`
+  (`AiCompleteStreamResult.finishReason`). Reißt ein Berater-Zug die
+  Token-Decke (`length`), bleibt der bezahlte Text stehen; die Zeile in
+  `brand_messages` trägt `parts.truncated: true`, das Abschluss-Frame
+  ebenso, und `brand.generation_completed`/`brand.converse_completed` nennen
+  `finishReason`. Die Oberfläche zeigt unter der Blase einen Hinweis; „Noch
+  einmal erzeugen" gibt es nur am letzten ENTWURFS-Zug (vorhandener
+  Erzeugen-Weg), ein Gesprächs-Zug bekommt den Satz „schreib einfach noch
+  einmal" — ihn zu wiederholen schickte die Antwort des Menschen doppelt.
+  Eine Rückfrage der Nachprüfung ist nie „abgeschnitten" (sie schreibt der
+  Server). Der FELDWERT selbst trägt kein Kennzeichen; `max_tokens` bleibt
+  großzügig und wird nicht gesenkt.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,

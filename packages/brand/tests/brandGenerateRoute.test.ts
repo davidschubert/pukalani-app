@@ -114,7 +114,10 @@ vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
 vi.stubGlobal('toH3Error', (error: unknown) => error)
-vi.stubGlobal('logEvent', () => {})
+const logs: { event: string, data: Record<string, unknown> }[] = []
+vi.stubGlobal('logEvent', (_level: string, event: string, data: Record<string, unknown> = {}) => {
+  logs.push({ event, data })
+})
 vi.stubGlobal('requireBrandAccess', async () => ({ userId: 'u1' }))
 vi.stubGlobal('assertBrandOwnerAccess', () => {})
 vi.stubGlobal('getRouterParam', (_event: H3Event, name: string) =>
@@ -203,6 +206,7 @@ beforeEach(() => {
   // die Route liest ihn seit P3.1 mit, und das soll auch der Normalfall messen.
   stepRows = [stepRow, stepRowFor('pvm')]
   body = { slotId: 'a.pitch' }
+  logs.length = 0
   tablesDB.updateRow.mockClear()
   tablesDB.createRow.mockClear()
 })
@@ -1145,5 +1149,77 @@ describe('POST …/generate — Quellen aus anderen Bausteinen', () => {
     await handler(fakeEvent().event)
     expect(seen[0]!.find(entry => entry.slotId === 'a.pitch')?.value)
       .toBe('Wir rösten Kaffee für Cafés auf Maui.')
+  })
+})
+
+/**
+ * DER ABGESCHNITTENE ENTWURF (P17, BE-007): nach einem bezahlten Lauf wird
+ * gekennzeichnet, nicht verworfen. Der Entwurf landet wie heute als ENTWURF im
+ * Feld (`latestDraft`, nie `confirmed`) — der Zug im Verlauf und das
+ * Abschluss-Frame tragen `truncated`, das Log den `finishReason`.
+ */
+describe('Abgeschnittener Entwurf', () => {
+  let truncated: boolean
+
+  beforeEach(async () => {
+    truncated = true
+    const module = await import('../server/utils/brandGenerators')
+    module.clearActiveBrandGenerations()
+    module.registerBrandSlotGenerator('context', (async () => ({
+      draft: 'Wir rösten Kaffee in kleinen',
+      message: 'Aus eurem Startbogen.\n\nWir rösten Kaffee in kleinen',
+      outcome: 'draft' as const,
+      model: 'test-model',
+      provider: 'test',
+      promptVersion: 'george-a-4',
+      aborted: false,
+      finishReason: truncated ? 'length' : 'stop',
+      truncated,
+    })) as never)
+  })
+
+  afterEach(async () => {
+    const module = await import('../server/utils/brandGenerators')
+    module.clearBrandSlotGenerators()
+    module.clearActiveBrandGenerations()
+  })
+
+  function messageRow(): Record<string, unknown> {
+    return tablesDB.createRow.mock.calls
+      .map(call => call[0] as { tableId: string, data: Record<string, unknown> })
+      .find(call => call.tableId === 'brand_messages')!.data
+  }
+
+  it('kennzeichnet Zeile, Frame und Log — und lässt den Text, wie er kam', async () => {
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+    const events = readBack(chunks)
+
+    expect(events.find(item => item.type === 'slot.ready')).toMatchObject({ draft: 'Wir rösten Kaffee in kleinen' })
+    expect(events.at(-1)).toMatchObject({ type: 'generation.completed', outcome: 'draft', truncated: true })
+
+    const message = messageRow()
+    expect(message.body).toBe('Aus eurem Startbogen.\n\nWir rösten Kaffee in kleinen')
+    expect(JSON.parse(String(message.parts))).toEqual({ kind: 'draft', slotId: 'a.pitch', truncated: true })
+
+    // Gespeichert wird wie heute: als ENTWURF, nicht als bestätigter Wert.
+    const data = tablesDB.updateRow.mock.calls
+      .map(call => call[0] as { tableId: string, data: Record<string, unknown> })
+      .find(call => call.tableId === 'brand_steps')!.data
+    const slots = JSON.parse(String(data.slots)) as Record<string, { latestDraft?: string, confirmed?: string }>
+    expect(slots['a.pitch']!.latestDraft).toBe('Wir rösten Kaffee in kleinen')
+    expect(slots['a.pitch']!.confirmed).toBeUndefined()
+
+    expect(logs.find(entry => entry.event === 'brand.generation_completed')?.data.finishReason).toBe('length')
+  })
+
+  it('GEGENPROBE: `stop` ⇒ kein Kennzeichen in `parts` und im Frame', async () => {
+    truncated = false
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+
+    expect((readBack(chunks).at(-1) as { truncated?: unknown }).truncated).toBeUndefined()
+    expect(JSON.parse(String(messageRow().parts))).toEqual({ kind: 'draft', slotId: 'a.pitch' })
+    expect(logs.find(entry => entry.event === 'brand.generation_completed')?.data.finishReason).toBe('stop')
   })
 })

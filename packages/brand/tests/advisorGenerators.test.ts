@@ -377,3 +377,60 @@ describe('c.candidates hält den Form-Vertrag seiner Registry-Art', () => {
     expect(brandSlotValueMatchesFormat('list', result.message!)).toBe(false)
   })
 })
+
+/**
+ * EINE ABGESCHNITTENE ANTWORT WIRD GEKENNZEICHNET, NICHT VERWORFEN (P17,
+ * BE-007): `finish_reason: 'length'` heisst „die Decke ist gerissen". Der
+ * Text bleibt, wie er kam — `truncated` reist neben ihm zur Route.
+ */
+describe('abgeschnittene Antwort (BE-007)', () => {
+  function ends(text: string, finishReason: string): void {
+    streamMock.mockResolvedValue({ text, usage: null, model: 'anthropic/x', provider: 'anthropic', aborted: false, finishReason })
+  }
+
+  it('streamAdvisorTurn reicht `length` als truncated durch — der Text bleibt', async () => {
+    const { streamAdvisorTurn } = await import('../server/utils/advisorGenerator')
+    ends('Ein Satz, der mit', 'length')
+    const turn = await streamAdvisorTurn({
+      event,
+      system: 's',
+      prompt: 'p',
+      maxTokens: 300,
+      signal: new AbortController().signal,
+      onDelta: () => {},
+    })
+    expect(turn).toMatchObject({ text: 'Ein Satz, der mit', finishReason: 'length', truncated: true })
+  })
+
+  it('GEGENPROBE: `stop` und eine fehlende Angabe sind nicht abgeschnitten', async () => {
+    const { streamAdvisorTurn } = await import('../server/utils/advisorGenerator')
+    const request = { event, system: 's', prompt: 'p', maxTokens: 300, signal: new AbortController().signal, onDelta: () => {} }
+    ends('Fertig.', 'stop')
+    expect(await streamAdvisorTurn(request)).toMatchObject({ finishReason: 'stop', truncated: false })
+    answers('Fertig.')
+    expect(await streamAdvisorTurn(request)).toMatchObject({ finishReason: '', truncated: false })
+  })
+
+  it('das Generator-Ergebnis trägt das Kennzeichen — der Entwurf bleibt der gelieferte', async () => {
+    ends('BASIS: darauf.\nDRAFT:\nDamit guter Kaffee kein', 'length')
+    const result = await vera.veraStrategyGenerator(context('b.purpose', 'pvm') as never)
+    expect(result.truncated).toBe(true)
+    expect(result.finishReason).toBe('length')
+    expect(result.draft).toBe('Damit guter Kaffee kein')
+  })
+
+  it('eine RÜCKFRAGE der Nachprüfung ist nicht abgeschnitten — sie schreibt der Server', async () => {
+    // Der abgeschnittene Entwurf verfehlt die geschlossene Auswahl; an seine
+    // Stelle tritt eine vollständige Rückfrage. Der Grund bleibt im Log lesbar.
+    ends('BASIS: Gemischt.\nDRAFT:\nHybrid — teils Branded House, teils', 'length')
+    const result = await vera.veraStrategyGenerator(context('b2.model', 'architecture') as never)
+    expect(result.outcome).toBe('question')
+    expect(result.truncated).toBe(false)
+    expect(result.finishReason).toBe('length')
+  })
+
+  it('GEGENPROBE: ein vollständiger Zug ist nicht gekennzeichnet', async () => {
+    const result = await vera.veraStrategyGenerator(context('b.purpose', 'pvm') as never)
+    expect(result.truncated).toBe(false)
+  })
+})

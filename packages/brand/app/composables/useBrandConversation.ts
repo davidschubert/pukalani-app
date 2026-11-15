@@ -295,6 +295,9 @@ export function useBrandConversation(
             // demselben Grund vor dem Abschluss: der Zug wird in EINEM Schritt
             // fertig und beknopft.
             if (item.confirm) store.setGeorgeMessageConfirm(item.generationId)
+            // Abgeschnitten (P17, BE-007): nur der Hinweis — ohne Feld, denn ein
+            // Gesprächszug lässt sich nicht ohne doppelte Antwort wiederholen.
+            if (item.truncated) store.setGeorgeMessageTruncated(item.generationId)
             // Der Wegweiser des Servers (§5) — gelesen, nie gerechnet.
             nextStop.value = item.next ?? null
             store.endGeorgeMessage(item.generationId)

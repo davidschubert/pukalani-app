@@ -41,6 +41,8 @@ let body: Record<string, unknown>
 let buckets: Map<string, number>
 let clientIp: string
 let routerId: string
+/** Der KI-Riegel des Cores (`aiSwitchedOn`, P17 BE-006) — Standard: an. */
+let aiOn: boolean
 
 const CLIENT_IP = '203.0.113.7'
 
@@ -185,6 +187,7 @@ vi.stubGlobal('setHeader', () => {})
 vi.stubGlobal('readValidatedBody', async (_event: H3Event, parse: (input: unknown) => unknown) => parse(body))
 vi.stubGlobal('getRouterParam', () => routerId)
 vi.stubGlobal('trustedClientIp', () => clientIp)
+vi.stubGlobal('aiSwitchedOn', async () => aiOn)
 vi.stubGlobal('useRateLimitStore', () => ({
   prefix: 'rl:',
   store: {
@@ -201,6 +204,8 @@ const postHandler = (await import('../server/api/brand/check.post'))
 const getHandler = (await import('../server/api/brand/check/[id].get'))
   .default as unknown as (event: H3Event) => Promise<BrandCheckResult>
 const { runBrandCheck } = await import('../server/utils/brandCheckRun')
+const { judgeBrandCheck } = await import('../server/utils/brandCheckJudge')
+const { fetchBrandSiteForCheck } = await import('../server/utils/brandCheckFetch')
 
 const event = { context: {} } as unknown as H3Event
 
@@ -221,7 +226,10 @@ beforeEach(() => {
   buckets = new Map()
   clientIp = CLIENT_IP
   routerId = ''
+  aiOn = true
   body = { url: 'kailua.coffee', locale: 'de' }
+  vi.mocked(judgeBrandCheck).mockClear()
+  vi.mocked(fetchBrandSiteForCheck).mockClear()
   // Die Session wird je Test gesetzt — der Normalfall dieser Route ist der Gast.
   ;(event as unknown as { context: Record<string, unknown> }).context = {}
   tablesDB.listRows.mockClear()
@@ -266,6 +274,50 @@ describe('POST /api/brand/check · der Zwischenspeicher', () => {
     expect(queries.join(' ')).toContain('kailua.coffee')
     expect(queries.join(' ')).not.toContain('utm_source')
     expect(queries.join(' ')).toContain('limit')
+  })
+})
+
+/**
+ * DER ABSCHALTER (P17, BE-006): der öffentliche Check rief das Modell bis
+ * hierher OHNE den Schalter zu fragen. Jetzt fragt er VOR der Buchung — und
+ * ein Zwischenspeicher-Treffer bleibt erreichbar, denn er kostet nichts.
+ */
+describe('POST /api/brand/check · KI abgeschaltet', () => {
+  it('⇒ 503 `check_paused`, KEIN Abruf, KEIN Modell, KEINE Buchung, keine Zeile', async () => {
+    aiOn = false
+
+    await expect(postHandler(event)).rejects.toMatchObject({
+      status: 503,
+      data: { code: 'check_paused' },
+    })
+    expect(judgeBrandCheck).not.toHaveBeenCalled()
+    expect(fetchBrandSiteForCheck).not.toHaveBeenCalled()
+    expect(buckets.size).toBe(0)
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+    const paused = logs.find(entry => entry.event === 'brand.check_paused')
+    expect(paused?.data).toEqual({ host: 'kailua.coffee' })
+  })
+
+  it('auch direkt über `runBrandCheck` (der Weg des Marktvergleichs)', async () => {
+    aiOn = false
+    await expect(runBrandCheck(event, { url: 'https://kailua.coffee/', locale: 'de', userId: 'u1', quota: 'account' }))
+      .rejects.toMatchObject({ status: 503, data: { code: 'check_paused' } })
+    expect(buckets.size).toBe(0)
+    expect(judgeBrandCheck).not.toHaveBeenCalled()
+  })
+
+  it('ein Zwischenspeicher-Treffer wird trotzdem ausgeliefert', async () => {
+    aiOn = false
+    stored = [{ $id: 'c9', $createdAt: new Date(Date.now() - 60_000).toISOString(), urlKey: 'kailua.coffee', score: 71 }]
+
+    expect(await postHandler(event)).toEqual({ ok: true, id: 'c9', cached: true })
+    expect(buckets.size).toBe(0)
+  })
+
+  it('GEGENPROBE: an ⇒ es wird gemessen und gespeichert', async () => {
+    await postHandler(event)
+    expect(judgeBrandCheck).toHaveBeenCalledTimes(1)
+    expect(tablesDB.createRow).toHaveBeenCalledTimes(1)
   })
 })
 

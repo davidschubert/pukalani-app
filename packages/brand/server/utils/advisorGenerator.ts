@@ -6,6 +6,7 @@ import {
   checkBrandChoiceDraft,
   swapBrandChoiceValueLine,
 } from '../../shared/brandChoiceOptions'
+import { brandTurnTruncated } from '../../shared/brandGeneration'
 import type { BrandSlot, BrandTeamKind } from '../../shared/slotRegistry'
 import type {
   BrandGeneratorContext,
@@ -124,6 +125,10 @@ export interface AdvisorStreamResult {
   model: string
   provider: string
   aborted: boolean
+  /** `finish_reason` des Anbieters, leer ohne Angabe oder bei Abbruch (P17, BE-007). */
+  finishReason: string
+  /** Die Decke ist gerissen (`brandTurnTruncated`) — der Text ist abgeschnitten, nicht verworfen. */
+  truncated: boolean
 }
 
 /**
@@ -172,6 +177,8 @@ export async function streamAdvisorTurn(request: AdvisorStreamRequest): Promise<
     model: result.model || requested,
     provider: result.provider,
     aborted: result.aborted,
+    finishReason: result.finishReason || '',
+    truncated: brandTurnTruncated(result.finishReason || ''),
   }
 }
 
@@ -360,6 +367,11 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
       provider: result.provider,
       promptVersion: options.promptVersion,
       aborted: result.aborted,
+      // Abgeschnitten heisst GEKENNZEICHNET, nicht verworfen (P17, BE-007): der
+      // Entwurf läuft wie jeder andere durch Lesen und Nachprüfung und bleibt
+      // ein Entwurf — das Kennzeichen reist zur Route.
+      finishReason: result.finishReason,
+      truncated: result.truncated,
     }
 
     /**
@@ -378,7 +390,10 @@ export function createAdvisorSlotGenerator(options: AdvisorSlotGeneratorOptions)
         dependencies: context.dependencies,
       })
       if ('question' in verdict) {
-        return { ...base, draft: '', message: verdict.question, outcome: 'question' }
+        // Die Rückfrage schreibt der SERVER, vollständig — sie ist nicht
+        // abgeschnitten, auch wenn der verworfene Entwurf es war. `finishReason`
+        // bleibt fürs Log stehen.
+        return { ...base, truncated: false, draft: '', message: verdict.question, outcome: 'question' }
       }
       return {
         ...base,

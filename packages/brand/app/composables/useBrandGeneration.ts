@@ -226,6 +226,9 @@ export function useBrandGeneration(
             // Anforderung 2026-09-04); ein Entwurf nie — die Route schickt sie
             // dort gar nicht erst mit.
             if (item.options?.length) store.setGeorgeMessageOptions(item.generationId, item.options)
+            // Abgeschnitten (P17, BE-007): Hinweis unter der Blase, und das Feld
+            // für „Noch einmal erzeugen" — derselbe Erzeugen-Weg wie hier.
+            if (item.truncated) store.setGeorgeMessageTruncated(item.generationId, item.slotId)
             store.applyGenerationRevision(item.revision)
             store.endGeorgeMessage(item.generationId)
             status.value = 'done'

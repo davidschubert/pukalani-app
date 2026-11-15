@@ -183,6 +183,21 @@ describe('triggerMarketBrandChecks · Abbruch und Fail-soft', () => {
     expect(updates).toEqual([{ competitorId: 'a', data: { brandCheckId: 'neu-a' } }])
   })
 
+  it('ein pausierter Check (`check_paused`, P17) beendet den Anstoss ebenfalls — nichts gelaufen, nichts gestempelt', async () => {
+    const rows = [competitor('a'), competitor('b'), competitor('c')]
+    runResults = [
+      Object.assign(new Error('paused'), { statusCode: 503, data: { code: 'check_paused' } }),
+    ]
+
+    await trigger(rows)
+
+    // Der nächste liefe in denselben Schalter — kein zweiter Versuch.
+    expect(runCalls).toHaveLength(1)
+    expect(logs.find(entry => entry.event === 'market.brand_check_skipped')?.data)
+      .toMatchObject({ status: 503, code: 'check_paused' })
+    expect(updates).toEqual([])
+  })
+
   it('ein 422 kostet nur SEINEN Kandidaten den Score', async () => {
     const rows = [competitor('tot'), competitor('lebt')]
     runResults = [

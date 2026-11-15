@@ -294,8 +294,9 @@ export async function triggerMarketBrandChecks(
       const status = statusOf(error)
       logEvent('info', 'market.brand_check_skipped', { status, code: codeOf(error) })
       // Der Konto-Deckel gilt fürs ganze KONTO — der nächste liefe in dieselbe
-      // Wand.
-      if (status === 429) break
+      // Wand. Ebenso ein pausierter Check (P17, BE-006): der Abschalter gilt
+      // für die ganze Instanz, gebucht wurde nichts.
+      if (status === 429 || codeOf(error) === 'check_paused') break
     }
   }
 

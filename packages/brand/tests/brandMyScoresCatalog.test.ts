@@ -142,6 +142,8 @@ const ERROR_KEYS = [
   'blockedTarget',
   'fetchFailed',
   'unavailable',
+  // P17 (BE-006): der Abschalter ist kein „in ein paar Minuten noch einmal".
+  'paused',
   'generic',
 ]
 
