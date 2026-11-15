@@ -62,6 +62,7 @@ const EXEMPT: Record<string, string> = {
   'scripts/ops/appwrite-mirror-prod-to-local.mjs': 'schreibt nur an den fest eingebauten lokalen Endpunkt; Production wird per ssh-SELECT gelesen',
   'scripts/ops/probe-key-scopes.mjs': 'nur GET — fragt ab, was ein Schlüssel darf',
   'scripts/ops/verify-instance-admins.mjs': 'Wächter, liest nur (Admin-Konten zählen)',
+  'scripts/ops/verify-health.mjs': 'Wächter, fragt nur öffentliche /api/health-Adressen ab — kein Schlüssel; der Hinweistext nennt lediglich den Ablageort der Migrations-Envs',
   'scripts/ops/verify-schema-parity.mjs': 'Wächter, liest nur das Schema jeder Instanz',
   'scripts/ops/verify-site-env.mjs': 'Wächter, liest per ssh nur Variablennamen und die Projekt-Id',
   'scripts/ops/verify-stale-keys.mjs': 'Wächter, findet tote Schlüssel und liest dafür nur',

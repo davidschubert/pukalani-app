@@ -3,7 +3,29 @@
  * Hat jede Instanz die Tabellen, die dort existieren SOLLEN — und dieselben
  * Spalten, wo sich zwei Instanzen eine Tabelle teilen?
  *
- *   node scripts/ops/verify-schema-parity.mjs
+ *   node --experimental-strip-types scripts/ops/verify-schema-parity.mjs        # am Mac (pnpm ops:schema-parity)
+ *   node --experimental-strip-types scripts/ops/verify-schema-parity.mjs --ci   # im täglichen Produktions-Wächter
+ *
+ * ZWEI WEGE ZUM SCHLÜSSEL (OPS-008, seit 2026-11-16):
+ *   • am Mac wie bisher aus ~/.appwrite-secrets/migrations/<name>.env;
+ *   • mit `--ci` aus der Umgebung: je Projekt EIN Schlüssel, der nur
+ *     `tables.read` und `columns.read` hat (`SCHEMA_WATCH_KEY_ACCOUNT`,
+ *     `…_ADMIN`, `…_PORTFOLIO`, `…_BRANDING`; GitHub-Umgebung
+ *     `production-watch`). Endpunkt, Projekt-Id und Database-Id sind
+ *     öffentliche Angaben und stehen unten. Fehlt ein Schlüssel, ist der Lauf
+ *     ROT — ein Wächter ohne Schlüssel hätte sonst jeden Tag grün gemeldet,
+ *     ohne etwas zu sehen. Das Protokoll in der CI ist ÖFFENTLICH: mit `--ci`
+ *     nennt der Lauf nur, was ohnehin im Repo steht (Soll-Tabellen, Layer und
+ *     Migrationsnummern), und ZÄHLT, was nur auf Production existiert
+ *     (unbekannte Tabellen, abweichende Spalten).
+ *
+ * DAZU DIE PROBEN JE LAYER (OPS-008): jedes `product.manifest.ts` nennt unter
+ * `schema.probe` die Tabelle/Spalte, die nach seiner jüngsten ablesbaren
+ * Migration existieren muss. `/api/health` jeder App prüft dieselben Proben
+ * mit ihrem Laufzeit-Schlüssel und meldet öffentlich nur „ok/behind". Dieser
+ * Lauf prüft sie über die Spaltenliste und NENNT die fehlende Migration
+ * (`brand-026`) — das ist die Antwort auf „welche fehlt?", wenn der
+ * Halbstunden-Wächter „Datenbank passt nicht zum Programm" meldet.
  *
  * WARUM ES DAS GIBT (E5 → AU4): der `system`-Layer läuft auf JEDER Instanz mit,
  * und eine neue `system`-Migration muss überall gefahren werden. Die erste
@@ -52,7 +74,15 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+/** `--ci`: Schlüssel aus der Umgebung, Protokoll ohne Namen, die nur Production kennt. */
+const CI = process.argv.includes('--ci')
+/** Öffentliche Angaben der Production-Projekte (stehen in jedem `NUXT_PUBLIC_*`). */
+const PROD_ENDPOINT = 'https://api.pukalani.app/v1'
+const PROD_DATABASE_ID = 'main'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * LAYER-BLÖCKE — benannte Konstanten, aus denen sich die Instanz-Solls weiter
@@ -547,28 +577,33 @@ const PARITY_TABLES = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...PAGES_TABLES, ...AN
  * Env-Dateien liegen (NICHT in der CI) — ein harter Fehler kostet hier also
  * kein Dauerrot.
  *
- * `ausgerollt: false` (photos; branding bis zum Launch): App existiert im
+ * `ausgerollt: false` (photos): App existiert im
  * Repo, aber kein pm2-Prozess, keine ploi-Site — fehlende Env bleibt eine
  * sichtbare Übersprungen-Zeile, das Soll steht für den Tag der Ausrollung.
- * Beim Launch das Flag mitdrehen.
+ * Beim Launch das Flag mitdrehen. (`branding` stand bis 2026-11-16 noch auf
+ * `false`, obwohl branding.supply seit dem 2026-09-01 live ist — eine fehlende
+ * Datei wäre dort nur „übersprungen" gewesen.)
+ *
+ * `app` = die App, deren Manifest sagt, welche Layer hier laufen (Proben je
+ * Layer); `project` + `ciKey` = der Weg mit `--ci`.
  *
  * `comments` ist seit F3 (2026-08-12) keine eigene Instanz mehr, sondern eine
  * Pool-Community im `account`-Projekt — der Eintrag ist RAUS.
  */
 const INSTANCES = [
-  { name: 'account', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/account.env'), soll: ACCOUNT_SOLL },
+  { name: 'account', app: 'platform', project: 'account', ciKey: 'SCHEMA_WATCH_KEY_ACCOUNT', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/account.env'), soll: ACCOUNT_SOLL },
   // Seit AH-4c heisst das Konsolen-Projekt `admin` und seine Migrations-Env
   // liegt als admin.env — der alte Zeiger auf control.env liess den Waechter
   // die Betreiber-Konsole STILL ueberspringen (Instanz fehlt = Warnzeile, aber
   // gruen; 2026-09-01 beim branding-Umzug erwischt). Der NAME bleibt
   // `control` (Ordner/Slot-Konvention), nur die DATEI zeigt auf admin.env.
-  { name: 'control', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/admin.env'), soll: CONTROL_SOLL },
+  { name: 'control', app: 'control', project: 'admin', ciKey: 'SCHEMA_WATCH_KEY_ADMIN', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/admin.env'), soll: CONTROL_SOLL },
   // Seit 2026-08-31 nach der Migrations-Konvention (Umzug mit dem
   // Ausgerollt-Flag, Davids Entscheidung): die alte
   // apps/portfolio/.env.production lag im REPO-BAUM und fehlte damit in jedem
   // Worktree — portfolio wäre dort immer „übersprungen" gewesen, mit dem Flag
   // sogar fälschlich rot.
-  { name: 'portfolio', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/portfolio.env'), soll: PORTFOLIO_SOLL },
+  { name: 'portfolio', app: 'portfolio', project: 'portfolio', ciKey: 'SCHEMA_WATCH_KEY_PORTFOLIO', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/portfolio.env'), soll: PORTFOLIO_SOLL },
   /**
    * `branding` folgt der Migrations-KONVENTION (~/.appwrite-secrets/migrations/),
    * nicht dem portfolio-Muster mit `.env.production` im Repo-Baum — so steht es
@@ -576,8 +611,8 @@ const INSTANCES = [
    * existiert, meldet der Lauf „übersprungen" statt zu scheitern (Begründung am
    * BRANDING_SOLL).
    */
-  { name: 'branding', ausgerollt: false, env: join(homedir(), '.appwrite-secrets/migrations/branding.env'), soll: BRANDING_SOLL },
-  { name: 'photos', ausgerollt: false, env: 'apps/photos/.env.production', soll: PHOTOS_SOLL },
+  { name: 'branding', app: 'branding', project: 'branding', ciKey: 'SCHEMA_WATCH_KEY_BRANDING', ausgerollt: true, env: join(homedir(), '.appwrite-secrets/migrations/branding.env'), soll: BRANDING_SOLL },
+  { name: 'photos', app: 'photos', ausgerollt: false, env: 'apps/photos/.env.production', soll: PHOTOS_SOLL },
 ]
 
 function parseEnvFile(path) {
@@ -625,6 +660,30 @@ async function columnsOf(cfg, table) {
 const found = []
 let envErrors = 0
 for (const instance of INSTANCES) {
+  if (CI) {
+    // Schlüssel aus der Umgebung des Wächters — nie aus einer Datei.
+    if (!instance.ausgerollt) {
+      console.log(`·  ${instance.name.padEnd(10)} übersprungen — nicht ausgerollt`)
+      continue
+    }
+    const key = process.env[instance.ciKey] || ''
+    if (!key) {
+      envErrors++
+      console.log(`✖  ${instance.name.padEnd(10)} Schlüssel ${instance.ciKey} fehlt in der Umgebung — Instanz bleibt ungeprüft`)
+      continue
+    }
+    const cfg = { endpoint: PROD_ENDPOINT, project: instance.project, databaseId: PROD_DATABASE_ID, key }
+    try {
+      const present = await listTables(cfg)
+      found.push({ name: instance.name, app: instance.app, cfg, soll: instance.soll, present })
+    }
+    catch (fehler) {
+      // Nur die Kurzform (z. B. „tables: HTTP 401") — nie die Antwort selbst.
+      envErrors++
+      console.log(`✖  ${instance.name.padEnd(10)} nicht lesbar (${String(fehler?.message ?? fehler).slice(0, 40)}) — Schlüssel ${instance.ciKey} abgelaufen oder ohne tables.read?`)
+    }
+    continue
+  }
   if (!existsSync(instance.env)) {
     if (instance.ausgerollt) {
       envErrors++
@@ -647,7 +706,7 @@ for (const instance of INSTANCES) {
     continue
   }
   const present = await listTables(cfg)
-  found.push({ name: instance.name, cfg, soll: instance.soll, present })
+  found.push({ name: instance.name, app: instance.app, cfg, soll: instance.soll, present })
 }
 
 if (found.length < 2) {
@@ -675,7 +734,7 @@ for (const inst of found) {
   }
   if (unknown.length) {
     warnings += unknown.length
-    console.log(`⚠  ${inst.name.padEnd(10)} Alt-/unbekannte Tabelle (Soll-Liste veraltet?): ${unknown.join(', ')}`)
+    console.log(`⚠  ${inst.name.padEnd(10)} Alt-/unbekannte Tabelle (Soll-Liste veraltet?): ${CI ? `${unknown.length} Stück — Namen am Mac: pnpm ops:schema-parity` : unknown.join(', ')}`)
   }
 }
 
@@ -704,13 +763,52 @@ for (const table of [...PARITY_TABLES].sort()) {
 if (columnFindings.length) {
   console.log('\nSpalten-Parität — es fehlt:')
   for (const f of columnFindings.sort((a, b) => a.instance.localeCompare(b.instance) || a.table.localeCompare(b.table))) {
-    console.log(`✖  ${f.instance.padEnd(10)} ${f.table}: ${f.missing.join(', ')}`)
+    console.log(`✖  ${f.instance.padEnd(10)} ${f.table}: ${CI ? `${f.missing.length} Spalte(n) — Namen am Mac: pnpm ops:schema-parity` : f.missing.join(', ')}`)
   }
 } else {
   console.log('\nSpalten-Parität: alle geteilten Tabellen deckungsgleich.')
 }
 
 // ── Fazit ────────────────────────────────────────────────────────────────────
+// ── (e) Proben je Layer: ist die jüngste ablesbare Migration gelaufen? (FATAL) ──
+// Dieselben Proben, die `/api/health` jeder App prüft (product.manifest.ts →
+// `schema.probe`), hier über die Spaltenliste — und mit NAMEN der Migration.
+// Layer und Nummer stehen im Repo; Tabellen- und Spaltennamen der Probe auch.
+let missingProbes = 0
+let probeErrors = 0
+const loadManifest = async rel => (await import(pathToFileURL(join(ROOT, rel)).href)).default
+console.log('\nProben je Layer (jüngste ablesbare Migration):')
+for (const inst of found) {
+  let probes
+  try {
+    const site = await loadManifest(`apps/${inst.app}/site.manifest.ts`)
+    probes = []
+    for (const layer of ['system', ...site.products]) {
+      const manifest = await loadManifest(`packages/${layer}/product.manifest.ts`)
+      if (manifest.schema) probes.push({ name: `${layer}-${manifest.schema.probe.migration}`, ...manifest.schema.probe })
+    }
+  }
+  catch (fehler) {
+    probeErrors++
+    console.log(`✖  ${inst.name.padEnd(10)} Manifeste nicht ladbar (${String(fehler?.message ?? fehler).slice(0, 80)}) — mit \`node --experimental-strip-types\` aufrufen`)
+    continue
+  }
+  const missing = []
+  const columnsByTable = new Map()
+  for (const probe of probes) {
+    if (!columnsByTable.has(probe.table)) columnsByTable.set(probe.table, await columnsOf(inst.cfg, probe.table))
+    const columns = columnsByTable.get(probe.table)
+    if (columns === null || (probe.column && !columns.has(probe.column))) missing.push(probe.name)
+  }
+  if (missing.length === 0) {
+    console.log(`✔  ${inst.name.padEnd(10)} alle ${probes.length} Proben da`)
+  }
+  else {
+    missingProbes += missing.length
+    console.log(`✖  ${inst.name.padEnd(10)} MIGRATION FEHLT: ${missing.join(', ')}`)
+  }
+}
+
 if (warnings > 0) {
   console.log(`\n${warnings} unbekannte/Alt-Tabelle(n) gemeldet (nicht fatal — Soll-Liste prüfen oder Cruft).`)
 }
@@ -720,11 +818,18 @@ if (envErrors > 0) {
     + 'Datei unter ~/.appwrite-secrets/migrations/ wiederherstellen (Ablage: Runbooks/Memory), erst dann ist der Lauf eine Aussage.',
   )
 }
-if (missingTables > 0 || missingColumns > 0 || envErrors > 0) {
+if (missingProbes > 0) {
+  console.log(
+    `\n${missingProbes} Probe(n) fehlen — das Programm erwartet eine Migration, die hier nicht gelaufen ist. `
+    + 'Nachholen (nach Davids Ja, erst mit --dry-run statt --prod ansehen):\n'
+    + '  pnpm migrate --app <app> --env ~/.appwrite-secrets/migrations/<projekt>.env --only <layer>-<NNN> --prod',
+  )
+}
+if (missingTables > 0 || missingColumns > 0 || envErrors > 0 || missingProbes > 0 || probeErrors > 0) {
   if (missingTables > 0 || missingColumns > 0) {
     console.log(
       `\n${missingTables} fehlende Tabelle(n), ${missingColumns} fehlende Spalte(n). `
-      + 'Nachfahren mit:  pnpm migrate --app <app>  (ggf. --layer <layer>)',
+      + 'Nachfahren mit:  pnpm migrate --app <app> --env <env-datei> --prod  (ggf. --layer <layer> oder --only <layer>-<NNN>)',
     )
   }
   process.exit(1)

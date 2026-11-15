@@ -249,7 +249,7 @@ paths:
   nach AH-4c wochenlang ungeprüft aus der Runde. Alle Prod-Migrations-Envs
   liegen unter ~/.appwrite-secrets/migrations/<name>.env (account, admin,
   portfolio, branding; portfolios Repo-Baum-Datei ist umgezogen — sie fehlte in
-  jedem Worktree). Der Wächter läuft NUR manuell auf dem Mac, nicht in der CI. Die Migrationen des Control Plane heißen seit
+  jedem Worktree). Der Wächter läuft am Mac (`pnpm ops:schema-parity`) und seit 2026-11-16 täglich im Produktions-Wächter (`--ci`, vier nur lesende Schlüssel `watch-schema-readonly` mit `tables.read` + `columns.read` in der Umgebung `production-watch`; dort ohne Namen, die nur Production kennt). Die Migrationen des Control Plane heißen seit
   2026-07-29 `control-NNN`; Dokumente von VOR dem Cutover (docs/archiv/**,
   CHANGELOG) nennen dieselben Migrationen `studio-NNN` — bewusst nicht
   umgeschrieben, das ist ein Protokoll und kein Nachschlagewerk. Die
