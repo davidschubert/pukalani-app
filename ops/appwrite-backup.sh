@@ -478,6 +478,9 @@ done
   echo "format=$FORMAT"
   echo "stamp=$STAMP"
   echo "appwrite_image=$APPWRITE_IMAGE"
+  # Der Ordner gehört zum Backup: die Compose-Datei bindet Dateien über ihren
+  # VOLLEN Pfad ein, zurückgespielt wird deshalb in denselben Ordner.
+  echo "compose_dir=$COMPOSE_DIR"
   echo "key_fingerprint=$FINGERPRINT"
   echo "databases=$DATABASE_COUNT"
   echo "database_names=$DATABASES"

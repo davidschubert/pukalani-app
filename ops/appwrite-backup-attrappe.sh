@@ -345,11 +345,19 @@ echo "── Server weg: zurückspielen aus der Box ──"
 docker volume rm appwrite_appwrite-builds >/dev/null 2>&1 || true
 rm -rf /srv/prod
 RUN="$BOX/runs/$LAST"
-NEW=/srv/neu/appwrite
+# Zurückgespielt wird in DENSELBEN Ordner wie auf dem „alten Server" — die
+# Compose-Datei bindet Dateien über ihren vollen Pfad ein.
+NEW="$SRC"
 restore() { bash /ops/appwrite-restore.sh "$@"; }
 expect "Vorschau des Zurückspielens" 0 'Vorschau — nichts geändert' restore "$RUN" --key "$KEYS/richtig.private.asc" --target "$NEW"
 [ ! -e "$NEW" ] && [ -z "$(docker ps -aq)" ] && ok "Vorschau hat nichts angelegt" || bad "Vorschau hat etwas angelegt"
 expect "Falscher privater Schlüssel" 1 'Falscher Schlüssel' restore "$RUN" --key "$KEYS/fremd.private.asc" --target "$NEW" --apply
+expect "Anderer Ordner als auf dem alten Server" 2 "gehört in den Ordner $SRC" restore "$RUN" --key "$KEYS/richtig.private.asc" --target /srv/neu/appwrite --apply
+# Ein Lauf ohne compose_dir (ältere Fassung des Backup-Skripts): die zweite Sicherung greift.
+cp -r "$RUN" /tmp/alt && grep -v '^compose_dir=' "$RUN/backup.meta" > /tmp/alt/backup.meta && ( cd /tmp/alt && sha256sum -- *.gpg backup.meta > SHA256SUMS )
+expect "Anderer Ordner, Lauf ohne compose_dir: eingebundene Datei fehlt" 1 'das gibt es auf diesem Rechner nicht' restore /tmp/alt --key "$KEYS/richtig.private.asc" --target /srv/neu/appwrite --apply
+[ -z "$(docker ps -q)" ] && ok "… und kein Dienst wurde gestartet" || bad "Dienste laufen nach dem Abbruch"
+rm -rf /srv/neu
 cp -r "$RUN" /tmp/kaputt && printf 'x' >> /tmp/kaputt/db.sql.gz.gpg
 expect "Beschädigte Datei" 1 'Prüfsummen stimmen nicht' restore /tmp/kaputt --key "$KEYS/richtig.private.asc" --target "$NEW" --apply
 cp -r "$RUN" /tmp/halb && rm /tmp/halb/config.tar.gz.gpg
@@ -372,7 +380,8 @@ back="$( cd "$NEW" && echo "SELECT HEX(secret), name FROM appwrite._1_users WHER
 case "$back" in *"00FF10"*"KLARTEXT-MARKER-DB-0"*) ok "Binärspalte und Text kommen unverändert zurück" ;; *) bad "Inhalt weicht ab: $back" ;; esac
 running="$( cd "$NEW" && docker compose ps --services --status running | sort | tr '\n' ' ' )"
 [ "$running" = 'appwrite mariadb ' ] && ok "Gestartet sind nur die genannten Dienste (appwrite, mariadb)" || bad "Laufende Dienste: $running"
-expect "Zweites Zurückspielen auf denselben Rechner" 4 'liegt schon eine Appwrite-Instanz' restore "$RUN" --key "$KEYS/richtig.private.asc" --target /srv/neu2/appwrite --apply
+rm -rf /tmp/zweit && cp -r "$RUN" /tmp/zweit && sed -i 's#^compose_dir=.*#compose_dir=/srv/neu2/appwrite#' /tmp/zweit/backup.meta && ( cd /tmp/zweit && sha256sum -- *.gpg backup.meta > SHA256SUMS )
+expect "Zweites Zurückspielen auf denselben Rechner" 4 'liegt schon eine Appwrite-Instanz' restore /tmp/zweit --key "$KEYS/richtig.private.asc" --target /srv/neu2/appwrite --apply
 
 echo
 echo "Bestanden: $PASS · Gescheitert: $FAIL"

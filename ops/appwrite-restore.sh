@@ -23,9 +23,11 @@
 #   <lauf-ordner>  ein Ordner runs/<JJJJ-MM-TT-HHMMSS> mit *.gpg, backup.meta, SHA256SUMS
 #   --key          der private Schlüssel als Datei (ASCII, ohne Passwort)
 #   --target       der neue Compose-Ordner; darf nicht existieren oder muss leer
-#                  sein. Sein NAME wird der Name des Compose-Projekts und damit
-#                  die Vorsilbe der Volumes — für einen Ersatz der Production:
-#                  denselben Namen wählen wie auf dem alten Server.
+#                  sein. Es muss DERSELBE Pfad sein wie auf dem alten Server
+#                  (steht als compose_dir in backup.meta): die Compose-Datei
+#                  bindet Dateien über ihren vollen Pfad ein, und der Name des
+#                  Ordners ist der Name des Compose-Projekts und damit die
+#                  Vorsilbe der Volumes. Das Skript prüft beides.
 #
 # SICHERUNG: das Skript weigert sich, wenn auf dem Rechner schon ein Container
 # oder ein Volume einer Appwrite-Instanz liegt. Es überschreibt nie etwas —
@@ -71,8 +73,10 @@ WAIT_UP="${RESTORE_WAIT_UP:-600}"
 VOLATILE='^_([0-9]+|console)_(audit|stats|cache|realtime|presenceLogs|abuse|schedules|sessions)(_perms)?$'
 SYSTEM_SCHEMAS="'information_schema','performance_schema','mysql','sys'"
 
+PULL_TRIES="${RESTORE_PULL_TRIES:-5}"
 WORK=''
 GNUPG_TMP=''
+APPLYING=0
 STARTED="$(date +%s)"
 
 log() { printf '%s %s\n' "$(date '+%F %T')" "$*"; }
@@ -82,6 +86,15 @@ finish() {
   trap - EXIT
   [ -n "$WORK" ] && rm -rf "$WORK"
   [ -n "$GNUPG_TMP" ] && rm -rf "$GNUPG_TMP"
+  if [ "$APPLYING" = 1 ] && [ "$code" -ne 0 ]; then
+    # Ein Abbruch mitten im Zurückspielen lässt einen halben Stand zurück, und
+    # ein zweiter Aufruf weigert sich zu Recht (Ziel nicht leer). Deshalb steht
+    # hier, wie man sauber neu beginnt.
+    log "✗ Abgebrochen (Exit $code). Der Rechner ist HALB zurückgespielt. Neu beginnen:"
+    log "    cd $TARGET && docker compose down -v ; cd / && rm -rf $TARGET"
+    log "  danach dieselbe Zeile noch einmal. Das Backup selbst ist unberührt."
+    code=1
+  fi
   exit "$code"
 }
 trap finish EXIT
@@ -122,6 +135,15 @@ BACKUP_TABLES="$(wc -l < "$WORK/counts.tsv" | tr -d ' ')"
 [ "$BACKUP_TABLES" = "$(meta tables)" ] || die "Die Zählung im Backup hat $BACKUP_TABLES Zeilen, backup.meta nennt $(meta tables) Tabellen"
 
 case "$TARGET" in /*) ;; *) TARGET="$PWD/$TARGET" ;; esac
+TARGET="${TARGET%/}"
+EXPECTED_DIR="$(meta compose_dir)"
+if [ -n "$EXPECTED_DIR" ] && [ "$TARGET" != "${EXPECTED_DIR%/}" ]; then
+  log "✗ Dieses Backup gehört in den Ordner $EXPECTED_DIR, nicht nach $TARGET."
+  log "  Die Compose-Datei bindet Dateien über ihren vollen Pfad ein; in einem anderen Ordner"
+  log "  starten einzelne Dienste nicht. Den Ordner (und den Benutzer dazu) so anlegen wie auf"
+  log "  dem alten Server und --target $EXPECTED_DIR angeben. Nichts geändert."
+  exit 2
+fi
 if [ -e "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ]; then
   log "✗ Der Zielordner $TARGET ist nicht leer. Nichts geändert."
   exit 4
@@ -154,6 +176,7 @@ if [ "$APPLY" != 1 ]; then
 fi
 
 # ── Zurückspielen ───────────────────────────────────────────────────────────
+APPLYING=1
 log "1/6 Entschlüsseln"
 for enc in "$RUN"/*.gpg; do
   plain="$WORK/$(basename "${enc%.gpg}")"
@@ -168,6 +191,27 @@ tar xzpf "$WORK/config.tar.gz" -C "$TARGET"
 [ -r "$TARGET/.env" ] && [ -r "$TARGET/docker-compose.yml" ] || die "Im Archiv der Einstellungen fehlen .env oder docker-compose.yml"
 grep -Eq '^_APP_OPENSSL_KEY_V1=.+' "$TARGET/.env" || die "In der zurückgespielten .env fehlt _APP_OPENSSL_KEY_V1"
 CONFIG_JSON="$(dc config --format json </dev/null)" || die "docker compose config scheitert im Zielordner"
+# Jede Datei, die der Stack vom Rechner einbindet, muss es hier geben — sonst
+# legt docker an ihrer Stelle einen leeren ORDNER an, und der Dienst startet
+# nie (bei der ersten Übung so geschehen: anderer Ordner als auf dem Server).
+printf '%s' "$CONFIG_JSON" | jq -r '.services[]?.volumes[]? | select(.type == "bind") | .source' > "$WORK/binds.txt"
+while read -r source; do
+  [ -n "$source" ] || continue
+  [ -e "$source" ] || die "Der Stack bindet $source ein, das gibt es auf diesem Rechner nicht. Der Compose-Ordner des alten Servers war vermutlich $(dirname "$source") — genau dorthin zurückspielen (--target)."
+done < "$WORK/binds.txt"
+
+# Die Programme (Images) ZUERST holen, mit Wiederholung: der Abruf ist der eine
+# Schritt, der an fremden Rechnern hängt, und ein Aussetzer dort soll nicht
+# mitten im Zurückspielen zuschlagen (bei der ersten Übung genau so geschehen).
+log "    Programme holen (bis zu $PULL_TRIES Versuche)"
+try=1
+# shellcheck disable=SC2086
+until dc pull --quiet --include-deps $SERVICES </dev/null >/dev/null 2>&1; do
+  [ "$try" -lt "$PULL_TRIES" ] || die "Die Programme lassen sich nicht holen (Netz? Registry?). Später noch einmal."
+  log "    Versuch $try gescheitert — warte 20 s"
+  try=$(( try + 1 ))
+  sleep 20
+done
 
 log "3/6 Datenbank starten und Dump einspielen"
 dc up -d mariadb </dev/null
@@ -229,7 +273,10 @@ while IFS="$(printf '\t')" read -r uid internal; do
 done < "$WORK/projects.tsv"
 
 log "5/6 Volumes anlegen und füllen"
-dc up --no-start </dev/null
+# Mit --services entstehen nur diese Dienste (und was sie brauchen); fehlt
+# dadurch ein Volume aus dem Backup, bricht die Prüfung gleich darunter ab.
+# shellcheck disable=SC2086
+dc up --no-start $SERVICES </dev/null
 for archive in "$WORK"/volume-*.tar.gz; do
   [ -e "$archive" ] || continue
   key="$(basename "$archive" .tar.gz)"
