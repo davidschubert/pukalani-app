@@ -6,6 +6,8 @@ export default {
   // KEIN requires auf billing: der Layer kennt billing bewusst nicht —
   // die App registriert den Access-Guard (courseAccess-Vertrag).
   hasMigrations: true,
+  // Schema-Probe (OPS-008): courses-007 legt translations auf courses UND lessons an (lessons zuletzt); 008 ändert nur Rechte.
+  schema: { latest: '008', probe: { migration: '007', table: 'lessons', column: 'translations' } },
   apiPrefixes: ['/api/courses', '/api/lessons'],
   title: { en: 'Courses', de: 'Kurse' },
   description: {

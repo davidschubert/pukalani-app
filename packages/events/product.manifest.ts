@@ -4,6 +4,8 @@ export default {
   key: 'events',
   tier: 'optional',
   hasMigrations: true,
+  // Schema-Probe (OPS-008): events-013 legt events.translations an.
+  schema: { latest: '013', probe: { migration: '013', table: 'events', column: 'translations' } },
   apiPrefixes: ['/api/events'],
   title: { en: 'Events', de: 'Events' },
   description: {
