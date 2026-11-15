@@ -12,7 +12,6 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "changelog:draft": "node --env-file=apps/comments/.env packages/admin/scripts/changelog-draft.mjs",
     "migrate": "node --experimental-strip-types scripts/migrate.mjs",
     "create-site": "node --experimental-strip-types scripts/create-site.mjs",
     "control:jobs": "node --experimental-strip-types scripts/control-jobs.mjs",
