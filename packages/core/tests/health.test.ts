@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ProductManifest } from '../shared/types/manifest'
 
 /**
  * /api/health HÄLT DAS APPWRITE-ERGEBNIS 5 SEKUNDEN (BE-002).
@@ -9,12 +10,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * wirklich fragt.
  */
 const healthGet = vi.fn<() => Promise<{ status: string }>>()
+const listRows = vi.fn<(params: { tableId: string }) => Promise<unknown>>()
 
 vi.mock('../server/lib/appwrite', () => ({
-  createAdminClient: () => ({ health: { get: healthGet } }),
+  createAdminClient: () => ({ health: { get: healthGet }, tablesDB: { listRows } }),
 }))
 
-type Handler = (event: object) => Promise<{ ok: boolean, build: string | null, reason?: string }>
+/** Ohne registrierte Layer gibt es keine Probe ⇒ ok 0/0. */
+const NO_PROBES = { state: 'ok', expected: 0, found: 0 }
+
+type Handler = (event: object) => Promise<{
+  ok: boolean
+  build: string | null
+  reason?: string
+  schema?: { state: string, expected: number, found: number | null }
+}>
 let handler: Handler
 let tenancy: { enabled?: boolean } = {}
 
@@ -22,11 +32,13 @@ beforeEach(async () => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-11-13T10:00:00Z'))
   vi.stubGlobal('defineEventHandler', (fn: unknown) => fn)
-  vi.stubGlobal('useRuntimeConfig', () => ({ public: { buildSha: 'abc1234' } }))
+  vi.stubGlobal('useRuntimeConfig', () => ({ public: { buildSha: 'abc1234', appwriteDatabaseId: 'main' } }))
   tenancy = {}
   vi.stubGlobal('useAppConfig', () => ({ pukalani: { tenancy } }))
   healthGet.mockReset()
   healthGet.mockResolvedValue({ status: 'pass' })
+  listRows.mockReset()
+  listRows.mockResolvedValue({ total: 0, rows: [] })
   // Frisches Modul je Test: der Zwischenspeicher ist Modul-Zustand.
   vi.resetModules()
   handler = (await import('../server/api/health')).default as unknown as Handler
@@ -34,6 +46,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('/api/health', () => {
@@ -75,7 +88,7 @@ describe('/api/health', () => {
 
   it('antwortet ohne `user`, mit `ok` und `build`', async () => {
     const body = await handler({ context: { user: { $id: 'u1' } } })
-    expect(body).toEqual({ ok: true, build: 'abc1234' })
+    expect(body).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES })
     expect(body).not.toHaveProperty('user')
   })
 
@@ -103,6 +116,65 @@ describe('/api/health', () => {
   })
 })
 
+const brandManifest: ProductManifest = {
+  key: 'brand', tier: 'optional', hasMigrations: true,
+  schema: { latest: '026', probe: { migration: '026', table: 'brand_checks', column: 'erasedAt' } },
+  title: { en: 'b', de: 'b' }, description: { en: 'b', de: 'b' }, icon: 'i-ph-x',
+}
+
+/**
+ * SCHEMA-STAND (OPS-008): `schema` sagt, ob die Datenbank zum ausgerollten
+ * Programm passt — `ok` bleibt davon UNBERÜHRT (seit P10 färbt `ok:false`
+ * jeden Deploy rot; ein Fehlalarm hier darf das nicht).
+ */
+describe('/api/health — Schema-Stand (OPS-008)', () => {
+  beforeEach(async () => {
+    const { registerProductManifest } = await import('../server/utils/productRegistry')
+    registerProductManifest(brandManifest)
+  })
+
+  it('Migration ausstehend ⇒ ok bleibt true, schema.state ist behind', async () => {
+    listRows.mockRejectedValue(Object.assign(new Error('Invalid query'), { code: 400, type: 'general_query_invalid' }))
+    const body = await handler({})
+    expect(body.ok).toBe(true)
+    expect(body.schema).toEqual({ state: 'behind', expected: 1, found: 0 })
+  })
+
+  it('verrät keine Tabellen-, Spalten- oder Migrationsnamen', async () => {
+    listRows.mockRejectedValue(Object.assign(new Error('x'), { code: 404, type: 'table_not_found' }))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(JSON.stringify(await handler({}))).not.toMatch(/brand|erasedAt|026/)
+  })
+
+  it('alles da ⇒ ok 1/1', async () => {
+    expect((await handler({})).schema).toEqual({ state: 'ok', expected: 1, found: 1 })
+  })
+
+  it('Lesefehler ⇒ unknown, ok bleibt true', async () => {
+    listRows.mockRejectedValue(Object.assign(new Error('x'), { code: 500, type: 'general_unknown' }))
+    const body = await handler({})
+    expect(body).toEqual({ ok: true, build: 'abc1234', schema: { state: 'unknown', expected: 1, found: null } })
+  })
+
+  it('eine hängende Probe hält die Antwort höchstens 4 s auf', async () => {
+    listRows.mockReturnValue(new Promise(() => {}))
+    const pending = handler({})
+    await vi.advanceTimersByTimeAsync(4_000)
+    expect((await pending).schema).toEqual({ state: 'unknown', expected: 1, found: null })
+  })
+
+  it('Appwrite-Check und Schema-Prüfung laufen parallel', async () => {
+    let resolveHealth: (value: { status: string }) => void = () => {}
+    healthGet.mockReturnValueOnce(new Promise(r => (resolveHealth = r)))
+    const pending = handler({})
+    await vi.advanceTimersByTimeAsync(0)
+    // Die Probe ist schon unterwegs, obwohl der Appwrite-Check noch läuft.
+    expect(listRows).toHaveBeenCalledTimes(1)
+    resolveHealth({ status: 'pass' })
+    expect((await pending).ok).toBe(true)
+  })
+})
+
 /**
  * SEC-025 (2026-11-13): Mandanten-Trennung an, aber kein Resolver registriert
  * (fehlende `NUXT_PLATFORM_CONTROL_*`). Die Plattform lehnt dann jede Anfrage
@@ -117,6 +189,15 @@ describe('/api/health — Trennung ohne Resolver (SEC-025)', () => {
     expect(body).toEqual({ ok: false, build: 'abc1234', reason: 'tenant_resolver_missing' })
   })
 
+  it('fragt Appwrite dann gar nicht — auch keine Schema-Probe', async () => {
+    tenancy = { enabled: true }
+    const { registerProductManifest } = await import('../server/utils/productRegistry')
+    registerProductManifest(brandManifest)
+    await handler({})
+    expect(healthGet).not.toHaveBeenCalled()
+    expect(listRows).not.toHaveBeenCalled()
+  })
+
   it('verrät nicht, WELCHE Einstellung fehlt', async () => {
     tenancy = { enabled: true }
     expect(JSON.stringify(await handler({}))).not.toMatch(/NUXT_|CONTROL|DATABASE|KEY/i)
@@ -126,11 +207,11 @@ describe('/api/health — Trennung ohne Resolver (SEC-025)', () => {
     tenancy = { enabled: true }
     const { registerTenantResolver } = await import('../server/utils/tenantResolver')
     registerTenantResolver(() => null)
-    expect(await handler({})).toEqual({ ok: true, build: 'abc1234' })
+    expect(await handler({})).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES })
   })
 
   it('Trennung aus ⇒ kein Grund, Antwort unverändert', async () => {
     tenancy = { enabled: false }
-    expect(await handler({})).toEqual({ ok: true, build: 'abc1234' })
+    expect(await handler({})).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES })
   })
 })
