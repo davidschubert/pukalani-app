@@ -15,6 +15,12 @@ die Empfehlung „nur Anzeige-Name" — der Gewinn ist Konsistenz der Namenswelt
 kein Kunde sieht die Projekt-Id). Vorlage: [ACCOUNT-CUTOVER.md](ACCOUNT-CUTOVER.md)
 (AH-1, pool→account — dasselbe Muster, kleinerer Datenbestand).
 
+> **Erledigt — das Werkzeug ist gelöscht (2026-11-15, Gesamtaudit OPS-005).**
+> `scripts/ops/ah4c-project-transfer.mjs`, `scripts/ops/ah4c-lib/` und der Test
+> `packages/control/tests/ah4cProjectTransfer.test.ts` liegen zuletzt in Commit
+> `9788e7ab` (`git show 9788e7ab:scripts/ops/ah4c-project-transfer.mjs`). Die
+> Schritte unten sind das Protokoll des Umzugs, nicht mehr ausführbar.
+
 **Die eine Stelle, an der es Kunden treffen kann:** die platform-App löst
 JEDEN Mandanten-Host über dieses Projekt auf (`NUXT_PLATFORM_CONTROL_*`,
 Read-only-Key). Ein toter oder falscher Verweis dort hat beim

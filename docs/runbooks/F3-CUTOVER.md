@@ -12,9 +12,14 @@ im [DECISION-LOG](../DECISION-LOG.md) vom 2026-08-12 · Muster für die
 Handgriffe: [ACCOUNT-CUTOVER.md](ACCOUNT-CUTOVER.md) (AH-1) und
 [ADMIN-CUTOVER.md](ADMIN-CUTOVER.md) (AH-4).
 
-Werkzeug: `scripts/ops/f3-comments-to-pool.mjs` · pure Regeln
-`scripts/ops/f3-lib/rules.mts` · Tests
-`packages/control/tests/f3CommentsToPool.test.ts`.
+> **Erledigt — das Werkzeug ist gelöscht (2026-11-15, Gesamtaudit OPS-005).**
+> Der Umzug ist gelaufen, das Alt-Projekt gibt es nicht mehr. Werkzeug
+> (`scripts/ops/f3-comments-to-pool.mjs`), Regeln (`scripts/ops/f3-lib/rules.mts`)
+> und Tests (`packages/control/tests/f3CommentsToPool.test.ts`) liegen zuletzt
+> in Commit `9788e7ab` (`git show 9788e7ab:scripts/ops/f3-comments-to-pool.mjs`).
+> Die Befehle unten sind das Protokoll des Laufs, nicht mehr ausführbar. Wer
+> wieder ein Silo in den Pool zieht, holt das Werkzeug aus diesem Commit und
+> prüft es gegen das heutige Schema.
 
 Die Kästchen sind **echt** und werden pro Durchlauf abgehakt. Wo eine Zahl
 steht, gehört sie eingetragen — ein Häkchen ohne Messwert ist eine Behauptung.
