@@ -24,7 +24,9 @@ Schritt nennt, woher etwas kommt und woran man erkennt, dass er gelungen ist.
 5. Die Adresse `api.pukalani.app` auf den neuen Server zeigen lassen (§ 4.5).
 6. Proben (§ 4.6), danach das Backup auf dem neuen Server wieder einrichten (§ 6).
 
-Dauer: siehe das Protokoll der Übungen (§ 8).
+Dauer in der Übung vom 2026-11-15: vom Herunterladen bis zur laufenden Instanz
+rund drei Minuten für die Kern-Dienste, rund sechs für alles — dazu das Mieten
+des Servers und das Umstellen der Adresse (§ 8).
 
 ## 2 · Was im Backup liegt — und was nicht
 
@@ -88,7 +90,7 @@ beim Zurückspielen.
 
 | Was | Wo |
 | --- | --- |
-| Die Backups | Hetzner Storage Box, Ordner `backups/appwrite/runs/`. Zugang über das Hetzner-Konto (Konsole → Storage Box). Benutzername und Adresse stehen dort; SSH läuft auf Port 23 |
+| Die Backups | Hetzner Storage Box, Ordner `backups/appwrite/runs/`. Zugang über das Hetzner-Konto (Konsole → Projekt → Storage Boxes). Benutzername und Adresse stehen dort; SSH läuft auf Port 23. Die Box ist nur aus dem Hetzner-Netz erreichbar („Externe Erreichbarkeit“ ist aus) |
 | Der private Schlüssel | in Davids Passwort-Managern **NordPass** und **Apple Passwörter**, jeweils als Eintrag „Pukalani Appwrite Backup – privater Schlüssel“. Nicht auf dem Server, nicht auf der Storage Box, nicht im Repo |
 | Zugang zum Hetzner-Konto und zu Cloudflare (für die Adresse) | Passwort-Manager |
 | Die Skripte | dieses Repo, Ordner `ops/` (öffentlich lesbar, auch ohne Rechner mit Checkout) |
@@ -101,8 +103,10 @@ beim Zurückspielen.
 - [ ] Hetzner Cloud: Server mit Ubuntu 24.04, mindestens die Größe des alten
       (4 GB RAM genügen zum Starten, der alte hat 8 GB), Standort Deutschland.
       Firewall: 22, 80, 443 offen.
-- [ ] Einen Benutzer anlegen, der Docker bedienen darf (auf dem alten Server
-      heißt er `ploi`), und als dieser anmelden.
+- [ ] Den Benutzer `ploi` anlegen (`sudo adduser ploi`) und als dieser
+      anmelden. Der Name ist nicht beliebig: zurückgespielt wird nach
+      `/home/ploi/appwrite`, weil die Compose-Datei drei Dateien über genau
+      diesen Pfad einbindet (§ 5).
 - [ ] Docker mit Compose, dazu `gpg`, `jq`, `rsync`:
 
 ```bash
@@ -120,6 +124,9 @@ eine leere Liste zeigt.
       ablesen. Kommt man mit keinem Schlüssel mehr hinein (der alte Server ist
       weg): dort ein neues Passwort setzen oder den eigenen öffentlichen
       SSH-Schlüssel hinterlegen.
+- [ ] Die Box antwortet nur Rechnern im Hetzner-Netz. Ein neuer Hetzner-Server
+      erreicht sie; von einem anderen Rechner aus vorher in der Konsole
+      „Externe Erreichbarkeit“ einschalten (und danach wieder aus).
 - [ ] Die vorhandenen Läufe ansehen und den jüngsten holen:
 
 ```bash
@@ -161,22 +168,24 @@ curl -fsSLo ~/restore/appwrite-restore.sh https://raw.githubusercontent.com/davi
 - [ ] Vorschau — ändert nichts, prüft Prüfsummen, Schlüssel und Rechner:
 
 ```bash
-bash ~/restore/appwrite-restore.sh ~/restore/lauf --key ~/restore/backup-schluessel.asc --target ~/appwrite
+bash ~/restore/appwrite-restore.sh ~/restore/lauf --key ~/restore/backup-schluessel.asc --target /home/ploi/appwrite
 ```
 
-Der Ordnername am Ende von `--target` wird der Name des Compose-Projekts und
-damit die Vorsilbe der Volumes. Für einen Ersatz der Production: `appwrite`,
-wie auf dem alten Server.
+`--target` ist der Ordner, in dem die Instanz auf dem alten Server lag; er
+steht als `compose_dir` in `backup.meta`, und das Skript lehnt jeden anderen
+ab. Sein letzter Teil (`appwrite`) wird der Name des Compose-Projekts und
+damit die Vorsilbe der Volumes.
 
 - [ ] Zurückspielen — dieselbe Zeile mit `--apply`:
 
 ```bash
-bash ~/restore/appwrite-restore.sh ~/restore/lauf --key ~/restore/backup-schluessel.asc --target ~/appwrite --apply
+bash ~/restore/appwrite-restore.sh ~/restore/lauf --key ~/restore/backup-schluessel.asc --target /home/ploi/appwrite --apply
 ```
 
-Das Skript geht sechs Schritte: entschlüsseln, Einstellungen ablegen,
-Datenbank starten und Dump einspielen, **zählen**, Volumes füllen, alles
-starten. Gezählt wird, bevor Appwrite startet: jede Tabelle gegen die Zählung
+Das Skript geht sechs Schritte: entschlüsseln, Einstellungen ablegen (und die
+Programme holen, mit Wiederholung), Datenbank starten und Dump einspielen,
+**zählen**, Volumes füllen, alles starten. Bricht es mittendrin ab, nennt es
+den Befehl, mit dem man sauber neu beginnt; das Backup bleibt unberührt. Gezählt wird, bevor Appwrite startet: jede Tabelle gegen die Zählung
 aus dem Backup, dazu die Konten je Projekt. Abweichen dürfen nur Tabellen, in
 die Appwrite laufend schreibt (Sitzungen, Statistik, Protokolle). Weicht etwas
 anderes ab, startet die Instanz nicht.
@@ -242,6 +251,19 @@ in der Übung, § 7) und das Fehlende von dort holen.
 - **Der Schlüssel im Passwort-Manager ist der einzige Weg in die Backups.**
   Geht er verloren, sind alle Läufe wertlos. Er liegt deshalb an zwei Orten.
   Wird er getauscht (§ 6.5), bleiben ältere Läufe nur mit dem ALTEN lesbar.
+- **Derselbe Ordner wie auf dem alten Server.** Die Compose-Datei bindet drei
+  Dateien über ihren VOLLEN Pfad ein (`/home/ploi/appwrite/clickhouse-…`,
+  `patches/…`). In einem anderen Ordner legt docker an ihrer Stelle leere
+  Ordner an, und ClickHouse startet nie („Is a directory“) — in der Übung so
+  erwischt. Das Skript prüft den Ordner jetzt vor dem ersten Handgriff.
+- **Ohne den Schlüssel aus der `.env` gibt es keine Fehlermeldung, sondern
+  Datenmüll.** In der Gegenprobe (nur `_APP_OPENSSL_KEY_V1` ersetzt) lief die
+  Instanz „gesund“ an; die Anmeldung scheiterte mit 401, und eine Datei aus
+  einem verschlüsselten Bucket kam mit HTTP 200 und falschem Inhalt zurück.
+  „Läuft“ heißt also nichts — erst Anmeldung und Datei beweisen es (§ 4.6).
+- **Der Abruf der Programme kann reißen.** Beim ersten Anlauf der Übung brach
+  Docker Hub mitten im Holen ab. Das Skript holt sie deshalb zuerst und
+  versucht es bis zu fünfmal.
 - **Gleiche Appwrite-Version.** Die Compose-Datei kommt aus dem Backup, also
   startet dieselbe Version, die den Dump geschrieben hat. Nicht „bei der
   Gelegenheit“ eine neuere einsetzen: ein Dump trägt das Schema seiner Version.
@@ -308,8 +330,7 @@ Vorschau — ein Zeitplan ohne den Schalter sichert nichts.
 
 Der Produktions-Wächter fragt das Tor täglich und wird rot, wenn der letzte
 gute Lauf älter als 26 Stunden ist oder der letzte Versuch gescheitert ist
-(`docs/runbooks/PRODUKTIONS-ALARM.md`; der Schritt im Wächter wird
-eingeschaltet, sobald das neue Skript auf dem Server läuft). Ein gescheiterter Lauf lässt alle
+(`docs/runbooks/PRODUKTIONS-ALARM.md`). Ein gescheiterter Lauf lässt alle
 früheren Läufe liegen und nennt den Schritt, an dem er scheiterte:
 
 | Schritt | Bedeutung | Was tun |
@@ -329,10 +350,13 @@ früheren Läufe liegen und nennt den Schritt, an dem er scheiterte:
 - Auf der Box räumt das Skript getrennt auf, und nur nach dem NAMEN des
   Ordners: älter als 30 Tage, nie die jüngsten sieben, höchstens fünf je Lauf.
   Was nicht wie ein Lauf heißt, fasst es nicht an.
-- Zweites Netz: tägliche Schnappschüsse der Storage Box (Hetzner-Konto →
-  Storage Box → Snapshots). Ein Schnappschuss lässt sich vom Server aus nicht
-  löschen. Im Ernstfall dort einen Stand öffnen, wenn auf der Box selbst
-  etwas fehlt.
+- Zweites Netz: tägliche Schnappschüsse der Storage Box, eingeschaltet am
+  2026-11-15 (Hetzner-Konto → Storage Box → Snapshots: täglich 05:00 UTC, die
+  letzten zehn bleiben). Ein Schnappschuss lässt sich vom Server aus nicht
+  löschen. Im Ernstfall dort einen Stand öffnen, wenn auf der Box selbst etwas
+  fehlt. Achtung: „Wiederherstellen“ eines älteren Schnappschusses löscht alle
+  neueren — zum Nachsehen stattdessen „Snapshot-Verzeichnis anzeigen“
+  einschalten und die Dateien aus `.zfs/snapshot/` holen.
 
 ### 6.5 Den Schlüssel tauschen
 
@@ -368,11 +392,16 @@ noch berührt. Muss mit „Gescheitert: 0“ enden.
 - [ ] Einen eigenen, leeren Rechner nehmen — nie den mit der Entwicklungs-
       Instanz (das Skript weigert sich dort ohnehin). Bewährt: eine
       Linux-Maschine in OrbStack, die danach gelöscht wird.
-- [ ] § 4.1 bis § 4.4, mit einem Zusatz am letzten Befehl, damit die Kopie
-      nichts verschickt und kein Zertifikat erneuert:
+- [ ] § 4.1 bis § 4.4 (auch in der Übung nach `/home/ploi/appwrite`), mit einem
+      Zusatz am letzten Befehl, damit die Kopie nichts verschickt und kein
+      Zertifikat erneuert:
       `--services "mariadb redis clickhouse appwrite traefik"`
-- [ ] Proben: die Zählung des Skripts, eine Anmeldung mit einem Demo-Konto,
-      eine Datei aus einem verschlüsselten Bucket.
+- [ ] Proben, in der Maschine selbst (die Adresse zeigt ja auf Production):
+      `curl --resolve api.pukalani.app:443:127.0.0.1 https://api.pukalani.app/v1/health/version`,
+      genauso eine Anmeldung mit einem Demo-Konto
+      (`POST /v1/account/sessions/email`, Kopfzeile `X-Appwrite-Project: account`)
+      und eine Datei aus dem Bucket `avatars` — ihre Prüfsumme gegen das
+      Ursprungsbild des Demo-Kontos, nicht nur gegen die Antwort.
 - [ ] Gegenprobe: in der `.env` der Kopie `_APP_OPENSSL_KEY_V1` durch einen
       anderen Wert ersetzen, `docker compose up -d appwrite` — die Datei darf
       sich jetzt nicht mehr lesen lassen.
@@ -384,3 +413,8 @@ noch berührt. Muss mit „Gescheitert: 0“ enden.
 | Datum | Was | Dauer | Ergebnis |
 | --- | --- | --- | --- |
 | 2026-11-15 | Attrappe (`ops/appwrite-backup-attrappe.sh`) | rund 5 min | bestanden, alle Gegenproben rot wie erwartet |
+| 2026-11-15 | Echtes Backup: Lauf vom selben Tag von der Storage Box geholt, in einer eigenen Linux-Maschine (OrbStack) zurückgespielt, nur Kern-Dienste | Herunterladen 14 s · Zurückspielen bis „gesund“ 168 s (58 s, wenn die Programme schon da sind) · die übrigen Programme für einen vollen Start 158 s · Maschine und Docker davor 47 s | 908 von 908 Tabellen zählgleich, Konten je Projekt gleich; https mit dem Zertifikat aus dem Backup; Demo-Konto meldet sich an; Profilbild byte-gleich mit dem Ursprungsbild. Gegenprobe ohne den Schlüssel aus der `.env`: Anmeldung 401, Datei unlesbar. Zwei Funde, beide im Skript behoben: Abruf der Programme riss ab; anderer Ordner als auf dem Server ⇒ ClickHouse startete nicht. Danach alles gelöscht |
+
+Nicht geübt: ein voller Start mit Worker und Zeitplan-Diensten, ein echter
+Ersatz-Server mit Umstellen der Adresse, der Abruf von der Box ohne den alten
+Server.
