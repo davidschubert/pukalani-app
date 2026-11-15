@@ -30,6 +30,94 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P11 — Backup der Datenbank: verschlüsselt, geprüft, einmal zurückgespielt ✅ 2026-11-15
+
+**Was.** Elftes und letztes Umsetzungs-Paket der Stufe „Jetzt" aus dem
+Gesamtaudit 2026-11 (Finding OPS-001), Pull Requests 166, 167, 168 und ein
+Doku-Nachtrag. Davids Entscheidung vom 2026-11-12: Das Backup nimmt den
+Schlüssel mit, mit dem Appwrite Daten verschlüsselt, wird verschlüsselt
+abgelegt und geprüft; die Wiederherstellung wird einmal geübt und
+aufgeschrieben. Acht weitere Antworten am 2026-11-15 (DECISION-LOG).
+
+1. **Was ein Lauf ablegt.** `ops/appwrite-backup.sh` schreibt je Lauf einen
+   Ordner `runs/<Zeitstempel>/`: Dump, sechs Volumes, die Einstellungen
+   (`.env`, Compose-Datei, Override, `patches/`) und die Zählung je Tabelle.
+   Vorher fehlte die `.env` — und mit ihr `_APP_OPENSSL_KEY_V1`, ohne den ein
+   Dump an allen verschlüsselten Stellen unlesbar ist.
+2. **Verschlüsselt mit einem öffentlichen Schlüssel** (`gpg`, war auf dem
+   Server schon da). Der private Schlüssel liegt nur in Davids zwei
+   Passwort-Managern; der Server kann seine eigenen Backups nicht lesen.
+   Vorher lag alles im Klartext, auch auf der Storage Box.
+3. **Löschungen schlagen nicht mehr durch.** Abgeglichen wird ohne
+   `--delete`. Die Box hält 30 Tage, der Server 14; aufgeräumt wird auf der
+   Box nur nach dem Namen des Ordners, nie die jüngsten sieben, höchstens
+   fünf je Lauf. Dazu tägliche Schnappschüsse der Box (zehn Stände).
+4. **Der Lauf prüft sich selbst:** Dump vollständig, Tabellen im Dump gegen
+   die Datenbank und gegen den letzten guten Lauf, Größen, Prüfsummen auf der
+   Box. Ein Fehler gleicht nichts ab und lässt alle früheren Läufe liegen.
+   Ohne Schalter zeigt das Skript nur, was es täte; der Zeitplan ruft `--run`.
+5. **Alarm.** Der Produktions-Wächter fragt täglich über das Tor-Skript
+   (`backup-status`, eine Zeile aus Wörtern und Zahlen) und wird rot, wenn der
+   letzte Lauf gescheitert ist oder der Lauf dieser Nacht fehlt.
+6. **Eine Volume-Liste** (`ops/appwrite-volumes.conf`) für Backup,
+   Wiederherstellung und Spiegel; Volume-Namen kommen aus `docker compose
+   config`. Vorher sicherte das Backup drei Volumes, der Spiegel vier andere.
+7. **Wiederherstellung.** `ops/appwrite-restore.sh` spielt einen Lauf auf
+   einen Rechner ohne Appwrite zurück und zählt jede Tabelle gegen das
+   Backup, bevor die Instanz startet. Runbook
+   [APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md):
+   Ernstfall Schritt für Schritt, Betrieb, Fallen, Protokoll.
+
+**Beweis.** Attrappe (`ops/appwrite-backup-attrappe.sh`: Wegwerf-Container
+mit eigenem Docker-Dienst, echte MariaDB, echtes gpg): 85 Proben, darunter
+leerer, abgeschnittener und gescheiterter Dump, fehlendes und unbekanntes
+Volume, falscher Schlüssel, Ablage nicht erreichbar, geschrumpfte Datenbank —
+jeweils Fehler, kein Abgleich, frühere Läufe unberührt. Auf dem Server am
+2026-11-15: drei Läufe mit Exit 0 (908 Tabellen, 25 MB, 15 s), der dritte von
+cron selbst gestartet; Prüfsummen auf der Box gerechnet und gleich; der
+Server kann den Lauf nicht öffnen. **Übung:** ein Lauf von der Box in eine
+eigene Linux-Maschine, 908 von 908 Tabellen zählgleich, ein Demo-Konto meldet
+sich an, ein Profilbild aus einem verschlüsselten Bucket ist byte-gleich mit
+dem Ursprungsbild; https antwortet mit dem Zertifikat aus dem Backup.
+**Gegenprobe:** nur `_APP_OPENSSL_KEY_V1` ersetzt — Anmeldung 401, Datei
+unlesbar. Rund drei Minuten vom Herunterladen bis zur laufenden Kern-Instanz.
+Probealarm: Backup-Blick rot ⇒ Issue ⇒ Mail, nächster Lauf entwarnt. Danach
+gelöscht (Davids Ja): die alten unverschlüsselten Kopien auf Server und Box.
+
+**Nicht geprüft.** Der Lauf um 03:30 in der Nacht selbst (der Wächter meldet
+sein Ausbleiben). Ein voller Start der Kopie mit Worker und Zeitplan-Diensten,
+ein echter Ersatz-Server mit Umstellen der Adresse, der Abruf von der Box
+ohne den alten Server. Reste: OPEN-ITEMS BK1.
+
+**Gelernt:** (1) **Ohne den Schlüssel gibt es keinen Fehler, sondern
+Datenmüll.** Mit fremdem `_APP_OPENSSL_KEY_V1` startete die Kopie „gesund";
+die Anmeldung scheiterte, und eine verschlüsselte Datei kam mit HTTP 200 und
+falschem Inhalt. „Läuft" beweist nichts — erst eine Anmeldung und eine Datei,
+gemessen an einem Maßstab von außen (dem Ursprungsbild), nicht an der Antwort
+selbst. (2) **Die Übung findet, was die Attrappe nicht kennt.** Zwei Funde
+erst mit dem echten Backup: Die Compose-Datei bindet Dateien über ihren
+vollen Pfad ein, in einem anderen Ordner startete ClickHouse nie; und der
+Abruf der Programme riss mitten im Zurückspielen ab. Beides prüft das Skript
+jetzt vor dem ersten Handgriff, und die Attrappe bindet seitdem wie der
+Server ein. (3) **Ein Volume-Name ist nicht Vorsilbe plus Schlüssel.**
+`appwrite-builds` heißt seit 2.7 auch als Volume so; daneben lag der alte
+Rest, und der Spiegel las ihn. Namen kommen aus `docker compose config`.
+(4) **Zwei Shell-Fallen:** `docker compose exec -T` liest die
+Standard-Eingabe leer (in `ssh … 'bash -s'` verschluckt es den Rest des
+Skripts), und `… | awk '{…; exit}'` oder `… | head -1` schließt die Pipe
+früh — mit `pipefail` ein Fehler 141, und nur manchmal: Die Vorschau lief,
+der Lauf direkt danach nicht. (5) **Lokal grün war zweimal nicht grün in der
+CI.** Ein Stellvertreter nutzte `rev`, das unter Linux an binären Bytes
+abbricht; und ein Test lief auf dem Runner von `main` über die 5-s-Frist —
+`Test` rot, Ausliefern übersprungen, das Tor hat gehalten. Tests, die
+Shell-Skripte starten, einmal im Linux-Container laufen lassen und der Datei
+eine eigene Frist geben. (6) **Ein Auftrag kann einen Pfad nennen, den es
+nicht gibt.** `/usr/src/code/appwrite` ist der Compose-Ordner von INNEN
+(Container des Upgrade-Werkzeugs); auf dem Server heißt er
+`/home/ploi/appwrite`. Erst nachsehen, dann schreiben. (7) **Schnappschüsse
+frieren auch ein, was weg soll.** Die Uhrzeit des ersten Schnappschusses
+wurde so gelegt, dass die alten Klartext-Kopien vorher gelöscht waren.
+
 ### GA1 P10 — Rückweg bei einer schlechten Version ✅ 2026-11-15
 
 **Was.** Zehntes Umsetzungs-Paket aus dem Gesamtaudit 2026-11 (Finding
