@@ -30,6 +30,68 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P19 — Insights: Änderungen an Veröffentlichtem laufen durch die Prüfregeln; Änderungshinweis ✅ 2026-11-16
+
+**Was.** Fünftes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Finding BE-009, „Mittel"). Zwei Pull Requests: 182 (Merge
+`61b9d0a4`, die Prüfung) und der zweite mit dem Änderungshinweis und dieser
+Doku. Davids Entscheidung vom 2026-11-12 („erst prüfen, dann
+veröffentlichen"), dazu vier Antworten per Klick am 2026-11-16 (DECISION-LOG).
+
+1. **Die Lücke.** Die sieben Prüfregeln liefen nur beim Zustandswechsel. Das
+   Speichern im Editor schrieb in jedem Zustand — an einem veröffentlichten
+   Artikel war jede Änderung sofort öffentlich, ohne Beleg-Prüfung und ohne
+   Herabsetzungs-Riegel. Gemessen: drei Wege können einen veröffentlichten
+   Artikel ändern (Zustand wechseln, Speichern, Übersetzen), nur einer prüfte.
+2. **Eine Stelle.** `insightsPublicationGate` ist der einzige Einstieg der
+   Regeln; Zustandswechsel und Speichern rufen ihn. Beim Speichern laufen die
+   Regeln ohne Abruf immer, fremde Seiten nur für Belege mit neuer Adresse
+   oder neuem Zitat — ein Tippfehler kostet keinen Abruf, und eine fremde
+   Seite, die sich geändert hat, blockiert keine Korrektur am Text.
+3. **Nicht bestanden.** Nichts wird geschrieben, online bleibt die geprüfte
+   Fassung. Die Antwort ist eine 200 mit der Liste der Stellen
+   (`saved: false`), wie beim Zustandswechsel. Der Editor behält die Eingabe
+   und nennt beide Auswege; „Zurückziehen" geht auch mit ungespeicherten
+   Änderungen und lässt das Formular stehen.
+4. **Sicherung in der Schreib-Funktion.** `saveInsightsPostRow` nimmt einen
+   öffentlichen Stand nur mit einem Freigabe-Zeichen an, das allein die
+   Prüfung für genau diesen Stand ausstellt (sonst 500 `gate_skipped`). Der
+   Übersetzen-Lauf bekommt ein enges Zeichen: nur die ausgeblendete zweite
+   Fassung darf sich ändern. Ein Wächter-Test zählt die Stellen, die die
+   Beitrags-Tabelle anfassen, und die Aufrufer der Schreib-Funktion.
+5. **Änderungshinweis (Davids Wunsch).** Unter einem geänderten Artikel steht
+   klein, was wann geändert wurde. Freiwillig je Änderung; das Datum setzt der
+   Server; den Text schlägt auf Knopfdruck ein Modell vor, ein Mensch
+   bestätigt. Migration `insights-011` (eine Textspalte), auf Production mit
+   Davids Ja VOR dem Merge gefahren.
+
+**Beweise.** Gegen die alte Route sind 12 der 30 neuen Tests rot, mit der
+neuen alle grün. Lokal gegen den Dev-Server mit einem Test-Artikel:
+veröffentlichen, regelwidrig ändern (abgelehnt, die Fassung für Leser bleibt
+Byte für Byte), regelkonform ändern (geht durch); im Editor geklickt
+(Hinweis, Zurückziehen behält die Eingabe). Änderungshinweis: Datum vom
+Server, ein erfundenes Datum wird nicht übernommen, ein echter KI-Vorschlag
+(602 Token hinein, 52 heraus, rund ein Zehntel Cent). PR 182 live auf allen
+acht Hosts (`/api/health` → `.build` = `61b9d0a4`, `ok:true`).
+
+**Nicht geprüft.** Klicks hinter der Anmeldung auf Production — dort ist noch
+kein Artikel veröffentlicht (OPEN-ITEMS 19 · BI5). Der Knopf „Vorschlag
+holen" als Klick im Editor (die Route dahinter lief per Skript).
+
+**Gelernt:** Eine Sicherung, die an einem ÜBERGANG hängt, schützt den Inhalt
+nur bis zum nächsten Weg, der den Inhalt ohne Übergang ändert. Die Regeln
+entstanden für „Entwurf → Prüfung → Freigabe"; das Bearbeiten danach kam mit
+dem Zustand „aktualisiert" dazu und lief daran vorbei. Seither gilt: die
+Sicherung gehört in die Schreib-Funktion (ein öffentlicher Stand braucht ein
+Zeichen der Prüfung), nicht in jede Route, die sich daran erinnern muss.
+Zweitens: ein neuer KI-Weg steht in ZWEI Listen (`scripts/check-ai-routing.mjs`
+und `packages/brand/tests/brandAiCallSites.test.ts`) — die zweite fiel erst im
+vollen Testlauf auf, der Layer-Test allein war grün. Drittens: wer eine
+Spalte anlegt, zieht seit 2026-11-16 `schema` im `product.manifest.ts` nach
+und liest lokal `/api/health`, bevor er zusammenführt.
+
+---
+
 ### GA1 Handgriffe — OpenRouter-Schalter, Anmelde-Regeln auf Production, Klick-Proben ✅ 2026-11-15
 
 Drei Dinge, die nach den Paketen des Gesamtaudits als Handgriffe offen waren.
