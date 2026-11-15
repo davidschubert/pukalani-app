@@ -63,6 +63,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Appwrite-Key rotieren |
 | [runbooks/CI-SCHLUESSEL-TAUSCHEN.md](runbooks/CI-SCHLUESSEL-TAUSCHEN.md) | Die zwei SSH-Schlüssel der CI (Ausliefern, Wächter): wo sie liegen, was sie dürfen, tauschen ohne Stillstand, Tor-Skript auf appwrite-prod |
 | [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Wer hält welchen Schlüssel im Projekt `control` — und wie man das nachmisst |
+| [runbooks/APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md) | **Appwrite-Server weg:** aus dem nächtlichen Backup auf der Storage Box und dem einen Schlüssel zurück zur laufenden Instanz — Schritt für Schritt, dazu Betrieb des Backups, Übung, Protokoll |
 | [runbooks/APPWRITE-PROD-SPIEGEL.md](runbooks/APPWRITE-PROD-SPIEGEL.md) | Prod-Appwrite 1:1 in die lokale OrbStack-Appwrite spiegeln (Skript, was lokal bewusst anders ist, Rückweg) |
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
 | [runbooks/AI-RUNNER-BETRIEB.md](runbooks/AI-RUNNER-BETRIEB.md) | AI-Runner im Betrieb: einen Testbefehl auf dem Rechner freigeben, was bei „nicht erlaubt“ zu tun ist, wann ein Auftrag als geprüft gilt, Fristen für Protokolle und Ereignisse |

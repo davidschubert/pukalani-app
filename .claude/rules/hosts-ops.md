@@ -155,7 +155,8 @@ paths:
   `authorized_keys` (kein Terminal, keine Weiterleitung), auf appwrite-prod
   NUR der Wächter-Schlüssel und nur mit festem Befehl: sshd führt dafür immer
   `~/bin/pukalani-cert-gate.sh` aus (Quelle `ops/appwrite-cert-gate.sh`,
-  erlaubt `probe`, `renew`, `reset-account`; Einspielen nur von Hand). Vom
+  erlaubt `probe`, `renew`, `reset-account`, `backup-status`; Einspielen nur
+  von Hand). Vom
   App-Server führt KEIN SSH-Weg zum Appwrite-Server. DER SCHLÜSSEL LIEGT NIE
   NEBEN FREMDEM CODE: `deploy.yml` baut im Job `build` ohne jedes Secret und
   liefert im Job `deliver` ohne `pnpm` aus; `pnpm check:workflows` hält das
