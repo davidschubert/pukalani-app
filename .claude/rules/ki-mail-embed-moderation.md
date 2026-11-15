@@ -167,6 +167,12 @@ paths:
   in jeder App an, ohne Schalter (hosts-ops.md, „HERKUNFTSPRÜFUNG").
   Transparenter Hintergrund NUR bei theme=auto. localhost:PORT↔PORT ist
   same-SITE — echtes Cross-Site-Gastverhalten braucht echte Domains.
+  LOKALE EINBETTER (`http://localhost:*`, `http://127.0.0.1:*`) stehen in
+  KEINER `app.config.ts` (BE-023, seit 2026-11-15): der Layer hängt sie selbst
+  an (`comments/server/utils/embedStaticOrigins.ts`), nur im Dev-Server
+  (`import.meta.dev`, auch die E2E-Suite) oder mit
+  `NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true` — die Variable auf keinem Server
+  setzen. Ein Produktions-Build liefert sie nicht mehr aus.
 - Moderation: Zweiphasen-Hide + Cascade gehören dem comments-Layer
   (commentModeration.ts) — admin-Routen + Auto-Hide teilen sie. Eskalation:
   registerReportEscalationHandler (moderation zählt, Owner reagiert);
@@ -175,5 +181,5 @@ paths:
   openReportsForTarget sind die moderation-Verträge für Resolve/Assist/Bulk.
 - Microcache: createMicrocache() (core) NUR für user-agnostische GETs —
   Gast-Kommentare Seite 1 (10s), öffentlicher Changelog (Write-invalidiert),
-  App-/api/stats (60s). NIE Antworten mit Session-Daten cachen; kein
+  App-/api/stats (10s, nur ohne Mandant — mit Mandant 404, BE-023). NIE Antworten mit Session-Daten cachen; kein
   SSR-Seiten-SWR (Session-State steckt im HTML).

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * H3-Pool-Isolation — LIVE-DB-Beweis (repeatable). Ergänzt den pure-logic-
- * Beweis (spikes/s5-pool-silo/test.mjs) um einen echten Appwrite-Roundtrip:
+ * Beweis (der Spike s5-pool-silo, Ergebnis in
+ * docs/archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md) um einen echten Appwrite-Roundtrip:
  * seedet Rows für ZWEI Tenants (ta/tb) in den gepoolten Tabellen und prüft,
  * dass die scopeQuery-Filterung (Query.equal('communityId', …)) auf DB-Ebene
  * wirklich isoliert — für comments UND reports (die Tabellen, die die

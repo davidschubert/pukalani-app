@@ -124,12 +124,12 @@ paths:
   Bewusst KEINE Live-Propagation (wie themeSettings.defaultThemeId). Beweis:
   `packages/onboarding/scripts/verify-community-favicon.mjs` (14, Gegenproben).
 - `createRow<TenantRow>` verlangt ALLE Spalten explizit (bewusst) — eine neue
-  communities-Spalte erzwingt eine Entscheidung an DREI Anlegestellen:
-  control/tenants/index.post.ts + onboardingProvision.ts (der DATEIname blieb)
-  + `scripts/ops/f3-lib/rules.mts` (`communityRowData`, das F3-Werkzeug — hier
-  stand bis 2026-08-17 „BEIDEN", und die dritte Stelle fand nur der Wächter
-  `packages/control/tests/f3CommentsToPool.test.ts`, der genau diese Liste
-  gegen die Route nagelt). Folge: die Migration MUSS vor dem Code-Deploy
+  communities-Spalte erzwingt eine Entscheidung an ZWEI Anlegestellen:
+  control/tenants/index.post.ts + onboardingProvision.ts (der DATEIname blieb).
+  (Bis 2026-11-15 gab es eine dritte, das erledigte F3-Umzugs-Werkzeug
+  `scripts/ops/f3-lib/rules.mts` samt Wächter-Test — mit OPS-005 gelöscht,
+  damit ein erledigtes Werkzeug nicht bei jeder Spalte mitgepflegt wird.)
+  Folge: die Migration MUSS vor dem Code-Deploy
   laufen, sonst bricht das Anlegen einer Community.
 - Schriften, 2 Rollen (Text + Überschriften, + fixe Mono — nie mehr als 3):
   Registry-Einzelfamilien in app/assets/css/fonts.css (build-prozessiert →

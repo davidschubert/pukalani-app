@@ -33,6 +33,11 @@ niemand weiß, ob ein Häkchen noch Arbeit bedeutet.
 - **Archiv** `docs/archiv/` (+ `archiv/audits/`) — ausgeführte Pläne und
   Audits. Wertvoll als Begründung und Rezept, aber KEINE Arbeitsliste:
   offene Kästchen sind bewusst zu Aufzählungen entschärft.
+  Seit 2026-11-15 (OPS-005) auch `archiv/skripte/`: einmalige Betriebs-
+  Skripte, die auf Production gelaufen sind (Appwrite-Upgrades). `ops/` und
+  `scripts/ops/` enthalten nur, was heute läuft; große Umzugs-Werkzeuge mit
+  Schreibzugriff auf Production werden nach dem Lauf GELÖSCHT (samt Tests),
+  das Runbook nennt den letzten Commit. Regel: docs/archiv/skripte/README.md.
 - `docs/plans/` enthält nur, was NOCH NICHT gebaut ist. Sobald ein Plan
   ausgeführt ist: Datei nach `archiv/`, Reste nach OPEN-ITEMS.md.
 - `docs/content/` = interne Doku-SITE (admin.pukalani.app/docs),

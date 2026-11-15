@@ -61,7 +61,9 @@ Lint, Typecheck, E2E) für genau diesen Commit grün sind
 2. `fonts` — holt den Font-Cache vom Server (mit Schlüssel, ohne Installieren).
 3. `build` — installiert und baut alle sechs Apps, ohne jedes Secret.
 4. `deliver` — je App: Build-Ergebnis nach `/home/ploi/releases/<app>/<commit>/`,
-   `ops/` nach `/home/ploi/<site>/ops/`, Verweis `current` atomar umlegen,
+   die Ecosystem-Datei der App und `pm2-heal.sh` nach `/home/ploi/<site>/ops/`
+   (seit 2026-11-15 nur diese zwei, nicht mehr der ganze Ordner `ops/`),
+   Verweis `current` atomar umlegen,
    `pm2 startOrReload` (der alte Prozess antwortet, bis der neue bereit ist),
    ältere Stände stutzen (es bleiben vier je App). Danach die Probe: dreimal in Folge der erwartete
    Commit auf `https://<site>/api/health`.
@@ -301,8 +303,8 @@ cp apps/comments/.env.example apps/comments/.env.production
 # EIN Befehl: Datenbank + Buckets + alle Migrationen
 # (system→comments→moderation→admin), idempotent (409→skip).
 nvm use 22
-node --experimental-strip-types --env-file=apps/comments/.env.production \
-  apps/comments/scripts/bootstrap.ts        # OHNE --seed (Prod!)
+node --env-file=apps/comments/.env.production \
+  scripts/bootstrap.mjs --app comments      # OHNE --seed (Prod!)
 ```
 
 > Tabellen-Owner: **system** (audit_logs, app_config, notifications) ·

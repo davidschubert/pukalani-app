@@ -190,7 +190,7 @@ mit `container_name` (Console, Browser; in der CI-Fassung ohne) von Hand.
 
 ### Prod — Ablauf (gelaufen 2026-11-06 nach Davids „Ja, mit Rotation")
 
-Skript [`ops/appwrite-upgrade-2.7.1.sh`](../../ops/appwrite-upgrade-2.7.1.sh)
+Skript [`appwrite-upgrade-2.7.1.sh`](../archiv/skripte/appwrite-upgrade-2.7.1.sh) (erledigt, seit 2026-11-15 im Archiv; lag unter `ops/`)
 (Aufruf im Kopf: `scp` + `ssh -t … | tee ~/appwrite-upgrade-2.7.1.log`, mit
 oder ohne `ROTATE_EXECUTOR_SECRET=1`). Es prüft die Vorbedingungen (`.env` auf
 2.6.2, Override auf der 2.6.2-Patchdatei, Trusted-Proxy-Eintrag), zieht ALLE
@@ -275,7 +275,7 @@ herstellen — der Code dafür existiert nicht mehr; G0 ist der nächste Fall, u
 er unterscheidet sich vom alten nur dadurch, dass er `failure` loggt.
 
 **Prod** — Skript
-[`ops/appwrite-aw28-drop-smtp-keepalive-patch.sh`](../../ops/appwrite-aw28-drop-smtp-keepalive-patch.sh)
+[`appwrite-aw28-drop-smtp-keepalive-patch.sh`](../archiv/skripte/appwrite-aw28-drop-smtp-keepalive-patch.sh) (erledigt, seit 2026-11-15 im Archiv; lag unter `ops/`)
 (Aufruf im Kopf, NUR nach Davids Ja): prüft `.env` 2.7.1 und den Patch-Mount,
 sichert die Override (`.bak-aw28-<TS>`), schreibt den Kopfkommentar neu und
 entfernt NUR den Block `appwrite-worker` (traefik- und clickhouse-Block
@@ -314,5 +314,8 @@ resend.dev · success`; danach ein NEUER Socket (anderer Quellport) in `01`.
 `404`).
 
 **Künftige Upgrades:** keine Patchdatei mehr ziehen. Die Upgrade-Skripte
-`ops/appwrite-upgrade-2.*.sh` prüfen den Patch-Mount als Vorbedingung — ein
-NEUES Skript lässt diese Prüfung und den Mount-Dreh weg.
+`docs/archiv/skripte/appwrite-upgrade-2.*.sh` (erledigt, im Archiv) prüfen den Patch-Mount als Vorbedingung — ein
+NEUES Skript lässt diese Prüfung und den Mount-Dreh weg. Es entsteht als Kopie
+des letzten aus dem Archiv, liegt für die Dauer des Upgrades unter `ops/` und
+zieht nach dem Lauf auf Production ebenfalls ins Archiv (Regel:
+[archiv/skripte/README.md](../archiv/skripte/README.md)).

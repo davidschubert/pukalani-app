@@ -54,6 +54,11 @@ cp apps/portfolio/.env.example apps/portfolio/.env   # Projekt + Keys eintragen
 pnpm --filter portfolio bootstrap
 ```
 
+Das ruft das eine Bootstrap-Skript aller Apps (`scripts/bootstrap.mjs --app
+portfolio`). Es ist nur für eine FRISCHE Instanz gedacht und bricht vor dem
+ersten Schreibzugriff ab, wenn die Datenbank schon Tabellen hat — für die
+bestehende Instanz gilt der Runner unten.
+
 Migrationen später einzeln über den zentralen Runner — nie ein Layer-Skript
 direkt:
 

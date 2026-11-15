@@ -10,6 +10,27 @@
  *   (Einbetter ohne TLS sind kein unterstütztes Szenario).
  */
 
+/**
+ * Lokale Einbetter fürs Entwickeln und die E2E-Suite (BE-023). Sie gehören
+ * NICHT in `pukalani.comments.embed.allowedOrigins`: app.config landet
+ * unverändert im Produktions-Build, und dort hieße `http://localhost:*` in
+ * `frame-ancestors`, dass jede Seite auf der Maschine eines Besuchers das
+ * Widget samt Anmeldung rahmen darf.
+ */
+export const EMBED_LOCAL_DEV_ORIGINS: readonly string[] = ['http://localhost:*', 'http://127.0.0.1:*']
+
+/**
+ * Die EINE Entscheidung, ob die lokalen Einbetter gelten: im Entwicklungs-
+ * Server (`import.meta.dev`) immer, sonst nur mit der ausdrücklichen
+ * Variable `NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true` (runtimeConfig
+ * `commentsEmbedLocalOrigins`; Nuxt liest `true` als Boolean, ein Text
+ * `'true'` zählt ebenso). Alles andere — leer, `false`, Unsinn — heißt AUS.
+ */
+export function embedLocalDevOriginsFor(isDev: boolean, flag: unknown): string[] {
+  const on = isDev || flag === true || flag === 'true'
+  return on ? [...EMBED_LOCAL_DEV_ORIGINS] : []
+}
+
 export interface EmbedSiteLike {
   host: string
   targetTypes: string[]

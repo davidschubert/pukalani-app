@@ -35,7 +35,7 @@
  * `deleteUserCompletely`-Umweg über die App.
  *
  * Angesprochen wird die REST-API, nicht das SDK — `scripts/` gehört zu keinem
- * Workspace-Paket (dieselbe Bauform wie ah4c-project-transfer.mjs).
+ * Workspace-Paket.
  *
  * Exit 0 = Lauf sauber · Exit 1 = Konfigurations- oder API-Fehler.
  */

@@ -4,7 +4,8 @@ import type { TenantContext } from '../../shared/types/tenant'
 
 /**
  * Horizont-3 Naht 3 — mandanten-agnostischer Datenzugriff (RUHEND).
- * docs/archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md, validiert in spikes/s5-pool-silo.
+ * docs/archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md (dort auch das Ergebnis des
+ * Spikes s5-pool-silo; der Ordner `spikes/` ist seit 2026-11-15 gelöscht).
  *
  * Produkt-Code ruft `listRows({ queries: scopeQuery(event, [...]) })` und
  * `createRow({ data: scopeRow(event, {...}) })`. Ohne Tenant-Kontext (heute)

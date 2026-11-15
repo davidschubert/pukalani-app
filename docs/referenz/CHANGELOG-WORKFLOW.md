@@ -2,7 +2,8 @@
 
 Zwei getrennte Spuren, nicht pro Push (jeder Push wäre WIP-Rauschen für
 Endnutzer). Track 1 ist seit 2026-11-13 abgeschaltet; es gibt keine neuen
-Releases mehr.
+Releases mehr. Track 2 wird seit 2026-11-15 nur noch von Hand im Dashboard
+gepflegt — die Function und das Entwurfs-Werkzeug sind entfernt.
 
 ## Track 1 — Entwickler-`CHANGELOG.md` (ABGESCHALTET seit 2026-11-13)
 
@@ -31,33 +32,17 @@ im Prod-Projekt **`admin`** (Dashboard → Changelog; öffentlich lesbar unter
 Marketing-Seite verlinkt genau diese Seite (`marketing.changelogUrl` in
 `packages/marketing/app/app.config.ts`).
 
-### 2A — Lokaler Draft-Generator (DER Weg)
+### So entsteht ein Eintrag (seit 2026-11-15: nur noch von Hand)
 
-[`packages/admin/scripts/changelog-draft.mjs`](../../packages/admin/scripts/changelog-draft.mjs)
-liest die Commits seit dem letzten Tag, mappt Typen auf Kategorien
-(`feat`→Feature, `fix`→Fix, `perf`/`refactor`→Verbesserung) und legt **einen
-Entwurf** (`published:false`) mit gruppierter Stichpunktliste an. Den arbeitest
-du im Dashboard zur fertigen Release-Note aus und veröffentlichst ihn.
+Einträge werden im Dashboard geschrieben (Dashboard → Changelog → Neuer
+Eintrag), als Entwurf gespeichert und dann veröffentlicht. Die Texte kommen
+aus den Hilfe-Seiten (`apps/help/content`) — die Hilfe ist der geprüfte
+Kundenstand —, nicht aus Commit-Betreffs. Ausgeführtes Beispiel:
+[CHANGELOG-CL1-FREIGABE.md](../archiv/CHANGELOG-CL1-FREIGABE.md).
 
-```bash
-pnpm changelog:draft                   # seit letztem Tag → Entwurf
-pnpm changelog:draft -- --dry          # nur Vorschau
-pnpm changelog:draft -- --since=v1.4.0 # ab bestimmtem Tag/SHA
-pnpm changelog:draft -- --version=v1.5 # Version ins Entwurfs-Feld
-```
-
-Läuft **lokal**. `pnpm changelog:draft` liest seine vier Variablen
-(`NUXT_PUBLIC_APPWRITE_ENDPOINT`, `…_PROJECT_ID`, `…_DATABASE_ID`,
-`NUXT_APPWRITE_KEY`) aus `apps/comments/.env` — das ist die DEV-Instanz. Für
-Prod denselben Aufruf mit `node --env-file=<prod-env des Projekts admin>
-packages/admin/scripts/changelog-draft.mjs …` fahren; der Schlüssel braucht
-`rows.write` auf der Tabelle `changelog`.
-
-**Seit Track 1 abgeschaltet ist (2026-11-13):** es entstehen keine neuen
-Releases und keine neuen Tags mehr. Ohne `--since` liest das Skript die
-Commits seit dem letzten Tag (`git describe --tags`) — das bleibt `v4.0.0`,
-der Bereich wächst also mit jedem Commit. Für einen sinnvollen Entwurf
-`--since=<SHA oder Datum des letzten veröffentlichten Eintrags>` angeben.
+Wer wissen will, was sich seit dem letzten Eintrag geändert hat, liest die
+Git-Historie: `git log --oneline <Commit des letzten Eintrags>..HEAD`
+(Conventional Commits: `feat` = Neues, `fix` = Korrektur).
 
 ### Zwei Fallen beim Veröffentlichen (CL1, 2026-11-06)
 
@@ -73,36 +58,30 @@ der Bereich wächst also mit jedem Commit. Für einen sinnvollen Entwurf
   der öffentlichen Liste NICHT — bis zu 5 Minuten Verzug; `?limit=50` ist ein
   anderer Cache-Schlüssel und zeigt den Stand sofort.
 
-Die kundenfertigen Texte stammen aus den Hilfe-Seiten (`apps/help/content`),
-nicht aus Commit-Betreffs — die Hilfe ist der geprüfte Kundenstand.
-Ausgeführtes Beispiel: [CHANGELOG-CL1-FREIGABE.md](../archiv/CHANGELOG-CL1-FREIGABE.md).
+### Was es nicht mehr gibt (entfernt 2026-11-15, Gesamtaudit BE-027)
 
-### 2B — Appwrite Function (STILLGELEGT, Stand 2026-11-06)
+Davids Entscheidung vom 2026-11-12 („automatischen Changelog-Entwurf
+entfernen") und vom 2026-11-15 (das Hand-Werkzeug mit).
 
-Gedacht war es voll hands-off: GitHub-Release-Webhook → Function
-`changelog-draft` unter `https://changelog.pukalani.app/` → Entwurf direkt in
-der DB. Aktiv war das vom 2026-07-19 an im damaligen Prod-Projekt `comments`.
-Mit dem Umbau der Projekte (Control-Cutover, `comments` als Pool-Community)
-verschwand das Projekt `comments` von Prod — und mit ihm die Function —, ohne
-dass es jemand bemerkte: das letzte Release (v3.0.0, 2026-07-28) lag davor, der Webhook feuerte
-seitdem nie. Gemessen am 2026-11-06: auf Prod 0 Functions und 0 Sites in allen
-vier Projekten, `changelog.pukalani.app` liefert nur noch Traefiks
-Ersatz-Zertifikat. Der GitHub-Webhook (Releases → `changelog.pukalani.app`) ist
-seit demselben Tag **deaktiviert** (nicht gelöscht).
-
-Der Code bleibt in [`functions/changelog-draft`](../../functions/changelog-draft)
-— `src/parse.js` ist die geteilte Parser-Quelle von 2A und unit-getestet.
-Wiederbeleben hieße: Function im Projekt `admin` deployen (Runtime `node-22`),
-Custom Domain + Zertifikat, Variablen setzen, Webhook wieder einschalten —
-Rezept im Archiv: [CHANGELOG-2B-AKTIVIERUNG.md](../archiv/CHANGELOG-2B-AKTIVIERUNG.md)
-§§ 5–6. Solange es keine Functions auf Prod gibt, hat der Executor auch keine
-Runtime-Images zu pflegen (Appwrite-Sicherheitshinweise zu Node/Bun-Runtimes
-betreffen uns dann nicht).
+- **Die Appwrite Function `changelog-draft`** (früher „Track 2B"): GitHub-
+  Release-Webhook → Function unter `changelog.pukalani.app` → Entwurf in der
+  Datenbank. Aktiv vom 2026-07-19 an im damaligen Prod-Projekt `comments`; mit
+  dem Umbau der Projekte verschwand das Projekt und mit ihm die Function, ohne
+  dass es jemand bemerkte. Seit release-please abgeschaltet ist, gibt es auch
+  kein Release mehr, das sie auslösen könnte. Entfernt: der Ordner
+  `functions/`, `appwrite.config.json`, der (abgeschaltete) Webhook bei
+  GitHub. Auf Production gab es am 2026-11-15 in keinem der vier Projekte eine
+  Function (gezählt in der Datenbank).
+- **Das Hand-Werkzeug `pnpm changelog:draft`** (früher „Track 2A",
+  das Skript changelog-draft.mjs im admin-Layer): legte aus den Commits seit
+  dem letzten Tag einen Entwurf an. Zuletzt im Juli benutzt (Entwurf 3.0.0, nie
+  veröffentlicht); ohne neue Tags las es einen immer größeren Bereich.
+- Letzter Commit mit beidem: `9788e7ab`. Das Rezept der Function steht im
+  Archiv: [CHANGELOG-2B-AKTIVIERUNG.md](../archiv/CHANGELOG-2B-AKTIVIERUNG.md).
 
 ## Warum getrennt?
 
 - **Granularität:** Dev-Changelog = jeder Commit; Produkt-Changelog = pro
   Release, kuratiert.
-- **Erreichbarkeit:** GitHub CI kann das self-hosted Appwrite (`localhost`)
-  nicht beschreiben → DB-Writes laufen lokal (2A), nie in der CI (2B, die
-  serverseitige Variante, ist stillgelegt).
+- **Erreichbarkeit:** GitHub CI schreibt nie in die Appwrite-Datenbank —
+  Einträge entstehen im Dashboard.

@@ -42,6 +42,11 @@ export default defineEventHandler(async (event) => {
     metadata: { eventId: id },
     successUrl: `${origin}${localePrefix}/events/${id}?ticket=success`,
     cancelUrl: `${origin}${localePrefix}/events/${id}`,
+    // BE-023: die Ticket-Prüfung oben hält zwei GLEICHZEITIGE Aufrufe (zwei
+    // Tabs) nicht auf — erst der Webhook stellt das Ticket aus. Mit Bereich
+    // bekommt derselbe Mensch für dasselbe Event dieselbe Stripe-Session, und
+    // die lässt sich nur einmal bezahlen.
+    idempotencyScope: `event-ticket:${id}`,
   })
 
   return { url }

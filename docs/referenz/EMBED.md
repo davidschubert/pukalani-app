@@ -70,8 +70,12 @@ pukalani: {
       enabled: true,
       // Statische Zusatz-Origins für frame-ancestors. Seit E3 kommen die
       // Prod-Domains aus der SITE-REGISTRY (s. u.) — hier stehen nur noch
-      // Dev-/Sonderfälle. ['*'] bleibt die bewusste „offen wie Disqus"-Option.
-      allowedOrigins: ['http://localhost:*'],
+      // Sonderfälle. ['*'] bleibt die bewusste „offen wie Disqus"-Option.
+      // Lokale Adressen (http://localhost:*, http://127.0.0.1:*) gehören NICHT
+      // hierher: der comments-Layer setzt sie selbst, nur im Dev-Server oder
+      // mit NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true (seit 2026-11-15, BE-023) —
+      // ein Produktions-Build liefert sie nicht mehr aus.
+      allowedOrigins: [],
       // Gast-Kommentare (E4): ohne Account kommentieren (nur Anzeigename,
       // keine Verifikation). Default aus; greift nur zusätzlich zu `enabled`.
       guests: true,

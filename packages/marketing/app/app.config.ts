@@ -27,7 +27,7 @@ export default defineAppConfig({
       // Die öffentliche Changelog-Seite der Control-App (admin-Layer,
       // ohne Anmeldung lesbar). Bis 2026-11-06 stand hier
       // changelog.pukalani.app — das war nie eine Seite, sondern der
-      // Webhook-Endpunkt der stillgelegten Function `changelog-draft`.
+      // Webhook-Endpunkt der inzwischen entfernten Function `changelog-draft`.
       changelogUrl: 'https://admin.pukalani.app/changelog',
       // Die Statusseite liegt bewusst NICHT bei uns: sie muss antworten, wenn
       // unser Server es nicht tut.
