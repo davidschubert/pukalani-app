@@ -48,6 +48,20 @@ und liest sie zurück.
   `verify-turnstile`, die brand-Skripte `invite`/`revoke`); gegen ein Projekt
   mit eingeschalteter Regel scheitern sie, bis sie umgestellt sind.
 
+## Stand auf Production
+
+Seit dem 2026-11-15 sind die Regeln in allen vier Projekten (`account`,
+`admin`, `branding`, `portfolio`) eingeschaltet. Gesetzt wurden sie in der
+Konsole (Auth → Policies → Passwords, Emails, Sessions), weil es noch keinen
+Schlüssel mit `policies`-Recht gibt; vorher und nachher gegen die Soll-Liste
+gelesen. Wer dort etwas ändert, ändert zuerst das Soll im Skript.
+
+- Der Abgleich mit Datenlecks ist eingeschaltet, lehnt aber erst ab, wenn die
+  Server-Variable gesetzt ist (nächster Abschnitt).
+- Die Anmelde-Mail ist auf Production noch nicht angesehen (Sprache, Adresse).
+- Beweis-Skripte mit `@example.com`-Konten scheitern jetzt auch gegen
+  Production-Projekte.
+
 ## Abgleich mit Datenlecks
 
 `password-pwned` lehnt nur ab, wenn der Appwrite-Server einen Dienst kennt:
