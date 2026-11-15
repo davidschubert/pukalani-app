@@ -256,6 +256,17 @@ export default defineAppConfig({
        */
       contactEmail: 'hello@branding.supply',
       /**
+       * DER LÖSCH-LAUF DER PRÜFERGEBNISSE LÄUFT SCHARF (SEC-015, SEC-026 —
+       * Davids Entscheidung 2026-11-15, „Gleich scharf"): stündlich entfernt
+       * er, was 90 Tage versteckt war (Dokument-Checks ganz, Website-Checks
+       * verlieren den Bezug zur Person), und leert die Absender-Adresse an
+       * Korrekturvorschlägen 90 Tage nach der Meldung. Gezählt wurde vorher
+       * auf Production (2026-11-15): nichts davon war fällig. 'dry-run'
+       * zählt nur und schreibt die Zahlen ins Prozess-Log
+       * (`brand.check_erasure`); 'off' stellt den Lauf ab.
+       */
+      checkErasure: 'apply',
+      /**
        * DIE DREI RECHTSWÖRTER IM FUSS SIND SEIT BS1 R1 ECHTE LINKS
        * (2026-09-07). Bis dahin standen sie hier bewusst leer — der
        * Layer-Default lässt die Zeile dann ganz weg, weil ein Wort ohne Ziel

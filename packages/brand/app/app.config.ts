@@ -1,3 +1,4 @@
+import type { BrandCheckErasureMode } from '../shared/brandCheckErasureMode'
 import type { BrandCompletionCtaConfig } from '../shared/brandCompletionCta'
 import type { BrandLegalLinksConfig } from '../shared/brandLegalLinks'
 import type { BrandWorkspaceNavExtra } from '../shared/brandWorkspaceNav'
@@ -412,6 +413,20 @@ export default defineAppConfig({
        * (`resolveWorkspaceNavExtras`).
        */
       workspaceNavExtras: [] as BrandWorkspaceNavExtra[],
+      /**
+       * DER LÖSCH-LAUF DER PRÜFERGEBNISSE (SEC-015, SEC-026) — 'off' |
+       * 'dry-run' | 'apply'. Stündlich: gelöschte Checks nach 90 Tagen
+       * abräumen (Dokument löschen, Website anonymisieren) und die
+       * Absender-Adressen von Korrekturvorschlägen nach 90 Tagen leeren
+       * (`server/utils/brandCheckErasureRun.ts`).
+       *
+       * 'off' ist der Layer-Default, weil der Lauf NICHT UMKEHRBAR löscht und
+       * auf Bestandsdaten wirkt — eine App schaltet ihn bewusst ein, und zwar
+       * erst auf 'dry-run' (zählt nur, schreibt die Zahlen ins Log). Ein
+       * unbekannter Wert gilt als 'off' und schreibt eine Fehlerzeile. Die
+       * Annotation hält den Typ weit genug für die drei Stellungen.
+       */
+      checkErasure: 'off' as BrandCheckErasureMode,
     },
   },
 })
