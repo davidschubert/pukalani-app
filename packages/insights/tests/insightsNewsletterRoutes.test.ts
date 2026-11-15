@@ -6,6 +6,7 @@ import type {
   InsightsNewsletterSubscribeResponse,
   InsightsNewsletterUnsubscribeResponse,
 } from '../shared/types/insightsApi'
+import { allowRecipientMail } from '../../core/server/utils/recipientMailLimit'
 import * as newsletter from '../server/utils/insightsNewsletter'
 import { insightsDb, isInsightsRowConflict, isInsightsRowMissing } from '../server/utils/insightsStore'
 import { insightsStorageError } from '../server/utils/insightsPostsAdmin'
@@ -141,6 +142,7 @@ vi.stubGlobal('useRateLimitStore', () => ({
 }))
 
 // ── Die ECHTEN Server-Utils, als Auto-Import gestellt ──────────────────────
+vi.stubGlobal('allowRecipientMail', allowRecipientMail)
 vi.stubGlobal('insightsDb', insightsDb)
 vi.stubGlobal('isInsightsRowMissing', isInsightsRowMissing)
 vi.stubGlobal('isInsightsRowConflict', isInsightsRowConflict)
@@ -337,6 +339,25 @@ describe('POST …/newsletter/subscribe', () => {
     })
     expect(tablesDB.createRow).not.toHaveBeenCalled()
     expect(mails).toHaveLength(0)
+  })
+
+  it('schickt derselben Adresse höchstens drei Bestätigungen am Tag — die vierte Anfrage antwortet gleich, ohne Mail, ohne neuen Link', async () => {
+    rows = [pendingRow()]
+    for (let i = 0; i < 3; i++) {
+      await subscribe(event)
+      // Der Stunden-Eimer je Leitung ist hier nicht das Thema: nur er wird geleert.
+      hits = Object.fromEntries(Object.entries(hits).filter(([key]) => key.includes('mailto:')))
+    }
+    expect(mails).toHaveLength(3)
+    const hashBefore = rows[0]!.tokenHash
+    mails = []
+
+    const result = await subscribe(event)
+
+    expect(result).toEqual({ ok: true })
+    expect(mails).toHaveLength(0)
+    expect(rows[0]!.tokenHash).toBe(hashBefore)
+    expect(Object.keys(hits).join(' ')).not.toContain('aloha')
   })
 
   it('antwortet 503 und LÄSST DIE ZEILE STEHEN, wenn die Mail nicht rausgeht', async () => {

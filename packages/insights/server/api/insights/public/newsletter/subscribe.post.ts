@@ -124,6 +124,19 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSubsc
       return { ok: true }
     }
 
+    // Höchstens drei Bestätigungs-Mails je ADRESSE und Tag (SEC-018) — die
+    // Eimer oben zählen je Leitung, dieser je Empfänger. Darüber: kein neuer
+    // Link (sonst entwertete ein Fremder den aus der letzten echten Mail),
+    // keine Zeile, keine Mail — und dieselbe Antwort wie sonst.
+    if (!(await allowRecipientMail(event, 'insights:newsletter', body.email))) {
+      logEvent('info', 'insights.newsletter_signup', {
+        source: body.source,
+        locale: body.locale,
+        state: 'recipient_limited',
+      })
+      return { ok: true }
+    }
+
     if (row) {
       // NUR die Felder dieses Vorgangs. `source` bleibt, wie er steht: der
       // ERSTE Eintrag sagt, welche Seite den Leser gebracht hat, und genau das

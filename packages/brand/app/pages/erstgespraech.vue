@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isBotCheckReason, type BotCheckReason } from '../../../core/shared/turnstile'
 import { BRAND_INTRO_MESSAGE_MAX } from '../../schemas/brandIntroCall'
 import { resolveBrandLegalLinks } from '../../shared/brandLegalLinks'
 import type { BrandIntroCallResponse, BrandProfileListResponse } from '../../shared/types/brand'
@@ -87,7 +88,7 @@ const hp = ref('')
 
 const status = ref<'idle' | 'sending' | 'done' | 'error'>('idle')
 /** Der Grund des Fehlschlags, so weit die Route ihn preisgibt. */
-const failure = ref<'too_fast' | 'rate_limited' | 'unavailable'>('unavailable')
+const failure = ref<'too_fast' | 'rate_limited' | 'unavailable' | BotCheckReason>('unavailable')
 /** Ist die Bestätigungs-Mail raus? Entscheidet den Erfolgstext (s. u.). */
 const mailed = ref(false)
 
@@ -169,7 +170,27 @@ watch(profileId, (value) => {
 
 const remaining = computed(() => BRAND_INTRO_MESSAGE_MAX - message.value.trim().length)
 
+/**
+ * BOT-BEWEIS (SEC-018), dasselbe Muster wie das Gast-Kommentar-Formular:
+ * solange ein Site-Key gesetzt ist, wartet der Knopf auf den Token des
+ * Widgets — sonst liefe der erste Klick garantiert in ein 403. Ohne Site-Key
+ * zeigt das Widget nichts und der Knopf bleibt offen (Dev, CI, E2E).
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+
+/**
+ * Der Text der Fehlerzeile. Die drei Roboter-Gründe tragen die TEXTE DES CORE
+ * (`auth.botCheck.*`, dieselbe Zuordnung wie im Gast-Kommentar-Formular).
+ */
+const failureText = computed(() => isBotCheckReason(failure.value)
+  ? t(`auth.botCheck.${failure.value === 'bot_check_required' ? 'required' : failure.value === 'bot_check_failed' ? 'failed' : 'unavailable'}`)
+  : t(`brand.introCall.form.error.${failure.value}`))
+
 const canSend = computed(() => status.value !== 'sending'
+  && !waitingForBotCheck.value
   && name.value.trim().length > 0
   && message.value.trim().length > 0
   && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
@@ -193,6 +214,7 @@ async function submit(): Promise<void> {
         // eine Dauer zu melden, die es nicht gibt (das Schema lässt es zu).
         ...(mountedAt.value ? { elapsedMs: Date.now() - mountedAt.value } : {}),
         hp: hp.value,
+        ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}),
       },
     })
     mailed.value = result.mailed
@@ -205,9 +227,13 @@ async function submit(): Promise<void> {
     const reason = (error as { data?: { reason?: string } })?.data?.reason
     const statusCode = (error as { statusCode?: number, status?: number })?.statusCode
       ?? (error as { status?: number })?.status
+    // Ein Turnstile-Token ist EINMALIG: nach jedem Fehlschlag ein neuer.
+    botCheck.value?.reset()
     failure.value = reason === 'too_fast'
       ? 'too_fast'
-      : statusCode === 429 ? 'rate_limited' : 'unavailable'
+      : isBotCheckReason(reason)
+        ? reason
+        : statusCode === 429 ? 'rate_limited' : 'unavailable'
     status.value = 'error'
   }
 }
@@ -319,13 +345,15 @@ const STEPS = ['s1', 's2', 's3'] as const
               <input v-model="hp" type="text" name="hp" tabindex="-1" autocomplete="off">
             </div>
 
+            <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="intro_call" />
+
             <UButton
               type="submit" size="lg" class="rounded-full" :disabled="!canSend" :loading="status === 'sending'"
               :label="status === 'sending' ? t('brand.introCall.form.sending') : t('brand.introCall.form.submit')"
             />
 
             <p v-if="status === 'error'" class="text-sm" style="color: var(--bw-stale)" data-intro-error>
-              {{ t(`brand.introCall.form.error.${failure}`) }}
+              {{ failureText }}
             </p>
 
             <p class="bw-label leading-relaxed" style="color: var(--bw-muted)">

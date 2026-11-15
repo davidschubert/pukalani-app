@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
 import type { BrandIntroCallResponse } from '../shared/types/brand'
+import { createMemoryRateLimitStore } from '../../core/server/utils/rateLimitStore'
+import type { RateLimitStore } from '../../core/server/utils/rateLimitStore'
+import { requireTurnstile } from '../../core/server/utils/turnstile'
+import { allowRecipientMail } from '../../core/server/utils/recipientMailLimit'
 
 /**
  * DAS ERSTGESPRÄCH, DURCHGESPIELT — gefälschte Ablage, echter Handler
@@ -64,8 +68,23 @@ const tablesDB = {
   }),
 }
 
+/**
+ * Die zwei Turnstile-Schlüssel dieses Laufs. Leer = aus (Dev/CI/E2E), beide
+ * gesetzt = an (Production). Geprüft wird mit dem ECHTEN `requireTurnstile`
+ * und der ECHTEN Empfänger-Grenze des Core (Memory-Store je Test).
+ */
+let turnstileKeys: { site: string, secret: string }
+let rateStore: RateLimitStore
+const siteverify = vi.fn()
+
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
-vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'main' } }))
+vi.stubGlobal('useRuntimeConfig', () => ({
+  turnstileSecret: turnstileKeys.secret,
+  public: { appwriteDatabaseId: 'main', turnstileSiteKey: turnstileKeys.site },
+}))
+vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
+vi.stubGlobal('$fetch', siteverify)
+vi.stubGlobal('useRateLimitStore', () => ({ store: rateStore, prefix: 'rl:test:' }))
 vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { introCallNotify: notifyTo } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
@@ -90,6 +109,9 @@ vi.mock('../server/utils/brandEvents', () => ({
     events.push(input as { type: string })
   }),
 }))
+
+vi.stubGlobal('requireTurnstile', requireTurnstile)
+vi.stubGlobal('allowRecipientMail', allowRecipientMail)
 
 const handler = (await import('../server/api/brand/intro-call.post'))
   .default as unknown as (event: H3Event) => Promise<BrandIntroCallResponse>
@@ -128,6 +150,9 @@ beforeEach(() => {
   events = []
   sessionUserId = null
   body = { ...VALID }
+  turnstileKeys = { site: '', secret: '' }
+  rateStore = createMemoryRateLimitStore()
+  siteverify.mockReset()
   tablesDB.getRow.mockClear()
   tablesDB.createRow.mockClear()
 })
@@ -162,12 +187,17 @@ describe('POST /api/brand/intro-call — der gute Weg', () => {
     expect(mails.map(mail => mail.to).sort()).toEqual(['alina@example.com', 'hallo@pukalani.app'])
   })
 
-  it('zitiert das Anliegen in der Bestätigung zurück', async () => {
+  it('die Bestätigung trägt das Anliegen NICHT — die Mail an den Betreiber schon', async () => {
+    notifyTo = 'hallo@pukalani.app'
     await handler(makeEvent())
-    expect(mails[0]?.text).toContain(VALID.message)
+    const confirm = mails.find(mail => mail.to === 'alina@example.com')
+    const notice = mails.find(mail => mail.to === 'hallo@pukalani.app')
+    expect(confirm?.text).not.toContain(VALID.message)
+    expect(confirm?.text).toContain('Eure Nachricht liegt uns vor.')
+    expect(notice?.text).toContain(VALID.message)
   })
 
-  it('zitiert ein Anliegen MIT Link nicht zurück und grüßt einen Namen mit Link nicht (kein Relais)', async () => {
+  it('grüßt einen Namen mit Link nicht und trägt keinen Text des Absenders hinaus (kein Relais)', async () => {
     body = {
       ...VALID,
       name: 'Etsy User! Sold https://a29.at/9hdF2k',
@@ -318,5 +348,65 @@ describe('die zwei Zustellwege', () => {
 
     expect(order).toEqual(['row', 'mail'])
     expect(mails.length).toBeGreaterThan(before)
+  })
+})
+
+describe('Bot-Prüfung und Grenze je Empfänger-Adresse (SEC-018)', () => {
+  it('verlangt mit gesetzten Schlüsseln einen Token — ohne ihn 403, keine Zeile, keine Mail', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    notifyTo = 'team@branding.supply'
+    await expect(handler(makeEvent())).rejects.toMatchObject({
+      status: 403,
+      data: { code: 'bot_check_required' },
+    })
+    expect(written).toHaveLength(0)
+    expect(mails).toHaveLength(0)
+    expect(siteverify).not.toHaveBeenCalled()
+  })
+
+  it('lässt mit gesetzten Schlüsseln und bestätigtem Token durch — mit der passenden Aktion', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    siteverify.mockResolvedValue({ 'success': true, 'action': 'intro_call', 'error-codes': [] })
+    body = { ...VALID, turnstileToken: 'token-aus-dem-widget' }
+    const result = await handler(makeEvent())
+    expect(result).toEqual({ ok: true, stored: true, mailed: true })
+    expect(siteverify).toHaveBeenCalledTimes(1)
+  })
+
+  it('läuft ohne Schlüssel wie bisher, auch ohne Token', async () => {
+    const result = await handler(makeEvent())
+    expect(result).toEqual({ ok: true, stored: true, mailed: true })
+    expect(siteverify).not.toHaveBeenCalled()
+  })
+
+  it('der Honigtopf antwortet weiter still mit Erfolg — auch mit gesetzten Schlüsseln', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    body = { ...VALID, hp: 'gefüllt' }
+    const result = await handler(makeEvent())
+    expect(result).toEqual({ ok: true, stored: true, mailed: true })
+    expect(written).toHaveLength(0)
+    expect(mails).toHaveLength(0)
+  })
+
+  it('schickt über der Grenze keine Bestätigung an die Adresse — die Antwort bleibt dieselbe', async () => {
+    notifyTo = 'team@branding.supply'
+    const results: BrandIntroCallResponse[] = []
+    for (let i = 0; i < 4; i++) results.push(await handler(makeEvent()))
+
+    const toSender = mails.filter(mail => mail.to === 'alina@example.com')
+    expect(toSender).toHaveLength(3)
+    expect(results[3]).toEqual(results[0])
+    // Die Anfrage selbst bleibt das Gedächtnis des Betreibers: Zeile und
+    // Betreiber-Meldung gehen weiter.
+    expect(written).toHaveLength(4)
+    expect(mails.filter(mail => mail.to === 'team@branding.supply')).toHaveLength(4)
+  })
+
+  it('zählt Schreibweisen derselben Adresse zusammen', async () => {
+    for (const email of ['alina@example.com', 'ALINA@example.com', ' Alina@Example.com ', 'alina@EXAMPLE.com']) {
+      body = { ...VALID, email }
+      await handler(makeEvent())
+    }
+    expect(mails.filter(mail => mail.to === 'alina@example.com')).toHaveLength(3)
   })
 })

@@ -96,6 +96,12 @@ export function createBrandWaitlistSchema() {
     // soll eine Zeile im Formular sein, keine Migration und kein 400.
     source: z.string().trim().max(BRAND_WAITLIST_SOURCE_MAX).default(''),
     hp: z.string().max(BRAND_WAITLIST_HONEYPOT_MAX).optional(),
+    /**
+     * Der Einmal-Token des Bot-Widgets (SEC-018). Optional: ohne gesetzte
+     * Turnstile-Schlüssel schickt das Formular keinen, und der Server prüft
+     * nicht (`requireTurnstile` ist dann ein No-op).
+     */
+    turnstileToken: z.string().max(4096).optional(),
   }).strict()
 }
 
