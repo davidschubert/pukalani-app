@@ -576,7 +576,7 @@
         "suggest": "Vorschlag holen (KI)",
         "cost": "Ein Vorschlag ist ein bezahlter KI-Lauf, weniger als 1 Cent. Er vergleicht deine ungespeicherten Änderungen mit der Fassung, die online steht.",
         "needsChange": "Erst etwas am Artikel ändern — dann gibt es etwas zu beschreiben.",
-        "suggested": "Vorschlag eingetragen. Bitte lesen und anpassen — erscheinen tut er erst mit Speichern.",
+        "suggested": "Vorschlag eingetragen. Bitte lesen und anpassen — er erscheint erst mit Speichern.",
         "unsaved": "Neue Hinweise und Änderungen erscheinen erst mit Speichern."
       }
     },
