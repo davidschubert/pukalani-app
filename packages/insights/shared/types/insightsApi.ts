@@ -157,10 +157,20 @@ export interface InsightsPostDeletedResponse {
   deleted: true
 }
 
-/** Das Speichern gibt die Zeile und die formalen Prüfpunkte zurück. */
+/**
+ * DIE ANTWORT DES SPEICHERNS — die Zeile, die Prüfpunkte und ob geschrieben
+ * wurde.
+ *
+ * `saved: false` gibt es nur an einem veröffentlichten Beitrag (BE-009): die
+ * Änderung hat die sieben Prüfregeln nicht bestanden, geschrieben wurde
+ * NICHTS, und `post` ist der unveränderte öffentliche Stand. Warum das eine
+ * 200 mit Liste ist und keine 409, steht an `InsightsPostStateResponse` — die
+ * Liste käme in einem Fehler-Körper nie an.
+ */
 export interface InsightsPostSavedResponse {
   post: InsightsPost
   issues: InsightsReviewIssue[]
+  saved: boolean
 }
 
 /**

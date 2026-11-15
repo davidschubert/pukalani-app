@@ -9,8 +9,11 @@ import type { InsightsEvidenceReason } from '../../shared/types/insightsApi'
 import { BrandSiteBlockedError, fetchBrandSiteForCheck } from '../contracts/brandContract'
 
 /**
- * DAS SERVER-GATE DER SIEBEN PRÜFREGELN (§9.4) — die Route, die einen
- * Zustandswechsel erlaubt, fragt HIER.
+ * DAS SERVER-GATE DER SIEBEN PRÜFREGELN (§9.4) — jede Route, die einen Stand
+ * öffentlich macht oder einen öffentlichen ändert, fragt HIER
+ * (`insightsPublicationGate`): der Zustandswechsel UND seit BE-009 das
+ * Speichern eines veröffentlichten Artikels. Erst prüfen, dann
+ * veröffentlichen — auch beim zweiten Mal.
  *
  * ── WARUM DAS GATE AUF DEM SERVER SITZT UND NICHT IM EDITOR ──────────────
  * Der Editor zeigt dieselben Regeln, aber er ist eine Anzeige. Die Regeln
@@ -84,22 +87,50 @@ export async function insightsCheckEvidence(source: InsightsSource): Promise<Ins
 }
 
 /**
- * DIE TEXTE ALLER QUELLEN EINES BEITRAGS — für den Gate-Lauf.
+ * WELCHE QUELLEN EIN GATE-LAUF ABRUFEN MUSS — pur, damit ein Test es einzeln
+ * zeigen kann.
+ *
+ * Ohne `published` (Zustandswechsel) ist es JEDE Quelle mit Zitat und
+ * Adresse, wie seit I2. MIT `published` (ein veröffentlichter Artikel wird
+ * geändert, BE-009) nur die, deren Paar (Adresse, Zitat) im öffentlichen
+ * Stand NICHT schon vorkommt.
+ *
+ * ── WARUM DER UNVERÄNDERTE BELEG NICHT NOCH EINMAL ABGERUFEN WIRD ────────
+ * Er ist beim Veröffentlichen geprüft worden — mit genau diesem Zitat an
+ * genau dieser Adresse. Ihn bei jedem Tippfehler neu abzurufen hiesse zweierlei:
+ * eine fremde Seite, die sich inzwischen geändert hat, blockierte eine
+ * Korrektur am TEXT (die mit dem Beleg nichts zu tun hat), und jedes Speichern
+ * wären bis zu zwanzig Anfragen an fremde Server. Wer den alten Beleg erneut
+ * prüfen will, hat dafür die Ampel.
+ *
+ * Verglichen wird nach INHALT, nicht nach Index: wer Quellen umsortiert, hat
+ * keinen Beleg geändert und löst keinen Abruf aus.
+ */
+export function insightsSourcesToFetch(next: InsightsPost, published?: InsightsPost | null): InsightsSource[] {
+  const candidates = next.sources.filter(source => source.quote && source.url)
+  if (!published) return candidates
+  const pairOf = (source: InsightsSource) => JSON.stringify([source.url, source.quote])
+  const known = new Set(published.sources.filter(source => source.quote && source.url).map(pairOf))
+  return candidates.filter(source => !known.has(pairOf(source)))
+}
+
+/**
+ * DIE TEXTE DER AUSGEWÄHLTEN QUELLEN — für den Gate-Lauf.
  *
  * Nacheinander und nicht parallel: zwanzig gleichzeitige Anfragen an fremde
  * Server sind ein kleiner Lastangriff, und der Betreiber wartet ohnehin auf
- * eine einzige Antwort. Quellen OHNE Zitat werden übersprungen — es gibt
- * nichts zu belegen, und ein Abruf dafür wäre eine Anfrage an einen fremden
- * Server ohne Zweck.
+ * eine einzige Antwort. Quellen OHNE Zitat kommen gar nicht erst herein
+ * (`insightsSourcesToFetch`) — es gibt nichts zu belegen, und ein Abruf dafür
+ * wäre eine Anfrage an einen fremden Server ohne Zweck.
  *
  * `own-data` wird NICHT ausgenommen: eine eigene Zahl ist auch ein Beleg, ihre
  * Adresse ist öffentlich, und eine Ausnahme wäre die Regel „unsere Zitate
  * prüfen wir nicht".
  */
-export async function insightsSourceTexts(post: InsightsPost): Promise<Record<string, string>> {
+export async function insightsSourceTexts(sources: readonly InsightsSource[]): Promise<Record<string, string>> {
   const texts: Record<string, string> = {}
   let fetched = 0
-  for (const source of post.sources) {
+  for (const source of sources) {
     if (!source.quote || !source.url) continue
     if (texts[source.url] !== undefined) continue
     if (fetched >= INSIGHTS_SOURCE_FETCH_MAX) break
@@ -176,7 +207,7 @@ export function insightsFlagText(
  * Beleg-Zeiger, Marken-Zeile, Methodik-Link, Herabsetzung). Nur die
  * Beleg-Prüfung braucht fremde Server, und die soll nicht bei jedem Öffnen
  * zwanzig Anfragen auslösen. Fehlt `sourceTexts`, PRÜFT die Regel nicht — und
- * genau deshalb ist der Gate-Lauf ein anderer (`insightsGateIssues`).
+ * genau deshalb ist der Gate-Lauf ein anderer (`insightsPublicationGate`).
  */
 export function insightsFormIssues(
   post: InsightsPost,
@@ -189,19 +220,134 @@ export function insightsFormIssues(
   })
 }
 
+// ── Das Gate und sein Freigabe-Zeichen (BE-009) ────────────────────────────
+
 /**
- * DIE PRÜFREGELN MIT VOLLEM KONTEXT — was einen Zustandswechsel erlaubt oder
- * verhindert. Der einzige Unterschied zum Form-Lauf sind die abgerufenen
- * Quelltexte; er ist der teure, und er ist der verbindliche.
+ * DAS FREIGABE-ZEICHEN — der Beleg, dass GENAU DIESER Stand die Prüfung
+ * bestanden hat (oder öffentlich nichts Ungeprüftes zeigt).
+ *
+ * ── SICHERUNGEN GEHÖREN IN DIE SCHNITTSTELLE, NICHT IN DIE DISZIPLIN ─────
+ * Bis BE-009 hing die Prüfung daran, dass eine Route sie RIEF. Der PATCH rief
+ * sie nicht, und jede Änderung an einem veröffentlichten Artikel war sofort
+ * öffentlich, an den sieben Regeln vorbei. Jetzt verlangt die Schreib-Funktion
+ * (`saveInsightsPostRow`) für jeden öffentlichen Stand ein Zeichen — ein neuer
+ * Weg, der die Prüfung vergisst, scheitert beim Schreiben statt still zu
+ * veröffentlichen.
+ *
+ * Ausstellen kann es NUR dieses Modul: gültig ist ein Zeichen nur, wenn es in
+ * der modul-privaten `WeakMap` steht. Ein von Hand gebautes `{ post }` hat die
+ * Form, aber keinen Eintrag — und gilt deshalb nicht. Gebunden ist es an das
+ * OBJEKT, das geprüft wurde, UND an dessen Inhalt zum Zeitpunkt der Prüfung:
+ * wer den geprüften Stand danach noch verändert, hat einen ungeprüften.
  */
-export async function insightsGateIssues(
-  post: InsightsPost,
-  brandRows: readonly InsightsBrandRow[],
-): Promise<InsightsReviewIssue[]> {
-  return insightsReviewIssues(post, {
-    sourceTexts: await insightsSourceTexts(post),
-    flagText: insightsFlagText(post, brandRows),
+export interface InsightsPublicClearance {
+  readonly post: InsightsPost
+  readonly kind: 'gate' | 'hidden-translation'
+}
+
+const issuedClearances = new WeakMap<InsightsPublicClearance, { post: InsightsPost, snapshot: string }>()
+
+function issueClearance(post: InsightsPost, kind: InsightsPublicClearance['kind']): InsightsPublicClearance {
+  const clearance: InsightsPublicClearance = Object.freeze({ post, kind })
+  issuedClearances.set(clearance, { post, snapshot: JSON.stringify(post) })
+  return clearance
+}
+
+/** Deckt das Zeichen genau diesen Stand? Nur ein hier ausgestelltes, nur für
+ *  dasselbe Objekt, nur solange es unverändert ist. */
+export function insightsClearanceCovers(clearance: InsightsPublicClearance | null | undefined, post: InsightsPost): boolean {
+  if (!clearance) return false
+  const issued = issuedClearances.get(clearance)
+  return !!issued && issued.post === post && issued.snapshot === JSON.stringify(post)
+}
+
+export interface InsightsGateInput {
+  /** Der Stand, der öffentlich werden oder bleiben soll. */
+  next: InsightsPost
+  /**
+   * Der Stand, der HEUTE öffentlich ist — nur beim Ändern eines
+   * veröffentlichten Artikels. Fehlt er, wird jede Quelle mit Zitat abgerufen
+   * (Zustandswechsel).
+   */
+  published?: InsightsPost | null
+  brandRows: readonly InsightsBrandRow[]
+}
+
+export type InsightsGateVerdict =
+  | { passed: true, issues: InsightsReviewIssue[], clearance: InsightsPublicClearance }
+  | { passed: false, issues: InsightsReviewIssue[] }
+
+/**
+ * DAS GATE DER SIEBEN PRÜFREGELN — der EINE Einstieg, den Routen rufen.
+ *
+ * Die Regeln OHNE Abruf laufen immer über den ganzen `next`. Der Abruf läuft
+ * über die Auswahl aus `insightsSourcesToFetch` — beim Zustandswechsel alle
+ * Quellen, beim Ändern eines veröffentlichten Artikels nur die neuen oder
+ * geänderten Belege (Begründung dort).
+ *
+ * Ein `quote_not_grounded` zählt nur für eine Quelle, die auch AUSGEWÄHLT war:
+ * teilt sich ein unveränderter Beleg die Adresse mit einem geänderten, liegt
+ * zwar der frische Seitentext vor — aber der alte Beleg ist beim
+ * Veröffentlichen geprüft worden und soll aus demselben Grund nicht an einer
+ * geänderten fremden Seite hängen.
+ *
+ * Bestanden ⇒ ein Zeichen für GENAU `next`; nicht bestanden ⇒ die Liste.
+ */
+export async function insightsPublicationGate(input: InsightsGateInput): Promise<InsightsGateVerdict> {
+  const { next, published, brandRows } = input
+  const selected = insightsSourcesToFetch(next, published)
+  const chosen = new Set<InsightsSource>(selected)
+  const issues = insightsReviewIssues(next, {
+    sourceTexts: await insightsSourceTexts(selected),
+    flagText: insightsFlagText(next, brandRows),
     knownBrandIds: insightsKnownBrandIds(brandRows),
-    methodologyLinked: insightsMethodologyLinked(post),
+    methodologyLinked: insightsMethodologyLinked(next),
+  }).filter((issue) => {
+    if (issue.code !== 'quote_not_grounded' || issue.at?.kind !== 'source') return true
+    const source = next.sources[issue.at.index]
+    return !!source && chosen.has(source)
   })
+  if (issues.length > 0) return { passed: false, issues }
+  return { passed: true, issues: [], clearance: issueClearance(next, 'gate') }
+}
+
+/** Die Felder, die ein Übersetzen-Lauf ändern darf — ausser den Texten der
+ *  Nicht-Grundsprache (die hängen an `baseLocale`). */
+const TRANSLATION_RUN_FIELDS = ['translatedAt', 'translationModel', 'translationPromptVersion', 'translationReviewed'] as const
+
+function withoutTranslation(post: InsightsPost, target: 'de' | 'en'): string {
+  const dropped = new Set<string>([
+    ...TRANSLATION_RUN_FIELDS,
+    ...(target === 'de' ? ['titleDe', 'dekDe', 'bodyDe'] : ['titleEn', 'dekEn', 'bodyEn']),
+  ])
+  // Nach Schlüssel sortiert: die Reihenfolge der Felder ist keine Änderung.
+  const kept = Object.entries(post)
+    .filter(([key]) => !dropped.has(key))
+    .sort(([a], [b]) => a.localeCompare(b))
+  return JSON.stringify(kept)
+}
+
+/**
+ * DAS ENGE ZEICHEN FÜR DEN ÜBERSETZEN-LAUF — ohne Prüfung, und das ist
+ * begründet.
+ *
+ * Der Lauf ist BEZAHLT; sein Ergebnis wird nicht verworfen, weil ein
+ * veröffentlichter Artikel daneben steht (klemmen statt ablehnen). Und er
+ * zeigt öffentlich nichts Neues: die frische Maschinen-Fassung trägt
+ * `translationReviewed: false` und ist damit ausgeblendet
+ * (`insightsPublicKopf`). Öffentlich wird sie erst über das Häkchen im PATCH
+ * — und der läuft durch das Gate.
+ *
+ * Deshalb ist das Zeichen ENG: es gilt nur, wenn das Häkchen aus ist UND sich
+ * `next` von `current` AUSSCHLIESSLICH in Titel/Vorspann/Text der
+ * Nicht-Grundsprache und in den vier Übersetzungs-Feldern unterscheidet. Jede
+ * andere Abweichung (ein Wort in der Grundfassung, eine Quelle, das Häkchen)
+ * ⇒ `null`, und die Schreib-Funktion lehnt ab.
+ */
+export function insightsHiddenTranslationClearance(current: InsightsPost, next: InsightsPost): InsightsPublicClearance | null {
+  if (next.translationReviewed !== false) return null
+  if (next.baseLocale !== current.baseLocale) return null
+  const target = current.baseLocale === 'de' ? 'en' : 'de'
+  if (withoutTranslation(current, target) !== withoutTranslation(next, target)) return null
+  return issueClearance(next, 'hidden-translation')
 }

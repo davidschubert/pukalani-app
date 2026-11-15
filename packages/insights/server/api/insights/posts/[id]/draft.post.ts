@@ -20,7 +20,9 @@ import type { InsightsDraftResponse } from '../../../../../shared/types/insights
  * Ein Entwurf ÜBERSCHREIBT Titel, Vorspann und Fließtext der Grundfassung. In
  * `review` wäre das ein Text, der einem Menschen unter der Hand ausgetauscht
  * wird; in `published`/`updated` wäre es eine stille Änderung an einem
- * öffentlichen Beitrag. Wer neu entwerfen will, zieht zurück.
+ * öffentlichen Beitrag. Wer neu entwerfen will, zieht zurück. Deshalb
+ * schreibt diese Route auch ohne Freigabe-Zeichen (BE-009): der Stand ist nie
+ * öffentlich, und `saveInsightsPostRow` verlangt es nur dafür.
  *
  * ── DER ENTWURF BLEIBT `draft` ───────────────────────────────────────────
  * „Es gibt keinen Weg von der KI direkt nach `review`" (§9.4). Der Zustand

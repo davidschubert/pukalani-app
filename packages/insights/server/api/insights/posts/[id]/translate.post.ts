@@ -99,7 +99,13 @@ export default defineEventHandler(async (event): Promise<InsightsTranslateRespon
     translationReviewed: false,
   }
 
-  const saved = await saveInsightsPostRow(event, id, next)
+  // DAS ENGE ZEICHEN (BE-009): an einem veröffentlichten Beitrag läuft hier
+  // kein Gate. Der Lauf ist bezahlt und wird nicht verworfen; die frische
+  // Fassung ist mit `translationReviewed: false` öffentlich ausgeblendet. Das
+  // Zeichen gilt nur, wenn sich AUSSCHLIESSLICH die zweite Fassung und ihre
+  // Herkunft geändert haben — öffentlich wird sie erst über das Häkchen im
+  // PATCH, und der prüft. An einem Entwurf ist das Zeichen ohne Belang.
+  const saved = await saveInsightsPostRow(event, id, next, insightsHiddenTranslationClearance(current, next) ?? undefined)
   insightsLogAi('completed', 'translate', {
     postId: id,
     format: current.format,

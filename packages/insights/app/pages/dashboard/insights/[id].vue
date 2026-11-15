@@ -131,6 +131,10 @@ const REASON_KEY: Record<string, string> = {
   post_not_found: 'insights.editor.error.postNotFound',
   source_not_found: 'insights.editor.error.sourceNotFound',
   storage_unavailable: 'insights.editor.error.storageUnavailable',
+  // BE-009: eine Route hat das Gate vergessen, die Schreib-Funktion hat
+  // abgelehnt. Nichts ist geändert — der Satz sagt das, damit niemand zweimal
+  // speichert und glaubt, es sei draussen.
+  gate_skipped: 'insights.editor.error.gateSkipped',
 }
 
 function reasonOf(error: unknown): string {
@@ -162,6 +166,18 @@ function fail(error: unknown): void {
 
 // ── Speichern ──────────────────────────────────────────────────────────────
 
+/**
+ * WURDE DAS LETZTE SPEICHERN ABGELEHNT? (BE-009)
+ *
+ * An einem veröffentlichten Beitrag prüft das Speichern die sieben Regeln;
+ * besteht die Änderung nicht, antwortet der Server `saved: false` mit dem
+ * UNVERÄNDERTEN öffentlichen Stand. Den setzen wir NICHT in `post`: der
+ * Editor beginnt bei einem neuen `post` von vorn, und die Eingabe wäre weg.
+ * Stattdessen bleibt sie stehen, die Liste zeigt die Punkte, und der Editor
+ * sagt über diesen Schalter, dass online weiter die geprüfte Fassung steht.
+ */
+const saveBlocked = ref(false)
+
 async function save(payload: InsightsPostEdit): Promise<void> {
   saving.value = true
   try {
@@ -169,8 +185,16 @@ async function save(payload: InsightsPostEdit): Promise<void> {
       method: 'PATCH',
       body: payload,
     })
-    post.value = saved.post
     issues.value = saved.issues
+    if (!saved.saved) {
+      saveBlocked.value = true
+      // Plural über die ZAHL (wie `rulesBlocked`): nur so wählt vue-i18n
+      // „Ein Punkt" gegen „{count} Punkte".
+      toast.add({ title: t('insights.editor.saveBlocked', saved.issues.length), color: 'warning' })
+      return
+    }
+    saveBlocked.value = false
+    post.value = saved.post
     toast.add({ title: t('insights.editor.saved'), color: 'success' })
   }
   catch (error) {
@@ -190,8 +214,28 @@ async function changeState(to: InsightsState): Promise<void> {
       method: 'POST',
       body: { to },
     })
-    post.value = result.post
+    // EIN ZUSTANDSWECHSEL ÄNDERT NIE DEN INHALT. Deshalb wird der Bestand IN
+    // PLACE nachgezogen statt `post` zu ersetzen: der Editor hängt an der
+    // IDENTITÄT von `post` und begänne sonst von vorn — wer nach einem
+    // abgelehnten Speichern zurückzieht, verlöre genau die Eingabe, die er
+    // als Entwurf speichern will.
+    const current = post.value
+    if (current) {
+      Object.assign(current, {
+        state: result.post.state,
+        publishedAt: result.post.publishedAt,
+        reviewedAt: result.post.reviewedAt,
+        reviewedBy: result.post.reviewedBy,
+      })
+    }
+    else {
+      post.value = result.post
+    }
     issues.value = result.issues
+    if (result.changed) saveBlocked.value = false
+    // `watch(post)` feuert beim In-place-Nachziehen nicht — der Newsletter
+    // hängt aber am Zustand (nur an einem öffentlichen Beitrag).
+    void loadNewsletter()
     toast.add({
       title: result.changed ? t('insights.editor.stateChanged') : t('insights.editor.stateBlocked', { count: result.issues.length }),
       color: result.changed ? 'success' : 'warning',
@@ -466,6 +510,7 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           :translating="translating"
           :drafting="drafting"
           :transitioning="transitioning"
+          :save-blocked="saveBlocked"
           :checking-index="checkingIndex"
           :newsletter="newsletter"
           :newsletter-sending="newsletterSending"
