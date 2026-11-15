@@ -7,6 +7,42 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-15 — Löschen und Fristen: was nach dem Löschen bleibt, und wie lange (P14)
+
+**Anlass:** Gesamtaudit, Paket P14 „Export und Löschung vollständig". Beim
+Umsetzen standen mehrere Zahlen nebeneinander, und für Einträge von Menschen
+ohne Konto gab es gar keine Frist. Wie es gebaut ist:
+[EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
+
+**Davids Entscheidungen (drei Runden zum Anklicken, je die empfohlene Antwort):**
+- **Prüfergebnisse (Brand Checks) nach dem Löschen von Konto oder Marke:**
+  sofort für niemanden mehr sichtbar, nach 90 Tagen endgültig gelöscht;
+  Ergebnisse über öffentliche Websites bleiben ohne Bezug zur Person. In der
+  Zeit holt nur der Betreiber von Hand zurück.
+- **Zurückholen (WH1, [Plan](plans/WIEDERHERSTELLUNG.md)):** Marken bekommen
+  einen Papierkorb zum Selbst-Zurückholen (90 Tage, Bilder und Entwürfe bleiben
+  so lange, eine veröffentlichte Marke bleibt nach dem Zurückholen
+  zurückgezogen). Konten bleiben vorerst nicht zurückholbar; das wird mit dem
+  Pukalani-Konto entschieden.
+- **Zwei Fristen bleiben nebeneinander:** die vollständige Kopie der Daten
+  eines gelöschten Kontos 30 Tage (sie enthält alles, deshalb kurz), die
+  wenigen versteckten Reste 90 Tage. Der Hinweis vor dem Löschen nennt beide.
+- **Termine einer gelöschten Person:** abgesagt und geleert (Titel,
+  Beschreibung, Ort, Link, Bild), der Platzhalter bleibt.
+- **Adresse eines Melders:** bleibt bis zu 90 Tage nach der Meldung
+  (Entscheidung vom 2026-11-12), wird nicht mit dem Konto sofort gelöscht.
+- **Einträge ohne Konto bekommen eine Frist:** Warteliste nie bestätigt 30
+  Tage, eingeladen oder abgelehnt 90 Tage, noch wartend spätestens 12 Monate;
+  Erstgespräch-Anfragen 12 Monate; Konto-Protokoll (Anmeldungen, Änderungen am
+  Konto) 12 Monate.
+
+**Folge:** Die ersten vier Punkte sind gebaut und live (PR 173, 174, 175). Die
+drei Fristen für Einträge ohne Konto sind entschieden, aber noch nicht gebaut
+(OPEN-ITEMS EL1 c); bis dahin sagen die Datenschutztexte dazu nichts Neues.
+
+**Wieder prüfen:** wenn das Pukalani-Konto (PK1) Export und Löschung an eine
+zentrale Stelle zieht — dann gehören die Fristen dorthin.
+
 ## 2026-11-12 — Alle vier Prüfungen halten das Ausliefern auf; kein Release-Automat mehr (P07)
 
 **Anlass:** Gesamtaudit 2026-11 (Paket P07, Findings OPS-006, OPS-013, SEC-044,

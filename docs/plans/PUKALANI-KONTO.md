@@ -556,7 +556,12 @@ E0 ist dann der erste Schritt.
 - *Testphase einmal pro Person:* „Person" ist ab hier das Pukalani-Konto. Die
   Marke „Testphase verbraucht" gehört ans Konto, nicht an die Community.
 - *Hinweis beim Löschen von Konto oder Marke:* E3 liefert die Auskunft je
-  Layer und die Seite dafür.
+  Layer und die Seite dafür. Der Hinweis selbst steht seit dem 2026-11-15
+  (GA1 P14) über dem Lösch-Knopf.
+- *Gelöschtes Konto zurückholen:* Davids Entscheidung vom 2026-11-15 — wird
+  HIER entschieden und gebaut, nicht vorher. Vorschlag 30 Tage Bedenkzeit;
+  was dafür nötig ist, steht in
+  [WIEDERHERSTELLUNG.md](WIEDERHERSTELLUNG.md), Abschnitt „Für später".
 
 ---
 
