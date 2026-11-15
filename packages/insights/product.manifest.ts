@@ -67,8 +67,8 @@ export default {
   tier: 'optional',
   requires: ['brand'],
   hasMigrations: true,
-  // Schema-Probe (OPS-008): insights-010 legt insights_watchlist.briefRunAt an.
-  schema: { latest: '010', probe: { migration: '010', table: 'insights_watchlist', column: 'briefRunAt' } },
+  // Schema-Probe (OPS-008): insights-011 legt insights_posts.changeNotes an.
+  schema: { latest: '011', probe: { migration: '011', table: 'insights_posts', column: 'changeNotes' } },
   apiPrefixes: ['/api/insights'],
   title: { en: 'Brand Insights', de: 'Brand Insights' },
   description: {
