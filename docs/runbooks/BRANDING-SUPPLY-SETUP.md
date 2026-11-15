@@ -124,7 +124,11 @@ Sonst zeigt der Fuß auf eine Route, deren Tabelle es nicht gibt.
 
       **`pnpm migrate … --env-file` geht NICHT mehr** (pnpm 10.29 wertet
       `--env-file` offenbar selbst aus und meldet „…branding.env: not found", Exit 9) —
-      den Runner direkt mit node aufrufen. DIESMAL IN DER FALSCHEN
+      den Runner direkt mit node aufrufen. **Seit 2026-11-16 (GA1 P21) heißt
+      derselbe Lauf** `pnpm migrate --app branding --env
+      ~/.appwrite-secrets/migrations/branding.env --layer comments --layer
+      moderation --prod`: `--env` ist die Schreibweise, die pnpm durchlässt,
+      und gegen Production verlangt der Runner `--prod`. DIESMAL IN DER FALSCHEN
       REIHENFOLGE: der Code (PR #110) war seit 19:45 UTC live, die Migration
       lief erst gegen 22:20 UTC (Plan BRAND-INSIGHTS-KURATION §20 „Auf Prod").
       Die Migration öffnet das Schreiben NICHT: `app_config.commentsEnabled`

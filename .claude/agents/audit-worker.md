@@ -83,7 +83,13 @@ Each layer is a contract; files inherit their layer's contract. Check your slice
 - Always explicit `Query.limit()` (silent default 25). Missing limit on a list = finding.
 - Use SDK generics (`tablesDB.listRows<T>()`), not `as T[]` casts.
 - Migrations idempotent (409 → skip), run ONLY via `pnpm migrate --app <app>`
-  (`scripts/migrate.mjs`); poll column `available` before creating indexes.
+  (`scripts/migrate.mjs`; non-local endpoint needs `--prod`, the env file's
+  project must be listed in the app's `site.manifest.ts` `appwriteProjects`);
+  every migration file starts with `import '../../../../scripts/lib/assert-target.mjs'`;
+  poll column `available` before creating indexes.
+- Every script that holds a key checks its target first (`scripts/lib/target.mjs`,
+  guard `packages/core/tests/scriptTargetGuard.test.ts`). A new script without
+  the check or a reasoned exemption = finding.
 
 ## §4 — Realtime & Presence
 - ONE shared JWT-authenticated realtime socket in

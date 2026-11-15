@@ -126,9 +126,43 @@ paths:
   dieselbe Funktion. Runbook: docs/runbooks/ANMELDE-REGELN.md.
 - Immer explizites Query.limit() (Default 25)
 - SDK-Generics nutzen: tablesDB.listRows<T>()
+- ZIEL-PRÜFUNG VOR DEM SCHREIBEN (OPS-002, seit 2026-11-16 — Davids
+  Entscheidung „Skripte, die in eine Datenbank schreiben, prüfen vorher, ob
+  es die richtige ist"): EINE Funktion für alle, `scripts/lib/target.mjs`.
+  Lokaler Endpunkt (localhost, 127.0.0.1, ::1, *.localhost) ⇒ durch; jeder
+  andere nur mit ausdrücklicher Bestätigung. Der RUNNER verlangt dafür
+  `--prod` UND vergleicht die Projekt-Id der Env-Datei mit
+  `appwriteProjects` im `site.manifest.ts` der App (Abweichung ⇒ Abbruch,
+  die Meldung nennt beide Ids; ein nicht ladbares Manifest ist ein Abbruch,
+  nie „alle Layer"; `--env-file` ohne `--app` gibt es nicht mehr). Danach
+  reicht er die geprüfte Id als `PUKALANI_TARGET_CONFIRM` an jede Migration
+  weiter. JEDES ANDERE SKRIPT verlangt gegen einen entfernten Endpunkt
+  `PUKALANI_TARGET_CONFIRM=<Projekt-Id>` — wer es setzt, NENNT das gemeinte
+  Projekt, und zeigt die Env-Datei auf ein anderes, bricht das Skript ab.
+  Aufrufe: lokal `pnpm migrate --app <app>`; Production
+  `pnpm migrate --app <app> --env ~/.appwrite-secrets/migrations/<projekt>.env
+  --only <layer>-<NNN> --prod` (erst mit `--dry-run` statt `--prod` ansehen:
+  zeigt Projekt, Endpunkt und die Dateien, schreibt nichts; ohne `--only`
+  fährt er alle Layer der App). Über `pnpm` geht nur `--env` — `--env-file`
+  fängt Node ab, bevor der Runner es sieht; direkt mit
+  `node scripts/migrate.mjs` gehen beide. NEUE MIGRATION ⇒ erste Import-Zeile
+  `import '../../../../scripts/lib/assert-target.mjs'` (direkt gestartet läuft
+  sie lokal weiter, gegen Production scheitert sie ohne Bestätigung — der
+  Direktaufruf war bis dahin der übliche Weg auf Production und ging am
+  Runner vorbei). NEUES SKRIPT MIT SCHLÜSSEL ⇒ dieselbe Zeile oder
+  `assertTarget({ endpoint, projectId })` vor dem ersten Client; Stripe:
+  `checkStripeTarget` (ein Live-Schlüssel verlangt `--live`). Wächter:
+  `packages/core/tests/scriptTargetGuard.test.ts` — jede Datei unter
+  `scripts/`, `packages/*/scripts/`, `apps/*/scripts/`, die einen Schlüssel in
+  die Hand nimmt, ruft die Prüfung oder steht mit Grund in `EXEMPT`; eine
+  veraltete Ausnahme wird ebenfalls rot. NEUES PROJEKT einer App ⇒ zuerst in
+  `appwriteProjects` eintragen. NICHT gelöst: ein VOLLER Lauf legt im
+  `system`-Layer weiter Spalten an und löscht sie wieder (alte Migrationen
+  ohne Register) — eine einzeln freigegebene Migration deshalb immer mit
+  `--only`.
 - Migrations: idempotent (409 → skip), IMMER über den zentralen Runner
   `pnpm migrate --app <app>` (scripts/migrate.mjs; bei mehreren Apps ist
-  --app Pflicht — nie die falsche Instanz), nach Column-Anlage auf
+  --app Pflicht — nie die falsche Instanz; Ziel-Prüfung s. o.), nach Column-Anlage auf
   'available' pollen bevor Indizes. Das Pollen allein reicht NICHT:
   der Index-Endpunkt liest die Spaltenliste aus Appwrites Metadaten-Cache
   (Collection-Dokument), der dem Spalten-Status hinterherhinkt — CI-E2E

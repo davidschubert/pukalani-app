@@ -41,7 +41,11 @@ Kopier-Knopf, lokal `pbpaste > datei`.
 
    → `~/.appwrite-secrets/migrations/control.env` (Format wie jede App-.env).
 
-2. **Schema anlegen:** `pnpm migrate --env-file ~/.appwrite-secrets/migrations/control.env`
+2. **Schema anlegen:** `pnpm migrate --app control --env ~/.appwrite-secrets/migrations/control.env --prod`
+   (seit 2026-11-16, GA1 P21: die App ist Pflicht, gegen Production braucht es
+   `--prod`, und das Projekt der Env-Datei muss in `appwriteProjects` von
+   `apps/control/site.manifest.ts` stehen — ein neues Projekt dort zuerst
+   eintragen. Erst ansehen: dasselbe mit `--dry-run` statt `--prod`.)
    Migrationen sind idempotent (409 → skip), es gibt kein Ledger — der Lauf
    ist beliebig wiederholbar.
 

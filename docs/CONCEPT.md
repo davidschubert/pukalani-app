@@ -547,7 +547,13 @@ Appwrite hat kein eingebautes Migrations-System → manuelle Scripts, nie automa
 - **Aufruf IMMER über den zentralen Runner:** `pnpm migrate --app <app>`
   (`scripts/migrate.mjs`). Bei mehreren Apps ist `--app` **Pflicht** — genau dafür
   gibt es ihn: ein direkter `node --env-file=apps/<app>/.env …`-Aufruf auf ein
-  Layer-Script trifft bei einem Tippfehler die falsche Instanz.
+  Layer-Script trifft bei einem Tippfehler die falsche Instanz. Seit 2026-11-16
+  (GA1 P21) PRÜFT der Runner sein Ziel: die Projekt-Id der Env-Datei muss in
+  `appwriteProjects` des `site.manifest.ts` der App stehen, gegen einen
+  Endpunkt, der nicht lokal ist, braucht es `--prod`, `--dry-run` zeigt den
+  Lauf ohne zu schreiben, `--only <layer>-<NNN>` fährt genau eine Migration.
+  Eine direkt gestartete Migration scheitert gegen Production ohne
+  Bestätigung (`scripts/lib/target.mjs`).
 - **Idempotent**: 409 (existiert bereits) → loggen und überspringen; Scripts sind
   beliebig oft wiederholbar, kein Migrations-State nötig
 - **Indizes NUR über die Fabrik** `scripts/migrations-lib/indexRetry.mts` — einmal je

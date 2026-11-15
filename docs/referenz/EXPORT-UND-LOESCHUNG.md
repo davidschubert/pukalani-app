@@ -134,7 +134,9 @@ prüft Davids Anwalt.
 
 `scripts/ops/erasure-backfill.mjs` bringt Zeilen, die vor P14 „gelöscht" wurden, auf den Stand, den
 der Code heute schreibt. Ohne `--apply` zählt es nur; das Protokoll nennt nur Zahlen. Gegen eine
-Instanz, die nicht `localhost` ist, braucht `--apply` zusätzlich `ERASURE_BACKFILL_CONFIRM=<Projekt>`.
+Instanz, die nicht lokal ist, braucht `--apply` zusätzlich `PUKALANI_TARGET_CONFIRM=<Projekt>` (seit
+2026-11-16 die eine Ziel-Prüfung aller Skripte, `scripts/lib/target.mjs`; vorher hieß die Variable
+`ERASURE_BACKFILL_CONFIRM`).
 Zwei kleine Tests (in `messages` und `comments`) halten die Feldwerte des Skripts gegen die
 Konstanten der Layer.
 

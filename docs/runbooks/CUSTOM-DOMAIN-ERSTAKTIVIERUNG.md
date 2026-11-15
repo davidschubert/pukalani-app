@@ -63,7 +63,7 @@ Die Häkchen hier sind ECHT und werden pro Durchlauf abgehakt.
 ## 0. Was vorher stimmen muss
 
 - [ ] **Migration `control-035` ist auf der Control-Plane-Instanz gefahren.**
-      `pnpm migrate --app control --layer control`
+      `pnpm migrate --app control --env ~/.appwrite-secrets/migrations/admin.env --only control-035 --prod`
       Sie muss **vor** dem Code-Deploy laufen: `createRow<TenantRow>` nennt alle
       Spalten explizit, und ohne sie bricht das Anlegen JEDER neuen Community.
 - [ ] Danach `pnpm ops:schema-parity` — sie berührt nur `communities` im
@@ -220,7 +220,7 @@ Die drei realistischen Fälle:
 ## B0. Was vorher stimmen muss
 
 - [ ] **Migration `control-036` ist auf der Control-Plane-Instanz gefahren.**
-      `pnpm migrate --app control --layer control`
+      `pnpm migrate --app control --env ~/.appwrite-secrets/migrations/admin.env --only control-036 --prod`
       Acht additive Spalten an `websites` + zwei Indizes. Sie ist **nicht**
       deploy-kritisch wie control-035 (`websites`-Zeilen werden mit
       `{ ...body }` angelegt, nicht mit einer expliziten Spaltenliste) — vorher

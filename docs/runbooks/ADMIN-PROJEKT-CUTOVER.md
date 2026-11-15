@@ -115,6 +115,11 @@ dem Runner-Stopp; Werkzeug: `--phase inventory`.
       `pnpm migrate --env-file ~/.appwrite-secrets/migrations/admin.env
       --layer system --layer billing --layer pages --layer tickets
       --layer runner --layer control --layer admin` — alle grün.
+      **Diese Form gibt es seit 2026-11-16 nicht mehr (GA1 P21):** der Runner
+      verlangt die App und gegen Production `--prod`, und er vergleicht das
+      Projekt der Env-Datei mit dem Manifest der App. Heute hieße derselbe Lauf
+      `pnpm migrate --app control --env ~/.appwrite-secrets/migrations/admin.env --prod`
+      (erst mit `--dry-run` statt `--prod` ansehen).
 - [x] Alle 41 Quell-Tabellen existieren im Ziel; alle 5 Buckets ebenfalls —
       die AH-1-Bucket-Lücke ist von den heutigen Migrationen selbst
       geschlossen (Werkzeug-Inventar Quelle↔Ziel).

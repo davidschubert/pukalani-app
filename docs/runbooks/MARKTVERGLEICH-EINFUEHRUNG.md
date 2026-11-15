@@ -60,10 +60,10 @@ brand-Layer zuerst, weil `market_*` an `brand_profiles` hängt:
 
 ```bash
 # brand-018 (Befund-Art `market`) und brand-019 (`marketVisibility`)
-pnpm migrate --env-file ~/.appwrite-secrets/migrations/branding.env --layer brand
+pnpm migrate --app branding --env ~/.appwrite-secrets/migrations/branding.env --layer brand --prod
 
 # market-001 … market-004 (Kandidaten, Marktprofile, Berichte, Rolle `self`)
-pnpm migrate --env-file ~/.appwrite-secrets/migrations/branding.env --layer market
+pnpm migrate --app branding --env ~/.appwrite-secrets/migrations/branding.env --layer market --prod
 ```
 
 - [x] brand-Lauf durch, jede Zeile `✔` oder `↷ (existiert bereits)`.
