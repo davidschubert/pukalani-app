@@ -1,4 +1,4 @@
-import { AppwriteException, ID, Permission, Role } from 'node-appwrite'
+import { AppwriteException, ID, Permission, Query, Role } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import type { H3Event } from 'h3'
@@ -78,7 +78,7 @@ export function isAppwriteUserMissing(error: unknown): boolean {
   return error.type === 'user_not_found'
 }
 
-/** Aufbewahrungsfrist der Snapshots (Lazy-Cleanup, Plan §4.8) */
+/** Aufbewahrungsfrist der Snapshots (Plan §4.8; durchgesetzt stündlich, SEC-009) */
 export const GDPR_EXPORT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 
 export async function exportUserCompletely(
@@ -148,31 +148,152 @@ async function writeSnapshot(event: H3Event, userId: string, payload: UserDataEx
     permissions: [Permission.read(Role.label('admin'))],
   })
 
-  // Lazy-Cleanup: abgelaufene Alt-Snapshots gleich mit abräumen (best effort)
+  // Zusätzliches Netz: abgelaufene Alt-Snapshots gleich mit abräumen. Die
+  // Frist GARANTIERT der stündliche Lauf (plugins/gdpr-export-prune.ts,
+  // SEC-009) — ein Fehler hier darf die Löschung deshalb nicht aufhalten.
   await cleanupExpiredGdprExports(event).catch(() => {})
 
   return file.$id
 }
 
-/** Alle Snapshots älter als die Aufbewahrungsfrist löschen (Lazy-Cleanup, §4.8). */
-export async function cleanupExpiredGdprExports(event: H3Event): Promise<number> {
-  const config = useRuntimeConfig(event)
-  const bucketId = config.public.appwriteGdprBucket
-  if (!bucketId) return 0
+/** Zähler eines Aufräum-Laufs über den gdpr-exports-Bucket. */
+export interface GdprExportPruneResult {
+  /** Gelesene Dateien (bis einschließlich der ersten noch nicht abgelaufenen). */
+  scanned: number
+  /** Davon älter als die Aufbewahrungsfrist. */
+  expired: number
+  /** Wirklich entfernt (ein 404 beim Löschen zählt mit: schon weg). */
+  removed: number
+  /** Löschen gescheitert — bleibt liegen, der nächste Lauf versucht es erneut. */
+  failed: number
+}
+
+export interface GdprExportPruneOptions {
+  /** Nur zählen, nichts löschen (Handroute, Standard dort). */
+  dryRun?: boolean
+  /** Bezugszeitpunkt für die Frist — nur für Tests. */
+  now?: Date
+}
+
+const GDPR_EXPORT_PAGE_SIZE = 100
+/**
+ * Harte Obergrenze an Seiten je Lauf (= 5.000 Dateien). Ein Bucket, der in
+ * einer Stunde mehr abgelaufene Kopien ansammelt, ist kein Normalbetrieb; der
+ * Lauf hört dann mit einer Zeile auf und der nächste macht weiter, statt einen
+ * Prozess unbegrenzt zu beschäftigen.
+ */
+const GDPR_EXPORT_MAX_PAGES = 50
+
+function isNotFound(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 404
+}
+
+/**
+ * Alle Snapshots älter als die Aufbewahrungsfrist löschen (SEC-009). Läuft
+ * OHNE Request (stündliches Plugin) und mit (Admin-Route) — Konfiguration und
+ * Admin-Client sind ohne Event dieselben wie beim Digest-Sweep.
+ *
+ * Gelesen wird ÄLTESTES ZUERST, seitenweise per Cursor. Weil die Liste
+ * aufsteigend nach `$createdAt` sortiert ist, ist hinter der ersten noch
+ * gültigen Datei jede weitere ebenfalls jünger — dort endet der Lauf, ohne
+ * den Rest des Buckets zu lesen.
+ *
+ * Fehler: eine scheiternde LISTE wirft (dann weiß der Lauf nichts); ein
+ * scheiterndes LÖSCHEN wird gezählt (`failed`) und der Rest trotzdem
+ * abgeräumt — weder verschluckt noch als Abbruch.
+ */
+export async function pruneExpiredGdprExports(
+  event?: H3Event,
+  opts: GdprExportPruneOptions = {},
+): Promise<GdprExportPruneResult> {
+  const result: GdprExportPruneResult = { scanned: 0, expired: 0, removed: 0, failed: 0 }
+  const bucketId = useRuntimeConfig(event).public.appwriteGdprBucket
+  if (!bucketId) return result
 
   const admin = createAdminClient(event)
-  const cutoff = Date.now() - GDPR_EXPORT_RETENTION_MS
-  let removed = 0
-  // Bucket bleibt klein (Frist!) — eine 100er-Seite pro Aufruf reicht; der
-  // nächste Aufruf räumt Rest-Seiten (Lazy-Prinzip).
-  const files = await admin.storage.listFiles({ bucketId })
-  for (const file of files.files) {
-    if (Date.parse(file.$createdAt) < cutoff) {
-      await admin.storage.deleteFile({ bucketId, fileId: file.$id }).catch(() => {})
-      removed++
+  const cutoff = (opts.now ?? new Date()).getTime() - GDPR_EXPORT_RETENTION_MS
+  // Cursor = die letzte Datei, die NOCH DA ist (Probelauf oder gescheitertes
+  // Löschen). Eine gelöschte Datei als Cursor kennt Appwrite nicht mehr, und
+  // ohne Cursor liest die nächste Seite wieder von vorn — dort stehen dann
+  // nur noch die liegengebliebenen, die sonst doppelt gezählt würden.
+  let cursor: string | undefined
+
+  for (let page = 0; page < GDPR_EXPORT_MAX_PAGES; page++) {
+    const queries = [Query.orderAsc('$createdAt'), Query.limit(GDPR_EXPORT_PAGE_SIZE)]
+    if (cursor) queries.push(Query.cursorAfter(cursor))
+    const { files } = await admin.storage.listFiles({ bucketId, queries })
+
+    for (const file of files) {
+      result.scanned++
+      if (Date.parse(file.$createdAt) >= cutoff) return result
+      result.expired++
+      if (opts.dryRun) {
+        cursor = file.$id
+        continue
+      }
+      try {
+        await admin.storage.deleteFile({ bucketId, fileId: file.$id })
+        result.removed++
+      }
+      catch (error) {
+        if (isNotFound(error)) {
+          result.removed++
+        }
+        else {
+          result.failed++
+          cursor = file.$id
+        }
+      }
     }
+
+    if (files.length < GDPR_EXPORT_PAGE_SIZE) return result
   }
-  return removed
+
+  logEvent('warn', 'gdpr.exports_prune_page_cap', { pages: GDPR_EXPORT_MAX_PAGES, ...result })
+  return result
+}
+
+/**
+ * Dünne Hülle für die zwei bisherigen Aufrufer (Snapshot schreiben, Admin-
+ * Liste öffnen). Sie bleiben als zusätzliches Netz; die Frist garantiert der
+ * stündliche Lauf.
+ */
+export async function cleanupExpiredGdprExports(event: H3Event): Promise<number> {
+  return (await pruneExpiredGdprExports(event)).removed
+}
+
+let gdprExportPruneRunning = false
+
+/**
+ * Der Lauf mit Riegel (Plugin und Handroute). Ein zweiter Start, während einer
+ * läuft, liefert `null` — zwei Läufe im selben Prozess würden dieselben
+ * Dateien doppelt löschen und doppelt zählen.
+ *
+ * Log: eine Zeile nur, wenn etwas abgelaufen war oder scheiterte — ein
+ * stündliches „0" macht das Log unlesbar (Regel wie beim Gast-Aufräumen).
+ * Gescheitertes Löschen bekommt eine EIGENE error-Zeile, damit ein Ausfall im
+ * Log auffällt und nicht in einer info-Zeile untergeht.
+ */
+export async function runGdprExportPrune(opts: GdprExportPruneOptions = {}): Promise<GdprExportPruneResult | null> {
+  if (gdprExportPruneRunning) {
+    logEvent('warn', 'gdpr.exports_prune_busy', {})
+    return null
+  }
+  gdprExportPruneRunning = true
+  try {
+    const result = await pruneExpiredGdprExports(undefined, opts)
+    const counts = { scanned: result.scanned, expired: result.expired, removed: result.removed, failed: result.failed }
+    if (result.expired > 0 || result.failed > 0) logEvent('info', 'gdpr.exports_pruned', counts)
+    if (result.failed > 0) logEvent('error', 'gdpr.exports_prune_incomplete', counts)
+    return result
+  }
+  catch (error) {
+    logEvent('error', 'gdpr.exports_prune_failed', { message: error instanceof Error ? error.message : String(error) })
+    throw error
+  }
+  finally {
+    gdprExportPruneRunning = false
+  }
 }
 
 export async function deleteUserCompletely(

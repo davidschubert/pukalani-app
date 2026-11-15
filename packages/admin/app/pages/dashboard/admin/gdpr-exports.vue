@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // GDPR-Pre-Delete-Snapshots: Liste + Download + manuelles Löschen. Die Dateien
 // entstehen bei jeder Account-Löschung (Self + Admin) und verfallen nach 30
-// Tagen automatisch (Lazy-Cleanup beim Listen/Snapshotten).
+// Tagen automatisch (stündlicher Lauf im Core, SEC-009; Listen und Snapshotten
+// räumen zusätzlich mit ab).
 import type { TableColumn } from '@nuxt/ui'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'users.manage', dashboardScope: 'operator' })

@@ -135,7 +135,11 @@ paths:
   Übersetzungs-Routen lesen über die Operator-Klinke und stellen
   `requireCourseMember` VOR den ersten Datenbankzugriff; (4) Übersetzen
   zeigt nie mehr als Lesen — die Lesson-Route trägt ALLE Vorprüfungen ihrer
-  GET-Route, die Event-Schwärzung LEERT den Cache mit; (5) echte Bearbeitung
+  GET-Route, die Event-Schwärzung LEERT den Cache mit, ebenso jedes LÖSCHEN (SEC-032,
+  2026-11-15: der Platzhalter eines gelöschten Kommentars, der Grabstein eines
+  Beitrags und der geschwärzte Termin eines gelöschten Kontos tragen keine
+  `translations` mehr — eine neue Spalte mit Inhalt braucht einen Eintrag in
+  JEDEM Lösch-Weg, docs/referenz/EXPORT-UND-LOESCHUNG.md); (5) echte Bearbeitung
   leert, No-op-Speichern nicht; (6) SCHON IN DER ZIELSPRACHE (2026-08-21,
   Davids Entscheidung): das Modell antwortet `{"same": true}` statt eines
   teuren Echos, die Route cacht die GRUNDFASSUNG wörtlich (zweiter Klick =

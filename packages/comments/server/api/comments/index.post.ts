@@ -3,6 +3,7 @@ import { commentSchema } from '../../../schemas/comment'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
 import { commentSnippet } from '../../../shared/commentSnippet'
 import { assertReplyParent } from '../../utils/replyParent'
+import { commentNotificationCommunityId, commentNotificationRowId } from '../../utils/commentNotifications'
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user
@@ -156,8 +157,15 @@ export default defineEventHandler(async (event) => {
   // direkter Cross-Layer-Zugriff auf die notifications-Tabelle (CONCEPT A14).
   // scope 'tenant' (C15): die Meldung gehört in die Community, in der der
   // Kommentar steht — ihr Link (targetUrl) gilt auch nur dort.
+  //
+  // FESTE ROW-ID je (Typ, Community, Kommentar, Empfänger) — SEC-032: die
+  // Meldung trägt einen Auszug, und nur über diese Id findet das Löschen bzw.
+  // Ausblenden des Kommentars sie wieder (utils/commentNotifications.ts).
+  const notificationCommunityId = commentNotificationCommunityId(event)
+  const notificationRowId = (type: 'reply' | 'mention', recipientId: string) =>
+    commentNotificationRowId({ communityId: notificationCommunityId, commentId: row.$id, recipientId, type })
   if (parent && parent.authorId && parent.authorId !== user.$id) {
-    await notify(event, { recipientId: parent.authorId, type: 'reply', title: user.name, body: snippet, link, senderId: user.$id, scope: 'tenant' })
+    await notify(event, { recipientId: parent.authorId, type: 'reply', title: user.name, body: snippet, link, senderId: user.$id, scope: 'tenant', rowId: notificationRowId('reply', parent.authorId) })
   }
 
   // @Name-Erwähnungen (aufgelöst gegen die Thread-Teilnehmer) benachrichtigen —
@@ -169,7 +177,7 @@ export default defineEventHandler(async (event) => {
     excludeUserIds: [user.$id, ...(parent?.authorId ? [parent.authorId] : [])],
   })
   for (const mention of mentions) {
-    await notify(event, { recipientId: mention.userId, type: 'mention', title: user.name, body: snippet, link, senderId: user.$id, scope: 'tenant' })
+    await notify(event, { recipientId: mention.userId, type: 'mention', title: user.name, body: snippet, link, senderId: user.$id, scope: 'tenant', rowId: notificationRowId('mention', mention.userId) })
   }
 
   // Activity-Feed (Core-Vertrag recordActivity, best-effort wie notify) —

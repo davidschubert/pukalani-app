@@ -1,6 +1,7 @@
 import { AppwriteException } from 'node-appwrite'
 import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
 import { COMMENT_TOMBSTONE_DATA, commentTombstonePermissions, toPublicCommentRow } from '../../utils/commentTombstone'
+import { commentNotificationCommunityId, removeCommentNotifications } from '../../utils/commentNotifications'
 
 /**
  * Soft-Delete (Spec): die Row bleibt erhalten — Antworten darunter bleiben
@@ -103,15 +104,22 @@ export default defineEventHandler(async (event) => {
    * Der Feed-Eintrag trägt einen eigenen Schnappschuss des Textes
    * (`metadata.snippet`, index.post.ts) — ohne diesen Schritt stünde der
    * gelöschte Satz dort weiter. Best-effort im Core-Vertrag (wirft nie, loggt).
-   *
-   * NICHT GERÄUMT: die Benachrichtigungen `reply`/`mention` mit demselben
-   * Auszug. Sie lassen sich keinem EINZELNEN Kommentar sicher zuordnen — der
-   * Link zeigt auf die SEITE (`targetUrl`), nicht auf den Kommentar, und die
-   * Row-Id ist zufällig. Über Absender + Seite + Text zu suchen, träfe nach
-   * einer Bearbeitung nicht mehr und bei gleichem Text den falschen
-   * Kommentar. Offener Rest, im Bericht zu SEC-032 benannt.
    */
   await removeActivitiesForObject(event, { objectType: 'comment', objectId: commentId })
+
+  /**
+   * Dasselbe für die Glocken anderer Menschen: `reply`/`mention` tragen denselben
+   * Auszug. Sie entstehen seit SEC-032 unter einer festen Id aus Kommentar und
+   * Empfänger und sind darüber sicher zuzuordnen (utils/commentNotifications.ts;
+   * Meldungen von davor bleiben, siehe dort). Die Konto-Id kommt aus `existing`
+   * — der Grabstein hat sie schon geleert. Kein `parentAuthorId`: Gast-
+   * Kommentare lassen sich nicht selbst löschen. Wirft nie, loggt.
+   */
+  await removeCommentNotifications(event, {
+    commentId,
+    communityId: commentNotificationCommunityId(event),
+    authorId: existing.authorId,
+  })
 
   return toPublicCommentRow(tombstone)
 })

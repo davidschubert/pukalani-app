@@ -20,12 +20,15 @@ import { BRAND_CHECKS_TABLE, type BrandCheckRow, brandDb, isAppwriteNotFound } f
  *     Löschroute einer Marke) und setzt nur den Zeitpunkt. Ab da antwortet
  *     jeder Leser so, als gäbe es die Zeile nicht (`brandCheckRankingFacts`
  *     liefert `erased`, die Leser fragen es ab).
- * (2) Der spätere STÜNDLICHE LAUF — NICHT Teil dieser Datei — liest die Zeilen
- *     mit `erasedAt` älter als die Frist (Index `idx_erased`), fragt für jede
- *     `decideBrandCheckPurge` und führt aus: `'delete'` ⇒ `deleteRow`,
- *     `'anonymize'` ⇒ `updateRow` mit `brandCheckAnonymizedData()`, `'keep'`
- *     ⇒ nichts. Die Regel steht hier und pur, damit der Lauf nur noch Zeilen
- *     holen und Antworten ausführen muss.
+ * (2) Der STÜNDLICHE LAUF — `brandCheckErasureRun.ts`, Takt in
+ *     `server/plugins/brand-check-erasure.ts`, Schalter
+ *     `pukalani.brand.checkErasure` — liest die Zeilen mit `erasedAt` älter
+ *     als die Frist (Index `idx_erased`), fragt für jede
+ *     `decideBrandCheckPurge` und führt aus: `'delete'` ⇒ erst die
+ *     Korrekturvorschläge des Checks, dann `deleteRow`; `'anonymize'` ⇒
+ *     `updateRow` mit `brandCheckAnonymizedData()`; `'keep'` ⇒ nichts. Die
+ *     Regel steht hier und pur, damit der Lauf nur noch Zeilen holen und
+ *     Antworten ausführen muss.
  *
  * ── WARUM NICHT SOFORT LÖSCHEN ────────────────────────────────────────────
  * Ein Konto ist schnell gelöscht und nicht wiederherstellbar; ein Check über

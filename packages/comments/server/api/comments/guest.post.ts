@@ -3,6 +3,7 @@ import { guestCommentSchema } from '../../../schemas/comment'
 import { guestCommentsAllowed } from '../../../shared/guestComments'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
 import { assertReplyParent } from '../../utils/replyParent'
+import { commentNotificationCommunityId, commentNotificationRowId } from '../../utils/commentNotifications'
 
 /**
  * Gast-Kommentar (Embed E4, Task 20): Kommentieren OHNE Account (nur ein frei
@@ -196,6 +197,14 @@ export default defineEventHandler(async (event) => {
       body: snippet,
       link,
       scope: 'tenant',
+      // Feste Id (SEC-032): ohne Absender findet die Räumung diese Meldung
+      // NUR über die berechnete Id — Empfänger ist der Eltern-Autor.
+      rowId: commentNotificationRowId({
+        communityId: commentNotificationCommunityId(event),
+        commentId: row.$id,
+        recipientId: parent.authorId,
+        type: 'reply.guest',
+      }),
     })
   }
 
