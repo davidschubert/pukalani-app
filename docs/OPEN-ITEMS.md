@@ -50,6 +50,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt (COMPLETE „GA1 P11"). Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
 | 34 · KI1 | **KI-Schutz: Nacharbeiten.** Jeder KI-Aufruf läuft seit 2026-11-15 von selbst mit „keine Speicherung, Verarbeitung in Europa", das Protokoll enthält keinen Antworttext mehr, der Abschalter erreicht jeden bezahlten Weg, und abgeschnittene Berater-Antworten sind gekennzeichnet (COMPLETE „GA1 P17"). Offen: (a) **Klick-Probe auf Live** (einen Beitrag übersetzen), (b) **Datenschutztexte**: was sie jetzt über die KI sagen dürfen, (c) ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#ki1) |
 | 35 · EL1 | **Export und Löschung: Nacharbeiten.** Seit 2026-11-15 erreichen Auskunft und Löschung jede Tabelle mit Personenbezug, Gelöschtes ist wirklich leer, und Fristen setzt ein stündlicher Lauf durch (COMPLETE „GA1 P14"). Offen: (a) **Klick-Probe auf Live** mit einem Wegwerf-Konto, (b) **Datenschutztexte**: Fristen und Hinweise, (c) Einträge **ohne Konto und ohne Frist** (Warteliste, Gesprächsanfragen, Protokoll), (d) **Zurückholen binnen 90 Tagen** als eigenes Vorhaben, (e) Kleinigkeiten. | Niedrig | S je Teil, (d) L | **Ja: (a) selbst, (b) mit dem Anwalt, (c)+(d) entscheiden** | [Einzelheiten](#el1) |
+| 36 · AR1 | **Aufräumen: Nacharbeiten.** Altlasten sind seit 2026-11-15 weg: Versuchsordner, erledigte Umzugs-Werkzeuge, die alte Changelog-Automatik; es gibt ein Start-Skript statt fünf, und der Server bekommt nur noch die Dateien, die er braucht (COMPLETE „GA1 P26"). Offen: (a) **die Adresse `changelog.pukalani.app` bei Cloudflare löschen**, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) zwei erledigte Umzugs-Anleitungen ins Archiv?, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare, (c) entscheiden** | [Einzelheiten](#ar1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -595,10 +596,7 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   `node --experimental-strip-types scripts/migrate.mjs --app <app> --env-file <pfad>`.
 - **(e) Kleinigkeiten.** Die Upload-Route fängt einen Fehler von Appwrite nicht
   ab; er wird zu einer allgemeinen 500 statt zu einer verständlichen Meldung
-  (`packages/core/server/api/storage/[bucket]/index.post.ts`). Die fünf
-  Bootstrap-Skripte und `system-032` legen die Ablage verschieden an
-  (Verschlüsselung und Virenprüfung nur in der Migration) — beim
-  Zusammenführen der Bootstrap-Skripte (Audit-Paket P26) angleichen. In
+  (`packages/core/server/api/storage/[bucket]/index.post.ts`). In
   `.claude/rules/tests.md` fehlt der Hinweis, dass `platform.pukalani.app` nur
   `/api/health` beantwortet: eine Live-Probe einer Route gehört auf einen
   Kontroll- oder Community-Host. Und lokal tragen alle vier Projekte die neue
@@ -778,6 +776,38 @@ NICHT hier.
   englisches Bildschirmfoto der neuen Hinweise fehlt. Die Kosten je Lauf und
   der Anbieter stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für
   KI-Ausfälle und Ausgaben" des Gesamtaudits).
+
+<a id="ar1"></a>
+
+**AR1 — Aufräumen: Nacharbeiten (aus dem Gesamtaudit, Paket P26).**
+
+- **(a) Die Adresse `changelog.pukalani.app` löschen.** Sie zeigt noch auf den
+  Datenbank-Server, dahinter ist nichts mehr (die Function und der Webhook
+  sind weg). David hat das Löschen am 2026-11-15 freigegeben; im Browser war
+  Cloudflare nicht angemeldet. Zu tun: bei Cloudflare in der Zone
+  `pukalani.app` den A-Eintrag `changelog` löschen. Der Name bleibt für
+  Kunden gesperrt (`RESERVED_SUBDOMAINS`). Danach die Zeile in
+  `docs/content/2.architektur/6.hosts-und-ports.md` streichen.
+- **(b) Ticket-Kauf vor einem Ausrollen.** Der Kauf eines Event-Tickets lebt
+  nur in der Test-App. Seit P26 bekommt derselbe Kauf dieselbe Stripe-Sitzung
+  (kein doppeltes Bezahlen aus zwei Tabs). Zwei Reste: Beim allerersten Kauf
+  eines Kontos können zwei gleichzeitige Aufrufe zwei Stripe-Kunden anlegen
+  (dann greift der Schutz nicht); und zwischen Bezahlen und Ausstellen des
+  Tickets antwortet ein erneuter Klick mit einem Fehler statt mit „schon
+  bezahlt". Die Rückkehr-Adressen kommen weiter aus dem Host der Anfrage
+  (Audit-Paket P23).
+- **(c) Erledigte Umzugs-Anleitungen.** `docs/runbooks/F3-CUTOVER.md` und
+  `ADMIN-PROJEKT-CUTOVER.md` beschreiben Umzüge, die gelaufen sind; ihr
+  Werkzeug ist gelöscht. Sie tragen oben einen Vermerk und gelten für den
+  Verweis-Wächter als Protokoll. Zu entscheiden: nach `docs/archiv/` ziehen
+  (dann auch die anderen erledigten Cutover-Anleitungen) oder so lassen.
+- **(d) Kleinigkeiten.** Die READMEs von `apps/photos` und `apps/control`
+  sind Kopien der Vorlage und tragen noch deren Überschrift. Der Zähler der
+  Kontakt-Route von `apps/photos` liegt im Speicher des Prozesses. Auf dem
+  Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner (bewusst
+  behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
+  gehören zu BK1 d). Der lokale Lauf der Playwright-Suite braucht einen
+  Browser-Download.
 
 <a id="el1"></a>
 

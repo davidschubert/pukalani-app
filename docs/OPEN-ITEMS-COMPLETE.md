@@ -30,6 +30,82 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P26 — Aufräumen: Altlasten weg, ein Start-Skript, Test-App ohne Entwickler-Einstellungen ✅ 2026-11-15
+
+**Was.** Drittes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Findings OPS-005, BE-023, BE-026, BE-027), Pull Request 177 (Merge
+`2dffebdb`). Davids Entscheidungen vom 2026-11-12: `spikes/` löschen, den
+automatischen Changelog-Entwurf entfernen, `apps/photos` bleibt. Am
+2026-11-15 dazu, per Klick: das Hand-Werkzeug für Changelog-Entwürfe mit
+löschen; die Entwickler-Einstellung für lokale Einbettung auch aus der
+Plattform nehmen; auf den Servern nachsehen und danach löschen, was dort an
+Altem lag.
+
+1. **Gelöscht (OPS-005, BE-027).** `spikes/` (22 Dateien, zwei eigene
+   Lockfiles außerhalb des Workspace). Die erledigten Umzugs-Werkzeuge unter
+   `scripts/ops/` (Projekt `control` → `admin`, `comments` → Pool, zwei
+   Nachzügler) samt ihren zwei Testdateien. Die Function `changelog-draft`,
+   `appwrite.config.json` und das Hand-Werkzeug `pnpm changelog:draft` samt
+   Parser-Test. Zusammen 43 Dateien und gut 6.200 Zeilen. Letzter Commit mit
+   all dem: `9788e7ab`.
+2. **Ins Archiv (OPS-005).** Vier erledigte Appwrite-Upgrade-Skripte liegen
+   unverändert unter [archiv/skripte/](archiv/skripte/README.md) — als
+   Protokoll und als Vorlage für das nächste Upgrade. Dort steht auch die neue
+   Regel: `ops/` und `scripts/ops/` enthalten nur, was heute läuft; ein
+   kleines einmaliges Skript zieht nach dem Lauf ins Archiv, ein großes
+   Umzugs-Werkzeug mit Schreibzugriff auf Production wird gelöscht.
+3. **Der Deploy kopiert zwei Dateien statt zwanzig (OPS-005).** Bisher ging
+   der ganze Ordner `ops/` in jede der sechs Sites, samt Backup-, Upgrade- und
+   Rückweg-Skript. Jetzt nur noch die Ecosystem-Datei der App und
+   `pm2-heal.sh`; ein Test im Core hält das.
+4. **Ein Start-Skript statt fünf (BE-026).** `scripts/bootstrap.mjs --app
+   <name>` ersetzt fünf byte-gleiche Kopien. Die Prüfung „ist die Instanz
+   frisch?" läuft jetzt VOR dem ersten Schreibzugriff und fragt die Tabellen
+   der Datenbank ab: befüllt heißt Abbruch mit Hinweis auf `pnpm migrate`,
+   eine Antwort, die nichts belegt (kein Leserecht, falsche Adresse, Netz),
+   ebenfalls. Vorher prüfte sie nur die Tabelle `comments`, wertete jeden
+   Fehler als „frisch" und stand hinter den ersten Schreibzugriffen. Ein Test
+   im Core wird rot, sobald wieder eine Kopie unter `apps/*/scripts/` liegt.
+5. **`apps/photos` (BE-026).** Ein gefülltes Honeypot-Feld wird still
+   geschluckt statt mit 400 abgelehnt, ein Mailfehler steht im Log, und der
+   Seitenübergang gilt je Route statt global (die App bindet das Dashboard
+   ein).
+6. **Test-App und Plattform ohne Entwickler-Einstellungen (BE-023).** Lokale
+   Adressen dürfen das Kommentar-Widget nur noch im Entwicklungs-Server
+   einbetten (oder mit `NUXT_COMMENTS_EMBED_LOCAL_ORIGINS=true`); die Zeile
+   stand auch in der ausgerollten Plattform. `/api/stats` der Test-App
+   antwortet mit Mandant 404. Der Ticket-Kauf gibt Stripe einen
+   Idempotenz-Schlüssel mit: derselbe Kauf bekommt dieselbe Sitzung.
+7. **Auf den Servern und bei GitHub (Davids Ja per Klick).** Der abgeschaltete
+   Webhook bei GitHub ist gelöscht. Auf dem Datenbank-Server sind fünf alte
+   Upgrade-Skripte aus dem Heimatordner weg (die Protokolle bleiben). Auf dem
+   App-Server sind die überzähligen Dateien aus den sechs `ops`-Ordnern
+   entfernt: je Site liegen dort noch zwei. Die Function gab es auf Production
+   schon nicht mehr (0 Functions in allen vier Projekten, gezählt in der
+   Datenbank); die sechs Alt-Tabellen in `portfolio` ebenfalls nicht.
+
+Offen geblieben: [OPEN-ITEMS AR1](OPEN-ITEMS.md#ar1) — vor allem der
+DNS-Eintrag `changelog.pukalani.app`.
+
+**Gelernt:** (1) **Ein Test, der eine Datei unter `apps/` lädt, ist lokal
+grün und in der CI rot.** Die tsconfig einer App zeigt auf `.nuxt/`, und das
+gibt es im Job `test` nicht — lokal schon, weil `pnpm lint:prepare` davor
+lief. Logik, die getestet werden soll, gehört in den Layer; und vor dem Push
+die Tests einmal ohne `.nuxt` fahren. (2) **`git commit -- <pfad>` nimmt
+den Stand der Arbeitskopie, nicht den des Index.** Ein `git rm --cached`
+für eine Datei, die auf der Platte bleibt, wird so wieder mit eingecheckt;
+`.DS_Store` war nach dem ersten Commit noch da. (3) **In zsh ist `path`
+keine freie Variable.** `for path in …` überschreibt den Suchpfad, danach
+findet die Shell weder `curl` noch `node`. (4) **Erst prüfen, ob es die
+letzte Kopie ist.** Vier der fünf gelöschten Skripte auf dem Server lagen
+byte-gleich im Repo; das fünfte (das Upgrade auf 2.0) gab es nur dort. Die
+Freigabe nannte es, seine Schritte stehen im Runbook — der Wortlaut ist
+trotzdem weg. Die Prüfsummen hätten VOR dem Löschen gegen das Repo gehört.
+(5) **Eine Entwickler-Einstellung in der `app.config` wird ausgeliefert.**
+Die Zeile für lokale Einbettung stand mit dem Kommentar „in Produktion
+praktisch wirkungslos" in zwei Apps; richtig ist ein Mechanismus, der sie im
+Build gar nicht erst setzt (`import.meta.dev`).
+
 ### GA1 P14 — Export und Löschung vollständig ✅ 2026-11-15
 
 **Was.** Zweites Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
