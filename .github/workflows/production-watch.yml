@@ -55,6 +55,22 @@
 #      Befund (Exit 2 ⇒ Warnung, der Lauf bleibt grün) — rot wird nur ein
 #      Modell, das unter unseren Bedingungen nachweislich keinen Weg mehr hat.
 #
+#   7. NÄCHTLICHES BACKUP (Tor-Wort `backup-status`), TÄGLICH (OPS-001,
+#      2026-11-15). Das Backup der Appwrite-Instanz lief seit Juli jede Nacht
+#      aus einem crontab auf dem Server — und hätte es eines Nachts aufgehört,
+#      hätte es niemand erfahren. Jetzt schreibt `ops/appwrite-backup.sh` nach
+#      jedem Lauf sein Ergebnis in eine Stand-Datei, und dieser Blick liest sie
+#      über das Tor-Skript: EINE Zeile mit Ergebnis, Schritt, Alter des letzten
+#      guten Laufs, Größe und Zahl der Dateien. Rot, wenn der letzte Versuch
+#      gescheitert ist oder der letzte gute Lauf zu alt ist. Die Schwelle steht
+#      HIER (nicht auf dem Server) und hängt am Auslöser: der tägliche Lauf
+#      kommt 47 Minuten nach dem Backup (03:30 UTC) und verlangt den Lauf
+#      DIESER Nacht (höchstens 6 Stunden alt — GitHub startet geplante Läufe
+#      oft verspätet); ein Lauf von Hand kommt zu beliebiger Zeit und verlangt
+#      nur „nicht älter als 26 Stunden". Wer eine der beiden Uhrzeiten ändert,
+#      prüft diese Schwelle mit. Runbook:
+#      docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md, § 6.3.
+#
 # ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
 # Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft
 # in 11 Tagen ab") war jeder Lauf rot — rund 900 Stück bis zum 2026-10-24,
@@ -133,6 +149,10 @@ on:
     inputs:
       alarm_drill:
         description: 'PROBEALARM: Health-Blick absichtlich rot — prüft Issue/Mail/Heartbeat; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
+      backup_drill:
+        description: 'PROBEALARM BACKUP: verlangt ein Backup, das es nicht geben kann (Alter unter 0 h) — Backup-Blick rot, prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
       appwrite_probe:
@@ -229,6 +249,11 @@ jobs:
     env:
       SERVER: '49.13.211.173'
       SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
+      # Für Blick 7. Derselbe Server und derselbe gepinnte Host-Key wie im Job
+      # `appwrite-cert` unten; der Wächter-Schlüssel hat dort keine Shell,
+      # sshd führt immer das Tor-Skript aus.
+      APPWRITE_SERVER: '188.245.61.155'
+      APPWRITE_SERVER_HOSTKEY: '188.245.61.155 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF5ARmxcJgO7pLIhHLdfFQkg/mMTcp+Xl7aC8snX/rCs'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -249,8 +274,9 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/ops_key
           chmod 600 ~/.ssh/ops_key
-          printf '%s\n' "$SERVER_HOSTKEY" > ~/.ssh/known_hosts
+          printf '%s\n' "$SERVER_HOSTKEY" "$APPWRITE_SERVER_HOSTKEY" > ~/.ssh/known_hosts
           printf 'IdentityFile ~/.ssh/ops_key\nIdentitiesOnly yes\n' >> ~/.ssh/config
+          printf 'Host appwrite-prod\n  HostName %s\n  User ploi\n  BatchMode yes\n  ConnectTimeout 20\n  StrictHostKeyChecking yes\n' "$APPWRITE_SERVER" >> ~/.ssh/config
 
       - name: Env-Variablen der Sites prüfen
         env:
@@ -296,6 +322,46 @@ jobs:
           fi
           exit "$code"
 
+      # Blick 7 (s. Kopf). Geschickt wird nur das WORT; was es ausgibt, steht
+      # im Tor-Skript auf dem Server (ops/appwrite-cert-gate.sh) — eine Zeile
+      # aus Wörtern und Zahlen, kein Pfad, kein Dateiname. Die Zeile wird hier
+      # noch einmal gegen ihre feste Form geprüft, bevor sie ins (öffentliche)
+      # Protokoll kommt.
+      - name: Nächtliches Backup gelaufen?
+        if: always()
+        env:
+          # Probealarm: eine Schwelle, die kein Backup erfüllen kann.
+          MAX_AGE_HOURS: ${{ inputs.backup_drill && '-1' || (github.event_name == 'schedule' && '6' || '26') }}
+        run: |
+          set -u
+          code=0
+          line="$(ssh appwrite-prod backup-status 2>/dev/null)" || code=$?
+          form='^backup ergebnis=(ok|fehler) schritt=[a-z-]{1,24} alter_stunden=([0-9]{1,6}|nie) groesse_mb=[0-9]{1,9} dateien=[0-9]{1,6}$'
+          # Genau EINE Zeile in genau dieser Form — sonst kommt nichts davon
+          # ins Protokoll.
+          if [ "$code" -ne 0 ] || [ "$(printf '%s\n' "$line" | wc -l)" -ne 1 ] || ! printf '%s\n' "$line" | grep -Eq "$form"; then
+            echo "::error::Kein lesbarer Backup-Stand vom Appwrite-Server (Tor: Exit $code). Runbook: docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md, § 6.3"
+            exit 1
+          fi
+          echo "$line"
+          result="$(printf '%s' "$line" | sed -E 's/.* ergebnis=([a-z]+) .*/\1/')"
+          step="$(printf '%s' "$line" | sed -E 's/.* schritt=([a-z-]+) .*/\1/')"
+          age="$(printf '%s' "$line" | sed -E 's/.* alter_stunden=([0-9]+|nie) .*/\1/')"
+          rot=0
+          if [ "$result" != "ok" ]; then
+            echo "::error::Der letzte Backup-Lauf ist GESCHEITERT (Schritt: $step). Frühere Läufe liegen unberührt. Runbook: docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md, § 6.3"
+            rot=1
+          fi
+          if [ "$age" = "nie" ]; then
+            echo "::error::Es gab noch NIE einen guten Backup-Lauf."
+            rot=1
+          elif [ "$age" -gt "$MAX_AGE_HOURS" ]; then
+            echo "::error::Der letzte gute Backup-Lauf ist $age h alt (erlaubt: $MAX_AGE_HOURS h). Lief der Zeitplan heute Nacht? Runbook: docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md, § 6.3"
+            rot=1
+          fi
+          [ "$rot" -eq 0 ] && echo "Backup in Ordnung: letzter guter Lauf vor $age h (erlaubt: $MAX_AGE_HOURS h)."
+          exit "$rot"
+
   # ── ALARMWEG: AUS EINEM ROTEN LAUF EINEN ZUSTAND MACHEN ─────────────────
   # Läuft nach JEDEM Wächter-Lauf (nicht nach den manuellen Appwrite-Jobs).
   # `always()`: gerade wenn oben etwas rot ist, muss dieser Job laufen.
@@ -339,7 +405,7 @@ jobs:
           set -euo pipefail
           rot=""
           [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit (alle 30 min)"
-          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail)"
+          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Backup)"
           echo "tls=$TLS_RESULT server=$SERVER_RESULT rot='${rot# }' drill=$DRILL"
 
           # Label einmalig sicherstellen (--force: vorhandenes nur aktualisieren).

@@ -116,7 +116,10 @@ paths:
   pm2-Log, Resend-Zähler mit Secret) und seit 2026-11-14 `verify-ai-models.mjs`
   (BE-004: hat jedes konfigurierte KI-Modell noch den Endpunkt, auf den der
   Code es festlegt? öffentliche Liste, kein Secret; „OpenRouter nicht
-  erreichbar" ist Exit 2 und bleibt grün). Alle decken dieselbe blinde Stelle ab —
+  erreichbar" ist Exit 2 und bleibt grün) und seit 2026-11-15 der Blick aufs
+  nächtliche Backup (OPS-001: Tor-Wort `backup-status` auf appwrite-prod, rot
+  bei gescheitertem Lauf oder wenn der Lauf dieser Nacht fehlt; eigener
+  Probealarm `-f backup_drill=true`). Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
   Läufe rot, api.pukalani.app lief ab, niemand sah es): der Job `alarm` macht
