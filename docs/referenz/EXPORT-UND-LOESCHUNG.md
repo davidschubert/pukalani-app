@@ -95,7 +95,9 @@ hinein ist ein eigenes Paket (Gesamtaudit P22).
 
 **Zurückholen innerhalb der 90 Tage** geht nur von Hand und nur für Prüfergebnisse: in der
 Appwrite-Konsole das Feld `erasedAt` der Zeile leeren. Ein gelöschtes Konto und eine gelöschte Marke
-kommen nicht zurück; ein Knopf zum Selbst-Zurückholen ist ein späteres Vorhaben.
+kommen nicht zurück. Geplant ist ein Papierkorb für Marken (Punkt WH1,
+[WIEDERHERSTELLUNG.md](../plans/WIEDERHERSTELLUNG.md)); Konten werden mit dem Pukalani-Konto
+entschieden.
 
 ## Der Hinweis vor dem Löschen
 
@@ -104,8 +106,12 @@ kommen nicht zurück; ein Knopf zum Selbst-Zurückholen ist ein späteres Vorhab
 Zeile an, indem er einen i18n-Schlüssel unter `pukalani.account.deleteNotices` in seiner
 `app.config.ts` nennt (heute: `brand`, `onboarding`, `messages`). `pnpm check:i18n-keys` prüft, dass
 jeder genannte Schlüssel in beiden Sprachen existiert. **Ändert sich, was beim Löschen geschieht,
-ändert sich dieser Text mit** – und es ist zu prüfen, ob die Datenschutzerklärung der Seite noch
-stimmt (die schreibt David mit dem Anwalt, nicht der Code).
+ändert sich dieser Text mit** – und die Datenschutztexte, die dieselben Fristen nennen: der
+vorläufige Text von branding.supply (`apps/branding/scripts/legalPrivacyInterim.ts`, ein Test hält
+die 90 Tage an den Konstanten fest; liegt auf Production als Zeile und wird eigens eingespielt), der
+Entwurf auf pukalani.app (`apps/marketing/i18n/locales/*.json`, Abschnitt „Speicherdauer") und die
+Vorlage für Communities (`packages/pages/shared/legalTemplates.ts`). Die verbindlichen Fassungen
+prüft Davids Anwalt.
 
 ## Bewusst ausgenommen
 
@@ -119,8 +125,10 @@ stimmt (die schreibt David mit dem Anwalt, nicht der Code).
   Fadens der anderen Person, kein lesbarer Inhalt.
 - **Gemeldete private Nachrichten** bleiben bis zu 90 Tage als Beleg (eigenes Paket P16 regelt, wer
   sie liest und wann sie fallen).
-- **Zeilen ohne Konto und ohne Frist**: Warteliste und Gesprächsanfragen von Menschen, die nie ein
-  Konto angelegt haben (offener Punkt EL1 in [OPEN-ITEMS](../OPEN-ITEMS.md)).
+- **Zeilen ohne Konto**: Warteliste und Gesprächsanfragen von Menschen, die nie ein Konto angelegt
+  haben, und das Konto-Protokoll haben heute noch keinen Lauf. Die Fristen sind entschieden
+  (2026-11-15: Warteliste 30 / 90 Tage / 12 Monate, Gesprächsanfragen und Protokoll 12 Monate), der
+  Bau ist der offene Punkt EL1 (c) in [OPEN-ITEMS](../OPEN-ITEMS.md).
 
 ## Altbestand
 
