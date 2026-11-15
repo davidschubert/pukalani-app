@@ -45,7 +45,20 @@
  *  · Newsletter             → `packages/insights/app/app.config.ts`
  *    (`newsletter.enabled: false`).
  *  · Fristen                → `BRAND_CHECK_CACHE_MS`, `MARKET_RAW_TTL_MS`,
- *    `SHARE_TTL_MS`, `BRAND_EVENTS_RETENTION_MONTHS`.
+ *    `SHARE_TTL_MS`, `BRAND_EVENTS_RETENTION_MONTHS`,
+ *    `BRAND_CHECK_ERASURE_RETENTION_DAYS` und
+ *    `BRAND_CHECK_CORRECTION_ADDRESS_RETENTION_DAYS` (der Test hält die 90 im
+ *    Text an beiden fest).
+ *  · Löschen                → `packages/brand/server/utils/brandUserData.ts`
+ *    (was mit dem Konto fällt), `brandCheckErasure.ts` (Prüfergebnisse sofort
+ *    unsichtbar), `brandCheckErasureRun.ts` (endgültig nach der Frist),
+ *    `packages/system/server/utils/userDataContributor.ts` (Konto-Protokoll:
+ *    Name und IP geleert, Kennung bleibt). Übersicht:
+ *    `docs/referenz/EXPORT-UND-LOESCHUNG.md`.
+ *  · Kopie bei Kontolöschung → AUS: auf branding.supply ist kein Bucket für
+ *    Kopien eingetragen (`NUXT_PUBLIC_APPWRITE_GDPR_BUCKET` leer), es wird
+ *    ohne Kopie gelöscht, und der Text nennt deshalb keine. WER DEN BUCKET
+ *    EINTRÄGT, SCHREIBT ZUERST DEN ABSATZ (30 Tage, nur der Betreiber liest).
  *  · Fremde Websites        → `brandSiteFetch.ts`, `brandSiteCrawl.ts`,
  *    `brandRobots.ts`, `brandTdm.ts`, `packages/market/shared/marketPii.ts`.
  *
@@ -64,7 +77,7 @@
  */
 
 /** Stand des Textes. Ändert sich eine Aussage, ändert sich dieses Datum mit. */
-export const PRIVACY_INTERIM_DATE = '2026-11-14'
+export const PRIVACY_INTERIM_DATE = '2026-11-15'
 
 /**
  * FRÜHERE FASSUNGEN DIESES TEXTES — als SHA-256 des ganzen Textes je Sprache.
@@ -80,15 +93,22 @@ export const PRIVACY_INTERIM_DATE = '2026-11-14'
  * dass die aktuelle Fassung nicht in dieser Liste steht.
  */
 export const PRIVACY_INTERIM_SUPERSEDED_SHA256: Record<'de' | 'en', readonly string[]> = {
-  // Fassung vom 2026-11-12 (erste Übergangsfassung).
-  de: ['6c2623eef8eababa63ec65041a5a3e34b0876a63d9561af57fc07c6a5c92f18e'],
-  en: ['8ae6fa07221ac78bb421f76a303166ab0d6247796b8344f663d35ab758a3699e'],
+  // Fassung vom 2026-11-12 (erste Übergangsfassung), danach die vom
+  // 2026-11-14 (Bildmodell und Hinweis zum offenen Ort).
+  de: [
+    '6c2623eef8eababa63ec65041a5a3e34b0876a63d9561af57fc07c6a5c92f18e',
+    '73955e509c6cb9d3bf0323f5e5db4970a8907a0a7adcdb087e7944abdac8cf7f',
+  ],
+  en: [
+    '8ae6fa07221ac78bb421f76a303166ab0d6247796b8344f663d35ab758a3699e',
+    '20a5410e76c5f69ddd66887a53c396c9e224c27a371f9d97325637c5fc84769e',
+  ],
 }
 
 /** Woran das Einspiel-Skript und der Test die Übergangsfassung erkennen. */
 export const PRIVACY_INTERIM_MARKER: Record<'de' | 'en', string> = {
-  de: '> **Vorläufige Fassung, Stand 14. November 2026.**',
-  en: '> **Provisional version, as of 14 November 2026.**',
+  de: '> **Vorläufige Fassung, Stand 15. November 2026.**',
+  en: '> **Provisional version, as of 15 November 2026.**',
 }
 
 export const PRIVACY_INTERIM_BODY: Record<'de' | 'en', string> = {
@@ -107,7 +127,7 @@ Einen Vertreter in der Europäischen Union haben wir bisher nicht benannt. Ob wi
 ## Was wir verarbeiten
 
 - **Konto.** E-Mail-Adresse, Anzeigename und Passwort; das Passwort liegt bei uns nur als Prüfwert, nie im Klartext. Meldest du dich mit Google an, erhalten wir von Google deinen Namen, deine E-Mail-Adresse und eine Kennung. Dazu halten wir fest, welcher Fassung der AGB du zugestimmt hast und dass du als Unternehmen oder selbstständig handelst.
-- **Sitzungen.** IP-Adresse, Browserkennung und der daraus abgeleitete ungefähre Ort, damit du unter [Einstellungen, Sitzungen](/dashboard/settings/sessions) siehst, wo du angemeldet bist. Den Ort schlagen wir in einer Datenbank auf unserem eigenen Server nach; dafür geht keine Anfrage nach außen.
+- **Sitzungen.** IP-Adresse, Browserkennung und der daraus abgeleitete ungefähre Ort, damit du unter [Konto, Sitzungen](/account/sessions) siehst, wo du angemeldet bist. Den Ort schlagen wir in einer Datenbank auf unserem eigenen Server nach; dafür geht keine Anfrage nach außen.
 - **Deine Markeninhalte.** Alles, was du in der Werkstatt schreibst oder hochlädst: Antworten, das Gespräch mit dem Markenberater, Entwürfe, bestätigte Kapitel, Vorbilder (Bilder) und die Ergebnisse daraus.
 - **Brand-Check.** Die geprüfte Adresse, das Ergebnis und ein täglich wechselnder Prüfwert aus deiner IP-Adresse, der nur das Tageslimit zählt. Die IP-Adresse selbst speichern wir dabei nicht. Der Brand-Check funktioniert ohne Konto.
 - **Marktvergleich.** Die Adressen, die du vergleichst, und die Auswertung dazu.
@@ -118,6 +138,7 @@ Einen Vertreter in der Europäischen Union haben wir bisher nicht benannt. Ob wi
 - **E-Mails an dich.** Mails zu Konto und Anmeldung (zum Beispiel Adresse bestätigen, Passwort zurücksetzen), Einladungen, die Quittung einer Erstgespräch-Anfrage und, nur wenn du sie einschaltest, Benachrichtigungen.
 - **Nutzungsereignisse.** Welche Schritte in der Werkstatt benutzt wurden, mit Konto- und Marken-Kennung, aber ohne deinen Text. Eine Ausnahme: Beginnst du einen Schritt neu, heben wir den bisherigen Text als Protokoll auf.
 - **Server-Protokolle.** IP-Adresse, Zeitpunkt, aufgerufene Adresse und Browserkennung jedes Seitenaufrufs.
+- **Konto-Protokoll.** Anmeldungen und Änderungen an deinem Konto mit Zeitpunkt, deinem Namen und deiner IP-Adresse, damit sich Missbrauch aufklären lässt.
 - **Cookies.** Ein Cookie hält deine Anmeldung, weitere merken sich Sprache und Farbwelt. Keines dient der Analyse oder der Werbung.
 
 ## KI-Verarbeitung deiner Markentexte
@@ -189,23 +210,25 @@ An diese Stellen gehen Daten, und nur an diese:
 
 - **Konto und Markeninhalte:** bis du die Marke oder das Konto löschst.
 - **Sitzungen:** bis du dich abmeldest oder die Sitzung abläuft.
-- **Brand-Check:** Ein Ergebnis wird sieben Tage lang für dieselbe Adresse wiederverwendet. Gespeichert bleibt es, bis wir es auf Anfrage entfernen.
+- **Brand-Check:** Ein Ergebnis wird sieben Tage lang für dieselbe Adresse wiederverwendet. Gespeichert bleibt es, bis du die Marke oder dein Konto löschst oder wir es auf Anfrage entfernen. Nach dem Löschen sieht es sofort niemand mehr; nach 90 Tagen löschen wir es endgültig. Ein Ergebnis über eine öffentliche Website bleibt danach bestehen, ohne Bezug zu dir.
+- **Korrekturvorschlag zu einem Brand-Check:** Die E-Mail-Adresse, die du dabei angibst, löschen wir 90 Tage nach dem Vorschlag automatisch. Der Vorschlag selbst bleibt, ohne Bezug zu dir.
 - **Marktvergleich:** Rohtext höchstens 24 Stunden, die Auswertung bis zur Löschung der Marke oder des Kontos.
 - **Geteilte Links:** 30 Tage; du kannst sie jederzeit widerrufen.
 - **Nutzungsereignisse:** 24 Monate, danach löschen wir sie automatisch.
+- **Konto-Protokoll:** Löschst du dein Konto, leeren wir darin deinen Namen und deine IP-Adresse. Die Konto-Kennung und der Vorgang bleiben als Nachweis stehen.
 - **Server-Protokolle und Sicherungskopien:** Dafür nennen wir die Fristen mit der geprüften Fassung.
 
 ## Deine Rechte
 
 Je nachdem, wo du lebst, hast du Rechte an deinen Daten. Nach der DSGVO sind das Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit, Widerspruch und die Beschwerde bei einer Aufsichtsbehörde.
 
-- Export und Löschung erledigst du selbst unter [Einstellungen, Daten](/dashboard/settings/data). Löschst du dein Konto, entfernen wir deine Marken, die Gespräche, geteilte Links, Nutzungsereignisse und die Daten deiner Marktvergleiche. Einladungen bleiben als Nachweis bestehen, aber ohne deine E-Mail-Adresse.
-- Ergebnisse eines Brand-Checks ohne Konto und Einträge der Warteliste hängen an keinem Konto. Wir entfernen sie auf Anfrage von Hand.
-- Für alles andere genügt eine Mail an hello@branding.supply.
+- Export und Löschung erledigst du selbst unter [Konto, Daten](/account/data); dort steht vor dem Löschen noch einmal, was geschieht. Löschst du dein Konto, entfernen wir deine Marken, die Gespräche, geteilte Links, Nutzungsereignisse und die Daten deiner Marktvergleiche. Deine Brand-Check-Ergebnisse verstecken wir sofort und löschen sie nach 90 Tagen. Einträge der Warteliste und E-Mail-Adressen an Korrekturvorschlägen und Meldungen entfernen wir mit, wenn sie zu deiner bestätigten Adresse gehören. Einladungen bleiben als Nachweis bestehen, aber ohne deine E-Mail-Adresse.
+- Ergebnisse eines Brand-Checks ohne Konto und Einträge der Warteliste ohne Konto hängen an keinem Konto. Wir entfernen sie auf Anfrage von Hand.
+- Eine einzelne Marke kannst du noch nicht selbst löschen; schreib uns an hello@branding.supply, wir löschen sie für dich. Für alles andere genügt ebenfalls eine Mail an diese Adresse.
 
 ## Änderungen
 
-Stand: 14. November 2026. Ändert sich etwas an den Empfängern oder an dem, was wir verarbeiten, ändern wir diesen Text und das Datum.`,
+Stand: 15. November 2026. Ändert sich etwas an den Empfängern oder an dem, was wir verarbeiten, ändern wir diesen Text und das Datum.`,
 
   en: `${PRIVACY_INTERIM_MARKER.en} This text describes what actually happens to your data on branding.supply today and who receives it. It has not been reviewed by our lawyer yet, which is why it does not name legal bases yet. The reviewed version will replace it.
 
@@ -222,7 +245,7 @@ We have not appointed a representative in the European Union so far. Whether we 
 ## What we process
 
 - **Account.** Email address, display name and password; we only hold the password as a hash, never in plain text. If you sign in with Google, we receive your name, your email address and an identifier from Google. We also record which version of the terms you agreed to and that you act as a business or as self-employed.
-- **Sessions.** IP address, user agent and the approximate location derived from it, so that you can see where you are signed in under [Settings, Sessions](/dashboard/settings/sessions). We look the location up in a database on our own server; no request leaves our server for this.
+- **Sessions.** IP address, user agent and the approximate location derived from it, so that you can see where you are signed in under [Account, Sessions](/account/sessions). We look the location up in a database on our own server; no request leaves our server for this.
 - **Your brand content.** Everything you write or upload in the workshop: answers, the conversation with the brand advisor, drafts, confirmed chapters, your references (images) and the results built from them.
 - **Brand check.** The checked address, the result and a daily rotating hash of your IP address that only counts the daily limit. We do not store the IP address itself here. The brand check works without an account.
 - **Market comparison.** The addresses you compare and the analysis of them.
@@ -233,6 +256,7 @@ We have not appointed a representative in the European Union so far. Whether we 
 - **Emails to you.** Emails about your account and sign-in (for example confirming your address, resetting your password), invitations, the receipt for an intro call request and, only if you switch them on, notifications.
 - **Usage events.** Which steps of the workshop were used, with account and brand identifiers but without your text. One exception: if you restart a step, we keep the previous text as a record.
 - **Server logs.** IP address, time, requested address and user agent of every page request.
+- **Account log.** Sign-ins and changes to your account with the time, your name and your IP address, so that misuse can be traced.
 - **Cookies.** One cookie keeps you signed in, others remember language and colour theme. None is used for analytics or advertising.
 
 ## AI processing of your brand texts
@@ -304,21 +328,23 @@ Data goes to these parties, and only to these:
 
 - **Account and brand content:** until you delete the brand or the account.
 - **Sessions:** until you sign out or the session expires.
-- **Brand check:** a result is reused for the same address for seven days. It stays stored until we remove it on request.
+- **Brand check:** a result is reused for the same address for seven days. It stays stored until you delete the brand or your account, or until we remove it on request. After deletion nobody can see it any more; after 90 days we delete it for good. A result about a public website remains after that, with no link to you.
+- **Correction request for a brand check:** we automatically delete the email address you give 90 days after the request. The request itself remains, with no link to you.
 - **Market comparison:** raw text for 24 hours at most, the analysis until the brand or the account is deleted.
 - **Shared links:** 30 days; you can revoke them at any time.
 - **Usage events:** 24 months, after which we delete them automatically.
+- **Account log:** if you delete your account, we clear your name and your IP address from it. The account identifier and the event remain as a record.
 - **Server logs and backups:** we will state these periods with the reviewed version.
 
 ## Your rights
 
 Depending on where you live, you have rights over your data. Under the GDPR these are access, rectification, erasure, restriction of processing, data portability, objection and a complaint to a supervisory authority.
 
-- You handle export and deletion yourself under [Settings, Data](/dashboard/settings/data). If you delete your account, we remove your brands, the conversations, shared links, usage events and the data of your market comparisons. Invitations remain as a record, but without your email address.
-- Results of a brand check without an account and waiting list entries are not tied to an account. We remove them by hand on request.
-- For everything else, an email to hello@branding.supply is enough.
+- You handle export and deletion yourself under [Account, Data](/account/data); before you delete, that page tells you once more what happens. If you delete your account, we remove your brands, the conversations, shared links, usage events and the data of your market comparisons. We hide your brand check results at once and delete them after 90 days. We also remove waiting list entries and email addresses on correction requests and reports if they belong to your confirmed address. Invitations remain as a record, but without your email address.
+- Results of a brand check without an account and waiting list entries without an account are not tied to an account. We remove them by hand on request.
+- You cannot delete a single brand yourself yet; write to hello@branding.supply and we delete it for you. For everything else, an email to that address is enough as well.
 
 ## Changes
 
-As of 14 November 2026. If the recipients or what we process change, we change this text and the date.`,
+As of 15 November 2026. If the recipients or what we process change, we change this text and the date.`,
 }

@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { BRAND_CHECK_ERASURE_RETENTION_DAYS } from '../../../packages/brand/server/utils/brandCheckErasure'
+import { BRAND_CHECK_CORRECTION_ADDRESS_RETENTION_DAYS } from '../../../packages/brand/server/utils/brandCheckErasureRun'
 import { BRAND_MARK_DRAFTS_ENDPOINT, brandImageModelLabel } from '../../../packages/brand/shared/brandMarkDrafts'
 import { parseMarkdown } from '../../../packages/core/shared/markdown'
 import { MAX_PAGE_BODY } from '../../../packages/pages/schemas/page'
@@ -29,6 +31,12 @@ import {
  *  7. Frühere Fassungen sind als Prüfsumme geführt, die aktuelle steht nicht
  *     darunter — sonst ersetzte das Einspiel-Skript sie durch sich selbst
  *     oder, schlimmer, hielte einen alten Text für den neuen.
+ *  8. Die FRISTEN nach dem Löschen stehen mit der Zahl da, die der Code
+ *     durchsetzt (SEC-015): Prüfergebnisse und die Adresse an einem
+ *     Korrekturvorschlag je 90 Tage. Wer eine Frist ändert, wird hier rot.
+ *  9. Die Links ins Konto zeigen in den KUNDEN-Bereich (`/account/…`), nicht
+ *     in die Betreiber-Ansicht (`/dashboard/…`), die ein Kunde nicht öffnen
+ *     kann.
  */
 
 const LOCALES = ['de', 'en'] as const
@@ -114,6 +122,25 @@ describe('branding: vorläufige Datenschutzerklärung', () => {
       expect(bullet).toContain('OpenRouter')
       expect(bullet).toMatch(locale === 'de' ? /nicht zusagen/ : /cannot promise/)
       expect(bullet).toMatch(locale === 'de' ? /freiwillig/ : /optional/)
+    }
+  })
+
+  it('nennt die Fristen nach dem Löschen mit den Zahlen aus dem Code', () => {
+    expect(BRAND_CHECK_ERASURE_RETENTION_DAYS).toBe(BRAND_CHECK_CORRECTION_ADDRESS_RETENTION_DAYS)
+    const days = BRAND_CHECK_ERASURE_RETENTION_DAYS
+    const de = PRIVACY_INTERIM_BODY.de.split('\n')
+    const en = PRIVACY_INTERIM_BODY.en.split('\n')
+    expect(de.find(line => line.startsWith('- **Brand-Check:**'))).toContain(`nach ${days} Tagen löschen wir es endgültig`)
+    expect(en.find(line => line.startsWith('- **Brand check:**'))).toContain(`after ${days} days we delete it for good`)
+    expect(de.find(line => line.startsWith('- **Korrekturvorschlag'))).toContain(`${days} Tage nach dem Vorschlag`)
+    expect(en.find(line => line.startsWith('- **Correction request'))).toContain(`${days} days after the request`)
+  })
+
+  it('verlinkt ins Kundenkonto, nie in die Betreiber-Ansicht', () => {
+    for (const locale of LOCALES) {
+      const internal = links(PRIVACY_INTERIM_BODY[locale]).filter(link => link.startsWith('/'))
+      expect(internal).toContain('/account/data')
+      expect(internal.filter(link => link.startsWith('/dashboard'))).toEqual([])
     }
   })
 
