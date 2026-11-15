@@ -13,6 +13,7 @@ import {
   assertAiRouteOnly,
   startAiRun,
 } from './aiLog'
+import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
  * Generischer KI-Completion-Client (Core): EIN Transport für alle Server-
@@ -301,6 +302,8 @@ async function runAiCompletion(event: H3Event, prompt: string, options: AiComple
   }
   const ctx = startAiRun(options.label ?? 'core', model)
   if (options.providerRouting?.only) assertAiRouteOnly(options.providerRouting.only, ctx)
+  // DER RIEGEL (P17, BE-006): ein angemeldeter Abschalter sagt „aus" ⇒ kein fetch.
+  await assertAiSwitchedOn(event, ctx)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)

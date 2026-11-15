@@ -296,3 +296,90 @@ describe('aiCompleteStream', () => {
     vi.stubGlobal('useRuntimeConfig', () => ({ aiKey: 'test-key' }))
   })
 })
+
+/**
+ * DAS ENDE DES STROMS (P17, BE-007): `finish_reason` steht im letzten
+ * Daten-Frame vor `[DONE]` (manche Anbieter auch im Frame mit dem letzten
+ * Delta). `length` heisst „die Decke ist gerissen" — der Text bleibt, er wird
+ * nur gekennzeichnet; verworfen wird nichts.
+ */
+const TRUNCATED = [
+  'data: {"model":"m/x","choices":[{"delta":{"content":"Ein langer "}}]}\n\n',
+  'data: {"choices":[{"delta":{"content":"Satz, der mitten"}}]}\n\n',
+  'data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n\n',
+  'data: [DONE]\n\n',
+].join('')
+
+describe('finish_reason auf dem Stream-Weg (BE-007)', () => {
+  beforeEach(() => {
+    fetchMock.mockReset()
+  })
+
+  it('der Dekodierer meldet es als eigenes Ereignis', () => {
+    expect(decodeSseFrame('data: {"choices":[{"delta":{},"finish_reason":"length"}]}'))
+      .toEqual([{ kind: 'finish', reason: 'length' }])
+    expect(decodeSseFrame('data: {"choices":[{"delta":{"content":"x"},"finish_reason":"stop"}]}'))
+      .toEqual([{ kind: 'delta', text: 'x' }, { kind: 'finish', reason: 'stop' }])
+    // `null` (der Normalfall jedes Zwischen-Frames) und leere Werte zählen nicht.
+    expect(decodeSseFrame('data: {"choices":[{"delta":{"content":"x"},"finish_reason":null}]}'))
+      .toEqual([{ kind: 'delta', text: 'x' }])
+    expect(decodeSseFrame('data: {"choices":[{"delta":{},"finish_reason":""}]}')).toEqual([])
+  })
+
+  it('`length` ⇒ finishReason `length`, der Text bleibt vollständig erhalten', async () => {
+    fetchMock.mockResolvedValue(streamingResponse([TRUNCATED]))
+    const result = await aiCompleteStream(event, 'Frage')
+    expect(result.finishReason).toBe('length')
+    expect(result.text).toBe('Ein langer Satz, der mitten')
+  })
+
+  it('buchstabenweise zerrissen ⇒ dasselbe', async () => {
+    fetchMock.mockResolvedValue(streamingResponse(letterwise(TRUNCATED)))
+    const result = await aiCompleteStream(event, 'Frage')
+    expect(result.finishReason).toBe('length')
+    expect(result.text).toBe('Ein langer Satz, der mitten')
+  })
+
+  it('`stop` ⇒ `stop`', async () => {
+    fetchMock.mockResolvedValue(streamingResponse([TRUNCATED.replace('"length"', '"stop"')]))
+    expect((await aiCompleteStream(event, 'Frage')).finishReason).toBe('stop')
+  })
+
+  it('ohne Angabe ⇒ leer', async () => {
+    fetchMock.mockResolvedValue(streamingResponse([STREAM]))
+    expect((await aiCompleteStream(event, 'Frage')).finishReason).toBe('')
+  })
+
+  it('Abbruch von aussen ⇒ leer, auch wenn vorher eines kam', async () => {
+    const controller = new AbortController()
+    fetchMock.mockImplementation(async (_url: string, init: { signal: AbortSignal }) => {
+      const encoder = new TextEncoder()
+      let index = 0
+      const pieces = [
+        'data: {"choices":[{"delta":{"content":"Teil"},"finish_reason":"length"}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"Rest"}}]}\n\n',
+      ]
+      return {
+        ok: true,
+        status: 200,
+        text: async () => '',
+        body: {
+          getReader: () => ({
+            read: async () => {
+              if (init.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' })
+              return index < pieces.length
+                ? { done: false, value: encoder.encode(pieces[index++]!) }
+                : { done: true, value: undefined }
+            },
+          }),
+        },
+      }
+    })
+    const result = await aiCompleteStream(event, 'Frage', {
+      signal: controller.signal,
+      onDelta: () => { controller.abort() },
+    })
+    expect(result.aborted).toBe(true)
+    expect(result.finishReason).toBe('')
+  })
+})

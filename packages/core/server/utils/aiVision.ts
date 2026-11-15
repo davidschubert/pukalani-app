@@ -11,6 +11,7 @@ import {
   assertAiRouteOnly,
   startAiRun,
 } from './aiLog'
+import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
  * BILDER LESEN — der Vision-Transport des Core (Konzept
@@ -340,6 +341,8 @@ async function runAiVision(
     })
   }
   assertAiRouteOnly(options.providerRouting?.only, ctx)
+  // DER RIEGEL (P17, BE-006): ein angemeldeter Abschalter sagt „aus" ⇒ kein fetch.
+  await assertAiSwitchedOn(event, ctx)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
