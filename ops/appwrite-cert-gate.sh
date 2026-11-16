@@ -33,15 +33,24 @@
 # in der Stand-Datei nicht wie ein Wort oder eine Zahl aussieht, wird nicht
 # durchgereicht.
 #
+# FÜNFTES WORT (OPS-004, 2026-11-16): `realtime-status` liest die Stand-Datei
+# des Realtime-Wächters (ops/realtime-watchdog.sh, läuft alle 5 min) und gibt
+# GENAU EINE Zeile aus — Ergebnis des letzten Laufs, Fehlschläge in Folge,
+# Neustarts der letzten 24 Stunden und 7 Tage, Alter des letzten Laufs in
+# Minuten (`nie`, wenn es keinen gibt). Nur lesend, kein docker; dieselbe
+# Prüfung jedes Werts wie bei `backup-status`. Der Wächter startet den
+# Container höchstens dreimal in Folge neu und meldet dann nur noch
+# `aufgegeben` — gesehen wird es nur hier.
+#
 # AUFRUF
-#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status
+#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status | realtime-status
 #   von Hand (Mac):  ssh ploi@<server> '~/bin/pukalani-cert-gate.sh probe'
 #
 # EINSPIELEN (nur von Hand, es gibt bewusst keinen CI-Weg auf diesen Server):
 #   docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, Abschnitt „Tor auf appwrite-prod"
 #
 # Exit: 0 ok · 3 Compose-Ordner fehlt · 4 Worker nicht gefunden ·
-#       5 Voraussetzung fehlt · 6 kein lesbarer Backup-Stand ·
+#       5 Voraussetzung fehlt · 6 kein lesbarer Backup- oder Realtime-Stand ·
 #       64 Befehl nicht erlaubt
 set -u
 
@@ -53,6 +62,8 @@ MASK_ADDRESSES='s/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/<adresse>/g'
 
 # Stand-Datei des Backups (BACKUP_DIR/state/last-run).
 BACKUP_STATE_FILE="${BACKUP_STATE_FILE:-$HOME/backup/state/last-run}"
+# Stand-Datei des Realtime-Wächters (gleicher Default wie dort).
+REALTIME_STATE_FILE="${REALTIME_STATE_FILE:-$HOME/ops/state/realtime-watchdog}"
 
 # Von Hand als $1; mit festem Befehl (kein Argument) in SSH_ORIGINAL_COMMAND.
 REQUEST="${1:-${SSH_ORIGINAL_COMMAND:-}}"
@@ -145,8 +156,49 @@ case "$REQUEST" in
     fi
     ;;
 
+  realtime-status)
+    # ÖFFENTLICHES PROTOKOLL: eine Zeile, nur Wörter aus einer festen Form und
+    # Zahlen. Die Datei wird zeilenweise gelesen, nie ausgeführt.
+    rt_value() {
+      local line
+      [ -r "$REALTIME_STATE_FILE" ] || return 0
+      while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in "$1="*) printf '%s' "${line#*=}"; return 0 ;; esac
+      done < "$REALTIME_STATE_FILE"
+    }
+    # Nur Ziffern, höchstens zwölf (kein Überlauf beim Rechnen).
+    is_count() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; [ "${#1}" -le 12 ]; }
+    RESULT="$(rt_value last_result)"
+    FAILS="$(rt_value failures)"
+    CHECK_EPOCH="$(rt_value last_check_epoch)"
+    case "$RESULT" in ok|neustart-geholfen|neustart-erfolglos|aufgegeben) ;; *) RESULT='' ;; esac
+    is_count "$FAILS" || RESULT=''
+    if [ -z "$RESULT" ]; then
+      echo "realtime ergebnis=unbekannt"
+      exit 6
+    fi
+    NOW="$(date +%s)"
+    R24=0
+    R7=0
+    if [ -r "$REALTIME_STATE_FILE.restarts" ]; then
+      while IFS= read -r line || [ -n "$line" ]; do
+        is_count "$line" || continue
+        # 10#: führende Nullen nicht als Oktalzahl lesen.
+        [ $(( NOW - 10#$line )) -lt 86400 ] && R24=$(( R24 + 1 ))
+        [ $(( NOW - 10#$line )) -lt 604800 ] && R7=$(( R7 + 1 ))
+      done < "$REALTIME_STATE_FILE.restarts"
+    fi
+    if is_count "$CHECK_EPOCH"; then
+      AGE=$(( (NOW - 10#$CHECK_EPOCH) / 60 ))
+      [ "$AGE" -ge 0 ] || AGE=0
+    else
+      AGE='nie'
+    fi
+    echo "realtime ergebnis=$RESULT fehlschlaege=$(( 10#$FAILS )) neustarts_24h=$R24 neustarts_7t=$R7 alter_minuten=$AGE"
+    ;;
+
   *)
-    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status."
+    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status, realtime-status."
     exit 64
     ;;
 esac
