@@ -8,6 +8,7 @@ import {
   CONSENT_COOKIE_MAX_AGE_S,
   adoptedConsentAt,
   consentWayFromPath,
+  isOperatorAccount,
   formatConsentCookie,
   parseConsentCookie,
   requiredConsents,
@@ -273,6 +274,12 @@ type AccountSnapshot =Pick<Models.User<Models.Preferences>, '$id' | '$createdAt'
 export async function missingConsents(event: H3Event, userId: string): Promise<ConsentKind[]> {
   const required = appRequiredConsents()
   if (!required.length || !userId) return []
+
+  // Betreiber-Konten werden nie gefragt und nie gesperrt (shared/consent.ts).
+  // Gelesen wird die Rolle vom angemeldeten Konto dieser Anfrage; für eine
+  // fremde Konto-Id gibt es die Ausnahme nicht.
+  const requester = event.context.user
+  if (requester?.$id === userId && isOperatorAccount(requester.labels)) return []
 
   const unknown = required.filter(consent => !present.has(cacheKey(userId, consent.kind, consent.version)))
   if (!unknown.length) return []

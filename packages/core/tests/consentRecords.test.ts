@@ -13,7 +13,7 @@ import type { ConsentConfig } from '../shared/consent'
 interface FakeEvent {
   path: string
   method: string
-  context: { user?: { $id: string, $createdAt: string, prefs: Record<string, unknown> } }
+  context: { user?: { $id: string, $createdAt: string, prefs: Record<string, unknown>, labels?: string[] } }
   cookies: Record<string, string>
   setCookies: Array<{ name: string, value: string | null }>
   body?: unknown
@@ -105,12 +105,12 @@ function makeError(init: Record<string, unknown>): Error {
   return Object.assign(new Error(String(init.statusText ?? 'Error')), init, { statusCode: init.status })
 }
 
-function makeEvent(init: Partial<FakeEvent> & { userId?: string, createdAt?: string, prefs?: Record<string, unknown> } = {}): FakeEvent {
+function makeEvent(init: Partial<FakeEvent> & { userId?: string, createdAt?: string, prefs?: Record<string, unknown>, labels?: string[] } = {}): FakeEvent {
   return {
     path: init.path ?? '/api/brand/projects',
     method: init.method ?? 'POST',
     context: init.userId
-      ? { user: { $id: init.userId, $createdAt: init.createdAt ?? world.accountCreatedAt, prefs: init.prefs ?? {} } }
+      ? { user: { $id: init.userId, $createdAt: init.createdAt ?? world.accountCreatedAt, prefs: init.prefs ?? {}, labels: init.labels ?? [] } }
       : {},
     cookies: init.cookies ?? {},
     setCookies: [],
@@ -417,6 +417,27 @@ describe('07.consent-required.ts', () => {
       expect(await runGate(makeEvent({ userId: 'u-1', method: path === '/api/auth/account' ? 'DELETE' : 'POST', path })), path).toEqual({ status: 0 })
     }
     expect(world.calls.getRow).toBe(0)
+  })
+
+  it('ein Konto mit Betreiber-Rolle geht durch — ohne nachzusehen und ohne Zeile', async () => {
+    for (const labels of [['admin'], ['moderator'], ['c-abc', 'admin']]) {
+      expect(await runGate(makeEvent({ userId: 'u-op', method: 'POST', path: '/api/brand/projects', labels })), labels.join(',')).toEqual({ status: 0 })
+    }
+    expect(world.calls.getRow).toBe(0)
+    expect(world.calls.createRow).toBe(0)
+    expect(await records.missingConsents(asEvent(makeEvent({ userId: 'u-op', labels: ['admin'] })), 'u-op')).toEqual([])
+  })
+
+  it('Gegenprobe: ein Community-Label oder eine Community-Rolle ist KEINE Betreiber-Rolle', async () => {
+    for (const labels of [['c-abc'], ['modcabc'], ['owner'], []]) {
+      expect(await runGate(makeEvent({ userId: 'u-kunde', method: 'POST', path: '/api/brand/projects', labels })), labels.join(',') || '(keine)')
+        .toEqual({ status: 403, code: 'consent_required' })
+    }
+  })
+
+  it('die Ausnahme gilt nur für das angemeldete Konto selbst, nicht für eine fremde Konto-Id', async () => {
+    const event = asEvent(makeEvent({ userId: 'u-op', labels: ['admin'] }))
+    expect(await records.missingConsents(event, 'u-anderes')).toEqual(['terms', 'business'])
   })
 
   it('mit Zustimmung geht durch', async () => {

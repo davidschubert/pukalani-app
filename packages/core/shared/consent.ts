@@ -1,4 +1,20 @@
 import type { ConsentKind, ConsentWay, RequiredConsent } from './types/consent'
+import { isRole } from './authz'
+
+/**
+ * BETREIBER-KONTEN SIND AUSGENOMMEN (Davids Entscheidung 2026-11-16: „Konten
+ * mit Betreiber-Rolle werden nie gefragt und nie gesperrt"). Die AGB gelten für
+ * Kundinnen und Kunden, nicht für den Betreiber selbst — und eine Tür, die den
+ * Betreiber aus seiner eigenen Konsole sperren kann, wäre ein Betriebsrisiko.
+ *
+ * „Betreiber-Rolle" ist genau das, was `authz.ts` als Rolle kennt (die
+ * globalen Labels `admin` und `moderator`). Community-Labels und Community-
+ * Rollen (Owner, Admin einer Community) sind KEINE Betreiber-Rolle: wer eine
+ * Community führt, ist Kunde.
+ */
+export function isOperatorAccount(labels: readonly string[] | null | undefined): boolean {
+  return (labels ?? []).some(label => isRole(label))
+}
 
 /**
  * DIE ZUSTIMMUNG IST EINE TATSACHE AM SERVER (SEC-008, Davids Entscheidung
