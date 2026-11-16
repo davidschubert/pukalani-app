@@ -55,8 +55,9 @@ WORTGLEICH nach `.claude/rules/<name>.md` gezogen und laden per
 `paths:`-Frontmatter nur, wenn eine passende Datei gelesen wird. Wer per
 Bash liest (cat/sed) oder eine Domäne nur BERÄT, öffnet die Regel-Datei
 bewusst per Read — sie gilt mit derselben Priorität wie CLAUDE.md:
-- `appwrite.md` — TablesDB, Clients/Keys, Migrationen + indexStep, Realtime,
-  Presence (Grenze, Vorfahrt)
+- `appwrite.md` — TablesDB, Clients/Keys, Migrationen + indexStep, Ziel-Prüfung
+  der Skripte, Datenbank-Stand in `/api/health`, Realtime, Presence (Grenze,
+  Vorfahrt)
 - `themes.md` — Katalog/Generator, Custom Themes, Farbwelt-Regel (B5),
   Branding-Spiegel (D6), Favicon-Upload, Schriften, Settings-Hub + Switcher
 - `hosts-ops.md` — admin./account./Altnamen, TLS-Fallen, drei Wächter,
@@ -201,7 +202,14 @@ nur Test und E2E auf). Der Deploy feuert per workflow_run auf Test UND E2E,
 startet also ZWEIMAL — einer der Läufe endet per Concurrency „cancelled", das
 ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, den Deploy-Lauf
 ebenfalls neu starten (er feuert nicht von selbst). Der einzige Prod-Beweis ist
-der Live-Build-SHA: `curl https://<host>/api/health` → `.build`. Ein späterer
+der Live-Build-SHA: `curl https://<host>/api/health` → `.build`. Daneben steht
+seit 2026-11-16 `.schema.state` (ok | behind | unknown): passt die Datenbank
+zum ausgerollten Programm? `behind` heißt, eine Migration fehlt — der
+Deploy-Lauf endet dann rot, der Halbstunden-Wächter öffnet ein Issue.
+MIGRATION AUF PRODUCTION IMMER VOR DEM MERGE, über den Runner und mit Davids
+Ja: `pnpm migrate --app <app> --env <datei> --only <layer>-<NNN> --prod`
+(erst `--dry-run`); neue Migration ⇒ Import-Zeile der Ziel-Prüfung und
+`schema` im `product.manifest.ts` (`.claude/rules/appwrite.md`). Ein späterer
 Deploy ohne App-Änderung überspringt und lässt den SHA des Vorgängers stehen.
 Seit 2026-11-14 (P08, Davids Entscheidung) sind die Prüf-Jobs `test`, `lint`,
 `secrets`, `typecheck` und `e2e` bei GitHub PFLICHT für `main`: ein Pull
