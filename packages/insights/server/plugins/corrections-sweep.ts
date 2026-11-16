@@ -8,7 +8,7 @@ import { runInsightsCorrectionsSweep } from '../utils/insightsCorrectionsSweep'
  * Sweeps dieses Projekts (`email-digest.ts` im core, `guest-author-prune.ts`
  * in comments, `raw-text-sweep.ts` in market) sollen sich gleich verhalten,
  * damit ein Betreiber nicht je Layer eine andere Mechanik lernen muss. Eine
- * Konstante je Zahl, erster Lauf kurz nach dem Boot, `setInterval` danach,
+ * Konstante je Zahl, erster Lauf kurz nach dem Boot, Takt über `defineTimedJob`,
  * Single-Instanz-Annahme. Die Arbeit selbst steht in `server/utils` — dort,
  * wo der Admin-Client hingehört.
  *
@@ -30,7 +30,7 @@ import { runInsightsCorrectionsSweep } from '../utils/insightsCorrectionsSweep'
  * täglich eine Tabelle ab, die es dort nicht gibt. Das Manifest registriert
  * sich in einem eigenen Nitro-Plugin; Nitro lädt Plugins in alphabetischer
  * Reihenfolge je Verzeichnis, und `product-manifest.ts` läuft daher nicht
- * garantiert vor dieser Datei — die Prüfung steht deshalb IM `setTimeout`,
+ * garantiert vor dieser Datei — die Prüfung steht deshalb IM Takt (`run`),
  * also nach dem Start, und nicht im Plugin-Rumpf.
  *
  * ── UND WARUM NICHT AUCH DER PRODUKT-SCHALTER ───────────────────────────
@@ -44,9 +44,17 @@ const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 60 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    if (!getProductRegistry().has('insights')) return
-    void runInsightsCorrectionsSweep().then((result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011). unref, damit
+  // die Timer einen sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen
+  // halten.
+  defineTimedJob({
+    name: 'insights-corrections-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      if (!getProductRegistry().has('insights')) return 'skipped'
+      const result = await runInsightsCorrectionsSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein tägliches
       // „0 Zeilen" macht das Log unlesbar. ZAHLEN, kein Inhalt.
       if (result.cleared || result.errors) {
@@ -56,15 +64,6 @@ export default defineNitroPlugin(() => {
           errors: result.errors,
         })
       }
-    }).catch((error) => {
-      console.error('[insights] Fristen-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
-  // sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+    },
+  })
 })

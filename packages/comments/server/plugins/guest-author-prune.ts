@@ -15,18 +15,18 @@ const SWEEP_INTERVAL_MS = 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 30 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    void pruneGuestAuthors().then((result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011).
+  defineTimedJob({
+    name: 'guest-author-prune',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      const result = await pruneGuestAuthors()
       // Nur melden, wenn wirklich etwas passiert ist — ein stündliches
       // „0 Zeilen" macht das Log unlesbar.
       if (result.deleted) {
         logEvent('info', 'comments.guest_authors_pruned', { deleted: result.deleted })
       }
-    }).catch((error) => {
-      console.error('[comments] Gast-Kontaktdaten-Aufräumen fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  setInterval(sweep, SWEEP_INTERVAL_MS)
+    },
+  })
 })

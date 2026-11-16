@@ -1,4 +1,4 @@
-import { runRetentionMode, runRunRetention } from '../utils/runRetention'
+import { isRunRetentionRunning, runRetentionMode, runRunRetention } from '../utils/runRetention'
 
 /**
  * Der Takt des AUFRÄUM-LAUFS (BE-025): Protokolle der Runner-Läufe nach 30
@@ -25,14 +25,20 @@ export default defineNitroPlugin(() => {
   const mode = runRetentionMode()
   if (mode === 'off') return
 
-  const sweep = () => {
-    // Die Zusammenfassung schreibt der Lauf selbst (logEvent); hier landet nur,
-    // was ihn als Ganzes scheitern ließ (z. B. ein fehlender Schlüssel).
-    void runRunRetention(mode).catch((error: unknown) => {
-      console.error('[runner] Aufräum-Lauf fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  setInterval(sweep, SWEEP_INTERVAL_MS)
+  // Die Zusammenfassung schreibt der Lauf selbst (logEvent); hier wird sein
+  // Ergebnis nur für `job.run` übersetzt (OPS-011).
+  defineTimedJob({
+    name: 'run-retention',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      // Der Riegel der Util meldet „schon im Gange" nur als leeres Ergebnis —
+      // nicht unterscheidbar von einem Lauf ohne Arbeit. Deshalb VORHER
+      // fragen; zwischen Frage und Aufruf liegt kein `await`.
+      if (isRunRetentionRunning()) return 'skipped'
+      const result = await runRunRetention(mode)
+      const failed = result.transcripts.failed + result.events.failed
+      if (failed > 0) throw new Error(`unvollständig: ${failed} Schritte gescheitert`)
+    },
+  })
 })

@@ -6,7 +6,7 @@ import { eraseStaleReporterEmails } from '../utils/abuseReportPrune'
 /**
  * Testphasen-Automatik: abgelaufene Trials werden nur-lesend (F49 vom
  * 2026-08-07; bis dahin fielen sie auf den kostenlosen Tarif). Gleiches Muster
- * wie der Health-Sweep (setInterval, Single-Instanz-Annahme) — stündlich
+ * wie der Health-Sweep (`defineTimedJob`, Single-Instanz-Annahme) — stündlich
  * reicht, weil eine Testphase in Tagen rechnet und ein paar Minuten Nachlauf
  * niemandem schaden.
  *
@@ -17,58 +17,71 @@ const SWEEP_INTERVAL_MS = 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 30 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    void runTrialSweep().then((result) => {
+  // Vier Anmeldungen auf EINEM Takt (gleicher Takt, gleiche Startverzögerung,
+  // wie bisher die vier Mitfahrer eines Timers) — je Lauf eine eigene
+  // Kennung, damit der Wächter sieht, WELCHER von ihnen scheitert. Die
+  // Fehlerzeile schreibt `defineTimedJob` (OPS-011).
+  defineTimedJob({
+    name: 'trial-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      const result = await runTrialSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein stündliches „0
       // Änderungen" macht das Log unlesbar.
       if (result.suspended.length) {
         console.info(`[control] Testphasen beendet (nur-lesend): ${result.suspended.join(', ')}`)
       }
-    }).catch((error) => {
-      console.error('[control] Testphasen-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
+    },
+  })
 
-    // Teilt sich bewusst den Takt: beides sind stündliche Aufräumarbeiten am
-    // selben Register, und ein zweiter Timer wäre nur ein zweiter Ort, an dem
-    // man nach dem Grund für ein verschwundenes Datum sucht.
-    void pruneInviteRequests().then((result) => {
+  // Teilt sich bewusst den Takt: beides sind stündliche Aufräumarbeiten am
+  // selben Register, und ein zweiter Takt wäre nur ein zweiter Ort, an dem
+  // man nach dem Grund für ein verschwundenes Datum sucht.
+  defineTimedJob({
+    name: 'invite-request-prune',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      const result = await pruneInviteRequests()
       if (result.deleted) {
         console.info(`[control] Erledigte Anfragen gelöscht: ${result.deleted}`)
       }
-    }).catch((error) => {
-      console.error('[control] Anfragen-Aufräumen fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
+    },
+  })
 
-    // Dritter Mitfahrer, gleiche Begründung (M13): Zahlungsverzug rechnet in
-    // TAGEN, stündlich ist also reichlich genau, und ein eigener Timer wäre nur
-    // ein weiterer Ort, an dem man nach dem Grund für eine Sperre sucht. Der
-    // Sweep ist idempotent — er sperrt jede Community höchstens einmal und hebt
-    // auf, was nicht mehr überfällig ist.
-    void runPastDueSweep().then((result) => {
+  // Dritter Mitfahrer, gleiche Begründung (M13): Zahlungsverzug rechnet in
+  // TAGEN, stündlich ist also reichlich genau, und ein eigener Takt wäre nur
+  // ein weiterer Ort, an dem man nach dem Grund für eine Sperre sucht. Der
+  // Sweep ist idempotent — er sperrt jede Community höchstens einmal und hebt
+  // auf, was nicht mehr überfällig ist.
+  defineTimedJob({
+    name: 'past-due-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      const result = await runPastDueSweep()
       if (result.suspended.length) {
         console.warn(`[control] Wegen Zahlungsverzug gesperrt: ${result.suspended.join(', ')}`)
       }
       if (result.lifted.length) {
         console.info(`[control] Zahlungs-Sperre aufgehoben: ${result.lifted.join(', ')}`)
       }
-    }).catch((error) => {
-      console.error('[control] Zahlungsverzugs-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
+    },
+  })
 
-    // Vierter Mitfahrer (F8-Rest): Melder-Adressen verfallen nach 90 Tagen. Die
-    // Frist rechnet in Tagen, stündlich ist also mehr als genau — und der Takt
-    // gehört aus demselben Grund hierher wie die drei darüber: ein eigener
-    // Timer wäre nur ein weiterer Ort, an dem man nach dem Grund für ein
-    // verschwundenes Datum sucht.
-    void eraseStaleReporterEmails().then((result) => {
+  // Vierter Mitfahrer (F8-Rest): Melder-Adressen verfallen nach 90 Tagen. Die
+  // Frist rechnet in Tagen, stündlich ist also mehr als genau — und der Takt
+  // gehört aus demselben Grund hierher wie die drei darüber.
+  defineTimedJob({
+    name: 'reporter-email-prune',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      const result = await eraseStaleReporterEmails()
       if (result.erased) {
         logEvent('info', 'abuse.reporter_email_pruned', { erased: result.erased })
       }
-    }).catch((error) => {
-      console.error('[control] Melder-Adressen-Aufräumen fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  setInterval(sweep, SWEEP_INTERVAL_MS)
+    },
+  })
 })

@@ -189,6 +189,15 @@ function createdBefore(iso: string, cutoffIso: string): boolean {
 let running = false
 
 /**
+ * Läuft gerade ein Lauf? Für den Takt (OPS-011): „schon im Gange" kommt aus
+ * `sweepRunRetention` nur als leeres Ergebnis zurück und sähe sonst aus wie
+ * ein Lauf ohne Arbeit. Ändert nichts am Verhalten für die Ops-Route.
+ */
+export function isRunRetentionRunning(): boolean {
+  return running
+}
+
+/**
  * EIN Lauf. Wirft nicht: jeder Einzelfehler zählt als `failed`, ein
  * gescheitertes Blättern beendet nur seinen Teil.
  */
