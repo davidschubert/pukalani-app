@@ -822,7 +822,11 @@ NICHT hier.
   Wartezeit des Webservers. Ein Wächter, der je Route die Summe ihrer Fristen
   gegen die 60 s hält, gehört zu Paket P20. Die zwei Streams des Markenberaters
   senden keinen Herzschlag.
-- **(c) Kleinigkeiten.** Die Lauf-Zeilen (`market_runs`, `insights_runs`)
+- **(c) Kleinigkeiten.** Der Video-Brief hält seinen Start weiter mit „erst
+  lesen, dann Stempel schreiben" fest: zwei Klicks im SELBEN Augenblick
+  könnten dort zwei bezahlte Läufe starten (nur die Redaktion, rund 5 Cent).
+  Mit `insights_runs` ist das eine kleine Umstellung auf die Lauf-Sperre. Die
+  Lauf-Zeilen (`market_runs`, `insights_runs`)
   werden nicht nach Alter geräumt; sie sind klein (höchstens drei je Marke und
   Tag, eine je Newsletter-Stapel) und verschwinden mit der Marke. Der Hinweis
   „Quelle in der Zeit nicht gelesen" erscheint nur beim Zustandswechsel, nicht
