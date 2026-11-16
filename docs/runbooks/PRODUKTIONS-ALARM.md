@@ -30,6 +30,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
+| Bot-Prüfung | `scripts/ops/verify-turnstile.mjs` | täglich | auf einer Site antwortet die Passwort-vergessen-Route ohne Token nicht mit 403 `bot_check_required` (Bot-Prüfung aus oder Cloudflare nicht erreichbar), oder die Seite trägt das Widget nicht (Gäste ausgesperrt); eine unklare Antwort bekommt nach 20 s einen zweiten Versuch |
 | Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte der gemeinsam gepflegten Tabellen oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
 | In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, übrige KI-Ausfälle |
 | Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
@@ -144,6 +145,15 @@ Probealarm: `gh workflow run production-watch.yml -f backup_drill=true` verlangt
 ein Backup, das es nicht geben kann, und macht damit genau diesen Blick rot;
 der nächste Lauf ohne Haken räumt auf. Was die Schritte bedeuten und was zu
 tun ist: [APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md), § 6.3.
+
+**Bot-Prüfung (seit 2026-11-16, OPS-012).** Ein roter Blick heißt: auf der
+genannten Site fehlt eine der zwei Turnstile-Variablen, oder der Prozess hat
+sie nach einer Änderung nicht neu geladen. „AUS" (200 ohne Token) ist der
+dringende Fall: Registrierung, Passwort-vergessen und die öffentlichen
+Formulare laufen dann ohne Hürde. „403, aber kein Widget" sperrt Gäste aus.
+Rezept: [DEPLOYMENT.md](DEPLOYMENT.md), Abschnitt Turnstile; nachprüfen mit
+`pnpm ops:turnstile <site>`. Der Blick ruft je Site einmal am Tag die
+Passwort-vergessen-Route mit einer Probe-Adresse auf — keine Mail, kein Konto.
 
 **KI-Modelle (seit 2026-11-14, BE-004).** Ein roter Blick heißt: eine
 KI-Funktion scheitert gerade bei JEDEM Aufruf, obwohl sie eingeschaltet ist
