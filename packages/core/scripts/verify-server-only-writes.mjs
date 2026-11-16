@@ -159,6 +159,9 @@ try {
     const seedData = await probeData(table, userId, 'b')
     if (!data || !seedData) { check(`${table}: Spalten lesbar`, false, '(Schlüssel ohne columns.read?)'); continue }
 
+    // Bestand zählen, BEVOR dieses Skript eigene Probe-Zeilen anlegt.
+    const counted = await countWriteRights(table)
+
     // (a) direkt ANLEGEN als Konto
     const direct = await call('POST', `/tablesdb/${databaseId}/tables/${table}/rows`, {
       session, body: { rowId: 'unique()', data, permissions: [`read("user:${userId}")`] },
@@ -193,8 +196,7 @@ try {
       check(`${table}: direkt löschen wird abgelehnt`, remove.status === 401, `(HTTP ${remove.status})`)
     }
 
-    // (c) Bestand
-    const counted = await countWriteRights(table)
+    // (c) Bestand (oben gezählt, VOR den Probe-Zeilen)
     if (!counted) check(`${table}: Bestand zählbar`, false)
     else if (expectClean.has(table)) check(`${table}: keine Zeile trägt ein Schreibrecht für ein Konto`, counted.writable === 0, `(${counted.writable} von ${counted.total})`)
     else note(`${table}: Bestand ${counted.total} Zeilen, davon ${counted.writable} mit Schreibrecht eines Kontos`)
