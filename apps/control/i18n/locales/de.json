@@ -106,6 +106,7 @@
         "errorGeneric": "Webhook konnte nicht eingerichtet werden",
         "secretUnconfirmedTitle": "Herkunft des Signatur-Geheimnisses unbestätigt",
         "secretUnconfirmedHint": "Der Endpunkt existiert, aber dieses Deployment hat ihn nicht selbst angelegt — das gespeicherte Geheimnis stammt aus der Server-Umgebung, wurde von Hand eingetragen oder gehört zu einem früheren Endpunkt. Stripe gibt das Geheimnis nur beim Anlegen heraus, ein Abgleich ist deshalb unmöglich. Passt es nicht, weist der Webhook jede Zustellung ab. Sicherheit gibt nur „Endpunkt neu anlegen“.",
+        "apiVersionMismatch": "Endpunkt sendet in einer anderen Version – neu anlegen",
         "recreate": "Endpunkt neu anlegen",
         "recreateConfirmTitle": "Endpunkt neu anlegen und Geheimnis ersetzen?",
         "recreateConfirmBody": "Der bestehende Endpunkt wird bei Stripe gelöscht und ein neuer mit allen neun Ereignissen angelegt. Das dabei erzeugte Signatur-Geheimnis wird sofort gespeichert und ersetzt das bisherige. Zustellungen, die Stripe in diesem Moment gerade wiederholt, gehen verloren.",

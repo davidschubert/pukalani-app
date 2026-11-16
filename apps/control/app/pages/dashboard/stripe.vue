@@ -53,6 +53,10 @@ interface WebhookStatus {
    * 'none'         = gar keins.
    */
   secretOrigin: 'created_here' | 'unconfirmed' | 'none'
+  /** API-Version, in der der Endpunkt sendet (`null` = Standard des Kontos, BE-016). */
+  apiVersion: string | null
+  apiVersionMatches: boolean
+  expectedApiVersion: string
 }
 
 interface TaxStatus {
@@ -544,6 +548,17 @@ async function ensureWebhook(recreate = false) {
             class="mt-4"
             :title="t('control.stripe.webhook.secretUnconfirmedTitle')"
             :description="t('control.stripe.webhook.secretUnconfirmedHint')"
+          />
+
+          <!-- BE-016: die Version eines bestehenden Endpunkts ändert nur die
+               Neuanlage — deshalb nur ein Hinweis, keine eigene Aktion. -->
+          <UAlert
+            v-if="webhook?.found && !webhook.apiVersionMatches"
+            color="warning"
+            variant="subtle"
+            icon="i-ph-clock-counter-clockwise"
+            class="mt-4"
+            :title="t('control.stripe.webhook.apiVersionMismatch')"
           />
 
           <div class="mt-4 flex flex-wrap justify-end gap-2">

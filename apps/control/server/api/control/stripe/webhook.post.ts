@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { missingWebhookEvents, WEBHOOK_EVENTS } from '../../../../../../packages/billing/shared/webhookEvents'
 import { stripeModeFromKey } from '../../../../../../packages/billing/shared/stripeKeys'
+import { STRIPE_API_VERSION } from '../../../../../../packages/billing/shared/stripeApiVersion'
 import { stripeWebhookUrl } from '../../../utils/stripeWebhookEndpoint'
 
 /**
@@ -136,6 +137,9 @@ async function ensureWebhookEndpoint(event: H3Event, user: { $id: string }) {
     const created = await stripe.webhookEndpoints.create({
       url,
       enabled_events: WEBHOOK_EVENTS as Stripe.WebhookEndpointCreateParams.EnabledEvent[],
+      // Der Endpunkt sendet in DERSELBEN Version, in der der Client liest
+      // (BE-016). Ohne Angabe nähme Stripe die Standard-Version des Kontos.
+      api_version: STRIPE_API_VERSION,
       description: 'Pukalani — Community-Abos (F55, angelegt aus dem Control-Dashboard)',
     }).catch((error: unknown) => toStripeSafeError(error, 'webhookEndpoints.create fehlgeschlagen'))
 
