@@ -163,6 +163,14 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   Seite fragt den Stand ab (`core/shared/runLease.ts`). Die Sperre ist eine
   Zeile mit fester Kennung, nie „erst lesen, dann schreiben". Regel:
   `.claude/rules/ki-mail-embed-moderation.md`.
+- BETREIBER-PROTOKOLL (`audit_logs`, BE-021/SEC-034, seit 2026-11-16) NUR über
+  den einen Schreiber `writeAuditLog()` (`core/server/utils/auditLog.ts`;
+  admin: `recordAudit`) — nie eigenes `createRow` mit leerem `catch`. Ein
+  Ausfall schreibt `audit.write_failed` (zählt der tägliche Kontroll-Lauf).
+  HERAUSGABE von Personendaten ist strikt: frische Anmeldung, ERST der
+  Eintrag (`{ strict: true }`), DANN die Daten, sonst 503 `audit_unavailable`;
+  alles andere läuft weiter. Ein neuer Export-Beitrag beachtet `audience`
+  (`self` | `operator`): private Inhalte Dritter gehen nicht an den Betreiber.
 - ZEIT-LAUF (Sweep, Aufräumer im Takt) NUR über `defineTimedJob()`
   (`core/server/utils/timedJob.ts`, OPS-011, seit 2026-11-16) — nie eigenes
   `setInterval` in einem Server-Plugin (Wächter-Test). Die Hilfe schreibt je
