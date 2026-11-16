@@ -11,6 +11,7 @@ import {
   MARKET_MAX_CHARS_PER_PAGE,
   MARKET_MAX_CHARS_PER_RUN,
   MARKET_MAX_PAGES,
+  MARKET_URL_MAX,
   marketPageMarker,
   marketPathBlocked,
   marketTdmReserved,
@@ -86,6 +87,13 @@ export interface MarketFetchOutcome {
   llmsTxt: 'found' | 'missing'
   /** Stand auf mindestens einer Seite ein Organization-JSON-LD? */
   jsonLd: boolean
+  /**
+   * WIE VIELE ADRESSEN VERWORFEN WURDEN, weil sie länger als
+   * `MARKET_URL_MAX` sind (BE-011) — aus Sitemap und Links, oder weil eine
+   * Weiterleitung auf eine solche Adresse führte. Nur die ZAHL: die Adressen
+   * selbst gehören weder in Protokoll noch Log.
+   */
+  skippedUrls: number
 }
 
 export interface MarketFetchOptions {
@@ -184,6 +192,7 @@ export async function fetchMarketCompetitor(
     sitemapUrls: 0,
     llmsTxt: 'missing',
     jsonLd: false,
+    skippedUrls: 0,
   })
 
   const origin = originOf(startUrl)
@@ -225,6 +234,9 @@ export async function fetchMarketCompetitor(
   // Sortierung in `selectMarketPages` ist stabil, also trägt die Reihenfolge
   // hier wirklich.
   const candidates = [...sitemapCandidates, ...start.links]
+  // Überlange Adressen verwirft `selectMarketPages` selbst; gezählt werden
+  // sie hier, je Adresse einmal (BE-011).
+  const skipped = new Set(candidates.filter(url => url.length > MARKET_URL_MAX))
   const selected = selectMarketPages(start.finalUrl, candidates, maxPages)
     .filter(url => url === start.finalUrl || (!marketPathBlocked(url) && allowed(url)))
 
@@ -256,8 +268,32 @@ export async function fetchMarketCompetitor(
   let rawText = ''
   let used = 0
 
+  /**
+   * ÜBERLANGE ADRESSEN NACH DER WEITERLEITUNG (BE-011).
+   *
+   * Eine Unterseite oder `llms.txt`, deren `finalUrl` länger als
+   * `MARKET_URL_MAX` ist, kommt weder ins Protokoll noch in den Rohtext: ein
+   * Zitat von ihr könnte nie abgelegt werden (`sourceUrl` ist im Schema auf
+   * dieselbe Länge begrenzt), ihr Text kostete also nur Budget.
+   *
+   * DIE STARTSEITE IST DIE AUSNAHME. Ohne sie gäbe es keinen Vergleich, und
+   * ihr Inhalt ist der, den der Kunde mit seiner Adresse gemeint hat. Sie
+   * wird deshalb unter der EINGETRAGENEN Adresse abgelegt (`startUrl`, beim
+   * Eintragen auf dieselbe Länge geprüft). Der Beleg-Riegel bricht dabei
+   * nicht: er sucht ein Zitat über den Seiten-Marker im Rohtext, und Marker,
+   * Protokoll-Eintrag und damit die erlaubte `sourceUrl` tragen dieselbe
+   * Adresse. Der Beleg zeigt dann auf eine Adresse, die tatsächlich zu
+   * diesem Text führt — über die Weiterleitung des Betreibers.
+   */
+  const startAddress = start.finalUrl.length <= MARKET_URL_MAX ? start.finalUrl : startUrl
+  if (start.finalUrl !== startAddress) skipped.add(start.finalUrl)
+
   const append = (url: string, block: string, hadJsonLd: boolean): void => {
     if (!block.trim()) return
+    if (url.length > MARKET_URL_MAX) {
+      skipped.add(url)
+      return
+    }
     const marker = marketPageMarker(url)
     const room = budget - used - marker.length
     if (room <= 0) return
@@ -268,7 +304,8 @@ export async function fetchMarketCompetitor(
   }
 
   for (const entry of fetched) {
-    append(entry.page.finalUrl, entry.block, !!entry.page.jsonLd)
+    const address = entry.page === start ? startAddress : entry.page.finalUrl
+    append(address, entry.block, !!entry.page.jsonLd)
   }
   if (llms?.text.trim()) {
     // Die `llms.txt` bekommt einen EIGENEN Seiten-Eintrag und damit einen
@@ -278,7 +315,7 @@ export async function fetchMarketCompetitor(
     append(llms.finalUrl, llms.text.slice(0, MARKET_MAX_CHARS_PER_PAGE), false)
   }
 
-  if (!pages.length) return empty('excluded', 'noText')
+  if (!pages.length) return { ...empty('excluded', 'noText'), skippedUrls: skipped.size }
 
   // DER FILTER GANZ AM ENDE, ÜBER ALLES (§2.9 Nr. 3): so gibt es genau EINE
   // Stelle, an der personenbezogene Daten entfernt werden — und keinen Pfad,
@@ -292,5 +329,6 @@ export async function fetchMarketCompetitor(
     sitemapUrls: sitemapCandidates.length,
     llmsTxt: llms ? 'found' : 'missing',
     jsonLd: fetched.some(entry => !!entry.page.jsonLd),
+    skippedUrls: skipped.size,
   }
 }

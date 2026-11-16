@@ -34,6 +34,23 @@ export const MARKET_MAX_CHARS_PER_RUN = 60_000
 /** Bytes je Seite — derselbe Deckel wie im brand-Abruf (§2.8: 2 MB). */
 export const MARKET_MAX_BYTES_PER_PAGE = 2_000_000
 
+/**
+ * DIE LÄNGSTE ADRESSE, DIE DER MARKTVERGLEICH KENNT (512 Zeichen).
+ *
+ * Sie galt seit M1 für die Adresse, die der Kunde EINTRÄGT
+ * (`normalizeMarketUrl`), und für jede Beleg-Adresse (`sourceUrl` im Schema
+ * der Ablage, `marketEvidenceSchema`). Seit GA1 P18 (BE-011) gilt sie auch
+ * für die Adressen, die ein FREMDER Server nennt (Sitemap, Links,
+ * Weiterleitungen): eine längere Adresse kann nie Beleg sein — das Schema
+ * lehnte jedes Zitat von ihr ab —, sie verbraucht nur Platz im Protokoll
+ * (`pagesFetched` fasst 5000 Zeichen), und acht davon liessen das Schreiben
+ * des Abrufstands scheitern und mit ihm den ganzen Lauf.
+ */
+export const MARKET_URL_MAX = 512
+
+/** Grösse der Spalte `market_competitors.pagesFetched` (market-001). */
+export const MARKET_PAGES_FETCHED_MAX = 5000
+
 // ── Adress-Normalisierung (§2.9 Nr. 8) ─────────────────────────────────────
 
 /**
@@ -88,7 +105,7 @@ export interface MarketNormalizedUrl {
  */
 export function normalizeMarketUrl(raw: string): MarketNormalizedUrl | null {
   const trimmed = raw.trim()
-  if (!trimmed || trimmed.length > 512) return null
+  if (!trimmed || trimmed.length > MARKET_URL_MAX) return null
 
   const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`
   let url: URL
@@ -275,6 +292,9 @@ export function marketPathRank(url: string, startUrl: string): number {
  * dieser Reihenfolge; die Sortierung ist STABIL, damit zwei gleich gerankte
  * Adressen ihre Herkunfts-Reihenfolge behalten und ein Lauf reproduzierbar
  * bleibt.
+ *
+ * Adressen über `MARKET_URL_MAX` fallen VOR der Auswahl heraus (BE-011): sie
+ * könnten nie Beleg sein, und sie belegten sonst einen der acht Plätze.
  */
 export function selectMarketPages(
   startUrl: string,
@@ -295,6 +315,7 @@ export function selectMarketPages(
   const ranked = candidates
     .map((url, index) => ({ url, index, rank: marketPathRank(url, startUrl) }))
     .filter((entry) => {
+      if (entry.url.length > MARKET_URL_MAX) return false
       let parsed: URL
       try {
         parsed = new URL(entry.url)
@@ -366,4 +387,25 @@ export function splitMarketRawText(rawText: string): Map<string, string> {
     match = next
   }
   return out
+}
+
+/**
+ * DAS PROTOKOLL DER GELESENEN SEITEN als JSON für `pagesFetched` — so, dass
+ * es in die Spalte passt (BE-011).
+ *
+ * Passt die ganze Liste nicht, fallen Einträge von HINTEN weg: vorn stehen
+ * Startseite und die am höchsten gerankten Seiten, und genau die tragen die
+ * meisten Belege. Ein abgeschnittenes Protokoll ist eine kleinere Auskunft;
+ * ein Wert über der Spaltengrösse wäre gar keine, denn Appwrite lehnte das
+ * ganze Update ab — mitsamt Status und Rohtext.
+ */
+export function serializeMarketPagesFetched<T>(
+  pages: readonly T[],
+  max: number = MARKET_PAGES_FETCHED_MAX,
+): string {
+  for (let keep = pages.length; keep > 0; keep--) {
+    const json = JSON.stringify(pages.slice(0, keep))
+    if (json.length <= max) return json
+  }
+  return '[]'
 }
