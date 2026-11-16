@@ -114,6 +114,7 @@ function articlePost(): InsightsPost {
     briefVideoId: '',
     draftModel: '',
     draftPromptVersion: '',
+    changeNotes: [],
   }
 }
 

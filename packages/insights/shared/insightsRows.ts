@@ -126,7 +126,7 @@ export const INSIGHTS_SUBSCRIBERS_TABLE = 'insights_subscribers'
 export const INSIGHTS_SENDS_TABLE = 'insights_sends'
 
 /**
- * Die Lauf-Sperre (insights-011, GA1 P18) — EINE Zeile je Versand-Stapel,
+ * Die Lauf-Sperre (insights-012, GA1 P18) — EINE Zeile je Versand-Stapel,
  * `subject` ist die Id der Sende-Zeile. Schema und Logik gehören dem Core
  * (`core/shared/runLease.ts`, `core/server/utils/runLease.ts`).
  */

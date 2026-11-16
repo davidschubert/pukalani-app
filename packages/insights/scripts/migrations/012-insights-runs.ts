@@ -1,5 +1,5 @@
 /**
- * Migration insights-011: `insights_runs` — DIE LAUF-SPERRE DES NEWSLETTERS.
+ * Migration insights-012: `insights_runs` — DIE LAUF-SPERRE DES NEWSLETTERS.
  *
  * GA1 P18 (Fundament für BE-010). Gemeinsame Regeln wie insights-001…010
  * (server-only `permissions: []` / `rowSecurity: false`, kein `communityId`,
@@ -45,7 +45,7 @@ if (!endpoint || !projectId || !apiKey || !databaseId) {
 
 const tablesDB = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey))
 
-console.log(`Migration insights-011 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+console.log(`Migration insights-012 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
 await ensureRunLeaseTable({
   tablesDB,
@@ -55,4 +55,4 @@ await ensureRunLeaseTable({
   sdk: { Query, TablesDBIndexType },
 })
 
-console.log('✔ Migration insights-011 fertig')
+console.log('✔ Migration insights-012 fertig')

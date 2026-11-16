@@ -1,7 +1,7 @@
 /**
  * DIE LAUF-TABELLE — EINE Fabrik für jede Migration, die eine Tabelle der
  * Lauf-Sperre anlegt (GA1 P18; heute market-005 `market_runs` und
- * insights-011 `insights_runs`).
+ * insights-012 `insights_runs`).
  *
  * Warum es die Tabelle gibt und warum jeder Lauf eine EIGENE Zeile mit
  * deterministischer Id ist: Kopf von `packages/core/shared/runLease.ts`. Hier

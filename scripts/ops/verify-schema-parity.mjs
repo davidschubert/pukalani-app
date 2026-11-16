@@ -458,7 +458,7 @@ const INSIGHTS_TABLES = [
   // ein abgebrochener Lauf fortgesetzt statt wiederholt wird.
   'insights_sends',
 
-  // insights-011: die Lauf-Sperre des Versands (GA1 P18) — dieselbe Form wie
+  // insights-012: die Lauf-Sperre des Versands (GA1 P18) — dieselbe Form wie
   // `market_runs` (Fabrik `scripts/migrations-lib/runLeaseTable.mts`).
   'insights_runs',
 ]
