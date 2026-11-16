@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
   const failure = oauthFailureTarget(locale)
   // Rückweg von Appwrite: auf einen Host, den die App selbst kennt, nicht auf
   // den Namen aus der Anfrage (SEC-010, `shared/trustedOrigin.ts`).
-  const { origin } = resolveTrustedOrigin(event)
+  const { origin } = await resolveTrustedOrigin(event)
 
   // Das Ziel nach der Anmeldung — geprüft wie überall (kein offener Weiterleiter).
   const target = safeRedirectTarget(getQuery(event).redirect)

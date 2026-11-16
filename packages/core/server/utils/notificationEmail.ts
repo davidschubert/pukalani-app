@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { type NotificationLinkContext, notificationLinkUrl } from '../../shared/notificationLinks'
 import { resolveCommunityHosts } from './communityHost'
+import { resolveSiteLinkBase } from './siteOrigin'
 import type { NotifyInput } from './notify'
 
 /**
@@ -68,8 +69,11 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Die Link-Basis dieser App (`NUXT_PUBLIC_APP_URL`) — der Fallback, wenn eine
- * Meldung keiner Community gehört oder ihr Host nicht auflösbar ist.
+ * Die Link-Basis dieser App — der Fallback, wenn eine Meldung keiner Community
+ * gehört oder ihr Host nicht auflösbar ist. Seit 2026-11-16 die aktive eigene
+ * Domain der Site, sonst `NUXT_PUBLIC_APP_URL` (`siteOrigin.ts`). Im Pool gibt
+ * es keinen Site-Resolver, dort bleibt es `appUrl`, und die Community-Hosts
+ * haben je Eintrag ohnehin Vorrang.
  *
  * Bis D5 (2026-08-01) war das die EINZIGE Basis, und darin lag der Fehler: eine
  * Meldung aus Community A verlinkte auf den App-Host. Wohin ein Eintrag
@@ -77,8 +81,8 @@ function escapeHtml(value: string): string {
  * shared/notificationLinks.ts — pro EINTRAG, nicht pro Mail (eine Digest-Mail
  * mischt Communities).
  */
-function appLinkBase(event: H3Event | undefined): string {
-  return (useRuntimeConfig(event).public.appUrl || '').replace(/\/+$/, '')
+async function appLinkBase(event: H3Event | undefined): Promise<string> {
+  return await resolveSiteLinkBase(event)
 }
 
 export interface NotificationEmailItem {
@@ -176,7 +180,7 @@ export async function maybeSendInstantEmail(event: H3Event | undefined, input: N
     // EINE Community, also ein Resolver-Aufruf — der 60-s-Cache im Resolver
     // trägt die übrigen Antworten desselben Threads.
     const hosts = await resolveCommunityHosts([communityId])
-    const mail = buildInstantEmail({ appBase: appLinkBase(event), hosts }, prefs.emailLocale, { ...input, communityId })
+    const mail = buildInstantEmail({ appBase: await appLinkBase(event), hosts }, prefs.emailLocale, { ...input, communityId })
     await sendMail(event, { ...mail, to: recipient.email })
   }
   catch (error) {

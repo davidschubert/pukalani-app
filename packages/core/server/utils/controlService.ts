@@ -47,9 +47,14 @@ const SERVICE_HEADER = 'x-pukalani-onboarding-secret'
  * ein Promise ohne `url`).
  *
  * Rangfolge Konsole → Env: dieselbe wie bei jedem anderen Zugang. Begründung
- * und die Rotations-Reihenfolge: `sharedSeamSecret.ts`.
+ * und die Rotations-Reihenfolge: `sharedSeamSecret.ts`. *
+ * OHNE EVENT AUFRUFBAR (seit 2026-11-16): ein Lauf im Takt (Digest) fragt die
+ * aktive eigene Domain der Site ab und hat keine Anfrage. Gebraucht wird das
+ * Event hier nur für die Laufzeit-Konfiguration und die Secret-Ablage, und
+ * beide nehmen `undefined` schon. Wege mit einem Menschen dahinter
+ * (`mintServiceJwt`) verlangen es weiter.
  */
-export async function controlServiceConfig(event: H3Event): Promise<ControlServiceConfig> {
+export async function controlServiceConfig(event: H3Event | undefined): Promise<ControlServiceConfig> {
   const config = useRuntimeConfig(event) as {
     onboardingControlUrl?: string
     onboardingServiceSecret?: string
@@ -75,7 +80,7 @@ export async function controlServiceConfig(event: H3Event): Promise<ControlServi
  * die Aufrufer degradierten still, obwohl die Naht steht. Genau die Sorte
  * Wirkungslosigkeit, gegen die die Konsolen-Ablage gebaut ist.
  */
-export async function controlServiceAvailable(event: H3Event): Promise<boolean> {
+export async function controlServiceAvailable(event: H3Event | undefined): Promise<boolean> {
   const config = useRuntimeConfig(event) as {
     onboardingControlUrl?: string
     onboardingServiceSecret?: string
@@ -131,7 +136,7 @@ export async function mintServiceJwtIfPossible(event: H3Event): Promise<string |
   return await mintServiceJwt(event).catch(() => undefined)
 }
 
-export async function callControlService<T>(event: H3Event, path: string, body: Record<string, unknown>): Promise<T> {
+export async function callControlService<T>(event: H3Event | undefined, path: string, body: Record<string, unknown>): Promise<T> {
   const { url, secret } = await controlServiceConfig(event)
   try {
     // Cast: $fetch typisiert die Antwort über NitroFetchRequest (die Route liegt

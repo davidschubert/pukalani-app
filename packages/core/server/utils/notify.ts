@@ -153,10 +153,12 @@ export async function notify(event: H3Event | undefined, input: NotifyInput): Pr
       tableId: 'notifications',
       rowId,
       data: payload,
-      // Row-Security: nur der Empfänger darf lesen + als gelesen markieren
+      // Row-Security: nur der Empfänger darf lesen (auch per Realtime). KEIN
+      // Schreibrecht (SEC-002): „als gelesen markieren" läuft über
+      // `POST /api/notifications/read`, die Route findet die Meldungen über
+      // den Empfänger.
       permissions: [
         Permission.read(Role.user(input.recipientId)),
-        Permission.update(Role.user(input.recipientId)),
       ],
     })
 

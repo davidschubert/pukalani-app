@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
   // Der Link landet in einer echten Mail — sein Host darf nicht aus einer
   // ungeprüften Anfrage stammen (SEC-010, `shared/trustedOrigin.ts`).
-  const { origin } = resolveTrustedOrigin(event)
+  const { origin } = await resolveTrustedOrigin(event)
   const { account } = createSessionClient(event)
 
   try {

@@ -108,7 +108,7 @@ paths:
   ploi-Site `pukalani.app` — das überschreibt das Kunden-Wildcard. Neu
   anfordern nur auf der Site `platform.pukalani.app` mit `*.pukalani.app`.
   Wächter `node scripts/ops/verify-tls.mjs` (alle 30 min + nach jedem Deploy).
-- ACHT WÄCHTER, EIN WORKFLOW, EIN ALARMWEG (`.github/workflows/
+- DIE WÄCHTER, EIN WORKFLOW, EIN ALARMWEG (`.github/workflows/
   production-watch.yml`, seit 2026-08-20; Alarmweg MON1 seit 2026-10-28): Job
   `tls` alle 30 min (`verify-tls.mjs` + `verify-health.mjs` — ok:true auf
   jedem Host, Appwrite-Version; weder ssh noch Secret), Job `server` täglich
@@ -186,6 +186,69 @@ paths:
   und den Umfang rät man auch nicht am Variablen-NAMEN ab. Runbook
   docs/runbooks/ZUGAENGE-AUFRAEUMEN.md.
   Details: docs/content/2.architektur/6.hosts-und-ports.md
+- SERVER-EINSTELLUNGEN STEHEN ALS VORLAGE IM REPO (GA1 P23, seit 2026-11-16,
+  Davids Entscheidung): die nginx-Dateien lagen nur in Ploi und waren von Hand
+  gewachsen — zwei Sites reichten monatelang die Adresse des Aufrufers nicht
+  an die App weiter, zwei setzten Schutz-Kopfzeilen, sechs keine. Jetzt:
+  `ops/nginx/*.conf.template` (Einzel-Site, mit langen Routen, Pool-Site,
+  Kundendomain), `ops/nginx-sites.conf` (Site, Art, Port, Zugriffs-Log) und
+  `ops/cron.conf` (erwartete Zeitpläne je Server, OHNE Werte). PFLICHT-ZEILEN
+  je Block, der an die App weiterreicht: `Host $host`, `X-Real-IP`,
+  `X-Forwarded-For $proxy_add_x_forwarded_for` (ohne sie bestimmt der Aufrufer
+  seine Adresse selbst), `X-Forwarded-Proto`, `proxy_read_timeout`
+  AUSDRÜCKLICH (60s; ein Block für lange Routen höchstens 180s, und er
+  WIEDERHOLT die vier Zeilen — sie werden aus `location /` nicht vererbt), der
+  Port aus der Liste; je Server-Block feste Namen (nie `_`), die Sperre für
+  Punkt-Dateien und `access_log off` (ohne die Zeile schreibt das GLOBALE Log
+  des Servers mit: Adresse, ganze Anfragezeile, 52 Tage). SCHUTZ-KOPFZEILEN
+  SETZT NUR DIE APP (SEC-006): `core/shared/securityHeaders.ts` +
+  `core/server/plugins/security-headers.ts`, für JEDE Antwort `nosniff`,
+  `Referrer-Policy`, `Permissions-Policy`, HSTS (ein Jahr, ohne
+  `includeSubDomains`, ohne `preload`, nie auf lokalen Hosts), auf Seiten `frame-ancestors`
+  (weiter nur aus `frameAncestors.ts`), eine Skript-CSP im Modus Report-Only
+  und kein `x-powered-by`. KEIN `add_header` für diese Namen in einer
+  nginx-Datei (Ploi schreibt bei einer neuen Site drei hinein — löschen) und
+  KEIN `X-Frame-Options` irgendwo: es kann die Erlaubnisliste von `/embed`
+  nicht ausdrücken. Eine Seite, die strenger sein will, setzt ihren Wert per
+  Middleware am Event (so `Referrer-Policy: no-referrer` auf den Token-Seiten
+  des Newsletters). DATEIEN tragen die Kopfzeilen nur im BUILD: im Dev-Server
+  liefert nicht Nitro `/_nuxt/*` und `public/` aus. ZWEI TÄGLICHE BLICKE:
+  `verify-server-config.mjs` (auf app-prod laufen `ops/nginx-check.mjs` und
+  `ops/cron-check.sh`, der Deploy legt sie neben die Ecosystem-Datei; auf
+  appwrite-prod das Tor-Wort `cron-status`, dafür liegen `cron-check.sh` und
+  `cron.conf` VON HAND in `~/ops/`) und `verify-security-headers.mjs` (von
+  außen, roh gezählt: jede Kopfzeile genau einmal; eine Datei, die ein
+  vorgeschalteter Zwischenspeicher ausliefert — `cf-cache-status: HIT` auf
+  pukalani.app —, wird nicht bewertet, sie trägt die Kopfzeilen ihres ersten
+  Abrufs). Verglichen werden
+  Pflicht-Zeilen, nicht Zeichen — Ploi schreibt eine Datei bei Zertifikat
+  oder Alias um, das bleibt grün. Die Skripte geben nur Zahlen, Site-Namen aus
+  der Liste und Regel-Namen aus (Kundendomains als Nummer; `--namen` nur von
+  Hand). Zeitpläne stehen an ZWEI Stellen: im crontab von `ploi` und in
+  `/etc/crontab` (dorthin schreibt Ploi seine „Cronjobs") — derselbe Eintrag
+  stand so monatelang doppelt. NEUER ZEITPLAN ⇒ erst `ops/cron.conf` und
+  ausliefern, dann anlegen; ENTFERNEN umgekehrt. NEUE SITE ⇒
+  docs/runbooks/NEUE-SITE.md. Probealarm `-f config_drill=true`.
+  MAIL-LINKS (SEC-010): Reset-Mail und OAuth-Rückweg nehmen in Apps OHNE
+  Mandanten-Auflösung `public.appUrl` (`resolveTrustedOrigin`,
+  `core/server/utils/trustedOrigin.ts`), den Namen der Anfrage nur, wo
+  `00.tenant.ts` ihn geprüft hat; fehlt `appUrl`, schreibt die App
+  `auth.app_url_missing` und fällt zurück. `NUXT_PUBLIC_APP_URL` ist Pflicht
+  auf platform, admin, portfolio und branding. EIGENE DOMAIN EINER EINZEL-SITE
+  (Davids Auftrag 2026-11-16): hat die Site im Dashboard eine eigene Domain
+  und ist sie `active`, nehmen Reset-, Bestätigungs- und Benachrichtigungs-
+  Mails, der Digest und der OAuth-Rückweg DIESE Adresse — über den Vertrag
+  `registerSiteOriginResolver` (`core/server/utils/siteOrigin.ts`), den der
+  `domains`-Layer mit derselben Abfrage bedient, aus der auch der 301
+  entsteht (Control Plane, 30 s Zwischenspeicher; nicht erreichbar ⇒
+  `appUrl`). Der Name kommt aus der `websites`-Zeile, NIE aus der Anfrage.
+  `NUXT_PUBLIC_APP_URL` BLEIBT dabei die STANDARD-Adresse (der Rückfall, wenn
+  die eigene Domain entfernt wird) — niemand stellt für eine eigene Domain
+  eine Server-Datei um. Eine neue Stelle, die einen Link in eine Mail legt,
+  nimmt `resolveSiteLinkBase(event)` statt `config.public.appUrl`. TERMIN-ERINNERUNGEN fährt die
+  App selbst (Zeit-Lauf `event-reminders` im events-Layer, stündlich, alle
+  Communities, der Mandant kommt aus dem Stempel der Termin-Zeile) — auf dem
+  Server gibt es dafür KEINEN Zeitplan mehr.
 - ZWEI CI-SCHLÜSSEL, ZWEI UMGEBUNGEN (GA1 P08, seit 2026-11-14): GitHub
   Actions erreicht die Server über ZWEI getrennte SSH-Schlüssel, und beide
   liegen nicht mehr auf Repo-Ebene, sondern in GitHub-Umgebungen, die nur den
@@ -201,7 +264,7 @@ paths:
   NUR der Wächter-Schlüssel und nur mit festem Befehl: sshd führt dafür immer
   `~/bin/pukalani-cert-gate.sh` aus (Quelle `ops/appwrite-cert-gate.sh`,
   erlaubt `probe`, `renew`, `reset-account`, `backup-status`,
-  `realtime-status`; Einspielen nur von Hand — ebenso
+  `realtime-status`, `cron-status`; Einspielen nur von Hand — ebenso
   `~/ops/realtime-watchdog.sh`, vorher `ops/realtime-watchdog-attrappe.sh`).
   Vom
   App-Server führt KEIN SSH-Weg zum Appwrite-Server. DER SCHLÜSSEL LIEGT NIE

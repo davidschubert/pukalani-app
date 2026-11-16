@@ -36,6 +36,8 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
 | Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
+| Server-Einstellungen | `scripts/ops/verify-server-config.mjs` (vergleicht auf den Servern mit `ops/nginx-check.mjs`, `ops/cron-check.sh` und dem Tor-Wort `cron-status`) | täglich | einer Site fehlt eine Pflicht-Zeile der Webserver-Vorlage (`ops/nginx/`), oder der Webserver setzt eine Schutz-Kopfzeile selbst; auf dem App-Server liegt eine Site, die `ops/nginx-sites.conf` nicht kennt; ein Zeitplan aus `ops/cron.conf` fehlt, steht doppelt, oder es gibt einen unbekannten. Verglichen werden Pflicht-Zeilen, nicht Zeichen — ein Handgriff in Ploi (Zertifikat, Alias) macht den Blick nicht rot |
+| Schutz-Kopfzeilen | `scripts/ops/verify-security-headers.mjs` | täglich | auf einem Host kommt eine Schutz-Kopfzeile (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS) nicht genau einmal an — auf einer Seite, auf `/api/health` oder auf einer Datei unter `/_nuxt/` —, oder es kommt eine, die niemand mehr senden soll (`X-Frame-Options`, `X-XSS-Protection`, `x-powered-by`). Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
 
 **In die App hinein (seit 2026-11-16, OPS-011).** Bis dahin sah der Alarm, ob
 ein Host antwortet, aber nicht, ob die App darin Fehler macht. Jetzt schreibt
@@ -157,6 +159,33 @@ Formulare laufen dann ohne Hürde. „403, aber kein Widget" sperrt Gäste aus.
 Rezept: [DEPLOYMENT.md](DEPLOYMENT.md), Abschnitt Turnstile; nachprüfen mit
 `pnpm ops:turnstile <site>`. Der Blick ruft je Site einmal am Tag die
 Passwort-vergessen-Route mit einer Probe-Adresse auf — keine Mail, kein Konto.
+
+**Server-Einstellungen (seit 2026-11-16, OPS-003).** Webserver-Einstellungen
+und Zeitpläne standen bis dahin nur auf den Servern. Jetzt stehen im Repo:
+die Vorlagen je Site-Art (`ops/nginx/`), die Liste der Sites mit Port und
+Zugriffs-Log (`ops/nginx-sites.conf`) und die Liste der Zeitpläne je Server
+(`ops/cron.conf`). Verglichen wird AUF den Servern, von zwei festen Skripten,
+die nur lesen und nur Zahlen, Site-Namen aus der Liste und Regel-Namen
+ausgeben — nie eine Zeile aus einer nginx-Datei oder einem crontab (das
+Protokoll des Laufs ist öffentlich; Kundendomains erscheinen nur als Nummer):
+`ops/nginx-check.mjs` und `ops/cron-check.sh` auf dem App-Server (der Deploy
+legt sie neben die Ecosystem-Datei), auf dem Appwrite-Server das Tor-Wort
+`cron-status`. Gelesen werden beide Quellen für Zeitpläne: der crontab von
+`ploi` und `/etc/crontab` (dorthin schreibt Ploi seine „Cronjobs").
+Probealarm: `gh workflow run production-watch.yml -f config_drill=true`
+(täuscht eine fehlende Pflicht-Zeile vor, auf dem Server fehlt nichts).
+Neue Site, Kundendomain, neuer Zeitplan: [NEUE-SITE.md](NEUE-SITE.md).
+
+**Schutz-Kopfzeilen (seit 2026-11-16, SEC-006).** Die Kopfzeilen setzt die
+App selbst, für jede Antwort gleich
+(`packages/core/server/plugins/security-headers.ts`): `nosniff`,
+`Referrer-Policy`, `Permissions-Policy` und HSTS überall, auf Seiten dazu
+die Regel zum Einbetten (`frame-ancestors`) und eine Skript-CSP, die nur
+beobachtet (Report-Only, ohne Sammelstelle — Verstöße stehen in der
+Browser-Konsole). Im Webserver steht dazu NICHTS mehr; die Vorlagen verbieten
+`add_header` für diese Namen. Der Blick zählt von außen roh nach, weil ein
+Test im Repo den Webserver davor nicht sieht. Von Hand:
+`node scripts/ops/verify-security-headers.mjs [host]`.
 
 **KI-Modelle (seit 2026-11-14, BE-004).** Ein roter Blick heißt: eine
 KI-Funktion scheitert gerade bei JEDEM Aufruf, obwohl sie eingeschaltet ist
@@ -545,6 +574,45 @@ Ausliefern steht aus oder ist gescheitert (`deploy.yml`-Lauf lesen). „Nicht
 erreichbar" oder „nicht in der festen Form": den Lauf von Hand wiederholen;
 bleibt es, am Mac `node scripts/ops/verify-app-signals.mjs --ssh` und
 `ssh ploi@49.13.211.173 'node /home/ploi/<site>/ops/app-watch-counts.mjs <prozess>'`.
+
+**Server-Einstellungen.** Der Satz im Issue nennt Site und Pflicht-Zeile
+oder den Zeitplan.
+
+- *Eine Pflicht-Zeile fehlt* (meist nach einem Handgriff an der Site, der die
+  Datei durch Plois eigene Schablone ersetzt hat): Ploi → Site → Manage →
+  NGINX configuration, die Zeile aus der Vorlage der Site-Art nachtragen
+  (`ops/nginx/`, die Zeilen unter `PFLICHT`), speichern, **Reload** (nie
+  Restart). Welche Zeile wo fehlt, zeigt auf dem Server
+  `node /home/ploi/platform.pukalani.app/ops/nginx-check.mjs --namen`.
+- *Der Webserver setzt eine Schutz-Kopfzeile selbst* (`zuviel`): die
+  `add_header`-Zeile löschen — Ploi schreibt bei einer neuen Site drei davon
+  hinein. Sie käme sonst doppelt.
+- *Unbekannte Site-Datei:* jemand hat eine Site angelegt. In
+  `ops/nginx-sites.conf` eintragen ([NEUE-SITE.md](NEUE-SITE.md)) oder die
+  Site entfernen.
+- *Zeitplan fehlt:* auf dem Server nachsehen (`crontab -l` als `ploi` bzw.
+  Ploi → Server → Cronjobs für `/etc/crontab`) und wieder anlegen, wie
+  `ops/cron.conf` ihn nennt. Fehlt `appwrite-backup`, läuft das nächtliche
+  Backup nicht (der Backup-Blick wird am selben Morgen ebenfalls rot).
+- *Unbekannter Zeitplan:* den Eintrag auf dem Server ansehen (der Blick nennt
+  ihn mit Absicht nicht). Gewollt ⇒ in `ops/cron.conf` eintragen; sonst
+  entfernen.
+- *„Antwortet nicht in der erwarteten Form":* die Skripte liegen nicht auf dem
+  Server oder passen nicht zur Auswertung. App-Server: ein Ausliefern steht
+  aus (`deploy.yml`-Lauf lesen). Appwrite-Server: Tor-Skript, `cron-check.sh`
+  und `cron.conf` von Hand einspielen
+  ([CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md), § 3). Am Mac:
+  `PUKALANI_APPWRITE_SSH=ploi@188.245.61.155 PUKALANI_APPWRITE_CRON_COMMAND='~/bin/pukalani-cert-gate.sh cron-status' node scripts/ops/verify-server-config.mjs --ssh`
+  (der eigene Zugang hat eine Shell, deshalb ruft man das Tor dort ausdrücklich).
+
+**Schutz-Kopfzeilen.** „Kommt 2-mal" oder „wird gesendet": der Webserver des
+Hosts setzt die Kopfzeile selbst — die `add_header`-Zeile in der nginx-Datei
+der Site entfernen, Reload; der Blick „Server-Einstellungen" nennt dieselbe
+Site als `zuviel`. Für `pukalani.app` zusätzlich bei Cloudflare nachsehen
+(dort lässt sich HSTS ebenfalls einschalten — nicht einschalten). „Fehlt":
+die App sendet sie nicht; den letzten Stand von
+`packages/core/server/plugins/security-headers.ts` und den Build des Hosts
+(`/api/health` → `.build`) prüfen.
 
 **Live-Verbindung (Realtime).** Kommentare, Anwesenheit und Benachrichtigungen
 kommen nicht mehr live an; die Seiten selbst laufen.
