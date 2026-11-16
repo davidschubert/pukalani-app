@@ -44,7 +44,9 @@ import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../../../../contracts/brandCon
  *     Antwort zum vorhandenen Beitrag bzw. auf den offenen Lauf, statt einen
  *     zweiten zu bezahlen. Ist der Beitrag inzwischen GELÖSCHT, wird der
  *     Verweis stillschweigend geräumt — sonst wäre ein Fundstück nach einem
- *     Aufräumen für immer blockiert.
+ *     Aufräumen für immer blockiert. NUR bei „Zeile nicht gefunden"; lässt
+ *     sich der Entwurf gerade nicht lesen, lehnt die Route mit 503
+ *     `brief_lookup_failed` ab (BE-012).
  *  4. Ist das Video überhaupt noch abrufbar? `available: false` heisst: der
  *     Anbieter kann es auch nicht lesen (bewiesen in der Probe vom
  *     2026-10-27: eine unerreichbare Video-Id ⇒ 502). Das 409 hier ist der
@@ -154,7 +156,33 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
 
   // (3) Schon ein Brief? — oder ein Verweis auf einen gelöschten Beitrag.
   if (item.briefPostId) {
-    const existing = await loadInsightsPostRow(event, item.briefPostId).catch(() => null)
+    /**
+     * NUR „GELÖSCHT" RÄUMT DEN VERWEIS (BE-012, Davids Entscheidung: „Der
+     * Video-Brief startet nur dann neu, wenn der Entwurf wirklich gelöscht
+     * wurde, nicht bei jeder Störung").
+     *
+     * Vorher machte ein `.catch(() => null)` aus JEDEM Fehler „gelöscht": war
+     * Appwrite einen Moment nicht erreichbar, räumte die Route den Verweis und
+     * liess einen zweiten BEZAHLTEN Lauf zu — neben einem Entwurf, den es
+     * weiterhin gab. Jetzt zählt nur der 404 der Zeile (`post_not_found` aus
+     * `loadInsightsPostRow`); jede andere Störung lehnt mit 503 ab, VOR
+     * Drossel und Stempel: nichts gebucht, kein Lauf, der Verweis bleibt.
+     */
+    let existing: unknown = null
+    try {
+      existing = await loadInsightsPostRow(event, item.briefPostId)
+    }
+    catch (error) {
+      if (!isBriefPostMissing(error)) {
+        // Ohne Inhalt: die Ursache schreibt `loadInsightsPostRow` selbst ins Log.
+        console.error('[insights] Brief: Entwurf zum Verweis nicht prüfbar')
+        throw createError({
+          status: 503,
+          statusText: 'Brief lookup failed',
+          data: { code: 'brief_lookup_failed' },
+        })
+      }
+    }
     if (existing) {
       throw createError({
         status: 409,
@@ -269,8 +297,9 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
    * unbehandelte Ablehnung nimmt unter pm2 den Prozess mit (die Warnung steht
    * wörtlich im Kopf von `packages/market/server/utils/marketBrandCheck.ts`).
    * `runInsightsBrief` fängt deshalb ALLES selbst und schreibt jeden Ausgang
-   * an die Zeile; das `.catch` hier ist der Gürtel zum Hosenträger und darf
-   * nie feuern.
+   * an die Zeile; der Fänger von `runDetached` (Core, GA1 P18 — die EINE
+   * gemeinsame Hilfe für Arbeit hinter der Antwort) ist der Gürtel zum
+   * Hosenträger und darf nie feuern.
    *
    * Der `event` reist mit in den Hintergrund, und das ist geprüft, nicht
    * geraten: alles, was er dort noch hergibt, ist LESEND (Runtime-Config,
@@ -278,7 +307,7 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
    * Geschrieben wird in die ANTWORT nichts mehr — die ist zu diesem Zeitpunkt
    * längst draussen.
    */
-  void runInsightsBrief(event, {
+  const run: InsightsBriefRun = {
     rowId: row.$id,
     videoId,
     item,
@@ -288,12 +317,24 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
     format: body.format,
     baseLocale: body.baseLocale,
     startedAtMs: Date.parse(startedAtIso),
-  }).catch(error => console.error('[insights] Brief-Lauf ohne Besitzer gescheitert:', error))
+  }
+  runDetached('insights', () => runInsightsBrief(event, run))
 
   // 202: angenommen, nicht erledigt. Die Zeile sagt, was daraus wird.
   setResponseStatus(event, 202)
   return { item }
 })
+
+/**
+ * „Den Entwurf gibt es nicht mehr" — der 404 aus `loadInsightsPostRow`
+ * (`insightsPostMissing()`), und NUR der. Erkannt am fachlichen Code, nicht am
+ * Status: ein 404 aus einer fehlenden TABELLE kommt dort als 503 an
+ * (`insightsStorageError`) und darf genau nicht als „gelöscht" gelten.
+ */
+function isBriefPostMissing(error: unknown): boolean {
+  const data = (error as { data?: { code?: unknown } } | null)?.data
+  return data?.code === 'post_not_found'
+}
 
 interface InsightsBriefRun {
   rowId: string
