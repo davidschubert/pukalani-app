@@ -1,13 +1,20 @@
 import { ID, Query } from 'node-appwrite'
 import { z } from 'zod'
-import { createAdminClient, createSessionClient } from '../../lib/appwrite'
+import { createAdminClient } from '../../lib/appwrite'
 import { decoySecurityPhrase } from '../../utils/securityPhrase'
 import { recoverySchema } from '../../../schemas/auth'
 import { AUTH_METHOD_UNAVAILABLE_CODE, instanceAuthFeatureGap } from '../../../shared/authMethodAvailability'
 
 /**
- * Email-OTP anfordern (passwortloser Login). Läuft als GUEST — Appwrite
- * legt unbekannte E-Mails dabei automatisch als User an (Auto-Signup).
+ * Email-OTP anfordern (passwortloser Login). Appwrite legt unbekannte
+ * E-Mails dabei automatisch als User an (Auto-Signup).
+ *
+ * MIT DEM ADMIN-CLIENT (SEC-007, GA1 P13): bis hierher lief der Aufruf als
+ * Gast. Die Anmelde-Wege eines Projekts lassen sich für Aufrufe OHNE
+ * API-Schlüssel abschalten (Auth → Settings → Auth methods) — damit entsteht
+ * kein Konto mehr an dieser Route und ihren Prüfungen vorbei. Ein Gast-Aufruf
+ * von hier träfe dieselbe Sperre; mit dem Schlüssel geht er weiter. Wächter:
+ * `core/tests/authMethodCalls.test.ts`.
  * Die Security-Phrase geht in Mail UND Response — die UI zeigt sie an,
  * damit User die echte Mail von Phishing unterscheiden können.
  *
@@ -71,7 +78,12 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const { account } = createSessionClient(event)
+  // Admin-Client (s. Kopf). Appwrites eigene Bremse gilt für Aufrufe mit
+  // Schlüssel nicht — gebremst wird in `05.rate-limit.ts` (diese Route steht
+  // dort) und davor von der Bot-Prüfung. Die Antwort mit Schlüssel trägt
+  // zusätzlich das Geheimnis des Codes; zurückgegeben werden unten NUR
+  // `userId` und `phrase`.
+  const { account } = createAdminClient(event)
 
   const token = await account.createEmailToken({
     userId: ID.unique(),
