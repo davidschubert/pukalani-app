@@ -100,13 +100,18 @@ function isOperatorDoor(expression: string): boolean {
   return /as:\s*'operator'\s*[,}]/.test(expression)
 }
 
+/** Wie der Code die Tabelle nennt: über die Konstante des Layers oder als Literal. */
+function tableTarget(table: string, constant?: string): string {
+  return constant ? `(?:${constant}\\b|'${table}')` : `'${table}'`
+}
+
 export interface Finding { file: string, line: number, table: string, why: string }
 
 export function sessionWrites(file: string, source: string, tables = SERVER_WRITTEN_TABLES): Finding[] {
   const code = stripComments(source)
   const findings: Finding[] = []
   for (const { table, constant } of tables) {
-    const target = `(?:${constant}\\b|'${table}')`
+    const target = tableTarget(table, constant)
     const pattern = new RegExp(`\\.\\s*(${WRITE_METHODS.join('|')})\\s*(?:<[^>(]*(?:<[^>]*>)?[^>(]*>)?\\s*\\(\\s*${target}`, 'g')
     for (const match of code.matchAll(pattern)) {
       const receiver = receiverBefore(code, match.index)
@@ -135,7 +140,8 @@ export function ownerWriteStamps(file: string, source: string, tables = SERVER_W
   const code = stripComments(source)
   const findings: Finding[] = []
   for (const { table, constant } of tables) {
-    const creates = new RegExp(`(?:\\.\\s*create\\s*(?:<[^>(]*>)?\\s*\\(\\s*(?:${constant}\\b|'${table}')|createRow[\\s\\S]{0,200}tableId:\\s*(?:${constant}\\b|'${table}'))`).test(code)
+    const target = tableTarget(table, constant)
+    const creates = new RegExp(`(?:\\.\\s*create\\s*(?:<[^>(]*>)?\\s*\\(\\s*${target}|createRow[\\s\\S]{0,200}tableId:\\s*${target})`).test(code)
     if (!creates) continue
     // `ownerUserId: string` ist eine Typ-Angabe, kein vergebenes Recht.
     for (const match of code.matchAll(/Permission\.(?:update|delete|write)\s*\(|ownerUserId\s*:(?!\s*string\b)/g)) {
@@ -151,6 +157,8 @@ describe('Tabellen, die nur der Server schreibt', () => {
 
   it('die Liste passt zu den Konstanten der Layer', () => {
     for (const { table, constant, layer } of SERVER_WRITTEN_TABLES) {
+      // Tabellen ohne Konstante nennt der Code als Literal — dort gibt es nichts abzugleichen.
+      if (!constant) continue
       const dir = join(ROOT, 'packages', layer, 'shared', 'types')
       const declared = readdirSync(dir).some(name =>
         new RegExp(`export const ${constant} = '${table}'`).test(readFileSync(join(dir, name), 'utf8')))
