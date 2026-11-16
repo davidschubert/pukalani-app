@@ -127,6 +127,9 @@ const SYSTEM_TABLES = [
   // system-036 (Instanz-Geheimnisse, KI-Schlüssel je Deployment) — fehlte in
   // der Soll-Liste und stand als „unbekannt"-Warnung auf account+control.
   'instance_secrets',
+  // system-040 (Lauf-Sperre für Skript-Läufe) und system-041 (Nachweise der Zustimmung, SEC-008)
+  'system_runs',
+  'consent_records',
   'community_navigation',
   'community_redirects',
   'community_seo',
