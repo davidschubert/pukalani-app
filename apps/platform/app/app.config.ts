@@ -184,6 +184,10 @@ export default defineAppConfig({
     // Freigabe zum Aufräumen am 2026-11-14. Rückweg: 'dry-run' oder 'off'
     // (Runbook docs/runbooks/LABEL-ABGLEICH.md).
     community: { labelReconcile: 'apply' },
+    // Lösch-Lauf für den Beleg gemeldeter privater Nachrichten (SEC-033):
+    // erst ZÄHLEN ('count'); 'apply' erst nach Davids Ja zu einer gezählten
+    // Zahl. Rückweg: 'off'.
+    messages: { reportEvidenceSweep: 'count' },
     // DIE Multi-Tenant-App (Horizont 3): das Tenant-Gate ist hier AN — die
     // Middleware 00.tenant.ts (core) löst jeden Request-Host über den in
     // server/plugins/tenant-resolver.ts registrierten Resolver auf.
