@@ -1,4 +1,4 @@
-import { ANALYTICS_PROXY_EVENT_PATH, headScriptId, plausibleScriptUrl, proxiedScriptSrc } from '../../shared/analyticsScript'
+import { ANALYTICS_PROXY_EVENT_PATH, PLAUSIBLE_DEFAULT_SCRIPT_URL, UMAMI_DEFAULT_SCRIPT_URL, headScriptId, plausibleScriptUrl, proxiedScriptSrc } from '../../shared/analyticsScript'
 
 /**
  * Analytics mit doppeltem Gate (Konzept A5):
@@ -91,7 +91,7 @@ export default defineNuxtPlugin(async () => {
     if (analytics.provider === 'umami') {
       useHead({
         script: [{
-          'src': analytics.src || 'https://cloud.umami.is/script.js',
+          'src': analytics.src || UMAMI_DEFAULT_SCRIPT_URL,
           'data-website-id': analytics.websiteId,
           'defer': true,
         }],
@@ -123,7 +123,7 @@ export default defineNuxtPlugin(async () => {
 
     useHead({
       script: [{
-        'src': analytics.src || 'https://plausible.io/js/script.js',
+        'src': analytics.src || PLAUSIBLE_DEFAULT_SCRIPT_URL,
         'data-domain': analytics.domain,
         'defer': true,
       }],

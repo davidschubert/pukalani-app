@@ -60,6 +60,43 @@ export function plausibleScriptUrl(instance: string | undefined, scriptId: strin
 export const ANALYTICS_PROXY_SCRIPT_PATH = '/api/stats-script.js'
 export const ANALYTICS_PROXY_EVENT_PATH = '/api/stats-event'
 
+/** Die Provider-Voreinstellungen, wenn `src` leer ist (Plugin `analytics.ts`). */
+export const UMAMI_DEFAULT_SCRIPT_URL = 'https://cloud.umami.is/script.js'
+export const PLAUSIBLE_DEFAULT_SCRIPT_URL = 'https://plausible.io/js/script.js'
+
+/**
+ * PURE (unit-getestet): von welchen FREMDEN Origins das Analytics-Plugin ein
+ * Skript laden kann — für die beobachtende Skript-CSP (SEC-006).
+ *
+ * Absichtlich großzügig: jede Herkunft, die einer der Zweige im Plugin
+ * benutzen KANN (eigenes `src`, die Selbstbedienungs-`instance`, die
+ * Provider-Voreinstellung). Die CSP beobachtet nur; eine Herkunft zu viel
+ * kostet nichts, eine zu wenig meldete die eigene Messung als Fremdkörper.
+ * Der Proxy-Weg (`/api/stats-script.js`) ist `'self'` und braucht keinen
+ * Eintrag. Gate aus ⇒ nichts, weil dann kein Byte geladen wird.
+ */
+export function analyticsScriptOrigins(
+  analytics: { enabled?: boolean, provider?: string, src?: string, instance?: string } | null | undefined,
+): string[] {
+  if (analytics?.enabled !== true) return []
+  const candidates = [analytics.src, analytics.instance]
+  if (!analytics.src) {
+    candidates.push(analytics.provider === 'umami' ? UMAMI_DEFAULT_SCRIPT_URL : PLAUSIBLE_DEFAULT_SCRIPT_URL)
+  }
+  const origins: string[] = []
+  for (const value of candidates) {
+    if (!value) continue
+    try {
+      const url = new URL(value)
+      if (url.protocol === 'https:' || url.protocol === 'http:') origins.push(url.origin)
+    }
+    catch {
+      // Keine absolute Adresse (z. B. ein Pfad auf dem eigenen Host) — `'self'` deckt sie.
+    }
+  }
+  return [...new Set(origins)]
+}
+
 /**
  * PURE (unit-getestet): die Basis-Adresse unserer Plausible-Instanz, wie sie
  * aus der App-Config folgt — die einzige Herkunft, die der Proxy anfragen darf.
