@@ -251,6 +251,16 @@ paths:
   comments blendet ab pukalani.comments.autoHideReports offenen Meldungen aus
   (0 = aus; Meldungen bleiben offen). resolveReportsForTarget/
   openReportsForTarget sind die moderation-Verträge für Resolve/Assist/Bulk.
+  GEMELDETE PRIVATE NACHRICHTEN (SEC-033, Davids Entscheidung 2026-11-12):
+  Text nur, solange eine Meldung OFFEN ist — Liste und Einzel-Ansicht fragen
+  dieselbe Funktion (`moderatorVisibleBody` mit der offenen Zahl, gebündelt
+  über `openReportCountsForTargets`), jede Einsicht steht entprellt im
+  Betreiber-Protokoll (`recordAuditView`, core). 90 Tage nach der letzten
+  Erledigung leert ein Lauf den eingefrorenen Beleg (`reportedBody` und
+  `reportedAt`); das Gespräch selbst und die Meldung bleiben (Schalter
+  `pukalani.messages.reportEvidenceSweep` off/count/apply, Stand je Nachricht
+  nur in ihrer Community über `reportEvidenceStateForTarget`);
+  docs/referenz/EXPORT-UND-LOESCHUNG.md.
 - Microcache: createMicrocache() (core) NUR für user-agnostische GETs —
   Gast-Kommentare Seite 1 (10s), öffentlicher Changelog (Write-invalidiert),
   App-/api/stats (10s, nur ohne Mandant — mit Mandant 404, BE-023). NIE Antworten mit Session-Daten cachen; kein

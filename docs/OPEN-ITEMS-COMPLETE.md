@@ -324,6 +324,76 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 > „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 > [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
 
+### GA1 P16 — Betreiber-Dashboard: Export ohne Nachrichtentexte, frische Anmeldung, Protokoll; gemeldete Nachrichten mit Frist ✅ 2026-11-16
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+SEC-033, SEC-034, BE-021), Pull Request 224 (Merge `55177a99`) und der
+Pull Request mit diesem Eintrag. Davids Entscheidungen vom 2026-11-12: „Der
+Export für den Betreiber enthält keine Nachrichtentexte; der eigene Export der
+Person bleibt vollständig" und „Sichtbar nur, solange die Meldung offen ist;
+danach 90 Tage gespeichert, dann gelöscht". Vom 2026-11-16: frische Anmeldung
+„wie die großen Anbieter" (Herausgabe, Zugänge, Rollen — Sperren bleibt
+sofort möglich), Fenster 10 Minuten, die Kopie vor einer Löschung ebenfalls
+ohne Texte, der Lösch-Lauf scharf nach der Zählung (0).
+
+1. **Erst gemessen.** „Melden darf nur, wer am Gespräch beteiligt ist" war
+   seit SEC-031 schon zu. Offen waren: die Liste der gemeldeten Nachrichten
+   zeigte den eingefrorenen Text auch nach der Erledigung, er wurde nie
+   gelöscht, der Betreiber-Export und die Kopie vor einer Löschung enthielten
+   ganze Gespräche, und beide Schreiber des Betreiber-Protokolls verwarfen
+   jeden Fehler ohne eine Zeile.
+2. **Der Export kennt seinen Empfänger.** Der Vertrag für Export-Beiträge
+   nimmt `{ audience: 'self' | 'operator' }` (`core/server/utils/userData.ts`).
+   Die privaten Nachrichten geben dem Betreiber je Gespräch nur Gegenüber,
+   Beginn, letzte Nachricht und Zähler. Die Kopie vor einer Löschung läuft
+   über denselben Weg. Der eigene Export bleibt vollständig.
+3. **Frische Anmeldung, das vorhandene Muster.** `requireRecentAuth` steht
+   jetzt an: Export einer Person, CSV-Liste aller Nutzer, Herunterladen einer
+   Lösch-Kopie, Speichern von Zugängen und Schlüsseln, Rollenvergabe. Sperren
+   und Sitzungen beenden bleiben ohne. Die Oberfläche nutzt den einen Hinweis
+   (`useRecentAuthPrompt`); der CSV-Export läuft dafür per Abruf.
+4. **Ein Schreiber für das Protokoll.** `writeAuditLog`
+   (`core/server/utils/auditLog.ts`): ein gescheiterter Eintrag schreibt
+   `audit.write_failed` (nur Aktion, Zielart, Status), der tägliche
+   Kontroll-Lauf zählt die Zeile (rot ab 3 in 25 Stunden). Herausgabe von
+   Personendaten ist strikt — erst der Eintrag, dann die Daten, sonst 503
+   `audit_unavailable`. Alles andere läuft weiter und meldet den Ausfall.
+   Neu festgehalten: Ansehen eines Kontos und der Nutzerliste (entprellt,
+   ohne Suchbegriff und ohne Namen), Herunterladen einer Lösch-Kopie, Einsicht
+   in den Text einer gemeldeten Nachricht. Sammel-Aktionen nennen die Ziele.
+5. **Gemeldete private Nachrichten.** Liste und Einzel-Ansicht fragen
+   dieselbe Funktion (`moderatorVisibleBody` mit der Zahl offener Meldungen):
+   Text nur, solange eine Meldung offen ist. Das gilt sofort auch für alte,
+   erledigte Meldungen. 90 Tage nach der letzten Erledigung leert der Zeit-Lauf
+   `message-report-evidence` den eingefrorenen Beleg (`reportedBody` und
+   `reportedAt`); das Gespräch der Beteiligten und die Meldung bleiben.
+   Schalter `pukalani.messages.reportEvidenceSweep` (off / count / apply), in
+   `platform` scharf. Zähl-Skript: `packages/messages/scripts/report-evidence-count.mjs`.
+6. **Daneben.** Löschen im Speicher über eine Erlaubnisliste; der Schutz des
+   letzten Admins zählt nur aktive Konten; das Anlegen eines Kontos steht auch
+   dann im Protokoll, wenn das Setzen der Rollen scheitert.
+
+**Belegt.** Unit-Tests je Route, gegen den alten Stand rot. Lokal über die
+echten Routen mit Wegwerf-Konten je Rolle (Gast, Konto ohne Rolle, Moderation,
+Betreiber frisch, Betreiber mit einer über 10 Minuten alten Anmeldung,
+Ausfall des Protokolls über einen Proxy): 53 von 53; Klick im Browser auf
+CSV-Export und den Hinweis „neu anmelden". Gemeldete Nachrichten: das
+Beweis-Skript der Nachrichten mit neuem Abschnitt 13, der Lösch-Lauf lokal in
+beiden Modi (zählt 2 fällige von 6, leert genau diese zwei, zweiter Lauf
+findet nichts; eine offene Meldung in einer anderen Community schützt nicht).
+Auf Production nur gezählt: 0 gemeldete Nachrichten, eine ältere Lösch-Kopie
+(läuft nach Davids Entscheidung von selbst ab). Keine Migration.
+
+**Gelernt:** Eine Zusage, die im Kopf einer Datei steht („genau eine Route
+liefert den Text"), hält nur so lange, bis jemand die zweite Route baut. Die
+Regel gehört in EINE Funktion, die beide Routen fragen, und in einen Test,
+der die zweite Route an ihr misst. Zweitens: ein Protokoll, das nie eine
+Aktion aufhalten darf, braucht eine Stelle, an der sein eigener Ausfall
+auffällt — sonst sieht ein leeres Protokoll aus wie ein ruhiger Tag. Und:
+was ein Lauf löscht, muss zu dem Merker passen, an dem der nächste Schritt
+hängt. Hier hing „schon eingefroren" am Zeitstempel; nur den Text zu leeren
+hätte eine spätere Meldung ohne Text hinterlassen.
+
 ### GA1 P13 — Schreiben nur noch über den Server; Kontoanlage nur über unsere Anmeldung; Zustimmung als Nachweis ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings

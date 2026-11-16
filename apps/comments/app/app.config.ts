@@ -26,6 +26,10 @@ export default defineAppConfig({
      */
     seo: { originFromRequest: true },
     brand: { name: 'Hawaii Studio' },
+    // Lösch-Lauf für den Beleg gemeldeter privater Nachrichten (SEC-033):
+    // scharf ('apply') wie in der Pool-App — die Test-App soll sich gleich
+    // verhalten.
+    messages: { reportEvidenceSweep: 'apply' },
     /**
      * DIE VOLLE INSTANZ-SICHT IM COMMUNITY-HUB (F51 Paket 2, 2026-08-07 —
      * Davids Ebenen-Entscheidung, DECISION-LOG „Community-Settings-Hub").

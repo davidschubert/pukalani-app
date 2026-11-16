@@ -77,7 +77,7 @@
     },
     "reports": {
       "title": "Gemeldete Nachrichten",
-      "description": "Nur gemeldete Nachrichten sind hier sichtbar — und zwar so, wie sie im Moment der Meldung dastanden.",
+      "description": "Nur gemeldete Nachrichten sind hier sichtbar — so, wie sie im Moment der Meldung dastanden, und nur, solange die Meldung offen ist.",
       "empty": "Keine gemeldeten Nachrichten.",
       "from": "Von",
       "to": "An",
@@ -85,6 +85,7 @@
       "reportedAt": "Gemeldet",
       "openReports": "Offene Meldungen",
       "snapshotNote": "Dieser Text ist eine eingefrorene Kopie. Der Verlauf des Gesprächs bleibt privat.",
+      "closedNote": "Meldung erledigt – der Text ist nicht mehr einsehbar.",
       "loadFailed": "Die Liste konnte nicht geladen werden."
     },
     "reasons": {

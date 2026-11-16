@@ -96,6 +96,7 @@ beide Server-Einstellungen einschalten.
 | LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
+| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
@@ -592,6 +593,35 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
   liegen die Vorgänger-Fassungen der Skripte als Weg zurück
   (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
+
+<a id="bp1"></a>
+
+**BP1 — Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten (aus dem Gesamtaudit, Paket P16).**
+
+- **(a) Klick auf der echten Seite.** Als Betreiber im Dashboard unter
+  „Personen": die Liste exportieren (kommt als Datei), nach mehr als zehn
+  Minuten noch einmal — dann erscheint „Zur Sicherheit neu anmelden", und nach
+  der Anmeldung geht es auf derselben Seite weiter. Lokal belegt, auf
+  Production noch nicht geklickt.
+- **(b) Zähler des Protokolls.** Der tägliche Kontroll-Lauf berichtet
+  `protokoll ausfaelle` je App und wird ab 3 in 25 Stunden rot. Die Schwelle
+  ist gesetzt, nicht gemessen: nach einer Woche die berichteten Zahlen ansehen
+  (zusammen mit WA1).
+- **(c) Löschen im Speicher.** Die Erlaubnisliste enthält, was die Seite schon
+  vorher anbot — auch Ablagen, an deren Dateien eine Zeile hängt (Schriften,
+  Favicons, Marken-Entwürfe, Runner- und Ticket-Dateien). Wer dort eine Datei
+  löscht, lässt die Zeile ohne Datei zurück. Entscheiden: Liste auf Avatare
+  kürzen, oder die Zeile mitlöschen.
+- **(d) Kleinigkeiten.** Produkt-Schalter und Theme-Einstellungen werden
+  gelesen, geändert und als Ganzes zurückgeschrieben (zwei Betreiber im selben
+  Augenblick überschreiben einander). Der Zeitpunkt der Erledigung einer
+  Meldung ist das `$updatedAt` ihrer Zeile: ein späterer Schreibvorgang an
+  einer erledigten Meldung lässt die 90 Tage neu beginnen — eine eigene Spalte
+  machte es genau (Migration). Der Lösch-Lauf liest je Takt höchstens 2.000
+  gemeldete Nachrichten. Das Beweis-Skript der Nachrichten scheitert gegen den
+  lokalen Spiegel an einer Prüfung des Owner-Schalters (die Test-App liest dort
+  die Schalter echter Communities mit). Betreiber-Routen sind weiter an keinen
+  Host gebunden — das gehört zum Pukalani-Konto (PK1).
 
 <a id="wl1"></a>
 

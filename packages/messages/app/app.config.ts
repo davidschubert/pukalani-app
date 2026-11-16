@@ -9,6 +9,17 @@
  */
 export default defineAppConfig({
   pukalani: {
+    messages: {
+      /**
+       * LÖSCH-LAUF FÜR DEN BELEG GEMELDETER NACHRICHTEN (SEC-033):
+       * `off` | `count` | `apply`. Vorgabe AUS — bei `off` meldet sich der
+       * Lauf gar nicht an. `count` zählt nur (eine Log-Zeile
+       * `messages.report_evidence_sweep`), `apply` leert fällige Belege
+       * (`reportedBody` und `reportedAt`, 90 Tage nach der Erledigung) und kommt erst nach Davids Ja zu einer
+       * gezählten Zahl. Lauf: server/utils/reportEvidenceSweep.ts.
+       */
+      reportEvidenceSweep: 'off' as 'off' | 'count' | 'apply',
+    },
     account: {
       /** Zeile in „Was beim Löschen geschieht" (AuthAccountDeleteCard, core): private Nachrichten werden gelöscht, gemeldete bleiben bis zu 90 Tage als Beleg. */
       deleteNotices: ['messages.account.deleteNotice'],

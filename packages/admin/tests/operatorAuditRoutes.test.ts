@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { writeAuditLog, auditUnavailableError } from '../../core/server/utils/auditLog'
 import { recordAudit } from '../server/utils/audit'
 import { auditIdList, AUDIT_METADATA_MAX_CHARS } from '../server/utils/auditMetadata'
-import { AUDIT_VIEW_WINDOW_MS, createAuditViewThrottle, recordAuditView } from '../server/utils/auditViewThrottle'
+import { recordAuditView } from '../../core/server/utils/auditView'
 import { isDeletableBucket } from '../server/utils/storageBuckets'
 
 /**
@@ -225,37 +225,6 @@ describe('Ansichten: festgehalten, entprellt, ohne Namen und ohne Suchbegriff', 
     expect(auditRows).toHaveLength(1)
     expect(auditRows[0]).toMatchObject({ action: 'user.list_viewed', metadata: '{"searched":true}', targetName: '' })
     expect(JSON.stringify(auditRows)).not.toContain('erika')
-  })
-})
-
-describe('Entprell-Regel (pur)', () => {
-  it('ein Eintrag je Schlüssel und Fenster; nach Ablauf wieder fällig', () => {
-    const throttle = createAuditViewThrottle(1000, 10)
-    expect(throttle.due('a', 0)).toBe(true)
-    throttle.mark('a', 0)
-    expect(throttle.due('a', 999)).toBe(false)
-    expect(throttle.due('b', 999)).toBe(true)
-    expect(throttle.due('a', 1000)).toBe(true)
-  })
-
-  it('erst nach gelungenem Eintrag gemerkt — ein Ausfall unterdrückt den nächsten Versuch nicht', async () => {
-    stubCommon()
-    auditFails = true
-    const key = `probe:${Math.random()}`
-    await recordAuditView(event() as never, key, { action: 'user.viewed' }, 0)
-    auditFails = false
-    await recordAuditView(event() as never, key, { action: 'user.viewed' }, 1)
-    await recordAuditView(event() as never, key, { action: 'user.viewed' }, 2)
-    expect(auditRows).toHaveLength(1)
-    expect(AUDIT_VIEW_WINDOW_MS).toBe(15 * 60 * 1000)
-  })
-
-  it('die Karte bleibt gedeckelt — und wirft lieber den ältesten Eintrag als einen neuen', () => {
-    const throttle = createAuditViewThrottle(1000, 3)
-    for (const [i, key] of ['a', 'b', 'c', 'd'].entries()) throttle.mark(key, i)
-    expect(throttle.size()).toBe(3)
-    expect(throttle.due('a', 4)).toBe(true)
-    expect(throttle.due('d', 4)).toBe(false)
   })
 })
 

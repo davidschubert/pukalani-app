@@ -43,6 +43,7 @@ const EXPECTED_JOB_NAMES = [
   'invite-request-prune',
   'label-reconcile',
   'market-raw-text-sweep',
+  'message-report-evidence',
   'past-due-notice',
   'past-due-sweep',
   'reporter-email-prune',
