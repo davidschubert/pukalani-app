@@ -536,6 +536,41 @@
         "domain_not_ready": "Der Stand hat sich geändert. Neu laden und noch einmal prüfen.",
         "generic": "Das hat gerade nicht geklappt."
       }
+    },
+    "domainSweep": {
+      "title": "Eigene Domains: Schonfrist-Lauf",
+      "subtitle": "Was der stündliche Lauf jetzt täte: Frist beginnen, Erinnerung, Abschalten, verfallene Einträge. Gezählt wird ohne zu schreiben.",
+      "mode": {
+        "off": "aus",
+        "dryRun": "zählt nur",
+        "apply": "scharf"
+      },
+      "count": {
+        "startGrace": "Frist startet",
+        "remind": "Erinnerung fällig",
+        "pause": "wird abgeschaltet",
+        "expireClaim": "Eintrag verfällt",
+        "mails": "Mails"
+      },
+      "checked": "{count} Domains geprüft",
+      "failed": "{count} nicht prüfbar",
+      "nothing": "Heute nichts zu tun.",
+      "recount": "Neu zählen",
+      "loadFailed": "Die Zahlen ließen sich nicht laden.",
+      "col": {
+        "community": "Community",
+        "domain": "Domain",
+        "action": "was geschieht",
+        "graceEnds": "Frist-Ende"
+      },
+      "action": {
+        "start_grace": "Frist startet",
+        "clear_grace": "Frist endet (Plan wieder da)",
+        "pause": "wird abgeschaltet",
+        "stamp_claim": "Eintrag bekommt Datum",
+        "expire_claim": "Eintrag verfällt",
+        "remind": "Erinnerung fällig"
+      }
     }
   }
 }

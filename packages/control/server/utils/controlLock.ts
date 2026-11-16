@@ -77,7 +77,9 @@ export function controlLockSubject(subject: string): string {
   return createHash('sha256').update(subject, 'utf8').digest('hex')
 }
 
-export function controlLockStore(event: H3Event): RunLeaseStore {
+/** Die Ablage `system_runs`. OHNE `event` aufrufbar: ein Zeit-Lauf hat keinen
+ *  Request (Fristen-Lauf der eigenen Domain, BE-014). */
+export function controlLockStore(event?: H3Event): RunLeaseStore {
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
   return appwriteRunLeaseStore({

@@ -536,6 +536,41 @@
         "domain_not_ready": "The status changed. Reload and check again.",
         "generic": "That did not work just now."
       }
+    },
+    "domainSweep": {
+      "title": "Custom domains: grace period run",
+      "subtitle": "What the hourly run would do now: start a grace period, send a reminder, switch off, expire entries. Counted without writing.",
+      "mode": {
+        "off": "off",
+        "dryRun": "counting only",
+        "apply": "live"
+      },
+      "count": {
+        "startGrace": "grace starts",
+        "remind": "reminder due",
+        "pause": "switched off",
+        "expireClaim": "entry expires",
+        "mails": "mails"
+      },
+      "checked": "{count} domains checked",
+      "failed": "{count} could not be checked",
+      "nothing": "Nothing to do today.",
+      "recount": "Count again",
+      "loadFailed": "The numbers could not be loaded.",
+      "col": {
+        "community": "Community",
+        "domain": "Domain",
+        "action": "what happens",
+        "graceEnds": "Grace ends"
+      },
+      "action": {
+        "start_grace": "grace starts",
+        "clear_grace": "grace ends (plan is back)",
+        "pause": "switched off",
+        "stamp_claim": "entry gets a date",
+        "expire_claim": "entry expires",
+        "remind": "reminder due"
+      }
     }
   }
 }

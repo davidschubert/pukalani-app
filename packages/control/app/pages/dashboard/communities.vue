@@ -4,6 +4,7 @@ import { nameToSubdomain, OPERATOR_APEX } from '../../../schemas/tenant'
 import type { TenantMode, TenantPlan, TenantStatus, TenantWave } from '../../../shared/types/tenantRecord'
 import type { CommunitySuspension } from '../../../../core/shared/communitySuspension'
 import type { CustomDomainApprovalResponse, CustomDomainStatus } from '../../../shared/customDomain'
+import type { CustomDomainSweepItem, CustomDomainSweepMode, CustomDomainSweepRouteResponse } from '../../../shared/customDomainSweep'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'sites.manage' })
 
@@ -363,6 +364,23 @@ async function savePlanLimits(key: string) {
   }
 }
 
+// ── Fristen-Lauf der eigenen Domain (BE-014) ─────────────────────────────────
+// Die Zahlen, nach denen das Scharfschalten entschieden wird. Die Route zählt
+// IMMER nur (schreibt nie), egal was der Schalter sagt; geladen wird erst im
+// Browser und nur hier, damit die Liste darüber nicht darauf wartet.
+const { data: sweepData, status: sweepStatus, error: sweepError, refresh: refreshSweep } = await useFetch<CustomDomainSweepRouteResponse>('/api/control/sweeps/custom-domain', { lazy: true, server: false })
+const SWEEP_MODE_COLORS: Record<CustomDomainSweepMode, 'neutral' | 'info' | 'warning'> = { 'off': 'neutral', 'dry-run': 'info', 'apply': 'warning' }
+function sweepModeLabel(mode: CustomDomainSweepMode): string {
+  return t(`control.domainSweep.mode.${mode === 'dry-run' ? 'dryRun' : mode}`)
+}
+const sweepRemindCount = computed(() => (sweepData.value?.items ?? []).filter(item => item.action === 'remind').length)
+const sweepColumns = computed<TableColumn<CustomDomainSweepItem>[]>(() => [
+  { accessorKey: 'host', header: () => t('control.domainSweep.col.community') },
+  { accessorKey: 'domain', header: () => t('control.domainSweep.col.domain') },
+  { accessorKey: 'action', header: () => t('control.domainSweep.col.action') },
+  { accessorKey: 'graceEndsAt', header: () => t('control.domainSweep.col.graceEnds') },
+])
+
 const HIDE_MD = { td: 'hidden md:table-cell', th: 'hidden md:table-cell' }
 const HIDE_LG = { td: 'hidden lg:table-cell', th: 'hidden lg:table-cell' }
 
@@ -557,6 +575,58 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
           </div>
         </div>
         <p class="mt-3 text-xs text-dimmed">{{ t('control.plans.hint') }}</p>
+      </section>
+
+      <!-- Fristen-Lauf der eigenen Domain (BE-014): EINE kleine Karte mit
+           den Zahlen des stündlichen Laufs. Die Route zählt nur — der Knopf
+           „Neu zählen" kann nichts abschalten. -->
+      <section class="mt-8 rounded-lg border border-default p-4" data-domain-sweep>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold">{{ t('control.domainSweep.title') }}</h2>
+            <UBadge v-if="sweepData" :color="SWEEP_MODE_COLORS[sweepData.configuredMode]" variant="subtle" size="sm" :data-domain-sweep-mode="sweepData.configuredMode">
+              {{ sweepModeLabel(sweepData.configuredMode) }}
+            </UBadge>
+          </div>
+          <UButton
+            size="sm"
+            variant="soft"
+            icon="i-ph-arrow-clockwise"
+            :loading="sweepStatus === 'pending'"
+            :label="t('control.domainSweep.recount')"
+            data-domain-sweep-recount
+            @click="() => refreshSweep()"
+          />
+        </div>
+        <p class="mt-1 text-sm text-muted">{{ t('control.domainSweep.subtitle') }}</p>
+        <p v-if="sweepError" class="mt-3 text-sm text-error">{{ t('control.domainSweep.loadFailed') }}</p>
+        <template v-else-if="sweepData">
+          <p class="mt-3 text-sm" data-domain-sweep-counts>
+            {{ t('control.domainSweep.count.startGrace') }} {{ sweepData.counts.startGrace }}
+            · {{ t('control.domainSweep.count.remind') }} {{ sweepRemindCount }}
+            · {{ t('control.domainSweep.count.pause') }} {{ sweepData.counts.pause }}
+            · {{ t('control.domainSweep.count.expireClaim') }} {{ sweepData.counts.expireClaim }}
+            · {{ t('control.domainSweep.count.mails') }} {{ sweepData.mails.start + sweepData.mails.ending }}
+          </p>
+          <p class="mt-1 text-xs text-dimmed">
+            {{ t('control.domainSweep.checked', { count: sweepData.checked }) }}<template v-if="sweepData.counts.failed"> · <span class="text-error">{{ t('control.domainSweep.failed', { count: sweepData.counts.failed }) }}</span></template>
+          </p>
+          <UTable v-if="sweepData.items.length" :data="sweepData.items" :columns="sweepColumns" class="mt-3" data-domain-sweep-items>
+            <template #host-cell="{ row }">
+              <span class="font-mono text-xs">{{ row.original.host }}</span>
+            </template>
+            <template #domain-cell="{ row }">
+              <span class="font-mono text-xs">{{ row.original.domain }}</span>
+            </template>
+            <template #action-cell="{ row }">
+              {{ t(`control.domainSweep.action.${row.original.action}`) }}
+            </template>
+            <template #graceEndsAt-cell="{ row }">
+              {{ row.original.graceEndsAt ? formatDate(row.original.graceEndsAt) : '–' }}
+            </template>
+          </UTable>
+          <p v-else class="mt-3 text-sm text-muted" data-domain-sweep-empty>{{ t('control.domainSweep.nothing') }}</p>
+        </template>
       </section>
     </template>
   </UDashboardPanel>

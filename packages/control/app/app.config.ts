@@ -19,6 +19,14 @@ export default defineAppConfig({
        * heißt das Dev-Projekt weiterhin `pool`).
        */
       defaultPoolProject: 'account',
+      /**
+       * FRISTEN-LAUF DER EIGENEN DOMAIN (BE-014): `off` | `dry-run` | `apply`
+       * (unbekannter Wert = `off`). Layer-Default `dry-run` und NICHT `off`:
+       * ein zählender Lauf schreibt nichts (auch keine Sperr-Zeile) und
+       * liefert die Zahlen, auf die das Scharfschalten wartet — `off` hieße,
+       * es gäbe sie nie. Scharf (`apply`) schaltet nur eine App ausdrücklich.
+       */
+      customDomainSweep: 'dry-run',
       // Plan-Katalog der COMMUNITY (P4-Rename 2026-07-26, Davids Pricing-Entscheid:
       // Basic 0 € / Personal 29 € / Pro 149 €, jährlich −25 %; Enterprise =
       // Studio-Angebot, KEIN Self-Service-Plan) — bewusst Code statt Table
