@@ -41,7 +41,8 @@
       "pending_cert": "DNS steht. Das Zertifikat wird ausgestellt.",
       "pending_platform": "Fast fertig — der letzte Schritt läuft.",
       "active": "Aktiv.",
-      "error": "Etwas ist schiefgegangen."
+      "error": "Etwas ist schiefgegangen.",
+      "paused": "Abgeschaltet — die Pukalani-Adresse gilt, nichts ist gelöscht."
     },
     "dns": {
       "txt": "1. Nachweis, dass die Domain dir gehört",

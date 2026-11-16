@@ -224,7 +224,8 @@
         "pending_cert": "DNS steht. Das Zertifikat wird ausgestellt.",
         "pending_platform": "Fast fertig — der letzte Schritt läuft.",
         "active": "Aktiv.",
-        "error": "Etwas ist schiefgegangen."
+        "error": "Etwas ist schiefgegangen.",
+        "paused": "Abgeschaltet. Deine Community ist unter ihrer Pukalani-Adresse erreichbar."
       },
       "dns": {
         "txt": "1. Nachweis, dass die Domain dir gehört",
@@ -280,8 +281,25 @@
         "plan_required": "Eigene Domains gibt es ab Pro.",
         "domain_missing": "Trage zuerst eine Domain ein.",
         "domain_not_ready": "Der Stand hat sich geändert. Lade die Seite neu und prüfe noch einmal.",
-        "generic": "Das hat gerade nicht geklappt. Versuche es noch einmal."
-      }
+        "generic": "Das hat gerade nicht geklappt. Versuche es noch einmal.",
+        "trial_not_included": "In der Testphase gibt es noch keine eigene Domain.",
+        "approval_required": "Eigene Domains schalten wir zurzeit einzeln frei."
+      },
+      "trialTitle": "Eigene Domain mit dem Pro-Abo",
+      "trialDesc": "In der Testphase gibt es noch keine eigene Domain. Mit dem Pro-Abo kannst du deine Domain verbinden.",
+      "approvalTitle": "Eigene Domain auf Anfrage",
+      "approvalDesc": "Eigene Domains schalten wir zurzeit einzeln frei. Schreib uns kurz, dann geben wir deine Community frei.",
+      "pausedTitle": "Deine Domain ist abgeschaltet",
+      "pausedDesc": "{domain} ist abgeschaltet. Deine Community ist weiter unter {host} erreichbar, und gelöscht wurde nichts.",
+      "pausedDenied": {
+        "plan_required": "Zum Wiedereinschalten brauchst du den Pro-Plan.",
+        "trial": "In der Testphase lässt sie sich nicht wieder einschalten. Mit dem Pro-Abo geht es.",
+        "approval_required": "Zum Wiedereinschalten muss deine Community für eigene Domains freigegeben sein. Schreib uns kurz."
+      },
+      "reenable": "Wieder einschalten",
+      "graceTitle": "Deine Domain wird bald abgeschaltet",
+      "graceDesc": "Deine Domain bleibt bis zum {date} aktiv. Danach schalten wir sie ab; deine Community bleibt unter {host} erreichbar. Mit dem Pro-Plan bleibt sie aktiv.",
+      "claimExpires": "Ohne Nachweis halten wir diesen Eintrag bis zum {date}."
     },
     "layout": {
       "footer": "Pukalani · Community-Software aus Deutschland, gehostet in Deutschland",

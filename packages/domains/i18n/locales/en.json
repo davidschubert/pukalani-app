@@ -41,7 +41,8 @@
       "pending_cert": "DNS is in place. The certificate is being issued.",
       "pending_platform": "Almost done — the last step is running.",
       "active": "Live.",
-      "error": "Something went wrong."
+      "error": "Something went wrong.",
+      "paused": "Switched off — the Pukalani address applies, nothing was deleted."
     },
     "dns": {
       "txt": "1. Proof that the domain is yours",
