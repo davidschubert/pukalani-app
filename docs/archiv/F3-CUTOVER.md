@@ -9,8 +9,8 @@ Code.
 
 Grundlage: [F3-COMMENTS-POOL.md](../archiv/F3-COMMENTS-POOL.md) · Davids Abnahme
 im [DECISION-LOG](../DECISION-LOG.md) vom 2026-08-12 · Muster für die
-Handgriffe: [ACCOUNT-CUTOVER.md](ACCOUNT-CUTOVER.md) (AH-1) und
-[ADMIN-CUTOVER.md](ADMIN-CUTOVER.md) (AH-4).
+Handgriffe: [ACCOUNT-CUTOVER.md](../runbooks/ACCOUNT-CUTOVER.md) (AH-1) und
+[ADMIN-CUTOVER.md](../runbooks/ADMIN-CUTOVER.md) (AH-4).
 
 > **Erledigt — das Werkzeug ist gelöscht (2026-11-15, Gesamtaudit OPS-005).**
 > Der Umzug ist gelaufen, das Alt-Projekt gibt es nicht mehr. Werkzeug

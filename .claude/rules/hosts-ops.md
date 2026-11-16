@@ -27,7 +27,7 @@ paths:
   Rename sonst DANEBEN, die studio→control-Falle). Seit **AH-4c (2026-08-18,
   Davids Entscheidung)** läuft auch das APPWRITE-PROJEKT als `admin` (Cookie
   `a_session_admin`): Projekt-Ids sind unveränderlich, also Neuanlage +
-  1:1-Umzug (Runbook docs/runbooks/ADMIN-PROJEKT-CUTOVER.md; das Werkzeug
+  1:1-Umzug (Runbook docs/archiv/ADMIN-PROJEKT-CUTOVER.md; das Werkzeug
   `scripts/ops/ah4c-project-transfer.mjs` ist seit 2026-11-15 gelöscht,
   letzter Stand in Commit `9788e7ab`); das Alt-Projekt `control` ist —
   wie `pool` — am 2026-08-19 GELÖSCHT (Davids Entscheidung; Alt-Stände nur

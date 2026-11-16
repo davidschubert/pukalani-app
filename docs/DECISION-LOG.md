@@ -2051,7 +2051,7 @@ interne Kosmetik, kundenwirksames Risikofenster an der platform-Naht) sind
 bekannt und akzeptiert. Am selben Tag außerdem: **Projekt `comments` in der
 Konsole GELÖSCHT** (war eingefroren; Rückweg nur noch Offsite-Dumps) —
 sauber durchgelaufen, 404-Gegenprobe. Runbook:
-docs/runbooks/ADMIN-PROJEKT-CUTOVER.md · OPEN-ITEMS Punkt 5 (AH-4c).
+docs/archiv/ADMIN-PROJEKT-CUTOVER.md · OPEN-ITEMS Punkt 5 (AH-4c).
 
 ---
 
@@ -2077,7 +2077,7 @@ Beobachtung des F3-Runbooks abzuwarten (5 Tage störungsfrei, Serien-Proben
 da, Runtime-Key antwortete 200, `commentspukalaniapp` lief noch in pm2) und
 ist jetzt ehrlich — offen bleiben Davids zwei Klicks: Site-Löschung im Panel,
 Key-Widerruf in der Appwrite-Konsole. Details: Nachtrag AH-4b in
-docs/runbooks/ADMIN-CUTOVER.md, Korrektur in docs/runbooks/F3-CUTOVER.md.
+docs/runbooks/ADMIN-CUTOVER.md, Korrektur in docs/archiv/F3-CUTOVER.md.
 
 ---
 
@@ -3576,5 +3576,57 @@ den Skripten läuft die Attrappe, danach kommt die Fassung von Hand auf den
 Server. Ein roter Backup-Blick im Wächter heißt: Der Lauf dieser Nacht fehlt
 oder ist gescheitert; frühere Läufe liegen unberührt.
 **Wieder prüfen:** sobald eine Vertrauensperson benannt ist (wer außer David
-kommt an den Schlüssel — OPEN-ITEMS BK1 a); und wenn die Datenbank so wächst,
+kommt an den Schlüssel — OPEN-ITEMS BU1 a, entschieden am 2026-11-16); und wenn die Datenbank so wächst,
 dass 30 Tage auf der Box spürbar Platz kosten.
+
+## 2026-11-16 — Offene Punkte: Reihenfolge in sechs Schritten, 16 Entscheidungen
+
+**Anlass:** Die Liste der offenen Punkte war auf rund 1040 Zeilen gewachsen,
+mit falscher Zählung und einem doppelten Kürzel. David hat sie auswerten
+lassen, eine Reihenfolge angenommen und in einer Fragerunde entschieden.
+Diese Runde ändert nur die Doku; gebaut wird je Eintrag in
+[OPEN-ITEMS.md](OPEN-ITEMS.md).
+**Reihenfolge (David):** 1 Entscheidungen · 2 Davids Klick-Runde auf den
+echten Seiten (KR1) · 3 was Claude allein baut, SC2 zuerst · 4 ein
+Anwaltstermin für alles, danach die Datenschutztexte (DT1) · 5 die Geld-Kette
+A1 → A2 → BS1 Bezahlweg → Preis für Brand Book & Kit → F7 · 6 der erste
+Insights-Artikel (BI5).
+**Entscheidungen (David, Fragen zum Anklicken am 2026-11-16):**
+1. **AL1:** Die Aktivitätsliste im Admin-Bereich wird mit den vorhandenen
+   Konto-Ereignissen gefüllt, nicht entfernt.
+2. **KE3:** Ein Aufräum-Lauf löscht Profilbilder, die zu keinem Profil gehören.
+3. **KU1:** „Kostenlos" und „Mitglieder" bei Kursen werden zu EINER
+   Zugangsart zusammengelegt.
+4. **KU1:** Kurs-Vorschauen geschlossener Communities bleiben in
+   Suchmaschinen auffindbar. Keine Änderung, Punkt geschlossen.
+5. **MM1:** Unter geschlossenen Themen werden auch Likes gesperrt.
+6. **MM1:** Übersetzen nur noch für Mitglieder der Community.
+7. **RW1:** Kein Notweg für einen Ausfall von GitHub. Nichts bauen, Punkt
+   geschlossen.
+8. **RW1:** Vier alte Stände je App reichen. Punkt geschlossen.
+9. **Backup (BU1):** Der Backup-Schlüssel bekommt einen zweiten, getrennten
+   Ablageort bei David; KEINE zweite Person.
+10. **Backup (BU1):** Die Einstellungs-Dateien der Apps kommen verschlüsselt
+    ins nächtliche Backup.
+11. **AR1:** Erledigte Umzugs-Anleitungen wandern ins Archiv.
+12. **IN1:** Marken-Seiten (Profil, Duell, Ranking) laufen künftig durch
+    dieselbe Prüfung wie Artikel.
+13. **MG1:** Ein Datenbank-Rückstand wird gemeldet (Anzeige und Alarm), stoppt
+    das Ausliefern aber NICHT. Das harte Tor ist verworfen.
+14. **PB1:** Die Migrations-Schlüssel dürfen Dateilisten lesen (nur lesen).
+    Das Ändern der Schlüssel auf Production bleibt ein eigener Schritt mit
+    Davids Ja zum Zeitpunkt der Umsetzung.
+15. **CI1:** Die Dependabot-Pull-Requests 155 bis 157 werden geprüft und bei
+    grünen Prüfungen übernommen (beim Nachsehen schon zusammengeführt).
+16. **AB1 und P29:** Beide Server-Einstellungen werden eingeschaltet: der
+    gemeinsame Zähler der Anmelde-Bremse auf branding.supply und die Prüfung
+    auf gestohlene Passwörter am Appwrite-Server. Das grundsätzliche Ja liegt
+    vor; umgesetzt wird je mit Davids Ja am Tag der Änderung.
+**Folgen im Alltag:** Das Backup hieß in der Liste ebenfalls `BK1`; es trägt
+jetzt das Kürzel **BU1**, `BK1` gehört allein Brand Book & Kit. Verweise auf
+offene Punkte nennen das Kürzel, keine Nummer. Mit Nr. 9 ist die Frage der
+Vertrauensperson aus dem Eintrag vom 2026-11-15 beantwortet: Fällt David aus,
+kommt niemand an die Backups; das ist bewusst so entschieden.
+**Wieder prüfen:** wenn sich an Davids Vertretung etwas ändert (Nr. 9); und
+Nr. 13, falls ein Rückstand einmal Schaden anrichtet, bevor der Alarm gelesen
+wird.

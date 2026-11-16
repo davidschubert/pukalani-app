@@ -2,7 +2,7 @@
 
 > **Nach dem Cutover:** die Schlüssel des Alt-Projekts liegen jetzt an mehreren
 > Orten und zeigen ins Leere. Aufräumen nach
-> [ZUGAENGE-AUFRAEUMEN.md](ZUGAENGE-AUFRAEUMEN.md) (`pnpm ops:stale-keys`).
+> [ZUGAENGE-AUFRAEUMEN.md](../runbooks/ZUGAENGE-AUFRAEUMEN.md) (`pnpm ops:stale-keys`).
 
 **Was passiert hier:** das Appwrite-Projekt der Betreiber-Konsole zieht von
 `control` nach `admin` um — neues Projekt (Ids sind unveränderlich, ein
@@ -12,7 +12,7 @@ Der Betreiber wird dabei genau einmal abgemeldet (Cookie wechselt von
 
 **Davids Entscheidung 2026-08-18** (DECISION-LOG; strukturierte Frage, gegen
 die Empfehlung „nur Anzeige-Name" — der Gewinn ist Konsistenz der Namenswelt,
-kein Kunde sieht die Projekt-Id). Vorlage: [ACCOUNT-CUTOVER.md](ACCOUNT-CUTOVER.md)
+kein Kunde sieht die Projekt-Id). Vorlage: [ACCOUNT-CUTOVER.md](../runbooks/ACCOUNT-CUTOVER.md)
 (AH-1, pool→account — dasselbe Muster, kleinerer Datenbestand).
 
 > **Erledigt — das Werkzeug ist gelöscht (2026-11-15, Gesamtaudit OPS-005).**

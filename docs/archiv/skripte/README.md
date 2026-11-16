@@ -33,8 +33,8 @@ bewusst nicht angepasst.
 
 Gelöscht statt archiviert (Stand 2026-11-15, letzter Commit mit den Dateien:
 `9788e7ab`): `scripts/ops/ah4c-project-transfer.mjs` mit `ah4c-lib/`
-(Runbook [ADMIN-PROJEKT-CUTOVER.md](../../runbooks/ADMIN-PROJEKT-CUTOVER.md)),
+(Runbook [ADMIN-PROJEKT-CUTOVER.md](../ADMIN-PROJEKT-CUTOVER.md)),
 `scripts/ops/f3-comments-to-pool.mjs` mit `f3-lib/`
-(Runbook [F3-CUTOVER.md](../../runbooks/F3-CUTOVER.md)),
+(Runbook [F3-CUTOVER.md](../F3-CUTOVER.md)),
 `scripts/ops/repair-runtime-project.mjs`,
 `scripts/ops/cleanup-portfolio-legacy-tables.mjs` und der Ordner `spikes/`.
