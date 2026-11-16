@@ -324,6 +324,104 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 > „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 > [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
 
+### GA1 P13 — Schreiben nur noch über den Server; Kontoanlage nur über unsere Anmeldung; Zustimmung als Nachweis ✅ 2026-11-16
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+SEC-002, SEC-007, SEC-008, BE-003), Pull Requests 205, 206, 209, 210, 212, 213,
+214, 215 und 216 (letzter Merge `744da33f`). Davids Entscheidungen vom
+2026-11-12 und 2026-11-16: „künftig schreibt nur noch unser Server", Schritt
+für Schritt; für die Kontoanlage „Tür zu und einmal fragen"; Konten mit
+Betreiber-Rolle werden nie gefragt und nie gesperrt.
+
+1. **Die Grundregel.** Die Datenbank ist unter eigener Adresse für jedes
+   Konto erreichbar. Ein Schreibrecht an einer Tabelle oder Zeile gilt deshalb
+   neben unseren Routen, und was die Route prüft (Community, Zugehörigkeit,
+   Sperre, Eingabe, Bremse), prüft die Datenbank nicht. Jetzt trägt keine
+   Tabelle und keine Zeile mehr ein Schreibrecht für Konten; geschrieben wird
+   über die Operator-Klinke der Datentür, nach den Prüfungen der Route. Rechte
+   an Zeilen regeln nur noch das Lesen (die Live-Verbindung hängt daran).
+   Regel: `.claude/rules/tenant-isolation.md` („DER SERVER SCHREIBT").
+2. **Drei Schritte je Etappe, nie zwei auf einmal.** Erst der Code, der mit
+   alten und mit neuen Rechten läuft, auf allen acht Seiten live; dann die
+   Rechte-Migration der Tabelle; dann der Aufräum-Lauf für vorhandene Zeilen.
+   Das ist die eine begründete Ausnahme von „Migration vor dem Merge" — die
+   Rechte-Migration VOR dem Code hätte das Schreiben auf Production
+   abgeschaltet. Vier Etappen: Beiträge und Kommentare; Stimmen, Reaktionen,
+   Verweise; Meldungen; die Glocke.
+3. **Code.** Alle schreibenden Routen der neun Inhalts-Tabellen und das
+   „als gelesen markieren" der Glocke schreiben mit dem Admin-Client
+   (`tenantDb(event, { as: 'operator', actor: 'member' })`; Inhalts-Sperre und
+   Beitritt hängen am `actor` und gelten unverändert). Wem eine Zeile gehört,
+   prüft die Route selbst vor dem Schreiben. Zwei Routen (Kommentar ändern und
+   löschen) hatten sich dafür allein auf die Ablehnung der Datenbank
+   verlassen; sie vergleichen jetzt die Konto-Id. Neue Zeilen bekommen nur
+   Leserechte.
+4. **Rechte.** Migrationen posts-024/-025, comments-021/-022, events-014,
+   moderation-005 über eine gemeinsame Hilfe
+   (`scripts/migrations-lib/tableWriteRights.mts`); die Rückwege liegen unter
+   `packages/<layer>/scripts/rollback/`. Drei alte Migrationen setzten das
+   Tabellenrecht bei jedem Lauf neu; sie tun es nicht mehr. Auf Production mit
+   Davids Ja gefahren und je Tabelle zurückgelesen (Projekte `account`,
+   `branding`, `portfolio`).
+5. **Aufräum-Lauf** `pnpm ops:strip-row-write-rights`: zählt ohne `--apply`
+   nur, arbeitet in Stapeln, ist wiederholbar, protokolliert nur Zahlen, hält
+   eine Lauf-Sperre (`system_runs`, system-040, dieselbe Formel wie P18) und
+   bricht ab, solange die Tabelle noch ein Schreibrecht trägt. Auf Production:
+   486 Zeilen Inhalte und 166 Zeilen der Glocke, 0 gescheitert, Nachzählung 0.
+6. **Kontoanlage (SEC-007).** In allen vier Production-Projekten sind die
+   Anmelde-Wege für Aufrufe ohne Schlüssel ausgeschaltet; unser Server ruft
+   mit Schlüssel und ist nicht betroffen. Der eine eigene Aufruf, den die
+   Schalter getroffen hätten (Anmelde-Code anfordern), läuft jetzt über den
+   Admin-Client; ein Wächter hält alle Anmelde-Aufrufe fest
+   (`packages/core/tests/authMethodCalls.test.ts`). Der Google-Weg lässt sich
+   so nicht schließen: dafür fragt die Seite ein Konto ohne festgehaltene
+   Zustimmung beim nächsten Besuch und weist schreibende Routen bis dahin ab
+   (403 `consent_required`). Runbook: `docs/runbooks/ANMELDE-REGELN.md`.
+7. **Zustimmung als Nachweis (SEC-008).** Der Server prüft die Angabe bei der
+   Registrierung und hält sie in `consent_records` fest (system-041: Konto,
+   Art, Fassung, Zeitpunkt, Weg), einer Tabelle ohne Rechte für Konten.
+   Auskunft und Löschung nehmen sie mit.
+8. **`app_config` (BE-003).** Jede Spalte der Tabelle ist öffentlich lesbar;
+   das steht jetzt an Migration und Typ, mit einer Liste der zehn Spalten und
+   einem Wächter-Test gegen die Migrationen.
+
+**Netze.** Liste `scripts/lib/server-written-tables.mjs`; Wächter
+`packages/core/tests/serverWrittenTables.test.ts` (jede schreibende Stelle
+hängt an der Operator-Klinke, keine Datei vergibt ein Schreibrecht);
+`pnpm check:permissions` Stufe 2 (keine Migration gibt ein Schreibrecht
+zurück); Beweis-Skript `packages/core/scripts/verify-server-only-writes.mjs`
+(nur lokal).
+
+**Beweis.** Lokal je Etappe eine Probe je Rolle über die echten Routen, in
+drei Zuständen (alter Code mit alten Rechten, neuer Code mit alten, neuer Code
+mit neuen), mit Live-Verbindung, fremdem Konto, Moderation und Gast. Auf
+Production nur zurückgelesen und gezählt; alle acht Seiten gesund. Was dort
+nicht gezeigt ist, steht in OPEN-ITEMS, Punkt SV1.
+
+**Gelernt:**
+- **Eine Änderung ohne Änderung prüft nur das Leserecht.** Die Datenbank
+  antwortet auf ein Update, das nichts ändert, mit 200 — auch ohne
+  Schreibrecht. Ein Beweis „ändern geht nicht" muss einen anderen Wert
+  schicken, sonst ist er immer grün.
+- **`updateTable` setzt weggelassene Felder auf ihre Vorgabe.** Wer nur die
+  Rechte ändern will, schickt Name, Zeilen-Sicherheit und Schalter mit.
+- **Ein Schalter in der Verwaltung trifft auch eigenen Code, der ohne
+  Schlüssel ruft.** Die Probe am ruhigsten echten Projekt fand genau einen
+  solchen Aufruf, bevor die Sperre dort ankam, wo er gebraucht wird. Erst
+  proben, dann ausrollen; und jede Einstellung, die nicht im Repo steht,
+  braucht einen Blick von außen (offen, SV1).
+- **Lokal gibt es kein Wegwerf-Projekt.** Self-hosted erlaubt genau eine
+  Organisation; eine Einstellung des Projekts lässt sich lokal nur am
+  Spiegel selbst proben.
+- **Mit dem Admin-Client ist die Prüfung der Route die einzige.** Vor dem
+  Umstellen jeder Route fragen: Worauf hat sie sich bisher still verlassen?
+- **Ein neues Pflichtfeld an einer Route bricht die Beweis-Skripte, die sie
+  rufen** — kein Test sieht das. Beim Kästchen der Betreiber-Bedingungen
+  waren es 25 Aufrufe.
+- **Der ganze `system`-Layer liegt im Typ-Programm der Apps**, auch seine
+  Migrationen: eine Hilfe unter `scripts/migrations-lib/` muss ohne
+  Importe aus `node-appwrite` typisierbar sein, sonst ist `typecheck` rot.
+
 ### GA1 P23 — Server-Einstellungen als Vorlage im Repo, Schutz-Kopfzeilen aus der App, Mail-Links mit fester Adresse ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings

@@ -41,7 +41,7 @@ beide Server-Einstellungen einschalten.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Acht Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1 und die Anmelde-Mail aus P29. Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
+| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Zehn Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1, SV1 und die Anmelde-Mail aus P29. Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
 
 ### Schritt 3 — Baut Claude allein
 
@@ -94,6 +94,7 @@ beide Server-Einstellungen einschalten.
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (b) `NUXT_REDIS_URL` auf branding.supply setzen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | **Ja: (b) ein Ja für die Server-Datei** | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten.** Seit 2026-11-16 stehen Webserver-Vorlagen und Zeitpläne im Repo, ein täglicher Blick vergleicht sie mit den Servern, und die App sendet die Schutz-Kopfzeilen selbst (COMPLETE „GA1 P23"). Offen: (a) Berichte der Skript-Regel einsammeln und sie scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) Umlauf der pm2-Logs, (d) der Erinnerungs-Lauf kennt gesperrte Communities nicht, (e) Kleinigkeiten und Sicherungen löschen, (f) eigene Domain einer Einzel-Site: zwei Stellen noch nicht umgestellt. **Wartet auf:** (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil, (a) M | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
+| SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) zwei Klick-Proben auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
@@ -247,6 +248,12 @@ Test-Konto. Was genau zu klicken ist, steht beim jeweiligen Eintrag:
    der Auswahl ([RU1 a](#ru1)).
 8. **Anmelde-Mail** — Sprache und Adresse der Mail ansehen (P29,
    [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)).
+9. **Schreiben in einer Community** — auf `demo.pukalani.app` einen Beitrag,
+   einen Kommentar und eine Stimme anlegen, den Beitrag ändern und löschen,
+   die Glocke als gelesen markieren ([SV1 a](#sv1)).
+10. **Anmeldung per Code** — je einmal auf `account.pukalani.app` und
+    `admin.pukalani.app` einen Code anfordern und damit anmelden
+    ([SV1 a](#sv1)).
 
 Nicht Teil der Runde, weil sie auf den ersten Artikel warten: die Proben aus
 BI2 und IN1 (b), siehe BI5.
@@ -747,6 +754,45 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Auf Production ist ein Lauf ÜBER 60 Sekunden nicht gezeigt (der Probe-Lauf
   vom 2026-11-16 brauchte 22 s) und die Seite dort nicht im Browser geklickt;
   beides ist lokal gezeigt (Lauf 75 s, zwei Reiter).
+
+<a id="sv1"></a>
+
+**SV1 — Schreiben nur über den Server: Nacharbeiten (aus dem Gesamtaudit, Paket P13).**
+
+- **(a) Zwei Klick-Proben** (KR1, Nummer 9 und 10). Auf Production ist seit
+  der Umstellung kein echter Schreibvorgang gezeigt: dort gab es bewusst keine
+  Schreibprobe, und es ist seither kein neuer Beitrag entstanden. Belegt ist
+  das Schreiben lokal (jede Rolle über die echten Routen, mit alten und mit
+  neuen Rechten) und in der CI gegen eine frische Datenbank. Ebenso ist die
+  Anmeldung per Code mit den ausgeschalteten Anmelde-Wegen auf Production
+  nicht geklickt; belegt ist, dass unser Server mit seinem Schlüssel von den
+  Schaltern nicht betroffen ist (gemessen am Passwort-Weg in allen vier
+  Projekten). Antwortet die Anmeldeseite mit „hier gerade nicht verfügbar":
+  Schalter „Email OTP" im Projekt wieder einschalten
+  ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)) und hier melden.
+- **(b) Kein täglicher Blick auf die Anmelde-Wege.** Die sechs Schalter sind
+  eine Einstellung in der Verwaltung der Datenbank, kein Code: niemand merkt,
+  wenn einer wieder an ist, und ein neues Projekt braucht sie von Hand. Der
+  Aufruf zum Prüfen von außen steht im Runbook; er gehört als Schritt in den
+  täglichen Wächter (vier Projekte, je ein Aufruf mit erfundenen
+  Zugangsdaten). Die lokale Datenbank und die der CI haben die Schalter AN,
+  Tests laufen dort also unter anderen Bedingungen als Production. Der
+  Schalter „JWT" ist an geblieben; unser Live-Token entsteht über den
+  Schlüssel, er wird vermutlich nicht gebraucht (erst prüfen, dann abschalten).
+- **(c) Das direkte Lesen.** Ein Konto liest direkt bei der Datenbank weiter
+  jede Zeile, für die es ein Leserecht trägt, und immer die ganze Zeile. Das
+  hängt an der Live-Verbindung und gehört zum Pukalani-Konto
+  ([PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), § 9, Punkt 1).
+- **(d) Kleinigkeiten.** Die Nachfrage nach der Zustimmung gibt es nur, wo
+  eine App Bedingungen hat (branding.supply, Betreiber-Seite); die Communities
+  bekommen sie mit den AGB aus A1. Für Konten von vor dem 2026-11-18 wird der
+  alte Vermerk einmal übernommen und als übernommen gekennzeichnet; ein Konto
+  ohne Vermerk wird gefragt. Die sechs unbenutzten Alt-Tabellen im Projekt
+  `portfolio` sind verschlossen, aber noch da (der Migrations-Runner fährt
+  ihre Layer dort nicht; löschen wäre ein eigener Schritt mit Davids Ja).
+  Anwesenheit und Datei-Ablagen sind nach der neuen Grundregel („der Server
+  schreibt") noch nicht bewertet. Die Rückwege der Rechte-Migrationen liegen
+  unter `packages/<layer>/scripts/rollback/` und sind nur lokal geprobt.
 
 <a id="si1"></a>
 
