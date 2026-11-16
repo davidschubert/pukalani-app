@@ -12,7 +12,10 @@ import type { ReportedMessageView } from '../../../shared/types/message'
  * ── WAS HIER STEHT UND WAS NICHT ────────────────────────────────────────
  * Sichtbar ist ausschließlich die GEMELDETE Nachricht, als eingefrorene Kopie
  * aus dem Moment der Meldung — kein Verlauf, kein Kontext, auch nicht „die
- * drei davor" (Davids Entscheidung 2). Wer Kontext braucht, fragt den Melder;
+ * drei davor" (Davids Entscheidung 2). Und nur, solange die Meldung OFFEN ist
+ * (SEC-033): eine erledigte Meldung bleibt als Zeile stehen, ihr Text kommt
+ * vom Server gar nicht mehr mit (`textAvailable: false`) — hier steht dann
+ * nur ein ruhiger Hinweis. Wer Kontext braucht, fragt den Melder;
  * was der freiwillig beilegt, steht im `note`-Feld seiner Meldung, das die
  * allgemeine Melde-Ansicht zeigt.
  *
@@ -99,12 +102,15 @@ const columns = computed<TableColumn<ReportedMessageView>[]>(() => ([
             <!-- DER EINGEFRORENE BELEG, nie der lebende Text. Gerendert wie
                  jeder andere Inhalt (kein v-html) — es ist dasselbe
                  Markdown-Subset. -->
-            <div class="max-w-xl">
+            <div v-if="row.original.textAvailable" class="max-w-xl">
               <MarkdownContent :source="row.original.body" class="text-sm" />
               <p class="mt-1 text-xs text-muted">
                 {{ t('messages.reports.snapshotNote') }}
               </p>
             </div>
+            <p v-else class="max-w-xl text-sm text-muted">
+              {{ t('messages.reports.closedNote') }}
+            </p>
           </template>
           <template #reportedAt-cell="{ row }">
             <span class="text-sm text-muted">{{ formatRelativeTime(row.original.reportedAt) }}</span>

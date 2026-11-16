@@ -44,6 +44,11 @@
  * 12. DIE MELDUNG friert den Beleg ein, die Moderations-Route liefert IHN —
  *     und für eine UNGEMELDETE Nachricht 404 `not_reported`. Das ist die eine
  *     Zusage dieses Konzepts, die man nur live belegen kann.
+ * 13. NACH DER ERLEDIGUNG KEIN TEXT MEHR (SEC-033): die Liste zeigt die
+ *     Nachricht ohne Text und mit Kennzeichen, die Einzel-Route antwortet 404
+ *     `not_reported`; der Beleg selbst bleibt bis zur Frist gespeichert; die
+ *     Einsicht steht im Betreiber-Protokoll; ein Unbeteiligter kann nicht
+ *     melden.
  *
  * Aufruf (Env wie beim Migrations-Runner):
  *   node --env-file=apps/comments/.env packages/messages/scripts/verify-messages.mjs
@@ -477,7 +482,7 @@ try {
   }
 
   if (!PORT) {
-    console.log('\n8.–12. Routen-Beweis ÜBERSPRUNGEN (kein MESSAGES_PORT gesetzt).')
+    console.log('\n8.–13. Routen-Beweis ÜBERSPRUNGEN (kein MESSAGES_PORT gesetzt).')
     console.log('        Mit laufendem Server:  MESSAGES_PORT=3021 node --env-file=… <dieses Skript>')
   }
   else {
@@ -633,6 +638,58 @@ try {
     const bodoQueue = await call('/api/messages/moderation', { cookie: bodo.cookie })
     check('… und ein gewöhnliches Konto kommt gar nicht hinein (403)', bodoQueue.status === 403, String(bodoQueue.status))
 
+    // ── 13. Nach der Erledigung kein Text mehr (SEC-033) ──────────────────
+    console.log('\n13. Text nur bei offener Meldung — danach nicht mehr (SEC-033)')
+    const strangerReport = await call('/api/reports', {
+      method: 'POST', cookie: stranger.cookie,
+      body: { targetType: 'message', targetId: annaMessageId, reason: 'harassment' },
+    })
+    check('ein Unbeteiligter kann die Nachricht NICHT melden (404 target_not_found)',
+      strangerReport.status === 404 && reasonOf(strangerReport) === 'target_not_found',
+      `${strangerReport.status}/${reasonOf(strangerReport)}`)
+
+    const openEntry = queue.json?.messages?.find(m => m.id === annaMessageId)
+    check('solange die Meldung offen ist, zeigt die LISTE den eingefrorenen Text',
+      openEntry?.body === 'Hallo Bodo.' && openEntry?.textAvailable === true && openEntry?.openReports === 1,
+      JSON.stringify({ body: openEntry?.body, textAvailable: openEntry?.textAvailable, openReports: openEntry?.openReports }))
+
+    const resolve = await call('/api/reports/resolve', {
+      method: 'POST', cookie: anna.cookie,
+      body: { targetType: 'message', targetId: annaMessageId, resolution: 'no_action' },
+    })
+    check('die Moderation erledigt die Meldung', resolve.status === 200 && resolve.json?.resolved === 1,
+      `${resolve.status}/${resolve.text.slice(0, 120)}`)
+
+    const closedQueue = await call('/api/messages/moderation', { cookie: anna.cookie })
+    const closedEntry = closedQueue.json?.messages?.find(m => m.id === annaMessageId)
+    check('danach steht sie noch in der LISTE — ohne Text und mit Kennzeichen',
+      closedQueue.status === 200 && closedEntry?.body === '' && closedEntry?.textAvailable === false
+      && closedEntry?.openReports === 0,
+      `${closedQueue.status}/${JSON.stringify({ body: closedEntry?.body, textAvailable: closedEntry?.textAvailable, openReports: closedEntry?.openReports })}`)
+    check('… und nirgends in der Antwort steht der Text',
+      !closedQueue.text.includes('Hallo Bodo.'), 'Text gefunden')
+
+    const closedSingle = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
+    check('die Einzel-Route antwortet nach der Erledigung 404 not_reported',
+      closedSingle.status === 404 && reasonOf(closedSingle) === 'not_reported',
+      `${closedSingle.status}/${reasonOf(closedSingle)}`)
+
+    const stored = await tablesDB.getRow({ databaseId, tableId: MESSAGES, rowId: annaMessageId }).catch(() => null)
+    check('der Beleg bleibt gespeichert (gelöscht wird erst nach der Frist)',
+      stored?.reportedBody === 'Hallo Bodo.', JSON.stringify(stored?.reportedBody))
+
+    const viewedRows = (await tablesDB.listRows({
+      databaseId, tableId: 'audit_logs',
+      queries: [Query.equal('actorId', anna.userId), Query.limit(50)],
+    }).catch(() => ({ rows: [] }))).rows
+    const viewed = viewedRows.find(r => r.action === 'message_report.viewed' && r.targetId === annaMessageId)
+    check('die Einsicht steht im Betreiber-Protokoll (message_report.viewed)', Boolean(viewed),
+      viewedRows.map(r => r.action).join(','))
+    check('… ohne den Text', !JSON.stringify(viewedRows).includes('Hallo Bodo.'))
+    check('die Listen-Einsicht steht dort mit der Zahl (message_report.queue_viewed)',
+      viewedRows.some(r => r.action === 'message_report.queue_viewed' && r.metadata === JSON.stringify({ withText: 1 })),
+      viewedRows.filter(r => r.action === 'message_report.queue_viewed').map(r => r.metadata).join(','))
+
     // Aufräumen: alles, was der Kundenpfad angelegt hat — und NUR das.
     const runUserIds = [anna.userId, bodo.userId, stranger.userId]
     for (const [tableId, queries] of [
@@ -648,6 +705,8 @@ try {
       ['member_counters', [Query.equal('userId', runUserIds)]],
       ['user_badges', [Query.equal('userId', runUserIds)]],
       ['notifications', [Query.equal('recipientId', runUserIds)]],
+      // Betreiber-Protokoll: Einsichten (SEC-033) und Anmeldungen der Testkonten.
+      ['audit_logs', [Query.equal('actorId', runUserIds)]],
     ]) {
       const { rows } = await tablesDB.listRows({ databaseId, tableId, queries: [...queries, Query.limit(100)] })
         .catch(() => ({ rows: [] }))

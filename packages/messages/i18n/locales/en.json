@@ -77,7 +77,7 @@
     },
     "reports": {
       "title": "Reported messages",
-      "description": "Only reported messages appear here — exactly as they read at the moment they were reported.",
+      "description": "Only reported messages appear here — exactly as they read at the moment they were reported, and only while the report is open.",
       "empty": "No reported messages.",
       "from": "From",
       "to": "To",
@@ -85,6 +85,7 @@
       "reportedAt": "Reported",
       "openReports": "Open reports",
       "snapshotNote": "This text is a frozen copy. The rest of the conversation stays private.",
+      "closedNote": "Report closed – the text can no longer be viewed.",
       "loadFailed": "The list could not be loaded."
     },
     "reasons": {

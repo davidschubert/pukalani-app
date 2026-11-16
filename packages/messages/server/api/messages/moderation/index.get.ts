@@ -18,7 +18,11 @@ const querySchema = z.object({
  * Konversationen dieser Community", die dieses Konzept ausschließt.
  *
  * Der TEXT in dieser Liste ist der eingefrorene Beleg, nie der lebende Text —
- * `moderatorVisibleBody` gibt für eine nicht eingefrorene Zeile `null`.
+ * und es gibt ihn nur, solange eine Meldung OFFEN ist (SEC-033). Dieselbe
+ * Regel und dieselbe Funktion wie in der Einzel-Ansicht
+ * (`moderatorVisibleBody`); erledigte Zeilen kommen mit `textAvailable:
+ * false` und leerem Text. Gibt die Liste mindestens einen Text heraus, steht
+ * das im Betreiber-Protokoll (`message_report.queue_viewed`, nur die Zahl).
  */
 export default defineEventHandler(async (event) => {
   requirePlanProduct(event, 'messages')

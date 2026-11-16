@@ -28,19 +28,27 @@ import {
  * Permission, die den Moderator aussperrt, wäre für ihn also gar keine.
  *
  * Der Schutz besteht deshalb aus drei Dingen, die zusammen halten:
- *  1. Es gibt GENAU EINE Route, die den Text einer Nachricht an einen
- *     Moderator ausliefert (`/api/messages/moderation/[id]`), und sie hängt an
- *     dieser Datei.
- *  2. Sie liefert nur, was `openReportsForTarget` als offen gemeldet
- *     bestätigt — sonst 404 mit `not_reported`.
- *  3. Sie liefert nur `reportedBody`, NIE `body`. Auch nicht ersatzweise:
- *     genau dieser Ersatz wäre die Hintertür, durch die eine ungemeldete
- *     Nachricht herauskäme (`moderatorVisibleBody` gibt dafür `null`).
+ *  1. ZWEI Routen geben einem Moderator Text heraus — die Warteschlange
+ *     (`/api/messages/moderation`) und die Einzel-Ansicht
+ *     (`/api/messages/moderation/[id]`) —, und beide hängen an dieser Datei.
+ *  2. EINE REGEL für beide (SEC-033, Davids Entscheidung 2026-11-12): Text
+ *     gibt es nur, solange eine Meldung OFFEN ist. Entschieden wird das in
+ *     EINER Funktion, `moderatorVisibleBody` (shared/messageReport.ts), mit
+ *     der echten Zahl offener Meldungen — in der Liste gebündelt geholt
+ *     (`openReportCountsForTargets`), in der Einzel-Ansicht über
+ *     `openReportsForTarget`, dort ohne offene Meldung 404 `not_reported`.
+ *  3. Herausgegeben wird nur `reportedBody`, NIE `body`. Auch nicht
+ *     ersatzweise: genau dieser Ersatz wäre die Hintertür, durch die eine
+ *     ungemeldete Nachricht herauskäme (`moderatorVisibleBody` gibt `null`).
  *
- * Wer eine zweite Lese-Route baut, kann das aufweichen, ohne dass etwas rot
+ * Jede herausgegebene Einsicht steht im Betreiber-Protokoll
+ * (`message_report.viewed` / `message_report.queue_viewed`, entprellt, nie
+ * strikt — die Moderation muss auch bei einem Ausfall arbeiten können).
+ *
+ * Wer eine dritte Lese-Route baut, kann das aufweichen, ohne dass etwas rot
  * wird. Das Netz dagegen ist `packages/messages/scripts/verify-messages.mjs`,
- * das gegen eine laufende Instanz prüft, dass keine ungemeldete Nachricht über
- * eine Moderations-Route herauskommt.
+ * das gegen eine laufende Instanz prüft, dass weder eine ungemeldete noch eine
+ * erledigte Nachricht über eine Moderations-Route Text herausgibt.
  */
 
 /** Moderation liest als Betreiber — und handelt auch als solcher (M13). */
@@ -115,6 +123,10 @@ export async function messageExists(event: H3Event, messageId: string): Promise<
  * das ist dieselbe Menge wie „wurde gemeldet". Eine Liste über alle
  * Nachrichten mit nachträglichem Filter wäre der Anfang der Ansicht, die
  * dieses Konzept ausschließt.
+ *
+ * Erledigte Meldungen bleiben in der Liste stehen (mit Beteiligten und
+ * Zeitpunkt), aber OHNE Text (`textAvailable: false`). Die offenen Zahlen
+ * kommen für die ganze Seite in EINER gebündelten Abfrage.
  */
 export async function listReportedMessages(event: H3Event, limit: number): Promise<ReportedMessageView[]> {
   const { rows } = await moderationDb(event).list<PrivateMessage>(MESSAGES_TABLE, [
@@ -122,14 +134,27 @@ export async function listReportedMessages(event: H3Event, limit: number): Promi
     Query.orderDesc('reportedAt'),
     Query.limit(limit),
   ])
-  return Promise.all(rows.map(row => toReportedView(event, row)))
+  const open = await openReportCountsForTargets(event, MESSAGE_REPORT_TARGET, rows.map(row => row.$id))
+  const views = await Promise.all(rows.map(row => toReportedView(event, row, open.get(row.$id) ?? 0)))
+
+  // Einsicht festhalten — nur die ZAHL der herausgegebenen Texte, keine Id,
+  // kein Text. Entprellt je Konto (15 min), nie strikt.
+  const withText = views.filter(view => view.textAvailable).length
+  if (withText > 0) {
+    await recordAuditView(event, `message-report-queue:${event.context.user?.$id ?? ''}`, {
+      action: 'message_report.queue_viewed',
+      metadata: { withText },
+    })
+  }
+  return views
 }
 
 /**
- * EINE gemeldete Nachricht — die einzige Route, die einen Text ausliefert.
+ * EINE gemeldete Nachricht — die Einzel-Ansicht.
  *
- * Ohne offene Meldung: 404 mit `not_reported`. Nicht 403 — für den Moderator
- * ist eine ungemeldete Nachricht schlicht nicht vorhanden, und ein 403 würde
+ * Ohne offene Meldung: 404 mit `not_reported` — das gilt für eine nie
+ * gemeldete und ebenso für eine ERLEDIGTE (SEC-033). Nicht 403 — für den
+ * Moderator ist die Nachricht schlicht nicht vorhanden, und ein 403 würde
  * bestätigen, dass es sie gibt.
  */
 export async function getReportedMessage(event: H3Event, messageId: string): Promise<ReportedMessageView> {
@@ -143,13 +168,23 @@ export async function getReportedMessage(event: H3Event, messageId: string): Pro
   }
 
   const message = await moderationDb(event).get<PrivateMessage>(MESSAGES_TABLE, messageId, 'Message not found')
-  return toReportedView(event, message, open.length)
+  const view = await toReportedView(event, message, open.length)
+  if (view.textAvailable) {
+    // Kein Text, kein Name im Eintrag — Art, Ziel-Id, wer, wann.
+    await recordAuditView(event, `message-report:${event.context.user?.$id ?? ''}:${messageId}`, {
+      action: 'message_report.viewed',
+      targetType: MESSAGE_REPORT_TARGET,
+      targetId: messageId,
+    })
+  }
+  return view
 }
 
 /**
  * Zeile → das, was ein Moderator sieht.
  *
- * `body` kommt aus `moderatorVisibleBody` und ist NIE der lebende Text. Die
+ * `body` kommt aus `moderatorVisibleBody` und ist NIE der lebende Text —
+ * und leer, wenn keine Meldung offen ist (`textAvailable: false`). Die
  * Beteiligten stehen dabei, weil eine Meldung ohne sie nicht bearbeitbar wäre
  * — mehr Kontext gibt es in v1 ausdrücklich nicht: kein Verlauf, auch nicht
  * „die drei davor". Wer Kontext braucht, fragt den Melder; was der freiwillig
@@ -158,7 +193,7 @@ export async function getReportedMessage(event: H3Event, messageId: string): Pro
 async function toReportedView(
   event: H3Event,
   message: PrivateMessage,
-  openReports?: number,
+  openReports: number,
 ): Promise<ReportedMessageView> {
   const conversation = await moderationDb(event)
     .get<Conversation>(CONVERSATIONS_TABLE, message.conversationId, 'Conversation not found')
@@ -169,6 +204,11 @@ async function toReportedView(
   // Name UND Bild aus EINER Abfrage: `resolveUserNames` + `resolveAvatars`
   // nebeneinander wären zwei identische `users.list` über dieselben zwei Ids.
   const cards = await resolveUserCards(event, [message.authorId, recipientId].filter(Boolean))
+  const visible = moderatorVisibleBody({
+    reportedBody: message.reportedBody ?? '',
+    reportedAt: message.reportedAt ?? '',
+    openReports,
+  })
 
   return {
     id: message.$id,
@@ -179,12 +219,10 @@ async function toReportedView(
     recipientId,
     recipientName: cards.get(recipientId)?.name ?? '',
     recipientAvatarUrl: cards.get(recipientId)?.avatarUrl ?? '',
-    body: moderatorVisibleBody({
-      reportedBody: message.reportedBody ?? '',
-      reportedAt: message.reportedAt ?? '',
-    }) ?? '',
+    body: visible ?? '',
+    textAvailable: visible !== null,
     reportedAt: message.reportedAt ?? '',
     sentAt: message.$createdAt,
-    openReports: openReports ?? 0,
+    openReports,
   }
 }

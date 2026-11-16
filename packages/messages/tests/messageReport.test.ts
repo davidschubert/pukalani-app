@@ -38,14 +38,14 @@ describe('Einfrieren', () => {
 
 describe('was die Moderation sieht', () => {
   it('gibt ohne Beleg NICHTS — auch nicht ersatzweise', () => {
-    expect(moderatorVisibleBody({ reportedBody: '', reportedAt: '' })).toBeNull()
+    expect(moderatorVisibleBody({ reportedBody: '', reportedAt: '', openReports: 1 })).toBeNull()
     // Auch dann nicht, wenn zufällig etwas in der Kopie steht, aber der
     // Zeitstempel fehlt: kein Zeitstempel heißt „nie gemeldet".
-    expect(moderatorVisibleBody({ reportedBody: 'Text', reportedAt: '' })).toBeNull()
+    expect(moderatorVisibleBody({ reportedBody: 'Text', reportedAt: '', openReports: 1 })).toBeNull()
   })
 
-  it('gibt die KOPIE, wenn eingefroren wurde', () => {
-    expect(moderatorVisibleBody({ reportedBody: 'gemeldet', reportedAt: '2026-08-05T10:00:00.000Z' }))
+  it('gibt die KOPIE, wenn eingefroren wurde und die Meldung offen ist', () => {
+    expect(moderatorVisibleBody({ reportedBody: 'gemeldet', reportedAt: '2026-08-05T10:00:00.000Z', openReports: 1 }))
       .toBe('gemeldet')
   })
 })

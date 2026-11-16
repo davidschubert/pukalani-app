@@ -214,9 +214,15 @@ export interface ReportedMessageView {
   recipientName: string
   /** `prefs.avatarUrl` des Empfängers; '' = keins. */
   recipientAvatarUrl: string
-  /** Der EINGEFRORENE Text, nie der aktuelle. */
+  /**
+   * Der EINGEFRORENE Text, nie der aktuelle — und nur, solange eine Meldung
+   * offen ist (SEC-033). Sonst ''; dann sagt `textAvailable` warum.
+   */
   body: string
+  /** Wurde der Text herausgegeben? `false` = Meldung erledigt (oder nie eingefroren). */
+  textAvailable: boolean
   reportedAt: string
   sentAt: string
+  /** Offene Meldungen zu dieser Nachricht (echte Zahl, auch in der Liste). */
   openReports: number
 }
