@@ -641,7 +641,7 @@ jobs:
           set -euo pipefail
           rot=""
           [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit/Live-Verbindung (alle 30 min)"
-          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Bot-Prüfung, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter)"
+          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Bot-Prüfung, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter, Server-Einstellungen, Schutz-Kopfzeilen)"
           echo "tls=$TLS_RESULT server=$SERVER_RESULT rot='${rot# }' drill=$DRILL"
           # Leerzeilen raus; bleibt nichts, gibt es keinen Abschnitt im Issue.
           befunde="$(printf '%s\n%s\n' "$BEFUNDE_TLS" "$BEFUNDE_SERVER" | sed '/^[[:space:]]*$/d')"
