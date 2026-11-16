@@ -102,4 +102,20 @@ describe('die Leser der Liste', () => {
     const health = read('scripts', 'ops', 'verify-health.mjs')
     for (const { site } of apps) expect(health).toContain(`host: '${site}'`)
   })
+
+  it('jeder Host des Health-Wächters steht auch im TLS-Wächter (OPS-012)', () => {
+    // Zwei Host-Listen von Hand, an nichts gebunden: ein Host, dessen Antwort
+    // geprüft wird, dessen Zertifikat aber niemand ansieht, läuft still ab
+    // (Oktober 2026: api.pukalani.app, acht Tage). Die Richtung ist bewusst
+    // einseitig — der TLS-Wächter beobachtet zusätzlich Altnamen und
+    // Weiterleitungen, die keine App mehr beantwortet.
+    const hostsOf = (file: string) => [...read('scripts', 'ops', file)
+      .split('\n').filter(line => !/^\s*(\/\/|\*)/.test(line)).join('\n')
+      .matchAll(/\{\s*host:\s*'([^']+)'/g)].map(match => match[1]!)
+    const tls = new Set(hostsOf('verify-tls.mjs'))
+    // `.invalid` ist der Platzhalter des Probealarms, kein Host.
+    const health = hostsOf('verify-health.mjs').filter(host => !host.endsWith('.invalid'))
+    expect(health.length).toBeGreaterThanOrEqual(8)
+    expect(health.filter(host => !tls.has(host)), 'im Health-Wächter, fehlt in HOSTS von scripts/ops/verify-tls.mjs').toEqual([])
+  })
 })
