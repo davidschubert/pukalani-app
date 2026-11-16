@@ -8,6 +8,8 @@ import type {
   InsightsState,
 } from '../../shared/insightsPost'
 import {
+  INSIGHTS_CHANGE_NOTE_MAX,
+  INSIGHTS_CHANGE_NOTES_MAX,
   INSIGHTS_FORMATS,
   INSIGHTS_LOCALES,
   INSIGHTS_QUESTION_HEADINGS_MIN,
@@ -105,6 +107,14 @@ const props = defineProps<{
   newsletterSending?: boolean
   /** Der Balken: wie viele von wie vielen (nur während des Versands). */
   newsletterProgress?: { sent: number, total: number } | null
+  /**
+   * DER LETZTE KI-VORSCHLAG FÜR EINEN ÄNDERUNGSHINWEIS — von der Seite geholt,
+   * hier nur eingetragen. `nonce` macht zwei gleiche Vorschläge hintereinander
+   * zu zwei Ereignissen (sonst feuerte der `watch` beim zweiten nicht).
+   */
+  noteSuggestion?: { de: string, en: string, nonce: number } | null
+  /** Läuft gerade ein Vorschlags-Lauf? */
+  suggestingNote?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -115,6 +125,7 @@ const emit = defineEmits<{
   draft: [{ brief: string, targetWords: number }]
   createBrand: [{ name: string, homepage: string, industry: string }]
   sendNewsletter: [{ introDe: string, introEn: string }]
+  suggestChangeNote: [InsightsPostEdit]
 }>()
 
 const { t, locale } = useI18n()
@@ -132,6 +143,7 @@ function clone(post: InsightsPost): InsightsPost {
     brandRefs: post.brandRefs.map(ref => ({ ...ref })),
     facts: post.facts.map(fact => ({ ...fact })),
     ranking: post.ranking ? { ...post.ranking, entries: post.ranking.entries.map(entry => ({ ...entry })) } : null,
+    changeNotes: post.changeNotes.map(note => ({ ...note })),
   }
 }
 
@@ -504,6 +516,7 @@ function editPayload(): InsightsPostEdit {
     ranking: draft.ranking,
     noteInternal: draft.noteInternal,
     brief: draft.brief,
+    changeNotes: draft.changeNotes.map(note => ({ ...note })),
   }
 }
 
@@ -527,6 +540,7 @@ const pristinePayload = computed(() => JSON.stringify({
   ranking: props.post.ranking,
   noteInternal: props.post.noteInternal,
   brief: props.post.brief,
+  changeNotes: props.post.changeNotes,
 }))
 
 const dirty = computed(() => JSON.stringify(editPayload()) !== pristinePayload.value)
@@ -534,6 +548,62 @@ const dirty = computed(() => JSON.stringify(editPayload()) !== pristinePayload.v
 function save(): void {
   emit('save', editPayload())
 }
+
+// ── Änderungshinweise ──────────────────────────────────────────────────────
+
+/**
+ * DER KASTEN STEHT NUR AN EINEM BEITRAG, DER SCHON EINMAL DRAUSSEN WAR.
+ *
+ * `props.post.publishedAt` und nicht der Zustand: auch ein zurückgezogener
+ * Beitrag hatte Leser, und seine Hinweise bleiben stehen. An einem Beitrag,
+ * der nie veröffentlicht war, verwirft der Server neue Hinweise ohnehin
+ * (`insightsStampChangeNotes`) — ein Kasten dort wäre eine Falle.
+ *
+ * Das DATUM eines Hinweises setzt der Server; ein neuer Hinweis trägt hier
+ * `at: ''` und heisst „neu", bis gespeichert ist. Höchstens EIN neuer
+ * zugleich: ein Speichern ist eine Änderung, und eine Änderung bekommt einen
+ * Hinweis — zwei frische Hinweise mit demselben Datum wären einer zu viel.
+ */
+const showChangeNotes = computed(() => Boolean(props.post.publishedAt))
+const hasNewNote = computed(() => draft.changeNotes.some(note => !note.at))
+const canAddNote = computed(() => !hasNewNote.value && draft.changeNotes.length < INSIGHTS_CHANGE_NOTES_MAX)
+
+function addChangeNote(): void {
+  if (!canAddNote.value) return
+  draft.changeNotes.unshift({ at: '', de: '', en: '' })
+}
+
+function removeChangeNote(index: number): void {
+  draft.changeNotes.splice(index, 1)
+}
+
+/** Der Knopf geht nur mit etwas, das der Vorschlag beschreiben kann. */
+const canSuggestNote = computed(() => dirty.value && !props.suggestingNote)
+
+function suggestChangeNote(): void {
+  if (!canSuggestNote.value) return
+  emit('suggestChangeNote', editPayload())
+}
+
+/**
+ * DER VORSCHLAG LANDET IM NEUEN HINWEIS — und nur dort.
+ *
+ * Gibt es schon einen ungespeicherten neuen, wird er überschrieben (der
+ * Mensch hat ein zweites Mal gefragt); sonst wird einer angelegt. Ein
+ * gespeicherter Hinweis wird NIE angefasst: er steht schon draussen.
+ */
+watch(() => props.noteSuggestion?.nonce, () => {
+  const suggestion = props.noteSuggestion
+  if (!suggestion) return
+  const fresh = draft.changeNotes.find(note => !note.at)
+  if (fresh) {
+    fresh.de = suggestion.de
+    fresh.en = suggestion.en
+    return
+  }
+  if (draft.changeNotes.length >= INSIGHTS_CHANGE_NOTES_MAX) return
+  draft.changeNotes.unshift({ at: '', de: suggestion.de, en: suggestion.en })
+})
 
 // ── Vorschau ───────────────────────────────────────────────────────────────
 
@@ -964,6 +1034,57 @@ const urlPlaceholder = 'https://'
             </p>
           </template>
         </template>
+      </div>
+
+      <!-- Änderungshinweise: nur an einem Beitrag, der schon draussen war. -->
+      <div v-if="showChangeNotes" class="bw-card p-6" data-insights-change-notes>
+        <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.changeNotes.title') }}</p>
+        <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.editor.changeNotes.hint') }}</p>
+
+        <p v-if="draft.changeNotes.length === 0" class="mt-3 text-sm" style="color: var(--bw-muted)">
+          {{ t('insights.editor.changeNotes.empty') }}
+        </p>
+        <ul v-else class="mt-3 space-y-4">
+          <li v-for="(note, index) in draft.changeNotes" :key="index" class="space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="bw-label" style="color: var(--bw-muted)">
+                {{ note.at ? insightsDay(note.at.slice(0, 10), locale) : t('insights.editor.changeNotes.new') }}
+              </span>
+              <UButton
+                :label="t('insights.editor.changeNotes.remove')" icon="i-ph-x"
+                size="xs" color="neutral" variant="ghost"
+                @click="removeChangeNote(index)"
+              />
+            </div>
+            <UInput
+              v-model="note.de" class="w-full" size="sm" :maxlength="INSIGHTS_CHANGE_NOTE_MAX"
+              :placeholder="t('insights.editor.changeNotes.de')" :aria-label="t('insights.editor.changeNotes.de')"
+            />
+            <UInput
+              v-model="note.en" class="w-full" size="sm" :maxlength="INSIGHTS_CHANGE_NOTE_MAX"
+              :placeholder="t('insights.editor.changeNotes.en')" :aria-label="t('insights.editor.changeNotes.en')"
+            />
+          </li>
+        </ul>
+
+        <div class="mt-4 flex flex-col gap-2">
+          <UButton
+            :label="t('insights.editor.changeNotes.add')" icon="i-ph-plus"
+            color="neutral" variant="ghost" class="rounded-full" style="background: var(--bw-surface)"
+            :disabled="!canAddNote"
+            @click="addChangeNote"
+          />
+          <UButton
+            :label="t('insights.editor.changeNotes.suggest')" icon="i-ph-sparkle"
+            color="neutral" variant="ghost" class="rounded-full" style="background: var(--bw-surface)"
+            :loading="suggestingNote" :disabled="!canSuggestNote"
+            data-insights-change-note-suggest
+            @click="suggestChangeNote"
+          />
+          <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.changeNotes.cost') }}</p>
+          <p v-if="!dirty" class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.changeNotes.needsChange') }}</p>
+          <p v-else class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.changeNotes.unsaved') }}</p>
+        </div>
       </div>
 
       <div class="bw-card p-6">

@@ -53,7 +53,8 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 36 · AR1 | **Aufräumen: Nacharbeiten.** Altlasten sind seit 2026-11-15 weg: Versuchsordner, erledigte Umzugs-Werkzeuge, die alte Changelog-Automatik; es gibt ein Start-Skript statt fünf, und der Server bekommt nur noch die Dateien, die er braucht (COMPLETE „GA1 P26"). Offen: (a) **die Adresse `changelog.pukalani.app` bei Cloudflare löschen**, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) zwei erledigte Umzugs-Anleitungen ins Archiv?, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare, (c) entscheiden** | [Einzelheiten](#ar1) |
 | 37 · WH1 | **Gelöschte Marke zurückholen (Papierkorb).** Auf branding.supply fehlt der Knopf „Marke löschen"; kommt er, verschwindet die Marke sofort überall, liegt 90 Tage unter „Gelöschte Marken" zum Selbst-Zurückholen und wird danach endgültig gelöscht. Davids Entscheidungen vom 2026-11-15 stehen im Plan. **Konten** bleiben vorerst nicht zurückholbar; das wird mit dem Pukalani-Konto (PK1) entschieden. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
 | 38 · SR1 | **Kleine Sicherheitsriegel: Nacharbeiten.** Sieben kleine Korrekturen sind seit 2026-11-15 live (COMPLETE „GA1 P25"): Bot-Prüfung und eine Grenze je Empfänger an den öffentlichen Formularen von branding.supply, ein eigenes Geheimnis für Abmelde-Links, Links nur mit http(s), strengere Prüfung gespeicherter Zeichen-Grafiken, Einladungen nur mit bestätigter Adresse. Offen: (a) **Klick-Probe auf Live** (beide Formulare), (b) **Datenschutztext** nennt die Bot-Prüfung an zwei Formularen noch nicht, (c) dieselbe Grenze für Code- und Reset-Mails (gehört zu AB1 e), (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) einmal klicken, (b) Text freigeben** | [Einzelheiten](#sr1) |
-| 39 · MG1 | **Migrationen: Nacharbeiten.** Seit 2026-11-16 prüfen schreibende Skripte ihr Ziel, und jede Seite meldet, ob die Datenbank zum Programm passt (COMPLETE „GA1 P21"). Offen: (a) ein **Tor, das das Ausliefern aufhält**, solange die Datenbank zurückhängt, wäre eine neue Entscheidung, (b) ein Test des Rückweg-Skripts war auf `main` **einmal ohne Grund rot**, (c) vier Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) entscheiden** | [Einzelheiten](#mg1) |
+| 39 · IN1 | **Insights-Redaktion: Nacharbeiten.** Änderungen an einem veröffentlichten Artikel laufen seit 2026-11-16 durch die sieben Prüfregeln, und unter einem geänderten Artikel kann ein Änderungshinweis stehen (COMPLETE „GA1 P19"). Offen: (a) **KI-Prüfung als eigener Knopf** (Davids Wunsch, bewusst später), (b) **Klick-Probe auf Live**, sobald der erste Artikel veröffentlicht ist (hängt an 19 · BI5), (c) **Marken-Seiten** lassen sich ohne Prüfung veröffentlichen und ändern, (d) Kleinigkeiten. | Niedrig | S bis M je Teil | **Ja: (a) Startwort, (c) entscheiden** | [Einzelheiten](#in1) |
+| 40 · MG1 | **Migrationen: Nacharbeiten.** Seit 2026-11-16 prüfen schreibende Skripte ihr Ziel, und jede Seite meldet, ob die Datenbank zum Programm passt (COMPLETE „GA1 P21"). Offen: (a) ein **Tor, das das Ausliefern aufhält**, solange die Datenbank zurückhängt, wäre eine neue Entscheidung, (b) ein Test des Rückweg-Skripts war auf `main` **einmal ohne Grund rot**, (c) vier Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) entscheiden** | [Einzelheiten](#mg1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -829,6 +830,40 @@ NICHT hier.
   Rechte oder Daten, und je Layer nur die jüngste ablesbare Stelle; die volle
   Spaltenliste als Soll gehört zu Paket P20 (Wächter erzeugen ihre Listen
   selbst). Die lesenden Schlüssel haben kein Ablaufdatum.
+
+<a id="in1"></a>
+
+**IN1 — Insights-Redaktion: Nacharbeiten (aus dem Gesamtaudit, Paket P19).**
+
+- **(a) KI-Prüfung als eigener Knopf.** Davids Wunsch vom 2026-11-12, am
+  2026-11-16 bewusst auf später gelegt. Der Knopf liest die aktuelle Fassung
+  und meldet, was unstimmig wirkt, was inhaltlich fehlt und wie der Artikel
+  für Leser und Suche besser wird. Er sperrt nichts und darf falsch warnen;
+  die festen Regeln bleiben die Sperre. Kosten je Klick etwa 1 bis 5 Cent.
+  Vorschlag für den Zuschnitt: eigene Route wie der Vorschlag für den
+  Änderungshinweis (eigenes Kontingent, schreibt nichts, Ergebnis nur
+  angezeigt), langer Lauf ⇒ die Frist am Proxy mitdenken.
+- **(b) Klick-Probe auf Live.** Auf Production ist noch kein Artikel
+  veröffentlicht (19 · BI5). Danach einmal: einen veröffentlichten Artikel
+  regelwidrig ändern (erwartet: „nicht gespeichert", die Seite bleibt), einen
+  Hinweis von Hand anlegen, einmal „Vorschlag holen (KI)" klicken. Der Klick
+  auf den Vorschlags-Knopf ist auch lokal nicht geklickt, nur die Route
+  dahinter gefahren.
+- **(c) Marken-Seiten ohne Prüfung.** Eine Marken-Zeile (`insights_brands`)
+  lässt sich im Formular direkt auf „veröffentlicht" stellen und danach
+  ändern; ihre Quellen und Zitate laufen durch keine der Regeln
+  (`server/api/insights/brands/[id].patch.ts`). Heute sind die Marken-Seiten
+  über `publicFormats` nicht freigeschaltet. Zu entscheiden, bevor sie es
+  werden: dieselbe Prüfung wie bei Artikeln?
+- **(d) Kleinigkeiten.** Der Kasten der Prüfregeln sagt auch an einem
+  veröffentlichten Artikel „der Übergang in die Redaktion ist gesperrt". Die
+  drei KI-Wege der Redaktion (Entwurf, Übersetzen, Vorschlag) stehen nicht in
+  der Bremsen-Liste des Core, sie bremst nur das Kontingent im Layer. Das
+  Datum eines Hinweises ist der Kalendertag in UTC. Ein Artikel, der eine
+  heute geltende Regel verletzt (etwa vor Regel 7 veröffentlicht), lässt sich
+  erst wieder speichern, wenn er sie erfüllt oder zurückgezogen ist — vor dem
+  ersten Veröffentlichen auf Production also einmal alle Entwürfe durch
+  „In die Redaktion geben" schicken.
 
 <a id="sr1"></a>
 

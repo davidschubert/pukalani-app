@@ -52,6 +52,9 @@ export const LAUNCH_KEPT_POST_FIELDS = [
   'briefPromptVersion',
   'briefVideoId',
   'slugHistory',
+  // Die Änderungshinweise schreibt die Redaktion an einem LAUFENDEN Artikel —
+  // ein zweiter Seed-Lauf darf sie nicht leeren.
+  'changeNotes',
 ]
 
 /** Dasselbe für die Marke (`INSIGHTS_BRAND_SERVER_OWNED_FIELDS` + die zwei Verweise). */
@@ -147,6 +150,7 @@ export function launchPostFromContent(content, { brandOf, rankingEntries = null,
     briefVideoId: '',
     draftModel: '',
     draftPromptVersion: '',
+    changeNotes: [],
   }
   if (existing) {
     for (const key of LAUNCH_KEPT_POST_FIELDS) post[key] = existing[key]

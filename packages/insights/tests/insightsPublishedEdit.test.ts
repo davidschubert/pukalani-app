@@ -228,6 +228,7 @@ function articlePost(overrides: Partial<InsightsPost> = {}): InsightsPost {
     briefVideoId: '',
     draftModel: '',
     draftPromptVersion: '',
+    changeNotes: [],
     ...overrides,
   }
 }
@@ -252,6 +253,7 @@ function editOf(post: InsightsPost, overrides: Partial<InsightsPostEdit> = {}): 
     ranking: post.ranking,
     noteInternal: post.noteInternal,
     brief: post.brief,
+    changeNotes: post.changeNotes.map(note => ({ ...note })),
     ...overrides,
   }
 }
