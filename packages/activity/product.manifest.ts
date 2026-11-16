@@ -6,6 +6,7 @@ export default {
   // Liest nur die system-eigene activities-Table (recordActivity im Core) —
   // keine harten Layer-Abhängigkeiten, ohne Content-Produkte nur leerer.
   hasMigrations: false,
+  userData: false,
   apiPrefixes: ['/api/activity'],
   title: { en: 'Activity Feed', de: 'Activity-Feed' },
   description: {

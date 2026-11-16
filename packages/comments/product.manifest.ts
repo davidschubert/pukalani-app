@@ -5,6 +5,7 @@ export default {
   tier: 'optional',
   requires: ['moderation'],
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): comments-020 legt comments.translations an.
   schema: { latest: '020', probe: { migration: '020', table: 'comments', column: 'translations' } },
   // Die Moderations-Routen liegen unter `/api/admin/…`, gehören aber diesem

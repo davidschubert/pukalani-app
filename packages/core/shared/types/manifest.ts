@@ -40,6 +40,22 @@ export interface ProductManifest {
    * `packages/core/tests/schemaProbeManifests.test.ts` wird sonst rot.
    */
   schema?: ProductSchemaState
+  /**
+   * Hält der Layer Daten zu KONTEN (Konto-Id, Adresse, Name, Handle, IP)?
+   * PFLICHT, damit jeder neue Layer die Frage beantwortet (OPS-012).
+   *
+   * `true`  ⇒ der Layer registriert einen Beitrag für Auskunft und Löschung
+   *           (`server/plugins/user-data.ts` mit `registerUserDataContributor`),
+   *           und jede seiner Tabellen mit einer Personen-Spalte hat eine
+   *           Entscheidung in `core/tests/support/userDataTables.ts`.
+   * `false` ⇒ kein Beitrag, und KEINE Migration des Layers legt eine
+   *           Personen-Spalte an.
+   *
+   * Beides hält `pnpm check:manifests` (Prüfung 9) an den Migrationen nach —
+   * das Feld ist eine Aussage, die der Wächter prüft, kein Schalter. Regeln
+   * und Fristen: docs/referenz/EXPORT-UND-LOESCHUNG.md.
+   */
+  userData: boolean
   /** Abrechnungs-Schlüssel fürs Control Plane (Default = key). */
   entitlementKey?: string
   /** Katalog-Texte (F7) — bewusst im Manifest, nicht in Layer-Locales:

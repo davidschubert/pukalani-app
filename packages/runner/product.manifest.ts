@@ -12,6 +12,7 @@ export default {
   key: 'runner',
   tier: 'optional',
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): runner-003 legt runs.resumeSessionId an.
   schema: { latest: '003', probe: { migration: '003', table: 'runs', column: 'resumeSessionId' } },
   apiPrefixes: ['/api/runner'],

@@ -67,6 +67,7 @@ export default {
   tier: 'optional',
   requires: ['brand'],
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): insights-011 legt insights_posts.changeNotes an.
   schema: { latest: '012', probe: { migration: '012', table: 'insights_runs' } },
   apiPrefixes: ['/api/insights'],

@@ -4,6 +4,7 @@ export default {
   key: 'billing',
   tier: 'foundation',
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): billing-003 legt stripe_settings.webhookEndpointId an.
   schema: { latest: '003', probe: { migration: '003', table: 'stripe_settings', column: 'webhookEndpointId' } },
   title: { en: 'Billing', de: 'Billing' },

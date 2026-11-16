@@ -30,6 +30,7 @@ export const productManifestSchema = z.object({
   requires: z.array(z.string().regex(keyPattern)).optional(),
   hasMigrations: z.boolean(),
   schema: productSchemaStateSchema.optional(),
+  userData: z.boolean(),
   entitlementKey: z.string().regex(keyPattern).optional(),
   title: manifestTextSchema,
   description: manifestTextSchema,

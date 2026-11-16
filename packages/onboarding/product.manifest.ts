@@ -6,6 +6,7 @@ export default {
   // Plattform selbst — er wird nie pro Site an- oder abgeschaltet.
   tier: 'foundation',
   hasMigrations: false,
+  userData: true,
   apiPrefixes: ['/api/onboarding'],
   title: { en: 'Onboarding', de: 'Onboarding' },
   description: {

@@ -16,6 +16,7 @@ export default {
   key: 'brand',
   tier: 'optional',
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): brand-026 legt brand_checks.erasedAt an.
   schema: { latest: '026', probe: { migration: '026', table: 'brand_checks', column: 'erasedAt' } },
   // `/api/discover` ist die öffentliche Galerie (Liste, Einzelansicht, Meldung).

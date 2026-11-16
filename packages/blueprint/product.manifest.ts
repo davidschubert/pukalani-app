@@ -28,6 +28,7 @@ export default {
   tier: 'foundation',
   requires: ['posts', 'comments', 'events', 'courses'],
   hasMigrations: false,
+  userData: false,
   title: { en: 'Blueprint', de: 'Bauplan' },
   description: {
     en: 'Composition layer: wires the products together (feed + comments, …) exactly once, so pool and silo sites behave identically.',

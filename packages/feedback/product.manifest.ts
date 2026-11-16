@@ -16,6 +16,7 @@ export default {
   key: 'feedback',
   tier: 'optional',
   hasMigrations: false,
+  userData: true,
   apiPrefixes: ['/api/feedback'],
   title: { en: 'Customer Feedback', de: 'Kunden-Feedback' },
   description: {

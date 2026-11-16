@@ -4,6 +4,7 @@ export default {
   key: 'media',
   tier: 'optional',
   hasMigrations: true,
+  userData: false,
   // Schema-Probe (OPS-008): media-004 legt media_items.communityId an; 005 löscht nur tenantId (nicht ablesbar).
   schema: { latest: '005', probe: { migration: '004', table: 'media_items', column: 'communityId' } },
   apiPrefixes: ['/api/media'],

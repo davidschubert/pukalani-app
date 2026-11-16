@@ -4,6 +4,7 @@ export default {
   key: 'analytics',
   tier: 'optional',
   hasMigrations: true,
+  userData: false,
   // Schema-Probe (OPS-008): analytics-002 legt analytics_settings.enabled an.
   schema: { latest: '002', probe: { migration: '002', table: 'analytics_settings', column: 'enabled' } },
   apiPrefixes: ['/api/analytics'],

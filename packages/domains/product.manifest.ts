@@ -4,6 +4,7 @@ export default {
   key: 'domains',
   tier: 'optional',
   hasMigrations: false,
+  userData: false,
   apiPrefixes: ['/api/site/domain'],
   title: { en: 'Own domain', de: 'Eigene Domain' },
   description: {
