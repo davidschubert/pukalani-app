@@ -155,7 +155,15 @@
     },
     "reauthSignedOut": "Bitte melde dich zur Bestätigung neu an.",
     "reauthTitle": "Zur Sicherheit neu anmelden",
-    "reauthConfirm": "Neu anmelden"
+    "reauthConfirm": "Neu anmelden",
+    "consent": {
+      "title": "Bitte bestätige unsere AGB",
+      "description": "Damit du weiter etwas anlegen, kaufen oder KI-Läufe starten kannst, brauchen wir einmal deine Zustimmung. Lesen kannst du weiterhin alles.",
+      "submit": "Zustimmen",
+      "later": "Später",
+      "success": "Danke, deine Zustimmung ist gespeichert.",
+      "failed": "Das hat nicht geklappt. Bitte versuche es noch einmal."
+    }
   },
   "validation": {
     "required": "Dieses Feld ist erforderlich",

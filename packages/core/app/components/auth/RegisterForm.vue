@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { createRegisterFormSchema, type RegisterFormInput } from '../../../schemas/auth'
+import type { ConsentKind } from '../../../shared/types/consent'
 
 /**
  * REGISTRIERUNG AUF EINLADUNG (Davids Entscheidung 2026-08-15) — die drei
@@ -141,17 +142,26 @@ const oauthBlockedBy = computed(() => {
   return ''
 })
 
+/** Was der Google-Knopf als Bestätigung mitnimmt (SEC-008, Merkzeichen `pk_consent`). */
+const oauthConsentKinds = computed<ConsentKind[]>(() => [
+  ...(requireTerms.value && state.terms ? ['terms' as const] : []),
+  ...(requireBusiness.value && state.business ? ['business' as const] : []),
+])
+
 async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
   loading.value = true
   errorMessage.value = null
   try {
-    // passwordConfirm/terms sind reine UI-Validierung — der Server bekommt sie nicht
+    // passwordConfirm bleibt im Browser. terms/business reisen mit: der Server
+    // prüft sie selbst und hält sie als Nachweis fest (SEC-008).
     await $fetch('/api/auth/signup', {
       method: 'POST',
       body: {
         name: event.data.name,
         email: event.data.email,
         password: event.data.password,
+        terms: event.data.terms === true,
+        business: event.data.business === true,
         // Nur gesetzt, wenn die Seite eine Einladung trägt. Der Server prüft
         // ihn selbst; hier wird nichts entschieden, nur weitergereicht.
         ...(props.inviteToken ? { inviteToken: props.inviteToken } : {}),
@@ -283,10 +293,8 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
       JEDEN Weg ins Konto, nicht nur für den mit Passwort. Stünde der
       Google-Knopf oben, wäre er die Hintertür um genau diese Zusage herum;
       gesperrt neben der Checkbox ist der Zusammenhang sichtbar.
-      Der Server kann die Zustimmung nicht nachprüfen — er bekommt sie auch
-      beim Passwort-Weg nicht (`terms` ist reine UI-Validierung, s. onSubmit).
-      Damit ist der Google-Weg genauso streng wie der bestehende, und nicht
-      strenger vorgetäuscht.
+      Seit SEC-008 nimmt der Knopf die gesetzten Häkchen als Merkzeichen
+      `pk_consent` mit; die Rückkehr hält sie als Nachweis fest.
       SEIT BS1 R1c gilt dasselbe für das Unternehmer-Häkchen: gesperrt ist der
       Knopf, solange EINES der beiden Pflicht-Häkchen offen ist.
     -->
@@ -294,6 +302,7 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
       separator="before"
       :disabled="oauthBlockedBy !== ''"
       :disabled-hint="oauthBlockedBy || undefined"
+      :consent-kinds="oauthConsentKinds"
     />
 
     <p v-if="termsUrl" class="text-center">

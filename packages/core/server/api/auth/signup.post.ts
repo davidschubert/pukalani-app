@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createAdminClient, requestLocale, setSessionCookie } from '../../lib/appwrite'
 import { registerSchema } from '../../../schemas/auth'
 import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
+import { BUSINESS_REQUIRED_CODE, TERMS_REQUIRED_CODE, requiredConsents, type ConsentConfig } from '../../../shared/consent'
 
 /**
  * Der Token gehört NICHT ins geteilte `registerSchema`: das trägt auch das
@@ -28,6 +29,14 @@ const signupSchema = registerSchema.extend({
    * Schranke gegen Riesen-Bodies, kein Format (Cloudflare nennt keins).
    */
   turnstileToken: z.string().max(4096).optional(),
+  /**
+   * Die Bestätigungen aus dem Formular (SEC-008). Der Server prüft sie
+   * selbst: verlangt die App die AGB (`termsUrl`) bzw. die
+   * Unternehmer-Bestätigung (`businessOnly`), muss hier `true` stehen, sonst
+   * 400 VOR der Anlage. Nur dann entsteht der Nachweis in `consent_records`.
+   */
+  terms: z.boolean().optional(),
+  business: z.boolean().optional(),
 })
 
 /**
@@ -52,7 +61,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 403, statusText: 'Registration is currently disabled' })
   }
 
-  const { email, password, name, inviteToken, admissionCode, turnstileToken } = await readValidatedBody(event, signupSchema.parse)
+  const { email, password, name, inviteToken, admissionCode, turnstileToken, terms, business } = await readValidatedBody(event, signupSchema.parse)
 
   // Identische Meldung wie oben: ein falscher, abgelaufener, widerrufener oder
   // fehlender Code sieht aus wie eine schlicht geschlossene Registrierung
@@ -88,6 +97,21 @@ export default defineEventHandler(async (event) => {
    * Schlüssel ein No-Op (server/utils/turnstile.ts).
    */
   await requireTurnstile(event, 'signup', turnstileToken)
+
+  /**
+   * ZUSTIMMUNG VOM SERVER GEPRÜFT (SEC-008): ohne ausdrückliche Bestätigung
+   * im Body entsteht kein Konto. Steht hinter den Registrierungs-Schaltern
+   * (eine geschlossene Tür antwortet wie bisher) und VOR `account.create`.
+   * Einziger Schalter ist die Config der App (`termsUrl`, `businessOnly`) —
+   * ohne beides ist das hier ein No-Op.
+   */
+  const required = requiredConsents((useAppConfig() as { pukalani?: { auth?: ConsentConfig } }).pukalani?.auth)
+  if (required.some(consent => consent.kind === 'terms') && terms !== true) {
+    throw createError({ status: 400, statusText: 'Terms not accepted', data: { code: TERMS_REQUIRED_CODE } })
+  }
+  if (required.some(consent => consent.kind === 'business') && business !== true) {
+    throw createError({ status: 400, statusText: 'Business confirmation missing', data: { code: BUSINESS_REQUIRED_CODE } })
+  }
 
   const { account } = createAdminClient(event)
 
@@ -145,23 +169,19 @@ export default defineEventHandler(async (event) => {
   await joinCommunity(event, 'registration', { sessionSecret: session.secret, userId: session.userId })
 
   /**
-   * AGB-ZUSTIMMUNG MIT FASSUNG (BS1 R1) — hier ist die Zustimmung eine
-   * Tatsache: ohne das Häkchen kommt dieses Formular gar nicht bis zum POST
-   * (`createRegisterFormSchema`, `requireTerms`). Der Server prüft sie nicht
-   * nach (er bekommt sie bewusst nicht, s. `RegisterForm.vue`), er hält fest,
-   * WELCHE Fassung diese App zum Zeitpunkt der Anlage ausgeliefert hat.
-   * No-Op in jeder App ohne `pukalani.auth.termsUrl`. Best-effort.
+   * AGB-ZUSTIMMUNG MIT FASSUNG (BS1 R1, seit SEC-008 mit Nachweis) — die
+   * Bestätigung wurde oben geprüft; festgehalten wird sie als Zeile in
+   * `consent_records` (`way: 'password'`) mit der Fassung, die diese App
+   * gerade ausliefert. No-Op ohne `pukalani.auth.termsUrl`. Best-effort.
    */
-  await recordTermsAcceptance(event, session.userId)
+  await recordTermsAcceptance(event, session.userId, { way: 'password', affirmed: terms === true })
 
   /**
-   * UNTERNEHMER-BESTÄTIGUNG (BS1 R1c) — dieselbe Arbeitsteilung eine Zeile
-   * darüber, nur mit einem eigenen Schalter: ohne das zweite Häkchen kommt
-   * dieses Formular nicht bis zum POST (`requireBusiness`), festgehalten
-   * wird aber, was der Server selbst weiß — dass DIESE App nur Unternehmen
-   * aufnimmt. No-Op ohne `pukalani.auth.businessOnly`. Best-effort.
+   * UNTERNEHMER-BESTÄTIGUNG (BS1 R1c, seit SEC-008 mit Nachweis) — dieselbe
+   * Arbeitsteilung eine Zeile darüber, mit eigenem Schalter.
+   * No-Op ohne `pukalani.auth.businessOnly`. Best-effort.
    */
-  await recordBusinessConfirmation(event, session.userId)
+  await recordBusinessConfirmation(event, session.userId, { way: 'password', affirmed: business === true })
 
   // Nicht-blockierende E-Mail-Verifizierung (pukalani.auth.verification): die
   // Bestätigungs-Mail geht über die Instanz-SMTP raus, der User ist trotzdem

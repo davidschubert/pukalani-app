@@ -140,7 +140,39 @@ export const recoverySchema = createRecoverySchema()
 export const otpVerifySchema = z.object({
   userId: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
+  /**
+   * Bestätigungen aus dem register-Modus (SEC-008). Optional: der reine
+   * Login schickt sie nicht. Festgehalten wird nur, was hier `true` ist —
+   * ohne sie entsteht keine Zeile, die Anmeldung gelingt trotzdem.
+   */
+  terms: z.boolean().optional(),
+  business: z.boolean().optional(),
 })
+
+export interface ConsentPromptOptions {
+  /** true = die App verlangt die AGB und sie fehlen diesem Konto */
+  requireTerms?: boolean
+  /** true = die App verlangt die Unternehmer-Bestätigung und sie fehlt */
+  requireBusiness?: boolean
+}
+
+/**
+ * Die Nachfrage (SEC-007): nur die fehlenden Häkchen, jedes als Pflicht.
+ * Dieselbe Fabrik prüft das Formular (`CoreConsentPrompt`) und die Route
+ * `POST /api/auth/consent` (dort mit dem, was die App verlangt).
+ */
+export function createConsentPromptSchema(t: TranslateFn = identity, options: ConsentPromptOptions = {}) {
+  return z.object({
+    terms: options.requireTerms
+      ? z.literal(true, t('validation.termsRequired'))
+      : z.boolean().optional(),
+    business: options.requireBusiness
+      ? z.literal(true, t('validation.businessRequired'))
+      : z.boolean().optional(),
+  })
+}
+
+export type ConsentPromptInput = z.infer<ReturnType<typeof createConsentPromptSchema>>
 
 export interface OtpRequestOptions {
   /** true = AGB-Checkbox ist Pflicht (register-Modus + pukalani.auth.termsUrl) */

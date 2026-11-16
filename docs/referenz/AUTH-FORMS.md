@@ -31,6 +31,24 @@ Provider-Buttons config-gated aus `pukalani.auth.providers` mit
 auth-Layout, Titel/Untertitel/Footer-Link-Struktur, Zod-Schema-Validierung
 (`createLoginSchema(t)` u. a. als Factories mit i18n-Meldungen).
 
+## Zustimmung: der Server prüft sie (SEC-008, seit 2026-11-16)
+
+Die Häkchen „AGB" (`pukalani.auth.termsUrl`) und „Unternehmer"
+(`pukalani.auth.businessOnly`) sind keine reine Formularvalidierung mehr:
+
+- `RegisterForm` schickt `terms`/`business` mit; `signup.post.ts` lehnt ohne
+  sie mit 400 `terms_required` bzw. `business_required` ab, bevor ein Konto
+  entsteht.
+- `OtpLoginForm` schickt sie im register-Modus an `otp/verify`; ohne sie
+  gelingt die Anmeldung, es entsteht nur kein Nachweis.
+- Der Google-Knopf (`AuthOauthButtons :consent-kinds`) legt die gesetzten
+  Häkchen beim Klick als Merkzeichen `pk_consent` (10 min) ab; die Rückkehr
+  vom Anbieter hält sie fest.
+- Wem eine Zustimmung fehlt, der sieht einmal je Besuch die Nachfrage
+  `CoreConsentPrompt` (Texte `auth.consent.*`) und kann bis dahin lesen, aber
+  nicht schreiben. Nachweis und Tür: `.claude/rules/appwrite.md`, Abschnitt
+  ZUSTIMMUNG.
+
 ## Regel (ersetzt „UAuthForm für Auth!")
 
 - **Neue, simple Auth-Ansichten**: erst prüfen, ob `UAuthForm` reicht — wenn

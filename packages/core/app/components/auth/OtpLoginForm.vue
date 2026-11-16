@@ -212,7 +212,14 @@ async function verify() {
   try {
     const result = await $fetch<OtpVerifyResponse>('/api/auth/otp/verify', {
       method: 'POST',
-      body: { userId: userId.value, code: secret },
+      // Bestätigungen aus dem register-Modus (SEC-008): nur dort gezeigt und
+      // Pflicht; der Server hält sie beim ersten Beitritt als Nachweis fest.
+      body: {
+        userId: userId.value,
+        code: secret,
+        ...(requireTerms.value && state.terms ? { terms: true } : {}),
+        ...(requireBusiness.value && state.business ? { business: true } : {}),
+      },
     })
     // KEIN auth.refresh() vor dem zweiten Faktor: /api/auth/me antwortet auf
     // eine halbe Session mit 401, der Store würde den Nutzer also als
