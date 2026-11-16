@@ -29,8 +29,8 @@ für Profilbilder ohne Profil · **KU1** „kostenlos" und „Mitglieder" werden
 eine Zugangsart; Kurs-Vorschauen bleiben auffindbar (geschlossen) · **MM1**
 Likes unter geschlossenen Themen sperren; Übersetzen nur für Mitglieder ·
 **RW1** kein Notweg ohne GitHub, vier Stände reichen (beide geschlossen) ·
-**BU1** zweiter Ablageort für den Backup-Schlüssel bei David, keine zweite
-Person; Einstellungs-Dateien ins Backup · **AR1** erledigte
+**BU1** Backup-Schlüssel bleibt in Davids zwei Passwort-Managern, keine zweite
+Person (geschlossen); Einstellungs-Dateien ins Backup · **AR1** erledigte
 Umzugs-Anleitungen ins Archiv · **IN1** Marken-Seiten durch dieselbe Prüfung
 wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 (geschlossen) · **PB1** Migrations-Schlüssel dürfen Dateilisten lesen ·
@@ -84,7 +84,7 @@ beide Server-Einstellungen einschalten.
 | MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** (b) Benachrichtigungen an entfernte Personen prüfen, (c) Likes unter geschlossenen Themen sperren (entschieden), (d) Übersetzen nur für Mitglieder (entschieden), (e) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (c) Marken-Seiten laufen durch dieselbe Prüfung wie Artikel (entschieden), (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (d) Kleinigkeiten. Klick-Probe (b) nach BI5. **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
-| BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (a) zweiter, getrennter Ablageort für den Schlüssel bei David (entschieden: keine zweite Person), (b) Einstellungs-Dateien der Apps verschlüsselt ins nächtliche Backup (entschieden), (c) Übung jährlich wiederholen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Mittel | je Teil S | **Ja: (a) Ablageort** | [Einzelheiten](#bu1) |
+| BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (b) Einstellungs-Dateien der Apps verschlüsselt ins nächtliche Backup (entschieden), (c) Übung jährlich wiederholen, (d) Kleinigkeiten. **Wartet auf:** nichts. | Mittel | je Teil S | Nein | [Einzelheiten](#bu1) |
 | P29 | **Anmelde-Regeln auf Production: Reste.** Prüfung auf gestohlene Passwörter am Appwrite-Server einschalten (entschieden), je Projekt ein Schlüssel mit `policies`-Recht für den Skript-Lauf. Anmelde-Mail ansehen: KR1; Cookie-Satz: DT1. **Wartet auf:** Davids Ja am Tag der Umsetzung. | Mittel | S | **Ja: Server-Einstellung, Schlüssel** | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
 
 **Weitere Nacharbeiten:**
@@ -565,12 +565,6 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 
 **BU1 — Backup der Datenbank: Nacharbeiten (aus dem Gesamtaudit, Paket P11).**
 
-- **(a) Zweiter Ablageort für den Schlüssel — entschieden am 2026-11-16:
-  bei David, keine zweite Person.** Die Backups öffnet nur der eine private
-  Schlüssel; er liegt heute in Davids zwei Passwort-Managern. Zu tun: einen
-  zweiten, davon getrennten Ablageort bei David einrichten und im Runbook
-  festhalten. Fällt David aus, kommt weiter niemand an die Daten; das ist
-  bewusst so entschieden.
 - **(b) Die `.env`-Dateien der Apps — entschieden am 2026-11-16:
   verschlüsselt ins nächtliche Backup.** Sie liegen heute nur auf dem
   App-Server. Darin stehen eigene Schlüssel der Apps, auch die, mit denen
