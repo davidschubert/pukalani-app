@@ -17,7 +17,10 @@
  * Rechte-Migration der Tabelle, DANN dieser Lauf. Er nimmt nur Tabellen an,
  * die in `scripts/lib/server-written-tables.mjs` stehen — für jede andere
  * schriebe das Programm noch mit der Sitzung des Kontos und bräuchte die
- * Rechte.
+ * Rechte. Mit `--apply` liest er außerdem die Rechte der Tabelle im
+ * Ziel-Projekt und bricht ab, solange sie noch ein Schreib-Recht trägt: die
+ * Liste sagt nur, dass der Code im Repo umgestellt ist, nicht, dass er schon
+ * überall läuft.
  *
  * ERST ZÄHLEN, DANN SCHREIBEN: ohne `--apply` ändert der Lauf nichts und nennt
  * nur Zahlen. Mit `--apply` arbeitet er in Stapeln, ist wiederholbar (eine
@@ -231,6 +234,15 @@ async function main() {
   for (const table of args.tables) {
     const before = await count(api, databaseId, table)
     if (!before) { console.log(`↷ ${table}: gibt es in diesem Projekt nicht`); continue }
+    // REIHENFOLGE ERZWUNGEN: Zeilen werden erst aufgeräumt, wenn die Tabelle
+    // selbst kein Schreib-Recht mehr trägt (Schritt 2 vor Schritt 3).
+    if (args.apply) {
+      const meta = await api('GET', `/tablesdb/${databaseId}/tables/${table}`)
+      if (meta.status !== 200) throw new RunError(`${table}: Rechte der Tabelle nicht lesbar (HTTP ${meta.status}) — der Schlüssel braucht tables.read`)
+      if (hasRowWriteRight(meta.json?.$permissions ?? [])) {
+        throw new RunError(`${table}: die Tabelle trägt noch ein Schreib-Recht für Konten — erst die Rechte-Migration der Tabelle fahren, dann aufräumen.`)
+      }
+    }
     console.log(`${table}: ${before.total} Zeilen, davon ${before.writable} mit Schreibrecht eines Kontos (update ${before.update}, delete ${before.delete})`)
     if (!args.apply || before.writable === 0) continue
     const result = await strip(api, databaseId, table, args.batch)
