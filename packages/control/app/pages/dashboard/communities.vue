@@ -3,6 +3,7 @@ import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { nameToSubdomain, OPERATOR_APEX } from '../../../schemas/tenant'
 import type { TenantMode, TenantPlan, TenantStatus, TenantWave } from '../../../shared/types/tenantRecord'
 import type { CommunitySuspension } from '../../../../core/shared/communitySuspension'
+import type { CustomDomainApprovalResponse, CustomDomainStatus } from '../../../shared/customDomain'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'sites.manage' })
 
@@ -12,7 +13,7 @@ const confirm = useConfirm()
 const { promptFreshSignIn } = useRecentAuthPrompt()
 useBrandTitle(() => t('control.tenants.title'))
 
-interface TenantDto { id: string, name: string, host: string, mode: TenantMode, projectId: string, tenantId: string, status: TenantStatus, wave: TenantWave, plan: TenantPlan, openRegistration: boolean, suspension: CommunitySuspension, suspensionReason: string, suspendedAt: string | null, pastDueSince: string | null }
+interface TenantDto { id: string, name: string, host: string, mode: TenantMode, projectId: string, tenantId: string, status: TenantStatus, wave: TenantWave, plan: TenantPlan, openRegistration: boolean, suspension: CommunitySuspension, suspensionReason: string, suspendedAt: string | null, pastDueSince: string | null, customDomain: string, customDomainStatus: CustomDomainStatus, customDomainApproved: boolean, customDomainGraceEndsAt: string | null, customDomainPausedAt: string | null }
 
 const { data, refresh } = await useFetch<{ total: number, tenants: TenantDto[] }>('/api/control/tenants', { lazy: true, server: false })
 const tenants = computed(() => data.value?.tenants ?? [])
@@ -269,6 +270,63 @@ async function unsuspend(tenant: TenantDto) {
   }
 }
 
+/**
+ * EIGENE DOMAIN FREIGEBEN (control-040, SEC-022 — Davids Entscheidung vom
+ * 2026-11-16: eine eigene Domain ist nur mit der Freigabe des Betreibers je
+ * Community aktiv). Der Schalter springt sofort um und fällt bei einem Fehler
+ * zurück. Wer die Freigabe einer AKTIVEN Domain entzieht, schaltet sie sofort
+ * ab (ohne Frist) — das fragt die Seite vorher, mit demselben Dialog wie das
+ * Löschen und das Entsperren.
+ */
+const { formatDate } = useFormatDate()
+
+const DOMAIN_STATUS_COLORS: Record<CustomDomainStatus, 'success' | 'warning' | 'info' | 'error' | 'neutral'> = {
+  none: 'neutral',
+  pending_dns: 'info',
+  pending_cert: 'info',
+  pending_platform: 'info',
+  active: 'success',
+  error: 'error',
+  paused: 'warning',
+}
+
+async function toggleDomainApproval(tenant: TenantDto, approved: boolean) {
+  if (!approved && tenant.customDomainStatus === 'active') {
+    const ok = await confirm({
+      title: t('control.tenants.domain.revokeTitle'),
+      description: t('control.tenants.domain.revokeText', { domain: tenant.customDomain, host: tenant.host }),
+      confirmLabel: t('control.tenants.domain.revokeConfirm'),
+      color: 'warning',
+    })
+    if (!ok) return
+  }
+  const previous = tenant.customDomainApproved
+  tenant.customDomainApproved = approved
+  try {
+    const result = await $fetch<CustomDomainApprovalResponse>(`/api/control/tenants/${tenant.id}/custom-domain`, {
+      method: 'POST',
+      body: { approved },
+    })
+    Object.assign(tenant, {
+      customDomainApproved: result.customDomainApproved,
+      customDomainStatus: result.customDomainStatus,
+      customDomainGraceEndsAt: result.customDomainGraceEndsAt,
+      customDomainPausedAt: result.customDomainPausedAt,
+    })
+    toast.add({
+      title: t(approved ? 'control.tenants.domain.approvedDone' : 'control.tenants.domain.revokedDone'),
+      description: t(result.customDomainStatus === 'paused' && previous
+        ? 'control.tenants.domain.pausedHint'
+        : approved ? 'control.tenants.domain.approvedHint' : 'control.tenants.domain.revokedHint', { host: tenant.host }),
+      color: 'success',
+    })
+  }
+  catch {
+    tenant.customDomainApproved = previous
+    toast.add({ title: t('control.tenants.updateFailed'), description: t('control.tenants.updateFailedHint'), color: 'error' })
+  }
+}
+
 // ── Editierbarer Quota-Katalog (tenant_plans, control-014) ────────────────────
 // Zahlen wirken im Pool nach ≤ 90 s (Katalog-Cache 60 s + Host-Cache 30 s im
 // platform-Resolver) — kein Deploy nötig. 0 = unbegrenzt.
@@ -313,6 +371,7 @@ const columns = computed<TableColumn<TenantDto>[]>(() => [
   { accessorKey: 'mode', header: () => t('control.tenants.col.mode'), meta: { class: HIDE_MD } },
   { id: 'tier', header: () => t('control.tenants.col.tier') },
   { id: 'registration', header: () => t('control.tenants.col.registration'), meta: { class: HIDE_LG } },
+  { id: 'domain', header: () => t('control.tenants.col.domain'), meta: { class: HIDE_LG } },
   { accessorKey: 'status', header: () => t('control.tenants.col.status') },
   { id: 'actions', header: srOnlyHeader(() => t('ui.table.actions')) },
 ])
@@ -394,6 +453,33 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
             :data-tenant-open-registration="row.original.openRegistration"
             @update:model-value="(open: boolean) => toggleOpenRegistration(row.original, open)"
           />
+        </template>
+        <template #domain-cell="{ row }">
+          <div class="space-y-1" :data-tenant-domain="row.original.customDomain || 'none'">
+            <div v-if="row.original.customDomain" class="flex items-center gap-2">
+              <span class="truncate font-mono text-xs">{{ row.original.customDomain }}</span>
+              <UBadge :color="DOMAIN_STATUS_COLORS[row.original.customDomainStatus]" variant="subtle" size="sm" :data-tenant-domain-status="row.original.customDomainStatus">
+                {{ t(`control.tenants.domain.status.${row.original.customDomainStatus}`) }}
+              </UBadge>
+            </div>
+            <p v-else class="text-xs text-dimmed">
+              {{ t('control.tenants.domain.none') }}
+            </p>
+            <USwitch
+              v-if="row.original.mode === 'pool'"
+              :model-value="row.original.customDomainApproved"
+              size="sm"
+              :label="t('control.tenants.domain.approved')"
+              :data-tenant-domain-approved="row.original.customDomainApproved"
+              @update:model-value="(approved: boolean) => toggleDomainApproval(row.original, approved)"
+            />
+            <p v-if="row.original.customDomainGraceEndsAt && row.original.customDomainStatus === 'active'" class="text-xs text-warning">
+              {{ t('control.tenants.domain.graceUntil', { date: formatDate(row.original.customDomainGraceEndsAt) }) }}
+            </p>
+            <p v-if="row.original.customDomainPausedAt && row.original.customDomainStatus === 'paused'" class="text-xs text-dimmed">
+              {{ t('control.tenants.domain.pausedSince', { date: formatDate(row.original.customDomainPausedAt) }) }}
+            </p>
+          </div>
         </template>
         <template #status-cell="{ row }">
           <div class="space-y-1">

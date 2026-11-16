@@ -8,6 +8,14 @@
       "reservedNames": "Reserved names",
       "abuseReports": "Abuse reports",
       "marketSignal": "Market signal"
+    },
+    "audit": {
+      "action": {
+        "community": {
+          "custom_domain_approved": "approved the custom domain of {name}",
+          "custom_domain_approval_revoked": "revoked the custom domain approval of {name}"
+        }
+      }
     }
   },
   "control": {
@@ -367,7 +375,8 @@
         "mode": "Mode",
         "tier": "Plan / wave",
         "registration": "Registration",
-        "status": "Status"
+        "status": "Status",
+        "domain": "Custom domain"
       },
       "suspend": {
         "action": "Suspend …",
@@ -394,6 +403,29 @@
         "confirm": "Lift",
         "done": "Suspension lifted",
         "doneHint": "{host} — takes effect within 30 seconds (cache)."
+      },
+      "domain": {
+        "none": "no custom domain",
+        "approved": "approved",
+        "status": {
+          "none": "none",
+          "pending_dns": "waiting for DNS",
+          "pending_cert": "certificate",
+          "pending_platform": "almost done",
+          "active": "active",
+          "error": "error",
+          "paused": "switched off"
+        },
+        "approvedDone": "Custom domain approved",
+        "approvedHint": "{host} can now connect a custom domain once the Pro plan is paid.",
+        "revokedDone": "Approval revoked",
+        "revokedHint": "{host} can no longer connect a custom domain.",
+        "pausedHint": "The custom domain of {host} is switched off. Visitors land on the Pukalani address; nothing was deleted.",
+        "revokeTitle": "Revoke approval?",
+        "revokeText": "{domain} is active right now and will be switched off immediately, without a grace period. Visitors will then land on {host}. Nothing is deleted; with a new approval the owner can switch the domain back on.",
+        "revokeConfirm": "Revoke and switch off",
+        "graceUntil": "Grace period until {date}",
+        "pausedSince": "switched off since {date}"
       }
     },
     "plans": {
@@ -490,7 +522,8 @@
         "pending_cert": "DNS is in place. The certificate is being issued.",
         "pending_platform": "Almost done — the last step is running in the app.",
         "active": "Live.",
-        "error": "Something went wrong."
+        "error": "Something went wrong.",
+        "paused": "Switched off — the Pukalani address applies, nothing was deleted."
       },
       "errors": {
         "domain_empty": "Please enter a domain.",
