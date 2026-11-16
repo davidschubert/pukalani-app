@@ -42,16 +42,25 @@
 # Container höchstens dreimal in Folge neu und meldet dann nur noch
 # `aufgegeben` — gesehen wird es nur hier.
 #
+# SECHSTES WORT (OPS-003, 2026-11-16): `cron-status` vergleicht die Zeitpläne
+# dieses Servers mit der Liste aus dem Repo (ops/cron.conf): es ruft das feste
+# Skript ~/ops/cron-check.sh (Quelle ops/cron-check.sh, liegt mit cron.conf
+# von Hand eingespielt daneben) und reicht dessen ZWEI Zeilen durch — je
+# Quelle (crontab von ploi, /etc/crontab) Zahlen und die Kennungen der Liste.
+# Nur lesend, kein docker. Jede Zeile wird hier noch einmal gegen ihre feste
+# Form geprüft: eine Zeile aus einem crontab kommt so auch dann nicht hinaus,
+# wenn das Skript daneben ausgetauscht würde.
+#
 # AUFRUF
-#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status | realtime-status
+#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status | realtime-status | cron-status
 #   von Hand (Mac):  ssh ploi@<server> '~/bin/pukalani-cert-gate.sh probe'
 #
 # EINSPIELEN (nur von Hand, es gibt bewusst keinen CI-Weg auf diesen Server):
 #   docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, Abschnitt „Tor auf appwrite-prod"
 #
 # Exit: 0 ok · 3 Compose-Ordner fehlt · 4 Worker nicht gefunden ·
-#       5 Voraussetzung fehlt · 6 kein lesbarer Backup- oder Realtime-Stand ·
-#       64 Befehl nicht erlaubt
+#       5 Voraussetzung fehlt · 6 kein lesbarer Backup-, Realtime- oder
+#       Zeitplan-Stand · 64 Befehl nicht erlaubt
 set -u
 
 COMPOSE_DIR="${APPWRITE_COMPOSE_DIR:-$HOME/appwrite}"
@@ -64,6 +73,8 @@ MASK_ADDRESSES='s/[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}/<adresse>/g'
 BACKUP_STATE_FILE="${BACKUP_STATE_FILE:-$HOME/backup/state/last-run}"
 # Stand-Datei des Realtime-Wächters (gleicher Default wie dort).
 REALTIME_STATE_FILE="${REALTIME_STATE_FILE:-$HOME/ops/state/realtime-watchdog}"
+CRON_CHECK_SCRIPT="${CRON_CHECK_SCRIPT:-$HOME/ops/cron-check.sh}"
+CRON_LINE='^cron server=appwrite-prod quelle=(benutzer|system) erwartet=[0-9]{1,3} gefunden=[0-9]{1,3} fehlt=[a-z0-9,-]{1,255} unbekannt=[0-9]{1,3} doppelt=[0-9]{1,3}$'
 
 # Von Hand als $1; mit festem Befehl (kein Argument) in SSH_ORIGINAL_COMMAND.
 REQUEST="${1:-${SSH_ORIGINAL_COMMAND:-}}"
@@ -197,8 +208,23 @@ case "$REQUEST" in
     echo "realtime ergebnis=$RESULT fehlschlaege=$(( 10#$FAILS )) neustarts_24h=$R24 neustarts_7t=$R7 alter_minuten=$AGE"
     ;;
 
+  cron-status)
+    if [ ! -r "$CRON_CHECK_SCRIPT" ]; then
+      echo "cron ergebnis=unbekannt"
+      exit 6
+    fi
+    # Höchstens zwei Zeilen (je Quelle eine), und nur in der festen Form.
+    CRON_OUT="$(bash "$CRON_CHECK_SCRIPT" appwrite-prod 2>/dev/null </dev/null | grep -E "$CRON_LINE" | sed -n '1,2p')"
+    CRON_COUNT="$(printf '%s\n' "$CRON_OUT" | grep -cE "$CRON_LINE" || true)"
+    if [ "${CRON_COUNT:-0}" != "2" ]; then
+      echo "cron ergebnis=unbekannt"
+      exit 6
+    fi
+    printf '%s\n' "$CRON_OUT"
+    ;;
+
   *)
-    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status, realtime-status."
+    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status, realtime-status, cron-status."
     exit 64
     ;;
 esac

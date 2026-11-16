@@ -1,0 +1,27 @@
+# BAUSTEIN: Zugriffs-Log für EINE Site (OPS-003, Davids Entscheidung
+# 2026-11-16: nur die Betreiber-Seite, 14 Tage).
+#
+# WAS MITGESCHRIEBEN WIRD: Zeit, Internet-Adresse des Aufrufers, Methode und
+# Pfad OHNE das, was hinter dem Fragezeichen steht, Ergebnis, Größe, Browser.
+# Die Adresse ist ein personenbezogenes Datum. BEWUSST NICHT: die Query (dort
+# stehen Einmal-Codes aus Mails), der Referrer, Cookies.
+#
+# EINBAUEN (zwei Stellen in der nginx-Datei der Site, ops/nginx-sites.conf
+# sagt für die Site `an`):
+#
+# 1) GANZ OBEN in der Datei, außerhalb von `server { … }` — und nur in EINER
+#    Site-Datei des Servers (nginx lehnt denselben Format-Namen zweimal ab):
+
+log_format pukalani_kurz '$remote_addr [$time_iso8601] "$request_method $uri" $status $body_bytes_sent "$http_user_agent"';
+
+# 2) IM Server-Block der App statt `access_log off;`:
+
+    access_log /home/ploi/logs/nginx/{{SITE}}-access.log pukalani_kurz;
+
+# VORHER auf dem Server (als ploi; nginx startet sonst nicht neu):
+#   mkdir -p /home/ploi/logs/nginx && chmod 750 /home/ploi/logs/nginx
+#   touch /home/ploi/logs/nginx/{{SITE}}-access.log && chmod 640 /home/ploi/logs/nginx/{{SITE}}-access.log
+#
+# AUFBEWAHRUNG: ops/logrotate-admin-access.conf, täglich aus dem crontab von
+# `ploi` (Eintrag `admin-log-umlauf` in ops/cron.conf). NICHT nach
+# /var/log/nginx/ legen: dort hebt der Umlauf des Systems 52 Tage auf.

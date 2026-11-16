@@ -76,12 +76,23 @@ describe('die Leser der Liste', () => {
   // Dateien: die Ecosystem-Datei, pm2-heal.sh (auf beide verlässt sich
   // `ops/rollback.sh`) und seit OPS-011 (2026-11-16) das Zähl-Skript des
   // Produktions-Wächters, das nur liest und nur Zahlen ausgibt.
-  it('deploy.yml kopiert nur Ecosystem-Datei, pm2-heal.sh und das Zähl-Skript auf den Server', () => {
+  it('deploy.yml kopiert nur Ecosystem-Datei, pm2-heal.sh, Zähl-Skript und die Vergleichs-Skripte auf den Server', () => {
     const code = deploy.split('\n').filter(line => !/^\s*#/.test(line))
     const toSiteOps = code.filter(line => /\brsync\b/.test(line) && line.includes('/ops/'))
     expect(toSiteOps).toHaveLength(1)
     const sources = toSiteOps[0]!.trim().split(/\s+/).filter(word => /^"?ops\//.test(word)).map(word => word.replace(/"/g, ''))
-    expect(sources).toEqual(['ops/ecosystem-$app.config.cjs', 'ops/pm2-heal.sh', 'ops/app-watch-counts.mjs'])
+    expect(sources).toEqual([
+      'ops/ecosystem-$app.config.cjs',
+      'ops/pm2-heal.sh',
+      'ops/app-watch-counts.mjs',
+      // OPS-003 (2026-11-16): die zwei nur lesenden Vergleichs-Skripte samt Listen
+      // und die Umlauf-Einstellung des Zugriffs-Logs der Betreiber-Seite.
+      'ops/nginx-check.mjs',
+      'ops/nginx-sites.conf',
+      'ops/cron-check.sh',
+      'ops/cron.conf',
+      'ops/logrotate-admin-access.conf',
+    ])
     expect(toSiteOps[0]).not.toContain('--delete')
     // Was der Server beim Ausliefern ausführt, sind die ersten zwei.
     expect(deploy).toContain('bash /home/ploi/$site/ops/pm2-heal.sh')

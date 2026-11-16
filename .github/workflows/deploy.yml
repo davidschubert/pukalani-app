@@ -654,7 +654,7 @@ jobs:
             # BRANDING-SUPPLY-SETUP.md sowie docs/archiv/HELP-GO-LIVE.md;
             # zurueck auf einen liegenden Stand geht fuer ALLE sechs mit
             # ops/rollback.sh.)
-            # NUR DIE DREI DATEIEN, die der Server braucht (OPS-005, 2026-11-15):
+            # NUR DIE DATEIEN, die der Server braucht (OPS-005, 2026-11-15):
             # die Ecosystem-Datei DIESER App, pm2-heal.sh und seit OPS-011
             # (2026-11-16) das Zaehl-Skript des Produktions-Waechters
             # (app-watch-counts.mjs: liest nur, gibt nur Zahlen aus — der
@@ -664,7 +664,13 @@ jobs:
             # in ops/ sonst liegt, gehoert auf den Appwrite-Server (von Hand
             # eingespielt) oder auf den eigenen Rechner. ops/rollback.sh
             # verlaesst sich auf die ersten zwei Dateien.
-            rsync -az --mkpath "ops/ecosystem-$app.config.cjs" ops/pm2-heal.sh ops/app-watch-counts.mjs "prod:/home/ploi/$site/ops/"
+            # Seit OPS-003 (2026-11-16) dazu die zwei Vergleichs-Skripte fuer
+            # Webserver-Einstellungen und Zeitplaene samt ihrer Listen
+            # (nginx-check.mjs + nginx-sites.conf, cron-check.sh + cron.conf:
+            # lesen nur, geben nur Zahlen, Site- und Regel-Namen aus) und die
+            # Umlauf-Einstellung fuer das Zugriffs-Log der Betreiber-Seite
+            # (logrotate-admin-access.conf; der Zeitplan dazu steht im crontab).
+            rsync -az --mkpath "ops/ecosystem-$app.config.cjs" ops/pm2-heal.sh ops/app-watch-counts.mjs ops/nginx-check.mjs ops/nginx-sites.conf ops/cron-check.sh ops/cron.conf ops/logrotate-admin-access.conf "prod:/home/ploi/$site/ops/"
             # Flip + Reload (ZDT Stufe 2). pm2 startOrReload findet den Prozess
             # ueber den NAMEN in der Ecosystem-Datei — bei einer Umbenennung
             # ersetzt es also NICHT, sondern startet daneben (zwei Prozesse,

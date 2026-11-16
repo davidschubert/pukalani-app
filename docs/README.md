@@ -57,6 +57,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | Datei | Wofür |
 | --- | --- |
 | [runbooks/DEPLOYMENT.md](runbooks/DEPLOYMENT.md) | Betrieb heute (was wo läuft, Ausliefern, **schlechter Stand live: Rückweg**) · neue App/Site aufsetzen, Envs, Migrationen, ploi-Felder |
+| [runbooks/NEUE-SITE.md](runbooks/NEUE-SITE.md) | Neue Site auf dem App-Server: nginx aus der Vorlage (`ops/nginx/`), Pflicht-Zeilen, Kundendomain, neuer oder entfernter Zeitplan (`ops/cron.conf`) |
 | [runbooks/STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) | Stripe vom Testmodus auf echtes Geld |
 | [runbooks/STRIPE-TEST-WALKTHROUGH.md](runbooks/STRIPE-TEST-WALKTHROUGH.md) | Die 6 Testmodus-Proben davor |
 | [runbooks/CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md) | Control-Host-Umzug (+ die drei Restkrümel) |
