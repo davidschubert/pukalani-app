@@ -46,6 +46,9 @@ const ACTION_STYLE: Record<string, { icon: string, color: string }> = {
   'user.list_viewed': { icon: 'i-ph-list-magnifying-glass', color: 'text-muted' },
   'user.csv_exported': { icon: 'i-ph-file-csv', color: 'text-muted' },
   'gdpr_export.downloaded': { icon: 'i-ph-download-simple', color: 'text-warning' },
+  // Einsicht in gemeldete private Nachrichten (SEC-033).
+  'message_report.viewed': { icon: 'i-ph-envelope-open', color: 'text-muted' },
+  'message_report.queue_viewed': { icon: 'i-ph-flag-banner', color: 'text-muted' },
   'user.deleted': { icon: 'i-ph-trash', color: 'text-error' },
   'user.password_changed': { icon: 'i-ph-password', color: 'text-warning' },
   'user.recovery_requested': { icon: 'i-ph-key', color: 'text-warning' },

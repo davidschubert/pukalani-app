@@ -136,6 +136,10 @@
           "updated": "hat einen Changelog-Eintrag bearbeitet",
           "deleted": "hat einen Changelog-Eintrag gelöscht"
         },
+        "message_report": {
+          "viewed": "hat eine gemeldete private Nachricht eingesehen",
+          "queue_viewed": "hat die Liste gemeldeter privater Nachrichten mit Text eingesehen"
+        },
         "gdpr_export": {
           "downloaded": "DSGVO-Export heruntergeladen",
           "deleted": "DSGVO-Export gelöscht"

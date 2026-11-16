@@ -136,6 +136,10 @@
           "updated": "edited a changelog entry",
           "deleted": "deleted a changelog entry"
         },
+        "message_report": {
+          "viewed": "viewed a reported private message",
+          "queue_viewed": "viewed the list of reported private messages with text"
+        },
         "gdpr_export": {
           "downloaded": "GDPR export downloaded",
           "deleted": "GDPR export deleted"
