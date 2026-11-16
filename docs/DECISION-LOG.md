@@ -3632,3 +3632,44 @@ kommt niemand an die Backups; das ist bewusst so entschieden.
 **Wieder prüfen:** wenn sich an Davids Vertretung etwas ändert (Nr. 9); und
 Nr. 13, falls ein Rückstand einmal Schaden anrichtet, bevor der Alarm gelesen
 wird.
+
+## 2026-11-16 — Server-Einstellungen als Vorlage im Repo, Schutz-Kopfzeilen aus der App
+
+**Anlass:** Gesamtaudit 2026-11, Paket P23 (OPS-003, SEC-006, SEC-010). Die
+Webserver-Einstellungen der sechs Sites lagen nur in Ploi und waren von Hand
+gewachsen (zwei Sites reichten die Adresse des Aufrufers nicht weiter, zwei
+setzten Schutz-Kopfzeilen, sechs keine, HSTS keine), Zeitpläne standen nur auf
+den Servern, und Links in Mails kamen aus dem Namen der Anfrage. Davids
+Entscheidungen vom 2026-11-12: Vorlagen ins Repo mit täglichem Vergleich; die
+Schutz-Kopfzeilen setzt die App für alle Seiten gleich; Mail-Links nehmen in
+den Einzel-Sites die fest eingestellte Adresse.
+**Entscheidung (David, Fragen zum Anklicken am 2026-11-16):**
+1. **Nachsehen auf beiden Servern und in Ploi: ja, nur lesen.**
+2. **Handgriffe auf den Servern: ja, alle drei** — Prüf-Programm einspielen,
+   Schutz-Zeilen im Webserver entfernen und fehlende Pflicht-Zeilen
+   nachtragen, den alten Erinnerungs-Zeitplan entfernen. Angeboten und nicht
+   gewählt: nur das Prüf-Programm; nichts ändern.
+3. **Zugriffs-Log der Betreiber-Seite: ja, 14 Tage** — Zeit, Adresse des
+   Aufrufers, Methode und Pfad ohne Query, Ergebnis, Browser. Angeboten und
+   nicht gewählt: 7 Tage; kein Log.
+4. **„Nur noch verschlüsselt" (HSTS) in zwei Stufen in diesem Paket:** erst
+   ein Tag, nach einigen Stunden ohne Auffälligkeit ein Jahr. Ohne
+   `includeSubDomains`, ohne `preload`. Angeboten und nicht gewählt: zweite
+   Stufe erst nach einer Woche; noch nicht einschalten.
+5. **Probealarm für den neuen Blick: ja.**
+6. **Das allgemeine Zugriffs-Log des Webservers (Umleitungen, unbekannte
+   Namen) von 52 auf 14 Tage kürzen: ja.**
+7. **Die feste Adresse von pukalani.studio ändern: ja — und grundsätzlich:**
+   stellt ein Betreiber im Dashboard eine eigene Domain ein, sollen Mails und
+   alles andere der Site diese Domain von selbst benutzen, ohne Handgriff an
+   einer Server-Datei.
+**Folgen im Alltag:** In einer nginx-Datei steht kein `add_header` für eine
+Schutz-Kopfzeile mehr und nie `X-Frame-Options` (es kann die Erlaubnisliste
+des eingebetteten Produkts nicht ausdrücken). Eine neue Site entsteht aus
+der Vorlage ([NEUE-SITE.md](runbooks/NEUE-SITE.md)); ein neuer Zeitplan steht
+zuerst in `ops/cron.conf`. HSTS lässt sich nur langsam zurücknehmen: einen
+kleinen Wert senden und warten. Termin-Erinnerungen fährt die App selbst für
+alle Communities; auf dem Server gibt es dafür keinen Zeitplan mehr.
+**Wieder prüfen:** `includeSubDomains` für die eigenen Domains, sobald eine
+Liste aller Unter-Adressen vorliegt; die Skript-CSP schärfen, sobald Berichte
+eingesammelt werden (OPEN-ITEMS SE1).

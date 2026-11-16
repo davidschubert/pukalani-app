@@ -203,8 +203,8 @@ paths:
   des Servers mit: Adresse, ganze Anfragezeile, 52 Tage). SCHUTZ-KOPFZEILEN
   SETZT NUR DIE APP (SEC-006): `core/shared/securityHeaders.ts` +
   `core/server/plugins/security-headers.ts`, für JEDE Antwort `nosniff`,
-  `Referrer-Policy`, `Permissions-Policy`, HSTS (ohne `includeSubDomains`,
-  ohne `preload`, nie auf lokalen Hosts), auf Seiten `frame-ancestors`
+  `Referrer-Policy`, `Permissions-Policy`, HSTS (ein Jahr, ohne
+  `includeSubDomains`, ohne `preload`, nie auf lokalen Hosts), auf Seiten `frame-ancestors`
   (weiter nur aus `frameAncestors.ts`), eine Skript-CSP im Modus Report-Only
   und kein `x-powered-by`. KEIN `add_header` für diese Namen in einer
   nginx-Datei (Ploi schreibt bei einer neuen Site drei hinein — löschen) und
@@ -217,7 +217,10 @@ paths:
   `ops/cron-check.sh`, der Deploy legt sie neben die Ecosystem-Datei; auf
   appwrite-prod das Tor-Wort `cron-status`, dafür liegen `cron-check.sh` und
   `cron.conf` VON HAND in `~/ops/`) und `verify-security-headers.mjs` (von
-  außen, roh gezählt: jede Kopfzeile genau einmal). Verglichen werden
+  außen, roh gezählt: jede Kopfzeile genau einmal; eine Datei, die ein
+  vorgeschalteter Zwischenspeicher ausliefert — `cf-cache-status: HIT` auf
+  pukalani.app —, wird nicht bewertet, sie trägt die Kopfzeilen ihres ersten
+  Abrufs). Verglichen werden
   Pflicht-Zeilen, nicht Zeichen — Ploi schreibt eine Datei bei Zertifikat
   oder Alias um, das bleibt grün. Die Skripte geben nur Zahlen, Site-Namen aus
   der Liste und Regel-Namen aus (Kundendomains als Nummer; `--namen` nur von
@@ -231,7 +234,10 @@ paths:
   `core/server/utils/trustedOrigin.ts`), den Namen der Anfrage nur, wo
   `00.tenant.ts` ihn geprüft hat; fehlt `appUrl`, schreibt die App
   `auth.app_url_missing` und fällt zurück. `NUXT_PUBLIC_APP_URL` ist Pflicht
-  auf platform, admin, portfolio und branding.
+  auf platform, admin, portfolio und branding. TERMIN-ERINNERUNGEN fährt die
+  App selbst (Zeit-Lauf `event-reminders` im events-Layer, stündlich, alle
+  Communities, der Mandant kommt aus dem Stempel der Termin-Zeile) — auf dem
+  Server gibt es dafür KEINEN Zeitplan mehr.
 - ZWEI CI-SCHLÜSSEL, ZWEI UMGEBUNGEN (GA1 P08, seit 2026-11-14): GitHub
   Actions erreicht die Server über ZWEI getrennte SSH-Schlüssel, und beide
   liegen nicht mehr auf Repo-Ebene, sondern in GitHub-Umgebungen, die nur den
