@@ -129,6 +129,7 @@ async function runOnce(index, code) {
     method: 'POST',
     cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: `Abnahme ${index}`,
       slug,
       category: 'other',
@@ -204,6 +205,7 @@ try {
     method: 'POST',
     cookie: last.cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: last.site.host, slug: last.site.host.split('.')[0], purpose: 'new', memberRange: 'to100',
       category: 'other', goal: 'discussion', description: 'Aus einer älteren platform.',
       vibe: 'calm', inviteCode: code, locale: 'de',
@@ -227,11 +229,11 @@ try {
   const before = await countTenants()
   const invalid = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie: last.cookie,
-    body: { name: 'x', slug: 'login', category: 'other', vibe: 'calm', inviteCode: code },
+    body: { operatorTerms: true, name: 'x', slug: 'login', category: 'other', vibe: 'calm', inviteCode: code },
   })
   const quotaBlocked = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie: last.cookie,
-    body: { name: 'Zweite', slug: `zweite-${Date.now().toString(36)}`, category: 'other', vibe: 'calm', inviteCode: code },
+    body: { operatorTerms: true, name: 'Zweite', slug: `zweite-${Date.now().toString(36)}`, category: 'other', vibe: 'calm', inviteCode: code },
   })
   const after = await countTenants()
   check('abgelehnte Eingabe (reservierter Name) → 400', invalid.status === 400, `Status ${invalid.status}`)

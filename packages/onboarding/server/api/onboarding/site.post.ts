@@ -4,6 +4,7 @@
 import { onboardingSiteSchema } from '../../../../control/schemas/onboarding'
 import { callControlPlane, mintRuntimeJwt } from '../../utils/controlPlane'
 import {
+  OPERATOR_TERMS_RECORD_FAILED_CODE,
   OPERATOR_TERMS_REQUIRED_CODE,
   resolveOperatorTerms,
   splitOperatorTerms,
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event) => {
    * Plane ist `.strict()` und wird getrennt ausgerollt, ein neues Feld im
    * Umschlag wäre dort ein 400. Bei eingeschaltetem Schalter ist es Pflicht,
    * und zwar VOR dem JWT und vor dem Control Plane: ohne Bestätigung entsteht
-   * nichts.
+   * nichts — und ohne festgehaltene Bestätigung auch nicht (s. unten).
    */
   const { accepted, rest } = splitOperatorTerms(await readBody(event))
   const appConfig = useAppConfig() as { pukalani?: { onboarding?: { operatorTerms?: OperatorTermsConfig } } }
@@ -61,18 +62,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 400, statusText: 'Validation Error' })
   }
   const site = parsed.data
-  const jwt = await mintRuntimeJwt(event)
-
-  const result = await callControlPlane<CreatedSite>(event, '/api/control/onboarding/site', { jwt, site })
 
   /**
-   * Der Nachweis: EINE Zeile je (Konto, `operator`, Fassung) — der Server hat
-   * das Kästchen in DIESER Anfrage gesehen. Auch bei `reused` (dieselbe
-   * Person legt dieselbe Adresse noch einmal an, etwa nach einem Abbruch):
-   * bestätigt hat sie in dieser Anfrage trotzdem, und eine schon stehende
-   * Zeile bleibt unverändert (409 = `exists`). BEST EFFORT wie die Saat
-   * darunter: die Community existiert schon, am Festhalten darf sie nicht
-   * scheitern. Der Eintrag im Log nennt nur die Konto-Kennung.
+   * DER NACHWEIS STEHT, BEVOR ETWAS ENTSTEHT: EINE Zeile je (Konto,
+   * `operator`, Fassung) — der Server hat das Kästchen in DIESER Anfrage
+   * gesehen. Lässt sie sich nicht schreiben, entsteht keine Community (503):
+   * eine Community ohne festgehaltene Bestätigung wäre genau die Lücke, für
+   * die es das Kästchen gibt („eine Sicherung, die nicht prüfen kann, lehnt
+   * ab"). Umgekehrt schadet eine Zeile ohne Community nicht — bestätigt hat
+   * die Person in dieser Anfrage trotzdem (etwa wenn die Adresse danach schon
+   * vergeben ist). Eine schon stehende Zeile bleibt unverändert (409 =
+   * `exists`), also auch bei einer wiederholten Anlage. Der Eintrag im Log
+   * nennt nur die Konto-Kennung.
    */
   if (operatorTerms) {
     await writeConsentRecord(event, {
@@ -81,14 +82,21 @@ export default defineEventHandler(async (event) => {
       version: operatorTerms.version,
       way: 'wizard',
     }).catch((error: unknown) => {
-      logEvent('warn', 'onboarding.operator_terms_record_failed', {
+      logEvent('error', 'onboarding.operator_terms_record_failed', {
         userId,
-        communityId: result.communityId,
         message: error instanceof Error ? error.message : String(error),
       })
-      return null
+      throw createError({
+        status: 503,
+        statusText: 'Operator terms could not be recorded',
+        data: { code: OPERATOR_TERMS_RECORD_FAILED_CODE },
+      })
     })
   }
+
+  const jwt = await mintRuntimeJwt(event)
+
+  const result = await callControlPlane<CreatedSite>(event, '/api/control/onboarding/site', { jwt, site })
 
   // Das Site-Label sofort, nicht erst beim ersten Besuch: der Wizard leitet
   // direkt auf den frischen Community-Host weiter, und dort soll der Gründer

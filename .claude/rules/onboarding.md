@@ -104,9 +104,11 @@ paths:
   `operatorTerms: true` VOR dem JWT (sonst 400 `operator_terms_required`) und
   nimmt das Feld IMMER vom Body, bevor das `.strict()`-Schema es sieht — es
   reist nie ins Control Plane (zwei Deployments, ein älteres Control Plane
-  antwortete sonst 400). Nach der Anlage (auch `reused`) eine Zeile in
-  `consent_records` mit `kind: 'operator'`, `way: 'wizard'`, best effort
-  (`onboarding.operator_terms_record_failed`). NIE über
+  antwortete sonst 400). VOR der Anlage (auch bei `reused`) eine Zeile in
+  `consent_records` mit `kind: 'operator'`, `way: 'wizard'`; lässt sie sich
+  nicht schreiben, entsteht nichts (503 `operator_terms_record_failed` —
+  keine Community ohne festgehaltene Bestätigung; eine Zeile ohne Community
+  schadet nicht). NIE über
   `pukalani.auth.termsUrl`/`requiredConsents` — die Tür fragte sonst jedes
   Mitglied (`GatedConsentKind` schließt `operator` vom Typ her aus). Neue
   Fassung ⇒ `version` in `apps/platform/app/app.config.ts` UND die

@@ -28,6 +28,8 @@
 
 /** Grund im 400, wenn das Kästchen fehlt (der zentrale Handler hebt ihn als `reason`). */
 export const OPERATOR_TERMS_REQUIRED_CODE = 'operator_terms_required'
+/** Grund-Code, wenn sich die Bestätigung nicht festhalten ließ (503, es entsteht nichts). */
+export const OPERATOR_TERMS_RECORD_FAILED_CODE = 'operator_terms_record_failed'
 
 /** Das Feld im Body der Anlage-Route. */
 export const OPERATOR_TERMS_FIELD = 'operatorTerms'

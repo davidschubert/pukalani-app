@@ -261,6 +261,7 @@ async function createCommunity(cookie, slug, name, code) {
     method: 'POST',
     cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name, slug,
       purpose: 'new', memberRange: 'to100', category: 'club', goal: 'discussion',
       description: 'Wegwerf-Community für den Beweis der eigenen Domain.',

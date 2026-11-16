@@ -6,8 +6,9 @@ import type { H3Event } from 'h3'
  *
  * `POST /api/onboarding/site` (Platform-Seite) verlangt bei eingeschaltetem
  * Schalter `operatorTerms: true` im Body — VOR dem JWT und vor dem Control
- * Plane — und hält die Bestätigung nach der Anlage als Zeile fest
- * (`kind: 'operator'`, `way: 'wizard'`). Das Feld reist NIE ins Control Plane
+ * Plane — und hält die Bestätigung VOR der Anlage als Zeile fest
+ * (`kind: 'operator'`, `way: 'wizard'`); lässt sie sich nicht schreiben,
+ * entsteht nichts. Das Feld reist NIE ins Control Plane
  * (getrennte Deployments, `.strict()`-Schema dort).
  *
  * Nachgebildet ist, was hinter einer Naht liegt: Control Plane, JWT, die
@@ -106,7 +107,7 @@ describe('POST /api/onboarding/site — Betreiber-Bedingungen', () => {
     expect(callControlPlane).not.toHaveBeenCalled()
   })
 
-  it('Schalter an, Kästchen gesetzt ⇒ Control Plane OHNE das Feld, danach die Zeile', async () => {
+  it('Schalter an, Kästchen gesetzt ⇒ erst die Zeile, dann das Control Plane OHNE das Feld', async () => {
     body = { ...SITE, operatorTerms: true }
     await expect(createSite(event)).resolves.toMatchObject({ communityId: 'c1' })
     expect(sentSite()).toEqual(SITE)
@@ -115,7 +116,7 @@ describe('POST /api/onboarding/site — Betreiber-Bedingungen', () => {
     expect(writeConsentRecord.mock.calls[0]?.[1]).toEqual({
       userId: 'u-owner', kind: 'operator', version: '2026-11-entwurf-1', way: 'wizard',
     })
-    expect(order).toEqual(['jwt', 'control:/api/control/onboarding/site', 'consent:operator'])
+    expect(order).toEqual(['consent:operator', 'jwt', 'control:/api/control/onboarding/site'])
   })
 
   it('auch bei einer wiederholten Anlage (reused) wird die Bestätigung dieser Anfrage festgehalten', async () => {
@@ -125,14 +126,24 @@ describe('POST /api/onboarding/site — Betreiber-Bedingungen', () => {
     expect(writeConsentRecord).toHaveBeenCalledTimes(1)
   })
 
-  it('scheitert das Festhalten, bleibt die Anlage ein Erfolg — mit Warnung im Log, ohne E-Mail', async () => {
+  it('scheitert das Festhalten ⇒ 503 operator_terms_record_failed, kein JWT, kein Control Plane, Fehler im Log ohne E-Mail', async () => {
     recordFails = true
     body = { ...SITE, operatorTerms: true }
-    await expect(createSite(event)).resolves.toMatchObject({ communityId: 'c1' })
-    const warning = logs.find(entry => entry.name === 'onboarding.operator_terms_record_failed')
-    expect(warning?.level).toBe('warn')
-    expect(warning?.data).toMatchObject({ userId: 'u-owner', communityId: 'c1' })
-    expect(JSON.stringify(warning?.data)).not.toContain('owner@example.test')
+    const thrown = await rejection()
+    expect(thrown?.status).toBe(503)
+    expect(thrown?.data?.code).toBe('operator_terms_record_failed')
+    expect(mintRuntimeJwt).not.toHaveBeenCalled()
+    expect(callControlPlane).not.toHaveBeenCalled()
+    const entry = logs.find(item => item.name === 'onboarding.operator_terms_record_failed')
+    expect(entry?.level).toBe('error')
+    expect(entry?.data).toMatchObject({ userId: 'u-owner' })
+    expect(JSON.stringify(entry?.data)).not.toContain('owner@example.test')
+  })
+
+  it('ein ungültiger Rest ⇒ 400, und es wird auch keine Zeile geschrieben', async () => {
+    body = { ...SITE, slug: 'X', operatorTerms: true }
+    await rejection()
+    expect(writeConsentRecord).not.toHaveBeenCalled()
   })
 
   it('ein ungültiger Rest bleibt ein 400 aus dem Schema, ohne Control Plane', async () => {

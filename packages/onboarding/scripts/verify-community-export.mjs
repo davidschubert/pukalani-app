@@ -206,6 +206,7 @@ try {
     method: 'POST',
     cookie: ownerCookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: 'U20 Exportprobe',
       slug,
       purpose: 'new',
