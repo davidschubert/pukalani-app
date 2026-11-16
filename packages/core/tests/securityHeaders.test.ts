@@ -73,8 +73,8 @@ describe('baseSecurityHeaders', () => {
     expect(headers['strict-transport-security']).not.toMatch(/includeSubDomains|preload/i)
   })
 
-  it('Stufe 1 ist ein Tag', () => {
-    expect(HSTS_MAX_AGE_SECONDS).toBe(86400)
+  it('Stufe 2 ist ein Jahr (Stufe 1 war ein Tag)', () => {
+    expect(HSTS_MAX_AGE_SECONDS).toBe(31536000)
   })
 
   it('lokaler Host: kein HSTS, der Rest bleibt', () => {
@@ -246,7 +246,7 @@ describe('Plugin-Haken an echten Antworten', () => {
     const { status, raw } = await get('/api/ping', 'example.org')
     expect(status).toBe(200)
     expectEachOnce(raw, [...BASE, 'strict-transport-security'])
-    expect(values(raw, 'strict-transport-security')).toEqual(['max-age=86400'])
+    expect(values(raw, 'strict-transport-security')).toEqual(['max-age=31536000'])
     expect(values(raw, 'x-frame-options')).toEqual([])
     // frame-ancestors gilt nur für Dokumente
     expect(values(raw, 'content-security-policy')).toEqual([])
