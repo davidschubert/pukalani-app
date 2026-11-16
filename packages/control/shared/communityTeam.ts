@@ -343,6 +343,10 @@ export interface CommunityErasureResult {
    *  aus `label` herausgenommen) — der Code selbst bleibt, siehe
    *  `inviteCodeErasure`. */
   inviteCodesAnonymized: number
+  /** Gelöschte `trial_claims`-Zeile (0 oder 1, BE-015). Optional, weil eine
+   *  ältere Control-Plane-Fassung das Feld noch nicht kennt (platform und
+   *  admin werden getrennt ausgeliefert). */
+  trialClaimsDeleted?: number
   /** Klartext zu jeder zurückgehaltenen Zeile — gehört ins Log, nie in eine
    *  Browser-Antwort (es nennt fremde Communities). */
   retained: RetainedMembership[]
@@ -436,7 +440,20 @@ export interface AbuseReportExport {
   createdAt: string
 }
 
+/**
+ * Die Testphase dieses Kontos (BE-015, `trial_claims`), wie die DSGVO-Auskunft
+ * sie zeigt: für welche Community, woher, wann.
+ */
+export interface TrialClaimExport {
+  communityId: string
+  communityName: string
+  source: string
+  claimedAt: string
+}
+
 export interface CommunityUserDataExport {
+  /** `null` = für dieses Konto wurde keine Testphase vergeben. */
+  trialClaim: TrialClaimExport | null
   memberships: CommunityMembershipExport[]
   invites: CommunityInviteExport[]
   inviteRequests: InviteRequestExport[]

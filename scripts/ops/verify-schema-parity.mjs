@@ -242,6 +242,14 @@ const TICKETS_TABLES = ['tickets', 'ticket_files', 'ticket_lists', 'ticket_watch
  */
 const RUNNER_TABLES = ['runners', 'runs', 'run_events']
 
+/**
+ * Control-Plane-Tabellen, die NUR auf `control` (Projekt `admin`) laufen —
+ * anders als `CONTROL_TABLES`, die auch auf account liegen. `trial_claims`
+ * (control-039, BE-015): die Testphase je Konto vergibt ausschließlich das
+ * Control Plane; auf dem Pool gibt es keinen Schreiber und keinen Leser.
+ */
+const CONTROL_ONLY_TABLES = ['trial_claims']
+
 /* ────────────────────────────────────────────────────────────────────────────
  * INSTANZ-SOLLS — je Instanz die Vereinigung ihrer Layer-Blöcke.
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -273,6 +281,7 @@ const CONTROL_SOLL = [
   ...BILLING_TABLES,
   ...CUSTOMER_FEEDBACK_TABLES,
   ...CONTROL_TABLES,
+  ...CONTROL_ONLY_TABLES,
   ...RUNNER_TABLES,
   /**
    * Mit E10 (2026-07-30) sind feedback UND tickets in apps/control

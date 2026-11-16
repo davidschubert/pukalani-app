@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
     invitesAnonymized: result.invitesAnonymized,
     inviteRequestsDeleted: result.inviteRequestsDeleted,
     inviteCodesAnonymized: result.inviteCodesAnonymized,
+    trialClaimsDeleted: result.trialClaimsDeleted ?? 0,
     retained: result.retained.map(entry => `${entry.communityName} (${entry.role}, ${entry.reason})`).join(', '),
   })
 
