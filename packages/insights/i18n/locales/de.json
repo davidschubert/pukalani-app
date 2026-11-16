@@ -176,6 +176,8 @@
         "failedNote": "{count} Adressen waren nicht erreichbar. Sie bleiben auf der Liste und bekommen die nächste Ausgabe.",
         "stoppedTitle": "Angehalten",
         "stoppedText": "Es gibt gerade keinen Mail-Weg. Sobald der Server wieder einen hat, setzt der Knopf genau hier fort — niemand bekommt etwas doppelt.",
+        "alreadyRunningTitle": "Der Versand läuft schon",
+        "alreadyRunningText": "Ein anderer Aufruf schickt gerade diese Ausgabe. Der Stand aktualisiert sich gleich.",
         "emptyTitle": "Noch steht niemand auf der Liste",
         "emptyText": "Sobald sich jemand eingetragen und bestätigt hat, steht hier der Knopf.",
         "notPublicTitle": "Erst freigeben",
@@ -272,6 +274,7 @@
       "runDone": "Fertig: {channels} Kanäle, {videos} Videos, {upserted} gespeichert, {deleted} entfernt, {tooOld} zu alt.",
       "runErrors": "ein Fehler unterwegs | ein Fehler unterwegs | {count} Fehler unterwegs",
       "runFailed": "Der Lauf hat nicht geklappt.",
+      "runPartial": "Teil-Ergebnis: Nicht alle Kanäle wurden in der Zeit gelesen. Der Rest folgt beim nächsten Lauf.",
       "rateLimited": "Zu viele Läufe in dieser Stunde. Gleich wieder versuchen.",
       "notConfigured": "Ohne API-Schlüssel kann der Radar nichts holen.",
       "skipped": {
@@ -344,7 +347,8 @@
         "slug_taken": "Zu diesem Arbeitstitel ist keine freie Adresse zu finden. Benenne das Video um oder lege den Beitrag von Hand an.",
         "generic": "Das hat nicht geklappt.",
         "brief_running": "Zu diesem Video läuft gerade ein Lauf. Warte, bis er fertig ist — ein zweiter würde ein zweites Mal kosten.",
-        "brief_failed": "Dieser Lauf hat keinen Brief geliefert. Entweder kann das Modell dieses Video nicht lesen (nicht jedes öffentliche Video lässt sich lesen), oder es hat zu lange gebraucht. Ein zweiter Versuch kostet einen weiteren Lauf."
+        "brief_failed": "Dieser Lauf hat keinen Brief geliefert. Entweder kann das Modell dieses Video nicht lesen (nicht jedes öffentliche Video lässt sich lesen), oder es hat zu lange gebraucht. Ein zweiter Versuch kostet einen weiteren Lauf.",
+        "brief_lookup_failed": "Der Entwurf zu diesem Video ließ sich gerade nicht prüfen. Bitte versuch es gleich noch einmal – es wurde nichts berechnet."
       }
     },
     "channels": {
@@ -485,6 +489,7 @@
       "backToDraft": "Zurück in den Entwurf",
       "stateChanged": "Zustand geändert",
       "stateBlocked": "{count} Punkte offen — der Zustand bleibt, wie er war.",
+      "sourcesTimedOut": "Eine Quelle ließ sich in der Zeit nicht lesen und gilt deshalb als nicht belegt. Ein zweiter Versuch kann reichen. | {count} Quellen ließen sich in der Zeit nicht lesen und gelten deshalb als nicht belegt. Ein zweiter Versuch kann reichen.",
       "translateDone": "Übersetzung liegt als Entwurf vor — noch nicht redigiert.",
       "draftPanel": "KI-Entwurf",
       "draftHint": "Ein Brief, ein Rohtext. Der Entwurf bleibt Entwurf: von der KI führt kein Weg direkt in die Redaktion.",

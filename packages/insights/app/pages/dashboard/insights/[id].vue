@@ -240,6 +240,11 @@ async function changeState(to: InsightsState): Promise<void> {
       title: result.changed ? t('insights.editor.stateChanged') : t('insights.editor.stateBlocked', { count: result.issues.length }),
       color: result.changed ? 'success' : 'warning',
     })
+    // Quellen, die das Gate in seiner Frist nicht lesen konnte (GA1 P18):
+    // sie gelten als nicht belegt, aber ein zweiter Versuch kann reichen.
+    if (!result.changed && result.sourcesTimedOut) {
+      toast.add({ title: t('insights.editor.sourcesTimedOut', result.sourcesTimedOut), color: 'info' })
+    }
   }
   catch (error) {
     fail(error)
@@ -412,6 +417,8 @@ const SEND_ROUNDS_MAX = 400
  *  · `aborted` — es gibt keinen Mail-Weg. Jeder weitere Aufruf scheiterte
  *    gleich; der Fortschritt steht in der Ablage, der Knopf setzt später fort.
  *  · ein Fehler — der Grund steht im Toast, der Stand wird neu geholt.
+ *    Ausnahme `run_running` (BE-010): ein anderer Aufruf schickt gerade —
+ *    ein ruhiger Hinweis, kein Fehler.
  */
 async function sendNewsletter(input: { introDe: string, introEn: string }): Promise<void> {
   newsletterSending.value = true
@@ -437,7 +444,20 @@ async function sendNewsletter(input: { introDe: string, introEn: string }): Prom
     }
   }
   catch (error) {
-    fail(error)
+    // BE-010: ein anderer Aufruf hält gerade die Versand-Sperre (zweiter
+    // Reiter, ein Klick nach abgerissener Antwort). Das ist kein Fehler — der
+    // Versand läuft ja. Ruhiger Hinweis statt rotem Toast; die Schleife ist
+    // damit zu Ende, und `finally` holt den Stand neu.
+    if (reasonOf(error) === 'run_running') {
+      toast.add({
+        title: t('insights.newsletter.send.alreadyRunningTitle'),
+        description: t('insights.newsletter.send.alreadyRunningText'),
+        color: 'info',
+      })
+    }
+    else {
+      fail(error)
+    }
   }
   finally {
     newsletterSending.value = false

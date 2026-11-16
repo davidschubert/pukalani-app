@@ -81,7 +81,10 @@ export default defineEventHandler(async (event): Promise<InsightsPostStateRespon
     // KEIN 409: die Liste käme dort nie an (Begründung am Typ
     // `InsightsPostStateResponse`). Geschrieben wird nichts — der Zustand
     // bleibt, was er war.
-    return { post: current, issues: verdict.issues, changed: false }
+    // `sourcesTimedOut` (GA1 P18): Quellen, die in der Gesamtfrist nicht
+    // gelesen wurden — sie stehen schon als „nicht belegt" in der Liste; die
+    // Zahl sagt nur, dass ein zweiter Versuch reichen kann.
+    return { post: current, issues: verdict.issues, changed: false, sourcesTimedOut: verdict.sourcesTimedOut }
   }
 
   const saved = await saveInsightsPostRow(event, id, next, verdict.clearance)

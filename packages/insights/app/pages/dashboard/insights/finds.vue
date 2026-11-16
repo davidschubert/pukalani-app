@@ -334,34 +334,29 @@ function syncBriefRuns(): void {
 
 watch(items, syncBriefRuns)
 
-onMounted(() => {
-  syncBriefRuns()
+onMounted(syncBriefRuns)
 
-  let timer: ReturnType<typeof setInterval> | null = null
-  const stop = () => {
-    if (timer === null) return
-    clearInterval(timer)
-    timer = null
-  }
-
-  watchEffect(() => {
-    if (!briefPolling.value) {
-      stop()
-      return
-    }
-    if (timer !== null) return
-    timer = setInterval(() => {
-      // Die Uhr auch OHNE Antwort stellen: so springt ein verschollener Lauf
-      // um, selbst wenn das Nachfragen gerade scheitert.
-      briefNow.value = Date.now()
-      // Ein Fehlschlag des Nachfragens ist KEIN Toast: die Seite hat gerade
-      // keinen Auftrag des Menschen, und eine Netzschluckauf-Meldung alle
-      // fünf Sekunden wäre schlimmer als die Verzögerung.
-      void refresh().catch(() => {})
-    }, INSIGHTS_BRIEF_POLL_MS)
-  })
-
-  onBeforeUnmount(stop)
+/**
+ * DAS NACHFRAGEN — seit GA1 P18 über die gemeinsame Hilfe des Core
+ * (`useRunPolling`), dieselbe wie auf der Seite des Marktvergleichs: ein Takt
+ * nur, solange ein Lauf offen ist UND der Reiter sichtbar ist; wird er wieder
+ * sichtbar, fragt sie sofort einmal nach. Vorher lief der Takt auch in einem
+ * versteckten Reiter weiter — alle fünf Sekunden eine Abfrage, die niemand
+ * ansah.
+ */
+useRunPolling({
+  active: briefPolling,
+  intervalMs: INSIGHTS_BRIEF_POLL_MS,
+  tick: async () => {
+    // Die Uhr auch OHNE Antwort stellen: so springt ein verschollener Lauf
+    // um, selbst wenn das Nachfragen gerade scheitert.
+    briefNow.value = Date.now()
+    // Ein Fehlschlag des Nachfragens ist KEIN Toast (die Hilfe schluckt ihn):
+    // die Seite hat gerade keinen Auftrag des Menschen, und eine
+    // Netzschluckauf-Meldung alle fünf Sekunden wäre schlimmer als die
+    // Verzögerung.
+    await refresh()
+  },
 })
 
 /** Was an der Zeile über ihren Lauf steht — ein Satz je Zustand. */

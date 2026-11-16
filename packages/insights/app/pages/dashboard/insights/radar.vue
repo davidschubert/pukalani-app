@@ -134,6 +134,11 @@ async function runNow(): Promise<void> {
         color: result.errors > 0 ? 'warning' : 'success',
         description: result.errors > 0 ? t('insights.radar.runErrors', { count: result.errors }) : undefined,
       })
+      // Die Abruf-Frist des Knopfes ist gerissen (GA1 P18): kein Fehler, nur
+      // ein Teil — geschrieben ist, was geholt war, der Rest kommt nachts.
+      if (result.partial) {
+        toast.add({ title: t('insights.radar.runPartial'), color: 'info' })
+      }
     }
     await refresh()
   }

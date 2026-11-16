@@ -115,6 +115,35 @@ export function insightsSourcesToFetch(next: InsightsPost, published?: InsightsP
 }
 
 /**
+ * DIE GESAMTFRIST DER QUELLEN-ABRUFE EINES GATE-LAUFS (GA1 P18, BE-008).
+ *
+ * Bis zu zwanzig Quellen nacheinander, je bis zu 30 s, wären bis zu zehn
+ * Minuten in EINER Anfrage — der Webserver reisst nach 60 s ab, die Redaktion
+ * sähe einen Fehler, und der Beitrag würde im Hintergrund TROTZDEM
+ * veröffentlicht. Nach 45 s wird deshalb kein Abruf mehr abgewartet: eine
+ * Quelle, die bis dahin nicht gelesen ist, zählt wie eine nicht lesbare
+ * (`''` = nicht belegbar). Das ist FAIL-CLOSED — mit einer solchen Quelle
+ * besteht das Gate nicht, und es wird NICHT veröffentlicht. Die Frist steht
+ * hier, an der EINEN Stelle, durch die beide Aufrufer des Gates gehen
+ * (Zustandswechsel und Speichern eines veröffentlichten Beitrags).
+ */
+export const INSIGHTS_GATE_FETCH_BUDGET_MS = 45_000
+
+export interface InsightsSourceTextsOptions {
+  /** Vorgabe `INSIGHTS_GATE_FETCH_BUDGET_MS`. */
+  budgetMs?: number
+  /** Die Uhr der Frist — Vorgabe `Date.now`, injizierbar für den Test. */
+  now?: () => number
+}
+
+export interface InsightsSourceTextsResult {
+  /** Adresse ⇒ Seitentext; `''` heisst „nicht belegbar". */
+  texts: Record<string, string>
+  /** Wie viele Quellen in der Frist NICHT gelesen wurden (in `texts` als `''`). */
+  timedOut: number
+}
+
+/**
  * DIE TEXTE DER AUSGEWÄHLTEN QUELLEN — für den Gate-Lauf.
  *
  * Nacheinander und nicht parallel: zwanzig gleichzeitige Anfragen an fremde
@@ -126,25 +155,78 @@ export function insightsSourcesToFetch(next: InsightsPost, published?: InsightsP
  * `own-data` wird NICHT ausgenommen: eine eigene Zahl ist auch ein Beleg, ihre
  * Adresse ist öffentlich, und eine Ausnahme wäre die Regel „unsere Zitate
  * prüfen wir nicht".
+ *
+ * DIE FRIST (`INSIGHTS_GATE_FETCH_BUDGET_MS`): ein Abruf, der bei Fristende
+ * noch läuft, wird nicht weiter abgewartet (er läuft im Hintergrund aus, sein
+ * Fehler ist gefangen); jede danach noch offene Quelle wird gar nicht erst
+ * abgerufen. Beide zählen in `timedOut` und stehen als `''` in `texts`.
  */
-export async function insightsSourceTexts(sources: readonly InsightsSource[]): Promise<Record<string, string>> {
+export async function insightsSourceTexts(
+  sources: readonly InsightsSource[],
+  options: InsightsSourceTextsOptions = {},
+): Promise<InsightsSourceTextsResult> {
+  const now = options.now ?? Date.now
+  const deadline = now() + (options.budgetMs ?? INSIGHTS_GATE_FETCH_BUDGET_MS)
   const texts: Record<string, string> = {}
   let fetched = 0
+  let timedOut = 0
   for (const source of sources) {
     if (!source.quote || !source.url) continue
     if (texts[source.url] !== undefined) continue
     if (fetched >= INSIGHTS_SOURCE_FETCH_MAX) break
-    fetched += 1
-    try {
-      const site = await fetchBrandSiteForCheck(source.url)
-      texts[source.url] = pageTextOf(site.content)
-    }
-    catch {
-      // Leer statt fehlend: nicht lesbar heisst nicht belegbar (s. Kopf).
+    const remaining = deadline - now()
+    if (remaining <= 0) {
+      // In der Frist nicht mehr begonnen — zählt wie nicht lesbar (s. oben).
       texts[source.url] = ''
+      timedOut += 1
+      continue
     }
+    fetched += 1
+    const outcome = await withinBudget(fetchSourceText(source.url), remaining)
+    if (outcome === TIMED_OUT) {
+      texts[source.url] = ''
+      timedOut += 1
+      continue
+    }
+    // Leer statt fehlend: nicht lesbar heisst nicht belegbar (s. Kopf).
+    texts[source.url] = outcome ?? ''
   }
-  return texts
+  return { texts, timedOut }
+}
+
+/**
+ * Ein Abruf, der NIE ablehnt: Text, oder `null` bei jedem Fehler. So darf er
+ * nach der Frist im Hintergrund auslaufen, ohne als unbehandelte Ablehnung
+ * den Prozess mitzunehmen.
+ */
+async function fetchSourceText(url: string): Promise<string | null> {
+  try {
+    const site = await fetchBrandSiteForCheck(url)
+    return pageTextOf(site.content)
+  }
+  catch {
+    return null
+  }
+}
+
+const TIMED_OUT = Symbol('timed-out')
+
+/**
+ * Auf einen Abruf höchstens `ms` warten. Der Zeitgeber wird in jedem Fall
+ * geräumt und hält den Prozess nicht am Leben (`unref`).
+ */
+async function withinBudget<T>(work: Promise<T>, ms: number): Promise<T | typeof TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const expired = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMED_OUT), ms)
+    if (typeof timer === 'object' && timer !== null && 'unref' in timer) timer.unref()
+  })
+  try {
+    return await Promise.race([work, expired])
+  }
+  finally {
+    clearTimeout(timer)
+  }
 }
 
 /**
@@ -273,9 +355,14 @@ export interface InsightsGateInput {
   brandRows: readonly InsightsBrandRow[]
 }
 
+/**
+ * `sourcesTimedOut` (GA1 P18): wie viele Quellen in der Gesamtfrist nicht
+ * gelesen wurden. Sie stehen schon als `quote_not_grounded` in `issues`; die
+ * Zahl sagt der Redaktion nur, dass ein zweiter Versuch reichen KANN.
+ */
 export type InsightsGateVerdict =
-  | { passed: true, issues: InsightsReviewIssue[], clearance: InsightsPublicClearance }
-  | { passed: false, issues: InsightsReviewIssue[] }
+  | { passed: true, issues: InsightsReviewIssue[], clearance: InsightsPublicClearance, sourcesTimedOut: number }
+  | { passed: false, issues: InsightsReviewIssue[], sourcesTimedOut: number }
 
 /**
  * DAS GATE DER SIEBEN PRÜFREGELN — der EINE Einstieg, den Routen rufen.
@@ -297,8 +384,9 @@ export async function insightsPublicationGate(input: InsightsGateInput): Promise
   const { next, published, brandRows } = input
   const selected = insightsSourcesToFetch(next, published)
   const chosen = new Set<InsightsSource>(selected)
+  const fetched = await insightsSourceTexts(selected)
   const issues = insightsReviewIssues(next, {
-    sourceTexts: await insightsSourceTexts(selected),
+    sourceTexts: fetched.texts,
     flagText: insightsFlagText(next, brandRows),
     knownBrandIds: insightsKnownBrandIds(brandRows),
     methodologyLinked: insightsMethodologyLinked(next),
@@ -307,8 +395,8 @@ export async function insightsPublicationGate(input: InsightsGateInput): Promise
     const source = next.sources[issue.at.index]
     return !!source && chosen.has(source)
   })
-  if (issues.length > 0) return { passed: false, issues }
-  return { passed: true, issues: [], clearance: issueClearance(next, 'gate') }
+  if (issues.length > 0) return { passed: false, issues, sourcesTimedOut: fetched.timedOut }
+  return { passed: true, issues: [], clearance: issueClearance(next, 'gate'), sourcesTimedOut: fetched.timedOut }
 }
 
 /** Die Felder, die ein Übersetzen-Lauf ändern darf — ausser den Texten der

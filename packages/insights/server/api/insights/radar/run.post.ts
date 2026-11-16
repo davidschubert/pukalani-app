@@ -1,6 +1,7 @@
 import {
   INSIGHTS_RADAR_NOT_CONFIGURED_CODE,
   INSIGHTS_RADAR_RATE_LIMIT_CODE,
+  INSIGHTS_RADAR_RUN_FETCH_BUDGET_MS,
   INSIGHTS_RADAR_RUN_LIMIT,
   INSIGHTS_RADAR_RUN_WINDOW_MS,
   insightsRadarRunKey,
@@ -61,5 +62,7 @@ export default defineEventHandler(async (event): Promise<InsightsRadarRunRespons
     })
   }
 
-  return await runInsightsRadarSweep({ event })
+  // Die Abruf-Frist gilt NUR hier, am Knopf (Begründung an der Konstante):
+  // nach ihr beginnt kein neuer Abruf mehr, und die Antwort trägt `partial`.
+  return await runInsightsRadarSweep({ event, deadlineMs: INSIGHTS_RADAR_RUN_FETCH_BUDGET_MS })
 })

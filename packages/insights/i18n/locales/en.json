@@ -176,6 +176,8 @@
         "failedNote": "{count} addresses could not be reached. They stay on the list and will get the next piece.",
         "stoppedTitle": "Stopped",
         "stoppedText": "There is no mail route right now. Once the server has one again, the button continues exactly here — nobody gets anything twice.",
+        "alreadyRunningTitle": "The send is already running",
+        "alreadyRunningText": "Another request is sending this issue right now. The status will update in a moment.",
         "emptyTitle": "Nobody on the list yet",
         "emptyText": "As soon as somebody has signed up and confirmed, the button appears here.",
         "notPublicTitle": "Publish first",
@@ -272,6 +274,7 @@
       "runDone": "Done: {channels} channels, {videos} videos, {upserted} stored, {deleted} removed, {tooOld} too old.",
       "runErrors": "one error on the way | one error on the way | {count} errors on the way",
       "runFailed": "The run did not work.",
+      "runPartial": "Partial result: not every channel was read in time. The rest follows with the next run.",
       "rateLimited": "Too many runs this hour. Try again shortly.",
       "notConfigured": "Without an API key the radar cannot fetch anything.",
       "skipped": {
@@ -344,7 +347,8 @@
         "slug_taken": "No free address could be found for this working title. Rename the video or create the post by hand.",
         "generic": "That did not work.",
         "brief_running": "A run for this video is already in flight. Wait until it is done — a second one would cost a second time.",
-        "brief_failed": "This run did not deliver a brief. Either the model cannot read this video (not every public video can be read), or it took too long. A second attempt costs another run."
+        "brief_failed": "This run did not deliver a brief. Either the model cannot read this video (not every public video can be read), or it took too long. A second attempt costs another run.",
+        "brief_lookup_failed": "The draft for this video could not be checked just now. Please try again in a moment – nothing was charged."
       }
     },
     "channels": {
@@ -485,6 +489,7 @@
       "backToDraft": "Back to draft",
       "stateChanged": "State changed",
       "stateBlocked": "{count} points open — the state stays as it was.",
+      "sourcesTimedOut": "One source could not be read in time and therefore counts as not supported. A second try may be enough. | {count} sources could not be read in time and therefore count as not supported. A second try may be enough.",
       "translateDone": "The translation is a draft — not reviewed yet.",
       "draftPanel": "AI draft",
       "draftHint": "One brief, one rough text. The draft stays a draft: there is no path from the model straight into review.",
