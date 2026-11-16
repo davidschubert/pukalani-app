@@ -9,6 +9,11 @@ export default defineAppConfig({
   // }
   pukalani: {
     brand: { name: 'Pukalani Control' },
+    // STRUKTURIERTE FEHLERZEILEN (OPS-011, 2026-11-16): 5xx-Zeilen am
+    // zentralen Fehler-Hook UND die Browser-Fehler-Annahme
+    // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
+    // Wächter zählt diese Zeilen in den pm2-Logs.
+    observability: { enabled: true, clientErrors: true },
     // DIE ADRESSE DIESER KONSOLE ist `admin.pukalani.app` (AH-4, 2026-08-11).
     // Der Altname `control.pukalani.app` ist seit AH-4b (2026-08-18, Davids
     // Entscheidung) BEWUSST tot: die ploi-Site wurde im Panel wirklich

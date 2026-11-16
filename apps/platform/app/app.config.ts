@@ -90,7 +90,10 @@ export default defineAppConfig({
     // Strukturierte 5xx-Logs + Client-Error-Inbox — auf der Multi-Tenant-App
     // ohnehin überfällig (der platform-.env-Ausfall wäre damit im Log
     // sofort benannt gewesen statt nur als generischer 500 sichtbar).
-    observability: { enabled: true },
+    // Seit OPS-011 (2026-11-16) auch die Browser-Fehler-Annahme
+    // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
+    // Wächter zählt diese Zeilen in den pm2-Logs.
+    observability: { enabled: true, clientErrors: true },
     /**
      * ANMELDUNG (F37, 2026-08-02) — beides war im Silo an und im Pool aus.
      *
