@@ -7,7 +7,7 @@ export default {
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): posts-023 legt community_posts.translations an.
-  schema: { latest: '023', probe: { migration: '023', table: 'community_posts', column: 'translations' } },
+  schema: { latest: '024', probe: { migration: '023', table: 'community_posts', column: 'translations' } },
   apiPrefixes: ['/api/posts'],
   title: { en: 'Posts', de: 'Beiträge' },
   description: {

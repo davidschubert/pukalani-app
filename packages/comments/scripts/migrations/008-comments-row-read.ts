@@ -14,6 +14,12 @@
  * IDEMPOTENT: updateTable setzt absolut; der Row-Backfill prüft je Row den
  * Zielzustand und schreibt nur bei Abweichung.
  *
+ * SEIT comments-021 (SEC-002, 2026-11-16) SETZT DIESE MIGRATION `create(users)`
+ * NICHT MEHR: Kommentare schreibt nur noch der Server, das Tabellenrecht
+ * besitzt comments-021. Weil `updateTable` hier absolut setzt, hätte ein
+ * voller Lauf die Tabelle sonst jedes Mal wieder geöffnet. Der Rest (kein
+ * Table-`read(any)`, Row-Backfill) bleibt.
+ *
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/comments/scripts/migrations/008-comments-row-read.ts
  *
@@ -54,10 +60,10 @@ try {
     databaseId,
     tableId: 'comments',
     name: 'Comments',
-    permissions: [Permission.create(Role.users())],
+    permissions: [],
     rowSecurity: true,
   })
-  console.log('✔ comments: Table-Permissions = [create(users)] (read(any) entfernt)')
+  console.log('✔ comments: kein Tabellenrecht (read(any) entfernt; Zielzustand von comments-021)')
 }
 catch (error) {
   if (hasCode(error, 404)) {
