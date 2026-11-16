@@ -31,6 +31,47 @@ paths:
   GAST-Kommentar Inhalt ist (Sperre gilt) und trotzdem niemanden zum Mitglied
   macht (kein Konto) — ein Ja/Nein-Flag kann beides nicht gleichzeitig sagen.
   Neue Route mit Operator-Klinke: IMMER prüfen, ob `actor` gesetzt gehört.
+- DER SERVER SCHREIBT, ZEILEN-RECHTE REGELN NUR DAS LESEN (SEC-002, seit
+  2026-11-16 — Davids Entscheidung „künftig schreibt nur noch unser Server"):
+  Appwrite ist unter eigener Adresse für jedes Konto direkt erreichbar. Ein
+  Schreibrecht an einer Tabelle oder Zeile gilt deshalb NEBEN unseren Routen —
+  und was die Route prüft (Mandant, Zugehörigkeit, Sperre, Eingabe, Bremse),
+  prüft Appwrite nicht. Darum: (1) KEINE Tabelle trägt ein Schreibrecht für
+  Konten, (2) KEINE Zeile bekommt `update`/`delete` für ein Konto (kein
+  `ownerUserId`, kein `Permission.update/delete(Role.user(…))`), (3) JEDER
+  Schreibvorgang läuft über den Admin-Client: `tenantDb(event, { as:
+  'operator', actor: 'member' })`, wenn ein Mitglied handelt (Inhalts-Sperre
+  M13 und Beitritt A5 hängen am `actor` und gelten unverändert), `actor:
+  'guest'` für Gäste, ohne `actor` für Zähler und Moderation. GELESEN wird
+  weiter über die Mitglieder-Klinke, wo das Leserecht der Zeile die
+  Sichtbarkeit entscheidet — Leserechte bleiben, Realtime hängt an ihnen.
+  FOLGE, DIE MAN NICHT VERGESSEN DARF: mit dem Admin-Client ist die Prüfung in
+  der Route die EINZIGE. „Gehört die Zeile diesem Konto?" beantwortet die
+  Route selbst und VOR dem Schreiben — durch den Vergleich der Konto-Id
+  (`authorId === user.$id`; Gast-Zeilen und Grabsteine tragen eine leere Id
+  und gehören niemandem) oder indem sie die eigene Zeile über `userId`/
+  `reporterId` = Konto sucht und nur die so gefundene Zeile anfasst. Zwei
+  Routen verließen sich dafür bis dahin allein auf Appwrites 401. DIE LISTE
+  der Tabellen steht in `scripts/lib/server-written-tables.mjs`; drei Netze
+  halten sie: `packages/core/tests/serverWrittenTables.test.ts` (jede
+  schreibende Aufrufstelle hängt fest an der Operator-Klinke, keine Datei
+  vergibt beim Anlegen ein Schreibrecht), `pnpm check:permissions` Stufe 2
+  (keine Migration gibt einer dieser Tabellen ein Schreib-Recht zurück) und
+  das Beweis-Skript `packages/core/scripts/verify-server-only-writes.mjs`
+  (nur lokal: direkt anlegen, ändern, löschen ⇒ 401; `--expect-closed all
+  --expect-clean all`). NEUE TABELLE MIT INHALT VON KONTEN ⇒ ohne Tabellenrecht
+  anlegen, in die Liste eintragen, Route mit Operator-Klinke. EINE BESTEHENDE
+  TABELLE UMSTELLEN geht in drei Schritten und NIE zwei auf einmal: erst der
+  Code (läuft mit alten Rechten und ohne sie) auf allen Seiten live, dann die
+  Rechte-Migration der Tabelle (`scripts/migrations-lib/tableWriteRights.mts`,
+  Rückweg unter `packages/<layer>/scripts/rollback/` — nicht im Ordner
+  `migrations/`, der Runner führe ihn sonst mit aus), dann der Aufräum-Lauf
+  für vorhandene Zeilen (`pnpm ops:strip-row-write-rights`, zählt ohne
+  `--apply` nur, Lauf-Sperre in `system_runs`, bricht ab, solange die Tabelle
+  noch ein Schreib-Recht trägt). Das ist die EINE begründete Ausnahme von
+  „Migration vor dem Merge". Was offen bleibt: das LESEN — ein Konto liest
+  direkt bei Appwrite weiter jede Zeile, für die seine Rollen ein Leserecht
+  tragen, und immer die ganze Zeile (docs/plans/PUKALANI-KONTO.md, § 9).
 - Warum: Isolation hing an drei Dingen, an die man sich erinnern musste
   (scopeQuery/scopeRow/ID-Prüfung). Am 2026-07-26 hat genau das versagt (drei
   Moderations-Routen lasen fremde Zeilen per ID, commit 1cc4855).

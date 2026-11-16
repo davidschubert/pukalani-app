@@ -575,6 +575,10 @@ Technische Fragen, die sich nur am laufenden System beantworten lassen:
    ein eigener Weg über unseren Server, oder dort bewusst ohne
    Live-Verbindung und mit Abfrage im Takt (wie der 20-Sekunden-Takt, den die
    Anwesenheit schon hat).
+   Stand 2026-11-16 (GA1 P13): mit dem Token lässt sich bei der Datenbank
+   nichts mehr SCHREIBEN (keine Tabelle und keine Zeile trägt ein Schreibrecht
+   für Konten, der Server schreibt). Offen ist das LESEN: das Token liest
+   weiter jede Zeile, für die das Konto ein Leserecht trägt.
 2. **Bindung prüfen ohne Zusatz-Aufruf.** `02.auth.ts` fragt heute je Anfrage
    einmal Appwrite. Die Host-Bindung soll aus dem Umschlag selbst kommen, ohne
    zweite Abfrage.

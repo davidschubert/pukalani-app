@@ -3673,3 +3673,45 @@ alle Communities; auf dem Server gibt es dafür keinen Zeitplan mehr.
 **Wieder prüfen:** `includeSubDomains` für die eigenen Domains, sobald eine
 Liste aller Unter-Adressen vorliegt; die Skript-CSP schärfen, sobald Berichte
 eingesammelt werden (OPEN-ITEMS SE1).
+
+## 2026-11-16 — Schreiben nur noch über den Server; Kontoanlage nur über unsere Anmeldung
+
+**Anlass:** Gesamtaudit 2026-11, Paket P13 (SEC-002, SEC-007, SEC-008,
+BE-003). Die Datenbank ist unter eigener Adresse für jedes Konto erreichbar;
+Schreibrechte an Tabellen und Zeilen galten deshalb neben unseren Routen, und
+ein Konto ließ sich an unserer Registrierung vorbei anlegen. Davids
+Entscheidung vom 2026-11-12: „künftig schreibt nur noch unser Server", Schritt
+für Schritt, Beiträge und Kommentare zuerst.
+
+**Entscheidung (David, Fragen zum Anklicken am 2026-11-16, je die empfohlene
+Antwort):**
+1. **Nachsehen auf Production: ja, nur lesen und zählen.**
+2. **Kontoanlage: „Tür zu und einmal fragen".** Die Anmelde-Wege der
+   Datenbank für Aufrufe ohne Schlüssel werden ausgeschaltet; für den
+   Google-Weg, der sich so nicht schließen lässt, fragt die Seite die
+   Zustimmung beim nächsten Besuch nach und weist Schreibversuche bis dahin
+   ab. Angeboten und nicht gewählt: nur nachfragen; nur sperren.
+3. **Je Etappe ein eigenes Ja für Rechte-Migration und Aufräum-Lauf** — erst
+   zählen, dann schreiben. Vier Etappen, alle am selben Tag freigegeben.
+4. **Sechs unbenutzte Alt-Tabellen im Projekt `portfolio`: verschließen**
+   (nicht löschen).
+5. **Die Sperre zuerst am ruhigsten echten Projekt proben** (`portfolio`),
+   danach in allen drei anderen. Lokal ließ sich kein Wegwerf-Projekt anlegen.
+6. **Konten mit Betreiber-Rolle werden nie gefragt und nie gesperrt.**
+7. **Betreiber einer Community bestätigen eigene Bedingungen per Kästchen,
+   wenn sie eine Community anlegen** (Davids Auftrag in derselben Runde; Text
+   als Entwurf, anwaltliche Prüfung steht aus, OPEN-ITEMS A1b).
+
+**Folgen im Alltag:** Keine Tabelle und keine Zeile bekommt ein Schreibrecht
+für Konten; Rechte an Zeilen regeln nur das Lesen. Eine neue Tabelle mit
+Inhalt von Konten steht in `scripts/lib/server-written-tables.mjs`, ihre
+Routen schreiben über die Operator-Klinke und prüfen selbst, wem die Zeile
+gehört. Eine bestehende Tabelle umstellen heißt: erst der Code live, dann die
+Rechte, dann die Zeilen — die eine begründete Ausnahme von „Migration vor dem
+Merge". Ein neues Projekt der Datenbank bekommt die Anmelde-Wege von Hand
+ausgeschaltet ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)). Jeder eigene
+Aufruf einer Anmelde-Methode läuft mit dem Schlüssel des Servers.
+
+**Wieder prüfen:** das direkte Lesen mit dem Pukalani-Konto
+([PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), § 9); ein täglicher Blick auf
+die Anmelde-Wege und der Schalter „JWT" (OPEN-ITEMS SV1).
