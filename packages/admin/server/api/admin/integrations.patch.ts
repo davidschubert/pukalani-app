@@ -47,8 +47,15 @@ const bodySchema = z.union([
   }),
 ])
 
+/**
+ * FRISCHE ANMELDUNG (SEC-034, Davids Entscheidung 2026-11-16 — „wie die
+ * großen Anbieter: Zugänge"): wer einen Schlüssel setzt oder entfernt, hat
+ * sich in den letzten 10 Minuten angemeldet. Geprüft NACH dem Rechte-Gate
+ * und VOR dem ersten Lesen oder Schreiben eines Geheimnisses.
+ */
 export default defineEventHandler(async (event) => {
   requirePermission(event, 'system.manage')
+  await requireRecentAuth(event)
 
   const body = await readValidatedBody(event, bodySchema.parse)
 

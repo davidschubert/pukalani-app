@@ -47,6 +47,8 @@ vi.stubGlobal('defineEventHandler', (fn: unknown) => fn)
 vi.stubGlobal('createError', makeError)
 vi.stubGlobal('requirePermission', () => ({ $id: 'op', labels: ['admin'] }))
 vi.stubGlobal('getRouterParam', () => 'u1')
+// Frische Anmeldung (SEC-034) hält recentAuthRoutes.test.ts fest — hier gilt sie als gegeben.
+vi.stubGlobal('requireRecentAuth', async () => {})
 vi.stubGlobal('readValidatedBody', async (e: H3Event & { body?: unknown }, parse: (b: unknown) => unknown) => parse(e.body))
 vi.stubGlobal('capabilitiesFor', capabilitiesFor)
 vi.stubGlobal('isRole', isRole)

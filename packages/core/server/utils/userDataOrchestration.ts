@@ -3,6 +3,7 @@ import type { Models } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import type { H3Event } from 'h3'
 import { createSessionClient } from '../lib/appwrite'
+import type { UserDataAudience, UserDataExportContext } from './userData'
 
 /**
  * GDPR-Orchestrierung (Plan: docs/archiv/GDPR-DELETE-AND-EXPORT.md §4.3).
@@ -81,6 +82,11 @@ export function isAppwriteUserMissing(error: unknown): boolean {
 /** Aufbewahrungsfrist der Snapshots (Plan §4.8; durchgesetzt stündlich, SEC-009) */
 export const GDPR_EXPORT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
 
+/** `via` → Empfänger (pur): `session` ⇒ die Person selbst, `admin` ⇒ der Betreiber. */
+export function exportAudience(via: 'session' | 'admin'): UserDataAudience {
+  return via === 'session' ? 'self' : 'operator'
+}
+
 export async function exportUserCompletely(
   event: H3Event,
   userId: string,
@@ -115,11 +121,16 @@ export async function exportUserCompletely(
     sessions = (await admin.users.listSessions({ userId })).sessions
   }
 
+  // Empfänger des Exports (SEC-034): der Selbst-Export geht an die Person,
+  // jeder Admin-Pfad — der Betreiber-Export UND die Kopie vor einer
+  // Löschung — an den Betreiber. Die Beiträge entscheiden daran, was sie
+  // herausgeben (messages: keine Nachrichtentexte an den Betreiber).
+  const context: UserDataExportContext = { audience: exportAudience(opts.via) }
   const data: Record<string, unknown> = {}
   for (const contributor of listUserDataContributors()) {
     // Export MUSS vollständig sein — ein werfender Contributor bricht ab
     // (halbe Exporte wären schlimmer als ein klarer Fehler).
-    data[contributor.id] = await contributor.exportUserData(event, userId)
+    data[contributor.id] = await contributor.exportUserData(event, userId, context)
   }
 
   return {
@@ -315,7 +326,9 @@ export async function deleteUserCompletely(
 
   let exportFileId: string | undefined
   if (user) {
-    // (1) SNAPSHOT — Fehler hier = Abbruch (ohne Snapshot keine Löschung)
+    // (1) SNAPSHOT — Fehler hier = Abbruch (ohne Snapshot keine Löschung).
+    // Die Kopie liest der BETREIBER (30 Tage im Bucket) — sie ist deshalb ein
+    // Betreiber-Export ohne Nachrichtentexte (SEC-034, Davids Ja 2026-11-16).
     const snapshot = await exportUserCompletely(event, userId, { via: 'admin' })
     exportFileId = await writeSnapshot(event, userId, snapshot)
 

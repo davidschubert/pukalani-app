@@ -2,6 +2,7 @@ import { isBotCheckReason, type BotCheckReason } from '../../shared/turnstile'
 import { REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
 import { isPasswordPolicyReason, type PasswordPolicyReason } from '../../shared/passwordPolicy'
 import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../shared/aiProviderRouting'
+import { AUDIT_UNAVAILABLE_REASON } from '../../shared/auditLog'
 
 /**
  * Hat der Server eine FRISCHE Anmeldung verlangt (`requireRecentAuth`, RA1)?
@@ -10,6 +11,36 @@ import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../shared/aiProviderRouting'
  */
 export function isReauthRequired(error: unknown): boolean {
   return (error as { data?: { reason?: unknown } } | null)?.data?.reason === REAUTH_REQUIRED_REASON
+}
+
+/**
+ * Hat eine HERAUSGABE von Personendaten abgelehnt, weil das Betreiber-
+ * Protokoll gerade nicht schreibbar ist (BE-021, `writeAuditLog` strikt)?
+ * Dann ist NICHTS herausgegeben worden — die Oberfläche sagt genau das.
+ */
+export function isAuditUnavailable(error: unknown): boolean {
+  return (error as { data?: { reason?: unknown } } | null)?.data?.reason === AUDIT_UNAVAILABLE_REASON
+}
+
+/**
+ * Ein `$fetch` mit `responseType: 'blob'` (Datei-Downloads) liest auch die
+ * FEHLER-Antwort als Blob — `error.data.reason` gibt es dann nicht, und ein
+ * fachlicher Grund (frische Anmeldung, Protokoll nicht erreichbar) käme nie
+ * an. Diese Hilfe liest den Blob als JSON-Envelope und gibt einen Fehler in
+ * der gewohnten Form zurück (`{ statusCode, data }`); alles andere kommt
+ * unverändert zurück.
+ */
+export async function unwrapBlobError(error: unknown): Promise<unknown> {
+  const shaped = error as { data?: unknown, statusCode?: number } | null
+  const data = shaped?.data
+  if (typeof Blob === 'undefined' || !(data instanceof Blob)) return error
+  try {
+    const parsed: unknown = JSON.parse(await data.text())
+    return { statusCode: shaped?.statusCode, data: parsed }
+  }
+  catch {
+    return error
+  }
 }
 
 /**

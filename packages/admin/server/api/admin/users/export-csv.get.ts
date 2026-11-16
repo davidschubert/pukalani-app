@@ -5,6 +5,13 @@ import { Query } from 'node-appwrite'
  * Pagination, sichere Felder (kein prefs-Inhalt außer nichts — Datensparsamkeit
  * wie AdminUserRow). Excel-tauglich: BOM + CRLF + Formel-Injection-Guard
  * (führende =+-@ werden mit ' entschärft). Audit-Eintrag pro Export.
+ *
+ * HERAUSGABE VON PERSONENDATEN (BE-021/SEC-034, Davids Entscheidungen
+ * 2026-11-16): frische Anmeldung VOR dem ersten Lesen, und ERST der
+ * Protokoll-Eintrag, DANN die Datei — scheitert der Eintrag, antwortet die
+ * Route 503 `audit_unavailable` und gibt nichts heraus. Die Oberfläche holt
+ * die Datei deshalb per `$fetch` (nicht per Navigation), damit sie beide
+ * Gründe zeigen kann.
  */
 
 const PAGE = 100
@@ -19,6 +26,7 @@ function csvCell(value: string | boolean): string {
 
 export default defineEventHandler(async (event) => {
   requirePermission(event, 'users.manage')
+  await requireRecentAuth(event)
 
   const admin = createAdminClient(event)
   const lines = ['id,name,email,createdAt,lastActivityAt,status,labels,emailVerified']
@@ -53,7 +61,7 @@ export default defineEventHandler(async (event) => {
     targetType: 'user',
     targetId: '',
     metadata: { count: lines.length - 1 },
-  })
+  }, { strict: true })
 
   setHeader(event, 'Content-Type', 'text/csv; charset=utf-8')
   setHeader(event, 'Content-Disposition', `attachment; filename="users-${new Date().toISOString().slice(0, 10)}.csv"`)

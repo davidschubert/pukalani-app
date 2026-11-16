@@ -1,6 +1,6 @@
 # Export und Löschung – wie es gebaut ist
 
-Stand: 2026-11-15 (Gesamtaudit, Paket P14). Diese Datei beschreibt, was geschieht, wenn jemand
+Stand: 2026-11-16 (Gesamtaudit, Pakete P14 und P16). Diese Datei beschreibt, was geschieht, wenn jemand
 seine Daten anfordert oder sein Konto löscht, welche Fristen gelten und wie man eine neue Tabelle
 richtig anschließt. Der Plan, aus dem das Fundament entstand, liegt im Archiv:
 [GDPR-DELETE-AND-EXPORT.md](../archiv/GDPR-DELETE-AND-EXPORT.md).
@@ -19,6 +19,17 @@ Produkt-Schema; er ruft die Beiträge nur auf (`packages/core/server/utils/userD
   sperren → jeden Beitrag aufrufen → Bild und Anwesenheit entfernen → das Konto bei Appwrite löschen,
   **nur wenn jeder Beitrag Erfolg gemeldet hat**. Scheitert einer, bleibt das Konto gesperrt stehen,
   und der Lauf lässt sich wiederholen (jeder Schritt verträgt das).
+
+**Wer den Export bekommt** (SEC-034, seit 2026-11-16 — Davids Entscheidung): jeder Beitrag erhält
+`exportUserData(event, userId, { audience })`. `self` ist die Person selbst (`GET /api/auth/export`)
+und bekommt alles, was sie im Produkt sieht. `operator` ist der Betreiber: der Export in der
+Nutzerverwaltung **und** die Kopie vor einer Löschung (30 Tage im Bucket `gdpr-exports`). Dort gibt
+`messages` je Gespräch nur Gegenüber, wer begonnen hat, Beginn, letzte Nachricht und zwei Zähler
+heraus — **keinen Nachrichtentext**, keine einzelnen Zeitpunkte, kein „gelesen". Ein neuer Beitrag,
+der private Inhalte zwischen Menschen speichert, beachtet `audience`; alle anderen liefern für beide
+dasselbe. Herausgaben an den Betreiber (Export, CSV-Liste, Download einer Kopie) verlangen eine
+frische Anmeldung (10 Minuten) und stehen vorher im Betreiber-Protokoll — ohne Eintrag gibt die
+Route nichts heraus (503 `audit_unavailable`, BE-021).
 
 Drei Regeln, die jede Änderung an einem Beitrag einhalten muss:
 

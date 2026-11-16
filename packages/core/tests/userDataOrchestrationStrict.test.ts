@@ -52,7 +52,7 @@ vi.stubGlobal('mapExportSessions', (sessions: unknown[]) => sessions)
 vi.stubGlobal('avatarFileId', () => null)
 vi.stubGlobal('deleteAvatarFilesOf', async () => ({ deleted: 0, failed: 0 }))
 
-const { deleteUserCompletely, exportUserCompletely } = await import('../server/utils/userDataOrchestration')
+const { deleteUserCompletely, exportAudience, exportUserCompletely } = await import('../server/utils/userDataOrchestration')
 
 const event = { context: { user: { $id: 'u1' } } } as unknown as H3Event
 
@@ -132,5 +132,38 @@ describe('exportUserCompletely — die Sitzungsliste', () => {
   it('session-Pfad ohne Fehler trägt KEIN sessionsUnavailable', async () => {
     const result = await exportUserCompletely(event, 'u1', { via: 'session' })
     expect(result.sessionsUnavailable).toBeUndefined()
+  })
+})
+
+describe('Empfänger des Exports (SEC-034): via ⇒ audience', () => {
+  function recording(seen: string[]): UserDataContributor {
+    return {
+      id: 'rec',
+      exportUserData: async (_event, _userId, context) => {
+        seen.push(context.audience)
+        return {}
+      },
+      deleteUserData: async () => ({ deleted: 0, anonymized: 0 }),
+    }
+  }
+
+  it('die Regel: session ⇒ self, admin ⇒ operator', () => {
+    expect(exportAudience('session')).toBe('self')
+    expect(exportAudience('admin')).toBe('operator')
+  })
+
+  it('Selbst-Export reicht self durch, Betreiber-Export operator', async () => {
+    const seen: string[] = []
+    contributors = [recording(seen)]
+    await exportUserCompletely(event, 'u1', { via: 'session' })
+    await exportUserCompletely(event, 'u1', { via: 'admin' })
+    expect(seen).toEqual(['self', 'operator'])
+  })
+
+  it('die Kopie vor der Löschung ist ein Betreiber-Export', async () => {
+    const seen: string[] = []
+    contributors = [recording(seen)]
+    await deleteUserCompletely(event, 'u1', { actor: 'admin' })
+    expect(seen).toEqual(['operator'])
   })
 })

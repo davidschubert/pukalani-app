@@ -69,6 +69,8 @@ vi.stubGlobal('resolveUserNames', async () => new Map<string, string>())
 const { messagesDeleteUserData, messagesExportUserData } = await import('../server/utils/messagesUserData')
 
 const event = { context: {} } as unknown as H3Event
+const SELF = { audience: 'self' } as const
+const OPERATOR = { audience: 'operator' } as const
 const row = (id: string, extra: Record<string, unknown>): Row =>
   ({ $id: id, $createdAt: '2026-11-01T00:00:00.000Z', ...extra })
 const serverError = () => new AppwriteException('Server Error', 500, 'general_unknown')
@@ -148,7 +150,7 @@ describe('messagesDeleteUserData — Aufräum-Löschungen', () => {
 
 describe('messagesExportUserData', () => {
   it('Normalfall: beide Konversationen, eigene Sperre', async () => {
-    const result = await messagesExportUserData(event, 'u1')
+    const result = await messagesExportUserData(event, 'u1', SELF)
     expect(result.conversations).toHaveLength(2)
     expect(result.blocks).toHaveLength(1)
   })
@@ -156,18 +158,55 @@ describe('messagesExportUserData', () => {
   for (const table of ['message_blocks', 'conversation_members', 'messages']) {
     it(`ein 500 auf ${table} ⇒ der Export bricht ab`, async () => {
       errors[table] = serverError()
-      await expect(messagesExportUserData(event, 'u1')).rejects.toThrow()
+      await expect(messagesExportUserData(event, 'u1', SELF)).rejects.toThrow()
     })
   }
 
   it('ein 500 auf eine Konversation ⇒ der Export bricht ab', async () => {
     getErrors.c2 = serverError()
-    await expect(messagesExportUserData(event, 'u1')).rejects.toThrow()
+    await expect(messagesExportUserData(event, 'u1', SELF)).rejects.toThrow()
   })
 
   it('eine Konversation, die es nicht mehr gibt (404), fehlt — ohne Abbruch', async () => {
     tables.conversations = tables.conversations!.filter(c => c.$id !== 'c2')
-    const result = await messagesExportUserData(event, 'u1')
+    const result = await messagesExportUserData(event, 'u1', SELF)
     expect(result.conversations).toHaveLength(1)
+  })
+})
+
+describe('messagesExportUserData — wer bekommt die Texte? (SEC-034)', () => {
+  beforeEach(() => {
+    tables.messages!.push(
+      row('m3', { authorId: 'u2', conversationId: 'c1', body: 'geheime antwort', reportedAt: '', readAt: '2026-11-02T00:00:00.000Z' }),
+    )
+  })
+
+  it('self: der volle Verlauf mit Text, Zeitpunkten und „gelesen"', async () => {
+    const result = await messagesExportUserData(event, 'u1', SELF)
+    const c1 = result.conversations.find(c => c.startedByMe) as { messages: Array<{ body: string, readAt?: string }> }
+    expect(c1.messages.map(m => m.body)).toEqual(['hallo', 'geheime antwort'])
+    expect(JSON.stringify(result)).toContain('readAt')
+  })
+
+  it('operator: je Gespräch nur Eckdaten und Zähler — KEIN Text irgendwo im Ergebnis', async () => {
+    const result = await messagesExportUserData(event, 'u1', OPERATOR)
+    const text = JSON.stringify(result)
+    for (const body of ['hallo', 'servus', 'geheime antwort']) expect(text).not.toContain(body)
+    expect(text).not.toContain('"messages"')
+    expect(text).not.toContain('readAt')
+    expect(text).not.toContain('sentAt')
+    expect(text).not.toContain('body')
+    const c1 = result.conversations.find(c => c.startedByMe)
+    expect(c1).toEqual({
+      partnerId: 'u2',
+      partnerName: '',
+      startedByMe: true,
+      startedAt: '2026-11-01T00:00:00.000Z',
+      lastMessageAt: '',
+      messageCount: 2,
+      mineCount: 1,
+    })
+    // Die eigenen Sperren bleiben — sie sind eine Entscheidung dieses Menschen.
+    expect(result.blocks).toHaveLength(1)
   })
 })

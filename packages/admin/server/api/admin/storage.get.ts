@@ -1,9 +1,6 @@
 import { Query } from 'node-appwrite'
 import type { StorageBucketOverview, StorageFileEntry, StorageOverview } from '../../../shared/types/admin'
 
-/** gdpr-exports hat eigene Retention (30 Tage) + Admin-Seite → hier read-only */
-const READ_ONLY_BUCKETS = new Set(['gdpr-exports'])
-
 /**
  * Storage-Browser über ALLE Buckets des Projekts (buckets.read am Runtime-Key).
  * Avatars-Bucket zusätzlich mit Orphan-Erkennung (von keinem User-Profil
@@ -77,7 +74,9 @@ export default defineEventHandler(async (event): Promise<StorageOverview> => {
         totalBytes: files.reduce((sum, f) => sum + f.sizeBytes, 0),
         orphanCount: orphanAware ? files.filter(f => f.orphan).length : 0,
         orphanAware,
-        readOnly: READ_ONLY_BUCKETS.has(bucket.$id),
+        // Löschbar nur, was auf der Erlaubnisliste steht (storageBuckets.ts) —
+        // dieselbe Frage, die die Lösch-Route stellt.
+        readOnly: !bucketDeletable(event, bucket.$id),
       })
     }
 

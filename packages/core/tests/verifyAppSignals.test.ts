@@ -20,13 +20,15 @@ const SCRIPT = join(REPO, 'scripts', 'ops', 'verify-app-signals.mjs')
 
 interface JobLine { name: string, every?: number, ok?: number, failed?: number, skipped?: number, overlap?: number, lastOk?: number | 'nie', lastRun?: number | 'nie', result?: string, registered?: number | 'nie' }
 
-function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, jobs?: JobLine[], version?: number } = {}): string {
+function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, jobs?: JobLine[], version?: number } = {}): string {
   const jobs = options.jobs ?? []
   return [
     `zaehler version=${options.version ?? COUNTS_VERSION} prozess=testprozess stunden=25 status=${options.status ?? 'online'}`,
     `prozess speicher_mb=150 neustarts=3 laeuft_min=${options.up ?? 600}`,
     `fehler server=${options.server ?? 0} browser=${options.browser ?? 0} browser_gedeckelt=${options.capped ?? 0}`,
     `ki ausfaelle=${options.ai ?? 0} ohne_guthaben=${options.noCredit ?? 0} kein_endpunkt=${options.noEndpoint ?? 0} abgeschaltet=${options.disabled ?? 0}`,
+    // `audit: null` = Ausgabe eines Servers mit dem Skript von VOR BE-021 (ohne die Zeile).
+    ...(options.audit === null ? [] : [`protokoll ausfaelle=${options.audit ?? 0}`]),
     ...jobs.map(job => `lauf name=${job.name} takt_min=${job.every ?? 60} ok=${job.ok ?? 24} gescheitert=${job.failed ?? 0} uebersprungen=${job.skipped ?? 0} haengt=${job.overlap ?? 0} letzter_ok_min=${job.lastOk ?? 10} letzter_lauf_min=${job.lastRun ?? 10} letztes_ergebnis=${job.result ?? 'ok'} angemeldet_min=${job.registered ?? 600}`),
     `ende laeufe=${jobs.length}`,
   ].join('\n')
@@ -184,6 +186,38 @@ describe('Regeln — Fehler und KI', () => {
   })
 })
 
+describe('Regeln — Betreiber-Protokoll (BE-021)', () => {
+  it('ab 3 gescheiterten Einträgen rot, mit Handgriff und Runbook-Abschnitt', () => {
+    expect(RULES.auditWriteFailures).toBe(3)
+    const red = evaluate(countsText({ audit: 3 })).red
+    expect(red).toHaveLength(1)
+    expect(red[0]).toContain('3 Einträge ins Betreiber-Protokoll gescheitert')
+    expect(red[0]).toContain('Tun:')
+    expect(red[0]).toContain('„Betreiber-Protokoll fällt aus"')
+  })
+
+  it('darunter nur berichtet, bei 0 still', () => {
+    const two = evaluate(countsText({ audit: 2 }))
+    expect(two.red).toEqual([])
+    expect(two.notes.join(' ')).toContain('2 Eintrag/Einträge ins Betreiber-Protokoll')
+    expect(evaluate(countsText({ audit: 0 }))).toEqual({ red: [], notes: [] })
+  })
+
+  it('ALTE Ausgabe ohne die Zeile (Server noch nicht ausgeliefert) ⇒ kein Problem, nicht rot, „nicht gezählt"', () => {
+    const counts = parseCounts(countsText({ audit: null }))
+    expect(counts.problem).toBeUndefined()
+    expect(counts.version).toBe(1)
+    expect(counts.auditFailed).toBeUndefined()
+    const result = evaluate(countsText({ audit: null }))
+    expect(result.red).toEqual([])
+    expect(result.notes).toEqual(['test.example: Betreiber-Protokoll nicht gezählt (das Zähl-Skript auf dem Server ist älter; nach dem nächsten Ausliefern kommt die Zahl)'])
+  })
+
+  it('eine kaputte protokoll-Zeile ist weiterhin „unlesbar"', () => {
+    expect(parseCounts(countsText().replace('protokoll ausfaelle=0', 'protokoll ausfaelle=viele')).problem).toBe('unlesbar')
+  })
+})
+
 describe('Probealarm', () => {
   it('macht eine gesunde Antwort rot, ohne die echten Zahlen zu verlieren', () => {
     const counts = parseCounts(countsText({ jobs: [{ name: 'trial-sweep' }] }))
@@ -240,10 +274,10 @@ describe('Listen und Skripte passen zusammen', () => {
     const script = readFileSync(join(REPO, 'ops', 'app-watch-counts.mjs'), 'utf8')
     expect(script).toContain(`const VERSION = ${COUNTS_VERSION}\n`)
     // Jede Zeilenart, die das Skript ausgibt, hat hier eine Form.
-    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'lauf name=', 'ende laeufe=']) {
+    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'lauf name=', 'ende laeufe=']) {
       expect(script, start).toContain(`console.log(\`${start}`)
     }
-    expect(Object.keys(LINE_FORMS)).toHaveLength(6)
+    expect(Object.keys(LINE_FORMS)).toHaveLength(7)
   })
 })
 

@@ -184,9 +184,39 @@ async function runBulk(action: 'block' | 'unblock') {
   }
 }
 
-// CSV-Download per Navigation — Content-Disposition macht daraus einen Download
-function exportCsv() {
-  window.location.href = '/api/admin/users/export-csv'
+// CSV-Download per `$fetch` statt Navigation (SEC-034/BE-021): die Route
+// verlangt eine frische Anmeldung und lehnt ab, wenn das Protokoll ausfällt —
+// eine Navigation zeigte statt eines Hinweises die nackte Fehlerseite.
+// `responseType: 'blob'` liest auch den Fehler als Blob, `unwrapBlobError`
+// macht daraus wieder das Envelope.
+const exportingCsv = ref(false)
+async function exportCsv() {
+  if (exportingCsv.value) return
+  exportingCsv.value = true
+  try {
+    const blob = await $fetch<Blob>('/api/admin/users/export-csv', { responseType: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `users-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.add({ title: t('admin.users.csvDone'), description: t('admin.users.csvDoneDesc'), color: 'success' })
+  }
+  catch (rawError) {
+    const error = await unwrapBlobError(rawError)
+    if (await promptFreshSignIn(error, t('admin.users.csvReauthText'))) return
+    if (isAuditUnavailable(error)) {
+      // Erst der Protokoll-Eintrag, dann die Daten (BE-021): ohne Eintrag
+      // wurde nichts herausgegeben — das sagt dieser Satz.
+      toast.add({ title: t('admin.auditUnavailable.title'), description: t('admin.auditUnavailable.desc'), color: 'warning' })
+      return
+    }
+    toast.add({ title: t('admin.users.exportFailed'), description: t('admin.users.exportFailedDesc'), color: 'error' })
+  }
+  finally {
+    exportingCsv.value = false
+  }
 }
 
 async function exportUser(user: AdminUserRow) {
@@ -208,7 +238,15 @@ async function exportUser(user: AdminUserRow) {
       color: 'success',
     })
   }
-  catch {
+  catch (error) {
+    // Herausgabe verlangt eine frische Anmeldung (SEC-034) — der EINE Weg aus core.
+    if (await promptFreshSignIn(error, t('admin.users.exportReauthText'))) return
+    if (isAuditUnavailable(error)) {
+      // Erst der Protokoll-Eintrag, dann die Daten (BE-021): ohne Eintrag
+      // wurde nichts herausgegeben — das sagt dieser Satz.
+      toast.add({ title: t('admin.auditUnavailable.title'), description: t('admin.auditUnavailable.desc'), color: 'warning' })
+      return
+    }
     toast.add({
       title: t('admin.users.exportFailed'),
       description: t('admin.users.exportFailedDesc'),
@@ -354,7 +392,7 @@ async function createUser() {
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UButton icon="i-ph-file-csv" size="sm" color="neutral" variant="subtle" data-testid="export-csv" @click="exportCsv">
+          <UButton icon="i-ph-file-csv" size="sm" color="neutral" variant="subtle" data-testid="export-csv" :loading="exportingCsv" @click="exportCsv">
             {{ t('admin.users.exportCsv') }}
           </UButton>
           <UButton icon="i-ph-plus" size="sm" data-testid="add-users" @click="openCreate">

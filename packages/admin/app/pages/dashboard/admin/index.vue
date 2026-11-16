@@ -41,6 +41,11 @@ const ACTION_STYLE: Record<string, { icon: string, color: string }> = {
   'user.role_granted': { icon: 'i-ph-shield-star', color: 'text-primary' },
   'user.role_revoked': { icon: 'i-ph-shield-slash', color: 'text-warning' },
   'user.exported': { icon: 'i-ph-download-simple', color: 'text-muted' },
+  // Zugriffe auf Personendaten (BE-021): Ansicht und Herausgabe.
+  'user.viewed': { icon: 'i-ph-eye', color: 'text-muted' },
+  'user.list_viewed': { icon: 'i-ph-list-magnifying-glass', color: 'text-muted' },
+  'user.csv_exported': { icon: 'i-ph-file-csv', color: 'text-muted' },
+  'gdpr_export.downloaded': { icon: 'i-ph-download-simple', color: 'text-warning' },
   'user.deleted': { icon: 'i-ph-trash', color: 'text-error' },
   'user.password_changed': { icon: 'i-ph-password', color: 'text-warning' },
   'user.recovery_requested': { icon: 'i-ph-key', color: 'text-warning' },

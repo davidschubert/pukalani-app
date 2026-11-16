@@ -42,6 +42,17 @@ export default defineEventHandler(async (event): Promise<AdminUserListResponse> 
     ? query.filter
     : null
 
+  // ZUGRIFF FESTHALTEN (BE-021, 2026-11-16): die Liste zeigt Namen und
+  // Adressen aller Konten. Höchstens ein Eintrag je Betreiber in 15 Minuten
+  // (Blättern, Sortieren und Nachladen schreiben keinen weiteren), nicht
+  // strikt. Festgehalten wird nur, OB gesucht wurde — der SUCHBEGRIFF nie: er
+  // ist oft selbst ein Name oder eine Adresse.
+  await recordAuditView(event, `user-list:${event.context.user?.$id ?? ''}`, {
+    action: 'user.list_viewed',
+    targetType: 'user',
+    metadata: { searched: search.length > 0 },
+  })
+
   const admin = createAdminClient(event)
 
   // Online-User über die Appwrite Presences API (frisch gefiltert). Map
