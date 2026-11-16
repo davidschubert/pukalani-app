@@ -22,6 +22,10 @@ import { REPORTS_TABLE, type Report } from '../../../shared/types/report'
  * wird — `find` filtert auf `reporterId = <Session-User>` UND die Tür hängt den
  * Mandanten-Filter an, `remove` belegt die Zugehörigkeit noch einmal. Ein
  * fremder Report ist auf diesem Weg nicht erreichbar.
+ *
+ * DIE EINZIGE PRÜFUNG (SEC-002, GA1 P13): eine Meldung trägt kein
+ * Schreibrecht des Melders mehr — gelöscht wird nur die Zeile, die `find`
+ * oben über `reporterId` = Konto in dieser Anfrage gefunden hat.
  */
 export default defineEventHandler(async (event) => {
   // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem

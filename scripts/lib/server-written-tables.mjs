@@ -26,6 +26,15 @@
 export const SERVER_WRITTEN_TABLES = [
   { table: 'community_posts', constant: 'POSTS_TABLE', layer: 'posts', rights: { migration: '024' } },
   { table: 'comments', constant: 'COMMENTS_TABLE', layer: 'comments', rights: { migration: '021' } },
+  // Etappe 2: Stimmen, Reaktionen, Themen-Verweise. Etappe 3: Meldungen.
+  // Ohne `rights` — die Rechte-Migrationen folgen getrennt.
+  { table: 'post_votes', constant: 'POST_VOTES_TABLE', layer: 'posts' },
+  { table: 'comment_votes', constant: 'VOTES_TABLE', layer: 'comments' },
+  { table: 'comment_reactions', constant: 'COMMENT_REACTIONS_TABLE', layer: 'comments' },
+  { table: 'discussion_reactions', constant: 'DISCUSSION_REACTIONS_TABLE', layer: 'posts' },
+  { table: 'discussion_links', constant: 'DISCUSSION_LINKS_TABLE', layer: 'posts' },
+  { table: 'event_votes', constant: 'EVENT_VOTES_TABLE', layer: 'events' },
+  { table: 'reports', constant: 'REPORTS_TABLE', layer: 'moderation' },
 ]
 
 /**

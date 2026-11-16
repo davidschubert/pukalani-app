@@ -19,8 +19,9 @@ import { COMMENT_REACTIONS_TABLE, type CommentReaction, type CommentReactionTogg
  * muss.
  *
  * ── DIE REAKTION IST INHALT, ALSO GILT ALLES, WAS FUER INHALT GILT ────────
- * Geschrieben wird ueber die MITGLIEDER-Klinke (`tenantDb(event)`, Actor
- * `member` per Default). Damit greifen ohne ein einziges eigenes `if`:
+ * Geschrieben wird ueber den Server (SEC-002, GA1 P13): die Operator-Klinke
+ * mit `actor: 'member'` — gehandelt hat das Mitglied. Damit greifen ohne ein
+ * einziges eigenes `if`:
  *  - **M13**: in einer wegen Zahlung gesperrten Community ist Reagieren zu
  *    (403 `community_suspended`) — die Sperre friert Inhalte ein, und eine
  *    Reaktion ist einer.
@@ -113,22 +114,33 @@ export default defineEventHandler(async (event): Promise<CommentReactionToggleRe
     throw createError({ status: 429, statusText: 'Too many reactions' })
   }
 
+  // GELESEN wird ueber die Mitglieder-Klinke, wie das Konto liest.
   const db = tenantDb(event)
+  /**
+   * GESCHRIEBEN wird ueber den Server (SEC-002): Operator-Klinke, gehandelt
+   * hat das Mitglied (`actor: 'member'` — Sperre M13 und Beitritt A5 gelten).
+   * Wer darf, prueft die Route selbst, VOR dem Schreiben: die Wache oben
+   * (Zugehoerigkeit), die Ziel-Pruefung und die Suche nach der EIGENEN
+   * Reaktion unten (`userId` = Konto). Entfernt wird nur eine so gefundene
+   * Zeile.
+   */
+  const writer = tenantDb(event, { as: 'operator', actor: 'member' })
 
-  const existing = await db.find<CommentReaction>(COMMENT_REACTIONS_TABLE, [
+  const found = await db.find<CommentReaction>(COMMENT_REACTIONS_TABLE, [
     Query.equal('targetId', targetId),
     Query.equal('userId', user.$id),
     Query.equal('reaction', reaction),
   ])
+  const existing = found && found.userId === user.$id ? found : null
 
   let delta = 0
   if (existing) {
-    await db.remove(COMMENT_REACTIONS_TABLE, existing.$id)
+    await writer.remove(COMMENT_REACTIONS_TABLE, existing.$id)
     delta = -1
   }
   else {
     try {
-      await db.create<CommentReaction>(COMMENT_REACTIONS_TABLE, {
+      await writer.create<CommentReaction>(COMMENT_REACTIONS_TABLE, {
         targetId,
         userId: user.$id,
         reaction,
@@ -140,9 +152,11 @@ export default defineEventHandler(async (event): Promise<CommentReactionToggleRe
          * deshalb steht hier die ABSICHT und keine Verzweigung. Der eine Fall,
          * in dem das nicht reichen wuerde (interne Ticket-Diskussionen), ist
          * oben in `resolveCommentReactionTarget` schon abgewiesen.
+         *
+         * NUR LESERECHTE (SEC-002): kein Schreibrecht fuer das Konto,
+         * zuruecknehmen laeuft ueber diese Route.
          */
         read: 'public',
-        ownerUserId: user.$id,
       })
       delta = 1
     }

@@ -19,9 +19,11 @@
  * Meldung ist ausdrücklich KEIN Mitglieder-Inhalt: sie nennt einen Menschen,
  * einen Vorwurf und eine Notiz.
  *
- * Der MELDER bekommt `read` (er soll seine eigene Meldung sehen) und über
- * `ownerUserId` `update`/`delete` — das Zurückziehen ist seine Sache
- * (Befund 2). Die Rolle-String-Form entspricht `Permission.read(Role.user(id))`
+ * Der MELDER bekommt `read` (er soll seine eigene Meldung sehen). Ein
+ * Schreibrecht an der Zeile bekommt er nicht (SEC-002, GA1 P13): Meldungen
+ * schreibt nur der Server — das Zurückziehen (Befund 2) läuft über
+ * `DELETE /api/reports`, und die Route findet die Meldung selbst über
+ * `reporterId` = Konto. Die Rolle-String-Form entspricht `Permission.read(Role.user(id))`
  * aus node-appwrite; hier steht sie als reiner String, damit diese Datei ohne
  * SDK importierbar und der Test an `tenantRowPermissionsFor` genagelt ist.
  */
@@ -37,12 +39,10 @@ export function reporterReadRole(reporterId: string): string {
  */
 export function reportRowPermissionOptions(reporterId: string): {
   read: 'moderators'
-  ownerUserId: string
   extraRead: string[]
 } {
   return {
     read: 'moderators',
-    ownerUserId: reporterId,
     extraRead: [reporterReadRole(reporterId)],
   }
 }

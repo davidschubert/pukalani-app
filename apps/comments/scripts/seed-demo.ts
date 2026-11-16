@@ -95,8 +95,9 @@ async function vote(comment: CommentRow, voters: Models.User<Models.Preferences>
     await tablesDB.createRow({
       databaseId, tableId: 'comment_votes', rowId: ID.unique(),
       data: { commentId: comment.$id, userId: v.$id, value },
-      // read(user:self) wie vote.post.ts — sonst sähe der User seine Seed-Votes nicht
-      permissions: [Permission.read(Role.user(v.$id)), Permission.update(Role.user(v.$id)), Permission.delete(Role.user(v.$id))],
+      // read(user:self) wie vote.post.ts — sonst sähe der User seine Seed-Votes nicht.
+      // Nur Leserecht: geschrieben wird über den Server (SEC-002).
+      permissions: [Permission.read(Role.user(v.$id))],
     }).catch(() => {})
   }
   const up = value === 1 ? voters.length : 0

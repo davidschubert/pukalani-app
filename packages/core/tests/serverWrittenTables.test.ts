@@ -60,10 +60,32 @@ function receiverBefore(code: string, index: number): string {
   return code.slice(start, i + 1)
 }
 
-/** Der Ausdruck hinter `const name =` bis zum Zeilenende (reicht für jede Tür im Repo). */
-function declarationOf(code: string, name: string): string | null {
-  const match = new RegExp(`(?:const|let)\\s+${name}\\s*=\\s*([^\\n]+)`).exec(code)
-  return match ? match[1]! : null
+/**
+ * Der Ausdruck hinter `const name =` bis zum Zeilenende (reicht für jede Tür
+ * im Repo) — und zwar der Deklaration, die an der Stelle `use` GILT: die
+ * letzte davor, deren Block bis dorthin nicht geschlossen ist. Eine Datei mit
+ * zwei Funktionen, die beide `const db = …` anlegen (topicLinks.ts: lesen über
+ * die Mitglieder-, schreiben über die Operator-Klinke), wird so je Funktion
+ * richtig gelesen.
+ */
+function declarationOf(code: string, name: string, use: number): string | null {
+  const pattern = new RegExp(`(?:const|let)\\s+${name}\\s*=\\s*([^\\n]+)`, 'g')
+  let found: string | null = null
+  for (const match of code.matchAll(pattern)) {
+    if (match.index >= use) break
+    if (blockOpenUntil(code, match.index, use)) found = match[1]!
+  }
+  return found
+}
+
+/** Schließt sich zwischen `from` und `to` der Block, in dem `from` steht? */
+function blockOpenUntil(code: string, from: number, to: number): boolean {
+  let depth = 0
+  for (let i = from; i < to; i++) {
+    if (code[i] === '{') depth++
+    else if (code[i] === '}' && --depth < 0) return false
+  }
+  return true
 }
 
 /** Liefert eine Hilfsfunktion dieser Datei `name(event)` eine Operator-Tür? */
@@ -90,7 +112,7 @@ export function sessionWrites(file: string, source: string, tables = SERVER_WRIT
       const receiver = receiverBefore(code, match.index)
       const line = code.slice(0, match.index).split('\n').length
       let expression: string | null = receiver
-      if (/^[\w$]+$/.test(receiver)) expression = declarationOf(code, receiver)
+      if (/^[\w$]+$/.test(receiver)) expression = declarationOf(code, receiver, match.index)
       if (!expression) {
         findings.push({ file, line, table, why: `Zugang „${receiver}" ist in dieser Datei nicht angelegt (Parameter?)` })
         continue
@@ -150,6 +172,33 @@ describe('Tabellen, die nur der Server schreibt', () => {
     const stamped = post.source.replace('withPublishedRead([], event),', 'withPublishedRead([], event).concat(Permission.update(Role.user(user.$id))),')
     expect(stamped).not.toBe(post.source)
     expect(ownerWriteStamps(post.file, stamped)).toHaveLength(1)
+  })
+
+  it('je Funktion gilt die Tür, die dort angelegt ist (zwei `const db` in einer Datei)', () => {
+    const links = files.find(f => f.file === 'packages/posts/server/utils/topicLinks.ts')!
+    // Die Datei liest in einer Funktion über die Mitglieder-Klinke und
+    // schreibt in anderen über `linkDb(event)` — das ist sauber.
+    expect(links.source).toMatch(/const db = tenantDb\(event\)\n/)
+    expect(sessionWrites(links.file, links.source)).toEqual([])
+    // Gegenprobe: liefert die Hilfe die Mitglieder-Klinke, fällt jede
+    // Schreibstelle auf.
+    const viaSession = links.source.replace(/return tenantDb\(event, \{ as: 'operator', actor: 'operator' \}\)/, 'return tenantDb(event)')
+    expect(viaSession).not.toBe(links.source)
+    expect(sessionWrites(links.file, viaSession).length).toBeGreaterThan(0)
+    // … und ein Schreibvorgang in derselben Funktion wie die Mitglieder-Klinke
+    // fällt auf, obwohl weiter unten eine Operator-Tür angelegt wird.
+    const sameScope = [
+      'function a(event) {', '  const db = tenantDb(event)', '  return db.remove(DISCUSSION_LINKS_TABLE, id)', '}',
+      'function b(event) {', "  const db = tenantDb(event, { as: 'operator' })", '  return db.remove(DISCUSSION_LINKS_TABLE, id)', '}',
+    ].join('\n')
+    expect(sessionWrites('probe.ts', sameScope).map(f => f.line)).toEqual([3])
+    // … und eine Operator-Tür in einem schon geschlossenen Block gilt nicht.
+    const closedBlock = [
+      'async function c(event) {', '  const db = tenantDb(event)',
+      "  if (x) { const db = tenantDb(event, { as: 'operator' }); await db.list(DISCUSSION_LINKS_TABLE) }",
+      '  await db.remove(DISCUSSION_LINKS_TABLE, id)', '}',
+    ].join('\n')
+    expect(sessionWrites('probe.ts', closedBlock).map(f => f.line)).toEqual([4])
   })
 
   it('kein Schreibvorgang läuft über die Sitzung des Kontos', () => {
