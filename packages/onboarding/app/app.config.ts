@@ -27,6 +27,24 @@
  */
 export default defineAppConfig({
   pukalani: {
+    onboarding: {
+      /**
+       * BEDINGUNGEN FÜR COMMUNITY-BETREIBER (seit 2026-11-16). Layer-Default
+       * AUS (beide Adressen leer): kein Kästchen im Wizard, keine Prüfung in
+       * `POST /api/onboarding/site`, keine Zeile in `consent_records`. Die
+       * Platform-App schaltet ein. Regeln: shared/operatorTerms.ts.
+       *
+       * `url` je Sprache, ABSOLUT — der Text liegt auf pukalani.app
+       * (apps/marketing), nicht auf dem Host des Wizards. `version` landet in
+       * `consent_records.version`; neue Fassung ⇒ neuer Wert, dann bestätigt
+       * jede NEUE Anlage die neue Fassung.
+       */
+      operatorTerms: {
+        url: { de: '', en: '' },
+        version: '',
+        draft: false,
+      },
+    },
     account: {
       /** Zeile in „Was beim Löschen geschieht" (AuthAccountDeleteCard, core): die E-Mail-Adresse einer Meldung an den Betreiber bleibt bis zu 90 Tage. */
       deleteNotices: ['onboarding.account.deleteNotice'],

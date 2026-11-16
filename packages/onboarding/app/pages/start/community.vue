@@ -14,6 +14,12 @@ import {
   type SlugCheck,
   type WizardStep,
 } from '../../../shared/wizardSteps'
+import {
+  OPERATOR_TERMS_REQUIRED_CODE,
+  operatorTermsHref,
+  resolveOperatorTerms,
+  type OperatorTermsConfig,
+} from '../../../shared/operatorTerms'
 import type { Choice } from '../../components/OnboardingChoices.vue'
 
 /**
@@ -128,12 +134,29 @@ function back() {
   else navigateTo(localePath('/start'))
 }
 
+// ── Bedingungen für Community-Betreiber (Regeln: shared/operatorTerms.ts) ──
+/**
+ * Bei eingeschaltetem Schalter (`pukalani.onboarding.operatorTerms`) ein
+ * Kästchen im letzten Schritt; ohne Häkchen bleibt „Anlegen" gesperrt. Die
+ * Autorität ist der Server — er lehnt die Anlage ohne `operatorTerms: true`
+ * ab und hält die Fassung fest.
+ *
+ * Das Häkchen lebt BEWUSST nur in dieser Seite, nicht im Entwurf: wer
+ * wiederkommt, bestätigt neu — eine Zustimmung von gestern aus dem
+ * sessionStorage wäre keine, die der Mensch in diesem Moment gegeben hat.
+ */
+const appConfig = useAppConfig() as { pukalani?: { onboarding?: { operatorTerms?: OperatorTermsConfig } } }
+const operatorTerms = computed(() => resolveOperatorTerms(appConfig.pukalani?.onboarding?.operatorTerms))
+const operatorTermsUrl = computed(() => operatorTerms.value ? operatorTermsHref(operatorTerms.value, locale.value) : '')
+const operatorTermsAccepted = ref(false)
+const canCreate = computed(() => !operatorTerms.value || operatorTermsAccepted.value)
+
 // ── Anlegen ─────────────────────────────────────────────────────────────────
 const creating = ref(false)
 const createError = ref('')
 
 async function create() {
-  if (creating.value) return
+  if (creating.value || !canCreate.value) return
   creating.value = true
   createError.value = ''
   try {
@@ -150,6 +173,8 @@ async function create() {
         // Plane das Tor geschlossen meldet.
         ...(draft.value.inviteCode ? { inviteCode: draft.value.inviteCode } : {}),
         locale: locale.value,
+        // Nur bei eingeschaltetem Schalter — und dann ist es nach `canCreate` gesetzt.
+        ...(operatorTerms.value ? { operatorTerms: operatorTermsAccepted.value } : {}),
       },
     })
     /**
@@ -180,7 +205,9 @@ async function create() {
             ? t('onboarding.errors.verifyFirst')
             : t('onboarding.errors.notAllowed'))
         : status === 400
-          ? t('onboarding.errors.invalid')
+          ? (reason === OPERATOR_TERMS_REQUIRED_CODE
+              ? t('onboarding.errors.operatorTermsRequired')
+              : t('onboarding.errors.invalid'))
           : t('onboarding.errors.unavailable')
   }
   finally {
@@ -286,6 +313,18 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
             </div>
           </div>
 
+          <div v-if="operatorTerms" class="space-y-1" data-operator-terms>
+            <UCheckbox v-model="operatorTermsAccepted" name="operatorTerms" :label="t('onboarding.summary.operatorTermsLabel')" />
+            <p v-if="operatorTerms.draft" class="ps-6 text-xs text-muted" data-operator-terms-draft>
+              {{ t('onboarding.summary.operatorTermsDraftNotice') }}
+            </p>
+            <p class="ps-6">
+              <ULink :to="operatorTermsUrl" target="_blank" class="text-sm text-muted hover:text-primary">
+                {{ t('onboarding.summary.operatorTermsLink') }}
+              </ULink>
+            </p>
+          </div>
+
           <p v-if="createError" class="flex items-start gap-2 text-sm text-error">
             <UIcon name="i-ph-warning-circle" class="mt-0.5 size-4 shrink-0" />
             {{ createError }}
@@ -307,6 +346,7 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
           type="submit"
           size="lg"
           :loading="creating"
+          :disabled="!canCreate"
           trailing-icon="i-ph-check"
         >
           {{ t('onboarding.create') }}
