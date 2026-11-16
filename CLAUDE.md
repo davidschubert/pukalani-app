@@ -148,6 +148,12 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   noch Test sehen (`{'@'}`-Escape, KEINE spitzen Klammern in Locale-Messages,
   `check:i18n-keys`, die i18n-Strategie mit `localePath()`, SEO und og:image):
   `.claude/rules/i18n-seo.md` — vor jeder Änderung an Locale-Dateien lesen.
+- LANGE ARBEIT GEHÖRT NICHT IN DIE ANFRAGE (BE-008, seit 2026-11-16): der
+  Webserver wartet 60 s. Hängt die Dauer einer Route an fremden Servern, einem
+  Modell oder einer Liste ⇒ Lauf-Sperre nehmen, `202`, `runDetached()`, die
+  Seite fragt den Stand ab (`core/shared/runLease.ts`). Die Sperre ist eine
+  Zeile mit fester Kennung, nie „erst lesen, dann schreiben". Regel:
+  `.claude/rules/ki-mail-embed-moderation.md`.
 - createError mit status/statusText (nicht statusCode/statusMessage),
   keine Appwrite-Fehlerdetails an Clients leaken. FACHLICHE Ablehnungsgründe
   reisen als `data: { code: 'last_owner' }` → der zentrale Handler

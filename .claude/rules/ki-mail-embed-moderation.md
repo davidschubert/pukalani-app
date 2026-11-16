@@ -7,6 +7,7 @@ paths:
   - "packages/posts/**"
   - "packages/core/shared/ugcTranslations.ts"
   - "packages/core/shared/notification*"
+  - "packages/core/shared/runLease.ts"
 ---
 <!-- Ausgelagert aus CLAUDE.md am 2026-09-08 (Token-Hygiene): lädt automatisch,
      sobald eine Datei aus `paths` gelesen wird; bei Bash-Lesen (cat/sed) diese
@@ -94,6 +95,45 @@ paths:
   Eine Rückfrage der Nachprüfung ist nie „abgeschnitten" (sie schreibt der
   Server). Der FELDWERT selbst trägt kein Kennzeichen; `max_tokens` bleibt
   großzügig und wird nicht gesenkt.
+- LANGE ARBEIT GEHÖRT NICHT IN DIE ANFRAGE (BE-008/BE-010, seit 2026-11-16 —
+  Davids Entscheidung „antwortet sofort und rechnet im Hintergrund; ein
+  zweiter Klick startet keinen zweiten Lauf"): der Webserver wartet 60 s
+  (`proxy_read_timeout`; die Frist wird NICHT angehoben, Davids Richtung vom
+  2026-11-08), der Node-Prozess rechnet danach weiter — der Mensch sieht einen
+  Fehler, obwohl der Lauf gelingt, und drückt noch einmal. Eine Route, deren
+  Dauer an fremden Servern, einem Modell oder einer Liste hängt, prüft deshalb
+  alles, was nichts kostet, nimmt die LAUF-SPERRE, bucht, antwortet `202` und
+  rechnet mit `runDetached()` weiter; die Seite fragt den Stand ab
+  (`useRunPolling`, ruht bei verstecktem Reiter). EINE Hilfe für alle:
+  `core/shared/runLease.ts` + `core/server/utils/runLease.ts`. Die Sperre ist
+  eine ZEILE MIT FESTER KENNUNG aus (Art, Gegenstand, laufende Nummer) in der
+  Lauf-Tabelle des Layers (`market_runs`, `insights_runs`; Fabrik
+  `scripts/migrations-lib/runLeaseTable.mts`): Appwrite kennt kein bedingtes
+  Schreiben, „erst lesen, dann Stempel setzen" hält zwei Klicks im selben
+  Augenblick nicht auf — das Anlegen derselben Kennung schon (lokal gemessen:
+  von zehn gleichzeitigen genau eine, neun 409). Der zweite Aufruf bekommt 409
+  `reason: run_running`, die Seite zeigt dafür einen ruhigen Hinweis, keinen
+  Fehler. REIHENFOLGE: erst Sperre, dann Kontingent (sonst bucht ein
+  Doppelklick zweimal); lehnt das Kontingent ab, fällt die Sperre wieder
+  (`dropRunLease`). Wer unter der Sperre mit einem Stand weiterarbeitet
+  (Cursor des Newsletters), liest ihn NACH dem Nehmen der Sperre neu. EINE
+  SPERRE HÄNGT NIE: der laufende Prozess schreibt alle 20 s einen Herzschlag;
+  bleibt er 120 s aus (Ausliefern, Absturz), gilt der Lauf als abgebrochen —
+  GERECHNET gegen die Server-Uhr (`runLeaseState`), nie gespeichert, kein
+  Aufräumer. Der Vorgänger wird beim Start nicht gelöscht (ein verspäteter
+  Starter legte die freie Kennung sonst noch einmal an). KONTINGENT nach
+  einem Abbruch: der Lauf vermerkt `paid`, BEVOR sein erster bezahlter Schritt
+  beginnt; ein abgebrochener Lauf ohne den Vermerk vererbt seine Buchung an
+  den nächsten Start, einer mit Vermerk bleibt gebucht. Im `detail` der
+  Lauf-Zeile stehen nur Zahlen und Kennungen (4.000 Zeichen), nie Namen oder
+  Adressen. Ein ZEITDECKEL in der Anfrage (Radar-Knopf 30 s für den Beginn
+  neuer Abrufe, Prüfregeln 45 s, Newsletter-Stapel 40 s) ist die kleinere
+  Lösung und nur dort erlaubt, wo ein Teil-Ergebnis ehrlich ist; die Prüfregeln
+  bleiben dabei streng (nicht gelesen = nicht belegt = nicht veröffentlicht).
+  Der Video-Brief (BI3) war das Vorbild und hält seinen Start weiter an der
+  eigenen Zeile fest. Beweise: `packages/core/tests/runLease.test.ts`,
+  `packages/market/tests/marketRunRoute.test.ts`,
+  `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,
