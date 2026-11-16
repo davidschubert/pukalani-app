@@ -6,6 +6,15 @@
  * sind ohnehin öffentlich (GET /api/config), daher read: any. Schreiben bleibt
  * server-only (kein write-Recht), durchgesetzt über /api/admin/config.
  *
+ * JEDE SPALTE DIESER TABELLE IST DAMIT ÖFFENTLICH (BE-003, 2026-11-16): das
+ * Recht gilt für die ganze Zeile und direkt bei Appwrite, ohne Anmeldung —
+ * nicht nur für die Felder, die `/api/config` herausgibt. Eine neue Spalte
+ * mit Schutzbedarf gehört in eine Tabelle ohne Rechte (`app_secrets`,
+ * `instance_secrets`). Die Liste aller Spalten mit dem Satz, warum sie
+ * öffentlich sein dürfen, steht in
+ * `packages/core/shared/appConfigPublicColumns.ts`; ein Test hält sie gegen
+ * die Migrationen.
+ *
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/system/scripts/migrations/005-app-config-read.ts
  *
