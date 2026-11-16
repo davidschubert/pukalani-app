@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -220,14 +220,8 @@ describe('Listen und Skripte passen zusammen', () => {
       for (const pkg of readdirSync(root, { withFileTypes: true })) {
         if (!pkg.isDirectory()) continue
         const plugins = join(root, pkg.name, 'server', 'plugins')
-        let files: string[] = []
-        try {
-          files = readdirSync(plugins).filter(name => name.endsWith('.ts'))
-        }
-        catch {
-          continue
-        }
-        for (const file of files) {
+        if (!existsSync(plugins)) continue
+        for (const file of readdirSync(plugins).filter(name => name.endsWith('.ts'))) {
           const source = readFileSync(join(plugins, file), 'utf8')
           for (const hit of source.matchAll(/defineTimedJob\(\{\s*name: '([a-z][a-z0-9-]{1,39})'/g)) inCode.add(hit[1]!)
         }
