@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 38 offen · 2 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 39 offen · 2 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-16**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -93,6 +93,7 @@ beide Server-Einstellungen einschalten.
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (b) `NUXT_REDIS_URL` auf branding.supply setzen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | **Ja: (b) ein Ja für die Server-Datei** | [Einzelheiten](#wa1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
+| WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
@@ -586,6 +587,35 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
   liegen die Vorgänger-Fassungen der Skripte als Weg zurück
   (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
+
+<a id="wl1"></a>
+
+**WL1 — Wächter mit eigenen Listen: Nacharbeiten (aus dem Gesamtaudit, Paket P20).**
+
+- **(a) 37 Einstellungen ohne Bewertung.** Der Code liest 71 `NUXT_…`-Namen;
+  31 sind auf mindestens einer Site Pflicht, vier mit Grund „keine Pflicht",
+  37 stehen als Bestand in `ENV_UNDECIDED`
+  (`scripts/ops/site-env-decisions.mjs`). Für jeden entscheiden: Pflicht auf
+  welcher Site, oder warum nicht. Braucht einen Blick auf die Namen in den
+  Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja. Die
+  Liste darf nur kürzer werden; der Test hält die Zahl fest.
+- **(b) Galerie neben dem Not-Aus.** Die Routen unter `/api/discover` folgen
+  seit P20 dem Abschalter von `brand`. Die Vorschaubilder (`/og/…`) und die
+  Sitemap von `apps/branding` lesen dieselben Daten direkt und antworten
+  weiter. Zu tun: in beiden Routen `isProductEnabled(event, 'brand')` fragen.
+- **(c) `/api/platform/entitlements/<projectId>`** gehört dem Control Plane,
+  liegt aber im selben Ordner wie eine Core-Route und steht deshalb als
+  begründete Ausnahme in `scripts/lib/manifest-routes.mjs`. Zu tun: unter
+  `/api/control/…` umziehen — alle Sites rufen die Adresse ab, also erst die
+  neue Adresse ausliefern, dann die Abrufer umstellen, dann die alte löschen.
+- **(d) Kleinigkeiten.** `check:permissions` hat keinen Test (nur Lauf und
+  Gegenprobe); die KI-Aufrufstellen stehen in zwei Scannern
+  (`scripts/check-ai-routing.mjs`, `packages/brand/tests/brandAiCallSites.test.ts`);
+  der Env-Wächter prüft, ob ein Name in der Server-Datei steht, nicht, ob
+  dahinter ein Wert steht; `onboarding` nennt ein `apiPrefixes`-Präfix, das
+  nichts bewirkt (Stufe `foundation` ist nicht abschaltbar); das Dashboard
+  fragt die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
+  (antwortet dann 404, das Feld bleibt leer).
 
 <a id="wa1"></a>
 

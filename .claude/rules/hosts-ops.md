@@ -316,6 +316,13 @@ paths:
   Server setzen (Davids Ja; neu laden über die Ecosystem-Datei, zurücklesen),
   und ERST DANN der Eintrag in die Pflicht-Liste. Der Wächter läuft täglich:
   ein Eintrag vor dem Setzen öffnet jeden Tag einen Alarm.
+  JEDE EINSTELLUNG HAT EINE ENTSCHEIDUNG (P20, seit 2026-11-16): der Test
+  `packages/core/tests/verifySiteEnv.test.ts` liest alle `NUXT_…`-Namen aus
+  dem Code (`runtimeConfig` aller Layer und Apps, jedes `process.env.NUXT_…`)
+  und verlangt je Name genau eine Antwort — Pflicht auf mindestens einer Site,
+  „keine Pflicht" mit Grund oder (Bestand) „noch nicht bewertet"
+  (`scripts/ops/site-env-decisions.mjs`). Eine neue Einstellung ohne Antwort
+  ist rot; die Pflicht-Liste selbst bleibt von Hand.
 - Neue Namen IMMER in RESERVED_SUBDOMAINS (packages/control/schemas/tenant.ts),
   sonst kann ein Selbstbedienungs-Kunde sie beantragen.
 - HERKUNFTSPRÜFUNG (SEC-004, seit 2026-11-13 ÜBERALL AN): alle Hosts unter

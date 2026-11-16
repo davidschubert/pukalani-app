@@ -324,6 +324,69 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 > „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 > [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
 
+### GA1 P20 — Wächter, die ihre Listen selbst erzeugen: Not-Aus je Route, Lösch-Pflicht, Datentür ✅ 2026-11-16
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+OPS-012, BE-005), Pull Requests 200 (Merge `e68c261a`), 201 (Merge `5485be74`) und dieser.
+Davids Entscheidungen vom 2026-11-12: „Die Wächter erzeugen ihre Listen aus
+dem Code, und ein neuer Wächter prüft die Lösch-Pflicht neuer Produkte" und
+„Die Galerie-Routen kommen in die Liste, über die der Not-Aus des Produkts
+wirkt; ein Wächter prüft das für alle Produkte".
+
+1. **Erst gemessen.** Von sieben Pflichten, die an Listen von Hand oder nur am
+   Text hingen, hatten die Pakete davor zwei zum Teil geschlossen (P14: jede
+   Tabelle hat eine Entscheidung; P09/P17: die KI-Modelle kommen aus dem Code
+   und werden täglich geprüft). Die Tabellen von P14 kamen aber selbst aus
+   einer Soll-Liste von Hand.
+2. **Not-Aus je Route (BE-005).** `/api/discover` steht in den `apiPrefixes`
+   von `brand`, `/api/admin/comments` und `/api/admin/embed-sites` in denen von
+   `comments`. `check:manifests` (Prüfung 7) liest die Routen jedes
+   abschaltbaren Layers aus dem Dateibaum: jede liegt unter einem Präfix oder
+   mit Grund in der Ausnahmeliste; kein Präfix deckt Routen eines anderen
+   Layers. Lokal belegt: Galerie für Gäste 200 wie vorher; Produkt
+   abgeschaltet ⇒ 404 wie die übrigen Routen (vorher 200).
+3. **Ein Leser für alle Migrationen** (`scripts/lib/migration-inventory.mjs`):
+   101 Tabellen aus 214 Dateien in 0,15 s, deckungsgleich mit der Soll-Liste
+   von Hand und spaltengenau gleich mit zwei Projekten der lokalen Datenbank.
+   Was er nicht lesen kann, ist ein Fehler.
+4. **Lösch-Pflicht (Prüfung 9).** Pflichtfeld `userData` im Manifest;
+   `true` ohne Beitrag, `false` mit einer Personen-Spalte, oder eine Tabelle
+   mit Personen-Spalte ohne Entscheidung — rot. P14s Listen-Test liest seine
+   Tabellen jetzt aus den Migrationen; ein neuer Layer ist von selbst dabei.
+5. **Datentür (Prüfung 10).** Die elf Layer stehen in
+   `scripts/lib/data-door-layers.mjs`, ESLint liest sie von dort; wer
+   `communityId` anlegt, steht dort oder mit Grund in der Ausnahme.
+6. **Weitere Listen gebunden:** das Soll der Schema-Parität (Test gegen die
+   Migrationen), jede Einstellung aus `runtimeConfig` braucht eine
+   Entscheidung, jedes Modell-Feld kennt der Modell-Wächter, jeder Health-Host
+   steht im TLS-Wächter, kein Layer-Test importiert aus `apps/`, keine
+   globale `pageTransition` in einer App mit Dashboard (Prüfung 8).
+7. **`docs/referenz/LIVE-BEWEISE.md` wird erzeugt** (`pnpm live-beweise`,
+   `check:live-beweise` im Lint-Lauf): 81 Skripte, sechs in der CI.
+
+**Was die neuen Wächter beim ersten Lauf fanden.** Elf Routen neben dem
+Not-Aus (behoben), eine Route des Control Plane im Ordner einer Core-Route
+(begründete Ausnahme, Rest WL1), 37 Einstellungen ohne Bewertung (als Bestand
+festgehalten, Rest WL1). Bei Lösch-Pflicht, Datentür und Soll: keine Lücke —
+ein Scheintreffer (`insights_channels.handle`), als Ausnahme mit Grund.
+
+**Laufzeit.** `lint:scripts` 4,1 s → 4,4 s; `check:manifests` 0,34 s → 0,47 s;
+neu `check:live-beweise` 0,25 s.
+
+**Gelernt:** (1) Ein Leser, der Quelltext statt eines Syntaxbaums liest,
+braucht eine Probe gegen die WIRKLICHKEIT, nicht nur gegen die Liste, die er
+ersetzt: der Abgleich mit der Soll-Liste war sofort deckungsgleich, erst der
+Vergleich mit der lokalen Datenbank zeigte eine falsche Spalte (eine
+Hilfsfunktion oben in der Datei, ihr Aufruf wurde an der Definition gezählt —
+aus „löschen, neu anlegen" wurde „gelöscht"). (2) Ein Wächter, der etwas
+nicht versteht, muss ROT werden; stilles Überspringen ist dieselbe blinde
+Liste in neuem Gewand. (3) Nicht jede Liste lässt sich erzeugen: „Pflicht auf
+dem Server" ist eine Entscheidung mit Reihenfolge. Dort bleibt die Liste von
+Hand, und der Wächter prüft nur, dass für alles Neue ENTSCHIEDEN wurde. (4)
+Eine Probe-Änderung an einer noch nicht eingecheckten Datei lässt sich nicht
+mit `git checkout` zurücknehmen — die Zeile fehlte danach wirklich, gemerkt
+hat es erst der nächste Lauf des Wächters. Vor einer Probe eine Kopie ziehen.
+
 ### GA1 P22 — Alarm sieht in die App hinein: Zeit-Läufe, Fehler, KI-Ausfälle, Live-Verbindung ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings

@@ -35,7 +35,10 @@ Vollständiges Konzept: docs/CONCEPT.md
   mit `registerProductManifest()` ist PFLICHT** (PM1): ohne das Plugin wirken
   Notabschaltung, Produkt-Gate und Katalog nicht, und weder Typecheck noch Lint
   noch Tests sehen es — `market` fuhr so wochenlang tot. Live-Beweis: der Key
-  steht in `/api/platform/products`.
+  steht in `/api/platform/products`. Seit 2026-11-16 (P20) hält derselbe
+  Wächter auch: JEDE Route eines abschaltbaren Layers liegt unter seinen
+  `apiPrefixes` (sonst erreicht der Not-Aus sie nicht; Ausnahmen mit Grund in
+  `scripts/lib/manifest-routes.mjs`), und jedes Manifest sagt `userData`.
   Strategie: docs/referenz/MULTI-SITE-PLATFORM-STRATEGIE.md
 - packages/blueprint = KOMPOSITIONS-Layer („Bauplan", seit 2026-07-27): der
   EINZIGE Layer, der mehrere Produkt-Layer kennen darf — Produkt-
@@ -111,7 +114,10 @@ schon in einer Datei stehen.
   (`registerUserDataContributor`, Nitro-Plugin `server/plugins/user-data.ts`);
   core orchestriert Export und Löschung (users.delete nur bei Voll-Erfolg).
   JEDE TABELLE braucht eine Entscheidung in
-  `core/tests/support/userDataTables.ts` (Wächter-Test, seit P14), ein
+  `core/tests/support/userDataTables.ts` (Wächter-Test, seit P14; seit P20
+  liest `check:manifests` Tabellen und Personen-Spalten aus den Migrationen:
+  Manifest `userData: true` ohne Beitrag oder `false` mit einer Spalte wie
+  `userId`/`email` ist rot — `scripts/lib/user-data-duty.mjs`), ein
   Lesefehler bricht die Löschung ab (nie `.catch(() => [])`), Fristen setzt ein
   Lauf durch — Regeln, Fristen, Läufe: docs/referenz/EXPORT-UND-LOESCHUNG.md
 - app.config.ts wird tief gemergt — App überschreibt nur was nötig
