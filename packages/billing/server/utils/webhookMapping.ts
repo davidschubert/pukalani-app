@@ -45,6 +45,8 @@ export function subscriptionToPatch(
   eventCreated: number,
 ): SubscriptionPatch {
   const item = subscription.items.data[0]
+  // Bleibt trotz fester Version (BE-016): der Rückfall auf den Event-Schnappschuss
+  // (`deleted` + 404) trägt die Version des ENDPUNKTS, und die kann älter sein.
   const legacyPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
   const periodEnd = item?.current_period_end ?? legacyPeriodEnd ?? 0
 
@@ -80,6 +82,7 @@ export function subscriptionToVerifiedUpdate(
     eventCreated: number
   } {
   const item = subscription.items.data[0]
+  // Legacy-Feld: s. subscriptionToPatch (Schnappschuss in der Endpunkt-Version).
   const legacyPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
   const periodEnd = item?.current_period_end ?? legacyPeriodEnd ?? 0
 
@@ -104,6 +107,76 @@ export function subscriptionToVerifiedUpdate(
 /** B4-Stale-Guard: ältere (out-of-order/retryte) Events verwerfen */
 export function isStale(existing: Pick<BillingSubscriptionRow, 'lastStripeEventAt'> | null, eventCreated: number): boolean {
   return !!existing && existing.lastStripeEventAt > eventCreated
+}
+
+/**
+ * DAS ABO WIRD FRISCH GELESEN, NICHT AUS DEM EREIGNIS ÜBERNOMMEN (BE-016).
+ *
+ * Der Schnappschuss in `customer.subscription.*` ist der Stand ZUM ZEITPUNKT
+ * des Ereignisses, und Stripe liefert Ereignisse weder geordnet noch einzeln.
+ * `isStale` verwirft nur ÄLTERE Sekunden — zwei verschiedene Ereignisse
+ * derselben Sekunde (`created` mit `incomplete` nach `updated` mit `active`)
+ * schrieben den älteren Stand über den neueren. Mit dem frischen Stand ist die
+ * Reihenfolge egal: jedes Ereignis schreibt, was Stripe JETZT weiß, und eine
+ * Wiederholung desselben Ereignisses schreibt dasselbe noch einmal.
+ *
+ * Ein gekündigtes Abo bleibt bei Stripe abrufbar (Status `canceled`). Nur wenn
+ * Stripe das Abo gar nicht kennt (404 / `resource_missing`) UND das Ereignis
+ * selbst `deleted` ist, trägt der Schnappschuss die Wahrheit — er sagt dann
+ * ohnehin `canceled`. Jeder andere Lesefehler wird geworfen: die Route
+ * antwortet 500, Stripe wiederholt die Zustellung. Ein geratener Stand wäre
+ * hier schlimmer als ein später.
+ */
+export type SubscriptionReadFailure = 'use_snapshot' | 'rethrow'
+
+/** Sagt Stripe „dieses Objekt gibt es nicht"? */
+export function isStripeResourceMissing(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const fields = error as { statusCode?: unknown, code?: unknown }
+  return fields.statusCode === 404 || fields.code === 'resource_missing'
+}
+
+/** PURE: was nach einem gescheiterten `subscriptions.retrieve` geschieht. */
+export function subscriptionReadFailure(eventType: string, error: unknown): SubscriptionReadFailure {
+  return eventType === 'customer.subscription.deleted' && isStripeResourceMissing(error)
+    ? 'use_snapshot'
+    : 'rethrow'
+}
+
+/**
+ * Den Stand holen, mit dem ein `customer.subscription.*`-Ereignis arbeitet:
+ * frisch von Stripe, nur im oben genannten Fall der Schnappschuss. `retrieve`
+ * wird hereingereicht, damit die Entscheidung ohne Stripe-Client prüfbar ist.
+ */
+export async function subscriptionForEvent(
+  eventType: string,
+  snapshot: Stripe.Subscription,
+  retrieve: (id: string) => Promise<Stripe.Subscription>,
+): Promise<{ subscription: Stripe.Subscription, source: 'fresh' | 'snapshot' }> {
+  try {
+    return { subscription: await retrieve(snapshot.id), source: 'fresh' }
+  }
+  catch (error) {
+    if (subscriptionReadFailure(eventType, error) === 'use_snapshot') {
+      return { subscription: snapshot, source: 'snapshot' }
+    }
+    throw error
+  }
+}
+
+/**
+ * Die Abo-Id einer Rechnung — in BEIDEN Formen. Seit Stripe-API 2025 (Basil)
+ * steht sie unter `parent.subscription_details.subscription`, davor direkt
+ * unter `subscription`. Welche Form ankommt, hängt an der Version des
+ * ENDPUNKTS, nicht an der des Clients — und der bestehende Endpunkt ist noch
+ * nicht neu angelegt. Beide Formen bleiben deshalb erkannt (beide getestet).
+ */
+export function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const parent = (invoice as unknown as { parent?: { subscription_details?: { subscription?: string | { id: string } | null } | null } | null }).parent
+  const legacySub = (invoice as unknown as { subscription?: string | { id: string } | null }).subscription
+  const ref = parent?.subscription_details?.subscription ?? legacySub
+  if (!ref) return null
+  return typeof ref === 'string' ? ref : ref.id
 }
 
 /** Zahlungs-Problem-Status (Dunning): Zugriff bleibt, aber der User muss handeln */

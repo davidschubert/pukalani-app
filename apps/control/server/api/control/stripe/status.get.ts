@@ -1,6 +1,7 @@
 import type Stripe from 'stripe'
 import { secretTail, stripeModeFromKey, webhookSecretOrigin, type StripeKeyMode, type StripeSecretSource } from '../../../../../../packages/billing/shared/stripeKeys'
 import { missingWebhookEvents, WEBHOOK_EVENTS } from '../../../../../../packages/billing/shared/webhookEvents'
+import { STRIPE_API_VERSION, stripeApiVersionMatches } from '../../../../../../packages/billing/shared/stripeApiVersion'
 import { readStripePriceStatus, type StripePriceStatus } from '../../../utils/stripePrices'
 import { stripeWebhookUrl } from '../../../utils/stripeWebhookEndpoint'
 
@@ -94,6 +95,14 @@ export default defineEventHandler(async (event) => {
       status: found?.status ?? null,
       enabledEvents: found?.enabled_events ?? [],
       missingEvents: found ? missingWebhookEvents(found.enabled_events ?? []) : WEBHOOK_EVENTS.slice(),
+      /**
+       * In welcher API-Version sendet der Endpunkt (BE-016)? `null` = die
+       * Standard-Version des Kontos (bei Anlage keine angegeben). Ändern lässt
+       * sie sich nur durch Neuanlage — die Karte zeigt dann einen Hinweis.
+       */
+      apiVersion: found?.api_version ?? null,
+      apiVersionMatches: found ? stripeApiVersionMatches(found.api_version) : false,
+      expectedApiVersion: STRIPE_API_VERSION,
       /** Andere Endpunkte desselben Kontos — nur die ANZAHL, nie fremde URLs. */
       otherEndpoints: list.data.length - (found ? 1 : 0),
       /**

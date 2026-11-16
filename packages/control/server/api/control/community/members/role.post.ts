@@ -3,6 +3,7 @@ import { decideRoleChange } from '../../../../../shared/communityTeam'
 import { COMMUNITY_ROLES } from '../../../../../../core/shared/communityAuthz'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../../shared/types/communityMember'
 import { memberFacts, requireCommunityTeamContext, throwOnDenied } from '../../../../utils/communityTeam'
+import { withControlLock } from '../../../../utils/controlLock'
 
 /**
  * Die Rolle eines Mitglieds ändern.
@@ -25,41 +26,48 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireOnboardingCaller(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const context = await requireCommunityTeamContext(event, body, 'team.manage')
+  // DIE MITGLIEDERLISTE WIRD UNTER DER SPERRE GELESEN (BE-013): die Regeln
+  // („nie der letzte Owner") zählen über die Liste, und zwei gleichzeitige
+  // Anfragen sähen sonst beide den alten Stand — zwei Owner, die einander
+  // zurückstufen, ließen die Community ohne Owner. Die Sperre gilt je
+  // Community für alle Team-Änderungen (Rolle, Entfernen, Übergabe).
+  return await withControlLock(event, { scope: 'team', subject: body.communityId }, async () => {
+    const context = await requireCommunityTeamContext(event, body, 'team.manage')
 
-  // Das Ziel MUSS aus der bereits gescopten Liste kommen: eine memberId aus einer
-  // anderen Community findet sich hier nicht (404), statt per getRow zu greifen.
-  const target = context.members.find(row => row.$id === body.memberId)
-  if (!target) {
-    throw createError({ status: 404, statusText: 'Member not found' })
-  }
+    // Das Ziel MUSS aus der bereits gescopten Liste kommen: eine memberId aus einer
+    // anderen Community findet sich hier nicht (404), statt per getRow zu greifen.
+    const target = context.members.find(row => row.$id === body.memberId)
+    if (!target) {
+      throw createError({ status: 404, statusText: 'Member not found' })
+    }
 
-  throwOnDenied(
-    decideRoleChange({
-      actorUserId: context.identity.userId,
-      actorRole: context.actorRole,
-      target: memberFacts(target),
-      nextRole: body.role,
-      members: context.members.map(memberFacts),
-    }),
-    { communityId: body.communityId, actor: context.identity.userId, target: target.$id, role: body.role },
-  )
+    throwOnDenied(
+      decideRoleChange({
+        actorUserId: context.identity.userId,
+        actorRole: context.actorRole,
+        target: memberFacts(target),
+        nextRole: body.role,
+        members: context.members.map(memberFacts),
+      }),
+      { communityId: body.communityId, actor: context.identity.userId, target: target.$id, role: body.role },
+    )
 
-  const admin = createAdminClient(event)
-  const row = await admin.tablesDB.updateRow<CommunityMemberRow>({
-    databaseId: context.databaseId,
-    tableId: COMMUNITY_MEMBERS_TABLE,
-    rowId: target.$id,
-    data: { role: body.role },
-  }).catch((error) => { throw toH3Error(error, 'Could not update member') })
+    const admin = createAdminClient(event)
+    const row = await admin.tablesDB.updateRow<CommunityMemberRow>({
+      databaseId: context.databaseId,
+      tableId: COMMUNITY_MEMBERS_TABLE,
+      rowId: target.$id,
+      data: { role: body.role },
+    }).catch((error) => { throw toH3Error(error, 'Could not update member') })
 
-  logEvent('info', 'site.member_role_changed', {
-    communityId: body.communityId,
-    memberId: row.$id,
-    role: body.role,
-    previousRole: target.role,
-    actor: context.identity.userId,
+    logEvent('info', 'site.member_role_changed', {
+      communityId: body.communityId,
+      memberId: row.$id,
+      role: body.role,
+      previousRole: target.role,
+      actor: context.identity.userId,
+    })
+
+    return { ok: true, memberId: row.$id, role: row.role }
   })
-
-  return { ok: true, memberId: row.$id, role: row.role }
 })

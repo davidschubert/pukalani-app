@@ -8,7 +8,7 @@ import {
   type BillingSubscriptionRow,
   type SubscriptionStatus,
 } from '../../../shared/types/billing'
-import { checkoutOutcome, isNewPaymentFailure, isStale, paymentFailureAudience, subscriptionToPatch, subscriptionToVerifiedUpdate, toSubscriptionStatus, type CheckoutOutcome, type SubscriptionPatch } from '../../utils/webhookMapping'
+import { checkoutOutcome, invoiceSubscriptionId, isNewPaymentFailure, isStale, paymentFailureAudience, subscriptionForEvent, subscriptionToPatch, subscriptionToVerifiedUpdate, toSubscriptionStatus, type CheckoutOutcome, type SubscriptionPatch } from '../../utils/webhookMapping'
 import { WEBHOOK_ALLOWLIST } from '../../../shared/webhookEvents'
 
 /**
@@ -112,18 +112,21 @@ export default defineEventHandler(async (event) => {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        const subscription = stripeEvent.data.object
+        // FRISCH GELESEN (BE-016), nicht der Schnappschuss des Ereignisses —
+        // sonst entschiede die Zustell-Reihenfolge über den gespeicherten
+        // Stand. Regel und Ausnahme: `subscriptionForEvent` in webhookMapping.ts.
+        const { subscription } = await subscriptionForEvent(
+          stripeEvent.type,
+          stripeEvent.data.object,
+          id => stripe.subscriptions.retrieve(id),
+        )
         const { applied } = await upsertSubscription(event, subscription, stripeEvent.created, subscription.metadata?.userId ?? null)
         if (applied) await runSubscriptionFulfillments(event, subscriptionToVerifiedUpdate(subscription, stripeEvent.created))
         break
       }
       case 'invoice.paid':
       case 'invoice.payment_failed': {
-        const invoice = stripeEvent.data.object
-        const parent = (invoice as unknown as { parent?: { subscription_details?: { subscription?: string | { id: string } } } }).parent
-        const legacySub = (invoice as unknown as { subscription?: string | { id: string } }).subscription
-        const ref = parent?.subscription_details?.subscription ?? legacySub
-        const subscriptionId = typeof ref === 'string' ? ref : ref?.id
+        const subscriptionId = invoiceSubscriptionId(stripeEvent.data.object)
         if (!subscriptionId) break
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const { applied, previousStatus } = await upsertSubscription(event, subscription, stripeEvent.created, subscription.metadata?.userId ?? null)

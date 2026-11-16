@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { onboardingSiteSchema } from '../../../../schemas/onboarding'
-import { checkInviteCode, consumeInviteCode, type InviteCheck } from '../../../utils/inviteCodes'
+import { checkInviteCode, releaseInviteCodeUse, reserveInviteCodeUse, type InviteCheck } from '../../../utils/inviteCodes'
+import { withControlLock } from '../../../utils/controlLock'
 import { markCodeRedeemed } from '../../../utils/inviteRequests'
 import { readOnboardingGate } from '../../../utils/onboardingGate'
 import { provisionCommunity } from '../../../utils/onboardingProvision'
@@ -78,38 +79,72 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const result = await provisionCommunity(event, identity, {
-    name: body.site.name,
-    slug: body.site.slug,
-    vibe: body.site.vibe,
-    /**
-     * NUR WAS GEFRAGT WURDE (U12). Seit der Wizard drei Dinge fragt, kommen
-     * `purpose`/`memberRange`/`goal` nur noch aus einer älteren platform —
-     * fehlen sie, stehen sie auch nicht im Profil. Ein gesetzter Default wäre
-     * eine erfundene Antwort und später nicht mehr von einer echten zu
-     * unterscheiden (Begründung im Kopf von schemas/onboarding.ts).
-     */
-    profile: {
-      ...(body.site.purpose ? { purpose: body.site.purpose } : {}),
-      ...(body.site.memberRange ? { memberRange: body.site.memberRange } : {}),
-      category: body.site.category,
-      ...(body.site.goal ? { goal: body.site.goal } : {}),
-      ...(body.site.description ? { description: body.site.description } : {}),
-    },
-    inviteCode: invite?.row ?? null,
+  const code = invite?.row ?? null
+
+  /**
+   * DIE REGELN DIESER ANLAGE HALTEN UNTER GLEICHZEITIGEN ANFRAGEN (BE-013).
+   *
+   *  - KONTINGENT JE KONTO: `provisionCommunity` zählt die eigenen Communities
+   *    und legt danach an. Zwei gleichzeitige Anfragen desselben Kontos sähen
+   *    beide „noch keine" — deshalb läuft Zählen-und-Anlegen unter der Sperre
+   *    (scope `onboarding`, Gegenstand Projekt + Konto). Der Zweite liest
+   *    danach die Community des Ersten: gleiche Adresse ⇒ `reused`, andere ⇒
+   *    das Kontingent lehnt ab.
+   *  - EINLADUNGS-CODE: die Einlösung wird VOR der Anlage atomar reserviert
+   *    (`reserveInviteCodeUse`, die Datenbank hält `maxUses`). Ein erschöpfter
+   *    Code bekommt dieselbe stumme Antwort wie jeder ungültige. Scheitert
+   *    die Anlage, geht die Einlösung zurück; ein Retry, der die eigene
+   *    Community wiederfindet (`reused`), kostet keine zweite.
+   *
+   * Bei OFFENEM Tor ist `code` null: ein mitgeschickter Code wird dann gar
+   * nicht erst geprüft und deshalb auch nicht verbraucht — er soll noch gelten,
+   * wenn der Betreiber das Tor wieder schließt.
+   */
+  const result = await withControlLock(event, { scope: 'onboarding', subject: `${identity.projectId}:${identity.userId}` }, async () => {
+    if (code && await reserveInviteCodeUse(event, code) === 'exhausted') {
+      logEvent('warn', 'onboarding.invite_rejected', {
+        reason: 'exhausted',
+        runtimeUserId: identity.userId,
+      })
+      throw createError({ status: 403, statusText: 'Invalid invite code' })
+    }
+
+    let provisioned: Awaited<ReturnType<typeof provisionCommunity>>
+    try {
+      provisioned = await provisionCommunity(event, identity, {
+        name: body.site.name,
+        slug: body.site.slug,
+        vibe: body.site.vibe,
+        /**
+         * NUR WAS GEFRAGT WURDE (U12). Seit der Wizard drei Dinge fragt, kommen
+         * `purpose`/`memberRange`/`goal` nur noch aus einer älteren platform —
+         * fehlen sie, stehen sie auch nicht im Profil. Ein gesetzter Default wäre
+         * eine erfundene Antwort und später nicht mehr von einer echten zu
+         * unterscheiden (Begründung im Kopf von schemas/onboarding.ts).
+         */
+        profile: {
+          ...(body.site.purpose ? { purpose: body.site.purpose } : {}),
+          ...(body.site.memberRange ? { memberRange: body.site.memberRange } : {}),
+          category: body.site.category,
+          ...(body.site.goal ? { goal: body.site.goal } : {}),
+          ...(body.site.description ? { description: body.site.description } : {}),
+        },
+        inviteCode: code,
+      })
+    }
+    catch (error) {
+      if (code) await releaseInviteCodeUse(event, code, 'provision_failed')
+      throw error
+    }
+    if (code && provisioned.reused) await releaseInviteCodeUse(event, code, 'reused')
+    return provisioned
   })
 
-  // Erst nach erfolgreicher Anlage — und nur, wenn wirklich etwas Neues
-  // entstanden ist: ein Retry (reused) darf den Code nicht zweimal kosten.
-  // Bei OFFENEM Tor ist `invite` null: ein mitgeschickter Code wird dann gar
-  // nicht erst geprüft und deshalb auch nicht verbraucht — er soll noch gelten,
-  // wenn der Betreiber das Tor wieder schließt.
-  if (!result.reused && invite?.row) {
-    await consumeInviteCode(event, invite.row)
+  if (!result.reused && code) {
     // Rückschreibung: aus „zugewiesen" wird die TATSACHE „eingelöst am … →
     // diese Community". Ohne sie wüsste der Betreiber nie, ob seine Einladung
     // angekommen ist — und genau das ist die Frage, die er stellt.
-    await markCodeRedeemed(event, invite.row, result.communityId)
+    await markCodeRedeemed(event, code, result.communityId)
   }
 
   return result

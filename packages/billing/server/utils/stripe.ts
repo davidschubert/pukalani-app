@@ -3,6 +3,8 @@ import type { H3Event } from 'h3'
 import type { PukalaniBillingConfig } from '../../shared/types/billing'
 import { rejectOneTimeLookupKey, rejectSubscriptionLookupKey } from '../../shared/lookupKeys'
 import { resolveBillingReturnOrigin } from '../../shared/returnOrigin'
+// Die Version steht fest (BE-016) — Begründung in shared/stripeApiVersion.ts.
+import { STRIPE_API_VERSION } from '../../shared/stripeApiVersion'
 
 /**
  * „Fehlt dauerhaft" nur EINMAL pro Prozess melden.
@@ -57,7 +59,7 @@ export async function useStripe(event: H3Event): Promise<Stripe> {
   // Live-Client wären im Go-Live-Fenster bis zu 5 Minuten lang ein 502 auf
   // jedem Checkout — genau dann, wenn jemand zuschaut (Audit F55, MEDIUM 4).
   priceCache.clear()
-  stripeClient = { key, client: new Stripe(key) }
+  stripeClient = { key, client: new Stripe(key, { apiVersion: STRIPE_API_VERSION }) }
   return stripeClient.client
 }
 
@@ -68,7 +70,7 @@ export async function useStripe(event: H3Event): Promise<Stripe> {
  * Instanz sein.
  */
 export function stripeClientForKey(key: string): Stripe {
-  return new Stripe(key)
+  return new Stripe(key, { apiVersion: STRIPE_API_VERSION })
 }
 
 /** Stripe-Fehler → generische h3-Fehler (keine Provider-Details leaken) */

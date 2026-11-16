@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { decideRemoval } from '../../../../../shared/communityTeam'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../../shared/types/communityMember'
 import { memberFacts, requireCommunityTeamContext, throwOnDenied } from '../../../../utils/communityTeam'
+import { withControlLock } from '../../../../utils/controlLock'
 
 /**
  * Einem Mitglied den ZUGANG entziehen (Davids Entscheidung 1 vom 2026-07-29).
@@ -41,37 +42,44 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireOnboardingCaller(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const context = await requireCommunityTeamContext(event, body, 'team.manage')
+  // DIE MITGLIEDERLISTE WIRD UNTER DER SPERRE GELESEN (BE-013): die Regeln
+  // („nie der letzte Owner") zählen über die Liste, und zwei gleichzeitige
+  // Anfragen sähen sonst beide den alten Stand — zwei Owner, die einander
+  // zurückstufen, ließen die Community ohne Owner. Die Sperre gilt je
+  // Community für alle Team-Änderungen (Rolle, Entfernen, Übergabe).
+  return await withControlLock(event, { scope: 'team', subject: body.communityId }, async () => {
+    const context = await requireCommunityTeamContext(event, body, 'team.manage')
 
-  const target = context.members.find(row => row.$id === body.memberId)
-  if (!target) {
-    throw createError({ status: 404, statusText: 'Member not found' })
-  }
+    const target = context.members.find(row => row.$id === body.memberId)
+    if (!target) {
+      throw createError({ status: 404, statusText: 'Member not found' })
+    }
 
-  throwOnDenied(
-    decideRemoval({
-      actorUserId: context.identity.userId,
-      actorRole: context.actorRole,
-      target: memberFacts(target),
-      members: context.members.map(memberFacts),
-    }),
-    { communityId: body.communityId, actor: context.identity.userId, target: target.$id },
-  )
+    throwOnDenied(
+      decideRemoval({
+        actorUserId: context.identity.userId,
+        actorRole: context.actorRole,
+        target: memberFacts(target),
+        members: context.members.map(memberFacts),
+      }),
+      { communityId: body.communityId, actor: context.identity.userId, target: target.$id },
+    )
 
-  const admin = createAdminClient(event)
-  const row = await admin.tablesDB.updateRow<CommunityMemberRow>({
-    databaseId: context.databaseId,
-    tableId: COMMUNITY_MEMBERS_TABLE,
-    rowId: target.$id,
-    data: { status: 'removed', removedAt: new Date().toISOString() },
-  }).catch((error) => { throw toH3Error(error, 'Could not remove member') })
+    const admin = createAdminClient(event)
+    const row = await admin.tablesDB.updateRow<CommunityMemberRow>({
+      databaseId: context.databaseId,
+      tableId: COMMUNITY_MEMBERS_TABLE,
+      rowId: target.$id,
+      data: { status: 'removed', removedAt: new Date().toISOString() },
+    }).catch((error) => { throw toH3Error(error, 'Could not remove member') })
 
-  logEvent('info', 'site.member_removed', {
-    communityId: body.communityId,
-    memberId: row.$id,
-    role: target.role,
-    actor: context.identity.userId,
+    logEvent('info', 'site.member_removed', {
+      communityId: body.communityId,
+      memberId: row.$id,
+      role: target.role,
+      actor: context.identity.userId,
+    })
+
+    return { ok: true, memberId: row.$id, status: row.status, runtimeUserId: target.runtimeUserId }
   })
-
-  return { ok: true, memberId: row.$id, status: row.status, runtimeUserId: target.runtimeUserId }
 })
