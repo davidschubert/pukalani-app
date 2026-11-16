@@ -1,6 +1,7 @@
 // Geteilte Flat Config für das gesamte Monorepo — ESLint findet sie von
 // jedem Package aus (Lookup in Eltern-Verzeichnissen).
 import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
+import { dataDoorGlobs } from './scripts/lib/data-door-layers.mjs'
 
 // Layer-Grenzen-Durchsetzung (CONCEPT.md A14, Stufe 2 / Backstop).
 // Verhindert KÜNFTIGE explizite Cross-Layer-Imports. Implizite Kopplung
@@ -634,8 +635,7 @@ export default createConfigForNuxt({
   // NUR über tenantDb — rohes `.tablesDB` der Client-Factories umgeht Scoping,
   // tenantId-Stempel und Zugehörigkeitsbeleg. Genau so sind am 2026-07-26/27
   // vier echte Cross-Tenant-Lecks entstanden bzw. gefunden worden (drei
-  // Moderations-Routen, mentions, embed-sites). Neue Pool-Layer kommen in
-  // diese Liste, sobald ihre Tabellen tenantId tragen.
+  // Moderations-Routen, mentions, embed-sites).
   //
   // WARUM server/plugins DAZUGEHÖRT (Audit-Befund B2, 2026-07-27): der
   // Dashboard-Stats-Contributor von comments liegt in server/plugins, nicht in
@@ -648,37 +648,12 @@ export default createConfigForNuxt({
   // die Ausnahmen aus CLAUDE.md), deshalb ist der Scope bewusst eng. Ein
   // eventloser Sweep-Plugin bräuchte künftig eine begründete
   // eslint-disable-next-line — nicht eine Aufweichung der Regel.
-  files: [
-    'packages/comments/server/api/**',
-    'packages/comments/server/plugins/**',
-    'packages/posts/server/api/**',
-    'packages/posts/server/plugins/**',
-    'packages/events/server/api/**',
-    'packages/events/server/plugins/**',
-    'packages/courses/server/api/**',
-    'packages/courses/server/plugins/**',
-    'packages/pages/server/api/**',
-    'packages/pages/server/plugins/**',
-    'packages/moderation/server/api/**',
-    'packages/moderation/server/plugins/**',
-    'packages/media/server/api/**',
-    'packages/media/server/plugins/**',
-    'packages/activity/server/api/**',
-    'packages/activity/server/plugins/**',
-    'packages/analytics/server/api/**',
-    'packages/analytics/server/plugins/**',
-    // messages (2026-08-05): alle vier Tabellen tragen communityId. Die EINE
-    // bewusste Ausnahme (die mandantenübergreifende Sperr-Abfrage) liegt in
-    // server/utils und damit außerhalb dieses Scopes — begründet im Kopf von
-    // packages/messages/server/utils/messageBlocks.ts.
-    'packages/messages/server/api/**',
-    'packages/messages/server/plugins/**',
-    // admin kam am 2026-08-01 dazu (Audit-Befund): der Layer besitzt zwar keine
-    // mandantenfähigen Tabellen, seine Routen LESEN aber fremde (die
-    // Nutzer-Detailseite zog `comments` ungescopt pool-weit). Wer in einer
-    // host-gebundenen Ansicht fremde Zeilen liest, gehört hinter dieselbe Tür.
-    'packages/admin/server/api/**',
-  ],
+  //
+  // DIE LISTE steht seit GA1 P20 in scripts/lib/data-door-layers.mjs (mit den
+  // Begründungen je Layer) — `pnpm check:manifests` hält sie gegen die
+  // Migrationen: wer `communityId` anlegt, steht dort oder in der begründeten
+  // Ausnahmeliste.
+  files: dataDoorGlobs(),
   rules: {
     'no-restricted-syntax': ['error',
       { selector: 'MemberExpression[property.name="tablesDB"]',

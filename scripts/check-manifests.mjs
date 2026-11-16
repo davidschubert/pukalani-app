@@ -43,6 +43,17 @@
  *     `mode: 'out-in'` bleibt der Seitenbereich nach dem ersten Klick leer —
  *     ohne Fehler, nur im Prod-Build. „Mit Dashboard" = der Layer `admin`
  *     steht in den Produkten der App.
+ *  9. DIE LÖSCH-PFLICHT (OPS-012, GA1 P20): das Manifest sagt `userData`,
+ *     der Dateibaum sagt, ob der Beitrag für Auskunft und Löschung
+ *     registriert wird, die MIGRATIONEN sagen, welche Tabellen und Spalten
+ *     der Layer anlegt. `true` ohne Beitrag, `false` mit einer Personen-Spalte
+ *     oder eine Tabelle mit Personen-Spalte ohne Entscheidung in
+ *     `core/tests/support/userDataTables.ts` — alles rot. Regel und
+ *     Ausnahmen: scripts/lib/user-data-duty.mjs. Kann der Leser eine
+ *     Migration nicht lesen, ist auch das rot (scripts/lib/migration-inventory.mjs).
+ * 10. DIE DATENTÜR-LISTE (OPS-012): legt ein Layer `communityId` an, steht er
+ *     in DATA_DOOR_LAYERS (ESLint verbietet dort rohes tablesDB) oder mit
+ *     Grund in DATA_DOOR_EXEMPT — scripts/lib/data-door-layers.mjs.
  *
  * Ausgabe pro Verstoß eine Zeile (Datei · erwartet/ist), Exit 1 bei Fehlern.
  */
@@ -50,6 +61,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { layerRoutes, routeCoverageProblems } from './lib/manifest-routes.mjs'
+import { layerInventory } from './lib/migration-inventory.mjs'
+import { CONTRIBUTOR_FILE, userDataDutyProblems } from './lib/user-data-duty.mjs'
+import { dataDoorProblems } from './lib/data-door-layers.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -170,6 +184,33 @@ for (const [layer, m] of manifests) {
       err(`${rel}: die Stelle „${what}" ist nicht mehr zu finden — Prüfung 7 nimmt Layer der Stufe \`foundation\` nur deshalb aus. Entweder die Stelle wiederherstellen oder die Ausnahme in scripts/lib/manifest-routes.mjs aufheben.`)
     }
   }
+}
+
+// ── 9 + 10: Lösch-Pflicht und Datentür, aus den Migrationen gelesen ──────
+{
+  const { USER_DATA_TABLES } = await import(
+    pathToFileURL(join(ROOT, 'packages/core/tests/support/userDataTables.ts')).href
+  )
+  const read = []
+  for (const [layer, m] of manifests) {
+    const inventory = layerInventory(ROOT, layer)
+    for (const note of inventory.unresolved) {
+      err(`${note} — der Leser der Migrationen versteht diese Stelle nicht, die Wächter für Lösch-Pflicht und Datentür wären hier blind. Tabelle und Spalte als Literal oder Konstante derselben Datei schreiben (Stil der übrigen Migrationen), oder die Datei mit Grund in MIGRATION_READ_HINTS (scripts/lib/migration-inventory.mjs) eintragen.`)
+    }
+    for (const note of inventory.staleHints) err(note)
+    const contributorFile = join(ROOT, 'packages', layer, CONTRIBUTOR_FILE(layer))
+    read.push({
+      key: layer,
+      userData: m.userData,
+      hasContributor: existsSync(contributorFile) && /registerUserDataContributor\s*\(/.test(readFileSync(contributorFile, 'utf8')),
+      hasServerApi: existsSync(join(ROOT, 'packages', layer, 'server', 'api')),
+      tables: inventory.tables,
+      touched: inventory.touched,
+      tenantTables: [...inventory.tables, ...inventory.touched].filter(([, columns]) => columns.has('communityId')).map(([table]) => table),
+    })
+  }
+  for (const problem of userDataDutyProblems({ layers: read, registry: USER_DATA_TABLES })) err(problem)
+  for (const problem of dataDoorProblems({ layers: read })) err(problem)
 }
 
 // requires müssen existieren

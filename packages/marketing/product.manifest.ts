@@ -26,6 +26,7 @@ export default {
   key: 'marketing',
   tier: 'foundation',
   hasMigrations: false,
+  userData: false,
   title: { en: 'Marketing chrome', de: 'Marketing-Chrome' },
   description: {
     en: 'Marketing chrome: the Pukalani header and footer, shared by pukalani.app and help.pukalani.app.',

@@ -4,6 +4,7 @@ export default {
   key: 'pages',
   tier: 'optional',
   hasMigrations: true,
+  userData: false,
   // Schema-Probe (OPS-008): pages-005 legt pages.communityId an; 006 löscht nur tenantId (nicht ablesbar).
   schema: { latest: '006', probe: { migration: '005', table: 'pages', column: 'communityId' } },
   apiPrefixes: ['/api/pages'],

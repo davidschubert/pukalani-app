@@ -5,6 +5,7 @@ export default {
   tier: 'optional',
   requires: ['moderation'],
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): posts-023 legt community_posts.translations an.
   schema: { latest: '023', probe: { migration: '023', table: 'community_posts', column: 'translations' } },
   apiPrefixes: ['/api/posts'],

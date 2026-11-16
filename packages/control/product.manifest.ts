@@ -4,6 +4,7 @@ export default {
   key: 'control',
   tier: 'optional',
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): control-038 legt communities.timezone an.
   schema: { latest: '038', probe: { migration: '038', table: 'communities', column: 'timezone' } },
   apiPrefixes: ['/api/control'],

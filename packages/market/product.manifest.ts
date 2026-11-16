@@ -43,6 +43,7 @@ export default {
   tier: 'optional',
   requires: ['brand'],
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): market-004 legt market_competitors.role an.
   schema: { latest: '005', probe: { migration: '005', table: 'market_runs' } },
   apiPrefixes: ['/api/market'],

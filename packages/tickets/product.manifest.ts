@@ -4,6 +4,7 @@ export default {
   key: 'tickets',
   tier: 'optional',
   hasMigrations: true,
+  userData: true,
   // Schema-Probe (OPS-008): tickets-004 legt tickets.origin an.
   schema: { latest: '004', probe: { migration: '004', table: 'tickets', column: 'origin' } },
   apiPrefixes: ['/api/tickets'],
