@@ -24,6 +24,22 @@ paths:
   UND ein Appwrite-JWT, das das Control Plane SELBST gegen das Pool-Projekt
   prüft. Idempotenz über den Hostnamen (kein Idempotency-Key); Owner-Mitgliedschaft
   scheitert ⇒ Tenant wird zurückgerollt.
+- REGELN, DIE UNTER GLEICHZEITIGEN ANFRAGEN HALTEN MÜSSEN (BE-013, seit
+  2026-11-16): im Control Plane entscheidet nie „erst lesen, dann schreiben".
+  Zwei Bausteine: (1) `withControlLock(event, { scope, subject }, work)`
+  (`packages/control/server/utils/controlLock.ts`) — eine Sperr-Zeile mit
+  fester Kennung in `system_runs`; UNTER der Sperre lesen, entscheiden,
+  schreiben; die Zeile fällt am Ende wieder, ein abgestorbener Halter wird
+  nach 30 s übernommen, ohne prüfbare Sperre wird NICHT geschrieben. Heute:
+  `onboarding` (Anlage je Konto: Kontingent und Testphase), `team` (Rolle
+  ändern, entfernen, Besitz übertragen — die Mitgliederliste wird unter der
+  Sperre gelesen), `member-invite` (Wochen-Kontingent). (2) Zähler mit
+  Obergrenze schreibt die Datenbank selbst: der Einladungs-Code wird VOR der
+  Anlage reserviert (`incrementRowColumn` mit `max`, gemessen unteilbar) und
+  bei Fehlschlag oder Wiederholung zurückgegeben. Neue Regel dieser Art ⇒
+  einer der zwei Bausteine und ein Test mit zwei gleichzeitigen Anfragen.
+  Die Testphase gibt es EINMAL JE KONTO, und Anlegen verlangt eine bestätigte
+  Adresse: `.claude/rules/plans-products.md`.
 - Vertrag (Kataloge, 6 Vibes, Testphase, Kontingent):
   `packages/control/shared/onboarding.ts` — der Wizard-Layer konsumiert ihn.
 - Branding gehört dem MANDANTEN (`communities.theme/variant`), nicht dem Projekt:

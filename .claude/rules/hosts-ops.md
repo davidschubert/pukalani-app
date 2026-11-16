@@ -389,6 +389,15 @@ paths:
   „keine Pflicht" mit Grund oder (Bestand) „noch nicht bewertet"
   (`scripts/ops/site-env-decisions.mjs`). Eine neue Einstellung ohne Antwort
   ist rot; die Pflicht-Liste selbst bleibt von Hand.
+- EIGENE DOMAIN EINER POOL-COMMUNITY (BE-014/SEC-022, seit 2026-11-16): nur
+  mit Freigabe des Betreibers, nicht in der Testphase; nach dem Plan-Ende 14
+  Tage Frist, dann `paused` (abgeschaltet, nichts gelöscht — ploi-Eintrag und
+  Zertifikat BLEIBEN, damit die Weiterleitung auf die Pukalani-Adresse und das
+  Wieder-Einschalten ohne neue Bestellung gehen). Zwei stündliche Läufe:
+  `custom-domain-sweep` (Betreiber-App; zählt bei `dry-run` nur) und
+  `custom-domain-notice` (Platform-App) — beide in `ops/timed-jobs.conf`.
+  Regel: `.claude/rules/plans-products.md`, Handgriffe:
+  docs/runbooks/EIGENE-DOMAIN-FREIGABE.md.
 - Neue Namen IMMER in RESERVED_SUBDOMAINS (packages/control/schemas/tenant.ts),
   sonst kann ein Selbstbedienungs-Kunde sie beantragen.
 - HERKUNFTSPRÜFUNG (SEC-004, seit 2026-11-13 ÜBERALL AN): alle Hosts unter

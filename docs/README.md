@@ -68,6 +68,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md) | **Appwrite-Server weg:** aus dem nächtlichen Backup auf der Storage Box und dem einen Schlüssel zurück zur laufenden Instanz — Schritt für Schritt, dazu Betrieb des Backups, Übung, Protokoll |
 | [runbooks/APPWRITE-PROD-SPIEGEL.md](runbooks/APPWRITE-PROD-SPIEGEL.md) | Prod-Appwrite 1:1 in die lokale OrbStack-Appwrite spiegeln (Skript, was lokal bewusst anders ist, Rückweg) |
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
+| [runbooks/EIGENE-DOMAIN-FREIGABE.md](runbooks/EIGENE-DOMAIN-FREIGABE.md) | Eigene Domain einer Pool-Community freigeben, abschalten, wieder einschalten; Schonfrist-Lauf (zählt nur / scharf), Einzelfälle |
 | [runbooks/AI-RUNNER-BETRIEB.md](runbooks/AI-RUNNER-BETRIEB.md) | AI-Runner im Betrieb: einen Testbefehl auf dem Rechner freigeben, was bei „nicht erlaubt“ zu tun ist, wann ein Auftrag als geprüft gilt, Fristen für Protokolle und Ereignisse |
 | [runbooks/GOOGLE-LOGIN.md](runbooks/GOOGLE-LOGIN.md) | „Anmelden mit Google" scharfschalten (Google-Console, Appwrite-Console, die zwei Schalter) |
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
