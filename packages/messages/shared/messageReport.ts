@@ -80,7 +80,11 @@ export function moderatorVisibleBody(state: ModeratorBodyState): string | null {
  *
  * Unabhängig von der Kontolöschung leert der Lösch-Lauf den Beleg 90 Tage
  * nach der letzten ERLEDIGUNG (`evidenceDueForClearing` unten,
- * `server/utils/reportEvidenceSweep.ts`) — dieselbe Zahl, anderer Anker.
+ * `server/utils/reportEvidenceSweep.ts`) — dieselbe Zahl, anderer Anker. Er
+ * leert `reportedBody` UND `reportedAt`: ohne Beleg kein Merker, eine spätere
+ * neue Meldung friert dann neu ein (`shouldFreezeSnapshot`). Eine geleerte
+ * Zeile ist hier nicht mehr geschützt (`reportedAt` leer) — richtig so, es
+ * gibt nichts mehr zu schützen.
  */
 export const REPORT_EVIDENCE_RETENTION_DAYS = 90
 

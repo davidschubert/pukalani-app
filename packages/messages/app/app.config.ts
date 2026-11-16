@@ -15,7 +15,7 @@ export default defineAppConfig({
        * `off` | `count` | `apply`. Vorgabe AUS — bei `off` meldet sich der
        * Lauf gar nicht an. `count` zählt nur (eine Log-Zeile
        * `messages.report_evidence_sweep`), `apply` leert fällige Belege
-       * (90 Tage nach der Erledigung) und kommt erst nach Davids Ja zu einer
+       * (`reportedBody` und `reportedAt`, 90 Tage nach der Erledigung) und kommt erst nach Davids Ja zu einer
        * gezählten Zahl. Lauf: server/utils/reportEvidenceSweep.ts.
        */
       reportEvidenceSweep: 'off' as 'off' | 'count' | 'apply',

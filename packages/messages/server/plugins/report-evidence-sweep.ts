@@ -3,8 +3,10 @@ import { createAppReportEvidenceSweep, reportEvidenceSweepMode } from '../utils/
 /**
  * DER TAKT DES LÖSCH-LAUFS FÜR GEMELDETE NACHRICHTEN (SEC-033).
  *
- * Was er tut und warum, steht in `server/utils/reportEvidenceSweep.ts`; die
- * Regel pur in `shared/messageReport.ts`. Hier nur der Takt.
+ * Was er tut und warum, steht in `server/utils/reportEvidenceSweep.ts` (er
+ * leert den eingefrorenen Beleg, `reportedBody` und `reportedAt`; Gespräch
+ * und Meldung bleiben); die Regel pur in `shared/messageReport.ts`. Hier nur
+ * der Takt.
  *
  * SCHALTER `pukalani.messages.reportEvidenceSweep` (`off` | `count` |
  * `apply`, Vorgabe `off`): bei `off` meldet sich der Lauf gar nicht an — ein

@@ -6,14 +6,17 @@ import {
   type EvidenceRow,
   type EvidenceSweepStore,
 } from '../server/utils/reportEvidenceSweep'
+import { shouldFreezeSnapshot } from '../shared/messageReport'
 
 /**
  * SEC-033 — DER LÖSCH-LAUF FÜR DEN BELEG GEMELDETER NACHRICHTEN.
  *
  * Gefahren gegen einen Fake-Store (Nachrichten + Meldungen je Community) und
  * eine Fake-Sperre. Geprüft wird, was man im Betrieb nicht sieht, bis es zu
- * spät ist: `count` schreibt nichts, `apply` leert NUR fällige und NUR
- * `reportedBody`, ein zweiter Lauf ändert nichts, eine offene Meldung schützt
+ * spät ist: `count` schreibt nichts, `apply` leert NUR fällige Belege und
+ * dort BEIDE Felder (`reportedBody` und `reportedAt`, nie `body`), die
+ * geleerte Zeile fällt aus der Liste und eine neue Meldung friert neu ein,
+ * ein zweiter Lauf ändert nichts, eine offene Meldung schützt
  * (auch eine, die erst zwischen Zählen und Schreiben aufgeht), die Sperre
  * hält einen zweiten Lauf auf, und der Stand wird nur in der Community der
  * Nachricht gefragt.
@@ -74,8 +77,9 @@ function world() {
     async clearEvidence(id) {
       const row = messages.find(m => m.$id === id)
       if (!row) throw new Error('weg')
-      writes.push({ id, data: { reportedBody: '' } })
+      writes.push({ id, data: { reportedBody: '', reportedAt: '' } })
       row.reportedBody = ''
+      row.reportedAt = ''
     },
   }
   return { messages, reports, writes, asked, hooks, store }
@@ -137,16 +141,18 @@ describe('count', () => {
 })
 
 describe('apply', () => {
-  it('leert NUR fällige Belege und NUR reportedBody', async () => {
+  it('leert NUR fällige Belege — beide Felder des Belegs, nie das Gespräch', async () => {
     const w = world()
     const lease = leaseStore()
     const result = await sweepReportEvidence('apply', { store: w.store, lease: lease.store, now })
     expect(result).toMatchObject({ mode: 'apply', due: 2, cleared: 2, failed: 0 })
     expect(w.writes.map(x => x.id).sort()).toEqual(['m-due', 'm-withdrawn'])
-    for (const write of w.writes) expect(Object.keys(write.data)).toEqual(['reportedBody'])
+    // EIN Schreibvorgang je Zeile mit genau den zwei Feldern des Belegs.
+    for (const write of w.writes) expect(write.data).toEqual({ reportedBody: '', reportedAt: '' })
 
     const byId = Object.fromEntries(w.messages.map(m => [m.$id, m]))
-    expect(byId['m-due']).toMatchObject({ reportedBody: '', body: 'lebend-1', reportedAt: iso(NOW - 120 * DAY) })
+    expect(byId['m-due']).toMatchObject({ reportedBody: '', reportedAt: '', body: 'lebend-1' })
+    expect(byId['m-withdrawn']).toMatchObject({ reportedBody: '', reportedAt: '', body: 'lebend-4' })
     expect(byId['m-fresh']?.reportedBody).toBe('beleg-2')
     expect(byId['m-open']?.reportedBody).toBe('beleg-3')
     // Die Meldungen selbst bleiben stehen.
@@ -158,13 +164,26 @@ describe('apply', () => {
     expect(leaseRow.detail).not.toMatch(/m-|beleg|lebend/)
   })
 
-  it('ein zweiter Lauf findet nichts mehr', async () => {
+  it('ein zweiter Lauf findet nichts mehr — die geleerten Zeilen sind aus seiner Liste gefallen', async () => {
     const w = world()
     const lease = leaseStore()
     await sweepReportEvidence('apply', { store: w.store, lease: lease.store, now })
     const second = await sweepReportEvidence('apply', { store: w.store, lease: lease.store, now })
-    expect(second).toMatchObject({ due: 0, cleared: 0 })
+    expect(second).toMatchObject({ reported: 3, due: 0, cleared: 0 })
     expect(w.writes).toHaveLength(2)
+    const listed = await w.store.listReported({ after: null, limit: 100 })
+    expect(listed.map(r => r.$id)).not.toContain('m-due')
+    expect(listed.map(r => r.$id)).not.toContain('m-withdrawn')
+  })
+
+  it('nach dem Leeren friert eine neue Meldung den Text NEU ein', async () => {
+    const w = world()
+    await sweepReportEvidence('apply', { store: w.store, lease: leaseStore().store, now })
+    const cleared = (await w.store.getMessage('m-due'))!
+    expect(shouldFreezeSnapshot({ reportedBody: cleared.reportedBody, reportedAt: cleared.reportedAt })).toBe(true)
+    // Gegenprobe: ein noch stehender Beleg friert nicht erneut ein.
+    const kept = (await w.store.getMessage('m-fresh'))!
+    expect(shouldFreezeSnapshot({ reportedBody: kept.reportedBody, reportedAt: kept.reportedAt })).toBe(false)
   })
 
   it('eine Meldung, die zwischen Zählen und Schreiben aufgeht, schützt den Beleg', async () => {
@@ -245,5 +264,18 @@ describe('Deckel und Takt', () => {
     await run()
     expect(logs).toHaveLength(2)
     expect(logs[1]?.due).toBe(1)
+  })
+})
+
+describe('der echte Store', () => {
+  it('leert in EINEM Schreibvorgang reportedBody UND reportedAt — und nichts sonst', async () => {
+    const updates: Array<Record<string, unknown>> = []
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'db' } }))
+    vi.stubGlobal('createAdminClient', () => ({
+      tablesDB: { updateRow: async (args: Record<string, unknown>) => { updates.push(args); return {} } },
+    }))
+    const { appwriteEvidenceSweepStore } = await import('../server/utils/reportEvidenceSweep')
+    await appwriteEvidenceSweepStore().clearEvidence('m-1')
+    expect(updates).toEqual([{ databaseId: 'db', tableId: 'messages', rowId: 'm-1', data: { reportedBody: '', reportedAt: '' } }])
   })
 })

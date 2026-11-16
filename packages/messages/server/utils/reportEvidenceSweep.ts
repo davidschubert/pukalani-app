@@ -31,11 +31,22 @@ import { MESSAGE_REPORT_TARGET, MESSAGES_TABLE } from '../../shared/types/messag
  * letzte Erledigung (ohne jede Meldungs-Zeile: `reportedAt`) 90 Tage her ist.
  *
  *  · `count`: zählt nur. Schreibt nichts — auch keine Sperr-Zeile.
- *  · `apply`: leert bei fälligen Zeilen NUR `reportedBody`. Das Gespräch der
- *    Beteiligten (`body`), `reportedAt`, die Meldung und ihr Vermerk bleiben.
- *    Vor dem Schreiben liest er Zeile UND Meldungs-Stand frisch und prüft die
- *    Regel noch einmal: eine inzwischen neu geöffnete Meldung schützt den
- *    Beleg. Wiederholbar — ein geleerter Beleg ist nie wieder fällig.
+ *  · `apply`: leert bei fälligen Zeilen den eingefrorenen Beleg — BEIDE
+ *    Felder, `reportedBody` UND `reportedAt` (⇒ ''), in EINEM Schreibvorgang.
+ *    Das Gespräch der Beteiligten (`body`) bleibt unangetastet, ebenso die
+ *    Meldung und ihr Vermerk in `reports`: dort bleibt die Tatsache „wurde
+ *    gemeldet" stehen. Vor dem Schreiben liest er Zeile UND Meldungs-Stand
+ *    frisch und prüft die Regel noch einmal: eine inzwischen neu geöffnete
+ *    Meldung schützt den Beleg.
+ *
+ * ── WARUM AUCH `reportedAt` ─────────────────────────────────────────────
+ * Der Zeitstempel ist der Merker „es gibt einen Beleg" (so sagt es der Test
+ * zu `shouldFreezeSnapshot`). Ohne Beleg kein Merker: eine spätere NEUE
+ * Meldung friert dann den Text von dann neu ein, statt eine offene Meldung
+ * ohne Text zu erzeugen. Und die Zeile fällt aus der Liste der gemeldeten
+ * Nachrichten und aus der Arbeitsliste dieses Laufs (`reportedAt != ''`),
+ * statt bei jedem Takt wieder gelesen zu werden. Wiederholbar — ein zweiter
+ * Lauf findet sie gar nicht mehr.
  *
  * ── COMMUNITY-GRENZEN ───────────────────────────────────────────────────
  * Die LISTE der gemeldeten Nachrichten ist mandantenübergreifend (ein Lauf
@@ -82,7 +93,7 @@ export interface EvidenceSweepStore {
   getMessage(id: string): Promise<EvidenceRow | null>
   /** Stand der Meldungen zu GENAU dieser Nachricht in GENAU dieser Community. */
   reportState(communityId: string, messageId: string): Promise<ReportEvidenceReports>
-  /** Leert NUR `reportedBody`. */
+  /** Leert den Beleg: `reportedBody` UND `reportedAt` ⇒ '', in einem Schreibvorgang. */
   clearEvidence(id: string): Promise<void>
 }
 
@@ -358,7 +369,7 @@ export function appwriteEvidenceSweepStore(): EvidenceSweepStore {
       return reportEvidenceStateForTarget({ communityId, targetType: MESSAGE_REPORT_TARGET, targetId: messageId })
     },
     async clearEvidence(id) {
-      await tablesDB.updateRow({ databaseId, tableId: MESSAGES_TABLE, rowId: id, data: { reportedBody: '' } })
+      await tablesDB.updateRow({ databaseId, tableId: MESSAGES_TABLE, rowId: id, data: { reportedBody: '', reportedAt: '' } })
     },
   }
 }
