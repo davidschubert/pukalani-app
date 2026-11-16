@@ -27,6 +27,9 @@ export interface CreatedSite {
   url: string
   plan: string
   trialEndsAt: string | null
+  /** Hat diese Community eine Testphase? (BE-015 — optional, solange ein
+   *  älteres Control Plane das Feld noch nicht schickt.) */
+  trial?: boolean
   tenantId: string
   reused: boolean
 }

@@ -5,8 +5,8 @@ export default {
   tier: 'optional',
   hasMigrations: true,
   userData: true,
-  // Schema-Probe (OPS-008): control-038 legt communities.timezone an.
-  schema: { latest: '038', probe: { migration: '038', table: 'communities', column: 'timezone' } },
+  // Schema-Probe (OPS-008): control-039 legt trial_claims an (BE-015).
+  schema: { latest: '039', probe: { migration: '039', table: 'trial_claims', column: 'runtimeUserId' } },
   apiPrefixes: ['/api/control'],
   title: { en: 'Control Plane', de: 'Control Plane' },
   description: {

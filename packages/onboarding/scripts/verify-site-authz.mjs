@@ -198,6 +198,9 @@ try {
   console.log(`\nO5-Beweis gegen http://localhost:${PORT} (Pool ${poolProject})\n`)
 
   const owner = await createPoolUser('owner')
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse —
+  // nur der Gründer, die übrigen Konten bleiben, wie der Beweis sie braucht.
+  await poolUsers.updateEmailVerification({ userId: owner.userId, emailVerification: true })
   const stranger = await createPoolUser('stranger')
   const code = await issueCode()
   const ownerCookie = await login(owner)

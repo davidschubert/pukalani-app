@@ -16,8 +16,9 @@ import { isNameReservedInDb } from '../../../utils/reservedNames'
  * Control Plane prüft die Identität selbst; es glaubt dem Aufrufer nichts.
  *
  * Kein `requirePermission`: das ist bewusst KEINE Betreiber-Route. Autorisiert
- * wird über (a) das gültige JWT eines Runtime-Users, (b) einen gültigen
- * Einladungs-Code und (c) das Konto-Kontingent.
+ * wird über (a) das gültige JWT eines Runtime-Users mit BESTÄTIGTER Adresse,
+ * (b) einen gültigen Einladungs-Code (solange das Tor zu ist) und (c) das
+ * Konto-Kontingent. Die Testphase vergibt `provisionCommunity` einmal je Konto.
  */
 const bodySchema = z.object({
   jwt: z.string().min(1).max(4096),
@@ -28,6 +29,20 @@ export default defineEventHandler(async (event) => {
   await requireOnboardingCaller(event)
   const body = await readValidatedBody(event, bodySchema.parse)
   const identity = await verifyRuntimeIdentity(event, body.jwt)
+
+  /**
+   * EINE COMMUNITY ANLEGEN VERLANGT EINE BESTÄTIGTE ADRESSE (BE-015, Davids
+   * Entscheidung 2026-11-16) — mit und ohne Einladungs-Code, VOR allem anderen:
+   * vor dem Namen, vor dem Code (kein Code wird verbraucht) und vor der
+   * Sperre. Die Testphase gibt es einmal je Konto; ein Konto, dessen Adresse
+   * niemandem nachweislich gehört, ist zu billig, um daran etwas zu hängen.
+   * Der Grund reist als `email_unverified` — der Wizard sagt dann, was zu tun
+   * ist (`onboarding.errors.verifyFirst`).
+   */
+  if (identity.emailVerified !== true) {
+    logEvent('warn', 'onboarding.unverified_rejected', { runtimeUserId: identity.userId })
+    throw createError({ status: 403, statusText: 'Email not verified', data: { code: 'email_unverified' } })
+  }
 
   // Gesperrte Namen, Teil 2: das Zod-Schema hat die Code-Basisliste geprüft,
   // hier kommt die Betreiber-Zusatzliste dazu (control-027). VOR dem

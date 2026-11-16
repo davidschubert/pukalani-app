@@ -112,6 +112,8 @@ async function runOnce(index, code) {
   const password = `Pw-${ID.unique()}`
   const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `Abnahme ${index}` })
   cleanup.users.push(user.$id)
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
+  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
 
   // 2. Anmelden.
   const loginRes = await call(CONTROL_HOST, '/api/auth/login', { method: 'POST', body: { email, password } })

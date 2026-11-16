@@ -77,6 +77,13 @@ export const TRIAL_ENDED_SUSPENSION_REASON
   = 'Die Testphase ist beendet. Mit einem Abo (Personal oder Pro) öffnet sich '
     + 'die Community sofort wieder — Inhalte und Einstellungen bleiben erhalten.'
 
+/** Der Grund für eine Community, die OHNE Testphase entsteht, weil das Konto
+ *  seine schon hatte (BE-015: die Testphase gibt es einmal je Konto). Gesetzt
+ *  in onboardingProvision.ts; derselbe Ton, dieselbe Sprache wie oben. */
+export const TRIAL_USED_SUSPENSION_REASON
+  = 'Für dieses Konto gab es schon eine Testphase. Mit einem Abo (Personal oder '
+    + 'Pro) öffnet sich die Community sofort — Inhalte und Einstellungen bleiben erhalten.'
+
 export async function runTrialSweep(now: number = Date.now()): Promise<TrialSweepResult> {
   const config = useRuntimeConfig()
   const admin = createAdminClient()

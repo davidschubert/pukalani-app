@@ -187,6 +187,9 @@ try {
   for (const account of [invited, stranger]) {
     const user = await poolUsers.create({ userId: ID.unique(), email: account.email, password: account.password, name: 'Beweis' })
     cleanup.users.push(user.$id)
+    // Ein gebundener Code gilt nur für eine BESTÄTIGTE Adresse, und seit BE-015
+    // verlangt auch das Anlegen selbst eine.
+    await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
     const login = await callPlatform(CONTROL_HOST, '/api/auth/login', { method: 'POST', body: account })
     account.cookie = login.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
   }
