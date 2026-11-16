@@ -327,7 +327,8 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 ### GA1 P20 — Wächter, die ihre Listen selbst erzeugen: Not-Aus je Route, Lösch-Pflicht, Datentür ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
-OPS-012, BE-005), Pull Requests 200 (Merge `e68c261a`), 201 (Merge `5485be74`) und dieser.
+OPS-012, BE-005), Pull Requests 200 (Merge `e68c261a`), 201 (Merge `5485be74`), 202 (Merge
+`fc2e3103`) und 203 (Merge `08996573`).
 Davids Entscheidungen vom 2026-11-12: „Die Wächter erzeugen ihre Listen aus
 dem Code, und ein neuer Wächter prüft die Lösch-Pflicht neuer Produkte" und
 „Die Galerie-Routen kommen in die Liste, über die der Not-Aus des Produkts
@@ -363,6 +364,9 @@ wirkt; ein Wächter prüft das für alle Produkte".
    globale `pageTransition` in einer App mit Dashboard (Prüfung 8).
 7. **`docs/referenz/LIVE-BEWEISE.md` wird erzeugt** (`pnpm live-beweise`,
    `check:live-beweise` im Lint-Lauf): 81 Skripte, sechs in der CI.
+8. **Bot-Prüfung täglich im Produktions-Wächter** (PR 203): `verify-turnstile`
+   lief nur von Hand. Eine Antwort, die nichts entscheidet, bekommt einen
+   zweiten Versuch. Der erste Lauf in der echten Umgebung war grün.
 
 **Was die neuen Wächter beim ersten Lauf fanden.** Elf Routen neben dem
 Not-Aus (behoben), eine Route des Control Plane im Ordner einer Core-Route
