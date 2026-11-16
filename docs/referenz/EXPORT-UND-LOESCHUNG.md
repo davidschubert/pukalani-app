@@ -132,8 +132,10 @@ die Zeile fällt aus der Liste der Moderation und aus der Arbeitsliste des Laufs
 Der Zeitpunkt der Erledigung ist das
 `$updatedAt` der erledigten Meldungs-Zeile (keine eigene Spalte); eine neu geöffnete Meldung
 schützt den Beleg, vor dem Leeren wird frisch gelesen. Der Stand wird je Nachricht nur in ihrer
-eigenen Community gefragt. `apply` nimmt die Lauf-Sperre in `system_runs`. Heute zählt der Lauf
-nur (`count`); `apply` kommt nach Davids Ja zu einer gezählten Zahl. Den Bestand zählt nur lesend
+eigenen Community gefragt. `apply` nimmt die Lauf-Sperre in `system_runs`. Scharf (`apply`) ist der Lauf
+seit dem 2026-11-16 in `platform` und in der Test-App — Davids Ja zur gezählten Zahl (0 gemeldete
+Nachrichten auf Production an diesem Tag); Rückweg ist `count` oder `off` in der `app.config.ts`
+der App. Den Bestand zählt nur lesend
 `node --env-file=<env-datei> packages/messages/scripts/report-evidence-count.mjs` (nur Zahlen,
 dazu die Zahl der Dateien im Bucket der Lösch-Kopien). Die Kontolöschung des Autors behält ihre
 eigene Regel (`evidenceStillProtected`, 90 Tage ab der Meldung).
