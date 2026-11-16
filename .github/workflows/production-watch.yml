@@ -140,7 +140,33 @@
 #      (nicht erreichbar, 503, während eines Auslieferns), bekommt nach 20 s
 #      einen zweiten Versuch.
 #
-# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 und 10
+#  12. SERVER-EINSTELLUNGEN WIE IN DER VORLAGE (`verify-server-config.mjs`),
+#      TÄGLICH (OPS-003, 2026-11-16). nginx-Dateien und Zeitpläne lagen nur
+#      auf den Servern: zwei Sites reichten monatelang die Adresse des
+#      Aufrufers nicht an die App weiter, ein Zeitplan bediente nur eine
+#      Community, und nichts davon wurde von selbst rot. Vorlagen
+#      (`ops/nginx/`), die Liste der Sites (`ops/nginx-sites.conf`) und die
+#      Liste der Zeitpläne (`ops/cron.conf`) stehen jetzt im Repo; auf den
+#      Servern vergleichen zwei feste, nur lesende Skripte — auf app-prod
+#      `ops/nginx-check.mjs` und `ops/cron-check.sh` (der Deploy legt sie
+#      neben die Ecosystem-Datei), auf appwrite-prod das Tor-Wort
+#      `cron-status`. Zurück kommen nur Zahlen, Site-Namen aus der Liste und
+#      Regel-Namen; keine Zeile aus einer nginx-Datei oder einem crontab.
+#      Verglichen werden PFLICHT-ZEILEN, nicht Zeichen: ein Handgriff in Ploi
+#      (Zertifikat, Alias) schreibt die Datei um, das Ergebnis bleibt grün.
+#      Rot: eine Pflicht-Zeile fehlt, der Webserver setzt eine Schutz-
+#      Kopfzeile selbst, eine Site oder ein Zeitplan ist unbekannt, ein
+#      erwarteter Zeitplan fehlt. Probealarm: `-f config_drill=true`.
+#
+#  13. SCHUTZ-KOPFZEILEN (`verify-security-headers.mjs`), TÄGLICH (SEC-006,
+#      2026-11-16). Die Kopfzeilen setzt die App für jede Antwort; ob sie an
+#      der echten Antwort GENAU EINMAL ankommen (und kein Webserver eine
+#      daneben setzt), sieht man nur von außen. Je Host eine Seite,
+#      `/api/health` und eine Datei unter `/_nuxt/`, roh gezählt. Ohne ssh,
+#      ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts
+#      aus (das meldet Blick 4).
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 13
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
 # setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
@@ -240,6 +266,10 @@ on:
         default: false
       realtime_drill:
         description: 'PROBEALARM LIVE-VERBINDUNG: Handshake gegen einen Host, den es nicht gibt, und ein Wächter-Stand, der nie frisch genug ist — prüft die Kette; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
+      config_drill:
+        description: 'PROBEALARM SERVER-EINSTELLUNGEN: der Blick tut so, als fehlte einer Site eine Pflicht-Zeile im Webserver — prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
       appwrite_probe:
@@ -532,6 +562,26 @@ jobs:
           line="$(ssh appwrite-prod realtime-status 2>/dev/null)" || true
           node scripts/ops/verify-realtime.mjs --watchdog-line "$line" --max-age "$MAX_AGE_MIN"
 
+      # Blick 12 (s. Kopf). Zwei feste Skripte auf app-prod und das Tor-Wort
+      # `cron-status` auf appwrite-prod; jede Zeile wird im Skript gegen ihre
+      # feste Form geprüft, bevor sie hier ins (öffentliche) Protokoll kommt.
+      - name: Server-Einstellungen wie in der Vorlage? (Webserver, Zeitpläne)
+        if: always()
+        env:
+          PUKALANI_OPS_SSH: ploi@49.13.211.173
+          PUKALANI_APPWRITE_SSH: appwrite-prod
+          PUKALANI_CONFIG_DRILL: ${{ inputs.config_drill && '1' || '0' }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: node scripts/ops/verify-server-config.mjs --ssh --strict
+
+      # Blick 13 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Antworten,
+      # roh gezählte Kopfzeilen.
+      - name: Schutz-Kopfzeilen auf jedem Host genau einmal?
+        if: always()
+        env:
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: node scripts/ops/verify-security-headers.mjs
+
       - name: Befunde weiterreichen
         id: befunde
         if: always()
@@ -572,8 +622,8 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
-      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill) && '1' || '0' }}
-      # Die Sätze der Blicke 9 und 10 (s. Kopf) — über `env`, nie direkt in
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill) && '1' || '0' }}
+      # Die Sätze der Blicke 9 bis 13 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}

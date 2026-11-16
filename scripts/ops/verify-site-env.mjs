@@ -170,6 +170,14 @@ export const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      /**
+       * SEC-010 (2026-11-16): die feste Adresse der Site. Auf einem Community-
+       * oder Kontroll-Host nimmt die Pool-App den geprüften Namen der Anfrage;
+       * überall sonst (und für Mails ohne Community) ist dies der Rückhalt.
+       * Fehlt sie, schreibt die App `auth.app_url_missing` und baut Links aus
+       * dem Namen der Anfrage. Auf dem Server nachgesehen: gesetzt.
+       */
+      'NUXT_PUBLIC_APP_URL',
       // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
       // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
       // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
@@ -332,6 +340,14 @@ export const SITES = [
       'NUXT_APPWRITE_KEY',
       'NUXT_PUBLIC_APPWRITE_ENDPOINT',
       'NUXT_PUBLIC_APPWRITE_PROJECT_ID',
+      /**
+       * SEC-010 (2026-11-16): Reset-Mail und OAuth-Rückweg nehmen in einer
+       * Site ohne Mandanten-Auflösung DIESE Adresse statt des Namens aus der
+       * Anfrage. Fehlt sie, fällt die App mit einer Fehlerzeile
+       * (`auth.app_url_missing`) auf die Anfrage zurück. Auf dem Server
+       * nachgesehen: gesetzt.
+       */
+      'NUXT_PUBLIC_APP_URL',
       // Turnstile (TS1, 2026-10-27): beide IMMER zusammen — ein Secret ohne
       // Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt ein
       // nutzloses Widget. Fehlt eins, ist die Registrierung ein Mail-Relais.
