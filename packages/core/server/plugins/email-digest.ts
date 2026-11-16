@@ -9,16 +9,26 @@ import { runEmailDigestSweep } from '../utils/emailDigest'
  * Ohne konfiguriertes SMTP ist der Sweep ein sofortiger no-op.
  */
 const SWEEP_INTERVAL_MS = 30 * 60 * 1000
+/**
+ * Erster Lauf kurz nach dem Start (seit OPS-011, 2026-11-16). Bis dahin kam
+ * der erste Takt erst nach 30 Minuten — an einem Tag mit mehreren
+ * Auslieferungen im Halbstunden-Abstand lief der Digest dann stundenlang gar
+ * nicht, weil jeder Neustart die Wartezeit neu begann. Ein zusätzlicher Lauf
+ * schickt nichts doppelt: fällig ist ein Mensch höchstens einmal am Tag
+ * (prefs.emailDigestLastAt).
+ */
+const FIRST_RUN_DELAY_MS = 2 * 60 * 1000
 
 export default defineNitroPlugin(async () => {
   if (!await mailerConfigured()) return
-  // Kein Sofortlauf (wie bisher): der erste Takt kommt nach 30 min. Fehler je
-  // Empfänger bleiben fachlich (`result.errors`); nur ein Wurf des ganzen
-  // Laufs ist `failed` — bis OPS-011 endete der als unbehandelte Ablehnung.
-  // unref, damit der Timer einen sauberen Exit (CLI/Tests) nicht offen hält.
+  // Fehler je Empfänger bleiben fachlich (`result.errors`); nur ein Wurf des
+  // ganzen Laufs ist `failed` — bis OPS-011 endete der als unbehandelte
+  // Ablehnung. unref, damit der Timer einen sauberen Exit (CLI/Tests) nicht
+  // offen hält.
   defineTimedJob({
     name: 'email-digest',
     everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
     unref: true,
     run: async () => {
       const result = await runEmailDigestSweep()
