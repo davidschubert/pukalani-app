@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // @ts-expect-error — reines .mjs ohne Typen (Betriebs-Skript)
 import { RULES } from '../../../ops/nginx-check.mjs'
 // @ts-expect-error — reines .mjs ohne Typen (Betriebs-Skript)
@@ -24,6 +24,11 @@ import { NGINX_RULES, evaluateCron, evaluateNginx, parseCronOutput, parseNginxOu
  * KEINE Zeile aus einer nginx-Datei oder einem crontab verlässt den Server
  * (das Protokoll des Wächters ist öffentlich).
  */
+// Jeder Test startet echte Prozesse (node, bash mit vielen kleinen Aufrufen) —
+// auf einem ausgelasteten CI-Runner reichen die 5 s Standard nicht immer
+// (ein Lauf mit vier Skript-Starts brauchte dort 5,3 s).
+vi.setConfig({ testTimeout: 30_000 })
+
 const REPO = join(__dirname, '..', '..', '..')
 const NGINX_CHECK = join(REPO, 'ops', 'nginx-check.mjs')
 const CRON_CHECK = join(REPO, 'ops', 'cron-check.sh')
