@@ -116,6 +116,22 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Kontaktdaten von Gästen (`guest_authors`, Altbestand) | 90 Tage | `comments/server/plugins/guest-author-prune.ts` | keiner | `comments.guest_authors_pruned` |
 | Protokolle und Ereignisse der Runner-Läufe | 30 / 90 Tage | `runner/server/plugins/run-retention.ts` | `pukalani.runner.retention` | `runner.retention` |
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
+| Text einer gemeldeten privaten Nachricht (`messages.reportedBody`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
+
+**Gemeldete private Nachrichten (SEC-033, Davids Entscheidung 2026-11-12):** Den Text sieht die
+Moderation nur, solange eine Meldung offen ist — in der Liste und in der Einzel-Ansicht entscheidet
+dieselbe Funktion (`moderatorVisibleBody`, `packages/messages/shared/messageReport.ts`); das gilt
+beim Lesen und damit sofort auch für alle schon erledigten Meldungen. Jede Einsicht steht im
+Betreiber-Protokoll (`message_report.viewed`, `message_report.queue_viewed`). Danach bleibt die
+Kopie 90 Tage gespeichert; der Lauf leert dann NUR `reportedBody` — das Gespräch der Beteiligten
+(`body`), `reportedAt`, die Meldung und ihr Vermerk bleiben. Der Zeitpunkt der Erledigung ist das
+`$updatedAt` der erledigten Meldungs-Zeile (keine eigene Spalte); eine neu geöffnete Meldung
+schützt den Beleg, vor dem Leeren wird frisch gelesen. Der Stand wird je Nachricht nur in ihrer
+eigenen Community gefragt. `apply` nimmt die Lauf-Sperre in `system_runs`. Heute zählt der Lauf
+nur (`count`); `apply` kommt nach Davids Ja zu einer gezählten Zahl. Den Bestand zählt nur lesend
+`node --env-file=<env-datei> packages/messages/scripts/report-evidence-count.mjs` (nur Zahlen,
+dazu die Zahl der Dateien im Bucket der Lösch-Kopien). Die Kontolöschung des Autors behält ihre
+eigene Regel (`evidenceStillProtected`, 90 Tage ab der Meldung).
 
 Zwei Zahlen stehen bewusst nebeneinander (Davids Entscheidung vom 2026-11-15): Die vollständige
 Kopie liegt kurz (30 Tage), die wenigen versteckten Reste länger (90 Tage). Der Hinweis vor dem
@@ -160,8 +176,8 @@ prüft Davids Anwalt.
   die Inhalte bleiben, der Bezug zur Person wird geleert.
 - **Konto-Ids in der Unterhaltung des Gegenübers** (`conversations.participants`): Struktur des
   Fadens der anderen Person, kein lesbarer Inhalt.
-- **Gemeldete private Nachrichten** bleiben bis zu 90 Tage als Beleg (eigenes Paket P16 regelt, wer
-  sie liest und wann sie fallen).
+- **Gemeldete private Nachrichten** bleiben bei der Kontolöschung bis zu 90 Tage als Beleg; wer sie
+  liest und wann der Text fällt, steht oben unter „Fristen" (SEC-033).
 - **Zeilen ohne Konto**: Warteliste und Gesprächsanfragen von Menschen, die nie ein Konto angelegt
   haben, und das Konto-Protokoll haben heute noch keinen Lauf. Die Fristen sind entschieden
   (2026-11-15: Warteliste 30 / 90 Tage / 12 Monate, Gesprächsanfragen und Protokoll 12 Monate), der
