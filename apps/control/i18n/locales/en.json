@@ -106,6 +106,7 @@
         "errorGeneric": "The webhook could not be set up",
         "secretUnconfirmedTitle": "Signing secret of unconfirmed origin",
         "secretUnconfirmedHint": "The endpoint exists, but this deployment did not create it — the stored secret comes from the server environment, was entered by hand, or belongs to an earlier endpoint. Stripe only ever hands the secret out at creation time, so it cannot be compared. If it does not match, the webhook rejects every delivery. Only „Recreate endpoint“ gives certainty.",
+        "apiVersionMismatch": "Endpoint sends in a different version – recreate it",
         "recreate": "Recreate endpoint",
         "recreateConfirmTitle": "Recreate the endpoint and replace the secret?",
         "recreateConfirmBody": "The existing endpoint is deleted at Stripe and a new one with all nine events is created. The signing secret produced along the way is stored immediately and replaces the previous one. Deliveries Stripe happens to be retrying at that moment are lost.",

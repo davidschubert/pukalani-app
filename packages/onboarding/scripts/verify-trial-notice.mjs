@@ -174,6 +174,7 @@ try {
     method: 'POST',
     cookie: ownerCookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: 'M13 Testphase',
       slug,
       purpose: 'new',

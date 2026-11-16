@@ -3,6 +3,13 @@
 // definiert ihn aber nicht. Reine Zod-/Daten-Module, kein Laufzeit-Coupling.
 import { onboardingSiteSchema } from '../../../../control/schemas/onboarding'
 import { callControlPlane, mintRuntimeJwt } from '../../utils/controlPlane'
+import {
+  OPERATOR_TERMS_RECORD_FAILED_CODE,
+  OPERATOR_TERMS_REQUIRED_CODE,
+  resolveOperatorTerms,
+  splitOperatorTerms,
+  type OperatorTermsConfig,
+} from '../../../shared/operatorTerms'
 // Der pages-Layer besitzt die Tabelle und stellt die Seed-Helfer bereit (A14).
 import { seedHomePage } from '../../../../pages/server/utils/seedHomePage'
 import { seedLegalPages } from '../../../../pages/server/utils/seedLegalPages'
@@ -28,7 +35,65 @@ export default defineEventHandler(async (event) => {
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  const site = await readValidatedBody(event, onboardingSiteSchema.parse)
+  const userId = event.context.user.$id
+
+  /**
+   * BETREIBER-BEDINGUNGEN (seit 2026-11-16, Regeln: shared/operatorTerms.ts).
+   * Das Kästchen wird IMMER vom Body abgenommen — das Schema des Control
+   * Plane ist `.strict()` und wird getrennt ausgerollt, ein neues Feld im
+   * Umschlag wäre dort ein 400. Bei eingeschaltetem Schalter ist es Pflicht,
+   * und zwar VOR dem JWT und vor dem Control Plane: ohne Bestätigung entsteht
+   * nichts — und ohne festgehaltene Bestätigung auch nicht (s. unten).
+   */
+  const { accepted, rest } = splitOperatorTerms(await readBody(event))
+  const appConfig = useAppConfig() as { pukalani?: { onboarding?: { operatorTerms?: OperatorTermsConfig } } }
+  const operatorTerms = resolveOperatorTerms(appConfig.pukalani?.onboarding?.operatorTerms)
+  if (operatorTerms && !accepted) {
+    throw createError({
+      status: 400,
+      statusText: 'Operator terms not accepted',
+      data: { code: OPERATOR_TERMS_REQUIRED_CODE },
+    })
+  }
+
+  const parsed = onboardingSiteSchema.safeParse(rest)
+  if (!parsed.success) {
+    // Dieselbe Antwort wie vorher `readValidatedBody`: 400, ohne Grund-Code.
+    throw createError({ status: 400, statusText: 'Validation Error' })
+  }
+  const site = parsed.data
+
+  /**
+   * DER NACHWEIS STEHT, BEVOR ETWAS ENTSTEHT: EINE Zeile je (Konto,
+   * `operator`, Fassung) — der Server hat das Kästchen in DIESER Anfrage
+   * gesehen. Lässt sie sich nicht schreiben, entsteht keine Community (503):
+   * eine Community ohne festgehaltene Bestätigung wäre genau die Lücke, für
+   * die es das Kästchen gibt („eine Sicherung, die nicht prüfen kann, lehnt
+   * ab"). Umgekehrt schadet eine Zeile ohne Community nicht — bestätigt hat
+   * die Person in dieser Anfrage trotzdem (etwa wenn die Adresse danach schon
+   * vergeben ist). Eine schon stehende Zeile bleibt unverändert (409 =
+   * `exists`), also auch bei einer wiederholten Anlage. Der Eintrag im Log
+   * nennt nur die Konto-Kennung.
+   */
+  if (operatorTerms) {
+    await writeConsentRecord(event, {
+      userId,
+      kind: 'operator',
+      version: operatorTerms.version,
+      way: 'wizard',
+    }).catch((error: unknown) => {
+      logEvent('error', 'onboarding.operator_terms_record_failed', {
+        userId,
+        message: error instanceof Error ? error.message : String(error),
+      })
+      throw createError({
+        status: 503,
+        statusText: 'Operator terms could not be recorded',
+        data: { code: OPERATOR_TERMS_RECORD_FAILED_CODE },
+      })
+    })
+  }
+
   const jwt = await mintRuntimeJwt(event)
 
   const result = await callControlPlane<CreatedSite>(event, '/api/control/onboarding/site', { jwt, site })

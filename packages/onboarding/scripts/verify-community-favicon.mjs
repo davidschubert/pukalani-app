@@ -215,6 +215,7 @@ async function createCommunity(cookie, slug, name) {
     method: 'POST',
     cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name, slug, purpose: 'new', memberRange: 'to100', category: 'club',
       goal: 'discussion', description: 'Favicon-Beweis.', vibe: 'fresh',
       inviteCode: code, locale: 'de',

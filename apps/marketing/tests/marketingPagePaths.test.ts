@@ -19,7 +19,7 @@
  *     selbst nicht notiert),
  *  2. gegen `MARKETING_ROUTES` (server/utils/marketingRoutes.ts), wo dieselben
  *     Pfade für die Sitemap ein zweites Mal stehen. Nur für die Seiten, die
- *     dort überhaupt vorkommen — die drei Rechtstexte fehlen dort ABSICHTLICH
+ *     dort überhaupt vorkommen — die Rechtstexte fehlen dort ABSICHTLICH
  *     (noindex bis zu den verbindlichen Texten).
  *
  * NEUE CHROME-SEITE OHNE `defineI18nRoute` ist ein Fehlschlag, kein Sonderfall:
@@ -70,7 +70,7 @@ describe('MARKETING_PAGE_PATHS', () => {
    * dort vorkommen" hätte eine Lücke, die genau den gesuchten Fehler durchlässt:
    * ein FALSCHER Pfad in der Tabelle kommt in der Sitemap nicht vor, fiele
    * damit aus der Auswahl und die Prüfung bliebe grün (beim Bau am 2026-08-18
-   * an einer Gegenprobe gemessen). Die drei Rechtstexte fehlen hier
+   * an einer Gegenprobe gemessen). Die Rechtstexte fehlen hier
    * ABSICHTLICH: sie sind bis zu den verbindlichen Texten noindex und stehen
    * deshalb in keiner Sitemap.
    */

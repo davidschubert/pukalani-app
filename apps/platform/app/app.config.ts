@@ -4,6 +4,30 @@ export default defineAppConfig({
     // App bedient `*.pukalani.app`, also landen hier alle Vertipper.
     brand: { name: 'Pukalani', homeUrl: 'https://pukalani.app' },
     /**
+     * BEDINGUNGEN FÜR COMMUNITY-BETREIBER (seit 2026-11-16): wer im Wizard
+     * eine Community anlegt, bestätigt sie per Kästchen; der Server prüft und
+     * hält die Fassung fest (packages/onboarding/shared/operatorTerms.ts).
+     *
+     * Zwei ABSOLUTE Adressen, weil der Text auf pukalani.app liegt und dort
+     * jede Sprache einen eigenen Pfad hat (apps/marketing/app/pages/
+     * betreiber-bedingungen.vue): Englisch ist die Vorgabe ohne Präfix,
+     * Deutsch liegt unter /de (`prefix_except_default`).
+     *
+     * `draft: true` zeigt am Kästchen den Entwurfs-Hinweis — bis die
+     * anwaltlich geprüfte Fassung steht. Dann `version` ändern und `draft`
+     * auf false.
+     */
+    onboarding: {
+      operatorTerms: {
+        url: {
+          de: 'https://pukalani.app/de/betreiber-bedingungen',
+          en: 'https://pukalani.app/community-operator-terms',
+        },
+        version: '2026-11-entwurf-1',
+        draft: true,
+      },
+    },
+    /**
      * BESUCHERSTATISTIK ALS SELBSTBEDIENUNG (2026-08-04, Layer `analytics`).
      *
      * Bewusst OHNE `src`/`domain`: diese App bedient jeden Mandanten-Host, und

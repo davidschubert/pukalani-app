@@ -218,7 +218,7 @@ const KIND_ORDER: readonly ConsentKind[] = ['terms', 'business']
  * die Unternehmer-Bestätigung — beide lesen das Cookie der Anfrage.)
  */
 function consumeConsentCookie(event: H3Event, kind: ConsentKind, affirmedKinds: readonly ConsentKind[]): void {
-  const required = appRequiredConsents().map(consent => consent.kind)
+  const required: readonly ConsentKind[] = appRequiredConsents().map(consent => consent.kind)
   const after = KIND_ORDER.slice(KIND_ORDER.indexOf(kind) + 1)
   const remaining = affirmedKinds.filter(k => after.includes(k) && required.includes(k))
   if (!remaining.length) {

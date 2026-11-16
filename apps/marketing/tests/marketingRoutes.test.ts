@@ -39,7 +39,7 @@ const PAGES_DIR = join(APP_ROOT, 'app', 'pages')
 // Rechtsseiten sind bis zu den verbindlichen Texten noindex und fehlen
 // ABSICHTLICH in der Sitemap (Begründung am Ende von MARKETING_ROUTES in
 // server/utils/marketingRoutes.ts). Neue Ausnahmen brauchen denselben Grund.
-const NOINDEX_PAGES = new Set(['agb.vue', 'datenschutz.vue', 'impressum.vue'])
+const NOINDEX_PAGES = new Set(['agb.vue', 'betreiber-bedingungen.vue', 'datenschutz.vue', 'impressum.vue'])
 
 /**
  * Welcher 404-Guard im Seiten-Quelltext auf welchen Katalog zeigt. Der Guard

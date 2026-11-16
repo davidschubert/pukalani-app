@@ -148,6 +148,7 @@ async function createCommunity(cookie, tag) {
     method: 'POST',
     cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: `F37 ${tag}`,
       slug,
       purpose: 'new',

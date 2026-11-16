@@ -137,6 +137,7 @@ try {
   const createRes = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: 'Exit-Beweis', slug: `exit-${stamp.toString(36)}`, purpose: 'new', memberRange: 'to100',
       category: 'other', goal: 'discussion', description: 'Beweislauf Control-Exit.', vibe: 'calm',
       inviteCode: code, locale: 'de',

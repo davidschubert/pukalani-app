@@ -1000,7 +1000,13 @@ Versprechen ohne Deckung), eine **Subprozessoren-Liste** (nach dieser Erhebung
 mindestens Hetzner, ploi.io, Cloudflare, Resend, Stripe, OpenRouter,
 UptimeRobot), die drei echten Texte, ein Zustimmungsschritt im Onboarding und
 `pukalani.auth.termsUrl` in `apps/platform` (fehlt genau dort, wo Kunden sich
-registrieren).
+registrieren). Seit 2026-11-16 (GA1 P13) gibt es einen Entwurf der
+„Bedingungen für Community-Betreiber" (`/de/betreiber-bedingungen`) und das
+Pflicht-Kästchen beim Anlegen einer Community mit Nachweis in
+`consent_records` — offen bleiben die anwaltliche Prüfung, die markierten
+[OFFEN]-Stellen, die Besitz-Übergabe ohne Bestätigung, der Kauf ohne Hinweis auf
+die Bedingungen und die allgemeinen AGB samt `termsUrl`. Den AVV nennt auch der
+Betreiber-Entwurf nur „auf Anfrage"; der Vertrag selbst fehlt weiterhin.
 
 **Faktenblatt zum Mitnehmen** (alles am Code erhoben, Stand 2026-08-14):
 Konten mit E-Mail/Name/Bio/Avatar in **einem** Appwrite-Projekt · Inhalte immer

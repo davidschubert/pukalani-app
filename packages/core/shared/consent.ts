@@ -1,4 +1,4 @@
-import type { ConsentKind, ConsentWay, RequiredConsent } from './types/consent'
+import type { ConsentKind, ConsentWay, GatedConsentKind, RequiredConsent } from './types/consent'
 import { isRole } from './authz'
 
 /**
@@ -76,7 +76,14 @@ export const CONSENT_COOKIE = 'pk_consent'
 /** Lebensdauer des Merkzeichens: zehn Minuten reichen für den Weg zum Anbieter und zurück. */
 export const CONSENT_COOKIE_MAX_AGE_S = 600
 
-const KINDS: readonly ConsentKind[] = ['terms', 'business']
+const KINDS: readonly ConsentKind[] = ['terms', 'business', 'operator']
+
+/**
+ * Die Arten, die das Merkzeichen des Google-Wegs tragen darf. `operator`
+ * gehört NICHT dazu: die Betreiber-Bedingungen bestätigt man nur im Wizard,
+ * nie bei der Anmeldung.
+ */
+const COOKIE_KINDS: readonly GatedConsentKind[] = ['terms', 'business']
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -86,6 +93,10 @@ function trimmed(value: unknown): string {
  * Welche Zustimmungen DIESE App verlangt, mit der aktuellen Fassung. Leer =
  * die App verlangt nichts (Core-Default) — dann gibt es keine Tür, keine
  * Nachfrage und keinen Netzaufruf.
+ *
+ * NIE `operator`: die Bedingungen für Community-Betreiber gelten nur für
+ * Konten, die eine Community anlegen — die Tür fragte sonst jedes Mitglied
+ * jeder Community. Sie prüft allein die Anlage-Route des onboarding-Layers.
  */
 export function requiredConsents(config: ConsentConfig | undefined): RequiredConsent[] {
   const required: RequiredConsent[] = []
@@ -112,18 +123,18 @@ export function consentWayFromPath(path: string): ConsentWay | null {
 
 /** Wert des Merkzeichens aus den bestätigten Arten, z. B. `terms.business`. */
 export function formatConsentCookie(kinds: readonly ConsentKind[]): string {
-  return KINDS.filter(kind => kinds.includes(kind)).join('.')
+  return COOKIE_KINDS.filter(kind => kinds.includes(kind)).join('.')
 }
 
 /** Liest das Merkzeichen; Unbekanntes wird ignoriert. */
 export function parseConsentCookie(value: string | undefined | null): ConsentKind[] {
   if (typeof value !== 'string' || value.length > 64) return []
   const parts = value.split('.')
-  return KINDS.filter(kind => parts.includes(kind))
+  return COOKIE_KINDS.filter(kind => parts.includes(kind))
 }
 
 export interface AdoptionInput {
-  kind: ConsentKind
+  kind: GatedConsentKind
   /** die aktuelle Fassung der App */
   version: string
   /** Prefs des Kontos */

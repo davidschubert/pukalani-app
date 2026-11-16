@@ -92,6 +92,31 @@ paths:
   `community_members` zwar jedes BEIGETRETENE Mitglied, aber Gäste, Autoren von vor
   A5 und Konten, die hier nie mitgemacht haben, haben trotzdem keine Zeile.
   Zeichen erscheint heute in der Kommentarliste (Gäste eingeschlossen).
+- BETREIBER-BEDINGUNGEN (seit 2026-11-16, GA1 P13, Davids Auftrag „betreiber
+  benötigen eigene agb's, die sie per kästchen bestätigen müssen"): der Text
+  liegt in `apps/marketing` (`pages/betreiber-bedingungen.vue`, `/de/
+  betreiber-bedingungen` ↔ `/community-operator-terms`, Texte unter
+  `marketing.legal.operator`, noindex, Entwurf). Schalter
+  `pukalani.onboarding.operatorTerms { url: { de, en }, version, draft }` —
+  Layer-Default AUS (leere Adressen ⇒ kein Kästchen, keine Prüfung, keine
+  Zeile), `apps/platform` schaltet ein. Geprüft wird NUR beim Anlegen und NUR
+  auf der Platform-Seite: `POST /api/onboarding/site` verlangt
+  `operatorTerms: true` VOR dem JWT (sonst 400 `operator_terms_required`) und
+  nimmt das Feld IMMER vom Body, bevor das `.strict()`-Schema es sieht — es
+  reist nie ins Control Plane (zwei Deployments, ein älteres Control Plane
+  antwortete sonst 400). VOR der Anlage (auch bei `reused`) eine Zeile in
+  `consent_records` mit `kind: 'operator'`, `way: 'wizard'`; lässt sie sich
+  nicht schreiben, entsteht nichts (503 `operator_terms_record_failed` —
+  keine Community ohne festgehaltene Bestätigung; eine Zeile ohne Community
+  schadet nicht). NIE über
+  `pukalani.auth.termsUrl`/`requiredConsents` — die Tür fragte sonst jedes
+  Mitglied (`GatedConsentKind` schließt `operator` vom Typ her aus). Neue
+  Fassung ⇒ `version` in `apps/platform/app/app.config.ts` UND die
+  Fassungs-Zeile im Text ändern (Wächter `apps/marketing/tests/
+  operatorTermsPage.test.ts`). OFFEN: die Besitz-Übergabe
+  (`community.transfer`) fragt nicht, der Kauf eines Plans zeigt die
+  Bedingungen nicht, die verbindliche Fassung wartet auf den Anwalt
+  (OPEN-ITEMS A1b).
 - Beweise: `packages/onboarding/scripts/{verify-control-host,verify-site-authz,
   acceptance-onboarding}.mjs` + `packages/control/scripts/verify-onboarding.mjs`.
   Lokal testen: `seed-local-tester.mjs` (Konto+Code, `--clean` räumt auf).

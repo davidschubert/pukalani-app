@@ -63,7 +63,7 @@ export const MARKETING_ROUTES: MarketingRoute[] = [
     priority: 0.7,
   })),
 ]
-// Rechtsseiten (/imprint, /privacy, /terms) fehlen ABSICHTLICH: sie sind bis zu
+// Rechtsseiten (/imprint, /privacy, /terms, /community-operator-terms) fehlen ABSICHTLICH: sie sind bis zu
 // den verbindlichen Texten noindex — eine noindex-Seite in der Sitemap wäre ein
 // Widerspruch, den Google zu Recht meldet.
 

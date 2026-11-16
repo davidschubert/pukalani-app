@@ -892,6 +892,79 @@
             "body": "Verfahren für Änderungen folgt."
           }
         ]
+      },
+      "operator": {
+        "metaTitle": "Bedingungen für Community-Betreiber – Pukalani",
+        "title": "Bedingungen für Community-Betreiber",
+        "lead": "Was gilt, wenn du bei Pukalani eine eigene Community anlegst und betreibst.",
+        "draftNote": "Dieser Text ist ein Entwurf und noch nicht anwaltlich geprüft. Stellen in eckigen Klammern sind noch offen. Wir halten fest, welcher Fassung du beim Anlegen deiner Community zugestimmt hast; die geprüfte Fassung ersetzt diesen Entwurf.",
+        "version": "Fassung 2026-11-entwurf-1 · Stand: 16. November 2026",
+        "sections": [
+          {
+            "title": "Worum es geht",
+            "body": "Diese Bedingungen gelten für dich, wenn du bei Pukalani eine Community anlegst und als Owner betreibst. Für Menschen, die in einer Community nur mitmachen, gelten sie nicht.\nDu bestätigst sie mit einem Kästchen, bevor deine Community entsteht. Wir halten fest, welcher Fassung du zugestimmt hast und wann.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: wie diese Bedingungen und unsere Allgemeinen Geschäftsbedingungen zusammenspielen – auch die AGB sind noch ein Entwurf. Und ob und wie diese Bedingungen gelten, wenn du eine bestehende Community als Owner übernimmst; die Übergabe fragt heute noch keine Bestätigung ab.]"
+          },
+          {
+            "title": "Deine Rolle und deine Verantwortung",
+            "body": "Du betreibst deine Community. Du entscheidest, worum es geht, wer mitmachen darf und welche Regeln gelten.\nDu bist für deine Community verantwortlich: für ihre Inhalte, auch für das, was deine Mitglieder dort veröffentlichen, und für die Moderation – Meldungen prüfen, Inhalte ausblenden, Mitglieder entfernen, wenn es nötig ist.\nDeine Community braucht eigene Rechtstexte, zum Beispiel ein Impressum und eine Datenschutzerklärung. Beim Anlegen erzeugen wir dafür Vorlagen als unveröffentlichte Entwürfe, mit Stellen, die du selbst ausfüllst. Dazu kommen Community-Regeln, die sofort sichtbar sind und die du anpassen kannst.\nDie Vorlagen sind eine Hilfe, keine Rechtsberatung. Ob sie für deine Community passen, prüfst du selbst."
+          },
+          {
+            "title": "Was wir bereitstellen",
+            "body": "Wir stellen die Plattform bereit, auf der deine Community läuft: ihre Adresse unter pukalani.app, das Dashboard zur Verwaltung, die Produkte deines Plans, das Hosting in Deutschland, regelmäßige Sicherungen und die Weiterentwicklung.\nDeine Mitglieder melden sich mit einem Pukalani-Konto an. Ein Konto gilt für alle Communities bei Pukalani. Das Passwort eines Mitglieds bekommst du nie zu sehen.\nPukalani ist im Early Access. Der Funktionsumfang ändert sich noch; auf eine bestimmte Funktion besteht in dieser Phase kein Anspruch."
+          },
+          {
+            "title": "Testphase",
+            "body": "Eine neue Community startet mit 14 Tagen Pro, ohne Zahlungsdaten. Die Testphase beginnt, sobald du die Community anlegst.\nSolange eine deiner Communities in der Testphase ist, kannst du keine weitere anlegen. Danach sind bis zu drei aktive Communities je Konto möglich.\nWählst du bis zum Ende der Testphase keinen Plan, ist deine Community danach nur noch lesbar (Abschnitt 6). Gelöscht wird dabei nichts."
+          },
+          {
+            "title": "Pläne, Preise, Zahlung und Kündigung",
+            "body": "Es gibt zwei Pläne: Personal für 29 € im Monat oder 261 € im Jahr und Pro für 149 € im Monat oder 1.341 € im Jahr. Die Preise enthalten die Umsatzsteuer. Welche Produkte zu welchem Plan gehören, steht auf unserer Preisseite. Ohne Plan ist eine Community nur lesbar – einen kostenlosen Plan für eigene Communities gibt es nicht.\nDu bezahlst über unseren Zahlungsdienstleister Stripe, derzeit per Karte. Ein Abo verlängert sich automatisch um den gewählten Zeitraum, bis du es kündigst.\nDu kündigst in den Einstellungen deiner Community unter „Plan“ über „Rechnungen & Zahlungsmethode“, im Kundenportal von Stripe. Dort findest du auch deine Rechnungen. Die Kündigung wirkt zum Ende des bezahlten Zeitraums; bis dahin läuft alles weiter.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: ob sich das Angebot nur an Unternehmen richtet oder auch an Verbraucherinnen und Verbraucher, und falls ja, das Widerrufsrecht.]"
+          },
+          {
+            "title": "Zahlungsverzug und Nur-Lesen-Zustand",
+            "body": "Schlägt eine Zahlung fehl, hast du 14 Tage Zeit, sie nachzuholen. Danach ist deine Community nur noch lesbar. Dasselbe gilt nach einer Testphase ohne Plan und wenn ein gekündigtes Abo endet.\nNur lesbar heißt: Besucher und Mitglieder können weiter alles lesen, aber niemand kann Neues schreiben. Gelöscht wird nichts. Deine Einstellungen, die Mitgliederverwaltung, die Moderation und der Export bleiben für dich erreichbar.\nSobald uns eine Zahlung für einen Plan bestätigt ist, ist deine Community wieder offen."
+          },
+          {
+            "title": "Was erlaubt ist und was nicht",
+            "body": "Du nutzt Pukalani nur für rechtmäßige Zwecke. Nicht erlaubt sind insbesondere:\n– rechtswidrige Inhalte, etwa Aufrufe zu Gewalt, Hetze oder Darstellungen sexuellen Missbrauchs,\n– Inhalte, die Rechte anderer verletzen, etwa Urheber-, Marken- oder Persönlichkeitsrechte,\n– Spam, Massenwerbung und Phishing,\n– Schadsoftware und Angriffe auf Pukalani, auf andere Communities oder auf Dritte,\n– das Umgehen von Grenzen und Sperren, etwa mit mehreren Konten für weitere Communities oder Testphasen.\nAngebote, die eine behördliche Erlaubnis oder eine Altersprüfung verlangen, etwa Glücksspiel oder pornografische Inhalte, sind nur nach vorheriger Absprache mit uns erlaubt.\nDu sorgst dafür, dass sich auch deine Mitglieder daran halten. Deine Community-Regeln dürfen strenger sein, nicht lockerer."
+          },
+          {
+            "title": "Was wir tun dürfen",
+            "body": "Erfahren wir von rechtswidrigen Inhalten oder von einem Verstoß gegen diese Bedingungen, dürfen wir eingreifen – so weit, wie es nötig ist:\n– Inhalte ausblenden. Kommentare, die mehrfach gemeldet wurden, blendet Pukalani automatisch aus; die Moderation entscheidet danach, ob sie wiederkommen.\n– Deine Community sperren. Eine wegen Missbrauchs gesperrte Community ist nicht mehr erreichbar, auch nicht zum Lesen. Ihre Inhalte bleiben gespeichert.\n– Im Notfall selbst moderieren. Unser Team hat einen Notfall-Zugang zu jeder Community, etwa um rechtswidrige Inhalte zu entfernen. Jeder Zugriff darüber wird protokolliert.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: wie und wann wir dich vor oder nach einem Eingriff benachrichtigen und wie du einer Sperre widersprechen kannst.]"
+          },
+          {
+            "title": "Die Daten deiner Mitglieder",
+            "body": "Für die personenbezogenen Daten in deiner Community bist du verantwortlich; wir verarbeiten sie in deinem Auftrag. Einen Vertrag zur Auftragsverarbeitung schließen wir auf Anfrage mit dir – sprich uns an, am besten vor dem Start deiner Community.\nIn der Mitgliederliste siehst du von jedem Mitglied Name, E-Mail-Adresse, Profilbild, Rolle, Beitrittsdatum und Status, in der Detailansicht, was es selbst in sein Profil geschrieben hat. Nutze diese Daten nur für deine Community.\nMitglieder können ihr Pukalani-Konto selbst exportieren und löschen; das erledigen wir zentral für alle Communities. Löscht jemand sein Konto, leeren wir seine Inhalte auch in deiner Community. Wo ein Gespräch sonst zerreißen würde, bleibt ein Platzhalter ohne Namen.\nEinige Funktionen arbeiten mit KI. Nutzt jemand sie, werden die betroffenen Texte dafür an einen KI-Dienst übermittelt.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: ob Auftragsverarbeitung oder gemeinsame Verantwortung die richtige Einordnung ist – das Pukalani-Konto deiner Mitglieder gilt für alle Communities –, und die vollständige Liste der Dienstleister, die wir einsetzen, etwa für E-Mail, Zahlung und KI-Funktionen.]"
+          },
+          {
+            "title": "Eigene Domain",
+            "body": "Im Plan Pro kannst du deine Community unter einer eigenen Domain betreiben. Die Domain muss dir gehören oder du musst über sie verfügen dürfen.\nDu trägst die Domain im Dashboard ein und richtest die DNS-Einträge bei deinem Anbieter ein; wir prüfen sie, besorgen das Zertifikat und schalten um. Die Adresse unter pukalani.app bleibt als Rückfall bestehen."
+          },
+          {
+            "title": "Export und Stilllegung",
+            "body": "Du kannst die Inhalte deiner Community jederzeit als Datei exportieren – in den Einstellungen unter „Export“, auch wenn die Community nur lesbar ist. Sichere wichtige Inhalte zusätzlich auf diesem Weg.\nDu kannst deine Community stilllegen, solange kein Abo läuft; kündige es dazu zuerst. Eine stillgelegte Community ist nicht mehr erreichbar, alle Mitgliedschaften enden.\nDie Inhalte löschen wir beim Stilllegen nicht. Sie bleiben gespeichert.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: ob und wann wir die Inhalte einer stillgelegten Community endgültig löschen und wie du die Löschung verlangen kannst; einen eigenen Weg dafür gibt es im Dashboard heute nicht.]"
+          },
+          {
+            "title": "Verfügbarkeit, Wartung und Änderungen am Dienst",
+            "body": "Wir arbeiten daran, dass Pukalani durchgehend erreichbar ist, sagen aber keine bestimmte Verfügbarkeit zu. Für Wartung und Updates kann der Dienst kurz unterbrochen sein. Den aktuellen Zustand zeigt unsere Statusseite.\nWir entwickeln Pukalani weiter und können Funktionen ändern, ersetzen oder einstellen.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: mit welcher Frist wir wesentliche Änderungen ankündigen.]"
+          },
+          {
+            "title": "Haftung",
+            "body": "[OFFEN – wird vor der verbindlichen Fassung geklärt: die Haftung beider Seiten, ihre Grenzen und die Frage, wer für Ansprüche Dritter wegen Inhalten deiner Community einsteht.]"
+          },
+          {
+            "title": "Laufzeit und Kündigung durch uns",
+            "body": "Diese Bedingungen gelten, solange du eine Community bei uns betreibst. Dein Abo kündigst du wie in Abschnitt 5 beschrieben, deine Community legst du wie in Abschnitt 11 still.\nWir können deine Community sperren oder den Vertrag beenden, wenn du erheblich gegen diese Bedingungen verstößt, etwa bei Missbrauch, oder wenn Zahlungen dauerhaft ausbleiben. Bei Zahlungsverzug wird die Community zuerst nur lesbar (Abschnitt 6).\n[OFFEN – wird vor der verbindlichen Fassung geklärt: Fristen für eine Kündigung durch uns.]"
+          },
+          {
+            "title": "Änderungen dieser Bedingungen",
+            "body": "Ändern wir diese Bedingungen, bekommt die neue Fassung eine neue Kennung. Wer danach eine Community anlegt, bestätigt die neue Fassung.\n[OFFEN – wird vor der verbindlichen Fassung geklärt: wie bestehende Communities einer neuen Fassung zustimmen oder widersprechen.]"
+          },
+          {
+            "title": "Vertragspartner, anwendbares Recht und Gerichtsstand",
+            "body": "[OFFEN – wird vor der verbindlichen Fassung geklärt: wer dein Vertragspartner ist (Name, Anschrift, Rechtsform), welches Recht gilt und wo der Gerichtsstand ist.]"
+          }
+        ]
       }
     },
     "proof": {

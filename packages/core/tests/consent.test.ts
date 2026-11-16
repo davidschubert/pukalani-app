@@ -4,6 +4,7 @@ import {
   adoptedConsentAt,
   consentWayFromPath,
   formatConsentCookie,
+  isConsentKind,
   parseConsentCookie,
   requiredConsents,
 } from '../shared/consent'
@@ -35,6 +36,28 @@ describe('requiredConsents', () => {
 
   it('verlangt die Unternehmer-Bestätigung auch ohne AGB-Seite', () => {
     expect(requiredConsents({ businessOnly: true })).toEqual([{ kind: 'business', version: '' }])
+  })
+
+  it('verlangt nie die Betreiber-Bedingungen — die prüft nur die Anlage einer Community', () => {
+    const configs = [
+      undefined,
+      { termsUrl: '/terms', termsVersion: 'v1', businessOnly: true },
+      // Felder, die es in `pukalani.auth` nicht gibt, schalten nichts ein.
+      { termsUrl: '/terms', operatorTerms: { url: 'https://example.test/terms', version: 'v1' } } as never,
+    ]
+    for (const config of configs) {
+      expect(requiredConsents(config).map(consent => consent.kind)).not.toContain('operator')
+    }
+  })
+})
+
+describe('Arten', () => {
+  it('kennt die Betreiber-Bedingungen als eigene Art', () => {
+    expect(isConsentKind('terms')).toBe(true)
+    expect(isConsentKind('business')).toBe(true)
+    expect(isConsentKind('operator')).toBe(true)
+    expect(isConsentKind('admin')).toBe(false)
+    expect(isConsentKind(undefined)).toBe(false)
   })
 })
 
@@ -112,9 +135,19 @@ describe('Weg und Merkzeichen', () => {
     expect(parseConsentCookie(undefined)).toEqual([])
     expect(parseConsentCookie('x'.repeat(100))).toEqual([])
   })
+
+  it('das Merkzeichen trägt nie die Betreiber-Bedingungen', () => {
+    expect(formatConsentCookie(['operator', 'terms'])).toBe('terms')
+    expect(parseConsentCookie('terms.operator')).toEqual(['terms'])
+  })
 })
 
 describe('consentRowId', () => {
+  it('trennt die Betreiber-Bedingungen von den AGB derselben Fassung', () => {
+    expect(consentRowId('u-123', 'operator', 'v1')).not.toBe(consentRowId('u-123', 'terms', 'v1'))
+    expect(consentRowId('u-123', 'operator', '2026-11-entwurf-1')).toMatch(/^c[0-9a-f]{31}$/)
+  })
+
   it('ist stabil und eine gültige Appwrite-Id', () => {
     const id = consentRowId('u-123', 'terms', 'v1')
     expect(id).toBe(consentRowId('u-123', 'terms', 'v1'))

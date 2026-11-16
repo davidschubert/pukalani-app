@@ -63,35 +63,75 @@ export async function checkInviteCode(
 }
 
 /**
- * Code verbrauchen — NACH erfolgreicher Anlage.
+ * EINE EINLÖSUNG RESERVIEREN — VOR der Anlage, atomar (BE-013).
  *
- * EHRLICHE GRENZE: node-appwrite 26 kennt keinen atomaren Increment, das ist
- * also ein Read-Modify-Write. Zwei exakt gleichzeitige Einlösungen desselben
- * Codes könnten `maxUses` daher um eins überschreiten. Das ist bewusst
- * akzeptiert, weil der Code NICHT die harte Grenze ist: die harte Grenze ist
- * das Konto-Kontingent (eine Community pro Konto in der Testphase,
- * evaluateSiteQuota) — und die wird pro Nutzer geprüft, nicht pro Code.
- * Wird der Code später zur Abrechnungsgrundlage, braucht es hier eine echte
- * Reservierung (eigene Row je Einlösung + Unique-Index).
+ * `incrementRowColumn` mit `max = maxUses` zählt in der Datenbank selbst hoch
+ * und lehnt ab, wenn der Wert die Grenze überschritte (Appwrite 400
+ * `column_limit_exceeded`; lokal gegen 2.7.1 gemessen: von zehn gleichzeitigen
+ * Aufrufen mit `max: 1` genau einer durch). Vorher stand hier ein
+ * „lesen, plus eins, schreiben" NACH der Anlage — zwei gleichzeitige
+ * Einlösungen desselben Codes kamen beide durch, und die Grenze des Codes war
+ * keine. `maxUses: 0` heißt „ohne Grenze" (`evaluateInviteCode`): dann wird
+ * nur gezählt.
  *
- * Fehler werden geschluckt und geloggt: die Community EXISTIERT an dieser
- * Stelle schon — sie deswegen zurückzurollen wäre die schlechtere Wahl als
- * ein Code, der einmal zu oft gilt.
+ * `exhausted` ist die Antwort für einen erschöpften Code. Jeder ANDERE Fehler
+ * (Netz, 5xx) wird ein 503 — die Community entsteht dann nicht, denn ohne
+ * Reservierung ist nicht belegt, dass der Code noch gilt.
  */
-export async function consumeInviteCode(event: H3Event, row: InviteCodeRow): Promise<void> {
+export async function reserveInviteCodeUse(event: H3Event, row: InviteCodeRow): Promise<'reserved' | 'exhausted'> {
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
   try {
-    await admin.tablesDB.updateRow<InviteCodeRow>({
+    await admin.tablesDB.incrementRowColumn({
       databaseId: config.public.appwriteDatabaseId,
       tableId: INVITE_CODES_TABLE,
       rowId: row.$id,
-      data: { uses: (row.uses ?? 0) + 1 },
+      column: 'uses',
+      value: 1,
+      ...(row.maxUses > 0 ? { max: row.maxUses } : {}),
+    })
+    return 'reserved'
+  }
+  catch (error) {
+    if (isColumnLimitExceeded(error)) return 'exhausted'
+    logEvent('error', 'onboarding.invite_reserve_failed', {
+      inviteCodeId: row.$id,
+      message: error instanceof Error ? error.message : String(error),
+    })
+    throw createError({ status: 503, statusText: 'Invite code unavailable', data: { code: 'invite_unavailable' } })
+  }
+}
+
+function isColumnLimitExceeded(error: unknown): boolean {
+  return typeof error === 'object' && error !== null
+    && (error as { type?: unknown }).type === 'column_limit_exceeded'
+}
+
+/**
+ * Eine reservierte Einlösung zurückgeben — wenn die Anlage scheitert oder ein
+ * Retry die schon vorhandene eigene Community wiederfindet (`reused`): ein
+ * Wiederholen darf keine zweite Einlösung kosten. `min: 0`, damit der Zähler
+ * nie unter null fällt. Wirft NIE: der Aufrufer meldet gerade das eigentliche
+ * Ergebnis (oder den eigentlichen Fehler), und das soll ankommen. Ein
+ * Fehlschlag ist eine zählbare Zeile — der Code gilt dann einmal weniger.
+ */
+export async function releaseInviteCodeUse(event: H3Event, row: InviteCodeRow, reason: 'provision_failed' | 'reused'): Promise<void> {
+  const config = useRuntimeConfig(event)
+  const admin = createAdminClient(event)
+  try {
+    await admin.tablesDB.decrementRowColumn({
+      databaseId: config.public.appwriteDatabaseId,
+      tableId: INVITE_CODES_TABLE,
+      rowId: row.$id,
+      column: 'uses',
+      value: 1,
+      min: 0,
     })
   }
   catch (error) {
-    logEvent('warn', 'onboarding.invite_consume_failed', {
+    logEvent('error', 'onboarding.invite_release_failed', {
       inviteCodeId: row.$id,
+      reason,
       message: error instanceof Error ? error.message : String(error),
     })
   }
