@@ -3606,6 +3606,8 @@ Insights-Artikel (BI5).
 8. **RW1:** Vier alte Stände je App reichen. Punkt geschlossen.
 9. **Backup (BU1):** Der Backup-Schlüssel bekommt einen zweiten, getrennten
    Ablageort bei David; KEINE zweite Person.
+   Nachtrag am selben Tag: Der Schlüssel liegt schon in Davids zwei
+   Passwort-Managern; David: „reicht so". Punkt geschlossen.
 10. **Backup (BU1):** Die Einstellungs-Dateien der Apps kommen verschlüsselt
     ins nächtliche Backup.
 11. **AR1:** Erledigte Umzugs-Anleitungen wandern ins Archiv.

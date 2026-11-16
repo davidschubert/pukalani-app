@@ -30,6 +30,17 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BU1 (a) — Ablageort des Backup-Schlüssels ✅ 2026-11-16
+
+**Was.** Der private Schlüssel, der die Backups öffnet, liegt in Davids zwei
+Passwort-Managern. David hat am 2026-11-16 entschieden: Das ist der zweite
+Ablageort, ein dritter kommt nicht dazu, und es gibt keine zweite Person.
+Fällt David aus, kommt niemand an die Daten; das ist bewusst so entschieden.
+Nur Doku, nichts gebaut.
+
+**Gelernt:** Vor einer Frage an David erst nachsehen, was schon gilt. Die
+Frage „zweiter Ablageort?" war gestellt, obwohl es ihn längst gab.
+
 ### Entscheidungsrunde und neue Ordnung der offenen Punkte ✅ 2026-11-16
 
 **Was.** David hat am 2026-11-16 die Liste der offenen Punkte auswerten
