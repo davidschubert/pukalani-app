@@ -53,8 +53,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const input = await readValidatedBody(event, postEditSchema.parse)
-  // Datentür (member): Session-Client — die Row-Security des Autors bleibt
-  // die erste Grenze, die Tür belegt zusätzlich die Zugehörigkeit.
+  // Gelesen wird über die Mitglieder-Klinke (Session-Client): was das Konto
+  // nicht lesen darf, gibt es für diese Route nicht; die Tür belegt zusätzlich
+  // die Zugehörigkeit zum Mandanten.
   const db = tenantDb(event)
 
   const row = await db.get<CommunityPost>(POSTS_TABLE, id, 'Post not found')
@@ -180,22 +181,21 @@ export default defineEventHandler(async (event) => {
    * „bearbeitet"-Stempel eine Zeile höher an der ECHTEN Inhaltsänderung hängt.
    */
   /**
-   * DIE SCHREIB-TÜR (F1 Teilpaket 3) — für den Autor unverändert die
-   * MITGLIEDER-Klinke, für alle anderen die Operator-Klinke.
+   * DIE SCHREIB-TÜR — für ALLE die Operator-Klinke (SEC-002, GA1 P13).
    *
-   * Technik, nicht Rechte: eine Beitrags-Zeile gibt `update` nur ihrem AUTOR
-   * (index.post.ts). Ein Kurator käme mit der Mitglieder-Klinke gar nicht an
-   * die Zeile — dieselbe Lage wie in der Zustands-Route. Gelesen wurde oben
-   * bewusst weiter über die Mitglieder-Tür: für den Normalfall (der Autor
-   * bearbeitet sein eigenes) ändert sich damit gar nichts, die Row-Security
-   * bleibt dort die erste Grenze.
+   * Seit F1 Teilpaket 3 schrieb nur der Autor über die Mitglieder-Klinke
+   * (Appwrites Zeilen-Recht war dort eine zweite Prüfung), alle anderen über
+   * den Server. Jetzt schreibt immer der Server: WER darf, steht oben
+   * (`isAuthor` aus dem Vergleich der Konto-Id, sonst die Stufen-Rechte) und
+   * unten (`mayEditPostFields`) — das ist die einzige Grenze. Gelesen wurde
+   * oben weiter über die Mitglieder-Tür.
    *
-   * `actor` sagt, WER handelt: ein Kurator oder eine Stufe 4 ist ein MITGLIED —
-   * die Inhalts-Sperre (M13) gilt für ihn, denn er ändert Inhalt. Nur der Stab
-   * (`posts.moderate`) handelt als Operator, aus derselben Begründung wie
-   * überall: eine zahlungssäumige Community muss moderierbar bleiben.
+   * `actor` sagt, WER handelt: der Autor, ein Kurator oder eine Stufe 4 ist
+   * ein MITGLIED — die Inhalts-Sperre (M13) gilt, denn sie ändern Inhalt. Nur
+   * der Stab (`posts.moderate`) handelt als Operator, aus derselben Begründung
+   * wie überall: eine zahlungssäumige Community muss moderierbar bleiben.
    */
-  const writeDb = isAuthor ? db : tenantDb(event, { as: 'operator', actor: staff ? 'operator' : 'member' })
+  const writeDb = tenantDb(event, { as: 'operator', actor: staff ? 'operator' : 'member' })
 
   const changed: PostEditField[] = []
   if ((input.title || null) !== row.title) changed.push('title')

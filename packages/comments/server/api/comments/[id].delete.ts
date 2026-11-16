@@ -1,4 +1,3 @@
-import { AppwriteException } from 'node-appwrite'
 import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
 import { COMMENT_TOMBSTONE_DATA, commentTombstonePermissions, toPublicCommentRow } from '../../utils/commentTombstone'
 import { commentNotificationCommunityId, removeCommentNotifications } from '../../utils/commentNotifications'
@@ -28,7 +27,7 @@ export default defineEventHandler(async (event) => {
   // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
   // Community-Host angemeldet). Bewusst KEIN Beitritt — den eigenen Kommentar zu löschen macht
   // niemanden zum Mitglied. 401 ohne Konto, 403 `not_a_member` für Fremde.
-  await requireCommunityMembership(event)
+  const user = await requireCommunityMembership(event)
 
   const commentId = getRouterParam(event, 'id')
   if (!commentId) {
@@ -52,33 +51,39 @@ export default defineEventHandler(async (event) => {
   }
 
   /**
-   * SCHRITT 1 — DATEN über die Mitglieder-Klinke. Die Row-Security lässt nur
-   * den Autor schreiben: gelingt dieser Schreibvorgang, IST die Urheberschaft
-   * belegt (ein Fremder endet unten im 403, ohne dass etwas geschrieben
-   * wurde). Status und Leeren in EINEM Schreibvorgang, damit kein Zustand
-   * „gelöscht, aber Text noch da" entsteht, den Realtime ausliefern könnte.
+   * NUR DER AUTOR — GEPRÜFT VON DIESER ROUTE (SEC-002, GA1 P13). Bis hierher
+   * schrieb Schritt 1 mit der Sitzung des Kontos, und Appwrites Zeilen-Recht
+   * war der Beleg der Urheberschaft. Jetzt schreibt der Server; der Vergleich
+   * hier, VOR dem ersten Schreibvorgang, ist die einzige Grenze. Gast-
+   * Kommentare tragen eine leere `authorId` und lassen sich nicht selbst
+   * löschen.
+   */
+  if (!existing.authorId || existing.authorId !== user.$id) {
+    throw createError({ status: 403, statusText: 'Forbidden' })
+  }
+
+  // `actor: 'member'`: gehandelt hat der Autor, die Inhalts-Sperre (M13) gilt
+  // (Muster posts/[id].delete).
+  const ops = tenantDb(event, { as: 'operator', actor: 'member' })
+
+  /**
+   * SCHRITT 1 — DATEN. Status und Leeren in EINEM Schreibvorgang, damit kein
+   * Zustand „gelöscht, aber Text noch da" entsteht, den Realtime ausliefern
+   * könnte.
    */
   let tombstone: Comment
   try {
-    tombstone = await db.update<Comment>(COMMENTS_TABLE, commentId, { ...COMMENT_TOMBSTONE_DATA }, 'Comment not found')
+    tombstone = await ops.update<Comment>(COMMENTS_TABLE, commentId, { ...COMMENT_TOMBSTONE_DATA }, 'Comment not found')
   }
   catch (error) {
-    // Row-Security-401 (nicht der Autor) → 403; echte 5xx nicht als 403 tarnen.
-    if (error instanceof AppwriteException && error.code === 401) {
-      throw createError({ status: 403, statusText: 'Forbidden' })
-    }
     throw toH3Error(error, 'Comment could not be deleted')
   }
 
   /**
-   * SCHRITT 2 — RECHTE über die Operator-Klinke: die `update`/`delete`-Rechte
-   * des Autors fallen, das Lese-Publikum bleibt. Die Session kann das nicht
-   * zuverlässig selbst: Appwrite lässt ein Konto nur Rollen vergeben, die es
-   * selbst trägt, und das Publikum einer Zeile (ein Community-Label, bei
-   * Betreiber-Zielen `label:admin`/`label:moderator`) gehört nicht immer dazu.
-   * Erst NACH Schritt 1 — der Admin-Client umgeht die Row-Security, die
-   * Urheberschaft muss also schon belegt sein. `actor: 'member'`: gehandelt
-   * hat der Autor, die Inhalts-Sperre (M13) gilt (Muster posts/[id].delete).
+   * SCHRITT 2 — RECHTE: trägt die Zeile noch `update`/`delete` für den Autor
+   * (Bestand aus der Zeit vor SEC-002), fallen sie hier; das Lese-Publikum
+   * bleibt. Neue Zeilen tragen diese Rechte nicht mehr, der Schritt entfällt
+   * für sie von selbst.
    *
    * BEST EFFORT MIT RETRY UND LOG-ZEILE (wie Phase 2 des Ausblendens): der
    * Text ist in Schritt 1 schon weg. Ein Fehler hier ließe dem Autor nur das
@@ -90,7 +95,6 @@ export default defineEventHandler(async (event) => {
    */
   const permissions = commentTombstonePermissions(tombstone.$permissions, existing.authorId)
   if (permissions.length !== tombstone.$permissions.length) {
-    const ops = tenantDb(event, { as: 'operator', actor: 'member' })
     const withdraw = () => ops.updatePermissions<Comment>(COMMENTS_TABLE, commentId, permissions, 'Comment not found')
     await withdraw()
       .catch(() => withdraw())

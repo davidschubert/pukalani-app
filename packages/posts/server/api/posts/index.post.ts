@@ -36,14 +36,23 @@ export default defineEventHandler(async (event) => {
    * unterliegt weiter der Zahlungssperre (M13) und macht weiter zum Mitglied
    * (A5) — die Kategorie ändert daran nichts, sie ist nur ein Feld mehr.
    */
-  // Datentür (member): stempelt tenantId; Session-Client wie bisher.
+  // Gelesen und gezählt wird über die Mitglieder-Klinke (Session-Client).
   const db = tenantDb(event)
   const categoryId = await resolveCategoryId(db, body.categoryId)
+  /**
+   * GESCHRIEBEN WIRD ÜBER DEN SERVER (SEC-002, GA1 P13 — Davids Entscheidung
+   * „künftig schreibt nur noch unser Server"). Die Zeile entsteht mit dem
+   * Admin-Client, NACH allen Prüfungen darüber (Produkt, Zugehörigkeit,
+   * Wartung, Kontingent, Eingabe, Kategorie) — sie sind die EINZIGE Grenze.
+   * `actor: 'member'`: gehandelt hat ein Mitglied; die Inhalts-Sperre (M13)
+   * und der Beitritt (A5) gelten unverändert. Die Tür stempelt den Mandanten.
+   */
+  const writer = tenantDb(event, { as: 'operator', actor: 'member' })
 
   const scheduled = !!body.scheduledAt
   const now = new Date().toISOString()
 
-  const row = await db.create<CommunityPost>(POSTS_TABLE, {
+  const row = await writer.create<CommunityPost>(POSTS_TABLE, {
     type: body.type,
     title: body.title || null,
     body: body.body,
@@ -86,11 +95,11 @@ export default defineEventHandler(async (event) => {
     //
     // C18: `withPublishedRead([], event)` statt einer festen read(any)-Zeile —
     // auf einer geschlossenen Community entsteht `read(label:<communityId>)`.
-    permissions: [
-      ...(scheduled ? [Permission.read(Role.user(user.$id))] : withPublishedRead([], event)),
-      Permission.update(Role.user(user.$id)),
-      Permission.delete(Role.user(user.$id)),
-    ],
+    //
+    // NUR LESERECHTE (SEC-002): kein `update`/`delete` für den Autor mehr —
+    // bearbeiten und löschen laufen über die Routen, die den Autor selbst
+    // prüfen ([id].patch.ts, [id].delete.ts).
+    permissions: scheduled ? [Permission.read(Role.user(user.$id))] : withPublishedRead([], event),
   }).catch((error) => {
     throw toH3Error(error, 'Could not create post')
   })

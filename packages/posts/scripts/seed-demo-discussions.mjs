@@ -393,13 +393,9 @@ for (const [themaTitel, antworten] of Object.entries(ANTWORTEN)) {
         // ohne das trüge jede Antwort die Sekunde des Seed-Laufs.
         $createdAt: new Date(Date.now() - a.vorTagen * 86_400_000).toISOString(),
       },
-      // Wie die Bestands-Kommentare der Demo: öffentlich lesbar, änderbar nur
-      // vom Verfasser.
-      permissions: [
-        ...READ_PUBLIC,
-        Permission.update(Role.user(authorId)),
-        Permission.delete(Role.user(authorId)),
-      ],
+      // Wie die Anlege-Route: öffentlich lesbar, nur Leserechte — geschrieben
+      // wird über den Server (SEC-002).
+      permissions: READ_PUBLIC,
     })
     idFuerText.set(a.text, row.$id)
     neueAntworten++

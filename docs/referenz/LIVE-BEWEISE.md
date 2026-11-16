@@ -135,7 +135,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-81 Beweis-Skripte im Repo, 6 davon fährt die CI bei jedem Push (`.github/workflows/e2e.yml`).
+82 Beweis-Skripte im Repo, 6 davon fährt die CI bei jedem Push (`.github/workflows/e2e.yml`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | In CI |
 | --- | --- | --- |
@@ -167,6 +167,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/core/scripts/verify-presence-away-priority.mjs` | BEWEIS: „sichtbar schlägt away (fremder Mandant)" — die Vorfahrts-Regel vom 2026-08-18 (packages/core/shared/presencePriority.ts). | nein |
 | `packages/core/scripts/verify-presence-boundary.mjs` | A4 — DIE PRESENCE-GRENZE, in BEIDE Richtungen bewiesen. | **ja** |
 | `packages/core/scripts/verify-rate-limits.mjs` | Beweis für die Drossel-Grenzen des Sicherheits-Pakets vom 2026-08-02. | nein |
+| `packages/core/scripts/verify-server-only-writes.mjs` | „Der Server schreibt" — LIVE-Beweis an der Datenbank (SEC-002, GA1 P13). | nein |
 | `packages/core/scripts/verify-session-ip.mjs` | Beweis: serverseitig erzeugte Appwrite-Sessions tragen die CLIENT-IP (x-forwarded-for aus forwardClientContext), nicht die Server-IP. | nein |
 | `packages/core/scripts/verify-timezone.mjs` | Beweis für die Konto-Zeitzone (U15 Teil 5). | nein |
 | `packages/core/scripts/verify-ugc-translation.mjs` | Beweis: KI-Übersetzung für User-Content (Davids Entscheidungen 2026-08-17 — Beiträge + Kommentare · Knopf statt Automatik · Inhalts-Produkt als Gate · nur Eingeloggte, gedrosselt · EIN Übersetzungs-Cache je Zeile, posts… | nein |

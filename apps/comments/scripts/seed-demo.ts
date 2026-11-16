@@ -83,8 +83,9 @@ async function add(author: Models.User<Models.Preferences>, content: string, par
       targetUrl: '/', editedAt: null,
       upvotes: 0, downvotes: 0, score: 0, status: 'active',
     },
-    // read(any) auf der ROW (nicht der Table) — wie index.post.ts (Migration 008)
-    permissions: [Permission.read(Role.any()), Permission.update(Role.user(author.$id)), Permission.delete(Role.user(author.$id))],
+    // read(any) auf der ROW (nicht der Table) — wie index.post.ts (Migration 008).
+    // Nur Leserechte: geschrieben wird über den Server (SEC-002).
+    permissions: [Permission.read(Role.any())],
   })
   return row
 }
