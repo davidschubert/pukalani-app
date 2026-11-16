@@ -85,7 +85,10 @@ describe('Regeln — Zeit-Läufe', () => {
   it('EIN gescheiterter Takt eines stündlichen Laufs ist kein Alarm (der nächste kommt)', () => {
     const result = evaluate(countsText({ jobs: [{ name: 'trial-sweep', failed: 1, lastOk: 70, lastRun: 10, result: 'failed' }] }), ['trial-sweep'])
     expect(result.red).toEqual([])
-    expect(result.notes[0]).toContain('1× gescheitert')
+    expect(result.notes[0]).toContain('1× gescheitert in 25 h, zuletzt gescheitert, noch in der Frist')
+    // Der nächste Takt war wieder gut ⇒ der Hinweis sagt es.
+    const healed = evaluate(countsText({ jobs: [{ name: 'trial-sweep', failed: 1, lastOk: 10, lastRun: 10, result: 'ok' }] }), ['trial-sweep'])
+    expect(healed.notes[0]).toContain('zuletzt wieder gut')
   })
 
   it('ein Tages-Lauf ist schon rot, wenn sein letzter Lauf gescheitert ist', () => {

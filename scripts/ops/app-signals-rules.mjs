@@ -241,7 +241,8 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
       red.push(`${where} der Zeit-Lauf „${name}" ist zuletzt gescheitert (er läuft nur alle ${Math.round(job.everyMin / 60)} Stunden). Tun: im Fehler-Log der App die Zeile \`job.run\` mit diesem Namen lesen; der Lauf lässt sich von Hand anstoßen. (${RUNBOOK}, „Zeit-Lauf überfällig oder gescheitert")`)
     }
     else if (job.failed > 0) {
-      notes.push(`${where} „${name}" ${job.failed}× gescheitert in ${counts.hours} h, zuletzt wieder gut`)
+      const stand = job.lastResult === 'failed' ? 'zuletzt gescheitert, noch in der Frist' : 'zuletzt wieder gut'
+      notes.push(`${where} „${name}" ${job.failed}× gescheitert in ${counts.hours} h, ${stand}`)
     }
   }
   for (const name of [...counts.jobs.keys()].sort()) {
