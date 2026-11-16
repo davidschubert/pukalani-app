@@ -92,6 +92,48 @@
 #      vor; an Production fehlt dabei nichts). Was bei Rot zu tun ist:
 #      docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm".
 #
+#   9. IN DIE APP HINEIN (`verify-app-signals.mjs`), TÄGLICH (OPS-011,
+#      2026-11-16). Bis dahin sah der Alarm, ob ein Host antwortet — nicht, ob
+#      die App darin Fehler macht. Ein Fehler in einer Route, ein toter
+#      Zeit-Lauf (an zweien hängt die Sperre bei Zahlungsverzug) oder eine
+#      ausgefallene KI-Funktion fiel auf, wenn ein Kunde schrieb. Jetzt
+#      schreibt jeder Zeit-Lauf nach jedem Takt eine Zeile (`job.run`), jeder
+#      KI-Ausfall eine (`ai.failed`), und alle ausgerollten Apps ihre 5xx
+#      (`server.error`). Gezählt wird AUF dem App-Server, vom festen Skript
+#      `ops/app-watch-counts.mjs` (der Deploy legt es neben die
+#      Ecosystem-Datei): es liest nur und gibt nur Zahlen und Kennungen in
+#      fester Form zurück — keine Log-Zeile, keine Meldung, kein Pfad.
+#      Gerechnet wird hier im Repo (`scripts/ops/app-signals-rules.mjs`): rot
+#      bei einem Zeit-Lauf ohne guten Lauf seit mehr als zwei Takten plus 30
+#      Minuten, bei einem Tages-Lauf, der zuletzt gescheitert ist, bei einem
+#      erwarteten Lauf, der sich nie gemeldet hat (`ops/timed-jobs.conf`), bei
+#      KI-Aufrufen mit Status 402 oder 404 und — nur auf `platform`, wo es
+#      Messwerte gibt — ab 25 Server-Fehlern in 25 Stunden. Alles andere wird
+#      gezählt und berichtet, aber nicht rot („zählt nur"), bis die Zahlen
+#      einer Woche vorliegen. Probealarm: `-f signals_drill=true`.
+#
+#  10. LIVE-VERBINDUNG (`verify-realtime.mjs`), zwei Stufen (OPS-004,
+#      2026-11-16). Der Wächter auf dem Appwrite-Server erstellt den
+#      Realtime-Container bei einem gescheiterten Handshake neu — bis dahin
+#      bei jedem, ohne zu zählen und ohne dass es jemand erfuhr. Jetzt gibt er
+#      nach drei Neustarts in Folge auf und hält seinen Stand fest.
+#        a) ALLE 30 MINUTEN: ein WebSocket-Handshake von außen gegen
+#           api.pukalani.app. Ohne ssh, ohne Secret. Drei Versuche, der dritte
+#           erst nach 5½ Minuten (länger als der Takt des Wächters auf dem
+#           Server) — ein Ausfall, den der Server selbst heilt, ist kein Alarm.
+#        b) TÄGLICH: der Stand des Wächters über das Tor-Wort
+#           `realtime-status` (eine Zeile). Rot bei „aufgegeben", bei einem
+#           Neustart ohne Erfolg, ab drei Neustarts in 24 Stunden (normal: 0)
+#           und wenn sein letzter Lauf älter als 20 Minuten ist (der Zeitplan
+#           dort läuft nicht mehr).
+#      Probealarm: `-f realtime_drill=true` (macht beide Stufen rot).
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 und 10
+# schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
+# eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
+# setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
+# Repo stehen.
+#
 # ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
 # Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft
 # in 11 Tagen ab") war jeder Lauf rot — rund 900 Stück bis zum 2026-10-24,
@@ -180,6 +222,14 @@ on:
         description: 'PROBEALARM BACKUP: verlangt ein Backup, das es nicht geben kann (Alter unter 0 h) — Backup-Blick rot, prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
+      signals_drill:
+        description: 'PROBEALARM IN DIE APP HINEIN: der Blick tut so, als wäre ein Zeit-Lauf einer App überfällig — prüft die Kette; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
+      realtime_drill:
+        description: 'PROBEALARM LIVE-VERBINDUNG: Handshake gegen einen Host, den es nicht gibt, und ein Wächter-Stand, der nie frisch genug ist — prüft die Kette; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
       appwrite_probe:
         description: 'appwrite-prod: nur lesen (Erreichbarkeit, Container, Zertifikat)'
         type: boolean
@@ -214,6 +264,9 @@ jobs:
     if: >
       github.event.repository.fork == false &&
       !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
+    # Je rotem Befund ein Satz „was zu tun ist" fürs Issue (s. Kopf).
+    outputs:
+      befunde: ${{ steps.befunde.outputs.text }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -253,6 +306,30 @@ jobs:
           PUKALANI_SCHEMA_DRILL: ${{ inputs.schema_drill && '1' || '0' }}
         run: node scripts/ops/verify-health.mjs
 
+      # Blick 10 a (s. Kopf). Ohne ssh und ohne Secret: ein Handshake, wie ihn
+      # jeder Browser macht. Im Normalfall ein Aufruf; nur wenn er scheitert,
+      # dauert der Schritt bis zu sechs Minuten (drei Versuche).
+      - name: Live-Verbindung von außen (Handshake 101)
+        if: always()
+        env:
+          PUKALANI_REALTIME_DRILL: ${{ inputs.realtime_drill && '1' || '0' }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: node scripts/ops/verify-realtime.mjs --handshake
+
+      # Höchstens 20 Sätze, je höchstens 600 Zeichen — sie kommen aus unseren
+      # eigenen Skripten und enthalten nur Zahlen und Namen aus dem Repo.
+      - name: Befunde weiterreichen
+        id: befunde
+        if: always()
+        run: |
+          set -u
+          f="$RUNNER_TEMP/befunde.txt"
+          {
+            echo 'text<<BEFUNDE_ENDE'
+            if [ -f "$f" ]; then head -n 20 "$f" | cut -c1-600; fi
+            echo 'BEFUNDE_ENDE'
+          } >> "$GITHUB_OUTPUT"
+
   # ── TÄGLICH ──────────────────────────────────────────────────────────────
   server:
     runs-on: ubuntu-latest
@@ -275,6 +352,9 @@ jobs:
       github.event.repository.fork == false &&
       github.event.schedule != '*/30 * * * *' &&
       !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
+    # Je rotem Befund ein Satz „was zu tun ist" fürs Issue (s. Kopf).
+    outputs:
+      befunde: ${{ steps.befunde.outputs.text }}
     env:
       SERVER: '49.13.211.173'
       SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
@@ -404,6 +484,45 @@ jobs:
           [ "$rot" -eq 0 ] && echo "Backup in Ordnung: letzter guter Lauf vor $age h (erlaubt: $MAX_AGE_HOURS h)."
           exit "$rot"
 
+      # Blick 9 (s. Kopf). Das Skript ruft je App das feste Zähl-Skript auf
+      # dem App-Server auf (`ops/app-watch-counts.mjs`, vom Deploy dorthin
+      # gelegt) und prüft jede Zeile gegen ihre Form, bevor sie hier ins
+      # (öffentliche) Protokoll kommt. Zurück kommen nur Zahlen und Kennungen.
+      - name: In die App hinein — Fehler, Zeit-Läufe, KI-Ausfälle
+        if: always()
+        env:
+          PUKALANI_OPS_SSH: ploi@49.13.211.173
+          PUKALANI_SIGNALS_DRILL: ${{ inputs.signals_drill && '1' || '0' }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: node scripts/ops/verify-app-signals.mjs --ssh --strict
+
+      # Blick 10 b (s. Kopf). Geschickt wird nur das WORT; die Zeile wird in
+      # `verify-realtime.mjs` gegen ihre feste Form geprüft, bevor sie ins
+      # Protokoll kommt. Antwortet das Tor nicht, bleibt die Zeile leer — das
+      # ist dann der Befund „kein lesbarer Stand".
+      - name: Realtime-Wächter auf dem Appwrite-Server — Stand
+        if: always()
+        env:
+          # Probealarm: eine Altersgrenze, die kein Stand erfüllen kann.
+          MAX_AGE_MIN: ${{ inputs.realtime_drill && '-1' || '20' }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: |
+          set -u
+          line="$(ssh appwrite-prod realtime-status 2>/dev/null)" || true
+          node scripts/ops/verify-realtime.mjs --watchdog-line "$line" --max-age "$MAX_AGE_MIN"
+
+      - name: Befunde weiterreichen
+        id: befunde
+        if: always()
+        run: |
+          set -u
+          f="$RUNNER_TEMP/befunde.txt"
+          {
+            echo 'text<<BEFUNDE_ENDE'
+            if [ -f "$f" ]; then head -n 20 "$f" | cut -c1-600; fi
+            echo 'BEFUNDE_ENDE'
+          } >> "$GITHUB_OUTPUT"
+
   # ── ALARMWEG: AUS EINEM ROTEN LAUF EINEN ZUSTAND MACHEN ─────────────────
   # Läuft nach JEDEM Wächter-Lauf (nicht nach den manuellen Appwrite-Jobs).
   # `always()`: gerade wenn oben etwas rot ist, muss dieser Job laufen.
@@ -432,7 +551,11 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
-      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill) && '1' || '0' }}
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill) && '1' || '0' }}
+      # Die Sätze der Blicke 9 und 10 (s. Kopf) — über `env`, nie direkt in
+      # den Skripttext eingesetzt.
+      BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
+      BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}
       ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
       # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
@@ -446,9 +569,11 @@ jobs:
           # `null` aus jq, ein Rechenfehler, Job trotzdem grün).
           set -euo pipefail
           rot=""
-          [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit (alle 30 min)"
-          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Backup)"
+          [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit/Live-Verbindung (alle 30 min)"
+          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter)"
           echo "tls=$TLS_RESULT server=$SERVER_RESULT rot='${rot# }' drill=$DRILL"
+          # Leerzeilen raus; bleibt nichts, gibt es keinen Abschnitt im Issue.
+          befunde="$(printf '%s\n%s\n' "$BEFUNDE_TLS" "$BEFUNDE_SERVER" | sed '/^[[:space:]]*$/d')"
 
           # Label einmalig sicherstellen (--force: vorhandenes nur aktualisieren).
           gh label create "$LABEL" --color B60205 --force \
@@ -470,7 +595,13 @@ jobs:
               echo "- Lauf: $RUN_URL"
               echo "- Was zuerst tun: \`docs/runbooks/PRODUKTIONS-ALARM.md\`, Abschnitt „Wenn ein Alarm kommt\" (Appwrite-Zertifikat, ok:false, Mail-Missbrauch)."
               echo "- Dieses Issue schließt der Wächter SELBST, sobald ein Lauf wieder grün ist. Solange es offen ist, ist der Alarm aktiv."
-              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über \`alarm_drill\` oder \`schema_drill\`; der nächste Lauf ohne Schalter räumt auf."
+              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über einen Probe-Schalter; der nächste Lauf ohne Schalter räumt auf."
+              if [ -n "$befunde" ]; then
+                echo
+                echo "**Was zu tun ist** (je Befund ein Satz; Blicke ohne eigenen Satz stehen im Lauf):"
+                echo
+                printf '%s\n' "$befunde" | sed 's/^/- /'
+              fi
               echo
               echo "_Erzeugt vom Job \`alarm\` in \`.github/workflows/production-watch.yml\` (MON1)._"
             } > /tmp/issue-body.md
@@ -486,7 +617,11 @@ jobs:
             # Weiterhin rot: alle 12 h ein Lebenszeichen, nicht alle 30 min.
             alt=$(( $(date -u +%s) - $(date -u -d "$zuletzt" +%s) ))
             if [ "$alt" -ge 43200 ]; then
-              gh issue comment "$nummer" --body "Weiterhin rot ($stand):${rot}. Lauf: $RUN_URL" >/dev/null
+              {
+                echo "Weiterhin rot ($stand):${rot}. Lauf: $RUN_URL"
+                if [ -n "$befunde" ]; then echo; printf '%s\n' "$befunde" | sed 's/^/- /'; fi
+              } > /tmp/issue-comment.md
+              gh issue comment "$nummer" --body-file /tmp/issue-comment.md >/dev/null
               echo "Issue #$nummer: weiterhin rot, Kommentar gesetzt (zuletzt vor $((alt / 3600)) h)."
             else
               echo "Issue #$nummer ist offen (zuletzt vor $((alt / 60)) min) — nichts zu tun."

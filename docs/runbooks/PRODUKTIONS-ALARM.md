@@ -31,7 +31,74 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 | Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte der gemeinsam gepflegten Tabellen oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
+| In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, übrige KI-Ausfälle |
+| Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
+| Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
+
+**In die App hinein (seit 2026-11-16, OPS-011).** Bis dahin sah der Alarm, ob
+ein Host antwortet, aber nicht, ob die App darin Fehler macht. Jetzt schreibt
+jede ausgerollte App drei Arten von Zeilen mit Zeitstempel in ihr pm2-Log:
+
+- `job.run` nach JEDEM Takt eines Zeit-Laufs (Kennung, Ergebnis `ok`,
+  `failed` oder `skipped`, Dauer, Takt) und `job.registered` beim Start. Alle
+  Zeit-Läufe melden sich über EINE Hilfe an (`defineTimedJob`,
+  `packages/core/server/utils/timedJob.ts`); welche es je App geben muss,
+  steht in `ops/timed-jobs.conf`.
+- `ai.failed` bei jedem Ausfall eines bezahlten KI-Aufrufs (Art, Status,
+  Modell, Lauf-Kennung) und `ai.disabled`, wenn der Abschalter greift.
+- `server.error` bei jedem 5xx und, auf den vier Apps mit Anmeldung,
+  `client.error` für Fehler aus dem Browser (`pukalani.observability`; die
+  Annahme ist je Prozess auf 120 Zeilen je Stunde gedeckelt).
+
+Gezählt wird auf dem App-Server: neben jeder Ecosystem-Datei liegt das feste
+Skript `ops/app-watch-counts.mjs` (der Deploy legt es dorthin). Es liest die
+zwei Log-Dateien, in die der Prozess gerade schreibt, und gibt nur Zahlen und
+Kennungen in fester Form zurück — keine Log-Zeile, keine Meldung, keinen Pfad;
+das Protokoll des Wächter-Laufs ist öffentlich. Gerechnet wird im Repo
+(`scripts/ops/app-signals-rules.mjs`): dort steht jede Schwelle mit ihrer
+Messung. Von Hand, vom eigenen Rechner:
+
+```bash
+node scripts/ops/verify-app-signals.mjs --ssh
+```
+
+*Was scharf ist und was nur zählt.* Rot wird nur, was eindeutig ist und wofür
+es einen Handgriff gibt (Tabelle oben). Für Server-Fehler gibt es nur auf
+`platform` eine Messung (0 Zeilen an 16 Tagen im November, über 2.000 am Tag
+beim Ausfall im Oktober) — dort ist die Schwelle 25 scharf. Auf den fünf
+anderen Apps ist das Protokoll erst seit dem 2026-11-16 an; dort, bei Fehlern
+aus dem Browser und bei den übrigen KI-Ausfällen wird gezählt und im Lauf
+unter „Nur gezählt" berichtet. Scharf stellen heißt: nach einer Woche die
+Zahlen aus den täglichen Läufen ansehen und in `RULES` eine Zahl eintragen
+(OPEN-ITEMS „AL1").
+
+Eigener Probealarm: `gh workflow run production-watch.yml -f signals_drill=true`
+tut so, als wäre ein Zeit-Lauf der ersten App überfällig (an Production ändert
+das nichts); der nächste Lauf ohne Haken räumt auf.
+
+**Live-Verbindung (seit 2026-11-16, OPS-004).** Auf dem Appwrite-Server prüft
+`~/ops/realtime-watchdog.sh` alle fünf Minuten den WebSocket-Handshake und
+erstellt den Container `appwrite-realtime` neu, wenn er scheitert. Bis dahin
+tat er das bei jedem Fehlschlag, ohne zu zählen, und niemand erfuhr davon.
+Jetzt zählt er die Läufe in Folge, die mit einem gescheiterten Handshake
+beginnen: höchstens drei Neustarts, danach schreibt er nur noch den Stand
+`aufgegeben`, bis ein Handshake wieder gelingt. Ein Neustart, der hilft, setzt
+den Zähler nicht zurück — nur ein Lauf, der gesund BEGINNT. Zwei Blicke machen
+daraus einen Alarm: alle 30 Minuten ein Handshake von außen (drei Versuche,
+der dritte erst nach 5½ Minuten — was der Server in fünf Minuten selbst
+heilt, ist kein Alarm) und täglich der Stand des Wächters über das Tor-Wort
+`realtime-status`. Gemessen am 2026-11-16: in vier Monaten zwei Neustarts,
+beide am 2026-10-24 und beide ohne Erfolg; normal sind null am Tag.
+
+Eigener Probealarm: `gh workflow run production-watch.yml -f realtime_drill=true`
+macht beide Blicke rot (Handshake gegen einen Host, den es nicht gibt; eine
+Altersgrenze, die kein Stand erfüllt); der nächste Lauf ohne Haken räumt auf.
+Nach JEDER Änderung an `ops/realtime-watchdog.sh` oder am Tor-Skript:
+`ops/realtime-watchdog-attrappe.sh` (echtes `docker compose` in einem
+Wegwerf-Container), dann von Hand auf den Server
+([CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md), „Tor auf
+appwrite-prod").
 
 **Datenbank-Stand (seit 2026-11-16, OPS-008).** Das Ausliefern läuft von
 selbst, Migrationen fährt David von Hand — die Reihenfolge „erst die
@@ -102,7 +169,10 @@ schreibt eine Zeile — der Wächter liest diese Zeile.
    `produktions-alarm` (kein zweites, solange es offen ist; alle 12 h ein
    Kommentar „weiterhin rot"). Ist alles wieder grün, kommentiert er
    „Entwarnung" und schließt es. **Offenes Issue = Alarm aktiv.** Braucht
-   kein Secret — nur `issues: write` des Workflow-Tokens.
+   kein Secret — nur `issues: write` des Workflow-Tokens. Seit 2026-11-16
+   steht im Issue unter „Was zu tun ist" je rotem Befund der Blicke „In die
+   App hinein" und „Live-Verbindung" EIN Satz mit dem Handgriff und dem
+   Abschnitt in diesem Runbook; die älteren Blicke nennt weiter nur der Lauf.
 2. **Mail bei jedem Wechsel** (Alarm / Entwarnung, nie im Takt) über Resend —
    sobald die Secrets `PRODUCTION_ALARM_RESEND_KEY` und
    `PRODUCTION_ALARM_MAIL_TO` gesetzt sind (Klickliste). Vorher steht im Lauf
@@ -373,6 +443,100 @@ in Appwrites `_audit`); Konten aufräumen mit `scripts/ops/purge-spam-accounts.m
 OPEN-ITEMS-COMPLETE „Resend-Spam" (2026-10-27). Hält die Notbremse eine ECHTE
 Anmeldewelle auf, Schwelle `MAIL_GLOBAL_HOUR_MAX` erhöhen — nicht die
 Notbremse entfernen.
+
+**Zeit-Lauf überfällig oder gescheitert.** Der Satz im Issue nennt App und
+Kennung. Ein Zeit-Lauf ist eine Arbeit, die die App von selbst im Takt
+erledigt; an einigen hängt etwas, das ein Kunde merkt:
+
+| Kennung | App | Takt | Was daran hängt | Von Hand |
+| --- | --- | --- | --- | --- |
+| `trial-sweep`, `past-due-sweep` | control | 1 h | Ende der Testphase, Sperre bei Zahlungsverzug | `POST /api/control/sweeps/past-due` (nur der zweite) |
+| `invite-request-prune`, `reporter-email-prune` | control | 1 h | Aufräumen, Frist 90 Tage für Melder-Adressen | – |
+| `health-sweep` | control | 5 min | Prüft Kunden-Sites, mailt den Betreiber | – |
+| `run-retention` | control | 1 h | Runner-Protokolle 30 / 90 Tage | `POST /api/runner/retention/run` |
+| `label-reconcile` | platform | 1 h | Entzogene Lese-Rechte nachziehen | `POST /api/community/members/run-label-reconcile` |
+| `past-due-notice` | platform | 1 h | Zahlungswarnung an Inhaber | `POST /api/community/billing/run-past-due-notice` |
+| `guest-author-prune` | platform, branding | 1 h | Frist für Gast-Kontaktdaten | – |
+| `email-digest` | control, platform, branding, portfolio (jede App mit Mail) | 30 min | Tages-Mail | `POST /api/notifications/run-digest` |
+| `gdpr-export-prune` | control, platform, portfolio (jede App mit Ablage) | 1 h | Kopien gelöschter Konten nach 30 Tagen | `POST /api/admin/gdpr-exports/prune` |
+| `entitlements-pull` | heute nirgends (die Adresse dafür ist auf keiner Site gesetzt) | 15 min | Plan-Funktionen | `POST /api/platform/entitlements/refresh` |
+| `brand-check-erasure` | branding | 1 h | Prüfergebnisse nach 90 Tagen | `POST /api/brand/admin/check-erasure/run` |
+| `brand-events-sweep` | branding | 24 h | Ereignisse nach 24 Monaten | `POST /api/brand/ops/events-sweep` |
+| `market-raw-text-sweep` | branding | 30 min | Rohtexte nach 24 Stunden (Zusage) | `POST /api/market/ops/sweep` |
+| `insights-radar` | branding | 24 h | Themenradar | `POST /api/insights/radar/run` |
+| `insights-corrections-sweep`, `insights-subscribers-sweep` | branding | 24 h | Fristen für Korrekturen und Newsletter | – |
+
+1. Den Grund lesen. Auf `ploi@49.13.211.173` steht er im Fehler-Log der App
+   als Zeile `job.run` mit `"result":"failed"`, dem Namen des Fehlers und einer
+   kurzen Meldung:
+   `grep '"event":"job.run"' ~/.pm2/logs/<prozess>-error-*.log | grep '"job":"<kennung>"' | tail -3`
+2. Scheitern MEHRERE Läufe derselben App zugleich, ist es fast nie der Lauf,
+   sondern die Datenbank oder ein Schlüssel — dann ist meist auch der
+   Health-Blick rot; dort weitermachen.
+3. „Hat sich nie gemeldet": der Lauf meldet sich beim Start nur an, wenn sein
+   Tor offen ist (Mailer eingerichtet, Ablage gesetzt, Schalter auf `apply`,
+   die vier `NUXT_PLATFORM_CONTROL_*`). Fehlt eine Variable, sagt es der
+   Env-Blick. Läuft er in dieser App bewusst nicht mehr, die Zeile aus
+   `ops/timed-jobs.conf` nehmen.
+4. „Der Lauf hängt": ein Takt ist nie zu Ende gegangen (meist ein Aufruf ohne
+   Frist). Die App über ihre Ecosystem-Datei neu laden; der Lauf beginnt neu.
+5. Ist die Ursache behoben, läuft der nächste Takt von selbst; wer nicht
+   warten will, stößt den Lauf über die Route in der Tabelle an (angemeldet
+   als Betreiber). Der nächste tägliche Lauf schließt das Issue, ein Lauf von
+   Hand (`gh workflow run production-watch.yml`) sofort.
+
+**Fehler in der App.** Der Satz nennt App und Zahl der Server-Fehler (5xx) in
+25 Stunden. Auf dem Server:
+`grep '"event":"server.error"' ~/.pm2/logs/<prozess>-error-*.log | tail -20` —
+jede Zeile trägt Pfad, Methode und Status. Häuft sich EIN Pfad, ist es eine
+Route (zuletzt ausgeliefert? dann zurückstellen, s. o.); sind es viele Pfade,
+darunter `/api/health` mit 502, ist es die Datenbank — dann ist auch der
+Health-Blick rot. Unter „Nur gezählt" stehen die Apps ohne scharfe Schwelle
+und die Fehler aus dem Browser: kein Alarm, aber die Zahl, an der sich die
+Schwelle später ausrichtet.
+
+**KI fällt aus.** Status 402: bei OpenRouter ist das Guthaben aufgebraucht
+oder das Monats-Limit eines Schlüssels erreicht — jeder bezahlte Aufruf
+scheitert, bis aufgeladen oder das Limit angehoben ist (openrouter.ai →
+Credits bzw. Keys; das Guthaben lädt sich nicht von selbst auf). Status 404:
+ein Modell hat unter unseren Bedingungen keinen Endpunkt mehr —
+`pnpm ops:ai-models` nennt es, weiter unter „KI-Modelle" in Abschnitt 1. Wer
+KI-Kosten sofort stoppen will: der Abschalter `app_config.brandAiEnabled`
+(Zeile `ai.disabled` zählt dann mit). Ein Blick auf das Guthaben im Voraus
+ist bewusst nicht gebaut: OpenRouter gibt es nur einem Verwaltungs-Schlüssel
+heraus, und der kann auch Schlüssel anlegen und löschen.
+
+**In die App hinein — keine Zahlen.** Der Blick konnte für eine App nicht
+zählen. „Prozess läuft nicht" / „pm2 kennt den Prozess nicht": auf dem Server
+`pm2 ls`, dann `pm2 startOrReload /home/ploi/<site>/ops/ecosystem-<app>.config.cjs --update-env`.
+„Andere Version": Zähl-Skript und Auswertung passen nicht zusammen — ein
+Ausliefern steht aus oder ist gescheitert (`deploy.yml`-Lauf lesen). „Nicht
+erreichbar" oder „nicht in der festen Form": den Lauf von Hand wiederholen;
+bleibt es, am Mac `node scripts/ops/verify-app-signals.mjs --ssh` und
+`ssh ploi@49.13.211.173 'node /home/ploi/<site>/ops/app-watch-counts.mjs <prozess>'`.
+
+**Live-Verbindung (Realtime).** Kommentare, Anwesenheit und Benachrichtigungen
+kommen nicht mehr live an; die Seiten selbst laufen.
+
+1. Stand lesen, ohne Mac: Actions → Produktions-Wächter → *Run workflow* mit
+   Haken `appwrite_probe` (Container, Platte, Last). Am Mac:
+   `ssh ploi@188.245.61.155 '~/bin/pukalani-cert-gate.sh realtime-status'`
+   und `tail -20 ~/ops/logs/realtime-watchdog.log` dort.
+2. `aufgegeben` oder „Neustart hat nicht geholfen": die Ursache liegt nicht am
+   Container. Reihenfolge: Platte voll (`df -h`, ClickHouse-Vorfall
+   2026-09-28)? Laufen `appwrite`, `traefik`, `redis` (`docker compose ps` in
+   `~/appwrite`; am 2026-10-24 hatte ein Paket-Update sie angehalten —
+   `docker compose up -d`, nie den Docker-Dienst neu starten)? Zertifikat von
+   `api.pukalani.app` (TLS-Blick)? Sobald ein Handshake wieder gelingt, setzt
+   der Wächter seinen Zähler selbst zurück.
+3. „Zeitplan läuft nicht": `crontab -l` dort — die Zeile mit
+   `realtime-watchdog.sh` muss stehen (Wortlaut im Kopf des Skripts).
+4. Wiederholte Neustarts, die helfen: der Container stirbt immer wieder
+   (`docker compose logs --tail 200 appwrite-realtime`). Jeder Neustart trennt
+   alle offenen Verbindungen; die Browser verbinden sich neu.
+5. Nur der Blick von außen ist rot, der Wächter meldet `ok`: der Weg von außen
+   ist gestört (Zertifikat, Proxy), nicht Realtime selbst — der Wächter prüft
+   lokal, ohne TLS.
 
 **Backup rot.** Die Fehlerzeile im Lauf nennt den Grund: „GESCHEITERT (Schritt:
 …)“ oder „… h alt“. Auf dem Appwrite-Server `~/ops/appwrite-backup.sh --status`
