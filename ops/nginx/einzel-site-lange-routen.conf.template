@@ -1,0 +1,77 @@
+# VORLAGE: Einzel-Site mit langen Routen (OPS-003).
+# Beispiel: branding.supply — drei Routen rufen ein Modell und dürfen länger
+# als 60 Sekunden brauchen. Sonst wie einzel-site.conf.template; lies dort den
+# Kopf (Platzhalter, keine Schutz-Kopfzeilen im Webserver).
+#
+# Zusätzlicher Platzhalter: {{LANGE_ROUTEN}} regulärer Ausdruck der Routen,
+# z. B. ^/api/beispiel/(lang|laenger)$
+#
+# NEUE LANGE ROUTE? Erst prüfen, ob sie nicht aus der Anfrage gehört (Lauf-
+# Sperre, 202, Abfragen — .claude/rules/ki-mail-embed-moderation.md). Eine
+# längere Frist ist die Ausnahme; mehr als 180s lässt der tägliche Blick nicht zu.
+
+# Ploi Webserver Configuration, do not remove!
+include /etc/nginx/ploi/{{SITE}}/before/*;
+
+server {
+    root /home/ploi/{{SITE}}/public;
+    # PFLICHT (feste-namen)
+    server_name {{SERVER_NAMES}};
+
+    # Zertifikat und TLS-Einstellungen pflegt Ploi (Zertifikat anfordern, Alias):
+    # diese Zeilen sind KEINE Pflicht-Zeilen und sehen nach einem Handgriff in
+    # Ploi anders aus (`listen 443 ssl` + `ssl_certificate` statt des include).
+    include /etc/nginx/ssl/{{SITE}};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_dhparam /etc/nginx/dhparams.pem;
+
+    charset utf-8;
+
+    # Ploi Configuration, do not remove!
+    include /etc/nginx/ploi/{{SITE}}/server/*;
+
+    # LANGE ROUTEN — dieser Block MUSS vor `location /` stehen (nginx prüft
+    # Regex-Blöcke vor dem Präfix). Die proxy_set_header-Zeilen sind
+    # WIEDERHOLT, weil sie aus `location /` nicht vererbt werden — fehlen sie
+    # hier, sieht die App für genau diese Routen keine Client-Adresse.
+    # PFLICHT wie unten, Frist höchstens 180s.
+    location ~ {{LANGE_ROUTEN}} {
+        proxy_pass http://127.0.0.1:{{PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 180s;
+    }
+
+    # PFLICHT (host, client-adresse-real-ip, client-adresse-xff, protokoll, frist, port)
+    location / {
+        proxy_pass http://127.0.0.1:{{PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # PFLICHT (punkt-dateien): keine Datei mit Punkt am Anfang ausliefern.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # PFLICHT (zugriffs-log): ausdrücklich aus. Ohne diese Zeile schreibt das
+    # globale Log des Servers mit (Adresse, ganze Anfragezeile, 52 Tage).
+    # Soll eine Site mitschreiben: ops/nginx/zugriffs-log.snippet.
+    access_log off;
+    error_log  /var/log/nginx/{{SITE}}-error.log error;
+}
+
+# Ploi Webserver Configuration, do not remove!
+include /etc/nginx/ploi/{{SITE}}/after/*;

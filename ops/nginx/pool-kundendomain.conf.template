@@ -1,0 +1,59 @@
+# VORLAGE: Kundendomain einer Pool-Site (OPS-003).
+# Liegt auf dem Server als /etc/nginx/ploi/{{SITE}}/before/{{DOMAIN}} (Ploi:
+# Site → Tenants). Je Name EINE Datei — `www.` ist ein eigener Name mit
+# eigener Datei.
+#
+# Platzhalter: {{SITE}} die Pool-Site · {{DOMAIN}} der Name des Kunden ·
+# {{PORT}} Port der Pool-App.
+# Ploi legt für einen Tenant eine PHP-Schablone an — durch diese Fassung
+# ersetzen. Der tägliche Blick (ops/nginx-check.mjs) prüft jede dieser Dateien
+# mit denselben Pflicht-Zeilen wie die Site selbst.
+
+# Port 80: nur die Zertifikats-Prüfung, sonst Umleitung auf https.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{DOMAIN}};
+
+    location /.well-known/ {
+        root /home/ploi/{{SITE}}/public;
+        auth_basic off;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    # PFLICHT (feste-namen)
+    server_name {{DOMAIN}};
+
+    # Zertifikat pflegt Ploi (Tenant-Zertifikat).
+    include /etc/nginx/ssl/{{DOMAIN}};
+
+    charset utf-8;
+
+    # PFLICHT (host, client-adresse-real-ip, client-adresse-xff, protokoll, frist, port)
+    location / {
+        proxy_pass http://127.0.0.1:{{PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # PFLICHT (punkt-dateien)
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # PFLICHT (zugriffs-log)
+    access_log off;
+    error_log  /var/log/nginx/{{DOMAIN}}-error.log error;
+}

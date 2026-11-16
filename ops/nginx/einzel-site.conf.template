@@ -1,0 +1,66 @@
+# VORLAGE: Einzel-Site — EINE App, feste Namen (OPS-003).
+# Beispiele: admin.pukalani.app, help.pukalani.app, pukalani.studio.
+#
+# Platzhalter: {{SITE}} Name der Ploi-Site · {{SERVER_NAMES}} alle Namen, die
+# diese App bedient (mit Leerzeichen getrennt) · {{PORT}} Port der App.
+# Anlegen: docs/runbooks/NEUE-SITE.md. Geprüft wird täglich von
+# ops/nginx-check.mjs — die Zeilen unter „PFLICHT" müssen bleiben, alles
+# andere darf Ploi umschreiben.
+#
+# KEINE SCHUTZ-KOPFZEILEN HIER (kein `add_header X-Frame-Options` usw.): die
+# sendet die App selbst für jede Antwort (core/server/plugins/
+# security-headers.ts). Ploi schreibt bei einer neuen Site drei solche Zeilen
+# hinein — löschen, sonst kommen sie doppelt.
+
+# Ploi Webserver Configuration, do not remove!
+include /etc/nginx/ploi/{{SITE}}/before/*;
+
+server {
+    root /home/ploi/{{SITE}}/public;
+    # PFLICHT (feste-namen): nur diese Namen, kein `_`, kein default_server.
+    # Daran hängt, dass ein fremder Host-Name die App nie erreicht.
+    server_name {{SERVER_NAMES}};
+
+    # Zertifikat und TLS-Einstellungen pflegt Ploi (Zertifikat anfordern, Alias):
+    # diese Zeilen sind KEINE Pflicht-Zeilen und sehen nach einem Handgriff in
+    # Ploi anders aus (`listen 443 ssl` + `ssl_certificate` statt des include).
+    include /etc/nginx/ssl/{{SITE}};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_dhparam /etc/nginx/dhparams.pem;
+
+    charset utf-8;
+
+    # Ploi Configuration, do not remove!
+    include /etc/nginx/ploi/{{SITE}}/server/*;
+
+    # PFLICHT (host, client-adresse-real-ip, client-adresse-xff, protokoll,
+    # frist, port): die vier proxy_set_header-Zeilen und die Frist. Ohne
+    # X-Forwarded-For bestimmt der Aufrufer selbst, welche Adresse die App
+    # sieht; 60s ist die Frist, auf die die App baut.
+    location / {
+        proxy_pass http://127.0.0.1:{{PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $http_connection;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # PFLICHT (punkt-dateien): keine Datei mit Punkt am Anfang ausliefern.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # PFLICHT (zugriffs-log): ausdrücklich aus. Ohne diese Zeile schreibt das
+    # globale Log des Servers mit (Adresse, ganze Anfragezeile, 52 Tage).
+    # Soll eine Site mitschreiben: ops/nginx/zugriffs-log.snippet.
+    access_log off;
+    error_log  /var/log/nginx/{{SITE}}-error.log error;
+}
+
+# Ploi Webserver Configuration, do not remove!
+include /etc/nginx/ploi/{{SITE}}/after/*;
