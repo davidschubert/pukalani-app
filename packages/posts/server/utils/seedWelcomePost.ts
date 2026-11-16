@@ -198,8 +198,6 @@ export async function seedWelcomePost(event: H3Event, input: SeedWelcomePostInpu
       },
       permissions: [
         Permission.read(Role.any()),
-        Permission.update(Role.user(input.ownerUserId)),
-        Permission.delete(Role.user(input.ownerUserId)),
       ],
     })
   }

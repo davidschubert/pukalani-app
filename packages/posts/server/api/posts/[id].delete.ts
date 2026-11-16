@@ -56,12 +56,11 @@ export default defineEventHandler(async (event) => {
 
   await db.update(POSTS_TABLE, id, { status: 'deleted' })
     .catch((error) => { throw toH3Error(error, 'Could not delete post') })
-  // Nur der Autor behält Leserecht (eigene Historie); update bleibt für
-  // Idempotenz-Wiederholungen, ein "Un-Delete" gibt es bewusst nicht (v1).
+  // Nur der Autor behält Leserecht (eigene Historie). Schreibrechte trägt die
+  // Zeile nicht (SEC-002): eine Wiederholung läuft wie alles über diese Route,
+  // ein "Un-Delete" gibt es bewusst nicht (v1).
   await db.updatePermissions(POSTS_TABLE, id, [
     Permission.read(Role.user(user.$id)),
-    Permission.update(Role.user(user.$id)),
-    Permission.delete(Role.user(user.$id)),
   ]).catch((error) => { throw toH3Error(error, 'Could not delete post') })
 
   /**
