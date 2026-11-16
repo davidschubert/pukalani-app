@@ -71,7 +71,7 @@ anderen Apps ist das Protokoll erst seit dem 2026-11-16 an; dort, bei Fehlern
 aus dem Browser und bei den übrigen KI-Ausfällen wird gezählt und im Lauf
 unter „Nur gezählt" berichtet. Scharf stellen heißt: nach einer Woche die
 Zahlen aus den täglichen Läufen ansehen und in `RULES` eine Zahl eintragen
-(OPEN-ITEMS „AL1").
+(OPEN-ITEMS „WA1").
 
 Eigener Probealarm: `gh workflow run production-watch.yml -f signals_drill=true`
 tut so, als wäre ein Zeit-Lauf der ersten App überfällig (an Production ändert

@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 37 offen · 2 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 38 offen · 2 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-16**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -91,6 +91,7 @@ beide Server-Einstellungen einschalten.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
+| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (b) `NUXT_REDIS_URL` auf branding.supply setzen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | **Ja: (b) ein Ja für die Server-Datei** | [Einzelheiten](#wa1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
@@ -591,6 +592,43 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
   liegen die Vorgänger-Fassungen der Skripte als Weg zurück
   (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
+
+<a id="wa1"></a>
+
+**WA1 — Alarm in die App hinein: Nacharbeiten (aus dem Gesamtaudit, Paket P22).**
+
+- **(a) Schwellen scharf stellen.** Rot wird heute nur, was eindeutig ist
+  (Zeit-Lauf überfällig, KI ohne Guthaben oder ohne Endpunkt, Server-Fehler
+  auf `platform` ab 25 in 25 Stunden). Nur gezählt werden: Server-Fehler auf
+  admin, branding, portfolio, Landing und Hilfe (das Protokoll ist dort erst
+  seit dem 2026-11-16 an), Fehler aus dem Browser und übrige KI-Ausfälle. Ab
+  dem 2026-11-23 die Zeilen „Nur gezählt" der täglichen Läufe ansehen und in
+  `scripts/ops/app-signals-rules.mjs` (`RULES`) je App eine Zahl eintragen.
+- **(b) `NUXT_REDIS_URL` auf branding.supply.** Dort liegen die Tages-Deckel
+  der KI im Speicher des Prozesses und beginnen bei jedem Ausliefern neu
+  (gemessen 2026-11-16: gesetzt auf platform, admin, portfolio; Redis läuft
+  auf dem Server). Setzen heißt: eine Zeile in der `.env` der Site, neu laden,
+  zurücklesen — danach die Site in die Pflicht-Liste von
+  `scripts/ops/verify-site-env.mjs` aufnehmen.
+- **(c) Speichergrenze je Prozess.** Die pm2-Dateien kennen keine
+  (`max_memory_restart`). Ein zu knapper Wert startete eine Seite im Kreis
+  neu, deshalb erst mit Messwerten: der tägliche Lauf berichtet den Speicher je
+  Prozess. Gemessen am 2026-11-16: fünf Apps 99 bis 182 MB, `platform` 291 MB
+  kurz nach dem Start und 555 MB nach gut einer Stunde (Rechner: 3,8 GB).
+- **(d) Kundendomains aus dem Control Plane lesen.** Die Host-Listen des TLS-
+  und des Health-Wächters sind von Hand gepflegt; eine neue Kundendomain steht
+  dort erst, wenn jemand sie einträgt. Braucht eine lesende Route mit
+  Geheimnis und ein Secret bei GitHub.
+- **(e) Kleinigkeiten.** Das Fehler-Log von `platform` besteht fast nur aus
+  Zeilen „[Icon] failed to load" (19.789 in acht Tagen); die pm2-Logs laufen
+  nicht um. Fehler außerhalb einer Anfrage fängt niemand. Das Guthaben bei
+  OpenRouter lässt sich nicht im Voraus prüfen (nur mit einem
+  Verwaltungs-Schlüssel) — gemeldet wird der erste abgelehnte Aufruf. Der Lauf
+  `past-due-notice` meldet „schon im Gange" als gut statt als übersprungen. Der
+  Mail-Blick liest im Log-Ordner auch Dateien früherer Prozess-Nummern mit (das
+  Zeitfenster hält ihn richtig). Auf dem Appwrite-Server liegen die
+  Sicherungen `*.vorher-p22` (nach zwei Wochen löschen). Termin-Erinnerungen
+  haben keinen Zeit-Lauf (gehört zu den Server-Einstellungen als Vorlage).
 
 <a id="ll1"></a>
 

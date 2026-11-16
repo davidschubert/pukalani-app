@@ -309,7 +309,7 @@ paths:
   `NUXT_REDIS_URL` steht seit 2026-11-16 auf der Pflicht-Liste von platform,
   admin und portfolio (ohne sie zählt jeder Prozess für sich und beginnt bei
   jedem Ausliefern neu); auf `branding.supply` ist sie noch NICHT gesetzt
-  (OPEN-ITEMS „AL1").
+  (OPEN-ITEMS „WA1").
   REIHENFOLGE BEI EINER NEUEN VARIABLE (zuletzt
   `NUXT_INSIGHTS_NEWSLETTER_SECRET`, SEC-020, 2026-11-15): der Code läuft mit
   einem Rückfall, bis der Wert steht — erst ausliefern, dann den Wert auf dem
