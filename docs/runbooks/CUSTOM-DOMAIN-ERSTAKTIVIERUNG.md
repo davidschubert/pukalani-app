@@ -8,8 +8,10 @@ ist der eine Durchlauf, der das nachholt. Danach ist der Weg Selbstbedienung
 und braucht kein Runbook mehr.
 
 > **Der ERSTE echte Fall ist ein SILO**, nicht eine Community:
-> `portfolio.pukalani.app` → `www.pukalani.studio` (www kanonisch, der Apex
-> leitet dorthin um). Dafür ist **Teil B** unten da. Teil A beschreibt den
+> `portfolio.pukalani.app` → `pukalani.studio`. Geplant war die www-Form;
+> kanonisch ist aber die **eingetragene** Form, und live steht der **Apex**
+> (am 2026-11-16 gemessen: `www.pukalani.studio` und `portfolio.pukalani.app`
+> antworten 301 auf `https://pukalani.studio/`). Dafür ist **Teil B** unten da. Teil A beschreibt den
 > Pool-Fall und bleibt für die erste Kunden-Community stehen.
 >
 > Der Unterschied ist nicht kosmetisch: ein Silo bekommt einen **Alias an
@@ -215,7 +217,7 @@ Die drei realistischen Fälle:
 
 # Teil B — SILO-Site (control-036) · **der erste echte Fall**
 
-`portfolio.pukalani.app` → `www.pukalani.studio`.
+`portfolio.pukalani.app` → `pukalani.studio` (Apex kanonisch, `www` → Apex).
 
 ## B0. Was vorher stimmen muss
 
@@ -264,9 +266,11 @@ Domain** → unten „Wo diese Site bei ploi wohnt".
 
 Das Token steht im selben Kasten, in dem auch die Domain eingetragen wird.
 
-- [ ] Eingetragen wird **`www.pukalani.studio`** — die eingetragene Form ist die
-      kanonische, und `www` soll es laut Entscheidung sein. Der Apex kommt als
-      Geschwister automatisch dazu und leitet um.
+- [ ] **Die eingetragene Form ist die kanonische** (`canonicalHostFor` in
+      `packages/control/shared/customDomain.ts`), die andere kommt als
+      Geschwister automatisch dazu und leitet um. Geplant war
+      `www.pukalani.studio`; eingetragen und live ist **`pukalani.studio`**
+      (Apex kanonisch, `www` → Apex 301 — Stand 2026-11-16).
 - [ ] Von einem fremden Rechner nachgemessen:
       `dig +short TXT _pukalani-verify.pukalani.studio @1.1.1.1`
       `dig +short A pukalani.studio @1.1.1.1`
@@ -339,7 +343,7 @@ nächste Neustart nimmt sie vom Netz. Das Rezept steht in **B7**.
 > 3. **Was herauskommen muss:** Status springt auf **`active`**, der
 >    Fehlertext wird leer, `customDomainActivatedAt` bekommt einen Zeitstempel.
 >    Danach antwortet `https://portfolio.pukalani.app/` mit **301** auf
->    `https://www.pukalani.studio/`.
+>    die eingetragene Form, live `https://pukalani.studio/`.
 > 4. Bleibt es bei `pending_platform`, steht jetzt der GRUND darin — und bei
 >    einem fehlenden Origin auch der Handgriff („Appwrite-Konsole → Projekt … →
 >    Settings → Platforms"). Ein `401 general_unauthorized_scope` allein darf
@@ -371,10 +375,12 @@ nächste Neustart nimmt sie vom Netz. Das Rezept steht in **B7**.
         https://<appwrite>/v1/account
 
       **401 = akzeptiert. 403 = Host unbekannt** (dann fehlt der Eintrag).
-- [ ] `https://www.pukalani.studio/` antwortet **200**.
-- [ ] `https://pukalani.studio/` antwortet **301** auf die www-Form.
-- [ ] `https://portfolio.pukalani.app/` antwortet **301** auf die www-Form,
-      mit Pfad und Query.
+- [x] `https://pukalani.studio/` antwortet **200** (kanonisch ist die
+      eingetragene Form, hier der Apex — gemessen 2026-11-16).
+- [x] `https://www.pukalani.studio/` antwortet **301** auf den Apex.
+- [ ] `https://portfolio.pukalani.app/` antwortet **301** auf den Apex,
+      mit Pfad und Query (für `/` am 2026-11-16 gemessen, Pfad und Query
+      nicht).
 - [ ] `https://portfolio.pukalani.app/api/health` antwortet weiter **200** und
       leitet NICHT um — sonst meldet der Health-Sweep der Betreiber-Konsole
       „degraded".
@@ -389,6 +395,18 @@ nächste Neustart nimmt sie vom Netz. Das Rezept steht in **B7**.
       Schema. Das war der eine Handgriff, den es sonst gegeben hätte.
 - [ ] Suchmaschinen brauchen Tage bis Wochen. `canonical` zeigt ab sofort
       richtig.
+- [ ] **Mails und Links folgen von selbst** (seit 2026-11-16). Reset-,
+      Verifizierungs- und Benachrichtigungs-Mails, der Digest und der
+      OAuth-Rückweg nehmen die eigene Domain, sobald sie `active` ist: der
+      `domains`-Layer meldet sie dem Core (`resolveSiteOrigin`, dieselbe
+      30-s-Abfrage wie die Umleitung). Vorher, und wenn das Control Plane
+      nicht antwortet, bleibt es die Standard-Adresse — die leitet per 301
+      weiter, es bricht also nichts. **`NUXT_PUBLIC_APP_URL` der Site BLEIBT
+      die Standard-Adresse.** Sie ist der Rückfall, wenn die eigene Domain
+      wieder entfernt wird: dann verschwinden die Appwrite-Plattformen der
+      eigenen Domain (über das Dashboard der Site räumt die App sie selbst ab,
+      siehe B6), und ein fest eingetragener eigener Name ließe Reset-Mails
+      still scheitern.
 - [ ] Die alte Adresse **bleibt** als Rückfall und leitet nur um
       (`Cache-Control: no-store`; manche Browser merken sich einen 301
       trotzdem — bei „meine Adresse geht nicht mehr" ist ein harter Reload die
