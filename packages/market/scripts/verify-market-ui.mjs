@@ -299,6 +299,26 @@ async function marketRows(table, profileId) {
 }
 
 /**
+ * DER LAUF SEIT GA1 P18 (BE-008): `POST /run` antwortet 202, sobald er
+ * gesperrt und gebucht ist; gerechnet wird dahinter. Gewartet wird über die
+ * Übersicht (`run.state`), bis er nicht mehr läuft. `run` ist danach der
+ * Stand aus `GET /api/market/profiles/<id>` (Schritte MIT Namen).
+ */
+async function runAndWait(base, cookie, query = '') {
+  const post = await call(`${base}/run${query}`, { method: 'POST', cookie })
+  if (post.status !== 202) return { post, run: null }
+  const deadline = Date.now() + 10 * 60_000
+  let run = post.json?.run ?? null
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    const overview = await call(base, { cookie })
+    run = overview.json?.run ?? null
+    if (run && run.state !== 'running') break
+  }
+  return { post, run }
+}
+
+/**
  * Sichtbarer TEXT einer SSR-Antwort. Skripte und Attribute fliegen raus, weil
  * dort der SSR-Payload steht: er trägt die rohen Antwort-Daten, und ein Grep
  * über das ganze HTML fände dort jeden i18n-Schlüssel, der irgendwo als Wert
@@ -495,9 +515,11 @@ try {
     `${secondSelf.status} ${secondSelf.json?.reason ?? ''}`)
 
   console.log('\n8 · Der Lauf mit Bericht')
-  const run = await call(`${base}/run?report=1`, { method: 'POST', cookie: owner.cookie })
-  check('der Lauf antwortet 200 und liefert einen Bericht',
-    run.status === 200 && Boolean(run.json?.report), `${run.status} ${run.json?.reason ?? ''}`)
+  const run = await runAndWait(base, owner.cookie, '?report=1')
+  const runReport = await call(`${base}/report`, { cookie: owner.cookie })
+  check('der Lauf startet (202), endet `done` und hinterlässt einen Bericht',
+    run.post.status === 202 && run.run?.state === 'done' && Boolean(runReport.json?.report),
+    `${run.post.status} ${run.run?.state ?? run.post.json?.reason ?? ''}`)
 
   const profileRows = await marketRows('market_profiles', profileId)
   const sharedProfile = profileRows.find(row => row.competitorId === sharedCompetitorId)
@@ -558,8 +580,8 @@ try {
   check('die Eigentümerin nimmt die Freigabe zurück',
     revoke.status === 200 && revoke.json?.marketVisibility === 'private', String(revoke.status))
 
-  const rerun = await call(`${base}/run`, { method: 'POST', cookie: owner.cookie })
-  const revokedStep = (rerun.json?.steps ?? []).find(step => step.competitorId === sharedCompetitorId)
+  const rerun = await runAndWait(base, owner.cookie)
+  const revokedStep = (rerun.run?.steps ?? []).find(step => step.competitorId === sharedCompetitorId)
   check('der Lauf meldet ihn als ausgeschlossen mit Grund `withdrawn`',
     revokedStep?.status === 'excluded' && revokedStep?.excludedReason === 'withdrawn',
     JSON.stringify(revokedStep ?? {}))
@@ -612,10 +634,11 @@ finally {
   for (const server of servers) await new Promise(done => server.close(done))
 
   if (!KEEP) {
-    for (const table of ['market_reports', 'market_profiles', 'market_competitors']) {
+    // `market_runs` hängt über `subject` am Branding (GA1 P18).
+    for (const [table, column] of [['market_runs', 'subject'], ['market_reports', 'profileId'], ['market_profiles', 'profileId'], ['market_competitors', 'profileId']]) {
       for (const id of cleanup.profiles) {
         const rows = await tablesDB.listRows({
-          databaseId, tableId: table, queries: [Query.equal('profileId', id), Query.limit(200)],
+          databaseId, tableId: table, queries: [Query.equal(column, id), Query.limit(200)],
         }).catch(() => ({ rows: [] }))
         for (const row of rows.rows) {
           await tablesDB.deleteRow({ databaseId, tableId: table, rowId: row.$id }).catch(() => {})

@@ -135,7 +135,11 @@
       "waiting": "Wartet",
       "comparing": "Vergleich läuft",
       "done": "Bericht fertig",
-      "replay": "Lauf noch einmal abspielen"
+      "replay": "Lauf noch einmal abspielen",
+      "progress": "{done} von {total} Wettbewerbern gelesen",
+      "writing": "Vergleich wird geschrieben",
+      "background": "Der Vergleich läuft im Hintergrund. Ihr könnt die Seite offen lassen oder später zurückkommen.",
+      "stalled": "Der Vergleich wurde unterbrochen. Startet ihn bitte noch einmal — ein Lauf, der noch nichts ausgewertet hatte, zählt nicht gegen euer Tageskontingent."
     },
     "result": {
       "title": "Das Feld, nebeneinander",
@@ -271,7 +275,8 @@
       "competitor_duplicate": "Diese Marke steht schon in eurer Liste.",
       "competitor_url_invalid": "Diese Adresse können wir nicht lesen — bitte mit Domain angeben.",
       "self_limit": "Eine eigene alte Website je Branding, nicht zwei.",
-      "shared_unavailable": "Diese Marke ist nicht (mehr) für den Marktvergleich freigegeben."
+      "shared_unavailable": "Diese Marke ist nicht (mehr) für den Marktvergleich freigegeben.",
+      "run_running": "Der Vergleich läuft schon — hier seht ihr, wie weit er ist."
     },
     "about": {
       "title": "Was der Vergleich tut und was nicht",

@@ -24,8 +24,10 @@ import type {
   MarketRatingResponse,
   MarketReportResponse,
   MarketRunResponse,
+  MarketRunView,
   MarketVisibilityResponse,
 } from '../../../../shared/types/marketApi'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../core/shared/runLease'
 import type {
   BrandFindingView,
   BrandFindingsResponse,
@@ -45,8 +47,9 @@ import { useMarketBandLabel, useMarketFieldLabels } from '../../../composables/u
  *      das ist der eigene Kunde, ihm fehlt ein Schritt, und ein 404 ist die
  *      Antwort auf „gibt es nicht", nicht auf „noch nicht".
  *  (b) KANDIDATEN — Liste, Quellen-Wähler, Schranke (Prototyp `markt.vue`).
- *  (c) LAUF — ein SYNCHRONER POST; der Fortschritt zeigt danach, was
- *      wirklich passiert ist (Prototyp `lauf.vue`, s. „Ehrlicher Fortschritt").
+ *  (c) LAUF — ein POST, der seit GA1 P18 sofort mit 202 antwortet; der
+ *      Fortschritt kommt aus der Lauf-Zeile über die Übersicht (Prototyp
+ *      `lauf.vue`, s. „Ehrlicher Fortschritt").
  *  (d) BERICHT — Gegenüberstellung, drei Listen, Profile, Befunde, `stale`
  *      (Prototyp `ergebnis.vue`).
  *  (e) RELAUNCH — die eigene alte Website gegen die Foundation (Prototyp
@@ -72,13 +75,16 @@ import { useMarketBandLabel, useMarketFieldLabels } from '../../../composables/u
  * (ein 403 bestätigte die Existenz). Ohne Session ebenso — das Beta-Gate des
  * Wizards antwortet 404, nicht 401.
  *
- * ── EHRLICHER FORTSCHRITT (Auftrag M4 (c)) ───────────────────────────────
- * Der Lauf ist EIN Aufruf, der lange dauert; es gibt keinen Kanal, über den
- * Zwischenstände kämen. Also wird auch keiner erfunden: während des Wartens
- * stehen die Kandidaten mit ihrem GESPEICHERTEN Stand da (meist „Wartet"),
- * und erst die Antwort füllt die Kette („robots.txt geprüft · 6 Seiten
- * gelesen · Profil erstellt"). Ein abgespielter Schein-Fortschritt wäre eine
- * Behauptung über einen fremden Server.
+ * ── EHRLICHER FORTSCHRITT (Auftrag M4 (c), seit GA1 P18 mit Zwischenstand) ─
+ * Bis P18 war der Lauf EIN langer Aufruf ohne Kanal für Zwischenstände. Seit
+ * P18 rechnet er hinter einer 202-Antwort und schreibt nach JEDEM Kandidaten
+ * seinen Stand an die Lauf-Zeile; die Seite fragt die Übersicht im Takt
+ * `RUN_LEASE_POLL_MS` ab (`useRunPolling`, nur bei sichtbarem Tab). Gezeigt
+ * wird nur, was dort steht: „x von y Wettbewerbern gelesen", die Kette der
+ * schon gelesenen Kandidaten, und „Vergleich wird geschrieben", sobald der
+ * Lauf in der Phase `report` ist. Die übrigen Kandidaten stehen mit ihrem
+ * GESPEICHERTEN Stand da (meist „Wartet") — ein abgespielter
+ * Schein-Fortschritt wäre eine Behauptung über einen fremden Server.
  *
  * ── DIE BEFUNDE KOMMEN ÜBER DIE brand-ROUTE ──────────────────────────────
  * Der Bericht trägt sie als `MarketFinding` (id, Feld, Warum, Vorschlag) —
@@ -325,46 +331,130 @@ async function updateUrl(payload: { id: string, url: string }): Promise<void> {
 // ── (c) Der Lauf ─────────────────────────────────────────────────────────
 
 const runPhase = ref<MarketRunPhase>('idle')
+/** Die Schritte des Laufs, wie die Lauf-Zeile sie meldet (mit Namen). */
 const runSteps = ref<MarketRunStep[]>([])
+const runProgress = ref<{ done: number, total: number, writing: boolean }>({ done: 0, total: 0, writing: false })
+/** Der ruhige Hinweis nach einem abgebrochenen Lauf (kein roter Fehler). */
+const runInterrupted = ref(false)
+/**
+ * WELCHER LAUF beobachtet wird (`startedAt`). Leer heisst „der jüngste" —
+ * so nach einem 409 oder beim Laden mitten im Lauf. Ohne die Kennung hielte
+ * die Seite nach dem Start den ALTEN Lauf (`done`) für das Ende des neuen.
+ */
+const watchedRunStartedAt = ref('')
 
 /**
- * Während des Wartens: die Kandidaten mit ihrem GESPEICHERTEN Stand. Keine
+ * Während des Laufs: die Kandidaten mit ihrem GESPEICHERTEN Stand, ersetzt
+ * durch den Schritt aus der Lauf-Zeile, sobald es einen gibt. Keine
  * erfundenen Zwischenschritte (s. Kopf).
  */
-const waitingSteps = computed<MarketRunStep[]>(() => competitors.value.map(entry => ({
-  competitorId: entry.id,
-  name: entry.name,
-  status: entry.status,
-  robotsChecked: false,
-  pagesRead: 0,
-})))
-
-const shownSteps = computed<MarketRunStep[]>(
-  () => (runSteps.value.length ? runSteps.value : waitingSteps.value),
-)
+const waitingSteps = computed<MarketRunStep[]>(() => competitors.value.map((entry) => {
+  const reported = runSteps.value.find(step => step.competitorId === entry.id)
+  return reported ?? {
+    competitorId: entry.id,
+    name: entry.name,
+    status: entry.status,
+    robotsChecked: false,
+    pagesRead: 0,
+  }
+}))
 
 const running = computed(() => runPhase.value === 'running' || runPhase.value === 'comparing')
+
+const shownSteps = computed<MarketRunStep[]>(
+  () => (running.value || !runSteps.value.length ? waitingSteps.value : runSteps.value),
+)
+
+/** Den Lauf-Stand der Übersicht in die Seite übernehmen (Fortschritt + Ausgang). */
+async function applyRun(run: MarketRunView | null | undefined): Promise<void> {
+  if (!run || !running.value) return
+  // Ein älterer Lauf als der beobachtete ist nicht dieser Lauf.
+  if (watchedRunStartedAt.value && run.startedAt && run.startedAt < watchedRunStartedAt.value) return
+
+  if (run.state === 'running') {
+    runSteps.value = run.steps
+    runProgress.value = { done: run.done, total: run.total, writing: run.phase === 'report' }
+    runPhase.value = run.phase === 'report' ? 'comparing' : 'running'
+    return
+  }
+
+  watchedRunStartedAt.value = ''
+  if (run.state === 'done') {
+    runSteps.value = run.steps
+    runPhase.value = 'done'
+    if (!run.aiEnabled) toast.add({ color: 'warning', title: t('market.error.aiOff') })
+    await refreshAll()
+    return
+  }
+  runPhase.value = 'idle'
+  if (run.state === 'stalled') {
+    runInterrupted.value = true
+  }
+  else if (run.state === 'failed') {
+    runSteps.value = run.steps
+    toast.add({ color: 'warning', title: t('market.error.run') })
+  }
+  await refreshAll()
+}
+
+/** Ein Takt: die Übersicht neu holen, dann den Lauf darin lesen. */
+async function pollRun(): Promise<void> {
+  await overview.refresh()
+  await applyRun(overview.data.value?.run)
+}
+
+useRunPolling({ active: running, intervalMs: RUN_LEASE_POLL_MS, tick: pollRun })
+
+// Neu geladen MITTEN im Lauf ⇒ wieder „läuft" (der Server hat es gerechnet,
+// SSR und Browser sehen denselben Stand).
+if (overview.data.value?.run?.state === 'running') {
+  const run = overview.data.value.run
+  runPhase.value = run.phase === 'report' ? 'comparing' : 'running'
+  runSteps.value = run.steps
+  runProgress.value = { done: run.done, total: run.total, writing: run.phase === 'report' }
+}
+// Neu geladen NACH einem abgebrochenen Lauf ⇒ der Hinweis steht wieder da.
+// Ohne das sähe ihn nur, wer beim Abbruch zufällig auf der Seite war — und
+// gerade wer später zurückkommt, soll erfahren, warum kein Ergebnis da ist.
+else if (overview.data.value?.run?.state === 'stalled') {
+  runInterrupted.value = true
+}
 
 /**
  * EIN KNOPF, EIN AUFRUF (`?report=1`).
  *
  * Aus Kundensicht ist „Markt vergleichen" eine Handlung; technisch sind es
- * zwei Schritte (Abruf und Vergleich). Genau dafür hat M3 das Flag gebaut —
- * zwei Aufrufe von hier müssten den Fall „Lauf gut, Bericht kaputt" selbst
- * zusammensetzen, und zwei Knöpfe wären dann nur eine Frage der Zeit.
+ * zwei Schritte (Abruf und Vergleich). Genau dafür hat M3 das Flag gebaut.
+ *
+ * Seit GA1 P18 antwortet der Server mit 202, sobald der Lauf gesperrt und
+ * gebucht ist. Läuft schon einer (zweiter Tab, Doppelklick), kommt 409
+ * `run_running` — das ist KEIN Fehler, sondern genau der Zustand, den die
+ * Seite dann zeigen soll: ein ruhiger Hinweis, und sie wechselt auf „läuft".
  */
 async function runComparison(): Promise<void> {
   if (running.value || !unlocked.value || !paywallUnlocked.value) return
   runPhase.value = 'running'
   runSteps.value = []
+  runInterrupted.value = false
+  runProgress.value = { done: 0, total: fieldCompetitors.value.length, writing: false }
   try {
     const response = await $fetch<MarketRunResponse>(`${base.value}/run?report=1`, { method: 'POST' })
-    runSteps.value = response.steps
-    runPhase.value = 'done'
-    if (!response.aiEnabled) toast.add({ color: 'warning', title: t('market.error.aiOff') })
-    await refreshAll()
+    if (!response.ran || !response.run) {
+      runPhase.value = 'idle'
+      return
+    }
+    watchedRunStartedAt.value = response.run.startedAt
+    runProgress.value = { done: 0, total: response.run.total, writing: false }
+    if (overview.data.value) overview.data.value = { ...overview.data.value, run: response.run }
   }
   catch (error) {
+    const reason = (error as { data?: { reason?: string } })?.data?.reason
+    if (reason === RUN_LEASE_BUSY_CODE) {
+      toast.add({ color: 'info', title: t('market.rejected.run_running') })
+      watchedRunStartedAt.value = ''
+      await pollRun().catch(() => {})
+      return
+    }
     runPhase.value = 'idle'
     fail(error, 'market.error.run')
   }
@@ -884,6 +974,22 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
           </MkPaywall>
 
           <!-- (c) DER LAUF -->
+          <p
+            v-if="runInterrupted && !running"
+            class="rounded-xl px-4 py-3 text-sm leading-relaxed"
+            style="background: var(--bw-surface); color: var(--bw-ink)"
+            data-market-run-interrupted
+          >
+            {{ t('market.run.stalled') }}
+          </p>
+          <div v-if="running" class="space-y-1" data-market-run-progress>
+            <p class="text-sm font-medium">
+              {{ runProgress.writing
+                ? t('market.run.writing')
+                : t('market.run.progress', { done: runProgress.done, total: runProgress.total }) }}
+            </p>
+            <p class="text-sm leading-relaxed" style="color: var(--bw-muted)">{{ t('market.run.background') }}</p>
+          </div>
           <MkRunProgress
             v-if="running || runSteps.length"
             :steps="shownSteps"

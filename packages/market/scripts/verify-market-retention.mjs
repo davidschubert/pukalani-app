@@ -347,6 +347,26 @@ async function marketRows(table, profileId) {
   return res.rows
 }
 
+/**
+ * DER LAUF SEIT GA1 P18 (BE-008): `POST /run` antwortet 202, sobald er
+ * gesperrt und gebucht ist; gerechnet wird dahinter. Gewartet wird über die
+ * Übersicht (`run.state`), bis er nicht mehr läuft. `run` ist danach der
+ * Stand aus `GET /api/market/profiles/<id>` (Schritte MIT Namen).
+ */
+async function runAndWait(base, cookie, query = '') {
+  const post = await call(`${base}/run${query}`, { method: 'POST', cookie })
+  if (post.status !== 202) return { post, run: null }
+  const deadline = Date.now() + 10 * 60_000
+  let run = post.json?.run ?? null
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    const overview = await call(base, { cookie })
+    run = overview.json?.run ?? null
+    if (run && run.state !== 'running') break
+  }
+  return { post, run }
+}
+
 // ── Der Lauf ───────────────────────────────────────────────────────────────
 
 try {
@@ -402,15 +422,16 @@ try {
   check('zweiter Kandidat angelegt (er ist die GEGENPROBE des Sweeps)',
     addedKeep.status === 200 && Boolean(keptId), String(addedKeep.status))
 
-  const run = await call(`${base}/run?report=1`, { method: 'POST', cookie: owner.cookie })
-  check('der Lauf antwortet 200 mit Bericht',
-    run.status === 200 && run.json?.ran === true && Boolean(run.json?.report),
-    `${run.status} ${run.json?.reason ?? ''}`)
+  const run = await runAndWait(base, owner.cookie, '?report=1')
+  const runReport = await call(`${base}/report`, { cookie: owner.cookie })
+  check('der Lauf startet (202), endet `done` und hinterlässt einen Bericht',
+    run.post.status === 202 && run.post.json?.ran === true && run.run?.state === 'done' && Boolean(runReport.json?.report),
+    `${run.post.status} ${run.run?.state ?? run.post.json?.reason ?? ''}`)
 
   const afterRun = await marketRows('market_competitors', profileId)
   const expiredBefore = afterRun.find(row => row.$id === expiredId)
   const keptBefore = afterRun.find(row => row.$id === keptId)
-  const keptStep = (run.json?.steps ?? []).find(step => step.competitorId === keptId)
+  const keptStep = (run.run?.steps ?? []).find(step => step.competitorId === keptId)
   check('Vorbedingung: der GEGENPROBE-Kandidat wurde wirklich gelesen',
     keptStep?.status === 'fetched', JSON.stringify(keptStep ?? {}))
   check('Rohtext ist da', Boolean(expiredBefore?.rawText), '')
@@ -556,10 +577,11 @@ finally {
   for (const server of servers) server.closeAllConnections?.()
   for (const server of servers) await new Promise(done => server.close(done))
 
-  for (const table of ['market_reports', 'market_profiles', 'market_competitors']) {
+  // `market_runs` hängt über `subject` am Branding (GA1 P18).
+  for (const [table, column] of [['market_runs', 'subject'], ['market_reports', 'profileId'], ['market_profiles', 'profileId'], ['market_competitors', 'profileId']]) {
     for (const id of cleanup.profiles) {
       const rows = await tablesDB.listRows({
-        databaseId, tableId: table, queries: [Query.equal('profileId', id), Query.limit(200)],
+        databaseId, tableId: table, queries: [Query.equal(column, id), Query.limit(200)],
       }).catch(() => ({ rows: [] }))
       for (const row of rows.rows) {
         await tablesDB.deleteRow({ databaseId, tableId: table, rowId: row.$id }).catch(() => {})

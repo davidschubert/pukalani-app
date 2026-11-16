@@ -75,7 +75,11 @@
       "llmsFound": "llms.txt found",
       "llmsMissing": "llms.txt not found",
       "jsonLd": "JSON-LD read",
-      "brandCheck": "Brand check started"
+      "brandCheck": "Brand check started",
+      "progress": "{done} of {total} competitors read",
+      "writing": "Writing the comparison",
+      "background": "The comparison runs in the background. You can keep this page open or come back later.",
+      "stalled": "The comparison was interrupted. Please start it again — a run that had not analysed anything yet does not count against your daily limit."
     },
     "result": {
       "title": "The field, side by side",
@@ -271,7 +275,8 @@
       "competitor_duplicate": "That brand is already on your list.",
       "competitor_url_invalid": "We cannot read that address — please include the domain.",
       "self_limit": "One old site of your own per brand, not two.",
-      "shared_unavailable": "That brand is not (or no longer) shared for market comparisons."
+      "shared_unavailable": "That brand is not (or no longer) shared for market comparisons.",
+      "run_running": "The comparison is already running — this page shows how far it has got."
     },
     "about": {
       "title": "What the comparison does and does not do",

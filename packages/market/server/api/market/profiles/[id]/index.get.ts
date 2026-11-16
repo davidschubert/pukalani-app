@@ -1,4 +1,5 @@
-import type { MarketOverviewResponse } from '../../../../../shared/types/marketApi'
+import type { MarketOverviewResponse, MarketRunView } from '../../../../../shared/types/marketApi'
+import { MARKET_RUN_SCOPE, noMarketRunView, toMarketRunView } from '../../../../../shared/marketRun'
 import type { MarketAiView, MarketProfile } from '../../../../../shared/marketProfile'
 import { MARKET_COMPETITORS_MAX } from '../../../../../shared/marketProfile'
 import { resolveMarketPaywall } from '../../../../../shared/marketPaywall'
@@ -6,6 +7,7 @@ import { brandMarketVisibilityOf, readBrandAiEnabled, resolveDerivationAccess } 
 import { MARKET_UNLOCK_STEP, marketUnlocked, requireMarketProfile } from '../../../../utils/marketAccess'
 import { listMarketCompetitors, listMarketProfiles } from '../../../../utils/marketStore'
 import { loadMarketBrandChecks } from '../../../../utils/marketBrandCheck'
+import { marketRunStore } from '../../../../utils/marketRun'
 import {
   latestProfilesByCompetitor,
   toMarketAiView,
@@ -36,16 +38,38 @@ import {
  * Die Route bleibt bewusst OHNE Freischaltungs-Schranke: Ansehen kostet
  * nichts, und eine Seite, die ihre eigene Sperre nicht laden dürfte, könnte
  * sie nicht erklären.
+ *
+ * ── SEIT GA1 P18 TRÄGT SIE DEN JÜNGSTEN LAUF (`run`) ────────────────────
+ * `POST /run` antwortet 202 und rechnet dahinter; die Seite fragt DIESE Route
+ * im Takt ab, solange der Lauf läuft. Der Zustand wird hier mit der
+ * SERVER-Uhr gerechnet (eine schiefe Browser-Uhr soll nicht „läuft" oder
+ * „abgebrochen" sagen), die Namen der Schritte kommen aus den
+ * Kandidaten-Zeilen, die ohnehin geladen sind. Ein Lesefehler der
+ * Lauf-Tabelle wirft die Übersicht NICHT um: dann `state: 'none'` und eine
+ * Warn-Zeile — Kandidaten und Bericht sind wichtiger als der Lauf-Stand, und
+ * auf einer Instanz ohne market-005 gäbe es sonst gar keine Seite.
  */
 export default defineEventHandler(async (event): Promise<MarketOverviewResponse> => {
   const { profileId, profile, betaAccount } = await requireMarketProfile(event)
 
-  const [competitors, profileRows, aiEnabled, unlocked] = await Promise.all([
+  const [competitors, profileRows, aiEnabled, unlocked, lease] = await Promise.all([
     listMarketCompetitors(event, profileId),
     listMarketProfiles(event, profileId),
     readBrandAiEnabled(event),
     marketUnlocked(event, profileId),
+    marketRunStore(event).latest(MARKET_RUN_SCOPE, profileId).then(
+      row => ({ ok: true as const, row }),
+      () => ({ ok: false as const, row: null }),
+    ),
   ])
+
+  let run: MarketRunView = noMarketRunView()
+  if (lease.ok) {
+    run = toMarketRunView(lease.row, Date.now(), new Map(competitors.map(row => [row.$id, row.name])))
+  }
+  else {
+    logEvent('warn', 'market.run_state_unreadable', {})
+  }
 
   const latest = latestProfilesByCompetitor(profileRows)
   const profiles: MarketProfile[] = []
@@ -87,5 +111,6 @@ export default defineEventHandler(async (event): Promise<MarketOverviewResponse>
     }),
     max: MARKET_COMPETITORS_MAX,
     marketVisibility: brandMarketVisibilityOf(profile),
+    run,
   }
 })
