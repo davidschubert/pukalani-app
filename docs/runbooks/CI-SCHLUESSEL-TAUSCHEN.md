@@ -113,10 +113,15 @@ eigene Zugang vom Mac ist von alldem nicht berührt.
 Der Wächter-Schlüssel bekommt auf dem Appwrite-Server keine Shell. sshd
 führt für ihn immer `ops/appwrite-cert-gate.sh` aus; erlaubt sind die Worte
 `probe`, `renew`, `reset-account`, (seit 2026-11-15) `backup-status` und
-(seit 2026-11-16) `realtime-status`. Das vierte und fünfte lesen nur: je eine
-Zeile mit Ergebnis, Alter und Größe des letzten nächtlichen Backups
+(seit 2026-11-16) `realtime-status` und `cron-status`. Die letzten drei lesen
+nur: je eine Zeile mit Ergebnis, Alter und Größe des letzten nächtlichen Backups
 (`docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md`, § 6.3) bzw. mit dem Stand des
-Realtime-Wächters (`docs/runbooks/PRODUKTIONS-ALARM.md`, „Live-Verbindung").
+Realtime-Wächters (`docs/runbooks/PRODUKTIONS-ALARM.md`, „Live-Verbindung");
+`cron-status` vergleicht die Zeitpläne des Servers mit `ops/cron.conf` und
+gibt je Quelle (crontab von `ploi`, `/etc/crontab`) eine Zeile mit Zahlen und
+Kennungen aus — dafür ruft das Tor `~/ops/cron-check.sh`, das mit der Liste
+daneben liegt (`docs/runbooks/NEUE-SITE.md`, „Neuer oder entfernter
+Zeitplan").
 Das Skript filtert auch die Ausgabe:
 Das Protokoll eines Laufs ist öffentlich, und der Worker schreibt seit
 Appwrite 2.2 alle Warteschlangen in ein Protokoll.
@@ -132,6 +137,15 @@ ssh ploi@188.245.61.155 'chmod 755 ~/bin/pukalani-cert-gate.sh && ~/bin/pukalani
 
 Ändert sich `ops/appwrite-cert-gate.sh` im Repo, gehört dieser Schritt dazu.
 Der Deploy kopiert `ops/` nur auf app-prod.
+
+Für `cron-status` liegen zwei weitere Dateien von Hand auf dem Server. Ändert
+sich `ops/cron.conf` oder `ops/cron-check.sh`, gehören sie mit hinüber — sonst
+vergleicht der Server mit einer alten Liste:
+
+```bash
+scp ops/cron-check.sh ops/cron.conf ploi@188.245.61.155:ops/
+ssh ploi@188.245.61.155 'chmod 755 ~/ops/cron-check.sh && ~/bin/pukalani-cert-gate.sh cron-status'
+```
 
 ## 4 · Fallen
 
