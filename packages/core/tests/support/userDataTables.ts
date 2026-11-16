@@ -11,10 +11,11 @@
  * eine neue Tabelle ohne Eintrag dazukommt oder ein Eintrag auf eine Datei
  * zeigt, die die Tabelle gar nicht anfasst.
  *
- * WOHER DIE TABELLEN KOMMEN: aus den gepflegten Soll-Listen in
- * `scripts/ops/verify-schema-parity.mjs` (dort trägt man eine neue Tabelle
- * ohnehin ein). Die Listen aus den Migrationen selbst zu erzeugen ist ein
- * späteres Paket (P20) — bis dahin gilt: neue Tabelle ⇒ dort UND hier.
+ * WOHER DIE TABELLEN KOMMEN: aus den MIGRATIONEN der Layer selbst (seit GA1
+ * P20, `scripts/lib/migration-inventory.mjs`) plus den Anlege-Skripten der
+ * Apps. Eine neue Tabelle — auch die eines neuen Layers — verlangt hier von
+ * selbst einen Eintrag; vorher kam die Liste aus den handgepflegten
+ * Soll-Listen des Paritäts-Skripts.
  *
  * DREI ANTWORTEN je Richtung (Export, Löschung):
  *  - eine DATEI: dort wird die Tabelle für das Konto gelesen bzw. geleert. Der
@@ -26,7 +27,9 @@
  *  - `NONE`: die Tabelle hat kein Feld mit Bezug zu einer Person.
  *
  * Wer eine Spalte mit Personenbezug an eine Tabelle hängt, die hier `NONE`
- * trägt, ändert den Eintrag mit.
+ * trägt, ändert den Eintrag mit — `pnpm check:manifests` (Prüfung 9) wird
+ * sonst rot, sofern die Spalte wie eine Person heißt (`userId`, `…By`,
+ * `email`, `ipHash`, … — Regel in `scripts/lib/user-data-duty.mjs`).
  */
 
 export interface Skip { skip: string }
@@ -56,9 +59,6 @@ const INSIGHTS = 'packages/insights/server/utils/insightsUserData.ts'
 const PORTFOLIO_INTRO = 'apps/portfolio/server/utils/introRequestsUserData.ts'
 
 const both = (file: string): TableCoverage => ({ export: file, erase: file })
-
-/** Tabellen, die keine Soll-Liste des Paritäts-Skripts als `*_TABLES` führt. */
-export const EXTRA_TABLES = ['intro_requests'] as const
 
 export const USER_DATA_TABLES: Record<string, Coverage> = {
   // ── system (läuft auf jeder Instanz) ────────────────────────────────────
