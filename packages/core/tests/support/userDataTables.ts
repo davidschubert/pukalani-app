@@ -69,8 +69,12 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   audit_logs: both(SYSTEM),
   community_handles: both(SYSTEM),
   instance_secrets: both(SYSTEM),
+  // Nachweise einer Zustimmung (system-041, SEC-008).
+  consent_records: both(SYSTEM),
   notifications: both(SYSTEM),
   app_config: NONE,
+  // Lauf-Sperre für Skript-Läufe (system-040): Gegenstand ist ein Tabellenname, im Detail stehen nur Zahlen.
+  system_runs: NONE,
   app_secrets: NONE,
   community_branding: NONE,
   community_navigation: NONE,

@@ -42,20 +42,35 @@
  * übersprungen, Indizes nur über `createIndexSteps` (Retry + Cache-Anstoß,
  * `.claude/rules/appwrite.md`). Zerstört nichts.
  */
-import type { Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
-import { createIndexSteps, hasCode } from './indexRetry.mts'
+import { createIndexSteps, hasCode, type IndexingTablesDB } from './indexRetry.mts'
 
 /**
  * DAS SDK KOMMT VOM AUFRUFER, NICHT AUS EINEM IMPORT. Node löst `node-appwrite`
  * relativ zur IMPORTIERENDEN Datei auf, und unter `scripts/` liegt das Paket
  * nicht (es hängt in den `node_modules` der Layer). Ein Laufzeit-Import hier
  * scheiterte also mit ERR_MODULE_NOT_FOUND — `indexRetry.mts` meidet ihn aus
- * demselben Grund. Typen dürfen kommen: `import type` wird beim Start
- * gestrichen.
+ * demselben Grund.
+ *
+ * AUCH DIE TYPEN KOMMEN NICHT AUS DEM PAKET (seit system-040, 2026-11-16): der
+ * `system`-Layer liegt als Ganzes im Typ-Programm der Apps, seine Migrationen
+ * werden also mitgeprüft — und von `scripts/` aus ist `node-appwrite` auch
+ * für den Compiler nicht auflösbar (TS2307). Deshalb STRUKTURELL getippt, wie
+ * `indexRetry.mts`: nur die Aufrufe, die diese Fabrik wirklich macht. Die
+ * echte `TablesDB` erfüllt sie.
  */
 export interface RunLeaseTableSdk {
-  Query: Pick<typeof Query, 'limit'>
-  TablesDBIndexType: Pick<typeof TablesDBIndexType, 'Key'>
+  Query: { limit: (limit: number) => string }
+  TablesDBIndexType: { Key: string }
+}
+
+interface ColumnParams { databaseId: string, tableId: string, key: string, required: boolean }
+
+export interface RunLeaseTablesDB extends IndexingTablesDB {
+  listColumns: (params: { databaseId: string, tableId: string, queries?: string[] }) => Promise<{ columns: { key: string, status: string }[] }>
+  createTable: (params: { databaseId: string, tableId: string, name: string, permissions?: string[], rowSecurity?: boolean }) => Promise<unknown>
+  createVarcharColumn: (params: ColumnParams & { size: number }) => Promise<unknown>
+  createIntegerColumn: (params: ColumnParams & { min?: number }) => Promise<unknown>
+  createDatetimeColumn: (params: ColumnParams) => Promise<unknown>
 }
 
 async function step(label: string, run: () => Promise<unknown>): Promise<void> {
@@ -73,7 +88,7 @@ async function step(label: string, run: () => Promise<unknown>): Promise<void> {
 }
 
 export async function ensureRunLeaseTable(input: {
-  tablesDB: TablesDB
+  tablesDB: RunLeaseTablesDB
   databaseId: string
   tableId: string
   name: string
