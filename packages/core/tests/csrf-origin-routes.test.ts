@@ -86,7 +86,7 @@ const METHODLESS_EXPECTED = [
 
 /** Erwartete Anzahl je Klasse. Ändert sich eine Zahl, gehört die Begründung in den Commit. */
 const EXPECTED_COUNTS: Record<string, number> = {
-  'onboarding-seam': 52,
+  'onboarding-seam': 53, // +1 control/onboarding/trial.post.ts (BE-015)
   'control-seam': 1,
   'runner-bearer': 6,
   'stripe-webhook': 1,
