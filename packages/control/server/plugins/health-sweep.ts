@@ -2,7 +2,7 @@ import { runHealthSweep } from '../utils/websiteHealth'
 
 /**
  * Health-Automatik (M6-T4, L6-Grundstein): prüft alle registrierten Sites
- * im Intervall — gleiches Muster wie der core-Digest-Sweep (setInterval
+ * im Intervall — gleiches Muster wie der core-Digest-Sweep (`defineTimedJob`
  * statt experimenteller Nitro-scheduledTasks, Single-Instanz-Annahme).
  * Erst-Lauf kurz nach dem Boot, damit das Register nicht bis zum ersten
  * Intervall auf „unknown" steht; manuell bleibt POST /api/control/websites/:id/
@@ -17,8 +17,15 @@ const SWEEP_INTERVAL_MS = 5 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 15 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    void runHealthSweep().then(async (result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011). unref, damit
+  // die Timer einen sauberen Exit (CLI/Tests) nicht offen halten.
+  defineTimedJob({
+    name: 'health-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      const result = await runHealthSweep()
       if (result.notOk.length || result.changed.length) {
         console.info(`[control] Health-Sweep: ${result.checked} geprüft · nicht ok: ${result.notOk.join(', ') || '—'} · geändert: ${result.changed.join(', ') || '—'}`)
       }
@@ -42,15 +49,6 @@ export default defineNitroPlugin(() => {
           console.warn('[control] Health-Alert konnte nicht gemailt werden (SMTP konfiguriert?)')
         }
       }
-    }).catch((error) => {
-      console.error('[control] Health-Sweep fehlgeschlagen:', (error as Error).message)
-    })
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
-  // sauberen Exit (CLI/Tests) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+    },
+  })
 })

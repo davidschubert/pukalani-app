@@ -7,7 +7,7 @@ import { runInsightsSubscribersSweep } from '../utils/insightsSubscribersSweep'
  * (`corrections-sweep.ts`) — und das ist Absicht: die Sweeps dieses Projekts
  * sollen sich gleich verhalten, damit ein Betreiber nicht je Layer eine andere
  * Mechanik lernen muss. Eine Konstante je Zahl, erster Lauf kurz nach dem
- * Boot, `setInterval` danach, Single-Instanz-Annahme. Die Arbeit selbst steht
+ * Boot, Takt über `defineTimedJob`, Single-Instanz-Annahme. Die Arbeit selbst steht
  * in `server/utils` — dort, wo der Admin-Client hingehört.
  *
  * ── WARUM EINMAL AM TAG ─────────────────────────────────────────────────
@@ -27,7 +27,7 @@ import { runInsightsSubscribersSweep } from '../utils/insightsSubscribersSweep'
  * Die Frage ist „ist dieses Produkt in DIESE App einkompiliert?". Ohne sie
  * liefe der Takt in jeder App, die den Layer aus einem anderen Grund im Baum
  * hat, und fragte täglich eine Tabelle ab, die es dort nicht gibt. Die
- * Prüfung steht IM `setTimeout` und nicht im Plugin-Rumpf: Nitro lädt Plugins
+ * Prüfung steht IM Takt (`run`) und nicht im Plugin-Rumpf: Nitro lädt Plugins
  * alphabetisch je Verzeichnis, `product-manifest.ts` läuft also nicht
  * garantiert vorher.
  *
@@ -43,9 +43,17 @@ const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 90 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    if (!getProductRegistry().has('insights')) return
-    void runInsightsSubscribersSweep().then((result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011). unref, damit
+  // die Timer einen sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen
+  // halten.
+  defineTimedJob({
+    name: 'insights-subscribers-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      if (!getProductRegistry().has('insights')) return 'skipped'
+      const result = await runInsightsSubscribersSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein tägliches
       // „0 Zeilen" macht das Log unlesbar. ZAHLEN, kein Inhalt.
       if (result.deleted || result.cleared || result.errors) {
@@ -57,15 +65,6 @@ export default defineNitroPlugin(() => {
           errors: result.errors,
         })
       }
-    }).catch((error) => {
-      console.error('[insights] Newsletter-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
-  // sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+    },
+  })
 })

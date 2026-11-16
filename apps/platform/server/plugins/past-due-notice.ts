@@ -15,7 +15,7 @@ import { registerPastDueNoticeReader, runPastDueNoticeSweep } from '../../../../
  *  - SCHREIBEN gehört dem onboarding-Layer (`notify()` im Pool-Projekt dieser App).
  *
  * EIGENES PLUGIN, nicht bei tenant-resolver.ts mitgefahren: dort werden
- * Resolver REGISTRIERT (kein Timer, keine Nebenwirkung). Ein setInterval in
+ * Resolver REGISTRIERT (kein Timer, keine Nebenwirkung). Ein Zeit-Lauf in
  * derselben Datei wäre ein zweiter Sorte Arbeit unter einer Überschrift, die
  * etwas anderes verspricht.
  *
@@ -44,18 +44,18 @@ export default defineNitroPlugin(() => {
   // und ein zweites Argument hieße ein zweiter Ort, der den Schlüssel kennt.
   registerPastDueNoticeReader(createPastDueNoticeReader({ endpoint, projectId, apiKey, databaseId }))
 
-  const sweep = () => {
-    void runPastDueNoticeSweep().then((result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011).
+  defineTimedJob({
+    name: 'past-due-notice',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      const result = await runPastDueNoticeSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein stündliches
       // „0 Warnungen" macht das Log unlesbar.
       if (result.notified.length) {
         console.warn(`[platform] Zahlungswarnung zugestellt: ${result.notified.join(', ')}`)
       }
-    }).catch((error) => {
-      console.error('[platform] Zahlungswarnungs-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  setInterval(sweep, SWEEP_INTERVAL_MS)
+    },
+  })
 })

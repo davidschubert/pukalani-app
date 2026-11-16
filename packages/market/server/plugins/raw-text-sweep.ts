@@ -5,7 +5,7 @@ import { runMarketRawSweep } from '../utils/marketRawSweep'
  *
  * Muster und Begründungen wie bei den anderen Sweeps des Projekts
  * (`email-digest.ts` im core, `guest-author-prune.ts` in comments): eine
- * Konstante je Zahl, erster Lauf kurz nach dem Boot, `setInterval` danach,
+ * Konstante je Zahl, erster Lauf kurz nach dem Boot, Takt über `defineTimedJob`,
  * Single-Instanz-Annahme. Die Arbeit selbst steht in `server/utils` — dort,
  * wo der Admin-Client hingehört und wo der ESLint-Backstop gegen rohes
  * `.tablesDB` in `server/plugins/**` nicht in die Quere kommt.
@@ -32,7 +32,7 @@ import { runMarketRawSweep } from '../utils/marketRawSweep'
  * registriert sich in einem eigenen Nitro-Plugin; Nitro lädt Plugins in
  * alphabetischer Reihenfolge je Verzeichnis, und `product-manifest.ts` läuft
  * daher nicht garantiert vor dieser Datei — die Prüfung steht deshalb IM
- * `setTimeout`, also nach dem Start, und nicht im Plugin-Rumpf.
+ * Takt (`run`), also nach dem Start, und nicht im Plugin-Rumpf.
  *
  * ── UND WARUM NICHT AUCH `pukalani.market.enabled` / DIE NOTABSCHALTUNG ──
  * Weil eine Aufbewahrungsfrist kein Produktmerkmal ist. Wer den
@@ -48,9 +48,17 @@ const SWEEP_INTERVAL_MS = 30 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 45 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    if (!getProductRegistry().has('market')) return
-    void runMarketRawSweep().then((result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011). unref, damit
+  // die Timer einen sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen
+  // halten.
+  defineTimedJob({
+    name: 'market-raw-text-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      if (!getProductRegistry().has('market')) return 'skipped'
+      const result = await runMarketRawSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein halbstündliches
       // „0 Zeilen" macht das Log unlesbar. ZAHLEN, kein Inhalt.
       if (result.swept || result.errors) {
@@ -60,15 +68,6 @@ export default defineNitroPlugin(() => {
           errors: result.errors,
         })
       }
-    }).catch((error) => {
-      console.error('[market] Rohtext-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
-  // sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+    },
+  })
 })

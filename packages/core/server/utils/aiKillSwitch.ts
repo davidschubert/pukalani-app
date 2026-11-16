@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { AI_DISABLED_CODE } from '../../shared/aiProviderRouting'
 import type { AiRunContext } from './aiLog'
-import { aiLogLine } from './aiLog'
+import { aiLogLine, logAiDisabled } from './aiLog'
 
 /**
  * EIN RIEGEL VOR JEDEM BEZAHLTEN KI-AUFRUF (P17, BE-006, 2026-11-15).
@@ -66,5 +66,6 @@ export function aiSwitchedOn(event: H3Event): Promise<boolean> {
 export async function assertAiSwitchedOn(event: H3Event, ctx?: AiRunContext): Promise<void> {
   if (await aiSwitchedOn(event)) return
   console.error(aiLogLine(ctx?.label ?? 'core', 'KI abgeschaltet', { model: ctx?.model, run: ctx?.run }))
+  logAiDisabled(ctx?.label ?? 'core', ctx?.model, ctx?.run)
   throw createError({ status: 503, statusText: 'AI switched off', data: { code: AI_DISABLED_CODE } })
 }

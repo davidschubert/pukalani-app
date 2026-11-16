@@ -8,6 +8,11 @@ export default defineAppConfig({
   //   auth: { providers: ['github'], termsUrl: '/agb', otp: true },
   // }
   pukalani: {
+    // STRUKTURIERTE FEHLERZEILEN (OPS-011, 2026-11-16): 5xx-Zeilen am
+    // zentralen Fehler-Hook UND die Browser-Fehler-Annahme
+    // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
+    // Wächter zählt diese Zeilen in den pm2-Logs.
+    observability: { enabled: true, clientErrors: true },
     /**
      * DER NAME, DEN DER BESUCHER SIEHT (2026-08-12).
      *
