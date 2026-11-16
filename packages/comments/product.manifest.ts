@@ -7,7 +7,10 @@ export default {
   hasMigrations: true,
   // Schema-Probe (OPS-008): comments-020 legt comments.translations an.
   schema: { latest: '020', probe: { migration: '020', table: 'comments', column: 'translations' } },
-  apiPrefixes: ['/api/comments'],
+  // Die Moderations-Routen liegen unter `/api/admin/…`, gehören aber diesem
+  // Layer — ohne die zwei Einträge blieben Queue, Sammel-Aktion, Assistent und
+  // die Einbetter-Liste erreichbar, wenn das Produkt abgeschaltet ist (BE-005).
+  apiPrefixes: ['/api/comments', '/api/admin/comments', '/api/admin/embed-sites'],
   title: { en: 'Comments', de: 'Kommentare' },
   description: {
     en: 'Threaded comments with realtime updates, votes, mentions, markdown, guest reading, AI translation and an embeddable widget.',

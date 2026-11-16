@@ -18,7 +18,11 @@ export default {
   hasMigrations: true,
   // Schema-Probe (OPS-008): brand-026 legt brand_checks.erasedAt an.
   schema: { latest: '026', probe: { migration: '026', table: 'brand_checks', column: 'erasedAt' } },
-  apiPrefixes: ['/api/brand'],
+  // `/api/discover` ist die öffentliche Galerie (Liste, Einzelansicht, Meldung).
+  // Sie gehört unter denselben Not-Aus wie der Wizard (BE-005, 2026-11-16):
+  // die Produkt-Schranke prüft nur „Produkt an?", weder Anmeldung noch Plan —
+  // für Gäste ändert sich nichts, solange das Produkt läuft.
+  apiPrefixes: ['/api/brand', '/api/discover'],
   title: { en: 'Brand Wizard', de: 'Brand-Wizard' },
   description: {
     en: 'Guided AI brand consultant: build a complete brand foundation — purpose, values, archetype, voice and manifesto.',

@@ -27,12 +27,29 @@
  *     (`market` fuhr so seit M1, COMPLETE „BI1 I1"). Das Plugin muss den
  *     Aufruf wörtlich enthalten; Ausnahmen stehen begründet in
  *     MANIFEST_PLUGIN_EXCEPTIONS.
+ *  7. JEDE ROUTE EINES ABSCHALTBAREN LAYERS LIEGT UNTER SEINEN `apiPrefixes`
+ *     (BE-005, GA1 P20): die Routen kommen aus dem Dateibaum
+ *     (`server/api/**`), nicht aus einer Liste. Eine Route daneben erreicht
+ *     der Not-Aus des Produkts nicht — so lag die Galerie von `brand`
+ *     (`/api/discover`) monatelang außerhalb. Dazu: kein Präfix deckt Routen
+ *     eines ANDEREN Layers, kein Präfix zeigt ins Leere, und ein
+ *     abschaltbarer Layer hat nichts unter `server/routes/`. Layer der Stufe
+ *     `foundation` sind nicht abschaltbar und deshalb ausgenommen — dass das
+ *     stimmt, liest die Prüfung an den zwei Stellen im Code nach, die es
+ *     festlegen. Ausnahmen mit Grund: ROUTE_PREFIX_EXCEPTIONS in
+ *     scripts/lib/manifest-routes.mjs (tote Einträge sind rot).
+ *  8. KEINE GLOBALE `pageTransition` IN EINER APP MIT DASHBOARD (CLAUDE.md,
+ *     2026-09-08 live erwischt): `UDashboardPanel` ist mehrwurzelig, mit
+ *     `mode: 'out-in'` bleibt der Seitenbereich nach dem ersten Klick leer —
+ *     ohne Fehler, nur im Prod-Build. „Mit Dashboard" = der Layer `admin`
+ *     steht in den Produkten der App.
  *
  * Ausgabe pro Verstoß eine Zeile (Datei · erwartet/ist), Exit 1 bei Fehlern.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
+import { layerRoutes, routeCoverageProblems } from './lib/manifest-routes.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -131,6 +148,27 @@ for (const [layer, m] of manifests) {
   const src = readFileSync(file, 'utf8')
   if (!/registerProductManifest\s*\(\s*manifest\s*\)/.test(src) || !/from\s+'\.\.\/\.\.\/product\.manifest'/.test(src)) {
     err(`${rel}: muss \`import manifest from '../../product.manifest'\` und \`registerProductManifest(manifest)\` enthalten`)
+  }
+}
+
+// ── 7: jede Route eines abschaltbaren Layers liegt unter seinen Präfixen ─
+{
+  for (const problem of routeCoverageProblems(
+    [...manifests].map(([layer, m]) => ({ key: layer, tier: m.tier, apiPrefixes: m.apiPrefixes, ...layerRoutes(ROOT, layer) })),
+  )) err(problem)
+
+  // Die Ausnahme „foundation" stimmt nur, solange diese Layer wirklich nicht
+  // abschaltbar sind. Zwei Stellen legen das fest — fällt eine weg, gilt die
+  // Ausnahme nicht mehr, und Prüfung 7 muss auch für sie gelten.
+  const premises = [
+    ['packages/admin/server/api/admin/products/[key].patch.ts', /manifest\.tier\s*!==\s*'optional'/, 'die Schalt-Route lehnt alles ab, was nicht `optional` ist'],
+    ['packages/core/server/utils/entitlementDocument.ts', /if\s*\(tier\s*===\s*'foundation'\)\s*return true/, 'ein Entitlement schaltet `foundation` nie ab'],
+  ]
+  for (const [rel, pattern, what] of premises) {
+    const file = join(ROOT, rel)
+    if (!existsSync(file) || !pattern.test(readFileSync(file, 'utf8'))) {
+      err(`${rel}: die Stelle „${what}" ist nicht mehr zu finden — Prüfung 7 nimmt Layer der Stufe \`foundation\` nur deshalb aus. Entweder die Stelle wiederherstellen oder die Ausnahme in scripts/lib/manifest-routes.mjs aufheben.`)
+    }
   }
 }
 
@@ -238,6 +276,14 @@ for (const app of listDirs('apps')) {
     const actual = [...extendsMatch[1].matchAll(/'([^']+)'/g)].map(m => m[1])
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       err(`apps/${app}/nuxt.config.ts: extends passt nicht zum Site-Manifest\n    erwartet: [${expected.join(', ')}]\n    ist:      [${actual.join(', ')}]`)
+    }
+  }
+
+  // ── 8: keine globale pageTransition in einer App mit Dashboard ─────────
+  if (products.includes('admin')) {
+    const code = nuxtSrc.split('\n').filter(line => !/^\s*(\/\/|\*|\/\*)/.test(line)).join('\n')
+    if (/\bpageTransition\s*:/.test(code)) {
+      err(`apps/${app}/nuxt.config.ts: globale \`pageTransition\` in einer App mit Dashboard (Layer admin) — im Prod-Build bleibt der Seitenbereich nach dem ersten Klick leer. Übergänge je Route über <NuxtPage :transition> (Muster: apps/portfolio, Layout \`site\`).`)
     }
   }
 
