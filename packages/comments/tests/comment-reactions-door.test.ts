@@ -11,13 +11,14 @@ import { USER_COUNTER_KINDS } from '../../core/server/utils/userCounterEvents'
  * Zwei der wichtigsten Zusagen lassen sich auf der Dev-Instanz nicht ueber
  * HTTP zeigen: `reddit-comments` ist EIN-mandantig, es gibt dort weder eine
  * fremde noch eine zahlungs-gesperrte Community. Beide Zusagen haengen aber
- * an EINER Zeile — der Tuerklinke:
+ * an EINER Zeile — der Tuerklinke, mit der geschrieben wird:
  *
- *   const db = tenantDb(event)      // Klinke 'member', Actor 'member'
+ *   const writer = tenantDb(event, { as: 'operator', actor: 'member' })
  *
- * Daran und nur daran haengen M13 (die Sperre friert Inhalte ein) und A5 (wer
- * schreibt, wird Mitglied). Wer sie auf `as: 'operator'` umstellt — etwa um
- * ein Rechte-Problem „schnell zu loesen" —, meldet die Reaktion still von
+ * Seit SEC-002 (GA1 P13) schreibt der Server (`as: 'operator'`); WER handelt,
+ * sagt `actor: 'member'`, und daran und nur daran haengen M13 (die Sperre
+ * friert Inhalte ein) und A5 (wer schreibt, wird Mitglied). Wer den Actor
+ * weglaesst oder auf `'operator'` stellt, meldet die Reaktion still von
  * beidem ab, und NICHTS wuerde rot: die Route funktioniert danach besser als
  * vorher. Genau solche Umstellungen hat dieses Repo schon einmal bezahlt
  * (Audit-Befund C1c: fuenf zugesagte Inhaltsarten, EINE tatsaechlich gesperrt).
@@ -41,21 +42,27 @@ const code = withoutComments(new URL('../server/api/comments/[id]/reactions.post
 const utils = withoutComments(new URL('../server/utils/commentReactions.ts', import.meta.url))
 const listRoute = withoutComments(new URL('../server/api/comments/index.get.ts', import.meta.url))
 
-describe('die Antwort-Reaktions-Route schreibt durch die MITGLIEDER-Klinke', () => {
-  it('nimmt die Datentuer ohne Klinken-Umschalter', () => {
-    // Genau diese Form: kein `as`, kein `actor` — also Default 'member'.
+describe('die Antwort-Reaktions-Route schreibt ueber den Server, gehandelt hat das Mitglied', () => {
+  it('liest ueber die Mitglieder-Klinke, schreibt ueber den Server als Mitglied', () => {
+    // Gelesen wird, wie das Konto liest; geschrieben ueber die Operator-Klinke
+    // mit `actor: 'member'` (SEC-002) — nicht mit der Betreiber-Rolle.
     expect(code).toContain('const db = tenantDb(event)')
+    expect(code).toContain(`const writer = tenantDb(event, { as: 'operator', actor: 'member' })`)
   })
 
-  it('macht das Schreiben NICHT zum Operator', () => {
+  it('jeder Schreibvorgang geht ueber `writer`, keiner als Betreiber', () => {
     /**
-     * Die Gegenprobe zur Zeile darueber. `as: 'operator'` kommt in dieser
-     * Datei gar nicht vor — das Ziel-Nachschlagen mit der Operator-Klinke
-     * lebt bewusst in `server/utils/commentReactions.ts` (fremde Zeile, nur
-     * Feststellung, kein Schreiben).
+     * Die Gegenprobe zur Zeile darueber: die Mitglieder-Klinke `db` schreibt
+     * nicht (sie ist der Session-Client), und `actor: 'operator'` kommt in
+     * dieser Datei nicht vor — das Ziel-Nachschlagen mit der Operator-Klinke
+     * lebt bewusst in `server/utils/commentReactions.ts` (fremde Zeile, nur Feststellung, kein Schreiben).
      */
-    expect(code).not.toContain(`as: 'operator'`)
+    expect(code).not.toMatch(/\bdb\.(create|update|remove|increment|decrement|updatePermissions)\b/)
+    expect(code).toMatch(/\bwriter\.create\b/)
+    expect(code).toMatch(/\bwriter\.remove\b/)
     expect(code).not.toContain(`actor: 'operator'`)
+    // Nur Leserechte an der neuen Zeile (SEC-002).
+    expect(code).not.toContain('ownerUserId')
   })
 
   it('haengt an derselben Schreib-Sperre wie jede andere Kommentar-Aktion', () => {
