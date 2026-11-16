@@ -494,10 +494,12 @@ erledigt; an einigen hängt etwas, das ein Kunde merkt:
 | --- | --- | --- | --- | --- |
 | `trial-sweep`, `past-due-sweep` | control | 1 h | Ende der Testphase, Sperre bei Zahlungsverzug | `POST /api/control/sweeps/past-due` (nur der zweite) |
 | `invite-request-prune`, `reporter-email-prune` | control | 1 h | Aufräumen, Frist 90 Tage für Melder-Adressen | – |
+| `custom-domain-sweep` | control (nicht bei Schalter `off`) | 1 h | Frist der eigenen Domain beginnen, nach 14 Tagen abschalten, Einträge ohne Nachweis verfallen lassen; bei `dry-run` nur zählen | Zahlen: `GET /api/control/sweeps/custom-domain` (zählt nur) |
 | `health-sweep` | control | 5 min | Prüft Kunden-Sites, mailt den Betreiber | – |
 | `run-retention` | control | 1 h | Runner-Protokolle 30 / 90 Tage | `POST /api/runner/retention/run` |
 | `label-reconcile` | platform | 1 h | Entzogene Lese-Rechte nachziehen | `POST /api/community/members/run-label-reconcile` |
 | `past-due-notice` | platform | 1 h | Zahlungswarnung an Inhaber | `POST /api/community/billing/run-past-due-notice` |
+| `custom-domain-notice` | platform | 1 h | Zwei Hinweise an Inhaber zur Frist der eigenen Domain (erster Tag, drei Tage vorher) — findet nur etwas, wenn `custom-domain-sweep` scharf ist | – |
 | `guest-author-prune` | platform, branding | 1 h | Frist für Gast-Kontaktdaten | – |
 | `email-digest` | control, platform, branding, portfolio (jede App mit Mail) | 30 min | Tages-Mail | `POST /api/notifications/run-digest` |
 | `gdpr-export-prune` | control, platform, portfolio (jede App mit Ablage) | 1 h | Kopien gelöschter Konten nach 30 Tagen | `POST /api/admin/gdpr-exports/prune` |
