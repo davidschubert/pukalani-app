@@ -1,5 +1,6 @@
 import { aiEndpointNoticeApplies } from '../../shared/aiProviderRouting'
 import { COMMUNITY_REMOVED_CODE } from '../../shared/communityRemoval'
+import { CONSENT_REQUIRED_CODE } from '../../shared/consent'
 import { COMMUNITY_SUSPENDED_CODE } from '../../shared/communitySuspension'
 import { notAMemberNoticeApplies } from '../../shared/communityParticipation'
 import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchErrorBridge'
@@ -72,6 +73,11 @@ import { FETCH_ERROR_HOOK, type FetchErrorNotice } from '../../shared/fetchError
  * 503 statt auszuweichen. Ein Hinweis für ALLE KI-Knöpfe aller Layer — deren
  * eigene „fehlgeschlagen"-Meldung schweigt in diesem Fall
  * (`isAiEndpointUnavailable`). Regel: `aiEndpointNoticeApplies`.
+ *
+ * FÜNFTER GRUND, KEIN TOAST (SEC-007, 2026-11-16): `consent_required`. Die
+ * App verlangt AGB (oder die Unternehmer-Bestätigung), und dem Konto fehlt
+ * die festgehaltene Zustimmung. Statt eines Hinweises öffnet sich die
+ * Nachfrage (`consent-prompt.client.ts`, über `useConsentPromptRequests`).
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const appConfig = useAppConfig() as { pukalani?: { notices?: { notAMemberSelfExplained?: string[] } } }
@@ -109,7 +115,12 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   const target = globalThis as unknown as Record<string, unknown>
+  const consentRequests = useConsentPromptRequests()
   target[FETCH_ERROR_HOOK] = (notice: FetchErrorNotice) => {
+    if (notice.status === 403 && notice.reason === CONSENT_REQUIRED_CODE) {
+      consentRequests.value += 1
+      return
+    }
     if (notice.status === 403 && notice.reason === COMMUNITY_REMOVED_CODE) {
       leaveToRemovedNotice()
       return
