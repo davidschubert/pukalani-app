@@ -8,9 +8,9 @@ import { POSTS_TABLE, POST_VOTES_TABLE, type CommunityPost, type PostVote, type 
 /**
  * Up-/Downvote auf einen Post — Toggle-Semantik wie comments:
  *   kein Vote → anlegen · gleicher Value → entfernen · anderer → umdrehen.
- * Vote-Rows schreibt der User selbst (SessionClient, Unique-Index sichert ab);
- * danach Recount + EIN Write der Zähler (Admin) → ein Realtime-Event,
- * serialisiert pro Post gegen Lost Updates.
+ * Die Stimme schreibt der Server (SEC-002, s. unten); der Unique-Index
+ * (postId, userId) sichert gegen Doppelklicks ab. Danach Recount + EIN Write
+ * der Zähler → ein Realtime-Event, serialisiert pro Post gegen Lost Updates.
  */
 export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
   // Produkt-Gate (P4): der Posting-Feed ist ab Plan personal enthalten.
@@ -31,14 +31,20 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
   }
 
   const { value } = await readValidatedBody(event, scoreVoteSchema.parse)
-  // Zwei Türen, wie die zwei Clients zuvor: member (Session — User schreibt
-  // seine Vote-Row selbst, Row-Security + Unique-Index sichern ab) und
-  // operator (autoritativer Recount + Zähler-Write auf fremder Row).
+  // Drei Türen: `db` LIEST, wie das Konto liest (Mitglieder-Klinke);
+  // `writer` schreibt die eigene Stimme; `ops` zählt und schreibt die Zähler.
   //
-  // WER HANDELT (F17): `ops` bekommt bewusst KEIN `actor` — die Handlung ist
-  // die Stimme über `db` (dort greifen Inhalts-Sperre und Beitritt), der
-  // Zähler darüber ist eine Ableitung aus ALLEN Stimmen (Muster comments/vote).
+  // DIE STIMME SCHREIBT DER SERVER (SEC-002, GA1 P13): `writer` ist die
+  // Operator-Klinke mit `actor: 'member'` — gehandelt hat das Mitglied, also
+  // greifen Inhalts-Sperre (M13) und Beitritt (A5) wie bisher. Wer darf,
+  // prüft die Route selbst, VOR dem Schreiben: die Wache oben (Zugehörigkeit)
+  // und die Suche nach der EIGENEN Stimme unten (`userId` = Konto).
+  //
+  // WER HANDELT (F17): `ops` bekommt bewusst KEIN `actor` — der Zähler ist
+  // eine Ableitung aus ALLEN Stimmen, kein zweiter Schreibvorgang derselben
+  // Person (Muster comments/vote). Deshalb NICHT `ops` für die Stimme.
   const db = tenantDb(event)
+  const writer = tenantDb(event, { as: 'operator', actor: 'member' })
   const ops = tenantDb(event, { as: 'operator' })
 
   /**
@@ -58,10 +64,13 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
     throw createError({ status: 409, statusText: 'Post not votable' })
   }
 
-  const current = await db.find<PostVote>(POST_VOTES_TABLE, [
+  // DIE EIGENE STIMME: gesucht über `userId` = Konto. Nur eine so gefundene
+  // Zeile wird unten geändert oder entfernt (ihre Id, aus dieser Anfrage).
+  const found = await db.find<PostVote>(POST_VOTES_TABLE, [
     Query.equal('postId', postId),
     Query.equal('userId', user.$id),
   ])
+  const current = found && found.userId === user.$id ? found : null
 
   /**
    * DAS TAGES-LIMIT FÜR LIKES (F57 Mechanik 3, Davids Entscheidung 2026-08-14).
@@ -91,23 +100,21 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
   }
 
   if (current && current.value === value) {
-    await db.remove(POST_VOTES_TABLE, current.$id)
+    await writer.remove(POST_VOTES_TABLE, current.$id)
   }
   else if (current) {
-    await db.update<PostVote>(POST_VOTES_TABLE, current.$id, { value })
+    await writer.update<PostVote>(POST_VOTES_TABLE, current.$id, { value })
   }
   else {
     try {
-      await db.create<PostVote>(POST_VOTES_TABLE, {
+      await writer.create<PostVote>(POST_VOTES_TABLE, {
         postId,
         userId: user.$id,
         value,
       }, {
-        permissions: [
-          Permission.read(Role.user(user.$id)),
-          Permission.update(Role.user(user.$id)),
-          Permission.delete(Role.user(user.$id)),
-        ],
+        // NUR LESERECHT (SEC-002): die eigene Stimme sieht nur der Stimmende
+        // (auch per Realtime); ändern und entfernen läuft über diese Route.
+        permissions: [Permission.read(Role.user(user.$id))],
       })
     }
     catch (error) {

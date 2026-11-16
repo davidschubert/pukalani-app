@@ -18,8 +18,8 @@ import {
  *   gleicher Value → Vote ENTFERNEN (Toggle)
  *   anderer Value  → umdrehen
  *
- * Vote-Rows schreibt der User selbst (SessionClient, Unique-Index sichert ab).
- * Danach werden upvotes/downvotes/score aus den ECHTEN Vote-Counts (AdminClient,
+ * Die Stimme schreibt der Server (SEC-002, s. unten); der Unique-Index
+ * (commentId, userId) sichert gegen Doppelklicks ab. Danach werden upvotes/downvotes/score aus den ECHTEN Vote-Counts (AdminClient,
  * sieht alle Rows) neu berechnet und in EINEM updateRow auf den Kommentar
  * geschrieben:
  *  - genau EIN Realtime-Event statt zwei → kein Zähler-Flackern im UI,
@@ -39,17 +39,23 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
   await assertCommentsWritable(event)
 
   const { value } = await readValidatedBody(event, voteSchema.parse)
-  // Zwei Türklinken, ein Vorgang: die eigene Stimme schreibt der User selbst
-  // (Session), die autoritativen Zähler liest und schreibt der Betreiber-Weg
-  // (Admin sieht ALLE Stimmen). Gescopt wird bei beiden gleich.
+  // Drei Türklinken, ein Vorgang: `db` LIEST, wie das Konto liest
+  // (Mitglieder-Klinke); `writer` schreibt die eigene Stimme; `ops` liest und
+  // schreibt die autoritativen Zähler (sieht ALLE Stimmen). Gescopt wird bei
+  // allen gleich.
   //
-  // WER HANDELT (F17): `ops` bekommt bewusst KEIN `actor`. Die HANDLUNG des
-  // Menschen ist die Stimme, und die geht über `db` (Mitglieds-Klinke, also
-  // Inhalts-Sperre M13 und Beitritt A5). Was `ops` danach schreibt, ist die
-  // Summe ALLER Stimmen auf einer fremden Zeile — eine Ableitung, kein zweiter
-  // Schreibvorgang derselben Person. Ist die Community gesperrt, scheitert
-  // schon `db` und der Recount ist nie erreicht.
+  // DIE STIMME SCHREIBT DER SERVER (SEC-002, GA1 P13): `writer` ist die
+  // Operator-Klinke mit `actor: 'member'` — gehandelt hat das Mitglied, also
+  // greifen Inhalts-Sperre (M13) und Beitritt (A5) wie bisher. Wer darf,
+  // prüft die Route selbst, VOR dem Schreiben: die Wache oben (Zugehörigkeit)
+  // und die Suche nach der EIGENEN Stimme unten (`userId` = Konto).
+  //
+  // WER HANDELT (F17): `ops` bekommt bewusst KEIN `actor`. Was `ops` schreibt,
+  // ist die Summe ALLER Stimmen auf einer fremden Zeile — eine Ableitung, kein
+  // zweiter Schreibvorgang derselben Person. Ist die Community gesperrt,
+  // scheitert schon `writer` und der Recount ist nie erreicht.
   const db = tenantDb(event)
+  const writer = tenantDb(event, { as: 'operator', actor: 'member' })
   const ops = tenantDb(event, { as: 'operator' })
 
   // Status prüfen: auf gelöschte/ausgeblendete Kommentare darf nicht gevotet
@@ -67,10 +73,13 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
     throw createError({ status: 409, statusText: 'Comment not votable' })
   }
 
-  const current = await db.find<CommentVote>(VOTES_TABLE, [
+  // DIE EIGENE STIMME: gesucht über `userId` = Konto. Nur eine so gefundene
+  // Zeile wird unten geändert oder entfernt (ihre Id, aus dieser Anfrage).
+  const found = await db.find<CommentVote>(VOTES_TABLE, [
     Query.equal('commentId', commentId),
     Query.equal('userId', user.$id),
   ])
+  const current = found && found.userId === user.$id ? found : null
 
   /**
    * DAS TAGES-LIMIT FÜR LIKES (F57 Mechanik 3, Davids Entscheidung 2026-08-14).
@@ -102,25 +111,22 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
 
   if (current && current.value === value) {
     // Toggle: Vote entfernen
-    await db.remove(VOTES_TABLE, current.$id, 'Vote not found')
+    await writer.remove(VOTES_TABLE, current.$id, 'Vote not found')
   }
   else if (current) {
     // Umdrehen
-    await db.update<CommentVote>(VOTES_TABLE, current.$id, { value }, 'Vote not found')
+    await writer.update<CommentVote>(VOTES_TABLE, current.$id, { value }, 'Vote not found')
   }
   else {
     // Neuer Vote. Bei Doppelklick können zwei Requests parallel hier landen — der
     // Unique-Index (commentId,userId) lässt nur einen durch; der 409 des zweiten
     // ist kein Fehler (Counts + myVote werden unten autoritativ neu gelesen).
     try {
-      await db.create<CommentVote>(VOTES_TABLE, { commentId, userId: user.$id, value }, {
+      await writer.create<CommentVote>(VOTES_TABLE, { commentId, userId: user.$id, value }, {
         // Die eigene Stimme sieht NUR der Stimmende (Lehre comment_votes):
         // die Liste liefert die API aggregiert, nicht die Rohzeilen.
-        permissions: [
-          Permission.read(Role.user(user.$id)),
-          Permission.update(Role.user(user.$id)),
-          Permission.delete(Role.user(user.$id)),
-        ],
+        // NUR LESERECHT (SEC-002): ändern und entfernen läuft über diese Route.
+        permissions: [Permission.read(Role.user(user.$id))],
       })
     }
     catch (error) {

@@ -41,10 +41,13 @@ describe('Row-Permissions einer Meldung im POOL', () => {
     expect(perms).toContain(Permission.read(Role.label('modsiteAAA')))
   })
 
-  it('der Melder darf lesen — und zurückziehen (Befund 2)', () => {
+  it('der Melder darf lesen — schreiben darf an der Zeile niemand (SEC-002)', () => {
     expect(perms).toContain(Permission.read(Role.user(REPORTER)))
-    expect(perms).toContain(Permission.update(Role.user(REPORTER)))
-    expect(perms).toContain(Permission.delete(Role.user(REPORTER)))
+    // Zurückziehen (Befund 2) läuft über DELETE /api/reports, nicht über ein
+    // Recht an der Zeile.
+    expect(perms).not.toContain(Permission.update(Role.user(REPORTER)))
+    expect(perms).not.toContain(Permission.delete(Role.user(REPORTER)))
+    expect(perms.filter(p => !p.startsWith('read('))).toEqual([])
   })
 
   it('SONST NIEMAND: keine Mitglieder, keine Öffentlichkeit, keine globalen Labels', () => {
@@ -62,19 +65,15 @@ describe('Row-Permissions einer Meldung im POOL', () => {
     expect(permsFor(poolOther)).not.toContain(Permission.read(Role.label('modsiteAAA')))
   })
 
-  it('genau vier Rechte — nichts Unbeabsichtigtes rutscht mit', () => {
-    expect(perms).toHaveLength(4)
+  it('genau zwei Rechte — nichts Unbeabsichtigtes rutscht mit', () => {
+    expect(perms).toHaveLength(2)
   })
 })
 
 describe('Row-Permissions einer Meldung ohne Pool-Community (Datenfehler)', () => {
   it('fail-closed: nur der Melder, kein Publikum', () => {
     const perms = permsFor(poolNoSite)
-    expect(perms).toEqual([
-      Permission.read(Role.user(REPORTER)),
-      Permission.update(Role.user(REPORTER)),
-      Permission.delete(Role.user(REPORTER)),
-    ])
+    expect(perms).toEqual([Permission.read(Role.user(REPORTER))])
   })
 })
 
@@ -87,6 +86,7 @@ describe('Row-Permissions einer Meldung im SILO / Single-Tenant', () => {
       expect(perms).toContain(Permission.read(Role.user(REPORTER)))
       expect(perms).not.toContain(Permission.read(Role.any()))
       expect(perms).not.toContain(Permission.read(Role.users()))
+      expect(perms).not.toContain(Permission.delete(Role.user(REPORTER)))
     }
   })
 })

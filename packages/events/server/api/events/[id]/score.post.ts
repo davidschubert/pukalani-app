@@ -7,14 +7,20 @@ import { EVENT_VOTES_TABLE, EVENTS_TABLE, type EventRow, type EventVote, type Ev
 /**
  * Up-/Downvote auf ein Event — Toggle-Semantik (Muster posts/score):
  *   kein Vote → anlegen · gleicher Value → entfernen · anderer → umdrehen.
- * Zwei Türen, wie die zwei Clients zuvor: member (Session — User schreibt
- * seine Vote-Row selbst, Row-Security + Unique-Index sichern ab) und
- * operator (autoritativer Recount + Zähler-Write auf fremder Row);
- * serialisiert pro Event gegen Lost Updates.
+ * Drei Türen: `db` LIEST, wie das Konto liest (Mitglieder-Klinke); `writer`
+ * schreibt die eigene Stimme; `ops` zählt neu und schreibt die Zähler auf die
+ * Event-Zeile; serialisiert pro Event gegen Lost Updates. Der Unique-Index
+ * (eventId, userId) sichert gegen Doppelklicks ab.
  *
- * WER HANDELT (F17): `ops` bekommt bewusst KEIN `actor` — die Handlung ist die
- * Stimme über `db` (dort greifen Inhalts-Sperre M13 und Beitritt A5), der
- * Zähler darüber ist eine Ableitung aus ALLEN Stimmen (Muster comments/vote).
+ * DIE STIMME SCHREIBT DER SERVER (SEC-002, GA1 P13): `writer` ist die
+ * Operator-Klinke mit `actor: 'member'` — gehandelt hat das Mitglied, also
+ * greifen Inhalts-Sperre (M13) und Beitritt (A5) wie bisher. Wer darf, prüft
+ * die Route selbst, VOR dem Schreiben: die Wache (Zugehörigkeit) und die
+ * Suche nach der EIGENEN Stimme (`userId` = Konto).
+ *
+ * WER HANDELT (F17): `ops` bekommt bewusst KEIN `actor` — der Zähler ist eine
+ * Ableitung aus ALLEN Stimmen (Muster comments/vote). Deshalb NICHT `ops` für
+ * die Stimme.
  */
 export default defineEventHandler(async (event): Promise<EventVoteResponse> => {
   // Produkt-Gate (P4): Events sind ab Plan pro enthalten.
@@ -34,6 +40,7 @@ export default defineEventHandler(async (event): Promise<EventVoteResponse> => {
 
   const { value } = await readValidatedBody(event, eventVoteSchema.parse)
   const db = tenantDb(event)
+  const writer = tenantDb(event, { as: 'operator', actor: 'member' })
   const ops = tenantDb(event, { as: 'operator' })
 
   /**
@@ -59,26 +66,27 @@ export default defineEventHandler(async (event): Promise<EventVoteResponse> => {
     throw createError({ status: 409, statusText: 'Event not votable' })
   }
 
-  const current = await db.find<EventVote>(EVENT_VOTES_TABLE, [
+  // DIE EIGENE STIMME: gesucht über `userId` = Konto. Nur eine so gefundene
+  // Zeile wird unten geändert oder entfernt (ihre Id, aus dieser Anfrage).
+  const found = await db.find<EventVote>(EVENT_VOTES_TABLE, [
     Query.equal('eventId', id), Query.equal('userId', user.$id),
   ])
+  const current = found && found.userId === user.$id ? found : null
 
   if (current && current.value === value) {
-    await db.remove(EVENT_VOTES_TABLE, current.$id)
+    await writer.remove(EVENT_VOTES_TABLE, current.$id)
   }
   else if (current) {
-    await db.update<EventVote>(EVENT_VOTES_TABLE, current.$id, { value })
+    await writer.update<EventVote>(EVENT_VOTES_TABLE, current.$id, { value })
   }
   else {
     try {
-      await db.create<EventVote>(EVENT_VOTES_TABLE, {
+      await writer.create<EventVote>(EVENT_VOTES_TABLE, {
         eventId: id, userId: user.$id, value,
       }, {
-        permissions: [
-          Permission.read(Role.user(user.$id)),
-          Permission.update(Role.user(user.$id)),
-          Permission.delete(Role.user(user.$id)),
-        ],
+        // NUR LESERECHT (SEC-002): die eigene Stimme sieht nur der Stimmende;
+        // ändern und entfernen läuft über diese Route.
+        permissions: [Permission.read(Role.user(user.$id))],
       })
     }
     catch (error) {
