@@ -116,15 +116,20 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Kontaktdaten von Gästen (`guest_authors`, Altbestand) | 90 Tage | `comments/server/plugins/guest-author-prune.ts` | keiner | `comments.guest_authors_pruned` |
 | Protokolle und Ereignisse der Runner-Läufe | 30 / 90 Tage | `runner/server/plugins/run-retention.ts` | `pukalani.runner.retention` | `runner.retention` |
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
-| Text einer gemeldeten privaten Nachricht (`messages.reportedBody`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
+| Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
 
 **Gemeldete private Nachrichten (SEC-033, Davids Entscheidung 2026-11-12):** Den Text sieht die
 Moderation nur, solange eine Meldung offen ist — in der Liste und in der Einzel-Ansicht entscheidet
 dieselbe Funktion (`moderatorVisibleBody`, `packages/messages/shared/messageReport.ts`); das gilt
 beim Lesen und damit sofort auch für alle schon erledigten Meldungen. Jede Einsicht steht im
 Betreiber-Protokoll (`message_report.viewed`, `message_report.queue_viewed`). Danach bleibt die
-Kopie 90 Tage gespeichert; der Lauf leert dann NUR `reportedBody` — das Gespräch der Beteiligten
-(`body`), `reportedAt`, die Meldung und ihr Vermerk bleiben. Der Zeitpunkt der Erledigung ist das
+Kopie 90 Tage gespeichert; der Lauf leert dann den eingefrorenen Beleg — `reportedBody` UND
+`reportedAt`, in einem Schreibvorgang. Das Gespräch der Beteiligten (`body`) bleibt, ebenso die
+Meldung und ihr Vermerk in `reports` (dort bleibt „wurde gemeldet" stehen). Warum auch der
+Zeitstempel: er ist der Merker „es gibt einen Beleg"; ohne Beleg kein Merker — eine spätere neue
+Meldung friert dann den Text von dann neu ein, statt eine offene Meldung ohne Text zu erzeugen, und
+die Zeile fällt aus der Liste der Moderation und aus der Arbeitsliste des Laufs (`reportedAt != ''`).
+Der Zeitpunkt der Erledigung ist das
 `$updatedAt` der erledigten Meldungs-Zeile (keine eigene Spalte); eine neu geöffnete Meldung
 schützt den Beleg, vor dem Leeren wird frisch gelesen. Der Stand wird je Nachricht nur in ihrer
 eigenen Community gefragt. `apply` nimmt die Lauf-Sperre in `system_runs`. Heute zählt der Lauf

@@ -256,7 +256,8 @@ paths:
   dieselbe Funktion (`moderatorVisibleBody` mit der offenen Zahl, gebündelt
   über `openReportCountsForTargets`), jede Einsicht steht entprellt im
   Betreiber-Protokoll (`recordAuditView`, core). 90 Tage nach der letzten
-  Erledigung leert ein Lauf NUR `reportedBody` (Schalter
+  Erledigung leert ein Lauf den eingefrorenen Beleg (`reportedBody` und
+  `reportedAt`); das Gespräch selbst und die Meldung bleiben (Schalter
   `pukalani.messages.reportEvidenceSweep` off/count/apply, Stand je Nachricht
   nur in ihrer Community über `reportEvidenceStateForTarget`);
   docs/referenz/EXPORT-UND-LOESCHUNG.md.
