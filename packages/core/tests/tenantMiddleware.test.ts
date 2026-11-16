@@ -176,3 +176,47 @@ describe('00.tenant — Gegenproben (unverändertes Verhalten)', () => {
     expect(logEvent).not.toHaveBeenCalled()
   })
 })
+
+describe('00.tenant — Umleitung auf die kanonische Adresse (control-035/040)', () => {
+  const ACTIVE_DOMAIN: TenantContext = {
+    mode: 'pool',
+    tenantId: 't-kunde-a',
+    canonicalHost: 'www.kunde.de',
+  } as unknown as TenantContext
+  const PAUSED_DOMAIN: TenantContext = {
+    mode: 'pool',
+    tenantId: 't-kunde-a',
+    canonicalHost: 'kunde-a.pukalani.app',
+    canonicalRedirect: 'temporary',
+  } as unknown as TenantContext
+
+  function withMethod(event: FakeEvent, method: string): FakeEvent {
+    return { ...event, method }
+  }
+
+  it('aktive eigene Domain: die Pukalani-Adresse leitet DAUERHAFT um (301 GET, 308 POST) mit no-store', async () => {
+    resolver = vi.fn(async () => ACTIVE_DOMAIN)
+    expect(await run(request('/feed?x=1'))).toBeNull()
+    expect(sendRedirect).toHaveBeenLastCalledWith(expect.anything(), 'https://www.kunde.de/feed?x=1', 301)
+    expect(await run(withMethod(request('/api/comments'), 'POST'))).toBeNull()
+    expect(sendRedirect).toHaveBeenLastCalledWith(expect.anything(), 'https://www.kunde.de/api/comments', 308)
+    expect(setResponseHeader).toHaveBeenCalledWith(expect.anything(), 'Cache-Control', 'no-store')
+  })
+
+  it('abgeschaltete eigene Domain: der Besuch der Domain leitet VORÜBERGEHEND um (302 GET, 307 POST) mit no-store', async () => {
+    resolver = vi.fn(async () => PAUSED_DOMAIN)
+    expect(await run(request('/feed', 'www.kunde.de'))).toBeNull()
+    expect(sendRedirect).toHaveBeenLastCalledWith(expect.anything(), 'https://kunde-a.pukalani.app/feed', 302)
+    expect(setResponseHeader).toHaveBeenLastCalledWith(expect.anything(), 'Cache-Control', 'no-store')
+    expect(await run(withMethod(request('/api/comments', 'www.kunde.de'), 'POST'))).toBeNull()
+    expect(sendRedirect).toHaveBeenLastCalledWith(expect.anything(), 'https://kunde-a.pukalani.app/api/comments', 307)
+  })
+
+  it('auf der Pukalani-Adresse selbst leitet eine abgeschaltete Domain nichts um', async () => {
+    resolver = vi.fn(async () => PAUSED_DOMAIN)
+    const event = request('/feed')
+    expect(await run(event)).toBeNull()
+    expect(sendRedirect).not.toHaveBeenCalled()
+    expect(event.context.tenant).toBe(PAUSED_DOMAIN)
+  })
+})

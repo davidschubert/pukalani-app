@@ -31,6 +31,13 @@ export const SITE_DOMAIN_STATUSES = [
   'pending_platform',
   'active',
   'error',
+  /**
+   * Abgeschaltet (control-040): heute setzt ihn nur der Pool-Weg (Frist nach
+   * Plan-Ende, Betreiber-Entzug). Er steht hier, weil die Liste per Test an
+   * `CUSTOM_DOMAIN_STATUSES` genagelt ist — ein Silo zeigt ihn notfalls als
+   * Wert an, setzen kann er ihn nicht.
+   */
+  'paused',
 ] as const
 export type SiteDomainStatus = (typeof SITE_DOMAIN_STATUSES)[number]
 
