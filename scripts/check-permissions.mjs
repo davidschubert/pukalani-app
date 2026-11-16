@@ -18,8 +18,20 @@
  * (Variable, Spread), ist das ebenfalls ein Fehler: was der Wächter nicht
  * lesen kann, kann er nicht freigeben.
  *
- * Stufe 1: nur Ablagen. Die Regeln für Tabellen kommen mit einem späteren
- * Paket dazu.
+ * STUFE 2 — TABELLEN, DIE NUR DER SERVER SCHREIBT (SEC-002, GA1 P13). Für jede
+ * Tabelle aus `scripts/lib/server-written-tables.mjs`, die eine Rechte-
+ * Migration nennt (`rights.migration`):
+ *  - diese Migration gibt es, und sie nimmt das Schreib-Recht der Tabelle
+ *    (`dropAccountWriteRight`);
+ *  - KEIN `updateTable` in irgendeiner Migration setzt für die Tabelle ein
+ *    Schreib-Recht (so ein Aufruf setzt absolut und öffnete die Tabelle bei
+ *    jedem vollen Lauf wieder);
+ *  - kein `createTable` in einer JÜNGEREN Migration legt sie mit Schreib-Recht
+ *    an. Die ursprüngliche Anlage in einer älteren Migration bleibt stehen —
+ *    sie läuft nur auf einer leeren Instanz, und die Rechte-Migration folgt
+ *    im selben Lauf.
+ * Der Rückweg (`packages/<layer>/scripts/rollback/`) liegt außerhalb und wird
+ * nicht geprüft: er setzt das Recht mit Absicht.
  *
  * Ausnahmen stehen in `ALLOWED` (Datei + Bucket + Begründung) und gelten nur,
  * wenn die Definition zusätzlich eine nicht-leere `allowedFileExtensions`
@@ -28,6 +40,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { SERVER_WRITTEN_TABLES } from './lib/server-written-tables.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -243,6 +256,70 @@ vom Server mit dem Admin-Client nach seinen Prüfungen.`)
   process.exit(1)
 }
 
+// ── Stufe 2: Tabellen, die nur der Server schreibt ────────────────────────
+const tableFindings = []
+let tableDefinitions = 0
+const guarded = SERVER_WRITTEN_TABLES.filter(entry => entry.rights)
+
+function migrationFilesOf(layer) {
+  const dir = join(ROOT, 'packages', layer, 'scripts', 'migrations')
+  return existsSync(dir) ? readdirSync(dir).filter(name => /^\d{3}-.*\.ts$/.test(name)).map(name => ({ name, path: join(dir, name) })) : []
+}
+
+/** `tableId: 'x'` oder `tableId: X` mit `const X = 'x'` in derselben Datei. */
+function tableIdOf(code, noComments, block) {
+  const value = valueOf(code, noComments, block, 'tableId')
+  const literal = literalString(value)
+  if (literal) return literal
+  const name = value?.text.match(/^[A-Za-z_$][\w$]*$/)?.[0]
+  if (!name) return null
+  return noComments.match(new RegExp(`const\\s+${name}\\s*=\\s*(['"\`])([^'"\`]+)\\1`))?.[2] ?? null
+}
+
+for (const entry of guarded) {
+  const own = migrationFilesOf(entry.layer).find(file => file.name.startsWith(`${entry.rights.migration}-`))
+  const drops = own && new RegExp(`dropAccountWriteRight\\(\\s*tablesDB\\s*,\\s*databaseId\\s*,\\s*'${entry.table}'`).test(mask(readFileSync(own.path, 'utf8')).noComments)
+  if (!drops) tableFindings.push(`packages/${entry.layer}/scripts/migrations/${entry.rights.migration}-*.ts  Tabelle '${entry.table}': die Rechte-Migration fehlt oder nimmt das Schreib-Recht nicht (dropAccountWriteRight)`)
+}
+
+if (guarded.length > 0) {
+  for (const file of listFiles().filter(path => path.includes(join('scripts', 'migrations')))) {
+    const rel = relative(ROOT, file)
+    const [, layer, number] = rel.match(/^packages\/([^/]+)\/scripts\/migrations\/(\d{3})-/) ?? []
+    const source = readFileSync(file, 'utf8')
+    const { code, noComments } = mask(source)
+    const keyPattern = /(?<![\w.$])rowSecurity\s*:/g
+    const seen = new Set()
+    let match
+    while ((match = keyPattern.exec(code)) !== null) {
+      const block = enclosingObject(code, match.index)
+      if (!block || seen.has(block.start)) continue
+      seen.add(block.start)
+      const entry = guarded.find(candidate => candidate.table === tableIdOf(code, noComments, block))
+      if (!entry) continue
+      tableDefinitions++
+      const call = code.slice(Math.max(0, block.start - 40), block.start).match(/(createTable|updateTable)\s*\(\s*$/)?.[1]
+      const perm = valueOf(code, noComments, block, 'permissions')
+      const { error } = checkPermissions(perm)
+      if (!error) continue
+      const original = call === 'createTable' && layer === entry.layer && number < entry.rights.migration
+      if (original) continue
+      tableFindings.push(`${rel}:${lineOf(source, perm ? perm.index : block.start)}  Tabelle '${entry.table}' (${call ?? 'unbekannter Aufruf'}): ${error}`)
+    }
+  }
+}
+
+if (tableFindings.length > 0) {
+  console.error('✖ Tabelle, die nur der Server schreibt, mit Schreibrecht oder unlesbaren Rechten:\n')
+  for (const finding of tableFindings) console.error(`  ${finding}`)
+  console.error(`
+Diese Tabellen schreibt nur der Server (scripts/lib/server-written-tables.mjs):
+kein Schreib-Recht an der Tabelle, weder für Konten noch für Labels. Das
+Tabellenrecht besitzt die dort genannte Rechte-Migration; ältere Migrationen
+setzen es nicht mehr, jüngere legen es nicht wieder an.`)
+  process.exit(1)
+}
+
 // Sichtbar machen, dass das Bootstrap-Skript wirklich gelesen wurde: null
 // Definitionen dort hieße, der Wächter läuft an seinen Buckets vorbei.
 const bootstrapCount = perFile.get(join('scripts', 'bootstrap.mjs')) ?? 0
@@ -251,3 +328,4 @@ if (bootstrapCount === 0) {
   process.exit(1)
 }
 console.log(`✔ Ablagen-Rechte: ${checked} Bucket-Definitionen geprüft (davon ${bootstrapCount} in scripts/bootstrap.mjs), kein Schreibrecht`)
+console.log(`✔ Tabellen-Rechte: ${guarded.length} Tabellen, die nur der Server schreibt, ${tableDefinitions} Definitionen geprüft`)

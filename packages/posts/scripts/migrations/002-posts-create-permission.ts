@@ -4,9 +4,15 @@
  * (SessionClient-createRow lief in Appwrite-401). Idempotent: setzt den
  * Zielzustand absolut. poll_votes bleibt bewusst OHNE User-Permissions
  * (Votes schreibt ausschließlich der Server, Plan P3/P6).
+ *
+ * SEIT posts-024 (SEC-002, 2026-11-16) SETZT DIESE MIGRATION DAS RECHT NICHT
+ * MEHR: Beiträge schreibt nur noch der Server, das Tabellenrecht besitzt
+ * posts-024. Diese Datei setzte ihren Zustand bei jedem Lauf absolut — ein
+ * voller Lauf hätte die Tabelle also jedes Mal wieder geöffnet, bis 024 sie
+ * Sekunden später schließt. Sie stellt jetzt nur noch `rowSecurity` sicher.
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, Permission, Role, TablesDB } from 'node-appwrite'
+import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -29,9 +35,9 @@ await tablesDB.updateTable({
   databaseId,
   tableId: 'community_posts',
   name: 'Community Posts',
-  permissions: [Permission.create(Role.users())],
+  permissions: [],
   rowSecurity: true,
 })
-console.log('✔ community_posts: Table-Permissions = [create(users)] (rowSecurity bleibt an)')
+console.log('✔ community_posts: kein Tabellenrecht (rowSecurity bleibt an) — Zielzustand von posts-024')
 
 console.log('✔ Migration posts-002 fertig')
