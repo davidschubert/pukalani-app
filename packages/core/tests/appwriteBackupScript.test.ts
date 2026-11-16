@@ -444,10 +444,10 @@ describe('ops/appwrite-cert-gate.sh — backup-status', () => {
     expect(out).toBe('backup ergebnis=unbekannt\n')
   })
 
-  it('lehnt weiterhin jedes andere Wort ab und nennt die vier erlaubten', () => {
+  it('lehnt weiterhin jedes andere Wort ab und nennt die fünf erlaubten', () => {
     const result = spawnSync('bash', [GATE, 'cat /etc/passwd'], { encoding: 'utf8' })
     expect(result.status).toBe(64)
-    expect(result.stdout).toContain('probe, renew, reset-account, backup-status')
+    expect(result.stdout).toContain('probe, renew, reset-account, backup-status, realtime-status')
   })
 })
 
