@@ -80,6 +80,14 @@ const ACTIVITIES = 'activities'
 const HANDLES = 'community_handles'
 const ACCOUNT_HANDLES = 'account_handles'
 const INSTANCE_SECRETS = 'instance_secrets'
+/**
+ * Nachweise einer Zustimmung (system-041, SEC-008): Auskunft mit Art, Fassung,
+ * Zeitpunkt und Weg; bei der Kontolöschung fallen die Zeilen — ohne Konto
+ * belegen sie nichts mehr. Die Tabelle gibt es erst nach der Migration
+ * (`listAllRowsIfTableExists`).
+ */
+const CONSENT_RECORDS = 'consent_records'
+type ConsentRow = Models.Row & { userId: string, kind: string, version: string, acceptedAt: string, way: string, source: string }
 
 interface SystemUserDataExport {
   notifications: Array<{ type: string, title: string, body: string, link: string, read: boolean, createdAt: string }>
@@ -95,6 +103,7 @@ interface SystemUserDataExport {
   handles: Array<{ communityId: string, handle: string, status: string, changedAt: string, createdAt: string }>
   /** Der konto-weite Name (system-031, AH-7) — aktiv und früher. */
   accountHandles: Array<{ handle: string, status: string, changedAt: string, createdAt: string }>
+  consents: Array<{ kind: string, version: string, acceptedAt: string, way: string, source: string }>
 }
 
 /** Die `$id`s der Instanz-Schlüssel, die diese Person zuletzt gesetzt hat. */
@@ -157,6 +166,12 @@ export async function systemExportUserData(event: H3Event, userId: string): Prom
     [Query.equal('targetId', userId), Query.equal('targetType', 'user'), Query.orderAsc('$createdAt')],
   )
   const secrets = await listSecretsUpdatedBy(event, userId)
+  const consents = await listAllRowsIfTableExists<ConsentRow>(
+    tablesDB,
+    config.public.appwriteDatabaseId,
+    CONSENT_RECORDS,
+    [Query.equal('userId', userId)],
+  )
 
   return {
     notifications: received.map(r => ({
@@ -194,6 +209,13 @@ export async function systemExportUserData(event: H3Event, userId: string): Prom
       status: r.status,
       changedAt: r.changedAt,
       createdAt: r.$createdAt,
+    })),
+    consents: consents.map(r => ({
+      kind: r.kind,
+      version: r.version ?? '',
+      acceptedAt: r.acceptedAt,
+      way: r.way,
+      source: r.source ?? '',
     })),
   }
 }
@@ -320,6 +342,14 @@ export async function systemDeleteUserData(event: H3Event, userId: string): Prom
   for (const rowId of await listSecretsUpdatedBy(event, userId)) {
     await tablesDB.updateRow({ databaseId, tableId: INSTANCE_SECRETS, rowId, data: { updatedBy: '' } })
     anonymized++
+  }
+
+  // Nachweise der Zustimmung (SEC-008): gehören zum Konto und fallen mit ihm.
+  // Lesefehler sind Fehler; nur die fehlende Tabelle (vor system-041) heißt „nichts da".
+  const consents = await listAllRowsIfTableExists<ConsentRow>(tablesDB, databaseId, CONSENT_RECORDS, [Query.equal('userId', userId)])
+  for (const row of consents) {
+    await tablesDB.deleteRow({ databaseId, tableId: CONSENT_RECORDS, rowId: row.$id })
+    deleted++
   }
 
   return { deleted, anonymized }

@@ -196,3 +196,33 @@ describe('systemExportUserData', () => {
     expect(result.handles).toHaveLength(1)
   })
 })
+
+describe('consent_records — Nachweise der Zustimmung (SEC-008)', () => {
+  const consent = (id: string, userId: string, extra: Record<string, unknown> = {}) =>
+    row(id, { userId, kind: 'terms', version: 'v1', acceptedAt: '2026-11-02T10:00:00.000Z', way: 'password', source: 'app.example', ...extra })
+
+  beforeEach(() => {
+    tables.consent_records = [consent('c1', 'u1'), consent('c2', 'u1', { kind: 'business', version: '', way: 'adopted' }), consent('c9', 'u9')]
+  })
+
+  it('die Auskunft nennt Art, Fassung, Zeitpunkt und Weg — nur die eigenen', async () => {
+    const result = await systemExportUserData(event, 'u1')
+    expect(result.consents).toEqual([
+      { kind: 'terms', version: 'v1', acceptedAt: '2026-11-02T10:00:00.000Z', way: 'password', source: 'app.example' },
+      { kind: 'business', version: '', acceptedAt: '2026-11-02T10:00:00.000Z', way: 'adopted', source: 'app.example' },
+    ])
+  })
+
+  it('die Kontolöschung entfernt die eigenen Nachweise und lässt fremde stehen', async () => {
+    await systemDeleteUserData(event, 'u1')
+    expect(deleted.filter(d => d.startsWith('consent_records/'))).toEqual(['consent_records/c1', 'consent_records/c2'])
+  })
+
+  it('fehlende Tabelle (Migration offen) ⇒ Erfolg; ein 500 ⇒ Abbruch', async () => {
+    errors.consent_records = tableMissing()
+    await expect(systemDeleteUserData(event, 'u1')).resolves.toBeDefined()
+    await expect(systemExportUserData(event, 'u1')).resolves.toMatchObject({ consents: [] })
+    errors.consent_records = serverError()
+    await expect(systemDeleteUserData(event, 'u1')).rejects.toThrow('Server Error')
+  })
+})
