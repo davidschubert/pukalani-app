@@ -7,7 +7,7 @@ export default {
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): comments-020 legt comments.translations an.
-  schema: { latest: '021', probe: { migration: '020', table: 'comments', column: 'translations' } },
+  schema: { latest: '022', probe: { migration: '020', table: 'comments', column: 'translations' } },
   // Die Moderations-Routen liegen unter `/api/admin/…`, gehören aber diesem
   // Layer — ohne die zwei Einträge blieben Queue, Sammel-Aktion, Assistent und
   // die Einbetter-Liste erreichbar, wenn das Produkt abgeschaltet ist (BE-005).

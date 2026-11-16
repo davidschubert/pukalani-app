@@ -33,7 +33,7 @@ export function invalidateProductGateCache(): void {
   cache = null
 }
 
-async function getGateState(event: H3Event): Promise<GateState> {
+async function getGateState(event: H3Event | undefined): Promise<GateState> {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.state
 
   // Zwei Quellen, bewusst getrennt: die öffentlichen Flags stehen in
@@ -72,8 +72,16 @@ function entitlementAllows(state: GateState, key: string): boolean {
   return evaluateEntitlement(state.entitlement, key, tier)
 }
 
-/** Effektiver Zustand EINES Produkte (nur einkompilierte kommen vor). */
-export async function isProductEnabled(event: H3Event, key: string): Promise<boolean> {
+/**
+ * Effektiver Zustand EINES Produkte (nur einkompilierte kommen vor).
+ *
+ * OHNE `H3Event` aufrufbar (seit OPS-003, 2026-11-16): ein Zeit-Lauf hat
+ * keinen Request, muss aber genauso stehen bleiben, wenn das Produkt
+ * abgeschaltet ist — sonst erinnerte ein per Not-Aus abgeschaltetes Produkt
+ * weiter aus dem Hintergrund. Beide Quellen (app_config, app_secrets) lesen
+ * schon heute ohne Request; der Schalter gilt je Instanz, nicht je Mandant.
+ */
+export async function isProductEnabled(event: H3Event | undefined, key: string): Promise<boolean> {
   if (!getProductRegistry().has(key)) return false
   const state = await getGateState(event)
   return isProductStateEnabled(state.products[key]) && entitlementAllows(state, key)
