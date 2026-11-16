@@ -62,6 +62,46 @@ gelesen. Wer dort etwas ändert, ändert zuerst das Soll im Skript.
 - Beweis-Skripte mit `@example.com`-Konten scheitern jetzt auch gegen
   Production-Projekte.
 
+## Anmelde-Wege für Aufrufe ohne Schlüssel (SEC-007, seit 2026-11-16)
+
+Appwrite bietet Kontoanlage und Anmeldung auch direkt an, an unserer
+Registrierung vorbei. Je Projekt lässt sich das abschalten: Verwaltung → Auth →
+Settings → **Auth methods**.
+
+| Schalter | Soll | Warum |
+| --- | --- | --- |
+| Email/Password, Magic URL, Email OTP, Anonymous, Phone, Team Invites | **aus** | Kein Konto und keine Anmeldung an unseren Prüfungen vorbei. Unser Server ruft mit API-Schlüssel und ist davon nicht betroffen. |
+| JWT | an | bleibt, bis geklärt ist, ob etwas daran hängt (unser Live-Token entsteht über `users.createJWT` mit Schlüssel). |
+| Passkey | aus | wird nicht angeboten. |
+
+**Stand:** alle vier Production-Projekte umgestellt am 2026-11-16
+(`portfolio` als Probe, danach `branding`, `admin`, `account`; Davids
+Entscheidung) und je Projekt von außen geprüft. Die lokale Datenbank und die
+der CI haben die Schalter an. Was noch fehlt (Klick-Probe der Anmeldung per
+Code, täglicher Blick): [OPEN-ITEMS](../OPEN-ITEMS.md), Punkt SV1.
+
+**Prüfen von außen, ohne ein Konto anzulegen** (erfundene Zugangsdaten):
+
+```bash
+curl -s -X POST https://api.pukalani.app/v1/account/sessions/email -H 'Content-Type: application/json' -H 'X-Appwrite-Project: <projekt>' -d '{"email":"gibt-es-nicht@example.test","password":"00000000"}'
+```
+
+`501 user_auth_method_unsupported` heißt zu, `401 user_invalid_credentials`
+heißt offen. Über unsere Seite muss dieselbe Anmeldung weiter „Invalid
+credentials" antworten (dann erreicht der Server Appwrite mit Schlüssel).
+
+**Vor dem Umstellen eines Projekts:** jeder Aufruf unseres Servers, den die
+Schalter treffen, läuft über den Admin-Client. Das hält der Test
+`packages/core/tests/authMethodCalls.test.ts`; der Anmelde-Code lief bis zum
+2026-11-16 ohne Schlüssel und wäre ausgefallen.
+
+**Was die Schalter nicht schließen:** die Anmeldung über Google. Dort spricht
+der Browser Appwrite direkt an. Ein so entstandenes Konto hat keine
+festgehaltene Zustimmung und wird beim ersten Besuch einmal gefragt
+(`.claude/rules/appwrite.md`, „ZUSTIMMUNG").
+
+**Zurück:** dieselben Schalter wieder einschalten; wirkt sofort.
+
 ## Abgleich mit Datenlecks
 
 `password-pwned` lehnt nur ab, wenn der Appwrite-Server einen Dienst kennt:

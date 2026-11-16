@@ -81,6 +81,40 @@ paths:
   Migration bei jedem Lauf erneut: ein „409 ⇒ Einstellungen nachziehen" in
   einer ALTEN Migration stellt den Bucket bei jedem Lauf zurück (system-032
   tat das) — nachziehen darf nur die jüngste.
+- RECHTE AN TABELLEN (SEC-002, seit 2026-11-16): dasselbe wie bei Ablagen.
+  Keine Tabelle trägt ein Schreibrecht für Konten, keine Zeile `update`/
+  `delete` für ein Konto; geschrieben wird vom Server mit dem Admin-Client
+  nach seinen Prüfungen, Rechte an Zeilen regeln nur das Lesen. Regel, Liste
+  und die drei Schritte zum Umstellen: `.claude/rules/tenant-isolation.md`
+  („DER SERVER SCHREIBT"). ZWEI FALLEN VON APPWRITE 2.7.1, beide gemessen:
+  ein Schreibvorgang OHNE Änderung (dieselben Werte) prüft nur das LESErecht
+  und kommt mit 200 zurück — eine Probe „direkt ändern wird abgelehnt" muss
+  also geänderte Werte schicken; und `updateTable` setzt Weggelassenes auf
+  Defaults — Tabelle lesen, nur die Rechte ändern, Name/`rowSecurity`/`enabled`
+  zurückschreiben (`scripts/migrations-lib/tableWriteRights.mts`). Ein altes
+  `updateTable`, das Rechte absolut setzt, öffnet die Tabelle bei jedem vollen
+  Lauf wieder: das Tabellenrecht BESITZT genau eine Migration
+  (`rights.migration` in `scripts/lib/server-written-tables.mjs`).
+- ANMELDE-WEGE DES PROJEKTS (SEC-007, seit 2026-11-16): Appwrite bietet
+  Kontoanlage und Anmeldung als öffentliche Endpunkte an — an unserer
+  Registrierung (Bot-Prüfung, Zulassung, geschlossene Registrierung,
+  Zustimmung) vorbei. Abschalten lässt sich das je Projekt unter Auth →
+  Settings → Auth methods: Email/Password, Magic URL, Email OTP, Anonymous,
+  Phone, Team Invites AUS, JWT bleibt an. Die Schalter treffen nur Aufrufe
+  OHNE API-Schlüssel (`POST /account`, `…/sessions/email`,
+  `…/sessions/anonymous`, `…/tokens/email|magic-url|phone`, `…/jwts`); mit
+  Schlüssel überspringt Appwrite die Prüfung. Deshalb läuft JEDER dieser
+  Aufrufe unseres Servers über den Admin-Client (`account.create`,
+  `createEmailPasswordSession`, `createEmailToken`; Wächter
+  `packages/core/tests/authMethodCalls.test.ts`) — ein Aufruf über den
+  Session-Client bekäme 501 `user_auth_method_unsupported`, und der Weg fiele
+  für alle aus (so wäre der Anmelde-Code ausgefallen). NICHT betroffen und
+  weiter über den Session-Client möglich: Wiederherstellung, E-Mail-
+  Bestätigung, Zwei-Faktor, `createSession` aus einem Token. NICHT schließbar:
+  OAuth (Google) — dafür gibt es die Nachfrage nach der Zustimmung. Probe von
+  außen, ohne ein Konto anzulegen: Anmelden direkt bei Appwrite mit erfundenen
+  Zugangsdaten ⇒ 501 (zu) statt 401 (offen). Stand je Projekt und Rückweg:
+  docs/runbooks/ANMELDE-REGELN.md.
 - BREMSEN (SEC-003/BE-002, seit 2026-11-13): Auth-Routen laufen über den
   Admin-Client, Appwrites eigene Grenzen gelten dort NICHT — gebremst wird in
   `core/server/middleware/05.rate-limit.ts`. Gezählt wird nur, was GELISTET

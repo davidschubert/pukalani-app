@@ -176,6 +176,12 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   `setInterval` in einem Server-Plugin (Wächter-Test). Die Hilfe schreibt je
   Takt `job.run`; der Alarm liest daran „überfällig" und „gescheitert". Neuer
   Lauf ⇒ Kennung in `ops/timed-jobs.conf` für jede App, in der er fährt.
+- DER SERVER SCHREIBT (SEC-002, seit 2026-11-16 — Davids Entscheidung): keine
+  Tabelle und keine Zeile trägt ein Schreibrecht für Konten; geschrieben wird
+  über die Operator-Klinke der Datentür NACH den Prüfungen der Route, Rechte an
+  Zeilen regeln nur das Lesen. Wem eine Zeile gehört, prüft die Route selbst,
+  vor dem Schreiben. Neue Tabelle ⇒ `scripts/lib/server-written-tables.mjs`.
+  Regel: `.claude/rules/tenant-isolation.md` („DER SERVER SCHREIBT").
 - createError mit status/statusText (nicht statusCode/statusMessage),
   keine Appwrite-Fehlerdetails an Clients leaken. FACHLICHE Ablehnungsgründe
   reisen als `data: { code: 'last_owner' }` → der zentrale Handler
