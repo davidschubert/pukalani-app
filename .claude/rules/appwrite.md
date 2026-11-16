@@ -147,7 +147,10 @@ paths:
   je Eintrag in `core/shared/consentGate.ts` (`/api/auth/` samt Auskunft und
   Löschung, Telemetrie, Anwesenheit, Health), Layer erweitern sie nicht. Ein
   Lesefehler lässt durch (`auth.consent_check_failed`), eine fehlende Tabelle
-  ebenso (`auth.consent_table_missing`). Der Browser fragt einmal je Besuch
+  ebenso (`auth.consent_table_missing`). KONTEN MIT BETREIBER-ROLLE (globales
+  Label `admin` oder `moderator`, `isOperatorAccount`) sind ausgenommen: nie
+  gefragt, nie gesperrt, keine Zeile (Davids Entscheidung 2026-11-16) — eine
+  Community-Rolle ist keine Betreiber-Rolle. Der Browser fragt einmal je Besuch
   (`CoreConsentPrompt` über `useOverlay`, `consent-prompt.client.ts`) und nach
   jedem 403 `consent_required`. Eine NEUE APP mit `termsUrl` (oder
   `businessOnly`) bekommt Nachweis, Tür und Nachfrage ohne eigenen Code — ohne
