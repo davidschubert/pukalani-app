@@ -1,4 +1,5 @@
 import { createSessionClient } from '../../lib/appwrite'
+import { resolveSiteLinkBase } from '../../utils/siteOrigin'
 
 /**
  * Verifizierungs-Mail erneut anfordern (Banner-Button). Session-Pflicht;
@@ -14,14 +15,17 @@ export default defineEventHandler(async (event) => {
     return { ok: true, alreadyVerified: true }
   }
 
-  const config = useRuntimeConfig(event)
-  if (!config.public.appUrl) {
+  // Aktive eigene Domain der Site vor `appUrl` (`utils/siteOrigin.ts`): der
+  // Link soll dort landen, wo die Person sich angemeldet hat, nicht über den
+  // 301 der Standard-Adresse.
+  const linkBase = await resolveSiteLinkBase(event)
+  if (!linkBase) {
     throw createError({ status: 503, statusText: 'Verification unavailable' })
   }
 
   try {
     const { account } = createSessionClient(event)
-    await account.createVerification({ url: `${config.public.appUrl}/verify` })
+    await account.createVerification({ url: `${linkBase}/verify` })
   }
   catch {
     // Keine Appwrite-Details leaken (z.B. SMTP-Zustand der Instanz)

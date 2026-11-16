@@ -2,6 +2,7 @@ import { Query, type Models } from 'node-appwrite'
 import { notificationMailedSeparately } from '../../shared/communityRemoval'
 import { communityIdsNeedingHost } from '../../shared/notificationLinks'
 import { resolveCommunityHosts } from './communityHost'
+import { resolveSiteLinkBase } from './siteOrigin'
 
 /**
  * Digest-Sweep (Modus 'digest'): sammelt UNGELESENE Notifications, gruppiert
@@ -98,8 +99,10 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
     result.candidates = byRecipient.size
 
     // Hosts EINMAL für den ganzen Lauf auflösen (D5) — siehe Kopf. Leere Karte
-    // bei Silo/ohne Resolver/Fehler; dann greift die App-Basis wie bisher.
-    const appBase = (config.public.appUrl || '').replace(/\/+$/, '')
+    // bei Silo/ohne Resolver/Fehler; dann greift die App-Basis: die aktive
+    // eigene Domain der Site, sonst `appUrl` (`siteOrigin.ts`). Ohne Event —
+    // der Lauf hat keine Anfrage, der Site-Resolver braucht keine.
+    const appBase = await resolveSiteLinkBase()
     const hosts = await resolveCommunityHosts(communityIdsNeedingHost(unread.rows))
 
     for (const [recipientId, rows] of byRecipient) {
