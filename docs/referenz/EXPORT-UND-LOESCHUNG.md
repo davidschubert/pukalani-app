@@ -32,6 +32,19 @@ Drei Regeln, die jede Änderung an einem Beitrag einhalten muss:
    Meldungen, Newsletter, Gesprächsanfragen) werden über die Adresse des Kontos gefunden – aber nur
    über eine bestätigte, sonst bekäme ein Konto unter fremder Adresse fremde Zeilen.
 
+## Zustimmung und diese Rechte (SEC-007/SEC-008, seit 2026-11-16)
+
+Apps, die AGB verlangen, halten die Zustimmung als Zeile in `consent_records` fest (Art, Fassung,
+Zeitpunkt, Weg, Host – keine IP). Die Auskunft liefert diese Zeilen im Abschnitt des
+`system`-Layers, die Löschung entfernt sie mit dem Konto
+(`packages/system/server/utils/userDataContributor.ts`).
+
+Wem die Zustimmung fehlt, der kann in diesen Apps nichts mehr anlegen
+(`07.consent-required.ts`). **Auskunft und Löschung des eigenen Kontos hängen nicht daran:** beide
+Routen liegen unter `/api/auth/`, und dieser Bereich steht auf der Erlaubnisliste der Tür
+(`packages/core/shared/consentGate.ts`). Wer ein Recht aus der DSGVO ausübt, muss vorher keinen
+AGB zustimmen.
+
 ## Die Liste: jede Tabelle hat eine Entscheidung
 
 `packages/core/tests/support/userDataTables.ts` nennt für jede Tabelle und jede Ablage, in welcher

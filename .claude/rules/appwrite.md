@@ -124,6 +124,36 @@ paths:
   API-Schlüssel. Appwrites Ablehnung wird über `core/shared/passwordPolicy.ts`
   zu einem fachlichen Grund; eine neue Route, die ein Passwort setzt, nutzt
   dieselbe Funktion. Runbook: docs/runbooks/ANMELDE-REGELN.md.
+- ZUSTIMMUNG (SEC-008/SEC-007, seit 2026-11-16 — Davids Entscheidungen „Die
+  Zustimmung zu den AGB wird vom Server geprüft und an einer Stelle
+  festgehalten, die das Konto nicht selbst ändern kann" und „Tür zu und
+  einmal fragen"): der Nachweis ist EINE Zeile je (Konto, Art, Fassung) in
+  `consent_records` (system-041, keine Rechte für Konten, nur Admin-Client,
+  feste Zeilen-Id, 409 = steht schon, nie überschreiben) —
+  `core/server/utils/consentRecords.ts`, Regeln pur in `core/shared/consent.ts`.
+  Die Prefs-Felder (`termsAcceptedAt`, `businessConfirmedAt`) gehören dem
+  Konto und belegen nichts. Regel: EINE ZEILE ENTSTEHT NUR, WENN DER SERVER
+  DIE BESTÄTIGUNG IN DIESER ANFRAGE GESEHEN HAT. Wege: `password`
+  (`signup.post.ts` verlangt `terms`/`business: true` im Body, sonst 400
+  `terms_required`/`business_required` VOR der Anlage), `otp` (beim ersten
+  Beitritt, nur mit den Feldern im Body — ohne sie keine Zeile, die Anmeldung
+  gelingt trotzdem), `oauth` (Merkzeichen `pk_consent`, 10 min, setzt der
+  Google-Knopf im Register-Formular; die Rückkehr liest und löscht es),
+  `prompt` (`POST /api/auth/consent`) und `adopted` (einmalige Übernahme aus
+  den Prefs, nur für Konten von vor `CONSENT_ADOPTION_CUTOVER`, AGB nur bei
+  gleicher Fassung). Die TÜR ist `core/server/middleware/07.consent-required.ts`:
+  jede schreibende `/api/**`-Anfrage eines Kontos ohne Zustimmung ⇒ 403
+  `consent_required`, Lesen bleibt frei; Erlaubnisliste fail-closed mit Grund
+  je Eintrag in `core/shared/consentGate.ts` (`/api/auth/` samt Auskunft und
+  Löschung, Telemetrie, Anwesenheit, Health), Layer erweitern sie nicht. Ein
+  Lesefehler lässt durch (`auth.consent_check_failed`), eine fehlende Tabelle
+  ebenso (`auth.consent_table_missing`). Der Browser fragt einmal je Besuch
+  (`CoreConsentPrompt` über `useOverlay`, `consent-prompt.client.ts`) und nach
+  jedem 403 `consent_required`. Eine NEUE APP mit `termsUrl` (oder
+  `businessOnly`) bekommt Nachweis, Tür und Nachfrage ohne eigenen Code — ohne
+  beides läuft nichts davon, auch kein Netzaufruf. NEUE SCHREIB-ROUTE ⇒ nichts
+  zu tun, die Tür steht zentral. Neue AGB-Fassung ⇒ `termsVersion` ändern,
+  dann fragt die Nachfrage jedes Konto erneut.
 - Immer explizites Query.limit() (Default 25)
 - SDK-Generics nutzen: tablesDB.listRows<T>()
 - ZIEL-PRÜFUNG VOR DEM SCHREIBEN (OPS-002, seit 2026-11-16 — Davids
