@@ -18,10 +18,14 @@
  *
  * `constant` ist der Name, unter dem der Layer die Tabelle exportiert
  * (`shared/types/*.ts`); der Test prüft, dass beides noch zusammenpasst.
+ *
+ * `rights.migration` nennt die Migration, die das Schreib-Recht der TABELLE
+ * nimmt und ihr Tabellenrecht seither besitzt. `pnpm check:permissions` hält
+ * dagegen, dass keine andere Migration es wieder setzt.
  */
 export const SERVER_WRITTEN_TABLES = [
-  { table: 'community_posts', constant: 'POSTS_TABLE', layer: 'posts' },
-  { table: 'comments', constant: 'COMMENTS_TABLE', layer: 'comments' },
+  { table: 'community_posts', constant: 'POSTS_TABLE', layer: 'posts', rights: { migration: '024' } },
+  { table: 'comments', constant: 'COMMENTS_TABLE', layer: 'comments', rights: { migration: '021' } },
 ]
 
 /**
