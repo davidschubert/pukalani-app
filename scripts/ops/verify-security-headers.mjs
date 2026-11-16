@@ -24,6 +24,14 @@
  *     allein `frame-ancestors`)
  *   · die Seite trägt genau eine `content-security-policy` mit `frame-ancestors`
  *
+ * EINE DATEI AUS EINEM ZWISCHENSPEICHER SAGT NICHTS AUS (gemessen 2026-11-16
+ * an pukalani.app, dem einen Host hinter Cloudflare): `/_nuxt/*` ist ein Jahr
+ * lang cachebar, und Cloudflare liefert eine unveränderte Datei mit den
+ * Kopfzeilen aus, die sie beim ERSTEN Abruf hatte — also noch mit denen des
+ * alten Webservers, bis die Datei sich ändert. Trägt die Antwort
+ * `cf-cache-status: HIT`, wird die Datei deshalb nicht bewertet (die Seite
+ * und `/api/health` desselben Hosts schon: sie werden nicht zwischengespeichert).
+ *
  * Braucht weder ssh noch ein Secret; liest nur öffentliche Antworten.
  * Ein Host, der gerade nicht oder mit 5xx antwortet, sagt hier NICHTS aus
  * (zweiter Versuch nach 20 s, dann „keine Aussage", nicht rot) — Erreichbarkeit
@@ -96,6 +104,12 @@ export function classifyResponse(kind, rawHeaders) {
   return problems
 }
 
+/** Kam die Antwort aus dem Zwischenspeicher eines vorgeschalteten Netzes? */
+export function servedFromSharedCache(rawHeaders) {
+  const status = (headerValues(rawHeaders).get('cf-cache-status') ?? [])[0] ?? ''
+  return /^(HIT|STALE|REVALIDATED|UPDATING)$/i.test(status.trim())
+}
+
 function get(host, path) {
   return new Promise((done) => {
     const request = https.get({ host, path, headers: { 'user-agent': 'pukalani-verify-security-headers' }, timeout: TIMEOUT_MS }, (res) => {
@@ -127,7 +141,7 @@ async function inspect(entry) {
   if (asset) {
     const file = await get(entry.host, asset)
     if (!file || file.status !== 200) return { conclusive: false, problems: [] }
-    targets.push({ kind: 'file', path: '/_nuxt/…', rawHeaders: file.rawHeaders })
+    if (!servedFromSharedCache(file.rawHeaders)) targets.push({ kind: 'file', path: '/_nuxt/…', rawHeaders: file.rawHeaders })
   }
   const problems = targets.flatMap(target => classifyResponse(target.kind, target.rawHeaders).map(problem => `${target.path}: ${problem}`))
   return { conclusive: true, problems, checked: targets.length }

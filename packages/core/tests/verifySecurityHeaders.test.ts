@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error — reines .mjs ohne Typen (Betriebs-Skript)
-import { HOSTS, MIN_HSTS_SECONDS, classifyResponse, headerValues } from '../../../scripts/ops/verify-security-headers.mjs'
+import { HOSTS, MIN_HSTS_SECONDS, classifyResponse, headerValues, servedFromSharedCache } from '../../../scripts/ops/verify-security-headers.mjs'
 import { HSTS_MAX_AGE_SECONDS, baseSecurityHeaders } from '../shared/securityHeaders'
 
 /**
@@ -64,6 +64,17 @@ describe('scripts/ops/verify-security-headers.mjs — Bewertung einer Antwort', 
   it('die Permissions-Policy enthält Kommas — sie zählt trotzdem als EINE', () => {
     expect(headerValues(appHeaders()).get('permissions-policy')).toEqual(['camera=(), microphone=(), geolocation=()'])
     expect(classifyResponse('api', appHeaders())).toEqual([])
+  })
+})
+
+describe('scripts/ops/verify-security-headers.mjs — eine Datei aus dem Zwischenspeicher sagt nichts aus', () => {
+  it('Cloudflare liefert eine unveränderte Datei mit ihren ALTEN Kopfzeilen — sie wird nicht bewertet', () => {
+    expect(servedFromSharedCache(['cf-cache-status', 'HIT', 'age', '3797'])).toBe(true)
+    expect(servedFromSharedCache(['CF-Cache-Status', 'REVALIDATED'])).toBe(true)
+    // Frisch vom Ursprung geholt oder gar nicht hinter einem solchen Netz: wird bewertet.
+    expect(servedFromSharedCache(['cf-cache-status', 'MISS'])).toBe(false)
+    expect(servedFromSharedCache(['cf-cache-status', 'DYNAMIC'])).toBe(false)
+    expect(servedFromSharedCache(appHeaders())).toBe(false)
   })
 })
 
