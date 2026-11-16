@@ -92,6 +92,7 @@ beide Server-Einstellungen einschalten.
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (b) `NUXT_REDIS_URL` auf branding.supply setzen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | **Ja: (b) ein Ja für die Server-Datei** | [Einzelheiten](#wa1) |
+| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten.** Seit 2026-11-16 stehen Webserver-Vorlagen und Zeitpläne im Repo, ein täglicher Blick vergleicht sie mit den Servern, und die App sendet die Schutz-Kopfzeilen selbst (COMPLETE „GA1 P23"). Offen: (a) Berichte der Skript-Regel einsammeln und sie scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) Umlauf der pm2-Logs, (d) der Erinnerungs-Lauf kennt gesperrte Communities nicht, (e) Kleinigkeiten und Sicherungen löschen, (f) eigene Domain einer Einzel-Site: einmal an einer echten Mail prüfen. **Wartet auf:** (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil, (a) M | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
@@ -651,8 +652,57 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   `past-due-notice` meldet „schon im Gange" als gut statt als übersprungen. Der
   Mail-Blick liest im Log-Ordner auch Dateien früherer Prozess-Nummern mit (das
   Zeitfenster hält ihn richtig). Auf dem Appwrite-Server liegen die
-  Sicherungen `*.vorher-p22` (nach zwei Wochen löschen). Termin-Erinnerungen
-  haben keinen Zeit-Lauf (gehört zu den Server-Einstellungen als Vorlage).
+  Sicherungen `*.vorher-p22` (nach zwei Wochen löschen).
+
+<a id="se1"></a>
+
+**SE1 — Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten (aus dem Gesamtaudit, Paket P23).**
+
+- **(a) Skript-Regel (CSP) scharf stellen.** Heute sendet jede Seite eine
+  Regel, die nur beobachtet (`Content-Security-Policy-Report-Only`), und
+  niemand sammelt die Berichte ein: ein Verstoß steht nur in der
+  Browser-Konsole. Nächste Schritte: eine eigene, gebremste Annahme-Route für
+  Berichte (nicht der Eingang für Browser-Fehler — Browser-Erweiterungen
+  würden ihn fluten), dann Nonces statt `'unsafe-inline'`, dann scharf.
+- **(b) HSTS auch für Unter-Adressen.** Gesendet wird ein Jahr, je Host, ohne
+  `includeSubDomains`. Für `pukalani.app` ginge der Zusatz erst, wenn JEDE
+  Unter-Adresse der Zone sicher per HTTPS antwortet (auch die, die nicht diese
+  App bedient). Kundendomains bleiben ohne.
+- **(c) Umlauf der pm2-Logs.** Sie wachsen ohne Grenze, und je Prozess liegen
+  alte Dateien früherer Nummern daneben. Ein Umlauf ist erst sauber, wenn das
+  Zähl-Skript (`ops/app-watch-counts.mjs`) auch die umgelaufene Datei liest —
+  sonst meldet der tägliche Blick Zeit-Läufe als fehlend.
+- **(d) Erinnerungs-Lauf.** Der Zeit-Lauf `event-reminders` geht alle
+  Communities durch, kennt aber weder den Plan einer Community noch eine
+  Sperre wegen Missbrauchs (beides weiß nur das Control Plane). Die Route
+  `POST /api/events/reminder-sweep` und `NUXT_EVENTS_SWEEP_KEY` ruft niemand
+  mehr; sie können weg, ebenso die Datei `~/events-sweep.log` auf dem Server.
+- **(e) Kleinigkeiten.** Sicherungen nach zwei Wochen löschen (ab 2026-11-30):
+  auf dem App-Server `/home/ploi/logs/nginx/*.vorher-p23*` und
+  `/home/ploi/portfolio.pukalani.app/.env.vorher-p23`, auf dem Appwrite-Server
+  `~/bin/pukalani-cert-gate.sh.vorher-p23` und `~/ops/crontab.vorher-p23`; im
+  Ploi-Panel das Skript „P23: nginx-Zugriffs-Log 14 Tage". Auf `pukalani.app`
+  liefert Cloudflare unveränderte Dateien noch mit den Kopfzeilen des alten
+  Webservers aus (löst sich mit dem nächsten Build der Landing). Auf `admin`
+  beantwortet der Webserver `/robots.txt` und `/favicon.ico` selbst mit 404
+  (zwei leere Blöcke aus Plois Schablone). Zwei Sites senden
+  `Connection 'upgrade'` fest. Die Umleitungs-Blöcke des Webservers schreiben
+  weiter ins allgemeine Zugriffs-Log (jetzt 14 Tage). Der Vergleich der
+  Webserver-Einstellung läuft nur auf dem App-Server (der Appwrite-Server hat
+  seinen Webserver im Container). Rückkehr-Adressen von Stripe fallen ohne
+  `i18n.baseUrl` weiter auf den Namen der Anfrage zurück (Nachtrag zu
+  SEC-010).
+
+- **(f) Eigene Domain einer Einzel-Site.** Mails, Digest und Rückwege nehmen
+  seit 2026-11-16 die im Dashboard aktive Domain (COMPLETE „GA1 P23", Punkt 8).
+  Bewiesen ist das mit Tests, nicht an einer echten Mail: auf pukalani.studio
+  einmal „Passwort vergessen" mit der eigenen Adresse auslösen — der Link muss
+  mit `https://pukalani.studio` beginnen. Die Variable `NUXT_PUBLIC_APP_URL`
+  dieser Site steht seit dem 2026-11-16 von Hand auf der eigenen Domain; sauber
+  ist die Standard-Adresse (`https://portfolio.pukalani.app`) als Rückfall —
+  zurückstellen, sobald die Probe-Mail stimmt (Davids Ja für die Server-Datei).
+  Nicht umgestellt: der Link in `CommentSection.vue` (nur die Test-App mit
+  eigener Domain) und die Rückkehr-Adressen von Stripe.
 
 <a id="ll1"></a>
 

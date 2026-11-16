@@ -85,6 +85,10 @@ async function main() {
   }
   const appServer = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
   const appwriteServer = process.env.PUKALANI_APPWRITE_SSH || 'appwrite-prod'
+  // Der Wächter-Schlüssel hat auf appwrite-prod einen festen Befehl: geschickt
+  // wird nur das WORT. Mit dem eigenen Zugang (freie Shell) ruft man das Tor
+  // ausdrücklich: PUKALANI_APPWRITE_CRON_COMMAND='~/bin/pukalani-cert-gate.sh cron-status'.
+  const appwriteCommand = process.env.PUKALANI_APPWRITE_CRON_COMMAND || 'cron-status'
   const drill = process.env.PUKALANI_CONFIG_DRILL === '1'
   const findingsFile = process.env.PUKALANI_FINDINGS_FILE
 
@@ -109,7 +113,7 @@ async function main() {
   if (drill) nginx = drillNginx(nginx, siteNames[0])
   const cron = new Map([
     ['app-prod', parseCronOutput(await read('cron-app-prod.txt', appServer, `bash ${scriptDir}/cron-check.sh app-prod`), 'app-prod')],
-    ['appwrite-prod', parseCronOutput(await read('cron-appwrite-prod.txt', appwriteServer, 'cron-status'), 'appwrite-prod')],
+    ['appwrite-prod', parseCronOutput(await read('cron-appwrite-prod.txt', appwriteServer, appwriteCommand), 'appwrite-prod')],
   ])
 
   for (const line of summaryLines({ nginx, cron })) console.log(line)

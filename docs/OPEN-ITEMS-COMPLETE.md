@@ -324,6 +324,99 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 > „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 > [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
 
+### GA1 P23 — Server-Einstellungen als Vorlage im Repo, Schutz-Kopfzeilen aus der App, Mail-Links mit fester Adresse ✅ 2026-11-16
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+OPS-003, SEC-006, SEC-010), Pull Requests 207 (Merge `e22c805d`), 208
+(`60eb6af3`), 211 (`349de17f`) und dieser Abschluss. Davids Entscheidungen vom
+2026-11-12: „Webserver-Einstellungen und Zeitpläne stehen als Vorlage im Repo,
+und ein täglicher Blick vergleicht sie mit dem Server", „Die Schutz-Kopfzeilen
+setzt künftig die App selbst für alle Seiten gleich" und „Links in Mails nehmen
+in den Einzel-Seiten die fest eingestellte Adresse".
+
+1. **Erst gemessen.** Kein Host sendete HSTS; `nosniff`, `X-Frame-Options` und
+   `X-XSS-Protection` kamen nur auf zwei Hosts, aus drei Zeilen im Webserver;
+   API-Antworten und Dateien trugen nichts; jede Seite verriet
+   `x-powered-by: Nuxt`. Auf dem Server: zwei Sites ohne ausdrückliche Frist,
+   ein Block ohne Adresse des Aufrufers, der Erinnerungs-Zeitplan der Events
+   stand ZWEIMAL da (im crontab des Benutzers und in `/etc/crontab`, wohin
+   Ploi schreibt) und bediente nur eine Community.
+2. **Schutz-Kopfzeilen aus EINER Stelle** (`core/shared/securityHeaders.ts`,
+   `core/server/plugins/security-headers.ts`): für jede Antwort `nosniff`,
+   `Referrer-Policy`, `Permissions-Policy` und HSTS; auf Seiten weiter
+   `frame-ancestors`, dazu eine Skript-CSP, die nur beobachtet, und kein
+   `x-powered-by`. Kein `X-Frame-Options` — das eingebettete Produkt läuft
+   weiter in fremden Seiten (E2E gegen den Build). HSTS in zwei Stufen: erst
+   ein Tag, nach einigen Stunden ein Jahr; ohne `includeSubDomains`, ohne
+   `preload`.
+3. **Mail-Links (SEC-010).** Reset-Mail und OAuth-Rückweg nehmen in Apps ohne
+   Mandanten-Auflösung `public.appUrl`; den Namen der Anfrage nur, wo die
+   Mandanten-Auflösung ihn geprüft hat. Fehlt die Adresse, schreibt die App
+   eine Fehlerzeile und fällt zurück. `NUXT_PUBLIC_APP_URL` ist jetzt Pflicht
+   auf allen vier Sites mit Anmeldung.
+4. **Vorlagen und Listen** (`ops/nginx/`, `ops/nginx-sites.conf`,
+   `ops/cron.conf`) und zwei feste, nur lesende Skripte auf den Servern
+   (`ops/nginx-check.mjs`, `ops/cron-check.sh`; auf dem Appwrite-Server über
+   das Tor-Wort `cron-status`). Verglichen werden Pflicht-Zeilen, nicht
+   Zeichen; ausgegeben werden nur Zahlen, Site-Namen aus der Liste und
+   Regel-Namen. Kein neues Secret, kein Ploi-Token bei GitHub.
+5. **Zwei tägliche Blicke:** „Server-Einstellungen wie in der Vorlage?"
+   (Probealarm `config_drill`) und „Schutz-Kopfzeilen auf jedem Host genau
+   einmal?" (von außen, roh gezählt).
+6. **Auf den Servern, mit Davids Ja:** Tor-Skript samt Zeitplan-Vergleich auf
+   dem Appwrite-Server; auf dem App-Server die zwei abweichenden nginx-Dateien
+   korrigiert (Schutz-Zeilen raus, Frist und Client-Zeilen nachgetragen,
+   Reload), ein Zugriffs-Log für die Betreiber-Seite ohne Query mit 14 Tagen,
+   der alte Erinnerungs-Zeitplan an beiden Stellen entfernt, das allgemeine
+   Zugriffs-Log von 52 auf 14 Tage gekürzt, die feste Adresse von
+   pukalani.studio berichtigt. Jede alte Fassung gesichert, jeder Schritt
+   zurückgelesen.
+7. **Termin-Erinnerungen** fährt die App selbst: der Zeit-Lauf
+   `event-reminders` geht stündlich alle Communities durch — erst nur zählend,
+   dann scharf.
+
+8. **Eigene Domain einer Einzel-Site (Davids Zusatzauftrag vom 2026-11-16).**
+   Stellt ein Betreiber im Dashboard eine eigene Domain ein, nehmen Mails,
+   Digest und Rückwege sie von selbst, sobald sie aktiv ist: ein Vertrag im
+   Core (`registerSiteOriginResolver`), den der `domains`-Layer mit derselben
+   Abfrage bedient wie die Umleitung. `NUXT_PUBLIC_APP_URL` bleibt die
+   Standard-Adresse und ist der Rückfall.
+
+**Gelernt:**
+- **Die Site wusste ihre eigene Domain längst — nur die Mails fragten nicht.**
+  Seiten folgten der eigenen Domain über die Umleitung und den Host der
+  Anfrage; alles, was OHNE Anfrage-Host eine Adresse baut (Mails, Rückwege),
+  nahm die Variable vom Server. Wo zwei Wege zur selben Antwort führen, fragt
+  jeder neue Aufrufer die eine Stelle, nicht die Variable.
+- **Zeitpläne stehen an zwei Stellen.** Ploi schreibt seine „Cronjobs" nach
+  `/etc/crontab`, nicht in den crontab des Benutzers. Wer nur `crontab -l`
+  liest, sieht die Hälfte — und derselbe Eintrag stand monatelang doppelt.
+- **Im Dev-Server liefert nicht Nitro die Dateien aus.** `/_nuxt/*` und
+  `public/` beantwortet dort der Dev-Server davor; ein Haken für „jede
+  Antwort" greift für sie nur im Build. Der E2E-Lauf (Dev-Server) kann das
+  nicht beweisen, ein Build und der Blick von außen schon.
+- **Ein vorgeschalteter Zwischenspeicher hält alte Kopfzeilen fest.**
+  Cloudflare liefert eine unveränderte, ein Jahr cachebare Datei mit den
+  Kopfzeilen ihres ersten Abrufs aus. Ein Blick von außen darf eine Antwort
+  mit `cf-cache-status: HIT` nicht bewerten, sonst ist er wochenlang rot.
+- **`curl ${var:+-H "…"}` wird in zsh EIN Wort.** Die Anfrage trug eine
+  kaputte Kopfzeile, Node antwortete 400 ohne jede Kopfzeile — es sah aus wie
+  ein Fehler der App und war einer der Probe.
+- **Die feste Adresse einer Site war nie geprüft worden.** pukalani.studio
+  trug als `appUrl` noch die Standard-Adresse; es fiel nur auf, weil der
+  öffentliche Wert im HTML jeder Seite steht und einmal gelesen wurde. Ein
+  Wächter prüft, DASS eine Variable gesetzt ist, nicht ihren Wert.
+- **Ohne eigene Zeile gilt das Protokoll des Servers.** `access_log off` in
+  jeder Site hieß nicht „es wird nichts mitgeschrieben": die Umleitungs-Blöcke
+  und der Auffangblock schrieben in das allgemeine Log, 52 Tage lang.
+- **Ein Vergleich nach Zeichen wäre nach jedem Handgriff in Ploi rot.** Ploi
+  schreibt eine Datei bei Zertifikat oder Alias um; geprüft wird deshalb die
+  Bedeutung (Anweisungen je Block), nicht der Text.
+- **`{1,400}` in `grep -E` ist unter macOS zu groß** (höchstens 255) — ein
+  Skript für Linux, dessen Test auch auf dem Mac läuft, bleibt darunter.
+
+**Reste:** OPEN-ITEMS „SE1".
+
 ### GA1 P20 — Wächter, die ihre Listen selbst erzeugen: Not-Aus je Route, Lösch-Pflicht, Datentür ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings

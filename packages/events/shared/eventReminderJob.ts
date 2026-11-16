@@ -12,10 +12,14 @@
  * Stufe 2 — `'send'`: erst NACHDEM der Server-Zeitplan entfernt ist. Dann
  * erinnert dieser Lauf selbst, für jede Community.
  *
+ * STAND: `'send'` seit 2026-11-16. Der Zähl-Lauf lief auf Production (0
+ * fällige Termine, 0 Fehler, 34 ms), der Server-Zeitplan ist an beiden Stellen
+ * entfernt (crontab des Benutzers und Ploi).
+ *
  * Eine Konstante im Code statt eines Schalters in der Konfiguration: der
  * Wechsel ist ein einmaliger, geprüfter Schritt mit eigenem Commit, kein
  * Zustand, den jemand im Betrieb umlegt.
  */
 export type EventReminderJobMode = 'count' | 'send'
 
-export const EVENT_REMINDER_JOB_MODE: EventReminderJobMode = 'count'
+export const EVENT_REMINDER_JOB_MODE: EventReminderJobMode = 'send'

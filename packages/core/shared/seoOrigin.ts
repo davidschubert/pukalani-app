@@ -149,3 +149,37 @@ export function rebaseSeoMeta<T extends SeoHeadMetaLike>(meta: readonly T[], ori
     return { ...entry, content: rebaseSeoUrl(entry.content, origin) }
   })
 }
+
+export interface CanonicalPluginOriginInput {
+  /** `pukalani.seo.originFromRequest` */
+  originFromRequest: boolean
+  /** `useRequestURL().origin` */
+  requestOrigin: string
+  /** `runtimeConfig.public.appUrl` */
+  appUrl: string
+  /** `runtimeConfig.public.i18n.baseUrl` — liefert nur das Schema */
+  i18nBaseUrl: string
+}
+
+/**
+ * PURE: die Basis des canonical aus `app/plugins/canonical.ts`.
+ *
+ * ZWEI EINTRÄGE, EIN TAG: das Plugin setzt sein canonical, `useLocaleSeoHead`
+ * ein zweites (`i18n-can`). unhead behält nur eines davon — am 2026-11-16 auf
+ * portfolio nachgesehen: es gewinnt das i18n-Tag, das Plugin-Tag erscheint
+ * nicht im HTML. Mit `originFromRequest` (portfolio, comments, platform)
+ * rechnete das Plugin trotzdem mit `appUrl`, also mit der STANDARD-Adresse,
+ * während das i18n-Tag den Host der Anfrage nimmt — nach dem 301 einer
+ * Einzel-Site also die eigene Domain. Dass das richtige Tag übrig blieb, hing
+ * allein an der Reihenfolge der Einträge.
+ *
+ * Deshalb rechnet das Plugin mit eingeschaltetem Gate mit DERSELBEN Regel wie
+ * `useLocaleSeoHead` (`resolveSeoOrigin`). Dann sind beide Einträge gleich,
+ * und welcher übrig bleibt, ist egal. Ohne Gate bleibt alles wie bisher.
+ */
+export function canonicalPluginOrigin(input: CanonicalPluginOriginInput): string {
+  if (input.originFromRequest) {
+    return resolveSeoOrigin(input.requestOrigin, input.i18nBaseUrl) || input.requestOrigin
+  }
+  return input.appUrl || input.requestOrigin
+}

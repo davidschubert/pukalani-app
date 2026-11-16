@@ -17,13 +17,17 @@
  */
 
 /**
- * Stufe 1 (2026-11-16): ein Tag; Stufe 2 = 31536000. KEIN `includeSubDomains`
- * (Kundendomains und Unter-Adressen, die nicht diese App bedient), KEIN
- * `preload` — HSTS ist schwer zurückzunehmen: ein Browser, der den Wert
- * einmal gesehen hat, hält sich bis zum Ablauf daran, auch wenn der Server
- * ihn längst nicht mehr sendet. `null` schaltet HSTS ab.
+ * EIN JAHR (Stufe 2, seit 2026-11-16). Stufe 1 war ein Tag: einige Stunden
+ * lang live auf allen acht Hosts, jede Seite, jede API und das eingebettete
+ * Produkt liefen normal — erst danach das Jahr (Davids Entscheidung: zwei
+ * Stufen). KEIN `includeSubDomains` (Kundendomains und Unter-Adressen, die
+ * nicht diese App bedient), KEIN `preload` — HSTS ist schwer zurückzunehmen:
+ * ein Browser, der den Wert einmal gesehen hat, hält sich bis zum Ablauf
+ * daran, auch wenn der Server ihn längst nicht mehr sendet. Zurück geht nur
+ * langsam: einen kleinen Wert senden und warten, bis die alten Zusagen in den
+ * Browsern abgelaufen sind. `null` schaltet HSTS ab.
  */
-export const HSTS_MAX_AGE_SECONDS: number | null = 86400
+export const HSTS_MAX_AGE_SECONDS: number | null = 31536000
 
 /**
  * Turnstile lädt sein Skript von hier (`TurnstileWidget.vue`, `SCRIPT_URL`).

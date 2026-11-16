@@ -34,6 +34,12 @@ export const SERVER_WRITTEN_TABLES = [
   { table: 'discussion_links', constant: 'DISCUSSION_LINKS_TABLE', layer: 'posts', rights: { migration: '025' } },
   { table: 'event_votes', constant: 'EVENT_VOTES_TABLE', layer: 'events', rights: { migration: '014' } },
   { table: 'reports', constant: 'REPORTS_TABLE', layer: 'moderation', rights: { migration: '005' } },
+  // Etappe 4: Tabellen des system-Layers, die nie ein Tabellenrecht trugen,
+  // deren ZEILEN aber ein Schreibrecht des Kontos bekamen. Ohne `constant`
+  // (der Code nennt sie als Literal) und ohne `rights` (es gibt nichts zu nehmen).
+  { table: 'notifications', layer: 'system' },
+  // Alt-Bestand: dort wird nichts mehr vergeben, nur noch gelesen und gelöscht.
+  { table: 'community_handles', layer: 'system' },
 ]
 
 /**
