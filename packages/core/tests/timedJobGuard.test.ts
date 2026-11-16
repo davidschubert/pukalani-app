@@ -33,6 +33,7 @@ const EXPECTED_JOB_NAMES = [
   'brand-events-sweep',
   'email-digest',
   'entitlements-pull',
+  'event-reminders',
   'gdpr-export-prune',
   'guest-author-prune',
   'health-sweep',
