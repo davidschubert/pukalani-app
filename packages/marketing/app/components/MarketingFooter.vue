@@ -244,6 +244,7 @@ const columns = computed(() => [
       page('datenschutz', t('marketing.footer.privacy')),
       page('impressum', t('marketing.footer.imprint')),
       page('agb', t('marketing.footer.terms')),
+      page('betreiber-bedingungen', t('marketing.footer.operatorTerms')),
     ],
   },
 ])

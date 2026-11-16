@@ -201,6 +201,7 @@ export const MARKETING_PAGE_PATHS = {
   datenschutz: { en: '/privacy', de: '/de/datenschutz' },
   impressum: { en: '/imprint', de: '/de/impressum' },
   agb: { en: '/terms', de: '/de/agb' },
+  'betreiber-bedingungen': { en: '/community-operator-terms', de: '/de/betreiber-bedingungen' },
 } as const satisfies Readonly<Record<string, Readonly<Record<MarketingLocale, string>>>>
 
 /**

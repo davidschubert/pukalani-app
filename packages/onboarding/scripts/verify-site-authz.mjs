@@ -209,6 +209,7 @@ try {
     method: 'POST',
     cookie: ownerCookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: 'O5 Isolationsprobe',
       slug,
       purpose: 'new',

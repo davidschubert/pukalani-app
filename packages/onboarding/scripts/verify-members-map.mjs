@@ -183,6 +183,7 @@ try {
     method: 'POST',
     cookie: ownerCookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: 'Karten-Probe',
       slug: `map-${Date.now().toString(36)}`,
       purpose: 'new',

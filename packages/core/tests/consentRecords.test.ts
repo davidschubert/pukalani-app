@@ -184,6 +184,15 @@ describe('writeConsentRecord', () => {
     expect(storedRows()[0]).toMatchObject({ acceptedAt: '2026-01-01T00:00:00.000Z', way: 'prompt' })
   })
 
+  it('hält die Betreiber-Bedingungen als eigene Zeile fest (Weg wizard)', async () => {
+    const event = asEvent(makeEvent())
+    await records.writeConsentRecord(event, { userId: 'u-1', kind: 'terms', version: 'v1', way: 'prompt' })
+    const result = await records.writeConsentRecord(event, { userId: 'u-1', kind: 'operator', version: 'v1', way: 'wizard' })
+    expect(result).toBe('recorded')
+    expect(storedRows()).toHaveLength(2)
+    expect(storedRows()[1]).toMatchObject({ userId: 'u-1', kind: 'operator', version: 'v1', way: 'wizard' })
+  })
+
   it('fehlende Tabelle wirft nicht und meldet sich einmal im Log', async () => {
     world.tableMissing = true
     const event = asEvent(makeEvent())
@@ -212,6 +221,15 @@ describe('missingConsents', () => {
     expect(world.calls.getRow).toBe(reads)
     expect(await records.missingConsents(event, 'u-1')).toEqual([])
     expect(world.calls.getRow).toBe(reads)
+  })
+
+  it('eine Zeile der Betreiber-Bedingungen ersetzt keine verlangte Zustimmung, und ohne sie fehlt nichts', async () => {
+    const event = asEvent(makeEvent({ userId: 'u-1' }))
+    authConfig = { termsUrl: '/terms', termsVersion: 'v1' }
+    await records.writeConsentRecord(event, { userId: 'u-1', kind: 'operator', version: 'v1', way: 'wizard' })
+    expect(await records.missingConsents(event, 'u-1')).toEqual(['terms'])
+    await records.writeConsentRecord(event, { userId: 'u-1', kind: 'terms', version: 'v1', way: 'prompt' })
+    expect(await records.missingConsents(event, 'u-1')).toEqual([])
   })
 
   it('eine neue Fassung fehlt wieder', async () => {

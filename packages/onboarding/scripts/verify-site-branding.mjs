@@ -157,6 +157,7 @@ async function createCommunity(cookie, slug, name) {
     method: 'POST',
     cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name,
       slug,
       purpose: 'new',

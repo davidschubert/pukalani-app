@@ -157,7 +157,7 @@ async function createCommunity(cookie, name, slug, code) {
   const res = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie,
-    body: { name, slug, category: 'club', vibe: 'calm', inviteCode: code, locale: 'de' },
+    body: { operatorTerms: true, name, slug, category: 'club', vibe: 'calm', inviteCode: code, locale: 'de' },
   })
   if (res.status !== 200 || !res.json?.communityId) {
     throw new Error(`Community ${slug} nicht angelegt (${res.status}): ${res.text.slice(0, 200)}`)

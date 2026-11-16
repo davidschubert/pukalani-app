@@ -206,6 +206,7 @@ try {
   const created = await callPlatform(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie: invited.cookie,
     body: {
+      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
       name: 'Kegelverein', slug, purpose: 'new', memberRange: 'to100', category: 'club',
       goal: 'relationships', vibe: 'warm', inviteCode: code, locale: 'de',
     },
