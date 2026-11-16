@@ -30,6 +30,110 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P18 — Lange Läufe aus der Anfrage nehmen: Marktvergleich im Hintergrund, Lauf-Sperre ✅ 2026-11-16
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+BE-008, BE-010, BE-011, BE-012), Pull Request 190 (Merge `43366201`). Davids
+Entscheidungen vom 2026-11-12: „Der Marktvergleich antwortet sofort und rechnet
+im Hintergrund; ein zweiter Klick startet keinen zweiten Lauf", „Umsetzen nach
+dem Vorbild des Video-Briefs"; die Wartezeit des Webservers wird nicht
+angehoben (Richtung vom 2026-11-08).
+
+1. **Erst gemessen.** Der Marktvergleich konnte nach seinen eigenen Fristen bis
+   rund 25 Minuten in EINER Anfrage rechnen (fünf Wettbewerber nacheinander, je
+   rund 17 Abrufe à 10 s und ein Modell-Aufruf à 60 s, danach Brand-Checks und
+   Bericht); der Webserver wartet 60 s. Bei einem Abbruch setzte die Seite den
+   Knopf zurück, zeigte einen Fehler und lud nicht neu — der Lauf lief weiter,
+   und ein zweiter Klick startete einen zweiten.
+2. **Eine gemeinsame Hilfe im Core** (`core/shared/runLease.ts`,
+   `core/server/utils/runLease.ts`): Jeder Lauf ist eine Zeile mit fester
+   Kennung aus Art, Gegenstand und laufender Nummer. Das Anlegen schließt aus;
+   der zweite gleichzeitige Start bekommt `409 run_running`. Ein Herzschlag alle
+   20 s hält den Lauf am Leben; bleibt er 120 s aus, gilt der Lauf als
+   abgebrochen — gerechnet gegen die Server-Uhr, ohne Aufräumer. Dazu
+   `runDetached` (Arbeit hinter der Antwort) und `useRunPolling` (Stand
+   abfragen, ruht bei verstecktem Reiter; die Merkliste der Insights nutzt es
+   jetzt auch). Tabellen `market_runs` (market-005) und `insights_runs`
+   (insights-012) aus einer Fabrik, nur im Projekt `branding`, vor dem Merge
+   auf Production gefahren und zurückgelesen.
+3. **Marktvergleich (BE-008).** Die Route prüft Zugang und Kandidaten, nimmt
+   die Sperre, bucht, antwortet `202`; der Lauf schreibt Fortschritt und
+   Ausgang an seine Zeile (nur Zahlen und Kennungen). Die Seite zeigt „x von y
+   gelesen", fragt alle fünf Sekunden nach, zeigt nach dem Neuladen wieder den
+   laufenden oder den abgebrochenen Lauf und bei einem zweiten Start den Satz
+   „läuft schon" statt eines Fehlers. Ein abgebrochener Lauf ohne bezahlten
+   Schritt vererbt seine Buchung an den nächsten Start; einer, der schon Geld
+   gekostet hat, bleibt gebucht.
+4. **Überlange Adressen (BE-011).** Adressen über 512 Zeichen kommen nicht in
+   die Seitenwahl, das Seitenprotokoll wird auf die Spaltengröße gekürzt, die
+   Zahl der ausgelassenen steht im Lauf-Protokoll, und ein Schreibfehler bei
+   einem Wettbewerber beendet nicht mehr den ganzen Lauf.
+5. **Newsletter (BE-010).** Ein Stapel nimmt dieselbe Sperre, liest die
+   Sende-Zeile danach NEU und arbeitet erst dann; dazu ein Zeitdeckel von 40 s
+   je Stapel.
+6. **Video-Brief (BE-012).** Nur ein nicht gefundener Entwurf räumt den
+   Verweis; jeder andere Lesefehler endet mit `503`, bevor etwas gebucht wird.
+7. **Zeitdeckel statt Umbau** für den Radar-Knopf (30 s, Teil-Ergebnis) und die
+   Prüfregeln der Insights (45 s; nicht gelesen = nicht belegt = nicht
+   veröffentlicht).
+
+**Beweise.** Tests je Punkt, vorher rot: zwei und zehn gleichzeitige Starts ⇒
+genau ein Lauf; Route antwortet `202`, bevor der Abruf fertig ist, zweiter
+Aufruf `409`, eine Buchung; abgestorbener Lauf ⇒ Sperre löst sich; Newsletter:
+zwei gleichzeitige Aufrufe ⇒ jede Adresse genau eine Mail. Lokal gegen echte
+Route und echte Appwrite: von zehn gleichzeitigen Anlagen derselben Kennung
+gelingt genau eine; vier Beweis-Skripte des Marktvergleichs 34/34, 45/45,
+46/46, 51/51; eigene Probe mit langsamen Demo-Websites 13/13 (Zusage nach
+67 ms, Lauf 75 s im Hintergrund); Klick-Probe im Browser mit zwei Reitern; ein
+echter lokaler KI-Lauf. Live auf allen acht Hosts (`43366201`, `ok:true`,
+branding.supply `schema: ok`). Ein echter Lauf auf Production mit
+Wegwerf-Konto und zwei Wettbewerbern (Davids Ja): Zusage nach 120 ms, von zwei
+gleichzeitigen Starts lief einer, der Lauf endete nach 22 s ohne Fehler, der
+Tagesdeckel von drei griff erst beim vierten Start; danach alles abgeräumt und
+nachgezählt.
+
+**Gelernt: Die Lehre eines Fundes gilt der KLASSE, nicht den gemessenen
+Routen.** BI3 hatte den Video-Brief am 2026-11-08 richtig gelöst; der
+Marktvergleich daneben rechnete weiter in der Anfrage. Die Mess-Liste vom
+2026-11-16 fand zehn weitere Wege über 60 s (OPEN-ITEMS LL1).
+
+**Gelernt: „Erst lesen, dann Stempel schreiben" ist keine Sperre.** So hielt
+der Video-Brief seinen Start fest — das hält zwei Klicks nacheinander auf, nicht
+zwei im selben Augenblick. Appwrite kennt kein bedingtes Schreiben; was dort
+ausschließt, ist das Anlegen einer Zeile mit FESTER Kennung. Die laufende
+Nummer in der Kennung macht auch das Übernehmen eines abgestorbenen Laufs
+sicher (beide Starter rechnen dieselbe nächste Kennung).
+
+**Gelernt: Wer unter einer Sperre mit einem Stand weiterarbeitet, liest ihn
+NACH dem Nehmen der Sperre neu.** Der Newsletter-Aufruf hatte seine Sende-Zeile
+vor der Sperre gelesen; ein Aufruf, der wartet, bis der Vorgänger fertig ist,
+hätte sonst vom alten Cursor aus noch einmal verschickt. Ein eigener Test hält
+genau diesen Schritt.
+
+**Gelernt: Erst die Sperre, dann das Kontingent.** Andersherum bucht ein
+Doppelklick zweimal und der zweite wird danach abgelehnt. Lehnt das Kontingent
+ab, fällt die Sperre wieder.
+
+**Gelernt: Ein Zeitdeckel begrenzt den BEGINN, nicht das Ende.** Der
+Radar-Knopf hält die 60 s mit einem Deckel nur bei kleiner Kanal-Liste: der
+letzte begonnene Abruf und das Schreiben laufen danach noch. Wo das Ergebnis an
+einer Liste hängt, ist der Hintergrund-Lauf die Lösung, der Deckel nur die
+kleinere.
+
+**Gelernt: Schnellere Antworten treffen andere Bremsen.** Die vier
+Beweis-Skripte scheiterten hintereinander gestartet an der Minuten-Bremse der
+Route (5 Starts je Minute) — nicht, weil etwas kaputt war, sondern weil vier
+Skripte jetzt in eine Minute passen.
+
+**Gelernt: Ein neuer Wächter kennt nur die Formen, die es bei seinem Bau gab.**
+Der Schema-Wächter aus P21 (am selben Tag zusammengeführt) erkannte eine
+Migration nicht, die ihre Tabelle über eine Fabrik anlegt; und zwei Sessions
+vergaben dieselbe Migrationsnummer (insights-011). Beides zeigte erst das
+Aufsetzen auf `main` — deshalb vor dem Push IMMER noch einmal aufsetzen und die
+Tests neu fahren.
+
+---
+
 ### GA1 P21 — Migrationen: Skripte prüfen ihr Ziel, jede Seite meldet den Datenbank-Stand ✅ 2026-11-16
 
 **Was.** Sechstes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit

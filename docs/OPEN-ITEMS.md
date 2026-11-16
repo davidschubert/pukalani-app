@@ -55,6 +55,7 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 38 · SR1 | **Kleine Sicherheitsriegel: Nacharbeiten.** Sieben kleine Korrekturen sind seit 2026-11-15 live (COMPLETE „GA1 P25"): Bot-Prüfung und eine Grenze je Empfänger an den öffentlichen Formularen von branding.supply, ein eigenes Geheimnis für Abmelde-Links, Links nur mit http(s), strengere Prüfung gespeicherter Zeichen-Grafiken, Einladungen nur mit bestätigter Adresse. Offen: (a) **Klick-Probe auf Live** (beide Formulare), (b) **Datenschutztext** nennt die Bot-Prüfung an zwei Formularen noch nicht, (c) dieselbe Grenze für Code- und Reset-Mails (gehört zu AB1 e), (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) einmal klicken, (b) Text freigeben** | [Einzelheiten](#sr1) |
 | 39 · IN1 | **Insights-Redaktion: Nacharbeiten.** Änderungen an einem veröffentlichten Artikel laufen seit 2026-11-16 durch die sieben Prüfregeln, und unter einem geänderten Artikel kann ein Änderungshinweis stehen (COMPLETE „GA1 P19"). Offen: (a) **KI-Prüfung als eigener Knopf** (Davids Wunsch, bewusst später), (b) **Klick-Probe auf Live**, sobald der erste Artikel veröffentlicht ist (hängt an 19 · BI5), (c) **Marken-Seiten** lassen sich ohne Prüfung veröffentlichen und ändern, (d) Kleinigkeiten. | Niedrig | S bis M je Teil | **Ja: (a) Startwort, (c) entscheiden** | [Einzelheiten](#in1) |
 | 40 · MG1 | **Migrationen: Nacharbeiten.** Seit 2026-11-16 prüfen schreibende Skripte ihr Ziel, und jede Seite meldet, ob die Datenbank zum Programm passt (COMPLETE „GA1 P21"). Offen: (a) ein **Tor, das das Ausliefern aufhält**, solange die Datenbank zurückhängt, wäre eine neue Entscheidung, (b) ein Test des Rückweg-Skripts war auf `main` **einmal ohne Grund rot**, (c) vier Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) entscheiden** | [Einzelheiten](#mg1) |
+| 41 · LL1 | **Lange Läufe: Nacharbeiten.** Der Marktvergleich antwortet seit 2026-11-16 sofort und rechnet im Hintergrund, ein zweiter Klick startet keinen zweiten Lauf, und der Newsletter-Versand sperrt sich gegen einen gleichzeitigen Start (COMPLETE „GA1 P18"). Offen: (a) der **Radar-Knopf** hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) **weitere lange Wege** (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -800,6 +801,49 @@ NICHT hier.
   behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
   gehören zu BK1 d). Der lokale Lauf der Playwright-Suite braucht einen
   Browser-Download.
+
+<a id="ll1"></a>
+
+**LL1 — Lange Läufe: Nacharbeiten (aus dem Gesamtaudit, Paket P18).**
+
+- **(a) Radar-Knopf.** „Jetzt laufen lassen" beginnt nach 30 Sekunden keine
+  neuen Abrufe mehr und meldet ein Teil-Ergebnis. Das hält die 60 Sekunden des
+  Webservers nur, solange die Kanal-Liste klein ist (heute rund zwölf): der
+  erste Abruf der Kanal-Daten und das Schreiben der Videos sind nicht
+  befristet, und bei 50 Kanälen sind das bis zu 2.500 Schreibzugriffe. Sauber
+  wäre derselbe Weg wie beim Marktvergleich: Lauf-Sperre in `insights_runs`,
+  `202`, Hintergrund, die Seite fragt den Stand ab. Die Tabelle steht schon.
+- **(b) Weitere lange Wege in der Anfrage** (gemessen am 2026-11-16, eigene
+  Fristen im Code zusammengezählt): öffentlicher Brand-Check rund 120 s,
+  Dokument-Check 90 s, Bild lesen 120 s, Zeichen-Entwürfe 120 s,
+  Dokument-Prüfung bis 660 s (hat eine eigene Sperre), Entwurf und Übersetzung
+  eines Artikels je 120 s (für beide gilt auf branding.supply die Ausnahme von
+  180 s). Üblich sind sie viel schneller; die Obergrenze liegt über der
+  Wartezeit des Webservers. Ein Wächter, der je Route die Summe ihrer Fristen
+  gegen die 60 s hält, gehört zu Paket P20. Die zwei Streams des Markenberaters
+  senden keinen Herzschlag.
+- **(c) Kleinigkeiten.** Der Video-Brief hält seinen Start weiter mit „erst
+  lesen, dann Stempel schreiben" fest: zwei Klicks im SELBEN Augenblick
+  könnten dort zwei bezahlte Läufe starten (nur die Redaktion, rund 5 Cent).
+  Mit `insights_runs` ist das eine kleine Umstellung auf die Lauf-Sperre. Die
+  Lauf-Zeilen (`market_runs`, `insights_runs`)
+  werden nicht nach Alter geräumt; sie sind klein (höchstens drei je Marke und
+  Tag, eine je Newsletter-Stapel) und verschwinden mit der Marke. Der Hinweis
+  „Quelle in der Zeit nicht gelesen" erscheint nur beim Zustandswechsel, nicht
+  beim Speichern eines veröffentlichten Artikels (dort steht weiter „Zitat
+  nicht belegt"). Ein Artikel mit sehr vielen langsamen Quellen lässt sich
+  wegen der 45 Sekunden unter Umständen nicht freigeben — dann die Quellen
+  einzeln über die Ampel prüfen und die langsamen ersetzen. Stirbt der Prozess
+  mitten in einem Newsletter-Stapel, bekommt beim Fortsetzen höchstens dieser
+  eine Stapel die Ausgabe doppelt (bekannte Grenze, unverändert). Der
+  Newsletter ist auf Production ausgeschaltet; die Sperre ist dort nur durch
+  Tests belegt. Vier Beweis-Skripte des Marktvergleichs brauchen 70 Sekunden
+  Abstand, weil die Läufe jetzt schneller antworten als die Minuten-Bremse
+  (5 Starts je Minute) erlaubt. Der spätere Alarm (Paket P22) kann
+  abgebrochene Läufe an Lauf-Zeilen ohne Ende mit altem Herzschlag erkennen.
+  Auf Production ist ein Lauf ÜBER 60 Sekunden nicht gezeigt (der Probe-Lauf
+  vom 2026-11-16 brauchte 22 s) und die Seite dort nicht im Browser geklickt;
+  beides ist lokal gezeigt (Lauf 75 s, zwei Reiter).
 
 <a id="mg1"></a>
 
