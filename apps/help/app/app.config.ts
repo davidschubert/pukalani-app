@@ -15,6 +15,11 @@ export default defineAppConfig({
      * Begründung + Regel: core/shared/realtimeGate.ts.
      */
     realtime: { enabled: false },
+    // STRUKTURIERTE 5xx-ZEILEN (OPS-011, 2026-11-16) — ein täglicher Wächter
+    // zählt sie in den pm2-Logs. BEWUSST OHNE Browser-Fehler-Annahme
+    // (`clientErrors`): öffentliche Inhaltsseiten ohne Anmeldung, dort käme
+    // vor allem Rauschen von Bots und Browser-Erweiterungen.
+    observability: { enabled: true },
   },
   ui: {
     button: {

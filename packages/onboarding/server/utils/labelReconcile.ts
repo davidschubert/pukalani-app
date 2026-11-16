@@ -105,6 +105,15 @@ export function __resetLabelReconcileCursor(): void {
 let running = false
 
 /**
+ * Läuft gerade ein Abgleich? Für den Takt (OPS-011): „schon im Gange" kommt
+ * aus `reconcileCommunityLabels` nur als leeres Ergebnis zurück und sähe sonst
+ * aus wie ein Lauf ohne Arbeit. Ändert nichts für die Ops-Route.
+ */
+export function isLabelReconcileRunning(): boolean {
+  return running
+}
+
+/**
  * EIN Lauf. Wirft nur, wenn schon die ERSTE Seite des Lesers scheitert (dann
  * gibt es nichts zu zählen); jeder Fehler eines einzelnen Kontos zählt als
  * `failed` und hält den Lauf nicht auf.

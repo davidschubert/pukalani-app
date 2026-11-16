@@ -1,6 +1,11 @@
 export default defineAppConfig({
   // App-spezifische Overrides (tiefer Merge, App > Layer > Core).
   pukalani: {
+    // STRUKTURIERTE FEHLERZEILEN (OPS-011, 2026-11-16): 5xx-Zeilen am
+    // zentralen Fehler-Hook UND die Browser-Fehler-Annahme
+    // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
+    // Wächter zählt diese Zeilen in den pm2-Logs.
+    observability: { enabled: true, clientErrors: true },
     /**
      * DER PRODUCTS-AUFKLAPPER (PS1, 2026-09-09 — Plan
      * docs/plans/PRODUCTS-SEITE.md §6, Davids Entscheidung e).

@@ -5,7 +5,7 @@ import { runInsightsRadarSweep } from '../utils/insightsRadarSweep'
  *
  * Muster und Begründungen wie beim Fristen-Sweep nebenan
  * (`corrections-sweep.ts`) und beim Ereignis-Sweep des brand-Layers: eine
- * Konstante je Zahl, erster Lauf kurz nach dem Boot, `setInterval` danach,
+ * Konstante je Zahl, erster Lauf kurz nach dem Boot, Takt über `defineTimedJob`,
  * Single-Instanz-Annahme, Arbeit in `server/utils`. Ein Betreiber soll nicht je
  * Layer eine andere Mechanik lernen müssen.
  *
@@ -27,7 +27,7 @@ import { runInsightsRadarSweep } from '../utils/insightsRadarSweep'
  * ── DAS PRODUKT-GATE: `getProductRegistry().has('insights')` ────────────
  * Dieselbe Frage wie nebenan — „ist dieses Produkt in DIESE App
  * einkompiliert?". Ohne sie liefe der Takt in jeder App, die den Layer aus
- * einem anderen Grund im Baum hat. Die Prüfung steht IM `setTimeout` und nicht
+ * einem anderen Grund im Baum hat. Die Prüfung steht IM Takt (`run`) und nicht
  * im Plugin-Rumpf, weil Nitro Plugins alphabetisch lädt und
  * `product-manifest.ts` daher nicht garantiert vorher gelaufen ist.
  *
@@ -45,21 +45,22 @@ const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 90 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    if (!getProductRegistry().has('insights')) return
-    // OHNE `then`: der Lauf loggt seine Zahlen selbst (`insights.radar_swept`),
-    // und ein übersprungener Lauf loggt bewusst gar nichts — „kein Schlüssel"
-    // ist ein Betriebszustand, keine tägliche Nachricht. Eine zweite Log-Zeile
-    // hier wäre dieselbe Auskunft an einer zweiten Stelle.
-    void runInsightsRadarSweep().catch((error) => {
-      console.error('[insights] Radar-Lauf fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
-  // sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011). unref, damit
+  // die Timer einen sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen
+  // halten.
+  defineTimedJob({
+    name: 'insights-radar',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      if (!getProductRegistry().has('insights')) return 'skipped'
+      // Der Lauf loggt seine Zahlen selbst (`insights.radar_swept`), und ein
+      // übersprungener Lauf loggt fachlich bewusst gar nichts — „kein
+      // Schlüssel" ist ein Betriebszustand, keine tägliche Nachricht. Für
+      // `job.run` zählt er als `skipped`.
+      const result = await runInsightsRadarSweep()
+      if (result.skipped) return 'skipped'
+    },
+  })
 })

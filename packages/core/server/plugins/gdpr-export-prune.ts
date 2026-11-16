@@ -39,16 +39,19 @@ const FIRST_RUN_DELAY_MS = 5 * 60 * 1000
 export default defineNitroPlugin(() => {
   if (!useRuntimeConfig().public.appwriteGdprBucket) return
 
-  const sweep = () => {
-    // Zähler und Fehler schreibt der Lauf selbst (logEvent); hier wird nur
-    // verhindert, dass ein geworfener Lauf als unbehandelte Ablehnung endet.
-    void runGdprExportPrune().catch(() => {})
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
+  // Zähler und Fehler schreibt der Lauf selbst (logEvent); hier wird sein
+  // Ergebnis nur für `job.run` übersetzt. unref, damit die Timer einen
   // sauberen Exit (CLI/Tests) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+  defineTimedJob({
+    name: 'gdpr-export-prune',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      const result = await runGdprExportPrune()
+      // `null` = der Riegel hält, ein anderer Lauf (Hand-Route) ist im Gange.
+      if (!result) return 'skipped'
+      if (result.failed > 0) throw new Error(`unvollständig: ${result.failed} Dateien nicht gelöscht`)
+    },
+  })
 })

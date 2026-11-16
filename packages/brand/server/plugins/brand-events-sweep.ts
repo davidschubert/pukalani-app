@@ -7,7 +7,7 @@ import { runBrandEventsSweep } from '../utils/brandEventsSweep'
  * Muster und Begründungen wie bei den anderen Sweeps des Projekts
  * (`email-digest.ts` im core, `guest-author-prune.ts` in comments,
  * `raw-text-sweep.ts` in market): eine Konstante je Zahl, erster Lauf kurz nach
- * dem Boot, `setInterval` danach, Single-Instanz-Annahme. Die Arbeit selbst
+ * dem Boot, der Takt über `defineTimedJob`, Single-Instanz-Annahme. Die Arbeit selbst
  * steht in `server/utils` — dort, wo der Admin-Client hingehört.
  *
  * ── WARUM EINMAL AM TAG ──────────────────────────────────────────────────
@@ -31,8 +31,9 @@ import { runBrandEventsSweep } from '../utils/brandEventsSweep'
  * täglich eine Tabelle ab, die es dort nicht gibt. Das Manifest registriert
  * sich in einem eigenen Nitro-Plugin; Nitro lädt Plugins in alphabetischer
  * Reihenfolge je Verzeichnis, und `product-manifest.ts` läuft daher nicht
- * garantiert vor dieser Datei — die Prüfung steht deshalb IM `setTimeout`,
- * also nach dem Start, und nicht im Plugin-Rumpf.
+ * garantiert vor dieser Datei — die Prüfung steht deshalb IM Takt (`run`),
+ * also nach dem Start, und nicht im Plugin-Rumpf; ein Takt ohne Produkt
+ * meldet `skipped`.
  *
  * ── UND WARUM NICHT AUCH DER PRODUKT-SCHALTER ────────────────────────────
  * Weil eine Aufbewahrungsfrist kein Produktmerkmal ist. Wer den Wizard
@@ -44,9 +45,17 @@ const SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 60 * 1000
 
 export default defineNitroPlugin(() => {
-  const sweep = () => {
-    if (!getProductRegistry().has('brand')) return
-    void runBrandEventsSweep().then((result) => {
+  // Takt, Fehlerzeile und Stand über die eine Hilfe (OPS-011). unref, damit
+  // die Timer einen sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen
+  // halten.
+  defineTimedJob({
+    name: 'brand-events-sweep',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    unref: true,
+    run: async () => {
+      if (!getProductRegistry().has('brand')) return 'skipped'
+      const result = await runBrandEventsSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein tägliches
       // „0 Zeilen" macht das Log unlesbar. ZAHLEN, kein Inhalt.
       if (result.deleted || result.errors) {
@@ -56,15 +65,6 @@ export default defineNitroPlugin(() => {
           errors: result.errors,
         })
       }
-    }).catch((error) => {
-      console.error('[brand] Ereignis-Sweep fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  const firstRun = setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  const timer = setInterval(sweep, SWEEP_INTERVAL_MS)
-  // Nitro räumt den Prozess beim Shutdown ab — unref, damit die Timer einen
-  // sauberen Exit (CLI, Tests, Migrations-Läufe) nicht offen halten.
-  firstRun.unref?.()
-  timer.unref?.()
+    },
+  })
 })

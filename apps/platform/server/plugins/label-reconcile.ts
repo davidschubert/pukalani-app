@@ -1,5 +1,5 @@
 import { createLabelReconcileReader } from '../../../../packages/control/server/utils/labelReconcileReader'
-import { labelReconcileMode, registerLabelReconcileReader, runLabelReconcile } from '../../../../packages/onboarding/server/utils/labelReconcile'
+import { isLabelReconcileRunning, labelReconcileMode, registerLabelReconcileReader, runLabelReconcile } from '../../../../packages/onboarding/server/utils/labelReconcile'
 
 /**
  * A14-Komposition für den LABEL-ABGLEICH (SEC-024, seit 2026-11-13): ein
@@ -42,14 +42,20 @@ export default defineNitroPlugin(() => {
   const mode = labelReconcileMode()
   if (mode === 'off') return
 
-  const sweep = () => {
-    // Die Zusammenfassung schreibt der Lauf selbst (logEvent); hier landet nur,
-    // was ihn als Ganzes scheitern ließ (erste Seite des Lesers).
-    void runLabelReconcile(mode).catch((error: unknown) => {
-      console.error('[platform] Label-Abgleich fehlgeschlagen:', error instanceof Error ? error.message : error)
-    })
-  }
-
-  setTimeout(sweep, FIRST_RUN_DELAY_MS)
-  setInterval(sweep, SWEEP_INTERVAL_MS)
+  // Die Zusammenfassung schreibt der Lauf selbst (logEvent); hier wird sein
+  // Ergebnis nur für `job.run` übersetzt (OPS-011).
+  defineTimedJob({
+    name: 'label-reconcile',
+    everyMs: SWEEP_INTERVAL_MS,
+    firstRunMs: FIRST_RUN_DELAY_MS,
+    run: async () => {
+      // Der Riegel meldet „schon im Gange" nur als leeres Ergebnis — deshalb
+      // VORHER fragen; zwischen Frage und Aufruf liegt kein `await`.
+      if (isLabelReconcileRunning()) return 'skipped'
+      const result = await runLabelReconcile(mode)
+      // Der Leser ist oben registriert; `null` hieße, er ist verschwunden.
+      if (!result) throw new Error('kein Leser registriert')
+      if (result.failed > 0) throw new Error(`unvollständig: ${result.failed} Konten nicht abgeglichen`)
+    },
+  })
 })

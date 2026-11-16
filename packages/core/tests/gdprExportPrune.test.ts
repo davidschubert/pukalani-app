@@ -253,16 +253,18 @@ describe('runGdprExportPrune — Riegel und Log-Zeilen', () => {
 describe('Plugin (Quelltext)', () => {
   const source = readFileSync(fileURLToPath(new URL('../server/plugins/gdpr-export-prune.ts', import.meta.url)), 'utf8')
 
-  it('ohne Bucket kein Timer — die Prüfung steht VOR setTimeout/setInterval', () => {
+  // Seit OPS-011 meldet sich der Takt über `defineTimedJob` an (Timer und
+  // unref liegen in der Hilfe, timedJob.test.ts); hier bleibt das Tor davor.
+  it('ohne Bucket kein Timer — die Prüfung steht VOR der Anmeldung des Takts', () => {
     const guard = source.indexOf('appwriteGdprBucket')
     expect(guard).toBeGreaterThan(-1)
-    expect(guard).toBeLessThan(source.indexOf('setTimeout('))
-    expect(guard).toBeLessThan(source.indexOf('setInterval('))
+    expect(source.indexOf('defineTimedJob(')).toBeGreaterThan(-1)
+    expect(guard).toBeLessThan(source.indexOf('defineTimedJob('))
   })
 
   it('ruft den Lauf mit Riegel, stündlich, Timer gelöst', () => {
     expect(source).toContain('runGdprExportPrune(')
     expect(source).toContain('60 * 60 * 1000')
-    expect(source).toContain('.unref?.()')
+    expect(source).toContain('unref: true')
   })
 })

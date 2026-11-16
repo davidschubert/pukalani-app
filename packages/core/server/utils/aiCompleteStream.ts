@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import type { AiCompleteOptions } from './aiComplete'
 import { buildAiRequestBody, getAiConfig, resolveAiKey } from './aiComplete'
-import { aiCallFailed, aiHttpFailure, aiLogLine, aiRunMs, assertAiRouteOnly, isAiTransportError, startAiRun } from './aiLog'
+import { aiCallFailed, aiHttpFailure, aiLogLine, aiRunMs, assertAiRouteOnly, isAiTransportError, logAiFailed, startAiRun } from './aiLog'
 import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
@@ -282,6 +282,7 @@ export async function aiCompleteStream(
     if (!res.ok) await aiHttpFailure(res, ctx, 'KI-Stream-API-Fehler')
     if (!res.body) {
       console.error(aiLogLine(ctx.label, 'KI-Stream ohne Rumpf', { status, model, ms: aiRunMs(ctx), run: ctx.run }))
+      logAiFailed(ctx, 'stream')
       throw createError({ status: 502, statusText: 'AI provider unavailable' })
     }
 
@@ -317,6 +318,7 @@ export async function aiCompleteStream(
             run: ctx.run,
             gen,
           }))
+          logAiFailed(ctx, 'stream')
           throw createError({ status: 502, statusText: 'AI provider error' })
         }
         else {
@@ -339,6 +341,7 @@ export async function aiCompleteStream(
     if (isAbortError(error)) {
       if (timedOut) {
         console.error(aiLogLine(ctx.label, 'KI-Stream Zeitüberschreitung', { model, ms: aiRunMs(ctx), chars: result.text.length, run: ctx.run, gen }))
+        logAiFailed(ctx, 'stream')
         throw createError({ status: 502, statusText: 'AI stream timed out' })
       }
       // Von aussen abgebrochen — ein Ergebnis, kein Fehler (s. Kopf).
