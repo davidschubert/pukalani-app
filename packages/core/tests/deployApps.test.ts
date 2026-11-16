@@ -72,16 +72,18 @@ describe('die Leser der Liste', () => {
 
   // OPS-005 (2026-11-15): bis dahin kopierte der Deploy den GANZEN Ordner ops/
   // in jede Site — samt Backup-, Wiederherstellungs- und Rückweg-Skript, die
-  // auf dem App-Server nie laufen. Der Server braucht je Site genau zwei
-  // Dateien; `ops/rollback.sh` verlässt sich auf dieselben zwei.
-  it('deploy.yml kopiert nur die Ecosystem-Datei der App und pm2-heal.sh auf den Server', () => {
+  // auf dem App-Server nie laufen. Der Server braucht je Site genau drei
+  // Dateien: die Ecosystem-Datei, pm2-heal.sh (auf beide verlässt sich
+  // `ops/rollback.sh`) und seit OPS-011 (2026-11-16) das Zähl-Skript des
+  // Produktions-Wächters, das nur liest und nur Zahlen ausgibt.
+  it('deploy.yml kopiert nur Ecosystem-Datei, pm2-heal.sh und das Zähl-Skript auf den Server', () => {
     const code = deploy.split('\n').filter(line => !/^\s*#/.test(line))
     const toSiteOps = code.filter(line => /\brsync\b/.test(line) && line.includes('/ops/'))
     expect(toSiteOps).toHaveLength(1)
     const sources = toSiteOps[0]!.trim().split(/\s+/).filter(word => /^"?ops\//.test(word)).map(word => word.replace(/"/g, ''))
-    expect(sources).toEqual(['ops/ecosystem-$app.config.cjs', 'ops/pm2-heal.sh'])
+    expect(sources).toEqual(['ops/ecosystem-$app.config.cjs', 'ops/pm2-heal.sh', 'ops/app-watch-counts.mjs'])
     expect(toSiteOps[0]).not.toContain('--delete')
-    // Was der Server danach ausführt, sind genau diese zwei.
+    // Was der Server beim Ausliefern ausführt, sind die ersten zwei.
     expect(deploy).toContain('bash /home/ploi/$site/ops/pm2-heal.sh')
     expect(deploy).toContain('pm2 startOrReload /home/ploi/$site/ops/ecosystem-$app.config.cjs')
     const rollback = read('ops', 'rollback.sh')
