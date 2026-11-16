@@ -72,7 +72,12 @@ if (!endpoint || !projectId || !databaseId || !apiKey) {
 
 const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey)
 const tablesDB = new TablesDB(client)
-const users = new Users(client)
+// ZWEI SCHLÜSSEL, WO ES ZWEI GIBT (2026-11-16): der Migrations-Schlüssel liest
+// das Schema (Teil A), darf aber keine Konten anlegen; der Laufzeit-Schlüssel
+// darf es. Liegen beide in der Env-Datei, legt Teil B seine Wegwerf-Konten mit
+// dem Laufzeit-Schlüssel an — mit nur einem Schlüssel bleibt alles wie bisher.
+const usersKey = process.env.NUXT_APPWRITE_KEY ?? apiKey
+const users = new Users(new Client().setEndpoint(endpoint).setProject(projectId).setKey(usersKey))
 
 /** Teil B läuft nur mit laufendem Server (Port aus der Env). */
 const TLS = process.env.MESSAGES_TLS === '1'
