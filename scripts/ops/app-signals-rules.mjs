@@ -83,6 +83,15 @@ export const RULES = {
   aiNoCredit: 1,
   aiNoEndpoint: 1,
   aiOtherFailures: null,
+  /**
+   * BETREIBER-PROTOKOLL (BE-021, 2026-11-16): gescheiterte Einträge in
+   * `audit_logs` (`audit.write_failed`). An einem normalen Tag 0. Ein
+   * einzelner Wackler (Netz, Neustart von Appwrite) heilt sich von selbst;
+   * ein DAUERHAFTER Ausfall — eine fehlende Spalte, ein Schlüssel ohne Recht —
+   * erzeugt bei JEDER Betreiber-Aktion und jeder Anmeldung eine Zeile und
+   * liegt damit schnell darüber. Ab 3 in 25 Stunden rot, darunter berichtet.
+   */
+  auditWriteFailures: 3,
 }
 
 const WORD = {
@@ -103,6 +112,8 @@ export const LINE_FORMS = {
   ai: /^ki ausfaelle=(\d{1,9}) ohne_guthaben=(\d{1,9}) kein_endpunkt=(\d{1,9}) abgeschaltet=(\d{1,9})$/,
   job: new RegExp(`^lauf name=(${WORD.job}) takt_min=(\\d{1,6}) ok=(\\d{1,9}) gescheitert=(\\d{1,9}) uebersprungen=(\\d{1,9}) haengt=(\\d{1,9}) letzter_ok_min=${WORD.age} letzter_lauf_min=${WORD.age} letztes_ergebnis=${WORD.result} angemeldet_min=${WORD.age}$`),
   end: /^ende laeufe=(\d{1,3})$/,
+  /** Seit BE-021 — OPTIONAL: ein Server mit dem älteren Skript schreibt sie nicht. */
+  audit: /^protokoll ausfaelle=(\d{1,9})$/,
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -151,6 +162,9 @@ export function parseCounts(text) {
         registeredMin: age(hit[10]),
       })
     }
+    else if ((hit = line.match(LINE_FORMS.audit))) {
+      counts.auditFailed = Number(hit[1])
+    }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])
     }
@@ -158,6 +172,11 @@ export function parseCounts(text) {
       return { ...counts, problem: 'unlesbar' }
     }
   }
+  // `protokoll` ist BEWUSST nicht in der Pflichtliste unten: nach dem Merge
+  // gilt diese Auswertung sofort (der Wächter läuft aus `main`), das neue
+  // Skript kommt erst mit dem nächsten Ausliefern auf den Server. Fehlt die
+  // Zeile, bleibt `auditFailed` undefiniert und die Regel berichtet „nicht
+  // gezählt" statt rot zu werden.
   // Ohne Schlusszeile ist die Ausgabe abgeschnitten — dann lieber keine Zahlen
   // als halbe.
   if (ended === null || ended !== counts.jobs.size) return { ...counts, problem: 'abgeschnitten' }
@@ -272,6 +291,17 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
   if (aiOther > 0) notes.push(`${where} ${aiOther} weitere KI-Ausfälle in ${counts.hours} h — zählt nur`)
   if (counts.aiDisabled > 0) notes.push(`${where} der KI-Abschalter hat ${counts.aiDisabled} Aufruf(e) verhindert`)
 
+  // ── Betreiber-Protokoll ───────────────────────────────────────────────
+  if (counts.auditFailed === undefined) {
+    notes.push(`${where} Betreiber-Protokoll nicht gezählt (das Zähl-Skript auf dem Server ist älter; nach dem nächsten Ausliefern kommt die Zahl)`)
+  }
+  else if (counts.auditFailed >= rules.auditWriteFailures) {
+    red.push(`${where} ${counts.auditFailed} Einträge ins Betreiber-Protokoll gescheitert in ${counts.hours} Stunden, Schwelle ${rules.auditWriteFailures} — Herausgaben (Export, CSV, Lösch-Kopien) werden dabei abgelehnt. Tun: im Fehler-Log der App die Zeilen \`audit.write_failed\` lesen (Status und \`type\` stehen dabei). (${RUNBOOK}, „Betreiber-Protokoll fällt aus")`)
+  }
+  else if (counts.auditFailed > 0) {
+    notes.push(`${where} ${counts.auditFailed} Eintrag/Einträge ins Betreiber-Protokoll gescheitert in ${counts.hours} h, Schwelle ${rules.auditWriteFailures}`)
+  }
+
   return { red, notes }
 }
 
@@ -282,7 +312,7 @@ export function summaryLine({ site, counts, expected = new Set() }) {
     const job = counts.jobs.get(name)
     return job && job.lastResult !== 'failed' && job.lastOkMin !== null
   }).length
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Zeit-Läufe ${good}/${expected.size} gut`
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
 }
 
 /**

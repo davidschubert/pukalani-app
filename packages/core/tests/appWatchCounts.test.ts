@@ -28,6 +28,7 @@ const LINE_FORMS = [
   /^prozess speicher_mb=\d+ neustarts=\d+ laeuft_min=\d+$/,
   /^fehler server=\d+ browser=\d+ browser_gedeckelt=\d+$/,
   /^ki ausfaelle=\d+ ohne_guthaben=\d+ kein_endpunkt=\d+ abgeschaltet=\d+$/,
+  /^protokoll ausfaelle=\d+$/,
   /^lauf name=[a-z][a-z0-9-]{1,39} takt_min=\d+ ok=\d+ gescheitert=\d+ uebersprungen=\d+ haengt=\d+ letzter_ok_min=(\d+|nie) letzter_lauf_min=(\d+|nie) letztes_ergebnis=(ok|failed|skipped|nie) angemeldet_min=(\d+|nie)$/,
   /^ende laeufe=\d+$/,
 ]
@@ -116,6 +117,9 @@ describe('ops/app-watch-counts.mjs', () => {
       event(8, 'error', 'ai.failed', { label: 'brand', kind: 'http', status: 404, model: 'm', run: 'r2' }),
       event(9, 'error', 'ai.failed', { label: 'brand', kind: 'call', model: 'm', run: 'r3' }),
       event(11, 'warn', 'ai.disabled', { label: 'brand' }),
+      event(13, 'error', 'audit.write_failed', { action: 'user.exported', targetType: 'user', strict: true, status: 401, type: 'general_unauthorized_scope' }),
+      event(14, 'error', 'audit.write_failed', { action: 'user.login', targetType: '', strict: false, status: null, type: null }),
+      event(27 * 60, 'error', 'audit.write_failed', { action: 'user.login', targetType: '', strict: false }),
       event(12, 'error', 'job.run', { job: 'trial-sweep', result: 'failed', ms: 4, everyMin: 60, error: 'Error', message: 'GEHEIM-MARKER' }),
       '[control] freie Zeile ohne Zeit — GEHEIM-MARKER',
       '    at irgendwo (/home/ploi/geheim.js:1:1)',
@@ -151,6 +155,9 @@ describe('ops/app-watch-counts.mjs', () => {
     expect(lineOf(lines, 'prozess ')).toBe('prozess speicher_mb=153 neustarts=103 laeuft_min=51')
     expect(lineOf(lines, 'fehler ')).toBe('fehler server=2 browser=1 browser_gedeckelt=1')
     expect(lineOf(lines, 'ki ')).toBe('ki ausfaelle=3 ohne_guthaben=1 kein_endpunkt=1 abgeschaltet=1')
+    // Betreiber-Protokoll (BE-021): nur die Zahl im Fenster, nie Aktion oder Kennung.
+    expect(lineOf(lines, 'protokoll ')).toBe('protokoll ausfaelle=2')
+    expect(out).not.toContain('user.exported')
     expect(lineOf(lines, 'lauf name=trial-sweep ')).toBe('lauf name=trial-sweep takt_min=60 ok=2 gescheitert=1 uebersprungen=0 haengt=0 letzter_ok_min=130 letzter_lauf_min=12 letztes_ergebnis=failed angemeldet_min=200')
     expect(lineOf(lines, 'lauf name=health-sweep ')).toBe('lauf name=health-sweep takt_min=5 ok=1 gescheitert=0 uebersprungen=0 haengt=0 letzter_ok_min=3 letzter_lauf_min=3 letztes_ergebnis=ok angemeldet_min=200')
     // „Übersprungen" hält einen Lauf am Leben.
@@ -193,6 +200,7 @@ describe('ops/app-watch-counts.mjs', () => {
       'prozess speicher_mb=153 neustarts=103 laeuft_min=51',
       'fehler server=0 browser=0 browser_gedeckelt=0',
       'ki ausfaelle=0 ohne_guthaben=0 kein_endpunkt=0 abgeschaltet=0',
+      'protokoll ausfaelle=0',
       'ende laeufe=0',
     ])
   })

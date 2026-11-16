@@ -41,6 +41,9 @@
 //                                 (kein Endpunkt unter der Bindung)
 //   ai.disabled                   der Abschalter hat einen Aufruf verhindert
 //   job.registered / job.run      Zeit-Läufe (core/server/utils/timedJob.ts)
+//   audit.write_failed            ein Eintrag ins Betreiber-Protokoll ist
+//                                 gescheitert (core/server/utils/auditLog.ts,
+//                                 BE-021) — Zeile `protokoll ausfaelle=<n>`
 // Für die Zeit-Läufe zählt zusätzlich die GANZE aktuelle Datei: „letzter
 // guter Lauf vor n Minuten" darf älter sein als das Fenster.
 //
@@ -152,7 +155,7 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0 }
   const jobs = new Map()
   const job = (id) => {
     if (typeof id !== 'string' || !JOB_PATTERN.test(id)) return null
@@ -183,6 +186,9 @@ async function main() {
         break
       case 'ai.disabled':
         if (inWindow) counts.aiDisabled++
+        break
+      case 'audit.write_failed':
+        if (inWindow) counts.auditFailed++
         break
       case 'job.registered': {
         const item = job(entry.job)
@@ -227,6 +233,9 @@ async function main() {
   console.log(`prozess speicher_mb=${memoryMb} neustarts=${restarts} laeuft_min=${upMinutes}`)
   console.log(`fehler server=${counts.server} browser=${counts.browser} browser_gedeckelt=${counts.capped}`)
   console.log(`ki ausfaelle=${counts.ai} ohne_guthaben=${counts.aiNoCredit} kein_endpunkt=${counts.aiNoEndpoint} abgeschaltet=${counts.aiDisabled}`)
+  // Seit BE-021 (2026-11-16). Die Auswertung verträgt eine Ausgabe OHNE diese
+  // Zeile (ein Server mit dem Skript von vorher) — VERSION bleibt deshalb 1.
+  console.log(`protokoll ausfaelle=${counts.auditFailed}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

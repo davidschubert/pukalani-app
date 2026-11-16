@@ -51,6 +51,9 @@ jede ausgerollte App drei Arten von Zeilen mit Zeitstempel in ihr pm2-Log:
 - `server.error` bei jedem 5xx und, auf den vier Apps mit Anmeldung,
   `client.error` für Fehler aus dem Browser (`pukalani.observability`; die
   Annahme ist je Prozess auf 120 Zeilen je Stunde gedeckelt).
+- `audit.write_failed` (seit 2026-11-16, BE-021), wenn ein Eintrag ins
+  Betreiber-Protokoll `audit_logs` scheitert — Zeile `protokoll ausfaelle=<n>`,
+  rot ab 3 in 25 Stunden (Abschnitt 4, „Betreiber-Protokoll fällt aus").
 
 Gezählt wird auf dem App-Server: neben jeder Ecosystem-Datei liegt das feste
 Skript `ops/app-watch-counts.mjs` (der Deploy legt es dorthin). Es liest die
@@ -515,6 +518,24 @@ KI-Kosten sofort stoppen will: der Abschalter `app_config.brandAiEnabled`
 (Zeile `ai.disabled` zählt dann mit). Ein Blick auf das Guthaben im Voraus
 ist bewusst nicht gebaut: OpenRouter gibt es nur einem Verwaltungs-Schlüssel
 heraus, und der kann auch Schlüssel anlegen und löschen.
+
+**Betreiber-Protokoll fällt aus.** Der Satz nennt App und Zahl der
+gescheiterten Einträge in `audit_logs` (Zeile `audit.write_failed`, ein
+Schreiber für alle: `packages/core/server/utils/auditLog.ts`). Was es heißt:
+Anmeldungen und Betreiber-Aktionen laufen weiter, stehen aber nicht im
+Protokoll — und jede HERAUSGABE von Personendaten (Export einer Person,
+CSV-Liste, Lösch-Kopie) wird mit 503 `audit_unavailable` abgelehnt, weil dort
+erst der Eintrag und dann die Daten kommen. Nachsehen auf `ploi@49.13.211.173`:
+`grep '"event":"audit.write_failed"' ~/.pm2/logs/<prozess>-error-*.log | tail -20`
+— die Zeile nennt nur Aktion, Zielart, `strict`, Status und Appwrite-`type`.
+Typische Ursachen: `type` `document_invalid_structure` / Status 400 ⇒ eine
+Spalte fehlt oder ist zu klein (Migrationen des `system`-Layers, `/api/health`
+→ `schema.state`); Status 401 / `general_unauthorized_scope` ⇒ dem
+Laufzeit-Schlüssel fehlt `rows.write`; Status 404 `table_not_found` ⇒
+`audit_logs` fehlt in diesem Projekt; ohne Status ⇒ Appwrite war nicht
+erreichbar (dann ist meist mehr rot). Ein einzelner Wackler heilt sich, unter
+3 wird nur berichtet. „Nicht gezählt" im Lauf heißt: auf dem Server liegt noch
+das Zähl-Skript von vorher — nach dem nächsten Ausliefern kommt die Zahl.
 
 **In die App hinein — keine Zahlen.** Der Blick konnte für eine App nicht
 zählen. „Prozess läuft nicht" / „pm2 kennt den Prozess nicht": auf dem Server
