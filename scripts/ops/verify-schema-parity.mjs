@@ -361,6 +361,9 @@ const MARKET_TABLES = [
   // market-003: der Bericht je Stand — Gegenüberstellung, Konventionen,
   // Überschneidungen, freie Stellen; `revisionKey` ist der Kostendeckel.
   'market_reports',
+  // market-005: die Lauf-Sperre (GA1 P18) — eine Zeile je Lauf, feste Id aus
+  // (scope, subject, seq); der Zustand wird aus dem Herzschlag gerechnet.
+  'market_runs',
 ]
 
 /**
@@ -424,6 +427,10 @@ const INSIGHTS_TABLES = [
   // Versand: ein Beitrag, eine Mail. Sie entsteht VOR der ersten Mail, damit
   // ein abgebrochener Lauf fortgesetzt statt wiederholt wird.
   'insights_sends',
+
+  // insights-011: die Lauf-Sperre des Versands (GA1 P18) — dieselbe Form wie
+  // `market_runs` (Fabrik `scripts/migrations-lib/runLeaseTable.mts`).
+  'insights_runs',
 ]
 
 const PORTFOLIO_SOLL = [
