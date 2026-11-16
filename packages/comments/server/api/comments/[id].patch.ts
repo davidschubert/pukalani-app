@@ -1,9 +1,15 @@
-import { AppwriteException } from 'node-appwrite'
 import { commentUpdateSchema } from '../../../schemas/comment'
 import { commentSnippet } from '../../../shared/commentSnippet'
 import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
 
-/** Eigenen Kommentar bearbeiten — Row-Permission erlaubt nur den Autor. */
+/**
+ * Eigenen Kommentar bearbeiten.
+ *
+ * WER DARF, PRÜFT DIESE ROUTE SELBST (SEC-002, GA1 P13): bis hierher schrieb
+ * sie mit der Sitzung des Kontos, und Appwrites Zeilen-Recht war die Prüfung
+ * „ist das der Autor?". Jetzt schreibt der Server (Admin-Client) — der Vergleich
+ * `authorId === Konto` VOR dem Schreiben ist damit die einzige Grenze.
+ */
 export default defineEventHandler(async (event) => {
   // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
   // Community-Host angemeldet). Bewusst KEIN Beitritt — den eigenen Kommentar zu bearbeiten macht
@@ -18,6 +24,8 @@ export default defineEventHandler(async (event) => {
   await assertCommentsWritable(event)
 
   const { content } = await readValidatedBody(event, commentUpdateSchema.parse)
+  // Gelesen wird über die Mitglieder-Klinke: was das Konto nicht lesen darf,
+  // gibt es für diese Route nicht (404).
   const db = tenantDb(event)
 
   // Status prüfen: nur aktive/gemeldete Kommentare sind editierbar. Ohne diese
@@ -28,6 +36,11 @@ export default defineEventHandler(async (event) => {
   const existing = await db.get<Comment>(COMMENTS_TABLE, commentId, 'Comment not found')
   if (existing.status !== 'active') {
     throw createError({ status: 409, statusText: 'Comment not editable' })
+  }
+  // NUR DER AUTOR. Gast-Kommentare und Grabsteine tragen eine leere
+  // `authorId` — sie gehören niemandem, der hier angemeldet sein könnte.
+  if (!existing.authorId || existing.authorId !== user.$id) {
+    throw createError({ status: 403, statusText: 'Forbidden' })
   }
 
   /**
@@ -45,9 +58,10 @@ export default defineEventHandler(async (event) => {
   const contentEdited = existing.content !== content
 
   try {
-    // Sparse Update — Row-Security wirft 401, wenn nicht der Autor schreibt.
+    // Sparse Update über den Server; `actor: 'member'`: gehandelt hat der
+    // Autor, die Inhalts-Sperre (M13) gilt.
     // editedAt markiert die echte Bearbeitung (≠ $updatedAt, das auch Votes bumpen).
-    const updated = await db.update<Comment>(
+    const updated = await tenantDb(event, { as: 'operator', actor: 'member' }).update<Comment>(
       COMMENTS_TABLE,
       commentId,
       {
@@ -66,9 +80,9 @@ export default defineEventHandler(async (event) => {
     /**
      * MITSCHREIBENDER ZÄHLER (F1) — Grundlage des Abzeichens „Editor".
      *
-     * NUR EIGENE INHALTE, und das ist hier eine Eigenschaft der Route: die
-     * Row-Security lässt ausschließlich den Autor schreiben (ein fremder
-     * Versuch endet im 403 unten). Eine Moderation, die einen fremden
+     * NUR EIGENE INHALTE, und das ist hier eine Eigenschaft der Route: sie
+     * lässt ausschließlich den Autor schreiben (ein fremder Versuch endet
+     * oben im 403). Eine Moderation, die einen fremden
      * Kommentar anfasst, kommt hier gar nicht vorbei — und dürfte auch nicht
      * zählen: das Abzeichen belohnt, den EIGENEN Text besser zu machen.
      */
@@ -87,10 +101,6 @@ export default defineEventHandler(async (event) => {
     return updated
   }
   catch (error) {
-    // Row-Security-401 (nicht der Autor) → 403; echte 5xx nicht als 403 tarnen.
-    if (error instanceof AppwriteException && error.code === 401) {
-      throw createError({ status: 403, statusText: 'Forbidden' })
-    }
     throw toH3Error(error, 'Comment could not be updated')
   }
 })

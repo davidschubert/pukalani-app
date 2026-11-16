@@ -105,11 +105,11 @@ describe('DELETE /api/comments/:id — der Grabstein ist leer, auch in der Daten
     expect(stored.parentId).toBeNull()
     // … und behält sein Publikum, verliert aber die Rechte des Autors.
     expect(stored.$permissions).toEqual([readAny])
-    // Die Rechte schreibt die Operator-Klinke, NACHDEM die Mitglieder-Klinke
-    // den Text geschrieben (und damit die Urheberschaft belegt) hat.
+    // Text und Rechte schreibt der Server (Operator-Klinke) — seit SEC-002
+    // belegt die Route die Urheberschaft selbst, nicht mehr ein Schreibvorgang
+    // mit der Sitzung des Kontos (Proben dazu: server-writes.test.ts).
     expect(permissionWrites).toEqual([{ handle: 'operator', id: 'k-1', permissions: [readAny] }])
-    const memberWrite = door.calls.findIndex(c => c.handle === 'member' && c.method === 'update')
-    expect(memberWrite).toBeGreaterThanOrEqual(0)
+    expect(door.calls.filter(c => c.method === 'update').map(c => c.handle)).toEqual(['operator'])
 
     // Der Feed-Eintrag mit dem Schnappschuss des Textes geht mit.
     expect(removeActivitiesForObject).toHaveBeenCalledWith(expect.anything(), { objectType: 'comment', objectId: 'k-1' })

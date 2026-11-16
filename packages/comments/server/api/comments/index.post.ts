@@ -56,10 +56,20 @@ export default defineEventHandler(async (event) => {
    */
   await assertContentWritable(event, body.targetType, body.targetId)
 
-  // Operator-Rows tragen Role.label-Permissions — die kann nur der Admin-Client
-  // setzen (Session-User dürfen fremde Label-Rollen nicht vergeben). Beide
-  // Türklinken scopen identisch; nur der Client dahinter unterscheidet sich.
+  // GELESEN wird wie bisher: ein Mitglied über die Mitglieder-Klinke (das
+  // Leserecht der Zeile entscheidet, an welchen Kommentar es antworten kann),
+  // das Team bei Betreiber-Zielen über die Operator-Klinke.
   const db = tenantDb(event, { as: operatorTarget ? 'operator' : 'member' })
+  /**
+   * GESCHRIEBEN WIRD ÜBER DEN SERVER (SEC-002, GA1 P13 — Davids Entscheidung
+   * „künftig schreibt nur noch unser Server"). Die Zeile entsteht mit dem
+   * Admin-Client, NACH allen Prüfungen darüber (Anmeldung, Zugehörigkeit,
+   * Schreib-Schalter, Kontingent, Eingabe, Zustand des Ziels) — sie sind damit
+   * die EINZIGE Grenze, ein Recht des Kontos an der Tabelle braucht es nicht.
+   * `actor` sagt weiter, WER handelt: ein Mitglied (Inhalts-Sperre M13 und
+   * Beitritt A5 gelten unverändert), bei Betreiber-Zielen das Team.
+   */
+  const writer = tenantDb(event, { as: 'operator', actor: operatorTarget ? 'operator' : 'member' })
 
   // Bei einer Antwort: Eltern-Kommentar vorab holen → rootId/depth ableiten,
   // maxDepth prüfen und den Parent für die Notification wiederverwenden.
@@ -83,7 +93,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Die tenantId stempelt die Tür — deshalb steht sie hier nicht.
-  const row = await db.create<Comment>(COMMENTS_TABLE, {
+  const row = await writer.create<Comment>(COMMENTS_TABLE, {
     targetId: body.targetId,
     targetType: body.targetType,
     content: body.content,
@@ -102,8 +112,12 @@ export default defineEventHandler(async (event) => {
     // Eigene Permissions statt des Standard-Publikums: Kommentare sind
     // VERÖFFENTLICHT — der Embed-Fall zeigt Threads auf fremden Seiten, auch
     // Gästen. Ausblenden entzieht die Row-Permission (Migration 008), damit ist
-    // ein hidden-Kommentar auch per Roh-REST unlesbar. Ändern und löschen darf
-    // nur der Autor. Operator-Targets sehen NUR admin/moderator.
+    // ein hidden-Kommentar auch per Roh-REST unlesbar. Operator-Targets sehen
+    // NUR admin/moderator.
+    //
+    // NUR LESERECHTE (SEC-002): die Zeile trägt kein `update`/`delete` für den
+    // Autor mehr. Ändern und löschen laufen über die Routen, die den Autor
+    // selbst prüfen ([id].patch.ts, [id].delete.ts).
     //
     // C18: was „veröffentlicht" bedeutet, entscheidet die Community —
     // `read(any)` auf einer öffentlichen, `read(label:<communityId>)` auf einer
@@ -114,8 +128,6 @@ export default defineEventHandler(async (event) => {
       ...(operatorTarget
         ? [Permission.read(Role.label('admin')), Permission.read(Role.label('moderator'))]
         : withPublishedRead([], event)),
-      Permission.update(Role.user(user.$id)),
-      Permission.delete(Role.user(user.$id)),
     ],
   }).catch((error) => {
     // Appwrite-4xx (z. B. abgelaufene Session) als 4xx durchreichen, nicht als 500

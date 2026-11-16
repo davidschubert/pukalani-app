@@ -380,7 +380,8 @@ async function comment({ target, targetUrl, author, content, parent = null, up =
   commentCount[status === 'hidden' ? 'hidden' : 'active']++
   const perms = status === 'hidden'
     ? [...READ_MODERATION]
-    : [READ_ANY, Permission.update(Role.user(author.authorId)), Permission.delete(Role.user(author.authorId))]
+    // Nur Leserechte, wie die Anlege-Route: geschrieben wird über den Server (SEC-002).
+    : [READ_ANY]
   return await create('comments', {
     targetId: target.id, targetType: target.type, content,
     authorId: author.authorId, authorName: author.authorName, authorKind: 'user',
