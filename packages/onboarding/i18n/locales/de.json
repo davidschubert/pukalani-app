@@ -289,6 +289,7 @@
       "trialDesc": "In der Testphase gibt es noch keine eigene Domain. Mit dem Pro-Abo kannst du deine Domain verbinden.",
       "approvalTitle": "Eigene Domain auf Anfrage",
       "approvalDesc": "Eigene Domains schalten wir zurzeit einzeln frei. Schreib uns kurz, dann geben wir deine Community frei.",
+      "approvalCta": "Schreib uns",
       "pausedTitle": "Deine Domain ist abgeschaltet",
       "pausedDesc": "{domain} ist abgeschaltet. Deine Community ist weiter unter {host} erreichbar, und gelöscht wurde nichts.",
       "pausedDenied": {

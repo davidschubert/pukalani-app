@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeExternalHref } from '../../../../../core/shared/safeHref'
 /**
  * EINSTELLUNGEN → EIGENE DOMAIN (control-035, Davids Entscheidungen vom
  * 2026-08-07).
@@ -80,7 +81,7 @@ interface CustomDomainState {
   }
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const toast = useToast()
 const localePath = useLocalePath()
 const { formatDate } = useFormatDate()
@@ -115,14 +116,26 @@ const DENIAL_TEXT: Record<DomainDenial, { title: string, description: string }> 
   approval_required: { title: 'onboarding.domain.approvalTitle', description: 'onboarding.domain.approvalDesc' },
 }
 /**
- * Plan und Testphase zeigen auf die Abo-Seite. Die Freigabe hat KEINEN Link:
- * im Dashboard gibt es heute keinen privaten Weg zu uns (der Feedback-Knopf
- * ist eine geteilte Liste, keine Nachricht) — der Satz sagt, was zu tun ist.
+ * Plan und Testphase zeigen auf die Abo-Seite. Die Freigabe zeigt auf die
+ * Kontakt-Stelle des Betreibers (`pukalani.onboarding.domainApprovalContactUrl`,
+ * je Sprache, absolut) — im Dashboard selbst gibt es keinen privaten Weg zu
+ * uns (der Feedback-Knopf ist eine geteilte Liste, keine Nachricht). Ohne
+ * konfigurierte Adresse bleibt der Satz ohne Knopf stehen.
  */
+const approvalContactUrl = computed(() => {
+  const config = useAppConfig() as { pukalani?: { onboarding?: { domainApprovalContactUrl?: { de?: string, en?: string } } } }
+  const urls = config.pukalani?.onboarding?.domainApprovalContactUrl
+  const raw = (locale.value === 'de' ? urls?.de : urls?.en) || urls?.en || urls?.de || ''
+  return safeExternalHref(raw) ?? ''
+})
+
 function denialActions(reason: DomainDenial) {
-  return reason === 'approval_required'
-    ? []
-    : [{ label: t('onboarding.domain.planCta'), to: localePath('/dashboard/community/plan'), color: 'primary' as const }]
+  if (reason === 'approval_required') {
+    return approvalContactUrl.value
+      ? [{ label: t('onboarding.domain.approvalCta'), to: approvalContactUrl.value, target: '_blank', color: 'primary' as const }]
+      : []
+  }
+  return [{ label: t('onboarding.domain.planCta'), to: localePath('/dashboard/community/plan'), color: 'primary' as const }]
 }
 
 const graceDate = computed(() => (state.value?.graceEndsAt ? formatDate(state.value.graceEndsAt) : ''))
@@ -383,7 +396,10 @@ const steps = computed(() => {
             />
           </div>
 
-          <p class="text-sm text-dimmed">
+          <!-- Solange die Domain abgeschaltet ist, leitet die Pukalani-Adresse
+               NICHT weiter — der Satz wäre dann falsch; der Kasten darunter
+               sagt, wo die Community zu Hause ist. -->
+          <p v-if="state?.status !== 'paused'" class="text-sm text-dimmed">
             {{ t('onboarding.domain.fallbackNote', { host: state?.fallbackHost ?? '' }) }}
           </p>
         </div>
