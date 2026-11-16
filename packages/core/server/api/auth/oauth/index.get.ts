@@ -1,5 +1,6 @@
 import { OAuthProvider } from 'node-appwrite'
 import { createAdminClient } from '../../../lib/appwrite'
+import { resolveTrustedOrigin } from '../../../utils/trustedOrigin'
 import { instanceAuthFeatureGap } from '../../../../shared/authMethodAvailability'
 import { safeRedirectTarget } from '../../../../shared/redirectTarget'
 import {
@@ -60,7 +61,9 @@ export default defineEventHandler(async (event) => {
 
   const locale = getCookie(event, 'i18n_redirected')
   const failure = oauthFailureTarget(locale)
-  const origin = getRequestURL(event).origin
+  // Rückweg von Appwrite: auf einen Host, den die App selbst kennt, nicht auf
+  // den Namen aus der Anfrage (SEC-010, `shared/trustedOrigin.ts`).
+  const { origin } = resolveTrustedOrigin(event)
 
   // Das Ziel nach der Anmeldung — geprüft wie überall (kein offener Weiterleiter).
   const target = safeRedirectTarget(getQuery(event).redirect)

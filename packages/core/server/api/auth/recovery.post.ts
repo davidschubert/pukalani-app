@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { z } from 'zod'
 import { createSessionClient, createAdminClient } from '../../lib/appwrite'
 import { recoverySchema } from '../../../schemas/auth'
+import { resolveTrustedOrigin } from '../../utils/trustedOrigin'
 
 /**
  * Recovery-Mail anfordern. Läuft als GUEST (SessionClient ohne Session) —
@@ -28,7 +29,9 @@ export default defineEventHandler(async (event) => {
    */
   await requireTurnstile(event, 'recovery', turnstileToken)
 
-  const origin = getRequestURL(event).origin
+  // Der Link landet in einer echten Mail — sein Host darf nicht aus einer
+  // ungeprüften Anfrage stammen (SEC-010, `shared/trustedOrigin.ts`).
+  const { origin } = resolveTrustedOrigin(event)
   const { account } = createSessionClient(event)
 
   try {
