@@ -44,6 +44,7 @@ const SYSTEM = 'packages/system/server/utils/userDataContributor.ts'
 const BILLING = 'packages/billing/server/utils/billingUserData.ts'
 const FEEDBACK = 'packages/control/server/utils/customerFeedback.ts'
 const COMMUNITY = 'packages/control/server/utils/communityErasure.ts'
+const TRIAL_CLAIMS = 'packages/control/server/utils/trialClaims.ts'
 const OPERATOR = 'packages/control/server/utils/controlOperatorUserData.ts'
 const COMMENTS = 'packages/comments/server/utils/userDataContributor.ts'
 const POSTS = 'packages/posts/server/utils/postsUserData.ts'
@@ -114,6 +115,10 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   community_members: both(COMMUNITY),
   invite_codes: both(COMMUNITY),
   invite_requests: both(COMMUNITY),
+  // Die Testphase je Konto (control-039, BE-015): Konto-Id + Community. Gelesen
+  // und gelöscht über die feste Id in trialClaims.ts (readTrialClaim/
+  // deleteTrialClaim) — gerufen aus communityErasure.ts.
+  trial_claims: both(TRIAL_CLAIMS),
   provisioning_jobs: both(OPERATOR),
   community_plans: NONE,
   entitlements: NONE,

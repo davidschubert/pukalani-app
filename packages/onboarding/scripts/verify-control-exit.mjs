@@ -128,6 +128,8 @@ try {
   const password = `Pw-${ID.unique()}`
   const user = await poolUsers.create({ userId: ID.unique(), email, password, name: 'Exit-Beweis' })
   cleanup.users.push(user.$id)
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
+  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
 
   const loginRes = await call(CONTROL_HOST, '/api/auth/login', { method: 'POST', body: { email, password } })
   if (loginRes.status !== 200) throw new Error(`Login ${loginRes.status}`)

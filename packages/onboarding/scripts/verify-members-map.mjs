@@ -169,6 +169,9 @@ try {
   console.log(`\nMitglieder-Karte gegen http://localhost:${PORT} (Pool ${poolProject})\n`)
 
   const owner = await createPoolUser('owner')
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse —
+  // nur der Gründer, die übrigen Konten bleiben, wie der Beweis sie braucht.
+  await poolUsers.updateEmailVerification({ userId: owner.userId, emailVerification: true })
   const memberA = await createPoolUser('a')
   const memberB = await createPoolUser('b')
   const memberC = await createPoolUser('c')

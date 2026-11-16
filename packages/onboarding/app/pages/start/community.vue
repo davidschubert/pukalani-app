@@ -21,6 +21,7 @@ import {
   type OperatorTermsConfig,
 } from '../../../shared/operatorTerms'
 import type { Choice } from '../../components/OnboardingChoices.vue'
+import type { TrialAvailability } from '../../../../control/shared/types/trialClaim'
 
 /**
  * Der Setup-Flow (SAAS-ROADMAP #1).
@@ -222,6 +223,12 @@ const summaryRows = computed(() => [
   { label: t('onboarding.summary.vibe'), value: draft.value.vibe ? t(`onboarding.vibes.${draft.value.vibe}.label`) : '' },
 ].filter(row => row.value))
 
+// Testphase einmal je Konto (BE-015): die Zusammenfassung sagt VOR dem Klick,
+// ob es eine gibt. Nur im Browser (kein Aufruf beim Server-Rendern); scheitert
+// die Frage, steht ein neutraler Satz da.
+const { data: trialCheck } = useFetch<TrialAvailability>('/api/onboarding/trial', { server: false, lazy: true })
+const trialAvailable = computed(() => trialCheck.value?.trialAvailable)
+
 useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboarding.gate.title')}`)
 </script>
 
@@ -308,8 +315,15 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
           <div class="flex items-start gap-3 rounded-xl border border-default p-4">
             <UIcon name="i-ph-clock-countdown" class="mt-0.5 size-5 shrink-0 text-primary" />
             <div class="space-y-1 text-sm">
-              <p class="font-medium">{{ t('onboarding.summary.trialTitle') }}</p>
-              <p class="text-muted">{{ t('onboarding.summary.trialBody') }}</p>
+              <template v-if="trialAvailable === true">
+                <p class="font-medium">{{ t('onboarding.summary.trialTitle') }}</p>
+                <p class="text-muted">{{ t('onboarding.summary.trialBody') }}</p>
+              </template>
+              <template v-else-if="trialAvailable === false">
+                <p class="font-medium">{{ t('onboarding.summary.noTrialTitle') }}</p>
+                <p class="text-muted">{{ t('onboarding.summary.noTrialBody') }}</p>
+              </template>
+              <p v-else class="text-muted">{{ t('onboarding.summary.trialUnknown') }}</p>
             </div>
           </div>
 

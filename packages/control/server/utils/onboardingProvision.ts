@@ -1,6 +1,7 @@
 import { ID, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import {
+  TRIAL_FALLBACK_PLAN,
   TRIAL_PLAN,
   evaluateSiteQuota,
   resolveVibe,
@@ -13,6 +14,8 @@ import { COMMUNITIES_TABLE, normalizeTenantPlan, type TenantRow } from '../../sh
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
 import type { InviteCodeRow } from '../../shared/types/inviteCode'
 import type { RuntimeIdentity } from './onboardingService'
+import { claimTrial, releaseTrialClaim } from './trialClaims'
+import { TRIAL_USED_SUSPENSION_REASON } from './trialSweep'
 
 /**
  * Die eigentliche Anlage einer Self-Service-Community (SAAS-ROADMAP #1).
@@ -29,9 +32,15 @@ import type { RuntimeIdentity } from './onboardingService'
  *    aber die Owner-Mitgliedschaft, wird der Tenant wieder gelöscht. Sonst
  *    stünde eine Community da, die niemandem gehört und die niemand
  *    aufräumen kann — genau die „verwaiste Row", die die Roadmap-DoD verbietet.
- *  - **Reihenfolge:** Tenant → Mitgliedschaft. Bis A6 Schritt 5 stand davor
- *    noch ein Abrechnungs-Workspace; die Community IST jetzt das zahlende
- *    Objekt (Davids Entscheidung 2026-07-30), es gibt nichts mehr davor.
+ *  - **Reihenfolge:** Testphase → Tenant → Mitgliedschaft. Bis A6 Schritt 5
+ *    stand davor noch ein Abrechnungs-Workspace; die Community IST jetzt das
+ *    zahlende Objekt (Davids Entscheidung 2026-07-30), es gibt nichts mehr
+ *    davor.
+ *  - **Testphase einmal je Konto (BE-015).** Vor dem Anlegen wird sie über
+ *    `claimTrial` vergeben (feste Zeile je Konto, 409 = gab es schon). Ohne
+ *    Testphase entsteht die Community trotzdem — auf `basic`, nur-lesend
+ *    (`billing`-Sperre), bis ein Abo sie öffnet. Scheitert die Anlage danach,
+ *    geht die Vergabe zurück (`releaseTrialClaim`).
  */
 
 export interface ProvisionInput {
@@ -46,8 +55,12 @@ export interface ProvisionResult {
   communityId: string
   host: string
   url: string
+  /** Der echte Plan der Zeile (`pro` mit Testphase, sonst `basic`). */
   plan: string
   trialEndsAt: string | null
+  /** true = diese Community hat eine Testphase (BE-015). Bei `reused` aus der
+   *  Zeile abgeleitet (`trialEndsAt` gesetzt). */
+  trial: boolean
   /** Zeilen-Scope im Pool — die Runtime braucht ihn, um die erste Seite der
    *  Community anzulegen (sie läuft dabei OHNE Mandanten-Kontext). */
   tenantId: string
@@ -142,6 +155,7 @@ export async function provisionCommunity(
         url: siteUrl(existing.host),
         plan: normalizeTenantPlan(existing.plan),
         trialEndsAt: existing.trialEndsAt,
+        trial: Boolean(existing.trialEndsAt),
         tenantId: existing.tenantId,
         reused: true,
       }
@@ -166,11 +180,29 @@ export async function provisionCommunity(
   // im Projekt des Nutzers entstehen, sonst gehört ihm seine Site nicht.
   const projectId = identity.projectId
 
+  // ── Testphase: einmal je Konto (BE-015) ─────────────────────────────────
+  // Die Community-Id entsteht VORHER, damit die Vergabe sie nennen kann.
+  // Ein `reused` oben vergibt nie.
+  const communityRowId = ID.unique()
+  const claim = await claimTrial(event, identity, communityRowId, now)
+    .catch((error) => { throw toH3Error(error, 'Could not create community') })
+  if (claim === 'unavailable') {
+    // Migration control-039 steht aus: wie bisher vergeben, aber laut.
+    logEvent('error', 'onboarding.trial_claims_missing', {
+      communityId: communityRowId,
+      runtimeUserId: identity.userId,
+    })
+  }
+  const withTrial = claim !== 'used'
+  const releaseClaim = async () => {
+    if (claim === 'granted') await releaseTrialClaim(event, identity, communityRowId)
+  }
+
   const tenantId = `t-${ID.unique()}`
   const tenant = await admin.tablesDB.createRow<TenantRow>({
     databaseId,
     tableId: COMMUNITIES_TABLE,
-    rowId: ID.unique(),
+    rowId: communityRowId,
     data: {
       name: input.name,
       host,
@@ -182,8 +214,10 @@ export async function provisionCommunity(
       // Testphase: Pro-QUOTA für 14 Tage. Die Pro-PRODUKTE (Feed, Events)
       // sind Early Access und damit ohnehin nicht Teil des Versprechens —
       // was hier gestaffelt wird, sind die Mengen-Limits.
-      plan: TRIAL_PLAN,
-      trialEndsAt: trialEndsAt(now),
+      // OHNE Testphase (das Konto hatte seine schon, BE-015): `basic` als
+      // Quota-Anker, kein Datum — nur-lesend über die Sperre unten.
+      plan: withTrial ? TRIAL_PLAN : TRIAL_FALLBACK_PLAN,
+      trialEndsAt: withTrial ? trialEndsAt(now) : null,
       theme: vibe.theme,
       variant: vibe.variant,
       // Neutral-Palette (control-020, Rest von B5): der Wizard fragt sie NICHT
@@ -228,9 +262,12 @@ export async function provisionCommunity(
       // M13 (control-034): eine frisch gegründete Community ist nicht gesperrt.
       // Explizit, damit eine neue Spalte hier eine Entscheidung erzwingt statt
       // stillschweigend auf null zu bleiben.
-      suspension: '',
-      suspensionReason: '',
-      suspendedAt: null,
+      // Ohne Testphase (BE-015) beginnt sie NUR-LESEND: dieselbe `billing`-
+      // Sperre wie nach dem Ende einer Testphase (trialSweep.ts). Der Kauf
+      // hebt sie im Webhook auf (`handleCommunitySubscriptionUpdate`).
+      suspension: withTrial ? '' : 'billing',
+      suspensionReason: withTrial ? '' : TRIAL_USED_SUSPENSION_REASON,
+      suspendedAt: withTrial ? null : new Date(now).toISOString(),
       pastDueSince: null,
       // control-035: eigene Domain. Eine frisch gegründete Community hat
       // keine — sie beginnt auf ihrer Subdomain, und die bleibt auch später
@@ -243,7 +280,10 @@ export async function provisionCommunity(
       customDomainVerifiedAt: null,
       customDomainActivatedAt: null,
     },
-  }).catch((error) => { throw toH3Error(error, 'Could not create community') })
+  }).catch(async (error) => {
+    await releaseClaim()
+    throw toH3Error(error, 'Could not create community')
+  })
 
   // ── Owner-Mitgliedschaft — mit Kompensation ───────────────────────────────
   try {
@@ -270,6 +310,7 @@ export async function provisionCommunity(
         host,
         message: cleanup instanceof Error ? cleanup.message : String(cleanup),
       }))
+    await releaseClaim()
     throw toH3Error(error, 'Could not create community')
   }
 
@@ -279,14 +320,16 @@ export async function provisionCommunity(
     runtimeUserId: identity.userId,
     inviteCodeId: input.inviteCode?.$id ?? '',
     emailVerified: identity.emailVerified,
+    trial: withTrial,
   })
 
   return {
     communityId: tenant.$id,
     host,
     url: siteUrl(host),
-    plan: TRIAL_PLAN,
+    plan: normalizeTenantPlan(tenant.plan),
     trialEndsAt: tenant.trialEndsAt,
+    trial: withTrial,
     tenantId,
     reused: false,
   }

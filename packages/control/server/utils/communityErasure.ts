@@ -13,6 +13,7 @@ import {
   type InviteCodeExport,
   type InviteRequestExport,
   type RetainedMembership,
+  type TrialClaimExport,
 } from '../../shared/communityTeam'
 import { ABUSE_REPORTS_TABLE, type AbuseReportRow } from '../../shared/abuseReports'
 import { INVITE_CODES_TABLE, type InviteCodeRow } from '../../shared/types/inviteCode'
@@ -21,6 +22,7 @@ import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../shared/t
 import { INVITE_REQUESTS_TABLE, type InviteRequestRow } from '../../shared/types/inviteRequest'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { listCommunityMembers, memberFacts } from './communityTeam'
+import { deleteTrialClaim, readTrialClaim } from './trialClaims'
 
 /**
  * F3 — DSGVO-Auskunft und -Löschung für die Zeilen, die das CONTROL PLANE über
@@ -31,7 +33,9 @@ import { listCommunityMembers, memberFacts } from './communityTeam'
  * und Löschung erreichen alle Tabellen mit Personenbezug") auch die Adresse an
  * zugewiesenen Early-Access-Codes (`invite_codes.boundEmail`/`label`) und in
  * der Auskunft die selbst verschickten/angenommenen Einladungen und die
- * eigenen Missbrauchsmeldungen (`abuse_reports.reporterEmail`).
+ * eigenen Missbrauchsmeldungen (`abuse_reports.reporterEmail`). Seit BE-015
+ * (2026-11-16) auch die Testphase des Kontos (`trial_claims`, eine Zeile mit
+ * fester Id aus Projekt + Konto).
  *
  * WARUM DAS EINE EIGENE NAHT BRAUCHT: `deleteUserCompletely` läuft in der
  * RUNTIME (Pool-/Silo-App). Sie räumt ihr eigenes Appwrite-Projekt ab — die
@@ -380,7 +384,21 @@ export async function exportCommunityUserData(
     if (row.acceptedBy === runtimeUserId) invitesAccepted.push(await inviteTrace(row, loadCommunity))
   }
 
-  return { memberships, invites, inviteRequests, invitesSent, invitesAccepted, inviteCodes, abuseReports }
+  // Die Testphase des Kontos (BE-015): über die feste Id gelesen. Ein
+  // Lesefehler wirft — die Auskunft meldet dann sichtbar `unavailable`.
+  const claim = await readTrialClaim(event, { projectId: runtimeProjectId, userId: runtimeUserId })
+  let trialClaim: TrialClaimExport | null = null
+  if (claim) {
+    const community = await loadCommunity(claim.communityId)
+    trialClaim = {
+      communityId: claim.communityId,
+      communityName: communityLabel(community, claim.communityId),
+      source: claim.source,
+      claimedAt: claim.claimedAt,
+    }
+  }
+
+  return { trialClaim, memberships, invites, inviteRequests, invitesSent, invitesAccepted, inviteCodes, abuseReports }
 }
 
 /**
@@ -503,5 +521,11 @@ export async function eraseCommunityUserData(
     invitesAnonymized++
   }
 
-  return { deleted, anonymized, invitesDeleted, invitesAnonymized, inviteRequestsDeleted, inviteCodesAnonymized, retained }
+  // Die Testphase des Kontos (BE-015). Gelöscht über die feste Id: „keine
+  // Zeile" (404) und „keine Tabelle" heißen nichts zu tun, JEDER andere Fehler
+  // bricht die Löschung ab (deleteUserCompletely löscht das Konto dann nicht).
+  // Wer danach ein neues Konto anlegt, ist für die Regel ein neues Konto.
+  const trialClaimsDeleted = await deleteTrialClaim(event, { projectId: runtimeProjectId, userId: runtimeUserId }) ? 1 : 0
+
+  return { deleted, anonymized, invitesDeleted, invitesAnonymized, inviteRequestsDeleted, inviteCodesAnonymized, trialClaimsDeleted, retained }
 }

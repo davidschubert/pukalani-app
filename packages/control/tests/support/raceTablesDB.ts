@@ -18,6 +18,9 @@ import { AppwriteException } from 'node-appwrite'
  *
  * Abfragen werden wirklich ausgewertet (equal, greaterThan, orderAsc/Desc,
  * limit, offset, cursorAfter), sonst bewiese ein Zähl-Test nichts.
+ *
+ * Eine Tabelle in `missingTables` antwortet wie eine nicht gefahrene Migration
+ * (404 `table_not_found`) — für Code, der vor seiner Migration live gehen darf.
  */
 
 export interface RaceRow { $id: string, $createdAt: string, [key: string]: unknown }
@@ -32,7 +35,13 @@ export function createRaceTablesDB() {
   const failingUpdates = new Map<string, (data: Record<string, unknown>) => boolean>()
   /** Tabellen, deren Lesen scheitern soll (z. B. die Sperre). */
   const failingReads = new Map<string, () => Error>()
+  /** Tabellen, die es (noch) nicht gibt. */
+  const missingTables = new Set<string>()
   let clock = 0
+
+  function assertTable(tableId: string) {
+    if (missingTables.has(tableId)) throw new AppwriteException('Table not found', 404, 'table_not_found')
+  }
 
   function table(id: string): Map<string, RaceRow> {
     let found = tables.get(id)
@@ -66,6 +75,7 @@ export function createRaceTablesDB() {
   const tablesDB = {
     async listRows({ tableId, queries = [] }: { databaseId?: string, tableId: string, queries?: string[] }) {
       await handOff()
+      assertTable(tableId)
       const failure = failingReads.get(tableId)
       if (failure) throw failure()
       const parsed = queries.map(query => JSON.parse(query) as ParsedQuery)
@@ -92,12 +102,16 @@ export function createRaceTablesDB() {
     },
     async getRow({ tableId, rowId }: { databaseId?: string, tableId: string, rowId: string }) {
       await handOff()
+      assertTable(tableId)
+      const failure = failingReads.get(tableId)
+      if (failure) throw failure()
       const row = table(tableId).get(rowId)
       if (!row) throw notFound()
       return { ...row }
     },
     async createRow({ tableId, rowId, data }: { databaseId?: string, tableId: string, rowId: string, data: Record<string, unknown>, permissions?: string[] }) {
       await handOff()
+      assertTable(tableId)
       const id = rowId === 'unique()' ? `row-${++clock}` : rowId
       if (table(tableId).has(id)) throw new AppwriteException('Document with the requested ID already exists.', 409, 'row_already_exists')
       return { ...seed(tableId, { ...data, $id: id }) }
@@ -113,6 +127,7 @@ export function createRaceTablesDB() {
     },
     async deleteRow({ tableId, rowId }: { databaseId?: string, tableId: string, rowId: string }) {
       await handOff()
+      assertTable(tableId)
       if (!table(tableId).delete(rowId)) throw notFound()
       return {}
     },
@@ -146,10 +161,12 @@ export function createRaceTablesDB() {
     seed,
     failingUpdates,
     failingReads,
+    missingTables,
     reset() {
       tables.clear()
       failingUpdates.clear()
       failingReads.clear()
+      missingTables.clear()
       clock = 0
     },
   }

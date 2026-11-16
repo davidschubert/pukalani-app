@@ -43,6 +43,21 @@ describe('buildCommunityReadyMail', () => {
     expect(mail.text).toContain('https://chor-wetzlar.pukalani.app/de/dashboard')
     expect(mail.text).toContain('https://account.pukalani.app/de')
   })
+  it('ohne Testphase (BE-015): kein Enddatum, dafür der Weg zum Plan — de + en', () => {
+    const de = buildCommunityReadyMail({ ...BASE, trialEndsAt: null, locale: 'de' })
+    expect(de.text).not.toContain('26.08.2026')
+    expect(de.text).toContain('braucht die Community ein Abo')
+    expect(de.text).toContain('https://chor-wetzlar.pukalani.app/de/dashboard/community/plan')
+    const en = buildCommunityReadyMail({ ...BASE, trialEndsAt: null, locale: 'en' })
+    expect(en.text).not.toContain('trial')
+    expect(en.text).toContain('needs a subscription')
+    expect(en.text).toContain('https://chor-wetzlar.pukalani.app/dashboard/community/plan')
+  })
+  it('mit Testphase steht der Plan-Satz NICHT drin (Gegenprobe)', () => {
+    const mail = buildCommunityReadyMail({ ...BASE, locale: 'de' })
+    expect(mail.text).not.toContain('braucht die Community ein Abo')
+    expect(mail.text).not.toContain('/dashboard/community/plan')
+  })
   it('lokale Hosts bekommen http statt https (Dev/Beweisläufe)', () => {
     const mail = buildCommunityReadyMail({
       ...BASE, host: 'kunde-a.localhost:3002', accountHost: 'app.localhost:3002', locale: 'en',

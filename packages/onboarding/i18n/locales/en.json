@@ -357,7 +357,7 @@
       },
       "summary": {
         "title": "Does this look right?",
-        "intro": "Check your answers. One click creates your community — the trial starts at that moment."
+        "intro": "Check your answers. One click creates your community."
       }
     },
     "fields": {
@@ -441,7 +441,10 @@
       "trialBody": "You can try everything for 14 days. After that your community is read-only until you pick a plan — content and members stay, nothing is deleted.",
       "operatorTermsLabel": "I accept the Terms for Community Operators",
       "operatorTermsLink": "Read the Terms for Community Operators (new tab)",
-      "operatorTermsDraftNotice": "Draft, not yet reviewed by a lawyer — the binding version replaces it after the review. We record which version you agreed to."
+      "operatorTermsDraftNotice": "Draft, not yet reviewed by a lawyer — the binding version replaces it after the review. We record which version you agreed to.",
+      "noTrialTitle": "No trial",
+      "noTrialBody": "The trial is once per account, and you have already used yours. You can create and set up the community; to post in it, it needs a subscription (Personal or Pro).",
+      "trialUnknown": "The trial is once per account."
     },
     "errors": {
       "hostTaken": "That address was just taken. Go back one step and pick another one.",
@@ -460,7 +463,8 @@
       "hints": {
         "visibility": "Public by default: your content is readable by anyone and found by search engines. \"Members only\" is a switch in the settings — it also takes everything published so far out of public view.",
         "trial": "The trial runs for 14 days, with everything Pro can do. After that your community is read-only until you pick a plan — nothing is deleted.",
-        "settings": "Name, address, colors and home page can be changed any time in your community's dashboard."
+        "settings": "Name, address, colors and home page can be changed any time in your community's dashboard.",
+        "noTrial": "No trial: the trial is once per account. Until it has a subscription (Personal or Pro) the community is read-only — choose a plan in the dashboard under Community → Plan."
       }
     },
     "validation": {

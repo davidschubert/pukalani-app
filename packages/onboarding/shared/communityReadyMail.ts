@@ -30,7 +30,8 @@ export interface CommunityReadyMailInput {
   host: string
   /** Host des Kundenbereichs (account.pukalani.app), ohne Schema. */
   accountHost: string
-  /** Ende der Testphase (ISO) — leer/null = keine Testphase, Absatz entfällt. */
+  /** Ende der Testphase (ISO) — leer/null = keine Testphase (BE-015: das Konto
+   *  hatte seine schon). Dann steht statt des Enddatums der Weg zum Plan. */
   trialEndsAt: string | null
   /** Sprache der Mail ('de' | 'en'). */
   locale: string
@@ -79,6 +80,10 @@ export function buildCommunityReadyMail(input: CommunityReadyMailInput): Communi
   const dashboard = siteLink(input.host, '/dashboard', german)
   const account = siteLink(input.accountHost, '', german)
   const trialDate = input.trialEndsAt ? formatMailDate(input.trialEndsAt, german) : ''
+  // OHNE Testphase (BE-015) ist die Community vom ersten Moment an nur zum
+  // Lesen — die Mail sagt, was sie öffnet, und wo.
+  const plan = siteLink(input.host, '/dashboard/community/plan', german)
+  const noTrial = !input.trialEndsAt
 
   const subject = german
     ? `Deine Community steht: ${input.siteName}`
@@ -94,6 +99,9 @@ export function buildCommunityReadyMail(input: CommunityReadyMailInput): Communi
         ...(trialDate
           ? ['', `Deine Testphase läuft bis zum ${trialDate}. Danach ist die Community ohne Abo nur noch zum Lesen — Inhalte und Mitglieder bleiben.`]
           : []),
+        ...(noTrial
+          ? ['', `Zum Schreiben braucht die Community ein Abo (Personal oder Pro); bis dahin ist sie nur zum Lesen. Plan wählen: ${plan}`]
+          : []),
         '',
         'Im Dashboard wartet eine kurze Liste mit den ersten fünf Schritten.',
       ]
@@ -105,6 +113,9 @@ export function buildCommunityReadyMail(input: CommunityReadyMailInput): Communi
         `Your account area: ${account}`,
         ...(trialDate
           ? ['', `Your trial runs until ${trialDate}. After that the community stays read-only without a subscription — content and members remain.`]
+          : []),
+        ...(noTrial
+          ? ['', `To post in it, the community needs a subscription (Personal or Pro); until then it is read-only. Choose a plan: ${plan}`]
           : []),
         '',
         'A short list with your first five steps is waiting in the dashboard.',
