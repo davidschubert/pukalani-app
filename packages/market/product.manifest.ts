@@ -44,7 +44,7 @@ export default {
   requires: ['brand'],
   hasMigrations: true,
   // Schema-Probe (OPS-008): market-004 legt market_competitors.role an.
-  schema: { latest: '004', probe: { migration: '004', table: 'market_competitors', column: 'role' } },
+  schema: { latest: '005', probe: { migration: '005', table: 'market_runs' } },
   apiPrefixes: ['/api/market'],
   title: { en: 'Market comparison', de: 'Marktvergleich' },
   description: {

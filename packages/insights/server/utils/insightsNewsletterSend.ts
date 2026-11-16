@@ -3,6 +3,7 @@ import { ID, Query } from 'node-appwrite'
 import type { InsightsNewsletterIntros, InsightsNewsletterLocale, InsightsSendState } from '../../shared/insightsNewsletter'
 import {
   INSIGHTS_NEWSLETTER_BATCH,
+  INSIGHTS_NEWSLETTER_BATCH_BUDGET_MS,
   insightsNewsletterIsRecipient,
   insightsNewsletterLocaleOf,
 } from '../../shared/insightsNewsletter'
@@ -276,6 +277,18 @@ export interface InsightsNewsletterBatchInput {
    * mitten in der Liste, und morgen geht es weiter.
    */
   maxBatch?: number
+  /**
+   * Die Uhr des Zeitdeckels (`INSIGHTS_NEWSLETTER_BATCH_BUDGET_MS`). Vorgabe
+   * `Date.now` — injizierbar, damit ein Test den Deckel ohne echte Wartezeit
+   * reissen kann.
+   */
+  now?: () => number
+  /**
+   * Hat der Lauf seine Sperre verloren (`keepRunLeaseAlive().lost()`)? Dann
+   * darf nach der Frist ein anderer Prozess übernehmen — der Stapel hört
+   * deshalb zwischen zwei Mails auf, wie beim Zeitdeckel.
+   */
+  leaseLost?: () => boolean
 }
 
 export interface InsightsNewsletterBatchResult {
@@ -287,6 +300,12 @@ export interface InsightsNewsletterBatchResult {
   done: boolean
   /** Der Lauf ist am SERVER gescheitert (kein Mailer) — nicht an einer Adresse. */
   aborted: boolean
+  /**
+   * Der Stapel hat VOR dem Ende seiner Zeilen aufgehört — Zeitdeckel oder
+   * verlorene Sperre. Kein Fehler: der Cursor steht hinter der letzten
+   * angesehenen Zeile, der nächste Aufruf setzt dort fort.
+   */
+  stoppedEarly: boolean
   /**
    * Der fortgeschriebene Cursor. Er bleibt SERVER-INTERN (die Antwort der
    * Route trägt ihn nicht, s. `InsightsNewsletterSendState`) — die Route
@@ -315,6 +334,15 @@ export interface InsightsNewsletterBatchResult {
  * `done` kommt aus der ROHEN Zeilenzahl (`rows.length < BATCH`), nicht aus
  * `sent + failed`: ein Stapel, in dem die reine Regel alle fünfzig Zeilen
  * aussortiert, hat nichts verschickt und ist trotzdem nicht fertig.
+ *
+ * ── DER ZEITDECKEL (GA1 P18) ────────────────────────────────────────────
+ * Nach `INSIGHTS_NEWSLETTER_BATCH_BUDGET_MS` beginnt der Stapel keine neue
+ * Zeile mehr (die erste beginnt er immer — sonst käme ein Lauf, dessen
+ * Lesen schon die Frist frisst, nie voran). Er schreibt den Cursor hinter die
+ * letzte ANGESEHENE Zeile und antwortet. `done` verlangt deshalb ZWEIERLEI:
+ * alle gelesenen Zeilen angesehen UND `rows.length < limit` — ein vorzeitig
+ * beendeter kurzer Stapel ist nicht das Ende der Liste (derselbe Fehler wie
+ * beim gebremsten Stapel, s. `limit`).
  */
 export async function runInsightsNewsletterBatch(
   event: H3Event,
@@ -322,6 +350,8 @@ export async function runInsightsNewsletterBatch(
 ): Promise<InsightsNewsletterBatchResult> {
   const { tablesDB, databaseId } = insightsDb(event)
   const startCursor = input.row.cursor ?? ''
+  const now = input.now ?? Date.now
+  const deadline = now() + INSIGHTS_NEWSLETTER_BATCH_BUDGET_MS
   /**
    * Der Deckel DIESES Stapels (RS1 a). Er geht in BEIDE Rechnungen ein — in
    * `Query.limit` und in `done` weiter unten. Würde `done` gegen die feste
@@ -354,8 +384,17 @@ export async function runInsightsNewsletterBatch(
   let sent = 0
   let failed = 0
   let aborted = false
+  let stoppedEarly = false
+  let seen = 0
 
   for (const subscriber of rows) {
+    // Zeitdeckel und verlorene Sperre: zwischen zwei Zeilen aufhören, nie
+    // mitten in einer. Die erste Zeile läuft immer (s. Kopf).
+    if (seen > 0 && (now() >= deadline || input.leaseLost?.())) {
+      stoppedEarly = true
+      break
+    }
+    seen++
     if (!insightsNewsletterIsRecipient(subscriber)) {
       // Angesehen und übersprungen — der Cursor geht trotzdem weiter (s. Kopf).
       cursor = subscriber.$id
@@ -382,8 +421,9 @@ export async function runInsightsNewsletterBatch(
     cursor = subscriber.$id
   }
 
-  const done = !aborted && rows.length < limit
-  const now = new Date().toISOString()
+  // ZWEI Bedingungen (s. Kopf): ein vorzeitig beendeter Stapel ist nie fertig.
+  const done = !aborted && !stoppedEarly && rows.length < limit
+  const savedAt = new Date().toISOString()
   const state: InsightsSendState = aborted ? 'failed' : (done ? 'done' : 'running')
 
   const nextSent = Math.max(0, Math.round(input.row.sent ?? 0)) + sent
@@ -405,7 +445,7 @@ export async function runInsightsNewsletterBatch(
         state,
         // Nur ein ABGESCHLOSSENER Lauf trägt einen Endzeitpunkt. Ein
         // abgebrochener bekommt keinen: er ist nicht fertig, er wartet.
-        finishedAt: done ? now : '',
+        finishedAt: done ? savedAt : '',
       },
     })
   }
@@ -425,6 +465,9 @@ export async function runInsightsNewsletterBatch(
     totalSent: nextSent,
     totalFailed: nextFailed,
     done,
+    // Ein Stapel, der am Zeitdeckel (oder an einer verlorenen Sperre)
+    // aufgehört hat — `batch` zählt dann mehr Zeilen, als angesehen wurden.
+    stoppedEarly,
   })
   if (done) {
     logEvent('info', 'insights.newsletter_send_finished', {
@@ -435,7 +478,7 @@ export async function runInsightsNewsletterBatch(
     })
   }
 
-  return { sent, failed, done, aborted, cursor, state: toInsightsNewsletterSendState(saved) }
+  return { sent, failed, done, aborted, stoppedEarly, cursor, state: toInsightsNewsletterSendState(saved) }
 }
 
 // ── 5. Der Start ───────────────────────────────────────────────────────────

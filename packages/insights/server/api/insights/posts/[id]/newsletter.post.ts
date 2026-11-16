@@ -5,7 +5,9 @@ import {
   INSIGHTS_NEWSLETTER_BATCH,
   insightsNewsletterLocaleOf,
 } from '../../../../../shared/insightsNewsletter'
+import { INSIGHTS_RUNS_TABLE } from '../../../../../shared/insightsRows'
 import type { InsightsNewsletterSendBatchResponse } from '../../../../../shared/types/insightsApi'
+import type { RunLeaseRow, RunLeaseStore } from '../../../../../../core/server/utils/runLease'
 
 /**
  * DEN NEWSLETTER ZU DIESEM BEITRAG SCHICKEN (`insights.manage`, BI1 I5b) —
@@ -41,7 +43,11 @@ import type { InsightsNewsletterSendBatchResponse } from '../../../../../shared/
  *     Mail (Begründung an `createInsightsSendRow`). Ein 409 aus dem
  *     Unique-Index ist das Rennen zweier offener Reiter: die Zeile wird neu
  *     gelesen und der Lauf FORTGESETZT, nicht ein zweiter gestartet.
- *  4. EINEN Stapel abarbeiten (höchstens 50), schreiben, antworten.
+ *  4. DIE LAUF-SPERRE nehmen (BE-010, `insights_runs`) — ein zweiter
+ *     gleichzeitiger Aufruf bekommt 409 `run_running` — und die Sende-Zeile
+ *     UNTER der Sperre neu lesen und neu entscheiden.
+ *  5. EINEN Stapel abarbeiten (höchstens 50, höchstens 40 s), schreiben,
+ *     Sperre beenden, antworten.
  *
  * ── DIE EINLEITUNG KOMMT NUR BEIM START AUS DEM FORMULAR ────────────────
  * Beim Fortsetzen steht sie in der Sende-Zeile, und von dort wird sie gelesen.
@@ -135,15 +141,75 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSendB
   // Versand (sonst schickt der nächste Druck alles erneut).
   if (!row) throw insightsStorageError(new Error('send row missing'), `newsletter send ${id}`)
 
-  const result = await runInsightsNewsletterBatch(event, {
-    postId: id,
-    post: target.post,
-    href: target.href,
-    // Beim Fortsetzen gilt der Text der Zeile, nicht der des Formulars (s. Kopf).
-    intros: { introDe: row.introDe ?? '', introEn: row.introEn ?? '' },
-    row,
-    maxBatch: budget.allowed,
-  })
+  /**
+   * DIE LAUF-SPERRE (BE-010, Davids Entscheidung: „Der Newsletter-Versand
+   * sperrt sich gegen einen zweiten gleichzeitigen Start").
+   *
+   * Der Unique-Index oben verhindert zwei VERSÄNDE, nicht zwei STAPEL: zwei
+   * gleichzeitige Aufrufe (zweiter Reiter, ein erneuter Klick nach einer
+   * abgerissenen Antwort) lasen denselben Cursor und schickten dieselben bis
+   * zu fünfzig Mails zweimal. Die Sperre ist eine Zeile mit fester Id je
+   * (Sende-Zeile, Nummer) in `insights_runs` (Kopf von
+   * `core/server/utils/runLease.ts`); der Verlierer bekommt 409
+   * `run_running`, und die Seite zeigt dafür einen ruhigen Hinweis.
+   */
+  const leases = appwriteRunLeaseStore({ ...insightsDb(event), tableId: INSIGHTS_RUNS_TABLE })
+  const { lease } = await acquireRunLease(leases, { scope: 'newsletter', subject: row.$id })
+
+  /**
+   * ERST MIT DER SPERRE DIE ZEILE NEU LESEN — sonst ist die Sperre nur halb.
+   *
+   * Ein Aufruf, der seine Zeile VOR dem Ende eines Vorgängers gelesen hat und
+   * die Sperre erst DANACH bekommt, hielte einen veralteten Cursor in der
+   * Hand und schickte von dort aus noch einmal. Nach dem Nehmen der Sperre
+   * kann niemand mehr schreiben; was jetzt gelesen wird, gilt.
+   */
+  let fresh: Awaited<ReturnType<typeof loadInsightsSendRow>>
+  try {
+    fresh = await loadInsightsSendRow(event, id)
+  }
+  catch (error) {
+    await endLease(leases, lease, 'failed')
+    throw error
+  }
+  if (!fresh) {
+    await endLease(leases, lease, 'failed')
+    throw insightsStorageError(new Error('send row missing'), `newsletter send ${id}`)
+  }
+  if (decideInsightsSendStart(fresh) === 'already_sent') {
+    await endLease(leases, lease, 'rejected')
+    throw insightsSendAlreadySent()
+  }
+  row = fresh
+
+  /**
+   * Der Herzschlag hält die Sperre, solange der Stapel läuft. Stirbt der
+   * Prozess mitten im Stapel, bleibt er stehen, und nach zwei Minuten ist der
+   * Versand von selbst wieder startbar (gerechnet, kein Aufräumer). Der
+   * Cursor steht dann am Stapel-ANFANG — die bekannte Grenze aus dem Kopf von
+   * `insightsNewsletterSend.ts` („begrenzt den Schaden eines Abbruchs auf
+   * fünfzig"; den Rest fängt der `Resend-Idempotency-Key` je Mail).
+   */
+  const alive = keepRunLeaseAlive(leases, lease)
+  let outcome = 'failed'
+  let result: Awaited<ReturnType<typeof runInsightsNewsletterBatch>>
+  try {
+    result = await runInsightsNewsletterBatch(event, {
+      postId: id,
+      post: target.post,
+      href: target.href,
+      // Beim Fortsetzen gilt der Text der Zeile, nicht der des Formulars (s. Kopf).
+      intros: { introDe: row.introDe ?? '', introEn: row.introEn ?? '' },
+      row,
+      maxBatch: budget.allowed,
+      leaseLost: () => alive.lost(),
+    })
+    outcome = result.aborted ? 'failed' : 'done'
+  }
+  finally {
+    alive.stop()
+    await endLease(leases, lease, outcome)
+  }
 
   const remaining = result.done ? 0 : await countInsightsNewsletterRecipients(event, result.cursor)
 
@@ -156,3 +222,24 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSendB
     send: result.state,
   }
 })
+
+/**
+ * DIE SPERRE BEENDEN — und dabei nie die eigentliche Antwort verdecken.
+ *
+ * Scheitert das Schreiben des Endes, steht der Lauf weiter auf „läuft", bis
+ * sein Herzschlag zwei Minuten alt ist; danach ist der Versand von selbst
+ * wieder startbar. Das ist lästig, aber kein Grund, einer Redaktion einen
+ * gelungenen Stapel als Fehler zu melden. Ins Log nur die Meldung.
+ */
+async function endLease(
+  store: RunLeaseStore,
+  lease: Pick<RunLeaseRow, '$id'>,
+  outcome: string,
+): Promise<void> {
+  try {
+    await finishRunLease(store, lease, { outcome })
+  }
+  catch (error) {
+    console.error('[insights] Versand-Sperre nicht beendet:', error instanceof Error ? error.message : 'unknown')
+  }
+}

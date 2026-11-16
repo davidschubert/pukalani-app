@@ -51,7 +51,14 @@ function quoted(id: string): RegExp {
   return new RegExp(`['"\`]${escaped}['"\`]`)
 }
 
-const CREATES = /\bcreate\w*Table\(|\bcreate\w*Column\(/
+/**
+ * WAS ALS „LEGT ETWAS AN" ZÄHLT: der direkte Aufruf — oder eine Fabrik aus
+ * `scripts/migrations-lib/`, die eine Tabelle anlegt (`ensure…Table(`, seit
+ * GA1 P18: `ensureRunLeaseTable` baut `market_runs` und `insights_runs` aus
+ * EINEM Schema). Ohne den zweiten Zweig sähe der Wächter eine solche Migration
+ * gar nicht — weder als Probe noch als „spätere Migration, die etwas anlegt".
+ */
+const CREATES = /\bcreate\w*Table\(|\bcreate\w*Column\(|\bensure\w*Table\(/
 
 /** Argument-Text jedes Aufrufs `name(` bis zur passenden schließenden Klammer. */
 function callArguments(source: string, name: string): string[] {

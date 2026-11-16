@@ -11,6 +11,8 @@ import type {
 } from '../marketProfile'
 import type { MarketPaywallState } from '../marketPaywall'
 import type { MarketMatrixRow } from '../marketReportRules'
+import type { MarketRunDetailPhase } from '../marketRun'
+import type { RunLeaseState } from '../../../core/shared/runLease'
 
 /**
  * DIE ANTWORT-TYPEN DER `/api/market`-ROUTEN (MV1 M2).
@@ -66,6 +68,11 @@ export interface MarketOverviewResponse {
   max: number
   /** Das Opt-in dieses Brandings (§7.2 Nr. 4) — der Schalter in „Stand". */
   marketVisibility: 'private' | 'shared'
+  /**
+   * Der jüngste Lauf (GA1 P18). `state: 'none'` auch dann, wenn die
+   * Lauf-Tabelle nicht lesbar war — die Seite bleibt ohne Lauf-Stand ladbar.
+   */
+  run: MarketRunView
 }
 
 /**
@@ -88,30 +95,41 @@ export interface MarketVisibilityResponse {
 }
 
 /**
- * Das Ergebnis EINES Laufs (§2.11 Nr. 2). Der VERGLEICH steht seit MV1 M3
- * darin, aber nur AUF ANSAGE (`withReport`, Default aus) — Begründung im Kopf
- * von `run.post.ts`.
+ * DER JÜNGSTE LAUF EINES BRANDINGS, wie die Übersicht ihn meldet (GA1 P18,
+ * BE-008). Der Zustand ist gegen die SERVER-Uhr gerechnet
+ * (`core/shared/runLease.ts`); die Schritte tragen die Namen aus den
+ * Kandidaten-Zeilen (das gespeicherte Detail kennt nur Kennungen).
+ */
+export interface MarketRunView {
+  state: RunLeaseState
+  startedAt: string
+  finishedAt: string
+  /** Wie viele Kandidaten der Lauf hat, und wie viele er schon gelesen hat. */
+  total: number
+  done: number
+  phase: MarketRunDetailPhase
+  /** War die KI beim Start an? `false` ⇒ „KI ist aus" nach dem Lauf. */
+  aiEnabled: boolean
+  /** Hat der Lauf mit etwas anderem als `done` geendet? */
+  failed: boolean
+  steps: MarketRunStep[]
+}
+
+/**
+ * DIE ANTWORT AUF „MARKT VERGLEICHEN" (seit GA1 P18 ein 202).
+ *
+ * Bis P18 rechnete die Route alles in EINER Anfrage und antwortete mit
+ * Schritten und Bericht. Seither antwortet sie, sobald der Lauf gesperrt und
+ * gebucht ist; Fortschritt und Ergebnis liest die Seite über die Übersicht
+ * (`MarketOverviewResponse.run`) und den Bericht (`GET /report`).
  */
 export interface MarketRunResponse {
-  /** `false`, wenn es nichts zu tun gab (alle Kandidaten schon aktuell). */
+  /** `false`, wenn es nichts zu tun gab (keine Kandidaten) — dann ohne Lauf. */
   ran: boolean
-  /** Je Kandidat der erreichte Stand — auch für die, die nichts zu tun hatten. */
-  steps: MarketRunStep[]
-  /**
-   * Wurde extrahiert? `false` heisst: der Abruf lief, die Auswertung nicht
-   * (Kill-Switch oder kein Schlüssel, §2.8 „die Seite meldet: KI ist aus").
-   */
+  /** War die KI beim Start an? */
   aiEnabled: boolean
-  /** Wie viele Kandidaten ein NEUES Marktprofil bekommen haben. */
-  extracted: number
-  /** Wie viele Kandidaten ihr vorhandenes Profil behalten haben (Idempotenz). */
-  reused: number
-  /**
-   * Der Bericht, falls der Lauf mit `withReport` gerufen wurde (MV1 M3). Ohne
-   * das Flag steht hier `null` — der Beweis von M2 prüft genau diese Form
-   * weiter, und ein automatisch angehängter Bericht hätte ihn geändert.
-   */
-  report?: MarketReportView | null
+  /** Der eben gestartete Lauf (`state: 'running'`), sonst `null`. */
+  run: MarketRunView | null
 }
 
 /**

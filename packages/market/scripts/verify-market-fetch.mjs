@@ -245,6 +245,26 @@ async function marketRows(table, profileId) {
   return res.rows
 }
 
+/**
+ * DER LAUF SEIT GA1 P18 (BE-008): `POST /run` antwortet 202, sobald er
+ * gesperrt und gebucht ist; gerechnet wird dahinter. Gewartet wird über die
+ * Übersicht (`run.state`), bis er nicht mehr läuft. `run` ist danach der
+ * Stand aus `GET /api/market/profiles/<id>` (Schritte MIT Namen).
+ */
+async function runAndWait(base, cookie, query = '') {
+  const post = await call(`${base}/run${query}`, { method: 'POST', cookie })
+  if (post.status !== 202) return { post, run: null }
+  const deadline = Date.now() + 10 * 60_000
+  let run = post.json?.run ?? null
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    const overview = await call(base, { cookie })
+    run = overview.json?.run ?? null
+    if (run && run.state !== 'running') break
+  }
+  return { post, run }
+}
+
 // ── Der Lauf ───────────────────────────────────────────────────────────────
 
 try {
@@ -352,11 +372,13 @@ try {
   // ── 4 · Der Lauf ────────────────────────────────────────────────────────
   console.log('\n4 · Der Lauf liest, wertet aus und legt ab')
   await acceptChapterB(profileId)
-  const run = await call(`${base}/run`, { method: 'POST', cookie: owner.cookie })
-  check('nach der Abnahme läuft er ⇒ 200 (GEGENPROBE zu 1)',
-    run.status === 200 && run.json?.ran === true, `${run.status} ${run.text.slice(0, 200)}`)
+  const run = await runAndWait(base, owner.cookie)
+  check('nach der Abnahme startet er ⇒ 202 (GEGENPROBE zu 1)',
+    run.post.status === 202 && run.post.json?.ran === true, `${run.post.status} ${run.post.text.slice(0, 200)}`)
+  check('… und endet `done` (abgefragt über die Übersicht)',
+    run.run?.state === 'done', JSON.stringify(run.run ?? {}).slice(0, 200))
 
-  const steps = run.json?.steps ?? []
+  const steps = run.run?.steps ?? []
   const stepFor = name => steps.find(step => step.name === name)
 
   const upcountryStep = stepFor('Upcountry Roast')
@@ -452,11 +474,11 @@ try {
   // ── 8 · Idempotenz ──────────────────────────────────────────────────────
   console.log('\n8 · Derselbe Stand kostet nichts')
   const before = (await marketRows('market_profiles', profileId)).length
-  const second = await call(`${base}/run`, { method: 'POST', cookie: owner.cookie })
+  const second = await runAndWait(base, owner.cookie)
   const after = (await marketRows('market_profiles', profileId)).length
-  check('der zweite Lauf meldet `reused` und legt KEIN neues Marktprofil an',
-    second.status === 200 && (second.json?.reused ?? 0) > 0 && after === before,
-    `${second.status} reused=${second.json?.reused} rows ${before}→${after}`)
+  check('der zweite Lauf endet `done` und legt KEIN neues Marktprofil an',
+    second.post.status === 202 && second.run?.state === 'done' && after === before,
+    `${second.post.status} ${second.run?.state} rows ${before}→${after}`)
 
   // ── 9 · Die KI-Aussensicht bleibt getrennt ──────────────────────────────
   console.log('\n9 · Die KI-Aussensicht steht NEBEN dem Website-Profil')
@@ -496,10 +518,11 @@ finally {
   for (const server of servers) server.closeAllConnections?.()
   for (const server of servers) await new Promise(done => server.close(done))
 
-  for (const table of ['market_reports', 'market_profiles', 'market_competitors']) {
+  // `market_runs` hängt über `subject` am Branding (GA1 P18).
+  for (const [table, column] of [['market_runs', 'subject'], ['market_reports', 'profileId'], ['market_profiles', 'profileId'], ['market_competitors', 'profileId']]) {
     for (const id of cleanup.profiles) {
       const rows = await tablesDB.listRows({
-        databaseId, tableId: table, queries: [Query.equal('profileId', id), Query.limit(200)],
+        databaseId, tableId: table, queries: [Query.equal(column, id), Query.limit(200)],
       }).catch(() => ({ rows: [] }))
       for (const row of rows.rows) {
         await tablesDB.deleteRow({ databaseId, tableId: table, rowId: row.$id }).catch(() => {})

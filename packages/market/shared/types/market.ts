@@ -42,6 +42,12 @@ import {
 export const MARKET_COMPETITORS_TABLE = 'market_competitors'
 export const MARKET_PROFILES_TABLE = 'market_profiles'
 export const MARKET_REPORTS_TABLE = 'market_reports'
+/**
+ * Die Lauf-Sperre (market-005, GA1 P18) — EINE Zeile je Lauf, `subject` ist
+ * die Profil-Id. Schema und Logik gehören dem Core (`core/shared/runLease.ts`,
+ * `core/server/utils/runLease.ts`); hier steht nur, welche Tabelle es ist.
+ */
+export const MARKET_RUNS_TABLE = 'market_runs'
 
 // ── Zeilen (market-001 … market-003) ────────────────────────────────────────
 

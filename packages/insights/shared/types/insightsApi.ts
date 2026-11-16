@@ -197,6 +197,12 @@ export interface InsightsPostStateResponse {
   post: InsightsPost
   issues: InsightsReviewIssue[]
   changed: boolean
+  /**
+   * Wie viele Quellen das Gate in seiner Gesamtfrist NICHT lesen konnte
+   * (GA1 P18) — nur an einer Ablehnung gesetzt. Sie zählen als nicht belegt
+   * (fail-closed); die Seite zeigt dazu einen ruhigen Hinweis.
+   */
+  sourcesTimedOut?: number
 }
 
 /**
@@ -307,6 +313,10 @@ export interface InsightsRadarRunResponse {
   errors: number
   quotaUnits: number
   skipped?: 'not_configured' | 'no_channels' | 'quota_estimate' | 'running'
+  /** Teil-Ergebnis: die Abruf-Frist des Knopfes ist gerissen (GA1 P18). */
+  partial?: boolean
+  /** Wie viele Kanäle der Teil-Lauf nicht mehr gelesen hat. */
+  channelsUnread?: number
 }
 
 

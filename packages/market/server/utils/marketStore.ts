@@ -10,6 +10,7 @@ import {
   MARKET_COMPETITORS_TABLE,
   MARKET_PROFILES_TABLE,
   MARKET_REPORTS_TABLE,
+  MARKET_RUNS_TABLE,
 } from '../../shared/types/market'
 import { MARKET_COMPETITORS_MAX } from '../../shared/marketProfile'
 import { loadOwnedProfile } from '../contracts/brandContract'
@@ -292,11 +293,15 @@ export async function createMarketReport(
  *
  * Aufgerufen wird das von zwei Stellen im brand-Layer über die Registry
  * (`registerBrandProfileCascade`): der Löschroute eines Brandings und dem
- * GDPR-Contributor. Deshalb steht die Reihenfolge fest: Berichte → Profile →
- * Kandidaten, also Kinder zuerst — dieselbe Begründung wie im Kopf der
+ * GDPR-Contributor. Deshalb steht die Reihenfolge fest: Läufe → Berichte →
+ * Profile → Kandidaten, also Kinder zuerst — dieselbe Begründung wie im Kopf der
  * brand-Löschroute (ein Abbruch soll SICHTBAREN Rest hinterlassen, keinen
  * unsichtbaren; ein Kandidat ohne Bericht taucht in der Liste auf, ein Bericht
  * ohne Kandidaten nirgends).
+ *
+ * Die LÄUFE (`market_runs`, Lauf-Sperre aus GA1 P18) hängen nicht über
+ * `profileId`, sondern über `subject` am Branding — die Spalte gehört dem
+ * Core-Schema, das jeder Layer teilt.
  *
  * IDEMPOTENT: jede Löschung verzeiht ein 404, und eine fehlende TABELLE
  * ebenfalls — auf einer Instanz ohne market-Migration hat dieser Layer nichts,
@@ -306,10 +311,16 @@ export async function removeMarketProfileData(event: H3Event, profileId: string)
   const { tablesDB, databaseId } = marketDb(event)
   let removed = 0
 
-  for (const tableId of [MARKET_REPORTS_TABLE, MARKET_PROFILES_TABLE, MARKET_COMPETITORS_TABLE]) {
+  const tables: ReadonlyArray<readonly [string, string]> = [
+    [MARKET_RUNS_TABLE, 'subject'],
+    [MARKET_REPORTS_TABLE, 'profileId'],
+    [MARKET_PROFILES_TABLE, 'profileId'],
+    [MARKET_COMPETITORS_TABLE, 'profileId'],
+  ]
+  for (const [tableId, column] of tables) {
     let rows: Models.Row[]
     try {
-      rows = await listAllRows<Models.Row>(tablesDB, databaseId, tableId, [Query.equal('profileId', profileId)])
+      rows = await listAllRows<Models.Row>(tablesDB, databaseId, tableId, [Query.equal(column, profileId)])
     }
     catch (error) {
       if (isMarketRowMissing(error)) continue

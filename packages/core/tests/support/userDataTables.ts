@@ -198,6 +198,9 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   market_competitors: { export: MARKET, erase: 'packages/market/server/utils/marketStore.ts' },
   market_profiles: { export: MARKET, erase: 'packages/market/server/utils/marketStore.ts' },
   market_reports: { export: MARKET, erase: 'packages/market/server/utils/marketStore.ts' },
+  // Die Lauf-Sperre (GA1 P18): nur Zeitpunkte, Ausgang und Zählerstände —
+  // hängt aber an der Marke und geht mit ihr (Kaskade über `subject`).
+  market_runs: { export: MARKET, erase: 'packages/market/server/utils/marketStore.ts' },
 
   // ── insights ────────────────────────────────────────────────────────────
   insights_posts: both(INSIGHTS),
@@ -208,6 +211,10 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   insights_channels: NONE,
   insights_watchlist: NONE,
   insights_sends: NONE,
+  // Die Lauf-Sperre des Versands (GA1 P18): Zeitpunkte, Ausgang und
+  // Zählerstände eines Stapels, `subject` ist eine Sende-Zeile — niemand
+  // ist darin genannt.
+  insights_runs: NONE,
 
   // ── pukalani.studio ─────────────────────────────────────────────────────
   intro_requests: both(PORTFOLIO_INTRO),

@@ -175,6 +175,15 @@ export interface InsightsRadarSweepResult {
   watchlist?: { items: number, updated: number, gone: number }
   /** Gesetzt, wenn der Lauf gar nicht stattgefunden hat — mit dem Grund. */
   skipped?: 'not_configured' | 'no_channels' | 'quota_estimate' | 'running'
+  /**
+   * TEIL-ERGEBNIS (GA1 P18): die Abruf-Frist (`deadlineMs`, nur am Knopf)
+   * ist gerissen, bevor alle Abrufe begonnen hatten. Geschrieben ist, was bis
+   * dahin geholt war; das 30-Tage-Netz und der Fundstück-Nachtrag sind
+   * ausgelassen (Begründung an der Stelle).
+   */
+  partial?: boolean
+  /** Wie viele Kanäle der Teil-Lauf nicht mehr gelesen hat. */
+  channelsUnread?: number
 }
 
 export interface InsightsRadarSweepDeps {
@@ -220,6 +229,15 @@ export interface InsightsRadarSweepDeps {
   tablesDB?: TablesDbLike
   /** Vorgabe: `logEvent`. */
   log?: (level: 'info' | 'warn', name: string, data: Record<string, unknown>) => void
+  /**
+   * DIE ABRUF-FRIST in Millisekunden ab Laufbeginn (GA1 P18) — nur der
+   * Betreiber-KNOPF setzt sie (`INSIGHTS_RADAR_RUN_FETCH_BUDGET_MS`), der
+   * nächtliche Lauf läuft ohne. Nach ihr beginnt kein NEUER Abruf mehr; ein
+   * laufender wird nicht abgebrochen. Die Schreib-Phase ist NICHT befristet.
+   */
+  deadlineMs?: number
+  /** Die Uhr der Frist. Vorgabe `Date.now` — injizierbar für den Test. */
+  clock?: () => number
 }
 
 /**
@@ -280,6 +298,9 @@ export async function runInsightsRadarSweep(
   sweepRunning = true
 
   const log = deps.log ?? ((level, name, data) => logEvent(level, name, data))
+  const clock = deps.clock ?? Date.now
+  const deadline = deps.deadlineMs !== undefined ? clock() + deps.deadlineMs : Number.POSITIVE_INFINITY
+  const pastDeadline = () => clock() >= deadline
 
   try {
     const runtime = deps.readRuntimeConfig?.() ?? useRuntimeConfig(deps.event)
@@ -375,9 +396,21 @@ export async function runInsightsRadarSweep(
     // Ein Kanal, der fehlschlägt, kostet EINEN Kanal. Der Lauf macht weiter:
     // ein aus der Liste genommener oder umgezogener Kanal darf nicht den Rest
     // der Redaktion um ihr Tagesbild bringen.
+    //
+    // DIE FRIST GREIFT HIER, VOR JEDEM KANAL — das ist der lange Teil (bis zu
+    // fünfzig Abrufe NACHEINANDER, je bis zu 15 s). Der erste Kanal läuft
+    // immer: ein Lauf, der schon vor ihm über der Frist ist, hätte sonst gar
+    // nichts zu schreiben. Die Kanal-Metadaten (Schritt 1) sind EIN Abruf für
+    // bis zu fünfzig Kanäle und laufen ohne Frist — ohne sie bekäme jedes
+    // Video eine Abonnentenzahl 0 und damit eine falsche Zahl in der Zeile.
     const videoIds: string[] = []
     const topicOf = new Map<string, InsightsRadarChannel>()
-    for (const channel of channels) {
+    for (const [index, channel] of channels.entries()) {
+      if (index > 0 && pastDeadline()) {
+        result.partial = true
+        result.channelsUnread = channels.length - index
+        break
+      }
       const playlistId = insightsUploadsPlaylistId(channel.channelId)
       // `readInsightsRadarConfig` hat das schon geprüft — der Riegel steht
       // trotzdem, weil er hier die Typ-Enge herstellt und nichts kostet.
@@ -404,8 +437,15 @@ export async function runInsightsRadarSweep(
     }
 
     // ── 3. Die Zahlen je Video, gestapelt zu je 50 ───────────────────────
+    // Auch hier greift die Frist — aber erst ab dem ZWEITEN Stapel: der erste
+    // ist der, der aus den gelesenen Kanälen überhaupt Zeilen macht. Ohne ihn
+    // wäre jeder Teil-Lauf ein leerer Lauf.
     const videos: InsightsRadarStoredVideo[] = []
-    for (const batch of insightsYoutubeBatches(videoIds)) {
+    for (const [index, batch] of insightsYoutubeBatches(videoIds).entries()) {
+      if (index > 0 && pastDeadline()) {
+        result.partial = true
+        break
+      }
       try {
         const parsed = insightsYoutubeVideosSchema.parse(
           await fetchJson(insightsYoutubeVideosUrl(baseUrl, apiKey, batch)),
@@ -481,9 +521,20 @@ export async function runInsightsRadarSweep(
 
     // ── 5. Die zwei Netze ────────────────────────────────────────────────
     // (a) 30 Tage nach dem ABRUF (III.E.4): was der Lauf nicht mehr erreicht.
+    //
+    // NICHT IM TEIL-LAUF: das Netz löscht, was „der Lauf nicht mehr
+    // erreicht". Ein Teil-Lauf hat ungelesene Kanäle, deren Zeilen NICHT
+    // aufgefrischt wurden — eine Zeile, deren letzter Abruf knapp 30 Tage
+    // zurückliegt, hätte ein voller Lauf erneuert, der Teil-Lauf löschte sie.
+    // Der nächtliche Lauf holt das Netz nach.
     const cutoff = new Date(now.getTime() - INSIGHTS_RADAR_RETENTION_DAYS * 86_400_000)
-    const swept = await deleteExpiredRadarRows(tablesDB, databaseId, 'fetchedAt', cutoff, log)
-    // (b) der Alters-Deckel nach der VERÖFFENTLICHUNG: Zeilen, die ein
+    const swept = result.partial
+      ? { deleted: 0, errors: 0 }
+      : await deleteExpiredRadarRows(tablesDB, databaseId, 'fetchedAt', cutoff, log)
+    // (b) der Alters-Deckel nach der VERÖFFENTLICHUNG — läuft AUCH im
+    // Teil-Lauf: er fragt das Veröffentlichungsdatum, nicht ob der Lauf den
+    // Kanal heute gelesen hat; ein ungelesener Kanal ändert daran nichts.
+    // Zeilen, die ein
     // früherer Lauf (oder eine grosszügigere Grenze) noch gespeichert hat.
     // Ohne dieses Netz stünden sie bis zu 30 Tage weiter in der Liste — der
     // Deckel oben verhindert nur, dass sie ERNEUT geschrieben werden.
@@ -503,21 +554,29 @@ export async function runInsightsRadarSweep(
     //
     // FAIL-SOFT und AM ENDE: ein Fehler hier darf das Tagesbild des Radars
     // nicht in Frage stellen, das oben schon geschrieben ist.
-    try {
-      const refreshed = await (deps.refreshWatchlist ?? defaultRefreshWatchlist)(
-        tablesDB, databaseId, apiKey, baseUrl, fetchJson, now,
-      )
-      result.watchlist = refreshed
-      result.quotaUnits += Math.ceil(refreshed.items / 50)
-    }
-    catch (error) {
-      // 404 = keine Tabelle: der Layer kann ohne insights-007 im Bau sein —
-      // dieselbe stille Wahl wie beim Radar ohne insights-004. `isTableMissing`
-      // ist die HAUSEIGENE Prüfung dieser Datei und nicht der Auto-Import
-      // `isInsightsRowMissing`: den gibt es im Vitest-Lauf nicht.
-      if (!isTableMissing(error)) {
-        result.errors += 1
-        log('warn', 'insights.watchlist_refresh_failed', { message: insightsYoutubeSafeMessage(error) })
+    //
+    // Nach der Frist ausgelassen: es sind weitere Abrufe (je 50 Fundstücke
+    // einer) samt Schreiben, und der nächtliche Lauf zieht sie ohnehin nach.
+    // `result.watchlist` bleibt dann leer — die Antwort sagt damit, dass
+    // nicht nachgezogen wurde. `partial` setzen nur die ABRUF-Schritte oben:
+    // der Satz dazu heisst „nicht alle Kanäle gelesen".
+    if (!result.partial && !pastDeadline()) {
+      try {
+        const refreshed = await (deps.refreshWatchlist ?? defaultRefreshWatchlist)(
+          tablesDB, databaseId, apiKey, baseUrl, fetchJson, now,
+        )
+        result.watchlist = refreshed
+        result.quotaUnits += Math.ceil(refreshed.items / 50)
+      }
+      catch (error) {
+        // 404 = keine Tabelle: der Layer kann ohne insights-007 im Bau sein —
+        // dieselbe stille Wahl wie beim Radar ohne insights-004. `isTableMissing`
+        // ist die HAUSEIGENE Prüfung dieser Datei und nicht der Auto-Import
+        // `isInsightsRowMissing`: den gibt es im Vitest-Lauf nicht.
+        if (!isTableMissing(error)) {
+          result.errors += 1
+          log('warn', 'insights.watchlist_refresh_failed', { message: insightsYoutubeSafeMessage(error) })
+        }
       }
     }
 
@@ -531,6 +590,8 @@ export async function runInsightsRadarSweep(
       quotaUnits: result.quotaUnits,
       watchlist: result.watchlist?.items ?? 0,
       watchlistGone: result.watchlist?.gone ?? 0,
+      partial: result.partial ?? false,
+      channelsUnread: result.channelsUnread ?? 0,
     })
     return result
   }

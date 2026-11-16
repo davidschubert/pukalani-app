@@ -68,7 +68,7 @@ export default {
   requires: ['brand'],
   hasMigrations: true,
   // Schema-Probe (OPS-008): insights-011 legt insights_posts.changeNotes an.
-  schema: { latest: '011', probe: { migration: '011', table: 'insights_posts', column: 'changeNotes' } },
+  schema: { latest: '012', probe: { migration: '012', table: 'insights_runs' } },
   apiPrefixes: ['/api/insights'],
   title: { en: 'Brand Insights', de: 'Brand Insights' },
   description: {

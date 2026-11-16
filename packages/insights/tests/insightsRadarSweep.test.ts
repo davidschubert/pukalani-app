@@ -408,3 +408,102 @@ describe('runInsightsRadarSweep — Upsert und 30-Tage-Netz', () => {
     expect(touched[0]!.get(CHANNEL)).toEqual({ title: 'The Futur', subscribers: 1_000_000, handle: '' })
   })
 })
+
+describe('runInsightsRadarSweep — die Abruf-Frist des Knopfes (GA1 P18)', () => {
+  /** Drei Kanäle mit gültiger Id — je einer eigenen Uploads-Playlist. */
+  const THREE = ['a', 'b', 'c'].map(last => ({ channelId: `${CHANNEL.slice(0, -1)}${last}`, topic: 'brand-strategy' }))
+
+  /**
+   * Eine API, die je Playlist EIN eigenes Video liefert und `videos.list`
+   * genau mit den angefragten Ids beantwortet — so ist an den Zeilen zu
+   * sehen, WELCHE Kanäle gelesen wurden.
+   */
+  function perChannelApi(calls: string[]) {
+    return async (url: string): Promise<unknown> => {
+      calls.push(url)
+      const params = new URL(url).searchParams
+      if (url.includes('/channels?')) return { items: [] }
+      if (url.includes('/playlistItems?')) {
+        return { items: [{ contentDetails: { videoId: `v-${params.get('playlistId') ?? ''}` } }] }
+      }
+      return {
+        items: (params.get('id') ?? '').split(',').filter(Boolean).map(id => ({
+          id,
+          snippet: { title: 'Brand strategy', channelId: '', channelTitle: 'Kanal', publishedAt: '2026-09-01T10:00:00Z' },
+          statistics: { viewCount: '100', likeCount: '1', commentCount: '0' },
+        })),
+      }
+    }
+  }
+
+  /** Jeder Blick auf die Uhr kostet 20 s — die Frist (30 s) reisst vor Kanal 3. */
+  function steppingClock(stepMs = 20_000): () => number {
+    let at = 0
+    return () => {
+      const now = at
+      at += stepMs
+      return now
+    }
+  }
+
+  it('beginnt nach der Frist keinen Kanal-Abruf mehr, schreibt das Geholte und meldet `partial`', async () => {
+    const calls: string[] = []
+    const result = await runInsightsRadarSweep(deps({
+      readChannels: channelsDep(THREE),
+      fetchJson: perChannelApi(calls),
+      deadlineMs: 30_000,
+      clock: steppingClock(),
+    }), NOW)
+
+    expect(result.partial).toBe(true)
+    expect(result.channelsUnread).toBe(1)
+    expect(result.channels).toBe(2)
+    // Der dritte Kanal wurde NIE abgerufen.
+    expect(calls.filter(url => url.includes('/playlistItems?'))).toHaveLength(2)
+    expect(calls.some(url => url.includes('/playlistItems?') && url.includes(THREE[2]!.channelId.slice(2)))).toBe(false)
+    // Was geholt war, ist geschrieben.
+    expect(rows.map(row => row.videoId).sort()).toEqual(
+      THREE.slice(0, 2).map(channel => `v-UU${channel.channelId.slice(2)}`).sort(),
+    )
+    // Der Fundstück-Nachtrag fällt nach der Frist aus (der nächtliche Lauf holt ihn nach).
+    expect(refreshed).toBe(0)
+    expect(logged.find(entry => entry.name === 'insights.radar_swept')?.data).toMatchObject({ partial: true, channelsUnread: 1 })
+  })
+
+  it('ein Teil-Lauf löscht über das 30-Tage-Netz NICHTS — der Alters-Deckel räumt weiter', async () => {
+    rows.push(
+      // Zuletzt vor 40 Tagen geholt: ein voller Lauf hätte sie erneuert ODER
+      // gelöscht — ein Teil-Lauf kann das nicht entscheiden.
+      { $id: 'alt-geholt', videoId: 'ungelesen', fetchedAt: '2026-07-31T00:00:00.000Z', publishedAt: '2026-07-30' },
+      // Jahre alt veröffentlicht: das sagt der Alters-Deckel unabhängig vom Lauf.
+      { $id: 'uralt', videoId: 'uralt', fetchedAt: '2026-09-08T00:00:00.000Z', publishedAt: '2020-01-01' },
+    )
+    const result = await runInsightsRadarSweep(deps({
+      readChannels: channelsDep(THREE),
+      fetchJson: perChannelApi([]),
+      deadlineMs: 30_000,
+      clock: steppingClock(),
+    }), NOW)
+
+    expect(result.partial).toBe(true)
+    expect(rows.some(row => row.videoId === 'ungelesen')).toBe(true)
+    expect(rows.some(row => row.videoId === 'uralt')).toBe(false)
+  })
+
+  it('GEGENPROBE: ohne Frist liest der Lauf alle Kanäle, räumt das 30-Tage-Netz und zieht nach', async () => {
+    rows.push({ $id: 'alt-geholt', videoId: 'ungelesen', fetchedAt: '2026-07-31T00:00:00.000Z', publishedAt: '2026-07-30' })
+    const calls: string[] = []
+    const result = await runInsightsRadarSweep(deps({
+      readChannels: channelsDep(THREE),
+      fetchJson: perChannelApi(calls),
+      // Dieselbe springende Uhr — ohne `deadlineMs` darf sie nichts bewirken.
+      clock: steppingClock(),
+    }), NOW)
+
+    expect(result.partial).toBeUndefined()
+    expect(result.channels).toBe(3)
+    expect(calls.filter(url => url.includes('/playlistItems?'))).toHaveLength(3)
+    expect(rows.some(row => row.videoId === 'ungelesen')).toBe(false)
+    expect(refreshed).toBe(1)
+  })
+})
