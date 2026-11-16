@@ -36,6 +36,17 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
     throw createError({ status: 404, statusText: 'User not found' })
   }
 
+  // ZUGRIFF FESTHALTEN (BE-021, 2026-11-16): wer das Konto einer Person
+  // öffnet, steht im Protokoll — höchstens einmal je (Betreiber, Konto) in 15
+  // Minuten, nicht strikt (eine Ansicht ist keine Herausgabe). Ohne Namen und
+  // ohne Adresse: die Ziel-Id reicht, und ein Name im Protokoll ist eine
+  // zweite Kopie, die bei einer Löschung erst wieder geleert werden muss.
+  await recordAuditView(event, `user:${event.context.user?.$id ?? ''}:${userId}`, {
+    action: 'user.viewed',
+    targetType: 'user',
+    targetId: userId,
+  })
+
   // 'current' kommt aus der Admin-API immer als false zurück (der API-Key agiert
   // nicht als der User). Schaut ein Admin auf das EIGENE Profil, ermitteln wir
   // die aktive Session über den Session-Client und markieren sie selbst.

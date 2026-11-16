@@ -71,6 +71,8 @@ async function saveRoles() {
     await refresh()
   }
   catch (error) {
+    // Rollen vergeben verlangt eine frische Anmeldung (SEC-034, 2026-11-16).
+    if (await promptFreshSignIn(error, t('admin.users.roleReauthText'))) return
     // `data.reason` (Fehler-Envelope, core shared/types/error.ts). Vorher stand
     // hier `data.data.code` — das kam NIE an: der zentrale Handler verwirft die
     // rohe `data` eines Fehlers, seit 2026-07-29 reist ein geprüfter Grund als
@@ -194,7 +196,15 @@ async function exportData() {
       color: 'success',
     })
   }
-  catch {
+  catch (error) {
+    // Herausgabe verlangt eine frische Anmeldung (SEC-034) — der EINE Weg aus core.
+    if (await promptFreshSignIn(error, t('admin.users.exportReauthText'))) return
+    if (isAuditUnavailable(error)) {
+      // Erst der Protokoll-Eintrag, dann die Daten (BE-021): ohne Eintrag
+      // wurde nichts herausgegeben — das sagt dieser Satz.
+      toast.add({ title: t('admin.auditUnavailable.title'), description: t('admin.auditUnavailable.desc'), color: 'warning' })
+      return
+    }
     toast.add({
       title: t('admin.users.exportFailed'),
       description: t('admin.users.exportFailedDesc'),

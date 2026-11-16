@@ -73,6 +73,7 @@
       "linkedWarningText": "This file is currently used as the avatar of {name}. Deleting it leaves that account without a profile picture.",
       "readOnlyTitle": "View only",
       "readOnlyText": "GDPR snapshots are cleaned up automatically after 30 days — they are managed on the GDPR page, not here.",
+      "readOnlyOtherText": "This storage area is view-only here: files can only be deleted in areas that are cleared for it.",
       "readOnlyLink": "Open GDPR page",
       "unavailableTitle": "Storage browser not available",
       "unavailableText": "Grant the runtime key the buckets.read, files.read + files.write scopes, then reload."
@@ -113,7 +114,9 @@
           "profile_updated": "updated their profile",
           "bulk_block": "blocked {count} users",
           "bulk_unblock": "unblocked users",
-          "csv_exported": "exported the user list as CSV"
+          "csv_exported": "exported the user list as CSV",
+          "viewed": "viewed the account of {name}",
+          "list_viewed": "viewed the user list"
         },
         "comment": {
           "hidden": "hid a comment by {name}",
@@ -383,7 +386,12 @@
         }
       },
       "exportCsv": "Export CSV",
-      "rowActions": "Actions for this account"
+      "rowActions": "Actions for this account",
+      "exportReauthText": "Your last sign-in was more than 10 minutes ago. Please sign in again — you will come back here and can export the data. Nothing was handed out.",
+      "csvReauthText": "Your last sign-in was more than 10 minutes ago. Please sign in again — you will come back here and can export the list. Nothing was handed out.",
+      "roleReauthText": "Your last sign-in was more than 10 minutes ago. Please sign in again — you will come back here and can save the roles. Nothing was changed.",
+      "csvDone": "List exported.",
+      "csvDoneDesc": "The CSV file is in your downloads folder."
     },
     "moderation": {
       "filter": {
@@ -482,7 +490,8 @@
       "downloadError": "Download failed.",
       "downloadErrorDesc": "Nothing was downloaded. The snapshot may already have expired — reloading the list shows the current state.",
       "confirmTitle": "Delete snapshot?",
-      "confirmText": "Permanently delete {name}? The snapshot can no longer be retrieved afterwards."
+      "confirmText": "Permanently delete {name}? The snapshot can no longer be retrieved afterwards.",
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Please sign in again — you will come back here and can download the copy. Nothing was handed out."
     },
     "products": {
       "title": "Products",
@@ -551,7 +560,12 @@
         "from": "Sender",
         "passKept": "Leaving this empty keeps the stored password.",
         "clearHint": "Clear the server field and save to remove this access — the server environment applies again."
-      }
+      },
+      "reauthText": "Your last sign-in was more than 10 minutes ago. Please sign in again — you will come back here and can save the access key. Nothing was changed."
+    },
+    "auditUnavailable": {
+      "title": "Nothing handed out",
+      "desc": "The audit log is unavailable right now, so nothing was handed out. Please try again later."
     }
   },
   "whatsNew": {

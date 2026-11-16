@@ -28,6 +28,13 @@ watchEffect(() => {
 const current = computed<StorageBucketOverview | null>(
   () => data.value?.buckets.find(b => b.id === selectedBucket.value) ?? null,
 )
+// Nur-lesend sind seit BE-021 ZWEI Sorten Ablagen: die GDPR-Kopien (eigene
+// Seite) und jede Ablage, die nicht auf der Erlaubnisliste des Servers steht
+// (server/utils/storageBuckets.ts). Der Hinweis sagt, welche es ist.
+const isGdprBucket = computed(() => {
+  const id = current.value?.id ?? ''
+  return id === 'gdpr-exports' || (!!config.public.appwriteGdprBucket && id === config.public.appwriteGdprBucket)
+})
 
 /**
  * SEITENWEISE statt alles auf einmal (Audit-Befund): diese Seite hat die
@@ -229,9 +236,9 @@ function removeOrphans() {
             variant="subtle"
             icon="i-ph-lock"
             :title="t('admin.storage.readOnlyTitle')"
-            :description="t('admin.storage.readOnlyText')"
+            :description="isGdprBucket ? t('admin.storage.readOnlyText') : t('admin.storage.readOnlyOtherText')"
           >
-            <template #actions>
+            <template v-if="isGdprBucket" #actions>
               <UButton color="info" variant="link" size="xs" :to="localePath('/dashboard/admin/gdpr-exports')">
                 {{ t('admin.storage.readOnlyLink') }}
               </UButton>

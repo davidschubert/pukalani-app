@@ -4,7 +4,10 @@ import { z } from 'zod'
  * Bulk-Aktionen der User-Liste (Multi-Select): block/unblock für bis zu
  * BULK_MAX Accounts. Guards wie die Einzel-Route (status.patch): der eigene
  * Account ist nicht blockierbar, der letzte Admin bleibt drin. Teilfehler
- * brechen den Batch nicht ab; EIN Audit-Eintrag pro Batch.
+ * brechen den Batch nicht ab; EIN Audit-Eintrag pro Batch — seit BE-021
+ * (2026-11-16) MIT den Ziel-Ids (`auditIdList`, sicher unter der
+ * Spaltengröße gekürzt), nicht nur der Anzahl. Nicht strikt: Sperren muss
+ * sofort gehen, auch wenn das Protokoll gerade ausfällt.
  */
 
 const BULK_MAX = 25
@@ -22,7 +25,8 @@ export default defineEventHandler(async (event) => {
   const done: string[] = []
   const failed: string[] = []
 
-  for (const id of [...new Set(ids)]) {
+  const targets = [...new Set(ids)]
+  for (const id of targets) {
     try {
       if (action === 'block') {
         if (id === adminUser.$id) { failed.push(id); continue }
@@ -42,7 +46,7 @@ export default defineEventHandler(async (event) => {
     action: `user.bulk_${action}`,
     targetType: 'user',
     targetId: '',
-    metadata: { count: done.length, failed: failed.length },
+    metadata: { count: done.length, failed: failed.length, ...auditIdList(targets) },
   })
 
   return { ok: failed.length === 0, done, failed }

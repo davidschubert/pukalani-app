@@ -29,6 +29,8 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCap
 const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
+// Zugänge setzen verlangt eine frische Anmeldung (SEC-034, 2026-11-16).
+const { promptFreshSignIn } = useRecentAuthPrompt()
 useBrandTitle(() => t('admin.integrations.title'))
 
 const { data, refresh } = await useFetch<IntegrationsResponse>('/api/admin/integrations')
@@ -47,7 +49,8 @@ async function save(id: IntegrationId) {
     await refresh()
     toast.add({ title: t('admin.integrations.saved'), color: 'success' })
   }
-  catch {
+  catch (error) {
+    if (await promptFreshSignIn(error, t('admin.integrations.reauthText'))) return
     toast.add({ title: t('admin.integrations.saveFailed'), description: t('admin.integrations.saveFailedHint'), color: 'error' })
   }
   finally {
@@ -56,15 +59,22 @@ async function save(id: IntegrationId) {
 }
 
 async function clear(id: IntegrationId) {
-  const ok = await confirm({
-    title: t('admin.integrations.clearTitle'),
-    description: t('admin.integrations.clearText', { env: envName(id) }),
-    confirmLabel: t('admin.integrations.clear'),
-    action: () => $fetch('/api/admin/integrations', { method: 'PATCH', body: { id, value: '' } }),
-  })
-  if (!ok) return
-  inputs[id] = ''
-  await refresh()
+  try {
+    const ok = await confirm({
+      title: t('admin.integrations.clearTitle'),
+      description: t('admin.integrations.clearText', { env: envName(id) }),
+      confirmLabel: t('admin.integrations.clear'),
+      action: () => $fetch('/api/admin/integrations', { method: 'PATCH', body: { id, value: '' } }),
+    })
+    if (!ok) return
+    inputs[id] = ''
+    await refresh()
+  }
+  catch (error) {
+    // confirm() wirft den Fehler der Aktion weiter (Dialog ist dann zu).
+    if (await promptFreshSignIn(error, t('admin.integrations.reauthText'))) return
+    toast.add({ title: t('admin.integrations.saveFailed'), description: t('admin.integrations.saveFailedHint'), color: 'error' })
+  }
 }
 
 const envName = (id: IntegrationId) => data.value?.items.find(i => i.id === id)?.envName ?? ''
@@ -92,7 +102,8 @@ async function saveSmtp() {
     await refresh()
     toast.add({ title: t('admin.integrations.saved'), color: 'success' })
   }
-  catch {
+  catch (error) {
+    if (await promptFreshSignIn(error, t('admin.integrations.reauthText'))) return
     toast.add({ title: t('admin.integrations.saveFailed'), description: t('admin.integrations.saveFailedHint'), color: 'error' })
   }
   finally {

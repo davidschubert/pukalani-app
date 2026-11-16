@@ -1,7 +1,6 @@
-import { ID } from 'node-appwrite'
 import type { H3Event } from 'h3'
 
-interface AuditInput {
+export interface AuditInput {
   /** z.B. 'user.block', 'comment.hidden' */
   action: string
   targetType?: string
@@ -11,37 +10,36 @@ interface AuditInput {
 }
 
 /**
- * Schreibt einen Audit-Eintrag (wer hat was getan). Best effort — ein Fehler
- * beim Logging darf die eigentliche Admin-Aktion NIE blockieren.
+ * Schreibt einen Audit-Eintrag (wer hat was getan) über den EINEN Schreiber
+ * des Protokolls (`writeAuditLog`, core — BE-021, 2026-11-16).
+ *
+ * ABBRECHEN ODER WEITERLAUFEN (Davids Plan 2026-11-16):
+ *   · Vorgabe (nicht strikt): die Admin-Aktion läuft weiter, ein Ausfall des
+ *     Protokolls wird nur gemeldet (`audit.write_failed`, zählt der tägliche
+ *     Kontroll-Lauf). Sperren, Sitzungen beenden, Rollen, Löschen,
+ *     Einstellungen und Ansichten gehören hierher — Sperren muss sofort gehen.
+ *   · `strict: true` für die HERAUSGABE von Personendaten (Export, CSV,
+ *     Lösch-Kopie): ERST der Eintrag, DANN die Antwort. Scheitert der
+ *     Eintrag, wirft er 503 `audit_unavailable` und die Route gibt nichts
+ *     heraus.
+ *
+ * Rückgabe: `true`, wenn der Eintrag steht.
  */
-export async function recordAudit(event: H3Event, input: AuditInput): Promise<void> {
+export async function recordAudit(event: H3Event, input: AuditInput, opts: { strict?: boolean } = {}): Promise<boolean> {
   const actor = event.context.user
-  if (!actor) return
+  if (!actor) {
+    // Ohne Betreiber kein Eintrag — für eine Herausgabe heißt das: nichts herausgeben.
+    if (opts.strict) throw auditUnavailableError()
+    return false
+  }
 
-  try {
-    const config = useRuntimeConfig(event)
-    const admin = createAdminClient(event)
-    // LETZTES X-Forwarded-For-Segment (das unser nginx anhängt), nicht das
-    // erste — sonst schreibt der Betroffene die IP seines eigenen
-    // Protokolleintrags selbst (Audit 2026-08-02, core/server/utils/clientIp.ts).
-    const ip = trustedClientIp(event) ?? ''
-    await admin.tablesDB.createRow({
-      databaseId: config.public.appwriteDatabaseId,
-      tableId: 'audit_logs',
-      rowId: ID.unique(),
-      data: {
-        actorId: actor.$id,
-        actorName: actor.name,
-        action: input.action,
-        targetType: input.targetType ?? '',
-        targetId: input.targetId ?? '',
-        targetName: input.targetName ?? '',
-        metadata: input.metadata ? JSON.stringify(input.metadata) : '',
-        ip,
-      },
-    })
-  }
-  catch {
-    // Logging-Fehler bewusst schlucken
-  }
+  return writeAuditLog(event, {
+    actorId: actor.$id,
+    actorName: actor.name,
+    action: input.action,
+    targetType: input.targetType,
+    targetId: input.targetId,
+    targetName: input.targetName,
+    metadata: input.metadata,
+  }, opts)
 }

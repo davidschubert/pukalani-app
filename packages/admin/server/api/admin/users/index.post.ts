@@ -40,15 +40,16 @@ export default defineEventHandler(async (event) => {
     throw toH3Error(error, 'Could not create user')
   })
 
-  if (roles.length > 0) {
-    // Über den EINEN Schreiber für Konto-Labels (SEC-024): nur hinzufügen,
-    // frisch gelesen, nachgeprüft — dieselbe Regel wie überall.
-    const result = await mutateUserLabels(event, user.$id, { add: roles })
-    if (!result.ok) {
-      throw createError({ status: 502, statusText: 'User created, but roles could not be set' })
-    }
-  }
+  // Über den EINEN Schreiber für Konto-Labels (SEC-024): nur hinzufügen,
+  // frisch gelesen, nachgeprüft — dieselbe Regel wie überall. Ein Wurf zählt
+  // wie „nicht gesetzt": der Protokoll-Eintrag unten muss trotzdem entstehen.
+  const rolesOk = roles.length === 0
+    || await mutateUserLabels(event, user.$id, { add: roles }).then(result => result.ok, () => false)
 
+  // DAS KONTO EXISTIERT AB HIER (BE-021, 2026-11-16) — auch wenn die Rollen
+  // gleich scheitern. Bis dahin warf die Route davor, und die Anlage stand
+  // nie im Protokoll. Jetzt erst der Eintrag (`rolesFailed: true`), dann der
+  // Fehler wie bisher.
   await recordAudit(event, {
     action: 'user.created',
     targetType: 'user',
@@ -68,8 +69,12 @@ export default defineEventHandler(async (event) => {
     // Wiedererkennung — genau das, was ein pseudonymisiertes Protokoll nicht
     // mehr können soll. Bestands-Zeilen räumt der Contributor mit
     // (`stripPersonalMetadata`).
-    metadata: { roles },
+    metadata: rolesOk ? { roles } : { roles, rolesFailed: true },
   })
+
+  if (!rolesOk) {
+    throw createError({ status: 502, statusText: 'User created, but roles could not be set' })
+  }
 
   setResponseStatus(event, 201)
   return { $id: user.$id, name: user.name, email: user.email, labels: roles }

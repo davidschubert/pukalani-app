@@ -17,6 +17,7 @@ interface GdprExportFile {
 const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
+const { promptFreshSignIn } = useRecentAuthPrompt()
 const { formatDate } = useFormatDate()
 
 useBrandTitle(() => t('admin.gdprExports.title'))
@@ -51,7 +52,17 @@ async function download(file: GdprExportFile) {
       color: 'success',
     })
   }
-  catch {
+  catch (rawError) {
+    // `responseType: 'blob'` liest auch den Fehler als Blob — erst entpacken,
+    // sonst kommt kein Grund an (frische Anmeldung, Protokoll nicht erreichbar).
+    const error = await unwrapBlobError(rawError)
+    if (await promptFreshSignIn(error, t('admin.gdprExports.reauthText'))) return
+    if (isAuditUnavailable(error)) {
+      // Erst der Protokoll-Eintrag, dann die Daten (BE-021): ohne Eintrag
+      // wurde nichts herausgegeben — das sagt dieser Satz.
+      toast.add({ title: t('admin.auditUnavailable.title'), description: t('admin.auditUnavailable.desc'), color: 'warning' })
+      return
+    }
     toast.add({
       title: t('admin.gdprExports.downloadError'),
       description: t('admin.gdprExports.downloadErrorDesc'),

@@ -1,9 +1,12 @@
 /**
  * Eine Storage-Datei löschen (Admin-Key, umgeht File-Permissions).
- * Bucket wird gegen die Instanz validiert; gdpr-exports ist gesperrt —
- * Snapshots haben ihre eigene Retention (30-Tage-Cleanup) und Admin-Seite.
+ *
+ * Nur in Ablagen der ERLAUBNISLISTE (`bucketDeletable`,
+ * server/utils/storageBuckets.ts — Begründung und Liste dort): eine neue
+ * Ablage ist hier zuerst nur-lesend, `gdpr-exports` bleibt immer draußen
+ * (eigene Frist und eigene Seite). Danach wird der Bucket zusätzlich gegen
+ * die Instanz geprüft.
  */
-const READ_ONLY_BUCKETS = new Set(['gdpr-exports'])
 
 export default defineEventHandler(async (event) => {
   requirePermission(event, 'storage.manage')
@@ -13,12 +16,12 @@ export default defineEventHandler(async (event) => {
   if (!bucketId || !fileId) {
     throw createError({ status: 400, statusText: 'Missing bucket or file id' })
   }
-  if (READ_ONLY_BUCKETS.has(bucketId)) {
+  if (!bucketDeletable(event, bucketId)) {
     throw createError({ status: 403, statusText: 'Bucket is read-only here' })
   }
 
   const admin = createAdminClient(event)
-  // Existenz-Check statt Allowlist: nur echte Buckets der Instanz zulassen
+  // Zusätzlich zur Erlaubnisliste: nur echte Buckets der Instanz
   await admin.storage.getBucket({ bucketId })
     .catch((error) => { throw toH3Error(error, 'Bucket not found') })
 

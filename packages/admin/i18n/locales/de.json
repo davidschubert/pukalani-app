@@ -73,6 +73,7 @@
       "linkedWarningText": "Diese Datei wird aktuell als Avatar von {name} verwendet. Wird sie gelöscht, hat dieser Account kein Profilbild mehr.",
       "readOnlyTitle": "Nur Ansicht",
       "readOnlyText": "GDPR-Snapshots werden automatisch nach 30 Tagen bereinigt — verwaltet werden sie auf der GDPR-Seite, nicht hier.",
+      "readOnlyOtherText": "Diese Ablage ist hier nur zum Ansehen: löschen lässt sich nur in Ablagen, die dafür freigegeben sind.",
       "readOnlyLink": "Zur GDPR-Seite",
       "unavailableTitle": "Speicher-Browser nicht verfügbar",
       "unavailableText": "Dem Runtime-Key die Scopes buckets.read, files.read + files.write geben, dann neu laden."
@@ -113,7 +114,9 @@
           "profile_updated": "hat das eigene Profil aktualisiert",
           "bulk_block": "hat {count} Benutzer blockiert",
           "bulk_unblock": "hat Benutzer entsperrt",
-          "csv_exported": "hat die Benutzerliste als CSV exportiert"
+          "csv_exported": "hat die Benutzerliste als CSV exportiert",
+          "viewed": "hat das Konto von {name} angesehen",
+          "list_viewed": "hat die Benutzerliste angesehen"
         },
         "comment": {
           "hidden": "hat einen Kommentar von {name} ausgeblendet",
@@ -383,7 +386,12 @@
         }
       },
       "exportCsv": "CSV-Export",
-      "rowActions": "Aktionen für dieses Konto"
+      "rowActions": "Aktionen für dieses Konto",
+      "exportReauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Daten exportieren. Es wurde nichts herausgegeben.",
+      "csvReauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Liste exportieren. Es wurde nichts herausgegeben.",
+      "roleReauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Rollen speichern. Es wurde nichts geändert.",
+      "csvDone": "Liste exportiert.",
+      "csvDoneDesc": "Die CSV-Datei liegt in deinem Download-Ordner."
     },
     "moderation": {
       "filter": {
@@ -482,7 +490,8 @@
       "downloadError": "Download fehlgeschlagen.",
       "downloadErrorDesc": "Es wurde nichts heruntergeladen. Möglicherweise ist der Snapshot bereits abgelaufen — nach dem Neuladen zeigt die Liste den aktuellen Stand.",
       "confirmTitle": "Snapshot löschen?",
-      "confirmText": "{name} endgültig löschen? Der Snapshot kann danach nicht mehr abgerufen werden."
+      "confirmText": "{name} endgültig löschen? Der Snapshot kann danach nicht mehr abgerufen werden.",
+      "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst die Kopie herunterladen. Es wurde nichts herausgegeben."
     },
     "products": {
       "title": "Produkte",
@@ -551,7 +560,12 @@
         "from": "Absender",
         "passKept": "Leer lassen behält das gespeicherte Passwort.",
         "clearHint": "Server-Feld leeren und speichern entfernt den Zugang — dann gilt wieder die Server-Umgebung."
-      }
+      },
+      "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst den Zugang speichern. Es wurde nichts geändert."
+    },
+    "auditUnavailable": {
+      "title": "Nichts herausgegeben",
+      "desc": "Das Protokoll ist gerade nicht erreichbar, deshalb wurde nichts herausgegeben. Bitte später noch einmal."
     }
   },
   "whatsNew": {
