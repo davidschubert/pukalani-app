@@ -1,26 +1,18 @@
 import { z } from 'zod'
-import { COMMUNITIES_TABLE, type TenantRow } from '../../../../../shared/types/tenantRecord'
-import { customDomainForms } from '../../../../../shared/customDomain'
 import { customDomainStateFor } from '../../../../utils/customDomainService'
 import { requireCommunityDomainOwner } from '../../../../utils/communityDomainGate'
 import { requireOnboardingCaller } from '../../../../utils/onboardingService'
-import { ploiConfig, removePloiTenant } from '../../../../utils/ploi'
+import { ploiConfig } from '../../../../utils/ploi'
+import { clearCustomDomainEntry } from '../../../../utils/customDomainRemoval'
 
 /**
  * Die eigene Domain WIEDER ABGEBEN (control-035).
  *
- * REIHENFOLGE IST DIE GANZE ENTSCHEIDUNG: erst die ZEILE leeren, dann bei ploi
- * aufräumen. Die Zeile ist die Wahrheit — sobald dort nichts mehr steht, löst
- * der Host bei uns nicht mehr auf (404), und die Subdomain hört auf, mit 301
- * dorthin zu zeigen. Umgekehrt (erst ploi, dann die Zeile) gäbe es ein
- * Fenster, in dem die Community auf eine Adresse umleitet, die nginx schon
- * nicht mehr kennt.
- *
- * DAS AUFRÄUMEN IST FAIL-SOFT und darf die Abgabe nie in einen Fehler
- * verwandeln. Ein zurückgelassener nginx-vHost ist Hausarbeit, kein
- * Sicherheitsproblem: er zeigt auf eine App, die den Host nicht kennt, und die
- * antwortet 404. (Die Appwrite-Web-Platform räumt die RUNTIME ab — dieselbe
- * Schlüsselgrenze wie beim Anlegen.)
+ * Reihenfolge (erst die Zeile, dann ploi) und das fail-softe Aufräumen stehen
+ * mit Begründung in `clearCustomDomainEntry` (server/utils/customDomainRemoval.ts)
+ * — derselbe Weg räumt im Fristen-Lauf einen verfallenen Eintrag (BE-014).
+ * (Die Appwrite-Web-Platform räumt die RUNTIME ab — dieselbe Schlüsselgrenze
+ * wie beim Anlegen.)
  *
  * OHNE BERECHTIGUNGS-PRÜFUNG (`requireEntitlement: false`): wer von Pro herunterstuft, muss
  * seine Domain noch loswerden können. Eine Sperre, die den Rückweg
@@ -37,37 +29,14 @@ export default defineEventHandler(async (event) => {
   const { row, databaseId, identity } = await requireCommunityDomainOwner(event, body, { requireEntitlement: false })
 
   const previous = row.customDomain || ''
-  const admin = createAdminClient(event)
-  const saved = await admin.tablesDB.updateRow<TenantRow>({
+  // Zeile leeren, DANN fail-soft bei ploi aufräumen — derselbe Weg wie beim
+  // verfallenen Eintrag des Fristen-Laufs (`clearCustomDomainEntry`).
+  const saved = await clearCustomDomainEntry({
+    tablesDB: createAdminClient(event).tablesDB,
     databaseId,
-    tableId: COMMUNITIES_TABLE,
-    rowId: row.$id,
-    data: {
-      customDomain: '',
-      customDomainStatus: 'none',
-      customDomainToken: '',
-      customDomainError: '',
-      customDomainVerifiedAt: null,
-      customDomainActivatedAt: null,
-      // control-040: Eintragsdatum, Frist und Abschaltung gehören der DOMAIN
-      // und gehen mit ihr. Die Freigabe (`customDomainApproved`) gehört der
-      // COMMUNITY und bleibt stehen.
-      customDomainClaimedAt: null,
-      customDomainGraceEndsAt: null,
-      customDomainPausedAt: null,
-    },
+    row,
+    ploi: ploiConfig(event),
   }).catch((error) => { throw toH3Error(error, 'Could not remove domain') })
-
-  if (previous) {
-    for (const form of customDomainForms(previous)) {
-      const result = await removePloiTenant(ploiConfig(event), form)
-      if (!result.ok && !result.skipped) {
-        logEvent('warn', 'community.custom_domain_cleanup_failed', {
-          communityId: row.$id, domain: form, detail: result.message.slice(0, 200),
-        })
-      }
-    }
-  }
 
   logEvent('info', 'community.custom_domain_removed', {
     communityId: row.$id,

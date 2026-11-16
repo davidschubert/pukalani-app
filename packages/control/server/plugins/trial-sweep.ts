@@ -2,6 +2,7 @@ import { runTrialSweep } from '../utils/trialSweep'
 import { pruneInviteRequests } from '../utils/inviteRequestPrune'
 import { runPastDueSweep } from '../utils/pastDueSweep'
 import { eraseStaleReporterEmails } from '../utils/abuseReportPrune'
+import { customDomainSweepConfiguredMode, runCustomDomainSweep } from '../utils/customDomainSweep'
 
 /**
  * Testphasen-Automatik: abgelaufene Trials werden nur-lesend (F49 vom
@@ -15,10 +16,14 @@ import { eraseStaleReporterEmails } from '../utils/abuseReportPrune'
  */
 const SWEEP_INTERVAL_MS = 60 * 60 * 1000
 const FIRST_RUN_DELAY_MS = 30 * 1000
+/** Der Fristen-Lauf der eigenen Domain startet versetzt (60 s): er liest den
+ *  Plan, den die Mitfahrer im ersten Takt eben noch zurückgesetzt haben. */
+const CUSTOM_DOMAIN_FIRST_RUN_DELAY_MS = 60 * 1000
 
 export default defineNitroPlugin(() => {
   // Vier Anmeldungen auf EINEM Takt (gleicher Takt, gleiche Startverzögerung,
-  // wie bisher die vier Mitfahrer eines Timers) — je Lauf eine eigene
+  // wie bisher die vier Mitfahrer eines Timers; dazu unten der Fristen-Lauf
+  // der eigenen Domain mit eigenem Startversatz) — je Lauf eine eigene
   // Kennung, damit der Wächter sieht, WELCHER von ihnen scheitert. Die
   // Fehlerzeile schreibt `defineTimedJob` (OPS-011).
   defineTimedJob({
@@ -84,4 +89,28 @@ export default defineNitroPlugin(() => {
       }
     },
   })
+
+  // Fünfter Lauf, EIGENER Startversatz (BE-014): Frist, Abschalten und
+  // verfallene Einträge der eigenen Domain. Der Schalter
+  // `pukalani.control.customDomainSweep` entscheidet VOR dem Anmelden: `off`
+  // ⇒ der Lauf meldet sich gar nicht an (sonst hielte ihn der Wächter für
+  // überfällig); `dry-run` zählt nur; `apply` schreibt. Eine belegte Sperre
+  // (zweiter Prozess) ist `skipped`, ein Fehlschlag an einer Community wirft
+  // NACH dem Lauf — so zählt der Alarm ihn als gescheitert, die anderen
+  // Communities wurden trotzdem bearbeitet.
+  const customDomainMode = customDomainSweepConfiguredMode()
+  if (customDomainMode !== 'off') {
+    defineTimedJob({
+      name: 'custom-domain-sweep',
+      everyMs: SWEEP_INTERVAL_MS,
+      firstRunMs: CUSTOM_DOMAIN_FIRST_RUN_DELAY_MS,
+      run: async () => {
+        const result = await runCustomDomainSweep({ mode: customDomainMode })
+        if ('skipped' in result) return 'skipped'
+        if (result.counts.failed > 0) {
+          throw new Error(`custom-domain-sweep: ${result.counts.failed} Fehlschläge`)
+        }
+      },
+    })
+  }
 })

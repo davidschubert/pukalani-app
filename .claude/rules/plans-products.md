@@ -44,3 +44,51 @@ paths:
   key) an den API-Einstiegen (posts = personal, ai = pro; 404 wie Datentür).
   UI-Sichtbarkeit via useTenantPlan().planAllows(); Demo-Hosts zeigen
   PlatformPlanBadge („Ab Personal/Pro") an den Produkten.
+- TESTPHASE EINMAL JE KONTO (BE-015, seit 2026-11-16 — Davids Entscheidung
+  „einmal je Person"): die Person ist das KONTO (Projekt + Konto-Id), nicht die
+  Community. Festgehalten in `trial_claims` im Control Plane (control-039,
+  keine Rechte für Konten): EINE Zeile je Konto mit fester Kennung
+  (`trialClaimRowId`), das ANLEGEN ist die Vergabe (201 = Testphase, 409 = gab
+  es schon) — kein „erst lesen, dann schreiben" (`claimTrial`,
+  `packages/control/server/utils/trialClaims.ts`). Die Zeile hängt an keiner
+  Community und überlebt Stilllegen und Löschen; sie fällt mit dem Konto
+  (Auskunft und Löschung im control-Layer). Die ERSTE Community eines Kontos
+  bekommt 14 Tage Pro, JEDE WEITERE entsteht ohne Testphase: `plan: 'basic'`,
+  kein `trialEndsAt`, Sperre `billing` — ein Kauf öffnet sie sofort
+  (unveränderter `apply-plan`-Weg). Scheitert die Anlage nach der Vergabe,
+  geht die Vergabe zurück. Der Wizard sagt es VOR dem Klick
+  (`GET /api/onboarding/trial`). ANLEGEN VERLANGT EINE BESTÄTIGTE ADRESSE
+  (403 `email_unverified`) — sonst wäre „einmal je Konto" mit einer zweiten
+  Adresse umgangen. Betreiber-Ausweg im Einzelfall: `trialEndsAt` setzen oder
+  die Zeile des Kontos löschen. Bestand: jedes Konto mit einer Owner-Zeile gilt
+  als „verbraucht" (`backfill-trial-claims.mjs`, zählt ohne `--apply` nur).
+- EIGENE DOMAIN: EINE REGEL, WER DARF (BE-014 und Übergangsregel SEC-022, seit
+  2026-11-16 — Davids Entscheidungen): `customDomainEntitlement(row, now)`
+  (`packages/control/shared/customDomain.ts`) — Plan Pro UND nicht in der
+  Testphase UND vom Betreiber freigegeben (`communities.customDomainApproved`,
+  Schalter in der Betreiber-Tabelle, Eintrag im Protokoll). Sie gilt beim
+  Eintragen, Prüfen, Freischalten und Wieder-Einschalten (403
+  `plan_required` | `trial_not_included` | `approval_required`); Lesen und
+  Entfernen gehen immer. Eine NEUE Stelle, die über eine eigene Domain
+  entscheidet, fragt DIESE Funktion, nie den Plan allein. Zustand `paused` =
+  abgeschaltet: nichts wird gelöscht, die Community antwortet unter ihrer
+  Pukalani-Adresse, die eigene Domain leitet vorübergehend dorthin (302/307).
+  Dorthin kommt eine Domain durch den Entzug der Freigabe (sofort) oder 14
+  Tage nach dem Plan-Ende (Lauf `custom-domain-sweep`, Schalter
+  `pukalani.control.customDomainSweep`: `dry-run` zählt nur, `apply`
+  schreibt; zwei Hinweise an den Owner über `custom-domain-notice` in der
+  Platform-App, je genau einmal). „Vergeben" ist eine Domain nur mit
+  bestandenem Nachweis; ein bloßer Eintrag blockiert niemanden und verfällt
+  nach 14 Tagen. Runbook: docs/runbooks/EIGENE-DOMAIN-FREIGABE.md, Bau:
+  docs/referenz/EIGENE-DOMAIN.md.
+- STRIPE-EINGANG LIEST FRISCH (BE-016, seit 2026-11-16): JEDES Abo-Ereignis
+  (`customer.subscription.*`, `checkout.session.*`, `invoice.*`) holt den
+  Stand mit `subscriptions.retrieve` — der Schnappschuss im Ereignis gilt nur
+  für `deleted`, wenn Stripe das Abo nicht mehr kennt. Damit spielt die
+  Reihenfolge der Zustellung keine Rolle; ein neuer Zweig im Webhook
+  übernimmt NIE das Objekt aus dem Ereignis. Die API-Version steht an EINER
+  Stelle (`packages/billing/shared/stripeApiVersion.ts`) und geht an jeden
+  Client und an das Anlegen des Endpunkts; ein Test hält sie gleich der
+  Version des installierten SDK (SDK-Sprung ⇒ Konstante bewusst nachziehen,
+  Endpunkt über /dashboard/stripe neu anlegen — die Statuskarte zeigt eine
+  abweichende Version).

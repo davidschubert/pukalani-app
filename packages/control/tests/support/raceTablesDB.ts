@@ -16,7 +16,8 @@ import { AppwriteException } from 'node-appwrite'
  *     `max`/`min` (400 `column_limit_exceeded`, wie lokal gegen 2.7.1
  *     gemessen).
  *
- * Abfragen werden wirklich ausgewertet (equal, greaterThan, orderAsc/Desc,
+ * Abfragen werden wirklich ausgewertet (equal, notEqual — wie MariaDB ohne
+ * `null` —, greaterThan, orderAsc/Desc,
  * limit, offset, cursorAfter), sonst bewiese ein Zähl-Test nichts.
  *
  * Eine Tabelle in `missingTables` antwortet wie eine nicht gefahrene Migration
@@ -83,6 +84,7 @@ export function createRaceTablesDB() {
       for (const query of parsed) {
         const key = query.attribute ?? ''
         if (query.method === 'equal') rows = rows.filter(row => (query.values ?? []).includes(row[key]))
+        if (query.method === 'notEqual') rows = rows.filter(row => row[key] !== null && row[key] !== undefined && !(query.values ?? []).includes(row[key]))
         if (query.method === 'greaterThan') rows = rows.filter(row => compare(row[key], query.values?.[0]) > 0)
       }
       const order = parsed.find(query => query.method === 'orderAsc' || query.method === 'orderDesc')

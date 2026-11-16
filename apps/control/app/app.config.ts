@@ -9,6 +9,10 @@ export default defineAppConfig({
   // }
   pukalani: {
     brand: { name: 'Pukalani Control' },
+    // FRISTEN-LAUF DER EIGENEN DOMAIN (BE-014): zählt nur und schreibt nichts
+    // — scharf (`apply`) erst nach Davids Ja zu den Zahlen (Karte unter der
+    // Communities-Liste, `GET /api/control/sweeps/custom-domain`).
+    control: { customDomainSweep: 'dry-run' },
     // STRUKTURIERTE FEHLERZEILEN (OPS-011, 2026-11-16): 5xx-Zeilen am
     // zentralen Fehler-Hook UND die Browser-Fehler-Annahme
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher

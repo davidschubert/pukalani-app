@@ -31,6 +31,8 @@ const EXEMPT: Record<string, string> = {}
 const EXPECTED_JOB_NAMES = [
   'brand-check-erasure',
   'brand-events-sweep',
+  'custom-domain-notice',
+  'custom-domain-sweep',
   'email-digest',
   'entitlements-pull',
   'event-reminders',

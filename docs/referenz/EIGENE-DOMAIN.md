@@ -103,7 +103,14 @@ Domain kann wieder eingeschaltet werden). Alle anderen nicht-aktiven Stufen
 bleiben 404. Dorthin kommt eine Domain auf zwei Wegen: durch den Entzug der
 Freigabe (sofort) und — mit dem Fristen-Lauf — 14 Tage nach dem Ende von
 Testphase oder Abo (`CUSTOM_DOMAIN_GRACE_DAYS`, Ende der Frist in
-`customDomainGraceEndsAt`; die zwei Hinweis-Mails verschickt derselbe Lauf).
+`customDomainGraceEndsAt`). Den Stempel setzt und das Abschalten erledigt
+der stündliche Lauf `custom-domain-sweep` der Betreiber-App
+(`packages/control/server/utils/customDomainSweep.ts`, Schalter
+`pukalani.control.customDomainSweep`: `dry-run` zählt nur, `apply`
+schreibt); die zwei Hinweise (erster Tag, drei Tage vorher) schreibt und
+verschickt der Lauf `custom-domain-notice` der Platform-App, je Hinweis genau
+einmal (feste Kennung der Glocken-Zeile). Handgriffe des Betreibers:
+`docs/runbooks/EIGENE-DOMAIN-FREIGABE.md`.
 Gelöscht wird dabei nichts. **Wieder einschalten** ist derselbe
 „Prüfen"-Klick (die Tür prüft die Berechtigung): die Kette läuft normal bis
 `activate`, das Frist und Abschalt-Stempel räumt; hält sie vorher an, bleibt
