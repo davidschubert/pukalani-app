@@ -95,7 +95,9 @@ schon in einer Datei stehen.
 ## Config-Gates (app.config.ts, Namespace pukalani.*)
 - pukalani.analytics / pukalani.consent: Core-Default false, App aktiviert explizit
 - pukalani.observability: JSON-5xx-Logs am zentralen `server/error.ts` +
-  Client-Error-Inbox (`POST /api/telemetry/error`); Core-Default aus
+  Client-Error-Inbox (`POST /api/telemetry/error`); Core-Default aus, seit
+  2026-11-16 in allen sechs ausgerollten Apps an (OPS-011: der tägliche
+  Wächter zählt die Zeilen; Client-Inbox nur auf den vier Apps mit Anmeldung)
 - pukalani.realtime.enabled (F14, seit 2026-08-01): der EINE Schalter für alle
   Realtime-Einstiege des Core (Row-Streams, Presence, Account-Channel). **Core-Default
   AN** — die begründete Ausnahme von „Core-Default ist IMMER aus"; AUS in
@@ -155,6 +157,11 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   Seite fragt den Stand ab (`core/shared/runLease.ts`). Die Sperre ist eine
   Zeile mit fester Kennung, nie „erst lesen, dann schreiben". Regel:
   `.claude/rules/ki-mail-embed-moderation.md`.
+- ZEIT-LAUF (Sweep, Aufräumer im Takt) NUR über `defineTimedJob()`
+  (`core/server/utils/timedJob.ts`, OPS-011, seit 2026-11-16) — nie eigenes
+  `setInterval` in einem Server-Plugin (Wächter-Test). Die Hilfe schreibt je
+  Takt `job.run`; der Alarm liest daran „überfällig" und „gescheitert". Neuer
+  Lauf ⇒ Kennung in `ops/timed-jobs.conf` für jede App, in der er fährt.
 - createError mit status/statusText (nicht statusCode/statusMessage),
   keine Appwrite-Fehlerdetails an Clients leaken. FACHLICHE Ablehnungsgründe
   reisen als `data: { code: 'last_owner' }` → der zentrale Handler

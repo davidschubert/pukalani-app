@@ -129,7 +129,36 @@ paths:
   Liste; Landing und Hilfe haben keine Datenbank). Auch die Probe des Deploys
   liest es: `behind` ⇒ alle Apps werden ausgeliefert, der Lauf endet rot.
   Eigener Probealarm `-f schema_drill=true` (täuscht für EINEN Host `behind`
-  vor, an Production fehlt nichts). Alle decken dieselbe blinde Stelle ab —
+  vor, an Production fehlt nichts). Seit 2026-11-16 (OPS-011, GA1 P22) sieht
+  der Alarm auch IN DIE APP HINEIN: jeder Zeit-Lauf meldet sich über EINE
+  Hilfe an (`defineTimedJob`, `core/server/utils/timedJob.ts` — ein Test wird
+  rot bei `setInterval(` in einem Server-Plugin) und schreibt nach jedem Takt
+  eine Zeile `job.run`; jeder KI-Ausfall schreibt `ai.failed`; alle sechs
+  ausgerollten Apps schreiben ihre 5xx (`pukalani.observability`). Gezählt
+  wird AUF dem App-Server vom festen Skript `ops/app-watch-counts.mjs` (der
+  Deploy legt es neben die Ecosystem-Datei; liest nur, gibt nur Zahlen und
+  Kennungen in fester Form aus — die AKTUELLEN zwei Log-Dateien aus
+  `pm2 jlist`, nie `*-error*.log`: dort liegen alte Dateien früherer
+  pm2-Nummern daneben). Gerechnet wird im Repo: `verify-app-signals.mjs`
+  täglich, Regeln und Messwerte in `scripts/ops/app-signals-rules.mjs`,
+  erwartete Läufe je App in `ops/timed-jobs.conf` (NEUER ZEIT-LAUF ⇒ dort
+  eintragen; die Liste ist an Production abgelesen, weil die Tore nur der
+  Server kennt). Rot: kein guter Lauf seit zwei Takten plus 30 Minuten, ein
+  Tages-Lauf zuletzt gescheitert, ein erwarteter Lauf nie gemeldet, KI mit
+  Status 402 oder 404, auf `platform` ab 25 Server-Fehlern in 25 h. ALLES
+  ANDERE ZÄHLT NUR (Server-Fehler der fünf anderen Apps, Browser-Fehler,
+  übrige KI-Ausfälle), bis die Zahlen einer Woche vorliegen — eine Schwelle
+  ohne Messung ist geraten, und ein Blick, der zu oft rot ist, wird
+  überlesen. Probealarm `-f signals_drill=true`. Dazu die LIVE-VERBINDUNG
+  (OPS-004): alle 30 min ein WebSocket-Handshake von außen
+  (`verify-realtime.mjs --handshake`, drei Versuche, der dritte nach 5½
+  Minuten — länger als der Takt des Wächters auf dem Server), täglich der
+  Stand dieses Wächters über das Tor-Wort `realtime-status`
+  (`~/ops/realtime-watchdog.sh` auf appwrite-prod: höchstens DREI Neustarts
+  in Folge, dann `aufgegeben`, bis ein Handshake wieder gelingt; gemessen
+  zwei Neustarts in vier Monaten, beide ohne Erfolg). Probealarm
+  `-f realtime_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein
+  Satz, was zu tun ist. Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
   Läufe rot, api.pukalani.app lief ab, niemand sah es): der Job `alarm` macht
@@ -168,8 +197,10 @@ paths:
   `authorized_keys` (kein Terminal, keine Weiterleitung), auf appwrite-prod
   NUR der Wächter-Schlüssel und nur mit festem Befehl: sshd führt dafür immer
   `~/bin/pukalani-cert-gate.sh` aus (Quelle `ops/appwrite-cert-gate.sh`,
-  erlaubt `probe`, `renew`, `reset-account`, `backup-status`; Einspielen nur
-  von Hand). Vom
+  erlaubt `probe`, `renew`, `reset-account`, `backup-status`,
+  `realtime-status`; Einspielen nur von Hand — ebenso
+  `~/ops/realtime-watchdog.sh`, vorher `ops/realtime-watchdog-attrappe.sh`).
+  Vom
   App-Server führt KEIN SSH-Weg zum Appwrite-Server. DER SCHLÜSSEL LIEGT NIE
   NEBEN FREMDEM CODE: `deploy.yml` baut im Job `build` ohne jedes Secret und
   liefert im Job `deliver` ohne `pnpm` aus; `pnpm check:workflows` hält das
@@ -275,6 +306,10 @@ paths:
   Die Namen der fehlenden Variablen stehen beim Start als Fehlerzeile im
   pm2-Log, nie in einer Antwort. Alle vier stehen seitdem auf der
   Pflicht-Liste (vorher nur der Schlüssel). Kein Schalter stellt das ab.
+  `NUXT_REDIS_URL` steht seit 2026-11-16 auf der Pflicht-Liste von platform,
+  admin und portfolio (ohne sie zählt jeder Prozess für sich und beginnt bei
+  jedem Ausliefern neu); auf `branding.supply` ist sie noch NICHT gesetzt
+  (OPEN-ITEMS „AL1").
   REIHENFOLGE BEI EINER NEUEN VARIABLE (zuletzt
   `NUXT_INSIGHTS_NEWSLETTER_SECRET`, SEC-020, 2026-11-15): der Code läuft mit
   einem Rückfall, bis der Wert steht — erst ausliefern, dann den Wert auf dem
