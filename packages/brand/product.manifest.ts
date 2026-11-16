@@ -16,6 +16,8 @@ export default {
   key: 'brand',
   tier: 'optional',
   hasMigrations: true,
+  // Schema-Probe (OPS-008): brand-026 legt brand_checks.erasedAt an.
+  schema: { latest: '026', probe: { migration: '026', table: 'brand_checks', column: 'erasedAt' } },
   apiPrefixes: ['/api/brand'],
   title: { en: 'Brand Wizard', de: 'Brand-Wizard' },
   description: {

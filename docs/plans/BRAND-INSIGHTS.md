@@ -841,6 +841,34 @@ jemand von Hand nachbessert, ist keiner mehr. Die Drossel bleibt trotzdem
 verklemmen kann. Der Same-Language-Fall entfällt: die Zielsprache ist immer die
 andere.
 
+**Ändern nach der Veröffentlichung (GA1 P19, 2026-11-16).** Ein Beitrag im
+Zustand `published` oder `updated` wird beim SPEICHERN erst geprüft und nur
+bei bestandener Prüfung geschrieben — dieselbe Funktion wie beim
+Zustandswechsel (`insightsPublicationGate`, `server/utils/insightsReview.ts`).
+Die Regeln ohne Abruf laufen über den ganzen neuen Stand; fremde Seiten werden
+nur für Belege abgerufen, deren Adresse oder Zitat neu ist. Besteht der Stand
+nicht, wird nichts geschrieben: online bleibt die geprüfte Fassung, der Editor
+behält die Eingabe und zeigt die Stellen. Zwei Auswege: die Stellen beheben —
+oder zurückziehen (geht auch mit ungespeicherten Änderungen) und als Entwurf
+weiterarbeiten. Eine Arbeitsfassung NEBEN der öffentlichen gibt es bewusst
+nicht (eine Zeile je Beitrag). Die Schreib-Funktion nimmt einen öffentlichen
+Stand nur mit einem Freigabe-Zeichen der Prüfung an; der Übersetzen-Lauf darf
+an einem veröffentlichten Beitrag nur die ausgeblendete zweite Fassung
+schreiben. Ein bestandenes Speichern unterschreibt wie die Freigabe
+(`reviewedAt`, `reviewedBy`).
+
+**Änderungshinweise (GA1 P19, Davids Wunsch).** Spalte `changeNotes`
+(Migration `insights-011`): je Hinweis Datum, deutscher und englischer Satz.
+Die Redaktion entscheidet je Änderung, ob ein Hinweis erscheint; neu anlegen
+lässt er sich nur an einem Beitrag, der schon einmal veröffentlicht war. Das
+Datum setzt der Server. Der Knopf „Vorschlag holen (KI)" vergleicht die
+ungespeicherten Änderungen mit der öffentlichen Fassung und schlägt je Sprache
+einen Satz vor (`POST /api/insights/posts/<id>/change-note`, eigenes
+Kontingent, schreibt nichts); ohne inhaltliche Änderung gibt es keinen Lauf.
+Die Artikelseite zeigt die drei jüngsten Hinweise unter der Autorenzeile,
+frühere eingeklappt. Hinweis-Texte laufen durch den Namens- und
+Herabsetzungsfilter (Regel 4).
+
 ### 9.5 Öffentliche Seiten
 
 - **`/insights` (Journal-Liste):** Filterzeile nach Format und Thema,

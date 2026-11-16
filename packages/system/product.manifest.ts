@@ -4,6 +4,8 @@ export default {
   key: 'system',
   tier: 'foundation',
   hasMigrations: true,
+  // Schema-Probe (OPS-008): system-038 legt app_config.brandAiEnabled an; 039 ändert nur einen Bucket (nicht ablesbar).
+  schema: { latest: '039', probe: { migration: '038', table: 'app_config', column: 'brandAiEnabled' } },
   title: { en: 'System', de: 'System' },
   // Der Katalog-Text nannte bis zum 2026-08-02 `changelog` (gehört dem
   // admin-Layer) und verschwieg `app_secrets` + `community_branding`. Diese

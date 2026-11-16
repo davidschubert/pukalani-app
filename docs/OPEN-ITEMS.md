@@ -40,19 +40,20 @@ demo-Ausbau, comments in den Pool. Entscheidungen: DECISION-LOG 2026-08-11.
 | 22 · AB1 | **Anmelde-Bremse: Nacharbeiten.** Die Bremse ist seit 2026-11-13 live (COMPLETE „GA1 P02"). Offen: (a) **Klick-Probe auf Live** mit einem eigenen Konto, (b) **Redis-Einstellung für branding.supply** und die Variable in die Pflichtliste des Wächters, (c) Uploads prüfen die Größe vor dem Einlesen, (d) zwei Fehlerwege an Anmeldung und Reset sauber trennen, (e) Mails je Empfänger begrenzen, (f) drei Kleinigkeiten. | Mittel | S je Teil | **Ja: (a) selbst, (b) Server-Einstellung** | [Einzelheiten](#ab1) |
 | 24 · KE3 | **Profilbild ohne Speichern bleibt als Datei liegen, ohne Protokoll-Eintrag.** In der Oberfläche lädt das Formular erst beim Speichern hoch; scheitert das Speichern danach (z. B. Telefonnummer schon vergeben) oder ruft jemand die Upload-Route direkt, liegt die Datei im Bucket `avatars` und ist per Adresse lesbar, bis das Konto gelöscht wird (dann räumt BE-001 auf). Kein Leck, aber Ablage-Müll. Entscheiden: Datei bei gescheitertem Speichern wieder löschen, einen Aufräum-Lauf bauen oder so lassen. | Niedrig | S | **Ja** — Entscheidung | `packages/core/app/components/user/UserProfileForm.vue` · `packages/core/server/api/storage/[bucket]/index.post.ts` |
 | 25 · PB1 | **Profilbild-Ablage: Nacharbeiten.** Die Ablage ist seit 2026-11-13 umgestellt und live (COMPLETE „GA1 P01"). Offen: (a) **Upload auf den drei anderen Seiten** einmal ausprobieren, (b) **Schlüssel der Migrations-Envs** angleichen und entscheiden, ob sie Dateilisten lesen dürfen, (c) der Migrations-Runner baut bei jedem Lauf an drei Tabellen um, (d) vier Runbooks nennen einen Befehl, der nicht mehr geht, (e) vier Kleinigkeiten. | Mittel | S je Teil, (c) M | **Ja: (a) selbst, (b) Rechte der Schlüssel** | [Einzelheiten](#pb1) |
-| 26 · P29 | **Anmelde-Regeln auf Production einschalten.** Code, Skript und Runbook sind da (2026-11-13). Offen: je Projekt ein Schlüssel mit `policies`-Recht, `ops:auth-policies --apply` in vier Projekten, `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server, die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten. | Mittel | S | Ja (jeder Schritt ändert Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
-| 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Offen: (a) **Klick-Probe auf Live**, abgemeldet und als Mitglied, (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
-| 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live** (Schreiben als Mitglied; ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
+| 26 · P29 | **Anmelde-Regeln auf Production: Reste.** Die Regeln sind seit 2026-11-15 in allen vier Projekten eingeschaltet und zurückgelesen (COMPLETE „GA1 Handgriffe"). Offen: `_APP_PWNED_PASSWORDS_DSN` am Appwrite-Server (bis dahin lehnt der Abgleich mit Datenlecks nichts ab), die Anmelde-Mail ansehen (Sprache, Adresse), Cookie-Satz in den Datenschutztexten, je Projekt ein Schlüssel mit `policies`-Recht für den Skript-Lauf. | Mittel | S | Ja (Server-Einstellung und Schlüssel ändern Production) | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
+| 27 · KU1 | **Kurse: Nacharbeiten.** Übersicht und Vorschau sind seit 2026-11-13 für alle sichtbar, Lektionen und Einschreiben nur für Mitglieder (COMPLETE „GA1 P04"). Die Klick-Probe auf Live ist am 2026-11-15 gemacht (COMPLETE „GA1 Handgriffe"). Offen: (b) die Zugangsarten „kostenlos" und „Mitglieder" unterscheiden sich nicht, (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder, (d) sollen Kurs-Vorschauen geschlossener Communities in Suchmaschinen stehen, (e) drei Kleinigkeiten. | Niedrig | S je Teil | **Ja: (b) und (d) Entscheidung** | [Einzelheiten](#ku1) |
+| 28 · MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** Wache, Zugriffssperre und Hinweisseite für Entfernte sind seit 2026-11-13 live (COMPLETE „GA1 P05"). Offen: (a) **Klick-Probe auf Live, zweiter Teil** (ein Test-Konto entfernen und die Hinweisseite samt Nachricht ansehen; das Schreiben als Mitglied ist am 2026-11-15 geklickt), (b) Benachrichtigungen an entfernte Personen, (c) Stimmen unter geschlossenen Themen, (d) wer darf übersetzen, (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (c) und (d) Entscheidung** | [Einzelheiten](#mm1) |
 | 29 · SI1 | **Sicherungen: Nacharbeiten.** Die vier Sicherungen aus dem Paket P06 sind seit 2026-11-14 live (COMPLETE „GA1 P06"). Der stündliche Label-Abgleich räumt seit dem 2026-11-14 auf. Offen: (a) **Klick-Probe auf Live** (Einladungslink aus einem Webmail-Fenster öffnen; „Zugang entziehen" mit einem Test-Konto), (b) was der Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#si1) |
 | 30 · RU1 | **Runner: Nacharbeiten.** Testbefehle nur aus der Liste des Rechners, Herkunft vom Server und die Fristen sind seit 2026-11-14 live (COMPLETE „GA1 P03"). Offen: (a) **ein echter Lauf über das Formular** mit Auswahl eines Testbefehls, (b) den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst** | [Einzelheiten](#ru1) |
 | 31 · CI1 | **Ausliefer-Weg: Nacharbeiten.** Getrennte Schlüssel für Ausliefern und Wächter, Geheimnisse nur für den Hauptzweig und die Pflicht-Prüfungen sind seit 2026-11-14 live (COMPLETE „GA1 P08"). Offen: (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
 | 32 · RW1 | **Rückweg: Nacharbeiten.** Zurückstellen per Skript, ein älterer Stand über GitHub und die Anleitung sind seit 2026-11-15 live und einmal geübt (COMPLETE „GA1 P10"). Offen: (a) **Notweg ohne GitHub** für das Ausliefern von etwas Neuem (heute nur der Weg zurück), (b) es liegen nur **vier Stände** je Seite, (c) Kleinigkeiten. | Niedrig | (a) M, (b) S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#rw1) |
 | 33 · BK1 | **Backup der Datenbank: Nacharbeiten.** Das nächtliche Backup ist seit 2026-11-15 verschlüsselt, prüft sich selbst, meldet einen Ausfall und wurde einmal zurückgespielt (COMPLETE „GA1 P11"). Offen: (a) **wer außer David an den Schlüssel kommt**, (b) die **Einstellungs-Dateien der Apps** auf dem App-Server sind in keinem Backup, (c) die Übung jährlich wiederholen, (d) Kleinigkeiten. | Mittel | je Teil S | Ja, bei (a) und (b) je eine Entscheidung | [Einzelheiten](#bk1) |
-| 34 · KI1 | **KI-Schutz: Nacharbeiten.** Jeder KI-Aufruf läuft seit 2026-11-15 von selbst mit „keine Speicherung, Verarbeitung in Europa", das Protokoll enthält keinen Antworttext mehr, der Abschalter erreicht jeden bezahlten Weg, und abgeschnittene Berater-Antworten sind gekennzeichnet (COMPLETE „GA1 P17"). Offen: (a) **Klick-Probe auf Live** (einen Beitrag übersetzen), (b) **Datenschutztexte**: was sie jetzt über die KI sagen dürfen, (c) ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#ki1) |
-| 35 · EL1 | **Export und Löschung: Nacharbeiten.** Seit 2026-11-15 erreichen Auskunft und Löschung jede Tabelle mit Personenbezug, Gelöschtes ist wirklich leer, und Fristen setzt ein stündlicher Lauf durch (COMPLETE „GA1 P14"). Offen: (a) **Klick-Probe auf Live** mit einem Wegwerf-Konto, (b) **Datenschutztexte**: Fristen und Hinweise, (c) **Fristen für Einträge ohne Konto bauen** (entschieden 2026-11-15: Warteliste 30/90 Tage/12 Monate, Erstgespräch und Protokoll 12 Monate), (d) Kleinigkeiten. Das Zurückholen binnen 90 Tagen ist ein eigener Punkt (WH1). | Niedrig | S je Teil, (c) M | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#el1) |
+| 34 · KI1 | **KI-Schutz: Nacharbeiten.** Jeder KI-Aufruf läuft seit 2026-11-15 von selbst mit „keine Speicherung, Verarbeitung in Europa", das Protokoll enthält keinen Antworttext mehr, der Abschalter erreicht jeden bezahlten Weg, und abgeschnittene Berater-Antworten sind gekennzeichnet (COMPLETE „GA1 P17"). Offen: (a) **Klick-Probe auf Live, zweiter Teil** (die KI-Einschätzung zu einer Meldung als Moderator; das Übersetzen ist am 2026-11-15 geklickt), (b) **Datenschutztexte**: was sie jetzt über die KI sagen dürfen, (c) ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) selbst, (b) mit dem Anwalt** | [Einzelheiten](#ki1) |
+| 35 · EL1 | **Export und Löschung: Nacharbeiten.** Seit 2026-11-15 erreichen Auskunft und Löschung jede Tabelle mit Personenbezug, Gelöschtes ist wirklich leer, und Fristen setzt ein stündlicher Lauf durch (COMPLETE „GA1 P14"). Die Klick-Probe auf Live ist am 2026-11-15 gemacht (COMPLETE „GA1 Handgriffe"). Offen: (b) **Datenschutztexte**: Fristen und Hinweise, (c) **Fristen für Einträge ohne Konto bauen** (entschieden 2026-11-15: Warteliste 30/90 Tage/12 Monate, Erstgespräch und Protokoll 12 Monate), (d) Kleinigkeiten. Das Zurückholen binnen 90 Tagen ist ein eigener Punkt (WH1). | Niedrig | S je Teil, (c) M | **Ja: (b) mit dem Anwalt** | [Einzelheiten](#el1) |
 | 36 · AR1 | **Aufräumen: Nacharbeiten.** Altlasten sind seit 2026-11-15 weg: Versuchsordner, erledigte Umzugs-Werkzeuge, die alte Changelog-Automatik; es gibt ein Start-Skript statt fünf, und der Server bekommt nur noch die Dateien, die er braucht (COMPLETE „GA1 P26"). Offen: (a) **die Adresse `changelog.pukalani.app` bei Cloudflare löschen**, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) zwei erledigte Umzugs-Anleitungen ins Archiv?, (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare, (c) entscheiden** | [Einzelheiten](#ar1) |
 | 37 · WH1 | **Gelöschte Marke zurückholen (Papierkorb).** Auf branding.supply fehlt der Knopf „Marke löschen"; kommt er, verschwindet die Marke sofort überall, liegt 90 Tage unter „Gelöschte Marken" zum Selbst-Zurückholen und wird danach endgültig gelöscht. Davids Entscheidungen vom 2026-11-15 stehen im Plan. **Konten** bleiben vorerst nicht zurückholbar; das wird mit dem Pukalani-Konto (PK1) entschieden. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
 | 38 · SR1 | **Kleine Sicherheitsriegel: Nacharbeiten.** Sieben kleine Korrekturen sind seit 2026-11-15 live (COMPLETE „GA1 P25"): Bot-Prüfung und eine Grenze je Empfänger an den öffentlichen Formularen von branding.supply, ein eigenes Geheimnis für Abmelde-Links, Links nur mit http(s), strengere Prüfung gespeicherter Zeichen-Grafiken, Einladungen nur mit bestätigter Adresse. Offen: (a) **Klick-Probe auf Live** (beide Formulare), (b) **Datenschutztext** nennt die Bot-Prüfung an zwei Formularen noch nicht, (c) dieselbe Grenze für Code- und Reset-Mails (gehört zu AB1 e), (d) Kleinigkeiten. | Niedrig | S je Teil | **Ja: (a) einmal klicken, (b) Text freigeben** | [Einzelheiten](#sr1) |
+| 39 · IN1 | **Insights-Redaktion: Nacharbeiten.** Änderungen an einem veröffentlichten Artikel laufen seit 2026-11-16 durch die sieben Prüfregeln, und unter einem geänderten Artikel kann ein Änderungshinweis stehen (COMPLETE „GA1 P19"). Offen: (a) **KI-Prüfung als eigener Knopf** (Davids Wunsch, bewusst später), (b) **Klick-Probe auf Live**, sobald der erste Artikel veröffentlicht ist (hängt an 19 · BI5), (c) **Marken-Seiten** lassen sich ohne Prüfung veröffentlichen und ändern, (d) Kleinigkeiten. | Niedrig | S bis M je Teil | **Ja: (a) Startwort, (c) entscheiden** | [Einzelheiten](#in1) |
 
 ## ⏸️ Geparkt / wartet — in Arbeitsreihenfolge
 
@@ -612,9 +613,6 @@ Davids weitere Wünsche zur Kurs-Übersicht (Kategorien, Filter, Sortierung,
 „Best seller", einzelne bezahlte Kurse) sind ein eigenes Vorhaben und stehen
 NICHT hier.
 
-- **(a) Klick-Probe auf Live.** Geprüft ist lokal und in der CI. Auf einer
-  Community mit Kursen einmal abgemeldet die Kurs-Übersicht und eine Kursseite
-  öffnen (Knopf „Anmelden, um teilzunehmen"), dann als Mitglied eine Lektion.
 - **(b) Zugangsarten.** „Kostenlos" und „Mitglieder" verlangen beide die
   Mitgliedschaft. Eine streichen oder ihr einen Unterschied geben.
 - **(c) Übersetzen-Knopf.** Er erscheint für jedes angemeldete Konto; wer kein
@@ -632,11 +630,12 @@ NICHT hier.
 
 **MM1 — Mitmachen nur für Mitglieder: Nacharbeiten (aus dem Gesamtaudit, Paket P05).**
 
-- **(a) Klick-Probe auf Live.** Geprüft ist lokal (Probe je Rolle, Beweis-
-  Skript, E2E gegen eine lokale Pool-Bühne). Auf einer Community: als Mitglied
-  kommentieren, liken, zusagen. Dann ein Test-Konto einladen, wieder entfernen
-  und mit ihm die Community öffnen: Hinweisseite, eine Nachricht an die
-  Leitung (Mail und Glocke beim Owner), neue Einladung annehmen.
+- **(a) Klick-Probe auf Live, zweiter Teil.** Geklickt ist seit dem
+  2026-11-15 das Schreiben als Mitglied (Kommentar, Stimme; zusagen ging
+  nicht, die Demo hat keine kommenden Termine). Offen: auf einer Community ein
+  Test-Konto einladen, wieder entfernen und mit ihm die Community öffnen:
+  Hinweisseite, eine Nachricht an die Leitung (Mail und Glocke beim Owner),
+  neue Einladung annehmen. Das braucht Owner und Test-Konto zugleich.
 - **(b) Benachrichtigungen an entfernte Personen.** Nicht geprüft ist, ob eine
   entfernte Person weiter Glocken-Einträge und Mails aus dieser Community
   bekommt (Antworten auf alte Kommentare, Sammel-Mail). Die Links führten sie
@@ -750,11 +749,10 @@ NICHT hier.
 
 **KI1 — KI-Schutz: Nacharbeiten (aus dem Gesamtaudit, Paket P17).**
 
-- **(a) Klick-Probe auf Live.** Angemeldet in einer Community einen Beitrag
-  oder Kommentar übersetzen lassen und als Moderator die KI-Einschätzung zu
-  einer Meldung holen. Erwartet: beides geht wie vorher. Lokal ist ein echter
-  Aufruf mit der neuen Voreinstellung durchgelaufen; auf Production wurde
-  hinter der Anmeldung nichts geklickt.
+- **(a) Klick-Probe auf Live, zweiter Teil.** Das Übersetzen eines Kommentars
+  ist am 2026-11-15 auf einer Community geklickt und ging (echter Aufruf).
+  Offen: als Moderator die KI-Einschätzung zu einer Meldung holen. Erwartet:
+  geht wie vorher.
 - **(b) Datenschutztexte.** Übersetzung, Moderations-Hilfe, Ticket-Einordnung
   und Seiten-Übersetzung laufen jetzt wie der Markenberater: der Anbieter
   speichert nichts, trainiert nicht damit, und gerechnet wird in Europa
@@ -811,6 +809,40 @@ NICHT hier.
   gehören zu BK1 d). Der lokale Lauf der Playwright-Suite braucht einen
   Browser-Download.
 
+<a id="in1"></a>
+
+**IN1 — Insights-Redaktion: Nacharbeiten (aus dem Gesamtaudit, Paket P19).**
+
+- **(a) KI-Prüfung als eigener Knopf.** Davids Wunsch vom 2026-11-12, am
+  2026-11-16 bewusst auf später gelegt. Der Knopf liest die aktuelle Fassung
+  und meldet, was unstimmig wirkt, was inhaltlich fehlt und wie der Artikel
+  für Leser und Suche besser wird. Er sperrt nichts und darf falsch warnen;
+  die festen Regeln bleiben die Sperre. Kosten je Klick etwa 1 bis 5 Cent.
+  Vorschlag für den Zuschnitt: eigene Route wie der Vorschlag für den
+  Änderungshinweis (eigenes Kontingent, schreibt nichts, Ergebnis nur
+  angezeigt), langer Lauf ⇒ die Frist am Proxy mitdenken.
+- **(b) Klick-Probe auf Live.** Auf Production ist noch kein Artikel
+  veröffentlicht (19 · BI5). Danach einmal: einen veröffentlichten Artikel
+  regelwidrig ändern (erwartet: „nicht gespeichert", die Seite bleibt), einen
+  Hinweis von Hand anlegen, einmal „Vorschlag holen (KI)" klicken. Der Klick
+  auf den Vorschlags-Knopf ist auch lokal nicht geklickt, nur die Route
+  dahinter gefahren.
+- **(c) Marken-Seiten ohne Prüfung.** Eine Marken-Zeile (`insights_brands`)
+  lässt sich im Formular direkt auf „veröffentlicht" stellen und danach
+  ändern; ihre Quellen und Zitate laufen durch keine der Regeln
+  (`server/api/insights/brands/[id].patch.ts`). Heute sind die Marken-Seiten
+  über `publicFormats` nicht freigeschaltet. Zu entscheiden, bevor sie es
+  werden: dieselbe Prüfung wie bei Artikeln?
+- **(d) Kleinigkeiten.** Der Kasten der Prüfregeln sagt auch an einem
+  veröffentlichten Artikel „der Übergang in die Redaktion ist gesperrt". Die
+  drei KI-Wege der Redaktion (Entwurf, Übersetzen, Vorschlag) stehen nicht in
+  der Bremsen-Liste des Core, sie bremst nur das Kontingent im Layer. Das
+  Datum eines Hinweises ist der Kalendertag in UTC. Ein Artikel, der eine
+  heute geltende Regel verletzt (etwa vor Regel 7 veröffentlicht), lässt sich
+  erst wieder speichern, wenn er sie erfüllt oder zurückgezogen ist — vor dem
+  ersten Veröffentlichen auf Production also einmal alle Entwürfe durch
+  „In die Redaktion geben" schicken.
+
 <a id="sr1"></a>
 
 **SR1 — Kleine Sicherheitsriegel: Nacharbeiten (aus dem Gesamtaudit, Paket P25).**
@@ -848,12 +880,6 @@ NICHT hier.
 
 **EL1 — Export und Löschung: Nacharbeiten (aus dem Gesamtaudit, Paket P14).**
 
-- **(a) Klick-Probe auf Live.** Mit einem Wegwerf-Konto auf einer Community
-  einen Kommentar schreiben und löschen, die Daten exportieren und das Konto
-  löschen; auf branding.supply dasselbe mit einer Marke und einem Brand Check.
-  Erwartet: der Hinweis über dem Knopf, danach nichts Lesbares mehr. Lokal ist
-  all das mit Wegwerf-Konten durchgelaufen und direkt an der Datenbank
-  nachgelesen; auf Production wurde hinter der Anmeldung nichts geklickt.
 - **(b) Datenschutztexte.** Neu und für die Erklärungen wichtig: Die Kopie der
   Daten eines gelöschten Kontos liegt 30 Tage beim Betreiber. Prüfergebnisse
   (Brand Checks) sind nach dem Löschen sofort unsichtbar und werden nach 90

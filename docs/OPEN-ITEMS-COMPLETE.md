@@ -30,6 +30,126 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P19 — Insights: Änderungen an Veröffentlichtem laufen durch die Prüfregeln; Änderungshinweis ✅ 2026-11-16
+
+**Was.** Fünftes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit
+2026-11 (Finding BE-009, „Mittel"). Zwei Pull Requests: 182 (Merge
+`61b9d0a4`, die Prüfung) und der zweite mit dem Änderungshinweis und dieser
+Doku. Davids Entscheidung vom 2026-11-12 („erst prüfen, dann
+veröffentlichen"), dazu vier Antworten per Klick am 2026-11-16 (DECISION-LOG).
+
+1. **Die Lücke.** Die sieben Prüfregeln liefen nur beim Zustandswechsel. Das
+   Speichern im Editor schrieb in jedem Zustand — an einem veröffentlichten
+   Artikel war jede Änderung sofort öffentlich, ohne Beleg-Prüfung und ohne
+   Herabsetzungs-Riegel. Gemessen: drei Wege können einen veröffentlichten
+   Artikel ändern (Zustand wechseln, Speichern, Übersetzen), nur einer prüfte.
+2. **Eine Stelle.** `insightsPublicationGate` ist der einzige Einstieg der
+   Regeln; Zustandswechsel und Speichern rufen ihn. Beim Speichern laufen die
+   Regeln ohne Abruf immer, fremde Seiten nur für Belege mit neuer Adresse
+   oder neuem Zitat — ein Tippfehler kostet keinen Abruf, und eine fremde
+   Seite, die sich geändert hat, blockiert keine Korrektur am Text.
+3. **Nicht bestanden.** Nichts wird geschrieben, online bleibt die geprüfte
+   Fassung. Die Antwort ist eine 200 mit der Liste der Stellen
+   (`saved: false`), wie beim Zustandswechsel. Der Editor behält die Eingabe
+   und nennt beide Auswege; „Zurückziehen" geht auch mit ungespeicherten
+   Änderungen und lässt das Formular stehen.
+4. **Sicherung in der Schreib-Funktion.** `saveInsightsPostRow` nimmt einen
+   öffentlichen Stand nur mit einem Freigabe-Zeichen an, das allein die
+   Prüfung für genau diesen Stand ausstellt (sonst 500 `gate_skipped`). Der
+   Übersetzen-Lauf bekommt ein enges Zeichen: nur die ausgeblendete zweite
+   Fassung darf sich ändern. Ein Wächter-Test zählt die Stellen, die die
+   Beitrags-Tabelle anfassen, und die Aufrufer der Schreib-Funktion.
+5. **Änderungshinweis (Davids Wunsch).** Unter einem geänderten Artikel steht
+   klein, was wann geändert wurde. Freiwillig je Änderung; das Datum setzt der
+   Server; den Text schlägt auf Knopfdruck ein Modell vor, ein Mensch
+   bestätigt. Migration `insights-011` (eine Textspalte), auf Production mit
+   Davids Ja VOR dem Merge gefahren.
+
+**Beweise.** Gegen die alte Route sind 12 der 30 neuen Tests rot, mit der
+neuen alle grün. Lokal gegen den Dev-Server mit einem Test-Artikel:
+veröffentlichen, regelwidrig ändern (abgelehnt, die Fassung für Leser bleibt
+Byte für Byte), regelkonform ändern (geht durch); im Editor geklickt
+(Hinweis, Zurückziehen behält die Eingabe). Änderungshinweis: Datum vom
+Server, ein erfundenes Datum wird nicht übernommen, ein echter KI-Vorschlag
+(602 Token hinein, 52 heraus, rund ein Zehntel Cent). PR 182 live auf allen
+acht Hosts (`/api/health` → `.build` = `61b9d0a4`, `ok:true`).
+
+**Nicht geprüft.** Klicks hinter der Anmeldung auf Production — dort ist noch
+kein Artikel veröffentlicht (OPEN-ITEMS 19 · BI5). Der Knopf „Vorschlag
+holen" als Klick im Editor (die Route dahinter lief per Skript).
+
+**Gelernt:** Eine Sicherung, die an einem ÜBERGANG hängt, schützt den Inhalt
+nur bis zum nächsten Weg, der den Inhalt ohne Übergang ändert. Die Regeln
+entstanden für „Entwurf → Prüfung → Freigabe"; das Bearbeiten danach kam mit
+dem Zustand „aktualisiert" dazu und lief daran vorbei. Seither gilt: die
+Sicherung gehört in die Schreib-Funktion (ein öffentlicher Stand braucht ein
+Zeichen der Prüfung), nicht in jede Route, die sich daran erinnern muss.
+Zweitens: ein neuer KI-Weg steht in ZWEI Listen (`scripts/check-ai-routing.mjs`
+und `packages/brand/tests/brandAiCallSites.test.ts`) — die zweite fiel erst im
+vollen Testlauf auf, der Layer-Test allein war grün. Drittens: wer eine
+Spalte anlegt, zieht seit 2026-11-16 `schema` im `product.manifest.ts` nach
+und liest lokal `/api/health`, bevor er zusammenführt.
+
+---
+
+### GA1 Handgriffe — OpenRouter-Schalter, Anmelde-Regeln auf Production, Klick-Proben ✅ 2026-11-15
+
+Drei Dinge, die nach den Paketen des Gesamtaudits als Handgriffe offen waren.
+Kein Code; alles über den Browser des Betreibers, jede Einstellung vorher
+gelesen und nachher zurückgelesen.
+
+**OpenRouter (Paket P00).** Der Schalter „keine Datenspeicherung" steht jetzt
+für alle fünf Gruppen auf an (neu: OpenAI, Google, SpaceXAI). Bei Google ist
+die Unterwahl „Allow Safety Retention" gesetzt: ohne sie fallen die
+Google-Modelle laut Anbieter weg, und Bild-Lesen, Video-Lesen und
+Bild-Erzeugen laufen über Google. Die Training-Schalter standen alle auf aus.
+Ein Monats-Limit je Schlüssel stand schon. Danach `pnpm ops:ai-models`
+(Exit 0, alle sechs Modell-Wahlen erreichbar) und drei echte Aufrufe auf
+Production (Übersetzung, Berater-Antwort, Brand Check).
+
+**Anmelde-Regeln (Paket P29).** In `account`, `admin`, `branding` und
+`portfolio` wichen je sechs von sieben Regeln vom Soll ab
+(`scripts/ops/appwrite-auth-policies.mjs`). Gesetzt in der Appwrite-Konsole
+(Auth → Policies → Passwords, Emails, Sessions), zurückgelesen: je sieben von
+sieben. Eine Registrierung unter den neuen Regeln ging in `account` und
+`branding` durch. Reste stehen in OPEN-ITEMS 26 · P29.
+
+**Klick-Proben.** Mit je einem Wegwerf-Konto:
+
+- *Community (EL1 a, KU1 a, MM1 a erster Teil, KI1 a erster Teil):* Kommentar
+  schreiben und löschen ⇒ leerer Platzhalter ohne Namen (Text, Name und
+  Konto-Id in der Antwort leer). Export enthält den Abschnitt der Kommentare.
+  Der Hinweis „Was beim Löschen geschieht" steht über dem Knopf (fünf Zeilen,
+  auch die 30-Tage-Zeile). Nach der Kontolöschung: beide Kommentare leere
+  Platzhalter, Sitzung weg, Konto in Appwrite nicht mehr vorhanden. Kurse:
+  abgemeldet Übersicht und Kursseite mit „Anmelden, um teilzunehmen", als
+  Mitglied einschreiben und eine Lektion öffnen. Übersetzen eines Kommentars
+  geht.
+- *branding.supply (EL1 a):* Marke anlegen, ein Brand Check mit Haken fürs
+  Ranking, Export enthält den Abschnitt `checks`, der Hinweis nennt die 90
+  Tage. Nach der Kontolöschung antwortet die Ergebnis-Adresse Wort für Wort
+  wie eine erfundene (404), das Ergebnis steht nicht mehr im Ranking, die
+  Marke ist weg.
+
+Nicht gemacht und weiter offen: AB1 (a), PB1 (a), SI1 (a), SR1 (a), der zweite
+Teil von MM1 (a) und KI1 (a).
+
+**Gelernt:** (1) Die Liste führte das Limit bei OpenRouter als offen, es stand
+längst. Erst den Ist-Zustand lesen, dann fragen. (2) „Keine Datenspeicherung"
+hat bei Google eine Unterwahl; die strenge schaltet die Modelle ab. (3) Der
+Abgleich mit Datenlecks lässt sich in der Konsole einschalten, wirkt aber erst
+mit der Server-Variable; ohne sie gilt jedes Passwort als sauber, und nichts
+scheitert (im Quelltext von 2.7.1 nachgelesen). (4) Auf branding.supply fehlt
+im Lösch-Hinweis die 30-Tage-Zeile, weil die Instanz keine Kopie schreibt. So
+ist es gebaut, es fiel erst im Vergleich der zwei Seiten auf. (5) Eine Stimme
+auf einem Demo-Kommentar ersetzt den gesetzten Demo-Zähler durch die echte
+Zahl der Stimmen, und er kommt nach dem Löschen des Kontos nicht zurück.
+Klick-Proben auf der Demo hinterlassen Spuren. (6) Die Bot-Prüfung läuft beim
+ersten Aufruf still und zeigt nach mehreren Aufrufen ihren Haken; den setzt
+ein Mensch.
+
+---
+
 ### GA1 P25 — Kleine Sicherheitsriegel: sieben zweite Sicherungen ✅ 2026-11-15
 
 **Was.** Viertes Umsetzungs-Paket der Stufe „Als Nächstes" aus dem Gesamtaudit

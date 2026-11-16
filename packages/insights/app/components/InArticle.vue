@@ -3,6 +3,7 @@ import type { ContentTocLink } from '@nuxt/ui'
 import type { InsightsLocale } from '../../shared/insightsPost'
 import { insightsPublicFassung, insightsTopicLabel } from '../../shared/insightsPost'
 import type { InsightsPublicPostView } from '../../shared/insightsPublic'
+import { insightsPublicChangeNotes } from '../../shared/insightsPublic'
 import { insightsDay } from '../utils/insightsFormat'
 
 /**
@@ -44,6 +45,21 @@ const toast = useToast()
 
 const view = computed(() => insightsPublicFassung(props.post, props.locale))
 const topicLabels = computed(() => props.post.topics.map(key => insightsTopicLabel(key)))
+/**
+ * DIE ÄNDERUNGSHINWEISE — klein unter der Zeile, jüngste zuerst, in der
+ * Sprache der FASSUNG, die der Leser gerade sieht (bei einem Rückfall auf die
+ * Grundfassung also deren Sprache, damit Text und Hinweis zusammenpassen).
+ * Drei stehen offen da; der Rest hinter einem nativen `details` — eine lange
+ * Liste von Korrekturen über dem Text wäre lauter als die Korrekturen selbst.
+ *
+ * `?? []`: ein Beitrag aus einer Antwort von VOR dem Feld (Zwischenspeicher,
+ * offener Tab) trägt es nicht — dann gibt es eben nichts zu zeigen.
+ */
+const CHANGE_NOTES_VISIBLE = 3
+const changeNotes = computed(() => insightsPublicChangeNotes(props.post.changeNotes ?? [], view.value.locale))
+const changeNotesShown = computed(() => changeNotes.value.slice(0, CHANGE_NOTES_VISIBLE))
+const changeNotesEarlier = computed(() => changeNotes.value.slice(CHANGE_NOTES_VISIBLE))
+
 const tocLinks = computed<ContentTocLink[]>(() => props.toc.map(entry => ({
   id: entry.id,
   text: entry.text,
@@ -106,6 +122,23 @@ async function share(): Promise<void> {
         <button class="bw-label inline-flex items-center gap-1.5" style="color: var(--bw-muted)" @click="share">
           <UIcon name="i-ph-link" class="size-4" /> {{ t('insights.article.share') }}
         </button>
+      </div>
+      <!-- Die Änderungshinweise: im Stil der Zeile darüber, klein und dezent. -->
+      <div
+        v-if="changeNotes.length"
+        class="mt-2 space-y-1"
+        :aria-label="t('insights.article.changeNotes')"
+        data-insights-change-notes
+      >
+        <p v-for="(note, index) in changeNotesShown" :key="index" class="bw-label" style="color: var(--bw-muted)">
+          {{ insightsDay(note.at, locale) }}: {{ note.text }}
+        </p>
+        <details v-if="changeNotesEarlier.length">
+          <summary class="bw-label cursor-pointer" style="color: var(--bw-muted)">{{ t('insights.article.changeNotesEarlier') }}</summary>
+          <p v-for="(note, index) in changeNotesEarlier" :key="index" class="bw-label mt-1" style="color: var(--bw-muted)">
+            {{ insightsDay(note.at, locale) }}: {{ note.text }}
+          </p>
+        </details>
       </div>
     </div>
 

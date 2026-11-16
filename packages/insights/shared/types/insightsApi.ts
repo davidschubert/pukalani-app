@@ -235,6 +235,16 @@ export interface InsightsDraftResponse {
   post: InsightsPost
 }
 
+/**
+ * DER VORSCHLAG FÜR EINEN ÄNDERUNGSHINWEIS (`POST …/change-note`) — ein Satz
+ * je Sprache, eine Sprache darf leer sein. Die Route SCHREIBT NICHTS: der
+ * Vorschlag landet im Formular, und erst „Speichern" macht ihn zum Hinweis.
+ */
+export interface InsightsChangeNoteSuggestionResponse {
+  de: string
+  en: string
+}
+
 // ── Themenradar (BI1 I4, §9.6) ─────────────────────────────────────────────
 
 /**

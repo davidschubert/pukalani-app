@@ -120,7 +120,16 @@ paths:
   erreichbar" ist Exit 2 und bleibt grün) und seit 2026-11-15 der Blick aufs
   nächtliche Backup (OPS-001: Tor-Wort `backup-status` auf appwrite-prod, rot
   bei gescheitertem Lauf oder wenn der Lauf dieser Nacht fehlt; eigener
-  Probealarm `-f backup_drill=true`). Alle decken dieselbe blinde Stelle ab —
+  Probealarm `-f backup_drill=true`). Seit 2026-11-16 (OPS-008) liest der
+  Health-Blick im Halbstunden-Takt außerdem den DATENBANK-STAND: jede App mit
+  Appwrite meldet in `/api/health` das Feld `schema` (ok | behind | unknown —
+  passt die Datenbank zum ausgerollten Programm? Regel in `appwrite.md`),
+  und `verify-health.mjs` wird rot bei `behind`, bei `unknown` nach dem
+  zweiten Versuch und wenn das Feld fehlt (Hosts mit `schema: true` in der
+  Liste; Landing und Hilfe haben keine Datenbank). Auch die Probe des Deploys
+  liest es: `behind` ⇒ alle Apps werden ausgeliefert, der Lauf endet rot.
+  Eigener Probealarm `-f schema_drill=true` (täuscht für EINEN Host `behind`
+  vor, an Production fehlt nichts). Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
   Läufe rot, api.pukalani.app lief ab, niemand sah es): der Job `alarm` macht

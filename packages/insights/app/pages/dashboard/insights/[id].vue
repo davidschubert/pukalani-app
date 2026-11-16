@@ -5,6 +5,7 @@ import { insightsNewsletterEnabled } from '../../../../shared/insightsPublic'
 import type {
   InsightsBrandCreatedResponse,
   InsightsBrandListItem,
+  InsightsChangeNoteSuggestionResponse,
   InsightsDraftResponse,
   InsightsEvidenceResponse,
   InsightsNewsletterSendBatchResponse,
@@ -135,6 +136,11 @@ const REASON_KEY: Record<string, string> = {
   // abgelehnt. Nichts ist geändert — der Satz sagt das, damit niemand zweimal
   // speichert und glaubt, es sei draussen.
   gate_skipped: 'insights.editor.error.gateSkipped',
+  // Der Vorschlag für einen Änderungshinweis: VOR dem Lauf abgelehnt (kein
+  // Geld ausgegeben) bzw. ein Lauf ohne brauchbaren Satz.
+  no_change: 'insights.editor.error.noChange',
+  not_published: 'insights.editor.error.notPublished',
+  ai_empty: 'insights.editor.error.aiEmpty',
 }
 
 function reasonOf(error: unknown): string {
@@ -309,6 +315,38 @@ async function runDraft(input: { brief: string, targetWords: number }): Promise<
   }
   finally {
     drafting.value = false
+  }
+}
+
+// ── Änderungshinweis: Vorschlag der KI ─────────────────────────────────────
+
+/**
+ * DER VORSCHLAG REIST ALS PROP ZURÜCK, NICHT ALS NEUER `post`.
+ *
+ * Die Route schreibt nichts — und ein neuer `post` liesse den Editor von vorn
+ * beginnen, die ungespeicherten Änderungen, die der Vorschlag beschreibt,
+ * wären weg. Der Editor trägt ihn in den neuen Hinweis ein; erscheinen tut er
+ * erst mit „Speichern". `nonce` macht jeden Vorschlag zu einem eigenen
+ * Ereignis, auch wenn zweimal derselbe Satz kommt.
+ */
+const noteSuggestion = ref<{ de: string, en: string, nonce: number } | null>(null)
+const suggestingNote = ref(false)
+
+async function suggestChangeNote(payload: InsightsPostEdit): Promise<void> {
+  suggestingNote.value = true
+  try {
+    const result = await $fetch<InsightsChangeNoteSuggestionResponse>(`/api/insights/posts/${id.value}/change-note`, {
+      method: 'POST',
+      body: payload,
+    })
+    noteSuggestion.value = { de: result.de, en: result.en, nonce: (noteSuggestion.value?.nonce ?? 0) + 1 }
+    toast.add({ title: t('insights.editor.changeNotes.suggested'), color: 'success' })
+  }
+  catch (error) {
+    fail(error)
+  }
+  finally {
+    suggestingNote.value = false
   }
 }
 
@@ -535,6 +573,8 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           :newsletter="newsletter"
           :newsletter-sending="newsletterSending"
           :newsletter-progress="newsletterProgress"
+          :note-suggestion="noteSuggestion"
+          :suggesting-note="suggestingNote"
           @save="save"
           @send-newsletter="sendNewsletter"
           @change-state="changeState"
@@ -542,6 +582,7 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           @translate="translate"
           @draft="runDraft"
           @create-brand="createBrand"
+          @suggest-change-note="suggestChangeNote"
         />
         <CoreEmptyState
           v-else-if="hydrated && !pending"

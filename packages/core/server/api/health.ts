@@ -1,6 +1,7 @@
 import { createAdminClient } from '../lib/appwrite'
 import { tenancyWithoutResolver } from '../utils/tenantResolver'
 import { TENANT_RESOLVER_MISSING_CODE } from '../../shared/unknownHost'
+import { resolveSchemaState } from '../utils/schemaState'
 
 /**
  * Health-Check gegen die Appwrite-Instanz via AdminClient (Scope: health.read).
@@ -23,6 +24,24 @@ import { TENANT_RESOLVER_MISSING_CODE } from '../../shared/unknownHost'
  *
  * Das frühere Feld `user` (Spiegel von `event.context.user`) ist entfallen:
  * kein Leser im Repo, und eine Infra-Route soll keine Sitzungsdaten tragen.
+ *
+ * SCHEMA-STAND (OPS-008, seit 2026-11-15): Deploys laufen automatisch,
+ * Migrationen von Hand — zweimal ging Code live, bevor seine Migration lief.
+ * Das Feld `schema` sagt deshalb, ob die Datenbank zum ausgerollten Programm
+ * passt: `{ state: 'ok' | 'behind' | 'unknown', expected, found }`. Jeder
+ * einkompilierte Layer mit Migrationen prüft EINE Probe am wirklichen Schema
+ * (`schema` im product.manifest.ts, Logik in `utils/schemaState.ts`).
+ *  - ÖFFENTLICH heißt: nur ein Zustandswort und zwei Zahlen, NIE Tabellen-,
+ *    Spalten- oder Migrationsnamen. Was fehlt (`brand-026`), steht nur im
+ *    Server-Log (`schema.behind`, eine Zeile je Wechsel).
+ *  - Ein LESEFEHLER (Ausfall, Frist, falscher Schlüssel) ist `unknown`, nicht
+ *    „ungesund"; nur ein sicher fehlendes Stück ist `behind`.
+ *  - `ok` bleibt davon UNBERÜHRT: seit P10 wird jeder Deploy rot, wenn `ok`
+ *    nicht true ist — ein Fehlalarm der Schema-Prüfung färbte sonst jeden
+ *    Deploy. `behind` meldet der tägliche Wächter.
+ *  - Beide Prüfungen laufen parallel; jede Probe hat ihre eigene Frist von
+ *    4 s, die Schema-Prüfung wirft nie und hat ihren eigenen
+ *    Zwischenspeicher (ok 5 min, behind 30 s, unknown 10 s).
  */
 const CACHE_MS = 5_000
 
@@ -77,7 +96,9 @@ export default defineEventHandler(async (event) => {
     return { ok: false, build, reason: TENANT_RESOLVER_MISSING_CODE }
   }
 
-  const ok = await appwriteHealthy(event)
+  // Parallel: die Schema-Prüfung lehnt nie ab und verlängert die Antwort
+  // höchstens bis zur Frist der langsamsten Probe.
+  const [ok, schema] = await Promise.all([appwriteHealthy(event), resolveSchemaState(event)])
 
-  return { ok, build }
+  return { ok, build, schema }
 })

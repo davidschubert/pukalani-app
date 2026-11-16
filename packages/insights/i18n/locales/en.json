@@ -40,7 +40,9 @@
       "mentioned": "Brands mentioned",
       "moreReading": "More reading",
       "translationMissing": "This language has not been edited yet — you are reading the base version.",
-      "backToList": "All pieces"
+      "backToList": "All pieces",
+      "changeNotes": "Changes to this article",
+      "changeNotesEarlier": "Earlier changes"
     },
     "sources": {
       "title": "Sources",
@@ -464,7 +466,8 @@
         "source": "Source {number}",
         "fact": "Row {number}",
         "brandRef": "Brand {number}",
-        "text": "Text field {number}"
+        "text": "Text field {number}",
+        "changeNote": "Change note {number}"
       },
       "untitled": "Untitled",
       "slug": "Address",
@@ -555,14 +558,32 @@
         "budgetExhausted": "Today’s email budget is used up. Sending stops so sign-up and confirmation can still send mail — press the same button again tomorrow and it picks up where it left off.",
         "budgetUnknown": "We cannot read the email budget right now, so nothing was sent. Is the Resend key missing from the server environment? See the “Resend webhook” runbook.",
         "generic": "That did not work.",
-        "notDeletable": "Withdraw it first — a published piece is not deleted directly."
+        "notDeletable": "Withdraw it first — a published piece is not deleted directly.",
+        "noChange": "There is no change to the content that a note could describe.",
+        "notPublished": "This post has never been published — a change note would have no readers.",
+        "aiEmpty": "The model returned no usable suggestion. Please try again or write it yourself."
       },
       "delete": "Delete",
       "deleteTitle": "Delete this piece",
       "deleteText": "“{title}” will be deleted for good. There is no undo.",
       "deleteHint": "Sources, facts and the desk note go with it — they live in the same row.",
       "deleteBlocked": "Withdraw it first: a published piece is not deleted straight out of the open.",
-      "deleted": "Piece deleted."
+      "deleted": "Piece deleted.",
+      "changeNotes": {
+        "title": "Change notes",
+        "hint": "Shown in small print below the article, with a date. Optional: yes for a corrected figure, no for a typo.",
+        "empty": "No note yet.",
+        "new": "new",
+        "de": "Deutsch",
+        "en": "English",
+        "remove": "Remove",
+        "add": "Add note",
+        "suggest": "Get suggestion (AI)",
+        "cost": "A suggestion is a paid AI run, less than 1 cent. It compares your unsaved changes with the version that is online.",
+        "needsChange": "Change something in the article first — then there is something to describe.",
+        "suggested": "Suggestion added. Please read and adjust it — it only appears once you save.",
+        "unsaved": "New notes and edits only appear once you save."
+      }
     },
     "admin": {
       "nav": "Brand Insights",

@@ -160,6 +160,39 @@ paths:
   `system`-Layer weiter Spalten an und löscht sie wieder (alte Migrationen
   ohne Register) — eine einzeln freigegebene Migration deshalb immer mit
   `--only`.
+- DATENBANK-STAND IN `/api/health` (OPS-008, seit 2026-11-16 — Davids
+  Entscheidung „Die Plattform zeigt an, ob die Datenbank zum ausgerollten
+  Programm passt, und der tägliche Wächter prüft es"): der Deploy feuert beim
+  Merge, Migrationen laufen von Hand, und zweimal ging Programm vor seiner
+  Migration live. Jeder Layer mit Migrationen nennt deshalb in
+  `product.manifest.ts` `schema: { latest, probe: { migration, table,
+  column? } }` — `latest` = höchste Dateinummer, `probe` = die jüngste
+  Migration, deren Ergebnis sich am Schema ABLESEN lässt (Tabelle oder Spalte,
+  die danach bleibt; Indizes, Rechte, Ablagen und Daten sind nicht ablesbar).
+  Die App prüft die Proben aller einkompilierten Layer (Laufzeit-Registry) mit
+  ihrem LAUFZEIT-Schlüssel: `listRows(limit 1, select [spalte])` — fehlende
+  Spalte ⇒ 400 `general_query_invalid`, fehlende Tabelle ⇒ 404
+  `table_not_found` (`core/server/utils/schemaState.ts`, Deutung pur in
+  `core/shared/schemaState.ts`). `/api/health` meldet daneben
+  `schema: { state: ok|behind|unknown, expected, found }`: öffentlich sind NUR
+  das Wort und zwei Zahlen, welche Migration fehlt, steht im Server-Log
+  (`schema.behind`). `ok` bleibt davon UNBERÜHRT (seit P10 färbt `ok` das
+  Ausliefern), ein Lesefehler heißt `unknown`, nie „ungesund"; gehalten wird
+  `ok` 5 min, `behind` 30 s, `unknown` 10 s. BEWUSST KEIN ZEIGER und kein
+  Register: eine einzeln von Hand gefahrene Migration bewegt keinen Zeiger —
+  die Probe liest, was da ist. NEUE MIGRATION ⇒ `latest` nachziehen, und legt
+  sie eine Tabelle oder Spalte an, auch `probe`; der Wächter
+  `packages/core/tests/schemaProbeManifests.test.ts` wird sonst rot (er prüft
+  auch, dass die Probe nicht auf etwas zeigt, das eine spätere Migration
+  löscht). Ein TIPPFEHLER in der Probe sieht aus wie eine fehlende Migration —
+  vor dem Merge lokal `/api/health` lesen. Landing und Hilfe haben einen
+  eigenen Health ohne Appwrite und kein Feld. Wer auswertet: der
+  Halbstunden-Wächter (`verify-health.mjs`: rot bei `behind`, bei
+  anhaltendem `unknown`, bei fehlendem Feld), die Probe des Deploys (rot bei
+  `behind`, NACH dem Ausliefern aller Apps — aufgehalten wird nichts) und
+  täglich `verify-schema-parity.mjs --ci` mit vier nur lesenden Schlüsseln
+  (nennt die fehlende Migration). Was bei Rot zu tun ist:
+  docs/runbooks/PRODUKTIONS-ALARM.md.
 - Migrations: idempotent (409 → skip), IMMER über den zentralen Runner
   `pnpm migrate --app <app>` (scripts/migrate.mjs; bei mehreren Apps ist
   --app Pflicht — nie die falsche Instanz; Ziel-Prüfung s. o.), nach Column-Anlage auf
@@ -216,7 +249,7 @@ paths:
   nach AH-4c wochenlang ungeprüft aus der Runde. Alle Prod-Migrations-Envs
   liegen unter ~/.appwrite-secrets/migrations/<name>.env (account, admin,
   portfolio, branding; portfolios Repo-Baum-Datei ist umgezogen — sie fehlte in
-  jedem Worktree). Der Wächter läuft NUR manuell auf dem Mac, nicht in der CI. Die Migrationen des Control Plane heißen seit
+  jedem Worktree). Der Wächter läuft am Mac (`pnpm ops:schema-parity`) und seit 2026-11-16 täglich im Produktions-Wächter (`--ci`, vier nur lesende Schlüssel `watch-schema-readonly` mit `tables.read` + `columns.read` in der Umgebung `production-watch`; dort ohne Namen, die nur Production kennt). Die Migrationen des Control Plane heißen seit
   2026-07-29 `control-NNN`; Dokumente von VOR dem Cutover (docs/archiv/**,
   CHANGELOG) nennen dieselben Migrationen `studio-NNN` — bewusst nicht
   umgeschrieben, das ist ein Protokoll und kein Nachschlagewerk. Die

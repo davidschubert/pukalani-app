@@ -254,6 +254,7 @@ function articlePost(overrides: Partial<InsightsPost> = {}): InsightsPost {
     noteInternal: '',
     draftModel: '',
     draftPromptVersion: '',
+    changeNotes: [],
     ...overrides,
   }
 }

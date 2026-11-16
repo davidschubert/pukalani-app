@@ -71,6 +71,27 @@
 #      prüft diese Schwelle mit. Runbook:
 #      docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md, § 6.3.
 #
+#   8. DATENBANK-STAND (OPS-008, 2026-11-16), zwei Stufen. Zweimal ging neues
+#      Programm live, bevor seine Migration gelaufen war (BI2 K5 und K7), und
+#      im August war das Aufgaben-Board wochenlang kaputt, weil vier Tabellen
+#      nie angelegt waren — kein Lauf wurde rot. Der Deploy feuert beim Merge,
+#      Migrationen laufen von Hand; die Reihenfolge stand nur als Satz da.
+#        a) ALLE 30 MINUTEN, im Health-Blick (4): jede App mit Appwrite meldet
+#           in `/api/health` das Feld `schema` (ok | behind | unknown). Sie
+#           prüft je Layer eine Probe am wirklichen Schema, mit ihrem eigenen
+#           Laufzeit-Schlüssel. Rot bei `behind`, bei anhaltendem `unknown`
+#           und wenn das Feld fehlt. Braucht weder ssh noch Secret.
+#        b) TÄGLICH (`verify-schema-parity.mjs --ci`): liest je Projekt die
+#           Tabellen- und Spaltenliste und vergleicht sie mit dem gepflegten
+#           Soll und mit denselben Proben — und NENNT die fehlende Migration.
+#           Dafür liegt je Projekt EIN Schlüssel in der Umgebung
+#           `production-watch`, der nur `tables.read` und `columns.read` hat
+#           (Davids Entscheidung 2026-11-12). Fehlt ein Schlüssel, ist der
+#           Blick rot. Im Protokoll stehen nur Namen, die im Repo stehen.
+#      Probealarm: `-f schema_drill=true` (täuscht für EINEN Host `behind`
+#      vor; an Production fehlt dabei nichts). Was bei Rot zu tun ist:
+#      docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm".
+#
 # ── DER ALARMWEG (Job `alarm`) — WARUM ER DAS WICHTIGSTE HIER IST ──────────
 # Der TLS-Wächter hat den Vorfall vom Oktober GESEHEN: ab 2026-10-05 („läuft
 # in 11 Tagen ab") war jeder Lauf rot — rund 900 Stück bis zum 2026-10-24,
@@ -151,6 +172,10 @@ on:
         description: 'PROBEALARM: Health-Blick absichtlich rot — prüft Issue/Mail/Heartbeat; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
+      schema_drill:
+        description: 'PROBEALARM DATENBANK-STAND: der Health-Blick tut so, als hätte ein Host „Datenbank passt nicht zum Programm“ gemeldet — prüft die Kette; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
       backup_drill:
         description: 'PROBEALARM BACKUP: verlangt ein Backup, das es nicht geben kann (Alter unter 0 h) — Backup-Blick rot, prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
@@ -222,6 +247,10 @@ jobs:
         if: always()
         env:
           PUKALANI_HEALTH_DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+          # Datenbank-Stand (OPS-008): derselbe Schritt liest `schema` aus
+          # `/api/health` und wird rot bei „behind". Der Schalter täuscht
+          # genau diese Antwort für EINEN Host vor.
+          PUKALANI_SCHEMA_DRILL: ${{ inputs.schema_drill && '1' || '0' }}
         run: node scripts/ops/verify-health.mjs
 
   # ── TÄGLICH ──────────────────────────────────────────────────────────────
@@ -322,6 +351,19 @@ jobs:
           fi
           exit "$code"
 
+      # Blick 8 b (s. Kopf). Je Projekt ein Schlüssel, der NUR das Schema lesen
+      # darf (tables.read, columns.read). Kein ssh, kein Installieren: das
+      # Skript braucht nur Node. Die Schlüssel gelangen nie ins Protokoll (das
+      # Skript gibt weder Werte noch Antworten aus, nur Namen aus dem Repo).
+      - name: Passt die Datenbank zum Programm? (Schema je Projekt, nur lesend)
+        if: always()
+        env:
+          SCHEMA_WATCH_KEY_ACCOUNT: ${{ secrets.SCHEMA_WATCH_KEY_ACCOUNT }}
+          SCHEMA_WATCH_KEY_ADMIN: ${{ secrets.SCHEMA_WATCH_KEY_ADMIN }}
+          SCHEMA_WATCH_KEY_PORTFOLIO: ${{ secrets.SCHEMA_WATCH_KEY_PORTFOLIO }}
+          SCHEMA_WATCH_KEY_BRANDING: ${{ secrets.SCHEMA_WATCH_KEY_BRANDING }}
+        run: node --experimental-strip-types scripts/ops/verify-schema-parity.mjs --ci
+
       # Blick 7 (s. Kopf). Geschickt wird nur das WORT; was es ausgibt, steht
       # im Tor-Skript auf dem Server (ops/appwrite-cert-gate.sh) — eine Zeile
       # aus Wörtern und Zahlen, kein Pfad, kein Dateiname. Die Zeile wird hier
@@ -390,7 +432,7 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
-      DRILL: ${{ inputs.alarm_drill && '1' || '0' }}
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill) && '1' || '0' }}
       ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
       # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
@@ -428,7 +470,7 @@ jobs:
               echo "- Lauf: $RUN_URL"
               echo "- Was zuerst tun: \`docs/runbooks/PRODUKTIONS-ALARM.md\`, Abschnitt „Wenn ein Alarm kommt\" (Appwrite-Zertifikat, ok:false, Mail-Missbrauch)."
               echo "- Dieses Issue schließt der Wächter SELBST, sobald ein Lauf wieder grün ist. Solange es offen ist, ist der Alarm aktiv."
-              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über \`alarm_drill\`; der nächste Lauf ohne Schalter räumt auf."
+              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über \`alarm_drill\` oder \`schema_drill\`; der nächste Lauf ohne Schalter räumt auf."
               echo
               echo "_Erzeugt vom Job \`alarm\` in \`.github/workflows/production-watch.yml\` (MON1)._"
             } > /tmp/issue-body.md

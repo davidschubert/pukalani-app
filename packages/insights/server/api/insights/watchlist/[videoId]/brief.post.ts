@@ -479,6 +479,8 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
       briefVideoId: run.videoId,
       draftModel: '',
       draftPromptVersion: '',
+      // Ein neuer Beitrag hat nichts, was sich für einen Leser geändert hätte.
+      changeNotes: [],
     }
 
     const created = await createInsightsPostRow(event, post)

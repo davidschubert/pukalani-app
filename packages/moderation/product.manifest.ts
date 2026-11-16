@@ -4,6 +4,8 @@ export default {
   key: 'moderation',
   tier: 'optional',
   hasMigrations: true,
+  // Schema-Probe (OPS-008): moderation-003 legt reports.communityId an; 004 löscht nur tenantId (nicht ablesbar).
+  schema: { latest: '004', probe: { migration: '003', table: 'reports', column: 'communityId' } },
   apiPrefixes: ['/api/reports'],
   title: { en: 'Moderation', de: 'Moderation' },
   description: {

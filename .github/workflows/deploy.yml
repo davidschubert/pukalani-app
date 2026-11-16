@@ -624,6 +624,9 @@ jobs:
           # (s. Probe unten) — der Lauf endet dann rot, NACHDEM alle Apps
           # ausgeliefert sind.
           UNHEALTHY=""
+          # Apps, deren Datenbank nicht zum ausgelieferten Programm passt
+          # (OPS-008, s. Probe unten) — ebenfalls erst NACH allen Apps rot.
+          SCHEMA_BEHIND=""
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
             site="${pair#*=}"
@@ -723,8 +726,22 @@ jobs:
             # Zurueckgestellt wird NICHT von selbst: ob der alte Stand hilft,
             # ist eine Entscheidung (docs/runbooks/DEPLOYMENT.md, „Schlechter
             # Stand live").
+            #
+            # DATENBANK-STAND (OPS-008, 2026-11-16): `/api/health` meldet neben
+            # `ok` das Feld `schema.state` — passt die Datenbank zum Programm?
+            # Die App prueft je Layer eine Probe am wirklichen Schema. Zweimal
+            # ging neues Programm live, bevor seine Migration gelaufen war, und
+            # kein Lauf wurde rot.
+            #   behind  ⇒ der Stand ist ausgeliefert, die uebrigen Apps werden
+            #             TROTZDEM ausgeliefert, der Lauf endet ROT. Aufgehalten
+            #             wird nichts (das waere eine eigene Entscheidung) —
+            #             der Lauf sagt nur, dass eine Migration fehlt.
+            #   unknown ⇒ nur eine Warnung: die App konnte nicht pruefen. Der
+            #             Halbstunden-Waechter fragt nach und wird dann rot.
+            #   kein Feld (Landing, Hilfe: eigener Health ohne Appwrite) ⇒ nichts.
+            # `ok` bleibt davon unberuehrt.
             echo "[$app] Erwarte Commit $EXPECTED_SHA und ok:true auf https://$probe/api/health (3x in Folge) …"
-            built=""; healthy=""; streak=0; reason=""
+            built=""; healthy=""; streak=0; reason=""; SCHEMA=""
             for i in $(seq 1 20); do
               RESP=$(curl -fsS -m 15 "https://$probe/api/health" || true)
               BUILD=$(printf '%s' "$RESP" | jq -r '.build // empty' 2>/dev/null || true)
@@ -732,6 +749,8 @@ jobs:
               # `reason` landet im öffentlichen Protokoll: nur ein kurzes Kennwort
               # (z. B. tenant_resolver_missing), nie freier Text vom Server.
               reason=$(printf '%s' "$RESP" | jq -r '.reason // empty' 2>/dev/null | grep -Eox '[a-z0-9_]{1,40}' | head -n 1 || true)
+              # Nur eines der drei bekannten Worte gelangt ins Protokoll.
+              SCHEMA=$(printf '%s' "$RESP" | jq -r '.schema.state // empty' 2>/dev/null | grep -Eox 'ok|behind|unknown' | head -n 1 || true)
               if [ "$BUILD" = "$EXPECTED_SHA" ]; then
                 streak=$((streak + 1))
                 if [ "$streak" -ge 3 ]; then
@@ -758,9 +777,22 @@ jobs:
               echo "::error::[$app] $EXPECTED_SHA ist ausgeliefert, aber https://$probe/api/health meldet nicht ok:true${reason:+ (reason: $reason)}."
               UNHEALTHY="$UNHEALTHY $app"
             fi
+            if [ "$SCHEMA" = "behind" ]; then
+              echo "::error::[$app] $EXPECTED_SHA ist ausgeliefert, aber die Datenbank passt nicht zum Programm (schema: behind) — eine Migration fehlt."
+              SCHEMA_BEHIND="$SCHEMA_BEHIND $app"
+            elif [ "$SCHEMA" = "unknown" ]; then
+              echo "::warning::[$app] Datenbank-Stand unbekannt (schema: unknown) — die App konnte ihn nicht prüfen; der Halbstunden-Wächter fragt nach."
+            elif [ "$SCHEMA" = "ok" ]; then
+              echo "[$app] ✔ Datenbank passt zum Programm (schema: ok)"
+            fi
           done
           if [ -n "$UNHEALTHY" ]; then
             echo "::error::Ausgeliefert, aber nicht gesund:$UNHEALTHY — docs/runbooks/DEPLOYMENT.md, Abschnitt „Schlechter Stand live“."
+          fi
+          if [ -n "$SCHEMA_BEHIND" ]; then
+            echo "::error::Ausgeliefert, aber die Datenbank passt nicht zum Programm:$SCHEMA_BEHIND — Migration nachholen: docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm“."
+          fi
+          if [ -n "$UNHEALTHY" ] || [ -n "$SCHEMA_BEHIND" ]; then
             exit 1
           fi
 

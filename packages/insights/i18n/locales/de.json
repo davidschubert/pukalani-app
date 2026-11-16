@@ -40,7 +40,9 @@
       "mentioned": "Erwähnte Marken",
       "moreReading": "Mehr lesen",
       "translationMissing": "Diese Sprachfassung ist noch nicht redigiert — hier steht die Grundfassung.",
-      "backToList": "Alle Beiträge"
+      "backToList": "Alle Beiträge",
+      "changeNotes": "Änderungen an diesem Artikel",
+      "changeNotesEarlier": "Frühere Änderungen"
     },
     "sources": {
       "title": "Quellen",
@@ -464,7 +466,8 @@
         "source": "Quelle {number}",
         "fact": "Zeile {number}",
         "brandRef": "Marke {number}",
-        "text": "Textfeld {number}"
+        "text": "Textfeld {number}",
+        "changeNote": "Änderungshinweis {number}"
       },
       "untitled": "Ohne Titel",
       "slug": "Adresse",
@@ -555,14 +558,32 @@
         "budgetExhausted": "Das Mail-Budget des Tages ist aufgebraucht. Der Versand hält an, damit Anmeldung und Bestätigung weiter Mails verschicken können — morgen denselben Knopf noch einmal drücken, es geht an der Stelle weiter.",
         "budgetUnknown": "Wir können das Mail-Budget gerade nicht abfragen und schicken deshalb nichts. Fehlt der Resend-Schlüssel in der Server-Umgebung? Siehe Runbook „Resend-Webhook“.",
         "generic": "Das hat nicht geklappt.",
-        "notDeletable": "Erst zurückziehen — ein freigegebener Beitrag wird nicht direkt gelöscht."
+        "notDeletable": "Erst zurückziehen — ein freigegebener Beitrag wird nicht direkt gelöscht.",
+        "noChange": "Es gibt keine inhaltliche Änderung, zu der ein Hinweis passen würde.",
+        "notPublished": "Dieser Beitrag war noch nie veröffentlicht — ein Änderungshinweis hätte keine Leser.",
+        "aiEmpty": "Das Modell hat keinen brauchbaren Vorschlag geliefert. Bitte noch einmal versuchen oder selbst schreiben."
       },
       "delete": "Löschen",
       "deleteTitle": "Beitrag löschen",
       "deleteText": "„{title}“ wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
       "deleteHint": "Quellen, Fakten und die Redaktionsnotiz gehen mit — sie stehen in derselben Zeile.",
       "deleteBlocked": "Erst zurückziehen: ein freigegebener Beitrag wird nicht aus der Öffentlichkeit heraus gelöscht.",
-      "deleted": "Beitrag gelöscht."
+      "deleted": "Beitrag gelöscht.",
+      "changeNotes": {
+        "title": "Änderungshinweise",
+        "hint": "Erscheint klein unter dem Artikel, mit Datum. Freiwillig: für eine korrigierte Zahl ja, für einen Tippfehler nein.",
+        "empty": "Noch kein Hinweis.",
+        "new": "neu",
+        "de": "Deutsch",
+        "en": "English",
+        "remove": "Entfernen",
+        "add": "Hinweis hinzufügen",
+        "suggest": "Vorschlag holen (KI)",
+        "cost": "Ein Vorschlag ist ein bezahlter KI-Lauf, weniger als 1 Cent. Er vergleicht deine ungespeicherten Änderungen mit der Fassung, die online steht.",
+        "needsChange": "Erst etwas am Artikel ändern — dann gibt es etwas zu beschreiben.",
+        "suggested": "Vorschlag eingetragen. Bitte lesen und anpassen — er erscheint erst mit Speichern.",
+        "unsaved": "Neue Hinweise und Änderungen erscheinen erst mit Speichern."
+      }
     },
     "admin": {
       "nav": "Brand Insights",

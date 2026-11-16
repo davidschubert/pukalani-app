@@ -49,8 +49,13 @@ export const INSIGHTS_AI_DAY_WINDOW_MS = 24 * 60 * 60_000
  * zweite, strengere Zahl an genau dieser Stelle wäre eine Regel ohne Anlass,
  * und der Deckel, der hier wirklich trägt, ist der Mensch, der jedes Video
  * selbst in die Liste gelegt hat.
+ *
+ * `changeNote` (Vorschlag für einen Änderungshinweis, 2026-11-16) ist der
+ * kleinste Lauf — ein Satz je Sprache aus einem gedeckelten Unterschied. Er
+ * bekommt trotzdem seinen EIGENEN Eimer: wer an einem Nachmittag zehn
+ * Hinweise vorschlagen lässt, soll dadurch keine Übersetzung verlieren.
  */
-export type InsightsAiKind = 'translate' | 'draft' | 'brief'
+export type InsightsAiKind = 'translate' | 'draft' | 'brief' | 'changeNote'
 
 /**
  * Der Stunden-Eimer EINES Kontos für EINE Art. `kind` vor `userId`, damit die
