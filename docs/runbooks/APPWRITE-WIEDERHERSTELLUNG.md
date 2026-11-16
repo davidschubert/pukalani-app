@@ -94,7 +94,7 @@ beim Zurückspielen.
 | Der private Schlüssel | in Davids Passwort-Managern **NordPass** und **Apple Passwörter**, jeweils als Eintrag „Pukalani Appwrite Backup – privater Schlüssel“. Nicht auf dem Server, nicht auf der Storage Box, nicht im Repo |
 | Zugang zum Hetzner-Konto und zu Cloudflare (für die Adresse) | Passwort-Manager |
 | Die Skripte | dieses Repo, Ordner `ops/` (öffentlich lesbar, auch ohne Rechner mit Checkout) |
-| Wer außer David an den Schlüssel kommt | **offen** — die Vertrauensperson ist noch nicht benannt (OPEN-ITEMS BK1) |
+| Wer außer David an den Schlüssel kommt | **entschieden am 2026-11-16:** keine zweite Person; der Schlüssel bekommt einen zweiten, getrennten Ablageort bei David (noch einzurichten, OPEN-ITEMS BU1) |
 
 ## 4 · Wiederherstellen, Schritt für Schritt
 
