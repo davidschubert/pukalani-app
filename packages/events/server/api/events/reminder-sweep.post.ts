@@ -19,6 +19,10 @@ import { seamSecretMatches, seamSecretsFor } from '../../../../core/server/utils
  * Im Silo/Single-Tenant (Gate `pukalani.tenancy.enabled` aus) bleibt alles
  * unverändert — dort gibt es keinen Mandanten, den man verfehlen könnte, das
  * Projekt IST die Grenze.
+ *
+ * Der eigentliche Weg ist seit OPS-003 (2026-11-16) der Zeit-Lauf
+ * `event-reminders` (server/plugins/event-reminders.ts), der stündlich ALLE
+ * Communities durchgeht; diese Route bleibt nur, bis der alte Zeitplan entfernt ist.
  */
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
