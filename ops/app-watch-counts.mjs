@@ -187,7 +187,11 @@ async function main() {
       case 'job.registered': {
         const item = job(entry.job)
         if (!item) break
-        if (item.registered === null || at > item.registered) item.registered = at
+        // Die FRÜHESTE Anmeldung in der Datei: für einen Lauf, der noch nie
+        // gut gelaufen ist, beginnt die Frist dort — nicht bei jedem Neustart
+        // neu (sonst bliebe ein Lauf, der seit seiner Einführung scheitert, an
+        // einem Tag mit vielen Auslieferungen unsichtbar).
+        if (item.registered === null || at < item.registered) item.registered = at
         if (Number.isInteger(entry.everyMin)) item.everyMin = wholeNumber(entry.everyMin, 100000)
         break
       }

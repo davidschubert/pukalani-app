@@ -13,6 +13,15 @@ paths:
 
 ## Realtime-Gate (F14/G5) — Config-Gate und Host-Gate
 
+- OB REALTIME ÜBERHAUPT ANTWORTET, sieht der Produktions-Wächter (OPS-004,
+  seit 2026-11-16): alle 30 min ein Handshake von außen gegen
+  `api.pukalani.app` (`scripts/ops/verify-realtime.mjs`), täglich der Stand
+  des Wächters auf dem Appwrite-Server (`ops/realtime-watchdog.sh`: prüft alle
+  5 min lokal, erstellt den Container höchstens dreimal in Folge neu, danach
+  `aufgegeben`). Ein Handshake (HTTP 101) beweist nur, dass der Dienst
+  Verbindungen annimmt — nicht, dass Ereignisse ankommen. Was bei Rot zu tun
+  ist: docs/runbooks/PRODUKTIONS-ALARM.md, „Live-Verbindung (Realtime)".
+
 - pukalani.realtime.enabled (F14, seit 2026-08-01): der EINE Schalter für alle
   Realtime-Einstiege des Core — Row-Streams (useRealtimeRows), Presence
   (usePresence/-State) und den Account-Channel (useRealtimeAccount). AUS heißt: kein

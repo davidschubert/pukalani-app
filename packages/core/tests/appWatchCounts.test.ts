@@ -123,6 +123,8 @@ describe('ops/app-watch-counts.mjs', () => {
     ])
     writeLog('out', 4, [
       event(200, 'info', 'job.registered', { job: 'trial-sweep', everyMin: 60 }),
+      // Ein späterer Neustart meldet denselben Lauf noch einmal an — es zählt die früheste Anmeldung.
+      event(40, 'info', 'job.registered', { job: 'trial-sweep', everyMin: 60 }),
       event(190, 'info', 'job.run', { job: 'trial-sweep', result: 'ok', ms: 3, everyMin: 60 }),
       event(130, 'info', 'job.run', { job: 'trial-sweep', result: 'ok', ms: 3, everyMin: 60 }),
       event(200, 'info', 'job.registered', { job: 'health-sweep', everyMin: 5 }),

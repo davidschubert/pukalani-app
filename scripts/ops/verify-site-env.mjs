@@ -238,6 +238,17 @@ export const SITES = [
       'NUXT_INSTANCE_SECRETS_KEY',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
+      /**
+       * BREMSEN UND ZÄHLER ÜBER NEUSTARTS HINWEG (OPS-011, 2026-11-16): ohne
+       * diese Variable zählt jeder Prozess für sich im Speicher — Bremsen,
+       * Konto-Pausen und Tages-Deckel beginnen bei jedem Ausliefern neu, an
+       * manchen Tagen mehrfach. Nichts wird rot, die Grenzen gelten nur
+       * kürzer als gedacht. Pflicht dort, wo sie am 2026-11-16 gesetzt war
+       * (platform, admin, portfolio). `branding.supply` hat sie noch NICHT
+       * (dort liegen die KI-Deckel im Speicher): erst auf dem Server setzen,
+       * dann hier eintragen (Reihenfolge-Regel in hosts-ops.md).
+       */
+      'NUXT_REDIS_URL',
     ],
   },
   {
@@ -305,6 +316,8 @@ export const SITES = [
       'NUXT_INSTANCE_SECRETS_KEY',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
+      // Bremsen und Zähler über Neustarts hinweg (OPS-011) — Begründung bei `platform`.
+      'NUXT_REDIS_URL',
     ],
   },
   {
@@ -352,6 +365,8 @@ export const SITES = [
       'NUXT_ONBOARDING_SERVICE_SECRET',
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
+      // Bremsen und Zähler über Neustarts hinweg (OPS-011) — Begründung bei `platform`.
+      'NUXT_REDIS_URL',
     ],
   },
   {
