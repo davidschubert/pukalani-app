@@ -64,18 +64,32 @@ test.describe('Schutz-Kopfzeilen (SEC-006)', () => {
     expect(values(res, 'x-frame-options')).toEqual([])
   })
 
+  /**
+   * DATEIEN LIEFERT IM DEV-SERVER NICHT NITRO AUS (gemessen 2026-11-16): die
+   * public-Dateien und `/_nuxt/*` beantwortet dort der Dev-Server davor, der
+   * `request`-Haken läuft für sie gar nicht. Im Build ist es Nitro selbst —
+   * dort tragen sie die Kopfzeilen. Der Dev-Zweig hält deshalb nur fest, dass
+   * die Dateien kommen und nichts doppelt ist; die Zusage für den Build prüft
+   * dieser Test, sobald er gegen einen Build läuft, und täglich der Blick des
+   * Produktions-Wächters an den echten Hosts.
+   */
   test('Dateien: public-Datei und ein Skript aus /_nuxt/', async ({ request }) => {
-    const file = await request.get('/embed.js')
-    expect(file.status()).toBe(200)
-    expectBaseOnce(file, '/embed.js')
-    expect(values(file, 'x-frame-options')).toEqual([])
-
     const html = await (await request.get('/')).text()
+    const dev = html.includes('/@vite/client')
     const asset = /(?:src|href)="(\/_nuxt\/[^"]+)"/.exec(html)?.[1]
     expect(asset, 'ein /_nuxt/-Verweis im HTML').toBeTruthy()
-    const js = await request.get(asset!)
-    expect(js.status()).toBe(200)
-    expectBaseOnce(js, asset!)
+
+    for (const path of ['/embed.js', asset!]) {
+      const file = await request.get(path)
+      expect(file.status(), path).toBe(200)
+      expect(values(file, 'x-frame-options'), path).toEqual([])
+      if (dev) {
+        for (const name of BASE) expect(values(file, name).length, `${path}: ${name} höchstens einmal`).toBeLessThanOrEqual(1)
+      }
+      else {
+        expectBaseOnce(file, path)
+      }
+    }
   })
 
   test('Embed erlaubt: /embed ist für die Einbetter framebar, ohne XFO', async ({ request }) => {
