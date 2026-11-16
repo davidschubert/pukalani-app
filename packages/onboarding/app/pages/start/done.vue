@@ -35,8 +35,17 @@ const communityId = computed(() => String(route.query.site ?? ''))
 const { data } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
   default: () => ({ communities: [] as MyCommunityView[] }),
 })
-const host = computed(() =>
-  data.value?.communities.find(entry => entry.communityId === communityId.value)?.host ?? '')
+const entry = computed(() =>
+  data.value?.communities.find(item => item.communityId === communityId.value))
+const host = computed(() => entry.value?.host ?? '')
+
+/**
+ * Testphase einmal je Konto (BE-015): entstand die Community OHNE Testphase
+ * (das Konto hatte seine schon), hat ihre Zeile kein `trialEndsAt` — dann
+ * steht hier der Weg zum Plan statt des Testphasen-Hinweises. Ohne Eintrag in
+ * der Liste bleibt der bisherige Hinweis.
+ */
+const hints = computed(() => ['visibility', entry.value && !entry.value.trialEndsAt ? 'noTrial' : 'trial', 'settings'])
 
 // Der Name kommt aus dem Entwurf; nach dem Leeren (unten) bleibt er in dieser
 // Kopie stehen, damit die Überschrift beim Neuladen nicht leer wird.
@@ -111,7 +120,7 @@ useBrandTitle(() => t('onboarding.done.title'))
     </div>
 
     <ul class="space-y-3 text-sm">
-      <li v-for="hint in ['visibility', 'trial', 'settings']" :key="hint" class="flex items-start gap-3">
+      <li v-for="hint in hints" :key="hint" class="flex items-start gap-3">
         <UIcon name="i-ph-check-circle" class="mt-0.5 size-4 shrink-0 text-primary" />
         <span class="text-muted">{{ t(`onboarding.done.hints.${hint}`) }}</span>
       </li>
