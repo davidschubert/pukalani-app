@@ -45,6 +45,18 @@ export const MODEL_FIELDS = [
 export const MODEL_LIST_FIELDS = ['outsideViewModels']
 
 /**
+ * FELDER, DIE WIE EINE MODELL-WAHL HEISSEN UND KEINE SIND (GA1 P20). Der Test
+ * `packages/core/tests/aiModelFields.test.ts` liest jedes Feld `…Model` /
+ * `…Models` aus allen `app.config.ts` — steht es weder oben noch hier, ist er
+ * rot. So kann ein neues Modell-Feld nicht mehr am täglichen Wächter
+ * vorbeigehen (BE-004: `imageModel` fehlte, das Bildmodell hatte wochenlang
+ * keinen Endpunkt, der Wächter war grün). Je Eintrag ein Grund.
+ */
+export const NOT_A_MODEL_CHOICE = {
+  models: 'packages/runner: Auswahlliste der Oberfläche für den AI-Runner (Eigennamen wie „Opus"), kein Slug beim Vermittler und kein Aufruf über den KI-Transport.',
+}
+
+/**
  * Die zwei EU-Endpunkte des Textweges — `AI_TEXT_EU_ENDPOINTS` im Core
  * (Davids Entscheidung 2026-11-09, AI1; seit P17 die Voreinstellung jedes
  * Textaufrufs).

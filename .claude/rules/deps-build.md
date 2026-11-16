@@ -118,6 +118,33 @@ paths:
   DECISION-LOG, in `plans/`, `referenz/`, `runbooks/` und im README nicht. Wer
   in einer dieser Dateien einen Pfad nennt (oder eine Datei löscht, die dort
   genannt ist), fährt vorher `pnpm check:doc-links`.
+- WÄCHTER LESEN IHRE LISTEN AUS DEM CODE (GA1 P20, seit 2026-11-16 — Davids
+  Entscheidung „Die Wächter erzeugen ihre Listen aus dem Code"): eine Liste,
+  die jemand nachtragen muss, macht ihren Wächter blind für genau das Neue.
+  `check:manifests` fährt seitdem ZEHN Prüfungen; neu sind (7) jede
+  Routen-Datei eines abschaltbaren Layers liegt unter seinen `apiPrefixes`,
+  (8) keine globale `pageTransition` in einer App mit dem Layer `admin`,
+  (9) die Lösch-Pflicht (Manifest `userData` gegen Beitrag und
+  Personen-Spalten) und (10) die Datentür-Liste (wer `communityId` anlegt,
+  steht in `scripts/lib/data-door-layers.mjs`). 9 und 10 lesen die
+  MIGRATIONEN über `scripts/lib/migration-inventory.mjs` — der Leser versteht
+  den Schreibstil der Migrationen (Literal, Konstante der Datei, Schleife über
+  eine Liste, Hilfsfunktion, Fabrik aus `scripts/migrations-lib/`); was er
+  NICHT lesen kann, macht `check:manifests` rot, statt still zu fehlen. Neue
+  Migration ⇒ Tabelle und Spalte als Literal oder Konstante derselben Datei
+  schreiben. Dazu als achter Wächter im Lint-Lauf `check:live-beweise`
+  (`docs/referenz/LIVE-BEWEISE.md` wird aus den Köpfen der Beweis-Skripte
+  ERZEUGT: neues, gelöschtes oder umbenanntes `verify-*`/`acceptance-*`-Skript
+  ⇒ `pnpm live-beweise` und die Datei mit committen). Im Test-Lauf
+  (`packages/core/tests`): `verifySiteEnv` (jede Einstellung aus
+  `runtimeConfig` und jedes `process.env.NUXT_…` hat eine Entscheidung in
+  `scripts/ops/site-env-decisions.mjs`), `aiModelFields` (jedes Feld `…Model`
+  einer `app.config.ts` kennt der Modell-Wächter), `deployApps` (Health-Hosts
+  ⊆ TLS-Hosts), `layerTestsNoAppImports` (ein Test eines Layers importiert
+  nichts aus `apps/` — dort fehlt in der CI `.nuxt/`). REGEL FÜR JEDE
+  AUSNAHMELISTE: eine Stelle, je Eintrag ein Grund, und ein Eintrag, der
+  nichts mehr ausnimmt, ist rot. Gemessen: `check:manifests` 0,25 s,
+  `lint:scripts` unverändert rund 4 s.
 - ALLE VIER PRÜFUNGEN HALTEN DEN DEPLOY AUF (seit 2026-11-13, P07, Davids
   Entscheidung 2026-11-12): Test, Lint, Typecheck, E2E. Ein roter Wächter im
   Lint-Lauf ist damit kein Hinweis mehr, sondern ein Stopp. Im Lint-Workflow

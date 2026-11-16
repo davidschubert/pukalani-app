@@ -48,6 +48,12 @@ jobs:
       # ist die handgepflegte Vorgängerin gescheitert (7 von 12 Zeilen falsch).
       - run: pnpm check:bilanz
 
+      # Die Liste der Beweis-Skripte in docs/referenz/LIVE-BEWEISE.md wird seit
+      # dem 2026-11-16 ERZEUGT (OPS-012): die handgeschriebene sprach von „zwei
+      # Dutzend" Skripten, im Repo lagen 81. Neues, gelöschtes oder
+      # umbenanntes Skript ohne neu erzeugte Liste ⇒ rot. Reines Lesen, <0,1 s.
+      - run: pnpm check:live-beweise
+
       # Tote Verweise in der Doku: CLAUDE.md sprach an 14 Stellen von einer
       # Tabelle, die es seit control-030 nicht mehr gibt — das Regelwerk, nach
       # dem hier alle arbeiten. Läuft in ~1 s, reines Lesen.

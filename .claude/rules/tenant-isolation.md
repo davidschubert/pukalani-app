@@ -61,8 +61,10 @@ paths:
   pool-weit in eine Kunden-Ansicht. Wer einen H3Event bekommt, bedient einen
   REQUEST und gehört hinter dieselbe Tür wie eine Route; eventlose Sweeps
   brauchen eine begründete eslint-disable-Zeile statt einer Aufweichung.
-  Neue Pool-Layer in die Liste aufnehmen, sobald ihre Tabellen communityId
-  tragen. Pool-Unique-
+  DIE LISTE steht seit 2026-11-16 (P20) in `scripts/lib/data-door-layers.mjs`
+  (ESLint liest sie von dort), und `pnpm check:manifests` hält sie gegen die
+  Migrationen: legt ein Layer `communityId` an, steht er dort — in der Liste
+  oder mit Grund in `DATA_DOOR_EXEMPT` (heute `control` und `system`). Pool-Unique-
   Regel gilt weiter, ABER nur für tenant-RELATIVE Schlüssel: Host/Slug brauchen
   communityId (comments-015 uq_tenant_host, pages-004, courses-002 uq_tenant_slug
   — die INDEXNAMEN blieben, nur die Spalte wurde umbenannt),

@@ -243,7 +243,11 @@ paths:
   tote Tabellen). Die Soll-Listen sind GEPFLEGT, nicht aus Migrations-Dateien
   geparst — neue Tabelle ⇒ in ihren Layer-Block im Skript eintragen; das gilt
   AUCH für Tabellen aus ensure-Skripten statt pnpm migrate (intro_requests so
-  übersehen, 2026-08-31). Seit 2026-08-31 trägt jeder INSTANCES-Eintrag ein
+  übersehen, 2026-08-31). Seit 2026-11-16 (P20) hält ein Test die Soll-Listen
+  gegen die Migrationen selbst (`user-data-coverage.test.ts`: jede Tabelle, die
+  eine Migration anlegt, steht im Soll, und umgekehrt) — das Nachtragen kann
+  nicht mehr vergessen werden; WO eine Tabelle laufen soll, bleibt eine
+  Entscheidung im Skript. Seit 2026-08-31 trägt jeder INSTANCES-Eintrag ein
   `ausgerollt`-Flag: fehlt die Env-Datei einer AUSGEROLLTEN Instanz, endet der
   Lauf rot (Exit 1) statt still „übersprungen" — so fiel die Betreiber-Konsole
   nach AH-4c wochenlang ungeprüft aus der Runde. Alle Prod-Migrations-Envs

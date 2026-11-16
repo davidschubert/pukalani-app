@@ -37,17 +37,30 @@ Drei Regeln, die jede Änderung an einem Beitrag einhalten muss:
 `packages/core/tests/support/userDataTables.ts` nennt für jede Tabelle und jede Ablage, in welcher
 Datei sie für die Auskunft gelesen und für die Löschung geleert wird – oder mit einem Satz, warum
 nicht. Der Test `packages/core/tests/user-data-coverage.test.ts` hält die Liste gegen die
-Soll-Tabellen aus `scripts/ops/verify-schema-parity.mjs` und gegen die genannten Dateien.
+Tabellen, die die Migrationen der Layer anlegen (seit 2026-11-16 aus den Migrations-Dateien gelesen,
+`scripts/lib/migration-inventory.mjs`; vorher aus einer Soll-Liste von Hand), und gegen die
+genannten Dateien.
+
+**Neuer Layer – die Lösch-Pflicht hält ein Wächter.** Jedes `product.manifest.ts` sagt
+`userData: true | false`. `pnpm check:manifests` (Prüfung 9) liest dazu den Dateibaum und die
+Migrationen: `true` verlangt das Plugin `server/plugins/user-data.ts` mit
+`registerUserDataContributor` und für jede Tabelle mit einer Personen-Spalte (Konto-Id, „…By",
+E-Mail, IP, Handle, Name einer Person) einen Eintrag in der Liste, der nicht `NONE` heißt; `false`
+ist rot, sobald eine Migration des Layers eine solche Spalte anlegt. Eine Spalte, die nur so heißt
+und keine Person meint, steht mit Grund in `PERSON_COLUMN_EXCEPTIONS`
+(`scripts/lib/user-data-duty.mjs`).
 
 **Neue Tabelle oder Ablage – was zu tun ist:**
 
-1. In die Soll-Liste des Paritäts-Skripts eintragen (wie bisher).
+1. In die Soll-Liste des Paritäts-Skripts eintragen (ein Test hält sie gegen die Migrationen).
 2. In `userDataTables.ts` eintragen: Datei für Export und Löschung, `skip('Grund')` oder `NONE`.
 3. Trägt sie Daten über Menschen: im Beitrag des Layers lesen und leeren, mit Test.
 4. Hat sie eine Frist: den Lauf nennen, der sie durchsetzt (nächster Abschnitt).
 
-Der Test sieht keine neue **Spalte** an einer vorhandenen Tabelle. Wer einer Tabelle ein Feld mit
-Text, Name, Adresse oder Konto-Id gibt, zieht den Beitrag und – wenn es Inhalt ist – den
+Eine neue **Spalte** an einer vorhandenen Tabelle sieht der Wächter nur, wenn sie wie eine Person
+HEISST (`userId`, `invitedBy`, `email` …). Ein Feld mit neutralem Namen (`note`, `payload`,
+`translations`) sieht er nicht. Wer einer Tabelle ein Feld mit Text, Name, Adresse oder Konto-Id
+gibt, zieht den Beitrag und – wenn es Inhalt ist – den
 Platzhalter des Layers von Hand nach (so fehlte der Übersetzungs-Cache `translations` nach seiner
 Einführung in jedem Lösch-Weg).
 
