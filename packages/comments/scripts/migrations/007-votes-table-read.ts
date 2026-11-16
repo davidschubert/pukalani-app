@@ -9,13 +9,18 @@
  * IDEMPOTENT: updateTable setzt die Ziel-Permissions absolut — ein Re-Run
  * ist ein No-op. 404 (Table fehlt, z. B. App ohne comments-Daten) → Skip.
  *
+ * SEIT comments-022 (SEC-002, 2026-11-16) SETZT DIESE MIGRATION `create(users)`
+ * NICHT MEHR: Stimmen schreibt nur noch der Server, das Tabellenrecht besitzt
+ * comments-022. Weil `updateTable` hier absolut setzt, hätte ein voller Lauf
+ * die Tabelle sonst jedes Mal wieder geöffnet.
+ *
  *   node --experimental-strip-types --env-file=apps/<app>/.env \
  *     packages/comments/scripts/migrations/007-votes-table-read.ts
  *
  * Benötigte Key-Scopes: tables.* (Migrations-Key, siehe A2).
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, Permission, Role } from 'node-appwrite'
+import { Client, TablesDB } from 'node-appwrite'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -45,12 +50,13 @@ try {
     databaseId,
     tableId: 'comment_votes',
     name: 'Comment Votes',
-    // read(users) fällt weg — nur noch create(users); Lesen läuft über
-    // Row-Permissions (read(user:self)) bzw. den Server-Admin-Client.
-    permissions: [Permission.create(Role.users())],
+    // read(users) fällt weg; Lesen läuft über Row-Permissions
+    // (read(user:self)) bzw. den Server-Admin-Client. Kein Schreib-Recht:
+    // Zielzustand von comments-022.
+    permissions: [],
     rowSecurity: true,
   })
-  console.log('✔ comment_votes: Table-Permissions = [create(users)] (read(users) entfernt)')
+  console.log('✔ comment_votes: kein Tabellenrecht (read(users) entfernt; Zielzustand von comments-022)')
 }
 catch (error) {
   if (hasCode(error, 404)) {

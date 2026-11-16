@@ -6,7 +6,7 @@ export default {
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): events-013 legt events.translations an.
-  schema: { latest: '013', probe: { migration: '013', table: 'events', column: 'translations' } },
+  schema: { latest: '014', probe: { migration: '013', table: 'events', column: 'translations' } },
   apiPrefixes: ['/api/events'],
   title: { en: 'Events', de: 'Events' },
   description: {
