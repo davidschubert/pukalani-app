@@ -178,6 +178,15 @@ export type CommunityAudience = 'members' | 'public'
 export interface TenantAddress {
   /** Kanonischer Host dieser Community (ohne Schema/Port). */
   canonicalHost?: string
+  /**
+   * Wie dauerhaft die Umleitung auf `canonicalHost` ist (control-040).
+   * Fehlt das Feld, gilt die Regel von Davids Entscheidung 2: DAUERHAFT
+   * (301/308). `'temporary'` setzt der Resolver für eine ABGESCHALTETE eigene
+   * Domain (`paused`): ihre Besucher landen auf der Pukalani-Adresse, aber nur
+   * vorübergehend (302/307) — die Domain kann wieder eingeschaltet werden, und
+   * ein gemerkter 301 bände den Browser an die Pukalani-Adresse.
+   */
+  canonicalRedirect?: 'temporary'
 }
 
 /**

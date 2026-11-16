@@ -224,7 +224,8 @@
         "pending_cert": "DNS is in place. The certificate is being issued.",
         "pending_platform": "Almost done — the last step is running.",
         "active": "Live.",
-        "error": "Something went wrong."
+        "error": "Something went wrong.",
+        "paused": "Switched off. Your community is reachable under its Pukalani address."
       },
       "dns": {
         "txt": "1. Proof that the domain is yours",
@@ -280,8 +281,26 @@
         "plan_required": "Custom domains are a Pro feature.",
         "domain_missing": "Add a domain first.",
         "domain_not_ready": "The status changed. Reload the page and check again.",
-        "generic": "That did not work just now. Please try again."
-      }
+        "generic": "That did not work just now. Please try again.",
+        "trial_not_included": "A custom domain is not part of the trial.",
+        "approval_required": "We are currently approving custom domains one by one."
+      },
+      "trialTitle": "Custom domain with the Pro subscription",
+      "trialDesc": "A custom domain is not part of the trial yet. With the Pro subscription you can connect your domain.",
+      "approvalTitle": "Custom domain on request",
+      "approvalDesc": "We are currently approving custom domains one by one. Drop us a short note and we will approve your community.",
+      "approvalCta": "Contact us",
+      "pausedTitle": "Your domain is switched off",
+      "pausedDesc": "{domain} is switched off. Your community is still reachable at {host}, and nothing was deleted.",
+      "pausedDenied": {
+        "plan_required": "To switch it back on, you need the Pro plan.",
+        "trial": "It cannot be switched back on during the trial. With the Pro subscription it can.",
+        "approval_required": "To switch it back on, your community needs to be approved for custom domains. Drop us a short note."
+      },
+      "reenable": "Switch back on",
+      "graceTitle": "Your domain will be switched off soon",
+      "graceDesc": "Your domain stays active until {date}. After that we switch it off; your community stays reachable at {host}. With the Pro plan it stays active.",
+      "claimExpires": "Without proof we keep this entry until {date}."
     },
     "layout": {
       "footer": "Pukalani · Community software made and hosted in Germany",

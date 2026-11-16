@@ -163,6 +163,8 @@ export default defineEventHandler(async (event) => {
   const target = canonicalRedirectTarget(host, tenant.canonicalHost, event.path)
   if (target) {
     setResponseHeader(event, 'Cache-Control', 'no-store')
-    return await sendRedirect(event, target, canonicalRedirectStatus(event.method))
+    // (4) Eine ABGESCHALTETE eigene Domain (control-040) leitet nur
+    //     VORÜBERGEHEND um (302/307) — sie kann wieder eingeschaltet werden.
+    return await sendRedirect(event, target, canonicalRedirectStatus(event.method, tenant.canonicalRedirect === 'temporary' ? 'temporary' : 'permanent'))
   }
 })

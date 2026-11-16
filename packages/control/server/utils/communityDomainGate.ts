@@ -17,9 +17,11 @@
  *     (`community.domain`; die Capability trägt nur die Owner-Rolle). Eine
  *     mitgeschickte fremde `communityId` ist damit harmlos: ohne
  *     Mitgliedschaft endet sie in 403.
- *  4. **Plan** — Davids Entscheidung 1: eigene Domains ab **Pro**. Geprüft
- *     wird hier und nicht nur in der Runtime-Route: die Platform-App gatet
- *     über ihre `app.config`, das Control Plane über die ZEILE. Wer nur der
+ *  4. **Berechtigung** — `customDomainEntitlement()` (control-040, SEC-022):
+ *     Plan Pro (Davids Entscheidung 1), KEINE laufende Testphase ohne Abo
+ *     und die FREIGABE des Betreibers je Community. Geprüft wird hier und
+ *     nicht nur in der Runtime-Route: die Platform-App gatet über ihre
+ *     `app.config`, das Control Plane über die ZEILE. Wer nur der
  *     UI-Sichtbarkeit vertraut, verkauft ein Pro-Merkmal an jeden, der die
  *     Route direkt aufruft.
  *
@@ -34,8 +36,18 @@ import type { H3Event } from 'h3'
 import { communityRoleHasCapability, isCommunityRole } from '../../../core/shared/communityAuthz'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
-import { customDomainAllowedForPlan } from '../../shared/customDomain'
+import { customDomainEntitlement, type CustomDomainDenial } from '../../shared/customDomain'
 import { verifyRuntimeIdentity, type RuntimeIdentity } from './onboardingService'
+
+/**
+ * Der fachliche Grund im 403 — die Seite liest ihn als `error.data.reason`.
+ * `plan_required` bleibt der alte Code (die Seite kennt ihn seit control-035).
+ */
+export const CUSTOM_DOMAIN_DENIAL_CODES: Record<CustomDomainDenial, string> = {
+  plan_required: 'plan_required',
+  trial: 'trial_not_included',
+  approval_required: 'approval_required',
+}
 
 export interface CommunityDomainContext {
   identity: RuntimeIdentity
@@ -46,7 +58,7 @@ export interface CommunityDomainContext {
 export async function requireCommunityDomainOwner(
   event: H3Event,
   body: { jwt: string, communityId: string },
-  options: { requirePlan?: boolean } = {},
+  options: { requireEntitlement?: boolean } = {},
 ): Promise<CommunityDomainContext> {
   const identity = await verifyRuntimeIdentity(event, body.jwt)
   const config = useRuntimeConfig(event)
@@ -88,22 +100,27 @@ export async function requireCommunityDomainOwner(
   }
 
   /**
-   * DIE PLAN-GRENZE. `requirePlan: false` gibt es genau für zwei Fälle, und
-   * beide sind Absicht:
-   *  - LESEN (`state`): ein Basic-Owner soll erfahren DÜRFEN, dass es das
-   *    Merkmal gibt und was es kostet — die Seite zeigt sonst einen leeren
-   *    Kasten ohne Erklärung.
-   *  - ENTFERNEN (`remove`): wer von Pro herunterstuft, muss seine Domain
-   *    noch loswerden können. Eine Sperre, die den Rückweg mit versperrt,
-   *    macht aus einer Herabstufung eine Falle.
+   * DIE BERECHTIGUNG (seit control-040: Plan + keine Testphase + Freigabe).
+   * `requireEntitlement: false` gibt es genau für zwei Fälle, und beide sind
+   * Absicht:
+   *  - LESEN (`state`): ein Owner ohne Berechtigung soll erfahren DÜRFEN,
+   *    dass es das Merkmal gibt und was ihm fehlt — die Seite zeigt sonst
+   *    einen leeren Kasten ohne Erklärung.
+   *  - ENTFERNEN (`remove`): wer herunterstuft, muss seine Domain noch
+   *    loswerden können. Eine Sperre, die den Rückweg mit versperrt, macht aus
+   *    einer Herabstufung eine Falle.
    */
-  if (options.requirePlan !== false && !customDomainAllowedForPlan(row.plan)) {
-    logEvent('warn', 'community.custom_domain_plan_denied', {
-      communityId: row.$id,
-      runtimeUserId: identity.userId,
-      plan: row.plan,
-    })
-    throw createError({ status: 403, statusText: 'Forbidden', data: { code: 'plan_required' } })
+  if (options.requireEntitlement !== false) {
+    const entitlement = customDomainEntitlement(row, Date.now())
+    if (!entitlement.allowed) {
+      logEvent('warn', 'community.custom_domain_plan_denied', {
+        communityId: row.$id,
+        runtimeUserId: identity.userId,
+        plan: row.plan,
+        reason: entitlement.reason,
+      })
+      throw createError({ status: 403, statusText: 'Forbidden', data: { code: CUSTOM_DOMAIN_DENIAL_CODES[entitlement.reason] } })
+    }
   }
 
   return { identity, row, databaseId }

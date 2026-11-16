@@ -10,10 +10,11 @@ import { requireOnboardingCaller } from '../../../../utils/onboardingService'
  * des Nutzers reist im RUMPF, nicht in der URL. Ein Token im Query-String
  * landet in nginx-Logs, in Verlaufslisten und in Referrern.
  *
- * OHNE PLAN-PRÜFUNG (`requirePlan: false`), und das ist Absicht: ein
- * Basic-Owner soll die Seite sehen und erfahren, was ihm fehlt. Der Zustand,
+ * OHNE BERECHTIGUNGS-PRÜFUNG (`requireEntitlement: false`), und das ist Absicht:
+ * ein Owner ohne Berechtigung soll die Seite sehen und erfahren, was ihm fehlt. Der Zustand,
  * den er dort liest, ist ohnehin „keine Domain" — es gibt nichts zu leaken.
- * `planAllows` in der Antwort sagt der Seite, ob sie die Eingabe anbietet.
+ * `entitlement` in der Antwort (seit control-040; `planAllows` für ältere
+ * Seiten) sagt der Seite, ob sie die Eingabe anbietet und warum nicht.
  */
 const bodySchema = z.object({
   jwt: z.string().min(1).max(4096),
@@ -23,6 +24,6 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireOnboardingCaller(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const { row } = await requireCommunityDomainOwner(event, body, { requirePlan: false })
+  const { row } = await requireCommunityDomainOwner(event, body, { requireEntitlement: false })
   return customDomainStateFor(event, row)
 })

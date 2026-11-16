@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeExternalHref } from '../../../../../core/shared/safeHref'
 /**
  * EINSTELLUNGEN → EIGENE DOMAIN (control-035, Davids Entscheidungen vom
  * 2026-08-07).
@@ -26,6 +27,14 @@
  *     es das gibt.
  *  3. Pro: Eingabe, DNS-Anleitung, Prüfen, Statuskette.
  *
+ * SEIT control-040 (SEC-022, BE-014) entscheidet nicht mehr der Plan allein,
+ * sondern die Regel des Control Plane (`entitlement` in der Antwort): Pro,
+ * KEINE Testphase ohne Abo, und die Freigabe des Betreibers. Jeder der drei
+ * Gründe hat seinen eigenen Hinweis. Ohne Antwort (älteres Control Plane, oder
+ * noch nicht geladen) gilt weiter `planAllows('customDomain')`. Dazu zwei neue
+ * Zustände: die FRIST nach dem Ende von Testphase oder Abo (Warnung mit Datum)
+ * und die ABGESCHALTETE Domain (`paused`, mit „Wieder einschalten").
+ *
  * DIE ANLEITUNG KOMMT VOM SERVER, nicht aus dieser Datei: Server-IP und
  * CNAME-Ziel stehen in der Runtime-Config des Control Plane
  * (`customDomainServerIps` / `customDomainCnameTarget`) und sind dort
@@ -34,9 +43,12 @@
  */
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'community.domain' })
 
+/** Warum keine eigene Domain (control-040) — die Werte von `customDomainEntitlement`. */
+type DomainDenial = 'plan_required' | 'trial' | 'approval_required'
+
 interface CustomDomainState {
   domain: string
-  status: 'none' | 'pending_dns' | 'pending_cert' | 'pending_platform' | 'active' | 'error'
+  status: 'none' | 'pending_dns' | 'pending_cert' | 'pending_platform' | 'active' | 'error' | 'paused'
   error: string
   forms: string[]
   verifiedAt: string | null
@@ -45,6 +57,13 @@ interface CustomDomainState {
   fallbackHost: string
   plan: string
   planAllows: boolean
+  /** Seit control-040: die Regel des Control Plane. Fehlt bei einem älteren
+   *  Control Plane — dann gilt `planAllows`. */
+  entitlement?: { allowed: boolean, reason?: DomainDenial }
+  approved?: boolean
+  graceEndsAt?: string | null
+  pausedAt?: string | null
+  claimExpiresAt?: string | null
   /**
    * NUR aus einer Antwort auf „Prüfen" (U16) — die Lade- und die
    * Speicher-Antwort tragen es bewusst nicht, weil dort nichts gemessen wurde.
@@ -62,9 +81,10 @@ interface CustomDomainState {
   }
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const toast = useToast()
 const localePath = useLocalePath()
+const { formatDate } = useFormatDate()
 
 useBrandTitle(() => t('onboarding.domain.title'))
 
@@ -77,9 +97,49 @@ const isTenantHost = computed(() => plan.value !== null)
  * antwortet 403 `plan_required`); das hier entscheidet nur, ob die Seite die
  * Eingabe anbietet oder den Hinweis.
  */
-const allowed = computed(() => planAllows('customDomain'))
-
 const state = ref<CustomDomainState | null>(null)
+
+/**
+ * Warum es (gerade) keine eigene Domain gibt — `null` = erlaubt. Die Antwort
+ * des Control Plane gewinnt; ohne sie der alte Weg über den Plan.
+ */
+const denial = computed<DomainDenial | null>(() => {
+  const entitlement = state.value?.entitlement
+  if (entitlement) return entitlement.allowed ? null : (entitlement.reason ?? 'plan_required')
+  return planAllows('customDomain') ? null : 'plan_required'
+})
+const allowed = computed(() => denial.value === null)
+
+const DENIAL_TEXT: Record<DomainDenial, { title: string, description: string }> = {
+  plan_required: { title: 'onboarding.domain.planTitle', description: 'onboarding.domain.planDesc' },
+  trial: { title: 'onboarding.domain.trialTitle', description: 'onboarding.domain.trialDesc' },
+  approval_required: { title: 'onboarding.domain.approvalTitle', description: 'onboarding.domain.approvalDesc' },
+}
+/**
+ * Plan und Testphase zeigen auf die Abo-Seite. Die Freigabe zeigt auf die
+ * Kontakt-Stelle des Betreibers (`pukalani.onboarding.domainApprovalContactUrl`,
+ * je Sprache, absolut) — im Dashboard selbst gibt es keinen privaten Weg zu
+ * uns (der Feedback-Knopf ist eine geteilte Liste, keine Nachricht). Ohne
+ * konfigurierte Adresse bleibt der Satz ohne Knopf stehen.
+ */
+const approvalContactUrl = computed(() => {
+  const config = useAppConfig() as { pukalani?: { onboarding?: { domainApprovalContactUrl?: { de?: string, en?: string } } } }
+  const urls = config.pukalani?.onboarding?.domainApprovalContactUrl
+  const raw = (locale.value === 'de' ? urls?.de : urls?.en) || urls?.en || urls?.de || ''
+  return safeExternalHref(raw) ?? ''
+})
+
+function denialActions(reason: DomainDenial) {
+  if (reason === 'approval_required') {
+    return approvalContactUrl.value
+      ? [{ label: t('onboarding.domain.approvalCta'), to: approvalContactUrl.value, target: '_blank', color: 'primary' as const }]
+      : []
+  }
+  return [{ label: t('onboarding.domain.planCta'), to: localePath('/dashboard/community/plan'), color: 'primary' as const }]
+}
+
+const graceDate = computed(() => (state.value?.graceEndsAt ? formatDate(state.value.graceEndsAt) : ''))
+const claimDate = computed(() => (state.value?.claimExpiresAt ? formatDate(state.value.claimExpiresAt) : ''))
 const loading = ref(true)
 const busy = ref('')
 
@@ -110,7 +170,7 @@ function rejectionText(error: unknown): string {
   const known = [
     'domain_empty', 'domain_too_long', 'domain_invalid', 'domain_not_a_domain',
     'domain_operator_domain', 'domain_taken', 'plan_required', 'domain_missing',
-    'domain_not_ready',
+    'domain_not_ready', 'trial_not_included', 'approval_required',
   ]
   return known.includes(reason)
     ? t(`onboarding.domain.errors.${reason}`)
@@ -182,7 +242,10 @@ async function verify(quiet = false) {
  * Frage ist nur eine Anfrage-Quelle. Der manuelle Knopf bleibt unberührt.
  */
 const autoCheckActive = computed(() =>
-  isTenantHost.value && allowed.value && !!state.value?.domain && state.value.status !== 'active',
+  isTenantHost.value && allowed.value && !!state.value?.domain
+  // Eine ABGESCHALTETE Domain schaltet nur der Knopf wieder ein, nie der Takt
+  // (control-040) — sonst ginge sie hinter dem Rücken des Owners wieder an.
+  && state.value.status !== 'active' && state.value.status !== 'paused',
 )
 useDomainAutoCheck({ active: () => autoCheckActive.value, run: () => verify(true) })
 
@@ -253,24 +316,41 @@ const steps = computed(() => {
       :description="t('onboarding.domain.noTenantDesc')"
     />
 
-    <template v-else-if="!allowed">
+    <template v-else>
+      <!--
+        KEINE BERECHTIGUNG (Plan, Testphase oder Freigabe — control-040). Eine
+        schon eingetragene Domain bleibt darunter sichtbar (Frist, abgeschaltet,
+        Stand), und entfernen geht immer.
+      -->
       <UPageCard
+        v-if="denial"
         :title="t('onboarding.domain.title')"
         :description="t('onboarding.domain.description')"
       >
-        <UAlert
-          icon="i-ph-lock-simple"
-          color="primary"
-          variant="subtle"
-          :title="t('onboarding.domain.planTitle')"
-          :description="t('onboarding.domain.planDesc')"
-          :actions="[{ label: t('onboarding.domain.planCta'), to: localePath('/dashboard/community/plan'), color: 'primary' }]"
-        />
+        <div class="space-y-4">
+          <UAlert
+            icon="i-ph-lock-simple"
+            color="primary"
+            variant="subtle"
+            :title="t(DENIAL_TEXT[denial].title)"
+            :description="t(DENIAL_TEXT[denial].description)"
+            :actions="denialActions(denial)"
+            :data-domain-denial="denial"
+          />
+          <UButton
+            v-if="state?.domain"
+            variant="ghost"
+            color="error"
+            :label="t('onboarding.domain.remove')"
+            :loading="busy === 'remove'"
+            :disabled="busy !== ''"
+            @click="remove"
+          />
+        </div>
       </UPageCard>
-    </template>
 
-    <template v-else>
       <UPageCard
+        v-else
         :title="t('onboarding.domain.title')"
         :description="t('onboarding.domain.description')"
       >
@@ -316,11 +396,48 @@ const steps = computed(() => {
             />
           </div>
 
-          <p class="text-sm text-dimmed">
+          <!-- Solange die Domain abgeschaltet ist, leitet die Pukalani-Adresse
+               NICHT weiter — der Satz wäre dann falsch; der Kasten darunter
+               sagt, wo die Community zu Hause ist. -->
+          <p v-if="state?.status !== 'paused'" class="text-sm text-dimmed">
             {{ t('onboarding.domain.fallbackNote', { host: state?.fallbackHost ?? '' }) }}
           </p>
         </div>
       </UPageCard>
+
+      <!--
+        ABGESCHALTET (control-040, BE-014): die Domain gehört der Community
+        noch, Besucher landen auf der Pukalani-Adresse. Ein Klick schaltet sie
+        wieder ein (derselbe Prüf-Lauf wie immer) — oder der Satz sagt, warum
+        das gerade nicht geht.
+      -->
+      <UAlert
+        v-if="state?.domain && state.status === 'paused'"
+        icon="i-ph-power"
+        color="warning"
+        variant="subtle"
+        :title="t('onboarding.domain.pausedTitle')"
+        :description="denial
+          ? `${t('onboarding.domain.pausedDesc', { domain: state.domain, host: state.fallbackHost })} ${t(`onboarding.domain.pausedDenied.${denial}`)}`
+          : t('onboarding.domain.pausedDesc', { domain: state.domain, host: state.fallbackHost })"
+        :actions="denial
+          ? denialActions(denial)
+          : [{ label: t('onboarding.domain.reenable'), color: 'primary', loading: busy === 'verify', disabled: busy !== '', onClick: () => verify() }]"
+        data-domain-paused
+      />
+
+      <!-- FRIST nach dem Ende von Testphase oder Abo (BE-014): die Domain ist
+           noch aktiv, aber nicht mehr lange. -->
+      <UAlert
+        v-if="state?.domain && state.status === 'active' && state.graceEndsAt"
+        icon="i-ph-hourglass-medium"
+        color="warning"
+        variant="subtle"
+        :title="t('onboarding.domain.graceTitle')"
+        :description="t('onboarding.domain.graceDesc', { date: graceDate, host: state.fallbackHost })"
+        :actions="[{ label: t('onboarding.domain.planCta'), to: localePath('/dashboard/community/plan'), color: 'primary' }]"
+        data-domain-grace
+      />
 
       <UPageCard
         v-if="state?.domain"
@@ -328,7 +445,7 @@ const steps = computed(() => {
         :description="t(`onboarding.domain.status.${state.status}`)"
       >
         <div class="space-y-4">
-          <ul class="space-y-2">
+          <ul v-if="state.status !== 'paused'" class="space-y-2">
             <li
               v-for="step in steps"
               :key="step.key"
@@ -371,6 +488,11 @@ const steps = computed(() => {
             {{ t('onboarding.domain.autoCheckNote') }}
           </p>
 
+          <!-- Ein Eintrag ohne Nachweis wird nur begrenzt gehalten (control-040). -->
+          <p v-if="claimDate" class="text-sm text-dimmed" data-domain-claim-expires>
+            {{ t('onboarding.domain.claimExpires', { date: claimDate }) }}
+          </p>
+
           <UAlert
             v-if="state.status === 'active'"
             icon="i-ph-check-circle"
@@ -383,7 +505,7 @@ const steps = computed(() => {
       </UPageCard>
 
       <UPageCard
-        v-if="state?.domain"
+        v-if="state?.domain && allowed"
         :title="t('onboarding.domain.dnsTitle')"
         :description="t('onboarding.domain.dnsDescription')"
       >
@@ -432,7 +554,7 @@ const steps = computed(() => {
       </UPageCard>
 
       <UPageCard
-        v-if="state?.domain"
+        v-if="state?.domain && allowed"
         :title="t('onboarding.domain.registrars.title')"
         :description="t('onboarding.domain.registrars.description')"
       >

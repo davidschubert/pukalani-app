@@ -279,6 +279,15 @@ export async function provisionCommunity(
       customDomainError: '',
       customDomainVerifiedAt: null,
       customDomainActivatedAt: null,
+      // control-040 (SEC-022/BE-014): eine neue Community ist NICHT für eine
+      // eigene Domain freigegeben — die Freigabe erteilt der Betreiber je
+      // Community. Keine Domain ⇒ kein Eintragsdatum, keine Frist, nichts
+      // abgeschaltet.
+      customDomainApproved: false,
+      customDomainApprovedAt: null,
+      customDomainClaimedAt: null,
+      customDomainGraceEndsAt: null,
+      customDomainPausedAt: null,
     },
   }).catch(async (error) => {
     await releaseClaim()

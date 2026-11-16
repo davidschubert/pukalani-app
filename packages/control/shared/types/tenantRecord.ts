@@ -210,6 +210,23 @@ export interface TenantRow extends Models.Row {
   customDomainVerifiedAt: string | null
   /** Wann die Domain kanonisch wurde (ISO); `null` = nie. */
   customDomainActivatedAt: string | null
+  /**
+   * Freigabe des Betreibers für eine eigene Domain (control-040, SEC-022).
+   * NUR `=== true` zählt — `null` (Bestand vor der Migration) und `false`
+   * heißen „nicht freigegeben". Gehört der COMMUNITY, nicht der Domain:
+   * „Domain entfernen" lässt sie stehen. Regel: `customDomainEntitlement()`.
+   */
+  customDomainApproved: boolean | null
+  /** Wann freigegeben (ISO); `null` = nicht freigegeben. */
+  customDomainApprovedAt: string | null
+  /** Wann die Domain eingetragen wurde (ISO); daran misst sich der Verfall
+   *  eines Eintrags ohne Nachweis (`customDomainClaimExpired`). */
+  customDomainClaimedAt: string | null
+  /** Ende der Frist nach dem Ende von Testphase oder Abo (ISO, BE-014);
+   *  `null` = keine Frist läuft. */
+  customDomainGraceEndsAt: string | null
+  /** Wann die Domain abgeschaltet wurde (Status `paused`); `null` = nicht. */
+  customDomainPausedAt: string | null
 }
 
 export const COMMUNITIES_TABLE = 'communities'

@@ -44,6 +44,14 @@ export default defineAppConfig({
         version: '',
         draft: false,
       },
+      /**
+       * KONTAKT FÜR DIE FREIGABE EINER EIGENEN DOMAIN (SEC-022, seit
+       * 2026-11-16): eigene Domains gibt der Betreiber je Community frei. Der
+       * Hinweis auf /dashboard/community/domain verlinkt diese Adresse — je
+       * Sprache, ABSOLUT (die Kontakt-Stelle liegt auf pukalani.app). Layer-
+       * Default leer: dann steht der Satz ohne Link da.
+       */
+      domainApprovalContactUrl: { de: '', en: '' },
     },
     account: {
       /** Zeile in „Was beim Löschen geschieht" (AuthAccountDeleteCard, core): die E-Mail-Adresse einer Meldung an den Betreiber bleibt bis zu 90 Tage. */

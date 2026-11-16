@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { COMMUNITIES_TABLE, normalizeTenantPlan, resolveTenantOpenRegistration, type TenantRow } from '../../../../shared/types/tenantRecord'
 import { resolveCommunitySuspension } from '../../../../../core/shared/communitySuspension'
+import { resolveCustomDomainStatus } from '../../../../shared/customDomain'
 
 /** Betreiber: Tenants (Host→Mandant-Register) auflisten. */
 export default defineEventHandler(async (event) => {
@@ -30,5 +31,13 @@ export default defineEventHandler(async (event) => {
     // Läuft gerade eine Frist? Die Liste zeigt daran, welche Community
     // demnächst von selbst zumacht — bevor der Kunde anruft.
     pastDueSince: row.pastDueSince ?? null,
+    // control-040 (SEC-022): eigene Domain + Freigabe des Betreibers. Der
+    // Status ist aufgelöst (fail-closed auf 'none'), die Freigabe nur bei
+    // `=== true` gesetzt — dieselbe Lesart wie `customDomainEntitlement`.
+    customDomain: row.customDomain || '',
+    customDomainStatus: resolveCustomDomainStatus(row.customDomainStatus),
+    customDomainApproved: row.customDomainApproved === true,
+    customDomainGraceEndsAt: row.customDomainGraceEndsAt ?? null,
+    customDomainPausedAt: row.customDomainPausedAt ?? null,
   })) }
 })

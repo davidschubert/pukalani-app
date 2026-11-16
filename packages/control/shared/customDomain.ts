@@ -36,6 +36,7 @@
  */
 
 import { OPERATOR_APEX } from '../schemas/tenant'
+import { isTrialActive } from './onboarding'
 import { normalizeTenantPlan, type TenantPlan } from './types/tenantRecord'
 
 // ── Status ──────────────────────────────────────────────────────────────────
@@ -53,6 +54,12 @@ import { normalizeTenantPlan, type TenantPlan } from './types/tenantRecord'
  *   active          — die Domain ist die kanonische Adresse der Community
  *   error           — ein Schritt ist hart gescheitert, `customDomainError`
  *                     trägt den Text, den der Owner liest
+ *   paused          — ABGESCHALTET (control-040, BE-014/SEC-022): nach dem
+ *                     Ende der Frist oder durch den Betreiber. Domain, Token,
+ *                     ploi-Tenant und Zertifikat BLEIBEN; die Domain ist
+ *                     nicht kanonisch, Besucher werden vorübergehend auf die
+ *                     Pukalani-Adresse umgeleitet. „Prüfen" schaltet sie
+ *                     wieder ein, sofern `customDomainEntitlement` es erlaubt.
  *
  * `pending_platform` ist eine EIGENE Stufe, obwohl der Schritt automatisiert
  * ist (gemessen am 2026-08-07 gegen die selbst gehostete 1.9.6: eine
@@ -68,6 +75,7 @@ export const CUSTOM_DOMAIN_STATUSES = [
   'pending_platform',
   'active',
   'error',
+  'paused',
 ] as const
 export type CustomDomainStatus = (typeof CUSTOM_DOMAIN_STATUSES)[number]
 
@@ -94,6 +102,31 @@ export function customDomainIsLive(
   return Boolean(domain) && resolveCustomDomainStatus(status) === 'active'
 }
 
+/**
+ * Ist diese Domain ABGESCHALTET (`paused`)? Dann gehört sie der Community noch
+ * (Nachweis, Zertifikat und ploi-Tenant bleiben), ist aber NICHT kanonisch:
+ * der Resolver löst den Host trotzdem auf, damit `00.tenant.ts` den Besucher
+ * VORÜBERGEHEND auf die Pukalani-Adresse umleitet statt 404 zu antworten.
+ */
+export function customDomainIsParked(
+  domain: string | null | undefined,
+  status: string | null | undefined,
+): boolean {
+  return Boolean(domain) && resolveCustomDomainStatus(status) === 'paused'
+}
+
+/**
+ * Hat diese Community den EIGENTUMS-NACHWEIS schon einmal geführt? Ab
+ * `pending_cert` hat das Control Plane den TXT-Record mit IHREM Token gesehen —
+ * nur dann blockiert ihr Eintrag die Domain für andere
+ * (`customDomainOwnership.ts`). `pending_dns` und `error` sind bloße Einträge.
+ */
+export function customDomainHasProof(status: string | null | undefined): boolean {
+  const resolved = resolveCustomDomainStatus(status)
+  return resolved === 'pending_cert' || resolved === 'pending_platform'
+    || resolved === 'active' || resolved === 'paused'
+}
+
 // ── Plan-Grenze ─────────────────────────────────────────────────────────────
 
 /**
@@ -115,6 +148,113 @@ export const CUSTOM_DOMAIN_MIN_PLAN: TenantPlan = 'pro'
 /** PURE: darf dieser Plan eine eigene Domain? (Alt-Werte über normalizeTenantPlan) */
 export function customDomainAllowedForPlan(plan: string | null | undefined): boolean {
   return normalizeTenantPlan(plan) === CUSTOM_DOMAIN_MIN_PLAN
+}
+
+// ── Berechtigung: Plan + keine Testphase + Freigabe (control-040) ───────────
+
+/**
+ * Warum eine Community (gerade) keine eigene Domain betreiben darf. Die
+ * Reihenfolge ist die der Prüfung und die der Antwort an den Owner: zuerst der
+ * Plan (das Merkmal kostet), dann die Testphase, dann die Freigabe.
+ */
+export const CUSTOM_DOMAIN_DENIALS = ['plan_required', 'trial', 'approval_required'] as const
+export type CustomDomainDenial = (typeof CUSTOM_DOMAIN_DENIALS)[number]
+
+export type CustomDomainEntitlement =
+  | { allowed: true }
+  | { allowed: false, reason: CustomDomainDenial }
+
+/** Der Ausschnitt einer `communities`-Zeile, den die Regel braucht. */
+export interface CustomDomainEntitlementInput {
+  plan?: string | null
+  trialEndsAt?: string | null
+  billingStatus?: string | null
+  customDomainApproved?: boolean | null
+}
+
+/**
+ * PURE (unit-getestet): DIE EINE REGEL, ob eine Community eine eigene Domain
+ * betreiben darf — Davids Entscheidungen vom 2026-11-16 (SEC-022), gelesen von
+ * der Tür der Domain-Routen, vom Zustand für die Seite und vom späteren
+ * Fristen-Lauf.
+ *
+ *  1. Plan nicht Pro ⇒ `plan_required` (Entscheidung 1 vom 2026-08-07).
+ *  2. Eine TESTPHASE läuft (Datum in der Zukunft) und es gibt KEIN bezahltes
+ *     Abo ⇒ `trial`. Die Testphase setzt den Plan auf `pro` — ohne diese
+ *     Zeile verschenkte sie das Merkmal. Ein Kauf während der Testphase
+ *     (`billingStatus === 'active'`) zählt als bezahlt.
+ *  3. Keine Freigabe des Betreibers (`customDomainApproved !== true`) ⇒
+ *     `approval_required` — Übergang bis zum Vorhaben „Pukalani-Konto": wir
+ *     schalten jede Community einzeln frei.
+ *
+ * Ein vom Betreiber gesetzter Pro-Plan ohne Testphasen-Datum ist bezahlt im
+ * Sinne dieser Regel (der Betreiber hat entschieden), braucht aber ebenso die
+ * Freigabe.
+ */
+export function customDomainEntitlement(row: CustomDomainEntitlementInput, now: number): CustomDomainEntitlement {
+  if (!customDomainAllowedForPlan(row.plan)) return { allowed: false, reason: 'plan_required' }
+  if (isTrialActive(row.trialEndsAt, now) && row.billingStatus !== 'active') return { allowed: false, reason: 'trial' }
+  if (row.customDomainApproved !== true) return { allowed: false, reason: 'approval_required' }
+  return { allowed: true }
+}
+
+/** Antwort der Betreiber-Route `POST /api/control/tenants/[id]/custom-domain`
+ *  (control-040) — Handler und Seite nennen denselben Typ. */
+export interface CustomDomainApprovalResponse {
+  id: string
+  host: string
+  customDomain: string
+  customDomainStatus: CustomDomainStatus
+  customDomainApproved: boolean
+  customDomainApprovedAt: string | null
+  customDomainGraceEndsAt: string | null
+  customDomainPausedAt: string | null
+}
+
+// ── Fristen (control-040, BE-014) ───────────────────────────────────────────
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Wie lange eine aktive Domain nach dem Ende von Testphase oder Abo aktiv
+ *  bleibt, bevor sie abgeschaltet wird (Davids Entscheidung, BE-014). */
+export const CUSTOM_DOMAIN_GRACE_DAYS = 14
+/** Wie lange ein Eintrag OHNE Nachweis gehalten wird (`pending_dns`/`error`). */
+export const CUSTOM_DOMAIN_CLAIM_DAYS = 14
+
+/** PURE: das Ende einer Frist, die JETZT beginnt (ISO). */
+export function customDomainGraceEnd(now: number): string {
+  return new Date(now + CUSTOM_DOMAIN_GRACE_DAYS * DAY_MS).toISOString()
+}
+
+/** PURE: bis wann ein Eintrag ohne Nachweis gehalten wird — `null`, wenn es
+ *  keinen Eintrag gibt, er schon einen Nachweis hat oder kein Datum trägt. */
+export function customDomainClaimExpiresAt(row: {
+  customDomain?: string | null
+  customDomainStatus?: string | null
+  customDomainClaimedAt?: string | null
+}): string | null {
+  if (!row.customDomain || customDomainHasProof(row.customDomainStatus)) return null
+  const status = resolveCustomDomainStatus(row.customDomainStatus)
+  if (status !== 'pending_dns' && status !== 'error') return null
+  const claimed = Date.parse(row.customDomainClaimedAt ?? '')
+  if (!Number.isFinite(claimed)) return null
+  return new Date(claimed + CUSTOM_DOMAIN_CLAIM_DAYS * DAY_MS).toISOString()
+}
+
+/**
+ * PURE: ist dieser Eintrag ohne Nachweis VERFALLEN? Nur `pending_dns` und
+ * `error` mit einem Eintragsdatum, das älter als 14 Tage ist. Ein FEHLENDES
+ * Datum ist NICHT verfallen (Bestand vor control-040 — das Übernahme-Skript
+ * stempelt ihn, die Frist zählt ab dann): lieber einen alten Eintrag einen
+ * Lauf länger halten als einen frischen wegräumen.
+ */
+export function customDomainClaimExpired(row: {
+  customDomain?: string | null
+  customDomainStatus?: string | null
+  customDomainClaimedAt?: string | null
+}, now: number): boolean {
+  const expiresAt = customDomainClaimExpiresAt(row)
+  return expiresAt !== null && Date.parse(expiresAt) <= now
 }
 
 // ── Eingabe normalisieren + prüfen ──────────────────────────────────────────
