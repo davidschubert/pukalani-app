@@ -34,7 +34,18 @@
  * halb konfiguriert. 503 `bot_check_unavailable` heißt: Cloudflare ist von
  * dieser Site aus gerade nicht erreichbar (fail-closed, kein Konfigurations-
  * fehler) — wird gemeldet, zählt aber als Befund, bis es wieder geht.
+ *
+ * SEIT 2026-11-16 TÄGLICH IM PRODUKTIONS-WÄCHTER (OPS-012): dort darf ein
+ * einzelner Aussetzer kein Alarm sein. Eine Antwort, die nichts ENTSCHEIDET
+ * (Site nicht erreichbar, 503 von Cloudflare, etwas Unerwartetes — etwa
+ * während eines Auslieferns), bekommt nach 20 Sekunden genau einen zweiten
+ * Versuch. „Aus" und „halb konfiguriert" sind eindeutig und werden sofort
+ * gemeldet. `PUKALANI_FINDINGS_FILE`: bekommt je rotem Befund eine Zeile mit
+ * dem, was zu tun ist (der Alarm-Job schreibt sie ins Issue).
  */
+import { appendFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /** Eine Site je pm2-Prozess — Hosts derselben App teilen die Env. */
 const SITES = [
@@ -46,13 +57,6 @@ const SITES = [
 
 const PROBE_EMAIL = 'turnstile-probe@example.com'
 const TIMEOUT_MS = 15_000
-
-const only = process.argv[2]
-const sites = only ? SITES.filter(s => s.host === only || s.site === only) : SITES
-if (sites.length === 0) {
-  console.error(`Keine Site "${only}". Bekannt: ${SITES.map(s => `${s.site} (${s.host})`).join(', ')}`)
-  process.exit(2)
-}
 
 async function probeServer(host) {
   const res = await fetch(`https://${host}/api/auth/recovery`, {
@@ -83,54 +87,89 @@ async function probeWidget(host) {
   return { status: res.status, widget: html.includes('data-turnstile') }
 }
 
-const failures = []
-for (const { host, site, note } of sites) {
-  let server
-  let widget
-  try {
-    [server, widget] = await Promise.all([probeServer(host), probeWidget(host)])
-  }
-  catch (error) {
-    failures.push(`${site}: ${host} nicht erreichbar — ${(error && error.message) || error}`)
-    console.log(`✗ ${site.padEnd(10)} ${host} nicht erreichbar`)
-    continue
-  }
+const RETRY_AFTER_MS = 20_000
 
+/**
+ * Deutet die zwei Antworten einer Site. `conclusive: false` heißt: diese
+ * Antwort sagt nichts über die Konfiguration — noch einmal fragen.
+ * @returns {{ ok: boolean, conclusive: boolean, line: string, failure?: string }}
+ */
+export function classifyTurnstile({ host, site, note }, server, widget) {
+  const pad = `${site.padEnd(10)} ${host.padEnd(22)}`
+  if (!server || !widget) {
+    return { ok: false, conclusive: false, line: `✗ ${site.padEnd(10)} ${host} nicht erreichbar`, failure: `${site}: ${host} nicht erreichbar` }
+  }
   const armed = server.status === 403 && server.reason === 'bot_check_required'
   const unavailable = server.status === 503 && server.reason === 'bot_check_unavailable'
   const off = server.status === 200 && server.ok === true
 
   if (armed && widget.widget) {
-    console.log(`✔ ${site.padEnd(10)} ${host.padEnd(22)} 403 bot_check_required · Widget im HTML — ${note}`)
-    continue
+    return { ok: true, conclusive: true, line: `✔ ${pad} 403 bot_check_required · Widget im HTML — ${note}` }
   }
   if (armed && !widget.widget) {
-    failures.push(`${site}: Server prüft (403), aber /forgot-password trägt KEIN Widget (${widget.status}) — NUXT_PUBLIC_TURNSTILE_SITE_KEY fehlt oder pm2 nicht neu geladen; so ist JEDER Gast ausgesperrt`)
-    console.log(`✗ ${site.padEnd(10)} ${host.padEnd(22)} 403, aber kein Widget — Site-Key fehlt`)
-    continue
+    // Eine Seite, die gerade nicht 200 antwortet, trägt auch kein Widget — das entscheidet nichts.
+    return {
+      ok: false,
+      conclusive: widget.status === 200,
+      line: `✗ ${pad} 403, aber kein Widget — Site-Key fehlt`,
+      failure: `${site}: Server prüft (403), aber /forgot-password trägt KEIN Widget (${widget.status}) — NUXT_PUBLIC_TURNSTILE_SITE_KEY fehlt oder pm2 nicht neu geladen. Gäste sind ausgesperrt.`,
+    }
   }
   if (off) {
     const half = widget.widget ? ' (Widget da, Secret fehlt — Hürde nur zum Anschauen)' : ''
-    failures.push(`${site}: Turnstile AUS — POST /api/auth/recovery antwortet 200 ohne Token${half}`)
-    console.log(`✗ ${site.padEnd(10)} ${host.padEnd(22)} AUS — 200 ohne Token${half}`)
-    continue
+    return { ok: false, conclusive: true, line: `✗ ${pad} AUS — 200 ohne Token${half}`, failure: `${site}: Turnstile AUS — POST /api/auth/recovery antwortet 200 ohne Token${half}` }
   }
   if (unavailable) {
-    failures.push(`${site}: Cloudflare siteverify nicht erreichbar (503 bot_check_unavailable, fail-closed) — Log der Site: auth.turnstile_unavailable`)
-    console.log(`✗ ${site.padEnd(10)} ${host.padEnd(22)} 503 bot_check_unavailable`)
-    continue
+    return { ok: false, conclusive: false, line: `✗ ${pad} 503 bot_check_unavailable`, failure: `${site}: Cloudflare siteverify nicht erreichbar (503 bot_check_unavailable, fail-closed) — Log der Site: auth.turnstile_unavailable` }
   }
-  failures.push(`${site}: unerwartete Antwort ${server.status} (reason ${server.reason ?? '—'}), Seite ${widget.status}`)
-  console.log(`✗ ${site.padEnd(10)} ${host.padEnd(22)} unerwartet: ${server.status} ${server.reason ?? ''}`)
+  return { ok: false, conclusive: false, line: `✗ ${pad} unerwartet: ${server.status} ${server.reason ?? ''}`, failure: `${site}: unerwartete Antwort ${server.status} (reason ${server.reason ?? '—'}), Seite ${widget.status}` }
 }
 
-if (failures.length) {
-  console.error(`\n✗ ${failures.length} Site(s) ohne scharfen Bot-Beweis:`)
-  for (const f of failures) console.error(`  · ${f}`)
-  console.error('\nRezept: docs/runbooks/DEPLOYMENT.md, Abschnitt Turnstile — beide Variablen in')
-  console.error('die Site-.env (ploi → Site → Environment), dann pm2 mit --update-env neu laden;')
-  console.error('ein Deploy ohne App-Änderung lädt NICHT neu. Startwarnung bei halber')
-  console.error('Konfiguration: auth.turnstile_misconfigured_at_boot im pm2-Log der Site.')
-  process.exit(1)
+async function inspect(entry) {
+  try {
+    const [server, widget] = await Promise.all([probeServer(entry.host), probeWidget(entry.host)])
+    return classifyTurnstile(entry, server, widget)
+  }
+  catch {
+    return classifyTurnstile(entry, null, null)
+  }
 }
-console.log('\n✔ Turnstile ist auf allen Sites scharf (Server prüft, Widget wird ausgeliefert).')
+
+async function main() {
+  const only = process.argv[2]
+  const sites = only ? SITES.filter(s => s.host === only || s.site === only) : SITES
+  if (sites.length === 0) {
+    console.error(`Keine Site "${only}". Bekannt: ${SITES.map(s => `${s.site} (${s.host})`).join(', ')}`)
+    process.exit(2)
+  }
+
+  const failures = []
+  for (const entry of sites) {
+    let result = await inspect(entry)
+    if (!result.ok && !result.conclusive) {
+      console.log(`… ${entry.site.padEnd(10)} ${entry.host} — keine eindeutige Antwort, zweiter Versuch in ${RETRY_AFTER_MS / 1000} s`)
+      await new Promise(done => setTimeout(done, RETRY_AFTER_MS))
+      result = await inspect(entry)
+    }
+    console.log(result.line)
+    if (!result.ok) failures.push(result.failure)
+  }
+
+  if (failures.length) {
+    console.error(`\n✗ ${failures.length} Site(s) ohne scharfen Bot-Beweis:`)
+    for (const f of failures) console.error(`  · ${f}`)
+    console.error('\nRezept: docs/runbooks/DEPLOYMENT.md, Abschnitt Turnstile — beide Variablen in')
+    console.error('die Site-.env (ploi → Site → Environment), dann pm2 mit --update-env neu laden;')
+    console.error('ein Deploy ohne App-Änderung lädt NICHT neu. Startwarnung bei halber')
+    console.error('Konfiguration: auth.turnstile_misconfigured_at_boot im pm2-Log der Site.')
+    if (process.env.PUKALANI_FINDINGS_FILE) {
+      for (const f of failures) {
+        appendFileSync(process.env.PUKALANI_FINDINGS_FILE, `Bot-Prüfung: ${f.slice(0, 300)} Zu tun: beide Turnstile-Variablen in der Server-Datei der Site prüfen und den Prozess neu laden (Runbook DEPLOYMENT.md, Abschnitt Turnstile).\n`)
+      }
+    }
+    process.exit(1)
+  }
+  console.log('\n✔ Turnstile ist auf allen Sites scharf (Server prüft, Widget wird ausgeliefert).')
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main()
