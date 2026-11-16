@@ -3,6 +3,7 @@ import type { TenantContext } from './tenant'
 import type { CommunityRole } from '../communityAuthz'
 import type { CommunitySeoSettings } from '../communitySeo'
 import type { TrustLevel } from '../trustLevel'
+import type { ConsentKind } from './consent'
 
 declare module 'h3' {
   interface H3EventContext {
@@ -72,6 +73,13 @@ declare module 'h3' {
      * API-Pfaden zu und antwortet auf alles andere mit 404.
      */
     controlCenter?: boolean
+    /**
+     * Verlangte Zustimmungen, die dem eingeloggten Konto fehlen (SEC-007) —
+     * gesetzt von server/middleware/07.consent-required.ts, NUR für
+     * Seiten-SSR und nur, wenn etwas fehlt. Leser: consent-state.server.ts
+     * (Spiegel in den Client, die Nachfrage öffnet sich dann einmal).
+     */
+    consentMissing?: ConsentKind[]
   }
 }
 

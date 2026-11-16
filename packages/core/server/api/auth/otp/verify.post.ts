@@ -9,7 +9,7 @@ import type { OtpVerifyResponse } from '../../../../shared/types/auth-responses'
  * wie login.post.ts fragen, ob Appwrite noch einen ZWEITEN Faktor verlangt.
  */
 export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
-  const { userId, code } = await readValidatedBody(event, otpVerifySchema.parse)
+  const { userId, code, terms, business } = await readValidatedBody(event, otpVerifySchema.parse)
   // Fehlversuche je KONTO, über alle IPs (SEC-003) — vor jedem Appwrite-Aufruf.
   await limitAccountAttempts(event, 'otp', userId)
 
@@ -73,16 +73,20 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
        * ist der Moment, in dem aus einem Auto-Signup ein Konto mit Absicht
        * wird. `isFirstJoin` grenzt es exakt ab; wer sein Konto schon hatte,
        * bekommt keinen neuen Vermerk. No-Op ohne `pukalani.auth.termsUrl`.
+       * Der Nachweis (SEC-008) entsteht nur mit `terms: true` im Body; ohne
+       * ihn fragt die Nachfrage beim nächsten Besuch. Die Anmeldung gelingt
+       * so oder so.
        */
-      await recordTermsAcceptance(event, session.userId)
+      await recordTermsAcceptance(event, session.userId, { way: 'otp', affirmed: terms === true })
 
       /**
        * UNTERNEHMER-BESTÄTIGUNG (BS1 R1c) — an derselben Stelle und mit
        * derselben `isFirstJoin`-Abgrenzung: der Code-Weg fragt das Häkchen
        * nur im register-Modus ab, und nur dort entsteht ein neues Konto.
-       * No-Op ohne `pukalani.auth.businessOnly`.
+       * No-Op ohne `pukalani.auth.businessOnly`. Nachweis nur mit
+       * `business: true` im Body (SEC-008).
        */
-      await recordBusinessConfirmation(event, session.userId)
+      await recordBusinessConfirmation(event, session.userId, { way: 'otp', affirmed: business === true })
 
       // Activity-Feed: der verifizierte OTP-Beitritt ist der Beitritts-Moment
       // (das Anlegen beim Token-Versand wäre verfrüht — unverifizierte E-Mail).

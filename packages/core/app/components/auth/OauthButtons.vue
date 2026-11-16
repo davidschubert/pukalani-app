@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { safeRedirectTarget } from '../../../shared/redirectTarget'
+import { CONSENT_COOKIE, CONSENT_COOKIE_MAX_AGE_S, formatConsentCookie } from '../../../shared/consent'
+import type { ConsentKind } from '../../../shared/types/consent'
 
 /**
  * Die Social-Login-Knöpfe (U14) — EINE Fläche für Anmelden UND Registrieren.
@@ -22,7 +24,14 @@ const props = withDefaults(defineProps<{
    * sich nicht.
    */
   separator?: 'before' | 'after'
-}>(), { separator: 'after', disabledHint: undefined })
+  /**
+   * Die Bestätigungen, die das Formular daneben gerade trägt (SEC-008). Beim
+   * Klick legt der Knopf sie für zehn Minuten in das Merkzeichen
+   * `pk_consent`; die Rückkehr vom Anbieter hält sie dann als Nachweis fest
+   * (`server/utils/consentRecords.ts`). Leer = kein Merkzeichen.
+   */
+  consentKinds?: ConsentKind[]
+}>(), { separator: 'after', disabledHint: undefined, consentKinds: () => [] })
 
 const { t } = useI18n()
 const route = useRoute()
@@ -41,6 +50,13 @@ function startUrl(id: string): string {
   const query = new URLSearchParams({ provider: id })
   if (redirectTarget.value) query.set('redirect', redirectTarget.value)
   return `/api/auth/oauth?${query.toString()}`
+}
+
+function rememberConsent() {
+  const value = formatConsentCookie(props.consentKinds)
+  if (!value || typeof document === 'undefined') return
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${CONSENT_COOKIE}=${value}; Max-Age=${CONSENT_COOKIE_MAX_AGE_S}; Path=/; SameSite=Lax${secure}`
 }
 </script>
 
@@ -62,6 +78,7 @@ function startUrl(id: string): string {
       :title="props.disabled ? props.disabledHint : undefined"
       external
       :data-provider="provider.id"
+      @click="rememberConsent"
     />
 
     <!-- Die erklärte Haltung (U14): was der Anbieter erfährt und was nicht.

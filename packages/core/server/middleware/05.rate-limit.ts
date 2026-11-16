@@ -181,6 +181,9 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // aber ein Skript soll daraus keine Schleife machen. Ein Mensch richtet
   // einmal ein.
   { re: /^POST \/api\/auth\/mfa\/setup$/, bucket: 'auth:mfa-setup', max: 10 },
+  // Nachfrage zur Zustimmung (SEC-007): schreibt über den ADMIN-Client je Art
+  // eine Zeile in `consent_records`. Ein Mensch bestätigt einmal.
+  { re: /^POST \/api\/auth\/consent$/, bucket: 'auth:consent', max: 10 },
   /**
    * DEN EIGENEN @NAMEN ÄNDERN (AH-7) — Audit-Befund AU2, 2026-08-15.
    *

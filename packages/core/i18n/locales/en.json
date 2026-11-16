@@ -155,7 +155,15 @@
     },
     "reauthSignedOut": "Please sign in again to confirm.",
     "reauthTitle": "Sign in again to continue",
-    "reauthConfirm": "Sign in again"
+    "reauthConfirm": "Sign in again",
+    "consent": {
+      "title": "Please confirm our terms",
+      "description": "To keep creating, buying or starting AI runs, we need your consent once. You can still read everything.",
+      "submit": "Agree",
+      "later": "Later",
+      "success": "Thank you, your consent has been saved.",
+      "failed": "That did not work. Please try again."
+    }
   },
   "validation": {
     "required": "This field is required",
