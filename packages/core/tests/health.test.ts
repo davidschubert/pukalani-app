@@ -117,7 +117,7 @@ describe('/api/health', () => {
 })
 
 const brandManifest: ProductManifest = {
-  key: 'brand', tier: 'optional', hasMigrations: true,
+  key: 'brand', tier: 'optional', hasMigrations: true, userData: false,
   schema: { latest: '026', probe: { migration: '026', table: 'brand_checks', column: 'erasedAt' } },
   title: { en: 'b', de: 'b' }, description: { en: 'b', de: 'b' }, icon: 'i-ph-x',
 }

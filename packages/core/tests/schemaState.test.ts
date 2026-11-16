@@ -65,7 +65,7 @@ let logLines: string[]
 
 function manifest(key: string, migration: string, table: string, column?: string): ProductManifest {
   return {
-    key, tier: 'optional', hasMigrations: true,
+    key, tier: 'optional', hasMigrations: true, userData: false,
     schema: { latest: migration, probe: { migration, table, ...(column ? { column } : {}) } },
     title: { en: key, de: key }, description: { en: key, de: key }, icon: 'i-ph-x',
   }
