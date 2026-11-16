@@ -380,7 +380,9 @@ in den Einzel-Seiten die fest eingestellte Adresse".
    Digest und Rückwege sie von selbst, sobald sie aktiv ist: ein Vertrag im
    Core (`registerSiteOriginResolver`), den der `domains`-Layer mit derselben
    Abfrage bedient wie die Umleitung. `NUXT_PUBLIC_APP_URL` bleibt die
-   Standard-Adresse und ist der Rückfall.
+   Standard-Adresse und ist der Rückfall. Bewiesen an der ganzen Kette, lokal
+   gegen den Spiegel: mit dem Control Plane beginnt der Link der Reset-Mail
+   mit der eigenen Domain, ohne es mit der Standard-Adresse.
 
 **Gelernt:**
 - **Die Site wusste ihre eigene Domain längst — nur die Mails fragten nicht.**
