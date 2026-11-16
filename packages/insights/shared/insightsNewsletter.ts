@@ -567,6 +567,20 @@ export function insightsNewsletterIsRecipient(row: InsightsNewsletterRecipientRo
 export const INSIGHTS_NEWSLETTER_BATCH = 50
 
 /**
+ * DER ZEITDECKEL EINES STAPELS (GA1 P18, BE-008) — nach 40 Sekunden beginnt
+ * ein Stapel keine neue Mail mehr, schreibt seinen Cursor und antwortet.
+ *
+ * Fünfzig Mails sind meist ein paar Sekunden, aber ein langsamer Mail-Weg
+ * (SMTP-Wartezeit je Mail) machte daraus leicht mehr als die 60 s, nach denen
+ * der Webserver die Verbindung reisst — dann sähe die Redaktion einen Fehler,
+ * während der Stapel im Hintergrund weiterschickt. 40 s lassen Luft für das
+ * Lesen davor und das Schreiben danach. Der Rest folgt mit dem nächsten
+ * Aufruf: die Seite ruft ohnehin, bis `done`. Ein so beendeter Stapel ist
+ * NICHT fertig (`done` bleibt falsch, s. `runInsightsNewsletterBatch`).
+ */
+export const INSIGHTS_NEWSLETTER_BATCH_BUDGET_MS = 40_000
+
+/**
  * DER IDEMPOTENZ-SCHLÜSSEL EINER AUSGABE-MAIL (RS1 d, 2026-11-06) — die
  * Lücke, die der Cursor allein nicht schliesst.
  *

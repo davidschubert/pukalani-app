@@ -4,7 +4,7 @@ import { AppwriteException } from 'node-appwrite'
 import type { InsightsPost } from '../shared/insightsPost'
 import { INSIGHTS_NEWSLETTER_BATCH, insightsNewsletterIdempotencyKey } from '../shared/insightsNewsletter'
 import type { MailDailyRemaining } from '../../core/shared/mailBudget'
-import { INSIGHTS_POSTS_TABLE, INSIGHTS_SENDS_TABLE, INSIGHTS_SUBSCRIBERS_TABLE, fromInsightsPost } from '../shared/insightsRows'
+import { INSIGHTS_POSTS_TABLE, INSIGHTS_RUNS_TABLE, INSIGHTS_SENDS_TABLE, INSIGHTS_SUBSCRIBERS_TABLE, fromInsightsPost } from '../shared/insightsRows'
 import type {
   InsightsNewsletterSendBatchResponse,
   InsightsNewsletterSendStatusResponse,
@@ -14,6 +14,7 @@ import * as send from '../server/utils/insightsNewsletterSend'
 import { insightsDb, isInsightsRowConflict, isInsightsRowMissing } from '../server/utils/insightsStore'
 import { insightsPostMissing, insightsStorageError, loadInsightsBrandRow, loadInsightsPostRow } from '../server/utils/insightsPostsAdmin'
 import { insightsNewsletterAllowed, insightsPublicFormats, insightsPublicMissing } from '../server/utils/insightsPublic'
+import { acquireRunLease, appwriteRunLeaseStore, finishRunLease, keepRunLeaseAlive, runLeaseRowId } from '../../core/server/utils/runLease'
 
 /**
  * DER VERSAND EINER AUSGABE — gefälschte Ablage, gefälschter Mailer, ECHTE
@@ -75,6 +76,18 @@ let body: Record<string, unknown>
  * mitgebremst.
  */
 let budgetRemaining: MailDailyRemaining
+/**
+ * EIN TOR VOR JEDER MAIL (BE-010) — `null` heisst offen. Ein Test, der zwei
+ * gleichzeitige Aufrufe prüft, hält damit den ersten Stapel MITTEN im Versand
+ * an, ohne echte Wartezeit.
+ */
+let mailGate: Promise<void> | null
+/**
+ * EIN TOR VOR DEM NÄCHSTEN LESEN DER LAUF-SPERRE (BE-010) — einmalig. Damit
+ * lässt sich der Aufruf anhalten, der seine Sende-Zeile schon gelesen hat,
+ * aber die Sperre noch nicht: der „alte Cursor"-Fall.
+ */
+let holdNextLeaseRead: Promise<void> | null
 
 function rowsOf(tableId: string): FakeRow[] {
   tables[tableId] ??= []
@@ -101,6 +114,10 @@ function applyQueries(rows: FakeRow[], queries: string[]): FakeRow[] {
     else if (query.method === 'orderAsc') {
       result.sort((a, b) => String(a[attribute] ?? '').localeCompare(String(b[attribute] ?? '')))
     }
+    else if (query.method === 'orderDesc') {
+      // Nur die Lauf-Sperre sortiert absteigend, und zwar nach der ZAHL `seq`.
+      result.sort((a, b) => Number(b[attribute] ?? 0) - Number(a[attribute] ?? 0))
+    }
   }
   const limit = parsed.find(query => query.method === 'limit')
   // Ein fehlendes `limit` wäre im Original die 25-Falle — hier soll es
@@ -111,6 +128,13 @@ function applyQueries(rows: FakeRow[], queries: string[]): FakeRow[] {
 
 const tablesDB = {
   listRows: vi.fn(async ({ tableId, queries }: { tableId: string, queries?: string[] }) => {
+    if (tableId === INSIGHTS_RUNS_TABLE && holdNextLeaseRead) {
+      // Erst NACH dem Tor lesen: der angehaltene Aufruf sieht dann den Stand,
+      // den die anderen inzwischen geschrieben haben — wie in Appwrite.
+      const gate = holdNextLeaseRead
+      holdNextLeaseRead = null
+      await gate
+    }
     const found = applyQueries(rowsOf(tableId), queries ?? [])
     return { rows: found, total: found.length }
   }),
@@ -122,6 +146,11 @@ const tablesDB = {
   createRow: vi.fn(async ({ tableId, rowId, data }: { tableId: string, rowId: string, data: Record<string, unknown> }) => {
     // Der Unique-Index `uq_post_id` — im Fake wie in Appwrite ein 409.
     if (tableId === INSIGHTS_SENDS_TABLE && rowsOf(tableId).some(row => row.postId === data.postId)) {
+      throw new AppwriteException('Document already exists', 409)
+    }
+    // Die Lauf-Sperre: eine FESTE Zeilen-Id ist die Sperre — die zweite
+    // Anlage derselben Id endet wie in Appwrite mit 409.
+    if (rowsOf(tableId).some(row => row.$id === rowId)) {
       throw new AppwriteException('Document already exists', 409)
     }
     const row: FakeRow = { $id: rowId, $createdAt: new Date().toISOString(), ...data }
@@ -155,6 +184,7 @@ vi.stubGlobal('readValidatedBody', async (_event: H3Event, parse: (input: unknow
 vi.stubGlobal('getRouterParam', () => 'p1')
 vi.stubGlobal('requirePermission', () => ({ $id: 'redaktion' }))
 vi.stubGlobal('sendMail', async (_event: H3Event, mail: { to: string, subject: string, text: string, headers?: Record<string, string> }) => {
+  if (mailGate) await mailGate
   if (!mailWorks) return false
   if (brokenAddresses.has(mail.to)) throw new Error('550 mailbox unavailable')
   mails.push(mail)
@@ -182,6 +212,11 @@ vi.stubGlobal('runInsightsNewsletterBatch', send.runInsightsNewsletterBatch)
 vi.stubGlobal('createInsightsSendRow', send.createInsightsSendRow)
 vi.stubGlobal('insightsSendAlreadySent', send.insightsSendAlreadySent)
 vi.stubGlobal('mailDailyRemaining', async () => budgetRemaining)
+// Die ECHTE Lauf-Sperre aus dem Core (BE-010) — über die gefälschte Ablage.
+vi.stubGlobal('appwriteRunLeaseStore', appwriteRunLeaseStore)
+vi.stubGlobal('acquireRunLease', acquireRunLease)
+vi.stubGlobal('finishRunLease', finishRunLease)
+vi.stubGlobal('keepRunLeaseAlive', keepRunLeaseAlive)
 
 const status = (await import('../server/api/insights/posts/[id]/newsletter.get'))
   .default as unknown as (event: H3Event) => Promise<InsightsNewsletterSendStatusResponse>
@@ -276,6 +311,8 @@ beforeEach(() => {
   logs = []
   body = {}
   budgetRemaining = 'unlimited'
+  mailGate = null
+  holdNextLeaseRead = null
   putPost(articlePost())
   Object.values(tablesDB).forEach(fn => fn.mockClear())
 })
@@ -738,5 +775,200 @@ describe('Die Mail-Bremse schützt das Anmelde-Budget', () => {
 
     budgetRemaining = 0
     await expect(runBatch(event)).rejects.toMatchObject({ status: 409, data: { code: 'already_sent' } })
+  })
+})
+
+// ── BE-010: die Lauf-Sperre und der Zeitdeckel (GA1 P18) ───────────────────
+
+function deferred(): { promise: Promise<void>, open: () => void } {
+  let open = () => {}
+  const promise = new Promise<void>((resolve) => { open = resolve })
+  return { promise, open }
+}
+
+/** Ein paar Runden der Ereignisschleife — ohne echte Wartezeit. Gedeckelt:
+ *  gegen den alten Stand, an dem nie etwas eintritt, endet die Schleife. */
+async function until(condition: () => boolean, rounds = 200): Promise<void> {
+  for (let round = 0; round < rounds && !condition(); round++) {
+    await new Promise(resolve => setImmediate(resolve))
+  }
+}
+
+/** Eine laufende Sende-Zeile mit fester Id — die Sperre hängt an ihr. */
+function putRunningSend(overrides: Partial<FakeRow> = {}): FakeRow {
+  const row: FakeRow = {
+    $id: 'send1',
+    $createdAt: '2026-10-21T00:00:00.000Z',
+    postId: 'p1',
+    subject: 'Two brands compared',
+    introDe: '',
+    introEn: '',
+    locale: 'en',
+    state: 'running',
+    cursor: '',
+    recipients: 0,
+    sent: 0,
+    failed: 0,
+    startedAt: '2026-10-21T00:00:00.000Z',
+    finishedAt: '',
+    ...overrides,
+  }
+  tables[INSIGHTS_SENDS_TABLE] = [row]
+  return row
+}
+
+describe('BE-010 · zwei gleichzeitige Aufrufe schicken nichts doppelt', () => {
+  it('der zweite bekommt 409 `run_running`, jede Adresse genau EINE Mail', async () => {
+    putSubscribers(Array.from({ length: 5 }, (_, index) => subscriber(index + 1)))
+    const gate = deferred()
+    mailGate = gate.promise
+
+    const settled: { ok: boolean, error?: unknown }[] = []
+    const calls = [runBatch(event), runBatch(event)].map(call => call.then(
+      () => { settled.push({ ok: true }) },
+      (error: unknown) => { settled.push({ ok: false, error }) },
+    ))
+    // Der Verlierer muss abgewiesen sein, WÄHREND der Gewinner noch vor
+    // seiner ersten Mail steht — sonst prüfte der Test nur „nacheinander".
+    await until(() => settled.length > 0)
+    gate.open()
+    await Promise.all(calls)
+
+    const rejected = settled.filter(entry => !entry.ok)
+    expect(rejected).toHaveLength(1)
+    expect(rejected[0]?.error).toMatchObject({ status: 409, data: { code: 'run_running' } })
+    expect(mails).toHaveLength(5)
+    expect(hasDuplicates(recipientsOfMails())).toBe(false)
+  })
+
+  it('wer seine Zeile VOR dem Ende des Vorgängers las, schickt nicht vom alten Cursor', async () => {
+    putSubscribers(Array.from({ length: 3 }, (_, index) => subscriber(index + 1)))
+    putRunningSend({ recipients: 3 })
+
+    // Der späte Aufruf liest die Sende-Zeile (Cursor leer) und hält dann vor
+    // der Sperre an.
+    const hold = deferred()
+    holdNextLeaseRead = hold.promise
+    const late = runBatch(event)
+    const lateOutcome = late.then(() => null, (error: unknown) => error)
+    await until(() => holdNextLeaseRead === null)
+
+    // Der frühe Aufruf läuft ganz durch und schliesst den Versand ab.
+    const early = await runBatch(event)
+    expect(early.done).toBe(true)
+    expect(mails).toHaveLength(3)
+
+    // Erst jetzt bekommt der späte die Sperre — und liest die Zeile NEU.
+    hold.open()
+    expect(await lateOutcome).toMatchObject({ status: 409, data: { code: 'already_sent' } })
+    expect(mails).toHaveLength(3)
+    expect(hasDuplicates(recipientsOfMails())).toBe(false)
+  })
+
+  it('ein abgestorbener Stapel (alter Herzschlag, kein Ende) sperrt nicht für immer', async () => {
+    putSubscribers([subscriber(1), subscriber(2)])
+    putRunningSend({ recipients: 2 })
+    const longAgo = new Date(Date.now() - 10 * 60_000).toISOString()
+    tables[INSIGHTS_RUNS_TABLE] = [{
+      $id: runLeaseRowId('newsletter', 'send1', 1),
+      $createdAt: longAgo,
+      scope: 'newsletter',
+      subject: 'send1',
+      seq: 1,
+      startedAt: longAgo,
+      heartbeatAt: longAgo,
+      finishedAt: '',
+      outcome: '',
+      detail: '',
+    }]
+
+    const result = await runBatch(event)
+    expect(result.done).toBe(true)
+    expect(mails).toHaveLength(2)
+    // Der Nachfolger trägt die nächste Nummer — der Vorgänger bleibt stehen.
+    expect(tables[INSIGHTS_RUNS_TABLE]?.map(row => row.seq)).toEqual([1, 2])
+  })
+
+  it('GEGENPROBE: ein LEBENDER Stapel (frischer Herzschlag) sperrt — keine Mail', async () => {
+    putSubscribers([subscriber(1)])
+    putRunningSend({ recipients: 1 })
+    const fresh = new Date().toISOString()
+    tables[INSIGHTS_RUNS_TABLE] = [{
+      $id: runLeaseRowId('newsletter', 'send1', 1),
+      $createdAt: fresh,
+      scope: 'newsletter',
+      subject: 'send1',
+      seq: 1,
+      startedAt: fresh,
+      heartbeatAt: fresh,
+      finishedAt: '',
+      outcome: '',
+      detail: '',
+    }]
+
+    await expect(runBatch(event)).rejects.toMatchObject({ status: 409, data: { code: 'run_running' } })
+    expect(mails).toHaveLength(0)
+  })
+
+  it('beendet die Sperre nach dem Stapel — der nächste Aufruf läuft sofort', async () => {
+    putSubscribers(Array.from({ length: INSIGHTS_NEWSLETTER_BATCH + 1 }, (_, index) => subscriber(index + 1)))
+    await runBatch(event)
+    const lease = tables[INSIGHTS_RUNS_TABLE]?.[0]
+    expect(lease?.outcome).toBe('done')
+    expect(String(lease?.finishedAt ?? '')).not.toBe('')
+    const second = await runBatch(event)
+    expect(second.done).toBe(true)
+  })
+})
+
+describe('Der Zeitdeckel eines Stapels (GA1 P18)', () => {
+  it('hört nach 40 s auf, meldet NICHT fertig, und der nächste Aufruf setzt dahinter fort', async () => {
+    putSubscribers(Array.from({ length: 5 }, (_, index) => subscriber(index + 1)))
+    const row = putRunningSend({ recipients: 5 })
+    // Jeder Blick auf die Uhr kostet 15 s: Start 0, Zeile 2 bei 15 s, Zeile 3
+    // bei 30 s, Zeile 4 bei 45 s ⇒ über dem Deckel.
+    let clock = 0
+    const now = () => {
+      const at = clock
+      clock += 15_000
+      return at
+    }
+
+    const first = await send.runInsightsNewsletterBatch(event, {
+      postId: 'p1',
+      post: articlePost(),
+      href: '/insights/zwei-marken',
+      intros: { introDe: '', introEn: '' },
+      row: row as never,
+      now,
+    })
+    expect(first.sent).toBe(3)
+    expect(first.stoppedEarly).toBe(true)
+    // Fünf Zeilen < fünfzig — und trotzdem NICHT fertig.
+    expect(first.done).toBe(false)
+    expect(first.state.state).toBe('running')
+    expect(first.cursor).toBe('s0003')
+    expect(tables[INSIGHTS_SENDS_TABLE]?.[0]?.cursor).toBe('s0003')
+    expect(String(tables[INSIGHTS_SENDS_TABLE]?.[0]?.finishedAt ?? '')).toBe('')
+
+    const second = await runBatch(event)
+    expect(second.done).toBe(true)
+    expect(recipientsOfMails()).toEqual(['s0001', 's0002', 's0003', 's0004', 's0005'].map(id => `${id}@example.test`))
+  })
+
+  it('GEGENPROBE: ohne Zeitdruck geht der ganze Stapel in einem Aufruf durch', async () => {
+    putSubscribers(Array.from({ length: 5 }, (_, index) => subscriber(index + 1)))
+    const row = putRunningSend({ recipients: 5 })
+    const result = await send.runInsightsNewsletterBatch(event, {
+      postId: 'p1',
+      post: articlePost(),
+      href: '/insights/zwei-marken',
+      intros: { introDe: '', introEn: '' },
+      row: row as never,
+      now: () => 0,
+    })
+    expect(result.sent).toBe(5)
+    expect(result.stoppedEarly).toBe(false)
+    expect(result.done).toBe(true)
   })
 })
