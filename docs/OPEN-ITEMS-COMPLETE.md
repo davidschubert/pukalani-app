@@ -313,6 +313,91 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 > „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 > [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
 
+### GA1 P22 — Alarm sieht in die App hinein: Zeit-Läufe, Fehler, KI-Ausfälle, Live-Verbindung ✅ 2026-11-16
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+OPS-011, OPS-004), Pull Requests 192 (Merge `97bb443d`), 193 (`e856fc41`), 195
+(`b37d6407`) und dieser Nachtrag. Davids Entscheidungen vom 2026-11-12: „Der
+tägliche Wächter zählt Fehler, ausgefallene Zeit-Läufe und KI-Ausfälle und
+meldet sie wie einen Ausfall" und „Der Wächter für die Live-Verbindung startet
+nach drei Fehlschlägen nicht mehr neu, sondern meldet".
+
+1. **Erst gemessen.** 18 Zeit-Läufe aus 14 Plugin-Dateien, jeder mit eigenem
+   `setInterval`, keiner hielt seinen letzten Lauf fest; der Tages-Mail-Lauf
+   fing Fehler gar nicht ab. Das Fehler-Protokoll war nur auf `platform` an,
+   die Annahme für Fehler aus dem Browser nirgends. KI-Ausfälle standen als
+   Textzeile ohne Zeitstempel im Log. Auf dem Server (nur gelesen): an einem
+   normalen Tag 0 Server-Fehler-Zeilen, beim Ausfall im Oktober über 2.000 am
+   Tag; der Realtime-Wächter hatte in vier Monaten zweimal neu gestartet,
+   beide Male ohne Erfolg, und seine Melde-Adresse war nie gesetzt.
+2. **Eine Hilfe für alle Zeit-Läufe** (`defineTimedJob`,
+   `core/server/utils/timedJob.ts`): Anmeldung und nach jedem Takt eine Zeile
+   `job.run` (Kennung, Ergebnis, Dauer, Takt). Ein Test wird rot bei jedem
+   `setInterval(` in einem Server-Plugin. Der Tages-Mail-Lauf startet jetzt
+   zwei Minuten nach dem Start der App.
+3. **Zählbare Zeilen.** `ai.failed` und `ai.disabled` an den zentralen Stellen
+   der KI-Transporte (nur Kennungen); `pukalani.observability` in allen sechs
+   ausgerollten Apps, die Annahme für Browser-Fehler auf den vier Apps mit
+   Anmeldung, dort mit einem Deckel je Prozess (120 Zeilen je Stunde).
+4. **Gezählt wird auf dem App-Server, gerechnet im Repo.** Das feste Skript
+   `ops/app-watch-counts.mjs` (kommt mit dem Ausliefern) liest die zwei
+   aktuellen Log-Dateien eines Prozesses und gibt nur Zahlen und Kennungen in
+   fester Form zurück. `scripts/ops/verify-app-signals.mjs` wertet täglich
+   aus; Regeln und Messwerte stehen in `app-signals-rules.mjs`, die erwarteten
+   Läufe je App in `ops/timed-jobs.conf` (an Production abgelesen). Keine
+   Tabelle, keine Migration, kein neues Secret.
+5. **Scharf ist nur, was eindeutig ist.** Rot: ein Zeit-Lauf ohne guten Lauf
+   seit mehr als zwei Takten plus 30 Minuten, ein Tages-Lauf, der zuletzt
+   gescheitert ist, ein erwarteter Lauf, der sich nie gemeldet hat, KI mit
+   Status 402 oder 404, auf `platform` ab 25 Server-Fehlern in 25 Stunden. Nur
+   gezählt: Server-Fehler der fünf anderen Apps, Fehler aus dem Browser,
+   übrige KI-Ausfälle (offen: WA1 a).
+6. **Live-Verbindung (OPS-004).** `ops/realtime-watchdog.sh` zählt die Läufe
+   in Folge, die mit einem gescheiterten Handshake beginnen: höchstens drei
+   Neustarts, dann `aufgegeben`. Stand über das fünfte Tor-Wort
+   `realtime-status`. Bewiesen an einer Attrappe mit echtem `docker compose`
+   (23 von 23), dann mit Davids Ja auf dem Appwrite-Server eingespielt (alte
+   Fassungen gesichert). Zwei Blicke: alle 30 Minuten ein Handshake von außen,
+   täglich der Stand des Wächters.
+7. **Das Issue sagt, was zu tun ist.** Je rotem Befund der neuen Blicke steht
+   im Alarm-Issue ein Satz mit Handgriff und Runbook-Abschnitt.
+8. **Bewiesen.** Lokal: dieselbe App mit absichtlich falscher
+   Datenbank-Adresse macht den Blick nach 40 Minuten rot, die gesunde
+   Gegenprobe bleibt grün. Auf `main`: ein Lauf von Hand grün (alle 23
+   erwarteten Zeit-Läufe gut), zwei Probealarme rot wie gewollt (Issues 196
+   und 197 mit den Sätzen, Mail-Schritt gelaufen), beide vom nächsten Lauf
+   selbst geschlossen.
+
+**Nicht gebaut, mit Grund:** ein Blick auf das Guthaben bei OpenRouter (geht
+nur mit einem Verwaltungs-Schlüssel, der auch Schlüssel anlegen und löschen
+kann — gemeldet wird stattdessen der erste abgelehnte Aufruf); eine
+Speichergrenze je Prozess (ein Messpunkt ist kein Höchstwert). Reste: WA1.
+
+**Gelernt: Eine Schwelle ohne Messung ist geraten.** Der Blick startet dort
+scharf, wo es Zahlen gibt (ein Normaltag, ein Ausfall), und zählt überall
+sonst erst nur. Ein Alarm, der zu oft rot ist, wird überlesen — so blieb im
+Oktober ein abgelaufenes Zertifikat acht Tage unbemerkt, obwohl der Wächter
+es sah.
+
+**Gelernt: „Am Leben" und „übersprungen" sind zwei Dinge.** Ein Lauf, der
+hängt, schreibt bei jedem Takt „der vorige läuft noch". Zählte das wie ein
+bewusstes Überspringen, sähe ein hängender Lauf für immer gesund aus. Wer aus
+Lebenszeichen auf Gesundheit schließt, prüft, welches Zeichen auch ein
+Kranker sendet.
+
+**Gelernt: Was der Server kennt, liest man am Server ab.** Welcher Zeit-Lauf
+in welcher App fährt, hängt an Toren, die nur dort stehen (Mailer, Ablage,
+eine Adresse). Die aus dem Code geratene Liste war an zwei Stellen falsch;
+die abgelesene stimmt. Ebenso der Ort der Log-Dateien: pm2 hängt seine
+Prozess-Nummer an den Namen, und alte Dateien bleiben daneben liegen — wer
+nach einem Muster zählt, zählt den Sommer mit.
+
+**Gelernt: Der Dev-Server schreibt anders als Production.** Nuxt stellt im
+Dev-Server jeder Fehler-Zeile ein Wort voran; ein Zähler, der auf den
+Zeilenanfang achtet, sieht dort keine Fehler. Eine lokale Probe beweist den
+Weg an echten Zeilen, aber nicht das Format des Servers — das wurde am Server
+nachgesehen.
+
 ### GA1 P18 — Lange Läufe aus der Anfrage nehmen: Marktvergleich im Hintergrund, Lauf-Sperre ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
