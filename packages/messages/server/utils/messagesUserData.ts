@@ -34,6 +34,16 @@ import {
  * eher formal als tatsächlich. NICHT exportiert wird, was im Produkt nicht
  * sichtbar ist (E-Mail-Adresse, Vertrauensstufe, Zähler des Gegenübers).
  *
+ * DER BETREIBER BEKOMMT KEINE TEXTE (SEC-034, Davids Entscheidung
+ * 2026-11-12/16): die Leitplanke oben gilt für die PERSON selbst
+ * (`audience: 'self'`). Ein Betreiber-Export — die Konsole und die Kopie vor
+ * einer Löschung (`audience: 'operator'`) — enthält je Gespräch nur
+ * Gegenüber, wer es begonnen hat, Beginn, letzte Nachricht und zwei Zähler.
+ * Kein Text, keine einzelnen Zeitpunkte, kein „gelesen": was zwei Menschen
+ * einander privat schreiben, braucht ein Betreiber für keine Auskunft und
+ * keinen Nachweis — und eine Kopie, die es nicht enthält, kann es auch nicht
+ * verlieren. Die Sperren bleiben (sie sind eine Entscheidung dieses Menschen).
+ *
  * LÖSCHUNG = Möglichkeit (B): eigene Nachrichten HART löschen, die des
  * Gegenübers bleiben. Das Argument, mit dem `comments` Grabsteine baut, gilt
  * hier NICHT — eine Konversation ist eine flache Liste, keine Baumstruktur; es
@@ -80,7 +90,7 @@ function admin(event: H3Event) {
 
 /* ── Export ──────────────────────────────────────────────────────────────── */
 
-export async function messagesExportUserData(event: H3Event, userId: string) {
+export async function messagesExportUserData(event: H3Event, userId: string, context: UserDataExportContext) {
   const { tablesDB, databaseId } = admin(event)
 
   // ÜBER DIE MITGLIEDS-ZEILEN, nicht über die Teilnehmer-Spalte: die ist eine
@@ -124,7 +134,7 @@ export async function messagesExportUserData(event: H3Event, userId: string) {
 
   for (const { conversation, messages } of rawConversations) {
     const partnerId = otherParticipant(conversation.participants ?? [], userId)
-    exported.push({
+    const summary = {
       // Das Gegenüber auf das reduziert, was im Produkt sichtbar ist —
       // dieselbe Linie wie bei der redigierten Team-Liste der About-Seite.
       partnerId,
@@ -132,6 +142,18 @@ export async function messagesExportUserData(event: H3Event, userId: string) {
       startedByMe: conversation.starterId === userId,
       startedAt: conversation.$createdAt,
       lastMessageAt: conversation.lastMessageAt,
+    }
+    if (context.audience === 'operator') {
+      // Nur Eckdaten und Zähler — siehe Kopf („Der Betreiber bekommt keine Texte").
+      exported.push({
+        ...summary,
+        messageCount: messages.length,
+        mineCount: messages.filter(message => message.authorId === userId).length,
+      })
+      continue
+    }
+    exported.push({
+      ...summary,
       messages: messages
         .sort((a, b) => a.$createdAt.localeCompare(b.$createdAt))
         .map(message => ({
