@@ -892,6 +892,79 @@
             "body": "The procedure for changes will follow."
           }
         ]
+      },
+      "operator": {
+        "metaTitle": "Terms for Community Operators – Pukalani",
+        "title": "Terms for Community Operators",
+        "lead": "What applies when you create and run your own community on Pukalani.",
+        "draftNote": "This text is a draft and is currently under legal review. Passages in square brackets are still open. We record which version you agreed to when you created your community; the reviewed version replaces this draft.",
+        "version": "Version 2026-11-entwurf-1 · As of 16 November 2026",
+        "sections": [
+          {
+            "title": "What this is about",
+            "body": "These terms apply to you when you create a community on Pukalani and run it as its owner. They do not apply to people who only take part in a community.\nYou accept them with a checkbox before your community is created. We record which version you agreed to and when.\n[OPEN – to be settled before the binding version: how these terms and our general Terms of Service fit together – the general terms are a draft as well. And whether and how these terms apply when you take over an existing community as its owner; the handover does not ask for an acceptance yet.]"
+          },
+          {
+            "title": "Your role and your responsibility",
+            "body": "You run your community. You decide what it is about, who may join and which rules apply.\nYou are responsible for your community: for its content, including what your members publish there, and for moderation – reviewing reports, hiding content, removing members when needed.\nYour community needs its own legal texts, for example an imprint and a privacy policy. When you create it, we add templates for these as unpublished drafts, with passages you fill in yourself. In addition there are community rules, visible right away, which you can adapt.\nThe templates are an aid, not legal advice. Whether they fit your community is for you to check."
+          },
+          {
+            "title": "What we provide",
+            "body": "We provide the platform your community runs on: its address under pukalani.app, the dashboard to manage it, the products of your plan, hosting in Germany, regular backups and further development.\nYour members sign in with a Pukalani account. One account works for all communities on Pukalani. You never get to see a member's password.\nPukalani is in early access. The range of features is still changing; during this phase there is no entitlement to any particular feature."
+          },
+          {
+            "title": "Trial",
+            "body": "A new community starts with 14 days of Pro, without payment details. The trial begins as soon as you create the community.\nWhile one of your communities is in its trial, you cannot create another one. After that, up to three active communities per account are possible.\nIf you do not pick a plan by the end of the trial, your community becomes read-only afterwards (section 6). Nothing is deleted."
+          },
+          {
+            "title": "Plans, prices, payment and cancellation",
+            "body": "There are two plans: Personal for €29 a month or €261 a year, and Pro for €149 a month or €1,341 a year. Prices include VAT. Which products belong to which plan is shown on our pricing page. Without a plan a community is read-only – there is no free plan for your own community.\nYou pay through our payment provider Stripe, currently by card. A subscription renews automatically for the chosen period until you cancel it.\nYou cancel in your community's settings under “Plan”, via “Invoices & payment method”, in Stripe's customer portal. Your invoices are there too. Cancellation takes effect at the end of the paid period; until then everything keeps running.\n[OPEN – to be settled before the binding version: whether the offer is aimed only at businesses or also at consumers, and if so, the right of withdrawal.]"
+          },
+          {
+            "title": "Late payment and read-only state",
+            "body": "If a payment fails, you have 14 days to make it up. After that your community becomes read-only. The same applies after a trial without a plan and when a cancelled subscription ends.\nRead-only means: visitors and members can still read everything, but nobody can write anything new. Nothing is deleted. Your settings, member management, moderation and the export stay available to you.\nAs soon as a payment for a plan is confirmed to us, your community is open again."
+          },
+          {
+            "title": "What is allowed and what is not",
+            "body": "You use Pukalani for lawful purposes only. In particular, the following are not allowed:\n– illegal content, such as calls for violence, hate speech or depictions of sexual abuse,\n– content that infringes the rights of others, such as copyright, trademark or personality rights,\n– spam, bulk advertising and phishing,\n– malware and attacks on Pukalani, on other communities or on third parties,\n– circumventing limits and blocks, for example with several accounts to get more communities or trials.\nOffers that require an official licence or age verification, such as gambling or pornographic content, are only allowed after prior agreement with us.\nYou make sure your members keep to this as well. Your community rules may be stricter, not looser."
+          },
+          {
+            "title": "What we may do",
+            "body": "If we learn of illegal content or of a breach of these terms, we may step in – as far as necessary:\n– Hide content. Comments that have been reported several times are hidden by Pukalani automatically; moderation then decides whether they come back.\n– Suspend your community. A community suspended for abuse can no longer be reached, not even for reading. Its content stays stored.\n– Moderate ourselves in an emergency. Our team has emergency access to every community, for example to remove illegal content. Every access through it is logged.\n[OPEN – to be settled before the binding version: how and when we notify you before or after stepping in, and how you can object to a suspension.]"
+          },
+          {
+            "title": "Your members' data",
+            "body": "You are responsible for the personal data in your community; we process it on your behalf. We conclude a data processing agreement with you on request – talk to us, ideally before your community starts.\nIn the member list you see each member's name, email address, profile picture, role, join date and status, and in the detail view what they wrote in their own profile. Use this data for your community only.\nMembers can export and delete their Pukalani account themselves; we handle this centrally for all communities. When someone deletes their account, we clear their content in your community too. Where a conversation would otherwise fall apart, a placeholder without a name remains.\nSome features work with AI. When someone uses them, the texts concerned are sent to an AI service for that purpose.\n[OPEN – to be settled before the binding version: whether processing on your behalf or joint controllership is the right classification – your members' Pukalani account works for all communities –, and the full list of service providers we use, for example for email, payment and AI features.]"
+          },
+          {
+            "title": "Your own domain",
+            "body": "On the Pro plan you can run your community under your own domain. The domain must belong to you, or you must be entitled to use it.\nYou enter the domain in the dashboard and set up the DNS records with your provider; we check them, obtain the certificate and switch over. The address under pukalani.app remains as a fallback."
+          },
+          {
+            "title": "Export and decommissioning",
+            "body": "You can export your community's content as a file at any time – in the settings under “Export”, even while the community is read-only. Use this to keep your own copy of important content.\nYou can decommission your community as long as no subscription is running; cancel it first. A decommissioned community can no longer be reached, and all memberships end.\nWe do not delete the content when you decommission. It stays stored.\n[OPEN – to be settled before the binding version: whether and when we finally delete the content of a decommissioned community and how you can request deletion; there is no separate way to do this in the dashboard today.]"
+          },
+          {
+            "title": "Availability, maintenance and changes to the service",
+            "body": "We work to keep Pukalani available at all times, but we do not promise any particular availability. The service may be briefly interrupted for maintenance and updates. Our status page shows the current state.\nWe keep developing Pukalani and may change, replace or discontinue features.\n[OPEN – to be settled before the binding version: how much notice we give for significant changes.]"
+          },
+          {
+            "title": "Liability",
+            "body": "[OPEN – to be settled before the binding version: the liability of both sides, its limits, and who answers for third-party claims about content in your community.]"
+          },
+          {
+            "title": "Term and termination by us",
+            "body": "These terms apply as long as you run a community with us. You cancel your subscription as described in section 5, and you decommission your community as described in section 11.\nWe may suspend your community or end the contract if you seriously breach these terms, for example through abuse, or if payments stay outstanding for good. With late payment, the community first becomes read-only (section 6).\n[OPEN – to be settled before the binding version: notice periods for termination by us.]"
+          },
+          {
+            "title": "Changes to these terms",
+            "body": "If we change these terms, the new version gets a new identifier. Anyone who creates a community afterwards accepts the new version.\n[OPEN – to be settled before the binding version: how existing communities agree to or object to a new version.]"
+          },
+          {
+            "title": "Contracting party, governing law and venue",
+            "body": "[OPEN – to be settled before the binding version: who your contracting party is (name, address, legal form), which law applies and where the place of jurisdiction is.]"
+          }
+        ]
       }
     },
     "proof": {

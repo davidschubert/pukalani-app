@@ -6,23 +6,52 @@
 // nicht kleingedruckt, sondern der erste Block — und die Seiten sind bis dahin
 // `noindex`: ein Impressum-Platzhalter im Suchindex wäre schlimmer als keiner.
 const props = defineProps<{
-  /** i18n-Basis unter marketing.legal (imprint | privacy | terms) */
-  scope: 'imprint' | 'privacy' | 'terms'
+  /** i18n-Basis unter marketing.legal (imprint | privacy | terms | operator) */
+  scope: 'imprint' | 'privacy' | 'terms' | 'operator'
   /** Anzahl der Abschnitte im jeweiligen Scope */
   sectionCount: number
 }>()
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const localePath = useLocalePath()
 useReveal()
 
 const base = computed(() => `marketing.legal.${props.scope}`)
+
+/**
+ * ABSÄTZE UND LISTEN (seit 2026-11-16, für die Betreiber-Bedingungen). Ein
+ * `body` darf mehrere Zeilen tragen (`\n`): jede Zeile ist ein Absatz, Zeilen
+ * mit „– " vorn werden zu einer Liste zusammengefasst. Ein einzeiliger Body —
+ * so stehen alle älteren Rechtstexte da — bleibt genau ein Absatz.
+ */
+interface LegalBlock { kind: 'p' | 'ul', lines: string[] }
+const LIST_MARK = '– '
+function toBlocks(body: string): LegalBlock[] {
+  const blocks: LegalBlock[] = []
+  for (const raw of body.split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    const isItem = line.startsWith(LIST_MARK)
+    const text = isItem ? line.slice(LIST_MARK.length) : line
+    const last = blocks.at(-1)
+    if (isItem && last?.kind === 'ul') last.lines.push(text)
+    else blocks.push({ kind: isItem ? 'ul' : 'p', lines: [text] })
+  }
+  return blocks
+}
+
 const sections = computed(() =>
   Array.from({ length: props.sectionCount }, (_, i) => ({
     title: t(`${base.value}.sections.${i}.title`),
-    body: t(`${base.value}.sections.${i}.body`),
+    blocks: toBlocks(t(`${base.value}.sections.${i}.body`)),
   })),
 )
+
+// Ein Scope darf den allgemeinen Entwurfs-Hinweis durch einen eigenen ersetzen
+// (die Betreiber-Bedingungen sind kein Platzhalter, sondern ein Entwurf in
+// Prüfung) und eine Fassungs-Zeile tragen.
+const draftNote = computed(() => te(`${base.value}.draftNote`) ? t(`${base.value}.draftNote`) : t('marketing.legal.draftNote'))
+const versionLine = computed(() => te(`${base.value}.version`) ? t(`${base.value}.version`) : '')
 
 useSeoMeta({
   title: () => t(`${base.value}.metaTitle`),
@@ -66,7 +95,7 @@ useSeoMeta({
         <UAlert
           color="primary" variant="subtle" icon="i-ph-warning-bold"
           :title="t('marketing.legal.draftBadge')"
-          :description="t('marketing.legal.draftNote')"
+          :description="draftNote"
           :ui="{
             title: 'text-sm font-extrabold uppercase tracking-wide',
             description: 'text-base/relaxed opacity-100',
@@ -92,8 +121,14 @@ useSeoMeta({
       <div class="mkt-inner mkt-narrow legal-body" data-reveal>
         <section v-for="(section, i) in sections" :key="section.title" class="legal-section">
           <h2 class="legal-h2">{{ i + 1 }}. {{ section.title }}</h2>
-          <p>{{ section.body }}</p>
+          <template v-for="(block, j) in section.blocks" :key="j">
+            <ul v-if="block.kind === 'ul'" class="legal-list">
+              <li v-for="line in block.lines" :key="line">{{ line }}</li>
+            </ul>
+            <p v-else>{{ block.lines[0] }}</p>
+          </template>
         </section>
+        <p v-if="versionLine" class="legal-version">{{ versionLine }}</p>
         <p class="legal-contact">{{ t('marketing.legal.contactHint') }}</p>
       </div>
     </section>
@@ -106,9 +141,27 @@ useSeoMeta({
   flex-direction: column;
   gap: 1.75rem;
 }
-.legal-section p {
+.legal-section p,
+.legal-section li {
   color: hsl(var(--puka-ink-soft));
   line-height: 1.65;
+}
+.legal-section p + p,
+.legal-section p + .legal-list,
+.legal-section .legal-list + p {
+  margin-top: 0.6rem;
+}
+.legal-list {
+  list-style: disc;
+  padding-inline-start: 1.25rem;
+  margin-top: 0.4rem;
+}
+.legal-list li + li {
+  margin-top: 0.25rem;
+}
+.legal-version {
+  font-size: 0.9rem;
+  color: hsl(var(--puka-ink-soft));
 }
 .legal-h2 {
   font-size: 1.1rem;
