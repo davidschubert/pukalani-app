@@ -98,6 +98,14 @@ export default defineEventHandler(async (event) => {
       customDomainError: '',
       customDomainVerifiedAt: null,
       customDomainActivatedAt: null,
+      // control-040 (SEC-022): auch eine vom Betreiber angelegte Community ist
+      // erst freigegeben, wenn er das in der Liste ausdrücklich schaltet —
+      // EIN Weg zur Freigabe, nicht zwei.
+      customDomainApproved: false,
+      customDomainApprovedAt: null,
+      customDomainClaimedAt: null,
+      customDomainGraceEndsAt: null,
+      customDomainPausedAt: null,
     },
   }).catch((error) => { throw toH3Error(error, 'Could not create tenant') })
 

@@ -65,3 +65,23 @@ describe('canonicalRedirectStatus', () => {
     }
   })
 })
+
+describe('canonicalRedirectStatus — vorübergehend (control-040)', () => {
+  /**
+   * Eine ABGESCHALTETE eigene Domain leitet auf die Pukalani-Adresse um, kann
+   * aber wieder eingeschaltet werden. Ein 301 dürfte der Browser für immer
+   * behalten — die Domain führte dann nach dem Wiedereinschalten weiter weg.
+   */
+  it('GET/HEAD bekommen 302, schreibende Methoden 307', () => {
+    expect(canonicalRedirectStatus('GET', 'temporary')).toBe(302)
+    expect(canonicalRedirectStatus('head', 'temporary')).toBe(302)
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      expect(canonicalRedirectStatus(method, 'temporary')).toBe(307)
+    }
+  })
+
+  it('ohne Angabe bleibt es dauerhaft (Davids Entscheidung 2)', () => {
+    expect(canonicalRedirectStatus('GET', 'permanent')).toBe(301)
+    expect(canonicalRedirectStatus('POST', 'permanent')).toBe(308)
+  })
+})

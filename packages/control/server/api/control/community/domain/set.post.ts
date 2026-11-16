@@ -12,7 +12,9 @@ import { requireOnboardingCaller } from '../../../../utils/onboardingService'
  * Selbstbedienung — der Owner tippt, das System prüft).
  *
  * Geschrieben werden vier Dinge und nichts sonst: die geprüfte Domain, der
- * Status `pending_dns`, ein frisches Token und ein leerer Fehlertext. Der
+ * Status `pending_dns`, ein frisches Token und ein leerer Fehlertext (dazu
+ * seit control-040 das Eintragsdatum und das Zurücksetzen von Frist und
+ * Abschaltung). Der
  * Aufrufer bestimmt WEDER den Status NOCH das Token — sonst könnte ein
  * durchgereichter Rumpf eine Domain sofort auf „aktiv" setzen.
  *
@@ -30,12 +32,17 @@ import { requireOnboardingCaller } from '../../../../utils/onboardingService'
  * Community bekäme sonst eine Adresse, die einer anderen gehört. Seit es
  * eigene Domains auch für SILOS gibt, zählt `websites` mit.
  *
- * DIE PRÜFUNG IST EIN RENNEN, und das ist bewusst so hingenommen: zwei
- * gleichzeitige Eintragungen derselben Domain durch zwei Communities könnten
- * theoretisch beide durchkommen. Die Freischaltung nicht — der TXT-Record
- * trägt genau EIN Token, also kommt höchstens eine der beiden je auf `active`,
- * und nur `active` wird vom Resolver bedient. Ein verteiltes Schloss für ein
- * Fenster von Millisekunden wäre teurer als die Tatsache, die es verhindert.
+ * EIN BLOSSER EINTRAG BLOCKIERT NIEMANDEN (control-040, SEC-022): eine
+ * fremde Community zählt hier nur, wenn sie den Nachweis schon geführt hat
+ * (`onlyProvenCommunities`). Zwei Communities können also gleichzeitig
+ * unbewiesene Einträge derselben Domain halten — entschieden wird im Moment
+ * des Nachweises (`verify.post.ts` fragt dann noch einmal, der erste Nachweis
+ * gewinnt). Ein Eintrag ohne Nachweis verfällt nach
+ * `CUSTOM_DOMAIN_CLAIM_DAYS`; das Datum dafür steht in `customDomainClaimedAt`.
+ *
+ * NEU EINTRAGEN SETZT FRIST UND ABSCHALTUNG ZURÜCK: eine andere Domain (oder
+ * dieselbe noch einmal) beginnt bei `pending_dns`, ohne alte Frist und ohne
+ * alten Abschalt-Stempel. Die Freigabe bleibt — sie gehört der Community.
  */
 const bodySchema = z.object({
   jwt: z.string().min(1).max(4096),
@@ -59,7 +66,7 @@ export default defineEventHandler(async (event) => {
   // wäre dieselbe Domain gleichzeitig an eine Community und an ein Silo
   // vergebbar gewesen, und wer antwortet, entschiede die Reihenfolge der
   // nginx-vHosts. Begründung und Formen-Paar: `utils/customDomainOwnership.ts`.
-  if (await customDomainTakenByOther(event, { domain, allowCommunityId: row.$id })) {
+  if (await customDomainTakenByOther(event, { domain, allowCommunityId: row.$id, onlyProvenCommunities: true })) {
     throw createError({ status: 409, statusText: 'Domain already taken', data: { code: 'domain_taken' } })
   }
 
@@ -76,6 +83,9 @@ export default defineEventHandler(async (event) => {
       customDomainError: '',
       customDomainVerifiedAt: null,
       customDomainActivatedAt: null,
+      customDomainClaimedAt: new Date().toISOString(),
+      customDomainGraceEndsAt: null,
+      customDomainPausedAt: null,
     },
   }).catch((error) => { throw toH3Error(error, 'Could not save domain') })
 

@@ -8,6 +8,14 @@
       "reservedNames": "Gesperrte Namen",
       "abuseReports": "Missbrauchsmeldungen",
       "marketSignal": "Markt-Signal"
+    },
+    "audit": {
+      "action": {
+        "community": {
+          "custom_domain_approved": "hat die eigene Domain von {name} freigegeben",
+          "custom_domain_approval_revoked": "hat {name} die Freigabe für die eigene Domain entzogen"
+        }
+      }
     }
   },
   "control": {
@@ -367,7 +375,8 @@
         "mode": "Modus",
         "tier": "Plan / Welle",
         "registration": "Registrierung",
-        "status": "Status"
+        "status": "Status",
+        "domain": "Eigene Domain"
       },
       "suspend": {
         "action": "Sperren …",
@@ -394,6 +403,29 @@
         "confirm": "Aufheben",
         "done": "Sperre aufgehoben",
         "doneHint": "{host} — wirkt in höchstens 30 Sekunden (Zwischenspeicher)."
+      },
+      "domain": {
+        "none": "keine eigene Domain",
+        "approved": "freigegeben",
+        "status": {
+          "none": "keine",
+          "pending_dns": "wartet auf DNS",
+          "pending_cert": "Zertifikat",
+          "pending_platform": "fast fertig",
+          "active": "aktiv",
+          "error": "Fehler",
+          "paused": "abgeschaltet"
+        },
+        "approvedDone": "Eigene Domain freigegeben",
+        "approvedHint": "{host} kann jetzt eine eigene Domain verbinden, sobald der Plan Pro bezahlt ist.",
+        "revokedDone": "Freigabe entzogen",
+        "revokedHint": "{host} kann keine eigene Domain mehr verbinden.",
+        "pausedHint": "Die eigene Domain von {host} ist abgeschaltet. Besucher landen auf der Pukalani-Adresse, gelöscht wurde nichts.",
+        "revokeTitle": "Freigabe entziehen?",
+        "revokeText": "{domain} ist gerade aktiv und wird sofort abgeschaltet, ohne Frist. Besucher landen dann auf {host}. Gelöscht wird nichts; mit einer neuen Freigabe kann der Owner die Domain wieder einschalten.",
+        "revokeConfirm": "Entziehen und abschalten",
+        "graceUntil": "Frist bis {date}",
+        "pausedSince": "abgeschaltet seit {date}"
       }
     },
     "plans": {
@@ -490,7 +522,8 @@
         "pending_cert": "DNS steht. Das Zertifikat wird ausgestellt.",
         "pending_platform": "Fast fertig — der letzte Schritt läuft in der App.",
         "active": "Aktiv.",
-        "error": "Etwas ist schiefgegangen."
+        "error": "Etwas ist schiefgegangen.",
+        "paused": "Abgeschaltet — die Pukalani-Adresse gilt, nichts ist gelöscht."
       },
       "errors": {
         "domain_empty": "Bitte eine Domain eintragen.",

@@ -22,7 +22,7 @@ import { ploiConfig, removePloiTenant } from '../../../../utils/ploi'
  * antwortet 404. (Die Appwrite-Web-Platform räumt die RUNTIME ab — dieselbe
  * Schlüsselgrenze wie beim Anlegen.)
  *
- * OHNE PLAN-PRÜFUNG (`requirePlan: false`): wer von Pro herunterstuft, muss
+ * OHNE BERECHTIGUNGS-PRÜFUNG (`requireEntitlement: false`): wer von Pro herunterstuft, muss
  * seine Domain noch loswerden können. Eine Sperre, die den Rückweg
  * mitversperrt, macht aus einer Herabstufung eine Falle.
  */
@@ -34,7 +34,7 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireOnboardingCaller(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const { row, databaseId, identity } = await requireCommunityDomainOwner(event, body, { requirePlan: false })
+  const { row, databaseId, identity } = await requireCommunityDomainOwner(event, body, { requireEntitlement: false })
 
   const previous = row.customDomain || ''
   const admin = createAdminClient(event)
@@ -49,6 +49,12 @@ export default defineEventHandler(async (event) => {
       customDomainError: '',
       customDomainVerifiedAt: null,
       customDomainActivatedAt: null,
+      // control-040: Eintragsdatum, Frist und Abschaltung gehören der DOMAIN
+      // und gehen mit ihr. Die Freigabe (`customDomainApproved`) gehört der
+      // COMMUNITY und bleibt stehen.
+      customDomainClaimedAt: null,
+      customDomainGraceEndsAt: null,
+      customDomainPausedAt: null,
     },
   }).catch((error) => { throw toH3Error(error, 'Could not remove domain') })
 

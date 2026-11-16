@@ -48,7 +48,23 @@ export function canonicalRedirectTarget(
  * eine Seite statt einer Fehlermeldung — die schlimmste Art, Daten zu
  * verlieren.
  */
-export function canonicalRedirectStatus(method: string | undefined): 301 | 308 {
+export function canonicalRedirectStatus(method: string | undefined, kind?: 'permanent'): 301 | 308
+export function canonicalRedirectStatus(method: string | undefined, kind: 'temporary'): 302 | 307
+export function canonicalRedirectStatus(method: string | undefined, kind: 'permanent' | 'temporary'): 301 | 302 | 307 | 308
+export function canonicalRedirectStatus(
+  method: string | undefined,
+  kind: 'permanent' | 'temporary' = 'permanent',
+): 301 | 302 | 307 | 308 {
   const verb = (method || 'GET').toUpperCase()
-  return verb === 'GET' || verb === 'HEAD' ? 301 : 308
+  const safe = verb === 'GET' || verb === 'HEAD'
+  /**
+   * VORÜBERGEHEND (control-040): eine abgeschaltete eigene Domain leitet auf
+   * die Pukalani-Adresse um, kann aber wieder eingeschaltet werden. Ein 301
+   * dürfte der Browser für immer behalten — dann führte die Domain nach dem
+   * Wiedereinschalten bei jedem früheren Besucher weiter auf die
+   * Pukalani-Adresse. 302/307 sind dieselbe Unterscheidung wie 301/308: 307
+   * erhält Methode und Rumpf.
+   */
+  if (kind === 'temporary') return safe ? 302 : 307
+  return safe ? 301 : 308
 }

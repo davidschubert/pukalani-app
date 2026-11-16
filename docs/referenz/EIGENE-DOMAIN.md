@@ -1,7 +1,9 @@
 # Eigene Domain — wie es gebaut ist
 
 **Sorte:** Referenz (wie ist X gebaut, und warum so). Gebaut 2026-08-07/08
-(Migrationen `control-035` für den Pool, `control-036` für Silo-Sites).
+(Migrationen `control-035` für den Pool, `control-036` für Silo-Sites);
+Freigabe, Frist und Abschalten seit 2026-11-16 (`control-040`, SEC-022/BE-014,
+nur Pool).
 
 **Was hier NICHT steht, damit es nicht doppelt gepflegt wird:**
 
@@ -60,20 +62,64 @@ Die Grenze wird **zweimal genannt und einmal durchgesetzt**:
 Dass beide dieselbe Zahl nennen müssen, ist echte Doppelpflege — deshalb liest
 `packages/control/tests/customDomain.test.ts` die `app.config.ts` und vergleicht.
 
+**Seit control-040 entscheidet nicht mehr der Plan allein**, sondern EINE pure
+Regel, `customDomainEntitlement(row, now)` in
+`packages/control/shared/customDomain.ts` (Davids Entscheidungen vom
+2026-11-16), in dieser Reihenfolge:
+
+1. Plan nicht Pro ⇒ `plan_required`.
+2. Testphase läuft (`trialEndsAt` in der Zukunft) und kein bezahltes Abo
+   (`billingStatus !== 'active'`) ⇒ `trial` — die Testphase setzt den Plan auf
+   `pro` und hätte das Merkmal sonst verschenkt.
+3. Keine Freigabe des Betreibers (`customDomainApproved !== true`) ⇒
+   `approval_required` — Übergang bis zum Vorhaben „Pukalani-Konto".
+
+Die Tür (`communityDomainGate.ts`) antwortet `403` mit `plan_required`,
+`trial_not_included` bzw. `approval_required`; `state` und `remove` laufen ohne
+diese Prüfung. Die Seite liest den Grund aus `entitlement` in der Antwort von
+`state` (Rückfall für ältere Antworten: `planAllows`). Die FREIGABE gehört der
+Community, nicht der Domain: der Betreiber schaltet sie in der
+Communities-Liste (`POST /api/control/tenants/[id]/custom-domain`, Protokoll
+`community.custom_domain_approved` / `…_approval_revoked`); ein Entzug schaltet
+eine aktive Domain sofort ab, ohne Frist. Bestand übernimmt einmal
+`packages/control/scripts/backfill-custom-domain-approval.mjs`.
+
 **Der Reiter bleibt in jedem Plan sichtbar** (kein Plan-Gate am Tab): ein
 Menüpunkt, der bei Basic verschwindet, verkauft nichts und erklärt nichts.
 Verwalten darf ihn nur der Owner (`community.domain`).
 
 ## 4. Die Zustandskette
 
-`none → pending_dns → pending_cert → pending_platform → active` (plus `error`),
-definiert in `packages/control/shared/customDomain.ts`,
-fail-closed auf `none`.
+`none → pending_dns → pending_cert → pending_platform → active` (plus `error`
+und, seit control-040, `paused`), definiert in
+`packages/control/shared/customDomain.ts`, fail-closed auf `none`.
 
-Vorangetrieben wird sie **ausschließlich durch den „Prüfen"-Klick**
-(`advanceCustomDomain` in `packages/control/server/utils/customDomainService.ts`).
-Es gibt bewusst **keinen Hintergrund-Job und keine Benachrichtigung**: ein
-Kunde, der wartet, drückt noch einmal.
+**`paused` = abgeschaltet.** Domain, Token, ploi-Tenant und Zertifikat
+bleiben; die Domain ist nicht kanonisch. Der Resolver
+(`tenantsResolver.ts`) löst ihren Host trotzdem auf, mit der Pukalani-Adresse
+als kanonisch und `canonicalRedirect: 'temporary'` — `00.tenant.ts` leitet
+deshalb **vorübergehend** um (302/307 mit `no-store`, nicht 301/308: die
+Domain kann wieder eingeschaltet werden). Alle anderen nicht-aktiven Stufen
+bleiben 404. Dorthin kommt eine Domain auf zwei Wegen: durch den Entzug der
+Freigabe (sofort) und — mit dem Fristen-Lauf — 14 Tage nach dem Ende von
+Testphase oder Abo (`CUSTOM_DOMAIN_GRACE_DAYS`, Ende der Frist in
+`customDomainGraceEndsAt`; die zwei Hinweis-Mails verschickt derselbe Lauf).
+Gelöscht wird dabei nichts. **Wieder einschalten** ist derselbe
+„Prüfen"-Klick (die Tür prüft die Berechtigung): die Kette läuft normal bis
+`activate`, das Frist und Abschalt-Stempel räumt; hält sie vorher an, bleibt
+die Domain `paused` mit Grund.
+
+**Fünf Spalten** (control-040, alle optional): `customDomainApproved`
+(nur `true` zählt), `customDomainApprovedAt`, `customDomainClaimedAt`
+(Eintragsdatum, setzt `set`), `customDomainGraceEndsAt`, `customDomainPausedAt`.
+`remove` räumt die drei Datumsspalten, nicht die Freigabe.
+
+Vorangetrieben (Richtung `active`) wird sie **ausschließlich durch den
+„Prüfen"-Klick** (`advanceCustomDomain` in
+`packages/control/server/utils/customDomainService.ts`). Für diesen Weg gibt es
+bewusst **keinen Hintergrund-Job und keine Benachrichtigung**: ein Kunde, der
+wartet, drückt noch einmal. (Der Fristen-Lauf aus control-040 bewegt nur in
+die Gegenrichtung — Frist, Abschalten, verfallene Einträge.)
 
 Drei Messungen in dieser Reihenfolge:
 
@@ -99,6 +145,21 @@ Drei Messungen in dieser Reihenfolge:
   Klick während der Ausstellung sperrt den Kunden sieben Tage aus. Ist die
   Liste unlesbar, wird bewusst **fail-open** bestellt.
 
+### Wem gehört die Domain? (seit control-040)
+
+Ein bloßer Eintrag blockiert niemanden mehr: eine fremde **Community**-Zeile
+zählt als „vergeben" nur mit Nachweis (`customDomainHasProof`: `pending_cert`,
+`pending_platform`, `active`, `paused` —
+`packages/control/server/utils/customDomainOwnership.ts`). Ein Eintrag ohne
+Nachweis (`pending_dns`/`error`) verfällt nach `CUSTOM_DOMAIN_CLAIM_DAYS` (14)
+ab `customDomainClaimedAt` (`customDomainClaimExpired`; ein fehlendes Datum
+verfällt nicht). Weil damit zwei Communities dieselbe Domain unbewiesen halten
+können, fragt `advanceCustomDomain` im Moment des eigenen Nachweises noch
+einmal, VOR jeder Bestellung bei ploi: der erste Nachweis gewinnt, der zweite
+bleibt `pending_dns` und bekommt `409 domain_taken`. **Silo-Zeilen**
+(`websites`) zählen weiter in jedem Zustand, und für Silo-Aufrufer zählt auch
+jede Community-Zeile — der Silo-Weg fragt beim Nachweis nicht noch einmal.
+
 ## 5. Welche Form gewinnt
 
 Die **eingetragene** Form ist kanonisch, die Geschwisterform wird automatisch
@@ -109,7 +170,8 @@ verdrahtet in `packages/core/server/middleware/00.tenant.ts`.
 Drei Feinheiten mit Grund:
 
 - **301 für GET/HEAD, 308 sonst.** Ein 301 erlaubt Browsern, ein POST zu einem
-  GET zu degradieren — der Rumpf wäre still weg.
+  GET zu degradieren — der Rumpf wäre still weg. Für eine abgeschaltete Domain
+  (`paused`) dieselbe Unterscheidung vorübergehend: 302/307.
 - **`Cache-Control: no-store`** an der Umleitung, damit ein späteres Abgeben der
   Domain nicht an einem gemerkten 301 hängen bleibt. Vollständig verhindern
   lässt sich das nicht.

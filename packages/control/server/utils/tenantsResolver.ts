@@ -6,7 +6,7 @@ import { communityIsOffline, resolveCommunitySuspension } from '../../../core/sh
 import { isSupportedTimezone } from '../../../core/shared/timezone'
 import { DEFAULT_TENANT_PLAN, COMMUNITY_PLANS_TABLE, COMMUNITIES_TABLE, normalizeTenantPlan, parseTenantPlanLimits, resolveTenantAudience, resolveTenantMemberInvitesEnabled, resolveTenantOpenRegistration, type TenantPlanLimits, type TenantPlanRow, type TenantRow } from '../../shared/types/tenantRecord'
 import { isSafeThemeToken, parseSiteProfile } from '../../shared/onboarding'
-import { canonicalHostFor, customDomainCandidates } from '../../shared/customDomain'
+import { canonicalHostFor, customDomainCandidates, customDomainIsLive, customDomainIsParked } from '../../shared/customDomain'
 
 /**
  * Horizont-3 Naht 1 — Resolver-Implementierung über die tenants-Table des
@@ -130,7 +130,17 @@ export function mapTenantRowToContext(
    * ein leerer kanonischer Host wäre eine Umleitung auf `https://`.
    */
   const address = row.host
-    ? { canonicalHost: canonicalHostFor({ host: row.host, customDomain: row.customDomain, customDomainStatus: row.customDomainStatus }) }
+    ? {
+        canonicalHost: canonicalHostFor({ host: row.host, customDomain: row.customDomain, customDomainStatus: row.customDomainStatus }),
+        /**
+         * ABGESCHALTETE eigene Domain (control-040, BE-014): ihr Host löst
+         * weiter auf (s. `findCommunityForHost`), kanonisch ist die
+         * Pukalani-Adresse — und die Umleitung dorthin ist VORÜBERGEHEND
+         * (302/307), weil die Domain wieder eingeschaltet werden kann. Auf der
+         * Pukalani-Adresse selbst hat das Feld keine Wirkung (keine Umleitung).
+         */
+        ...(customDomainIsParked(row.customDomain, row.customDomainStatus) ? { canonicalRedirect: 'temporary' as const } : {}),
+      }
     : {}
   if (row.mode === 'silo') return { mode: 'silo', projectId: row.projectId, ...communityId, ...branding, ...policy, ...address }
   // Pool ohne tenantId wäre ein Datenfehler — NIE ungescoped durchlassen
@@ -232,6 +242,13 @@ export function createTenantsTableResolver(options: TenantsTableResolverOptions)
  * 'active' ist, liefert als kanonischen Host ihre Subdomain — der Request-Host
  * passt dann zu nichts, und wir geben `null` zurück (404, wie ein unbekannter
  * Host). Genau das soll passieren, solange das Zertifikat fehlt.
+ *
+ * AUSNAHME `paused` (control-040, BE-014): eine ABGESCHALTETE Domain hat ihren
+ * Nachweis und ihr Zertifikat noch. Ihr Host löst deshalb auf — der Kontext
+ * trägt die Pukalani-Adresse als kanonisch (`canonicalHostFor`) und die
+ * Markierung „vorübergehend", und `00.tenant.ts` leitet den Besucher dorthin
+ * um, statt ihm ein 404 zu zeigen. Alle anderen nicht-aktiven Stufen bleiben
+ * 404.
  */
 async function findCommunityForHost(
   tablesDB: TablesDB,
@@ -252,10 +269,13 @@ async function findCommunityForHost(
     tableId: COMMUNITIES_TABLE,
     queries: [Query.equal('customDomain', candidates), Query.limit(2)],
   })
-  // Der Kandidat muss AKTIV sein — sonst ist die Zeile für diesen Host so gut
-  // wie nicht vorhanden (s. Kopf). Mehr als eine Treffer-Zeile darf es nicht
+  // Der Kandidat muss AKTIV sein, oder ABGESCHALTET (dann leitet die
+  // Middleware vorübergehend um) — sonst ist die Zeile für diesen Host so gut
+  // wie nicht vorhanden (s. Kopf). Eine aktive Zeile schlägt eine abgeschaltete. Mehr als eine Treffer-Zeile darf es nicht
   // geben (die Eindeutigkeit setzt `domain/set.post.ts` durch); käme es doch
   // dazu, gewinnt niemand: `find` nimmt die erste AKTIVE, und das ist
   // deterministisch genug für einen Zustand, den es nicht geben darf.
-  return byDomain.find(row => canonicalHostFor(row) !== row.host) ?? null
+  return byDomain.find(row => customDomainIsLive(row.customDomain, row.customDomainStatus))
+    ?? byDomain.find(row => customDomainIsParked(row.customDomain, row.customDomainStatus))
+    ?? null
 }

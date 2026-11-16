@@ -26,6 +26,13 @@ export default defineAppConfig({
         version: '2026-11-entwurf-1',
         draft: true,
       },
+      // Wohin der Hinweis „eigene Domains geben wir einzeln frei" zeigt
+      // (packages/onboarding, /dashboard/community/domain): die Kontakt-Stelle
+      // der Landingpage. Englisch ohne Präfix, Deutsch unter /de.
+      domainApprovalContactUrl: {
+        de: 'https://pukalani.app/de#kontakt',
+        en: 'https://pukalani.app/#kontakt',
+      },
     },
     /**
      * BESUCHERSTATISTIK ALS SELBSTBEDIENUNG (2026-08-04, Layer `analytics`).
