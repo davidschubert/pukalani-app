@@ -10,8 +10,13 @@ import { isRecentAuth, RECENT_AUTH_MAX_AGE_MS, REAUTH_REQUIRED_REASON } from '..
  * Route, die etwas Unumkehrbares tut; heute: Konto löschen (RA1),
  * Besitz übertragen und Community stilllegen (RA2, onboarding-Layer), Nutzer
  * löschen in der Betreiber-Konsole (RA3, admin) sowie Mandant löschen und
- * Website austragen im Control Plane (RA3, control). Die Oberfläche fängt den
- * Grund EINMAL ab: `useRecentAuthPrompt`.
+ * Website austragen im Control Plane (RA3, control) sowie — Davids
+ * Entscheidung 2026-11-16, „wie die großen Anbieter: Herausgabe, Zugänge, wer
+ * Zugriff hat" — in der Betreiber-Konsole (admin): Daten einer Person
+ * exportieren, die Nutzerliste als CSV, eine Lösch-Kopie herunterladen,
+ * Zugänge (Integrationen) setzen und Rollen vergeben (SEC-034). Sperren und
+ * Sitzungen beenden bleiben bewusst OHNE: sie müssen sofort gehen. Die
+ * Oberfläche fängt den Grund EINMAL ab: `useRecentAuthPrompt`.
  *
  * Das Alter kommt von Appwrite (`$createdAt` der aktuellen Session), nicht
  * aus einem Cookie oder Body — der Aufrufer kann es also nicht behaupten.

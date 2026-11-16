@@ -19,6 +19,23 @@ export interface UserDataDeleteResult {
   anonymized: number
 }
 
+/**
+ * WER DEN EXPORT BEKOMMT (SEC-034, Davids Entscheidung 2026-11-12):
+ *   · `self`     — die Person selbst (`GET /api/auth/export`, Art. 15):
+ *                  vollständig, so wie sie es im Produkt sieht.
+ *   · `operator` — der Betreiber (Export in der Konsole UND die Kopie vor
+ *                  einer Löschung, 30 Tage im gdpr-exports-Bucket): nur, was
+ *                  ein Betreiber für Auskunft und Nachweis braucht. Was zwei
+ *                  Menschen privat miteinander geschrieben haben, gehört NICHT
+ *                  dazu (messages gibt dort nur Gesprächs-Eckdaten und Zähler).
+ * Ein Beitrag, der für beide dasselbe liefert, muss den Kontext nicht lesen.
+ */
+export type UserDataAudience = 'self' | 'operator'
+
+export interface UserDataExportContext {
+  audience: UserDataAudience
+}
+
 export interface UserDataContributor {
   /** stabil + eindeutig, z. B. 'comments', 'moderation', 'system' */
   id: string
@@ -26,8 +43,10 @@ export interface UserDataContributor {
    * Alle Daten des Users als export-fertiges, JSON-serialisierbares Objekt.
    * MUSS intern vollständig paginieren (listAllRows). Darf werfen — der
    * Orchestrator entscheidet über das Teilfehler-Reporting.
+   * `context.audience` sagt, WER den Export bekommt (siehe oben) — ein
+   * neuer Beitrag mit privaten Inhalten Dritter beachtet ihn.
    */
-  exportUserData(event: H3Event, userId: string): Promise<unknown>
+  exportUserData(event: H3Event, userId: string, context: UserDataExportContext): Promise<unknown>
   /**
    * Löscht/anonymisiert alle Daten des Users im eigenen Layer.
    * MUSS idempotent sein: ein Re-Run nach Teilfehler findet Rest-Daten

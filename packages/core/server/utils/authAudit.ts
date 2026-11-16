@@ -1,4 +1,3 @@
-import { ID } from 'node-appwrite'
 import type { H3Event } from 'h3'
 
 /**
@@ -34,45 +33,34 @@ export type AuthAuditAction =
 /**
  * Schreibt ein Auth-Ereignis ins Aktivitätsprotokoll (audit_logs). Bewusst
  * NICHT über recordAudit (admin-Layer) — core darf nicht von admin abhängen;
- * stattdessen direkt in die Tabelle, best effort und graceful, falls sie
- * fehlt (App ohne admin-Layer). Spiegelt das audit_logs-Schema; Actor ist
- * der jeweilige User selbst. `fields` trägt NUR Feldnamen, nie Werte.
+ * stattdessen über den EINEN Schreiber des Protokolls (`writeAuditLog`,
+ * server/utils/auditLog.ts), NICHT strikt: Auth darf nie blockieren. Ein
+ * gescheiterter Eintrag wird seit BE-021 (2026-11-16) gemeldet
+ * (`audit.write_failed`) statt still geschluckt. Actor ist der jeweilige
+ * User selbst. `fields` trägt NUR Feldnamen, nie Werte.
  */
 export async function logAuthEvent(
   event: H3Event,
   action: AuthAuditAction,
   opts: { userId: string, name?: string, method?: string, fields?: string[] },
 ): Promise<void> {
-  try {
-    const config = useRuntimeConfig(event)
-    const admin = createAdminClient(event)
-    const name = opts.name ?? await admin.users.get({ userId: opts.userId }).then(u => u.name).catch(() => '')
-    // Die IP im Protokoll ist eine BEHAUPTUNG über einen Menschen — sie muss
-    // vom eigenen Proxy stammen, nicht vom Client. `trustedClientIp` liest
-    // deshalb das LETZTE X-Forwarded-For-Segment (das unser nginx anhängt);
-    // vorher stand hier das erste, also der frei wählbare Teil (Audit
-    // 2026-08-02). Begründung: server/utils/clientIp.ts.
-    const ip = trustedClientIp(event) ?? ''
-    const metadata: Record<string, unknown> = {}
-    if (opts.method) metadata.method = opts.method
-    if (opts.fields?.length) metadata.fields = opts.fields
-    await admin.tablesDB.createRow({
-      databaseId: config.public.appwriteDatabaseId,
-      tableId: 'audit_logs',
-      rowId: ID.unique(),
-      data: {
-        actorId: opts.userId,
-        actorName: name,
-        action,
-        targetType: '',
-        targetId: '',
-        targetName: '',
-        metadata: Object.keys(metadata).length ? JSON.stringify(metadata) : '',
-        ip,
-      },
-    })
+  let name = opts.name ?? ''
+  if (opts.name === undefined) {
+    try {
+      name = await createAdminClient(event).users.get({ userId: opts.userId }).then(u => u.name)
+    }
+    catch {
+      // Ohne Namen wird trotzdem protokolliert — die Id trägt den Eintrag.
+      name = ''
+    }
   }
-  catch {
-    // Tabelle fehlt / Logging-Fehler → bewusst schlucken (darf Auth nie blockieren)
-  }
+  const metadata: Record<string, unknown> = {}
+  if (opts.method) metadata.method = opts.method
+  if (opts.fields?.length) metadata.fields = opts.fields
+  await writeAuditLog(event, {
+    actorId: opts.userId,
+    actorName: name,
+    action,
+    metadata,
+  })
 }
