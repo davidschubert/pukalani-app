@@ -107,6 +107,8 @@ async function createPoolUser(tag) {
   const password = `Pw-${ID.unique()}`
   const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `F12 ${tag}` })
   cleanup.users.push(user.$id)
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
+  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
   return { userId: user.$id, email, password }
 }
 

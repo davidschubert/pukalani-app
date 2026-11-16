@@ -259,11 +259,14 @@ try {
   console.log(`\nF57-Beweis (Einladungen durch Mitglieder) gegen http://localhost:${PORT}, Pool ${poolProject}\n`)
 
   // ── Aufbau ───────────────────────────────────────────────────────────────
-  const owner = await createPoolUser('owner')
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse —
+  // beide Gründer werden bestätigt; für GEGENPROBE 1 unten nimmt der Beweis die
+  // Bestätigung des Owners danach wieder zurück.
+  const owner = await createPoolUser('owner', { verified: true })
   // Die Testphase lässt EINE Community je Konto zu — Community B braucht
   // deshalb einen eigenen Gründer. (Ohne diesen Satz sieht der 403 beim
   // zweiten Anlegen wie ein Fehler der neuen Arbeit aus.)
-  const ownerB = await createPoolUser('ownerB')
+  const ownerB = await createPoolUser('ownerB', { verified: true })
   const memberAcc = await createPoolUser('member', { verified: true })
   const outsider = await createPoolUser('outsider', { verified: true })
   const invitee = await createPoolUser('invitee', { verified: true })
@@ -590,11 +593,12 @@ try {
     String(await countInviteRows(a.communityId, second.userId)))
 
   /**
-   * GEGENPROBE 1: der OWNER dieses Beweises hat seine Adresse nie bestätigt
-   * (`createPoolUser('owner')` ohne `verified`) — und lädt trotzdem ein. Genau
+   * GEGENPROBE 1: der OWNER dieses Beweises hat jetzt KEINE bestätigte Adresse
+   * (zum Anlegen bestätigt, hier wieder zurückgenommen) — und lädt trotzdem ein. Genau
    * das ist Davids Zuschnitt: die Regel fügt für MITGLIEDER etwas hinzu und
    * nimmt dem Owner nichts.
    */
+  await poolUsers.updateEmailVerification({ userId: owner.userId, emailVerification: false })
   const ownerUnverified = await invite(a.host, ownerCookie, `f57-au1-owner-${Date.now()}@example.test`)
   check('GEGENPROBE: der Owner darf auch unbestätigt einladen → 200',
     ownerUnverified.status === 200, `${ownerUnverified.status} ${ownerUnverified.text.slice(0, 160)}`)

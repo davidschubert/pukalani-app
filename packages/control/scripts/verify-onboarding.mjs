@@ -4,10 +4,11 @@
  * Fährt den echten Weg der Platform-App gegen einen laufenden Studio-Server:
  * Pool-User anlegen → Session → JWT → POST /api/control/onboarding/site. Prüft
  * den Happy Path UND die Abwehr (kein Secret, falsches Secret, kaputtes JWT,
- * fremder Host, zweite Community in der Testphase, Retry-Idempotenz).
+ * unbestätigte Adresse, fremder Host, zweite Community in der Testphase,
+ * Retry-Idempotenz) und die Vergabe der Testphase je Konto (BE-015).
  *
  * Räumt am Ende ALLES weg, was es angelegt hat (Tenants, Mitgliedschaften,
- * Codes, Pool-User) — auch wenn ein Test fehlschlägt.
+ * Codes, Testphasen-Zeilen, Pool-User) — auch wenn ein Test fehlschlägt.
  *
  * Aufruf (Studio-Dev-Server muss laufen):
  *   node --env-file=apps/control/.env packages/control/scripts/verify-onboarding.mjs
@@ -17,6 +18,7 @@
  *   POOL_ENDPOINT/KEY   Default: dieselbe Instanz, Key aus NUXT_APPWRITE_KEY
  */
 import '../../../scripts/lib/assert-target.mjs'
+import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
 const STUDIO_URL = (process.env.STUDIO_URL || 'http://localhost:3004').replace(/\/+$/, '')
@@ -38,7 +40,12 @@ const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolPr
 
 let pass = 0
 let fail = 0
-const cleanup = { tenants: [], members: [], codes: [], users: [] }
+const cleanup = { tenants: [], members: [], codes: [], users: [], claims: [] }
+
+/** Dieselbe feste Id wie `trialClaimRowId` (server/utils/trialClaims.ts). */
+function trialClaimRowId(projectId, userId) {
+  return `tc${createHash('sha256').update(`${projectId}:${userId}`, 'utf8').digest('hex').slice(0, 32)}`
+}
 
 function check(label, condition, detail = '') {
   if (condition) {
@@ -51,12 +58,18 @@ function check(label, condition, detail = '') {
   }
 }
 
-/** Ein Pool-User + frischer JWT (genau wie ihn die Platform-App mintet). */
-async function createPoolUserWithJwt(tag) {
+/**
+ * Ein Pool-User + frischer JWT (genau wie ihn die Platform-App mintet).
+ * Bestätigt per Default: seit BE-015 verlangt das Anlegen eine bestätigte
+ * Adresse; `verified: false` prüft genau diese Abwehr.
+ */
+async function createPoolUserWithJwt(tag, { verified = true } = {}) {
   const email = `o2-${tag}-${Date.now()}@example.test`
   const password = `Pw-${ID.unique()}`
   const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `O2 ${tag}` })
   cleanup.users.push(user.$id)
+  cleanup.claims.push(trialClaimRowId(poolProject, user.$id))
+  if (verified) await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
 
   // Session wie beim Login (Admin-Client), dann JWT zu dieser Session.
   // node-appwrite 28: `account.createJWT` ist entfernt — geminzt wird am
@@ -108,6 +121,7 @@ try {
 
   const owner = await createPoolUserWithJwt('owner')
   const stranger = await createPoolUserWithJwt('stranger')
+  const unverified = await createPoolUserWithJwt('unverified', { verified: false })
   const invite = await issueCode()
   const slug = `o2-${Date.now().toString(36)}`
 
@@ -149,6 +163,9 @@ try {
   check('kaputtes JWT → 401', badJwt.status === 401, `war ${badJwt.status}`)
   const badCode = await post('/api/control/onboarding/site', { ...payload, site: { ...payload.site, inviteCode: 'PUKA-XXXX-XXXX' } }, withSecret)
   check('unbekannter Code → 403', badCode.status === 403, `war ${badCode.status}`)
+  const notVerified = await post('/api/control/onboarding/site', { ...payload, jwt: unverified.jwt }, withSecret)
+  check('unbestätigte Adresse → 403 email_unverified (BE-015)',
+    notVerified.status === 403 && notVerified.json?.reason === 'email_unverified', `war ${notVerified.status} ${notVerified.text.slice(0, 160)}`)
   const reserved = await post('/api/control/onboarding/site', { ...payload, site: { ...payload.site, slug: 'login' } }, withSecret)
   check('reservierter Slug (login) → 400', reserved.status === 400, `war ${reserved.status}`)
   const extra = await post('/api/control/onboarding/site', { ...payload, site: { ...payload.site, plan: 'business' } }, withSecret)
@@ -216,6 +233,15 @@ try {
 
   const codeAfter = await control.getRow({ databaseId, tableId: 'invite_codes', rowId: invite.id })
   check('Code einmal verbraucht', codeAfter.uses === 1, `uses=${codeAfter.uses}`)
+  check('Antwort meldet die Testphase (trial: true)', created.json?.trial === true, JSON.stringify(created.json?.trial))
+  const claim = await control.getRow({ databaseId, tableId: 'trial_claims', rowId: trialClaimRowId(poolProject, owner.userId) }).catch(() => null)
+  check('Testphase als Zeile je Konto vergeben (trial_claims)', claim?.communityId === created.json?.communityId && claim?.source === 'onboarding',
+    claim ? `${claim.communityId}/${claim.source}` : 'keine Zeile — Migration control-039 gefahren?')
+  const trialCheck = await post('/api/control/onboarding/trial', { jwt: owner.jwt }, withSecret)
+  check('Vorab-Prüfung: Testphase schon genutzt → trialAvailable false', trialCheck.status === 200 && trialCheck.json?.trialAvailable === false,
+    `${trialCheck.status} ${trialCheck.text.slice(0, 160)}`)
+  const strangerCheck = await post('/api/control/onboarding/trial', { jwt: stranger.jwt }, withSecret)
+  check('Vorab-Prüfung: neues Konto → trialAvailable true', strangerCheck.json?.trialAvailable === true, strangerCheck.text.slice(0, 160))
 
   console.log('\n3. Idempotenz + Grenzen')
   // Der Retry fährt bewusst die ALTE Nutzlast: er beweist damit zweierlei —
@@ -251,6 +277,7 @@ finally {
   for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
   for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
   for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
+  for (const id of cleanup.claims) await control.deleteRow({ databaseId, tableId: 'trial_claims', rowId: id }).catch(() => {})
   for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
   const rest = await control.listRows({ databaseId, tableId: 'communities' })
   console.log(`  ✔ aufgeräumt — verbleibende Tenants: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)

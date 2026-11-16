@@ -244,6 +244,9 @@ try {
 
   console.log('1. Aufbau: Community, Owner, Mitglied')
   const owner = await createPoolUser('owner')
+  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse —
+  // nur der Gründer, die übrigen Konten bleiben, wie der Beweis sie braucht.
+  await poolUsers.updateEmailVerification({ userId: owner.userId, emailVerification: true })
   const member = await createPoolUser('member')
   const code = await issueCode()
   const ownerCookie = await login(owner)
