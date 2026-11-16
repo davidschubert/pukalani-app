@@ -153,6 +153,116 @@ export async function openReportsForTarget(
   return res.rows
 }
 
+/** Höchstens so viele Seiten je Bündel (500 Zeilen je Seite) — ein Netz, kein Fenster. */
+const OPEN_COUNT_MAX_PAGES = 20
+
+/**
+ * WIE VIELE offene Meldungen hat JEDES dieser Targets? — gebündelt für eine
+ * ganze Seite einer Melde-Liste (SEC-033: die Liste gemeldeter privater
+ * Nachrichten gibt Text nur bei offener Meldung heraus und braucht dafür die
+ * echte Zahl je Zeile, ohne je Zeile eine Abfrage).
+ *
+ * Bündel zu 100 Ids (Grenze von `Query.equal`), mit dem Mandanten-Filter der
+ * Anfrage (`scopeQuery`). Innerhalb eines Bündels wird seitenweise gelesen,
+ * damit ein Target mit vielen Meldungen die anderen nicht aus dem Fenster
+ * drängt. Targets ohne offene Meldung fehlen in der Karte.
+ */
+export async function openReportCountsForTargets(
+  event: import('h3').H3Event,
+  targetType: string,
+  targetIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  if (targetIds.length === 0) return counts
+  const config = useRuntimeConfig(event)
+  const databaseId = config.public.appwriteDatabaseId
+  const { tablesDB } = createAdminClient(event)
+
+  for (let i = 0; i < targetIds.length; i += 100) {
+    const batch = targetIds.slice(i, i + 100)
+    let after: string | null = null
+    for (let page = 0; page < OPEN_COUNT_MAX_PAGES; page++) {
+      const res: { rows: Report[] } = await tablesDB.listRows<Report>({
+        databaseId,
+        tableId: REPORTS_TABLE,
+        queries: scopeQuery(event, [
+          Query.equal('targetType', targetType),
+          Query.equal('targetId', batch),
+          Query.equal('status', 'open'),
+          Query.limit(REPORTS_WINDOW),
+          ...(after ? [Query.cursorAfter(after)] : []),
+        ]),
+      })
+      for (const row of res.rows) counts.set(row.targetId, (counts.get(row.targetId) ?? 0) + 1)
+      if (res.rows.length < REPORTS_WINDOW) break
+      after = res.rows[res.rows.length - 1]!.$id
+    }
+  }
+  return counts
+}
+
+/** Stand der Meldungen zu EINEM Target, wie ihn ein Lauf ohne Anfrage braucht. */
+export interface TargetReportEvidenceState {
+  /** Offene Meldungen. */
+  open: number
+  /** Nicht offene (erledigte) Meldungen. Zurückgezogene sind gelöscht. */
+  closed: number
+  /** Spätestes `$updatedAt` der nicht offenen; '' = keine. */
+  lastClosedAt: string
+}
+
+/**
+ * Der Mandanten-Filter für eine AUSDRÜCKLICH genannte Community. Ohne Id
+ * (Einzelbetrieb: die Zeilen tragen keinen Stempel) nur Zeilen ohne Stempel —
+ * nie „alle".
+ */
+function communityScope(communityId: string): string[] {
+  return communityId
+    ? [Query.equal('communityId', communityId)]
+    : [Query.or([Query.equal('communityId', ''), Query.isNull('communityId')])]
+}
+
+/**
+ * STAND DER MELDUNGEN ZU EINEM TARGET — OHNE ANFRAGE, IN EINER COMMUNITY
+ * (SEC-033, Vertrag für den Lösch-Lauf des Belegs gemeldeter Nachrichten).
+ *
+ * Ein Lauf hat keinen Mandanten-Kontext; die Community nennt der Aufrufer
+ * deshalb ausdrücklich (die `communityId` des Targets), und gefragt wird NUR
+ * dort — keine Abfrage über Community-Grenzen.
+ *
+ * Der Zeitpunkt der Erledigung ist das `$updatedAt` der erledigten Zeile
+ * (eine eigene Spalte gibt es nicht; `resolveReportsForTarget` schreibt sie
+ * zuletzt). Zwei Abfragen mit `limit(1)`: `total` zählt exakt, ohne Zeilen zu
+ * übertragen.
+ */
+export async function reportEvidenceStateForTarget(input: {
+  communityId: string
+  targetType: string
+  targetId: string
+}): Promise<TargetReportEvidenceState> {
+  const config = useRuntimeConfig()
+  const databaseId = config.public.appwriteDatabaseId
+  const { tablesDB } = createAdminClient()
+  const base = [
+    Query.equal('targetType', input.targetType),
+    Query.equal('targetId', input.targetId),
+    ...communityScope(input.communityId),
+  ]
+  const [open, closed] = await Promise.all([
+    tablesDB.listRows<Report>({
+      databaseId,
+      tableId: REPORTS_TABLE,
+      queries: [...base, Query.equal('status', 'open'), Query.limit(1)],
+    }),
+    tablesDB.listRows<Report>({
+      databaseId,
+      tableId: REPORTS_TABLE,
+      queries: [...base, Query.notEqual('status', 'open'), Query.orderDesc('$updatedAt'), Query.limit(1)],
+    }),
+  ])
+  return { open: open.total, closed: closed.total, lastClosedAt: closed.rows[0]?.$updatedAt ?? '' }
+}
+
 /**
  * Offene Meldungen eines Target-Typs: distinkte Target-IDs nach Aktualität +
  * Anzahl je Target. Für die Moderations-Queue (Admin).
