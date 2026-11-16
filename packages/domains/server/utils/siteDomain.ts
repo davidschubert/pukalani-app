@@ -28,7 +28,7 @@ import type { H3Event } from 'h3'
 import type { SiteDomainAddress, SiteDomainState, SiteDomainVerifyResult } from '../../../core/shared/types/siteDomain'
 
 /** Die Projekt-Id DIESER App — ihre Identität im Website-Register. */
-export function siteProjectId(event: H3Event): string {
+export function siteProjectId(event: H3Event | undefined): string {
   return useRuntimeConfig(event).public.appwriteProjectId || ''
 }
 
@@ -57,7 +57,7 @@ export function invalidateSiteDomainAddress(): void {
   cached = null
 }
 
-async function fetchAddress(event: H3Event): Promise<SiteDomainAddress | null> {
+async function fetchAddress(event: H3Event | undefined): Promise<SiteDomainAddress | null> {
   const projectId = siteProjectId(event)
   if (!projectId) return null
   if (!await controlServiceAvailable(event)) return null
@@ -72,8 +72,16 @@ async function fetchAddress(event: H3Event): Promise<SiteDomainAddress | null> {
   }
 }
 
-/** Die Adresse dieser Site — gecacht, fail-soft, wirft nie. */
-export async function siteDomainAddress(event: H3Event): Promise<SiteDomainAddress | null> {
+/**
+ * Die Adresse dieser Site — gecacht, fail-soft, wirft nie.
+ *
+ * OHNE EVENT AUFRUFBAR (seit 2026-11-16): der Digest-Lauf fragt über
+ * `resolveSiteOrigin()` nach der eigenen Domain und hat keine Anfrage. Das
+ * Event dient hier ohnehin nur der Laufzeit-Konfiguration; die Antwort hängt
+ * an der Projekt-Id, nie am Host der Anfrage — derselbe Zwischenspeicher
+ * bedient deshalb Middleware, Mail-Links und Lauf.
+ */
+export async function siteDomainAddress(event: H3Event | undefined): Promise<SiteDomainAddress | null> {
   const now = Date.now()
   if (cached && cached.until > now) return cached.value
   if (inFlight) return await inFlight

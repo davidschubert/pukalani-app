@@ -375,7 +375,19 @@ in den Einzel-Seiten die fest eingestellte Adresse".
    `event-reminders` geht stündlich alle Communities durch — erst nur zählend,
    dann scharf.
 
+8. **Eigene Domain einer Einzel-Site (Davids Zusatzauftrag vom 2026-11-16).**
+   Stellt ein Betreiber im Dashboard eine eigene Domain ein, nehmen Mails,
+   Digest und Rückwege sie von selbst, sobald sie aktiv ist: ein Vertrag im
+   Core (`registerSiteOriginResolver`), den der `domains`-Layer mit derselben
+   Abfrage bedient wie die Umleitung. `NUXT_PUBLIC_APP_URL` bleibt die
+   Standard-Adresse und ist der Rückfall.
+
 **Gelernt:**
+- **Die Site wusste ihre eigene Domain längst — nur die Mails fragten nicht.**
+  Seiten folgten der eigenen Domain über die Umleitung und den Host der
+  Anfrage; alles, was OHNE Anfrage-Host eine Adresse baut (Mails, Rückwege),
+  nahm die Variable vom Server. Wo zwei Wege zur selben Antwort führen, fragt
+  jeder neue Aufrufer die eine Stelle, nicht die Variable.
 - **Zeitpläne stehen an zwei Stellen.** Ploi schreibt seine „Cronjobs" nach
   `/etc/crontab`, nicht in den crontab des Benutzers. Wer nur `crontab -l`
   liest, sieht die Hälfte — und derselbe Eintrag stand monatelang doppelt.

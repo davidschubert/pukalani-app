@@ -5,6 +5,7 @@ import {
   shouldReportAppUrlMissing,
   type TrustedOrigin,
 } from '../../shared/trustedOrigin'
+import { resolveSiteOrigin } from './siteOrigin'
 
 /**
  * Die Adresse für Mail-Links und OAuth-Rückwege (SEC-010) — Regel und
@@ -15,6 +16,11 @@ import {
  * (`event.context.controlCenter`). Beides steht nur, wenn die
  * Mandanten-Auflösung an ist — ein Silo kommt nie in diesen Zweig.
  *
+ * SEIT 2026-11-16 ASYNC: Schritt (2) der Regel, die aktive eigene Domain einer
+ * Einzel-Site, kommt aus dem Vertrag `resolveSiteOrigin` — und der fragt über
+ * den `domains`-Layer das Control Plane (gecacht). Gefragt wird nur, wenn der
+ * Pool-Zweig nicht greift: ein geprüfter Mandanten-Host braucht keine Antwort.
+ *
  * Billing hat eine eigene Regel (`resolveBillingReturnOrigin`) und bleibt
  * davon unberührt.
  */
@@ -22,14 +28,17 @@ import {
 /** Einmal je Prozess — sonst schriebe jede Reset-Anfrage eine Zeile. */
 let appUrlMissingReported = false
 
-export function resolveTrustedOrigin(event: H3Event): TrustedOrigin {
+export async function resolveTrustedOrigin(event: H3Event): Promise<TrustedOrigin> {
   const appConfig = useAppConfig() as { pukalani?: { tenancy?: { enabled?: boolean } } }
   const config = useRuntimeConfig(event)
   const dev = Boolean(import.meta.dev)
+  const tenancyEnabled = appConfig.pukalani?.tenancy?.enabled === true
+  const hostVerified = Boolean(event.context.tenant) || event.context.controlCenter === true
   const result = decideTrustedOrigin({
-    tenancyEnabled: appConfig.pukalani?.tenancy?.enabled === true,
-    hostVerified: Boolean(event.context.tenant) || event.context.controlCenter === true,
+    tenancyEnabled,
+    hostVerified,
     requestOrigin: getRequestURL(event).origin,
+    siteOrigin: tenancyEnabled && hostVerified ? null : await resolveSiteOrigin(event),
     appUrl: config.public.appUrl,
     dev,
   })

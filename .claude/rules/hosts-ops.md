@@ -234,7 +234,18 @@ paths:
   `core/server/utils/trustedOrigin.ts`), den Namen der Anfrage nur, wo
   `00.tenant.ts` ihn geprüft hat; fehlt `appUrl`, schreibt die App
   `auth.app_url_missing` und fällt zurück. `NUXT_PUBLIC_APP_URL` ist Pflicht
-  auf platform, admin, portfolio und branding. TERMIN-ERINNERUNGEN fährt die
+  auf platform, admin, portfolio und branding. EIGENE DOMAIN EINER EINZEL-SITE
+  (Davids Auftrag 2026-11-16): hat die Site im Dashboard eine eigene Domain
+  und ist sie `active`, nehmen Reset-, Bestätigungs- und Benachrichtigungs-
+  Mails, der Digest und der OAuth-Rückweg DIESE Adresse — über den Vertrag
+  `registerSiteOriginResolver` (`core/server/utils/siteOrigin.ts`), den der
+  `domains`-Layer mit derselben Abfrage bedient, aus der auch der 301
+  entsteht (Control Plane, 30 s Zwischenspeicher; nicht erreichbar ⇒
+  `appUrl`). Der Name kommt aus der `websites`-Zeile, NIE aus der Anfrage.
+  `NUXT_PUBLIC_APP_URL` BLEIBT dabei die STANDARD-Adresse (der Rückfall, wenn
+  die eigene Domain entfernt wird) — niemand stellt für eine eigene Domain
+  eine Server-Datei um. Eine neue Stelle, die einen Link in eine Mail legt,
+  nimmt `resolveSiteLinkBase(event)` statt `config.public.appUrl`. TERMIN-ERINNERUNGEN fährt die
   App selbst (Zeit-Lauf `event-reminders` im events-Layer, stündlich, alle
   Communities, der Mandant kommt aus dem Stempel der Termin-Zeile) — auf dem
   Server gibt es dafür KEINEN Zeitplan mehr.

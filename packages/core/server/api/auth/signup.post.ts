@@ -4,6 +4,7 @@ import { createAdminClient, requestLocale, setSessionCookie } from '../../lib/ap
 import { registerSchema } from '../../../schemas/auth'
 import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
 import { BUSINESS_REQUIRED_CODE, TERMS_REQUIRED_CODE, requiredConsents, type ConsentConfig } from '../../../shared/consent'
+import { resolveSiteLinkBase } from '../../utils/siteOrigin'
 
 /**
  * Der Token gehört NICHT ins geteilte `registerSchema`: das trägt auch das
@@ -190,7 +191,8 @@ export default defineEventHandler(async (event) => {
   // daher ein eigener Client statt createSessionClient(event).
   const config = useRuntimeConfig(event)
   const appConfig2 = useAppConfig() as { pukalani?: { auth?: { verification?: boolean } } }
-  if (appConfig2.pukalani?.auth?.verification && config.public.appUrl) {
+  const verifyBase = appConfig2.pukalani?.auth?.verification ? await resolveSiteLinkBase(event) : ''
+  if (verifyBase) {
     try {
       const client = new Client()
         .setEndpoint(config.public.appwriteEndpoint)
@@ -198,7 +200,7 @@ export default defineEventHandler(async (event) => {
         .setSession(session.secret)
       const locale = requestLocale(event)
       if (locale) client.setLocale(locale)
-      await new Account(client).createVerification({ url: `${config.public.appUrl}/verify` })
+      await new Account(client).createVerification({ url: `${verifyBase}/verify` })
     }
     catch (error) {
       console.error('[core] Verifizierungs-Mail nach Signup fehlgeschlagen:', error)
