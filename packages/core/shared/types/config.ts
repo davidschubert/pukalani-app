@@ -78,6 +78,11 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
  * hier hinein, wenn es einen echten Client-Leser gibt. Sensible Werte gehören
  * gar nicht erst in app_config (Table-read(any), system-005), sondern in
  * app_secrets.
+ *
+ * DIESE AUSWAHL IST KEINE GRENZE (BE-003): sie hält den Seiten-Payload klein.
+ * Direkt bei Appwrite ist die ganze Zeile für jeden lesbar — welche Spalten
+ * es gibt und warum jede öffentlich sein darf, steht in
+ * `shared/appConfigPublicColumns.ts` (Wächter-Test gegen die Migrationen).
  */
 export type PublicAppConfig = Pick<
   AppConfig,
