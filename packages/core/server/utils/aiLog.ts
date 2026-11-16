@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../shared/aiProviderRouting'
+import { logEvent } from './logEvent'
 
 /**
  * DAS PROTOKOLL DER KI-TRANSPORTE — NUR KENNUNGEN (P17, SEC-017, 2026-11-15).
@@ -44,19 +45,59 @@ export type AiLogFields = Readonly<Record<string, string | number | undefined>>
 
 const SAFE_VALUE = /^[\w./:@-]{1,80}$/
 
-function safeValue(value: string | number): string {
+/**
+ * DIE EINE FILTERREGEL für jeden Wert, der ins KI-Protokoll geht — Textzeile
+ * (`aiLogLine`) und JSON-Zeile (`logAiFailed`/`logAiDisabled`) teilen sie:
+ * eine endliche Zahl oder eine kurze Kennung, sonst `?`.
+ */
+export function aiLogSafeValue(value: string | number): string {
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '?'
   return SAFE_VALUE.test(value) ? value : '?'
 }
 
 /** `[label] Art feld=wert …` — `undefined` fällt weg, alles Unsichere wird `?`. */
 export function aiLogLine(label: string, what: AiLogWhat, fields: AiLogFields): string {
-  const parts = [`[${SAFE_VALUE.test(label) ? label : '?'}] ${what}`]
+  const parts = [`[${aiLogSafeValue(label)}] ${what}`]
   for (const [key, value] of Object.entries(fields)) {
     if (value === undefined) continue
-    parts.push(`${key}=${safeValue(value)}`)
+    parts.push(`${key}=${aiLogSafeValue(value)}`)
   }
   return parts.join(' ')
+}
+
+/**
+ * Die Art eines echten Ausfalls eines bezahlten Aufrufs: `http` = der
+ * Vermittler antwortete mit einem Fehler-Status, `call` = der Aufruf selbst
+ * scheiterte (Netz, Abbruch, unlesbare Antwort), `stream` = der Stream kam
+ * ohne Rumpf, mit Fehlerframe oder lief in die Zeitüberschreitung.
+ */
+export type AiFailureKind = 'http' | 'call' | 'stream'
+
+/**
+ * EINE zählbare JSON-Zeile je echtem Ausfall (OPS-011, seit 2026-11-16): der
+ * tägliche Wächter zählt `ai.failed` in den pm2-Logs; die Textzeile daneben
+ * bleibt für den Menschen. NUR Kennungen, gefiltert wie `aiLogLine` — kein
+ * Rumpf, keine Nachricht. Bewusst NICHT für abgewiesene Eingaben (vor dem
+ * Senden, nichts bezahlt), Qualitäts-Zeilen (abgeschnitten, ohne JSON) und
+ * „Routing ungültig" (ein Programmierfehler, eigener Fall).
+ */
+export function logAiFailed(ctx: AiRunContext, kind: AiFailureKind, status?: number): void {
+  logEvent('error', 'ai.failed', {
+    label: aiLogSafeValue(ctx.label),
+    kind,
+    ...(status === undefined ? {} : { status: Number.isFinite(status) ? status : 0 }),
+    model: aiLogSafeValue(ctx.model),
+    run: aiLogSafeValue(ctx.run),
+  })
+}
+
+/** Der Abschalter hat einen Aufruf verhindert — eine `warn`-Zeile, zählbar wie `ai.failed`. */
+export function logAiDisabled(label: string, model: string | undefined, run: string | undefined): void {
+  logEvent('warn', 'ai.disabled', {
+    label: aiLogSafeValue(label),
+    model: model === undefined ? undefined : aiLogSafeValue(model),
+    run: run === undefined ? undefined : aiLogSafeValue(run),
+  })
 }
 
 /** Eine kurze Kennung je Transport-Aufruf (`run=`). */
@@ -158,6 +199,7 @@ export async function aiHttpFailure(
     ...extra,
     run: ctx.run,
   }))
+  logAiFailed(ctx, 'http', res.status)
   if (res.status === 404) throw aiEndpointUnavailableError()
   throw createError({ status: 502, statusText: 'AI provider unavailable' })
 }
@@ -178,5 +220,6 @@ export function aiCallFailed(
     ...extra,
     run: ctx.run,
   }))
+  logAiFailed(ctx, 'call')
   throw createError({ status: 502, statusText })
 }
