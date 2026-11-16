@@ -20,7 +20,7 @@ import { requireOnboardingCaller } from '../../../../utils/onboardingService'
  * Diese Route setzt `active` allein auf die BEHAUPTUNG des Aufrufers hin. Das
  * ist vertretbar, weil sie NICHT von irgendwem erreichbar ist: es gilt
  * dieselbe Vierfach-Prüfung wie überall an dieser Naht (Service-Secret + JWT +
- * Owner-Rolle + Plan), und der Aufrufer ist unser eigenes Deployment.
+ * Owner-Rolle + Berechtigung), und der Aufrufer ist unser eigenes Deployment.
  *
  * Vor allem aber: der Zustand DAVOR muss `pending_platform` sein. Dorthin
  * kommt eine Domain nur durch `domain/verify` — also nur, nachdem das Control
@@ -58,7 +58,15 @@ export default defineEventHandler(async (event) => {
       // Fehlschlag hin: eine aktive Domain zieht den 301 der Subdomain nach
       // sich, und dann sitzt der Kunde auf einer Adresse ohne Realtime.
       ? { customDomainStatus: 'pending_platform', customDomainError: failure.slice(0, 500) }
-      : { customDomainStatus: 'active', customDomainError: '', customDomainActivatedAt: new Date().toISOString() },
+      // Aktiv räumt Frist und Abschalt-Stempel ab (control-040): das
+      // Wiedereinschalten einer abgeschalteten Domain endet hier.
+      : {
+          customDomainStatus: 'active',
+          customDomainError: '',
+          customDomainActivatedAt: new Date().toISOString(),
+          customDomainGraceEndsAt: null,
+          customDomainPausedAt: null,
+        },
   }).catch((error) => { throw toH3Error(error, 'Could not activate domain') })
 
   logEvent(failure ? 'warn' : 'info', 'community.custom_domain_activated', {

@@ -121,6 +121,24 @@ describe('trialClaimRowId', () => {
   })
 })
 
+describe('control-040: eine neue Community trägt die fünf Domain-Spalten', () => {
+  it('nicht freigegeben, kein Eintragsdatum, keine Frist, nichts abgeschaltet — mit und ohne Testphase', async () => {
+    identity('u1')
+    const first = await create('u1', 'alpha')
+    endTrial(first.communityId)
+    const second = await create('u1', 'beta')
+    for (const id of [first.communityId, second.communityId]) {
+      expect(community(id)).toMatchObject({
+        customDomainApproved: false,
+        customDomainApprovedAt: null,
+        customDomainClaimedAt: null,
+        customDomainGraceEndsAt: null,
+        customDomainPausedAt: null,
+      })
+    }
+  })
+})
+
 describe('Testphase einmal je Konto', () => {
   it('die erste Community eines Kontos bekommt die Testphase und die Vergabe-Zeile', async () => {
     identity('u1')

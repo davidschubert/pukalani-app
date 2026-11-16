@@ -18,17 +18,33 @@
  * trägt jemand `www.kunde.de`, ist auch `kunde.de` vergeben — sie lösen auf
  * dieselbe Seite auf.
  *
- * ── WARUM DAS EIN RENNEN BLEIBT, UND WARUM DAS IN ORDNUNG IST ─────────────
- * Zwei gleichzeitige Eintragungen könnten theoretisch beide durchkommen (wie
- * schon bei control-035 festgehalten). Die FREISCHALTUNG nicht: der
- * TXT-Record trägt genau EIN Token, also kommt höchstens eine der beiden je
- * auf `active` — und nur `active` macht eine Adresse kanonisch. Ein verteiltes
- * Schloss für ein Fenster von Millisekunden wäre teurer als die Tatsache, die
- * es verhindert.
+ * ── EIN BLOSSER EINTRAG BLOCKIERT NIEMANDEN (control-040, SEC-022) ─────────
+ * Bis control-040 zählte jede Zeile, die die Domain trug — auch `pending_dns`,
+ * also ein Eintrag OHNE jeden Nachweis. Wer eine fremde Domain zuerst
+ * eintippte, sperrte sie damit für jede andere Community auf Dauer. Jetzt
+ * zählt eine COMMUNITY-Zeile nur, wenn sie den Nachweis schon geführt hat
+ * (`customDomainHasProof`: `pending_cert`, `pending_platform`, `active`,
+ * `paused`). Pool-Aufrufer sagen das mit `onlyProvenCommunities: true`.
+ *
+ * Weil damit zwei Communities gleichzeitig unbewiesene Einträge derselben
+ * Domain halten können, fragt `verify.post.ts` NOCH EINMAL in dem Moment, in
+ * dem der Nachweis gelingt — der erste Nachweis gewinnt, der zweite bleibt
+ * mit `409 domain_taken` in `pending_dns`. Was bleibt, ist das Fenster
+ * zwischen zwei GLEICHZEITIGEN Nachweisen (Millisekunden); beide müssten
+ * dafür ihr Token in DERSELBEN Zone stehen haben — also derselbe Mensch.
+ *
+ * ── SILO-ZEILEN (`websites`) ZÄHLEN WIE BISHER IMMER ──────────────────────
+ * Ihr Status-Wertebereich ist derselbe, die Regel aber nicht: Silo-Domains
+ * trägt der Betreiber oder der Silo-Owner ein, es gibt für sie keinen Verfall
+ * eines Eintrags, und ihr Prüf-Weg (`siteDomainService.ts`) fragt beim
+ * Nachweis nicht noch einmal nach. Für SILO-Aufrufer zählt deshalb auch jede
+ * Community-Zeile weiter (ohne `onlyProvenCommunities`) — sonst könnten eine
+ * Community und ein Silo dieselbe Domain bis zum Nachweis tragen, und der
+ * Silo-Weg merkte die Kollision nicht.
  */
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { customDomainForms } from '../../shared/customDomain'
+import { customDomainForms, customDomainHasProof } from '../../shared/customDomain'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { WEBSITES_TABLE, type WebsiteRow } from '../../shared/types/website'
 
@@ -39,6 +55,12 @@ export interface DomainOwnershipQuery {
   allowCommunityId?: string
   /** Row-Id der Website, die sie schon haben DARF ('' = keine). */
   allowWebsiteId?: string
+  /**
+   * true = eine fremde COMMUNITY-Zeile zählt nur mit Nachweis
+   * (`customDomainHasProof`). Setzen nur die Pool-Routen (control-040);
+   * `websites`-Zeilen zählen immer.
+   */
+  onlyProvenCommunities?: boolean
 }
 
 /**
@@ -58,7 +80,10 @@ export async function customDomainTakenByOther(
   const [communities, websites] = await Promise.all([
     admin.tablesDB.listRows<TenantRow>({
       databaseId, tableId: COMMUNITIES_TABLE,
-      queries: [Query.equal('customDomain', forms), Query.limit(5)],
+      // 25 statt 5 (control-040): unbewiesene Einträge blockieren nicht mehr
+      // und dürfen sich deshalb häufen — eine bewiesene Zeile darf nicht hinter
+      // fünf bloßen Einträgen aus dem Fenster fallen.
+      queries: [Query.equal('customDomain', forms), Query.limit(25)],
     }),
     admin.tablesDB.listRows<WebsiteRow>({
       databaseId, tableId: WEBSITES_TABLE,
@@ -66,6 +91,7 @@ export async function customDomainTakenByOther(
     }),
   ]).catch((error) => { throw toH3Error(error, 'Could not check domain') })
 
-  return communities.rows.some(row => row.$id !== query.allowCommunityId)
-    || websites.rows.some(row => row.$id !== query.allowWebsiteId)
+  return communities.rows.some(row => row.$id !== query.allowCommunityId
+    && (!query.onlyProvenCommunities || customDomainHasProof(row.customDomainStatus)))
+  || websites.rows.some(row => row.$id !== query.allowWebsiteId)
 }

@@ -30,14 +30,19 @@
 import type { H3Event } from 'h3'
 import {
   canonicalHostFor,
+  customDomainClaimExpiresAt,
+  customDomainEntitlement,
   customDomainForms,
+  customDomainHasProof,
   customDomainVerifyRecordName,
   customDomainVerifyRecordValue,
   resolveCustomDomainStatus,
+  type CustomDomainDenial,
   type CustomDomainStatus,
 } from '../../shared/customDomain'
 import { normalizeTenantPlan, type TenantPlan, type TenantRow } from '../../shared/types/tenantRecord'
 import { checkDomainDns, domainAnswersOverHttps } from './customDomainDns'
+import { customDomainTakenByOther } from './customDomainOwnership'
 import { ensurePloiTenants, isDryRunFlag, ploiConfig, requestPloiTenantCertificate } from './ploi'
 
 export interface CustomDomainSettings {
@@ -87,8 +92,25 @@ export interface CustomDomainState {
   /** Die Pukalani-Subdomain — sie bleibt Rückfall (Davids Entscheidung 2). */
   fallbackHost: string
   plan: TenantPlan
-  /** Reicht der Plan? (Die Route setzt es durch; das hier ist für die Anzeige.) */
+  /** Reicht der Plan? (Die Route setzt es durch; das hier ist für die Anzeige.)
+   *  Bleibt für ältere Seiten — die Regel seit control-040 ist `entitlement`. */
   planAllows: boolean
+  /**
+   * Darf diese Community eine eigene Domain betreiben (control-040, SEC-022)?
+   * Dieselbe pure Regel wie an der Tür der Routen (`customDomainEntitlement`):
+   * Plan Pro, keine Testphase ohne Abo, Freigabe des Betreibers. Die Seite
+   * zeigt daran den passenden Hinweis statt der Eingabe.
+   */
+  entitlement: { allowed: boolean, reason?: CustomDomainDenial }
+  /** Hat der Betreiber die Community freigegeben? */
+  approved: boolean
+  /** Ende der Frist nach Plan-Ende (ISO); `null` = keine Frist läuft. */
+  graceEndsAt: string | null
+  /** Wann die Domain abgeschaltet wurde (ISO); `null` = nicht abgeschaltet. */
+  pausedAt: string | null
+  /** Bis wann ein Eintrag OHNE Nachweis gehalten wird (ISO); `null` = es gibt
+   *  keinen solchen Eintrag. */
+  claimExpiresAt: string | null
   instructions: {
     txtName: string
     txtValue: string
@@ -117,6 +139,14 @@ export function customDomainStateFor(event: H3Event, row: TenantRow): CustomDoma
     fallbackHost: row.host,
     plan,
     planAllows: plan === 'pro',
+    entitlement: (() => {
+      const result = customDomainEntitlement(row, Date.now())
+      return result.allowed ? { allowed: true } : { allowed: false, reason: result.reason }
+    })(),
+    approved: row.customDomainApproved === true,
+    graceEndsAt: row.customDomainGraceEndsAt ?? null,
+    pausedAt: row.customDomainPausedAt ?? null,
+    claimExpiresAt: customDomainClaimExpiresAt(row),
     instructions: {
       txtName: domain ? customDomainVerifyRecordName(domain) : '',
       txtValue: row.customDomainToken ? customDomainVerifyRecordValue(row.customDomainToken) : '',
@@ -150,10 +180,20 @@ export interface CustomDomainAdvance {
    * bis der Kunde seinen Eintrag ändert.
    */
   caaBlocked: boolean
+  /**
+   * true = der Nachweis ist gelungen, aber eine ANDERE Community hat dieselbe
+   * Domain schon nachgewiesen (control-040). Die Zeile bleibt `pending_dns`,
+   * die Route antwortet `409 domain_taken`.
+   */
+  taken: boolean
 }
 
+/** Der Text, den der Owner liest, wenn eine andere Community schneller war. */
+export const CUSTOM_DOMAIN_TAKEN_ERROR = 'Diese Domain hat eine andere Community bereits nachgewiesen.'
+
 /**
- * EIN Schritt weiter, so weit es geht. Wirft NIE.
+ * EIN Schritt weiter, so weit es geht. Wirft nur, wenn die Eigentums-Frage
+ * (1b) nicht gelesen werden kann.
  *
  * Reihenfolge (jede Stufe ist Voraussetzung der nächsten):
  *   1. TXT-Nachweis + Zeige-Prüfung        → sonst `pending_dns`
@@ -172,7 +212,7 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
   const domain = row.customDomain || ''
   const token = row.customDomainToken || ''
   if (!domain || !token) {
-    return { patch: {}, status: 'none', error: '', needsPlatformRegistration: false, caaBlocked: false }
+    return { patch: {}, status: 'none', error: '', needsPlatformRegistration: false, caaBlocked: false, taken: false }
   }
 
   const settings = customDomainSettings(event)
@@ -193,6 +233,7 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
     error,
     needsPlatformRegistration: false,
     caaBlocked,
+    taken: false,
   })
 
   // ── 1. Gehört die Domain dieser Community, und zeigt sie auf uns? ─────────
@@ -214,6 +255,22 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
     return stop('pending_dns', `${domain} zeigt noch nicht auf uns.${dns.error ? ` (${dns.error})` : ''}`)
   }
 
+  /**
+   * ── 1b. Gehört die Domain inzwischen einer ANDEREN Community? ────────────
+   * (control-040, SEC-022) Ein bloßer Eintrag blockiert niemanden mehr, also
+   * können zwei Communities dieselbe Domain unbewiesen halten. Entschieden
+   * wird JETZT, im Moment des eigenen Nachweises und VOR jeder Bestellung bei
+   * ploi: hat eine andere den Nachweis schon geführt, bleibt diese Zeile
+   * `pending_dns`. Wer schon einen Nachweis hat (`paused`, `pending_cert` …),
+   * fragt nicht noch einmal — für ihn ist die Frage längst entschieden.
+   * Ein Lesefehler wirft (`customDomainTakenByOther`) und hält den Lauf auf:
+   * „frei" auf Verdacht wäre genau die Kollision, die die Frage verhindert.
+   */
+  if (!customDomainHasProof(row.customDomainStatus)
+    && await customDomainTakenByOther(event, { domain, allowCommunityId: row.$id, onlyProvenCommunities: true })) {
+    return { ...stop('pending_dns', CUSTOM_DOMAIN_TAKEN_ERROR), taken: true }
+  }
+
   // ── 2. nginx + Zertifikat ────────────────────────────────────────────────
   // Beide Formen bekommen ihren vHost; ein Zertifikat nur die, die auch
   // wirklich hierher zeigt (HTTP-01 scheitert sonst und ploi meldet einen
@@ -226,6 +283,7 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
       error: tenants.message,
       needsPlatformRegistration: false,
       caaBlocked,
+      taken: false,
     }
   }
 
@@ -277,6 +335,7 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
       error: message,
       needsPlatformRegistration: false,
       caaBlocked,
+      taken: false,
     }
   }
 
@@ -295,6 +354,7 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
         error: `Zertifikat noch nicht aktiv (${https.error}).`,
         needsPlatformRegistration: false,
         caaBlocked,
+        taken: false,
       }
     }
   }
@@ -306,5 +366,6 @@ export async function advanceCustomDomain(event: H3Event, row: TenantRow): Promi
     error: '',
     needsPlatformRegistration: true,
     caaBlocked,
+    taken: false,
   }
 }

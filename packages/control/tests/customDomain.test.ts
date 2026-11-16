@@ -2,9 +2,18 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  CUSTOM_DOMAIN_CLAIM_DAYS,
+  CUSTOM_DOMAIN_GRACE_DAYS,
   CUSTOM_DOMAIN_MIN_PLAN,
+  CUSTOM_DOMAIN_STATUSES,
   canonicalHostFor,
   customDomainAllowedForPlan,
+  customDomainClaimExpired,
+  customDomainClaimExpiresAt,
+  customDomainEntitlement,
+  customDomainGraceEnd,
+  customDomainHasProof,
+  customDomainIsParked,
   customDomainBase,
   customDomainCandidates,
   customDomainForms,
@@ -162,8 +171,8 @@ describe('resolveCustomDomainStatus', () => {
     expect(resolveCustomDomainStatus('tippfehler')).toBe('none')
   })
 
-  it('kennt die fünf echten Stufen', () => {
-    for (const value of ['pending_dns', 'pending_cert', 'pending_platform', 'active', 'error']) {
+  it('kennt die sechs echten Stufen', () => {
+    for (const value of ['pending_dns', 'pending_cert', 'pending_platform', 'active', 'error', 'paused']) {
       expect(resolveCustomDomainStatus(value)).toBe(value)
     }
   })
@@ -180,7 +189,7 @@ describe('canonicalHostFor', () => {
   /** Solange das Zertifikat fehlt, bleibt die Subdomain zu Hause — sonst
    *  leitete sie auf ein Zertifikats-Warnschild um. */
   it('eine unfertige Domain gewinnt NICHT', () => {
-    for (const status of ['pending_dns', 'pending_cert', 'pending_platform', 'error', '']) {
+    for (const status of ['pending_dns', 'pending_cert', 'pending_platform', 'error', '', 'paused']) {
       expect(canonicalHostFor({ ...base, customDomain: 'www.kunde.de', customDomainStatus: status })).toBe('kunde.pukalani.app')
     }
   })
@@ -396,5 +405,102 @@ describe('caaVerdictFromRecords', () => {
    *  Subdomain davon ist NICHT Let's Encrypt. */
   it('eine Subdomain der Kennung zählt nicht', () => {
     expect(caaVerdictFromRecords([{ issue: 'acme.letsencrypt.org' }])).toBe('blocked')
+  })
+})
+
+// ── control-040: Berechtigung, Nachweis, Fristen (SEC-022, BE-014) ─────────
+
+describe('customDomainEntitlement', () => {
+  const NOW = Date.parse('2026-11-16T12:00:00.000Z')
+  const FUTURE = '2026-11-30T12:00:00.000Z'
+  const PAST = '2026-11-01T12:00:00.000Z'
+
+  it('Plan nicht Pro ⇒ plan_required — vor allem anderen, auch mit Freigabe', () => {
+    for (const plan of ['basic', 'personal', '', null, 'free']) {
+      expect(customDomainEntitlement({ plan, customDomainApproved: true }, NOW)).toEqual({ allowed: false, reason: 'plan_required' })
+    }
+    // Reihenfolge: ein Basic-Plan in der Testphase ohne Freigabe nennt den Plan.
+    expect(customDomainEntitlement({ plan: 'basic', trialEndsAt: FUTURE }, NOW)).toEqual({ allowed: false, reason: 'plan_required' })
+  })
+
+  it('Testphase mit Plan pro ist NICHT berechtigt — auch nicht mit Freigabe', () => {
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: FUTURE, billingStatus: '' }, NOW)).toEqual({ allowed: false, reason: 'trial' })
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: FUTURE, billingStatus: null, customDomainApproved: true }, NOW)).toEqual({ allowed: false, reason: 'trial' })
+    // Reihenfolge: Testphase vor Freigabe.
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: FUTURE, customDomainApproved: false }, NOW)).toEqual({ allowed: false, reason: 'trial' })
+  })
+
+  it('bezahltes Pro ohne Freigabe ⇒ approval_required', () => {
+    for (const approved of [false, null, undefined]) {
+      expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: approved }, NOW))
+        .toEqual({ allowed: false, reason: 'approval_required' })
+    }
+  })
+
+  it('bezahltes Pro mit Freigabe ⇒ erlaubt — auch wenn während der Testphase gekauft wurde', () => {
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: true }, NOW)).toEqual({ allowed: true })
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: FUTURE, billingStatus: 'active', customDomainApproved: true }, NOW)).toEqual({ allowed: true })
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: PAST, billingStatus: 'active', customDomainApproved: true }, NOW)).toEqual({ allowed: true })
+  })
+
+  it('vom Betreiber gesetztes Pro ohne Testphasen-Datum + Freigabe ⇒ erlaubt', () => {
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: null, billingStatus: '', customDomainApproved: true }, NOW)).toEqual({ allowed: true })
+    // Alt-Wert `business` ist Pro (normalizeTenantPlan).
+    expect(customDomainEntitlement({ plan: 'business', customDomainApproved: true }, NOW)).toEqual({ allowed: true })
+  })
+})
+
+describe('customDomainIsParked / customDomainHasProof', () => {
+  it('abgeschaltet ist nur paused MIT Domain — und nie kanonisch', () => {
+    expect(customDomainIsParked('www.kunde.de', 'paused')).toBe(true)
+    expect(customDomainIsParked('', 'paused')).toBe(false)
+    expect(customDomainIsParked('www.kunde.de', 'active')).toBe(false)
+    expect(customDomainIsLive('www.kunde.de', 'paused')).toBe(false)
+  })
+
+  it('Nachweis haben genau pending_cert, pending_platform, active, paused', () => {
+    const proven = CUSTOM_DOMAIN_STATUSES.filter(status => customDomainHasProof(status))
+    expect(proven).toEqual(['pending_cert', 'pending_platform', 'active', 'paused'])
+    expect(customDomainHasProof(null)).toBe(false)
+    expect(customDomainHasProof('tippfehler')).toBe(false)
+  })
+})
+
+describe('Fristen', () => {
+  const NOW = Date.parse('2026-11-16T12:00:00.000Z')
+  const DAY = 24 * 60 * 60 * 1000
+
+  it('customDomainGraceEnd: jetzt + 14 Tage', () => {
+    expect(CUSTOM_DOMAIN_GRACE_DAYS).toBe(14)
+    expect(customDomainGraceEnd(NOW)).toBe(new Date(NOW + 14 * DAY).toISOString())
+  })
+
+  it('customDomainClaimExpired: pending_dns/error ohne Nachweis, älter als 14 Tage', () => {
+    expect(CUSTOM_DOMAIN_CLAIM_DAYS).toBe(14)
+    const old = new Date(NOW - 15 * DAY).toISOString()
+    const fresh = new Date(NOW - 13 * DAY).toISOString()
+    expect(customDomainClaimExpired({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: old }, NOW)).toBe(true)
+    expect(customDomainClaimExpired({ customDomain: 'kunde.de', customDomainStatus: 'error', customDomainClaimedAt: old }, NOW)).toBe(true)
+    expect(customDomainClaimExpired({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: fresh }, NOW)).toBe(false)
+    // Genau auf der Grenze ist verfallen.
+    expect(customDomainClaimExpired({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: new Date(NOW - 14 * DAY).toISOString() }, NOW)).toBe(true)
+  })
+
+  it('ein fehlendes Datum ist NICHT verfallen, ein Nachweis auch nicht', () => {
+    const old = new Date(NOW - 30 * DAY).toISOString()
+    for (const claimedAt of [null, undefined, '', 'kaputt']) {
+      expect(customDomainClaimExpired({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: claimedAt }, NOW)).toBe(false)
+    }
+    for (const status of ['pending_cert', 'pending_platform', 'active', 'paused', 'none']) {
+      expect(customDomainClaimExpired({ customDomain: 'kunde.de', customDomainStatus: status, customDomainClaimedAt: old }, NOW)).toBe(false)
+    }
+    expect(customDomainClaimExpired({ customDomain: '', customDomainStatus: 'pending_dns', customDomainClaimedAt: old }, NOW)).toBe(false)
+  })
+
+  it('customDomainClaimExpiresAt: Eintragsdatum + 14 Tage, nur ohne Nachweis', () => {
+    const claimed = new Date(NOW).toISOString()
+    expect(customDomainClaimExpiresAt({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: claimed }))
+      .toBe(new Date(NOW + 14 * DAY).toISOString())
+    expect(customDomainClaimExpiresAt({ customDomain: 'kunde.de', customDomainStatus: 'active', customDomainClaimedAt: claimed })).toBeNull()
   })
 })

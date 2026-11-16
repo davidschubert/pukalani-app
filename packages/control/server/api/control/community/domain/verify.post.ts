@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../../shared/types/tenantRecord'
+import { resolveCustomDomainStatus } from '../../../../../shared/customDomain'
 import { advanceCustomDomain, customDomainStateFor } from '../../../../utils/customDomainService'
 import { requireCommunityDomainOwner } from '../../../../utils/communityDomainGate'
 import { requireOnboardingCaller } from '../../../../utils/onboardingService'
@@ -21,6 +22,19 @@ import { requireOnboardingCaller } from '../../../../utils/onboardingService'
  * das Pool-Projekt keinen Schlüssel hat — dieselbe Grenze wie bei
  * `revokeCommunityLabel` (A5). Sie meldet sich danach mit
  * `domain/activate` zurück.
+ *
+ * ── WIEDER EINSCHALTEN (control-040, BE-014) ──────────────────────────────
+ * Derselbe Knopf schaltet eine ABGESCHALTETE Domain (`paused`) wieder ein —
+ * die Tür prüft dabei die Berechtigung wie bei jedem Prüfen. Die Kette läuft
+ * normal (DNS → ploi/Zertifikat → `pending_platform` → `activate`). Hält sie
+ * vorher an, BLEIBT die Domain `paused` und trägt nur den Grund: sie hat ihren
+ * Nachweis schon, und ein Rückfall auf `pending_dns` nähme ihren Besuchern die
+ * Umleitung auf die Pukalani-Adresse (der Resolver bedient nur `paused`).
+ *
+ * ── DER ERSTE NACHWEIS GEWINNT (control-040, SEC-022) ─────────────────────
+ * Hat eine andere Community dieselbe Domain schon nachgewiesen, bleibt diese
+ * Zeile `pending_dns` mit lesbarem Grund, und die Antwort ist
+ * `409 domain_taken` (`advanceCustomDomain`, Schritt 1b).
  */
 const bodySchema = z.object({
   jwt: z.string().min(1).max(4096),
@@ -37,21 +51,29 @@ export default defineEventHandler(async (event) => {
   }
 
   const advance = await advanceCustomDomain(event, row)
+  const wasPaused = resolveCustomDomainStatus(row.customDomainStatus) === 'paused'
+  const patch = wasPaused && advance.status !== 'pending_platform'
+    ? { ...advance.patch, customDomainStatus: 'paused' }
+    : advance.patch
   const admin = createAdminClient(event)
   const saved = await admin.tablesDB.updateRow<TenantRow>({
     databaseId,
     tableId: COMMUNITIES_TABLE,
     rowId: row.$id,
-    data: advance.patch,
+    data: patch,
   }).catch((error) => { throw toH3Error(error, 'Could not update domain state') })
 
   logEvent('info', 'community.custom_domain_checked', {
     communityId: row.$id,
     runtimeUserId: identity.userId,
     domain: row.customDomain,
-    status: advance.status,
+    status: patch.customDomainStatus ?? advance.status,
     detail: advance.error.slice(0, 200),
   })
+
+  if (advance.taken) {
+    throw createError({ status: 409, statusText: 'Domain already taken', data: { code: 'domain_taken' } })
+  }
 
   return {
     ...customDomainStateFor(event, saved),
