@@ -134,11 +134,10 @@ describe('runCustomDomainNoticeSweep', () => {
     expect(bellRows()).toHaveLength(4)
   })
 
-  it('erst kurz vor Schluss bemerkt: start und ending in einem Lauf', async () => {
+  it('erst kurz vor Schluss bemerkt: nur die Erinnerung, nicht zugleich „noch 14 Tage"', async () => {
     communities = [grace(NOW + 2 * DAY, { ownerUserIds: ['u-de'] })]
     await mod.runCustomDomainNoticeSweep(NOW)
     expect(mails.map(mail => mail.subject)).toEqual([
-      'Deine Domain surfclub.de bleibt noch bis zum 18. November 2026 aktiv',
       'In drei Tagen schalten wir surfclub.de ab',
     ])
   })

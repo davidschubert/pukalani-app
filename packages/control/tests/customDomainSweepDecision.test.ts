@@ -148,9 +148,9 @@ describe('customDomainNoticesDue', () => {
   it('erster Tag ⇒ nur start', () => {
     expect(customDomainNoticesDue(iso(NOW + 14 * DAY), NOW)).toEqual(['start'])
   })
-  it('drei Tage vorher ⇒ start + ending', () => {
-    expect(customDomainNoticesDue(iso(NOW + CUSTOM_DOMAIN_NOTICE_ENDING_DAYS * DAY), NOW)).toEqual(['start', 'ending'])
-    expect(customDomainNoticesDue(iso(NOW + DAY), NOW)).toEqual(['start', 'ending'])
+  it('drei Tage vorher ⇒ nur ending (nie beide zugleich)', () => {
+    expect(customDomainNoticesDue(iso(NOW + CUSTOM_DOMAIN_NOTICE_ENDING_DAYS * DAY), NOW)).toEqual(['ending'])
+    expect(customDomainNoticesDue(iso(NOW + DAY), NOW)).toEqual(['ending'])
   })
   it('knapp mehr als drei Tage ⇒ nur start', () => {
     expect(customDomainNoticesDue(iso(NOW + 3 * DAY + 60_000), NOW)).toEqual(['start'])

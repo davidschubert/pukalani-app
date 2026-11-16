@@ -44,16 +44,19 @@ export interface CustomDomainGraceNotice {
 /**
  * PURE (unit-getestet): welche Hinweise sind JETZT fällig?
  *
- *  - `start`, sobald der Stempel steht und das Ende in der Zukunft liegt,
- *  - `ending` zusätzlich, wenn das Ende höchstens drei Tage entfernt ist.
+ *  - `start`, sobald der Stempel steht und das Ende mehr als drei Tage
+ *    entfernt ist,
+ *  - `ending` STATT dessen, wenn das Ende höchstens drei Tage entfernt ist.
  * Nach dem Ende (der Fristen-Lauf schaltet ab) und bei unlesbarem Datum:
- * nichts. Wer erst am zwölften Tag gemeldet wird (der Hinweis-Lauf war aus),
- * bekommt beide — `start` sagt dann ehrlich das Datum.
+ * nichts. NIE BEIDE ZUGLEICH: im Normalfall ging `start` am ersten Tag
+ * hinaus (die Glocken-Zeile hält es fest) — und wer erst kurz vor dem Ende
+ * gemeldet wird (der Hinweis-Lauf war aus), soll nicht „noch 14 Tage" lesen
+ * und im selben Augenblick „in drei Tagen". Dann zählt nur die Erinnerung.
  */
 export function customDomainNoticesDue(graceEndsAt: string | null | undefined, now: number): CustomDomainNoticeKind[] {
   const end = Date.parse(graceEndsAt ?? '')
   if (!Number.isFinite(end) || end <= now) return []
-  return end - now <= CUSTOM_DOMAIN_NOTICE_ENDING_DAYS * DAY_MS ? ['start', 'ending'] : ['start']
+  return end - now <= CUSTOM_DOMAIN_NOTICE_ENDING_DAYS * DAY_MS ? ['ending'] : ['start']
 }
 
 /**
