@@ -20,10 +20,13 @@
  * DANN das Recht nehmen. Alter Code + genommenes Recht = jedes Anlegen
  * scheitert. Der Code seit der jeweiligen Etappe läuft mit beiden Zuständen.
  *
- * Das SDK kommt vom Aufrufer (Node löst `node-appwrite` relativ zur
- * importierenden Datei auf — Begründung in `runLeaseTable.mts`).
+ * Das SDK kommt vom Aufrufer, und der Client ist STRUKTURELL getippt (Node
+ * und der Compiler lösen `node-appwrite` von `scripts/` aus nicht auf —
+ * Begründung in `runLeaseTable.mts`). Die echte `TablesDB` erfüllt den Typ.
  */
-import type { TablesDB } from 'node-appwrite'
+import type { NudgeableTablesDB } from './indexRetry.mts'
+
+type TablesDB = NudgeableTablesDB
 
 const WRITE_RIGHT = /^(create|update|delete|write)\(/
 const ACCOUNT_CREATE = 'create("users")'
