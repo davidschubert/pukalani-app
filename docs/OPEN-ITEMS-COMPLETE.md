@@ -384,6 +384,13 @@ Betreiber-Rolle werden nie gefragt und nie gesperrt.
 8. **`app_config` (BE-003).** Jede Spalte der Tabelle ist öffentlich lesbar;
    das steht jetzt an Migration und Typ, mit einer Liste der zehn Spalten und
    einem Wächter-Test gegen die Migrationen.
+9. **Bedingungen für Community-Betreiber** (Davids Auftrag in derselben
+   Runde, Pull Request 221, Merge `38d0db88`). Wer eine Community anlegt,
+   bestätigt sie per Kästchen; der Server prüft das und hält die Fassung in
+   `consent_records` fest, bevor etwas entsteht (Art `operator`, Weg `wizard`).
+   Der Text liegt als Entwurf auf pukalani.app, deutsch und englisch, mit den
+   offenen Rechtsfragen als `[OFFEN …]`. Regel: `.claude/rules/onboarding.md`;
+   was fehlt, steht in OPEN-ITEMS A1b.
 
 **Netze.** Liste `scripts/lib/server-written-tables.mjs`; Wächter
 `packages/core/tests/serverWrittenTables.test.ts` (jede schreibende Stelle
@@ -395,8 +402,11 @@ zurück); Beweis-Skript `packages/core/scripts/verify-server-only-writes.mjs`
 **Beweis.** Lokal je Etappe eine Probe je Rolle über die echten Routen, in
 drei Zuständen (alter Code mit alten Rechten, neuer Code mit alten, neuer Code
 mit neuen), mit Live-Verbindung, fremdem Konto, Moderation und Gast. Auf
-Production nur zurückgelesen und gezählt; alle acht Seiten gesund. Was dort
-nicht gezeigt ist, steht in OPEN-ITEMS, Punkt SV1.
+Production zurückgelesen und gezählt; alle acht Seiten gesund. Am Ende ein
+Durchgang auf einer echten Community in Davids angemeldetem Browser (Beitrag,
+Kommentar, Stimme, Glocke; alles wieder gelöscht) und die Anmeldung per Code
+auf der Betreiber-Seite. Was auf den echten Seiten nicht gezeigt ist, steht in
+OPEN-ITEMS, Punkt SV1.
 
 **Gelernt:**
 - **Eine Änderung ohne Änderung prüft nur das Leserecht.** Die Datenbank
