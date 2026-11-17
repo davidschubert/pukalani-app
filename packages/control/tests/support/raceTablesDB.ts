@@ -17,8 +17,9 @@ import { AppwriteException } from 'node-appwrite'
  *     gemessen).
  *
  * Abfragen werden wirklich ausgewertet (equal, notEqual — wie MariaDB ohne
- * `null` —, greaterThan, orderAsc/Desc,
+ * `null` —, greaterThan, isNull, or, orderAsc/Desc,
  * limit, offset, cursorAfter), sonst bewiese ein Zähl-Test nichts.
+ * Ein unbekannter FILTER fällt nicht still weg (`matches` wirft).
  *
  * Eine Tabelle in `missingTables` antwortet wie eine nicht gefahrene Migration
  * (404 `table_not_found`) — für Code, der vor seiner Migration live gehen darf.
@@ -27,6 +28,9 @@ import { AppwriteException } from 'node-appwrite'
 export interface RaceRow { $id: string, $createdAt: string, [key: string]: unknown }
 
 interface ParsedQuery { method: string, attribute?: string, values?: unknown[] }
+
+/** Abfragen, die Zeilen aussortieren; alles andere (Reihenfolge, Seite) wirkt danach. */
+const FILTERS = new Set(['equal', 'notEqual', 'greaterThan', 'isNull', 'or'])
 
 const handOff = () => new Promise<void>(resolve => setImmediate(resolve))
 
@@ -73,6 +77,19 @@ export function createRaceTablesDB() {
     return String(a ?? '').localeCompare(String(b ?? ''))
   }
 
+  /** Wie SQL: ein Vergleich mit `null` ist nie wahr — nur `isNull` trifft es. */
+  function matches(row: RaceRow, query: ParsedQuery): boolean {
+    const value = row[query.attribute ?? '']
+    switch (query.method) {
+      case 'equal': return (query.values ?? []).includes(value)
+      case 'notEqual': return value !== null && value !== undefined && !(query.values ?? []).includes(value)
+      case 'greaterThan': return value !== null && value !== undefined && compare(value, query.values?.[0]) > 0
+      case 'isNull': return value === null || value === undefined
+      case 'or': return (query.values as ParsedQuery[] | undefined ?? []).some(inner => matches(row, inner))
+      default: throw new Error(`raceTablesDB: Abfrage '${query.method}' wird nicht ausgewertet`)
+    }
+  }
+
   const tablesDB = {
     async listRows({ tableId, queries = [] }: { databaseId?: string, tableId: string, queries?: string[] }) {
       await handOff()
@@ -82,10 +99,7 @@ export function createRaceTablesDB() {
       const parsed = queries.map(query => JSON.parse(query) as ParsedQuery)
       let rows = [...table(tableId).values()]
       for (const query of parsed) {
-        const key = query.attribute ?? ''
-        if (query.method === 'equal') rows = rows.filter(row => (query.values ?? []).includes(row[key]))
-        if (query.method === 'notEqual') rows = rows.filter(row => row[key] !== null && row[key] !== undefined && !(query.values ?? []).includes(row[key]))
-        if (query.method === 'greaterThan') rows = rows.filter(row => compare(row[key], query.values?.[0]) > 0)
+        if (FILTERS.has(query.method)) rows = rows.filter(row => matches(row, query))
       }
       const order = parsed.find(query => query.method === 'orderAsc' || query.method === 'orderDesc')
       rows.sort((a, b) => compare(a.$createdAt, b.$createdAt))

@@ -175,10 +175,15 @@
         "notResumable": "This run can no longer be resumed.",
         "mode": "The inherited mode is blocked for an unverified job.",
         "runner": "The predecessor's machine is not available.",
-        "testsNeedRunner": "The inherited test commands require a specific machine.",
-        "testsUntrusted": "The job no longer counts as verified — the inherited test commands cannot come along.",
-        "testNotListed": "An inherited test command is no longer on the machine’s list.",
         "trustUnavailable": "The ticket’s origin could not be checked right now. Try again in a moment."
+      },
+      "abandonedTitle": "Ended automatically",
+      "abandonedText": "This run gave no sign of life for 7 days (computer off, service crashed or an interrupted upload) and was ended. Start a new run if you still need it.",
+      "resumeBlocked": {
+        "title": "This question cannot be resumed",
+        "testNotListed": "The run carries test commands the computer no longer offers — it dates from before the command list. An answer would be rejected. Start a new run and pick the tests there.",
+        "testsUntrusted": "The run carries test commands, but its prompt is not verified, and unverified runs may not take tests along. Start a new run without tests.",
+        "testsNeedRunner": "The run carries test commands but no specific computer — tests need one. Start a new run and pick the computer there."
       }
     },
     "timeline": {

@@ -104,6 +104,27 @@ export const BRANDING_ROUTES: readonly BrandingSitemapEntry[] = [
   { path: '/team', priority: 0.5 },
 ]
 
+/**
+ * FESTE SEITEN, DIE AN EINEM PRODUKT HÄNGEN (WL1 d): Übersicht der Galerie und
+ * Journal antworten auch bei abgeschaltetem Produkt weiter — aber leer. Eine
+ * leere Seite lädt keinen Crawler ein; sie fällt deshalb aus der Sitemap,
+ * solange ihr Produkt aus ist. `insights` setzt `brand` voraus (dieselbe Regel
+ * wie bei den Einträgen in `sitemap.xml.get.ts`).
+ *
+ * Alle anderen festen Seiten bleiben: sie haben eigenen Inhalt, der an keinem
+ * Schalter hängt.
+ */
+const BRANDING_ROUTE_PRODUCTS: Readonly<Record<string, readonly ('brand' | 'insights')[]>> = {
+  '/discover': ['brand'],
+  '/insights': ['brand', 'insights'],
+}
+
+/** Die festen Seiten für den Stand der zwei Produkt-Schalter (pur). */
+export function brandingFixedRoutes(products: { brand: boolean, insights: boolean }): BrandingSitemapEntry[] {
+  return BRANDING_ROUTES.filter(route =>
+    (BRANDING_ROUTE_PRODUCTS[route.path] ?? []).every(key => products[key]))
+}
+
 /** Priorität der Anatomien — sie sind der Zweck der Ebene „Discover" (§1). */
 export const BRANDING_DISCOVER_PRIORITY = 0.6
 

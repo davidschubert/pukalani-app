@@ -127,20 +127,46 @@ describe('Sitemap', () => {
     expect(xml).toContain('https://example.test/insights/story')
   })
 
+  it('führt die zwei festen Übersichten, solange beide Produkte an sind (Gegenprobe zu WL1 d)', async () => {
+    enabled.add('brand')
+    enabled.add('insights')
+    const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
+    expect(xml).toContain('<loc>https://example.test/discover</loc>')
+    expect(xml).toContain('<loc>https://example.test/insights</loc>')
+  })
+
   it('bleibt bei den festen Seiten und liest nichts, wenn `brand` abgeschaltet ist', async () => {
     enabled.add('insights')
     const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
     expect(xml).toContain('<loc>https://example.test/brand-check</loc>')
     expect(xml).not.toContain('/discover/acme')
     expect(xml).not.toContain('/insights/story')
+    // WL1 d: auch die zwei festen Übersichten fallen — sie wären leer.
+    expect(xml).not.toContain('<loc>https://example.test/discover</loc>')
+    expect(xml).not.toContain('<loc>https://example.test/insights</loc>')
+    expect(xml).not.toContain('/de/discover')
+    expect(xml).not.toContain('/de/insights')
     expect(reads).toEqual([])
   })
 
-  it('lässt nur die Artikel weg, wenn `insights` abgeschaltet ist', async () => {
+  it('lässt nur die Artikel und das Journal weg, wenn `insights` abgeschaltet ist', async () => {
     enabled.add('brand')
     const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
     expect(xml).toContain('https://example.test/discover/acme')
+    expect(xml).toContain('<loc>https://example.test/discover</loc>')
     expect(xml).not.toContain('/insights/story')
+    expect(xml).not.toContain('<loc>https://example.test/insights</loc>')
     expect(reads).toEqual(['publications'])
+  })
+
+  it('lässt sich der Schalter nicht lesen, bleibt die Sitemap vollständig', async () => {
+    vi.stubGlobal('isProductEnabled', async () => {
+      throw new Error('config unavailable')
+    })
+    const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
+    expect(xml).toContain('<loc>https://example.test/discover</loc>')
+    expect(xml).toContain('<loc>https://example.test/insights</loc>')
+    expect(xml).toContain('https://example.test/discover/acme')
+    expect(xml).toContain('https://example.test/insights/story')
   })
 })

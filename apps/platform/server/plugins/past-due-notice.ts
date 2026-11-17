@@ -1,5 +1,5 @@
 import { createPastDueNoticeReader } from '../../../../packages/control/server/utils/pastDueNoticeReader'
-import { registerPastDueNoticeReader, runPastDueNoticeSweep } from '../../../../packages/onboarding/server/utils/pastDueNotice'
+import { isPastDueNoticeRunning, registerPastDueNoticeReader, runPastDueNoticeSweep } from '../../../../packages/onboarding/server/utils/pastDueNotice'
 
 /**
  * A14-Komposition: die Zahlungswarnung eines COMMUNITY-Abos gehört in die
@@ -50,6 +50,10 @@ export default defineNitroPlugin(() => {
     everyMs: SWEEP_INTERVAL_MS,
     firstRunMs: FIRST_RUN_DELAY_MS,
     run: async () => {
+      // Der Riegel meldet „schon im Gange" nur als leeres Ergebnis — deshalb
+      // VORHER fragen (zwischen Frage und Aufruf liegt kein `await`), sonst
+      // stünde im Protokoll ein guter Lauf, der nichts getan hat (WA1 e).
+      if (isPastDueNoticeRunning()) return 'skipped'
       const result = await runPastDueNoticeSweep()
       // Nur melden, wenn wirklich etwas passiert ist — ein stündliches
       // „0 Warnungen" macht das Log unlesbar.

@@ -175,10 +175,15 @@
         "notResumable": "Dieser Lauf lässt sich nicht mehr fortsetzen.",
         "mode": "Der geerbte Modus ist für einen ungeprüften Auftrag gesperrt.",
         "runner": "Der Rechner des Vorgängers steht nicht bereit.",
-        "testsNeedRunner": "Die geerbten Testbefehle brauchen einen bestimmten Rechner.",
-        "testsUntrusted": "Der Auftrag gilt nicht mehr als geprüft — die geerbten Testbefehle dürfen nicht mit.",
-        "testNotListed": "Ein geerbter Testbefehl steht nicht mehr in der Liste des Rechners.",
         "trustUnavailable": "Die Herkunft des Tickets konnte gerade nicht geprüft werden. Versuch es gleich noch einmal."
+      },
+      "abandonedTitle": "Automatisch beendet",
+      "abandonedText": "Dieser Lauf hat 7 Tage lang kein Lebenszeichen gegeben (Rechner aus, Dienst abgestürzt oder ein abgebrochenes Hochladen) und wurde deshalb beendet. Leg bei Bedarf einen neuen Lauf an.",
+      "resumeBlocked": {
+        "title": "Diese Rückfrage lässt sich nicht fortsetzen",
+        "testNotListed": "Der Lauf trägt Testbefehle, die der Rechner heute nicht mehr anbietet — er stammt aus der Zeit vor der Befehls-Liste. Eine Antwort würde abgelehnt. Leg einen neuen Lauf an und wähle die Tests dort aus.",
+        "testsUntrusted": "Der Lauf trägt Testbefehle, aber der Auftrag gilt nicht als geprüft, und ungeprüfte Läufe dürfen keine Tests mitnehmen. Leg einen neuen Lauf ohne Tests an.",
+        "testsNeedRunner": "Der Lauf trägt Testbefehle, aber keinen bestimmten Rechner — Tests gibt es nur mit einem. Leg einen neuen Lauf an und wähle dort den Rechner."
       }
     },
     "timeline": {

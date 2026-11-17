@@ -121,22 +121,6 @@ export default defineEventHandler(async (event): Promise<IntegrationsResponse> =
     })
   }
 
-  // Der Sweep-Schlüssel existiert im runtimeConfig nur, wo der events-Layer
-  // montiert ist. Sein „Sender" ist kein Deployment dieses Repos, sondern ein
-  // Cron — und weil hier NUR empfangen wird, ist die Rotation fensterlos:
-  // erst hier eintragen (nimmt ab da alt und neu an), dann im Cron.
-  if ('eventsSweepKey' in runtime) {
-    items.push({
-      id: 'events-sweep',
-      envName: 'NUXT_EVENTS_SWEEP_KEY',
-      source: integrationSource(
-        await readInstanceSecret(event, 'events-sweep'),
-        runtime.eventsSweepKey as string,
-      ),
-      shared: 'one-way',
-    })
-  }
-
   // ── SMTP: EIN Block, und das Passwort bleibt hier ───────────────────────
   const storedSmtp = parseMailerSettings(await readInstanceSecret(event, 'smtp'))
   const smtpView = toMailerView(storedSmtp ?? {

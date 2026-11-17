@@ -21,6 +21,7 @@
  */
 import { createDisparagementGuard } from '../../core/shared/disparagementGuard.ts'
 import {
+  insightsBrandReviewIssues,
   insightsBrandSchema,
   insightsDuelSlug,
   insightsMethodologyLinked,
@@ -192,6 +193,45 @@ export function launchPostIssues(post, brandRows) {
     knownBrandIds: brandRows.filter(row => row.state !== 'removed').map(row => row.id),
     methodologyLinked: insightsMethodologyLinked(post),
     flagText: launchFlagText(post, brandRows),
+  })
+}
+
+/**
+ * DIE VORAB-PRÜFUNG EINER MARKEN-ZEILE (IN1 c) — dieselben Regeln wie das
+ * Server-Gate der Marken-Seiten (`insightsBrandPublicationGate`): die
+ * Quellen-Regeln und der Namens- und Herabsetzungsfilter über Zeichen und
+ * Historie, wieder OHNE Beleg-Abruf (s. Kopf).
+ *
+ * WOZU, WENN DER SEED NUR ENTWÜRFE SCHREIBT: eine Marke, die als Entwurf
+ * dasteht, lässt sich seit dem 2026-11-17 erst veröffentlichen, wenn sie diese
+ * Regeln erfüllt. Ein Launch-Inhalt, der daran scheitert, soll das beim Seed
+ * sagen — nicht erst, wenn jemand im Dashboard auf „Veröffentlichen" drückt.
+ *
+ * Der Filter ist `insightsBrandFlagText` nachgebaut (Begründung wie bei
+ * `launchFlagText`): „die eigenen" sind die Marke selbst und ihre `relations`,
+ * alle übrigen nicht entfernten Zeilen sind Kandidaten.
+ * `brandRows`: `{ id, name, homepage, state }`, `selfId`: die Id dieser Zeile.
+ */
+export function launchBrandIssues(brand, selfId, brandRows) {
+  const related = new Set(brand.relations)
+  const ownTexts = [brand.name]
+  if (brand.homepage) ownTexts.push(brand.homepage)
+  const candidates = []
+  for (const row of brandRows) {
+    if (row.state === 'removed' || row.id === selfId) continue
+    if (related.has(row.id)) {
+      ownTexts.push(row.name)
+      if (row.homepage) ownTexts.push(row.homepage)
+      continue
+    }
+    candidates.push({ name: row.name, url: row.homepage || undefined })
+  }
+  const guard = createDisparagementGuard(candidates, { ownTexts })
+  return insightsBrandReviewIssues(brand, {
+    flagText: (text) => {
+      const reason = guard.check(text)
+      return reason ? [reason] : []
+    },
   })
 }
 

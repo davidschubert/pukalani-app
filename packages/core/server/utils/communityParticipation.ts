@@ -32,12 +32,17 @@ import { COMMUNITY_SUSPENDED_CODE, memberWritesAllowedFor } from '../../shared/c
 
 export interface CommunityParticipantOptions {
   /**
-   * Die Route bleibt in einer GESPERRTEN Community offen (M13) — heute nur das
+   * Die Route bleibt in einer GESPERRTEN Community offen (M13) — heute das
    * Melden. Melden ist Moderation, kein Inhalt: wer in einer Community mit
    * Zahlungsverzug einen Übergriff sieht, soll ihn weiter melden können,
    * sonst nähme die Mahnung der Community ihren Schutz. Dann gibt es keine
    * Sperr-Ablehnung — aber auch KEINEN Beitritt (die Sperre friert ein, sie
    * lässt niemanden herein), sondern nur die Frage nach der Mitgliedschaft.
+   *
+   * Und die Zusage zu einem Termin (F26): erst der Bestand zeigt, ob sie
+   * zusagt (Inhalt, zu) oder zurückzieht (offen). Dort hält die Datentür
+   * (`actor: 'member'`) das Zusagen zu — wer die Option setzt, braucht
+   * dahinter eine solche Tür für alles, was Inhalt ist.
    */
   openDuringSuspension?: boolean
 }

@@ -1,7 +1,7 @@
 import { ID } from 'node-appwrite'
 import { resumeRunSchema } from '../../../../../schemas/run'
 import { buildResumeRunFields, permissionModeAllowed, runResumeAllowed } from '../../../../../shared/runGuards'
-import { checkRequestedTestCommands, offeredTestCommands, parseStoredTestCommands } from '../../../../../shared/testCommands'
+import { checkInheritedTestCommands, offeredTestCommands } from '../../../../../shared/testCommands'
 import { resolveRunSubjectTrust } from '../../../../utils/runSubjectTrust'
 import { RUNNERS_TABLE, RUNS_TABLE, type RunRow, type RunnerRow } from '../../../../../shared/types/runner'
 
@@ -97,19 +97,21 @@ export default defineEventHandler(async (event): Promise<RunRow> => {
    * (SEC-037) — mit dem Vertrauens-Wert DIESER Fortsetzung und der HEUTIGEN
    * Liste des Rechners. Ein kaputter gespeicherter Wert wird abgelehnt wie ein
    * nicht gelisteter Befehl, statt still als „keine Tests" weiterzulaufen.
+   *
+   * 409, NICHT 400 (RU1 e): die Antwort des Menschen ist in Ordnung — der
+   * gespeicherte Lauf passt nicht mehr zur heutigen Liste, und daran ändert
+   * kein zweiter Versuch etwas. Das Board liest den Code und zeigt „leg einen
+   * neuen Lauf an" statt „versuch es noch einmal". Typischer Fall: eine
+   * Rückfrage aus der Zeit vor der Befehls-Liste (2026-11-14).
    */
-  const inheritedTests = parseStoredTestCommands(fields.testCommands)
-  if (inheritedTests === null) {
-    throw createError({ status: 400, statusText: 'Test commands not allowed', data: { code: 'test_command_not_listed' } })
-  }
-  const testCheck = checkRequestedTestCommands({
-    requested: inheritedTests,
+  const testCheck = checkInheritedTestCommands({
+    stored: fields.testCommands,
     offered: runner ? offeredTestCommands(runner.capabilitiesJson, fields.repoKey) : [],
     promptTrusted: fields.promptTrusted,
     runnerSelected: runner !== null,
   })
   if (!testCheck.ok) {
-    throw createError({ status: 400, statusText: 'Test commands not allowed', data: { code: testCheck.code } })
+    throw createError({ status: 409, statusText: 'Inherited test commands not allowed', data: { code: testCheck.code } })
   }
 
   /**

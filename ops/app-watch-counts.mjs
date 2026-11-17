@@ -45,7 +45,8 @@
 // Tage (letzte Änderung) wird nichts gelesen, höchstens 16 Dateien je Log.
 //
 // WAS GEZÄHLT WIRD (im Fenster der letzten <stunden> Stunden):
-//   server.error                  5xx am zentralen Fehler-Hook
+//   server.error                  5xx am zentralen Fehler-Hook; seit 2026-11-17 auch
+//                                 Fehler außerhalb einer Anfrage (`source: process`)
 //   client.error                  Fehler aus dem Browser (Annahme je Prozess gedeckelt)
 //   telemetry.client_error_capped der Deckel hat gegriffen
 //   ai.failed                     Ausfall eines bezahlten KI-Aufrufs; eigens

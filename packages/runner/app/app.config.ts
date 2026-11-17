@@ -92,6 +92,16 @@ export default defineAppConfig({
        * shared/runTextRetention.ts, kein Regler.
        */
       textRetention: 'off' as RowRetentionMode,
+      /**
+       * FRISTEN-LAUF FÜR LÄUFE, DIE NIE BEENDET WURDEN (RU1 c): ein Entwurf
+       * oder ein Lauf auf queued/claimed/running ohne Lebenszeichen seit 7
+       * Tagen wird abgebrochen (Grund `abandoned`), danach greifen die
+       * Fristen oben (server/utils/staleRunRetention.ts). EIGENER Schalter —
+       * die beiden oben stehen in apps/control auf 'apply'. 'count' zählt
+       * nur, 'apply' beendet. Layer-Default AUS; die FRIST ist eine
+       * Konstante in shared/staleRunRetention.ts, kein Regler.
+       */
+      staleRunRetention: 'off' as RowRetentionMode,
     },
   },
 })

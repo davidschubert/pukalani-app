@@ -3,9 +3,9 @@ import {
   BRANDING_DISCOVER_PRIORITY,
   BRANDING_INSIGHTS_ENTRY_PRIORITY,
   BRANDING_RANKINGS_PRIORITY,
-  BRANDING_ROUTES,
   type BrandingSitemapEntry,
   brandingBaseUrl,
+  brandingFixedRoutes,
   brandingSitemapXml,
 } from '../utils/brandingSitemap'
 
@@ -39,6 +39,11 @@ import {
  * redigierte Übersetzung meldet nur seine Grundsprache — im Seitenkopf UND
  * hier.
  *
+ * ── EIN ABGESCHALTETES PRODUKT STEHT NICHT IN DER SITEMAP (WL1 b, d) ─────
+ * Anatomien und Artikel antworten dann 404; die zwei festen Übersichten
+ * (`/discover`, `/insights`) antworten zwar weiter, aber leer — auch sie
+ * fallen deshalb heraus (`brandingFixedRoutes`).
+ *
  * ── FAIL-SOFT: DIE FESTEN SEITEN KOMMEN IMMER ────────────────────────────
  * Fällt der Read aus (Instanz weg, Tabelle fehlt vor brand-020), bleibt die
  * Sitemap bei den festen Routen. Eine kürzere Sitemap ist besser als ein 500
@@ -49,10 +54,14 @@ import {
 export default defineEventHandler(async (event) => {
   const base = brandingBaseUrl(event)
 
+  // EINMAL fragen, dreimal verwenden: feste Seiten, Anatomien, Artikel.
+  const brandOn = await productOn(event, 'brand')
+  const insightsOn = brandOn && await productOn(event, 'insights')
+
   const entries: BrandingSitemapEntry[] = [
-    ...BRANDING_ROUTES,
-    ...(await discoverEntries(event)),
-    ...(await insightsEntries(event)),
+    ...brandingFixedRoutes({ brand: brandOn, insights: insightsOn }),
+    ...(brandOn ? await discoverEntries(event) : []),
+    ...(insightsOn ? await insightsEntries(event) : []),
   ]
 
   setHeader(event, 'content-type', 'application/xml; charset=utf-8')
@@ -60,6 +69,29 @@ export default defineEventHandler(async (event) => {
   setHeader(event, 'cache-control', 'public, max-age=3600')
   return brandingSitemapXml(base, entries)
 })
+
+/**
+ * NOT-AUS (WL1 b, d): ist ein Produkt abgeschaltet, antworten seine Seiten 404
+ * oder leer — die Sitemap bietet sie dann nicht an. `insights` setzt `brand`
+ * voraus.
+ *
+ * Lässt sich der Schalter nicht lesen, gilt das Produkt hier als AN: die
+ * festen Seiten antworten ohnehin, und die Lese-Wege dahinter sind selbst
+ * fail-soft (unten). Eine Störung soll die Sitemap nicht kürzen, ohne dass es
+ * jemand entschieden hat — gemeldet wird sie trotzdem.
+ */
+async function productOn(event: H3Event, key: 'brand' | 'insights'): Promise<boolean> {
+  try {
+    return await isProductEnabled(event, key)
+  }
+  catch (error) {
+    logEvent('warn', 'branding.sitemap_product_state_unavailable', {
+      product: key,
+      message: error instanceof Error ? error.message : 'unknown',
+    })
+    return true
+  }
+}
 
 /**
  * Die sichtbaren Anatomien als Sitemap-Einträge, alphabetisch nach Slug.
@@ -71,9 +103,6 @@ export default defineEventHandler(async (event) => {
  */
 async function discoverEntries(event: H3Event): Promise<BrandingSitemapEntry[]> {
   try {
-    // NOT-AUS (WL1 b): ist `brand` abgeschaltet, antwortet jede Anatomie 404 —
-    // die Sitemap bietet sie dann auch nicht an.
-    if (!(await isProductEnabled(event, 'brand'))) return []
     const rows = await listPublishedBrandPublications(event)
     return rows
       .filter(row => typeof row.slug === 'string' && row.slug.length > 0)
@@ -109,9 +138,6 @@ async function discoverEntries(event: H3Event): Promise<BrandingSitemapEntry[]> 
  */
 async function insightsEntries(event: H3Event): Promise<BrandingSitemapEntry[]> {
   try {
-    // NOT-AUS (WL1 b): `insights` setzt `brand` voraus — ist eines von beiden
-    // abgeschaltet, gibt es die Adressen nicht.
-    if (!(await isProductEnabled(event, 'brand')) || !(await isProductEnabled(event, 'insights'))) return []
     return (await listInsightsSitemapEntries(event)).map(entry => ({
       path: entry.path,
       priority: entry.path === '/rankings' ? BRANDING_RANKINGS_PRIORITY : BRANDING_INSIGHTS_ENTRY_PRIORITY,

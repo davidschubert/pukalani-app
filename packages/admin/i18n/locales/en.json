@@ -552,16 +552,14 @@
         "analytics": "Analytics (Plausible)",
         "tickets-ai": "Console AI (ticket triage)",
         "smtp": "Mail delivery (SMTP)",
-        "onboarding-service": "Control plane link (service secret)",
-        "events-sweep": "Event reminders (sweep key)"
+        "onboarding-service": "Control plane link (service secret)"
       },
       "serviceDesc": {
         "ai": "Powers moderation assistants and translation suggestions across all communities.",
         "analytics": "Reads visitor numbers for the analytics pages.",
         "tickets-ai": "A separate budget for ticket triage. Without its own key the general AI access applies.",
         "smtp": "Sends notifications, invitations and the daily digest.",
-        "onboarding-service": "The shared word this instance and the operator console recognise each other by — creating communities, managing members, activating domains.",
-        "events-sweep": "The key a cron job uses to trigger the event reminder sweep."
+        "onboarding-service": "The shared word this instance and the operator console recognise each other by — creating communities, managing members, activating domains."
       },
       "smtp": {
         "host": "Server",

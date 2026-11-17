@@ -121,7 +121,7 @@ catalog:
   # Nuxt 4.5 auf unhead 3 + vue-router 5.2 steht. 10.6 verlangt @nuxt/kit
   # ^4.5.1, unhead ^3.2.3, vue-router ^5.2.0, h3 ^1.15.11 — dieselbe Linie.
   '@nuxtjs/i18n': ^10.6.0
-  eslint: ^10.14.0
+  eslint: ^10.15.0
   # In-Memory-Zip für das Brand-Kit-Bündel (BK1 K6, Konzept §2.17). Pur, ohne
   # Abhängigkeiten, läuft in Node und im Browser — gebraucht wird nur
   # `zipSync`/`strToU8` in `packages/brand/shared/brandKitZip.ts` (Server).
