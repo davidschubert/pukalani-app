@@ -34,8 +34,8 @@ Person (geschlossen); Einstellungs-Dateien ins Backup · **AR1** erledigte
 Umzugs-Anleitungen ins Archiv · **IN1** Marken-Seiten durch dieselbe Prüfung
 wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 (geschlossen) · **PB1** Migrations-Schlüssel dürfen Dateilisten lesen ·
-**CI1** Dependabot 155 bis 157 übernehmen (erledigt) · **AB1** und **P29**
-beide Server-Einstellungen einschalten.
+**CI1** Dependabot 155 bis 157 übernehmen (erledigt) · **AB1** (erledigt am
+2026-11-17) und **P29** beide Server-Einstellungen einschalten.
 
 ### Schritt 2 — Davids Klick-Runde auf den echten Seiten
 
@@ -63,8 +63,8 @@ beide Server-Einstellungen einschalten.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| AB1 | **Anmelde-Bremse: Nacharbeiten.** (b) gemeinsamer Zähler für branding.supply einschalten (entschieden) und in die Pflichtliste des Wächters, (c) Uploads prüfen die Größe vor dem Einlesen, (d) zwei Fehlerwege trennen, (e) Mails je Empfänger begrenzen, (f) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Umsetzung. | Mittel | S je Teil | **Ja: (b) Server-Einstellung** | [Einzelheiten](#ab1) |
-| SR1 | **Kleine Sicherheitsriegel: Nacharbeiten.** (c) dieselbe Grenze je Empfänger für Code- und Reset-Mails (zusammen mit AB1 e), (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztext (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#sr1) |
+| AB1 | **Anmelde-Bremse: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (f) Der Dev-Server warnt bei Node 22.18 (verlangt 22.21 oder neuer). (g) Die Mail „E-Mail bestätigen" hat noch keine Grenze je Empfänger. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02"). **Wartet auf:** (f) Davids Ja für ein neues Node auf dem Mac. | Niedrig | S je Teil | **Ja: (f)** | [Einzelheiten](#ab1) |
+| SR1 | **Kleine Sicherheitsriegel: Reste.** (a) Klick-Probe: KR1. (b) Datenschutztext: DT1. (d) Zwei Beobachtungen ohne Auftrag (Korrektur-Formular, Kennung im Pfad einer Adresse). Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#sr1) |
 
 **Bündel „Fristen und Löschen":**
 
@@ -91,7 +91,7 @@ beide Server-Einstellungen einschalten.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (b) `NUXT_REDIS_URL` auf branding.supply setzen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | **Ja: (b) ein Ja für die Server-Datei** | [Einzelheiten](#wa1) |
+| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten.** Seit 2026-11-16 stehen Webserver-Vorlagen und Zeitpläne im Repo, ein täglicher Blick vergleicht sie mit den Servern, und die App sendet die Schutz-Kopfzeilen selbst (COMPLETE „GA1 P23"). Offen: (a) Berichte der Skript-Regel einsammeln und sie scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) Umlauf der pm2-Logs, (d) der Erinnerungs-Lauf kennt gesperrte Communities nicht, (e) Kleinigkeiten und Sicherungen löschen, (f) eigene Domain einer Einzel-Site: zwei Stellen noch nicht umgestellt. **Wartet auf:** (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil, (a) M | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
@@ -314,66 +314,41 @@ BI2 und IN1 (b), siehe BI5.
 
 <a id="ab1"></a>
 
-**AB1 — Anmelde-Bremse: Nacharbeiten (aus dem Gesamtaudit, Paket P02).**
-Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
-Sitzungen. Schon woanders eingeplant und deshalb NICHT hier: die Ausnahme für
-bekannte Geräte bei einer Konto-Pause (Audit-Paket P29, zugeschnitten), die
-Pflicht-Prüfungen vor dem Zusammenführen auf GitHub (Paket P08, erledigt am
-2026-11-14) und Laufzeit-Tests über einen echten Community-Host (Paket P27).
+**AB1 — Anmelde-Bremse: Reste (aus dem Gesamtaudit, Paket P02).**
+Die Teile (b) bis (e) und die Kleinigkeiten aus (f) sind am 2026-11-17 erledigt
+(COMPLETE „N02"). Übrig:
 
 - **(a) Klick-Probe auf Live.** Steht in der Klick-Runde ([KR1](#kr1)).
-- **(b) Redis für branding.supply — entschieden am 2026-11-16: einschalten.**
-  `platform`, `admin` und `portfolio` zählen geteilt in Redis,
-  `branding.supply` hat `NUXT_REDIS_URL` nicht; die Zähler beginnen dort bei
-  jedem Deploy neu. Eintragen (Server-Einstellung, Davids Ja am Tag der
-  Umsetzung) und die Variable in die Pflichtliste von
-  `scripts/ops/verify-site-env.mjs` aufnehmen, für alle Sites mit Konten.
-- **(c) Größe vor dem Einlesen prüfen.** Favicon-Upload und Event-Titelbild
-  lesen die ganze Datei, bevor ihre Grenze greift; der Medien-Upload prüft
-  vorher `Content-Length`. Dasselbe Muster übernehmen.
-- **(d) Zwei Fehlerwege trennen.** Die Reset-Anforderung antwortet bewusst immer
-  gleich, schreibt aber auch dann nichts ins Log, wenn Appwrite die Anfrage aus
-  einem Konfigurationsgrund ablehnt (lokal so gesehen: keine Mail, keine Zeile).
-  Und Anmeldung und Code-Prüfung werten einen Ausfall von Appwrite wie einen
-  Fehlversuch. Beides: den Grund unterscheiden, ins Log schreiben, einen
-  Ausfall nicht zählen.
-- **(e) Mails je Empfänger.** Code- und Reset-Mails sind je Absender-Adresse und
-  insgesamt je Stunde begrenzt, nicht je Empfänger. Eine Grenze je Empfänger
-  ergänzen (das Muster steht in `packages/core/server/utils/accountAttempts.ts`).
-- **(f) Kleinigkeiten.** Zwei verrutschte
-  Kommentare in `05.rate-limit.ts` und ein Testtitel. Der Dev-Server warnt bei
-  Node 22.18 (verlangt 22.21 oder neuer).
+- **(f) Node auf dem Mac.** Der Dev-Server warnt bei Node 22.18 (verlangt 22.21
+  oder neuer); die Prüfungen laufen damit trotzdem grün. Ein neues Node ist
+  eine Änderung auf Davids Mac — deshalb sein Ja.
+- **(g) Bestätigungs-Mail je Empfänger.** Code- und Reset-Mails zählen seit
+  2026-11-17 je Adresse (5 je Stunde). Die Mail „E-Mail bestätigen"
+  (`POST /api/auth/verification`) zählt nur je Anschluss und je Stunde.
+  Derselbe Baustein passt dort in eine Zeile (`allowRecipientMail` mit
+  `AUTH_MAIL_RECIPIENT_LIMIT`).
 
 <a id="sr1"></a>
 
-**SR1 — Kleine Sicherheitsriegel: Nacharbeiten (aus dem Gesamtaudit, Paket P25).**
+**SR1 — Kleine Sicherheitsriegel: Reste (aus dem Gesamtaudit, Paket P25).**
+Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
+„N02"). Übrig:
 
 - **(a) Klick-Probe auf Live.** Auf branding.supply einmal das
   Erstgespräch-Formular und einmal die Warteliste abschicken (eigene Adresse).
   Erwartet: das Feld der Bot-Prüfung erscheint, die Anfrage geht durch, die
   Bestätigung kommt ohne den eigenen Text. Lokal ist beides mit eingeschalteter
   Bot-Prüfung geklickt und gezählt; auf Production wurde nichts abgeschickt.
+  Steht in der Klick-Runde ([KR1](#kr1)).
 - **(b) Datenschutztext.** Der Text von branding.supply nennt die Bot-Prüfung
   für Registrierung, Passwort zurücksetzen und Kommentare. Seit 2026-11-15
   steht sie auch am Erstgespräch und an der Warteliste. Zu tun: die zwei
   Formulare im Text ergänzen (`apps/branding/scripts/legalPrivacyInterim.ts`,
-  de und en) — Rechtstext, deshalb Davids Freigabe.
-- **(c) Dieselbe Grenze für Code- und Reset-Mails.** Der Baustein
-  `allowRecipientMail` passt an der Reset-Anforderung in eine Zeile (die
-  Antwort ist dort schon für jede Adresse gleich); bei der Code-Anmeldung
-  trägt die Antwort Angaben aus dem Vorgang, das ist mehr als eine Zeile.
-  Gehört zu [AB1 (e)](#ab1).
-- **(d) Kleinigkeiten.** Das Korrektur-Formular der Insights hat weiter nur
-  Honigtopf und Drossel (kein Mailversand; Nachbarschaft zum Paket P19). Die
-  Redaktions-Formulare der Insights zeigen bei einem abgelehnten Link nur
-  die Fehlermeldung des Servers, keinen Hinweis am Feld. Die Liste der
-  offenen Einladungen zeigt höchstens 100 und sagt nichts, wenn es mehr sind.
-  Die Hinweise der Bot-Prüfung sprechen mit „du", die Formulare von
-  branding.supply mit „ihr". Die Meldung an den Betreiber beim
-  Erstgespräch hat keine eigene Grenze je Tag (davor stehen Bot-Prüfung und
-  Drossel). `packages/core/scripts/verify-session-ip.mjs` ist mit der neuen
-  zweiten Adresse nicht gelaufen. Eine Kennung im PFAD einer Adresse bleibt
-  im Protokoll stehen (gekürzt werden Query und Fragment).
+  de und en) — Rechtstext, deshalb Davids Freigabe ([DT1](#dt1)).
+- **(d) Zwei Beobachtungen, kein Auftrag.** Das Korrektur-Formular der Insights
+  hat nur Honigtopf und Drossel (es verschickt keine Mail). Eine Kennung im
+  PFAD einer Adresse bleibt im Protokoll stehen (gekürzt werden Query und
+  Fragment).
 
 <a id="el1"></a>
 
@@ -755,12 +730,8 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   seit dem 2026-11-16 an), Fehler aus dem Browser und übrige KI-Ausfälle. Ab
   dem 2026-11-23 die Zeilen „Nur gezählt" der täglichen Läufe ansehen und in
   `scripts/ops/app-signals-rules.mjs` (`RULES`) je App eine Zahl eintragen.
-- **(b) `NUXT_REDIS_URL` auf branding.supply.** Dort liegen die Tages-Deckel
-  der KI im Speicher des Prozesses und beginnen bei jedem Ausliefern neu
-  (gemessen 2026-11-16: gesetzt auf platform, admin, portfolio; Redis läuft
-  auf dem Server). Setzen heißt: eine Zeile in der `.env` der Site, neu laden,
-  zurücklesen — danach die Site in die Pflicht-Liste von
-  `scripts/ops/verify-site-env.mjs` aufnehmen.
+- **(b) erledigt am 2026-11-17** (`NUXT_REDIS_URL` auf branding.supply, COMPLETE
+  „N02").
 - **(c) Speichergrenze je Prozess.** Die pm2-Dateien kennen keine
   (`max_memory_restart`). Ein zu knapper Wert startete eine Seite im Kreis
   neu, deshalb erst mit Messwerten: der tägliche Lauf berichtet den Speicher je
@@ -1006,7 +977,8 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner (bewusst
   behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
   gehören zu BU1 d). Der lokale Lauf der Playwright-Suite braucht einen
-  Browser-Download.
+  Browser-Download. `CLAUDE.md` nennt „node-appwrite 29 + appwrite 27"; im
+  Katalog stehen 31 und 29 (gesehen am 2026-11-17, nur die Zahl nachziehen).
 
 <a id="bt1"></a>
 

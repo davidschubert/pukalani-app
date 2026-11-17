@@ -230,7 +230,11 @@ paths:
   Bremsen-Speicher, im Schlüssel nur ein Hash. `false` ⇒ keine Mail, KEIN
   neuer Link (sonst entwertet ein Fremder den aus der letzten echten Mail),
   und die Antwort bleibt wortgleich zum Erfolg (sie verrät nicht, ob eine
-  Adresse bekannt ist). (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
+  Adresse bekannt ist). Derselbe Baustein steht seit 2026-11-17 (AB1 e) an
+  den ANMELDE-MAILS, mit eigener Zahl: Code- und Reset-Mails 5 je Adresse und
+  Stunde (`AUTH_MAIL_RECIPIENT_LIMIT`, Bereiche `auth:otp` und
+  `auth:recovery`). Eine Antwort, die Werte trägt (Code-Anforderung: `userId`),
+  bleibt über der Grenze auch in den WERTEN gleich. (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
   eine frei eingetragene Adresse: der Name läuft durch `displayNameProblem`,
   eine Nachricht wird nicht zitiert. Heute so: Erstgespräch und Warteliste
   (brand), Newsletter-Anmeldung (insights, nur die Grenze). Die Meldung an
