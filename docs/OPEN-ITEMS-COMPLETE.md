@@ -153,6 +153,13 @@ Lauf, der Daten ändern könnte, ging im Zähl-Modus live.
   neuen Runner-Laufs werden angenommen, auch mit Cursor; im Spiegel gibt es
   keinen nie beendeten Lauf (12 Läufe, alle beendet).
 
+**Production.** Keine Migration, kein Handgriff. Nach dem letzten Merge
+melden die acht Hosts `ok` auf einem Build, der alle acht Pull Requests
+enthält (`d5e8870f`), `schema.state` ist überall `ok`, und die fünf
+Pflicht-Prüfungen auf `main` sind grün. Der Lauf `stale-run-retention` fährt
+in der Betreiber-Konsole im Zähl-Modus; seine Zahl ist nicht gelesen (ein
+Blick ins Log der echten Seite braucht Davids Ja).
+
 **Nicht geprüft**
 
 - Kein Klick im Browser, weder lokal noch auf den echten Seiten: der Hinweis
