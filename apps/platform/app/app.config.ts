@@ -125,6 +125,10 @@ export default defineAppConfig({
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
+    // Profilbilder ohne Profil (KE3): NUR zählen ('count', Log
+    // `retention.run`, `job: avatar-orphan-sweep`). 'apply' erst mit dem Ja
+    // des Betreibers zur gezählten Zahl.
+    storage: { avatarOrphanSweep: 'count' },
     /**
      * ANMELDUNG (F37, 2026-08-02) — beides war im Silo an und im Pool aus.
      *
