@@ -1,6 +1,6 @@
 import { Permission, Query, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, COURSES_TABLE, ENROLLMENTS_TABLE, LESSONS_TABLE, type CourseAccess, type CourseRow, type EnrollmentRow, type LessonRow } from '../../shared/types/course'
+import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, COURSES_TABLE, ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, type CourseAccess, type CourseRow, type EnrollmentRow, type LessonProgressRow, type LessonRow } from '../../shared/types/course'
 
 /**
  * RECHTE-MODELL „NUR SERVER-ZUGRIFF" (SEC-029, Muster `pages`/`lessons`):
@@ -146,12 +146,48 @@ export async function syncLessonCount(event: H3Event, courseId: string): Promise
   }
 }
 
+/** Seitengröße beim Aufräumen der Fortschritts-Zeilen. */
+const PROGRESS_CLEANUP_PAGE = 100
+
+/**
+ * Fortschritts-Zeilen einer GELÖSCHTEN Lektion mitlöschen (BE-018) —
+ * best-effort, nach dem Löschen der Lektion.
+ *
+ * WER HANDELT (F17, „ZWEI FRAGEN, ZWEI FELDER"): Operator-Klinke OHNE `actor`.
+ * Die Zeilen gehören fremden Konten, und hier schreibt niemand Inhalt — es ist
+ * die Folge-Aufräumarbeit eines Löschens, das eine Zeile vorher schon durch
+ * Sperre und Beitritt gegangen ist (dieselbe Begründung wie `syncLessonCount`).
+ *
+ * GEBLÄTTERT OHNE CURSOR: die Menge schrumpft mit jedem Löschen, ein Cursor
+ * über sie übersprünge Zeilen. Also immer wieder die erste Seite, bis leer.
+ * Ein Fehler wird mit der Zahl der Reste geloggt, nie geworfen — die Lektion
+ * ist dann schon weg, ein 500 wäre eine falsche Auskunft.
+ */
+export async function removeLessonProgress(event: H3Event, lessonId: string): Promise<void> {
+  const db = tenantDb(event, { as: 'operator' })
+  const byLesson = [Query.equal('lessonId', lessonId)]
+  try {
+    for (;;) {
+      const page = await db.list<LessonProgressRow>(LESSON_PROGRESS_TABLE, [...byLesson, Query.limit(PROGRESS_CLEANUP_PAGE)])
+      if (page.rows.length === 0) return
+      for (const row of page.rows) await db.remove(LESSON_PROGRESS_TABLE, row.$id)
+    }
+  }
+  catch {
+    const remaining = await db.count(LESSON_PROGRESS_TABLE, byLesson).catch(() => null)
+    logEvent('error', 'courses.lesson_progress_cleanup_failed', { lessonId, remaining })
+  }
+}
+
 /**
  * Published-Lektion + zugehöriger Kurs in einem Rutsch — beide durch die Tür
  * (get belegt die Zugehörigkeit, ein fremder Mandant bekommt 404). Gemeinsamer
- * Vorlauf von GET /api/lessons/:id und POST /api/lessons/:id/complete.
- * Den Kurs-STATUS prüft die aufrufende Route (die beiden tun das bewusst
- * unterschiedlich — Verhalten unverändert übernommen).
+ * Vorlauf von Lesen, Abschließen und Übersetzen einer Lektion.
+ *
+ * DER KURS MUSS VERÖFFENTLICHT SEIN (BE-018), sonst 404 'Course not found'.
+ * Lesen und Übersetzen prüften das je selbst, das Abschließen nicht — die
+ * Lektionen eines zurückgezogenen Kurses ließen sich weiter abschließen. Alle
+ * drei Aufrufer wollen dieselbe Antwort, also steht sie hier, einmal.
  */
 export async function publishedLessonWithCourse(
   event: H3Event,
@@ -163,5 +199,8 @@ export async function publishedLessonWithCourse(
     throw createError({ status: 404, statusText: 'Lesson not found' })
   }
   const course = await db.get<CourseRow>(COURSES_TABLE, lesson.courseId, 'Course not found')
+  if (course.status !== 'published') {
+    throw createError({ status: 404, statusText: 'Course not found' })
+  }
   return { lesson, course }
 }

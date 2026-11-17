@@ -1,7 +1,8 @@
 import { LESSONS_TABLE, type LessonRow } from '../../../shared/types/course'
 
 /**
- * Lektion löschen (courses.manage) — lessonCount wird nachgezogen. Datentür
+ * Lektion löschen (courses.manage) — lessonCount wird nachgezogen, die
+ * Fortschritts-Zeilen der Lektion gehen mit (BE-018). Datentür
  * als Operator: get/remove belegen die Zugehörigkeit VOR dem Löschen.
  *
  * WER HANDELT (F17): Redaktion an INHALT — `actor` aus dem Gate. LÖSCHEN zählt
@@ -27,6 +28,9 @@ export default defineEventHandler(async (event) => {
     throw toH3Error(error, 'Could not delete lesson')
   })
 
+  // Fortschritt der gelöschten Lektion mitnehmen (BE-018) — NACH dem Löschen,
+  // best-effort; Klinke und Begründung in `removeLessonProgress`.
+  await removeLessonProgress(event, id)
   await syncLessonCount(event, row.courseId)
 
   return { ok: true }

@@ -5,11 +5,18 @@ import { EVENTS_TABLE, type EventRow } from '../../../../shared/types/event'
  * Moderation: ausgeblendeten Termin wiederherstellen (F15) — Leserecht und
  * Status zurück, Titelbild folgt.
  *
- * REIHENFOLGE UMGEKEHRT ZUM AUSBLENDEN, und das ist Absicht (Muster
- * posts/restore.post.ts): erst das Leserecht, dann der Status. So ist die Row
- * bereits wieder lesbar, wenn das Status-Realtime-Event bei den offenen Fenstern
- * ankommt — andersherum bekämen sie ein „published", das sie noch nicht lesen
- * dürfen, und zeigten eine Lücke.
+ * REIHENFOLGE: ERST DER ZUSTAND, DANN DAS LESERECHT (BE-017). Bis dahin stand
+ * es andersherum (Muster posts/restore.post.ts), damit das Status-Realtime-
+ * Event eine schon lesbare Zeile trifft. Scheiterte dann der zweite Schritt,
+ * war ein AUSGEBLENDETER Termin lesbar — Bequemlichkeit vor Sicherheit. Jetzt
+ * kann ein offenes Fenster das „published" kurz vor dem Leserecht sehen und
+ * zeigt eine Lücke, bis es nachlädt; das ist der kleinere Schaden.
+ *
+ * WIEDERHOLBAR: scheitert das Leserecht, setzt die Route den Zustand zurück
+ * auf `hidden` (best-effort, laut geloggt) und antwortet mit dem Fehler. Dann
+ * gilt `canRestoreEvent` wieder, und „Wiederherstellen" lässt sich einfach noch
+ * einmal drücken. Ohne den Rückweg stünde ein „veröffentlichter" Termin ohne
+ * Leserecht da: unsichtbar und über diese Route nicht mehr erreichbar.
  *
  * WIEDERHERGESTELLT WIRD IMMER NACH `published`, nie nach `draft`: ausgeblendet
  * werden kann laut `canHideEvent` nur ein veröffentlichter Termin, also ist
@@ -49,11 +56,19 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const permissions = withPublishedRead(row.$permissions, event)
-  await db.updatePermissions(EVENTS_TABLE, id, permissions)
-    .catch((error) => { throw toH3Error(error, 'Could not restore event') })
   const updated = await db.update<EventRow>(EVENTS_TABLE, id, { status: 'published' })
     .catch((error) => { throw toH3Error(error, 'Could not restore event') })
+  const permissions = withPublishedRead(row.$permissions, event)
+  try {
+    await db.updatePermissions(EVENTS_TABLE, id, permissions)
+  }
+  catch (error) {
+    // Rückweg auf `hidden`, damit der nächste Versuch wieder erlaubt ist.
+    await db.update(EVENTS_TABLE, id, { status: 'hidden' }).catch(() => {
+      logEvent('error', 'events.restore_rollback_failed', { eventId: id })
+    })
+    throw toH3Error(error, 'Could not restore event')
+  }
 
   await applyEventCoverVisibility(event, { ...updated, $permissions: permissions })
 
