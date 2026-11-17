@@ -68,10 +68,10 @@ afterEach(() => {
 })
 
 describe('POST /api/admin/avatars/orphan-sweep', () => {
-  it('verlangt users.manage wie die Prune-Route — und läuft ohne nicht', async () => {
+  it('verlangt storage.manage wie das Löschen im Storage-Browser — und läuft ohne nicht', async () => {
     const route = await runRoute({ denied: true })
     await expect(route.call()).rejects.toMatchObject({ status: 403 })
-    expect(route.permissions).toEqual(['users.manage'])
+    expect(route.permissions).toEqual(['storage.manage'])
     expect(route.runs).toEqual([])
   })
 
@@ -119,7 +119,7 @@ describe('POST /api/admin/avatars/orphan-sweep', () => {
 
   it('das Rechte-Gate steht VOR dem Lesen des Bodys (Quelltext)', () => {
     const source = readFileSync(fileURLToPath(new URL(ROUTE, import.meta.url)), 'utf8')
-    const gate = source.indexOf(`requirePermission(event, 'users.manage')`)
+    const gate = source.indexOf(`requirePermission(event, 'storage.manage')`)
     expect(gate).toBeGreaterThan(-1)
     expect(gate).toBeLessThan(source.indexOf('readValidatedBody('))
   })

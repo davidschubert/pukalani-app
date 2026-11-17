@@ -117,7 +117,7 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Protokolle und Ereignisse der Runner-Läufe | 30 / 90 Tage | `runner/server/plugins/run-retention.ts` | `pukalani.runner.retention` | `runner.retention` |
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
 | Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
-| Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio, branding: `count`) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
+| Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `count`; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
 
 **Gemeldete private Nachrichten (SEC-033, Davids Entscheidung 2026-11-12):** Den Text sieht die
 Moderation nur, solange eine Meldung offen ist — in der Liste und in der Einzel-Ansicht entscheidet
@@ -149,7 +149,7 @@ Jeder Lauf hat eine Sperre gegen den Doppelstart im selben Prozess und eine Rout
 Hand, die ohne Angabe nur zählt:
 
 - `POST /api/admin/gdpr-exports/prune` (`users.manage`)
-- `POST /api/admin/avatars/orphan-sweep` (`users.manage`; `{ apply: true }` löscht nur, wenn der
+- `POST /api/admin/avatars/orphan-sweep` (`storage.manage`; `{ apply: true }` löscht nur, wenn der
   Schalter der App auf `apply` steht, sonst 409 `sweep_not_enabled`)
 - `POST /api/brand/admin/check-erasure/run` (Betreiber von branding.supply)
 

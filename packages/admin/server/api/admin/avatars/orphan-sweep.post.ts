@@ -10,7 +10,8 @@ const bodySchema = z.object({
  * demselben Grund wie bei den Lösch-Kopien: ein Lauf, den man nur durch
  * Warten beobachten kann, wird nie bewiesen.
  *
- * users.manage-gated wie `POST /api/admin/gdpr-exports/prune`. Body
+ * storage.manage-gated wie das Löschen einer Datei im Storage-Browser
+ * (`admin/storage/[bucket]/[fileId].delete.ts`) — der Lauf löscht Dateien. Body
  * `{ apply?: boolean }`, ohne Angabe wird NUR GEZÄHLT. `apply: true` löscht
  * nur, wenn der Schalter der App (`pukalani.storage.avatarOrphanSweep`)
  * selbst auf `apply` steht — sonst 409 `sweep_not_enabled`: die Route ist
@@ -21,7 +22,7 @@ const bodySchema = z.object({
  * Sperre). Ohne Avatars-Bucket nur Nullen.
  */
 export default defineEventHandler(async (event) => {
-  requirePermission(event, 'users.manage')
+  requirePermission(event, 'storage.manage')
   const body = await readValidatedBody(event, bodySchema.parse)
   const apply = body?.apply === true
 
