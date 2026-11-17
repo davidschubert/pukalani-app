@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import type { CourseManageResponse, CourseRow } from '../../../../shared/types/course'
+import { normalizeCourseAccess, type CourseManageResponse, type CourseRow } from '../../../../shared/types/course'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'courses.manage' })
 
@@ -101,7 +101,7 @@ const columns = computed<TableColumn<CourseRow>[]>(() => [
             <span class="font-mono text-xs text-muted">/{{ row.original.slug }}</span>
           </template>
           <template #access-cell="{ row }">
-            {{ t(`courses.access.${row.original.access}`) }}
+            {{ t(`courses.access.${normalizeCourseAccess(row.original.access)}`) }}
           </template>
           <template #lessonCount-cell="{ row }">
             <span class="tabular-nums">{{ row.original.lessonCount }}</span>

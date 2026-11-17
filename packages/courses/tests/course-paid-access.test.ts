@@ -77,7 +77,7 @@ describe('Ohne registrierten Guard sind paid-Kurse zu (Pool-Zustand heute)', () 
     await expect(fresh.assertCourseAccess(poolEvent, paidCourse)).rejects.toMatchObject({ status: 403 })
   })
 
-  it('lässt free- und members-Kurse davon unberührt', async () => {
+  it('lässt Kurse für Mitglieder davon unberührt — auch den Bestand mit dem alten Wert free', async () => {
     vi.resetModules()
     const fresh = await import('../server/utils/courseAccess')
     await expect(fresh.assertCourseAccess(poolEvent, freeCourse)).resolves.toBeUndefined()

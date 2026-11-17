@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { createCourseSchema } from '../../schemas/course'
-import type { CourseManageResponse, CourseRow } from '../../shared/types/course'
+import { COURSE_ACCESS, type CourseAccess, type CourseManageResponse, type CourseRow } from '../../shared/types/course'
 
 /**
  * Kurs ANLEGEN — eine Fassung für beide Einstiege (Dashboard-Tabelle und
@@ -56,7 +56,7 @@ const { t } = useI18n()
 const toast = useToast()
 
 const saving = ref(false)
-const form = reactive({ title: '', slug: '', description: '', access: 'free' as 'free' | 'members' | 'paid', entitlementProduct: '' })
+const form = reactive({ title: '', slug: '', description: '', access: 'members' as CourseAccess, entitlementProduct: '' })
 
 /** Slug-Vorschlag aus dem Titel (editierbar) */
 watch(() => form.title, (title) => {
@@ -78,7 +78,7 @@ const paidAvailable = computed(() => props.paidAvailable ?? fetchedPaidAvailable
 
 watch(open, async (isOpen) => {
   if (!isOpen) return
-  Object.assign(form, { title: '', slug: '', description: '', access: 'free', entitlementProduct: '' })
+  Object.assign(form, { title: '', slug: '', description: '', access: 'members', entitlementProduct: '' })
   if (props.paidAvailable !== undefined || fetchedPaidAvailable.value !== undefined) return
   try {
     const res = await $fetch<CourseManageResponse>('/api/courses/manage')
@@ -92,8 +92,13 @@ watch(open, async (isOpen) => {
 /**
  * Zugang ist eine Auswahl, kein Knopf-Paar (Audit-Befund C12): `URadioGroup`
  * bringt Tastaturbedienung und Vorlesbarkeit mit, ein Trio aus UButton nicht.
+ *
+ * ZWEI ZUGANGSARTEN (KU1, Davids Entscheidung 2026-11-16): „Kostenlos" und
+ * „Mitglieder" verlangten beide die Mitgliedschaft und sind eine Auswahl
+ * geworden. Wo diese Instanz nichts verkauft, bleibt genau eine übrig — die
+ * Gruppe steht dann trotzdem da und sagt, für wen der Kurs ist.
  */
-const accessItems = computed(() => (['free', 'members', 'paid'] as const)
+const accessItems = computed(() => COURSE_ACCESS
   .filter(value => value !== 'paid' || paidAvailable.value)
   .map(value => ({
     label: t(`courses.access.${value}`),

@@ -4,8 +4,8 @@ import { createCourseSchema, createLessonSchema, createReorderSchema } from '../
 describe('createCourseSchema', () => {
   const schema = createCourseSchema()
 
-  it('akzeptiert einen freien Kurs', () => {
-    expect(schema.safeParse({ title: 'Theming 101', slug: 'theming-101', description: 'Grundlagen.', access: 'free' }).success).toBe(true)
+  it('akzeptiert einen Kurs für Mitglieder', () => {
+    expect(schema.safeParse({ title: 'Theming 101', slug: 'theming-101', description: 'Grundlagen.', access: 'members' }).success).toBe(true)
   })
 
   it('paid verlangt entitlementProduct', () => {
@@ -14,9 +14,9 @@ describe('createCourseSchema', () => {
   })
 
   it('validiert den Slug (url-sicher)', () => {
-    expect(schema.safeParse({ title: 'X', slug: 'Hat Spaces', description: 'x', access: 'free' }).success).toBe(false)
-    expect(schema.safeParse({ title: 'X', slug: 'ok-slug-9', description: 'x', access: 'free' }).success).toBe(true)
-    expect(schema.safeParse({ title: 'X', slug: '-kaputt-', description: 'x', access: 'free' }).success).toBe(false)
+    expect(schema.safeParse({ title: 'X', slug: 'Hat Spaces', description: 'x', access: 'members' }).success).toBe(false)
+    expect(schema.safeParse({ title: 'X', slug: 'ok-slug-9', description: 'x', access: 'members' }).success).toBe(true)
+    expect(schema.safeParse({ title: 'X', slug: '-kaputt-', description: 'x', access: 'members' }).success).toBe(false)
   })
 
   it('lehnt unbekannten Zugang ab', () => {

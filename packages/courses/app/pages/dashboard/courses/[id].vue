@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createLessonSchema } from '../../../../schemas/course'
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
-import type { CourseRow, LessonRow } from '../../../../shared/types/course'
+import { normalizeCourseAccess, type CourseRow, type LessonRow } from '../../../../shared/types/course'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'courses.manage' })
 
@@ -235,7 +235,7 @@ const urlPlaceholder = 'https://'
             <UBadge :color="course.status === 'published' ? 'success' : course.status === 'archived' ? 'neutral' : 'warning'" variant="subtle">
               {{ t(`courses.status.${course.status}`) }}
             </UBadge>
-            <UBadge color="neutral" variant="outline">{{ t(`courses.access.${course.access}`) }}</UBadge>
+            <UBadge color="neutral" variant="outline">{{ t(`courses.access.${normalizeCourseAccess(course.access)}`) }}</UBadge>
             <span class="flex-1" />
             <UButton
               v-if="course.status !== 'published'"

@@ -237,7 +237,6 @@ export default defineAppConfig({
           {
             labelKey: 'billing.compare.courses.title',
             rows: [
-              { labelKey: 'billing.compare.courses.free', plans: { free: true, pro: true } },
               { labelKey: 'billing.compare.courses.members', plans: { free: true, pro: true } },
               { labelKey: 'billing.compare.courses.pro', plans: { free: false, pro: true } },
               { labelKey: 'billing.compare.courses.progress', plans: { free: true, pro: true } },

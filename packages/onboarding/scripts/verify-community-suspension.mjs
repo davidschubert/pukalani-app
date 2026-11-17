@@ -372,7 +372,7 @@ try {
   const courseSlug = `m13-kurs-${Date.now().toString(36)}`
   const courseBefore = await call(host, '/api/courses', {
     method: 'POST', cookie: ownerHostCookie,
-    body: { title: 'M13 Kursprobe', slug: courseSlug, description: 'Ein Kurs vor der Sperre.', access: 'free' },
+    body: { title: 'M13 Kursprobe', slug: courseSlug, description: 'Ein Kurs vor der Sperre.', access: 'members' },
   })
   check('Redaktion darf einen Kurs anlegen (201)', courseBefore.status === 201,
     `Status ${courseBefore.status} ${courseBefore.text.slice(0, 200)}`)
@@ -683,7 +683,7 @@ try {
 
   const courseDuring = await call(host, '/api/courses', {
     method: 'POST', cookie: ownerHostCookie,
-    body: { title: 'M13 Sperrkurs', slug: `${courseSlug}-2`, description: 'Darf nicht entstehen.', access: 'free' },
+    body: { title: 'M13 Sperrkurs', slug: `${courseSlug}-2`, description: 'Darf nicht entstehen.', access: 'members' },
   })
   check('Kurs anlegen ist ZU (403)', courseDuring.status === 403,
     `Status ${courseDuring.status} ${courseDuring.text.slice(0, 200)}`)

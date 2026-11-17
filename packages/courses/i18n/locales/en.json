@@ -10,8 +10,7 @@
       "create": "New course"
     },
     "access": {
-      "free": "Free",
-      "members": "Members",
+      "members": "For members",
       "paid": "Pro"
     },
     "status": {
