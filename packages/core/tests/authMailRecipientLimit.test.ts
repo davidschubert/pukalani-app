@@ -3,7 +3,7 @@ import { createMemoryRateLimitStore } from '../server/utils/rateLimitStore'
 import type { RateLimitStore } from '../server/utils/rateLimitStore'
 
 /**
- * ANMELDE-MAILS JE EMPFÄNGER (AB1 e / SR1 c) — die zwei Routen gegen den
+ * ANMELDE-MAILS JE EMPFÄNGER (AB1 e / SR1 c, AB1 g) — die drei Routen gegen den
  * ECHTEN Baustein `allowRecipientMail` und den echten Memory-Store. Gestubbt
  * sind Appwrite und die Nitro-Globals.
  *
@@ -11,6 +11,10 @@ import type { RateLimitStore } from '../server/utils/rateLimitStore'
  *  - bis zur Grenze geht je Anfrage eine Mail hinaus, darüber keine;
  *  - die Antwort über der Grenze hat dieselbe Form wie darunter;
  *  - eine andere Adresse zählt getrennt.
+ *
+ * Die Bestätigungs-Mail (AB1 g) ist die eine Route mit Anmeldung: sie fragt
+ * für die EIGENE Adresse und sagt die Grenze deshalb offen (429) — die
+ * anderen zwei antworten wortgleich, weil dort jeder für jede Adresse fragt.
  */
 
 interface FakeEvent {
@@ -24,6 +28,9 @@ let registrationEnabled = true
 let accounts: Record<string, string> = {}
 
 const createRecovery = vi.fn(async (_input: { email: string, url: string }) => ({}))
+const createVerification = vi.fn(async (_input: { url: string }) => ({}))
+/** `Retry-After` der letzten 429 — die echte `tooManyRequests` setzt ihn. */
+let retryAfter: unknown
 const createEmailToken = vi.fn(async (input: { userId: string, email: string }) => ({
   userId: accounts[input.email] ?? input.userId,
   phrase: 'Echte Phrase',
@@ -35,16 +42,20 @@ const listUsers = vi.fn(async (input: { queries: string[] }) => {
 })
 
 vi.mock('../server/lib/appwrite', () => ({
-  createSessionClient: () => ({ account: { createRecovery } }),
+  createSessionClient: () => ({ account: { createRecovery, createVerification } }),
   createAdminClient: () => ({ account: { createEmailToken }, users: { list: listUsers } }),
 }))
 vi.mock('../server/utils/trustedOrigin', () => ({
   resolveTrustedOrigin: async () => ({ origin: 'https://community.example' }),
 }))
+vi.mock('../server/utils/siteOrigin', () => ({
+  resolveSiteLinkBase: async () => 'https://community.example',
+}))
 
 type Handler = (event: FakeEvent) => Promise<Record<string, unknown>>
 let recovery: Handler
 let otp: Handler
+let verification: Handler
 let limit: typeof import('../server/utils/recipientMailLimit')
 
 beforeAll(async () => {
@@ -57,13 +68,18 @@ beforeAll(async () => {
   vi.stubGlobal('getAppConfig', async () => ({ registrationEnabled, maintenanceMode: false }))
   vi.stubGlobal('tenantRegistrationOpen', () => true)
   vi.stubGlobal('toH3Error', (error: unknown) => error)
-  vi.stubGlobal('createError', (input: { status: number, statusText: string }) =>
-    Object.assign(new Error(input.statusText), { status: input.status }))
+  vi.stubGlobal('createError', (input: { status: number, statusText: string, data?: unknown }) =>
+    Object.assign(new Error(input.statusText), { status: input.status, data: input.data }))
+  vi.stubGlobal('setHeader', (_event: unknown, name: string, value: unknown) => {
+    if (name === 'Retry-After') retryAfter = value
+  })
+  vi.stubGlobal('tooManyRequests', (await import('../server/utils/rateLimited')).tooManyRequests)
   limit = await import('../server/utils/recipientMailLimit')
   vi.stubGlobal('allowRecipientMail', limit.allowRecipientMail)
   vi.stubGlobal('AUTH_MAIL_RECIPIENT_LIMIT', limit.AUTH_MAIL_RECIPIENT_LIMIT)
   recovery = (await import('../server/api/auth/recovery.post')).default as unknown as Handler
   otp = (await import('../server/api/auth/otp.post')).default as unknown as Handler
+  verification = (await import('../server/api/auth/verification.post')).default as unknown as Handler
 })
 
 beforeEach(() => {
@@ -72,7 +88,9 @@ beforeEach(() => {
   accounts = { 'person@example.com': 'user-person' }
   createRecovery.mockClear()
   createEmailToken.mockClear()
+  createVerification.mockClear()
   listUsers.mockClear()
+  retryAfter = undefined
 })
 
 const ask = (email: string): FakeEvent => ({ body: { email }, context: {} })
@@ -153,5 +171,62 @@ describe('POST /api/auth/otp — Grenze je Empfänger', () => {
     for (let i = 0; i < 6; i++) await otp(ask('person@example.com'))
     await recovery(ask('person@example.com'))
     expect(createRecovery).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('POST /api/auth/verification — Grenze je Empfänger (AB1 g)', () => {
+  const signedIn = (email: string, extra: Record<string, unknown> = {}): FakeEvent => ({
+    body: undefined,
+    context: { user: { $id: 'user-person', email, emailVerification: false, ...extra } },
+  })
+
+  it('verschickt bis zur Grenze, darüber 429 `rate_limited` mit Retry-After — und keine Mail', async () => {
+    for (let i = 0; i < 5; i++) expect(await verification(signedIn('person@example.com'))).toEqual({ ok: true })
+    expect(createVerification).toHaveBeenCalledTimes(5)
+
+    await expect(verification(signedIn('person@example.com')))
+      .rejects.toMatchObject({ status: 429, data: { code: 'rate_limited' } })
+    expect(createVerification).toHaveBeenCalledTimes(5)
+    expect(retryAfter).toBe(3600)
+  })
+
+  it('zählt je Adresse über Sitzungen hinweg, eine andere Adresse getrennt', async () => {
+    // Dieselbe Adresse aus einer anderen Sitzung (anderes Gerät) — und in
+    // anderer Schreibweise: ein Zähler.
+    for (let i = 0; i < 3; i++) await verification(signedIn('person@example.com'))
+    for (let i = 0; i < 2; i++) await verification(signedIn('Person@Example.com', { $id: 'user-person' }))
+    await expect(verification(signedIn('person@example.com'))).rejects.toMatchObject({ status: 429 })
+
+    expect(await verification(signedIn('andere@example.com', { $id: 'user-andere' }))).toEqual({ ok: true })
+    expect(createVerification).toHaveBeenCalledTimes(6)
+  })
+
+  it('zählt nicht, was keine Mail verschickt: schon bestätigt, nicht angemeldet', async () => {
+    for (let i = 0; i < 7; i++) {
+      expect(await verification(signedIn('person@example.com', { emailVerification: true })))
+        .toEqual({ ok: true, alreadyVerified: true })
+    }
+    await expect(verification({ body: undefined, context: {} })).rejects.toMatchObject({ status: 401 })
+    expect(createVerification).not.toHaveBeenCalled()
+
+    // Das Budget der Adresse ist danach unberührt.
+    for (let i = 0; i < 5; i++) await verification(signedIn('person@example.com'))
+    expect(createVerification).toHaveBeenCalledTimes(5)
+  })
+
+  it('zählt getrennt von Code- und Reset-Mails', async () => {
+    for (let i = 0; i < 5; i++) await verification(signedIn('person@example.com'))
+    await recovery(ask('person@example.com'))
+    await otp(ask('person@example.com'))
+    expect(createRecovery).toHaveBeenCalledTimes(1)
+    expect(createEmailToken).toHaveBeenCalledTimes(1)
+  })
+
+  it('gleichzeitige Anfragen: genau fünf Mails', async () => {
+    const results = await Promise.allSettled(
+      Array.from({ length: 12 }, () => verification(signedIn('person@example.com'))),
+    )
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(5)
+    expect(createVerification).toHaveBeenCalledTimes(5)
   })
 })

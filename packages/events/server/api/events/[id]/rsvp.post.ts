@@ -45,7 +45,15 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
   // SEC-030: ein Pool-Konto ist auf jedem Community-Host angemeldet — wer hier
   // mitmacht, muss dazugehören. Offene Registrierung: dieser Schritt IST der
   // Beitritt (A5); geschlossen oder entzogen: 403 `not_a_member`. 401 ohne Konto.
-  const user = await requireCommunityParticipant(event)
+  //
+  // `openDuringSuspension` (F26, s. Kopf): die Wache weiß noch nicht, ob dieser
+  // Aufruf zusagt oder zurückzieht — das zeigt erst der Bestand. In einer
+  // gesperrten Community lässt sie deshalb Mitglieder (und nur sie, ohne
+  // Beitritt) durch; die Sperre für das ZUSAGEN hält die Datentür (`db` mit
+  // `actor: 'member'` wirft beim Hochzählen 403 `community_suspended`), offen
+  // bleibt allein der Rücknahme-Zweig. Ohne die Option war seit SEC-030 auch
+  // das Zurückziehen wieder zu.
+  const user = await requireCommunityParticipant(event, { openDuringSuspension: true })
 
   // Wartungsmodus friert JEDEN Mitglieds-Schreibweg ein (utils/eventPolicy.ts).
   await assertEventsWritable(event)

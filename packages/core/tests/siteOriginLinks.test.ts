@@ -91,6 +91,10 @@ beforeAll(async () => {
   vi.stubGlobal('tenantRegistrationOpen', () => true)
   vi.stubGlobal('inviteOpensRegistrationFor', async () => true)
   vi.stubGlobal('requireTurnstile', async () => {})
+  // Die Empfänger-Grenze der Bestätigungs-Mail hat ihren eigenen Test
+  // (authMailRecipientLimit.test.ts) — hier lässt sie durch.
+  vi.stubGlobal('allowRecipientMail', async () => true)
+  vi.stubGlobal('AUTH_MAIL_RECIPIENT_LIMIT', { max: 5, windowMs: 60 * 60_000 })
   vi.stubGlobal('rememberKnownDevice', () => {})
   vi.stubGlobal('logAuthEvent', async () => {})
   vi.stubGlobal('joinCommunity', async () => {})

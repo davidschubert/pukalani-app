@@ -164,7 +164,13 @@ paths:
   `brand/server/utils/brandStreamHeartbeat.ts`); der Leser im Browser nimmt
   nur `data:`-Zeilen. Ein neuer Stream ruft dieselbe Hilfe. NOCH IN DER
   ANFRAGE rechnen vier Wege des Markenberaters (OPEN-ITEMS „LL1" b) — der
-  Layer hat keine Lauf-Tabelle. Beweise: `packages/core/tests/runLease.test.ts`,
+  Layer hat keine Lauf-Tabelle. WÄCHTER (seit 2026-11-17):
+  `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
+  KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
+  Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe
+  ihrer Fristen bis 60 s (180 s nur auf den Wegen des nginx-Blocks),
+  `detached`, `stream` oder `over` (Bestand mit Grund, darf nur schrumpfen).
+  Beweise: `packages/core/tests/runLease.test.ts`,
   `packages/market/tests/marketRunRoute.test.ts`,
   `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`,
   `packages/insights/tests/insightsRadarRunRoute.test.ts`,
@@ -279,7 +285,10 @@ paths:
   den ANMELDE-MAILS, mit eigener Zahl: Code- und Reset-Mails 5 je Adresse und
   Stunde (`AUTH_MAIL_RECIPIENT_LIMIT`, Bereiche `auth:otp` und
   `auth:recovery`). Eine Antwort, die Werte trägt (Code-Anforderung: `userId`),
-  bleibt über der Grenze auch in den WERTEN gleich. (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
+  bleibt über der Grenze auch in den WERTEN gleich. Die Mail „E-Mail
+  bestätigen" (`POST /api/auth/verification`, Bereich `auth:verification`)
+  zählt genauso, sagt die Grenze aber OFFEN (429 `rate_limited`): gefragt hat
+  das angemeldete Konto nach seiner eigenen Adresse. (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
   eine frei eingetragene Adresse: der Name läuft durch `displayNameProblem`,
   eine Nachricht wird nicht zitiert. Heute so: Erstgespräch und Warteliste
   (brand), Newsletter-Anmeldung (insights, nur die Grenze). Die Meldung an

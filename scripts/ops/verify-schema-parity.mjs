@@ -378,6 +378,11 @@ const BRAND_TABLES = [
   // darüber: eine fehlende Migration soll auffallen, BEVOR der erste Kunde auf
   // „Entwürfe erzeugen" klickt — der Lauf antwortete sonst 503.
   'brand_mark_drafts',
+  // brand-027: die Lauf-Sperre des Markenberaters (LL1 b) — dieselbe Form wie
+  // `market_runs` (Fabrik `scripts/migrations-lib/runLeaseTable.mts`). Eine
+  // Zeile je Lauf der vier langen Wege (Entwürfe, Lesung, Fundament-Check,
+  // öffentlicher Check); ohne sie antwortet jeder Start 503.
+  'brand_runs',
 ]
 
 /**

@@ -26,7 +26,8 @@ import type { H3Event } from 'h3'
  * zählen 3 je Tag (unten). Anmelde-Mails — Code und „Passwort zurücksetzen" —
  * zählen `AUTH_MAIL_RECIPIENT_LIMIT`: wer sich anmelden will, fordert auch
  * einmal drei Mails hintereinander an und soll nach einer Stunde wieder
- * weiterkommen. Der Bereich trennt die Zähler (`auth:otp`, `auth:recovery`).
+ * weiterkommen. Der Bereich trennt die Zähler (`auth:otp`, `auth:recovery`,
+ * seit AB1 g auch `auth:verification` — die Mail „E-Mail bestätigen").
  */
 
 /** Mails je Adresse und Bereich im Fenster. Die Zahl steht NUR hier. */

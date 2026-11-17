@@ -49,6 +49,10 @@ const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: con
 let pass = 0
 let fail = 0
 const cleanup = { operators: [], requests: [], codes: [] }
+/** Freie Plätze, die nicht von diesem Lauf stammen — Id → Zeile vor der Zuweisung. */
+const foreignSlots = new Map()
+/** Die Spalten eines Platzes, die Zuweisung und Erinnerung ändern. */
+const SLOT_COLUMNS = ['codeHash', 'label', 'boundEmail', 'requestId', 'assignedAt', 'expiresAt', 'maxUses', 'uses', 'status']
 
 function check(label, ok, detail = '') {
   if (ok) { pass++; console.log(`  ✔ ${label}`) }
@@ -175,6 +179,22 @@ try {
     rawStock.rows.length === 3 && rawStock.rows.every(r => !r.boundEmail && r.uses === 0 && r.codeHash.length === 64))
 
   console.log('\n4. Zuweisung über die ECHTE Route')
+  // Die Zuweisung nimmt den ÄLTESTEN freien Platz — das muss nicht einer der
+  // drei eigenen sein (eine geteilte Datenbank hat oft schon Vorrat). Deshalb
+  // der Stand aller freien Plätze direkt davor: ein fremder Platz, den Zuweisung
+  // oder Erinnerung verbrauchen, wird im Aufräumen wiederhergestellt statt gelöscht.
+  const nowIso = new Date().toISOString()
+  const freeBefore = await control.listRows({
+    databaseId, tableId: 'invite_codes',
+    queries: [
+      Query.equal('status', ['active']), Query.equal('boundEmail', ['']), Query.equal('uses', [0]),
+      Query.or([Query.isNull('expiresAt'), Query.greaterThan('expiresAt', nowIso)]),
+      Query.limit(100),
+    ],
+  })
+  for (const row of freeBefore.rows) {
+    if (!rawStock.rows.some(own => own.$id === row.$id)) foreignSlots.set(row.$id, row)
+  }
   const applicant = `vorrat-${stamp}@example.test`
   check('Anfrage angenommen', await requestAccess(applicant) === 200)
   const reqRows = await control.listRows({
@@ -197,15 +217,12 @@ try {
   if (usedSlot) cleanup.codes.push(usedSlot.id)
   check('der Code steht jetzt auf „zugewiesen"', usedSlot?.state === 'assigned', usedSlot?.state)
   // Die Zuweisung nimmt einen Platz AUS DEM VORRAT (takeFromStock, ältester
-  // freier zuerst) — sie legt keinen neuen Code daneben an. Gemessen an den
-  // eigenen drei Plätzen: genau einer ist jetzt an die Adresse gebunden.
-  const ownSlots = await control.listRows({
-    databaseId, tableId: 'invite_codes', queries: [Query.equal('$id', rawStock.rows.map(r => r.$id)), Query.limit(5)],
-  })
-  const boundOwn = ownSlots.rows.filter(r => r.boundEmail === applicant)
-  check('die Zuweisung kam aus dem Vorrat (einer der drei Plätze ist jetzt gebunden)',
-    boundOwn.length === 1 && boundOwn[0].$id === usedSlot?.id,
-    `gebunden: ${boundOwn.length}, zugewiesener Code ${usedSlot?.id ?? '—'} ${rawStock.rows.some(r => r.$id === usedSlot?.id) ? 'aus dem Vorrat' : 'NEU angelegt'}`)
+  // freier zuerst) — sie legt keinen neuen Code daneben an. Gemessen am Stand
+  // direkt davor: der gebundene Code war ein freier Platz, und zwar der älteste.
+  const oldestFree = [...freeBefore.rows].sort((a, b) => a.$createdAt.localeCompare(b.$createdAt))[0]
+  check('die Zuweisung kam aus dem Vorrat (der älteste freie Platz ist jetzt gebunden)',
+    !!usedSlot && usedSlot.id === oldestFree?.$id,
+    `zugewiesener Code ${usedSlot?.id ?? '—'} ${freeBefore.rows.some(r => r.$id === usedSlot?.id) ? 'aus dem Vorrat' : 'NEU angelegt'}, ältester freier ${oldestFree?.$id ?? '—'}`)
   check('ein Platz weniger frei', afterAssign.json?.stock?.free === (afterFill.json?.stock?.free ?? 0) - 1,
     `${afterFill.json?.stock?.free} → ${afterAssign.json?.stock?.free}`)
 
@@ -237,8 +254,17 @@ catch (error) {
 }
 finally {
   console.log('\n6. Aufräumen')
+  // Eigene Codes löschen; einen FREMDEN Platz, den der Lauf verbraucht hat,
+  // in den Zustand von vorher zurückstellen — er gehört nicht diesem Lauf.
   for (const id of new Set(cleanup.codes)) {
-    await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
+    const original = foreignSlots.get(id)
+    if (original) {
+      const data = Object.fromEntries(SLOT_COLUMNS.map(column => [column, original[column] ?? null]))
+      await control.updateRow({ databaseId, tableId: 'invite_codes', rowId: id, data }).catch(() => {})
+    }
+    else {
+      await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
+    }
   }
   for (const id of new Set(cleanup.requests)) {
     await control.deleteRow({ databaseId, tableId: 'invite_requests', rowId: id }).catch(() => {})
@@ -255,7 +281,12 @@ finally {
   // NACHZÄHLEN — nicht dem eigenen Löschen glauben.
   const leftovers = []
   const gone = (table, id) => control.getRow({ databaseId, tableId: table, rowId: id }).then(() => false, error => error?.code === 404)
-  for (const id of new Set(cleanup.codes)) if (!await gone('invite_codes', id)) leftovers.push(`invite_codes:${id}`)
+  const restored = id => control.getRow({ databaseId, tableId: 'invite_codes', rowId: id })
+    .then(row => SLOT_COLUMNS.every(column => (row[column] ?? null) === (foreignSlots.get(id)[column] ?? null)), () => false)
+  for (const id of new Set(cleanup.codes)) {
+    if (foreignSlots.has(id)) { if (!await restored(id)) leftovers.push(`invite_codes:${id} (fremder Platz nicht zurückgestellt)`) }
+    else if (!await gone('invite_codes', id)) leftovers.push(`invite_codes:${id}`)
+  }
   for (const id of new Set(cleanup.requests)) if (!await gone('invite_requests', id)) leftovers.push(`invite_requests:${id}`)
   for (const [key, n] of Object.entries(await sweepRows(controlRest, databaseId, personTargets, operatorIds))) leftovers.push(`${key}=${n}`)
   for (const id of operatorIds) {

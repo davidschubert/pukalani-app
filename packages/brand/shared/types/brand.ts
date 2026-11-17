@@ -26,6 +26,7 @@ import type { BrandGenerationOutcome } from '../brandGeneration'
 import type { BrandInspirationEntry } from '../brandInspiration'
 import type { BrandMarkDraftEntry } from '../brandMarkDrafts'
 import type { BrandReadingState } from '../brandReading'
+import type { BrandRunView } from '../brandRun'
 import type { BrandPublicationBlocker, BrandPublicationViewStatus } from '../brandPublication'
 import type { BrandWaitlistStatus } from '../brandWaitlistAdmin'
 import type {
@@ -2331,33 +2332,38 @@ export interface BrandMarkDraftsListResponse {
 }
 
 /**
- * DIE ANTWORT EINES LAUFS (`POST …/mark/drafts`).
+ * DIE ANTWORT EINES STARTS (`POST …/mark/drafts`) — seit LL1 b (2026-11-17)
+ * ein `202`: der Lauf ist angenommen und rechnet hinter der Antwort.
  *
- * `created` ist die Zahl der WIRKLICH entstandenen Entwürfe und kann kleiner
- * als vier sein: Teilerfolg ist Erfolg (Kopf von
- * `server/utils/brandMarkDrafts.ts`). Das REST-KONTINGENT steht darin, weil der
- * Mensch unter dem Knopf sehen soll, wie oft er heute noch erzeugen kann, ohne
- * es zählen zu müssen.
+ * Die Entwürfe selbst stehen NICHT darin — sie entstehen erst. Die Werkstatt
+ * fragt `GET …/mark/drafts` ab, bis `run.state` nicht mehr `running` ist, und
+ * liest dort Liste und Ausgang. Das REST-KONTINGENT steht schon hier, weil
+ * VOR der Antwort gebucht wird: der Mensch soll unter dem Knopf sehen, wie
+ * oft er heute noch erzeugen kann, ohne es zählen zu müssen.
  */
-export interface BrandMarkDraftsRunResponse extends BrandMarkDraftsListResponse {
+export interface BrandMarkDraftsRunResponse {
   ok: true
-  created: number
-  /** Modell-Kennung ohne Schlüssel — sie steht auf jeder Karte. */
-  model: string
+  run: BrandRunView
   quota: { used: number, limit: number, remaining: number }
 }
 
 /**
- * DIE ANTWORT DES LESENS (`GET …/mark/drafts`) — die Liste plus das Bildmodell.
+ * DIE ANTWORT DES LESENS (`GET …/mark/drafts`) — die Liste, das Bildmodell
+ * und der Stand des jüngsten Laufs.
  *
  * `imageModel` ist der EFFEKTIVE Slug (`getEffectiveAiImageConfig`, inklusive
  * Laufzeit-Override), leer, wenn kein Bildmodell eingetragen ist. Die
  * Werkstatt nennt ihn VOR dem Auslösen, damit niemand erst nach dem Klick
- * erfährt, welches Modell arbeitet. Ein eigener Typ, damit Lauf- und
+ * erfährt, welches Modell arbeitet. Ein eigener Typ, damit die
  * Schreib-Antworten unberührt bleiben.
+ *
+ * `run` ist die Lauf-Zeile, gegen die Server-Uhr gerechnet (`running`,
+ * `done`, `failed`, `stalled` oder `none`). Wer die Seite neu lädt, sieht
+ * daran, dass ein Lauf noch rechnet oder abgebrochen wurde.
  */
 export interface BrandMarkDraftsIndexResponse extends BrandMarkDraftsListResponse {
   imageModel: string
+  run: BrandRunView
 }
 
 /** Die Antwort von `PATCH`/`DELETE` — `item` ist beim Entfernen `null`. */

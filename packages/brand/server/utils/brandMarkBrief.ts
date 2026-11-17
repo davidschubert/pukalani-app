@@ -64,7 +64,7 @@ import {
  */
 
 /** Vier Absätze sind ein Text-Lauf, kein Bildlauf — 60 s reichen. */
-const BRAND_MARK_BRIEF_TIMEOUT_MS = 60_000
+export const BRAND_MARK_BRIEF_TIMEOUT_MS = 60_000
 /** Vier Felder à 420 Zeichen plus JSON-Rahmen brauchen keinen Roman. */
 const BRAND_MARK_BRIEF_MAX_TOKENS = 1200
 

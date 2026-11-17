@@ -26,11 +26,11 @@ const bodySchema = z.union([
     // Die Einzel-Schlüssel: ausdrücklich aufgezählt statt aus INTEGRATION_IDS
     // gefiltert — nur so bleibt es eine unterscheidbare Union, und der
     // Compiler kann `body.smtp` von `body.value` trennen.
-    // Die beiden Naht-Geheimnisse (A0) stehen hier mit drin: aus Sicht dieser
-    // Route sind sie EIN Wert wie jeder andere. Was sie besonders macht —
+    // Das Naht-Geheimnis (A0) steht hier mit drin: aus Sicht dieser
+    // Route ist es EIN Wert wie jeder andere. Was es besonders macht —
     // dass drüben derselbe stehen muss — ist eine Frage der REIHENFOLGE beim
     // Eintragen, nicht des Speicherns (siehe `sharedSeamSecret.ts`).
-    id: z.enum(['ai', 'analytics', 'tickets-ai', 'onboarding-service', 'events-sweep']),
+    id: z.enum(['ai', 'analytics', 'tickets-ai', 'onboarding-service']),
     value: z.string().trim().max(400),
   }),
   z.object({

@@ -66,8 +66,13 @@ import { assertAiSwitchedOn } from './aiKillSwitch'
  * Bytes in einen Bucket und liefert sie später an einen Browser aus.
  */
 
-/** Ein Bildlauf ist langsamer als ein Textlauf — 120 s statt 60. */
-const DEFAULT_TIMEOUT_MS = 120_000
+/**
+ * Ein Bildlauf ist langsamer als ein Textlauf — 120 s statt 60. Exportiert,
+ * damit der Fristen-Wächter (`core/tests/routeDeadlineBudget.test.ts`) mit
+ * der echten Zahl rechnet.
+ */
+export const AI_IMAGE_TIMEOUT_MS = 120_000
+const DEFAULT_TIMEOUT_MS = AI_IMAGE_TIMEOUT_MS
 
 /**
  * Der Token-Deckel. Bild-Modelle rechnen ihre Ausgabe in Tokens ab (ein Bild
