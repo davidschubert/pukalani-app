@@ -10,9 +10,9 @@
  *   - derselbe User auf der ANDEREN Community (keine Mitgliedschaft) → 403
  *   - User ganz ohne Rolle → 403 (wie heute)
  *   - Gast ohne Session → Redirect auf /login (wie heute)
- *   - Operator mit admin-Label: ZUGANG unverändert (Seite + API direkt),
- *     MENÜ nach Ort — auf dem Mandanten-Host keine Operator-Module, auf dem
- *     Kontroll-Host sehr wohl (E9, s. Abschnitt 6)
+ *   - Operator mit admin-Label: ZUGANG über die API unverändert, MENÜ und
+ *     SEITE nach Ort — auf dem Mandanten-Host keine Operator-Module und die
+ *     Seite 404 (Orts-Wächter), auf dem Kontroll-Host beides (E9, Abschnitt 6)
  *   - der S1-Registrierungs-Schalter ist für den Owner erreichbar
  *     (/dashboard/community SSR 200) und PATCH /api/community/registration
  *     funktioniert end-to-end (Control Plane schreibt, Wert kommt zurück)
@@ -162,9 +162,13 @@ try {
   check('/dashboard → 200', dashOperator.status === 200, `Status ${dashOperator.status}`)
   check('Menü OHNE System (/dashboard/system) — fremder Ort', !hasNav(dashOperator.text, '/dashboard/system'))
   check('Menü OHNE People (/dashboard/users) — fremder Ort', !hasNav(dashOperator.text, '/dashboard/users'))
-  // Break-Glass: versteckt ist nicht gesperrt — die Autorität liegt auf der Route.
+  // Die SEITE folgt seit dem Orts-Wächter (Davids Entscheidung 2026-08-18,
+  // packages/admin/app/middleware/dashboard-scope.global.ts) derselben Regel
+  // wie das Menü: eine Betreiber-Seite gibt es auf einem Mandanten-Host nicht
+  // (404, nicht 403 — sonst verriete die Antwort, dass es dort etwas gäbe).
   const operatorUsersPage = await page(siteA.host, '/dashboard/users', operatorCookieA)
-  check('Zugang bleibt: /dashboard/users direkt → 200', operatorUsersPage.status === 200, `Status ${operatorUsersPage.status}`)
+  check('Seite /dashboard/users auf dem Mandanten-Host → 404 (Orts-Wächter)', operatorUsersPage.status === 404, `Status ${operatorUsersPage.status}`)
+  // Break-Glass: die Autorität liegt auf der ROUTE — die bleibt für den Betreiber offen.
   const operatorUsersApi = await call(siteA.host, '/api/admin/users', { cookie: operatorCookieA })
   check('Zugang bleibt: /api/admin/users → 200', operatorUsersApi.status === 200, `Status ${operatorUsersApi.status}`)
   // Gegenprobe zum Ort: auf dem KONTROLL-Host stehen dieselben Module sehr wohl
@@ -174,6 +178,10 @@ try {
   check('Kontroll-Host: /dashboard → 200', dashControl.status === 200, `Status ${dashControl.status}`)
   check('Kontroll-Host: Menü MIT System (/dashboard/system)', hasNav(dashControl.text, '/dashboard/system'))
   check('Kontroll-Host: Menü MIT People (/dashboard/users)', hasNav(dashControl.text, '/dashboard/users'))
+  // Gegenprobe zum Orts-Wächter: dieselbe Seite steht am richtigen Ort offen —
+  // sonst hieße die 404 oben nur „Seite kaputt".
+  const controlUsersPage = await page(CONTROL_HOST, '/dashboard/users', operatorControlCookie)
+  check('Kontroll-Host: /dashboard/users direkt → 200', controlUsersPage.status === 200, `Status ${controlUsersPage.status}`)
 
   console.log('\n7. S1-Registrierungs-Schalter: für den Owner erreichbar + PATCH end-to-end')
   const communityPage = await page(siteA.host, '/dashboard/community', ownerCookieA)

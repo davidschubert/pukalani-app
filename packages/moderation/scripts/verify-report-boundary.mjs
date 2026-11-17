@@ -31,16 +31,25 @@
  *           läuft: melden über /api/reports und nachsehen, welche Permissions
  *           die Route wirklich geschrieben hat. Ohne Server wird Akt 2
  *           übersprungen (mit Hinweis), nicht als Fehler gewertet.
+ *           Kommentieren und Melden sind Mitmachen (SEC-030): ein frisches
+ *           Konto darf das nur bei OFFENER Registrierung (dann ist es der
+ *           Beitritt). Akt 2 öffnet die Registrierung von Host A deshalb
+ *           selbst und stellt den gelesenen Wert am Ende zurück — dafür
+ *           braucht er den Control Plane mit Schreibrecht
+ *           (NUXT_PLATFORM_CONTROL_*; der Läufer der Bühne reicht ihn durch).
  *
  * Läuft gegen die Instanz aus der Env — nie hartkodiert Prod. Legt Wegwerf-
- * Nutzer/Zeilen an und räumt sie (auch im Fehlerfall) wieder weg.
+ * Nutzer/Zeilen an und räumt sie (auch im Fehlerfall) wieder weg — in Akt 2
+ * samt den Mitglieds-Zeilen der Beitritte — und zählt danach nach.
  *
  *   node --env-file=apps/platform/.env packages/moderation/scripts/verify-report-boundary.mjs
  *   # Akt 2 zusätzlich: `pnpm --filter platform dev` in einem zweiten Terminal
+ *   # Auf der Bühne: pnpm buehne run --only verify-report-boundary
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { appwriteRest, createCleanup, Q } from '../../../scripts/lib/probe-stage.mjs'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -65,7 +74,26 @@ const SITE_B = `mbsiteB${stamp}`
 /** Muss Zeichen für Zeichen zu core/shared/communityModeratorLabel.ts passen. */
 const modLabel = communityId => `mod${communityId}`
 
-const created = { users: [], reports: [] }
+const created = { users: [], reports: [], comments: [] }
+/** Akt 2: Registrierung von A, wie sie vorher war ({ rowId, openRegistration }). */
+const registrationRestore = []
+
+// ── Control Plane (nur Akt 2) ───────────────────────────────────────────────
+const controlEnv = {
+  endpoint: process.env.NUXT_PLATFORM_CONTROL_ENDPOINT,
+  projectId: process.env.NUXT_PLATFORM_CONTROL_PROJECT_ID,
+  databaseId: process.env.NUXT_PLATFORM_CONTROL_DATABASE_ID,
+  key: process.env.NUXT_PLATFORM_CONTROL_KEY,
+}
+/** REST-Client des Control Plane oder null, wenn die Env ihn nicht hergibt. */
+function controlClient() {
+  if (!controlEnv.endpoint || !controlEnv.projectId || !controlEnv.databaseId || !controlEnv.key) return null
+  return appwriteRest({ ...controlEnv, script: 'verify-report-boundary (Control)' })
+}
+/** Registrierung direkt in der Zeile setzen — der Beitritt liest sie frisch. */
+async function setOpenRegistration(control, rowId, openRegistration) {
+  await control.updateRow(controlEnv.databaseId, 'communities', rowId, { openRegistration })
+}
 let pass = 0
 let fail = 0
 
@@ -249,6 +277,17 @@ try {
     const themes = await call(HOST_A, '/api/themes')
     if (themes.status !== 200) throw new Error(`Mandanten-Host ${HOST_A} antwortet nicht (${themes.status})`)
 
+    // Ein frisches Konto darf nur bei offener Registrierung mitmachen (SEC-030):
+    // A ausdrücklich öffnen statt es vorauszusetzen; zurück im finally.
+    const control = controlClient()
+    if (!control) {
+      throw new Error('Akt 2 braucht den Control Plane mit Schreibrecht (NUXT_PLATFORM_CONTROL_ENDPOINT/_PROJECT_ID/_DATABASE_ID/_KEY) — er öffnet die Registrierung von A und räumt die Mitglieds-Zeilen weg.')
+    }
+    const siteA = (await control.listRows(controlEnv.databaseId, 'communities', [Q.equal('host', HOST_A), Q.limit(1)])).rows[0]
+    if (!siteA) throw new Error(`Community ${HOST_A} nicht im Control Plane gefunden.`)
+    registrationRestore.push({ rowId: siteA.$id, openRegistration: siteA.openRegistration })
+    await setOpenRegistration(control, siteA.$id, true)
+
     // Ein echtes Ziel im echten Mandanten: erst kommentieren, dann melden.
     // (Seit Befund 8 prüft die Route die Existenz des Ziels — ein erfundenes
     // targetId wäre jetzt zu Recht ein 404.)
@@ -260,6 +299,7 @@ try {
       body: { targetId: `mb-thread-${stamp}`, targetType: 'verify', content: 'Beweis-Kommentar.' },
     })
     const commentId = posted.json?.$id ?? posted.json?.comment?.$id
+    if (commentId) created.comments.push(commentId)
     check('Kommentar als Melde-Ziel angelegt', !!commentId, `${posted.status} ${posted.text.slice(0, 160)}`)
 
     const kritiker = await actor('kritiker', [])
@@ -298,8 +338,11 @@ try {
         JSON.stringify(perms))
       check('und kein Mitglieder-Read auf der Community (Meldung ≠ Inhalt)',
         !perms.some(p => p === `read("label:${written.slice(3)}")`), JSON.stringify(perms))
-      check('der Melder darf lesen und zurückziehen',
-        perms.includes(`read("user:${kritiker.id}")`) && perms.includes(`delete("user:${kritiker.id}")`),
+      // SEC-002 (seit 2026-11-16, „Der Server schreibt"): der Melder LIEST
+      // seine Meldung, ein Schreibrecht an der Zeile trägt kein Konto mehr —
+      // das Zurückziehen läuft über DELETE /api/reports (unten, Befund 2).
+      check('der Melder darf lesen — und KEIN Konto trägt ein Schreibrecht an der Zeile (SEC-002)',
+        perms.includes(`read("user:${kritiker.id}")`) && !perms.some(p => /^(update|delete|write)\(/.test(p)),
         JSON.stringify(perms))
 
       // Und jetzt lesen wie der Browser: mit echten Sessions, an unserem Code
@@ -326,10 +369,12 @@ try {
         nochmal.status === 409 && nochmal.json?.reason === 'already_reported',
         `${nochmal.status} ${nochmal.text.slice(0, 200)}`)
 
+      // Ein Typ, den KEIN Layer anmeldet (`event` meldet seit dem events-Layer
+      // ein eigenes Ziel an und taugt dafür nicht mehr).
       const unbekannt = await call(HOST_A, '/api/reports', {
         method: 'POST',
         cookie: kritikerCookie,
-        body: { targetType: 'event', targetId: commentId, reason: 'spam' },
+        body: { targetType: 'verify', targetId: commentId, reason: 'spam' },
       })
       check('Befund 8: nicht registrierter Ziel-Typ → 400 unknown_target',
         unbekannt.status === 400 && unbekannt.json?.reason === 'unknown_target',
@@ -368,9 +413,30 @@ finally {
   for (const id of created.reports) {
     await adminDb.deleteRow({ databaseId, tableId: REPORTS_TABLE, rowId: id }).catch(() => {})
   }
-  // Akt 2 hinterlässt im Control Plane je Beitritt eine community_members-Zeile.
-  // Die bleibt bewusst stehen: dieses Skript hat keinen Control-Plane-Schlüssel,
-  // und mit dem gelöschten Nutzer zeigt sie auf niemanden mehr.
+  const control = registrationRestore.length ? controlClient() : null
+  for (const { rowId, openRegistration } of registrationRestore) {
+    await setOpenRegistration(control, rowId, openRegistration).catch((error) => {
+      fail++
+      console.log(`  ✗ Registrierung von ${rowId} nicht zurückgestellt — ${error?.message || error}`)
+    })
+  }
+  // Akt 2 hinterlässt je Beitritt eine community_members-Zeile im Control
+  // Plane (und Spuren an den Konten im Pool). Das Register der gemeinsamen
+  // Hilfe löscht alles, was über eine Personen-Spalte an den Konten hängt,
+  // löscht die Konten und zählt danach nach.
+  if (control) {
+    const pool = appwriteRest({ endpoint, projectId, key: apiKey, script: 'verify-report-boundary' })
+    const register = createCleanup({ pool, control, poolDatabaseId: databaseId, controlDatabaseId: controlEnv.databaseId })
+    for (const id of created.users) register.track('account', id)
+    for (const id of created.comments) register.track('poolRow', `comments/${id}`)
+    for (const id of created.reports) register.track('poolRow', `${REPORTS_TABLE}/${id}`)
+    const { leftovers } = await register.run().catch(error => ({ leftovers: [`Aufräumen abgebrochen: ${error?.message || error}`] }))
+    for (const { rowId, openRegistration } of registrationRestore) {
+      const row = await control.getRow(controlEnv.databaseId, 'communities', rowId).catch(() => null)
+      if (row?.openRegistration !== openRegistration) leftovers.push(`Registrierung von ${rowId}`)
+    }
+    check(`nachgezählt: nichts übrig (${created.users.length} Konten samt Spuren, Registrierung zurück)`, leftovers.length === 0, leftovers.join(', '))
+  }
   for (const id of created.users) await adminUsers.delete({ userId: id }).catch(() => {})
   console.log(`  ✔ ${created.users.length} Nutzer + ${created.reports.length} Meldungen entfernt`)
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)

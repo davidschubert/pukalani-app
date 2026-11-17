@@ -42,9 +42,14 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  appwriteRest,
+  createCleanup,
+  createProbeAccount,
+  createProbeCommunity,
+  login as loginOn,
+  runStamp,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3021)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -62,14 +67,14 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   process.exit(1)
 }
 
-const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolClient = new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey)
-const poolUsers = new Users(poolClient)
-const poolDb = new TablesDB(poolClient)
+const script = 'verify-page-languages'
+const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const cleanup = createCleanup({ pool, control: controlRest, poolDatabaseId, controlDatabaseId: databaseId })
+const runId = runStamp()
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [], members: [], pages: [] }
 /**
  * DIE POOL-SEITIGE ID DER COMMUNITY — nicht dieselbe wie die Control-Zeile.
  *
@@ -79,7 +84,7 @@ const cleanup = { users: [], codes: [], tenants: [], members: [], pages: [] }
  * selbst geschrieben haben — deshalb liegen in der lokalen Dev-Datenbank
  * Hunderte Seiten-Zeilen zu Communities, die es längst nicht mehr gibt.
  */
-let poolCommunityId = ''
+let poolCommunityId
 
 function check(label, ok, detail = '') {
   if (ok) { pass++; console.log(`  ✔ ${label}`) }
@@ -142,70 +147,26 @@ function ogAlternates(html) {
     .sort()
 }
 
+/** Probe-Konto. Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse. */
 async function createPoolUser(tag) {
-  const email = `f60-${tag}-${Date.now()}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `F60 ${tag}` })
-  cleanup.users.push(user.$id)
-  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-  return { userId: user.$id, email, password }
+  const account = await createProbeAccount(pool, { tag: `f60-${tag}`, stamp: runId, name: `F60 ${tag}` })
+  cleanup.track('account', account.userId)
+  return account
 }
 
-async function login(host, account) {
-  const res = await call(host, '/api/auth/login', {
-    method: 'POST',
-    body: { email: account.email, password: account.password },
-  })
-  if (res.status !== 200) throw new Error(`Login auf ${host} fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
+function login(host, account) {
+  return loginOn(call, host, account)
 }
 
-async function issueCode(tag) {
-  const code = `PUKA-F60${tag}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId,
-    tableId: 'invite_codes',
-    rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'F60-Beweis',
-      maxUses: 0,
-      uses: 0,
-      expiresAt: null,
-      status: 'active',
-    },
-  })
-  cleanup.codes.push(row.$id)
-  return code
-}
 
 async function createCommunity(cookie, slug, name) {
-  const code = await issueCode(slug.slice(-4).toUpperCase())
-  const created = await call(CONTROL_HOST, '/api/onboarding/site', {
-    method: 'POST',
-    cookie,
-    body: probeSiteBody({
-      name,
-      slug,
-      description: 'F60-Beweis: der Fallback sagt, was er zeigt.',
-      vibe: 'fresh',
-      inviteCode: code,
-    }),
+  // Anlage über die echte Route `POST /api/onboarding/site` — Rumpf, Code und
+  // Aufräumen kommen aus der gemeinsamen Hilfe (scripts/lib/probe-stage.mjs).
+  const created = await createProbeCommunity({
+    call, controlHost: CONTROL_HOST, cookie, control: controlRest, databaseId, slug, name, cleanup,
+    bodyOverrides: { description: 'F60-Beweis: der Fallback sagt, was er zeigt.', vibe: 'fresh' },
   })
-  if (created.status !== 200 || !created.json?.communityId) {
-    throw new Error(`Community ${slug} nicht angelegt (${created.status}): ${created.text.slice(0, 200)}`)
-  }
-  cleanup.tenants.push(created.json.communityId)
-  const members = await control.listRows({
-    databaseId,
-    tableId: 'community_members',
-    queries: [Query.equal('communityId', created.json.communityId), Query.limit(10)],
-  })
-  cleanup.members.push(...members.rows.map(row => row.$id))
-  return { communityId: created.json.communityId, host: created.json.host }
+  return { communityId: created.communityId, host: created.host }
 }
 
 /** Der Host-Resolver cacht negativ (30 s) — nach der Anlage kurz nachfassen. */
@@ -225,7 +186,7 @@ try {
 
   const owner = await createPoolUser('owner')
   const controlCookie = await login(CONTROL_HOST, owner)
-  const stamp = Date.now().toString(36)
+  const stamp = runId
 
   console.log('0. Community anlegen')
   const site = await createCommunity(controlCookie, `f60-${stamp}`, 'F60 Beweis')
@@ -241,10 +202,13 @@ try {
     slug: SLUG, locale: 'de', title: 'Impressum', body: '## Angaben\n\nMusterstraße 1', status: 'published',
   })
   check(`gespeichert (${de.status})`, de.status === 200)
-  if (de.json?.$id) cleanup.pages.push(de.json.$id)
+  if (de.json?.$id) cleanup.track('poolRow', `pages/${de.json.$id}`)
   // Die gespeicherte Zeile trägt die Pool-Id der Community — die einzige
   // Stelle, an der wir sie ohne zweite Abfrage bekommen.
-  if (de.json?.communityId) poolCommunityId = de.json.communityId
+  if (de.json?.communityId) {
+    poolCommunityId = de.json.communityId
+    cleanup.track('tenant', poolCommunityId)
+  }
 
   const askedDe = await call(site.host, `/api/pages/public/${SLUG}?locale=de`)
   check('locale=de liefert die deutsche Fassung', askedDe.json?.locale === 'de', String(askedDe.json?.locale))
@@ -279,7 +243,7 @@ try {
   const en = await savePage(site.host, cookie, {
     slug: SLUG, locale: 'en', title: 'Imprint', body: '## Details\n\nSample Street 1', status: 'published',
   })
-  if (en.json?.$id) cleanup.pages.push(en.json.$id)
+  if (en.json?.$id) cleanup.track('poolRow', `pages/${en.json.$id}`)
   const enHtml2 = await page(site.host, `/${SLUG}`)
   check('Hinweis ist weg', !hasNotice(enHtml2))
   check('alle Alternates sind zurück (inkl. x-default)',
@@ -297,8 +261,8 @@ try {
   console.log('\n7.–8. Gegenprobe: nichts leckt auf andere Seiten')
   const b1 = await savePage(site.host, cookie, { slug: BOTH, locale: 'de', title: 'Über uns', body: 'Hallo', status: 'published' })
   const b2 = await savePage(site.host, cookie, { slug: BOTH, locale: 'en', title: 'About us', body: 'Hello', status: 'published' })
-  if (b1.json?.$id) cleanup.pages.push(b1.json.$id)
-  if (b2.json?.$id) cleanup.pages.push(b2.json.$id)
+  if (b1.json?.$id) cleanup.track('poolRow', `pages/${b1.json.$id}`)
+  if (b2.json?.$id) cleanup.track('poolRow', `pages/${b2.json.$id}`)
   const bothHtml = await page(site.host, `/${BOTH}`)
   check('zweisprachige Seite behält alle Alternates, obwohl die Nachbarseite nur eine Sprache hat',
     JSON.stringify(alternates(bothHtml)) === '["de","de-DE","en","en-US","x-default"]', JSON.stringify(alternates(bothHtml)))
@@ -351,38 +315,12 @@ catch (error) {
 }
 finally {
   console.log('\nAufräumen …')
-  for (const id of cleanup.pages) {
-    await poolDb.deleteRow({ databaseId: poolDatabaseId, tableId: 'pages', rowId: id }).catch(() => {})
-  }
-  // … und die GESEEDETEN dazu (Begründung oben bei `poolCommunityId`).
-  if (poolCommunityId) {
-    const seeded = await poolDb.listRows({
-      databaseId: poolDatabaseId,
-      tableId: 'pages',
-      queries: [Query.equal('communityId', poolCommunityId), Query.limit(100)],
-    }).catch(() => ({ rows: [] }))
-    for (const row of seeded.rows) {
-      await poolDb.deleteRow({ databaseId: poolDatabaseId, tableId: 'pages', rowId: row.$id }).catch(() => {})
-    }
-    console.log(`  ✔ ${seeded.rows.length} geseedete Seiten-Zeilen entfernt`)
-  }
-  for (const id of cleanup.members) {
-    await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  }
-  for (const id of cleanup.tenants) {
-    await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  }
-  for (const id of cleanup.codes) {
-    await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  }
-  for (const id of cleanup.users) {
-    await poolUsers.delete({ userId: id }).catch(() => {})
-  }
-  // Sichtbar machen, was übrig bleibt: die erste Fassung dieses Skripts löschte
-  // aus `tenants` (die Tabelle heisst `communities`), der 404 fiel in ein
-  // `catch` — zwei Test-Communities blieben stehen, und nichts sagte es.
-  const rest = await control.listRows({ databaseId, tableId: 'communities', queries: [Query.limit(25)] })
-  console.log(`  ✔ aufgeräumt — verbleibende Communities: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)
+  // Die eigenen Seiten sind registriert, die vom Onboarding GESEEDETEN fallen
+  // über den Stempel der Community (Begründung oben bei `poolCommunityId`).
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konto, Community, Mitglieds-Zeilen, Code, eigene und geseedete Seiten, Zeilen der Community)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail}\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

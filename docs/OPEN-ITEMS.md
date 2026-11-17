@@ -102,6 +102,7 @@ beide Server-Einstellungen einschalten.
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) soll der Bühnen-Lauf Pflicht vor dem Zusammenführen werden, (d) Kleinigkeiten. **Wartet auf:** (c) David. | Niedrig | M je Teil | **Ja: (c) eine Entscheidung** | [Einzelheiten](#bt1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -339,9 +340,7 @@ Pflicht-Prüfungen vor dem Zusammenführen auf GitHub (Paket P08, erledigt am
 - **(e) Mails je Empfänger.** Code- und Reset-Mails sind je Absender-Adresse und
   insgesamt je Stunde begrenzt, nicht je Empfänger. Eine Grenze je Empfänger
   ergänzen (das Muster steht in `packages/core/server/utils/accountAttempts.ts`).
-- **(f) Kleinigkeiten.** `verify-control-exit.mjs` bekommt je Lauf eine eigene
-  Absender-Adresse wie `verify-site-authz.mjs` (seit P02 wird die Route gezählt,
-  ein zweiter Lauf in derselben Minute kann 429 sehen). Zwei verrutschte
+- **(f) Kleinigkeiten.** Zwei verrutschte
   Kommentare in `05.rate-limit.ts` und ein Testtitel. Der Dev-Server warnt bei
   Node 22.18 (verlangt 22.21 oder neuer).
 
@@ -370,9 +369,7 @@ Pflicht-Prüfungen vor dem Zusammenführen auf GitHub (Paket P08, erledigt am
   die Fehlermeldung des Servers, keinen Hinweis am Feld. Die Liste der
   offenen Einladungen zeigt höchstens 100 und sagt nichts, wenn es mehr sind.
   Die Hinweise der Bot-Prüfung sprechen mit „du", die Formulare von
-  branding.supply mit „ihr". Das Prüfskript
-  `packages/onboarding/scripts/verify-member-invites.mjs` ist an die neue
-  Antwort angepasst, aber nicht gelaufen. Die Meldung an den Betreiber beim
+  branding.supply mit „ihr". Die Meldung an den Betreiber beim
   Erstgespräch hat keine eigene Grenze je Tag (davor stehen Bot-Prüfung und
   Drossel). `packages/core/scripts/verify-session-ip.mjs` ist mit der neuen
   zweiten Adresse nicht gelaufen. Eine Kennung im PFAD einer Adresse bleibt
@@ -483,11 +480,9 @@ NICHT hier.
   Aufrufe zählen auf das Tages-Kontingent der Community. Der Knopf
   verschwindet für Nicht-Mitglieder (dazu KU1 c).
 - **(e) Kleinigkeiten.** Eine Zusage zu einem inzwischen ausgeblendeten Termin
-  lässt sich nicht mehr zurücknehmen (404). `verify-site-authz.mjs` scheitert
-  ab dem dritten Lauf je Stunde an der Stunden-Bremse der Registrierung (eigene
-  Test-Adresse je Probe fehlt dort). Der Link in der Mail an die Leitung trägt
+  lässt sich nicht mehr zurücknehmen (404). Der Link in der Mail an die Leitung trägt
   kein Sprach-Präfix. Der E2E-Test `community-removed.spec.ts` läuft nur
-  gegen eine lokale Pool-Bühne (Vorhaben „Tests über den echten Kundenpfad").
+  gegen eine Pool-Bühne und noch in keinem Workflow (BT1 d).
   Der Kopf von `packages/messages/server/utils/messageGate.ts` sagt, jede
   Schreib-Route rufe eine seiner Funktionen; für Löschen und Gelesen-Markieren
   stimmt das nicht.
@@ -1012,6 +1007,47 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
   gehören zu BU1 d). Der lokale Lauf der Playwright-Suite braucht einen
   Browser-Download.
+
+<a id="bt1"></a>
+
+**BT1 — Tests über den echten Kundenpfad: Nacharbeiten (aus dem Gesamtaudit, Paket P27).**
+
+- **(a) Skripte, die noch von Hand laufen.** 14 Beweis-Skripte brauchen die
+  Einzel-Instanz `apps/comments` als laufenden Server, 12 brauchen
+  branding.supply mit eigenem Projekt. Die Bühne startet heute nur
+  Betreiber-App und Platform-Server. Zu tun: je App einen dritten Server in
+  den Lauf `buehne.yml` hängen (nur nachts, wegen der Laufzeit) und die
+  Skripte einzeln einziehen lassen. Die Liste steht in
+  `scripts/buehne/beweise.mjs` (`lauf: 'hand'` mit Grund). Bewusst von Hand
+  bleiben sechs Skripte mit Fremddiensten (echte KI, eine fremde Website).
+- **(b) Rollen-Tests außerhalb der Pool-Produkte.** Der Wächter
+  `packages/core/tests/route-role-coverage.test.ts` führt 319 Routen im
+  Bestand (`support/routeRoleBacklog.ts`): control 64, onboarding 48, core 40,
+  brand 33, admin 31, insights 29, tickets 19, runner 14, market 10 und
+  kleinere. Layer für Layer abbauen und den Layer danach in
+  `ZERO_BACKLOG_LAYERS` eintragen. Zuerst onboarding und control (dort
+  liegen Mitglieder-Verwaltung und Anlage).
+- **(c) Bühnen-Lauf als Pflicht?** Der Lauf „Bühne (Kundenpfad)" läuft heute
+  neben den fünf Pflicht-Prüfungen und hält weder das Zusammenführen noch das
+  Ausliefern auf; ist er rot, öffnet er auf `main` ein Issue. Ihn zur Pflicht
+  zu machen ist eine GitHub-Einstellung und Davids Entscheidung. Dazu gehört
+  eine zweite Frage: Zwei Pull Requests, die einzeln grün waren, haben
+  zusammen `main` rot gemacht (2026-11-17, eine Stunde ohne Ausliefern).
+  GitHub kann verlangen, dass ein Zweig vor dem Zusammenführen auf dem Stand
+  von `main` ist; bei mehreren Sitzungen gleichzeitig kostet das Wartezeit.
+- **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
+  Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
+  Betreiber noch nicht. `verify-notification-mail-links` stößt den
+  Sammel-Lauf für alle Konten der Instanz an und gehört deshalb nur auf eine
+  leere Datenbank. Zwei Skripte stehen auf „von Hand", weil eine Prüfung
+  einen Fehler im Programm zeigt (`verify-community-suspension`,
+  `verify-invite-stock`); sie ziehen nach, sobald er behoben ist. Die
+  E2E-Specs von `apps/control` (1) und `apps/portfolio` (5) laufen in keinem
+  Workflow, ebenso `community-removed.spec.ts` (braucht die Bühne und einen
+  Browser im Bühnen-Lauf). Die Gruppen-Tabellen in
+  `docs/referenz/LIVE-BEWEISE.md` stammen vom 2026-08-02. Der Kopf von
+  `packages/events/tests/participation-guard.test.ts` sagt noch, Übersetzen
+  verlange die Zugehörigkeit.
 
 <a id="a1-anwalt"></a>
 

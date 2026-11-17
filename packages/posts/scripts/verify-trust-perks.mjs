@@ -39,9 +39,15 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import { Client, ID, Permission, Query, Role, TablesDB } from 'node-appwrite'
+import {
+  appwriteRest,
+  createCleanup,
+  createProbeAccount,
+  createProbeCommunity,
+  login,
+  runStamp,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3016)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -63,8 +69,14 @@ const LIMIT_TL0 = Number(process.env.LIMIT_TL0 || 50)
 const LIMIT_TL2 = Number(process.env.LIMIT_TL2 || 75)
 
 const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
 const pool = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+// Die Datenbank des Pools — lokal heißen beide `main`, auf der Bühne sagt es der Läufer.
+const poolDatabaseId = process.env.POOL_DATABASE_ID || databaseId
+const script = 'verify-trust-perks'
+const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const poolRest = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const cleanup = createCleanup({ pool: poolRest, control: controlRest, poolDatabaseId, controlDatabaseId: databaseId })
+const runId = runStamp()
 
 const MEMBERS = 'community_members'
 const COUNTERS = 'member_counters'
@@ -73,7 +85,6 @@ const POSTS = 'community_posts'
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [] }
 
 function check(label, ok, detail = '') {
   if (ok) { pass++; console.log(`  ✔ ${label}`) }
@@ -102,7 +113,7 @@ function call(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
         let json = null
         try { json = JSON.parse(text) }
         catch { /* HTML-Fehlerseite */ }
-        resolve({ status: res.statusCode, json, text })
+        resolve({ status: res.statusCode, json, text, setCookie: res.headers['set-cookie'] ?? [] })
       })
     })
     req.on('error', reject)
@@ -122,77 +133,50 @@ function reasonOf(res) {
   return res.json?.reason ?? res.json?.data?.reason ?? null
 }
 
+/** Probe-Konto. Die Annahme verlangt eine BESTÄTIGTE Adresse (accept.post.ts). */
 async function createPoolUser(tag) {
-  const email = `f57s-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `F57 ${tag}` })
-  cleanup.users.push(user.$id)
-  // Die Annahme verlangt eine BESTÄTIGTE Adresse (accept.post.ts).
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-  return { userId: user.$id, email, password, tag }
+  const account = await createProbeAccount(poolRest, { tag: `f57s-${tag}`, stamp: runId, name: `F57 ${tag}` })
+  cleanup.track('account', account.userId)
+  return { ...account, tag }
 }
 
 /** Der Login gibt seine Cookies über die Header zurück — hier vollständig. */
 function loginWithCookies(account) {
-  return new Promise((resolve, reject) => {
-    const payload = JSON.stringify({ email: account.email, password: account.password })
-    const req = request({
-      host: '::1', port: PORT, path: '/api/auth/login', method: 'POST',
-      headers: { host: CONTROL_HOST, 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) },
-    }, (res) => {
-      let text = ''
-      res.on('data', c => text += c)
-      res.on('end', () => {
-        const raw = (res.headers['set-cookie'] ?? []).find(c => c.startsWith('a_session_'))
-        if (!raw) return reject(new Error(`Kein Session-Cookie (${res.statusCode}): ${text.slice(0, 160)}`))
-        resolve(raw.split(';')[0])
-      })
-    })
-    req.on('error', reject)
-    req.write(payload)
-    req.end()
-  })
+  return login(call, CONTROL_HOST, account)
 }
 
-async function issueCode() {
-  const code = `PUKA-F57S-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId, tableId: 'invite_codes', rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'F57-Stufen-Beweis', maxUses: 0, uses: 0, expiresAt: null, status: 'active',
-    },
-  })
-  cleanup.codes.push(row.$id)
-  return code
-}
+
+/**
+ * Stempel → Lese-Label: im Pool trägt die Spalte `communityId` die tenantId
+ * (`t-…`), das Label am Konto aber die Kennung der Community-Zeile im
+ * Control Plane (`TenantContext.communityId`, tenantsResolver.ts).
+ */
+const labelOfTenant = new Map()
 
 async function createCommunity(cookie, slug, name) {
-  const code = await issueCode()
-  const res = await call(CONTROL_HOST, '/api/onboarding/site', {
-    method: 'POST', cookie,
-    body: probeSiteBody({
-      name,
-      slug,
-      description: 'Beweis für die Stufen-Vorteile.',
-      vibe: 'elegant',
-      inviteCode: code,
-    }),
+  // Anlage über die echte Route `POST /api/onboarding/site` — Rumpf, Code und
+  // Aufräumen kommen aus der gemeinsamen Hilfe (scripts/lib/probe-stage.mjs).
+  const created = await createProbeCommunity({
+    call, controlHost: CONTROL_HOST, cookie, control: controlRest, databaseId, slug, name, cleanup,
+    bodyOverrides: { description: 'Beweis für die Stufen-Vorteile.', vibe: 'elegant' },
   })
-  if (res.status !== 200 || !res.json?.communityId) {
-    throw new Error(`Community-Anlage fehlgeschlagen (${res.status}): ${res.text.slice(0, 200)}`)
-  }
-  cleanup.tenants.push(res.json.communityId)
   // ZWEI IDs: die Runtime-Tabellen tragen `communities.tenantId` (`t-…`), nicht
   // die `$id` — mit der falschen Id sucht man in einer leeren Menge.
-  const row = await control.getRow({ databaseId, tableId: 'communities', rowId: res.json.communityId })
-  return { communityId: res.json.communityId, tenantId: row.tenantId, host: res.json.host }
+  const row = await control.getRow({ databaseId, tableId: 'communities', rowId: created.communityId })
+  cleanup.track('tenant', row.tenantId)
+  labelOfTenant.set(row.tenantId, created.communityId)
+  return { communityId: created.communityId, tenantId: row.tenantId, host: created.host }
 }
 
-/** Warten, bis die frische Mitgliedschaft durch den 30-s-Rollen-Cache ist. */
+/**
+ * Warten, bis die frische Mitgliedschaft durch den 30-s-Rollen-Cache ist.
+ * Jede Nachfrage mit eigener IP: die Route ist auf 10 je Minute und Adresse
+ * gedrosselt (`community:invite-quota`) — mit einer festen Adresse antwortete
+ * sie nach zehn Nachfragen 429, und das Warten hätte die Drossel gemessen.
+ */
 async function waitForMembership(host, cookie) {
   for (let i = 0; i < 45; i++) {
-    const res = await call(host, '/api/community/invites/quota', { cookie })
+    const res = await call(host, '/api/community/invites/quota', { cookie, clientIp: freshIp() })
     if (res.status === 200) return true
     await new Promise(resolve => setTimeout(resolve, 1000))
   }
@@ -201,14 +185,14 @@ async function waitForMembership(host, cookie) {
 
 function counterRow(tenantId, userId) {
   return pool.listRows({
-    databaseId, tableId: COUNTERS,
+    databaseId: poolDatabaseId, tableId: COUNTERS,
     queries: [Query.equal('communityId', tenantId), Query.equal('userId', userId), Query.limit(1)],
   }).then(res => res.rows[0] ?? null)
 }
 
 function badgeCount(tenantId, userId, badgeKey) {
   return pool.listRows({
-    databaseId, tableId: BADGES,
+    databaseId: poolDatabaseId, tableId: BADGES,
     queries: [Query.equal('communityId', tenantId), Query.equal('userId', userId), Query.equal('badgeKey', badgeKey), Query.limit(10)],
   }).then(res => res.total)
 }
@@ -247,11 +231,11 @@ async function backdateMembership(communityId, runtimeUserId, days) {
 async function seedCounters(tenantId, userId, values) {
   const row = await counterRow(tenantId, userId)
   if (row) {
-    await pool.updateRow({ databaseId, tableId: COUNTERS, rowId: row.$id, data: values })
+    await pool.updateRow({ databaseId: poolDatabaseId, tableId: COUNTERS, rowId: row.$id, data: values })
     return row.$id
   }
   const created = await pool.createRow({
-    databaseId, tableId: COUNTERS, rowId: ID.unique(),
+    databaseId: poolDatabaseId, tableId: COUNTERS, rowId: ID.unique(),
     data: { communityId: tenantId, userId, seeded: true, ...values },
     permissions: [],
   })
@@ -263,14 +247,18 @@ async function seedPost(tenantId, authorId, authorName) {
   postCounter++
   const now = new Date().toISOString()
   return pool.createRow({
-    databaseId, tableId: POSTS, rowId: ID.unique(),
+    databaseId: poolDatabaseId, tableId: POSTS, rowId: ID.unique(),
     data: {
       type: 'post', title: `Stufen-Beweis Ziel ${postCounter}`, body: 'Ziel für den Stufen-Beweis.',
       authorId, authorName, status: 'published', scheduledAt: null, publishedAt: now,
       pollOptions: null, pollEndsAt: null, categoryId: '',
       upvotes: 0, downvotes: 0, score: 0, communityId: tenantId,
     },
-    permissions: [],
+    // Dasselbe Leserecht, das die App einem Mitglieder-Beitrag gibt
+    // (`tenantRowPermissionsFor`, Pool: das Label der Community). Seit SEC-031
+    // (2026-11-13) liest die Stimm-Route den Beitrag mit dem Session-Client —
+    // eine Zeile ohne Leserecht ist für sie „nicht da" (404).
+    permissions: [Permission.read(Role.label(labelOfTenant.get(tenantId)))],
   })
 }
 
@@ -301,7 +289,7 @@ try {
 
   const owner = await createPoolUser('owner')
   const ownerCookie = await loginWithCookies(owner)
-  const a = await createCommunity(ownerCookie, `f57s-a-${Date.now().toString(36)}`, 'Stufen A')
+  const a = await createCommunity(ownerCookie, `f57s-a-${runId}`, 'Stufen A')
   const author = await createPoolUser('autor')
 
   /* ── 1. Die Annahme hinterlegt den Einladenden ──────────────────────────── */
@@ -436,7 +424,7 @@ try {
    */
   const owner2 = await createPoolUser('owner-b')
   const owner2Cookie = await loginWithCookies(owner2)
-  const b = await createCommunity(owner2Cookie, `f57s-b-${Date.now().toString(36)}`, 'Stufen B')
+  const b = await createCommunity(owner2Cookie, `f57s-b-${runId}`, 'Stufen B')
 
   await call(b.host, '/api/community/members', {
     method: 'POST', cookie: owner2Cookie, clientIp: freshIp(), body: { email: owner.email, role: 'viewer' },
@@ -569,28 +557,10 @@ catch (error) {
 }
 finally {
   console.log('\nAufräumen …')
-  for (const communityId of cleanup.tenants) {
-    try {
-      const tenantRow = await control.getRow({ databaseId, tableId: 'communities', rowId: communityId }).catch(() => null)
-      const runtimeId = tenantRow?.tenantId ?? communityId
-      for (const table of ['community_invites', MEMBERS]) {
-        const { rows } = await control.listRows({
-          databaseId, tableId: table, queries: [Query.equal('communityId', communityId), Query.limit(200)],
-        })
-        for (const row of rows) await control.deleteRow({ databaseId, tableId: table, rowId: row.$id }).catch(() => {})
-      }
-      for (const table of [COUNTERS, BADGES, POSTS, 'post_votes']) {
-        const { rows } = await pool.listRows({
-          databaseId, tableId: table, queries: [Query.equal('communityId', runtimeId), Query.limit(500)],
-        }).catch(() => ({ rows: [] }))
-        for (const row of rows) await pool.deleteRow({ databaseId, tableId: table, rowId: row.$id }).catch(() => {})
-      }
-      await control.deleteRow({ databaseId, tableId: 'communities', rowId: communityId }).catch(() => {})
-    }
-    catch { /* best effort */ }
-  }
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Einladungen, Codes, Zähler, Abzeichen, Beiträge, Stimmen)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
 
   console.log(`\n${fail === 0 ? '✔' : '✗'} F57-Stufen (Staffel + Campaigner/Champion): ${pass}/${pass + fail}\n`)
   process.exit(fail === 0 ? 0 : 1)

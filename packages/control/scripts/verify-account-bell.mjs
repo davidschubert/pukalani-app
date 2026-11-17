@@ -30,6 +30,11 @@
  * Braucht: lokale Appwrite, control-Dev-Server (:3004) und platform-Dev-Server
  * (:3006). POOL_KEY = NUXT_APPWRITE_KEY aus apps/platform/.env (das Pool-
  * Projekt ist ein anderes Projekt — der control-Key kommt dort nicht hinein).
+ * Auf der Bühne: `pnpm buehne run --only verify-account-bell`.
+ *
+ * Aufgeräumt wird auch, was die Anfrage bei ANDEREN Betreiber-Konten des
+ * Control Plane hinterlässt (die Meldung geht an alle mit Label `admin`):
+ * gefunden über den eindeutigen Titel dieses Laufs.
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { readFileSync } from 'node:fs'
@@ -37,6 +42,7 @@ import { request as httpRequest } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve as resolvePath } from 'node:path'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
+import { appwriteRest, findColumns, PERSON_COLUMNS, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolvePath(HERE, '../../..')
@@ -72,7 +78,7 @@ const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolPr
 
 let pass = 0
 let fail = 0
-const cleanup = { controlUsers: [], poolUsers: [], controlRows: [], poolRows: [], requests: [] }
+const cleanup = { controlUsers: [], poolUsers: [], controlRows: [], poolRows: [], requests: [], requestTitle: '' }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -126,13 +132,14 @@ async function login(caller, account) {
 }
 
 /** Eine Notification anlegen, GENAU wie notify() es tut (Empfänger-Permissions,
- *  tenantId als Ablage-Merkmal). */
-async function seedNotification(db, recipientId, { type, title, tenantId }) {
+ *  Ablage-Merkmal in der Spalte `communityId` — bis system-025/026 hieß sie
+ *  `tenantId`; im Pool trägt sie die tenantId der Community, sonst `_account`). */
+async function seedNotification(db, recipientId, { type, title, communityId }) {
   return await db.createRow({
     databaseId,
     tableId: 'notifications',
     rowId: ID.unique(),
-    data: { recipientId, type, title, body: 'C17-Beweis', link: '/account/billing', read: false, tenantId },
+    data: { recipientId, type, title, body: 'C17-Beweis', link: '/account/billing', read: false, communityId },
     permissions: [Permission.read(Role.user(recipientId)), Permission.update(Role.user(recipientId))],
   })
 }
@@ -181,6 +188,7 @@ try {
   // Der ECHTE Weg: das öffentliche Formular liegt in der Platform-App auf dem
   // Kontroll-Host, das Anlegen gehört dem Control Plane (Service-Naht).
   const requestEmail = `c17-anfrage-${stamp}@example.test`
+  cleanup.requestTitle = requestEmail
   const requested = await callPlatform(CONTROL_HOST, '/api/onboarding/request', {
     method: 'POST', body: { email: requestEmail, note: 'C17-Beweis', locale: 'de' },
   })
@@ -297,7 +305,7 @@ try {
   const communityTitle = `c17-community-${stamp}`
   const accountTitle = `c17-konto-${stamp}`
   if (tenantId) {
-    cleanup.poolRows.push((await seedNotification(poolDb, member.id, { type: 'reply', title: communityTitle, tenantId })).$id)
+    cleanup.poolRows.push((await seedNotification(poolDb, member.id, { type: 'reply', title: communityTitle, communityId: tenantId })).$id)
     cleanup.poolRows.push((await seedNotification(poolDb, member.id, { type: 'billing', title: accountTitle, communityId: ACCOUNT })).$id)
   }
 
@@ -332,8 +340,51 @@ finally {
   for (const id of cleanup.requests) {
     await controlDb.deleteRow({ databaseId, tableId: 'invite_requests', rowId: id }).catch(() => {})
   }
+  // Die Anfrage meldet sich bei JEDEM Betreiber-Konto des Control Plane —
+  // auch bei denen, die es schon gab. Ihr Titel ist die Adresse dieses Laufs.
+  const requestRows = async () => cleanup.requestTitle
+    ? (await controlDb.listRows({ databaseId, tableId: 'notifications', queries: [Query.equal('type', 'invite.request'), Query.equal('title', cleanup.requestTitle), Query.limit(100)] }).catch(() => ({ rows: [] }))).rows
+    : []
+  for (const row of await requestRows()) {
+    await controlDb.deleteRow({ databaseId, tableId: 'notifications', rowId: row.$id }).catch(() => {})
+  }
   for (const id of cleanup.controlUsers) await controlUsers.delete({ userId: id }).catch(() => {})
   for (const id of cleanup.poolUsers) await poolUsers.delete({ userId: id }).catch(() => {})
+  // Anmeldungen hinterlassen Zeilen an den Konten (Protokoll, Zustimmung …):
+  // alles, was über eine Personen-Spalte an ihnen hängt, in beiden Projekten.
+  const personSweeps = [
+    // Das Schema zu lesen braucht `tables.read` — das hat lokal nur der Migrations-Schlüssel.
+    { client: appwriteRest({ endpoint, projectId: controlProject, key: process.env.NUXT_APPWRITE_MIGRATIONS_KEY || controlKey, script: 'verify-account-bell (Control)' }), db: databaseId, ids: cleanup.controlUsers },
+    { client: appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script: 'verify-account-bell (Pool)' }), db: process.env.POOL_DATABASE_ID || databaseId, ids: cleanup.poolUsers },
+  ]
+  const personRest = []
+  for (const { client, db, ids } of personSweeps) {
+    if (!ids.length) continue
+    const targets = await findColumns(client, db, PERSON_COLUMNS).catch(() => null)
+    if (!targets) {
+      personRest.push(`${client.projectId}: Schema nicht lesbar, Spuren der Konten ungezählt`)
+      continue
+    }
+    await sweepRows(client, db, targets, ids, { remove: true }).catch(() => {})
+    const rest = await sweepRows(client, db, targets, ids).catch(error => ({ [`Zählung ${client.projectId}`]: String(error?.message ?? error) }))
+    for (const [key, n] of Object.entries(rest)) personRest.push(`${client.projectId}:${key}=${n}`)
+  }
+
+  // NACHZÄHLEN — nicht dem eigenen Löschen glauben.
+  const exists = promise => promise.then(() => true).catch(() => false)
+  const left = []
+  for (const id of cleanup.controlRows) if (await exists(controlDb.getRow({ databaseId, tableId: 'notifications', rowId: id }))) left.push(`control-Meldung ${id}`)
+  for (const id of cleanup.poolRows) if (await exists(poolDb.getRow({ databaseId, tableId: 'notifications', rowId: id }))) left.push(`pool-Meldung ${id}`)
+  for (const id of cleanup.requests) if (await exists(controlDb.getRow({ databaseId, tableId: 'invite_requests', rowId: id }))) left.push(`Anfrage ${id}`)
+  if ((await requestRows()).length) left.push('Anfrage-Meldungen bei anderen Betreibern')
+  if (cleanup.requestTitle) {
+    const pending = await controlDb.listRows({ databaseId, tableId: 'invite_requests', queries: [Query.equal('email', cleanup.requestTitle), Query.limit(5)] }).catch(() => ({ total: 0 }))
+    if (pending.total) left.push(`${pending.total} Anfrage-Zeile(n)`)
+  }
+  for (const id of cleanup.controlUsers) if (await exists(controlUsers.get({ userId: id }))) left.push(`control-Konto ${id}`)
+  for (const id of cleanup.poolUsers) if (await exists(poolUsers.get({ userId: id }))) left.push(`pool-Konto ${id}`)
+  left.push(...personRest)
+  check('nachgezählt: nichts übrig (Meldungen, Anfrage, Konten)', left.length === 0, left.join(', '))
 
   console.log(`\n${pass} bestanden, ${fail} fehlgeschlagen`)
   process.exit(fail === 0 ? 0 : 1)

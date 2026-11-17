@@ -14,6 +14,17 @@
 # wäre eine GitHub-Einstellung). Er läuft NEBEN den Pflicht-Prüfungen, ein
 # Pull Request wartet deshalb nicht länger.
 #
+# WELCHE BEWEISE LAUFEN, steht an EINER Stelle: `scripts/buehne/beweise.mjs`
+# (eine Zeile je Skript: e2e · buehne · nacht · hand mit Grund). Der Läufer
+# `pnpm buehne run` fährt sie und schreibt eine Tabelle in die
+# Zusammenfassung des Laufs. Ein neues Skript ohne Einteilung macht
+# `pnpm check:live-beweise` und einen Test rot.
+#
+# ROT AUF main ODER NACHTS ⇒ ALARM: der Job `alarm` öffnet das Issue
+# `buehne-alarm` (offen = Alarm, der nächste grüne Lauf schließt es) — derselbe
+# Weg wie beim Produktions-Wächter (docs/runbooks/PRODUKTIONS-ALARM.md), ohne
+# Secret. Ein roter Lauf an einem Pull Request öffnet nichts; er steht dort.
+#
 # WAS DIESER LAUF NICHT BEWEIST (steht auch in .claude/rules/tests.md):
 #  · Production hat die direkten Anmelde-Wege der Datenbank AUS, die CI hat
 #    sie AN — dass niemand an unserer Anmeldung vorbeikommt, zeigt er nicht.
@@ -30,7 +41,21 @@ on:
   push:
     branches: [main]
   pull_request:
+  # NACHTS die langen Beweise (Skripte mit Wartezeiten, ab rund einer Minute).
+  # Welche das sind, steht in `scripts/buehne/beweise.mjs` (`lauf: 'nacht'`).
+  schedule:
+    - cron: '41 1 * * *'
   workflow_dispatch:
+    inputs:
+      lauf:
+        description: 'Welche Beweise: buehne (kurz) oder nacht (kurz + lang)'
+        type: choice
+        options: [buehne, nacht]
+        default: buehne
+      alarm_drill:
+        description: 'Probealarm: tut so, als wäre der Lauf rot (öffnet das Alarm-Issue)'
+        type: boolean
+        default: false
 
 # Rechte stehen je Job (SEC-041): ohne eigene Angabe hat ein Job keine.
 permissions: {}
@@ -46,17 +71,47 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    timeout-minutes: 30
+    # Der nächtliche Lauf fährt auch die langen Beweise.
+    timeout-minutes: 60
     env:
       PLATFORM_PORT: '3150'
       CONTROL_PORT: '3004'
       CONTROL_HOST: app.localhost
+      SMTP_PORT: '1025'
+      # Zeitplan ⇒ nacht; von Hand ⇒ die Eingabe; sonst (Pull Request, Push) ⇒ buehne.
+      LAUF: ${{ github.event_name == 'schedule' && 'nacht' || inputs.lauf || 'buehne' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Appwrite-Instanzschlüssel erzeugen
+      # Lokaler Briefkasten für ALLE Mails dieses Laufs (Einladung, Hinweis,
+      # Zahlungswarnung der Apps; Anmelde-Code der Datenbank): nichts verlässt
+      # den Runner. Über Version UND Prüfsumme festgelegt, wie die Actions
+      # über einen Commit. Steht VOR dem Stack, weil die Datenbank seine
+      # Adresse beim Start braucht.
+      - name: Briefkasten starten (Mailpit)
+        run: >
+          docker run -d --name buehne-mailpit
+          -p "$SMTP_PORT:1025" -p 8025:8025
+          axllent/mailpit:v1.33.1@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
+
+      # Der Instanz-Schlüssel je Lauf (wie in e2e.yml) — und der MAIL-WEG DER
+      # DATENBANK: ohne Mail-Server bietet Appwrite den Anmelde-Code per Mail
+      # nicht an, der passwortlose Weg antwortete dann anders als auf
+      # Production. Die Container erreichen den Briefkasten über die Adresse
+      # des Docker-Hosts (aus dem Standard-Netz gelesen, nicht geraten).
+      - name: Appwrite-Instanzschlüssel und Mail-Weg setzen
         working-directory: ci/appwrite
-        run: printf '\n_APP_OPENSSL_KEY_V1=%s\n' "$(openssl rand -hex 16)" >> ci.env
+        run: |
+          gateway=$(docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}')
+          if [ -z "$gateway" ]; then
+            echo '::error::Adresse des Docker-Hosts nicht gefunden'
+            exit 1
+          fi
+          {
+            printf '\n_APP_OPENSSL_KEY_V1=%s\n' "$(openssl rand -hex 16)"
+            printf '_APP_SMTP_HOST=%s\n' "$gateway"
+            printf '_APP_SMTP_PORT=%s\n' "$SMTP_PORT"
+          } >> ci.env
 
       - name: Appwrite-Stack starten (im Hintergrund)
         working-directory: ci/appwrite
@@ -112,6 +167,7 @@ jobs:
           --control-port "$CONTROL_PORT"
           --platform-port "$PLATFORM_PORT"
           --control-host "$CONTROL_HOST"
+          --smtp-port "$SMTP_PORT"
 
       # Beide Datenbanken NEBENEINANDER: verschiedene Projekte, dieselbe
       # Instanz. Die Protokolle wandern in Dateien und werden nacheinander
@@ -172,19 +228,33 @@ jobs:
       - name: Bühne aufbauen (zwei Communities, Konten je Rolle)
         run: node scripts/buehne/buehne.mjs up --platform-port "$PLATFORM_PORT" --control-host "$CONTROL_HOST"
 
-      # Jeder Beweis ein EIGENER Schritt mit sprechendem Namen: ein roter Lauf
-      # soll am Schritt-Namen zeigen, WELCHE Zusage gebrochen ist.
       - name: Beweis — Rollen auf der Bühne (Anmelden, Mitglied, fremd, entfernt, Anlage über die echte Route)
         run: node scripts/buehne/buehne.mjs smoke
 
-      - name: Beweis — Hinweis auf die ablaufende Testphase (M13)
+      # ALLE eingeteilten Beweise, einer nach dem anderen. Je Skript eine
+      # aufklappbare Gruppe im Protokoll; die Tabelle (Skript, Ergebnis,
+      # Zählung, Dauer) steht in der Zusammenfassung des Laufs. Ein roter
+      # Beweis hält die übrigen nicht auf, der Schritt endet dann rot.
+      - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
+        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT"
+
+      # Acht Test-Dateien prüfen die Trennung der Communities gegen eine
+      # ECHTE Datenbank und werden ohne sie übersprungen — in `test.yml` also
+      # immer. Hier steht die Datenbank; verlangt wird: nichts übersprungen.
+      - name: Isolations-Tests gegen die echte Datenbank (sonst übersprungen)
         run: |
-          POOL_KEY="$(grep '^NUXT_APPWRITE_KEY=' apps/platform/.env | cut -d= -f2-)"
-          export POOL_KEY
-          export NUXT_PUBLIC_CONTROL_POOL_PROJECT=account
-          cd packages/onboarding
-          node --experimental-strip-types --env-file=../../apps/control/.env \
-            scripts/verify-trial-notice.mjs
+          lauf() {
+            envfile="$1"; shift
+            ( set -a; . "$envfile"; set +a; "$@" ) | tee "$RUNNER_TEMP/isolation.log"
+            if grep -Eq 'Tests .*skipped' "$RUNNER_TEMP/isolation.log"; then
+              echo '::error::Ein Isolations-Test wurde übersprungen — die Datenbank-Umgebung fehlt ihm.'
+              exit 1
+            fi
+          }
+          set -o pipefail
+          lauf apps/platform/.env pnpm --filter @pukalani/activity --filter @pukalani/comments --filter @pukalani/media exec vitest run tests/tenant-isolation.test.ts
+          lauf apps/platform/.env pnpm --filter @pukalani/core exec vitest run tests/notification-tenant-isolation.test.ts
+          lauf apps/control/.env pnpm --filter @pukalani/control exec vitest run tests/community-authz-isolation.test.ts tests/communityHostResolver.test.ts tests/communityJoinDatesResolver.test.ts tests/tenants-resolver.test.ts
 
       # Abbau mit Nachzählen: bleibt eine Zeile oder ein Konto der Bühne
       # übrig, endet der Schritt rot. Läuft auch nach einem roten Beweis.
@@ -203,3 +273,74 @@ jobs:
           echo '── Betreiber-App'; tail -n 60 "$RUNNER_TEMP/control.log" || true
           echo '── Platform-Server'; tail -n 60 "$RUNNER_TEMP/platform.log" || true
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite appwrite-worker mariadb || true
+
+  # ── ALARM ───────────────────────────────────────────────────────────────
+  # Ein roter Lauf ist nur eine Farbe (Oktober 2026: ein Wächter war 19 Tage
+  # rot, niemand sah es). Auf main und nachts wird daraus ein Issue.
+  alarm:
+    runs-on: ubuntu-latest
+    needs: [buehne]
+    if: >
+      always() && !cancelled() &&
+      github.event.repository.fork == false &&
+      (github.event_name == 'schedule' || github.event_name == 'push' || inputs.alarm_drill)
+    # Kein Checkout, kein Secret: nur Issues lesen und schreiben.
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      LABEL: buehne-alarm
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      RESULT: ${{ needs.buehne.result }}
+      DRILL: ${{ inputs.alarm_drill && 'ja' || 'nein' }}
+      ANLASS: ${{ github.event_name }}
+      ALARM_ASSIGNEE: ${{ github.repository_owner }}
+    steps:
+      - name: Issue öffnen, bestätigen oder schließen
+        run: |
+          # STRENG: bricht dieser Schritt ab, ist der Lauf rot — ein kaputter
+          # Alarmweg darf nicht grün aussehen.
+          set -euo pipefail
+          stand=$(date -u '+%Y-%m-%d %H:%M UTC')
+          # Nur ein ECHTES Ergebnis zählt. Ein verdrängter oder abgebrochener
+          # Lauf („cancelled", „skipped") sagt nichts über das Produkt: weder
+          # Alarm noch Entwarnung.
+          case "$RESULT" in
+            success) zustand=gruen ;;
+            failure) zustand=rot ;;
+            *) zustand=unklar ;;
+          esac
+          if [ "$DRILL" = "ja" ]; then zustand=rot; fi
+          if [ "$zustand" = "unklar" ]; then
+            echo "Ergebnis des Laufs: $RESULT — kein Alarm, keine Entwarnung."
+            exit 0
+          fi
+          gh label create "$LABEL" --color B60205 --description 'Die Bühne (Tests über den echten Kundenpfad) ist rot' >/dev/null 2>&1 || true
+          nummer=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+          hinweis=''
+          if [ "$DRILL" = "ja" ]; then hinweis=' (PROBEALARM — nichts ist kaputt)'; fi
+          if [ "$zustand" = "rot" ]; then
+            if [ -z "$nummer" ]; then
+              {
+                echo "Die Bühne ist rot$hinweis."
+                echo
+                echo "- Lauf: $RUN_URL"
+                echo "- Anlass: $ANLASS · Stand: $stand"
+                echo
+                echo 'Was zu tun ist: den Lauf öffnen. Die Zusammenfassung zeigt je Beweis-Skript, ob es bestanden hat; der rote Schritt nennt die letzten Zeilen. Ein roter Beweis heißt: eine Zusage des Kundenpfads hält gerade nicht, oder das Skript ist veraltet. Einteilung und Aufruf von Hand: docs/referenz/LIVE-BEWEISE.md.'
+                echo
+                echo 'Dieses Issue schließt sich von selbst, sobald ein Lauf auf main oder der nächtliche Lauf wieder grün ist.'
+              } > /tmp/issue-body.md
+              gh issue create --title "Bühne rot: Tests über den echten Kundenpfad$hinweis" --label "$LABEL" --assignee "$ALARM_ASSIGNEE" --body-file /tmp/issue-body.md
+            else
+              gh issue comment "$nummer" --body "Weiter rot$hinweis ($stand, Anlass: $ANLASS). Lauf: $RUN_URL" >/dev/null
+              echo "Alarm-Issue #$nummer bestätigt."
+            fi
+          elif [ -n "$nummer" ]; then
+            gh issue comment "$nummer" --body "✅ Entwarnung ($stand): die Bühne ist wieder grün. Lauf: $RUN_URL" >/dev/null
+            gh issue close "$nummer" --reason completed >/dev/null
+            echo "Alarm-Issue #$nummer geschlossen."
+          else
+            echo 'Grün, kein offenes Alarm-Issue.'
+          fi

@@ -19,17 +19,21 @@
  *      Admin-Client die EINZIGE Grenze).
  *
  * node:http über ::1, weil fetch den Host-Header verwirft und Nitro auf
- * [::1] hört. Setzt die Tenant-Pläne temporär auf 'pro' (Resolver-Cache
- * 30 s → Warte-Schleife) und stellt sie am Ende wieder her; räumt Event
- * und Test-User auch im Fehlerfall weg.
+ * [::1] hört. Setzt den Plan von A AUSDRÜCKLICH erst auf 'basic', dann
+ * beide auf 'pro' (Resolver-Cache 30 s → Warte-Schleife) und stellt die
+ * gelesenen Pläne am Ende wieder her — das Skript setzt keinen Plan voraus
+ * (auf der Bühne stehen beide auf pro). Räumt Event, Feed-Eintrag und
+ * Test-User auch im Fehlerfall weg und zählt danach nach.
  *
  * Aus packages/events (dort löst node-appwrite auf):
  *   node --env-file=../../apps/platform/.env scripts/verify-pool-isolation.mjs
+ * Auf der Bühne: `pnpm buehne run --only events/scripts/verify-pool-isolation`.
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { assertTarget, isLocalEndpoint } from '../../../scripts/lib/target.mjs'
+import { appwriteRest, findColumns, PERSON_COLUMNS, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3131)
 const HOST_A = process.env.TENANT_A_HOST || 'kunde-a.localhost'
@@ -130,9 +134,12 @@ try {
   }
 
   console.log('1. Produkt-Gate (events = ab Plan pro)')
-  // Beide Tenants stehen lokal auf plan null (= basic) → Liste muss 404 sein.
-  // Warte-Schleife: der Host-Resolver cacht 30 s — ein direkt vorher
-  // beendeter Lauf kann 'pro' noch im Cache haben.
+  // Die gelesenen Pläne kommen im finally zurück — VOR der ersten Änderung merken.
+  cleanup.planRestore.push({ id: tenantA.$id, plan: tenantA.plan ?? null }, { id: tenantB.$id, plan: tenantB.plan ?? null })
+  // Plan von A ausdrücklich auf 'basic' setzen statt ihn vorauszusetzen.
+  // Warte-Schleife: der Host-Resolver cacht 30 s — der alte Plan kann noch
+  // im Cache stehen.
+  await setPlan(tenantA, 'basic')
   const gatedClosed = await waitFor('Produkt-Gate zu (Plan basic → 404)', async () => {
     const res = await call(HOST_A, '/api/events')
     return res.status === 404
@@ -140,7 +147,6 @@ try {
   check('Plan basic → /api/events antwortet 404 (Produkt existiert nicht)', gatedClosed)
 
   // Pläne temporär auf 'pro' heben (Restore im finally)
-  cleanup.planRestore.push({ id: tenantA.$id, plan: tenantA.plan ?? null }, { id: tenantB.$id, plan: tenantB.plan ?? null })
   await setPlan(tenantA, 'pro')
   await setPlan(tenantB, 'pro')
   const planLive = await waitFor('Plan-Upgrade sichtbar (Resolver-Cache 30 s)', async () => {
@@ -208,14 +214,43 @@ catch (error) {
 }
 finally {
   console.log('\n6. Aufräumen')
+  // Das Veröffentlichen schreibt einen Feed-Eintrag (activities, objectId =
+  // Event) — der gehört mit weg, sonst bleibt er im Feed von A stehen.
+  const feedRows = id => pool.listRows({ databaseId, tableId: 'activities', queries: [Query.equal('objectId', id), Query.limit(25)] })
+    .then(res => res.rows).catch(() => [])
   for (const id of cleanup.events) {
+    for (const row of await feedRows(id)) await pool.deleteRow({ databaseId, tableId: 'activities', rowId: row.$id }).catch(() => {})
     await pool.deleteRow({ databaseId, tableId: 'events', rowId: id }).catch(() => {})
   }
   for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
   for (const { id, plan } of cleanup.planRestore) {
     await control.updateRow({ databaseId: controlDb, tableId: 'communities', rowId: id, data: { plan } }).catch(() => {})
   }
-  console.log(`  ✔ aufgeräumt (${cleanup.events.length} Event(s), ${cleanup.users.length} User, Pläne zurückgesetzt)`)
+  // Die Anmeldung hinterlässt Zeilen am Konto (Protokoll): alles, was über
+  // eine Personen-Spalte an ihm hängt, fällt mit.
+  const left = []
+  if (cleanup.users.length) {
+    const poolRest = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script: 'verify-pool-isolation (events)' })
+    const targets = await findColumns(poolRest, databaseId, PERSON_COLUMNS).catch(() => null)
+    if (!targets) left.push('Schema des Pools nicht lesbar, Spuren des Kontos ungezählt')
+    else {
+      await sweepRows(poolRest, databaseId, targets, cleanup.users, { remove: true })
+      for (const [key, n] of Object.entries(await sweepRows(poolRest, databaseId, targets, cleanup.users))) left.push(`${key}=${n}`)
+    }
+  }
+  // NACHZÄHLEN — nicht dem eigenen Löschen glauben.
+  for (const id of cleanup.events) {
+    if (await pool.getRow({ databaseId, tableId: 'events', rowId: id }).then(() => true).catch(() => false)) left.push(`event ${id}`)
+    if ((await feedRows(id)).length) left.push(`Feed-Eintrag zu ${id}`)
+  }
+  for (const id of cleanup.users) {
+    if (await poolUsers.get({ userId: id }).then(() => true).catch(() => false)) left.push(`Konto ${id}`)
+  }
+  for (const { id, plan } of cleanup.planRestore) {
+    const row = await control.getRow({ databaseId: controlDb, tableId: 'communities', rowId: id }).catch(() => null)
+    if ((row?.plan ?? null) !== plan) left.push(`Plan von ${id}`)
+  }
+  check(`aufgeräumt (${cleanup.events.length} Event(s) samt Feed-Eintrag, ${cleanup.users.length} User samt Spuren, Pläne zurückgesetzt) — nachgezählt`, left.length === 0, left.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

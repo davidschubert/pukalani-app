@@ -18,6 +18,7 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { PERSON_COLUMNS, appwriteRest, findColumns, generatePassword, runStamp, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
 
 const PLATFORM_PORT = Number(process.env.PLATFORM_PORT || 3006)
 const STUDIO_URL = process.env.STUDIO_URL || 'http://localhost:3004'
@@ -39,7 +40,11 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
 }
 
 const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
+// Der Wegwerf-Betreiber ist ein Konto im Projekt des Control Plane — dafür
+// braucht es `users.write`. Der Laufzeit-Schlüssel der Betreiber-App hat das,
+// der Migrations-Schlüssel lokal nicht (in der CI hat EIN Schlüssel alle Rechte).
+const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(process.env.NUXT_APPWRITE_KEY || controlKey))
+const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script: 'verify-invite-stock' })
 
 let pass = 0
 let fail = 0
@@ -119,13 +124,13 @@ async function mailTo(email, attempts = 12) {
 
 try {
   console.log(`\nBeweis Vorrat + Betreiber-Session — Studio ${STUDIO_URL}, Platform :${PLATFORM_PORT}\n`)
-  const stamp = Date.now().toString(36)
+  const stamp = runStamp()
 
   console.log('1. Wegwerf-Betreiber mit echter Sitzung')
   const operator = await controlUsers.create({
     userId: ID.unique(),
     email: `betreiber-${stamp}@example.test`,
-    password: `Pw-${ID.unique()}`,
+    password: generatePassword(),
     name: 'Vorrats-Beweis',
   })
   cleanup.operators.push(operator.$id)
@@ -191,6 +196,16 @@ try {
   const usedSlot = (afterAssign.json?.codes ?? []).find(c => c.boundEmail === applicant)
   if (usedSlot) cleanup.codes.push(usedSlot.id)
   check('der Code steht jetzt auf „zugewiesen"', usedSlot?.state === 'assigned', usedSlot?.state)
+  // Die Zuweisung nimmt einen Platz AUS DEM VORRAT (takeFromStock, ältester
+  // freier zuerst) — sie legt keinen neuen Code daneben an. Gemessen an den
+  // eigenen drei Plätzen: genau einer ist jetzt an die Adresse gebunden.
+  const ownSlots = await control.listRows({
+    databaseId, tableId: 'invite_codes', queries: [Query.equal('$id', rawStock.rows.map(r => r.$id)), Query.limit(5)],
+  })
+  const boundOwn = ownSlots.rows.filter(r => r.boundEmail === applicant)
+  check('die Zuweisung kam aus dem Vorrat (einer der drei Plätze ist jetzt gebunden)',
+    boundOwn.length === 1 && boundOwn[0].$id === usedSlot?.id,
+    `gebunden: ${boundOwn.length}, zugewiesener Code ${usedSlot?.id ?? '—'} ${rawStock.rows.some(r => r.$id === usedSlot?.id) ? 'aus dem Vorrat' : 'NEU angelegt'}`)
   check('ein Platz weniger frei', afterAssign.json?.stock?.free === (afterFill.json?.stock?.free ?? 0) - 1,
     `${afterFill.json?.stock?.free} → ${afterAssign.json?.stock?.free}`)
 
@@ -228,10 +243,25 @@ finally {
   for (const id of new Set(cleanup.requests)) {
     await control.deleteRow({ databaseId, tableId: 'invite_requests', rowId: id }).catch(() => {})
   }
-  for (const id of new Set(cleanup.operators)) {
+  // Was am Betreiber hängt (Glocke zur Anfrage, Protokoll der Zuweisung) —
+  // über die Personen-Spalten des Control Plane, wie die gemeinsame Hilfe es tut.
+  const operatorIds = [...new Set(cleanup.operators)]
+  const personTargets = await findColumns(controlRest, databaseId, PERSON_COLUMNS)
+    ?? [{ tableId: 'notifications', column: 'recipientId' }]
+  await sweepRows(controlRest, databaseId, personTargets, operatorIds, { remove: true })
+  for (const id of operatorIds) {
     await controlUsers.delete({ userId: id }).catch(() => {})
   }
-  console.log('  ✔ aufgeräumt')
+  // NACHZÄHLEN — nicht dem eigenen Löschen glauben.
+  const leftovers = []
+  const gone = (table, id) => control.getRow({ databaseId, tableId: table, rowId: id }).then(() => false, error => error?.code === 404)
+  for (const id of new Set(cleanup.codes)) if (!await gone('invite_codes', id)) leftovers.push(`invite_codes:${id}`)
+  for (const id of new Set(cleanup.requests)) if (!await gone('invite_requests', id)) leftovers.push(`invite_requests:${id}`)
+  for (const [key, n] of Object.entries(await sweepRows(controlRest, databaseId, personTargets, operatorIds))) leftovers.push(`${key}=${n}`)
+  for (const id of operatorIds) {
+    if (await controlUsers.get({ userId: id }).then(() => true, error => error?.code !== 404)) leftovers.push(`Betreiber-Konto:${id}`)
+  }
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail ? '✗' : '✔'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail ? 1 : 0)
 }

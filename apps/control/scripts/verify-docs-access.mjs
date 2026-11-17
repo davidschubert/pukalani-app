@@ -16,10 +16,16 @@
  *   PROBE_BASE=http://localhost:3147 node --env-file=… …            # anderer Port
  *   … --keep                                                        # Testkonto behalten
  *
- * Das Skript legt einen WEGWERF-Betreiber an (Label `admin`), meldet sich über
- * die echte App-Route /api/auth/login an und löscht das Konto am Ende wieder.
+ * Das Skript legt einen WEGWERF-Betreiber an (Label `admin`, Adresse und
+ * Passwort je Lauf neu), meldet sich über die echte App-Route /api/auth/login
+ * an und löscht das Konto am Ende wieder — und zählt nach, dass es weg ist.
  */
 import '../../../scripts/lib/assert-target.mjs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { generatePassword, probeEmail, runStamp } from '../../../scripts/lib/probe-stage.mjs'
+
 const BASE = process.env.PROBE_BASE ?? 'http://localhost:3004'
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -31,9 +37,27 @@ if (!endpoint || !projectId || !apiKey) {
   process.exit(1)
 }
 
-const EMAIL = 'docs-verify@local.test'
-const PASSWORD = 'Docs-Verify-2026!x'
-const USER_ID = 'docs-verify-user'
+const STAMP = runStamp()
+const EMAIL = probeEmail('docs-verify', STAMP)
+const PASSWORD = generatePassword()
+const USER_ID = `docsverify${STAMP}`
+
+/**
+ * Die Abschnitts-Titel der Doku, gelesen aus dem REPO (`docs/content/<n>.<abschnitt>/.navigation.yml`)
+ * — nicht aus der geprüften Antwort und nicht von Hand abgeschrieben (die
+ * Handliste hieß nach einem Massen-Umbenennen „Produkte", der Abschnitt heißt
+ * „Features").
+ */
+const CONTENT_DIR = join(fileURLToPath(new URL('.', import.meta.url)), '../../../docs/content')
+const SECTION_TITLES = readdirSync(CONTENT_DIR, { withFileTypes: true })
+  .filter(entry => entry.isDirectory())
+  .map((entry) => {
+    try {
+      return readFileSync(join(CONTENT_DIR, entry.name, '.navigation.yml'), 'utf8').match(/^title:\s*(.+)$/m)?.[1]?.trim() ?? null
+    }
+    catch { return null }
+  })
+  .filter(Boolean)
 
 async function appwrite(path, method = 'GET', body) {
   const res = await fetch(`${endpoint}${path}`, {
@@ -47,13 +71,12 @@ async function appwrite(path, method = 'GET', body) {
 const results = []
 function check(name, pass, detail) {
   results.push(pass)
-  console.log(`${pass ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`)
+  console.log(`${pass ? '✔' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`)
 }
 
 // ── Wegwerf-Betreiber ───────────────────────────────────────────────────────
 const created = await appwrite('/users', 'POST', { userId: USER_ID, email: EMAIL, password: PASSWORD, name: 'Docs Verify' })
-if (created.status === 409) await appwrite(`/users/${USER_ID}/password`, 'PATCH', { password: PASSWORD })
-else if (created.status >= 300) {
+if (created.status >= 300) {
   console.error('✗ User-Anlage fehlgeschlagen', created.status, created.json)
   process.exit(1)
 }
@@ -110,8 +133,9 @@ if (cookie) {
     /Monorepo, dokumentiert|Was dich hier erwartet/i.test(homeHtml), `${homeHtml.length} Bytes`)
   // Die Abschnitte sind auf der Startseite zugeklappt (nur der aktive Zweig
   // rendert Links), deshalb auf die Abschnitts-TITEL prüfen, nicht auf hrefs.
-  check('Betreiber: Seitenleiste zeigt die Content-Navigation',
-    ['Architektur', 'Produkte', 'Guides'].every(section => homeHtml.includes(section)))
+  check('Betreiber: Seitenleiste zeigt die Content-Navigation (alle Abschnitte aus docs/content)',
+    SECTION_TITLES.length >= 3 && SECTION_TITLES.every(section => homeHtml.includes(section)),
+    `fehlt: ${SECTION_TITLES.filter(section => !homeHtml.includes(section)).join(', ') || '—'}`)
 
   const sub = await authed('/docs/architektur/hosts-und-ports')
   const subHtml = await sub.text()
@@ -125,8 +149,10 @@ if (cookie) {
 
 // ── Aufräumen ───────────────────────────────────────────────────────────────
 if (!process.argv.includes('--keep')) {
-  const del = await appwrite(`/users/${USER_ID}`, 'DELETE')
-  check('Wegwerf-Betreiber gelöscht', del.status === 204 || del.status === 200, `status ${del.status}`)
+  await appwrite(`/users/${USER_ID}`, 'DELETE')
+  // Nachzählen: das Konto muss weg sein (404), nicht nur „gelöscht" heißen.
+  const after = await appwrite(`/users/${USER_ID}`)
+  check('aufgeräumt — Wegwerf-Betreiber nachgezählt weg', after.status === 404, `status ${after.status}`)
 }
 
 const failed = results.filter(ok => !ok).length

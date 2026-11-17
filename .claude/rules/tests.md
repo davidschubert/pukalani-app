@@ -172,3 +172,42 @@ liegen; (3) ein Hilfs-Modul, das direkt gestartet nichts tut, endet mit
 Exit 0 und sieht aus wie ein bestandener Lauf — der Rauchtest weigert sich
 deshalb ohne `pnpm buehne smoke`. Einordnung aller Skripte:
 docs/referenz/LIVE-BEWEISE.md.
+
+DIE BEWEISE LAUFEN VON SELBST (OPS-009, seit 2026-11-17): bis dahin liefen
+6 von 82 Beweis-Skripten in der CI, alle anderen nur, wenn jemand daran
+dachte — und ein Beweis, der nicht läuft, veraltet still (beim Einzug auf die
+Bühne waren von 42 gestarteten Skripten 27 rot, fast alle wegen des Skripts,
+nicht wegen des Produkts). EINE Stelle sagt, was wo läuft:
+`scripts/buehne/beweise.mjs`, eine Zeile je Skript — `lauf: 'e2e'` (Schritt in
+e2e.yml), `'buehne'` (bei jedem Pull Request und auf `main`, zusammen rund zwei
+Minuten), `'nacht'` (nur im nächtlichen Lauf: ab rund 45 s oder mit
+Wartezeiten) oder `'hand'` mit GRUND. Der Läufer `pnpm buehne run --lauf
+buehne|nacht [--only <teil>]` fährt sie nacheinander mit der richtigen
+Env-Datei, den Hosts der Bühne und einer EIGENEN Aufrufer-Adresse je Skript
+(`scripts/buehne/client-address.mjs` hängt `x-forwarded-for` an, wie es auf
+Production der Webserver tut — ohne das laufen alle Skripte in dieselben
+Bremsen, z. B. fünf Community-Anlagen je Adresse). In der CI:
+`.github/workflows/buehne.yml` — neben den Pflicht-Prüfungen, kein Tor fürs
+Ausliefern; die Tabelle je Skript steht in der Zusammenfassung des Laufs; rot
+auf `main` oder nachts ⇒ Issue `buehne-alarm` (docs/runbooks/
+PRODUKTIONS-ALARM.md). Dort laufen auch die acht Isolations-Tests gegen die
+echte Datenbank, die `pnpm -r test` ohne Datenbank überspringt.
+NEUES BEWEIS-SKRIPT ⇒ Zeile in `beweise.mjs` (sonst sind
+`pnpm check:live-beweise` und `packages/core/tests/proofScriptManifest.test.ts`
+rot), dann `pnpm live-beweise`. VIER REGELN FÜR EIN SKRIPT AUF DER BÜHNE, alle
+beim Einzug gemessen: (1) es SETZT seine Annahmen über die Probe-Community
+selbst (Plan, Registrierung) und stellt sie im `finally` zurück — nie
+voraussetzen, was ein anderes Skript gerade geändert haben kann; (2) es räumt
+über `createCleanup` auf und ZÄHLT NACH — „✔ aufgeräumt" ohne Zählung stand in
+einem Dutzend Skripten, die Seiten, Beiträge und Protokoll-Zeilen liegen
+ließen; (3) eine Sonde, die „geht das noch?" fragt, darf dabei nichts anlegen
+(eine Registrierungs-Sonde legte je Abfrage ein echtes Konto an); (4) Hosts,
+Ports und Ids kommen aus der Umgebung (`pnpm buehne env`), Konten für den
+Betreiber über den Laufzeit-Schlüssel (der Migrations-Schlüssel darf lokal
+keine Konten anlegen). EIN ROTER BEWEIS IST ENTWEDER EIN VERALTETES SKRIPT
+ODER EIN FEHLER IM PRODUKT — die Prüfung wird nie gestrichen, weil sie rot
+ist: Regel geändert ⇒ Prüfung anpassen und die Regel nennen; Produkt falsch ⇒
+Skript auf `hand` mit neutralem Grund und den Fehler melden. WAS FEHLT: die
+Skripte, die die Einzel-Instanz `apps/comments` oder branding.supply als
+laufenden Server brauchen (26), stehen auf `hand`; Skripte mit echten
+KI-Aufrufen, Stripe oder fremden Websites bleiben dort.

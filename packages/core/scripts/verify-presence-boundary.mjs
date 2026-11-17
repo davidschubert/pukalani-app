@@ -28,19 +28,28 @@
  *           (server/middleware/06.community-label.ts)? → Heartbeat schreiben → sieht
  *           der Nachbar-Mandant die Presence? Ohne laufenden Server wird Akt 2
  *           übersprungen (mit Hinweis), nicht als Fehler gewertet.
- *           Die Hosts brauchen OFFENE Registrierung (tenants.openRegistration),
- *           sonst gibt es dort keinen Beitritt und Akt 2 meldet zu Recht Fehler.
+ *           Ein erster Beitrag ist nur bei OFFENER Registrierung ein Beitritt
+ *           (SEC-030) — Akt 2 schaltet die Registrierung von Host A deshalb
+ *           selbst: erst ausdrücklich ZU (Gegenprobe: der Beitrag wird mit
+ *           `not_a_member` abgelehnt, kein Label), dann AUF; am Ende kommt der
+ *           gelesene Wert zurück. Host B muss offen sein (Anmeldung = Beitritt).
+ *           Dafür braucht Akt 2 den Control Plane mit Schreibrecht
+ *           (NUXT_PLATFORM_CONTROL_*; der Läufer der Bühne reicht ihn durch).
  *
  * Läuft gegen die Instanz aus der Env — nie hartkodiert Prod. Legt Wegwerf-
- * Nutzer an und räumt sie (auch im Fehlerfall) wieder weg.
+ * Nutzer an und räumt sie (auch im Fehlerfall) wieder weg — in Akt 2 samt
+ * allem, was ihre Beitritte hinterlassen (Kommentare, Mitglieds-Zeilen im
+ * Control Plane), und zählt danach nach.
  *
  *   node --env-file=apps/platform/.env packages/core/scripts/verify-presence-boundary.mjs
  *   # Akt 2 zusätzlich: `pnpm --filter platform dev` in einem zweiten Terminal
  *   # (Hosts aus der lokalen tenants-Tabelle, Default kunde-a/kunde-b.localhost)
+ *   # Auf der Bühne: pnpm buehne run --only verify-presence-boundary
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Presences, Query, TablesDB, Users } from 'node-appwrite'
+import { appwriteRest, createCleanup, Q } from '../../../scripts/lib/probe-stage.mjs'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -61,6 +70,8 @@ const SITE_A = `a4siteA${stamp}`
 const SITE_B = `a4siteB${stamp}`
 
 const created = { users: [], presences: [], comments: [] }
+/** Akt 2: Registrierung von A, wie sie vorher war ({ rowId, openRegistration }). */
+const registrationRestore = []
 let pass = 0
 let fail = 0
 
@@ -194,6 +205,24 @@ async function loginOn(host, account) {
 
 const labelsOf = async id => (await adminUsers.get({ userId: id })).labels ?? []
 
+// ── Control Plane (nur Akt 2) ───────────────────────────────────────────────
+const controlEnv = {
+  endpoint: process.env.NUXT_PLATFORM_CONTROL_ENDPOINT,
+  projectId: process.env.NUXT_PLATFORM_CONTROL_PROJECT_ID,
+  databaseId: process.env.NUXT_PLATFORM_CONTROL_DATABASE_ID,
+  key: process.env.NUXT_PLATFORM_CONTROL_KEY,
+}
+/** REST-Client des Control Plane oder null, wenn die Env ihn nicht hergibt. */
+function controlClient() {
+  if (!controlEnv.endpoint || !controlEnv.projectId || !controlEnv.databaseId || !controlEnv.key) return null
+  return appwriteRest({ ...controlEnv, script: 'verify-presence-boundary (Control)' })
+}
+
+/** Registrierung einer Community direkt in ihrer Zeile setzen — der Beitritt liest sie frisch. */
+async function setOpenRegistration(control, rowId, openRegistration) {
+  await control.updateRow(controlEnv.databaseId, 'communities', rowId, { openRegistration })
+}
+
 try {
   console.log(`\nA4 — Presence-Grenze gegen ${endpoint} / Projekt ${projectId}`)
   console.log(`Site A = ${SITE_A} · Site B = ${SITE_B}\n`)
@@ -253,6 +282,33 @@ try {
     if (aHost.status !== 200 || bHost.status !== 200) {
       throw new Error(`Mandanten-Hosts antworten nicht (${HOST_A}: ${aHost.status}, ${HOST_B}: ${bHost.status})`)
     }
+
+    const control = controlClient()
+    if (!control) {
+      throw new Error('Akt 2 braucht den Control Plane mit Schreibrecht (NUXT_PLATFORM_CONTROL_ENDPOINT/_PROJECT_ID/_DATABASE_ID/_KEY) — er schaltet die Registrierung von A und räumt die Mitglieds-Zeilen weg.')
+    }
+    const siteRows = await control.listRows(controlEnv.databaseId, 'communities', [Q.equal('host', [HOST_A, HOST_B]), Q.limit(2)])
+    const siteA = siteRows.rows.find(row => row.host === HOST_A)
+    const siteB = siteRows.rows.find(row => row.host === HOST_B)
+    if (!siteA || !siteB) throw new Error(`Communities ${HOST_A}/${HOST_B} nicht im Control Plane gefunden.`)
+    if (siteB.openRegistration === false) throw new Error(`${HOST_B} hat eine geschlossene Registrierung — Akt 2 braucht dort die Anmeldung als Beitritt.`)
+
+    console.log(`\n6a. Geschlossene Registrierung: ein erster Beitrag ist KEIN Beitritt (SEC-030, ${HOST_A})`)
+    // Ausdrücklich ZU setzen statt vorauszusetzen; der gelesene Wert kommt im finally zurück.
+    registrationRestore.push({ rowId: siteA.$id, openRegistration: siteA.openRegistration })
+    await setOpenRegistration(control, siteA.$id, false)
+    const olga = await plainUser('olga')
+    const closedTry = await call(HOST_A, '/api/comments', {
+      method: 'POST',
+      cookie: await loginOn(HOST_A, olga),
+      body: { targetId: `a4-join-${stamp}`, targetType: 'verify', content: 'Ich mache mit.' },
+    })
+    check('Beitrag auf A bei geschlossener Registrierung → 403 not_a_member',
+      closedTry.status === 403 && closedTry.json?.reason === 'not_a_member', `Status ${closedTry.status} ${closedTry.text.slice(0, 120)}`)
+    if (closedTry.json?.$id) created.comments.push(closedTry.json.$id)
+    check('… und Olga trägt danach KEIN Label', (await labelsOf(olga.id)).length === 0, JSON.stringify(await labelsOf(olga.id)))
+    // Ab hier ist A offen: der erste Beitrag IST der Beitritt.
+    await setOpenRegistration(control, siteA.$id, true)
 
     console.log(`\n6. Label-Vergabe: MITGLIEDSCHAFT, nicht Besuch (${HOST_A} / ${HOST_B})`)
     // SEIT A5 (2026-07-29) folgt das Label einer community_members-Zeile MIT ZUGANG.
@@ -332,11 +388,29 @@ catch (error) {
 finally {
   console.log('\n9. Aufräumen')
   for (const id of created.presences) await adminPresences.delete({ presenceId: id }).catch(() => {})
-  // Die Beitritts-Auslöser hinterlassen echte Kommentare (Akt 2) — und im
-  // Control Plane je Beitritt eine community_members-Zeile. Die Zeilen bleiben
-  // bewusst stehen: dieses Skript hat keinen Control-Plane-Schlüssel, und mit
-  // dem gelöschten Nutzer zeigen sie auf niemanden mehr. Wer aufräumen will,
-  // nimmt packages/onboarding/scripts/verify-site-authz.mjs — das hat beide.
+  const control = registrationRestore.length ? controlClient() : null
+  for (const { rowId, openRegistration } of registrationRestore) {
+    await setOpenRegistration(control, rowId, openRegistration).catch((error) => {
+      fail++
+      console.log(`  ✗ Registrierung von ${rowId} nicht zurückgestellt — ${error?.message || error}`)
+    })
+  }
+  // Die Beitritts-Auslöser (Akt 2) hinterlassen echte Kommentare und im
+  // Control Plane je Beitritt eine community_members-Zeile. Das Register der
+  // gemeinsamen Hilfe löscht alles, was über eine Personen-Spalte an den
+  // Konten hängt, löscht die Konten und zählt danach nach.
+  if (control) {
+    const pool = appwriteRest({ endpoint, projectId, key: apiKey, script: 'verify-presence-boundary' })
+    const register = createCleanup({ pool, control, poolDatabaseId: process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main', controlDatabaseId: controlEnv.databaseId })
+    for (const id of created.users) register.track('account', id)
+    for (const id of created.comments) register.track('poolRow', `comments/${id}`)
+    const { leftovers } = await register.run().catch(error => ({ leftovers: [`Aufräumen abgebrochen: ${error?.message || error}`] }))
+    for (const { rowId, openRegistration } of registrationRestore) {
+      const row = await control.getRow(controlEnv.databaseId, 'communities', rowId).catch(() => null)
+      if (row?.openRegistration !== openRegistration) leftovers.push(`Registrierung von ${rowId}`)
+    }
+    check(`nachgezählt: nichts übrig (${created.users.length} Konten samt Spuren, Registrierung zurück)`, leftovers.length === 0, leftovers.join(', '))
+  }
   if (created.comments.length > 0) {
     const poolDb = new TablesDB(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey))
     const dbId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main'

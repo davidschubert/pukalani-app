@@ -30,10 +30,19 @@
  *     packages/onboarding/scripts/verify-profile-signal.mjs
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { request as httpRequest } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import { Client, ID, Users } from 'node-appwrite'
+import {
+  addStageMember,
+  appwriteRest,
+  createCleanup,
+  createHttpCaller,
+  createProbeAccount,
+  createProbeCommunity,
+  generatePassword,
+  login as loginOn,
+  runStamp,
+  waitForHost as waitForHostOn,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3016)
 const CONTROL_URL = process.env.CONTROL_URL || 'http://localhost:3014'
@@ -43,6 +52,10 @@ const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const controlProject = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
 const controlKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
+// Das Betreiber-Konto entsteht im Projekt des Control Plane — dafür braucht es
+// `users.write`. Der Laufzeit-Schlüssel der Betreiber-App hat das, der
+// Migrations-Schlüssel lokal nicht (in der CI hat EIN Schlüssel alle Rechte).
+const controlUsersKey = process.env.NUXT_APPWRITE_KEY || controlKey
 const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'pool'
 const poolKey = process.env.POOL_KEY
 
@@ -51,13 +64,18 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   process.exit(1)
 }
 
-const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+const script = 'verify-profile-signal'
+const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlUsersKey))
+const { call } = createHttpCaller({ port: PORT })
+const cleanup = createCleanup({ pool, control, controlDatabaseId: databaseId })
+const runId = runStamp()
+/** Betreiber-Konten im Projekt des Control Plane — die räumt dieses Skript selbst. */
+const operators = []
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], operators: [], codes: [], tenants: [], members: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -68,36 +86,6 @@ function check(label, ok, detail = '') {
     fail++
     console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`)
   }
-}
-
-/** node:http, weil fetch den Host-Header verwirft; ::1, weil Nitro dort hört. */
-function call(host, path, { method = 'GET', body, cookie } = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = body ? JSON.stringify(body) : null
-    const req = httpRequest({
-      host: '::1',
-      port: PORT,
-      path,
-      method,
-      headers: {
-        host,
-        ...(payload ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) } : {}),
-        ...(cookie ? { cookie } : {}),
-      },
-    }, (res) => {
-      let text = ''
-      res.on('data', chunk => text += chunk)
-      res.on('end', () => {
-        let json = null
-        try { json = JSON.parse(text) }
-        catch { /* HTML-Fehlerseite */ }
-        resolve({ status: res.statusCode, json, text, setCookie: res.headers['set-cookie'] ?? [] })
-      })
-    })
-    req.on('error', reject)
-    if (payload) req.write(payload)
-    req.end()
-  })
 }
 
 /** Das Control Plane läuft als EIGENER Dienst — hier per fetch, kein Host-Trick. */
@@ -112,75 +100,25 @@ async function callControl(path, { cookie } = {}) {
   return { status: res.status, json, text }
 }
 
+/** Probe-Konto im Pool. Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse. */
 async function createPoolUser(tag) {
-  const email = `u19-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `U19 ${tag}` })
-  cleanup.users.push(user.$id)
-  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-  return { userId: user.$id, email, password }
+  const account = await createProbeAccount(pool, { tag: `u19-${tag}`, stamp: runId, name: `U19 ${tag}` })
+  cleanup.track('account', account.userId)
+  return account
 }
 
-async function login(account) {
-  const res = await call(CONTROL_HOST, '/api/auth/login', {
-    method: 'POST',
-    body: { email: account.email, password: account.password },
-  })
-  if (res.status !== 200) throw new Error(`Login fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
-}
-
-async function issueCode() {
-  const code = `PUKA-U19TEST-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId, tableId: 'invite_codes', rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'U19-Beweis', maxUses: 0, uses: 0, expiresAt: null, status: 'active',
-    },
-  })
-  cleanup.codes.push(row.$id)
-  return code
-}
-
-async function waitForHost(host) {
-  for (let i = 0; i < 45; i++) {
-    const res = await call(host, '/api/themes')
-    if (res.status === 200) return true
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  }
-  return false
-}
+const login = account => loginOn(call, CONTROL_HOST, account)
+const waitForHost = host => waitForHostOn(call, host)
 
 /** Community anlegen — bewusst OHNE purpose/memberRange/goal (U12-Wizard). */
-async function createCommunity(cookie, name, slug, code) {
-  const res = await call(CONTROL_HOST, '/api/onboarding/site', {
-    method: 'POST',
-    cookie,
-    body: probeSiteBody({
-      name,
-      slug,
-      vibe: 'calm',
-      inviteCode: code,
-      purpose: undefined,
-      memberRange: undefined,
-      goal: undefined,
-      description: undefined,
-    }),
+async function createCommunity(cookie, name, slug) {
+  // Anlage über die echte Route `POST /api/onboarding/site` — Rumpf, Code und
+  // Aufräumen kommen aus der gemeinsamen Hilfe (scripts/lib/probe-stage.mjs).
+  const created = await createProbeCommunity({
+    call, controlHost: CONTROL_HOST, cookie, control, databaseId, slug, name, cleanup,
+    bodyOverrides: { vibe: 'calm', purpose: undefined, memberRange: undefined, goal: undefined, description: undefined },
   })
-  if (res.status !== 200 || !res.json?.communityId) {
-    throw new Error(`Community ${slug} nicht angelegt (${res.status}): ${res.text.slice(0, 200)}`)
-  }
-  cleanup.tenants.push(res.json.communityId)
-  const members = await control.listRows({
-    databaseId, tableId: 'community_members',
-    queries: [Query.equal('communityId', res.json.communityId), Query.limit(25)],
-  })
-  cleanup.members.push(...members.rows.map(row => row.$id))
-  return { communityId: res.json.communityId, host: res.json.host }
+  return { communityId: created.communityId, host: created.host }
 }
 
 /**
@@ -211,11 +149,11 @@ try {
   console.log('0. Wegwerf-Betreiber + Ausgangsstand der Auswertung')
   const operator = await controlUsers.create({
     userId: ID.unique(),
-    email: `u19-betreiber-${Date.now()}@example.test`,
-    password: `Pw-${ID.unique()}`,
+    email: `u19-betreiber-${runId}@example.test`,
+    password: generatePassword(),
     name: 'U19-Beweis',
   })
-  cleanup.operators.push(operator.$id)
+  operators.push(operator.$id)
   await controlUsers.updateLabels({ userId: operator.$id, labels: ['admin'] })
   const operatorSession = await controlUsers.createSession({ userId: operator.$id })
   const operatorCookie = `a_session_${controlProject}=${operatorSession.secret}`
@@ -231,15 +169,13 @@ try {
 
   const owner = await createPoolUser('owner')
   const stranger = await createPoolUser('stranger')
-  const code = await issueCode()
   const ownerCookie = await login(owner)
   const strangerCookie = await login(stranger)
-  const stamp = Date.now().toString(36)
 
   console.log('\n1. Community A anlegen — der Wizard fragt die drei Dinge nicht mehr')
-  const a = await createCommunity(ownerCookie, 'U19 Signal A', `u19a-${stamp}`, code)
+  const a = await createCommunity(ownerCookie, 'U19 Signal A', `u19a-${runId}`)
   check('Community-Host antwortet', await waitForHost(a.host), 'Host wurde nicht aufgelöst')
-  const rowFresh = await control.getRow({ databaseId, tableId: 'communities', rowId: a.communityId })
+  const rowFresh = await control.getRow(databaseId, 'communities', a.communityId)
   const profileFresh = JSON.parse(rowFresh.profile || '{}')
   check('Profil trägt KEINE der drei Antworten',
     !profileFresh.purpose && !profileFresh.memberRange && !profileFresh.goal, rowFresh.profile)
@@ -269,11 +205,10 @@ try {
   check('Fremder (eingeloggt, kein Mitglied) → 403', strangerRes.status === 403, `Status ${strangerRes.status}`)
 
   const viewer = await createPoolUser('viewer')
-  const viewerRow = await control.createRow({
-    databaseId, tableId: 'community_members', rowId: ID.unique(),
-    data: { communityId: a.communityId, runtimeProjectId: poolProject, runtimeUserId: viewer.userId, role: 'viewer', status: 'active', email: viewer.email },
+  const viewerRow = await addStageMember(control, databaseId, {
+    communityId: a.communityId, projectId: poolProject, userId: viewer.userId, role: 'viewer', status: 'active', email: viewer.email,
   })
-  cleanup.members.push(viewerRow.$id)
+  cleanup.track('member', viewerRow.$id)
   const viewerCookie = await login(viewer)
   const viewerRes = await call(a.host, '/api/community/profile-signal', { cookie: viewerCookie })
   check('VIEWER dieser Community → 403 (die Frage ist Owner-Sache)', viewerRes.status === 403, `Status ${viewerRes.status}`)
@@ -295,7 +230,7 @@ try {
   })
   check('… eine LEERE Antwort wird abgewiesen (400)', empty.status === 400, `Status ${empty.status}`)
 
-  const rowAfter = await control.getRow({ databaseId, tableId: 'communities', rowId: a.communityId })
+  const rowAfter = await control.getRow(databaseId, 'communities', a.communityId)
   const profileAfter = JSON.parse(rowAfter.profile || '{}')
   check('Row nachgelesen: purpose steht im Profil', profileAfter.purpose === 'new', rowAfter.profile)
   check('Row nachgelesen: goal steht im Profil', profileAfter.goal === 'discussion', rowAfter.profile)
@@ -315,7 +250,7 @@ try {
   // wird gemessen, dass er überhaupt hält.
   const ownerB = await createPoolUser('owner-b')
   const ownerBCookie = await login(ownerB)
-  const b = await createCommunity(ownerBCookie, 'U19 Signal B', `u19b-${stamp}`, code)
+  const b = await createCommunity(ownerBCookie, 'U19 Signal B', `u19b-${runId}`)
   check('Community-Host B antwortet', await waitForHost(b.host), 'Host wurde nicht aufgelöst')
   await call(b.host, '/api/posts', {
     method: 'POST',
@@ -334,7 +269,7 @@ try {
   const bStillGone = await call(b.host, '/api/community/profile-signal', { cookie: ownerBCookie })
   check('… und sie HÄLT beim nächsten Aufruf', bStillGone.json?.visible === false, JSON.stringify(bStillGone.json))
 
-  const prefs = (await poolUsers.get({ userId: ownerB.userId })).prefs ?? {}
+  const prefs = (await pool.get(`/users/${ownerB.userId}`)).prefs ?? {}
   const merker = String(prefs.profileSignalPostponed ?? '')
   // Die FORM des Merkers, nicht nur seine Anwesenheit: er trägt die
   // communityId UND die Frist. Ein blankes `true` würde die Frage in der
@@ -374,12 +309,17 @@ catch (error) {
 }
 finally {
   console.log('\n9. Aufräumen')
-  for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  for (const id of cleanup.operators) await controlUsers.delete({ userId: id }).catch(() => {})
-  console.log('  ✔ aufgeräumt')
+  const { deleted, leftovers } = await cleanup.run()
+  let operatorsLeft = 0
+  for (const id of operators) {
+    await controlUsers.delete({ userId: id }).catch(() => {})
+    // Nachzählen: das Betreiber-Konto muss weg sein (404), nicht nur „gelöscht" heißen.
+    if (await controlUsers.get({ userId: id }).then(() => true, error => error?.code !== 404)) operatorsLeft++
+  }
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Code, Zeilen der Communities) + ${operators.length} Betreiber-Konto`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0 && operatorsLeft === 0,
+    [...leftovers, ...(operatorsLeft ? [`Betreiber-Konten: ${operatorsLeft}`] : [])].join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }
