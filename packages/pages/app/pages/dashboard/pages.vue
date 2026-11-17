@@ -457,6 +457,19 @@ async function deletePage() {
           data-pages-search
         />
 
+        <!-- Das Netz der Liste hat gegriffen (KK1 c): nicht still weniger
+             zeigen, sondern sagen, dass Seiten fehlen. -->
+        <UAlert
+          v-if="listData?.truncated"
+          icon="i-ph-warning"
+          color="warning"
+          variant="subtle"
+          class="mb-4"
+          :title="t('pages.admin.listTruncated')"
+          :description="t('pages.admin.listTruncatedHint')"
+          data-pages-truncated
+        />
+
         <UTable :data="filteredGroups" :columns="columns" data-pages-table>
           <template #slug-cell="{ row }">
             <button

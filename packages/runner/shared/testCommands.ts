@@ -102,3 +102,37 @@ export function checkRequestedTestCommands(input: {
   }
   return { ok: true }
 }
+
+/**
+ * Dürfen die GESPEICHERTEN Testbefehle eines Vorgängers mit seiner
+ * Fortsetzung mit? (RU1 e)
+ *
+ * Dieselbe Prüfung wie beim Anlegen, nur mit dem gespeicherten Wert
+ * (`runs.testCommands`) statt einer Auswahl im Formular. Ein kaputter Wert
+ * zählt wie ein nicht gelisteter Befehl. Anders als beim Anlegen kann der
+ * Mensch hier NICHTS ändern — die Fortsetzung erbt die Befehle, eine Antwort
+ * ändert sie nicht. Deshalb ist jede Absage hier endgültig für DIESEN Lauf
+ * (die Route antwortet 409, das Board zeigt statt des Antwort-Felds den Satz
+ * „leg einen neuen Lauf an"). Betroffen sind vor allem Rückfragen aus der
+ * Zeit vor der Befehls-Liste (SEC-037, 2026-11-14): ihr Freitext steht in
+ * keiner Liste.
+ *
+ * Server (Fortsetzungs-Route) und Board (Vorab-Prüfung mit der Anzeige-Kopie
+ * der Liste) nutzen DIESE Funktion — die Route bleibt die Sicherung, das
+ * Board spart nur den vergeblichen Versuch.
+ */
+export function checkInheritedTestCommands(input: {
+  stored: string
+  offered: readonly string[]
+  promptTrusted: boolean
+  runnerSelected: boolean
+}): TestCommandsCheck {
+  const requested = parseStoredTestCommands(input.stored)
+  if (requested === null) return { ok: false, code: 'test_command_not_listed' }
+  return checkRequestedTestCommands({
+    requested,
+    offered: input.offered,
+    promptTrusted: input.promptTrusted,
+    runnerSelected: input.runnerSelected,
+  })
+}

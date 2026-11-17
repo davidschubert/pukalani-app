@@ -48,6 +48,8 @@
       "quotaTitle": "Kontingent erreicht",
       "quotaHint": "Diese Community hat so viele Seiten angelegt, wie ihr Plan zulässt. Lösche nicht mehr gebrauchte Seiten oder Sprachfassungen. Bestehende Seiten kannst du weiter bearbeiten.",
       "quotaTodayHint": "Für heute sind genug neue Seiten angelegt — morgen geht es weiter. Bestehende Seiten kannst du weiter bearbeiten.",
+      "listTruncated": "Nicht alle Seiten werden angezeigt",
+      "listTruncatedHint": "Diese Community hat mehr Sprachfassungen, als die Liste auf einmal laden kann. Lösche Seiten oder Sprachfassungen, die du nicht mehr brauchst.",
       "deleted": "Seite gelöscht",
       "deleteFailed": "Konnte nicht gelöscht werden",
       "deleteFailedHint": "Die Seite ist noch da. Lade die Liste neu und versuch es noch einmal.",

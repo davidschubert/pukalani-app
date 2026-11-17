@@ -212,7 +212,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-83 Beweis-Skripte im Repo: 6 E2E-Lauf, 31 Bühne (jeder Lauf), 10 Bühne (nachts), 36 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+83 Beweis-Skripte im Repo: 6 E2E-Lauf, 32 Bühne (jeder Lauf), 11 Bühne (nachts), 34 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -232,7 +232,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/control/scripts/verify-account-bell.mjs` | Beweis für die Glocke im Kundenbereich (C17). | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-audience-flip.mjs` | C18 — SICHTBARKEIT JE COMMUNITY, LIVE-BEWEIS in BEIDE Richtungen. | E2E-Lauf |
 | `packages/control/scripts/verify-invite-requests.mjs` | Beweis für die Einladungs-Warteschlange (control-017). | Bühne (jeder Lauf) |
-| `packages/control/scripts/verify-invite-stock.mjs` | Beweis für Vorrat + Zuweisung MIT echter Betreiber-Session (control-017). | von Hand: Eine Prüfung ist rot und wird geklärt. |
+| `packages/control/scripts/verify-invite-stock.mjs` | Beweis für Vorrat + Zuweisung MIT echter Betreiber-Session (control-017). | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-onboarding.mjs` | Beweis für O2 — die Provisionierungs-Route des Control Plane. | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
 | `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht die App branding.supply mit eigenem Projekt, und die steht auf der Bühne nicht. |
@@ -268,7 +268,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/onboarding/scripts/verify-account-events.mjs` | Beweis für den Abschnitt „Konto und Sicherheit" auf `/profile/activity` (Davids Entscheidung 2026-11-13). | Bühne (nachts) |
 | `packages/onboarding/scripts/verify-community-export.mjs` | Beweis für U20 — das Community-Bündel (GET /api/community/export). | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-community-favicon.mjs` | Beweis für den Community-Favicon-Upload (Davids Zuschnitt vom 2026-08-18): eine Community lädt ein eigenes PNG-Favicon hoch, es erscheint im Tab und als App-Icon; ohne Upload bleibt das generierte Initial-SVG. | Bühne (jeder Lauf) |
-| `packages/onboarding/scripts/verify-community-suspension.mjs` | Beweis für M13 — der Sperr-/Missbrauchspfad (Davids Entscheidungen 2026-08-02). | von Hand: Eine Prüfung ist rot und wird geklärt. |
+| `packages/onboarding/scripts/verify-community-suspension.mjs` | Beweis für M13 — der Sperr-/Missbrauchspfad (Davids Entscheidungen 2026-08-02). | Bühne (nachts) |
 | `packages/onboarding/scripts/verify-control-exit.mjs` | Beweis für den F50-Nachtrag — die zwei Switcher-Ausgänge kommen EINGELOGGT an. | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-control-host.mjs` | Beweis für O3 — die Trennung der zwei Welten DESSELBEN Deployments. | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-custom-domain.mjs` | Beweis: eigene Domains je Community (control-035, Davids Entscheidungen vom 2026-08-07). | von Hand: Braucht eine Betreiber-App im Trockenlauf mit eigenem Namens-Server (NUXT_CUSTOM_DOMAIN_DRY_RUN, NUXT_CUSTOM_DOMAIN_DNS_SERVERS), die die Bühne nicht startet, und kennt die Freigabe durch den Betreiber (BE-014) noch nicht. |

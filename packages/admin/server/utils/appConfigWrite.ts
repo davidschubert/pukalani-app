@@ -26,9 +26,11 @@ import type { Models } from 'node-appwrite'
  * nicht teilen (jede App hat ihr eigenes Projekt). Läuft eine App je einmal
  * mit mehreren Prozessen, braucht es eine Sperre in der Datenbank.
  *
- * Wer nur EIGENE Spalten mit Werten aus dem Body setzt (config.patch.ts,
- * tickets/settings.patch.ts), braucht die Kette nicht: `updateRow` ändert nur
- * die genannten Spalten.
+ * Wer nur EIGENE Spalten mit Werten aus dem Body setzt, braucht die Kette
+ * nicht: `updateRow` ändert nur die genannten Spalten (tickets/
+ * settings.patch.ts). Dort liegt der Schutz darin, dass die SEITE nur sendet,
+ * was sich geändert hat. config.patch.ts tut beides — Teil-Objekt UND Kette —,
+ * damit es für diese Zeile genau einen Schreibweg gibt.
  */
 
 export type AppConfigRow = Models.Row & Record<string, unknown>

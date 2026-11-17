@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { guidelinesFallbackPage } from '../../../../shared/guidelinesFallback'
 import { requestedPageLocale } from '../../../../shared/pageLocales'
 import { GUIDELINES_SLUG, PAGES_TABLE, type PageRow, type PublicPage } from '../../../../shared/types/page'
+import { listPageRowsPaged, PAGE_VERSIONS_MAX, PAGE_VERSIONS_PAGE_SIZE } from '../../../utils/pageRows'
 
 /**
  * Öffentlich: die VERÖFFENTLICHTE Seite für slug + locale (Fallback en).
@@ -27,11 +28,18 @@ export default defineEventHandler(async (event): Promise<PublicPage> => {
   // reiste bis in `guidelinesFallbackPage` — eine Regel für beide Routen.
   const requested = requestedPageLocale(getQuery(event).locale)
 
-  const res = await tenantDb(event, { as: 'operator' }).list<PageRow>(PAGES_TABLE, [
+  // Alle veröffentlichten Fassungen, geblättert (KK1 c) — vorher `limit(20)`:
+  // darüber fehlte eine Sprache, und `availableLocales` log. Gleiche
+  // Reihenfolge wie vorher (nach Kennung), also derselbe letzte Rückfall.
+  const res = await listPageRowsPaged<PageRow>(tenantDb(event, { as: 'operator' }), PAGES_TABLE, [
     Query.equal('slug', slug),
     Query.equal('status', 'published'),
-    Query.limit(20),
-  ]).catch((error) => {
+  ], {
+    pageSize: PAGE_VERSIONS_PAGE_SIZE,
+    maxRows: PAGE_VERSIONS_MAX,
+    logName: 'pages.versions_capped',
+    scope: tenantCacheScope(event),
+  }).catch((error) => {
     throw toH3Error(error, 'Could not load page')
   })
 

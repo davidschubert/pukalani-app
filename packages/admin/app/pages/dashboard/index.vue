@@ -81,7 +81,13 @@ const can = (capability: Capability) =>
 // die Route nicht die App.
 const commentsHere = ((appConfig.pukalani as { admin?: { modules?: { id?: string }[] } }).admin?.modules ?? [])
   .some(module => module.id === 'comments')
-const canModerateComments = computed(() => commentsHere && can('comments.moderate'))
+// Montiert heißt nicht eingeschaltet: steht das PRODUKT `comments` per
+// Laufzeit-Schalter (Not-Aus, Produkt-Schalter) auf aus, antwortet
+// `/api/admin/comments` 404 (Produkt-Gate). `useProduct` liest die Flags aus
+// dem SSR-Payload — Server und Client sehen denselben Wert, das `v-if` am
+// Widget rendert also auf beiden Seiten gleich — und folgt dem Schalter live.
+const commentsOn = useProduct('comments')
+const canModerateComments = computed(() => commentsHere && commentsOn.value && can('comments.moderate'))
 const canReadAudit = computed(() => can('audit.read'))
 const canManageStorage = computed(() => can('storage.manage'))
 // S5: die Schnellmoderation ist für JEDEN Site-Moderator sichtbar, ihr
@@ -208,6 +214,12 @@ const { data: reported, refresh: refreshReported } = useFetch<ReportedCommentsSu
   query: { status: 'reported', page: 1 }, lazy: true, server: false, immediate: canModerateComments.value,
 })
 const reportedList = computed(() => (reported.value?.comments ?? []).slice(0, 5))
+// `immediate` liest die Bedingung nur EINMAL. Wird das Produkt in derselben
+// Sitzung wieder eingeschaltet (oder erst dann sichtbar), lädt das Widget hier
+// nach — nur beim Wechsel auf „an", nie beim Abschalten.
+watch(canModerateComments, (on, was) => {
+  if (on && !was) void refreshReported()
+})
 
 const { data: audit, refresh: refreshAudit } = useFetch<AuditLogListResponse>('/api/admin/audit', {
   query: { page: 1 }, lazy: true, server: false, immediate: canReadAudit.value,

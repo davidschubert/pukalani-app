@@ -48,6 +48,8 @@
       "quotaTitle": "Quota reached",
       "quotaHint": "This community has created as many pages as its plan allows. Delete pages or language versions you no longer need. You can keep editing existing pages.",
       "quotaTodayHint": "Enough new pages have been created for today — you can continue tomorrow. You can keep editing existing pages.",
+      "listTruncated": "Not all pages are shown",
+      "listTruncatedHint": "This community has more page versions than the list can load at once. Delete pages or language versions you no longer need.",
       "deleted": "Page deleted",
       "deleteFailed": "Could not delete",
       "deleteFailedHint": "The page is still there. Reload the list and try again.",
