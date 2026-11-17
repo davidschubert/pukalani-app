@@ -33,7 +33,7 @@ nur für Mitglieder (beides gebaut, COMPLETE „N03") ·
 **BU1** Backup-Schlüssel bleibt in Davids zwei Passwort-Managern, keine zweite
 Person (geschlossen); Einstellungs-Dateien ins Backup · **AR1** erledigte
 Umzugs-Anleitungen ins Archiv · **IN1** Marken-Seiten durch dieselbe Prüfung
-wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
+wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 (geschlossen) · **PB1** Migrations-Schlüssel dürfen Dateilisten lesen ·
 **CI1** Dependabot 155 bis 157 übernehmen (erledigt) · **AB1** (erledigt am
 2026-11-17) und **P29** beide Server-Einstellungen einschalten.
@@ -81,7 +81,7 @@ wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 | AL1 | **Aktivitätsliste in der Admin-Nutzeransicht füllen** (entschieden: nicht entfernen). Quelle sind die vorhandenen Konto-Ereignisse (`readAccountEvents`, Core); für die Betreiber-Sicht die Aktionsliste erweitern. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
 | KE3 | **Aufräum-Lauf für Profilbilder ohne Profil** (entschieden). Heute bleibt ein hochgeladenes Bild liegen, wenn das Speichern danach scheitert. Kein Leck, aber Ablage-Müll. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/core/server/api/storage/[bucket]/index.post.ts` |
 | MM1 | **Mitmachen nur für Mitglieder: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (e) Zwei Kleinigkeiten ohne Auftrag (Zusage zu einem ausgeblendeten Termin, Sprache im Link der Benachrichtigungs-Mails) und ein Test, der noch in keinem Lauf mitfährt. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#mm1) |
-| IN1 | **Insights-Redaktion: Nacharbeiten.** (c) Marken-Seiten laufen durch dieselbe Prüfung wie Artikel (entschieden), (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (d) Kleinigkeiten. Klick-Probe (b) nach BI5. **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
+| IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal durch die neue Prüfung schicken, (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten selbst ist gebaut (COMPLETE „N05"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
 | BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (b) Einstellungs-Dateien der Apps verschlüsselt ins nächtliche Backup (entschieden), (c) Übung jährlich wiederholen, (d) Kleinigkeiten. **Wartet auf:** nichts. | Mittel | je Teil S | Nein | [Einzelheiten](#bu1) |
 | P29 | **Anmelde-Regeln auf Production: Reste.** Prüfung auf gestohlene Passwörter am Appwrite-Server einschalten (entschieden), je Projekt ein Schlüssel mit `policies`-Recht für den Skript-Lauf. Anmelde-Mail ansehen: KR1; Cookie-Satz: DT1. **Wartet auf:** Davids Ja am Tag der Umsetzung. | Mittel | S | **Ja: Server-Einstellung, Schlüssel** | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
@@ -92,14 +92,14 @@ wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten.** Seit 2026-11-16 stehen Webserver-Vorlagen und Zeitpläne im Repo, ein täglicher Blick vergleicht sie mit den Servern, und die App sendet die Schutz-Kopfzeilen selbst (COMPLETE „GA1 P23"). Offen: (a) Berichte der Skript-Regel einsammeln und sie scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) Umlauf der pm2-Logs, (d) der Erinnerungs-Lauf kennt gesperrte Communities nicht, (e) Kleinigkeiten und Sicherungen löschen, (f) eigene Domain einer Einzel-Site: zwei Stellen noch nicht umgestellt. **Wartet auf:** (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil, (a) M | Nein | [Einzelheiten](#se1) |
-| LL1 | **Lange Läufe: Nacharbeiten.** (a) Der Radar-Knopf hält die Wartezeit des Webservers nur bei kleiner Kanal-Liste ein, (b) weitere lange Wege (Brand-Check, Dokument-Prüfung, Zeichen-Entwürfe) rechnen noch in der Anfrage, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S bis M je Teil | Nein | [Einzelheiten](#ll1) |
+| LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
-| KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
+| KI1 | **KI-Schutz: Nacharbeiten.** (d) drei Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
 
@@ -464,6 +464,9 @@ Benachrichtigungen mehr an entfernte Personen.
 <a id="in1"></a>
 
 **IN1 — Insights-Redaktion: Nacharbeiten (aus dem Gesamtaudit, Paket P19).**
+Gebaut am 2026-11-17 (COMPLETE „N05"): Marken-Seiten laufen durch dieselbe
+Prüfung wie Artikel, die KI-Wege der Redaktion stehen in der Bremsen-Liste,
+der Kasten der Prüfregeln sagt an einem öffentlichen Artikel das Richtige.
 
 - **(a) KI-Prüfung als eigener Knopf.** Davids Wunsch vom 2026-11-12, am
   2026-11-16 bewusst auf später gelegt. Der Knopf liest die aktuelle Fassung
@@ -478,22 +481,22 @@ Benachrichtigungen mehr an entfernte Personen.
   regelwidrig ändern (erwartet: „nicht gespeichert", die Seite bleibt), einen
   Hinweis von Hand anlegen, einmal „Vorschlag holen (KI)" klicken. Der Klick
   auf den Vorschlags-Knopf ist auch lokal nicht geklickt, nur die Route
-  dahinter gefahren.
-- **(c) Marken-Seiten — entschieden am 2026-11-16: dieselbe Prüfung wie
-  bei Artikeln.** Eine Marken-Zeile (`insights_brands`) lässt sich heute im
-  Formular direkt auf „veröffentlicht" stellen und danach ändern; ihre
-  Quellen und Zitate laufen durch keine der Regeln
-  (`server/api/insights/brands/[id].patch.ts`). Zu bauen, bevor Profil,
-  Duell und Ranking über `publicFormats` freigeschaltet werden.
-- **(d) Kleinigkeiten.** Der Kasten der Prüfregeln sagt auch an einem
-  veröffentlichten Artikel „der Übergang in die Redaktion ist gesperrt". Die
-  drei KI-Wege der Redaktion (Entwurf, Übersetzen, Vorschlag) stehen nicht in
-  der Bremsen-Liste des Core, sie bremst nur das Kontingent im Layer. Das
-  Datum eines Hinweises ist der Kalendertag in UTC. Ein Artikel, der eine
-  heute geltende Regel verletzt (etwa vor Regel 7 veröffentlicht), lässt sich
-  erst wieder speichern, wenn er sie erfüllt oder zurückgezogen ist — vor dem
-  ersten Veröffentlichen auf Production also einmal alle Entwürfe durch
-  „In die Redaktion geben" schicken.
+  dahinter gefahren. Dazu seit N05: eine Marke mit einem unbelegten Zitat auf
+  „Veröffentlicht" stellen (erwartet: „Nicht gespeichert", der Punkt steht in
+  der Liste) — lokal geklickt, auf Live nicht.
+- **(c) Vorhandene Marken-Seiten.** Marken, die schon vor der neuen Prüfung
+  auf „veröffentlicht" standen, sind nicht nachgeprüft. Eine davon lässt sich
+  erst wieder als „veröffentlicht" speichern, wenn sie die Regeln erfüllt (als
+  Entwurf und „entfernt" geht immer). Vor dem Freischalten von Profil, Duell
+  und Ranking deshalb jede veröffentlichte Marke einmal öffnen und speichern.
+  Das Skript `seed-launch.mjs` schreibt Marken direkt in die Datenbank, an
+  der Prüfung vorbei — vor einem neuen Lauf auf Entwürfe umstellen.
+- **(d) Kleinigkeiten.** Das Datum eines Hinweises ist der Kalendertag in
+  UTC. Ein Artikel, der eine heute geltende Regel verletzt (etwa vor Regel 7
+  veröffentlicht), lässt sich erst wieder speichern, wenn er sie erfüllt oder
+  zurückgezogen ist — vor dem ersten Veröffentlichen auf Production also
+  einmal alle Entwürfe durch „In die Redaktion geben" schicken. Die zwei
+  lesenden Marken-Routen haben noch keinen Rollen-Test (stehen im Bestand).
 
 <a id="pb1"></a>
 
@@ -798,45 +801,51 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 <a id="ll1"></a>
 
 **LL1 — Lange Läufe: Nacharbeiten (aus dem Gesamtaudit, Paket P18).**
+Gebaut am 2026-11-17 (COMPLETE „N05"): der Radar-Knopf rechnet im
+Hintergrund, der Video-Brief startet unter der Lauf-Sperre, die zwei Streams
+des Markenberaters senden ein Lebenszeichen, die Beweis-Skripte des
+Marktvergleichs warten die Minuten-Bremse selbst ab.
 
-- **(a) Radar-Knopf.** „Jetzt laufen lassen" beginnt nach 30 Sekunden keine
-  neuen Abrufe mehr und meldet ein Teil-Ergebnis. Das hält die 60 Sekunden des
-  Webservers nur, solange die Kanal-Liste klein ist (heute rund zwölf): der
-  erste Abruf der Kanal-Daten und das Schreiben der Videos sind nicht
-  befristet, und bei 50 Kanälen sind das bis zu 2.500 Schreibzugriffe. Sauber
-  wäre derselbe Weg wie beim Marktvergleich: Lauf-Sperre in `insights_runs`,
-  `202`, Hintergrund, die Seite fragt den Stand ab. Die Tabelle steht schon.
-- **(b) Weitere lange Wege in der Anfrage** (gemessen am 2026-11-16, eigene
-  Fristen im Code zusammengezählt): öffentlicher Brand-Check rund 120 s,
-  Dokument-Check 90 s, Bild lesen 120 s, Zeichen-Entwürfe 120 s,
-  Dokument-Prüfung bis 660 s (hat eine eigene Sperre), Entwurf und Übersetzung
-  eines Artikels je 120 s (für beide gilt auf branding.supply die Ausnahme von
-  180 s). Üblich sind sie viel schneller; die Obergrenze liegt über der
-  Wartezeit des Webservers. Ein Wächter, der je Route die Summe ihrer Fristen
-  gegen die 60 s hält, gehört zu Paket P20. Die zwei Streams des Markenberaters
-  senden keinen Herzschlag.
-- **(c) Kleinigkeiten.** Der Video-Brief hält seinen Start weiter mit „erst
-  lesen, dann Stempel schreiben" fest: zwei Klicks im SELBEN Augenblick
-  könnten dort zwei bezahlte Läufe starten (nur die Redaktion, rund 5 Cent).
-  Mit `insights_runs` ist das eine kleine Umstellung auf die Lauf-Sperre. Die
-  Lauf-Zeilen (`market_runs`, `insights_runs`)
-  werden nicht nach Alter geräumt; sie sind klein (höchstens drei je Marke und
-  Tag, eine je Newsletter-Stapel) und verschwinden mit der Marke. Der Hinweis
-  „Quelle in der Zeit nicht gelesen" erscheint nur beim Zustandswechsel, nicht
-  beim Speichern eines veröffentlichten Artikels (dort steht weiter „Zitat
-  nicht belegt"). Ein Artikel mit sehr vielen langsamen Quellen lässt sich
-  wegen der 45 Sekunden unter Umständen nicht freigeben — dann die Quellen
-  einzeln über die Ampel prüfen und die langsamen ersetzen. Stirbt der Prozess
-  mitten in einem Newsletter-Stapel, bekommt beim Fortsetzen höchstens dieser
-  eine Stapel die Ausgabe doppelt (bekannte Grenze, unverändert). Der
-  Newsletter ist auf Production ausgeschaltet; die Sperre ist dort nur durch
-  Tests belegt. Vier Beweis-Skripte des Marktvergleichs brauchen 70 Sekunden
-  Abstand, weil die Läufe jetzt schneller antworten als die Minuten-Bremse
-  (5 Starts je Minute) erlaubt. Der spätere Alarm (Paket P22) kann
+- **(b) Vier lange Wege rechnen noch in der Anfrage** (gemessen am
+  2026-11-16, eigene Fristen im Code zusammengezählt): Zeichen-Entwürfe 120 s,
+  Bild lesen 120 s, Dokument-Check 90 s, öffentlicher Brand-Check rund 120 s.
+  Üblich sind sie viel schneller; die Obergrenze liegt über der Wartezeit des
+  Webservers. Keiner passte in einen kleinen Pull Request: alle vier liegen im
+  Markenberater-Layer, und der hat noch keine Lauf-Tabelle. Jeder Umbau
+  braucht deshalb eine Migration (auf Production mit Davids Ja, vor dem
+  Merge), eine Route zum Abfragen und den Umbau der Seite. Empfohlene
+  Reihenfolge, nach dem Schaden eines Abbruchs: (1) die Lauf-Tabelle des
+  Layers mit den Zeichen-Entwürfen (bezahlt, teuerster Lauf, ein zweiter
+  Klick kostet doppelt), (2) Bild lesen (bezahlt), (3) Dokument-Check,
+  (4) öffentlicher Brand-Check (läuft ohne Konto — das Abfragen braucht dort
+  eine eigene Antwort auf „wem gehört der Lauf"). Die Dokument-Prüfung (bis
+  660 s) hat schon eine eigene Sperre; Entwurf und Übersetzung eines Artikels
+  (je 120 s) laufen unter der Ausnahme von 180 s auf branding.supply. Ein
+  Wächter, der je Route die Summe ihrer Fristen gegen die 60 s hält, fehlt
+  weiter.
+- **(c) Kleinigkeiten.** Radar: das Ergebnis eines Laufs erscheint als
+  Meldung beim Ende; wer die Seite erst später öffnet, sieht nur das Datum
+  des letzten Laufs, nicht die Zahlen. Der nächtliche Radar-Lauf nimmt die
+  Lauf-Sperre nicht — ihn schließt ein Merker im Prozess aus, das trägt,
+  solange die App mit einem Prozess läuft. Ein abgebrochener Knopf-Lauf
+  verbraucht einen der drei Starts je Stunde. `market-library-compute.mjs`
+  erwartet vom Lauf noch die alte sofortige Antwort mit Zahlen und bricht
+  seit P18 ab (Skript von Hand, bezahlt echte Läufe — beim nächsten Gebrauch
+  auf Abfragen umstellen). Die Lauf-Zeilen (`market_runs`, `insights_runs`)
+  werden nicht nach Alter geräumt; sie sind klein und verschwinden mit der
+  Marke. Der Hinweis „Quelle in der Zeit nicht gelesen" erscheint nur beim
+  Zustandswechsel, nicht beim Speichern eines veröffentlichten Artikels (dort
+  steht weiter „Zitat nicht belegt"). Ein Artikel mit sehr vielen langsamen
+  Quellen lässt sich wegen der 45 Sekunden unter Umständen nicht freigeben —
+  dann die Quellen einzeln über die Ampel prüfen und die langsamen ersetzen.
+  Stirbt der Prozess mitten in einem Newsletter-Stapel, bekommt beim
+  Fortsetzen höchstens dieser eine Stapel die Ausgabe doppelt (bekannte
+  Grenze, unverändert). Der Newsletter ist auf Production ausgeschaltet; die
+  Sperre ist dort nur durch Tests belegt. Der Alarm (Paket P22) kann
   abgebrochene Läufe an Lauf-Zeilen ohne Ende mit altem Herzschlag erkennen.
-  Auf Production ist ein Lauf ÜBER 60 Sekunden nicht gezeigt (der Probe-Lauf
-  vom 2026-11-16 brauchte 22 s) und die Seite dort nicht im Browser geklickt;
-  beides ist lokal gezeigt (Lauf 75 s, zwei Reiter).
+  Auf Production ist ein Lauf ÜBER 60 Sekunden weiter nicht gezeigt, weder
+  beim Marktvergleich noch beim Radar; beides ist lokal gezeigt (75 s und
+  87 s, je zwei Reiter).
 
 <a id="sv1"></a>
 
@@ -907,6 +916,10 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 <a id="ki1"></a>
 
 **KI1 — KI-Schutz: Nacharbeiten (aus dem Gesamtaudit, Paket P17).**
+Gebaut am 2026-11-17 (COMPLETE „N05"): ein neu eingetragenes Modell wird beim
+Speichern geprüft (Admin-Config-Seite und Ticket-Einstellungen), und
+Markenberater und Marktvergleich zeigen den genauen Satz, wenn das Modell
+keinen Europa-Endpunkt hat.
 
 - **(a) Klick-Probe auf Live, zweiter Teil.** Das Übersetzen eines Kommentars
   ist am 2026-11-15 auf einer Community geklickt und ging (echter Aufruf).
@@ -920,21 +933,14 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
   (kein fester Ort, steht schon im Text von branding.supply). Ob und wie die
   Datenschutzerklärungen das sagen, entscheidet David mit dem Anwalt
   (BS1 und A1; gesammelt in [DT1](#dt1)).
-- **(c) Modell aus der Konsole.** Wer auf der Admin-Config-Seite ein Modell
-  einträgt, das keinen der zwei Europa-Endpunkte hat, bekommt keinen Hinweis
-  beim Speichern. Der erste Aufruf scheitert dann mit einem klaren Satz („KI
-  gerade nicht verfügbar"), es wird nichts woanders gerechnet. Besser wäre
-  die Prüfung schon beim Speichern. Der tägliche Wächter prüft nur die
-  Modelle aus dem Code.
-- **(d) Kleinigkeiten.** Bei einem Modell ohne Europa-Endpunkt zeigen
-  Markenberater und Marktvergleich weiter ihren allgemeinen Satz („gerade
-  nicht verfügbar"), nicht den neuen genauen. Der Feldwert eines
-  abgeschnittenen Entwurfs trägt kein Kennzeichen, nur die Sprechblase
-  darüber. Das Prüfskript `verify-brand-context.mjs` hat als Voreinstellung
-  ein Modell, das es unter unseren Bedingungen nicht mehr gibt. Ein
-  englisches Bildschirmfoto der neuen Hinweise fehlt. Die Kosten je Lauf und
-  der Anbieter stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für
-  KI-Ausfälle und Ausgaben" des Gesamtaudits).
+- **(d) Kleinigkeiten.** Beim Speichern eines Modells wird nur der Ort
+  geprüft; ob der Anbieter nichts speichert, prüft weiter nur der tägliche
+  Wächter. Der Klick auf der Config-Seite ist nicht gezeigt (lokal und auf
+  Live), nur die Route dahinter. Der Feldwert eines abgeschnittenen Entwurfs
+  trägt kein Kennzeichen, nur die Sprechblase darüber. Ein englisches
+  Bildschirmfoto der Hinweise fehlt. Die Kosten je Lauf und der Anbieter
+  stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für KI-Ausfälle
+  und Ausgaben" des Gesamtaudits).
 
 <a id="ar1"></a>
 
@@ -1012,7 +1018,12 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
   Browser im Bühnen-Lauf). Die Gruppen-Tabellen in
   `docs/referenz/LIVE-BEWEISE.md` stammen vom 2026-08-02. Der Kopf von
   `packages/events/tests/participation-guard.test.ts` sagt noch, Übersetzen
-  verlange die Zugehörigkeit.
+  verlange die Zugehörigkeit. Zwei Isolations-Tests des Betreiber-Layers
+  (`tenants-resolver.test.ts`, `communityHostResolver.test.ts`) bilden ihren
+  Probe-Host beide als `off-<Uhrzeit>.test.local`; starten beide Dateien in
+  derselben Millisekunde, stößt die eindeutige Host-Spalte zusammen und der
+  Bühnen-Lauf wird rot (so am 2026-11-17 einmal auf `main`, Issue 274; kein
+  Fehler im Programm). Abhilfe: ein Zufallsteil im Namen.
 
 <a id="a1-anwalt"></a>
 

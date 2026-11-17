@@ -45,12 +45,27 @@ paths:
   wirft der Transport 503 mit `data.code: 'ai_endpoint_unavailable'` — kein
   Wechsel auf ein anderes Modell. Den Hinweis dazu zeigt der eine zentrale
   Leser (`community-suspended-notice.client.ts`); lokale „fehlgeschlagen"-
-  Meldungen schweigen dann (`isAiEndpointUnavailable`). Preis: der Orts-Pin
+  Meldungen schweigen dann (`isAiEndpointUnavailable`). Der Leser sieht nur,
+  was an `$fetch` vorbeikommt: ein STREAM und ein LAUF IM HINTERGRUND zeigen
+  denselben Satz selbst (KI1 d, 2026-11-17 — Markenberater über den
+  Fehler-Frame des Stroms, Marktvergleich über den kurzen Code an der
+  Lauf-Zeile). Preis: der Orts-Pin
   kostet rund 10 %, und er ist eine Bedingung an die MODELLWAHL — ein Modell
   ohne die zwei Endpunkte (auch ein per Konsole eingetragenes
   `app_config.aiModel`) läuft nicht langsamer, sondern gar nicht;
   `pnpm ops:ai-models` prüft die konfigurierten Slugs täglich, seit P17 auch
-  `ticketsAiModel`. Die Basis-Adresse ist OpenRouter; ein anderer Vermittler
+  `ticketsAiModel`. SEIT KI1 c (2026-11-17) PRÜFT AUCH DAS SPEICHERN: beide
+  Routen, die ein Modell aus der Oberfläche annehmen (`admin/config.patch.ts`,
+  `tickets/settings.patch.ts`), rufen für ein NEUES Modell
+  `checkAiModelEndpoints` (`core/server/utils/aiModelCheck.ts`, Deutung pur in
+  `core/shared/aiModelEndpoints.ts` — dieselbe öffentliche Auskunft wie der
+  Wächter, per Test an ihn gebunden): kein Europa-Endpunkt oder unbekannt ⇒
+  422 `ai_model_no_eu_endpoint` / `ai_model_unknown`, nichts gespeichert;
+  nicht prüfbar (Frist 5 s, Ausfall, anderer Vermittler) ⇒ gespeichert mit
+  `aiModelCheck: 'unverified'` und Warnung — ein Ausfall des Vermittlers
+  blockiert das Speichern nie. Eine weitere Route, die ein Modell speichert,
+  ruft dieselbe Hilfe; eine Auswahlliste bietet nur Modelle mit
+  Europa-Endpunkt an. Die Basis-Adresse ist OpenRouter; ein anderer Vermittler
   kennt den `provider`-Block nicht und müsste eigens gebaut werden.
 - PROTOKOLL NUR MIT KENNUNGEN (SEC-017, seit 2026-11-15): kein Transport
   schreibt Antworttext, Fehlerrumpf des Anbieters oder ein rohes Fehlerobjekt
@@ -126,14 +141,32 @@ paths:
   beginnt; ein abgebrochener Lauf ohne den Vermerk vererbt seine Buchung an
   den nächsten Start, einer mit Vermerk bleibt gebucht. Im `detail` der
   Lauf-Zeile stehen nur Zahlen und Kennungen (4.000 Zeichen), nie Namen oder
-  Adressen. Ein ZEITDECKEL in der Anfrage (Radar-Knopf 30 s für den Beginn
-  neuer Abrufe, Prüfregeln 45 s, Newsletter-Stapel 40 s) ist die kleinere
-  Lösung und nur dort erlaubt, wo ein Teil-Ergebnis ehrlich ist; die Prüfregeln
-  bleiben dabei streng (nicht gelesen = nicht belegt = nicht veröffentlicht).
-  Der Video-Brief (BI3) war das Vorbild und hält seinen Start weiter an der
-  eigenen Zeile fest. Beweise: `packages/core/tests/runLease.test.ts`,
+  Adressen. Ein ZEITDECKEL in der Anfrage (Prüfregeln 45 s, Newsletter-Stapel
+  40 s) ist die kleinere Lösung und nur dort erlaubt, wo ein Teil-Ergebnis
+  ehrlich ist; die Prüfregeln bleiben dabei streng (nicht gelesen = nicht
+  belegt = nicht veröffentlicht). SEIT LL1 (2026-11-17) GEHEN AUCH DER
+  RADAR-KNOPF UND DER VIDEO-BRIEF DIESEN WEG: der Radar-Knopf (vorher ein
+  Zeitdeckel von 30 s) nimmt die Sperre in `insights_runs` (Art `radar`, ein
+  fester Gegenstand je Instanz), antwortet `202`, und `GET
+  /api/insights/radar` liefert den Lauf-Stand; der nächtliche Radar-Lauf
+  nimmt die Sperre NICHT, ihn schließt der Merker im Prozess aus. Der
+  Video-Brief (BI3, das Vorbild) hielt seinen Start an der eigenen Zeile fest
+  — „erst lesen, dann Stempel"; jetzt nimmt er die Sperre (Art `brief`,
+  Gegenstand = das Fundstück) nach den kostenlosen Vorprüfungen, liest die
+  Zeile danach neu und gibt den 409 der Sperre als gewohnten `brief_running`
+  weiter; die Stempel sind nur noch Anzeige. EIN STREAM, DER STILL SEIN KANN,
+  SENDET EIN LEBENSZEICHEN: der Webserver trennt nach 60 s Stille, deshalb
+  schreiben die zwei Streams des Markenberaters alle 15 s eine
+  SSE-Kommentarzeile (`startBrandStreamHeartbeat`,
+  `brand/server/utils/brandStreamHeartbeat.ts`); der Leser im Browser nimmt
+  nur `data:`-Zeilen. Ein neuer Stream ruft dieselbe Hilfe. NOCH IN DER
+  ANFRAGE rechnen vier Wege des Markenberaters (OPEN-ITEMS „LL1" b) — der
+  Layer hat keine Lauf-Tabelle. Beweise: `packages/core/tests/runLease.test.ts`,
   `packages/market/tests/marketRunRoute.test.ts`,
-  `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`.
+  `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`,
+  `packages/insights/tests/insightsRadarRunRoute.test.ts`,
+  `packages/insights/tests/insightsBriefLease.test.ts`,
+  `packages/brand/tests/brandStreamHeartbeat.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,
