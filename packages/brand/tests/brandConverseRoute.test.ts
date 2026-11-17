@@ -141,6 +141,8 @@ let modelText: string
 let modelFails: Error | null
 /** Wie der Strom endete (`finish_reason`) — Standard: leer, wie ohne Angabe. */
 let modelFinish: string
+/** Hält das Modell VOR dem ersten Wort auf (stille Phase, LL1 b). */
+let modelGate: Promise<void> | null = null
 const aiCompleteStream = vi.fn(async (
   _event: unknown,
   prompt: string,
@@ -148,6 +150,7 @@ const aiCompleteStream = vi.fn(async (
 ) => {
   lastPrompt = prompt
   lastSystem = options.system
+  if (modelGate) await modelGate
   if (modelFails) throw modelFails
   // In Stücken, wie ein echter Anbieter — der Putzer muss über die Grenzen hinweg
   // dasselbe Ergebnis liefern.
@@ -261,6 +264,7 @@ beforeEach(() => {
   modelText = 'Das nehme ich mit. Was loben eure Kunden an euch?'
   modelFails = null
   modelFinish = ''
+  modelGate = null
   logs.length = 0
   lastPrompt = ''
   lastSystem = ''
@@ -1706,5 +1710,61 @@ describe('POST …/converse · abgeschnittene Antwort', () => {
     expect(JSON.parse(String(george.parts))).toEqual({ kind: 'reply', slotId: 'a.origin' })
     expect((readBack(chunks).at(-1) as { truncated?: unknown }).truncated).toBeUndefined()
     expect(logs.find(entry => entry.event === 'brand.converse_completed')?.data.finishReason).toBe('stop')
+  })
+})
+
+describe('Lebenszeichen in stillen Phasen (LL1 b)', () => {
+  it('40 s Stille vor dem ersten Wort ⇒ mindestens zwei `: ping`, danach keins mehr — und der Leser liest denselben Zug', async () => {
+    vi.useFakeTimers()
+    try {
+      let open!: () => void
+      modelGate = new Promise<void>((resolve) => { open = resolve })
+      const { event, chunks } = fakeEvent()
+      const running = handler(event)
+      // Bis die Route beim Modell angekommen ist (Ablage-Fälschungen sind async).
+      for (let i = 0; i < 1000 && aiCompleteStream.mock.calls.length === 0; i++) await Promise.resolve()
+      expect(aiCompleteStream).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(40_000)
+      const pings = () => chunks.filter(chunk => chunk === ': ping\n\n').length
+      expect(pings()).toBeGreaterThanOrEqual(2)
+
+      open()
+      await running
+      const afterEnd = pings()
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(pings()).toBe(afterEnd)
+
+      const events = readBack(chunks)
+      expect(events[0]!.type).toBe('generation.started')
+      expect(events.at(-1)!.type).toBe('generation.completed')
+      const spoken = events.flatMap(item => (item.type === 'message.delta' ? [item.text] : [])).join('')
+      expect(spoken).toBe(modelText)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('GEGENPROBE: ein schneller Zug bekommt kein Lebenszeichen', async () => {
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+    expect(chunks.some(chunk => chunk.startsWith(':'))).toBe(false)
+  })
+})
+
+describe('kein KI-Endpunkt unter der Datenschutz-Bindung (KI1 d)', () => {
+  it('503 `ai_endpoint_unavailable` vom Transport ⇒ der Frame trägt genau diesen Code', async () => {
+    modelFails = Object.assign(new Error(''), { statusCode: 503, data: { code: 'ai_endpoint_unavailable' } })
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+    expect(readBack(chunks).at(-1)).toMatchObject({ type: 'generation.failed', code: 'ai_endpoint_unavailable' })
+  })
+
+  it('GEGENPROBE: ein 503 ohne diesen Code bleibt `provider_error`', async () => {
+    modelFails = Object.assign(new Error(''), { statusCode: 503, statusText: 'AI not configured' })
+    const { event, chunks } = fakeEvent()
+    await handler(event)
+    expect(readBack(chunks).at(-1)).toMatchObject({ type: 'generation.failed', code: 'provider_error' })
   })
 })
