@@ -62,5 +62,15 @@ Ereignisse 90 Tage. Server: stündlicher Lauf in `apps/control`
 (`packages/runner/server/utils/runRetention.ts`, Schalter
 `pukalani.runner.retention` off/dry-run/apply, Ops-Route
 `POST /api/runner/retention/run`). Mac: der Dienst räumt `<stateDir>/runs`
-selbst (`runRetention` in der Config, Vorgabe `dry-run`). Runbook für alle
-drei Themen: docs/runbooks/AI-RUNNER-BETRIEB.md.
+selbst (`runRetention` in der Config, Vorgabe `dry-run`). TEXTE UND ANHÄNGE
+(RU1 c, seit 2026-11-17): 12 Monate nach Laufende entfernt ein zweiter
+stündlicher Lauf `run-text-retention` Auftrag, Fehlertext, freie
+Berichtsfelder und die Anhang-Dateien; die Zeile bleibt, Kosten, Dauer,
+Commit und die übrigen Zahlen und Kennungen bleiben (Erlaubnisliste in
+`packages/runner/shared/runTextRetention.ts`, ein neues Berichtsfeld fällt,
+bis es dort steht; Spur `textRemovedAt`). Util
+`packages/runner/server/utils/runTextRetention.ts` auf dem Gerüst
+`core/…/rowRetention.ts`, EIGENER Schalter `pukalani.runner.textRetention`
+off/count/apply (control: `count`, `apply` erst mit Davids Ja zur Zahl),
+Hand-Route `POST /api/runner/retention/texts` (`{ apply: true }`). Runbook
+für alle drei Themen: docs/runbooks/AI-RUNNER-BETRIEB.md.

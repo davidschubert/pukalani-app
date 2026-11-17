@@ -1,3 +1,5 @@
+import type { RowRetentionMode } from '../../core/shared/rowRetention'
+
 /**
  * Der AI-Runner meldet seine Dashboard-Sektion bei der Admin-Modul-Registry an
  * (`pukalani.admin.modules`, über alle Layer deep-merged) und legt daneben die
@@ -81,6 +83,15 @@ export default defineAppConfig({
        * als Konstanten in shared/runRetention.ts.
        */
       retention: 'off' as 'off' | 'dry-run' | 'apply',
+      /**
+       * FRISTEN-LAUF FÜR TEXTE UND ANHÄNGE (RU1 c): 12 Monate nach Laufende
+       * fallen Auftrag, Fehlertext, freie Berichtsfelder und Anhänge; Kosten,
+       * Dauer und Commit bleiben (server/utils/runTextRetention.ts). EIGENER
+       * Schalter, bewusst nicht `retention`: 'count' zählt nur, 'apply'
+       * schwärzt. Layer-Default AUS; die FRIST ist eine Konstante in
+       * shared/runTextRetention.ts, kein Regler.
+       */
+      textRetention: 'off' as RowRetentionMode,
     },
   },
 })
