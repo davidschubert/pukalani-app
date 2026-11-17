@@ -1,7 +1,7 @@
 # Doku-Karte
 
 Wo steht was — und was ist die **eine** Datei, in die offene Arbeit gehört.
-Stand: 2026-08-10.
+Stand: 2026-08-10; die Runbook-Tabelle ist am 2026-11-17 vervollständigt.
 
 ## Die vier Sorten
 
@@ -62,9 +62,9 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/STRIPE-TEST-WALKTHROUGH.md](runbooks/STRIPE-TEST-WALKTHROUGH.md) | Die 6 Testmodus-Proben davor |
 | [runbooks/CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md) | Control-Host-Umzug (+ die drei Restkrümel) |
 | [runbooks/ACCOUNT-CUTOVER.md](runbooks/ACCOUNT-CUTOVER.md) | AH-1: Projekt `pool` → `account` und Host `my.`/`start.` → `account.` in EINEM Fenster |
-| [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Appwrite-Key rotieren |
+| [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Protokoll vom 2026-07-24: nur lesender Control-Plane-Schlüssel für `platform` (einmalig, erledigt; die Projektnamen dort sind die von damals) |
 | [runbooks/CI-SCHLUESSEL-TAUSCHEN.md](runbooks/CI-SCHLUESSEL-TAUSCHEN.md) | Die zwei SSH-Schlüssel der CI (Ausliefern, Wächter): wo sie liegen, was sie dürfen, tauschen ohne Stillstand, Tor-Skript auf appwrite-prod |
-| [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Wer hält welchen Schlüssel im Projekt `control` — und wie man das nachmisst |
+| [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Messung vom 2026-08-03: wer welchen Schlüssel im Betreiber-Projekt hielt (damals `control`, seit 2026-08-18 `admin`) — und wie man das nachmisst |
 | [runbooks/APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md) | **Appwrite-Server weg:** aus dem nächtlichen Backup auf der Storage Box und dem einen Schlüssel zurück zur laufenden Instanz — Schritt für Schritt, dazu Betrieb des Backups, Übung, Protokoll |
 | [runbooks/APPWRITE-PROD-SPIEGEL.md](runbooks/APPWRITE-PROD-SPIEGEL.md) | Prod-Appwrite 1:1 in die lokale OrbStack-Appwrite spiegeln (Skript, was lokal bewusst anders ist, Rückweg) |
 | [runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md](runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md) | Erste echte Kundendomain freischalten (Pool-Community **und** Silo-Site) |
@@ -73,7 +73,15 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/GOOGLE-LOGIN.md](runbooks/GOOGLE-LOGIN.md) | „Anmelden mit Google" scharfschalten (Google-Console, Appwrite-Console, die zwei Schalter) |
 | [runbooks/MARKTVERGLEICH-EINFUEHRUNG.md](runbooks/MARKTVERGLEICH-EINFUEHRUNG.md) | Produkt `market` auf `branding` einschalten: sechs Migrationen, ein Schalter, Rauchtest (Durchlauf 2026-09-06 abgehakt) |
 | [runbooks/ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) | Appwrites Regeln für Passwort, Adresse und Sitzung: Soll-Liste, Prüf-Skript, Datenleck-Abgleich, bekanntes Gerät, Notfall-Knöpfe |
-| [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist |
+| [runbooks/PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) | **Der Einstieg bei jeder Störung:** Produktions-Wächter + Alarmweg (Issue/Mail/Heartbeat), Probealarm, Davids Klickliste, was bei einem Alarm zu tun ist (je Störfall ein Absatz, Not-Aus), Vertretung und zweite Alarm-Adresse (§ 5) |
+| [runbooks/SICHERHEITSVORFALL.md](runbooks/SICHERHEITSVORFALL.md) | Verdacht auf fremden Zugriff: aufschreiben, eindämmen, Schlüssel tauschen (Zeiger auf jedes Tausch-Rezept), Spuren, Melden — und was fehlt |
+| [runbooks/ANFRAGEN-VON-AUSSEN.md](runbooks/ANFRAGEN-VON-AUSSEN.md) | Jemand meldet einen Rechtsverstoß oder verlangt Löschung oder Auskunft: wo es ankommt, Identität prüfen, die Handgriffe im Dashboard |
+| [runbooks/MFA-NOTAUSGANG.md](runbooks/MFA-NOTAUSGANG.md) | Zwei-Faktor-Anmeldung eines Kontos zurücksetzen, wenn Gerät und Codes weg sind (nur nach echter Identitätsprüfung) |
+| [runbooks/ZUGAENGE-AUFRAEUMEN.md](runbooks/ZUGAENGE-AUFRAEUMEN.md) | Zugänge zu gelöschten Projekten finden und entfernen (`pnpm ops:stale-keys`; nur 404 beweist „tot") |
+| [runbooks/RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md) | Mail-Versand über Resend: Webhook für Bounces und Beschwerden, Tagesbudget, der Sende-Schlüssel an fünf Stellen, Tausch |
+| [runbooks/APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md) | Appwrite 2.6.2 → 2.7.1 (der heutige Stand). Die Sprünge davor: [2.0](runbooks/APPWRITE-2-0-UPGRADE.md), [2.2](runbooks/APPWRITE-2-2-UPGRADE.md), [2.6](runbooks/APPWRITE-2-6-UPGRADE.md) |
+| [runbooks/ADMIN-CUTOVER.md](runbooks/ADMIN-CUTOVER.md) | AH-4: Betreiber-Konsole `control.` → `admin.` (erledigt; Protokoll und Begründungen) |
+| [runbooks/BRANDING-SUPPLY-SETUP.md](runbooks/BRANDING-SUPPLY-SETUP.md) | branding.supply einrichten (Projekt, Site, Zertifikat; Durchlauf 2026-09-01) |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
 | [runbooks/NEWSLETTER-ABMELDE-LINKS.md](runbooks/NEWSLETTER-ABMELDE-LINKS.md) | Eigenes Geheimnis der Abmelde-Links auf branding.supply (SEC-020): setzen, wechseln, was bei einem Tausch des API-Schlüssels passiert |
 | [runbooks/LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md) | Stündlicher Label-Abgleich (SEC-024): was er tut und nie tut, Schalter, Probelauf, Log lesen, Ops-Route, Rückweg |

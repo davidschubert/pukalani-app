@@ -94,7 +94,7 @@ beim Zurückspielen.
 | Der private Schlüssel | in Davids Passwort-Managern **NordPass** und **Apple Passwörter**, jeweils als Eintrag „Pukalani Appwrite Backup – privater Schlüssel“. Nicht auf dem Server, nicht auf der Storage Box, nicht im Repo |
 | Zugang zum Hetzner-Konto und zu Cloudflare (für die Adresse) | Passwort-Manager |
 | Die Skripte | dieses Repo, Ordner `ops/` (öffentlich lesbar, auch ohne Rechner mit Checkout) |
-| Wer außer David an den Schlüssel kommt | **entschieden am 2026-11-16:** keine zweite Person; der Schlüssel bekommt einen zweiten, getrennten Ablageort bei David (noch einzurichten, OPEN-ITEMS BU1) |
+| Wer außer David an den Schlüssel kommt | **entschieden am 2026-11-16:** keine zweite Person. Der Schlüssel liegt an zwei getrennten Orten bei David (die zwei Passwort-Manager oben; damit ist der zweite Ablageort erledigt). Folge: Fällt David aus, kann niemand eine Wiederherstellung fahren — auch eine Vertretung nicht (PRODUKTIONS-ALARM.md, § 5) |
 
 ## 4 · Wiederherstellen, Schritt für Schritt
 
@@ -197,7 +197,8 @@ Gelungen, wenn die letzte Zeile mit `✔ Zurückgespielt` beginnt.
 - [ ] Cloudflare → Zone `pukalani.app` → DNS: den A-Eintrag `api` auf die
       Adresse des neuen Servers setzen (nicht „proxied“, wie bisher).
 - [ ] Das Zertifikat kommt aus dem Backup mit. Ist es inzwischen abgelaufen:
-      `docs/runbooks/PRODUKTIONS-ALARM.md`, Abschnitt „Appwrite-Zertifikat“.
+      `docs/runbooks/PRODUKTIONS-ALARM.md`, § 4, „Zertifikat
+      abgelaufen/kurz davor“.
 
 ### 4.6 Proben
 
@@ -329,7 +330,9 @@ Vorschau — ein Zeitplan ohne den Schalter sichert nichts.
 | Läufe auf dem Server / auf der Box | `ls ~/backup/runs` · `ssh storagebox ls backups/appwrite/runs` |
 
 Der Produktions-Wächter fragt das Tor täglich und wird rot, wenn der letzte
-gute Lauf älter als 26 Stunden ist oder der letzte Versuch gescheitert ist
+Versuch gescheitert ist oder der letzte gute Lauf zu alt: im täglichen Lauf
+älter als 6 Stunden (verlangt wird der Lauf dieser Nacht), bei einem Start
+von Hand älter als 26 Stunden
 (`docs/runbooks/PRODUKTIONS-ALARM.md`). Ein gescheiterter Lauf lässt alle
 früheren Läufe liegen und nennt den Schritt, an dem er scheiterte:
 
