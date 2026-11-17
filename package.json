@@ -44,6 +44,7 @@
     "ops:ai-models": "node scripts/ops/verify-ai-models.mjs",
     "ops:turnstile": "node scripts/ops/verify-turnstile.mjs",
     "ops:auth-policies": "node scripts/ops/appwrite-auth-policies.mjs",
+    "ops:auth-methods": "node scripts/ops/verify-auth-methods.mjs",
     "ops:strip-row-write-rights": "node --experimental-strip-types scripts/ops/strip-row-write-rights.mjs"
   },
   "devDependencies": {
