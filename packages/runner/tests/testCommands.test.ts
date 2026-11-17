@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_OFFERED_TEST_COMMANDS, checkRequestedTestCommands, offeredTestCommands, parseStoredTestCommands } from '../shared/testCommands'
+import { MAX_OFFERED_TEST_COMMANDS, checkInheritedTestCommands, checkRequestedTestCommands, offeredTestCommands, parseStoredTestCommands } from '../shared/testCommands'
 
 /**
  * SEC-037, Konsolen-Seite: Testbefehle gibt es nur aus der Liste, die der
@@ -104,5 +104,31 @@ describe('parseStoredTestCommands', () => {
   })
   it.each(['{kaputt', '{}', '"pnpm lint"', '[1]', '["a", null]'])('%j ⇒ null (kaputt)', (raw) => {
     expect(parseStoredTestCommands(raw)).toBeNull()
+  })
+})
+
+describe('checkInheritedTestCommands — die geerbten Befehle einer Fortsetzung (RU1 e)', () => {
+  const base = { offered: ['pnpm lint'], promptTrusted: true, runnerSelected: true }
+
+  it('nichts gespeichert ⇒ ok', () => {
+    expect(checkInheritedTestCommands({ ...base, stored: '' })).toEqual({ ok: true })
+  })
+
+  it('gelistet ⇒ ok', () => {
+    expect(checkInheritedTestCommands({ ...base, stored: '["pnpm lint"]' })).toEqual({ ok: true })
+  })
+
+  it('Freitext aus der Zeit vor der Liste ⇒ test_command_not_listed', () => {
+    expect(checkInheritedTestCommands({ ...base, stored: '["pnpm lint && pnpm -r test"]' })).toEqual({ ok: false, code: 'test_command_not_listed' })
+  })
+
+  it('kaputter Wert ⇒ test_command_not_listed, nie „keine Tests"', () => {
+    expect(checkInheritedTestCommands({ ...base, stored: '{kaputt' })).toEqual({ ok: false, code: 'test_command_not_listed' })
+    expect(checkInheritedTestCommands({ ...base, stored: '[1]' })).toEqual({ ok: false, code: 'test_command_not_listed' })
+  })
+
+  it('ungeprüft ⇒ tests_not_allowed_untrusted; ohne Rechner ⇒ tests_need_runner', () => {
+    expect(checkInheritedTestCommands({ ...base, stored: '["pnpm lint"]', promptTrusted: false })).toEqual({ ok: false, code: 'tests_not_allowed_untrusted' })
+    expect(checkInheritedTestCommands({ ...base, stored: '["pnpm lint"]', runnerSelected: false })).toEqual({ ok: false, code: 'tests_need_runner' })
   })
 })

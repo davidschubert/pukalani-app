@@ -10,9 +10,33 @@
  * das Browser-Plugin davor und die zentrale 5xx-Zeile (`server/error.ts`).
  * Pure, ohne Nuxt-Importe — App, Server und Tests nutzen dieselbe Rechnung.
  *
- * WAS SIE NICHT KANN: eine Kennung im PFAD erkennen (`/x/<kennung>`). Der Pfad
- * bleibt, wie er ist; wer dort etwas Vertrauliches führt, kürzt es selbst.
+ * LANGE KENNUNG IM PFAD (SR1 d, 2026-11-17): ein Abschnitt des Pfads aus 40
+ * oder mehr Zeichen `[A-Za-z0-9_-]` wird auf seine ersten sechs Zeichen
+ * gekürzt (`/x/abcdef…`). So lang ist bei uns nur eine Zufalls-Kennung aus
+ * einem Link (32 Bytes sind 43 bzw. 64 Zeichen); Zeilen-Ids (20 bis 36
+ * Zeichen) und gewöhnliche Adressen bleiben ganz. Sechs Zeichen reichen, um
+ * zwei Protokoll-Zeilen demselben Link zuzuordnen, und verraten ihn nicht. Ein
+ * sehr langer sprechender Abschnitt wird mitgekürzt — der Anfang bleibt lesbar.
+ *
+ * WAS SIE NICHT KANN: eine KURZE Kennung im Pfad erkennen. Wer dort etwas
+ * Vertrauliches unter 40 Zeichen führt, kürzt es selbst.
  */
+
+/**
+ * Ein Pfad-Abschnitt, der nur eine lange Zufalls-Kennung sein kann (s. Kopf):
+ * direkt hinter einem `/`, mindestens 40 Zeichen, und dahinter endet der
+ * Abschnitt (kein Punkt: ein Dateiname mit Endung ist keine Kennung).
+ */
+const LONG_PATH_SEGMENT = /(\/[\w-]{6})[\w-]{34,}(?![\w.-])/g
+
+/**
+ * Lange Kennungen im Pfad kürzen — in einer Adresse oder mitten im Text.
+ * Ohne Lookbehind: die Datei läuft auch im Browser, und ältere Safari-Fassungen
+ * scheitern daran schon beim Laden.
+ */
+export function shortenLongPathSegments(value: string): string {
+  return value.replace(LONG_PATH_SEGMENT, '$1…')
+}
 
 /** Obergrenze für eine geloggte Adresse (der Pfad allein ist nie länger). */
 export const LOG_ADDRESS_MAX = 512
@@ -28,7 +52,7 @@ export function stripAddressForLog(value: string, max = LOG_ADDRESS_MAX): string
   const head = cut === -1 ? raw : raw.slice(0, cut)
   // `schema://nutzer:passwort@host/…` ⇒ `schema://host/…`
   const withoutCredentials = head.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@\s]*@/i, '$1')
-  return withoutCredentials.slice(0, max)
+  return shortenLongPathSegments(withoutCredentials).slice(0, max)
 }
 
 /**
@@ -40,7 +64,7 @@ const ADDRESS_WITH_TAIL = /((?:[a-z][a-z0-9+.-]*:\/\/|\/)[^\s?#"'`<>()[\]]*)[?#]
 const ADDRESS_CREDENTIALS = /([a-z][a-z0-9+.-]*:\/\/)[^/@\s"'`<>]*@/gi
 
 export function stripAddressesInText(text: string): string {
-  return text.replace(ADDRESS_WITH_TAIL, '$1').replace(ADDRESS_CREDENTIALS, '$1')
+  return shortenLongPathSegments(text.replace(ADDRESS_WITH_TAIL, '$1').replace(ADDRESS_CREDENTIALS, '$1'))
 }
 
 export interface ClientErrorReport {

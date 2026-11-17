@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { runResumeAllowed } from '../../shared/runGuards'
 import { runTextRemovedAt } from '../../shared/runTextRetention'
-import type { RunRow } from '../../shared/types/runner'
+import { runAbandoned } from '../../shared/staleRunRetention'
+import { checkInheritedTestCommands, offeredTestCommands } from '../../shared/testCommands'
+import type { RunRow, RunnersListResponse } from '../../shared/types/runner'
 
 /**
  * Der Abschlussbericht eines Laufs — docs/plans/AI-RUNNER.md § 3.4/§ 9.
@@ -119,6 +121,61 @@ const canResume = computed(() => runResumeAllowed(props.run))
  */
 const textRemoved = computed(() => runTextRemovedAt(props.run.resultJson) !== null)
 
+/**
+ * NACH 7 TAGEN STILLE ABGEBROCHEN (RU1 c, shared/staleRunRetention.ts): der
+ * Lauf kam nie zu einem Ende (Rechner aus, Dienst abgestürzt, Hochladen
+ * abgebrochen). Der Zustand heisst `cancelled` wie beim Knopf — der Hinweis
+ * sagt, dass niemand geklickt hat.
+ */
+const abandoned = computed(() => runAbandoned(props.run))
+
+/**
+ * DIE GEERBTEN TESTBEFEHLE PASSEN NICHT MEHR (RU1 e). Eine Fortsetzung erbt
+ * die Testbefehle ihres Vorgängers, die Antwort ändert sie nicht — trägt der
+ * Lauf Befehle, die der Rechner heute nicht anbietet (Rückfragen aus der Zeit
+ * vor der Befehls-Liste, 2026-11-14), lehnt die Route JEDE Antwort ab. Statt
+ * erst nach dem Tippen eine Absage zu zeigen, prüft das Board vorher mit
+ * derselben Regel (`checkInheritedTestCommands`) und der Anzeige-Kopie der
+ * Liste aus dem Heartbeat. Die Route bleibt die Sicherung: lehnt sie aus
+ * einem Grund ab, den das Board nicht sehen kann (die HEUTIGE Herkunft des
+ * Tickets), setzt ihr Code denselben Zustand.
+ *
+ * Kein Rechner-Eintrag, Ladefehler ⇒ KEINE Vorab-Sperre — dann entscheidet
+ * die Route, das Feld bleibt.
+ */
+const RESUME_BLOCK_KEYS: Record<string, string> = {
+  test_command_not_listed: 'runner.report.resumeBlocked.testNotListed',
+  tests_not_allowed_untrusted: 'runner.report.resumeBlocked.testsUntrusted',
+  tests_need_runner: 'runner.report.resumeBlocked.testsNeedRunner',
+}
+const resumeBlockedCode = ref('')
+
+watch(() => [props.run.$id, canResume.value, props.run.testCommands] as const, async ([runId, resumable, stored]) => {
+  resumeBlockedCode.value = ''
+  if (import.meta.server || !resumable || !stored) return
+  const runners = await $fetch<RunnersListResponse>('/api/runner/runners').catch(() => null)
+  // Ein inzwischen gewechselter Lauf überholt diese Antwort nicht.
+  if (!runners || runId !== props.run.$id) return
+  const runner = props.run.runnerId
+    ? runners.runners.find(entry => entry.$id === props.run.runnerId && entry.status === 'active') ?? null
+    : null
+  // Rechner fehlt oder ist stillgelegt: das ist `runner_unavailable`, nicht
+  // diese Sperre — die Route sagt es beim Absenden.
+  if (props.run.runnerId && !runner) return
+  const check = checkInheritedTestCommands({
+    stored,
+    offered: runner ? offeredTestCommands(runner.capabilitiesJson, props.run.repoKey) : [],
+    promptTrusted: props.run.promptTrusted === true,
+    runnerSelected: runner !== null,
+  })
+  if (!check.ok) resumeBlockedCode.value = check.code
+}, { immediate: true })
+
+const resumeBlockedText = computed(() => {
+  const key = RESUME_BLOCK_KEYS[resumeBlockedCode.value]
+  return key ? t(key) : ''
+})
+
 const answer = ref('')
 const submitting = ref(false)
 
@@ -136,9 +193,6 @@ const RESUME_ERROR_KEYS: Record<string, string> = {
   not_resumable: 'runner.report.errors.notResumable',
   mode_not_allowed_untrusted: 'runner.report.errors.mode',
   runner_unavailable: 'runner.report.errors.runner',
-  tests_need_runner: 'runner.report.errors.testsNeedRunner',
-  tests_not_allowed_untrusted: 'runner.report.errors.testsUntrusted',
-  test_command_not_listed: 'runner.report.errors.testNotListed',
   subject_trust_unavailable: 'runner.report.errors.trustUnavailable',
 }
 
@@ -158,7 +212,15 @@ async function submitAnswer() {
     toast.add({ title: t('runner.report.resumed'), description: t('runner.report.resumedHint'), color: 'success', icon: 'i-ph-rocket-launch' })
   }
   catch (error) {
-    const key = RESUME_ERROR_KEYS[reasonOf(error)] ?? 'runner.report.errors.resume'
+    const reason = reasonOf(error)
+    // Endgültig für DIESEN Lauf: statt „versuch es noch einmal" das Feld
+    // ausblenden und den Satz „leg einen neuen Lauf an" zeigen.
+    if (RESUME_BLOCK_KEYS[reason]) {
+      resumeBlockedCode.value = reason
+      toast.add({ title: t('runner.report.errors.resume'), description: t(RESUME_BLOCK_KEYS[reason]!), color: 'error' })
+      return
+    }
+    const key = RESUME_ERROR_KEYS[reason] ?? 'runner.report.errors.resume'
     toast.add({ title: t(key), description: t('runner.report.errors.resumeHint'), color: 'error' })
   }
   finally {
@@ -184,7 +246,18 @@ async function submitAnswer() {
       variant="subtle"
       icon="i-ph-question"
       :title="t('runner.report.needsInputTitle')"
-      :description="canResume ? t('runner.report.needsInputText') : t('runner.report.needsInputNoSession')"
+      :description="!canResume ? t('runner.report.needsInputNoSession') : resumeBlockedText ? undefined : t('runner.report.needsInputText')"
+    />
+
+    <!-- Nach 7 Tagen ohne Lebenszeichen von der Frist abgebrochen -->
+    <UAlert
+      v-if="abandoned"
+      color="neutral"
+      variant="subtle"
+      icon="i-ph-hourglass-simple-low"
+      :title="t('runner.report.abandonedTitle')"
+      :description="t('runner.report.abandonedText')"
+      data-runner-abandoned
     />
 
     <!-- Geschwärzt nach 12 Monaten: statt Auftrag, Fehlertext und Anhängen
@@ -202,7 +275,17 @@ async function submitAnswer() {
          die Fortsetzung erbt alles Übrige aus dem Vorgänger (§ 9). Nur bei
          fortsetzbarem Lauf (needs_input MIT Session), sonst führt allein ein
          neuer Lauf weiter. -->
-    <form v-if="canResume" class="space-y-2" data-runner-resume @submit.prevent="submitAnswer">
+    <!-- Die geerbten Testbefehle passen nicht mehr: kein Feld, ein Satz. -->
+    <UAlert
+      v-if="canResume && resumeBlockedText"
+      color="warning"
+      variant="outline"
+      icon="i-ph-prohibit"
+      :title="t('runner.report.resumeBlocked.title')"
+      :description="resumeBlockedText"
+      data-runner-resume-blocked
+    />
+    <form v-else-if="canResume" class="space-y-2" data-runner-resume @submit.prevent="submitAnswer">
       <UFormField :label="t('runner.report.answerLabel')">
         <UTextarea
           v-model="answer"
