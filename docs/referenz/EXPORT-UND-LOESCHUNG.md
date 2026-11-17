@@ -118,6 +118,7 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
 | Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
 | Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `count`; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
+| Warteliste von branding.supply (`brand_waitlist`) | nie bestätigt 30 Tage nach der letzten Anforderung eines Links, eingeladen oder abgelehnt 90 Tage nach dem letzten Schreiben, noch wartend 12 Monate ab dem Eintragen | `brand/server/plugins/brand-waitlist-retention.ts`, stündlich (Regel `brand/shared/brandWaitlistRetention.ts`) | `pukalani.brand.waitlistRetention` (off / count / apply; branding: `count`) | `retention.run` mit `job: brand-waitlist-retention`, Fehler `retention.incomplete` / `retention.failed` |
 
 **Gemeldete private Nachrichten (SEC-033, Davids Entscheidung 2026-11-12):** Den Text sieht die
 Moderation nur, solange eine Meldung offen ist — in der Liste und in der Einzel-Ansicht entscheidet
@@ -152,6 +153,8 @@ Hand, die ohne Angabe nur zählt:
 - `POST /api/admin/avatars/orphan-sweep` (`storage.manage`; `{ apply: true }` löscht nur, wenn der
   Schalter der App auf `apply` steht, sonst 409 `sweep_not_enabled`)
 - `POST /api/brand/admin/check-erasure/run` (Betreiber von branding.supply)
+- `POST /api/brand/admin/waitlist-retention/run` (Betreiber von branding.supply; löscht nur mit
+  `{ apply: true }` und Schalter `apply`)
 
 Ein Ausfall zeigt sich heute nur als Fehlerzeile im Log der App. Ein Alarm in die Betreiber-Ansicht
 hinein ist ein eigenes Paket (Gesamtaudit P22).
@@ -188,10 +191,12 @@ prüft Davids Anwalt.
   Fadens der anderen Person, kein lesbarer Inhalt.
 - **Gemeldete private Nachrichten** bleiben bei der Kontolöschung bis zu 90 Tage als Beleg; wer sie
   liest und wann der Text fällt, steht oben unter „Fristen" (SEC-033).
-- **Zeilen ohne Konto**: Warteliste und Gesprächsanfragen von Menschen, die nie ein Konto angelegt
-  haben, und das Konto-Protokoll haben heute noch keinen Lauf. Die Fristen sind entschieden
-  (2026-11-15: Warteliste 30 / 90 Tage / 12 Monate, Gesprächsanfragen und Protokoll 12 Monate), der
-  Bau ist der offene Punkt EL1 (c) in [OPEN-ITEMS](../OPEN-ITEMS.md).
+- **Zeilen ohne Konto**: Die Fristen sind entschieden (2026-11-15: Warteliste 30 / 90 Tage /
+  12 Monate, Gesprächsanfragen und Protokoll 12 Monate). Die Warteliste hat seit 2026-11-17 einen
+  Lauf (oben unter „Fristen"), der auf Production zunächst nur zählt; gelöscht wird erst mit
+  Davids Ja zur gezählten Zahl. Gesprächsanfragen von Menschen ohne Konto und das Konto-Protokoll
+  haben noch keinen Lauf — sie folgen in einem eigenen Schritt (offener Punkt EL1 (c) in
+  [OPEN-ITEMS](../OPEN-ITEMS.md)).
 
 ## Altbestand
 

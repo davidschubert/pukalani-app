@@ -32,6 +32,7 @@ const EXPECTED_JOB_NAMES = [
   'avatar-orphan-sweep',
   'brand-check-erasure',
   'brand-events-sweep',
+  'brand-waitlist-retention',
   'custom-domain-notice',
   'custom-domain-sweep',
   'email-digest',
