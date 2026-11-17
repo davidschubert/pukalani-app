@@ -7,7 +7,11 @@ export default {
   tier: 'foundation',
   hasMigrations: false,
   userData: true,
-  apiPrefixes: ['/api/onboarding'],
+  // KEIN `apiPrefixes` (WL1 d, 2026-11-17): die Stufe `foundation` ist nicht
+  // abschaltbar — die Schalt-Route lehnt alles außer `optional` ab, ein
+  // Entitlement schaltet `foundation` nie ab (`pnpm check:manifests`, Prüfung
+  // 7, hält beide Stellen fest). Ein Präfix hier bewirkte nur eine Abfrage
+  // der Produkt-Sperre je Anfrage, die immer „an" antwortete.
   title: { en: 'Onboarding', de: 'Onboarding' },
   description: {
     en: 'Public self-service funnel: sign up, set up a community in four steps, land in it.',

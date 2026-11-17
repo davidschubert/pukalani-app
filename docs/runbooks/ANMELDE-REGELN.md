@@ -71,14 +71,17 @@ Settings → **Auth methods**.
 | Schalter | Soll | Warum |
 | --- | --- | --- |
 | Email/Password, Magic URL, Email OTP, Anonymous, Phone, Team Invites | **aus** | Kein Konto und keine Anmeldung an unseren Prüfungen vorbei. Unser Server ruft mit API-Schlüssel und ist davon nicht betroffen. |
-| JWT | an | bleibt, bis geklärt ist, ob etwas daran hängt (unser Live-Token entsteht über `users.createJWT` mit Schlüssel). |
+| JWT | an | Bewertet am 2026-11-17: nichts im Code hängt daran. Jedes Token entsteht über `users.createJWT` mit Schlüssel (`core/server/api/auth/realtime-token.get.ts`, `core/server/utils/controlService.ts`), der Browser ruft `account.createJWT` nirgends. Der Schalter kann aus; umgestellt ist er noch nicht (ein Klick je Projekt in der Verwaltung, danach die Live-Verbindung auf einer Seite ansehen). |
 | Passkey | aus | wird nicht angeboten. |
 
 **Stand:** alle vier Production-Projekte umgestellt am 2026-11-16
 (`portfolio` als Probe, danach `branding`, `admin`, `account`; Davids
 Entscheidung) und je Projekt von außen geprüft. Die lokale Datenbank und die
-der CI haben die Schalter an. Was noch fehlt (Klick-Probe der Anmeldung per
-Code, täglicher Blick): [OPEN-ITEMS](../OPEN-ITEMS.md), Punkt SV1.
+der CI haben die Schalter an. Seit dem 2026-11-17 prüft der tägliche Wächter
+die vier Projekte von außen (`scripts/ops/verify-auth-methods.mjs`, Blick 14
+in `production-watch.yml`): je Projekt derselbe Aufruf wie unten, rot bei
+„offen". Was noch fehlt (Klick-Probe der Anmeldung per Code):
+[OPEN-ITEMS](../OPEN-ITEMS.md), Punkt SV1.
 
 **Prüfen von außen, ohne ein Konto anzulegen** (erfundene Zugangsdaten):
 
@@ -87,7 +90,10 @@ curl -s -X POST https://api.pukalani.app/v1/account/sessions/email -H 'Content-T
 ```
 
 `501 user_auth_method_unsupported` heißt zu, `401 user_invalid_credentials`
-heißt offen. Über unsere Seite muss dieselbe Anmeldung weiter „Invalid
+heißt offen. Dasselbe für alle vier Projekte: `pnpm ops:auth-methods`. Von
+den sechs Schaltern ist von außen nur „Email/Password" ohne Nebenwirkung
+prüfbar — die anderen würden bei offenem Weg ein Konto anlegen oder eine Mail
+schicken. Über unsere Seite muss dieselbe Anmeldung weiter „Invalid
 credentials" antworten (dann erreicht der Server Appwrite mit Schlüssel).
 
 **Vor dem Umstellen eines Projekts:** jeder Aufruf unseres Servers, den die
