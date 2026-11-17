@@ -3,6 +3,7 @@ import { fakeDoor, firstOperatorCall, type FakeDoor, type FakeRow } from '../../
 import { probeRoute, resetCommunityWorld, userIdOf } from '../../core/tests/support/participationHarness'
 import { serializeUgcTranslations } from '../../core/shared/ugcTranslations'
 import { buildEventIcs } from '../server/utils/ics'
+import { getPubliclyVisibleEvent } from '../server/utils/visibleEvent'
 import { attendeeAvatarsFor, attendeesFor, myRsvpsFor, myVotesFor } from '../server/utils/eventsShared'
 import { EVENT_RSVPS_TABLE, EVENT_VOTES_TABLE, EVENTS_TABLE } from '../shared/types/event'
 
@@ -73,6 +74,7 @@ function eventsDoor(): FakeDoor {
 
 /** Die echten Hilfen für eigene Zusätze — plus Technik, die nichts entscheidet. */
 const READ_GLOBALS = {
+  getPubliclyVisibleEvent,
   myRsvpsFor,
   myVotesFor,
   attendeesFor,
@@ -198,7 +200,7 @@ describe('GET /api/events/:id/ics (Kalender-Datei)', () => {
 
   it('Gast: kein 401, gelesen wird nur über die Mitglieder-Klinke', async () => {
     const door = eventsDoor()
-    const run = await probeRoute(load, { who: 'guest', params: { id: 'e-1' }, door: door.tenantDb, globals: { buildEventIcs } })
+    const run = await probeRoute(load, { who: 'guest', params: { id: 'e-1' }, door: door.tenantDb, globals: { buildEventIcs, getPubliclyVisibleEvent } })
     expect(run.status).toBe(200)
     expect(door.calls).toEqual([{ handle: 'member', method: 'get', table: EVENTS_TABLE, id: 'e-1' }])
   })
@@ -206,7 +208,7 @@ describe('GET /api/events/:id/ics (Kalender-Datei)', () => {
   for (const who of ['guest', 'member'] as const) {
     it(`${who}, Entwurf ohne Leserecht: 404`, async () => {
       const door = eventsDoor()
-      const run = await probeRoute(load, { who, params: { id: 'e-2' }, door: door.tenantDb, globals: { buildEventIcs } })
+      const run = await probeRoute(load, { who, params: { id: 'e-2' }, door: door.tenantDb, globals: { buildEventIcs, getPubliclyVisibleEvent } })
       expect(run.status).toBe(404)
       expect(firstOperatorCall(door.calls)).toBe(-1)
     })
@@ -275,6 +277,7 @@ describe('POST /api/events/:id/translate (übersetzen ist lesen)', () => {
   function translateGlobals() {
     const ai = { count: 0 }
     const globals = {
+      getPubliclyVisibleEvent,
       getEffectiveAiConfig: async () => ({ model: 'probe-model' }),
       aiCompleteJson: async () => {
         ai.count += 1
