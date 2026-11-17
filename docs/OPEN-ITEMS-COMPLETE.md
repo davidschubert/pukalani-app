@@ -30,6 +30,160 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N08 — Nacharbeiten „Kleine Reste quer durch die Produkte": Warteliste, AB1 (g), EL1 (d), KK1 (c), BP1 (d), RU1 (c, d, e), SR1 (d), MM1 (e), SI1 (d), IN1 (c) und zwei Reste aus N07 ✅ 2026-11-17
+
+Die kleinen, baubaren Reste aus zehn offenen Punkten. Pull Requests 296, 297,
+298, 300, 301, 302, 303, 305 und der Abschluss-PR; keine Migration, nichts auf
+Production von Hand geändert, kein Stripe-Aufruf, kein KI-Lauf. Der eine neue
+Lauf, der Daten ändern könnte, ging im Zähl-Modus live.
+
+**Was gebaut ist**
+
+- **Warteliste (hieß kurz WL1).** Trägt sich eine Adresse erneut ein, die der
+  Betreiber schon eingeladen oder abgelehnt hat, bekommt sie wie jede andere
+  einen Link. Der Klick darauf stellte die Zeile bisher auf „bestätigt". Jetzt
+  bleibt der Zustand, der Link wird verbraucht, der Betreiber bekommt keine
+  Meldung, und die Antwort ist dieselbe wie für eine schon bestätigte Adresse
+  (`packages/brand/server/api/brand/waitlist/confirm.post.ts`). Das Kürzel WL1
+  gehört damit wieder nur den „Wächtern mit eigenen Listen".
+- **Bestätigungs-Mail je Empfänger (AB1 g).** `POST /api/auth/verification`
+  zählt wie Code- und Reset-Mails je Adresse (`AUTH_MAIL_RECIPIENT_LIMIT`, 5
+  je Stunde, Bereich `auth:verification`). Über der Grenze antwortet die Route
+  offen mit der vorhandenen 429 `rate_limited`: gefragt hat das angemeldete
+  Konto nach seiner eigenen Adresse; der Knopf zeigt dafür schon den Satz.
+- **Benachrichtigungen aufräumen (EL1 d).** Das Aufräumen der Meldungen zu
+  einem gelöschten oder ausgeblendeten Kommentar oder Beitrag ist EINE
+  Funktion im Core (`removeObjectNotifications`,
+  `packages/core/server/utils/notificationCleanup.ts`); `comments` und `posts`
+  reichen nur noch ihre Id-Formel durch. Verhalten unverändert; eine Störung
+  steht in beiden Layern unter derselben Log-Kennung
+  `notifications.cleanup_failed`.
+- **Seiten-Listen (KK1 c).** Verwaltungs-Liste (vorher 500 Zeilen), Fassungen
+  im Editor und auf der öffentlichen Seite (20) und das Löschen (50) lesen
+  über eine gemeinsame Hilfe (`packages/pages/server/utils/pageRows.ts`):
+  geblättert nach Kennung, mit Netz und einer Log-Zeile, wenn es greift. Die
+  Verwaltungs-Seite sagt, wenn das Netz (2.000 Zeilen) greift. Das Löschen
+  läuft Runde um Runde, bis keine Fassung mehr steht; bleibt ein Rest,
+  antwortet die Route mit einem Fehler statt „gelöscht".
+- **Dashboard-Reste (aus N07, BP1 d).** Der Eintrag `events-sweep` ist aus
+  Betreiber-Konsole und Core. Die Übersicht fragt die Moderations-Liste nicht
+  mehr ab, wenn `comments` abgeschaltet ist, und lädt sie, sobald das Produkt
+  wieder an ist. Die Konfig-Seite sendet nur die geänderten Schalter; die
+  Route nimmt ein Teil-Objekt und schreibt über `mutateAppConfig()` nur die
+  genannten Spalten.
+- **Runner (RU1 c, e).** Neuer stündlicher Lauf `stale-run-retention`: ein
+  Lauf in `draft`, `queued`, `claimed` oder `running`, der 7 Tage kein
+  Lebenszeichen zeigt (letzte Änderung, Claim, Start, letztes Ereignis), wird
+  wie mit dem Abbrechen-Knopf beendet (`cancelled`, Grund `abandoned`); danach
+  greifen die vorhandenen Fristen. Eigener Schalter
+  `pukalani.runner.staleRunRetention`, in `apps/control` auf `count`.
+  Hand-Route mit Rollen-Test, Zeile in der Bremsen-Liste und in
+  `ops/timed-jobs.conf`. Fortsetzen nach einer Rückfrage: passt ein alter Lauf
+  nicht mehr zur Befehls-Liste, antwortet die Route 409 mit dem Grund, und das
+  Board zeigt statt des Antwortfelds „leg einen neuen Lauf an" — eine Regel
+  für Route und Board (`checkInheritedTestCommands`).
+- **Kleinigkeiten.** Der Handlauf der Zahlungswarnung steht in der
+  Bremsen-Liste (SI1 d). Der Launch-Seed der Insights prüft Marken-Zeilen vor
+  dem Schreiben mit den Regeln der Marken-Seiten (IN1 c; nur geändert, nicht
+  gelaufen). Die festen Übersichten `/discover` und `/insights` fallen aus der
+  Sitemap von branding.supply, wenn ihr Produkt abgeschaltet ist. Das
+  Protokoll kürzt einen Pfad-Abschnitt aus 40 oder mehr Zeichen auf seine
+  ersten sechs (SR1 d, `core/shared/logAddress.ts`).
+
+**Ohne Rückfrage entschieden (kleine, umkehrbare Fragen — Davids Regel vom
+2026-11-17)**
+
+- Warteliste: dieselbe Antwort wie „schon bestätigt" statt eines eigenen
+  Satzes — ein „du bist abgelehnt" wäre eine Auskunft, die der Betreiber nicht
+  gegeben hat. Der Link wird trotzdem verbraucht.
+- Bestätigungs-Mail: die Grenze wird offen gesagt (429) statt still
+  geschluckt — anders als bei Code und Reset fragt hier nur das eigene Konto.
+- Runner: 7 Tage für alle vier Zustände; beendet wird mit `cancelled` (wie
+  der Abbrechen-Knopf — ein noch lebender Dienst hält dann von selbst an), ein
+  Entwurf wird verworfen, nicht gelöscht. Eine Warteschlange, die länger als 7
+  Tage steht (Rechner aus), wird damit ebenfalls beendet; das zeigt zuerst die
+  gezählte Zahl.
+- Seiten: Netz 2.000 Zeilen für die Liste, 200 je Seite; Löschen in Runden zu
+  25 (jedes Löschen belegt vorher die Zugehörigkeit).
+- Konfig-Seite: die Modell-Prüfung bleibt vor der Schreib-Kette (sie kann 5 s
+  warten und hielte sonst alle Schreiber auf).
+- Protokoll: sechs Zeichen einer langen Kennung bleiben stehen (zuordenbar,
+  aber nicht benutzbar); Abschnitte unter 40 Zeichen bleiben ganz.
+- **Bewusst so gelassen, damit es die Liste verlässt:**
+  - SR1 (d): das Korrektur-Formular der Insights bleibt bei Honigtopf und
+    Drossel. Die Regel „Bot-Prüfung und Grenze je Empfänger" gilt für
+    Formulare, die eine Mail an eine eingetragene Adresse auslösen; dieses
+    verschickt keine.
+  - MM1 (e): eine Zusage zu einem inzwischen ausgeblendeten Termin lässt sich
+    nicht zurücknehmen (keine Stelle in der Oberfläche, erinnert wird nur an
+    veröffentlichte Termine, die Zusage fällt mit dem Konto). Links in
+    Benachrichtigungs-Mails tragen kein Sprach-Präfix (der Sprach-Merker des
+    Browsers leitet um; ein Präfix je Empfänger müsste die Sprach-Einstellung
+    jeder App kennen). Wer durch den ersten Beitrag Mitglied wird, sieht den
+    Übersetzen-Knopf erst nach dem nächsten Seitenaufruf (wie die Rolle). Der
+    E2E-Test `community-removed.spec.ts` gehört zu BT1 (d).
+  - RU1 (d): Tickets von vor dem 2026-11-14 bleiben „ungeprüft" (auf
+    Production acht, alle geschlossen); der Weg ist ein neues Ticket, einen
+    Knopf „als geprüft übernehmen" gibt es bewusst nicht.
+  - RU1 (e): ein ungeprüfter Lauf wird vom Dienst weiter committet — auf
+    seinem Arbeits-Zweig, nie gepusht; die Herkunft entscheidet nur über
+    Testbefehle.
+- Nicht gebaut: die Zahlen des Seiten-Kontingents im Katalog des Control Plane
+  (bräuchte einen Umbau der Plan-Route und Zahlen in der echten Datenbank;
+  OPEN-ITEMS „KK1" c), ein Lauf über die alten Textauszüge (echte Daten;
+  „EL1" d), RU1 (b), und das Kennzeichen am Feldwert eines abgeschnittenen
+  Entwurfs (KI1 d — die Stelle liegt in der Seite des Markenberaters, an der
+  zur selben Zeit die Gruppe N10 baute).
+
+**Geprüft**
+
+- Tests je Teil am echten Handler oder an der puren Regel, mit Gegenprobe:
+  Warteliste je Zustand (bleibt, zweiter Klick unbekannt, abgelaufen,
+  Schreibfehler); Bestätigungs-Mail bis zur Grenze, je Adresse über Sitzungen,
+  zwölf gleichzeitige Anfragen ⇒ genau fünf Mails; Core-Funktion der
+  Benachrichtigungen (nur die exakt passende Zeile fällt); Seiten mit mehr
+  Zeilen als einer Seite, Netz, Löschen über Runden; Konfig-Route mit zwei
+  gleichzeitigen Aufrufen und Gegenprobe; Runner-Regel mit gestellter Uhr
+  (`count` nennt dieselbe Zahl wie `apply`), Rollen-Test der Hand-Route;
+  Sitemap je Schalter-Stand an der geladenen Route.
+- Alle offenen Zweige einmal ZUSAMMEN auf dem neuesten `main` gemergt und die
+  Suiten von core, admin, pages, comments, posts und runner gefahren (alle
+  grün), dazu `pnpm lint:scripts`.
+- Lokal, nur lesend, gegen die Appwrite-Instanz (2.7.1): die Abfragen des
+  neuen Runner-Laufs werden angenommen, auch mit Cursor; im Spiegel gibt es
+  keinen nie beendeten Lauf (12 Läufe, alle beendet).
+
+**Nicht geprüft**
+
+- Kein Klick im Browser, weder lokal noch auf den echten Seiten: der Hinweis
+  der Seiten-Liste, die Konfig-Seite, die Übersicht mit abgeschaltetem
+  `comments`, das Board des Runners (blockierte Rückfrage, „Automatisch
+  beendet"), der Knopf „Bestätigung erneut senden" über der Grenze.
+- Kein Lauf scharf geschaltet: `stale-run-retention` zählt nur. Kein Lauf des
+  Launch-Seeds. Kein Blick in die echte Datenbank.
+- Die drei Verwaltungs-Routen der Seiten sind nicht als Route geladen (sie
+  stehen im Bestand der Rollen-Tests); geprüft ist die Hilfe dahinter.
+
+**Gelernt:** (1) **Ein Auftrag, der zwei Dinge über dieselbe Datei sagt, wird
+am Zaun entschieden, nicht an der Liste.** KI1 (d) stand in der Aufgabenliste,
+lag aber in einer 4.000-Zeilen-Seite, die an diesem Tag einer Nachbar-Gruppe
+gehörte — es blieb als Rest mit genauer Ortsangabe, statt einen Konflikt zu
+riskieren. (2) **Was ein offener Punkt als fehlend nennt, zuerst nachmessen —
+zum zweiten Mal an diesem Tag.** Der Launch-Seed schrieb Marken schon immer
+als Entwurf; was wirklich fehlte, war die Prüfung vor dem Schreiben. (3)
+**Eine geteilte Datei darf kein Lookbehind tragen.** `logAddress.ts` läuft im
+Browser; ältere Safari-Fassungen scheitern an `(?<=…)` schon beim Laden, und
+kein Test hier merkt es. (4) **Erfundene Kennungen in Tests zusammensetzen,
+nicht ausschreiben.** Eine ausgeschriebene Zufalls-Zeichenkette neben dem
+Wort „Token" trifft die Pflicht-Prüfung `secrets`. (5) **Ein Deckel, den ein
+Agent wählt, ist eine Zahl zum Nachrechnen:** das Löschen der Seiten lief in
+Runden zu 100 gleichzeitig, und jedes Löschen liest vorher — 200 Aufrufe auf
+einmal. (6) **Listen, die mehrere Zweige ergänzen, wieder in Reihe:** der
+Runner-Zweig entstand erst nach dem Merge des Zweigs, der dieselbe
+Bremsen-Liste erweitert hatte.
+
+---
+
 ### N06 — Nacharbeiten „Betreiber-Dashboard, Label-Abgleich, Aufräumen": AL1, BP1 (c, d), SI1 (b, d), AR1 (b, c, d) und PD1 (c) ✅ 2026-11-17
 
 Die baubaren Reste aus vier Paketen des Gesamtaudits (P16, P06, P26, P15) und
