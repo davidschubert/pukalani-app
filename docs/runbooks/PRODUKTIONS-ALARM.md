@@ -769,14 +769,19 @@ bzw. die Pflichtliste in `scripts/ops/verify-site-env.mjs`.
 
 Stand 2026-11-17 (OPS-010): Jeder Alarmweg aus § 2 und § 3 endet bei einer
 Person. Vorbereitet ist, dass eine zweite sie mitbekommt; eingetragen ist
-noch niemand (OPEN-ITEMS „VT1").
+noch niemand (OPEN-ITEMS „VT1"). Davids Entscheidung vom selben Tag: Die
+Vertretung soll zuerst nur Bescheid wissen (Alarme mitbekommen, nachsehen,
+anrufen, Kunden antworten); über eigene Zugänge wird entschieden, wenn die
+Person feststeht.
 
 **Das Notfallblatt.** Für die Vertretung gibt es ein Blatt mit den ersten
 Handgriffen: woran man eine Störung erkennt, wie man nachsieht, wen man
 anruft, was man Kunden sagt, was man nie tut — danach je Störfall ein
 Absatz, der auf dieses Runbook zeigt. Es liegt bewusst NICHT im Repo (das
 Repo ist öffentlich, das Blatt nennt Menschen und Telefonnummern), sondern
-privat bei David. Es enthält keine Passwörter und keine Schlüssel.
+privat bei David: als Ausdruck bei der Vertretung und als Notiz in seinem
+Passwort-Tresor, auf Deutsch und auf Englisch. Es enthält keine Passwörter
+und keine Schlüssel.
 
 **Was jede und jeder ohne Konto sieht.** `https://status.pukalani.app` (die
 Statusseite von UptimeRobot), `https://<host>/api/health` je Host (`"ok":true`
@@ -795,7 +800,7 @@ ist eine Einstellung bei einem Dienst und braucht Davids Ja.
 | Heartbeat bei healthchecks.io (§ 2, Schritt 3) | Kanäle des Checks `pukalani-production-watch` | Dort einen weiteren Mail-Kanal anlegen und dem Check zuordnen |
 | Alarm-Issue (§ 2, Schritt 1) | dem Repo-Besitzer zugewiesen | Nur für eine Mitarbeiterin im Repo möglich (Änderung an `ALARM_ASSIGNEE` im Workflow). Nicht nötig, wenn die Mail oben steht |
 | GitHub-Mails „Run failed" | Konto des Besitzers | Nur mit eigenem GitHub-Konto und eigenen Benachrichtigungen |
-| Betreiber-Mail der Konsole (`NUXT_ALERT_EMAIL` auf `admin.pukalani.app`): Störungen der Kunden-Sites, Missbrauchs-Meldungen, Anfragen | eine Adresse; die Variable steht nicht auf der Pflicht-Liste | Zweite Adresse mit Komma in den Wert (nodemailer nimmt eine Kommaliste; hier nie geprobt), neu laden über die Ecosystem-Datei. Ohne Mail geht derselbe Hinweis an die Glocke jedes Kontos mit der Rolle `admin` |
+| Betreiber-Mail der Konsole (`NUXT_ALERT_EMAIL` auf `admin.pukalani.app`): Störungen der Kunden-Sites, Missbrauchs-Meldungen, Anfragen | **niemand:** die Variable ist auf keiner Site gesetzt (nachgesehen am 2026-11-17, nur gezählt) und steht nicht auf der Pflicht-Liste. Es bleibt der Hinweis in der Glocke jedes Kontos mit der Rolle `admin` und die Liste im Dashboard | Erst entscheiden, ob sie gesetzt wird (OPEN-ITEMS „VT1" b); dann beide Adressen mit Komma in den Wert (nodemailer nimmt eine Kommaliste; hier nie geprobt), neu laden über die Ecosystem-Datei |
 | Konto-Mails der Dienste (Resend-Tageslimit, Hetzner, Ploi, Cloudflare, Stripe, OpenRouter) | Konto-Inhaber | In keinem Runbook beschrieben; im jeweiligen Konto nachsehen |
 
 **Wenn die Vertretung selbst eingreifen soll,** bekommt sie eigene Konten —
