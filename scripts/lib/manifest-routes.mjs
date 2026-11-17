@@ -27,11 +27,9 @@ import { join } from 'node:path'
  * der Not-Aus des Produkts diese Route NICHT erreichen soll oder kann.
  */
 export const ROUTE_PREFIX_EXCEPTIONS = [
-  {
-    layer: 'control',
-    path: '/api/platform/entitlements',
-    reason: 'Teilt sich den Ordner mit der Core-Route /api/platform/entitlements/refresh — ein Präfix dort schaltete beim Abschalten von control eine Route des Core mit ab. Die Adresse rufen alle Sites ab; ein Umzug unter /api/control ist eine eigene Änderung (GA1 P20, Rest).',
-  },
+  // Heute leer. Der eine Eintrag (control, `/api/platform/entitlements`) ist
+  // seit dem 2026-11-17 weg: die Adresse liegt jetzt unter `/api/control`
+  // (WL1 c). Form eines Eintrags: { layer, path, reason }.
 ]
 
 const METHOD_SUFFIX = /\.(get|post|put|patch|delete|head|options)$/
