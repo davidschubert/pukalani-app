@@ -100,7 +100,11 @@ describe('Beweis-Skripte nehmen den einen Rumpf (OPS-009)', () => {
 
   it('findet die Skripte überhaupt (der Wächter sieht hin)', () => {
     expect(allScripts.length).toBeGreaterThan(100)
-    expect(callers.length).toBeGreaterThanOrEqual(15)
+    // Gezählt werden Skripte, die die Route nennen ODER die Hilfe importieren:
+    // wer ganz auf `createProbeCommunity` umgestellt ist, nennt den Pfad der
+    // Route nicht mehr — die erste Zahl schrumpft also mit jedem Umzug.
+    const usingHelper = allScripts.filter(path => IMPORTS_HELPER.test(read(path)))
+    expect(new Set([...callers, ...usingHelper]).size).toBeGreaterThanOrEqual(15)
   })
 
   it('jedes Skript, das die Anlage-Route ruft, importiert die Hilfe und baut keinen eigenen Rumpf', () => {
