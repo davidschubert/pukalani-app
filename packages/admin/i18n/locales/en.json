@@ -78,7 +78,7 @@
       "linkedWarningText": "This file is currently used as the avatar of {name}. Deleting it leaves that account without a profile picture.",
       "readOnlyTitle": "View only",
       "readOnlyText": "GDPR snapshots are cleaned up automatically after 30 days — they are managed on the GDPR page, not here.",
-      "readOnlyOtherText": "This storage area is view-only here: files can only be deleted in areas that are cleared for it.",
+      "readOnlyOtherText": "This storage area is view-only here: its files belong to content such as fonts, media or event images. Delete them where that content is managed, so no entry is left without its file.",
       "readOnlyLink": "Open GDPR page",
       "unavailableTitle": "Storage browser not available",
       "unavailableText": "Grant the runtime key the buckets.read, files.read + files.write scopes, then reload."
