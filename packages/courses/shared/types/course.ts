@@ -9,8 +9,38 @@ export const LESSON_PROGRESS_TABLE = 'lesson_progress'
 export type CourseStatus = 'draft' | 'published' | 'archived'
 export type LessonStatus = 'draft' | 'published'
 
-export const COURSE_ACCESS = ['free', 'members', 'paid'] as const
+/**
+ * ZWEI ZUGANGSARTEN (KU1, Davids Entscheidung 2026-11-16): bis dahin gab es
+ * daneben `'free'`. „Kostenlos" und „Mitglieder" verlangten aber beide genau
+ * dasselbe — die Mitgliedschaft (SEC-029) — und standen im Formular als zwei
+ * Auswahlen, die nichts unterschieden. Jetzt gibt es `'members'` (Mitglied
+ * genügt) und `'paid'` (Mitglied UND Freischaltung über den App-Guard).
+ */
+export const COURSE_ACCESS = ['members', 'paid'] as const
 export type CourseAccess = (typeof COURSE_ACCESS)[number]
+
+/**
+ * Der alte Wert steht weiter in Bestands-Zeilen: es gibt bewusst KEINE
+ * Migration, die ihn umschreibt — gelesen wird tolerant. Nur hier benannt,
+ * damit niemand ihn als wählbare Zugangsart missversteht.
+ */
+export const LEGACY_COURSE_ACCESS_FREE = 'free'
+/** Was in der Spalte `courses.access` stehen kann (Bestand + heute). */
+export type StoredCourseAccess = CourseAccess | typeof LEGACY_COURSE_ACCESS_FREE
+
+/**
+ * DIE EINE LESE-REGEL für `courses.access` — pur, getestet.
+ *
+ * `'paid'` bleibt `'paid'`, ALLES andere ist `'members'`: der alte Wert
+ * `'free'` genauso wie ein leerer oder unbekannter. Das ist dieselbe Richtung
+ * wie `assertCourseAccess` (nur `'paid'` fragt den Guard) — die Anzeige kann
+ * damit nie etwas anderes behaupten als die Prüfung. Jede Antwort, die einen
+ * Kurs herausgibt, und jede Stelle, die den Namen der Zugangsart anzeigt,
+ * geht hier durch.
+ */
+export function normalizeCourseAccess(value: unknown): CourseAccess {
+  return value === 'paid' ? 'paid' : 'members'
+}
 
 /**
  * DREI ABLEHNUNGEN, DREI SÄTZE (Audit-Befund 2026-08-02).
@@ -51,7 +81,8 @@ export interface CourseRow extends Models.Row {
   slug: string
   description: string
   status: CourseStatus
-  access: CourseAccess
+  /** Bestands-Zeilen tragen noch `'free'` — lesen NUR über `normalizeCourseAccess` */
+  access: StoredCourseAccess
   /** Pflicht bei access 'paid' — Produkt-String, den der App-Guard prüft */
   entitlementProduct: string | null
   authorId: string

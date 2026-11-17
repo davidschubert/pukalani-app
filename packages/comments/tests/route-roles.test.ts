@@ -104,13 +104,15 @@ describeRoleGateToDoor(
 // ── POST /api/comments/:id/translate ────────────────────────────────────────
 
 /**
- * Übersetzen ist LESEN, nicht Mitmachen (`.claude/rules/tenant-isolation.md`,
- * „MITMACHEN VERLANGT ZUGEHÖRIGKEIT"): verlangt wird nur die Anmeldung, das
- * Ziel wird über die Mitglieder-Klinke gelesen — dort entscheidet das
- * Leserecht der Zeile, was sichtbar ist. Erst danach schreibt die
- * Operator-Klinke den Zwischenspeicher.
+ * Übersetzen gibt es NUR FÜR MITGLIEDER (MM1, Davids Entscheidung 2026-11-16;
+ * `.claude/rules/tenant-isolation.md`, „MITMACHEN VERLANGT ZUGEHÖRIGKEIT"):
+ * ein fremdes Konto bekommt 403 `not_a_member`, bevor die Datentür aufgeht —
+ * auch bei offener Registrierung, Übersetzen ist kein Beitritt. Das Ziel wird
+ * danach über die Mitglieder-Klinke gelesen (das Leserecht der Zeile
+ * entscheidet, was sichtbar ist), erst dann schreibt die Operator-Klinke den
+ * Zwischenspeicher.
  */
-describe('POST /api/comments/:id/translate (Lesen mit Anmeldung)', () => {
+describe('POST /api/comments/:id/translate (nur Mitglieder)', () => {
   const load = () => import('../server/api/comments/[id]/translate.post')
 
   function comment(): FakeRow {
@@ -140,27 +142,62 @@ describe('POST /api/comments/:id/translate (Lesen mit Anmeldung)', () => {
     expect(ai.calls()).toBe(0)
   })
 
-  for (const who of ['member', 'stranger'] as const) {
-    it(`${who}: lesbarer Kommentar ⇒ 200, gelesen zuerst über die Mitglieder-Klinke`, async () => {
+  for (const registration of ['closed', 'open'] as const) {
+    it(`fremdes Konto, Registrierung ${registration}: 403 not_a_member, Datentür zu, kein KI-Aufruf, kein Beitritt`, async () => {
       const ai = aiGlobals()
       const door = fakeDoor({ rows: { [COMMENTS_TABLE]: [comment()] } })
       const run = await probeRoute(load, {
-        who, params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
+        who: 'stranger', registration, params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
       })
-      expect(run.status).toBe(200)
-      expect(door.calls[0]).toEqual({ handle: 'member', method: 'get', table: COMMENTS_TABLE, id: 'cm-1' })
-      // Die Operator-Klinke schreibt nur den Zwischenspeicher, und erst nach dem Lesen.
-      const operatorCalls = door.calls.filter(call => call.handle === 'operator')
-      expect(operatorCalls.map(call => call.method)).toEqual(['update'])
-      expect(firstOperatorCall(door.calls)).toBeGreaterThan(0)
+      expect(run.status).toBe(403)
+      expect(run.error?.data?.code).toBe('not_a_member')
+      expect(door.calls).toEqual([])
+      expect(ai.calls()).toBe(0)
+      expect(run.joinHandlerCalls).toBe(0)
     })
   }
 
-  it('Kommentar ohne Leserecht für das Konto: 404, keine Operator-Klinke, kein KI-Aufruf', async () => {
+  it('entferntes Konto: 403 not_a_member, Datentür zu', async () => {
+    const ai = aiGlobals()
+    const door = fakeDoor({ rows: { [COMMENTS_TABLE]: [comment()] } })
+    const run = await probeRoute(load, {
+      who: 'removed', params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
+    })
+    expect(run.status).toBe(403)
+    expect(run.error?.data?.code).toBe('not_a_member')
+    expect(door.calls).toEqual([])
+    expect(ai.calls()).toBe(0)
+  })
+
+  it('Einzel-Instanz (kein Mandant): jedes angemeldete Konto darf', async () => {
+    const ai = aiGlobals()
+    const door = fakeDoor({ rows: { [COMMENTS_TABLE]: [comment()] } })
+    const run = await probeRoute(load, {
+      who: 'stranger', mode: 'silo', params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
+    })
+    expect(run.status).toBe(200)
+    expect(ai.calls()).toBe(1)
+  })
+
+  it('Mitglied: lesbarer Kommentar ⇒ 200, gelesen zuerst über die Mitglieder-Klinke', async () => {
+    const ai = aiGlobals()
+    const door = fakeDoor({ rows: { [COMMENTS_TABLE]: [comment()] } })
+    const run = await probeRoute(load, {
+      who: 'member', params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
+    })
+    expect(run.status).toBe(200)
+    expect(door.calls[0]).toEqual({ handle: 'member', method: 'get', table: COMMENTS_TABLE, id: 'cm-1' })
+    // Die Operator-Klinke schreibt nur den Zwischenspeicher, und erst nach dem Lesen.
+    const operatorCalls = door.calls.filter(call => call.handle === 'operator')
+    expect(operatorCalls.map(call => call.method)).toEqual(['update'])
+    expect(firstOperatorCall(door.calls)).toBeGreaterThan(0)
+  })
+
+  it('Mitglied, Kommentar ohne Leserecht: 404, keine Operator-Klinke, kein KI-Aufruf', async () => {
     const ai = aiGlobals()
     const door = fakeDoor({ rows: { [COMMENTS_TABLE]: [comment()] }, readable: () => false })
     const run = await probeRoute(load, {
-      who: 'stranger', params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
+      who: 'member', params: { id: 'cm-1' }, body: { locale: 'en' }, door: door.tenantDb, globals: ai.globals,
     })
     expect(run.status).toBe(404)
     expect(door.calls.every(call => call.handle === 'member')).toBe(true)

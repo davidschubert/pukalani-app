@@ -1,4 +1,4 @@
-import type { CoursePreview, CourseRow, LessonRow, LessonSummary } from './types/course'
+import { normalizeCourseAccess, type CoursePreview, type CourseRow, type LessonRow, type LessonSummary } from './types/course'
 
 /**
  * DIE ÖFFENTLICHE FELDAUSWAHL (SEC-029) — pur, getestet.
@@ -17,11 +17,21 @@ export function toCoursePreview(row: CourseRow): CoursePreview {
     slug: row.slug,
     description: row.description,
     status: row.status,
-    access: row.access,
+    access: normalizeCourseAccess(row.access),
     authorName: row.authorName,
     lessonCount: row.lessonCount,
     translations: row.translations ?? '',
   }
+}
+
+/**
+ * EINE ZEILE FÜR DIE VERWALTUNG (Dashboard, Antwort auf Anlegen/Ändern): die
+ * ganze Zeile, aber mit der heutigen Zugangsart (KU1). Ohne das zeigte die
+ * Kurs-Tabelle für einen Bestands-Kurs den alten Wert `'free'`, für den es
+ * keinen Namen mehr gibt.
+ */
+export function toManagedCourse<T extends CourseRow>(row: T): T {
+  return { ...row, access: normalizeCourseAccess(row.access) }
 }
 
 /** Ein Eintrag der Gliederung — Titel und Reihenfolge, nie der Inhalt. */

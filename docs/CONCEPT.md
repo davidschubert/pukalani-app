@@ -161,7 +161,7 @@ apps/       ← Vollständige, deploybare Nuxt-Applikationen
 | `packages/activity` | ✅ Aktiv | Activity-Feed: UI zum Core-Vertrag `recordActivity()` (Cursor-Pagination, Realtime, Gruppierung, 9 Ereignis-Typen). Seiten `/activity` + `/dashboard/community/activity`, Capability `activity.manage`. Hieß bis zur Umbenennung `packages/feed` — ältere Dokumente nennen ihn noch so |
 | `packages/feedback` | ✅ Aktiv | Feedback-Widget: Button unten links, Popup (Gäste + Rate-Limit), Admin-Sichtung (`feedback.manage`) |
 | `packages/billing` | ✅ Aktiv | Stripe: hosted Checkout/Portal, Webhook (Signatur/Allowlist/Stale-Guard), Entitlements + `useBilling` (Realtime), Fulfillment-Vertrag `registerCheckoutFulfillment` — Plan: docs/archiv/BILLING-STRIPE.md |
-| `packages/courses` | ✅ Aktiv | LMS v1: Markdown-Lektionen, Enrollment + server-autoritativer Fortschritt, Builder mit Edit-Awareness, Zugang free/members/paid via `registerCourseAccessGuard` (billing-Entitlements) |
+| `packages/courses` | ✅ Aktiv | LMS v1: Markdown-Lektionen, Enrollment + server-autoritativer Fortschritt, Builder mit Edit-Awareness, Zugang members/paid (seit 2026-11-17 zwei statt drei Arten, KU1) via `registerCourseAccessGuard` (billing-Entitlements) |
 | `packages/media` | ✅ Aktiv | Verwaltete Bild-Galerie: Upload, Bildunterschriften, Sortierung, Publish-Status — die Inhalts-Quelle für Foto- und Portfolio-Seiten |
 | `packages/messages` | ✅ Aktiv | Private 1:1-Nachrichten zwischen Mitgliedern derselben Community — mit Meldeweg, Sperre, Vertrauensstufen-Schwelle und Owner-Schalter (`requires: moderation, posts`) |
 | `packages/pages` | ✅ Aktiv | Editierbare Inhaltsseiten (Impressum, AGB, Datenschutz) mit Editor und Sprachversionen; `body` als MEDIUMTEXT (off-row, kein Zeilenbudget) |

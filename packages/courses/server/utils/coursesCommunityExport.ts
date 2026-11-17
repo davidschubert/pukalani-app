@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { COURSES_TABLE, ENROLLMENTS_TABLE, LESSONS_TABLE, type CourseRow, type LessonRow } from '../../shared/types/course'
+import { COURSES_TABLE, ENROLLMENTS_TABLE, LESSONS_TABLE, normalizeCourseAccess, type CourseRow, type LessonRow } from '../../shared/types/course'
 
 /**
  * Community-Export des courses-Layers (Vertrag: core/server/utils/communityExport.ts).
@@ -68,7 +68,7 @@ export async function coursesCommunityExport(event: H3Event) {
       slug: c.slug,
       description: c.description,
       status: c.status,
-      access: c.access,
+      access: normalizeCourseAccess(c.access),
       entitlementProduct: c.entitlementProduct,
       authorName: c.authorName,
       lessonCount: c.lessonCount,

@@ -200,7 +200,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/core/server/api/auth/sessions/index.get.ts',
     'packages/core/server/api/auth/timezone.put.ts',
     'packages/core/server/api/auth/verification.put.ts',
-    'packages/core/server/api/community/role.get.ts',
     'packages/core/server/api/geo/cities.get.ts',
     'packages/core/server/api/geo/countries.get.ts',
     'packages/core/server/api/notifications/index.get.ts',

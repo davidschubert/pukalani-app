@@ -10,8 +10,7 @@
       "create": "Neuer Kurs"
     },
     "access": {
-      "free": "Kostenlos",
-      "members": "Mitglieder",
+      "members": "Für Mitglieder",
       "paid": "Pro"
     },
     "status": {

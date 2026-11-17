@@ -37,7 +37,7 @@ describeRoleGateToDoor(
   () => import('../server/api/courses/index.post'),
   MANAGE,
   {
-    body: { title: 'Wolken lesen', slug: 'wolken-lesen', description: 'Ein Kurs über Wolken.', access: 'free' },
+    body: { title: 'Wolken lesen', slug: 'wolken-lesen', description: 'Ein Kurs über Wolken.', access: 'members' },
     globals: LAYER_HELPERS,
   },
 )

@@ -38,7 +38,7 @@ test.describe('Kurs-Vorschau für Gäste (SEC-029)', () => {
       tableId: 'courses',
       rowId: ID.unique(),
       data: {
-        title, slug, description: 'Ein öffentlich sichtbarer Kurs.', status: 'published', access: 'free',
+        title, slug, description: 'Ein öffentlich sichtbarer Kurs.', status: 'published', access: 'members',
         entitlementProduct: null, authorId: 'e2e-author', authorName: 'E2E', lessonCount: 1,
       },
       permissions: [],
