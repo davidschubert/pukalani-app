@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -212,5 +212,35 @@ describe('migrate-plan — reine Logik', () => {
     expect(decideRunTarget({ endpoint: REMOTE, projectId: 'a', allowedProjects: ['b'], prod: false, dryRun: true })).toMatchObject({ ok: false, reason: 'project_not_allowed' })
     expect(decideRunTarget({ endpoint: LOCAL, projectId: 'b', allowedProjects: ['b'], prod: true, dryRun: true })).toMatchObject({ ok: false, reason: 'prod_but_local' })
     expect(decideRunTarget({ endpoint: REMOTE, projectId: 'b', allowedProjects: ['b'], prod: false, dryRun: false })).toMatchObject({ ok: false, reason: 'remote_unconfirmed' })
+  })
+})
+
+/**
+ * MG1 (c): 13 Layer trugen ein eigenes `migrate`-Skript, das den Runner ohne
+ * `--app` rief — seit es mehrere Apps gibt, endete jedes mit „Mehrere Apps
+ * gefunden". Ein Befehl, der immer scheitert, sieht aus wie ein zweiter Weg.
+ * Es gibt genau einen: `pnpm migrate --app <app>` aus der Wurzel.
+ */
+describe('migrate — ein Weg, kein Befehl je Layer oder App', () => {
+  function scriptsOf(file: string): Record<string, string> {
+    return (JSON.parse(readFileSync(file, 'utf8')) as { scripts?: Record<string, string> }).scripts ?? {}
+  }
+
+  it('die Wurzel trägt den Runner als „migrate"', () => {
+    expect(scriptsOf(join(REPO, 'package.json')).migrate).toContain('scripts/migrate.mjs')
+  })
+
+  it('kein package.json unter packages/ oder apps/ ruft den Runner selbst', () => {
+    const offenders: string[] = []
+    for (const group of ['packages', 'apps']) {
+      for (const name of readdirSync(join(REPO, group))) {
+        const file = join(REPO, group, name, 'package.json')
+        if (!existsSync(file)) continue
+        for (const [script, command] of Object.entries(scriptsOf(file))) {
+          if (script === 'migrate' || command.includes('scripts/migrate.mjs')) offenders.push(`${group}/${name}: "${script}"`)
+        }
+      }
+    }
+    expect(offenders, `Eigene Migrations-Befehle:\n  ${offenders.join('\n  ')}\n\nDer eine Weg: pnpm migrate --app <app> (.claude/rules/appwrite.md).`).toEqual([])
   })
 })
