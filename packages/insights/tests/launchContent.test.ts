@@ -12,6 +12,7 @@ import {
 import { LAUNCH_BRANDS, LAUNCH_POSTS } from '../scripts/launch/index.mjs'
 import {
   launchBrandFromContent,
+  launchBrandIssues,
   launchFlagText,
   launchPostFromContent,
   launchPostIssues,
@@ -86,6 +87,32 @@ describe('Launch-Inhalt: Marken-Zeilen', () => {
       const parsed = launchBrandFromContent(brand, { relations: brand.relationSlugs })
       expect(parsed.state).toBe('draft')
     }
+  })
+
+  it('die Regeln der Marken-Seiten ohne Quelltexte: keine Treffer (IN1 c)', () => {
+    for (const brand of brands) {
+      const parsed = launchBrandFromContent(brand, { relations: brand.relationSlugs })
+      expect(launchBrandIssues(parsed, brand.slug, brandRows), brand.slug).toEqual([])
+    }
+  })
+
+  it('Gegenprobe: ein Historien-Satz, der eine NICHT verbundene Marke nennt, hält den Seed auf', () => {
+    // Nike: hat Historie, und unter `relations` steht nur adidas.
+    const content = brands.find(brand => brand.slug === 'nike')!
+    const parsed = launchBrandFromContent(content, { relations: content.relationSlugs })
+    expect(parsed.history.length).toBeGreaterThan(0)
+
+    const withName = (name: string) => ({
+      ...parsed,
+      history: [{ ...parsed.history[0]!, text: `Ähnlich wie bei ${name}.` }, ...parsed.history.slice(1)],
+    })
+    // IKEA ist weder die Zeile selbst noch eine Beziehung ⇒ Treffer an Stelle 0.
+    const issues = launchBrandIssues(withName('IKEA'), content.slug, brandRows)
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toMatchObject({ code: 'disparagement', at: { kind: 'history', index: 0 } })
+    // Die Beziehung (adidas) und der eigene Name sind keine Fremden.
+    expect(launchBrandIssues(withName('adidas'), content.slug, brandRows)).toEqual([])
+    expect(launchBrandIssues(withName('Nike'), content.slug, brandRows)).toEqual([])
   })
 
   it('Katalogwerte nur aus dem brand-Layer', () => {
