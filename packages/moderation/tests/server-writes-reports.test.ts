@@ -70,6 +70,40 @@ describe('DELETE /api/reports — nur die eigene Meldung', () => {
     expect(door.rows[REPORTS_TABLE]).toEqual([report(OTHER)])
   })
 
+  /**
+   * BE-020: eine ERLEDIGTE Meldung samt Entscheidung gehört zum Verlauf der
+   * Moderation — sie lässt sich nicht mehr zurückziehen (Davids Entscheidung).
+   * Die Route antwortet 409 `report_resolved`, die Zeile bleibt unverändert.
+   */
+  it('BE-020: eine erledigte eigene Meldung übersteht die Rücknahme unverändert (409 report_resolved)', async () => {
+    const resolved: FakeRow = { ...report(MEMBER), status: 'resolved', resolvedBy: 'u-mod', resolution: 'hidden' }
+    const door = fakeDoor({ rows: { [REPORTS_TABLE]: [report(OTHER), { ...resolved }] } })
+    const { tenantDb, writes } = writerDoor(door)
+    const run = await runDoorRoute(loadDelete, { door, globals: globals(tenantDb) })
+
+    expect(run.status).toBe(409)
+    expect(run.error?.data?.code).toBe('report_resolved')
+    expect(writes).toEqual([])
+    expect(door.rows[REPORTS_TABLE]).toEqual([report(OTHER), resolved])
+  })
+
+  it('BE-020: die Suche fragt nur nach OFFENEN eigenen Meldungen', async () => {
+    const door = fakeDoor({ rows: { [REPORTS_TABLE]: [report(MEMBER)] } })
+    const { tenantDb } = writerDoor(door)
+    const seen: string[][] = []
+    const spyDoor = (event: never, options?: never) => {
+      const handle = tenantDb(event, options) as { find: (t: string, q?: string[]) => Promise<unknown> }
+      return { ...handle, find: (t: string, q: string[] = []) => { seen.push(q); return handle.find(t, q) } }
+    }
+    const run = await runDoorRoute(loadDelete, { door, globals: globals(spyDoor) })
+
+    expect(run.status).toBe(200)
+    const first = (seen[0] ?? []).map(q => JSON.parse(q) as { method: string, attribute: string, values: unknown[] })
+    expect(first).toContainEqual({ method: 'equal', attribute: 'status', values: ['open'] })
+    expect(first).toContainEqual({ method: 'equal', attribute: 'reporterId', values: [MEMBER] })
+    expect(door.rows[REPORTS_TABLE]).toEqual([])
+  })
+
   it('ohne eigene Meldung: nichts wird entfernt, auch keine fremde', async () => {
     const door = fakeDoor({ rows: { [REPORTS_TABLE]: [report(OTHER)] } })
     const { tenantDb, writes } = writerDoor(door)

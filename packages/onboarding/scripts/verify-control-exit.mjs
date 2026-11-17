@@ -26,6 +26,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -138,12 +139,14 @@ try {
 
   const createRes = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name: 'Exit-Beweis', slug: `exit-${stamp.toString(36)}`, purpose: 'new', memberRange: 'to100',
-      category: 'other', goal: 'discussion', description: 'Beweislauf Control-Exit.', vibe: 'calm',
-      inviteCode: code, locale: 'de',
-    },
+    body: probeSiteBody({
+      name: 'Exit-Beweis',
+      slug: `exit-${stamp.toString(36)}`,
+      category: 'other',
+      description: 'Beweislauf Control-Exit.',
+      vibe: 'calm',
+      inviteCode: code,
+    }),
   })
   if (createRes.status !== 200) throw new Error(`Anlage ${createRes.status}: ${createRes.text.slice(0, 120)}`)
   const site = createRes.json

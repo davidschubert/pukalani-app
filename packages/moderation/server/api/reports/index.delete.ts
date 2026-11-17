@@ -1,4 +1,5 @@
 import { Query } from 'node-appwrite'
+import { REPORT_RESOLVED_CODE } from '../../../shared/reportErrors'
 import { REPORTS_TABLE, type Report } from '../../../shared/types/report'
 
 /**
@@ -26,6 +27,14 @@ import { REPORTS_TABLE, type Report } from '../../../shared/types/report'
  * DIE EINZIGE PRÜFUNG (SEC-002, GA1 P13): eine Meldung trägt kein
  * Schreibrecht des Melders mehr — gelöscht wird nur die Zeile, die `find`
  * oben über `reporterId` = Konto in dieser Anfrage gefunden hat.
+ *
+ * NUR OFFENE MELDUNGEN (BE-020, Davids Entscheidung: „Erledigte Meldungen
+ * lassen sich nicht mehr zurückziehen"): eine erledigte Meldung trägt die
+ * Entscheidung der Moderation (`resolvedBy`, `resolution`) und gehört zum
+ * Verlauf. Die Lese-Seite (`myOpenReportTargetIds`) zählt ohnehin nur offene;
+ * zeigt ein Knopf trotzdem „Zurückziehen" (veraltete Seite, oder der Weg über
+ * `already_reported`), antwortet die Route ehrlich 409 `report_resolved`
+ * statt „zurückgezogen" zu behaupten.
  */
 export default defineEventHandler(async (event) => {
   // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
@@ -49,15 +58,22 @@ export default defineEventHandler(async (event) => {
   // (index.post.ts): eine Meldung ist kein Inhalt, also greift die
   // Inhalts-Sperre hier nicht.
   const db = tenantDb(event, { as: 'operator' })
-  const existing = await db.find<Report>(REPORTS_TABLE, [
+  const own = [
     Query.equal('reporterId', user.$id),
     Query.equal('targetType', targetType),
     Query.equal('targetId', targetId),
-  ])
-
-  // Nichts zu tun, wenn keine eigene Meldung existiert (idempotent)
+  ]
+  const existing = await db.find<Report>(REPORTS_TABLE, [...own, Query.equal('status', 'open')])
   if (existing) {
     await db.remove(REPORTS_TABLE, existing.$id)
+    return { ok: true }
+  }
+
+  // Keine offene: gibt es eine erledigte eigene? Die bleibt stehen (BE-020).
+  // Gar keine eigene Meldung ⇒ nichts zu tun (idempotent).
+  const closed = await db.find<Report>(REPORTS_TABLE, own)
+  if (closed) {
+    throw createError({ status: 409, statusText: 'Report already resolved', data: { code: REPORT_RESOLVED_CODE } })
   }
 
   return { ok: true }

@@ -20,6 +20,7 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PLATFORM_PORT = Number(process.env.PLATFORM_PORT || 3006)
 const STUDIO_URL = process.env.STUDIO_URL || 'http://localhost:3004'
@@ -208,11 +209,14 @@ try {
   const slug = `anfrage-${stamp}`
   const created = await callPlatform(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie: invited.cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name: 'Kegelverein', slug, purpose: 'new', memberRange: 'to100', category: 'club',
-      goal: 'relationships', vibe: 'warm', inviteCode: code, locale: 'de',
-    },
+    body: probeSiteBody({
+      name: 'Kegelverein',
+      slug,
+      goal: 'relationships',
+      vibe: 'warm',
+      inviteCode: code,
+      description: undefined,
+    }),
   })
   check('Community angelegt', created.status === 200 && !!created.json?.communityId, `${created.status} ${created.text.slice(0, 160)}`)
   if (created.json?.communityId) cleanup.tenants.push(created.json.communityId)

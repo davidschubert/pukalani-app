@@ -25,11 +25,23 @@
  * ZWEI LÄUFE HINTEREINANDER laufen in den Rate-Limiter der Onboarding-Route
  * (429 „RATE_LIMITED" beim Anlegen von kunde-a) — das ist die Schutzfunktion,
  * kein Fehlschlag des Beweises. Zwischen zwei Läufen ein paar Minuten warten.
+ *
+ * Konten, Einladungs-Codes, Communities, Anmeldung und Aufräumen kommen aus
+ * der gemeinsamen Hilfe `scripts/lib/probe-stage.mjs` (OPS-009) — der Rumpf
+ * der Anlage ist derselbe, den ein Unit-Test gegen die echte Route hält.
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { request } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import {
+  appwriteRest,
+  createCleanup,
+  createHttpCaller,
+  createProbeAccount,
+  createProbeCommunity,
+  login,
+  runStamp,
+  setAccountLabels,
+  waitForHost,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3141)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -46,12 +58,15 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   process.exit(1)
 }
 
-const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+const script = 'verify-dashboard-access'
+const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const { call, page } = createHttpCaller({ port: PORT })
+const cleanup = createCleanup({ pool, control, controlDatabaseId: databaseId })
+const stamp = runStamp()
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [], members: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -64,115 +79,17 @@ function check(label, ok, detail = '') {
   }
 }
 
-/** node:http, weil fetch den Host-Header verwirft; ::1, weil Nitro dort hört. */
-function call(host, path, { method = 'GET', body, cookie, accept } = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = body ? JSON.stringify(body) : null
-    const req = request({
-      host: '::1',
-      port: PORT,
-      path,
-      method,
-      headers: {
-        host,
-        ...(accept ? { accept } : {}),
-        ...(payload ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) } : {}),
-        ...(cookie ? { cookie } : {}),
-      },
-    }, (res) => {
-      let text = ''
-      res.on('data', chunk => text += chunk)
-      res.on('end', () => {
-        let json = null
-        try { json = JSON.parse(text) }
-        catch { /* HTML-Seite */ }
-        resolve({ status: res.statusCode, headers: res.headers, json, text, setCookie: res.headers['set-cookie'] ?? [] })
-      })
-    })
-    req.on('error', reject)
-    if (payload) req.write(payload)
-    req.end()
-  })
-}
-
-/** Seiten-SSR wie ein Browser (Accept: text/html — sonst antwortet Nitro JSON). */
-function page(host, path, cookie) {
-  return call(host, path, { cookie, accept: 'text/html' })
-}
-
 async function createPoolUser(tag) {
-  const email = `n1-${tag}-${Date.now()}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `N1 ${tag}` })
-  cleanup.users.push(user.$id)
-  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-  return { userId: user.$id, email, password }
+  const account = await createProbeAccount(pool, { tag: `n1-${tag}`, stamp, name: `N1 ${tag}` })
+  cleanup.track('account', account.userId)
+  return account
 }
 
-/** Anmelden auf einem beliebigen Host → Session-Cookie für DIESEN Host. */
-async function login(host, account) {
-  const res = await call(host, '/api/auth/login', {
-    method: 'POST',
-    body: { email: account.email, password: account.password },
+async function createCommunity(cookie, slug, name) {
+  return createProbeCommunity({
+    call, controlHost: CONTROL_HOST, cookie, control, databaseId, slug, name, cleanup,
+    bodyOverrides: { description: 'N1-Beweis: Site-Rollen öffnen das Dashboard.', vibe: 'fresh' },
   })
-  if (res.status !== 200) throw new Error(`Login auf ${host} fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
-}
-
-async function issueCode(tag) {
-  const code = `PUKA-N1${tag}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId, tableId: 'invite_codes', rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'N1-Beweis', maxUses: 0, uses: 0, expiresAt: null, status: 'active',
-    },
-  })
-  cleanup.codes.push(row.$id)
-  return code
-}
-
-async function createCommunity(account, cookie, slug, name) {
-  const code = await issueCode(slug.slice(0, 4).toUpperCase())
-  const created = await call(CONTROL_HOST, '/api/onboarding/site', {
-    method: 'POST',
-    cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name,
-      slug,
-      purpose: 'new',
-      memberRange: 'to100',
-      category: 'club',
-      goal: 'discussion',
-      description: 'N1-Beweis: Site-Rollen öffnen das Dashboard.',
-      vibe: 'fresh',
-      inviteCode: code,
-      locale: 'de',
-    },
-  })
-  if (created.status !== 200 || !created.json?.communityId) {
-    throw new Error(`Community ${slug} nicht angelegt (${created.status}): ${created.text.slice(0, 200)}`)
-  }
-  cleanup.tenants.push(created.json.communityId)
-  const members = await control.listRows({
-    databaseId, tableId: 'community_members', queries: [Query.equal('communityId', created.json.communityId), Query.limit(10)],
-  })
-  cleanup.members.push(...members.rows.map(row => row.$id))
-  return { communityId: created.json.communityId, host: created.json.host }
-}
-
-/** Der Host-Resolver cacht negativ (30 s) — nach der Anlage kurz nachfassen. */
-async function waitForHost(host) {
-  for (let i = 0; i < 40; i++) {
-    const res = await call(host, '/api/themes')
-    if (res.status === 200) return true
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  }
-  return false
 }
 
 /** Nav-Marker im SSR-HTML: Ziel-Pfade der Sidebar (localePath, en = ohne Prefix). */
@@ -187,22 +104,21 @@ try {
   const nobody = await createPoolUser('nobody')
   const neighbor = await createPoolUser('neighbor')
   const operator = await createPoolUser('operator')
-  await poolUsers.updateLabels({ userId: operator.userId, labels: ['admin'] })
+  await setAccountLabels(pool, operator.userId, ['admin'])
 
-  const ownerControlCookie = await login(CONTROL_HOST, owner)
-  const neighborControlCookie = await login(CONTROL_HOST, neighbor)
-  const stamp = Date.now().toString(36)
+  const ownerControlCookie = await login(call, CONTROL_HOST, owner)
+  const neighborControlCookie = await login(call, CONTROL_HOST, neighbor)
 
   console.log('1. Zwei Communities anlegen (kunde-a: Owner-Mitglied, kunde-b: fremd)')
-  const siteA = await createCommunity(owner, ownerControlCookie, `n1-kunde-a-${stamp}`, 'N1 Kunde A')
-  const siteB = await createCommunity(neighbor, neighborControlCookie, `n1-kunde-b-${stamp}`, 'N1 Kunde B')
+  const siteA = await createCommunity(ownerControlCookie, `n1-kunde-a-${stamp}`, 'N1 Kunde A')
+  const siteB = await createCommunity(neighborControlCookie, `n1-kunde-b-${stamp}`, 'N1 Kunde B')
   check('kunde-a angelegt', !!siteA.host, JSON.stringify(siteA))
   check('kunde-b angelegt', !!siteB.host, JSON.stringify(siteB))
-  check('kunde-a antwortet', await waitForHost(siteA.host))
-  check('kunde-b antwortet', await waitForHost(siteB.host))
+  check('kunde-a antwortet', await waitForHost(call, siteA.host))
+  check('kunde-b antwortet', await waitForHost(call, siteB.host))
 
   console.log('\n2. Owner (OHNE Operator-Label) erreicht SEIN Dashboard — SSR')
-  const ownerCookieA = await login(siteA.host, owner)
+  const ownerCookieA = await login(call, siteA.host, owner)
   const dashA = await page(siteA.host, '/dashboard', ownerCookieA)
   check('/dashboard → 200', dashA.status === 200, `Status ${dashA.status}`)
   check('Payload spiegelt die Rolle (pukalani-community-role → owner)', dashA.text.includes('pukalani-community-role') && dashA.text.includes('owner'))
@@ -218,12 +134,12 @@ try {
   check('Nav OHNE Storage (/dashboard/storage)', !hasNav(settingsA.text, '/dashboard/storage'))
 
   console.log('\n3. Derselbe User auf kunde-b (KEINE Mitgliedschaft) → wie ein Fremder')
-  const ownerCookieB = await login(siteB.host, owner)
+  const ownerCookieB = await login(call, siteB.host, owner)
   const dashB = await page(siteB.host, '/dashboard', ownerCookieB)
   check('/dashboard auf kunde-b → 403', dashB.status === 403, `Status ${dashB.status}`)
 
   console.log('\n4. User ganz ohne Rolle → wie heute abgewiesen')
-  const nobodyCookieA = await login(siteA.host, nobody)
+  const nobodyCookieA = await login(call, siteA.host, nobody)
   const dashNobody = await page(siteA.host, '/dashboard', nobodyCookieA)
   check('/dashboard → 403', dashNobody.status === 403, `Status ${dashNobody.status}`)
 
@@ -241,7 +157,7 @@ try {
   //
   // Geprüft wird deshalb jetzt beides getrennt, weil es zwei Dinge sind:
   // das MENÜ (Ort) und der ZUGANG (Capability auf der Route).
-  const operatorCookieA = await login(siteA.host, operator)
+  const operatorCookieA = await login(call, siteA.host, operator)
   const dashOperator = await page(siteA.host, '/dashboard', operatorCookieA)
   check('/dashboard → 200', dashOperator.status === 200, `Status ${dashOperator.status}`)
   check('Menü OHNE System (/dashboard/system) — fremder Ort', !hasNav(dashOperator.text, '/dashboard/system'))
@@ -253,7 +169,7 @@ try {
   check('Zugang bleibt: /api/admin/users → 200', operatorUsersApi.status === 200, `Status ${operatorUsersApi.status}`)
   // Gegenprobe zum Ort: auf dem KONTROLL-Host stehen dieselben Module sehr wohl
   // im Menü — sonst wäre der Befund oben nur „Modul verschwunden".
-  const operatorControlCookie = await login(CONTROL_HOST, operator)
+  const operatorControlCookie = await login(call, CONTROL_HOST, operator)
   const dashControl = await page(CONTROL_HOST, '/dashboard', operatorControlCookie)
   check('Kontroll-Host: /dashboard → 200', dashControl.status === 200, `Status ${dashControl.status}`)
   check('Kontroll-Host: Menü MIT System (/dashboard/system)', hasNav(dashControl.text, '/dashboard/system'))
@@ -269,7 +185,7 @@ try {
   })
   check('PATCH openRegistration=false → 200', closeIt.status === 200 && closeIt.json?.openRegistration === false,
     `Status ${closeIt.status} ${closeIt.text.slice(0, 160)}`)
-  const tenantAfter = await control.getRow({ databaseId, tableId: 'communities', rowId: siteA.communityId })
+  const tenantAfter = await control.getRow(databaseId, 'communities', siteA.communityId)
   check('Control Plane trägt den Wert (communities.openRegistration=false)', tenantAfter.openRegistration === false,
     JSON.stringify(tenantAfter.openRegistration))
   const reopen = await call(siteA.host, '/api/community/registration', {
@@ -300,12 +216,10 @@ catch (error) {
 }
 finally {
   console.log('\n10. Aufräumen')
-  for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  const rest = await control.listRows({ databaseId, tableId: 'communities', queries: [Query.limit(25)] })
-  console.log(`  ✔ aufgeräumt — verbleibende Tenants: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Codes, Zeilen der Communities)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

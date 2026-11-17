@@ -1,9 +1,9 @@
-import { Permission, Role } from 'node-appwrite'
 import { commentSchema } from '../../../schemas/comment'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
 import { commentSnippet } from '../../../shared/commentSnippet'
 import { assertReplyParent } from '../../utils/replyParent'
 import { commentNotificationCommunityId, commentNotificationRowId } from '../../utils/commentNotifications'
+import { commentReadPermissions, isOperatorCommentTarget } from '../../utils/commentReadPermissions'
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user
@@ -21,8 +21,7 @@ export default defineEventHandler(async (event) => {
   // Operator-Targets (pukalani.comments.operatorTargets, z. B. 'ticket'): nur
   // Operatoren dürfen schreiben, und die Rows sind NICHT read(any), sondern
   // nur für admin/moderator lesbar — interne Diskussionen bleiben intern.
-  const appConfig = useAppConfig() as { pukalani?: { comments?: { operatorTargets?: string[] } } }
-  const operatorTarget = (appConfig.pukalani?.comments?.operatorTargets ?? []).includes(body.targetType)
+  const operatorTarget = isOperatorCommentTarget(body.targetType)
   /**
    * ZWEI FRAGEN, sauber getrennt (SEC-030, 2026-11-13):
    *  - Betreiber-Ziel ⇒ die Betreiber-Prüfung (globales Label). Hier schreibt
@@ -124,11 +123,10 @@ export default defineEventHandler(async (event) => {
     // geschlossenen. Deshalb hier `withPublishedRead([], event)` statt einer
     // festen read(any)-Zeile: der Schalter wirkt auf JEDEN neuen Kommentar,
     // ohne dass diese Route ihn kennt.
-    permissions: [
-      ...(operatorTarget
-        ? [Permission.read(Role.label('admin')), Permission.read(Role.label('moderator'))]
-        : withPublishedRead([], event)),
-    ],
+    //
+    // BE-020: beide Fälle bildet EINE Funktion (utils/commentReadPermissions.ts),
+    // die auch das Wiederherstellen benutzt — sonst öffnete es interne Kommentare.
+    permissions: commentReadPermissions(event, body.targetType),
   }).catch((error) => {
     // Appwrite-4xx (z. B. abgelaufene Session) als 4xx durchreichen, nicht als 500
     throw toH3Error(error, 'Could not create comment')
