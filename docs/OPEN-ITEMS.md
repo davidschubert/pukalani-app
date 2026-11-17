@@ -90,7 +90,7 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
-| LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
+| LL1 | **Lange Läufe: Reste.** (b) Der öffentliche Brand-Check rechnet noch in der Anfrage, (c) Kleinigkeiten, (d) fünf weitere Wege über der Wartezeit des Webservers, die der neue Fristen-Wächter kennt. Zeichen-Entwürfe, Vorbilder lesen und Fundament-Check laufen im Hintergrund (COMPLETE „N10"). **Wartet auf:** nichts. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
 | WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) eine Kleinigkeit. **Wartet auf:** nichts — David hat am 2026-11-17 Ja gesagt zum Blick auf die Namen in den Server-Dateien, als eigene kleine Gruppe. | Niedrig | S je Teil | Nein | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
@@ -789,40 +789,41 @@ und den Link im Kommentar-Bereich.
 
 <a id="ll1"></a>
 
-**LL1 — Lange Läufe: Nacharbeiten (aus dem Gesamtaudit, Paket P18).**
-Gebaut am 2026-11-17 (COMPLETE „N05"): der Radar-Knopf rechnet im
-Hintergrund, der Video-Brief startet unter der Lauf-Sperre, die zwei Streams
-des Markenberaters senden ein Lebenszeichen, die Beweis-Skripte des
-Marktvergleichs warten die Minuten-Bremse selbst ab.
+**LL1 — Lange Läufe: Reste (aus dem Gesamtaudit, Paket P18).**
+Gebaut am 2026-11-17 (COMPLETE „N05"): Radar-Knopf im Hintergrund,
+Video-Brief unter der Lauf-Sperre, Lebenszeichen der zwei Berater-Streams.
+Gebaut am 2026-11-18 (COMPLETE „N10"): Zeichen-Entwürfe, Vorbilder lesen und
+Fundament-Check rechnen im Hintergrund (Lauf-Tabelle `brand_runs`); ein
+Wächter hält je Route die Summe ihrer Fristen gegen die Wartezeit des
+Webservers (`packages/core/tests/routeDeadlineBudget.test.ts`).
 
-- **(b) Vier lange Wege rechnen noch in der Anfrage** (gemessen am
-  2026-11-16, eigene Fristen im Code zusammengezählt): Zeichen-Entwürfe 120 s,
-  Bild lesen 120 s, Dokument-Check 90 s, öffentlicher Brand-Check rund 120 s.
-  Üblich sind sie viel schneller; die Obergrenze liegt über der Wartezeit des
-  Webservers. Keiner passte in einen kleinen Pull Request: alle vier liegen im
-  Markenberater-Layer, und der hat noch keine Lauf-Tabelle. Jeder Umbau
-  braucht deshalb eine Migration (auf Production mit Davids Ja, vor dem
-  Merge), eine Route zum Abfragen und den Umbau der Seite. Empfohlene
-  Reihenfolge, nach dem Schaden eines Abbruchs: (1) die Lauf-Tabelle des
-  Layers mit den Zeichen-Entwürfen (bezahlt, teuerster Lauf, ein zweiter
-  Klick kostet doppelt), (2) Bild lesen (bezahlt), (3) Dokument-Check,
-  (4) öffentlicher Brand-Check (läuft ohne Konto — das Abfragen braucht dort
-  eine eigene Antwort auf „wem gehört der Lauf"). Die Dokument-Prüfung (bis
-  660 s) hat schon eine eigene Sperre; Entwurf und Übersetzung eines Artikels
-  (je 120 s) laufen unter der Ausnahme von 180 s auf branding.supply. Ein
-  Wächter, der je Route die Summe ihrer Fristen gegen die 60 s hält, fehlt
-  weiter.
-- **(c) Kleinigkeiten.** Radar: das Ergebnis eines Laufs erscheint als
-  Meldung beim Ende; wer die Seite erst später öffnet, sieht nur das Datum
-  des letzten Laufs, nicht die Zahlen. Der nächtliche Radar-Lauf nimmt die
-  Lauf-Sperre nicht — ihn schließt ein Merker im Prozess aus, das trägt,
-  solange die App mit einem Prozess läuft. Ein abgebrochener Knopf-Lauf
-  verbraucht einen der drei Starts je Stunde. `market-library-compute.mjs`
-  erwartet vom Lauf noch die alte sofortige Antwort mit Zahlen und bricht
-  seit P18 ab (Skript von Hand, bezahlt echte Läufe — beim nächsten Gebrauch
-  auf Abfragen umstellen). Die Lauf-Zeilen (`market_runs`, `insights_runs`)
-  werden nicht nach Alter geräumt; sie sind klein und verschwinden mit der
-  Marke. Der Hinweis „Quelle in der Zeit nicht gelesen" erscheint nur beim
+- **(b) Der öffentliche Brand-Check rechnet noch in der Anfrage** (Website
+  lesen und urteilen, zusammen bis rund 120 s; üblich viel schneller). Er ist
+  der Trichter von branding.supply und läuft ohne Konto. Empfehlung für den
+  Umbau, in dieser Reihenfolge: (1) die Mechanik in `brandCheckRun.ts` in
+  drei Schritte teilen (Zwischenspeicher und Vorprüfung, Buchung, Ausführung)
+  — der Marktvergleich ruft weiter alle drei in einem Zug; (2) die Route
+  nimmt die Lauf-Sperre (Art `check` in `brand_runs`, Gegenstand = Hash der
+  Adresse) VOR der Buchung und antwortet `202` mit einem Kennzeichen, das nur
+  der Starter bekommt (an der Zeile steht nur dessen Hash); (3) eine lesende
+  Route liefert den Stand zu diesem Kennzeichen — die Minuten-Bremse des
+  Checks darf das Abfragen nicht mitzählen; (4) drei Aufrufer umstellen:
+  das öffentliche Formular (das Kennzeichen im Browser merken, damit ein
+  zweiter Reiter und ein Neuladen denselben Lauf sehen), die Score-Seite und
+  die Übersicht aller Marken; (5) Lauf-Zeilen dieser Art hängen an keiner
+  Marke — sie brauchen eine Frist (zuerst nur zählen, Muster aus „N04").
+  Ein Treffer im Zwischenspeicher antwortet weiter sofort.
+- **(c) Kleinigkeiten.** Ein abgebrochener Knopf-Lauf des Radars verbraucht
+  einen der drei Starts je Stunde (bekannte Grenze: nur ein Ausliefern mitten
+  im Lauf bricht ihn ab). `market-library-compute.mjs` fragt den Stand jetzt
+  ab, ist aber nicht gelaufen (es bezahlt echte Läufe). Die Lesung der
+  Vorbilder bucht bei einem gescheiterten oder abgebrochenen Lauf nicht
+  zurück (nur die Entwürfe tun das). Die Übersicht aller Marken zeigt nach
+  dem Neuladen nicht, dass ein Fundament-Check läuft — ein Klick antwortet
+  dann „läuft schon" und wartet mit. Die Lauf-Zeilen (`market_runs`,
+  `insights_runs`, `brand_runs`) werden nicht nach Alter geräumt; sie sind
+  klein und verschwinden mit der Marke.
+  Der Hinweis „Quelle in der Zeit nicht gelesen" erscheint nur beim
   Zustandswechsel, nicht beim Speichern eines veröffentlichten Artikels (dort
   steht weiter „Zitat nicht belegt"). Ein Artikel mit sehr vielen langsamen
   Quellen lässt sich wegen der 45 Sekunden unter Umständen nicht freigeben —
@@ -833,8 +834,16 @@ Marktvergleichs warten die Minuten-Bremse selbst ab.
   Sperre ist dort nur durch Tests belegt. Der Alarm (Paket P22) kann
   abgebrochene Läufe an Lauf-Zeilen ohne Ende mit altem Herzschlag erkennen.
   Auf Production ist ein Lauf ÜBER 60 Sekunden weiter nicht gezeigt, weder
-  beim Marktvergleich noch beim Radar; beides ist lokal gezeigt (75 s und
-  87 s, je zwei Reiter).
+  beim Marktvergleich noch beim Radar noch bei den drei Wegen des
+  Markenberaters; alles ist lokal gezeigt (75 bis 87 s, je zwei Reiter).
+- **(d) Bestand des Fristen-Wächters** (`packages/core/tests/support/routeDeadlines.ts`,
+  Bauform `over` — die Liste darf nur schrumpfen): neben dem öffentlichen
+  Brand-Check stehen dort die Dokument-Prüfung des Markenberaters (bis
+  1.320 s: zehn Nachholungen und die Prüfung, je zwei Stufen; sie hat eine
+  eigene Sperre im Prozess), die Kapitel-Prüfung und das Schließen einer
+  Sitzung (je bis 120 s, üblich wenige Sekunden), der Marktbericht (90 s) und
+  die Übersetzung einer ganzen Seite (120 s). Nicht gezählt sind Aufrufe an
+  ploi, Stripe, Mail und das Control Plane.
 
 <a id="sv1"></a>
 
