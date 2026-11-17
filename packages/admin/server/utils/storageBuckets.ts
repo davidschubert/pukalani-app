@@ -2,39 +2,30 @@ import type { H3Event } from 'h3'
 
 /**
  * WELCHE ABLAGEN DIE SPEICHER-SEITE LÖSCHEN DARF — eine ERLAUBNISLISTE
- * (BE-021, 2026-11-16), keine Sperrliste mehr.
+ * (BE-021, 2026-11-16), seit BP1 (c) (2026-11-17) gekürzt auf EINE Ablage:
+ * die Profilbilder (`avatars`, bzw. die Id aus `appwriteAvatarsBucket`).
  *
- * Bis hierher war JEDE Ablage des Projekts löschbar außer `gdpr-exports`: ein
- * neuer Bucket (eine Migration, ein Layer, ein Kunde) war damit vom ersten
- * Tag an in der Konsole leerzuräumen, ohne dass das jemand entschieden hatte.
- * Jetzt ist es umgekehrt: löschbar ist nur, was hier steht, und eine neue
- * Ablage ist zuerst nur-lesend.
+ * WARUM NUR DIE: an den Dateien aller anderen Ablagen hängt eine Zeile oder
+ * ein Verweis — Schriften (`custom_fonts`), Favicons (Datei = Community),
+ * Medien (`media.fileId`), Event-Cover (`events.coverFileId`),
+ * Marken-Entwürfe und -Inspiration, Runner- und Ticket-Dateien. Wer dort über diese
+ * Seite eine Datei löscht, lässt die Zeile ohne Datei zurück (kaputtes Bild, toter
+ * Download). Diese Dateien löscht weiter der Weg des jeweiligen Produkts, der
+ * die Zeile mitnimmt; auf der Speicher-Seite sind sie nur zum Ansehen.
+ * Profilbilder hängen an keiner Zeile, sondern an `prefs.avatarUrl` des
+ * Kontos — die Seite erkennt verwaiste Dateien selbst und warnt vor dem
+ * Löschen einer verknüpften (storage.get.ts).
  *
- * Die Liste ist genau das, was die Seite bis heute zum Löschen angeboten hat
- * — alle Buckets, die eine Migration anlegt, außer `gdpr-exports`:
- *   avatars (system-032, Id aus der Config), fonts (system-012),
- *   favicons (system-037), media (media-001), event-covers (events-002),
- *   brand-drafts (brand-023), brand-inspiration (brand-024),
- *   runner-files (runner-001), ticket-files (tickets-003).
- * `gdpr-exports` bleibt draußen: die Kopien vor einer Löschung haben ihre
- * eigene Frist (30 Tage, stündlicher Lauf) und ihre eigene Seite samt
- * Protokoll (`/api/admin/gdpr-exports`).
+ * Eine NEUE Ablage ist zuerst nur-lesend. `gdpr-exports` bleibt immer
+ * draußen, auch unter einer anderen Id aus der Config: die Kopien vor einer
+ * Löschung haben ihre eigene Frist (30 Tage, stündlicher Lauf) und ihre
+ * eigene Seite samt Protokoll (`/api/admin/gdpr-exports`).
  *
  * Server (`storage/[bucket]/[fileId].delete.ts`) und Seite
  * (`storage.get.ts` → `readOnly`) fragen BEIDE diese Funktion — die Seite
  * bietet also nichts an, was der Server ablehnt.
  */
-const DELETABLE_BUCKETS: ReadonlySet<string> = new Set([
-  'avatars',
-  'fonts',
-  'favicons',
-  'media',
-  'event-covers',
-  'brand-drafts',
-  'brand-inspiration',
-  'runner-files',
-  'ticket-files',
-])
+const DELETABLE_BUCKETS: ReadonlySet<string> = new Set(['avatars'])
 
 /** Nie löschbar über die Speicher-Seite, auch wenn eine Config die Id anders setzt. */
 const NEVER_DELETABLE: ReadonlySet<string> = new Set(['gdpr-exports'])

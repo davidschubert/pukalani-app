@@ -1,6 +1,5 @@
-import { AppwriteException } from 'node-appwrite'
 import { z } from 'zod'
-import type { ProductRuntimeState } from '../../../../../core/shared/types/config'
+import { parseProductsColumn, type ProductRuntimeState } from '../../../../../core/shared/types/config'
 
 const bodySchema = z.object({ enabled: z.boolean() })
 
@@ -11,6 +10,17 @@ const bodySchema = z.object({ enabled: z.boolean() })
  * (moderation ← comments); Anschalten verlangt aktive Abhängigkeiten.
  * Statusmaschine M2: enabled ⇔ active/inactive — provisioning/error kommen
  * mit dem Provisioner (M3/M7).
+ *
+ * ZWEI BETREIBER IM SELBEN AUGENBLICK (BP1 d, 2026-11-17): Prüfen und
+ * Schreiben laufen in der Kette von `mutateAppConfig()`
+ * (server/utils/appConfigWrite.ts) gegen den FRISCH gelesenen Stand — vorher
+ * kam er aus dem 5-s-Zwischenspeicher der Produkt-Gates, und der zweite
+ * Schalter schrieb den Stand von vor dem ersten zurück. Geschrieben werden
+ * die gespeicherten Abweichungen plus genau dieser eine Schlüssel. Die
+ * Prüfungen sehen zusätzlich das Entitlement (`getEffectiveProducts`, nach
+ * dem Verwerfen des Zwischenspeichers ebenfalls frisch); geschrieben wird es
+ * nie — ein vom Entitlement gesperrtes Produkt landet nicht als „aus" in der
+ * Spalte (das tat der alte Weg, er schrieb den WIRKSAMEN Stand zurück).
  */
 export default defineEventHandler(async (event) => {
   requirePermission(event, 'system.manage')
@@ -26,51 +36,39 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 409, statusText: 'Foundation products cannot be toggled' })
   }
 
-  const states = await getEffectiveProducts(event)
+  await mutateAppConfig(event, async (current) => {
+    const stored = parseProductsColumn(current?.products)
+    invalidateProductGateCache()
+    const effective = await getEffectiveProducts(event)
+    const isOn = (productKey: string) =>
+      (stored[productKey]?.enabled ?? true) && (effective[productKey]?.enabled ?? true)
 
-  if (!enabled) {
-    const requiredBy = [...getProductRegistry().values()]
-      .filter(m => m.requires?.includes(key) && (states[m.key]?.enabled ?? true))
-      .map(m => m.key)
-    if (requiredBy.length > 0) {
-      throw createError({ status: 409, statusText: `Required by: ${requiredBy.join(', ')}` })
+    if (!enabled) {
+      const requiredBy = [...getProductRegistry().values()]
+        .filter(m => m.requires?.includes(key) && isOn(m.key))
+        .map(m => m.key)
+      if (requiredBy.length > 0) {
+        throw createError({ status: 409, statusText: `Required by: ${requiredBy.join(', ')}` })
+      }
     }
-  }
-  if (enabled) {
-    const missing = (manifest.requires ?? []).filter(req => !(states[req]?.enabled ?? true))
-    if (missing.length > 0) {
-      throw createError({ status: 409, statusText: `Requires: ${missing.join(', ')}` })
+    if (enabled) {
+      const missing = (manifest.requires ?? []).filter(req => !isOn(req))
+      if (missing.length > 0) {
+        throw createError({ status: 409, statusText: `Requires: ${missing.join(', ')}` })
+      }
     }
-  }
 
-  const next: Record<string, ProductRuntimeState> = {
-    ...states,
-    [key]: { enabled, status: enabled ? 'active' : 'inactive' },
-  }
-  // Nur echte Overrides persistieren — Default (an/active) bleibt implizit,
-  // damit die Spalte klein bleibt und neue Produkte automatisch AN sind.
-  const overrides = Object.fromEntries(
-    Object.entries(next).filter(([, state]) => !(state.enabled && state.status === 'active')),
-  )
-  const data = { products: JSON.stringify(overrides) }
-
-  const config = useRuntimeConfig(event)
-  const admin = createAdminClient(event)
-  const databaseId = config.public.appwriteDatabaseId
-
-  try {
-    await admin.tablesDB.updateRow({ databaseId, tableId: 'app_config', rowId: 'global', data })
-  }
-  catch (error) {
-    // NUR wenn die Zeile fehlt anlegen — andere Fehler nicht verschlucken
-    if (error instanceof AppwriteException && error.code === 404) {
-      await admin.tablesDB.createRow({ databaseId, tableId: 'app_config', rowId: 'global', data })
-        .catch(e => { throw toH3Error(e, 'Could not update products') })
+    const next: Record<string, ProductRuntimeState> = {
+      ...stored,
+      [key]: { enabled, status: enabled ? 'active' : 'inactive' },
     }
-    else {
-      throw toH3Error(error, 'Could not update products')
-    }
-  }
+    // Nur echte Overrides persistieren — Default (an/active) bleibt implizit,
+    // damit die Spalte klein bleibt und neue Produkte automatisch AN sind.
+    const overrides = Object.fromEntries(
+      Object.entries(next).filter(([, state]) => !(state.enabled && state.status === 'active')),
+    )
+    return { data: { products: JSON.stringify(overrides) }, result: undefined }
+  }, 'Could not update products')
 
   invalidateProductGateCache()
 
