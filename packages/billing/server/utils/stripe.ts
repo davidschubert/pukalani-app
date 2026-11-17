@@ -3,6 +3,8 @@ import type { H3Event } from 'h3'
 import type { PukalaniBillingConfig } from '../../shared/types/billing'
 import { rejectOneTimeLookupKey, rejectSubscriptionLookupKey } from '../../shared/lookupKeys'
 import { resolveBillingReturnOrigin } from '../../shared/returnOrigin'
+import { resolveSiteOrigin } from '../../../core/server/utils/siteOrigin'
+import { isLocalRequestHost } from '../../../core/shared/securityHeaders'
 // Die Version steht fest (BE-016) — Begründung in shared/stripeApiVersion.ts.
 import { STRIPE_API_VERSION } from '../../shared/stripeApiVersion'
 
@@ -102,14 +104,27 @@ export async function getBillingConfig(_event: H3Event): Promise<PukalaniBilling
 }
 
 /**
- * Rücksprung-Ziel für Checkout/Portal — NICHT aus dem `Host`-Header, sondern
- * aus der konfigurierten Basis-URL der App (Begründung: shared/returnOrigin.ts).
- * Ohne Konfiguration (lokale Entwicklung) bleibt der Request-Origin.
+ * Rücksprung-Ziel für Checkout/Portal — NICHT aus dem `Host`-Header
+ * (Begründung und Reihenfolge: shared/returnOrigin.ts): die aktive eigene
+ * Domain der Site, sonst die konfigurierte Basis-URL, sonst die feste Adresse
+ * der App. Der Request-Origin bleibt der Fall „lokale Entwicklung"; greift er
+ * auf einem öffentlichen Host, fehlt eine Pflicht-Einstellung — dann steht
+ * eine Fehlerzeile im Log, und der Rücksprung geht trotzdem (eine Zahlung
+ * scheitert nicht an einer fehlenden Variable).
  */
-export function billingReturnOrigin(event: H3Event): string {
-  const publicConfig = useRuntimeConfig(event).public as { i18n?: { baseUrl?: unknown } }
-  const configured = typeof publicConfig.i18n?.baseUrl === 'string' ? publicConfig.i18n.baseUrl : ''
-  return resolveBillingReturnOrigin(getRequestURL(event).origin, configured)
+export async function billingReturnOrigin(event: H3Event): Promise<string> {
+  const publicConfig = useRuntimeConfig(event).public as { appUrl?: unknown, i18n?: { baseUrl?: unknown } }
+  const requestUrl = getRequestURL(event)
+  const picked = resolveBillingReturnOrigin({
+    siteOrigin: await resolveSiteOrigin(event),
+    baseUrl: typeof publicConfig.i18n?.baseUrl === 'string' ? publicConfig.i18n.baseUrl : '',
+    appUrl: typeof publicConfig.appUrl === 'string' ? publicConfig.appUrl : '',
+    requestOrigin: requestUrl.origin,
+  })
+  if (picked.source === 'request' && !isLocalRequestHost(requestUrl.host)) {
+    logEvent('error', 'billing.return_origin_unconfigured', {})
+  }
+  return picked.origin
 }
 
 /**

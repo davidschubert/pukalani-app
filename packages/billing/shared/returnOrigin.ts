@@ -15,21 +15,53 @@
  * `apps/comments`, `apps/control`), aber sie haben dieselbe Sorte Wahrheit —
  * die konfigurierte Basis-URL der App (`NUXT_PUBLIC_I18N_BASE_URL`).
  *
- * REGEL: ist eine Basis-URL konfiguriert, gewinnt SIE — der Request-Host wird
- * nicht einmal angesehen. Ohne Konfiguration (lokale Entwicklung, wo es keine
- * gibt) bleibt der Request-Origin. Das ist bewusst strenger als
- * `core/shared/seoOrigin.ts`, das nur das SCHEMA aus der Env nimmt: SEO darf
- * pro Mandanten-Host variieren, ein Zahlungs-Rücksprung nicht.
+ * REGEL (seit 2026-11-17 mit vier Stufen, SE1 f): der Request-Host wird nicht
+ * einmal angesehen, solange irgendeine feste Wahrheit da ist.
+ *  1. die AKTIVE EIGENE DOMAIN der Einzel-Site (Vertrag `resolveSiteOrigin`
+ *     im Core — dieselbe Abfrage wie Mails und OAuth-Rückwege seit GA1 P23),
+ *  2. die konfigurierte Basis-URL (`NUXT_PUBLIC_I18N_BASE_URL`),
+ *  3. die feste Adresse der App (`NUXT_PUBLIC_APP_URL`, Pflicht auf jeder
+ *     Site mit Anmeldung) — vorher fiel eine Site ohne Basis-URL hier schon
+ *     auf den Request-Host zurück,
+ *  4. der Request-Origin — der Fall „lokale Entwicklung". Kommt er auf einem
+ *     öffentlichen Host zum Zug, schreibt der Aufrufer eine Fehlerzeile
+ *     (`source: 'request'`), denn dann fehlt eine Pflicht-Einstellung.
+ * Das ist bewusst strenger als `core/shared/seoOrigin.ts`, das nur das SCHEMA
+ * aus der Env nimmt: SEO darf pro Mandanten-Host variieren, ein
+ * Zahlungs-Rücksprung nicht.
  *
  * PURE + unit-getestet, deshalb in shared/ und ohne Nuxt-Abhängigkeit.
  */
-export function resolveBillingReturnOrigin(
-  requestOrigin: string | undefined | null,
-  configuredBaseUrl: string | undefined | null,
-): string {
-  const configured = originOf(configuredBaseUrl)
-  if (configured) return configured
-  return originOf(requestOrigin)
+export interface BillingReturnOriginInput {
+  /** Aktive eigene Domain der Site als Origin, sonst leer. */
+  siteOrigin?: string | null
+  /** `NUXT_PUBLIC_I18N_BASE_URL` */
+  baseUrl?: string | null
+  /** `NUXT_PUBLIC_APP_URL` */
+  appUrl?: string | null
+  /** Origin der Anfrage — nur der letzte Ausweg. */
+  requestOrigin?: string | null
+}
+
+export type BillingReturnOriginSource = 'site-domain' | 'base-url' | 'app-url' | 'request' | 'none'
+
+export interface BillingReturnOrigin {
+  origin: string
+  source: BillingReturnOriginSource
+}
+
+export function resolveBillingReturnOrigin(input: BillingReturnOriginInput): BillingReturnOrigin {
+  const steps: [BillingReturnOriginSource, string | null | undefined][] = [
+    ['site-domain', input.siteOrigin],
+    ['base-url', input.baseUrl],
+    ['app-url', input.appUrl],
+    ['request', input.requestOrigin],
+  ]
+  for (const [source, value] of steps) {
+    const origin = originOf(value)
+    if (origin) return { origin, source }
+  }
+  return { origin: '', source: 'none' }
 }
 
 function originOf(value: string | undefined | null): string {

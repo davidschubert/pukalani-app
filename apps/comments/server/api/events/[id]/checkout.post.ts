@@ -35,7 +35,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 409, statusText: 'Ticket already owned' })
   }
 
-  const origin = getRequestURL(event).origin
+  // Rücksprung-Ziel wie bei Abo und Portal: eigene Domain bzw. konfigurierte
+  // Adresse, nicht der Name der Anfrage (SE1 f, billing/shared/returnOrigin.ts).
+  const origin = await billingReturnOrigin(event)
   const localePrefix = typeof getQuery(event).locale === 'string' && getQuery(event).locale === 'de' ? '/de' : ''
   const url = await createPaymentCheckoutSession(event, {
     lookupKey: row.priceLookupKey,
