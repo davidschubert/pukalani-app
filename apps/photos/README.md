@@ -1,62 +1,37 @@
-# apps/_template — Kopiervorlage für neue Pukalani-Apps
+# apps/photos — Foto-Site (Einzel-Site, nicht ausgerollt)
 
-Dünne App-Hülle, die alle Layer komponiert (`themes`, `admin`, `comments`,
-`moderation`, `core`, `system`). Der Unterstrich-Prefix hält sie aus dem
-Migrations-Runner heraus (`scripts/migrate.mjs` ignoriert `_*`).
+Eine Einzel-Site mit eigenem Editorial-Design: Startseite, Galerie, „Über" und
+ein Kontaktformular (`app/pages/`, Stile in `app/assets/css/photos.css`,
+gescopet auf das Layout `site` — Anmeldung und Dashboard behalten den
+Standard-Look). Sie ist die App, an der der `media`-Layer erprobt wird, und
+das Muster für „eigene Site mit eigenem Design auf denselben Layern".
 
-## Neue App erstellen
+**Stand:** nur Code. Es gibt keine Site auf dem App-Server und keinen
+Eintrag im Ausliefer-Lauf; ausgerollt sind heute als Einzel-Sites nur
+`apps/portfolio` und `apps/branding` (CLAUDE.md, „SILO-REGEL").
 
-1. **Kopieren + benennen**
-   ```bash
-   cp -R apps/_template apps/<name>
-   ```
-   - `package.json`: `"name": "<name>"` setzen und im `bootstrap`-Skript
-     `--app _template` durch `--app <name>` ersetzen (sonst zielen die
-     Migrationen auf die Vorlage; `pnpm create-site <name>` erledigt beides)
-   - `nuxt.config.ts`: `devServer.port` eindeutig vergeben (3002+, siehe CLAUDE.md)
-   - `.env.example` → `NUXT_PUBLIC_APP_URL` an den Port anpassen
-   - Nicht benötigte Produkt-Layer aus `extends` UND `package.json` entfernen
-     (`core` + `system` bleiben immer)
+## Layer
 
-2. **Appwrite-Instanz vorbereiten** (jede App hat ihre EIGENE Instanz)
-   - Instanz starten, in der Console: Account + Projekt + zwei API-Keys anlegen
-     (Runtime-Key + Migrations-Key, Scopes siehe `.env.example`)
-   - `cp apps/<name>/.env.example apps/<name>/.env` und ausfüllen
+Steht in `site.manifest.ts`: `themes`, `admin`, `media` — dazu immer `core`
+und `system`.
 
-3. **Installieren + Bootstrap**
-   ```bash
-   pnpm install
-   pnpm --filter <name> bootstrap   # DB + Bucket + Platform + alle Migrationen
-   ```
-   Das ist EIN Skript für alle Apps (`scripts/bootstrap.mjs --app <name>`) und
-   nur für FRISCHE Instanzen: es prüft vor dem ersten Schreibzugriff, ob die
-   Datenbank leer ist, und bricht sonst ab (`--check` prüft nur, `--force`
-   erzwingt).
-   Migrationen später einzeln: `pnpm migrate --app <name>`
-   (nie ohne `--app`, sobald mehrere Apps existieren — der Runner erzwingt das).
+## Lokal starten
 
-4. **Starten**
-   ```bash
-   pnpm --filter <name> dev
-   ```
+```bash
+pnpm --filter photos dev   # Port 3003
+```
 
-5. **Anpassen**
-   - `app/app.config.ts`: Config-Gates (`pukalani.analytics`, `pukalani.auth.*`, …)
-   - `i18n/locales/*.json`: App-Texte (Core-Keys werden gemergt)
-   - `app/pages/`: eigene Seiten; Layout-Overrides optional unter `app/layouts/`
-     (Core bringt `default` + `auth` mit)
+`.env` aus `.env.example` anlegen (eigenes Appwrite-Projekt, siehe
+`appwriteProjects` in `site.manifest.ts`). Migrationen:
 
-## Konventionen (Kurzfassung)
+```bash
+pnpm migrate --app photos
+```
 
-- CRUD nur über `server/api/*` der Layer — nie Web-SDK-CRUD im Client
-- `app.config.ts` gehört in `app/` (im Package-Root wird sie ignoriert)
-- Domain-Types in `shared/types/`, Zod-Schemas als Factories, i18n-Keys statt
-  hartcodierter Strings — Details in CLAUDE.md und docs/CONCEPT.md
+## Bekannte Grenzen
 
-## Was hier anders ist als in der Vorlage
-
-- **Kein globales `app.pageTransition`.** Die App bindet das Dashboard ein
-  (`packages/admin`); mit `mode: 'out-in'` bliebe dort nach der ersten
-  Client-Navigation der Seitenbereich leer (`UDashboardPanel` ist
-  mehrwurzelig). Der Fade läuft nur je Route über `<NuxtPage :transition>` im
-  Layout `site` (`app/app.vue`) — dasselbe Muster wie `apps/portfolio`.
+- Der Zähler der Kontakt-Route (`server/api/contact.post.ts`) liegt im
+  Speicher des Prozesses — vor einem Ausrollen gehört die Route in die
+  Bremsen-Liste des Core (`.claude/rules/appwrite.md`, „BREMSEN").
+- Keine globale `app.pageTransition` (die App bindet das Dashboard ein);
+  der Übergang gilt je Route, siehe Kommentar in `nuxt.config.ts`.

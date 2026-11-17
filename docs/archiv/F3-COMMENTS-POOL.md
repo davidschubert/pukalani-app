@@ -3,7 +3,7 @@
 **Stand: 2026-08-11 · Status: PLAN, zur Abnahme durch David. Nichts davon ist
 gebaut.** Steuerung: [OPEN-ITEMS.md](../OPEN-ITEMS.md) Punkt 10 · Horizont:
 [ACCOUNT-HORIZONT.md](../plans/ACCOUNT-HORIZONT.md) Abschnitt AH-6 · Vorlauf, dessen
-Rezept hier wiederverwendet wird: [ACCOUNT-CUTOVER.md](../runbooks/ACCOUNT-CUTOVER.md)
+Rezept hier wiederverwendet wird: [ACCOUNT-CUTOVER.md](ACCOUNT-CUTOVER.md)
 (AH-1, gefahren am 2026-08-11).
 
 Dieses Dokument ist der **Plan**. Es enthält bewusst keine abhakbaren Kästchen

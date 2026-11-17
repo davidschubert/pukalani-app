@@ -60,8 +60,6 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/NEUE-SITE.md](runbooks/NEUE-SITE.md) | Neue Site auf dem App-Server: nginx aus der Vorlage (`ops/nginx/`), Pflicht-Zeilen, Kundendomain, neuer oder entfernter Zeitplan (`ops/cron.conf`) |
 | [runbooks/STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) | Stripe vom Testmodus auf echtes Geld |
 | [runbooks/STRIPE-TEST-WALKTHROUGH.md](runbooks/STRIPE-TEST-WALKTHROUGH.md) | Die 6 Testmodus-Proben davor |
-| [runbooks/CONTROL-CUTOVER.md](runbooks/CONTROL-CUTOVER.md) | Control-Host-Umzug (+ die drei Restkrümel) |
-| [runbooks/ACCOUNT-CUTOVER.md](runbooks/ACCOUNT-CUTOVER.md) | AH-1: Projekt `pool` → `account` und Host `my.`/`start.` → `account.` in EINEM Fenster |
 | [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Protokoll vom 2026-07-24: nur lesender Control-Plane-Schlüssel für `platform` (einmalig, erledigt; die Projektnamen dort sind die von damals) |
 | [runbooks/CI-SCHLUESSEL-TAUSCHEN.md](runbooks/CI-SCHLUESSEL-TAUSCHEN.md) | Die zwei SSH-Schlüssel der CI (Ausliefern, Wächter): wo sie liegen, was sie dürfen, tauschen ohne Stillstand, Tor-Skript auf appwrite-prod |
 | [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Messung vom 2026-08-03: wer welchen Schlüssel im Betreiber-Projekt hielt (damals `control`, seit 2026-08-18 `admin`) — und wie man das nachmisst |
@@ -80,7 +78,6 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/ZUGAENGE-AUFRAEUMEN.md](runbooks/ZUGAENGE-AUFRAEUMEN.md) | Zugänge zu gelöschten Projekten finden und entfernen (`pnpm ops:stale-keys`; nur 404 beweist „tot") |
 | [runbooks/RESEND-WEBHOOK.md](runbooks/RESEND-WEBHOOK.md) | Mail-Versand über Resend: Webhook für Bounces und Beschwerden, Tagesbudget, der Sende-Schlüssel an fünf Stellen, Tausch |
 | [runbooks/APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md) | Appwrite 2.6.2 → 2.7.1 (der heutige Stand). Die Sprünge davor: [2.0](runbooks/APPWRITE-2-0-UPGRADE.md), [2.2](runbooks/APPWRITE-2-2-UPGRADE.md), [2.6](runbooks/APPWRITE-2-6-UPGRADE.md) |
-| [runbooks/ADMIN-CUTOVER.md](runbooks/ADMIN-CUTOVER.md) | AH-4: Betreiber-Konsole `control.` → `admin.` (erledigt; Protokoll und Begründungen) |
 | [runbooks/BRANDING-SUPPLY-SETUP.md](runbooks/BRANDING-SUPPLY-SETUP.md) | branding.supply einrichten (Projekt, Site, Zertifikat; Durchlauf 2026-09-01) |
 | [runbooks/MARKTVERGLEICH-BIBLIOTHEK.md](runbooks/MARKTVERGLEICH-BIBLIOTHEK.md) | Bibliotheks-Einträge rechnen und von Hand prüfen (bezahlter Lauf, Handzeichen, Auffrischung nach 90 Tagen) |
 | [runbooks/NEWSLETTER-ABMELDE-LINKS.md](runbooks/NEWSLETTER-ABMELDE-LINKS.md) | Eigenes Geheimnis der Abmelde-Links auf branding.supply (SEC-020): setzen, wechseln, was bei einem Tausch des API-Schlüssels passiert |
@@ -112,6 +109,14 @@ gehören dort hin.
 Reste nach `OPEN-ITEMS.md`. Ein Plan-Dokument ist nie eine To-do-Liste.
 
 ## Archiv — ausgeführt, nur noch Historie
+
+Erledigte Umzugs-Anleitungen liegen hier, nicht mehr bei den Runbooks (Davids
+Entscheidung 2026-11-16): [CONTROL-CUTOVER](archiv/CONTROL-CUTOVER.md)
+(studio → control, 2026-07-26), [ACCOUNT-CUTOVER](archiv/ACCOUNT-CUTOVER.md)
+(AH-1: Projekt `pool` → `account`), [ADMIN-CUTOVER](archiv/ADMIN-CUTOVER.md)
+(AH-4: `control.` → `admin.`), [ADMIN-PROJEKT-CUTOVER](archiv/ADMIN-PROJEKT-CUTOVER.md)
+und [F3-CUTOVER](archiv/F3-CUTOVER.md). Sie bleiben als Protokoll und Rezept;
+ihre Befehle und Pfade beschreiben den Tag des Umzugs, nicht den heutigen Stand.
 
 Erledigte Betriebs-Skripte (Appwrite-Upgrades) liegen unter
 [archiv/skripte/](archiv/skripte/README.md) — dort steht auch die Regel, wann

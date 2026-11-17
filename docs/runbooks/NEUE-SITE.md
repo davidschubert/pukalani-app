@@ -12,7 +12,7 @@ Dieses Runbook ist der Teil „Webserver und Zeitpläne". Was eine neue App sons
 braucht (Appwrite-Projekt, `.env`, Migrationen, Zertifikat), steht in
 [DEPLOYMENT.md](./DEPLOYMENT.md) und für die bestehenden Sites in
 [BRANDING-SUPPLY-SETUP.md](./BRANDING-SUPPLY-SETUP.md) und
-[CONTROL-CUTOVER.md](./CONTROL-CUTOVER.md). Eine neue Site ist die Ausnahme:
+[CONTROL-CUTOVER.md](../archiv/CONTROL-CUTOVER.md). Eine neue Site ist die Ausnahme:
 ein neues Produkt bekommt einen eigenen Layer, aber standardmäßig **keine**
 eigene Site (Silo-Regel in `CLAUDE.md`).
 

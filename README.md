@@ -44,7 +44,7 @@ export default defineNuxtConfig({
 |---|---|
 | Nuxt 4 (SSR) + Nuxt UI 4 | Framework + UI-Komponenten |
 | Appwrite (self-hosted, 2.7.1 auf dev, CI und prod, MariaDB, TablesDB) | Backend: Auth, Datenbank, Storage, Realtime, Presences |
-| node-appwrite 29 / appwrite 27 | Server SDK (CRUD via Server Routes) / Web SDK (Realtime + Presences API) |
+| node-appwrite 31 / appwrite 29 | Server SDK (CRUD via Server Routes) / Web SDK (Realtime + Presences API) |
 | Pinia · Zod · @nuxtjs/i18n (de+en) | State · Validierung · Internationalisierung |
 | Tailwind CSS 4 · TypeScript strict | Styling · Typsicherheit |
 | pnpm Workspaces + Catalog | Monorepo, zentrale Versionsverwaltung |

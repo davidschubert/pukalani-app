@@ -8,7 +8,7 @@ Vollständiges Konzept: docs/CONCEPT.md
 
 ## Stack
 - Nuxt 4.5.x (Composition API, SSR), Nuxt UI 4.10.x, Pinia 4, Tailwind CSS 4
-- node-appwrite 29 (Server SDK) + appwrite 27 (Web SDK, NUR Realtime) — Appwrite
+- node-appwrite 31 (Server SDK) + appwrite 29 (Web SDK, NUR Realtime) — Appwrite
   self-hosted **2.7.1** auf dev, CI und prod (seit 2026-11-06). EINE Falle, die
   eigenen Code betrifft: seit 2.7 trennt Realtime nach 120 s STILLE, ein eigener
   `new WebSocket` braucht alle 20 s `{"type":"ping"}` wie die SDKs. Upgrade-Wege,

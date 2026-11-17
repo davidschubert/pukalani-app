@@ -17,7 +17,7 @@ paths:
 
 ## Hosts (Umbenennung 2026-07-25, Cutover 2026-07-26 — Davids Entscheidung)
 - `admin.pukalani.app` = Betreiber-Oberfläche (AH-4, Davids Entscheidung
-  2026-08-11; Runbook docs/runbooks/ADMIN-CUTOVER.md). Seit **AH-4b
+  2026-08-11; Runbook docs/archiv/ADMIN-CUTOVER.md). Seit **AH-4b
   (2026-08-18, Davids Panel-Klick)** ist auch die INFRA wirklich umbenannt:
   ploi-Site 392163, Server-Verzeichnis `/home/ploi/admin.pukalani.app/` (ploi
   benennt das Verzeichnis mit) und die certbot-Lineage heißen `admin` — SITE
@@ -57,7 +57,7 @@ paths:
   (Der damals überzählige SAN `studio` ist seit dem AH-4b-Zertifikat weg.)
   Die Site hat BEWUSST kein Repository: die CI rsynct .output UND
   ops/-Configs; ploi-Fallback-Deploy gibt es für control nicht (Fallback =
-  Runbook docs/runbooks/CONTROL-CUTOVER.md).
+  Runbook docs/archiv/CONTROL-CUTOVER.md).
 - `account.pukalani.app` = DER Kundenbereich (AH-1, Davids Entscheidung
   2026-08-11): Anmeldung, Konto, Communities UND der Wizard (`/start`). EIN
   Kontroll-Host derselben Platform-App, ohne DNS- oder Site-Bedarf (Wildcard

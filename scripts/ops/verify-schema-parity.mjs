@@ -589,7 +589,7 @@ const PARITY_TABLES = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...PAGES_TABLES, ...AN
  * `ausgerollt: true` heisst: die Instanz LÄUFT in Produktion — fehlt ihre
  * Env-Datei, ist das ein FEHLER, keine Notiz (Davids Entscheidung 2026-08-31).
  * Genau so ist die Betreiber-Konsole nach dem AH-4c-Rename (control.env →
- * admin.env, docs/runbooks/ADMIN-PROJEKT-CUTOVER.md) still aus der Prüfung
+ * admin.env, docs/archiv/ADMIN-PROJEKT-CUTOVER.md) still aus der Prüfung
  * gefallen: „übersprungen" war nur eine Warnzeile, der Lauf blieb grün —
  * die Klasse „Konfiguration falsch, aber nichts wird rot", gegen die dieser
  * Wächter geschrieben ist. Er läuft manuell auf dem Mac, auf dem die

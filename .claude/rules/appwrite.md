@@ -56,7 +56,7 @@ paths:
   `pukalani.control.defaultPoolProject` (packages/control/app/app.config.ts),
   Env-Override NUXT_PUBLIC_CONTROL_POOL_PROJECT. LOKAL heißt das Dev-Projekt
   weiterhin `pool` — die Verify-Skripte fallen bewusst darauf zurück.
-  Runbook: docs/runbooks/ACCOUNT-CUTOVER.md.
+  Runbook: docs/archiv/ACCOUNT-CUTOVER.md.
 - Jede App: EIGENE Appwrite-Instanz, Config aus .env
   (NUXT_APPWRITE_KEY server-only, NUXT_PUBLIC_* für Endpoint/Project)
 - RECHTE AN ABLAGEN (SEC-001, seit 2026-11-13): Appwrite ist unter eigener

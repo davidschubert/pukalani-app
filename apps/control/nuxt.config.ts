@@ -4,7 +4,7 @@
 // NAMENS-LAGE seit AH-4b/AH-4c (beide 2026-08-18): ploi-Site, Verzeichnis,
 // Zertifikat, pm2-Prozess (adminpukalaniapp) UND das Appwrite-Projekt heißen
 // wirklich `admin` (Cookie a_session_admin; Projekt-Umzug per
-// docs/runbooks/ADMIN-PROJEKT-CUTOVER.md, Alt-Projekt `control` eingefroren).
+// docs/archiv/ADMIN-PROJEKT-CUTOVER.md, Alt-Projekt `control` eingefroren).
 // Den Namen `control` behalten NUR noch: Ordner (apps/control),
 // Workspace-Paketname und Release-Slot (releases/control). Eine Umbenennung
 // des Ordners nach apps/admin wurde am 2026-08-17 geprüft und VERWORFEN:

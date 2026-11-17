@@ -94,7 +94,7 @@ Community-Abos.
 
 ### AH-4 · Cutover `control.` → `admin.`
 
-Muster: docs/runbooks/CONTROL-CUTOVER.md (studio→control war derselbe
+Muster: docs/archiv/CONTROL-CUTOVER.md (studio→control war derselbe
 Vorgang). Eigene Checkliste beim Bau; nicht vergessen: **Stripe-Webhook-URL**,
 CI-Deploy-Ziele (rsync-Pfade), eigenes Zertifikat (control hat eine EIGENE
 LE-Lineage — admin per DNS-01 NEU, NIE über die Wildcard-Site), Envs, Doku,

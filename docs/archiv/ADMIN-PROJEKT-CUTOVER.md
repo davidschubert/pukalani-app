@@ -12,7 +12,7 @@ Der Betreiber wird dabei genau einmal abgemeldet (Cookie wechselt von
 
 **Davids Entscheidung 2026-08-18** (DECISION-LOG; strukturierte Frage, gegen
 die Empfehlung „nur Anzeige-Name" — der Gewinn ist Konsistenz der Namenswelt,
-kein Kunde sieht die Projekt-Id). Vorlage: [ACCOUNT-CUTOVER.md](../runbooks/ACCOUNT-CUTOVER.md)
+kein Kunde sieht die Projekt-Id). Vorlage: [ACCOUNT-CUTOVER.md](ACCOUNT-CUTOVER.md)
 (AH-1, pool→account — dasselbe Muster, kleinerer Datenbestand).
 
 > **Erledigt — das Werkzeug ist gelöscht (2026-11-15, Gesamtaudit OPS-005).**
