@@ -63,24 +63,23 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| AB1 | **Anmelde-Bremse: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (f) Der Dev-Server warnt bei Node 22.18 (verlangt 22.21 oder neuer). (g) Die Mail „E-Mail bestätigen" hat noch keine Grenze je Empfänger. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02"). **Wartet auf:** (f) Davids Ja für ein neues Node auf dem Mac. | Niedrig | S je Teil | **Ja: (f)** | [Einzelheiten](#ab1) |
-| SR1 | **Kleine Sicherheitsriegel: Reste.** (a) Klick-Probe: KR1. (b) Datenschutztext: DT1. (d) Zwei Beobachtungen ohne Auftrag (Korrektur-Formular, Kennung im Pfad einer Adresse). Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#sr1) |
+| AB1 | **Anmelde-Bremse: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (f) Der Dev-Server warnt bei Node 22.18 (verlangt 22.21 oder neuer). Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02" und „N08"). **Wartet auf:** (a) Davids Zeit, (f) Davids Ja für ein neues Node auf dem Mac. | Niedrig | S je Teil | **Ja: (f)** | [Einzelheiten](#ab1) |
+| SR1 | **Kleine Sicherheitsriegel: Reste.** (a) Klick-Probe: KR1. (b) Datenschutztext: DT1. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02" und „N08"). **Wartet auf:** Davids Zeit (KR1) und seine Freigabe (DT1). | Niedrig | S | **Ja** | [Einzelheiten](#sr1) |
 
 **Bündel „Fristen und Löschen":**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| EL1 | **Export und Löschung: Reste.** Alte Benachrichtigungen behalten ihren Textauszug; das Aufräumen fremder Benachrichtigungen gehört als eine Funktion in den Core. Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#el1) |
+| EL1 | **Export und Löschung: Reste.** (b) Datenschutztexte: DT1. (d) Benachrichtigungen von vor dem 2026-11-15 behalten ihren Textauszug — ein einmaliger Lauf könnte ihn leeren (rund 50 Zeilen, nur im Projekt `account`). **Wartet auf:** (b) Davids Freigabe, (d) Davids Ja zu einem Lauf auf Production. | Niedrig | S | **Ja** | [Einzelheiten](#el1) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner), (d) alte Tickets bleiben „ungeprüft", (e) drei Kleinigkeiten am Dienst. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | (b) M, Rest S | Nein | [Einzelheiten](#ru1) |
-| WL1 | **Warteliste: der Bestätigungs-Link hebt eine Absage auf.** Meldet sich eine abgelehnte oder eingeladene Adresse erneut an und klickt den neuen Link, steht sie wieder auf „bestätigt". Gefunden beim Bau der Fristen. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/brand/server/api/brand/waitlist/confirm.post.ts` |
+| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner). (c) Der neue Lauf für nie beendete Läufe zählt nur — nach den ersten Zahlen scharf schalten. Klick-Probe (a): KR1. **Wartet auf:** (b) nichts, (c) Davids Ja zur gezählten Zahl. | Niedrig | (b) M, Rest S | **Ja: (c)** | [Einzelheiten](#ru1) |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| MM1 | **Mitmachen nur für Mitglieder: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (e) Zwei Kleinigkeiten ohne Auftrag (Zusage zu einem ausgeblendeten Termin, Sprache im Link der Benachrichtigungs-Mails) und ein Test, der noch in keinem Lauf mitfährt. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#mm1) |
-| IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal durch die neue Prüfung schicken, (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten selbst ist gebaut (COMPLETE „N05"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
+| MM1 | **Mitmachen nur für Mitglieder: Rest.** (a) Klick-Probe auf den echten Seiten: KR1. Alles andere ist erledigt oder bewusst so entschieden (COMPLETE „N03" und „N08"). **Wartet auf:** Davids Zeit. | Niedrig | S | **Ja: selbst klicken** | [Einzelheiten](#mm1) |
+| IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal öffnen und speichern (Handgriff im Dashboard, vor dem Freischalten von Profil, Duell und Ranking), (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten ist gebaut (COMPLETE „N05"), der Seed prüft sie mit (COMPLETE „N08"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
 | BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (b) Einstellungs-Dateien der Apps verschlüsselt ins nächtliche Backup (entschieden), (c) Übung jährlich wiederholen, (d) Kleinigkeiten. **Wartet auf:** nichts. | Mittel | je Teil S | Nein | [Einzelheiten](#bu1) |
 | P29 | **Anmelde-Regeln auf Production: Reste.** Prüfung auf gestohlene Passwörter am Appwrite-Server einschalten (entschieden), je Projekt ein Schlüssel mit `policies`-Recht für den Skript-Lauf. Anmelde-Mail ansehen: KR1; Cookie-Satz: DT1. **Wartet auf:** Davids Ja am Tag der Umsetzung. | Mittel | S | **Ja: Server-Einstellung, Schlüssel** | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
@@ -93,12 +92,12 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
-| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) zwei Kleinigkeiten. **Wartet auf:** nichts — David hat am 2026-11-17 Ja gesagt zum Blick auf die Namen in den Server-Dateien, als eigene kleine Gruppe. | Niedrig | S je Teil | Nein | [Einzelheiten](#wl1) |
-| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung, Konfig-Seite). Löschen im Speicher und die Schalter sind seit 2026-11-17 erledigt (COMPLETE „N06"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
+| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) eine Kleinigkeit. **Wartet auf:** nichts — David hat am 2026-11-17 Ja gesagt zum Blick auf die Namen in den Server-Dateien, als eigene kleine Gruppe. | Niedrig | S je Teil | Nein | [Einzelheiten](#wl1) |
+| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
-| KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
+| KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Bekannte Grenzen des Label-Abgleichs, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. Der Abgleich findet seit 2026-11-17 auch stillgelegte Communities und Herabstufungen (COMPLETE „N06"). **Wartet auf:** (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
-| KI1 | **KI-Schutz: Nacharbeiten.** (d) drei Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
+| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten, darunter das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (liegt in der Seite des Markenberaters, baubar nach N10). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (d) Kleinigkeiten. Ticket-Kauf, die drei Umzugs-Anleitungen und die READMEs sind seit 2026-11-17 erledigt (COMPLETE „N06"). **Wartet auf:** (a) David. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
 
@@ -325,24 +324,19 @@ BI2 und IN1 (b), siehe BI5.
 <a id="ab1"></a>
 
 **AB1 — Anmelde-Bremse: Reste (aus dem Gesamtaudit, Paket P02).**
-Die Teile (b) bis (e) und die Kleinigkeiten aus (f) sind am 2026-11-17 erledigt
-(COMPLETE „N02"). Übrig:
+Die Teile (b) bis (e), (g) und die Kleinigkeiten aus (f) sind am 2026-11-17
+erledigt (COMPLETE „N02" und „N08"). Übrig:
 
 - **(a) Klick-Probe auf Live.** Steht in der Klick-Runde ([KR1](#kr1)).
 - **(f) Node auf dem Mac.** Der Dev-Server warnt bei Node 22.18 (verlangt 22.21
   oder neuer); die Prüfungen laufen damit trotzdem grün. Ein neues Node ist
   eine Änderung auf Davids Mac — deshalb sein Ja.
-- **(g) Bestätigungs-Mail je Empfänger.** Code- und Reset-Mails zählen seit
-  2026-11-17 je Adresse (5 je Stunde). Die Mail „E-Mail bestätigen"
-  (`POST /api/auth/verification`) zählt nur je Anschluss und je Stunde.
-  Derselbe Baustein passt dort in eine Zeile (`allowRecipientMail` mit
-  `AUTH_MAIL_RECIPIENT_LIMIT`).
 
 <a id="sr1"></a>
 
 **SR1 — Kleine Sicherheitsriegel: Reste (aus dem Gesamtaudit, Paket P25).**
-Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
-„N02"). Übrig:
+Teil (c) und (d) sind am 2026-11-17 erledigt bzw. entschieden (COMPLETE „N02"
+und „N08"). Übrig:
 
 - **(a) Klick-Probe auf Live.** Auf branding.supply einmal das
   Erstgespräch-Formular und einmal die Warteliste abschicken (eigene Adresse).
@@ -355,10 +349,6 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
   steht sie auch am Erstgespräch und an der Warteliste. Zu tun: die zwei
   Formulare im Text ergänzen (`apps/branding/scripts/legalPrivacyInterim.ts`,
   de und en) — Rechtstext, deshalb Davids Freigabe ([DT1](#dt1)).
-- **(d) Zwei Beobachtungen, kein Auftrag.** Das Korrektur-Formular der Insights
-  hat nur Honigtopf und Drossel (es verschickt keine Mail). Eine Kennung im
-  PFAD einer Adresse bleibt im Protokoll stehen (gekürzt werden Query und
-  Fragment).
 
 <a id="el1"></a>
 
@@ -378,14 +368,19 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
   pukalani.studio brauchte keine Änderung (keine Konten, keine Prüfergebnisse).
   Auf branding.supply gibt es KEINE Sicherungskopie (kein Bucket eingetragen),
   der Text nennt dort deshalb keine.
-- **(d) Reste.** Benachrichtigungen zu Kommentaren, die VOR dem 2026-11-15
-  entstanden, behalten ihren Textauszug, auch wenn der Kommentar gelöscht wird
-  (neue werden mit aufgeräumt); Erinnerungen an einen Termin nennen dessen
-  alten Titel. Wie viele alte Kopien in den Projekten `admin`, `branding` und
-  `portfolio` liegen, ließ sich von außen nicht zählen (der Lauf der
-  jeweiligen App räumt sie). Das Aufräumen fremder Benachrichtigungen gehört
-  als eine Funktion in den Core statt in zwei Layer. Die Fristen für Einträge
-  ohne Konto (früher Teil c) sind gebaut und eingeschaltet (COMPLETE „N04").
+- **(d) Alte Textauszüge.** Benachrichtigungen zu Kommentaren und Erwähnungen,
+  die VOR dem 2026-11-15 entstanden, behalten ihren Textauszug, auch wenn der
+  Kommentar gelöscht wird (neue werden mit aufgeräumt; die Funktion dafür
+  liegt seit 2026-11-17 im Core, COMPLETE „N08"). Sie tragen eine zufällige
+  Kennung und lassen sich keinem Kommentar zuordnen. Gezählt im lokalen
+  Spiegel (Stand 2026-11-09): 52 solche Zeilen im Projekt `account`, keine in
+  `admin`, `branding` und `portfolio`. **Empfehlung:** ein einmaliger Lauf, der
+  bei genau diesen Zeilen den Auszug leert (die Meldung selbst bleibt, „X hat
+  geantwortet" steht weiter da) — erst zählen, dann leeren. Das ändert echte
+  Daten und braucht Davids Ja; ohne den Lauf verschwinden die Auszüge erst,
+  wenn der Empfänger die Meldung löscht oder sein Konto geht. Erinnerungen an
+  einen Termin nennen dessen alten Titel (so belassen: der Titel war zum
+  Zeitpunkt der Erinnerung richtig).
   Referenz: [EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
 
 <a id="ru1"></a>
@@ -407,19 +402,15 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
   Vertrag `resolveRunSubjectTrust` den Text mitliefern (nur `apps/control`
   kennt beide Layer), die Anlege-Route ihn nicht mehr aus der Anfrage nehmen;
   dazu ein Rollen-Test für die Anlege-Route. Rund sechs Dateien plus Tests.
-- **(c) Was keine Frist hat.** Texte und Anhänge beendeter Läufe haben seit
-  dem 2026-11-17 eine Frist (12 Monate, eingeschaltet; COMPLETE „N04"). Ohne
-  Frist bleiben: ein Lauf, der nie beendet wurde (Entwurf, oder er hängt auf
-  „läuft"), und auf dem Rechner die Arbeits-Zweige alter Läufe und das Log
-  des Dienstes.
-- **(d) Alte Tickets.** Tickets von vor dem 2026-11-14 haben keine Herkunft
-  und gelten als ungeprüft (auf Production acht, alle geschlossen). Einen
-  Knopf „als geprüft übernehmen" gibt es nicht; der Weg ist ein neues Ticket.
-- **(e) Kleinigkeiten.** Ein ungeprüfter Lauf wird vom Dienst weiter
-  committet (nur die Testbefehle entfallen). Zwei alte Läufe mit Rückfrage
-  tragen Testbefehle, die heute nicht in der Liste stehen; ihre Fortsetzung
-  wird abgelehnt. Der Schlüssel der Migrations-Ablage für `admin` kann weder
-  Dateien noch Konten lesen (siehe PB1).
+- **(c) Nie beendete Läufe: scharf schalten.** Seit dem 2026-11-17 gibt es
+  den Lauf `stale-run-retention` (COMPLETE „N08"): ein Lauf, der 7 Tage kein
+  Lebenszeichen zeigt und nie endete, wird wie mit dem Abbrechen-Knopf
+  beendet. Er steht in `apps/control` auf `count` und ZÄHLT NUR. Zu tun: die
+  Zahl in der Log-Zeile `retention.run` (job `stale-run-retention`) ansehen,
+  dann mit Davids Ja `staleRunRetention: 'apply'` setzen. Im lokalen Spiegel
+  (Stand 2026-11-09) gab es keinen solchen Lauf. Ohne Frist bleiben auf dem
+  Rechner die Arbeits-Zweige alter Läufe und das Log des Dienstes (Davids
+  Mac, kein Auftrag).
 
 <a id="mm1"></a>
 
@@ -427,6 +418,9 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
 Erledigt seit 2026-11-17 (COMPLETE „N03"): Übersetzen nur für Mitglieder,
 Likes und Reaktionen unter geschlossenen Themen gesperrt, keine
 Benachrichtigungen mehr an entfernte Personen.
+
+Bewusst so entschieden am 2026-11-17 (COMPLETE „N08"): die Kleinigkeiten aus
+(e).
 
 - **(a) Klick-Probe auf Live, zweiter Teil.** Geklickt ist seit dem
   2026-11-15 das Schreiben als Mitglied (Kommentar, Stimme; zusagen ging
@@ -436,25 +430,6 @@ Benachrichtigungen mehr an entfernte Personen.
   neue Einladung annehmen. Das braucht Owner und Test-Konto zugleich. Seit
   N03 gehört dazu: nach dem Entfernen auf einen alten Kommentar des
   Test-Kontos antworten — es darf keine Mail mehr bekommen.
-- **(e) Kleinigkeiten, bewusst nicht gebaut.**
-  - Eine Zusage zu einem inzwischen ausgeblendeten Termin lässt sich nicht
-    zurücknehmen (404). Es gibt keine Stelle in der Oberfläche, von der aus
-    man das auslösen könnte (der Termin ist für das Konto nicht mehr zu
-    sehen), erinnert wird nur an veröffentlichte Termine, und die Zusage
-    fällt mit dem Konto. Ein Umbau müsste die Regel „erst lesen, wie das
-    Konto liest" aufweichen. Vorschlag: so lassen.
-  - Links in Benachrichtigungs-Mails tragen kein Sprach-Präfix — das gilt für
-    ALLE diese Mails, nicht nur für die an die Leitung. Wer schon einmal da
-    war, wird über den Sprach-Merker des Browsers auf seine Sprache
-    umgeleitet. Ein Präfix je Empfänger-Sprache wäre eine Stelle im Core
-    (`notificationLinkUrl`), müsste aber die Sprach-Einstellung jeder App
-    kennen.
-  - Der E2E-Test `community-removed.spec.ts` läuft nur gegen eine Pool-Bühne
-    und noch in keinem Workflow (BT1 d).
-  - Wer in einer offenen Community durch seinen ersten Beitrag gerade Mitglied
-    geworden ist, sieht den Übersetzen-Knopf erst nach dem nächsten
-    Seitenaufruf (der Browser erfährt die Mitgliedschaft beim Laden der
-    Seite, wie die Rolle).
 
 <a id="in1"></a>
 
@@ -484,8 +459,8 @@ der Kasten der Prüfregeln sagt an einem öffentlichen Artikel das Richtige.
   erst wieder als „veröffentlicht" speichern, wenn sie die Regeln erfüllt (als
   Entwurf und „entfernt" geht immer). Vor dem Freischalten von Profil, Duell
   und Ranking deshalb jede veröffentlichte Marke einmal öffnen und speichern.
-  Das Skript `seed-launch.mjs` schreibt Marken direkt in die Datenbank, an
-  der Prüfung vorbei — vor einem neuen Lauf auf Entwürfe umstellen.
+  Das Skript `seed-launch.mjs` schreibt Marken als Entwurf und prüft sie
+  seit dem 2026-11-17 vorher mit denselben Regeln (COMPLETE „N08").
 - **(d) Kleinigkeiten.** Das Datum eines Hinweises ist der Kalendertag in
   UTC. Ein Artikel, der eine heute geltende Regel verletzt (etwa vor Regel 7
   veröffentlicht), lässt sich erst wieder speichern, wenn er sie erfüllt oder
@@ -621,10 +596,18 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 - **(c) Kleinigkeiten.** Das Nachholen eines halb gescheiterten Ausblendens
   (Termine) geht über die Route, die Oberfläche bietet es an einem schon
   ausgeblendeten Termin nicht an — sie kann den halben Zustand nicht erkennen.
-  Drei Listen im Seiten-Produkt haben noch feste Obergrenzen ohne Blättern
-  (Verwaltungs-Liste 500, je Seite 50 und 20 Fassungen). Die Zahlen des
-  Seiten-Kontingents stehen nur in der Konfiguration der Platform-App, nicht
-  im Katalog des Control Plane.
+  Die Zahlen des Seiten-Kontingents stehen nur in der Konfiguration der
+  Platform-App, nicht im Katalog des Control Plane. Bewertet am 2026-11-17:
+  das wirkt heute richtig (fehlt eine Art im Katalog, gilt die Zahl aus der
+  Konfiguration). Für den Katalog bräuchte es zweierlei: die Plan-Route
+  (`plans/[key].patch.ts`) schreibt heute die ganze Grenzen-Zeile neu und
+  löschte einen Seiten-Eintrag beim nächsten Speichern der Kommentar-Grenzen
+  — sie müsste zusammenführen, und die Seite bräuchte Felder je Art; dazu die
+  Zahlen einmal in die drei Plan-Zeilen der echten Datenbank (Davids Ja).
+  Empfehlung: erst bauen, wenn die Zahl je Plan verschieden sein soll. Die
+  drei Verwaltungs-Routen der Seiten haben noch keinen Rollen-Test (stehen im
+  Bestand, BT1 b); ein solcher Test belegt dann auch den Hinweis der Liste
+  und den Fehler beim unvollständigen Löschen.
 
 <a id="bp1"></a>
 
@@ -649,9 +632,7 @@ nicht mehr, das Beweis-Skript der Nachrichten läuft gegen den lokalen Spiegel.
   braucht aber eine Migration auf Production. Empfehlung: erst bauen, wenn
   eine Route erledigte Meldungen beschreibt (heute hält der Fehler Daten nur
   länger, nie kürzer). Der Lösch-Lauf liest je Takt höchstens 2.000 gemeldete
-  Nachrichten. Die Konfig-Seite sendet alle ihre Schalter aus dem eigenen
-  Stand; zwei Betreiber können sich dort noch überschreiben. Die neue
-  Schreib-Kette gilt je Prozess. Betreiber-Routen sind weiter an keinen Host
+  Nachrichten. Die Schreib-Kette für `app_config` gilt je Prozess. Betreiber-Routen sind weiter an keinen Host
   gebunden — das gehört zum Pukalani-Konto (PK1).
 
 <a id="wl1"></a>
@@ -670,13 +651,10 @@ KI-Aufrufstellen und das wirkungslose Präfix von `onboarding`.
   Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja liegt seit
   dem 2026-11-17 vor, gebaut wird es als eigene kleine Gruppe. Die
   Liste darf nur kürzer werden; der Test hält die Zahl fest.
-- **(d) Kleinigkeiten.** Der Env-Wächter prüft, ob ein Name in der
-  Server-Datei steht, nicht, ob dahinter ein Wert steht. Das Dashboard fragt
-  die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
-  (antwortet dann 404, das Feld bleibt leer; die Stelle liegt in
-  `packages/admin/app/pages/dashboard/index.vue`). Die festen Seiten
-  `/discover` und `/insights` stehen in der Sitemap von branding.supply auch
-  dann, wenn das Produkt abgeschaltet ist (sie antworten weiter, nur leer).
+- **(d) Kleinigkeit.** Der Env-Wächter prüft, ob ein Name in der
+  Server-Datei steht, nicht, ob dahinter ein Wert steht. (Die Moderations-
+  Abfrage des Dashboards und die zwei festen Seiten in der Sitemap von
+  branding.supply sind seit 2026-11-17 erledigt, COMPLETE „N08".)
 
 <a id="vt1"></a>
 **VT1 — Vertretung benennen (aus dem Gesamtaudit, Paket P24, OPS-010).**
@@ -776,10 +754,11 @@ und den Link im Kommentar-Bereich.
 - **(d) Erinnerungs-Lauf.** Die Route ist aus dem Code. Auf dem Server liegen
   noch die Einstellung `NUXT_EVENTS_SWEEP_KEY` und die Datei
   `~/events-sweep.log` — sie gehen am Server-Termin ab 2026-11-30 mit weg
-  (Davids Entscheidung vom 2026-11-17, zusammen mit den Sicherungen aus e). In der Betreiber-Konsole
-  steht `events-sweep` noch als Auswahl und Text (`packages/admin`,
-  `INTEGRATION_IDS`, zwei Sprachdateien) und im Core als Schlüssel-Sorte; die
-  Seite zeigt den Eintrag nicht mehr an. Der Zeit-Lauf `event-reminders`
+  (Davids Entscheidung vom 2026-11-17, zusammen mit den Sicherungen aus e). Auswahl, Text und
+  Schlüssel-Sorte `events-sweep` sind seit 2026-11-17 aus dem Code (COMPLETE
+  „N08"); in der Tabelle `instance_secrets` des Projekts kann noch eine Zeile
+  dieser Sorte liegen — niemand liest sie mehr, sie kann am selben Termin mit
+  weg. Der Zeit-Lauf `event-reminders`
   erinnert auch in einer Community, die wegen Missbrauchs vom Netz genommen
   ist (der Link in der Erinnerung führt dann auf eine Seite, die es nicht
   gibt). Bewertet: der PLAN spielt keine Rolle (eine Erinnerung ist kein neuer
@@ -927,10 +906,8 @@ Moderations-Label nach einer Herabstufung; seine Ops-Route ist gebremst.
   eigener Durchgang mit einem TypeScript-Programm je App käme zusammen auf
   etwa 28 s, nimmt die Regel aber aus dem Lint des einzelnen Pakets. Kommt
   mit dem Ausliefer-Weg (CI1), damit sich die Prüfungen nur einmal ändern.
-- **(d) Kleinigkeiten.** Die Ops-Route der Zahlungswarnung
-  (`run-past-due-notice`) steht nicht in der Bremsen-Liste (die des
-  Label-Abgleichs seit 2026-11-17 schon). Eine 503 trägt im Umschlag den Code
-  `INTERNAL_ERROR` (es gibt keinen eigenen für 503).
+- **(d) Kleinigkeit.** Eine 503 trägt im Umschlag den Code `INTERNAL_ERROR`
+  (es gibt keinen eigenen für 503).
 
 <a id="ki1"></a>
 
@@ -956,7 +933,10 @@ keinen Europa-Endpunkt hat.
   geprüft; ob der Anbieter nichts speichert, prüft weiter nur der tägliche
   Wächter. Der Klick auf der Config-Seite ist nicht gezeigt (lokal und auf
   Live), nur die Route dahinter. Der Feldwert eines abgeschnittenen Entwurfs
-  trägt kein Kennzeichen, nur die Sprechblase darüber. Ein englisches
+  trägt kein Kennzeichen, nur die Sprechblase darüber — die Stelle liegt in
+  der Seite des Markenberaters (`packages/brand`, `[stepKey].vue`), an der am
+  2026-11-17 die Gruppe N10 baute; ohne neue Spalte ginge es als Anzeige (der
+  letzte Zug zu diesem Feld war abgeschnitten). Ein englisches
   Bildschirmfoto der Hinweise fehlt. Die Kosten je Lauf und der Anbieter
   stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für KI-Ausfälle
   und Ausgaben" des Gesamtaudits).
