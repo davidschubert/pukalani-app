@@ -101,8 +101,14 @@ export interface RowRetentionDeps<T extends { $id: string }> {
    * `failed` und bleibt stehen.
    */
   decide: (row: T, now: Date) => string | null | Promise<string | null>
-  /** Löscht EINEN Eintrag. Wirft bei einem Fehler. */
-  remove: (row: T) => Promise<void>
+  /**
+   * Löscht EINEN Eintrag. Wirft bei einem Fehler. Darf `'kept'` zurückgeben,
+   * wenn ein letzter Blick direkt vor dem Löschen ergibt, dass der Eintrag
+   * DOCH bleibt (er wurde zwischen Entscheiden und Löschen wieder gebraucht):
+   * dann zählt er weder als fällig noch als Fehler. Jeder andere Rückgabewert
+   * (auch keiner) heisst „gelöscht".
+   */
+  remove: (row: T) => Promise<unknown>
   /** Sagt, ob ein Fehler beim Löschen „gibt es nicht mehr" bedeutet (dann Erfolg). */
   isGone?: (error: unknown) => boolean
 }
@@ -175,17 +181,25 @@ export async function runRowRetention<T extends { $id: string }>(
         continue
       }
 
-      result.expired++
-      result.byReason[reason] = (result.byReason[reason] ?? 0) + 1
+      const countExpired = (): void => {
+        result.expired++
+        result.byReason[reason] = (result.byReason[reason] ?? 0) + 1
+      }
       if (mode === 'count') {
+        countExpired()
         lastKept = row.$id
         continue
       }
       try {
-        await deps.remove(row)
+        if (await deps.remove(row) === 'kept') {
+          lastKept = row.$id
+          continue
+        }
+        countExpired()
         result.deleted++
       }
       catch (error) {
+        countExpired()
         if (deps.isGone?.(error)) {
           result.deleted++
         }

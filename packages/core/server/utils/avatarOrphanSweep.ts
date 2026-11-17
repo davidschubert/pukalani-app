@@ -5,7 +5,6 @@ import {
   avatarOrphanCandidate,
   avatarOrphanReason,
   type AvatarOrphanFile,
-  type AvatarOrphanReason,
   type AvatarOwnerState,
 } from '../../shared/avatarOrphan'
 import {
@@ -48,12 +47,9 @@ import { isAppwriteUserMissing } from './userDataOrchestration'
  *
  * UND DOCH NOCH EINMAL VOR DEM LÖSCHEN: `remove` liest das Konto ein zweites
  * Mal und prüft Regel 3 erneut. Hat es die Datei inzwischen eingetragen, wird
- * NICHT gelöscht. Das Gerüst kennt kein „doch nicht fällig" aus `remove`
- * (nur Erfolg, „schon weg" oder Fehler) — `remove` wirft deshalb
- * `AvatarStillReferencedError`; der Lauf zieht diese Fälle aus `failed`,
- * `expired` und `byReason` wieder heraus und meldet sie als `keptAtDelete`
- * (eigene Zeile `avatar_orphan.sweep`). Die Zeile `retention.run` des Gerüsts
- * zählt sie dann als `failed` — sie entsteht vor der Korrektur.
+ * NICHT gelöscht: `remove` antwortet dem Gerüst `'kept'`, die Datei zählt dann
+ * weder als fällig noch als Fehler. Der Lauf meldet diese Fälle als
+ * `keptAtDelete` (eigene Zeile `avatar_orphan.sweep`).
  */
 
 /** Ein Profilbild im Bucket — der Ausschnitt, den der Lauf liest. */
@@ -70,19 +66,12 @@ export interface AvatarSweepUsers {
   get(params: { userId: string }): Promise<{ prefs?: unknown }>
 }
 
-/** Das Ergebnis eines Laufs: die Zahlen des Gerüsts, bereinigt, plus zwei eigene. */
+/** Das Ergebnis eines Laufs: die Zahlen des Gerüsts plus zwei eigene. */
 export interface AvatarOrphanSweepResult extends RowRetentionResult {
   /** Jenseits der Schonfrist, aber ohne eindeutigen Besitzer — bleiben (Altbestand). */
   unowned: number
   /** Fällig entschieden, aber vor dem Löschen doch eingetragen — bleiben. */
   keptAtDelete: number
-}
-
-/** `remove` fand die Datei beim zweiten Nachschlagen im Profil eingetragen. */
-export class AvatarStillReferencedError extends Error {
-  constructor(public readonly fileId: string) {
-    super('avatar file is referenced again')
-  }
 }
 
 /** „Diese Datei gibt es nicht mehr" — NUR, wenn Appwrite das sagt (kein Proxy-404). */
@@ -108,7 +97,6 @@ async function lookupOwner(users: AvatarSweepUsers, userId: string): Promise<Ava
 interface SweepCounters {
   unowned: number
   keptAtDelete: number
-  keptReasons: Record<string, number>
 }
 
 /**
@@ -125,10 +113,10 @@ export function avatarOrphanSweepDeps(
   users: AvatarSweepUsers,
   bucketId: string,
   now: Date,
-  counters: SweepCounters = { unowned: 0, keptAtDelete: 0, keptReasons: {} },
+  counters: SweepCounters = { unowned: 0, keptAtDelete: 0 },
 ): RowRetentionDeps<AvatarSweepFile> {
   const cutoffMs = now.getTime() - AVATAR_ORPHAN_GRACE_DAYS * RETENTION_DAY_MS
-  const decided = new Map<string, { ownerId: string, reason: AvatarOrphanReason }>()
+  const decided = new Map<string, string>()
 
   return {
     listPage: async ({ after, limit }) => {
@@ -149,21 +137,21 @@ export function avatarOrphanSweepDeps(
         return null
       }
       const reason = avatarOrphanReason(file.$id, bucketId, await lookupOwner(users, candidate.ownerId))
-      if (reason) decided.set(file.$id, { ownerId: candidate.ownerId, reason })
+      if (reason) decided.set(file.$id, candidate.ownerId)
       return reason
     },
     remove: async (file) => {
-      const entry = decided.get(file.$id)
+      const ownerId = decided.get(file.$id)
       decided.delete(file.$id)
-      if (!entry) throw new Error('avatar orphan sweep: remove without decision')
+      if (!ownerId) throw new Error('avatar orphan sweep: remove without decision')
       // Zweites Nachschlagen direkt vor dem Löschen (s. Kopf).
-      const reason = avatarOrphanReason(file.$id, bucketId, await lookupOwner(users, entry.ownerId))
+      const reason = avatarOrphanReason(file.$id, bucketId, await lookupOwner(users, ownerId))
       if (reason === null) {
         counters.keptAtDelete++
-        counters.keptReasons[entry.reason] = (counters.keptReasons[entry.reason] ?? 0) + 1
-        throw new AvatarStillReferencedError(file.$id)
+        return 'kept'
       }
       await storage.deleteFile({ bucketId, fileId: file.$id })
+      return undefined
     },
     isGone: isAvatarFileGone,
   }
@@ -213,21 +201,13 @@ export async function runAvatarOrphanSweep(
     users ??= admin.users as unknown as AvatarSweepUsers
   }
 
-  const counters: SweepCounters = { unowned: 0, keptAtDelete: 0, keptReasons: {} }
+  const counters: SweepCounters = { unowned: 0, keptAtDelete: 0 }
   const deps = avatarOrphanSweepDeps(storage, users, bucketId, now, counters)
   const raw = await runRetentionJob(AVATAR_ORPHAN_SWEEP_JOB, mode, deps, { now, limits: opts.limits })
   if (!raw) return null
 
-  const byReason: Record<string, number> = {}
-  for (const [reason, count] of Object.entries(raw.byReason)) {
-    const left = count - (counters.keptReasons[reason] ?? 0)
-    if (left > 0) byReason[reason] = left
-  }
   const result: AvatarOrphanSweepResult = {
     ...raw,
-    expired: raw.expired - counters.keptAtDelete,
-    failed: raw.failed - counters.keptAtDelete,
-    byReason,
     unowned: counters.unowned,
     keptAtDelete: counters.keptAtDelete,
   }
