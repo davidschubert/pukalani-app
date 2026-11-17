@@ -1,0 +1,200 @@
+# DIE BÜHNE (OPS-009): der echte Kundenpfad im Pool, automatisch.
+#
+# Die E2E-Suite (e2e.yml) fährt die Einzel-Instanz `apps/comments` — eine App
+# ohne Mandanten. Die häufigste Fehlerklasse liegt aber dort, wo VIELE
+# Communities in einem Projekt leben: eine Route, die nicht fragt, ob jemand
+# hierher gehört. Dieser Lauf baut deshalb auf derselben Wegwerf-Appwrite
+# zwei Projekte (`admin` = Control Plane, `account` = Pool), startet die
+# Betreiber-App und den Platform-Server aus dem Checkout, legt zwei
+# Probe-Communities mit Konten je Rolle an (`pnpm buehne up`) und fährt die
+# Beweise dagegen. Am Ende wird alles wieder abgebaut und NACHGEZÄHLT.
+#
+# KEIN TOR FÜRS AUSLIEFERN: `deploy.yml` hört auf „Test" und „E2E (Appwrite)",
+# nicht auf diesen Lauf, und er ist keine Pflicht-Prüfung am Pull Request (das
+# wäre eine GitHub-Einstellung). Er läuft NEBEN den Pflicht-Prüfungen, ein
+# Pull Request wartet deshalb nicht länger.
+#
+# WAS DIESER LAUF NICHT BEWEIST (steht auch in .claude/rules/tests.md):
+#  · Production hat die direkten Anmelde-Wege der Datenbank AUS, die CI hat
+#    sie AN — dass niemand an unserer Anmeldung vorbeikommt, zeigt er nicht.
+#  · Die Server laufen als Entwicklungs-Server, nicht als gebauter Stand, und
+#    hinter keinem Webserver (keine Kopfzeilen des Proxys, keine 60-s-Frist).
+#  · Die Datenbank ist leer: keine Bestands-Communities, keine alten Zeilen.
+#  · Kein Fremddienst: kein Stripe, keine KI, kein Mail-Versand nach draußen.
+#
+# Die Schritte bis „Auf Appwrite warten" sind dieselben wie in e2e.yml — dort
+# stehen die Begründungen (Start im Hintergrund, Instanz-Schlüssel je Lauf).
+name: Bühne (Kundenpfad)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Rechte stehen je Job (SEC-041): ohne eigene Angabe hat ein Job keine.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Wie in e2e.yml: auf einem Zweig darf ein überholter Stand abgebrochen
+  # werden, auf `main` nicht.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  buehne:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    env:
+      PLATFORM_PORT: '3150'
+      CONTROL_PORT: '3004'
+      CONTROL_HOST: app.localhost
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Appwrite-Instanzschlüssel erzeugen
+        working-directory: ci/appwrite
+        run: printf '\n_APP_OPENSSL_KEY_V1=%s\n' "$(openssl rand -hex 16)" >> ci.env
+
+      - name: Appwrite-Stack starten (im Hintergrund)
+        working-directory: ci/appwrite
+        run: |
+          (
+            docker compose --env-file ci.env --project-name appwrite-ci up -d \
+              traefik appwrite appwrite-realtime appwrite-geo \
+              appwrite-worker \
+              mariadb redis
+            echo $? > "$RUNNER_TEMP/stack.rc"
+          ) > "$RUNNER_TEMP/stack.log" 2>&1 &
+          echo "Stack-Start laeuft im Hintergrund — Node-Setup und Install ziehen vor."
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Auf Appwrite warten
+        run: |
+          for i in $(seq 1 600); do
+            if [ -f "$RUNNER_TEMP/stack.rc" ]; then break; fi
+            sleep 0.5
+          done
+          rc=$(cat "$RUNNER_TEMP/stack.rc" 2>/dev/null || echo 'timeout')
+          if [ "$rc" != "0" ]; then
+            echo '::error::Stack-Start fehlgeschlagen (Rueckgabe '"$rc"')'
+            cat "$RUNNER_TEMP/stack.log" || true
+            exit 1
+          fi
+          for i in $(seq 1 450); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/v1/health/version || true)
+            if [ "$code" = "200" ]; then
+              echo "Appwrite bereit: $(curl -s http://localhost:8080/v1/health/version)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo '::error::Appwrite nach 450s nicht erreichbar'
+          docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite mariadb
+          exit 1
+
+      # Zwei Projekte, zwei .env-Dateien, ein Naht-Geheimnis je Lauf. Die
+      # Ausgabe nennt nur Schritte und Zahlen — das Protokoll ist öffentlich.
+      - name: Bühnen-Setup (Projekte admin + account, zwei .env)
+        run: >
+          node scripts/ci/buehne-setup.mjs
+          --endpoint http://localhost:8080/v1
+          --control-port "$CONTROL_PORT"
+          --platform-port "$PLATFORM_PORT"
+          --control-host "$CONTROL_HOST"
+
+      # Beide Datenbanken NEBENEINANDER: verschiedene Projekte, dieselbe
+      # Instanz. Die Protokolle wandern in Dateien und werden nacheinander
+      # gezeigt, sonst wäre nicht lesbar, welcher Lauf welche Zeile schrieb.
+      - name: Bootstrap beider Projekte (DB, Buckets, Migrationen)
+        run: |
+          node --env-file=apps/control/.env scripts/bootstrap.mjs --app control > "$RUNNER_TEMP/bootstrap-control.log" 2>&1 &
+          control_pid=$!
+          node --env-file=apps/platform/.env scripts/bootstrap.mjs --app platform > "$RUNNER_TEMP/bootstrap-platform.log" 2>&1 &
+          platform_pid=$!
+          control_rc=0
+          platform_rc=0
+          wait "$control_pid" || control_rc=$?
+          wait "$platform_pid" || platform_rc=$?
+          echo "── Control Plane (admin): Rueckgabe $control_rc"
+          tail -15 "$RUNNER_TEMP/bootstrap-control.log"
+          echo "── Pool (account): Rueckgabe $platform_rc"
+          tail -15 "$RUNNER_TEMP/bootstrap-platform.log"
+          if [ "$control_rc" != "0" ] || [ "$platform_rc" != "0" ]; then
+            echo '::error::Bootstrap fehlgeschlagen — vollstaendige Protokolle folgen'
+            cat "$RUNNER_TEMP/bootstrap-control.log" "$RUNNER_TEMP/bootstrap-platform.log"
+            exit 1
+          fi
+
+      # Dieselben Anmelde-Regeln wie in Production (P29), für das Projekt
+      # aller Konten. Nach dem Bootstrap, mit Zurücklesen.
+      - name: Anmelde-Regeln setzen (Pool-Projekt)
+        run: node --env-file=apps/platform/.env scripts/ops/appwrite-auth-policies.mjs --apply
+
+      # ZWEI ENTWICKLUNGS-SERVER aus dem Checkout. Gewartet wird auf
+      # `/api/health` — die Betreiber-App antwortet mit 200, der
+      # Platform-Server zusätzlich mit `ok: true` (ohne die vier
+      # Control-Variablen lehnte er jede Anfrage ab, SEC-025). Nitro bündelt
+      # die API-Routen beim Start; Seiten kompiliert der Server erst beim
+      # ersten Zugriff, deshalb prüfen die Beweise hier Routen, keine Seiten.
+      - name: Betreiber-App und Platform-Server starten
+        run: |
+          (cd apps/control && nohup pnpm exec nuxi dev --port "$CONTROL_PORT" > "$RUNNER_TEMP/control.log" 2>&1 &)
+          (cd apps/platform && nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+          for i in $(seq 1 240); do
+            control=$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://localhost:$CONTROL_PORT/api/health" || true)
+            platform=$(curl -s -m 5 "http://localhost:$PLATFORM_PORT/api/health" || true)
+            if [ "$control" = "200" ] && echo "$platform" | grep -q '"ok":true'; then
+              echo "Beide Server bereit nach ${i}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo '::error::Die Server sind nach 240s nicht bereit'
+          tail -40 "$RUNNER_TEMP/control.log" "$RUNNER_TEMP/platform.log" || true
+          exit 1
+
+      - name: Bühne aufbauen (zwei Communities, Konten je Rolle)
+        run: node scripts/buehne/buehne.mjs up --platform-port "$PLATFORM_PORT" --control-host "$CONTROL_HOST"
+
+      # Jeder Beweis ein EIGENER Schritt mit sprechendem Namen: ein roter Lauf
+      # soll am Schritt-Namen zeigen, WELCHE Zusage gebrochen ist.
+      - name: Beweis — Rollen auf der Bühne (Anmelden, Mitglied, fremd, entfernt, Anlage über die echte Route)
+        run: node scripts/buehne/buehne.mjs smoke
+
+      - name: Beweis — Hinweis auf die ablaufende Testphase (M13)
+        run: |
+          POOL_KEY="$(grep '^NUXT_APPWRITE_KEY=' apps/platform/.env | cut -d= -f2-)"
+          export POOL_KEY
+          export NUXT_PUBLIC_CONTROL_POOL_PROJECT=account
+          cd packages/onboarding
+          node --experimental-strip-types --env-file=../../apps/control/.env \
+            scripts/verify-trial-notice.mjs
+
+      # Abbau mit Nachzählen: bleibt eine Zeile oder ein Konto der Bühne
+      # übrig, endet der Schritt rot. Läuft auch nach einem roten Beweis.
+      - name: Bühne abbauen und nachzählen
+        if: always()
+        run: |
+          if [ -f .buehne/state.json ]; then
+            node scripts/buehne/buehne.mjs down
+          else
+            echo 'Keine Bühne aufgebaut — nichts abzubauen.'
+          fi
+
+      - name: Server- und Stack-Protokolle bei Fehler
+        if: failure()
+        run: |
+          echo '── Betreiber-App'; tail -60 "$RUNNER_TEMP/control.log" || true
+          echo '── Platform-Server'; tail -60 "$RUNNER_TEMP/platform.log" || true
+          docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite appwrite-worker mariadb || true
