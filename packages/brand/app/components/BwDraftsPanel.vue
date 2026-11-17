@@ -8,6 +8,7 @@ import {
   brandImageModelLabel,
 } from '../../shared/brandMarkDrafts'
 import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../core/shared/runLease'
+import { BRAND_RUN_POLL_TIMEOUT_MS } from '../../shared/brandRun'
 import type {
   BrandMarkDraftWriteResponse,
   BrandMarkDraftsRunResponse,
@@ -175,7 +176,7 @@ onMounted(load)
 
 /** EINE NACHFRAGE, solange ein Lauf läuft: Liste und Lauf-Stand in einem Zug. */
 async function poll(): Promise<void> {
-  await drafts.load()
+  await drafts.load({ timeout: BRAND_RUN_POLL_TIMEOUT_MS })
   syncRemaining()
   if (runState.value.state !== 'running') alreadyRunning.value = false
 }

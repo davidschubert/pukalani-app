@@ -42,6 +42,14 @@ import { parseRunLeaseDetail, runLeaseState } from '../../core/shared/runLease'
  * gesetzt.
  */
 
+/**
+ * Wie lange EINE Nachfrage der Seite höchstens warten darf. Eine Abfrage, die
+ * hängen bleibt (Ausliefern mitten in der Anfrage, Netz-Aussetzer), hielte
+ * sonst das ganze Nachfragen an: der nächste Takt wartet, bis der laufende
+ * zu Ende ist. Mit der Frist scheitert sie, und der nächste Takt fragt neu.
+ */
+export const BRAND_RUN_POLL_TIMEOUT_MS = 10_000
+
 /** Die Arten in `brand_runs.scope` (varchar 32). */
 export const BRAND_RUN_SCOPES = {
   /** Zeichen-Entwürfe — subject = Profil-Id. */

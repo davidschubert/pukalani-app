@@ -56,8 +56,12 @@ export function useBrandMarkDrafts(profileId: string) {
     loaded.value = true
   }
 
-  async function load(): Promise<void> {
-    const res = await $fetch<BrandMarkDraftsIndexResponse>(base)
+  /**
+   * `timeout` setzt das NACHFRAGEN während eines Laufs (s.
+   * `BRAND_RUN_POLL_TIMEOUT_MS`); das erste Laden wartet ohne Frist.
+   */
+  async function load(options: { timeout?: number } = {}): Promise<void> {
+    const res = await $fetch<BrandMarkDraftsIndexResponse>(base, options.timeout ? { timeout: options.timeout } : {})
     imageModel.value = typeof res.imageModel === 'string' ? res.imageModel : ''
     // Fehlt das Feld (älterer Server-Stand während eines Auslieferns), heisst
     // das „kein Lauf" — nie ein Wurf in der Liste.
