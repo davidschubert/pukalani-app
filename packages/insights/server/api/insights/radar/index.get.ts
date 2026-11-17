@@ -34,13 +34,14 @@ import { insightsRadarRunStore } from '../../../utils/insightsRadarRun'
  * irgendwo daneben: der könnte von den Zeilen abweichen, und dann glaubte
  * niemand mehr einem von beiden.
  *
- * ── `run` IST DER KNOPF-LAUF, NICHT DER LETZTE ABRUF (LL1 a) ────────────
- * Der jüngste Lauf von „Jetzt laufen lassen" aus `insights_runs`, damit die
+ * ── `run` IST DER JÜNGSTE LAUF AN DER SPERRE (LL1 a, LL1 c) ─────────────
+ * Der jüngste Lauf aus `insights_runs`, damit die
  * Seite einen laufenden Lauf nach dem Neuladen wieder als laufend zeigt und
  * nach dem Ende seine Zahlen. Der Zustand ist gegen die SERVER-Uhr gerechnet
  * (`toInsightsRadarRunView`), nie gespeichert. `lastRunAt` bleibt daneben die
- * Auskunft aus den Zeilen — auch der nächtliche Lauf schreibt dorthin, in die
- * Lauf-Tabelle schreibt nur der Knopf.
+ * Auskunft aus den Zeilen. Seit LL1 c nimmt auch der nächtliche Lauf die
+ * Sperre und schreibt sein Ende in dieselbe Lauf-Zeile — `run` ist damit der
+ * jüngste Lauf überhaupt, gleich welcher Auslöser.
  */
 export default defineEventHandler(async (event): Promise<InsightsRadarResponse> => {
   requirePermission(event, 'insights.manage')
