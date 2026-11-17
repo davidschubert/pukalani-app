@@ -46,6 +46,10 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // Abgebaut mit N09 (2026-11-17): Instanz-Recht `tickets.manage`, Prüfstand
   // `support/instanceRoleGate.ts` (Betreiber und Karten-Mitglied).
   'tickets',
+  // Abgebaut mit N09 (2026-11-17): Board-Routen hinter `runner.manage`,
+  // lesende Maschinen-Routen mit Runner-Ausweis
+  // (`packages/runner/tests/support/runnerMachineHarness.ts`).
+  'runner',
 ]
 
 /**
