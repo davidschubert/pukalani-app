@@ -141,12 +141,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/core/server/api/stats-script.js.get.ts',
     'packages/core/server/api/storage/[bucket]/[fileId].delete.ts',
   ],
-  domains: [
-    'packages/domains/server/api/site/domain/index.delete.ts',
-    'packages/domains/server/api/site/domain/index.get.ts',
-    'packages/domains/server/api/site/domain/index.put.ts',
-    'packages/domains/server/api/site/domain/verify.post.ts',
-  ],
   insights: [
     'packages/insights/server/api/insights/brands/[id].get.ts',
     'packages/insights/server/api/insights/brands/index.get.ts',
