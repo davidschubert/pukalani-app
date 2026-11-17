@@ -8,7 +8,8 @@ import { resolveTrustedOrigin } from '../../utils/trustedOrigin'
  * Recovery-Mail anfordern. Läuft als GUEST (SessionClient ohne Session) —
  * createRecovery ist ein Account-Endpoint, der API Key hat dafür bewusst
  * keinen Scope. Antwortet IMMER ok (keine Account-Enumeration);
- * die Nitro-Rate-Limit-Middleware drosselt zusätzlich.
+ * die Nitro-Rate-Limit-Middleware drosselt je Anschluss und je Stunde, die
+ * Empfänger-Grenze (`recipientMailLimit.ts`) je Adresse.
  */
 /**
  * Turnstile-Token nur an dieser Route, nicht im geteilten Formular-Schema
@@ -28,6 +29,15 @@ export default defineEventHandler(async (event) => {
    * bleibt damit unberührt. Ohne Schlüssel ein No-Op.
    */
   await requireTurnstile(event, 'recovery', turnstileToken)
+
+  /**
+   * GRENZE JE EMPFÄNGER (AB1 e / SR1 c): gezählt wird JEDE Anforderung für
+   * diese Adresse, ob es ein Konto gibt oder nicht — über der Grenze geht
+   * keine Mail hinaus, und die Antwort ist dieselbe wie sonst.
+   */
+  if (!(await allowRecipientMail(event, 'auth:recovery', email, AUTH_MAIL_RECIPIENT_LIMIT))) {
+    return { ok: true }
+  }
 
   // Der Link landet in einer echten Mail — sein Host darf nicht aus einer
   // ungeprüften Anfrage stammen (SEC-010, `shared/trustedOrigin.ts`).
