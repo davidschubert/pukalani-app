@@ -94,6 +94,9 @@ function routeGlobals(extra: Record<string, unknown> = {}) {
   }
 }
 
+/** Eine Instanz, die Tickets verkaufen kann (Checkout-Route bekanntgegeben) — seit KK1 prüft das auch der Server. */
+const SELLING = () => ({ pukalani: { events: { ticketCheckoutPath: '/api/events/{id}/checkout' } } })
+
 afterEach(() => {
   resetCommunityWorld()
   vi.unstubAllGlobals()
@@ -104,7 +107,7 @@ describe('BE-018 — PATCH schreibt Zugang und Preis', () => {
     const base = fakeDoor({ rows: { [EVENTS_TABLE]: [eventRow()] } })
     const { door } = doorWithPermissions(base)
     const run = await runDoorRoute(loadPatch, {
-      door, params: { id: 'e-1' }, body: { access: 'paid', priceLookupKey: 'x', priceAmount: 500 }, globals: routeGlobals(),
+      door, params: { id: 'e-1' }, body: { access: 'paid', priceLookupKey: 'x', priceAmount: 500 }, globals: routeGlobals({ useAppConfig: SELLING }),
     })
 
     expect(run.status).toBe(200)

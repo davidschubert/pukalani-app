@@ -217,6 +217,12 @@ paths:
   ohne Störung — ein späterer Takt holt die Fehlenden nach, die anderen
   laufen in die Dublette (keine Zeile, keine Mail). Der Lauf hängt am
   stündlichen Zeit-Lauf `event-reminders`, kein Seitenaufruf stößt ihn an.
+  VERSCHOBEN NACH DER ERINNERUNG ⇒ NOCH EINMAL (KK1, Davids Entscheidung
+  2026-11-17): ändert `PATCH /api/events/:id` den Beginn eines schon
+  erinnerten Termins, fällt der Merker (`rescheduleClearsReminder`,
+  `events/shared/eventReschedule.ts` — verglichen wird der Zeitpunkt, das
+  Formular schickt den Beginn immer mit); die neue Erinnerung trägt die neue
+  Uhrzeit und eine neue Kennung, für die alte Uhrzeit bleibt es bei einer.
 - ÖFFENTLICHES FORMULAR, DAS EINE MAIL AUSLÖST (SEC-018, seit 2026-11-15 —
   Davids Entscheidung): drei Dinge, immer zusammen. (1) BOT-PRÜFUNG:
   `requireTurnstile(event, aktion, body.turnstileToken)` nach dem Honigtopf
