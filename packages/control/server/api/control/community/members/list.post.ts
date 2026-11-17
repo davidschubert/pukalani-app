@@ -42,7 +42,8 @@ export default defineEventHandler(async (event): Promise<CommunityTeamResponse> 
   // auch nicht aufgeräumt: ein Widerruf-Knopf für etwas, das nichts mehr kann,
   // wäre nur Beschäftigung. Die Row bleibt als Spur.
   const now = Date.now()
-  const invites: CommunityInviteView[] = (await listCommunityInvites(event, body.communityId))
+  const listed = await listCommunityInvites(event, body.communityId)
+  const invites: CommunityInviteView[] = listed.rows
     .filter(row => Date.parse(row.expiresAt) > now)
     .map(row => ({
       id: row.$id,
@@ -53,5 +54,5 @@ export default defineEventHandler(async (event): Promise<CommunityTeamResponse> 
       createdAt: row.$createdAt,
     }))
 
-  return { members, invites, actorRole: context.actorRole }
+  return { members, invites, invitesTruncated: listed.truncated, actorRole: context.actorRole }
 })

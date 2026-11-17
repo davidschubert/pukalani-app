@@ -499,6 +499,10 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
               </div>
             </template>
           </UTable>
+          <!-- Die Liste endet bei der Grenze — dann sagt sie es auch. -->
+          <p v-if="data?.invitesTruncated" class="mt-3 text-sm text-muted" data-invites-truncated>
+            {{ t('members.invites.truncated') }}
+          </p>
         </UPageCard>
 
         <div v-if="canManageTeam" class="mb-4 flex flex-wrap items-center gap-3">
