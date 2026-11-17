@@ -49,7 +49,6 @@ wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| SC2 | **Den Stripe-Test-Treiber auf die heutigen Projekte umstellen.** `a2a-checkout-driver.mjs` spricht noch die gelöschten Projekte `pool`/`control`; umstellen auf `account`/`admin` und über Env auch lokal fahrbar machen. Derselbe Treiber stand auch in MG1 (c). **Wartet auf:** nichts; muss vor A2 fertig sein. | Mittel | S | Nein (Prod-Probe nur mit Davids Ja) | [STRIPE-TEST-WALKTHROUGH.md § Durchlauf 2026-11-12](runbooks/STRIPE-TEST-WALKTHROUGH.md) |
 
 **Bündel „Ausliefern und Rückweg":**
 
@@ -57,7 +56,7 @@ wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 | --- | --- | --- | --- | --- | --- |
 | CI1 | **Ausliefer-Weg: Nacharbeiten.** (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
 | RW1 | **Rückweg: Nacharbeiten.** Nur noch Kleinigkeiten: ein manueller Start mit dem laufenden Stand, die Übung an einer App mit Datenbank wiederholen. **Wartet auf:** CI1 (b), weil das feste Skript beide Wege zusammenführt. | Niedrig | S | Nein | [Einzelheiten](#rw1) |
-| MG1 | **Migrationen: Nacharbeiten.** (b) Ein Test des Rückweg-Skripts war auf `main` einmal ohne Grund rot (beobachten), (c) drei Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#mg1) |
+| MG1 | **Migrationen: Nacharbeiten.** (b) Ein Test des Rückweg-Skripts war auf `main` einmal ohne Grund rot — er zeigt jetzt Ausgabe und Exit-Code, die Ursache ist weiter offen (beobachten). (c) Zwei Reste: der tägliche Blick prüft je Layer nur eine Stelle; die lesenden Schlüssel laufen nie ab. **Wartet auf:** (b) den nächsten roten Lauf, (c) ein Ja. | Niedrig | S je Teil | **Ja: (c)** | [Einzelheiten](#mg1) |
 
 **Bündel „Mails und Bremsen":**
 
@@ -125,7 +124,7 @@ den ersten zahlenden Kunden, also vor A2.
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | VT1 | **Vertretung benennen.** Heute landet jeder Alarm nur bei David. Das Notfallblatt (deutsch und englisch) und die Handgriffe für eine zweite Alarm-Adresse sind vorbereitet (COMPLETE „GA1 P24"); eingetragen ist niemand. Offen: eine Person benennen, die Handgriffe erledigen, einmal mit ihr proben; dazu (b) die Mail für Meldungen von außen. **Wartet auf:** David (wer). | Hoch | S | **Ja: Person, Ja je Einstellung** | [PRODUKTIONS-ALARM.md § 5](runbooks/PRODUKTIONS-ALARM.md) · [Einzelheiten](#vt1) |
-| A2 | **Stripe auf echtes Geld umstellen — über die F55-Seite.** Bei David: Bank-Aktivierung, Steuer-Registrierung, Live-Key eintragen, Portal-Konfiguration; alles andere klickt die Seite. **Wartet auf:** A1 und SC2. Vorbedingung für BS1 Z1. | Hoch | S | **Ja: Bank, Konto, Portal** | [STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) · [Notiz](#a2a) |
+| A2 | **Stripe auf echtes Geld umstellen — über die F55-Seite.** Bei David: Bank-Aktivierung, Steuer-Registrierung, Live-Key eintragen, Portal-Konfiguration; alles andere klickt die Seite. **Wartet auf:** A1. Vorbedingung für BS1 Z1. | Hoch | S | **Ja: Bank, Konto, Portal** | [STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) · [Notiz](#a2a) |
 | BS1 | **branding.supply: Rechtstexte + Bezahlweg.** Offen: R2 (Davids Generator-Texte, dazu der Abschnitt „Reichweitenmessung"), R2c (Plausible einschalten; David legt die Site an, Text vor Schalter), R3 (Anwalt), Z1 (Stripe-Checkout). Impressum und AGB sind noch Gerüst. **Wartet auf:** R3 Anwalt, Z1 nach A2. Vorbedingung fürs Öffnen der Beta. | **Hoch** | M | **Ja: Texte, Anwalt, Preis** | [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) · [Notiz](#bs1) |
 | BK1 | **Brand Book & Kit (Produkt 03).** K0 bis K6 sind gebaut. Offen: K7 (Beispiel + Copy), K8 (Abnahme, Persona-Audit), Davids Blicke auf `brand.md`, Leseansicht und Lieferseite, die Verify-Zusagen 31 bis 33 gegen Production. Der Preis (149 € netto) wird erst mit BS1 Z1 sichtbar. **Wartet auf:** Davids Gates; Preis nach BS1 Z1. | Mittel | L | **Ja: Gates, Abnahme** | [BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) |
 | F7 | **Bezahlte Communities** — der Owner nimmt Geld von seinen Mitgliedern. Konzept steht, alle vier Entscheidungen sind gefallen (2026-08-15). Offen: die Anwaltsliste (§ 9) und der Bau. **Wartet auf:** Anwalt, dann A2. | Mittel | XL | **Ja: Anwalt (§ 9)** | [F7-PAID-COMMUNITIES-KONZEPT.md](plans/F7-PAID-COMMUNITIES-KONZEPT.md) |
@@ -300,17 +299,29 @@ BI2 und IN1 (b), siehe BI5.
 - **(b) Ein fremder Test war einmal rot.** Nach dem ersten Merge von P21
   scheiterte auf `main` `packages/core/tests/rollbackScript.test.ts` („legt den
   Verweis um …") mit leerer Ausgabe; im Pull Request und im zweiten Versuch
-  war er grün, lokal in 22 Läufen nicht nachstellbar. Das Ausliefern hat
-  deshalb einmal nicht gestartet. Verdacht: Last auf dem Runner (P21 bringt
-  Tests mit, die viele Prozesse starten). Kommt es wieder: Ausgabe UND
-  Exit-Code des Skripts im Test mit ausgeben, dann die Ursache suchen. Gehört
+  war er grün, lokal nicht nachstellbar. Die Ursache ist NICHT gefunden. Seit
+  dem 2026-11-17 schreibt der Test bei einem Fehlschlag je Skript-Lauf
+  Exit-Code, Signal, Dauer, ob der Prozess überhaupt startete, und die Ausgabe
+  ins Protokoll. Kommt es wieder: dort lesen, dann die Ursache suchen. Gehört
   zu [RW1](#rw1).
-- **(c) Kleinigkeiten.** Der veraltete Stripe-Test-Treiber steht in SC2. Die `migrate`-Skripte in den
-  `package.json` der Layer rufen den Runner ohne `--app` und scheitern (schon
-  vorher). Die Probe je Layer sieht nur Tabellen und Spalten, keine Indizes,
-  Rechte oder Daten, und je Layer nur die jüngste ablesbare Stelle; die volle
-  Spaltenliste als Soll gehört zu Paket P20 (Wächter erzeugen ihre Listen
-  selbst). Die lesenden Schlüssel haben kein Ablaufdatum.
+- **(c) Zwei Reste.** (1) Die Probe je Layer sieht nur Tabellen und Spalten,
+  keine Indizes, Rechte oder Daten, und je Layer nur die jüngste ablesbare
+  Stelle. Der Baustein für mehr ist da: seit P20 liest
+  `scripts/lib/migration-inventory.mjs` alle Spalten aus den Migrationen.
+  Angeschlossen ist er an den täglichen Blick NICHT — der vergleicht Spalten
+  bewusst nur für wenige Tabellen, weil ältere Instanzen erklärbar abweichen.
+  Zu tun: einmal auf Production zählen, wie viele Spalten vom Soll abweichen
+  (nur lesen, Davids Ja), dann entscheiden, ob der Blick spaltengenau prüft.
+  (2) Die vier lesenden Schlüssel `watch-schema-readonly` (je Projekt einer,
+  in der GitHub-Umgebung `production-watch`) haben kein Ablaufdatum. Zu tun,
+  falls gewünscht: je Projekt einen neuen Schlüssel mit Ablauf anlegen, das
+  Secret tauschen (`gh secret set --env production-watch`), den alten
+  löschen, den Termin notieren. Ein abgelaufener Schlüssel macht den Blick rot,
+  nicht blind. Braucht Davids Ja und seinen Klick in der Appwrite-Verwaltung.
+- **(d) Nebenbei gefunden (2026-11-17).** `.claude/rules/appwrite.md` sagt
+  noch „lokal heißt das Dev-Projekt weiterhin `pool`"; seit dem Spiegel vom
+  2026-11-09 heißen die lokalen Projekte `account` und `admin`. Satz
+  anpassen und die Rückfälle auf `pool` in den Beweis-Skripten prüfen.
 
 <a id="ab1"></a>
 
@@ -1192,7 +1203,8 @@ freigegeben wird von David, nach der Antwort des Anwalts.
 konfigurieren (braucht A1) [Claude] · 2.5 Minimal-Verifikation [beide].
 Der Testmodus-Durchlauf ist am 2026-11-12 gefahren und aufgeschrieben
 ([STRIPE-TEST-WALKTHROUGH.md](runbooks/STRIPE-TEST-WALKTHROUGH.md)); der
-Treiber dazu ist veraltet (SC2). **Rest aus A3 (Brutto-Preise):** Stripe
+Treiber dazu ist seit dem 2026-11-17 umgestellt und lokal ganz gefahren
+(gegen Production nicht — was er dort braucht, steht im Runbook). **Rest aus A3 (Brutto-Preise):** Stripe
 legt die Prices ohne `tax_behavior` an und die Checkouts laufen mit
 `automatic_tax` — steht das Konto-Default auf „exclusive", rechnet Stripe
 19 % oben drauf und widerspricht der Landing. Prüfung vor dem Live-Gang:

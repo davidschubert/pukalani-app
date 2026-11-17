@@ -42,6 +42,16 @@ declare module 'h3' {
      */
     communityTrustLevel?: TrustLevel
     /**
+     * Das eingeloggte Konto GEHÖRT zur Community dieses Hosts (MM1,
+     * 2026-11-17) — gesetzt von `server/middleware/07.community-role.ts`, NUR
+     * für Seiten-SSR, aus `resolveCommunityMembership` (dieselbe Regel wie
+     * `requireCommunityMembership`: Rolle ODER Community-Label; ohne Mandant
+     * ist jedes angemeldete Konto Mitglied). Leser: tenant-brand.server.ts
+     * (Spiegel in den Client, `useCommunityMember`). Nur UX — die Grenze
+     * bleibt die Wache der Route. undefined = Gast oder API-Pfad.
+     */
+    communityMember?: boolean
+    /**
      * Sucheinstellung dieser Community (U15 Teil 2) — gesetzt von
      * server/middleware/09.community-seo.ts, NUR für Seiten-SSR (kein
      * /api/-Pfad; der Kopf entsteht nur dort).

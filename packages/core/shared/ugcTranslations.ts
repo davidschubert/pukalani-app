@@ -1,7 +1,7 @@
 /**
  * ÜBERSETZUNGEN VON NUTZER-INHALTEN (Davids Entscheidungen 2026-08-17:
  * Beiträge + Kommentare · ein Knopf je Inhalt, keine Automatik · Produkt-Gate
- * ist das jeweilige INHALTS-Produkt, bewusst nicht 'ai' · nur Eingeloggte).
+ * ist das jeweilige INHALTS-Produkt, bewusst nicht 'ai' · seit 2026-11-17 nur Mitglieder der Community, MM1).
  *
  * Dieselbe Bauform wie die Kategorie-Namen (`posts/shared/categoryI18n.ts`):
  * EINE JSON-Spalte auf der Zeile, Sprachcode → Überschreibung, gelesen über

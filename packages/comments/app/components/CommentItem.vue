@@ -88,8 +88,8 @@ const canReport = computed(() =>
 )
 
 /**
- * ÜBERSETZEN (Paket 3, Davids Entscheidungen 2026-08-17: ein Knopf je Inhalt,
- * nur Eingeloggte). Das Zwillingsstück zur `PostCard`, bis auf das eine Feld:
+ * ÜBERSETZEN (Paket 3, Davids Entscheidungen 2026-08-17: ein Knopf je Inhalt;
+ * seit 2026-11-17 nur für Mitglieder der Community, MM1). Das Zwillingsstück zur `PostCard`, bis auf das eine Feld:
  * eine Antwort hat keinen Titel. Die Regel liegt im Core-Composable.
  *
  * Ein GELÖSCHTER Kommentar zeigt nur einen Platzhalter — `body` ist dann leer,

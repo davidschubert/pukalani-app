@@ -111,7 +111,7 @@ try {
 
   const created = await call('/api/courses', {
     method: 'POST', cookie: adminCookie,
-    body: { title: 'Silo-Kurs', slug, description: 'Einzelbetrieb.', access: 'free', status: 'published' },
+    body: { title: 'Silo-Kurs', slug, description: 'Einzelbetrieb.', access: 'members', status: 'published' },
   })
   const courseId = created.json?.$id
   check('POST /api/courses → 201', created.status === 201 && !!courseId, `Status ${created.status} ${created.text.slice(0, 160)}`)
@@ -140,7 +140,7 @@ try {
   check('manage → 403', plainManage.status === 403, `Status ${plainManage.status}`)
   const plainCreate = await call('/api/courses', {
     method: 'POST', cookie: plainCookie,
-    body: { title: 'darf nicht', slug: `${slug}-x`, description: 'x', access: 'free' },
+    body: { title: 'darf nicht', slug: `${slug}-x`, description: 'x', access: 'members' },
   })
   check('POST /api/courses → 403', plainCreate.status === 403, `Status ${plainCreate.status}`)
   if (plainCreate.json?.$id) cleanup.courses.push(plainCreate.json.$id)

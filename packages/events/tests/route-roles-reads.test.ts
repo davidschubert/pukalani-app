@@ -271,7 +271,7 @@ describe('POST /api/events/reminder-sweep (Dienst-Route mit Naht-Geheimnis)', ()
 
 // ── POST /api/events/:id/translate ──────────────────────────────────────────
 
-describe('POST /api/events/:id/translate (übersetzen ist lesen)', () => {
+describe('POST /api/events/:id/translate (nur Mitglieder, MM1)', () => {
   const load = () => import('../server/api/events/[id]/translate.post')
 
   function translateGlobals() {
@@ -298,14 +298,24 @@ describe('POST /api/events/:id/translate (übersetzen ist lesen)', () => {
     expect(run.doorOpened).toBe(false)
   })
 
-  for (const who of ['member', 'stranger'] as const) {
-    it(`${who}, Entwurf ohne Leserecht: 404, kein KI-Aufruf, kein Schreiben`, async () => {
+  it('Mitglied, Entwurf ohne Leserecht: 404, kein KI-Aufruf, kein Schreiben', async () => {
+    const { ai, globals } = translateGlobals()
+    const door = translateDoor(eventRow('e-1', 'draft'))
+    const run = await probeRoute(load, { who: 'member', params: { id: 'e-1' }, body: { locale: 'en' }, door: door.tenantDb, globals })
+    expect(run.status).toBe(404)
+    expect(ai.count).toBe(0)
+    expect(firstOperatorCall(door.calls)).toBe(-1)
+  })
+
+  for (const who of ['stranger', 'removed'] as const) {
+    it(`${who}, veröffentlichter Termin: 403 not_a_member, Datentür zu, kein KI-Aufruf`, async () => {
       const { ai, globals } = translateGlobals()
-      const door = translateDoor(eventRow('e-1', 'draft'))
+      const door = translateDoor(eventRow('e-1', 'published'))
       const run = await probeRoute(load, { who, params: { id: 'e-1' }, body: { locale: 'en' }, door: door.tenantDb, globals })
-      expect(run.status).toBe(404)
+      expect(run.status).toBe(403)
+      expect(run.error?.data?.code).toBe('not_a_member')
+      expect(door.calls).toEqual([])
       expect(ai.count).toBe(0)
-      expect(firstOperatorCall(door.calls)).toBe(-1)
     })
   }
 
@@ -331,12 +341,14 @@ describe('POST /api/events/:id/translate (übersetzen ist lesen)', () => {
     expect(firstOperatorCall(door.calls)).toBe(-1)
   })
 
-  it('fremdes Konto, offene Registrierung: Übersetzen macht niemanden zum Mitglied', async () => {
-    const { globals } = translateGlobals()
+  it('fremdes Konto, offene Registrierung: 403 — Übersetzen macht niemanden zum Mitglied', async () => {
+    const { ai, globals } = translateGlobals()
     const door = translateDoor(eventRow('e-1', 'published'))
     const run = await probeRoute(load, {
       who: 'stranger', registration: 'open', params: { id: 'e-1' }, body: { locale: 'en' }, door: door.tenantDb, globals,
     })
+    expect(run.status).toBe(403)
     expect(run.joinHandlerCalls).toBe(0)
+    expect(ai.count).toBe(0)
   })
 })
