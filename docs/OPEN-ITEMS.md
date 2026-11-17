@@ -88,18 +88,17 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
+| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. Die Icon-Zeilen, Fehler außerhalb einer Anfrage und der Zahlungswarn-Lauf sind seit 2026-11-17 erledigt (COMPLETE „N09"). **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
-| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) eine Kleinigkeit. **Wartet auf:** nichts — David hat am 2026-11-17 Ja gesagt zum Blick auf die Namen in den Server-Dateien, als eigene kleine Gruppe. | Niedrig | S je Teil | Nein | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Bekannte Grenzen des Label-Abgleichs, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. Der Abgleich findet seit 2026-11-17 auch stillgelegte Communities und Herabstufungen (COMPLETE „N06"). **Wartet auf:** (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten, darunter das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (liegt in der Seite des Markenberaters, baubar nach N10). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
-| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (d) Kleinigkeiten. Ticket-Kauf, die drei Umzugs-Anleitungen und die READMEs sind seit 2026-11-17 erledigt (COMPLETE „N06"). **Wartet auf:** (a) David. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
-| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
+| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 61 von 83 Beweis-Skripten von selbst, und acht weitere Layer haben Rollen-Tests für jede Route (COMPLETE „N09"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) 88 Routen stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten und vier Stellen zum Bewerten. **Wartet auf:** (b) zum größten Teil auf den Umbau in N10, (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -635,27 +634,6 @@ nicht mehr, das Beweis-Skript der Nachrichten läuft gegen den lokalen Spiegel.
   Nachrichten. Die Schreib-Kette für `app_config` gilt je Prozess. Betreiber-Routen sind weiter an keinen Host
   gebunden — das gehört zum Pukalani-Konto (PK1).
 
-<a id="wl1"></a>
-
-**WL1 — Wächter mit eigenen Listen: Reste (aus dem Gesamtaudit, Paket P20).**
-Erledigt am 2026-11-17 (COMPLETE „N07"): (b) Vorschaubilder und Sitemap der
-Galerie folgen dem Not-Aus, (c) die Adresse des Control Plane liegt unter
-`/api/control`, aus (d) der Test für `check:permissions`, ein Leser für die
-KI-Aufrufstellen und das wirkungslose Präfix von `onboarding`.
-
-- **(a) 36 Einstellungen ohne Bewertung.** Sie stehen als Bestand in
-  `ENV_UNDECIDED` (`scripts/ops/site-env-decisions.mjs`); seit dem 2026-11-17
-  eine weniger, weil `NUXT_EVENTS_SWEEP_KEY` mit seiner Route aus dem Code
-  ging. Für jeden entscheiden: Pflicht auf
-  welcher Site, oder warum nicht. Braucht einen Blick auf die Namen in den
-  Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja liegt seit
-  dem 2026-11-17 vor, gebaut wird es als eigene kleine Gruppe. Die
-  Liste darf nur kürzer werden; der Test hält die Zahl fest.
-- **(d) Kleinigkeit.** Der Env-Wächter prüft, ob ein Name in der
-  Server-Datei steht, nicht, ob dahinter ein Wert steht. (Die Moderations-
-  Abfrage des Dashboards und die zwei festen Seiten in der Sitemap von
-  branding.supply sind seit 2026-11-17 erledigt, COMPLETE „N08".)
-
 <a id="vt1"></a>
 **VT1 — Vertretung benennen (aus dem Gesamtaudit, Paket P24, OPS-010).**
 
@@ -709,15 +687,20 @@ KI-Aufrufstellen und das wirkungslose Präfix von `onboarding`.
   und des Health-Wächters sind von Hand gepflegt; eine neue Kundendomain steht
   dort erst, wenn jemand sie einträgt. Braucht eine lesende Route mit
   Geheimnis und ein Secret bei GitHub.
-- **(e) Kleinigkeiten.** Das Fehler-Log von `platform` besteht fast nur aus
-  Zeilen „[Icon] failed to load" (19.789 in acht Tagen); die pm2-Logs laufen
-  nicht um. Fehler außerhalb einer Anfrage fängt niemand. Das Guthaben bei
-  OpenRouter lässt sich nicht im Voraus prüfen (nur mit einem
-  Verwaltungs-Schlüssel) — gemeldet wird der erste abgelehnte Aufruf. Der Lauf
-  `past-due-notice` meldet „schon im Gange" als gut statt als übersprungen. Der
+- **(e) Kleinigkeiten.** Erledigt am 2026-11-17 (COMPLETE „N09"): die Zeilen
+  „[Icon] failed to load" (Ursache behoben), Fehler außerhalb einer Anfrage
+  (zählbare Zeile `server.error` mit `source: process`), der Lauf
+  `past-due-notice` meldet „schon im Gange" als übersprungen. Offen: Das
+  Guthaben bei OpenRouter lässt sich nicht im Voraus prüfen (nur mit einem
+  Verwaltungs-Schlüssel) — gemeldet wird der erste abgelehnte Aufruf. Der
   Mail-Blick liest im Log-Ordner auch Dateien früherer Prozess-Nummern mit (das
   Zeitfenster hält ihn richtig). Auf dem Appwrite-Server liegen die
-  Sicherungen `*.vorher-p22` (nach zwei Wochen löschen).
+  Sicherungen `*.vorher-p22` (nach zwei Wochen löschen). Im Log-Ordner der
+  Platform-App liegt noch die Datei einer früheren Prozess-Nummer mit rund
+  263.000 Icon-Zeilen (nur Platz; mit dem Aufräumen am 2026-11-30 löschen).
+  Fehler außerhalb einer Anfrage zählen als Server-Fehler mit — wenn die
+  Schwellen in (a) gesetzt werden, die Zeilen mit `source: process` einmal
+  getrennt ansehen.
 
 <a id="se1"></a>
 
@@ -965,28 +948,60 @@ SDK-Versionen aus dem Katalog.
   (bewusst behalten) und vier Sicherheitskopien aus dem Backup-Paket
   (`*.vorher-p11*`, gehören zu BU1 d). Der lokale Lauf der Playwright-Suite
   braucht einen Browser-Download. Ein UptimeRobot-Monitor heißt vielleicht
-  noch „studio…" (nur der Name, nicht nachgesehen). GitHub meldet beim Push
-  vier Sicherheits-Hinweise zu Abhängigkeiten (einer davon hoch) — ansehen.
+  noch „studio…" (nur der Name, nicht nachgesehen).
+- **(e) Vier Hinweise zu Abhängigkeiten bleiben offen** (gemessen am
+  2026-11-17 mit `pnpm audit` und den Hinweisen des Repos; der Hinweis zu
+  `glob` ist geschlossen). Keine davon ist eine direkte Abhängigkeit:
+  - `minimatch` (mittel): schließt, sobald `@typescript-eslint` ≥ 8.73.0 und
+    `@nuxt/content` ≥ 3.17.0 im Lockfile stehen. Beide Ausgaben waren am
+    2026-11-17 erst Stunden bis einen Tag alt und sind deshalb nicht
+    genommen. **Empfehlung:** ab dem 2026-11-20 ein kleines Update
+    (`pnpm update` für genau diese Pakete, Lockfile-Diff lesen, alle fünf
+    Prüfungen, Live-Build) — Patch und Minor innerhalb des Katalogs.
+  - `zod` 3 (hoch): kommt nur über `@nuxt/content`; unser eigenes `zod` ist
+    aktuell. Behoben ist es erst ab zod 4.6.6, und `@nuxt/content` verlangt
+    auch in der neuesten Ausgabe zod 3. **Empfehlung:** warten, bis
+    `@nuxt/content` umstellt; kein erzwungener Sprung (ein Override auf eine
+    andere Hauptversion wäre ein Umbau, kein Update).
+  - `picomatch` (hoch): es gibt noch keine Ausgabe mit der Korrektur. Kommt
+    über die Lint-Werkzeuge und über `@nuxt/fonts`. **Empfehlung:** warten.
+  - `esbuild` 0.27 (niedrig): kommt über `@nuxt/fonts` 0.14, das `@nuxt/ui`
+    mitbringt; schließt mit `@nuxt/fonts` 1.x — ein großer Sprung, den
+    `@nuxt/ui` vorgeben muss. **Empfehlung:** warten.
 
 <a id="bt1"></a>
 
 **BT1 — Tests über den echten Kundenpfad: Nacharbeiten (aus dem Gesamtaudit, Paket P27).**
+Erledigt am 2026-11-17 (COMPLETE „N09"): der dritte Server im nächtlichen
+Lauf (zwölf Skripte der Einzel-Instanz), Rollen-Tests für `onboarding`,
+`control`, `core`, `admin`, `tickets`, `runner`, `domains` und `billing`, die
+zwei Skripte mit dem Programm-Fehler, die Probe-Hosts der Isolations-Tests
+und die Tabellen in `docs/referenz/LIVE-BEWEISE.md`.
 
-- **(a) Skripte, die noch von Hand laufen.** 14 Beweis-Skripte brauchen die
-  Einzel-Instanz `apps/comments` als laufenden Server, 12 brauchen
-  branding.supply mit eigenem Projekt. Die Bühne startet heute nur
-  Betreiber-App und Platform-Server. Zu tun: je App einen dritten Server in
-  den Lauf `buehne.yml` hängen (nur nachts, wegen der Laufzeit) und die
-  Skripte einzeln einziehen lassen. Die Liste steht in
-  `scripts/buehne/beweise.mjs` (`lauf: 'hand'` mit Grund). Bewusst von Hand
-  bleiben sechs Skripte mit Fremddiensten (echte KI, eine fremde Website).
-- **(b) Rollen-Tests außerhalb der Pool-Produkte.** Der Wächter
-  `packages/core/tests/route-role-coverage.test.ts` führt 319 Routen im
-  Bestand (`support/routeRoleBacklog.ts`): control 64, onboarding 48, core 40,
-  brand 33, admin 31, insights 29, tickets 19, runner 14, market 10 und
-  kleinere. Layer für Layer abbauen und den Layer danach in
-  `ZERO_BACKLOG_LAYERS` eintragen. Zuerst onboarding und control (dort
-  liegen Mitglieder-Verwaltung und Anlage).
+- **(a) Skripte, die noch von Hand laufen (22 von 83).** 12 brauchen
+  branding.supply mit eigenem Projekt: nötig wären ein viertes Projekt
+  `branding` im Bühnen-Setup, `bootstrap --app branding`, ein vierter Server
+  (nur nachts) und Einträge `env: 'branding'` im Läufer, nach dem Muster der
+  Einzel-Instanz (`env: 'einzel'`). Vorher je Skript prüfen, ob es echte KI,
+  Stripe oder eine fremde Website anfasst — und warten, bis der Umbau in
+  `brand`, `market` und `insights` (N10) steht. Zwei Skripte der
+  Einzel-Instanz brauchen eigens eingestellte Server (`verify-silo-domain`,
+  `verify-domain-settle`). Bewusst von Hand bleiben sechs mit Fremddiensten.
+  **Passt noch in den Nacht-Lauf, ohne neuen Server:**
+  `apps/comments/e2e/community-removed.spec.ts` (das entfernte Konto steht
+  auf der Bühne; es fehlen die Variablen `PW_POOL_*` aus dem Stand der Bühne
+  und ein Playwright-Schritt) und die eine E2E-Datei von `apps/control` (die
+  Betreiber-App läuft dort schon). Die fünf E2E-Dateien von `apps/portfolio`
+  brauchen einen eigenen Server und ein eigenes Projekt.
+- **(b) Rollen-Tests: 88 Routen im Bestand** (`support/routeRoleBacklog.ts`):
+  brand 33, insights 26, market 10 (dort baut N10 um — danach), pages 8,
+  `apps/control` 8, je eine in `apps/comments`, `apps/photos`,
+  `apps/portfolio`. `apps/control` hat noch keine Test-Einrichtung (kein
+  `test`-Skript, keine `vitest.config.ts`): Tests dort führte `pnpm -r test`
+  nie aus. Erst die Einrichtung nach dem Muster von `apps/portfolio`, dann
+  die acht Routen (fünf passen auf
+  `packages/control/tests/support/controlRouteHarness.ts`, dazu der Webhook
+  mit Signatur). Layer ohne Rest nach `ZERO_BACKLOG_LAYERS`.
 - **(c) Bühnen-Lauf als Pflicht: im Dezember neu entscheiden.** Entschieden
   am 2026-11-17 (DECISION-LOG): Der Lauf „Bühne (Kundenpfad)" bleibt vorerst
   ein Hinweis — er hält weder das Zusammenführen noch das Ausliefern auf und
@@ -995,24 +1010,27 @@ SDK-Versionen aus dem Katalog.
   Programm? Danach David erneut fragen. Ebenfalls entschieden: GitHub
   erzwingt nicht, dass ein Zweig vor dem Zusammenführen aktuell ist; die
   Sitzungen testen selbst gegen den neuesten Stand (CLAUDE.md, Abschnitt Git).
+  Der nächtliche Lauf dauert seit dem dritten Server rund 23 statt 16 Minuten.
 - **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
   Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
   Betreiber noch nicht. `verify-notification-mail-links` stößt den
   Sammel-Lauf für alle Konten der Instanz an und gehört deshalb nur auf eine
-  leere Datenbank. Zwei Skripte stehen auf „von Hand", weil eine Prüfung
-  einen Fehler im Programm zeigt (`verify-community-suspension`,
-  `verify-invite-stock`); sie ziehen nach, sobald er behoben ist. Die
-  E2E-Specs von `apps/control` (1) und `apps/portfolio` (5) laufen in keinem
-  Workflow, ebenso `community-removed.spec.ts` (braucht die Bühne und einen
-  Browser im Bühnen-Lauf). Die Gruppen-Tabellen in
-  `docs/referenz/LIVE-BEWEISE.md` stammen vom 2026-08-02. Der Kopf von
-  `packages/events/tests/participation-guard.test.ts` sagt noch, Übersetzen
-  verlange die Zugehörigkeit. Zwei Isolations-Tests des Betreiber-Layers
-  (`tenants-resolver.test.ts`, `communityHostResolver.test.ts`) bilden ihren
-  Probe-Host beide als `off-<Uhrzeit>.test.local`; starten beide Dateien in
-  derselben Millisekunde, stößt die eindeutige Host-Spalte zusammen und der
-  Bühnen-Lauf wird rot (so am 2026-11-17 einmal auf `main`, Issue 274; kein
-  Fehler im Programm). Abhilfe: ein Zufallsteil im Namen.
+  leere Datenbank. Der Test `packages/core/tests/rollbackScript.test.ts`
+  scheiterte am 2026-11-17 einmal in der CI mit Exit 141 („geht denselben Weg
+  wieder nach vorn"; eine Pipe schließt früh, bekannte Falle bei
+  `pipefail`), bei der Wiederholung und in 15 lokalen Läufen grün — die
+  Stelle in `ops/rollback.sh` ist nicht gefunden. `verify-trust-perks`
+  rechnet mit dem Kalendertag: ein Lauf, der über Mitternacht UTC geht, wird
+  rot (so ein von Hand gestarteter Nacht-Lauf am 2026-11-18, 00:00 UTC; der
+  Zeitplan um 01:41 UTC liegt nicht dort).
+- **(e) Vier Stellen zum Bewerten.** Die neuen Rollen-Tests halten sie fest,
+  wie sie heute sind. Nach heutiger Messung gibt keine etwas heraus; bei
+  jeder greift eine zweite Sicherung. Einzelheiten stehen in der
+  Übergabe-Notiz der Gruppe N09 (nicht im Repo). (1) Mitglieder-Verwaltung,
+  drei lesende Routen: die Rechte-Wache soll die Entzugs-Notiz selbst mit
+  abfragen. (2) Anwesenheit: dieselbe Wache wie beim Übersetzen. (3) Übersicht
+  des Dashboards im Pool: soll die Instanz-Rolle „Moderator" hinein dürfen,
+  oder nur der Betreiber? (4) Nutzer löschen: Reihenfolge zweier Prüfungen.
 
 <a id="a1-anwalt"></a>
 
