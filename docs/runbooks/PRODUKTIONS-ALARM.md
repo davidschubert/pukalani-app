@@ -37,6 +37,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
 | Server-Einstellungen | `scripts/ops/verify-server-config.mjs` (vergleicht auf den Servern mit `ops/nginx-check.mjs`, `ops/cron-check.sh` und dem Tor-Wort `cron-status`) | täglich | einer Site fehlt eine Pflicht-Zeile der Webserver-Vorlage (`ops/nginx/`), oder der Webserver setzt eine Schutz-Kopfzeile selbst; auf dem App-Server liegt eine Site, die `ops/nginx-sites.conf` nicht kennt; ein Zeitplan aus `ops/cron.conf` fehlt, steht doppelt, oder es gibt einen unbekannten. Verglichen werden Pflicht-Zeilen, nicht Zeichen — ein Handgriff in Ploi (Zertifikat, Alias) macht den Blick nicht rot |
+| Anmelde-Wege der Datenbank | `scripts/ops/verify-auth-methods.mjs` | täglich | in einem der vier Projekte nimmt die Datenbank eine Anmeldung ohne Schlüssel wieder an (Antwort 401 statt 501), oder die Probe bekommt eine unerwartete Antwort. Je Projekt ein Aufruf von außen mit erfundenen Zugangsdaten; legt nichts an. Störung (429, 5xx) ist „keine Aussage" |
 | Schutz-Kopfzeilen | `scripts/ops/verify-security-headers.mjs` | täglich | auf einem Host kommt eine Schutz-Kopfzeile (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS) nicht genau einmal an — auf einer Seite, auf `/api/health` oder auf einer Datei unter `/_nuxt/` —, oder es kommt eine, die niemand mehr senden soll (`X-Frame-Options`, `X-XSS-Protection`, `x-powered-by`). Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
 
 **In die App hinein (seit 2026-11-16, OPS-011).** Bis dahin sah der Alarm, ob
@@ -785,6 +786,16 @@ Site als `zuviel`. Für `pukalani.app` zusätzlich bei Cloudflare nachsehen
 die App sendet sie nicht; den letzten Stand von
 `packages/core/server/plugins/security-headers.ts` und den Build des Hosts
 (`/api/health` → `.build`) prüfen.
+
+**Anmelde-Wege.** Der Satz im Issue nennt das Projekt. „Wieder offen": in der
+Verwaltung der Datenbank das Projekt öffnen, Auth → Settings → Auth methods,
+und die sechs Schalter ausschalten
+([ANMELDE-REGELN.md](ANMELDE-REGELN.md), „Anmelde-Wege für Aufrufe ohne
+Schlüssel"); danach `node scripts/ops/verify-auth-methods.mjs <projekt>` — es
+muss „zu (501)" melden. „Unerwartete Antwort": die Probe selbst passt nicht
+mehr (Projekt umbenannt, Schnittstelle geändert) — das Skript anpassen, nicht
+den Blick abschalten. Ein NEUES Projekt gehört in `PROJECTS` im Skript; ein
+Test hält die Liste gegen die Site-Manifeste.
 
 **Live-Verbindung (Realtime).** Kommentare, Anwesenheit und Benachrichtigungen
 kommen nicht mehr live an; die Seiten selbst laufen.

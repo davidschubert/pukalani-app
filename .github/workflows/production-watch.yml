@@ -166,7 +166,14 @@
 #      ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts
 #      aus (das meldet Blick 4).
 #
-# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 13
+#  14. ANMELDE-WEGE DER DATENBANK (`verify-auth-methods.mjs`), TÄGLICH (SV1 b,
+#      2026-11-17). Kontoanlage und Anmeldung direkt bei der Datenbank sind
+#      in allen vier Projekten abgeschaltet — eine Einstellung in der
+#      Verwaltung, kein Code. Je Projekt ein Aufruf von außen, ohne Schlüssel
+#      und mit sichtbar erfundenen Zugangsdaten: 501 heißt zu, 401 heißt
+#      offen (rot). Legt nichts an. Ohne ssh, ohne Secret.
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 14
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
 # setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
@@ -582,6 +589,14 @@ jobs:
           PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
         run: node scripts/ops/verify-security-headers.mjs
 
+      # Blick 14 (s. Kopf). Ohne ssh und ohne Secret: je Projekt ein Aufruf
+      # ohne Schlüssel, der nichts anlegt.
+      - name: Anmelde-Wege der Datenbank von außen zu?
+        if: always()
+        env:
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: node scripts/ops/verify-auth-methods.mjs
+
       - name: Befunde weiterreichen
         id: befunde
         if: always()
@@ -623,7 +638,7 @@ jobs:
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
       DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill) && '1' || '0' }}
-      # Die Sätze der Blicke 9 bis 13 (s. Kopf) — über `env`, nie direkt in
+      # Die Sätze der Blicke 9 bis 14 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}
