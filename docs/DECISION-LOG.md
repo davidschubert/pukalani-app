@@ -3790,3 +3790,22 @@ Meldungen und Statuswechsel der Kunden-Sites erreichen niemanden per Mail
 dann auch die Ausnahme für den Besitzer aus dem Eintrag vom 2026-11-14 und
 die Frage des Backup-Schlüssels aus dem Eintrag vom 2026-11-16); und vor dem
 Stripe-Livegang (A2), falls bis dahin niemand benannt ist.
+
+## 2026-11-17 — Nacharbeiten N03: zweite Erinnerung, Name der Zugangsart, Likes am Thema selbst
+
+**Kontext:** Gruppe N03 der Nacharbeiten (KU1, MM1, KK1 in
+[OPEN-ITEMS.md](OPEN-ITEMS.md)). Drei Punkte waren beim Bauen offen.
+**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-17):**
+1. **Wird ein Termin verschoben, nachdem schon erinnert wurde, kommt noch
+   einmal eine Erinnerung mit der neuen Uhrzeit.** Angeboten und nicht
+   gewählt: nur einmal erinnern. Preis: zwei Nachrichten zum selben Termin.
+2. **Die eine Zugangsart bei Kursen heißt „Für Mitglieder"** (englisch „For
+   members"). Angeboten und nicht gewählt: „Kostenlos", „Kostenlos für
+   Mitglieder". Sie sagt, was gilt: man muss Mitglied der Community sein.
+3. **Unter einem geschlossenen Thema sind nur die Kommentare eingefroren**
+   (Likes und Reaktionen an ihnen). Das Thema selbst darf weiter Likes und
+   Reaktionen bekommen. Angeboten und nicht gewählt: das ganze Thema einfrieren.
+**Folgen im Alltag:** Wer einen Termin mehrmals verschiebt, löst je neuer
+Uhrzeit eine Erinnerung aus; für dieselbe Uhrzeit bleibt es bei einer. Ein
+geschlossenes Thema zeigt an seinen Kommentaren den Stand vom Schließen.
+**Wieder prüfen:** wenn Rückmeldungen kommen, dass die zweite Erinnerung stört.

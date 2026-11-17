@@ -30,6 +30,121 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N03 — Nacharbeiten „Kurse, Mitmachen, Termine": KU1, MM1 (b–d) und KK1 (a, b, c) ✅ 2026-11-17
+
+Drei Einträge aus Schritt 3 der offenen Punkte, sechs Pull Requests mit Code
+(256, 257, 259, 262, 264, 265) und dieser Abschluss. Keine Migration, keine
+Änderung an Production außerhalb des Auslieferns. Davids Entscheidungen vom
+2026-11-16 (eine Zugangsart, Übersetzen nur für Mitglieder, Likes unter
+geschlossenen Themen sperren) und vom 2026-11-17, per Klick: nach dem
+Verschieben noch einmal erinnern; die eine Zugangsart heißt „Für Mitglieder";
+gesperrt werden nur die Kommentare, das Thema selbst bleibt likebar.
+
+**Was gebaut ist**
+
+- **Kurse: eine Zugangsart statt zwei (KU1 b, PR 256).** „Kostenlos" und
+  „Mitglieder" verlangten beide die Mitgliedschaft. Wählbar sind jetzt „Für
+  Mitglieder" und „Pro". Bestands-Kurse tragen in der Spalte weiter den alten
+  Wert; gelesen wird er über EINE Regel (`normalizeCourseAccess`), und jede
+  Antwort, die einen Kurs herausgibt (Vorschau, Verwaltung, Anlegen, Ändern,
+  Export), geht durch sie. Das Schema nimmt den alten Wert weiter an und
+  speichert den neuen. Keine Migration.
+- **Übersetzen nur für Mitglieder (MM1 d, KU1 c, PR 257).** Die Routen für
+  Beiträge, Kommentare und Termine rufen `requireCommunityMembership` vor dem
+  ersten Datenbankzugriff und vor dem Cache-Treffer (Kurse und Lektionen taten
+  das schon). Für den Knopf gibt es einen neuen Spiegel im Browser,
+  `useCommunityMember()`: die Middleware setzt ihn beim Seitenaufruf aus
+  derselben Funktion wie die Wache, `GET /api/community/role` liefert ihn nach
+  einer Anmeldung im Browser nach. Die drei Routen stehen nicht mehr als
+  Ausnahme im Wächter der Mitmach-Routen.
+- **Likes und Reaktionen unter geschlossenen Themen (MM1 c, PR 259).** Beide
+  Routen fragen denselben Core-Vertrag wie das Kommentieren
+  (`assertContentWritable`): 403 `topic_closed`, auch für das Zurücknehmen.
+  Die Themen-Seite bot beides schon nicht mehr an (dieselbe Sperre wie das
+  Schreibfeld); neu bekommt auch die Kommentar-Leiste im Feed den Hinweis.
+- **Keine Benachrichtigungen mehr an entfernte Personen (MM1 b, PR 262).**
+  Erst gemessen (siehe Beweis), dann gebaut: `notify()` fragt bei Meldungen
+  einer Community vor dem Schreiben, ob der Empfänger dort entfernt ist — keine
+  Glocken-Zeile, keine Mail, Ergebnis `skipped: 'former_member'`. Im Request
+  zählt zuerst die frische Notiz zum Entzug, sonst ein neuer Vertrag, der ohne
+  Request über den Stempel der Zeile fragt (Läufe haben keinen Mandanten). Die
+  Sammel-Mail lässt aus, was vor dem Entzug liegen blieb; eine ausgelassene
+  Termin-Erinnerung zählt nicht als Störung. Die neue Einladung kommt weiter
+  an. Bewusst fail-soft: ohne Antwort des Control Plane geht die Meldung raus.
+- **Termine (KK1 a, c, PR 264).** Ändert sich der Beginn eines schon
+  erinnerten Termins, fällt der Merker, und der Lauf erinnert mit der neuen
+  Uhrzeit. „Bezahlt" lehnt jetzt auch der Server ab, wo die Instanz keine
+  Tickets verkauft (422 `event_paid_unavailable`); Bestand bleibt speicherbar.
+- **Statistik und Kleinigkeiten (KK1 b, c, MM1 e, KU1 e, PR 265).** Die Zahlen
+  fragen die Adresse ab, die die Zähl-Datei der eigenen Kennung nennt — nur,
+  wenn sie eine eigene Adresse der Community ist (zehn Minuten gehalten,
+  nichts Neues gespeichert). Glocke und Mail lesen einen Zeitpunkt nur noch
+  bei Erinnerungen. `commentReactions.ts` und der Gast-Weg nutzen die
+  gemeinsame Liste der Betreiber-Ziele. Zwei überholte Kommentare und der Satz
+  „nur Eingeloggte" in der Doku sind berichtigt. Der Abschluss einer Lektion in
+  einem zurückgezogenen Kurs war schon seit P28 zu.
+
+**Beweis**
+
+- **Bühne, vorher/nachher (MM1 b).** Neues Skript
+  `packages/onboarding/scripts/verify-removed-notifications.mjs`, läuft bei
+  jedem Pull Request mit. Gegen den alten Stand: 7 von 9, rot waren genau „keine
+  neue Glocken-Zeile" und „keine neue Mail" — die entfernte Person bekam beides.
+  Gegen den neuen Stand: 12 von 12. Gegenprobe: ohne die registrierte Abfrage
+  im Control Plane wird die Prüfung für ein schon länger entferntes Konto rot.
+- **Bühne, einmalige Probe gegen `main` (nicht im Repo).** 17 von 17: die
+  Route sagt für Mitglied und fremdes Konto das Richtige, der Übersetzen-Knopf
+  steht im HTML des Mitglieds und fehlt beim fremden Konto und beim Gast
+  (derselbe Beitrag steht bei allen dreien), der Server antwortet 403
+  `not_a_member` bzw. 401; unter einem geschlossenen Thema 403 `topic_closed`
+  für Like, Reaktion und Kommentar, das Thema selbst lässt sich weiter liken.
+  Kurse 7 von 7: der alte Wert wird angenommen und als „members" gespeichert,
+  die Galerie zeigt das neue Abzeichen und keinen rohen Schlüssel.
+- **Tests an den echten Routen**, je Regel mit Gegenprobe:
+  `course-access-kinds.test.ts`, die Übersetzungs-Proben in den drei
+  `route-roles*`-Dateien, `communityMemberMirror.test.ts`,
+  `closed-topic-votes.test.ts`, `notifyFormerMember.test.ts`,
+  `event-reschedule-and-paid.test.ts`, `analytics-stats-cache.test.ts`.
+- **Live.** Alle acht Hosts melden `ok`, der Build enthält die Merges (Stand im
+  Abschlussbericht der Sitzung).
+
+**Was NICHT geprüft ist.** Kein Klick auf den echten Seiten (KR1). Die
+Sammel-Mail und die Termin-Erinnerung liefen nicht gegen die Bühne (der
+Sammel-Lauf ginge lokal über alle gespiegelten Konten) — beide belegen Tests.
+Die Statistik ist an keiner echten Zähl-Seite geklickt.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar; Davids Regel vom
+2026-11-17 für kleine Fragen):
+- Unter einem geschlossenen Thema ist auch das ZURÜCKNEHMEN eines Likes oder
+  einer Reaktion zu — geschlossen heißt eingefroren, der Stand bleibt.
+- Übersetzen ist auch bei offener Registrierung kein Beitritt, und ein schon
+  gespeicherter Treffer geht ebenfalls nur an Mitglieder.
+- Benachrichtigungen an Entfernte: bei einer Störung des Control Plane wird
+  zugestellt statt verworfen; die neue Einladung bleibt die eine Ausnahme.
+- Kurse: keine Migration, der alte Wert wird weiter angenommen.
+- Statistik: keine neue Spalte; die Adresse wird aus der Zähl-Datei gelesen
+  und zehn Minuten gehalten.
+- Nicht gebaut: das Zurücknehmen einer Zusage zu einem ausgeblendeten Termin
+  und ein Sprach-Präfix in Mail-Links (Gründe in OPEN-ITEMS „MM1" e).
+
+**Reste:** OPEN-ITEMS „MM1" (Klick-Probe, drei Kleinigkeiten ohne Auftrag) und
+„KK1" (Statistik klicken, drei Kleinigkeiten). KU1 ist geschlossen.
+
+**Gelernt:** (1) „Erst prüfen" hat sich gelohnt: dass Entfernte weiter Mails
+bekommen, stand nirgends, und der erste Fix hätte es in der Probe trotzdem
+nicht gezeigt — die Abfrage „ehemalig" merkt sich auch „nein" 60 Sekunden, die
+Antwort direkt nach dem Entzug wäre noch durchgegangen. Dafür gibt es die
+frische Notiz im Request; ein Lauf ohne Request hat sie nicht und fragt nur
+das Control Plane. Wer eine Sperre an einen Zwischenspeicher hängt, prüft die
+Minute danach. (2) Ein Vertrag, der fail-soft ist, braucht eine Gegenprobe,
+die ihn abschaltet — sonst ist die Probe immer grün. (3) `notify()` meldet
+„bewusst ausgelassen" getrennt von „gescheitert": der Erinnerungs-Lauf holt
+Störungen nach und hätte sonst jede Stunde wieder gefragt. (4) Ein neuer Wert
+in einer Spalte braucht keine Migration, wenn EINE Lese-Regel alle Ausgänge
+deckt — aber dann wirklich alle; die Verwaltungs-Routen gaben die rohe Zeile
+heraus. (5) Der Typecheck gehört vor JEDEN Push, auch bei „nur einer Datei":
+PR 265 ging mit einem Typfehler raus, den nur die CI fand.
+
 ### N01 — Nacharbeiten: Stripe-Test-Treiber (SC2) und Migrations-Weg (MG1 b, c) ✅ 2026-11-17
 
 Zwei kleine Reste aus dem Stripe-Durchlauf vom 2026-11-12 und aus Paket P21.

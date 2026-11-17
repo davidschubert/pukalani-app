@@ -26,8 +26,9 @@ Alle 16 stehen im [DECISION-LOG](DECISION-LOG.md) (2026-11-16) und in den
 Einträgen unten; diese sagen jetzt, was zu bauen ist. Kurzfassung:
 **AL1** Aktivitätsliste mit Konto-Ereignissen füllen · **KE3** Aufräum-Lauf
 für Profilbilder ohne Profil · **KU1** „kostenlos" und „Mitglieder" werden
-eine Zugangsart; Kurs-Vorschauen bleiben auffindbar (geschlossen) · **MM1**
-Likes unter geschlossenen Themen sperren; Übersetzen nur für Mitglieder ·
+eine Zugangsart (gebaut, COMPLETE „N03"); Kurs-Vorschauen bleiben auffindbar
+(geschlossen) · **MM1** Likes unter geschlossenen Themen sperren; Übersetzen
+nur für Mitglieder (beides gebaut, COMPLETE „N03") ·
 **RW1** kein Notweg ohne GitHub, vier Stände reichen (beide geschlossen) ·
 **BU1** Backup-Schlüssel bleibt in Davids zwei Passwort-Managern, keine zweite
 Person (geschlossen); Einstellungs-Dateien ins Backup · **AR1** erledigte
@@ -79,8 +80,7 @@ wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 | --- | --- | --- | --- | --- | --- |
 | AL1 | **Aktivitätsliste in der Admin-Nutzeransicht füllen** (entschieden: nicht entfernen). Quelle sind die vorhandenen Konto-Ereignisse (`readAccountEvents`, Core); für die Betreiber-Sicht die Aktionsliste erweitern. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
 | KE3 | **Aufräum-Lauf für Profilbilder ohne Profil** (entschieden). Heute bleibt ein hochgeladenes Bild liegen, wenn das Speichern danach scheitert. Kein Leck, aber Ablage-Müll. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/core/server/api/storage/[bucket]/index.post.ts` |
-| KU1 | **Kurse: Nacharbeiten.** (b) „kostenlos" und „Mitglieder" zu einer Zugangsart zusammenlegen (entschieden), (c) Hinweis am Übersetzen-Knopf für Nicht-Mitglieder (zusammen mit MM1 d), (e) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ku1) |
-| MM1 | **Mitmachen nur für Mitglieder: Nacharbeiten.** (b) Benachrichtigungen an entfernte Personen prüfen, (c) Likes unter geschlossenen Themen sperren (entschieden), (d) Übersetzen nur für Mitglieder (entschieden), (e) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#mm1) |
+| MM1 | **Mitmachen nur für Mitglieder: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (e) Zwei Kleinigkeiten ohne Auftrag (Zusage zu einem ausgeblendeten Termin, Sprache im Link der Benachrichtigungs-Mails) und ein Test, der noch in keinem Lauf mitfährt. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (c) Marken-Seiten laufen durch dieselbe Prüfung wie Artikel (entschieden), (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (d) Kleinigkeiten. Klick-Probe (b) nach BI5. **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
 | BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (b) Einstellungs-Dateien der Apps verschlüsselt ins nächtliche Backup (entschieden), (c) Übung jährlich wiederholen, (d) Kleinigkeiten. **Wartet auf:** nichts. | Mittel | je Teil S | Nein | [Einzelheiten](#bu1) |
@@ -97,7 +97,7 @@ wie Artikel · **MG1** Datenbank-Rückstand melden, nicht aufhalten
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
-| KK1 | **Kleine Korrekturen in Events, Kursen, Seiten, Moderation, Statistik: Nacharbeiten.** Seit 2026-11-17 nennen Termin-Erinnerungen die Uhrzeit mit Zeitzone, ausgeblendete Termine bleiben ausgeblendet, die Seitenliste zeigt alle Seiten, und eine fremde Zähl-Kennung wird abgelehnt (COMPLETE „GA1 P28"). Offen: (a) nach dem Verschieben eines Termins noch einmal erinnern, (b) die Statistik-Prüfung an einer echten Community klicken und die geprüfte Adresse auch für die Zahlen nutzen, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
+| KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
@@ -426,52 +426,40 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
   ihre Fortsetzung wird abgelehnt. Der Schlüssel der Migrations-Ablage für
   `admin` kann weder Dateien noch Konten lesen (siehe PB1).
 
-<a id="ku1"></a>
-
-**KU1 — Kurse: Nacharbeiten (aus dem Gesamtaudit, Paket P04).**
-Davids weitere Wünsche zur Kurs-Übersicht (Kategorien, Filter, Sortierung,
-„Best seller", einzelne bezahlte Kurse) sind ein eigenes Vorhaben und stehen
-NICHT hier.
-
-- **(b) Zugangsarten — entschieden am 2026-11-16: zusammenlegen.**
-  „Kostenlos" und „Mitglieder" verlangen beide die Mitgliedschaft und werden
-  zu EINER Zugangsart.
-- **(c) Übersetzen-Knopf.** Er erscheint für jedes angemeldete Konto; wer kein
-  Mitglied ist, bekommt nach dem Klick nur die allgemeine Fehlermeldung.
-- **(e) Kleinigkeiten.** `POST /api/lessons/:id/complete` prüft den Status des
-  Kurses nicht (Abschluss in einem zurückgezogenen Kurs möglich, Testfall
-  übersprungen); ein Kommentar in `packages/courses/tests/redaction-actor.test.ts`
-  und der Satz „nur Eingeloggte" oben in
-  `docs/content/3.features/6.uebersetzungen.md` sind überholt.
-
 <a id="mm1"></a>
 
-**MM1 — Mitmachen nur für Mitglieder: Nacharbeiten (aus dem Gesamtaudit, Paket P05).**
+**MM1 — Mitmachen nur für Mitglieder: Reste (aus dem Gesamtaudit, Paket P05).**
+Erledigt seit 2026-11-17 (COMPLETE „N03"): Übersetzen nur für Mitglieder,
+Likes und Reaktionen unter geschlossenen Themen gesperrt, keine
+Benachrichtigungen mehr an entfernte Personen.
 
 - **(a) Klick-Probe auf Live, zweiter Teil.** Geklickt ist seit dem
   2026-11-15 das Schreiben als Mitglied (Kommentar, Stimme; zusagen ging
   nicht, die Demo hat keine kommenden Termine). Offen: auf einer Community ein
   Test-Konto einladen, wieder entfernen und mit ihm die Community öffnen:
   Hinweisseite, eine Nachricht an die Leitung (Mail und Glocke beim Owner),
-  neue Einladung annehmen. Das braucht Owner und Test-Konto zugleich.
-- **(b) Benachrichtigungen an entfernte Personen.** Nicht geprüft ist, ob eine
-  entfernte Person weiter Glocken-Einträge und Mails aus dieser Community
-  bekommt (Antworten auf alte Kommentare, Sammel-Mail). Die Links führten sie
-  nur auf die Hinweisseite.
-- **(c) Stimmen unter geschlossenen Themen — entschieden am 2026-11-16:
-  sperren.** Kommentieren ist dort zu, Likes und Reaktionen an vorhandenen
-  Kommentaren gehen heute weiter; sie werden mit gesperrt.
-- **(d) Übersetzen — entschieden am 2026-11-16: nur für Mitglieder der
-  Community.** Heute kann jedes angemeldete Konto übersetzen, und die
-  Aufrufe zählen auf das Tages-Kontingent der Community. Der Knopf
-  verschwindet für Nicht-Mitglieder (dazu KU1 c).
-- **(e) Kleinigkeiten.** Eine Zusage zu einem inzwischen ausgeblendeten Termin
-  lässt sich nicht mehr zurücknehmen (404). Der Link in der Mail an die Leitung trägt
-  kein Sprach-Präfix. Der E2E-Test `community-removed.spec.ts` läuft nur
-  gegen eine Pool-Bühne und noch in keinem Workflow (BT1 d).
-  Der Kopf von `packages/messages/server/utils/messageGate.ts` sagt, jede
-  Schreib-Route rufe eine seiner Funktionen; für Löschen und Gelesen-Markieren
-  stimmt das nicht.
+  neue Einladung annehmen. Das braucht Owner und Test-Konto zugleich. Seit
+  N03 gehört dazu: nach dem Entfernen auf einen alten Kommentar des
+  Test-Kontos antworten — es darf keine Mail mehr bekommen.
+- **(e) Kleinigkeiten, bewusst nicht gebaut.**
+  - Eine Zusage zu einem inzwischen ausgeblendeten Termin lässt sich nicht
+    zurücknehmen (404). Es gibt keine Stelle in der Oberfläche, von der aus
+    man das auslösen könnte (der Termin ist für das Konto nicht mehr zu
+    sehen), erinnert wird nur an veröffentlichte Termine, und die Zusage
+    fällt mit dem Konto. Ein Umbau müsste die Regel „erst lesen, wie das
+    Konto liest" aufweichen. Vorschlag: so lassen.
+  - Links in Benachrichtigungs-Mails tragen kein Sprach-Präfix — das gilt für
+    ALLE diese Mails, nicht nur für die an die Leitung. Wer schon einmal da
+    war, wird über den Sprach-Merker des Browsers auf seine Sprache
+    umgeleitet. Ein Präfix je Empfänger-Sprache wäre eine Stelle im Core
+    (`notificationLinkUrl`), müsste aber die Sprach-Einstellung jeder App
+    kennen.
+  - Der E2E-Test `community-removed.spec.ts` läuft nur gegen eine Pool-Bühne
+    und noch in keinem Workflow (BT1 d).
+  - Wer in einer offenen Community durch seinen ersten Beitrag gerade Mitglied
+    geworden ist, sieht den Übersetzen-Knopf erst nach dem nächsten
+    Seitenaufruf (der Browser erfährt die Mitgliedschaft beim Laden der
+    Seite, wie die Rolle).
 
 <a id="in1"></a>
 
@@ -614,32 +602,26 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 
 <a id="kk1"></a>
 
-**KK1 — Kleine Korrekturen in Events, Kursen, Seiten, Moderation, Statistik: Nacharbeiten (aus dem Gesamtaudit, Paket P28).**
+**KK1 — Kleine Korrekturen in Events, Seiten, Statistik: Reste (aus dem Gesamtaudit, Paket P28).**
+Erledigt seit 2026-11-17 (COMPLETE „N03"): zweite Erinnerung nach dem
+Verschieben, „bezahlt" an einem Termin prüft auch der Server, die Zahlen
+fragen die Adresse aus der Zähl-Datei ab, ein Zeitpunkt wird nur noch bei
+Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 
-- **(a) Erinnerung nach dem Verschieben.** Wird der Beginn eines Termins
-  geändert, nachdem schon erinnert wurde, bleibt der Merker am Termin stehen —
-  es gibt keine zweite Erinnerung mit der neuen Uhrzeit. Die Zeilen-Kennung je
-  Erinnerung enthält den Beginn schon; es fehlt nur, den Merker beim
-  Verschieben zu leeren. Vorher entscheiden, ob das gewollt ist (zwei Mails
-  zum selben Termin).
-- **(b) Statistik.** Die Prüfung der Zähl-Kennung ist mit Tests am echten
-  Handler belegt, aber noch an keiner echten Community geklickt. Die Zahlen
-  fragt die Seite weiter unter dem Host der Anfrage ab: liegt die
-  Plausible-Site unter der Schwester-Adresse (mit oder ohne `www`), nimmt das
-  Speichern die Kennung an, die Zahlen-Seite sagt aber „gerade nicht
-  erreichbar". Die beim Speichern gelesene Adresse könnte als Ziel dienen.
-  Schon gespeicherte Kennungen werden nicht nachträglich geprüft.
+- **(b) Statistik.** Die Prüfung der Zähl-Kennung und das neue Ziel der
+  Zahlen sind mit Tests am echten Handler belegt, aber noch an keiner echten
+  Community mit eigener Zähl-Seite geklickt (Kennung speichern, Zahlen-Seite
+  öffnen — am besten mit einer Seite, die in Plausible unter der `www`-Adresse
+  liegt). Schon gespeicherte Kennungen werden nicht nachträglich geprüft; eine
+  fremde Kennung aus der Zeit davor zeigt keine fremden Zahlen (gefragt wird
+  dann die eigene Adresse), zählt aber weiter dorthin.
 - **(c) Kleinigkeiten.** Das Nachholen eines halb gescheiterten Ausblendens
   (Termine) geht über die Route, die Oberfläche bietet es an einem schon
-  ausgeblendeten Termin nicht an. Drei Listen im Seiten-Produkt haben noch
-  feste Obergrenzen ohne Blättern (Verwaltungs-Liste 500, je Seite 50 und 20
-  Fassungen). Die Zahlen des Seiten-Kontingents stehen nur in der
-  Konfiguration der Platform-App, nicht im Katalog des Control Plane. Ob
-  „bezahlt" an einem Termin wählbar ist, entscheidet nur das Formular, nicht
-  der Server. `commentReactions.ts` liest die Liste der Betreiber-Ziele noch
-  selbst. Ein Text, der wörtlich wie ein gespeicherter Zeitpunkt aussieht,
-  würde in Glocke und Mail als Datum erscheinen (harmlos; eine Beschränkung
-  auf Erinnerungen wäre möglich).
+  ausgeblendeten Termin nicht an — sie kann den halben Zustand nicht erkennen.
+  Drei Listen im Seiten-Produkt haben noch feste Obergrenzen ohne Blättern
+  (Verwaltungs-Liste 500, je Seite 50 und 20 Fassungen). Die Zahlen des
+  Seiten-Kontingents stehen nur in der Konfiguration der Platform-App, nicht
+  im Katalog des Control Plane.
 
 <a id="bp1"></a>
 
