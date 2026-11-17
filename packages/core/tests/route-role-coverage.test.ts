@@ -34,9 +34,15 @@ const REPO = resolve(import.meta.dirname, '../../..')
  * wie `POOL_LAYERS` in `participation-guard-routes.test.ts`). Ein Layer hier
  * und ein Eintrag im Bestand ⇒ rot. Wer den Bestand eines weiteren Layers
  * abgebaut hat, trägt ihn hier ein — dann wächst er nicht wieder.
+ *
+ * Dazu `control` (Control Plane, seit BT1 b): Betreiber- und Naht-Routen mit
+ * eigenem Prüfstand `packages/control/tests/support/controlRouteHarness.ts`.
  */
 const ZERO_BACKLOG_LAYERS: readonly string[] = [
   'activity', 'comments', 'courses', 'events', 'feedback', 'media', 'messages', 'moderation', 'posts',
+  // Abgebaut mit BT1 b (2026-11-17): alle Bestands-Routen haben Tests
+  // (control 64, onboarding 47).
+  'control', 'onboarding',
 ]
 
 /**

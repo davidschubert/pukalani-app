@@ -47,8 +47,12 @@ export type Who = 'guest' | 'member' | 'stranger' | 'removed' | 'legacy' | TeamR
 
 export interface CommunityWorld {
   who: Who
-  /** Pool (Standard) oder Silo (kein Mandant: das Projekt ist die Grenze). */
-  mode?: 'pool' | 'silo'
+  /**
+   * Pool (Standard), Silo (kein Mandant: das Projekt ist die Grenze) oder
+   * Kontroll-Host (`control`: kein Mandant, dazu `event.context.controlCenter`
+   * — dort leben Trichter und Konto-Bereich des onboarding-Layers).
+   */
+  mode?: 'pool' | 'silo' | 'control'
   /** Registrierung der Community. Standard: geschlossen (nur per Einladung). */
   registration?: 'open' | 'closed'
   /** Zahlungssperre M13: Inhalte sind zu. */
@@ -58,6 +62,13 @@ export interface CommunityWorld {
    * wirft ⇒ `unavailable`) oder `none` (kein Handler registriert).
    */
   seam?: 'up' | 'down' | 'none'
+  /**
+   * Weitere Felder im Mandanten-Kontext des Pools (z. B. `audience`,
+   * `trialEndsAt`, `name`). Ohne Pool-Mandanten wirkungslos.
+   */
+  tenantFields?: Record<string, unknown>
+  /** Weitere Felder am Konto (z. B. `prefs`, `email`). Beim Gast wirkungslos. */
+  userFields?: Record<string, unknown>
 }
 
 export const COMMUNITY_ID = 'c-a'
@@ -135,7 +146,7 @@ export function wireCommunityWorld(world: CommunityWorld): WiredWorld {
 
   const mode = world.mode ?? 'pool'
   const tenant = mode === 'pool'
-    ? { mode: 'pool', tenantId: TENANT_SCOPE, communityId: COMMUNITY_ID, projectId: 'pool', suspension: world.suspended ? 'billing' : '' }
+    ? { mode: 'pool', tenantId: TENANT_SCOPE, communityId: COMMUNITY_ID, projectId: 'pool', suspension: world.suspended ? 'billing' : '', ...world.tenantFields }
     : null
   const user = world.who === 'guest'
     ? undefined
@@ -143,8 +154,11 @@ export function wireCommunityWorld(world: CommunityWorld): WiredWorld {
         $id: USER_IDS[world.who],
         name: 'Testperson',
         labels: labelsOf(world.who),
+        ...world.userFields,
       }
-  const event = { context: { user, tenant }, path: '/api/test', method: 'POST' } as unknown as H3Event
+  const context: Record<string, unknown> = { user, tenant }
+  if (mode === 'control') context.controlCenter = true
+  const event = { context, path: '/api/test', method: 'POST' } as unknown as H3Event
 
   // Rollen-Resolver (Control Plane, 30-s-Cache): die Rolle je Person (ROLE_OF).
   permission.registerCommunityRoleResolver(({ runtimeUserId }) => {
