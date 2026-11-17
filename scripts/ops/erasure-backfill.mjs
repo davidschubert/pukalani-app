@@ -5,6 +5,7 @@
  *   node --env-file=<env-datei> scripts/ops/erasure-backfill.mjs            # nur zählen
  *   node --env-file=<env-datei> scripts/ops/erasure-backfill.mjs --apply    # schreiben
  *   … --only comments,posts                                                 # einzelne Regeln
+ *   … --only notification-excerpts                                          # EL1 (d): alte Textauszüge in Meldungen
  *
  * WARUM ES DAS GIBT: seit P14 leert der Code beim Löschen wirklich (Text,
  * Übersetzungen, Vorschau, Ausschnitt im Verlauf). Was DAVOR gelöscht wurde,
@@ -150,6 +151,13 @@ async function userExists(id) {
     throw error
   }
 }
+
+/** EL1 (d): Typen aus `comments`, deren Meldung einen Auszug trägt. */
+const NOTIFICATION_EXCERPT_TYPES = ['reply', 'mention', 'reply.guest']
+/** Die feste Id seit dem 2026-11-15 (`commentNotificationRowId`). */
+const NOTIFICATION_FIXED_ID = /^cmn[0-9a-f]{32}$/
+/** Zwei Tage Luft nach dem Ausliefern der festen Id — davor ist „Bestand". */
+const NOTIFICATION_EXCERPT_CUTOFF = '2026-11-17T00:00:00.000Z'
 
 /**
  * JEDE REGEL: `find()` liefert die Zeilen, die NICHT im Zielzustand sind, als
@@ -385,6 +393,29 @@ const RULES = [
       }
       const expired = res.files.filter(file => Date.parse(file.$createdAt) < now - 30 * DAY)
       return { scanned: res.total, hits: expired.map(() => ({})) }
+    },
+  },
+  {
+    key: 'notification-excerpts',
+    label: 'Meldungen zu Antworten und Erwähnungen von vor dem 2026-11-15, die noch einen Textauszug tragen',
+    // EL1 (d). Seit dem 2026-11-15 entsteht jede dieser Meldungen unter einer
+    // FESTEN Id (`cmn` + 32 Hex-Zeichen, commentNotificationRowId) und fällt
+    // mit ihrem Kommentar (removeObjectNotifications). Der Bestand davor
+    // trägt eine zufällige Id und lässt sich keinem Kommentar zuordnen — sein
+    // Auszug bliebe stehen, auch wenn der Kommentar längst gelöscht ist.
+    // Zielzustand: derselbe Eintrag ohne Auszug (`body: ''`); Absender, Typ
+    // und Link bleiben, die Glocke zeigt weiter „X hat geantwortet".
+    // Erkannt wird an der ID, nicht am Text. Eine Zeile mit zufälliger Id, die
+    // NACH dem Stichtag entstand, kennt dieses Skript nicht: sie bleibt und
+    // zählt als „nicht prüfbar". `post.mention` trug von Anfang an eine feste
+    // Id und gehört nicht dazu.
+    async find() {
+      const rows = await listAll('notifications', [q.equal('type', NOTIFICATION_EXCERPT_TYPES)])
+      const old = rows.filter(row => filled(row.body) && !NOTIFICATION_FIXED_ID.test(row.$id))
+      const hits = old
+        .filter(row => row.$createdAt < NOTIFICATION_EXCERPT_CUTOFF)
+        .map(row => ({ fix: () => patchRow('notifications', row.$id, { body: '' }) }))
+      return { scanned: rows.length, hits, unknown: old.length - hits.length }
     },
   },
 ]

@@ -244,6 +244,13 @@ Instanz, die nicht lokal ist, braucht `--apply` zusätzlich `PUKALANI_TARGET_CON
 Zwei kleine Tests (in `messages` und `comments`) halten die Feldwerte des Skripts gegen die
 Konstanten der Layer.
 
+Seit dem 2026-11-18 kennt das Skript die Regel `notification-excerpts` (EL1 d): Meldungen zu
+Antworten und Erwähnungen von vor dem 2026-11-15 behalten sonst ihren Textauszug, auch wenn der
+Kommentar gelöscht ist. Die Regel leert nur den Auszug (`body`), die Meldung bleibt. „Alt" erkennt
+sie an der Id (neue Meldungen tragen die feste Id `cmn…`), nicht am Text; eine Zeile mit zufälliger
+Id von nach dem Stichtag bleibt und zählt als „nicht prüfbar". Ein dritter Test in `comments` hält
+Id-Form und Typen gegen den Layer. Aufruf nur für diese Regel: `--only notification-excerpts`.
+
 ## Beweise
 
 - Tests je Beitrag: `packages/*/tests/*UserData*.test.ts`, dazu `comment-deletion`, `postDeletion`,
