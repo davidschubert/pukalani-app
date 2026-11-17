@@ -10,6 +10,7 @@ import type {
   InsightsWatchVerdictResponse,
 } from '../../../../shared/types/insightsApi'
 import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../core/shared/runLease'
+import { insightsRadarLastRun } from '../../../../shared/insightsRadarRun'
 import type { InsightsVerdict } from '../../../../shared/insightsWatchlist'
 import { insightsDay, insightsNumber } from '../../../utils/insightsFormat'
 
@@ -140,6 +141,43 @@ const watching = ref(false)
 const watchedStartedAt = ref('')
 const running = computed(() => starting.value || runView.value?.state === 'running')
 const interrupted = computed(() => !running.value && runView.value?.state === 'stalled')
+
+/**
+ * DIE ZAHLEN DES LETZTEN LAUFS, AUCH SPÄTER (LL1 c, 2026-11-17) — aus der
+ * Lauf-Zeile gelesen (`insightsRadarLastRun`), nicht aus der Meldung beim
+ * Ende: wer die Seite erst am nächsten Morgen öffnet, sieht dieselben Zahlen.
+ * Ein gescheiterter oder abgebrochener Lauf wird als solcher benannt, ohne
+ * Zahlen. Während ein Lauf läuft, steht hier nichts (der Satz am Knopf sagt
+ * es) — die Lauf-Zeile kennt dann nur den laufenden.
+ */
+const lastRun = computed(() => (running.value ? null : insightsRadarLastRun(runView.value)))
+const lastRunText = computed(() => {
+  const last = lastRun.value
+  if (!last) return ''
+  const date = insightsDay(last.at.slice(0, 10), readerLocale.value)
+  switch (last.kind) {
+    case 'done': {
+      const parts = [t('insights.radar.lastResult.done', {
+        date,
+        channels: last.result.channels,
+        videos: last.result.videos,
+        upserted: last.result.upserted,
+        deleted: last.result.deleted,
+        tooOld: last.result.tooOld,
+      })]
+      if (last.result.errors > 0) parts.push(t('insights.radar.runErrors', { count: last.result.errors }))
+      if (last.result.partial) parts.push(t('insights.radar.lastResult.partial'))
+      return parts.join(' · ')
+    }
+    case 'skipped':
+      return t('insights.radar.lastResult.skipped', { date, reason: t(`insights.radar.skipped.${last.reason}`) })
+    case 'failed':
+      return t('insights.radar.lastResult.failed', { date })
+    case 'stalled':
+      return t('insights.radar.lastResult.stalled', { date })
+  }
+  return ''
+})
 
 function announce(result: InsightsRadarRunResult): void {
   if (result.skipped) {
@@ -281,6 +319,12 @@ async function runNow(): Promise<void> {
             <div class="flex items-baseline gap-2">
               <dt class="text-muted">{{ t('insights.radar.statusLastRun') }}</dt>
               <dd>{{ data?.lastRunAt ? insightsDay(data.lastRunAt.slice(0, 10), readerLocale) : t('insights.radar.lastRunNever') }}</dd>
+            </div>
+            <div v-if="lastRun" class="flex items-baseline gap-2 sm:col-span-2" data-testid="radar-last-result">
+              <dt class="shrink-0 text-muted">{{ t('insights.radar.statusLastResult') }}</dt>
+              <dd :class="lastRun.kind === 'failed' || lastRun.kind === 'stalled' ? 'text-warning' : ''">
+                {{ lastRunText }}
+              </dd>
             </div>
           </dl>
 

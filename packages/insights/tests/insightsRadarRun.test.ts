@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { RUN_LEASE_STALL_MS } from '../../core/shared/runLease'
 import {
+  insightsRadarLastRun,
   parseInsightsRadarRunDetail,
   toInsightsRadarRunDetail,
   toInsightsRadarRunView,
@@ -92,5 +93,52 @@ describe('toInsightsRadarRunDetail — nur Zahlen und Kennungen', () => {
     const detail = toInsightsRadarRunDetail({ ...RESULT, title: 'Ein Videotitel' } as typeof RESULT)
     expect(detail).toEqual(RESULT)
     expect(JSON.stringify(detail)).not.toContain('Videotitel')
+  })
+})
+
+/**
+ * DIE ZAHLEN DES LETZTEN LAUFS AUF DER SEITE (LL1 c) — aus der Lauf-Zeile,
+ * nicht aus der Meldung beim Ende. Gescheitert und abgebrochen tragen keine
+ * Zahlen, ein laufender Lauf und „noch keiner" nichts.
+ */
+describe('insightsRadarLastRun', () => {
+  const STARTED = '2026-11-17T03:00:00.000Z'
+  const FINISHED = '2026-11-17T03:01:30.000Z'
+  const NUMBERS = { channels: 11, videos: 22, upserted: 20, deleted: 1, tooOld: 2, errors: 0, quotaUnits: 14 }
+
+  it('fertig ⇒ die Zahlen mit dem Tag des Endes', () => {
+    expect(insightsRadarLastRun({ state: 'done', startedAt: STARTED, finishedAt: FINISHED, result: NUMBERS }))
+      .toEqual({ kind: 'done', at: FINISHED, result: NUMBERS })
+  })
+
+  it('fertig, aber nichts geholt ⇒ der Grund statt Nullen', () => {
+    expect(insightsRadarLastRun({ state: 'done', startedAt: STARTED, finishedAt: FINISHED, result: { ...NUMBERS, skipped: 'no_channels' } }))
+      .toEqual({ kind: 'skipped', at: FINISHED, reason: 'no_channels' })
+  })
+
+  it('gescheitert und abgebrochen werden benannt, ohne Zahlen', () => {
+    expect(insightsRadarLastRun({ state: 'failed', startedAt: STARTED, finishedAt: FINISHED, result: null }))
+      .toEqual({ kind: 'failed', at: FINISHED })
+    // Ein abgebrochener Lauf hat kein Ende — dann zählt sein Beginn.
+    expect(insightsRadarLastRun({ state: 'stalled', startedAt: STARTED, finishedAt: '', result: null }))
+      .toEqual({ kind: 'stalled', at: STARTED })
+  })
+
+  it('läuft oder noch keiner ⇒ nichts', () => {
+    expect(insightsRadarLastRun({ state: 'running', startedAt: STARTED, finishedAt: '', result: null })).toBeNull()
+    expect(insightsRadarLastRun(null)).toBeNull()
+    expect(insightsRadarLastRun(undefined)).toBeNull()
+  })
+
+  it('aus einer echten Zeile gerechnet: done mit Zahlen, ein alter Herzschlag ⇒ abgebrochen', () => {
+    const now = Date.parse(FINISHED) + 1000
+    const done = toInsightsRadarRunView({
+      startedAt: STARTED, heartbeatAt: FINISHED, finishedAt: FINISHED, outcome: 'done', detail: JSON.stringify(NUMBERS),
+    }, now)
+    expect(insightsRadarLastRun(done)).toEqual({ kind: 'done', at: FINISHED, result: NUMBERS })
+    const stalled = toInsightsRadarRunView({
+      startedAt: STARTED, heartbeatAt: STARTED, finishedAt: '', outcome: '', detail: JSON.stringify(NUMBERS),
+    }, Date.parse(STARTED) + RUN_LEASE_STALL_MS + 1)
+    expect(insightsRadarLastRun(stalled)).toEqual({ kind: 'stalled', at: STARTED })
   })
 })
