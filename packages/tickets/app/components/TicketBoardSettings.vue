@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { AI_MODEL_NO_EU_ENDPOINT_CODE, AI_MODEL_UNKNOWN_CODE } from '../../../core/shared/aiModelEndpoints'
+import type { AiModelCheck } from '../../../core/shared/aiModelEndpoints'
+
 /**
  * Board-Einstellungen (Modal): KI-Modell für die Triage zur Laufzeit
  * wechseln — kuratierte OpenRouter-Auswahl + frei eintippbare Modell-Id
@@ -11,6 +14,9 @@
  * nur `system.manage`. Die Route ist die Autorität — `canEditModel` aus der
  * GET-Antwort sorgt nur dafür, dass niemand erst nach dem Klick einen 403
  * sieht.
+ *
+ * KI1 c (2026-11-17): die Route prüft ein neues Modell beim Speichern — 422
+ * mit Grund ⇒ der genaue Satz; `unverified` ⇒ gespeichert, mit Warnung.
  */
 const open = defineModel<boolean>('open', { required: true })
 
@@ -22,17 +28,16 @@ const settings = ref<BoardSettings | null>(null)
 const model = ref('')
 const saving = ref(false)
 
-// Kuratierte Auswahl (OpenRouter-Ids) — eigene Ids per Eintippen (create-item)
+// Kuratierte Auswahl (OpenRouter-Ids) — eigene Ids per Eintippen (create-item).
+// NUR MODELLE MIT EUROPA-ENDPUNKT (KI1 c, 2026-11-17): jeder Textaufruf ist an
+// die zwei Orte aus `core/shared/aiProviderRouting.ts` gebunden, und das
+// Speichern prüft das jetzt. Bis dahin standen hier neun Modelle, von denen
+// sieben keinen dieser Orte haben (gemessen an der öffentlichen
+// Endpunkt-Auskunft des Vermittlers) — eine Auswahl, die beim Speichern
+// immer abgelehnt wird, ist keine. Ein eingetipptes Modell wird ebenso geprüft.
 const KNOWN_MODELS = [
   'anthropic/claude-haiku-4.5',
   'anthropic/claude-sonnet-4.5',
-  'anthropic/claude-opus-4.1',
-  'openai/gpt-4o-mini',
-  'openai/gpt-4o',
-  'google/gemini-2.5-flash',
-  'google/gemini-2.5-pro',
-  'meta-llama/llama-3.3-70b-instruct',
-  'deepseek/deepseek-chat',
 ]
 const items = ref<string[]>([...KNOWN_MODELS])
 
@@ -62,11 +67,21 @@ function onCreate(value: string) {
 async function save(resetToDefault = false) {
   saving.value = true
   try {
-    const res = await $fetch<{ model: string }>('/api/tickets/settings', {
+    const res = await $fetch<{ model: string, aiModelCheck?: AiModelCheck }>('/api/tickets/settings', {
       method: 'PATCH',
       body: { model: resetToDefault ? '' : model.value },
     })
     model.value = res.model
+    if (res.aiModelCheck === 'unverified') {
+      toast.add({
+        title: t('tickets.settings.modelUnverified', { model: res.model }),
+        description: t('tickets.settings.modelUnverifiedHint'),
+        color: 'warning',
+        icon: 'i-ph-warning',
+      })
+      open.value = false
+      return
+    }
     toast.add({
       title: t('tickets.settings.saved', { model: res.model }),
       description: t('tickets.settings.savedHint'),
@@ -75,7 +90,18 @@ async function save(resetToDefault = false) {
     })
     open.value = false
   }
-  catch {
+  catch (error) {
+    const reason = (error as { data?: { reason?: string } }).data?.reason
+    if (reason === AI_MODEL_NO_EU_ENDPOINT_CODE || reason === AI_MODEL_UNKNOWN_CODE) {
+      toast.add({
+        title: t('tickets.settings.modelRejected'),
+        description: reason === AI_MODEL_UNKNOWN_CODE
+          ? t('tickets.settings.modelUnknown', { model: model.value })
+          : t('tickets.settings.modelNoEuEndpoint', { model: model.value }),
+        color: 'error',
+      })
+      return
+    }
     toast.add({ title: t('tickets.settings.invalid'), description: t('tickets.settings.invalidHint'), color: 'error' })
   }
   finally {
