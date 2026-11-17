@@ -119,6 +119,17 @@ export function __resetPastDueNoticeReader(): void {
 }
 
 /**
+ * Läuft gerade ein Sweep in diesem Prozess? Für den Zeit-Lauf (WA1 e): der
+ * Riegel unten gibt „schon im Gange" nur als leeres Ergebnis zurück, und das
+ * sähe im Protokoll der Zeit-Läufe aus wie ein guter Lauf ohne Arbeit. Wer
+ * vorher fragt, kann ihn als übersprungen melden. Ändert nichts für die
+ * Ops-Route.
+ */
+export function isPastDueNoticeRunning(): boolean {
+  return sweepRunning
+}
+
+/**
  * EIN Lauf: überfällige Communities dieses Projekts holen, ihren Owner
  * benachrichtigen (Glocke + Mail-Zweig von `notify()`), Ergebnis melden.
  */
