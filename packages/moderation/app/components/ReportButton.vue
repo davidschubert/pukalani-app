@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ReportReason } from '../../shared/types/report'
-import { ALREADY_REPORTED_CODE, reportErrorReason } from '../../shared/reportErrors'
+import { ALREADY_REPORTED_CODE, REPORT_RESOLVED_CODE, reportErrorReason } from '../../shared/reportErrors'
 
 /**
  * Generischer Melde-Button. Der Konsument (comments, users-Card, …) liefert
@@ -78,7 +78,14 @@ async function onRetract() {
     emit('update:reported', false)
     toast.add({ title: t('moderation.report.retracted'), color: 'success', icon: 'i-ph-flag-banner-fold' })
   }
-  catch {
+  catch (error) {
+    // Schon erledigt (BE-020): die Meldung bleibt im Verlauf. Der Knopf
+    // folgt der Lese-Seite, die nur offene Meldungen als „gemeldet" zählt.
+    if (reportErrorReason(error) === REPORT_RESOLVED_CODE) {
+      emit('update:reported', false)
+      toast.add({ title: t('moderation.report.resolved'), color: 'info', icon: 'i-ph-flag' })
+      return
+    }
     toast.add({
       title: t('moderation.report.error'),
       description: t('moderation.report.retractFailedDescription'),

@@ -168,6 +168,7 @@ export async function runDoorRoute(load: () => Promise<{ default: unknown }>, pr
     assertPoolWriteQuota: async () => {},
     assertContentWritable: async () => {},
     spendLikeAllowance: async () => ({ ok: true }),
+    refundLikeAllowance: async () => {},
     recordUserCounterEvents: async () => {},
     reportContentUpvotes: async () => {},
     recordActivity: async () => {},

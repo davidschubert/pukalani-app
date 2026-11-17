@@ -98,7 +98,8 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
    */
   const previousVote: UpvoteState = current?.value === 1 ? 1 : current?.value === -1 ? -1 : null
   const intendedVote: UpvoteState = previousVote === value ? null : value
-  if (upvoteDelta(previousVote, intendedVote) === 1) {
+  const spendsLike = upvoteDelta(previousVote, intendedVote) === 1
+  if (spendsLike) {
     const allowance = await spendLikeAllowance(event, user.$id)
     if (!allowance.ok) {
       throw createError({
@@ -109,31 +110,46 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
     }
   }
 
-  if (current && current.value === value) {
-    // Toggle: Vote entfernen
-    await writer.remove(VOTES_TABLE, current.$id, 'Vote not found')
-  }
-  else if (current) {
-    // Umdrehen
-    await writer.update<CommentVote>(VOTES_TABLE, current.$id, { value }, 'Vote not found')
-  }
-  else {
-    // Neuer Vote. Bei Doppelklick können zwei Requests parallel hier landen — der
-    // Unique-Index (commentId,userId) lässt nur einen durch; der 409 des zweiten
-    // ist kein Fehler (Counts + myVote werden unten autoritativ neu gelesen).
-    try {
-      await writer.create<CommentVote>(VOTES_TABLE, { commentId, userId: user.$id, value }, {
-        // Die eigene Stimme sieht NUR der Stimmende (Lehre comment_votes):
-        // die Liste liefert die API aggregiert, nicht die Rohzeilen.
-        // NUR LESERECHT (SEC-002): ändern und entfernen läuft über diese Route.
-        permissions: [Permission.read(Role.user(user.$id))],
-      })
+  /**
+   * SCHEITERT DAS SCHREIBEN, GEHT DAS EBEN GEBUCHTE LIKE ZURÜCK (BE-020) —
+   * genau einmal und nur, wenn diese Anfrage gebucht hat. Eine reguläre
+   * Rücknahme bucht nichts und erstattet nichts (kein Toggle-Karussell).
+   * Der 409 des Doppelklick-Rennens unten ist KEIN Fehler: die Stimme des
+   * Gewinners steht, beide Anfragen haben gebucht, und das zweite Like bleibt
+   * verbraucht — höchstens eines je Rennen, lieber zu viel verbucht als ein
+   * Schlupfloch.
+   */
+  try {
+    if (current && current.value === value) {
+      // Toggle: Vote entfernen
+      await writer.remove(VOTES_TABLE, current.$id, 'Vote not found')
     }
-    catch (error) {
-      if (!(error instanceof AppwriteException && error.code === 409)) {
-        throw createError({ status: 500, statusText: 'Could not vote' })
+    else if (current) {
+      // Umdrehen
+      await writer.update<CommentVote>(VOTES_TABLE, current.$id, { value }, 'Vote not found')
+    }
+    else {
+      // Neuer Vote. Bei Doppelklick können zwei Requests parallel hier landen — der
+      // Unique-Index (commentId,userId) lässt nur einen durch; der 409 des zweiten
+      // ist kein Fehler (Counts + myVote werden unten autoritativ neu gelesen).
+      try {
+        await writer.create<CommentVote>(VOTES_TABLE, { commentId, userId: user.$id, value }, {
+          // Die eigene Stimme sieht NUR der Stimmende (Lehre comment_votes):
+          // die Liste liefert die API aggregiert, nicht die Rohzeilen.
+          // NUR LESERECHT (SEC-002): ändern und entfernen läuft über diese Route.
+          permissions: [Permission.read(Role.user(user.$id))],
+        })
+      }
+      catch (error) {
+        if (!(error instanceof AppwriteException && error.code === 409)) {
+          throw createError({ status: 500, statusText: 'Could not vote' })
+        }
       }
     }
+  }
+  catch (error) {
+    if (spendsLike) await refundLikeAllowance(event, user.$id)
+    throw error
   }
 
   // Zähler UND eigenen Vote autoritativ aus den echten Votes ableiten (AdminClient

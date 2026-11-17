@@ -25,11 +25,14 @@ export const ALREADY_REPORTED_CODE = 'already_reported'
 export const UNKNOWN_TARGET_CODE = 'unknown_target'
 /** Das Ziel gibt es (in diesem Mandanten) nicht — 404. */
 export const TARGET_NOT_FOUND_CODE = 'target_not_found'
+/** Die eigene Meldung ist schon erledigt und gehört zum Verlauf (BE-020) — 409. */
+export const REPORT_RESOLVED_CODE = 'report_resolved'
 
 export const REPORT_ERROR_CODES = [
   ALREADY_REPORTED_CODE,
   UNKNOWN_TARGET_CODE,
   TARGET_NOT_FOUND_CODE,
+  REPORT_RESOLVED_CODE,
 ] as const
 
 export type ReportErrorCode = (typeof REPORT_ERROR_CODES)[number]
