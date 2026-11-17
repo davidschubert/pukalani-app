@@ -47,10 +47,11 @@ schiebt, ist der falsche Ablauf.
 
 ### Der eine verbleibende Server-Schritt [David]
 
-Auf der ploi-Site `control.pukalani.app` **einmalig** eine Env-Variable setzen
+Auf der ploi-Site `admin.pukalani.app` **einmalig** eine Env-Variable setzen
 (ploi → Site → Environment) und danach `pm2 reload ecosystem-control.config.cjs
---update-env`. Die ploi-Site behält bewusst den Altnamen; die öffentliche
-Adresse der Konsole ist seit dem AH-4-Cutover `admin.pukalani.app`:
+--update-env`. Site, Verzeichnis und Appwrite-Projekt heißen seit 2026-08-18
+`admin` (AH-4b/AH-4c); nur die Ecosystem-DATEI und der Ordner `apps/control`
+tragen noch den alten Namen:
 
 ```bash
 NUXT_BILLING_SETTINGS_KEY=<64 Hex-Zeichen>     # openssl rand -hex 32
@@ -155,7 +156,7 @@ alten Fassung dieses Runbooks — die Community-Hosts haben kein Stripe:
 
 | App / Host | Rolle im Geldweg | Braucht Stripe-Secrets? |
 |---|---|---|
-| **control** — `admin.pukalani.app` (ploi-Site und Verzeichnis heißen weiter `control.pukalani.app`) | Checkout-Session, Portal-Session, **Webhook**, Fulfillment. Appwrite-Projekt `control`. | **Ja** |
+| **control** — `admin.pukalani.app` (ploi-Site, Verzeichnis und Appwrite-Projekt heißen seit 2026-08-18 `admin`) | Checkout-Session, Portal-Session, **Webhook**, Fulfillment. Appwrite-Projekt `admin`. | **Ja** |
 | **platform** — `*.pukalani.app` (jeder Community-Host) | Der Owner **klickt** hier; die Route reicht über die Service-Naht an `control` weiter. Appwrite-Projekt `pool`. | **Nein** — `apps/platform/nuxt.config.ts` extended `packages/billing` gar nicht |
 | **comments** — `comments.pukalani.app` | Silo-App mit **Einmalkäufen** (Event-Tickets). Eigenes Appwrite-Projekt, eigener Webhook. | Ja, wenn dort verkauft werden soll |
 
