@@ -189,8 +189,11 @@ function displayText(value: string): string {
  * KEIN HYDRATIONS-RISIKO: die Liste steht im Inhalt des Popovers, und den
  * rendert Reka erst beim Öffnen — im Browser, nie im SSR.
  */
-function bodyText(value: string): string {
-  const when = parseNotificationWhen(value)
+function bodyText(value: string, type: string): string {
+  // Nur eine ERINNERUNG trägt einen Zeitpunkt (KK1): der Auszug eines
+  // Kommentars, der wörtlich wie ein gespeicherter Zeitpunkt aussieht, bleibt
+  // der Text, den jemand geschrieben hat.
+  const when = type === 'reminder' ? parseNotificationWhen(value) : null
   if (!when) return displayText(value)
   return formatNotificationWhen(when, { language: language.value, zone: timezone.value || undefined })
 }
@@ -229,7 +232,7 @@ function bodyText(value: string): string {
               <template #name><span class="font-medium text-default">{{ displayText(n.title) }}</span></template>
             </i18n-t>
           </div>
-          <p class="truncate pl-3 text-xs text-muted">{{ bodyText(n.body) }}</p>
+          <p class="truncate pl-3 text-xs text-muted">{{ bodyText(n.body, n.type) }}</p>
           <p class="pl-3 text-xs text-dimmed">{{ formatRelativeTime(n.$createdAt) }}</p>
         </NuxtLink>
       </div>

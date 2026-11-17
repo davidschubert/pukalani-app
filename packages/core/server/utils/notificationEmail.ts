@@ -139,9 +139,10 @@ function itemLines(locale: EmailLocale, item: NotificationEmailItem, links: Noti
    * Sprache des Empfängers und in SEINER Zone, sonst der des Termins, sonst
    * UTC; immer mit Kürzel. Eine Uhrzeit ist kein Zitat: sie steht ohne
    * Anführungszeichen. Alte Zeilen mit fertigem Text erkennt der Parser nicht,
-   * sie laufen wie bisher als Zitat.
+   * sie laufen wie bisher als Zitat. NUR FÜR ERINNERUNGEN (KK1): der Auszug
+   * eines Kommentars, der wörtlich wie ein Token aussieht, bleibt ein Zitat.
    */
-  const when = parseNotificationWhen(item.body)
+  const when = item.type === 'reminder' ? parseNotificationWhen(item.body) : null
   const body = when
     ? formatNotificationWhen(when, { language: copy.language, zone: notificationWhenMailZone(options.timezone, when.zone) })
     : resolveNotificationText(item.body, locale)
