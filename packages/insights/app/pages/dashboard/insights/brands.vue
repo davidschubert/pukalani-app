@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import type { InsightsBrand, InsightsBrandEdit, InsightsBrandState } from '../../../../shared/insightsPost'
-import { INSIGHTS_BRAND_STATES, insightsBrandEditSchema } from '../../../../shared/insightsPost'
+import type { InsightsBrand, InsightsBrandEdit, InsightsBrandState, InsightsReviewIssue } from '../../../../shared/insightsPost'
+import { INSIGHTS_BRAND_STATES, INSIGHTS_QUOTE_MAX, insightsBrandEditSchema } from '../../../../shared/insightsPost'
 import type {
   InsightsBrandCreatedResponse,
   InsightsBrandDetailResponse,
@@ -37,7 +37,9 @@ import { createInsightsBrandSchema } from '../../../utils/insightsForms'
  *
  * ── BEARBEITET WIRD IN EINEM USLIDEOVER, NICHT AUF EINER EIGENEN SEITE ───
  * Eine Marke ist ein FORMULAR, kein Dokument: keine zwei Sprachfassungen,
- * kein Fliesstext, kein Zustands-Gate mit sieben Prüfregeln. Der Beitrag hat
+ * kein Fliesstext, keine Zustands-Kette (seit IN1 c, 2026-11-17, prüft der
+ * Server `published` trotzdem wie einen Artikel — die Liste der offenen
+ * Punkte steht dann im Formular, s. `blockedIssues`). Der Beitrag hat
  * dafür eine Vollseite, weil er all das hat. Eine dritte Adresse
  * (`/dashboard/insights/brands/<id>`) für zwanzig Felder wäre ein Rücksprung
  * pro Bearbeitung und ein zweiter Ladevorgang für die Liste dahinter.
@@ -210,13 +212,33 @@ const loadingDetail = ref(false)
 const saving = ref(false)
 const draft = reactive<InsightsBrandEdit>(emptyDraft())
 
+/**
+ * DIE OFFENEN PUNKTE EINES ABGELEHNTEN SPEICHERNS (IN1 c, 2026-11-17).
+ *
+ * Soll eine Marke `published` sein, prüft der Server sie wie einen Artikel.
+ * Besteht sie nicht, kommt eine 200 mit `saved: false` und der Liste — die
+ * Eingabe bleibt im Formular stehen, die Liste darunter, und geschrieben ist
+ * nichts. `storedState` ist der Zustand der Zeile in der Ablage: er sagt, ob
+ * „als Entwurf speichern" die Seite auch offline nimmt.
+ */
+const blockedIssues = ref<InsightsReviewIssue[]>([])
+const blockedTimedOut = ref(0)
+const storedState = ref<InsightsBrandState>('draft')
+
+function clearBlocked(): void {
+  blockedIssues.value = []
+  blockedTimedOut.value = 0
+}
+
 async function openBrand(id: string): Promise<void> {
   editingId.value = id
   editOpen.value = true
   loadingDetail.value = true
+  clearBlocked()
   try {
     const detail = await $fetch<InsightsBrandDetailResponse>(`/api/insights/brands/${id}`)
     Object.assign(draft, toDraft(detail.brand))
+    storedState.value = detail.brand.state
   }
   catch (error) {
     editOpen.value = false
@@ -234,9 +256,20 @@ async function save(): Promise<void> {
       method: 'PATCH',
       body: draft,
     })
+    if (!saved.saved) {
+      // Nichts gespeichert: die Eingabe bleibt stehen, die Liste zeigt die
+      // Stellen. KEIN `toDraft(saved.brand)` — das wäre der alte Bestand und
+      // würfe die Arbeit weg.
+      blockedIssues.value = saved.issues
+      blockedTimedOut.value = saved.sourcesTimedOut ?? 0
+      toast.add({ title: t('insights.brands.saveBlocked', saved.issues.length), color: 'warning' })
+      return
+    }
+    clearBlocked()
     // Der Server kann die Adresse geändert haben (`titel-2`) — der Entwurf
     // übernimmt sie, sonst schickt das nächste Speichern die alte zurück.
     draft.slug = saved.brand.slug
+    storedState.value = saved.brand.state
     toast.add({ title: t('insights.brands.saved'), color: 'success' })
     editOpen.value = false
     await refresh()
@@ -247,6 +280,57 @@ async function save(): Promise<void> {
   finally {
     saving.value = false
   }
+}
+
+/** Der Ausweg nach einer Ablehnung: als Entwurf speichern geht immer — ein
+ *  Entwurf ist nicht öffentlich und läuft durch keine Prüfung. */
+async function saveAsDraft(): Promise<void> {
+  draft.state = 'draft'
+  const parsed = insightsBrandEditSchema.safeParse(draft)
+  if (!parsed.success) {
+    toast.add({ title: t('insights.brands.error.validation'), color: 'error' })
+    return
+  }
+  await save()
+}
+
+// ── Die Liste der offenen Punkte ───────────────────────────────────────────
+
+/** Dieselben Sätze wie im Beitrags-Editor, wo es dieselben Codes sind —
+ *  ausgeschrieben, damit der Schlüssel-Wächter sie sieht. */
+const ISSUE_KEY: Partial<Record<InsightsReviewIssue['code'], string>> = {
+  quote_too_long: 'insights.editor.issue.quoteTooLong',
+  quote_not_grounded: 'insights.editor.issue.quoteNotGrounded',
+  source_missing_publisher: 'insights.editor.issue.sourceMissingPublisher',
+  source_missing_date: 'insights.editor.issue.sourceMissingDate',
+  source_missing_license: 'insights.editor.issue.sourceMissingLicense',
+  disparagement: 'insights.editor.issue.disparagement',
+}
+
+/** Der Grund des Herabsetzungs-Riegels — für eine Marke heisst „ohne
+ *  Verweis" hier „nicht unter Beziehungen eingetragen". */
+const ISSUE_REASON_KEY: Record<string, string> = {
+  competitor_name: 'insights.brands.issueReason.competitorName',
+  competitor_domain: 'insights.brands.issueReason.competitorDomain',
+  disparagement: 'insights.editor.issue.reason.disparagement',
+}
+
+function issueText(issue: InsightsReviewIssue): string {
+  const raw = issue.detail ?? ''
+  const reasonKey = issue.code === 'disparagement' ? ISSUE_REASON_KEY[raw] : undefined
+  return t(ISSUE_KEY[issue.code] ?? 'insights.editor.issue.quoteNotGrounded', {
+    max: INSIGHTS_QUOTE_MAX,
+    detail: reasonKey ? t(reasonKey) : raw,
+  })
+}
+
+function issueWhere(issue: InsightsReviewIssue): string {
+  if (!issue.at) return ''
+  const number = issue.at.index + 1
+  if (issue.at.kind === 'source') return t('insights.editor.at.source', { number })
+  if (issue.at.kind === 'mark') return t('insights.brands.at.mark', { number })
+  if (issue.at.kind === 'history') return t('insights.brands.at.history', { number })
+  return ''
 }
 
 // ── Die Felder, die eine eigene Rechnung brauchen ──────────────────────────
@@ -618,6 +702,35 @@ async function createBrand(): Promise<void> {
                 >
                   <UInput v-model="draft.removalReason" class="w-full" :maxlength="300" />
                 </UFormField>
+              </div>
+
+              <!-- IN1 c: `published` läuft durch dieselbe Prüfung wie ein
+                   Artikel. Abgelehnt ⇒ nichts gespeichert, die Eingabe bleibt,
+                   hier stehen die Stellen und der Ausweg. -->
+              <p v-if="draft.state === 'published' && blockedIssues.length === 0" class="text-sm leading-relaxed text-muted">
+                {{ t('insights.brands.publishHint') }}
+              </p>
+              <div v-if="blockedIssues.length" class="bw-card p-5" data-insights-brand-blocked>
+                <p class="flex items-start gap-2 text-sm" style="color: var(--bw-stale)">
+                  <UIcon name="i-ph-prohibit-fill" class="mt-0.5 size-4 shrink-0" />
+                  {{ t(storedState === 'published' ? 'insights.brands.blockedPublished' : 'insights.brands.blockedDraft', blockedIssues.length) }}
+                </p>
+                <p v-if="blockedTimedOut" class="mt-2 text-sm" style="color: var(--bw-ink-soft)">
+                  {{ t('insights.editor.sourcesTimedOut', blockedTimedOut) }}
+                </p>
+                <ul class="mt-3 space-y-2">
+                  <li v-for="(issue, index) in blockedIssues" :key="index" class="text-sm leading-snug" style="color: var(--bw-ink-soft)">
+                    {{ issueText(issue) }}
+                    <span v-if="issueWhere(issue)" class="bw-label block" style="color: var(--bw-muted)">{{ issueWhere(issue) }}</span>
+                  </li>
+                </ul>
+                <UButton
+                  class="mt-4" color="neutral" variant="subtle" icon="i-ph-floppy-disk"
+                  :loading="saving"
+                  :label="t(storedState === 'published' ? 'insights.brands.saveAsDraftUnpublish' : 'insights.brands.saveAsDraft')"
+                  data-insights-brand-save-draft
+                  @click="saveAsDraft"
+                />
               </div>
 
               <div class="flex justify-end gap-2">

@@ -606,6 +606,20 @@
       "editHint": "Marks, history and relations each need a source from the list below.",
       "refresh": "Reload",
       "saved": "Brand saved.",
+      "saveBlocked": "One open point – not saved. | {count} open points – not saved.",
+      "publishHint": "Publishing checks the page like an article: quotes against their sources, publisher, date, licence and the sentences under marks and history.",
+      "blockedDraft": "Not saved, one point is open. The brand stays unpublished. Any intermediate state can be saved as a draft. | Not saved, {count} points are open. The brand stays unpublished. Any intermediate state can be saved as a draft.",
+      "blockedPublished": "Not saved, one point is open. The checked version stays online. Saving as a draft takes the page offline. | Not saved, {count} points are open. The checked version stays online. Saving as a draft takes the page offline.",
+      "saveAsDraft": "Save as draft",
+      "saveAsDraftUnpublish": "Save as draft (takes the page offline)",
+      "at": {
+        "mark": "Mark {number}",
+        "history": "History, line {number}"
+      },
+      "issueReason": {
+        "competitorName": "Name of a brand not listed under relations",
+        "competitorDomain": "Website of a brand not listed under relations"
+      },
       "emptyTitle": "No brand yet",
       "emptyDescription": "A new brand starts with name, website and industry.",
       "slugHint": "The address. On a rename the old one moves into the history — links stay alive.",

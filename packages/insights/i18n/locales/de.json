@@ -606,6 +606,20 @@
       "editHint": "Zeichen, Historie und Beziehungen brauchen je einen Beleg aus der Quellenliste.",
       "refresh": "Neu laden",
       "saved": "Marke gespeichert.",
+      "saveBlocked": "Ein Punkt offen – nicht gespeichert. | {count} Punkte offen – nicht gespeichert.",
+      "publishHint": "Veröffentlichen prüft die Seite wie einen Artikel: Zitate gegen ihre Quellen, Herausgeber, Datum, Lizenz und die Sätze unter Zeichen und Historie.",
+      "blockedDraft": "Nicht gespeichert, ein Punkt ist offen. Die Marke bleibt unveröffentlicht. Als Entwurf lässt sich jeder Zwischenstand speichern. | Nicht gespeichert, {count} Punkte sind offen. Die Marke bleibt unveröffentlicht. Als Entwurf lässt sich jeder Zwischenstand speichern.",
+      "blockedPublished": "Nicht gespeichert, ein Punkt ist offen. Online steht weiter die geprüfte Fassung. Als Entwurf gespeichert, geht die Seite offline. | Nicht gespeichert, {count} Punkte sind offen. Online steht weiter die geprüfte Fassung. Als Entwurf gespeichert, geht die Seite offline.",
+      "saveAsDraft": "Als Entwurf speichern",
+      "saveAsDraftUnpublish": "Als Entwurf speichern (nimmt die Seite offline)",
+      "at": {
+        "mark": "Zeichen {number}",
+        "history": "Historie, Zeile {number}"
+      },
+      "issueReason": {
+        "competitorName": "Name einer Marke, die nicht unter Beziehungen steht",
+        "competitorDomain": "Website einer Marke, die nicht unter Beziehungen steht"
+      },
       "emptyTitle": "Noch keine Marke",
       "emptyDescription": "Eine neue Marke beginnt mit Name, Website und Branche.",
       "slugHint": "Die Adresse. Beim Ändern wandert die alte in die Historie — Links bleiben heil.",

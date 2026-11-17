@@ -873,7 +873,7 @@ export const INSIGHTS_TEXT_FIELDS = ['titleDe', 'titleEn', 'dekDe', 'dekEn', 'bo
 export interface InsightsReviewIssue {
   code: InsightsReviewCode
   /** Woran es liegt — Quelle Nr. n, Faktenzeile Nr. n, Marken-Verweis Nr. n. */
-  at?: { kind: 'source' | 'fact' | 'brandRef' | 'text' | 'changeNote', index: number }
+  at?: { kind: 'source' | 'fact' | 'brandRef' | 'text' | 'changeNote' | 'mark' | 'history', index: number }
   /** Die Stelle im Text bzw. der fehlende Schlüssel — nie eine ganze Fassung. */
   detail?: string
 }
@@ -923,6 +923,41 @@ export interface InsightsReviewContext {
 }
 
 /**
+ * DIE QUELLEN-REGELN 1 UND 2 ÜBER EINE QUELLEN-LISTE (IN1 c, 2026-11-17) —
+ * Zitatschranke, Beleg-Riegel, Herausgeber/Datum, Lizenz.
+ *
+ * Herausgezogen, damit Beitrag UND Marken-Seite dieselbe Fassung lesen:
+ * Davids Entscheidung vom 2026-11-16 heisst „dieselbe Prüfung wie bei
+ * Artikeln", und zwei abgeschriebene Schleifen wären beim ersten neuen Code
+ * zwei Prüfungen. Codes und Reihenfolge sind die von `insightsReviewIssues`
+ * vor dem Herausziehen (je Quelle: Länge, Beleg, Herausgeber, Datum, Lizenz).
+ */
+export function insightsSourceIssues(
+  sources: readonly InsightsSource[],
+  context: Pick<InsightsReviewContext, 'sourceTexts'> = {},
+): InsightsReviewIssue[] {
+  const issues: InsightsReviewIssue[] = []
+  for (const [index, source] of sources.entries()) {
+    if (source.quote.length > INSIGHTS_QUOTE_MAX) {
+      issues.push({ code: 'quote_too_long', at: { kind: 'source', index } })
+    }
+    const pageText = context.sourceTexts?.[source.url]
+    if (source.quote && pageText !== undefined && !evidenceIsGrounded({ quote: source.quote, pageText })) {
+      issues.push({ code: 'quote_not_grounded', at: { kind: 'source', index } })
+    }
+    // 2 — Herausgeber, Datum, Lizenz.
+    if (source.kind !== 'own-data') {
+      if (!source.publisher) issues.push({ code: 'source_missing_publisher', at: { kind: 'source', index } })
+      if (!source.date) issues.push({ code: 'source_missing_date', at: { kind: 'source', index } })
+    }
+    if (source.kind === 'wikipedia' && !source.license) {
+      issues.push({ code: 'source_missing_license', at: { kind: 'source', index } })
+    }
+  }
+  return issues
+}
+
+/**
  * DIE SIEBEN PRÜFREGELN VOR DEM ÜBERGANG NACH `review` (§9.4, Regel 7 aus
  * BI2 K6) — alle blockierend, alle pur, alle mit Gegenprobe im Test.
  *
@@ -947,24 +982,8 @@ export interface InsightsReviewContext {
 export function insightsReviewIssues(post: InsightsPost, context: InsightsReviewContext = {}): InsightsReviewIssue[] {
   const issues: InsightsReviewIssue[] = []
 
-  // 1 — Zitatschranke und Beleg-Riegel.
-  for (const [index, source] of post.sources.entries()) {
-    if (source.quote.length > INSIGHTS_QUOTE_MAX) {
-      issues.push({ code: 'quote_too_long', at: { kind: 'source', index } })
-    }
-    const pageText = context.sourceTexts?.[source.url]
-    if (source.quote && pageText !== undefined && !evidenceIsGrounded({ quote: source.quote, pageText })) {
-      issues.push({ code: 'quote_not_grounded', at: { kind: 'source', index } })
-    }
-    // 2 — Herausgeber, Datum, Lizenz.
-    if (source.kind !== 'own-data') {
-      if (!source.publisher) issues.push({ code: 'source_missing_publisher', at: { kind: 'source', index } })
-      if (!source.date) issues.push({ code: 'source_missing_date', at: { kind: 'source', index } })
-    }
-    if (source.kind === 'wikipedia' && !source.license) {
-      issues.push({ code: 'source_missing_license', at: { kind: 'source', index } })
-    }
-  }
+  // 1 und 2 — Zitatschranke, Beleg-Riegel, Herausgeber, Datum, Lizenz.
+  issues.push(...insightsSourceIssues(post.sources, context))
 
   // 3 — jede Faktenzeile zeigt auf eine Quelle.
   for (const [index, fact] of post.facts.entries()) {
@@ -1171,6 +1190,12 @@ export type InsightsBrand = z.infer<typeof insightsBrandSchema>
  * mit genau EINER Bedingung (`removed` braucht einen Grund), und die steht im
  * Schema. Ein eigener Zustands-Endpunkt für drei Werte ohne Prüfkette wäre
  * eine zweite Route für dasselbe Speichern.
+ *
+ * SEIT IN1 c (2026-11-17) HAT `published` EINE PRÜFKETTE: der Weg dorthin
+ * und jede Änderung danach laufen durch `insightsBrandPublicationGate`. Der
+ * Zustand bleibt trotzdem im Formular — die Prüfung sitzt in der Route und
+ * in der Schreib-Funktion (`saveInsightsBrandRow`), nicht in einem zweiten
+ * Endpunkt.
  */
 export const INSIGHTS_BRAND_SERVER_OWNED_FIELDS = ['slugHistory', 'removedAt', 'claimedBy'] as const
 
@@ -1186,6 +1211,51 @@ export const insightsBrandEditSchema = z.object(insightsBrandFields).omit({
 })
 
 export type InsightsBrandEdit = z.infer<typeof insightsBrandEditSchema>
+
+/** Was die Prüfung einer Marken-Seite ansieht — Belege und öffentliche Sätze. */
+export interface InsightsBrandReviewInput {
+  sources: readonly InsightsSource[]
+  marks: readonly { text: string }[]
+  history: readonly { text: string }[]
+}
+
+/**
+ * DIE PRÜFREGELN EINER MARKEN-SEITE (IN1 c, 2026-11-17) — „dieselbe Prüfung
+ * wie bei Artikeln" (Davids Entscheidung vom 2026-11-16).
+ *
+ * Dieselben Bausteine, nicht abgeschrieben: die Quellen-Regeln 1 und 2 aus
+ * `insightsSourceIssues` (dieselben Codes, dieselbe Reihenfolge), dazu der
+ * Namens- und Herabsetzungsfilter (Regel 4) über die ÖFFENTLICHEN Sätze der
+ * Marke — je Zeichen und je Historien-Zeile eine Stelle (`at.kind` `mark` bzw.
+ * `history`). `removalReason` ist nicht öffentlich und wird nicht geprüft.
+ *
+ * Was es an einer Marke nicht gibt, läuft hier nicht: Faktenzeilen (die
+ * Beleg-Zeiger von Zeichen und Historie hält schon das Schema), Methodik-Link,
+ * Marken-Verweise, Frage-Überschriften. Fehlen `sourceTexts` bzw. `flagText`,
+ * prüft die jeweilige Regel nicht — dieselbe Begründung wie am Beitrag
+ * (`InsightsReviewContext`).
+ */
+export function insightsBrandReviewIssues(
+  brand: InsightsBrandReviewInput,
+  context: Pick<InsightsReviewContext, 'sourceTexts' | 'flagText'> = {},
+): InsightsReviewIssue[] {
+  const issues = insightsSourceIssues(brand.sources, context)
+  if (context.flagText) {
+    for (const [index, mark] of brand.marks.entries()) {
+      if (!mark.text) continue
+      for (const hit of context.flagText(mark.text)) {
+        issues.push({ code: 'disparagement', at: { kind: 'mark', index }, detail: hit })
+      }
+    }
+    for (const [index, entry] of brand.history.entries()) {
+      if (!entry.text) continue
+      for (const hit of context.flagText(entry.text)) {
+        issues.push({ code: 'disparagement', at: { kind: 'history', index }, detail: hit })
+      }
+    }
+  }
+  return issues
+}
 
 /**
  * DER SCORE ALS ANSICHT, NICHT ALS SPALTE (Entscheidung 7, §9.0).
