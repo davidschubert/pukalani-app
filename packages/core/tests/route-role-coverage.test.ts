@@ -43,6 +43,18 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // Abgebaut mit BT1 b (2026-11-17): alle Bestands-Routen haben Tests
   // (control 64, onboarding 47).
   'control', 'onboarding',
+  // Abgebaut mit N09 (2026-11-17): Instanz-Recht `tickets.manage`, Prüfstand
+  // `support/instanceRoleGate.ts` (Betreiber und Karten-Mitglied).
+  'tickets',
+  // Abgebaut mit N09 (2026-11-17): Board-Routen hinter `runner.manage`,
+  // lesende Maschinen-Routen mit Runner-Ausweis
+  // (`packages/runner/tests/support/runnerMachineHarness.ts`).
+  'runner',
+  // Abgebaut mit N09 (2026-11-17): `community.domain` im Pool und im Silo.
+  'domains',
+  // Abgebaut mit N09 (2026-11-17): Betreiber-Übersicht, eigenes Abo,
+  // öffentliche Preisliste.
+  'billing',
 ]
 
 /**
