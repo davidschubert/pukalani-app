@@ -4,6 +4,7 @@ import { Permission, Role } from 'node-appwrite'
 import { resetCommunityWorld } from '../../core/tests/support/participationHarness'
 import { type FakeDoor, type FakeRow, fakeDoor, runDoorRoute } from '../../core/tests/support/doorFake'
 import { listAllRows, listAllRowsIfTableExists } from '../../core/server/utils/listAllRows'
+import { removeObjectNotifications } from '../../core/server/utils/notificationCleanup'
 import { postMentionNotificationId } from '../server/utils/postMentions'
 import { POSTS_TABLE } from '../shared/types/post'
 
@@ -223,6 +224,8 @@ describe('removePostMentionNotifications — nur die Meldungen GENAU dieses Beit
     }
     adminFake(tables)
     vi.stubGlobal('useTenant', () => ({ mode: 'pool', tenantId: 't-a' }))
+    // Die ECHTE Core-Räumung: Layer-Formel (Typ, Id) und Core-Vertrag zusammen.
+    vi.stubGlobal('removeObjectNotifications', removeObjectNotifications)
     const { removePostMentionNotifications } = await import('../server/utils/postMentionCleanup')
 
     expect(await removePostMentionNotifications(event, { $id: 'p-1', authorId: MEMBER })).toBe(1)

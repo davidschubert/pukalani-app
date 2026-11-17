@@ -4,6 +4,7 @@ import { AppwriteException, Permission, Role } from 'node-appwrite'
 import { resetCommunityWorld, TENANT_SCOPE } from '../../core/tests/support/participationHarness'
 import { type FakeRow, fakeDoor, runDoorRoute } from '../../core/tests/support/doorFake'
 import { listAllRows } from '../../core/server/utils/listAllRows'
+import { removeObjectNotifications } from '../../core/server/utils/notificationCleanup'
 import { COMMENTS_TABLE } from '../shared/types/comment'
 import { commentNotificationRowId } from '../server/utils/commentNotifications'
 
@@ -100,6 +101,9 @@ function bellGlobals(bell: ReturnType<typeof fakeBell>, logEvent = vi.fn()) {
     useRuntimeConfig: () => ({ public: { appwriteDatabaseId: 'main' } }),
     listAllRows,
     logEvent,
+    // Die ECHTE Core-Räumung: geprüft wird das Zusammenspiel aus Layer-Formel
+    // (Typen, Id) und Core-Vertrag (Suche, Löschen), nicht ein Stub.
+    removeObjectNotifications,
   }
 }
 
@@ -228,7 +232,7 @@ describe('DELETE /api/comments/:id — die Meldungen DIESES Kommentars verlassen
 
     expect(run.status).toBe(200)
     expect(door.rows[COMMENTS_TABLE]!.find(r => r.$id === 'k-1')).toMatchObject({ status: 'deleted', content: '' })
-    expect(logEvent).toHaveBeenCalledWith('warn', 'comments.notification_cleanup_failed', expect.objectContaining({ commentId: 'k-1' }))
+    expect(logEvent).toHaveBeenCalledWith('warn', 'notifications.cleanup_failed', expect.objectContaining({ kind: 'comment', objectId: 'k-1', removed: 0, code: 500 }))
   })
 })
 
