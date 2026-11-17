@@ -209,7 +209,8 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   `safeExternalHref()`, Schema-Feld mit `z.url({ protocol: HTTP_URL_PROTOCOL })`
   (`core/shared/safeHref.ts`) — `z.url()` allein nimmt JEDES Schema. Wächter:
   `core/tests/hrefBindingsGuard.test.ts`. Eine ADRESSE IM PROTOKOLL geht durch
-  `stripAddressForLog()` (`core/shared/logAddress.ts`, ohne Query und Fragment).
+  `stripAddressForLog()` (`core/shared/logAddress.ts`, ohne Query und Fragment,
+  eine lange Kennung im Pfad gekürzt).
 - useToast kommt aus Nuxt UI — nicht im Core re-exportieren (schattet Auto-Import)
 - EINE Version je Kernabhängigkeit, Dependencies über den pnpm-Katalog, Nitros
   Routen-Typisierung ist AUS (jeder `$fetch` nennt seinen Antworttyp selbst), und
