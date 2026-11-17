@@ -43,6 +43,9 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // Abgebaut mit BT1 b (2026-11-17): alle Bestands-Routen haben Tests
   // (control 64, onboarding 47).
   'control', 'onboarding',
+  // Abgebaut mit N09 (2026-11-17): Instanz-Recht `tickets.manage`, Prüfstand
+  // `support/instanceRoleGate.ts` (Betreiber und Karten-Mitglied).
+  'tickets',
 ]
 
 /**
