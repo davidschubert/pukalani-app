@@ -1,5 +1,7 @@
 import type { H3Event } from 'h3'
 import { type NotificationLinkContext, notificationLinkUrl } from '../../shared/notificationLinks'
+import { formatNotificationWhen, notificationWhenMailZone, parseNotificationWhen } from '../../shared/notificationWhen'
+import { normalizeTimezonePref } from '../../shared/timezone'
 import { resolveCommunityHosts } from './communityHost'
 import { resolveSiteLinkBase } from './siteOrigin'
 import type { NotifyInput } from './notify'
@@ -26,6 +28,13 @@ export interface NotificationEmailPrefs {
 
 const COPY: Record<EmailLocale, {
   types: Record<string, string>
+  /**
+   * Typen, deren Überschrift ein ganzer Satz ist statt „{Titel} {Label}"
+   * (BE-018): „Sommerfest Erinnerung" las sich wie ein Stichwortzettel.
+   */
+  headings: Record<string, (title: string) => string>
+  /** Sprach-Tag für Zeitpunkte (`notificationWhen.ts`). */
+  language: string
   fallbackType: string
   openLink: string
   digestSubject: (count: number) => string
@@ -37,7 +46,9 @@ const COPY: Record<EmailLocale, {
     // gespeichert, oben übersetzt) — das Label sagt nur, worum es geht.
     // 'reply.guest': der Titel ist ein frei gewählter Gast-Name — das
     // Kennzeichen steht deshalb im Label, direkt hinter dem Namen (SEC-035).
-    types: { reply: 'hat auf deinen Kommentar geantwortet', 'reply.guest': '(Gast) hat auf deinen Kommentar geantwortet', mention: 'hat dich erwähnt', 'post.mention': 'hat dich in einem Beitrag erwähnt', reminder: 'Erinnerung', ticket: '— Ticket-Update', billing: '— Zahlungsproblem', 'badge.awarded': '— Abzeichen erhalten', 'run.succeeded': '— Lauf fertig', 'run.needs_input': '— Lauf braucht deine Antwort', 'run.failed': '— Lauf fehlgeschlagen' },
+    types: { reply: 'hat auf deinen Kommentar geantwortet', 'reply.guest': '(Gast) hat auf deinen Kommentar geantwortet', mention: 'hat dich erwähnt', 'post.mention': 'hat dich in einem Beitrag erwähnt', ticket: '— Ticket-Update', billing: '— Zahlungsproblem', 'badge.awarded': '— Abzeichen erhalten', 'run.succeeded': '— Lauf fertig', 'run.needs_input': '— Lauf braucht deine Antwort', 'run.failed': '— Lauf fehlgeschlagen' },
+    headings: { reminder: title => `Erinnerung: ${title} beginnt bald` },
+    language: 'de-DE',
     fallbackType: 'Neue Benachrichtigung',
     openLink: 'Ansehen',
     digestSubject: count => `${count} neue Benachrichtigung${count === 1 ? '' : 'en'}`,
@@ -45,7 +56,9 @@ const COPY: Record<EmailLocale, {
     footer: 'Du erhältst diese Mail, weil E-Mail-Benachrichtigungen in deinen Einstellungen aktiv sind. Abstellen: Dashboard → Einstellungen → Benachrichtigungen.',
   },
   en: {
-    types: { reply: 'replied to your comment', 'reply.guest': '(guest) replied to your comment', mention: 'mentioned you', 'post.mention': 'mentioned you in a post', reminder: 'Reminder', ticket: '— ticket update', billing: '— payment issue', 'badge.awarded': '— badge earned', 'run.succeeded': '— run finished', 'run.needs_input': '— run needs your reply', 'run.failed': '— run failed' },
+    types: { reply: 'replied to your comment', 'reply.guest': '(guest) replied to your comment', mention: 'mentioned you', 'post.mention': 'mentioned you in a post', ticket: '— ticket update', billing: '— payment issue', 'badge.awarded': '— badge earned', 'run.succeeded': '— run finished', 'run.needs_input': '— run needs your reply', 'run.failed': '— run failed' },
+    headings: { reminder: title => `Reminder: ${title} starts soon` },
+    language: 'en-US',
     fallbackType: 'New notification',
     openLink: 'View',
     digestSubject: count => `${count} new notification${count === 1 ? '' : 's'}`,
@@ -98,9 +111,19 @@ export interface NotificationEmailItem {
   communityId?: string
 }
 
-function itemLines(locale: EmailLocale, item: NotificationEmailItem, links: NotificationLinkContext) {
+/** Was die Mail über den EMPFÄNGER wissen muss, außer der Sprache. */
+export interface NotificationEmailOptions {
+  /**
+   * Seine gewählte Zeitzone (`prefs.timezone`, `''` = automatisch). Nur für
+   * Zeitpunkte im Text (BE-018); fehlt sie, gilt die Zone des Termins, sonst UTC.
+   */
+  timezone?: string
+}
+
+function itemLines(locale: EmailLocale, item: NotificationEmailItem, links: NotificationLinkContext, options: NotificationEmailOptions) {
   const copy = COPY[locale]
   const label = copy.types[item.type]
+  const sentence = copy.headings[item.type]
   /**
    * ÜBERSETZBARE TEXTE (F1 Teilpaket 2): steht in `title`/`body` ein
    * i18n-Schlüssel (Abzeichen-Name, Bedingungstext), macht die Registry daraus
@@ -111,20 +134,32 @@ function itemLines(locale: EmailLocale, item: NotificationEmailItem, links: Noti
    * einzige Stelle, an der ein fertiger Text nicht mehr zu retten wäre.
    */
   const title = resolveNotificationText(item.title, locale)
-  const body = resolveNotificationText(item.body, locale)
-  const heading = label ? `${title} ${label}` : `${copy.fallbackType}: ${title}`
+  /**
+   * ZEITPUNKT (BE-018): ein `@when:`-Token wird hier erst zur Uhrzeit — in der
+   * Sprache des Empfängers und in SEINER Zone, sonst der des Termins, sonst
+   * UTC; immer mit Kürzel. Eine Uhrzeit ist kein Zitat: sie steht ohne
+   * Anführungszeichen. Alte Zeilen mit fertigem Text erkennt der Parser nicht,
+   * sie laufen wie bisher als Zitat.
+   */
+  const when = parseNotificationWhen(item.body)
+  const body = when
+    ? formatNotificationWhen(when, { language: copy.language, zone: notificationWhenMailZone(options.timezone, when.zone) })
+    : resolveNotificationText(item.body, locale)
+  const heading = sentence ? sentence(title) : label ? `${title} ${label}` : `${copy.fallbackType}: ${title}`
   const url = notificationLinkUrl(links, item)
+  const bodyText = !body ? '' : when ? `${body}\n` : `„${body}"\n`
+  const bodyHtml = !body ? '' : when ? `${escapeHtml(body)}<br>` : `<em>„${escapeHtml(body)}"</em><br>`
   return {
     heading,
-    text: `${heading}\n${body ? `„${body}"\n` : ''}${copy.openLink}: ${url}`,
-    html: `<p><strong>${escapeHtml(heading)}</strong><br>${body ? `<em>„${escapeHtml(body)}"</em><br>` : ''}<a href="${escapeHtml(url)}">${copy.openLink}</a></p>`,
+    text: `${heading}\n${bodyText}${copy.openLink}: ${url}`,
+    html: `<p><strong>${escapeHtml(heading)}</strong><br>${bodyHtml}<a href="${escapeHtml(url)}">${copy.openLink}</a></p>`,
   }
 }
 
 /** Sofort-Mail für EINE Notification (Modus 'instant'). */
-export function buildInstantEmail(links: NotificationLinkContext, locale: EmailLocale, input: NotificationEmailItem): Omit<MailInput, 'to'> {
+export function buildInstantEmail(links: NotificationLinkContext, locale: EmailLocale, input: NotificationEmailItem, options: NotificationEmailOptions = {}): Omit<MailInput, 'to'> {
   const copy = COPY[locale]
-  const lines = itemLines(locale, input, links)
+  const lines = itemLines(locale, input, links, options)
   return {
     subject: lines.heading,
     text: `${lines.text}\n\n—\n${copy.footer}`,
@@ -140,9 +175,9 @@ export function buildInstantEmail(links: NotificationLinkContext, locale: EmailL
  * Sammel-Mail pro Tag, nicht eine je Community), eine Mail trägt also Links in
  * mehrere Communities UND in den Kundenbereich nebeneinander.
  */
-export function buildDigestEmail(links: NotificationLinkContext, locale: EmailLocale, items: NotificationEmailItem[]): Omit<MailInput, 'to'> {
+export function buildDigestEmail(links: NotificationLinkContext, locale: EmailLocale, items: NotificationEmailItem[], options: NotificationEmailOptions = {}): Omit<MailInput, 'to'> {
   const copy = COPY[locale]
-  const parts = items.map(item => itemLines(locale, item, links))
+  const parts = items.map(item => itemLines(locale, item, links, options))
   return {
     subject: copy.digestSubject(items.length),
     text: `${copy.digestIntro(items.length)}\n\n${parts.map(p => p.text).join('\n\n')}\n\n—\n${copy.footer}`,
@@ -180,7 +215,10 @@ export async function maybeSendInstantEmail(event: H3Event | undefined, input: N
     // EINE Community, also ein Resolver-Aufruf — der 60-s-Cache im Resolver
     // trägt die übrigen Antworten desselben Threads.
     const hosts = await resolveCommunityHosts([communityId])
-    const mail = buildInstantEmail({ appBase: await appLinkBase(event), hosts }, prefs.emailLocale, { ...input, communityId })
+    // Zone aus denselben Prefs, die gerade für Modus und Sprache gelesen
+    // wurden (BE-018) — kein zweiter Abruf.
+    const timezone = normalizeTimezonePref((recipient.prefs as Record<string, unknown>).timezone)
+    const mail = buildInstantEmail({ appBase: await appLinkBase(event), hosts }, prefs.emailLocale, { ...input, communityId }, { timezone })
     await sendMail(event, { ...mail, to: recipient.email })
   }
   catch (error) {
