@@ -451,6 +451,10 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // Control Plane und je Konto `users.get` im Pool. Ein Betreiber prüft ein
   // Ergebnis, er hämmert nicht — derselbe Deckel wie der Aufräum-Lauf.
   { re: /^POST \/api\/community\/members\/run-label-reconcile$/, bucket: 'community:label-reconcile', max: 6 },
+  // Zahlungswarnungen von Hand (SI1 d): ein Lauf liest alle überfälligen
+  // Communities im Control Plane und schreibt je Owner eine Meldung. Derselbe
+  // Deckel wie die anderen Handläufe, eigener Eimer.
+  { re: /^POST \/api\/community\/billing\/run-past-due-notice$/, bucket: 'community:past-due-notice', max: 6 },
   // E10, Davids Entscheidung 8 („volle Notbremse in Fassung 1"): Wählen und
   // Kommentieren sind session-gated, aber sie schreiben ins BETREIBER-System
   // eines anderen Projekts — ein Skript soll daraus keinen Hebel machen.

@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { createBrandWaitlistConfirmSchema } from '../../../../schemas/brandWaitlist'
+import { normalizeBrandWaitlistStatus } from '../../../../shared/brandWaitlistAdmin'
 import type { BrandWaitlistConfirmResponse } from '../../../../shared/types/brand'
 import { BRAND_WAITLIST_TABLE, type BrandWaitlistRow, brandDb } from '../../../utils/brandStore'
 import {
@@ -49,10 +50,23 @@ import {
  * seit dem Opt-in EIN Eimer für beide Routen, denn es ist EIN Vorgang) macht
  * den Versuch zusätzlich teuer.
  *
+ * ── EINGELADEN ODER ABGELEHNT BLEIBT, WAS ES IST ──────────────────────────
+ * Trägt sich eine Adresse noch einmal ein, die der Betreiber schon eingeladen
+ * oder abgelehnt hat, bekommt sie wie jede andere einen Link (das Formular
+ * verrät nichts über eine Adresse) — die Zeile behält dabei ihren Zustand
+ * (`waitlist.post.ts`). Der Klick auf diesen Link darf das nicht umkehren:
+ * die Entscheidung des Betreibers bliebe sonst nur so lange stehen, bis der
+ * Mensch das Formular ein zweites Mal ausfüllt, und eine abgelehnte Adresse
+ * stünde wieder auf der Arbeitsliste. Deshalb: Zustand bleibt, der Link wird
+ * verbraucht (Hash und Frist geleert, wie beim Stempeln), KEINE Meldung an den
+ * Betreiber — und die Antwort ist dieselbe wie für eine schon bestätigte
+ * Adresse (`already_confirmed`). Ein eigener Satz „du bist abgelehnt" wäre
+ * eine Auskunft, die der Betreiber nicht gegeben hat.
+ *
  * ── BESTANDS-STATUS `new` ─────────────────────────────────────────────────
  * Vor dem Opt-in schrieb die Route `status: 'new'`. In Produktion gibt es keine
  * solche Zeile (die Tabelle war leer), aber der Code behandelt sie wie
- * `pending`: alles ausser 'confirmed' ist „noch nicht bestätigt", und ein
+ * `pending` (`normalizeBrandWaitlistStatus`, wie alles Unbekannte): ein
  * Sonderfall, den niemand auslöst, wäre ein Sonderfall, den niemand testet.
  *
  * ── DER TOKEN STEHT NIE IM LOG ────────────────────────────────────────────
@@ -111,6 +125,31 @@ export default defineEventHandler(async (event): Promise<BrandWaitlistConfirmRes
       statusText: 'Waitlist token has expired',
       data: { code: 'token_expired' },
     })
+  }
+
+  // DER BETREIBER HAT SCHON ENTSCHIEDEN (s. Kopf): der Link wird verbraucht,
+  // der Zustand bleibt. Nach der Frist-Prüfung, damit ein abgelaufener Link
+  // für jede Zeile dieselbe Antwort bekommt.
+  const decided = normalizeBrandWaitlistStatus(row.status)
+  if (decided === 'invited' || decided === 'declined') {
+    try {
+      await tablesDB.updateRow({
+        databaseId,
+        tableId: BRAND_WAITLIST_TABLE,
+        rowId: row.$id,
+        data: { tokenHash: '', tokenExpiresAt: '' },
+      })
+    }
+    catch (error) {
+      // Fail-soft: der Link läuft nach 24 Stunden ohnehin ab, und er ändert
+      // an dieser Zeile nichts mehr — ein Schreibfehler ist hier keine 503 wert.
+      logEvent('warn', 'brand.waitlist_unavailable', {
+        rowId: row.$id,
+        message: error instanceof Error ? error.message : 'unknown',
+      })
+    }
+    logEvent('info', 'brand.waitlist_confirm_kept', { state: decided })
+    return { ok: true, state: 'already_confirmed' }
   }
 
   try {
