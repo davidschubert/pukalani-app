@@ -35,8 +35,8 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 **Was.** Paket der Stufe „Später" aus dem Gesamtaudit 2026-11 (Finding
 OPS-009), Davids Entscheidung „Klein beginnen: Die Prüfungen aus P04 und P05
 bekommen sofort ihre Tests; die Bühne danach". Drei Etappen, Pull Requests
-237 (Merge `9d92deca`), 242 (Merge `a2f23006`) und 244, dazu 239 (Merge
-`93a0180a`, eine Testdatei). Nur Tests, Skripte, CI und Doku — kein
+237 (Merge `9d92deca`), 242 (Merge `a2f23006`) und 244 (Merge `aec6d6f0`),
+dazu 239 (Merge `93a0180a`, eine Testdatei). Nur Tests, Skripte, CI und Doku — kein
 Produkt-Code.
 
 - **Etappe 1 — Rollen-Tests.** Der Prüfstand für echte Routen-Handler
@@ -92,8 +92,8 @@ und gegen eine nachgebaute Datentür. Auf Production wurde nichts geprüft.
   führen die Termin-Routen aus) und PR 233 (die Routen rufen eine neue Hilfe)
   waren einzeln grün; auf `main` scheiterten elf Tests, eine Stunde lang
   wurde nicht ausgeliefert. Seitdem vor jedem Merge: `git merge origin/main`
-  lokal und die betroffenen Pakete testen. Ob GitHub das erzwingen soll, ist
-  offen (BT1 c).
+  lokal und die betroffenen Pakete testen (Regel in CLAUDE.md). GitHub
+  erzwingt es nicht — Davids Entscheidung vom 2026-11-17.
 - **Ohne Webserver davor kommen alle Aufrufe von einer Adresse.** Auf der
   Bühne liefen die Skripte nacheinander in dieselbe Anlege-Bremse. Der Läufer
   hängt deshalb je Skript eine eigene Aufrufer-Adresse an — das, was auf

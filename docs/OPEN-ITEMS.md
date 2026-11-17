@@ -102,7 +102,7 @@ beide Server-Einstellungen einschalten.
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
-| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) soll der Bühnen-Lauf Pflicht vor dem Zusammenführen werden, (d) Kleinigkeiten. **Wartet auf:** (c) David. | Niedrig | M je Teil | **Ja: (c) eine Entscheidung** | [Einzelheiten](#bt1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -1027,14 +1027,14 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   kleinere. Layer für Layer abbauen und den Layer danach in
   `ZERO_BACKLOG_LAYERS` eintragen. Zuerst onboarding und control (dort
   liegen Mitglieder-Verwaltung und Anlage).
-- **(c) Bühnen-Lauf als Pflicht?** Der Lauf „Bühne (Kundenpfad)" läuft heute
-  neben den fünf Pflicht-Prüfungen und hält weder das Zusammenführen noch das
-  Ausliefern auf; ist er rot, öffnet er auf `main` ein Issue. Ihn zur Pflicht
-  zu machen ist eine GitHub-Einstellung und Davids Entscheidung. Dazu gehört
-  eine zweite Frage: Zwei Pull Requests, die einzeln grün waren, haben
-  zusammen `main` rot gemacht (2026-11-17, eine Stunde ohne Ausliefern).
-  GitHub kann verlangen, dass ein Zweig vor dem Zusammenführen auf dem Stand
-  von `main` ist; bei mehreren Sitzungen gleichzeitig kostet das Wartezeit.
+- **(c) Bühnen-Lauf als Pflicht: im Dezember neu entscheiden.** Entschieden
+  am 2026-11-17 (DECISION-LOG): Der Lauf „Bühne (Kundenpfad)" bleibt vorerst
+  ein Hinweis — er hält weder das Zusammenführen noch das Ausliefern auf und
+  öffnet auf `main` und nachts ein Issue, wenn er rot ist. Ab dem 2026-12-01
+  nachsehen: Wie oft war er rot, und wie oft lag es am Skript statt am
+  Programm? Danach David erneut fragen. Ebenfalls entschieden: GitHub
+  erzwingt nicht, dass ein Zweig vor dem Zusammenführen aktuell ist; die
+  Sitzungen testen selbst gegen den neuesten Stand (CLAUDE.md, Abschnitt Git).
 - **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
   Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
   Betreiber noch nicht. `verify-notification-mail-links` stößt den
