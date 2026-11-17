@@ -125,6 +125,20 @@ export default defineAppConfig({
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
+    // Profilbilder ohne Profil (KE3): NUR zählen ('count', Log
+    // `retention.run`, `job: avatar-orphan-sweep`). 'apply' erst mit dem Ja
+    // des Betreibers zur gezählten Zahl.
+    storage: { avatarOrphanSweep: 'count' },
+    /**
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
+     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
+     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
+     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
+     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
+     * 'off' stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
+     * löschen).
+     */
+    audit: { retention: 'count' },
     /**
      * ANMELDUNG (F37, 2026-08-02) — beides war im Silo an und im Pool aus.
      *

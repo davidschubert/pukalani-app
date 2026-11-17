@@ -29,8 +29,12 @@ const EXEMPT: Record<string, string> = {}
 
 /** Sortiert. Neuer oder umbenannter Lauf ⇒ hier UND in `ops/timed-jobs.conf` nachziehen. */
 const EXPECTED_JOB_NAMES = [
+  'audit-log-retention',
+  'avatar-orphan-sweep',
   'brand-check-erasure',
   'brand-events-sweep',
+  'brand-intro-retention',
+  'brand-waitlist-retention',
   'custom-domain-notice',
   'custom-domain-sweep',
   'email-digest',
@@ -42,6 +46,7 @@ const EXPECTED_JOB_NAMES = [
   'insights-corrections-sweep',
   'insights-radar',
   'insights-subscribers-sweep',
+  'intro-request-retention',
   'invite-request-prune',
   'label-reconcile',
   'market-raw-text-sweep',

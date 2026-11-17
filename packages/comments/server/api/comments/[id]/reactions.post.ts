@@ -91,7 +91,15 @@ export default defineEventHandler(async (event): Promise<CommentReactionToggleRe
   }
 
   // Belegt die Mandanten-Zugehoerigkeit UND dass der Kommentar sichtbar ist.
-  await resolveCommentReactionTarget(event, targetId)
+  const target = await resolveCommentReactionTarget(event, targetId)
+
+  /**
+   * GESCHLOSSENES THEMA: AUCH KEINE REAKTIONEN (MM1, Davids Entscheidung
+   * 2026-11-16) — derselbe Core-Vertrag wie beim Kommentieren und bei den
+   * Stimmen (`vote.post.ts`): 403 `topic_closed`, auch fuer das Zuruecknehmen.
+   * Vor der Drossel, damit ein abgewiesener Versuch kein Kontingent kostet.
+   */
+  await assertContentWritable(event, target.targetType, target.targetId)
 
   // Drossel: ein Mensch, eine Community, ein Fenster. Fail-open wie ueberall —
   // ein toter Redis darf das Reagieren nicht abschalten. EIGENER Eimer neben

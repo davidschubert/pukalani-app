@@ -125,6 +125,18 @@ export default defineAppConfig({
       enabled: true,
       clientErrors: true,
     },
+    /**
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
+     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
+     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
+     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
+     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
+     * 'off' stellt den Lauf ab.
+     *
+     * Test-App, keine ausgerollte Site: der Lauf steht hier, damit er sich
+     * lokal ansehen lässt — deshalb keine Zeile in ops/timed-jobs.conf.
+     */
+    audit: { retention: 'count' },
     comments: {
       // Auto-Hide: ab 3 offenen Meldungen verschwindet ein Kommentar aus der
       // Öffentlichkeit, bis die Moderation entscheidet (Meldungen bleiben offen)

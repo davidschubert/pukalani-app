@@ -337,7 +337,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/runner/server/api/runner/runs/recent.get.ts',
   ],
   tickets: [
-    'packages/tickets/server/api/tickets/[id].patch.ts',
     'packages/tickets/server/api/tickets/[id]/duplicate.post.ts',
     'packages/tickets/server/api/tickets/[id]/files.get.ts',
     'packages/tickets/server/api/tickets/[id]/files.post.ts',
@@ -347,7 +346,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/tickets/server/api/tickets/assignable.get.ts',
     'packages/tickets/server/api/tickets/board.get.ts',
     'packages/tickets/server/api/tickets/files/[fileId].delete.ts',
-    'packages/tickets/server/api/tickets/files/[fileId].get.ts',
     'packages/tickets/server/api/tickets/index.post.ts',
     'packages/tickets/server/api/tickets/lists/[id].patch.ts',
     'packages/tickets/server/api/tickets/lists/[id]/duplicate.post.ts',

@@ -54,7 +54,10 @@ async function loadCounts(ids: string[]) {
 
     <PostFeed class="mt-6" :reply-counts="replyCounts" @rows-changed="loadCounts">
       <template #comments="{ post }">
-        <CommentSection :target-id="post.$id" target-type="post" target-url="/feed" />
+        <!-- `locked`: ein geschlossenes Thema erscheint auch im Feed — ohne den
+             Hinweis böte die Seite dort Antworten, Likes und Reaktionen an, die
+             der Server ablehnt (MM1). -->
+        <CommentSection :target-id="post.$id" target-type="post" target-url="/feed" :locked="post.closed === true" />
       </template>
     </PostFeed>
   </UContainer>

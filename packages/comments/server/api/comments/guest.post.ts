@@ -4,6 +4,7 @@ import { guestCommentsAllowed } from '../../../shared/guestComments'
 import { COMMENTS_TABLE, MAX_COMMENT_DEPTH, type Comment } from '../../../shared/types/comment'
 import { assertReplyParent } from '../../utils/replyParent'
 import { commentNotificationCommunityId, commentNotificationRowId } from '../../utils/commentNotifications'
+import { isOperatorCommentTarget } from '../../utils/commentReadPermissions'
 
 /**
  * Gast-Kommentar (Embed E4, Task 20): Kommentieren OHNE Account (nur ein frei
@@ -42,7 +43,6 @@ export default defineEventHandler(async (event) => {
       comments?: {
         embed?: { enabled?: boolean, guests?: boolean }
         guestsOnPublicPages?: boolean
-        operatorTargets?: string[]
       }
     }
   }
@@ -92,8 +92,7 @@ export default defineEventHandler(async (event) => {
   await assertContentWritable(event, body.targetType, body.targetId)
 
   // Interne/Operator-Threads sind für Gäste tabu.
-  const operatorTarget = (appConfig.pukalani?.comments?.operatorTargets ?? []).includes(body.targetType)
-  if (operatorTarget) {
+  if (isOperatorCommentTarget(body.targetType)) {
     throw createError({ status: 403, statusText: 'Guests cannot comment on this target' })
   }
 
