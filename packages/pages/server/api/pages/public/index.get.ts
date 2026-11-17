@@ -6,6 +6,7 @@ import { groupPublicPageVersions, publicNavItems, type PublicPagesSnapshot } fro
 // Konsument ist App-Code (blueprint-Layout), und der darf keine Nitro-Route
 // importieren. Begründung dort.
 import { GUIDELINES_SLUG, PAGES_TABLE, type PageRow, type PublicPageNavItem } from '../../../../shared/types/page'
+import { listPageRowsPaged } from '../../../utils/pageRows'
 
 /**
  * Öffentlich: Liste der VERÖFFENTLICHTEN Seiten für die Hauptnavigation
@@ -63,32 +64,18 @@ const PAGE_SIZE = 100
 const MAX_ROWS = 1_000
 
 async function loadPublicPagesSnapshot(event: H3Event): Promise<PublicPagesSnapshot> {
-  const db = tenantDb(event, { as: 'operator' })
-  const rows: PageRow[] = []
-  let cursor: string | undefined
-
-  for (;;) {
-    const res = await db.list<PageRow>(PAGES_TABLE, [
-      Query.equal('status', 'published'),
-      Query.limit(PAGE_SIZE),
-      ...(cursor ? [Query.cursorAfter(cursor)] : []),
-    ]).catch((error) => {
-      throw toH3Error(error, 'Could not load pages')
-    })
-    rows.push(...res.rows)
-    if (res.rows.length < PAGE_SIZE) break
-    if (rows.length >= MAX_ROWS) {
-      if (res.total > rows.length) {
-        logEvent('warn', 'pages.public_list_capped', {
-          scope: tenantCacheScope(event),
-          read: rows.length,
-          total: res.total,
-        })
-      }
-      break
-    }
-    cursor = res.rows.at(-1)!.$id
-  }
+  // Dieselbe Hilfe wie Verwaltungs-Liste und Fassungen (KK1 c), dieselbe
+  // Log-Kennung wie zuvor — der Wortlaut des Netzes steht oben.
+  const { rows } = await listPageRowsPaged<PageRow>(tenantDb(event, { as: 'operator' }), PAGES_TABLE, [
+    Query.equal('status', 'published'),
+  ], {
+    pageSize: PAGE_SIZE,
+    maxRows: MAX_ROWS,
+    logName: 'pages.public_list_capped',
+    scope: tenantCacheScope(event),
+  }).catch((error) => {
+    throw toH3Error(error, 'Could not load pages')
+  })
 
   const groups = groupPublicPageVersions(rows.map(row => ({
     slug: row.slug, locale: row.locale, title: row.title, sortOrder: row.sortOrder,

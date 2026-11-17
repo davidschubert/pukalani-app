@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { guidelinesFallbackEditorRows } from '../../../shared/guidelinesFallback'
 import { GUIDELINES_SLUG, PAGES_TABLE, type PageDetailResponse, type PageEditorRow, type PageRow } from '../../../shared/types/page'
+import { listPageRowsPaged, PAGE_VERSIONS_MAX, PAGE_VERSIONS_PAGE_SIZE } from '../../utils/pageRows'
 
 /**
  * Admin: alle Sprachversionen einer Seite (inkl. body) zum Bearbeiten.
@@ -17,10 +18,16 @@ export default defineEventHandler(async (event): Promise<PageDetailResponse> => 
   if (!slug) {
     throw createError({ status: 400, statusText: 'Missing slug' })
   }
-  const res = await tenantDb(event, { as: 'operator' }).list<PageRow>(PAGES_TABLE, [
+  // Alle Fassungen, geblättert (KK1 c) — vorher `limit(20)`, darüber fehlten
+  // Sprachen im Editor ohne Hinweis. Netz und Log: server/utils/pageRows.ts.
+  const res = await listPageRowsPaged<PageRow>(tenantDb(event, { as: 'operator' }), PAGES_TABLE, [
     Query.equal('slug', slug),
-    Query.limit(20),
-  ]).catch((error) => {
+  ], {
+    pageSize: PAGE_VERSIONS_PAGE_SIZE,
+    maxRows: PAGE_VERSIONS_MAX,
+    logName: 'pages.versions_capped',
+    scope: tenantCacheScope(event),
+  }).catch((error) => {
     throw toH3Error(error, 'Could not load page')
   })
 
