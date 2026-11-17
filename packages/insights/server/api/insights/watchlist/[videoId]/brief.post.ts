@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { INSIGHTS_AI_DISABLED_CODE } from '../../../../../shared/insightsAiLimits'
 import type { InsightsLocale, InsightsPost, InsightsSource } from '../../../../../shared/insightsPost'
-import { toInsightsWatchItem } from '../../../../../shared/insightsRows'
+import { INSIGHTS_RUNS_TABLE, toInsightsWatchItem } from '../../../../../shared/insightsRows'
 import {
   INSIGHTS_BRIEF_PROMPT_VERSION,
   buildInsightsVideoBriefPrompt,
@@ -23,6 +23,8 @@ import {
 } from '../../../../../shared/insightsWatchlist'
 import type { InsightsBriefResponse } from '../../../../../shared/types/insightsApi'
 import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../../../../contracts/brandContract'
+import { RUN_LEASE_BUSY_CODE } from '../../../../../../core/shared/runLease'
+import type { RunLeaseRow, RunLeaseStore } from '../../../../../../core/server/utils/runLease'
 
 /**
  * BRIEF AUS EINEM VIDEO (`insights.manage`, BI2 K5 — Plan
@@ -57,6 +59,8 @@ import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../../../../contracts/brandCon
  *  6. Ist ein VIDEO-MODELL konfiguriert? Diese Prüfung steht VOR der Drossel,
  *     aus demselben Grund wie der Kill-Switch dort (`insightsAi.ts`): ein
  *     Betriebszustand darf keinen Tages-Eimer kosten.
+ *  6b. DIE LAUF-SPERRE (seit LL1 c, 2026-11-17): `acquireRunLease` in
+ *     `insights_runs`, danach die Zeile frisch lesen (s. u.).
  *  7. Kill-Switch und Drossel (`insightsBeginAiRun`).
  *  8. Erst jetzt der Anbieter.
  *
@@ -125,6 +129,22 @@ import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from '../../../../contracts/brandCon
  * `insightsBriefState()` „läuft" sagt. Geprüft wird mit der SERVER-Uhr —
  * die Oberfläche rechnet denselben Zustand nur für ihre Anzeige, und bei
  * einer schiefen Browser-Uhr entscheidet weiterhin diese Route.
+ *
+ * ── DIE SPERRE HÄLT DEN AUGENBLICK (LL1 c, 2026-11-17) ──────────────────
+ * Bis dahin hielt der Brief seinen Start allein am Stempel der eigenen Zeile
+ * fest: erst lesen („läuft nicht"), dann `briefRunAt` schreiben. Zwei Klicks
+ * im SELBEN Augenblick lesen beide „frei" und starten beide einen bezahlten
+ * Lauf — Appwrite kennt kein bedingtes Schreiben. Den Ausschluss trägt jetzt
+ * die Lauf-Sperre des Core (`acquireRunLease`, Art `brief`, Gegenstand = die
+ * Zeilen-Id des Fundstücks, Tabelle `insights_runs`): eine Zeile mit fester
+ * Kennung, die nur EINER anlegen kann. Sie steht nach allen Prüfungen, die
+ * nichts kosten, und VOR Drossel und Stempel. Der Verlierer bekommt denselben
+ * 409 `brief_running` wie bei der Stempel-Prüfung — die Seite muss nichts
+ * Neues lernen. Die Stempel BLEIBEN: die Liste liest aus ihnen „läuft",
+ * „fertig" und „gescheitert", und die Stempel-Prüfung bleibt die erste,
+ * billige Ablehnung. Lehnt die Drossel ab oder scheitert der Stempel, fällt
+ * die Sperre wieder (`dropRunLease`); der Lauf dahinter schlägt alle 20 s den
+ * Herzschlag und beendet die Sperre in JEDEM Ausgang (`finishRunLease`).
  *
  * ── EIN VERWAISTER LAUF LÖST SICH SELBST ────────────────────────────────
  * Stirbt der Lauf, ohne zu schreiben (Prozess-Neustart, Deploy, Container
@@ -200,21 +220,17 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
    * Ohne diese Stufe wäre BI3 ein Rückschritt: vor BI3 hielt die offene
    * Verbindung den zweiten Klick auf (die Zeile lud, der Knopf war gesperrt).
    * Jetzt antwortet die Route nach einer Sekunde, der Knopf ist wieder da —
-   * und drei Klicks wären drei bezahlte Läufe. Die Sperre muss deshalb an der
-   * ZEILE hängen und nicht am Browser.
+   * und drei Klicks wären drei bezahlte Läufe. Die Sperre muss deshalb am
+   * SERVER hängen und nicht am Browser. Diese Stufe ist seit LL1 c nur noch
+   * die billige erste Ablehnung; zwei Klicks im selben Augenblick hält erst
+   * die Lauf-Sperre in Stufe 6b auf.
    *
    * Die Server-Uhr entscheidet. Ein `stalled`-Lauf (nichts geschrieben,
    * Stall-Grenze überschritten) und ein `failed`-Lauf dürfen durch — es liegt
    * nichts vor, das ein zweiter Lauf doppeln würde.
    */
   const state = insightsBriefState(item, Date.now())
-  if (!insightsBriefStartable(state)) {
-    throw createError({
-      status: 409,
-      statusText: 'Brief run in flight',
-      data: { code: INSIGHTS_BRIEF_RUNNING_CODE },
-    })
-  }
+  if (!insightsBriefStartable(state)) throw insightsBriefRunning()
 
   // (4) Ein Video, das wir nicht mehr abrufen können, kann der Anbieter auch
   // nicht lesen.
@@ -256,33 +272,82 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
   }
 
   /**
-   * (7) Kill-Switch und Drossel — der Rückgabewert wird BEWUSST verworfen.
+   * (6b) DIE LAUF-SPERRE — nach allem, was nichts kostet, VOR Drossel und
+   * Stempel (Kopf, „Die Sperre hält den Augenblick"). Erst Sperre, dann
+   * Kontingent: sonst bucht ein Doppelklick zweimal.
    *
-   * `insightsBeginAiRun` liefert das TEXT-Modell und die Standard-Bedingungen.
-   * Beides passt hier nicht: das Textmodell (`claude-haiku-4.5`) sieht keine
-   * Videos, und die Bedingungen sind für diesen Lauf die EU-gepinnten. Was
-   * gebraucht wird, ist die WIRKUNG des Aufrufs — er wirft bei abgeschalteter
-   * KI und bucht den Eimer.
+   * Der 409 der Sperre (`run_running`) reist als der gewohnte 409
+   * `brief_running` hinaus — für den Menschen ist es derselbe Satz. Jeder
+   * andere Fehler (503 `run_lease_unavailable`: nicht prüfbar) bleibt, wie er
+   * ist: „nicht prüfbar" heisst nie „läuft schon" und nie „frei".
    */
-  await insightsBeginAiRun(event, user.$id, 'brief')
+  const leases = appwriteRunLeaseStore({ ...insightsDb(event), tableId: INSIGHTS_RUNS_TABLE })
+  let lease: RunLeaseRow
+  try {
+    ({ lease } = await acquireRunLease(leases, { scope: INSIGHTS_BRIEF_LEASE_SCOPE, subject: row.$id }))
+  }
+  catch (error) {
+    if (isRunLeaseBusy(error)) throw insightsBriefRunning()
+    throw error
+  }
 
   /**
-   * (8) DER STEMPEL IST DIE SPERRE — und er steht VOR dem Lauf.
+   * ERST MIT DER SPERRE DIE ZEILE NEU LESEN — sonst ist die Sperre nur halb.
    *
-   * Erst wenn er geschrieben ist, darf der Anbieter-Aufruf los: scheitert das
-   * Schreiben, gibt es keine Sperre, und der zweite Klick zahlte ein zweites
-   * Mal. Deshalb nicht parallel und nicht danach. Der Fehler reist in diesem
-   * Fall als 5xx zum Menschen — der Eimer ist dann gebucht und der Lauf nicht
-   * gemacht; das ist der richtige Weg herum.
+   * Wer seine Zeile gelesen hat, BEVOR ein Vorgänger fertig war, und die
+   * Sperre erst danach bekommt, hielte einen veralteten Stand in der Hand und
+   * zahlte einen zweiten Brief neben dem eben angelegten. Was jetzt gelesen
+   * wird, kann niemand mehr ändern, ohne die Sperre zu halten.
+   */
+  try {
+    const fresh = await findInsightsWatchRow(event, videoId)
+    if (!fresh) throw insightsWatchMissing()
+    item = toInsightsWatchItem(fresh)
+    const freshState = insightsBriefState(item, Date.now())
+    if (freshState === 'done') {
+      throw createError({ status: 409, statusText: 'Brief exists', data: { code: 'brief_exists' } })
+    }
+    if (!insightsBriefStartable(freshState)) throw insightsBriefRunning()
+
+    /**
+     * (7) Kill-Switch und Drossel — der Rückgabewert wird BEWUSST verworfen.
+     *
+     * `insightsBeginAiRun` liefert das TEXT-Modell und die Standard-
+     * Bedingungen. Beides passt hier nicht: das Textmodell
+     * (`claude-haiku-4.5`) sieht keine Videos, und die Bedingungen sind für
+     * diesen Lauf die EU-gepinnten. Was gebraucht wird, ist die WIRKUNG des
+     * Aufrufs — er wirft bei abgeschalteter KI und bucht den Eimer.
+     */
+    await insightsBeginAiRun(event, user.$id, 'brief')
+  }
+  catch (error) {
+    // Nichts lief: die Sperre fällt, als hätte es den Versuch nie gegeben.
+    await dropRunLease(leases, lease)
+    throw error
+  }
+
+  /**
+   * (8) DER STEMPEL — die ANZEIGE des Laufs, und er steht VOR dem Lauf.
+   *
+   * Die Liste liest aus ihm „läuft", und die Stempel-Prüfung in Stufe 3b
+   * lehnt den nächsten Klick daran billig ab. Scheitert das Schreiben, fällt
+   * die Sperre, und der Fehler reist als 5xx zum Menschen — der Eimer ist
+   * dann gebucht und der Lauf nicht gemacht; das ist der richtige Weg herum.
    *
    * `briefError: ''` räumt den Vermerk eines früheren Fehlschlags mit: ab
    * jetzt gilt dieser Lauf.
    */
   const startedAtIso = new Date().toISOString()
-  item = await updateInsightsWatchRow(event, row.$id, {
-    briefRunAt: startedAtIso,
-    briefError: '',
-  })
+  try {
+    item = await updateInsightsWatchRow(event, row.$id, {
+      briefRunAt: startedAtIso,
+      briefError: '',
+    })
+  }
+  catch (error) {
+    await dropRunLease(leases, lease)
+    throw error
+  }
 
   insightsLogAi('requested', 'brief', {
     postId: '',
@@ -318,12 +383,63 @@ export default defineEventHandler(async (event): Promise<InsightsBriefResponse> 
     baseLocale: body.baseLocale,
     startedAtMs: Date.parse(startedAtIso),
   }
-  runDetached('insights', () => runInsightsBrief(event, run))
+  runDetached('insights', () => runInsightsBriefUnderLease(event, run, leases, lease))
 
   // 202: angenommen, nicht erledigt. Die Zeile sagt, was daraus wird.
   setResponseStatus(event, 202)
   return { item }
 })
+
+/** Die Art des Laufs in `insights_runs` (neben `newsletter`). */
+const INSIGHTS_BRIEF_LEASE_SCOPE = 'brief'
+
+/** Der gewohnte 409 der Route für „es läuft schon einer". */
+function insightsBriefRunning() {
+  return createError({
+    status: 409,
+    statusText: 'Brief run in flight',
+    data: { code: INSIGHTS_BRIEF_RUNNING_CODE },
+  })
+}
+
+/** Der 409 der Lauf-Sperre — erkannt am fachlichen Code, nicht am Status. */
+function isRunLeaseBusy(error: unknown): boolean {
+  const data = (error as { data?: { code?: unknown } } | null)?.data
+  return data?.code === RUN_LEASE_BUSY_CODE
+}
+
+/**
+ * DER LAUF UNTER DER SPERRE — Herzschlag während des Laufs, Ende in JEDEM
+ * Ausgang. `runInsightsBrief` wirft nie; das `finally` ist trotzdem da, weil
+ * eine Sperre auch dann nicht hängen darf, wenn sich das einmal ändert.
+ *
+ * Die Sperre endet NACH dem Schreiben an der Fundstück-Zeile: wer danach die
+ * Sperre bekommt, liest dort schon `briefPostId` bzw. `briefError`.
+ * Scheitert das Beenden, löst sich die Sperre nach zwei Minuten ohne
+ * Herzschlag von selbst; ins Log nur die Meldung. Im `detail` nichts — die
+ * Zeile trägt Art und Fundstück-Id, mehr braucht niemand.
+ */
+async function runInsightsBriefUnderLease(
+  event: H3Event,
+  run: InsightsBriefRun,
+  leases: RunLeaseStore,
+  lease: Pick<RunLeaseRow, '$id'>,
+): Promise<void> {
+  const alive = keepRunLeaseAlive(leases, lease)
+  let outcome: string = 'brief_failed'
+  try {
+    outcome = await runInsightsBrief(event, run)
+  }
+  finally {
+    alive.stop()
+    try {
+      await finishRunLease(leases, lease, { outcome })
+    }
+    catch (error) {
+      console.error('[insights] Brief-Sperre nicht beendet:', error instanceof Error ? error.message : 'unknown')
+    }
+  }
+}
 
 /**
  * „Den Entwurf gibt es nicht mehr" — der 404 aus `loadInsightsPostRow`
@@ -397,8 +513,11 @@ function briefUsage(completion: InsightsBriefUsage | undefined): InsightsBriefUs
  * Unverändert aus dem Nachtrag vom 2026-10-28: ab hier ist das Video gelesen
  * und der Lauf bezahlt, also wird nur noch zugeschnitten
  * (`insightsVideoBriefSchema`), nie abgewiesen.
+ *
+ * Gibt den Ausgang für die Lauf-Sperre zurück: `done` oder den Fehler-Code,
+ * der auch an der Zeile steht (LL1 c).
  */
-async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<void> {
+async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<'done' | InsightsBriefError> {
   let briefRawChars = 0
   // AUSSERHALB des try, weil der `failed`-Zweig sie braucht: scheitert erst
   // das SCHEMA, ist das Video gelesen, der Lauf bezahlt und die Zahlen stehen
@@ -439,7 +558,7 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
     const slug = await findFreeInsightsSlug(event, 'posts', title, '')
     if (!slug) {
       await failInsightsBrief(event, run, 'slug_taken', briefRawChars, true, briefUsage(completion))
-      return
+      return 'slug_taken'
     }
 
     // JEDE Spalte explizit (CLAUDE.md) — eine neue Spalte soll eine
@@ -507,6 +626,7 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
       briefRawChars,
       ...briefUsage(completion),
     })
+    return 'done'
   }
   catch (error) {
     insightsLogAi('failed', 'brief', {
@@ -519,6 +639,7 @@ async function runInsightsBrief(event: H3Event, run: InsightsBriefRun): Promise<
       ...briefUsage(completion),
     })
     await failInsightsBrief(event, run, 'brief_failed', briefRawChars, false)
+    return 'brief_failed'
   }
 }
 
