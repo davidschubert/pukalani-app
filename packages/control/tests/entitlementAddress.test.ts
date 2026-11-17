@@ -1,17 +1,21 @@
 import { generateKeyPairSync, verify } from 'node:crypto'
+import { existsSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ROUTE_PREFIX_EXCEPTIONS } from '../../../scripts/lib/manifest-routes.mjs'
 
 /**
- * DIE ADRESSE DES ENTITLEMENT-DOKUMENTS ZIEHT UM (WL1 c, 2026-11-17).
+ * DIE ADRESSE DES ENTITLEMENT-DOKUMENTS (WL1 c, 2026-11-17).
  *
- * Neu: `/api/control/entitlements/<projectId>` (unter dem Präfix des Control
- * Plane, sein Not-Aus erreicht sie). Die alte Adresse
- * `/api/platform/entitlements/<projectId>` antwortet weiter, bis keine Site
- * sie mehr abruft. Geprüft wird an den geladenen Routen:
- *  - beide Adressen liefern DASSELBE Dokument (ein Rumpf, ein
- *    Zwischenspeicher),
- *  - die Signatur stimmt und der Inhalt nennt genau die aktiven Produkte,
- *  - die Ablehnungen der neuen Adresse sind die der alten.
+ * `/api/control/entitlements/<projectId>` — unter dem Präfix des Control
+ * Plane, sein Not-Aus erreicht sie. Die alte Adresse
+ * `/api/platform/entitlements/<projectId>` ist gelöscht. Geprüft wird an der
+ * geladenen Route:
+ *  - das Dokument ist signiert und nennt genau die aktiven Produkte,
+ *  - ein zweiter Abruf kommt aus dem Zwischenspeicher,
+ *  - die Ablehnungen (400, 404, 503),
+ *  - und dass es die alte Adresse nicht mehr gibt.
  */
 
 type Handler = (event: { projectId: string }) => Promise<string>
@@ -52,14 +56,13 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const load = async (path: string) => (await import(path)).default as Handler
-const NEW = '../server/api/control/entitlements/[projectId].get'
-const OLD = '../server/api/platform/entitlements/[projectId].get'
+const load = async () => (await import('../server/api/control/entitlements/[projectId].get')).default as Handler
 
-describe('Entitlement-Dokument: neue und alte Adresse', () => {
-  it('beide liefern dasselbe signierte Dokument — einmal gelesen, einmal signiert', async () => {
-    const fresh = await (await load(NEW))({ projectId: 'probe-site' })
-    const again = await (await load(OLD))({ projectId: 'probe-site' })
+describe('Entitlement-Dokument unter /api/control/entitlements', () => {
+  it('liefert ein signiertes Dokument — einmal gelesen, der zweite Abruf kommt aus dem Zwischenspeicher', async () => {
+    const handler = await load()
+    const fresh = await handler({ projectId: 'probe-site' })
+    const again = await handler({ projectId: 'probe-site' })
     expect(again).toBe(fresh)
     expect(reads).toHaveLength(2)
 
@@ -72,15 +75,20 @@ describe('Entitlement-Dokument: neue und alte Adresse', () => {
   it.each([
     ['unlesbare Projekt-Kennung', 'Nicht/Erlaubt', 400],
     ['unbekannte Site', 'gibt-es-nicht', 404],
-  ])('%s ⇒ %s an BEIDEN Adressen', async (_name, projectId, status) => {
-    await expect((await load(NEW))({ projectId })).rejects.toMatchObject({ status })
-    await expect((await load(OLD))({ projectId })).rejects.toMatchObject({ status })
+  ])('%s ⇒ %s', async (_name, projectId, status) => {
+    await expect((await load())({ projectId })).rejects.toMatchObject({ status })
   })
 
-  it('ohne Signier-Schlüssel ⇒ 503 an beiden Adressen, nichts gelesen', async () => {
+  it('ohne Signier-Schlüssel ⇒ 503, nichts gelesen', async () => {
     config.entitlementsPrivateKey = ''
-    await expect((await load(NEW))({ projectId: 'probe-site' })).rejects.toMatchObject({ status: 503 })
-    await expect((await load(OLD))({ projectId: 'probe-site' })).rejects.toMatchObject({ status: 503 })
+    await expect((await load())({ projectId: 'probe-site' })).rejects.toMatchObject({ status: 503 })
     expect(reads).toEqual([])
+  })
+
+  it('die alte Adresse gibt es nicht mehr, und keine Route des Control Plane liegt außerhalb seines Präfixes', () => {
+    const api = fileURLToPath(new URL('../server/api', import.meta.url))
+    expect(existsSync(join(api, 'platform'))).toBe(false)
+    expect(readdirSync(api)).toEqual(['control'])
+    expect(ROUTE_PREFIX_EXCEPTIONS).toEqual([])
   })
 })
