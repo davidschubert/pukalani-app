@@ -112,6 +112,12 @@ export interface MarketRunView {
   aiEnabled: boolean
   /** Hat der Lauf mit etwas anderem als `done` geendet? */
   failed: boolean
+  /**
+   * WARUM, wenn die Seite dafür einen eigenen Satz hat (KI1 d, 2026-11-17):
+   * heute nur „kein Endpunkt unter der Datenschutz-Bindung". Optional — fehlt
+   * es, gilt der allgemeine Satz, wie bisher.
+   */
+  failure?: 'ai_endpoint_unavailable'
   steps: MarketRunStep[]
 }
 

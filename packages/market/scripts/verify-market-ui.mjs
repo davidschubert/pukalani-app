@@ -69,6 +69,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { startRunRespectingBrake } from './lib/runStart.mjs'
 // Die BIBLIOTHEK selbst — Node 22 entfernt die Typen beim Laden, die Datei
 // ist reine Daten ohne Import. Eine Schlüssel-Liste in diesem Skript wäre
 // eine zweite Wahrheit über den Inhalt der Bibliothek (M6b).
@@ -173,7 +174,7 @@ function call(path, { method = 'GET', body, cookie } = {}) {
         let json = null
         try { json = JSON.parse(text) }
         catch { /* HTML */ }
-        resolveCall({ status: res.statusCode, json, text })
+        resolveCall({ status: res.statusCode, json, text, headers: res.headers })
       })
     })
     req.on('error', rejectCall)
@@ -305,7 +306,8 @@ async function marketRows(table, profileId) {
  * Stand aus `GET /api/market/profiles/<id>` (Schritte MIT Namen).
  */
 async function runAndWait(base, cookie, query = '') {
-  const post = await call(`${base}/run${query}`, { method: 'POST', cookie })
+  // Hält den Abstand zur Minuten-Bremse selbst (LL1 c, `lib/runStart.mjs`).
+  const post = await startRunRespectingBrake(() => call(`${base}/run${query}`, { method: 'POST', cookie }))
   if (post.status !== 202) return { post, run: null }
   const deadline = Date.now() + 10 * 60_000
   let run = post.json?.run ?? null

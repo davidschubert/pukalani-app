@@ -6,6 +6,7 @@ import {
   type BrandGenerationEventName,
   type BrandGenerationFailureCode,
   type BrandGenerationOutcome,
+  brandProviderFailureCode,
   findBrandGenerationByKey,
   packBrandGenerations,
   serializeBrandGenerationEvent,
@@ -51,6 +52,7 @@ import { parseGeorgeOptions } from '../../../../../../utils/georgeTurn'
 import { loadBrandConversationHistory } from '../../../../../../utils/brandConversationHistory'
 import { bookBrandAiQuota } from '../../../../../../utils/brandAiQuota'
 import { recordBrandEvent } from '../../../../../../utils/brandEvents'
+import { startBrandStreamHeartbeat } from '../../../../../../utils/brandStreamHeartbeat'
 
 /**
  * DAS §3e-STREAMING-PROTOKOLL, SERVERSEITIG.
@@ -348,6 +350,9 @@ export default defineEventHandler(async (event) => {
     // alles auf einmal — das Streaming wäre dann reine Zierde.
     'X-Accel-Buffering': 'no',
   })
+  // Lebenszeichen in stillen Phasen (LL1 b): der Webserver trennt nach 60 s
+  // Stille. Gestoppt in `fail()` und im `finally` unten.
+  const stopHeartbeat = startBrandStreamHeartbeat(res)
 
   function send<N extends BrandGenerationEventName>(type: N, data: BrandGenerationEventDataMap[N]): void {
     if (res.writableEnded) return
@@ -365,6 +370,7 @@ export default defineEventHandler(async (event) => {
       userId,
       payload: { slotId: slot.id, stepKey, code },
     })
+    stopHeartbeat()
     res.end()
   }
 
@@ -478,7 +484,8 @@ export default defineEventHandler(async (event) => {
         // Die MELDUNG des Anbieters, nicht der Prompt und nicht die Antwort.
         message: error instanceof Error ? error.message : String(error),
       })
-      return fail('provider_error')
+      // KI1 d: „kein Endpunkt unter der Bindung" reist als eigener Code.
+      return fail(brandProviderFailureCode(error))
     }
 
     if (result.aborted || abort.signal.aborted) return fail('aborted')
@@ -566,6 +573,7 @@ export default defineEventHandler(async (event) => {
     res.end()
   }
   finally {
+    stopHeartbeat()
     lock.release()
     // Der Burst-Platz gehört diesem Lauf, nicht seinem Ausgang: Erfolg,
     // Anbieterfehler und Abbruch geben ihn gleichermassen frei.

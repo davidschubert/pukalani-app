@@ -392,7 +392,21 @@ async function applyRun(run: MarketRunView | null | undefined): Promise<void> {
   }
   else if (run.state === 'failed') {
     runSteps.value = run.steps
-    toast.add({ color: 'warning', title: t('market.error.run') })
+    // KI1 d: kein Endpunkt unter der Datenschutz-Bindung — derselbe Hinweis
+    // (Schlüssel und Kennung) wie beim zentralen Leser des Core; der Lauf
+    // rechnet im Hintergrund, an `$fetch` kommt dieser Fehler nie vorbei.
+    if (run.failure === 'ai_endpoint_unavailable') {
+      toast.add({
+        id: 'ai-endpoint-unavailable',
+        color: 'warning',
+        icon: 'i-ph-shield-check',
+        title: t('error.aiEndpointUnavailable'),
+        description: t('error.aiEndpointUnavailableHint'),
+      })
+    }
+    else {
+      toast.add({ color: 'warning', title: t('market.error.run') })
+    }
   }
   await refreshAll()
 }

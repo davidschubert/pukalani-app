@@ -1965,7 +1965,8 @@ async function generateSlot(slot: BrandSlot): Promise<void> {
 /**
  * `ai_disabled` und `no_generator` sind BETRIEBSZUSTÄNDE, kein Unglück: der
  * Stand bleibt voll bearbeitbar (§9b.5). Vom GESPRÄCH kommt hier nur die
- * Drossel an — ein ausgefallener Zug bleibt still (s. `useBrandConversation`).
+ * Drossel an (und seit KI1 d der fehlende Endpunkt) — ein sonst ausgefallener
+ * Zug bleibt still (s. `useBrandConversation`).
  */
 const generationNotice = computed<string | null>(() => {
   const code = generation.failureCode.value ?? conversation.failureCode.value
@@ -1980,6 +1981,11 @@ const generationNotice = computed<string | null>(() => {
   if (code === 'aborted') return t('brand.workspace.generate.stopped')
   if (code === 'not_ready') return t('brand.workspace.generate.notReady')
   if (code === 'slot_confirmed') return t('brand.workspace.generate.slotConfirmed')
+  // KI1 d: kein Endpunkt unter der Datenschutz-Bindung — der genaue Satz des
+  // Core (derselbe Schlüssel wie im zentralen Hinweis), nicht „hat nicht
+  // geklappt". Der Strom läuft an `$fetch` vorbei, deshalb zeigt ihn hier die
+  // Seite selbst.
+  if (code === 'ai_endpoint_unavailable') return t('error.aiEndpointUnavailableHint')
   return t('brand.workspace.generate.failed')
 })
 

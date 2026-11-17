@@ -263,6 +263,25 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
     expect(ersterTreffer('DELETE /api/posts/p1')?.bucket).toBe('posts:delete')
   })
 
+  // IN1 d (2026-11-17): die bezahlten Wege der Insights-Redaktion bremste nur
+  // das Kontingent im Layer — je Anschluss und VOR der Route zählte niemand.
+  it('deckelt die KI-Wege der Insights-Redaktion wie die übrigen bezahlten Modell-Aufrufe', () => {
+    const generate = ersterTreffer('POST /api/brand/profiles/b1/steps/purpose/generate')
+    for (const weg of ['draft', 'translate', 'change-note']) {
+      const treffer = ersterTreffer(`POST /api/insights/posts/p1/${weg}`)
+      expect(treffer, `${weg} fehlt in WRITE_LIMITED`).not.toBeNull()
+      expect(treffer?.bucket).toBe('insights:ai')
+      expect(treffer?.max).toBe(generate?.max)
+    }
+    const brief = ersterTreffer('POST /api/insights/watchlist/v1/brief')
+    expect(brief?.bucket).toBe('insights:brief')
+    expect(brief?.max).toBe(generate?.max)
+    // Lesen und die Geschwister-Routen ohne Modell-Aufruf bleiben frei.
+    expect(ersterTreffer('GET /api/insights/watchlist/v1/brief')).toBeNull()
+    expect(ersterTreffer('POST /api/insights/posts/p1/state')).toBeNull()
+    expect(ersterTreffer('POST /api/insights/posts/p1/evidence')).toBeNull()
+  })
+
   it('die neuen Zeilen verschieben keine bestehende Zuordnung', () => {
     expect(ersterTreffer('PATCH /api/posts/p1')?.bucket).toBe('posts:edit')
     expect(ersterTreffer('PATCH /api/comments/c1')?.bucket).toBe('comments:edit')

@@ -43,8 +43,8 @@
  *   NUXT_AI_KEY=… pnpm --filter @pukalani/brand verify:context
  *
  * ENV: `NUXT_AI_KEY` (Pflicht für den echten Lauf) · `NUXT_AI_BASE_URL`
- * (Default OpenRouter) · `NUXT_AI_MODEL` (Default `google/gemini-2.5-flash`,
- * dasselbe Modell, das branding.supply für Text-Urteile fährt).
+ * (Default OpenRouter) · `NUXT_AI_MODEL` (Default `anthropic/claude-haiku-4.5`,
+ * s. `DEFAULT_TEXT_MODEL`).
  */
 
 import { dirname, join, resolve } from 'node:path'
@@ -58,7 +58,17 @@ const jiti = createJiti(import.meta.url)
 const DRY = process.argv.includes('--dry-run')
 const KEY = process.env.NUXT_AI_KEY ?? ''
 const BASE_URL = (process.env.NUXT_AI_BASE_URL ?? 'https://openrouter.ai/api/v1').replace(/\/$/, '')
-const MODEL = process.env.NUXT_AI_MODEL ?? 'google/gemini-2.5-flash'
+/**
+ * DAS TEXTMODELL DES LAYERS (KI1 d, 2026-11-17): `reviewModel` in
+ * `packages/brand/app/app.config.ts` — dort steht, warum es derselbe String
+ * ist wie der Core-Default `pukalani.ai.model`
+ * (`packages/core/app/app.config.ts`). Die frühere Voreinstellung
+ * `google/gemini-2.5-flash` hat unter der Bindung (keine Speicherung,
+ * Rechenort Europa) keinen Endpunkt mehr; ein Lauf damit scheiterte, statt zu
+ * prüfen. Ändert sich das Modell dort, wird es hier nachgezogen.
+ */
+const DEFAULT_TEXT_MODEL = 'anthropic/claude-haiku-4.5'
+const MODEL = process.env.NUXT_AI_MODEL ?? DEFAULT_TEXT_MODEL
 
 /** Ab hier gilt ein Absatz als „im Ton" (§2.13). */
 const THRESHOLD = 70

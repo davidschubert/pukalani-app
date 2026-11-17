@@ -48,6 +48,10 @@ let updates: { competitorId: string, data: Record<string, unknown> }[]
 /** Kandidaten, deren Abrufstand sich nicht schreiben lässt (jeder Versuch). */
 let unwritable: Set<string>
 let extractCalls: number
+/** Was die gestellte Auswertung meldet (`''` = gelungen). */
+let extractFailure: string
+/** Wirft der gestellte Bericht? */
+let reportError: unknown
 let logs: { level: string, name: string, data: Record<string, unknown> }[]
 
 // ── Die eingesetzten Nachbarn ───────────────────────────────────────────────
@@ -131,7 +135,7 @@ vi.mock('../server/utils/marketExtract', () => ({
   marketInputHash: (raw: string) => createHash('sha256').update(raw).digest('hex'),
   extractMarketProfile: vi.fn(async () => {
     extractCalls++
-    return { failure: '', fields: [], model: 'test-model', promptVersion: 'v1' }
+    return { failure: extractFailure, fields: [], model: 'test-model', promptVersion: 'v1' }
   }),
 }))
 
@@ -151,7 +155,10 @@ vi.mock('../server/utils/marketBrandCheck', () => ({
 
 vi.mock('../server/utils/marketReportService', () => ({
   loadMarketReportState: vi.fn(async () => ({ withProfile: 1 })),
-  produceMarketReport: vi.fn(async () => ({ view: null })),
+  produceMarketReport: vi.fn(async () => {
+    if (reportError) throw reportError
+    return { view: null }
+  }),
 }))
 
 // ── Nitro-/h3-Globals ───────────────────────────────────────────────────────
@@ -212,6 +219,8 @@ beforeEach(() => {
   updates = []
   unwritable = new Set()
   extractCalls = 0
+  extractFailure = ''
+  reportError = null
   logs = []
 })
 
@@ -497,5 +506,60 @@ describe('überlange Adressen (BE-011)', () => {
     expect(pagesRequested).toContain('https://b.example/')
     const detail = parseMarketRunDetail(latestRow()?.detail)
     expect(detail.steps.map(step => [step.competitorId, step.status])).toEqual([['a', 'failed'], ['b', 'fetched']])
+  })
+})
+
+// ── KI1 d ───────────────────────────────────────────────────────────────────
+
+describe('kein KI-Endpunkt unter der Datenschutz-Bindung (KI1 d)', () => {
+  it('die Auswertung meldet ihn ⇒ der Lauf hört auf, die Zeile trägt NUR den kurzen Code, die Übersicht nennt ihn', async () => {
+    aiEnabled = true
+    site('https://a.example')
+    site('https://b.example')
+    competitors = [competitor('a', 'https://a.example/'), competitor('b', 'https://b.example/')]
+    extractFailure = 'ai_endpoint_unavailable'
+
+    await run(newEvent() as unknown as H3Event)
+    await settled()
+
+    const row = latestRow()
+    expect(row?.outcome).toBe('ai_endpoint_unavailable')
+    // Nach dem ersten Kandidaten Schluss: der zweite scheiterte genauso.
+    expect(extractCalls).toBe(1)
+    expect(pagesRequested).not.toContain('https://b.example/')
+    const view = await overview(newEvent() as unknown as H3Event)
+    expect(view.run).toMatchObject({ state: 'failed', failed: true, failure: 'ai_endpoint_unavailable' })
+  })
+
+  it('GEGENPROBE: ein anderer Anbieter-Fehler bleibt beim Kandidaten, der Lauf endet `done` ohne `failure`', async () => {
+    aiEnabled = true
+    site('https://a.example')
+    site('https://b.example')
+    competitors = [competitor('a', 'https://a.example/'), competitor('b', 'https://b.example/')]
+    extractFailure = 'provider_error'
+
+    await run(newEvent() as unknown as H3Event)
+    await settled()
+
+    expect(latestRow()?.outcome).toBe('done')
+    expect(extractCalls).toBe(2)
+    const view = await overview(newEvent() as unknown as H3Event)
+    expect(view.run.failure).toBeUndefined()
+  })
+
+  it('der Bericht meldet ihn ⇒ der Lauf endet mit dem Code statt „fertig"; ein anderer Bericht-Fehler bleibt fail-soft', async () => {
+    aiEnabled = true
+    site('https://a.example')
+    competitors = [competitor('a', 'https://a.example/')]
+    reportError = Object.assign(new Error(''), { statusCode: 503, data: { code: 'ai_endpoint_unavailable' } })
+
+    await run(newEvent() as unknown as H3Event)
+    await settled()
+    expect(latestRow()?.outcome).toBe('ai_endpoint_unavailable')
+
+    reportError = Object.assign(new Error(''), { statusCode: 502 })
+    await run(newEvent() as unknown as H3Event)
+    await settled()
+    expect(latestRow()?.outcome).toBe('done')
   })
 })
