@@ -1,5 +1,7 @@
 import { Query } from 'node-appwrite'
-import { guidelinesFallbackNavItem } from '../../../../shared/guidelinesFallback'
+import type { H3Event } from 'h3'
+import { requestedPageLocale } from '../../../../shared/pageLocales'
+import { groupPublicPageVersions, publicNavItems, type PublicPagesSnapshot } from '../../../../shared/publicPagesNav'
 // PublicPageNavItem liegt seit dem 2026-08-02 in shared/types/page.ts: der
 // Konsument ist App-Code (blueprint-Layout), und der darf keine Nitro-Route
 // importieren. Begründung dort.
@@ -21,47 +23,85 @@ export default defineEventHandler(async (event): Promise<PublicPageNavItem[]> =>
   // VOR dem Cache: gecacht wird das Ergebnis, nie die Erlaubnis.
   assertCommunityContentReadable(event, 'Pages not found')
 
-  const requested = String(getQuery(event).locale || 'en').slice(0, 8)
+  // Geprüft gegen das Muster des Seiten-Schemas (BE-019): alles andere —
+  // auch ein Array aus `?locale=a&locale=b` — zählt wie „nicht angegeben".
+  const requested = requestedPageLocale(getQuery(event).locale)
 
-  // Microcache (30 s, mandanten- UND sprachgenau): diese Route läuft bei JEDEM
-  // SSR-Seitenaufbau — Navigation und Fußzeile lesen sie. Die Schreibrouten
-  // verwerfen den Eintrag sofort, ein Veröffentlichen wartet also nicht auf
-  // die Ablaufzeit. Begründung: server/utils/publicPagesCache.ts.
-  const cached = cachedPublicPages(event, requested)
-  if (cached) return cached
+  // Microcache (30 s, mandantengenau, SPRACHUNABHÄNGIG): diese Route läuft bei
+  // JEDEM SSR-Seitenaufbau — Navigation und Fußzeile lesen sie. Gespeichert
+  // ist der Stand des Mandanten, die Sprache wird je Anfrage daraus gewählt.
+  // Die Schreibrouten verwerfen den Eintrag sofort, ein Veröffentlichen
+  // wartet also nicht auf die Ablaufzeit. Begründung:
+  // server/utils/publicPagesCache.ts.
+  let snapshot = cachedPublicPages(event)
+  if (!snapshot) {
+    snapshot = await loadPublicPagesSnapshot(event)
+    rememberPublicPages(event, snapshot)
+  }
+  return publicNavItems(snapshot, requested)
+})
 
-  const res = await tenantDb(event, { as: 'operator' }).list<PageRow>(PAGES_TABLE, [
-    Query.equal('status', 'published'),
-    Query.orderAsc('sortOrder'),
-    Query.limit(50),
-  ]).catch((error) => {
-    throw toH3Error(error, 'Could not load pages')
-  })
+/**
+ * ALLE VERÖFFENTLICHTEN ZEILEN, GEBLÄTTERT (BE-019).
+ *
+ * Bis dahin las die Route `Query.limit(50)` ohne Blättern — eine Zeile je
+ * Seite UND Sprache. Mit drei Sprachen fehlten ab der 17. Seite Einträge in
+ * Navigation und Fußzeile, ohne Hinweis.
+ *
+ * Geblättert wird nach Kennung (Appwrites Standard-Reihenfolge, der Cursor
+ * zeigt auf eine eindeutige Zeile), sortiert erst im Speicher: ein Cursor auf
+ * `sortOrder` liefe bei Gleichstand über viele Zeilen derselben Reihenfolge
+ * (die Rechtstexte stehen alle bei 90/91, neue Seiten bei 0). Das Ergebnis ist
+ * dasselbe wie vorher mit `orderAsc('sortOrder')`.
+ *
+ * Die Obergrenze ist ein NETZ, kein Alltag: 1.000 Zeilen sind mehr als jede
+ * Navigation trägt. Greift sie, steht das als EINE Log-Zeile im Protokoll —
+ * nur Zahlen und die Mandanten-Kennung, kein Titel. Die Antwort enthält dann
+ * die ersten 1.000 gelesenen Zeilen.
+ */
+const PAGE_SIZE = 100
+const MAX_ROWS = 1_000
 
-  const bySlug = new Map<string, PageRow[]>()
-  for (const row of res.rows) {
-    const list = bySlug.get(row.slug) ?? []
-    list.push(row)
-    bySlug.set(row.slug, list)
+async function loadPublicPagesSnapshot(event: H3Event): Promise<PublicPagesSnapshot> {
+  const db = tenantDb(event, { as: 'operator' })
+  const rows: PageRow[] = []
+  let cursor: string | undefined
+
+  for (;;) {
+    const res = await db.list<PageRow>(PAGES_TABLE, [
+      Query.equal('status', 'published'),
+      Query.limit(PAGE_SIZE),
+      ...(cursor ? [Query.cursorAfter(cursor)] : []),
+    ]).catch((error) => {
+      throw toH3Error(error, 'Could not load pages')
+    })
+    rows.push(...res.rows)
+    if (res.rows.length < PAGE_SIZE) break
+    if (rows.length >= MAX_ROWS) {
+      if (res.total > rows.length) {
+        logEvent('warn', 'pages.public_list_capped', {
+          scope: tenantCacheScope(event),
+          read: rows.length,
+          total: res.total,
+        })
+      }
+      break
+    }
+    cursor = res.rows.at(-1)!.$id
   }
 
-  const items = [...bySlug.values()].map((rows) => {
-    const row = rows.find(r => r.locale === requested)
-      ?? rows.find(r => r.locale === 'en')
-      ?? rows[0]!
-    return { slug: row.slug, title: row.title, sortOrder: row.sortOrder }
-  })
+  const groups = groupPublicPageVersions(rows.map(row => ({
+    slug: row.slug, locale: row.locale, title: row.title, sortOrder: row.sortOrder,
+  })))
 
   // Die Regeln erscheinen in der Navigation auch dann, wenn es sie als Zeile
   // noch nicht gibt (F1, Davids Entscheidung 2 — Begründung in
   // shared/guidelinesFallback.ts). Der Punkt und die Seite dahinter müssen
   // dieselbe Antwort geben, deshalb steht hier dieselbe zweite Frage wie in
   // public/[slug].get.ts: ein zurückgezogener Entwurf bleibt zurückgezogen.
-  if (!items.some(item => item.slug === GUIDELINES_SLUG) && await guidelinesFallbackApplies(event)) {
-    items.push(guidelinesFallbackNavItem(requested))
-  }
+  // Die Frage hängt nicht an der Sprache und wird deshalb mitgespeichert.
+  const hasGuidelines = groups.some(group => group.values().next().value?.slug === GUIDELINES_SLUG)
+  const guidelinesFallback = !hasGuidelines && await guidelinesFallbackApplies(event)
 
-  const sorted = items.sort((a, b) => a.sortOrder - b.sortOrder)
-  rememberPublicPages(event, requested, sorted)
-  return sorted
-})
+  return { groups, guidelinesFallback }
+}

@@ -77,3 +77,27 @@ export function hasLocale(available: readonly string[], code: string): boolean {
   const wanted = baseLanguage(code)
   return !!wanted && available.some(entry => baseLanguage(entry) === wanted)
 }
+
+/**
+ * DAS MUSTER EINES SPRACHCODES einer Seite: `en`, `de`, `en-US`.
+ *
+ * EINE Quelle für zwei Stellen (BE-019): das Seiten-Schema prüft damit, was
+ * gespeichert wird, und die öffentlichen Routen prüfen damit, was in der
+ * Anfrage steht. Vorher kannte nur das Schema das Muster; die Routen nahmen
+ * jeden Text, und die Liste schlug damit in einem gewöhnlichen Objekt nach —
+ * `toString` traf dort eine geerbte Funktion statt einer Sprache.
+ */
+export const PAGE_LOCALE_PATTERN = /^[a-z]{2}(-[A-Za-z]{2})?$/
+
+/** Sprache, wenn die Anfrage keine (gültige) nennt — wie bisher `en`. */
+export const DEFAULT_PUBLIC_PAGE_LOCALE = 'en'
+
+/**
+ * Die gewünschte Sprache aus `?locale=`. Alles, was nicht dem Muster folgt —
+ * auch ein Array aus `?locale=a&locale=b` —, zählt wie „nicht angegeben".
+ * Bewusst KEIN Fehler: eine Navigation, die an einem kaputten Parameter
+ * scheitert, hilft niemandem, und `en` ist die Antwort ohne Angabe.
+ */
+export function requestedPageLocale(raw: unknown): string {
+  return typeof raw === 'string' && PAGE_LOCALE_PATTERN.test(raw) ? raw : DEFAULT_PUBLIC_PAGE_LOCALE
+}
