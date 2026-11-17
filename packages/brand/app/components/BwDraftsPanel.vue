@@ -142,10 +142,25 @@ function messageKey(error: unknown): string {
   return 'brand.mark.drafts.error.generic'
 }
 
+/**
+ * DEN ZÄHLER AUS DEM LAUF-STAND NACHZIEHEN. Läuft ein Lauf, ist sein Zähler
+ * der aktuelle — auch in einem Reiter, der ihn nicht gestartet hat. Ist er
+ * zu Ende, zählt sein Stand nur, wenn hier schon eine Zahl steht (also in
+ * dieser Sitzung gestartet wurde): der Zähler eines Laufs von gestern sagt
+ * über heute nichts. Nach einem Lauf ohne Ergebnis ist er an der Lauf-Zeile
+ * schon wieder um eins höher (Rückbuchung).
+ */
+function syncRemaining(): void {
+  const view = runState.value
+  if (!view.quota) return
+  if (view.state === 'running' || remaining.value !== null) remaining.value = view.quota.remaining
+}
+
 async function load(): Promise<void> {
   loading.value = true
   try {
     await drafts.load()
+    syncRemaining()
     errorKey.value = ''
   }
   catch (error) {
@@ -158,18 +173,11 @@ async function load(): Promise<void> {
 
 onMounted(load)
 
-/**
- * EINE NACHFRAGE, solange ein Lauf läuft: Liste und Lauf-Stand in einem Zug.
- * Endet der Lauf, steht der Zähler aus der Lauf-Zeile da — nach einem Lauf
- * ohne Ergebnis ist er dort schon wieder um eins höher (Rückbuchung).
- */
+/** EINE NACHFRAGE, solange ein Lauf läuft: Liste und Lauf-Stand in einem Zug. */
 async function poll(): Promise<void> {
   await drafts.load()
-  const view = runState.value
-  if (view.state !== 'running') {
-    alreadyRunning.value = false
-    if (view.quota && remaining.value !== null) remaining.value = view.quota.remaining
-  }
+  syncRemaining()
+  if (runState.value.state !== 'running') alreadyRunning.value = false
 }
 
 useRunPolling({ active: running, intervalMs: RUN_LEASE_POLL_MS, tick: poll })
@@ -189,7 +197,7 @@ async function run(): Promise<void> {
     // hat den Lauf gestartet. Stand holen — dann zeigt auch dieser Reiter ihn.
     if ((error as FetchErrorLike | null)?.data?.reason === RUN_LEASE_BUSY_CODE) {
       alreadyRunning.value = true
-      await drafts.load().catch(() => {})
+      await drafts.load().then(syncRemaining).catch(() => {})
     }
     else {
       errorKey.value = messageKey(error)
