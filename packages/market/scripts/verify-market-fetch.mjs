@@ -57,6 +57,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { startRunRespectingBrake } from './lib/runStart.mjs'
 
 const PORT = Number(process.env.BRANDING_PORT || 3016)
 const HOST = process.env.BRANDING_HOST || 'localhost'
@@ -183,7 +184,7 @@ function call(path, { method = 'GET', body, cookie } = {}) {
         let json = null
         try { json = JSON.parse(text) }
         catch { /* HTML */ }
-        resolveCall({ status: res.statusCode, json, text })
+        resolveCall({ status: res.statusCode, json, text, headers: res.headers })
       })
     })
     req.on('error', rejectCall)
@@ -252,7 +253,8 @@ async function marketRows(table, profileId) {
  * Stand aus `GET /api/market/profiles/<id>` (Schritte MIT Namen).
  */
 async function runAndWait(base, cookie, query = '') {
-  const post = await call(`${base}/run${query}`, { method: 'POST', cookie })
+  // Hält den Abstand zur Minuten-Bremse selbst (LL1 c, `lib/runStart.mjs`).
+  const post = await startRunRespectingBrake(() => call(`${base}/run${query}`, { method: 'POST', cookie }))
   if (post.status !== 202) return { post, run: null }
   const deadline = Date.now() + 10 * 60_000
   let run = post.json?.run ?? null
@@ -303,7 +305,7 @@ try {
 
   // ── 1 · Freischaltung ───────────────────────────────────────────────────
   console.log('\n1 · Die Freischaltung hängt an Kapitel B')
-  const lockedRun = await call(`${base}/run`, { method: 'POST', cookie: owner.cookie })
+  const lockedRun = await startRunRespectingBrake(() => call(`${base}/run`, { method: 'POST', cookie: owner.cookie }))
   check('Lauf vor der Abnahme ⇒ 409 market_locked',
     lockedRun.status === 409 && lockedRun.json?.reason === 'market_locked',
     `${lockedRun.status} ${lockedRun.json?.reason ?? ''}`)
@@ -364,7 +366,7 @@ try {
   console.log('\n3 · Ein fremdes Branding gibt es nicht')
   const foreignList = await call(`${base}/competitors`, { cookie: stranger.cookie })
   check('fremdes Konto MIT Beta-Zugang ⇒ 404 (nicht 403)', foreignList.status === 404, String(foreignList.status))
-  const foreignRun = await call(`${base}/run`, { method: 'POST', cookie: stranger.cookie })
+  const foreignRun = await startRunRespectingBrake(() => call(`${base}/run`, { method: 'POST', cookie: stranger.cookie }))
   check('auch der Lauf ⇒ 404', foreignRun.status === 404, String(foreignRun.status))
   const noSession = await call(`${base}/competitors`)
   check('ohne Anmeldung ⇒ 404', noSession.status === 404, String(noSession.status))
