@@ -220,7 +220,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
   ],
   insights: [
     'packages/insights/server/api/insights/brands/[id].get.ts',
-    'packages/insights/server/api/insights/brands/[id].patch.ts',
     'packages/insights/server/api/insights/brands/index.get.ts',
     'packages/insights/server/api/insights/channels/[channelId].delete.ts',
     'packages/insights/server/api/insights/channels/[channelId].patch.ts',
