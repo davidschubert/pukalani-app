@@ -173,6 +173,12 @@ Exit 0 und sieht aus wie ein bestandener Lauf — der Rauchtest weigert sich
 deshalb ohne `pnpm buehne smoke`. Einordnung aller Skripte:
 docs/referenz/LIVE-BEWEISE.md.
 
+EINE LIVE-PROBE EINER ROUTE GEHÖRT AUF EINEN KONTROLL- ODER COMMUNITY-HOST
+(PB1 d): `platform.pukalani.app` selbst hat keinen Mandanten und beantwortet
+nur `/api/health` — jede andere Route dort endet in 404 `unknown_host` und
+sieht aus wie „Route fehlt". Für eine Probe `account.pukalani.app`
+(Kontroll-Host) oder `demo.pukalani.app` (Community) nehmen.
+
 DIE BEWEISE LAUFEN VON SELBST (OPS-009, seit 2026-11-17): bis dahin liefen
 6 von 82 Beweis-Skripten in der CI, alle anderen nur, wenn jemand daran
 dachte — und ein Beweis, der nicht läuft, veraltet still (beim Einzug auf die

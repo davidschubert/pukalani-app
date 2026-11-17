@@ -16,7 +16,7 @@ export default defineAppConfig({
        * neue Communities in der EINGEFRORENEN Instanz an, und zwar lautlos.
        *
        * Env-Override je Umgebung: NUXT_PUBLIC_CONTROL_POOL_PROJECT (lokal
-       * heißt das Dev-Projekt weiterhin `pool`).
+       * heißt das Projekt seit dem Spiegel vom 2026-11-09 ebenfalls `account`).
        */
       defaultPoolProject: 'account',
       /**

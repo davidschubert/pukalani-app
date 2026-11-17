@@ -77,7 +77,7 @@ const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const controlProject = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
 const controlKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
-const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'pool'
+const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'account'
 const poolKey = process.env.POOL_KEY
 // Beide Projekte tragen lokal dieselbe Datenbank-Id ('main'); der Override ist
 // für Umgebungen da, in denen sie auseinanderfallen.
