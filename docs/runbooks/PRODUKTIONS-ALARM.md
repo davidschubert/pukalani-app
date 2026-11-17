@@ -721,32 +721,33 @@ erreichbar" oder „nicht in der festen Form": den Lauf von Hand wiederholen;
 bleibt es, am Mac `node scripts/ops/verify-app-signals.mjs --ssh` und
 `ssh ploi@49.13.211.173 'node /home/ploi/<site>/ops/app-watch-counts.mjs <prozess>'`.
 
-**Umlauf der pm2-Logs (Vorlage, noch nicht eingeschaltet — Stand 2026-11-17).**
-pm2 dreht seine Logs nicht selbst; die zwei Dateien je Prozess wachsen ohne
-Grenze. Die Vorlage steht in `ops/logrotate-pm2.conf` (täglich, 14 Tage,
-`copytruncate`, die gestrige Datei ungepackt). Das Zähl-Skript liest die
-umgelaufenen Dateien seit dem 2026-11-17 mit (`<datei>.1`, `<datei>.2.gz`) —
-vorher hätte der Blick „In die App hinein" nach dem ersten Umlauf Tages-Läufe
-als fehlend gemeldet. Einschalten, mit Davids Ja, in dieser Reihenfolge:
+**Umlauf der pm2-Logs (eingeschaltet am 2026-11-17, mit Davids Ja).** pm2
+dreht seine Logs nicht selbst; die zwei Dateien je Prozess wuchsen ohne
+Grenze. Der Umlauf steht als zweiter Block in
+`ops/logrotate-admin-access.conf` (täglich, 14 Tage, `copytruncate`, die
+gestrige Datei ungepackt). Diese Datei liefert das Ausliefern aus, und der
+vorhandene Zeitplan `admin-log-umlauf` (täglich 03:12, Benutzer `ploi`) fährt
+sie — kein neuer Zeitplan, kein neues Paket. Das Zähl-Skript liest die
+umgelaufenen Dateien mit (`<datei>.1`, `<datei>.2.gz`); vorher hätte der Blick
+„In die App hinein" nach dem ersten Umlauf Tages-Läufe als fehlend gemeldet.
+Vor dem Einschalten gemessen: 66 MB Logs, 24 GB frei, alle sechs Sites mit dem
+neuen Zähl-Skript.
 
-1. Prüfen, dass JEDE der sechs Sites das neue Zähl-Skript trägt: auf dem
-   App-Server `grep -c rotatedFiles /home/ploi/*/ops/app-watch-counts.mjs` —
-   jede Zeile muss eine Zahl über 0 zeigen (das Skript kommt mit dem nächsten
-   Ausliefern der jeweiligen App).
-2. Den Block aus `ops/logrotate-pm2.conf` an `ops/logrotate-admin-access.conf`
-   anhängen (Pull Request). Diese Datei liefert das Ausliefern schon aus, und
-   der vorhandene Zeitplan `admin-log-umlauf` (täglich 03:12) fährt sie — kein
-   neuer Zeitplan, keine neue Datei auf dem Server, kein neues Paket.
-3. Nach dem nächsten Ausliefern der Betreiber-Konsole und einer Nacht:
-   `ls -la ~/.pm2/logs/ | head -30` zeigt je Log eine Datei `.1`; der Blick
-   „In die App hinein" am Morgen danach bleibt grün und nennt weiter jeden
-   Zeit-Lauf.
-
-Zurück: den Block wieder aus der Datei nehmen (Pull Request). Die umgelaufenen
-Dateien bleiben liegen und fallen nach 14 Tagen nicht von selbst weg — von
-Hand löschen. Beim ersten Lauf wird jede Datei einmal kopiert: vorher mit
-`du -sh ~/.pm2/logs` und `df -h /home` nachsehen, dass der Platz für eine
-zweite Kopie reicht.
+- *Nachsehen:* `ls -la ~/.pm2/logs/ | head -30` zeigt je Log eine Datei `.1`
+  (eine Nacht später dazu `.2.gz`). Der Blick „In die App hinein" bleibt
+  grün und nennt weiter jeden Zeit-Lauf. DIE ERSTE NACHT DREHT NOCH NICHTS:
+  `logrotate` merkt sich eine Datei, die es zum ersten Mal sieht, nur in
+  seiner Zustands-Datei und dreht sie ab der folgenden Nacht (gemessen im
+  Probe-Modus am 2026-11-17: „Handling 2 logs", beide Muster gelesen, kein
+  Fehler).
+- *Der Blick meldet nach einer Nacht einen Zeit-Lauf als fehlend:* auf der
+  betroffenen Site liegt ein altes Zähl-Skript
+  (`grep -c rotatedFiles /home/ploi/*/ops/app-watch-counts.mjs` — jede Zeile
+  muss eine Zahl über 0 zeigen). Die App neu ausliefern.
+- *Zurück:* den zweiten Block aus `ops/logrotate-admin-access.conf` nehmen
+  (Pull Request). Die umgelaufenen Dateien bleiben liegen — von Hand löschen.
+- *Dateien früherer Prozess-Nummern* laufen einmal um; ihre Kopie `.1` bleibt
+  liegen und kann von Hand weg.
 
 **Server-Einstellungen.** Der Satz im Issue nennt Site und Pflicht-Zeile
 oder den Zeitplan.

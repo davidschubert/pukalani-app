@@ -33,8 +33,10 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 ### N07 — Nacharbeiten „Kopfzeilen, Wächter, Adressen": SE1 (a, c, d, f), WL1 (b, c, Teile von d) und SV1 (b) ✅ 2026-11-17
 
 Die baubaren Reste aus drei Paketen des Gesamtaudits (P23, P20, P13). Pull
-Requests 277, 280, 281, 282, 283, 284, 285, 286, 287 und dieser Abschluss;
-keine Migration, nichts am Server geändert.
+Requests 277, 280, 281, 282, 283, 284, 285, 286, 287, 288 und 292; keine
+Migration. Am Server von Hand nichts geändert; mit Davids Ja ein lesender
+Blick (Platz und Skript-Stand) und der Umlauf der pm2-Logs über die
+ausgelieferte Datei.
 
 **Was gebaut ist**
 
@@ -66,8 +68,11 @@ keine Migration, nichts am Server geändert.
 - **Zähl-Skript liest umgelaufene Logs (SE1 c).** `ops/app-watch-counts.mjs`
   liest neben den zwei laufenden pm2-Logs ihre umgelaufenen Geschwister
   (`.1`, `.2.gz`, Datum, die Form von pm2-logrotate), nur genaue Namen,
-  höchstens acht Tage zurück. Vorlage `ops/logrotate-pm2.conf` und Anleitung
-  im Runbook; eingeschaltet ist der Umlauf nicht.
+  höchstens acht Tage zurück. Der Umlauf selbst ist seit dem 2026-11-17
+  eingeschaltet (Davids Ja per Klick): ein zweiter Block in
+  `ops/logrotate-admin-access.conf`, gefahren vom vorhandenen Zeitplan —
+  vorher auf dem Server gemessen: 66 MB Logs, 24 GB frei, alle sechs Sites
+  mit dem neuen Zähl-Skript.
 - **Eigene Domain (SE1 f, Nachtrag aus e).** Checkout, Kundenportal und der
   Ticket-Kauf der Test-App nehmen für die Rückkehr-Adresse die aktive eigene
   Domain der Site (`resolveSiteOrigin`), sonst die Basis-URL, sonst die feste
@@ -132,11 +137,15 @@ Galerie; der Anmelde-Blick wird gegen die lokale Datenbank rot (dort sind die
 Wege an). Live: die Kopfzeile nennt auf drei Hosts die Route, alle acht Hosts
 `ok`.
 
+Der Wächter lief am 2026-11-17 einmal von Hand (Davids Ja per Klick, Lauf
+44167219497): alle vier Projekte „zu (501)", und der Blick „In die App
+hinein" nennt auf allen sechs Apps „Skript-Regel 0" — das neue Zähl-Skript
+ist also überall angekommen.
+
 **Nicht geprüft.** Kein Bericht eines echten Besuchers, kein Firefox und kein
-Safari; der Anmelde-Blick gegen die echten Projekte (kommt mit dem nächsten
-täglichen Lauf); kein echter Stripe-Aufruf; die Antwort der neuen
-Control-Adresse auf Production (nur der Live-Build); nichts am Server
-geändert oder angesehen; die Regel ist nicht scharf.
+Safari; kein echter Stripe-Aufruf; die Antwort der neuen Control-Adresse auf
+Production (nur der Live-Build); der erste echte Umlauf der pm2-Logs (zweite
+Nacht); die Regel ist nicht scharf.
 
 **Gelernt:**
 - **Eine Probe im Browser findet, was kein Test findet.** Die Annahme-Route
