@@ -24,6 +24,12 @@ import type { H3Event } from 'h3'
  * Alles vor der Buchung ist Attrappe (Zugang, Datentür, Listen); die BUCHUNG
  * selbst und der Burst-Zähler sind ECHT — sonst prüfte der Test seine eigene
  * Attrappe.
+ *
+ * SEIT LL1 b (2026-11-17) STEHEN HIER NUR NOCH ZWEI DER VIER: die Lesung der
+ * Vorbilder und die Zeichen-Entwürfe rechnen hinter der Antwort, ihr Platz
+ * gehört dem Lauf und kommt mit dessen Ende zurück. Dieselben zwei Aussagen
+ * für sie stehen in `brandReadingRunRoute.test.ts` und
+ * `brandMarkDraftsRunRoute.test.ts`.
  */
 
 vi.mock('../server/utils/brandInspirationStore', async () => ({
@@ -82,8 +88,6 @@ vi.stubGlobal('useRateLimitStore', () => ({
 const generators = await import('../server/utils/brandGenerators')
 
 const handlers: Record<string, (event: H3Event) => Promise<unknown>> = {
-  'Vorbilder lesen': (await import('../server/api/brand/profiles/[id]/inspiration/read.post'))
-    .default as unknown as (event: H3Event) => Promise<unknown>,
   'DNA vorschlagen': (await import('../server/api/brand/profiles/[id]/dna/propose.post'))
     .default as unknown as (event: H3Event) => Promise<unknown>,
   'Zeichen-Briefing': (await import('../server/api/brand/profiles/[id]/mark/brief.post'))

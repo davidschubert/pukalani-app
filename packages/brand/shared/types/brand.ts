@@ -2238,17 +2238,27 @@ export interface BrandInspirationReadingView {
   runLine: string
 }
 
+/**
+ * `run` ist der Stand des jüngsten Lese-Laufs (LL1 b, 2026-11-17), gegen die
+ * Server-Uhr gerechnet: der Lauf rechnet hinter der Antwort seines Starts,
+ * und die Werkstatt fragt diese Liste ab, bis er nicht mehr `running` ist.
+ */
 export interface BrandInspirationListResponse extends BrandInspirationItemsResponse {
   reading: BrandInspirationReadingView
+  run: BrandRunView
 }
 
 /**
- * DIE ANTWORT EINES LAUFS (`POST …/inspiration/read`, D2b) — dieselbe Liste
- * wie beim GET, plus das REST-KONTINGENT: der Mensch soll unter dem Knopf
- * sehen, wie oft er heute noch lesen lassen kann, ohne es zählen zu müssen.
+ * DIE ANTWORT EINES STARTS (`POST …/inspiration/read`, D2b) — seit LL1 b ein
+ * `202`: der Lauf ist angenommen. Liste und Lesung stehen NICHT darin (sie
+ * entstehen erst; `GET …/inspiration` liefert sie mit dem Lauf-Stand). Das
+ * REST-KONTINGENT steht schon hier, weil vor der Antwort gebucht wird: der
+ * Mensch soll unter dem Knopf sehen, wie oft er heute noch lesen lassen kann,
+ * ohne es zählen zu müssen.
  */
-export interface BrandInspirationReadResponse extends BrandInspirationListResponse {
+export interface BrandInspirationReadResponse {
   ok: true
+  run: BrandRunView
   quota: { used: number, limit: number, remaining: number }
 }
 

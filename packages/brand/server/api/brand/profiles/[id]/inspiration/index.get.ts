@@ -1,5 +1,6 @@
 import { BRAND_INSPIRATION_MAX } from '../../../../../../shared/brandInspiration'
 import { brandReadingState, parseBrandReadingSlotValue } from '../../../../../../shared/brandReading'
+import { BRAND_RUN_SCOPES } from '../../../../../../shared/brandRun'
 import type { BrandInspirationListResponse } from '../../../../../../shared/types/brand'
 import { BRAND_READING_SLOT_ID } from '../../../../../utils/brandInspirationReading'
 import {
@@ -7,7 +8,8 @@ import {
   listBrandInspiration,
   requireBrandInspirationContext,
 } from '../../../../../utils/brandInspirationStore'
-import { brandSlotStoredValue, parseSlotRecords } from '../../../../../utils/brandStore'
+import { readBrandRunView } from '../../../../../utils/brandRun'
+import { brandSlotStoredValue, loadStepRows, parseSlotRecords } from '../../../../../utils/brandStore'
 
 /**
  * DIE VORBILDER DIESER MARKE — Bereich, Notiz und Nummer, KEIN Bild
@@ -33,8 +35,19 @@ import { brandSlotStoredValue, parseSlotRecords } from '../../../../../utils/bra
  */
 export default defineEventHandler(async (event): Promise<BrandInspirationListResponse> => {
   const { userId, betaAccount } = await requireBrandAccess(event)
-  const { profile, stepRows } = await requireBrandInspirationContext(event, userId, betaAccount)
-  const items = await listBrandInspiration(event, profile.$id)
+  const { profile } = await requireBrandInspirationContext(event, userId, betaAccount)
+
+  // DER LAUF-STAND ZUERST, Kapitel-Zeilen und Liste DANACH (LL1 b): endet der
+  // Lauf zwischen den Lesevorgängen, zeigt die Antwort „läuft noch" mit schon
+  // vollständiger Lesung (die nächste Abfrage zieht den Stand nach) — nie
+  // „fertig" mit einer Lesung von vorher. Deshalb werden die Kapitel-Zeilen
+  // hier noch einmal gelesen: die aus der Zugangs-Prüfung sind älter als der
+  // Lauf-Stand, und an ihnen hängt das Fazit.
+  const run = await readBrandRunView(event, BRAND_RUN_SCOPES.reading, profile.$id)
+  const [items, stepRows] = await Promise.all([
+    listBrandInspiration(event, profile.$id),
+    loadStepRows(event, profile.$id),
+  ])
 
   const dnaRow = stepRows.find(row => row.stepKey === BRAND_INSPIRATION_STEP_KEY)
   const slotValue = dnaRow
@@ -50,5 +63,6 @@ export default defineEventHandler(async (event): Promise<BrandInspirationListRes
       summary: { keeps: [...(view?.keeps ?? [])], improves: [...(view?.improves ?? [])] },
       runLine: view?.runLine ?? '',
     },
+    run,
   }
 })

@@ -2,6 +2,8 @@
 import { BRAND_DNA_DIMENSIONS, BRAND_INSPIRATION_AREAS, BRAND_READING_VERDICTS, brandDnaDimension, brandTermById, brandTermLabel } from '../../shared/brandDesignVocab'
 import { BRAND_DESIGN_READING_DAILY_LIMIT, brandAiRejectionMessageKey } from '../../shared/brandAiLimits'
 import type { BrandReadingVerdict } from '../../shared/brandReading'
+import { BRAND_RUN_POLL_TIMEOUT_MS } from '../../shared/brandRun'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../core/shared/runLease'
 import type { BrandInspirationReadResponse } from '../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
 
@@ -37,6 +39,17 @@ import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
  * ── DAS BILD KOMMT AUS DER EIGENEN ROUTE ──────────────────────────────────
  * Wie im Upload-Instrument: `…/inspiration/:id/image`, nur für den Besitzer,
  * `private, no-store`. Es gibt keine Bucket-Adresse (§2.13).
+ *
+ * ── DER LAUF RECHNET IM HINTERGRUND (LL1 b, 2026-11-17) ──────────────────
+ * Der Start antwortet sofort (`202`); ein Vision-Zug über zwölf Bilder
+ * braucht länger, als eine Anfrage warten sollte. Solange der Lauf läuft,
+ * fragt der Abschnitt die Liste alle paar Sekunden ab (`useRunPolling`, nur
+ * bei sichtbarem Reiter) — dort stehen Lesungen, Fazit UND Lauf-Stand. Wer
+ * die Seite neu lädt oder in einem zweiten Reiter öffnet, sieht denselben
+ * Stand: „läuft", fertig, gescheitert mit Grund, oder unterbrochen. Ein
+ * zweiter Start während eines Laufs ist kein Fehler, sondern ein ruhiger
+ * Hinweis (`run_running`). Der Baustein wird nachgeladen, sobald der Lauf
+ * ENDET — erst dann stehen Slot-Wert und Revision.
  */
 const props = defineProps<{
   profileId: string
@@ -47,12 +60,33 @@ const props = defineProps<{
 const { t, locale } = useI18n()
 const store = useBrandWorkspaceStore()
 const inspiration = useBrandInspiration(props.profileId)
-const { items, runLine, summary, state, unread } = inspiration
+const { items, runLine, summary, state, unread, run: runState } = inspiration
 
-const running = ref(false)
+/** Der Start-Aufruf ist unterwegs — danach trägt der Lauf-Stand das „läuft". */
+const starting = ref(false)
 const errorKey = ref('')
+/** Der ruhige Hinweis „läuft schon" nach einem zweiten Start. */
+const alreadyRunning = ref(false)
 /** `null` = noch kein Lauf in dieser Sitzung; die Zeile steht dann nicht da. */
 const remaining = ref<number | null>(null)
+
+/** Läuft gerade ein Lauf — der eigene Start oder einer aus einem anderen Reiter? */
+const running = computed(() => starting.value || runState.value.state === 'running')
+
+/**
+ * WAS DER JÜNGSTE LAUF HINTERLASSEN HAT — eine Zeile unter dem Knopf, aus dem
+ * Lauf-Stand gelesen und nicht aus einer Merkvariable: nach einem Neuladen
+ * steht dort dasselbe. Die Gründe sind dieselben Wörter, die früher als
+ * Fehler-Code der Anfrage kamen.
+ */
+const runMessageKey = computed(() => {
+  const view = runState.value
+  if (view.state === 'stalled') return 'brand.reading.interrupted'
+  if (view.state !== 'failed') return ''
+  if (view.failure === 'ai_endpoint_unavailable') return 'error.aiEndpointUnavailableHint'
+  if (view.failure === 'reading_too_large') return 'brand.reading.error.tooLarge'
+  return 'brand.reading.error.failed'
+})
 
 const VERDICT_TONE: Record<BrandReadingVerdict, string> = {
   fits: 'confirmed',
@@ -136,27 +170,65 @@ function messageKey(error: unknown): string {
   return 'brand.reading.error.generic'
 }
 
+/**
+ * DEN ZÄHLER AUS DEM LAUF-STAND NACHZIEHEN. Läuft ein Lauf, ist sein Zähler
+ * der aktuelle — auch in einem Reiter, der ihn nicht gestartet hat. Ist er
+ * zu Ende, zählt sein Stand nur, wenn hier schon eine Zahl steht: der Zähler
+ * eines Laufs von gestern sagt über heute nichts.
+ */
+function syncRemaining(): void {
+  const view = runState.value
+  if (!view.quota) return
+  if (view.state === 'running' || remaining.value !== null) remaining.value = view.quota.remaining
+}
+
+// Die Liste lädt das Ablage-Instrument darüber (`BwUploadsEditor`) — kommt
+// dabei ein laufender Lauf an, steht sein Zähler sofort da.
+watch(() => runState.value.state, (next, previous) => {
+  syncRemaining()
+  // DER LAUF IST ZU ENDE: der neue Slot-Wert und die neue Revision (s. Kopf).
+  // Auch nach einem gescheiterten Lauf — er hat nichts geschrieben, und das
+  // Nachladen ist dann ein No-op.
+  if (previous === 'running' && next !== 'running') {
+    alreadyRunning.value = false
+    void store.loadStep(props.profileId, 'dna')
+  }
+}, { immediate: true })
+
+/** EINE NACHFRAGE, solange ein Lauf läuft: Liste, Fazit und Lauf-Stand in einem Zug. */
+async function poll(): Promise<void> {
+  await inspiration.load({ timeout: BRAND_RUN_POLL_TIMEOUT_MS })
+}
+
+useRunPolling({ active: running, intervalMs: RUN_LEASE_POLL_MS, tick: poll })
+
 async function run(): Promise<void> {
   if (props.disabled || running.value) return
-  running.value = true
+  starting.value = true
   errorKey.value = ''
+  alreadyRunning.value = false
   try {
     const res = await $fetch<BrandInspirationReadResponse>(`${inspiration.base}/read`, {
       method: 'POST',
     })
-    inspiration.setItems(res.items)
-    inspiration.setReading(res.reading)
+    runState.value = res.run
     remaining.value = res.quota.remaining
-    // Der neue Slot-Wert und die neue Revision (s. Kopf).
-    await store.loadStep(props.profileId, 'dna')
   }
   catch (error) {
-    errorKey.value = messageKey(error)
-    // Eine Drossel-Absage IST eine Auskunft über das Kontingent: null.
-    if (errorKey.value.endsWith('readingLimit')) remaining.value = 0
+    // „Läuft schon" ist KEIN Fehler: ein zweiter Reiter (oder ein Doppelklick)
+    // hat den Lauf gestartet. Stand holen — dann zeigt auch dieser Reiter ihn.
+    if ((error as FetchErrorLike | null)?.data?.reason === RUN_LEASE_BUSY_CODE) {
+      alreadyRunning.value = true
+      await inspiration.load().catch(() => {})
+    }
+    else {
+      errorKey.value = messageKey(error)
+      // Eine Drossel-Absage IST eine Auskunft über das Kontingent: null.
+      if (errorKey.value.endsWith('readingLimit')) remaining.value = 0
+    }
   }
   finally {
-    running.value = false
+    starting.value = false
   }
 }
 
@@ -271,18 +343,28 @@ function imageSrc(id: string, createdAt: string): string {
           :label="t(runLabelKey, { count: unread })"
           color="neutral" variant="outline" class="rounded-full"
           style="background: var(--bw-surface-hi)"
+          data-reading-run
           :loading="running"
           :disabled="disabled || running || items.length === 0"
           @click="run"
         />
-        <p v-if="running" class="bw-pending">{{ t('brand.reading.running') }}</p>
+        <p v-if="running" class="bw-pending" data-reading-running>
+          {{ alreadyRunning ? t('brand.reading.alreadyRunning') : t('brand.reading.running') }}
+        </p>
       </div>
+      <p v-if="running" class="bw-pending">{{ t('brand.reading.background') }}</p>
       <p class="bw-pending">
         {{ remaining === null
           ? t('brand.reading.limits', { max: BRAND_DESIGN_READING_DAILY_LIMIT })
           : t('brand.reading.remaining', { count: remaining, max: BRAND_DESIGN_READING_DAILY_LIMIT }) }}
       </p>
       <p v-if="errorKey" class="text-sm" style="color: var(--bw-stale)">{{ t(errorKey) }}</p>
+      <p
+        v-else-if="runMessageKey && !running" class="text-sm" style="color: var(--bw-stale)"
+        data-reading-run-outcome
+      >
+        {{ t(runMessageKey) }}
+      </p>
     </div>
   </section>
 </template>

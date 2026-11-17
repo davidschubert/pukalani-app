@@ -21,7 +21,7 @@ import {
   brandReadingPrompt,
 } from './readingPrompt'
 import { BRAND_PROVIDER_ROUTING_VERTEX_EU } from './brandProviderRouting'
-import { brandDevStubEnabled } from './brandGenerators'
+import { brandDevStubDelay, brandDevStubEnabled } from './brandGenerators'
 import { brandSlotPromptLabel } from './brandSlotPromptLabels'
 import {
   BRAND_INSPIRATION_STEP_KEY,
@@ -234,6 +234,9 @@ export async function runBrandInspirationReading(
   const started = Date.now()
 
   if (brandReadingStubEnabled()) {
+    // Nur im Beweis gesetzt: der Ersatz braucht dann so lange wie ein
+    // langsamer echter Lauf (`brandDevStubDelay`).
+    await brandDevStubDelay()
     const clamped = clampBrandReadings(stubReading(images), capped.map(e => e.id), at)
     return {
       readings: clamped.readings,
