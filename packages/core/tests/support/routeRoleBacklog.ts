@@ -46,10 +46,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/admin/server/api/admin/users/[id]/status.patch.ts',
     'packages/admin/server/api/admin/users/stats.get.ts',
   ],
-  analytics: [
-    'packages/analytics/server/api/analytics/settings.patch.ts',
-    'packages/analytics/server/api/analytics/stats.get.ts',
-  ],
   'apps/comments': [
     'apps/comments/server/api/events/[id]/checkout.post.ts',
   ],

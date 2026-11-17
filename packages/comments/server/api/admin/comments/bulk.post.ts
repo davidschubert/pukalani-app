@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import { z } from 'zod'
+import { commentReadPermissions } from '../../../utils/commentReadPermissions'
 
 /**
  * Bulk-Moderation (Multi-Select in der Queue): hide/restore/dismiss für bis
@@ -37,7 +38,7 @@ export default defineEventHandler(async (event) => {
       // Die Tür prüft JE ID die Zugehörigkeit — eine Sammel-Aktion ist der
       // bequemste Ort, fremde IDs unterzumischen. Fremdes wirft 404 und landet
       // unten in `failed`, von außen nicht von „gibt es nicht" zu unterscheiden.
-      const row = await ops.get<ModeratableCommentRow>('comments', id, 'Comment not found')
+      const row = await ops.get<ModeratableCommentRow & { targetType: string }>('comments', id, 'Comment not found')
       // Soft-Delete-Tombstones sind nicht moderierbar (wie Einzel-Route)
       if (row.status === 'deleted') { failed.push(id); continue }
 
@@ -54,8 +55,10 @@ export default defineEventHandler(async (event) => {
         // restore: Status zurück + Veröffentlichungs-Permission wieder anhängen
         // (ein Write). C18: was „veröffentlicht" heißt, entscheidet die
         // Community — withPublishedRead setzt die richtige und räumt die andere.
+        // BE-020: an einem Betreiber-Ziel bleibt der Kommentar intern
+        // (dieselbe Funktion wie Anlegen und Einzel-Route).
         await ops.update<Models.Row & { status: string }>('comments', id, { status: 'active' }, 'Comment not found')
-        const restored = withPublishedRead(row.$permissions, event)
+        const restored = commentReadPermissions(event, row.targetType, row.$permissions)
         if (restored.join('\u0000') !== row.$permissions.join('\u0000')) {
           await ops.updatePermissions('comments', id, restored, 'Comment not found')
         }

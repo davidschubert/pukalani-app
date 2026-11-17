@@ -88,7 +88,8 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
    */
   const previousVote: UpvoteState = current?.value === 1 ? 1 : current?.value === -1 ? -1 : null
   const intendedVote: UpvoteState = previousVote === value ? null : value
-  if (upvoteDelta(previousVote, intendedVote) === 1) {
+  const spendsLike = upvoteDelta(previousVote, intendedVote) === 1
+  if (spendsLike) {
     const allowance = await spendLikeAllowance(event, user.$id)
     if (!allowance.ok) {
       throw createError({
@@ -99,31 +100,46 @@ export default defineEventHandler(async (event): Promise<PostVoteResponse> => {
     }
   }
 
-  if (current && current.value === value) {
-    await writer.remove(POST_VOTES_TABLE, current.$id)
-  }
-  else if (current) {
-    await writer.update<PostVote>(POST_VOTES_TABLE, current.$id, { value })
-  }
-  else {
-    try {
-      await writer.create<PostVote>(POST_VOTES_TABLE, {
-        postId,
-        userId: user.$id,
-        value,
-      }, {
-        // NUR LESERECHT (SEC-002): die eigene Stimme sieht nur der Stimmende
-        // (auch per Realtime); ändern und entfernen läuft über diese Route.
-        permissions: [Permission.read(Role.user(user.$id))],
-      })
+  /**
+   * SCHEITERT DAS SCHREIBEN, GEHT DAS EBEN GEBUCHTE LIKE ZURÜCK (BE-020) —
+   * genau einmal und nur, wenn diese Anfrage gebucht hat. Eine reguläre
+   * Rücknahme bucht nichts und erstattet nichts (kein Toggle-Karussell).
+   * Der 409 des Doppelklick-Rennens unten ist KEIN Fehler: die Stimme des
+   * Gewinners steht, beide Anfragen haben gebucht, und das zweite Like bleibt
+   * verbraucht — höchstens eines je Rennen, lieber zu viel verbucht als ein
+   * Schlupfloch.
+   */
+  try {
+    if (current && current.value === value) {
+      await writer.remove(POST_VOTES_TABLE, current.$id)
     }
-    catch (error) {
-      // Doppelklick-Race: der Unique-Index lässt nur einen durch — Counts +
-      // myVote werden unten ohnehin autoritativ neu gelesen
-      if (!(error instanceof AppwriteException && error.code === 409)) {
-        throw createError({ status: 500, statusText: 'Could not vote' })
+    else if (current) {
+      await writer.update<PostVote>(POST_VOTES_TABLE, current.$id, { value })
+    }
+    else {
+      try {
+        await writer.create<PostVote>(POST_VOTES_TABLE, {
+          postId,
+          userId: user.$id,
+          value,
+        }, {
+          // NUR LESERECHT (SEC-002): die eigene Stimme sieht nur der Stimmende
+          // (auch per Realtime); ändern und entfernen läuft über diese Route.
+          permissions: [Permission.read(Role.user(user.$id))],
+        })
+      }
+      catch (error) {
+        // Doppelklick-Race: der Unique-Index lässt nur einen durch — Counts +
+        // myVote werden unten ohnehin autoritativ neu gelesen
+        if (!(error instanceof AppwriteException && error.code === 409)) {
+          throw createError({ status: 500, statusText: 'Could not vote' })
+        }
       }
     }
+  }
+  catch (error) {
+    if (spendsLike) await refundLikeAllowance(event, user.$id)
+    throw error
   }
 
   return await serializePerPost(postId, async (): Promise<PostVoteResponse> => {

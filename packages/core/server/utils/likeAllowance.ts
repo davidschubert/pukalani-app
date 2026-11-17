@@ -32,10 +32,17 @@ import type { LikeAllowance } from '../../shared/likeAllowance'
  * bei Gegenwind zusperren.
  */
 
-export type LikeAllowanceAuthority = (
+export type LikeAllowanceAuthority = ((
   event: H3Event,
   userId: string,
-) => Promise<LikeAllowance> | LikeAllowance
+) => Promise<LikeAllowance> | LikeAllowance) & {
+  /**
+   * Ein in DIESER Anfrage verbrauchtes Like zurückgeben (BE-020), wenn das
+   * Schreiben der Stimme danach gescheitert ist. Optional und an derselben
+   * Registrierung wie das Verbrauchen — EIN Register, EINE Autorität.
+   */
+  refund?: (event: H3Event, userId: string) => Promise<void> | void
+}
 
 let authority: LikeAllowanceAuthority | null = null
 
@@ -62,10 +69,12 @@ export function __resetLikeAllowanceAuthority(): void {
  * Schreiben der Abzeichen.
  *
  * GERUFEN WIRD VOR DEM SCHREIBEN DER STIMME. Scheitert das Schreiben danach
- * (409 aus dem Unique-Index bei Doppelklick), bleibt das Like verbraucht —
- * bewusst: die Alternative wäre eine Rückbuchung, und eine Rückbuchung ist
- * genau der Weg, über den ein Toggle-Karussell das Limit aushebeln würde.
- * Es geht dabei um höchstens ein Like je Rennen.
+ * am 409 aus dem Unique-Index (Doppelklick), bleibt das Like verbraucht —
+ * die Stimme des Gewinners steht, und es geht um höchstens ein Like je Rennen
+ * (lieber zu viel verbucht als ein Schlupfloch). Eine RÜCKNAHME der Stimme
+ * erstattet nie etwas, sonst hebelte ein Toggle-Karussell das Limit aus.
+ * Nur ein FEHLER beim Schreiben in derselben Anfrage gibt das Like zurück:
+ * `refundLikeAllowance` unten (BE-020).
  */
 export async function spendLikeAllowance(event: H3Event, userId: string): Promise<LikeAllowance> {
   if (!authority || !userId) return { ok: true }
@@ -77,5 +86,25 @@ export async function spendLikeAllowance(event: H3Event, userId: string): Promis
       message: error instanceof Error ? error.message : String(error),
     })
     return { ok: true }
+  }
+}
+
+/**
+ * EIN LIKE ZURÜCKGEBEN (BE-020) — NUR, wenn die Route in DIESER Anfrage
+ * gebucht hat und das Schreiben der Stimme danach mit einem Fehler scheiterte.
+ * Nie bei einer regulären Rücknahme der Stimme und nie beim 409 des
+ * Doppelklick-Rennens (Begründung bei `spendLikeAllowance`).
+ *
+ * Best-effort: wirft nie (die Route antwortet ohnehin mit dem Fehler des
+ * Schreibens), protokolliert nur Kennungen. Ohne Autorität oder ohne deren
+ * `refund` ein No-op.
+ */
+export async function refundLikeAllowance(event: H3Event, userId: string): Promise<void> {
+  if (!authority?.refund || !userId) return
+  try {
+    await authority.refund(event, userId)
+  }
+  catch {
+    logEvent('warn', 'like_allowance.refund_failed', { userId })
   }
 }

@@ -46,7 +46,9 @@ import { welcomePostRowId } from '../../shared/welcomePost'
  * angelegte Community `audience: 'public'` trägt (onboardingProvision) —
  * dieselbe Permission, die die normale Anlege-Route für sie setzt. Wird das
  * Lese-Publikum später umgestellt, zieht die vorhandene Umstellung diese Zeile
- * mit, wie jede andere auch.
+ * mit, wie jede andere auch. Dass jede Community öffentlich angelegt und nur
+ * bei einer echten Neuanlage gesät wird, hält der Wächter
+ * `tests/welcomePostAudienceGuard.test.ts` fest.
  */
 
 const MESSAGES: Record<string, Record<string, unknown>> = { de, en }

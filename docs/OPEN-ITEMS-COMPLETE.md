@@ -30,6 +30,105 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P28 — Kleine Korrekturen: Erinnerungen mit Zeitzone, Ausblenden hält, Seitenliste vollständig, Meldungen und Zähl-Kennung geprüft ✅ 2026-11-17
+
+**Was.** Paket der Stufe „Später" aus dem Gesamtaudit 2026-11 (Findings
+BE-017, BE-018, BE-019, BE-020, BE-022 — rund zwanzig kleine Punkte), Pull
+Requests 232 (Merge `f7111fd3`), 233 (`a62f28da`), 234 (`ffe34997`), 235
+(`68b9d822`), 236 (`4953fd88`) und dieser Abschluss. Davids Entscheidungen vom
+2026-11-12 („zuerst die Uhrzeit in Erinnerungen") und vom 2026-11-17: in der
+Erinnerungs-Mail die Zeit des Empfängers, wenn er eine Zeitzone eingestellt
+hat, sonst die Ortszeit des Termins, immer mit Zone; für Seiten 300 Fassungen
+gesamt und 50 je Tag, alle Pläne gleich.
+
+1. **Erst gemessen.** Fast alle Punkte galten noch. Schon erledigt war die
+   Bremse beim Seiten-Speichern (BE-002); der stündliche Zeit-Lauf der
+   Erinnerungen (OPS-003) hatte einen Teil von BE-018 anders gelöst.
+2. **Erinnerungen (BE-018).** Die Benachrichtigung trägt Beginn und Zone des
+   Termins als Rohwert; formatiert wird beim Lesen — Glocke in Sprache und
+   Zone des Lesers, Mail in der Sprache des Empfängers, die Zone steht immer
+   dabei. Je Termin, Empfänger und Beginn entsteht genau eine Erinnerung
+   (feste Zeilen-Kennung), der Merker am Termin kommt nach dem Versand, ein
+   späterer Takt holt nur die Fehlenden nach. Der Aufruf der Termin-Liste
+   stößt keinen Lauf mehr an.
+3. **Termine und Kurse (BE-017, BE-018).** Bearbeiten speichert Zugang und
+   Preis. Ausgeblendete Termine bleiben ausgeblendet, wenn die Serie neu
+   veröffentlicht wird; ein halb gescheitertes Ausblenden lässt sich
+   nachholen; Lesen, Kalenderdatei und Übersetzen liefern nur veröffentlichte
+   und abgesagte Termine; Wiederherstellen setzt erst den Zustand, dann das
+   Leserecht. Ein gescheitertes Herunterzählen wird protokolliert und
+   nachgezählt, die Kalenderdatei maskiert ein einzelnes CR und schreibt die
+   Adresse als URI. Lektionen eines zurückgezogenen Kurses lassen sich nicht
+   mehr abschließen, der Fortschritt folgt der gelöschten Lektion.
+4. **Seiten (BE-019).** Die Sprache aus der Anfrage wird gegen das Muster des
+   Schemas geprüft, der Zwischenspeicher hält je Community ein
+   sprachunabhängiges Ergebnis, die Liste liest alle Zeilen statt 50, und das
+   Anlegen einer neuen Fassung zählt gegen ein Kontingent.
+5. **Moderation und Likes (BE-020).** Zurückziehen trifft nur offene
+   Meldungen (sonst 409 `report_resolved`). Das Leserecht eines Kommentars
+   kommt beim Anlegen und bei beiden Wegen des Wiederherstellens aus einer
+   Funktion — Kommentare an Betreiber-Zielen bleiben intern. Ein Like, dessen
+   Schreiben scheitert, gibt sein Tages-Kontingent zurück.
+6. **Statistik (BE-022).** Eine neue eigene Zähl-Kennung wird nur
+   gespeichert, wenn die Zähl-Datei der Instanz die Adresse dieser Community
+   nennt (fremd oder unbekannt ⇒ 422, nicht prüfbar ⇒ 503, nichts
+   gespeichert). Der Zwischenspeicher der Zahlen trennt nach Host.
+7. **Willkommens-Beitrag.** Nicht umgebaut: eine Community wird immer
+   öffentlich angelegt (beide Anlege-Wege schreiben es fest, gesät wird nur
+   bei einer echten Neuanlage). Ein Wächter-Test hält die Voraussetzung fest.
+
+**Beweis.** Je Punkt ein Test, der gegen den alten Stand rot war. Lokale
+Probe über die echten Routen mit Wegwerf-Konten und Mailpit: englische Mail
+„Tue, Nov 17, 2026, 12:59 AM EST" (Ortszeit des Termins), deutsche Mail
+„Di., 17. Nov. 2026, 06:59 MEZ" (Zone des Kontos), Glocke im Browser
+gelesen, zweiter Lauf erinnert niemanden doppelt; Meldung zurückziehen,
+Termin bearbeiten, ausblenden und wiederherstellen. Nicht über die echte
+Route geprobt: Seiten und Statistik (nur Tests am echten Handler). Live:
+`4953fd88` auf allen acht Hosts, `ok`, Datenbank-Stand `ok`. Keine Migration.
+
+**Offen:** OPEN-ITEMS KK1.
+
+**Gelernt:**
+
+- **Eine Uhrzeit gehört als Rohwert in die Zeile, nicht als Text.** Ein
+  fertiger Satz ist in genau einer Sprache und einer Zone richtig — und
+  dieselbe Zeile wird in der Glocke, in der Sofort-Mail und in der
+  Sammel-Mail gelesen, von Menschen in verschiedenen Zonen. Der Server kennt
+  die Zone des Empfängers nur, wenn er sie eingestellt hat; deshalb steht
+  die Zone in einer Mail immer dabei.
+- **„Merker zuerst" schützt vor doppelt, kostet aber den Rest.** Eine feste
+  Zeilen-Kennung je Empfänger schützt genauso — und erlaubt, den Merker erst
+  nach dem Versand zu setzen. Lokal gemessen: Merker geleert, zweiter Lauf,
+  keine zweite Zeile und keine zweite Mail.
+- **Ein Sammel-Weg umgeht die Regel des Einzel-Wegs.** Dreimal in diesem
+  Paket: die Serien-Schleife kannte „ausgeblendet" nicht, das Wiederherstellen
+  in der Sammel-Aktion kannte Betreiber-Ziele nicht, das Bearbeiten prüfte
+  drei Felder und schrieb sie nicht. Die Regel gehört in EINE Funktion, die
+  beide Wege rufen.
+- **Zwei grüne Pull Requests können zusammen rot sein.** PR 233 zog eine
+  neue Hilfe in drei Routen, PR 237 der Nachbar-Sitzung führte genau diese
+  Routen erstmals in Tests aus; Sekunden nacheinander zusammengeführt, waren
+  elf Tests auf `main` rot. Ausgeliefert wurde nichts (das Tor hielt), die
+  Nachbar-Sitzung zog den Test nach. Seither vor jedem Zusammenführen:
+  `git merge origin/main` und die Tests der berührten Layer — das hat zwei
+  weitere Zusammenstöße vor dem Merge gezeigt.
+- **Ein Nachschlagen mit einem Schlüssel aus der Anfrage braucht eine Map
+  oder gar keinen Schlüssel.** Die sauberste Lösung war, die Sprache aus dem
+  Zwischenspeicher herauszunehmen: gespeichert wird das sprachunabhängige
+  Ergebnis, gewählt wird je Anfrage. Nebenbei: der Verifikationsschritt des
+  Findings (`locale=constructor`) traf gar nicht, weil die Route auf acht
+  Zeichen kürzte; `toString` und `valueOf` trafen.
+- **Was öffentlich ist, kann trotzdem ein Schreibziel sein.** Die
+  Zähl-Kennung steht im HTML jeder Seite; wer sie einträgt, schreibt in
+  fremde Zahlen. Die Zähl-Datei der Instanz nennt die Adresse der Seite —
+  das ließ sich ohne Schlüssel prüfen. Eine Prüfung, die nicht prüfen kann,
+  speichert nicht.
+- **Eine Probe in der Test-App ohne Mandanten-Trennung trifft echte Zeilen
+  im Spiegel.** Die Statistik-Route hätte dort die Einstellung einer
+  gespiegelten Community geändert; deshalb blieb sie ohne Laufzeitprobe.
+  Vor jeder Probe zuerst zählen, was der Lauf anfassen würde (hier: 0
+  fällige Termine).
+
 ### GA1 P24 — Vertretung vorbereitet: Notfallblatt, zweite Alarm-Adresse, vier Störfälle mit Anleitung ✅ 2026-11-17
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Finding

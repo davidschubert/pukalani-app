@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { ANALYTICS_RANGE, ANALYTICS_STATS_RANGES } from '../../shared/analyticsStats'
+import { ANALYTICS_RANGE } from '../../shared/analyticsStats'
 import type { AnalyticsStatsRange } from '../../shared/analyticsStats'
 import type { AnalyticsConfigResponse, AnalyticsStatsResponse } from '../../shared/types/analytics'
 
@@ -58,46 +58,93 @@ export function writeAnalyticsConfigCache(event: H3Event, value: AnalyticsConfig
  * grobe Anwesenheits-Anzeige, keine Uhr — und sie heißt deshalb auch nicht
  * „live".
  */
-const analyticsStatsCache = createMicrocache<AnalyticsStatsResponse>(120_000)
+const STATS_TTL_MS = 120_000
 
 /**
- * DER SCHLÜSSEL TRÄGT AUCH DEN ZEITRAUM (Statistik-Seite): 7, 30 und 90 Tage
- * sind drei verschiedene Antworten. Ohne diesen Teil bekäme der Owner beim
- * Umschalten zwei Minuten lang die Zahlen des vorigen Zeitraums mit der neuen
- * Beschriftung — falsch, und zwar unsichtbar falsch.
+ * DER EINTRAG TRÄGT AUCH HOST UND ZEITRAUM (BE-022): je Mandant EIN Eintrag,
+ * darin eine Tabelle aus „Host + Zeitraum" ⇒ Antwort, jede Zeile mit eigener
+ * Ablaufzeit.
+ *
+ *  - DER HOST, weil das ZIEL der Abfrage an ihm hängt (`resolveStatsTarget`:
+ *    bei eigener Plausible-Site ist er der Site-Schlüssel, bei der Sammel-Site
+ *    der Filter). Ohne ihn zeigte eine Community, die über ihre eigene Domain
+ *    UND über die Pukalani-Adresse erreichbar ist, auf der zweiten zwei Minuten
+ *    lang die Zahlen der ersten. Hineingereicht wird DIESELBE normalisierte
+ *    Zeichenkette, die auch ans Ziel geht (`analyticsRequestHost`).
+ *  - DER ZEITRAUM (Statistik-Seite): 7, 30 und 90 Tage sind drei verschiedene
+ *    Antworten. Ohne ihn bekäme der Owner beim Umschalten zwei Minuten lang die
+ *    Zahlen des vorigen Zeitraums mit der neuen Beschriftung — falsch, und zwar
+ *    unsichtbar falsch.
+ *
+ * WARUM EINE TABELLE JE MANDANT statt eines Schlüssels je Host: das Leeren
+ * nach dem Speichern muss ALLE Hosts treffen, ohne sie zu kennen — der Mandant
+ * hat mehrere, und die Schreibroute läuft nur unter einem davon.
+ *
+ * HÖCHSTENS ACHT HOSTS je Mandant: ein erfundener Host-Header soll keinen
+ * Speicher fressen (im Pool sind unbekannte Hosts ohnehin 404). Läuft die
+ * Tabelle über, wird sie geleert — dieselbe schlichte Art wie im Microcache.
  */
-export function analyticsStatsCacheKey(event: H3Event, range: AnalyticsStatsRange = ANALYTICS_RANGE): string {
-  return `analytics:stats:${tenantCacheScope(event)}:${range}`
+const MAX_HOSTS_PER_TENANT = 8
+
+interface StatsSlot {
+  host: string
+  value: AnalyticsStatsResponse
+  expires: number
+}
+
+const analyticsStatsCache = createMicrocache<Map<string, StatsSlot>>(STATS_TTL_MS)
+
+export function analyticsStatsCacheKey(event: H3Event): string {
+  return `analytics:stats:${tenantCacheScope(event)}`
+}
+
+function slotKey(host: string, range: AnalyticsStatsRange): string {
+  return `${range} ${host}`
 }
 
 export function readAnalyticsStatsCache(
   event: H3Event,
+  host: string,
   range: AnalyticsStatsRange = ANALYTICS_RANGE,
 ): AnalyticsStatsResponse | undefined {
-  return analyticsStatsCache.get(analyticsStatsCacheKey(event, range))
+  const slots = analyticsStatsCache.get(analyticsStatsCacheKey(event))
+  const key = slotKey(host, range)
+  const slot = slots?.get(key)
+  if (!slot) return undefined
+  if (slot.expires > Date.now()) return slot.value
+  slots!.delete(key)
+  return undefined
 }
 
 export function writeAnalyticsStatsCache(
   event: H3Event,
   value: AnalyticsStatsResponse,
+  host: string,
   range: AnalyticsStatsRange = ANALYTICS_RANGE,
 ): void {
-  analyticsStatsCache.set(analyticsStatsCacheKey(event, range), value)
+  const cacheKey = analyticsStatsCacheKey(event)
+  const slots = analyticsStatsCache.get(cacheKey) ?? new Map<string, StatsSlot>()
+  const now = Date.now()
+  for (const [key, slot] of slots) {
+    if (slot.expires <= now) slots.delete(key)
+  }
+  const hosts = new Set([...slots.values()].map(slot => slot.host))
+  if (!hosts.has(host) && hosts.size >= MAX_HOSTS_PER_TENANT) slots.clear()
+  slots.set(slotKey(host, range), { host, value, expires: now + STATS_TTL_MS })
+  // Neu setzen, auch wenn die Tabelle schon drinsteht: das verlängert den
+  // äußeren Eintrag, die Zeilen darin laufen trotzdem je für sich ab.
+  analyticsStatsCache.set(cacheKey, slots)
 }
 
 /**
  * Nach dem Umschalten: die Einträge GENAU dieses Mandanten wegwerfen — alle
- * Zeiträume, denn die Messung hat sich für jeden von ihnen geändert. Neu setzen
- * geht hier nicht: die neuen Zahlen kommen aus einer anderen Plausible-Site und
- * müssen erst geholt werden; ein `clear()` wiederum träfe alle anderen
- * Communities ohne Not.
- *
- * Die Schleife über die weiße Liste ist der Grund, warum es sie als Konstante
- * gibt: ein vierter Zeitraum wird hier sonst vergessen, und dann bliebe genau
- * er nach dem Abschalten mit alten Zahlen stehen.
+ * Hosts und alle Zeiträume, denn die Messung hat sich für jeden von ihnen
+ * geändert. Neu setzen geht hier nicht: die neuen Zahlen kommen aus einer
+ * anderen Plausible-Site und müssen erst geholt werden; ein `clear()` wiederum
+ * träfe alle anderen Communities ohne Not. Weil Hosts und Zeiträume in EINEM
+ * Eintrag je Mandant liegen, reicht ein `delete` — eine Liste, in der ein
+ * Host oder Zeitraum vergessen werden könnte, gibt es nicht mehr.
  */
 export function clearAnalyticsStatsCache(event: H3Event): void {
-  for (const range of ANALYTICS_STATS_RANGES) {
-    analyticsStatsCache.delete(analyticsStatsCacheKey(event, range))
-  }
+  analyticsStatsCache.delete(analyticsStatsCacheKey(event))
 }

@@ -1,6 +1,8 @@
 import { effectiveScriptId, isPlausibleScriptId } from '../../../../core/shared/analyticsScript'
 import { analyticsSettingsSchema } from '../../../schemas/analytics'
 import { ANALYTICS_SETTINGS_TABLE, type AnalyticsConfigResponse, type AnalyticsSettingsRow } from '../../../shared/types/analytics'
+import { analyticsRequestHost } from '../../utils/analyticsRequestHost'
+import { verifyAnalyticsScriptOwner } from '../../utils/verifyAnalyticsScriptOwner'
 
 /**
  * Messung an- oder abschalten (`enabled`, Sammel-Site) bzw. eine EIGENE
@@ -32,6 +34,7 @@ import { ANALYTICS_SETTINGS_TABLE, type AnalyticsConfigResponse, type AnalyticsS
  *  User-Schreibrechte (sie gehört der Community, nicht einer Person).
  */
 interface AnalyticsAppConfig {
+  instance?: string
   shared?: { scriptId?: string, siteId?: string }
 }
 
@@ -51,6 +54,39 @@ export default defineEventHandler(async (event): Promise<AnalyticsConfigResponse
    * darunter, falls zwei Anfragen gleichzeitig „keine Zeile" sehen.
    */
   const existing = await db.find<AnalyticsSettingsRow>(ANALYTICS_SETTINGS_TABLE)
+
+  const appConfig = useAppConfig() as { pukalani?: { analytics?: AnalyticsAppConfig } }
+
+  /**
+   * GEHÖRT DIE KENNUNG ZUR EIGENEN SEITE? (BE-022, Davids Entscheidung „Die
+   * Zähl-Kennung wird beim Speichern gegen die eigene Seite geprüft.") Die
+   * Form allein reicht nicht: die Kennung jeder Community steht öffentlich im
+   * HTML ihrer Seiten, und eine fremde Kennung ließe die eigenen Besucher in
+   * der Statistik einer anderen Seite zählen.
+   *
+   * Geprüft wird NUR eine neue, nicht-leere Kennung — Löschen (`''`), ein
+   * reiner Schalter-Klick und eine unveränderte Kennung binden nichts Neues
+   * an. Und zwar VOR dem Schreiben: fail-closed, ohne Prüfung wird nichts
+   * gespeichert. Die Sammel-Kennung der Instanz gehört zur Sammel-Seite und
+   * ist als EIGENE Kennung damit ebenfalls fremd.
+   *
+   * Eigene Adressen: der Host der Anfrage (dieselbe Rechnung wie in
+   * `stats.get.ts`) und die eigene Domain der Community, falls gesetzt.
+   */
+  const nextScriptId = body.plausibleScriptId ?? ''
+  if (nextScriptId && nextScriptId !== (existing?.plausibleScriptId ?? '')) {
+    const ownHosts = [analyticsRequestHost(event), normalizeHost(useTenant(event)?.canonicalHost)]
+    const check = await verifyAnalyticsScriptOwner(appConfig.pukalani?.analytics?.instance, nextScriptId, ownHosts)
+    if (check === 'foreign') {
+      throw createError({ status: 422, statusText: 'Script id belongs to another site', data: { code: 'analytics_script_foreign' } })
+    }
+    if (check === 'unknown') {
+      throw createError({ status: 422, statusText: 'Unknown script id', data: { code: 'analytics_script_unknown' } })
+    }
+    if (check !== 'own') {
+      throw createError({ status: 503, statusText: 'Script id cannot be checked', data: { code: 'analytics_script_check_unavailable' } })
+    }
+  }
 
   /**
    * NUR SCHREIBEN, WAS MITKAM (v2): das Schema lässt beide Felder weg, und ein
@@ -80,7 +116,6 @@ export default defineEventHandler(async (event): Promise<AnalyticsConfigResponse
   //
   // Gerechnet wird er mit derselben Regel wie in der Leseroute — die Antwort
   // eines Schreibvorgangs muss dasselbe sagen wie der nächste Seitenaufbau.
-  const appConfig = useAppConfig() as { pukalani?: { analytics?: AnalyticsAppConfig } }
   const shared = appConfig.pukalani?.analytics?.shared ?? {}
   const response: AnalyticsConfigResponse = {
     scriptId: effectiveScriptId(row, shared),

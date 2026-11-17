@@ -1,4 +1,3 @@
-import type { H3Event } from 'h3'
 import {
   buildStatsQueries,
   mapCountryCounts,
@@ -11,6 +10,7 @@ import {
 } from '../../../shared/analyticsStats'
 import type { PlausibleQuery, PlausibleQueryResponse } from '../../../shared/analyticsStats'
 import { ANALYTICS_SETTINGS_TABLE, type AnalyticsSettingsRow, type AnalyticsStatsResponse } from '../../../shared/types/analytics'
+import { analyticsRequestHost } from '../../utils/analyticsRequestHost'
 
 /**
  * DIE ZAHLEN EINER COMMUNITY — Paket 2 der v2 (docs/plans/ANALYTICS-V2.md).
@@ -36,17 +36,6 @@ import { ANALYTICS_SETTINGS_TABLE, type AnalyticsSettingsRow, type AnalyticsStat
  * läuft ja — nur die Anzeige nicht. Ein 502 hätte die Dashboard-Seite mit einer
  * Fehlermeldung überzogen, obwohl an der Community nichts kaputt ist.
  */
-
-/**
- * Der Host kommt aus dem Request-Header, normalisiert wie überall im Repo
- * (`normalizeHost`: Kleinschreibung, Port und Punkt weg) — dieselbe Rechnung,
- * mit der die Mandanten-Middleware den Host auflöst. BEWUSST nicht über
- * `resolveSeoOrigin`: der liefert einen ORIGIN mit Schema für den Kopf einer
- * Seite, Plausibles `event:hostname` ist aber genau der nackte Hostname.
- */
-function requestHost(event: H3Event): string {
-  return normalizeHost(getHeader(event, 'host'))
-}
 
 /** Abbruch, bevor eine hängende fremde Instanz die Dashboard-Seite blockiert. */
 const QUERY_TIMEOUT_MS = 10_000
@@ -102,7 +91,15 @@ export default defineEventHandler(async (event): Promise<AnalyticsStatsResponse>
    */
   const range = normalizeStatsRange(getQuery(event).range)
 
-  const cached = readAnalyticsStatsCache(event, range)
+  /**
+   * Der Host der Anfrage (`analyticsRequestHost`, eine Rechnung für beide
+   * Routen) bestimmt das ZIEL der Abfrage — und gehört deshalb mit in den
+   * Zwischenspeicher (BE-022): DIESELBE Zeichenkette für beides, sonst zeigte
+   * die eigene Domain zwei Minuten lang die Zahlen der Pukalani-Adresse.
+   */
+  const host = analyticsRequestHost(event)
+
+  const cached = readAnalyticsStatsCache(event, host, range)
   if (cached) return cached
 
   const appConfig = useAppConfig() as { pukalani?: { analytics?: AnalyticsAppConfig } }
@@ -125,10 +122,10 @@ export default defineEventHandler(async (event): Promise<AnalyticsStatsResponse>
     return UNAVAILABLE
   }
 
-  const target = resolveStatsTarget(row, analytics.shared ?? {}, requestHost(event))
+  const target = resolveStatsTarget(row, analytics.shared ?? {}, host)
   if (target.state === 'off') {
     const off: AnalyticsStatsResponse = { active: false }
-    writeAnalyticsStatsCache(event, off, range)
+    writeAnalyticsStatsCache(event, off, host, range)
     return off
   }
   // „Gerade nicht erreichbar" wird BEWUSST nicht gecacht: der Grund ist meist
@@ -192,7 +189,7 @@ export default defineEventHandler(async (event): Promise<AnalyticsStatsResponse>
       entryPages: mapNamedCounts(entryPages),
       recentVisitors: mapVisitors(recent),
     }
-    writeAnalyticsStatsCache(event, response, range)
+    writeAnalyticsStatsCache(event, response, host, range)
     return response
   }
   catch {
