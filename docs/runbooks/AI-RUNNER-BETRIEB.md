@@ -81,7 +81,7 @@ Tickets (Spalte `tickets.origin`). Der Browser kann das nicht behaupten.
   NEUES Ticket anlegen und den Text selbst hineinschreiben (lesen, nicht
   blind kopieren). Duplizieren hilft nicht.
 
-## 3. Aufräumen: Protokolle 30 Tage, Ereignisse 90 Tage
+## 3. Aufräumen: Protokolle 30 Tage, Ereignisse 90 Tage, Texte 12 Monate
 
 ### In der Konsole (Projekt `admin`)
 
@@ -105,6 +105,35 @@ Jeder Lauf schreibt eine Zeile `runner.retention` mit Zahlen ins Log der App
 `POST /api/runner/retention/run` (angemeldet mit `runner.manage`); ohne Body
 ist das ein Probelauf, `{ "dryRun": false }` löscht und geht nur, wenn der
 Schalter auf `apply` steht. Löschen ist nicht umkehrbar.
+
+### Texte und Anhänge nach 12 Monaten (seit 2026-11-17)
+
+Ein zweiter stündlicher Lauf (`run-text-retention`,
+`packages/runner/server/utils/runTextRetention.ts`, Regel in
+`packages/runner/shared/runTextRetention.ts`) entfernt 12 Monate nach dem Ende
+eines Laufs
+
+- die Anhang-Dateien im Bucket `runner-files`,
+- den Auftragstext, den Fehlertext und die freien Felder des Berichts
+  (Änderungsliste `diffstat`, Test-Ausgaben).
+
+Die Zeile bleibt. Kosten, Dauer, Züge, Commit, Branch, Modell, Testbefehle mit
+Exit-Code und alle Zeitpunkte stehen weiter da; im Bericht steht
+`textRemovedAt`, und das Board zeigt „Texte und Anhänge dieses Laufs wurden
+nach 12 Monaten gelöscht." Was bleibt, legt eine Erlaubnisliste fest: ein neues
+Feld im Bericht fällt, bis es dort eingetragen ist. Läufe, die nicht beendet
+sind, fasst er nie an. Scheitert das Löschen einer Datei, bleibt die Zeile
+unverändert und der nächste Takt versucht es erneut.
+
+Eigener Schalter `pukalani.runner.textRetention`: `off` · `count` (zählt nur)
+· `apply` (entfernt). In `apps/control` steht er auf `count`; auf `apply` erst
+mit Davids Ja zur gezählten Zahl. Die Zahl steht im Log der App in der Zeile
+`retention.run` mit `job: "run-text-retention"` (`expired` = fällige Läufe;
+`deleted` zählt geschwärzte Läufe, nicht gelöschte Zeilen). Von Hand:
+`POST /api/runner/retention/texts` (angemeldet mit `runner.manage`); ohne Body
+wird nur gezählt, `{ "apply": true }` geht nur bei Schalter `apply` (sonst 409
+`run_text_retention_not_apply`), ein laufender Lauf antwortet 409
+`run_text_retention_busy`. Entfernter Text kommt nicht wieder.
 
 ### Auf dem Rechner
 

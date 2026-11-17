@@ -11,6 +11,7 @@ import {
 import type { PlausibleQuery, PlausibleQueryResponse } from '../../../shared/analyticsStats'
 import { ANALYTICS_SETTINGS_TABLE, type AnalyticsSettingsRow, type AnalyticsStatsResponse } from '../../../shared/types/analytics'
 import { analyticsRequestHost } from '../../utils/analyticsRequestHost'
+import { resolveOwnScriptSite } from '../../utils/verifyAnalyticsScriptOwner'
 
 /**
  * DIE ZAHLEN EINER COMMUNITY — Paket 2 der v2 (docs/plans/ANALYTICS-V2.md).
@@ -122,7 +123,14 @@ export default defineEventHandler(async (event): Promise<AnalyticsStatsResponse>
     return UNAVAILABLE
   }
 
-  const target = resolveStatsTarget(row, analytics.shared ?? {}, host)
+  // Eigene Kennung ⇒ die Adresse, die ihre Zähl-Datei nennt, wenn sie eine
+  // eigene ist (KK1) — dieselben eigenen Adressen wie beim Speichern.
+  const ownScriptId = row?.plausibleScriptId ?? ''
+  const ownSite = ownScriptId
+    ? await resolveOwnScriptSite(analytics.instance, ownScriptId, [host, normalizeHost(useTenant(event)?.canonicalHost)])
+    : null
+
+  const target = resolveStatsTarget(row, analytics.shared ?? {}, host, ownSite)
   if (target.state === 'off') {
     const off: AnalyticsStatsResponse = { active: false }
     writeAnalyticsStatsCache(event, off, host, range)

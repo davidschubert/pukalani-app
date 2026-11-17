@@ -121,9 +121,11 @@ describe('Zeitpunkte im Text der Glocke (BE-018)', () => {
   // core/shared/notificationWhen.ts). Zeigte die Glocke `n.body` roh oder nur
   // über `displayText`, stünde dort das Token statt einer Uhrzeit.
   it('der Text unter dem Satz läuft über den Zeitpunkt-Leser, in Leser-Zone und Oberflächen-Sprache', () => {
-    expect(bellSource).toContain('{{ bodyText(n.body) }}')
+    expect(bellSource).toContain('{{ bodyText(n.body, n.type) }}')
     expect(bellSource).not.toMatch(/\{\{\s*(displayText\()?n\.body\)?\s*\}\}/)
-    expect(bellSource).toMatch(/parseNotificationWhen\(value\)/)
+    // Nur eine Erinnerung trägt einen Zeitpunkt (KK1): der Auszug eines
+    // Kommentars, der wie ein Token aussieht, bleibt Text.
+    expect(bellSource).toMatch(/type === 'reminder' \? parseNotificationWhen\(value\) : null/)
     expect(bellSource).toMatch(/formatNotificationWhen\(when, \{ language: language\.value, zone: timezone\.value \|\| undefined \}\)/)
     expect(bellSource).toContain('useAccountTimezone()')
   })

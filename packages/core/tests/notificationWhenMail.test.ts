@@ -103,6 +103,12 @@ describe('buildInstantEmail — Erinnerung', () => {
     expect(built.text).toContain('„Hallo"')
     expect(built.html).toContain('<em>„Hallo"</em>')
   })
+
+  it('ein Kommentar, der wörtlich wie ein Zeitpunkt aussieht, bleibt ein Zitat (KK1)', () => {
+    const built = mail.buildInstantEmail(links, 'de', { type: 'reply', title: 'Max', body: TOKEN_NY, link: '/feed' }, { timezone: 'Europe/Berlin' })
+    expect(built.text).toContain(`„${TOKEN_NY}"`)
+    expect(built.text).not.toContain('MEZ')
+  })
 })
 
 describe('buildDigestEmail — Erinnerung', () => {

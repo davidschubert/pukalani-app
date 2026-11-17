@@ -232,6 +232,7 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
     ['PUT /api/pages', 'pages:save', null],
     // BE-025: der Aufräum-Lauf von Hand — eigener Eimer, nicht der des Claims.
     ['POST /api/runner/retention/run', 'runner:retention', 6],
+    ['POST /api/runner/retention/texts', 'runner:retention', 6],
   ])('%s → Bucket %s, Deckel %s', (route, bucket, max) => {
     expect(ersterTreffer(route)).toEqual({ bucket, max })
   })

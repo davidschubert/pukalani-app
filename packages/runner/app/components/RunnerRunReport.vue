@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { runResumeAllowed } from '../../shared/runGuards'
+import { runTextRemovedAt } from '../../shared/runTextRetention'
 import type { RunRow } from '../../shared/types/runner'
 
 /**
@@ -110,6 +111,14 @@ const transcriptHref = computed(() =>
  */
 const canResume = computed(() => runResumeAllowed(props.run))
 
+/**
+ * NACH 12 MONATEN GESCHWÄRZT (RU1 c, shared/runTextRetention.ts): Auftrag,
+ * Fehlertext, freie Berichtsfelder und Anhänge sind weg, Zahlen und Kennungen
+ * stehen noch. Ein kurzer Hinweis an der Stelle, an der sonst Text stünde —
+ * damit der Bericht nicht kaputt aussieht.
+ */
+const textRemoved = computed(() => runTextRemovedAt(props.run.resultJson) !== null)
+
 const answer = ref('')
 const submitting = ref(false)
 
@@ -176,6 +185,17 @@ async function submitAnswer() {
       icon="i-ph-question"
       :title="t('runner.report.needsInputTitle')"
       :description="canResume ? t('runner.report.needsInputText') : t('runner.report.needsInputNoSession')"
+    />
+
+    <!-- Geschwärzt nach 12 Monaten: statt Auftrag, Fehlertext und Anhängen
+         dieser Satz; die Zahlen darunter bleiben. -->
+    <UAlert
+      v-if="textRemoved"
+      color="neutral"
+      variant="subtle"
+      icon="i-ph-clock-counter-clockwise"
+      :description="t('runner.report.textRemoved')"
+      data-runner-text-removed
     />
 
     <!-- Antwort auf die Rückfrage: ein Feld + Knopf, kein volles Formular —

@@ -168,6 +168,7 @@
       "raw": "Der Bericht ließ sich nicht lesen — hier steht er roh:",
       "none": "Kein Bericht.",
       "transcript": "Transkript herunterladen",
+      "textRemoved": "Texte und Anhänge dieses Laufs wurden nach 12 Monaten gelöscht.",
       "errors": {
         "resume": "Die Fortsetzung wurde nicht gestartet.",
         "resumeHint": "Es wurde nichts angelegt — deine Antwort steht noch im Feld.",

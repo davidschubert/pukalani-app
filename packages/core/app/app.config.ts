@@ -717,6 +717,23 @@ export default defineAppConfig({
        */
       labelReconcile: 'off' as 'off' | 'dry-run' | 'apply',
     },
+    audit: {
+      /**
+       * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS (EL1 c, Davids Entscheidungen
+       * 2026-11-15 und 2026-11-17 „Ganz löschen") — 'off' | 'count' |
+       * 'apply'. Stündlich: jeden Eintrag in `audit_logs` löschen, der älter
+       * als 12 Monate ist, auch Einträge über Handlungen des Betreibers
+       * (`server/utils/auditLogRetention.ts`, Regel in
+       * `shared/auditLogRetention.ts`).
+       *
+       * 'off' ist der Core-Default, weil der Lauf NICHT UMKEHRBAR löscht — eine
+       * App schaltet ihn bewusst ein, zuerst auf 'count' (zählt nur, Zeile
+       * `retention.run` mit `job: audit-log-retention` im Log). Ein
+       * unbekannter Wert gilt als 'off' und schreibt eine Fehlerzeile. Die
+       * Annotation hält den Typ weit genug für die drei Stellungen.
+       */
+      retention: 'off' as RowRetentionMode,
+    },
     storage: {
       /**
        * PROFILBILDER OHNE PROFIL (KE3, 2026-11-17): ein Lauf alle 6 Stunden

@@ -439,7 +439,8 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // einigen tausend Dateien und Zeilen durch und löscht im Modus `apply`. Ein
   // Betreiber prüft ein Ergebnis, er hämmert nicht — derselbe Deckel wie die
   // KI-Läufe von Brand Design.
-  { re: /^POST \/api\/runner\/retention\/run$/, bucket: 'runner:retention', max: 6 },
+  // Derselbe Deckel für den Handlauf der Text-Frist (RU1, `retention/texts`).
+  { re: /^POST \/api\/runner\/retention\/(?:run|texts)$/, bucket: 'runner:retention', max: 6 },
   // E10, Davids Entscheidung 8 („volle Notbremse in Fassung 1"): Wählen und
   // Kommentieren sind session-gated, aber sie schreiben ins BETREIBER-System
   // eines anderen Projekts — ein Skript soll daraus keinen Hebel machen.
