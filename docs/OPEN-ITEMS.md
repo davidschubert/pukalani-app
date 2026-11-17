@@ -24,7 +24,7 @@ steht zusammen; bei jedem Eintrag steht, **worauf er wartet**.
 
 Alle 16 stehen im [DECISION-LOG](DECISION-LOG.md) (2026-11-16) und in den
 Einträgen unten; diese sagen jetzt, was zu bauen ist. Kurzfassung:
-**AL1** Aktivitätsliste mit Konto-Ereignissen füllen · **KE3** Aufräum-Lauf
+**AL1** Aktivitätsliste mit Konto-Ereignissen füllen (gebaut, COMPLETE „N06") · **KE3** Aufräum-Lauf
 für Profilbilder ohne Profil (gebaut, COMPLETE „N04") · **KU1** „kostenlos" und „Mitglieder" werden
 eine Zugangsart (gebaut, COMPLETE „N03"); Kurs-Vorschauen bleiben auffindbar
 (geschlossen) · **MM1** Likes unter geschlossenen Themen sperren; Übersetzen
@@ -79,7 +79,6 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| AL1 | **Aktivitätsliste in der Admin-Nutzeransicht füllen** (entschieden: nicht entfernen). Quelle sind die vorhandenen Konto-Ereignisse (`readAccountEvents`, Core); für die Betreiber-Sicht die Aktionsliste erweitern. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
 | MM1 | **Mitmachen nur für Mitglieder: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (e) Zwei Kleinigkeiten ohne Auftrag (Zusage zu einem ausgeblendeten Termin, Sprache im Link der Benachrichtigungs-Mails) und ein Test, der noch in keinem Lauf mitfährt. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal durch die neue Prüfung schicken, (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten selbst ist gebaut (COMPLETE „N05"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
@@ -95,12 +94,12 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
 | WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) zwei Kleinigkeiten. **Wartet auf:** nichts — David hat am 2026-11-17 Ja gesagt zum Blick auf die Namen in den Server-Dateien, als eigene kleine Gruppe. | Niedrig | S je Teil | Nein | [Einzelheiten](#wl1) |
-| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
-| PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
+| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung, Konfig-Seite). Löschen im Speicher und die Schalter sind seit 2026-11-17 erledigt (COMPLETE „N06"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
+| PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
-| SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
+| SI1 | **Sicherungen: Reste.** (b) Bekannte Grenzen des Label-Abgleichs, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. Der Abgleich findet seit 2026-11-17 auch stillgelegte Communities und Herabstufungen (COMPLETE „N06"). **Wartet auf:** (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) drei Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
-| AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
+| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (d) Kleinigkeiten. Ticket-Kauf, die drei Umzugs-Anleitungen und die READMEs sind seit 2026-11-17 erledigt (COMPLETE „N06"). **Wartet auf:** (a) David. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 46 von 82 Beweis-Skripten von selbst, und jede neue Route braucht einen Rollen-Test (COMPLETE „GA1 P27"). Offen: (a) 26 Skripte brauchen die Einzel-Instanz oder branding.supply als laufenden Server, (b) 319 Routen außerhalb der Pool-Produkte stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
@@ -568,7 +567,10 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 
 <a id="pd1"></a>
 
-**PD1 — Plan, Testphase und eigene Domain: Nacharbeiten (aus dem Gesamtaudit, Paket P15).**
+**PD1 — Plan, Testphase und eigene Domain: Reste (aus dem Gesamtaudit, Paket P15).**
+Gebaut am 2026-11-17 (COMPLETE „N06"): die zwei Alt-Pläne im Kasten „Pläne &
+Limits" haben Namen, und der letzte Schritt des Wizards zeigt bei einer
+unbestätigten Adresse den Kasten mit „Mail erneut senden".
 
 - **(a) Stripe-Endpunkt neu anlegen.** Der vorhandene Endpunkt (Testbetrieb)
   sendet in der Standard-Version des Stripe-Kontos; die feste Version bekommt
@@ -581,23 +583,25 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 - **(b) Klicks auf den echten Seiten.** Lokal belegt, auf Production nicht
   geklickt: der Wizard mit einem Konto, das seine Testphase schon hatte
   („Ohne Testphase"); der Schalter „freigegeben" in der Betreiber-Tabelle; die
-  Domain-Seite eines Owners ohne Freigabe.
+  Domain-Seite eines Owners ohne Freigabe. Neu dazu: der Wizard mit einem
+  Konto ohne bestätigte Adresse (Kasten und Knopf erscheinen).
+- **(c) Drei Grundsatzfragen, je mit Empfehlung.**
+  (1) Der Hinweis zur Domain steht in der Glocke unter „Zahlungsproblem" (Art
+  `billing`). Empfehlung: so lassen, bis der erste echte Fall zeigt, dass der
+  Titel verwirrt; eine eigene Art kostet einen Text je Sprache im Core.
+  (2) Beitritt und Annahme einer Einladung sind unter gleichzeitigen Anfragen
+  nicht geprüft. Empfehlung: die Sperre `team` nehmen (`withControlLock`),
+  sobald Beitritte in Zahl kommen; doppelte Zeilen verhindert heute schon der
+  Unique-Index. (3) Die Kontolöschung im Control Plane nimmt die Team-Sperre
+  nicht. Empfehlung: beim nächsten Griff an die Kontolöschung mitnehmen.
 - **(c) Kleinigkeiten.** Der Schonfrist-Lauf ist seit 2026-11-17 scharf
   (Runbook: [EIGENE-DOMAIN-FREIGABE.md](runbooks/EIGENE-DOMAIN-FREIGABE.md));
   die erste echte Frist und die ersten echten Hinweis-Mails stehen noch aus —
-  beim ersten Fall die Mail im Postfach ansehen. Der Hinweis zur Domain steht in der Glocke unter
-  „Zahlungsproblem" (er nutzt die Art `billing`; eine eigene Art bräuchte
-  einen Text je Sprache im Core). Bei offenem Tor erfährt ein Konto ohne
-  bestätigte Adresse erst im letzten Schritt des Wizards davon, und dort fehlt
-  ein Knopf „Mail erneut senden". Ein Eintrag im Zustand „Fehler", der schon
-  einmal einen Nachweis hatte, verfällt nie. Die eigene Domain der
-  Einzel-Sites (`websites`) behält die alte Regel: jeder Eintrag blockiert,
-  auch ohne Nachweis. Beitritt und Annahme einer Einladung sind unter
-  gleichzeitigen Anfragen nicht geprüft; die Kontolöschung im Control Plane
-  nimmt die Team-Sperre nicht. Im Kasten „Pläne & Limits" der Betreiber-Tabelle
-  stehen für zwei Alt-Pläne rohe Schlüssel statt Namen. Der Schalter
-  „freigegeben" kann fallen, sobald das Pukalani-Konto je Seite eine eigene
-  Sitzung ausstellt (Etappe E1).
+  beim ersten Fall die Mail im Postfach ansehen. Ein Eintrag im Zustand
+  „Fehler", der schon einmal einen Nachweis hatte, verfällt nie. Die eigene
+  Domain der Einzel-Sites (`websites`) behält die alte Regel: jeder Eintrag
+  blockiert, auch ohne Nachweis. Der Schalter „freigegeben" kann fallen,
+  sobald das Pukalani-Konto je Seite eine eigene Sitzung ausstellt (Etappe E1).
 
 <a id="kk1"></a>
 
@@ -624,32 +628,31 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 
 <a id="bp1"></a>
 
-**BP1 — Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten (aus dem Gesamtaudit, Paket P16).**
+**BP1 — Betreiber-Dashboard und gemeldete Nachrichten: Reste (aus dem Gesamtaudit, Paket P16).**
+Erledigt am 2026-11-17 (COMPLETE „N06"): die Speicher-Seite löscht nur noch
+Profilbilder, Produkt-Schalter und Theme-Einstellungen überschreiben einander
+nicht mehr, das Beweis-Skript der Nachrichten läuft gegen den lokalen Spiegel.
 
 - **(a) Klick auf der echten Seite.** Als Betreiber im Dashboard unter
   „Personen": die Liste exportieren (kommt als Datei), nach mehr als zehn
   Minuten noch einmal — dann erscheint „Zur Sicherheit neu anmelden", und nach
   der Anmeldung geht es auf derselben Seite weiter. Lokal belegt, auf
-  Production noch nicht geklickt.
+  Production noch nicht geklickt. Dazu einmal ein Konto öffnen: die Karte
+  „Aktivität" zeigt jetzt Einträge.
 - **(b) Zähler des Protokolls.** Der tägliche Kontroll-Lauf berichtet
   `protokoll ausfaelle` je App und wird ab 3 in 25 Stunden rot. Die Schwelle
   ist gesetzt, nicht gemessen: nach einer Woche die berichteten Zahlen ansehen
   (zusammen mit WA1).
-- **(c) Löschen im Speicher.** Die Erlaubnisliste enthält, was die Seite schon
-  vorher anbot — auch Ablagen, an deren Dateien eine Zeile hängt (Schriften,
-  Favicons, Marken-Entwürfe, Runner- und Ticket-Dateien). Wer dort eine Datei
-  löscht, lässt die Zeile ohne Datei zurück. Entscheiden: Liste auf Avatare
-  kürzen, oder die Zeile mitlöschen.
-- **(d) Kleinigkeiten.** Produkt-Schalter und Theme-Einstellungen werden
-  gelesen, geändert und als Ganzes zurückgeschrieben (zwei Betreiber im selben
-  Augenblick überschreiben einander). Der Zeitpunkt der Erledigung einer
-  Meldung ist das `$updatedAt` ihrer Zeile: ein späterer Schreibvorgang an
-  einer erledigten Meldung lässt die 90 Tage neu beginnen — eine eigene Spalte
-  machte es genau (Migration). Der Lösch-Lauf liest je Takt höchstens 2.000
-  gemeldete Nachrichten. Das Beweis-Skript der Nachrichten scheitert gegen den
-  lokalen Spiegel an einer Prüfung des Owner-Schalters (die Test-App liest dort
-  die Schalter echter Communities mit). Betreiber-Routen sind weiter an keinen
-  Host gebunden — das gehört zum Pukalani-Konto (PK1).
+- **(d) Kleinigkeiten.** Der Zeitpunkt der Erledigung einer Meldung ist das
+  `$updatedAt` ihrer Zeile: ein späterer Schreibvorgang an einer erledigten
+  Meldung lässt die 90 Tage neu beginnen. Eine eigene Spalte machte es genau,
+  braucht aber eine Migration auf Production. Empfehlung: erst bauen, wenn
+  eine Route erledigte Meldungen beschreibt (heute hält der Fehler Daten nur
+  länger, nie kürzer). Der Lösch-Lauf liest je Takt höchstens 2.000 gemeldete
+  Nachrichten. Die Konfig-Seite sendet alle ihre Schalter aus dem eigenen
+  Stand; zwei Betreiber können sich dort noch überschreiben. Die neue
+  Schreib-Kette gilt je Prozess. Betreiber-Routen sind weiter an keinen Host
+  gebunden — das gehört zum Pukalani-Konto (PK1).
 
 <a id="wl1"></a>
 
@@ -898,29 +901,36 @@ Anmelde-Wege der vier Projekte.
 
 <a id="si1"></a>
 
-**SI1 — Sicherungen: Nacharbeiten (aus dem Gesamtaudit, Paket P06).**
+**SI1 — Sicherungen: Reste (aus dem Gesamtaudit, Paket P06).**
+Gebaut am 2026-11-17 (COMPLETE „N06"): der stündliche Label-Abgleich findet
+auch aktive Mitgliedschaften in stillgelegten Communities und das
+Moderations-Label nach einer Herabstufung; seine Ops-Route ist gebremst.
 
 - **(a) Klick-Probe auf Live.** Geprüft ist lokal. Auf einer Community: eine
   Einladung an eine Test-Adresse schicken und den Link aus einem
   Webmail-Fenster öffnen (die Seite muss die Einladung zeigen). Ein Test-Konto
   entfernen und sehen, dass die Liste „entfernt" zeigt und kein Hinweis auf
   einen offenen Lese-Zugang kommt.
-- **(b) Was der Abgleich nicht findet.** Ein Moderations-Label nach einer
-  Herabstufung (die Zeile bleibt aktiv; es fällt erst beim nächsten Besuch der
-  Person). Mitglieder, deren Umstellung beim Stilllegen einer Community im
-  Control Plane scheiterte. Der Lauf merkt sich seine Lesestelle nur im
-  Prozess. Die Reihenfolge je Konto gilt nur innerhalb eines Prozesses;
-  Platform-App und Betreiber-Konsole sind zwei.
+- **(b) Bekannte Grenzen des Abgleichs (bewertet, kein Auftrag).** Eine
+  Herabstufung, die älter ist als 26 Stunden und in der Zeit keinen Lauf sah,
+  heilt weiter erst der nächste Besuch. Die zwei neuen Listen haben einen
+  Deckel von 1.000 Zeilen ohne Lesestelle (steht im Log, wenn er greift). Die
+  gescheiterte Zeile im Control Plane bleibt `active`; steht `disabledStale`
+  über 0 im Log, gehört sie von Hand auf `removed`. Die Lesestelle der
+  entfernten Zeilen lebt nur im Prozess — das zählt erst ab 1.000 entfernten
+  Zeilen. Die Reihenfolge je Konto gilt nur innerhalb eines Prozesses; der
+  Schreiber liest nach und wiederholt, einen Entzug holt der Lauf nach.
+  Ein ganzer Lauf gegen eine Bühne mit stillgelegter Community steht noch aus.
+  Runbook: [LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md).
 - **(c) Lint-Lauf.** Mit der typisierten Regel dauert `pnpm -r lint` lokal
   etwa 43 s statt 18 s (in der CI rund 2,5 Minuten für den ganzen Job). Ein
   eigener Durchgang mit einem TypeScript-Programm je App käme zusammen auf
-  etwa 28 s, nimmt die Regel aber aus dem Lint des einzelnen Pakets.
-- **(d) Kleinigkeiten.** Die Ops-Route `run-label-reconcile` steht nicht in
-  der Bremsen-Liste (wie die der Zahlungswarnung). Eine 503 trägt im Umschlag
-  den Code `INTERNAL_ERROR` (es gibt keinen eigenen für 503). Die Seite
-  `/invite` von branding.supply ist nach der Umstellung nur per Test und
-  Quelltext geprüft, nicht im Browser. README und DECISION-LOG nennen in
-  datierten Zeilen noch den entfernten Schalter `csrfOriginCheck`.
+  etwa 28 s, nimmt die Regel aber aus dem Lint des einzelnen Pakets. Kommt
+  mit dem Ausliefer-Weg (CI1), damit sich die Prüfungen nur einmal ändern.
+- **(d) Kleinigkeiten.** Die Ops-Route der Zahlungswarnung
+  (`run-past-due-notice`) steht nicht in der Bremsen-Liste (die des
+  Label-Abgleichs seit 2026-11-17 schon). Eine 503 trägt im Umschlag den Code
+  `INTERNAL_ERROR` (es gibt keinen eigenen für 503).
 
 <a id="ki1"></a>
 
@@ -953,7 +963,11 @@ keinen Europa-Endpunkt hat.
 
 <a id="ar1"></a>
 
-**AR1 — Aufräumen: Nacharbeiten (aus dem Gesamtaudit, Paket P26).**
+**AR1 — Aufräumen: Reste (aus dem Gesamtaudit, Paket P26).**
+Erledigt am 2026-11-17 (COMPLETE „N06"): die zwei Lücken am Ticket-Kauf, die
+drei übrigen Umzugs-Anleitungen liegen im Archiv, die READMEs von
+`apps/photos` und `apps/control` beschreiben ihre App, `CLAUDE.md` nennt die
+SDK-Versionen aus dem Katalog.
 
 - **(a) Die Adresse `changelog.pukalani.app` löschen.** Sie zeigt noch auf den
   Datenbank-Server, dahinter ist nichts mehr (die Function und der Webhook
@@ -962,31 +976,17 @@ keinen Europa-Endpunkt hat.
   `pukalani.app` den A-Eintrag `changelog` löschen. Der Name bleibt für
   Kunden gesperrt (`RESERVED_SUBDOMAINS`). Danach die Zeile in
   `docs/content/2.architektur/6.hosts-und-ports.md` streichen.
-- **(b) Ticket-Kauf vor einem Ausrollen.** Der Kauf eines Event-Tickets lebt
-  nur in der Test-App. Seit P26 bekommt derselbe Kauf dieselbe Stripe-Sitzung
-  (kein doppeltes Bezahlen aus zwei Tabs). Zwei Reste: Beim allerersten Kauf
-  eines Kontos können zwei gleichzeitige Aufrufe zwei Stripe-Kunden anlegen
-  (dann greift der Schutz nicht); und zwischen Bezahlen und Ausstellen des
-  Tickets antwortet ein erneuter Klick mit einem Fehler statt mit „schon
-  bezahlt". Die Rückkehr-Adressen kommen weiter aus dem Host der Anfrage
-  (Audit-Paket P23).
-- **(c) Übrige Umzugs-Anleitungen.** Entschieden am 2026-11-16: erledigte
-  Umzugs-Anleitungen wandern ins Archiv. `F3-CUTOVER.md` und
-  `ADMIN-PROJEKT-CUTOVER.md` liegen seit dem 2026-11-16 unter
-  `docs/archiv/`. Noch zu prüfen: `ACCOUNT-CUTOVER.md`, `ADMIN-CUTOVER.md`
-  und `CONTROL-CUTOVER.md` (sind die Umzüge ganz gelaufen und wird nichts
-  daraus mehr gebraucht, ziehen sie nach). Zwei Kommentare im Code nennen
-  noch den alten Pfad (`apps/control/nuxt.config.ts`,
-  `scripts/ops/verify-schema-parity.mjs`), und der Verweis-Wächter trägt
-  zwei Ausnahmen, die jetzt leer laufen; beim nächsten Griff mitnehmen.
-- **(d) Kleinigkeiten.** Die READMEs von `apps/photos` und `apps/control`
-  sind Kopien der Vorlage und tragen noch deren Überschrift. Der Zähler der
-  Kontakt-Route von `apps/photos` liegt im Speicher des Prozesses. Auf dem
-  Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner (bewusst
-  behalten) und vier Sicherheitskopien aus dem Backup-Paket (`*.vorher-p11*`,
-  gehören zu BU1 d). Der lokale Lauf der Playwright-Suite braucht einen
-  Browser-Download. `CLAUDE.md` nennt „node-appwrite 29 + appwrite 27"; im
-  Katalog stehen 31 und 29 (gesehen am 2026-11-17, nur die Zahl nachziehen).
+- **(d) Kleinigkeiten.** Ticket-Kauf (lebt nur in der Test-App): die
+  Rückkehr-Adressen kommen weiter aus dem Host der Anfrage; die Prüfung
+  „schon bezahlt" liest die 100 jüngsten Sitzungen und braucht ein
+  Zeitfenster, sobald es eine Erstattung mit Rücknahme des Tickets gibt. Der
+  Zähler der Kontakt-Route von `apps/photos` liegt im Speicher des Prozesses.
+  Auf dem Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner
+  (bewusst behalten) und vier Sicherheitskopien aus dem Backup-Paket
+  (`*.vorher-p11*`, gehören zu BU1 d). Der lokale Lauf der Playwright-Suite
+  braucht einen Browser-Download. Ein UptimeRobot-Monitor heißt vielleicht
+  noch „studio…" (nur der Name, nicht nachgesehen). GitHub meldet beim Push
+  vier Sicherheits-Hinweise zu Abhängigkeiten (einer davon hoch) — ansehen.
 
 <a id="bt1"></a>
 
