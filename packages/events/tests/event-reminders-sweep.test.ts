@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
 
@@ -7,8 +9,13 @@ import type { H3Event } from 'h3'
  * Bis dahin wurde nur erinnert, wo jemand die Events-Seite öffnete (oder für
  * die eine Community des alten Zeitplans). Geprüft wird hier, was der neue
  * Lauf zusagt: jede Community, jede Erinnerung in IHRER Glocke, nichts doppelt
- * — auch nicht, wenn der Sweep beim Lesen gleichzeitig läuft — und im
+ * — auch nicht, wenn die Route `reminder-sweep` gleichzeitig läuft — und im
  * Zähl-Modus kein einziger Schreibvorgang.
+ *
+ * Seit BE-018 (2026-11-17) dazu: der Text ist ein Rohwert (Zeitpunkt + Zone
+ * des Termins), jede Erinnerung hat eine feste Zeilen-Id je (Termin,
+ * Empfänger, Beginn), der Merker steht erst NACH den Benachrichtigungen, und
+ * die Termin-Liste stößt keinen Lauf mehr an.
  *
  * Der Speicher unten ist nachgebaut. Was er NICHT belegen kann: dass Appwrite
  * die Abfrage (isNull + Zeitfenster + Cursor) genauso beantwortet; das zeigt
@@ -22,8 +29,12 @@ const HOUR = 3600_000
 let tables: Record<string, Row[]>
 let listCalls: { tableId: string, queries: string[] }[]
 let updateError: unknown
-let notifyImpl: (input: Record<string, unknown>) => Promise<{ created: boolean }>
+let notifyImpl: (input: Record<string, unknown>) => Promise<{ created: boolean, duplicate?: true }>
 let notified: Record<string, unknown>[]
+/** Zeilen-Ids, die die nachgebaute Glocke schon trägt — Appwrites 409 bei fester `rowId`. */
+let createdRowIds: Set<string>
+/** Reihenfolge der Schreibvorgänge: `notify:<user>` und `mark:<termin>`. */
+let callLog: string[]
 let productEnabled: boolean
 let tenancy: boolean
 const logged: { level: string, name: string, fields: Record<string, unknown> }[] = []
@@ -60,6 +71,7 @@ async function updateRow({ tableId, rowId, data }: { tableId: string, rowId: str
   await tick()
   if (updateError) throw updateError
   const row = tables[tableId]!.find(candidate => candidate.$id === rowId)!
+  if (tableId === 'events' && 'remindersSentAt' in data) callLog.push(`mark:${rowId}`)
   Object.assign(row, data)
   return row
 }
@@ -70,7 +82,10 @@ vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'main' 
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('useAppConfig', () => ({ pukalani: { tenancy: { enabled: tenancy } } }))
 vi.stubGlobal('isProductEnabled', async () => productEnabled)
-vi.stubGlobal('notify', (_event: unknown, input: Record<string, unknown>) => notifyImpl(input))
+vi.stubGlobal('notify', (_event: unknown, input: Record<string, unknown>) => {
+  callLog.push(`notify:${String(input.recipientId)}`)
+  return notifyImpl(input)
+})
 vi.stubGlobal('logEvent', (level: string, name: string, fields: Record<string, unknown>) => {
   logged.push({ level, name, fields })
 })
@@ -87,6 +102,7 @@ vi.stubGlobal('tenantDb', (event: H3Event) => {
 
 const {
   EVENT_REMINDER_RUN_CAP,
+  eventReminderRowId,
   runEventReminderJob,
   sweepAllEventReminders,
   sweepEventReminders,
@@ -110,6 +126,15 @@ function going(id: string, eventId: string, userId: string): Row {
   return { $id: id, eventId, userId, status: 'going', ...(communityId ? { communityId } : {}) }
 }
 
+/** Die nachgebaute Glocke: dieselbe `rowId` ein zweites Mal ⇒ Dublette, keine Zeile, keine Mail. */
+async function deliver(input: Record<string, unknown>): Promise<{ created: boolean, duplicate?: true }> {
+  const rowId = typeof input.rowId === 'string' ? input.rowId : undefined
+  if (rowId && createdRowIds.has(rowId)) return { created: false, duplicate: true }
+  if (rowId) createdRowIds.add(rowId)
+  notified.push(input)
+  return { created: true }
+}
+
 beforeEach(() => {
   tables = { events: [dueEvent('ev-a', 't-kunde-a'), dueEvent('ev-b', 't-kunde-b')], event_rsvps: [] }
   tables.event_rsvps = [
@@ -123,10 +148,9 @@ beforeEach(() => {
   tablesDB.updateRow.mockClear()
   updateError = undefined
   notified = []
-  notifyImpl = async (input) => {
-    notified.push(input)
-    return { created: true }
-  }
+  createdRowIds = new Set()
+  callLog = []
+  notifyImpl = deliver
   productEnabled = true
   tenancy = true
   logged.length = 0
@@ -169,30 +193,22 @@ describe('sweepAllEventReminders — alle Communities', () => {
     expect(tables.events!.every(row => row.remindersSentAt === null)).toBe(true)
   })
 
-  it('Merker vor notify: wirft notify, bleibt der Merker stehen und errors zählt', async () => {
-    notifyImpl = async () => { throw new Error('Glocke kaputt') }
-    const result = await sweepAllEventReminders({ dryRun: false })
-
-    expect(result.errors).toBe(3)
-    expect(result.reminded).toBe(0)
-    expect(tables.events!.every(row => typeof row.remindersSentAt === 'string')).toBe(true)
-    // ... und der nächste Lauf versucht es nicht noch einmal
-    notifyImpl = async (input) => { notified.push(input); return { created: true } }
-    expect((await sweepAllEventReminders({ dryRun: false })).dueEvents).toBe(0)
-    expect(notified).toEqual([])
-  })
-
-  it('notify meldet „nicht geschrieben" ⇒ errors, nicht reminded', async () => {
+  it('notify meldet „nicht geschrieben" ⇒ errors, nicht reminded, und KEIN Merker', async () => {
     notifyImpl = async () => ({ created: false })
     const result = await sweepAllEventReminders({ dryRun: false })
     expect(result).toMatchObject({ reminded: 0, errors: 3 })
+    expect(tables.events!.every(row => row.remindersSentAt === null)).toBe(true)
   })
 
-  it('scheitert der Merker, geht keine Erinnerung raus, der Lauf läuft weiter', async () => {
+  it('scheitert der Merker NACH den Benachrichtigungen, zählt errors — der nächste Takt läuft in die Dubletten', async () => {
     updateError = new Error('Schreiben gescheitert')
     const result = await sweepAllEventReminders({ dryRun: false })
-    expect(result).toMatchObject({ dueEvents: 2, reminded: 0, errors: 2 })
-    expect(notified).toEqual([])
+    expect(result).toMatchObject({ dueEvents: 2, reminded: 3, errors: 2 })
+    updateError = undefined
+    const second = await sweepAllEventReminders({ dryRun: false })
+    expect(second).toMatchObject({ dueEvents: 2, reminded: 0, errors: 0 })
+    expect(notified).toHaveLength(3)
+    expect(tables.events!.every(row => typeof row.remindersSentAt === 'string')).toBe(true)
   })
 
   it('ein Lesefehler der Termin-Liste wirft (der Zeit-Lauf meldet failed)', async () => {
@@ -262,18 +278,27 @@ describe('eine Warteschlange im Prozess', () => {
     return counts
   }
 
-  it('Sweep beim Lesen und Zeit-Lauf gleichzeitig ⇒ jede Zusage genau eine Erinnerung', async () => {
-    const read = sweepEventReminders(readEvent('t-kunde-a'))
+  it('Route-Weg und Zeit-Lauf gleichzeitig ⇒ jede Zusage genau eine Erinnerung', async () => {
+    const route = sweepEventReminders(readEvent('t-kunde-a'))
     const all = sweepAllEventReminders({ dryRun: false })
-    await Promise.all([read, all])
+    await Promise.all([route, all])
     expect(remindersPerUser()).toEqual({ u1: 1, u2: 1, u3: 1 })
   })
 
-  it('auch in umgekehrter Reihenfolge (der Lauf zuerst, der GET wartet nicht dahinter)', async () => {
+  it('auch in umgekehrter Reihenfolge (der Lauf zuerst, die Route reiht sich ein)', async () => {
     const all = sweepAllEventReminders({ dryRun: false })
-    const read = sweepEventReminders(readEvent('t-kunde-a'))
-    await Promise.all([read, all])
+    const route = sweepEventReminders(readEvent('t-kunde-a'))
+    await Promise.all([route, all])
     expect(remindersPerUser()).toEqual({ u1: 1, u2: 1, u3: 1 })
+  })
+
+  it('die Route überspringt einen laufenden Lauf NICHT still, sie wartet in der Schlange (BE-018)', async () => {
+    // Der Zähl-Lauf setzt keinen Merker — was die Route danach erinnert,
+    // hat sie selbst erinnert. Vorher kehrte sie bei „besetzt" ohne Arbeit zurück.
+    const counting = sweepAllEventReminders({ dryRun: true })
+    const route = sweepEventReminders(readEvent('t-kunde-a'))
+    await Promise.all([counting, route])
+    expect(remindersPerUser()).toEqual({ u1: 1, u2: 1 })
   })
 
   it('zwei Zeit-Läufe gleichzeitig (Route + Takt) ⇒ der spätere liest den Merker des früheren', async () => {
@@ -320,3 +345,102 @@ describe('runEventReminderJob — ein Takt des Zeit-Laufs', () => {
     expect(logged).toEqual([])
   })
 })
+
+describe('BE-018 — Rohwert, feste Zeilen-Id, Merker zuletzt', () => {
+  const ROW_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,35}$/
+
+  it('body ist das Token mit dem Beginn und der Zone DES TERMINS — kein fertiger Text', async () => {
+    tables.events = [dueEvent('ev-ny', 't-kunde-a', { timezone: 'America/New_York' })]
+    tables.event_rsvps = [going('rn', 'ev-ny', 'un')]
+    await sweepAllEventReminders({ dryRun: false })
+    expect(notified[0]!.body).toBe(`@when:${String(tables.events[0]!.startAt)};America/New_York`)
+    // Gegenprobe: ein Termin ohne Zone trägt eine leere Zone, nie die des Servers
+    tables.events.push(dueEvent('ev-nozone', 't-kunde-a', { timezone: null }))
+    tables.event_rsvps.push(going('rz', 'ev-nozone', 'uz'))
+    await sweepAllEventReminders({ dryRun: false })
+    const nozone = notified.find(input => input.recipientId === 'uz')!
+    expect(nozone.body).toBe(`@when:${String(tables.events[1]!.startAt)};`)
+  })
+
+  it('auch der Route-Weg schreibt das Token und eine feste Zeilen-Id', async () => {
+    tables.events![0]!.timezone = 'Europe/Berlin'
+    await sweepEventReminders({ context: { tenantId: 't-kunde-a' } } as unknown as H3Event)
+    expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u2'])
+    for (const input of notified) {
+      expect(input.body).toBe(`@when:${String(tables.events![0]!.startAt)};Europe/Berlin`)
+      expect(input.rowId).toBe(eventReminderRowId('ev-a', String(input.recipientId), String(tables.events![0]!.startAt)))
+    }
+  })
+
+  it('rowId je (Termin, Empfänger, Beginn): stabil, gültig für Appwrite, verschieden je Teil', async () => {
+    await sweepAllEventReminders({ dryRun: false })
+    const u1 = notified.find(input => input.recipientId === 'u1')!
+    const startAt = String(tables.events!.find(row => row.$id === 'ev-a')!.startAt)
+    expect(u1.rowId).toBe(eventReminderRowId('ev-a', 'u1', startAt))
+    const id = eventReminderRowId('ev-a', 'u1', startAt)
+    expect(id).toMatch(ROW_ID)
+    expect(id.length).toBeLessThanOrEqual(36)
+    expect(eventReminderRowId('ev-a', 'u1', startAt)).toBe(id)
+    expect(eventReminderRowId('ev-a', 'u2', startAt)).not.toBe(id)
+    expect(eventReminderRowId('ev-b', 'u1', startAt)).not.toBe(id)
+    // Verschobener Termin ⇒ neue Id, also darf er erneut erinnern
+    expect(eventReminderRowId('ev-a', 'u1', '2026-12-01T10:00:00.000Z')).not.toBe(id)
+  })
+
+  it('der Merker steht erst NACH allen Benachrichtigungen seines Termins', async () => {
+    await sweepAllEventReminders({ dryRun: false })
+    const mark = callLog.indexOf('mark:ev-a')
+    expect(mark).toBeGreaterThan(callLog.indexOf('notify:u1'))
+    expect(mark).toBeGreaterThan(callLog.indexOf('notify:u2'))
+    expect(callLog.indexOf('mark:ev-b')).toBeGreaterThan(callLog.indexOf('notify:u3'))
+  })
+
+  it('ein Empfänger scheitert ⇒ kein Merker; der nächste Takt holt NUR ihn nach und setzt dann den Merker', async () => {
+    let failU2 = true
+    notifyImpl = async (input) => {
+      if (input.recipientId === 'u2' && failU2) return { created: false }
+      return deliver(input)
+    }
+    const first = await sweepAllEventReminders({ dryRun: false })
+    expect(first).toMatchObject({ dueEvents: 2, recipients: 3, reminded: 2, errors: 1 })
+    expect(tables.events!.find(row => row.$id === 'ev-a')!.remindersSentAt).toBeNull()
+    expect(typeof tables.events!.find(row => row.$id === 'ev-b')!.remindersSentAt).toBe('string')
+
+    failU2 = false
+    const second = await sweepAllEventReminders({ dryRun: false })
+    // u1 läuft in die Dublette (keine Zeile, keine Mail), u2 bekommt seine Erinnerung
+    expect(second).toMatchObject({ dueEvents: 1, recipients: 2, reminded: 1, errors: 0 })
+    expect(remindersPerUserOf(notified)).toEqual({ u1: 1, u2: 1, u3: 1 })
+    expect(typeof tables.events!.find(row => row.$id === 'ev-a')!.remindersSentAt).toBe('string')
+  })
+
+  it('wirft notify für einen Empfänger, gilt dasselbe (Störung, kein Merker)', async () => {
+    notifyImpl = async (input) => {
+      if (input.recipientId === 'u3') throw new Error('Glocke kaputt')
+      return deliver(input)
+    }
+    const result = await sweepAllEventReminders({ dryRun: false })
+    expect(result).toMatchObject({ reminded: 2, errors: 1 })
+    expect(tables.events!.find(row => row.$id === 'ev-b')!.remindersSentAt).toBeNull()
+  })
+
+  it('Termin ohne Zusagen ⇒ Merker sofort', async () => {
+    tables.event_rsvps = []
+    const result = await sweepAllEventReminders({ dryRun: false })
+    expect(result).toMatchObject({ dueEvents: 2, recipients: 0, reminded: 0, errors: 0 })
+    expect(tables.events!.every(row => typeof row.remindersSentAt === 'string')).toBe(true)
+  })
+
+  it('die Termin-Liste (GET /api/events) stößt keinen Lauf mehr an', () => {
+    const source = readFileSync(resolve(import.meta.dirname, '../server/api/events/index.get.ts'), 'utf8')
+    expect(source).not.toMatch(/sweepEventReminders|sweepAllEventReminders/)
+    // Gegenprobe: der Lese-Pfad läuft weiter (Serien-Fenster)
+    expect(source).toContain('topUpSeries(event)')
+  })
+})
+
+function remindersPerUserOf(inputs: Record<string, unknown>[]): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const input of inputs) counts[input.recipientId as string] = (counts[input.recipientId as string] ?? 0) + 1
+  return counts
+}

@@ -7,7 +7,8 @@ import { ME, runRoute, type Scenario } from './support/messageRouteHarness'
  *
  * Auch keine privaten Antworten in einem Gespräch, das schon besteht, und auch
  * kein Weiterlesen. Jede Route ruft die Core-Wache, BEVOR die Datenbank gefragt
- * wird — bewiesen an `dbTouches === 0`.
+ * wird — bewiesen an `dbTouches === 0`. Dasselbe gilt für ein fremdes Konto
+ * aus einer anderen Community (P27, OPS-009).
  */
 
 afterEach(() => {
@@ -99,6 +100,13 @@ describe.each([...WRITE_ROUTES, ...READ_ROUTES])('$name', (route) => {
     expect(run.dbTouches).toBe(0)
   })
 
+  it('fremdes Konto: 403 not_a_member, keine Datenbank', async () => {
+    const run = await runRoute(route.load, { who: 'stranger', ...route.member })
+    expect(run.status).toBe(403)
+    expect(run.error?.data?.code).toBe('not_a_member')
+    expect(run.dbTouches).toBe(0)
+  })
+
   it('Gast: 401, keine Datenbank', async () => {
     const run = await runRoute(route.load, { who: 'guest', ...route.removed })
     expect(run.status).toBe(401)
@@ -144,6 +152,12 @@ describe('PATCH /api/messages/settings (Owner-Schalter setzen)', () => {
 
   it('Entfernte Person: 403 ohne Datenbank (Capability-Wache, keine Rolle mehr)', async () => {
     const run = await runRoute(load, { who: 'removed', body: { enabled: true } })
+    expect(run.status).toBe(403)
+    expect(run.dbTouches).toBe(0)
+  })
+
+  it('fremdes Konto: 403 ohne Datenbank', async () => {
+    const run = await runRoute(load, { who: 'stranger', body: { enabled: true } })
     expect(run.status).toBe(403)
     expect(run.dbTouches).toBe(0)
   })

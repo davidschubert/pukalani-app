@@ -58,6 +58,28 @@ export function canHideEvent(status: EventStatus): { allowed: boolean, reason: E
   return { allowed: true, reason: null }
 }
 
+/**
+ * Erneutes Ausblenden eines SCHON ausgeblendeten Termins (BE-017): kein
+ * zweites Urteil, nur die Reparatur. Scheiterte beim ersten Mal der Entzug des
+ * Leserechts, holt die Route ihn nach — ohne Status, Meldungen oder Feed noch
+ * einmal anzufassen. `canHideEvent` bleibt unverändert: das Menü bietet für
+ * `hidden` weiter nur „Wiederherstellen" an.
+ */
+export function hideIsRepair(status: EventStatus): boolean {
+  return status === 'hidden'
+}
+
+/**
+ * Folgt ein Serien-Termin dem Veröffentlichen/Zurückziehen seines Masters?
+ * (BE-017, `[id].patch.ts`). NEIN für `cancelled` (die Absage bleibt) und für
+ * `hidden`: das ist ein Urteil der Moderation, und `events.manage` darf es
+ * auch über den Umweg Serie nicht aufheben — zurück kommt ein ausgeblendeter
+ * Termin nur über `restore`.
+ */
+export function seriesLifecycleFollows(status: EventStatus): boolean {
+  return status !== 'cancelled' && status !== 'hidden'
+}
+
 /** Wiederhergestellt wird nur, was auch ausgeblendet IST (sonst 409). */
 export function canRestoreEvent(status: EventStatus): { allowed: boolean, reason: EventModerationDenyReason | null } {
   if (status !== 'hidden') return { allowed: false, reason: 'not_hidden' }

@@ -21,10 +21,8 @@ export default defineEventHandler(async (event): Promise<LessonRow & { courseSlu
     throw createError({ status: 400, statusText: 'Missing lesson id' })
   }
 
+  // Lektion veröffentlicht UND Kurs veröffentlicht, sonst 404 (prüft die Hilfe).
   const { lesson, course } = await publishedLessonWithCourse(event, id)
-  if (course.status !== 'published') {
-    throw createError({ status: 404, statusText: 'Course not found' })
-  }
 
   const enrollment = await enrollmentFor(event, course.$id, user.$id)
   if (!enrollment) {

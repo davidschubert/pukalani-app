@@ -11,8 +11,9 @@ ECHTER Identitätsprüfung (Antwort von der hinterlegten Mail-Adresse reicht
 NICHT — die kann kompromittiert sein; Video-Ident oder ein zuvor bekannter
 zweiter Kanal).
 
-**Der Eingriff** (Appwrite-Konsole, Projekt `account` — bzw. `control` für
-Betreiber-Konten):
+**Der Eingriff** (Appwrite-Konsole, im Projekt, in dem das Konto liegt:
+`account` für Kunden-Communities, `admin` für Betreiber-Konten — bis
+2026-08-18 hieß es `control` —, `portfolio`, `branding`):
 
 1. Auth → Users → Konto öffnen.
 2. Reiter „MFA": den TOTP-Authenticator LÖSCHEN (damit fällt der

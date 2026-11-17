@@ -1,4 +1,4 @@
-import { canHideEvent } from '../../../../shared/eventModerationPolicy'
+import { canHideEvent, hideIsRepair } from '../../../../shared/eventModerationPolicy'
 import { EVENTS_TABLE, type EventRow } from '../../../../shared/types/event'
 
 /**
@@ -54,6 +54,24 @@ export default defineEventHandler(async (event) => {
   const db = tenantDb(event, { as: 'operator' })
 
   const row = await db.get<EventRow>(EVENTS_TABLE, id, 'Event not found')
+
+  /**
+   * SCHON AUSGEBLENDET ⇒ NUR DER ENTZUG (BE-017). Scheitert unten der Entzug
+   * zweimal, bleibt ein `hidden`-Termin mit Leserecht stehen; bis dahin endete
+   * jeder neue Versuch in 409, die Lücke ließ sich nicht schließen. Jetzt holt
+   * dieser Aufruf genau das nach — kein zweiter Status, keine Meldungen, kein
+   * Feed (das ist beim ersten Mal geschehen). Hier LAUT: das ist die Reparatur.
+   */
+  if (hideIsRepair(row.status)) {
+    const withdrawn = withoutPublishedRead(row.$permissions, event)
+    if (withdrawn.length !== row.$permissions.length) {
+      await db.updatePermissions(EVENTS_TABLE, id, withdrawn)
+        .catch((error) => { throw toH3Error(error, 'Could not hide event') })
+    }
+    await applyEventCoverVisibility(event, { ...row, $permissions: withdrawn })
+    return { ok: true }
+  }
+
   const verdict = canHideEvent(row.status)
   if (!verdict.allowed) {
     throw createError({
@@ -73,7 +91,7 @@ export default defineEventHandler(async (event) => {
     await withdraw()
       .catch(() => withdraw())
       .catch((error) => {
-        console.error(`[events] Permission-Entzug fehlgeschlagen — hidden-Event ${id} bleibt Roh-REST-lesbar bis zum Re-Hide:`, error)
+        console.error(`[events] Permission-Entzug fehlgeschlagen — hidden-Event ${id} bleibt Roh-REST-lesbar bis zum erneuten Ausblenden (holt den Entzug nach):`, error)
       })
   }
   // Das Titelbild an die (jetzt leeren) Row-Rechte angleichen — best-effort mit
