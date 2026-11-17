@@ -3,6 +3,7 @@ import {
   BRAND_INSPIRATION_MAX,
 } from '../../shared/brandInspiration'
 import { brandReadingState, brandReadingUnreadCount } from '../../shared/brandReading'
+import { type BrandRunView, noBrandRunView } from '../../shared/brandRun'
 import type {
   BrandInspirationListResponse,
   BrandInspirationReadingView,
@@ -43,6 +44,11 @@ export function useBrandInspiration(profileId: string) {
   )
   const runLine = useState<string>(`brand-inspiration-run:${profileId}`, () => '')
   const loaded = useState<boolean>(`brand-inspiration-loaded:${profileId}`, () => false)
+  /**
+   * Der Stand des jüngsten Lese-Laufs (LL1 b) — der Lauf rechnet hinter der
+   * Antwort seines Starts; Liste, Fazit und er kommen aus DERSELBEN Abfrage.
+   */
+  const run = useState<BrandRunView>(`brand-inspiration-run-state:${profileId}`, noBrandRunView)
 
   const base = `/api/brand/profiles/${encodeURIComponent(profileId)}/inspiration`
 
@@ -61,11 +67,18 @@ export function useBrandInspiration(profileId: string) {
     runLine.value = view.runLine
   }
 
-  async function load(): Promise<void> {
-    const res = await $fetch<BrandInspirationListResponse>(base)
+  /**
+   * `timeout` setzt das NACHFRAGEN während eines Laufs (s.
+   * `BRAND_RUN_POLL_TIMEOUT_MS`); das erste Laden wartet ohne Frist.
+   */
+  async function load(options: { timeout?: number } = {}): Promise<void> {
+    const res = await $fetch<BrandInspirationListResponse>(base, options.timeout ? { timeout: options.timeout } : {})
+    // Fehlt das Feld (älterer Server-Stand während eines Auslieferns), heisst
+    // das „kein Lauf" — nie ein Wurf in der Liste.
+    run.value = res.run ?? noBrandRunView()
     setItems(res.items)
     setReading(res.reading)
   }
 
-  return { base, items, summary, runLine, loaded, state, unread, full, setItems, setReading, load }
+  return { base, items, summary, runLine, loaded, run, state, unread, full, setItems, setReading, load }
 }

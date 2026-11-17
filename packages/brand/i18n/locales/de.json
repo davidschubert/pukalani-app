@@ -3161,6 +3161,9 @@
       "unreadHint": "Kommt mit dem nächsten Lauf dazu.",
       "empty": "Zuerst Vorbilder ablegen — dann liest Frida sie gegen die Foundation.",
       "running": "Frida liest die Vorbilder …",
+      "background": "Der Lauf rechnet im Hintergrund. Die Seite kann offen bleiben oder später wieder geöffnet werden — die Lesung erscheint hier.",
+      "alreadyRunning": "Ein Lauf rechnet schon. Die Lesung erscheint hier, sobald er fertig ist.",
+      "interrupted": "Der letzte Lauf wurde unterbrochen. Bitte noch einmal starten.",
       "run": {
         "first": "Vorbilder lesen",
         "more": "{count} neue Vorbilder lesen",
@@ -3173,7 +3176,9 @@
         "noImages": "Es liegt kein Vorbild da, das gelesen werden könnte.",
         "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
         "notFound": "Diese Marke gibt es nicht mehr.",
-        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal.",
+        "failed": "Die Vorbilder ließen sich gerade nicht lesen. Später noch einmal versuchen.",
+        "tooLarge": "Die Vorbilder sind zusammen zu groß für einen Lauf. Ein paar entfernen oder kleiner ablegen, dann noch einmal starten."
       }
     },
     "dna": {

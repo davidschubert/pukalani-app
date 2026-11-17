@@ -3161,6 +3161,9 @@
       "unreadHint": "It joins with the next run.",
       "empty": "Add references first — then Frida reads them against your foundation.",
       "running": "Frida is reading your references …",
+      "background": "The run continues in the background. The page can stay open or be reopened later — the reading will appear here.",
+      "alreadyRunning": "A run is already in progress. The reading will appear here as soon as it is finished.",
+      "interrupted": "The last run was interrupted. Please start it again.",
       "run": {
         "first": "Read references",
         "more": "Read {count} new references",
@@ -3173,7 +3176,9 @@
         "noImages": "There is no reference to read.",
         "rateLimited": "That was too quick. Wait a moment and try again.",
         "notFound": "This brand no longer exists.",
-        "generic": "That did not work. Please try again."
+        "generic": "That did not work. Please try again.",
+        "failed": "The references could not be read right now. Try again later.",
+        "tooLarge": "Together the references are too large for one run. Remove a few or add smaller files, then start again."
       }
     },
     "dna": {

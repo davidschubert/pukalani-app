@@ -749,19 +749,21 @@ try {
     JSON.stringify(inspSlots['g.inspiration'] ?? null))
 
   let lastReadingRun = Date.now()
-  const reading = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
-  const readingStub = reading.status === 200
+  const { started: reading, final: readingList } = await startAndAwaitRun(
+    `${inspBase}/read`, inspBase, owner.cookie,
+  )
+  const readingStub = reading.status === 202
   if (!readingStub) {
     check('ohne Vision-Modell antwortet die Lesung ruhig mit 503 `vision_unavailable`',
       reading.status === 503 && reading.json?.reason === 'vision_unavailable',
       `${reading.status} ${JSON.stringify(reading.json?.reason ?? null)}`)
   }
   else {
-    const readItems = reading.json?.items ?? []
+    const readItems = readingList?.json?.items ?? []
     check('die Lesung liest BEIDE Bilder — je Bild ein Urteil aus dem Vokabular',
-      readItems.length === 2
+      readingList?.json?.run?.state === 'done' && readItems.length === 2
       && readItems.every(item => ['fits', 'tension', 'off'].includes(item.reading?.verdict)),
-      JSON.stringify(readItems.map(item => item.reading?.verdict ?? null)))
+      `${readingList?.json?.run?.state} ${JSON.stringify(readItems.map(item => item.reading?.verdict ?? null))}`)
     check('… und sie nennt ihr Rest-Kontingent',
       reading.json?.quota?.limit === 3 && reading.json?.quota?.remaining === 2,
       JSON.stringify(reading.json?.quota ?? null))
@@ -1284,11 +1286,13 @@ try {
 
   if (readingStub) {
     await waitForRateWindow(lastReadingRun)
-    const read2 = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
-    const read3 = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
+    // Nacheinander UND abgewartet: ein Start während eines Laufs bekäme 409
+    // `run_running` (eigener Beweis in `tests/brandReadingRunRoute.test.ts`).
+    const { started: read2 } = await startAndAwaitRun(`${inspBase}/read`, inspBase, owner.cookie)
+    const { started: read3 } = await startAndAwaitRun(`${inspBase}/read`, inspBase, owner.cookie)
     check('zweite und dritte Lesung gehen — und das Kontingent zählt herunter',
-      read2.status === 200 && read2.json?.quota?.remaining === 1
-      && read3.status === 200 && read3.json?.quota?.remaining === 0,
+      read2.status === 202 && read2.json?.quota?.remaining === 1
+      && read3.status === 202 && read3.json?.quota?.remaining === 0,
       `${read2.status}/${read2.json?.quota?.remaining} · ${read3.status}/${read3.json?.quota?.remaining}`)
     const read4 = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
     check('GEGENPROBE: die VIERTE Lesung am selben Tag ⇒ 429 `brand_reading_limit`',
