@@ -147,11 +147,4 @@ export const CSRF_ORIGINLESS_CALLERS: readonly CsrfOriginlessCaller[] = [
     markers: ['svix-signature', 'checkResendSignature('],
     reason: 'Server-zu-Server; die Signatur über den Rohtext ist der Ausweis.',
   },
-  {
-    id: 'events-sweep',
-    caller: 'Zeitgesteuerter Erinnerungs-Lauf (Cron je Community-Host)',
-    credential: 'Naht-Geheimnis im Kopf `x-sweep-key`, konstant-zeitig geprüft',
-    markers: ['x-sweep-key', 'seamSecretMatches('],
-    reason: 'Server-zu-Server; kein Browser, kein Cookie.',
-  },
 ]

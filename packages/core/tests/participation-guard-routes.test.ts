@@ -45,8 +45,6 @@ const EXCEPTIONS: Record<string, string> = {
   'packages/comments/server/api/comments/guest.post.ts':
     'Gast-Weg ohne Konto: es gibt niemanden, dessen Mitgliedschaft man prüfen könnte. Eigene Schranken: Config-Gate, '
     + 'öffentliche Community, Turnstile, Inhalts-Sperre (actor guest).',
-  'packages/events/server/api/events/reminder-sweep.post.ts':
-    'Dienst-Route ohne Nutzer: geschützt durch das Naht-Geheimnis (x-sweep-key), läuft je Community-Host.',
   'packages/feedback/server/api/feedback/index.post.ts':
     'Feedback an den BETREIBER (Control Plane), kein Inhalt der Community; bewusst auch für Gäste '
     + '(Hürde minimal, Rate-Limit feedback:create, Stummschaltung je Community im Control Plane).',

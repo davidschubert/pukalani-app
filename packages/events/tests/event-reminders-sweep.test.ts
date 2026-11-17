@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { H3Event } from 'h3'
 
 /**
  * DER ERINNERUNGS-LAUF ÜBER ALLE COMMUNITIES (OPS-003).
@@ -9,8 +8,8 @@ import type { H3Event } from 'h3'
  * Bis dahin wurde nur erinnert, wo jemand die Events-Seite öffnete (oder für
  * die eine Community des alten Zeitplans). Geprüft wird hier, was der neue
  * Lauf zusagt: jede Community, jede Erinnerung in IHRER Glocke, nichts doppelt
- * — auch nicht, wenn die Route `reminder-sweep` gleichzeitig läuft — und im
- * Zähl-Modus kein einziger Schreibvorgang.
+ * — auch nicht, wenn zwei Läufe gleichzeitig starten — und im Zähl-Modus kein
+ * einziger Schreibvorgang.
  *
  * Seit BE-018 (2026-11-17) dazu: der Text ist ein Rohwert (Zeitpunkt + Zone
  * des Termins), jede Erinnerung hat eine feste Zeilen-Id je (Termin,
@@ -89,23 +88,12 @@ vi.stubGlobal('notify', (_event: unknown, input: Record<string, unknown>) => {
 vi.stubGlobal('logEvent', (level: string, name: string, fields: Record<string, unknown>) => {
   logged.push({ level, name, fields })
 })
-// Die Datentür des Sweeps beim Lesen: scopet auf den Mandanten des Requests,
-// wie tenantDb() es im Pool tut.
-vi.stubGlobal('tenantDb', (event: H3Event) => {
-  const tenantId = (event.context as { tenantId?: string }).tenantId
-  const scoped = (queries: string[]) => tenantId ? [...queries, JSON.stringify({ method: 'equal', attribute: 'communityId', values: [tenantId] })] : queries
-  return {
-    list: (tableId: string, queries: string[]) => listRows({ tableId, queries: scoped(queries) }),
-    update: (tableId: string, rowId: string, data: Record<string, unknown>) => updateRow({ tableId, rowId, data }),
-  }
-})
 
 const {
   EVENT_REMINDER_RUN_CAP,
   eventReminderRowId,
   runEventReminderJob,
   sweepAllEventReminders,
-  sweepEventReminders,
 } = await import('../server/utils/eventReminders')
 
 function dueEvent(id: string, communityId: string | undefined, extra: Record<string, unknown> = {}): Row {
@@ -283,38 +271,13 @@ describe('sweepAllEventReminders — alle Communities', () => {
 })
 
 describe('eine Warteschlange im Prozess', () => {
-  const readEvent = (tenantId: string) => ({ context: { tenantId } }) as unknown as H3Event
-
   function remindersPerUser(): Record<string, number> {
     const counts: Record<string, number> = {}
     for (const input of notified) counts[input.recipientId as string] = (counts[input.recipientId as string] ?? 0) + 1
     return counts
   }
 
-  it('Route-Weg und Zeit-Lauf gleichzeitig ⇒ jede Zusage genau eine Erinnerung', async () => {
-    const route = sweepEventReminders(readEvent('t-kunde-a'))
-    const all = sweepAllEventReminders({ dryRun: false })
-    await Promise.all([route, all])
-    expect(remindersPerUser()).toEqual({ u1: 1, u2: 1, u3: 1 })
-  })
-
-  it('auch in umgekehrter Reihenfolge (der Lauf zuerst, die Route reiht sich ein)', async () => {
-    const all = sweepAllEventReminders({ dryRun: false })
-    const route = sweepEventReminders(readEvent('t-kunde-a'))
-    await Promise.all([route, all])
-    expect(remindersPerUser()).toEqual({ u1: 1, u2: 1, u3: 1 })
-  })
-
-  it('die Route überspringt einen laufenden Lauf NICHT still, sie wartet in der Schlange (BE-018)', async () => {
-    // Der Zähl-Lauf setzt keinen Merker — was die Route danach erinnert,
-    // hat sie selbst erinnert. Vorher kehrte sie bei „besetzt" ohne Arbeit zurück.
-    const counting = sweepAllEventReminders({ dryRun: true })
-    const route = sweepEventReminders(readEvent('t-kunde-a'))
-    await Promise.all([counting, route])
-    expect(remindersPerUser()).toEqual({ u1: 1, u2: 1 })
-  })
-
-  it('zwei Zeit-Läufe gleichzeitig (Route + Takt) ⇒ der spätere liest den Merker des früheren', async () => {
+  it('zwei Zeit-Läufe gleichzeitig ⇒ der spätere liest den Merker des früheren', async () => {
     // Liefen sie parallel, sähen beide `remindersSentAt: null` — der Speicher
     // oben antwortet mit einem Takt Verzögerung, das Fenster wäre also offen.
     await Promise.all([sweepAllEventReminders({ dryRun: false }), sweepAllEventReminders({ dryRun: false })])
@@ -373,16 +336,6 @@ describe('BE-018 — Rohwert, feste Zeilen-Id, Merker zuletzt', () => {
     await sweepAllEventReminders({ dryRun: false })
     const nozone = notified.find(input => input.recipientId === 'uz')!
     expect(nozone.body).toBe(`@when:${String(tables.events[1]!.startAt)};`)
-  })
-
-  it('auch der Route-Weg schreibt das Token und eine feste Zeilen-Id', async () => {
-    tables.events![0]!.timezone = 'Europe/Berlin'
-    await sweepEventReminders({ context: { tenantId: 't-kunde-a' } } as unknown as H3Event)
-    expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u2'])
-    for (const input of notified) {
-      expect(input.body).toBe(`@when:${String(tables.events![0]!.startAt)};Europe/Berlin`)
-      expect(input.rowId).toBe(eventReminderRowId('ev-a', String(input.recipientId), String(tables.events![0]!.startAt)))
-    }
   })
 
   it('rowId je (Termin, Empfänger, Beginn): stabil, gültig für Appwrite, verschieden je Teil', async () => {
