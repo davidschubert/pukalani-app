@@ -1018,7 +1018,12 @@ keinen Europa-Endpunkt hat.
   Browser im Bühnen-Lauf). Die Gruppen-Tabellen in
   `docs/referenz/LIVE-BEWEISE.md` stammen vom 2026-08-02. Der Kopf von
   `packages/events/tests/participation-guard.test.ts` sagt noch, Übersetzen
-  verlange die Zugehörigkeit.
+  verlange die Zugehörigkeit. Zwei Isolations-Tests des Betreiber-Layers
+  (`tenants-resolver.test.ts`, `communityHostResolver.test.ts`) bilden ihren
+  Probe-Host beide als `off-<Uhrzeit>.test.local`; starten beide Dateien in
+  derselben Millisekunde, stößt die eindeutige Host-Spalte zusammen und der
+  Bühnen-Lauf wird rot (so am 2026-11-17 einmal auf `main`, Issue 274; kein
+  Fehler im Programm). Abhilfe: ein Zufallsteil im Namen.
 
 <a id="a1-anwalt"></a>
 
