@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 39 offen · 2 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 40 offen · 2 geparkt/wartend · 16 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-16**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -117,10 +117,12 @@ Datenschutz-Sätze, die DT1 sammelt.
 
 ### Schritt 5 — Geld-Kette in fester Reihenfolge
 
-**A1 → A2 → BS1 Bezahlweg → Preis für Brand Book & Kit → F7.**
+**A1 → A2 → BS1 Bezahlweg → Preis für Brand Book & Kit → F7.** VT1 gehört vor
+den ersten zahlenden Kunden, also vor A2.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
+| VT1 | **Vertretung benennen.** Heute landet jeder Alarm nur bei David. Das Notfallblatt und die Handgriffe für eine zweite Alarm-Adresse sind vorbereitet; eingetragen ist niemand. Offen: eine Person benennen, die Handgriffe erledigen, einmal mit ihr proben. **Wartet auf:** David (wer). | Hoch | S | **Ja: Person, Ja je Einstellung** | [PRODUKTIONS-ALARM.md § 5](runbooks/PRODUKTIONS-ALARM.md) · [Einzelheiten](#vt1) |
 | A2 | **Stripe auf echtes Geld umstellen — über die F55-Seite.** Bei David: Bank-Aktivierung, Steuer-Registrierung, Live-Key eintragen, Portal-Konfiguration; alles andere klickt die Seite. **Wartet auf:** A1 und SC2. Vorbedingung für BS1 Z1. | Hoch | S | **Ja: Bank, Konto, Portal** | [STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) · [Notiz](#a2a) |
 | BS1 | **branding.supply: Rechtstexte + Bezahlweg.** Offen: R2 (Davids Generator-Texte, dazu der Abschnitt „Reichweitenmessung"), R2c (Plausible einschalten; David legt die Site an, Text vor Schalter), R3 (Anwalt), Z1 (Stripe-Checkout). Impressum und AGB sind noch Gerüst. **Wartet auf:** R3 Anwalt, Z1 nach A2. Vorbedingung fürs Öffnen der Beta. | **Hoch** | M | **Ja: Texte, Anwalt, Preis** | [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) · [Notiz](#bs1) |
 | BK1 | **Brand Book & Kit (Produkt 03).** K0 bis K6 sind gebaut. Offen: K7 (Beispiel + Copy), K8 (Abnahme, Persona-Audit), Davids Blicke auf `brand.md`, Leseansicht und Lieferseite, die Verify-Zusagen 31 bis 33 gegen Production. Der Preis (149 € netto) wird erst mit BS1 Z1 sichtbar. **Wartet auf:** Davids Gates; Preis nach BS1 Z1. | Mittel | L | **Ja: Gates, Abnahme** | [BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) |
@@ -685,6 +687,31 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   nichts bewirkt (Stufe `foundation` ist nicht abschaltbar); das Dashboard
   fragt die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
   (antwortet dann 404, das Feld bleibt leer).
+
+<a id="vt1"></a>
+**VT1 — Vertretung benennen (aus dem Gesamtaudit, Paket P24, OPS-010).**
+
+- **(a) Die Person.** Sobald David jemanden hat: Namen und Nummern ins
+  Notfallblatt (liegt privat bei David, nicht im Repo), dann die Handgriffe
+  aus [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), § 5 (Alarm-Mail,
+  UptimeRobot, healthchecks.io), dann die Probe mit einem Probealarm.
+- **(b) Nicht nachgesehen:** ob `NUXT_ALERT_EMAIL` auf der Betreiber-Seite
+  gesetzt ist. Ohne sie gehen Missbrauchs-Meldungen und Störungen der
+  Kunden-Sites nur an die Glocke im Dashboard.
+- **(c) Vorschlag, nicht entschieden:** ein Wort am Tor des Appwrite-Servers,
+  das `docker compose up -d` fährt. Heute kann eine Vertretung ohne
+  Server-Zugang den häufigsten Ausfall (Appwrite steht nach einem Update)
+  nur ansehen, nicht beheben.
+- **(d) Lücken in den neuen Runbooks:** kein Tausch-Rezept für den
+  Laufzeit-Schlüssel einer Site und für `_APP_OPENSSL_KEY_V1`, keine Übung
+  eines Sicherheitsvorfalls, keine `security.txt`
+  ([SICHERHEITSVORFALL.md](runbooks/SICHERHEITSVORFALL.md), § 5); Fristen
+  für Anfragen von außen gehören in den Anwaltstermin, und die Kunden-Hilfe
+  beschreibt „Konto löschen" nicht
+  ([ANFRAGEN-VON-AUSSEN.md](runbooks/ANFRAGEN-VON-AUSSEN.md), § 6).
+- **(e) Kleinigkeiten:** `scripts/ops/uptimerobot-sync.mjs` trägt neue
+  Kontakte an bestehende Monitore nicht nach; die Stripe-Runbooks brauchen
+  mit A2 einen Abschnitt „Zahlung kommt nicht an" für den Echtbetrieb.
 
 <a id="wa1"></a>
 
