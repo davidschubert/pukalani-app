@@ -276,14 +276,17 @@
       "runDone": "Done: {channels} channels, {videos} videos, {upserted} stored, {deleted} removed, {tooOld} too old.",
       "runErrors": "one error on the way | one error on the way | {count} errors on the way",
       "runFailed": "The run did not work.",
-      "runPartial": "Partial result: not every channel was read in time. The rest follows with the next run.",
+      "runPartial": "Partial result: the run was interrupted and not every channel was read. The rest follows with the next run.",
+      "runRunning": "Running in the background. The page updates by itself.",
+      "runAlreadyRunning": "A run is already on its way. The numbers appear here once it is done.",
+      "runStalled": "The last run was interrupted and can be started again.",
       "rateLimited": "Too many runs this hour. Try again shortly.",
       "notConfigured": "Without an API key the radar cannot fetch anything.",
       "skipped": {
         "not_configured": "No API key present — the run fetched nothing.",
         "no_channels": "No channels configured — the run fetched nothing.",
         "quota_estimate": "The run would have been too expensive. The channel list is too long.",
-        "running": "One is already running. Wait a moment."
+        "running": "The nightly run was underway. This run fetched nothing."
       },
       "openLabel": "Watch on YouTube",
       "verdictListed": "Added to your finds.",

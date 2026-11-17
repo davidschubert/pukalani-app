@@ -1,3 +1,4 @@
+import type { RunLeaseState } from '../../../core/shared/runLease'
 import type { InsightsChannel, InsightsChannelPreview } from '../insightsChannel'
 import type { InsightsVerdict, InsightsWatchItem } from '../insightsWatchlist'
 import type {
@@ -294,16 +295,22 @@ export interface InsightsRadarResponse {
   /** Älter als so viele Tage (ab Veröffentlichung) speichert der Lauf nichts — die Ansicht sagt es dazu. */
   maxVideoAgeDays: number
   videos: InsightsRadarVideoItem[]
+  /**
+   * Der jüngste Knopf-Lauf (LL1 a) — `null`, wenn noch keiner lief oder die
+   * Lauf-Tabelle fehlt. Der Zustand ist gegen die SERVER-Uhr gerechnet.
+   */
+  run: InsightsRadarRunView | null
 }
 
 /**
- * `POST /api/insights/radar/run` — das Ergebnis EINES Laufs, in Zahlen.
+ * Das Ergebnis EINES Radar-Laufs, in Zahlen — so, wie der Lauf es in seiner
+ * Zeile ablegt (`shared/insightsRadarRun.ts`).
  *
- * Es ist das Sweep-Ergebnis unverändert. `skipped` sagt, wenn gar nichts
- * passiert ist, und WARUM — ein Lauf, der „0 Videos" meldet, weil kein
- * Schlüssel da ist, sieht sonst aus wie einer, der nichts gefunden hat.
+ * `skipped` sagt, wenn gar nichts passiert ist, und WARUM — ein Lauf, der
+ * „0 Videos" meldet, weil kein Schlüssel da ist, sieht sonst aus wie einer,
+ * der nichts gefunden hat.
  */
-export interface InsightsRadarRunResponse {
+export interface InsightsRadarRunResult {
   channels: number
   videos: number
   upserted: number
@@ -313,10 +320,33 @@ export interface InsightsRadarRunResponse {
   errors: number
   quotaUnits: number
   skipped?: 'not_configured' | 'no_channels' | 'quota_estimate' | 'running'
-  /** Teil-Ergebnis: die Abruf-Frist des Knopfes ist gerissen (GA1 P18). */
+  /**
+   * Teil-Ergebnis: der Lauf hat seinen Herzschlag verloren und keine neuen
+   * Abrufe mehr begonnen (LL1 a).
+   */
   partial?: boolean
   /** Wie viele Kanäle der Teil-Lauf nicht mehr gelesen hat. */
   channelsUnread?: number
+  /** Die nachgezogenen Fundstücke — fehlt, wenn nicht nachgezogen wurde. */
+  watchlist?: { items: number, updated: number, gone: number }
+}
+
+/** Ein Knopf-Lauf des Radars, wie die Seite ihn sieht (LL1 a). */
+export interface InsightsRadarRunView {
+  state: RunLeaseState
+  startedAt: string
+  /** Leer, solange der Lauf nicht beendet ist. */
+  finishedAt: string
+  /** Nur bei `done` — vorher gibt es keine Zahlen, danach keine verlässlichen. */
+  result: InsightsRadarRunResult | null
+}
+
+/**
+ * `POST /api/insights/radar/run` — 202, der Lauf ist angenommen und rechnet
+ * im Hintergrund (LL1 a). Die Zahlen kommen über `GET /api/insights/radar`.
+ */
+export interface InsightsRadarRunResponse {
+  run: InsightsRadarRunView
 }
 
 

@@ -4,9 +4,12 @@ import { INSIGHTS_RADAR_DAILY_QUOTA } from '../../../../shared/insightsYoutube'
 import type {
   InsightsRadarResponse,
   InsightsRadarRunResponse,
+  InsightsRadarRunResult,
+  InsightsRadarRunView,
   InsightsRadarVideoItem,
   InsightsWatchVerdictResponse,
 } from '../../../../shared/types/insightsApi'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../core/shared/runLease'
 import type { InsightsVerdict } from '../../../../shared/insightsWatchlist'
 import { insightsDay, insightsNumber } from '../../../utils/insightsFormat'
 
@@ -113,46 +116,98 @@ async function setVerdict(videoId: string, verdict: InsightsVerdict): Promise<vo
   }
 }
 
-const running = ref(false)
+/**
+ * „JETZT LAUFEN LASSEN" IM HINTERGRUND (LL1 a, 2026-11-17).
+ *
+ * Die Route antwortet 202, sobald der Lauf gesperrt und gezählt ist, und
+ * rechnet dahinter. Die Seite fragt dann alle `RUN_LEASE_POLL_MS` die
+ * Radar-Antwort neu ab (`useRunPolling`, ruht bei verstecktem Reiter) — darin
+ * steht `run`, gegen die Server-Uhr gerechnet, und mit ihm die frische Liste.
+ * Endet der Lauf, kommen dieselben Zahlen wie früher als Rückmeldung.
+ *
+ * Läuft schon einer (zweiter Reiter, ein Kollege), kommt 409 `run_running` —
+ * kein Fehler, sondern genau der Zustand, den die Seite dann zeigen soll: ein
+ * ruhiger Hinweis, und sie fragt mit. Nach dem Neuladen zeigt sie einen
+ * laufenden Lauf wieder als laufend, einen abgebrochenen mit einem ruhigen
+ * Satz (der Knopf ist dann wieder frei).
+ */
+const runView = computed<InsightsRadarRunView | null>(() => data.value?.run ?? null)
+/** Die Start-Anfrage ist unterwegs. */
+const starting = ref(false)
+/** Ein Lauf, dessen Ende die Seite melden soll. */
+const watching = ref(false)
+/** Der Beginn des beobachteten Laufs — ein älterer ist nicht dieser. */
+const watchedStartedAt = ref('')
+const running = computed(() => starting.value || runView.value?.state === 'running')
+const interrupted = computed(() => !running.value && runView.value?.state === 'stalled')
+
+function announce(result: InsightsRadarRunResult): void {
+  if (result.skipped) {
+    toast.add({ title: t(`insights.radar.skipped.${result.skipped}`), color: 'warning' })
+    return
+  }
+  toast.add({
+    title: t('insights.radar.runDone', {
+      channels: result.channels,
+      videos: result.videos,
+      upserted: result.upserted,
+      deleted: result.deleted,
+      tooOld: result.tooOld,
+    }),
+    color: result.errors > 0 ? 'warning' : 'success',
+    description: result.errors > 0 ? t('insights.radar.runErrors', { count: result.errors }) : undefined,
+  })
+  // Der Lauf hat seinen Herzschlag verloren und keine neuen Abrufe mehr
+  // begonnen: kein Fehler, nur ein Teil — der Rest kommt nachts.
+  if (result.partial) {
+    toast.add({ title: t('insights.radar.runPartial'), color: 'info' })
+  }
+}
+
+watch(runView, (run) => {
+  if (!run) return
+  if (run.state === 'running') {
+    watching.value = true
+    return
+  }
+  if (!watching.value) return
+  if (watchedStartedAt.value && run.startedAt < watchedStartedAt.value) return
+  watching.value = false
+  watchedStartedAt.value = ''
+  if (run.state === 'done' && run.result) announce(run.result)
+  else if (run.state === 'failed') toast.add({ title: t('insights.radar.runFailed'), color: 'error' })
+  // `stalled` zeigt der ruhige Hinweis über dem Knopf.
+}, { immediate: true })
+
+useRunPolling({ active: running, intervalMs: RUN_LEASE_POLL_MS, tick: refresh })
 
 async function runNow(): Promise<void> {
-  running.value = true
+  if (running.value) return
+  starting.value = true
   try {
-    const result = await $fetch<InsightsRadarRunResponse>('/api/insights/radar/run', { method: 'POST' })
-    if (result.skipped) {
-      toast.add({ title: t(`insights.radar.skipped.${result.skipped}`), color: 'warning' })
-    }
-    else {
-      toast.add({
-        title: t('insights.radar.runDone', {
-          channels: result.channels,
-          videos: result.videos,
-          upserted: result.upserted,
-          deleted: result.deleted,
-          tooOld: result.tooOld,
-        }),
-        color: result.errors > 0 ? 'warning' : 'success',
-        description: result.errors > 0 ? t('insights.radar.runErrors', { count: result.errors }) : undefined,
-      })
-      // Die Abruf-Frist des Knopfes ist gerissen (GA1 P18): kein Fehler, nur
-      // ein Teil — geschrieben ist, was geholt war, der Rest kommt nachts.
-      if (result.partial) {
-        toast.add({ title: t('insights.radar.runPartial'), color: 'info' })
-      }
-    }
-    await refresh()
+    const response = await $fetch<InsightsRadarRunResponse>('/api/insights/radar/run', { method: 'POST' })
+    watching.value = true
+    watchedStartedAt.value = response.run.startedAt
+    if (data.value) data.value = { ...data.value, run: response.run }
   }
   catch (error) {
     // Der zentrale Handler hebt `data.code` als `reason` ins Envelope — genau
-    // dafür setzen die zwei Routen ihn. Ohne Grund bleibt der allgemeine Satz.
+    // dafür setzt die Route ihn. Ohne Grund bleibt der allgemeine Satz.
     const reason = (error as { data?: { reason?: string } } | null)?.data?.reason
+    if (reason === RUN_LEASE_BUSY_CODE) {
+      toast.add({ title: t('insights.radar.runAlreadyRunning'), color: 'info' })
+      watching.value = true
+      watchedStartedAt.value = ''
+      await refresh()
+      return
+    }
     const key = reason === 'rate_limited'
       ? 'insights.radar.rateLimited'
       : (reason === 'not_configured' ? 'insights.radar.notConfigured' : 'insights.radar.runFailed')
     toast.add({ title: t(key), color: 'error' })
   }
   finally {
-    running.value = false
+    starting.value = false
   }
 }
 </script>
@@ -229,13 +284,21 @@ async function runNow(): Promise<void> {
             </div>
           </dl>
 
-          <UButton
-            :label="t('insights.radar.run')"
-            icon="i-ph-play"
-            :loading="running"
-            :disabled="!configured || status === 'pending'"
-            @click="runNow"
-          />
+          <div class="flex flex-col items-end gap-2">
+            <UButton
+              :label="t('insights.radar.run')"
+              icon="i-ph-play"
+              :loading="running"
+              :disabled="!configured || running || (status === 'pending' && !data)"
+              @click="runNow"
+            />
+            <p v-if="running" class="text-xs text-muted">
+              {{ t('insights.radar.runRunning') }}
+            </p>
+            <p v-else-if="interrupted" class="max-w-64 text-right text-xs text-muted">
+              {{ t('insights.radar.runStalled') }}
+            </p>
+          </div>
         </div>
       </UCard>
 
