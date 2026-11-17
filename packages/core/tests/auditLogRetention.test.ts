@@ -234,13 +234,14 @@ describe('Schalter `pukalani.audit.retention`', () => {
     expect(auditLogRetentionMode()).toBe(mode)
   })
 
-  it('der Core gibt `off` vor; die ausgerollten Apps mit Konten und die Test-App zählen nur', () => {
+  it('der Core gibt `off` vor; die ausgerollten Apps löschen seit der Freigabe vom 2026-11-17, die Test-App zählt nur', () => {
     const here = dirname(fileURLToPath(import.meta.url))
     const core = readFileSync(join(here, '..', 'app', 'app.config.ts'), 'utf8')
     expect(core).toContain(`retention: 'off' as RowRetentionMode,`)
-    for (const app of ['control', 'platform', 'branding', 'portfolio', 'comments']) {
+    const expected: Record<string, string> = { control: 'apply', platform: 'apply', branding: 'apply', portfolio: 'apply', comments: 'count' }
+    for (const [app, mode] of Object.entries(expected)) {
       const source = readFileSync(join(here, '..', '..', '..', 'apps', app, 'app', 'app.config.ts'), 'utf8')
-      expect(source, app).toContain(`audit: { retention: 'count' },`)
+      expect(source, app).toContain(`audit: { retention: '${mode}' },`)
     }
   })
 })

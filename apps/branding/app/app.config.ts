@@ -7,15 +7,15 @@ export default defineAppConfig({
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
     /**
-     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
-     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
-     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
-     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
-     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
-     * 'off' stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
-     * löschen).
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS LÖSCHT (EL1 c): 'apply' seit dem
+     * 2026-11-17 — Davids Ja zur gezählten Zahl (0 Einträge älter als 12
+     * Monate an diesem Tag). Stündlich fällt jeder Eintrag in `audit_logs`,
+     * der älter als 12 Monate ist (`retention.run`,
+     * `job: audit-log-retention`). Rückweg: 'count' (zählt nur) oder 'off'
+     * (dann auch die Zeile in ops/timed-jobs.conf löschen); Gelöschtes kommt
+     * damit nicht wieder.
      */
-    audit: { retention: 'count' },
+    audit: { retention: 'apply' },
     /**
      * DER PRODUCTS-AUFKLAPPER (PS1, 2026-09-09 — Plan
      * docs/plans/PRODUCTS-SEITE.md §6, Davids Entscheidung e).
@@ -282,25 +282,24 @@ export default defineAppConfig({
        */
       checkErasure: 'apply',
       /**
-       * DER FRISTEN-LAUF DER WARTELISTE ZÄHLT NUR (EL1 c): 'count' liest
-       * stündlich mit genau der Auswahl, die 'apply' löschen würde (nie
-       * bestätigt 30 Tage, eingeladen/abgelehnt 90 Tage, wartend 12 Monate),
-       * und schreibt die Zahlen ins Prozess-Log (`retention.run`,
-       * `job: brand-waitlist-retention`). 'apply' wird erst mit Davids Ja zur
-       * gezählten Zahl gesetzt; 'off' stellt den Lauf ab (dann auch die Zeile
-       * in ops/timed-jobs.conf löschen).
+       * DER FRISTEN-LAUF DER WARTELISTE LÖSCHT (EL1 c): 'apply' seit dem
+       * 2026-11-17 — Davids Ja zur gezählten Zahl (0 fällige Einträge an
+       * diesem Tag). Stündlich: nie bestätigt nach 30 Tagen, eingeladen oder
+       * abgelehnt nach 90 Tagen, wartend nach 12 Monaten (`retention.run`,
+       * `job: brand-waitlist-retention`). Rückweg: 'count' (zählt nur) oder
+       * 'off' (dann auch die Zeile in ops/timed-jobs.conf löschen);
+       * Gelöschtes kommt damit nicht wieder.
        */
-      waitlistRetention: 'count',
+      waitlistRetention: 'apply',
       /**
-       * DER FRISTEN-LAUF DER GESPRÄCHSANFRAGEN ZÄHLT NUR (EL1 c): 'count'
-       * liest stündlich mit genau der Auswahl, die 'apply' löschen würde
-       * (jede Anfrage 12 Monate nach dem Eingang), und schreibt die Zahlen
-       * ins Prozess-Log (`retention.run`, `job: brand-intro-retention`).
-       * 'apply' wird erst mit Davids Ja zur gezählten Zahl gesetzt; 'off'
-       * stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
-       * löschen).
+       * DER FRISTEN-LAUF DER GESPRÄCHSANFRAGEN LÖSCHT (EL1 c): 'apply' seit
+       * dem 2026-11-17 — Davids Ja zur gezählten Zahl (0 fällige Anfragen an
+       * diesem Tag). Stündlich fällt jede Anfrage 12 Monate nach dem Eingang
+       * (`retention.run`, `job: brand-intro-retention`). Rückweg: 'count'
+       * (zählt nur) oder 'off' (dann auch die Zeile in ops/timed-jobs.conf
+       * löschen); Gelöschtes kommt damit nicht wieder.
        */
-      introRequestRetention: 'count',
+      introRequestRetention: 'apply',
       /**
        * DIE DREI RECHTSWÖRTER IM FUSS SIND SEIT BS1 R1 ECHTE LINKS
        * (2026-09-07). Bis dahin standen sie hier bewusst leer — der
