@@ -6,6 +6,7 @@ import { BRAND_FINDINGS_TABLE } from '../../../../utils/brandFindingsStore'
 import { purgeBrandInspiration } from '../../../../utils/brandInspirationStore'
 import { purgeBrandMarkDrafts } from '../../../../utils/brandMarkDrafts'
 import { BrandProfileCascadeError, runBrandProfileCascades } from '../../../../utils/brandProfileCascade'
+import { purgeBrandRuns } from '../../../../utils/brandRun'
 import {
   BRAND_PUBLICATIONS_TABLE,
   BRAND_PUBLICATION_REPORTS_TABLE,
@@ -142,6 +143,19 @@ export default defineEventHandler(async (event): Promise<BrandProfileDeleteRespo
    * die keine Route mehr erreicht (§2.13).
    */
   const markDrafts = await purgeBrandMarkDrafts(event, profileId)
+  /**
+   * DIE LÄUFE DER MARKE (brand-027, `brand_runs`) — sie hängen über `subject`
+   * an ihr, nicht an einer `profileId`-Spalte. NACH den Entwürfen: ein Lauf,
+   * der gerade noch rechnet, fragt vor dem Ablegen, ob es die Marke noch gibt
+   * (`brandRunProfileExists`).
+   */
+  let runs: number
+  try {
+    runs = await purgeBrandRuns(event, profileId)
+  }
+  catch (error) {
+    throw toH3Error(error, 'Brand profile could not be deleted')
+  }
   let publications = 0
   try {
     await tablesDB.deleteRow({ databaseId, tableId: BRAND_PUBLICATIONS_TABLE, rowId: profileId })
@@ -184,7 +198,7 @@ export default defineEventHandler(async (event): Promise<BrandProfileDeleteRespo
   // Ereignis über ein gelöschtes Profil wäre der einzige Rest, der bliebe.
   logEvent('info', 'brand.profile_deleted', {
     profileId, steps, messages, shares, events, findings, publications, publicationReports,
-    inspiration, markDrafts, checksErased, ...cascades,
+    inspiration, markDrafts, runs, checksErased, ...cascades,
   })
 
   return { deleted: true, removed: { steps, messages, shares, events, findings } }
