@@ -2,6 +2,7 @@ import { globSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { DELEGATES as ROUTING_DELEGATES, FAMILIES, balanced, routingExpressions, stripComments } from '../../../scripts/check-ai-routing.mjs'
 
 /**
  * JEDER MODELL-AUFRUF GIBT DIE ROUTING-KONSTANTE SEINER FAMILIE MIT (Finding
@@ -35,10 +36,18 @@ import { describe, expect, it } from 'vitest'
 
 type AiFamily = 'image' | 'eu' | 'text'
 
+/**
+ * EIN SCANNER STATT ZWEI (WL1 d, 2026-11-17): Transport-Namen, der Leser
+ * (Kommentare entfernen, Klammern zählen, `providerRouting` finden) und die
+ * Liste der Durchreicher kommen aus `scripts/check-ai-routing.mjs`. Hier
+ * steht nur noch die EIGENE Regel dieser Prüfung: in brand, market und
+ * insights nennt jeder Aufruf die Konstante seiner Familie ausdrücklich.
+ * Ein neuer Transport steht damit an einer Stelle und gilt für beide.
+ */
 const TRANSPORTS: Readonly<Record<AiFamily, readonly string[]>> = {
-  image: ['aiImage'],
-  eu: ['aiVision', 'aiVisionJson', 'aiVideo', 'aiVideoDetailed', 'aiVideoJson', 'aiVideoJsonDetailed'],
-  text: ['aiComplete', 'aiCompleteDetailed', 'aiCompleteJson', 'aiCompleteJsonDetailed', 'aiCompleteStream'],
+  image: FAMILIES.image,
+  eu: [...FAMILIES.vision, ...FAMILIES.video],
+  text: FAMILIES.text,
 }
 
 const EXPECTED: Readonly<Record<AiFamily, string>> = {
@@ -60,101 +69,6 @@ interface AiSource {
 interface AiCallSiteReport {
   readonly counts: Record<AiFamily, number>
   readonly violations: readonly string[]
-}
-
-/**
- * KOMMENTARE ENTFERNEN — mit Blick auf Zeichenketten und Regex-Literale.
- * Ein `'https://…'` ist kein Zeilenkommentar, ein `'**\/*.ts'` kein Block.
- * Kommentare werden durch Leerzeichen ersetzt (Zeilenumbrüche bleiben).
- */
-function stripComments(source: string): string {
-  let out = ''
-  let index = 0
-  let lastSignificant = ''
-  while (index < source.length) {
-    const char = source[index]!
-    const next = source[index + 1]
-    if (char === '/' && next === '/') {
-      while (index < source.length && source[index] !== '\n') index++
-      continue
-    }
-    if (char === '/' && next === '*') {
-      const end = source.indexOf('*/', index + 2)
-      const stop = end === -1 ? source.length : end + 2
-      out += source.slice(index, stop).replace(/[^\n]/g, ' ')
-      index = stop
-      continue
-    }
-    if (char === '\'' || char === '"' || char === '`') {
-      let cursor = index + 1
-      while (cursor < source.length && source[cursor] !== char) {
-        cursor += source[cursor] === '\\' ? 2 : 1
-      }
-      out += source.slice(index, cursor + 1)
-      index = cursor + 1
-      lastSignificant = char
-      continue
-    }
-    if (char === '/' && (lastSignificant === '' || '(,=:[!&|?{};'.includes(lastSignificant))) {
-      // Ein Regex-Literal: bis zum unmaskierten `/` ausserhalb einer Klasse.
-      let cursor = index + 1
-      let inClass = false
-      while (cursor < source.length && source[cursor] !== '\n') {
-        const current = source[cursor]
-        if (current === '\\') { cursor += 2; continue }
-        if (current === '[') inClass = true
-        else if (current === ']') inClass = false
-        else if (current === '/' && !inClass) break
-        cursor++
-      }
-      out += source.slice(index, cursor + 1)
-      index = cursor + 1
-      lastSignificant = '/'
-      continue
-    }
-    out += char
-    if (!/\s/.test(char)) lastSignificant = char
-    index++
-  }
-  return out
-}
-
-/** Der Text in den Klammern ab `open` (dem Index der öffnenden Klammer). */
-function balanced(source: string, open: number, left: string, right: string): string {
-  let depth = 0
-  for (let cursor = open; cursor < source.length; cursor++) {
-    const char = source[cursor]
-    if (char === '\'' || char === '"' || char === '`') {
-      let end = cursor + 1
-      while (end < source.length && source[end] !== char) end += source[end] === '\\' ? 2 : 1
-      cursor = end
-      continue
-    }
-    if (char === left) depth++
-    else if (char === right) {
-      depth--
-      if (depth === 0) return source.slice(open + 1, cursor)
-    }
-  }
-  return source.slice(open + 1)
-}
-
-/** Alle Werte von `providerRouting:` in einem Text — als Ausdruck. */
-function routingExpressions(text: string): string[] {
-  const found: string[] = []
-  // Nicht nach `.`: `run.providerRouting` ist ein WERT, kein Schlüssel.
-  const re = /(?<![\w.$])providerRouting\b(\s*:\s*)?/g
-  for (const match of text.matchAll(re)) {
-    const start = (match.index ?? 0) + match[0].length
-    if (!match[1]) {
-      // Kurzschreibweise `{ providerRouting }` — ein Durchreichen.
-      found.push('providerRouting')
-      continue
-    }
-    if (text[start] === '{') found.push(`{${balanced(text, start, '{', '}')}}`)
-    else found.push(/^[\w.$]+/.exec(text.slice(start))?.[0] ?? '')
-  }
-  return found
 }
 
 /**
@@ -236,12 +150,10 @@ function readTree(): AiSource[] {
     })))
 }
 
-/** Die drei Redaktions-Routen reichen `run.providerRouting` aus `insightsAi.ts` durch. */
-const DELEGATES: Readonly<Record<string, string>> = {
-  'packages/insights/server/api/insights/posts/[id]/draft.post.ts': 'packages/insights/server/utils/insightsAi.ts',
-  'packages/insights/server/api/insights/posts/[id]/translate.post.ts': 'packages/insights/server/utils/insightsAi.ts',
-  'packages/insights/server/api/insights/posts/[id]/change-note.post.ts': 'packages/insights/server/utils/insightsAi.ts',
-}
+/** Die drei Redaktions-Routen reichen `run.providerRouting` aus `insightsAi.ts` durch — dieselbe Liste wie im Skript. */
+const DELEGATES: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(ROUTING_DELEGATES).map(([path, entry]) => [path, entry.source]),
+)
 
 /**
  * MINDESTZAHLEN — Stand 2026-11-13: 1 Bild-Aufruf (Zeichen-Entwürfe), 2
