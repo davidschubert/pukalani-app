@@ -33,7 +33,7 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 ### N07 — Nacharbeiten „Kopfzeilen, Wächter, Adressen": SE1 (a, c, d, f), WL1 (b, c, Teile von d) und SV1 (b) ✅ 2026-11-17
 
 Die baubaren Reste aus drei Paketen des Gesamtaudits (P23, P20, P13). Pull
-Requests 277, 280, 281, 282, 283, 284, 285, 286, 287, 288 und 289; keine
+Requests 277, 280, 281, 282, 283, 284, 285, 286, 287, 288 und 292; keine
 Migration. Am Server von Hand nichts geändert; mit Davids Ja ein lesender
 Blick (Platz und Skript-Stand) und der Umlauf der pm2-Logs über die
 ausgelieferte Datei.
