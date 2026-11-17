@@ -175,6 +175,7 @@ jobs:
           --platform-port "$PLATFORM_PORT"
           --control-host "$CONTROL_HOST"
           --smtp-port "$SMTP_PORT"
+          ${{ env.LAUF == 'nacht' && '--einzel-port "$EINZEL_PORT"' || '' }}
 
       # Beide Datenbanken NEBENEINANDER: verschiedene Projekte, dieselbe
       # Instanz. Die Protokolle wandern in Dateien und werden nacheinander
@@ -208,14 +209,16 @@ jobs:
       # Ein DRITTES Projekt auf derselben Wegwerf-Appwrite: `apps/comments`
       # als Einzel-Instanz ohne Mandanten, wie in e2e.yml (Projekt `comments`
       # — die Id ist nicht frei, der Migrations-Runner prüft sie gegen
-      # `site.manifest.ts`), mit Demo-Daten. Die Beweise mit
-      # `braucht: ['einzel']` in `scripts/buehne/beweise.mjs` laufen gegen sie;
-      # ohne sie meldet der Läufer sie als „übersprungen". Nur bei LAUF=nacht,
-      # damit der Lauf an Pull Requests und auf main nicht länger wird.
-      - name: Einzel-Instanz — Projekt comments, Bootstrap mit Demo-Daten, Anmelde-Regeln
+      # `site.manifest.ts`), mit Demo-Daten. Projekt und `.env` legt schon das
+      # Bühnen-Setup an (`--einzel-port`, nur nachts): die Console lässt nur
+      # EINEN Account zu, ein zweites Setup-Skript scheiterte mit 501. Die
+      # Beweise mit `braucht: ['einzel']` in `scripts/buehne/beweise.mjs`
+      # laufen gegen sie; ohne sie meldet der Läufer sie als „übersprungen".
+      # Nur bei LAUF=nacht, damit der Lauf an Pull Requests und auf main nicht
+      # länger wird.
+      - name: Einzel-Instanz — Bootstrap mit Demo-Daten, Anmelde-Regeln
         if: env.LAUF == 'nacht'
         run: |
-          node scripts/ci/appwrite-setup.mjs --endpoint http://localhost:8080/v1 --app apps/comments --app-url "http://localhost:$EINZEL_PORT"
           pnpm --filter comments run bootstrap --seed
           node --env-file=apps/comments/.env scripts/ops/appwrite-auth-policies.mjs --apply
 

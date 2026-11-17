@@ -150,7 +150,7 @@ im `site.manifest.ts`) und schreibt beide `.env` samt Naht-Geheimnis; dann
 `bootstrap` je App, beide Server, `pnpm buehne up`, die Beweise je als
 eigener Schritt, `down` mit Nachzählen. NACHTS (seit 2026-11-17) kommt ein
 drittes Projekt dazu: `comments` mit `apps/comments` als Einzel-Instanz
-(`scripts/ci/appwrite-setup.mjs`, `bootstrap --seed`, Port 3001) und
+(`buehne-setup.mjs --einzel-port`, `bootstrap --seed`, Port 3001) und
 Playwrights Chromium für die zwei Skripte mit Browser. An Pull Requests und
 auf `main` steht sie nicht.
 

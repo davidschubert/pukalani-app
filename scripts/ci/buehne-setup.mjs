@@ -40,9 +40,16 @@ const controlPort = arg('control-port', '3004')
 const platformPort = arg('platform-port', '3150')
 const controlHost = arg('control-host', 'app.localhost')
 const smtpPort = arg('smtp-port', '')
+// NUR NACHTS: die Einzel-Instanz `apps/comments` als drittes Projekt. Sie
+// entsteht HIER und nicht über `appwrite-setup.mjs`, weil die Console nur
+// EINEN Account zulässt (ein zweiter Aufruf scheitert mit 501) — alle drei
+// Projekte kommen deshalb aus derselben Console-Sitzung.
+const einzelPort = arg('einzel-port', '')
 
 const CONTROL_PROJECT = 'admin'
 const POOL_PROJECT = 'account'
+// Nicht frei: `apps/comments/site.manifest.ts` lässt `account` und `comments` zu.
+const EINZEL_PROJECT = 'comments'
 
 // Wegwerf-Instanz: lokal durch, alles andere nur mit ausdrücklicher
 // Bestätigung (OPS-002). Beide Projekte liegen auf demselben Endpunkt.
@@ -52,7 +59,7 @@ assertTarget({ script: 'ci/buehne-setup', endpoint, projectId: CONTROL_PROJECT }
 // liegen dort die Zugänge der lokalen Instanz; dieses Skript ist für die CI,
 // wo es die Dateien noch nicht gibt. Geprüft wird VOR dem ersten Schritt an
 // der Console — sonst entstünden Projekt und Schlüssel, bevor der Abbruch kommt.
-for (const appDir of ['apps/control', 'apps/platform']) {
+for (const appDir of ['apps/control', 'apps/platform', ...(einzelPort ? ['apps/comments'] : [])]) {
   if (existsSync(resolve(appDir, '.env'))) {
     console.error(`✗ ${appDir}/.env gibt es schon — dieses Skript schreibt nur auf einer frischen CI-Instanz.`)
     console.error('  Lokal gilt die vorhandene `.env`; die Bühne baut dort `pnpm buehne up` auf.')
@@ -63,6 +70,7 @@ for (const appDir of ['apps/control', 'apps/platform']) {
 const consoleSteps = await openConsole(endpoint)
 const controlKey = await consoleSteps.provisionProject(CONTROL_PROJECT)
 const poolKey = await consoleSteps.provisionProject(POOL_PROJECT)
+const einzelKey = einzelPort ? await consoleSteps.provisionProject(EINZEL_PROJECT) : ''
 
 // Das Naht-Geheimnis zwischen Platform-Server und Betreiber-App: je Lauf neu.
 const seamSecret = randomBytes(32).toString('hex')
@@ -117,5 +125,22 @@ writeEnv('apps/platform', [
   `NUXT_ONBOARDING_SERVICE_SECRET=${seamSecret}`,
   ...smtp,
 ])
+
+// Die Einzel-Instanz: ein Projekt ohne Mandanten, ohne Naht zum Control
+// Plane — dieselben Einträge wie in e2e.yml (appwrite-setup.mjs). Mails
+// schickt hier nur die Datenbank (Anmelde-Code), an den lokalen Briefkasten.
+if (einzelPort) {
+  writeEnv('apps/comments', [
+    '# Von scripts/ci/buehne-setup.mjs generiert (CI-Wegwerf-Instanz, Einzel-Instanz der Bühne)',
+    `NUXT_APPWRITE_KEY=${einzelKey}`,
+    `NUXT_APPWRITE_MIGRATIONS_KEY=${einzelKey}`,
+    `NUXT_PUBLIC_APPWRITE_ENDPOINT=${endpoint}`,
+    `NUXT_PUBLIC_APPWRITE_PROJECT_ID=${EINZEL_PROJECT}`,
+    'NUXT_PUBLIC_APPWRITE_DATABASE_ID=main',
+    'NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET=avatars',
+    'NUXT_PUBLIC_APPWRITE_GDPR_BUCKET=gdpr-exports',
+    `NUXT_PUBLIC_APP_URL=http://localhost:${einzelPort}`,
+  ])
+}
 
 console.log('\nBühnen-Setup fertig — weiter mit bootstrap je App, dann Server starten und `pnpm buehne up`.')

@@ -12,9 +12,7 @@
  * Idempotent genug für Wiederholungsläufe gegen dieselbe Instanz (409 → weiter,
  * Login statt Signup); gedacht aber für Wegwerf-Instanzen (CI). Die
  * Console-Schritte selbst stehen in `console-lib.mjs` — dieselben nutzt
- * `buehne-setup.mjs` für die zwei Projekte der Bühne. Der nächtliche
- * Bühnen-Lauf (`buehne.yml`) ruft dieses Skript NACH `buehne-setup.mjs` als
- * drittes Projekt auf derselben Instanz auf (Einzel-Instanz, `--app-url`).
+ * `buehne-setup.mjs` für die zwei Projekte der Bühne.
  */
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -30,8 +28,6 @@ function arg(name, fallback) {
 const endpoint = (arg('endpoint', 'http://localhost:8080/v1')).replace(/\/$/, '')
 const appDir = arg('app', 'apps/comments')
 const projectId = arg('project', 'comments')
-// e2e.yml fährt die App auf 3001; der nächtliche Bühnen-Lauf nennt seinen Port.
-const appUrl = arg('app-url', 'http://localhost:3001')
 
 // Gedacht für Wegwerf-Instanzen: die CI ruft mit http://localhost:8080/v1 auf
 // (.github/workflows/e2e.yml). Alles andere braucht
@@ -53,7 +49,7 @@ const apiKey = await consoleSteps.provisionProject(projectId)
     `NUXT_PUBLIC_APPWRITE_DATABASE_ID=main`,
     `NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET=avatars`,
     `NUXT_PUBLIC_APPWRITE_GDPR_BUCKET=gdpr-exports`,
-    `NUXT_PUBLIC_APP_URL=${appUrl}`,
+    `NUXT_PUBLIC_APP_URL=http://localhost:3001`,
     '',
   ]
   writeFileSync(envPath, lines.join('\n'))
