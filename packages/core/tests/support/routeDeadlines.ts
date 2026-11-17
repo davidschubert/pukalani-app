@@ -122,11 +122,11 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
     form: 'inline',
     deadlines: [{ ...BRAND_SITE, times: 1, what: 'die eingereichte Seite lesen, eine Frist über alle Umleitungen' }],
   },
+  // Fundament-Check (LL1 b): Lauf-Sperre, 202, der Lauf rechnet in `startBrandRun`.
+  // Ein Treffer im Zwischenspeicher antwortet weiter sofort mit 200.
   'packages/brand/server/api/brand/profiles/[id]/check.post.ts': {
-    form: 'over',
-    deadlines: [{ ...BRAND_JUDGE, times: 1, what: 'das Urteil über das Fundament (ein Text-Lauf)' }],
-    reason: 'Fundament-Check des Markenberaters: ein Urteil mit 90 s Frist in der Anfrage. '
-      + 'Wird gerade auf Lauf-Sperre und 202 umgebaut (OPEN-ITEMS LL1 b).',
+    form: 'detached',
+    via: 'packages/brand/server/utils/brandRun.ts',
   },
   'packages/brand/server/api/brand/profiles/[id]/dna/propose.post.ts': {
     form: 'inline',

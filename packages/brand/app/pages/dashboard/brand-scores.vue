@@ -6,6 +6,7 @@ import type {
   BrandProfileScores,
   BrandProfileScoresResponse,
 } from '../../../shared/types/brand'
+import { RUN_LEASE_BUSY_CODE } from '../../../../core/shared/runLease'
 import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 /**
@@ -218,13 +219,50 @@ async function run(row: BrandProfileScores, source: 'website' | 'document'): Pro
       })
     }
     else {
-      await $fetch<BrandCheckStartResponse>(
-        `/api/brand/profiles/${encodeURIComponent(row.profileId)}/check`,
-        // ERST beim ZWEITEN Mal erzwingen: der erste Lauf findet ohnehin nichts
-        // im Zwischenspeicher, und mit `force` wäre der versehentliche
-        // Doppelklick ein zweiter bezahlter Aufruf.
-        { method: 'POST', body: { force: row.document !== null } },
-      )
+      /**
+       * DER FUNDAMENT-CHECK RECHNET IM HINTERGRUND (LL1 b, 2026-11-17): der
+       * Start antwortet `202`, der Stand steht am Verlauf der Marke. Diese
+       * Übersicht hat ihn nicht — sie wartet auf das Ende des EINEN Laufs,
+       * den sie gestartet hat (`awaitBrandDocumentCheckRun`). „Läuft schon"
+       * (`run_running`, ein zweiter Reiter) ist kein Fehler: dann wartet sie
+       * auf DENSELBEN Lauf mit.
+       */
+      let wait = true
+      try {
+        const started = await $fetch<BrandCheckStartResponse>(
+          `/api/brand/profiles/${encodeURIComponent(row.profileId)}/check`,
+          // ERST beim ZWEITEN Mal erzwingen: der erste Lauf findet ohnehin nichts
+          // im Zwischenspeicher, und mit `force` wäre der versehentliche
+          // Doppelklick ein zweiter bezahlter Aufruf.
+          { method: 'POST', body: { force: row.document !== null } },
+        )
+        // Ein Treffer im Zwischenspeicher hat nichts gestartet.
+        wait = Boolean(started.run)
+      }
+      catch (error) {
+        if ((error as FetchErrorLike | null)?.data?.reason !== RUN_LEASE_BUSY_CODE) throw error
+        toast.add({ title: t('brand.myScores.document.alreadyRunning'), color: 'info', duration: 4000 })
+      }
+      if (wait) {
+        const ended = await awaitBrandDocumentCheckRun(row.profileId)
+        if (ended.state !== 'done') {
+          // Gescheitert, abgebrochen — oder er rechnet nach fünf Minuten noch.
+          const description = ended.state === 'running'
+            ? t('brand.myScores.document.background')
+            : ended.state === 'stalled'
+              ? t('brand.myScores.document.interrupted')
+              : ended.failure === 'ai_endpoint_unavailable'
+                ? t('error.aiEndpointUnavailableHint')
+                : t('brand.myScores.errors.unavailable')
+          await refresh()
+          toast.add({
+            title: ended.state === 'running' ? t('brand.myScores.document.running') : t('brand.myScores.list.failed'),
+            description,
+            color: ended.state === 'running' ? 'info' : 'error',
+          })
+          return
+        }
+      }
     }
     // Ein Lauf schreibt genau EINE neue Zeile; die Liste kostet einen Abruf,
     // und ein Nachladen der ganzen Tabelle ist ehrlicher als eine von Hand

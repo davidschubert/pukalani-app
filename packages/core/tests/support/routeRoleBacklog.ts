@@ -45,7 +45,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/brand/server/api/brand/invite/redeem.post.ts',
     'packages/brand/server/api/brand/ops/events-sweep.post.ts',
     'packages/brand/server/api/brand/profiles/[id]/analyze.post.ts',
-    'packages/brand/server/api/brand/profiles/[id]/checks.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/design.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/index.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/index.patch.ts',

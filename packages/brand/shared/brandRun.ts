@@ -205,6 +205,24 @@ export function toBrandRunView(lease: RunLeaseSnapshot | null, nowMs: number): B
   }
 }
 
+/** Wie lange eine Übersicht auf einen gescheiterten oder abgebrochenen Lauf hinweist. */
+export const BRAND_RUN_NOTICE_MS = 24 * 60 * 60_000
+
+/**
+ * SOLL EINE ÜBERSICHT NOCH AUF DIESEN LAUF HINWEISEN?
+ *
+ * Ein gescheiterter oder abgebrochener Lauf ist eine Auskunft für den, der
+ * ihn gerade gestartet hat — nicht für jeden Besuch der Seite in den Wochen
+ * danach. Eine Übersicht (die Score-Seite) zeigt den Hinweis deshalb nur
+ * einen Tag lang; die Werkstatt-Abschnitte zeigen ihn, bis der nächste Lauf
+ * startet (dort steht er direkt am Knopf).
+ */
+export function brandRunNoticeDue(view: Pick<BrandRunView, 'state' | 'startedAt'>, nowMs: number): boolean {
+  if (view.state !== 'failed' && view.state !== 'stalled') return false
+  const startedMs = Date.parse(view.startedAt)
+  return !Number.isNaN(startedMs) && nowMs - startedMs < BRAND_RUN_NOTICE_MS
+}
+
 /**
  * SCHULDET DER VORGÄNGER NOCH EINE RÜCKBUCHUNG?
  *
