@@ -205,6 +205,34 @@ Die Mail-Notbremse selbst (60 je Stunde und Route über alle IPs) lebt in
 `packages/core/server/middleware/05.rate-limit.ts`; sie STOPPT den Versand und
 schreibt eine Zeile — der Wächter liest diese Zeile.
 
+## 1b · Der zweite Alarm: die Bühne (`.github/workflows/buehne.yml`, seit 2026-11-17)
+
+Kein Blick auf Production, sondern auf das PROGRAMM: der Lauf „Bühne
+(Kundenpfad)" baut auf einer Wegwerf-Datenbank zwei Probe-Communities auf und
+fährt die Beweis-Skripte dagegen (bei jedem Pull Request und auf `main` die
+kurzen, jede Nacht um 01:41 UTC auch die langen). Rot auf `main` oder nachts
+⇒ der Job `alarm` DIESES Workflows öffnet ein Issue mit dem Label
+`buehne-alarm` (eines, solange es offen ist; jeder weitere rote Lauf
+kommentiert; der nächste grüne Lauf schließt es). Ohne Secret, ohne Mail,
+ohne Heartbeat — das Issue ist dem Repo-Besitzer zugewiesen. Ein roter Lauf
+an einem Pull Request öffnet nichts; ein verdrängter Lauf („cancelled") auch
+nicht.
+
+**Was zu tun ist, wenn `buehne-alarm` offen ist:** den verlinkten Lauf
+öffnen. Die Zusammenfassung zeigt je Beweis-Skript „bestanden" oder
+„fehlgeschlagen" mit Zählung; der rote Schritt nennt die letzten Zeilen des
+Skripts. Dann eines von zwei: (1) das Skript ist veraltet (eine Regel hat sich
+bewusst geändert) ⇒ Skript anpassen; (2) eine Zusage des Kundenpfads hält
+nicht mehr ⇒ das ist ein Fehler im Programm, der letzte Merge ist der erste
+Verdächtige. Von Hand nachstellen: `pnpm buehne up`, `pnpm buehne run --only
+<name>`, `pnpm buehne down` (docs/referenz/LIVE-BEWEISE.md, Abschnitt „Die
+Bühne"). Production ist davon nicht berührt — ob dort etwas kaputt ist, sagt
+weiter nur `produktions-alarm`.
+
+**Probealarm:** `gh workflow run buehne.yml -f alarm_drill=true` öffnet das
+Issue mit dem Zusatz „PROBEALARM"; ein zweiter Lauf ohne den Schalter
+schließt es wieder. Nach jeder Änderung an `buehne.yml` einmal fahren.
+
 ## 2 · Der Alarmweg (Job `alarm`, läuft nach jedem Wächter-Lauf)
 
 1. **Issue.** Ist irgendein Wächter rot, öffnet der Job EIN Issue mit Label
