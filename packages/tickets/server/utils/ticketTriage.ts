@@ -81,7 +81,7 @@ export async function getEffectiveTicketsAiConfig(event: H3Event): Promise<Ticke
   return config
 }
 
-interface TriageResult {
+export interface TriageResult {
   relevance: number
   priority: string
   effort: string
@@ -121,9 +121,62 @@ function buildPrompt(ticket: TicketRow): string {
   ].filter(line => line !== '').join('\n')
 }
 
+const TRIAGE_PRIORITIES = ['low', 'medium', 'high']
+const TRIAGE_EFFORTS = ['easy', 'medium', 'hard', 'very_hard']
+
+/**
+ * Trägt das Objekt ALLE fünf Felder in der erwarteten Form? Strenger als die
+ * Klemmung unten, die Fehlendes still mit Vorgaben füllt (Relevanz 3,
+ * `medium`, leere Einschätzung).
+ */
+export function isCompleteTriage(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return typeof v.relevance === 'number' && Number.isInteger(v.relevance) && v.relevance >= 1 && v.relevance <= 5
+    && typeof v.priority === 'string' && TRIAGE_PRIORITIES.includes(v.priority)
+    && typeof v.effort === 'string' && TRIAGE_EFFORTS.includes(v.effort)
+    && typeof v.assessment === 'string' && v.assessment.trim() !== ''
+    && Array.isArray(v.questions) && v.questions.every(q => typeof q === 'string')
+}
+
+/**
+ * AN DER TOKEN-DECKE ABGESCHNITTEN (`finishReason: 'length'`, EL1).
+ *
+ * Ist das JSON gar nicht lesbar, wirft schon der Transport (502
+ * `ai_truncated`). Hier geht es um den anderen Fall: das JSON war lesbar,
+ * obwohl die Decke riss — `parseModelJson` schneidet auf das äußere Objekt zu,
+ * ein Modell, das nach der schließenden Klammer weiterschreibt, liefert also
+ * ein ganzes Objekt. Zwei Wege, je nach Form:
+ *  - Alle fünf Felder vollständig und gültig (`isCompleteTriage`) ⇒ der
+ *    bezahlte Lauf wird übernommen und im Log gekennzeichnet (BE-007:
+ *    abgeschnitten heißt gekennzeichnet, nicht verworfen). Es fehlt nichts.
+ *  - Sonst ⇒ fachlicher Fehler 502 mit `data.code: 'ai_truncated'`. Die
+ *    Klemmung füllte die Lücken mit Vorgaben, und eine erfundene Relevanz 3
+ *    mit leerer Einschätzung stünde sonst als echte Einordnung in der
+ *    Beschreibung. Die Oberfläche zeigt ihre vorhandene Fehlermeldung.
+ * `maxTokens` bleibt, wo er ist — die Decke zu senken zerstört nur Läufe.
+ */
+export function acceptTriageCompletion(
+  completion: { value: Partial<TriageResult>, finishReason: string, completionTokens: number },
+  model: string,
+): Partial<TriageResult> {
+  if (completion.finishReason !== 'length') return completion.value
+  const fields = { finish: 'length', model, out: completion.completionTokens }
+  if (isCompleteTriage(completion.value)) {
+    console.warn(aiLogLine('tickets', 'KI-Antwort abgeschnitten', { ...fields, kept: 1 }))
+    return completion.value
+  }
+  console.error(aiLogLine('tickets', 'KI-Antwort abgeschnitten', { ...fields, kept: 0 }))
+  throw createError({
+    status: 502,
+    statusText: 'AI response truncated',
+    data: { code: AI_TRUNCATED_CODE },
+  })
+}
+
 /** Transport via core aiComplete; die Feld-Klemmung (Domäne) bleibt hier. */
 async function callCompletions(event: H3Event, config: TicketsAiConfig, apiKey: string, prompt: string): Promise<TriageResult> {
-  const parsed = await aiCompleteJson<Partial<TriageResult>>(event, prompt, {
+  const completion = await aiCompleteJsonDetailed<Partial<TriageResult>>(event, prompt, {
     model: config.model,
     baseUrl: config.baseUrl,
     apiKey,
@@ -131,10 +184,11 @@ async function callCompletions(event: H3Event, config: TicketsAiConfig, apiKey: 
     maxTokens: 700,
     label: 'tickets',
   })
+  const parsed = acceptTriageCompletion(completion, config.model)
   return {
     relevance: Math.min(5, Math.max(1, Number(parsed.relevance) || 3)),
-    priority: ['low', 'medium', 'high'].includes(parsed.priority ?? '') ? parsed.priority! : 'medium',
-    effort: ['easy', 'medium', 'hard', 'very_hard'].includes(parsed.effort ?? '') ? parsed.effort! : 'medium',
+    priority: TRIAGE_PRIORITIES.includes(parsed.priority ?? '') ? parsed.priority! : 'medium',
+    effort: TRIAGE_EFFORTS.includes(parsed.effort ?? '') ? parsed.effort! : 'medium',
     assessment: String(parsed.assessment ?? '').slice(0, 1200),
     questions: (Array.isArray(parsed.questions) ? parsed.questions : []).map(q => String(q).slice(0, 300)).slice(0, 6),
   }

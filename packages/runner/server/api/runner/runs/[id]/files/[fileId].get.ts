@@ -1,3 +1,4 @@
+import { FILE_RESPONSE_HEADERS, decideFileDelivery } from '../../../../../../../core/shared/fileDelivery'
 import { parseRunAttachments } from '../../../../../../shared/runAttachments'
 import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow } from '../../../../../../shared/types/runner'
 
@@ -18,6 +19,10 @@ import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow } from '../../../../../../
  *     nur ein Inhaltsverzeichnis.
  */
 export default defineEventHandler(async (event) => {
+  // Schutz-Kopfzeilen auf JEDER Antwort, auch auf Ablehnungen (SEC-001).
+  for (const [name, value] of Object.entries(FILE_RESPONSE_HEADERS)) {
+    setHeader(event, name, value)
+  }
   const caller = await requireRunner(event)
   const id = getRouterParam(event, 'id')
   const fileId = getRouterParam(event, 'fileId')
@@ -42,10 +47,14 @@ export default defineEventHandler(async (event) => {
     throw toH3Error(error, 'Could not read attachment')
   })
 
-  setHeader(event, 'Content-Type', attachment.mimeType || 'application/octet-stream')
-  // Immer `attachment`: der Empfänger ist ein Programm, das die Datei auf die
-  // Platte schreibt — eine Inline-Vorschau hat hier kein Publikum.
-  setHeader(event, 'Content-Disposition', `attachment; filename="${encodeURIComponent(attachment.name)}"`)
+  const body = Buffer.from(bytes as ArrayBuffer)
+  // Immer Download (`allowInlineImages: false`): der Empfänger ist ein
+  // Programm, das die Datei auf die Platte schreibt — eine Inline-Vorschau hat
+  // hier kein Publikum. Der Typ aus der Anhang-Liste geht nicht durch
+  // (`core/shared/fileDelivery.ts`, SEC-001); der Dienst liest ihn nicht.
+  const delivery = decideFileDelivery({ storedType: attachment.mimeType, bytes: body, name: attachment.name, allowInlineImages: false })
+  setHeader(event, 'Content-Type', delivery.contentType)
+  setHeader(event, 'Content-Disposition', delivery.disposition)
   setHeader(event, 'Cache-Control', 'private, max-age=300')
-  return Buffer.from(bytes as ArrayBuffer)
+  return body
 })
