@@ -78,7 +78,6 @@ export const LONG_PROXY_ROUTES: Readonly<Record<string, string>> = {
 }
 
 const AI_COMPLETE = { constant: 'AI_COMPLETE_TIMEOUT_MS', file: 'packages/core/server/utils/aiComplete.ts' } as const
-const AI_IMAGE = { constant: 'AI_IMAGE_TIMEOUT_MS', file: 'packages/core/server/utils/aiImage.ts' } as const
 const AI_MODEL_CHECK = { constant: 'AI_MODEL_CHECK_TIMEOUT_MS', file: 'packages/core/server/utils/aiModelCheck.ts' } as const
 const BRAND_SITE = { constant: 'BRAND_SITE_ANALYSIS_TIMEOUT_MS', file: 'packages/brand/shared/brandSiteAnalysis.ts' } as const
 const BRAND_CRAWL = { constant: 'BRAND_CRAWL_TIMEOUT_MS', file: 'packages/brand/server/utils/brandSiteCrawl.ts' } as const
@@ -150,11 +149,10 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
     form: 'inline',
     deadlines: [{ constant: 'BRAND_MARK_BRIEF_TIMEOUT_MS', file: 'packages/brand/server/utils/brandMarkBrief.ts', times: 1, what: 'der Zeichen-Brief (ein Text-Lauf)' }],
   },
+  // Zeichen-Entwürfe (LL1 b): Lauf-Sperre, 202, der Lauf rechnet in `startBrandRun`.
   'packages/brand/server/api/brand/profiles/[id]/mark/drafts/index.post.ts': {
-    form: 'over',
-    deadlines: [{ ...AI_IMAGE, times: 1, what: 'vier Bild-Läufe, parallel gestartet — zählen einmal' }],
-    reason: 'Zeichen-Entwürfe: bezahlte Bild-Läufe mit 120 s Frist in der Anfrage. '
-      + 'Wird gerade auf Lauf-Sperre und 202 umgebaut (OPEN-ITEMS LL1 b).',
+    form: 'detached',
+    via: 'packages/brand/server/utils/brandRun.ts',
   },
   'packages/brand/server/api/brand/profiles/[id]/review.post.ts': {
     form: 'over',
