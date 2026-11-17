@@ -127,9 +127,9 @@ jobs:
           wait "$control_pid" || control_rc=$?
           wait "$platform_pid" || platform_rc=$?
           echo "── Control Plane (admin): Rueckgabe $control_rc"
-          tail -15 "$RUNNER_TEMP/bootstrap-control.log"
+          tail -n 15 "$RUNNER_TEMP/bootstrap-control.log"
           echo "── Pool (account): Rueckgabe $platform_rc"
-          tail -15 "$RUNNER_TEMP/bootstrap-platform.log"
+          tail -n 15 "$RUNNER_TEMP/bootstrap-platform.log"
           if [ "$control_rc" != "0" ] || [ "$platform_rc" != "0" ]; then
             echo '::error::Bootstrap fehlgeschlagen — vollstaendige Protokolle folgen'
             cat "$RUNNER_TEMP/bootstrap-control.log" "$RUNNER_TEMP/bootstrap-platform.log"
@@ -151,17 +151,22 @@ jobs:
         run: |
           (cd apps/control && nohup pnpm exec nuxi dev --port "$CONTROL_PORT" > "$RUNNER_TEMP/control.log" 2>&1 &)
           (cd apps/platform && nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+          # Der Entwicklungs-Server gibt JSON eingerückt aus ("ok": true) —
+          # deshalb der Vergleich ohne Leerzeichen. Verlangt wird je Server
+          # `ok` UND der Datenbank-Stand `ok` (alle Migrationen sind da).
+          ready() {
+            curl -s -m 5 "http://localhost:$1/api/health" | tr -d ' \n' | grep -q '"ok":true.*"state":"ok"'
+          }
           for i in $(seq 1 240); do
-            control=$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://localhost:$CONTROL_PORT/api/health" || true)
-            platform=$(curl -s -m 5 "http://localhost:$PLATFORM_PORT/api/health" || true)
-            if [ "$control" = "200" ] && echo "$platform" | grep -q '"ok":true'; then
+            if ready "$CONTROL_PORT" && ready "$PLATFORM_PORT"; then
               echo "Beide Server bereit nach ${i}s."
               exit 0
             fi
             sleep 1
           done
           echo '::error::Die Server sind nach 240s nicht bereit'
-          tail -40 "$RUNNER_TEMP/control.log" "$RUNNER_TEMP/platform.log" || true
+          echo '── Antwort Betreiber-App'; curl -s -m 5 "http://localhost:$CONTROL_PORT/api/health" || true
+          echo '── Antwort Platform-Server'; curl -s -m 5 "http://localhost:$PLATFORM_PORT/api/health" || true
           exit 1
 
       - name: Bühne aufbauen (zwei Communities, Konten je Rolle)
@@ -195,6 +200,6 @@ jobs:
       - name: Server- und Stack-Protokolle bei Fehler
         if: failure()
         run: |
-          echo '── Betreiber-App'; tail -60 "$RUNNER_TEMP/control.log" || true
-          echo '── Platform-Server'; tail -60 "$RUNNER_TEMP/platform.log" || true
+          echo '── Betreiber-App'; tail -n 60 "$RUNNER_TEMP/control.log" || true
+          echo '── Platform-Server'; tail -n 60 "$RUNNER_TEMP/platform.log" || true
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite appwrite-worker mariadb || true
