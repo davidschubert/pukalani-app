@@ -24,6 +24,16 @@ describe('resolveStatsTarget', () => {
     expect(target).toEqual({ state: 'ready', siteId: HOST, filters: [] })
   })
 
+  it('nennt die Zähl-Datei eine eigene Adresse, ist SIE das Ziel (KK1) — sonst der Host', () => {
+    expect(resolveStatsTarget({ plausibleScriptId: OWN }, SHARED, HOST, `www.${HOST}`))
+      .toEqual({ state: 'ready', siteId: `www.${HOST}`, filters: [] })
+    expect(resolveStatsTarget({ plausibleScriptId: OWN }, SHARED, HOST, null))
+      .toEqual({ state: 'ready', siteId: HOST, filters: [] })
+    // Die Sammel-Site kennt keine eigene Adresse — der Wert darf dort nichts bewirken.
+    expect(resolveStatsTarget({ enabled: true }, SHARED, HOST, 'www.fremd.example'))
+      .toMatchObject({ state: 'ready', siteId: SHARED.siteId })
+  })
+
   it('die eigene Site gewinnt auch, wenn der Schalter an ist', () => {
     const target = resolveStatsTarget({ plausibleScriptId: OWN, enabled: true }, SHARED, HOST)
     expect(target).toEqual({ state: 'ready', siteId: HOST, filters: [] })

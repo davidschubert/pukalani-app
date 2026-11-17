@@ -18,7 +18,11 @@ import {
 /**
  * DIE TÜR VOR DER TÜR — alle Schutzregeln an EINER Stelle (Konzept § 2).
  *
- * Jede Schreib-Route ruft genau eine dieser Funktionen. Der Grund ist
+ * Jede Route, die eine NACHRICHT auf den Weg bringt (Gespräch eröffnen,
+ * antworten), ruft die passende dieser Funktionen. Die übrigen Schreib-Routen
+ * tun es bewusst nicht: eigenes Löschen, Gelesen-Markieren, Blockieren und
+ * die Einstellungen der Community erreichen niemanden — vor ihnen steht die
+ * Mitgliedschafts-Wache bzw. das Rollen-Tor, nicht diese Tür. Der Grund ist
  * derselbe, aus dem die Datentür existiert: eine Regel, an die sich fünf
  * Routen erinnern müssen, ist keine Regel. Und der Schutz ist hier nicht die
  * Kür — Davids Rahmensetzung lautet, dass ein Nachrichtenweg ohne ihn gar
