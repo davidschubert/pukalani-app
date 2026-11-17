@@ -193,9 +193,17 @@ paths:
   Mitgliedschaft entscheidet (Pool fail-closed, Silo durch — ein Ausfall des
   Control Plane kostet ein Mitglied mit Label keinen Kommentar, einen
   Erst-Beitritt schon). Melden bleibt in einer gesperrten Community offen
-  (`openDuringSuspension`), tritt dort aber nicht bei. ÜBERSETZEN ist Lesen,
-  nicht Mitmachen: die drei Routen (posts, comments, events) verlangen nur
-  die Anmeldung und lesen ihr Ziel über die Session-Klinke. Die gemerkte
+  (`openDuringSuspension`), tritt dort aber nicht bei. ÜBERSETZEN GIBT ES NUR
+  FÜR MITGLIEDER (MM1, seit 2026-11-17 — Davids Entscheidung 2026-11-16;
+  vorher genügte die Anmeldung, und ein fremdes Konto verbrauchte das
+  Tages-Kontingent der Community): alle fünf Routen rufen
+  `requireCommunityMembership` (Kurse: `requireCourseMember`) vor dem ersten
+  Datenbankzugriff — kein Beitritt, keine Inhalts-Sperre (der Cache wird
+  weiter als `actor: 'operator'` geschrieben, eine gesperrte Community bleibt
+  lesbar). posts, comments und events lesen ihr Ziel danach weiter über die
+  Session-Klinke. Den Knopf zeigt der Browser nur mit `useCommunityMember()`
+  (Spiegel aus `07.community-role.ts`, dieselbe Funktion wie die Wache; ohne
+  Mandant ist jedes angemeldete Konto Mitglied). Die gemerkte
   Ablehnung schlägt in `joinCommunity` den Rollen-Cache (sonst schrieb eine
   entfernte Person noch 30 s weiter). EINEN Leser für den Grund stellt der
   Core (`community-suspended-notice.client.ts`, nur bei Schreibversuchen;

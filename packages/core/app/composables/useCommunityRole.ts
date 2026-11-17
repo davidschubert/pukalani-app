@@ -128,6 +128,29 @@ export function useRoleLabel() {
  *
  * NUR UX-Schicht: die Grenze ist die Server-Middleware.
  */
+/**
+ * „Gehört das eingeloggte Konto zur Community dieses Hosts?" (MM1,
+ * 2026-11-17) — für Knöpfe, die es nur für Mitglieder gibt (Übersetzen).
+ *
+ * NICHT dasselbe wie `useCommunityRole().role !== null`: Mitglied ist auch,
+ * wer nur das Community-Label trägt (Bestand ohne Zeile), und auf einer
+ * Einzel-Instanz ohne Mandant jedes angemeldete Konto — dort gibt es gar
+ * keine Rolle. Die Antwort kommt deshalb aus derselben Server-Funktion wie
+ * die Wache der Routen (`resolveCommunityMembership`), gespiegelt über
+ * `07.community-role.ts` → tenant-brand.server.ts; nach einer Anmeldung im
+ * Browser zieht der Auth-Store sie mit der Rolle nach, die Abmeldung setzt
+ * sie zurück.
+ *
+ * WAS SIE NICHT WEISS: wer in einer offenen Community durch seinen ersten
+ * Beitrag gerade Mitglied geworden ist, heißt hier bis zum nächsten
+ * Seitenaufruf noch „nein" (wie die Rolle, s. o.).
+ *
+ * NUR UX-Schicht: die Grenze ist `requireCommunityMembership` in der Route.
+ */
+export function useCommunityMember() {
+  return useState<boolean>('pukalani-community-member', () => false)
+}
+
 export function useCommunityRemoved() {
   return useState<boolean>('pukalani-community-removed', () => false)
 }

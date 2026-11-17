@@ -160,7 +160,8 @@ paths:
   Marken-Tageszähler zurück (`refundBrandAiQuota`); Konto- und Instanz-Deckel
   bleiben gebucht (Missbrauchsnetz). Ein Teil-Erfolg ist ein Lauf.
 - UGC-ÜBERSETZUNG (2026-08-18, Davids Entscheidungen): Knopf statt Automatik,
-  Gate = das jeweilige INHALTS-Produkt (bewusst NICHT 'ai'), nur Eingeloggte.
+  Gate = das jeweilige INHALTS-Produkt (bewusst NICHT 'ai'), seit 2026-11-17
+  nur MITGLIEDER der Community (MM1; Regel in tenant-isolation.md).
   Alle fünf Inhaltsarten (posts, comments inkl. Umfrage-Optionen, events,
   courses+lessons): `translations`-MEDIUMTEXT-Spalte je Zeile (posts-023,
   comments-020, events-013, courses-007), pure Regel
@@ -172,8 +173,9 @@ paths:
   über die Session-Klinke (Row-Permissions = Sichtbarkeit), Cache-Schreiben
   als operator/actor:'operator' (kein M13, kein A5-Beitritt) — AUSNAHME Kurse
   und Lektionen (SEC-029, 2026-11-13): ihre Zeilen tragen kein Leserecht, beide
-  Übersetzungs-Routen lesen über die Operator-Klinke und stellen
-  `requireCourseMember` VOR den ersten Datenbankzugriff; (4) Übersetzen
+  Übersetzungs-Routen lesen über die Operator-Klinke; die Mitgliedschafts-Wache
+  steht in ALLEN fünf Routen VOR dem ersten Datenbankzugriff und vor dem
+  Cache-Treffer; (4) Übersetzen
   zeigt nie mehr als Lesen — die Lesson-Route trägt ALLE Vorprüfungen ihrer
   GET-Route, die Event-Schwärzung LEERT den Cache mit, ebenso jedes LÖSCHEN (SEC-032,
   2026-11-15: der Platzhalter eines gelöschten Kommentars, der Grabstein eines
