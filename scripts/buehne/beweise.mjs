@@ -70,7 +70,7 @@ export const BEWEISE = [
   { skript: 'packages/control/scripts/verify-account-bell.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/control/scripts/verify-audience-flip.mjs', lauf: 'e2e', grund: E2E },
   { skript: 'packages/control/scripts/verify-invite-requests.mjs', lauf: 'buehne', env: 'control', dauer: 3, braucht: ['appwrite', 'platform', 'control'] },
-  { skript: 'packages/control/scripts/verify-invite-stock.mjs', lauf: 'hand', env: 'control', grund: 'Eine Prüfung ist rot und wird geklärt.' },
+  { skript: 'packages/control/scripts/verify-invite-stock.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control', 'mailpit'] },
   { skript: 'packages/control/scripts/verify-onboarding.mjs', lauf: 'buehne', env: 'control', dauer: 1, braucht: ['appwrite', 'control'] },
   { skript: 'packages/control/scripts/verify-silo-domain.mjs', lauf: 'hand', grund: COMMENTS },
 
@@ -124,7 +124,7 @@ export const BEWEISE = [
   { skript: 'packages/onboarding/scripts/verify-account-events.mjs', lauf: 'nacht', env: 'platform', dauer: 30, braucht: ['appwrite', 'platform'] },
   { skript: 'packages/onboarding/scripts/verify-community-export.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-community-favicon.mjs', lauf: 'buehne', env: 'control', dauer: 3, braucht: ['appwrite', 'platform', 'control'] },
-  { skript: 'packages/onboarding/scripts/verify-community-suspension.mjs', lauf: 'hand', env: 'control', dauer: 150, braucht: ['appwrite', 'platform', 'control'], grund: 'Eine Prüfung ist rot und wird geklärt.' },
+  { skript: 'packages/onboarding/scripts/verify-community-suspension.mjs', lauf: 'nacht', env: 'control', dauer: 175, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-control-exit.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-control-host.mjs', lauf: 'buehne', env: 'keine', dauer: 1, braucht: ['platform'] },
   { skript: 'packages/onboarding/scripts/verify-custom-domain.mjs', lauf: 'hand', env: 'control', grund: 'Braucht eine Betreiber-App im Trockenlauf mit eigenem Namens-Server (NUXT_CUSTOM_DOMAIN_DRY_RUN, NUXT_CUSTOM_DOMAIN_DNS_SERVERS), die die Bühne nicht startet, und kennt die Freigabe durch den Betreiber (BE-014) noch nicht.' },
