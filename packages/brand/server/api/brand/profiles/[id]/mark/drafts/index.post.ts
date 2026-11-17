@@ -33,7 +33,7 @@ import {
   runningBrandRunView,
   startBrandRun,
 } from '../../../../../../utils/brandRun'
-import { BRAND_PROFILES_TABLE } from '../../../../../../utils/brandStore'
+import { BRAND_PROFILES_TABLE, loadStepRows } from '../../../../../../utils/brandStore'
 
 /**
  * DIE KI-ENTWÜRFE ERZEUGEN (Konzept docs/archiv/BRAND-DESIGN.md §2.5 Stufe 3,
@@ -314,8 +314,12 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
       // Der Slot-Wert nennt nur BEHALTENE Entwürfe — ein frischer Lauf ändert
       // ihn deshalb nicht; der Aufruf zieht aber einen Slot nach, der aus
       // einem früheren Stand hängengeblieben ist (`syncBrandMarkDraftsSlot`).
+      //
+      // DIE KAPITEL-ZEILE WIRD DAFÜR NEU GELESEN: der Sync schreibt die ganze
+      // Slot-Ablage der Zeile zurück. Mit dem Stand vom START überschriebe er
+      // alles, was der Mensch während des Laufs im Kapitel gespeichert hat.
       const items = await listBrandMarkDrafts(event, profile.$id)
-      await syncBrandMarkDraftsSlot(event, profile, stepRows, items)
+      await syncBrandMarkDraftsSlot(event, profile, await loadStepRows(event, profile.$id), items)
 
       await recordBrandEvent(event, {
         type: 'design.drafts.run',

@@ -41,6 +41,8 @@ let created: { title: string }[] = []
 let listings: unknown[][] = [[]]
 let listCalls = 0
 let profileExists = true
+/** Mit welchen Kapitel-Zeilen der Slot-Sync gerufen wurde. */
+let syncedWith: unknown[] = []
 /** Wer fragt: ohne Zugang (Gast, Konto ohne Freischaltung) oder mit fremder Marke. */
 let noAccess = false
 let foreignBrand = false
@@ -76,7 +78,9 @@ vi.mock('../server/utils/brandMarkDrafts', async () => ({
     if (runThrows) throw runThrows
     return runResult
   },
-  syncBrandMarkDraftsSlot: async () => {},
+  syncBrandMarkDraftsSlot: async (_event: unknown, _profile: unknown, rows: unknown) => {
+    syncedWith.push(rows)
+  },
 }))
 vi.mock('../server/utils/brandEvents', async () => ({
   recordBrandEvent: async (_event: unknown, input: { payload: Record<string, unknown> }) => {
@@ -95,9 +99,12 @@ vi.mock('../server/utils/brandStore', async () => ({
     },
   }),
   isAppwriteNotFound: () => false,
+  // Der Stand der Kapitel-Zeilen IM AUGENBLICK des Schreibens.
+  loadStepRows: async () => FRESH_STEP_ROWS,
 }))
 
 const profile = { $id: 'p1', contentLocale: 'de' }
+const FRESH_STEP_ROWS = [{ $id: 'p1_mark', stepKey: 'mark', revision: 7 }]
 const NARROW = `rl:${brandDesignDraftsDayKey('p1')}`
 const ACCOUNT = `rl:${brandAiAccountDayKey('u1')}`
 const INSTANCE = `rl:${brandAiInstanceDayKey()}`
@@ -214,6 +221,7 @@ beforeEach(() => {
   listings = [[]]
   listCalls = 0
   profileExists = true
+  syncedWith = []
   noAccess = false
   foreignBrand = false
   counts = new Map()
@@ -534,6 +542,17 @@ describe('Der abgebrochene Vorgänger — die Rückbuchung holt der nächste Sta
     await detached
     expect(refunds).toEqual([])
     expect(logs.some(entry => entry.name === 'brand.mark_drafts_stalled_refund_failed')).toBe(true)
+  })
+})
+
+describe('Der Slot-Sync am Ende des Laufs', () => {
+  it('schreibt gegen die Kapitel-Zeile von JETZT, nicht gegen den Stand vom Start', async () => {
+    // Die Vorprüfung sah `stepRows: []`; während des Laufs hat der Mensch im
+    // Kapitel gespeichert (Revision 7). Ein Sync mit dem alten Stand
+    // überschriebe das.
+    await start(event)
+    await detached
+    expect(syncedWith).toEqual([FRESH_STEP_ROWS])
   })
 })
 
