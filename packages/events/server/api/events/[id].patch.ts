@@ -1,6 +1,6 @@
 import { Query } from 'node-appwrite'
 import { eventEditSchema } from '../../../schemas/event'
-import { eventIsEditable } from '../../../shared/eventModerationPolicy'
+import { eventIsEditable, seriesLifecycleFollows } from '../../../shared/eventModerationPolicy'
 import { EVENTS_TABLE, isSeriesMaster, type EventRow } from '../../../shared/types/event'
 
 /**
@@ -88,6 +88,11 @@ export default defineEventHandler(async (event) => {
   if (body.address !== undefined) data.address = body.address
   if (body.locationNotes !== undefined) data.locationNotes = body.locationNotes
   if (body.timezone !== undefined) data.timezone = body.timezone
+  // Geprüft wurden sie oben schon immer, geschrieben nie (BE-018) — die
+  // Antwort meldete Erfolg für eine Änderung, die nicht stattfand.
+  if (body.access !== undefined) data.access = body.access
+  if (body.priceAmount !== undefined) data.priceAmount = body.priceAmount
+  if (body.priceLookupKey !== undefined) data.priceLookupKey = body.priceLookupKey
   if (body.status !== undefined) data.status = body.status
 
   /**
@@ -126,14 +131,16 @@ export default defineEventHandler(async (event) => {
 
   // Serie (§7e): Publish/Unpublish des MASTERS zieht seine Instanzen mit
   // (Lifecycle-Ausnahme von „Instanzen sind eigenständig" — vor dem Launch
-  // will man die ganze Serie schalten); abgesagte Instanzen bleiben abgesagt.
+  // will man die ganze Serie schalten); abgesagte UND ausgeblendete Instanzen
+  // bleiben, wie sie sind (BE-017, `seriesLifecycleFollows`): ein Urteil der
+  // Moderation hebt die Redaktion auch über den Master nicht auf.
   // Cursor-paginiert statt limit(200): eine lange Serie wurde sonst still
   // gekappt (Audit-Befund 2026-08-02).
   if ((publishing || unpublishing) && isSeriesMaster(updated)) {
     const instances = await listSeriesInstances(db, updated.$id, [Query.notEqual('$id', updated.$id)])
       .catch(() => [] as EventRow[])
     for (const instance of instances) {
-      if (instance.status === 'cancelled') continue
+      if (!seriesLifecycleFollows(instance.status)) continue
       const permissions = publishing
         ? withPublishedRead(instance.$permissions, event)
         : withoutPublishedRead(instance.$permissions, event)

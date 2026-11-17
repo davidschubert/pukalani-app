@@ -1,8 +1,10 @@
-import { EVENTS_TABLE, type EventDetailResponse, type EventRow } from '../../../shared/types/event'
+import type { EventDetailResponse } from '../../../shared/types/event'
 
 /**
  * Event-Detail: published/cancelled sind über die Row-Permission read(any)
- * öffentlich lesbar; drafts liefern 404 (Session-Client sieht sie nicht).
+ * öffentlich lesbar; drafts liefern 404 (Session-Client sieht sie nicht),
+ * `hidden` ebenfalls — auch wenn die Zeile nach einem halb gescheiterten
+ * Ausblenden noch ein Leserecht trägt (BE-017, `getPubliclyVisibleEvent`).
  * Datentür (member): get belegt die Zugehörigkeit — ein fremder Mandant
  * bekommt 404, auch wenn die Row read(any) trägt.
  * Angereichert um eigene RSVP + eigenen Vote, die Teilnehmerliste
@@ -17,7 +19,8 @@ export default defineEventHandler(async (event): Promise<EventDetailResponse> =>
     throw createError({ status: 400, statusText: 'Missing event id' })
   }
 
-  const row = await tenantDb(event).get<EventRow>(EVENTS_TABLE, id, 'Event not found')
+  // Leserecht UND Zustand (BE-017): nur published/cancelled, sonst 404.
+  const row = await getPubliclyVisibleEvent(event, id)
 
   const userId = event.context.user?.$id ?? null
 
