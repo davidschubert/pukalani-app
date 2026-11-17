@@ -7,6 +7,61 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-17 — Fristen-Läufe (N04): Protokoll ganz löschen, Runner-Texte nach 12 Monaten, Standard ist Zählen
+
+**Anlass:** Nacharbeiten-Gruppe N04 (EL1 c, KE3, RU1 c). Die Fristen vom
+2026-11-15 (weiter unten) waren entschieden, aber nicht gebaut; beim Bauen
+standen drei Fragen offen.
+
+**Davids Entscheidungen (eine Runde zum Anklicken, je die empfohlene Antwort):**
+- **Konto-Protokoll: nach 12 Monaten ganz löschen.** Das „Konto-Protokoll" der
+  Datenschutztexte ist die Tabelle `audit_logs`, und in ihr stehen auch
+  Handlungen des Betreibers (Rollen geändert, Daten herausgegeben, Konto
+  gelöscht). Jeder Eintrag fällt nach 12 Monaten. Verworfen: nach 12 Monaten
+  nur Name und IP leeren und den Eintrag als Nachweis behalten.
+- **KI-Läufe des Runners: Texte nach 12 Monaten weg, Zahlen bleiben.**
+  Auftragstext, Bericht-Text, Fehlertext und Anhänge eines beendeten Laufs
+  fallen 12 Monate nach seinem Ende; Kosten, Dauer, Commit und die übrigen
+  Kennungen bleiben, damit sichtbar bleibt, was die Läufe gekostet haben.
+  Verworfen: den ganzen Lauf löschen; ein Löschen-Knopf je Lauf statt einer
+  Frist; so lassen.
+- **Auf Production darf nachgezählt werden** (nur lesen), bevor das Löschen
+  freigegeben wird.
+- **Das Löschen ist eingeschaltet** (zweite Runde am selben Tag, nach der
+  Zählung): „Ja, alle einschalten". Gezählt war: ein hochgeladenes Profilbild,
+  dessen Konto es nicht mehr gibt; Warteliste, Gesprächsanfragen,
+  Konto-Protokoll und Runner-Texte 0, weil nichts alt genug ist. Verworfen:
+  nur den Profilbild-Lauf einschalten; weiter nur zählen.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar; Davids Regel vom
+2026-11-17 „bei kleinen Fragen nimm deine Empfehlung"):
+- **Jeder neue Lauf hat drei Stellungen — aus, zählen, löschen — und geht mit
+  „zählen" live.** Ein unbekannter Wert heißt „aus". Das Löschen schaltet je
+  App eine Zeile in deren `app.config.ts` ein, mit Davids Ja zur gezählten
+  Zahl. Die Test-App bleibt auf „zählen".
+- **Schonfrist für Profilbilder ohne Profil: 7 Tage.** Ein Formular kann lange
+  offen stehen; sieben Tage kosten nur etwas Ablage.
+- **Warteliste: welcher Zeitpunkt zählt.** Nie bestätigt: 30 Tage ab der
+  letzten Anforderung eines Links. Eingeladen oder abgelehnt: 90 Tage ab dem
+  letzten Schreiben an der Zeile (eine spätere Notiz verlängert — die
+  vorsichtige Richtung). Wartend: 12 Monate ab dem Eintragen.
+- **Gesprächsanfragen fallen nach 12 Monaten auch dann, wenn ein Konto daran
+  hängt** — die Entscheidung nennt keine Ausnahme.
+- **Ein Lauf, der nicht beendet ist, verliert seinen Text nie von selbst**
+  (dieselbe Vorsicht wie beim vorhandenen Aufräum-Lauf des Runners).
+- **Anhänge an Tickets: PDFs werden heruntergeladen statt im Browser
+  angezeigt.** Inline gehen nur noch Bilder, deren Inhalt zum Typ passt.
+- **Die Hand-Route des Profilbild-Laufs verlangt das Recht für die Ablage**
+  (`storage.manage`), wie das Löschen einer Datei in der Betreiber-Ansicht.
+
+**Folge:** Sechs Läufe sind gebaut und live (Pull Requests 258, 261, 263,
+266; Kleinigkeiten 260), seit Pull Request 275 löschen sie. Die
+Datenschutztexte nennen die neuen Fristen noch nicht (DT1).
+
+**Wieder prüfen:** wenn das Pukalani-Konto (PK1) Export und Löschung an eine
+zentrale Stelle zieht; und wenn ein Lauf im Zähl-Modus Zahlen zeigt, die
+niemand erwartet hat.
+
 ## 2026-11-17 — Tests über den echten Kundenpfad (P27): die Bühne läuft mit, hält aber noch nichts auf
 
 **Anlass:** Gesamtaudit, Paket P27 (OPS-009). Seit dem 2026-11-17 gibt es einen

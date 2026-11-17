@@ -25,7 +25,7 @@ steht zusammen; bei jedem Eintrag steht, **worauf er wartet**.
 Alle 16 stehen im [DECISION-LOG](DECISION-LOG.md) (2026-11-16) und in den
 Einträgen unten; diese sagen jetzt, was zu bauen ist. Kurzfassung:
 **AL1** Aktivitätsliste mit Konto-Ereignissen füllen · **KE3** Aufräum-Lauf
-für Profilbilder ohne Profil · **KU1** „kostenlos" und „Mitglieder" werden
+für Profilbilder ohne Profil (gebaut, COMPLETE „N04") · **KU1** „kostenlos" und „Mitglieder" werden
 eine Zugangsart (gebaut, COMPLETE „N03"); Kurs-Vorschauen bleiben auffindbar
 (geschlossen) · **MM1** Likes unter geschlossenen Themen sperren; Übersetzen
 nur für Mitglieder (beides gebaut, COMPLETE „N03") ·
@@ -70,16 +70,16 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| EL1 | **Export und Löschung: Nacharbeiten.** (c) Fristen für Einträge ohne Konto bauen (entschieden 2026-11-15: Warteliste 30/90 Tage/12 Monate, Erstgespräch und Protokoll 12 Monate), (d) Kleinigkeiten. Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | (c) M, (d) S | Nein | [Einzelheiten](#el1) |
+| EL1 | **Export und Löschung: Reste.** Alte Benachrichtigungen behalten ihren Textauszug; das Aufräumen fremder Benachrichtigungen gehört als eine Funktion in den Core. Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#el1) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Nacharbeiten.** (b) Den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ru1) |
+| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner), (d) alte Tickets bleiben „ungeprüft", (e) drei Kleinigkeiten am Dienst. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | (b) M, Rest S | Nein | [Einzelheiten](#ru1) |
+| WL1 | **Warteliste: der Bestätigungs-Link hebt eine Absage auf.** Meldet sich eine abgelehnte oder eingeladene Adresse erneut an und klickt den neuen Link, steht sie wieder auf „bestätigt". Gefunden beim Bau der Fristen. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/brand/server/api/brand/waitlist/confirm.post.ts` |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | AL1 | **Aktivitätsliste in der Admin-Nutzeransicht füllen** (entschieden: nicht entfernen). Quelle sind die vorhandenen Konto-Ereignisse (`readAccountEvents`, Core); für die Betreiber-Sicht die Aktionsliste erweitern. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
-| KE3 | **Aufräum-Lauf für Profilbilder ohne Profil** (entschieden). Heute bleibt ein hochgeladenes Bild liegen, wenn das Speichern danach scheitert. Kein Leck, aber Ablage-Müll. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/core/server/api/storage/[bucket]/index.post.ts` |
 | MM1 | **Mitmachen nur für Mitglieder: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (e) Zwei Kleinigkeiten ohne Auftrag (Zusage zu einem ausgeblendeten Termin, Sprache im Link der Benachrichtigungs-Mails) und ein Test, der noch in keinem Lauf mitfährt. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal durch die neue Prüfung schicken, (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten selbst ist gebaut (COMPLETE „N05"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
@@ -379,23 +379,15 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
   pukalani.studio brauchte keine Änderung (keine Konten, keine Prüfergebnisse).
   Auf branding.supply gibt es KEINE Sicherungskopie (kein Bucket eingetragen),
   der Text nennt dort deshalb keine.
-- **(c) Fristen für Einträge ohne Konto bauen.** Entschieden am 2026-11-15
-  (DECISION-LOG): Warteliste nie bestätigt 30 Tage, eingeladen oder abgelehnt
-  90 Tage, noch wartend spätestens 12 Monate; Erstgespräch-Anfragen
-  (branding.supply und pukalani.studio) 12 Monate; Konto-Protokoll 12 Monate.
-  Noch zu bauen: je ein stündlicher Lauf nach dem Muster der vorhandenen
-  (erst zählen, dann löschen), danach die Datenschutztexte nachziehen.
-- **(d) Kleinigkeiten.** Benachrichtigungen zu Kommentaren, die VOR dem
-  2026-11-15 entstanden, behalten ihren Textauszug, auch wenn der Kommentar
-  gelöscht wird (neue werden mit aufgeräumt); Erinnerungen an einen Termin
-  nennen dessen alten Titel. Ein Ausfall eines Laufs steht nur im Log der App
-  (der Alarm ist ein eigenes Paket). Die KI-Einordnung von Tickets wertet
-  nicht aus, ob die Antwort abgeschnitten wurde. Die Datei-Auslieferung der
-  Tickets reicht den gespeicherten Dateityp durch. Wie viele alte Kopien in
-  den Projekten `admin`, `branding` und `portfolio` liegen, ließ sich von
-  außen nicht zählen (der Lauf der jeweiligen App räumt sie). Das Aufräumen
-  fremder Benachrichtigungen gehört als eine Funktion in den Core statt in
-  zwei Layer. Referenz: [EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
+- **(d) Reste.** Benachrichtigungen zu Kommentaren, die VOR dem 2026-11-15
+  entstanden, behalten ihren Textauszug, auch wenn der Kommentar gelöscht wird
+  (neue werden mit aufgeräumt); Erinnerungen an einen Termin nennen dessen
+  alten Titel. Wie viele alte Kopien in den Projekten `admin`, `branding` und
+  `portfolio` liegen, ließ sich von außen nicht zählen (der Lauf der
+  jeweiligen App räumt sie). Das Aufräumen fremder Benachrichtigungen gehört
+  als eine Funktion in den Core statt in zwei Layer. Die Fristen für Einträge
+  ohne Konto (früher Teil c) sind gebaut und eingeschaltet (COMPLETE „N04").
+  Referenz: [EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
 
 <a id="ru1"></a>
 
@@ -409,22 +401,26 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
 - **(b) Den Auftragstext baut der Browser.** Der Server bestimmt aus dem
   Ticket, ob ein Lauf als geprüft gilt; den Text selbst (Titel, Beschreibung,
   offene Checkliste) setzt weiter die Seite zusammen und schickt ihn mit.
-  Sauberer wäre, der Server baute ihn aus der Ticket-Zeile.
-- **(c) Was keine Frist hat.** Die Zeilen der Läufe (Auftragstext, Bericht)
-  und Anhänge von Läufen bleiben liegen; es gibt keinen Löschen-Knopf je Lauf,
-  und der Layer hat keinen Beitrag zu Auskunft und Löschung eines Kontos
-  (`runs.createdBy`, nur Betreiber-Konten). Auf dem Rechner bleiben die
-  Arbeits-Zweige alter Läufe und das Log des Dienstes.
+  Sauberer wäre, der Server baute ihn aus der Ticket-Zeile. Eingeschätzt am
+  2026-11-17: kein kleiner Umbau. Der Zusammenbau (`TicketModalRunner.vue`)
+  und der Checklisten-Leser (heute nur im Browser, eine zweite Fassung in
+  `ticketTriage.ts`) müssten nach `packages/tickets/shared/` ziehen, der
+  Vertrag `resolveRunSubjectTrust` den Text mitliefern (nur `apps/control`
+  kennt beide Layer), die Anlege-Route ihn nicht mehr aus der Anfrage nehmen;
+  dazu ein Rollen-Test für die Anlege-Route. Rund sechs Dateien plus Tests.
+- **(c) Was keine Frist hat.** Texte und Anhänge beendeter Läufe haben seit
+  dem 2026-11-17 eine Frist (12 Monate, eingeschaltet; COMPLETE „N04"). Ohne
+  Frist bleiben: ein Lauf, der nie beendet wurde (Entwurf, oder er hängt auf
+  „läuft"), und auf dem Rechner die Arbeits-Zweige alter Läufe und das Log
+  des Dienstes.
 - **(d) Alte Tickets.** Tickets von vor dem 2026-11-14 haben keine Herkunft
   und gelten als ungeprüft (auf Production acht, alle geschlossen). Einen
   Knopf „als geprüft übernehmen" gibt es nicht; der Weg ist ein neues Ticket.
 - **(e) Kleinigkeiten.** Ein ungeprüfter Lauf wird vom Dienst weiter
-  committet (nur die Testbefehle entfallen). Die Herkunft wird beim Bearbeiten
-  gelesen und dann geschrieben, ohne Sperre dazwischen. `extraPath` in der
-  Einstellungs-Datei des Dienstes verwirft ungültige Einträge still. Zwei alte
-  Läufe mit Rückfrage tragen Testbefehle, die heute nicht in der Liste stehen;
-  ihre Fortsetzung wird abgelehnt. Der Schlüssel der Migrations-Ablage für
-  `admin` kann weder Dateien noch Konten lesen (siehe PB1).
+  committet (nur die Testbefehle entfallen). Zwei alte Läufe mit Rückfrage
+  tragen Testbefehle, die heute nicht in der Liste stehen; ihre Fortsetzung
+  wird abgelehnt. Der Schlüssel der Migrations-Ablage für `admin` kann weder
+  Dateien noch Konten lesen (siehe PB1).
 
 <a id="mm1"></a>
 
@@ -505,7 +501,7 @@ Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
 Sitzungen: an keinem der Punkte unten wird gerade gearbeitet. Schon woanders
 eingeplant und deshalb NICHT hier: der Wächter für Rechte an TABELLEN (Paket
 P13, „Schreiben nur noch über den Server") und hochgeladene Bilder, die
-ohne gespeichertes Profil liegen bleiben (Punkt KE3 oben). Beim Abgleich erledigt: der echte
+ohne gespeichertes Profil liegen bleiben (KE3, gebaut am 2026-11-17 — COMPLETE „N04"). Beim Abgleich erledigt: der echte
 Upload auf `account.pukalani.app` ist gemessen (COMPLETE „GA1 P01", Beweis h),
 und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 `apps/comments/e2e/themes-visual.spec.ts`, die mit Absicht nur lokal laufen.
@@ -1170,8 +1166,13 @@ freigegeben wird von David, nach der Antwort des Anwalts.
 - **KI** — was die Texte über Speicherung, Training und den Ort der
   Verarbeitung sagen dürfen ([KI1 b](#ki1)).
 - **Fristen** — Kopie gelöschter Konten, Prüfergebnisse, Melder-Adresse,
-  Protokoll ([EL1 b](#el1)); dazu die Fristen für Einträge ohne Konto,
-  sobald EL1 (c) gebaut ist.
+  Protokoll ([EL1 b](#el1)). Dazu, seit dem 2026-11-17 gebaut und
+  eingeschaltet, aber noch in keinem Text: Warteliste (nie bestätigt 30
+  Tage, eingeladen oder abgelehnt 90 Tage, wartend höchstens 12 Monate),
+  Gesprächsanfragen 12 Monate (branding.supply und pukalani.studio),
+  Konto-Protokoll 12 Monate (der Satz „die Konto-Kennung bleibt als Nachweis
+  stehen" gilt dann nur noch für diese Zeit), hochgeladene Profilbilder ohne
+  Profil 7 Tage.
 - **Bot-Prüfung** — Erstgespräch und Warteliste von branding.supply im Text
   ergänzen ([SR1 b](#sr1)).
 - **Resend** — der Mail-Dienst ist nach dem EU-US Data Privacy Framework

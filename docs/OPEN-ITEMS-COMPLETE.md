@@ -30,6 +30,114 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N04 — Nacharbeiten „Fristen und Aufräum-Läufe": EL1 (c, d), KE3, RU1 (c, e) ✅ 2026-11-17
+
+Die Fristen vom 2026-11-15 für Einträge ohne Konto, der Aufräum-Lauf für
+Profilbilder und die Frist für Texte der Runner-Läufe. Pull Requests 258, 260,
+261, 263, 266 und 275; keine Migration. Die sechs Läufe gingen im Zähl-Modus
+live und löschen seit dem 2026-11-17 mit Davids Ja zur gezählten Zahl.
+
+**Was gebaut ist**
+
+- **Ein Gerüst für Fristen-Läufe (Core).** `packages/core/shared/rowRetention.ts`
+  (Schalter `off | count | apply`, „älter als N Tage", die Schleife — pur) und
+  `packages/core/server/utils/rowRetention.ts` (Anbindung an eine Tabelle,
+  Sperre gegen den Doppelstart, einheitliche Log-Zeilen `retention.run`,
+  `retention.incomplete`, `retention.failed`). `count` liest mit genau der
+  Auswahl von `apply` und schreibt nichts; ein unbekannter Wert heißt `off`.
+  Ein Lösch-Schritt darf nach einem letzten Blick „bleibt doch" melden.
+- **Warteliste (EL1 c).** Stündlicher Lauf auf branding.supply: nie bestätigt
+  30 Tage nach der letzten Anforderung eines Links, eingeladen oder abgelehnt
+  90 Tage nach dem letzten Schreiben, noch wartend 12 Monate ab dem Eintragen.
+- **Gesprächsanfragen (EL1 c).** Zwei Läufe, branding.supply
+  (`brand_intro_requests`) und pukalani.studio (`intro_requests`): 12 Monate.
+- **Konto-Protokoll (EL1 c).** Lauf im Core für `audit_logs`, in vier Apps:
+  jeder Eintrag fällt nach 12 Monaten (Davids Entscheidung vom 2026-11-17:
+  ganz löschen, auch Einträge über Betreiber-Handlungen). Ein Handlauf, der
+  löscht, schreibt genau einen Eintrag mit den Zahlen.
+- **Profilbilder ohne Profil (KE3).** Lauf alle sechs Stunden in den drei Apps
+  mit Bucket: eine Datei fällt, wenn sie älter als 7 Tage ist (Schonfrist für
+  „gerade hochgeladen, Profil noch nicht gespeichert"), genau einem Konto
+  gehört und dieses Konto nicht auf sie zeigt — oder es das Konto nicht mehr
+  gibt. Direkt vor dem Löschen wird das Konto noch einmal gelesen.
+- **Texte der Runner-Läufe (RU1 c).** 12 Monate nach dem Ende eines Laufs
+  fallen Auftragstext, Bericht-Text, Fehlertext und Anhang-Dateien; Kosten,
+  Dauer, Commit und Kennungen bleiben (Erlaubnisliste: ein später
+  hinzugefügtes Textfeld fällt von selbst). Eigener Schalter — der vorhandene
+  Aufräum-Lauf des Runners steht schon auf `apply` und hätte sonst mit dem
+  Ausliefern gelöscht. Das Board zeigt an einem geleerten Lauf einen Hinweis.
+  Der Beitrag des Runners zu Auskunft und Löschung eines Kontos bestand schon
+  seit P14; der offene Punkt nannte ihn noch als fehlend.
+- **Kleinigkeiten (EL1 d, RU1 e).** Anhänge an Tickets und Runner-Läufen gehen
+  mit geprüftem Dateityp hinaus (`core/shared/fileDelivery.ts`: inline nur
+  Bilder, deren Inhalt zum Typ passt; alles andere als Download; PDFs werden
+  jetzt heruntergeladen). Die KI-Einordnung von Tickets speichert eine an der
+  Token-Decke abgeschnittene, unvollständige Antwort nicht mehr. `extraPath`
+  in der Einstellungs-Datei des Runner-Dienstes meldet ungültige Einträge,
+  ohne etwas neu abzulehnen. Die Herkunft eines Tickets brauchte keine Sperre:
+  geschrieben wird sie nur bei einer Änderung, und die einzige mögliche
+  Änderung ist eine Herabstufung — ein Test mit zwei gleichzeitigen
+  Bearbeitungen hält das fest.
+
+Jeder Lauf hat einen Schalter (Vorgabe `off`, in den Apps erst `count`, dann `apply`), einen
+Zeit-Lauf mit Zeile in `ops/timed-jobs.conf`, eine Hand-Route, die ohne Angabe
+nur zählt, und einen Rollen-Test. Referenz:
+[EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
+
+**Beweise.** Tests mit gestellter Uhr je Regel und Lauf (Grenze genau an der
+Frist, `count` nennt dieselbe Zahl, die `apply` löscht, frische Einträge
+bleiben, ein Fehlschlag zählt und lässt den Eintrag stehen). Lokal gegen die
+Appwrite-Instanz, je Lauf mit angelegten Probe-Einträgen und gestelltem Alter:
+erst zählen (nichts verändert), dann löschen (genau die fälligen weg), die
+frischen bleiben, ein zweiter Lauf findet nichts, Probe-Einträge nachgezählt
+0. Für Profilbilder mit vorgestellter Uhr, weil sich das Alter einer Datei
+nicht stellen lässt.
+
+**Production.** Keine Migration. Nach dem Ausliefern liefen alle sechs Läufe
+im Zähl-Modus; gelesen wurden nur ihre Zähl-Zeilen im Log der Apps (Davids
+Ja: nur zählen). Ergebnis: Warteliste 0 fällig (ein Eintrag älter als 30
+Tage, nicht fällig), Gesprächsanfragen 0 und 0, Konto-Protokoll 0 in allen
+vier Apps (kein Eintrag ist älter als 12 Monate), Runner-Texte 0,
+Profilbilder ohne Profil 1 (auf der Pool-App: eine Datei, deren Konto es
+nicht mehr gibt; elf Dateien jenseits der Schonfrist angesehen). Mit Davids
+Ja „alle einschalten" stehen die vier ausgerollten Apps seit Pull Request 275
+auf `apply`; die Test-App bleibt auf `count`. Der erste Lauf danach hat genau
+diese eine Datei gelöscht (`deleted: 1`, `failed: 0`), alle zwölf Takte der
+sechs Läufe meldeten `ok`. Die acht Hosts antworten `ok` auf dem Build des
+letzten Merges, `main` ist grün.
+
+**Nicht geprüft.** Kein Klick im Browser: der Hinweis am geleerten Lauf, die
+Bild-Vorschau und der PDF-Download an Tickets. Kein echter KI-Aufruf. Auf
+Production hat bisher nur der Profilbild-Lauf etwas zu löschen gehabt; die
+anderen fünf löschen zum ersten Mal, wenn ein Eintrag seine Frist erreicht.
+
+**Ohne Rückfrage entschieden** (DECISION-LOG 2026-11-17): Standard „zählen",
+Schonfrist 7 Tage, welcher Zeitpunkt bei der Warteliste zählt, PDFs als
+Download, das Recht der Profilbild-Hand-Route. RU1 (b) — der Server baut den
+Auftragstext — ist eingeschätzt, aber kein kleiner Umbau, und bleibt offen.
+
+**Gelernt:** (1) **Ein neuer Lösch-Teil gehört nie an einen Schalter, der
+schon auf „löschen" steht.** Der Aufräum-Lauf des Runners stand in der App auf
+`apply`; die Text-Frist dort anzuhängen hätte mit dem Ausliefern gelöscht,
+bevor jemand eine Zahl gesehen hat. Neuer Teil, eigener Schalter. (2) **Was
+ein offener Punkt als fehlend nennt, zuerst nachmessen.** Der Beitrag des
+Runners zu Auskunft und Löschung war seit P14 da, die „fehlende Sperre" an der
+Ticket-Herkunft war keine Lücke. (3) **Eine Annahme über Production ist
+schnell gemessen:** welche App einen Bucket für Profilbilder hat, stand
+nirgends im Repo, aber in der öffentlichen Einstellung jeder Seite —
+branding.supply hat keinen, und eine Zeile in `ops/timed-jobs.conf` hätte dort
+täglich einen fehlenden Lauf gemeldet. (4) **Eine neue Route macht den
+Lint-Job rot, wenn die Produkt-Bilanz nicht neu erzeugt ist** (`pnpm bilanz`);
+die Wächter davor (`check:*`) lokal fahren, nicht nur `lint` im Paket.
+(5) **Parallele Zweige, die dieselben Listen ergänzen, in Reihe schalten:**
+jeder Lauf trägt eine Zeile in dieselben drei Dateien ein; wer den nächsten
+Zweig auf dem vorigen aufbaut, löst den Konflikt einmal statt nach jedem
+Merge. (6) **Ein Zeitpunkt lässt sich in der lokalen Instanz stellen**
+(`$createdAt`/`$updatedAt` beim Anlegen einer Zeile mit Schlüssel) — bei
+Dateien nicht; dort stellt die Probe die Uhr des Laufs vor.
+
+---
+
 ### N05 — Nacharbeiten „Lange Läufe und KI-Wege": LL1 (a, Teile von b und c), KI1 (c, Teile von d) und IN1 (c, Teile von d) ✅ 2026-11-17
 
 Drei Einträge aus Schritt 3 der offenen Punkte, fünf Pull Requests mit Code
