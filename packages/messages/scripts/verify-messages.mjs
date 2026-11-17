@@ -102,6 +102,17 @@ const CLARA = `vm-clara-${RUN}`
 
 let passed = 0
 let failed = 0
+/**
+ * ÜBERSPRUNGEN ist weder bestanden noch gescheitert (BP1 d, 2026-11-17): eine
+ * Prüfung, deren Vorbedingung dieser Lauf nicht herstellen kann, ohne fremde
+ * Zeilen zu ändern, wird mit Grund gemeldet und eigens gezählt. Der Exit-Code
+ * hängt nur an `failed`.
+ */
+let skipped = 0
+function skip(label, reason, count = 1) {
+  skipped += count
+  console.log(`  ○ ÜBERSPRUNGEN: ${label} — ${reason}`)
+}
 function check(label, ok, detail = '') {
   if (ok) {
     passed++
@@ -495,11 +506,46 @@ try {
     // Der Cleanup unten darf NUR löschen, was DIESER Lauf angelegt hat —
     // ein Query auf `enabled=true` hätte auf dem POOL den Schalter JEDER
     // Community gelöscht (Prod-Fußangel, 2026-08-05 vor dem ersten
-    // Prod-Smoke-Test gefunden).
-    const settingsBefore = new Set(
-      (await tablesDB.listRows({ databaseId, tableId: SETTINGS, queries: [Query.limit(500)] })
-        .catch(() => ({ rows: [] }))).rows.map(r => r.$id),
-    )
+    // Prod-Smoke-Test gefunden). Ein UNVOLLSTÄNDIGER Schnappschuss (Lesefehler,
+    // mehr Zeilen als gelesen) hieße, fremde Zeilen für eigene zu halten —
+    // dann wird an den Settings gar nichts angefasst.
+    const snapshot = await tablesDB.listRows({ databaseId, tableId: SETTINGS, queries: [Query.limit(500)] })
+      .catch(() => null)
+    const snapshotComplete = Boolean(snapshot) && snapshot.total <= snapshot.rows.length
+    const settingsBefore = new Set((snapshot?.rows ?? []).map(r => r.$id))
+
+    // FREMDE SCHALTER-ZEILEN (BP1 d, 2026-11-17): die Test-App ist eine
+    // Einzel-Instanz, ihre Datentür hängt KEINEN Mandanten-Filter an. Liegt die
+    // lokale Datenbank als Spiegel mit echten Communities vor, liest der
+    // Schalter deren Zeilen mit — und zwar GENAU die erste, die
+    // `findMessageSettings()` mit `Query.limit(1)` bekommt (dieselbe Abfrage
+    // hier). Und `saveMessagesEnabled()` würde GENAU DIESE fremde Zeile ändern.
+    // Drei Ausgangslagen:
+    //   · keine Zeile ⇒ wie immer: zu, Anna schaltet an (eigene Zeile, wird
+    //     über den Schnappschuss gelöscht);
+    //   · die erste fremde Zeile steht auf „an" ⇒ „ausgeschaltet" ist nicht
+    //     herstellbar: der Zu-Check und Annas Umschalten werden ÜBERSPRUNGEN,
+    //     der Rest läuft (der Posteingang ist ja offen);
+    //   · die erste fremde Zeile steht auf „aus" (oder der Stand ist unklar)
+    //     ⇒ der Zu-Check gilt, aber Anschalten hieße, die fremde Zeile zu
+    //     ändern: 9.–13. werden ÜBERSPRUNGEN.
+    // Fremde Zeilen werden nie geändert oder gelöscht.
+    const firstSetting = snapshotComplete
+      ? (await tablesDB.listRows({ databaseId, tableId: SETTINGS, queries: [Query.limit(1)] })
+          .catch(() => null))
+      : null
+    const foreignSwitch = !snapshotComplete || !firstSetting
+      ? 'unknown'
+      : firstSetting.rows.length === 0
+        ? 'none'
+        : firstSetting.rows[0].enabled === true ? 'on' : 'off'
+    const foreignCount = snapshot?.total ?? 0
+    if (foreignSwitch !== 'none') {
+      console.log(`\n  Hinweis: ${foreignCount} fremde Schalter-Zeile(n) im Projekt, die erste steht auf `
+        + `${foreignSwitch === 'on' ? '„an"' : foreignSwitch === 'off' ? '„aus"' : '„unbekannt"'} — sie werden nicht angefasst.`)
+    }
+    let conversationId = ''
+    let annaMessageId = ''
 
     // ANNA trägt das Betreiber-Label und hält damit ALL_CAPABILITIES (im Silo
     // ist das der reguläre Weg — dort gibt es keine Community-Rollen).
@@ -509,200 +555,231 @@ try {
 
     // ── 8. Der Owner-Schalter an der Route ────────────────────────────────
     console.log('\n8. Der Owner-Schalter (Route)')
-    const closedInbox = await call('/api/messages', { cookie: anna.cookie })
-    check('ausgeschaltet ⇒ der Posteingang ist zu (403 messages_disabled)',
-      closedInbox.status === 403 && reasonOf(closedInbox) === 'messages_disabled',
-      `${closedInbox.status}/${reasonOf(closedInbox)}`)
+    if (foreignSwitch === 'on') {
+      skip('ausgeschaltet ⇒ der Posteingang ist zu (403 messages_disabled)',
+        `Vorbedingung „aus" nicht herstellbar: ${foreignCount} fremde Schalter-Zeile(n), die erste steht auf „an"`)
+    }
+    else {
+      const closedInbox = await call('/api/messages', { cookie: anna.cookie })
+      check('ausgeschaltet ⇒ der Posteingang ist zu (403 messages_disabled)',
+        closedInbox.status === 403 && reasonOf(closedInbox) === 'messages_disabled',
+        `${closedInbox.status}/${reasonOf(closedInbox)}`)
+    }
 
+    // Abgewiesen wird VOR dem Schreiben — dieser Aufruf ändert in keiner Lage etwas.
     const bodoSwitch = await call('/api/messages/settings', {
       method: 'PATCH', cookie: bodo.cookie, body: { enabled: true },
     })
     check('ein gewöhnliches Konto darf ihn NICHT umlegen (403)', bodoSwitch.status === 403, String(bodoSwitch.status))
 
-    const annaSwitch = await call('/api/messages/settings', {
-      method: 'PATCH', cookie: anna.cookie, body: { enabled: true },
-    })
-    check('wer `messages.manage` hält, schaltet ihn an', annaSwitch.status === 200 && annaSwitch.json?.enabled === true,
-      `${annaSwitch.status}/${annaSwitch.text.slice(0, 80)}`)
+    if (foreignSwitch === 'none') {
+      const annaSwitch = await call('/api/messages/settings', {
+        method: 'PATCH', cookie: anna.cookie, body: { enabled: true },
+      })
+      check('wer `messages.manage` hält, schaltet ihn an', annaSwitch.status === 200 && annaSwitch.json?.enabled === true,
+        `${annaSwitch.status}/${annaSwitch.text.slice(0, 80)}`)
+    }
+    else {
+      skip('wer `messages.manage` hält, schaltet ihn an',
+        'das Umschalten schriebe in die erste FREMDE Schalter-Zeile')
+    }
 
-    // ── 9. TL0 wird abgewiesen ────────────────────────────────────────────
-    console.log('\n9. Wer eröffnen darf — und wer nicht')
-    const bodoOpens = await call('/api/messages', {
-      method: 'POST', cookie: bodo.cookie, body: { handle: anna.handle, body: 'Darf ich das?' },
-    })
-    check('Stufe 0 ohne Rolle kann KEINE Konversation eröffnen (403)', bodoOpens.status === 403, String(bodoOpens.status))
-    check('… und erfährt den GRUND nicht (derselbe Code wie bei einer Sperre)',
-      reasonOf(bodoOpens) === 'recipient_unavailable', String(reasonOf(bodoOpens)))
+    if (foreignSwitch === 'off' || foreignSwitch === 'unknown') {
+      // 9.–13. brauchen einen offenen Posteingang; 9: 4, 10: 6, 11: 8, 12: 7, 13: 10 Prüfungen
+      // (wer dort eine Prüfung ergänzt, zieht die Zahl nach).
+      skip('9.–13. (Eröffnen, Antworten, Sperre, Meldung, Erledigung)',
+        foreignSwitch === 'off'
+          ? `Vorbedingung „an" nicht herstellbar ohne die erste FREMDE Schalter-Zeile zu ändern (${foreignCount} im Projekt, die erste auf „aus")`
+          : 'Schalter-Zeilen nicht vollständig lesbar — fremde Zeilen werden nicht angefasst',
+        35)
+    }
+    else {
+      // ── 9. TL0 wird abgewiesen ────────────────────────────────────────────
+      console.log('\n9. Wer eröffnen darf — und wer nicht')
+      const bodoOpens = await call('/api/messages', {
+        method: 'POST', cookie: bodo.cookie, body: { handle: anna.handle, body: 'Darf ich das?' },
+      })
+      check('Stufe 0 ohne Rolle kann KEINE Konversation eröffnen (403)', bodoOpens.status === 403, String(bodoOpens.status))
+      check('… und erfährt den GRUND nicht (derselbe Code wie bei einer Sperre)',
+        reasonOf(bodoOpens) === 'recipient_unavailable', String(reasonOf(bodoOpens)))
 
-    const annaOpens = await call('/api/messages', {
-      method: 'POST', cookie: anna.cookie, body: { handle: bodo.handle, body: 'Hallo Bodo.' },
-    })
-    check('wer das Recht hat, eröffnet', annaOpens.status === 200 && Boolean(annaOpens.json?.conversationId),
-      `${annaOpens.status}/${annaOpens.text.slice(0, 120)}`)
-    const conversationId = annaOpens.json?.conversationId ?? ''
+      const annaOpens = await call('/api/messages', {
+        method: 'POST', cookie: anna.cookie, body: { handle: bodo.handle, body: 'Hallo Bodo.' },
+      })
+      check('wer das Recht hat, eröffnet', annaOpens.status === 200 && Boolean(annaOpens.json?.conversationId),
+        `${annaOpens.status}/${annaOpens.text.slice(0, 120)}`)
+      conversationId = annaOpens.json?.conversationId ?? ''
 
-    const unknown = await call('/api/messages', {
-      method: 'POST', cookie: anna.cookie, body: { handle: `gibtesnicht${RUN}`.slice(0, 24), body: 'Hallo?' },
-    })
-    check('ein unbekannter Name endet wie eine Sperre (kein Verzeichnisdienst)',
-      unknown.status === 403 && reasonOf(unknown) === 'recipient_unavailable',
-      `${unknown.status}/${reasonOf(unknown)}`)
+      const unknown = await call('/api/messages', {
+        method: 'POST', cookie: anna.cookie, body: { handle: `gibtesnicht${RUN}`.slice(0, 24), body: 'Hallo?' },
+      })
+      check('ein unbekannter Name endet wie eine Sperre (kein Verzeichnisdienst)',
+        unknown.status === 403 && reasonOf(unknown) === 'recipient_unavailable',
+        `${unknown.status}/${reasonOf(unknown)}`)
 
-    // ── 10. Empfangen und antworten ab Stufe 0 ────────────────────────────
-    console.log('\n10. Empfangen und Antworten gehen ab Stufe 0')
-    const inbox = await call('/api/messages', { cookie: bodo.cookie })
-    check('der Empfänger sieht die Konversation', inbox.status === 200 && inbox.json?.conversations?.length === 1,
-      `${inbox.status}/${inbox.json?.conversations?.length}`)
-    check('… mit einer ungelesenen Nachricht', inbox.json?.conversations?.[0]?.unread === 1,
-      String(inbox.json?.conversations?.[0]?.unread))
+      // ── 10. Empfangen und antworten ab Stufe 0 ────────────────────────────
+      console.log('\n10. Empfangen und Antworten gehen ab Stufe 0')
+      const inbox = await call('/api/messages', { cookie: bodo.cookie })
+      check('der Empfänger sieht die Konversation', inbox.status === 200 && inbox.json?.conversations?.length === 1,
+        `${inbox.status}/${inbox.json?.conversations?.length}`)
+      check('… mit einer ungelesenen Nachricht', inbox.json?.conversations?.[0]?.unread === 1,
+        String(inbox.json?.conversations?.[0]?.unread))
 
-    const thread = await call(`/api/messages/${conversationId}`, { cookie: bodo.cookie })
-    check('… und darf den Verlauf lesen', thread.status === 200 && thread.json?.messages?.length === 1,
-      `${thread.status}/${thread.json?.messages?.length}`)
-    const annaMessageId = thread.json?.messages?.[0]?.id ?? ''
+      const thread = await call(`/api/messages/${conversationId}`, { cookie: bodo.cookie })
+      check('… und darf den Verlauf lesen', thread.status === 200 && thread.json?.messages?.length === 1,
+        `${thread.status}/${thread.json?.messages?.length}`)
+      annaMessageId = thread.json?.messages?.[0]?.id ?? ''
 
-    const afterRead = await call('/api/messages', { cookie: bodo.cookie })
-    check('das Öffnen setzt den Ungelesen-Zähler auf 0',
-      afterRead.json?.conversations?.[0]?.unread === 0, String(afterRead.json?.conversations?.[0]?.unread))
+      const afterRead = await call('/api/messages', { cookie: bodo.cookie })
+      check('das Öffnen setzt den Ungelesen-Zähler auf 0',
+        afterRead.json?.conversations?.[0]?.unread === 0, String(afterRead.json?.conversations?.[0]?.unread))
 
-    const bodoReplies = await call(`/api/messages/${conversationId}`, {
-      method: 'POST', cookie: bodo.cookie, body: { body: 'Hallo Anna.' },
-    })
-    check('ANTWORTEN geht ohne Vertrauensstufe (§ 2.4, Folge 1)', bodoReplies.status === 200,
-      `${bodoReplies.status}/${bodoReplies.text.slice(0, 120)}`)
+      const bodoReplies = await call(`/api/messages/${conversationId}`, {
+        method: 'POST', cookie: bodo.cookie, body: { body: 'Hallo Anna.' },
+      })
+      check('ANTWORTEN geht ohne Vertrauensstufe (§ 2.4, Folge 1)', bodoReplies.status === 200,
+        `${bodoReplies.status}/${bodoReplies.text.slice(0, 120)}`)
 
-    const stranger = await createAccount('clara')
-    const peek = await call(`/api/messages/${conversationId}`, { cookie: stranger.cookie })
-    check('ein Unbeteiligter bekommt 404 — nicht 403 (die Id bleibt unbestätigt)',
-      peek.status === 404, String(peek.status))
+      const stranger = await createAccount('clara')
+      const peek = await call(`/api/messages/${conversationId}`, { cookie: stranger.cookie })
+      check('ein Unbeteiligter bekommt 404 — nicht 403 (die Id bleibt unbestätigt)',
+        peek.status === 404, String(peek.status))
 
-    // ── 11. Die Sperre ────────────────────────────────────────────────────
-    console.log('\n11. Die Sperre verhindert das Senden — beidseitig')
-    const block = await call('/api/messages/blocks', {
-      method: 'POST', cookie: bodo.cookie, body: { userId: anna.userId, everywhere: false },
-    })
-    check('sperren geht ohne Vertrauensstufe (Schutz hängt an nichts)', block.status === 200, String(block.status))
+      // ── 11. Die Sperre ────────────────────────────────────────────────────
+      console.log('\n11. Die Sperre verhindert das Senden — beidseitig')
+      const block = await call('/api/messages/blocks', {
+        method: 'POST', cookie: bodo.cookie, body: { userId: anna.userId, everywhere: false },
+      })
+      check('sperren geht ohne Vertrauensstufe (Schutz hängt an nichts)', block.status === 200, String(block.status))
 
-    const blockedSend = await call(`/api/messages/${conversationId}`, {
-      method: 'POST', cookie: anna.cookie, body: { body: 'Und jetzt?' },
-    })
-    check('der GESPERRTE kann nicht mehr senden (403)', blockedSend.status === 403, String(blockedSend.status))
-    check('… und erfährt den Grund nicht', reasonOf(blockedSend) === 'recipient_unavailable', String(reasonOf(blockedSend)))
+      const blockedSend = await call(`/api/messages/${conversationId}`, {
+        method: 'POST', cookie: anna.cookie, body: { body: 'Und jetzt?' },
+      })
+      check('der GESPERRTE kann nicht mehr senden (403)', blockedSend.status === 403, String(blockedSend.status))
+      check('… und erfährt den Grund nicht', reasonOf(blockedSend) === 'recipient_unavailable', String(reasonOf(blockedSend)))
 
-    const blockedBack = await call(`/api/messages/${conversationId}`, {
-      method: 'POST', cookie: bodo.cookie, body: { body: 'Ich auch nicht.' },
-    })
-    check('… und der SPERRENDE ebenso wenig (beidseitig)', blockedBack.status === 403, String(blockedBack.status))
+      const blockedBack = await call(`/api/messages/${conversationId}`, {
+        method: 'POST', cookie: bodo.cookie, body: { body: 'Ich auch nicht.' },
+      })
+      check('… und der SPERRENDE ebenso wenig (beidseitig)', blockedBack.status === 403, String(blockedBack.status))
 
-    const blockList = await call('/api/messages/blocks', { cookie: bodo.cookie })
-    check('meine Sperr-Liste zeigt sie', blockList.json?.blocks?.length === 1, String(blockList.json?.blocks?.length))
-    const annaSeesNothing = await call('/api/messages/blocks', { cookie: anna.cookie })
-    check('… und der Gesperrte sieht sie NICHT (§ 2.3)', annaSeesNothing.json?.blocks?.length === 0,
-      String(annaSeesNothing.json?.blocks?.length))
+      const blockList = await call('/api/messages/blocks', { cookie: bodo.cookie })
+      check('meine Sperr-Liste zeigt sie', blockList.json?.blocks?.length === 1, String(blockList.json?.blocks?.length))
+      const annaSeesNothing = await call('/api/messages/blocks', { cookie: anna.cookie })
+      check('… und der Gesperrte sieht sie NICHT (§ 2.3)', annaSeesNothing.json?.blocks?.length === 0,
+        String(annaSeesNothing.json?.blocks?.length))
 
-    const unblock = await call(`/api/messages/blocks/${anna.userId}`, { method: 'DELETE', cookie: bodo.cookie })
-    check('aufheben geht', unblock.status === 200, String(unblock.status))
-    const sendAgain = await call(`/api/messages/${conversationId}`, {
-      method: 'POST', cookie: anna.cookie, body: { body: 'Wieder da.' },
-    })
-    check('… und danach kommt die Nachricht wieder durch', sendAgain.status === 200, String(sendAgain.status))
-    const secondMessageId = sendAgain.json?.messageId ?? ''
+      const unblock = await call(`/api/messages/blocks/${anna.userId}`, { method: 'DELETE', cookie: bodo.cookie })
+      check('aufheben geht', unblock.status === 200, String(unblock.status))
+      const sendAgain = await call(`/api/messages/${conversationId}`, {
+        method: 'POST', cookie: anna.cookie, body: { body: 'Wieder da.' },
+      })
+      check('… und danach kommt die Nachricht wieder durch', sendAgain.status === 200, String(sendAgain.status))
+      const secondMessageId = sendAgain.json?.messageId ?? ''
 
-    // ── 12. Melden, Beleg, Moderations-Route ──────────────────────────────
-    console.log('\n12. Die Moderation sieht NUR die gemeldete Nachricht')
-    const beforeReport = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
-    check('eine UNGEMELDETE Nachricht gibt der Moderation nichts (404 not_reported)',
-      beforeReport.status === 404 && reasonOf(beforeReport) === 'not_reported',
-      `${beforeReport.status}/${reasonOf(beforeReport)}`)
+      // ── 12. Melden, Beleg, Moderations-Route ──────────────────────────────
+      console.log('\n12. Die Moderation sieht NUR die gemeldete Nachricht')
+      const beforeReport = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
+      check('eine UNGEMELDETE Nachricht gibt der Moderation nichts (404 not_reported)',
+        beforeReport.status === 404 && reasonOf(beforeReport) === 'not_reported',
+        `${beforeReport.status}/${reasonOf(beforeReport)}`)
 
-    const report = await call('/api/reports', {
-      method: 'POST', cookie: bodo.cookie,
-      body: { targetType: 'message', targetId: annaMessageId, reason: 'harassment' },
-    })
-    check('melden geht', report.status === 200 || report.status === 201, `${report.status}/${report.text.slice(0, 120)}`)
+      const report = await call('/api/reports', {
+        method: 'POST', cookie: bodo.cookie,
+        body: { targetType: 'message', targetId: annaMessageId, reason: 'harassment' },
+      })
+      check('melden geht', report.status === 200 || report.status === 201, `${report.status}/${report.text.slice(0, 120)}`)
 
-    const moderated = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
-    check('danach liefert die EINE Moderations-Route den Beleg',
-      moderated.status === 200 && moderated.json?.body === 'Hallo Bodo.',
-      `${moderated.status}/${JSON.stringify(moderated.json?.body)}`)
-    check('… mit beiden Beteiligten, aber OHNE Verlauf',
-      moderated.json?.authorId === anna.userId && moderated.json?.recipientId === bodo.userId
-      && !('messages' in (moderated.json ?? {})),
-      JSON.stringify(Object.keys(moderated.json ?? {})))
+      const moderated = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
+      check('danach liefert die EINE Moderations-Route den Beleg',
+        moderated.status === 200 && moderated.json?.body === 'Hallo Bodo.',
+        `${moderated.status}/${JSON.stringify(moderated.json?.body)}`)
+      check('… mit beiden Beteiligten, aber OHNE Verlauf',
+        moderated.json?.authorId === anna.userId && moderated.json?.recipientId === bodo.userId
+        && !('messages' in (moderated.json ?? {})),
+        JSON.stringify(Object.keys(moderated.json ?? {})))
 
-    const stillHidden = await call(`/api/messages/moderation/${secondMessageId}`, { cookie: anna.cookie })
-    check('die ZWEITE, ungemeldete Nachricht bleibt unsichtbar (404)',
-      stillHidden.status === 404 && reasonOf(stillHidden) === 'not_reported',
-      `${stillHidden.status}/${reasonOf(stillHidden)}`)
+      const stillHidden = await call(`/api/messages/moderation/${secondMessageId}`, { cookie: anna.cookie })
+      check('die ZWEITE, ungemeldete Nachricht bleibt unsichtbar (404)',
+        stillHidden.status === 404 && reasonOf(stillHidden) === 'not_reported',
+        `${stillHidden.status}/${reasonOf(stillHidden)}`)
 
-    const queue = await call('/api/messages/moderation', { cookie: anna.cookie })
-    check('die Warteschlange enthält GENAU die gemeldete',
-      queue.status === 200 && queue.json?.messages?.length === 1 && queue.json.messages[0].id === annaMessageId,
-      `${queue.status}/${queue.json?.messages?.length}`)
+      const queue = await call('/api/messages/moderation', { cookie: anna.cookie })
+      check('die Warteschlange enthält GENAU die gemeldete',
+        queue.status === 200 && queue.json?.messages?.length === 1 && queue.json.messages[0].id === annaMessageId,
+        `${queue.status}/${queue.json?.messages?.length}`)
 
-    const bodoQueue = await call('/api/messages/moderation', { cookie: bodo.cookie })
-    check('… und ein gewöhnliches Konto kommt gar nicht hinein (403)', bodoQueue.status === 403, String(bodoQueue.status))
+      const bodoQueue = await call('/api/messages/moderation', { cookie: bodo.cookie })
+      check('… und ein gewöhnliches Konto kommt gar nicht hinein (403)', bodoQueue.status === 403, String(bodoQueue.status))
 
-    // ── 13. Nach der Erledigung kein Text mehr (SEC-033) ──────────────────
-    console.log('\n13. Text nur bei offener Meldung — danach nicht mehr (SEC-033)')
-    const strangerReport = await call('/api/reports', {
-      method: 'POST', cookie: stranger.cookie,
-      body: { targetType: 'message', targetId: annaMessageId, reason: 'harassment' },
-    })
-    check('ein Unbeteiligter kann die Nachricht NICHT melden (404 target_not_found)',
-      strangerReport.status === 404 && reasonOf(strangerReport) === 'target_not_found',
-      `${strangerReport.status}/${reasonOf(strangerReport)}`)
+      // ── 13. Nach der Erledigung kein Text mehr (SEC-033) ──────────────────
+      console.log('\n13. Text nur bei offener Meldung — danach nicht mehr (SEC-033)')
+      const strangerReport = await call('/api/reports', {
+        method: 'POST', cookie: stranger.cookie,
+        body: { targetType: 'message', targetId: annaMessageId, reason: 'harassment' },
+      })
+      check('ein Unbeteiligter kann die Nachricht NICHT melden (404 target_not_found)',
+        strangerReport.status === 404 && reasonOf(strangerReport) === 'target_not_found',
+        `${strangerReport.status}/${reasonOf(strangerReport)}`)
 
-    const openEntry = queue.json?.messages?.find(m => m.id === annaMessageId)
-    check('solange die Meldung offen ist, zeigt die LISTE den eingefrorenen Text',
-      openEntry?.body === 'Hallo Bodo.' && openEntry?.textAvailable === true && openEntry?.openReports === 1,
-      JSON.stringify({ body: openEntry?.body, textAvailable: openEntry?.textAvailable, openReports: openEntry?.openReports }))
+      const openEntry = queue.json?.messages?.find(m => m.id === annaMessageId)
+      check('solange die Meldung offen ist, zeigt die LISTE den eingefrorenen Text',
+        openEntry?.body === 'Hallo Bodo.' && openEntry?.textAvailable === true && openEntry?.openReports === 1,
+        JSON.stringify({ body: openEntry?.body, textAvailable: openEntry?.textAvailable, openReports: openEntry?.openReports }))
 
-    const resolve = await call('/api/reports/resolve', {
-      method: 'POST', cookie: anna.cookie,
-      body: { targetType: 'message', targetId: annaMessageId, resolution: 'no_action' },
-    })
-    check('die Moderation erledigt die Meldung', resolve.status === 200 && resolve.json?.resolved === 1,
-      `${resolve.status}/${resolve.text.slice(0, 120)}`)
+      const resolve = await call('/api/reports/resolve', {
+        method: 'POST', cookie: anna.cookie,
+        body: { targetType: 'message', targetId: annaMessageId, resolution: 'no_action' },
+      })
+      check('die Moderation erledigt die Meldung', resolve.status === 200 && resolve.json?.resolved === 1,
+        `${resolve.status}/${resolve.text.slice(0, 120)}`)
 
-    const closedQueue = await call('/api/messages/moderation', { cookie: anna.cookie })
-    const closedEntry = closedQueue.json?.messages?.find(m => m.id === annaMessageId)
-    check('danach steht sie noch in der LISTE — ohne Text und mit Kennzeichen',
-      closedQueue.status === 200 && closedEntry?.body === '' && closedEntry?.textAvailable === false
-      && closedEntry?.openReports === 0,
-      `${closedQueue.status}/${JSON.stringify({ body: closedEntry?.body, textAvailable: closedEntry?.textAvailable, openReports: closedEntry?.openReports })}`)
-    check('… und nirgends in der Antwort steht der Text',
-      !closedQueue.text.includes('Hallo Bodo.'), 'Text gefunden')
+      const closedQueue = await call('/api/messages/moderation', { cookie: anna.cookie })
+      const closedEntry = closedQueue.json?.messages?.find(m => m.id === annaMessageId)
+      check('danach steht sie noch in der LISTE — ohne Text und mit Kennzeichen',
+        closedQueue.status === 200 && closedEntry?.body === '' && closedEntry?.textAvailable === false
+        && closedEntry?.openReports === 0,
+        `${closedQueue.status}/${JSON.stringify({ body: closedEntry?.body, textAvailable: closedEntry?.textAvailable, openReports: closedEntry?.openReports })}`)
+      check('… und nirgends in der Antwort steht der Text',
+        !closedQueue.text.includes('Hallo Bodo.'), 'Text gefunden')
 
-    const closedSingle = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
-    check('die Einzel-Route antwortet nach der Erledigung 404 not_reported',
-      closedSingle.status === 404 && reasonOf(closedSingle) === 'not_reported',
-      `${closedSingle.status}/${reasonOf(closedSingle)}`)
+      const closedSingle = await call(`/api/messages/moderation/${annaMessageId}`, { cookie: anna.cookie })
+      check('die Einzel-Route antwortet nach der Erledigung 404 not_reported',
+        closedSingle.status === 404 && reasonOf(closedSingle) === 'not_reported',
+        `${closedSingle.status}/${reasonOf(closedSingle)}`)
 
-    const stored = await tablesDB.getRow({ databaseId, tableId: MESSAGES, rowId: annaMessageId }).catch(() => null)
-    check('der Beleg bleibt gespeichert (gelöscht wird erst nach der Frist)',
-      stored?.reportedBody === 'Hallo Bodo.', JSON.stringify(stored?.reportedBody))
+      const stored = await tablesDB.getRow({ databaseId, tableId: MESSAGES, rowId: annaMessageId }).catch(() => null)
+      check('der Beleg bleibt gespeichert (gelöscht wird erst nach der Frist)',
+        stored?.reportedBody === 'Hallo Bodo.', JSON.stringify(stored?.reportedBody))
 
-    const viewedRows = (await tablesDB.listRows({
-      databaseId, tableId: 'audit_logs',
-      queries: [Query.equal('actorId', anna.userId), Query.limit(50)],
-    }).catch(() => ({ rows: [] }))).rows
-    const viewed = viewedRows.find(r => r.action === 'message_report.viewed' && r.targetId === annaMessageId)
-    check('die Einsicht steht im Betreiber-Protokoll (message_report.viewed)', Boolean(viewed),
-      viewedRows.map(r => r.action).join(','))
-    check('… ohne den Text', !JSON.stringify(viewedRows).includes('Hallo Bodo.'))
-    check('die Listen-Einsicht steht dort mit der Zahl (message_report.queue_viewed)',
-      viewedRows.some(r => r.action === 'message_report.queue_viewed' && r.metadata === JSON.stringify({ withText: 1 })),
-      viewedRows.filter(r => r.action === 'message_report.queue_viewed').map(r => r.metadata).join(','))
+      const viewedRows = (await tablesDB.listRows({
+        databaseId, tableId: 'audit_logs',
+        queries: [Query.equal('actorId', anna.userId), Query.limit(50)],
+      }).catch(() => ({ rows: [] }))).rows
+      const viewed = viewedRows.find(r => r.action === 'message_report.viewed' && r.targetId === annaMessageId)
+      check('die Einsicht steht im Betreiber-Protokoll (message_report.viewed)', Boolean(viewed),
+        viewedRows.map(r => r.action).join(','))
+      check('… ohne den Text', !JSON.stringify(viewedRows).includes('Hallo Bodo.'))
+      check('die Listen-Einsicht steht dort mit der Zahl (message_report.queue_viewed)',
+        viewedRows.some(r => r.action === 'message_report.queue_viewed' && r.metadata === JSON.stringify({ withText: 1 })),
+        viewedRows.filter(r => r.action === 'message_report.queue_viewed').map(r => r.metadata).join(','))
+
+    }
 
     // Aufräumen: alles, was der Kundenpfad angelegt hat — und NUR das.
-    const runUserIds = [anna.userId, bodo.userId, stranger.userId]
+    // Läuft in JEDER Ausgangslage; Abfragen auf eine Id, die dieser Lauf nie
+    // bekam (übersprungen), entfallen — `equal('…', '')` träfe fremde Zeilen.
+    const runUserIds = [...createdUsers]
     for (const [tableId, queries] of [
-      [MESSAGES, [Query.equal('conversationId', conversationId)]],
-      [MEMBERS, [Query.equal('conversationId', conversationId)]],
-      [CONVERSATIONS, [Query.equal('$id', conversationId)]],
+      ...(conversationId
+        ? [
+            [MESSAGES, [Query.equal('conversationId', conversationId)]],
+            [MEMBERS, [Query.equal('conversationId', conversationId)]],
+            [CONVERSATIONS, [Query.equal('$id', conversationId)]],
+          ]
+        : []),
       [BLOCKS, [Query.equal('blockerId', [anna.userId, bodo.userId])]],
-      ['reports', [Query.equal('targetId', annaMessageId)]],
+      ...(annaMessageId ? [['reports', [Query.equal('targetId', annaMessageId)]]] : []),
       ['community_handles', [Query.equal('userId', runUserIds)]],
       // Nebenprodukte des Sendens: Zähler-Zeilen, Abzeichen, Glocken-Einträge
       // der Testkonten — users.delete() läuft NICHT durch den GDPR-Weg und
@@ -719,8 +796,8 @@ try {
     }
     // Settings zuletzt und über den SCHNAPPSCHUSS: nur Zeilen, die es vor
     // diesem Lauf nicht gab (auf dem Pool wäre `enabled=true` der Schalter
-    // jeder Community gewesen).
-    const { rows: settingsAfter } = await tablesDB.listRows({ databaseId, tableId: SETTINGS, queries: [Query.limit(500)] })
+    // jeder Community gewesen). Ohne vollständigen Schnappschuss: nichts.
+    const { rows: settingsAfter } = !snapshotComplete ? { rows: [] } : await tablesDB.listRows({ databaseId, tableId: SETTINGS, queries: [Query.limit(500)] })
       .catch(() => ({ rows: [] }))
     for (const row of settingsAfter) {
       if (!settingsBefore.has(row.$id)) {
@@ -739,5 +816,7 @@ finally {
   }
 }
 
-console.log(`\n${failed === 0 ? '✔' : '✘'} ${passed}/${passed + failed} Prüfungen bestanden\n`)
+console.log(`\n${failed === 0 ? '✔' : '✘'} ${passed}/${passed + failed} Prüfungen bestanden`)
+if (skipped > 0) console.log(`○ ${skipped} Prüfung(en) ÜBERSPRUNGEN (nicht bestanden, nicht gescheitert — Gründe oben)`)
+console.log('')
 process.exit(failed === 0 ? 0 : 1)
