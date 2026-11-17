@@ -3,7 +3,8 @@
 Diese Datei ist eine ÜBERSICHT, keine Arbeitsliste — Offenes gehört nach
 `docs/OPEN-ITEMS.md`. Sie hat zwei Teile: die **Einordnung** (Gruppen, was zum
 Einhängen in die CI fehlt, wie man von Hand startet) ist von Hand geschrieben
-und trägt den Stand 2026-08-02 (F30); die **vollständige Liste** am Ende wird
+und trägt den Stand 2026-08-02 (F30), der Abschnitt „Die Bühne" den vom
+2026-11-17 (OPS-009); die **vollständige Liste** am Ende wird
 seit dem 2026-11-16 aus den Köpfen der Skripte ERZEUGT (`pnpm live-beweise`),
 und `pnpm check:live-beweise` wird im Lint-Lauf rot, wenn sie nicht zum Repo
 passt. Die Tabellen der Gruppen nennen nur eine Auswahl — vollständig ist die
@@ -26,8 +27,8 @@ drei Stufen — und der Sprung von Gruppe 1 nach Gruppe 2 ist der teure.
 | Gruppe | Braucht | In CI? |
 | --- | --- | --- |
 | **1 — nur Appwrite** | die migrierte Wegwerf-Instanz aus `e2e.yml` | **ja, eingehängt** |
-| **2 — Dev-Server + Mandanten** | Platform-Server auf festem Port UND die Wegwerf-Communities `kunde-a`/`kunde-b` in einem Control-Plane-Projekt | nein — Bau steht aus |
-| **3 — zwei Dev-Server** | zusätzlich `apps/control` (:3004), teils Mailpit | nein — Bau steht aus |
+| **2 — Dev-Server + Mandanten** | Platform-Server auf festem Port UND die Probe-Communities `kunde-a`/`kunde-b` im Control Plane (die Bühne, s. u.) | die Bühne steht (`buehne.yml`); die Skripte ziehen einzeln ein |
+| **3 — zwei Dev-Server** | zusätzlich `apps/control` (:3004), teils Mailpit | die Bühne startet beide Server; Mailpit fehlt dort noch |
 
 ## Gruppe 1 — läuft in der CI-E2E (`.github/workflows/e2e.yml`)
 
@@ -90,27 +91,81 @@ Control Plane laufen sie nicht.
 | `control/verify-invite-stock.mjs` | control-017: Vorrat + Zuweisung mit echter Betreiber-Session | dito |
 | `onboarding/verify-community-suspension.mjs` | M13: Sperr-/Missbrauchspfad, billing und abuse | Control + Platform; **~20 min** — gehört nie in den Push-Pfad |
 
-## Der Hebel, der Gruppe 2 freischaltet
+## Die Bühne — der Hebel, der Gruppe 2 freischaltet (seit 2026-11-17)
 
-Nicht dreizehn einzelne Probleme, sondern EINES: es gibt in CI keine
-Wegwerf-Communities. Wer das baut, schaltet die ganze Gruppe frei. Nötig sind:
+Nicht dreizehn einzelne Probleme, sondern EINES: es gab weder lokal noch in
+der CI Probe-Communities. Jede Sitzung schrieb sich `kunde-a`/`kunde-b` von
+Hand in die lokale Instanz, und 22 Skripte legten sich ihre Community mit je
+eigenem, kopiertem Rumpf an. Seit OPS-009 gibt es dafür zwei Dinge:
 
-1. ein ZWEITES Appwrite-Projekt `control` auf derselben Wegwerf-Instanz
-   (`scripts/ci/appwrite-setup.mjs --project control` kann das schon),
-2. `pnpm migrate` für die `control-*`-Migrationen,
-3. ein Seed, der `kunde-a`/`kunde-b` als `tenants`-Rows anlegt (Plan, Produkte,
-   `openRegistration`) und auf das Runtime-Projekt zeigt,
-4. `pnpm --filter platform dev` auf festem Port mit den Tenancy-Envs, plus
-   Warten auf `/api/health`.
+**1. Die gemeinsame Hilfe `scripts/lib/probe-stage.mjs`.** EINE Stelle für
+alles, was Beweis-Skripte brauchen: der Rumpf für `POST /api/onboarding/site`
+(`probeSiteBody`), HTTP mit Host-Kopfzeile (`createHttpCaller`), Probe-Konten
+(`createProbeAccount`, immer `@example.test`, Passwort je Lauf erzeugt),
+Anmelden, Einladungs-Code, Community über die echte Route
+(`createProbeCommunity`), auf den Host warten und ein Aufräum-Register, das
+nach dem Löschen NACHZÄHLT (`createCleanup`). Sie spricht Appwrite per
+`fetch` an, weil `node-appwrite` im Wurzel-`scripts/` nicht auflösbar ist.
+Der Test `packages/onboarding/tests/probeSiteBody.test.ts` hält den Rumpf
+gegen das echte Schema und den echten Handler — ein neues Pflichtfeld macht
+DIESEN Test rot, nicht erst den nächsten Live-Lauf. Der Wächter
+`packages/core/tests/proofScriptStageHelper.test.ts` verlangt, dass kein
+Skript den Rumpf wieder selbst baut.
 
-**Warum das hier bewusst NICHT nebenbei entstanden ist:** die E2E ist ein
-Deploy-Gate. Ein Dev-Server kompiliert jede Route beim ersten Zugriff (`/` gut
-25 s), mehrere dieser Skripte warten zusätzlich den 30-s-Resolver-Cache aus,
-und `verify-community-suspension` braucht allein ~20 Minuten. Eine halb
-gebaute Bühne hätte rote Läufe erzeugt, die nichts über das Produkt aussagen —
-und rot heißt hier: kein Deploy. Der Bau gehört in einen eigenen, gemessenen
-Schritt, und die langen Beweise dann in einen nächtlichen `schedule:`-Lauf,
-nicht in den Push-Pfad.
+**2. Die Bühne `pnpm buehne <up|status|env|smoke|down>`**
+(`scripts/buehne/buehne.mjs`). `up` legt zwei Communities direkt im Control
+Plane an (`kunde-a.localhost`: Registrierung zu; `kunde-b.localhost`:
+Registrierung offen; beide Plan `pro`, öffentlich) und im Pool-Projekt Konten
+je Rolle: für A Owner, Admin, Moderator, Editor, Mitglied, ein entferntes
+Konto, ein fremdes Konto und einen Betreiber; für B Owner und Mitglied. Der
+Stand steht in `.buehne/state.json` (nicht im Repo, Modus 600). `env` nennt
+einem Skript die Hosts und Ports, `smoke` prüft die Rollen über echte Routen,
+`down` löscht alles — auch jede Zeile, die mit dem Stempel der Bühne oder an
+einem ihrer Konten entstanden ist — und zählt nach (übrig ⇒ Exit 1).
+
+**Lokal** (die Instanz ist ein Spiegel mit echten Daten — die Bühne schreibt
+nur eigene, gestempelte Zeilen und liest nichts Fremdes):
+
+```bash
+# `.env` für apps/platform und apps/control liegen im Worktree (aus dem
+# Haupt-Checkout kopiert); beide Server aus DEMSELBEN Checkout, eigene Ports:
+(cd apps/control  && pnpm exec nuxi dev --port 3254)
+(cd apps/platform && NUXT_ONBOARDING_CONTROL_URL=http://localhost:3254 pnpm exec nuxi dev --port 3250)
+pnpm buehne up --platform-port 3250 --suffix meinlauf   # --suffix: eigene Hostnamen je Sitzung
+pnpm buehne smoke
+pnpm buehne env                                         # Hosts/Ports für ein Skript
+pnpm buehne down                                        # Tabelle „gelöscht / übrig"
+```
+
+`--suffix` gehört auf einem geteilten Rechner immer dazu: `host` ist im
+Control Plane eindeutig, zwei Sitzungen mit `kunde-a.localhost` stünden sich
+im Weg. Steht ein Host schon und gehört nicht zur eigenen Bühne, bricht `up`
+ab und ändert nichts.
+
+**In der CI** (`.github/workflows/buehne.yml`, läuft neben den
+Pflicht-Prüfungen, kein Tor fürs Ausliefern): `scripts/ci/buehne-setup.mjs`
+legt auf der Wegwerf-Appwrite die Projekte `admin` und `account` an (die Ids
+sind nicht frei: der Migrations-Runner vergleicht sie mit `appwriteProjects`
+im `site.manifest.ts`) und schreibt beide `.env` samt Naht-Geheimnis; dann
+`bootstrap` je App, beide Server, `pnpm buehne up`, die Beweise je als
+eigener Schritt, `down` mit Nachzählen.
+
+**Was die Bühne NICHT beweist:** Production hat die direkten Anmelde-Wege der
+Datenbank aus, lokal und in der CI sind sie an. Die Server laufen als
+Entwicklungs-Server ohne Webserver davor. In der CI ist die Datenbank leer,
+lokal ist sie ein Spiegel. Kein Fremddienst spricht mit (kein Stripe, keine
+KI, kein Mail-Versand nach draußen).
+
+**Stand der Umstellung:** alle 22 Skripte nehmen den Rumpf aus der Hilfe;
+`verify-dashboard-access` und `verify-trial-notice` laufen ganz über sie
+(Konten, Anmelden, Community, Aufräumen). Die übrigen ziehen nach, sobald sie
+auf der Bühne laufen — ein Skript, das noch selbst aufräumt, lässt die Seiten
+und den ersten Beitrag seiner Probe-Community liegen; `createCleanup` räumt
+sie mit ab.
+
+**Warum die langen Beweise nicht in den Push-Pfad gehören:** mehrere Skripte
+warten den 30-s-Resolver-Cache aus, und `verify-community-suspension` braucht
+allein ~20 Minuten. Sie gehören in einen nächtlichen Lauf.
 
 ## Beweise von Hand laufen lassen
 

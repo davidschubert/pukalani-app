@@ -137,3 +137,38 @@ Middleware davor (Sperre für Entfernte, Herkunftsprüfung, Bremsen, Zustimmung)
 läuft nicht mit, die Datenbank ist eine Attrappe ohne Schema — dafür gibt es
 die Beweis-Skripte gegen die echte Instanz. Wer eine Route umbenennt oder
 löscht, zieht den Pfad im Test bzw. im Bestand nach (der Wächter nennt ihn).
+
+DIE BÜHNE (OPS-009, seit 2026-11-17): Probe-Communities und Probe-Konten
+baut NIEMAND mehr von Hand. `pnpm buehne up` legt zwei Communities
+(`kunde-a.localhost` Registrierung zu, `kunde-b.localhost` offen) und Konten je
+Rolle an (Owner, Admin, Moderator, Editor, Mitglied, entfernt, fremd,
+Betreiber), `pnpm buehne env` nennt einem Skript Hosts und Ports,
+`pnpm buehne smoke` prüft die Rollen über echte Routen, `pnpm buehne down`
+löscht alles und ZÄHLT NACH (übrig ⇒ Exit 1). Auf einem geteilten Rechner
+IMMER mit `--suffix <wort>` (eigene Hostnamen je Sitzung — `host` ist im
+Control Plane eindeutig) und eigenen Ports; beide Server aus DEMSELBEN
+Checkout (Regeln oben). Ein NEUES BEWEIS-SKRIPT nimmt die gemeinsame Hilfe
+`scripts/lib/probe-stage.mjs` (Rumpf für `POST /api/onboarding/site`,
+HTTP mit Host-Kopfzeile, Konten `@example.test` mit erzeugtem Passwort,
+Anmelden, Community über die echte Route, Aufräum-Register mit Nachzählen) —
+nie wieder ein kopierter Rumpf: ein neues Pflichtfeld an der Route brach
+einmal 25 Skripte, ohne dass ein Test es merkte. Zwei Netze:
+`packages/onboarding/tests/probeSiteBody.test.ts` (der Rumpf besteht das
+echte Schema und den echten Handler) und der Wächter
+`packages/core/tests/proofScriptStageHelper.test.ts` (kein Skript baut den
+Rumpf selbst). In der CI baut `.github/workflows/buehne.yml` dieselbe Bühne
+auf der Wegwerf-Appwrite (`scripts/ci/buehne-setup.mjs`: Projekte `admin` und
+`account` — die Ids sind nicht frei, der Migrations-Runner prüft sie gegen
+`site.manifest.ts`). WAS DIE BÜHNE NICHT BEWEIST: die direkten Anmelde-Wege
+der Datenbank sind lokal und in der CI AN, auf Production AUS; die Server
+laufen als Entwicklungs-Server ohne Webserver davor; die CI-Datenbank ist
+leer; kein Fremddienst spricht mit. DREI FALLEN, alle beim Bau gemessen:
+(1) im Pool heißt der Stempel einer Zeile `communityId` und trägt die
+tenantId — nach `tenantId` zu suchen findet dort nichts; (2) eine Anlage
+über die echte Route hinterlässt mehr als die Community (fünf Seiten, den
+ersten Beitrag, eine Kategorie, Zustimmungs- und Protokoll-Zeilen, im Control
+Plane die Testphasen-Zeile) — wer nur Konto und Community löscht, lässt das
+liegen; (3) ein Hilfs-Modul, das direkt gestartet nichts tut, endet mit
+Exit 0 und sieht aus wie ein bestandener Lauf — der Rauchtest weigert sich
+deshalb ohne `pnpm buehne smoke`. Einordnung aller Skripte:
+docs/referenz/LIVE-BEWEISE.md.
