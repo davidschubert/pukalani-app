@@ -5,11 +5,9 @@ import { WEBSITES_TABLE, type WebsiteRow } from '../../shared/types/website'
 import { ENTITLEMENTS_TABLE, type EntitlementRow } from '../../shared/types/entitlement'
 
 /**
- * EIN RUMPF FÜR ZWEI ADRESSEN (WL1 c, 2026-11-17): die Adresse des Dokuments
- * zieht von `/api/platform/entitlements/<projectId>` nach
- * `/api/control/entitlements/<projectId>` — unter das `apiPrefixes`-Präfix
- * des Control Plane, damit sein Not-Aus sie erreicht. Solange beide Adressen
- * antworten, teilen sie diesen Rumpf UND den Zwischenspeicher.
+ * Rumpf der Route `GET /api/control/entitlements/<projectId>`. Bis zum
+ * 2026-11-17 lag sie unter `/api/platform/entitlements/<projectId>`, neben
+ * einer Core-Route und damit außerhalb des Not-Aus des Control Plane (WL1 c).
  *
  * Signiertes Entitlement-Dokument einer Site ausstellen (F3/M8-Vorbereitung):
  * öffentlich (die Site pullt ohne Control-Session; der Inhalt ist die
