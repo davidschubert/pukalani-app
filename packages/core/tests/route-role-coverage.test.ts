@@ -36,15 +36,29 @@ const REPO = resolve(import.meta.dirname, '../../..')
  * abgebaut hat, trägt ihn hier ein — dann wächst er nicht wieder.
  *
  * Dazu `control` (Control Plane, seit BT1 b): Betreiber- und Naht-Routen mit
- * eigenem Prüfstand `packages/control/tests/support/controlRouteHarness.ts`.
+ * eigenem Prüfstand `packages/control/tests/support/controlRouteHarness.ts`,
+ * und `core` (seit BT1 b): Konto-, Auth- und Plattform-Routen, Appwrite-Klienten
+ * nachgebaut in `support/appwriteFake.ts`.
  */
 const ZERO_BACKLOG_LAYERS: readonly string[] = [
   'activity', 'comments', 'courses', 'events', 'feedback', 'media', 'messages', 'moderation', 'posts',
   // Abgebaut mit BT1 b (2026-11-17): alle Bestands-Routen haben Tests
-  // (control 64, onboarding 47).
-  'control', 'onboarding',
-  // Abgebaut 2026-11-17: alle 28 Bestands-Routen des Dashboards haben Tests
-  // (Prüfstand packages/admin/tests/support/adminRouteHarness.ts).
+  // (control 64, onboarding 47, core 37).
+  'control', 'onboarding', 'core',
+  // Abgebaut mit N09 (2026-11-17): Instanz-Recht `tickets.manage`, Prüfstand
+  // `support/instanceRoleGate.ts` (Betreiber und Karten-Mitglied).
+  'tickets',
+  // Abgebaut mit N09 (2026-11-17): Board-Routen hinter `runner.manage`,
+  // lesende Maschinen-Routen mit Runner-Ausweis
+  // (`packages/runner/tests/support/runnerMachineHarness.ts`).
+  'runner',
+  // Abgebaut mit N09 (2026-11-17): `community.domain` im Pool und im Silo.
+  'domains',
+  // Abgebaut mit N09 (2026-11-17): Betreiber-Übersicht, eigenes Abo,
+  // öffentliche Preisliste.
+  'billing',
+  // Abgebaut mit N09 (2026-11-17): alle 28 Bestands-Routen des Dashboards
+  // (Prüfstand `packages/admin/tests/support/adminRouteHarness.ts`).
   'admin',
 ]
 
