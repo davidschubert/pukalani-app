@@ -218,6 +218,8 @@
       "buy": "Purchase ticket",
       "soon": "Coming soon",
       "alreadyOwned": "You already own a ticket for this event.",
+      "alreadyPaid": "Already paid — your ticket is being issued.",
+      "alreadyPaidHint": "This usually takes only a moment. Reload the page shortly; there is no need to pay again.",
       "failed": "Could not start the ticket checkout.",
       "failedHint": "The checkout did not open — nothing was charged. Please try again in a moment."
     },

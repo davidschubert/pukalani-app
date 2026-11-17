@@ -67,7 +67,7 @@ vi.stubGlobal('createError', (init: Record<string, unknown>) =>
 vi.stubGlobal('requireBillingEnabled', async () => ({}))
 vi.stubGlobal('ensureCustomer', async () => ({ stripeCustomerId: 'cus_1' }))
 vi.stubGlobal('resolveOneTimePrice', async () => ({ id: 'price_1' }))
-vi.stubGlobal('useStripe', async () => ({ checkout: { sessions: { create } } }))
+vi.stubGlobal('useStripe', async () => ({ checkout: { sessions: { create, list: async () => ({ data: [] }) } } }))
 vi.stubGlobal('toStripeSafeError', (error: unknown) => { throw error })
 
 const { createPaymentCheckoutSession } = await import('../server/utils/fulfillment')

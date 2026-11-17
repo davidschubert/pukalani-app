@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import type { SubscriptionStatus } from '../../shared/types/billing'
 import { CHECKOUT_PAYMENT_METHOD_TYPES } from '../../shared/paymentMethods'
 import { checkoutIdempotencyKey } from './checkoutIdempotency'
+import { mayFulfillCheckout } from './webhookMapping'
 
 /**
  * Erfüllungs-Vertrag für One-time-Checkouts (mode 'payment', §5b):
@@ -150,6 +151,31 @@ export async function createSubscriptionCheckoutSession(event: H3Event, input: {
   return session.url
 }
 
+/** Fachlicher Grund (`data.code` ⇒ Envelope `reason`): dieser Kauf ist
+ *  schon bezahlt, das Ausstellen läuft noch. */
+export const ALREADY_PAID_REASON = 'already_paid'
+
+/**
+ * Die bezahlte Session GENAU dieses Kaufs unter den abgeschlossenen Sessions
+ * eines Kunden: Metadaten stimmen in JEDEM Schlüssel überein (Kauf-Ziel wie
+ * `eventId` + `userId`), und der Zahlungs-Status ist einer, den auch der
+ * Webhook erfüllen würde (`mayFulfillCheckout`). PURE.
+ *
+ * Die Rückkehr-Adresse zählt bewusst NICHT: wer auf Deutsch bezahlt hat,
+ * hat auch auf Englisch schon bezahlt.
+ */
+export function findPaidCheckoutSession<T extends Pick<Stripe.Checkout.Session, 'metadata' | 'payment_status'>>(
+  sessions: readonly T[],
+  metadata: Record<string, string>,
+): T | null {
+  const keys = Object.keys(metadata)
+  if (keys.length === 0) return null
+  return sessions.find(session =>
+    mayFulfillCheckout(session.payment_status)
+    && keys.every(key => session.metadata?.[key] === metadata[key]),
+  ) ?? null
+}
+
 /**
  * Generische One-time-Checkout-Session (mode 'payment') für App-Kompositionen
  * — z. B. Event-Tickets: die APP-Route validiert das Zielobjekt (events-Layer)
@@ -182,6 +208,31 @@ export async function createPaymentCheckoutSession(event: H3Event, input: {
   const stripe = await useStripe(event)
 
   const metadata = { ...input.metadata, userId: user.$id }
+
+  // AR1 b: zwischen Bezahlen und Ausstellen (der Webhook stellt aus) sieht
+  // die Route des Aufrufers noch „nichts gekauft". Ein erneuter Klick traf
+  // dann denselben Idempotenz-Schlüssel, Stripe spielte die schon BEZAHLTE
+  // Session noch einmal zurück, und der Mensch landete auf einer
+  // abgeschlossenen Bezahlseite (bei anderer Sprache sogar auf einer NEUEN,
+  // zweiten). Darum fragen wir Stripe vorher: gibt es für genau diesen Kauf
+  // eine bezahlte Session? ⇒ 409 `already_paid`. Nur mit Bereich — der sagt,
+  // dass es den Kauf je Konto nur einmal gibt. Kann Stripe nicht antworten,
+  // lehnen wir ab (toStripeSafeError), statt ungeprüft zu verkaufen.
+  if (input.idempotencyScope) {
+    const { data: completed } = await stripe.checkout.sessions.list({
+      customer: customer.stripeCustomerId,
+      status: 'complete',
+      limit: 100,
+    }).catch(error => toStripeSafeError(error, 'checkout.sessions.list (payment) fehlgeschlagen'))
+    if (findPaidCheckoutSession(completed, metadata)) {
+      throw createError({
+        status: 409,
+        statusText: 'Already paid',
+        data: { code: ALREADY_PAID_REASON },
+      })
+    }
+  }
+
   const requestOptions = input.idempotencyScope
     ? {
         idempotencyKey: checkoutIdempotencyKey({

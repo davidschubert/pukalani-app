@@ -60,7 +60,19 @@ async function buyTicket() {
     window.location.href = res.url
   }
   catch (error) {
-    const statusCode = (error as { statusCode?: number }).statusCode
+    const shaped = error as { statusCode?: number, data?: { reason?: unknown } }
+    // AR1 b: bezahlt, das Ticket wird aber noch ausgestellt (Webhook). Der
+    // Grund kommt aus billing (`ALREADY_PAID_REASON`) über die App-Route —
+    // die Layer kennen sich nicht (A14), daher hier der Wert selbst.
+    if (shaped.data?.reason === 'already_paid') {
+      toast.add({
+        title: t('events.ticket.alreadyPaid'),
+        description: t('events.ticket.alreadyPaidHint'),
+        color: 'info',
+      })
+      return
+    }
+    const statusCode = shaped.statusCode
     toast.add({
       title: statusCode === 409 ? t('events.ticket.alreadyOwned') : t('events.ticket.failed'),
       // 409 ist kein Fehler, sondern eine Auskunft — dort gibt es nichts zu tun.
