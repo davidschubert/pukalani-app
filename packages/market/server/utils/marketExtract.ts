@@ -10,6 +10,7 @@ import type {
 import { MARKET_EVIDENCE_MAX, MARKET_FIELDS, MARKET_FIELD_IDS } from '../../shared/marketProfile'
 import { countEvidenceFrequency, evidenceIsGrounded } from '../../shared/marketExtractRules'
 import { splitMarketRawText } from '../../shared/marketCrawlRules'
+import { isMarketAiEndpointUnavailable } from '../../shared/marketRun'
 import {
   MARKET_EXTRACT_MAX_TOKENS,
   MARKET_EXTRACT_PROMPT_VERSION,
@@ -99,8 +100,13 @@ export interface MarketExtractResult {
   fields: MarketProfileField[]
   model: string
   promptVersion: string
-  /** Warum es nicht geklappt hat — `''` heisst: es hat. */
-  failure: '' | 'ai_disabled' | 'provider_error' | 'schema_error'
+  /**
+   * Warum es nicht geklappt hat — `''` heisst: es hat.
+   * `ai_endpoint_unavailable` (KI1 d): kein Endpunkt unter der Bindung — der
+   * Lauf hört dann auf, statt jeden weiteren Kandidaten ebenso scheitern zu
+   * lassen (`marketRun.ts`).
+   */
+  failure: '' | 'ai_disabled' | 'provider_error' | 'schema_error' | 'ai_endpoint_unavailable'
 }
 
 /** Der Stand des Rohtexts — er entscheidet über das Neu-Rechnen (s. Kopf). */
@@ -321,7 +327,12 @@ export async function extractMarketProfile(
       // Ursache (kein Schlüssel in der Dev-Env) war nur aus dem Code zu erraten.
       message: describeProviderError(error),
     })
-    return { fields: [], model, promptVersion: MARKET_EXTRACT_PROMPT_VERSION, failure: 'provider_error' }
+    return {
+      fields: [],
+      model,
+      promptVersion: MARKET_EXTRACT_PROMPT_VERSION,
+      failure: isMarketAiEndpointUnavailable(error) ? 'ai_endpoint_unavailable' : 'provider_error',
+    }
   }
 
   const parsed = answerSchema.safeParse(raw)
