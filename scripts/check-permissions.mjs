@@ -38,11 +38,19 @@
  * trägt. Die Liste ist bewusst leer.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SERVER_WRITTEN_TABLES } from './lib/server-written-tables.mjs'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+/**
+ * `PUKALANI_CHECK_ROOT` gibt es nur für den Test
+ * (`packages/core/tests/checkPermissions.test.ts`): er lässt den Wächter
+ * gegen eine Kopie der Migrationen laufen, in die er einen Fehler legt. Die
+ * Liste der Tabellen kommt immer aus diesem Repo.
+ */
+const ROOT = process.env.PUKALANI_CHECK_ROOT
+  ? resolve(process.env.PUKALANI_CHECK_ROOT)
+  : join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /** @type {{ file: string, bucket: string, reason: string }[]} */
 const ALLOWED = []
