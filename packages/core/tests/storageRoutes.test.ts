@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
+import { AppwriteException } from 'node-appwrite'
 import { fileBelongsToUser } from '../shared/avatarOwnership'
 
 /**
@@ -54,14 +55,19 @@ interface FakeEvent {
 
 class HttpError extends Error {
   status: number
-  constructor(init: { status: number, statusText: string }) {
+  data?: unknown
+  constructor(init: { status: number, statusText: string, data?: unknown }) {
     super(init.statusText)
     this.status = init.status
+    this.data = init.data
   }
 }
 
+const logEvent = vi.fn()
+vi.stubGlobal('logEvent', logEvent)
+
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
-vi.stubGlobal('createError', (init: { status: number, statusText: string }) => new HttpError(init))
+vi.stubGlobal('createError', (init: { status: number, statusText: string, data?: unknown }) => new HttpError(init))
 vi.stubGlobal('toH3Error', (error: unknown) => error instanceof HttpError ? error : new HttpError({ status: 404, statusText: 'File not found' }))
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteAvatarsBucket: 'avatars' } }))
 vi.stubGlobal('getRouterParam', (event: FakeEvent, name: string) => event.params[name])
@@ -96,7 +102,19 @@ async function statusOf(promise: Promise<unknown>): Promise<number> {
   }
 }
 
+async function errorOf(promise: Promise<unknown>): Promise<HttpError> {
+  try {
+    await promise
+  }
+  catch (error) {
+    if (error instanceof HttpError) return error
+    throw error
+  }
+  throw new Error('Die Route hat nicht abgelehnt')
+}
+
 beforeEach(() => {
+  logEvent.mockClear()
   sessionStorage = makeStorage()
   adminStorage = makeStorage()
   storedMime = 'image/png'
@@ -239,5 +257,39 @@ describe('POST /api/storage/:bucket', () => {
     })
     expect(await statusOf(postRoute(event as unknown as H3Event))).toBe(403)
     expect(adminStorage.createFile).not.toHaveBeenCalled()
+  })
+
+  // PB1 (d): ein Fehler von Appwrite wird zu einer eigenen Antwort, nie zu
+  // einer allgemeinen 500 — und ein 401 des SERVER-Schlüssels nie zu einem
+  // 401 für die Seite (das hieße dort „abgemeldet").
+  const validUpload = () => makeEvent({
+    context: { user },
+    params: { bucket: 'avatars' },
+    form: [{ name: 'file', filename: 'x.png', type: 'image/png', data: PNG }],
+  })
+
+  it('Appwrite lehnt die Datei ab (400) → 400 upload_rejected, Warnung im Protokoll', async () => {
+    adminStorage.createFile.mockRejectedValueOnce(new AppwriteException('File extension not allowed', 400, 'storage_file_type_unsupported'))
+    const error = await errorOf(postRoute(validUpload() as unknown as H3Event))
+    expect(error.status).toBe(400)
+    expect(error.data).toEqual({ code: 'upload_rejected' })
+    expect(error.message).not.toContain('extension')
+    expect(logEvent).toHaveBeenCalledWith('warn', 'storage.upload_failed', { bucketId: 'avatars', code: 400, type: 'storage_file_type_unsupported' })
+  })
+
+  it.each([401, 403, 404, 500])('Appwrite antwortet %i → 503 storage_unavailable, Fehler im Protokoll', async (code) => {
+    adminStorage.createFile.mockRejectedValueOnce(new AppwriteException('missing scope (files.write)', code, 'general_unauthorized_scope'))
+    const error = await errorOf(postRoute(validUpload() as unknown as H3Event))
+    expect(error.status).toBe(503)
+    expect(error.data).toEqual({ code: 'storage_unavailable' })
+    expect(error.message).not.toContain('scope')
+    expect(logEvent).toHaveBeenCalledWith('error', 'storage.upload_failed', expect.objectContaining({ code }))
+  })
+
+  it('kein Appwrite-Fehler (Netz) → 503 storage_unavailable', async () => {
+    adminStorage.createFile.mockRejectedValueOnce(new Error('fetch failed'))
+    const error = await errorOf(postRoute(validUpload() as unknown as H3Event))
+    expect(error.status).toBe(503)
+    expect(logEvent).toHaveBeenCalledWith('error', 'storage.upload_failed', { bucketId: 'avatars', code: undefined, type: undefined })
   })
 })

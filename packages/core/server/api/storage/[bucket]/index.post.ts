@@ -1,4 +1,4 @@
-import { ID, Permission, Role } from 'node-appwrite'
+import { AppwriteException, ID, Permission, Role } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { createAdminClient } from '../../../lib/appwrite'
 import { AVATAR_MAX_BYTES, avatarFileName, isAvatarImageMime, sniffImageMime } from '../../../../shared/avatarImage'
@@ -17,6 +17,14 @@ import { AVATAR_MAX_BYTES, avatarFileName, isAvatarImageMime, sniffImageMime } f
  * mit dem Session-Client über genau dieses Recht.
  * Der gespeicherte Name kommt aus dem ERKANNTEN Typ (`avatar.<endung>`), nicht
  * vom Aufrufer: der Bucket prüft die Endung.
+ *
+ * LEHNT APPWRITE AB, antwortet die Route mit einem eigenen Status statt mit
+ * einer allgemeinen 500 (PB1 d): 400 `upload_rejected`, wenn der Bucket die
+ * Datei nicht nimmt (Typ, Größe); sonst 503 `storage_unavailable` — auch bei
+ * 401/403/404 von Appwrite, denn die meinen hier den SCHLÜSSEL DES SERVERS
+ * oder einen fehlenden Bucket, nicht das Konto (ein durchgereichtes 401 sähe
+ * für die Seite wie „abgemeldet" aus). Der Grund steht als `storage.upload_failed`
+ * im Protokoll, nie in der Antwort.
  */
 export default defineEventHandler(async (event) => {
   if (!event.context.user) {
@@ -54,14 +62,29 @@ export default defineEventHandler(async (event) => {
   const { storage } = createAdminClient(event)
   const userId = event.context.user.$id
 
-  return await storage.createFile({
-    bucketId,
-    fileId: ID.unique(),
-    file: InputFile.fromBuffer(filePart.data, avatarFileName(sniffed)),
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.update(Role.user(userId)),
-      Permission.delete(Role.user(userId)),
-    ],
-  })
+  try {
+    return await storage.createFile({
+      bucketId,
+      fileId: ID.unique(),
+      file: InputFile.fromBuffer(filePart.data, avatarFileName(sniffed)),
+      permissions: [
+        Permission.read(Role.any()),
+        Permission.update(Role.user(userId)),
+        Permission.delete(Role.user(userId)),
+      ],
+    })
+  }
+  catch (error) {
+    const code = error instanceof AppwriteException ? error.code : undefined
+    const rejected = code === 400 || code === 413
+    logEvent(rejected ? 'warn' : 'error', 'storage.upload_failed', {
+      bucketId,
+      code,
+      type: error instanceof AppwriteException ? error.type : undefined,
+    })
+    if (rejected) {
+      throw createError({ status: 400, statusText: 'Upload rejected', data: { code: 'upload_rejected' } })
+    }
+    throw createError({ status: 503, statusText: 'Storage unavailable', data: { code: 'storage_unavailable' } })
+  }
 })
