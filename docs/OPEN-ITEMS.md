@@ -91,10 +91,10 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
-| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten.** Seit 2026-11-16 stehen Webserver-Vorlagen und Zeitpläne im Repo, ein täglicher Blick vergleicht sie mit den Servern, und die App sendet die Schutz-Kopfzeilen selbst (COMPLETE „GA1 P23"). Offen: (a) Berichte der Skript-Regel einsammeln und sie scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) Umlauf der pm2-Logs, (d) der Erinnerungs-Lauf kennt gesperrte Communities nicht, (e) Kleinigkeiten und Sicherungen löschen, (f) eigene Domain einer Einzel-Site: zwei Stellen noch nicht umgestellt. **Wartet auf:** (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil, (a) M | Nein | [Einzelheiten](#se1) |
+| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs einschalten, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) und (d) Davids Ja für den Server, (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil | **Ja: (c), (d)** | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
-| SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
-| WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
+| SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
+| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) zwei Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
@@ -653,32 +653,26 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 
 <a id="wl1"></a>
 
-**WL1 — Wächter mit eigenen Listen: Nacharbeiten (aus dem Gesamtaudit, Paket P20).**
+**WL1 — Wächter mit eigenen Listen: Reste (aus dem Gesamtaudit, Paket P20).**
+Erledigt am 2026-11-17 (COMPLETE „N07"): (b) Vorschaubilder und Sitemap der
+Galerie folgen dem Not-Aus, (c) die Adresse des Control Plane liegt unter
+`/api/control`, aus (d) der Test für `check:permissions`, ein Leser für die
+KI-Aufrufstellen und das wirkungslose Präfix von `onboarding`.
 
-- **(a) 37 Einstellungen ohne Bewertung.** Der Code liest 71 `NUXT_…`-Namen;
-  31 sind auf mindestens einer Site Pflicht, vier mit Grund „keine Pflicht",
-  37 stehen als Bestand in `ENV_UNDECIDED`
-  (`scripts/ops/site-env-decisions.mjs`). Für jeden entscheiden: Pflicht auf
+- **(a) 36 Einstellungen ohne Bewertung.** Sie stehen als Bestand in
+  `ENV_UNDECIDED` (`scripts/ops/site-env-decisions.mjs`); seit dem 2026-11-17
+  eine weniger, weil `NUXT_EVENTS_SWEEP_KEY` mit seiner Route aus dem Code
+  ging. Für jeden entscheiden: Pflicht auf
   welcher Site, oder warum nicht. Braucht einen Blick auf die Namen in den
   Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja. Die
   Liste darf nur kürzer werden; der Test hält die Zahl fest.
-- **(b) Galerie neben dem Not-Aus.** Die Routen unter `/api/discover` folgen
-  seit P20 dem Abschalter von `brand`. Die Vorschaubilder (`/og/…`) und die
-  Sitemap von `apps/branding` lesen dieselben Daten direkt und antworten
-  weiter. Zu tun: in beiden Routen `isProductEnabled(event, 'brand')` fragen.
-- **(c) `/api/platform/entitlements/<projectId>`** gehört dem Control Plane,
-  liegt aber im selben Ordner wie eine Core-Route und steht deshalb als
-  begründete Ausnahme in `scripts/lib/manifest-routes.mjs`. Zu tun: unter
-  `/api/control/…` umziehen — alle Sites rufen die Adresse ab, also erst die
-  neue Adresse ausliefern, dann die Abrufer umstellen, dann die alte löschen.
-- **(d) Kleinigkeiten.** `check:permissions` hat keinen Test (nur Lauf und
-  Gegenprobe); die KI-Aufrufstellen stehen in zwei Scannern
-  (`scripts/check-ai-routing.mjs`, `packages/brand/tests/brandAiCallSites.test.ts`);
-  der Env-Wächter prüft, ob ein Name in der Server-Datei steht, nicht, ob
-  dahinter ein Wert steht; `onboarding` nennt ein `apiPrefixes`-Präfix, das
-  nichts bewirkt (Stufe `foundation` ist nicht abschaltbar); das Dashboard
-  fragt die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
-  (antwortet dann 404, das Feld bleibt leer).
+- **(d) Kleinigkeiten.** Der Env-Wächter prüft, ob ein Name in der
+  Server-Datei steht, nicht, ob dahinter ein Wert steht. Das Dashboard fragt
+  die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
+  (antwortet dann 404, das Feld bleibt leer; die Stelle liegt in
+  `packages/admin/app/pages/dashboard/index.vue`). Die festen Seiten
+  `/discover` und `/insights` stehen in der Sitemap von branding.supply auch
+  dann, wenn das Produkt abgeschaltet ist (sie antworten weiter, nur leer).
 
 <a id="vt1"></a>
 **VT1 — Vertretung benennen (aus dem Gesamtaudit, Paket P24, OPS-010).**
@@ -745,27 +739,50 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 
 <a id="se1"></a>
 
-**SE1 — Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten (aus dem Gesamtaudit, Paket P23).**
+**SE1 — Server-Einstellungen und Schutz-Kopfzeilen: Reste (aus dem Gesamtaudit, Paket P23).**
+Erledigt am 2026-11-17 (COMPLETE „N07"): die Annahme-Route für die Berichte
+der Skript-Regel samt Zahl im täglichen Blick, die tote Erinnerungs-Route,
+das Zähl-Skript für umgelaufene Logs, die eigene Domain für Stripe-Rückwege
+und den Link im Kommentar-Bereich.
 
-- **(a) Skript-Regel (CSP) scharf stellen.** Heute sendet jede Seite eine
-  Regel, die nur beobachtet (`Content-Security-Policy-Report-Only`), und
-  niemand sammelt die Berichte ein: ein Verstoß steht nur in der
-  Browser-Konsole. Nächste Schritte: eine eigene, gebremste Annahme-Route für
-  Berichte (nicht der Eingang für Browser-Fehler — Browser-Erweiterungen
-  würden ihn fluten), dann Nonces statt `'unsafe-inline'`, dann scharf.
+- **(a) Skript-Regel (CSP) scharf stellen.** Die Regel beobachtet weiter nur.
+  Nächste Schritte, in dieser Reihenfolge: (1) eine Woche lang im täglichen
+  Blick die Zahl „Skript-Regel" je App lesen und jeden Bericht ansehen
+  (`grep '"event":"csp.report"'` im Fehler-Log der App) — jede bekannte
+  fremde Quelle gehört in `knownScriptOrigins()`; (2) Nonces statt
+  `'unsafe-inline'`, weiter beobachtend — mit Absicht erst danach: mit Nonces
+  meldet der Browser auch jedes Skript, das eine Erweiterung direkt in die
+  Seite schreibt, als `inline` ohne erkennbare Quelle, und das begrübe die
+  erste Messung; (3) scharf stellen, wenn eine Woche keinen echten Verstoß
+  zeigt (Davids Entscheidung). Nicht geprüft: Firefox und Safari.
 - **(b) HSTS auch für Unter-Adressen.** Gesendet wird ein Jahr, je Host, ohne
   `includeSubDomains`. Für `pukalani.app` ginge der Zusatz erst, wenn JEDE
   Unter-Adresse der Zone sicher per HTTPS antwortet (auch die, die nicht diese
-  App bedient). Kundendomains bleiben ohne.
-- **(c) Umlauf der pm2-Logs.** Sie wachsen ohne Grenze, und je Prozess liegen
-  alte Dateien früherer Nummern daneben. Ein Umlauf ist erst sauber, wenn das
-  Zähl-Skript (`ops/app-watch-counts.mjs`) auch die umgelaufene Datei liest —
-  sonst meldet der tägliche Blick Zeit-Läufe als fehlend.
-- **(d) Erinnerungs-Lauf.** Der Zeit-Lauf `event-reminders` geht alle
-  Communities durch, kennt aber weder den Plan einer Community noch eine
-  Sperre wegen Missbrauchs (beides weiß nur das Control Plane). Die Route
-  `POST /api/events/reminder-sweep` und `NUXT_EVENTS_SWEEP_KEY` ruft niemand
-  mehr; sie können weg, ebenso die Datei `~/events-sweep.log` auf dem Server.
+  App bedient). Kundendomains bleiben ohne. Lässt sich nicht zurücknehmen
+  (Browser merken es sich ein Jahr) — nur mit Davids Entscheidung.
+- **(c) Umlauf der pm2-Logs einschalten.** Vorlage (`ops/logrotate-pm2.conf`)
+  und Anleitung stehen im Repo
+  ([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), „Umlauf der
+  pm2-Logs"), das Zähl-Skript liest umgelaufene Dateien. Einschalten ist ein
+  kleiner Pull Request plus eine Nacht — mit Davids Ja, und erst, wenn alle
+  sechs Sites das neue Zähl-Skript tragen (es kommt mit dem nächsten
+  Ausliefern der jeweiligen App).
+- **(d) Erinnerungs-Lauf.** Die Route ist aus dem Code. Auf dem Server liegen
+  noch die Einstellung `NUXT_EVENTS_SWEEP_KEY` und die Datei
+  `~/events-sweep.log` — entfernen mit Davids Ja. In der Betreiber-Konsole
+  steht `events-sweep` noch als Auswahl und Text (`packages/admin`,
+  `INTEGRATION_IDS`, zwei Sprachdateien) und im Core als Schlüssel-Sorte; die
+  Seite zeigt den Eintrag nicht mehr an. Der Zeit-Lauf `event-reminders`
+  erinnert auch in einer Community, die wegen Missbrauchs vom Netz genommen
+  ist (der Link in der Erinnerung führt dann auf eine Seite, die es nicht
+  gibt). Bewertet: der PLAN spielt keine Rolle (eine Erinnerung ist kein neuer
+  Inhalt, und eine Zahlungs-Sperre soll sie laut Code-Kommentar nicht
+  verschlucken) — nur die Sperre wegen Missbrauchs und das Stilllegen.
+  Empfehlung: ein Vertrag im Core wie `resolveCommunityHosts`, der für eine
+  Liste von Communities die NICHT erreichbaren nennt (stillgelegt oder wegen
+  Missbrauchs gesperrt), bedient vom Control Plane mit derselben Abfrage;
+  ohne Antwort wird erinnert. Der vorhandene Vertrag reicht dafür nicht: er
+  unterscheidet „nicht erreichbar" nicht von „keine Antwort".
 - **(e) Kleinigkeiten.** Sicherungen nach zwei Wochen löschen (ab 2026-11-30):
   auf dem App-Server `/home/ploi/logs/nginx/*.vorher-p23*` und
   `/home/ploi/portfolio.pukalani.app/.env.vorher-p23*`, auf dem Appwrite-Server
@@ -778,21 +795,11 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
   `Connection 'upgrade'` fest. Die Umleitungs-Blöcke des Webservers schreiben
   weiter ins allgemeine Zugriffs-Log (jetzt 14 Tage). Der Vergleich der
   Webserver-Einstellung läuft nur auf dem App-Server (der Appwrite-Server hat
-  seinen Webserver im Container). Rückkehr-Adressen von Stripe fallen ohne
-  `i18n.baseUrl` weiter auf den Namen der Anfrage zurück (Nachtrag zu
-  SEC-010).
-
-- **(f) Eigene Domain einer Einzel-Site.** Mails, Digest und Rückwege nehmen
-  seit 2026-11-16 die im Dashboard aktive Domain (COMPLETE „GA1 P23", Punkt 8).
-  Bewiesen an der ganzen Kette, lokal: Einzel-Site mit der Standard-Adresse als
-  `NUXT_PUBLIC_APP_URL`, Control Plane daneben ⇒ der Link in der Reset-Mail
-  beginnt mit der eigenen Domain; Control Plane aus ⇒ Rückfall auf die
-  Standard-Adresse. Auf dem Server steht `NUXT_PUBLIC_APP_URL` von
-  pukalani.studio wieder auf der Standard-Adresse (der Rückfall). Offen, wer
-  mag: auf pukalani.studio einmal „Passwort vergessen" mit der eigenen Adresse
-  auslösen — der Link muss mit `https://pukalani.studio` beginnen. Nicht
-  umgestellt: der Link in `CommentSection.vue` (nur die Test-App mit eigener
-  Domain) und die Rückkehr-Adressen von Stripe.
+  seinen Webserver im Container).
+- **(f) Eigene Domain einer Einzel-Site.** Offen, wer mag: auf pukalani.studio
+  einmal „Passwort vergessen" mit der eigenen Adresse auslösen — der Link muss
+  mit `https://pukalani.studio` beginnen. Die Stripe-Rückwege sind nur mit
+  gestellten Stripe-Antworten geprüft.
 
 <a id="ll1"></a>
 
@@ -845,7 +852,9 @@ Marktvergleichs warten die Minuten-Bremse selbst ab.
 
 <a id="sv1"></a>
 
-**SV1 — Schreiben nur über den Server: Nacharbeiten (aus dem Gesamtaudit, Paket P13).**
+**SV1 — Schreiben nur über den Server: Reste (aus dem Gesamtaudit, Paket P13).**
+Erledigt am 2026-11-17 (COMPLETE „N07"): der tägliche Blick von außen auf die
+Anmelde-Wege der vier Projekte.
 
 - **(a) Eine Klick-Probe** (KR1, Nummer 9). Auf den echten Seiten ist am
   2026-11-16 gezeigt: Beitrag, Kommentar und Stimme anlegen, ändern und
@@ -859,15 +868,14 @@ Marktvergleichs warten die Minuten-Bremse selbst ab.
   geprüft). Antwortet eine Anmeldeseite mit „hier gerade nicht verfügbar":
   Schalter „Email OTP" im Projekt wieder einschalten
   ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)) und hier melden.
-- **(b) Kein täglicher Blick auf die Anmelde-Wege.** Die sechs Schalter sind
-  eine Einstellung in der Verwaltung der Datenbank, kein Code: niemand merkt,
-  wenn einer wieder an ist, und ein neues Projekt braucht sie von Hand. Der
-  Aufruf zum Prüfen von außen steht im Runbook; er gehört als Schritt in den
-  täglichen Wächter (vier Projekte, je ein Aufruf mit erfundenen
-  Zugangsdaten). Die lokale Datenbank und die der CI haben die Schalter AN,
-  Tests laufen dort also unter anderen Bedingungen als Production. Der
-  Schalter „JWT" ist an geblieben; unser Live-Token entsteht über den
-  Schlüssel, er wird vermutlich nicht gebraucht (erst prüfen, dann abschalten).
+- **(b) Anmelde-Wege.** Der Wächter sieht von außen nur den Schalter
+  „Email/Password" (die fünf anderen würden bei offenem Weg ein Konto anlegen
+  oder eine Mail schicken). Der erste Lauf gegen die echten Projekte ist der
+  nächste tägliche Lauf. Der Schalter „JWT" ist bewertet: nichts im Code hängt
+  daran — er kann aus (ein Klick je Projekt in der Verwaltung, danach die
+  Live-Verbindung auf einer Seite ansehen). Die lokale Datenbank und die der
+  CI haben die Schalter AN, Tests laufen dort also unter anderen Bedingungen
+  als Production.
 - **(c) Das direkte Lesen.** Ein Konto liest direkt bei der Datenbank weiter
   jede Zeile, für die es ein Leserecht trägt, und immer die ganze Zeile. Das
   hängt an der Live-Verbindung und gehört zum Pukalani-Konto
