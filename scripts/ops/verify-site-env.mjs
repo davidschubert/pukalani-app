@@ -161,6 +161,28 @@ const RESEND_BUDGET_KEY = 'NUXT_RESEND_API_KEY'
  */
 const INSIGHTS_NEWSLETTER_SECRET = 'NUXT_INSIGHTS_NEWSLETTER_SECRET'
 
+/**
+ * Die zwei Ablagen des Kontos (bewertet am 2026-11-17, WL1 a). Ohne
+ * `…_AVATARS_BUCKET` verschwindet das Hochladen des Profilfotos still (der
+ * Upload antwortet 403, der Aufräum-Lauf startet nicht); ohne
+ * `…_GDPR_BUCKET` wird ein Konto ohne Sicherungskopie gelöscht und der
+ * Aufräum-Lauf der Kopien läuft nicht. Beides sieht aus wie eine bewusst
+ * abgeschaltete Funktion (F44-Art). Pflicht auf platform, control und
+ * portfolio. Auf branding.supply bewusst NICHT: dort gibt es keine Ablage für
+ * Profilfotos und keine für Kopien (`ops/timed-jobs.conf`).
+ */
+const AVATARS_BUCKET = 'NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET'
+const GDPR_BUCKET = 'NUXT_PUBLIC_APPWRITE_GDPR_BUCKET'
+
+/**
+ * Anmelden mit Google (bewertet am 2026-11-17, WL1 a): `providers: ['google']`
+ * in der `app.config.ts` sagt nur „diese App bietet es an" — wirksam wird der
+ * Knopf erst mit diesem Namen. Fehlt er, verschwindet der Knopf still und die
+ * Route lehnt ab. Pflicht auf den drei Sites, deren App Google anbietet
+ * (platform, control, branding; docs/runbooks/GOOGLE-LOGIN.md).
+ */
+const OAUTH_PROVIDERS = 'NUXT_PUBLIC_AUTH_OAUTH_PROVIDERS'
+
 export const SITES = [
   {
     dir: 'platform.pukalani.app',
@@ -260,6 +282,10 @@ export const SITES = [
        * Reihenfolge-Regel in hosts-ops.md).
        */
       'NUXT_REDIS_URL',
+      // Profilfotos, Sicherungskopie vor dem Löschen, Google-Knopf — Begründung an den Konstanten.
+      AVATARS_BUCKET,
+      GDPR_BUCKET,
+      OAUTH_PROVIDERS,
     ],
   },
   {
@@ -329,6 +355,21 @@ export const SITES = [
       GEO_CITIES_PATH,
       // Bremsen und Zähler über Neustarts hinweg (OPS-011) — Begründung bei `platform`.
       'NUXT_REDIS_URL',
+      // Profilfotos, Sicherungskopie vor dem Löschen, Google-Knopf — Begründung an den Konstanten.
+      AVATARS_BUCKET,
+      GDPR_BUCKET,
+      OAUTH_PROVIDERS,
+      /**
+       * Eigene Domains der Kunden (bewertet am 2026-11-17, WL1 a): das
+       * Zertifikat bestellt die Betreiber-App bei ploi. Eine halbe Einstellung
+       * zählt wie keine (`ploiConfigured` verlangt alle drei) — dann bleibt
+       * jede neue oder wieder eingeschaltete Domain still auf „wartet auf
+       * Zertifikat" stehen. `NUXT_PLOI_BASE_URL` hat einen Standard und ist
+       * keine Pflicht.
+       */
+      'NUXT_PLOI_TOKEN',
+      'NUXT_PLOI_SERVER_ID',
+      'NUXT_PLOI_SITE_ID',
     ],
   },
   {
@@ -386,6 +427,9 @@ export const SITES = [
       GEO_CITIES_PATH,
       // Bremsen und Zähler über Neustarts hinweg (OPS-011) — Begründung bei `platform`.
       'NUXT_REDIS_URL',
+      // Profilfotos und Sicherungskopie vor dem Löschen — Begründung an den Konstanten.
+      AVATARS_BUCKET,
+      GDPR_BUCKET,
     ],
   },
   {
@@ -514,6 +558,9 @@ export const SITES = [
       // Bremsen, Konto-Pausen und KI-Tages-Deckel über Neustarts hinweg
       // (AB1 b / WA1 b, gesetzt am 2026-11-17) — Begründung bei `platform`.
       'NUXT_REDIS_URL',
+      // Google-Knopf — Begründung an der Konstante. Die zwei Ablagen des
+      // Kontos fehlen hier bewusst (keine Profilfotos, keine Kopien).
+      OAUTH_PROVIDERS,
     ],
   },
   {

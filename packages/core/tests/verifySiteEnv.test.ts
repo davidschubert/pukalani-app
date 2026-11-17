@@ -88,10 +88,11 @@ describe('jede Einstellung aus dem Code hat eine Entscheidung', () => {
     expect(decide()).toEqual([])
   })
 
-  it('der Bestand „noch nicht bewertet" wird nur kürzer', () => {
-    // Wer einen Namen bewertet, zieht ihn in die Pflicht-Liste oder nach
-    // ENV_NOT_REQUIRED um und senkt diese Zahl. Neue Namen gehören nie hierher.
-    expect(ENV_UNDECIDED.length).toBeLessThanOrEqual(36)
+  it('der Bestand „noch nicht bewertet" ist abgearbeitet und bleibt leer', () => {
+    // 36 Namen am 2026-11-16, bewertet am 2026-11-17 (WL1 a). Eine neue
+    // Einstellung bekommt gleich eine Antwort: Pflicht-Liste oder
+    // ENV_NOT_REQUIRED mit Grund.
+    expect(ENV_UNDECIDED).toEqual([])
   })
 
   it('GEGENPROBE (SEC-025): eine Einstellung, die der Code liest und niemand entschieden hat, ist rot', () => {
