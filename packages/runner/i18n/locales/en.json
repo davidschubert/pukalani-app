@@ -168,6 +168,7 @@
       "raw": "The report could not be read — here it is raw:",
       "none": "No report.",
       "transcript": "Download transcript",
+      "textRemoved": "The texts and attachments of this run were deleted after 12 months.",
       "errors": {
         "resume": "The continuation was not started.",
         "resumeHint": "Nothing was created — your answer is still in the field.",

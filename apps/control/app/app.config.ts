@@ -124,7 +124,11 @@ export default defineAppConfig({
     // Aufräum-Lauf (BE-025): LÖSCHT seit 2026-11-14 (Davids Entscheidung, nachdem
     // der Probelauf auf Production gezählt hatte: 10 Protokolle, 0 Ereignisse).
     // Zurück auf 'dry-run' = nur zählen; Gelöschtes kommt damit nicht wieder.
-    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'apply' },
+    // Texte und Anhänge alter Läufe (RU1 c, 12 Monate, Zahlen bleiben): NUR
+    // ZÄHLEN ('count', Log-Zeile `retention.run` mit job=run-text-retention).
+    // Auf 'apply' erst mit Davids Ja zur gezählten Zahl — geschwärzter Text
+    // kommt nicht wieder.
+    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'apply', textRetention: 'count' },
     // C17: DIESE App ist der Leser der kontobezogenen Meldungen. Beide
     // `scope: 'account'`-Absender leben hier (Stripe-Webhook im billing-Layer,
     // Early-Access-Anfragen im control-Layer) und schreiben in DIESES

@@ -33,9 +33,12 @@ import { RUN_EVENTS_TABLE, RUNNER_FILES_BUCKET, RUNS_TABLE, type RunEventRow, ty
  *  - ANHÄNGE: sie liegen im selben Bucket, aber mit ZUFÄLLIGEN Ids und dem
  *    Namen der hochgeladenen Datei (files.post.ts). Eine Datei, die nicht
  *    `run-<eigene Id>.jsonl` heisst, fasst der Lauf nicht an, egal wie alt.
+ *    Anhänge (und die Texte der Zeile) entfernt nach 12 Monaten ein EIGENER
+ *    Lauf mit eigenem Schalter: `server/utils/runTextRetention.ts` (RU1 c).
  *  - alles eines Laufs, der noch nicht im Endzustand ist (`draft`, `queued`,
  *    `claimed`, `running`) — auch wenn die Datei alt ist.
- *  - die `runs`-Zeilen selbst: der Bericht (Kosten, Commit, Dauer) bleibt.
+ *  - die `runs`-Zeilen selbst: der Bericht (Kosten, Commit, Dauer) bleibt —
+ *    auch nach dem Schwärzen durch `runTextRetention.ts`.
  *
  * VORSICHT, WEIL NICHT UMKEHRBAR: Probelauf (`dry-run`) mit genau derselben
  * Auswahl, der nur zählt; einzeln löschen statt per Abfrage; Deckel je Lauf

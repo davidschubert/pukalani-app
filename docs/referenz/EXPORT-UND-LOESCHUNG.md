@@ -115,6 +115,7 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Zugangs-Anfragen (`invite_requests`), samt Adresse am Einladungscode | abgelehnt 30, eingelöst 90 Tage | derselbe Sammel-Lauf (`inviteRequestPrune.ts`) | keiner | – |
 | Kontaktdaten von Gästen (`guest_authors`, Altbestand) | 90 Tage | `comments/server/plugins/guest-author-prune.ts` | keiner | `comments.guest_authors_pruned` |
 | Protokolle und Ereignisse der Runner-Läufe | 30 / 90 Tage | `runner/server/plugins/run-retention.ts` | `pukalani.runner.retention` | `runner.retention` |
+| Texte und Anhänge der Runner-Läufe (Auftragstext, Bericht-Text, Fehlertext, Anhang-Dateien; Kosten, Dauer, Commit und Kennungen bleiben) | 12 Monate nach dem Ende des Laufs | `runner/server/plugins/run-text-retention.ts`, stündlich (Regel `runner/shared/runTextRetention.ts`) | `pukalani.runner.textRetention` (off / count / apply; control: `count`) | `retention.run` mit `job: run-text-retention` (`deleted` zählt hier geleerte Läufe, die Zeile bleibt) |
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
 | Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
 | Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `count`; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
@@ -155,6 +156,8 @@ Hand, die ohne Angabe nur zählt:
 - `POST /api/admin/gdpr-exports/prune` (`users.manage`)
 - `POST /api/admin/avatars/orphan-sweep` (`storage.manage`; `{ apply: true }` löscht nur, wenn der
   Schalter der App auf `apply` steht, sonst 409 `sweep_not_enabled`)
+- `POST /api/runner/retention/texts` (`runner.manage`; leert nur mit `{ apply: true }` und Schalter
+  `apply`)
 - `POST /api/brand/admin/check-erasure/run` (Betreiber von branding.supply)
 - `POST /api/brand/admin/waitlist-retention/run` (Betreiber von branding.supply; löscht nur mit
   `{ apply: true }` und Schalter `apply`)
@@ -195,7 +198,8 @@ prüft Davids Anwalt.
 - **Der letzte Owner einer Community** behält seine Mitglieds-Zeile mit Konto-Id (die Adresse wird
   geleert); welche Community betroffen ist, steht im Log.
 - **Arbeitsmaterial der Betreiber-Konsole** (Tickets samt Anhängen, Auftragstexte der Runner-Läufe):
-  die Inhalte bleiben, der Bezug zur Person wird geleert.
+  die Inhalte bleiben, der Bezug zur Person wird geleert. Texte und Anhänge der Runner-Läufe fallen
+  nach 12 Monaten (oben unter „Fristen").
 - **Konto-Ids in der Unterhaltung des Gegenübers** (`conversations.participants`): Struktur des
   Fadens der anderen Person, kein lesbarer Inhalt.
 - **Gemeldete private Nachrichten** bleiben bei der Kontolöschung bis zu 90 Tage als Beleg; wer sie

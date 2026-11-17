@@ -15,11 +15,13 @@ import { RUNS_TABLE, type RunRow } from '../../shared/types/runner'
  * (`resultJson`): das ist die Ausgabe des Runners, kein Datum über die Person.
  *
  * LÖSCHUNG: nur `createdBy` wird geleert. Die Läufe selbst, ihre Ereignisse,
- * Protokolle und Anhänge bleiben unter dem bestehenden Aufräum-Lauf
- * (`server/utils/runRetention.ts`: Protokolle 30 Tage, Ereignisse 90 Tage nach
- * dem Ende; die `runs`-Zeile und Anhänge ohne Frist). Ob der Auftragstext
- * einer gelöschten Person eine eigene Frist braucht, ist als offener Punkt
- * „RU1" geführt — hier wird das nicht nebenbei entschieden.
+ * Protokolle und Anhänge folgen den Fristen des Layers, unabhängig vom Konto:
+ * `server/utils/runRetention.ts` löscht Protokolle 30 Tage und Ereignisse 90
+ * Tage nach dem Ende; `server/utils/runTextRetention.ts` (RU1 c, Entscheidung
+ * des Betreibers 2026-11-17) entfernt 12 Monate nach dem Ende Auftragstext,
+ * Fehlertext, freie Berichtsfelder und Anhänge. Die `runs`-Zeile mit Kosten,
+ * Dauer und Commit bleibt ohne Frist. Der Auftragstext einer gelöschten
+ * Person steht also höchstens bis zu dieser 12-Monats-Frist.
  *
  * Läuft nur, wo der runner-Layer läuft (heute allein apps/control), dort gibt
  * es `runs` — ein Lesefehler wirft (`listAllRows`), nie „nichts gefunden".
