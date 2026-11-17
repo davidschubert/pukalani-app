@@ -53,7 +53,8 @@ test.describe('Schutz-Kopfzeilen (SEC-006)', () => {
       expect(reportOnly).toHaveLength(1)
       expect(reportOnly[0]).toMatch(/^script-src 'self' 'unsafe-inline'/)
       expect(reportOnly[0]).toContain('https://challenges.cloudflare.com')
-      expect(reportOnly[0]).not.toMatch(/report-uri|report-to/)
+      // Seit SE1 a nennt die Regel ihre eigene Annahme-Route (relativ).
+      expect(reportOnly[0]).toMatch(/; report-uri \/api\/telemetry\/csp-report$/)
     }
   })
 
