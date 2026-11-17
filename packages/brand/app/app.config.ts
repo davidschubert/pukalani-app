@@ -442,6 +442,20 @@ export default defineAppConfig({
        * Annotation hält den Typ weit genug für die drei Stellungen.
        */
       waitlistRetention: 'off' as RowRetentionMode,
+      /**
+       * DER FRISTEN-LAUF DER GESPRÄCHSANFRAGEN (EL1 c, Davids Entscheidung
+       * 2026-11-15) — 'off' | 'count' | 'apply'. Stündlich: jede Anfrage in
+       * `brand_intro_requests` 12 Monate nach dem Eingang löschen, unabhängig
+       * vom Status und auch mit Konto (`server/utils/brandIntroRetentionRun.ts`,
+       * Regel in `shared/brandIntroRetention.ts`).
+       *
+       * 'off' ist der Layer-Default, weil der Lauf NICHT UMKEHRBAR löscht — eine
+       * App schaltet ihn bewusst ein, zuerst auf 'count' (zählt nur, Zeile
+       * `retention.run` mit `job: brand-intro-retention` im Log). Ein
+       * unbekannter Wert gilt als 'off' und schreibt eine Fehlerzeile. Die
+       * Annotation hält den Typ weit genug für die drei Stellungen.
+       */
+      introRequestRetention: 'off' as RowRetentionMode,
     },
   },
 })

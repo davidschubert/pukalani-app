@@ -66,7 +66,8 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   account_handles: both(SYSTEM),
   activities: both(SYSTEM),
   // Name, IP und Zusatzangaben werden geleert; die Konto-Id bleibt als
-  // Nachweis, wer wann was getan hat (ohne Frist — offener Punkt).
+  // Nachweis, wer wann was getan hat — bis zur Frist von 12 Monaten
+  // (Fristen-Lauf `audit-log-retention`, core/server/utils/auditLogRetention.ts).
   audit_logs: both(SYSTEM),
   community_handles: both(SYSTEM),
   instance_secrets: both(SYSTEM),

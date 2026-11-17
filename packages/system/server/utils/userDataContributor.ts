@@ -15,8 +15,9 @@ import type { H3Event } from 'h3'
  * Integrität): actorName/ip/metadata.name leeren, actorId + Struktur
  * bleiben (nach users.delete keinem Menschen mehr zuordenbar); targetName
  * für Logs, die auf den User zeigen, ebenfalls leeren. Plan §4.6.
- * `actorId`/`targetId` bleiben dabei als PSEUDONYMES Protokoll ohne Frist
- * stehen — ob es eine bekommt, ist als offener Punkt geführt (SEC-026).
+ * `actorId`/`targetId` bleiben dabei als PSEUDONYMES Protokoll stehen, bis
+ * der Fristen-Lauf des Core den Eintrag 12 Monate nach dem Schreiben löscht
+ * (`core/server/utils/auditLogRetention.ts`, EL1 c).
  * Seit SEC-026 (2026-11-15) steht das Protokoll auch in der AUSKUNFT
  * (`auditLog`): als Handelnde mit Aktion, Ziel-Art, Zeit und IP; als Ziel nur
  * Aktion und Zeit — Name und IP des handelnden Betreibers sind ein Datum über

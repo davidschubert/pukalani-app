@@ -130,6 +130,16 @@ export default defineAppConfig({
     // des Betreibers zur gezählten Zahl.
     storage: { avatarOrphanSweep: 'count' },
     /**
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
+     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
+     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
+     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
+     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
+     * 'off' stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
+     * löschen).
+     */
+    audit: { retention: 'count' },
+    /**
      * ANMELDUNG (F37, 2026-08-02) — beides war im Silo an und im Pool aus.
      *
      * `otp`: der passwortlose Code-Login. Reiner Anzeige-/Routen-Schalter der
