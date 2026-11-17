@@ -1,16 +1,15 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
-import { fileBelongsToUser } from '../../shared/avatarOwnership'
+import { avatarFileIdFromUrl, fileBelongsToUser } from '../../shared/avatarOwnership'
 
 /**
  * fileId aus einer Storage-Avatar-URL (/api/storage/<bucket>/<id>?…), sonst
- * null. Eine Quelle für zwei Nutzer: profile.put (Alt-Avatar ersetzen) und
- * die GDPR-Löschung (Avatar-Datei entfernen).
+ * null. Eine Quelle für drei Nutzer: profile.put (Alt-Avatar ersetzen), die
+ * GDPR-Löschung (Avatar-Datei entfernen) und der Aufräum-Lauf für Dateien
+ * ohne Profil (KE3). Die Lesart selbst ist pur (`shared/avatarOwnership.ts`).
  */
 export function avatarFileId(url: unknown, bucketId: string): string | null {
-  if (typeof url !== 'string' || !bucketId) return null
-  const match = url.match(/^\/api\/storage\/([^/]+)\/([^/?]+)/)
-  return match && match[1] === bucketId ? match[2]! : null
+  return avatarFileIdFromUrl(url, bucketId)
 }
 
 /**

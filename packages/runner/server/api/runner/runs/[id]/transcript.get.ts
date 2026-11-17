@@ -1,3 +1,4 @@
+import { FILE_RESPONSE_HEADERS } from '../../../../../../core/shared/fileDelivery'
 import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow } from '../../../../../shared/types/runner'
 
 /**
@@ -14,6 +15,11 @@ import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow } from '../../../../../sha
  * antwortet 404 — dann rendert der Bericht auch keinen Download-Link.
  */
 export default defineEventHandler(async (event) => {
+  // Schutz-Kopfzeilen auf JEDER Antwort, auch auf Ablehnungen (SEC-001). Der
+  // Typ ist hier fest (`application/x-ndjson`), nie der gespeicherte.
+  for (const [name, value] of Object.entries(FILE_RESPONSE_HEADERS)) {
+    setHeader(event, name, value)
+  }
   requirePermission(event, 'runner.manage')
   const id = getRouterParam(event, 'id')
   if (!id) throw createError({ status: 400, statusText: 'Missing id' })

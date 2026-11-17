@@ -734,6 +734,21 @@ export default defineAppConfig({
        */
       retention: 'off' as RowRetentionMode,
     },
+    storage: {
+      /**
+       * PROFILBILDER OHNE PROFIL (KE3, 2026-11-17): ein Lauf alle 6 Stunden
+       * entfernt hochgeladene Profilbilder, auf die ihr Konto nicht (mehr)
+       * verweist oder deren Konto es nicht mehr gibt — erst nach einer
+       * Schonfrist von 7 Tagen seit dem Upload (Regel:
+       * shared/avatarOrphan.ts, Lauf: server/utils/avatarOrphanSweep.ts).
+       * `'off'` = kein Takt · `'count'` = nur zählen (Log `retention.run`,
+       * `job: avatar-orphan-sweep`) · `'apply'` = löschen. Ohne
+       * Avatars-Bucket meldet sich der Lauf nie an. Ein ungültiger Wert gilt
+       * als `'off'` und schreibt eine Fehlerzeile. Core-Default AUS; `apply`
+       * nur mit dem Ja des Betreibers zur gezählten Zahl.
+       */
+      avatarOrphanSweep: 'off' as RowRetentionMode,
+    },
     observability: {
       /** Strukturierte JSON-Error-Logs für unbehandelte Server-Fehler (5xx)
        *  am zentralen Nitro-Error-Hook. Sentry-Andockpunkt: server/utils/logEvent.ts */

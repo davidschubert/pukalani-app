@@ -239,6 +239,9 @@ export interface BucketCoverage { export: Direction, erase: Direction, needle?: 
 export const USER_DATA_BUCKETS: Record<string, BucketCoverage | 'none'> = {
   'avatars': {
     export: skip('das Bild selbst steht nicht im Export; der Verweis darauf steht in den Konto-Angaben'),
+    // Bei der Kontolöschung alle Dateien des Kontos. Dateien LEBENDER Konten
+    // ohne Verweis im Profil räumt zusätzlich der Lauf avatar-orphan-sweep
+    // (KE3, 7 Tage nach dem Upload; core/server/utils/avatarOrphanSweep.ts).
     erase: 'packages/core/server/utils/userDataOrchestration.ts',
     needle: 'deleteAvatarFilesOf',
   },
