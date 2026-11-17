@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { HTTP_URL_PROTOCOL } from '../../core/shared/safeHref'
 import { LOCALE_CODE_PATTERN } from '../../core/shared/ugcTranslations'
-import { COURSE_ACCESS, MAX_COURSE_DESCRIPTION, MAX_COURSE_TITLE, MAX_LESSON_CONTENT } from '../shared/types/course'
+import { COURSE_ACCESS, LEGACY_COURSE_ACCESS_FREE, MAX_COURSE_DESCRIPTION, MAX_COURSE_TITLE, MAX_LESSON_CONTENT, normalizeCourseAccess } from '../shared/types/course'
 
 type TranslateFn = (key: string) => string
 const identity: TranslateFn = key => key
@@ -16,7 +16,12 @@ const courseFields = (t: TranslateFn) => ({
   title: z.string().trim().min(1, t('courses.validation.titleRequired')).max(MAX_COURSE_TITLE, t('courses.validation.titleMax')),
   slug: slugSchema(t),
   description: z.string().trim().min(1, t('courses.validation.descriptionRequired')).max(MAX_COURSE_DESCRIPTION, t('courses.validation.descriptionMax')),
-  access: z.enum(COURSE_ACCESS),
+  /**
+   * Zwei Zugangsarten (KU1). Der alte Wert `'free'` wird weiter ANGENOMMEN und
+   * als `'members'` gespeichert: ein Formular, das beim Ausliefern noch offen
+   * war, soll nicht an einer Auswahl scheitern, die dasselbe bedeutet.
+   */
+  access: z.enum([...COURSE_ACCESS, LEGACY_COURSE_ACCESS_FREE]).transform(normalizeCourseAccess),
   entitlementProduct: z.string().trim().max(64).nullish(),
 })
 

@@ -1,5 +1,6 @@
 import { courseEditSchema } from '../../../../schemas/course'
-import { COURSES_TABLE, type CourseRow } from '../../../../shared/types/course'
+import { toManagedCourse } from '../../../../shared/coursePreview'
+import { COURSES_TABLE, normalizeCourseAccess, type CourseRow } from '../../../../shared/types/course'
 
 /**
  * Kurs bearbeiten (courses.manage; [slug]-Segment = Row-ID im Builder).
@@ -34,7 +35,8 @@ export default defineEventHandler(async (event) => {
   const row = await db.get<CourseRow>(COURSES_TABLE, id, 'Course not found')
 
   // paid braucht das Entitlement-Produkt — gegen den MERGED Zustand
-  const mergedAccess = body.access ?? row.access
+  // Bestands-Zeilen tragen noch 'free' — gelesen wird über die eine Regel (KU1)
+  const mergedAccess = body.access ?? normalizeCourseAccess(row.access)
   const mergedProduct = body.entitlementProduct === undefined ? row.entitlementProduct : body.entitlementProduct
   // Und 'paid' überhaupt anbieten können (Befund 2, 2026-08-02). Gegen den
   // MERGED Zustand, damit auch ein Bestandskurs nicht unbemerkt auf 'paid'
@@ -79,5 +81,5 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return updated
+  return toManagedCourse(updated)
 })

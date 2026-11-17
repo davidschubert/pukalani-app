@@ -114,7 +114,7 @@ try {
 
   const created = await call('/api/courses', {
     method: 'POST', cookie: adminCookie,
-    body: { title: 'Einstiegs-Kurs', slug, description: 'Beweis-Kurs.', access: 'free', status: 'published' },
+    body: { title: 'Einstiegs-Kurs', slug, description: 'Beweis-Kurs.', access: 'members', status: 'published' },
   })
   const courseId = created.json?.$id
   check('Vorbereitung: veröffentlichter Kurs angelegt', created.status === 201 && !!courseId, `Status ${created.status} ${created.text.slice(0, 160)}`)

@@ -121,10 +121,9 @@ describe('assertPaidAccessOffered (Befund 2)', () => {
     expect(() => assertPaidAccessOffered('paid')).not.toThrow()
   })
 
-  it('free/members sind nie betroffen', async () => {
+  it('Kurse für Mitglieder sind nie betroffen', async () => {
     const { assertPaidAccessOffered } = await freshCourseAccess()
     stubCreateError()
-    expect(() => assertPaidAccessOffered('free')).not.toThrow()
     expect(() => assertPaidAccessOffered('members')).not.toThrow()
   })
 

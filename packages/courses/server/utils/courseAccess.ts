@@ -1,6 +1,6 @@
 import { Permission, Query, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, COURSES_TABLE, ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, type CourseAccess, type CourseRow, type EnrollmentRow, type LessonProgressRow, type LessonRow } from '../../shared/types/course'
+import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, COURSES_TABLE, ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, normalizeCourseAccess, type CourseAccess, type CourseRow, type EnrollmentRow, type LessonProgressRow, type LessonRow } from '../../shared/types/course'
 
 /**
  * RECHTE-MODELL „NUR SERVER-ZUGRIFF" (SEC-029, Muster `pages`/`lessons`):
@@ -53,8 +53,9 @@ export function isCourseAccessConfigured(): boolean {
 }
 
 /**
- * free/members = Mitglied genügt (geprüft VOR dem Aufruf, courseMembership.ts)
- * · paid = delegiert an den App-Guard
+ * members = Mitglied genügt (geprüft VOR dem Aufruf, courseMembership.ts)
+ * · paid = delegiert an den App-Guard. Der alte Wert `'free'` aus
+ * Bestands-Zeilen zählt wie `'members'` (KU1, `normalizeCourseAccess`).
  *
  * BEIDE 403 tragen einen fachlichen Grund (`data.code` → `reason` im Envelope,
  * Audit-Befund 2026-08-02). Ohne ihn konnte die Oberfläche „diese Instanz
@@ -65,7 +66,7 @@ export async function assertCourseAccess(event: H3Event, course: CourseRow): Pro
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  if (course.access !== 'paid') return
+  if (normalizeCourseAccess(course.access) !== 'paid') return
   if (!accessGuard) {
     throw createError({
       status: 403,
