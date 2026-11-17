@@ -137,11 +137,15 @@ Galerie; der Anmelde-Blick wird gegen die lokale Datenbank rot (dort sind die
 Wege an). Live: die Kopfzeile nennt auf drei Hosts die Route, alle acht Hosts
 `ok`.
 
+Der Wächter lief am 2026-11-17 einmal von Hand (Davids Ja per Klick, Lauf
+44167219497): alle vier Projekte „zu (501)", und der Blick „In die App
+hinein" nennt auf allen sechs Apps „Skript-Regel 0" — das neue Zähl-Skript
+ist also überall angekommen.
+
 **Nicht geprüft.** Kein Bericht eines echten Besuchers, kein Firefox und kein
-Safari; der Anmelde-Blick gegen die echten Projekte (kommt mit dem nächsten
-täglichen Lauf); kein echter Stripe-Aufruf; die Antwort der neuen
-Control-Adresse auf Production (nur der Live-Build); nichts am Server
-geändert oder angesehen; die Regel ist nicht scharf.
+Safari; kein echter Stripe-Aufruf; die Antwort der neuen Control-Adresse auf
+Production (nur der Live-Build); der erste echte Umlauf der pm2-Logs (zweite
+Nacht); die Regel ist nicht scharf.
 
 **Gelernt:**
 - **Eine Probe im Browser findet, was kein Test findet.** Die Annahme-Route

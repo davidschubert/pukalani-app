@@ -874,8 +874,9 @@ Anmelde-Wege der vier Projekte.
   ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)) und hier melden.
 - **(b) Anmelde-Wege.** Der Wächter sieht von außen nur den Schalter
   „Email/Password" (die fünf anderen würden bei offenem Weg ein Konto anlegen
-  oder eine Mail schicken). Der erste Lauf gegen die echten Projekte ist der
-  nächste tägliche Lauf. Der Schalter „JWT" ist bewertet: nichts im Code hängt
+  oder eine Mail schicken). Der erste Lauf gegen die echten Projekte war am
+  2026-11-17 (von Hand gestartet, mit Davids Ja): alle vier „zu". Der Schalter
+  „JWT" ist bewertet: nichts im Code hängt
   daran — er kann aus (ein Klick je Projekt in der Verwaltung, danach die
   Live-Verbindung auf einer Seite ansehen). Die lokale Datenbank und die der
   CI haben die Schalter AN, Tests laufen dort also unter anderen Bedingungen
