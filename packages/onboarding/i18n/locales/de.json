@@ -531,7 +531,8 @@
         "posts": "Beiträge",
         "events": "Termine",
         "courses": "Kurse",
-        "media": "Bilder"
+        "media": "Bilder",
+        "pages": "Seiten"
       }
     },
     "communityExport": {

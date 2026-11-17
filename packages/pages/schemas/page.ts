@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PAGE_LOCALE_PATTERN } from '../shared/pageLocales'
 import { PAGE_STATUSES } from '../shared/types/page'
 
 type TranslateFn = (key: string) => string
@@ -12,8 +13,9 @@ export const MAX_PAGE_BODY = 200_000
 
 // slug = sprechender URL-Pfad (imprint, terms, privacy): klein, keine Slashes
 const slugRe = /^[a-z][a-z0-9-]*$/
-// locale-Code: en, de, en-US …
-const localeRe = /^[a-z]{2}(-[A-Za-z]{2})?$/
+// locale-Code: en, de, en-US … — dasselbe Muster prüfen die öffentlichen
+// Routen an `?locale=` (BE-019), deshalb liegt es in shared/pageLocales.ts.
+const localeRe = PAGE_LOCALE_PATTERN
 
 /** Upsert einer Seite in EINER Sprache (Admin). */
 export function createPageUpsertSchema(t: TranslateFn = identity) {
