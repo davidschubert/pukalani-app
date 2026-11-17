@@ -56,11 +56,17 @@ describe('die Probe selbst', () => {
     expect(DEFAULT_ENDPOINT).toBe('https://api.pukalani.app/v1')
   })
 
-  it('prüft genau die Projekte der ausgerollten Apps', async () => {
+  it('prüft genau die Projekte der ausgerollten Apps', () => {
+    // Als TEXT gelesen, nicht importiert: ein Test eines Layers lädt nichts
+    // aus `apps/` (dort fehlt in der CI `.nuxt/`, `layerTestsNoAppImports`).
     const projects = new Set<string>()
     for (const app of ['platform', 'control', 'portfolio', 'branding']) {
-      const manifest = (await import(`../../../apps/${app}/site.manifest.ts`)).default as { appwriteProjects: string[] }
-      for (const project of manifest.appwriteProjects) projects.add(project)
+      const source = readFileSync(join(REPO, 'apps', app, 'site.manifest.ts'), 'utf8')
+      const list = /\bappwriteProjects:\s*\[([^\]]*)\]/.exec(source)
+      expect(list, `apps/${app}/site.manifest.ts nennt appwriteProjects`).not.toBeNull()
+      const ids = [...list![1]!.matchAll(/'([a-z][a-z0-9-]*)'/g)].map(hit => hit[1]!)
+      expect(ids.length, app).toBeGreaterThan(0)
+      for (const id of ids) projects.add(id)
     }
     expect([...PROJECTS].sort()).toEqual([...projects].sort())
   })
