@@ -45,8 +45,20 @@ export default defineEventHandler(async (event) => {
   // - /_i18n/: nuxt-i18n lädt Locale-Messages im Prod-Build per INTERNEM
   //   self-fetch OHNE Host-Header — ein 404 hier ließe jede Seite mit rohen
   //   i18n-Keys rendern (Prod-Befund 2026-07-23). Inhalte sind build-statisch.
+  // - /api/_nuxt_icon/: dieselbe Sorte Aufruf (WA1 e, gemessen 2026-11-17).
+  //   Ein Symbol, dessen Name erst beim Rendern feststeht (aus der app.config
+  //   oder berechnet), holt @nuxt/icon beim Server-Rendern über einen INTERNEN
+  //   self-fetch — und der trägt die Kopfzeilen der Anfrage NICHT (das Modul
+  //   nimmt `useRequestFetch().native`, das es an Nitros `event.$fetch` nicht
+  //   gibt, und fällt auf den nackten lokalen Abruf zurück). Ohne Host endete
+  //   er hier im 404 für unbekannte Hosts: je Symbol und Seitenaufruf eine
+  //   Zeile „[Icon] failed to load" im Fehler-Log (29.512 in neun Tagen, nur
+  //   auf der App mit Trennung), und das Symbol kam erst im Browser nach. Die
+  //   Route liefert SVG-Pfade aus dem Iconify-Paket, fasst keine Datenbank an
+  //   und kennt keinen Mandanten (dieselbe Begründung wie für den
+  //   Kontroll-Host, `controlApiPrefixes`).
   const path = event.path.split('?')[0] ?? ''
-  if (path === '/api/health' || path.startsWith('/_i18n/')) return
+  if (path === '/api/health' || path.startsWith('/_i18n/') || path.startsWith('/api/_nuxt_icon/')) return
 
   const resolver = getTenantResolver()
   /**
