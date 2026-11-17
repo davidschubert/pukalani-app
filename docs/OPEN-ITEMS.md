@@ -98,6 +98,7 @@ beide Server-Einstellungen einschalten.
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
+| KK1 | **Kleine Korrekturen in Events, Kursen, Seiten, Moderation, Statistik: Nacharbeiten.** Seit 2026-11-17 nennen Termin-Erinnerungen die Uhrzeit mit Zeitzone, ausgeblendete Termine bleiben ausgeblendet, die Seitenliste zeigt alle Seiten, und eine fremde Zähl-Kennung wird abgelehnt (COMPLETE „GA1 P28"). Offen: (a) nach dem Verschieben eines Termins noch einmal erinnern, (b) die Statistik-Prüfung an einer echten Community klicken und die geprüfte Adresse auch für die Zahlen nutzen, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
@@ -629,6 +630,35 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   stehen für zwei Alt-Pläne rohe Schlüssel statt Namen. Der Schalter
   „freigegeben" kann fallen, sobald das Pukalani-Konto je Seite eine eigene
   Sitzung ausstellt (Etappe E1).
+
+<a id="kk1"></a>
+
+**KK1 — Kleine Korrekturen in Events, Kursen, Seiten, Moderation, Statistik: Nacharbeiten (aus dem Gesamtaudit, Paket P28).**
+
+- **(a) Erinnerung nach dem Verschieben.** Wird der Beginn eines Termins
+  geändert, nachdem schon erinnert wurde, bleibt der Merker am Termin stehen —
+  es gibt keine zweite Erinnerung mit der neuen Uhrzeit. Die Zeilen-Kennung je
+  Erinnerung enthält den Beginn schon; es fehlt nur, den Merker beim
+  Verschieben zu leeren. Vorher entscheiden, ob das gewollt ist (zwei Mails
+  zum selben Termin).
+- **(b) Statistik.** Die Prüfung der Zähl-Kennung ist mit Tests am echten
+  Handler belegt, aber noch an keiner echten Community geklickt. Die Zahlen
+  fragt die Seite weiter unter dem Host der Anfrage ab: liegt die
+  Plausible-Site unter der Schwester-Adresse (mit oder ohne `www`), nimmt das
+  Speichern die Kennung an, die Zahlen-Seite sagt aber „gerade nicht
+  erreichbar". Die beim Speichern gelesene Adresse könnte als Ziel dienen.
+  Schon gespeicherte Kennungen werden nicht nachträglich geprüft.
+- **(c) Kleinigkeiten.** Das Nachholen eines halb gescheiterten Ausblendens
+  (Termine) geht über die Route, die Oberfläche bietet es an einem schon
+  ausgeblendeten Termin nicht an. Drei Listen im Seiten-Produkt haben noch
+  feste Obergrenzen ohne Blättern (Verwaltungs-Liste 500, je Seite 50 und 20
+  Fassungen). Die Zahlen des Seiten-Kontingents stehen nur in der
+  Konfiguration der Platform-App, nicht im Katalog des Control Plane. Ob
+  „bezahlt" an einem Termin wählbar ist, entscheidet nur das Formular, nicht
+  der Server. `commentReactions.ts` liest die Liste der Betreiber-Ziele noch
+  selbst. Ein Text, der wörtlich wie ein gespeicherter Zeitpunkt aussieht,
+  würde in Glocke und Mail als Datum erscheinen (harmlos; eine Beschränkung
+  auf Erinnerungen wäre möglich).
 
 <a id="bp1"></a>
 

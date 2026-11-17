@@ -199,6 +199,22 @@ paths:
   Kandidaten aus UNGELESENEN notifications-Rows (kein User-Scan), max 1
   Mail/Tag (prefs.emailDigestLastAt, merge!), Intervall-Plugin 30 min +
   POST /api/notifications/run-digest (system.manage).
+- EIN ZEITPUNKT IN EINER BENACHRICHTIGUNG IST EIN ROHWERT (BE-018, seit
+  2026-11-17 — Davids Entscheidung): `notifications.body` trägt für eine
+  Uhrzeit nie fertigen Text, sondern `encodeNotificationWhen(zeitpunkt, zone)`
+  (`core/shared/notificationWhen.ts`). Formatiert wird beim LESEN: die Glocke
+  in Sprache und Zone des Lesers, Sofort- und Sammel-Mail in der Sprache des
+  Empfängers und in SEINER Zone, wenn er eine gewählt hat (`prefs.timezone`),
+  sonst in der Zone des Termins, sonst UTC (`notificationWhenMailZone`). Das
+  Zonen-Kürzel steht IMMER dabei — ein Server weiß nicht, wo der Empfänger
+  sitzt, und eine Uhrzeit ohne Zone ist dann für die meisten falsch (vorher:
+  `de-DE` und Server-Zeit für alle). Alte Zeilen mit fertigem Text bleiben,
+  wie sie sind. ERINNERN IST JE EMPFÄNGER GENAU EINMAL: `notify({ rowId })`
+  mit fester Kennung aus Termin, Empfänger und Beginn
+  (`eventReminderRowId`), der Merker am Termin kommt NACH dem Versand und nur
+  ohne Störung — ein späterer Takt holt die Fehlenden nach, die anderen
+  laufen in die Dublette (keine Zeile, keine Mail). Der Lauf hängt am
+  stündlichen Zeit-Lauf `event-reminders`, kein Seitenaufruf stößt ihn an.
 - ÖFFENTLICHES FORMULAR, DAS EINE MAIL AUSLÖST (SEC-018, seit 2026-11-15 —
   Davids Entscheidung): drei Dinge, immer zusammen. (1) BOT-PRÜFUNG:
   `requireTurnstile(event, aktion, body.turnstileToken)` nach dem Honigtopf
@@ -251,6 +267,14 @@ paths:
   comments blendet ab pukalani.comments.autoHideReports offenen Meldungen aus
   (0 = aus; Meldungen bleiben offen). resolveReportsForTarget/
   openReportsForTarget sind die moderation-Verträge für Resolve/Assist/Bulk.
+  ZURÜCKZIEHEN NUR, SOLANGE OFFEN (BE-020, seit 2026-11-17): die Rücknahme
+  der eigenen Meldung sucht nur offene; für eine erledigte antwortet sie 409
+  `report_resolved`, die Entscheidung bleibt im Verlauf. LESERECHT EINES
+  KOMMENTARS AUS EINER FUNKTION (`comments/server/utils/commentReadPermissions.ts`):
+  Anlegen und BEIDE Wege des Wiederherstellens fragen sie — ein Kommentar an
+  einem Betreiber-Ziel (`pukalani.comments.operatorTargets`) trägt nur die
+  Betreiber-Leserechte und bekommt nie das Publikum der Community. Wer einen
+  weiteren Weg baut, der Kommentar-Leserechte setzt, ruft dieselbe Funktion.
   GEMELDETE PRIVATE NACHRICHTEN (SEC-033, Davids Entscheidung 2026-11-12):
   Text nur, solange eine Meldung OFFEN ist — Liste und Einzel-Ansicht fragen
   dieselbe Funktion (`moderatorVisibleBody` mit der offenen Zahl, gebündelt
