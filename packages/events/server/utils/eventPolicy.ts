@@ -25,10 +25,10 @@ import type { H3Event } from 'h3'
  * WAS NICHT EINFRIERT und warum:
  *  - LESEN. Der Wartungsmodus soll die Community einfrieren, nicht abschalten
  *    (dieselbe Grenze wie in posts).
- *  - Der Reminder-Sweep (`reminder-sweep.post.ts` und der on-read-Zweig): das
- *    ist kein Mitglieds-Schreibweg, sondern ein Betreiber-Vorgang mit
- *    Schlüssel. Er schreibt einen Versand-Merker auf fremde Zeilen — eine
- *    verschluckte Terminerinnerung wäre der falsche Preis für eine Wartung.
+ *  - Die Termin-Erinnerung (Zeit-Lauf `event-reminders`): das ist kein
+ *    Mitglieds-Schreibweg. Der Lauf schreibt einen Versand-Merker auf fremde
+ *    Zeilen — eine verschluckte Terminerinnerung wäre der falsche Preis für
+ *    eine Wartung.
  *
  * ABGRENZUNG zur M13-SPERRE: die billing-Sperre (Zahlungsverzug) lässt das
  * ABSAGEN bewusst offen — sie schützt die Zusagenden vor der Rechnung ihres
