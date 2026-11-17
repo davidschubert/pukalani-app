@@ -36,6 +36,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -208,19 +209,13 @@ try {
   const created = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie: ownerCookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
+    body: probeSiteBody({
       name: 'U20 Exportprobe',
       slug,
-      purpose: 'new',
-      memberRange: 'to100',
-      category: 'club',
-      goal: 'discussion',
       description: 'Wir prüfen, ob das Bündel vollständig ist und niemanden verrät.',
       vibe: 'elegant',
       inviteCode: code,
-      locale: 'de',
-    },
+    }),
   })
   check('Community angelegt', created.status === 200 && !!created.json?.communityId,
     `${created.status} ${created.text.slice(0, 200)}`)

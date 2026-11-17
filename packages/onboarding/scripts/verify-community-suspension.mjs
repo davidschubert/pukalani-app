@@ -43,6 +43,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_PORT = Number(process.env.CONTROL_PORT || 3004)
@@ -256,19 +257,13 @@ try {
   const created = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie: ownerCookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
+    body: probeSiteBody({
       name: 'M13 Sperrprobe',
       slug,
-      purpose: 'new',
-      memberRange: 'to100',
-      category: 'club',
-      goal: 'discussion',
       description: 'Wir prüfen, was eine Sperre mit einer Community macht.',
       vibe: 'calm',
       inviteCode: code,
-      locale: 'de',
-    },
+    }),
   })
   check('Community angelegt', created.status === 200 && !!created.json?.communityId, `${created.status} ${created.text.slice(0, 200)}`)
   const communityId = created.json?.communityId

@@ -33,6 +33,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3016)
 const CONTROL_URL = process.env.CONTROL_URL || 'http://localhost:3014'
@@ -159,7 +160,16 @@ async function createCommunity(cookie, name, slug, code) {
   const res = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie,
-    body: { operatorTerms: true, name, slug, category: 'club', vibe: 'calm', inviteCode: code, locale: 'de' },
+    body: probeSiteBody({
+      name,
+      slug,
+      vibe: 'calm',
+      inviteCode: code,
+      purpose: undefined,
+      memberRange: undefined,
+      goal: undefined,
+      description: undefined,
+    }),
   })
   if (res.status !== 200 || !res.json?.communityId) {
     throw new Error(`Community ${slug} nicht angelegt (${res.status}): ${res.text.slice(0, 200)}`)

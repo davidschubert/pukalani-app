@@ -84,6 +84,7 @@ import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { startDnsStub } from './lib/dnsStub.mjs'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -262,13 +263,13 @@ async function createCommunity(cookie, slug, name, code) {
   const res = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name, slug,
-      purpose: 'new', memberRange: 'to100', category: 'club', goal: 'discussion',
+    body: probeSiteBody({
+      name,
+      slug,
       description: 'Wegwerf-Community für den Beweis der eigenen Domain.',
-      vibe: 'elegant', inviteCode: code, locale: 'de',
-    },
+      vibe: 'elegant',
+      inviteCode: code,
+    }),
   })
   if (res.status !== 200 || !res.json?.communityId) {
     throw new Error(`Community "${slug}" nicht angelegt (${res.status}): ${res.text.slice(0, 200)}`)
