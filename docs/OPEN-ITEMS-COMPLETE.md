@@ -324,6 +324,108 @@ heute offen ist, steht ausschließlich in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 > „Doppel-Zertifikat" ist bewusst KEIN Aufräum-Punkt — Einzelheiten in
 > [OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md).
 
+### GA1 P15 — Testphase einmal je Konto, eigene Domain mit Freigabe und Schonfrist, Stripe-Eingang liest frisch, Regeln halten bei gleichzeitigen Anfragen ✅ 2026-11-17
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings
+BE-013, BE-014, BE-015, BE-016 und die Übergangsregel zu SEC-022), Pull
+Requests 223 (Merge `4d7ad403`), 225 (`dfe5e026`), 226 (`ae9bfe88`), 229
+(`156af174`) und dieser Abschluss. Davids Entscheidungen vom 2026-11-12: „Die
+Testphase gibt es einmal je Person", „Eigene Domain nach Plan-Ende: nach
+Schonfrist abschalten, nichts löschen" (14 Tage, Hinweis am ersten Tag und
+drei Tage vor dem Ende), „Eigene Domain bis zum Pukalani-Konto nur mit Davids
+Freigabe aktiv, nicht in der Testphase". Dazu vom 2026-11-16: heute aktive
+Domains als freigegeben übernehmen, Besucher einer abgeschalteten Domain
+weiterleiten, Anlegen einer Community nur mit bestätigter E-Mail-Adresse;
+vom 2026-11-17: den Schonfrist-Lauf scharf schalten.
+
+1. **Erst gemessen.** Alle vier Findings galten unverändert. Im Spiegel und
+   auf Production: acht Communities, vier Konten mit Owner-Zeile, genau eine
+   eigene Domain (aktiv, die des Betreibers), kein Einladungs-Code überzogen.
+   Gemessen gegen Appwrite 2.7.1: `incrementRowColumn` mit Obergrenze ist
+   unteilbar (zehn gleichzeitige Aufrufe bei Grenze 1 ⇒ ein Erfolg, neun
+   Ablehnungen) — der Kommentar im Code sagte noch das Gegenteil.
+2. **Stripe-Eingang (BE-016).** Auch die drei Ereignisse
+   `customer.subscription.*` lesen das Abo jetzt frisch bei Stripe; der Stand
+   aus dem Ereignis gilt nur noch für `deleted`, wenn Stripe das Abo nicht mehr
+   kennt. Die API-Version steht an einer Stelle, ein Test hält sie gleich der
+   des installierten SDK, die Statuskarte zeigt einen Endpunkt, der in einer
+   anderen Version sendet.
+3. **Regeln unter gleichzeitigen Anfragen (BE-013).** Der Einladungs-Code wird
+   vor der Anlage in der Datenbank reserviert und bei Fehlschlag oder
+   Wiederholung zurückgegeben. Kontingent je Konto, Wochen-Kontingent der
+   Mitglieder-Einladungen, Rollenwechsel, Entfernen und Besitzübertragung
+   laufen unter einer Sperr-Zeile mit fester Kennung in `system_runs`
+   (`withControlLock`): unter der Sperre lesen, entscheiden, schreiben.
+   Scheitert der zweite Schritt einer Besitzübertragung, wird der erste
+   zurückgenommen.
+4. **Testphase einmal je Konto (BE-015).** Neue Tabelle `trial_claims`
+   (control-039): eine Zeile je Konto mit fester Kennung, das Anlegen ist die
+   Vergabe. Die erste Community bekommt 14 Tage Pro, jede weitere entsteht
+   ohne Testphase und nur zum Lesen, bis ein Plan gebucht ist. Anlegen verlangt
+   eine bestätigte Adresse. Der Wizard sagt vor dem Klick, was gilt. Vier
+   Bestands-Konten sind als „Testphase verbraucht" eingetragen; laufende
+   Testphasen blieben unberührt.
+5. **Eigene Domain (BE-014, SEC-022).** Eine Regel entscheidet, wer darf: Plan
+   Pro, nicht in der Testphase, vom Betreiber freigegeben (Schalter in der
+   Betreiber-Tabelle, Eintrag im Protokoll). Neuer Zustand `paused`
+   (abgeschaltet): nichts wird gelöscht, die eigene Domain leitet vorübergehend
+   auf die Pukalani-Adresse, der Owner schaltet mit einem Klick wieder ein.
+   Vergeben ist eine Domain nur noch mit bestandenem Nachweis; ein bloßer
+   Eintrag blockiert niemanden und verfällt nach 14 Tagen. Fünf Spalten
+   (control-040). Die eine aktive Domain ist als freigegeben übernommen.
+6. **Schonfrist-Lauf.** `custom-domain-sweep` in der Betreiber-App stempelt
+   die Frist und schaltet nach 14 Tagen ab; `custom-domain-notice` in der
+   Platform-App schreibt je Owner und Hinweis eine Glocken-Zeile mit fester
+   Kennung und schickt nur dann die Mail — genau einmal, auch bei
+   abgeschalteten Benachrichtigungen. **Der Lauf zählte zuerst nur**
+   (`pukalani.control.customDomainSweep: 'dry-run'`, die Zahlen stehen auf
+   einer Karte im Betreiber-Bereich). Auf Production gezählt: eine eigene
+   Domain, freigegeben, nichts zu tun. Seit 2026-11-17 steht der Schalter mit
+   Davids Ja auf `apply`.
+
+**Belege.** Je Regel ein Test mit zwei gleichzeitigen Anfragen (gegen den alten
+Code rot). Lokale Proben über die echten Routen: Regeln 36 von 36, Stripe-
+Eingang 5 von 5, Testphase 23 von 23, eigene Domain 21 von 21; Schonfrist-Lauf
+mit sechs Wegwerf-Communities (Zählung ohne Änderung, dann lokal scharf: vier
+Mails, nach einem zweiten Lauf weiterhin vier). Wizard, Betreiber-Schalter und
+Domain-Seite lokal selbst geklickt. Live: `/api/health` auf allen acht Hosts
+mit dem jeweiligen Merge, `ok` und `schema` in Ordnung. Zwei Migrationen und
+zwei Übernahme-Läufe auf Production, jeweils erst gezählt.
+
+**Gelernt:**
+
+- **Eine Zeile mit fester Kennung ist drei Dinge zugleich:** die Sperre, der
+  Nachweis „schon geschehen" und der Zähler „genau einmal". Hier trägt sie die
+  Testphase je Konto (`trial_claims`), die Sperre vor fünf Regeln
+  (`system_runs`) und die Hinweis-Mail (Glocken-Zeile). Wer „einmal" sagt,
+  legt eine solche Zeile an und liest nicht vorher nach.
+- **Einen Kommentar „das kann die Datenbank nicht" misst man nach.** Der Code
+  hielt den unteilbaren Zähler für unmöglich (Stand einer zwei Jahre alten
+  SDK-Version). Zehn gleichzeitige Aufrufe gegen die echte Datenbank haben es
+  in einer Minute geklärt und eine neue Tabelle erspart.
+- **Eine Regel, die an den Schreib-Routen sitzt, hat keinen Rückweg.** Die
+  eigene Domain wurde beim Eintragen am Plan geprüft, danach nie wieder: der
+  Plan sank, die Domain blieb. Eine Berechtigung braucht eine Funktion, die
+  auch ein Lauf fragen kann, und einen Auslöser für „nicht mehr berechtigt".
+- **Ein Lauf, der an echten Daten abschaltet oder Mails verschickt, zählt
+  zuerst nur** — und die Zählung muss dort stehen, wo der Betreiber sie sieht
+  (Karte), nicht nur im Server-Protokoll. Ein Zähl-Lauf nimmt keine Sperre:
+  eine Sperr-Zeile wäre selbst ein Schreibvorgang.
+- **Hinweise zum Vertrag gehen nicht über die Benachrichtigungs-Einstellung.**
+  `notify()` schickt eine Mail nur bei „sofort". Für die zwei Hinweise
+  schreibt der Lauf die Glocken-Zeile mit `mail: 'skip'` und verschickt selbst.
+- **Zwei Hinweise dürfen nie im selben Augenblick fällig sein.** In der Probe
+  bekam ein Owner „noch 14 Tage" und „in drei Tagen" zusammen, weil die Frist
+  dort von Anfang an kurz war. Kurz vor dem Ende geht nur noch die Erinnerung.
+- **Eine Probe-Domain muss der Entwicklungs-Server annehmen.** Vier Prüfungen
+  waren rot, weil Vite fremde Hosts mit 403 abweist — die Probe-Domain liegt
+  jetzt unter `.localhost`. Und `/api/health` wird nie umgeleitet: als Probe
+  für „Schreibzugriff wird umgeleitet" taugt die Adresse nicht.
+- **Zwei Sessions an derselben Seite:** Die Nachbar-Session führte ihr
+  Kästchen in den Wizard zusammen, während dieser Zweig offen war. Neue
+  Schlüssel am ENDE eines Locale-Objekts ergeben einen Konflikt von drei
+  Zeilen statt einer verschobenen Datei; danach liefen alle Gates noch einmal.
+
 ### GA1 P16 — Betreiber-Dashboard: Export ohne Nachrichtentexte, frische Anmeldung, Protokoll; gemeldete Nachrichten mit Frist ✅ 2026-11-16
 
 **Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Findings

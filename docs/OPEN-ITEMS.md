@@ -97,6 +97,7 @@ beide Server-Einstellungen einschalten.
 | SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
+| PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | SI1 | **Sicherungen: Nacharbeiten.** (b) Was der stündliche Label-Abgleich nicht findet, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (c) Ein per Konsole eingetragenes Modell wird erst beim Aufruf geprüft, (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Nacharbeiten.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (b) Ticket-Kauf: zwei kleine Lücken vor einem Ausrollen, (c) die drei übrigen Umzugs-Anleitungen prüfen, (d) Kleinigkeiten. **Wartet auf:** (a) David. | Niedrig | S je Teil | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
@@ -593,6 +594,39 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
   liegen die Vorgänger-Fassungen der Skripte als Weg zurück
   (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
+
+<a id="pd1"></a>
+
+**PD1 — Plan, Testphase und eigene Domain: Nacharbeiten (aus dem Gesamtaudit, Paket P15).**
+
+- **(a) Stripe-Endpunkt neu anlegen.** Der vorhandene Endpunkt (Testbetrieb)
+  sendet in der Standard-Version des Stripe-Kontos; die feste Version bekommt
+  ein Endpunkt nur beim Anlegen. Davids Entscheidung vom 2026-11-17: beim
+  Wechsel auf echtes Geld (A2) — dort wird der Endpunkt für den echten Betrieb
+  ohnehin über `admin.pukalani.app` → Stripe neu angelegt und bekommt die
+  Version von selbst; die Karte zeigt, ob sie stimmt. Danach können die zwei
+  Stellen fallen, die beide Formen eines Ereignisses lesen
+  (`current_period_end`, Abo-Verweis der Rechnung).
+- **(b) Klicks auf den echten Seiten.** Lokal belegt, auf Production nicht
+  geklickt: der Wizard mit einem Konto, das seine Testphase schon hatte
+  („Ohne Testphase"); der Schalter „freigegeben" in der Betreiber-Tabelle; die
+  Domain-Seite eines Owners ohne Freigabe.
+- **(c) Kleinigkeiten.** Der Schonfrist-Lauf ist seit 2026-11-17 scharf
+  (Runbook: [EIGENE-DOMAIN-FREIGABE.md](runbooks/EIGENE-DOMAIN-FREIGABE.md));
+  die erste echte Frist und die ersten echten Hinweis-Mails stehen noch aus —
+  beim ersten Fall die Mail im Postfach ansehen. Der Hinweis zur Domain steht in der Glocke unter
+  „Zahlungsproblem" (er nutzt die Art `billing`; eine eigene Art bräuchte
+  einen Text je Sprache im Core). Bei offenem Tor erfährt ein Konto ohne
+  bestätigte Adresse erst im letzten Schritt des Wizards davon, und dort fehlt
+  ein Knopf „Mail erneut senden". Ein Eintrag im Zustand „Fehler", der schon
+  einmal einen Nachweis hatte, verfällt nie. Die eigene Domain der
+  Einzel-Sites (`websites`) behält die alte Regel: jeder Eintrag blockiert,
+  auch ohne Nachweis. Beitritt und Annahme einer Einladung sind unter
+  gleichzeitigen Anfragen nicht geprüft; die Kontolöschung im Control Plane
+  nimmt die Team-Sperre nicht. Im Kasten „Pläne & Limits" der Betreiber-Tabelle
+  stehen für zwei Alt-Pläne rohe Schlüssel statt Namen. Der Schalter
+  „freigegeben" kann fallen, sobald das Pukalani-Konto je Seite eine eigene
+  Sitzung ausstellt (Etappe E1).
 
 <a id="bp1"></a>
 
