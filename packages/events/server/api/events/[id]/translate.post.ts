@@ -17,6 +17,7 @@ import {
   type EventRow,
   type EventTranslateResponse,
 } from '../../../../shared/types/event'
+import { getPubliclyVisibleEvent } from '../../../utils/visibleEvent'
 
 /**
  * EINEN TERMIN ÜBERSETZEN (Davids Entscheidung 2026-08-18 — die KI-Übersetzung

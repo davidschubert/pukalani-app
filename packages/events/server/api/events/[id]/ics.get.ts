@@ -1,3 +1,5 @@
+import { getPubliclyVisibleEvent } from '../../../utils/visibleEvent'
+
 /**
  * ICS-Export (text/calendar, EIN VEVENT) — kein externer Dienst. Liest über
  * die Datentür (member/Session): nur Events, die der Aufrufer ohnehin sehen

@@ -1,4 +1,5 @@
 import type { EventDetailResponse } from '../../../shared/types/event'
+import { getPubliclyVisibleEvent } from '../../utils/visibleEvent'
 
 /**
  * Event-Detail: published/cancelled sind über die Row-Permission read(any)
