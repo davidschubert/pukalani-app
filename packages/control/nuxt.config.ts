@@ -34,7 +34,7 @@ export default defineNuxtConfig({
     // server-only! Aussteller-Schlüssel der Entitlement-Zustellung (F3):
     // Ed25519 PKCS8-DER base64 + kid — erzeugt scripts/entitlements-keygen.mjs.
     // Env: NUXT_ENTITLEMENTS_PRIVATE_KEY / NUXT_ENTITLEMENTS_KID.
-    // Leer = GET /api/platform/entitlements/:projectId antwortet 503.
+    // Leer = GET /api/control/entitlements/:projectId antwortet 503.
     entitlementsPrivateKey: '',
     entitlementsKid: '',
     // server-only! Service-Secret des Self-Service-Onboardings (SAAS-ROADMAP #1):
