@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   MINUTE_BRAKE_FALLBACK_SEC,
+  RUN_BUSY_REASON,
+  RUN_POLL_INTERVAL_MS,
+  RUN_POLL_MAX_MS,
   minuteBrakeWaitSec,
+  runPollDecision,
   startRunRespectingBrake,
+  waitForRun,
 } from '../scripts/lib/runStart.mjs'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../core/shared/runLease'
 
 /**
  * DER ABSTAND DER BEWEIS-SKRIPTE ZUR MINUTEN-BREMSE (LL1 c) — pur.
@@ -75,5 +81,84 @@ describe('startRunRespectingBrake', () => {
     expect(calls).toBe(1)
     expect(slept).toEqual([])
     expect(result.json?.reason).toBe('market_run_limit')
+  })
+})
+
+/**
+ * AUF DEN LAUF WARTEN (LL1 c) — die pure Entscheidung, mit der
+ * `market-library-compute.mjs` seit P18 den 202-Lauf abfragt.
+ */
+describe('runPollDecision', () => {
+  const T0 = '2026-11-17T10:00:00.000Z'
+
+  it('Takt und Grund hängen an denselben Werten wie Seite und Sperre', () => {
+    expect(RUN_POLL_INTERVAL_MS).toBe(RUN_LEASE_POLL_MS)
+    expect(RUN_BUSY_REASON).toBe(RUN_LEASE_BUSY_CODE)
+    // Über den rund 25 min, die ein Lauf über fünf Kandidaten rechnen kann.
+    expect(RUN_POLL_MAX_MS).toBeGreaterThan(25 * 60_000)
+  })
+
+  it('läuft ⇒ warten; fertig ⇒ done', () => {
+    expect(runPollDecision({ state: 'running', startedAt: T0 }, { startedAt: T0, elapsedMs: 1000 })).toEqual({ action: 'wait' })
+    expect(runPollDecision({ state: 'done', startedAt: T0, failed: false }, { startedAt: T0, elapsedMs: 1000 })).toEqual({ action: 'done' })
+  })
+
+  it('die Übersicht zeigt noch den VORGÄNGER ⇒ warten, auch wenn er fertig ist', () => {
+    const earlier = '2026-11-17T09:00:00.000Z'
+    expect(runPollDecision({ state: 'done', startedAt: earlier }, { startedAt: T0, elapsedMs: 1000 })).toEqual({ action: 'wait' })
+  })
+
+  it('nach 409 ohne eigenen Beginn zählt der jüngste Lauf', () => {
+    expect(runPollDecision({ state: 'done', startedAt: T0 }, { startedAt: '', elapsedMs: 1000 })).toEqual({ action: 'done' })
+  })
+
+  it('abgebrochen, gescheitert, kein Lauf ⇒ klarer Abbruch mit Grund', () => {
+    const stalled = runPollDecision({ state: 'stalled', startedAt: T0 }, { startedAt: T0, elapsedMs: 1000 })
+    expect(stalled).toMatchObject({ action: 'abort', reason: expect.stringContaining('abgebrochen') })
+    expect(runPollDecision({ state: 'failed', startedAt: T0, failed: true, failure: 'ai_endpoint_unavailable' }, { startedAt: T0, elapsedMs: 1 }))
+      .toEqual({ action: 'abort', reason: 'gescheitert (ai_endpoint_unavailable)' })
+    expect(runPollDecision({ state: 'failed', startedAt: T0, failed: true }, { startedAt: T0, elapsedMs: 1 }))
+      .toEqual({ action: 'abort', reason: 'gescheitert' })
+    expect(runPollDecision(null, { elapsedMs: 1 }).action).toBe('abort')
+    expect(runPollDecision({ state: 'none', startedAt: '' }, { elapsedMs: 1 }).action).toBe('abort')
+  })
+
+  it('der Deckel trifft nur einen Lauf, der noch läuft', () => {
+    expect(runPollDecision({ state: 'running', startedAt: T0 }, { startedAt: T0, elapsedMs: RUN_POLL_MAX_MS }))
+      .toMatchObject({ action: 'abort', reason: expect.stringContaining('Deckel') })
+    expect(runPollDecision({ state: 'done', startedAt: T0 }, { startedAt: T0, elapsedMs: RUN_POLL_MAX_MS })).toEqual({ action: 'done' })
+  })
+})
+
+describe('waitForRun', () => {
+  it('fragt im Takt nach, bis der Lauf endet, und gibt den letzten Stand zurück', async () => {
+    const T0 = '2026-11-17T10:00:00.000Z'
+    const answers = [
+      { state: 'running', startedAt: T0 },
+      { state: 'running', startedAt: T0 },
+      { state: 'done', startedAt: T0, failed: false, done: 3, total: 3 },
+    ]
+    let reads = 0
+    const slept: number[] = []
+    const result = await waitForRun(async () => answers[reads++], {
+      startedAt: T0,
+      sleep: async (ms) => { slept.push(ms) },
+      now: () => 0,
+    })
+    expect(result.action).toBe('done')
+    expect(result.run).toMatchObject({ done: 3, total: 3 })
+    expect(reads).toBe(3)
+    expect(slept).toEqual([RUN_POLL_INTERVAL_MS, RUN_POLL_INTERVAL_MS, RUN_POLL_INTERVAL_MS])
+  })
+
+  it('bricht am Deckel ab, statt ewig zu fragen', async () => {
+    let clock = 0
+    const result = await waitForRun(async () => ({ state: 'running', startedAt: 'x' }), {
+      maxMs: 20_000,
+      sleep: async (ms) => { clock += ms },
+      now: () => clock,
+    })
+    expect(result.action).toBe('abort')
+    expect(clock).toBe(20_000)
   })
 })
