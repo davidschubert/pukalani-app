@@ -897,7 +897,10 @@ const urlPlaceholder = 'https://'
             <UIcon name="i-ph-warning-circle-fill" class="size-4" />
             <!-- Plural über die ZAHL, nicht über ein benanntes Feld: nur so
                  wählt vue-i18n die Form („Ein Punkt" gegen „{count} Punkte"). -->
-            {{ t('insights.editor.rulesBlocked', shownIssues.length) }}
+            <!-- IN1 d (2026-11-17): an einem ÖFFENTLICHEN Beitrag gibt es
+                 keinen Übergang in die Redaktion mehr — gesperrt ist dort das
+                 Speichern (BE-009). Der Kasten sagt, was wirklich gilt. -->
+            {{ t(savePublishes ? 'insights.editor.rulesBlockedPublic' : 'insights.editor.rulesBlocked', shownIssues.length) }}
           </p>
           <ul class="mt-3 space-y-2">
             <li v-for="(issue, index) in shownIssues" :key="index" class="text-sm leading-snug" style="color: var(--bw-ink-soft)">

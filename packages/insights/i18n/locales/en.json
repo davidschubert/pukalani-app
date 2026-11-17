@@ -431,6 +431,7 @@
       "rules": "Checks before the desk",
       "rulesOk": "All seven checks pass.",
       "rulesBlocked": "One open point — moving to the desk is blocked. | {count} open points — moving to the desk is blocked.",
+      "rulesBlockedPublic": "One open point — the article is public, changes cannot be saved like this. | {count} open points — the article is public, changes cannot be saved like this.",
       "preview": "Preview",
       "toReview": "Send to the desk",
       "publish": "Publish",

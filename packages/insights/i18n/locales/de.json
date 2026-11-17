@@ -431,6 +431,7 @@
       "rules": "Prüfregeln vor der Redaktion",
       "rulesOk": "Alle sieben Regeln erfüllt.",
       "rulesBlocked": "Ein Punkt offen — der Übergang in die Redaktion ist gesperrt. | {count} Punkte offen — der Übergang in die Redaktion ist gesperrt.",
+      "rulesBlockedPublic": "Ein Punkt offen — der Artikel ist öffentlich, Änderungen lassen sich so nicht speichern. | {count} Punkte offen — der Artikel ist öffentlich, Änderungen lassen sich so nicht speichern.",
       "preview": "Vorschau",
       "toReview": "In die Redaktion geben",
       "publish": "Freigeben",
