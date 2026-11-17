@@ -11,7 +11,11 @@ import { readInstanceSecret, type InstanceSecretKind } from './instanceSecrets'
  *    Control Plane (Header `x-pukalani-onboarding-secret`, in BEIDE Richtungen:
  *    platform→control beim Onboarding, control→silo beim Domain-Rückruf).
  *  - `events-sweep` — der Schlüssel, mit dem ein Cron den Terminerinnerungs-
- *    Sweep anstößt (Header `x-sweep-key`).
+ *    Sweep anstieß (Header `x-sweep-key`). Die Route dazu ist seit dem
+ *    2026-11-17 gelöscht (SE1 d; erinnert wird über den Zeit-Lauf
+ *    `event-reminders`). Die Sorte bleibt in `INSTANCE_SECRET_KINDS`, weil
+ *    eine Instanz noch eine Zeile davon tragen kann; die Betreiber-Konsole
+ *    zeigt sie nicht mehr an.
  *
  * ── WARUM SIE NICHT EINFACH WIE `ai` UMZIEHEN KONNTEN ─────────────────────
  * Ein KI-Schlüssel gehört EINER Instanz: eintragen, fertig. Ein Naht-Geheimnis

@@ -91,7 +91,6 @@ const EXPECTED_COUNTS: Record<string, number> = {
   'runner-bearer': 6,
   'stripe-webhook': 1,
   'resend-webhook': 1,
-  'events-sweep': 1,
 }
 
 /** Namentlich: alles, was NICHT zur Onboarding-Naht gehört. */
@@ -105,7 +104,6 @@ const EXPECTED_NON_SEAM: Record<string, string> = {
   'packages/runner/server/api/runner/runs/[id]/transcript.post.ts': 'runner-bearer',
   'packages/billing/server/api/stripe/webhook.post.ts': 'stripe-webhook',
   'packages/core/server/api/mail/resend-webhook.post.ts': 'resend-webhook',
-  'packages/events/server/api/events/reminder-sweep.post.ts': 'events-sweep',
 }
 
 /** Der Ausweis-Aufruf je Klasse — asynchrone Gates MIT `await`. */
@@ -115,7 +113,6 @@ const GATE_CALL: Record<string, RegExp> = {
   'runner-bearer': /await\s+requireRunner\(\s*event\s*\)/,
   'stripe-webhook': /getHeader\(\s*event\s*,\s*['"]stripe-signature['"]\s*\)[\s\S]*constructEvent\(/,
   'resend-webhook': /checkResendSignature\(\s*\{[\s\S]*svix-signature/,
-  'events-sweep': /seamSecretMatches\(\s*getHeader\(\s*event\s*,\s*['"]x-sweep-key['"]\s*\)/,
 }
 
 const writeRoutes = routeFiles.filter(r => WRITE.test(r.path))
