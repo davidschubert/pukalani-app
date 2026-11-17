@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { Client, ID, TablesDB } from 'node-appwrite'
 import { afterAll, describe, expect, it } from 'vitest'
 import { createCommunityHostResolver } from '../server/utils/communityHostResolver'
@@ -28,7 +29,12 @@ describe.skipIf(!hasEnv)('createCommunityHostResolver (echte Appwrite)', () => {
     ? new TablesDB(new Client().setEndpoint(endpoint!).setProject(projectId!).setKey(apiKey!))
     : null!
   const createdIds: string[] = []
-  const stamp = Date.now()
+  // Uhrzeit PLUS Zufall: `host` ist in der Tabelle eindeutig, und vitest
+  // startet die Dateien dieses Pakets nebeneinander. Mit der Uhrzeit allein
+  // stieß `off-<ms>.test.local` einmal mit tenants-resolver.test.ts zusammen
+  // (2026-11-17, kein Fehler im Programm). Kurz gehalten, weil `tenantId`
+  // nur 36 Zeichen fasst.
+  const stamp = `${Date.now().toString(36)}${randomBytes(3).toString('hex')}`
   const TENANT_A = `t-hostres-a-${stamp}`
   const TENANT_B = `t-hostres-b-${stamp}`
   const TENANT_OFF = `t-hostres-off-${stamp}`
