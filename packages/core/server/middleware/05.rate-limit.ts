@@ -864,6 +864,24 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
    */
   { re: /^(POST|PATCH|DELETE) \/api\/market\/profiles\/[^/]+\/competitors/, bucket: 'market:competitors', max: WRITE_MAX },
   /**
+   * DIE KI-WEGE DER INSIGHTS-REDAKTION (IN1 d, 2026-11-17): Entwurf,
+   * Übersetzung und Vorschlag für den Änderungshinweis bezahlen je Klick einen
+   * Modell-Aufruf, der Video-Brief einen Video-Aufruf. Bis hierher bremste sie
+   * nur das Kontingent IM Layer (10 je Stunde, 50 je Tag und Konto —
+   * `packages/insights/shared/insightsAiLimits.ts`) — und das zählt erst, wenn
+   * Sitzung, Rechte und Zeile schon gelesen sind. Diese Zeilen zählen je
+   * Anschluss und DAVOR, wie bei jedem anderen bezahlten Weg (Regel 3 im Kopf
+   * von `.claude/rules/appwrite.md`, „BREMSEN").
+   *
+   * 6/min ist die Zahl von `brand:generate` und `tickets:triage` (dieselbe
+   * Klasse: ein Mensch klickt und liest dann ein Ergebnis). ZWEI Eimer, weil
+   * es zwei Arbeitsplätze sind: wer in der Merkliste Briefe anstösst, soll
+   * sich damit nicht den Editor sperren. Die GET-Routen daneben (Stand des
+   * Briefs abfragen) stehen bewusst nicht hier.
+   */
+  { re: /^POST \/api\/insights\/posts\/[^/]+\/(draft|translate|change-note)$/, bucket: 'insights:ai', max: 6 },
+  { re: /^POST \/api\/insights\/watchlist\/[^/]+\/brief$/, bucket: 'insights:brief', max: 6 },
+  /**
    * INHALTE ÜBERSETZEN (2026-08-17) — dieselbe Kostenklasse wie eine Zeile
    * darüber, nur häufiger erreichbar: jeder Klick schickt bis zu 10.000 Zeichen
    * an den KI-Anbieter und bezahlt die Antwort. Beide Routen haben SCHON eine
