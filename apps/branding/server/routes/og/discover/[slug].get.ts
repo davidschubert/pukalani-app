@@ -49,6 +49,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 404, statusText: 'Not found' })
   }
 
+  // NOT-AUS (WL1 b): das Bild liest dieselben Daten wie `/api/discover` und
+  // liegt als Seiten-Route ausserhalb der `apiPrefixes` — es fragt den
+  // Schalter deshalb selbst. Aus ⇒ 404, wie die Galerie.
+  await requireProduct(event, 'brand')
+
   const row = await loadPublishedBrandPublication(event, slug)
   if (!row) throw createError({ status: 404, statusText: 'Not found' })
 

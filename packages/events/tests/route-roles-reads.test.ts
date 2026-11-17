@@ -80,9 +80,8 @@ const READ_GLOBALS = {
   attendeesFor,
   attendeeAvatarsFor,
   resolveAvatars: async () => new Map<string, string | null>(),
-  // Wartung im Hintergrund (best-effort, eigene Tests in event-reminders-sweep /
-  // event-recurrence) — nicht Gegenstand dieser Probe.
-  sweepEventReminders: async () => {},
+  // Wartung im Hintergrund (best-effort, eigene Tests in event-recurrence) —
+  // nicht Gegenstand dieser Probe.
   topUpSeries: async () => {},
 }
 
@@ -213,60 +212,6 @@ describe('GET /api/events/:id/ics (Kalender-Datei)', () => {
       expect(firstOperatorCall(door.calls)).toBe(-1)
     })
   }
-})
-
-// ── POST /api/events/reminder-sweep ─────────────────────────────────────────
-
-describe('POST /api/events/reminder-sweep (Dienst-Route mit Naht-Geheimnis)', () => {
-  const load = () => import('../server/api/events/reminder-sweep.post')
-
-  /** Technik: Konfiguration, Kopfzeile, Zähler für den Lauf. */
-  function sweepGlobals(configured: string, header: string | undefined) {
-    const sweeps = { count: 0 }
-    const globals = {
-      useRuntimeConfig: () => ({ eventsSweepKey: configured, instanceSecretsKey: '', public: {} }),
-      getHeader: (_e: unknown, name: string) => (name === 'x-sweep-key' ? header : undefined),
-      sweepEventReminders: async () => { sweeps.count += 1 },
-    }
-    return { sweeps, globals }
-  }
-
-  it('ohne Geheimnis in der Anfrage: 401, kein Lauf, Datentür zu', async () => {
-    const { sweeps, globals } = sweepGlobals('probe', undefined)
-    const run = await probeRoute(load, { who: 'guest', globals })
-    expect(run.status).toBe(401)
-    expect(sweeps.count).toBe(0)
-    expect(run.doorOpened).toBe(false)
-  })
-
-  it('falsches Geheimnis: 401, kein Lauf, Datentür zu', async () => {
-    const { sweeps, globals } = sweepGlobals('probe', 'falsch')
-    const run = await probeRoute(load, { who: 'guest', globals })
-    expect(run.status).toBe(401)
-    expect(sweeps.count).toBe(0)
-    expect(run.doorOpened).toBe(false)
-  })
-
-  it('kein Geheimnis eingerichtet: 404, kein Lauf', async () => {
-    const { sweeps, globals } = sweepGlobals('', 'probe')
-    const run = await probeRoute(load, { who: 'guest', globals })
-    expect(run.status).toBe(404)
-    expect(sweeps.count).toBe(0)
-  })
-
-  it('angemeldetes Konto ohne Geheimnis: 401 — ein Konto ersetzt das Geheimnis nicht', async () => {
-    const { sweeps, globals } = sweepGlobals('probe', undefined)
-    const run = await probeRoute(load, { who: 'owner', globals })
-    expect(run.status).toBe(401)
-    expect(sweeps.count).toBe(0)
-  })
-
-  it('richtiges Geheimnis: der Lauf startet genau einmal', async () => {
-    const { sweeps, globals } = sweepGlobals('probe', 'probe')
-    const run = await probeRoute(load, { who: 'guest', globals })
-    expect(run.status).toBe(200)
-    expect(sweeps.count).toBe(1)
-  })
 })
 
 // ── POST /api/events/:id/translate ──────────────────────────────────────────

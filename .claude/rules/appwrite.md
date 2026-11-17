@@ -113,7 +113,11 @@ paths:
   Bestätigung, Zwei-Faktor, `createSession` aus einem Token. NICHT schließbar:
   OAuth (Google) — dafür gibt es die Nachfrage nach der Zustimmung. Probe von
   außen, ohne ein Konto anzulegen: Anmelden direkt bei Appwrite mit erfundenen
-  Zugangsdaten ⇒ 501 (zu) statt 401 (offen). Stand je Projekt und Rückweg:
+  Zugangsdaten ⇒ 501 (zu) statt 401 (offen). Genau das fragt seit 2026-11-17
+  der tägliche Wächter je Projekt (`scripts/ops/verify-auth-methods.mjs`,
+  `pnpm ops:auth-methods`; rot bei „offen" und bei einer unerwarteten
+  Antwort, Störung ist „keine Aussage") — ein NEUES Projekt gehört in
+  `PROJECTS` dort. Stand je Projekt und Rückweg:
   docs/runbooks/ANMELDE-REGELN.md.
 - BREMSEN (SEC-003/BE-002, seit 2026-11-13): Auth-Routen laufen über den
   Admin-Client, Appwrites eigene Grenzen gelten dort NICHT — gebremst wird in

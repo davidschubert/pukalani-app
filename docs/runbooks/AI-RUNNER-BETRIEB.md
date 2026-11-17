@@ -126,8 +126,9 @@ sind, fasst er nie an. Scheitert das Löschen einer Datei, bleibt die Zeile
 unverändert und der nächste Takt versucht es erneut.
 
 Eigener Schalter `pukalani.runner.textRetention`: `off` · `count` (zählt nur)
-· `apply` (entfernt). In `apps/control` steht er auf `count`; auf `apply` erst
-mit Davids Ja zur gezählten Zahl. Die Zahl steht im Log der App in der Zeile
+· `apply` (entfernt). In `apps/control` steht er seit dem 2026-11-17 auf
+`apply` (Davids Ja zur gezählten Zahl: 0 fällige Läufe an diesem Tag); der
+Rückweg ist `count`. Die Zahl steht im Log der App in der Zeile
 `retention.run` mit `job: "run-text-retention"` (`expired` = fällige Läufe;
 `deleted` zählt geschwärzte Läufe, nicht gelöschte Zeilen). Von Hand:
 `POST /api/runner/retention/texts` (angemeldet mit `runner.manage`); ohne Body

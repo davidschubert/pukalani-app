@@ -36,9 +36,6 @@ const source = (file: string) => readFileSync(`${apiDir}/${file}`, 'utf8')
 /**
  * BEWUSST AUSGENOMMEN — alles, was kein MITGLIEDS-Schreibweg ist:
  *
- *  - der Reminder-Sweep: ein Betreiber-Vorgang hinter `NUXT_EVENTS_SWEEP_KEY`,
- *    der nur einen Versand-Merker auf fremde Zeilen schreibt. Eine verschluckte
- *    Terminerinnerung wäre der falsche Preis für eine Wartung.
  *  - die MODERATIONS-Routen (F15, 2026-08-03; Schwärzen kam mit F46 dazu):
  *    Ausblenden, Wiederherstellen und Schwärzen laufen hinter `events.moderate`
  *    mit der Türklinke `operator` — sie sind ein Urteil über fremden Inhalt,
@@ -50,7 +47,6 @@ const source = (file: string) => readFileSync(`${apiDir}/${file}`, 'utf8')
  *    seine Moderations-Routen ausnimmt" verwiesen hat.
  */
 const OPERATOR_ROUTES = new Set([
-  'reminder-sweep.post.ts',
   '[id]/hide.post.ts',
   '[id]/restore.post.ts',
   '[id]/redact.post.ts',

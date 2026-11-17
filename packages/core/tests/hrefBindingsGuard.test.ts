@@ -88,8 +88,6 @@ const EXCEPTIONS: Record<string, string> = {
     'stripeCustomerUrl baut im Code eine feste https-Adresse auf dashboard.stripe.com.',
   'packages/brand/app/pages/brand/[profileId]/kit.vue :: row.source':
     'Lizenz-Quellen kommen aus dem Schriften-Katalog im Code (brandFontPair), nicht aus der Zeile.',
-  'packages/comments/app/components/CommentSection.vue :: config.public.appUrl || \'/\'':
-    'Runtime-Konfiguration des Deployments, kein Nutzerinhalt.',
   'packages/events/app/components/EventDetail.vue :: mapsUrl':
     'Im Code gebaute https-Adresse der Kartensuche, Adressdaten nur URL-kodiert im Query.',
   'packages/market/app/components/MkBrandScore.vue :: href':

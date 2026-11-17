@@ -25,7 +25,7 @@ steht zusammen; bei jedem Eintrag steht, **worauf er wartet**.
 Alle 16 stehen im [DECISION-LOG](DECISION-LOG.md) (2026-11-16) und in den
 Einträgen unten; diese sagen jetzt, was zu bauen ist. Kurzfassung:
 **AL1** Aktivitätsliste mit Konto-Ereignissen füllen · **KE3** Aufräum-Lauf
-für Profilbilder ohne Profil · **KU1** „kostenlos" und „Mitglieder" werden
+für Profilbilder ohne Profil (gebaut, COMPLETE „N04") · **KU1** „kostenlos" und „Mitglieder" werden
 eine Zugangsart (gebaut, COMPLETE „N03"); Kurs-Vorschauen bleiben auffindbar
 (geschlossen) · **MM1** Likes unter geschlossenen Themen sperren; Übersetzen
 nur für Mitglieder (beides gebaut, COMPLETE „N03") ·
@@ -70,16 +70,16 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| EL1 | **Export und Löschung: Nacharbeiten.** (c) Fristen für Einträge ohne Konto bauen (entschieden 2026-11-15: Warteliste 30/90 Tage/12 Monate, Erstgespräch und Protokoll 12 Monate), (d) Kleinigkeiten. Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | (c) M, (d) S | Nein | [Einzelheiten](#el1) |
+| EL1 | **Export und Löschung: Reste.** Alte Benachrichtigungen behalten ihren Textauszug; das Aufräumen fremder Benachrichtigungen gehört als eine Funktion in den Core. Datenschutztexte (b): DT1. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#el1) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Nacharbeiten.** (b) Den Auftragstext baut weiter der Browser, (c) Lauf-Zeilen und Anhänge haben keine Frist, (d) alte Tickets bleiben „ungeprüft", (e) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ru1) |
+| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner), (d) alte Tickets bleiben „ungeprüft", (e) drei Kleinigkeiten am Dienst. Klick-Probe (a): KR1. **Wartet auf:** nichts. | Niedrig | (b) M, Rest S | Nein | [Einzelheiten](#ru1) |
+| WL1 | **Warteliste: der Bestätigungs-Link hebt eine Absage auf.** Meldet sich eine abgelehnte oder eingeladene Adresse erneut an und klickt den neuen Link, steht sie wieder auf „bestätigt". Gefunden beim Bau der Fristen. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/brand/server/api/brand/waitlist/confirm.post.ts` |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | AL1 | **Aktivitätsliste in der Admin-Nutzeransicht füllen** (entschieden: nicht entfernen). Quelle sind die vorhandenen Konto-Ereignisse (`readAccountEvents`, Core); für die Betreiber-Sicht die Aktionsliste erweitern. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/admin/server/api/admin/users/[id]/index.get.ts` |
-| KE3 | **Aufräum-Lauf für Profilbilder ohne Profil** (entschieden). Heute bleibt ein hochgeladenes Bild liegen, wenn das Speichern danach scheitert. Kein Leck, aber Ablage-Müll. **Wartet auf:** nichts. | Niedrig | S | Nein | `packages/core/server/api/storage/[bucket]/index.post.ts` |
 | MM1 | **Mitmachen nur für Mitglieder: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (e) Zwei Kleinigkeiten ohne Auftrag (Zusage zu einem ausgeblendeten Termin, Sprache im Link der Benachrichtigungs-Mails) und ein Test, der noch in keinem Lauf mitfährt. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal durch die neue Prüfung schicken, (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten selbst ist gebaut (COMPLETE „N05"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
 | PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
@@ -91,10 +91,10 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
-| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten.** Seit 2026-11-16 stehen Webserver-Vorlagen und Zeitpläne im Repo, ein täglicher Blick vergleicht sie mit den Servern, und die App sendet die Schutz-Kopfzeilen selbst (COMPLETE „GA1 P23"). Offen: (a) Berichte der Skript-Regel einsammeln und sie scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) Umlauf der pm2-Logs, (d) der Erinnerungs-Lauf kennt gesperrte Communities nicht, (e) Kleinigkeiten und Sicherungen löschen, (f) eigene Domain einer Einzel-Site: zwei Stellen noch nicht umgestellt. **Wartet auf:** (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil, (a) M | Nein | [Einzelheiten](#se1) |
+| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs einschalten, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) und (d) Davids Ja für den Server, (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil | **Ja: (c), (d)** | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
-| SV1 | **Schreiben nur über den Server: Nacharbeiten.** Seit 2026-11-16 schreibt Inhalte nur noch unser Server, und ein Konto entsteht nur noch über unsere Anmeldung (COMPLETE „GA1 P13"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) ein täglicher Blick von außen auf die Anmelde-Wege der Datenbank, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
-| WL1 | **Wächter mit eigenen Listen: Nacharbeiten.** Seit 2026-11-16 lesen die Prüfungen ihre Listen aus dem Code (COMPLETE „GA1 P20"). Offen: (a) 37 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (b) Vorschaubilder und Sitemap der Galerie folgen dem Not-Aus nicht, (c) eine Adresse des Control Plane liegt außerhalb seines Not-Aus, (d) Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
+| SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
+| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) zwei Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
@@ -379,23 +379,15 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
   pukalani.studio brauchte keine Änderung (keine Konten, keine Prüfergebnisse).
   Auf branding.supply gibt es KEINE Sicherungskopie (kein Bucket eingetragen),
   der Text nennt dort deshalb keine.
-- **(c) Fristen für Einträge ohne Konto bauen.** Entschieden am 2026-11-15
-  (DECISION-LOG): Warteliste nie bestätigt 30 Tage, eingeladen oder abgelehnt
-  90 Tage, noch wartend spätestens 12 Monate; Erstgespräch-Anfragen
-  (branding.supply und pukalani.studio) 12 Monate; Konto-Protokoll 12 Monate.
-  Noch zu bauen: je ein stündlicher Lauf nach dem Muster der vorhandenen
-  (erst zählen, dann löschen), danach die Datenschutztexte nachziehen.
-- **(d) Kleinigkeiten.** Benachrichtigungen zu Kommentaren, die VOR dem
-  2026-11-15 entstanden, behalten ihren Textauszug, auch wenn der Kommentar
-  gelöscht wird (neue werden mit aufgeräumt); Erinnerungen an einen Termin
-  nennen dessen alten Titel. Ein Ausfall eines Laufs steht nur im Log der App
-  (der Alarm ist ein eigenes Paket). Die KI-Einordnung von Tickets wertet
-  nicht aus, ob die Antwort abgeschnitten wurde. Die Datei-Auslieferung der
-  Tickets reicht den gespeicherten Dateityp durch. Wie viele alte Kopien in
-  den Projekten `admin`, `branding` und `portfolio` liegen, ließ sich von
-  außen nicht zählen (der Lauf der jeweiligen App räumt sie). Das Aufräumen
-  fremder Benachrichtigungen gehört als eine Funktion in den Core statt in
-  zwei Layer. Referenz: [EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
+- **(d) Reste.** Benachrichtigungen zu Kommentaren, die VOR dem 2026-11-15
+  entstanden, behalten ihren Textauszug, auch wenn der Kommentar gelöscht wird
+  (neue werden mit aufgeräumt); Erinnerungen an einen Termin nennen dessen
+  alten Titel. Wie viele alte Kopien in den Projekten `admin`, `branding` und
+  `portfolio` liegen, ließ sich von außen nicht zählen (der Lauf der
+  jeweiligen App räumt sie). Das Aufräumen fremder Benachrichtigungen gehört
+  als eine Funktion in den Core statt in zwei Layer. Die Fristen für Einträge
+  ohne Konto (früher Teil c) sind gebaut und eingeschaltet (COMPLETE „N04").
+  Referenz: [EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
 
 <a id="ru1"></a>
 
@@ -409,22 +401,26 @@ Teil (c) und die Kleinigkeiten aus (d) sind am 2026-11-17 erledigt (COMPLETE
 - **(b) Den Auftragstext baut der Browser.** Der Server bestimmt aus dem
   Ticket, ob ein Lauf als geprüft gilt; den Text selbst (Titel, Beschreibung,
   offene Checkliste) setzt weiter die Seite zusammen und schickt ihn mit.
-  Sauberer wäre, der Server baute ihn aus der Ticket-Zeile.
-- **(c) Was keine Frist hat.** Die Zeilen der Läufe (Auftragstext, Bericht)
-  und Anhänge von Läufen bleiben liegen; es gibt keinen Löschen-Knopf je Lauf,
-  und der Layer hat keinen Beitrag zu Auskunft und Löschung eines Kontos
-  (`runs.createdBy`, nur Betreiber-Konten). Auf dem Rechner bleiben die
-  Arbeits-Zweige alter Läufe und das Log des Dienstes.
+  Sauberer wäre, der Server baute ihn aus der Ticket-Zeile. Eingeschätzt am
+  2026-11-17: kein kleiner Umbau. Der Zusammenbau (`TicketModalRunner.vue`)
+  und der Checklisten-Leser (heute nur im Browser, eine zweite Fassung in
+  `ticketTriage.ts`) müssten nach `packages/tickets/shared/` ziehen, der
+  Vertrag `resolveRunSubjectTrust` den Text mitliefern (nur `apps/control`
+  kennt beide Layer), die Anlege-Route ihn nicht mehr aus der Anfrage nehmen;
+  dazu ein Rollen-Test für die Anlege-Route. Rund sechs Dateien plus Tests.
+- **(c) Was keine Frist hat.** Texte und Anhänge beendeter Läufe haben seit
+  dem 2026-11-17 eine Frist (12 Monate, eingeschaltet; COMPLETE „N04"). Ohne
+  Frist bleiben: ein Lauf, der nie beendet wurde (Entwurf, oder er hängt auf
+  „läuft"), und auf dem Rechner die Arbeits-Zweige alter Läufe und das Log
+  des Dienstes.
 - **(d) Alte Tickets.** Tickets von vor dem 2026-11-14 haben keine Herkunft
   und gelten als ungeprüft (auf Production acht, alle geschlossen). Einen
   Knopf „als geprüft übernehmen" gibt es nicht; der Weg ist ein neues Ticket.
 - **(e) Kleinigkeiten.** Ein ungeprüfter Lauf wird vom Dienst weiter
-  committet (nur die Testbefehle entfallen). Die Herkunft wird beim Bearbeiten
-  gelesen und dann geschrieben, ohne Sperre dazwischen. `extraPath` in der
-  Einstellungs-Datei des Dienstes verwirft ungültige Einträge still. Zwei alte
-  Läufe mit Rückfrage tragen Testbefehle, die heute nicht in der Liste stehen;
-  ihre Fortsetzung wird abgelehnt. Der Schlüssel der Migrations-Ablage für
-  `admin` kann weder Dateien noch Konten lesen (siehe PB1).
+  committet (nur die Testbefehle entfallen). Zwei alte Läufe mit Rückfrage
+  tragen Testbefehle, die heute nicht in der Liste stehen; ihre Fortsetzung
+  wird abgelehnt. Der Schlüssel der Migrations-Ablage für `admin` kann weder
+  Dateien noch Konten lesen (siehe PB1).
 
 <a id="mm1"></a>
 
@@ -505,7 +501,7 @@ Abgeglichen am 2026-11-13 mit dieser Liste, den Audit-Paketen und den laufenden
 Sitzungen: an keinem der Punkte unten wird gerade gearbeitet. Schon woanders
 eingeplant und deshalb NICHT hier: der Wächter für Rechte an TABELLEN (Paket
 P13, „Schreiben nur noch über den Server") und hochgeladene Bilder, die
-ohne gespeichertes Profil liegen bleiben (Punkt KE3 oben). Beim Abgleich erledigt: der echte
+ohne gespeichertes Profil liegen bleiben (KE3, gebaut am 2026-11-17 — COMPLETE „N04"). Beim Abgleich erledigt: der echte
 Upload auf `account.pukalani.app` ist gemessen (COMPLETE „GA1 P01", Beweis h),
 und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 `apps/comments/e2e/themes-visual.spec.ts`, die mit Absicht nur lokal laufen.
@@ -657,32 +653,26 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 
 <a id="wl1"></a>
 
-**WL1 — Wächter mit eigenen Listen: Nacharbeiten (aus dem Gesamtaudit, Paket P20).**
+**WL1 — Wächter mit eigenen Listen: Reste (aus dem Gesamtaudit, Paket P20).**
+Erledigt am 2026-11-17 (COMPLETE „N07"): (b) Vorschaubilder und Sitemap der
+Galerie folgen dem Not-Aus, (c) die Adresse des Control Plane liegt unter
+`/api/control`, aus (d) der Test für `check:permissions`, ein Leser für die
+KI-Aufrufstellen und das wirkungslose Präfix von `onboarding`.
 
-- **(a) 37 Einstellungen ohne Bewertung.** Der Code liest 71 `NUXT_…`-Namen;
-  31 sind auf mindestens einer Site Pflicht, vier mit Grund „keine Pflicht",
-  37 stehen als Bestand in `ENV_UNDECIDED`
-  (`scripts/ops/site-env-decisions.mjs`). Für jeden entscheiden: Pflicht auf
+- **(a) 36 Einstellungen ohne Bewertung.** Sie stehen als Bestand in
+  `ENV_UNDECIDED` (`scripts/ops/site-env-decisions.mjs`); seit dem 2026-11-17
+  eine weniger, weil `NUXT_EVENTS_SWEEP_KEY` mit seiner Route aus dem Code
+  ging. Für jeden entscheiden: Pflicht auf
   welcher Site, oder warum nicht. Braucht einen Blick auf die Namen in den
   Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja. Die
   Liste darf nur kürzer werden; der Test hält die Zahl fest.
-- **(b) Galerie neben dem Not-Aus.** Die Routen unter `/api/discover` folgen
-  seit P20 dem Abschalter von `brand`. Die Vorschaubilder (`/og/…`) und die
-  Sitemap von `apps/branding` lesen dieselben Daten direkt und antworten
-  weiter. Zu tun: in beiden Routen `isProductEnabled(event, 'brand')` fragen.
-- **(c) `/api/platform/entitlements/<projectId>`** gehört dem Control Plane,
-  liegt aber im selben Ordner wie eine Core-Route und steht deshalb als
-  begründete Ausnahme in `scripts/lib/manifest-routes.mjs`. Zu tun: unter
-  `/api/control/…` umziehen — alle Sites rufen die Adresse ab, also erst die
-  neue Adresse ausliefern, dann die Abrufer umstellen, dann die alte löschen.
-- **(d) Kleinigkeiten.** `check:permissions` hat keinen Test (nur Lauf und
-  Gegenprobe); die KI-Aufrufstellen stehen in zwei Scannern
-  (`scripts/check-ai-routing.mjs`, `packages/brand/tests/brandAiCallSites.test.ts`);
-  der Env-Wächter prüft, ob ein Name in der Server-Datei steht, nicht, ob
-  dahinter ein Wert steht; `onboarding` nennt ein `apiPrefixes`-Präfix, das
-  nichts bewirkt (Stufe `foundation` ist nicht abschaltbar); das Dashboard
-  fragt die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
-  (antwortet dann 404, das Feld bleibt leer).
+- **(d) Kleinigkeiten.** Der Env-Wächter prüft, ob ein Name in der
+  Server-Datei steht, nicht, ob dahinter ein Wert steht. Das Dashboard fragt
+  die Moderations-Liste auch dann ab, wenn `comments` abgeschaltet ist
+  (antwortet dann 404, das Feld bleibt leer; die Stelle liegt in
+  `packages/admin/app/pages/dashboard/index.vue`). Die festen Seiten
+  `/discover` und `/insights` stehen in der Sitemap von branding.supply auch
+  dann, wenn das Produkt abgeschaltet ist (sie antworten weiter, nur leer).
 
 <a id="vt1"></a>
 **VT1 — Vertretung benennen (aus dem Gesamtaudit, Paket P24, OPS-010).**
@@ -749,27 +739,50 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 
 <a id="se1"></a>
 
-**SE1 — Server-Einstellungen und Schutz-Kopfzeilen: Nacharbeiten (aus dem Gesamtaudit, Paket P23).**
+**SE1 — Server-Einstellungen und Schutz-Kopfzeilen: Reste (aus dem Gesamtaudit, Paket P23).**
+Erledigt am 2026-11-17 (COMPLETE „N07"): die Annahme-Route für die Berichte
+der Skript-Regel samt Zahl im täglichen Blick, die tote Erinnerungs-Route,
+das Zähl-Skript für umgelaufene Logs, die eigene Domain für Stripe-Rückwege
+und den Link im Kommentar-Bereich.
 
-- **(a) Skript-Regel (CSP) scharf stellen.** Heute sendet jede Seite eine
-  Regel, die nur beobachtet (`Content-Security-Policy-Report-Only`), und
-  niemand sammelt die Berichte ein: ein Verstoß steht nur in der
-  Browser-Konsole. Nächste Schritte: eine eigene, gebremste Annahme-Route für
-  Berichte (nicht der Eingang für Browser-Fehler — Browser-Erweiterungen
-  würden ihn fluten), dann Nonces statt `'unsafe-inline'`, dann scharf.
+- **(a) Skript-Regel (CSP) scharf stellen.** Die Regel beobachtet weiter nur.
+  Nächste Schritte, in dieser Reihenfolge: (1) eine Woche lang im täglichen
+  Blick die Zahl „Skript-Regel" je App lesen und jeden Bericht ansehen
+  (`grep '"event":"csp.report"'` im Fehler-Log der App) — jede bekannte
+  fremde Quelle gehört in `knownScriptOrigins()`; (2) Nonces statt
+  `'unsafe-inline'`, weiter beobachtend — mit Absicht erst danach: mit Nonces
+  meldet der Browser auch jedes Skript, das eine Erweiterung direkt in die
+  Seite schreibt, als `inline` ohne erkennbare Quelle, und das begrübe die
+  erste Messung; (3) scharf stellen, wenn eine Woche keinen echten Verstoß
+  zeigt (Davids Entscheidung). Nicht geprüft: Firefox und Safari.
 - **(b) HSTS auch für Unter-Adressen.** Gesendet wird ein Jahr, je Host, ohne
   `includeSubDomains`. Für `pukalani.app` ginge der Zusatz erst, wenn JEDE
   Unter-Adresse der Zone sicher per HTTPS antwortet (auch die, die nicht diese
-  App bedient). Kundendomains bleiben ohne.
-- **(c) Umlauf der pm2-Logs.** Sie wachsen ohne Grenze, und je Prozess liegen
-  alte Dateien früherer Nummern daneben. Ein Umlauf ist erst sauber, wenn das
-  Zähl-Skript (`ops/app-watch-counts.mjs`) auch die umgelaufene Datei liest —
-  sonst meldet der tägliche Blick Zeit-Läufe als fehlend.
-- **(d) Erinnerungs-Lauf.** Der Zeit-Lauf `event-reminders` geht alle
-  Communities durch, kennt aber weder den Plan einer Community noch eine
-  Sperre wegen Missbrauchs (beides weiß nur das Control Plane). Die Route
-  `POST /api/events/reminder-sweep` und `NUXT_EVENTS_SWEEP_KEY` ruft niemand
-  mehr; sie können weg, ebenso die Datei `~/events-sweep.log` auf dem Server.
+  App bedient). Kundendomains bleiben ohne. Lässt sich nicht zurücknehmen
+  (Browser merken es sich ein Jahr) — nur mit Davids Entscheidung.
+- **(c) Umlauf der pm2-Logs einschalten.** Vorlage (`ops/logrotate-pm2.conf`)
+  und Anleitung stehen im Repo
+  ([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), „Umlauf der
+  pm2-Logs"), das Zähl-Skript liest umgelaufene Dateien. Einschalten ist ein
+  kleiner Pull Request plus eine Nacht — mit Davids Ja, und erst, wenn alle
+  sechs Sites das neue Zähl-Skript tragen (es kommt mit dem nächsten
+  Ausliefern der jeweiligen App).
+- **(d) Erinnerungs-Lauf.** Die Route ist aus dem Code. Auf dem Server liegen
+  noch die Einstellung `NUXT_EVENTS_SWEEP_KEY` und die Datei
+  `~/events-sweep.log` — entfernen mit Davids Ja. In der Betreiber-Konsole
+  steht `events-sweep` noch als Auswahl und Text (`packages/admin`,
+  `INTEGRATION_IDS`, zwei Sprachdateien) und im Core als Schlüssel-Sorte; die
+  Seite zeigt den Eintrag nicht mehr an. Der Zeit-Lauf `event-reminders`
+  erinnert auch in einer Community, die wegen Missbrauchs vom Netz genommen
+  ist (der Link in der Erinnerung führt dann auf eine Seite, die es nicht
+  gibt). Bewertet: der PLAN spielt keine Rolle (eine Erinnerung ist kein neuer
+  Inhalt, und eine Zahlungs-Sperre soll sie laut Code-Kommentar nicht
+  verschlucken) — nur die Sperre wegen Missbrauchs und das Stilllegen.
+  Empfehlung: ein Vertrag im Core wie `resolveCommunityHosts`, der für eine
+  Liste von Communities die NICHT erreichbaren nennt (stillgelegt oder wegen
+  Missbrauchs gesperrt), bedient vom Control Plane mit derselben Abfrage;
+  ohne Antwort wird erinnert. Der vorhandene Vertrag reicht dafür nicht: er
+  unterscheidet „nicht erreichbar" nicht von „keine Antwort".
 - **(e) Kleinigkeiten.** Sicherungen nach zwei Wochen löschen (ab 2026-11-30):
   auf dem App-Server `/home/ploi/logs/nginx/*.vorher-p23*` und
   `/home/ploi/portfolio.pukalani.app/.env.vorher-p23*`, auf dem Appwrite-Server
@@ -782,21 +795,11 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
   `Connection 'upgrade'` fest. Die Umleitungs-Blöcke des Webservers schreiben
   weiter ins allgemeine Zugriffs-Log (jetzt 14 Tage). Der Vergleich der
   Webserver-Einstellung läuft nur auf dem App-Server (der Appwrite-Server hat
-  seinen Webserver im Container). Rückkehr-Adressen von Stripe fallen ohne
-  `i18n.baseUrl` weiter auf den Namen der Anfrage zurück (Nachtrag zu
-  SEC-010).
-
-- **(f) Eigene Domain einer Einzel-Site.** Mails, Digest und Rückwege nehmen
-  seit 2026-11-16 die im Dashboard aktive Domain (COMPLETE „GA1 P23", Punkt 8).
-  Bewiesen an der ganzen Kette, lokal: Einzel-Site mit der Standard-Adresse als
-  `NUXT_PUBLIC_APP_URL`, Control Plane daneben ⇒ der Link in der Reset-Mail
-  beginnt mit der eigenen Domain; Control Plane aus ⇒ Rückfall auf die
-  Standard-Adresse. Auf dem Server steht `NUXT_PUBLIC_APP_URL` von
-  pukalani.studio wieder auf der Standard-Adresse (der Rückfall). Offen, wer
-  mag: auf pukalani.studio einmal „Passwort vergessen" mit der eigenen Adresse
-  auslösen — der Link muss mit `https://pukalani.studio` beginnen. Nicht
-  umgestellt: der Link in `CommentSection.vue` (nur die Test-App mit eigener
-  Domain) und die Rückkehr-Adressen von Stripe.
+  seinen Webserver im Container).
+- **(f) Eigene Domain einer Einzel-Site.** Offen, wer mag: auf pukalani.studio
+  einmal „Passwort vergessen" mit der eigenen Adresse auslösen — der Link muss
+  mit `https://pukalani.studio` beginnen. Die Stripe-Rückwege sind nur mit
+  gestellten Stripe-Antworten geprüft.
 
 <a id="ll1"></a>
 
@@ -849,7 +852,9 @@ Marktvergleichs warten die Minuten-Bremse selbst ab.
 
 <a id="sv1"></a>
 
-**SV1 — Schreiben nur über den Server: Nacharbeiten (aus dem Gesamtaudit, Paket P13).**
+**SV1 — Schreiben nur über den Server: Reste (aus dem Gesamtaudit, Paket P13).**
+Erledigt am 2026-11-17 (COMPLETE „N07"): der tägliche Blick von außen auf die
+Anmelde-Wege der vier Projekte.
 
 - **(a) Eine Klick-Probe** (KR1, Nummer 9). Auf den echten Seiten ist am
   2026-11-16 gezeigt: Beitrag, Kommentar und Stimme anlegen, ändern und
@@ -863,15 +868,14 @@ Marktvergleichs warten die Minuten-Bremse selbst ab.
   geprüft). Antwortet eine Anmeldeseite mit „hier gerade nicht verfügbar":
   Schalter „Email OTP" im Projekt wieder einschalten
   ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)) und hier melden.
-- **(b) Kein täglicher Blick auf die Anmelde-Wege.** Die sechs Schalter sind
-  eine Einstellung in der Verwaltung der Datenbank, kein Code: niemand merkt,
-  wenn einer wieder an ist, und ein neues Projekt braucht sie von Hand. Der
-  Aufruf zum Prüfen von außen steht im Runbook; er gehört als Schritt in den
-  täglichen Wächter (vier Projekte, je ein Aufruf mit erfundenen
-  Zugangsdaten). Die lokale Datenbank und die der CI haben die Schalter AN,
-  Tests laufen dort also unter anderen Bedingungen als Production. Der
-  Schalter „JWT" ist an geblieben; unser Live-Token entsteht über den
-  Schlüssel, er wird vermutlich nicht gebraucht (erst prüfen, dann abschalten).
+- **(b) Anmelde-Wege.** Der Wächter sieht von außen nur den Schalter
+  „Email/Password" (die fünf anderen würden bei offenem Weg ein Konto anlegen
+  oder eine Mail schicken). Der erste Lauf gegen die echten Projekte ist der
+  nächste tägliche Lauf. Der Schalter „JWT" ist bewertet: nichts im Code hängt
+  daran — er kann aus (ein Klick je Projekt in der Verwaltung, danach die
+  Live-Verbindung auf einer Seite ansehen). Die lokale Datenbank und die der
+  CI haben die Schalter AN, Tests laufen dort also unter anderen Bedingungen
+  als Production.
 - **(c) Das direkte Lesen.** Ein Konto liest direkt bei der Datenbank weiter
   jede Zeile, für die es ein Leserecht trägt, und immer die ganze Zeile. Das
   hängt an der Live-Verbindung und gehört zum Pukalani-Konto
@@ -1170,8 +1174,13 @@ freigegeben wird von David, nach der Antwort des Anwalts.
 - **KI** — was die Texte über Speicherung, Training und den Ort der
   Verarbeitung sagen dürfen ([KI1 b](#ki1)).
 - **Fristen** — Kopie gelöschter Konten, Prüfergebnisse, Melder-Adresse,
-  Protokoll ([EL1 b](#el1)); dazu die Fristen für Einträge ohne Konto,
-  sobald EL1 (c) gebaut ist.
+  Protokoll ([EL1 b](#el1)). Dazu, seit dem 2026-11-17 gebaut und
+  eingeschaltet, aber noch in keinem Text: Warteliste (nie bestätigt 30
+  Tage, eingeladen oder abgelehnt 90 Tage, wartend höchstens 12 Monate),
+  Gesprächsanfragen 12 Monate (branding.supply und pukalani.studio),
+  Konto-Protokoll 12 Monate (der Satz „die Konto-Kennung bleibt als Nachweis
+  stehen" gilt dann nur noch für diese Zeit), hochgeladene Profilbilder ohne
+  Profil 7 Tage.
 - **Bot-Prüfung** — Erstgespräch und Warteliste von branding.supply im Text
   ergänzen ([SR1 b](#sr1)).
 - **Resend** — der Mail-Dienst ist nach dem EU-US Data Privacy Framework

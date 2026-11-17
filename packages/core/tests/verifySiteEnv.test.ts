@@ -88,7 +88,7 @@ describe('jede Einstellung aus dem Code hat eine Entscheidung', () => {
   it('der Bestand „noch nicht bewertet" wird nur kürzer', () => {
     // Wer einen Namen bewertet, zieht ihn in die Pflicht-Liste oder nach
     // ENV_NOT_REQUIRED um und senkt diese Zahl. Neue Namen gehören nie hierher.
-    expect(ENV_UNDECIDED.length).toBeLessThanOrEqual(37)
+    expect(ENV_UNDECIDED.length).toBeLessThanOrEqual(36)
   })
 
   it('GEGENPROBE (SEC-025): eine Einstellung, die der Code liest und niemand entschieden hat, ist rot', () => {

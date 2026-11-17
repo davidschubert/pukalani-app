@@ -375,6 +375,11 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // Client-Error-Inbox (Observability-Gate): der Client dedupliziert/kappt
   // selbst (10/Session) — das Limit hier stoppt Scripting/kaputte Clients.
   { re: /^POST \/api\/telemetry\/error$/, bucket: 'telemetry:error', max: 30 },
+  // Berichte der Skript-Regel (SE1 a): der Browser schickt sie von selbst,
+  // je Verstoß und Seitenaufruf einen. Eigener Topf — ein Schwall Berichte
+  // darf die Fehler-Annahme daneben nicht aufbrauchen. Die Route deckelt
+  // zusätzlich Größe und Menge (`utils/cspReportCap.ts`).
+  { re: /^POST \/api\/telemetry\/csp-report$/, bucket: 'telemetry:csp', max: 30 },
   /**
    * Das Mess-Ereignis (F47, Eintrag AU2 2026-08-15): gastoffen, und jeder
    * Request löst einen AUSGEHENDEN `fetch` an die Plausible-Instanz aus (bis

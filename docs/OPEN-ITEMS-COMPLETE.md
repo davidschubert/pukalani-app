@@ -30,6 +30,268 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N07 — Nacharbeiten „Kopfzeilen, Wächter, Adressen": SE1 (a, c, d, f), WL1 (b, c, Teile von d) und SV1 (b) ✅ 2026-11-17
+
+Die baubaren Reste aus drei Paketen des Gesamtaudits (P23, P20, P13). Pull
+Requests 277, 280, 281, 282, 283, 284, 285, 286, 287 und dieser Abschluss;
+keine Migration, nichts am Server geändert.
+
+**Was gebaut ist**
+
+- **Berichte der Skript-Regel (SE1 a).** Die beobachtende Skript-CSP nennt
+  eine eigene Annahme-Route (`report-uri /api/telemetry/csp-report`, relativ).
+  Die Route (`packages/core/server/api/telemetry/csp-report.post.ts`, Regeln
+  pur in `core/shared/cspReport.ts`) nimmt nur die zwei Formen an, die ein
+  Browser schickt, prüft die Größe vor und nach dem Einlesen (16 KB), ist je
+  Anschluss auf 30 in der Minute gebremst (eigener Topf) und schreibt je
+  Verstoß und Stunde EINE Zeile `csp.report` mit vier kurzen Wörtern:
+  Anweisung, Herkunft der Quelle, Herkunft der Datei, erster Abschnitt des
+  Seitenpfads. Höchstens 40 verschiedene je Stunde, dann eine Deckel-Zeile.
+  Nichts über Personen: keine Adresse des Aufrufers, kein Konto, keine volle
+  Seiten-Adresse. Berichte aus Browser-Erweiterungen, über fremde Seiten und
+  über andere Regeln fallen heraus, bevor etwas geschrieben wird. Das
+  Zähl-Skript gibt `skriptregel berichte=… gedeckelt=…` aus, der tägliche
+  Blick nennt je App „Skript-Regel n" — zählt nur, wird nie rot. **Die Regel
+  beobachtet weiter nur.**
+- **Zod probiert im Browser kein `new Function` mehr.** Fund der lokalen
+  Probe: jeder Seitenaufruf meldete `script-src eval` aus dem eigenen Bündel —
+  Zods Probe für seinen schnellen Prüfer, kein Verstoß. Ein Client-Plugin
+  (`core/app/plugins/00.zod-jitless.client.ts`) setzt `jitless`; der Server
+  bleibt unberührt.
+- **Erinnerungs-Route entfernt (SE1 d).** `POST /api/events/reminder-sweep`,
+  `NUXT_EVENTS_SWEEP_KEY` und der Weg „eine Community je Aufruf" sind aus dem
+  Code; Herkunfts-Ausnahme, Mitmach-Ausnahme und der Bestand der unbewerteten
+  Einstellungen (37 → 36) sind nachgezogen. Erinnert wird unverändert über den
+  Zeit-Lauf `event-reminders`.
+- **Zähl-Skript liest umgelaufene Logs (SE1 c).** `ops/app-watch-counts.mjs`
+  liest neben den zwei laufenden pm2-Logs ihre umgelaufenen Geschwister
+  (`.1`, `.2.gz`, Datum, die Form von pm2-logrotate), nur genaue Namen,
+  höchstens acht Tage zurück. Vorlage `ops/logrotate-pm2.conf` und Anleitung
+  im Runbook; eingeschaltet ist der Umlauf nicht.
+- **Eigene Domain (SE1 f, Nachtrag aus e).** Checkout, Kundenportal und der
+  Ticket-Kauf der Test-App nehmen für die Rückkehr-Adresse die aktive eigene
+  Domain der Site (`resolveSiteOrigin`), sonst die Basis-URL, sonst die feste
+  Adresse der App; der Name der Anfrage bleibt nur für die lokale Entwicklung
+  (auf einem öffentlichen Host mit Fehlerzeile). Der Link „Seite öffnen" im
+  eingebetteten Kommentar-Bereich ist ein interner Pfad und landet auf dem
+  Host des Rahmens.
+- **Galerie folgt dem Not-Aus (WL1 b).** `/og/discover/…`, `/og/insights/…`
+  und die Sitemap von branding.supply fragen den Produkt-Schalter selbst
+  (`brand`, für Artikel zusätzlich `insights`).
+- **Adresse des Control Plane umgezogen (WL1 c).** Das Entitlement-Dokument
+  liegt unter `/api/control/entitlements/<projectId>`; die alte Adresse und
+  ihre Ausnahme in `scripts/lib/manifest-routes.mjs` sind gelöscht. Drei
+  Schritte: neue Adresse live (Build auf allen acht Hosts), Abrufer (im Code
+  keiner — s. Gelernt), alte Adresse weg.
+- **Täglicher Blick auf die Anmelde-Wege (SV1 b).**
+  `scripts/ops/verify-auth-methods.mjs` als Schritt 14 im täglichen Wächter:
+  je Projekt ein Aufruf von außen, ohne Schlüssel, mit erfundenen
+  Zugangsdaten. 501 heißt zu, 401 heißt offen und rot, eine andere Antwort
+  heißt „die Probe ist veraltet" und ist ebenfalls rot, eine Störung ist
+  keine Aussage. Kein ssh, kein Secret; die Probe legt nichts an.
+- **Kleinigkeiten (WL1 d).** `check:permissions` hat einen Test mit
+  Gegenproben; die Prüfung der KI-Aufrufstellen in brand, market und insights
+  nutzt den Leser und die Listen aus `scripts/check-ai-routing.mjs` statt
+  einer wortgleichen Kopie; `onboarding` nennt kein `apiPrefixes` mehr.
+
+**Ohne Rückfrage entschieden (Davids Regel vom 2026-11-17 für kleine,
+umkehrbare Fragen)**
+
+- `report-uri` statt `report-to`: keine zweite Kopfzeile, jeder Browser
+  versteht es; die Route liest trotzdem beide Formen.
+- Gezählt werden VERSCHIEDENE Verstöße je Stunde, nicht Seitenaufrufe —
+  derselbe Verstoß kommt mit jedem Seitenaufruf wieder, das Log liefe voll und
+  ein neuer ginge unter. Aussortiertes wird nicht einzeln geschrieben.
+- Nonces statt `'unsafe-inline'` NICHT in dieser Runde: mit Nonces meldet der
+  Browser auch jedes Skript, das eine Erweiterung direkt in die Seite
+  schreibt, als `inline` ohne erkennbare Quelle. Das begrübe die erste
+  Messung; erst eine Woche Zahlen, dann Nonces.
+- Fehlt jede feste Adresse auf einem öffentlichen Host, lehnt der Checkout
+  nicht ab, sondern protokolliert und macht weiter (Muster der Mail-Links aus
+  P23) — eine Zahlung scheitert nicht an einer fehlenden Einstellung.
+- Das Artikel-Bild und die Artikel-Adressen der Sitemap folgen zusätzlich dem
+  Schalter von `insights` (dieselbe Lücke wie bei der Galerie).
+- Umlauf der pm2-Logs über das vorhandene `logrotate` als Benutzer `ploi`
+  (wie beim Zugriffs-Log), nicht über ein pm2-Modul: kein neues Paket.
+- Erinnerungen und Plan: eine Erinnerung ist kein neuer Inhalt, der Plan der
+  Community spielt keine Rolle. Offen bleibt nur die Sperre wegen Missbrauchs
+  (Empfehlung in OPEN-ITEMS „SE1" d).
+- Der Eintrag `events-sweep` in der Betreiber-Konsole und das Dashboard-Feld
+  der Moderation bleiben stehen: beide liegen in `packages/admin`, dort
+  arbeitete zur selben Zeit eine Nachbar-Gruppe.
+
+**Geprüft.** Je Teil Tests an der geladenen Route oder am echten Skript, mit
+Gegenprobe (`cspReport`, `cspReportRateLimit` mit 40 gleichzeitigen
+Berichten, `appWatchCounts`, `verifyAppSignals`, `return-origin-routes` mit
+gestelltem Stripe, `productGateRoutes`, `entitlementAddress`,
+`verifyAuthMethods` gegen einen Stellvertreter der Datenbank,
+`checkPermissions`). Lokal im Browser gegen einen Build: ein eingefügtes
+fremdes Skript ergibt genau einen Bericht, drei normale Seiten keinen. Lokal
+gegen die Datenbank: Schalter `brand` aus ⇒ Bild 404 und Sitemap ohne
+Galerie; der Anmelde-Blick wird gegen die lokale Datenbank rot (dort sind die
+Wege an). Live: die Kopfzeile nennt auf drei Hosts die Route, alle acht Hosts
+`ok`.
+
+**Nicht geprüft.** Kein Bericht eines echten Besuchers, kein Firefox und kein
+Safari; der Anmelde-Blick gegen die echten Projekte (kommt mit dem nächsten
+täglichen Lauf); kein echter Stripe-Aufruf; die Antwort der neuen
+Control-Adresse auf Production (nur der Live-Build); nichts am Server
+geändert oder angesehen; die Regel ist nicht scharf.
+
+**Gelernt:**
+- **Eine Probe im Browser findet, was kein Test findet.** Die Annahme-Route
+  war fertig getestet — und der erste echte Seitenaufruf meldete sofort einen
+  „Verstoß" aus dem eigenen Bündel (Zods Probe mit `new Function`). Ohne den
+  Blick in den Build wäre die Zahl im täglichen Blick vom ersten Tag an
+  Rauschen gewesen. Zod liest seinen Schalter beim BAUEN eines Schemas: der
+  Aufruf gehört auf Modul-Ebene in ein Plugin, das als erstes lädt.
+- **Die Skript-Regel ist im Dev-Server aus.** Wer sie proben will, braucht
+  einen Build (`node .output/server/index.mjs`); der Dev-Server sendet die
+  Kopfzeile nicht.
+- **`curl -I` beweist bei einer Route mit Methoden-Endung nichts.** Eine Datei
+  `x.get.ts` antwortet auf HEAD mit 404, auch wenn es die Route gibt;
+  `/api/health` antwortet nur deshalb, weil die Datei ohne Endung heißt. Der
+  Blick von außen auf „gibt es die Adresse?" braucht ein GET — oder den
+  Live-Build.
+- **„Alle Sites rufen die Adresse ab" stand so in der Liste und stimmte
+  nicht.** Die Adresse des Entitlement-Dokuments steht nur in einer
+  Einstellung der abrufenden Site, und die ist nirgends gesetzt: der tägliche
+  Blick zeigt auf keiner App den Zeit-Lauf, der abruft. Vor einem Umzug in
+  Schritten erst messen, WER abruft — hier sagte es ein Log, das schon da war.
+- **Zwei Ausgaben eines Skripts leben gleichzeitig.** Die Auswertung läuft aus
+  `main`, das Zähl-Skript kommt erst mit dem nächsten Ausliefern der jeweiligen
+  App auf den Server. Eine neue Zeile ist deshalb für die Auswertung freiwillig
+  („nicht gezählt"), nie Pflicht — und eine unbekannte Zeile bleibt
+  „unlesbar".
+- **Ein Skript, das kein Werkzeug ausliefert, kann der Server nicht fahren.**
+  Das Ausliefern kopiert eine feste Liste von Dateien aus `ops/`. Eine neue
+  Vorlage dort erreicht den Server nicht; der Umlauf der pm2-Logs hängt sich
+  deshalb an die Datei, die schon ausgeliefert und schon nachts gefahren wird.
+- **Der Wächter „Layer-Tests laden nichts aus `apps/`" sieht keinen
+  zusammengesetzten Pfad.** Ein `import()` mit `${app}` im Pfad war lokal
+  grün und in der CI rot (dort fehlt `.nuxt/`). Manifeste einer App liest ein
+  Layer-Test als Text.
+- **Eine erzeugte Übersicht gehört zum selben Commit.** Eine neue oder
+  gelöschte Route ändert `docs/referenz/PRODUKT-BILANZ.md`; ohne `pnpm bilanz`
+  ist der Lint-Lauf rot, und lokal fiel es nicht auf, weil nur `lint` und
+  nicht die sieben Wächter davor liefen.
+- **Eine Sonde darf nichts anlegen.** Von sechs Anmelde-Schaltern ist von
+  außen nur einer ohne Nebenwirkung prüfbar; die anderen würden bei offenem
+  Weg ein Konto anlegen oder eine Mail schicken. Lieber ein Anzeiger mit
+  benannter Grenze als eine Probe, die Spuren hinterlässt. Und: eine
+  unerwartete Antwort ist rot, nicht grün — sonst prüft die Probe eines Tages
+  nichts mehr und bleibt still.
+
+**Reste:** OPEN-ITEMS „SE1", „WL1" (Wächter), „SV1".
+
+### N04 — Nacharbeiten „Fristen und Aufräum-Läufe": EL1 (c, d), KE3, RU1 (c, e) ✅ 2026-11-17
+
+Die Fristen vom 2026-11-15 für Einträge ohne Konto, der Aufräum-Lauf für
+Profilbilder und die Frist für Texte der Runner-Läufe. Pull Requests 258, 260,
+261, 263, 266 und 275; keine Migration. Die sechs Läufe gingen im Zähl-Modus
+live und löschen seit dem 2026-11-17 mit Davids Ja zur gezählten Zahl.
+
+**Was gebaut ist**
+
+- **Ein Gerüst für Fristen-Läufe (Core).** `packages/core/shared/rowRetention.ts`
+  (Schalter `off | count | apply`, „älter als N Tage", die Schleife — pur) und
+  `packages/core/server/utils/rowRetention.ts` (Anbindung an eine Tabelle,
+  Sperre gegen den Doppelstart, einheitliche Log-Zeilen `retention.run`,
+  `retention.incomplete`, `retention.failed`). `count` liest mit genau der
+  Auswahl von `apply` und schreibt nichts; ein unbekannter Wert heißt `off`.
+  Ein Lösch-Schritt darf nach einem letzten Blick „bleibt doch" melden.
+- **Warteliste (EL1 c).** Stündlicher Lauf auf branding.supply: nie bestätigt
+  30 Tage nach der letzten Anforderung eines Links, eingeladen oder abgelehnt
+  90 Tage nach dem letzten Schreiben, noch wartend 12 Monate ab dem Eintragen.
+- **Gesprächsanfragen (EL1 c).** Zwei Läufe, branding.supply
+  (`brand_intro_requests`) und pukalani.studio (`intro_requests`): 12 Monate.
+- **Konto-Protokoll (EL1 c).** Lauf im Core für `audit_logs`, in vier Apps:
+  jeder Eintrag fällt nach 12 Monaten (Davids Entscheidung vom 2026-11-17:
+  ganz löschen, auch Einträge über Betreiber-Handlungen). Ein Handlauf, der
+  löscht, schreibt genau einen Eintrag mit den Zahlen.
+- **Profilbilder ohne Profil (KE3).** Lauf alle sechs Stunden in den drei Apps
+  mit Bucket: eine Datei fällt, wenn sie älter als 7 Tage ist (Schonfrist für
+  „gerade hochgeladen, Profil noch nicht gespeichert"), genau einem Konto
+  gehört und dieses Konto nicht auf sie zeigt — oder es das Konto nicht mehr
+  gibt. Direkt vor dem Löschen wird das Konto noch einmal gelesen.
+- **Texte der Runner-Läufe (RU1 c).** 12 Monate nach dem Ende eines Laufs
+  fallen Auftragstext, Bericht-Text, Fehlertext und Anhang-Dateien; Kosten,
+  Dauer, Commit und Kennungen bleiben (Erlaubnisliste: ein später
+  hinzugefügtes Textfeld fällt von selbst). Eigener Schalter — der vorhandene
+  Aufräum-Lauf des Runners steht schon auf `apply` und hätte sonst mit dem
+  Ausliefern gelöscht. Das Board zeigt an einem geleerten Lauf einen Hinweis.
+  Der Beitrag des Runners zu Auskunft und Löschung eines Kontos bestand schon
+  seit P14; der offene Punkt nannte ihn noch als fehlend.
+- **Kleinigkeiten (EL1 d, RU1 e).** Anhänge an Tickets und Runner-Läufen gehen
+  mit geprüftem Dateityp hinaus (`core/shared/fileDelivery.ts`: inline nur
+  Bilder, deren Inhalt zum Typ passt; alles andere als Download; PDFs werden
+  jetzt heruntergeladen). Die KI-Einordnung von Tickets speichert eine an der
+  Token-Decke abgeschnittene, unvollständige Antwort nicht mehr. `extraPath`
+  in der Einstellungs-Datei des Runner-Dienstes meldet ungültige Einträge,
+  ohne etwas neu abzulehnen. Die Herkunft eines Tickets brauchte keine Sperre:
+  geschrieben wird sie nur bei einer Änderung, und die einzige mögliche
+  Änderung ist eine Herabstufung — ein Test mit zwei gleichzeitigen
+  Bearbeitungen hält das fest.
+
+Jeder Lauf hat einen Schalter (Vorgabe `off`, in den Apps erst `count`, dann `apply`), einen
+Zeit-Lauf mit Zeile in `ops/timed-jobs.conf`, eine Hand-Route, die ohne Angabe
+nur zählt, und einen Rollen-Test. Referenz:
+[EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
+
+**Beweise.** Tests mit gestellter Uhr je Regel und Lauf (Grenze genau an der
+Frist, `count` nennt dieselbe Zahl, die `apply` löscht, frische Einträge
+bleiben, ein Fehlschlag zählt und lässt den Eintrag stehen). Lokal gegen die
+Appwrite-Instanz, je Lauf mit angelegten Probe-Einträgen und gestelltem Alter:
+erst zählen (nichts verändert), dann löschen (genau die fälligen weg), die
+frischen bleiben, ein zweiter Lauf findet nichts, Probe-Einträge nachgezählt
+0. Für Profilbilder mit vorgestellter Uhr, weil sich das Alter einer Datei
+nicht stellen lässt.
+
+**Production.** Keine Migration. Nach dem Ausliefern liefen alle sechs Läufe
+im Zähl-Modus; gelesen wurden nur ihre Zähl-Zeilen im Log der Apps (Davids
+Ja: nur zählen). Ergebnis: Warteliste 0 fällig (ein Eintrag älter als 30
+Tage, nicht fällig), Gesprächsanfragen 0 und 0, Konto-Protokoll 0 in allen
+vier Apps (kein Eintrag ist älter als 12 Monate), Runner-Texte 0,
+Profilbilder ohne Profil 1 (auf der Pool-App: eine Datei, deren Konto es
+nicht mehr gibt; elf Dateien jenseits der Schonfrist angesehen). Mit Davids
+Ja „alle einschalten" stehen die vier ausgerollten Apps seit Pull Request 275
+auf `apply`; die Test-App bleibt auf `count`. Der erste Lauf danach hat genau
+diese eine Datei gelöscht (`deleted: 1`, `failed: 0`), alle zwölf Takte der
+sechs Läufe meldeten `ok`. Die acht Hosts antworten `ok` auf dem Build des
+letzten Merges, `main` ist grün.
+
+**Nicht geprüft.** Kein Klick im Browser: der Hinweis am geleerten Lauf, die
+Bild-Vorschau und der PDF-Download an Tickets. Kein echter KI-Aufruf. Auf
+Production hat bisher nur der Profilbild-Lauf etwas zu löschen gehabt; die
+anderen fünf löschen zum ersten Mal, wenn ein Eintrag seine Frist erreicht.
+
+**Ohne Rückfrage entschieden** (DECISION-LOG 2026-11-17): Standard „zählen",
+Schonfrist 7 Tage, welcher Zeitpunkt bei der Warteliste zählt, PDFs als
+Download, das Recht der Profilbild-Hand-Route. RU1 (b) — der Server baut den
+Auftragstext — ist eingeschätzt, aber kein kleiner Umbau, und bleibt offen.
+
+**Gelernt:** (1) **Ein neuer Lösch-Teil gehört nie an einen Schalter, der
+schon auf „löschen" steht.** Der Aufräum-Lauf des Runners stand in der App auf
+`apply`; die Text-Frist dort anzuhängen hätte mit dem Ausliefern gelöscht,
+bevor jemand eine Zahl gesehen hat. Neuer Teil, eigener Schalter. (2) **Was
+ein offener Punkt als fehlend nennt, zuerst nachmessen.** Der Beitrag des
+Runners zu Auskunft und Löschung war seit P14 da, die „fehlende Sperre" an der
+Ticket-Herkunft war keine Lücke. (3) **Eine Annahme über Production ist
+schnell gemessen:** welche App einen Bucket für Profilbilder hat, stand
+nirgends im Repo, aber in der öffentlichen Einstellung jeder Seite —
+branding.supply hat keinen, und eine Zeile in `ops/timed-jobs.conf` hätte dort
+täglich einen fehlenden Lauf gemeldet. (4) **Eine neue Route macht den
+Lint-Job rot, wenn die Produkt-Bilanz nicht neu erzeugt ist** (`pnpm bilanz`);
+die Wächter davor (`check:*`) lokal fahren, nicht nur `lint` im Paket.
+(5) **Parallele Zweige, die dieselben Listen ergänzen, in Reihe schalten:**
+jeder Lauf trägt eine Zeile in dieselben drei Dateien ein; wer den nächsten
+Zweig auf dem vorigen aufbaut, löst den Konflikt einmal statt nach jedem
+Merge. (6) **Ein Zeitpunkt lässt sich in der lokalen Instanz stellen**
+(`$createdAt`/`$updatedAt` beim Anlegen einer Zeile mit Schlüssel) — bei
+Dateien nicht; dort stellt die Probe die Uhr des Laufs vor.
+
+---
+
 ### N05 — Nacharbeiten „Lange Läufe und KI-Wege": LL1 (a, Teile von b und c), KI1 (c, Teile von d) und IN1 (c, Teile von d) ✅ 2026-11-17
 
 Drei Einträge aus Schritt 3 der offenen Punkte, fünf Pull Requests mit Code

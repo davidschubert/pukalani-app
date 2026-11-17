@@ -66,8 +66,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
   ],
   billing: [
     'packages/billing/server/api/billing/admin/subscriptions.get.ts',
-    'packages/billing/server/api/billing/checkout.post.ts',
-    'packages/billing/server/api/billing/portal.post.ts',
     'packages/billing/server/api/billing/prices.get.ts',
     'packages/billing/server/api/billing/subscription.get.ts',
   ],

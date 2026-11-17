@@ -16,7 +16,8 @@
 //     (/^[a-z][a-z0-9-]{1,39}$/; sie stehen als Literal im öffentlichen Repo)
 // und NIE: eine Log-Zeile, eine Meldung, einen Pfad, eine Adresse, eine
 // Nutzer-Id. Was es nicht ausgibt, kann auch ein geänderter Workflow nicht ins
-// Protokoll schreiben. Es liest nur (zwei Log-Dateien und `pm2 jlist`).
+// Protokoll schreiben. Es liest nur (zwei Log-Dateien, ihre umgelaufenen
+// Geschwister und `pm2 jlist`).
 //
 // WIE ES AUF DEN SERVER KOMMT: der Deploy legt es neben die Ecosystem-Datei
 // (/home/ploi/<site>/ops/, .github/workflows/deploy.yml). Eine Änderung hier
@@ -32,6 +33,17 @@
 // rotiert nicht — gezählt werden deshalb nur JSON-Zeilen, die die App mit
 // `time` schreibt (core/server/utils/logEvent.ts).
 //
+// UMGELAUFENE DATEIEN (SE1 c, 2026-11-17): läuft ein Umlauf über die zwei
+// Dateien (ops/logrotate-pm2.conf), liegt der gestrige Tag in einer Datei
+// DANEBEN — ohne sie fehlten dem Fenster Stunden, und ein Tages-Lauf gälte
+// als „nie gelaufen". Gelesen werden deshalb zusätzlich die Dateien, die
+// GENAU den Namen der laufenden Datei tragen plus eine Umlauf-Endung:
+//   <datei>.1  <datei>.2.gz        (logrotate)
+//   <datei>-20261117[.gz]          (logrotate mit `dateext`)
+//   <stamm>__2026-11-17_00-00-00.log[.gz]   (pm2-logrotate)
+// Dateien früherer pm2-Nummern passen auf keine der Formen. Älter als acht
+// Tage (letzte Änderung) wird nichts gelesen, höchstens 16 Dateien je Log.
+//
 // WAS GEZÄHLT WIRD (im Fenster der letzten <stunden> Stunden):
 //   server.error                  5xx am zentralen Fehler-Hook
 //   client.error                  Fehler aus dem Browser (Annahme je Prozess gedeckelt)
@@ -44,8 +56,9 @@
 //   audit.write_failed            ein Eintrag ins Betreiber-Protokoll ist
 //                                 gescheitert (core/server/utils/auditLog.ts,
 //                                 BE-021) — Zeile `protokoll ausfaelle=<n>`
-// Für die Zeit-Läufe zählt zusätzlich die GANZE aktuelle Datei: „letzter
-// guter Lauf vor n Minuten" darf älter sein als das Fenster.
+// Für die Zeit-Läufe zählen zusätzlich die GANZEN Dateien (die laufende und
+// ihre umgelaufenen Geschwister): „letzter guter Lauf vor n Minuten" darf
+// älter sein als das Fenster.
 //
 // AUFRUF
 //   node app-watch-counts.mjs <prozess> [stunden]      (Standard: 25)
@@ -54,8 +67,10 @@
 // Exit: 0 gezählt · 5 pm2 antwortet nicht oder kennt den Prozess nicht ·
 //       64 Aufruf nicht erlaubt
 import { execFileSync } from 'node:child_process'
-import { createReadStream, statSync } from 'node:fs'
+import { createReadStream, readdirSync, statSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { createInterface } from 'node:readline'
+import { createGunzip } from 'node:zlib'
 
 const VERSION = 1
 
@@ -67,6 +82,9 @@ const STATES = new Set(['online', 'stopping', 'stopped', 'launching', 'errored']
 const MAX_JOBS = 60
 /** Von einer sehr großen Datei nur das Ende lesen (die Zeilen sind zeitlich geordnet). */
 const MAX_READ_BYTES = 200 * 1024 * 1024
+/** Umgelaufene Dateien: so weit zurück wie das größte Fenster (168 h) plus ein Tag. */
+const ROTATED_MAX_AGE_MS = 8 * 24 * 3600000
+const MAX_ROTATED_FILES = 16
 
 function refuse(message) {
   console.log(message)
@@ -101,6 +119,46 @@ function readProcessList() {
   }
 }
 
+function escapeForPattern(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Die umgelaufenen Geschwister EINER Log-Datei, jüngste zuerst. Nur genaue
+ * Namen (s. Kopf) — nie ein Muster über den ganzen Ordner.
+ */
+function rotatedFiles(file, now) {
+  const dir = dirname(file)
+  const name = basename(file)
+  const stem = name.replace(/\.log$/, '')
+  const forms = [
+    new RegExp(`^${escapeForPattern(name)}\\.\\d{1,3}(\\.gz)?$`),
+    new RegExp(`^${escapeForPattern(name)}-\\d{8}(\\.gz)?$`),
+    new RegExp(`^${escapeForPattern(stem)}__\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}\\.log(\\.gz)?$`),
+  ]
+  let entries
+  try {
+    entries = readdirSync(dir)
+  }
+  catch {
+    return []
+  }
+  const found = []
+  for (const entry of entries) {
+    if (!forms.some(form => form.test(entry))) continue
+    const path = join(dir, entry)
+    try {
+      const stat = statSync(path)
+      // Die letzte Änderung einer umgelaufenen Datei ist ihr jüngster Eintrag.
+      if (stat.isFile() && now - stat.mtimeMs <= ROTATED_MAX_AGE_MS) found.push({ path, at: stat.mtimeMs })
+    }
+    catch {
+      // zwischen Auflisten und Lesen verschwunden (der Umlauf läuft gerade)
+    }
+  }
+  return found.sort((a, b) => b.at - a.at).slice(0, MAX_ROTATED_FILES).map(item => item.path)
+}
+
 async function scan(file, onEvent) {
   let size
   try {
@@ -109,23 +167,36 @@ async function scan(file, onEvent) {
   catch {
     return
   }
-  const start = size > MAX_READ_BYTES ? size - MAX_READ_BYTES : 0
-  const lines = createInterface({ input: createReadStream(file, { start, encoding: 'utf8' }), crlfDelay: Infinity })
-  for await (const line of lines) {
-    // Nur Zeilen aus `logEvent` — alles andere (Stacks, freie Meldungen) wird
-    // nicht einmal geparst.
-    if (!line.startsWith('{"time":"')) continue
-    let entry
-    try {
-      entry = JSON.parse(line)
+  const packed = file.endsWith('.gz')
+  // Eine gepackte Datei lässt sich nicht ab der Mitte lesen; über dem Deckel bleibt sie liegen.
+  if (packed && size > MAX_READ_BYTES) return
+  const start = !packed && size > MAX_READ_BYTES ? size - MAX_READ_BYTES : 0
+  const raw = createReadStream(file, packed ? {} : { start, encoding: 'utf8' })
+  const input = packed ? raw.pipe(createGunzip()) : raw
+  const lines = createInterface({ input, crlfDelay: Infinity })
+  // Eine beschädigte oder gerade verschwundene Datei beendet das Lesen DIESER
+  // Datei, nicht das Skript.
+  const stop = () => lines.close()
+  raw.on('error', stop)
+  input.on('error', stop)
+  try {
+    for await (const line of lines) {
+      if (!line.startsWith('{"time":"')) continue
+      let entry
+      try {
+        entry = JSON.parse(line)
+      }
+      catch {
+        continue
+      }
+      if (typeof entry?.time !== 'string' || typeof entry?.event !== 'string') continue
+      const at = Date.parse(entry.time)
+      if (!Number.isFinite(at)) continue
+      onEvent(entry, at)
     }
-    catch {
-      continue
-    }
-    if (typeof entry?.time !== 'string' || typeof entry?.event !== 'string') continue
-    const at = Date.parse(entry.time)
-    if (!Number.isFinite(at)) continue
-    onEvent(entry, at)
+  }
+  catch {
+    // s. o.: was bis hierher gelesen ist, zählt
   }
 }
 
@@ -155,7 +226,7 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0 }
   const jobs = new Map()
   const job = (id) => {
     if (typeof id !== 'string' || !JOB_PATTERN.test(id)) return null
@@ -189,6 +260,12 @@ async function main() {
         break
       case 'audit.write_failed':
         if (inWindow) counts.auditFailed++
+        break
+      case 'csp.report':
+        if (inWindow) counts.csp++
+        break
+      case 'csp.report_capped':
+        if (inWindow) counts.cspCapped++
         break
       case 'job.registered': {
         const item = job(entry.job)
@@ -226,7 +303,9 @@ async function main() {
   }
 
   for (const file of [env.pm_err_log_path, env.pm_out_log_path]) {
-    if (typeof file === 'string' && file.length > 0) await scan(file, onEvent)
+    if (typeof file !== 'string' || file.length === 0) continue
+    await scan(file, onEvent)
+    for (const rotated of rotatedFiles(file, now)) await scan(rotated, onEvent)
   }
 
   console.log(`zaehler version=${VERSION} prozess=${name} stunden=${hours} status=${state}`)
@@ -236,6 +315,7 @@ async function main() {
   // Seit BE-021 (2026-11-16). Die Auswertung verträgt eine Ausgabe OHNE diese
   // Zeile (ein Server mit dem Skript von vorher) — VERSION bleibt deshalb 1.
   console.log(`protokoll ausfaelle=${counts.auditFailed}`)
+  console.log(`skriptregel berichte=${counts.csp} gedeckelt=${counts.cspCapped}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

@@ -60,6 +60,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 404, statusText: 'Not found' })
   }
 
+  // NOT-AUS (WL1 b): wie das Galerie-Bild — die Route liegt ausserhalb der
+  // `apiPrefixes` von `insights` und fragt den Schalter selbst. `insights`
+  // setzt `brand` voraus, darum beide.
+  await requireProduct(event, 'brand')
+  await requireProduct(event, 'insights')
+
   const lookup = await findPublicInsightsPost(event, 'article', slug)
   if (lookup.kind !== 'post') throw createError({ status: 404, statusText: 'Not found' })
 

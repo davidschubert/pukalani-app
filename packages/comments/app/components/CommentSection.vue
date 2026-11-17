@@ -34,6 +34,17 @@ const { isLoggedIn } = useCurrentUser()
 const isEmbed = inject('pukalaniEmbed', false)
 const embedLogin = isEmbed ? useEmbedLogin() : null
 
+/**
+ * „Seite öffnen", wenn der Browser das Anmelde-Fenster blockiert (SE1 f,
+ * 2026-11-17). RELATIV, also der Host, der diesen Rahmen ausliefert —
+ * derselbe, auf dem das Anmelde-Fenster sonst aufginge (`useEmbedLogin`).
+ * Vorher stand hier die fest eingestellte Adresse (`public.appUrl`): bei
+ * einer Site mit eigener Domain ist das die Standard-Adresse, die Anmeldung
+ * landete dann auf einem anderen Host als der Rahmen, und der Rahmen blieb
+ * abgemeldet.
+ */
+const siteHomePath = computed(() => localePath('/'))
+
 // Gast-Kommentare (E4): nur im Embed und nur wenn der Betreiber sie freigibt
 // (pukalani.comments.embed.guests). Dann darf man ohne Account mit Name+E-Mail
 // schreiben — der Login-Popup bleibt als Zusatzoption.
@@ -217,7 +228,7 @@ function presenceLabel(u: PresenceUser): string {
       <p v-if="embedLogin" class="mt-2 text-xs text-muted">
         {{ t('comments.guest.orSignIn') }}
         <template v-if="embedLogin.status.value === 'blocked'">
-          <ULink :href="config.public.appUrl || '/'" target="_blank" rel="noopener" class="font-medium text-primary">
+          <ULink :to="siteHomePath" target="_blank" rel="noopener" class="font-medium text-primary">
             {{ t('comments.embed.openSite') }}
           </ULink>
         </template>
@@ -236,7 +247,7 @@ function presenceLabel(u: PresenceUser): string {
     <div v-else-if="embedLogin" class="text-sm text-muted" data-embed-login>
       <p v-if="embedLogin.status.value === 'blocked'">
         {{ t('comments.embed.loginBlocked') }}
-        <ULink :href="config.public.appUrl || '/'" target="_blank" rel="noopener" class="font-medium text-primary">
+        <ULink :to="siteHomePath" target="_blank" rel="noopener" class="font-medium text-primary">
           {{ t('comments.embed.openSite') }}
         </ULink>
       </p>

@@ -152,29 +152,46 @@ describe('lookupKeyAllowedBy', () => {
   })
 })
 
-/** Rücksprung-Ziel (Audit-Befund 7). */
+/** Rücksprung-Ziel (Audit-Befund 7; seit SE1 f mit eigener Domain und fester Adresse). */
 describe('resolveBillingReturnOrigin', () => {
+  const pick = (input: Parameters<typeof resolveBillingReturnOrigin>[0]) => resolveBillingReturnOrigin(input)
+
   it('nimmt die konfigurierte Basis-URL und ignoriert den Request-Host', () => {
-    expect(resolveBillingReturnOrigin('https://boese.example', 'https://comments.pukalani.app'))
-      .toBe('https://comments.pukalani.app')
+    expect(pick({ requestOrigin: 'https://boese.example', baseUrl: 'https://comments.pukalani.app' }))
+      .toEqual({ origin: 'https://comments.pukalani.app', source: 'base-url' })
   })
 
   it('wirft Pfad/Query der Basis-URL weg — nur der Origin zählt', () => {
-    expect(resolveBillingReturnOrigin('https://boese.example', 'https://comments.pukalani.app/de/pricing?x=1'))
+    expect(pick({ requestOrigin: 'https://boese.example', baseUrl: 'https://comments.pukalani.app/de/pricing?x=1' }).origin)
       .toBe('https://comments.pukalani.app')
   })
 
-  it('fällt ohne Konfiguration auf den Request-Origin zurück (lokale Entwicklung)', () => {
-    expect(resolveBillingReturnOrigin('http://localhost:3001', '')).toBe('http://localhost:3001')
-    expect(resolveBillingReturnOrigin('http://localhost:3001', undefined)).toBe('http://localhost:3001')
+  it('die aktive eigene Domain schlägt Basis-URL und feste Adresse (SE1 f)', () => {
+    expect(pick({
+      siteOrigin: 'https://kunde.example',
+      baseUrl: 'https://standard.pukalani.app',
+      appUrl: 'https://standard.pukalani.app',
+      requestOrigin: 'https://boese.example',
+    })).toEqual({ origin: 'https://kunde.example', source: 'site-domain' })
   })
 
-  it('ignoriert eine unbrauchbare Basis-URL statt daran zu scheitern', () => {
-    expect(resolveBillingReturnOrigin('http://localhost:3001', 'nicht-mal-eine-url')).toBe('http://localhost:3001')
-    expect(resolveBillingReturnOrigin('http://localhost:3001', 'javascript:alert(1)')).toBe('http://localhost:3001')
+  it('ohne Basis-URL gilt die feste Adresse der App, NICHT der Request-Host (SE1 e)', () => {
+    expect(pick({ appUrl: 'https://standard.pukalani.app/', requestOrigin: 'https://boese.example' }))
+      .toEqual({ origin: 'https://standard.pukalani.app', source: 'app-url' })
   })
 
-  it('liefert einen leeren Origin, wenn beides fehlt — nie einen geratenen Host', () => {
-    expect(resolveBillingReturnOrigin('', '')).toBe('')
+  it('fällt ohne jede Konfiguration auf den Request-Origin zurück (lokale Entwicklung) und sagt es', () => {
+    expect(pick({ requestOrigin: 'http://localhost:3001', baseUrl: '', appUrl: '' }))
+      .toEqual({ origin: 'http://localhost:3001', source: 'request' })
+    expect(pick({ requestOrigin: 'http://localhost:3001' }).source).toBe('request')
+  })
+
+  it('ignoriert unbrauchbare Werte statt daran zu scheitern', () => {
+    expect(pick({ requestOrigin: 'http://localhost:3001', baseUrl: 'nicht-mal-eine-url' }).origin).toBe('http://localhost:3001')
+    expect(pick({ requestOrigin: 'http://localhost:3001', baseUrl: 'javascript:alert(1)', siteOrigin: 'data:text/html,x' }).origin).toBe('http://localhost:3001')
+  })
+
+  it('liefert einen leeren Origin, wenn alles fehlt — nie einen geratenen Host', () => {
+    expect(pick({ requestOrigin: '', baseUrl: '' })).toEqual({ origin: '', source: 'none' })
   })
 })

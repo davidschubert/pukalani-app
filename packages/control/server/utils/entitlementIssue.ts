@@ -1,9 +1,14 @@
 import { createPrivateKey, sign as cryptoSign } from 'node:crypto'
+import type { H3Event } from 'h3'
 import { Query } from 'node-appwrite'
-import { WEBSITES_TABLE, type WebsiteRow } from '../../../../shared/types/website'
-import { ENTITLEMENTS_TABLE, type EntitlementRow } from '../../../../shared/types/entitlement'
+import { WEBSITES_TABLE, type WebsiteRow } from '../../shared/types/website'
+import { ENTITLEMENTS_TABLE, type EntitlementRow } from '../../shared/types/entitlement'
 
 /**
+ * Rumpf der Route `GET /api/control/entitlements/<projectId>`. Bis zum
+ * 2026-11-17 lag sie unter `/api/platform/entitlements/<projectId>`, neben
+ * einer Core-Route und damit außerhalb des Not-Aus des Control Plane (WL1 c).
+ *
  * Signiertes Entitlement-Dokument einer Site ausstellen (F3/M8-Vorbereitung):
  * öffentlich (die Site pullt ohne Control-Session; der Inhalt ist die
  * Produkt-Liste, die Signatur verhindert Fälschung — § 8: Sites halten
@@ -18,7 +23,7 @@ const GRACE_MS = 7 * 24 * 3_600_000
 
 const docCache = createMicrocache<string>(60_000)
 
-export default defineEventHandler(async (event) => {
+export async function issueEntitlementDocument(event: H3Event): Promise<string> {
   const projectId = getRouterParam(event, 'projectId')
   if (!projectId || !/^[a-z][a-z0-9-]*$/.test(projectId)) {
     throw createError({ status: 400, statusText: 'Invalid project id' })
@@ -78,4 +83,4 @@ export default defineEventHandler(async (event) => {
   docCache.set(projectId, document)
   setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')
   return document
-})
+}

@@ -1,6 +1,6 @@
 # Export und Löschung – wie es gebaut ist
 
-Stand: 2026-11-16 (Gesamtaudit, Pakete P14 und P16). Diese Datei beschreibt, was geschieht, wenn jemand
+Stand: 2026-11-17 (Gesamtaudit, Pakete P14 und P16; Fristen-Läufe aus der Nacharbeit N04). Diese Datei beschreibt, was geschieht, wenn jemand
 seine Daten anfordert oder sein Konto löscht, welche Fristen gelten und wie man eine neue Tabelle
 richtig anschließt. Der Plan, aus dem das Fundament entstand, liegt im Archiv:
 [GDPR-DELETE-AND-EXPORT.md](../archiv/GDPR-DELETE-AND-EXPORT.md).
@@ -115,14 +115,14 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Zugangs-Anfragen (`invite_requests`), samt Adresse am Einladungscode | abgelehnt 30, eingelöst 90 Tage | derselbe Sammel-Lauf (`inviteRequestPrune.ts`) | keiner | – |
 | Kontaktdaten von Gästen (`guest_authors`, Altbestand) | 90 Tage | `comments/server/plugins/guest-author-prune.ts` | keiner | `comments.guest_authors_pruned` |
 | Protokolle und Ereignisse der Runner-Läufe | 30 / 90 Tage | `runner/server/plugins/run-retention.ts` | `pukalani.runner.retention` | `runner.retention` |
-| Texte und Anhänge der Runner-Läufe (Auftragstext, Bericht-Text, Fehlertext, Anhang-Dateien; Kosten, Dauer, Commit und Kennungen bleiben) | 12 Monate nach dem Ende des Laufs | `runner/server/plugins/run-text-retention.ts`, stündlich (Regel `runner/shared/runTextRetention.ts`) | `pukalani.runner.textRetention` (off / count / apply; control: `count`) | `retention.run` mit `job: run-text-retention` (`deleted` zählt hier geleerte Läufe, die Zeile bleibt) |
+| Texte und Anhänge der Runner-Läufe (Auftragstext, Bericht-Text, Fehlertext, Anhang-Dateien; Kosten, Dauer, Commit und Kennungen bleiben) | 12 Monate nach dem Ende des Laufs | `runner/server/plugins/run-text-retention.ts`, stündlich (Regel `runner/shared/runTextRetention.ts`) | `pukalani.runner.textRetention` (off / count / apply; control: `apply` seit 2026-11-17) | `retention.run` mit `job: run-text-retention` (`deleted` zählt hier geleerte Läufe, die Zeile bleibt) |
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
 | Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
-| Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `count`; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
-| Warteliste von branding.supply (`brand_waitlist`) | nie bestätigt 30 Tage nach der letzten Anforderung eines Links, eingeladen oder abgelehnt 90 Tage nach dem letzten Schreiben, noch wartend 12 Monate ab dem Eintragen | `brand/server/plugins/brand-waitlist-retention.ts`, stündlich (Regel `brand/shared/brandWaitlistRetention.ts`) | `pukalani.brand.waitlistRetention` (off / count / apply; branding: `count`) | `retention.run` mit `job: brand-waitlist-retention`, Fehler `retention.incomplete` / `retention.failed` |
-| Gesprächsanfragen von branding.supply (`brand_intro_requests`), unabhängig vom Status, auch mit Konto | 12 Monate ab dem Eingang | `brand/server/plugins/brand-intro-retention.ts`, stündlich (Regel `brand/shared/brandIntroRetention.ts`) | `pukalani.brand.introRequestRetention` (off / count / apply; branding: `count`) | `retention.run` mit `job: brand-intro-retention`, Fehler `retention.incomplete` / `retention.failed` |
-| Gesprächsanfragen von pukalani.studio (`intro_requests`) | 12 Monate ab dem Eingang | `apps/portfolio/server/plugins/intro-request-retention.ts`, stündlich (Regel `apps/portfolio/shared/introRequestRetention.ts`; fehlt die Tabelle, ist nichts zu tun) | `pukalani.portfolio.introRequestRetention` (off / count / apply; ohne Wert `off`; portfolio: `count`) | `retention.run` mit `job: intro-request-retention`, Fehler `retention.incomplete` / `retention.failed` |
-| Konto-Protokoll (`audit_logs`), jeder Eintrag — auch über Handlungen des Betreibers (Davids Entscheidung 2026-11-17) | 12 Monate ab dem Schreiben | `core/server/plugins/audit-log-retention.ts`, stündlich, in jeder App mit Schalter (Regel `core/shared/auditLogRetention.ts`; fehlt die Tabelle, ist nichts zu tun) | `pukalani.audit.retention` (off / count / apply; control, platform, branding, portfolio und comments: `count`) | `retention.run` mit `job: audit-log-retention`, Fehler `retention.incomplete` / `retention.failed` |
+| Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `apply` seit 2026-11-17; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
+| Warteliste von branding.supply (`brand_waitlist`) | nie bestätigt 30 Tage nach der letzten Anforderung eines Links, eingeladen oder abgelehnt 90 Tage nach dem letzten Schreiben, noch wartend 12 Monate ab dem Eintragen | `brand/server/plugins/brand-waitlist-retention.ts`, stündlich (Regel `brand/shared/brandWaitlistRetention.ts`) | `pukalani.brand.waitlistRetention` (off / count / apply; branding: `apply` seit 2026-11-17) | `retention.run` mit `job: brand-waitlist-retention`, Fehler `retention.incomplete` / `retention.failed` |
+| Gesprächsanfragen von branding.supply (`brand_intro_requests`), unabhängig vom Status, auch mit Konto | 12 Monate ab dem Eingang | `brand/server/plugins/brand-intro-retention.ts`, stündlich (Regel `brand/shared/brandIntroRetention.ts`) | `pukalani.brand.introRequestRetention` (off / count / apply; branding: `apply` seit 2026-11-17) | `retention.run` mit `job: brand-intro-retention`, Fehler `retention.incomplete` / `retention.failed` |
+| Gesprächsanfragen von pukalani.studio (`intro_requests`) | 12 Monate ab dem Eingang | `apps/portfolio/server/plugins/intro-request-retention.ts`, stündlich (Regel `apps/portfolio/shared/introRequestRetention.ts`; fehlt die Tabelle, ist nichts zu tun) | `pukalani.portfolio.introRequestRetention` (off / count / apply; ohne Wert `off`; portfolio: `apply` seit 2026-11-17) | `retention.run` mit `job: intro-request-retention`, Fehler `retention.incomplete` / `retention.failed` |
+| Konto-Protokoll (`audit_logs`), jeder Eintrag — auch über Handlungen des Betreibers (Davids Entscheidung 2026-11-17) | 12 Monate ab dem Schreiben | `core/server/plugins/audit-log-retention.ts`, stündlich, in jeder App mit Schalter (Regel `core/shared/auditLogRetention.ts`; fehlt die Tabelle, ist nichts zu tun) | `pukalani.audit.retention` (off / count / apply; control, platform, branding, portfolio: `apply` seit 2026-11-17; die Test-App comments: `count`) | `retention.run` mit `job: audit-log-retention`, Fehler `retention.incomplete` / `retention.failed` |
 
 **Gemeldete private Nachrichten (SEC-033, Davids Entscheidung 2026-11-12):** Den Text sieht die
 Moderation nur, solange eine Meldung offen ist — in der Liste und in der Einzel-Ansicht entscheidet
@@ -168,8 +168,30 @@ Hand, die ohne Angabe nur zählt:
 - `POST /api/admin/audit-logs/retention/run` (`system.manage`; löscht nur mit `{ apply: true }` und
   Schalter `apply` und schreibt dann genau einen Eintrag `audit_log.retention_applied` mit den Zahlen)
 
-Ein Ausfall zeigt sich heute nur als Fehlerzeile im Log der App. Ein Alarm in die Betreiber-Ansicht
-hinein ist ein eigenes Paket (Gesamtaudit P22).
+Ein Ausfall fällt auf: jeder Lauf ist ein Zeit-Lauf (`defineTimedJob`), der tägliche Wächter „In die
+App hinein" liest seine `job.run`-Zeilen und meldet einen Lauf, der überfällig ist oder scheitert
+(OPS-011; erwartete Läufe je App: `ops/timed-jobs.conf`).
+
+### Das Gerüst der Fristen-Läufe (seit 2026-11-17)
+
+Neue Läufe, die nach einer Frist löschen, bauen auf einem gemeinsamen Gerüst auf:
+`packages/core/shared/rowRetention.ts` (Schalter, Rechnung „älter als N Tage", Schleife — pur) und
+`packages/core/server/utils/rowRetention.ts` (Anbindung an eine Tabelle, Sperre, Log-Zeilen). Der
+Schalter hat drei Stellungen:
+
+- `off` — der Lauf meldet sich nicht an (Vorgabe in Core und Layern).
+- `count` — er liest mit genau der Auswahl, die `apply` träfe, schreibt nichts und meldet die Zahl
+  je Takt als `retention.run` (mit `job`, `expired`, `byReason`). **So geht jeder neue Lauf live.**
+- `apply` — er löscht. Gesetzt wird das je App in deren `app.config.ts`, mit Davids Ja zur gezählten
+  Zahl; der Rückweg ist `count`.
+
+Ein unbekannter Wert heißt `off` (Fehlerzeile `retention.invalid_mode`). Die Hand-Routen zählen ohne
+Angabe nur; `{ "apply": true }` löscht nur, wenn der Schalter der App auf `apply` steht (sonst 409).
+Wie ein neuer Lauf entsteht, steht im Kopf von `server/utils/rowRetention.ts`. Stand: Warteliste,
+beide Gesprächsanfragen, Konto-Protokoll, Profilbilder und Runner-Texte liefen am 2026-11-17 zuerst
+im Zähl-Modus und stehen seit demselben Tag in den ausgerollten Apps auf `apply` — Davids Ja zur
+gezählten Zahl (fällig war genau ein Profilbild, dessen Konto es nicht mehr gibt; alles andere 0).
+Die Test-App `apps/comments` bleibt auf `count`.
 
 **Zurückholen innerhalb der 90 Tage** geht nur von Hand und nur für Prüfergebnisse: in der
 Appwrite-Konsole das Feld `erasedAt` der Zeile leeren. Ein gelöschtes Konto und eine gelöschte Marke
@@ -204,12 +226,10 @@ prüft Davids Anwalt.
   Fadens der anderen Person, kein lesbarer Inhalt.
 - **Gemeldete private Nachrichten** bleiben bei der Kontolöschung bis zu 90 Tage als Beleg; wer sie
   liest und wann der Text fällt, steht oben unter „Fristen" (SEC-033).
-- **Zeilen ohne Konto**: Die Fristen sind entschieden (2026-11-15: Warteliste 30 / 90 Tage /
-  12 Monate, Gesprächsanfragen und Protokoll 12 Monate; 2026-11-17: das Protokoll ganz, auch
-  Einträge über Handlungen des Betreibers). Alle drei Fristen haben seit 2026-11-17 einen Lauf
-  (oben unter „Fristen": Warteliste, Gesprächsanfragen von branding.supply und pukalani.studio,
-  Konto-Protokoll). Auf Production zählen sie zunächst nur (`count`); gelöscht wird erst, wenn der
-  Betreiber die gezählte Zahl freigibt und die App auf `apply` gestellt wird.
+- **Zeilen ohne Konto** sind seit dem 2026-11-17 NICHT mehr ausgenommen: Warteliste,
+  Gesprächsanfragen (branding.supply und pukalani.studio) und das Konto-Protokoll haben je einen
+  Lauf (oben unter „Fristen"), und er löscht. Entschieden am 2026-11-15 (Fristen) und am 2026-11-17
+  (das Protokoll ganz, auch Einträge über Handlungen des Betreibers; Löschen eingeschaltet).
 
 ## Altbestand
 

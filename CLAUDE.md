@@ -176,6 +176,15 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   `setInterval` in einem Server-Plugin (Wächter-Test). Die Hilfe schreibt je
   Takt `job.run`; der Alarm liest daran „überfällig" und „gescheitert". Neuer
   Lauf ⇒ Kennung in `ops/timed-jobs.conf` für jede App, in der er fährt.
+- FRISTEN-LAUF (löscht nach einer Frist; EL1/KE3/RU1, seit 2026-11-17) NUR auf
+  dem Gerüst `core/shared/rowRetention.ts` + `core/server/utils/rowRetention.ts`:
+  Schalter `off | count | apply`, Vorgabe `off`. LIVE GEHT ER MIT `count` (liest
+  mit der Auswahl von `apply`, schreibt nichts, meldet `retention.run`);
+  `apply` setzt je App eine Zeile in deren `app.config.ts`, mit Davids Ja zur
+  gezählten Zahl. Regel je Zeile pur im Layer der Tabelle (Test mit gestellter
+  Uhr), Hand-Route zählt ohne Angabe nur. Ein Lauf, der an einem Schalter
+  hängt, der schon auf `apply` steht, bekommt für Neues einen EIGENEN Schalter.
+  Fristen und Läufe: docs/referenz/EXPORT-UND-LOESCHUNG.md.
 - DER SERVER SCHREIBT (SEC-002, seit 2026-11-16 — Davids Entscheidung): keine
   Tabelle und keine Zeile trägt ein Schreibrecht für Konten; geschrieben wird
   über die Operator-Klinke der Datentür NACH den Prüfungen der Route, Rechte an

@@ -95,8 +95,11 @@ export const DELEGATES = {
 export const MINIMUM = { text: 15, vision: 1, video: 1, image: 1 }
 
 /**
- * KOMMENTARE ENTFERNEN — mit Blick auf Zeichenketten und Regex-Literale
- * (Vorlage: `packages/brand/tests/brandAiCallSites.test.ts`). Kommentare
+ * KOMMENTARE ENTFERNEN — mit Blick auf Zeichenketten und Regex-Literale.
+ * EIN LESER FÜR BEIDE PRÜFUNGEN (WL1 d, seit 2026-11-17): diese Funktion,
+ * `balanced` und `routingExpressions` nutzt auch
+ * `packages/brand/tests/brandAiCallSites.test.ts` — bis dahin standen sie
+ * dort ein zweites Mal, wortgleich. Kommentare
  * werden durch Leerzeichen ersetzt, Zeilenumbrüche bleiben (Zeilennummern).
  */
 export function stripComments(source) {
@@ -151,7 +154,7 @@ export function stripComments(source) {
 }
 
 /** Der Text in den Klammern ab `open` (Index der öffnenden Klammer). */
-function balanced(source, open, left, right) {
+export function balanced(source, open, left, right) {
   let depth = 0
   for (let cursor = open; cursor < source.length; cursor++) {
     const char = source[cursor]
@@ -171,7 +174,7 @@ function balanced(source, open, left, right) {
 }
 
 /** Alle Werte von `providerRouting` in einem Argument-Text — als Ausdruck. */
-function routingExpressions(text) {
+export function routingExpressions(text) {
   const found = []
   // Nicht nach `.`: `run.providerRouting` ist ein WERT, kein Schlüssel.
   const re = /(?<![\w.$])providerRouting\b(\s*:\s*)?/g

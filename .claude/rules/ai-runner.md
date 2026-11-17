@@ -71,6 +71,6 @@ Commit und die übrigen Zahlen und Kennungen bleiben (Erlaubnisliste in
 bis es dort steht; Spur `textRemovedAt`). Util
 `packages/runner/server/utils/runTextRetention.ts` auf dem Gerüst
 `core/…/rowRetention.ts`, EIGENER Schalter `pukalani.runner.textRetention`
-off/count/apply (control: `count`, `apply` erst mit Davids Ja zur Zahl),
+off/count/apply (control: `apply` seit 2026-11-17, Davids Ja zur Zahl),
 Hand-Route `POST /api/runner/retention/texts` (`{ apply: true }`). Runbook
 für alle drei Themen: docs/runbooks/AI-RUNNER-BETRIEB.md.
