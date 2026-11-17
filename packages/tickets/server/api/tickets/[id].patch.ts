@@ -57,6 +57,12 @@ export default defineEventHandler(async (event): Promise<TicketRow> => {
 
   if (textEdited && before) {
     const nextOrigin = originAfterTextEdit(before.origin, hasOperatorRole(user.labels))
+    // NUR bei einer Änderung schreiben — das ist die Garantie gegen
+    // gleichzeitige Bearbeitungen: die einzige Änderung ist `operator` ⇒
+    // `staff`, ein veralteter Lesestand schreibt also nie eine bessere
+    // Herkunft zurück (Test: tests/route-roles-patch.test.ts). Eine Sperre
+    // braucht es deshalb nicht; wer hier bedingungslos schreibt, öffnet die
+    // Lücke.
     if (nextOrigin !== before.origin) data.origin = nextOrigin
   }
 

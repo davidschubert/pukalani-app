@@ -338,7 +338,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/runner/server/api/runner/runs/recent.get.ts',
   ],
   tickets: [
-    'packages/tickets/server/api/tickets/[id].patch.ts',
     'packages/tickets/server/api/tickets/[id]/duplicate.post.ts',
     'packages/tickets/server/api/tickets/[id]/files.get.ts',
     'packages/tickets/server/api/tickets/[id]/files.post.ts',
