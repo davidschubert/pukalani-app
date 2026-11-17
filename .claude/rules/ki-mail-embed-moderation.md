@@ -122,7 +122,7 @@ paths:
   (`useRunPolling`, ruht bei verstecktem Reiter). EINE Hilfe für alle:
   `core/shared/runLease.ts` + `core/server/utils/runLease.ts`. Die Sperre ist
   eine ZEILE MIT FESTER KENNUNG aus (Art, Gegenstand, laufende Nummer) in der
-  Lauf-Tabelle des Layers (`market_runs`, `insights_runs`; Fabrik
+  Lauf-Tabelle des Layers (`market_runs`, `insights_runs`, `brand_runs`; Fabrik
   `scripts/migrations-lib/runLeaseTable.mts`): Appwrite kennt kein bedingtes
   Schreiben, „erst lesen, dann Stempel setzen" hält zwei Klicks im selben
   Augenblick nicht auf — das Anlegen derselben Kennung schon (lokal gemessen:
@@ -162,9 +162,23 @@ paths:
   schreiben die zwei Streams des Markenberaters alle 15 s eine
   SSE-Kommentarzeile (`startBrandStreamHeartbeat`,
   `brand/server/utils/brandStreamHeartbeat.ts`); der Leser im Browser nimmt
-  nur `data:`-Zeilen. Ein neuer Stream ruft dieselbe Hilfe. NOCH IN DER
-  ANFRAGE rechnen vier Wege des Markenberaters (OPEN-ITEMS „LL1" b) — der
-  Layer hat keine Lauf-Tabelle. WÄCHTER (seit 2026-11-17):
+  nur `data:`-Zeilen. Ein neuer Stream ruft dieselbe Hilfe. SEIT N10 (2026-11-18)
+  RECHNEN AUCH DREI WEGE DES MARKENBERATERS HINTER DER ANTWORT:
+  Zeichen-Entwürfe, Vorbilder lesen und Fundament-Check nehmen die Sperre in
+  `brand_runs` (brand-027; Arten `drafts`, `reading`, `doc-check`, Gegenstand
+  = die Marke), antworten `202`, und EIN Stück fährt den Lauf
+  (`startBrandRun`, `brand/server/utils/brandRun.ts`: Herzschlag, ein Ende,
+  das immer an der Zeile steht, Abschluss für Rückbuchung und Burst-Platz).
+  Der Ausgang ist `done` oder dasselbe kurze Wort, das früher der Fehler-Code
+  der Anfrage war; die lesende Route liefert den Lauf-Stand mit und liest ihn
+  VOR dem Ergebnis. ZWEI REGELN AUS DEM UMBAU: (1) ein Lauf im Hintergrund
+  schreibt gegen den Stand von JETZT — was er am Ende schreibt, liest er
+  unmittelbar davor neu (die Kapitel-Zeile, den Platz unter dem Deckel, „gibt
+  es die Marke noch?"); mit dem Stand vom Start überschriebe er, was der
+  Mensch während des Laufs gespeichert hat. (2) Das Nachfragen der Seite hat
+  eine Frist je Abfrage (`BRAND_RUN_POLL_TIMEOUT_MS`): `useRunPolling`
+  überlappt nicht, eine hängende Abfrage hielte es sonst an. NOCH IN DER
+  ANFRAGE rechnet der öffentliche Brand-Check (OPEN-ITEMS „LL1" b). WÄCHTER (seit 2026-11-17):
   `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
   KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
   Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe
@@ -176,7 +190,10 @@ paths:
   `packages/insights/tests/insightsRadarRunRoute.test.ts`,
   `packages/insights/tests/insightsRadarTimedLease.test.ts`,
   `packages/insights/tests/insightsBriefLease.test.ts`,
-  `packages/brand/tests/brandStreamHeartbeat.test.ts`.
+  `packages/brand/tests/brandStreamHeartbeat.test.ts`,
+  `packages/brand/tests/brandMarkDraftsRunRoute.test.ts`,
+  `packages/brand/tests/brandReadingRunRoute.test.ts`,
+  `packages/brand/tests/brandDocumentCheckRoute.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,

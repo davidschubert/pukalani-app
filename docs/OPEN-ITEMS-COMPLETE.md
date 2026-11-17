@@ -30,6 +30,141 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N10 — Nacharbeiten „Lange Wege des Markenberaters": LL1 (b, drei von vier Wegen), der Fristen-Wächter und Kleinigkeiten aus LL1 (c) ✅ 2026-11-18
+
+Ein Eintrag aus Schritt 3 der offenen Punkte, fünf Pull Requests mit Code
+(309 Fristen-Wächter, 315 Lauf-Tabelle und Zeichen-Entwürfe, 316 Vorbilder
+lesen, 317 Fundament-Check, 318 Kleinigkeiten) und dieser Abschluss. Eine
+Migration auf Production (`brand-027`, mit Davids Ja vom 2026-11-18, vor dem
+ersten Merge gefahren). Kein bezahlter KI-Lauf, kein Lauf gegen Production.
+Nicht gebaut: der öffentliche Brand-Check — er bleibt als Rest mit Empfehlung
+in OPEN-ITEMS „LL1" (b).
+
+**Was gebaut ist**
+
+- **Lauf-Tabelle des Markenberaters (PR 315).** `brand_runs` (brand-027) aus
+  derselben Fabrik wie `market_runs` und `insights_runs`. EINE Tabelle für alle
+  vier Wege: `scope` nennt den Weg (`drafts`, `reading`, `doc-check`, `check`),
+  `subject` den Gegenstand. Ein gemeinsames Stück (`brand/server/utils/
+  brandRun.ts`, `startBrandRun`) fährt einen Lauf hinter der Antwort: Herzschlag,
+  ein Ende, das immer an der Zeile steht (`done` oder ein kurzer Grund — dieselben
+  Wörter wie früher die Fehler-Codes der Anfrage), und ein Abschluss für
+  Rückbuchung und Burst-Platz. Die lesenden Routen liefern den Lauf-Stand mit
+  (fail-soft: fehlt die Tabelle, heißt er „kein Lauf"). Die Läufe einer Marke
+  stehen in der Auskunft (Zeitpunkte, Ausgang, Zahlen) und verschwinden mit der
+  Marke und mit dem Konto.
+- **Zeichen-Entwürfe (PR 315).** Der Start nimmt die Sperre, bucht, antwortet
+  `202`; ein zweiter Start bekommt `409 run_running` und berührt keinen Zähler.
+  Fehlt das Briefing, lehnt die Route ab, bevor etwas gebucht wird (vorher:
+  buchen, scheitern, zurückbuchen). Abgelegt wird gegen den Stand im Augenblick
+  des Ablegens: geklemmt auf den Platz unter dem Deckel, nichts bei gelöschter
+  Marke. Kein Entwurf ⇒ der sichtbare Zähler geht zurück wie bisher; stirbt der
+  Lauf mittendrin, holt der NÄCHSTE Start die Rückbuchung nach — erst der
+  Vermerk am Vorgänger, dann die Rückbuchung, damit auch nach einer abgelehnten
+  Drossel niemand zweimal zurückbucht.
+- **Vorbilder lesen (PR 316).** Dasselbe Muster. Die Liste liest den Lauf-Stand
+  VOR Fazit und Bildern, damit „fertig" nie neben einer Lesung von vorher steht.
+- **Fundament-Check (PR 317).** Ein Treffer im Zwischenspeicher antwortet weiter
+  sofort mit `200` und der Id; sonst `202` ohne Id. Der Stand kommt mit dem
+  Verlauf (`documentRun`), die Id des fertigen Checks steht am Lauf. Scheitert
+  das Urteil, steht der Grund am Lauf und es entsteht keine Zeile. Die
+  Score-Seite fragt den Verlauf ab; die Übersicht aller Marken wartet auf das
+  Ende des Laufs, den sie gestartet hat. Der Hinweis auf einen alten Fehlschlag
+  steht dort nur einen Tag.
+- **Die Seiten.** Alle drei zeigen denselben Stand nach dem Neuladen und in
+  einem zweiten Reiter: läuft, fertig, gescheitert mit Grund, unterbrochen. Ein
+  zweiter Start ist ein ruhiger Hinweis, kein Fehler. Der Zähler „noch x von y"
+  steht auch in dem Reiter, der den Lauf nicht gestartet hat.
+- **Fristen-Wächter (PR 309).** `packages/core/tests/routeDeadlineBudget.test.ts`
+  findet aus dem Quelltext jede Route, die einen langsamen Baustein erreicht
+  (KI-Transporte, Abruf fremder Websites, YouTube — über ausgeschriebene Importe
+  und Nitros Auto-Importe), und verlangt für sie einen Eintrag im Fristen-Buch
+  (`support/routeDeadlines.ts`): `inline` mit den echten Fristen aus dem Code
+  (Summe ≤ 60 s, bzw. 180 s für die zwei Artikel-Wege auf branding.supply),
+  `detached`, `stream` oder bekannter Bestand `over` mit Grund. Der Bestand darf
+  nur schrumpfen (neun beim Bau, sechs nach den drei Umbauten).
+- **Kleinigkeiten (PR 318).** Die Radar-Seite zeigt die Zahlen des letzten
+  Laufs auch später (aus der Lauf-Zeile), der nächtliche Radar-Lauf nimmt die
+  Lauf-Sperre des Knopfs, `market-library-compute.mjs` fragt den Stand ab.
+
+**Beweise**
+
+- Tests je Weg an der echten Route mit der echten Sperr-Logik des Core, der
+  echten Buchung und dem echten Burst-Zähler: zehn gleichzeitige Starts ⇒ genau
+  ein Lauf und eine Buchung; Rückbuchung genau einmal (auch für den
+  abgebrochenen Vorgänger, mit Gegenprobe); Klemmen; gelöschte Marke; Rollen
+  (ohne Zugang, fremde Marke) an Start und Liste. Zusammenbau auf dem neuesten
+  `main` vor jedem Merge: brand 3559, core 4634, insights 848, market 270 Tests
+  grün, Lint je Paket, alle Wächter, Typecheck der App `branding`.
+- **Migration:** lokal zweimal gefahren (anlegen, dann zehnmal „existiert
+  bereits"), lokal `/api/health` → `schema.state: ok`; auf Production erst der
+  Probelauf (Projekt `branding`, eine Datei), dann der Lauf: Tabelle, acht
+  Spalten, ein Index.
+- **Lokal über 60 Sekunden** (echte Routen, lokaler Spiegel, gestellte
+  Antworten von 75 s über `BRAND_DEV_STUB_DELAY_MS`, keine Kosten), je Weg fünf
+  gleichzeitige Starts: Entwürfe 1× `202` und 4× `409` nach höchstens 274 ms,
+  Lauf 77 s, vier Entwürfe; Lesung 1× `202` und 4× `409`, Lauf 77 s, zwei
+  Lesungen; Fundament-Check genau ein Lauf (zwei weitere Starts fing die
+  Minuten-Bremse), 77 s, der Check steht im Verlauf.
+- **Im Browser mit zwei Reitern:** Entwürfe — zweiter Start ⇒ „Ein Lauf rechnet
+  schon", nach dem Neuladen weiter „läuft", am Ende in beiden acht Entwürfe; ein
+  absichtlich unterbrochener Lauf (Server mitten im Lauf gestoppt) steht nach
+  zwei Minuten als „unterbrochen" da. Lesung und Fundament-Check — Klick ⇒
+  „läuft", zweiter Start ⇒ `409`, der zweite Reiter zeigt „läuft", am Ende steht
+  in beiden das neue Ergebnis.
+- **Aufräumen:** das Löschen der Probe-Marke nahm ihre sieben Lauf-Zeilen mit
+  (nachgezählt: null).
+- Der Wächter wurde von Hand rot gemacht (neue Route mit langsamem Baustein
+  ohne Eintrag ⇒ rot mit Pfad und Hinweis) und zurückgestellt.
+
+**Nicht geprüft**
+
+- Kein Lauf über 60 Sekunden auf Production, keine Klicks auf den echten
+  Seiten, kein bezahlter Lauf dort. Die drei Wege liefen lokal nur mit den
+  Ersatz-Läufen, nie gegen ein echtes Modell.
+- Die Radar-Seite und die Übersicht aller Marken sind nicht im Browser geklickt;
+  `market-library-compute.mjs` ist nicht gelaufen (es bezahlt echte Läufe).
+- Die Rückbuchung für einen abgebrochenen Entwurfs-Lauf ist nur durch Tests
+  belegt: lokal lebt der Zähler im Prozess und beginnt mit dem Neustart neu.
+
+**Ohne Rückfrage entschieden**
+
+- EINE Lauf-Tabelle für alle vier Wege statt einer je Weg — damit eine
+  Migration und ein Ja.
+- Lauf-Zeilen einer Marke verschwinden mit ihr; eine eigene Frist gibt es
+  nicht. Erst der öffentliche Check (Zeilen ohne Marke) bräuchte eine.
+- Der öffentliche Brand-Check bleibt Rest. Er ist der Trichter und hat drei
+  Aufrufer; ein sauberer Umbau braucht ein Kennzeichen für den Starter, eine
+  eigene Abfrage-Route und eine Frist für Zeilen ohne Marke — das gehört in
+  einen eigenen Durchgang, nicht ans Ende von diesem.
+- Ein abgebrochener Radar-Knopf-Lauf verbraucht weiter einen der drei Starts je
+  Stunde (bekannte Grenze): ein Mensch kann einen Lauf nicht von außen
+  abbrechen, es trifft nur ein Ausliefern mitten im Lauf.
+- Die Lesung bucht bei einem gescheiterten oder abgebrochenen Lauf nicht zurück
+  — wie bisher; nur die Entwürfe haben diese Zusage (BE-004).
+
+**Gelernt: Ein Lauf im Hintergrund schreibt gegen den Stand von JETZT, nicht
+gegen den vom Start.** Entwürfe und Lesung schrieben am Ende die ganze
+Slot-Ablage der Kapitel-Zeile zurück — mit den Zeilen, die die Route beim Start
+gelesen hatte. In der Anfrage waren das Millisekunden; hinter der Antwort sind
+es bis zu zwei Minuten, in denen ein Autosave des Kapitels überschrieben worden
+wäre. Kein Test und kein Typ sah das. Regel: was ein Lauf am Ende schreibt,
+liest er unmittelbar davor neu (Kapitel-Zeile, Platz unter dem Deckel,
+„gibt es die Marke noch?").
+
+**Gelernt: Eine hängende Abfrage hält das Nachfragen an.** `useRunPolling`
+überlappt bewusst nicht — solange ein Takt läuft, fällt der nächste aus. Eine
+Abfrage, die nie zurückkommt (hier: Neustart des Probe-Servers mitten in der
+Anfrage), ließ die Seite deshalb für immer auf „läuft" stehen, obwohl der
+Server längst „unterbrochen" sagte. Jede Nachfrage hat jetzt eine Frist von
+zehn Sekunden.
+
+**Gelernt: Der Wächter fand, was die Hand-Messung übersah.** Die Liste vom
+2026-11-16 nannte vier Wege des Markenberaters; der Wächter fand vier weitere
+über der Wartezeit (Kapitel-Prüfung, Schließen einer Sitzung, Marktbericht,
+Seiten-Übersetzung), und die Dokument-Prüfung zählt 1.320 s statt 660 s, weil
+jede Prüfung eine zweite Stufe starten kann.
+
 ### N08 — Nacharbeiten „Kleine Reste quer durch die Produkte": Warteliste, AB1 (g), EL1 (d), KK1 (c), BP1 (d), RU1 (c, d, e), SR1 (d), MM1 (e), SI1 (d), IN1 (c) und zwei Reste aus N07 ✅ 2026-11-17
 
 Die kleinen, baubaren Reste aus zehn offenen Punkten. Pull Requests 296, 297,
