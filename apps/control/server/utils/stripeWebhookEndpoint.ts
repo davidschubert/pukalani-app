@@ -14,7 +14,7 @@ import type { H3Event } from 'h3'
  * Weil die URL aus der Env kommt, genügte dort ein Wert — hier war nichts zu
  * ändern. Was NICHT von allein mitgeht, ist der bereits bei Stripe
  * REGISTRIERTE Endpunkt: Stripe folgt keiner Weiterleitung, die URL im
- * Dashboard gehört also von Hand umgehängt (docs/runbooks/ADMIN-CUTOVER.md).
+ * Dashboard gehört also von Hand umgehängt (docs/archiv/ADMIN-CUTOVER.md).
  *
  * BEWUSST AUCH NICHT aus dem `Host`-Header: derselbe Grund wie bei
  * `billingReturnOrigin` — ein Header ist Eingabe des Aufrufers, und diese URL

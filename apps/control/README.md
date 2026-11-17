@@ -1,50 +1,39 @@
-# apps/_template — Kopiervorlage für neue Pukalani-Apps
+# apps/control — Betreiber-Konsole (admin.pukalani.app)
 
-Dünne App-Hülle, die alle Layer komponiert (`themes`, `admin`, `comments`,
-`moderation`, `core`, `system`). Der Unterstrich-Prefix hält sie aus dem
-Migrations-Runner heraus (`scripts/migrate.mjs` ignoriert `_*`).
+Die App, in der der Betreiber arbeitet: Control Plane der Plattform
+(Communities, Pläne, Einladungs-Codes, eigene Domains), Feedback-Bereich,
+Ticket-Board, AI-Runner und die interne Projekt-Doku. Im Code, im Deployment
+und in pm2 heißt sie `control`; die Adresse ist seit 2026-08-11
+**admin.pukalani.app**, das Appwrite-Projekt seit 2026-08-18 **`admin`**
+(Protokolle der Umzüge: `docs/archiv/ADMIN-CUTOVER.md`,
+`docs/archiv/ADMIN-PROJEKT-CUTOVER.md`).
 
-## Neue App erstellen
+Kein Mandant, kein Kunden-Host: hier liegen `communities` und
+`community_members`, alle Sites lesen sie über die Service-Naht bzw. mit einem
+nur lesenden Schlüssel.
 
-1. **Kopieren + benennen**
-   ```bash
-   cp -R apps/_template apps/<name>
-   ```
-   - `package.json`: `"name": "<name>"` setzen und im `bootstrap`-Skript
-     `--app _template` durch `--app <name>` ersetzen (sonst zielen die
-     Migrationen auf die Vorlage; `pnpm create-site <name>` erledigt beides)
-   - `nuxt.config.ts`: `devServer.port` eindeutig vergeben (3002+, siehe CLAUDE.md)
-   - `.env.example` → `NUXT_PUBLIC_APP_URL` an den Port anpassen
-   - Nicht benötigte Produkt-Layer aus `extends` UND `package.json` entfernen
-     (`core` + `system` bleiben immer)
+## Layer
 
-2. **Appwrite-Instanz vorbereiten** (jede App hat ihre EIGENE Instanz)
-   - Instanz starten, in der Console: Account + Projekt + zwei API-Keys anlegen
-     (Runtime-Key + Migrations-Key, Scopes siehe `.env.example`)
-   - `cp apps/<name>/.env.example apps/<name>/.env` und ausfüllen
+Steht in `site.manifest.ts` (die eine Quelle; `pnpm check:manifests` hält
+`extends` und `package.json` dazu konsistent): `themes`, `admin`, `control`,
+`feedback`, `billing`, `tickets`, `runner`, `pages` — dazu immer `core` und
+`system`.
 
-3. **Installieren + Bootstrap**
-   ```bash
-   pnpm install
-   pnpm --filter <name> bootstrap   # DB + Bucket + Platform + alle Migrationen
-   ```
-   Das ist EIN Skript für alle Apps (`scripts/bootstrap.mjs --app <name>`) und
-   nur für FRISCHE Instanzen: es prüft vor dem ersten Schreibzugriff, ob die
-   Datenbank leer ist, und bricht sonst ab (`--check` prüft nur, `--force`
-   erzwingt).
-   Migrationen später einzeln: `pnpm migrate --app <name>`
-   (nie ohne `--app`, sobald mehrere Apps existieren — der Runner erzwingt das).
+## Lokal starten
 
-4. **Starten**
-   ```bash
-   pnpm --filter <name> dev
-   ```
+```bash
+pnpm --filter control dev   # Port 3004
+```
 
-5. **Anpassen**
-   - `app/app.config.ts`: Config-Gates (`pukalani.analytics`, `pukalani.auth.*`, …)
-   - `i18n/locales/*.json`: App-Texte (Core-Keys werden gemergt)
-   - `app/pages/`: eigene Seiten; Layout-Overrides optional unter `app/layouts/`
-     (Core bringt `default` + `auth` mit)
+`.env` aus `.env.example` anlegen. Migrationen laufen nur über den zentralen
+Runner und nur gegen das Projekt aus `appwriteProjects`:
+
+```bash
+pnpm migrate --app control
+```
+
+Production: `.claude/rules/appwrite.md` („ZIEL-PRÜFUNG VOR DEM SCHREIBEN") —
+immer mit `--only`, erst `--dry-run`, und nur mit Freigabe.
 
 ## Interne Projekt-Doku unter `/docs`
 
@@ -68,9 +57,9 @@ direkt dorthin (Collection `internalDocs`, `prefix: '/docs'`).
   ```
   (Dev-Server muss laufen; `PROBE_BASE=…` für einen anderen Port.)
 
-## Konventionen (Kurzfassung)
+## Weiterlesen
 
-- CRUD nur über `server/api/*` der Layer — nie Web-SDK-CRUD im Client
-- `app.config.ts` gehört in `app/` (im Package-Root wird sie ignoriert)
-- Domain-Types in `shared/types/`, Zod-Schemas als Factories, i18n-Keys statt
-  hartcodierter Strings — Details in CLAUDE.md und docs/CONCEPT.md
+- Hosts, Altnamen und Pflicht-Einstellungen: `.claude/rules/hosts-ops.md`
+- Anlegen, Mitglieder, Stilllegen: `.claude/rules/onboarding.md`
+- Pläne und Produkte: `.claude/rules/plans-products.md`
+- Betrieb und Ausliefern: `docs/runbooks/DEPLOYMENT.md`

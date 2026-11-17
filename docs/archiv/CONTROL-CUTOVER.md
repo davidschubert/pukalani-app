@@ -1,5 +1,12 @@
 # Cutover: Studio → Control (Maschine + Appwrite-Projekt)
 
+> **Archiviert am 2026-11-17 — der Umzug ist ganz gelaufen.** Die Betreiber-
+> Konsole heißt seit AH-4 `admin.pukalani.app` ([ADMIN-CUTOVER.md](ADMIN-CUTOVER.md)),
+> ihr Projekt seit AH-4c `admin` ([ADMIN-PROJEKT-CUTOVER.md](ADMIN-PROJEKT-CUTOVER.md)).
+> Dieses Dokument ist Protokoll: Pfade, Hosts und Projektnamen beschreiben den
+> 2026-07-26. Die drei unten offenen Krümel sind am 2026-11-17 nachgesehen
+> (nur von außen, ohne Schlüssel) und dort mit ihrem Stand vermerkt.
+
 Der **Code**-Teil ist erledigt und deployt (Layer `control`, App `control`,
 `/api/control/*`, Feature-Key, i18n, Env-Namen). Offen ist nur noch, was
 ausserhalb des Repos liegt: das Appwrite-Projekt und die ploi-Site.
@@ -154,12 +161,16 @@ Offene Krümel:
       49.13.211.173 (DNS only, wie Wildcard) angelegt, Alt-Record `studio`
       gelöscht — der Alias läuft weiter über `*.pukalani.app` (verifiziert:
       dig + https 200 auf beiden).
-- [ ] Gelegenheits-Krümel: ploi-Alias `studio.` + Doppel-Zertifikat der
-      control-Site zurückbauen (nichts zeigt mehr auf studio; nur noch alte
-      Bookmarks). Beim Zert-Neuausstellen control-only SAN.
+- Erledigt (nachgesehen 2026-11-17): ploi-Alias `studio.` und das
+      Doppel-Zertifikat gibt es nicht mehr — `studio.pukalani.app` antwortet
+      404 wie jeder unbekannte Name, das Zertifikat der Konsole nennt nur noch
+      `admin.pukalani.app`.
 - [x] GitHub-Secret PLOI_DEPLOY_WEBHOOK_STUDIO entfernt.
-- [ ] Read-only-Key im Projekt control erzeugen (David, Console) und den
-      Interim-Runtime-Key in der platform-.env ersetzen (s. Nachwehen).
-- [ ] UptimeRobot-Monitor 803548622: Friendly-Name sagt noch „studio…"
-      (URL prüft schon control) — SPA rendert das Edit-Formular nur im
-      fokussierten Tab, daher Ein-Klick für David.
+- Erledigt mit dem Projekt-Umzug AH-4c: die Platform-App liest das Control
+      Plane mit einem Schlüssel, der nur `rows.read` trägt
+      ([ADMIN-PROJEKT-CUTOVER.md](ADMIN-PROJEKT-CUTOVER.md),
+      [APPWRITE-KEYS.md](../runbooks/APPWRITE-KEYS.md)).
+- Nicht nachgesehen (2026-11-17): ob der UptimeRobot-Monitor 803548622
+      noch „studio…" heißt. Geprüft wird seit AH-4 die Adresse der Konsole
+      ([ADMIN-CUTOVER.md](ADMIN-CUTOVER.md)); ein alter Name wäre nur ein
+      Schönheitsfehler und steht als Kleinigkeit in OPEN-ITEMS (AR1 d).

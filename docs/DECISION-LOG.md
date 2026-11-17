@@ -2115,7 +2115,7 @@ Beobachtung des F3-Runbooks abzuwarten (5 Tage störungsfrei, Serien-Proben
 da, Runtime-Key antwortete 200, `commentspukalaniapp` lief noch in pm2) und
 ist jetzt ehrlich — offen bleiben Davids zwei Klicks: Site-Löschung im Panel,
 Key-Widerruf in der Appwrite-Konsole. Details: Nachtrag AH-4b in
-docs/runbooks/ADMIN-CUTOVER.md, Korrektur in docs/archiv/F3-CUTOVER.md.
+docs/archiv/ADMIN-CUTOVER.md, Korrektur in docs/archiv/F3-CUTOVER.md.
 
 ---
 

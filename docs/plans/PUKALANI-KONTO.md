@@ -175,7 +175,7 @@ kommen darin nicht vor.
 - **Nutzer-Ids sind beim Anlegen frei wählbar** — ein verbundener Dienst kann
   sein lokales Konto unter derselben Id führen wie das Pukalani-Konto.
 - **Übernahme mit Passwort-Hash** ist möglich und bei AH-1 schon einmal
-  gefahren (`docs/runbooks/ACCOUNT-CUTOVER.md`).
+  gefahren (`docs/archiv/ACCOUNT-CUTOVER.md`).
 - **Kein eingebautes „Konto über mehrere Projekte".** Was hier „ein Konto für
   alle Seiten" heißt, bauen wir selbst — Appwrite liefert die Bausteine.
 

@@ -650,7 +650,7 @@ jobs:
             # (portfolio und platform behalten ihre Checkouts fuer den ploi-
             # FALLBACK-Deploy — der macht sein eigenes git pull. Fuer control,
             # marketing, help und branding gibt es diesen Fallback nicht; Ersatz
-            # sind die Runbooks docs/runbooks/CONTROL-CUTOVER.md und
+            # sind die Runbooks docs/archiv/CONTROL-CUTOVER.md und
             # BRANDING-SUPPLY-SETUP.md sowie docs/archiv/HELP-GO-LIVE.md;
             # zurueck auf einen liegenden Stand geht fuer ALLE sechs mit
             # ops/rollback.sh.)

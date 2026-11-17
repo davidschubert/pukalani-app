@@ -6,7 +6,7 @@ und der Kundenbereich zieht von `my.pukalani.app` / `start.pukalani.app` nach
 abgemeldet (Sessions wandern nicht mit).
 
 Grundlage: `docs/plans/ACCOUNT-HORIZONT.md`, Davids Entscheidung vom 2026-08-11
-(DECISION-LOG). Muster für die Deploy-Handgriffe: `docs/runbooks/CONTROL-CUTOVER.md`.
+(DECISION-LOG). Muster für die Deploy-Handgriffe: `docs/archiv/CONTROL-CUTOVER.md`.
 
 Die Kästchen sind **echt** und werden pro Durchlauf abgehakt. Wo eine Zahl
 steht, gehört sie eingetragen — ein Häkchen ohne Messwert ist eine Behauptung.

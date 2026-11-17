@@ -5,7 +5,7 @@
 antwortet 301 — Pfad und Query unverändert.
 
 **Davids Entscheidung 2026-08-11.** Spezifikation: docs/plans/ACCOUNT-HORIZONT.md
-(AH-4). Vorlage dieses Vorgangs: docs/runbooks/CONTROL-CUTOVER.md
+(AH-4). Vorlage dieses Vorgangs: docs/archiv/CONTROL-CUTOVER.md
 (studio→control, 2026-07-26) — dort stehen die Fallen, die hier vermieden sind.
 
 ---
