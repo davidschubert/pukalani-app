@@ -694,9 +694,18 @@ export interface CommunityInviteView {
   createdAt: string
 }
 
+/**
+ * So viele offene Einladungen listet die Team-Ansicht höchstens (die neuesten
+ * zuerst). Gibt es mehr, sagt die Antwort das (`invitesTruncated`) und die
+ * Seite zeigt einen Hinweis — vorher endete die Liste dort kommentarlos.
+ */
+export const COMMUNITY_INVITE_LIST_MAX = 100
+
 export interface CommunityTeamResponse {
   members: CommunityMemberView[]
   invites: CommunityInviteView[]
+  /** Es gibt mehr offene Einladungen als `COMMUNITY_INVITE_LIST_MAX`. */
+  invitesTruncated?: boolean
   /** Rolle des Abfragenden — die UI leitet daraus ab, was sie anbietet. */
   actorRole: CommunityRole | null
 }

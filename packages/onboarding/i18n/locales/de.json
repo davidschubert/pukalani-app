@@ -865,7 +865,8 @@
       "description": "Verschickt, aber noch nicht angenommen. Widerrufen macht den Link sofort ungültig.",
       "email": "E-Mail-Adresse",
       "role": "Rolle",
-      "expires": "Läuft ab"
+      "expires": "Läuft ab",
+      "truncated": "Es gibt mehr offene Einladungen, als hier stehen. Angezeigt werden nur die neuesten."
     },
     "revoke": {
       "title": "Einladung widerrufen?",

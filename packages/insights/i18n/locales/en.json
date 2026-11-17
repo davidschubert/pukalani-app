@@ -504,6 +504,7 @@
       "sourceAdd": "Add source",
       "sourceRemove": "Remove source",
       "sourceUrl": "Address",
+      "sourceLinkInvalid": "Please enter a full address that starts with http or https.",
       "sourceKind": "Kind",
       "sourcePublisher": "Publisher",
       "sourceDate": "Date",

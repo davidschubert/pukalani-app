@@ -504,6 +504,7 @@
       "sourceAdd": "Quelle hinzufügen",
       "sourceRemove": "Quelle entfernen",
       "sourceUrl": "Adresse",
+      "sourceLinkInvalid": "Bitte eine vollständige Adresse eintragen, die mit http oder https beginnt.",
       "sourceKind": "Art",
       "sourcePublisher": "Herausgeber",
       "sourceDate": "Datum",

@@ -6,7 +6,7 @@ import { isCommunityRole, communityRoleHasCapability, type CommunityRole } from 
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
 import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../shared/types/communityInvite'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
-import type { CommunityTeamDecision, CommunityTeamMemberFacts } from '../../shared/communityTeam'
+import { COMMUNITY_INVITE_LIST_MAX, type CommunityTeamDecision, type CommunityTeamMemberFacts } from '../../shared/communityTeam'
 import { memberInviteLimitFrom } from '../../shared/communityInviteQuota'
 import { verifyRuntimeIdentity, type RuntimeIdentity } from './onboardingService'
 
@@ -134,20 +134,24 @@ export async function findCommunityMember(
 }
 
 /** Offene Einladungen einer Site (pending; abgelaufene filtert der Aufrufer). */
-export async function listCommunityInvites(event: H3Event, communityId: string): Promise<CommunityInviteRow[]> {
+export async function listCommunityInvites(
+  event: H3Event,
+  communityId: string,
+): Promise<{ rows: CommunityInviteRow[], truncated: boolean }> {
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
-  const { rows } = await admin.tablesDB.listRows<CommunityInviteRow>({
+  const { rows, total } = await admin.tablesDB.listRows<CommunityInviteRow>({
     databaseId: config.public.appwriteDatabaseId,
     tableId: COMMUNITY_INVITES_TABLE,
     queries: [
       Query.equal('communityId', communityId),
       Query.equal('status', 'pending'),
       Query.orderDesc('$createdAt'),
-      Query.limit(100),
+      Query.limit(COMMUNITY_INVITE_LIST_MAX),
     ],
   }).catch((error) => { throw toH3Error(error, 'Could not read site invites') })
-  return rows
+  // `total` zählt alle offenen, `rows` trägt höchstens die Grenze.
+  return { rows, truncated: total > rows.length }
 }
 
 /**

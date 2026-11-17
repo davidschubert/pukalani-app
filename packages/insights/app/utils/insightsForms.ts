@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { HTTP_URL_PROTOCOL, isHttpUrl } from '../../../core/shared/safeHref'
 import { INSIGHTS_FORMATS, INSIGHTS_LOCALES } from '../../shared/insightsPost'
 
 /**
@@ -38,9 +39,25 @@ export type InsightsNewPostForm = z.infer<ReturnType<typeof createInsightsNewPos
 export function createInsightsBrandSchema(t: (key: string) => string) {
   return z.object({
     name: z.string().trim().min(1, t('insights.editor.brandNameRequired')).max(200),
-    homepage: z.union([z.url(t('insights.editor.brandHomepageInvalid')).max(512), z.literal('')]).default(''),
+    // Dieselbe Regel wie der Server (`insightsBrandEditSchema`): nur http(s).
+    // `z.url()` allein nimmt jedes Schema — der Server lehnte dann ab, und am
+    // Feld stand nichts.
+    homepage: z.union([
+      z.url({ protocol: HTTP_URL_PROTOCOL, error: t('insights.editor.brandHomepageInvalid') }).max(512),
+      z.literal(''),
+    ]).default(''),
     industry: z.string().trim().max(40).default(''),
   })
 }
 
 export type InsightsBrandForm = z.infer<ReturnType<typeof createInsightsBrandSchema>>
+
+/**
+ * Trägt ein Link-Feld der Redaktion etwas, das der Server ablehnen wird?
+ * Leer ist erlaubt (das Feld ist dann einfach nicht gesetzt); alles andere muss
+ * eine http(s)-Adresse sein — dieselbe Regel wie `z.url({ protocol })` im
+ * Vertrag (`core/shared/safeHref.ts`). Für Felder ohne UForm (Quellen-Liste).
+ */
+export function insightsLinkRejected(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value !== '' && !isHttpUrl(value)
+}

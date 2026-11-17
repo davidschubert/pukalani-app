@@ -159,7 +159,7 @@ describe('Mail-Routen: Notbremse über alle IPs', () => {
     expect((await call(fakeEvent('192.0.2.200')))?.status).toBe(429)
   })
 
-  it('lässt Routen außerhalb der Mail-Liste unberührt (Login zählt nur Fehlversuche)', async () => {
+  it('lässt Routen außerhalb der Mail-Liste unberührt (Login hat kein Stundenfenster und keine Notbremse)', async () => {
     for (let i = 1; i <= 61; i++) await call(fakeEvent(`198.51.100.${i}`))
     expect(await call(fakeEvent('192.0.2.200', '/api/auth/login'))).toBeNull()
   })

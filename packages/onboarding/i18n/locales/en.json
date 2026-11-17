@@ -865,7 +865,8 @@
       "description": "Sent, but not accepted yet. Revoking makes the link invalid immediately.",
       "email": "Email address",
       "role": "Role",
-      "expires": "Expires"
+      "expires": "Expires",
+      "truncated": "There are more open invitations than shown here. The list shows only the most recent."
     },
     "revoke": {
       "title": "Revoke invitation?",
