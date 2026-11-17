@@ -243,6 +243,8 @@ export interface ProbeRun {
    */
   doorOpened: boolean
   joinHandlerCalls: number
+  /** Die Antwort des Handlers, wenn er ohne Fehler und ohne Datentür endete. */
+  result?: unknown
 }
 
 /** Die Datentür endet in den Proben hier: geprüft wird die Wache DAVOR. */
@@ -316,8 +318,8 @@ export async function probeRoute(
   const mod = await load()
   const handler = mod.default as (e: H3Event) => Promise<unknown>
   try {
-    await handler(wired.event)
-    return { status: 200, guardPassed, doorOpened, joinHandlerCalls: wired.joinHandlerCalls() }
+    const result = await handler(wired.event)
+    return { status: 200, guardPassed, doorOpened, joinHandlerCalls: wired.joinHandlerCalls(), result }
   }
   catch (thrown) {
     if (thrown instanceof DoorReached) {
