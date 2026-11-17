@@ -454,7 +454,7 @@
     "notAMember": "Du bist kein Mitglied dieser Community",
     "notAMemberHint": "Mitmachen können hier nur Mitglieder, und Mitglied wird man in dieser Community per Einladung. Frag am besten die Leitung der Community.",
     "aiEndpointUnavailable": "KI gerade nicht verfügbar",
-    "aiEndpointUnavailableHint": "Das eingestellte KI-Modell ist unter unseren Datenschutz-Vorgaben (keine Speicherung, Verarbeitung in Europa) gerade nicht erreichbar. Dein Text wurde an kein KI-Modell weitergegeben. Bitte versuch es später noch einmal."
+    "aiEndpointUnavailableHint": "Das eingestellte KI-Modell ist unter unseren Datenschutz-Vorgaben (keine Speicherung, Verarbeitung in Europa) gerade nicht erreichbar. Der Text wurde an kein KI-Modell weitergegeben. Bitte später noch einmal versuchen."
   },
   "demo": {
     "banner": "Das ist eine Demo-Community mit Beispiel-Inhalten.",
