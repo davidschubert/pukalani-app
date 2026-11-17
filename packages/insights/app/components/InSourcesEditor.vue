@@ -3,6 +3,7 @@ import type { InsightsSource, InsightsSourceKind } from '../../shared/insightsPo
 import { INSIGHTS_QUOTE_MAX, INSIGHTS_SOURCE_KINDS } from '../../shared/insightsPost'
 import type { InsightsEvidenceResponse } from '../../shared/types/insightsApi'
 import { insightsHost } from '../utils/insightsFormat'
+import { insightsLinkRejected } from '../utils/insightsForms'
 
 /**
  * DAS QUELLEN-PANEL (§9.4) — die Zeilen-Oberfläche für `InsightsSource[]`.
@@ -56,6 +57,11 @@ const emit = defineEmits<{
 const sources = defineModel<InsightsSource[]>({ required: true })
 
 const { t } = useI18n()
+
+/** Hinweis am Feld, bevor der Server den Link ablehnt (nur http(s) ist erlaubt). */
+function linkHint(value: string | undefined): string | undefined {
+  return insightsLinkRejected(value) ? t('insights.editor.sourceLinkInvalid') : undefined
+}
 
 /** Ausgeschrieben statt gerechnet: `brand-site` und `own-data` tragen einen
  *  Bindestrich, und ein zusammengebauter Schlüssel wäre für den i18n-Wächter
@@ -141,7 +147,7 @@ function evidenceOf(index: number): InsightsEvidenceView {
         </p>
 
         <div class="mt-3 grid gap-3 sm:grid-cols-2">
-          <UFormField :label="t('insights.editor.sourceUrl')">
+          <UFormField :label="t('insights.editor.sourceUrl')" :error="linkHint(source.url)">
             <UInput v-model="source.url" class="w-full font-mono text-xs" :maxlength="512" />
           </UFormField>
           <UFormField :label="t('insights.editor.sourceKind')">
@@ -153,7 +159,7 @@ function evidenceOf(index: number): InsightsEvidenceView {
           <UFormField :label="t('insights.editor.sourceDate')">
             <UInput v-model="source.date" type="date" class="w-full" />
           </UFormField>
-          <UFormField v-if="source.kind === 'wikipedia'" class="sm:col-span-2" :label="t('insights.editor.sourceLicense')">
+          <UFormField v-if="source.kind === 'wikipedia'" class="sm:col-span-2" :label="t('insights.editor.sourceLicense')" :error="linkHint(source.license)">
             <UInput v-model="source.license" class="w-full" :maxlength="200" />
           </UFormField>
           <UFormField class="sm:col-span-2" :label="t('insights.editor.sourceQuote')">

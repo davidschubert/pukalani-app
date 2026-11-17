@@ -1011,6 +1011,25 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
 ]
 
 /**
+ * GAST-FORMULARE, DIE EINE MAIL AN EINE VOM ABSENDER GEWÄHLTE ADRESSE SCHICKEN
+ * (Quittung, Double-Opt-in) — dieselbe Spam-Relais-Klasse wie die Auth-Routen,
+ * nur ohne Konto: Erstgespräch (zitiert Name UND Anliegen zurück), Warteliste
+ * und Newsletter (Bestätigungs-Link an die eingegebene Adresse). Sie liegen in
+ * `WRITE_LIMITED` mit eigenem Minuten-Deckel; Stundenfenster und Notbremse
+ * gelten hier je BUCKET statt je Route, damit ein Formular mit mehreren
+ * Pfaden (waitlist + waitlist/confirm) einen Eimer teilt. Das Portfolio-
+ * Erstgespräch mailt nur an David (keine Relais-Gefahr), hält aber dieselbe
+ * Kontingent-Grenze — eine Nacht Formular-Spam kostet Resend-Mails, egal wer
+ * der Empfänger ist.
+ */
+const GUEST_MAIL_BUCKETS = new Set([
+  'brand:intro-call',
+  'brand:waitlist',
+  'insights:newsletter',
+  'portfolio:intro-call',
+])
+
+/**
  * Die beiden zusätzlichen Fenster der Mail-Routen (Vorfall 2026-10-27, s. Kopf).
  * Liefert das Fenster, das blockt, oder `null`.
  *
@@ -1034,25 +1053,6 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
  *    zählt der In-Memory-Fallback je Instanz; die Bremse greift dann je
  *    Instanz, und jede meldet sich einmal.
  */
-/**
- * GAST-FORMULARE, DIE EINE MAIL AN EINE VOM ABSENDER GEWÄHLTE ADRESSE SCHICKEN
- * (Quittung, Double-Opt-in) — dieselbe Spam-Relais-Klasse wie die Auth-Routen,
- * nur ohne Konto: Erstgespräch (zitiert Name UND Anliegen zurück), Warteliste
- * und Newsletter (Bestätigungs-Link an die eingegebene Adresse). Sie liegen in
- * `WRITE_LIMITED` mit eigenem Minuten-Deckel; Stundenfenster und Notbremse
- * gelten hier je BUCKET statt je Route, damit ein Formular mit mehreren
- * Pfaden (waitlist + waitlist/confirm) einen Eimer teilt. Das Portfolio-
- * Erstgespräch mailt nur an David (keine Relais-Gefahr), hält aber dieselbe
- * Kontingent-Grenze — eine Nacht Formular-Spam kostet Resend-Mails, egal wer
- * der Empfänger ist.
- */
-const GUEST_MAIL_BUCKETS = new Set([
-  'brand:intro-call',
-  'brand:waitlist',
-  'insights:newsletter',
-  'portfolio:intro-call',
-])
-
 async function checkMailRouteBudget(
   store: RateLimitStore,
   prefix: string,

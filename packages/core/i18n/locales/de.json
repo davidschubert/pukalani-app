@@ -79,9 +79,9 @@
     },
     "networkError": "Server nicht erreichbar — bitte später erneut versuchen.",
     "botCheck": {
-      "required": "Bitte bestätige, dass du kein Roboter bist.",
-      "failed": "Die Roboter-Prüfung ist fehlgeschlagen, bitte versuche es erneut.",
-      "unavailable": "Die Roboter-Prüfung ist gerade nicht erreichbar, bitte versuche es in ein paar Minuten noch einmal."
+      "required": "Bitte die Roboter-Prüfung bestätigen.",
+      "failed": "Die Roboter-Prüfung ist fehlgeschlagen. Bitte noch einmal versuchen.",
+      "unavailable": "Die Roboter-Prüfung ist gerade nicht erreichbar. Bitte in ein paar Minuten noch einmal versuchen."
     },
     "passwordPolicy": {
       "breached": "Dieses Passwort ist in bekannten Datenlecks aufgetaucht. Bitte wähle ein anderes.",
