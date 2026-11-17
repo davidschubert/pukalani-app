@@ -241,8 +241,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/insights/server/api/insights/public/duels/[slug].get.ts',
     'packages/insights/server/api/insights/public/posts/[slug].get.ts',
     'packages/insights/server/api/insights/public/rankings/[slug].get.ts',
-    'packages/insights/server/api/insights/radar/index.get.ts',
-    'packages/insights/server/api/insights/radar/run.post.ts',
     'packages/insights/server/api/insights/watchlist/[videoId].delete.ts',
     'packages/insights/server/api/insights/watchlist/[videoId].patch.ts',
     'packages/insights/server/api/insights/watchlist/index.get.ts',
