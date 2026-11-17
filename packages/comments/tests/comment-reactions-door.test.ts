@@ -107,7 +107,9 @@ describe('das Ziel wird geprueft, bevor irgendetwas entsteht', () => {
      * bezieht — sie verriete Existenz und Reagierende eines internen
      * Kommentars. Wer diese Pruefung entfernt, oeffnet genau das.
      */
-    expect(utils).toContain('operatorTargets')
+    // Seit KK1 über die EINE Funktion, die auch das Leserecht eines Kommentars
+    // entscheidet (`commentReadPermissions.ts`) — keine zweite Liste.
+    expect(utils).toContain('isOperatorCommentTarget(target.targetType)')
     expect(utils).toContain('reaction_target_not_public')
   })
 })
