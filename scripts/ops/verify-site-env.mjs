@@ -251,10 +251,10 @@ export const SITES = [
        * diese Variable zählt jeder Prozess für sich im Speicher — Bremsen,
        * Konto-Pausen und Tages-Deckel beginnen bei jedem Ausliefern neu, an
        * manchen Tagen mehrfach. Nichts wird rot, die Grenzen gelten nur
-       * kürzer als gedacht. Pflicht dort, wo sie am 2026-11-16 gesetzt war
-       * (platform, admin, portfolio). `branding.supply` hat sie noch NICHT
-       * (dort liegen die KI-Deckel im Speicher): erst auf dem Server setzen,
-       * dann hier eintragen (Reihenfolge-Regel in hosts-ops.md).
+       * kürzer als gedacht. Pflicht auf jeder Site mit Konten: platform, admin
+       * und portfolio seit 2026-11-16, `branding.supply` seit 2026-11-17 (dort
+       * am selben Tag gesetzt — erst der Server, dann die Liste,
+       * Reihenfolge-Regel in hosts-ops.md).
        */
       'NUXT_REDIS_URL',
     ],
@@ -508,6 +508,9 @@ export const SITES = [
        */
       GEO_CITY_DB_PATH,
       GEO_CITIES_PATH,
+      // Bremsen, Konto-Pausen und KI-Tages-Deckel über Neustarts hinweg
+      // (AB1 b / WA1 b, gesetzt am 2026-11-17) — Begründung bei `platform`.
+      'NUXT_REDIS_URL',
     ],
   },
   {

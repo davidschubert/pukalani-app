@@ -397,10 +397,10 @@ paths:
   Die Namen der fehlenden Variablen stehen beim Start als Fehlerzeile im
   pm2-Log, nie in einer Antwort. Alle vier stehen seitdem auf der
   Pflicht-Liste (vorher nur der Schlüssel). Kein Schalter stellt das ab.
-  `NUXT_REDIS_URL` steht seit 2026-11-16 auf der Pflicht-Liste von platform,
-  admin und portfolio (ohne sie zählt jeder Prozess für sich und beginnt bei
-  jedem Ausliefern neu); auf `branding.supply` ist sie noch NICHT gesetzt
-  (OPEN-ITEMS „WA1").
+  `NUXT_REDIS_URL` steht auf der Pflicht-Liste jeder Site mit Konten —
+  platform, admin und portfolio seit 2026-11-16, `branding.supply` seit
+  2026-11-17 (ohne sie zählt jeder Prozess für sich und beginnt bei jedem
+  Ausliefern neu). Landing und Hilfe haben keine Konten und brauchen sie nicht.
   REIHENFOLGE BEI EINER NEUEN VARIABLE (zuletzt
   `NUXT_INSIGHTS_NEWSLETTER_SECRET`, SEC-020, 2026-11-15): der Code läuft mit
   einem Rückfall, bis der Wert steht — erst ausliefern, dann den Wert auf dem
