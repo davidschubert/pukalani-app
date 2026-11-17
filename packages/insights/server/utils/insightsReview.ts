@@ -1,8 +1,8 @@
 import type { GuardCandidate } from '../../../core/shared/disparagementGuard'
 import { createDisparagementGuard } from '../../../core/shared/disparagementGuard'
 import { evidenceIsGrounded } from '../../../core/shared/evidenceGrounding'
-import type { InsightsPost, InsightsReviewIssue, InsightsSource } from '../../shared/insightsPost'
-import { insightsMethodologyLinked, insightsReviewIssues } from '../../shared/insightsPost'
+import type { InsightsBrand, InsightsPost, InsightsReviewIssue, InsightsSource } from '../../shared/insightsPost'
+import { insightsBrandReviewIssues, insightsMethodologyLinked, insightsReviewIssues } from '../../shared/insightsPost'
 import type { InsightsBrandRow } from '../../shared/insightsRows'
 import { toInsightsBrand } from '../../shared/insightsRows'
 import type { InsightsEvidenceReason } from '../../shared/types/insightsApi'
@@ -14,6 +14,11 @@ import { BrandSiteBlockedError, fetchBrandSiteForCheck } from '../contracts/bran
  * (`insightsPublicationGate`): der Zustandswechsel UND seit BE-009 das
  * Speichern eines veröffentlichten Artikels. Erst prüfen, dann
  * veröffentlichen — auch beim zweiten Mal.
+ *
+ * Seit IN1 c (2026-11-17) gilt dasselbe für MARKEN-SEITEN
+ * (`insightsBrandPublicationGate`): dieselben Quellen-Regeln, derselbe
+ * Abruf mit derselben Frist, dasselbe Freigabe-Zeichen in der
+ * Schreib-Funktion (`saveInsightsBrandRow`).
  *
  * ── WARUM DAS GATE AUF DEM SERVER SITZT UND NICHT IM EDITOR ──────────────
  * Der Editor zeigt dieselben Regeln, aber er ist eine Anzeige. Die Regeln
@@ -105,8 +110,14 @@ export async function insightsCheckEvidence(source: InsightsSource): Promise<Ins
  *
  * Verglichen wird nach INHALT, nicht nach Index: wer Quellen umsortiert, hat
  * keinen Beleg geändert und löst keinen Abruf aus.
+ *
+ * Seit IN1 c (2026-11-17) braucht sie nur `{ sources }`: dieselbe Auswahl
+ * gilt für eine Marken-Seite, die kein Beitrag ist.
  */
-export function insightsSourcesToFetch(next: InsightsPost, published?: InsightsPost | null): InsightsSource[] {
+export function insightsSourcesToFetch(
+  next: { readonly sources: readonly InsightsSource[] },
+  published?: { readonly sources: readonly InsightsSource[] } | null,
+): InsightsSource[] {
   const candidates = next.sources.filter(source => source.quote && source.url)
   if (!published) return candidates
   const pairOf = (source: InsightsSource) => JSON.stringify([source.url, source.quote])
@@ -327,20 +338,49 @@ export interface InsightsPublicClearance {
   readonly kind: 'gate' | 'hidden-translation'
 }
 
-const issuedClearances = new WeakMap<InsightsPublicClearance, { post: InsightsPost, snapshot: string }>()
+/**
+ * DAS ZEICHEN FÜR EINE MARKEN-SEITE (IN1 c, 2026-11-17) — dieselbe Bauart,
+ * eine eigene Form: ein Beitrags-Zeichen trägt `post`, dieses `brand`. So
+ * kann der Typ-Prüfer ein Zeichen der einen Tabelle gar nicht erst an die
+ * Schreib-Funktion der anderen reichen; zur Laufzeit hält es ohnehin die
+ * Bindung an das geprüfte Objekt.
+ */
+export interface InsightsBrandClearance {
+  readonly brand: InsightsBrand
+  readonly kind: 'brand-gate'
+}
+
+/**
+ * EIN Verzeichnis für beide Zeichen-Arten (seit IN1 c verallgemeinert statt
+ * verdoppelt): Schlüssel ist das Zeichen, Wert das geprüfte Objekt und sein
+ * Inhalt zum Zeitpunkt der Prüfung.
+ */
+const issuedClearances = new WeakMap<object, { subject: object, snapshot: string }>()
+
+function registerClearance<C extends object>(clearance: C, subject: object): C {
+  issuedClearances.set(clearance, { subject, snapshot: JSON.stringify(subject) })
+  return clearance
+}
+
+function clearanceCovers(clearance: object | null | undefined, subject: object): boolean {
+  if (!clearance) return false
+  const issued = issuedClearances.get(clearance)
+  return !!issued && issued.subject === subject && issued.snapshot === JSON.stringify(subject)
+}
 
 function issueClearance(post: InsightsPost, kind: InsightsPublicClearance['kind']): InsightsPublicClearance {
-  const clearance: InsightsPublicClearance = Object.freeze({ post, kind })
-  issuedClearances.set(clearance, { post, snapshot: JSON.stringify(post) })
-  return clearance
+  return registerClearance<InsightsPublicClearance>(Object.freeze({ post, kind }), post)
 }
 
 /** Deckt das Zeichen genau diesen Stand? Nur ein hier ausgestelltes, nur für
  *  dasselbe Objekt, nur solange es unverändert ist. */
 export function insightsClearanceCovers(clearance: InsightsPublicClearance | null | undefined, post: InsightsPost): boolean {
-  if (!clearance) return false
-  const issued = issuedClearances.get(clearance)
-  return !!issued && issued.post === post && issued.snapshot === JSON.stringify(post)
+  return clearanceCovers(clearance, post)
+}
+
+/** Dasselbe für eine Marken-Seite (IN1 c). */
+export function insightsBrandClearanceCovers(clearance: InsightsBrandClearance | null | undefined, brand: InsightsBrand): boolean {
+  return clearanceCovers(clearance, brand)
 }
 
 export interface InsightsGateInput {
@@ -382,21 +422,113 @@ export type InsightsGateVerdict =
  */
 export async function insightsPublicationGate(input: InsightsGateInput): Promise<InsightsGateVerdict> {
   const { next, published, brandRows } = input
-  const selected = insightsSourcesToFetch(next, published)
-  const chosen = new Set<InsightsSource>(selected)
-  const fetched = await insightsSourceTexts(selected)
+  const fetched = await fetchSelectedSources(next, published)
   const issues = insightsReviewIssues(next, {
     sourceTexts: fetched.texts,
     flagText: insightsFlagText(next, brandRows),
     knownBrandIds: insightsKnownBrandIds(brandRows),
     methodologyLinked: insightsMethodologyLinked(next),
-  }).filter((issue) => {
+  }).filter(issue => fetched.counts(issue))
+  if (issues.length > 0) return { passed: false, issues, sourcesTimedOut: fetched.timedOut }
+  return { passed: true, issues: [], clearance: issueClearance(next, 'gate'), sourcesTimedOut: fetched.timedOut }
+}
+
+/**
+ * DER ABRUF-TEIL BEIDER GATES (seit IN1 c herausgezogen) — Auswahl, Abruf
+ * mit Frist, und die Regel, dass ein `quote_not_grounded` nur für eine
+ * AUSGEWÄHLTE Quelle zählt (Begründung an `insightsPublicationGate`). Eine
+ * Stelle, damit Beitrag und Marke nicht zwei Fassungen derselben Ausnahme
+ * bekommen.
+ */
+async function fetchSelectedSources(
+  next: { readonly sources: readonly InsightsSource[] },
+  published: { readonly sources: readonly InsightsSource[] } | null | undefined,
+): Promise<{ texts: Record<string, string>, timedOut: number, counts: (issue: InsightsReviewIssue) => boolean }> {
+  const selected = insightsSourcesToFetch(next, published)
+  const chosen = new Set<InsightsSource>(selected)
+  const fetched = await insightsSourceTexts(selected)
+  const counts = (issue: InsightsReviewIssue): boolean => {
     if (issue.code !== 'quote_not_grounded' || issue.at?.kind !== 'source') return true
     const source = next.sources[issue.at.index]
     return !!source && chosen.has(source)
-  })
+  }
+  return { texts: fetched.texts, timedOut: fetched.timedOut, counts }
+}
+
+// ── Das Gate der Marken-Seiten (IN1 c, 2026-11-17) ─────────────────────────
+
+/**
+ * DER HERABSETZUNGS- UND NAMENSFILTER FÜR EINE MARKEN-SEITE.
+ *
+ * Dieselbe Überlegung wie bei `insightsFlagText`: Kandidaten sind die
+ * Marken, über die diese Seite NICHT redet. „Die eigenen" sind die Marke
+ * selbst — mit Name und Homepage aus dem NEUEN Stand, damit eine Umbenennung
+ * sich nicht am eigenen Namen sperrt — und die Marken unter `relations`: sie
+ * stehen verlinkt auf der Seite und haben eine Zeile, an der ein
+ * Korrekturvorschlag ankommt, das genaue Gegenstück zu den Marken-Verweisen
+ * eines Beitrags. Alle ÜBRIGEN nicht entfernten Zeilen sind Kandidaten. Die
+ * Wortliste gilt immer.
+ */
+export function insightsBrandFlagText(
+  brand: InsightsBrand,
+  selfId: string,
+  brandRows: readonly InsightsBrandRow[],
+): (text: string) => readonly string[] {
+  const related = new Set(brand.relations)
+  const ownTexts: string[] = [brand.name]
+  if (brand.homepage) ownTexts.push(brand.homepage)
+  const candidates: GuardCandidate[] = []
+  for (const row of brandRows) {
+    if (row.state === 'removed' || row.$id === selfId) continue
+    const other = toInsightsBrand(row)
+    if (related.has(row.$id)) {
+      ownTexts.push(other.name)
+      if (other.homepage) ownTexts.push(other.homepage)
+      continue
+    }
+    candidates.push({ name: other.name, url: other.homepage || undefined })
+  }
+  const guard = createDisparagementGuard(candidates, { ownTexts })
+  return (text: string) => {
+    const reason = guard.check(text)
+    return reason ? [reason] : []
+  }
+}
+
+export interface InsightsBrandGateInput {
+  /** Der Stand, der veröffentlicht werden oder bleiben soll. */
+  next: InsightsBrand
+  /**
+   * Der HEUTE veröffentlichte Stand — nur wenn die Zeile schon `published`
+   * ist. Dann werden nur neue oder geänderte Belege abgerufen.
+   */
+  published?: InsightsBrand | null
+  brandRows: readonly InsightsBrandRow[]
+  /** Die Zeilen-Id der Marke selbst — sie ist kein Kandidat ihres Filters. */
+  selfId: string
+}
+
+export type InsightsBrandGateVerdict =
+  | { passed: true, issues: InsightsReviewIssue[], clearance: InsightsBrandClearance, sourcesTimedOut: number }
+  | { passed: false, issues: InsightsReviewIssue[], sourcesTimedOut: number }
+
+/**
+ * DAS GATE EINER MARKEN-SEITE (IN1 c, 2026-11-17) — der EINE Einstieg für
+ * Marken, gebaut wie `insightsPublicationGate`: Regeln ohne Abruf immer über
+ * die ganze Zeile, Abruf über dieselbe Auswahl und dieselbe Frist (nicht
+ * gelesen = nicht belegt), Zeichen nur bei bestandener Prüfung und nur für
+ * GENAU `next`.
+ */
+export async function insightsBrandPublicationGate(input: InsightsBrandGateInput): Promise<InsightsBrandGateVerdict> {
+  const { next, published, brandRows, selfId } = input
+  const fetched = await fetchSelectedSources(next, published)
+  const issues = insightsBrandReviewIssues(next, {
+    sourceTexts: fetched.texts,
+    flagText: insightsBrandFlagText(next, selfId, brandRows),
+  }).filter(issue => fetched.counts(issue))
   if (issues.length > 0) return { passed: false, issues, sourcesTimedOut: fetched.timedOut }
-  return { passed: true, issues: [], clearance: issueClearance(next, 'gate'), sourcesTimedOut: fetched.timedOut }
+  const clearance = registerClearance<InsightsBrandClearance>(Object.freeze({ brand: next, kind: 'brand-gate' as const }), next)
+  return { passed: true, issues: [], clearance, sourcesTimedOut: fetched.timedOut }
 }
 
 /** Die Felder, die ein Übersetzen-Lauf ändern darf — ausser den Texten der

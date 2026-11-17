@@ -1,5 +1,6 @@
 import type { InsightsBrand } from '../../../../shared/insightsPost'
 import { insightsBrandEditSchema } from '../../../../shared/insightsPost'
+import type { InsightsBrandRow } from '../../../../shared/insightsRows'
 import { toInsightsBrand } from '../../../../shared/insightsRows'
 import type { InsightsBrandSavedResponse } from '../../../../shared/types/insightsApi'
 
@@ -28,6 +29,16 @@ import type { InsightsBrandSavedResponse } from '../../../../shared/types/insigh
  * `insightsBrandEditSchema` (400) — dieselbe Regel, die auch der volle
  * Vertrag durchsetzt. Eine Entfernung ohne dokumentierten Grund ist der eine
  * Fall, in dem uns später die Antwort fehlt.
+ *
+ * ── `published` LÄUFT DURCH DIE PRÜFUNG (IN1 c, 2026-11-17) ──────────────
+ * Davids Entscheidung vom 2026-11-16: „dieselbe Prüfung wie bei Artikeln".
+ * Soll der neue Stand `published` sein, fragt die Route
+ * `insightsBrandPublicationGate` — beim ersten Veröffentlichen mit Abruf
+ * jeder belegten Quelle, an einer schon veröffentlichten Seite nur der neuen
+ * oder geänderten. Nicht bestanden ⇒ 200 mit `saved: false` und der Liste,
+ * NICHTS geschrieben. `draft` und `removed` speichern frei; der Notausgang
+ * hängt nie an einer Regel. Die Schreib-Funktion verlangt für `published`
+ * das Zeichen des Gates selbst — die Route ist nicht die einzige Sicherung.
  */
 export default defineEventHandler(async (event): Promise<InsightsBrandSavedResponse> => {
   requirePermission(event, 'insights.manage')
@@ -56,7 +67,37 @@ export default defineEventHandler(async (event): Promise<InsightsBrandSavedRespo
     claimedBy: current.claimedBy,
   }
 
-  const saved = await saveInsightsBrandRow(event, id, next)
+  let saved: InsightsBrandRow
+  if (next.state === 'published') {
+    // IN1 c: veröffentlichen UND ändern einer veröffentlichten Seite laufen
+    // durch das Gate. War sie schon `published`, reist der heutige Stand mit
+    // — nur neue oder geänderte Belege werden dann abgerufen.
+    const brandRows = await listInsightsBrandRows(event, INSIGHTS_BRANDS_LIMIT)
+    const verdict = await insightsBrandPublicationGate({
+      next,
+      published: current.state === 'published' ? current : null,
+      brandRows,
+      selfId: id,
+    })
+    if (!verdict.passed) {
+      // Nichts geschrieben — auch keine neue Adresse: `applyInsightsSlugChange`
+      // oben LIEST nur, `slugHistory` reist ausschliesslich in `next`.
+      return {
+        brand: current,
+        id: row.$id,
+        listItem: toInsightsBrandListItem(row),
+        issues: verdict.issues,
+        saved: false,
+        sourcesTimedOut: verdict.sourcesTimedOut,
+      }
+    }
+    saved = await saveInsightsBrandRow(event, id, next, verdict.clearance)
+  }
+  else {
+    // `draft` und `removed` sind nicht öffentlich und speichern frei — das
+    // Entfernen auf Wunsch ist der Notausgang und hängt an keiner Regel.
+    saved = await saveInsightsBrandRow(event, id, next)
+  }
 
   if (current.state !== next.state) {
     logEvent('info', 'insights.brand_state_changed', { rowId: saved.$id, from: current.state, to: next.state })
@@ -66,5 +107,7 @@ export default defineEventHandler(async (event): Promise<InsightsBrandSavedRespo
     brand: toInsightsBrand(saved),
     id: saved.$id,
     listItem: toInsightsBrandListItem(saved),
+    issues: [],
+    saved: true,
   }
 })

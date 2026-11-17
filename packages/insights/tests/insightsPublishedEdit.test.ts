@@ -766,4 +766,84 @@ describe('Wächter: kein Schreibweg an der Prüfung vorbei', () => {
     }
     expect(problems).toEqual([])
   })
+
+  // ── IN1 c (2026-11-17): dieselben zwei Fragen für die Marken-Tabelle ──────
+
+  it('c · `INSIGHTS_BRANDS_TABLE` steht nur an den eingetragenen Stellen', () => {
+    const found: Record<string, number> = {}
+    for (const file of serverFiles) {
+      const count = countOf(readFileSync(file, 'utf8'), 'INSIGHTS_BRANDS_TABLE')
+      if (count > 0) found[layerPath(file)] = count
+    }
+    const problems: string[] = []
+    for (const [file, count] of Object.entries(found)) {
+      const allowed = BRANDS_TABLE_USES[file]
+      if (!allowed) {
+        problems.push(`${file}: greift ${count}× direkt auf die Marken-Tabelle zu. Schreiben geht NUR über saveInsightsBrandRow/createInsightsBrandRow; reines Lesen mit Grund in BRANDS_TABLE_USES eintragen.`)
+      }
+      else if (allowed.count !== count) {
+        problems.push(`${file}: ${count} statt ${allowed.count} Vorkommen. Ist ein neuer Schreibweg dazugekommen? Prüfen, dann Zahl und Grund in BRANDS_TABLE_USES anpassen.`)
+      }
+    }
+    for (const file of Object.keys(BRANDS_TABLE_USES)) {
+      if (!found[file]) problems.push(`${file}: steht in BRANDS_TABLE_USES, nutzt die Tabelle aber nicht mehr — Eintrag streichen.`)
+    }
+    expect(problems).toEqual([])
+  })
+
+  it('d · die Konto-Löschung leert an einer Marke NUR `claimedBy`', () => {
+    const source = readFileSync(join(LAYER_ROOT, 'server/utils/insightsUserData.ts'), 'utf8')
+    const writes = [...source.matchAll(/clear\(INSIGHTS_BRANDS_TABLE,[^)]*\)/g)].map(match => match[0])
+    expect(writes).toEqual([`clear(INSIGHTS_BRANDS_TABLE, row.$id, { claimedBy: '' })`])
+  })
+
+  it('e · jeder Aufruf von `saveInsightsBrandRow` in einer Route trägt seine Sicherung', () => {
+    const problems: string[] = []
+    const callers = serverFiles.filter(file => layerPath(file).startsWith('server/api/'))
+    for (const file of callers) {
+      const path = layerPath(file)
+      const source = readFileSync(file, 'utf8')
+      const calls = [...source.matchAll(/saveInsightsBrandRow\(/g)]
+      if (calls.length === 0) continue
+      const guard = BRAND_SAVE_CALLERS[path]
+      if (!guard) {
+        problems.push(`${path}: ruft saveInsightsBrandRow, steht aber nicht in BRAND_SAVE_CALLERS. Einen veröffentlichten Stand nur mit Zeichen aus insightsBrandPublicationGate schreiben und die Route eintragen.`)
+        continue
+      }
+      const signed = calls.filter(call => topLevelArgCount(source, (call.index ?? 0) + call[0].length) === 4).length
+      const unsigned = calls.length - signed
+      if (signed === 0) problems.push(`${path}: kein Aufruf von saveInsightsBrandRow mit Freigabe-Zeichen (viertes Argument).`)
+      if (unsigned !== guard.unsigned) problems.push(`${path}: ${unsigned} Aufruf(e) ohne Zeichen, erlaubt sind ${guard.unsigned}.`)
+      if (unsigned > 0 && !source.includes(guard.branch)) problems.push(`${path}: der Zweig ohne Zeichen (${guard.branch}) ist im Quelltext nicht mehr zu finden.`)
+      if (!source.includes('insightsBrandPublicationGate(')) problems.push(`${path}: ruft insightsBrandPublicationGate() nicht.`)
+    }
+    for (const path of Object.keys(BRAND_SAVE_CALLERS)) {
+      if (!callers.some(file => layerPath(file) === path)) problems.push(`${path}: steht in BRAND_SAVE_CALLERS, die Datei gibt es nicht mehr.`)
+    }
+    expect(problems).toEqual([])
+  })
 })
+
+/**
+ * WER DIE MARKEN-TABELLE ANFASST (IN1 c) — dieselbe Liste wie für Beiträge.
+ * Geschrieben wird nur in `insightsPostsAdmin.ts` (Anlegen nie `published`,
+ * Speichern `published` nur mit Zeichen) und in der Konto-Löschung, die
+ * ausschliesslich `claimedBy` leert (Test d) — nichts Öffentliches.
+ */
+const BRANDS_TABLE_USES: Record<string, { count: number, why: string }> = {
+  'server/utils/insightsPostsAdmin.ts': { count: 6, why: 'die Schreib-Tür: Liste, Anlegen (nie published), Laden, Schreiben (published mit Zeichen), Adress-Suche' },
+  'server/utils/insightsPublic.ts': { count: 5, why: 'nur Lesen für die öffentlichen Seiten' },
+  'server/utils/insightsUserData.ts': { count: 4, why: 'Konto-Löschung: Export liest, Löschung leert NUR `claimedBy` (Test d)' },
+  'server/utils/insightsStore.ts': { count: 1, why: 'Re-Export der Tabellen-Konstante' },
+  'server/api/insights/public/corrections.post.ts': { count: 2, why: 'nur Lesen: ist das Ziel eines Korrekturvorschlags öffentlich?' },
+}
+
+/** Jede Route, die `saveInsightsBrandRow` ruft — `unsigned` ist ihr Zweig für
+ *  `draft`/`removed`, den `branch` im Quelltext belegen muss. */
+const BRAND_SAVE_CALLERS: Record<string, { unsigned: number, branch: string, why: string }> = {
+  'server/api/insights/brands/[id].patch.ts': {
+    unsigned: 1,
+    branch: `next.state === 'published'`,
+    why: '`draft` und `removed` sind nicht öffentlich; das Entfernen auf Wunsch hängt an keiner Regel',
+  },
+}

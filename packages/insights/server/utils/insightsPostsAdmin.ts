@@ -13,8 +13,8 @@ import {
 } from '../../shared/insightsRows'
 import type { InsightsBrandListItem, InsightsPostListItem } from '../../shared/types/insightsApi'
 import { brandPublicationSlug, brandPublicationSlugCandidate } from '../contracts/brandContract'
-import type { InsightsPublicClearance } from './insightsReview'
-import { insightsClearanceCovers } from './insightsReview'
+import type { InsightsBrandClearance, InsightsPublicClearance } from './insightsReview'
+import { insightsBrandClearanceCovers, insightsClearanceCovers } from './insightsReview'
 
 /**
  * DER ABLAGE-ZUGRIFF DER REDAKTION (BI1 I2) — alles, was mehr als eine Route
@@ -222,7 +222,16 @@ export async function listInsightsBrandRows(event: H3Event, limit: number): Prom
   }
 }
 
+/**
+ * EINE MARKEN-ZEILE ANLEGEN — nie veröffentlicht (IN1 c, 2026-11-17).
+ *
+ * Wie beim Beitrag: eine Zeile beginnt nicht öffentlich. Der einzige Weg nach
+ * `published` ist das Speichern über `saveInsightsBrandRow` mit Zeichen.
+ * `removed` darf eine neue Zeile dagegen sein — der Notausgang hängt nie an
+ * einer Regel (heute legt keine Route so an, die Sperre gilt nur `published`).
+ */
 export async function createInsightsBrandRow(event: H3Event, brand: InsightsBrand): Promise<InsightsBrandRow> {
+  if (brand.state === 'published') throw insightsGateSkipped('new')
   const { tablesDB, databaseId } = insightsDb(event)
   try {
     return await tablesDB.createRow<InsightsBrandRow>({
@@ -252,7 +261,27 @@ export async function loadInsightsBrandRow(event: H3Event, id: string): Promise<
   }
 }
 
-export async function saveInsightsBrandRow(event: H3Event, id: string, brand: InsightsBrand): Promise<InsightsBrandRow> {
+/**
+ * EINE MARKEN-ZEILE SCHREIBEN — `published` NUR mit Freigabe-Zeichen
+ * (IN1 c, 2026-11-17; dieselbe Bauart wie `saveInsightsPostRow`).
+ *
+ * Das Zeichen stellt allein `insightsBrandPublicationGate` aus, und es deckt
+ * genau das geprüfte Objekt in seinem geprüften Inhalt. Fehlt es, wird nicht
+ * geschrieben (500 `gate_skipped`): ein neuer Weg, der die Prüfung vergisst,
+ * scheitert hier laut, statt still zu veröffentlichen.
+ *
+ * `draft` und `removed` brauchen KEIN Zeichen. `removed` ist der Notausgang
+ * aus Entscheidung 11 („ohne Diskussion gewährt") — er darf nie an einer
+ * Regel hängen, auch nicht an einer fremden Seite, die gerade nicht
+ * antwortet. Seine eine Bedingung (ein Grund) steht im Schema.
+ */
+export async function saveInsightsBrandRow(
+  event: H3Event,
+  id: string,
+  brand: InsightsBrand,
+  clearance?: InsightsBrandClearance,
+): Promise<InsightsBrandRow> {
+  if (brand.state === 'published' && !insightsBrandClearanceCovers(clearance, brand)) throw insightsGateSkipped(id)
   const { tablesDB, databaseId } = insightsDb(event)
   try {
     return await tablesDB.updateRow<InsightsBrandRow>({
