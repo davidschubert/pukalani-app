@@ -37,6 +37,8 @@ const REPO = resolve(import.meta.dirname, '../../..')
  */
 const ZERO_BACKLOG_LAYERS: readonly string[] = [
   'activity', 'comments', 'courses', 'events', 'feedback', 'media', 'messages', 'moderation', 'posts',
+  // Abgebaut mit BT1 b (2026-11-17): alle 47 Bestands-Routen haben Tests.
+  'onboarding',
 ]
 
 /**
