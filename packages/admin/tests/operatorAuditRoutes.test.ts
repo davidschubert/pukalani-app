@@ -272,36 +272,69 @@ describe('Konto anlegen: scheitern die Rollen, steht die Anlage trotzdem im Prot
   })
 })
 
-describe('Speicher: Erlaubnisliste statt Sperrliste', () => {
+describe('Speicher: Erlaubnisliste statt Sperrliste — nur Profilbilder (BP1 c)', () => {
+  // Ablagen, an deren Dateien eine Zeile oder ein Verweis hängt: hier nie löschbar.
+  const WITH_ROWS = ['fonts', 'favicons', 'media', 'event-covers', 'brand-drafts', 'brand-inspiration', 'runner-files', 'ticket-files']
+
   it('die Regel', () => {
-    for (const id of ['avatars', 'fonts', 'favicons', 'media', 'event-covers', 'brand-drafts', 'brand-inspiration', 'runner-files', 'ticket-files']) {
-      expect(isDeletableBucket(id), id).toBe(true)
-    }
+    expect(isDeletableBucket('avatars')).toBe(true)
+    for (const id of WITH_ROWS) expect(isDeletableBucket(id), id).toBe(false)
     expect(isDeletableBucket('gdpr-exports')).toBe(false)
     expect(isDeletableBucket('neuer-bucket')).toBe(false)
     // Ids aus der Config: eine umbenannte Avatar-Ablage bleibt löschbar,
     // eine umbenannte GDPR-Ablage nie.
     expect(isDeletableBucket('profilbilder', { avatarsBucket: 'profilbilder' })).toBe(true)
-    expect(isDeletableBucket('media', { gdprBucket: 'media' })).toBe(false)
+    expect(isDeletableBucket('gdpr-exports', { avatarsBucket: 'gdpr-exports' })).toBe(false)
+    expect(isDeletableBucket('avatars', { gdprBucket: 'avatars' })).toBe(false)
   })
 
-  it('die Route lehnt alles außerhalb der Liste ab, bevor sie Appwrite fragt', async () => {
-    const deleted: string[] = []
+  function storageFake() {
+    const calls: string[] = []
     adminClient = {
       storage: {
-        getBucket: async () => ({}),
-        deleteFile: async ({ bucketId }: { bucketId: string }) => { deleted.push(bucketId) },
+        getBucket: async ({ bucketId }: { bucketId: string }) => { calls.push(`get:${bucketId}`); return {} },
+        deleteFile: async ({ bucketId, fileId }: { bucketId: string, fileId: string }) => { calls.push(`delete:${bucketId}/${fileId}`) },
       },
     }
-    stubCommon({
-      bucketDeletable: (_event: unknown, id: string) => isDeletableBucket(id, { avatarsBucket: 'avatars', gdprBucket: 'gdpr-exports' }),
-      getRouterParam: (ev: { params: Record<string, string> }, name: string) => ev.params[name],
+    return calls
+  }
+
+  async function loadDeleteRoute(extra: Record<string, unknown> = {}) {
+    // ECHTE bucketDeletable aus storageBuckets.ts, mit der Config aus stubCommon.
+    const { bucketDeletable } = await import('../server/utils/storageBuckets')
+    stubCommon({ ...routerParam, bucketDeletable, ...extra })
+    return handler('../server/api/admin/storage/[bucket]/[fileId].delete.ts')
+  }
+
+  it('Ablagen mit Zeilen ⇒ 403, Appwrite wird gar nicht gefragt, nichts protokolliert', async () => {
+    const calls = storageFake()
+    const run = await loadDeleteRoute()
+    for (const bucket of [...WITH_ROWS, 'gdpr-exports', 'neuer-bucket']) {
+      await expect(run(event({ bucket, fileId: 'f' })), bucket).rejects.toMatchObject({ status: 403 })
+    }
+    expect(calls).toEqual([])
+    expect(auditRows).toEqual([])
+  })
+
+  it('Profilbild-Ablage ⇒ gelöscht und protokolliert', async () => {
+    const calls = storageFake()
+    const run = await loadDeleteRoute()
+    await expect(run(event({ bucket: 'avatars', fileId: 'bild-1' }))).resolves.toEqual({ ok: true })
+    expect(calls).toEqual(['get:avatars', 'delete:avatars/bild-1'])
+    expect(auditRows).toEqual([expect.objectContaining({ action: 'storage.file_deleted', targetType: 'file', targetId: 'bild-1', targetName: 'avatars' })])
+  })
+
+  it('ohne storage.manage (Gast oder Konto ohne Recht) ⇒ abgelehnt, nichts gelöscht', async () => {
+    const calls = storageFake()
+    const run = await loadDeleteRoute({
+      requirePermission: (_event: unknown, permission: string) => {
+        calls.push(`permission:${permission}`)
+        throw Object.assign(new Error('Forbidden'), { status: 403 })
+      },
     })
-    const run = await handler('../server/api/admin/storage/[bucket]/[fileId].delete.ts')
-    await expect(run(event({ bucket: 'gdpr-exports', fileId: 'f' }))).rejects.toMatchObject({ status: 403 })
-    await expect(run(event({ bucket: 'neuer-bucket', fileId: 'f' }))).rejects.toMatchObject({ status: 403 })
-    await expect(run(event({ bucket: 'avatars', fileId: 'f' }))).resolves.toEqual({ ok: true })
-    expect(deleted).toEqual(['avatars'])
+    await expect(run({ context: {}, params: { bucket: 'avatars', fileId: 'bild-1' } })).rejects.toMatchObject({ status: 403 })
+    expect(calls).toEqual(['permission:storage.manage'])
+    expect(auditRows).toEqual([])
   })
 })
 

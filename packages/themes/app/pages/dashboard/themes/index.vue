@@ -69,11 +69,22 @@ const galleryThemes = computed<GalleryEntry[]>(() => {
 const effectiveDefaultId = computed(() => settings.value.defaultThemeId ?? 'default')
 
 // ── Instanz-Einstellungen (Default, Built-in-Overrides) ───────────────────
-async function saveSettings(next: ThemeSettings) {
+// Gesendet wird NUR, was dieser Klick ändert (BP1 d, 2026-11-17): ein
+// genannter Schlüssel ersetzt seinen Wert (`null` = keiner), `builtins` wird
+// je Eintrag ersetzt (`{}` = keine Abweichung). So überschreiben zwei
+// Betreiber im selben Augenblick einander nicht; der Server führt zusammen
+// und antwortet mit dem neuen Gesamtstand.
+type ThemeSettingsPatch = {
+  defaultThemeId?: string | null
+  defaultVariantId?: string | null
+  builtins?: NonNullable<ThemeSettings['builtins']>
+}
+
+async function saveSettings(patch: ThemeSettingsPatch) {
   busy.value = true
   try {
-    await $fetch('/api/admin/themes/settings', { method: 'PATCH', body: next })
-    settings.value = next
+    const res = await $fetch<{ ok: true, settings: ThemeSettings }>('/api/admin/themes/settings', { method: 'PATCH', body: patch })
+    settings.value = res.settings
     toast.add({ title: t('themes.customize.saved'), color: 'success' })
   }
   catch {
@@ -85,16 +96,13 @@ async function saveSettings(next: ThemeSettings) {
 }
 
 function setDefaultTheme(id: string, variantId?: string) {
-  const next: ThemeSettings = { ...settings.value, defaultThemeId: id }
-  if (variantId) next.defaultVariantId = variantId
-  else delete next.defaultVariantId
-  void saveSettings(next)
+  // Ohne Variante ausdrücklich `null` — sonst bliebe die alte stehen.
+  void saveSettings({ defaultThemeId: id, defaultVariantId: variantId ?? null })
 }
 
 function toggleBuiltinHidden(id: string) {
-  const builtins = { ...(settings.value.builtins ?? {}) }
-  builtins[id] = { ...builtins[id], hidden: !builtins[id]?.hidden }
-  void saveSettings({ ...settings.value, builtins })
+  const current = settings.value.builtins?.[id]
+  void saveSettings({ builtins: { [id]: { ...current, hidden: !current?.hidden } } })
 }
 
 function moveBuiltin(id: string, direction: -1 | 1) {
@@ -103,9 +111,14 @@ function moveBuiltin(id: string, direction: -1 | 1) {
   const target = index + direction
   if (target < 0 || target >= ids.length) return
   ;[ids[index], ids[target]] = [ids[target]!, ids[index]!]
-  const builtins = { ...(settings.value.builtins ?? {}) }
-  ids.forEach((themeId, order) => { builtins[themeId] = { ...builtins[themeId], order } })
-  void saveSettings({ ...settings.value, builtins })
+  // Nur die Einträge, deren Platz sich wirklich ändert (beim ersten Sortieren
+  // alle, danach die zwei getauschten).
+  const current = settings.value.builtins ?? {}
+  const builtins: NonNullable<ThemeSettings['builtins']> = {}
+  ids.forEach((themeId, order) => {
+    if (current[themeId]?.order !== order) builtins[themeId] = { ...current[themeId], order }
+  })
+  void saveSettings({ builtins })
 }
 
 // Built-in umbenennen (Instanz-weit, Override in den Settings)
@@ -113,10 +126,14 @@ const builtinRename = ref<{ id: string, name: string } | null>(null)
 function saveBuiltinRename() {
   if (!builtinRename.value) return
   const { id, name } = builtinRename.value
-  const builtins = { ...(settings.value.builtins ?? {}) }
   const original = THEME_REGISTRY.find(entry => entry.id === id)?.name
-  builtins[id] = { ...builtins[id], name: name.trim() && name.trim() !== original ? name.trim() : undefined }
-  void saveSettings({ ...settings.value, builtins })
+  const entry = { ...(settings.value.builtins?.[id] ?? {}) }
+  const trimmed = name.trim()
+  // Leer oder gleich dem Original ⇒ Name-Abweichung fällt weg (der Eintrag
+  // wird ohne `name` gesendet, `{}` heißt „keine Abweichung").
+  if (trimmed && trimmed !== original) entry.name = trimmed
+  else delete entry.name
+  void saveSettings({ builtins: { [id]: entry } })
   builtinRename.value = null
 }
 
