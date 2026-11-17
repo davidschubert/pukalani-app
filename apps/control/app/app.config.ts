@@ -130,7 +130,11 @@ export default defineAppConfig({
     // ('apply') seit dem 2026-11-17 — Davids Ja zur gezählten Zahl (0 Läufe an
     // diesem Tag). Log-Zeile `retention.run` mit job=run-text-retention.
     // Rückweg: 'count' (zählt nur); geleerter Text kommt damit nicht wieder.
-    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'apply', textRetention: 'apply' },
+    // Läufe, die nie beendet wurden (RU1 c, 7 Tage ohne Lebenszeichen ⇒
+    // abgebrochen, Grund `abandoned`): ZÄHLT NUR ('count') seit dem 2026-11-17.
+    // Log-Zeile `retention.run` mit job=stale-run-retention. Scharf ('apply')
+    // erst mit Davids Ja zur gezählten Zahl.
+    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'apply', textRetention: 'apply', staleRunRetention: 'count' },
     // C17: DIESE App ist der Leser der kontobezogenen Meldungen. Beide
     // `scope: 'account'`-Absender leben hier (Stripe-Webhook im billing-Layer,
     // Early-Access-Anfragen im control-Layer) und schreiben in DIESES
