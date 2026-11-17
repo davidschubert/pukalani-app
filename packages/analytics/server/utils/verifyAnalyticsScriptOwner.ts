@@ -62,7 +62,7 @@ async function readLimited(response: Response, limit: number): Promise<string | 
   return new TextDecoder().decode(bytes)
 }
 
-function unavailable(reason: string): AnalyticsScriptOwnerCheck {
+function unavailable(reason: string): 'unavailable' {
   // Der Grund gehört ins Server-Log, nicht in die Antwort: dort hilft er beim
   // Nachsehen, draußen verriete er etwas über die Instanz.
   console.warn(`[analytics] Zähl-Kennung nicht prüfbar: ${reason}`)
