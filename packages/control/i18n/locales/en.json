@@ -364,7 +364,9 @@
       "plan": {
         "basic": "Basic",
         "personal": "Personal",
-        "pro": "Pro"
+        "pro": "Pro",
+        "free": "Free (legacy plan)",
+        "business": "Business (legacy plan)"
       },
       "emptyTitle": "No communities yet",
       "rowActions": "Actions for this community",

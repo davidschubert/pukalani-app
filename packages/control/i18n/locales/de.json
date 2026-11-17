@@ -364,7 +364,9 @@
       "plan": {
         "basic": "Basic",
         "personal": "Personal",
-        "pro": "Pro"
+        "pro": "Pro",
+        "free": "Free (Alt-Plan)",
+        "business": "Business (Alt-Plan)"
       },
       "emptyTitle": "Noch keine Communities",
       "rowActions": "Aktionen für diese Community",
