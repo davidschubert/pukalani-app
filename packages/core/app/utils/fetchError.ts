@@ -3,6 +3,7 @@ import { REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
 import { isPasswordPolicyReason, type PasswordPolicyReason } from '../../shared/passwordPolicy'
 import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../shared/aiProviderRouting'
 import { AUDIT_UNAVAILABLE_REASON } from '../../shared/auditLog'
+import { AUTH_UNAVAILABLE_CODE } from '../../shared/authFailure'
 
 /**
  * Hat der Server eine FRISCHE Anmeldung verlangt (`requireRecentAuth`, RA1)?
@@ -129,4 +130,14 @@ export function botCheckReason(error: unknown): BotCheckReason | null {
 export function passwordPolicyReason(error: unknown): PasswordPolicyReason | null {
   const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
   return isPasswordPolicyReason(reason) ? reason : null
+}
+
+/**
+ * Anmeldung gerade nicht möglich, weil der Server die Prüfung nicht ausführen
+ * konnte (AB1 d)? Über den Grund aus dem Envelope (`auth_unavailable`,
+ * shared/authFailure.ts), nie über den Status: 503 heißt an denselben Routen
+ * auch „Code-Anmeldung fehlt der Instanz".
+ */
+export function isAuthUnavailable(error: unknown): boolean {
+  return (error as { data?: { reason?: unknown } } | null)?.data?.reason === AUTH_UNAVAILABLE_CODE
 }

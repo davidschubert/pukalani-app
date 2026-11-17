@@ -182,7 +182,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/core/server/api/auth/embed-handoff.post.ts',
     'packages/core/server/api/auth/embed-session.post.ts',
     'packages/core/server/api/auth/export.get.ts',
-    'packages/core/server/api/auth/login.post.ts',
     'packages/core/server/api/auth/logout.post.ts',
     'packages/core/server/api/auth/me.get.ts',
     'packages/core/server/api/auth/mfa/disable.post.ts',

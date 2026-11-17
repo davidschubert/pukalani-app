@@ -22,7 +22,9 @@ export function useAuthErrorMessage() {
    * @param fallback Text für alles, was weder Netzwerk noch Sperre ist
    */
   function authErrorMessage(error: unknown, fallback: string): string {
-    if (isNetworkError(error)) return t('auth.networkError')
+    // Server weg — oder er hat geantwortet, konnte die Anmeldung aber nicht
+    // prüfen (AB1 d): beides ist „später noch einmal", nie „Passwort prüfen".
+    if (isNetworkError(error) || isAuthUnavailable(error)) return t('auth.networkError')
     /**
      * BOT-BEWEIS (Turnstile, Vorfall 2026-10-27): drei Gründe, drei Sätze. Ohne
      * diesen Zweig fiele ein abgelehnter Token in die Formular-Meldung — beim
