@@ -531,7 +531,8 @@
         "posts": "Posts",
         "events": "Events",
         "courses": "Courses",
-        "media": "Images"
+        "media": "Images",
+        "pages": "Pages"
       }
     },
     "communityExport": {

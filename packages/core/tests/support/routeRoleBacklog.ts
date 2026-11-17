@@ -318,7 +318,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/pages/server/api/pages/[slug].delete.ts',
     'packages/pages/server/api/pages/[slug].get.ts',
     'packages/pages/server/api/pages/index.get.ts',
-    'packages/pages/server/api/pages/index.put.ts',
     'packages/pages/server/api/pages/navigation.patch.ts',
     'packages/pages/server/api/pages/redirects.get.ts',
     'packages/pages/server/api/pages/redirects.patch.ts',

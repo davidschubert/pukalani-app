@@ -291,7 +291,19 @@ async function saveActiveLocale() {
     selectedSlug.value = slug
     await refreshList()
   }
-  catch {
+  catch (error) {
+    // KONTINGENT (BE-019): eine NEUE Fassung kann am Plan scheitern (429 mit
+    // `reason`). Dann ist „prüf die Verbindung" falsch — ein erneutes
+    // Speichern scheitert genauso. Gleiches Muster wie media/dashboard/media.vue.
+    const reason = (error as { data?: { reason?: string } })?.data?.reason
+    if (reason === 'quota_reached' || reason === 'quota_reached_today') {
+      toast.add({
+        title: t('pages.admin.quotaTitle'),
+        description: t(reason === 'quota_reached_today' ? 'pages.admin.quotaTodayHint' : 'pages.admin.quotaHint'),
+        color: 'warning',
+      })
+      return
+    }
     // Übersetzter Text statt rohem `statusMessage` (Audit-Befund C12) — s. die
     // gleichlautende Stelle in comments/dashboard/community/embed.vue.
     toast.add({

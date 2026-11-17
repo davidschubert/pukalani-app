@@ -287,6 +287,15 @@ export default defineAppConfig({
         plans: {
           basic: {
             comments: { perDay: 200, total: 5_000 },
+            // SEITEN (BE-019, Davids Entscheidung 2026-11-17): in ALLEN drei
+            // Plänen dieselbe Zahl. Die Grenze stoppt Ausreißer (ein Skript,
+            // das Seiten in Schleife anlegt), keinen normalen Kunden — eine
+            // Vereins-Website hat ein, zwei Dutzend Seiten. Gezählt werden
+            // ZEILEN: eine Seite in zwei Sprachen sind zwei, und die Zeilen,
+            // die das Anlegen einer Community sät (Startseite, Rechtstexte,
+            // Regeln), zählen mit. Gebremst wird nur das ANLEGEN einer neuen
+            // Fassung, nie das Bearbeiten (server/api/pages/index.put.ts).
+            pages: { perDay: 50, total: 300 },
             // events/media stehen hier BEWUSST NICHT: `tenancy.products`
             // unten gibt Basic weder Termine noch Mediathek, die Route
             // antwortet schon vorher 404 (requirePlanProduct). Basic ist
@@ -297,6 +306,8 @@ export default defineAppConfig({
           },
           personal: {
             comments: { perDay: 1000, total: 50_000 },
+            // Seiten: gleiche Zahl in allen Plänen, Begründung bei `basic`.
+            pages: { perDay: 50, total: 300 },
             // TERMINE. Eine Termin-Zeile kostet nur eine DB-Zeile; die Bremse ist gegen Weglauf (Skript, Endlos-Serie),
             // nicht gegen den Kunden. Deshalb großzügig.
             // `perDay: 50` liegt bewusst ÜBER SERIES_MAX_PER_RUN (26,
@@ -328,6 +339,8 @@ export default defineAppConfig({
           },
           pro: {
             comments: { perDay: 5000, total: 250_000 },
+            // Seiten: gleiche Zahl in allen Plänen, Begründung bei `basic`.
+            pages: { perDay: 50, total: 300 },
             // Gleiche Herleitung, eine Größenordnung darüber:
             // `total: 10_000` Termine sind für eine Community praktisch
             // unerreichbar und fangen trotzdem eine Endlos-Serie ab.

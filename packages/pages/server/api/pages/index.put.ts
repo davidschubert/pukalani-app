@@ -71,6 +71,14 @@ export default defineEventHandler(async (event): Promise<PageRow> => {
   // Entwürfe per Roh-REST für Mitglieder lesbar machen.
   // Beim ANLEGEN ist 0 dagegen richtig: eine neue Seite hat noch keine
   // Reihenfolge, und die Spalte ist required.
+  //
+  // KONTINGENT NUR HIER (BE-019): eine neue Fassung ist eine neue Zeile im
+  // geteilten Pool, und ohne Prüfung legte ein Skript mit Redaktionsrechten
+  // beliebig viele an. Das Bearbeiten oben fragt bewusst NICHT — wer am Limit
+  // steht, muss sein Impressum trotzdem korrigieren können. Die Zahlen stehen
+  // im Katalog (`pukalani.tenancy.quota.plans.*.pages`, apps/platform), der
+  // Verbrauchs-Posten in server/plugins/community-usage.ts.
+  await assertPoolWriteQuota(event, { kind: 'pages', tableId: PAGES_TABLE })
   const created = await db.create<PageRow>(PAGES_TABLE, { ...data, sortOrder: body.sortOrder ?? 0 }, { permissions: [] })
     .catch((error) => {
       throw toH3Error(error, 'Could not save page')
