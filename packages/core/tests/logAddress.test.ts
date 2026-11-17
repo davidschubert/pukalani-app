@@ -24,8 +24,33 @@ describe('stripAddressForLog', () => {
     expect(stripAddressForLog(input)).toBe(expected)
   })
 
+  // SR1 d: eine lange Zufalls-Kennung im PFAD (43 Zeichen base64url, 64 hex).
+  // Zusammengesetzt statt ausgeschrieben: die Form zählt, nicht der Wert.
+  const LONG_B64 = `Zk3_ab${'q-_9'.repeat(9)}Q`
+  const LONG_HEX = 'a1'.repeat(32)
+  it.each([
+    [`/api/x/share/${LONG_B64}`, '/api/x/share/Zk3_ab…'],
+    [`/x/share/${LONG_HEX}/details?y=1`, '/x/share/a1a1a1…/details'],
+    [`https://example.org/x/${LONG_HEX}`, 'https://example.org/x/a1a1a1…'],
+    // Zeilen-Ids und feste Kennungen (20 bis 36 Zeichen) bleiben ganz.
+    ['/api/posts/6741f0a2003b1c9d8e7f', '/api/posts/6741f0a2003b1c9d8e7f'],
+    ['/api/x/cmn0123456789abcdef0123456789abcdef', '/api/x/cmn0123456789abcdef0123456789abcdef'],
+    ['/api/x/123e4567-e89b-12d3-a456-426614174000', '/api/x/123e4567-e89b-12d3-a456-426614174000'],
+    // Ein Dateiname mit Endung ist keine Kennung.
+    [`/_nuxt/${'b'.repeat(44)}.js`, `/_nuxt/${'b'.repeat(44)}.js`],
+  ])('lange Kennung im Pfad: %s ⇒ %s', (input, expected) => {
+    expect(stripAddressForLog(input)).toBe(expected)
+  })
+
+  it('die gekürzte Kennung lässt sich nicht mehr benutzen, bleibt aber zuordenbar', () => {
+    const out = stripAddressForLog(`/x/share/${LONG_B64}`)
+    expect(out).not.toContain(LONG_B64.slice(0, 12))
+    expect(out).toContain(LONG_B64.slice(0, 6))
+  })
+
   it('klemmt die Länge', () => {
-    expect(stripAddressForLog(`/${'a'.repeat(2000)}`)).toHaveLength(512)
+    // Viele kurze Abschnitte — ein einzelner langer würde als Kennung gekürzt.
+    expect(stripAddressForLog(`/${'ab/'.repeat(700)}`)).toHaveLength(512)
   })
 })
 
@@ -43,6 +68,15 @@ describe('stripAddressesInText', () => {
     const out = stripAddressesInText(stack)
     expect(out).not.toContain(MARK)
     expect(out).toContain('/_nuxt/b.js:4:1')
+  })
+
+  it('kürzt eine lange Kennung auch in einer Meldung (SR1 d)', () => {
+    const long = `Zk3_ab${'q-_9'.repeat(9)}Q`
+    const out = stripAddressesInText(`[GET] "/api/x/share/${long}": 500 Server Error`)
+    expect(out).toBe('[GET] "/api/x/share/Zk3_ab…": 500 Server Error')
+    // Ein Stack mit Datei, Zeile und Spalte bleibt lesbar.
+    expect(stripAddressesInText('at run (/srv/app/server/chunks/routes/api/x.mjs:12:5)'))
+      .toBe('at run (/srv/app/server/chunks/routes/api/x.mjs:12:5)')
   })
 
   it('ein Fragezeichen im Satz ist keine Adresse', () => {
