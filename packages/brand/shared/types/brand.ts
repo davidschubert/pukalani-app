@@ -26,6 +26,7 @@ import type { BrandGenerationOutcome } from '../brandGeneration'
 import type { BrandInspirationEntry } from '../brandInspiration'
 import type { BrandMarkDraftEntry } from '../brandMarkDrafts'
 import type { BrandReadingState } from '../brandReading'
+import type { BrandRunView } from '../brandRun'
 import type { BrandPublicationBlocker, BrandPublicationViewStatus } from '../brandPublication'
 import type { BrandWaitlistStatus } from '../brandWaitlistAdmin'
 import type {
@@ -1594,11 +1595,19 @@ export interface BrandPublicationReportResponse {
  * (§2 „Reproduzierbarkeit"). Der HONIGTOPF antwortet ebenfalls `cached: true`,
  * dann aber mit leerer `id`: ein Bot bekommt dieselbe Form wie ein Mensch,
  * ohne dass etwas entsteht.
+ *
+ * `run` (seit LL1 b, 2026-11-17) ist gesetzt, wenn der Check NICHT aus dem
+ * Zwischenspeicher kam, sondern als Lauf angenommen wurde (`202`): er rechnet
+ * hinter der Antwort, `id` ist dann noch leer, und die Seite fragt den Stand
+ * ab. Heute so beim Fundament-Check; der Stand kommt dort mit dem Verlauf
+ * (`BrandCheckHistoryResponse.documentRun`), die Id des Ergebnisses steht am
+ * fertigen Lauf (`run.ref`).
  */
 export interface BrandCheckStartResponse {
   ok: true
   id: string
   cached: boolean
+  run?: BrandRunView
 }
 
 /**
@@ -1872,10 +1881,16 @@ export interface BrandCheckDiff {
  * `diff` ist `null`, solange es keinen Vorgänger derselben Quelle gibt — der
  * Normalfall beim ersten Check einer Brand. Die Seite lässt den Abschnitt dann
  * weg, statt eine Tabelle aus Strichen zu zeigen.
+ *
+ * `documentRun` ist der Stand des jüngsten FUNDAMENT-CHECK-Laufs (LL1 b,
+ * 2026-11-17), gegen die Server-Uhr gerechnet: der Lauf rechnet hinter der
+ * Antwort seines Starts, und die Seite fragt den Verlauf ab, bis er nicht
+ * mehr `running` ist — Verlauf und Lauf-Stand kommen aus DERSELBEN Abfrage.
  */
 export interface BrandCheckHistoryResponse {
   items: BrandCheckHistoryItem[]
   diff: BrandCheckDiff | null
+  documentRun: BrandRunView
 }
 
 /** Der jüngste Stand EINER Quelle — für die Karten der Übersicht. */
@@ -2237,17 +2252,27 @@ export interface BrandInspirationReadingView {
   runLine: string
 }
 
+/**
+ * `run` ist der Stand des jüngsten Lese-Laufs (LL1 b, 2026-11-17), gegen die
+ * Server-Uhr gerechnet: der Lauf rechnet hinter der Antwort seines Starts,
+ * und die Werkstatt fragt diese Liste ab, bis er nicht mehr `running` ist.
+ */
 export interface BrandInspirationListResponse extends BrandInspirationItemsResponse {
   reading: BrandInspirationReadingView
+  run: BrandRunView
 }
 
 /**
- * DIE ANTWORT EINES LAUFS (`POST …/inspiration/read`, D2b) — dieselbe Liste
- * wie beim GET, plus das REST-KONTINGENT: der Mensch soll unter dem Knopf
- * sehen, wie oft er heute noch lesen lassen kann, ohne es zählen zu müssen.
+ * DIE ANTWORT EINES STARTS (`POST …/inspiration/read`, D2b) — seit LL1 b ein
+ * `202`: der Lauf ist angenommen. Liste und Lesung stehen NICHT darin (sie
+ * entstehen erst; `GET …/inspiration` liefert sie mit dem Lauf-Stand). Das
+ * REST-KONTINGENT steht schon hier, weil vor der Antwort gebucht wird: der
+ * Mensch soll unter dem Knopf sehen, wie oft er heute noch lesen lassen kann,
+ * ohne es zählen zu müssen.
  */
-export interface BrandInspirationReadResponse extends BrandInspirationListResponse {
+export interface BrandInspirationReadResponse {
   ok: true
+  run: BrandRunView
   quota: { used: number, limit: number, remaining: number }
 }
 
@@ -2331,33 +2356,38 @@ export interface BrandMarkDraftsListResponse {
 }
 
 /**
- * DIE ANTWORT EINES LAUFS (`POST …/mark/drafts`).
+ * DIE ANTWORT EINES STARTS (`POST …/mark/drafts`) — seit LL1 b (2026-11-17)
+ * ein `202`: der Lauf ist angenommen und rechnet hinter der Antwort.
  *
- * `created` ist die Zahl der WIRKLICH entstandenen Entwürfe und kann kleiner
- * als vier sein: Teilerfolg ist Erfolg (Kopf von
- * `server/utils/brandMarkDrafts.ts`). Das REST-KONTINGENT steht darin, weil der
- * Mensch unter dem Knopf sehen soll, wie oft er heute noch erzeugen kann, ohne
- * es zählen zu müssen.
+ * Die Entwürfe selbst stehen NICHT darin — sie entstehen erst. Die Werkstatt
+ * fragt `GET …/mark/drafts` ab, bis `run.state` nicht mehr `running` ist, und
+ * liest dort Liste und Ausgang. Das REST-KONTINGENT steht schon hier, weil
+ * VOR der Antwort gebucht wird: der Mensch soll unter dem Knopf sehen, wie
+ * oft er heute noch erzeugen kann, ohne es zählen zu müssen.
  */
-export interface BrandMarkDraftsRunResponse extends BrandMarkDraftsListResponse {
+export interface BrandMarkDraftsRunResponse {
   ok: true
-  created: number
-  /** Modell-Kennung ohne Schlüssel — sie steht auf jeder Karte. */
-  model: string
+  run: BrandRunView
   quota: { used: number, limit: number, remaining: number }
 }
 
 /**
- * DIE ANTWORT DES LESENS (`GET …/mark/drafts`) — die Liste plus das Bildmodell.
+ * DIE ANTWORT DES LESENS (`GET …/mark/drafts`) — die Liste, das Bildmodell
+ * und der Stand des jüngsten Laufs.
  *
  * `imageModel` ist der EFFEKTIVE Slug (`getEffectiveAiImageConfig`, inklusive
  * Laufzeit-Override), leer, wenn kein Bildmodell eingetragen ist. Die
  * Werkstatt nennt ihn VOR dem Auslösen, damit niemand erst nach dem Klick
- * erfährt, welches Modell arbeitet. Ein eigener Typ, damit Lauf- und
+ * erfährt, welches Modell arbeitet. Ein eigener Typ, damit die
  * Schreib-Antworten unberührt bleiben.
+ *
+ * `run` ist die Lauf-Zeile, gegen die Server-Uhr gerechnet (`running`,
+ * `done`, `failed`, `stalled` oder `none`). Wer die Seite neu lädt, sieht
+ * daran, dass ein Lauf noch rechnet oder abgebrochen wurde.
  */
 export interface BrandMarkDraftsIndexResponse extends BrandMarkDraftsListResponse {
   imageModel: string
+  run: BrandRunView
 }
 
 /** Die Antwort von `PATCH`/`DELETE` — `item` ist beim Entfernen `null`. */

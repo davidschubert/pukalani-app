@@ -1754,6 +1754,9 @@
         "recheck": "Check the foundation again",
         "start": "Check the foundation",
         "running": "We are reading your foundation …",
+        "background": "The check continues in the background. The page can stay open or be reopened later — the result will appear here.",
+        "alreadyRunning": "A foundation check is already in progress. The result will appear here as soon as it is finished.",
+        "interrupted": "The last foundation check was interrupted. Please start it again.",
         "none": "Your foundation has not been checked yet."
       },
       "diff": {
@@ -3161,6 +3164,9 @@
       "unreadHint": "It joins with the next run.",
       "empty": "Add references first — then Frida reads them against your foundation.",
       "running": "Frida is reading your references …",
+      "background": "The run continues in the background. The page can stay open or be reopened later — the reading will appear here.",
+      "alreadyRunning": "A run is already in progress. The reading will appear here as soon as it is finished.",
+      "interrupted": "The last run was interrupted. Please start it again.",
       "run": {
         "first": "Read references",
         "more": "Read {count} new references",
@@ -3173,7 +3179,9 @@
         "noImages": "There is no reference to read.",
         "rateLimited": "That was too quick. Wait a moment and try again.",
         "notFound": "This brand no longer exists.",
-        "generic": "That did not work. Please try again."
+        "generic": "That did not work. Please try again.",
+        "failed": "The references could not be read right now. Try again later.",
+        "tooLarge": "Together the references are too large for one run. Remove a few or add smaller files, then start again."
       }
     },
     "dna": {
@@ -3339,6 +3347,9 @@
         "loading": "Loading drafts …",
         "empty": "No drafts yet. One run generates four at once.",
         "running": "The drafts are being made … this takes a moment.",
+        "background": "The run continues in the background. The page can stay open or be reopened later — the drafts will appear here.",
+        "alreadyRunning": "A run is already in progress. The drafts will appear here as soon as it is finished.",
+        "interrupted": "The last run was interrupted. Please start it again — a run without a draft does not count towards the daily allowance.",
         "limits": "{max} runs per day, {per} drafts per run.",
         "remaining": "{count} of {max} runs left today.",
         "full": "A brand keeps no more than {max} drafts. Discard a few and the next run will go through.",

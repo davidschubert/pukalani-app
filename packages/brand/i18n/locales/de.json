@@ -1754,6 +1754,9 @@
         "recheck": "Fundament erneut prüfen",
         "start": "Fundament prüfen",
         "running": "Das Fundament wird gelesen …",
+        "background": "Der Check rechnet im Hintergrund. Die Seite kann offen bleiben oder später wieder geöffnet werden — das Ergebnis erscheint hier.",
+        "alreadyRunning": "Ein Fundament-Check rechnet schon. Das Ergebnis erscheint hier, sobald er fertig ist.",
+        "interrupted": "Der letzte Fundament-Check wurde unterbrochen. Bitte noch einmal starten.",
         "none": "Das Fundament wurde noch nicht geprüft."
       },
       "diff": {
@@ -3161,6 +3164,9 @@
       "unreadHint": "Kommt mit dem nächsten Lauf dazu.",
       "empty": "Zuerst Vorbilder ablegen — dann liest Frida sie gegen die Foundation.",
       "running": "Frida liest die Vorbilder …",
+      "background": "Der Lauf rechnet im Hintergrund. Die Seite kann offen bleiben oder später wieder geöffnet werden — die Lesung erscheint hier.",
+      "alreadyRunning": "Ein Lauf rechnet schon. Die Lesung erscheint hier, sobald er fertig ist.",
+      "interrupted": "Der letzte Lauf wurde unterbrochen. Bitte noch einmal starten.",
       "run": {
         "first": "Vorbilder lesen",
         "more": "{count} neue Vorbilder lesen",
@@ -3173,7 +3179,9 @@
         "noImages": "Es liegt kein Vorbild da, das gelesen werden könnte.",
         "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
         "notFound": "Diese Marke gibt es nicht mehr.",
-        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal."
+        "generic": "Das hat nicht geklappt. Versucht es bitte noch einmal.",
+        "failed": "Die Vorbilder ließen sich gerade nicht lesen. Später noch einmal versuchen.",
+        "tooLarge": "Die Vorbilder sind zusammen zu groß für einen Lauf. Ein paar entfernen oder kleiner ablegen, dann noch einmal starten."
       }
     },
     "dna": {
@@ -3339,6 +3347,9 @@
         "loading": "Entwürfe werden geladen …",
         "empty": "Noch keine Entwürfe. Ein Lauf erzeugt vier auf einmal.",
         "running": "Die Entwürfe entstehen … das dauert einen Moment.",
+        "background": "Der Lauf rechnet im Hintergrund. Die Seite kann offen bleiben oder später wieder geöffnet werden — die Entwürfe erscheinen hier.",
+        "alreadyRunning": "Ein Lauf rechnet schon. Die Entwürfe erscheinen hier, sobald er fertig ist.",
+        "interrupted": "Der letzte Lauf wurde unterbrochen. Bitte noch einmal starten — ein Lauf ohne Entwurf zählt nicht auf das Tageskontingent.",
         "limits": "{max} Läufe je Tag, {per} Entwürfe je Lauf.",
         "remaining": "Noch {count} von {max} Läufen heute.",
         "full": "Mehr als {max} Entwürfe hält eine Marke nicht. Verwerft ein paar, dann geht der nächste Lauf.",

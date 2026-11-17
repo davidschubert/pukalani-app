@@ -1,11 +1,13 @@
 import { Query } from 'node-appwrite'
 import { brandCheckCategoryScores, brandCheckUrlKey } from '../../../../../shared/brandCheck'
 import { latestBrandCheckDiff } from '../../../../../shared/brandCheckHistory'
+import { BRAND_RUN_SCOPES } from '../../../../../shared/brandRun'
 import type {
   BrandCheckCategoryResult,
   BrandCheckHistoryItem,
   BrandCheckHistoryResponse,
 } from '../../../../../shared/types/brand'
+import { readBrandRunView } from '../../../../utils/brandRun'
 import {
   BRAND_CHECKS_TABLE,
   type BrandCheckRow,
@@ -55,6 +57,13 @@ export default defineEventHandler(async (event): Promise<BrandCheckHistoryRespon
   const profileId = requireProfileIdParam(event)
   const profile = await loadOwnedProfile(event, userId, profileId)
 
+  // DER LAUF-STAND DES FUNDAMENT-CHECKS ZUERST, der Verlauf danach (LL1 b):
+  // endet der Lauf zwischen den Lesevorgängen, zeigt die Antwort „läuft noch"
+  // mit schon vollständigem Verlauf (die nächste Abfrage zieht den Stand
+  // nach) — nie „fertig" mit einem Verlauf von vorher. Fail-soft: fehlt die
+  // Lauf-Tabelle, heisst der Stand „kein Lauf".
+  const documentRun = await readBrandRunView(event, BRAND_RUN_SCOPES.documentCheck, profileId)
+
   const { tablesDB, databaseId } = brandDb(event)
   const websiteKey = brandCheckUrlKey(profile.websiteUrl ?? '')
 
@@ -101,7 +110,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckHistoryRespon
     .slice(0, HISTORY_LIMIT)
     .map(toHistoryItem)
 
-  return { items, diff: latestBrandCheckDiff(items) }
+  return { items, diff: latestBrandCheckDiff(items), documentRun }
 })
 
 function toHistoryItem(row: BrandCheckRow): BrandCheckHistoryItem {

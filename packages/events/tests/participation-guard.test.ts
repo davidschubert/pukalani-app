@@ -10,7 +10,10 @@ import { describeGuardedRoute } from '../../core/tests/support/participationHarn
  * `route-roles-reads.test.ts` („POST /api/events/:id/translate").
  */
 
-describeGuardedRoute('POST /api/events/:id/rsvp', () => import('../server/api/events/[id]/rsvp.post'), 'participant', {
+// `report`: wie `participant`, aber in einer gesperrten Community für
+// Mitglieder offen — die Zusage selbst hält dann die Datentür zu, das
+// Zurückziehen bleibt offen (F26). Beide Richtungen: rsvp-suspension.test.ts.
+describeGuardedRoute('POST /api/events/:id/rsvp', () => import('../server/api/events/[id]/rsvp.post'), 'report', {
   params: { id: 'e-1' }, body: { status: 'going' },
 })
 

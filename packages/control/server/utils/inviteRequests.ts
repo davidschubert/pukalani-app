@@ -32,7 +32,17 @@ function databaseId(event: H3Event): string {
   return useRuntimeConfig(event).public.appwriteDatabaseId
 }
 
-/** Nächster freier Vorrats-Code: aktiv, an niemanden gebunden, unbenutzt. */
+/**
+ * Nächster freier Vorrats-Code: aktiv, an niemanden gebunden, unbenutzt,
+ * nicht abgelaufen.
+ *
+ * Abgelaufene übergeht schon die ABFRAGE, nicht erst der Code danach: vorher
+ * kamen die zehn ältesten Plätze zurück und wurden erst hier gefiltert. Waren
+ * die zehn ältesten abgelaufen (das passiert mit der Zeit von selbst), fand die
+ * Zuweisung nie einen Platz, legte jedes Mal einen neuen Code daneben an, und
+ * der Vorrat schrumpfte nie — ohne Fehler, nur mit falschen Zahlen.
+ * Der Nachcheck bleibt als Netz gegen die Uhr zwischen Abfrage und Prüfung.
+ */
 async function takeFromStock(event: H3Event, now: number): Promise<InviteCodeRow | null> {
   const admin = createAdminClient(event)
   const { rows } = await admin.tablesDB.listRows<InviteCodeRow>({
@@ -42,13 +52,14 @@ async function takeFromStock(event: H3Event, now: number): Promise<InviteCodeRow
       Query.equal('status', 'active'),
       Query.equal('boundEmail', ''),
       Query.equal('uses', 0),
+      Query.or([Query.isNull('expiresAt'), Query.greaterThan('expiresAt', new Date(now).toISOString())]),
       Query.orderAsc('$createdAt'),
       Query.limit(10),
     ],
   }).catch(() => ({ rows: [] as InviteCodeRow[] }))
 
-  // Abgelaufene übergehen, statt sie zuzuweisen — sonst bekäme jemand eine
-  // Einladung, die beim Öffnen schon tot ist.
+  // Abgelaufene nie zuweisen — sonst bekäme jemand eine Einladung, die beim
+  // Öffnen schon tot ist.
   return rows.find(row => !row.expiresAt || Date.parse(row.expiresAt) > now) ?? null
 }
 

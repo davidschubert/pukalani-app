@@ -64,7 +64,7 @@ import {
  */
 
 /** Zehn Zeilen mit Begründung sind ein Text-Lauf, kein Bildlauf — 60 s reichen. */
-const BRAND_DNA_TIMEOUT_MS = 60_000
+export const BRAND_DNA_TIMEOUT_MS = 60_000
 /** Zehn Begründungen à 420 Zeichen plus Vorbild-Sätze brauchen Platz. */
 const BRAND_DNA_MAX_TOKENS = 3000
 

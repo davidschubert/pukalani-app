@@ -171,7 +171,7 @@ function reviewModel(): string {
  */
 
 /** Ein JSON-Aufruf ist kein Strom — 45 s Core-Default reichen, 60 s sind Luft. */
-const BRAND_REVIEW_TIMEOUT_MS = 60_000
+export const BRAND_REVIEW_TIMEOUT_MS = 60_000
 
 /**
  * LÄUFT DER ERSATZ-SPEZIALIST? — der Ersatz-Generator ODER die

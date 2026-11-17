@@ -105,6 +105,27 @@ let pass = 0
 let fail = 0
 const cleanup = { users: [], profiles: [], access: [], aiFlag: null }
 
+/**
+ * EINEN LAUF IM HINTERGRUND ABWARTEN (LL1 b, 2026-11-17).
+ *
+ * Die langen Wege antworten `202` und rechnen hinter der Antwort; der Ausgang
+ * steht an der Lauf-Zeile, die die LESENDE Route mitliefert (`run`). Diese
+ * Hilfe startet, fragt die Liste ab, bis der Lauf nicht mehr läuft, und gibt
+ * Start-Antwort UND Endstand zurück. Eine Ablehnung (4xx/5xx) kommt
+ * unverändert zurück — dann gibt es nichts abzuwarten.
+ */
+async function startAndAwaitRun(startPath, listPath, cookie, { timeoutMs = 180_000 } = {}) {
+  const started = await call(startPath, { method: 'POST', cookie })
+  if (started.status !== 202) return { started, final: null }
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const final = await call(listPath, { cookie })
+    if (final.status !== 200 || final.json?.run?.state !== 'running') return { started, final }
+    if (Date.now() > deadline) return { started, final }
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+}
+
 function check(label, ok, detail = '') {
   if (ok) {
     pass++
@@ -728,19 +749,21 @@ try {
     JSON.stringify(inspSlots['g.inspiration'] ?? null))
 
   let lastReadingRun = Date.now()
-  const reading = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
-  const readingStub = reading.status === 200
+  const { started: reading, final: readingList } = await startAndAwaitRun(
+    `${inspBase}/read`, inspBase, owner.cookie,
+  )
+  const readingStub = reading.status === 202
   if (!readingStub) {
     check('ohne Vision-Modell antwortet die Lesung ruhig mit 503 `vision_unavailable`',
       reading.status === 503 && reading.json?.reason === 'vision_unavailable',
       `${reading.status} ${JSON.stringify(reading.json?.reason ?? null)}`)
   }
   else {
-    const readItems = reading.json?.items ?? []
+    const readItems = readingList?.json?.items ?? []
     check('die Lesung liest BEIDE Bilder — je Bild ein Urteil aus dem Vokabular',
-      readItems.length === 2
+      readingList?.json?.run?.state === 'done' && readItems.length === 2
       && readItems.every(item => ['fits', 'tension', 'off'].includes(item.reading?.verdict)),
-      JSON.stringify(readItems.map(item => item.reading?.verdict ?? null)))
+      `${readingList?.json?.run?.state} ${JSON.stringify(readItems.map(item => item.reading?.verdict ?? null))}`)
     check('… und sie nennt ihr Rest-Kontingent',
       reading.json?.quota?.limit === 3 && reading.json?.quota?.remaining === 2,
       JSON.stringify(reading.json?.quota ?? null))
@@ -972,19 +995,24 @@ try {
    */
   let keptDraftId = ''
   let lastDraftsRun = Date.now()
-  const draftRun = await call(`${a}/mark/drafts`, { method: 'POST', cookie: owner.cookie })
-  const draftsStub = draftRun.status === 200
+  const { started: draftRun, final: draftList } = await startAndAwaitRun(
+    `${a}/mark/drafts`, `${a}/mark/drafts`, owner.cookie,
+  )
+  const draftsStub = draftRun.status === 202
   if (!draftsStub) {
     check('ohne Bild-Modell antwortet der Entwurfs-Lauf ruhig mit 503 `image_unavailable`',
       draftRun.status === 503 && draftRun.json?.reason === 'image_unavailable',
       `${draftRun.status} ${JSON.stringify(draftRun.json?.reason ?? null)}`)
   }
   else {
-    const items = draftRun.json?.items ?? []
+    check('der Start antwortet 202 mit „läuft" — die Entwürfe entstehen hinter der Antwort',
+      draftRun.json?.run?.state === 'running' && draftRun.json?.quota?.remaining === 2,
+      `${JSON.stringify(draftRun.json?.run?.state ?? null)} · ${draftRun.json?.quota?.remaining}`)
+    const items = draftList?.json?.items ?? []
     check('der Entwurfs-Lauf legt VIER Entwürfe an — mit Modell und Prompt-Hash an der Zeile',
-      draftRun.json?.created === 4 && items.length === 4
+      draftList?.json?.run?.state === 'done' && draftList?.json?.run?.created === 4 && items.length === 4
       && items.every(item => item.model === 'dev-stub' && /^[0-9a-f]{16}$/.test(String(item.promptHash))),
-      `${draftRun.json?.created} · ${JSON.stringify(items[0] ?? null)}`)
+      `${draftList?.json?.run?.state}/${draftList?.json?.run?.created} · ${JSON.stringify(items[0] ?? null)}`)
     keptDraftId = items[0]?.id ?? ''
     const kept = await call(`${a}/mark/drafts/${keptDraftId}`, {
       method: 'PATCH', cookie: owner.cookie, body: { kept: true },
@@ -1258,11 +1286,13 @@ try {
 
   if (readingStub) {
     await waitForRateWindow(lastReadingRun)
-    const read2 = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
-    const read3 = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
+    // Nacheinander UND abgewartet: ein Start während eines Laufs bekäme 409
+    // `run_running` (eigener Beweis in `tests/brandReadingRunRoute.test.ts`).
+    const { started: read2 } = await startAndAwaitRun(`${inspBase}/read`, inspBase, owner.cookie)
+    const { started: read3 } = await startAndAwaitRun(`${inspBase}/read`, inspBase, owner.cookie)
     check('zweite und dritte Lesung gehen — und das Kontingent zählt herunter',
-      read2.status === 200 && read2.json?.quota?.remaining === 1
-      && read3.status === 200 && read3.json?.quota?.remaining === 0,
+      read2.status === 202 && read2.json?.quota?.remaining === 1
+      && read3.status === 202 && read3.json?.quota?.remaining === 0,
       `${read2.status}/${read2.json?.quota?.remaining} · ${read3.status}/${read3.json?.quota?.remaining}`)
     const read4 = await call(`${inspBase}/read`, { method: 'POST', cookie: owner.cookie })
     check('GEGENPROBE: die VIERTE Lesung am selben Tag ⇒ 429 `brand_reading_limit`',
@@ -1302,11 +1332,14 @@ try {
      * braucht seine Läufe.
      */
     await waitForRateWindow(lastDraftsRun)
-    const draft2 = await call(`${a}/mark/drafts`, { method: 'POST', cookie: owner.cookie })
-    const draft3 = await call(`${a}/mark/drafts`, { method: 'POST', cookie: owner.cookie })
+    // Nacheinander UND abgewartet: ein Start während eines Laufs bekäme 409
+    // `run_running` (die Lauf-Sperre; eigener Beweis in
+    // `tests/brandMarkDraftsRunRoute.test.ts`).
+    const { started: draft2 } = await startAndAwaitRun(`${a}/mark/drafts`, `${a}/mark/drafts`, owner.cookie)
+    const { started: draft3 } = await startAndAwaitRun(`${a}/mark/drafts`, `${a}/mark/drafts`, owner.cookie)
     check('zweiter und dritter Entwurfs-Lauf gehen — das Kontingent zählt herunter',
-      draft2.status === 200 && draft2.json?.quota?.remaining === 1
-      && draft3.status === 200 && draft3.json?.quota?.remaining === 0,
+      draft2.status === 202 && draft2.json?.quota?.remaining === 1
+      && draft3.status === 202 && draft3.json?.quota?.remaining === 0,
       `${draft2.status}/${draft2.json?.quota?.remaining} · ${draft3.status}/${draft3.json?.quota?.remaining}`)
     const noRoom = await call(`${a}/mark/drafts`, { method: 'POST', cookie: owner.cookie })
     check('kein Platz für vier weitere ⇒ 409 `drafts_limit_reached` (der Platz-Deckel zuerst)',

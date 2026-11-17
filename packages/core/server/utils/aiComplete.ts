@@ -30,7 +30,13 @@ import { assertAiSwitchedOn } from './aiKillSwitch'
  * raus, und das Log trägt nur Kennungen (SEC-017, `aiLog.ts`).
  */
 
-const DEFAULT_TIMEOUT_MS = 45_000
+/**
+ * Die Frist eines Aufrufs ohne eigene `timeoutMs`. Exportiert, damit der
+ * Fristen-Wächter (`core/tests/routeDeadlineBudget.test.ts`) mit der echten
+ * Zahl rechnet.
+ */
+export const AI_COMPLETE_TIMEOUT_MS = 45_000
+const DEFAULT_TIMEOUT_MS = AI_COMPLETE_TIMEOUT_MS
 
 export interface AiConfig {
   enabled: boolean

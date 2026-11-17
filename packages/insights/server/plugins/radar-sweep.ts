@@ -1,4 +1,4 @@
-import { runInsightsRadarSweep } from '../utils/insightsRadarSweep'
+import { runInsightsRadarTimed } from '../utils/insightsRadarRun'
 
 /**
  * DER TAKT DES THEMENRADARS (Plan §9.6, Paket I4).
@@ -6,7 +6,8 @@ import { runInsightsRadarSweep } from '../utils/insightsRadarSweep'
  * Muster und Begründungen wie beim Fristen-Sweep nebenan
  * (`corrections-sweep.ts`) und beim Ereignis-Sweep des brand-Layers: eine
  * Konstante je Zahl, erster Lauf kurz nach dem Boot, Takt über `defineTimedJob`,
- * Single-Instanz-Annahme, Arbeit in `server/utils`. Ein Betreiber soll nicht je
+ * Arbeit in `server/utils` (seit LL1 c unter der Lauf-Sperre des Knopfs, damit
+ * auch mehrere Prozesse nur EINEN Lauf fahren). Ein Betreiber soll nicht je
  * Layer eine andere Mechanik lernen müssen.
  *
  * ── WARUM EINMAL AM TAG, UND NICHT ÖFTER ────────────────────────────────
@@ -58,8 +59,10 @@ export default defineNitroPlugin(() => {
       // Der Lauf loggt seine Zahlen selbst (`insights.radar_swept`), und ein
       // übersprungener Lauf loggt fachlich bewusst gar nichts — „kein
       // Schlüssel" ist ein Betriebszustand, keine tägliche Nachricht. Für
-      // `job.run` zählt er als `skipped`.
-      const result = await runInsightsRadarSweep()
+      // `job.run` zählt er als `skipped`. Seit LL1 c nimmt der Takt die
+      // Lauf-Sperre des Knopfs (`runInsightsRadarTimed`): läuft schon ein
+      // Lauf, ist auch das `skipped`.
+      const result = await runInsightsRadarTimed()
       if (result.skipped) return 'skipped'
     },
   })

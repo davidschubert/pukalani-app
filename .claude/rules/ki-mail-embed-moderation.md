@@ -148,8 +148,11 @@ paths:
   RADAR-KNOPF UND DER VIDEO-BRIEF DIESEN WEG: der Radar-Knopf (vorher ein
   Zeitdeckel von 30 s) nimmt die Sperre in `insights_runs` (Art `radar`, ein
   fester Gegenstand je Instanz), antwortet `202`, und `GET
-  /api/insights/radar` liefert den Lauf-Stand; der nächtliche Radar-Lauf
-  nimmt die Sperre NICHT, ihn schließt der Merker im Prozess aus. Der
+  /api/insights/radar` liefert den Lauf-Stand; seit LL1 c nimmt auch der
+  nächtliche Radar-Lauf dieselbe Sperre (läuft schon einer ⇒ Takt
+  `skipped`, der Knopf bekommt währenddessen 409; ohne Lauf-Tabelle wie
+  früher nur der Merker im Prozess), und die Seite zeigt die Zahlen des
+  letzten Laufs aus der Lauf-Zeile. Der
   Video-Brief (BI3, das Vorbild) hielt seinen Start an der eigenen Zeile fest
   — „erst lesen, dann Stempel"; jetzt nimmt er die Sperre (Art `brief`,
   Gegenstand = das Fundstück) nach den kostenlosen Vorprüfungen, liest die
@@ -161,10 +164,17 @@ paths:
   `brand/server/utils/brandStreamHeartbeat.ts`); der Leser im Browser nimmt
   nur `data:`-Zeilen. Ein neuer Stream ruft dieselbe Hilfe. NOCH IN DER
   ANFRAGE rechnen vier Wege des Markenberaters (OPEN-ITEMS „LL1" b) — der
-  Layer hat keine Lauf-Tabelle. Beweise: `packages/core/tests/runLease.test.ts`,
+  Layer hat keine Lauf-Tabelle. WÄCHTER (seit 2026-11-17):
+  `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
+  KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
+  Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe
+  ihrer Fristen bis 60 s (180 s nur auf den Wegen des nginx-Blocks),
+  `detached`, `stream` oder `over` (Bestand mit Grund, darf nur schrumpfen).
+  Beweise: `packages/core/tests/runLease.test.ts`,
   `packages/market/tests/marketRunRoute.test.ts`,
   `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`,
   `packages/insights/tests/insightsRadarRunRoute.test.ts`,
+  `packages/insights/tests/insightsRadarTimedLease.test.ts`,
   `packages/insights/tests/insightsBriefLease.test.ts`,
   `packages/brand/tests/brandStreamHeartbeat.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von

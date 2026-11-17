@@ -272,6 +272,14 @@
       "quotaOf": "{units} of {total} units",
       "statusLastRun": "Last run",
       "lastRunNever": "none yet",
+      "statusLastResult": "Result of the last run",
+      "lastResult": {
+        "done": "{date}: {channels} channels, {videos} videos, {upserted} stored, {deleted} removed, {tooOld} too old",
+        "partial": "partial result, not all channels read",
+        "skipped": "{date}: {reason}",
+        "failed": "{date}: failed, no numbers",
+        "stalled": "{date}: interrupted, no numbers"
+      },
       "run": "Run now",
       "runDone": "Done: {channels} channels, {videos} videos, {upserted} stored, {deleted} removed, {tooOld} too old.",
       "runErrors": "one error on the way | one error on the way | {count} errors on the way",
