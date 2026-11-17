@@ -62,11 +62,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
   'apps/portfolio': [
     'apps/portfolio/server/api/intro-call.post.ts',
   ],
-  billing: [
-    'packages/billing/server/api/billing/admin/subscriptions.get.ts',
-    'packages/billing/server/api/billing/prices.get.ts',
-    'packages/billing/server/api/billing/subscription.get.ts',
-  ],
   brand: [
     'packages/brand/server/api/brand/admin/derivation-unlocks/index.get.ts',
     'packages/brand/server/api/brand/admin/design-unlocks/index.get.ts',

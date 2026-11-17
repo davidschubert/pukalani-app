@@ -52,6 +52,9 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   'runner',
   // Abgebaut mit N09 (2026-11-17): `community.domain` im Pool und im Silo.
   'domains',
+  // Abgebaut mit N09 (2026-11-17): Betreiber-Übersicht, eigenes Abo,
+  // öffentliche Preisliste.
+  'billing',
 ]
 
 /**
