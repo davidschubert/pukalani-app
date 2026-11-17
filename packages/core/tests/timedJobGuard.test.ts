@@ -45,6 +45,7 @@ const EXPECTED_JOB_NAMES = [
   'insights-corrections-sweep',
   'insights-radar',
   'insights-subscribers-sweep',
+  'intro-request-retention',
   'invite-request-prune',
   'label-reconcile',
   'market-raw-text-sweep',

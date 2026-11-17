@@ -24,6 +24,22 @@ export default defineAppConfig({
      */
     audit: { retention: 'count' },
     /**
+     * DER FRISTEN-LAUF DER GESPRÄCHSANFRAGEN ZÄHLT NUR (EL1 c, Davids
+     * Entscheidung 2026-11-15) — 'off' | 'count' | 'apply'. Stündlich: jede
+     * Anfrage in `intro_requests` 12 Monate nach dem Eingang löschen
+     * (`server/utils/introRequestRetentionRun.ts`, Regel in
+     * `shared/introRequestRetention.ts`). Einen Layer-Default gibt es nicht —
+     * fehlt der Wert, heisst das 'off'.
+     *
+     * 'count' liest mit genau der Auswahl, die 'apply' löschen würde, und
+     * schreibt die Zahlen ins Prozess-Log (`retention.run`,
+     * `job: intro-request-retention`). 'apply' wird erst mit dem Ja des
+     * Betreibers zur gezählten Zahl gesetzt; 'off' stellt den Lauf ab (dann
+     * auch die Zeile in ops/timed-jobs.conf löschen). Ein unbekannter Wert
+     * gilt als 'off' und schreibt eine Fehlerzeile.
+     */
+    portfolio: { introRequestRetention: 'count' },
+    /**
      * DER NAME, DEN DER BESUCHER SIEHT (2026-08-12).
      *
      * `useBrandName()` im Core geht die Kette Mandanten-Name → App-Marke →
