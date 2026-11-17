@@ -122,7 +122,7 @@ den ersten zahlenden Kunden, also vor A2.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| VT1 | **Vertretung benennen.** Heute landet jeder Alarm nur bei David. Das Notfallblatt und die Handgriffe für eine zweite Alarm-Adresse sind vorbereitet; eingetragen ist niemand. Offen: eine Person benennen, die Handgriffe erledigen, einmal mit ihr proben. **Wartet auf:** David (wer). | Hoch | S | **Ja: Person, Ja je Einstellung** | [PRODUKTIONS-ALARM.md § 5](runbooks/PRODUKTIONS-ALARM.md) · [Einzelheiten](#vt1) |
+| VT1 | **Vertretung benennen.** Heute landet jeder Alarm nur bei David. Das Notfallblatt (deutsch und englisch) und die Handgriffe für eine zweite Alarm-Adresse sind vorbereitet (COMPLETE „GA1 P24"); eingetragen ist niemand. Offen: eine Person benennen, die Handgriffe erledigen, einmal mit ihr proben; dazu (b) die Mail für Meldungen von außen. **Wartet auf:** David (wer). | Hoch | S | **Ja: Person, Ja je Einstellung** | [PRODUKTIONS-ALARM.md § 5](runbooks/PRODUKTIONS-ALARM.md) · [Einzelheiten](#vt1) |
 | A2 | **Stripe auf echtes Geld umstellen — über die F55-Seite.** Bei David: Bank-Aktivierung, Steuer-Registrierung, Live-Key eintragen, Portal-Konfiguration; alles andere klickt die Seite. **Wartet auf:** A1 und SC2. Vorbedingung für BS1 Z1. | Hoch | S | **Ja: Bank, Konto, Portal** | [STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) · [Notiz](#a2a) |
 | BS1 | **branding.supply: Rechtstexte + Bezahlweg.** Offen: R2 (Davids Generator-Texte, dazu der Abschnitt „Reichweitenmessung"), R2c (Plausible einschalten; David legt die Site an, Text vor Schalter), R3 (Anwalt), Z1 (Stripe-Checkout). Impressum und AGB sind noch Gerüst. **Wartet auf:** R3 Anwalt, Z1 nach A2. Vorbedingung fürs Öffnen der Beta. | **Hoch** | M | **Ja: Texte, Anwalt, Preis** | [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) · [Notiz](#bs1) |
 | BK1 | **Brand Book & Kit (Produkt 03).** K0 bis K6 sind gebaut. Offen: K7 (Beispiel + Copy), K8 (Abnahme, Persona-Audit), Davids Blicke auf `brand.md`, Leseansicht und Lieferseite, die Verify-Zusagen 31 bis 33 gegen Production. Der Preis (149 € netto) wird erst mit BS1 Z1 sichtbar. **Wartet auf:** Davids Gates; Preis nach BS1 Z1. | Mittel | L | **Ja: Gates, Abnahme** | [BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) |
@@ -692,12 +692,18 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
 **VT1 — Vertretung benennen (aus dem Gesamtaudit, Paket P24, OPS-010).**
 
 - **(a) Die Person.** Sobald David jemanden hat: Namen und Nummern ins
-  Notfallblatt (liegt privat bei David, nicht im Repo), dann die Handgriffe
-  aus [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), § 5 (Alarm-Mail,
-  UptimeRobot, healthchecks.io), dann die Probe mit einem Probealarm.
-- **(b) Nicht nachgesehen:** ob `NUXT_ALERT_EMAIL` auf der Betreiber-Seite
-  gesetzt ist. Ohne sie gehen Missbrauchs-Meldungen und Störungen der
-  Kunden-Sites nur an die Glocke im Dashboard.
+  Notfallblatt (liegt privat bei David, nicht im Repo; entschieden am
+  2026-11-17: Ausdruck bei der Vertretung, Notiz im Passwort-Tresor), dann
+  die Handgriffe aus [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md),
+  § 5 (Alarm-Mail, UptimeRobot, healthchecks.io), dann die Probe mit einem
+  Probealarm. Entschieden: Die Vertretung soll zuerst nur Bescheid wissen;
+  eigene Zugänge erst, wenn die Person feststeht.
+- **(b) Mail für Meldungen von außen — braucht Davids Ja.**
+  `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt (nachgesehen am 2026-11-17).
+  Missbrauchs-Meldungen, Zugangs-Anfragen und Statuswechsel der Kunden-Sites
+  erreichen deshalb heute niemanden per Mail, nur die Glocke im Dashboard.
+  Setzen heißt: eine Zeile in der Server-Datei der Betreiber-Seite, neu
+  laden, eine Probe-Meldung.
 - **(c) Vorschlag, nicht entschieden:** ein Wort am Tor des Appwrite-Servers,
   das `docker compose up -d` fährt. Heute kann eine Vertretung ohne
   Server-Zugang den häufigsten Ausfall (Appwrite steht nach einem Update)

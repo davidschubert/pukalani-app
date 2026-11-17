@@ -203,6 +203,9 @@ paths:
   kennt für Mitarbeitende nur eine Stufe — wer Läufe starten darf, darf auch
   zusammenführen und ausliefern (DECISION-LOG 2026-11-14, „Wieder prüfen").
   Den privaten Backup-Schlüssel bekommt sie nicht (DECISION-LOG 2026-11-16).
+  `NUXT_ALERT_EMAIL` (Mail bei Missbrauchs-Meldungen, Anfragen und
+  Statuswechseln der Kunden-Sites) ist auf KEINER Site gesetzt (nachgesehen
+  2026-11-17): diese Hinweise erreichen heute nur die Glocke im Dashboard.
   Was ohne Server-Zugang NICHT geht: Appwrite nach einem Paket-Update oder
   Neustart wieder starten (`docker compose up -d` in `/home/ploi/appwrite` —
   das Tor kennt dafür kein Wort; Runbook § 4). Störfälle ohne eigenes Runbook

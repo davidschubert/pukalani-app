@@ -3715,3 +3715,40 @@ Aufruf einer Anmelde-Methode läuft mit dem Schlüssel des Servers.
 **Wieder prüfen:** das direkte Lesen mit dem Pukalani-Konto
 ([PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), § 9); ein täglicher Blick auf
 die Anmelde-Wege und der Schalter „JWT" (OPEN-ITEMS SV1).
+
+## 2026-11-17 — Vertretung: erst nur Bescheid wissen; das Notfallblatt liegt außerhalb des Repos
+
+**Anlass:** Gesamtaudit 2026-11, Paket P24 (OPS-010). Jeder Alarmweg endet bei
+einer Person; es gab kein Blatt, das einer zweiten sagt, wo sie anfängt und
+was sie nie tut. Davids Entscheidung vom 2026-11-12: Eine Vertrauensperson
+bekommt die Alarme mit und ein Blatt mit den ersten Handgriffen, bevor der
+erste Kunde zahlt. Am 2026-11-17: Es gibt noch niemanden — das Blatt wird
+fertig vorbereitet, Name und Adresse bleiben frei.
+**Entscheidung (David, vier Fragen zum Anklicken am 2026-11-17):**
+1. **Das Blatt liegt als Ausdruck bei der Vertretung und als Notiz in Davids
+   Passwort-Tresor** — nie im Repo (öffentlich; es nennt Menschen und
+   Nummern). Angeboten und nicht gewählt: nur im Tresor; nur als Ausdruck.
+2. **Die Vertretung soll zuerst nur Bescheid wissen:** Alarme mitbekommen,
+   nachsehen, David anrufen, Kunden antworten. Keine eigenen Zugänge.
+   Angeboten und nicht gewählt: gleich ein eigenes GitHub-Konto und ein
+   eigenes Betreiber-Konto. Über Zugänge wird entschieden, wenn die Person
+   feststeht.
+3. **Das Blatt gibt es auf Deutsch und auf Englisch** (Betreiber-Sitz USA,
+   Märkte weltweit). Preis: zwei Fassungen pflegen.
+4. **Probealarm und lesendes Nachsehen auf dem Server: ja.**
+**Folgen im Alltag:** Ohne eigenen Zugang kann die Vertretung nichts
+reparieren. Fällt David aus und kippt etwas auf einem Server, bleibt es so,
+bis er zurück ist oder eine Technik-Hilfe mit Zugang eingreift — das Blatt
+sagt es ausdrücklich. Eine Wiederherstellung aus dem Backup kann weiterhin nur
+David (Eintrag vom 2026-11-16, Nr. 9). Die Alarm-Mail des Wächters nimmt
+seitdem mehrere Empfänger (Kommaliste im Secret); eingetragen wird die zweite
+Adresse erst mit der Person. Im Repo stehen nur der Zeiger auf das Blatt und
+je Alarm-Quelle der Handgriff
+([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), § 5). Beim Nachsehen
+gefunden: `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt — Missbrauchs-
+Meldungen und Statuswechsel der Kunden-Sites erreichen niemanden per Mail
+(OPEN-ITEMS „VT1" b).
+**Wieder prüfen:** sobald die Person benannt ist (Stufe mit eigenen Zugängen;
+dann auch die Ausnahme für den Besitzer aus dem Eintrag vom 2026-11-14 und
+die Frage des Backup-Schlüssels aus dem Eintrag vom 2026-11-16); und vor dem
+Stripe-Livegang (A2), falls bis dahin niemand benannt ist.
