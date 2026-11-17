@@ -21,6 +21,10 @@ export default defineAppConfig({
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
+    // Profilbilder ohne Profil (KE3): NUR zählen ('count', Log
+    // `retention.run`, `job: avatar-orphan-sweep`). 'apply' erst mit dem Ja
+    // des Betreibers zur gezählten Zahl.
+    storage: { avatarOrphanSweep: 'count' },
     // DIE ADRESSE DIESER KONSOLE ist `admin.pukalani.app` (AH-4, 2026-08-11).
     // Der Altname `control.pukalani.app` ist seit AH-4b (2026-08-18, Davids
     // Entscheidung) BEWUSST tot: die ploi-Site wurde im Panel wirklich

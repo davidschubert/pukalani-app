@@ -167,6 +167,24 @@ describe('Schleife', () => {
     expect(await runRowRetention('apply', proxy.deps, { now: NOW })).toMatchObject({ deleted: 0, failed: 1 })
   })
 
+  it('ein letzter Blick vor dem Löschen darf „bleibt doch" sagen — weder fällig noch Fehler', async () => {
+    const table = fakeTable(mixedRows(6))
+    const deps: RowRetentionDeps<Row> = {
+      ...table.deps,
+      remove: async (row) => {
+        if (row.$id === 'r002') return 'kept'
+        await table.deps.remove(row)
+      },
+    }
+    const result = await runRowRetention('apply', deps, { now: NOW, limits: { pageSize: 2 } })
+    expect(result).toMatchObject({ considered: 6, expired: 2, deleted: 2, failed: 0 })
+    expect(result.byReason).toEqual({ old: 2 })
+    expect(table.ids()).toContain('r002')
+    // In `count` gibt es diesen letzten Blick nicht: dort zählt die Regel allein.
+    const counted = await runRowRetention('count', fakeTable(mixedRows(6)).deps, { now: NOW })
+    expect(counted.expired).toBe(3)
+  })
+
   it('eine Regel, die wirft, löscht nichts', async () => {
     const table = fakeTable(mixedRows(4))
     const deps: RowRetentionDeps<Row> = {
