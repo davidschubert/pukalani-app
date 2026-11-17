@@ -71,6 +71,9 @@ export default defineEventHandler(async (event) => {
  */
 async function discoverEntries(event: H3Event): Promise<BrandingSitemapEntry[]> {
   try {
+    // NOT-AUS (WL1 b): ist `brand` abgeschaltet, antwortet jede Anatomie 404 —
+    // die Sitemap bietet sie dann auch nicht an.
+    if (!(await isProductEnabled(event, 'brand'))) return []
     const rows = await listPublishedBrandPublications(event)
     return rows
       .filter(row => typeof row.slug === 'string' && row.slug.length > 0)
@@ -106,6 +109,9 @@ async function discoverEntries(event: H3Event): Promise<BrandingSitemapEntry[]> 
  */
 async function insightsEntries(event: H3Event): Promise<BrandingSitemapEntry[]> {
   try {
+    // NOT-AUS (WL1 b): `insights` setzt `brand` voraus — ist eines von beiden
+    // abgeschaltet, gibt es die Adressen nicht.
+    if (!(await isProductEnabled(event, 'brand')) || !(await isProductEnabled(event, 'insights'))) return []
     return (await listInsightsSitemapEntries(event)).map(entry => ({
       path: entry.path,
       priority: entry.path === '/rankings' ? BRANDING_RANKINGS_PRIORITY : BRANDING_INSIGHTS_ENTRY_PRIORITY,
