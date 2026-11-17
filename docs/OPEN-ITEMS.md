@@ -91,10 +91,10 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
-| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs einschalten, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) und (d) Davids Ja für den Server, (e) die Sicherungen ab 2026-11-30. | Niedrig | S je Teil | **Ja: (c), (d)** | [Einzelheiten](#se1) |
+| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Nacharbeiten.** (b) Vier lange Wege rechnen noch in der Anfrage (Zeichen-Entwürfe, Bild lesen, Dokument-Check, Brand-Check), (c) Kleinigkeiten. Radar-Knopf, Video-Brief und das Lebenszeichen der Berater-Streams sind gebaut (COMPLETE „N05"). **Wartet auf:** nichts; (b) braucht eine Migration auf Production. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
-| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) zwei Kleinigkeiten. **Wartet auf:** (a) ein Ja für den Blick auf die Server-Einstellungen. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#wl1) |
+| WL1 | **Wächter mit eigenen Listen: Reste.** Galerie-Bilder und Sitemap folgen dem Not-Aus, die Adresse des Control Plane ist umgezogen (COMPLETE „N07"). Offen: (a) 36 Einstellungen sind noch nicht bewertet (Pflicht auf dem Server oder nicht?), (d) zwei Kleinigkeiten. **Wartet auf:** nichts — David hat am 2026-11-17 Ja gesagt zum Blick auf die Namen in den Server-Dateien, als eigene kleine Gruppe. | Niedrig | S je Teil | Nein | [Einzelheiten](#wl1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Nacharbeiten.** Seit 2026-11-16 enthält der Betreiber-Export keine Nachrichtentexte, heikle Aktionen verlangen eine frische Anmeldung, und ein Ausfall des Protokolls fällt auf (COMPLETE „GA1 P16"). Offen: (a) ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (c) Erlaubnisliste beim Löschen im Speicher kürzen?, (d) Kleinigkeiten. **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Nacharbeiten.** Seit 2026-11-16 gibt es die Testphase einmal je Konto, eine eigene Domain nur mit Freigabe, und der Stripe-Eingang liest frisch (COMPLETE „GA1 P15"). Offen: (a) den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) Kleinigkeiten. **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Drei Listen im Seiten-Produkt ohne Blättern, die Zahlen des Seiten-Kontingents stehen nicht im Katalog, ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
@@ -664,7 +664,8 @@ KI-Aufrufstellen und das wirkungslose Präfix von `onboarding`.
   eine weniger, weil `NUXT_EVENTS_SWEEP_KEY` mit seiner Route aus dem Code
   ging. Für jeden entscheiden: Pflicht auf
   welcher Site, oder warum nicht. Braucht einen Blick auf die Namen in den
-  Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja. Die
+  Server-Dateien (nur Namen, wie der tägliche Wächter) — Davids Ja liegt seit
+  dem 2026-11-17 vor, gebaut wird es als eigene kleine Gruppe. Die
   Liste darf nur kürzer werden; der Test hält die Zahl fest.
 - **(d) Kleinigkeiten.** Der Env-Wächter prüft, ob ein Name in der
   Server-Datei steht, nicht, ob dahinter ein Wert steht. Das Dashboard fragt
@@ -760,16 +761,19 @@ und den Link im Kommentar-Bereich.
   Unter-Adresse der Zone sicher per HTTPS antwortet (auch die, die nicht diese
   App bedient). Kundendomains bleiben ohne. Lässt sich nicht zurücknehmen
   (Browser merken es sich ein Jahr) — nur mit Davids Entscheidung.
-- **(c) Umlauf der pm2-Logs einschalten.** Vorlage (`ops/logrotate-pm2.conf`)
-  und Anleitung stehen im Repo
-  ([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), „Umlauf der
-  pm2-Logs"), das Zähl-Skript liest umgelaufene Dateien. Einschalten ist ein
-  kleiner Pull Request plus eine Nacht — mit Davids Ja, und erst, wenn alle
-  sechs Sites das neue Zähl-Skript tragen (es kommt mit dem nächsten
-  Ausliefern der jeweiligen App).
+- **(c) Umlauf der pm2-Logs: nach dem ersten Umlauf nachsehen.** Eingeschaltet
+  am 2026-11-17 mit Davids Ja (zweiter Block in
+  `ops/logrotate-admin-access.conf`, gefahren vom vorhandenen Zeitplan um
+  03:12). Die erste Nacht merkt sich die Dateien nur, gedreht wird ab der
+  zweiten (2026-11-19). Offen ist nur der Blick danach: der tägliche Wächter
+  am Morgen muss grün bleiben und jeden Zeit-Lauf nennen; auf dem Server liegt
+  je Log eine Datei `.1` ([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), „Umlauf
+  der pm2-Logs"). Die 59 MB große Alt-Datei einer früheren Prozess-Nummer
+  läuft einmal um; ihre Kopie kann von Hand weg.
 - **(d) Erinnerungs-Lauf.** Die Route ist aus dem Code. Auf dem Server liegen
   noch die Einstellung `NUXT_EVENTS_SWEEP_KEY` und die Datei
-  `~/events-sweep.log` — entfernen mit Davids Ja. In der Betreiber-Konsole
+  `~/events-sweep.log` — sie gehen am Server-Termin ab 2026-11-30 mit weg
+  (Davids Entscheidung vom 2026-11-17, zusammen mit den Sicherungen aus e). In der Betreiber-Konsole
   steht `events-sweep` noch als Auswahl und Text (`packages/admin`,
   `INTEGRATION_IDS`, zwei Sprachdateien) und im Core als Schlüssel-Sorte; die
   Seite zeigt den Eintrag nicht mehr an. Der Zeit-Lauf `event-reminders`
