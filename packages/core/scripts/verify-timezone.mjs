@@ -18,21 +18,29 @@
  *   5. Zurück auf „automatisch" ⇒ wieder die Zone der Laufzeit, also exakt
  *      das Verhalten von vor dieser Einstellung.
  *
- * Voraussetzung: `apps/comments` läuft (mit Demo-Seed, s. README) und die
- * lokale Appwrite ist erreichbar.
+ * Voraussetzung: `apps/comments` läuft (mit Kommentaren auf der Startseite,
+ * z. B. aus dem Demo-Seed) und die lokale Appwrite ist erreichbar.
  *
- *   PORT=3021 node packages/core/scripts/verify-timezone.mjs
+ *   PORT=3021 node --env-file=apps/comments/.env packages/core/scripts/verify-timezone.mjs
+ *
+ * KONTO: mit Schlüssel in der Umgebung (`--env-file` oder der Läufer) legt
+ * das Skript ein eigenes Wegwerf-Konto an (`…@example.test`, zufälliges
+ * Passwort), meldet es über die echte Anmelde-Route an und räumt es mit
+ * Nachzählen wieder ab. Ohne Schlüssel nimmt es wie früher das Demo-Konto
+ * (`DEMO_EMAIL` / `DEMO_PASSWORD`).
  *
  * node:http statt fetch, weil fetch einen eigenen Host-Header verwirft, und
  * über `::1`, weil Nitro dort hört (dieselbe Begründung wie in den
  * onboarding-Skripten).
  */
 import { request } from 'node:http'
+import { createEinzelCleanup, createProbeAccount } from '../../../scripts/lib/probe-stage.mjs'
 
-const PORT = Number(process.env.PORT || 3001)
+// Der Läufer setzt EINZEL_PORT (die Einzel-Instanz im nächtlichen Lauf).
+const PORT = Number(process.env.EINZEL_PORT || process.env.PORT || 3001)
 const HOST = process.env.HOST || 'localhost'
-const EMAIL = process.env.DEMO_EMAIL || 'uma@demo.local'
-const PASSWORD = process.env.DEMO_PASSWORD || 'Demo-Passw0rd!'
+const OWN_ACCOUNT = Boolean(process.env.NUXT_APPWRITE_KEY && !process.env.DEMO_EMAIL)
+const sweep = OWN_ACCOUNT ? createEinzelCleanup({ script: 'verify-timezone' }) : null
 
 let pass = 0
 let fail = 0
@@ -93,6 +101,15 @@ async function setZone(cookie, timezone) {
 async function main() {
   console.log(`\nKonto-Zeitzone — Beweis gegen http://${HOST}:${PORT}\n`)
 
+  let EMAIL = process.env.DEMO_EMAIL || 'uma@demo.local'
+  let PASSWORD = process.env.DEMO_PASSWORD || 'Demo-Passw0rd!'
+  if (sweep) {
+    const account = await createProbeAccount(sweep.pool, { tag: 'timezone', name: 'Zeitzone Beweis' })
+    sweep.track('account', account.userId)
+    EMAIL = account.email
+    PASSWORD = account.password
+  }
+
   console.log('1) Ohne Session')
   const guest = await setZone(undefined, 'Europe/Berlin')
   check('PUT /api/auth/timezone ohne Session = 401', guest.status === 401, `status ${guest.status}`)
@@ -104,7 +121,7 @@ async function main() {
   check('Login liefert eine Session', login.status === 200 && cookie.length > 0, `status ${login.status}`)
   if (!cookie) {
     console.log('\n  Ohne Session ist der Rest nicht messbar — Abbruch.\n')
-    process.exit(1)
+    await finish()
   }
 
   console.log('\n3) Was die Route ablehnt')
@@ -144,11 +161,21 @@ async function main() {
     back.length === automaticDates.length && back.every((value, i) => value === automaticDates[i]),
     `${back[0]} vs ${automaticDates[0]}`)
 
+  await finish()
+}
+
+/** Aufräumen MIT Nachzählen (Bühnen-Regel 2), dann die Schlusszeile. */
+async function finish() {
+  if (sweep) {
+    const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+    check('Wegwerf-Konto aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
+  }
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail} Prüfungen bestanden\n`)
   process.exit(fail === 0 ? 0 : 1)
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error(error)
-  process.exit(1)
+  fail++
+  await finish()
 })

@@ -148,7 +148,11 @@ legt auf der Wegwerf-Appwrite die Projekte `admin` und `account` an (die Ids
 sind nicht frei: der Migrations-Runner vergleicht sie mit `appwriteProjects`
 im `site.manifest.ts`) und schreibt beide `.env` samt Naht-Geheimnis; dann
 `bootstrap` je App, beide Server, `pnpm buehne up`, die Beweise je als
-eigener Schritt, `down` mit Nachzählen.
+eigener Schritt, `down` mit Nachzählen. NACHTS (seit 2026-11-17) kommt ein
+drittes Projekt dazu: `comments` mit `apps/comments` als Einzel-Instanz
+(`scripts/ci/appwrite-setup.mjs`, `bootstrap --seed`, Port 3001) und
+Playwrights Chromium für die zwei Skripte mit Browser. An Pull Requests und
+auf `main` steht sie nicht.
 
 **Was die Bühne NICHT beweist:** Production hat die direkten Anmelde-Wege der
 Datenbank aus, lokal und in der CI sind sie an. Die Server laufen als
@@ -158,9 +162,10 @@ KI, kein Mail-Versand nach draußen).
 
 **Was heute von selbst läuft (Stand 2026-11-17):** die Einteilung steht in
 `scripts/buehne/beweise.mjs`, eine Zeile je Skript, und die erzeugte Liste
-unten zeigt sie in der Spalte „Läuft". 6 Skripte laufen im E2E-Lauf, 30 bei
-jedem Lauf der Bühne (zusammen rund zwei Minuten), 10 nur nachts (ab rund
-45 s oder mit Wartezeiten), 36 von Hand — jedes mit Grund. Der Läufer:
+unten zeigt sie in der Spalte „Läuft". 6 Skripte laufen im E2E-Lauf, 31 bei
+jedem Lauf der Bühne (zusammen rund zwei Minuten), 22 nur nachts (ab rund
+45 s, mit Wartezeiten oder gegen die Einzel-Instanz — 12 davon), 24 von
+Hand — jedes mit Grund. Der Läufer:
 
 ```bash
 pnpm buehne run --liste --lauf nacht          # was liefe
@@ -168,7 +173,19 @@ pnpm buehne run --lauf buehne                 # die kurzen (so fährt sie die CI
 pnpm buehne run --lauf nacht                  # kurz + lang (nächtlicher Lauf)
 pnpm buehne run --only verify-site-authz      # ein Skript, egal welche Klasse
 # lokal mit eigenen Ports: --control-port 3254 (der Platform-Port steht im Stand)
+# mit Einzel-Instanz:      --einzel-port 3268  (apps/comments aus DEMSELBEN Checkout)
 ```
+
+**Die Einzel-Instanz im Läufer:** ein Skript mit `env: 'einzel'` und
+`braucht: [..., 'einzel']` bekommt `apps/comments/.env` (`--env-einzel`),
+`EINZEL_URL` und `EINZEL_PORT`. Ohne `--einzel-port` meldet der Läufer es als
+„übersprungen" (zählt nicht als rot). Diese Skripte legen ihre Konten,
+Kategorien und Beiträge selbst an und räumen über `createEinzelCleanup`
+(`probe-stage.mjs`) mit Nachzählen auf — die alten Aufräum-Blöcke ließen
+Namen (`account_handles`), Zähler, Abzeichen, Benachrichtigungen,
+Aktivitäten und Protokoll-Zeilen der Wegwerf-Konten liegen. Lokal ist die
+Einzel-Instanz das Spiegel-Projekt `account` (dieselbe Datenbank wie der
+Pool) — dort nichts fahren, was für ALLE Konten etwas anstößt.
 
 Er gibt jedem Skript die richtige Env-Datei, die Hosts der Bühne und eine
 EIGENE Aufrufer-Adresse (`scripts/buehne/client-address.mjs` hängt
@@ -176,9 +193,10 @@ EIGENE Aufrufer-Adresse (`scripts/buehne/client-address.mjs` hängt
 laufen alle Skripte in dieselben Bremsen. Rot auf `main` oder nachts öffnet
 das Issue `buehne-alarm` (docs/runbooks/PRODUKTIONS-ALARM.md, Abschnitt 1b).
 
-**Von Hand bleiben:** 14 Skripte, die die Einzel-Instanz `apps/comments` als
-laufenden Server brauchen; 12, die branding.supply mit eigenem Projekt
-brauchen; 6 mit Fremddiensten (echte KI, eine fremde Website, Dateien, die
+**Von Hand bleiben:** 2 Skripte der Einzel-Instanz, die sie EIGENS
+eingestellt brauchen (`verify-silo-domain`: Trockenlauf-Betreiber-App,
+Naht, portfolio gegen eine tote Naht; `verify-domain-settle`: beschnittener
+Schlüssel); 12, die branding.supply mit eigenem Projekt brauchen; 6 mit Fremddiensten (echte KI, eine fremde Website, Dateien, die
 nicht im Repo liegen); `verify-custom-domain` (braucht eine Betreiber-App im
 Trockenlauf mit eigenem Namens-Server); `verify-notification-mail-links`
 (stößt den Sammel-Lauf für ALLE Konten der Instanz an — nur auf einer leeren
@@ -212,7 +230,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-83 Beweis-Skripte im Repo: 6 E2E-Lauf, 31 Bühne (jeder Lauf), 10 Bühne (nachts), 36 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+83 Beweis-Skripte im Repo: 6 E2E-Lauf, 31 Bühne (jeder Lauf), 22 Bühne (nachts), 24 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -226,7 +244,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/brand/scripts/verify-brand-sessions.mjs` | Beweis für BW2 Paket 3a — „Gespräch je Session" gegen einen echten Server. | von Hand: Braucht die App branding.supply mit eigenem Projekt, und die steht auf der Bühne nicht. |
 | `packages/brand/scripts/verify-brand-share.mjs` | Beweis für Paket G3 „Teilen sichtbar" (Konzept docs/archiv/BRAND-FOUNDATION-LESEANSICHT.md §5, Zeile G3) — gegen einen echten Server, weil keine pure Funktion belegen kann, was an Route, Ablage und Kopfzeilen hängt: | von Hand: Braucht die App branding.supply mit eigenem Projekt, und die steht auf der Bühne nicht. |
 | `packages/brand/scripts/verify-brand-tokens.mjs` | DER FREMDE LESER (Konzept docs/plans/BRAND-BOOK-KIT.md §2.18 Zeile K2: „Style-Dictionary-v5-Probelauf im Skript"). | von Hand: Lädt beim Lauf ein Werkzeug aus dem Netz, und das soll kein automatischer Lauf tun. |
-| `packages/comments/scripts/verify-comment-reactions.mjs` | EMOJI-REAKTIONEN AUF ANTWORTEN — der Beweis (F57, Davids Entscheidung 2026-08-13 „Ja, nachbauen"). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/comments/scripts/verify-comment-reactions.mjs` | EMOJI-REAKTIONEN AUF ANTWORTEN — der Beweis (F57, Davids Entscheidung 2026-08-13 „Ja, nachbauen"). | Bühne (nachts), Einzel-Instanz |
 | `packages/comments/scripts/verify-embed-boundary.mjs` | Beweis für F37 — DAS WIDGET IM POOL: Berechtigung + Mandantengrenze. | Bühne (jeder Lauf) |
 | `packages/comments/scripts/verify-pool-isolation.mjs` | H3-Pool-Isolation — LIVE-DB-Beweis (repeatable). Ergänzt den pure-logic- Beweis (der Spike s5-pool-silo, Ergebnis in docs/archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md) um einen echten Appwrite-Roundtrip: seedet Rows für ZWE… | E2E-Lauf |
 | `packages/control/scripts/verify-account-bell.mjs` | Beweis für die Glocke im Kundenbereich (C17). | Bühne (jeder Lauf) |
@@ -234,11 +252,11 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/control/scripts/verify-invite-requests.mjs` | Beweis für die Einladungs-Warteschlange (control-017). | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-invite-stock.mjs` | Beweis für Vorrat + Zuweisung MIT echter Betreiber-Session (control-017). | von Hand: Eine Prüfung ist rot und wird geklärt. |
 | `packages/control/scripts/verify-onboarding.mjs` | Beweis für O2 — die Provisionierungs-Route des Control Plane. | Bühne (jeder Lauf) |
-| `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so. |
 | `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht die App branding.supply mit eigenem Projekt, und die steht auf der Bühne nicht. |
 | `packages/core/scripts/verify-geo-cities.mjs` | Beweis: der Orts-Picker im Profil — Suche, Länder-Filter und der Standort am KONTO (Mitglieder-Karte, Etappe 1). | von Hand: Braucht die Orts-Datei für Städte und Regionen, und die liegt nicht im Repo. |
 | `packages/core/scripts/verify-handle-search-boundary.mjs` | Beweis: die Handle-Grenze einer Community hält — beim LESEN und beim NEHMEN. | Bühne (jeder Lauf) |
-| `packages/core/scripts/verify-mfa.mjs` | Beweis für den Zweitfaktor (U15 Teil 4). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/core/scripts/verify-mfa.mjs` | Beweis für den Zweitfaktor (U15 Teil 4). | Bühne (nachts), Einzel-Instanz |
 | `packages/core/scripts/verify-notification-mail-links.mjs` | Beweis: Benachrichtigungs-MAILS verlinken auf den Host DER COMMUNITY (D5). | von Hand: Noch nicht ganz grün auf der Bühne gesehen: der Platform-Server muss mit NUXT_PUBLIC_APP_URL laufen (die CI setzt es), lokal fehlte es; außerdem verschickt der Sammel-Lauf die Mails aller wartenden Konten der Instanz. |
 | `packages/core/scripts/verify-otp-availability.mjs` | Beweis für F37 — DER PASSWORTLOSE LOGIN ENDET NIE IN EINER SACKGASSE. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-presence-away-priority.mjs` | BEWEIS: „sichtbar schlägt away (fremder Mandant)" — die Vorfahrts-Regel vom 2026-08-18 (packages/core/shared/presencePriority.ts). | Bühne (jeder Lauf) |
@@ -246,13 +264,13 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/core/scripts/verify-rate-limits.mjs` | Beweis für die Drossel-Grenzen des Sicherheits-Pakets vom 2026-08-02. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-server-only-writes.mjs` | „Der Server schreibt" — LIVE-Beweis an der Datenbank (SEC-002, GA1 P13). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-session-ip.mjs` | Beweis: serverseitig erzeugte Appwrite-Sessions tragen die CLIENT-IP (x-forwarded-for aus forwardClientContext), nicht die Server-IP. | von Hand: Braucht die Standort-Datei und eine geänderte Proxy-Einstellung der Datenbank. |
-| `packages/core/scripts/verify-timezone.mjs` | Beweis für die Konto-Zeitzone (U15 Teil 5). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/core/scripts/verify-timezone.mjs` | Beweis für die Konto-Zeitzone (U15 Teil 5). | Bühne (nachts), Einzel-Instanz |
 | `packages/core/scripts/verify-ugc-translation.mjs` | Beweis: KI-Übersetzung für User-Content (Davids Entscheidungen 2026-08-17 — Beiträge + Kommentare · Knopf statt Automatik · Inhalts-Produkt als Gate · nur Eingeloggte, gedrosselt · EIN Übersetzungs-Cache je Zeile, posts… | von Hand: Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet. |
-| `packages/courses/scripts/verify-manage-entrypoints.mjs` | F58-Beweis: Die Kurs-Verwaltung ist AUS DEM PRODUKT HERAUS erreichbar. | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/courses/scripts/verify-manage-entrypoints.mjs` | F58-Beweis: Die Kurs-Verwaltung ist AUS DEM PRODUKT HERAUS erreichbar. | Bühne (nachts), Einzel-Instanz |
 | `packages/courses/scripts/verify-pool-isolation.mjs` | courses im Pool — LIVE-Isolationsbeweis über die ECHTE API (Muster events/verify-pool-isolation + events/verify-site-authz, zusammengelegt). | Bühne (nachts) |
-| `packages/courses/scripts/verify-silo-unchanged.mjs` | Silo-Gegenprobe: Kurse verhalten sich in apps/comments UNVERÄNDERT. | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
-| `packages/domains/scripts/verify-domain-settle.mjs` | Beweis: der LETZTE Schritt einer Silo-Freischaltung (F54-1, 2026-08-08). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
-| `packages/events/scripts/verify-manage-entrypoints.mjs` | F58-Beweis: Die Termin-Verwaltung ist AUS DEM PRODUKT HERAUS erreichbar. | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/courses/scripts/verify-silo-unchanged.mjs` | Silo-Gegenprobe: Kurse verhalten sich in apps/comments UNVERÄNDERT. | Bühne (nachts), Einzel-Instanz |
+| `packages/domains/scripts/verify-domain-settle.mjs` | Beweis: der LETZTE Schritt einer Silo-Freischaltung (F54-1, 2026-08-08). | von Hand: Braucht eine zweite Einzel-Instanz mit absichtlich beschnittenem Schlüssel und eigener Naht; die Einzel-Instanz des nächtlichen Laufs hat den vollen Schlüssel. |
+| `packages/events/scripts/verify-manage-entrypoints.mjs` | F58-Beweis: Die Termin-Verwaltung ist AUS DEM PRODUKT HERAUS erreichbar. | Bühne (nachts), Einzel-Instanz |
 | `packages/events/scripts/verify-paid-ticket.mjs` | DER GELDPFAD, gegen die ECHTE Instanz — Ticket ausstellen, wiederfinden, zusagen dürfen. | E2E-Lauf |
 | `packages/events/scripts/verify-pool-isolation.mjs` | events im Pool — LIVE-Isolationsbeweis über die ECHTE API (Muster comments/posts verify-pool-isolation + onboarding/verify-site-authz). | Bühne (nachts) |
 | `packages/events/scripts/verify-site-authz.mjs` | N5a — Events-Verwaltung gehört dem Site-Owner, nicht dem globalen Label. | Bühne (jeder Lauf) |
@@ -287,13 +305,13 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/pages/scripts/verify-community-seo.mjs` | Beweis für U15 Teil 2 (Davids Zuschnitt vom 2026-08-13) — DER OWNER STELLT SEINEN SUCHEINTRAG SELBST EIN: eigene Beschreibung der Startseite · noindex-Schalter · Vorschau. | Bühne (jeder Lauf) |
 | `packages/pages/scripts/verify-page-languages.mjs` | Beweis für F60 (Davids Entscheidungen vom 2026-09-10) — MEHRSPRACHIGE BETREIBER-SEITEN: der Fallback zeigt und sagt, was er zeigt. | Bühne (jeder Lauf) |
 | `packages/posts/scripts/verify-composer-editor.mjs` | „SCHREIBFLÄCHE AUF UEditor" — der Beweis (2026-08-04). | von Hand: Braucht einen echten Browser und eine fremde Website. |
-| `packages/posts/scripts/verify-handles-mentions.mjs` | „HANDLES (@name) UND ERWÄHNUNGEN" — der Beweis (2026-08-04). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
-| `packages/posts/scripts/verify-like-limit.mjs` | DAS TAGES-LIMIT FUER LIKES — der Beweis (F57 Mechanik 3, 2026-08-14). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
-| `packages/posts/scripts/verify-mention-menu.mjs` | „NAMENSVERVOLLSTÄNDIGUNG BEIM TIPPEN" — der Beweis (2026-08-05). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
-| `packages/posts/scripts/verify-new-topic-entry.mjs` | „THEMA ERÖFFNEN AUS DISCUSSIONS HERAUS" — der Beweis (2026-08-04). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/posts/scripts/verify-handles-mentions.mjs` | „HANDLES (@name) UND ERWÄHNUNGEN" — der Beweis (2026-08-04). | Bühne (nachts), Einzel-Instanz |
+| `packages/posts/scripts/verify-like-limit.mjs` | DAS TAGES-LIMIT FUER LIKES — der Beweis (F57 Mechanik 3, 2026-08-14). | Bühne (nachts), Einzel-Instanz |
+| `packages/posts/scripts/verify-mention-menu.mjs` | „NAMENSVERVOLLSTÄNDIGUNG BEIM TIPPEN" — der Beweis (2026-08-05). | Bühne (nachts), Einzel-Instanz |
+| `packages/posts/scripts/verify-new-topic-entry.mjs` | „THEMA ERÖFFNEN AUS DISCUSSIONS HERAUS" — der Beweis (2026-08-04). | Bühne (nachts), Einzel-Instanz |
 | `packages/posts/scripts/verify-pool-isolation.mjs` | posts im Pool — LIVE-DB-Isolationsbeweis (Muster: comments/scripts/ verify-pool-isolation.mjs). Seedet Feed-Rows, Score-Votes und Poll-Stimmen für ZWEI Tenants und prüft, dass die tenantId-Filterung der Datentür auf DB-… | E2E-Lauf |
-| `packages/posts/scripts/verify-reactions.mjs` | EMOJI-REAKTIONEN — der Beweis (F57 Mechanik 1, 2026-08-13). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
-| `packages/posts/scripts/verify-topic-links.mjs` | THEMEN-VERLINKUNG MIT RUECKVERWEIS — der Beweis (F57, letzte Mechanik, 2026-08-14). | von Hand: Braucht die Einzel-Instanz apps/comments als laufenden Server, und die gibt es auf der Bühne nicht. |
+| `packages/posts/scripts/verify-reactions.mjs` | EMOJI-REAKTIONEN — der Beweis (F57 Mechanik 1, 2026-08-13). | Bühne (nachts), Einzel-Instanz |
+| `packages/posts/scripts/verify-topic-links.mjs` | THEMEN-VERLINKUNG MIT RUECKVERWEIS — der Beweis (F57, letzte Mechanik, 2026-08-14). | Bühne (nachts), Einzel-Instanz |
 | `packages/posts/scripts/verify-trust-levels.mjs` | BEWEIS: die Vertrauensstufen (F1 Teilpaket 3) — gegen eine ECHTE Appwrite. | Bühne (jeder Lauf) |
 | `packages/posts/scripts/verify-trust-perks.mjs` | WAS EINE VERTRAUENSSTUFE EINBRINGT — der Beweis (F57-Stufen, 2026-08-14). | Bühne (nachts) |
 | `packages/runner/scripts/verify-runner-boundary.mjs` | Beweis: die RUNNER-NAHT des AI-Runners hält — docs/plans/AI-RUNNER.md § 5. | Bühne (jeder Lauf) |

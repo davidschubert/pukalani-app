@@ -35,6 +35,7 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
 /** Playwright wohnt in apps/comments — absoluter Pfad, siehe verify-handles-mentions.mjs. */
 const playwrightEntry = new URL('../../../apps/comments/node_modules/@playwright/test/index.mjs', import.meta.url)
@@ -43,7 +44,7 @@ const { chromium } = await import(playwrightEntry.href).catch(() => {
   process.exit(1)
 })
 
-const base = process.argv[2] ?? 'http://localhost:3001'
+const base = einzelBaseUrl('http://localhost:3001')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
@@ -390,6 +391,14 @@ finally {
     await users.delete({ userId: user.$id }).catch(() => {})
   }
   await browser?.close()
+
+  // NACHZÄHLEN (Bühnen-Regel 2): Beiträge, Konten und alles, was an ihnen
+  // hängt (Namen, Benachrichtigungen, Zähler), sind wirklich weg.
+  const sweep = createEinzelCleanup({ script: 'verify-mention-menu' })
+  for (const postId of createdPosts) sweep.track('poolRow', `community_posts/${postId}`)
+  for (const user of [author, target]) if (user) sweep.track('account', user.$id)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
 
   console.log(`\n${passed}/${passed + failed} Prüfungen bestanden`)
   process.exit(failed === 0 ? 0 : 1)

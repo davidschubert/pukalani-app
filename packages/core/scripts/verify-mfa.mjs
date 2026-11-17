@@ -14,16 +14,24 @@
  *   PORT=3021 node packages/core/scripts/verify-mfa.mjs
  *
  * Voraussetzung: Dev-Server der App `comments` + lokale Appwrite.
+ *
+ * EIN TOTP-CODE GILT NUR EINMAL (seit Appwrite 2.7): wer im selben
+ * 30-s-Fenster einrichtet und gleich danach mit demselben Code anmeldet, wird
+ * abgewiesen. `freshTotp` wartet deshalb je Geheimnis auf das nächste Fenster,
+ * bevor ein Code ein zweites Mal gebraucht wird — so wie ein Mensch, der auf
+ * die nächste Zahl in seiner App wartet. Der Lauf dauert dadurch gut eine Minute.
  */
 import { request } from 'node:http'
 import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { Client, Account, Users, ID, AuthenticatorType } from 'node-appwrite'
 import { assertTarget } from '../../../scripts/lib/target.mjs'
+import { createEinzelCleanup } from '../../../scripts/lib/probe-stage.mjs'
 
-const PORT = Number(process.env.PORT || 3021)
+// Der Läufer setzt EINZEL_PORT und EINZEL_ENV_FILE (die Einzel-Instanz im nächtlichen Lauf).
+const PORT = Number(process.env.EINZEL_PORT || process.env.PORT || 3021)
 const HOST = process.env.HOST || 'localhost'
-const ENV_FILE = process.env.ENV_FILE || 'apps/comments/.env'
+const ENV_FILE = process.env.EINZEL_ENV_FILE || process.env.ENV_FILE || 'apps/comments/.env'
 /** Abschnitt 10 liest den E-Mail-Code aus dem lokalen Mailpit (Appwrite-Dev schickt dorthin). */
 const MAILPIT_URL = process.env.MAILPIT_URL || 'http://localhost:8025'
 
@@ -99,13 +107,30 @@ function base32Decode(input) {
   return Buffer.from(bytes)
 }
 
+const totpWindow = () => Math.floor(Date.now() / 1000 / 30)
+
 function totp(secret) {
   const counter = Buffer.alloc(8)
-  counter.writeBigInt64BE(BigInt(Math.floor(Date.now() / 1000 / 30)))
+  counter.writeBigInt64BE(BigInt(totpWindow()))
   const hash = createHmac('sha1', base32Decode(secret)).update(counter).digest()
   const offset = hash[hash.length - 1] & 0xf
   const value = ((hash[offset] & 0x7f) << 24 | hash[offset + 1] << 16 | hash[offset + 2] << 8 | hash[offset + 3]) % 1_000_000
   return String(value).padStart(6, '0')
+}
+
+/** Je Geheimnis das zuletzt verbrauchte 30-s-Fenster. */
+const usedWindow = new Map()
+
+/**
+ * Ein Code, den Appwrite für DIESES Geheimnis noch nicht gesehen hat: liegt
+ * das letzte Einlösen im selben Fenster, wird auf das nächste gewartet.
+ */
+async function freshTotp(secret) {
+  while ((usedWindow.get(secret) ?? -1) >= totpWindow()) {
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+  usedWindow.set(secret, totpWindow())
+  return totp(secret)
 }
 
 /**
@@ -146,6 +171,9 @@ const admin = () => {
   return { account: new Account(client), users: new Users(client) }
 }
 
+/** Aufräumen MIT Nachzählen (Bühnen-Regel 2) — mit den Werten aus ENV_FILE. */
+const sweep = createEinzelCleanup({ script: 'verify-mfa', env })
+
 const email = `mfa-verify-${Date.now()}@example.com`
 const password = 'Beweis-Passwort-2026!'
 const a = admin()
@@ -170,7 +198,7 @@ async function createUserWithMfa(label) {
   const cookie = sessionCookieFrom(login)
   const setup = await call('/api/auth/mfa/setup', { method: 'POST', cookie, clientIp: ip })
   const verified = await call('/api/auth/mfa/verify', {
-    method: 'POST', body: { code: totp(setup.json.secret) }, cookie, clientIp: ip,
+    method: 'POST', body: { code: await freshTotp(setup.json.secret) }, cookie, clientIp: ip,
   })
   return { email: mail, secret: setup.json.secret, recoveryCodes: verified.json.recoveryCodes }
 }
@@ -198,7 +226,7 @@ try {
   check('liefert eine otpauth-URL', String(setup.json?.uri).startsWith('otpauth://totp/'))
   check('liefert ein QR-Bild als data:-URI', String(setup.json?.qr).startsWith('data:image/png;base64,'))
 
-  const verify = await call('/api/auth/mfa/verify', { method: 'POST', body: { code: totp(secret) }, cookie, clientIp: ip })
+  const verify = await call('/api/auth/mfa/verify', { method: 'POST', body: { code: await freshTotp(secret) }, cookie, clientIp: ip })
   check('verify 200', verify.status === 200, `status ${verify.status} ${verify.raw.slice(0, 120)}`)
   const recoveryCodes = verify.json?.recoveryCodes ?? []
   check('liefert 6 Wiederherstellungs-Codes', recoveryCodes.length === 6, `${recoveryCodes.length}`)
@@ -242,7 +270,7 @@ try {
   // Frisches Budget: die Drossel zählt je IP.
   ip = freshIp()
   const right = await call('/api/auth/mfa/challenge', {
-    method: 'POST', body: { mode: 'totp', code: totp(secret) }, cookie, clientIp: ip,
+    method: 'POST', body: { mode: 'totp', code: await freshTotp(secret) }, cookie, clientIp: ip,
   })
   check('richtiger Code 200', right.status === 200, `status ${right.status} ${right.raw.slice(0, 120)}`)
   check('challenge setzt das Cookie NICHT neu (leeres secret)', sessionCookieFrom(right, null) === null)
@@ -286,13 +314,14 @@ try {
     probeUserId = (await a.users.create({
       userId: ID.unique(), email: probeEmail, password, name: 'MFA Schreibweise',
     })).$id
+    extraUserIds.push(probeUserId)
     const sessionOf = secretValue => new Account(
       new Client().setEndpoint(ENDPOINT).setProject(PROJECT).setSession(secretValue),
     )
     const first = await a.account.createEmailPasswordSession({ email: probeEmail, password })
     const setupAcc = sessionOf(first.secret)
     const probeAuth = await setupAcc.createMFAAuthenticator({ type: AuthenticatorType.Totp })
-    await setupAcc.updateMFAAuthenticator({ type: AuthenticatorType.Totp, otp: totp(probeAuth.secret) })
+    await setupAcc.updateMFAAuthenticator({ type: AuthenticatorType.Totp, otp: await freshTotp(probeAuth.secret) })
     const probeCodes = (await setupAcc.createMFARecoveryCodes()).recoveryCodes
     await setupAcc.updateMFA({ mfa: true })
 
@@ -325,7 +354,7 @@ try {
   ip = freshIp()
   login = await call('/api/auth/login', { method: 'POST', body: { email: off.email, password }, clientIp: ip })
   cookie = sessionCookieFrom(login)
-  await call('/api/auth/mfa/challenge', { method: 'POST', body: { mode: 'totp', code: totp(off.secret) }, cookie, clientIp: ip })
+  await call('/api/auth/mfa/challenge', { method: 'POST', body: { mode: 'totp', code: await freshTotp(off.secret) }, cookie, clientIp: ip })
 
   const badDisable = await call('/api/auth/mfa/disable', {
     method: 'POST', body: { mode: 'totp', code: '000000' }, cookie, clientIp: ip,
@@ -337,7 +366,7 @@ try {
 
   ip = freshIp()
   const disable = await call('/api/auth/mfa/disable', {
-    method: 'POST', body: { mode: 'totp', code: totp(off.secret) }, cookie, clientIp: ip,
+    method: 'POST', body: { mode: 'totp', code: await freshTotp(off.secret) }, cookie, clientIp: ip,
   })
   check('Abschalten mit richtigem Code: 200', disable.status === 200, `status ${disable.status} ${disable.raw.slice(0, 120)}`)
 
@@ -403,7 +432,7 @@ try {
   const otpHalf = await call('/api/auth/me', { cookie, clientIp: ip })
   check('halbe Session ist überall ausgeloggt (/me 401)', otpHalf.status === 401, `status ${otpHalf.status}`)
   const otpChallenge = await call('/api/auth/mfa/challenge', {
-    method: 'POST', body: { mode: 'totp', code: totp(otpUser.secret) }, cookie, clientIp: ip,
+    method: 'POST', body: { mode: 'totp', code: await freshTotp(otpUser.secret) }, cookie, clientIp: ip,
   })
   check('Challenge mit App-Code 200', otpChallenge.status === 200, `status ${otpChallenge.status} ${otpChallenge.raw.slice(0, 120)}`)
   const otpFull = await call('/api/auth/me', { cookie, clientIp: ip })
@@ -433,6 +462,9 @@ catch (error) {
 finally {
   if (userId) await a.users.delete({ userId }).catch(() => {})
   for (const id of extraUserIds) await a.users.delete({ userId: id }).catch(() => {})
+  for (const id of [userId, ...extraUserIds]) sweep.track('account', id)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('Wegwerf-Konten aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
 }
 
 console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail} Prüfungen bestanden\n`)

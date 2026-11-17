@@ -11,7 +11,7 @@
  *   pnpm buehne env    # Zeilen NAME=wert für ein Beweis-Skript, ohne Geheimnisse
  *   pnpm buehne smoke  # Rauchtest gegen den laufenden Platform-Server
  *   pnpm buehne down
- *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004]
+ *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004] [--einzel-port 3001]
  *
  * `run` fährt die Beweis-Skripte laut Einteilung `scripts/buehne/beweise.mjs`
  * gegen die stehende Bühne — Einzelheiten im Kopf von `scripts/buehne/run.mjs`.
@@ -93,6 +93,8 @@ const { values: opts, positionals } = parseArgs({
     'only': { type: 'string', multiple: true },
     'liste': { type: 'boolean', default: false },
     'control-port': { type: 'string' },
+    'einzel-port': { type: 'string' },
+    'env-einzel': { type: 'string', default: 'apps/comments/.env' },
   },
 })
 const command = positionals[0]
