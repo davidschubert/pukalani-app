@@ -1,5 +1,8 @@
+import { createHash } from 'node:crypto'
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
+import { encodeNotificationWhen } from '../../../core/shared/notificationWhen'
+import type { NotifyInput, NotifyResult } from '../../../core/server/utils/notify'
 import { listAllRows } from '../../../core/server/utils/listAllRows'
 import type { TenantDb } from '../../../core/server/utils/tenantDb'
 import type { EventReminderJobMode } from '../../shared/eventReminderJob'
@@ -9,80 +12,149 @@ import { EVENT_RSVPS_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow } fro
 const REMINDER_LEAD_MS = 24 * 3600_000
 
 /**
- * Reminder-Sweep OHNE Cron (Muster publishDuePosts): published-Events, die
- * innerhalb der nächsten 24 h starten und noch nicht erinnert wurden, lösen
- * eine In-App-Notification an alle Zusager aus (Core-Vertrag notify()).
+ * Erinnerung 24 h vor dem Beginn: published-Termine, die innerhalb der
+ * nächsten 24 h starten und noch nicht erinnert wurden, lösen eine
+ * Benachrichtigung an alle Zusager aus (Core-Vertrag notify()).
  *
- * Idempotenz: remindersSentAt wird ZUERST gesetzt (dann erst notify) und
- * der Sweep läuft in-memory serialisiert — parallele GETs derselben Instanz
- * erinnern nie doppelt (Cross-Instanz akzeptiert, Muster Rate-Limit/Locks).
- * Best-effort: ein Fehler hier darf den auslösenden GET nie scheitern lassen.
- * Trade-off dokumentiert (EVENTS-V2 §4): besucht niemand die Seite, feuert
- * nichts. Lückenschluss war die scheduled Function auf
- * POST /api/events/reminder-sweep — die bediente aber nur EINE Community.
- * Seit OPS-003 (2026-11-16) geht der Zeit-Lauf `event-reminders`
- * (`sweepAllEventReminders` unten) stündlich ALLE Communities durch.
+ * DER WEG ist seit OPS-003 (2026-11-16) der Zeit-Lauf `event-reminders`
+ * (`sweepAllEventReminders` unten), stündlich über ALLE Communities. Bis
+ * BE-018 (2026-11-17) stieß zusätzlich JEDER Aufruf der Termin-Liste einen
+ * Lauf an, auch von Gästen — das ist entfernt. `sweepEventReminders` bedient
+ * nur noch die Route `reminder-sweep` (eine Community, durch die Datentür).
  *
- * WER HANDELT (F17): KEIN `actor` — ein Sweep. Ausgelöst vom GET eines
- * beliebigen Lesers, geschrieben wird nur ein Versand-Merker auf fremden
- * Zeilen. Weder tritt der Leser dadurch der Community bei (A5), noch soll eine
- * Zahlungssperre die Erinnerung an einen Termin verschlucken, den die Zusager
- * längst im Kalender haben.
+ * „GENAU EINMAL" je (Termin, Empfänger, Beginn) macht die feste Zeilen-Id der
+ * Benachrichtigung (`eventReminderRowId`, `notify({ rowId })`): ein zweiter
+ * Versuch läuft in Appwrites 409 — keine Zeile, keine Mail. Der Merker
+ * `remindersSentAt` steht deshalb erst NACH den Benachrichtigungen und nur,
+ * wenn keine an einer Störung scheiterte; sonst holt der nächste Takt die
+ * Fehlenden nach. Bis BE-018 stand er ZUERST — ein abgebrochener Versand
+ * kostete den Rest seine Erinnerung.
+ *
+ * WER HANDELT (F17): KEIN `actor` — ein Sweep. Geschrieben wird nur ein
+ * Versand-Merker auf fremden Zeilen. Weder tritt der Aufrufer dadurch der
+ * Community bei (A5), noch soll eine Zahlungssperre die Erinnerung an einen
+ * Termin verschlucken, den die Zusager längst im Kalender haben.
  */
 export async function sweepEventReminders(event: H3Event): Promise<void> {
-  // Läuft schon ein Sweep (beim Lesen ODER der Zeit-Lauf), wartet der GET
-  // nicht dahinter: der laufende sieht dieselben fälligen Termine oder der
-  // nächste Aufruf holt sie nach. Gleichzeitig lesen dürfen die beiden nie —
-  // dafür steht die Warteschlange unten.
-  if (reminderQueueBusy()) return
+  // Reiht sich ein, statt bei „besetzt" still zurückzukehren: das Überspringen
+  // brauchte nur der Anstoß beim Lesen (eine Liste sollte nicht warten). Ein
+  // Fehler bleibt best-effort — die Route antwortet wie bisher.
   await inReminderQueue(() => doSweep(event)).catch(() => {})
 }
 
 /**
- * EINE WARTESCHLANGE IM PROZESS für alle drei Auslöser (Sweep beim Lesen,
- * Route `reminder-sweep`, Zeit-Lauf `event-reminders`): ein Sweep nach dem
- * anderen, und der spätere liest erst, wenn der frühere seine Merker gesetzt
- * hat. Ohne sie hätten Zeit-Lauf und ein GET denselben Termin gleichzeitig
- * mit leerem `remindersSentAt` gelesen — beide hätten erinnert.
+ * EINE WARTESCHLANGE IM PROZESS für beide Auslöser (Route `reminder-sweep`,
+ * Zeit-Lauf `event-reminders`): ein Sweep nach dem anderen, und der spätere
+ * liest erst, wenn der frühere seine Merker gesetzt hat. Seit BE-018 schützt
+ * die feste Zeilen-Id ohnehin vor Doppeln; die Schlange spart die Arbeit
+ * (Zusagen lesen, 409 kassieren) und hält die Zähler ehrlich.
  *
  * WARUM KEINE LAUF-SPERRE MIT EIGENER TABELLE (`core/shared/runLease.ts`):
  * sie bräuchte im Pool-Projekt eine neue Tabelle samt Migration, und decken
  * würde sie nur das Fenster von Sekunden, in dem beim Neuladen der alte und
  * der neue Prozess beide leben. Innerhalb eines Prozesses ist diese Kette die
- * Sperre; zwischen Prozessen ist es der Merker je Termin (er steht VOR jeder
- * Benachrichtigung), und `firstRunMs` des Zeit-Laufs legt dessen ersten Takt
- * weit hinter das Ende des alten Prozesses. Single-Instanz-Annahme wie bei
- * allen Sweeps hier.
+ * Sperre; zwischen Prozessen ist es die feste Zeilen-Id je Erinnerung, und
+ * `firstRunMs` des Zeit-Laufs legt dessen ersten Takt weit hinter das Ende
+ * des alten Prozesses. Single-Instanz-Annahme wie bei allen Sweeps hier.
  */
 let reminderQueue: Promise<unknown> = Promise.resolve()
-let reminderQueueDepth = 0
-
-function reminderQueueBusy(): boolean {
-  return reminderQueueDepth > 0
-}
 
 function inReminderQueue<T>(work: () => Promise<T>): Promise<T> {
-  reminderQueueDepth++
-  const run = reminderQueue.then(work, work).finally(() => { reminderQueueDepth-- })
+  const run = reminderQueue.then(work, work)
   // Die Kette selbst darf nie abgelehnt sein, sonst übersprängen spätere
   // Glieder ihre Arbeit — der Fehler gehört dem Aufrufer, nicht der Kette.
   reminderQueue = run.catch(() => {})
   return run
 }
 
-/** Text der Erinnerung — EINE Stelle für beide Sweeps, damit die Glocke gleich aussieht. */
-function reminderBody(startAt: string): string {
-  return new Intl.DateTimeFormat('de-DE', {
-    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  }).format(new Date(startAt))
+/**
+ * Feste Zeilen-Id der Erinnerung je (Termin, Empfänger, Beginn) — der
+ * Idempotenz-Schlüssel für `notify()` (Muster `pastDueNoticeRowId`, onboarding).
+ * Der BEGINN gehört hinein, damit ein verschobener Termin erneut erinnern KANN.
+ * `evrem-` + 30 Hex = 36 Zeichen: Appwrites Grenze, nur erlaubte Zeichen,
+ * Anfang ein Buchstabe. Liegt hier und nicht in `shared/`, weil nur der
+ * Server sie braucht und `node:crypto` nicht in den Browser gehört.
+ */
+export function eventReminderRowId(eventId: string, userId: string, startAt: string): string {
+  const digest = createHash('sha256').update(`${eventId}|${userId}|${startAt}`).digest('hex')
+  return `evrem-${digest.slice(0, 30)}`
+}
+
+/** Was die Arbeit je Termin von ihrer Umgebung braucht — Admin-Client oder Datentür. */
+interface ReminderPort {
+  /** Alle Zusagen (`going`) des Termins. */
+  listGoing: (eventId: string) => Promise<EventRsvpRow[]>
+  /** Den Versand-Merker setzen. */
+  markSent: (eventId: string, at: string) => Promise<void>
+  /** Eine Erinnerung schreiben (Ablage-Felder kennt nur der Aufrufer). */
+  notify: (input: Omit<NotifyInput, 'scope' | 'communityId'>) => Promise<NotifyResult>
+}
+
+interface ReminderOutcome {
+  recipients: number
+  reminded: number
+  errors: number
+}
+
+/**
+ * DIE ARBEIT JE TERMIN, EINMAL für beide Wege: Zusagen lesen ⇒ je Zusage eine
+ * Erinnerung mit fester Zeilen-Id ⇒ Merker, wenn niemand an einer STÖRUNG
+ * scheiterte (`created: false` ohne `duplicate`, oder ein Wurf). Eine
+ * Dublette ist kein Fehler und kein `reminded` — die Erinnerung steht schon
+ * da. Ein Lesefehler lässt den Termin für den nächsten Takt liegen.
+ */
+async function remindEvent(row: EventRow, port: ReminderPort, nowIso: string, dryRun: boolean): Promise<ReminderOutcome> {
+  const outcome: ReminderOutcome = { recipients: 0, reminded: 0, errors: 0 }
+  let rsvps: EventRsvpRow[]
+  try {
+    rsvps = await port.listGoing(row.$id)
+  }
+  catch {
+    outcome.errors++
+    return outcome
+  }
+  outcome.recipients = rsvps.length
+  if (dryRun) return outcome
+
+  // Rohwert statt fertigem Text (BE-018): Zeitpunkt + Zone DES TERMINS. Zone
+  // und Sprache wählt erst, wer liest — Glocke und Mail (core/shared/notificationWhen.ts).
+  const body = encodeNotificationWhen(row.startAt, row.timezone)
+  let failed = 0
+  for (const rsvp of rsvps) {
+    try {
+      const sent = await port.notify({
+        recipientId: rsvp.userId,
+        type: 'reminder',
+        title: row.title,
+        body,
+        link: `/events/${row.$id}`,
+        rowId: eventReminderRowId(row.$id, rsvp.userId, row.startAt),
+      })
+      if (sent.created) outcome.reminded++
+      else if (!sent.duplicate) failed++
+    }
+    catch {
+      failed++
+    }
+  }
+  outcome.errors += failed
+  if (failed > 0) return outcome
+
+  try {
+    await port.markSent(row.$id, nowIso)
+  }
+  catch {
+    // Ohne Merker bleibt der Termin fällig; der nächste Takt läuft für jede
+    // Zusage in die Dublette — keine zweite Erinnerung, nur Arbeit.
+    outcome.errors++
+  }
+  return outcome
 }
 
 async function doSweep(event: H3Event): Promise<void> {
-  // Datentür als Operator: jeder GET sweept die fälligen Events SEINES
-  // Mandanten (Muster publishDuePosts) — list scopet, update belegt die
-  // Zugehörigkeit. Die RSVP-Suche pro Event bleibt eventId-gebunden
-  // (eventId ist bereits mandantenbelegt).
+  // Datentür als Operator: der Aufruf sweept die fälligen Termine SEINES
+  // Mandanten — list scopet, update belegt die Zugehörigkeit. Die Suche der
+  // Zusagen je Termin bleibt eventId-gebunden (eventId ist mandantenbelegt).
   const db = tenantDb(event, { as: 'operator' })
   const now = Date.now()
 
@@ -94,29 +166,14 @@ async function doSweep(event: H3Event): Promise<void> {
     Query.limit(10),
   ])
 
-  for (const row of due.rows) {
-    // Flag ZUERST — schlägt notify danach fehl, lieber eine verpasste
-    // Erinnerung als Duplikate bei jedem weiteren GET
-    await db.update(EVENTS_TABLE, row.$id, { remindersSentAt: new Date(now).toISOString() })
-
-    const rsvps = await listAllScopedRsvps(db, row.$id)
-    for (const rsvp of rsvps) {
-      // Typ 'reminder' rendert die Bell als „Erinnerung: {title} beginnt
-      // bald"; body = Startzeit als Text (notify speichert bewusst fertigen
-      // Text, keine i18n-Keys)
-      await notify(event, {
-        recipientId: rsvp.userId,
-        type: 'reminder',
-        title: row.title,
-        body: reminderBody(row.startAt),
-        link: `/events/${row.$id}`,
-        // scope 'tenant' (C15): der Sweep läuft im Request eines Mandanten-
-        // Hosts (Muster publishDuePosts) — die Erinnerung gehört in DESSEN
-        // Glocke, ihr Link (/events/:id) gilt auch nur dort.
-        scope: 'tenant',
-      })
-    }
+  const port: ReminderPort = {
+    listGoing: eventId => listAllScopedRsvps(db, eventId),
+    markSent: async (eventId, at) => { await db.update(EVENTS_TABLE, eventId, { remindersSentAt: at }) },
+    // scope 'tenant' (C15): die Route läuft im Request eines Mandanten-Hosts —
+    // die Erinnerung gehört in DESSEN Glocke, ihr Link gilt auch nur dort.
+    notify: input => notify(event, { ...input, scope: 'tenant' }),
   }
+  for (const row of due.rows) await remindEvent(row, port, new Date(now).toISOString(), false)
 }
 
 /** Alle going-RSVPs eines Events — cursor-paginiert DURCH die Tür (Ersatz
@@ -193,10 +250,9 @@ function tenancyEnabled(): boolean {
  * aus) gibt es keinen Stempel, das Projekt IST die Grenze; `notify()` legt
  * dann ab wie beim bisherigen Sweep.
  *
- * Reihenfolge je Termin: erst die Zusagen lesen (ein Lesefehler lässt den
- * Termin für den nächsten Takt liegen), dann den Merker setzen, erst DANN
- * benachrichtigen — schlägt notify fehl, lieber eine verpasste Erinnerung als
- * eine doppelte. `dryRun` liest nur und schreibt nichts.
+ * Die Arbeit je Termin ist `remindEvent` oben (dieselbe wie beim Route-Weg):
+ * Zusagen lesen, benachrichtigen, Merker zuletzt. `dryRun` liest nur und
+ * schreibt nichts.
  *
  * Ein Lesefehler der Termin-Liste wirft (der Zeit-Lauf meldet `failed`);
  * Fehler bei EINEM Termin oder Empfänger werden gezählt.
@@ -212,6 +268,7 @@ async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
   const { tablesDB } = createAdminClient()
   const pooled = tenancyEnabled()
   const now = Date.now()
+  const nowIso = new Date(now).toISOString()
 
   // Erst die ganze Liste (bis zum Deckel), dann die Arbeit: der Merker
   // nimmt bearbeitete Termine aus dem Filter, und ein Cursor über eine
@@ -253,55 +310,22 @@ async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
       continue
     }
 
-    let rsvps: EventRsvpRow[]
-    try {
-      rsvps = await listAllRows<EventRsvpRow>(tablesDB, databaseId, EVENT_RSVPS_TABLE, [
-        Query.equal('eventId', row.$id),
+    const outcome = await remindEvent(row, {
+      listGoing: eventId => listAllRows<EventRsvpRow>(tablesDB, databaseId, EVENT_RSVPS_TABLE, [
+        Query.equal('eventId', eventId),
         Query.equal('status', 'going'),
-      ])
-    }
-    catch {
-      result.errors++
-      continue
-    }
-    result.recipients += rsvps.length
-    if (dryRun) continue
-
-    try {
-      await tablesDB.updateRow({
-        databaseId,
-        tableId: EVENTS_TABLE,
-        rowId: row.$id,
-        data: { remindersSentAt: new Date(now).toISOString() },
-      })
-    }
-    catch {
-      // Ohne Merker keine Erinnerung — sonst käme sie im nächsten Takt noch einmal.
-      result.errors++
-      continue
-    }
-
-    for (const rsvp of rsvps) {
-      try {
-        const sent = await notify(undefined, {
-          recipientId: rsvp.userId,
-          type: 'reminder',
-          title: row.title,
-          body: reminderBody(row.startAt),
-          link: `/events/${row.$id}`,
-          // scope 'tenant' (C15) mit dem Stempel DER ZEILE: ohne Request
-          // kennt notify() keinen Mandanten. Im Silo bleibt der Wert leer,
-          // dann gilt dieselbe Ablage wie beim bisherigen Sweep.
-          scope: 'tenant',
-          ...(communityId ? { communityId } : {}),
-        })
-        if (sent.created) result.reminded++
-        else result.errors++
-      }
-      catch {
-        result.errors++
-      }
-    }
+      ]),
+      markSent: async (eventId, at) => {
+        await tablesDB.updateRow({ databaseId, tableId: EVENTS_TABLE, rowId: eventId, data: { remindersSentAt: at } })
+      },
+      // scope 'tenant' (C15) mit dem Stempel DER ZEILE: ohne Request kennt
+      // notify() keinen Mandanten. Im Silo bleibt der Wert leer, dann gilt
+      // dieselbe Ablage wie beim Route-Weg.
+      notify: input => notify(undefined, { ...input, scope: 'tenant', ...(communityId ? { communityId } : {}) }),
+    }, nowIso, dryRun)
+    result.recipients += outcome.recipients
+    result.reminded += outcome.reminded
+    result.errors += outcome.errors
   }
   return result
 }

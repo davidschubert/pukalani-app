@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import type { Models } from 'node-appwrite'
 import { notificationAudienceFor, notificationVisibleFor } from '../../shared/notificationScope'
+import { formatNotificationWhen, parseNotificationWhen } from '../../shared/notificationWhen'
 import type { NotificationListResponse, UserNotification } from '../../shared/types/notification'
 
-const { t, te } = useI18n()
+const { t, te, locale, locales } = useI18n()
 const localePath = useLocalePath()
 const auth = useAuthStore()
 const config = useRuntimeConfig()
 const { formatRelativeTime } = useFormatRelativeTime()
+const { timezone } = useAccountTimezone()
+
+/** Sprach-Tag der Oberfläche (`de-DE`/`en-US`) — dieselbe Quelle wie `useFormatDate`. */
+const language = computed(() => {
+  const entries = locales.value as Array<{ code: string, language?: string }>
+  return entries.find(entry => entry.code === locale.value)?.language ?? locale.value
+})
 
 /**
  * In WELCHER Welt hängt diese Glocke (C15/Audit S6)? Dieselbe pure Rechnung wie
@@ -171,6 +179,21 @@ function messageKey(type: string): string {
 function displayText(value: string): string {
   return value && te(value) ? t(value) : value
 }
+
+/**
+ * Der Text unter dem Satz. Ein ZEITPUNKT (`@when:`-Token, BE-018) wird hier
+ * erst zur Uhrzeit — wie überall in der App in der Zone des LESERS
+ * (Konto-Einstellung, sonst Gerät) und in der Sprache der Oberfläche, mit
+ * Zonen-Kürzel. Alles andere läuft wie bisher über `displayText`.
+ *
+ * KEIN HYDRATIONS-RISIKO: die Liste steht im Inhalt des Popovers, und den
+ * rendert Reka erst beim Öffnen — im Browser, nie im SSR.
+ */
+function bodyText(value: string): string {
+  const when = parseNotificationWhen(value)
+  if (!when) return displayText(value)
+  return formatNotificationWhen(when, { language: language.value, zone: timezone.value || undefined })
+}
 </script>
 
 <template>
@@ -206,7 +229,7 @@ function displayText(value: string): string {
               <template #name><span class="font-medium text-default">{{ displayText(n.title) }}</span></template>
             </i18n-t>
           </div>
-          <p class="truncate pl-3 text-xs text-muted">{{ displayText(n.body) }}</p>
+          <p class="truncate pl-3 text-xs text-muted">{{ bodyText(n.body) }}</p>
           <p class="pl-3 text-xs text-dimmed">{{ formatRelativeTime(n.$createdAt) }}</p>
         </NuxtLink>
       </div>

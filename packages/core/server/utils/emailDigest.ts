@@ -1,6 +1,7 @@
 import { Query, type Models } from 'node-appwrite'
 import { notificationMailedSeparately } from '../../shared/communityRemoval'
 import { communityIdsNeedingHost } from '../../shared/notificationLinks'
+import { normalizeTimezonePref } from '../../shared/timezone'
 import { resolveCommunityHosts } from './communityHost'
 import { resolveSiteLinkBase } from './siteOrigin'
 
@@ -123,7 +124,10 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
         const fresh = rows.filter(row => Date.parse(row.$createdAt) > lastAt && !notificationMailedSeparately(row.type))
         if (fresh.length === 0) { result.skipped++; continue }
 
-        const mail = buildDigestEmail({ appBase, hosts }, prefs.emailLocale, fresh.slice(0, DIGEST_MAX_ITEMS))
+        // Zeitpunkte in SEINER Zone, wenn er eine gewählt hat (BE-018) — aus
+        // denselben Prefs wie Modus und Sprache, kein zweiter Abruf.
+        const timezone = normalizeTimezonePref((recipient.prefs as Record<string, unknown>).timezone)
+        const mail = buildDigestEmail({ appBase, hosts }, prefs.emailLocale, fresh.slice(0, DIGEST_MAX_ITEMS), { timezone })
         await sendMail(undefined, { ...mail, to: recipient.email })
         // Marker NACH dem Versand — prefs mergen (updatePrefs ERSETZT alles)
         await admin.users.updatePrefs({

@@ -22,7 +22,11 @@ import * as messageGate from '../../server/utils/messageGate'
  * `not_a_member` für Nicht-Mitglieder und Entfernte, im Silo gibt sie durch.
  */
 
-export type Who = 'guest' | 'member' | 'removed'
+/**
+ * `stranger` — Konto aus einer ANDEREN Community: keine Rolle hier, kein Label
+ * dieser Community (P27, OPS-009).
+ */
+export type Who = 'guest' | 'member' | 'removed' | 'stranger'
 
 export interface Scenario {
   who: Who
@@ -43,6 +47,8 @@ const OTHER_SCOPE = 't-b'
 
 export const ME = 'u-me'
 export const REMOVED = 'u-removed'
+/** Das Konto des fremden Besuchers (hat in der Welt einen Handle nur in einer anderen Community). */
+export const STRANGER = 'u-stranger'
 
 /**
  * Wer ist wer:
@@ -175,7 +181,11 @@ export async function runRoute<T>(load: () => Promise<{ default: unknown }>, sce
     : null
   const user = scenario.who === 'guest'
     ? undefined
-    : { $id: scenario.who === 'member' ? ME : REMOVED, name: 'Testperson', labels: scenario.who === 'member' ? ['c-a'] : [] }
+    : {
+        $id: scenario.who === 'member' ? ME : scenario.who === 'stranger' ? STRANGER : REMOVED,
+        name: 'Testperson',
+        labels: scenario.who === 'member' ? ['c-a'] : [] as string[],
+      }
   const isMember = Boolean(user) && (mode === 'silo' || scenario.who === 'member')
   const event = { context: { user, tenant }, path: '/api/test' }
 

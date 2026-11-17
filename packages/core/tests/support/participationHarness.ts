@@ -3,6 +3,8 @@ import type { H3Event } from 'h3'
 import * as join from '../../server/utils/communityJoin'
 import * as permission from '../../server/utils/communityPermission'
 import * as participation from '../../server/utils/communityParticipation'
+import * as instancePermission from '../../server/utils/requirePermission'
+import type { CommunityRole } from '../../shared/communityAuthz'
 
 /**
  * PRÜFSTAND „GEHÖRT DIESE PERSON ZU DIESER COMMUNITY?" (SEC-030).
@@ -24,9 +26,24 @@ import * as participation from '../../server/utils/communityParticipation'
  *  - `legacy`   — trägt das Label, hat aber (noch) keine Zeile: Bestand aus
  *                 der A4-Zeit, für die Mitgliedschaft ein Mitglied.
  *  - `guest`    — kein Konto.
+ *
+ * Dazu das Team (P27/OPS-009) — je eine Community-Rolle und das Label:
+ *  - `owner`, `admin`, `moderator`, `editor`.
+ *  - `operator` — der Betreiber: trägt das globale Instanz-Label `admin`
+ *                 (`shared/authz.ts`: alle Capabilities). Im Pool ist das der
+ *                 protokollierte Not-Zugang von `requireCommunityPermission`.
+ *                 KEINE Community-Rolle, KEIN Community-Label — für die
+ *                 Mitgliedschafts-Wachen ist er also kein Mitglied.
+ *
+ * `member` bleibt die Rolle `viewer` mit Label.
  */
 
-export type Who = 'guest' | 'member' | 'stranger' | 'removed' | 'legacy'
+export type TeamRole = 'owner' | 'admin' | 'moderator' | 'editor'
+
+/** Die Personen, die ein Rollen-Tor kennen (für `describeRoleGatedRoute`). */
+export type RoleWho = TeamRole | 'member' | 'operator'
+
+export type Who = 'guest' | 'member' | 'stranger' | 'removed' | 'legacy' | TeamRole | 'operator'
 
 export interface CommunityWorld {
   who: Who
@@ -63,6 +80,47 @@ const USER_IDS: Record<Exclude<Who, 'guest'>, string> = {
   stranger: 'u-stranger',
   removed: 'u-removed',
   legacy: 'u-legacy',
+  owner: 'u-owner',
+  admin: 'u-admin',
+  moderator: 'u-moderator',
+  editor: 'u-editor',
+  operator: 'u-operator',
+}
+
+/** Konto-Id einer Person der Welt (z. B. für `authorId` in einer Proben-Zeile). */
+export function userIdOf(who: Exclude<Who, 'guest'>): string {
+  return USER_IDS[who]
+}
+
+/**
+ * Was der Rollen-Resolver (Control Plane, 30-s-Cache) je Person sagt. Der
+ * Entfernte steht dort noch als `viewer` — genau das Loch, das die Notiz
+ * `rememberCommunityAccessRevoked` schließen soll.
+ */
+const ROLE_OF: Record<Exclude<Who, 'guest'>, CommunityRole | null> = {
+  member: 'viewer',
+  removed: 'viewer',
+  owner: 'owner',
+  admin: 'admin',
+  moderator: 'moderator',
+  editor: 'editor',
+  stranger: null,
+  legacy: null,
+  operator: null,
+}
+
+/** Globales Instanz-Label des Betreibers (`shared/authz.ts`, Rolle `admin`). */
+export const OPERATOR_LABEL = 'admin'
+
+function labelsOf(who: Exclude<Who, 'guest'>): string[] {
+  if (who === 'operator') return [OPERATOR_LABEL]
+  if (who === 'stranger' || who === 'removed') return []
+  return [COMMUNITY_ID]
+}
+
+/** Hat die Person eine Zeile mit Zugang (für den Beitritts-Handler)? */
+function isRowMember(who: Who): boolean {
+  return who === 'member' || who === 'owner' || who === 'admin' || who === 'moderator' || who === 'editor'
 }
 
 function makeError(init: Record<string, unknown>): Error {
@@ -84,14 +142,15 @@ export function wireCommunityWorld(world: CommunityWorld): WiredWorld {
     : {
         $id: USER_IDS[world.who],
         name: 'Testperson',
-        labels: world.who === 'member' || world.who === 'legacy' ? [COMMUNITY_ID] : [] as string[],
+        labels: labelsOf(world.who),
       }
   const event = { context: { user, tenant }, path: '/api/test', method: 'POST' } as unknown as H3Event
 
-  // Rollen-Resolver (Control Plane, 30-s-Cache). Der Entfernte steht dort noch
-  // als `viewer` — genau das Loch, das die Notiz schließen soll.
-  permission.registerCommunityRoleResolver(({ runtimeUserId }) =>
-    runtimeUserId === USER_IDS.member || runtimeUserId === USER_IDS.removed ? 'viewer' : null)
+  // Rollen-Resolver (Control Plane, 30-s-Cache): die Rolle je Person (ROLE_OF).
+  permission.registerCommunityRoleResolver(({ runtimeUserId }) => {
+    const who = (Object.keys(USER_IDS) as Array<Exclude<Who, 'guest'>>).find(key => USER_IDS[key] === runtimeUserId)
+    return who ? ROLE_OF[who] : null
+  })
 
   let handlerCalls = 0
   const seam = world.seam ?? 'up'
@@ -99,7 +158,7 @@ export function wireCommunityWorld(world: CommunityWorld): WiredWorld {
     join.registerCommunityJoinHandler(() => {
       handlerCalls += 1
       if (seam === 'down') throw new Error('control plane unreachable')
-      if (world.who === 'member') return 'member'
+      if (isRowMember(world.who)) return 'member'
       if (world.who === 'removed') return 'removed'
       return world.registration === 'open' ? 'joined' : 'closed'
     })
@@ -145,14 +204,29 @@ export interface RouteProbe extends CommunityWorld {
   body?: unknown
   /** Zusätzliche Globals, die eine bestimmte Route vor der Datentür braucht. */
   globals?: Record<string, unknown>
+  /**
+   * Eine nachgebaute Datentür (z. B. `fakeDoor(…).tenantDb` aus `doorFake.ts`)
+   * für Routen, die ERST lesen und DANN fragen. Ohne Angabe endet die Probe
+   * beim ersten `tenantDb()`. Gezählt wird das Öffnen in beiden Fällen.
+   */
+  door?: (event: H3Event, options?: { as?: 'member' | 'operator', actor?: string }) => unknown
 }
 
 export interface ProbeRun {
   status: number
   error?: ThrownLike
-  /** Hat eine der Mitgliedschafts-Wachen „durch" gesagt? */
+  /**
+   * Hat eine Wache „durch" gesagt? Gezählt werden die Mitgliedschafts-Wachen
+   * (`requireCommunityMembership`, `requireCommunityParticipant`) und die
+   * Rollen-Tore (`requireCommunityPermission`, `requirePermission`) — jeweils
+   * die ECHTE Funktion, nur umwickelt. `requireCommunityTeamGate` liegt im
+   * onboarding-Layer: sie ruft `requireCommunityPermission` und zählt darüber.
+   */
   guardPassed: boolean
-  /** Wurde die Datentür geöffnet (egal mit welcher Klinke)? */
+  /**
+   * Wurde die Datentür geöffnet (egal mit welcher Klinke)? Dazu zählen auch
+   * die rohen Clients `createSessionClient` und `createAdminClient`.
+   */
   doorOpened: boolean
   joinHandlerCalls: number
 }
@@ -180,12 +254,23 @@ export async function probeRoute(
       guardPassed = true
       return result
     }
+  // `requirePermission` ist SYNCHRON (und wird ohne await gerufen) — die Hülle
+  // muss es auch sein, sonst wäre jede Prüfung ein wahrheitswertiges Promise.
+  const passingSync = <A extends unknown[], R>(fn: (...args: A) => R) =>
+    (...args: A): R => {
+      const result = fn(...args)
+      guardPassed = true
+      return result
+    }
   vi.stubGlobal('requireCommunityMembership', passing(permission.requireCommunityMembership))
   vi.stubGlobal('requireCommunityParticipant', passing(participation.requireCommunityParticipant))
+  vi.stubGlobal('requireCommunityPermission', passing(permission.requireCommunityPermission))
+  vi.stubGlobal('requirePermission', passingSync(instancePermission.requirePermission))
 
   vi.stubGlobal('defineEventHandler', (fn: unknown) => fn)
   vi.stubGlobal('getRouterParam', (_e: unknown, name: string) => probe.params?.[name])
   vi.stubGlobal('getQuery', () => probe.query ?? {})
+  vi.stubGlobal('getValidatedQuery', async (_e: unknown, parse: (q: unknown) => unknown) => parse(probe.query ?? {}))
   vi.stubGlobal('readBody', async () => probe.body ?? {})
   vi.stubGlobal('readValidatedBody', async (_e: unknown, parse: (b: unknown) => unknown) => parse(probe.body ?? {}))
   vi.stubGlobal('setResponseStatus', () => {})
@@ -201,10 +286,17 @@ export async function probeRoute(
   vi.stubGlobal('assertPoolWriteQuota', async () => {})
   vi.stubGlobal('assertContentWritable', async () => {})
   vi.stubGlobal('useRateLimitStore', () => ({ store: { hit: async () => ({ count: 1, resetInMs: 1000 }) }, prefix: '' }))
-  vi.stubGlobal('tenantDb', () => {
+  vi.stubGlobal('tenantDb', (event: H3Event, options?: { as?: 'member' | 'operator', actor?: string }) => {
     doorOpened = true
+    if (probe.door) return probe.door(event, options)
     throw new DoorReached('door')
   })
+  const rawClient = () => {
+    doorOpened = true
+    throw new DoorReached('door')
+  }
+  vi.stubGlobal('createSessionClient', rawClient)
+  vi.stubGlobal('createAdminClient', rawClient)
   for (const [name, value] of Object.entries(probe.globals ?? {})) vi.stubGlobal(name, value)
 
   const mod = await load()
@@ -310,6 +402,143 @@ export function describeGuardedRoute(
         const run = await probeRoute(load, { ...base, who: 'stranger', registration: 'open', suspended: true })
         notMember(run)
         expect(run.joinHandlerCalls).toBe(0)
+      })
+    }
+  })
+}
+
+// ── Rollen-Tore und Konto-Routen (P27, OPS-009) ─────────────────────────────
+
+/** Alle Personen, über die ein Rollen-Tor entscheidet. */
+export const ROLE_PEOPLE: readonly RoleWho[] = ['owner', 'admin', 'moderator', 'editor', 'member', 'operator']
+
+export interface RoleExpectation {
+  /** Wer durch das Tor kommt — AUSGESCHRIEBEN im Test, nie berechnet. */
+  allow: readonly RoleWho[]
+  /** Wer abgewiesen wird (403, Datentür zu). */
+  deny: readonly RoleWho[]
+}
+
+/**
+ * Proben für eine Route hinter einem ROLLEN-TOR (`requireCommunityPermission`,
+ * `requirePermission`, `requireCommunityTeamGate`).
+ *
+ * Die Erwartung steht im Test, Person für Person. Sie darf NICHT aus der
+ * Rechte-Matrix (`communityAuthz.ts`, `authz.ts`) abgeleitet werden: das wäre
+ * dieselbe Antwort, die geprüft wird, und damit immer grün (Beweis-Regel 1,
+ * `.claude/rules/tests.md`). Jede Person aus `ROLE_PEOPLE` steht in GENAU
+ * einer der beiden Listen — eine vergessene Person ist ein roter Fall.
+ *
+ * Immer dabei: Gast ⇒ 401, fremdes Konto ⇒ 403, entferntes Konto ⇒ 403 —
+ * jeweils mit geschlossener Datentür.
+ */
+export function describeRoleGatedRoute(
+  name: string,
+  load: () => Promise<{ default: unknown }>,
+  expectation: RoleExpectation,
+  base: Omit<RouteProbe, 'who'> = {},
+): void {
+  describe(`${name} (Rollen-Tor)`, () => {
+    afterEach(() => {
+      resetCommunityWorld()
+      vi.unstubAllGlobals()
+    })
+
+    const denied = (run: ProbeRun) => {
+      expect(run.status).toBe(403)
+      expect(run.guardPassed, 'die Wache lässt nicht durch').toBe(false)
+      expect(run.doorOpened, 'die Datentür bleibt zu').toBe(false)
+    }
+
+    it('die Erwartung nennt jede Person genau einmal', () => {
+      const named = [...expectation.allow, ...expectation.deny]
+      expect([...named].sort()).toEqual([...ROLE_PEOPLE].sort())
+    })
+
+    it('ohne Konto: 401, Datentür zu', async () => {
+      const run = await probeRoute(load, { ...base, who: 'guest' })
+      expect(run.status).toBe(401)
+      expect(run.doorOpened).toBe(false)
+    })
+
+    it('fremdes Konto: 403, Datentür zu', async () => {
+      denied(await probeRoute(load, { ...base, who: 'stranger' }))
+    })
+
+    it('entferntes Konto (Rollen-Cache sagt noch „viewer"): 403, Datentür zu', async () => {
+      denied(await probeRoute(load, { ...base, who: 'removed' }))
+    })
+
+    for (const who of expectation.deny) {
+      it(`${who}: 403, Datentür zu`, async () => {
+        denied(await probeRoute(load, { ...base, who }))
+      })
+    }
+
+    for (const who of expectation.allow) {
+      it(`${who}: die Wache lässt durch`, async () => {
+        const run = await probeRoute(load, { ...base, who })
+        expect(run.guardPassed).toBe(true)
+        expect([401, 403]).not.toContain(run.status)
+      })
+    }
+  })
+}
+
+/**
+ * Wie `describeRoleGatedRoute`, dazu je durchgelassener Person: Status 200 und
+ * die Datentür wird wirklich erreicht. Ohne diesen Zusatz sähe ein Absturz
+ * hinter der Wache („weder 401 noch 403") wie ein Durchlass aus.
+ */
+export function describeRoleGateToDoor(
+  name: string,
+  load: () => Promise<{ default: unknown }>,
+  expectation: RoleExpectation,
+  base: Omit<RouteProbe, 'who'> = {},
+): void {
+  describeRoleGatedRoute(name, load, expectation, base)
+  describe(`${name} — Durchgelassene erreichen die Datentür`, () => {
+    afterEach(() => {
+      resetCommunityWorld()
+      vi.unstubAllGlobals()
+    })
+    for (const who of expectation.allow) {
+      it(`${who}: Datentür erreicht`, async () => {
+        const run = await probeRoute(load, { ...base, who })
+        expect(run.status).toBe(200)
+        expect(run.doorOpened).toBe(true)
+      })
+    }
+  })
+}
+
+/**
+ * Proben für eine Route, die nur „angemeldet" verlangt und ausschließlich über
+ * das EIGENE Konto antwortet (Einstellungen, eigene Liste, Abmelden …). Ein
+ * Rollen- oder Mitgliedschafts-Tor wäre hier falsch: das Konto gehört der
+ * Person, nicht der Community.
+ */
+export function describeAccountRoute(
+  name: string,
+  load: () => Promise<{ default: unknown }>,
+  base: Omit<RouteProbe, 'who'> = {},
+): void {
+  describe(`${name} (eigenes Konto)`, () => {
+    afterEach(() => {
+      resetCommunityWorld()
+      vi.unstubAllGlobals()
+    })
+
+    it('ohne Konto: 401, Datentür zu', async () => {
+      const run = await probeRoute(load, { ...base, who: 'guest' })
+      expect(run.status).toBe(401)
+      expect(run.doorOpened).toBe(false)
+    })
+
+    for (const who of ['member', 'stranger'] as const) {
+      it(`${who}: angemeldet genügt (kein 401/403)`, async () => {
+        const run = await probeRoute(load, { ...base, who })
+        expect([401, 403]).not.toContain(run.status)
       })
     }
   })

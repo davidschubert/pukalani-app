@@ -2,7 +2,7 @@
 
 **Wann.** Wenn ein Issue mit dem Label `produktions-alarm` aufgeht, wenn eine
 Alarm-Mail kommt, wenn UptimeRobot meldet — und einmal zum Einrichten (die
-Klickliste unten, nur David).
+Klickliste unten, nur David). Wer David vertritt, beginnt bei § 5.
 
 **Warum.** Zwei stille Vorfälle im Oktober 2026. (1) Das Zertifikat von
 `api.pukalani.app` lief am 2026-10-16 ab; **alle** Apps antworteten acht Tage
@@ -218,7 +218,8 @@ schreibt eine Zeile — der Wächter liest diese Zeile.
 2. **Mail bei jedem Wechsel** (Alarm / Entwarnung, nie im Takt) über Resend —
    sobald die Secrets `PRODUCTION_ALARM_RESEND_KEY` und
    `PRODUCTION_ALARM_MAIL_TO` gesetzt sind (Klickliste). Vorher steht im Lauf
-   eine gelbe Warnung „Mail-Alarm nicht eingerichtet".
+   eine gelbe Warnung „Mail-Alarm nicht eingerichtet". Das Secret darf seit
+   dem 2026-11-17 eine Kommaliste sein (mehrere Empfänger, § 5).
 3. **Heartbeat bei jedem grünen Lauf** an `PRODUCTION_WATCH_HEARTBEAT_URL`
    (Klickliste). Das ist der einzige Weg, der auch meldet, wenn der Workflow
    GAR NICHT mehr läuft (GitHub schaltet Zeitpläne nach 60 Tagen ohne Commit
@@ -425,10 +426,74 @@ curl -s https://api.pukalani.app/v1/health/version; echo; node scripts/ops/verif
   `~/appwrite`: Regel in `_console_rules` auf `verified`, Redis-Schlüssel der
   Regel löschen, `docker compose restart appwrite-worker`, dann
   `docker exec appwrite php app/cli.php ssl --domain=api.pukalani.app --skip-check=true`
-  (Rezept mit allen Fallen: Memory `appwrite-prod-tls-cert-expired`,
-  OPEN-ITEMS-COMPLETE „Vorfall appwrite-prod — TLS-Zertifikat", 2026-10-24).
+  (Rezept mit allen Fallen: OPEN-ITEMS-COMPLETE „Vorfall appwrite-prod —
+  TLS-Zertifikat", 2026-10-24; der Container heißt seit Appwrite 2.2
+  `appwrite-worker`).
 - Instanz steht (kein `version`): `docker compose ps` dort; Platte voll?
-  (`df -h`, ClickHouse-Vorfall 2026-09-28) — `docker compose up -d`.
+  (`df -h`, ClickHouse-Vorfall 2026-09-28) — `docker compose up -d`. Beide
+  Fälle haben unten einen eigenen Absatz.
+
+**Appwrite steht nach einem Server-Update oder Neustart.** Der häufigste
+Grund für „alle Apps `ok:false`", der kein Zertifikat ist. Ein Paket-Update
+auf dem Appwrite-Server (Ploi → Server → Verwalte → Updates → „Run updates
+now"), das `containerd` oder `docker` anhebt, hält ALLE Container an — und
+`appwrite`, `appwrite-traefik`, `appwrite-redis` und `appwrite-browser` haben
+keine Neustart-Regel: sie bleiben unten (Vorfall 2026-10-24, `containerd.io`
+2.2.6 → 2.4.2; die übrigen Dienste drehten in einer Neustart-Schleife, weil
+Redis fehlte). Ein Neustart des Servers bringt sie ebenfalls NICHT zurück.
+
+1. Auf `ploi@188.245.61.155` in `~/appwrite` (das ist `/home/ploi/appwrite`;
+   den Pfad `/usr/src/code/appwrite` gibt es auf dem Server nicht):
+   `docker compose ps` — stehen die vier oben auf „Exited"?
+2. `docker compose up -d`, als `ploi`, ohne `sudo`. Am 2026-10-24 antwortete
+   die API danach in rund 15 Sekunden.
+3. Beweis: `curl -s https://api.pukalani.app/v1/health/version` nennt die
+   Version; ein Wächter-Lauf von Hand schließt das Issue.
+4. Die Live-Verbindung kommt zuletzt: `appwrite-realtime` kann in der
+   Schleife hängen bleiben, wenn es vor Redis angelegt wurde. Der Wächter auf
+   dem Server stellt den Container innerhalb von fünf Minuten selbst neu her
+   (Absatz „Live-Verbindung" unten).
+
+NIE den Docker-Dienst oder containerd neu starten — das ist derselbe Ausfall
+noch einmal. Vorbeugen: vor „Run updates now" auf diesem Server
+`apt list --upgradable | grep -E 'containerd|docker'`; steht eines der beiden
+an, das Update nur fahren, wenn direkt danach jemand Schritt 2 gehen kann. Der
+App-Server braucht nach einem Neustart nichts (pm2 holt die sechs Prozesse
+selbst zurück, so gesehen am 2026-10-24). **Ohne Zugang zum Server geht hier
+nur Nachsehen** (Haken `appwrite_probe`): Das Tor kennt kein Wort, das
+Container startet.
+
+**Platte voll** (Appwrite-Server; Vorfall 2026-09-28, Eintrag in
+[OPEN-ITEMS-COMPLETE.md](../OPEN-ITEMS-COMPLETE.md) „Platte voll durch
+ClickHouse-Diagnose-Logs"). Zeichen: UptimeRobot meldet `api.pukalani.app`
+als DOWN (Zeitüberschreitung), während `/v1/health/version` noch `200`
+antwortet; hohe Last; Redis lehnt jeden Schreibbefehl ab (`MISCONF … unable
+to persist to disk`). Ohne Zugang zeigt der Haken `appwrite_probe` den
+Füllstand.
+
+1. Messen: `df -h /` und `docker system df -v` — was ist gewachsen?
+2. War es wieder ClickHouse (Diagnose-Tabellen `system.*_log`, damals 31 GB
+   in 20 Tagen): ZUERST die Logdateien im ClickHouse-Container leeren, denn
+   `TRUNCATE` braucht 1 MiB freien Platz und scheitert bei 0 Byte mit
+   `NOT_ENOUGH_SPACE` (Containername aus `docker compose ps`):
+   `docker exec <clickhouse-container> sh -c ': > /var/log/clickhouse-server/*.log; rm -f /var/log/clickhouse-server/*.gz'`
+3. Dann je Diagnose-Tabelle (`text_log`, `trace_log`, `query_log`,
+   `processors_profile_log`, `part_log`, `metric_log` …):
+   `clickhouse-client --query "TRUNCATE TABLE system.<name>_log"` im
+   Container. Das ist reine Diagnose; die Nutzungs-Statistik
+   (`appwrite.projects_usage_events`) bleibt.
+4. Redis prüfen: `redis-cli bgsave`, dann `redis-cli info persistence` →
+   `rdb_last_bgsave_status:ok`.
+5. Verwaiste Images: `docker image prune` (damals 9,4 GB).
+
+Die Ursache von damals ist seit dem 2026-09-28 abgestellt
+(`~/appwrite/patches/clickhouse-logging.xml`, eingebunden über
+`docker-compose.override.yml`) — nach JEDEM Appwrite-Upgrade nachsehen, dass
+der Mount noch dasteht. NIE ein Volume löschen: darin liegen die Datenbank und
+jede hochgeladene Datei (`ops/appwrite-volumes.conf`); und nichts unter
+`~/backup/runs` von Hand wegräumen, die Aufbewahrung räumt selbst (14 Tage).
+Auf dem App-Server gab es den Fall noch nicht; die pm2-Logs haben dort keinen
+Umlauf (OPEN-ITEMS „SE1" c) — `du -sh ~/.pm2/logs` zeigt, ob sie es sind.
 
 **Ein einzelner Host `ok:false` / HTTP ≠ 200.** Auf `ploi@49.13.211.173`:
 `pm2 ls`, `pm2 logs <prozess> --lines 50` (Namen: `platformpukalaniapp`,
@@ -484,7 +549,36 @@ in Appwrites `_audit`); Konten aufräumen mit `scripts/ops/purge-spam-accounts.m
 (läuft auf app-prod mit der Site-`.env`). Vorfall und Diagnose-Rezept:
 OPEN-ITEMS-COMPLETE „Resend-Spam" (2026-10-27). Hält die Notbremse eine ECHTE
 Anmeldewelle auf, Schwelle `MAIL_GLOBAL_HOUR_MAX` erhöhen — nicht die
-Notbremse entfernen.
+Notbremse entfernen. Neue Konten sofort stoppen: Absatz „Not-Aus".
+
+**Mails kommen nicht an** (Kunden melden: kein Code, keine Bestätigung, keine
+Benachrichtigung). Kein Blick wird davon sicher rot — in dieser Reihenfolge
+prüfen:
+
+1. *Welche Mail?* Anmelde-Code, Bestätigung und Passwort-Mail verschickt
+   Appwrite selbst (`_APP_SMTP_*` in `~/appwrite/.env`). Benachrichtigung,
+   Tages-Mail, Einladung und Newsletter verschickt die App (`NUXT_SMTP_*` der
+   Site; `platform` liest sie aus der Ablage `instance_secrets`). Fehlt nur
+   eine Sorte, liegt es an genau dieser Stelle.
+2. *Tagesgrenze erreicht?* Der freie Tarif von Resend trägt 100 Mails am Tag
+   für ALLES. Der tägliche Wächter-Lauf zeigt „Resend: n Mails in 24 h" und
+   wird ab 80 rot; Resend selbst mailt dem Konto-Inhaber. Ist die Grenze
+   voll, hilft nur warten oder der Tarif — nach der Ursache sehen (Absatz
+   „Mail-Missbrauch").
+3. *Notbremse gezogen?* Zeile `auth.mail_route_breaker` im pm2-Log: mehr als
+   60 Mails je Stunde auf einer Route; für den Rest der Stunde wartet auf
+   dieser Route auch der echte Mensch. Weiter unter „Mail-Missbrauch".
+4. *Fehlt eine Einstellung?* `pnpm ops:site-env` (liest nur die Namen). Im
+   pm2-Log steht beim ersten verworfenen Versand einmal
+   `NUXT_SMTP_HOST fehlt — … wurde NICHT verschickt`. Eine fehlende Variable
+   wird sonst nirgends rot (Regel F44 in `.claude/rules/hosts-ops.md`).
+5. *Schlüssel getauscht oder widerrufen?* Der Sende-Schlüssel steckt an fünf
+   Stellen, und jede wird anders wirksam:
+   [RESEND-WEBHOOK.md](RESEND-WEBHOOK.md), § 6.1.
+6. *Domain bei Resend noch verifiziert?* Resend → Domains (`pukalani.app`).
+
+Appwrites eigenen Mail-Versand NIE mit `doctor` prüfen — der Befehl schickt
+eine Testmail.
 
 **Zeit-Lauf überfällig oder gescheitert.** Der Satz im Issue nennt App und
 Kennung. Ein Zeit-Lauf ist eine Arbeit, die die App von selbst im Takt
@@ -549,6 +643,24 @@ KI-Kosten sofort stoppen will: der Abschalter `app_config.brandAiEnabled`
 (Zeile `ai.disabled` zählt dann mit). Ein Blick auf das Guthaben im Voraus
 ist bewusst nicht gebaut: OpenRouter gibt es nur einem Verwaltungs-Schlüssel
 heraus, und der kann auch Schlüssel anlegen und löschen.
+
+**Not-Aus** — vier Schalter, die ohne Ausliefern wirken. Die ersten drei
+stehen im Dashboard JEDER Site mit Anmeldung (angemeldet mit der Rolle
+`admin`); sie gelten nur für diese Site.
+
+| Was | Wo | Wirkung |
+| --- | --- | --- |
+| Neue Konten stoppen | `/dashboard/admin/config` → „Registrierung offen" aus | Registrierung wird abgelehnt, ein Anmelde-Code geht nur noch an bestehende Konten; diese melden sich weiter an. Wo Einladungen zulassen (branding.supply), kommt eine eingeladene Adresse weiter durch. Der erste Handgriff bei Spam über die Registrierung |
+| Schreiben einfrieren | dieselbe Seite → „Wartungsmodus" an | blockiert Registrierung (auch mit Einladung) und Kommentare. KEINE Wartungsseite: alles andere läuft weiter |
+| Ein Produkt abschalten | `/dashboard/admin/products` → Schalter des Produkts | schreibt `app_config.products.<key>.enabled = false`; jede Route unter den `apiPrefixes` des Produkts antwortet 404, die Seiten ebenso. Daten bleiben liegen; Zeit-Läufe des Produkts können weiterlaufen (so der Aufräum-Lauf des Marktvergleichs: eine Frist ist kein Produktmerkmal). Beispiel mit allen Folgen: [MARKTVERGLEICH-EINFUEHRUNG.md](MARKTVERGLEICH-EINFUEHRUNG.md), § 5 |
+| Alle bezahlten KI-Aufrufe auf branding.supply stoppen | Appwrite-Konsole, Projekt `branding`, Tabelle `app_config`, Zeile `global`, Spalte `brandAiEnabled` auf `false` | jeder der fünf KI-Wege fragt die Spalte vor dem Senden; eine unlesbare Zeile zählt als „aus". Die Stände bleiben bearbeitbar, es kommen keine neuen Entwürfe. Dafür gibt es KEINEN Schalter im Dashboard |
+
+Eine einzelne Kunden-Community vom Netz nehmen (Host antwortet 404, nichts
+wird gelöscht) geht über die Betreiber-Konsole: als Entscheidung „gesperrt" an
+einer Missbrauchs-Meldung (`/dashboard/abuse`,
+[ANFRAGEN-VON-AUSSEN.md](ANFRAGEN-VON-AUSSEN.md)) oder durch Stilllegen
+(`.claude/rules/onboarding.md`, „Stilllegen statt Vernichten"). Verdacht auf
+fremden Zugriff: [SICHERHEITSVORFALL.md](SICHERHEITSVORFALL.md).
 
 **Betreiber-Protokoll fällt aus.** Der Satz nennt App und Zahl der
 gescheiterten Einträge in `audit_logs` (Zeile `audit.write_failed`, ein
@@ -652,3 +764,62 @@ Zeitplan nicht: `crontab -l` dort ansehen, dann EIN Lauf von Hand
 bzw. die Pflichtliste in `scripts/ops/verify-site-env.mjs`.
 
 **Probealarm vergessen aufzuräumen?** Ein Lauf ohne Haken schließt das Issue.
+
+## 5 · Vertretung: wenn David nicht erreichbar ist
+
+Stand 2026-11-17 (OPS-010): Jeder Alarmweg aus § 2 und § 3 endet bei einer
+Person. Vorbereitet ist, dass eine zweite sie mitbekommt; eingetragen ist
+noch niemand (OPEN-ITEMS „VT1").
+
+**Das Notfallblatt.** Für die Vertretung gibt es ein Blatt mit den ersten
+Handgriffen: woran man eine Störung erkennt, wie man nachsieht, wen man
+anruft, was man Kunden sagt, was man nie tut — danach je Störfall ein
+Absatz, der auf dieses Runbook zeigt. Es liegt bewusst NICHT im Repo (das
+Repo ist öffentlich, das Blatt nennt Menschen und Telefonnummern), sondern
+privat bei David. Es enthält keine Passwörter und keine Schlüssel.
+
+**Was jede und jeder ohne Konto sieht.** `https://status.pukalani.app` (die
+Statusseite von UptimeRobot), `https://<host>/api/health` je Host (`"ok":true`
+heißt gesund), die Liste der Alarm-Issues
+(`https://github.com/davidschubert/pukalani-app/issues?q=label%3Aproduktions-alarm`,
+offen = Alarm aktiv) und die Protokolle der Wächter-Läufe. Reparieren lässt
+sich ohne Konto nichts.
+
+**Eine zweite Person bekommt die Alarme mit.** Je Quelle ein Handgriff; jeder
+ist eine Einstellung bei einem Dienst und braucht Davids Ja.
+
+| Quelle | Heute | Zweite Adresse |
+| --- | --- | --- |
+| Alarm-Mail des Wächters (§ 2, Schritt 2) | Secret `PRODUCTION_ALARM_MAIL_TO`, eine Adresse | Das Secret neu setzen, beide Adressen mit Komma getrennt: `gh secret set PRODUCTION_ALARM_MAIL_TO --env production-watch --repo davidschubert/pukalani-app` (der Wert nur als Eingabe). Danach Probealarm |
+| UptimeRobot (§ 3) | zwei Alert Contacts: Mail und Push | Neuen Alert Contact (Mail) anlegen, die Person bestätigt ihn; dann an JEDEN der zehn Monitore hängen. `scripts/ops/uptimerobot-sync.mjs` trägt Kontakte nur bei neuen oder umgebogenen Monitoren ein — ein Monitor, der „passt", bekommt den neuen Kontakt nicht |
+| Heartbeat bei healthchecks.io (§ 2, Schritt 3) | Kanäle des Checks `pukalani-production-watch` | Dort einen weiteren Mail-Kanal anlegen und dem Check zuordnen |
+| Alarm-Issue (§ 2, Schritt 1) | dem Repo-Besitzer zugewiesen | Nur für eine Mitarbeiterin im Repo möglich (Änderung an `ALARM_ASSIGNEE` im Workflow). Nicht nötig, wenn die Mail oben steht |
+| GitHub-Mails „Run failed" | Konto des Besitzers | Nur mit eigenem GitHub-Konto und eigenen Benachrichtigungen |
+| Betreiber-Mail der Konsole (`NUXT_ALERT_EMAIL` auf `admin.pukalani.app`): Störungen der Kunden-Sites, Missbrauchs-Meldungen, Anfragen | eine Adresse; die Variable steht nicht auf der Pflicht-Liste | Zweite Adresse mit Komma in den Wert (nodemailer nimmt eine Kommaliste; hier nie geprobt), neu laden über die Ecosystem-Datei. Ohne Mail geht derselbe Hinweis an die Glocke jedes Kontos mit der Rolle `admin` |
+| Konto-Mails der Dienste (Resend-Tageslimit, Hetzner, Ploi, Cloudflare, Stripe, OpenRouter) | Konto-Inhaber | In keinem Runbook beschrieben; im jeweiligen Konto nachsehen |
+
+**Wenn die Vertretung selbst eingreifen soll,** bekommt sie eigene Konten —
+nie ein geteiltes Passwort:
+
+- *GitHub, Mitarbeiterin im Repo:* Wächter von Hand, Probealarm, die drei
+  Notfall-Haken für das Appwrite-Zertifikat (§ 4), alles im Browser. Das Repo
+  eines Einzelkontos kennt für Mitarbeitende nur EINE Stufe: wer Läufe starten
+  darf, darf auch zusammenführen und `deploy.yml` von Hand starten. Vorher die
+  Ausnahme für den Besitzer neu bewerten und für die Umgebung `production`
+  eine Freigabe verlangen (DECISION-LOG 2026-11-14, „Wieder prüfen").
+- *Betreiber-Konto mit der Rolle `admin`* (je Site ein eigenes): die Schalter
+  aus „Not-Aus", Konten blockieren, Sitzungen beenden, Missbrauchs-Meldungen.
+  Es gibt nur `moderator` und `admin`; `admin` darf auch löschen und
+  exportieren.
+- *Server, Ploi, Appwrite-Konsole:* nur für jemanden mit Technik-Wissen; das
+  ist voller Zugriff auf alle Daten.
+- *Nie:* der private Schlüssel der Backups (DECISION-LOG 2026-11-16, Nr. 9 —
+  dort steht auch, wann das wieder zu prüfen ist). Eine Wiederherstellung
+  kann deshalb nur David.
+
+**Die Probe.** Die Vertretung gilt erst als eingerichtet, wenn ein Probealarm
+(§ 2) BEI IHR angekommen ist, sie mit dem Blatt die acht Hosts nachgesehen und
+David unter der Nummer auf dem Blatt erreicht hat, und der Lauf ohne Haken
+das Issue wieder geschlossen hat. Wiederholen: jährlich und bei jeder neuen
+Adresse oder Nummer.
+

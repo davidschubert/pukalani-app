@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
   // (Progress-Zeilen tragen bewusst keine User-Schreibrechte), gelernt hat ein
   // Mitglied. Die M13-Sperre nennt „Kursfortschritt" ausdrücklich.
   const db = tenantDb(event, { as: 'operator', actor: 'member' })
+  // Lektion UND Kurs veröffentlicht, sonst 404 — wie beim Lesen (BE-018).
   const { course } = await publishedLessonWithCourse(event, id)
 
   const enrollment = await enrollmentFor(event, course.$id, user.$id)

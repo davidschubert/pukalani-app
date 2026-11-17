@@ -6,6 +6,8 @@ import {
   eventIsEditable,
   eventIsPubliclyVisible,
   eventIsRedacted,
+  hideIsRepair,
+  seriesLifecycleFollows,
 } from '../shared/eventModerationPolicy'
 import { EVENT_STATUSES, type EventStatus } from '../shared/types/event'
 
@@ -38,8 +40,30 @@ describe('Ausblenden: nur was auch sichtbar ist', () => {
     expect(canHideEvent('published').reason).toBeNull()
   })
 
-  it('ist nicht doppelt anwendbar (schon ausgeblendet ⇒ 409, keine zweite Runde)', () => {
+  it('ist nicht doppelt anwendbar (schon ausgeblendet ⇒ kein zweites Ausblenden im Menü)', () => {
     expect(canHideEvent('hidden')).toEqual({ allowed: false, reason: 'not_visible' })
+  })
+})
+
+describe('Erneutes Ausblenden holt nur den Entzug nach (BE-017)', () => {
+  it('gilt genau für schon ausgeblendete Termine', () => {
+    expect(Object.fromEntries(EVENT_STATUSES.map(s => [s, hideIsRepair(s)]))).toEqual({
+      draft: false, published: false, cancelled: false, hidden: true,
+    })
+  })
+
+  it('überschneidet sich nie mit dem echten Ausblenden', () => {
+    for (const status of EVENT_STATUSES) {
+      expect(canHideEvent(status).allowed && hideIsRepair(status), status).toBe(false)
+    }
+  })
+})
+
+describe('Serien-Master zieht seine Termine mit — außer Urteile (BE-017)', () => {
+  it('abgesagte und ausgeblendete Termine folgen NICHT', () => {
+    expect(Object.fromEntries(EVENT_STATUSES.map(s => [s, seriesLifecycleFollows(s)]))).toEqual({
+      draft: true, published: true, cancelled: false, hidden: false,
+    })
   })
 })
 

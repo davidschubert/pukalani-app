@@ -28,8 +28,8 @@ später an der falschen Stelle.
 
 | Wo | Was passiert dort | Appwrite-Projekt |
 |---|---|---|
-| `https://<community-host>/dashboard/community/plan` | Der **Owner klickt**: Plan wählen, Portal öffnen. App `platform`. | `pool` |
-| `https://admin.pukalani.app` | **Stripe lebt hier**: Schlüssel, Checkout-Session, Portal-Session, Webhook. App `control` (ploi-Site und Verzeichnis heißen weiter `control.pukalani.app`). | `control` |
+| `https://<community-host>/dashboard/community/plan` | Der **Owner klickt**: Plan wählen, Portal öffnen. App `platform`. | `account` (bis 2026-08-11 `pool`) |
+| `https://admin.pukalani.app` | **Stripe lebt hier**: Schlüssel, Checkout-Session, Portal-Session, Webhook. App `control` (ploi-Site, Verzeichnis und Appwrite-Projekt heißen seit 2026-08-18 `admin`). | `admin` |
 | Stripe-Dashboard (Test-Modus) | Preise, Webhook-Endpunkt, Test-Clock. | — |
 
 > **Seit F51 (2026-08-07)** heißt die Abo-Seite `/dashboard/community/plan` —

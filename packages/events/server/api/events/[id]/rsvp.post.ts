@@ -82,6 +82,16 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
     value: 1, ...(row.capacity !== null ? { max: row.capacity } : {}),
   })
   const decrement = () => db.decrement(EVENTS_TABLE, id, 'attendeeCount', { value: 1, min: 0 })
+  /**
+   * Scheitert ein Herunterzählen, NACHDEM die Zusage schon geändert ist, laufen
+   * Zusagen und Zähler auseinander (BE-018). Dann: laut loggen und den
+   * Zähler aus den `going`-Zusagen neu setzen (best-effort, `attendeeRecount.ts`).
+   * Die Antwort der Route bleibt, wie sie war.
+   */
+  const recountAfter = async (failed: string) => {
+    logEvent('error', failed, { eventId: id })
+    await recountAttendeeCount(event, id)
+  }
 
   let myRsvp: RsvpStatus | null
 
@@ -106,6 +116,10 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
       // Der Zähler gehört zur Rücknahme — ginge er über `db`, stünde die Zusage
       // gelöscht da, während `attendeeCount` den Platz weiter belegt hielte.
       await withdrawDb.decrement(EVENTS_TABLE, id, 'attendeeCount', { value: 1, min: 0 })
+        .catch(async (error) => {
+          await recountAfter('events.rsvp_decrement_failed')
+          throw error
+        })
     }
     myRsvp = null
   }
@@ -169,8 +183,10 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
       }
     }
     catch (error) {
-      // Upsert gescheitert → Zähler-Gate zurückrollen, sonst driftet er
-      await decrement().catch(() => {})
+      // Upsert gescheitert → Zähler-Gate zurückrollen, sonst driftet er. Scheitert
+      // auch das, wird nachgezählt (BE-018) — vorher verschluckt, der Zähler
+      // stand dann dauerhaft um eins zu hoch.
+      await decrement().catch(() => recountAfter('events.rsvp_rollback_failed'))
       throw toH3Error(error, 'Could not save RSVP')
     }
 
@@ -192,7 +208,12 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
     if (current) {
       await db.update(EVENT_RSVPS_TABLE, current.$id, { status: target })
         .catch((error) => { throw toH3Error(error, 'Could not save RSVP') })
-      if (current.status === 'going') await decrement()
+      if (current.status === 'going') {
+        await decrement().catch(async (error) => {
+          await recountAfter('events.rsvp_decrement_failed')
+          throw error
+        })
+      }
     }
     else {
       await db.create(EVENT_RSVPS_TABLE, {
@@ -208,7 +229,12 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
           ])
           if (winner && winner.status !== target) {
             await db.update(EVENT_RSVPS_TABLE, winner.$id, { status: target })
-            if (winner.status === 'going') await decrement()
+            if (winner.status === 'going') {
+              await decrement().catch(async (decrementError) => {
+                await recountAfter('events.rsvp_decrement_failed')
+                throw decrementError
+              })
+            }
           }
           return
         }
