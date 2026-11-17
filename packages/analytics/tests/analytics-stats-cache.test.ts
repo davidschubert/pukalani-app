@@ -123,14 +123,42 @@ describe('GET /api/analytics/stats — zwei Hosts derselben Community', () => {
   vi.stubGlobal('useRuntimeConfig', () => ({}))
   vi.stubGlobal('readAnalyticsStatsCache', cache.readAnalyticsStatsCache)
   vi.stubGlobal('writeAnalyticsStatsCache', cache.writeAnalyticsStatsCache)
-  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+  vi.stubGlobal('useTenant', () => null)
+
+  /**
+   * Was die Zähl-Datei der Kennung über ihre Seite sagt (KK1): `null` = die
+   * Instanz kennt die Kennung nicht (404), eine Zeichenkette = die Adresse in
+   * der Datei, `'down'` = der Abruf scheitert.
+   */
+  let scriptDomain: string | null | 'down' = null
+  let scriptFetches = 0
+  const queriedSites: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/js/')) {
+      scriptFetches += 1
+      if (scriptDomain === 'down') throw new TypeError('fetch failed')
+      if (scriptDomain === null) return new Response('Not found', { status: 404 })
+      return new Response(`!function(){var t={endpoint:"https://plausible.example.test/api/event",domain:${JSON.stringify(scriptDomain)}};t.x=1}();`, { status: 200 })
+    }
     const query = JSON.parse(String(init?.body)) as PlausibleQuery
+    queriedSites.push(query.site_id)
     return new Response(JSON.stringify({ results: [{ metrics: [visitorsBySite[query.site_id] ?? 0], dimensions: [] }] }), { status: 200 })
   }))
 
+  type StatsHandler = (event: H3Event) => Promise<{ today?: { visitors: number } }>
+  const loadHandler = async () => (await import('../server/api/analytics/stats.get')).default as unknown as StatsHandler
+
+  beforeEach(async () => {
+    scriptDomain = null
+    scriptFetches = 0
+    queriedSites.length = 0
+    const { __resetOwnScriptSiteCache } = await import('../server/utils/verifyAnalyticsScriptOwner')
+    __resetOwnScriptSiteCache()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
   it('die eigene Domain bekommt IHRE Zahlen, nicht die der Pukalani-Adresse', async () => {
-    const handler = (await import('../server/api/analytics/stats.get'))
-      .default as unknown as (event: H3Event) => Promise<{ today?: { visitors: number } }>
+    const handler = await loadHandler()
 
     cache.clearAnalyticsStatsCache(eventFor('t-route'))
     const first = await handler(eventFor('t-route', 'kunde-a.pukalani.app'))
@@ -138,5 +166,57 @@ describe('GET /api/analytics/stats — zwei Hosts derselben Community', () => {
 
     expect(first.today?.visitors).toBe(11)
     expect(second.today?.visitors).toBe(22)
+  })
+
+  /**
+   * KK1 (2026-11-17): die Seite liegt in Plausible unter der Schwester-Adresse
+   * (`www.`). Das Speichern nahm die Kennung an, die Zahlen fragten aber den
+   * Host der Anfrage — „gerade nicht erreichbar". Jetzt ist das Ziel die
+   * Adresse, die die Zähl-Datei nennt.
+   */
+  it('die Zähl-Datei nennt die www-Adresse: abgefragt wird SIE, nicht der Host der Anfrage', async () => {
+    visitorsBySite['www.kunde-a.example'] = 33
+    scriptDomain = 'www.kunde-a.example'
+    const handler = await loadHandler()
+
+    cache.clearAnalyticsStatsCache(eventFor('t-www'))
+    const run = await handler(eventFor('t-www', 'kunde-a.example'))
+
+    expect(run.today?.visitors).toBe(33)
+    expect(new Set(queriedSites)).toEqual(new Set(['www.kunde-a.example']))
+  })
+
+  it('Gegenprobe: nennt die Datei eine FREMDE Seite, bleibt es beim Host der Anfrage — nie fremde Zahlen', async () => {
+    visitorsBySite['fremd.example'] = 99
+    scriptDomain = 'fremd.example'
+    const handler = await loadHandler()
+
+    cache.clearAnalyticsStatsCache(eventFor('t-fremd'))
+    const run = await handler(eventFor('t-fremd', 'kunde-a.example'))
+
+    expect(run.today?.visitors).toBe(22)
+    expect(queriedSites).not.toContain('fremd.example')
+  })
+
+  it('die Datei ist nicht lesbar: wie bisher der Host der Anfrage', async () => {
+    scriptDomain = 'down'
+    const handler = await loadHandler()
+
+    cache.clearAnalyticsStatsCache(eventFor('t-down'))
+    const run = await handler(eventFor('t-down', 'kunde-a.example'))
+
+    expect(run.today?.visitors).toBe(22)
+  })
+
+  it('die gelesene Adresse wird gehalten: zwei Aufrufe, EIN Abruf der Zähl-Datei', async () => {
+    scriptDomain = 'www.kunde-a.example'
+    const handler = await loadHandler()
+
+    cache.clearAnalyticsStatsCache(eventFor('t-once'))
+    await handler(eventFor('t-once', 'kunde-a.example'))
+    cache.clearAnalyticsStatsCache(eventFor('t-once'))
+    await handler(eventFor('t-once', 'kunde-a.example'))
+
+    expect(scriptFetches).toBe(1)
   })
 })

@@ -50,11 +50,14 @@ describe('Kurs-Verwaltung handelt als Redaktion, nicht als Betreiber', () => {
  * UND DIE GEGENSEITE: DIE ZWEI MITGLIEDS-WEGE (Audit-Befund 2026-08-02).
  *
  * Einschreiben und Lektion-abschließen sind die einzigen Kurs-Routen, an denen
- * ein gewöhnliches MITGLIED schreibt — beide brauchen die Operator-Klinke aus
- * demselben technischen Grund (enrollments und Fortschritts-Zeilen tragen
- * bewusst keine User-Schreibrechte) und setzen `actor: 'member'` deshalb HART,
- * statt ihn aus einem Gate zu beziehen: es gibt hier kein Gate, nur eine
- * angemeldete Person.
+ * ein gewöhnliches MITGLIED INHALT schreibt — beide brauchen die
+ * Operator-Klinke aus demselben technischen Grund (enrollments und
+ * Fortschritts-Zeilen tragen bewusst keine User-Schreibrechte) und setzen
+ * `actor: 'member'` deshalb HART, statt ihn aus einem Rollen-Gate zu beziehen.
+ * Vor beiden steht seit SEC-029/SEC-030 die Mitgliedschafts-Wache
+ * (`requireCourseMemberJoining` bzw. `requireCourseMember`); sie sagt, WER
+ * darf, liefert aber keinen `actor`. (Die zwei Übersetzungs-Routen schreiben
+ * nur den abgeleiteten Cache, mit `actor: 'operator'` — kein Inhalt.)
  *
  * WARUM DAS EINEN ANKER BRAUCHT: fällt das `actor` weg, fällt die Route auf die
  * KLINKE zurück ('operator') — und damit still aus der Inhalts-Sperre (M13) und

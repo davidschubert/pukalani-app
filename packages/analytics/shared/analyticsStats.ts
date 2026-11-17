@@ -81,12 +81,15 @@ export interface AnalyticsSharedSiteConfig {
  *     (`<instanz>/js/<id>.js`, Feld `domain`). Seit BE-022 (2026-11-17) liest
  *     das Speichern sie dort nach und nimmt nur eine Id an, deren Seite einer
  *     eigenen Adresse der Community entspricht (`analyticsScriptOwner.ts`) —
- *     der Vergleich ignoriert aber ein führendes `www.`. Diese Funktion
- *     fragt weiter den HOST der Anfrage und nicht die dort gelesene
- *     Adresse. Stimmt die Annahme nicht (die Site heißt in
- *     Plausible anders), antwortet die API mit einem Fehler und die Seite sagt
- *     „gerade nicht erreichbar" — sie zeigt NIE fremde Zahlen, denn ein
- *     falscher Site-Schlüssel trifft keine andere Community, sondern nichts.
+ *     der Vergleich ignoriert aber ein führendes `www.`. Seit KK1
+ *     (2026-11-17) ist das Ziel die dort gelesene Adresse (`ownSite`), wenn
+ *     sie eine eigene der Community ist — sonst lag eine Seite, die in
+ *     Plausible unter der Schwester-Adresse (mit/ohne `www`) heißt, beim
+ *     Speichern richtig und bei den Zahlen daneben. Ohne sie bleibt es beim
+ *     HOST der Anfrage: stimmt der nicht, antwortet die API mit einem Fehler
+ *     und die Seite sagt „gerade nicht erreichbar" — sie zeigt NIE fremde
+ *     Zahlen, denn ein falscher Site-Schlüssel trifft keine andere Community,
+ *     sondern nichts.
  *  2. SAMMEL-SITE: der Schalter steht an. Site-Schlüssel ist die eine
  *     Sammel-Site, und der `event:hostname`-Filter ist die GANZE Trennung
  *     zwischen den Communities — deshalb steht er hier und nicht in der Route.
@@ -99,13 +102,21 @@ export function resolveStatsTarget(
   row: AnalyticsSettingsLike | null | undefined,
   shared: AnalyticsSharedSiteConfig,
   host: string,
+  /**
+   * Die Adresse, die die Zähl-Datei der EIGENEN Kennung nennt — nur, wenn sie
+   * eine eigene Adresse der Community ist (KK1, `resolveOwnScriptSite`).
+   * Auch sie kommt vom Server, nie aus der Anfrage des Clients. Ohne sie gilt
+   * der Host der Anfrage wie bisher.
+   */
+  ownSite?: string | null,
 ): AnalyticsStatsTarget {
   const own = row?.plausibleScriptId ?? ''
   if (own && isPlausibleScriptId(own)) {
     // Ohne Host kein Site-Schlüssel — gemessen wird trotzdem (das Script hängt
     // im Head), also „gerade nicht erreichbar" statt „aus".
-    if (!host) return { state: 'unavailable' }
-    return { state: 'ready', siteId: host, filters: [] }
+    const siteId = ownSite || host
+    if (!siteId) return { state: 'unavailable' }
+    return { state: 'ready', siteId, filters: [] }
   }
 
   const sharedScriptId = shared.scriptId ?? ''
