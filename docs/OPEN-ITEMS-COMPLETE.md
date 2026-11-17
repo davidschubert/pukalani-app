@@ -30,6 +30,93 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P27 — Tests über den echten Kundenpfad: Rollen-Tests je Route, eine Bühne mit zwei Communities, Beweise laufen von selbst ✅ 2026-11-17
+
+**Was.** Paket der Stufe „Später" aus dem Gesamtaudit 2026-11 (Finding
+OPS-009), Davids Entscheidung „Klein beginnen: Die Prüfungen aus P04 und P05
+bekommen sofort ihre Tests; die Bühne danach". Drei Etappen, Pull Requests
+237 (Merge `9d92deca`), 242 (Merge `a2f23006`) und 244, dazu 239 (Merge
+`93a0180a`, eine Testdatei). Nur Tests, Skripte, CI und Doku — kein
+Produkt-Code.
+
+- **Etappe 1 — Rollen-Tests.** Der Prüfstand für echte Routen-Handler
+  (`packages/core/tests/support/participationHarness.ts`) kennt jetzt Owner,
+  Admin, Moderator, Editor und Betreiber. Jede schreibende und jede
+  personenbezogene Route der neun Pool-Produkte wird von einem Test geladen
+  und ausgeführt: Gast, fremdes Konto, entferntes Konto, Mitglied, Rollen
+  (629 neue Tests, 113 von 113 Routen; vorher 37). Der Wächter
+  `route-role-coverage.test.ts` zählt alle Routen aus dem Code; eine neue
+  Route ohne Test ist rot, der Bestand der übrigen Layer (319) darf nur
+  schrumpfen.
+- **Etappe 2 — Bühne.** EINE Hilfe für Beweis-Skripte
+  (`scripts/lib/probe-stage.mjs`) und `pnpm buehne up|status|env|smoke|run|down`:
+  zwei Probe-Communities mit Konten je Rolle, lokal und in der CI
+  (`.github/workflows/buehne.yml`, zwei Projekte auf der Wegwerf-Appwrite,
+  Betreiber-App und Platform-Server aus dem Checkout). `down` löscht alles
+  und zählt nach.
+- **Etappe 3 — Automatik.** `scripts/buehne/beweise.mjs` teilt jedes der 82
+  Beweis-Skripte ein: 6 im E2E-Lauf, 30 bei jedem Lauf der Bühne, 10 nachts,
+  36 von Hand mit Grund. Vorher liefen 6 von selbst, jetzt 46. Dazu die acht
+  Isolations-Tests gegen die echte Datenbank, die `pnpm -r test` überspringt,
+  ein nächtlicher Lauf und das Alarm-Issue `buehne-alarm`.
+
+**Zahlen.** Routen mit einem Test, der sie ausführt: 167 → 243 von 569.
+Beweis-Skripte, die von selbst laufen: 6 → 46 von 82. Pflicht-Prüfung `e2e`
+vorher 266 s (Median aus 30 Läufen), nachher 286 s und 286 s auf `main` —
+unverändert im Rahmen (205 bis 346 s), weil nichts in sie hineingelegt wurde;
+der Bühnen-Lauf braucht daneben rund fünf Minuten und ist keine Pflicht.
+
+**Was die Automatik NICHT beweist.** Production hat die direkten Anmelde-Wege
+der Datenbank aus, lokal und in der CI sind sie an. Die Server laufen als
+Entwicklungs-Server ohne Webserver davor, die CI-Datenbank ist leer, kein
+Fremddienst spricht mit. Die Rollen-Tests laufen ohne die Middleware davor
+und gegen eine nachgebaute Datentür. Auf Production wurde nichts geprüft.
+
+**Gelernt:**
+- **Ein Beweis, der nicht läuft, veraltet still.** Von 42 Skripten, die zum
+  ersten Mal seit Monaten liefen, waren 27 rot — fast alle wegen des Skripts:
+  alte Host-Namen, eine umbenannte Spalte, eine umgezogene Seite, Annahmen
+  über die Probe-Community. Drei zeigten echte Auffälligkeiten im Programm;
+  die stehen im Audit zur Bewertung, zwei der Skripte bis dahin auf „von Hand".
+- **Auch übersprungene Tests veralten.** Acht Test-Dateien prüfen die
+  Trennung der Communities gegen eine echte Datenbank und wurden ohne sie
+  übersprungen — in der CI also immer. Beim ersten Lauf waren zwei davon rot:
+  sie suchten die Spalte `tenantId`, die seit Monaten `communityId` heißt.
+  Die Trennung selbst hielt; geprüft hatte es nur niemand mehr.
+- **„✔ aufgeräumt" ohne Nachzählen ist eine Behauptung.** Ein Dutzend Skripte
+  ließ nach jedem Lauf Seiten, den ersten Beitrag, eine Kategorie und
+  Protokoll-Zeilen ihrer Probe-Community liegen; eine Sonde legte je Abfrage
+  ein echtes Konto an. Aufräumen läuft jetzt über ein Register, das nach dem
+  Löschen zählt.
+- **Zwei grüne Pull Requests können zusammen rot sein.** PR 237 (neue Tests
+  führen die Termin-Routen aus) und PR 233 (die Routen rufen eine neue Hilfe)
+  waren einzeln grün; auf `main` scheiterten elf Tests, eine Stunde lang
+  wurde nicht ausgeliefert. Seitdem vor jedem Merge: `git merge origin/main`
+  lokal und die betroffenen Pakete testen. Ob GitHub das erzwingen soll, ist
+  offen (BT1 c).
+- **Ohne Webserver davor kommen alle Aufrufe von einer Adresse.** Auf der
+  Bühne liefen die Skripte nacheinander in dieselbe Anlege-Bremse. Der Läufer
+  hängt deshalb je Skript eine eigene Aufrufer-Adresse an — das, was auf
+  Production der Webserver tut.
+- **Die CI ist strenger und ärmer als der lokale Spiegel, beides zeigt
+  etwas.** Dort gelten die Passwort-Regeln von Production (ein Probe-Passwort
+  mit Teilen der Adresse scheiterte nur dort), und die Wegwerf-Datenbank
+  hatte keinen Mail-Versand (der passwortlose Weg antwortete deshalb anders).
+  Sie bekommt jetzt einen lokalen Briefkasten.
+- **Kleine Fallen:** die Id eines API-Schlüssels gilt in Appwrite für die
+  ganze Instanz, nicht je Projekt; der Entwicklungs-Server gibt JSON
+  eingerückt aus (`"ok": true`); ein Hilfs-Modul, das direkt gestartet
+  nichts tut, endet mit Exit 0; `tail -40 a b` scheitert auf dem
+  CI-Runner (`tail -n 40`); im Pool heißt der Stempel einer Zeile
+  `communityId` und trägt die tenantId.
+- **Ablauf:** Ein Merge-Befehl gehört nicht in dieselbe Zeile wie die Frage,
+  ob gerade ausgeliefert wird — PR 242 ging so während eines laufenden
+  Ausliefern hinein (ohne Folgen, er ändert keine App).
+
+**Reste:** `docs/OPEN-ITEMS.md`, Punkt BT1.
+
+---
+
 ### GA1 P28 — Kleine Korrekturen: Erinnerungen mit Zeitzone, Ausblenden hält, Seitenliste vollständig, Meldungen und Zähl-Kennung geprüft ✅ 2026-11-17
 
 **Was.** Paket der Stufe „Später" aus dem Gesamtaudit 2026-11 (Findings
