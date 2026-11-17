@@ -233,6 +233,7 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
     // BE-025: der Aufräum-Lauf von Hand — eigener Eimer, nicht der des Claims.
     ['POST /api/runner/retention/run', 'runner:retention', 6],
     ['POST /api/runner/retention/texts', 'runner:retention', 6],
+    ['POST /api/runner/retention/stale', 'runner:retention', 6],
     // SI1 d: der Label-Abgleich von Hand — eigener Eimer.
     ['POST /api/community/members/run-label-reconcile', 'community:label-reconcile', 6],
   ])('%s → Bucket %s, Deckel %s', (route, bucket, max) => {
