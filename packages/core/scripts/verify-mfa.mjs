@@ -174,7 +174,9 @@ const admin = () => {
 /** Aufräumen MIT Nachzählen (Bühnen-Regel 2) — mit den Werten aus ENV_FILE. */
 const sweep = createEinzelCleanup({ script: 'verify-mfa', env })
 
-const email = `mfa-verify-${Date.now()}@example.com`
+// `@example.test` wie alle Probe-Konten: die Anmelde-Regeln (P29) lehnen
+// `example.com` als Wegwerf-Adresse ab (`user_email_disposable`).
+const email = `mfa-verify-${Date.now()}@example.test`
 const password = 'Beweis-Passwort-2026!'
 const a = admin()
 let userId
@@ -190,7 +192,7 @@ const extraUserIds = []
  * Produkt nicht hat — beim Bau gleich zweimal passiert (Abschnitt 6 und 7).
  */
 async function createUserWithMfa(label) {
-  const mail = `mfa-verify-${label}-${Date.now()}@example.com`
+  const mail = `mfa-verify-${label}-${Date.now()}@example.test`
   const id = (await a.users.create({ userId: ID.unique(), email: mail, password, name: `MFA ${label}` })).$id
   extraUserIds.push(id)
   const ip = freshIp()
@@ -308,7 +310,7 @@ try {
   // (abuse-limit 10). Nach den Drossel- und Wiederherstellungs-Abschnitten
   // oben ist das Budget des Haupt-Kontos aufgebraucht, und der Beweis wäre
   // nicht am Befund gescheitert, sondern an seinem eigenen Vorlauf.
-  const probeEmail = `mfa-verify-casing-${Date.now()}@example.com`
+  const probeEmail = `mfa-verify-casing-${Date.now()}@example.test`
   let probeUserId
   try {
     probeUserId = (await a.users.create({
@@ -442,7 +444,7 @@ try {
   // Gegenprobe: ein Konto OHNE Zweitfaktor darf sich durch die Weiche nicht ändern.
   await call('/api/auth/logout', { method: 'POST', cookie, clientIp: ip })
   ip = freshIp()
-  const plainEmail = `mfa-verify-otp-plain-${Date.now()}@example.com`
+  const plainEmail = `mfa-verify-otp-plain-${Date.now()}@example.test`
   extraUserIds.push((await a.users.create({ userId: ID.unique(), email: plainEmail, password, name: 'OTP ohne MFA' })).$id)
   const plainRequest = await call('/api/auth/otp', { method: 'POST', body: { email: plainEmail }, clientIp: ip })
   const plainCode = await otpCodeFromMail(plainEmail)
