@@ -252,7 +252,7 @@ export const USER_DATA_BUCKETS: Record<string, BucketCoverage | 'none'> = {
   },
   'runner-files': {
     export: skip('Protokolle und Anhänge der Läufe; der Auftragstext steht im Export des Runners'),
-    erase: skip('Arbeitsmaterial der Betreiber-Konsole; Protokolle löscht der Aufräum-Lauf nach 30 Tagen'),
+    erase: skip('Arbeitsmaterial der Betreiber-Konsole; Protokolle löscht der Aufräum-Lauf nach 30 Tagen, Anhänge der Texte-Lauf 12 Monate nach Laufende'),
   },
   'brand-inspiration': {
     export: skip('im Export stehen die Angaben zu den Bildern, nicht die Bilder selbst'),
