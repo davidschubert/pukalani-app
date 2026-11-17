@@ -274,7 +274,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/onboarding/server/api/community/billing/trial.get.ts',
     'packages/onboarding/server/api/community/branding.patch.ts',
     'packages/onboarding/server/api/community/branding/favicon.delete.ts',
-    'packages/onboarding/server/api/community/branding/favicon.post.ts',
     'packages/onboarding/server/api/community/control-handoff.post.ts',
     'packages/onboarding/server/api/community/domain/index.delete.ts',
     'packages/onboarding/server/api/community/domain/index.get.ts',
