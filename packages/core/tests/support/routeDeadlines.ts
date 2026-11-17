@@ -132,18 +132,10 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
     form: 'inline',
     deadlines: [{ constant: 'BRAND_DNA_TIMEOUT_MS', file: 'packages/brand/server/utils/brandDnaProposal.ts', times: 1, what: 'der DNA-Vorschlag (ein Text-Lauf)' }],
   },
+  // Vorbilder lesen (LL1 b): Lauf-Sperre, 202, der Lauf rechnet in `startBrandRun`.
   'packages/brand/server/api/brand/profiles/[id]/inspiration/read.post.ts': {
-    form: 'over',
-    deadlines: [{
-      // Zahl von Hand, Konstante nicht exportiert (BRAND_READING_TIMEOUT_MS —
-      // die Datei baut gerade eine andere Arbeit um).
-      ms: 120_000,
-      hand: 'packages/brand/server/utils/brandInspirationReading.ts',
-      times: 1,
-      what: 'die Vorbilder lesen (ein Bild-Lauf über alle Bilder auf einmal)',
-    }],
-    reason: 'Vorbilder lesen: ein bezahlter Bild-Lauf mit 120 s Frist in der Anfrage. '
-      + 'Wird gerade auf Lauf-Sperre und 202 umgebaut (OPEN-ITEMS LL1 b).',
+    form: 'detached',
+    via: 'packages/brand/server/utils/brandRun.ts',
   },
   'packages/brand/server/api/brand/profiles/[id]/mark/brief.post.ts': {
     form: 'inline',
