@@ -36,13 +36,15 @@ const REPO = resolve(import.meta.dirname, '../../..')
  * abgebaut hat, trägt ihn hier ein — dann wächst er nicht wieder.
  *
  * Dazu `control` (Control Plane, seit BT1 b): Betreiber- und Naht-Routen mit
- * eigenem Prüfstand `packages/control/tests/support/controlRouteHarness.ts`.
+ * eigenem Prüfstand `packages/control/tests/support/controlRouteHarness.ts`,
+ * und `core` (seit BT1 b): Konto-, Auth- und Plattform-Routen, Appwrite-Klienten
+ * nachgebaut in `support/appwriteFake.ts`.
  */
 const ZERO_BACKLOG_LAYERS: readonly string[] = [
   'activity', 'comments', 'courses', 'events', 'feedback', 'media', 'messages', 'moderation', 'posts',
   // Abgebaut mit BT1 b (2026-11-17): alle Bestands-Routen haben Tests
-  // (control 64, onboarding 47).
-  'control', 'onboarding',
+  // (control 64, onboarding 47, core 37).
+  'control', 'onboarding', 'core',
 ]
 
 /**
