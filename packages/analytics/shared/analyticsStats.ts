@@ -75,9 +75,15 @@ export interface AnalyticsSharedSiteConfig {
  *     ist der Site-Schlüssel der HOST der Community und es braucht keinen
  *     Filter — in dieser Site steht ohnehin nur sie selbst.
  *     ANNAHME, die dabei bewusst getroffen wird: die Domain der eigenen Site
- *     ist der Host, unter dem die Community läuft. Anders geht es nicht: die
- *     Script-Id verrät die Domain nicht, und die CE hat keine Sites-API, über
- *     die wir sie erfragen könnten. Stimmt die Annahme nicht (die Site heißt in
+ *     ist der Host, unter dem die Community läuft. Die CE hat keine Sites-API,
+ *     über die wir sie erfragen könnten. Die Script-Id selbst verrät die
+ *     Domain nicht — wohl aber ihre öffentliche Zähl-Datei
+ *     (`<instanz>/js/<id>.js`, Feld `domain`). Seit BE-022 (2026-11-17) liest
+ *     das Speichern sie dort nach und nimmt nur eine Id an, deren Seite einer
+ *     eigenen Adresse der Community entspricht (`analyticsScriptOwner.ts`) —
+ *     der Vergleich ignoriert aber ein führendes `www.`. Diese Funktion
+ *     fragt weiter den HOST der Anfrage und nicht die dort gelesene
+ *     Adresse. Stimmt die Annahme nicht (die Site heißt in
  *     Plausible anders), antwortet die API mit einem Fehler und die Seite sagt
  *     „gerade nicht erreichbar" — sie zeigt NIE fremde Zahlen, denn ein
  *     falscher Site-Schlüssel trifft keine andere Community, sondern nichts.
