@@ -122,6 +122,18 @@ export interface InsightsBrandSavedResponse {
   brand: InsightsBrand
   id: string
   listItem: InsightsBrandListItem
+  /**
+   * IN1 c (2026-11-17): dieselbe Form wie `InsightsPostSavedResponse`. Soll
+   * der Stand `published` sein und besteht er die Prüfung nicht, ist
+   * `saved: false`, geschrieben wurde NICHTS, `brand` und `listItem` sind der
+   * unveränderte Bestand, und `issues` nennt die Stellen. Warum das eine 200
+   * ist und keine 409, steht an `InsightsPostStateResponse`.
+   */
+  issues: InsightsReviewIssue[]
+  saved: boolean
+  /** Quellen, die in der Gesamtfrist nicht gelesen wurden — nur an einer
+   *  Ablehnung gesetzt (fail-closed, s. `InsightsPostStateResponse`). */
+  sourcesTimedOut?: number
 }
 
 /**
