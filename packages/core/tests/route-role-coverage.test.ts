@@ -57,6 +57,9 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // Abgebaut mit N09 (2026-11-17): Betreiber-Übersicht, eigenes Abo,
   // öffentliche Preisliste.
   'billing',
+  // Abgebaut mit N09 (2026-11-17): alle 28 Bestands-Routen des Dashboards
+  // (Prüfstand `packages/admin/tests/support/adminRouteHarness.ts`).
+  'admin',
 ]
 
 /**
