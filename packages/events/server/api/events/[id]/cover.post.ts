@@ -46,6 +46,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 400, statusText: 'Missing event id' })
   }
 
+  // Angegebene Länge vor dem Einlesen prüfen (core/server/utils/uploadSize.ts);
+  // die Prüfung der echten Größe unten bleibt die Wahrheit.
+  rejectOversizedUpload(event, MAX_EVENT_COVER_BYTES)
+
   const db = tenantDb(event, { as: 'operator', actor })
   const admin = createAdminClient(event)
 

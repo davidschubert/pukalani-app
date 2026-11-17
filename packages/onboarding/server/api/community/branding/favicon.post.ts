@@ -23,6 +23,7 @@ import type { CommunityFaviconResponse } from '../../../../shared/types/communit
  * synchron und für Betreiber-Routen.
  *
  * ── PRÜFREIHENFOLGE (von billig nach teuer, jede mit eigenem Status) ────────
+ *  0. Angegebene Länge zu groß?   → 413 (vor dem Einlesen, `rejectOversizedUpload`)
  *  1. Datei vorhanden?            → 400 (kein Feld ist ein Bedienfehler)
  *  2. ≤ 1 MB?                     → 413 (vor dem Sniffing, spart Arbeit)
  *  3. PNG-Magic-Bytes?            → 415 (der Inhalt, nicht der deklarierte Typ)
@@ -41,6 +42,10 @@ export default defineEventHandler(async (event): Promise<CommunityFaviconRespons
   if (!tenant?.communityId) {
     throw createError({ status: 404, statusText: 'Not found' })
   }
+
+  // Angegebene Länge vor dem Einlesen prüfen (core/server/utils/uploadSize.ts);
+  // die Prüfung der echten Größe unter (2) bleibt die Wahrheit.
+  rejectOversizedUpload(event, MAX_FAVICON_BYTES)
 
   const form = await readMultipartFormData(event)
   const filePart = form?.find(part => part.name === 'file' && part.filename)
