@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { hasShellSyntax } from './exec.ts'
+import { log } from './log.ts'
 import { PERMISSION_MODES, type PermissionMode } from './protocol.ts'
 
 /**
@@ -230,11 +231,55 @@ function readRunRetention(root: Record<string, unknown>): RunRetention {
   return { mode: mode as RunRetentionMode, days }
 }
 
+/** Art eines Werts für eine Warnzeile — nie der Wert selbst. */
+function kindOf(value: unknown): string {
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'Liste'
+  if (typeof value === 'string') return value.trim() ? 'Text, kein absoluter Pfad' : 'leerer Text'
+  return typeof value
+}
+
+/**
+ * `extraPath` lesen: gültig ist ein absoluter Pfad (beginnt mit `/`). Alles
+ * andere wird übergangen und GEMELDET (Position und Art, RU1 e) — vorher fiel
+ * es still heraus, und ein vertippter Eintrag zeigte sich erst als Exit 127
+ * eines Testbefehls.
+ *
+ * BEWUSST KEIN WURF: der Dienst läuft auf dem Rechner des Betreibers mit
+ * einer Datei, die von Hand gepflegt wird. Eine neue Wurf-Bedingung legte ihn
+ * beim nächsten Start still; eine Warnzeile tut das nicht, und die gültigen
+ * Einträge wirken weiter.
+ */
+function readExtraPath(value: unknown, onWarning: (message: string) => void): string[] {
+  if (value === undefined) return []
+  const where = 'config.json.extraPath'
+  if (!Array.isArray(value)) {
+    onWarning(`${where}: erwartet eine Liste absoluter Pfade, gefunden ${kindOf(value)} — ignoriert`)
+    return []
+  }
+  const valid: string[] = []
+  value.forEach((entry: unknown, index) => {
+    if (typeof entry === 'string' && entry.startsWith('/')) {
+      valid.push(entry)
+      return
+    }
+    onWarning(`${where}[${index}]: ${kindOf(entry)} — Eintrag ignoriert (erwartet ein absoluter Pfad, beginnt mit /)`)
+  })
+  return valid
+}
+
 /**
  * Die Config prüfen und vervollständigen. Wirft mit einem Satz, den man ohne
  * Quelltext versteht — diese Datei tippt ein Mensch.
+ *
+ * `onWarning` nimmt, was gemeldet, aber nicht abgelehnt wird (heute nur
+ * `extraPath`); Vorgabe ist der Log des Dienstes.
  */
-export function parseRunnerConfig(raw: unknown, home: string): RunnerConfig {
+export function parseRunnerConfig(
+  raw: unknown,
+  home: string,
+  onWarning: (message: string) => void = message => log.warn(message),
+): RunnerConfig {
   const root = asRecord(raw, 'config.json')
 
   const endpoint = readString(root, 'endpoint', 'config.json').replace(/\/+$/, '')
@@ -261,9 +306,7 @@ export function parseRunnerConfig(raw: unknown, home: string): RunnerConfig {
 
   const claudeBin = typeof root.claudeBin === 'string' && root.claudeBin.trim() ? root.claudeBin.trim() : 'claude'
   const claudeTokenFile = typeof root.claudeTokenFile === 'string' ? expandHome(root.claudeTokenFile.trim(), home) : ''
-  const extraPath = Array.isArray(root.extraPath)
-    ? root.extraPath.filter((entry): entry is string => typeof entry === 'string' && entry.startsWith('/'))
-    : []
+  const extraPath = readExtraPath(root.extraPath, onWarning)
   // Vorgabe AN: nur ein ausdrückliches `false` schaltet die Mitteilung ab.
   const macosNotifications = root.macosNotifications === undefined ? true : root.macosNotifications
   if (typeof macosNotifications !== 'boolean') {

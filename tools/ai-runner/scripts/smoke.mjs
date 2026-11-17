@@ -113,6 +113,32 @@ check('Config: Vorgaben und ~-Auflösung', () => {
   assert.throws(() => parseRunnerConfig({ ...rawConfig, macosNotifications: 'ja' }, home), /macosNotifications/)
 })
 
+check('Config: extraPath meldet ungültige Einträge, wirft nicht, behält die gültigen (RU1 e)', () => {
+  const warnings = []
+  const collect = message => warnings.push(message)
+  const parsed = parseRunnerConfig({ ...rawConfig, extraPath: ['/opt/homebrew/bin', 'bin', 42, '~/x', '/usr/local/bin', null] }, home, collect)
+  assert.deepEqual(parsed.extraPath, ['/opt/homebrew/bin', '/usr/local/bin'])
+  assert.equal(warnings.length, 4)
+  assert.match(warnings[0], /extraPath\[1\]: Text, kein absoluter Pfad/)
+  assert.match(warnings[1], /extraPath\[2\]: number/)
+  assert.match(warnings[2], /extraPath\[3\]: Text, kein absoluter Pfad/)
+  assert.match(warnings[3], /extraPath\[5\]: null/)
+  // Der Wert selbst steht nicht in der Zeile — nur Position und Art.
+  assert.ok(!warnings.join('\n').includes('~/x'))
+
+  // Vorhanden, aber keine Liste ⇒ gemeldet, leer, kein Wurf.
+  warnings.length = 0
+  assert.deepEqual(parseRunnerConfig({ ...rawConfig, extraPath: '/opt/homebrew/bin' }, home, collect).extraPath, [])
+  assert.equal(warnings.length, 1)
+  assert.match(warnings[0], /extraPath: erwartet eine Liste.*gefunden Text/)
+
+  // Fehlt das Feld oder ist alles gültig ⇒ keine Zeile.
+  warnings.length = 0
+  parseRunnerConfig(rawConfig, home, collect)
+  parseRunnerConfig({ ...rawConfig, extraPath: ['/opt/homebrew/bin'] }, home, collect)
+  assert.equal(warnings.length, 0)
+})
+
 check('Config: unsinnige Werte werfen mit Klartext', () => {
   assert.throws(() => parseRunnerConfig({ ...rawConfig, endpoint: 'admin.pukalani.app' }, home), /http/)
   assert.throws(() => parseRunnerConfig({ ...rawConfig, repos: {} }, home), /leer/)
