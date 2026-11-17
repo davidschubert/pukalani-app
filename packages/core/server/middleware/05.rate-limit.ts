@@ -444,8 +444,9 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // einigen tausend Dateien und Zeilen durch und löscht im Modus `apply`. Ein
   // Betreiber prüft ein Ergebnis, er hämmert nicht — derselbe Deckel wie die
   // KI-Läufe von Brand Design.
-  // Derselbe Deckel für den Handlauf der Text-Frist (RU1, `retention/texts`).
-  { re: /^POST \/api\/runner\/retention\/(?:run|texts)$/, bucket: 'runner:retention', max: 6 },
+  // Derselbe Deckel für den Handlauf der Text-Frist (RU1, `retention/texts`)
+  // und den der nie beendeten Läufe (`retention/stale`).
+  { re: /^POST \/api\/runner\/retention\/(?:run|texts|stale)$/, bucket: 'runner:retention', max: 6 },
   // Label-Abgleich von Hand (SI1 d): ein Lauf liest bis zu 3000 Zeilen im
   // Control Plane und je Konto `users.get` im Pool. Ein Betreiber prüft ein
   // Ergebnis, er hämmert nicht — derselbe Deckel wie der Aufräum-Lauf.

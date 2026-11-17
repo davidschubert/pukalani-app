@@ -229,24 +229,32 @@ describe('POST /api/runner/runs/:id/resume — nie besser als Vorgänger und Sub
     expect((await resumeRun(event)).testCommands).toBe('["pnpm lint"]')
   })
 
-  it('geerbte Testbefehle, die der Rechner nicht mehr listet ⇒ 400 test_command_not_listed', async () => {
+  // RU1 e: 409, nicht 400 — die Antwort ist in Ordnung, der gespeicherte Lauf
+  // passt nicht mehr zur Liste; das Board liest den Code und zeigt „neuer Lauf".
+  it('Rückfrage aus der Zeit vor der Liste (Freitext-Befehl) ⇒ 409 test_command_not_listed, nichts angelegt', async () => {
+    rows.set('run-1', predecessor({ testCommands: '["pnpm -r test && pnpm lint"]' }))
+    expect(await rejection(resumeRun(event))).toMatchObject({ status: 409, data: { code: 'test_command_not_listed' } })
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+
+  it('geerbte Testbefehle, die der Rechner nicht mehr listet ⇒ 409 test_command_not_listed', async () => {
     rows.set('run-1', predecessor({ testCommands: '["pnpm build"]' }))
-    expect(await rejection(resumeRun(event))).toMatchObject({ status: 400, data: { code: 'test_command_not_listed' } })
+    expect(await rejection(resumeRun(event))).toMatchObject({ status: 409, data: { code: 'test_command_not_listed' } })
   })
 
-  it('kaputter gespeicherter Wert ⇒ 400 test_command_not_listed', async () => {
+  it('kaputter gespeicherter Wert ⇒ 409 test_command_not_listed', async () => {
     rows.set('run-1', predecessor({ testCommands: '{kaputt' }))
-    expect(await rejection(resumeRun(event))).toMatchObject({ status: 400, data: { code: 'test_command_not_listed' } })
+    expect(await rejection(resumeRun(event))).toMatchObject({ status: 409, data: { code: 'test_command_not_listed' } })
   })
 
-  it('geerbte Testbefehle bei heute ungeprüftem Subjekt ⇒ 400 tests_not_allowed_untrusted', async () => {
+  it('geerbte Testbefehle bei heute ungeprüftem Subjekt ⇒ 409 tests_not_allowed_untrusted', async () => {
     rows.set('run-1', predecessor({ subjectId: 't-feedback', testCommands: '["pnpm lint"]' }))
-    expect(await rejection(resumeRun(event))).toMatchObject({ status: 400, data: { code: 'tests_not_allowed_untrusted' } })
+    expect(await rejection(resumeRun(event))).toMatchObject({ status: 409, data: { code: 'tests_not_allowed_untrusted' } })
   })
 
-  it('geerbte Testbefehle ohne Ziel-Rechner (Alt-Daten) ⇒ 400 tests_need_runner', async () => {
+  it('geerbte Testbefehle ohne Ziel-Rechner (Alt-Daten) ⇒ 409 tests_need_runner', async () => {
     rows.set('run-1', predecessor({ runnerId: '', testCommands: '["pnpm lint"]' }))
-    expect(await rejection(resumeRun(event))).toMatchObject({ status: 400, data: { code: 'tests_need_runner' } })
+    expect(await rejection(resumeRun(event))).toMatchObject({ status: 409, data: { code: 'tests_need_runner' } })
   })
 })
 

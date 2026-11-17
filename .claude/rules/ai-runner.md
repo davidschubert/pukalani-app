@@ -19,7 +19,8 @@ kein `git commit`, gemessen) — nie push, nie auf einem geschützten Branch.
 `success`/`is_error:false`; die Wahrheit steht in `permission_denials` und im
 `post_turn_summary` (AI-RUNNER.md § 11, gemessen). Stirbt der Daemon mitten im
 Lauf, bleibt der Lauf auf `running` — die Kur ist der Abbrechen-Knopf im
-Board, kein Totmann-Zeitgeber. Server-Seite: Layer `packages/runner`
+Board; einen schnellen Totmann-Zeitgeber gibt es nicht, nur die 7-Tage-Frist
+für nie beendete Läufe (unten, „NIE BEENDET"). Server-Seite: Layer `packages/runner`
 (Board-UI + Naht, Tabellen runners/runs/run_events, Capability
 `runner.manage` NUR admin); Beweise: `verify-runner-boundary.mjs` (24) und
 `tools/ai-runner/scripts/smoke.mjs` (86, läuft seit 2026-11-14 mit
@@ -72,5 +73,20 @@ bis es dort steht; Spur `textRemovedAt`). Util
 `packages/runner/server/utils/runTextRetention.ts` auf dem Gerüst
 `core/…/rowRetention.ts`, EIGENER Schalter `pukalani.runner.textRetention`
 off/count/apply (control: `apply` seit 2026-11-17, Davids Ja zur Zahl),
-Hand-Route `POST /api/runner/retention/texts` (`{ apply: true }`). Runbook
-für alle drei Themen: docs/runbooks/AI-RUNNER-BETRIEB.md.
+Hand-Route `POST /api/runner/retention/texts` (`{ apply: true }`). NIE
+BEENDET (RU1 c, seit 2026-11-17): ein Lauf in `draft`, `queued`, `claimed`
+oder `running`, der seit 7 Tagen kein Lebenszeichen zeigt (jüngstes aus
+`$updatedAt`, `claimedAt`, `startedAt` und dem letzten Ereignis — ein
+lebender Lauf fasst seine Zeile nicht an), wird wie mit dem Abbrechen-Knopf
+beendet: `cancelled`, `error: 'abandoned'`, Endzeit jetzt; danach greifen
+die Fristen oben. `needs_input` ist ein Endzustand und bleibt. Dritter
+stündlicher Lauf `stale-run-retention`
+(`packages/runner/server/utils/staleRunRetention.ts`), EIGENER Schalter
+`pukalani.runner.staleRunRetention` off/count/apply (control: `count` —
+scharf nur mit Davids Ja zur gezählten Zahl), Hand-Route
+`POST /api/runner/retention/stale`. FORTSETZEN NACH EINER RÜCKFRAGE prüft
+die geerbten Testbefehle mit EINER Regel für Route und Board
+(`checkInheritedTestCommands`, `shared/testCommands.ts`): passt ein alter
+Lauf nicht mehr zur Liste, antwortet `resume.post.ts` 409 mit dem Grund, und
+das Board zeigt statt des Antwortfelds den Satz „leg einen neuen Lauf an".
+Runbook für alle Themen: docs/runbooks/AI-RUNNER-BETRIEB.md.

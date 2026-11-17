@@ -56,6 +56,7 @@ const EXPECTED_JOB_NAMES = [
   'reporter-email-prune',
   'run-retention',
   'run-text-retention',
+  'stale-run-retention',
   'trial-sweep',
 ]
 
