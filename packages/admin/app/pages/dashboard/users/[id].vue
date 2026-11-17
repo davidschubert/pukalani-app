@@ -2,6 +2,7 @@
 import type { TableColumn } from '@nuxt/ui'
 import type { AdminUserActivity, AdminUserComment, AdminUserDetailResponse } from '../../../../shared/types/admin'
 import { userActionErrorCode, userActionErrorKeys } from '../../../../shared/userActionErrors'
+import { USER_ACTIVITY_LIMIT, userActivityTextKey } from '../../../../shared/userActivity'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'users.manage', dashboardScope: 'operator' })
 
@@ -92,66 +93,41 @@ function exactDateTime(iso: string): string {
 }
 
 /**
- * Appwrite-Event-Namen in Klartext (Audit-Befund C12).
+ * AKTIVITÄT (AL1): kommt aus dem Betreiber-Protokoll `audit_logs` — was die
+ * Person selbst tat und was ein Betreiber am Konto tat (Regeln:
+ * shared/userActivity.ts, Lesen: server/utils/userActivity.ts). Bis Appwrite
+ * 2.5 stand hier `users.listLogs`; die Quelle gibt es nicht mehr.
  *
- * `users.listLogs` liefert rohe API-Ereignisnamen (`account.sessions.create`,
- * `account.update.password`, …). Die standen hier als Monospace-Badge in der
- * Oberfläche — ein Betreiber liest daraus nicht, dass sich jemand angemeldet
- * hat. Die Zuordnung ist eine EXPLIZITE Liste, kein Zerlegen des Punktpfades:
- * ein geratener Text ist schlimmer als der rohe Name.
- *
- * Die Namen sind ein offener Raum (jede Appwrite-Version kann welche
- * hinzufügen) — WAS NICHT IN DER LISTE STEHT, BLEIBT SICHTBAR, roh und
- * monospace. Kein Rückfall auf „Unbekannt", der ein Loch unsichtbar macht.
+ * Aktionen in Klartext über eine EXPLIZITE Liste (Audit-Befund C12) — WAS
+ * NICHT IN DER LISTE STEHT, BLEIBT SICHTBAR, roh und monospace. Kein Rückfall
+ * auf „Unbekannt", der ein Loch unsichtbar macht.
  */
-const ACTIVITY_EVENT_KEYS: Record<string, string> = {
-  'account.create': 'accountCreate',
-  'account.delete': 'accountDelete',
-  'account.update.email': 'emailChanged',
-  'account.update.name': 'nameChanged',
-  'account.update.password': 'passwordChanged',
-  'account.update.phone': 'phoneChanged',
-  'account.update.prefs': 'prefsChanged',
-  'account.update.status': 'accountDeactivated',
-  'account.sessions.create': 'signIn',
-  'account.sessions.update': 'sessionRefreshed',
-  'account.sessions.delete': 'signOut',
-  'account.recovery.create': 'recoveryRequested',
-  'account.recovery.update': 'recoveryCompleted',
-  'account.verification.create': 'verificationRequested',
-  'account.verification.update': 'verificationCompleted',
-  'account.tokens.create': 'codeRequested',
-  'account.tokens.update': 'codeSignIn',
-  'account.targets.create': 'targetAdded',
-  'account.targets.update': 'targetChanged',
-  'account.targets.delete': 'targetRemoved',
-  'users.create': 'createdByOperator',
-  'users.delete': 'deletedByOperator',
-  'users.update.email': 'emailChangedByOperator',
-  'users.update.name': 'nameChangedByOperator',
-  'users.update.password': 'passwordChangedByOperator',
-  'users.update.labels': 'rolesChangedByOperator',
-  'users.update.prefs': 'prefsChangedByOperator',
-  'users.update.status': 'statusChangedByOperator',
-  'teams.memberships.create': 'membershipCreated',
-  'teams.memberships.update': 'membershipChanged',
-  'teams.memberships.delete': 'membershipRemoved',
-}
-function activityEventKey(event: string): string | null {
-  const suffix = ACTIVITY_EVENT_KEYS[event]
+function activityEventKey(entry: AdminUserActivity): string | null {
+  const suffix = userActivityTextKey(entry.action, entry.method)
   if (!suffix) return null
   const key = `admin.users.detail.activity.event.${suffix}`
   return te(key) ? key : null
 }
 
-// Aktivitätsprotokoll als Tabelle — dieselben vier kompakten Spalten wie in
-// der SessionsTable direkt darüber (B6: eine Karte, zwei Bauweisen war der
-// auffälligste Bruch auf dieser Seite).
+// Die Methode zeigt nur, was der Ereignis-Text nicht schon sagt.
+function activityMethod(entry: AdminUserActivity): string {
+  if (entry.action === 'user.password_changed' && entry.method === 'recovery') return ''
+  return entry.method
+}
+
+// Link auf das Protokoll nur, wenn der Betrachter es lesen darf (`audit.read`
+// trägt nur das Betreiber-Label, keine Site-Rolle — wie in der Nav).
+const canReadAudit = computed(() => userHasCapability(auth.user, 'audit.read'))
+
+// Aktivität als Tabelle — vier kompakte Spalten wie in der SessionsTable
+// direkt darüber (B6: eine Karte, zwei Bauweisen war der auffälligste Bruch
+// auf dieser Seite). Jede Spalte hat einen Kopf (ein leerer Kopf ist ein
+// stiller Hydration-Fehler).
 const activityColumns = computed<TableColumn<AdminUserActivity>[]>(() => [
-  { accessorKey: 'event', header: () => t('admin.users.detail.activity.col.event') },
-  { id: 'client', header: () => t('admin.users.detail.activity.col.client') },
+  { id: 'event', header: () => t('admin.users.detail.activity.col.event') },
+  { id: 'who', header: () => t('admin.users.detail.activity.col.who') },
   { id: 'location', header: () => t('admin.users.detail.activity.col.location') },
-  { accessorKey: 'time', header: () => t('admin.users.detail.activity.col.time') },
+  { id: 'time', header: () => t('admin.users.detail.activity.col.time') },
 ])
 
 // Letzte Kommentare ebenfalls als Tabelle (B6) — dieselbe Karte-über-Karte-
@@ -450,51 +426,55 @@ async function runUserAction(type: UserAction) {
               <SessionsTable v-else :sessions="data?.sessions ?? []" />
             </UPageCard>
 
-            <!-- Aktivitätsprotokoll — seit Appwrite 2.5 ohne Quelle, die Liste ist immer leer (s. server/api/admin/users/[id]/index.get.ts) -->
+            <!-- Aktivität aus dem Betreiber-Protokoll audit_logs (AL1, s. server/api/admin/users/[id]/index.get.ts) -->
             <!-- min-w-0 wie bei den Sessions: sonst wächst die Karte auf
                  Inhaltsbreite der Tabelle statt sie scrollen zu lassen -->
             <UPageCard variant="subtle" :ui="{ container: 'min-w-0' }">
               <div class="mb-3 flex items-center justify-between">
                 <h3 class="font-semibold">{{ t('admin.users.detail.activity.title') }}</h3>
-                <UBadge color="neutral" variant="subtle">{{ data?.activity.length ?? 0 }}</UBadge>
+                <UBadge v-if="!data?.activityFailed" color="neutral" variant="subtle">{{ data?.activity.length ?? 0 }}</UBadge>
               </div>
-              <UTable :data="data?.activity ?? []" :columns="activityColumns" data-user-activity>
+              <UAlert
+                v-if="data?.activityFailed"
+                color="warning"
+                variant="subtle"
+                icon="i-ph-warning"
+                :title="t('admin.users.detail.activity.failedTitle')"
+                :description="t('admin.users.detail.activity.failed')"
+                data-user-activity-failed
+              />
+              <UTable v-else :data="data?.activity ?? []" :columns="activityColumns" data-user-activity>
                 <template #event-cell="{ row }">
-                  <span
-                    v-if="activityEventKey(row.original.event)"
-                    class="text-sm font-medium"
-                    :title="row.original.event"
-                  >{{ t(activityEventKey(row.original.event)!) }}</span>
-                  <UBadge v-else color="neutral" variant="subtle" size="sm" class="font-mono">{{ row.original.event }}</UBadge>
-                </template>
-                <template #client-cell="{ row }">
-                  <div class="flex min-w-0 flex-col gap-1 text-xs text-muted">
-                    <span v-if="row.original.clientName" class="flex items-center gap-1.5">
-                      <UIcon :name="browserIcon(row.original.clientName)" class="size-3.5 shrink-0" />
-                      <span class="truncate">{{ [row.original.clientName, row.original.clientVersion].filter(Boolean).join(' ') }}</span>
+                  <div class="flex min-w-0 flex-col gap-0.5">
+                    <span
+                      v-if="activityEventKey(row.original)"
+                      class="text-sm font-medium"
+                      :title="row.original.action"
+                    >{{ t(activityEventKey(row.original)!) }}</span>
+                    <UBadge v-else color="neutral" variant="subtle" size="sm" class="w-fit font-mono">{{ row.original.action }}</UBadge>
+                    <span v-if="row.original.fields.length" class="text-xs text-muted">
+                      {{ row.original.fields.map(field => t(`admin.users.detail.activity.field.${field}`)).join(', ') }}
                     </span>
-                    <span v-if="row.original.osName" class="flex items-center gap-1.5">
-                      <UIcon :name="osIcon(row.original.osName)" class="size-3.5 shrink-0" />
-                      <span class="truncate">{{ [row.original.osName, row.original.osVersion].filter(Boolean).join(' ') }}</span>
-                    </span>
-                    <span v-if="row.original.deviceName" class="flex items-center gap-1.5">
-                      <UIcon :name="deviceIcon(row.original.deviceName)" class="size-3.5 shrink-0" />
-                      <span class="truncate">{{ row.original.deviceName }}</span>
-                    </span>
+                    <span v-if="activityMethod(row.original)" class="font-mono text-xs text-dimmed">{{ activityMethod(row.original) }}</span>
                   </div>
+                </template>
+                <template #who-cell="{ row }">
+                  <span v-if="row.original.origin === 'self'" class="text-xs text-muted">{{ t('admin.users.detail.activity.self') }}</span>
+                  <span v-else class="flex items-center gap-1.5 text-xs">
+                    <UIcon name="i-ph-shield-check" class="size-3.5 shrink-0 text-primary" />
+                    <span class="truncate">{{ row.original.operatorName || t('admin.users.detail.activity.operator') }}</span>
+                  </span>
                 </template>
                 <template #location-cell="{ row }">
-                  <div class="flex min-w-0 flex-col gap-1 text-xs">
-                    <span class="flex items-center gap-1.5 text-muted">
-                      <UIcon :name="flagIcon(row.original.countryCode)" class="size-3.5 shrink-0" />
-                      <span class="truncate">{{ row.original.countryName || t('account.sessions.unknown') }}</span>
-                    </span>
+                  <div v-if="row.original.origin === 'self'" class="flex min-w-0 flex-col gap-1 text-xs">
+                    <span class="truncate text-muted">{{ row.original.place || t('account.sessions.unknown') }}</span>
                     <span class="truncate font-mono text-dimmed">{{ row.original.ip || '—' }}</span>
                   </div>
+                  <span v-else class="text-xs text-dimmed">—</span>
                 </template>
                 <template #time-cell="{ row }">
-                  <span class="whitespace-nowrap text-xs text-muted" :title="exactDateTime(row.original.time)">
-                    {{ formatRelativeTime(row.original.time) }}
+                  <span class="whitespace-nowrap text-xs text-muted" :title="exactDateTime(row.original.createdAt)">
+                    {{ formatRelativeTime(row.original.createdAt) }}
                   </span>
                 </template>
 
@@ -506,6 +486,12 @@ async function runUserAction(type: UserAction) {
                   />
                 </template>
               </UTable>
+              <p v-if="!data?.activityFailed && data?.activityTruncated" class="mt-3 text-xs text-muted" data-user-activity-truncated>
+                {{ t('admin.users.detail.activity.truncated', { count: USER_ACTIVITY_LIMIT }) }}
+                <ULink v-if="canReadAudit" :to="localePath('/dashboard/admin')" class="text-primary hover:underline">
+                  {{ t('admin.users.detail.activity.openAudit') }}
+                </ULink>
+              </p>
             </UPageCard>
           </div>
 

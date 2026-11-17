@@ -1,11 +1,13 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
-import type { AdminUserComment, AdminUserDetailResponse } from '../../../../../shared/types/admin'
+import type { AdminUserActivity, AdminUserComment, AdminUserDetailResponse } from '../../../../../shared/types/admin'
+import { USER_ACTIVITY_LIMIT } from '../../../../../shared/userActivity'
 
 type CommentRow = Models.Row & Omit<AdminUserComment, '$id' | '$createdAt'>
 
 /**
- * Vollständige User-Sicht: Profil, aktive Sessions und letzte Kommentare.
+ * Vollständige User-Sicht: Profil, aktive Sessions, Aktivität (aus dem
+ * Betreiber-Protokoll `audit_logs`) und letzte Kommentare.
  *
  * DATENTÜR (Audit-Befund 2026-08-01): die Kommentare kamen bis hierher über den
  * rohen Admin-Client und waren damit POOL-WEIT — die letzte Stelle in
@@ -56,6 +58,19 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
         .then(s => s.$id).catch(() => '')
     : ''
 
+  // Startet hier, damit es neben den drei Abfragen darunter läuft (Begründung
+  // und Regeln am `await` weiter unten).
+  const activityRead = listUserActivity(event, userId, USER_ACTIVITY_LIMIT)
+    .then(section => ({ ...section, failed: false }))
+    .catch((error: unknown) => {
+      const { type, code } = (error ?? {}) as { type?: unknown, code?: unknown }
+      logEvent('error', 'admin.user_activity_read_failed', {
+        type: typeof type === 'string' ? type : '',
+        code: typeof code === 'number' ? code : 0,
+      })
+      return { activity: [] as AdminUserActivity[], truncated: false, failed: true }
+    })
+
   const [sessions, targets, comments] = await Promise.all([
     admin.users.listSessions({ userId }).catch(() => ({ sessions: [] as Models.Session[] })),
     // Benachrichtigungskanäle (email/sms/push-Targets)
@@ -64,6 +79,21 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
       Query.equal('authorId', userId), Query.orderDesc('$createdAt'), Query.limit(10),
     ]).catch(() => ({ total: 0, rows: [] as CommentRow[] })),
   ])
+
+  // AKTIVITÄT (AL1, 2026-11-17): bis Appwrite 2.5 kam die Liste aus
+  // `users.listLogs` — den Endpunkt gibt es seit 2.5 nicht mehr (auf 2.7.1
+  // 404, node-appwrite 30 hat ihn entfernt), die Liste war seitdem leer.
+  // Davids Entscheidung: FÜLLEN statt entfernen, aus dem vorhandenen
+  // Betreiber-Protokoll `audit_logs` (Selbst-Ereignisse aus `logAuthEvent` +
+  // Betreiber-Aktionen am Konto aus `recordAudit`; Regeln in
+  // shared/userActivity.ts). Gelesen NACH `recordAuditView`, aber dessen
+  // `user.viewed` filtert die Abfrage ohnehin aus.
+  // EIN LESEFEHLER IST KEIN LEERER TAG: Profil und Sitzungen kommen
+  // trotzdem, die Antwort sagt `activityFailed` — die Seite zeigt dann einen
+  // Hinweis statt „Keine Aktivität". Im Log keine Namen oder Ids von Personen.
+  // Nur Art und Code des Fehlers ins Log: die Meldung einer Abfrage kann die
+  // Konto-Id wiederholen.
+  const activity = await activityRead
 
   const prefs = user.prefs as { bio?: string, avatarUrl?: string }
 
@@ -109,15 +139,10 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
       lastSeen,
     },
     sessions: safeSessions,
-    // Aktivitätsprotokoll: LEER, und das nicht erst seit dem SDK-Bump
-    // (2026-11-10). Appwrite hat `GET /users/{id}/logs` mit Server 2.5
-    // entfernt — auf 2.7.1 antwortet der Endpunkt 404, der frühere Aufruf lief
-    // still in sein `.catch` und lieferte seitdem immer []. node-appwrite 30
-    // hat `users.listLogs` dann auch aus dem SDK genommen. Der Nachfolger
-    // `activities.listEvents` existiert self-hosted NICHT (2.7.1: 404). Feld
-    // und Typ bleiben, damit die Admin-Ansicht unverändert ihren Leerzustand
-    // zeigt; ob der Abschnitt ganz wegfällt, ist eine Produktentscheidung.
-    activity: [],
+    // Aktivität aus dem Betreiber-Protokoll `audit_logs` (AL1) — s. oben.
+    activity: activity.activity,
+    activityTruncated: activity.truncated,
+    activityFailed: activity.failed,
     targets: targets.targets.map(target => ({
       $id: target.$id,
       $createdAt: target.$createdAt,

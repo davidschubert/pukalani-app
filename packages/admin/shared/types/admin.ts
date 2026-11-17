@@ -1,3 +1,4 @@
+import type { AccountEventProfileField } from '../../../core/shared/accountEvents'
 import type { DashboardStatValue } from '../../../core/shared/types/dashboard-stat'
 
 /** Auf sichere Felder reduzierter Appwrite-User für die Admin-UI */
@@ -58,18 +59,30 @@ export interface AdminUserSession {
   current: boolean
 }
 
-/** Ein Eintrag aus dem Appwrite-Aktivitätsprotokoll des Users (früher users.listLogs — seit Appwrite 2.5 ohne Quelle, die Liste ist immer leer; s. users/[id]/index.get.ts) */
+/**
+ * Ein Eintrag der Aktivitätsliste eines Kontos — aus dem Betreiber-Protokoll
+ * `audit_logs` (AL1; Regeln in `shared/userActivity.ts`). Bis Appwrite 2.5
+ * kam die Liste aus `users.listLogs`, deren Felder (Gerät, Land) gibt es nicht mehr.
+ */
 export interface AdminUserActivity {
-  event: string
-  time: string
+  /** Row-Id der Protokoll-Zeile — Vue-`key`, nie angezeigt. */
+  id: string
+  /** Protokoll-Aktion, z. B. `user.login`, `user.block`. */
+  action: string
+  /** ISO-8601, aus `$createdAt` der Zeile. */
+  createdAt: string
+  /** `self` = die Person selbst, `operator` = ein Betreiber am Konto. */
+  origin: 'self' | 'operator'
+  /** Nur bei `operator`: der Name des Betreibers (sonst leer). */
+  operatorName: string
+  /** Nur bei `self`: die IP-Adresse der Person (die eines Betreibers bleibt draußen). */
   ip: string
-  countryCode: string
-  countryName: string
-  clientName: string
-  clientVersion: string
-  osName: string
-  osVersion: string
-  deviceName: string
+  /** Nur bei `self`: „Stadt, Region" aus der lokalen Orts-Datenbank, oder leer. */
+  place: string
+  /** Kurze Kennung aus `metadata.method` (`password`, `otp`, `recovery` …), oder leer. */
+  method: string
+  /** Nur bei `user.profile_updated`: die geänderten Feld-NAMEN (geschlossene Liste). */
+  fields: AccountEventProfileField[]
 }
 
 /** Ein Benachrichtigungskanal des Users (users.listTargets) */
@@ -100,6 +113,10 @@ export interface AdminUserDetailResponse {
   user: AdminUserDetail
   sessions: AdminUserSession[]
   activity: AdminUserActivity[]
+  /** Es gibt ältere Einträge, die nicht mehr in die Liste passten. */
+  activityTruncated: boolean
+  /** Das Protokoll war nicht lesbar — die leere Liste heißt dann NICHT „nichts geschehen". */
+  activityFailed: boolean
   targets: AdminUserTarget[]
   comments: AdminUserComment[]
   commentsTotal: number
