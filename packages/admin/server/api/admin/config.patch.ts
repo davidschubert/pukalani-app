@@ -1,22 +1,33 @@
-import { AppwriteException } from 'node-appwrite'
 import { z } from 'zod'
 import { aiModelCheckRejection } from '../../../../core/shared/aiModelEndpoints'
 import type { AiModelCheck } from '../../../../core/shared/aiModelEndpoints'
 
+/**
+ * EIN TEIL-OBJEKT (BP1-Nachtrag, 2026-11-17): jedes Feld optional, mindestens
+ * eines. Die Seite sendet nur, was sich gegenüber dem geladenen Stand geändert
+ * hat — vorher schickte sie ALLE Schalter aus ihrem eigenen Stand, und zwei
+ * Betreiber, die gleichzeitig verschiedene Schalter umlegten, schrieben dem
+ * anderen dessen alten Wert zurück. Die vier Felder sind vier eigene Spalten
+ * ohne Abhängigkeit untereinander; ein fehlendes Feld heißt „nicht
+ * angefasst", nie „aus".
+ */
 const configSchema = z.object({
-  registrationEnabled: z.boolean(),
-  commentsEnabled: z.boolean(),
-  maintenanceMode: z.boolean(),
+  registrationEnabled: z.boolean().optional(),
+  commentsEnabled: z.boolean().optional(),
+  maintenanceMode: z.boolean().optional(),
   // Globales KI-Model-Override (app_config.aiModel, system-016) — leer =
   // zurück auf den Build-Default aus pukalani.ai; OpenRouter-artige Ids (vendor/model).
-  // Optional: alte Clients ohne das Feld patchen nur die Flags.
   aiModel: z.string().trim().max(100)
     .regex(/^$|^[\w.-]+\/[\w.:-]+$/, 'Erwartet vendor/model oder leer')
     .optional(),
-})
+}).refine(data => Object.keys(data).length > 0, 'Mindestens ein Feld')
 
 /**
  * Produkt-Flags setzen (Upsert der app_config/global-Zeile) + Audit.
+ *
+ * Geschrieben wird über `mutateAppConfig()` (appConfigWrite.ts) und NUR mit
+ * den genannten Spalten — dieselbe Kette wie Produkt-Schalter und
+ * Theme-Einstellungen, die dieselbe Zeile schreiben.
  *
  * KI-MODELL WIRD BEIM SPEICHERN GEPRÜFT (KI1 c, 2026-11-17): der Text-Transport
  * bindet jeden Aufruf an die zwei Europa-Endpunkte; ein Modell ohne einen davon
@@ -46,20 +57,11 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  try {
-    await admin.tablesDB.updateRow({ databaseId, tableId: 'app_config', rowId: 'global', data })
-  }
-  catch (error) {
-    // NUR wenn die Zeile fehlt anlegen — andere Fehler nicht verschlucken
-    // (sonst 409 vom Create, der den echten Fehler maskiert).
-    if (error instanceof AppwriteException && error.code === 404) {
-      await admin.tablesDB.createRow({ databaseId, tableId: 'app_config', rowId: 'global', data })
-        .catch(e => { throw toH3Error(e, 'Could not save configuration') })
-    }
-    else {
-      throw toH3Error(error, 'Could not save configuration')
-    }
-  }
+  // Die Modell-Prüfung oben bleibt AUSSERHALB der Kette: sie kann bis zu 5 s
+  // beim Vermittler warten, und so lange stünden sonst alle anderen Schreiber
+  // dieser Zeile an. `compute` braucht den gelesenen Stand nicht — es schreibt
+  // nur, was der Aufrufer genannt hat.
+  await mutateAppConfig(event, () => ({ data, result: undefined }), 'Could not save configuration')
 
   await recordAudit(event, {
     action: 'config.updated',

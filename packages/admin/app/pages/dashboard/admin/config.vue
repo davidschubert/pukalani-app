@@ -34,6 +34,27 @@ watchEffect(() => {
 
 
 
+/**
+ * NUR WAS SICH GEÄNDERT HAT (BP1-Nachtrag, 2026-11-17): verglichen wird mit
+ * dem GELADENEN Stand, nicht mit dem eigenen. Vorher gingen alle Schalter aus
+ * dem Stand dieser Seite raus — hatte ein zweiter Betreiber inzwischen einen
+ * anderen Schalter umgelegt, schrieb dieses Speichern ihm den alten Wert
+ * zurück. Die Route nimmt ein Teil-Objekt; `aiEnabled`/`aiDefaultModel` sind
+ * reine Anzeige und gehen nie mit.
+ */
+type ConfigPatch = Partial<Pick<AppConfig, 'registrationEnabled' | 'commentsEnabled' | 'maintenanceMode' | 'aiModel'>>
+const changes = computed<ConfigPatch>(() => {
+  const loaded = data.value
+  const patch: ConfigPatch = {}
+  for (const key of ['registrationEnabled', 'commentsEnabled', 'maintenanceMode'] as const) {
+    if (!loaded || state[key] !== loaded[key]) patch[key] = state[key]
+  }
+  const model = (state.aiModel ?? '').trim()
+  if (!loaded || model !== (loaded.aiModel ?? '').trim()) patch.aiModel = model
+  return patch
+})
+const hasChanges = computed(() => Object.keys(changes.value).length > 0)
+
 const flags = computed(() => [
   { key: 'registrationEnabled' as const, icon: 'i-ph-user-plus' },
   { key: 'commentsEnabled' as const, icon: 'i-ph-chat-circle' },
@@ -47,17 +68,13 @@ const loading = ref(false)
  * mit Warnung, weil der Vermittler gerade nicht antwortete.
  */
 async function save() {
+  // Nichts geändert ⇒ nichts zu senden (die Route lehnt ein leeres Teil-Objekt ab).
+  if (!hasChanges.value) return
   loading.value = true
   try {
-    // Nur die patchbaren Felder senden (aiEnabled/aiDefaultModel sind reine Anzeige)
     const res = await $fetch<{ aiModelCheck?: AiModelCheck }>('/api/admin/config', {
       method: 'PATCH',
-      body: {
-        registrationEnabled: state.registrationEnabled,
-        commentsEnabled: state.commentsEnabled,
-        maintenanceMode: state.maintenanceMode,
-        aiModel: state.aiModel ?? '',
-      },
+      body: changes.value,
     })
     await refresh()
     if (res.aiModelCheck === 'unverified') {
@@ -149,7 +166,7 @@ async function save() {
       </div>
 
       <div class="mt-6 flex justify-end">
-        <UButton :loading="loading" @click="save">{{ t('admin.config.save') }}</UButton>
+        <UButton :loading="loading" :disabled="!hasChanges" @click="save">{{ t('admin.config.save') }}</UButton>
       </div>
     </UPageCard>
   </div>
