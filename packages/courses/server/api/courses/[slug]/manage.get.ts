@@ -1,4 +1,5 @@
 import { Query } from 'node-appwrite'
+import { toManagedCourse } from '../../../../shared/coursePreview'
 import { COURSES_TABLE, LESSONS_TABLE, type CourseRow, type LessonRow } from '../../../../shared/types/course'
 
 /**
@@ -24,5 +25,5 @@ export default defineEventHandler(async (event): Promise<CourseRow & { lessons: 
     Query.equal('courseId', id), Query.orderAsc('order'), Query.limit(500),
   ])
 
-  return { ...course, lessons: lessons.rows }
+  return { ...toManagedCourse(course), lessons: lessons.rows }
 })

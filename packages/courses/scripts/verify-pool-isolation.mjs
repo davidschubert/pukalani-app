@@ -228,7 +228,7 @@ try {
 
   const created = await call(HOST_A, '/api/courses', {
     method: 'POST', cookie: ownerCookie,
-    body: { title: 'Iso-Kurs A', slug, description: 'Gehört Kunde A.', access: 'free', status: 'published' },
+    body: { title: 'Iso-Kurs A', slug, description: 'Gehört Kunde A.', access: 'members', status: 'published' },
   })
   const courseId = created.json?.$id
   check('POST /api/courses auf A → 201 (Site-Rolle genügt, kein globales Label)', created.status === 201 && !!courseId, `Status ${created.status} ${created.text.slice(0, 160)}`)
@@ -312,7 +312,7 @@ try {
   console.log('\n6. Slug gehört dem Mandanten (courses-002: uq_tenant_slug)')
   const sameSlugOnB = await call(HOST_B, '/api/courses', {
     method: 'POST', cookie: opCookie,
-    body: { title: 'Gleicher Slug bei B', slug, description: 'Gehört Kunde B.', access: 'free', status: 'draft' },
+    body: { title: 'Gleicher Slug bei B', slug, description: 'Gehört Kunde B.', access: 'members', status: 'draft' },
   })
   check('Derselbe Slug bei B → 201 statt 409 (Unique ist tenant-relativ)', sameSlugOnB.status === 201, `Status ${sameSlugOnB.status} ${sameSlugOnB.text.slice(0, 160)}`)
   if (sameSlugOnB.json?.$id) cleanup.courses.push(sameSlugOnB.json.$id)
@@ -400,7 +400,7 @@ try {
   const draftSlug = `${slug}-entwurf`
   const draft = await call(HOST_A, '/api/courses', {
     method: 'POST', cookie: ownerCookie,
-    body: { title: 'Iso-Entwurf A', slug: draftSlug, description: 'Noch nicht fertig.', access: 'free', status: 'draft' },
+    body: { title: 'Iso-Entwurf A', slug: draftSlug, description: 'Noch nicht fertig.', access: 'members', status: 'draft' },
   })
   if (draft.json?.$id) cleanup.courses.push(draft.json.$id)
   check('Entwurf angelegt (201)', draft.status === 201, `Status ${draft.status}`)

@@ -30,6 +30,72 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N01 — Nacharbeiten: Stripe-Test-Treiber (SC2) und Migrations-Weg (MG1 b, c) ✅ 2026-11-17
+
+Zwei kleine Reste aus dem Stripe-Durchlauf vom 2026-11-12 und aus Paket P21.
+Pull Requests 253 und 254, keine Migration, keine Änderung an Production.
+
+**Was gebaut ist**
+
+- **Stripe-Test-Treiber (SC2).** `packages/control/scripts/a2a-checkout-driver.mjs`
+  las Schlüsseldateien und Projekt-Ids (`pool`, `control`), die es seit August
+  nicht mehr gibt. Er liest Ziel und Zugänge jetzt aus zwei Env-Dateien
+  (Standard: die der Apps `platform` und `control`), prüft das Ziel vor dem
+  ersten Aufruf und baut auf der gemeinsamen Hilfe der Bühne auf
+  (`scripts/lib/probe-stage.mjs`). Er geht den Weg des Wizards (Anmeldung,
+  `POST /api/onboarding/site`), hält den Stand eines Laufs in `.buehne/` statt
+  auf der Kommandozeile und räumt mit `cleanup` wieder auf (mit Nachzählen).
+  Lokal hängt er den Host der Probe-Community auf `<slug>.localhost` um, damit
+  der Rücksprung von Stripe nicht bei Production landet.
+- **Ein Weg für Migrationen (MG1 c).** 13 Layer trugen ein `migrate`-Skript,
+  das den Runner ohne `--app` rief und seit der zweiten App immer abbrach.
+  Entfernt; die README nennt den einen Weg `pnpm migrate --app <app>`. Ein
+  Test hält das: kein `package.json` unter `packages/` oder `apps/` ruft den
+  Runner selbst.
+- **Rückweg-Test mit Diagnose (MG1 b).** `rollbackScript.test.ts` schreibt bei
+  einem gescheiterten Test je Skript-Lauf Exit-Code, Signal, Dauer, ob der
+  Prozess überhaupt startete, stdout und stderr getrennt ins Protokoll, dazu
+  den Stand der Attrappe. Eine Ursache für den einmal roten Lauf ist damit
+  NICHT festgelegt — sie steht beim nächsten Mal im Protokoll.
+
+**Beweise**
+
+- Treiber, lokal gegen den Prod-Spiegel, Stripe im Testmodus (Davids Ja per
+  Klick): anlegen → Owner 200, ohne Anmeldung 401 → Portal vor dem Kauf 409 →
+  Checkout-Adresse → Kauf mit der Testkarte → drei Webhooks 200 → `personal`,
+  `active`, Trial geräumt → Portal 200, zweiter Kauf 409 `already_subscribed`
+  → Kündigung → `basic`, `canceled`, Sperre `billing` → `cleanup`: nichts
+  übrig. Protokoll und Rezept: runbooks/STRIPE-TEST-WALKTHROUGH.md,
+  „Durchlauf 2026-11-17".
+- Rückweg-Test: Gegenprobe mit einem absichtlich roten Test — Ausgabe und
+  Exit-Code stehen im Protokoll; danach zurückgenommen.
+- Core: lint, alle Tests und typecheck grün; die Repo-Wächter grün.
+
+**Nicht geprüft.** Kein Lauf gegen Production und keiner gegen ein anderes
+entferntes Ziel: der Weg des Treibers dorthin ist gebaut, aber nie gefahren.
+Jahres-Abo und Pro sind mit dem neuen Treiber nicht erneut gekauft. Im
+Stripe-Testkonto bleiben ein Test-Kunde und ein gekündigtes Test-Abo stehen.
+
+**Offen geblieben** (OPEN-ITEMS MG1): die Ursache des roten Laufs; ob der
+tägliche Blick spaltengenau prüfen soll (der Baustein aus P20 liest alle
+Spalten, angeschlossen ist er nicht — erst auf Production zählen); ein
+Ablaufdatum für die vier lesenden Schlüssel (beides braucht Davids Ja).
+
+**Gelernt:** (1) Ein Skript, das auf der gemeinsamen Hilfe aufbaut, lief beim
+ersten Versuch durch — der alte Treiber hatte jeden Handgriff selbst und
+veraltete deshalb mit jedem Umzug. (2) Eine Warteschleife gehört nur mit `&&`
+hinter den Befehl, auf dessen Wirkung sie wartet: `stripe subscriptions
+cancel` fragt ohne `--confirm` nach und endet mit Exit 1, die Schleife
+dahinter wartete auf ein Ereignis, das nie kam. Dasselbe mit `;` zwischen
+Lint und Commit: der Commit ging trotz Lint-Fehler durch (vor dem Push
+bemerkt). (3) Der Haken „Test gescheitert" läuft in vitest NACH `afterEach` —
+die Attrappe war da schon gelöscht; was eine Diagnose zeigen soll, muss vor
+dem Aufräumen festgehalten werden (Reihenfolge gemessen, nicht angenommen).
+(4) Ein
+Dev-Server antwortet nach dem Start kurz mit 503: erst `/api/health` beider
+Server abwarten, dann den Lauf starten. Ein abgebrochenes Anlegen lässt einen
+halben Stand zurück — der Treiber sagt das jetzt bei jedem Kommando.
+
 ### N02 — Nacharbeiten „Mails und Bremsen": AB1 (b–f) und SR1 (c, d) ✅ 2026-11-17
 
 Die kleinen Reste aus den Paketen P02 (Anmelde-Bremse) und P25 (kleine
