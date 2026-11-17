@@ -44,7 +44,7 @@
       "freeCommunity": "Community: Beiträge, Umfragen, Fragen & Kommentare",
       "freeVotes": "Up-/Downvotes und Live-Updates in Echtzeit",
       "freeEvents": "Events entdecken, zusagen — mit Erinnerungen & Replays",
-      "freeCourses": "Freie & Members-Kurse mit Lernfortschritt",
+      "freeCourses": "Kurse für Mitglieder mit Lernfortschritt",
       "freeFeed": "Activity-Feed und Benachrichtigungen",
       "freeThemes": "Themes, Hell-/Dunkelmodus und zwei Sprachen",
       "freePrivacy": "Volle Datenkontrolle: Export & Löschung (DSGVO)",
@@ -82,8 +82,7 @@
       },
       "courses": {
         "title": "Kurse",
-        "free": "Freie Kurse",
-        "members": "Members-Kurse (für Angemeldete)",
+        "members": "Kurse für Mitglieder",
         "pro": "Pro-Kurse — alle kostenpflichtigen Kurse inklusive",
         "progress": "Lernfortschritt & Abschluss-Tracking",
         "discussion": "Diskussion & Fragen je Lektion"

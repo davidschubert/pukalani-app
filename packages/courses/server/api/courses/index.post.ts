@@ -1,4 +1,5 @@
 import { courseSchema } from '../../../schemas/course'
+import { toManagedCourse } from '../../../shared/coursePreview'
 import { COURSES_TABLE, type CourseRow } from '../../../shared/types/course'
 
 /**
@@ -64,5 +65,5 @@ export default defineEventHandler(async (event) => {
   }
 
   setResponseStatus(event, 201)
-  return row
+  return toManagedCourse(row)
 })

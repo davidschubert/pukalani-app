@@ -47,19 +47,6 @@ const EXCEPTIONS: Record<string, string> = {
     + 'öffentliche Community, Turnstile, Inhalts-Sperre (actor guest).',
   'packages/events/server/api/events/reminder-sweep.post.ts':
     'Dienst-Route ohne Nutzer: geschützt durch das Naht-Geheimnis (x-sweep-key), läuft je Community-Host.',
-  // ÜBERSETZEN IST LESEN, NICHT MITMACHEN. Regel 4 der UGC-Übersetzung
-  // („Übersetzen zeigt nie mehr als Lesen"): die drei Routen lesen ihr Ziel
-  // über die Session-Klinke, wer es nicht lesen darf, bekommt 404. Eine
-  // Mitgliedschafts-Pflicht nähme angemeldeten Lesern einer offenen Community
-  // den Knopf, bevor sie je etwas geschrieben haben — genau den Menschen, die
-  // ihn brauchen. Bremsen: 10 je 10 min je Mensch und Community, Tages-Eimer.
-  // (Kurse und Lektionen sind anders: ihr Inhalt gehört Mitgliedern, SEC-029.)
-  'packages/comments/server/api/comments/[id]/translate.post.ts':
-    'Übersetzen ist Lesen: Ziel wird über die Session-Klinke gelesen (404 ohne Leserecht), nur Angemeldete, gebremst.',
-  'packages/posts/server/api/posts/[id]/translate.post.ts':
-    'Übersetzen ist Lesen: Ziel wird über die Session-Klinke gelesen (404 ohne Leserecht), nur Angemeldete, gebremst.',
-  'packages/events/server/api/events/[id]/translate.post.ts':
-    'Übersetzen ist Lesen: Ziel wird über die Session-Klinke gelesen (404 ohne Leserecht), nur Angemeldete, gebremst.',
   'packages/feedback/server/api/feedback/index.post.ts':
     'Feedback an den BETREIBER (Control Plane), kein Inhalt der Community; bewusst auch für Gäste '
     + '(Hürde minimal, Rate-Limit feedback:create, Stummschaltung je Community im Control Plane).',

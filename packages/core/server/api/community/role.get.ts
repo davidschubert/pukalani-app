@@ -18,18 +18,22 @@
  * inklusive).
  */
 export default defineEventHandler(async (event) => {
-  if (!event.context.user) return { role: null, trustLevel: 0 }
+  if (!event.context.user) return { role: null, trustLevel: 0, member: false }
   try {
     // `resolveTrustLevel` wirft nie und antwortet im Zweifel mit 0 — es steht
     // trotzdem im selben try, damit ein Fehler der ROLLE nicht eine halbe
     // Antwort erzeugt.
-    const [role, trustLevel] = await Promise.all([
+    // `member` (MM1): dieselbe Regel wie `requireCommunityMembership` — Rolle
+    // ODER Community-Label, ohne Mandant jedes angemeldete Konto. Der Browser
+    // blendet damit Knöpfe aus, die es nur für Mitglieder gibt (Übersetzen).
+    const [role, trustLevel, member] = await Promise.all([
       resolveCommunityRole(event),
       resolveTrustLevel(event),
+      resolveCommunityMembership(event),
     ])
-    return { role, trustLevel }
+    return { role, trustLevel, member }
   }
   catch {
-    return { role: null, trustLevel: 0 }
+    return { role: null, trustLevel: 0, member: false }
   }
 })

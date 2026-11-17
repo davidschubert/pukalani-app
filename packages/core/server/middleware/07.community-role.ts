@@ -26,10 +26,28 @@
 export default defineEventHandler(async (event) => {
   const user = event.context.user
   const tenant = event.context.tenant
-  if (!user?.$id || !tenant?.communityId) return
+  if (!user?.$id) return
 
   const path = event.path.split('?')[0] ?? ''
   if (path.startsWith('/api/') || path.startsWith('/_')) return
+
+  /**
+   * „Gehört dieses Konto hierher?" (MM1, 2026-11-17) — der Spiegel für Knöpfe,
+   * die es nur für Mitglieder gibt (Übersetzen). Steht VOR der Abkürzung für
+   * Hosts ohne Community: ohne Mandant ist jedes angemeldete Konto Mitglied,
+   * und genau das soll die Einzel-Instanz auch im Browser wissen. Dieselbe
+   * Funktion wie hinter `requireCommunityMembership`, also dieselbe Antwort
+   * wie die Route. Ein Fehler heißt „nein": der Knopf fehlt dann einmal, die
+   * Route hätte ebenfalls abgelehnt.
+   */
+  try {
+    event.context.communityMember = await resolveCommunityMembership(event)
+  }
+  catch {
+    event.context.communityMember = false
+  }
+
+  if (!tenant?.communityId) return
 
   try {
     event.context.communityRole = await resolveCommunityRole(event)

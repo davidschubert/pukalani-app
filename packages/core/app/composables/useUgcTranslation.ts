@@ -7,7 +7,7 @@ import {
 
 /**
  * DER KNOPF „ÜBERSETZEN" AN EINEM INHALT (Paket 3 zu Davids Entscheidungen
- * vom 2026-08-17: ein Knopf je Inhalt, keine Automatik, nur Eingeloggte).
+ * vom 2026-08-17: ein Knopf je Inhalt, keine Automatik; seit 2026-11-17 nur Mitglieder, MM1).
  *
  * ── WARUM IN CORE ─────────────────────────────────────────────────────────
  * Zwei Konsumenten in zwei Produkt-Layern (`posts` und `comments`), und
@@ -80,6 +80,7 @@ export function useUgcTranslation(source: UgcTranslationSource) {
   const { t, locale } = useI18n()
   const toast = useToast()
   const { isLoggedIn } = useCurrentUser()
+  const isCommunityMember = useCommunityMember()
 
   const busy = ref(false)
   const showing = ref(false)
@@ -105,11 +106,14 @@ export function useUgcTranslation(source: UgcTranslationSource) {
   watch(entry, (value) => { if (!value) showing.value = false })
 
   /**
-   * Nur Eingeloggte (die Route antwortet Gästen 401) und nur, wo Text steht.
+   * Nur MITGLIEDER der Community (MM1, Davids Entscheidung 2026-11-16 — die
+   * Routen antworten Gästen 401 und fremden Konten 403 `not_a_member`) und
+   * nur, wo Text steht. Bis 2026-11-17 genügte die Anmeldung; ein fremdes
+   * Konto sah den Knopf dann und bekam nach dem Klick nur einen Fehler.
    * Im Embed sind Gäste nie eingeloggt — dort verschwindet der Knopf damit von
    * selbst, ohne dass dieser Layer das Embed kennen müsste.
    */
-  const canTranslate = computed(() => isLoggedIn.value && source.body().trim().length > 0)
+  const canTranslate = computed(() => isLoggedIn.value && isCommunityMember.value && source.body().trim().length > 0)
 
   /**
    * Die vorliegende Fassung IST die Grundfassung — es gibt nichts umzuschalten

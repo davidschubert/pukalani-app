@@ -157,6 +157,9 @@ export default defineNuxtPlugin(() => {
   // (useCommunityRole), die Autorität bleibt die Server-Route.
   const communityTrustLevel = useState<TrustLevel>('pukalani-community-trust-level', () => 0)
   communityTrustLevel.value = event?.context.communityTrustLevel ?? 0
+  // „Gehört hierher" (MM1) — derselbe Spiegel, dieselbe explizite Zuweisung.
+  const communityMember = useCommunityMember()
+  communityMember.value = event?.context.communityMember === true
   // Entfernt (SEC-030 Teil 2) — explizite Zuweisung aus demselben Grund wie
   // bei der Rolle: ein früher laufender Leser kann den Key schon angelegt haben.
   const communityRemoved = useCommunityRemoved()

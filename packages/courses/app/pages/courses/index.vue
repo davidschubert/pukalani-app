@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CourseListResponse, CourseRow } from '../../../shared/types/course'
+import type { CourseAccess, CourseListResponse, CourseRow } from '../../../shared/types/course'
 
 /**
  * Kurs-Galerie: öffentlich, auch für Gäste (SEC-029) — Karten mit
@@ -43,8 +43,8 @@ function onCreated(row: CourseRow) {
   void navigateTo(localePath(`/dashboard/courses/${row.$id}`))
 }
 
-const accessColor = (access: string) =>
-  access === 'paid' ? 'warning' as const : access === 'members' ? 'info' as const : 'success' as const
+const accessColor = (access: CourseAccess) =>
+  access === 'paid' ? 'warning' as const : 'success' as const
 </script>
 
 <template>
