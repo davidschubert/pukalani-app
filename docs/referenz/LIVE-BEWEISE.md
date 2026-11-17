@@ -212,7 +212,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-82 Beweis-Skripte im Repo: 6 E2E-Lauf, 30 Bühne (jeder Lauf), 10 Bühne (nachts), 36 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+83 Beweis-Skripte im Repo: 6 E2E-Lauf, 31 Bühne (jeder Lauf), 10 Bühne (nachts), 36 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -278,6 +278,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/onboarding/scripts/verify-my-overview.mjs` | Beweis für F12 — die Kunden-Übersicht auf `account.*`. | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-past-due-notice.mjs` | Beweis: DIE ZAHLUNGSWARNUNG EINES COMMUNITY-ABOS KOMMT BEIM OWNER AN (Davids Entscheidung vom 2026-08-03 — sie gehört in die COMMUNITY-Glocke). | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-profile-signal.mjs` | Beweis für U19 — die Karte „Hilf uns, Pukalani zu schärfen" UND ihr Leser. | Bühne (jeder Lauf) |
+| `packages/onboarding/scripts/verify-removed-notifications.mjs` | Beweis: EINE ENTFERNTE PERSON BEKOMMT AUS DER COMMUNITY NICHTS MEHR (MM1 b). | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-site-authz.mjs` | Beweis für O5 — Branding pro Mandant + Autorisierung je Community. | Bühne (nachts) |
 | `packages/onboarding/scripts/verify-site-branding.mjs` | Beweis für Entscheidung 12 (David, 2026-07-28) — SITE-OWNER wählen Theme + Variante ihrer Community selbst. Seit dem 2026-07-29 (Davids Entscheidung, Rest von OPEN-ITEMS B5) gehört die NEUTRAL-PALETTE (`data-neutral`, c… | Bühne (nachts) |
 | `packages/onboarding/scripts/verify-trial-notice.mjs` | Beweis für M13 — der Hinweis auf die ablaufende Testphase. | Bühne (nachts) |

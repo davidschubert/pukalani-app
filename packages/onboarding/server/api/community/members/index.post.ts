@@ -96,6 +96,10 @@ export default defineEventHandler(async (event): Promise<CommunityInviteResponse
           body: '',
           link: '/join',
           senderId: event.context.user?.$id,
+          // Die Einladung IST der Rückweg einer entfernten Person (MM1 b):
+          // alles andere aus dieser Community erreicht sie nicht mehr, das hier
+          // schon.
+          formerMember: 'deliver',
         })
       }
     }

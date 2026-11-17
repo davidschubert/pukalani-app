@@ -1,8 +1,14 @@
 import { Client, Query, TablesDB } from 'node-appwrite'
 import { createMicrocache } from '../../../core/server/utils/microcache'
 import type { CommunityMemberLookup, CommunityRoleResolver } from '../../../core/server/utils/communityPermission'
-import type { FormerCommunityMembersLookup, FormerCommunityMembersResolver } from '../../../core/server/utils/communityMembership'
+import type {
+  FormerCommunityMembersLookup,
+  FormerCommunityMembersResolver,
+  FormerMembersByTenantLookup,
+  FormerMembersByTenantResolver,
+} from '../../../core/server/utils/communityMembership'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
+import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 
 /**
  * G1 — Resolver-Implementierung über die community_members-Table des Control Plane
@@ -162,4 +168,59 @@ export function createFormerCommunityMembersResolver(
 /** Cache-Key des gebündelten Lookups — Trenner wie bei communityMemberCacheKey. */
 export function formerMemberCacheKey(communityId: string, projectId: string, userId: string): string {
   return `${communityId}\u0000${projectId}\u0000${userId}`
+}
+
+/**
+ * „EHEMALIG?" ÜBER DEN ABLAGE-STEMPEL (MM1 b, 2026-11-17) — der Vertrag
+ * `FormerMembersByTenantResolver` aus dem Core.
+ *
+ * Benachrichtigungen kennen ihre Community nur über den Stempel der Zeile
+ * (`communities.tenantId`), und Läufe ohne Request (Termin-Erinnerungen,
+ * Sammel-Mail) haben gar keinen Mandanten. Hier wird der Stempel in den
+ * Anker der Mitgliedschaft übersetzt (`communities.$id` + Projekt) und dann
+ * DERSELBE gebündelte Resolver gefragt wie für das Zeichen in der
+ * Kommentarliste — eine Regel für „ehemalig", ein Cache je Konto.
+ *
+ * Der Anker wird je Stempel 60 s gehalten (auch „gibt es nicht"); er ändert
+ * sich im Leben einer Community nie. BEWUSST OHNE Filter auf den Zustand der
+ * Community: eine stillgelegte Community hat alle Mitgliedschaften entzogen —
+ * genau das soll die Antwort sagen. Fehler werden nicht gehalten und ergeben
+ * eine leere Antwort (fail-soft, wie der Vertrag es verlangt).
+ */
+export function createFormerMembersByTenantResolver(
+  options: FormerMembersResolverOptions,
+  former: FormerCommunityMembersResolver = createFormerCommunityMembersResolver(options),
+): FormerMembersByTenantResolver {
+  const tablesDB = new TablesDB(
+    new Client().setEndpoint(options.endpoint).setProject(options.projectId).setKey(options.apiKey),
+  )
+  const anchors = createMicrocache<{ communityId: string, runtimeProjectId: string } | null>(options.cacheTtlMs ?? 60_000)
+
+  return async (lookup: FormerMembersByTenantLookup): Promise<string[]> => {
+    if (!lookup.tenantId || lookup.runtimeUserIds.length === 0) return []
+
+    let anchor = anchors.get(lookup.tenantId)
+    if (anchor === undefined) {
+      try {
+        const { rows } = await tablesDB.listRows<TenantRow>({
+          databaseId: options.databaseId,
+          tableId: COMMUNITIES_TABLE,
+          queries: [
+            Query.equal('tenantId', lookup.tenantId),
+            Query.select(['$id', 'projectId']),
+            Query.limit(1),
+          ],
+        })
+        const row = rows[0]
+        anchor = row?.$id && row.projectId ? { communityId: row.$id, runtimeProjectId: row.projectId } : null
+        anchors.set(lookup.tenantId, anchor)
+      }
+      catch {
+        return []
+      }
+    }
+    if (!anchor) return []
+
+    return await former({ ...anchor, runtimeUserIds: lookup.runtimeUserIds })
+  }
 }

@@ -29,7 +29,7 @@ const HOUR = 3600_000
 let tables: Record<string, Row[]>
 let listCalls: { tableId: string, queries: string[] }[]
 let updateError: unknown
-let notifyImpl: (input: Record<string, unknown>) => Promise<{ created: boolean, duplicate?: true }>
+let notifyImpl: (input: Record<string, unknown>) => Promise<{ created: boolean, duplicate?: true, skipped?: 'former_member' }>
 let notified: Record<string, unknown>[]
 /** Zeilen-Ids, die die nachgebaute Glocke schon trägt — Appwrites 409 bei fester `rowId`. */
 let createdRowIds: Set<string>
@@ -198,6 +198,19 @@ describe('sweepAllEventReminders — alle Communities', () => {
     const result = await sweepAllEventReminders({ dryRun: false })
     expect(result).toMatchObject({ reminded: 0, errors: 3 })
     expect(tables.events!.every(row => row.remindersSentAt === null)).toBe(true)
+  })
+
+  it('Zusage eines inzwischen entfernten Kontos: bewusst ausgelassen ist KEINE Störung — der Merker kommt (MM1 b)', async () => {
+    // u2 ist aus Community A entfernt: notify() schreibt für ihn nichts und sagt es.
+    notifyImpl = async input => input.recipientId === 'u2'
+      ? { created: false, skipped: 'former_member' as const }
+      : deliver(input)
+    const result = await sweepAllEventReminders({ dryRun: false })
+
+    expect(result).toMatchObject({ recipients: 3, reminded: 2, errors: 0 })
+    expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u3'])
+    // Ohne den Merker fragte der Lauf jede Stunde wieder (Gegenprobe: der Test darüber).
+    expect(tables.events!.every(row => typeof row.remindersSentAt === 'string')).toBe(true)
   })
 
   it('scheitert der Merker NACH den Benachrichtigungen, zählt errors — der nächste Takt läuft in die Dubletten', async () => {

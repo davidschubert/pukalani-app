@@ -1,5 +1,5 @@
 import { createTenantsTableResolver } from '../../../../packages/control/server/utils/tenantsResolver'
-import { createFormerCommunityMembersResolver, createCommunityMembersResolver } from '../../../../packages/control/server/utils/communityMembersResolver'
+import { createFormerCommunityMembersResolver, createFormerMembersByTenantResolver, createCommunityMembersResolver } from '../../../../packages/control/server/utils/communityMembersResolver'
 import { createCommunityHostResolver } from '../../../../packages/control/server/utils/communityHostResolver'
 import { createCommunityJoinDatesResolver } from '../../../../packages/control/server/utils/communityJoinDatesResolver'
 
@@ -57,7 +57,12 @@ export default defineNitroPlugin(() => {
   }
   registerTenantResolver(createTenantsTableResolver({ endpoint, projectId, apiKey, databaseId }))
   registerCommunityRoleResolver(createCommunityMembersResolver({ endpoint, projectId, apiKey, databaseId }))
-  registerFormerCommunityMembersResolver(createFormerCommunityMembersResolver({ endpoint, projectId, apiKey, databaseId }))
+  // EINE Instanz für beide Verträge: das Zeichen in der Kommentarliste und die
+  // Frage „bekommt dieses Konto noch Benachrichtigungen?" (MM1 b) teilen sich
+  // Regel und Cache.
+  const formerMembers = createFormerCommunityMembersResolver({ endpoint, projectId, apiKey, databaseId })
+  registerFormerCommunityMembersResolver(formerMembers)
+  registerFormerMembersByTenantResolver(createFormerMembersByTenantResolver({ endpoint, projectId, apiKey, databaseId }, formerMembers))
   registerCommunityHostResolver(createCommunityHostResolver({ endpoint, projectId, apiKey, databaseId }))
   registerCommunityJoinDatesResolver(createCommunityJoinDatesResolver({ endpoint, projectId, apiKey, databaseId }))
 })

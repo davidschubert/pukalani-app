@@ -99,9 +99,10 @@ interface ReminderOutcome {
 /**
  * DIE ARBEIT JE TERMIN, EINMAL für beide Wege: Zusagen lesen ⇒ je Zusage eine
  * Erinnerung mit fester Zeilen-Id ⇒ Merker, wenn niemand an einer STÖRUNG
- * scheiterte (`created: false` ohne `duplicate`, oder ein Wurf). Eine
- * Dublette ist kein Fehler und kein `reminded` — die Erinnerung steht schon
- * da. Ein Lesefehler lässt den Termin für den nächsten Takt liegen.
+ * scheiterte (`created: false` ohne `duplicate` und ohne `skipped`, oder ein
+ * Wurf). Eine Dublette ist kein Fehler und kein `reminded` — die Erinnerung
+ * steht schon da; ebenso eine Zusage, deren Konto inzwischen aus der Community
+ * entfernt ist (`skipped`, MM1 b). Ein Lesefehler lässt den Termin für den nächsten Takt liegen.
  */
 async function remindEvent(row: EventRow, port: ReminderPort, nowIso: string, dryRun: boolean): Promise<ReminderOutcome> {
   const outcome: ReminderOutcome = { recipients: 0, reminded: 0, errors: 0 }
@@ -131,7 +132,10 @@ async function remindEvent(row: EventRow, port: ReminderPort, nowIso: string, dr
         rowId: eventReminderRowId(row.$id, rsvp.userId, row.startAt),
       })
       if (sent.created) outcome.reminded++
-      else if (!sent.duplicate) failed++
+      // Bewusst nicht geschrieben (Empfänger aus der Community entfernt, MM1 b)
+      // ist wie die Dublette KEINE Störung — sonst bliebe der Termin fällig
+      // und der Lauf fragte jede Stunde wieder.
+      else if (!sent.duplicate && !sent.skipped) failed++
     }
     catch {
       failed++

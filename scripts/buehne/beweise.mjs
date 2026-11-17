@@ -133,6 +133,7 @@ export const BEWEISE = [
   { skript: 'packages/onboarding/scripts/verify-members-map.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-my-overview.mjs', lauf: 'buehne', env: 'control', dauer: 4, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-past-due-notice.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control', 'mailpit'] },
+  { skript: 'packages/onboarding/scripts/verify-removed-notifications.mjs', lauf: 'buehne', env: 'control', dauer: 15, braucht: ['appwrite', 'platform', 'control', 'mailpit'] },
   { skript: 'packages/onboarding/scripts/verify-profile-signal.mjs', lauf: 'buehne', env: 'control', dauer: 34, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-site-authz.mjs', lauf: 'nacht', env: 'control', dauer: 82, braucht: ['appwrite', 'platform', 'control', 'mailpit'] },
   { skript: 'packages/onboarding/scripts/verify-site-branding.mjs', lauf: 'nacht', env: 'control', dauer: 67, braucht: ['appwrite', 'platform', 'control'] },
