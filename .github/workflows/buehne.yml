@@ -83,9 +83,35 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Appwrite-Instanzschlüssel erzeugen
+      # Lokaler Briefkasten für ALLE Mails dieses Laufs (Einladung, Hinweis,
+      # Zahlungswarnung der Apps; Anmelde-Code der Datenbank): nichts verlässt
+      # den Runner. Über Version UND Prüfsumme festgelegt, wie die Actions
+      # über einen Commit. Steht VOR dem Stack, weil die Datenbank seine
+      # Adresse beim Start braucht.
+      - name: Briefkasten starten (Mailpit)
+        run: >
+          docker run -d --name buehne-mailpit
+          -p "$SMTP_PORT:1025" -p 8025:8025
+          axllent/mailpit:v1.33.1@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
+
+      # Der Instanz-Schlüssel je Lauf (wie in e2e.yml) — und der MAIL-WEG DER
+      # DATENBANK: ohne Mail-Server bietet Appwrite den Anmelde-Code per Mail
+      # nicht an, der passwortlose Weg antwortete dann anders als auf
+      # Production. Die Container erreichen den Briefkasten über die Adresse
+      # des Docker-Hosts (aus dem Standard-Netz gelesen, nicht geraten).
+      - name: Appwrite-Instanzschlüssel und Mail-Weg setzen
         working-directory: ci/appwrite
-        run: printf '\n_APP_OPENSSL_KEY_V1=%s\n' "$(openssl rand -hex 16)" >> ci.env
+        run: |
+          gateway=$(docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}')
+          if [ -z "$gateway" ]; then
+            echo '::error::Adresse des Docker-Hosts nicht gefunden'
+            exit 1
+          fi
+          {
+            printf '\n_APP_OPENSSL_KEY_V1=%s\n' "$(openssl rand -hex 16)"
+            printf '_APP_SMTP_HOST=%s\n' "$gateway"
+            printf '_APP_SMTP_PORT=%s\n' "$SMTP_PORT"
+          } >> ci.env
 
       - name: Appwrite-Stack starten (im Hintergrund)
         working-directory: ci/appwrite
@@ -131,15 +157,6 @@ jobs:
           echo '::error::Appwrite nach 450s nicht erreichbar'
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite mariadb
           exit 1
-
-      # Lokaler Briefkasten für die Mails der Apps (Einladung, Hinweis,
-      # Zahlungswarnung): nichts verlässt den Runner. Über Version UND
-      # Prüfsumme festgelegt, wie die Actions über einen Commit.
-      - name: Briefkasten starten (Mailpit)
-        run: >
-          docker run -d --name buehne-mailpit
-          -p "$SMTP_PORT:1025" -p 8025:8025
-          axllent/mailpit:v1.33.1@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
 
       # Zwei Projekte, zwei .env-Dateien, ein Naht-Geheimnis je Lauf. Die
       # Ausgabe nennt nur Schritte und Zahlen — das Protokoll ist öffentlich.

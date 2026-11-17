@@ -29,6 +29,10 @@
  * `NUXT_APPWRITE_MIGRATIONS_KEY` (columns.read). KEIN SCHLÜSSEL WIRD AUSGEGEBEN.
  */
 import { assertTarget, isLocalEndpoint } from '../../../scripts/lib/target.mjs'
+// Das Passwort des Probe-Kontos wird je Lauf erzeugt und enthält nichts aus
+// Adresse oder Name: die Anmelde-Regeln des Projekts lehnen sonst ab
+// (`password_personal_data` — in der CI gelten dieselben wie in Production).
+import { generatePassword } from '../../../scripts/lib/probe-stage.mjs'
 
 /** Die Inhalts-Tabellen, die Konten früher direkt beschreiben durften. */
 const TABLES = [
@@ -136,7 +140,7 @@ try {
   //    Anmelde-Wege das Projekt Clients erlaubt) ─────────────────────────────
   const user = await call('POST', '/users', {
     key: runtimeKey,
-    body: { userId: 'unique()', email: `${RUN}@example.test`, password: `${RUN}-Aa1!-${Math.random().toString(36).slice(2)}`, name: 'P13 Probe' },
+    body: { userId: 'unique()', email: `${RUN}@example.test`, password: generatePassword(), name: 'P13 Probe' },
   })
   if (user.status !== 201) throw new Error(`Probe-Konto ließ sich nicht anlegen (HTTP ${user.status} ${user.json?.type ?? ''})`)
   const userId = user.json.$id
