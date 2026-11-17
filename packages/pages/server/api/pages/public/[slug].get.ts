@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { guidelinesFallbackPage } from '../../../../shared/guidelinesFallback'
+import { requestedPageLocale } from '../../../../shared/pageLocales'
 import { GUIDELINES_SLUG, PAGES_TABLE, type PageRow, type PublicPage } from '../../../../shared/types/page'
 
 /**
@@ -21,7 +22,10 @@ export default defineEventHandler(async (event): Promise<PublicPage> => {
   if (!slug) {
     throw createError({ status: 400, statusText: 'Missing slug' })
   }
-  const requested = String(getQuery(event).locale || 'en').slice(0, 8)
+  // Dasselbe Muster wie die Liste (BE-019). Hier schlug zwar nichts in einem
+  // Objekt nach (gesucht wird per Vergleich), aber eine ungeprüfte Sprache
+  // reiste bis in `guidelinesFallbackPage` — eine Regel für beide Routen.
+  const requested = requestedPageLocale(getQuery(event).locale)
 
   const res = await tenantDb(event, { as: 'operator' }).list<PageRow>(PAGES_TABLE, [
     Query.equal('slug', slug),

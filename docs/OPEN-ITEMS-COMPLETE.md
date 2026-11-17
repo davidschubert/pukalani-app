@@ -30,6 +30,84 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 P24 — Vertretung vorbereitet: Notfallblatt, zweite Alarm-Adresse, vier Störfälle mit Anleitung ✅ 2026-11-17
+
+**Was.** Paket der Stufe „Als Nächstes" aus dem Gesamtaudit 2026-11 (Finding
+OPS-010), Pull Request 231 (Merge `32f0f434`) und dieser Abschluss. Davids
+Entscheidung vom 2026-11-12: „Eine Vertrauensperson bekommt die Alarme mit und
+ein Blatt mit den ersten Handgriffen, bevor der erste Kunde zahlt." Am
+2026-11-17: Es gibt noch niemanden — also alles so weit vorbereiten, dass nur
+noch Name und Adresse fehlen. **Erledigt ist die Vorbereitung; die Person
+fehlt** (OPEN-ITEMS „VT1").
+
+1. **Erst gemessen, wohin heute jeder Alarm geht.** Alle Wege enden bei einer
+   Person: das zugewiesene Issue, die Alarm-Mail, die zwei Kontakte bei
+   UptimeRobot, der Heartbeat, die Mails von GitHub. Zwei Wege KONNTEN keine
+   zweite Adresse tragen: Die Alarm-Mail baute ihre Empfängerliste aus genau
+   einem Wert, und `scripts/ops/uptimerobot-sync.mjs` trägt Kontakte an
+   bestehende Monitore nicht nach.
+2. **Das Notfallblatt** liegt bewusst nicht im Repo, sondern privat bei David
+   (Ausdruck bei der Vertretung, Notiz im Passwort-Tresor; deutsch und
+   englisch; keine Passwörter, keine Schlüssel). Seite 1 „die ersten 15
+   Minuten" für jemanden ohne Technik-Wissen, danach je Störfall ein Absatz,
+   der auf ein Runbook zeigt. Aufgenommen ist nur, was in einem Runbook steht
+   oder am Code belegt ist.
+3. **Vier Störfälle hatten keine Anleitung** und stehen jetzt in
+   [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), § 4: Appwrite steht
+   nach einem Server-Update oder Neustart (der Vorfall vom 2026-10-24 stand
+   nur als zwei Warnzeilen da), Platte voll (stand nur hier im Archiv), Mails
+   kommen nicht an (die Teile lagen in drei Dateien), Not-Aus. Neu sind
+   [SICHERHEITSVORFALL.md](runbooks/SICHERHEITSVORFALL.md) und
+   [ANFRAGEN-VON-AUSSEN.md](runbooks/ANFRAGEN-VON-AUSSEN.md); beide ordnen
+   vorhandene Handgriffe und nennen am Ende, was fehlt.
+4. **§ 5 „Vertretung"** im selben Runbook: was ohne Konto zu sehen ist, je
+   Alarm-Quelle der Handgriff für eine zweite Adresse, welche eigenen Konten
+   eine Vertretung bräuchte, die Probe.
+5. **Die Alarm-Mail nimmt mehrere Empfänger:** `PRODUCTION_ALARM_MAIL_TO` darf
+   eine Kommaliste sein. Eine einzelne Adresse ergibt dieselbe Anfrage wie
+   vorher.
+6. **Veraltetes berichtigt:** `control` → `admin` in vier Runbooks, ein toter
+   Verweis und eine alte Schwelle im Wiederherstellungs-Runbook, der Name des
+   Wächter-Workflows. Die Karte [README.md](README.md) nennt jetzt jedes der
+   33 Runbooks (neun fehlten).
+
+**Davids Antworten (2026-11-17, vier Fragen zum Anklicken):** Ausdruck plus
+Tresor · erst nur Bescheid wissen, Zugänge später · englische Fassung ja ·
+Probealarm und lesendes Nachsehen ja. Im [DECISION-LOG](DECISION-LOG.md)
+(2026-11-17).
+
+**Beweise.** `check:doc-links`, `lint:scripts` und die fünf Tests, die den
+Wächter-Workflow lesen (108 von 108), lokal mit Exit 0; fünf Pflicht-Prüfungen
+am Pull Request grün. Die neue Empfänger-Zeile lokal an vier Eingaben (eine
+Adresse, zwei, mit Leerzeichen, leer). Probealarm auf `main` nach dem Merge
+(Lauf 44010795388): Issue 238 geöffnet, Mail-Schritt „Mail gesendet"; der
+Lauf ohne Haken (44011153116) räumt auf. Eingetragen wurde nichts: kein
+Secret, kein Kontakt, kein Konto.
+
+**Nicht geprüft.** Eine Mail an ZWEI Adressen (es gibt keine zweite); die
+Klickwege bei UptimeRobot und healthchecks.io; ob die Mails des Probealarms
+im Postfach lagen; kein Mensch ohne Technik-Wissen hat das Blatt bisher
+gelesen.
+
+**Beim Nachsehen gefunden.** `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt
+(auf dem App-Server nur gezählt, kein Wert gelesen). Die Mail bei einer
+Missbrauchs-Meldung, einer Zugangs-Anfrage und einem Statuswechsel einer
+Kunden-Site ging also nie an jemanden; es blieb die Glocke im Dashboard. Im
+Code steht dazu ein Beschluss vom Juli — auf dem Server kam er nie an.
+
+**Gelernt:** „Wer bekommt den Alarm?" lässt sich nicht am Runbook ablesen,
+nur an der Stelle, die den Empfänger wirklich trägt: Die Klickliste nannte
+Mail, Push und Heartbeat als eingerichtet, und trotzdem konnte die wichtigste
+Mail technisch nur an eine Adresse gehen, und eine vierte Quelle (die
+Betreiber-Mail) hatte gar keinen Empfänger. Eine Einstellung, deren Vorgabe
+„leer = aus" ist, braucht eine Zeile in der Liste der Entscheidungen
+(`scripts/ops/site-env-decisions.mjs` führte sie als „noch nicht bewertet") —
+sonst sieht „bewusst aus" genauso aus wie „vergessen". Und: Ein Blatt für
+eine Vertretung ist zuerst eine Liste dessen, was sie NICHT kann. Ohne
+eigenen Zugang bleibt nur Bemerken, Anrufen, Antworten; der häufigste Ausfall
+(Appwrite steht nach einem Update) braucht einen Menschen am Server, weil das
+Tor kein Wort zum Starten kennt.
+
 ### BU1 (a) — Ablageort des Backup-Schlüssels ✅ 2026-11-16
 
 **Was.** Der private Schlüssel, der die Backups öffnet, liegt in Davids zwei
