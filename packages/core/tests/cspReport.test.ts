@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -36,6 +36,19 @@ describe('Kopfzeile und Route', () => {
     expect(scriptCspReportOnly([])).toContain(`report-uri ${CSP_REPORT_PATH}`)
     const file = fileURLToPath(new URL(`../server${CSP_REPORT_PATH}.post.ts`, import.meta.url))
     expect(existsSync(file), file).toBe(true)
+  })
+})
+
+describe('Zod probiert im Browser kein `new Function`', () => {
+  // Lokal am Build gemessen: ohne den Schalter schickt JEDER Seitenaufruf
+  // einen Bericht `script-src eval` — Zods eigene Probe, kein Verstoß.
+  it('der Schalter steht auf Modul-Ebene, vor dem Plugin, und das Plugin lädt als erstes', () => {
+    const file = fileURLToPath(new URL('../app/plugins/00.zod-jitless.client.ts', import.meta.url))
+    const source = readFileSync(file, 'utf8')
+    const config = source.indexOf('\nz.config({ jitless: true })\n')
+    expect(config).toBeGreaterThan(0)
+    expect(config).toBeLessThan(source.indexOf('export default defineNuxtPlugin'))
+    expect(source).toContain('enforce: \'pre\'')
   })
 })
 
