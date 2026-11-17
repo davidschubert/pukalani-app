@@ -78,6 +78,21 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  /**
+   * GRENZE JE EMPFÄNGER (AB1 e / SR1 c) — NACH der stillen Antwort oben (dort
+   * geht keine Mail hinaus, also zählt sie nicht) und VOR dem Versand. Über
+   * der Grenze geht kein weiterer Code hinaus; die Antwort hat dieselbe Form
+   * wie sonst. `userId` ist die des Kontos, falls es eines gibt — so bleibt
+   * sie über mehrere Anfragen gleich, und ein schon zugestellter Code lässt
+   * sich weiter einlösen. `phrase` ist eine Attrappe (`securityPhrase.ts`).
+   */
+  if (!(await allowRecipientMail(event, 'auth:otp', email, AUTH_MAIL_RECIPIENT_LIMIT))) {
+    const existing = await createAdminClient(event).users
+      .list({ queries: [Query.equal('email', email), Query.limit(1)] })
+      .catch(() => null)
+    return { ok: true, userId: existing?.users[0]?.$id ?? ID.unique(), phrase: decoySecurityPhrase() }
+  }
+
   // Admin-Client (s. Kopf). Appwrites eigene Bremse gilt für Aufrufe mit
   // Schlüssel nicht — gebremst wird in `05.rate-limit.ts` (diese Route steht
   // dort) und davor von der Bot-Prüfung. Die Antwort mit Schlüssel trägt

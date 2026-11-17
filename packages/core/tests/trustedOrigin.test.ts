@@ -166,6 +166,9 @@ beforeAll(async () => {
   vi.stubGlobal('getRequestURL', (event: FakeEvent) => new URL(`https://${event.host}/api/auth/x`))
   vi.stubGlobal('readValidatedBody', async (event: FakeEvent, parse: (body: unknown) => unknown) => parse(event.body))
   vi.stubGlobal('requireTurnstile', async () => {})
+  // Empfänger-Grenze der Reset-Anforderung (AB1 e): hier nicht Thema, immer frei.
+  vi.stubGlobal('allowRecipientMail', async () => true)
+  vi.stubGlobal('AUTH_MAIL_RECIPIENT_LIMIT', { max: 5, windowMs: 3_600_000 })
   vi.stubGlobal('logAuthEvent', async () => {})
   vi.stubGlobal('logEvent', () => {})
   vi.stubGlobal('getQuery', (event: FakeEvent) => event.query ?? {})

@@ -192,7 +192,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/core/server/api/auth/notification-prefs.get.ts',
     'packages/core/server/api/auth/notification-prefs.put.ts',
     'packages/core/server/api/auth/oauth/callback.get.ts',
-    'packages/core/server/api/auth/otp.post.ts',
     'packages/core/server/api/auth/password.put.ts',
     'packages/core/server/api/auth/profile.put.ts',
     'packages/core/server/api/auth/realtime-token.get.ts',

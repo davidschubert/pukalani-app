@@ -21,12 +21,30 @@ import type { H3Event } from 'h3'
  *    gegriffen hat (sonst wäre sie eine Auskunft über fremde Adressen).
  *  - Im Schlüssel und im Log steht nie eine Adresse im Klartext (Redis ist
  *    geteilt): nur der Bereich und ein Hash der normalisierten Adresse.
+ *
+ * ZWEI ZAHLEN, EIN BAUSTEIN (AB1 e / SR1 c, 2026-11-17): Formulare ohne Konto
+ * zählen 3 je Tag (unten). Anmelde-Mails — Code und „Passwort zurücksetzen" —
+ * zählen `AUTH_MAIL_RECIPIENT_LIMIT`: wer sich anmelden will, fordert auch
+ * einmal drei Mails hintereinander an und soll nach einer Stunde wieder
+ * weiterkommen. Der Bereich trennt die Zähler (`auth:otp`, `auth:recovery`).
  */
 
 /** Mails je Adresse und Bereich im Fenster. Die Zahl steht NUR hier. */
 export const RECIPIENT_MAIL_MAX = 3
 /** Fenster der Empfänger-Grenze: 24 Stunden, fest (kein gleitendes Fenster). */
 export const RECIPIENT_MAIL_WINDOW_MS = 24 * 60 * 60_000
+
+/** Deckel und Fenster einer Empfänger-Grenze. */
+export interface RecipientMailLimit {
+  max: number
+  windowMs: number
+}
+
+/**
+ * Anmelde-Mails je Adresse und Bereich: 5 je Stunde (Davids Entscheidung
+ * 2026-11-17) — die Zahl steht NUR hier. Festes Fenster, danach geht es weiter.
+ */
+export const AUTH_MAIL_RECIPIENT_LIMIT: RecipientMailLimit = { max: 5, windowMs: 60 * 60_000 }
 
 /**
  * Schlüssel der Empfänger-Grenze (pur). Die Adresse wird normalisiert
@@ -44,15 +62,21 @@ export function recipientMailKey(prefix: string, scope: string, email: string): 
 /**
  * Eine Mail an `email` im Bereich `scope` anmelden. `true` ⇒ verschicken,
  * `false` ⇒ nicht verschicken (Grenze erreicht oder Store ausgefallen).
+ * Ohne `limit` gilt die Formular-Grenze (3 je Tag).
  */
-export async function allowRecipientMail(event: H3Event, scope: string, email: string): Promise<boolean> {
+export async function allowRecipientMail(
+  event: H3Event,
+  scope: string,
+  email: string,
+  limit: RecipientMailLimit = { max: RECIPIENT_MAIL_MAX, windowMs: RECIPIENT_MAIL_WINDOW_MS },
+): Promise<boolean> {
   try {
     const { store, prefix } = useRateLimitStore(event)
-    const state = await store.hit(recipientMailKey(prefix, scope, email), RECIPIENT_MAIL_WINDOW_MS)
-    if (state.count <= RECIPIENT_MAIL_MAX) return true
+    const state = await store.hit(recipientMailKey(prefix, scope, email), limit.windowMs)
+    if (state.count <= limit.max) return true
     // Genau EIN Request sieht den Übergang (atomarer Zähler) — eine Log-Zeile
     // je Fenster und Adresse, ohne die Adresse.
-    if (state.count === RECIPIENT_MAIL_MAX + 1) logEvent('warn', 'mail.recipient_limit', { scope })
+    if (state.count === limit.max + 1) logEvent('warn', 'mail.recipient_limit', { scope })
     return false
   }
   catch (error) {
