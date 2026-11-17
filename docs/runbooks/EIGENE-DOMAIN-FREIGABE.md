@@ -86,10 +86,11 @@ Zwei stündliche Läufe erledigen das:
   sie geht genau einmal. Die Mail geht auch an Owner, die Benachrichtigungen
   abgeschaltet haben (es ist ein Hinweis zum Vertrag).
 
-### Der Lauf zählt zuerst nur
+### Der Schalter des Laufs
 
 Schalter `pukalani.control.customDomainSweep` in
-`apps/control/app/app.config.ts`:
+`apps/control/app/app.config.ts` — seit 2026-11-17 `apply` (Davids Ja nach
+der Zählung auf Production: eine eigene Domain, freigegeben, nichts zu tun):
 
 | Wert | Wirkung |
 | --- | --- |
@@ -101,9 +102,11 @@ Die Zahlen stehen jederzeit auf `admin.pukalani.app` → **Communities** → Kar
 **Eigene Domains: Schonfrist-Lauf** (Knopf „Neu zählen"). Die Karte zählt
 immer nur, auch wenn der Lauf scharf ist.
 
-**Scharf schalten** ist ein eigener kleiner Pull Request (Wert auf `apply`),
-nach einem Blick auf die Karte. Solange der Lauf nur zählt, gibt es keine
-Stempel, also verschickt auch die Platform-App nichts.
+**Anhalten** ist ein kleiner Pull Request (Wert auf `dry-run`): Der Lauf zählt
+dann nur noch, gesetzte Fristen und abgeschaltete Domains bleiben, wie sie
+sind; ohne neue Stempel verschickt auch die Platform-App nichts Neues.
+Ein neuer Lauf dieser Art (abschalten, Mails) beginnt immer mit `dry-run`
+und einem Blick auf die Karte.
 
 ### Einzelfälle
 
