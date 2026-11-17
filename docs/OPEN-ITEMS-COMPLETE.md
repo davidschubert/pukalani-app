@@ -30,6 +30,99 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N02 — Nacharbeiten „Mails und Bremsen": AB1 (b–f) und SR1 (c, d) ✅ 2026-11-17
+
+Die kleinen Reste aus den Paketen P02 (Anmelde-Bremse) und P25 (kleine
+Sicherheitsriegel). Fünf Pull Requests (247 bis 251), keine Migration, kein
+neues Paket. Offen bleiben nur die Klick-Proben (KR1), der Datenschutztext
+(DT1) und drei Kleinigkeiten, die in OPEN-ITEMS unter AB1 und SR1 stehen.
+
+**Was jetzt gilt**
+
+- **Mails je Empfänger (AB1 e, SR1 c).** Code- und Reset-Mails zählen
+  zusätzlich je Adresse: **5 je Stunde** (Davids Klick 2026-11-17), Code und
+  Reset je für sich. Der Baustein ist derselbe wie an den Formularen
+  (`allowRecipientMail`, jetzt mit Deckel und Fenster als Angabe;
+  `AUTH_MAIL_RECIPIENT_LIMIT` in `core/server/utils/recipientMailLimit.ts`).
+  Die Reset-Anforderung antwortet weiter für jede Adresse `{ ok: true }`. Die
+  Code-Anforderung antwortet über der Grenze in derselben Form und mit
+  derselben Konto-Kennung wie darunter; ein schon zugestellter Code lässt sich
+  weiter einlösen. Die stille Antwort bei geschlossener Registrierung zählt
+  nicht (dort geht keine Mail hinaus).
+- **Größe vor dem Einlesen (AB1 c).** Neuer Core-Baustein
+  `rejectOversizedUpload(event, maxBytes)` (`core/server/utils/uploadSize.ts`):
+  liest die angegebene Länge und antwortet 413, bevor der Körper gelesen wird.
+  Event-Titelbild und Community-Favicon rufen ihn nach der Rechte-Prüfung
+  auf; die Prüfung der echten Größe danach bleibt. NEUE UPLOAD-ROUTE ⇒ dieser
+  Aufruf vor `readMultipartFormData`.
+- **Zwei Fehlerwege (AB1 d).** Anmeldung und Code-Prüfung unterscheiden „Appwrite
+  hat geprüft und abgelehnt" (401, zählt) von „die Prüfung kam nicht zustande"
+  (503 mit Grund `auth_unavailable`, Log-Zeile `auth.login_unavailable`, zählt
+  NICHT auf das Konto — `skipAccountAttempt`). Die Anmeldeseite zeigt dann
+  „Server nicht erreichbar". Die Drossel je Anschluss zählt bewusst weiter: sie
+  läuft nach einer Minute ab und bremst das Nachfassen, solange ohnehin nichts
+  antwortet. Die Reset-Anforderung schreibt bei einem unerwarteten Grund
+  `auth.recovery_failed` mit Typ und Status (nie Adresse oder Meldung);
+  unbekannte und gesperrte Adressen bleiben still. Die Regel ist pur:
+  `core/shared/authFailure.ts`.
+- **Gemeinsamer Zähler auf branding.supply (AB1 b, WA1 b).** `NUXT_REDIS_URL`
+  ist seit dem 2026-11-17 auf dem Server gesetzt (Davids Ja per Klick; eine
+  Zeile, dieselbe wie auf den drei anderen Sites, neu geladen über die
+  Ecosystem-Datei) und steht auf der Pflichtliste von
+  `scripts/ops/verify-site-env.mjs` — damit auf jeder Site mit Konten.
+- **Kleinigkeiten (AB1 f, SR1 d).** Zwei Kommentarblöcke in `05.rate-limit.ts`
+  stehen wieder über ihrer Deklaration, ein Testtitel sagt, was er prüft. Die
+  Hinweise der Roboter-Prüfung sprechen ohne Anrede (Davids Klick). Die Liste
+  der offenen Einladungen sagt, wenn es mehr als 100 gibt. Das Formular „neue
+  Marke" der Insights-Redaktion lehnt am Feld dasselbe ab wie der Server (nur
+  http und https), die Quellen-Liste zeigt den Hinweis am Feld.
+  `verify-session-ip.mjs` ist mit der zweiten Adresse gelaufen (26 von 26 Prüfungen
+  grün, lokal gegen einen Server aus dem Worktree). Eine eigene
+  Tages-Grenze für die Betreiber-Meldung des Erstgesprächs gibt es NICHT
+  (Davids Klick: die vorhandenen Bremsen reichen).
+
+**Beweise**
+
+- Tests an den echten Routen gegen den echten Zähler: `authMailRecipientLimit`,
+  `authFailurePaths`, `uploadSize`, je ein Routen-Test für Titelbild und
+  Favicon (mit Gegenprobe: ohne den Aufruf werden die 413-Tests rot),
+  `communityInvitesList`, `insightsForms` (der Hinweis am Feld stimmt mit dem
+  Vertrag des Servers überein).
+- Lokal mit echter Appwrite und Mail-Fänger: 7 Code- und 7 Reset-Anforderungen
+  für eine Probe-Adresse ⇒ je 5 Mails, alle Antworten 200 und gleich, eine
+  Log-Zeile je Bereich. Reset mit nicht eingetragenem Link-Host ⇒ 200, keine
+  Mail, `auth.recovery_failed` (`general_argument_invalid`). Reset für eine
+  unbekannte Adresse ⇒ 200, keine Zeile. Backend unerreichbar ⇒ Anmeldung und
+  Code-Prüfung 503 mit `auth_unavailable`.
+- Server: der Wert steht im laufenden Prozess von branding.supply (Länge wie
+  bei den anderen drei), Landing und Hilfe zeigen zur Gegenprobe „fehlt"; ein
+  Zähler-Schlüssel der Site liegt im gemeinsamen Speicher und läuft ab; der
+  Env-Wächter ist mit dem neuen Eintrag grün; die Site meldet `ok` — auch nach
+  dem nächsten Ausliefern.
+
+**Nicht geprüft:** keine Klicks auf den echten Seiten (KR1); die Mail-Grenze
+und die getrennten Fehlerwege auf Production nur über Build und Tests, nicht
+mit einer echten Anmeldung; die englischen Texte nicht im Browser gesehen.
+
+**Gelernt:** (1) Ein neuer Test, der eine Route lädt, macht den Wächter
+`route-role-coverage` rot, bis die Route aus dem Bestand gestrichen ist — das
+traf dreimal (Favicon, Code-Anforderung, Anmeldung). Nach jedem neuen
+Routen-Test die GANZE Core-Suite fahren, und den Commit nie im selben Befehl
+an den Testlauf hängen: einmal ging so ein roter Stand auf den Zweig (noch
+ohne Pull Request). (2) Eine Antwort, die eine Grenze verbergen soll, muss
+auch in den WERTEN gleich bleiben: die Code-Anforderung gibt die Kennung des
+Kontos zurück — eine frische Kennung über der Grenze hätte die Grenze
+verraten. (3) Appwrite prüft bei der Reset-Anforderung die Link-Adresse VOR
+dem Konto: bei einem nicht eingetragenen Host scheitert JEDE Anforderung, auch
+die für unbekannte Adressen — genau der Fall, der bisher keine Zeile schrieb.
+(4) Ein Formular-Schema mit `z.url(text)` nimmt jedes Schema; steht am Server
+`z.url({ protocol })`, lehnt nur der Server ab und am Feld steht nichts.
+(5) Ein Nuxt-Entwicklungs-Server, dessen Vorgänger noch nicht beendet ist,
+ÜBERNIMMT den Port („Taking over the dev server") statt auszuweichen — vor
+einer Probe die Prozess-Nummer am Port neu lesen. (6) Bei einem Ausfall zählt
+die Minuten-Drossel je Anschluss bewusst weiter; nur die Pause je Konto wird
+erspart.
+
 ### GA1 P27 — Tests über den echten Kundenpfad: Rollen-Tests je Route, eine Bühne mit zwei Communities, Beweise laufen von selbst ✅ 2026-11-17
 
 **Was.** Paket der Stufe „Später" aus dem Gesamtaudit 2026-11 (Finding

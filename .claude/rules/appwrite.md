@@ -143,6 +143,16 @@ paths:
   trägt, solange pm2 je App `instances: 1` fährt. Beweis-Muster für jede
   Bremse: ein Test mit GLEICHZEITIGEN Anfragen
   (`core/tests/rateLimitFailureRoutes.test.ts`, `accountAttempts.test.ts`).
+  AUSFALL IST KEIN FEHLVERSUCH (AB1 d, seit 2026-11-17): eine Route, die ein
+  Geheimnis prüft, trennt „Appwrite hat abgelehnt" (4xx ⇒ 401, zählt) von
+  „die Prüfung kam nicht zustande" (`isAuthBackendOutage`,
+  `core/shared/authFailure.ts` ⇒ 503 mit `data.code: auth_unavailable`, eine
+  Log-Zeile, `skipAccountAttempt(event)`): der Versuch zählt dann nicht auf
+  das Konto. Die Minuten-Drossel je Anschluss zählt ihn bewusst weiter.
+  UPLOADS prüfen die angegebene Länge VOR dem Einlesen:
+  `rejectOversizedUpload(event, maxBytes)` (`core/server/utils/uploadSize.ts`)
+  nach der Rechte-Prüfung und vor `readMultipartFormData`; die Prüfung der
+  echten Größe danach bleibt.
   BEKANNTES GERÄT (P29, seit 2026-11-13): damit ein Fremder den Besitzer
   nicht über die Konto-Pause aussperrt, setzt der Server nach einer
   VOLLSTÄNDIGEN Anmeldung (kein zweiter Faktor offen) das signierte Cookie
