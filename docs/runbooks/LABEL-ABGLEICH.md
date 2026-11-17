@@ -22,14 +22,48 @@ Regel: `.claude/rules/tenant-isolation.md`, Absatz SITE-LABEL.
   Konto-Labels (nachgeprüft, einmal wiederholt) und nimmt das Handle-Publikum
   dieser Community mit.
 
+Seit SI1 b (2026-11-17) zwei weitere Fälle:
+
+- **Stillgelegt, Umstellung gescheitert.** Beim Stilllegen einer Community
+  setzt das Control Plane alle Mitgliedschaften auf `removed`. Scheitert das
+  für eine Zeile, bleibt sie `active`, der Host antwortet 404, und beim Besuch
+  heilt nichts. Der Lauf liest solche Zeilen (höchstens 1000 je Lauf) und
+  behandelt sie wie entfernte: beide Labels weg. Die Zugangs-Frage davor
+  prüft auch, ob die Community noch stillgelegt ist; ist sie wieder an, bleibt
+  das Label. Die Zeile selbst bleibt `active` — die Platform-App liest das
+  Control Plane nur. Steht `disabledStale` > 0 im Log, die Zeilen von Hand auf
+  `removed` stellen.
+- **Herabgestuft.** Wird ein Mitglied aus dem Moderations-Team zu einer Rolle
+  ohne Moderation herabgestuft, bleibt seine Zeile `active`, und das
+  Moderations-Label fiel bisher erst beim nächsten Besuch. Der Lauf liest die
+  `active`-Zeilen mit einer Rolle ohne Moderation, die sich in den letzten
+  26 Stunden geändert haben (höchstens 1000 je Lauf, neueste zuerst). Trägt
+  das Konto das Moderations-Label dieser Community, liest er die Rolle frisch
+  nach und nimmt NUR das Moderations-Label. Das Mitglieds-Label bleibt.
+  Welche Rollen moderieren, sagt dieselbe Regel wie beim Besuch
+  (`reports.moderate`).
+
 ## Was der Lauf nie tut
 
 - Er vergibt nie ein Label.
 - Er fasst keine Betreiber-Rollen (`admin`, `moderator`) und keine Labels
   anderer Communities an.
-- Er fasst kein Label ohne `removed`-Zeile an. Bestands-Mitglieder aus der
+- Er fasst kein Label ohne Zeile an (nur `removed`, `active` in einer
+  stillgelegten Community oder herabgestuft). Bestands-Mitglieder aus der
   Zeit vor A5 tragen ein Label ohne Zeile — das ist legitim.
-- Er fasst kein Konto an, das inzwischen wieder eingeladen wurde.
+- Er fasst kein Konto an, das inzwischen wieder eingeladen wurde, dessen
+  Community wieder eingeschaltet ist oder das wieder moderiert.
+- Er ändert keine Zeile im Control Plane.
+- Nach einer Herabstufung nimmt er nie das Mitglieds-Label.
+
+## Bekannte Grenzen
+
+- Eine Herabstufung, die älter als 26 Stunden ist und in der Zeit keinen
+  einzigen Lauf sah (Platform-App so lange aus), findet der Lauf nicht. Dann
+  heilt weiter der nächste Besuch der Person.
+- Die zwei neuen Listen haben keinen Lesezeiger. Greift ihr Deckel, sieht der
+  Lauf dieselben ersten 1000 wieder; die Log-Zeile sagt es.
+- Der Lesezeiger der `removed`-Zeilen lebt nur im Prozess.
 
 ## Schalter
 
@@ -66,12 +100,20 @@ Eine Zusammenfassung je Lauf, nur Anzahlen:
 | `revoked` | davon entzogen (nur `apply`) |
 | `failed` | Konto nicht lesbar, Rückfrage oder Entzug gescheitert |
 | `skipped` | Konto gelöscht, wieder eingeladen, oder Kennung ist kein Label |
-| `truncated` | Deckel gegriffen — der nächste Lauf macht dahinter weiter |
+| `truncated` | ein Deckel hat gegriffen (siehe Log-Zeile) |
+| `disabledCandidates` | gelesene `active`-Zeilen in stillgelegten Communities |
+| `disabledStale` | davon mit hängendem Label (in `stale` mitgezählt) — Zeile von Hand umstellen |
+| `demotedCandidates` | gelesene geänderte Zeilen mit Rolle ohne Moderation (26 h) |
+| `demotedStale` | davon mit hängendem Moderations-Label (in `stale` mitgezählt) |
 
 Ohne Abweichung ist die Zeile `info`, sonst `warn`. Im Modus `apply` steht je
 Entzug eine Zeile `community_label.reconcile_revoked` mit `userId` und
-`communityId`. Greift der Deckel, steht zusätzlich
-`community_label.reconcile_truncated` im Log.
+`communityId` (bei den neuen Fällen dazu `case: disabled` oder
+`case: demoted`). Greift ein Deckel, steht zusätzlich
+`community_label.reconcile_truncated` im Log (bei den neuen Listen mit
+`list`). Scheitert das Lesen einer neuen Liste, steht
+`community_label.reconcile_read_failed` mit `list` im Log, `failed` zählt eins
+hoch, und der Rest läuft weiter.
 
 `stale` > 0 im Probelauf heißt: so viele Entzüge würde `apply` machen. Ein
 zweiter Lauf nach `apply` sollte `stale: 0` zeigen.
@@ -85,6 +127,7 @@ der Platform-App, angemeldet mit Betreiber-Recht `system.manage`.
 - Body `{ "dryRun": false }`: schreibt nur, wenn der Schalter auf `apply`
   steht; sonst 409 mit `reason: label_reconcile_not_apply`.
 - 503: die Control-Env (`NUXT_PLATFORM_CONTROL_*`) fehlt.
+- 429: mehr als sechs Aufrufe je Minute (Bremse `community:label-reconcile`).
 - Antwort: dieselben Anzahlen wie im Log.
 
 Lokaler Beweis: Abschnitt 10 c in

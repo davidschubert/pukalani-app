@@ -178,6 +178,29 @@ export async function setCommunityModeratorLabel(
 }
 
 /**
+ * NUR das MODERATIONS-Label einziehen — mit Ergebnis und ohne Request
+ * (SI1 b, seit 2026-11-17). Derselbe Schreibvorgang wie der Einzug-Zweig von
+ * `setCommunityModeratorLabel` beim Besuch, aber für den stündlichen
+ * Label-Abgleich (onboarding/server/utils/labelReconcile.ts): der hat kein
+ * `H3Event` und braucht das Ergebnis (`failed` zählen). Die Zugehörigkeit
+ * (`<communityId>`) bleibt IMMER — eine Herabstufung ist kein Entzug.
+ * „Konto gibt es nicht mehr" ist Erfolg, wie bei `revokeCommunityLabel`.
+ */
+export async function revokeCommunityModeratorLabel(
+  event: H3Event | undefined,
+  communityId: string,
+  userId: string,
+): Promise<CommunityLabelRevokeResult> {
+  if (!userId) return { revoked: false, reason: 'no_user' }
+  const label = communityModeratorLabel(communityId)
+  if (!label) return { revoked: false, reason: 'invalid_label' }
+  const result = await writeLabels(event, userId, { remove: [label] }, 'revoked')
+  if (!result.ok && result.reason === 'not_found') return { revoked: true }
+  if (!result.ok) return { revoked: false, reason: result.reason }
+  return { revoked: true }
+}
+
+/**
  * Community-Label EINZIEHEN — „draußen" heißt draußen (A5, Davids Entscheidung 1).
  *
  * Der Gegenzug zu grantCommunityLabel und der Grund, warum „Zugang entziehen" jetzt

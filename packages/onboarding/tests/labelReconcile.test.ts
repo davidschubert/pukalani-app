@@ -32,7 +32,15 @@ interface World {
   access?: Set<string>
   /** Konten, deren Lesen wirft. */
   broken?: Set<string>
+  /** SI1 b: `active`-Zeilen in stillgelegten Communities. */
+  inDisabled?: RemovedMembership[]
+  /** SI1 b: kürzlich geänderte `active`-Zeilen mit Rolle ohne Moderation. */
+  demoted?: RemovedMembership[]
+  /** Paare (communityId|userId), deren Rolle JETZT moderiert (wieder hochgestuft). */
+  moderates?: Set<string>
 }
+
+const EMPTY = { disabledCandidates: 0, disabledStale: 0, demotedCandidates: 0, demotedStale: 0 }
 
 function build(world: World, options: { maxCandidates?: number } = {}) {
   const users = {
@@ -57,6 +65,18 @@ function build(world: World, options: { maxCandidates?: number } = {}) {
     }),
     hasAccess: vi.fn(async (_project: string, communityId: string, userId: string) =>
       world.access?.has(`${communityId}|${userId}`) ?? false),
+    listActiveInDisabled: vi.fn(async (runtimeProjectId: string, { limit }: { limit: number }) => {
+      expect(runtimeProjectId).toBe(PROJECT)
+      const rows = world.inDisabled ?? []
+      return { rows: rows.slice(0, limit), truncated: rows.length > limit }
+    }),
+    listDemoted: vi.fn(async (runtimeProjectId: string, { limit }: { limit: number, since: string }) => {
+      expect(runtimeProjectId).toBe(PROJECT)
+      const rows = world.demoted ?? []
+      return { rows: rows.slice(0, limit), truncated: rows.length > limit }
+    }),
+    moderatesNow: vi.fn(async (_project: string, communityId: string, userId: string) =>
+      world.moderates?.has(`${communityId}|${userId}`) ?? false),
   }
   const deps = {
     reader,
@@ -72,7 +92,12 @@ function build(world: World, options: { maxCandidates?: number } = {}) {
       const result = await mutateUserLabels(users, userId, { remove: [communityId, `mod${communityId}`] })
       return { revoked: result.ok }
     },
+    revokeModerator: async (communityId: string, userId: string) => {
+      const result = await mutateUserLabels(users, userId, { remove: [`mod${communityId}`] })
+      return { revoked: result.ok }
+    },
     maxCandidates: options.maxCandidates,
+    now: () => Date.parse('2026-11-17T12:00:00.000Z'),
   }
   return { users, reader, deps }
 }
@@ -91,7 +116,7 @@ describe('reconcileCommunityLabels', () => {
     const world: World = { accounts: { u1: ['cA'] }, removed: [row('r1', 'cA', 'u1')] }
     const { users, deps } = build(world)
     const result = await reconcileCommunityLabels('dry-run', deps)
-    expect(result).toEqual({ mode: 'dry-run', candidates: 1, stale: 1, revoked: 0, failed: 0, skipped: 0, truncated: false })
+    expect(result).toEqual({ mode: 'dry-run', candidates: 1, stale: 1, revoked: 0, failed: 0, skipped: 0, truncated: false, ...EMPTY })
     expect(users.updateLabels).not.toHaveBeenCalled()
     expect(world.accounts.u1).toEqual(['cA'])
     // Probelauf: IMMER eine Zeile mit den Anzahlen.
@@ -111,7 +136,7 @@ describe('reconcileCommunityLabels', () => {
     }
     const { deps } = build(world)
     const result = await reconcileCommunityLabels('apply', deps)
-    expect(result).toEqual({ mode: 'apply', candidates: 3, stale: 1, revoked: 1, failed: 0, skipped: 1, truncated: false })
+    expect(result).toEqual({ mode: 'apply', candidates: 3, stale: 1, revoked: 1, failed: 0, skipped: 1, truncated: false, ...EMPTY })
     expect(world.accounts).toEqual({
       u1: ['admin', 'cOther'],
       u2: ['cA'],
@@ -172,6 +197,161 @@ describe('reconcileCommunityLabels', () => {
     const second = await reconcileCommunityLabels('apply', deps)
     expect(second).toMatchObject({ candidates: 1, revoked: 1, truncated: false })
     expect(world.accounts).toEqual({ u1: [], u2: [], u3: [] })
+  })
+})
+
+describe('SI1 b — stillgelegte Community, Umstellung gescheitert', () => {
+  beforeEach(() => {
+    logs.length = 0
+    __resetLabelReconcileCursor()
+  })
+
+  it('apply: aktive Zeile in stillgelegter Community + Label ⇒ beide Labels weg, eigenes Zählfeld', async () => {
+    const world: World = {
+      accounts: { u1: ['admin', 'cA', 'modcA', 'cOther'] },
+      removed: [],
+      inDisabled: [row('m1', 'cA', 'u1')],
+    }
+    const { deps, reader } = build(world)
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toEqual({
+      mode: 'apply', candidates: 0, stale: 1, revoked: 1, failed: 0, skipped: 0, truncated: false,
+      disabledCandidates: 1, disabledStale: 1, demotedCandidates: 0, demotedStale: 0,
+    })
+    // Betreiber-Rolle und fremde Community bleiben.
+    expect(world.accounts.u1).toEqual(['admin', 'cOther'])
+    // Die Zugangs-Frage wurde unmittelbar davor gestellt.
+    expect(reader.hasAccess).toHaveBeenCalledWith(PROJECT, 'cA', 'u1')
+    expect(logs.filter(l => l.name === 'community_label.reconcile_revoked').map(l => l.data))
+      .toEqual([{ userId: 'u1', communityId: 'cA', case: 'disabled' }])
+  })
+
+  it('dry-run zählt nur', async () => {
+    const world: World = { accounts: { u1: ['cA'] }, removed: [], inDisabled: [row('m1', 'cA', 'u1')] }
+    const { deps, users } = build(world)
+    const result = await reconcileCommunityLabels('dry-run', deps)
+    expect(result).toMatchObject({ stale: 1, revoked: 0, disabledCandidates: 1, disabledStale: 1 })
+    expect(users.updateLabels).not.toHaveBeenCalled()
+    expect(world.accounts.u1).toEqual(['cA'])
+  })
+
+  it('Gegenprobe: Community inzwischen wieder aktiv (Zugang frisch gefragt) ⇒ nichts', async () => {
+    const world: World = {
+      accounts: { u1: ['cA', 'modcA'] },
+      removed: [],
+      inDisabled: [row('m1', 'cA', 'u1')],
+      access: new Set(['cA|u1']),
+    }
+    const { deps, users } = build(world)
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toMatchObject({ stale: 0, revoked: 0, skipped: 1, disabledCandidates: 1, disabledStale: 0 })
+    expect(users.updateLabels).not.toHaveBeenCalled()
+    expect(world.accounts.u1).toEqual(['cA', 'modcA'])
+  })
+
+  it('der Deckel der Liste wird gemeldet', async () => {
+    const world: World = {
+      accounts: { u1: ['cA'], u2: ['cA'] },
+      removed: [],
+      inDisabled: [row('m1', 'cA', 'u1'), row('m2', 'cA', 'u2')],
+    }
+    const { deps } = build(world)
+    const result = await reconcileCommunityLabels('apply', { ...deps, maxDisabledCandidates: 1 })
+    expect(result).toMatchObject({ truncated: true, disabledCandidates: 1, revoked: 1 })
+    expect(logs.some(l => l.name === 'community_label.reconcile_truncated' && l.data.list === 'disabled')).toBe(true)
+  })
+
+  it('scheitert die Liste, zählt das als `failed`, und die `removed`-Zeilen laufen trotzdem', async () => {
+    const world: World = { accounts: { u1: ['cA'] }, removed: [row('r1', 'cA', 'u1')] }
+    const { deps, reader } = build(world)
+    reader.listActiveInDisabled.mockRejectedValueOnce(new Error('control plane down'))
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toMatchObject({ failed: 1, revoked: 1 })
+    expect(logs.some(l => l.name === 'community_label.reconcile_read_failed' && l.data.list === 'disabled')).toBe(true)
+  })
+})
+
+describe('SI1 b — Herabstufung ohne Besuch', () => {
+  beforeEach(() => {
+    logs.length = 0
+    __resetLabelReconcileCursor()
+  })
+
+  it('herabgestuft + Moderations-Label ⇒ NUR das Moderations-Label fällt', async () => {
+    const world: World = {
+      accounts: { u1: ['moderator', 'cA', 'modcA', 'modcOther'] },
+      removed: [],
+      demoted: [row('m1', 'cA', 'u1')],
+    }
+    const { deps, reader } = build(world)
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toEqual({
+      mode: 'apply', candidates: 0, stale: 1, revoked: 1, failed: 0, skipped: 0, truncated: false,
+      disabledCandidates: 0, disabledStale: 0, demotedCandidates: 1, demotedStale: 1,
+    })
+    // Zugehörigkeit, Betreiber-Rolle und fremdes Moderations-Label bleiben.
+    expect(world.accounts.u1).toEqual(['moderator', 'cA', 'modcOther'])
+    expect(reader.moderatesNow).toHaveBeenCalledWith(PROJECT, 'cA', 'u1')
+    expect(reader.hasAccess).not.toHaveBeenCalled()
+    // Das Fenster: 26 Stunden vor „jetzt".
+    expect(reader.listDemoted).toHaveBeenCalledWith(PROJECT, expect.objectContaining({ since: '2026-11-16T10:00:00.000Z' }))
+    expect(logs.filter(l => l.name === 'community_label.reconcile_revoked').map(l => l.data))
+      .toEqual([{ userId: 'u1', communityId: 'cA', case: 'demoted' }])
+  })
+
+  it('dry-run zählt nur', async () => {
+    const world: World = { accounts: { u1: ['cA', 'modcA'] }, removed: [], demoted: [row('m1', 'cA', 'u1')] }
+    const { deps, users } = build(world)
+    const result = await reconcileCommunityLabels('dry-run', deps)
+    expect(result).toMatchObject({ stale: 1, revoked: 0, demotedStale: 1 })
+    expect(users.updateLabels).not.toHaveBeenCalled()
+  })
+
+  it('Gegenprobe: wieder hochgestuft (Rolle frisch gelesen) ⇒ nichts', async () => {
+    const world: World = {
+      accounts: { u1: ['cA', 'modcA'] },
+      removed: [],
+      demoted: [row('m1', 'cA', 'u1')],
+      moderates: new Set(['cA|u1']),
+    }
+    const { deps, users } = build(world)
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toMatchObject({ stale: 0, revoked: 0, skipped: 1, demotedStale: 0 })
+    expect(users.updateLabels).not.toHaveBeenCalled()
+    expect(world.accounts.u1).toEqual(['cA', 'modcA'])
+  })
+
+  it('Konto ohne Moderations-Label ⇒ keine Rückfrage, kein Schreiben', async () => {
+    const world: World = { accounts: { u1: ['cA'] }, removed: [], demoted: [row('m1', 'cA', 'u1')] }
+    const { deps, users, reader } = build(world)
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toMatchObject({ stale: 0, revoked: 0, demotedCandidates: 1, demotedStale: 0 })
+    expect(reader.moderatesNow).not.toHaveBeenCalled()
+    expect(users.updateLabels).not.toHaveBeenCalled()
+  })
+
+  it('stillgelegt UND herabgestuft: einmal beide Labels weg, kein zweiter Schreibvorgang', async () => {
+    const world: World = {
+      accounts: { u1: ['cA', 'modcA'] },
+      removed: [],
+      inDisabled: [row('m1', 'cA', 'u1')],
+      demoted: [row('m1', 'cA', 'u1')],
+    }
+    const { deps, users } = build(world)
+    const result = await reconcileCommunityLabels('apply', deps)
+    expect(result).toMatchObject({ stale: 1, revoked: 1, disabledStale: 1, demotedStale: 0 })
+    expect(users.updateLabels).toHaveBeenCalledTimes(1)
+    expect(world.accounts.u1).toEqual([])
+  })
+
+  it('ist wiederholbar: der zweite Lauf schreibt nichts', async () => {
+    const world: World = { accounts: { u1: ['cA', 'modcA'] }, removed: [], demoted: [row('m1', 'cA', 'u1')] }
+    const { deps, users } = build(world)
+    await reconcileCommunityLabels('apply', deps)
+    users.updateLabels.mockClear()
+    const second = await reconcileCommunityLabels('apply', deps)
+    expect(second).toMatchObject({ stale: 0, revoked: 0, demotedCandidates: 1 })
+    expect(users.updateLabels).not.toHaveBeenCalled()
   })
 })
 
