@@ -14,7 +14,8 @@ import { tooManyRequests } from './rateLimited'
  * Regeln:
  *  - Gezählt wird VOR der Prüfung (atomar im Store, hält unter gleichzeitigen
  *    Anfragen), bei Erfolg wird der eigene Versuch zurückgebucht — eine
- *    gelungene Anmeldung kostet nichts.
+ *    gelungene Anmeldung kostet nichts. Ebenso, wenn die Prüfung gar nicht
+ *    stattfand (`skipAccountAttempt`, unten).
  *  - KEINE Dauersperre: ein festes Fenster, das ein geblockter Versuch nicht
  *    verlängert. Danach ist das Konto wieder frei, auch wenn währenddessen
  *    weiter angefragt wurde.
@@ -43,6 +44,22 @@ import { tooManyRequests } from './rateLimited'
 export const ACCOUNT_ATTEMPT_MAX = 10
 /** Fenster des Konto-Zählers: 15 Minuten, fest (kein gleitendes Fenster). */
 export const ACCOUNT_ATTEMPT_WINDOW_MS = 15 * 60_000
+
+/**
+ * AUSFALL IST KEIN FEHLVERSUCH (AB1 d). Kommt die Prüfung des Geheimnisses gar
+ * nicht zustande (Appwrite nicht erreichbar), meldet die Route das hier — der
+ * Versuch wird dann wie ein Erfolg zurückgebucht, obwohl die Antwort ein 503
+ * ist. Sonst pausierte ein Ausfall von zehn Wiederholungen das Konto für eine
+ * Viertelstunde. Die Drossel je IP (`05.rate-limit.ts`) zählt den Versuch
+ * weiter: sie läuft nach einer Minute ab und bremst das Nachfassen, solange
+ * Appwrite ohnehin nicht antwortet.
+ */
+const uncountedAttempts = new WeakSet<object>()
+
+/** Diesen Versuch nicht auf das Konto zählen (die Prüfung fand nicht statt). */
+export function skipAccountAttempt(event: H3Event): void {
+  uncountedAttempts.add(event)
+}
 
 /** Welche Prüfung gezählt wird — je Scope ein eigener Zähler. */
 export type AccountAttemptScope = 'login' | 'otp' | 'mfa'
@@ -79,7 +96,7 @@ export async function limitAccountAttempts(event: H3Event, scope: AccountAttempt
   }
 
   event.node.res.once('finish', () => {
-    if (event.node.res.statusCode < 400) void store.refund(key, ACCOUNT_ATTEMPT_WINDOW_MS)
+    if (event.node.res.statusCode < 400 || uncountedAttempts.has(event)) void store.refund(key, ACCOUNT_ATTEMPT_WINDOW_MS)
   })
 }
 

@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { z } from 'zod'
 import { createSessionClient, createAdminClient } from '../../lib/appwrite'
 import { recoverySchema } from '../../../schemas/auth'
+import { unexpectedRecoveryFailure } from '../../../shared/authFailure'
 import { resolveTrustedOrigin } from '../../utils/trustedOrigin'
 
 /**
@@ -46,6 +47,21 @@ export default defineEventHandler(async (event) => {
 
   try {
     await account.createRecovery({ email, url: `${origin}/reset-password` })
+  }
+  catch (error) {
+    /**
+     * ZWEI GRÜNDE, EINE ANTWORT (AB1 d). Unbekannte oder gesperrte Adresse:
+     * erwartet, still. Alles andere — Appwrite nicht erreichbar, der Link-Host
+     * im Projekt nicht eingetragen, kein Mailversand — ist ein Fehler im
+     * BETRIEB und bekommt eine Zeile (Typ und Status, nie die Adresse). Nach
+     * außen bleibt beides dieselbe Antwort.
+     */
+    const failure = unexpectedRecoveryFailure(error)
+    if (failure) logEvent('error', 'auth.recovery_failed', failure)
+    return { ok: true }
+  }
+
+  try {
     // Security-Signal ins Aktivitätsprotokoll — nur intern (admin-only Audit),
     // die Antwort bleibt in JEDEM Pfad identisch (keine Account-Enumeration).
     const { users } = createAdminClient(event)
@@ -56,7 +72,7 @@ export default defineEventHandler(async (event) => {
     }
   }
   catch {
-    // Unbekannte E-Mail etc. — nicht leaken, Antwort bleibt identisch
+    // Das Protokoll ist Beiwerk — die Mail ist verschickt, die Antwort bleibt.
   }
 
   return { ok: true }

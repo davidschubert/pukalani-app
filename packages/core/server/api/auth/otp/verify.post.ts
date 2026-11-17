@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../../lib/appwrite'
 import { otpVerifySchema } from '../../../../schemas/auth'
+import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../../shared/authFailure'
 import { secondFactorPending } from '../../../../shared/mfa'
 import type { OtpVerifyResponse } from '../../../../shared/types/auth-responses'
 
@@ -22,8 +23,26 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
   const before = await users.get({ userId }).catch(() => null)
   const isFirstJoin = !!before && !before.emailVerification && !before.passwordUpdate
 
+  /**
+   * DIE PRÜFUNG DES CODES STEHT FÜR SICH (AB1 d): nur hier lässt sich ein
+   * Ausfall von Appwrite von einem falschen Code trennen. Ausfall ⇒ 503 mit
+   * Grund, eine Log-Zeile, und der Versuch zählt nicht auf das Konto.
+   */
+  const session = await account.createSession({ userId, secret: code }).catch((error: unknown) => {
+    if (isAuthBackendOutage(error)) {
+      skipAccountAttempt(event)
+      logEvent('error', 'auth.login_unavailable', { method: 'otp' })
+      throw createError({
+        status: 503,
+        statusText: 'Sign-in is temporarily unavailable',
+        data: { code: AUTH_UNAVAILABLE_CODE },
+      })
+    }
+    // Falscher/abgelaufener Code — generisch, KEIN Cookie
+    throw createError({ status: 401, statusText: 'Invalid or expired code' })
+  })
+
   try {
-    const session = await account.createSession({ userId, secret: code })
     // Das Cookie wird IMMER gesetzt, auch wenn noch ein zweiter Faktor fehlt
     // (Begründung in login.post.ts): die halbe Session ist der Träger, mit dem
     // /api/auth/mfa/challenge die Challenge löst, und für jeden Konto-Aufruf
@@ -105,7 +124,7 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
     return { ok: true, mfaRequired: false }
   }
   catch {
-    // Falscher/abgelaufener Code — generisch, KEIN Cookie
+    // Alles nach der Code-Prüfung (zweiter Faktor, Beitritt): wie bisher generisch.
     throw createError({ status: 401, statusText: 'Invalid or expired code' })
   }
 })

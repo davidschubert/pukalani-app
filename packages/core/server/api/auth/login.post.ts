@@ -1,5 +1,6 @@
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../lib/appwrite'
 import { loginSchema } from '../../../schemas/auth'
+import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../shared/authFailure'
 import { secondFactorPending } from '../../../shared/mfa'
 import type { LoginResponse } from '../../../shared/types/auth-responses'
 
@@ -14,7 +15,22 @@ export default defineEventHandler(async (event): Promise<LoginResponse> => {
   try {
     session = await account.createEmailPasswordSession({ email, password })
   }
-  catch {
+  catch (error) {
+    /**
+     * AUSFALL ODER FALSCHES PASSWORT? (AB1 d) Hat Appwrite gar nicht geprüft
+     * (nicht erreichbar, 5xx), ist das kein Fehlversuch: 503 mit Grund, eine
+     * Log-Zeile, und der Versuch zählt nicht auf das Konto. Die Anmeldeseite
+     * sagt dann „Server nicht erreichbar" statt „Passwort prüfen".
+     */
+    if (isAuthBackendOutage(error)) {
+      skipAccountAttempt(event)
+      logEvent('error', 'auth.login_unavailable', { method: 'password' })
+      throw createError({
+        status: 503,
+        statusText: 'Sign-in is temporarily unavailable',
+        data: { code: AUTH_UNAVAILABLE_CODE },
+      })
+    }
     // Keine Appwrite-Details leaken — generische 401
     throw createError({ status: 401, statusText: 'Invalid credentials' })
   }
