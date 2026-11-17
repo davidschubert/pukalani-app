@@ -40,7 +40,14 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Presences, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  appwriteRest,
+  createCleanup,
+  createProbeAccount,
+  generatePassword,
+  probeSiteBody,
+  runStamp,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -63,6 +70,10 @@ const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolPr
 // Glocken-Zeilen der Kontakt-Route liegen im POOL-Projekt (SEC-030 Teil 2).
 const poolTables = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
 const poolDatabaseId = process.env.POOL_DATABASE_ID || databaseId
+const script = 'verify-site-authz'
+const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const poolRest = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const runId = runStamp()
 
 let pass = 0
 let fail = 0
@@ -124,11 +135,9 @@ function call(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
 }
 
 async function createPoolUser(tag) {
-  const email = `o5-${tag}-${Date.now()}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `O5 ${tag}` })
-  cleanup.users.push(user.$id)
-  return { userId: user.$id, email, password }
+  const account = await createProbeAccount(poolRest, { tag: `o5-${tag}`, stamp: runId, name: `O5 ${tag}`, verified: false })
+  cleanup.users.push(account.userId)
+  return account
 }
 
 /** Anmelden auf dem Kontroll-Host → Session-Cookie. */
@@ -164,23 +173,33 @@ async function issueCode() {
  * Auth-Routen also noch „offen". (Der Beitritt selbst entscheidet das Control
  * Plane ungecacht, deshalb greifen die Mitgliedschafts-Prüfungen sofort.)
  *
- * Die Sonde ist NEBENWIRKUNGSFREI: `/api/auth/signup` prüft die Sperre VOR der
- * Body-Validierung — geschlossen ⇒ 403, offen ⇒ 400 (ungültiges Passwort). In
- * keinem Fall entsteht ein Konto. Jede Sonde bekommt eine eigene Client-IP,
- * weil signup seit dem Audit 2026-08-02 gedrosselt ist (5/min und IP).
+ * Die Sonde ist NEBENWIRKUNGSFREI: `/api/auth/signup` prüft die Sperre der
+ * Community NACH der Body-Validierung, aber VOR der Kontoanlage. Die Sonde
+ * schickt deshalb einen gültigen Body mit einer Adresse, die es SCHON gibt (das
+ * Konto des Owners): geschlossen ⇒ 403, offen ⇒ 409 („schon registriert"). In
+ * keinem Fall entsteht ein Konto. (Bis 2026-11-17 nahm die Sonde frische
+ * Adressen — solange die Registrierung noch offen war, legte JEDE Sonde ein
+ * Konto an, und keines wurde aufgeräumt.) Jede Sonde bekommt eine eigene
+ * Client-IP, weil signup seit dem Audit 2026-08-02 gedrosselt ist (5/min und IP).
  */
-async function waitForClosedRegistration(host) {
-  for (let i = 0; i < 40; i++) {
+async function waitForClosedRegistration(host, existingEmail) {
+  // Alle 2 s statt jede Sekunde: jede Sonde zählt in die Notbremse der
+  // Mail-Routen (60 je Stunde und App, über alle Adressen) — 25 Sonden decken
+  // den 30-s-Cache ab und lassen dem Rest des Laufs Luft.
+  for (let i = 0; i < 25; i++) {
     const res = await call(host, '/api/auth/signup', {
       method: 'POST',
       // GÜLTIGER Body (starkes Passwort, Name ≥ 2 Zeichen), sonst antwortet Zod
       // 400, BEVOR die Route die Registrierungssperre prüft — und die 403 kommt
       // nie (2026-09-08 erwischt: der Check war seit der Schema-Härtung tot).
-      body: { email: `probe-${i}-${Date.now()}@example.test`, password: 'Probe-Passw0rd!1', name: 'Probe' },
+      body: { email: existingEmail, password: generatePassword(), name: 'Probe' },
       clientIp: `192.0.2.${1 + (i % 250)}`,
     })
     if (res.status === 403) return true
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Alles außer „offen" (409) und „gesperrt" (403) ist eine andere Antwort,
+    // als die Sonde kennt — dann lieber rot als weiter raten.
+    if (res.status !== 409) throw new Error(`Sonde der Registrierung: unerwartet ${res.status} ${res.text.slice(0, 120)}`)
+    await new Promise(resolve => setTimeout(resolve, 2000))
   }
   return false
 }
@@ -206,7 +225,7 @@ try {
   const code = await issueCode()
   const ownerCookie = await login(owner)
   const strangerCookie = await login(stranger)
-  const slug = `o5-${Date.now().toString(36)}`
+  const slug = `o5-${runId}`
 
   console.log('1. Community anlegen (echter Wizard-Abschluss, Vibe „elegant")')
   const created = await call(CONTROL_HOST, '/api/onboarding/site', {
@@ -678,7 +697,7 @@ try {
   const signupEmail = `a5-signup-${Date.now()}@example.test`
   const signedUp = await call(host, '/api/auth/signup', {
     method: 'POST',
-    body: { email: signupEmail, password: `Pw-${ID.unique()}`, name: 'A5 Signup' },
+    body: { email: signupEmail, password: generatePassword(), name: 'A5 Signup' },
   })
   if (signedUp.status === 200) {
     const found = await poolUsers.list({ queries: [Query.equal('email', signupEmail), Query.limit(1)] })
@@ -922,7 +941,7 @@ try {
    * ::1-Eimer würden spätere Läufe stören.
    */
   check('…und die Auth-Routen sehen die Sperre (nach dem Resolver-Cache)',
-    await waitForClosedRegistration(host))
+    await waitForClosedRegistration(host, owner.email))
 
   const otpIp = `198.51.100.${1 + Math.floor(Math.random() * 250)}`
   const otpKnown = await call(host, '/api/auth/otp', {
@@ -1128,12 +1147,22 @@ finally {
     for (const id of cleanup.presences) await poolPresences.delete({ presenceId: id }).catch(() => {})
   }
   for (const id of cleanup.invites) await control.deleteRow({ databaseId, tableId: 'community_invites', rowId: id }).catch(() => {})
-  for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  const rest = await control.listRows({ databaseId, tableId: 'communities', queries: [Query.limit(25)] })
-  console.log(`  ✔ aufgeräumt — verbleibende Tenants: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)
+  // Der Rest über das gemeinsame Aufräum-Register — es räumt auch, was die
+  // Anlage über die echte Route hinterlässt (Seiten, erster Beitrag, Kategorie,
+  // Zustimmungs- und Protokoll-Zeilen, Testphasen-Zeile), und zählt nach.
+  const register = createCleanup({ pool: poolRest, control: controlRest, poolDatabaseId, controlDatabaseId: databaseId })
+  for (const id of cleanup.users) register.track('account', id)
+  for (const id of cleanup.members) register.track('member', id)
+  for (const id of cleanup.codes) register.track('inviteCode', id)
+  for (const id of cleanup.tenants) {
+    register.track('community', id)
+    const row = await controlRest.getRow(databaseId, 'communities', id).catch(() => null)
+    if (row?.tenantId) register.track('tenant', row.tenantId)
+  }
+  const { deleted, leftovers } = await register.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Codes, Zeilen der Communities)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

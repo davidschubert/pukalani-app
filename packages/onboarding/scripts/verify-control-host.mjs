@@ -10,6 +10,9 @@
  *
  * Aufruf (Platform-Dev-Server muss laufen):
  *   node packages/onboarding/scripts/verify-control-host.mjs
+ * Hosts aus der Umgebung: CONTROL_HOST (Standard app.localhost) und
+ * TENANT_HOST_A (Standard kunde-a.localhost) — auf der Bühne nennt sie
+ * `pnpm buehne env`: `pnpm buehne run --only verify-control-host`.
  */
 /**
  * WICHTIG (Falle, die zwei Fehlmessungen gekostet hat): `fetch` (undici)
@@ -30,6 +33,8 @@ import { request } from 'node:http'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const BASE = `http://localhost:${PORT}`
+const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
+const TENANT_HOST = process.env.TENANT_HOST_A || 'kunde-a.localhost'
 let pass = 0
 let fail = 0
 
@@ -58,23 +63,27 @@ function get(host, path, headers = {}) {
 
 console.log(`\nO3-Beweis gegen ${BASE}\n`)
 
-console.log('1. Kontroll-Host app.localhost')
-const start = await get('app.localhost', '/start')
+console.log(`1. Kontroll-Host ${CONTROL_HOST}`)
+const start = await get(CONTROL_HOST, '/start')
 check('/start erreichbar (kein 404)', start.status !== 404, `Status ${start.status}`)
 check('/start schickt Gäste zum Login', /\/login/.test(start.body) || /\/login/.test(start.location || ''), `Status ${start.status}`)
-const health = await get('app.localhost', '/api/health')
+const health = await get(CONTROL_HOST, '/api/health')
 check('/api/health → 200', health.status === 200, `Status ${health.status}`)
 for (const path of ['/api/comments?targetType=page&targetId=home', '/api/pages/public/home', '/api/stats', '/api/themes']) {
-  const res = await get('app.localhost', path)
+  const res = await get(CONTROL_HOST, path)
   check(`${path} → 404 (kein Mandanten-Datenpfad im Kundenbereich)`, res.status === 404, `Status ${res.status}`)
 }
-const me = await get('app.localhost', '/api/auth/me')
+const me = await get(CONTROL_HOST, '/api/auth/me')
 check('/api/auth/me erlaubt (401 ohne Session, nicht 404)', me.status === 401, `Status ${me.status}`)
 
-console.log('\n2. Community-Host kunde-a.localhost')
-const tenantComments = await get('kunde-a.localhost', '/api/comments?targetType=page&targetId=home')
+console.log(`\n2. Community-Host ${TENANT_HOST}`)
+// Erst die Gegenprobe, dass es den Host gibt — sonst wäre das 404 von /start
+// unten auch bei einem unbekannten Host „grün".
+const tenantThemes = await get(TENANT_HOST, '/api/themes')
+check('der Community-Host wird aufgelöst (/api/themes → 200)', tenantThemes.status === 200, `Status ${tenantThemes.status}`)
+const tenantComments = await get(TENANT_HOST, '/api/comments?targetType=page&targetId=home')
 check('/api/comments auf Community-Host erlaubt', tenantComments.status === 200, `Status ${tenantComments.status}`)
-const funnelOnTenant = await get('kunde-a.localhost', '/start')
+const funnelOnTenant = await get(TENANT_HOST, '/start')
 check('/start auf Community-Host → 404', funnelOnTenant.status === 404, `Status ${funnelOnTenant.status}`)
 
 console.log('\n3. Unbekannter Host')

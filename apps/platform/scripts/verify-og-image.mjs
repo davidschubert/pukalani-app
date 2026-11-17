@@ -13,6 +13,10 @@
  *   node scripts/verify-og-image.mjs                  # demo.localhost:3006
  *   node scripts/verify-og-image.mjs --host demo.pukalani.app --port 443 --tls
  *   node scripts/verify-og-image.mjs --save /tmp/karte.png
+ *   pnpm buehne run --only verify-og-image          # Host und Port der Bühne
+ *
+ * Ohne Flags gelten die Umgebungs-Werte der Bühne (TENANT_HOST_A,
+ * PLATFORM_PORT), sonst demo.localhost:3006; Flags gehen immer vor.
  *
  * Warum node:http und nicht fetch (dieselbe Falle wie in den
  * onboarding-Skripten): Node's `fetch` VERWIRFT einen selbst gesetzten
@@ -29,8 +33,8 @@ const flag = (name, fallback) => {
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback
 }
 
-const host = flag('host', 'demo.localhost')
-const port = Number(flag('port', '3006'))
+const host = flag('host', process.env.TENANT_HOST_A || 'demo.localhost')
+const port = Number(flag('port', process.env.PLATFORM_PORT || '3006'))
 const tls = args.includes('--tls')
 const address = flag('address', tls ? host : '::1')
 const save = flag('save', '')
@@ -67,7 +71,7 @@ function metaTags(html) {
 
 let failed = 0
 const check = (ok, label, detail = '') => {
-  console.log(`${ok ? '✔' : '✘'} ${label}${detail ? ` — ${detail}` : ''}`)
+  console.log(`${ok ? '✔' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`)
   if (!ok) failed++
 }
 
@@ -87,7 +91,14 @@ check(meta['twitter:card'] === 'summary_large_image', 'twitter:card = summary_la
 // Der Kopf, der vorher schon da war, muss unberührt bleiben
 const canonical = /<link[^>]*rel="canonical"[^>]*href="([^"]*)"/.exec(page.body.toString('utf8'))?.[1] ?? ''
 check(canonical.includes(host), 'canonical zeigt weiter auf diesen Host', canonical)
-check(Boolean(meta['og:title']) && Boolean(meta['og:description']), 'og:title/og:description unverändert vorhanden')
+check(Boolean(meta['og:title']), 'og:title unverändert vorhanden')
+// og:description gibt es nur, wenn die Seite eine Beschreibung HAT
+// (useBrandTitle lässt beide weg, wenn der Text leer ist — eine frisch
+// angelegte Community ohne Beschreibung hat keine). Geprüft wird deshalb,
+// dass beide zusammen stehen und dasselbe sagen.
+check(Boolean(meta['og:description']) === Boolean(meta.description) && (meta['og:description'] ?? '') === (meta.description ?? ''),
+  'og:description steht genau dann, wenn description steht — mit demselben Text',
+  `og:description=${JSON.stringify(meta['og:description'] ?? null)} description=${JSON.stringify(meta.description ?? null)}`)
 
 const path = imageUrl ? new URL(imageUrl).pathname : '/og/0000000.png'
 const image = await request(path)

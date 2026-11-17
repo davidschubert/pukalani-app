@@ -22,15 +22,21 @@
  * Jede Prüfung bekommt eine eigene, zufällige Client-IP — sonst stören sich
  * die Läufe gegenseitig. Dass die lokal überhaupt wirkt, ist die dokumentierte
  * Grenze aus server/utils/clientIp.ts: ohne vorgelagerten nginx hängt niemand
- * die echte Adresse an, also IST das letzte Segment die des Clients.
+ * die echte Adresse an, also IST das letzte Segment die des Clients. Das
+ * Skript setzt die Kopfzeile selbst; die Adresse, die der Läufer der Bühne
+ * jedem Skript mitgibt, bleibt damit unberührt.
+ *
+ * Der Host muss eine ECHTE Community sein (ein unbekannter Host endet vor den
+ * Bremsen mit 404): `HOST`, sonst `TENANT_HOST_A` (die Bühne nennt ihn).
  *
  *   node packages/core/scripts/verify-rate-limits.mjs
  *   PORT=3001 HOST=localhost node packages/core/scripts/verify-rate-limits.mjs
+ *   pnpm buehne run --only verify-rate-limits
  */
 import { request } from 'node:http'
 
 const PORT = Number(process.env.PORT || process.env.PLATFORM_PORT || 3006)
-const HOST = process.env.HOST || 'kunde-a.localhost'
+const HOST = process.env.HOST || process.env.TENANT_HOST_A || 'kunde-a.localhost'
 
 let pass = 0
 let fail = 0
@@ -75,8 +81,13 @@ function call(path, { method = 'GET', body, clientIp, contentType } = {}) {
   })
 }
 
+/**
+ * Eine frische Adresse aus dem Bereich für Messungen (198.18.0.0/15): breit
+ * genug, dass zwei Läufe kurz hintereinander nicht im selben Eimer landen.
+ */
 function freshIp() {
-  return `203.0.113.${1 + Math.floor(Math.random() * 250)}`
+  const octet = () => 1 + Math.floor(Math.random() * 254)
+  return `198.${18 + Math.floor(Math.random() * 2)}.${octet()}.${octet()}`
 }
 
 /**
@@ -94,6 +105,11 @@ async function firstThrottled(tries, make) {
 }
 
 console.log(`\nDrossel-Beweis gegen http://localhost:${PORT} (Host ${HOST})\n`)
+
+// Gegenprobe vorab: der Host wird aufgelöst. Sonst endet jede Anfrage vor
+// den Bremsen mit 404, und „kein 429" hieße nichts.
+const alive = await call('/api/themes')
+check(`${HOST} wird aufgelöst (/api/themes → 200)`, alive.status === 200, `Status ${alive.status}`)
 
 console.log('3. POST /api/auth/signup — 5/min und IP (ALWAYS_LIMITED)')
 {

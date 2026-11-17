@@ -43,7 +43,17 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  PERSON_COLUMNS,
+  appwriteRest,
+  createCleanup,
+  findColumns,
+  generatePassword,
+  probeEmail,
+  probeSiteBody,
+  runStamp,
+  sweepRows,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_PORT = Number(process.env.CONTROL_PORT || 3004)
@@ -63,7 +73,14 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
 }
 
 const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
+// Betreiber-Konten entstehen im Projekt des Control Plane — dafür braucht es
+// `users.write`. Der Laufzeit-Schlüssel der Betreiber-App hat das, der
+// Migrations-Schlüssel lokal nicht (in der CI hat EIN Schlüssel alle Rechte).
+const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(process.env.NUXT_APPWRITE_KEY || controlKey))
+const script = 'verify-community-suspension'
+const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const poolRest = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const runId = runStamp()
 const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
 /**
  * Die RUNTIME-Tabellen (F25): die beiden Sweeps lassen sich von außen nur
@@ -137,8 +154,8 @@ function call(host, path, { method = 'GET', body, cookie, port = PORT } = {}) {
 const ctl = (path, options = {}) => call(CONTROL_APP_HOST, path, { ...options, port: CONTROL_PORT })
 
 async function createPoolUser(tag) {
-  const email = `m13-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.test`
-  const password = `Pw-${ID.unique()}`
+  const email = probeEmail(`m13-${tag}`, runId)
+  const password = generatePassword()
   const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `M13 ${tag}` })
   cleanup.users.push(user.$id)
   return { userId: user.$id, email, password }
@@ -146,8 +163,8 @@ async function createPoolUser(tag) {
 
 /** Konto im CONTROL-Projekt (Betreiber-Oberfläche) — mit oder ohne admin-Label. */
 async function createControlUser(tag, labels = []) {
-  const email = `m13c-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.test`
-  const password = `Pw-${ID.unique()}`
+  const email = probeEmail(`m13c-${tag}`, runId)
+  const password = generatePassword()
   const user = await controlUsers.create({ userId: ID.unique(), email, password, name: `M13 ${tag}` })
   if (labels.length) await controlUsers.updateLabels({ userId: user.$id, labels })
   cleanup.controlUsers.push(user.$id)
@@ -252,7 +269,7 @@ try {
   const code = await issueCode()
   const ownerCookie = await login(owner)
   const memberCookie = await login(member)
-  const slug = `m13-${Date.now().toString(36)}`
+  const slug = `m13-${runId}`
 
   const created = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
@@ -1200,13 +1217,32 @@ finally {
     }
   }
   for (const id of cleanup.reports) await control.deleteRow({ databaseId, tableId: 'abuse_reports', rowId: id }).catch(() => {})
-  for (const id of [...new Set(cleanup.members)]) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
+  // Betreiber-Konten (Projekt des Control Plane): erst, was an ihnen hängt
+  // (Protokoll, Glocke), dann die Konten — und nachzählen.
+  const controlPersonTargets = await findColumns(controlRest, databaseId, PERSON_COLUMNS)
+    ?? [{ tableId: 'notifications', column: 'recipientId' }]
+  await sweepRows(controlRest, databaseId, controlPersonTargets, cleanup.controlUsers, { remove: true })
   for (const id of cleanup.controlUsers) await controlUsers.delete({ userId: id }).catch(() => {})
-  const rest = await control.listRows({ databaseId, tableId: 'communities', queries: [Query.limit(25)] })
-  console.log(`  ✔ aufgeräumt — verbleibende Communities: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)
+  // Der Rest über das gemeinsame Aufräum-Register — es räumt auch, was die
+  // Anlage über die echte Route hinterlässt (Seiten, erster Beitrag, Kategorie,
+  // Zustimmungs- und Protokoll-Zeilen, Testphasen-Zeile), und zählt nach.
+  const register = createCleanup({ pool: poolRest, control: controlRest, poolDatabaseId, controlDatabaseId: databaseId })
+  for (const id of cleanup.users) register.track('account', id)
+  for (const id of new Set(cleanup.members)) register.track('member', id)
+  for (const id of cleanup.codes) register.track('inviteCode', id)
+  for (const id of cleanup.tenants) {
+    register.track('community', id)
+    const row = await controlRest.getRow(databaseId, 'communities', id).catch(() => null)
+    if (row?.tenantId) register.track('tenant', row.tenantId)
+  }
+  const { deleted, leftovers } = await register.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Codes, Zeilen der Communities)`)
+  for (const [key, n] of Object.entries(await sweepRows(controlRest, databaseId, controlPersonTargets, cleanup.controlUsers))) leftovers.push(`control:${key}=${n}`)
+  for (const id of cleanup.controlUsers) {
+    if (await controlUsers.get({ userId: id }).then(() => true, error => error?.code !== 404)) leftovers.push(`Betreiber-Konto:${id}`)
+  }
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

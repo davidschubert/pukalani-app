@@ -20,7 +20,15 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request as httpRequest } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  appwriteRest,
+  createCleanup,
+  createProbeAccount,
+  generatePassword,
+  login,
+  probeSiteBody,
+  runStamp,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PLATFORM_PORT = Number(process.env.PLATFORM_PORT || 3006)
 const STUDIO_URL = process.env.STUDIO_URL || 'http://localhost:3004'
@@ -40,11 +48,30 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
 }
 
 const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+const script = 'verify-invite-requests'
+const controlRest = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const cleanup = createCleanup({ pool, control: controlRest, poolDatabaseId: process.env.POOL_DATABASE_ID || 'main', controlDatabaseId: databaseId })
+/** Zeilen der Warteschlange — die kennt das Aufräum-Register nicht, sie fallen hier einzeln. */
+const requestRows = []
+// Der Betreiber, dessen Glocke geprüft wird, ist ein Konto im Projekt des
+// Control Plane — dafür braucht es `users.write`. Der Laufzeit-Schlüssel der
+// Betreiber-App hat das, der Migrations-Schlüssel lokal nicht.
+const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(process.env.NUXT_APPWRITE_KEY || controlKey))
+/** Betreiber-Konten und ihre Glocken-Zeilen — räumt dieses Skript selbst. */
+const operators = []
+const bellRows = []
+/**
+ * Die Betreiber-MAIL geht nur raus, wenn die Betreiber-App eine Adresse dafür
+ * hat (`NUXT_ALERT_EMAIL`) — die ist heute auf keiner Site gesetzt, die
+ * Anfrage erreicht den Betreiber über die Glocke (.claude/rules/hosts-ops.md).
+ * Läuft die Betreiber-App MIT Adresse, setzt der Aufrufer OPERATOR_MAIL=1, und
+ * die Mail wird zusätzlich verlangt.
+ */
+const EXPECT_OPERATOR_MAIL = process.env.OPERATOR_MAIL === '1'
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], requests: [], codes: [], tenants: [], members: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -121,8 +148,16 @@ async function mailWithSubject(fragment, attempts = 10) {
 try {
   console.log(`\nBeweis Einladungs-Warteschlange — Platform :${PLATFORM_PORT}, Studio ${STUDIO_URL}, Mailpit ${MAILPIT}\n`)
 
-  const stamp = Date.now().toString(36)
+  const stamp = runStamp()
   const email = `anfrage-${stamp}@example.test`
+
+  // Ein Wegwerf-Betreiber (Label admin), damit die Glocke einen Empfänger hat,
+  // den dieser Lauf kennt — fremde Glocken liest das Skript nicht.
+  const operator = await controlUsers.create({
+    userId: ID.unique(), email: `anfrage-betreiber-${stamp}@example.test`, password: generatePassword(), name: 'Beweis Warteschlange',
+  })
+  operators.push(operator.$id)
+  await controlUsers.updateLabels({ userId: operator.$id, labels: ['admin'] })
 
   console.log('1. Anfragen (öffentlich, ohne Konto)')
   const first = await callPlatform(CONTROL_HOST, '/api/onboarding/request', {
@@ -140,20 +175,36 @@ try {
   })
   check('zweite Anfrage derselben Adresse ist wieder ok (keine Auskunft)', again.status === 200)
 
+  // Nur die eigenen zwei Adressen lesen — nie die Warteschlange anderer.
   const rows = await control.listRows({
-    databaseId, tableId: 'invite_requests', queries: [Query.orderDesc('$createdAt'), Query.limit(25)],
+    databaseId, tableId: 'invite_requests', queries: [Query.equal('email', [email, `bot-${stamp}@example.test`]), Query.limit(25)],
   })
   const mine = rows.rows.filter(row => row.email === email)
   const botRow = rows.rows.find(row => row.email === `bot-${stamp}@example.test`)
-  cleanup.requests.push(...mine.map(row => row.$id))
+  requestRows.push(...mine.map(row => row.$id))
   check('genau EINE Zeile trotz zweier Anfragen', mine.length === 1, `${mine.length}`)
   check('Bot-Anfrage wurde NICHT gespeichert', !botRow)
   const requestId = mine[0]?.$id
 
-  // Der Betreiber soll die Anfrage nicht erst im Dashboard entdecken müssen.
-  const operatorMail = await mailWithSubject(`Early-Access-Anfrage von ${email}`)
-  if (!operatorMail.available) console.log('   ⊘ Mailpit nicht erreichbar — Betreiber-Mail ungeprüft')
-  else check('Betreiber-Mail zur neuen Anfrage liegt in Mailpit', !!operatorMail.message)
+  // Der Betreiber soll die Anfrage nicht erst im Dashboard entdecken müssen:
+  // die Glocke trägt sie für JEDEN Betreiber (notifyOperators, inviteRequests.ts).
+  let bell = []
+  for (let i = 0; i < 20 && !bell.length; i++) {
+    const res = await control.listRows({
+      databaseId, tableId: 'notifications',
+      queries: [Query.equal('recipientId', operator.$id), Query.equal('type', 'invite.request'), Query.limit(10)],
+    })
+    bell = res.rows
+    if (!bell.length) await new Promise(resolve => setTimeout(resolve, 300))
+  }
+  bellRows.push(...bell.map(row => row.$id))
+  check('die Glocke des Betreibers trägt die Anfrage (genau einmal, mit der Adresse)',
+    bell.length === 1 && bell[0].title === email, `${bell.length} Zeile(n) ${bell.map(row => row.title).join(', ')}`)
+  if (EXPECT_OPERATOR_MAIL) {
+    const operatorMail = await mailWithSubject(`Early-Access-Anfrage von ${email}`)
+    if (!operatorMail.available) check('Betreiber-Mail zur neuen Anfrage liegt in Mailpit', false, 'Mailpit nicht erreichbar')
+    else check('Betreiber-Mail zur neuen Anfrage liegt in Mailpit', !!operatorMail.message)
+  }
 
   console.log('\n2. Betreiber weist zu (Mail geht raus)')
   const assign = await callStudio(`/api/control/invite-requests/${requestId}/assign`, { method: 'POST' })
@@ -175,7 +226,7 @@ try {
       boundEmail: email, requestId, assignedAt: new Date().toISOString(),
     },
   })
-  cleanup.codes.push(codeRow.$id)
+  cleanup.track('inviteCode', codeRow.$id)
   await control.updateRow({
     databaseId, tableId: 'invite_requests', rowId: requestId,
     data: { status: 'assigned', inviteCodeId: codeRow.$id, assignedAt: new Date().toISOString() },
@@ -183,16 +234,15 @@ try {
   check('Code an die Adresse gebunden', true)
 
   console.log('\n3. Der Code gilt NUR für den Eingeladenen')
-  const invited = { email, password: `Pw-${ID.unique()}` }
-  const stranger = { email: `fremd-${stamp}@example.test`, password: `Pw-${ID.unique()}` }
+  // Ein gebundener Code gilt nur für eine BESTÄTIGTE Adresse, und seit BE-015
+  // verlangt auch das Anlegen selbst eine. Die Adresse des Eingeladenen ist die
+  // der Anfrage (`anfrage-<stamp>@example.test`).
+  const invited = await createProbeAccount(pool, { tag: 'anfrage', stamp, name: 'Beweis' })
+  const stranger = await createProbeAccount(pool, { tag: 'fremd', stamp, name: 'Beweis' })
+  if (invited.email !== email) throw new Error(`Adresse des Kontos (${invited.email}) ist nicht die der Anfrage`)
   for (const account of [invited, stranger]) {
-    const user = await poolUsers.create({ userId: ID.unique(), email: account.email, password: account.password, name: 'Beweis' })
-    cleanup.users.push(user.$id)
-    // Ein gebundener Code gilt nur für eine BESTÄTIGTE Adresse, und seit BE-015
-    // verlangt auch das Anlegen selbst eine.
-    await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-    const login = await callPlatform(CONTROL_HOST, '/api/auth/login', { method: 'POST', body: account })
-    account.cookie = login.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
+    cleanup.track('account', account.userId)
+    account.cookie = await login(callPlatform, CONTROL_HOST, account)
   }
 
   const strangerCheck = await callPlatform(CONTROL_HOST, '/api/onboarding/precheck', {
@@ -219,7 +269,8 @@ try {
     }),
   })
   check('Community angelegt', created.status === 200 && !!created.json?.communityId, `${created.status} ${created.text.slice(0, 160)}`)
-  if (created.json?.communityId) cleanup.tenants.push(created.json.communityId)
+  if (created.json?.communityId) cleanup.track('community', created.json.communityId)
+  if (created.json?.tenantId) cleanup.track('tenant', created.json.tenantId)
 
   const afterRequest = await control.getRow({ databaseId, tableId: 'invite_requests', rowId: requestId })
   check('Anfrage steht auf „eingelöst"', afterRequest.status === 'redeemed', afterRequest.status)
@@ -238,7 +289,7 @@ try {
   const members = await control.listRows({
     databaseId, tableId: 'community_members', queries: [Query.equal('communityId', created.json?.communityId ?? 'x'), Query.limit(5)],
   })
-  cleanup.members.push(...members.rows.map(row => row.$id))
+  for (const row of members.rows) cleanup.track('member', row.$id)
 }
 catch (error) {
   fail++
@@ -246,12 +297,20 @@ catch (error) {
 }
 finally {
   console.log('\n5. Aufräumen')
-  for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.requests) await control.deleteRow({ databaseId, tableId: 'invite_requests', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  console.log('  ✔ aufgeräumt')
+  for (const id of requestRows) await control.deleteRow({ databaseId, tableId: 'invite_requests', rowId: id }).catch(() => {})
+  for (const id of bellRows) await control.deleteRow({ databaseId, tableId: 'notifications', rowId: id }).catch(() => {})
+  for (const id of operators) await controlUsers.delete({ userId: id }).catch(() => {})
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Community, Mitglieds-Zeilen, Code, Zeilen der Community)`)
+  // Auch die Anfrage muss weg sein (nachgezählt über die Adresse, nicht geglaubt).
+  const gone = (table, id) => control.getRow({ databaseId, tableId: table, rowId: id }).then(() => false, error => error?.code === 404)
+  for (const id of requestRows) if (!await gone('invite_requests', id)) leftovers.push(`invite_requests:${id}`)
+  for (const id of bellRows) if (!await gone('notifications', id)) leftovers.push(`notifications:${id}`)
+  for (const id of operators) {
+    if (await controlUsers.get({ userId: id }).then(() => true, error => error?.code !== 404)) leftovers.push(`Betreiber-Konto:${id}`)
+  }
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

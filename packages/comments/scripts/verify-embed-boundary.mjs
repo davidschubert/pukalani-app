@@ -28,9 +28,16 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  addStageMember,
+  appwriteRest,
+  createCleanup,
+  createProbeAccount,
+  createProbeCommunity,
+  login as loginOn,
+  runStamp,
+  waitForHost as waitForHostOn,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -47,12 +54,16 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   process.exit(1)
 }
 
-const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+const script = 'verify-embed-boundary'
+const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const cleanup = createCleanup({ pool, control, poolDatabaseId: process.env.POOL_DATABASE_ID || 'main', controlDatabaseId: databaseId })
+const runId = runStamp()
+/** Einbetter, die über die Route angelegt wurden — zuerst über die Route wieder weg. */
+let embedSites = []
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [], members: [], sites: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -101,73 +112,32 @@ function call(host, path, { method = 'GET', body, cookie, origin, secFetchSite }
   })
 }
 
+/** Probe-Konto. Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse. */
 async function createPoolUser(tag) {
-  const email = `f37-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `F37 ${tag}` })
-  cleanup.users.push(user.$id)
-  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-  return { userId: user.$id, email, password }
+  const account = await createProbeAccount(pool, { tag: `f37-${tag}`, stamp: runId, name: `F37 ${tag}` })
+  cleanup.track('account', account.userId)
+  return account
 }
 
-async function login(account) {
-  const res = await call(CONTROL_HOST, '/api/auth/login', {
-    method: 'POST',
-    body: { email: account.email, password: account.password },
-  })
-  if (res.status !== 200) throw new Error(`Login fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
+function login(account) {
+  return loginOn(call, CONTROL_HOST, account)
 }
 
-async function issueCode() {
-  const code = `PUKA-F37TEST-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId, tableId: 'invite_codes', rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'F37-Beweis', maxUses: 0, uses: 0, expiresAt: null, status: 'active',
-    },
-  })
-  cleanup.codes.push(row.$id)
-  return code
-}
 
 /** Der Host-Resolver cacht negativ (30 s) — nach der Anlage kurz nachfassen. */
-async function waitForHost(host) {
-  for (let i = 0; i < 40; i++) {
-    const res = await call(host, '/api/themes')
-    if (res.status === 200) return true
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  }
-  return false
+function waitForHost(host) {
+  return waitForHostOn(call, host)
 }
 
 async function createCommunity(cookie, tag) {
-  const slug = `f37-${tag}-${Date.now().toString(36)}`
-  const res = await call(CONTROL_HOST, '/api/onboarding/site', {
-    method: 'POST',
-    cookie,
-    body: probeSiteBody({
-      name: `F37 ${tag}`,
-      slug,
-      description: 'Wir prüfen, ob Einbetter an ihrer Community kleben.',
-      vibe: 'elegant',
-      inviteCode: await issueCode(),
-    }),
+  // Anlage über die echte Route `POST /api/onboarding/site` — Rumpf, Code und
+  // Aufräumen kommen aus der gemeinsamen Hilfe (scripts/lib/probe-stage.mjs).
+  const created = await createProbeCommunity({
+    call, controlHost: CONTROL_HOST, cookie, control, databaseId, cleanup,
+    slug: `f37-${tag}-${runId}`, name: `F37 ${tag}`,
+    bodyOverrides: { description: 'Wir prüfen, ob Einbetter an ihrer Community kleben.', vibe: 'elegant' },
   })
-  if (res.status !== 200 || !res.json?.communityId) {
-    throw new Error(`Community ${tag} nicht angelegt (${res.status}): ${res.text.slice(0, 200)}`)
-  }
-  cleanup.tenants.push(res.json.communityId)
-  const members = await control.listRows({
-    databaseId, tableId: 'community_members',
-    queries: [Query.equal('communityId', res.json.communityId), Query.limit(10)],
-  })
-  cleanup.members.push(...members.rows.map(row => row.$id))
-  return { communityId: res.json.communityId, host: res.json.host }
+  return { communityId: created.communityId, host: created.host }
 }
 
 try {
@@ -221,18 +191,10 @@ try {
   const staff = {}
   for (const role of ['admin', 'moderator', 'editor', 'viewer']) {
     const account = await createPoolUser(role)
-    const row = await control.createRow({
-      databaseId, tableId: 'community_members', rowId: ID.unique(),
-      data: {
-        communityId: a.communityId,
-        runtimeProjectId: poolProject,
-        runtimeUserId: account.userId,
-        role,
-        status: 'active',
-        email: account.email,
-      },
+    const row = await addStageMember(control, databaseId, {
+      communityId: a.communityId, projectId: poolProject, userId: account.userId, role, status: 'active', email: account.email,
     })
-    cleanup.members.push(row.$id)
+    cleanup.track('member', row.$id)
     staff[role] = { ...account, cookie: await login(account) }
   }
   for (const role of ['admin', 'moderator', 'editor', 'viewer']) {
@@ -257,14 +219,14 @@ try {
     method: 'POST', cookie: cookieA, body: { host: SHARED_HOST, label: 'A-Blog' },
   })
   check('Owner A legt einen Einbetter an → 200', siteA.status === 200, `Status ${siteA.status} ${siteA.text.slice(0, 200)}`)
-  if (siteA.json?.id) cleanup.sites.push({ host: a.host, cookie: cookieA, id: siteA.json.id })
+  if (siteA.json?.id) embedSites.push({ host: a.host, cookie: cookieA, id: siteA.json.id })
 
   const siteB = await call(b.host, '/api/admin/embed-sites', {
     method: 'POST', cookie: cookieB, body: { host: SHARED_HOST, label: 'B-Blog' },
   })
   check('Owner B darf DENSELBEN Host anlegen (Unique ist tenant-relativ) → 200',
     siteB.status === 200, `Status ${siteB.status} ${siteB.text.slice(0, 200)}`)
-  if (siteB.json?.id) cleanup.sites.push({ host: b.host, cookie: cookieB, id: siteB.json.id })
+  if (siteB.json?.id) embedSites.push({ host: b.host, cookie: cookieB, id: siteB.json.id })
 
   const listA = await call(a.host, '/api/admin/embed-sites', { cookie: cookieA })
   const listB = await call(b.host, '/api/admin/embed-sites', { cookie: cookieB })
@@ -306,7 +268,7 @@ try {
   const onlyA = await call(a.host, '/api/admin/embed-sites', {
     method: 'POST', cookie: cookieA, body: { host: ONLY_A },
   })
-  if (onlyA.json?.id) cleanup.sites.push({ host: a.host, cookie: cookieA, id: onlyA.json.id })
+  if (onlyA.json?.id) embedSites.push({ host: a.host, cookie: cookieA, id: onlyA.json.id })
   const cspA2 = await call(a.host, '/embed?targetId=f37&targetType=verify')
   const cspB2 = await call(b.host, '/embed?targetId=f37&targetType=verify')
   check('A: der neue Einbetter steht sofort in der CSP (Cache write-invalidiert)',
@@ -332,7 +294,7 @@ try {
   })
   check('same-origin (der Embed-/Dashboard-Fluss) geht durch → 200',
     sameOrigin.status === 200, `Status ${sameOrigin.status} ${sameOrigin.text.slice(0, 160)}`)
-  if (sameOrigin.json?.id) cleanup.sites.push({ host: a.host, cookie: cookieA, id: sameOrigin.json.id })
+  if (sameOrigin.json?.id) embedSites.push({ host: a.host, cookie: cookieA, id: sameOrigin.json.id })
 
   const crossTenant = await call(a.host, '/api/admin/embed-sites', {
     method: 'POST',
@@ -371,7 +333,7 @@ try {
   })
   check('kopfloser Aufruf (kein Origin, kein Sec-Fetch-Site) geht durch → 200',
     headless.status === 200, `Status ${headless.status} ${headless.text.slice(0, 160)}`)
-  if (headless.json?.id) cleanup.sites.push({ host: a.host, cookie: cookieA, id: headless.json.id })
+  if (headless.json?.id) embedSites.push({ host: a.host, cookie: cookieA, id: headless.json.id })
 
   // ──────────────────────────────────────────────────────────────────────────
   console.log('\n8. Löschen bleibt beim Owner')
@@ -388,7 +350,7 @@ try {
   })
   check('Owner darf löschen → 200', ownerDelete.status === 200, `Status ${ownerDelete.status}`)
   if (ownerDelete.status === 200) {
-    cleanup.sites = cleanup.sites.filter(s => s.id !== siteA.json?.id)
+    embedSites = embedSites.filter(s => s.id !== siteA.json?.id)
   }
   const cspAfter = await call(a.host, '/embed?targetId=f37&targetType=verify')
   check('…und der Host fliegt sofort aus der CSP',
@@ -401,24 +363,13 @@ catch (error) {
 }
 finally {
   console.log('\nAufräumen …')
-  for (const site of cleanup.sites) {
+  for (const site of embedSites) {
     await call(site.host, `/api/admin/embed-sites/${site.id}`, { method: 'DELETE', cookie: site.cookie }).catch(() => {})
   }
-  for (const id of cleanup.members) {
-    await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  }
-  // Die Tabelle heißt `communities` (E8-Vokabular) — `tenants` ist nur noch
-  // der Name im Gespräch. Ein `.catch(() => {})` auf einen Tippfehler räumt
-  // still NICHTS weg und der Lauf sieht trotzdem grün aus.
-  for (const id of cleanup.tenants) {
-    await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  }
-  for (const id of cleanup.codes) {
-    await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  }
-  for (const id of cleanup.users) {
-    await poolUsers.delete({ userId: id }).catch(() => {})
-  }
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Codes, Einbetter, Zeilen der Communities)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${pass} bestanden, ${fail} fehlgeschlagen`)
   process.exit(fail === 0 ? 0 : 1)
 }

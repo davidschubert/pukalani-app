@@ -104,7 +104,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import { appwriteRest, createCleanup, probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -543,12 +543,22 @@ finally {
   for (const id of new Set([...cleanup.handles, ...strays.rows.map(row => row.$id)])) {
     await poolDb.deleteRow({ databaseId: poolDatabaseId, tableId: HANDLES_TABLE, rowId: id }).catch(() => {})
   }
-  for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  const rest = await control.listRows({ databaseId, tableId: 'communities', queries: [Query.limit(25)] }).catch(() => ({ rows: [] }))
-  console.log(`  ✔ aufgeräumt — verbleibende Communities: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)
+  // Eine Anlage über die echte Route hinterlässt mehr als Community und
+  // Konto (Seiten, ersten Beitrag, Kategorie, Zustimmung, Protokoll, im
+  // Control Plane die Testphase). Das Register der gemeinsamen Hilfe löscht
+  // nach Stempel- und Personen-Spalten und zählt danach nach.
+  const register = createCleanup({
+    pool: appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script: 'verify-handle-search-boundary (Pool)' }),
+    control: appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script: 'verify-handle-search-boundary (Control)' }),
+    poolDatabaseId, controlDatabaseId: databaseId,
+  })
+  for (const id of cleanup.users) register.track('account', id)
+  for (const id of cleanup.members) register.track('member', id)
+  for (const id of cleanup.tenants) register.track('community', id)
+  for (const id of cleanup.tenantIds) register.track('tenant', id)
+  for (const id of cleanup.codes) register.track('inviteCode', id)
+  const { leftovers } = await register.run().catch(error => ({ leftovers: [`Aufräumen abgebrochen: ${error?.message || error}`] }))
+  check(`nachgezählt: nichts übrig (${cleanup.users.length} Konten, ${cleanup.tenants.length} Communities samt Spuren)`, leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

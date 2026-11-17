@@ -13,14 +13,12 @@
  *   4. Der Umschlag trägt nur die sechs Felder der Ansicht — kein
  *      stripeCustomerId, kein projectId, kein tenantId.
  *   5. Kanten: Gast → 401, Mandanten-Host → 404 (Route UND Seite).
- *   6. Die Wege: `my./` → Übersicht · leeres Konto → weiter in den Wizard ·
- *      ausgeloggt → Login mit `?redirect=` · `start./` → Wizard ·
- *      `?code=` schlägt auf BEIDEN Hosts durch.
- *
- * Der Server muss mit den drei Test-Hosts laufen:
- *   NUXT_PUBLIC_TENANCY_CONTROL_HOSTS=app.localhost,my.localhost,start.localhost \
- *   NUXT_PUBLIC_TENANCY_WIZARD_HOSTS=start.localhost \
- *   pnpm --filter platform dev
+ *   6. Die Wege auf dem EINEN Kontroll-Host (seit AH-1 `account.`, lokal
+ *      `app.localhost`): `/` → Account-Startseite (AH-2) · leeres Konto → weiter in den
+ *      Wizard · ausgeloggt → Login mit `?redirect=` · `?code=` schlägt die
+ *      Übersicht. Die Vorgänger `my.` und `start.` antworten 301 auf den
+ *      Kontroll-Host, Pfad und Query unverändert — ein `?code=` aus einer
+ *      alten Einladungs-Mail kommt so im Wizard an.
  *
  * Räumt am Ende alles weg, was es angelegt hat.
  *
@@ -28,14 +26,26 @@
  *     packages/onboarding/scripts/verify-my-overview.mjs
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { request } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  addStageMember,
+  appwriteRest,
+  createCleanup,
+  createHttpCaller,
+  createProbeAccount,
+  createProbeCommunity,
+  login as loginOn,
+  runStamp,
+  waitForHost as waitForHostOn,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
-const MY_HOST = process.env.MY_HOST || 'my.localhost'
-const START_HOST = process.env.START_HOST || 'start.localhost'
+// Seit AH-1 gibt es EINEN Kontroll-Host (`account.pukalani.app`, lokal
+// `app.localhost`) — er trägt Übersicht UND Wizard.
+const MY_HOST = process.env.CONTROL_HOST || 'app.localhost'
+// Die abgeschalteten Vorgänger (`legacyControlHosts` in
+// apps/platform/app/app.config.ts) — sie leiten mit 301 auf den Kontroll-Host.
+const LEGACY_MY_HOST = process.env.LEGACY_MY_HOST || 'my.pukalani.app'
+const LEGACY_START_HOST = process.env.LEGACY_START_HOST || 'start.pukalani.app'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const controlProject = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -49,12 +59,15 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   process.exit(1)
 }
 
-const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
+const script = 'verify-my-overview'
+const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const cleanup = createCleanup({ pool, control, controlDatabaseId: databaseId })
+const http = createHttpCaller({ port: PORT })
+const runId = runStamp()
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [], members: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -67,122 +80,42 @@ function check(label, ok, detail = '') {
   }
 }
 
-/** node:http, weil fetch den Host-Header verwirft; ::1, weil Nitro dort hört. */
-function call(host, path, { method = 'GET', body, cookie } = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = body ? JSON.stringify(body) : null
-    const req = request({
-      host: '::1',
-      port: PORT,
-      path,
-      method,
-      headers: {
-        host,
-        ...(payload ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) } : {}),
-        ...(cookie ? { cookie } : {}),
-      },
-    }, (res) => {
-      let text = ''
-      res.on('data', chunk => text += chunk)
-      res.on('end', () => {
-        let json = null
-        try { json = JSON.parse(text) }
-        catch { /* HTML-Seite */ }
-        resolve({
-          status: res.statusCode,
-          json,
-          text,
-          location: res.headers.location ?? '',
-          setCookie: res.headers['set-cookie'] ?? [],
-        })
-      })
-    })
-    req.on('error', reject)
-    if (payload) req.write(payload)
-    req.end()
-  })
+/** HTTP mit Host-Kopfzeile; `location` gleich mit herausgezogen. */
+async function call(host, path, options) {
+  const res = await http.call(host, path, options)
+  return { ...res, location: String(res.headers.location ?? '') }
 }
 
+/** Probe-Konto. Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse. */
 async function createPoolUser(tag) {
-  const email = `f12-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: `F12 ${tag}` })
-  cleanup.users.push(user.$id)
-  // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
-  return { userId: user.$id, email, password }
+  const account = await createProbeAccount(pool, { tag: `f12-${tag}`, stamp: runId, name: `F12 ${tag}` })
+  cleanup.track('account', account.userId)
+  return account
 }
 
-async function login(account) {
-  const res = await call(MY_HOST, '/api/auth/login', {
-    method: 'POST',
-    body: { email: account.email, password: account.password },
-  })
-  if (res.status !== 200) throw new Error(`Login fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
-}
+const login = account => loginOn(http.call, MY_HOST, account)
 
-async function issueCode() {
-  const code = `PUKA-F12TEST-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId, tableId: 'invite_codes', rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'F12-Beweis', maxUses: 0, uses: 0, expiresAt: null, status: 'active',
-    },
+async function createCommunity(cookie, name, slug) {
+  // Anlage über die echte Route `POST /api/onboarding/site` — Rumpf, Code und
+  // Aufräumen kommen aus der gemeinsamen Hilfe (scripts/lib/probe-stage.mjs).
+  const created = await createProbeCommunity({
+    call: http.call, controlHost: MY_HOST, cookie, control, databaseId, slug, name, cleanup,
+    bodyOverrides: { description: 'Beweis für die Kunden-Übersicht im Kundenbereich.', vibe: 'calm' },
   })
-  cleanup.codes.push(row.$id)
-  return code
-}
-
-async function createCommunity(cookie, name, slug, code) {
-  const res = await call(MY_HOST, '/api/onboarding/site', {
-    method: 'POST',
-    cookie,
-    body: probeSiteBody({
-      name,
-      slug,
-      description: 'Beweis für die Kunden-Übersicht auf my.',
-      vibe: 'calm',
-      inviteCode: code,
-    }),
-  })
-  if (res.status !== 200 || !res.json?.communityId) {
-    throw new Error(`Anlegen fehlgeschlagen (${res.status}): ${res.text.slice(0, 200)}`)
-  }
-  cleanup.tenants.push(res.json.communityId)
-  const members = await control.listRows({
-    databaseId, tableId: 'community_members',
-    queries: [Query.equal('communityId', res.json.communityId), Query.limit(10)],
-  })
-  cleanup.members.push(...members.rows.map(row => row.$id))
-  return res.json
+  return { communityId: created.communityId, host: created.host }
 }
 
 async function addMember(communityId, user, role, status) {
-  const row = await control.createRow({
-    databaseId, tableId: 'community_members', rowId: ID.unique(),
-    data: {
-      communityId, runtimeProjectId: poolProject, runtimeUserId: user.userId,
-      role, status, email: user.email,
-      ...(status === 'removed' ? { removedAt: new Date().toISOString() } : {}),
-    },
+  const row = await addStageMember(control, databaseId, {
+    communityId, projectId: poolProject, userId: user.userId, role, status, email: user.email,
   })
-  cleanup.members.push(row.$id)
+  cleanup.track('member', row.$id)
+  if (status === 'removed') await control.updateRow(databaseId, 'community_members', row.$id, { removedAt: new Date().toISOString() })
   return row.$id
 }
 
 /** Der Host-Resolver cacht negativ (30 s) — nach der Anlage kurz nachfassen. */
-async function waitForHost(host) {
-  for (let i = 0; i < 45; i++) {
-    const res = await call(host, '/api/themes')
-    if (res.status === 200) return true
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  }
-  return false
-}
+const waitForHost = host => waitForHostOn(http.call, host)
 
 const mine = (cookie, host = MY_HOST) => call(host, '/api/onboarding/communities', { cookie })
 /** Ziel einer Weiterleitung ohne Locale-Prefix (prefix_except_default). */
@@ -202,9 +135,8 @@ try {
   const exiledCookie = await login(exiled)
 
   console.log('1. Zwei Communities per Wizard anlegen')
-  const stamp = Date.now().toString(36)
-  const a = await createCommunity(aliceCookie, 'Alice Community', `f12a-${stamp}`, await issueCode())
-  const b = await createCommunity(bobCookie, 'Bobs Verein', `f12b-${stamp}`, await issueCode())
+  const a = await createCommunity(aliceCookie, 'Alice Community', `f12a-${runId}`)
+  const b = await createCommunity(bobCookie, 'Bobs Verein', `f12b-${runId}`)
   check('Alice-Community steht', !!a.communityId, JSON.stringify(a))
   check('Bob-Community steht', !!b.communityId, JSON.stringify(b))
   check('Community-Host antwortet', await waitForHost(a.host), 'Host wurde nicht aufgelöst')
@@ -276,10 +208,8 @@ try {
   // eigenen, also stehen beide Blickwinkel in EINER Antwort. Die Owner-Sicht
   // auf die gesperrte Zeile beweist verify-community-suspension (Abschnitt 7).
   console.log('\n4b. Nur-lesend: DASS sieht jede Rolle, WARUM nur der Abrechnende')
-  await control.updateRow({
-    databaseId, tableId: 'communities', rowId: b.communityId,
-    data: { suspension: 'billing', suspensionReason: 'Beweis: Rechnung offen.', suspendedAt: new Date().toISOString() },
-  })
+  await control.updateRow(databaseId, 'communities', b.communityId,
+    { suspension: 'billing', suspensionReason: 'Beweis: Rechnung offen.', suspendedAt: new Date().toISOString() })
   const suspendedList = (await mine(aliceCookie)).json?.communities ?? []
   const asViewer = suspendedList.find(c => c.communityId === b.communityId)
   const asOwner = suspendedList.find(c => c.communityId === a.communityId)
@@ -287,10 +217,8 @@ try {
     asViewer?.readOnly === true && asViewer?.suspension === '', JSON.stringify(asViewer))
   check('… die eigene, gesunde Community daneben bleibt readOnly false',
     asOwner?.readOnly === false && asOwner?.suspension === '', JSON.stringify(asOwner))
-  await control.updateRow({
-    databaseId, tableId: 'communities', rowId: b.communityId,
-    data: { suspension: '', suspensionReason: '', suspendedAt: null },
-  })
+  await control.updateRow(databaseId, 'communities', b.communityId,
+    { suspension: '', suspensionReason: '', suspendedAt: null })
 
   console.log('\n5. Kanten der Route')
   const guest = await mine(null)
@@ -302,13 +230,16 @@ try {
   check('… und die SEITE dort ebenso → 404', pageOnTenant.status === 404, `Status ${pageOnTenant.status}`)
 
   console.log('\n6. Wohin führt `/`?')
-  const myRoot = await call(MY_HOST, '/', { cookie: aliceCookie })
-  check('my./ (eingeloggt, mit Communities) → Übersicht',
-    myRoot.status === 302 && withoutLocale(myRoot.location) === '/communities',
-    `${myRoot.status} → ${myRoot.location}`)
+  // Seit AH-2 (2026-08-11) ist `/` auf dem Kontroll-Host eine SEITE, keine
+  // Weiterleitung mehr: die Account-Startseite mit den Wegen in die Bereiche
+  // (packages/onboarding/app/middleware/control-center.global.ts, Kopf).
+  const myRoot = await call(MY_HOST, '/', { cookie: aliceCookie, accept: 'text/html' })
+  check('Kontroll-Host / (eingeloggt) → Account-Startseite mit dem Weg zur Übersicht',
+    myRoot.status === 200 && myRoot.text.includes('data-account-home') && myRoot.text.includes('data-account-card="communities"'),
+    `${myRoot.status} → ${myRoot.location || 'ohne Weiterleitung'}`)
 
   const emptyRoot = await call(MY_HOST, '/communities', { cookie: strangerCookie })
-  check('my./communities mit 0 Communities → weiter in den Wizard',
+  check('Kontroll-Host /communities mit 0 Communities → weiter in den Wizard',
     emptyRoot.status === 302 && withoutLocale(emptyRoot.location) === '/start',
     `${emptyRoot.status} → ${emptyRoot.location}`)
 
@@ -317,29 +248,42 @@ try {
   const loggedOut = await call(MY_HOST, '/communities')
   const redirectsToCommunities = raw =>
     withoutLocale(raw) === '/login' && /redirect=(%2F|\/)(de(%2F|\/)|en(%2F|\/))?communities/.test(raw)
-  check('my./communities ausgeloggt → Login mit `?redirect=` auf die Übersicht',
+  check('Kontroll-Host /communities ausgeloggt → Login mit `?redirect=` auf die Übersicht',
     loggedOut.status === 302 && redirectsToCommunities(loggedOut.location),
     `${loggedOut.status} → ${loggedOut.location}`)
 
+  // Die Startseite selbst verlangt die Anmeldung — Rückziel ist dann `/`.
   const rootLoggedOut = await call(MY_HOST, '/')
-  check('my./ ausgeloggt → derselbe Login, dasselbe Rückziel',
-    rootLoggedOut.status === 302 && redirectsToCommunities(rootLoggedOut.location),
+  check('Kontroll-Host / ausgeloggt → Login mit `?redirect=` zurück auf die Startseite',
+    rootLoggedOut.status === 302 && withoutLocale(rootLoggedOut.location) === '/login'
+    && /redirect=(%2F|\/)(de(%2F|\/)?|en(%2F|\/)?)?(&|$)/.test(rootLoggedOut.location),
     `${rootLoggedOut.status} → ${rootLoggedOut.location}`)
 
-  const startRoot = await call(START_HOST, '/', { cookie: aliceCookie })
-  check('start./ behält den Wizard — auch für einen Bestandskunden',
-    startRoot.status === 302 && withoutLocale(startRoot.location) === '/start',
-    `${startRoot.status} → ${startRoot.location}`)
-
-  const startCode = await call(START_HOST, '/?code=PUKA-DEMO-1234', { cookie: aliceCookie })
-  check('start./?code=… → Wizard MIT Code',
-    startCode.status === 302
-    && withoutLocale(startCode.location) === '/start'
-    && startCode.location.includes('code=PUKA-DEMO-1234'),
+  // Seit AH-1 gibt es keinen eigenen Wizard-Host mehr: `start.` und `my.`
+  // antworten 301 auf den Kontroll-Host, Pfad und Query unverändert
+  // (.claude/rules/hosts-ops.md, „account.pukalani.app"). Geprüft wird das
+  // Ziel als Host + Pfad + Query — nicht nur „irgendeine Weiterleitung".
+  const legacyTarget = (raw) => {
+    try {
+      const url = new URL(raw)
+      return { host: url.host, path: url.pathname, search: url.search }
+    }
+    catch { return null }
+  }
+  const startCode = await call(LEGACY_START_HOST, '/?code=PUKA-DEMO-1234', { cookie: aliceCookie })
+  const startTarget = legacyTarget(startCode.location)
+  check('alter Name start./?code=… → 301 auf den Kontroll-Host, Code bleibt',
+    startCode.status === 301 && startTarget?.host === MY_HOST && startTarget.path === '/' && startTarget.search === '?code=PUKA-DEMO-1234',
     `${startCode.status} → ${startCode.location}`)
 
+  const myLegacy = await call(LEGACY_MY_HOST, '/communities')
+  const myTarget = legacyTarget(myLegacy.location)
+  check('alter Name my./communities → 301 auf dieselbe Seite des Kontroll-Hosts',
+    myLegacy.status === 301 && myTarget?.host === MY_HOST && myTarget.path === '/communities',
+    `${myLegacy.status} → ${myLegacy.location}`)
+
   const myCode = await call(MY_HOST, '/?code=PUKA-DEMO-1234', { cookie: aliceCookie })
-  check('my./?code=… → der Code schlägt die Übersicht (weitergeleitete Mail)',
+  check('Kontroll-Host /?code=… → der Code schlägt die Übersicht (weitergeleitete Mail)',
     myCode.status === 302
     && withoutLocale(myCode.location) === '/start'
     && myCode.location.includes('code=PUKA-DEMO-1234'),
@@ -360,12 +304,10 @@ catch (error) {
 }
 finally {
   console.log('\n8. Aufräumen')
-  for (const id of [...new Set(cleanup.members)]) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  const rest = await control.listRows({ databaseId, tableId: 'communities', queries: [Query.limit(25)] })
-  console.log(`  ✔ aufgeräumt — verbleibende Communities: ${rest.rows.map(r => r.host).join(', ') || '(keine)'}`)
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konten, Communities, Mitglieds-Zeilen, Codes, Zeilen der Communities)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

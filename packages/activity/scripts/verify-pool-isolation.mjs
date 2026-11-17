@@ -18,11 +18,17 @@
  * keine communityId (und sind im Pool damit unsichtbar), und wie weit ist ihr
  * Leserecht. Das ist keine Prüfung mit Soll-Wert, sondern die Zahl, mit der
  * die Entscheidung „Alt-Zeilen wegwerfen" (Kopf von nuxt.config.ts)
- * nachgehalten wird — sie schlägt deshalb nie fehl.
+ * nachgehalten wird — sie schlägt deshalb nie fehl. Sie liest ALLE Zeilen
+ * der Instanz und läuft deshalb nur mit `--bestand` (nicht auf der Bühne,
+ * deren Datenbank ein Spiegel mit echten Daten sein kann).
  *
  * Aus packages/activity (dort löst node-appwrite auf):
- *   node --env-file=../../apps/platform/.env scripts/verify-pool-isolation.mjs
- *   node --env-file=<pool.env>               scripts/verify-pool-isolation.mjs
+ *   node --env-file=../../apps/platform/.env scripts/verify-pool-isolation.mjs [--bestand]
+ *   node --env-file=<pool.env>               scripts/verify-pool-isolation.mjs [--bestand]
+ *   pnpm buehne run --only activity/scripts/verify-pool-isolation
+ *
+ * Schlüssel: Zeilen mit dem Migrations-Schlüssel, falls vorhanden, Konten mit
+ * dem Laufzeit-Schlüssel (lokal fehlt dem Migrations-Schlüssel `users.write`).
  *
  * Idempotent + selbst-aufräumend (auch im Fehlerfall). Läuft NUR gegen die in
  * der Env genannte Instanz — nie hartkodiert Prod.
@@ -33,7 +39,10 @@ import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwr
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
-const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY ?? process.env.NUXT_APPWRITE_KEY
+const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
+/** Konten anlegen braucht `users.write` — das hat der Laufzeit-Schlüssel. */
+const usersKey = process.env.NUXT_APPWRITE_KEY || apiKey
+const measureStock = process.argv.includes('--bestand')
 if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — mit --env-file=<app-.env> aufrufen.')
   process.exit(1)
@@ -41,7 +50,7 @@ if (!endpoint || !projectId || !databaseId || !apiKey) {
 
 const adminClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey)
 const tablesDB = new TablesDB(adminClient)
-const adminUsers = new Users(adminClient)
+const adminUsers = new Users(new Client().setEndpoint(endpoint).setProject(projectId).setKey(usersKey))
 
 const TABLE = 'activities'
 /** Labels müssen alphanumerisch sein (Appwrite) — deshalb ohne Bindestrich. */
@@ -150,6 +159,10 @@ try {
     '(wäre sie es nicht, prüfte der Beweis oben nichts)')
 
   // ── 3. BESTANDS-MESSUNG dieser Instanz (kein Soll-Wert, nur die Zahl) ─────
+  if (!measureStock) {
+    console.log('\n— Bestand: übersprungen (nur mit --bestand) —')
+  }
+  else {
   console.log('\n— Bestand: Feed-Zeilen ohne communityId (im Pool unsichtbar) —')
   let scanned = 0, unstamped = 0, unstampedWide = 0
   const byType = new Map()
@@ -174,6 +187,7 @@ try {
     console.log('  → Im Pool bleiben diese Zeilen unsichtbar (fail-closed). Bewusst so:')
     console.log('    Kopf von packages/activity/nuxt.config.ts.')
   }
+  }
 }
 catch (error) {
   // LAUT scheitern — sonst verschluckt `finally` mit process.exit() den Fehler
@@ -188,6 +202,12 @@ finally {
   for (const userId of createdUsers) {
     await adminUsers.delete({ userId }).catch(() => {})
   }
+  // NACHZÄHLEN — nicht dem eigenen Löschen glauben.
+  const exists = promise => promise.then(() => true).catch(() => false)
+  const left = []
+  for (const id of created) if (await exists(tablesDB.getRow({ databaseId, tableId: TABLE, rowId: id }))) left.push(`Zeile ${id}`)
+  for (const userId of createdUsers) if (await exists(adminUsers.get({ userId }))) left.push(`Konto ${userId}`)
+  check('nachgezählt: keine Test-Zeile und kein Test-Konto übrig', left.length === 0, left.join(', '))
   console.log(`\n${failed === 0 ? '✔' : '✗'} ${passed} bestanden, ${failed} fehlgeschlagen `
     + `(${created.length} Test-Zeilen, ${createdUsers.length} Test-Konto/-Konten aufgeräumt)`)
   process.exit(failed === 0 ? 0 : 1)

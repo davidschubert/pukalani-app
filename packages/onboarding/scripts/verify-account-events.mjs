@@ -16,14 +16,16 @@
  * Protokoll-Zeilen wieder. Es weigert sich, wenn der Appwrite-Endpunkt nicht
  * auf diesem Rechner liegt.
  *
- * Aufruf — der Platform-Server muss mit `localhost` als Kontroll-Host laufen
- * (Launch-Config `platform-kundenbereich`, oder
- * `NUXT_PUBLIC_TENANCY_CONTROL_HOSTS=localhost pnpm --filter platform dev`):
+ * Aufruf — die Anfragen gehen an den KONTROLL-HOST des Platform-Servers
+ * (`CONTROL_HOST`, Standard `localhost`; die Bühne nennt ihren):
  *
  *   node --env-file=apps/platform/.env \
  *     packages/onboarding/scripts/verify-account-events.mjs [--keep] [--clean]
+ *   pnpm buehne run --only verify-account-events
  *
- * `--keep`  lässt Konto A stehen (für einen Blick im Browser),
+ * `--keep`  lässt Konto A stehen (für einen Blick im Browser — das Passwort
+ *           wird je Lauf erzeugt und nie ausgegeben; anmelden über
+ *           „Passwort vergessen", die Mail landet in Mailpit),
  * `--clean` räumt nur auf und prüft nichts.
  *
  * ERWARTUNGSWERTE kommen nie aus der geprüften Antwort (Beweis-Regel 1):
@@ -31,8 +33,10 @@
  * Server-Schlüssel direkt aus der Tabelle.
  */
 import { createHmac } from 'node:crypto'
+import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { isLocalEndpoint } from '../../../scripts/lib/target.mjs'
+import { appwriteRest, findColumns, generatePassword, PERSON_COLUMNS, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
 
 const keep = process.argv.includes('--keep')
 const cleanOnly = process.argv.includes('--clean')
@@ -42,7 +46,8 @@ const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
 const apiKey = process.env.NUXT_APPWRITE_KEY
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
-const BASE = `http://localhost:${PORT}`
+const CONTROL_HOST = process.env.CONTROL_HOST || 'localhost'
+const BASE = `http://${CONTROL_HOST}:${PORT}`
 
 if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — mit --env-file=apps/platform/.env aufrufen.')
@@ -55,8 +60,9 @@ if (!isLocalEndpoint(endpoint)) {
 }
 
 // Wegwerf-Konten einer lokalen Instanz — dasselbe Muster wie
-// seed-local-tester.mjs. Die Adressen sind fest, damit `--clean` sie findet.
-const PASSWORD = 'AccountEvents-2026!'
+// seed-local-tester.mjs. Die Adressen sind fest, damit `--clean` sie findet;
+// das Passwort entsteht je Lauf (nie eines im Quelltext).
+const PASSWORD = generatePassword()
 const A = { email: 'account-events-a@example.test', name: 'Konto Ereignis A' }
 const B = { email: 'account-events-b@example.test', name: 'Konto Ereignis B' }
 // Eine öffentliche, dokumentierte Adresse (Google-DNS) — damit die lokale
@@ -151,30 +157,58 @@ async function createAccount({ email, name }) {
   return users.create({ userId: ID.unique(), email, password: PASSWORD, name })
 }
 
-/** Ein Aufruf gegen den Platform-Server, mit Cookie-Dose und Herkunft. */
-async function call(jar, method, path, body, headers = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      'origin': BASE,
-      ...(body ? { 'content-type': 'application/json' } : {}),
-      ...(jar.cookie ? { cookie: jar.cookie } : {}),
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    redirect: 'manual',
+/**
+ * Ein Aufruf gegen den Platform-Server, mit Cookie-Dose und Herkunft.
+ * `node:http` über `::1` statt `fetch`: `fetch` verwirft eine eigene
+ * Host-Kopfzeile, und nur über sie erreicht man einen Kontroll-Host wie
+ * `app.localhost`; Nitro hört im Dev auf IPv6.
+ */
+function call(jar, method, path, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const payload = body ? JSON.stringify(body) : null
+    const req = request({
+      host: '::1',
+      port: PORT,
+      path,
+      method,
+      headers: {
+        'host': `${CONTROL_HOST}:${PORT}`,
+        'origin': BASE,
+        ...(payload ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) } : {}),
+        ...(jar.cookie ? { cookie: jar.cookie } : {}),
+        ...headers,
+      },
+    }, (res) => {
+      let text = ''
+      res.on('data', chunk => text += chunk)
+      res.on('end', () => {
+        // Wie ein Browser: neue Cookies ersetzen gleichnamige, die übrigen
+        // bleiben (die Antwort auf den zweiten Faktor setzt nicht alle neu).
+        const set = res.headers['set-cookie'] ?? []
+        if (set.length) {
+          const cookies = new Map(jar.cookie ? jar.cookie.split('; ').map(pair => [pair.split('=')[0], pair]) : [])
+          for (const line of set) {
+            const pair = line.split(';')[0]
+            const name = pair.split('=')[0]
+            if (/max-age=0|expires=thu, 01 jan 1970/i.test(line) || pair === `${name}=`) cookies.delete(name)
+            else cookies.set(name, pair)
+          }
+          jar.cookie = [...cookies.values()].join('; ')
+        }
+        let json = null
+        try {
+          json = JSON.parse(text)
+        }
+        catch {
+          // keine JSON-Antwort
+        }
+        resolve({ status: res.statusCode ?? 0, json, text })
+      })
+    })
+    req.on('error', reject)
+    if (payload) req.write(payload)
+    req.end()
   })
-  const set = res.headers.getSetCookie?.() ?? []
-  if (set.length) jar.cookie = set.map(line => line.split(';')[0]).join('; ')
-  const text = await res.text()
-  let json = null
-  try {
-    json = JSON.parse(text)
-  }
-  catch {
-    // keine JSON-Antwort
-  }
-  return { status: res.status, json, text }
 }
 
 async function login(account) {
@@ -195,7 +229,7 @@ console.log(`Konto-Ereignisse gegen ${BASE} / Appwrite ${endpoint} (${projectId}
 
 const startedAt = new Date().toISOString()
 const userA = await createAccount(A)
-await createAccount(B)
+const userB = await createAccount(B)
 
 try {
   console.log('Ohne Anmeldung')
@@ -286,6 +320,7 @@ try {
 
   const withMfa = await call(half, 'GET', '/api/account/activity')
   const kinds = (withMfa.json?.account?.events ?? []).map(entry => entry.kind)
+  check('A: die Liste antwortet nach der Anmeldung mit zweitem Faktor (200)', withMfa.status === 200, `Status ${withMfa.status} ${withMfa.text.slice(0, 120)}`)
   check('A sieht den Fehlversuch unter „Konto und Sicherheit"', kinds.includes('mfa_challenge_failed') && (withMfa.json.account.events.find(entry => entry.kind === 'mfa_challenge_failed')?.id === failures[0]?.$id), JSON.stringify(kinds))
   check('A sieht auch „Zwei-Faktor eingeschaltet"', kinds.includes('mfa_enabled'), JSON.stringify(kinds))
   const bystander = await call(jarB, 'GET', '/api/account/activity')
@@ -302,6 +337,16 @@ finally {
   }
   else {
     await removeAccount(A.email)
+    // NACHZÄHLEN: weder die Konten noch Zeilen, die über eine Personen-Spalte
+    // an ihnen hängen (Protokoll, Zustimmung, …), dürfen übrig sein.
+    const pool = appwriteRest({ endpoint, projectId, key: apiKey, script: 'verify-account-events' })
+    const ids = [userA.$id, userB.$id]
+    const targets = await findColumns(pool, databaseId, PERSON_COLUMNS) ?? []
+    await sweepRows(pool, databaseId, targets, ids, { remove: true })
+    const rest = await sweepRows(pool, databaseId, targets, ids)
+    const accounts = (await Promise.all([findUser(A.email), findUser(B.email)])).filter(Boolean)
+    const left = [...accounts.map(user => `Konto ${user.$id}`), ...Object.entries(rest).map(([key, n]) => `${key}=${n}`)]
+    check('nachgezählt: keine Konten und keine Zeilen der Konten übrig', left.length === 0, left.join(', '))
   }
 }
 

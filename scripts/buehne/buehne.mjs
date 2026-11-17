@@ -11,6 +11,10 @@
  *   pnpm buehne env    # Zeilen NAME=wert für ein Beweis-Skript, ohne Geheimnisse
  *   pnpm buehne smoke  # Rauchtest gegen den laufenden Platform-Server
  *   pnpm buehne down
+ *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004]
+ *
+ * `run` fährt die Beweis-Skripte laut Einteilung `scripts/buehne/beweise.mjs`
+ * gegen die stehende Bühne — Einzelheiten im Kopf von `scripts/buehne/run.mjs`.
  *
  * Weitere Optionen: `--env-platform <datei>` (Standard apps/platform/.env,
  * daraus Endpunkt, Pool-Projekt und Pool-Schlüssel) und `--env-control <datei>`
@@ -51,6 +55,7 @@ import {
   STAMP_COLUMNS,
   sweepRows,
 } from '../lib/probe-stage.mjs'
+import { runCommand } from './run.mjs'
 import { runSmoke } from './smoke.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -83,6 +88,11 @@ const { values: opts, positionals } = parseArgs({
     'suffix': { type: 'string' },
     'env-platform': { type: 'string', default: 'apps/platform/.env' },
     'env-control': { type: 'string', default: 'apps/control/.env' },
+    // nur für `run`
+    'lauf': { type: 'string' },
+    'only': { type: 'string', multiple: true },
+    'liste': { type: 'boolean', default: false },
+    'control-port': { type: 'string' },
   },
 })
 const command = positionals[0]
@@ -350,9 +360,12 @@ async function status() {
   console.log(`    weitere Zeilen der Bühne: ${extra.map(([key, n]) => `${key} ${n}`).join(', ') || 'keine'}`)
 }
 
-function env() {
-  const state = readState()
-  if (!state) fail('Keine Bühne laut Stand-Datei — erst `pnpm buehne up`.')
+/**
+ * Die Zeilen, die ein Beweis-Skript über die Bühne wissen muss — ohne Geheimnisse.
+ *
+ * @returns {Record<string, string>}
+ */
+function stageEnvLines(state) {
   const { a, b } = state.communities
   const port = opts['platform-port'] ?? state.platformPort
   const lines = {
@@ -371,7 +384,19 @@ function env() {
     BUEHNE_COMMUNITY_B: b.communityId,
     BUEHNE_STATE: STATE_FILE,
   }
-  for (const [key, value] of Object.entries(lines)) console.log(`${key}=${value}`)
+  return Object.fromEntries(Object.entries(lines).map(([key, value]) => [key, String(value)]))
+}
+
+function env() {
+  const state = readState()
+  if (!state) fail('Keine Bühne laut Stand-Datei — erst `pnpm buehne up`.')
+  for (const [key, value] of Object.entries(stageEnvLines(state))) console.log(`${key}=${value}`)
+}
+
+async function run() {
+  const state = readState()
+  const code = await runCommand({ root: ROOT, opts, state, stageEnv: state?.complete ? stageEnvLines(state) : null })
+  process.exit(code)
 }
 
 async function smoke() {
@@ -387,9 +412,9 @@ async function smoke() {
   process.exit(result.fail === 0 ? 0 : 1)
 }
 
-const COMMANDS = { up, down, status, env, smoke }
+const COMMANDS = { up, down, status, env, smoke, run }
 if (!COMMANDS[command]) {
-  console.error('Aufruf: node scripts/buehne/buehne.mjs <up|status|env|smoke|down> [--platform-port N] [--control-host H] [--suffix W] [--env-platform D] [--env-control D]')
+  console.error('Aufruf: node scripts/buehne/buehne.mjs <up|status|env|smoke|run|down> [--platform-port N] [--control-host H] [--suffix W] [--env-platform D] [--env-control D]')
   process.exit(2)
 }
 await COMMANDS[command]()

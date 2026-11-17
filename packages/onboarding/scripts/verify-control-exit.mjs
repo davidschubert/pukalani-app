@@ -9,8 +9,9 @@
  *   - ohne Session → 401, unbekanntes Ziel → 400
  *   - auf dem KONTROLL-Host → 404 (die Route lebt nur auf Mandanten-Hosts,
  *     und `/api/community/` steht nicht in `controlApiPrefixes`)
- *   - `manage` siegelt für den Kundenbereich, `create` für den Wizard-Host —
- *     Host und Pfad kommen aus der ANTWORT
+ *   - `manage` siegelt für den Kundenbereich, `create` für den Wizard (seit
+ *     AH-1 ohne eigenen Host: der Kontroll-Host, Pfad `/start`) — Host und
+ *     Pfad kommen aus der ANTWORT
  *   - die Einlösung setzt drüben ein Cookie und leitet auf den Pfad weiter;
  *     mit dem Cookie ist man dort WIRKLICH eingeloggt (/api/auth/me → 200)
  *   - ein Siegel für den Kundenbereich öffnet auf einem MANDANTEN-Host NICHT
@@ -23,21 +24,29 @@
  *     packages/onboarding/scripts/verify-control-exit.mjs
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { request } from 'node:http'
-import { createHash } from 'node:crypto'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import {
+  appwriteRest,
+  createCleanup,
+  createHttpCaller,
+  createProbeAccount,
+  createProbeCommunity,
+  login,
+  runStamp,
+  waitForHost,
+} from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
-// Lokal MUSS der Platform-Server den Wizard-Host kennen — und zwar auf BEIDEN
-// Achsen: NUXT_PUBLIC_TENANCY_CONTROL_HOSTS=app.localhost,start.localhost
-// NUXT_PUBLIC_TENANCY_WIZARD_HOSTS=start.localhost. Fehlt der Host in
-// controlHosts, ist er ein UNBEKANNTER Host und die Einlösung antwortet 404.
-// Der Beweis prüft damit den Fall MIT eigenem Wizard-Host; in Produktion ist
-// die Liste seit AH-1 leer und der Ausgang fällt auf den Kontroll-Host zurück
-// (`resolveWizardHosts`, unit-getestet in core + onboarding).
-const WIZARD_HOST = process.env.WIZARD_HOST || 'start.localhost'
+// Wohin „Community anlegen" führt, sagt `resolveWizardHosts`
+// (core/shared/controlCenter.ts): ein eigener Wizard-Host, falls einer
+// eingetragen ist, sonst der Kontroll-Host. Seit AH-1 ist die Liste in
+// Produktion LEER — der Ausgang landet auf `account.` bzw. lokal auf dem
+// Kontroll-Host, und `/start` gibt es dort. Genau diesen Fall prüft der
+// Beweis standardmäßig. Wer einen eigenen Wizard-Host prüfen will, startet den
+// Platform-Server mit NUXT_PUBLIC_TENANCY_WIZARD_HOSTS=<host> (der Host gehört
+// dann AUCH in NUXT_PUBLIC_TENANCY_CONTROL_HOSTS, sonst ist er unbekannt und
+// die Einlösung antwortet 404) und setzt WIZARD_HOST auf denselben Namen.
+const WIZARD_HOST = process.env.WIZARD_HOST || CONTROL_HOST
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const controlProject = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -51,14 +60,15 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
   process.exit(1)
 }
 
-const control = new TablesDB(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlKey))
-const poolUsers = new Users(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
-const pool = new TablesDB(new Client().setEndpoint(endpoint).setProject(poolProject).setKey(poolKey))
-const poolDatabaseId = process.env.POOL_DATABASE_ID || 'main'
+const script = 'verify-control-exit'
+const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
+const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
+const cleanup = createCleanup({ pool, control, poolDatabaseId: process.env.POOL_DATABASE_ID || 'main', controlDatabaseId: databaseId })
+const http = createHttpCaller({ port: PORT })
+const stamp = runStamp()
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], codes: [], tenants: [], members: [], pages: [] }
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -71,94 +81,28 @@ function check(label, ok, detail = '') {
   }
 }
 
-function call(host, path, { method = 'GET', body, cookie } = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = body ? JSON.stringify(body) : null
-    const req = request({
-      host: '::1',
-      port: PORT,
-      path,
-      method,
-      headers: {
-        host,
-        ...(payload ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) } : {}),
-        ...(cookie ? { cookie } : {}),
-      },
-    }, (res) => {
-      let text = ''
-      res.on('data', chunk => text += chunk)
-      res.on('end', () => {
-        let json = null
-        try { json = JSON.parse(text) }
-        catch { /* HTML */ }
-        resolve({
-          status: res.statusCode,
-          json,
-          text,
-          location: res.headers.location ?? '',
-          setCookie: res.headers['set-cookie'] ?? [],
-        })
-      })
-    })
-    req.on('error', reject)
-    if (payload) req.write(payload)
-    req.end()
-  })
-}
-
-async function issueCode() {
-  const code = `PUKA-EXIT-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-  const row = await control.createRow({
-    databaseId, tableId: 'invite_codes', rowId: ID.unique(),
-    data: {
-      codeHash: createHash('sha256').update(code.toUpperCase(), 'utf8').digest('hex'),
-      label: 'Beweis Control-Exit', maxUses: 0, uses: 0, expiresAt: null, status: 'active',
-    },
-  })
-  cleanup.codes.push(row.$id)
-  return code
+/** HTTP mit Host-Kopfzeile; `location` gleich mit herausgezogen. */
+async function call(host, path, options) {
+  const res = await http.call(host, path, options)
+  return { ...res, location: String(res.headers.location ?? '') }
 }
 
 try {
   console.log(`\nBeweis Control-Exit gegen http://localhost:${PORT} (Kundenbereich ${CONTROL_HOST}, Wizard ${WIZARD_HOST})\n`)
 
   // ── Aufbau: Konto + Community, wie ein echter Kunde ───────────────────────
-  const code = await issueCode()
-  const stamp = Date.now()
-  const email = `exit-${stamp}@example.test`
-  const password = `Pw-${ID.unique()}`
-  const user = await poolUsers.create({ userId: ID.unique(), email, password, name: 'Exit-Beweis' })
-  cleanup.users.push(user.$id)
   // Seit BE-015 verlangt das Anlegen einer Community eine BESTÄTIGTE Adresse.
-  await poolUsers.updateEmailVerification({ userId: user.$id, emailVerification: true })
+  const account = await createProbeAccount(pool, { tag: 'exit', stamp, name: 'Exit-Beweis' })
+  cleanup.track('account', account.userId)
+  const { email } = account
+  const cookie = await login(http.call, CONTROL_HOST, account)
 
-  const loginRes = await call(CONTROL_HOST, '/api/auth/login', { method: 'POST', body: { email, password } })
-  if (loginRes.status !== 200) throw new Error(`Login ${loginRes.status}`)
-  const cookie = loginRes.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
-  if (!cookie) throw new Error('kein Session-Cookie')
-
-  const createRes = await call(CONTROL_HOST, '/api/onboarding/site', {
-    method: 'POST', cookie,
-    body: probeSiteBody({
-      name: 'Exit-Beweis',
-      slug: `exit-${stamp.toString(36)}`,
-      category: 'other',
-      description: 'Beweislauf Control-Exit.',
-      vibe: 'calm',
-      inviteCode: code,
-    }),
+  const site = await createProbeCommunity({
+    call: http.call, controlHost: CONTROL_HOST, cookie, control, databaseId, cleanup,
+    slug: `exit-${stamp}`, name: 'Exit-Beweis',
+    bodyOverrides: { category: 'other', description: 'Beweislauf Control-Exit.', vibe: 'calm' },
   })
-  if (createRes.status !== 200) throw new Error(`Anlage ${createRes.status}: ${createRes.text.slice(0, 120)}`)
-  const site = createRes.json
-  cleanup.tenants.push(site.communityId)
-
-  let reachable = false
-  for (let i = 0; i < 90; i++) {
-    const res = await call(site.host, '/')
-    if (res.status === 200) { reachable = true; break }
-    await new Promise(resolve => setTimeout(resolve, 500))
-  }
-  if (!reachable) throw new Error('Site wurde nicht erreichbar')
+  if (!await waitForHost(http.call, site.host)) throw new Error('Site wurde nicht erreichbar')
   console.log(`  Community steht: ${site.host}`)
 
   // ── 1. Die Verweigerungen ─────────────────────────────────────────────────
@@ -244,27 +188,10 @@ catch (error) {
 }
 finally {
   console.log('\n6. Aufräumen')
-  for (const tenantRow of cleanup.tenants) {
-    const t = await control.getRow({ databaseId, tableId: 'communities', rowId: tenantRow }).catch(() => null)
-    if (!t?.tenantId) continue
-    const pages = await pool.listRows({ databaseId: poolDatabaseId, tableId: 'pages', queries: [Query.equal('tenantId', t.tenantId), Query.limit(25)] }).catch(() => null)
-    for (const page of pages?.rows ?? []) {
-      await pool.deleteRow({ databaseId: poolDatabaseId, tableId: 'pages', rowId: page.$id }).catch(() => {})
-      cleanup.pages.push(page.$id)
-    }
-  }
-  if (cleanup.tenants.length) {
-    const members = await control.listRows({
-      databaseId, tableId: 'community_members',
-      queries: [Query.equal('communityId', cleanup.tenants), Query.limit(100)],
-    }).catch(() => null)
-    cleanup.members.push(...(members?.rows ?? []).map(row => row.$id))
-  }
-  for (const id of cleanup.members) await control.deleteRow({ databaseId, tableId: 'community_members', rowId: id }).catch(() => {})
-  for (const id of cleanup.tenants) await control.deleteRow({ databaseId, tableId: 'communities', rowId: id }).catch(() => {})
-  for (const id of cleanup.codes) await control.deleteRow({ databaseId, tableId: 'invite_codes', rowId: id }).catch(() => {})
-  for (const id of cleanup.users) await poolUsers.delete({ userId: id }).catch(() => {})
-  console.log(`  ✔ aufgeräumt`)
+  const { deleted, leftovers } = await cleanup.run()
+  const total = Object.values(deleted).reduce((sum, n) => sum + n, 0)
+  console.log(`  gelöscht: ${total} Einträge (Konto, Community, Mitglieds-Zeilen, Code, Zeilen der Community)`)
+  check('aufgeräumt — nachgezählt, nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }
