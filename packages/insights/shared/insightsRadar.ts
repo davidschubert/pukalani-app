@@ -342,24 +342,6 @@ export interface InsightsRadarStoredVideo extends InsightsRadarVideo {
 export const INSIGHTS_RADAR_RUN_LIMIT = 3
 export const INSIGHTS_RADAR_RUN_WINDOW_MS = 60 * 60_000
 
-/**
- * DIE ABRUF-FRIST DES KNOPFES „Jetzt laufen lassen" (GA1 P18, BE-008).
- *
- * Der Knopf fährt den nächtlichen Lauf IN der Anfrage, und der Webserver
- * wartet 60 s (Davids Richtung: die Frist wird nicht angehoben). Nach dieser
- * Frist beginnt der Lauf keinen NEUEN Abruf mehr, schreibt, was er hat, und
- * meldet `partial`. Der nächtliche Lauf hat keine Frist.
- *
- * 30 und nicht 40 Sekunden, weil die Frist nur den BEGINN eines Abrufs
- * begrenzt: ein laufender Abruf darf noch bis zu 15 s brauchen
- * (`FETCH_TIMEOUT_MS`), ein Video-Stapel wird nach einer Kanal-Frist noch
- * einmal geholt (sonst schriebe ein Teil-Lauf gar nichts), und danach kommt
- * die unbefristete Schreib-Phase. Bei gesunder API (Antworten unter einer
- * Sekunde) reisst die Frist praktisch nie; sie ist das Netz für den Tag, an
- * dem YouTube oder das Netz langsam ist.
- */
-export const INSIGHTS_RADAR_RUN_FETCH_BUDGET_MS = 30_000
-
 /** Der Eimer EINES Kontos. */
 export function insightsRadarRunKey(userId: string): string {
   return `insights-radar-run:${userId}`

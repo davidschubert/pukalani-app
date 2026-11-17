@@ -176,8 +176,8 @@ export interface InsightsRadarSweepResult {
   /** Gesetzt, wenn der Lauf gar nicht stattgefunden hat — mit dem Grund. */
   skipped?: 'not_configured' | 'no_channels' | 'quota_estimate' | 'running'
   /**
-   * TEIL-ERGEBNIS (GA1 P18): die Abruf-Frist (`deadlineMs`, nur am Knopf)
-   * ist gerissen, bevor alle Abrufe begonnen hatten. Geschrieben ist, was bis
+   * TEIL-ERGEBNIS: der Haken `stop` (nur der Knopf-Lauf, LL1 a) hat
+   * angeschlagen, bevor alle Abrufe begonnen hatten. Geschrieben ist, was bis
    * dahin geholt war; das 30-Tage-Netz und der Fundstück-Nachtrag sind
    * ausgelassen (Begründung an der Stelle).
    */
@@ -230,14 +230,15 @@ export interface InsightsRadarSweepDeps {
   /** Vorgabe: `logEvent`. */
   log?: (level: 'info' | 'warn', name: string, data: Record<string, unknown>) => void
   /**
-   * DIE ABRUF-FRIST in Millisekunden ab Laufbeginn (GA1 P18) — nur der
-   * Betreiber-KNOPF setzt sie (`INSIGHTS_RADAR_RUN_FETCH_BUDGET_MS`), der
-   * nächtliche Lauf läuft ohne. Nach ihr beginnt kein NEUER Abruf mehr; ein
-   * laufender wird nicht abgebrochen. Die Schreib-Phase ist NICHT befristet.
+   * SOLL DER LAUF AUFHÖREN? (LL1 a, 2026-11-17) — nur der Knopf-Lauf setzt
+   * den Haken: er meldet `true`, sobald der Herzschlag der Lauf-Sperre
+   * verloren ist (`keepRunLeaseAlive().lost()`), denn dann darf ein anderer
+   * Prozess den Lauf übernehmen. Danach beginnt kein NEUER Abruf mehr; ein
+   * laufender wird nicht abgebrochen, die Schreib-Phase läuft zu Ende. Der
+   * nächtliche Lauf hat keinen Haken. (Bis LL1 a stand hier eine Abruf-Frist
+   * von 30 s, weil der Knopf in der Anfrage rechnete.)
    */
-  deadlineMs?: number
-  /** Die Uhr der Frist. Vorgabe `Date.now` — injizierbar für den Test. */
-  clock?: () => number
+  stop?: () => boolean
 }
 
 /**
@@ -298,9 +299,7 @@ export async function runInsightsRadarSweep(
   sweepRunning = true
 
   const log = deps.log ?? ((level, name, data) => logEvent(level, name, data))
-  const clock = deps.clock ?? Date.now
-  const deadline = deps.deadlineMs !== undefined ? clock() + deps.deadlineMs : Number.POSITIVE_INFINITY
-  const pastDeadline = () => clock() >= deadline
+  const halted = () => deps.stop?.() === true
 
   try {
     const runtime = deps.readRuntimeConfig?.() ?? useRuntimeConfig(deps.event)
@@ -397,16 +396,16 @@ export async function runInsightsRadarSweep(
     // ein aus der Liste genommener oder umgezogener Kanal darf nicht den Rest
     // der Redaktion um ihr Tagesbild bringen.
     //
-    // DIE FRIST GREIFT HIER, VOR JEDEM KANAL — das ist der lange Teil (bis zu
-    // fünfzig Abrufe NACHEINANDER, je bis zu 15 s). Der erste Kanal läuft
-    // immer: ein Lauf, der schon vor ihm über der Frist ist, hätte sonst gar
+    // DER HALT (`stop`) GREIFT HIER, VOR JEDEM KANAL — das ist der lange Teil
+    // (bis zu fünfzig Abrufe NACHEINANDER, je bis zu 15 s). Der erste Kanal
+    // läuft immer: ein Lauf, der schon vor ihm angehalten ist, hätte sonst gar
     // nichts zu schreiben. Die Kanal-Metadaten (Schritt 1) sind EIN Abruf für
-    // bis zu fünfzig Kanäle und laufen ohne Frist — ohne sie bekäme jedes
+    // bis zu fünfzig Kanäle und laufen ohne Halt — ohne sie bekäme jedes
     // Video eine Abonnentenzahl 0 und damit eine falsche Zahl in der Zeile.
     const videoIds: string[] = []
     const topicOf = new Map<string, InsightsRadarChannel>()
     for (const [index, channel] of channels.entries()) {
-      if (index > 0 && pastDeadline()) {
+      if (index > 0 && halted()) {
         result.partial = true
         result.channelsUnread = channels.length - index
         break
@@ -437,12 +436,12 @@ export async function runInsightsRadarSweep(
     }
 
     // ── 3. Die Zahlen je Video, gestapelt zu je 50 ───────────────────────
-    // Auch hier greift die Frist — aber erst ab dem ZWEITEN Stapel: der erste
+    // Auch hier greift der Halt — aber erst ab dem ZWEITEN Stapel: der erste
     // ist der, der aus den gelesenen Kanälen überhaupt Zeilen macht. Ohne ihn
     // wäre jeder Teil-Lauf ein leerer Lauf.
     const videos: InsightsRadarStoredVideo[] = []
     for (const [index, batch] of insightsYoutubeBatches(videoIds).entries()) {
-      if (index > 0 && pastDeadline()) {
+      if (index > 0 && halted()) {
         result.partial = true
         break
       }
@@ -555,12 +554,12 @@ export async function runInsightsRadarSweep(
     // FAIL-SOFT und AM ENDE: ein Fehler hier darf das Tagesbild des Radars
     // nicht in Frage stellen, das oben schon geschrieben ist.
     //
-    // Nach der Frist ausgelassen: es sind weitere Abrufe (je 50 Fundstücke
+    // Nach dem Halt ausgelassen: es sind weitere Abrufe (je 50 Fundstücke
     // einer) samt Schreiben, und der nächtliche Lauf zieht sie ohnehin nach.
     // `result.watchlist` bleibt dann leer — die Antwort sagt damit, dass
     // nicht nachgezogen wurde. `partial` setzen nur die ABRUF-Schritte oben:
     // der Satz dazu heisst „nicht alle Kanäle gelesen".
-    if (!result.partial && !pastDeadline()) {
+    if (!result.partial && !halted()) {
       try {
         const refreshed = await (deps.refreshWatchlist ?? defaultRefreshWatchlist)(
           tablesDB, databaseId, apiKey, baseUrl, fetchJson, now,

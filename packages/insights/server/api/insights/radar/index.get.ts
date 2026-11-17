@@ -1,9 +1,11 @@
 import { Query } from 'node-appwrite'
 import { readInsightsRadarConfig } from '../../../../shared/insightsRadar'
+import { INSIGHTS_RADAR_RUN_SCOPE, INSIGHTS_RADAR_RUN_SUBJECT, toInsightsRadarRunView } from '../../../../shared/insightsRadarRun'
 import { insightsRadarQuotaEstimate } from '../../../../shared/insightsYoutube'
 import type { InsightsTopicRow } from '../../../../shared/insightsRows'
 import { toInsightsRadarVideo } from '../../../../shared/insightsRows'
 import type { InsightsRadarResponse, InsightsRadarVideoItem } from '../../../../shared/types/insightsApi'
+import { insightsRadarRunStore } from '../../../utils/insightsRadarRun'
 
 /**
  * DER THEMENRADAR, WIE DIE REDAKTION IHN SIEHT (BI1 I4, §9.6).
@@ -31,6 +33,14 @@ import type { InsightsRadarResponse, InsightsRadarVideoItem } from '../../../../
  * ist das die erste Zeile. Kein zweiter Zustand, kein „letzter Lauf"-Stempel
  * irgendwo daneben: der könnte von den Zeilen abweichen, und dann glaubte
  * niemand mehr einem von beiden.
+ *
+ * ── `run` IST DER KNOPF-LAUF, NICHT DER LETZTE ABRUF (LL1 a) ────────────
+ * Der jüngste Lauf von „Jetzt laufen lassen" aus `insights_runs`, damit die
+ * Seite einen laufenden Lauf nach dem Neuladen wieder als laufend zeigt und
+ * nach dem Ende seine Zahlen. Der Zustand ist gegen die SERVER-Uhr gerechnet
+ * (`toInsightsRadarRunView`), nie gespeichert. `lastRunAt` bleibt daneben die
+ * Auskunft aus den Zeilen — auch der nächtliche Lauf schreibt dorthin, in die
+ * Lauf-Tabelle schreibt nur der Knopf.
  */
 export default defineEventHandler(async (event): Promise<InsightsRadarResponse> => {
   requirePermission(event, 'insights.manage')
@@ -73,6 +83,15 @@ export default defineEventHandler(async (event): Promise<InsightsRadarResponse> 
   // Video-Ids dieser Antwort — eine Karte, weil die Ansicht je Zeile fragt.
   const verdicts = await readInsightsVerdicts(event, videos.map(video => video.videoId))
 
+  // FAIL-SOFT wie die zwei Lesestellen darüber: ohne insights-012 gibt es die
+  // Lauf-Tabelle nicht, und die Seite zeigt dann eben keinen Knopf-Lauf.
+  const lease = await insightsRadarRunStore(event)
+    .latest(INSIGHTS_RADAR_RUN_SCOPE, INSIGHTS_RADAR_RUN_SUBJECT)
+    .catch((error: unknown) => {
+      if (isInsightsRowMissing(error)) return null
+      throw error
+    })
+
   return {
     configured,
     verdicts,
@@ -82,5 +101,6 @@ export default defineEventHandler(async (event): Promise<InsightsRadarResponse> 
     today: new Date().toISOString().slice(0, 10),
     maxVideoAgeDays,
     videos,
+    run: toInsightsRadarRunView(lease, Date.now()),
   }
 })
