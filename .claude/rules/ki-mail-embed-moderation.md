@@ -161,7 +161,13 @@ paths:
   `brand/server/utils/brandStreamHeartbeat.ts`); der Leser im Browser nimmt
   nur `data:`-Zeilen. Ein neuer Stream ruft dieselbe Hilfe. NOCH IN DER
   ANFRAGE rechnen vier Wege des Markenberaters (OPEN-ITEMS „LL1" b) — der
-  Layer hat keine Lauf-Tabelle. Beweise: `packages/core/tests/runLease.test.ts`,
+  Layer hat keine Lauf-Tabelle. WÄCHTER (seit 2026-11-17):
+  `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
+  KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
+  Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe
+  ihrer Fristen bis 60 s (180 s nur auf den Wegen des nginx-Blocks),
+  `detached`, `stream` oder `over` (Bestand mit Grund, darf nur schrumpfen).
+  Beweise: `packages/core/tests/runLease.test.ts`,
   `packages/market/tests/marketRunRoute.test.ts`,
   `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`,
   `packages/insights/tests/insightsRadarRunRoute.test.ts`,

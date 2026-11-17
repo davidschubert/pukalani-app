@@ -38,7 +38,7 @@ import {
  */
 
 /** Wie lange ein einzelner API-Aufruf höchstens dauern darf (wie im Sweep). */
-const FETCH_TIMEOUT_MS = 15_000
+export const INSIGHTS_WATCH_FETCH_TIMEOUT_MS = 15_000
 
 /** „Dieses Video steht nicht in deiner Liste." */
 export function insightsWatchMissing() {
@@ -212,7 +212,7 @@ export interface InsightsWatchFetchDeps {
 
 /** Die Vorgabe für `fetchJson` — wörtlich dieselbe wie im Sweep. */
 async function defaultFetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  const response = await fetch(url, { signal: AbortSignal.timeout(INSIGHTS_WATCH_FETCH_TIMEOUT_MS) })
   if (!response.ok) {
     let body: unknown
     try {
