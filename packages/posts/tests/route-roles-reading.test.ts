@@ -376,7 +376,7 @@ describe('GET /api/posts/scheduled — nur die eigenen geplanten Beiträge', () 
 
 // ── POST /api/posts/:id/translate ───────────────────────────────────────────
 
-describe('POST /api/posts/:id/translate (Übersetzen ist Lesen)', () => {
+describe('POST /api/posts/:id/translate (nur Mitglieder, MM1)', () => {
   const load = () => import('../server/api/posts/[id]/translate.post')
   /** Ein Beitrag, dessen englische Fassung schon in der Zeile steht. */
   const translated = (id: string): FakeRow => ({
@@ -396,15 +396,23 @@ describe('POST /api/posts/:id/translate (Übersetzen ist Lesen)', () => {
     expect(door.calls).toEqual([])
   })
 
-  for (const who of ['member', 'stranger'] as const) {
-    it(`${who}: angemeldet genügt; gelesen nur über die Mitglieder-Klinke`, async () => {
+  for (const who of ['stranger', 'removed'] as const) {
+    it(`${who}: 403 not_a_member, Datentür zu — auch ein Cache-Treffer wird nicht ausgeliefert`, async () => {
       const door = translateDoor()
       const run = await runRead(load, { who, door, params: { id: 'p-1' }, body: { locale: 'en' }, globals })
-      expect(run.status).toBe(200)
-      expect(run.body).toMatchObject({ locale: 'en', body: 'Text in English', cached: true })
-      expect(memberHandleOnly(door.calls)).toBe(true)
+      expect(run.status).toBe(403)
+      expect(run.error?.data?.code).toBe('not_a_member')
+      expect(door.calls).toEqual([])
     })
   }
+
+  it('Mitglied: gelesen nur über die Mitglieder-Klinke', async () => {
+    const door = translateDoor()
+    const run = await runRead(load, { who: 'member', door, params: { id: 'p-1' }, body: { locale: 'en' }, globals })
+    expect(run.status).toBe(200)
+    expect(run.body).toMatchObject({ locale: 'en', body: 'Text in English', cached: true })
+    expect(memberHandleOnly(door.calls)).toBe(true)
+  })
 
   it('unlesbarer Beitrag: 404, kein Zugriff über die Operator-Klinke', async () => {
     const door = translateDoor()
