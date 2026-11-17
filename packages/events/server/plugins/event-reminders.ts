@@ -18,7 +18,7 @@ import { runEventReminderJob } from '../utils/eventReminders'
  * ERSTER LAUF NACH 5 MINUTEN: beim Neuladen leben alter und neuer Prozess
  * kurz nebeneinander, und die Warteschlange im Prozess sieht den anderen
  * nicht. Fünf Minuten legen den ersten Takt weit hinter das Ende des alten
- * Prozesses — danach schützt der Merker je Termin.
+ * Prozesses — danach schützt die feste Zeilen-Id je Erinnerung (BE-018).
  *
  * KEIN TOR VOR DEM ANMELDEN außer dem Layer selbst: das Plugin liegt im
  * events-Layer und fährt damit genau in den Apps, die ihn erweitern. Ob das

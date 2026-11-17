@@ -127,7 +127,8 @@ export default defineEventHandler(async (event): Promise<EventTranslateResponse>
 
   // Mitglieder-Klinke: die Row-Permissions sind hier die Sichtbarkeits-Prüfung
   // (siehe Kopf), der Mandanten-Filter der Tür das Netz darunter.
-  const row = await tenantDb(event).get<EventRow>(EVENTS_TABLE, id, 'Event not found')
+  // Zustand dazu (BE-017): ein `hidden`-Termin mit stehengebliebenem Recht ⇒ 404.
+  const row = await getPubliclyVisibleEvent(event, id)
   if (eventIsRedacted(row.redactedAt)) {
     throw createError({ status: 400, statusText: 'Event is redacted', data: { code: 'event_redacted' } })
   }

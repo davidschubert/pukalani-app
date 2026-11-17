@@ -45,7 +45,8 @@ Lauf mit `--strict`. Beide laufen immer, auch wenn der erste rot wird, sonst
 verdeckt ein Befund den anderen. Ein toter Zugang wird damit rot und schickt
 die übliche Fehlermail. „Unklar" bleibt bewusst grün: ein Wächter, der bei jedem
 Netz-Aussetzer schreit, wird nach der dritten Fehlmeldung ignoriert. Von Hand
-auslösen: Actions → Zugangs-Wächter → Run workflow.
+auslösen: Actions → Produktions-Wächter → Run workflow (ohne Haken; der
+Blick läuft im täglichen Teil mit).
 
 Dort stehen nicht nur Reste, sondern die **aktiven** `.env` der Sites. Ein ✖ auf
 einer laufenden Site ist deshalb kein Aufräum-Hinweis, sondern ein

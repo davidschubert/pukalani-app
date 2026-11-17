@@ -741,8 +741,13 @@ jobs:
             betreff="✅ Entwarnung: Produktions-Wächter wieder grün"
             text="Alle Wächter sind wieder grün. Lauf: $RUN_URL"
           fi
+          # MEHRERE EMPFÄNGER (OPS-010, 2026-11-17): das Secret darf eine
+          # Kommaliste sein („a@…, b@…") — bis dahin trug die Anfrage genau
+          # EINE Adresse, eine Vertretung konnte die Mail nicht mitbekommen.
+          # Eine einzelne Adresse ergibt dieselbe Anfrage wie vorher. Resend
+          # nimmt `to` als Liste (höchstens 50); jede Adresse sieht die andere.
           jq -n --arg to "$MAIL_TO" --arg s "$betreff" --arg t "$text" \
-            '{from: "Produktions-Wächter <noreply@pukalani.app>", to: [$to], subject: $s, text: $t}' \
+            '{from: "Produktions-Wächter <noreply@pukalani.app>", to: ($to | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))), subject: $s, text: $t}' \
             > /tmp/mail.json
           code=$(curl -sS -o /tmp/mail-out.json -w '%{http_code}' -m 20 \
             -H "Authorization: Bearer $RESEND_KEY" -H 'Content-Type: application/json' \

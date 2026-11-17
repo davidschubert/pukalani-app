@@ -38,7 +38,7 @@ import {
  *   2. `publishedLessonWithCourse` (Datentür als Operator — Lektionen tragen
  *      bewusst KEINE Read-Permission; die Tür ist hier die einzige
  *      Mandanten-Grenze und wirft bei einem Entwurf 404),
- *   3. `course.status === 'published'`,
+ *   3. `course.status === 'published'` (seit BE-018 in derselben Hilfe),
  *   4. Einschreibung,
  *   5. `assertCourseAccess` (paid → App-Guard).
  * Wer eine dieser Prüfungen streicht, macht aus dieser Route die Hintertür in
@@ -117,9 +117,6 @@ export default defineEventHandler(async (event): Promise<LessonTranslateResponse
 
   // Die fünf Vorprüfungen der Leseroute, in derselben Reihenfolge (siehe Kopf).
   const { lesson, course } = await publishedLessonWithCourse(event, id)
-  if (course.status !== 'published') {
-    throw createError({ status: 404, statusText: 'Course not found' })
-  }
   const enrollment = await enrollmentFor(event, course.$id, user.$id)
   if (!enrollment) {
     throw createError({ status: 403, statusText: 'Enroll first' })

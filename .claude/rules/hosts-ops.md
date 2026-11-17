@@ -186,6 +186,28 @@ paths:
   und den Umfang rät man auch nicht am Variablen-NAMEN ab. Runbook
   docs/runbooks/ZUGAENGE-AUFRAEUMEN.md.
   Details: docs/content/2.architektur/6.hosts-und-ports.md
+- VERTRETUNG UND ZWEITE ALARM-ADRESSE (GA1 P24, OPS-010, seit 2026-11-17):
+  jeder Alarmweg endet bei EINER Person. Vorbereitet ist, dass eine zweite
+  ihn mitbekommt — eingetragen ist niemand, bis David jemanden benennt
+  (OPEN-ITEMS „VT1"). Das NOTFALLBLATT für die Vertretung liegt bewusst NICHT
+  im Repo (öffentlich; das Blatt nennt Menschen und Nummern), sondern privat
+  bei David; im Repo steht nur der Zeiger und die Tabelle „je Quelle der
+  Handgriff für eine zweite Adresse" (docs/runbooks/PRODUKTIONS-ALARM.md,
+  § 5). NIE Namen, Telefonnummern oder private Adressen einer Vertretung ins
+  Repo, in einen Commit oder in ein Lauf-Protokoll. Das Secret
+  `PRODUCTION_ALARM_MAIL_TO` darf eine KOMMALISTE sein (der Workflow trennt
+  sie; vorher trug die Anfrage genau eine Adresse). NEUE ALARM-QUELLE ⇒ Zeile
+  in dieser Tabelle, sonst weiß beim nächsten Wechsel der Vertretung niemand,
+  wo ihre Adresse noch steht. Eine Vertretung, die eingreifen soll, bekommt
+  EIGENE Konten (nie ein geteiltes Passwort); ein Repo eines Einzelkontos
+  kennt für Mitarbeitende nur eine Stufe — wer Läufe starten darf, darf auch
+  zusammenführen und ausliefern (DECISION-LOG 2026-11-14, „Wieder prüfen").
+  Den privaten Backup-Schlüssel bekommt sie nicht (DECISION-LOG 2026-11-16).
+  Was ohne Server-Zugang NICHT geht: Appwrite nach einem Paket-Update oder
+  Neustart wieder starten (`docker compose up -d` in `/home/ploi/appwrite` —
+  das Tor kennt dafür kein Wort; Runbook § 4). Störfälle ohne eigenes Runbook
+  bis dahin: docs/runbooks/SICHERHEITSVORFALL.md und
+  docs/runbooks/ANFRAGEN-VON-AUSSEN.md (beide nennen, was fehlt).
 - SERVER-EINSTELLUNGEN STEHEN ALS VORLAGE IM REPO (GA1 P23, seit 2026-11-16,
   Davids Entscheidung): die nginx-Dateien lagen nur in Ploi und waren von Hand
   gewachsen — zwei Sites reichten monatelang die Adresse des Aufrufers nicht

@@ -56,3 +56,30 @@ describe('buildEventIcs', () => {
     expect(cancelled).toContain('STATUS:CANCELLED')
   })
 })
+
+describe('BE-018 — Zeilenumbrüche und URL als URI', () => {
+  const lineCount = (ics: string) => ics.split('\r\n').length
+
+  it('ein einzelnes CR im Titel erzeugt keine zusätzliche Zeile', () => {
+    expect(escapeIcsText('a\rb')).toBe('a\\nb')
+    const plain = buildEventIcs({ ...row, title: 'ab', description: '' })
+    const withCr = buildEventIcs({ ...row, title: 'a\rSTATUS:CANCELLED', description: '' })
+    expect(withCr).not.toMatch(/\r(?!\n)/)
+    expect(lineCount(withCr)).toBe(lineCount(plain))
+    expect(withCr).toContain('SUMMARY:a\\nSTATUS:CANCELLED\r\n')
+  })
+
+  it('URL mit Komma und Semikolon steht unverändert da', () => {
+    const url = 'https://example.com/a,b;c?x=1,2;3'
+    const ics = buildEventIcs({ ...row, url })
+    expect(ics).toContain(`\r\nURL:${url}\r\n`)
+  })
+
+  it('URL mit Zeilenumbruch schleust keine Zeile ein', () => {
+    for (const url of ['https://example.com/a\r\nX-EVIL:1', 'https://example.com/a\nX-EVIL:1', 'https://example.com/a\rX-EVIL:1']) {
+      const ics = buildEventIcs({ ...row, url })
+      expect(ics).not.toContain('X-EVIL')
+      expect(ics).not.toContain('URL:')
+    }
+  })
+})

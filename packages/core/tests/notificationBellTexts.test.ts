@@ -115,3 +115,16 @@ describe('Glocken-Texte deckt jeden Absender (C17)', () => {
     expect(withoutText, `Typen ohne Lesetext: ${withoutText.join(', ')}`).toEqual([])
   })
 })
+
+describe('Zeitpunkte im Text der Glocke (BE-018)', () => {
+  // Die Termin-Erinnerung trägt im Text einen Rohwert (`@when:`-Token,
+  // core/shared/notificationWhen.ts). Zeigte die Glocke `n.body` roh oder nur
+  // über `displayText`, stünde dort das Token statt einer Uhrzeit.
+  it('der Text unter dem Satz läuft über den Zeitpunkt-Leser, in Leser-Zone und Oberflächen-Sprache', () => {
+    expect(bellSource).toContain('{{ bodyText(n.body) }}')
+    expect(bellSource).not.toMatch(/\{\{\s*(displayText\()?n\.body\)?\s*\}\}/)
+    expect(bellSource).toMatch(/parseNotificationWhen\(value\)/)
+    expect(bellSource).toMatch(/formatNotificationWhen\(when, \{ language: language\.value, zone: timezone\.value \|\| undefined \}\)/)
+    expect(bellSource).toContain('useAccountTimezone()')
+  })
+})

@@ -104,3 +104,36 @@ seither 24/24 in ~25 s, Exit 0. Test-eigene `node:http`-Server rufen weiterhin
 `closeAllConnections()` vor `close()` (richtige Hygiene — `close()` wartet
 sonst auf Keep-alive-Sockets), das war nie die Hang-Ursache. NICHT auf
 `channel: 'chrome'` zurückwechseln.
+
+ROLLEN-TESTS AN DER ECHTEN ROUTE (OPS-009, seit 2026-11-17 — Davids
+Entscheidung „Klein beginnen: Die Prüfungen aus P04 und P05 bekommen sofort
+ihre Tests"): die häufigste Fehlerklasse des Gesamtaudits war eine Route, der
+eine Prüfung fehlt — die Regel als Funktion war getestet, ihr Aufruf in der
+Route nicht. Deshalb gilt: JEDE NEUE SCHREIBENDE ODER PERSONENBEZOGENE ROUTE
+BEKOMMT EINEN TEST, DER SIE LÄDT UND AUSFÜHRT. Der Prüfstand
+`packages/core/tests/support/participationHarness.ts` führt den echten
+Handler mit den echten Core-Wachen aus (nachgebildet ist nur die Naht zum
+Control Plane) und kennt die Personen Gast, Mitglied, fremdes Konto,
+entferntes Konto, Bestands-Mitglied, Owner, Admin, Moderator, Editor und
+Betreiber (globales Label, keine Community-Rolle). Vier fertige Frage-Sätze:
+`describeGuardedRoute` (Mitmachen / eigenes Ändern / Melden),
+`describeRoleGatedRoute` und `describeRoleGateToDoor` (Rollen-Tor: wer durch
+darf, steht AUSGESCHRIEBEN im Test — nie aus der Rechte-Matrix berechnet,
+das wäre Beweis-Regel 1), `describeAccountRoute` (nur das eigene Konto).
+Routen, die erst lesen und dann entscheiden, bekommen eine nachgebaute
+Datentür (`doorFake.ts`, Option `door`) und prüfen, über WELCHE Klinke gelesen
+wird. Beispiele: `packages/*/tests/route-roles*.test.ts`. Wächter:
+`packages/core/tests/route-role-coverage.test.ts` zählt alle Routen aus dem
+Code (schreibend nach Dateiname, personenbezogen = eine lesende Route fragt
+nach dem Konto) und verlangt je Route einen Test, der sie per
+`import('../server/api/…')` lädt, eine begründete Ausnahme oder einen Eintrag
+im Bestand `support/routeRoleBacklog.ts`. DER BESTAND DARF NUR SCHRUMPFEN:
+eine neue Route ohne Test ist rot, ein Bestands-Eintrag mit Test ebenso, bis
+er gestrichen ist. Für die neun Pool-Produkte ist er leer und bleibt es
+(`ZERO_BACKLOG_LAYERS`). WAS DER WÄCHTER NICHT SIEHT: ob der Test die
+richtigen Fragen stellt (er erkennt nur das Laden), und Pfade, die mit
+`${…}` zusammengesetzt werden. WAS DER PRÜFSTAND NICHT BEWEIST: die
+Middleware davor (Sperre für Entfernte, Herkunftsprüfung, Bremsen, Zustimmung)
+läuft nicht mit, die Datenbank ist eine Attrappe ohne Schema — dafür gibt es
+die Beweis-Skripte gegen die echte Instanz. Wer eine Route umbenennt oder
+löscht, zieht den Pfad im Test bzw. im Bestand nach (der Wächter nennt ihn).
