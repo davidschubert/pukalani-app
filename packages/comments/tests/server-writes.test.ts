@@ -91,6 +91,8 @@ const loadCreate = () => import('../server/api/comments/index.post')
 const loadPatch = () => import('../server/api/comments/[id].patch')
 const loadDelete = () => import('../server/api/comments/[id].delete')
 const removeActivitiesForObject = async () => 0
+/** Die Glocke ist nicht Gegenstand dieser Datei (s. comment-notifications.test.ts). */
+const removeObjectNotifications = async () => 0
 const updateActivitySnippetForObject = async () => 0
 
 describe('POST /api/comments — der Server legt an, die Zeile trägt nur Leserechte', () => {
@@ -182,7 +184,7 @@ describe('PATCH /api/comments/:id — nur der Autor, geprüft von der Route', ()
 })
 
 describe('DELETE /api/comments/:id — nur der Autor, geprüft von der Route', () => {
-  const globals = (tenantDb: unknown) => ({ tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject })
+  const globals = (tenantDb: unknown) => ({ tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject, removeObjectNotifications })
 
   it('der Autor löscht; Daten und Rechte schreibt der Server', async () => {
     const legacy = [readAny, Permission.update(Role.user(MEMBER)), Permission.delete(Role.user(MEMBER))]
