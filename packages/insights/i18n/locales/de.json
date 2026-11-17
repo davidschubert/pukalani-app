@@ -272,6 +272,14 @@
       "quotaOf": "{units} von {total} Einheiten",
       "statusLastRun": "Letzter Lauf",
       "lastRunNever": "noch keiner",
+      "statusLastResult": "Ergebnis des letzten Laufs",
+      "lastResult": {
+        "done": "{date}: {channels} Kanäle, {videos} Videos, {upserted} gespeichert, {deleted} entfernt, {tooOld} zu alt",
+        "partial": "Teil-Ergebnis, nicht alle Kanäle gelesen",
+        "skipped": "{date}: {reason}",
+        "failed": "{date}: gescheitert, ohne Zahlen",
+        "stalled": "{date}: abgebrochen, ohne Zahlen"
+      },
       "run": "Jetzt laufen lassen",
       "runDone": "Fertig: {channels} Kanäle, {videos} Videos, {upserted} gespeichert, {deleted} entfernt, {tooOld} zu alt.",
       "runErrors": "ein Fehler unterwegs | ein Fehler unterwegs | {count} Fehler unterwegs",

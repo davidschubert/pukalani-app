@@ -135,7 +135,11 @@ async function defaultTouchChannels(
   )
 }
 
-/** Läuft gerade einer? Ein zweiter würde dieselben Zeilen doppelt schreiben. */
+/**
+ * Läuft gerade einer? Ein zweiter würde dieselben Zeilen doppelt schreiben.
+ * Seit LL1 c nur noch das zweite Netz im Prozess — über Prozesse hinweg
+ * schliesst die Lauf-Sperre aus (`insightsRadarRun.ts`).
+ */
 let sweepRunning = false
 
 /**
@@ -230,13 +234,15 @@ export interface InsightsRadarSweepDeps {
   /** Vorgabe: `logEvent`. */
   log?: (level: 'info' | 'warn', name: string, data: Record<string, unknown>) => void
   /**
-   * SOLL DER LAUF AUFHÖREN? (LL1 a, 2026-11-17) — nur der Knopf-Lauf setzt
-   * den Haken: er meldet `true`, sobald der Herzschlag der Lauf-Sperre
+   * SOLL DER LAUF AUFHÖREN? (LL1 a, 2026-11-17) — jeder Lauf unter der
+   * Lauf-Sperre setzt den Haken (Knopf seit LL1 a, der nächtliche seit
+   * LL1 c): er meldet `true`, sobald der Herzschlag der Lauf-Sperre
    * verloren ist (`keepRunLeaseAlive().lost()`), denn dann darf ein anderer
    * Prozess den Lauf übernehmen. Danach beginnt kein NEUER Abruf mehr; ein
-   * laufender wird nicht abgebrochen, die Schreib-Phase läuft zu Ende. Der
-   * nächtliche Lauf hat keinen Haken. (Bis LL1 a stand hier eine Abruf-Frist
-   * von 30 s, weil der Knopf in der Anfrage rechnete.)
+   * laufender wird nicht abgebrochen, die Schreib-Phase läuft zu Ende. Ohne
+   * Haken (Instanz ohne Lauf-Tabelle) läuft der Sweep durch. (Bis LL1 a
+   * stand hier eine Abruf-Frist von 30 s, weil der Knopf in der Anfrage
+   * rechnete.)
    */
   stop?: () => boolean
 }

@@ -148,8 +148,11 @@ paths:
   RADAR-KNOPF UND DER VIDEO-BRIEF DIESEN WEG: der Radar-Knopf (vorher ein
   Zeitdeckel von 30 s) nimmt die Sperre in `insights_runs` (Art `radar`, ein
   fester Gegenstand je Instanz), antwortet `202`, und `GET
-  /api/insights/radar` liefert den Lauf-Stand; der nächtliche Radar-Lauf
-  nimmt die Sperre NICHT, ihn schließt der Merker im Prozess aus. Der
+  /api/insights/radar` liefert den Lauf-Stand; seit LL1 c nimmt auch der
+  nächtliche Radar-Lauf dieselbe Sperre (läuft schon einer ⇒ Takt
+  `skipped`, der Knopf bekommt währenddessen 409; ohne Lauf-Tabelle wie
+  früher nur der Merker im Prozess), und die Seite zeigt die Zahlen des
+  letzten Laufs aus der Lauf-Zeile. Der
   Video-Brief (BI3, das Vorbild) hielt seinen Start an der eigenen Zeile fest
   — „erst lesen, dann Stempel"; jetzt nimmt er die Sperre (Art `brief`,
   Gegenstand = das Fundstück) nach den kostenlosen Vorprüfungen, liest die
@@ -171,6 +174,7 @@ paths:
   `packages/market/tests/marketRunRoute.test.ts`,
   `packages/insights/tests/insightsNewsletterSendRoutes.test.ts`,
   `packages/insights/tests/insightsRadarRunRoute.test.ts`,
+  `packages/insights/tests/insightsRadarTimedLease.test.ts`,
   `packages/insights/tests/insightsBriefLease.test.ts`,
   `packages/brand/tests/brandStreamHeartbeat.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von

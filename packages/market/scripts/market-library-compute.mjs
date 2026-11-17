@@ -92,6 +92,7 @@ import { createServer, request } from 'node:http'
 import { dirname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { assertTarget } from '../../../scripts/lib/target.mjs'
+import { RUN_BUSY_REASON, startRunRespectingBrake, waitForRun } from './lib/runStart.mjs'
 import { spawnSync } from 'node:child_process'
 
 // DIE REGELN KOMMEN AUS DEM PRODUKT, NICHT AUS DIESER DATEI.
@@ -572,7 +573,7 @@ function call(path, { method = 'GET', body, cookie } = {}) {
         let json = null
         try { json = JSON.parse(text) }
         catch { /* HTML */ }
-        resolveCall({ status: res.statusCode, json, text })
+        resolveCall({ status: res.statusCode, json, text, headers: res.headers })
       })
     })
     req.on('error', rejectCall)
@@ -790,9 +791,33 @@ async function runCompute({ stub }) {
       }
 
       console.log(`\nLauf über ${byCompetitor.size} Marke(n) …`)
-      const run = await call(`${base}/run`, { method: 'POST', cookie })
-      if (run.status !== 200) fail(`Lauf abgelehnt (${run.status} ${run.json?.reason ?? ''})`)
-      console.log(`  extrahiert: ${run.json.extracted} · wiederverwendet: ${run.json.reused}`)
+      // SEIT GA1 P18 ANTWORTET DER LAUF 202 und rechnet im Hintergrund; der
+      // Ausgang steht danach an der Lauf-Zeile (`run` der Übersicht). Die
+      // Minuten-Bremse wartet `startRunRespectingBrake` ab, das Abfragen
+      // `waitForRun` (beide `lib/runStart.mjs`). Eine 409 `run_running`
+      // heisst „läuft schon" — dann wartet das Skript auf DIESEN Lauf mit.
+      const started = await startRunRespectingBrake(() => call(`${base}/run`, { method: 'POST', cookie }))
+      let startedAt = ''
+      if (started.status === 202) {
+        if (started.json?.ran === false) {
+          console.log('  nichts zu tun (kein Kandidat angenommen)')
+          continue
+        }
+        startedAt = started.json?.run?.startedAt ?? ''
+      }
+      else if (started.status === 409 && started.json?.reason === RUN_BUSY_REASON) {
+        console.log('  läuft schon — warte mit')
+      }
+      else {
+        fail(`Lauf abgelehnt (${started.status} ${started.json?.reason ?? ''})`)
+      }
+      const waited = await waitForRun(async () => {
+        const polled = await call(base, { cookie })
+        if (polled.status !== 200) fail(`Stand nicht lesbar (${polled.status})`)
+        return polled.json?.run ?? null
+      }, { startedAt })
+      if (waited.action !== 'done') fail(`Lauf ohne Ergebnis: ${waited.reason}`)
+      console.log(`  gelesen: ${waited.run.done} von ${waited.run.total}`)
 
       const overview = await call(base, { cookie })
       if (overview.status !== 200) fail(`Stand nicht lesbar (${overview.status})`)

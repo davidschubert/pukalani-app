@@ -72,3 +72,85 @@ export async function startRunRespectingBrake(send, options = {}) {
   await sleep(wait * 1000)
   return send()
 }
+
+/**
+ * AUF DEN LAUF WARTEN (LL1 c, 2026-11-17) — für ein Skript, das mit dem
+ * ERGEBNIS weiterarbeitet (`market-library-compute.mjs`).
+ *
+ * Seit GA1 P18 antwortet `POST /run` mit 202 und `run.state: 'running'`; der
+ * Ausgang steht danach an der Lauf-Zeile, die `GET /api/market/profiles/<id>`
+ * als `run` liefert (`MarketRunView`, gegen die Server-Uhr gerechnet). Ein
+ * Skript fragt deshalb im Takt nach, bis der Lauf nicht mehr läuft.
+ *
+ * Takt 5 s wie die Seite (`RUN_LEASE_POLL_MS`). Deckel 40 min: ein Lauf über
+ * fünf Kandidaten kann nach seinen eigenen Fristen rund 25 min rechnen (GA1
+ * P18, „Erst gemessen") — der Deckel liegt darüber, damit er nur einen
+ * wirklich hängenden Lauf trifft. Ein abgestorbener Lauf braucht ihn nicht:
+ * nach 120 s ohne Herzschlag meldet der Server `stalled`.
+ */
+export const RUN_POLL_INTERVAL_MS = 5_000
+export const RUN_POLL_MAX_MS = 40 * 60_000
+
+/** Der Grund an der 409, wenn schon ein Lauf unterwegs ist (`RUN_LEASE_BUSY_CODE`). */
+export const RUN_BUSY_REASON = 'run_running'
+
+/**
+ * Die pure Entscheidung je Abfrage.
+ *
+ * - `wait`  — weiter fragen (läuft noch, oder die Übersicht zeigt noch den
+ *             VORGÄNGER: `startedAt` älter als der eigene Start);
+ * - `done`  — der Lauf endete mit `done`;
+ * - `abort` — Ende ohne Ergebnis, mit einem Grund für den Menschen: `failed`
+ *             (mit dem kurzen Code, wenn die Zeile einen trägt), `stalled`
+ *             (Herzschlag verloren — Ausliefern oder Absturz), kein Lauf in
+ *             der Übersicht, Deckel gerissen.
+ *
+ * `startedAt` ist der Beginn aus der 202 — leer, wenn das Skript nach einer
+ * 409 bei einem fremden Lauf mitwartet (dann zählt der jüngste).
+ *
+ * @param {{ state?: string, startedAt?: string, failed?: boolean, failure?: string } | null | undefined} run
+ * @param {{ startedAt?: string, elapsedMs: number, maxMs?: number }} input
+ * @returns {{ action: 'wait' } | { action: 'done' } | { action: 'abort', reason: string }}
+ */
+export function runPollDecision(run, input) {
+  const maxMs = input.maxMs ?? RUN_POLL_MAX_MS
+  const overdue = input.elapsedMs >= maxMs
+  if (!run || !run.state || run.state === 'none') {
+    return { action: 'abort', reason: 'kein Lauf in der Übersicht' }
+  }
+  const older = Boolean(input.startedAt) && Boolean(run.startedAt) && run.startedAt < input.startedAt
+  if (run.state === 'running' || older) {
+    return overdue
+      ? { action: 'abort', reason: `nach ${Math.round(maxMs / 60_000)} min noch nicht fertig (Deckel)` }
+      : { action: 'wait' }
+  }
+  if (run.state === 'done' && run.failed !== true) return { action: 'done' }
+  if (run.state === 'stalled') {
+    return { action: 'abort', reason: 'abgebrochen — der Herzschlag des Laufs ist ausgeblieben (Ausliefern oder Absturz)' }
+  }
+  return { action: 'abort', reason: `gescheitert${run.failure ? ` (${run.failure})` : ''}` }
+}
+
+/**
+ * Fragt `readRun` im Takt ab, bis `runPollDecision` nicht mehr `wait` sagt.
+ *
+ * @param {() => Promise<unknown>} readRun liefert den `run` der Übersicht (oder `null`)
+ * @param {{ startedAt?: string, intervalMs?: number, maxMs?: number, sleep?: (ms: number) => Promise<void>, now?: () => number }} [options]
+ * @returns {Promise<{ action: 'done', run: any } | { action: 'abort', reason: string, run: any }>}
+ */
+export async function waitForRun(readRun, options = {}) {
+  const sleep = options.sleep ?? (ms => new Promise(resolve => setTimeout(resolve, ms)))
+  const now = options.now ?? Date.now
+  const intervalMs = options.intervalMs ?? RUN_POLL_INTERVAL_MS
+  const startedMs = now()
+  while (true) {
+    await sleep(intervalMs)
+    const run = await readRun()
+    const decision = runPollDecision(run, {
+      startedAt: options.startedAt,
+      elapsedMs: now() - startedMs,
+      maxMs: options.maxMs,
+    })
+    if (decision.action !== 'wait') return { ...decision, run }
+  }
+}

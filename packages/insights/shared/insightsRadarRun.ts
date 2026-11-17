@@ -123,3 +123,40 @@ export function toInsightsRadarRunView(
     result: state === 'done' ? parseInsightsRadarRunDetail(lease.detail) : null,
   }
 }
+
+/**
+ * WAS DIE RADAR-SEITE ÜBER DEN LETZTEN LAUF SAGT (LL1 c, 2026-11-17).
+ *
+ * Bis hierher erschienen die Zahlen eines Laufs nur als Meldung im Moment
+ * seines Endes; wer die Seite später öffnete, sah nur das Datum. Jetzt liest
+ * die Seite sie aus der Lauf-Zeile (`run` von `GET /api/insights/radar`):
+ *  - `done`    — die Zahlen (mit Fehlern und Teil-Ergebnis, wenn es sie gab);
+ *  - `skipped` — der Lauf endete, hat aber nichts geholt, mit Grund;
+ *  - `failed` / `stalled` — gescheitert bzw. abgebrochen, OHNE Zahlen: ein
+ *    solcher Lauf hat keine, denen man glauben dürfte (`toInsightsRadarRunView`).
+ * Ein laufender Lauf und „noch keiner" ⇒ `null` (dafür hat die Seite eigene
+ * Sätze). `at` ist der Tag, an dem der Lauf endete — beim abgebrochenen der
+ * Beginn, denn ein Ende hat er nicht.
+ */
+export type InsightsRadarLastRun =
+  | { kind: 'done', at: string, result: InsightsRadarRunResult }
+  | { kind: 'skipped', at: string, reason: NonNullable<InsightsRadarRunResult['skipped']> }
+  | { kind: 'failed' | 'stalled', at: string }
+
+export function insightsRadarLastRun(view: InsightsRadarRunView | null | undefined): InsightsRadarLastRun | null {
+  if (!view) return null
+  const at = view.finishedAt || view.startedAt
+  switch (view.state) {
+    case 'done':
+      if (!view.result) return null
+      return view.result.skipped
+        ? { kind: 'skipped', at, reason: view.result.skipped }
+        : { kind: 'done', at, result: view.result }
+    case 'failed':
+      return { kind: 'failed', at }
+    case 'stalled':
+      return { kind: 'stalled', at }
+    default:
+      return null
+  }
+}
