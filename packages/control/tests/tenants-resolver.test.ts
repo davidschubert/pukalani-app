@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { Client, ID, TablesDB } from 'node-appwrite'
 import { afterAll, describe, expect, it } from 'vitest'
 import { createTenantsTableResolver, mapTenantRowToContext } from '../server/utils/tenantsResolver'
@@ -175,8 +176,12 @@ describe.skipIf(!hasEnv)('createTenantsTableResolver (echte Appwrite)', () => {
     ? new TablesDB(new Client().setEndpoint(endpoint!).setProject(projectId!).setKey(apiKey!))
     : null!
   const createdIds: string[] = []
-  const HOST_POOL = `pool-${Date.now()}.test.local`
-  const HOST_OFF = `off-${Date.now()}.test.local`
+  // Uhrzeit PLUS Zufall und ein eigenes Präfix: `host` ist in der Tabelle
+  // eindeutig, und communityHostResolver.test.ts daneben legt zur selben Zeit
+  // ebenfalls Probe-Hosts an (Zusammenstoß am 2026-11-17).
+  const stamp = `${Date.now().toString(36)}${randomBytes(3).toString('hex')}`
+  const HOST_POOL = `tr-pool-${stamp}.test.local`
+  const HOST_OFF = `tr-off-${stamp}.test.local`
 
   afterAll(async () => {
     for (const id of createdIds) {

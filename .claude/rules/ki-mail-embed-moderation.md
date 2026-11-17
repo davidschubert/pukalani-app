@@ -275,7 +275,10 @@ paths:
   den ANMELDE-MAILS, mit eigener Zahl: Code- und Reset-Mails 5 je Adresse und
   Stunde (`AUTH_MAIL_RECIPIENT_LIMIT`, Bereiche `auth:otp` und
   `auth:recovery`). Eine Antwort, die Werte trägt (Code-Anforderung: `userId`),
-  bleibt über der Grenze auch in den WERTEN gleich. (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
+  bleibt über der Grenze auch in den WERTEN gleich. Die Mail „E-Mail
+  bestätigen" (`POST /api/auth/verification`, Bereich `auth:verification`)
+  zählt genauso, sagt die Grenze aber OFFEN (429 `rate_limited`): gefragt hat
+  das angemeldete Konto nach seiner eigenen Adresse. (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
   eine frei eingetragene Adresse: der Name läuft durch `displayNameProblem`,
   eine Nachricht wird nicht zitiert. Heute so: Erstgespräch und Warteliste
   (brand), Newsletter-Anmeldung (insights, nur die Grenze). Die Meldung an
