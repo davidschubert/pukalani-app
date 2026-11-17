@@ -12,10 +12,13 @@ das Rezept für den lokalen Weg.
 
 > **Wer klickt.** Anders als die alte Fassung behauptete, ist fast alles ohne
 > Handarbeit reproduzierbar: `packages/control/scripts/a2a-checkout-driver.mjs`
-> legt über die ECHTE Service-Naht Konto + Einladungs-Code + Community an
-> (Secrets aus `~/.appwrite-secrets`), liefert Checkout-/Portal-URLs als Owner
-> und liest die `communities`-Row. Nur die Stripe-Checkout-Seite selbst ist
-> Browserarbeit (Testkarte 4242).
+> legt Konto + Einladungs-Code + Community über den Weg des Wizards an
+> (Anmeldung, `POST /api/onboarding/site`), liefert Checkout-/Portal-URLs als
+> Owner, liest die `communities`-Row und räumt am Ende wieder auf. Ziel und
+> Zugänge kommen aus zwei Env-Dateien (Standard: `apps/platform/.env` und
+> `apps/control/.env`), nie von der Kommandozeile. Nur die Stripe-Checkout-Seite
+> selbst ist Browserarbeit (Testkarte 4242). Aufruf und Rezept: „Durchlauf
+> 2026-11-17" unten.
 
 **Zeit: ~30 Min (plus bis zu 1 h Warten auf den stündlichen Sweep in Probe 6).**
 
@@ -451,9 +454,88 @@ Worktree kopieren und danach wieder löschen):
    verwirren.
 4. **Portal-URLs haben eine neue Form:** `billing.stripe.com/p/session?secret=test_…`
    statt `/p/session/test_…`. Funktional gleich.
-5. **`a2a-checkout-driver.mjs` ist veraltet.** Er spricht `pool`/`control`,
-   `a_session_pool` und Schlüsseldateien, die es nicht mehr gibt
-   (OPEN-ITEMS `21 · SC2`).
+5. **`a2a-checkout-driver.mjs` war veraltet** (`pool`/`control`,
+   `a_session_pool`, Schlüsseldateien, die es nicht mehr gibt). Seit dem
+   2026-11-17 umgestellt — Schritt 5 oben macht jetzt der Treiber, s. den
+   nächsten Abschnitt.
+
+## Durchlauf 2026-11-17 (SC2, der Treiber, lokal)
+
+Anlass: der Treiber sprach gelöschte Projekte. Er ist neu gebaut und lokal
+einmal ganz gefahren — gegen den Prod-Spiegel (Projekte `account` + `admin`),
+Stripe im **Testmodus** (Seite zeigt „Sandbox"). Abgenommen:
+
+- [x] `provision`: Konto, Einladungs-Code, Community über
+      `POST /api/onboarding/site`; Anmeldung als Owner auf dem Host der Community
+- [x] `authz`: `GET /api/community/billing/trial` als Owner 200, ohne
+      Anmeldung 401
+- [x] `portal` vor dem Kauf: 409 („No billing account yet")
+- [x] `checkout personal monthly`: 200 mit Adresse `checkout.stripe.com/…/cs_test_…`;
+      Rücksprung-Adresse zeigt auf `<slug>.localhost`, nicht auf Production
+- [x] Kauf im Browser (4242) → drei Webhooks (`checkout.session.completed`,
+      `customer.subscription.created`, `invoice.paid`), alle 200 →
+      `status`: `plan = personal`, `billingStatus = active`, Trial geräumt
+- [x] `portal` nach dem Kauf: 200; zweiter `checkout`: 409 `already_subscribed`
+- [x] Kündigung sofort über die Stripe-CLI → Webhook
+      `customer.subscription.deleted` 200 → `status`: `basic` / `canceled` /
+      `suspension = billing`
+- [x] `cleanup`: alles Angelegte gelöscht und nachgezählt, nichts übrig
+
+**So läuft es lokal** (`.env` beider Apps aus dem Haupt-Checkout in den
+Worktree kopieren, danach wieder löschen; in `apps/control/.env` die
+Ploi-Zeilen streichen):
+
+1. `STRIPE_API_KEY=<sk_test aus apps/control/.env> stripe listen --print-secret`
+   → `whsec_…`; diesen Wert als `NUXT_STRIPE_WEBHOOK_SECRET` in die kopierte
+   `apps/control/.env` schreiben (die Zeile aus dem Haupt-Checkout gilt für
+   einen anderen Empfänger).
+2. `STRIPE_API_KEY=… stripe listen --forward-to
+   http://localhost:3004/api/stripe/webhook --events <die neun aus Probe 1>`.
+3. Beide Server aus DEMSELBEN Worktree: control auf 3004, platform auf 3006
+   (die Standard-Ports; `NUXT_ONBOARDING_CONTROL_URL` in der Platform-Datei
+   zeigt schon auf 3004). Auf eigenen Ports: Rezept vom 2026-11-12 oben.
+   **Warten, bis `/api/health` beider Server 200 meldet** — sonst bricht
+   `provision` mit 503 ab (dann `cleanup` und neu).
+4. Der Treiber, jeweils aus der Wurzel:
+
+   ```bash
+   node packages/control/scripts/a2a-checkout-driver.mjs provision --platform-port 3006
+   node packages/control/scripts/a2a-checkout-driver.mjs authz
+   node packages/control/scripts/a2a-checkout-driver.mjs checkout personal monthly
+   # die Adresse im Browser öffnen, mit 4242 4242 4242 4242 bezahlen
+   node packages/control/scripts/a2a-checkout-driver.mjs status
+   node packages/control/scripts/a2a-checkout-driver.mjs portal
+   # Abo beenden: stripe subscriptions cancel <sub_…> --confirm
+   node packages/control/scripts/a2a-checkout-driver.mjs status
+   node packages/control/scripts/a2a-checkout-driver.mjs cleanup
+   ```
+
+   Der Stand des Laufs (Host, Ids, Zugang des Probe-Kontos) liegt in
+   `.buehne/a2a-checkout.json` (nicht im Repo); `cleanup` löscht ihn.
+   Jahres-Abo: `checkout personal yearly`, Pro: `checkout pro monthly`.
+
+**Befunde:**
+
+1. **Der Rücksprung nach dem Bezahlen scheitert lokal weiter am Zertifikat**
+   (`https://<slug>.localhost`) — erwartet, der Webhook trägt das Ergebnis.
+   Der Treiber hängt den Host lokal auf `<slug>.localhost` um, damit der
+   Rücksprung nicht bei Production landet.
+2. **`stripe subscriptions cancel` fragt nach** und endet ohne Eingabe mit
+   Exit 1 — `--confirm` anhängen. Die Rückfrage nennt den Modus („Mode: Test").
+3. **Ein abgebrochenes `provision` lässt einen halben Stand zurück.** Jedes
+   andere Kommando sagt das und verweist auf `cleanup`.
+4. **Befund 3 vom 2026-11-12 gilt weiter:** derselbe Testkauf erreicht auch den
+   Prod-Endpunkt (dasselbe Stripe-Testkonto).
+
+**Gegen ein entferntes Ziel ist der Treiber NICHT gefahren.** Gebaut ist der
+Weg: `--env-platform <datei> --env-control <datei>` mit Dateien, die dieselben
+Namen tragen wie die `.env` der Apps (in der Control-Datei zusätzlich
+`NUXT_PUBLIC_CONTROL_POOL_PROJECT`), dazu `PUKALANI_TARGET_CONFIRM=admin` und
+`--control-host account.pukalani.app`; ohne `--platform-port` spricht er
+`https://<host>`. Der Schlüssel der Platform-Datei muss Konten anlegen und
+löschen dürfen. Ob es passende Dateien für Production gibt, ist nicht
+nachgesehen. Jeder Lauf dort legt ein Konto und eine Community an und braucht
+Davids Ja.
 
 ## Troubleshooting
 
