@@ -1,3 +1,5 @@
+import { CSP_REPORT_PATH } from './cspReport'
+
 /**
  * SCHUTZ-KOPFZEILEN AUS EINER STELLE (SEC-006, seit 2026-11-16).
  *
@@ -92,13 +94,17 @@ const SAFE_ORIGIN = /^https?:\/\/[\w.[\]-]+(:(\d+|\*))?$/
  * fragt deshalb nur eines: lädt eine Seite Skripte von einer FREMDEN Quelle,
  * die wir nicht kennen?
  *
- * KEIN `report-uri`: Berichte werden noch nicht eingesammelt. Der Eingang für
- * Browser-Fehler ist gebremst und würde von Browser-Erweiterungen geflutet
- * (die injizieren Skripte und lösen Berichte aus, ohne dass die Seite etwas
- * falsch macht). Sichtbar ist ein Verstoß damit nur in der Browser-Konsole.
+ * `report-uri` (SE1 a, seit 2026-11-17): der Browser schickt jeden Verstoß
+ * an die eigene Annahme-Route (`CSP_REPORT_PATH`, relativ — also an den Host
+ * der Seite). Bewusst NICHT der Eingang für Browser-Fehler: Erweiterungen
+ * schieben Skripte in jede Seite und lösen Berichte aus, ohne dass die Seite
+ * etwas falsch macht; die Route sortiert sie aus, zählt je Verstoß und
+ * schreibt nichts über Personen (`shared/cspReport.ts`). `report-uri` und
+ * nicht `report-to`: es braucht keine zweite Kopfzeile, und jeder Browser
+ * versteht es.
  */
 export function scriptCspReportOnly(extraScriptOrigins: string[]): string {
   const origins = [...new Set(extraScriptOrigins.filter(o => SAFE_ORIGIN.test(o)))]
   const scriptSrc = ["'self'", "'unsafe-inline'", ...origins].join(' ')
-  return `script-src ${scriptSrc}; object-src 'none'; base-uri 'self'`
+  return `script-src ${scriptSrc}; object-src 'none'; base-uri 'self'; report-uri ${CSP_REPORT_PATH}`
 }

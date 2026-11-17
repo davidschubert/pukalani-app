@@ -95,11 +95,13 @@ describe('baseSecurityHeaders', () => {
 })
 
 describe('scriptCspReportOnly', () => {
-  it('self, unsafe-inline, die Origins; object-src und base-uri fest; KEIN report-uri', () => {
+  it('self, unsafe-inline, die Origins; object-src und base-uri fest; Berichte an die eigene Route', () => {
     expect(scriptCspReportOnly(['https://challenges.cloudflare.com'])).toBe(
-      `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'`,
+      `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; report-uri /api/telemetry/csp-report`,
     )
-    expect(scriptCspReportOnly([])).not.toMatch(/report-uri|report-to/)
+    // Relativ: der Bericht geht an den Host der Seite, nie an einen fremden.
+    expect(scriptCspReportOnly([])).toMatch(/; report-uri \/api\/telemetry\/csp-report$/)
+    expect(scriptCspReportOnly([])).not.toMatch(/report-to/)
   })
 
   it('nur http(s)-Origins kommen durch, Doppelte fallen weg', () => {
@@ -108,7 +110,7 @@ describe('scriptCspReportOnly', () => {
       'javascript:alert(1)', "https://x.example; script-src *", 'https://b.example/pfad', '*', '',
     ])
     expect(value).toBe(
-      `script-src 'self' 'unsafe-inline' https://a.example http://localhost:3000; object-src 'none'; base-uri 'self'`,
+      `script-src 'self' 'unsafe-inline' https://a.example http://localhost:3000; object-src 'none'; base-uri 'self'; report-uri /api/telemetry/csp-report`,
     )
   })
 })
