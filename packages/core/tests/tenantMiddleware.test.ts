@@ -107,8 +107,8 @@ describe('00.tenant — Trennung an, aber kein Resolver (SEC-025)', () => {
     expect(event.context.tenant).toBeUndefined()
   })
 
-  it('/api/health, /_i18n/ und der Fehlerseiten-Durchgang kommen durch', async () => {
-    for (const path of ['/api/health', '/_i18n/abc/de/messages.json', '/__nuxt_error?status=503']) {
+  it('/api/health, /_i18n/, die Symbol-Route und der Fehlerseiten-Durchgang kommen durch', async () => {
+    for (const path of ['/api/health', '/_i18n/abc/de/messages.json', '/api/_nuxt_icon/ph.json?icons=palette', '/__nuxt_error?status=503']) {
       const event = request(path)
       expect(await run(event), path).toBeNull()
       expect(event.context.tenant, path).toBeUndefined()
@@ -151,6 +151,25 @@ describe('00.tenant — Gegenproben (unverändertes Verhalten)', () => {
     expect(await run(event)).toBeNull()
     expect(event.context.tenant).toBe(POOL_TENANT)
     expect(sendRedirect).not.toHaveBeenCalled()
+  })
+
+  it('innerer Abruf der Symbol-Route OHNE Host kommt durch — jede andere Route ohne Host bleibt 404', async () => {
+    // WA1 e: @nuxt/icon holt Symbole beim Server-Rendern über einen inneren
+    // Abruf, der die Kopfzeilen der Anfrage nicht trägt. Ohne die Ausnahme
+    // endete er hier — je Symbol eine Zeile „[Icon] failed to load".
+    resolver = vi.fn(async () => null)
+    const icon: FakeEvent = { path: '/api/_nuxt_icon/ph.json?icons=palette,megaphone-simple', method: 'GET', headers: {}, context: {} }
+    expect(await run(icon)).toBeNull()
+    expect(icon.context.tenant).toBeUndefined()
+    expect(resolver).not.toHaveBeenCalled()
+
+    // GEGENPROBE: dieselbe Lage, andere Route — weiter 404, nichts leakt.
+    for (const path of ['/api/comments', '/api/_nuxt_icon', '/api/_nuxt_iconX/ph.json', '/']) {
+      const other: FakeEvent = { path, method: 'GET', headers: {}, context: {} }
+      const thrown = await run(other)
+      expect(thrown?.statusCode, path).toBe(404)
+      expect(thrown?.data?.code, path).toBe(UNKNOWN_HOST_CODE)
+    }
   })
 
   it('unbekannter Host ⇒ 404 unknown_host, der Fehlerseiten-Durchgang kommt durch', async () => {
