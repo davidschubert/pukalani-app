@@ -31,6 +31,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const MY_HOST = process.env.MY_HOST || 'my.localhost'
@@ -140,12 +141,13 @@ async function createCommunity(cookie, name, slug, code) {
   const res = await call(MY_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name, slug, purpose: 'new', memberRange: 'to100', category: 'club',
-      goal: 'discussion', description: 'Beweis für die Kunden-Übersicht auf my.',
-      vibe: 'calm', inviteCode: code, locale: 'de',
-    },
+    body: probeSiteBody({
+      name,
+      slug,
+      description: 'Beweis für die Kunden-Übersicht auf my.',
+      vibe: 'calm',
+      inviteCode: code,
+    }),
   })
   if (res.status !== 200 || !res.json?.communityId) {
     throw new Error(`Anlegen fehlgeschlagen (${res.status}): ${res.text.slice(0, 200)}`)

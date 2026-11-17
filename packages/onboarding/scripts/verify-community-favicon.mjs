@@ -38,6 +38,7 @@ import { createHash } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import { deflateSync } from 'node:zlib'
 import { Client, ID, Query, Storage, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3154)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -216,12 +217,13 @@ async function createCommunity(cookie, slug, name) {
   const created = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name, slug, purpose: 'new', memberRange: 'to100', category: 'club',
-      goal: 'discussion', description: 'Favicon-Beweis.', vibe: 'fresh',
-      inviteCode: code, locale: 'de',
-    },
+    body: probeSiteBody({
+      name,
+      slug,
+      description: 'Favicon-Beweis.',
+      vibe: 'fresh',
+      inviteCode: code,
+    }),
   })
   if (created.status !== 200 || !created.json?.communityId) {
     throw new Error(`Community ${slug} nicht angelegt (${created.status}): ${created.text.slice(0, 200)}`)

@@ -24,6 +24,7 @@
     "bilanz": "node --experimental-strip-types scripts/produkt-bilanz.mjs",
     "check:bilanz": "node --experimental-strip-types scripts/produkt-bilanz.mjs --check",
     "live-beweise": "node scripts/live-beweise.mjs",
+    "buehne": "node scripts/buehne/buehne.mjs",
     "check:live-beweise": "node scripts/live-beweise.mjs --check",
     "check:single-copy": "node scripts/check-single-copy.mjs",
     "check:prompt-quotes": "node scripts/check-prompt-quotes.mjs",

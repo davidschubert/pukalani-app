@@ -34,3 +34,6 @@ blob-report/
 # committet nicht sich selbst — sondern jemand anderes committet ihn.
 .tmp-*
 _scratch-*
+# Stand der lokalen Bühne (scripts/buehne/buehne.mjs): Ids und je Lauf
+# erzeugte Zugänge der Probe-Konten — gehört nie ins Repo.
+.buehne/

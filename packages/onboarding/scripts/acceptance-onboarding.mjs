@@ -17,6 +17,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const RUNS = Number(process.argv.includes('--runs') ? process.argv[process.argv.indexOf('--runs') + 1] : 10)
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
@@ -130,15 +131,17 @@ async function runOnce(index, code) {
   const createRes = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
+    body: probeSiteBody({
       name: `Abnahme ${index}`,
       slug,
       category: 'other',
       vibe: 'calm',
       inviteCode: code,
-      locale: 'de',
-    },
+      purpose: undefined,
+      memberRange: undefined,
+      goal: undefined,
+      description: undefined,
+    }),
   })
   if (createRes.status !== 200) throw new Error(`Anlage ${createRes.status}: ${createRes.text.slice(0, 120)}`)
   const site = createRes.json
@@ -206,12 +209,14 @@ try {
   const retry = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST',
     cookie: last.cookie,
-    body: {
-      operatorTerms: true, // Betreiber-Bedingungen: Pflicht, wo die App sie einschaltet
-      name: last.site.host, slug: last.site.host.split('.')[0], purpose: 'new', memberRange: 'to100',
-      category: 'other', goal: 'discussion', description: 'Aus einer älteren platform.',
-      vibe: 'calm', inviteCode: code, locale: 'de',
-    },
+    body: probeSiteBody({
+      name: last.site.host,
+      slug: last.site.host.split('.')[0],
+      category: 'other',
+      description: 'Aus einer älteren platform.',
+      vibe: 'calm',
+      inviteCode: code,
+    }),
   })
   check('alte Nutzlast bleibt gültig (nicht 400)', retry.status === 200, `Status ${retry.status}: ${retry.text.slice(0, 120)}`)
   check('gibt dieselbe Community zurück', retry.json?.communityId === last.site.communityId && retry.json?.reused === true, JSON.stringify(retry.json))
@@ -231,11 +236,33 @@ try {
   const before = await countTenants()
   const invalid = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie: last.cookie,
-    body: { operatorTerms: true, name: 'x', slug: 'login', category: 'other', vibe: 'calm', inviteCode: code },
+    body: probeSiteBody({
+      name: 'x',
+      slug: 'login',
+      category: 'other',
+      vibe: 'calm',
+      inviteCode: code,
+      purpose: undefined,
+      memberRange: undefined,
+      goal: undefined,
+      description: undefined,
+      locale: undefined,
+    }),
   })
   const quotaBlocked = await call(CONTROL_HOST, '/api/onboarding/site', {
     method: 'POST', cookie: last.cookie,
-    body: { operatorTerms: true, name: 'Zweite', slug: `zweite-${Date.now().toString(36)}`, category: 'other', vibe: 'calm', inviteCode: code },
+    body: probeSiteBody({
+      name: 'Zweite',
+      slug: `zweite-${Date.now().toString(36)}`,
+      category: 'other',
+      vibe: 'calm',
+      inviteCode: code,
+      purpose: undefined,
+      memberRange: undefined,
+      goal: undefined,
+      description: undefined,
+      locale: undefined,
+    }),
   })
   const after = await countTenants()
   check('abgelehnte Eingabe (reservierter Name) → 400', invalid.status === 400, `Status ${invalid.status}`)
