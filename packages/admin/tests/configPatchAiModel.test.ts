@@ -46,12 +46,22 @@ vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
 vi.stubGlobal('toH3Error', (error: unknown) => error)
-vi.stubGlobal('readValidatedBody', async (_event: H3Event, run: (input: unknown) => unknown) => run(body))
+// Wie h3: ein Fehler der Prüfung wird zu 400 „Validation Error".
+vi.stubGlobal('readValidatedBody', async (_event: H3Event, run: (input: unknown) => unknown) => {
+  try {
+    return run(body)
+  }
+  catch (error) {
+    throw Object.assign(new Error('Validation Error'), { status: 400, statusCode: 400, data: error })
+  }
+})
 vi.stubGlobal('recordAudit', async (_event: H3Event, entry: Record<string, unknown>) => { audits.push(entry) })
 vi.stubGlobal('getAiConfig', () => ({ enabled: true, model: 'anthropic/claude-haiku-4.5', baseUrl }))
 vi.stubGlobal('requirePermission', requirePermission)
 vi.stubGlobal('checkAiModelEndpoints', checkAiModelEndpoints)
 vi.stubGlobal('fetch', fetchMock)
+const { mutateAppConfig } = await import('../server/utils/appConfigWrite')
+vi.stubGlobal('mutateAppConfig', mutateAppConfig)
 
 const handler = (await import('../server/api/admin/config.patch'))
   .default as unknown as (event: H3Event) => Promise<Record<string, unknown>>
@@ -174,5 +184,51 @@ describe('PATCH /api/admin/config — Modell-Prüfung beim Speichern', () => {
     body = { ...FLAGS, aiModel: 'google/gemini-2.5-flash' }
     await expect(call()).resolves.toMatchObject({ aiModelCheck: 'ok' })
     expect(tablesDB.createRow).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('PATCH /api/admin/config — Teil-Objekt (nur was der Klick ändert)', () => {
+  it('leeres Teil-Objekt ⇒ 400, nichts gelesen und nichts geschrieben', async () => {
+    body = {}
+    await expect(call()).rejects.toMatchObject({ status: 400 })
+    expect(tablesDB.getRow).not.toHaveBeenCalled()
+    expect(tablesDB.updateRow).not.toHaveBeenCalled()
+    expect(audits).toHaveLength(0)
+  })
+
+  it('nur unbekannte Felder ⇒ 400 (sie fallen weg, übrig bleibt nichts)', async () => {
+    body = { somethingElse: true }
+    await expect(call()).rejects.toMatchObject({ status: 400 })
+    expect(tablesDB.updateRow).not.toHaveBeenCalled()
+  })
+
+  it('ein Feld ⇒ geschrieben wird genau diese Spalte', async () => {
+    body = { maintenanceMode: true }
+    await expect(call()).resolves.toEqual({ maintenanceMode: true })
+    expect(tablesDB.updateRow).toHaveBeenCalledTimes(1)
+    expect(tablesDB.updateRow.mock.calls[0]?.[0]).toMatchObject({ data: { maintenanceMode: true } })
+    expect(Object.keys((tablesDB.updateRow.mock.calls[0]?.[0] as { data: Row }).data)).toEqual(['maintenanceMode'])
+    expect(audits[0]?.metadata).toEqual({ maintenanceMode: true })
+  })
+
+  it('zwei Betreiber gleichzeitig, verschiedene Felder ⇒ beide Änderungen stehen', async () => {
+    const calls = [{ maintenanceMode: true }, { registrationEnabled: false }].map((part) => {
+      body = part
+      return call()
+    })
+    await Promise.all(calls)
+    expect(stored).toMatchObject({ maintenanceMode: true, registrationEnabled: false, commentsEnabled: true })
+    expect(audits).toHaveLength(2)
+  })
+
+  it('Gegenprobe: die alte Seite (alle Felder aus dem eigenen Stand) verliert eine Änderung', async () => {
+    // Beide Seiten luden FLAGS; jede legt EINEN Schalter um und schickt alles.
+    const calls = [{ ...FLAGS, maintenanceMode: true }, { ...FLAGS, registrationEnabled: false }].map((full) => {
+      body = full
+      return call()
+    })
+    await Promise.all(calls)
+    // Der zweite schreibt `maintenanceMode: false` aus seinem alten Stand zurück.
+    expect(stored).toMatchObject({ maintenanceMode: false, registrationEnabled: false })
   })
 })

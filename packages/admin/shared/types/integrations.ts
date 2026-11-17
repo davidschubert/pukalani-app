@@ -10,15 +10,15 @@
 /**
  * Die Dienste, deren Schlüssel über die Oberfläche gepflegt werden können.
  *
- * Die letzten beiden sind keine fremden Dienste, sondern die GETEILTEN
- * Geheimnisse unserer eigenen Nähte (A0, 2026-08-18): dasselbe Wort muss auf
- * ZWEI Deployments stehen. Sie stehen hier, weil sie dieselbe Frage
- * beantworten („woher kommt dieser Zugang, und wie ändere ich ihn ohne ssh") —
+ * Der letzte ist kein fremder Dienst, sondern das GETEILTE Geheimnis
+ * unserer eigenen Naht (A0, 2026-08-18): dasselbe Wort muss auf ZWEI
+ * Deployments stehen. Es steht hier, weil es dieselbe Frage
+ * beantwortet („woher kommt dieser Zugang, und wie ändere ich ihn ohne ssh") —
  * mit EINEM Unterschied, der auf der Karte steht: rotiert wird in einer
  * REIHENFOLGE. Welche, hängt davon ab, ob die Naht in eine oder in beide
  * Richtungen läuft — siehe `shared` unten und `sharedSeamSecret.ts`.
  */
-export const INTEGRATION_IDS = ['ai', 'analytics', 'tickets-ai', 'onboarding-service', 'events-sweep'] as const
+export const INTEGRATION_IDS = ['ai', 'analytics', 'tickets-ai', 'onboarding-service'] as const
 export type IntegrationId = typeof INTEGRATION_IDS[number]
 
 /** Woher der benutzte Wert stammt. Ablage schlägt Env — überall gleich. */
@@ -34,8 +34,9 @@ export interface IntegrationState {
    * und wenn ja, WELCHER Art. Die Karte zeigt danach zwei verschiedene
    * Rotations-Anleitungen, denn es sind zwei verschiedene Lagen:
    *
-   * `'one-way'` — einer sendet, einer empfängt (`events-sweep`: der Cron
-   *   schickt, der Sweep prüft). Hier gibt es KEIN Fenster: neuen Wert zuerst
+   * `'one-way'` — einer sendet, einer empfängt (`onboarding-service` auf
+   *   jeder Instanz außer der Betreiber-Konsole: sie sendet nur, der
+   *   Empfänger ist die Konsole). Hier gibt es KEIN Fenster: neuen Wert zuerst
    *   beim Empfänger eintragen, der nimmt ab da alt UND neu an, danach beim
    *   Sender. Niemand merkt etwas.
    *
