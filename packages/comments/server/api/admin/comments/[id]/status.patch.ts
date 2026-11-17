@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import { z } from 'zod'
+import { commentReadPermissions } from '../../../../utils/commentReadPermissions'
 
 /**
  * Moderation: Kommentar ausblenden/wiederherstellen. Die Zweiphasen-Hide-
@@ -33,7 +34,7 @@ export default defineEventHandler(async (event) => {
   // Admin-Client sonst umgeht — und liefert 404 statt 403, damit ein
   // Fehlschlag keine fremde ID bestätigt.
   const ops = tenantDb(event, { as: 'operator' })
-  const row = await ops.get<ModeratableCommentRow>('comments', commentId, 'Comment not found')
+  const row = await ops.get<ModeratableCommentRow & { targetType: string }>('comments', commentId, 'Comment not found')
 
   // Soft-Delete-Kommentare sind sichtbar, aber NICHT moderierbar (Constraint)
   if (row.status === 'deleted') {
@@ -48,7 +49,10 @@ export default defineEventHandler(async (event) => {
   // bedeutet — `read(any)` oder `read(label:<communityId>)`. `withPublishedRead`
   // räumt dabei die jeweils andere Schreibweise weg, damit ein nach dem
   // Ausblenden umgeschalteter Mandant beim Wiederherstellen nicht beide trägt.
-  const restored = withPublishedRead(row.$permissions, event)
+  //
+  // BE-020: ein Kommentar an einem Betreiber-Ziel (Ticket) bekommt dabei NICHT
+  // das Publikum, sondern bleibt intern — dieselbe Funktion wie beim Anlegen.
+  const restored = commentReadPermissions(event, row.targetType, row.$permissions)
   const updated = await (status === 'hidden'
     ? hideCommentRow(event, row)
     : ops.update<Models.Row & { status: string }>('comments', commentId, { status }, 'Comment not found')

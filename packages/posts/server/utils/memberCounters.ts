@@ -448,6 +448,39 @@ export async function spendMemberLikeAllowance(event: H3Event, userId: string): 
   return { ok: true }
 }
 
+/**
+ * EIN LIKE ZURÜCKGEBEN — die posts-Seite von `refundLikeAllowance` (BE-020).
+ *
+ * Gerufen NUR, wenn die Route in derselben Anfrage gebucht hat und das
+ * Schreiben der Stimme danach scheiterte (die Bedingungen hält der
+ * Core-Vertrag). Zurückgezählt wird nur, was `spendMemberLikeAllowance`
+ * gezählt haben kann: derselbe UTC-Tag, ein Kontingent für die Stufe und ein
+ * Stand über 0. Ist der Tag inzwischen gewechselt, gibt es nichts zu
+ * erstatten — der Stand von gestern gilt nicht mehr.
+ *
+ * Ein schon gebuchter Abzeichen-Tag (`likeLimitDay`) bleibt stehen: er ist
+ * einmal je Tag gebucht und kein Kontingent.
+ *
+ * Atomar heruntergezählt (`decrement` klemmt bei 0). Wirft — der
+ * Core-Vertrag fängt und protokolliert.
+ */
+export async function refundMemberLikeAllowance(event: H3Event, userId: string): Promise<void> {
+  const staffel = likesPerDayFromConfig()
+  if (likeMechanicOff(staffel)) return
+
+  const db = counterDb(event)
+  const row = await findRow(event, db, userId)
+  if (!row) return
+  const limit = likeLimitForLevel(staffel, effectiveTrustLevel(row.trustLevel, row.trustLevelLeader === true))
+  if (limit <= 0) return
+  if ((row.likeDay ?? '') !== utcDayKey(Date.now()) || (row.likesToday ?? 0) <= 0) return
+
+  await db.decrement<MemberCounters>(MEMBER_COUNTERS_TABLE, row.$id, 'likesToday', { value: 1, min: 0 }, 'Counters not found')
+}
+
+/** An DERSELBEN Registrierung wie das Verbrauchen (`registerLikeAllowanceAuthority`). */
+spendMemberLikeAllowance.refund = refundMemberLikeAllowance
+
 /* ─── Wer hat wen hergeholt? (F57-Stufen) ────────────────────────────────── */
 
 /**
