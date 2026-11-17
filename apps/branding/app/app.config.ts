@@ -292,6 +292,16 @@ export default defineAppConfig({
        */
       waitlistRetention: 'count',
       /**
+       * DER FRISTEN-LAUF DER GESPRÄCHSANFRAGEN ZÄHLT NUR (EL1 c): 'count'
+       * liest stündlich mit genau der Auswahl, die 'apply' löschen würde
+       * (jede Anfrage 12 Monate nach dem Eingang), und schreibt die Zahlen
+       * ins Prozess-Log (`retention.run`, `job: brand-intro-retention`).
+       * 'apply' wird erst mit Davids Ja zur gezählten Zahl gesetzt; 'off'
+       * stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
+       * löschen).
+       */
+      introRequestRetention: 'count',
+      /**
        * DIE DREI RECHTSWÖRTER IM FUSS SIND SEIT BS1 R1 ECHTE LINKS
        * (2026-09-07). Bis dahin standen sie hier bewusst leer — der
        * Layer-Default lässt die Zeile dann ganz weg, weil ein Wort ohne Ziel

@@ -32,6 +32,7 @@ const EXPECTED_JOB_NAMES = [
   'audit-log-retention',
   'brand-check-erasure',
   'brand-events-sweep',
+  'brand-intro-retention',
   'brand-waitlist-retention',
   'custom-domain-notice',
   'custom-domain-sweep',
