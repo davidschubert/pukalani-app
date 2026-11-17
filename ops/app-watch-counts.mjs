@@ -155,7 +155,7 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0 }
   const jobs = new Map()
   const job = (id) => {
     if (typeof id !== 'string' || !JOB_PATTERN.test(id)) return null
@@ -189,6 +189,12 @@ async function main() {
         break
       case 'audit.write_failed':
         if (inWindow) counts.auditFailed++
+        break
+      case 'csp.report':
+        if (inWindow) counts.csp++
+        break
+      case 'csp.report_capped':
+        if (inWindow) counts.cspCapped++
         break
       case 'job.registered': {
         const item = job(entry.job)
@@ -236,6 +242,7 @@ async function main() {
   // Seit BE-021 (2026-11-16). Die Auswertung verträgt eine Ausgabe OHNE diese
   // Zeile (ein Server mit dem Skript von vorher) — VERSION bleibt deshalb 1.
   console.log(`protokoll ausfaelle=${counts.auditFailed}`)
+  console.log(`skriptregel berichte=${counts.csp} gedeckelt=${counts.cspCapped}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

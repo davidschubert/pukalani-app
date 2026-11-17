@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { COUNTS_VERSION, LINE_FORMS, NOWHERE, RULES, drillCounts, evaluateApp, parseCounts, parseExpectedJobs } from '../../../scripts/ops/app-signals-rules.mjs'
+import { COUNTS_VERSION, LINE_FORMS, NOWHERE, RULES, drillCounts, evaluateApp, parseCounts, parseExpectedJobs, summaryLine } from '../../../scripts/ops/app-signals-rules.mjs'
 import { readApps } from '../../../scripts/ops/verify-app-signals.mjs'
 
 /**
@@ -20,7 +20,7 @@ const SCRIPT = join(REPO, 'scripts', 'ops', 'verify-app-signals.mjs')
 
 interface JobLine { name: string, every?: number, ok?: number, failed?: number, skipped?: number, overlap?: number, lastOk?: number | 'nie', lastRun?: number | 'nie', result?: string, registered?: number | 'nie' }
 
-function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, jobs?: JobLine[], version?: number } = {}): string {
+function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, csp?: number | null, cspCapped?: number, jobs?: JobLine[], version?: number } = {}): string {
   const jobs = options.jobs ?? []
   return [
     `zaehler version=${options.version ?? COUNTS_VERSION} prozess=testprozess stunden=25 status=${options.status ?? 'online'}`,
@@ -29,6 +29,8 @@ function countsText(options: { status?: string, up?: number, server?: number, br
     `ki ausfaelle=${options.ai ?? 0} ohne_guthaben=${options.noCredit ?? 0} kein_endpunkt=${options.noEndpoint ?? 0} abgeschaltet=${options.disabled ?? 0}`,
     // `audit: null` = Ausgabe eines Servers mit dem Skript von VOR BE-021 (ohne die Zeile).
     ...(options.audit === null ? [] : [`protokoll ausfaelle=${options.audit ?? 0}`]),
+    // `csp: null` = Ausgabe eines Servers mit dem Skript von VOR SE1 a (ohne die Zeile).
+    ...(options.csp === null ? [] : [`skriptregel berichte=${options.csp ?? 0} gedeckelt=${options.cspCapped ?? 0}`]),
     ...jobs.map(job => `lauf name=${job.name} takt_min=${job.every ?? 60} ok=${job.ok ?? 24} gescheitert=${job.failed ?? 0} uebersprungen=${job.skipped ?? 0} haengt=${job.overlap ?? 0} letzter_ok_min=${job.lastOk ?? 10} letzter_lauf_min=${job.lastRun ?? 10} letztes_ergebnis=${job.result ?? 'ok'} angemeldet_min=${job.registered ?? 600}`),
     `ende laeufe=${jobs.length}`,
   ].join('\n')
@@ -218,6 +220,32 @@ describe('Regeln — Betreiber-Protokoll (BE-021)', () => {
   })
 })
 
+describe('Berichte der Skript-Regel (SE1 a) — zählt nur', () => {
+  it('Berichte machen nie rot und stehen als Hinweis mit der Zahl da', () => {
+    const result = evaluate(countsText({ csp: 7, cspCapped: 1 }))
+    expect(result.red).toEqual([])
+    expect(result.notes).toHaveLength(1)
+    expect(result.notes[0]).toContain('7 Bericht(e) der Skript-Regel in 25 h, der Deckel hat 1× gegriffen')
+    expect(summaryLine({ site: 'test.example', counts: parseCounts(countsText({ csp: 7 })) })).toContain('Skript-Regel 7')
+  })
+
+  it('ohne Berichte kein Hinweis', () => {
+    expect(evaluate(countsText()).notes).toEqual([])
+  })
+
+  it('ALTE Ausgabe ohne die Zeile ⇒ kein Problem, nicht rot, in der Übersicht „nicht gezählt"', () => {
+    const counts = parseCounts(countsText({ csp: null }))
+    expect(counts.problem).toBeUndefined()
+    expect(counts.cspReports).toBeUndefined()
+    expect(evaluate(countsText({ csp: null }))).toEqual({ red: [], notes: [] })
+    expect(summaryLine({ site: 'test.example', counts })).toContain('Skript-Regel nicht gezählt')
+  })
+
+  it('eine kaputte Zeile ist „unlesbar"', () => {
+    expect(parseCounts(countsText().replace('berichte=0', 'berichte=-1')).problem).toBe('unlesbar')
+  })
+})
+
 describe('Probealarm', () => {
   it('macht eine gesunde Antwort rot, ohne die echten Zahlen zu verlieren', () => {
     const counts = parseCounts(countsText({ jobs: [{ name: 'trial-sweep' }] }))
@@ -274,10 +302,10 @@ describe('Listen und Skripte passen zusammen', () => {
     const script = readFileSync(join(REPO, 'ops', 'app-watch-counts.mjs'), 'utf8')
     expect(script).toContain(`const VERSION = ${COUNTS_VERSION}\n`)
     // Jede Zeilenart, die das Skript ausgibt, hat hier eine Form.
-    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'lauf name=', 'ende laeufe=']) {
+    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'lauf name=', 'ende laeufe=']) {
       expect(script, start).toContain(`console.log(\`${start}`)
     }
-    expect(Object.keys(LINE_FORMS)).toHaveLength(7)
+    expect(Object.keys(LINE_FORMS)).toHaveLength(8)
   })
 })
 

@@ -31,6 +31,6 @@ NUXT_ENTITLEMENTS_PRIVATE_KEY=${privateB64}
 NUXT_ENTITLEMENTS_KID=${kid}
 
 ── Jede Site (.env — Prüfer; bestehende Map um diese kid erweitern) ───────
-NUXT_ENTITLEMENTS_URL=http://localhost:3004/api/platform/entitlements/<projectId>
+NUXT_ENTITLEMENTS_URL=http://localhost:3004/api/control/entitlements/<projectId>
 NUXT_ENTITLEMENTS_PUBLIC_KEYS={"${kid}":"${publicB64}"}
 `)

@@ -231,7 +231,15 @@ paths:
   `Referrer-Policy`, `Permissions-Policy`, HSTS (ein Jahr, ohne
   `includeSubDomains`, ohne `preload`, nie auf lokalen Hosts), auf Seiten `frame-ancestors`
   (weiter nur aus `frameAncestors.ts`), eine Skript-CSP im Modus Report-Only
-  und kein `x-powered-by`. KEIN `add_header` für diese Namen in einer
+  und kein `x-powered-by`. Die Skript-CSP nennt seit 2026-11-17 (SE1 a) eine
+  Annahme-Route (`report-uri /api/telemetry/csp-report`): eigener Eingang,
+  gebremst je Anschluss, je Verstoß und Stunde EINE Zeile `csp.report` mit
+  vier Wörtern (Anweisung, Herkunft der Quelle, Herkunft der Datei, erster
+  Abschnitt des Seitenpfads), nichts über Personen; Berichte aus
+  Browser-Erweiterungen fallen heraus (`core/shared/cspReport.ts`). Der
+  tägliche Blick in die App berichtet die Zahl je App („Skript-Regel"), rot
+  wird davon nichts. Die Regel BEOBACHTET weiter nur — scharf stellen ist
+  eine eigene Entscheidung (OPEN-ITEMS „SE1" a). KEIN `add_header` für diese Namen in einer
   nginx-Datei (Ploi schreibt bei einer neuen Site drei hinein — löschen) und
   KEIN `X-Frame-Options` irgendwo: es kann die Erlaubnisliste von `/embed`
   nicht ausdrücken. Eine Seite, die strenger sein will, setzt ihren Wert per

@@ -32,7 +32,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 | Bot-Prüfung | `scripts/ops/verify-turnstile.mjs` | täglich | auf einer Site antwortet die Passwort-vergessen-Route ohne Token nicht mit 403 `bot_check_required` (Bot-Prüfung aus oder Cloudflare nicht erreichbar), oder die Seite trägt das Widget nicht (Gäste ausgesperrt); eine unklare Antwort bekommt nach 20 s einen zweiten Versuch |
 | Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte der gemeinsam gepflegten Tabellen oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
-| In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, übrige KI-Ausfälle |
+| In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, Berichte der Skript-Regel, übrige KI-Ausfälle |
 | Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
 | Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
@@ -181,8 +181,11 @@ App selbst, für jede Antwort gleich
 (`packages/core/server/plugins/security-headers.ts`): `nosniff`,
 `Referrer-Policy`, `Permissions-Policy` und HSTS überall, auf Seiten dazu
 die Regel zum Einbetten (`frame-ancestors`) und eine Skript-CSP, die nur
-beobachtet (Report-Only, ohne Sammelstelle — Verstöße stehen in der
-Browser-Konsole). Im Webserver steht dazu NICHTS mehr; die Vorlagen verbieten
+beobachtet (Report-Only). Seit 2026-11-17 schickt der Browser jeden Verstoß
+an `/api/telemetry/csp-report`; die App schreibt je Verstoß und Stunde eine
+Zeile `csp.report`, und der Blick „In die App hinein" nennt die Zahl je App
+unter „Skript-Regel" (zählt nur). Welche Quelle auf welcher Seite:
+`grep '"event":"csp.report"' ~/.pm2/logs/<prozess>-error-*.log | tail -20`. Im Webserver steht dazu NICHTS mehr; die Vorlagen verbieten
 `add_header` für diese Namen. Der Blick zählt von außen roh nach, weil ein
 Test im Repo den Webserver davor nicht sieht. Von Hand:
 `node scripts/ops/verify-security-headers.mjs [host]`.

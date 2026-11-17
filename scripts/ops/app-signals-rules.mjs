@@ -114,6 +114,7 @@ export const LINE_FORMS = {
   end: /^ende laeufe=(\d{1,3})$/,
   /** Seit BE-021 — OPTIONAL: ein Server mit dem älteren Skript schreibt sie nicht. */
   audit: /^protokoll ausfaelle=(\d{1,9})$/,
+  csp: /^skriptregel berichte=(\d{1,9}) gedeckelt=(\d{1,9})$/,
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -164,6 +165,9 @@ export function parseCounts(text) {
     }
     else if ((hit = line.match(LINE_FORMS.audit))) {
       counts.auditFailed = Number(hit[1])
+    }
+    else if ((hit = line.match(LINE_FORMS.csp))) {
+      Object.assign(counts, { cspReports: Number(hit[1]), cspCapped: Number(hit[2]) })
     }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])
@@ -302,6 +306,14 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
     notes.push(`${where} ${counts.auditFailed} Eintrag/Einträge ins Betreiber-Protokoll gescheitert in ${counts.hours} h, Schwelle ${rules.auditWriteFailures}`)
   }
 
+  // ── Berichte der Skript-Regel (SE1 a) ─────────────────────────────────
+  // Zählt nur: die Regel beobachtet. Eine Zeile `csp.report` je VERSCHIEDENEM
+  // Verstoß und Stunde — ohne die Zeile ist das Zähl-Skript auf dem Server
+  // älter, dann steht in der Übersicht „nicht gezählt".
+  if (counts.cspReports > 0 || counts.cspCapped > 0) {
+    notes.push(`${where} ${counts.cspReports} Bericht(e) der Skript-Regel in ${counts.hours} h${counts.cspCapped > 0 ? `, der Deckel hat ${counts.cspCapped}× gegriffen` : ''} — zählt nur; welche Quelle auf welcher Seite, steht im Fehler-Log der App in den Zeilen \`csp.report\``)
+  }
+
   return { red, notes }
 }
 
@@ -312,7 +324,7 @@ export function summaryLine({ site, counts, expected = new Set() }) {
     const job = counts.jobs.get(name)
     return job && job.lastResult !== 'failed' && job.lastOkMin !== null
   }).length
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
 }
 
 /**

@@ -21,7 +21,7 @@ Protokoll in [`docs/archiv/PRODUKT-BILANZ-2026-07-27.md`](../archiv/PRODUKT-BILA
 | **analytics** | ✅ | comments, portfolio | 3/3 über `tenantDb` | ✅ | personal |
 | **brand** | — | branding | 0/100 über `tenantDb` · 48 roh | ✅ | — |
 | **comments** | ✅ | _template, branding, comments | 18/19 über `tenantDb` | ✅ | — |
-| **control** | — | control | 0/88 über `tenantDb` · 61 roh | ✅ | — |
+| **control** | — | control | 0/89 über `tenantDb` · 60 roh | ✅ | — |
 | **courses** | ✅ | _template, comments | 14/15 über `tenantDb` | ✅ | pro |
 | **domains** | — | comments, portfolio | 0/5 über `tenantDb` | — | — |
 | **events** | ✅ | _template, comments | 16/18 über `tenantDb` | ✅ | pro |
