@@ -102,7 +102,7 @@ Demo-Login (nach `--seed`): `uma@demo.local` / `Demo-Passw0rd!` (regulär), `mod
 |---|---|
 | `pnpm --filter comments bootstrap [--seed]` | Frische Instanz: DB + Bucket + Platform + alle Migrationen (optional Seed) |
 | `pnpm --filter comments seed [--force]` | Demo-User (Rollen) + Kommentare (idempotent; `--force` re-seedet) |
-| `pnpm --filter @pukalani/<layer> migrate` | Migrationen eines Layers idempotent ausführen |
+| `pnpm migrate --app <app> [--layer <layer>]` | Migrationen einer App idempotent ausführen — der eine Weg, immer aus der Wurzel (Production: `--env <datei> --only <layer>-<NNN> --prod`, vorher mit `--dry-run` ansehen) |
 | `pnpm dev:app` · `pnpm dev:core` | Dev-Server (App 3001 · Core-Playground 3000) |
 | `pnpm typecheck` · `pnpm -r lint` · `pnpm -r test` | Qualitäts-Checks über den Workspace |
 

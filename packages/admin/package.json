@@ -6,8 +6,7 @@
   "main": "./nuxt.config.ts",
   "scripts": {
     "lint": "eslint .",
-    "test": "vitest run",
-    "migrate": "node ../../scripts/migrate.mjs --layer admin"
+    "test": "vitest run"
   },
   "dependencies": {
     "@nuxt/ui": "catalog:",

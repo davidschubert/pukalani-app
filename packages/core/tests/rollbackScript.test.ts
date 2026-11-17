@@ -47,7 +47,52 @@ function stub(name: string, body: string) {
   chmodSync(file, 0o755)
 }
 
+/**
+ * Was jeder Skript-Lauf des gerade laufenden Tests ergeben hat. Scheitert der
+ * Test, gibt `beforeEach` das alles aus (siehe dort) — der Fehlschlag auf
+ * `main` vom 2026-11-16 zeigte nur „leere Ausgabe", und daraus ließ sich
+ * keine Ursache lesen.
+ */
+interface ScriptRun {
+  args: string[]
+  code: number | null
+  signal: NodeJS.Signals | null
+  spawnError: string
+  ms: number
+  stdout: string
+  stderr: string
+}
+let runs: ScriptRun[] = []
+/** Stand der Attrappe am Ende des Tests — festgehalten, BEVOR `afterEach` sie löscht. */
+let stageAtEnd = ''
+
+function describeStage() {
+  const pm2Log = existsSync(join(state, 'log')) ? readFileSync(join(state, 'log'), 'utf8').trim() : ''
+  const link = join(root, 'releases', 'help', 'current')
+  let target = '(fehlt)'
+  try { target = readlinkSync(link).split('/').pop() ?? '(leer)' }
+  catch { /* Verweis fehlt */ }
+  return [
+    `── Attrappe am Ende: der Verweis zeigt auf ${target}`,
+    `   Aufrufe des pm2-Stellvertreters:\n${pm2Log || '   (keine)'}`,
+  ].join('\n')
+}
+
+function describeRuns() {
+  if (runs.length === 0) return 'ops/rollback.sh wurde in diesem Test nicht gestartet.'
+  return runs.map((entry, index) => [
+    `── Lauf ${index + 1} von ${runs.length}: ops/rollback.sh ${entry.args.join(' ')}`,
+    `   Exit-Code: ${entry.code === null ? 'keiner' : entry.code} · Signal: ${entry.signal ?? 'keines'} · Dauer: ${entry.ms} ms`,
+    `   Start des Prozesses: ${entry.spawnError || 'gelungen'}`,
+    `   stdout (${entry.stdout.length} Zeichen):`,
+    entry.stdout || '   (leer)',
+    `   stderr (${entry.stderr.length} Zeichen):`,
+    entry.stderr || '   (leer)',
+  ].join('\n')).join('\n')
+}
+
 function run(...args: string[]) {
+  const started = Date.now()
   const result = spawnSync('bash', [SCRIPT, ...args], {
     encoding: 'utf8',
     env: {
@@ -61,14 +106,39 @@ function run(...args: string[]) {
       STUB_ROOT: root,
     },
   })
-  return { code: result.status, out: `${result.stdout}${result.stderr}` }
+  // Ein Prozess, der gar nicht startet, liefert weder Ausgabe noch Exit-Code
+  // (`stdout` ist dann `null`) — das steht hier getrennt, statt als Text
+  // „null" in der Ausgabe zu landen.
+  const stdout = result.stdout ?? ''
+  const stderr = result.stderr ?? ''
+  runs.push({
+    args,
+    code: result.status,
+    signal: result.signal,
+    spawnError: result.error ? `${result.error.name}: ${result.error.message}` : '',
+    ms: Date.now() - started,
+    stdout,
+    stderr,
+  })
+  return { code: result.status, out: `${stdout}${stderr}` }
 }
 
 const current = () => readlinkSync(join(root, 'releases', 'help', 'current')).split('/').pop()
 const pm2Calls = () => (existsSync(join(state, 'log')) ? readFileSync(join(state, 'log'), 'utf8') : '')
   .split('\n').filter(line => line.startsWith('pm2 '))
 
-beforeEach(() => {
+beforeEach(({ onTestFailed }) => {
+  // MG1 (b): scheitert ein Test, stehen Ausgabe UND Exit-Code JEDES
+  // Skript-Laufs im Protokoll, dazu der Stand der Attrappe. Ohne Deutung —
+  // die Ursache wird gelesen, nicht vermutet.
+  runs = []
+  stageAtEnd = ''
+  // Läuft NACH `afterEach` — die Attrappe ist dann schon gelöscht, ihr Stand
+  // kommt deshalb aus `stageAtEnd`.
+  onTestFailed(() => {
+    console.error(['ops/rollback.sh — Diagnose zum gescheiterten Test', describeRuns(), stageAtEnd].join('\n'))
+  })
+
   dir = mkdtempSync(join(tmpdir(), 'rollback-'))
   root = join(dir, 'server')
   state = join(dir, 'state')
@@ -102,6 +172,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  stageAtEnd = describeStage()
   rmSync(dir, { recursive: true, force: true })
 })
 
