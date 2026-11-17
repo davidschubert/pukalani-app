@@ -218,6 +218,8 @@
       "buy": "Ticket kaufen",
       "soon": "Bald verfügbar",
       "alreadyOwned": "Du hast schon ein Ticket für dieses Event.",
+      "alreadyPaid": "Schon bezahlt — dein Ticket wird gerade ausgestellt.",
+      "alreadyPaidHint": "Das dauert meist nur einen Moment. Lade die Seite gleich neu; ein zweites Mal bezahlen musst du nicht.",
       "failed": "Ticket-Kauf konnte nicht gestartet werden.",
       "failedHint": "Der Bezahlvorgang ließ sich nicht öffnen — berechnet wurde nichts. Versuch es gleich noch einmal."
     },
