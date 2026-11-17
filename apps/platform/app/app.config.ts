@@ -125,20 +125,22 @@ export default defineAppConfig({
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
-    // Profilbilder ohne Profil (KE3): NUR zählen ('count', Log
-    // `retention.run`, `job: avatar-orphan-sweep`). 'apply' erst mit dem Ja
-    // des Betreibers zur gezählten Zahl.
-    storage: { avatarOrphanSweep: 'count' },
+    // Profilbilder ohne Profil (KE3): der Lauf LÖSCHT ('apply') seit dem
+    // 2026-11-17 — Davids Ja zur gezählten Zahl (über alle drei Apps mit
+    // Bucket: 1 Datei, deren Konto es nicht mehr gibt). Log `retention.run`,
+    // `job: avatar-orphan-sweep`. Rückweg: 'count' (zählt nur) oder 'off';
+    // Gelöschtes kommt damit nicht wieder.
+    storage: { avatarOrphanSweep: 'apply' },
     /**
-     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
-     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
-     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
-     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
-     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
-     * 'off' stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
-     * löschen).
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS LÖSCHT (EL1 c): 'apply' seit dem
+     * 2026-11-17 — Davids Ja zur gezählten Zahl (0 Einträge älter als 12
+     * Monate an diesem Tag). Stündlich fällt jeder Eintrag in `audit_logs`,
+     * der älter als 12 Monate ist (`retention.run`,
+     * `job: audit-log-retention`). Rückweg: 'count' (zählt nur) oder 'off'
+     * (dann auch die Zeile in ops/timed-jobs.conf löschen); Gelöschtes kommt
+     * damit nicht wieder.
      */
-    audit: { retention: 'count' },
+    audit: { retention: 'apply' },
     /**
      * ANMELDUNG (F37, 2026-08-02) — beides war im Silo an und im Pool aus.
      *

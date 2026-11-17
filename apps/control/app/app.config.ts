@@ -22,19 +22,21 @@ export default defineAppConfig({
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
     /**
-     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
-     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
-     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
-     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
-     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
-     * 'off' stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
-     * löschen).
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS LÖSCHT (EL1 c): 'apply' seit dem
+     * 2026-11-17 — Davids Ja zur gezählten Zahl (0 Einträge älter als 12
+     * Monate an diesem Tag). Stündlich fällt jeder Eintrag in `audit_logs`,
+     * der älter als 12 Monate ist (`retention.run`,
+     * `job: audit-log-retention`). Rückweg: 'count' (zählt nur) oder 'off'
+     * (dann auch die Zeile in ops/timed-jobs.conf löschen); Gelöschtes kommt
+     * damit nicht wieder.
      */
-    audit: { retention: 'count' },
-    // Profilbilder ohne Profil (KE3): NUR zählen ('count', Log
-    // `retention.run`, `job: avatar-orphan-sweep`). 'apply' erst mit dem Ja
-    // des Betreibers zur gezählten Zahl.
-    storage: { avatarOrphanSweep: 'count' },
+    audit: { retention: 'apply' },
+    // Profilbilder ohne Profil (KE3): der Lauf LÖSCHT ('apply') seit dem
+    // 2026-11-17 — Davids Ja zur gezählten Zahl (über alle drei Apps mit
+    // Bucket: 1 Datei, deren Konto es nicht mehr gibt). Log `retention.run`,
+    // `job: avatar-orphan-sweep`. Rückweg: 'count' (zählt nur) oder 'off';
+    // Gelöschtes kommt damit nicht wieder.
+    storage: { avatarOrphanSweep: 'apply' },
     // DIE ADRESSE DIESER KONSOLE ist `admin.pukalani.app` (AH-4, 2026-08-11).
     // Der Altname `control.pukalani.app` ist seit AH-4b (2026-08-18, Davids
     // Entscheidung) BEWUSST tot: die ploi-Site wurde im Panel wirklich
@@ -124,11 +126,11 @@ export default defineAppConfig({
     // Aufräum-Lauf (BE-025): LÖSCHT seit 2026-11-14 (Davids Entscheidung, nachdem
     // der Probelauf auf Production gezählt hatte: 10 Protokolle, 0 Ereignisse).
     // Zurück auf 'dry-run' = nur zählen; Gelöschtes kommt damit nicht wieder.
-    // Texte und Anhänge alter Läufe (RU1 c, 12 Monate, Zahlen bleiben): NUR
-    // ZÄHLEN ('count', Log-Zeile `retention.run` mit job=run-text-retention).
-    // Auf 'apply' erst mit Davids Ja zur gezählten Zahl — geschwärzter Text
-    // kommt nicht wieder.
-    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'apply', textRetention: 'count' },
+    // Texte und Anhänge alter Läufe (RU1 c, 12 Monate, Zahlen bleiben): LÖSCHT
+    // ('apply') seit dem 2026-11-17 — Davids Ja zur gezählten Zahl (0 Läufe an
+    // diesem Tag). Log-Zeile `retention.run` mit job=run-text-retention.
+    // Rückweg: 'count' (zählt nur); geleerter Text kommt damit nicht wieder.
+    runner: { subjectLinks: { ticket: '/dashboard/tickets?ticket=' }, retention: 'apply', textRetention: 'apply' },
     // C17: DIESE App ist der Leser der kontobezogenen Meldungen. Beide
     // `scope: 'account'`-Absender leben hier (Stripe-Webhook im billing-Layer,
     // Early-Access-Anfragen im control-Layer) und schreiben in DIESES

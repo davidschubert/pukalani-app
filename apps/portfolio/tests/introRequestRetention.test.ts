@@ -254,10 +254,10 @@ describe('Schalter `pukalani.portfolio.introRequestRetention`', () => {
     expect(introRequestRetentionMode()).toBe('off')
   })
 
-  it('pukalani.studio zählt nur', () => {
+  it('pukalani.studio löscht seit der Freigabe vom 2026-11-17', () => {
     const here = dirname(fileURLToPath(import.meta.url))
     const app = readFileSync(join(here, '..', 'app', 'app.config.ts'), 'utf8')
-    expect(app).toContain(`portfolio: { introRequestRetention: 'count' },`)
+    expect(app).toContain(`portfolio: { introRequestRetention: 'apply' },`)
   })
 })
 

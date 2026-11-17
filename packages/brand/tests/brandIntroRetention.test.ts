@@ -271,12 +271,12 @@ describe('Schalter `pukalani.brand.introRequestRetention`', () => {
     expect(brandIntroRetentionMode()).toBe(mode)
   })
 
-  it('der Layer gibt `off` vor, branding.supply zählt nur', () => {
+  it('der Layer gibt `off` vor; branding.supply löscht seit der Freigabe vom 2026-11-17', () => {
     const here = dirname(fileURLToPath(import.meta.url))
     const layer = readFileSync(join(here, '..', 'app', 'app.config.ts'), 'utf8')
     const app = readFileSync(join(here, '..', '..', '..', 'apps', 'branding', 'app', 'app.config.ts'), 'utf8')
     expect(layer).toContain(`introRequestRetention: 'off' as RowRetentionMode,`)
-    expect(app).toContain(`introRequestRetention: 'count',`)
+    expect(app).toContain(`introRequestRetention: 'apply',`)
   })
 })
 

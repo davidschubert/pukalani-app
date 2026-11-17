@@ -285,12 +285,12 @@ describe('Schalter `pukalani.brand.waitlistRetention`', () => {
     expect(brandWaitlistRetentionMode()).toBe(mode)
   })
 
-  it('der Layer gibt `off` vor, branding.supply zählt nur', () => {
+  it('der Layer gibt `off` vor; branding.supply löscht seit der Freigabe vom 2026-11-17', () => {
     const here = dirname(fileURLToPath(import.meta.url))
     const layer = readFileSync(join(here, '..', 'app', 'app.config.ts'), 'utf8')
     const app = readFileSync(join(here, '..', '..', '..', 'apps', 'branding', 'app', 'app.config.ts'), 'utf8')
     expect(layer).toContain(`waitlistRetention: 'off' as RowRetentionMode,`)
-    expect(app).toContain(`waitlistRetention: 'count',`)
+    expect(app).toContain(`waitlistRetention: 'apply',`)
   })
 })
 
