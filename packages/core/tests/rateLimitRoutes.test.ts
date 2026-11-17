@@ -235,6 +235,8 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
     ['POST /api/runner/retention/texts', 'runner:retention', 6],
     // SI1 d: der Label-Abgleich von Hand — eigener Eimer.
     ['POST /api/community/members/run-label-reconcile', 'community:label-reconcile', 6],
+    // SI1 d: die Zahlungswarnung von Hand — eigener Eimer, nicht der des Abos.
+    ['POST /api/community/billing/run-past-due-notice', 'community:past-due-notice', 6],
   ])('%s → Bucket %s, Deckel %s', (route, bucket, max) => {
     expect(ersterTreffer(route)).toEqual({ bucket, max })
   })

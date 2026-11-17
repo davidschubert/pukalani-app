@@ -38,7 +38,10 @@
  *
  * VOR JEDEM SCHREIBEN: Schema (`insightsBrandSchema` / `insightsPostSchema`)
  * und die sieben Prüfregeln (`insightsReviewIssues`) ohne Quelltexte, mit dem
- * Namensfilter über ALLE Marken-Zeilen der Instanz. Der Lauf plant zuerst
+ * Namensfilter über ALLE Marken-Zeilen der Instanz. Seit IN1 c laufen auch die
+ * MARKEN-Zeilen durch ihre Regeln (`launchBrandIssues`, dieselben wie das Gate
+ * der Marken-Seiten): der Seed schreibt sie als Entwurf, und ein Entwurf, der
+ * die Regeln nicht erfüllt, ließe sich im Dashboard nie veröffentlichen. Der Lauf plant zuerst
  * alles, prüft alles und schreibt erst dann — ein Treffer bricht ab, bevor die
  * erste Zeile entsteht. Der Beleg-Abruf (steht das Zitat wörtlich auf der
  * Seite?) bleibt dem Server-Gate vorbehalten (s. Kopf von `launch-check.mjs`).
@@ -98,7 +101,7 @@ registerHooks({
   },
 })
 
-const { launchBrandFromContent, launchFlaggedSentences, launchPostFromContent, launchPostIssues }
+const { launchBrandFromContent, launchBrandIssues, launchFlaggedSentences, launchPostFromContent, launchPostIssues }
   = await import('./launch-check.mjs')
 const { fromInsightsBrand, fromInsightsPost, toInsightsBrand, toInsightsPost, INSIGHTS_BRANDS_TABLE, INSIGHTS_POSTS_TABLE }
   = await import('../shared/insightsRows.ts')
@@ -294,6 +297,17 @@ for (const content of LAUNCH_POSTS) {
 // ── 3. Prüfen — ALLES, bevor irgendetwas geschrieben wird ─────────────────────
 
 let blocked = false
+// Marken zuerst (IN1 c): was der Seed als Entwurf hinlegt, muss sich später
+// veröffentlichen lassen — dieselben Regeln wie das Gate der Marken-Seiten.
+for (const plan of brandPlan.values()) {
+  if (!plan.brand) continue
+  const issues = launchBrandIssues(plan.brand, plan.id, brandRowsAfter)
+  if (issues.length) {
+    blocked = true
+    console.error(`✗ Marke ${plan.content.slug}: ${issues.length} Prüfregel-Treffer`)
+    for (const issue of issues) console.error(`    ${JSON.stringify(issue)}`)
+  }
+}
 for (const plan of postPlan) {
   if (!plan.post) continue
   const issues = launchPostIssues(plan.post, brandRowsAfter)

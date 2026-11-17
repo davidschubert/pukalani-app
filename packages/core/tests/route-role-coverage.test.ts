@@ -39,7 +39,10 @@ const REPO = resolve(import.meta.dirname, '../../..')
  * eigenem Prüfstand `packages/control/tests/support/controlRouteHarness.ts`.
  */
 const ZERO_BACKLOG_LAYERS: readonly string[] = [
-  'activity', 'comments', 'control', 'courses', 'events', 'feedback', 'media', 'messages', 'moderation', 'posts',
+  'activity', 'comments', 'courses', 'events', 'feedback', 'media', 'messages', 'moderation', 'posts',
+  // Abgebaut mit BT1 b (2026-11-17): alle Bestands-Routen haben Tests
+  // (control 64, onboarding 47).
+  'control', 'onboarding',
 ]
 
 /**
