@@ -30,6 +30,139 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N06 — Nacharbeiten „Betreiber-Dashboard, Label-Abgleich, Aufräumen": AL1, BP1 (c, d), SI1 (b, d), AR1 (b, c, d) und PD1 (c) ✅ 2026-11-17
+
+Die baubaren Reste aus vier Paketen des Gesamtaudits (P16, P06, P26, P15) und
+die Entscheidung AL1. Pull Requests 278, 279, 289, 290, 291, 293 und der
+Abschluss-PR; keine Migration, nichts auf Production von Hand geändert, kein
+Stripe-Aufruf, kein KI-Lauf.
+
+**Was gebaut ist**
+
+- **Aktivitätsliste in der Nutzeransicht (AL1).** Die Karte war seit Appwrite
+  2.5 ohne Quelle und immer leer. Sie liest jetzt das Betreiber-Protokoll
+  (`audit_logs`), zugeschnitten auf ein Konto (`packages/admin/server/utils/
+  userActivity.ts`, Regeln pur in `admin/shared/userActivity.ts`): was die
+  Person selbst tat (`actorId` = Konto, ohne Ziel) und was ein Betreiber am
+  Konto tat (`targetId` = Konto) — zwei Abfragen über die vorhandenen Indizes,
+  zusammengeführt, höchstens 20, `truncated` als Tatsache. Reine Ansichten
+  (`user.viewed`, `user.list_viewed`) stehen nicht in der Liste: das Öffnen
+  der Seite schreibt selbst eine. Ort und Adresse gibt es nur bei Ereignissen
+  der Person; die Adresse einer Betreiber-Zeile gehört dem Betreiber. Ein
+  Lesefehler zeigt einen Hinweis statt „Keine Aktivität". Eine Aktion ohne
+  Text bleibt sichtbar (roh). Kein neuer Schreiber, keine neuen Daten.
+- **Löschen im Speicher (BP1 c).** Entschieden: die Erlaubnisliste ist auf die
+  Profilbild-Ablage gekürzt. An den Dateien der anderen acht Ablagen hängt
+  eine Zeile oder ein Verweis (am Code nachgesehen, auch für `media` und
+  `event-covers`); sie sind auf der Speicher-Seite nur-lesend, gelöscht wird
+  dort, wo der Inhalt verwaltet wird.
+- **Zwei Betreiber im selben Augenblick (BP1 d).** Produkt-Schalter und
+  Theme-Einstellungen laufen über `mutateAppConfig()`
+  (`admin/server/utils/appConfigWrite.ts`): im Prozess nacheinander, die Zeile
+  `app_config` wird in der Kette frisch gelesen, geändert wird nur das eine
+  Feld. Theme-Einstellungen: ein genannter Schlüssel ersetzt, `null` heißt
+  „keiner", Built-ins je Eintrag; die Seite sendet nur, was der Klick ändert.
+  Nebenbei behoben: der Produkt-Schalter schrieb den WIRKSAMEN Stand zurück —
+  ein Produkt, das nur wegen des Plans aus war, blieb danach dauerhaft „aus".
+- **Beweis-Skript der Nachrichten (BP1 d).** `verify-messages.mjs` stellt vor
+  Schritt 8 fest, welche Schalter-Zeile die Test-App liest, meldet Prüfungen
+  ohne herstellbare Vorbedingung als ÜBERSPRUNGEN (eigene Zeile, weder
+  bestanden noch gescheitert) und schreibt nie in eine fremde Zeile. Vorher
+  stellte es eine fremde Zeile im Spiegel still auf „an".
+- **Label-Abgleich (SI1 b, d).** Zwei neue Fälle im stündlichen Lauf: aktive
+  Mitgliedschaft in einer stillgelegten Community (beide Labels fallen, die
+  Community wird unmittelbar vorher frisch gefragt) und Rolle ohne Moderation,
+  in den letzten 26 Stunden geändert, Konto trägt noch das Moderations-Label
+  (nur dieses fällt, die Rolle wird frisch gelesen). Die Regel „welche Rolle
+  trägt das Moderations-Label" ist dieselbe wie beim Besuch
+  (`reports.moderate`), per Test gebunden. Neue Core-Funktion
+  `revokeCommunityModeratorLabel`; Zählfelder `disabledCandidates`,
+  `disabledStale`, `demotedCandidates`, `demotedStale`. Keine neue Migration:
+  die Abfragen nutzen `communities.idx_status` und
+  `community_members.idx_community_status`. `run-label-reconcile` steht in
+  der Bremsen-Liste (6 je Minute).
+- **Ticket-Kauf (AR1 b).** Der Kauf liegt in `packages/billing` und
+  `packages/events`, nicht in `packages/tickets` (das ist das Ticket-Board).
+  `ensureCustomer` legt den Stripe-Kunden mit festem Idempotenz-Schlüssel an
+  (Projekt, Konto, Adresse, Name); aufgeräumt wird nur ein Kunde, der ein
+  anderer ist als der gespeicherte. `createPaymentCheckoutSession` fragt bei
+  einem Kauf mit Bereich nach einer schon bezahlten Sitzung für genau diesen
+  Kauf ⇒ 409 `already_paid`, eigener Satz auf der Event-Seite. Das schließt
+  auch einen Weg, der im Eintrag nicht stand: ein zweiter Klick aus der
+  anderen Sprache bekam eine neue, zweite Bezahlseite.
+- **Plan-Kleinigkeiten (PD1 c).** Die Alt-Pläne `free` und `business` (Zeilen
+  aus control-014) heißen im Kasten „Pläne & Limits" jetzt „Free (Alt-Plan)"
+  und „Business (Alt-Plan)". Der letzte Schritt des Wizards zeigt bei
+  `email_unverified` den vorhandenen Kasten mit „Mail erneut senden"; ein als
+  unbestätigt bekanntes Konto sieht den Hinweis schon beim Betreten.
+- **Aufräumen (AR1 c, d).** `ACCOUNT-CUTOVER.md`, `ADMIN-CUTOVER.md` und
+  `CONTROL-CUTOVER.md` liegen unter `docs/archiv/`, alle Verweise sind
+  nachgezogen, zwei leer laufende Ausnahmen des Verweis-Wächters sind weg.
+  `apps/control` und `apps/photos` haben eine eigene README. `CLAUDE.md` und
+  README nennen node-appwrite 31 und appwrite 29.
+
+**Ohne Rückfrage entschieden (kleine, umkehrbare Fragen — Davids Regel vom
+2026-11-17)**
+
+- Speicher: Liste kürzen statt Zeile mitlöschen (die kleinere Lösung; das
+  Mitlöschen bräuchte je Ablage die Regeln des Produkts).
+- Aktivitätsliste: Ansichten des Kontos bleiben draußen; An- und Abmeldungen
+  stehen drin (die Betreiber-Sicht ist eine andere Frage als die Selbst-Sicht
+  unter `/profile/activity`).
+- Label-Abgleich: die zwei neuen Fälle laufen sofort scharf mit (der Schalter
+  der Platform-App steht auf `apply`). Der Entzug ist, was Stilllegen zusagt;
+  wird eine Community wieder aktiv, kommt das Label beim nächsten Besuch
+  zurück.
+- Eigene Spalte für den Zeitpunkt der Erledigung einer Meldung: nicht gebaut
+  (bräuchte eine Migration auf Production; der Fehler hält Daten heute nur
+  länger, nie kürzer).
+- CONTROL-CUTOVER trotz dreier offener Kästchen archiviert: zwei sind von
+  außen als erledigt nachgesehen, das dritte ist ein Name bei UptimeRobot.
+- Die datierte Zeile im DECISION-LOG mit `csrfOriginCheck` bleibt: sie
+  beschreibt ihre Zeit; die README nennt den Schalter nicht mehr.
+
+**Geprüft**
+
+- Tests je Paket mit Gegenproben: zwei gleichzeitige Aufrufe (Stripe-Kunde,
+  Produkt-Schalter, Theme-Einstellungen), Rollen-Tests am echten Handler
+  (Nutzeransicht, Lösch-Route, beide Schalter-Routen), Abgleich mit
+  „Community wieder aktiv" und „wieder hochgestuft".
+- Lokal im Browser, Betreiber-Konsole gegen den Spiegel, je mit drei
+  Wegwerf-Konten (danach gelöscht, Protokoll-Zeilen entfernt, die Zeile
+  `app_config` zurückgestellt): die Aktivitätsliste gefüllt und leer; der
+  Kasten „Pläne & Limits"; Ausblenden und Sortieren der Themes (gesendet wird
+  nur das Geänderte). Die Seite `/invite` von branding.supply ohne Code und
+  mit ungültigem Code.
+- `verify-messages.mjs` gegen die lokale Test-App: 100 von 100, 2 übersprungen.
+- Appwrite 2.7.1 nimmt die neuen Abfragen an (lokal, nur lesend): `or` mit
+  `isNull` und zwei `notEqual`; `greaterThan('$updatedAt')` mit Sortierung.
+
+**Nicht geprüft**
+
+- Kein Klick auf den echten Seiten, kein Blick in die echte Datenbank.
+- Kein ganzer Lauf des Label-Abgleichs gegen eine Bühne mit stillgelegter
+  Community; im Spiegel stehen drei aktive Zeilen in fünf stillgelegten
+  Communities — was der erste Lauf auf Production findet, steht in seinem Log.
+- „Als Standard setzen", der Produkt-Schalter und die Speicher-Seite als Klick
+  im Browser (nur per Test); der Wizard mit einem unbestätigten Konto; die
+  englische Ansicht der Aktivitätsliste; ein Kauf im Stripe-Testmodus.
+
+**Gelernt:** Ein Agent je Paket im SELBEN Arbeitsverzeichnis geht, solange die
+Pakete sich nicht berühren — die Zweige entstehen erst beim Committen nach
+Pfad. Es bricht an genau einer Stelle: rückt `main` währenddessen vor und
+ändert eine Datei, die noch uncommittet im Baum liegt (hier
+`05.rate-limit.ts`), lässt sich kein Zweig mehr von `origin/main` abzweigen;
+dann zuerst vom alten Stand abzweigen, committen, `main` hineinmergen. Und:
+ein Auftrag nennt den Ort, an dem man die Arbeit vermutet — der Ticket-Kauf
+lag nicht in `packages/tickets`. Wer den Agenten den Ort selbst messen lässt,
+verliert nichts; wer ihn festnagelt, bekommt eine Änderung am falschen Paket.
+Eine Zusammenfassung „schreibt den Stand zurück" verdeckt, WELCHEN Stand:
+beim Produkt-Schalter war es der wirksame statt der gespeicherte, und das
+fiel erst auf, als die Route unter zwei gleichzeitigen Aufrufen getestet
+wurde.
+
+---
+
 ### N07 — Nacharbeiten „Kopfzeilen, Wächter, Adressen": SE1 (a, c, d, f), WL1 (b, c, Teile von d) und SV1 (b) ✅ 2026-11-17
 
 Die baubaren Reste aus drei Paketen des Gesamtaudits (P23, P20, P13). Pull

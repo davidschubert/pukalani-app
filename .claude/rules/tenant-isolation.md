@@ -154,7 +154,11 @@ paths:
   der Platform-App nach (`onboarding/server/utils/labelReconcile.ts`, Schalter
   `pukalani.community.labelReconcile` off/dry-run/apply): nur Labels mit
   `removed`-Zeile und ohne Zeile MIT Zugang, nie Betreiber-Rollen, nie Bestand
-  ohne Zeile. Das Label ist `communities.$id` (= `community_members.communityId`),
+  ohne Zeile. Seit 2026-11-17 (SI1 b) zwei Fälle mehr: eine `active`-Zeile in
+  einer STILLGELEGTEN Community (beide Labels fallen; die Community wird
+  unmittelbar vorher frisch gefragt) und das Moderations-Label nach einer
+  Herabstufung in den letzten 26 Stunden (nur dieses Label, über
+  `revokeCommunityModeratorLabel`; die Rolle wird frisch gelesen). Das Label ist `communities.$id` (= `community_members.communityId`),
   NICHT `tenantId`. Runbook: docs/runbooks/LABEL-ABGLEICH.md.
 - MITGLIEDSCHAFT IST EIN EREIGNIS (A5): Vertrag `core/shared/communityJoin.ts` +
   Registry `core/server/utils/communityJoin.ts` (`registerCommunityJoinHandler` — die
