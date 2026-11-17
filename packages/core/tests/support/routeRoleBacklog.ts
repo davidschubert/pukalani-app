@@ -87,7 +87,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/brand/server/api/brand/profiles/[id]/inspiration/[fileId].delete.ts',
     'packages/brand/server/api/brand/profiles/[id]/inspiration/[fileId].patch.ts',
     'packages/brand/server/api/brand/profiles/[id]/inspiration/[fileId]/image.get.ts',
-    'packages/brand/server/api/brand/profiles/[id]/inspiration/index.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/inspiration/index.post.ts',
     'packages/brand/server/api/brand/profiles/[id]/kit/workshop.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/mark/drafts/[draftId].delete.ts',
