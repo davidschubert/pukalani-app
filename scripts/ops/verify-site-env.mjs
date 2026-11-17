@@ -18,11 +18,14 @@
  * ist falsch, aber nichts wird rot. Deshalb dieselbe Antwort — nachsehen, was
  * WIRKLICH auf dem Server steht, statt zu glauben, was in einer Vorlage steht.
  *
- * WERTE VERLASSEN DEN SERVER NIE. Über ssh läuft nur ein `grep -oE` auf die
- * SCHLÜSSELNAMEN; ein Passwort steht damit weder im Terminal noch in einem
- * CI-Log. Deshalb kann dieses Skript auch nur „fehlt ganz" erkennen und nicht
- * „steht drin, ist aber falsch" — für Letzteres ist die Probe im jeweiligen
- * Runbook zuständig.
+ * WERTE VERLASSEN DEN SERVER NIE. Über ssh läuft nur ein kleines `awk`, das je
+ * Zeile den SCHLÜSSELNAMEN und eine Ziffer ausgibt: `1` = dahinter steht
+ * etwas, `0` = dahinter steht nichts. Ein Passwort steht damit weder im
+ * Terminal noch in einem CI-Log. Deshalb erkennt dieses Skript „fehlt ganz"
+ * und (seit 2026-11-17, WL1 d) „steht drin, ist aber leer" — nicht „steht
+ * drin, ist aber falsch"; dafür ist die Probe im jeweiligen Runbook zuständig.
+ * Warum „leer" zählt: `NAME=` in der Datei sieht für die Namens-Prüfung aus
+ * wie gesetzt, die App läuft damit aber genauso wie ganz ohne den Namen.
  *
  * ── ZWEITE FRAGE SEIT 2026-08-18 (E1b): ZEIGT MEIN RECHNER AUFS RICHTIGE
  * PROJEKT? ──────────────────────────────────────────────────────────────────
@@ -46,8 +49,8 @@
  * — wer das erweitert, kippt die Zusage, die diesen Wächter überhaupt
  * betreibbar macht.
  *
- * Exit 0 = alles da · Exit 1 = eine Pflicht-Variable fehlt ODER eine lokale
- * Datei zeigt auf ein anderes Projekt als der Server.
+ * Exit 0 = alles da · Exit 1 = eine Pflicht-Variable fehlt oder ist leer ODER
+ * eine lokale Datei zeigt auf ein anderes Projekt als der Server.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -527,17 +530,59 @@ export const SITES = [
   },
 ]
 
-/** Liest NUR die Schlüsselnamen einer Server-.env. Werte bleiben dort. */
-function readKeyNames(dir) {
+/**
+ * Das Programm, das AUF DEM SERVER über die `.env` läuft. Es gibt je Zeile
+ * `NAME=1` (dahinter steht etwas) oder `NAME=0` (dahinter steht nichts) aus —
+ * den Wert selbst nie. Gelesen wird wie in den Ecosystem-Dateien
+ * (`ops/ecosystem-*.config.cjs`, `parseEnvFile`): Leerraum um Name und Wert
+ * zählt nicht, ein Paar Anführungszeichen außen herum auch nicht. `NAME=""`
+ * ist also leer.
+ *
+ * Bewusst schlichtes awk (läuft mit mawk, gawk und dem awk von macOS) und
+ * ohne einfaches Anführungszeichen im Text — das Programm steht auf dem
+ * Server in einfachen Anführungszeichen (`sprintf("%c", 39)` ist das Zeichen).
+ */
+export const ENV_STATE_AWK = [
+  'BEGIN { q = sprintf("%c", 39) }',
+  '{',
+  '  if (!match($0, /^[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*=/)) next',
+  '  name = substr($0, RSTART, RLENGTH)',
+  '  gsub(/[ \\t=]/, "", name)',
+  '  value = substr($0, RSTART + RLENGTH)',
+  '  gsub(/^[ \\t]+/, "", value)',
+  '  gsub(/[ \\t\\r]+$/, "", value)',
+  '  first = substr(value, 1, 1)',
+  '  last = substr(value, length(value), 1)',
+  '  if (length(value) >= 2 && first == last && (first == "\\"" || first == q)) value = substr(value, 2, length(value) - 2)',
+  '  print name "=" (value == "" ? "0" : "1")',
+  '}',
+].join('\n')
+
+/**
+ * Macht aus der Ausgabe von `ENV_STATE_AWK` eine Karte Name ⇒ `'set'` oder
+ * `'empty'` (pure, ohne ssh prüfbar). Steht ein Name mehrfach in der Datei,
+ * gilt die LETZTE Zeile — so liest auch die Ecosystem-Datei. Zeilen in
+ * anderer Form werden übergangen.
+ */
+export function parseKeyStates(output) {
+  const states = new Map()
+  for (const raw of String(output).split('\n')) {
+    const match = raw.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)=([01])$/)
+    if (match) states.set(match[1], match[2] === '1' ? 'set' : 'empty')
+  }
+  return states
+}
+
+/** Liest NUR Schlüsselnamen und „leer / nicht leer" einer Server-.env. Werte bleiben dort. */
+function readKeyStates(dir) {
   const out = execFileSync('ssh', [
     '-o', 'BatchMode=yes',
     '-o', 'ConnectTimeout=20',
     SERVER,
-    `test -f /home/ploi/${dir}/.env && grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' /home/ploi/${dir}/.env | tr -d '=' || echo __NO_ENV_FILE__`,
+    `test -f /home/ploi/${dir}/.env && awk '${ENV_STATE_AWK}' /home/ploi/${dir}/.env || echo __NO_ENV_FILE__`,
   ], { encoding: 'utf8' })
-  const lines = out.split('\n').map(l => l.trim()).filter(Boolean)
-  if (lines.includes('__NO_ENV_FILE__')) return null
-  return new Set(lines)
+  if (out.split('\n').some(line => line.trim() === '__NO_ENV_FILE__')) return null
+  return parseKeyStates(out)
 }
 
 /**
@@ -611,9 +656,20 @@ export function requiredKeysFor(site) {
   return entry ? [...entry.required] : null
 }
 
-/** Welche Pflicht-Variablen fehlen in dieser Schlüsselmenge? (pure) */
+/**
+ * Welche Pflicht-Variablen fehlen in dieser Schlüsselmenge? (pure) `present`
+ * ist eine Menge von Namen oder die Karte aus `parseKeyStates`.
+ */
 export function missingKeys(site, present) {
   return site.required.filter(key => !present.has(key))
+}
+
+/**
+ * Welche Pflicht-Variablen stehen in der Datei, aber ohne Wert? (pure)
+ * `states` ist die Karte aus `parseKeyStates`.
+ */
+export function emptyKeys(site, states) {
+  return site.required.filter(key => states.get(key) === 'empty')
 }
 
 /** Der Lauf gegen den Server (ssh). Nur beim direkten Aufruf, nie beim Import (Test). */
@@ -629,7 +685,7 @@ function main() {
   for (const site of sites) {
     let present
     try {
-      present = readKeyNames(site.dir)
+      present = readKeyStates(site.dir)
     }
     catch (error) {
       console.log(`✖ ${site.name.padEnd(10)} ssh/Lesen fehlgeschlagen — ${(error && error.message) || error}`)
@@ -647,11 +703,15 @@ function main() {
       continue
     }
     const missing = missingKeys(site, present)
-    if (missing.length === 0) {
+    const empty = emptyKeys(site, present)
+    if (missing.length === 0 && empty.length === 0) {
       console.log(`✔ ${site.name.padEnd(10)} ${site.required.length} Pflicht-Variablen gesetzt (${site.note})`)
     }
     else {
-      console.log(`✖ ${site.name.padEnd(10)} FEHLT: ${missing.join(', ')}`)
+      if (missing.length > 0) console.log(`✖ ${site.name.padEnd(10)} FEHLT: ${missing.join(', ')}`)
+      // „Leer" ist dieselbe Sorte Loch wie „fehlt": die App läuft, die Aufgabe
+      // bleibt still liegen. Genannt wird nur der Name.
+      if (empty.length > 0) console.log(`✖ ${site.name.padEnd(10)} LEER (Name steht da, dahinter nichts): ${empty.join(', ')}`)
       console.log(`  ${' '.repeat(10)} ${site.note}`)
       broken++
     }
@@ -692,7 +752,7 @@ function main() {
   }
 
   if (broken > 0) {
-    console.log(`\n${broken} Befund(e). Fehlende Variablen erklärt die jeweilige apps/<app>/.env.example;`)
+    console.log(`\n${broken} Befund(e). Fehlende oder leere Variablen erklärt die jeweilige apps/<app>/.env.example;`)
     console.log('ein Projekt-Unterschied gehört korrigiert, BEVOR jemand damit migriert (docs/OPEN-ITEMS.md, E1b).')
     process.exit(1)
   }
