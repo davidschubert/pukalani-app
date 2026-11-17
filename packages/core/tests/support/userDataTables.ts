@@ -203,6 +203,9 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   brand_checks: { export: BRAND, erase: 'packages/brand/server/utils/brandCheckErasure.ts' },
   brand_inspiration: { export: 'packages/brand/server/utils/brandInspirationStore.ts', erase: 'packages/brand/server/utils/brandInspirationStore.ts' },
   brand_mark_drafts: { export: 'packages/brand/server/utils/brandMarkDrafts.ts', erase: 'packages/brand/server/utils/brandMarkDrafts.ts' },
+  // Die Lauf-Sperre der langen Wege (brand-027): nur Zeitpunkte, Ausgang und
+  // Zählerstände — die Läufe einer Marke hängen aber an ihr und gehen mit ihr.
+  brand_runs: { export: 'packages/brand/server/utils/brandRun.ts', erase: 'packages/brand/server/utils/brandRun.ts' },
 
   // ── market (hängt an der Marke; gelöscht über die Kaskade) ──────────────
   market_competitors: { export: MARKET, erase: 'packages/market/server/utils/marketStore.ts' },

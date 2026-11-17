@@ -10,6 +10,7 @@ import {
   purgeBrandInspiration,
 } from './brandInspirationStore'
 import { BRAND_MARK_DRAFTS_TABLE, purgeBrandMarkDrafts } from './brandMarkDrafts'
+import { exportBrandRuns, purgeBrandRuns } from './brandRun'
 import { runBrandProfileCascades } from './brandProfileCascade'
 import {
   BRAND_PUBLICATIONS_TABLE,
@@ -195,6 +196,13 @@ export async function brandExportUserData(event: H3Event, userId: string): Promi
        * nimmt sie sehr wohl mit (`purgeBrandMarkDrafts`, s. u.).
        */
       markDrafts: await safeListAll(event, BRAND_MARK_DRAFTS_TABLE, filter),
+      /**
+       * DIE LÄUFE (brand-027, `brand_runs` — Lauf-Sperre der langen Wege):
+       * Zeitpunkte, Ausgang und Zählerstände. Sie nennen niemanden, hängen
+       * aber an dieser Marke und gehören deshalb zur Auskunft; die LÖSCHUNG
+       * nimmt sie mit (`purgeBrandRuns`, s. u.).
+       */
+      runs: await exportBrandRuns(event, profile.$id),
     })
   }
 
@@ -404,6 +412,8 @@ export async function brandDeleteUserData(event: H3Event, userId: string): Promi
      * Bucket `brand-drafts`).
      */
     deleted += await purgeBrandMarkDrafts(event, profile.$id)
+    // Die Läufe der Marke (brand-027) — sie hängen über `subject` an ihr.
+    deleted += await purgeBrandRuns(event, profile.$id)
     // Die Mitläufer anderer Layer an derselben `profileId` (MV1 M1) — dieselbe
     // Registry und dieselbe Stelle wie in der Löschroute. Ohne sie bliebe nach
     // einer Konto-Löschung Inhalt liegen, den keine Route mehr erreicht.

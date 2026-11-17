@@ -58,7 +58,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/brand/server/api/brand/profiles/[id]/mark/drafts/[draftId].delete.ts',
     'packages/brand/server/api/brand/profiles/[id]/mark/drafts/[draftId].patch.ts',
     'packages/brand/server/api/brand/profiles/[id]/mark/drafts/[draftId]/image.get.ts',
-    'packages/brand/server/api/brand/profiles/[id]/mark/drafts/index.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/messages.get.ts',
     'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey].get.ts',
     'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/generations.get.ts',

@@ -17,8 +17,8 @@ export default {
   tier: 'optional',
   hasMigrations: true,
   userData: true,
-  // Schema-Probe (OPS-008): brand-026 legt brand_checks.erasedAt an.
-  schema: { latest: '026', probe: { migration: '026', table: 'brand_checks', column: 'erasedAt' } },
+  // Schema-Probe (OPS-008): brand-027 legt die Lauf-Tabelle `brand_runs` an.
+  schema: { latest: '027', probe: { migration: '027', table: 'brand_runs' } },
   // `/api/discover` ist die öffentliche Galerie (Liste, Einzelansicht, Meldung).
   // Sie gehört unter denselben Not-Aus wie der Wizard (BE-005, 2026-11-16):
   // die Produkt-Schranke prüft nur „Produkt an?", weder Anmeldung noch Plan —
