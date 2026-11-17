@@ -190,6 +190,12 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   `data` bleibt draußen. Vor dem 2026-07-29 gab es das Feld nicht — Routen
   setzten `data.code`, es kam NIE an (der `last_admin`-Zweig der
   Nutzerverwaltung war deshalb toter Code).
+- NEUE ROUTE ⇒ ROLLEN-TEST (OPS-009, seit 2026-11-17): jede schreibende oder
+  personenbezogene Route braucht einen Test, der sie lädt und ausführt (Gast,
+  fremdes Konto, Mitglied, Rollen) — Prüfstand
+  `core/tests/support/participationHarness.ts`, Wächter
+  `core/tests/route-role-coverage.test.ts` (der Bestand ohne Test darf nur
+  schrumpfen). Regel: `.claude/rules/tests.md` („ROLLEN-TESTS").
 - LINK AUS GESPEICHERTEN DATEN (SEC-021, seit 2026-11-15): `:href` nur über
   `safeExternalHref()`, Schema-Feld mit `z.url({ protocol: HTTP_URL_PROTOCOL })`
   (`core/shared/safeHref.ts`) — `z.url()` allein nimmt JEDES Schema. Wächter:
