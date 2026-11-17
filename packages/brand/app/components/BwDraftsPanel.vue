@@ -7,6 +7,7 @@ import {
   type BrandMarkDraftEntry,
   brandImageModelLabel,
 } from '../../shared/brandMarkDrafts'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../core/shared/runLease'
 import type {
   BrandMarkDraftWriteResponse,
   BrandMarkDraftsRunResponse,
@@ -50,6 +51,15 @@ import type {
  * SERVER (`GET …/mark/drafts` → `imageModel`); ohne Bildmodell bleibt der
  * Kasten weg. Solange die Liste lädt, ist der Knopf gesperrt: sonst liesse
  * sich auslösen, bevor der Hinweis überhaupt dasteht.
+ *
+ * ── DER LAUF RECHNET IM HINTERGRUND (LL1 b, 2026-11-17) ──────────────────
+ * Der Start antwortet sofort (`202`); vier Bilder brauchen länger, als eine
+ * Anfrage warten sollte. Solange der Lauf läuft, fragt die Werkstatt die
+ * Liste alle paar Sekunden ab (`useRunPolling`, nur bei sichtbarem Reiter) —
+ * dort stehen Entwürfe UND Lauf-Stand. Wer die Seite neu lädt oder in einem
+ * zweiten Reiter öffnet, sieht denselben Stand: „läuft", fertig, gescheitert
+ * mit Grund, oder unterbrochen. Ein zweiter Start während eines Laufs ist
+ * kein Fehler, sondern ein ruhiger Hinweis (`run_running`).
  */
 const props = defineProps<{
   profileId: string
@@ -60,20 +70,39 @@ const props = defineProps<{
 const { t, locale } = useI18n()
 
 const drafts = useBrandMarkDrafts(props.profileId)
-const { items, kept, full, imageModel } = drafts
+const { items, kept, full, imageModel, run: runState } = drafts
 const localePath = useLocalePath()
 const appConfig = useAppConfig()
 
 const loading = ref(!drafts.loaded.value)
-const running = ref(false)
+/** Der Start-Aufruf ist unterwegs — danach trägt der Lauf-Stand das „läuft". */
+const starting = ref(false)
 const busyId = ref('')
 const errorKey = ref('')
+/** Der ruhige Hinweis „läuft schon" nach einem zweiten Start. */
+const alreadyRunning = ref(false)
 /** `null` = noch kein Lauf in dieser Sitzung; die Zeile steht dann allgemein. */
 const remaining = ref<number | null>(null)
-/** Der Modell-Name des letzten Laufs — nur für die Lauf-Zeile unter dem Knopf. */
-const lastModel = ref('')
+
+/** Läuft gerade ein Lauf — der eigene Start oder einer aus einem anderen Reiter? */
+const running = computed(() => starting.value || runState.value.state === 'running')
 
 const canAct = computed(() => !props.disabled && !running.value && !busyId.value)
+
+/**
+ * WAS DER JÜNGSTE LAUF HINTERLASSEN HAT — eine Zeile unter dem Knopf, aus dem
+ * Lauf-Stand gelesen und nicht aus einer Merkvariable: nach einem Neuladen
+ * steht dort dasselbe. Die Gründe sind dieselben Wörter, die früher als
+ * Fehler-Code der Anfrage kamen.
+ */
+const runMessageKey = computed(() => {
+  const view = runState.value
+  if (view.state === 'stalled') return 'brand.mark.drafts.interrupted'
+  if (view.state !== 'failed') return ''
+  if (view.failure === 'ai_endpoint_unavailable') return 'error.aiEndpointUnavailableHint'
+  if (view.failure === 'drafts_no_brief') return 'brand.mark.drafts.error.noBrief'
+  return 'brand.mark.drafts.error.failed'
+})
 
 /** Der Anzeigename des Bildmodells — leer, solange es keines gibt. */
 const imageModelLabel = computed(() => imageModel.value ? brandImageModelLabel(imageModel.value) : '')
@@ -129,22 +158,46 @@ async function load(): Promise<void> {
 
 onMounted(load)
 
+/**
+ * EINE NACHFRAGE, solange ein Lauf läuft: Liste und Lauf-Stand in einem Zug.
+ * Endet der Lauf, steht der Zähler aus der Lauf-Zeile da — nach einem Lauf
+ * ohne Ergebnis ist er dort schon wieder um eins höher (Rückbuchung).
+ */
+async function poll(): Promise<void> {
+  await drafts.load()
+  const view = runState.value
+  if (view.state !== 'running') {
+    alreadyRunning.value = false
+    if (view.quota && remaining.value !== null) remaining.value = view.quota.remaining
+  }
+}
+
+useRunPolling({ active: running, intervalMs: RUN_LEASE_POLL_MS, tick: poll })
+
 async function run(): Promise<void> {
   if (!canAct.value || full.value || loading.value) return
-  running.value = true
+  starting.value = true
   errorKey.value = ''
+  alreadyRunning.value = false
   try {
     const res = await $fetch<BrandMarkDraftsRunResponse>(drafts.base, { method: 'POST' })
-    drafts.setItems(res.items)
+    runState.value = res.run
     remaining.value = res.quota.remaining
-    lastModel.value = res.model
   }
   catch (error) {
-    errorKey.value = messageKey(error)
-    if (errorKey.value.endsWith('draftsLimit')) remaining.value = 0
+    // „Läuft schon" ist KEIN Fehler: ein zweiter Reiter (oder ein Doppelklick)
+    // hat den Lauf gestartet. Stand holen — dann zeigt auch dieser Reiter ihn.
+    if ((error as FetchErrorLike | null)?.data?.reason === RUN_LEASE_BUSY_CODE) {
+      alreadyRunning.value = true
+      await drafts.load().catch(() => {})
+    }
+    else {
+      errorKey.value = messageKey(error)
+      if (errorKey.value.endsWith('draftsLimit')) remaining.value = 0
+    }
   }
   finally {
-    running.value = false
+    starting.value = false
   }
 }
 
@@ -243,8 +296,11 @@ function createdLabel(entry: BrandMarkDraftEntry): string {
           :disabled="!canAct || full || loading"
           @click="run"
         />
-        <p v-if="running" class="bw-pending">{{ t('brand.mark.drafts.running') }}</p>
+        <p v-if="running" class="bw-pending" data-drafts-running>
+          {{ alreadyRunning ? t('brand.mark.drafts.alreadyRunning') : t('brand.mark.drafts.running') }}
+        </p>
       </div>
+      <p v-if="running" class="bw-pending">{{ t('brand.mark.drafts.background') }}</p>
       <p class="bw-pending" data-drafts-quota>
         {{ remaining === null
           ? t('brand.mark.drafts.limits', { max: BRAND_DESIGN_DRAFTS_DAILY_LIMIT, per: BRAND_MARK_DRAFTS_PER_RUN })
@@ -254,6 +310,12 @@ function createdLabel(entry: BrandMarkDraftEntry): string {
         {{ t('brand.mark.drafts.full', { max: BRAND_MARK_DRAFTS_MAX }) }}
       </p>
       <p v-if="errorKey" class="text-sm" style="color: var(--bw-stale)">{{ t(errorKey) }}</p>
+      <p
+        v-else-if="runMessageKey && !running" class="text-sm" style="color: var(--bw-stale)"
+        data-drafts-run-outcome
+      >
+        {{ t(runMessageKey) }}
+      </p>
     </div>
 
     <p v-if="loading" class="bw-pending mt-4">{{ t('brand.mark.drafts.loading') }}</p>

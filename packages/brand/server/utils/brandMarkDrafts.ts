@@ -26,7 +26,7 @@ import {
   brandMarkPromptHash,
 } from '../../shared/brandMarkDrafts'
 import { BRAND_MARK_STEP_KEY } from './brandMarkBrief'
-import { brandDevStubEnabled } from './brandGenerators'
+import { brandDevStubDelay, brandDevStubEnabled } from './brandGenerators'
 import { BRAND_PROVIDER_ROUTING_VERTEX_GLOBAL } from './brandProviderRouting'
 import {
   BRAND_STEPS_TABLE,
@@ -705,6 +705,9 @@ export async function runBrandMarkDrafts(
   const started = Date.now()
 
   if (brandMarkDraftsStubEnabled()) {
+    // Nur im Beweis gesetzt: der Ersatz braucht dann so lange wie ein
+    // langsamer echter Lauf (`brandDevStubDelay`).
+    await brandDevStubDelay()
     return {
       images: prompts.map((_, index) => ({
         mime: 'image/png',

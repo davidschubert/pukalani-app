@@ -45,15 +45,6 @@ vi.mock('../server/utils/brandMarkBrief', async () => ({
   runBrandMarkBrief: async () => ({ failure: 'no_foundation' as const }),
   writeBrandMarkBriefSlot: async () => {},
 }))
-vi.mock('../server/utils/brandMarkDrafts', async () => ({
-  brandMarkDraftTitleFor: () => 'Entwurf 1',
-  brandMarkDraftsFree: () => 12,
-  brandMarkDraftsStubEnabled: () => true,
-  createBrandMarkDraft: async () => {},
-  listBrandMarkDrafts: async () => [],
-  runBrandMarkDrafts: async () => ({ failure: 'no_brief' as const }),
-  syncBrandMarkDraftsSlot: async () => {},
-}))
 vi.mock('../server/utils/brandDnaProposal', async () => ({
   BRAND_DNA_SLOT_ID: 'g.dna',
   brandDnaPromptReadings: () => [],
@@ -96,8 +87,6 @@ const handlers: Record<string, (event: H3Event) => Promise<unknown>> = {
   'DNA vorschlagen': (await import('../server/api/brand/profiles/[id]/dna/propose.post'))
     .default as unknown as (event: H3Event) => Promise<unknown>,
   'Zeichen-Briefing': (await import('../server/api/brand/profiles/[id]/mark/brief.post'))
-    .default as unknown as (event: H3Event) => Promise<unknown>,
-  'Zeichen-Entwürfe': (await import('../server/api/brand/profiles/[id]/mark/drafts/index.post'))
     .default as unknown as (event: H3Event) => Promise<unknown>,
 }
 

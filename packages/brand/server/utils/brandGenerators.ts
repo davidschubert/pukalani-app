@@ -241,6 +241,29 @@ export function brandDevStubEnabled(): boolean {
 }
 
 /**
+ * EINE GESTELLTE WARTEZEIT FÜR DIE ERSATZ-LÄUFE (LL1 b, 2026-11-17).
+ *
+ * Die langen Wege (Entwürfe, Lesung, Check) rechnen hinter der Antwort. Dass
+ * das auch bei einem Lauf trägt, der länger braucht als der Webserver wartet
+ * (60 s), lässt sich nur zeigen, wenn der Ersatz so lange braucht — ein
+ * Beweis, der dafür ein Modell bezahlt und auf dessen Trägheit hofft, wird
+ * nicht gefahren. `BRAND_DEV_STUB_DELAY_MS=70000` lässt jeden Ersatz-Lauf so
+ * lange warten.
+ *
+ * UNGEFÄHRLICH aus zwei Gründen, beide nötig: sie wirkt nur in den
+ * Ersatz-Zweigen (die es auf einem Server nicht gibt) UND nie mit
+ * `NODE_ENV === 'production'`. Ohne `NUXT_`-Präfix — keine Runtime-Config,
+ * kein Schlüssel für `ops:site-env`, ein Handgriff am Beweis. Gedeckelt auf
+ * zehn Minuten, damit ein Tippfehler keinen Lauf für Stunden parkt.
+ */
+export async function brandDevStubDelay(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') return
+  const ms = Number(process.env.BRAND_DEV_STUB_DELAY_MS)
+  if (!Number.isFinite(ms) || ms <= 0) return
+  await new Promise(resolve => setTimeout(resolve, Math.min(ms, 600_000)))
+}
+
+/**
  * Der zuständige Generator: eigener Baustein, sonst `'*'`, sonst der Dev-Stub
  * (wenn erlaubt). `null` heisst „niemand schreibt hier" — die Route meldet
  * `generation.failed` mit `no_generator`, und der Stand bleibt bearbeitbar.

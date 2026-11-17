@@ -3,6 +3,7 @@ import {
   BRAND_MARK_DRAFTS_PER_RUN,
   type BrandMarkDraftEntry,
 } from '../../shared/brandMarkDrafts'
+import { type BrandRunView, noBrandRunView } from '../../shared/brandRun'
 import type { BrandMarkDraftsIndexResponse } from '../../shared/types/brand'
 
 /**
@@ -36,6 +37,12 @@ export function useBrandMarkDrafts(profileId: string) {
    */
   const imageModel = useState<string>(`brand-mark-drafts-model:${profileId}`, () => '')
 
+  /**
+   * Der Stand des jüngsten Laufs (LL1 b) — der Lauf rechnet hinter der
+   * Antwort seines Starts, die Liste und er kommen aus DERSELBEN Abfrage.
+   */
+  const run = useState<BrandRunView>(`brand-mark-drafts-run:${profileId}`, noBrandRunView)
+
   const base = `/api/brand/profiles/${encodeURIComponent(profileId)}/mark/drafts`
 
   const kept = computed(() => items.value.filter(entry => entry.kept).length)
@@ -52,6 +59,9 @@ export function useBrandMarkDrafts(profileId: string) {
   async function load(): Promise<void> {
     const res = await $fetch<BrandMarkDraftsIndexResponse>(base)
     imageModel.value = typeof res.imageModel === 'string' ? res.imageModel : ''
+    // Fehlt das Feld (älterer Server-Stand während eines Auslieferns), heisst
+    // das „kein Lauf" — nie ein Wurf in der Liste.
+    run.value = res.run ?? noBrandRunView()
     setItems(res.items)
   }
 
@@ -64,5 +74,5 @@ export function useBrandMarkDrafts(profileId: string) {
     return `${base}/${encodeURIComponent(entry.id)}/image?v=${encodeURIComponent(entry.createdAt)}`
   }
 
-  return { base, items, loaded, imageModel, kept, full, setItems, load, imageUrl }
+  return { base, items, loaded, imageModel, run, kept, full, setItems, load, imageUrl }
 }
