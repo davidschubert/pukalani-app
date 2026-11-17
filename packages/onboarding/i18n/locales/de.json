@@ -465,10 +465,14 @@
       "noTrialBody": "Die Testphase gibt es einmal je Konto, und deine hast du schon genutzt. Du kannst die Community anlegen und einrichten; zum Schreiben braucht sie ein Abo (Personal oder Pro).",
       "trialUnknown": "Die Testphase gibt es einmal je Konto."
     },
+    "verify": {
+      "earlyTitle": "Zum Anlegen brauchst du eine bestätigte E-Mail-Adresse",
+      "createTitle": "Angelegt wird erst mit bestätigter E-Mail-Adresse",
+      "retryHint": "Deine Antworten bleiben erhalten. Nach der Bestätigung genügt ein Klick auf „Community erstellen“."
+    },
     "errors": {
       "hostTaken": "Diese Adresse wurde gerade belegt. Geh einen Schritt zurück und wähle eine andere.",
       "notAllowed": "Das ging nicht: entweder gilt der Einladungs-Code nicht mehr, oder du hast bereits eine Community in der Testphase.",
-      "verifyFirst": "Deine E-Mail-Adresse ist noch nicht bestätigt. Klick auf den Link in unserer Bestätigungsmail und versuch es dann noch einmal — deine Antworten bleiben erhalten.",
       "invalid": "Eine Angabe passt nicht. Geh die Schritte noch einmal durch.",
       "unavailable": "Wir konnten die Community gerade nicht anlegen. Versuch es in einer Minute noch einmal — deine Antworten bleiben erhalten.",
       "operatorTermsRequired": "Bitte bestätige zuerst die Bedingungen für Community-Betreiber — das Kästchen steht direkt über dem Knopf."

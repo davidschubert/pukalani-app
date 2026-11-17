@@ -465,10 +465,14 @@
       "noTrialBody": "The trial is once per account, and you have already used yours. You can create and set up the community; to post in it, it needs a subscription (Personal or Pro).",
       "trialUnknown": "The trial is once per account."
     },
+    "verify": {
+      "earlyTitle": "Creating a community needs a confirmed email address",
+      "createTitle": "Your community is created once your email address is confirmed",
+      "retryHint": "Your answers are kept. Once you have confirmed, one click on “Create community” is enough."
+    },
     "errors": {
       "hostTaken": "That address was just taken. Go back one step and pick another one.",
       "notAllowed": "That didn't work: either the invite code is no longer valid, or you already have a community in its trial.",
-      "verifyFirst": "Your email address is not confirmed yet. Open the link in our confirmation email, then try again — your answers are kept.",
       "invalid": "One of the answers doesn't fit. Please walk back through the steps.",
       "unavailable": "We couldn't create the community just now. Try again in a minute — your answers are kept.",
       "operatorTermsRequired": "Please accept the Terms for Community Operators first — the checkbox is right above the button."
