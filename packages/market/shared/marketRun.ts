@@ -1,3 +1,4 @@
+import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../core/shared/aiProviderRouting'
 import type { RunLeaseSnapshot, RunLeaseState } from '../../core/shared/runLease'
 import { RUN_LEASE_DETAIL_MAX, parseRunLeaseDetail, runLeaseState } from '../../core/shared/runLease'
 import type {
@@ -75,7 +76,22 @@ export const MARKET_RUN_OUTCOMES = {
   leaseLost: 'lease_lost',
   /** Das `paid`-Vermerk liess sich nicht schreiben — ohne ihn kein bezahlter Schritt. */
   leaseUnwritable: 'lease_unwritable',
+  /**
+   * Das Modell hat unter der Datenschutz-Bindung (keine Speicherung,
+   * Rechenort Europa) keinen Endpunkt (KI1 d, 2026-11-17). Nur dieser kurze
+   * Code steht an der Zeile — keine Meldung, kein Status-Text des Anbieters.
+   */
+  aiEndpointUnavailable: AI_ENDPOINT_UNAVAILABLE_CODE,
 } as const
+
+/**
+ * Ist ein geworfener KI-Fehler der Fall „kein Endpunkt unter der Bindung"?
+ * Gelesen wird nur der kurze Code (`data.code`), den der Core-Transport setzt.
+ */
+export function isMarketAiEndpointUnavailable(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  return (error as { data?: { code?: unknown } }).data?.code === AI_ENDPOINT_UNAVAILABLE_CODE
+}
 
 export function emptyMarketRunDetail(input: Partial<MarketRunDetail> = {}): MarketRunDetail {
   return {
@@ -236,6 +252,11 @@ export function toMarketRunView(
     phase: detail.phase,
     aiEnabled: detail.aiEnabled,
     failed: Boolean(lease.finishedAt) && lease.outcome !== 'done',
+    // Nur der EINE Ausgang, für den die Seite einen eigenen Satz hat (KI1 d);
+    // jeder andere bleibt beim allgemeinen „konnte nicht laufen".
+    ...(lease.finishedAt && lease.outcome === MARKET_RUN_OUTCOMES.aiEndpointUnavailable
+      ? { failure: MARKET_RUN_OUTCOMES.aiEndpointUnavailable }
+      : {}),
     steps,
   }
 }

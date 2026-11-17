@@ -1,3 +1,4 @@
+import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../core/shared/aiProviderRouting'
 import { REGISTRY_VERSION } from './slotRegistry'
 import type { BrandGenerationEntry, BrandNextSessionRef } from './types/brand'
 
@@ -51,6 +52,41 @@ export type BrandGenerationFailureCode
     | 'aborted'
     | 'empty_result'
     | 'persist_failed'
+    /**
+     * Das eingestellte Modell hat unter der Datenschutz-Bindung (keine
+     * Speicherung, Rechenort Europa) keinen Endpunkt — der Transport wirft
+     * 503 mit `data.code: 'ai_endpoint_unavailable'` (KI1 d, 2026-11-17).
+     * Ein eigener Code statt `provider_error`, weil die Oberfläche dafür den
+     * genauen Satz des Core zeigt. Ein ALTER Browser-Stand kennt den Code
+     * nicht und fällt auf seinen allgemeinen Satz zurück — der Frame selbst
+     * bleibt ein gültiges `generation.failed`.
+     */
+    | typeof AI_ENDPOINT_UNAVAILABLE_CODE
+
+/**
+ * WELCHER CODE GEHÖRT ZU EINEM GEWORFENEN KI-FEHLER? (KI1 d, 2026-11-17)
+ *
+ * Genau ein Fall wird unterschieden: der Transport sagt, dass unter der
+ * Bindung kein Endpunkt erreichbar ist. Gelesen wird nur der kurze Code am
+ * Fehler (`data.code`), nie Status-Text oder Meldung des Anbieters. Alles
+ * andere bleibt `provider_error`, wie bisher.
+ */
+export function brandProviderFailureCode(error: unknown): 'provider_error' | typeof AI_ENDPOINT_UNAVAILABLE_CODE {
+  if (!error || typeof error !== 'object') return 'provider_error'
+  const code = (error as { data?: { code?: unknown } }).data?.code
+  return code === AI_ENDPOINT_UNAVAILABLE_CODE ? AI_ENDPOINT_UNAVAILABLE_CODE : 'provider_error'
+}
+
+/**
+ * Meldet ein Strom-Frame den Fall „kein Endpunkt unter der Bindung"? Der
+ * Gesprächs-Zug ist sonst bei jedem Ausfall still (`useBrandConversation`);
+ * dieser eine Fall bekommt einen Satz, weil er nicht von selbst vorbeigeht —
+ * jeder weitere Zug scheiterte genauso, und Schweigen sähe nach einem
+ * kaputten Berater aus.
+ */
+export function isBrandAiEndpointFailure(code: unknown): code is typeof AI_ENDPOINT_UNAVAILABLE_CODE {
+  return code === AI_ENDPOINT_UNAVAILABLE_CODE
+}
 
 /**
  * WAS EIN LAUF HERVORGEBRACHT HAT (george-a-4, Audit-Befund B3).

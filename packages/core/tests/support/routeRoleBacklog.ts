@@ -21,7 +21,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/admin/server/api/admin/changelog/index.get.ts',
     'packages/admin/server/api/admin/changelog/index.post.ts',
     'packages/admin/server/api/admin/config.get.ts',
-    'packages/admin/server/api/admin/config.patch.ts',
     'packages/admin/server/api/admin/fonts/[id].delete.ts',
     'packages/admin/server/api/admin/fonts/[id].patch.ts',
     'packages/admin/server/api/admin/fonts/index.post.ts',
@@ -349,7 +348,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/tickets/server/api/tickets/lists/[id]/sort.post.ts',
     'packages/tickets/server/api/tickets/lists/index.post.ts',
     'packages/tickets/server/api/tickets/settings.get.ts',
-    'packages/tickets/server/api/tickets/settings.patch.ts',
     'packages/tickets/server/api/tickets/watching.get.ts',
   ],
 }

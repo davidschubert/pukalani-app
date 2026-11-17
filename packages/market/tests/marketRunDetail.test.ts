@@ -3,6 +3,7 @@ import { RUN_LEASE_DETAIL_MAX, RUN_LEASE_STALL_MS } from '../../core/shared/runL
 import {
   emptyMarketRunDetail,
   fitMarketRunDetail,
+  isMarketAiEndpointUnavailable,
   marketRunInheritsBooking,
   parseMarketRunDetail,
   toMarketRunView,
@@ -117,5 +118,23 @@ describe('toMarketRunView', () => {
     const failed = toMarketRunView({ ...base, finishedAt: iso(NOW), outcome: 'lease_lost' }, NOW, names)
     expect(failed).toMatchObject({ state: 'failed', failed: true })
     expect(toMarketRunView({ ...base, finishedAt: iso(NOW), outcome: 'done' }, NOW, names)).toMatchObject({ state: 'done', failed: false })
+  })
+})
+
+describe('isMarketAiEndpointUnavailable (KI1 d)', () => {
+  it('erkennt nur den kurzen Code des Transports', () => {
+    expect(isMarketAiEndpointUnavailable({ statusCode: 503, data: { code: 'ai_endpoint_unavailable' } })).toBe(true)
+    expect(isMarketAiEndpointUnavailable({ statusCode: 503, statusText: 'AI not configured' })).toBe(false)
+    expect(isMarketAiEndpointUnavailable({ data: { code: 'ai_disabled' } })).toBe(false)
+    expect(isMarketAiEndpointUnavailable(new Error('ai_endpoint_unavailable'))).toBe(false)
+    expect(isMarketAiEndpointUnavailable(null)).toBe(false)
+  })
+
+  it('die Übersicht nennt den Grund nur für genau diesen Ausgang', () => {
+    const base = { startedAt: iso(NOW - 60_000), heartbeatAt: iso(NOW - 1_000), finishedAt: iso(NOW - 1_000), detail: '' }
+    expect(toMarketRunView({ ...base, outcome: 'ai_endpoint_unavailable' }, NOW, new Map()))
+      .toMatchObject({ state: 'failed', failed: true, failure: 'ai_endpoint_unavailable' })
+    expect(toMarketRunView({ ...base, outcome: 'failed' }, NOW, new Map()).failure).toBeUndefined()
+    expect(toMarketRunView({ ...base, outcome: 'done' }, NOW, new Map()).failure).toBeUndefined()
   })
 })

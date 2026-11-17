@@ -108,6 +108,12 @@ paths:
   `community_members` zwar jedes BEIGETRETENE Mitglied, aber Gäste, Autoren von vor
   A5 und Konten, die hier nie mitgemacht haben, haben trotzdem keine Zeile.
   Zeichen erscheint heute in der Kommentarliste (Gäste eingeschlossen).
+  Seit MM1 b (2026-11-17) gibt es denselben Vertrag ein zweites Mal OHNE
+  Request, über den Ablage-Stempel statt über die Community-Kennung
+  (`resolveFormerMembersOfTenant`, Implementierung
+  `createFormerMembersByTenantResolver`, dieselbe Instanz und derselbe Cache):
+  damit schreibt `notify()` entfernten Personen nichts mehr
+  (tenant-isolation.md, „ENTFERNT ⇒ AUCH KEINE BENACHRICHTIGUNG MEHR").
 - BETREIBER-BEDINGUNGEN (seit 2026-11-16, GA1 P13, Davids Auftrag „betreiber
   benötigen eigene agb's, die sie per kästchen bestätigen müssen"): der Text
   liegt in `apps/marketing` (`pages/betreiber-bedingungen.vue`, `/de/

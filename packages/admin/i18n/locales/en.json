@@ -42,7 +42,12 @@
       "aiModelDesc": "Model for the built-in AI (moderation assist). Empty = build default {model}. Format: vendor/model (OpenRouter).",
       "save": "Save",
       "saved": "Configuration saved.",
-      "aiKeyMoved": "The key now lives under"
+      "aiKeyMoved": "The key now lives under",
+      "aiModelRejected": "Not saved",
+      "aiModelNoEuEndpoint": "The model {model} is not offered anywhere in Europe (Amazon Bedrock in Ireland or Google Vertex in Europe). Our AI only runs there, so every call with this model would fail. Please choose a different model.",
+      "aiModelUnknown": "The broker (OpenRouter) does not know the model {model}. Please check the spelling (vendor/model).",
+      "aiModelUnverified": "Saved, but not checked",
+      "aiModelUnverifiedDesc": "The broker did not respond just now, so it is not confirmed that the model is offered in Europe. The daily watcher checks it; if in doubt, simply save again later."
     },
     "storage": {
       "title": "Storage",

@@ -12,6 +12,7 @@ import {
   type BrandGenerationEventDataMap,
   type BrandGenerationEventName,
   type BrandGenerationFailureCode,
+  brandProviderFailureCode,
   serializeBrandGenerationEvent,
 } from '../../../../../../../shared/brandGeneration'
 import {
@@ -52,6 +53,7 @@ import {
 } from '../../../../../../utils/brandStore'
 import { streamAdvisorTurn } from '../../../../../../utils/advisorGenerator'
 import { claimBrandConverseKey } from '../../../../../../utils/brandConverse'
+import { startBrandStreamHeartbeat } from '../../../../../../utils/brandStreamHeartbeat'
 import {
   listBrandFindings,
   markBrandFindingsMentioned,
@@ -724,6 +726,9 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
     // Ohne diesen Kopf puffert nginx den Strom (s. generate.post.ts).
     'X-Accel-Buffering': 'no',
   })
+  // Lebenszeichen in stillen Phasen (LL1 b): der Webserver trennt nach 60 s
+  // Stille. Gestoppt in `fail()` und im `finally` unten.
+  const stopHeartbeat = startBrandStreamHeartbeat(res)
 
   function send<N extends BrandGenerationEventName>(type: N, data: BrandGenerationEventDataMap[N]): void {
     if (res.writableEnded) return
@@ -742,6 +747,7 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
       userId,
       payload: { stepKey, code },
     })
+    stopHeartbeat()
     res.end()
     return undefined
   }
@@ -1048,7 +1054,8 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
         // Die MELDUNG des Anbieters, nicht der Prompt und nicht die Antwort.
         message: error instanceof Error ? error.message : String(error),
       })
-      return fail('provider_error')
+      // KI1 d: „kein Endpunkt unter der Bindung" reist als eigener Code.
+      return fail(brandProviderFailureCode(error))
     }
 
     if (turn.aborted || abort.signal.aborted) return fail('aborted')
@@ -1256,6 +1263,7 @@ export default defineEventHandler(async (event): Promise<BrandConverseResponse |
     res.end()
   }
   finally {
+    stopHeartbeat()
     lock.release()
     burst.release()
   }

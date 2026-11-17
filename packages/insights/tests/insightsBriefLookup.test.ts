@@ -6,7 +6,14 @@ import type { InsightsWatchRow } from '../shared/insightsRows'
 import { fromInsightsWatchItem, toInsightsWatchItem } from '../shared/insightsRows'
 import { insightsDb, isInsightsRowMissing } from '../server/utils/insightsStore'
 import { insightsPostMissing, insightsStorageError, loadInsightsPostRow } from '../server/utils/insightsPostsAdmin'
-import { runDetached } from '../../core/server/utils/runLease'
+import {
+  acquireRunLease,
+  dropRunLease,
+  finishRunLease,
+  keepRunLeaseAlive,
+  runDetached,
+} from '../../core/server/utils/runLease'
+import { memoryStore } from '../../core/tests/support/runLeaseMemoryStore'
 
 /**
  * BE-012 — DER VIDEO-BRIEF STARTET NUR NEU, WENN DER ENTWURF WIRKLICH WEG IST
@@ -73,6 +80,12 @@ vi.stubGlobal('insightsPostMissing', insightsPostMissing)
 vi.stubGlobal('insightsStorageError', insightsStorageError)
 vi.stubGlobal('loadInsightsPostRow', loadInsightsPostRow)
 vi.stubGlobal('runDetached', runDetached)
+// Die echte Lauf-Sperre (LL1 c) über einen Speicher-Store — hier nur Beiwerk.
+vi.stubGlobal('appwriteRunLeaseStore', () => memoryStore())
+vi.stubGlobal('acquireRunLease', acquireRunLease)
+vi.stubGlobal('dropRunLease', dropRunLease)
+vi.stubGlobal('finishRunLease', finishRunLease)
+vi.stubGlobal('keepRunLeaseAlive', keepRunLeaseAlive)
 
 const handler = (await import('../server/api/insights/watchlist/[videoId]/brief.post'))
   .default as unknown as (event: H3Event) => Promise<{ item: InsightsWatchItem }>

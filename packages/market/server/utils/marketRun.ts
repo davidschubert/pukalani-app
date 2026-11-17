@@ -9,6 +9,7 @@ import type { MarketRunDetail } from '../../shared/marketRun'
 import {
   MARKET_RUN_OUTCOMES,
   fitMarketRunDetail,
+  isMarketAiEndpointUnavailable,
   toMarketRunDetailStep,
 } from '../../shared/marketRun'
 import { MARKET_UNLOCK_STEP } from './marketAccess'
@@ -71,6 +72,8 @@ interface CandidateOutcome {
   reused: boolean
   charsUsed: number
   skippedUrls: number
+  /** Die Auswertung fand unter der Bindung keinen Endpunkt (KI1 d) — der Lauf hört auf. */
+  aiEndpointUnavailable?: true
 }
 
 export interface MarketRunInput {
@@ -171,6 +174,14 @@ export async function runMarketComparison(event: H3Event, input: MarketRunInput)
       detail.done++
       detail.steps.push(toMarketRunDetailStep(candidate.step))
       await progress()
+
+      // KEIN ENDPUNKT UNTER DER BINDUNG (KI1 d, 2026-11-17): jeder weitere
+      // Kandidat scheiterte genauso — der Lauf hört hier auf und nennt den
+      // Grund an der Zeile, statt als „fertig" ohne Auswertung zu enden.
+      if (candidate.aiEndpointUnavailable) {
+        outcome = MARKET_RUN_OUTCOMES.aiEndpointUnavailable
+        break
+      }
     }
 
     logEvent('info', 'market.run', {
@@ -229,6 +240,10 @@ export async function runMarketComparison(event: H3Event, input: MarketRunInput)
         }
         catch (error) {
           if (error instanceof MarketRunLeaseUnwritable) throw error
+          // AUSNAHME von „fail-soft" (KI1 d): ohne Endpunkt unter der Bindung
+          // scheitert auch das Nachholen über `POST /report` — die Seite soll
+          // den Grund jetzt nennen, nicht einen fertigen Lauf ohne Vergleich.
+          if (isMarketAiEndpointUnavailable(error)) outcome = MARKET_RUN_OUTCOMES.aiEndpointUnavailable
           // FAIL-SOFT: der Bericht ist hier eine Zugabe. Ein Deckel oder ein
           // ausgefallener Anbieter verwandelt einen gelungenen Abruf nicht in
           // einen gescheiterten Lauf — der Kunde holt den Vergleich über
@@ -527,7 +542,14 @@ async function runWebsiteCandidate(
     rawText: outcome.rawText,
   })
   if (extraction.failure) {
-    return { step, extracted: false, reused: false, charsUsed, skippedUrls }
+    return {
+      step,
+      extracted: false,
+      reused: false,
+      charsUsed,
+      skippedUrls,
+      ...(extraction.failure === 'ai_endpoint_unavailable' ? { aiEndpointUnavailable: true as const } : {}),
+    }
   }
 
   const host = hostOf(url)

@@ -3,7 +3,7 @@ import {
   type BrandAiRejectionCode,
   isBrandAiRejectionCode,
 } from '../../shared/brandAiLimits'
-import { decodeBrandGenerationChunk } from '../../shared/brandGeneration'
+import { decodeBrandGenerationChunk, isBrandAiEndpointFailure } from '../../shared/brandGeneration'
 import { isBrandUiLocale } from '../../shared/brandUiLocale'
 import type { BrandNextSessionRef } from '../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
@@ -59,8 +59,13 @@ import { useBrandWorkspaceStore } from '../stores/brandWorkspace'
  * einzige Sicherung, die auch über zwei Browser-Tabs hinweg greift.
  */
 
-/** Nur die Drossel wird gemeldet; alles andere bleibt still (s. Kopf). */
-export type BrandConversationFailure = BrandAiRejectionCode
+/**
+ * Nur die Drossel wird gemeldet; alles andere bleibt still (s. Kopf) — mit
+ * EINER Ausnahme seit KI1 d (2026-11-17): hat das Modell unter der
+ * Datenschutz-Bindung keinen Endpunkt, scheitert jeder weitere Zug genauso.
+ * Das sagt die Seite mit dem Satz des Core, statt den Berater stumm zu lassen.
+ */
+export type BrandConversationFailure = BrandAiRejectionCode | 'ai_endpoint_unavailable'
 
 /**
  * DIE ZWEI ABLEHNUNGEN, DIE EIN MENSCH ZU SEHEN BEKOMMT (BW2 3c-i).
@@ -304,7 +309,11 @@ export function useBrandConversation(
           }
           // `slot.ready` kommt hier NIE — die Route hat keinen Pfad dorthin.
           // Ein Zweig dafür wäre ein Angebot an den nächsten Umbau.
-          else store.endGeorgeMessage(item.generationId)
+          else {
+            // KI1 d: der eine Ausfall, der einen Satz bekommt (s. Typ oben).
+            if (item.type === 'generation.failed' && isBrandAiEndpointFailure(item.code)) failureCode.value = item.code
+            store.endGeorgeMessage(item.generationId)
+          }
         }
       }
 
