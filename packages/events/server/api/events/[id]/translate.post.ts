@@ -34,6 +34,15 @@ import {
  * tragen — Moderations-Assist, Kategorie-Vorschlag) hieße hier, dass eine
  * Community ihre eigenen Termine nicht lesen darf.
  *
+ * ── NUR MITGLIEDER (MM1, Davids Entscheidung 2026-11-16) ──────────────────
+ * Bis 2026-11-17 genügte die Anmeldung. Im Pool ist ein Konto aber auf jedem
+ * Community-Host angemeldet, und jeder Aufruf zählt auf das Tages-Kontingent
+ * DIESER Community — ein fremdes Konto konnte es leeren. Jetzt steht
+ * `requireCommunityMembership` vor allem anderen (401 ohne Konto, 403
+ * `not_a_member`), und der Knopf erscheint nur für Mitglieder
+ * (`useCommunityMember`). Was unten über die zwei Türen steht, gilt weiter:
+ * die Wache sagt, WER fragen darf, die Klinke, WAS er dabei sehen darf.
+ *
  * ── ZWEI TÜREN, UND JEDE HAT IHREN GRUND ──────────────────────────────────
  * GELESEN wird über die MITGLIEDER-Klinke (`tenantDb(event)`), genau wie in
  * `[id].get.ts`: der Session-Client wertet die Row-Permissions aus, und das ist
@@ -104,13 +113,14 @@ export default defineEventHandler(async (event): Promise<EventTranslateResponse>
   // 'ai' — Begründung im Kopf.
   requirePlanProduct(event, 'events')
 
-  const user = event.context.user
-  if (!user) {
-    // Nur Eingeloggte (Davids Entscheidung): ein Gast, der in einer Schleife
-    // klickt, wäre eine offene Rechnung. Die Event-Detailseite ist öffentlich —
-    // dieser Knopf ist es nicht.
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  // NUR MITGLIEDER DIESER COMMUNITY (MM1, Davids Entscheidung 2026-11-16).
+  // Bis dahin genügte die Anmeldung — im Pool ist ein Konto aber auf JEDEM
+  // Community-Host angemeldet, und jeder Aufruf zählt auf das Tages-Kontingent
+  // der Community. Die Wache steht VOR dem ersten Datenbankzugriff und vor dem
+  // Cache-Treffer: 401 ohne Konto, 403 `not_a_member` für ein fremdes Konto.
+  // Kein Beitritt (Übersetzen ist kein Beitrag). Ohne Mandant (Einzel-Instanz)
+  // ist jedes angemeldete Konto Mitglied.
+  const user = await requireCommunityMembership(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {

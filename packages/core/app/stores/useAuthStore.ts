@@ -17,6 +17,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Weg wie die Rolle — dieselbe Route liefert beides, dieselbe Zeile nullt
   // beides beim Abmelden.
   const communityTrustLevel = useState<TrustLevel>('pukalani-community-trust-level', () => 0)
+  // „Gehört hierher" (MM1) — dritter Wert derselben Route, derselbe Weg.
+  const communityMember = useState<boolean>('pukalani-community-member', () => false)
 
   function setUser(value: CurrentUser | null) {
     user.value = value
@@ -26,20 +28,23 @@ export const useAuthStore = defineStore('auth', () => {
     if (value === null) {
       communityRole.value = null
       communityTrustLevel.value = 0
+      communityMember.value = false
     }
   }
 
   /** Eigene Site-Rolle nachziehen (fail-closed: jeder Fehler ⇒ keine Rolle). */
   async function refreshSiteRole() {
     try {
-      const res = await $fetch<{ role: string | null, trustLevel?: number }>('/api/community/role')
+      const res = await $fetch<{ role: string | null, trustLevel?: number, member?: boolean }>('/api/community/role')
       communityRole.value = res.role && isCommunityRole(res.role) ? res.role : null
       communityTrustLevel.value = normalizeTrustLevel(res.trustLevel)
+      communityMember.value = res.member === true
     }
     catch {
       // 404 (Kontroll-Host ohne Präfix-Freigabe), Netz-Blip, … ⇒ keine Rolle.
       communityRole.value = null
       communityTrustLevel.value = 0
+      communityMember.value = false
     }
   }
 
@@ -62,6 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (status === 401 || status === 403) {
         user.value = null
         communityRole.value = null
+        communityMember.value = false
       }
     }
   }

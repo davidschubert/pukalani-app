@@ -232,7 +232,7 @@ const menuItems = computed<MenuItem[]>(() => {
 
 /**
  * ÜBERSETZEN (Paket 3, Davids Entscheidungen 2026-08-17: ein Knopf je Inhalt,
- * nur Eingeloggte). Die Regel liegt im Core-Composable — hier steht nur, WAS
+ * seit 2026-11-17 nur Mitglieder, MM1). Die Regel liegt im Core-Composable — hier steht nur, WAS
  * dieses Produkt übersetzt (Titel UND Text) und welche Route das tut.
  *
  * Die Karte ist die EINZIGE Anlegestelle: die Themen-Seite des blueprint-Layers
