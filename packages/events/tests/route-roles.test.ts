@@ -1,3 +1,4 @@
+import { rejectOversizedUpload } from '../../core/server/utils/uploadSize'
 import { describeRoleGatedRoute } from '../../core/tests/support/participationHarness'
 
 /**
@@ -60,9 +61,11 @@ describeRoleGatedRoute('GET /api/events/:id/cover (Vorschau)', () => import('../
 })
 
 // Die Wache steht VOR dem Einlesen der hochgeladenen Datei: die Probe endet an
-// der Datentür, bevor `readMultipartFormData` gebraucht würde.
+// der Datentür, bevor `readMultipartFormData` gebraucht würde. Die frühe
+// Größen-Prüfung davor läuft echt mit (kleine angegebene Länge).
 describeRoleGatedRoute('POST /api/events/:id/cover', () => import('../server/api/events/[id]/cover.post'), MANAGE, {
   params: { id: 'e-1' },
+  globals: { rejectOversizedUpload, getRequestHeader: () => '128' },
 })
 
 describeRoleGatedRoute('DELETE /api/events/:id/cover', () => import('../server/api/events/[id]/cover.delete'), MANAGE, {
