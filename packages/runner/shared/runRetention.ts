@@ -60,8 +60,9 @@ function isBefore(iso: string | null | undefined, cutoffIso: string): boolean {
  *
  * Nur, wenn der Lauf in einem ENDZUSTAND ist — ein Lauf auf `draft`, `queued`,
  * `claimed` oder `running` ist ein Auftrag, der noch zu jemandem gehört (auch
- * ein auf `running` hängengebliebener Lauf: den bereinigt der Abbrechen-Knopf,
- * nicht die Frist) — UND sein Ende vor der Frist liegt. Das Ende ist
+ * ein auf `running` hängengebliebener Lauf: den beendet der Abbrechen-Knopf
+ * oder nach 7 Tagen Stille `shared/staleRunRetention.ts`, nicht diese Frist)
+ * — UND sein Ende vor der Frist liegt. Das Ende ist
  * `finishedAt`; fehlt es (der Lauf wurde z. B. abgebrochen, bevor der Runner
  * ein Ende meldete), gilt ersatzweise das Anlegedatum der Datei, denn das
  * Protokoll wird erst am Ende eines Laufs hochgeladen.

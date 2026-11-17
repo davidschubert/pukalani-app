@@ -44,7 +44,7 @@ import { insightsUploadsPlaylistId } from '../../shared/insightsRadar'
  */
 
 /** Wie lange ein einzelner API-Aufruf höchstens dauern darf (wie im Sweep). */
-const FETCH_TIMEOUT_MS = 15_000
+export const INSIGHTS_CHANNEL_FETCH_TIMEOUT_MS = 15_000
 
 /** „Diesen Kanal gibt es in unserer Liste nicht." */
 export function insightsChannelMissing() {
@@ -211,7 +211,7 @@ export interface InsightsChannelLookupDeps {
 
 /** Die Vorgabe für `fetchJson` — wörtlich dieselbe wie im Sweep. */
 async function defaultFetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  const response = await fetch(url, { signal: AbortSignal.timeout(INSIGHTS_CHANNEL_FETCH_TIMEOUT_MS) })
   if (!response.ok) {
     let body: unknown
     try {

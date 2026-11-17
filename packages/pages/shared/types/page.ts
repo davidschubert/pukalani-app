@@ -149,6 +149,11 @@ export interface PagesListResponse {
    * Route prüft es trotzdem selbst; sie ist die Grenze, dies die Höflichkeit.
    */
   aiTranslate: boolean
+  /**
+   * Hat das Netz der Liste gegriffen (KK1 c, server/utils/pageRows.ts)? Dann
+   * fehlen Seiten, und die Verwaltung sagt es, statt still weniger zu zeigen.
+   */
+  truncated: boolean
 }
 
 /** Antwort von `GET /api/pages/:slug` (alle Sprachfassungen zum Bearbeiten). */

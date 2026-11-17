@@ -208,6 +208,62 @@ describe('POST /api/brand/waitlist/confirm', () => {
     expect(mails).toHaveLength(0)
   })
 
+  describe('der Betreiber hat schon entschieden (erneut eingetragen, neuer Link)', () => {
+    for (const status of ['invited', 'declined'] as const) {
+      it(`"${status}" bleibt "${status}": Link verbraucht, kein Stempel, keine Meldung`, async () => {
+        notifyTo = 'hello@branding.supply'
+        stored = [pendingRow({ status, note: 'Notiz des Betreibers' })]
+
+        const result = await handler(event)
+
+        // Dieselbe Antwort wie für eine bestätigte Adresse — der Zustand
+        // selbst ist keine Auskunft dieser Route.
+        expect(result).toEqual({ ok: true, state: 'already_confirmed' })
+        expect(stored[0]).toMatchObject({
+          status,
+          confirmedAt: '',
+          note: 'Notiz des Betreibers',
+          tokenHash: '',
+          tokenExpiresAt: '',
+        })
+        expect(mails).toHaveLength(0)
+        expect(logs.some(line => line.event === 'brand.waitlist_confirmed')).toBe(false)
+      })
+
+      it(`"${status}": der zweite Klick auf denselben Link ist unbekannt ⇒ 400`, async () => {
+        stored = [pendingRow({ status })]
+        await handler(event)
+
+        await expect(handler(event)).rejects.toMatchObject({ status: 400, data: { code: 'token_invalid' } })
+        expect(stored[0]!.status).toBe(status)
+      })
+
+      it(`"${status}" mit abgelaufenem Link ⇒ 410 wie bei jeder Zeile, nichts geschrieben`, async () => {
+        stored = [pendingRow({ status, tokenExpiresAt: new Date(Date.now() - 1_000).toISOString() })]
+
+        await expect(handler(event)).rejects.toMatchObject({ status: 410, data: { code: 'token_expired' } })
+        expect(tablesDB.updateRow).not.toHaveBeenCalled()
+        expect(stored[0]!.status).toBe(status)
+      })
+
+      it(`"${status}": scheitert das Leeren des Links, bleibt die Antwort gleich`, async () => {
+        updateBroken = true
+        stored = [pendingRow({ status })]
+
+        expect(await handler(event)).toEqual({ ok: true, state: 'already_confirmed' })
+        expect(stored[0]!.status).toBe(status)
+      })
+    }
+
+    it('Gegenprobe: "pending" und der Alt-Wert "new" werden weiter bestätigt', async () => {
+      for (const status of ['pending', 'new']) {
+        stored = [pendingRow({ status })]
+        expect(await handler(event)).toEqual({ ok: true, state: 'confirmed' })
+        expect(stored[0]!.status).toBe('confirmed')
+      }
+    })
+  })
+
   it('kaputte Ablage ⇒ 503 `waitlist_unavailable` (Lesen wie Schreiben)', async () => {
     storeBroken = true
     await expect(handler(event)).rejects.toMatchObject({

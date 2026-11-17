@@ -388,7 +388,9 @@ paths:
   Benachrichtigungs-Mail raus — die App lief, die Seiten antworteten, nur die
   Mail blieb aus, und das sieht aus wie ein bewusst abgeschaltetes Produkt.
   Zwei Netze: `pnpm ops:site-env` (liest über ssh nur die SCHLÜSSELNAMEN jeder
-  Server-`.env`, Werte bleiben dort; Pflicht-Liste gepflegt IM Skript, neue
+  Server-`.env` und seit 2026-11-17 je Name „leer / nicht leer" — `NAME=`
+  ohne Wert ist ein Befund wie ein fehlender Name; Werte bleiben dort;
+  Pflicht-Liste gepflegt IM Skript, neue
   Pflicht-Variable ⇒ dort eintragen — läuft seit 2026-08-20 TÄGLICH in der CI,
   s. Wächter-Absatz unten) und zur Laufzeit
   `warnMailerMissingOnce()` in core/server/utils/mailer.ts, das beim ERSTEN
@@ -418,10 +420,11 @@ paths:
   JEDE EINSTELLUNG HAT EINE ENTSCHEIDUNG (P20, seit 2026-11-16): der Test
   `packages/core/tests/verifySiteEnv.test.ts` liest alle `NUXT_…`-Namen aus
   dem Code (`runtimeConfig` aller Layer und Apps, jedes `process.env.NUXT_…`)
-  und verlangt je Name genau eine Antwort — Pflicht auf mindestens einer Site,
-  „keine Pflicht" mit Grund oder (Bestand) „noch nicht bewertet"
-  (`scripts/ops/site-env-decisions.mjs`). Eine neue Einstellung ohne Antwort
-  ist rot; die Pflicht-Liste selbst bleibt von Hand.
+  und verlangt je Name genau eine Antwort — Pflicht auf mindestens einer Site
+  oder „keine Pflicht" mit Grund (`scripts/ops/site-env-decisions.mjs`). Der
+  Bestand „noch nicht bewertet" (36 Namen) ist seit dem 2026-11-17
+  abgearbeitet und bleibt leer. Eine neue Einstellung ohne Antwort ist rot;
+  die Pflicht-Liste selbst bleibt von Hand.
 - EIGENE DOMAIN EINER POOL-COMMUNITY (BE-014/SEC-022, seit 2026-11-16): nur
   mit Freigabe des Betreibers, nicht in der Testphase; nach dem Plan-Ende 14
   Tage Frist, dann `paused` (abgeschaltet, nichts gelöscht — ploi-Eintrag und

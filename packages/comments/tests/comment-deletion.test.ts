@@ -73,6 +73,8 @@ function withPermissionWrites(door: FakeDoor) {
 }
 
 const removeActivitiesForObject = vi.fn(async () => 0)
+/** Die Glocke ist nicht Gegenstand dieser Datei (s. comment-notifications.test.ts). */
+const removeObjectNotifications = vi.fn(async () => 0)
 const updateActivitySnippetForObject = vi.fn(async () => 0)
 
 beforeEach(() => {
@@ -95,7 +97,7 @@ describe('DELETE /api/comments/:id — der Grabstein ist leer, auch in der Daten
     const { tenantDb, permissionWrites } = withPermissionWrites(door)
     const run = await runDoorRoute(loadDelete, {
       door, params: { id: 'k-1' },
-      globals: { tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject },
+      globals: { tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject, removeObjectNotifications },
     })
 
     expect(run.status).toBe(200)
@@ -125,7 +127,7 @@ describe('DELETE /api/comments/:id — der Grabstein ist leer, auch in der Daten
     const { tenantDb } = withPermissionWrites(door)
     await runDoorRoute(loadDelete, {
       door, params: { id: 'k-1' },
-      globals: { tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject },
+      globals: { tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject, removeObjectNotifications },
     })
     const sibling = door.rows[COMMENTS_TABLE]!.find(r => r.$id === 'k-2')!
     expect(sibling).toMatchObject({ status: 'active', content: 'Bleibt', authorId: MEMBER })
@@ -137,7 +139,7 @@ describe('DELETE /api/comments/:id — der Grabstein ist leer, auch in der Daten
     const { tenantDb, permissionWrites } = withPermissionWrites(door)
     const run = await runDoorRoute(loadDelete, {
       door, params: { id: 'k-1' },
-      globals: { tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject },
+      globals: { tenantDb, assertNotMaintenance: async () => {}, removeActivitiesForObject, removeObjectNotifications },
     })
     expect(run.status).toBe(409)
     expect(permissionWrites).toHaveLength(0)

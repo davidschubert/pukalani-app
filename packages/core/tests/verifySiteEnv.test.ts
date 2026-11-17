@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { codeEnvNames, envDecisionProblems, runtimeConfigEnvNames } from '../../../scripts/lib/env-inventory.mjs'
 import { ENV_NOT_REQUIRED, ENV_READ_BY_MODULES, ENV_UNDECIDED } from '../../../scripts/ops/site-env-decisions.mjs'
-import { SITES, missingKeys, requiredKeysFor } from '../../../scripts/ops/verify-site-env.mjs'
+import { ENV_STATE_AWK, SITES, emptyKeys, missingKeys, parseKeyStates, requiredKeysFor } from '../../../scripts/ops/verify-site-env.mjs'
 
 /**
  * SEC-025 (2026-11-13): die Platform-App lehnt ohne Mandanten-Resolver JEDE
@@ -85,10 +88,11 @@ describe('jede Einstellung aus dem Code hat eine Entscheidung', () => {
     expect(decide()).toEqual([])
   })
 
-  it('der Bestand „noch nicht bewertet" wird nur kürzer', () => {
-    // Wer einen Namen bewertet, zieht ihn in die Pflicht-Liste oder nach
-    // ENV_NOT_REQUIRED um und senkt diese Zahl. Neue Namen gehören nie hierher.
-    expect(ENV_UNDECIDED.length).toBeLessThanOrEqual(36)
+  it('der Bestand „noch nicht bewertet" ist abgearbeitet und bleibt leer', () => {
+    // 36 Namen am 2026-11-16, bewertet am 2026-11-17 (WL1 a). Eine neue
+    // Einstellung bekommt gleich eine Antwort: Pflicht-Liste oder
+    // ENV_NOT_REQUIRED mit Grund.
+    expect(ENV_UNDECIDED).toEqual([])
   })
 
   it('GEGENPROBE (SEC-025): eine Einstellung, die der Code liest und niemand entschieden hat, ist rot', () => {
@@ -103,5 +107,96 @@ describe('jede Einstellung aus dem Code hat eine Entscheidung', () => {
     expect(decide({ notRequired: { ...ENV_NOT_REQUIRED, NUXT_ALT: 'Ein Grund, der lang genug ist, um zu zählen.' } })[0]).toContain('ENV_NOT_REQUIRED: NUXT_ALT')
     expect(decide({ undecided: [...ENV_UNDECIDED, 'NUXT_APPWRITE_KEY'] })[0]).toContain('mehr als einer Liste')
     expect(decide({ notRequired: { ...ENV_NOT_REQUIRED, NUXT_BRAND_CARD_CACHE_DIR: 'kurz' } })[0]).toContain('ohne tragfähigen Grund')
+  })
+})
+
+/**
+ * WL1 (d), 2026-11-17: `NAME=` in der Server-Datei sah für die Namens-Prüfung
+ * aus wie gesetzt. Der Wächter fragt jetzt je Name auch „steht etwas
+ * dahinter?" — und zwar so, dass der Wert den Server nie verlässt: das
+ * awk-Programm gibt nur den Namen und `0` oder `1` aus. Dieser Test lässt
+ * GENAU DAS Programm über eine Probe-Datei laufen.
+ */
+describe('verify-site-env — leere Werte, ohne einen Wert zu lesen', () => {
+  // Erfundene Werte, bewusst als Probe erkennbar.
+  const PROBE_VALUES = ['probe-wert-eins', 'probe wert zwei', 'probe-wert-drei', 'probe=wert=vier']
+  const PROBE_FILE = [
+    '# Kommentar',
+    'NUXT_VOLL=probe-wert-eins',
+    'NUXT_LEER=',
+    'NUXT_LEER_MIT_LEERRAUM=   ',
+    'NUXT_LEER_DOPPELT=""',
+    'NUXT_LEER_EINFACH=\'\'',
+    'NUXT_IN_ANFUEHRUNG="probe wert zwei"',
+    '  NUXT_EINGERUECKT = probe-wert-drei',
+    'NUXT_MIT_GLEICH=probe=wert=vier',
+    'NUXT_ERST_LEER=',
+    'NUXT_ERST_LEER=probe-wert-eins',
+    'NUXT_ERST_VOLL=probe-wert-eins',
+    'NUXT_ERST_VOLL=',
+    '#NUXT_AUSKOMMENTIERT=probe-wert-eins',
+    'kein name mit leerzeichen=probe-wert-eins',
+    '',
+  ].join('\n')
+
+  function runOnProbe(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'site-env-probe-'))
+    try {
+      const file = join(dir, 'probe.env')
+      writeFileSync(file, PROBE_FILE)
+      return execFileSync('awk', [ENV_STATE_AWK, file], { encoding: 'utf8' })
+    }
+    finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }
+
+  it('das Programm gibt je Zeile nur den Namen und 0 oder 1 aus — nie einen Wert', () => {
+    const out = runOnProbe()
+    for (const line of out.split('\n').filter(Boolean)) expect(line).toMatch(/^[A-Za-z_][A-Za-z0-9_]*=[01]$/)
+    for (const value of PROBE_VALUES) expect(out).not.toContain(value)
+    expect(out).not.toContain('probe')
+  })
+
+  it('erkennt leer in jeder Schreibweise, und bei doppelten Namen gilt die letzte Zeile', () => {
+    const states = parseKeyStates(runOnProbe())
+    expect(Object.fromEntries(states)).toEqual({
+      NUXT_VOLL: 'set',
+      NUXT_LEER: 'empty',
+      NUXT_LEER_MIT_LEERRAUM: 'empty',
+      NUXT_LEER_DOPPELT: 'empty',
+      NUXT_LEER_EINFACH: 'empty',
+      NUXT_IN_ANFUEHRUNG: 'set',
+      NUXT_EINGERUECKT: 'set',
+      NUXT_MIT_GLEICH: 'set',
+      NUXT_ERST_LEER: 'set',
+      NUXT_ERST_VOLL: 'empty',
+    })
+  })
+
+  it('parseKeyStates übergeht alles, was nicht „NAME=0" oder „NAME=1" ist', () => {
+    const states = parseKeyStates('NUXT_A=1\nNUXT_B=0\nNUXT_C=geheim\n__NO_ENV_FILE__\n\n  NUXT_D=1  \n')
+    expect([...states.keys()]).toEqual(['NUXT_A', 'NUXT_B', 'NUXT_D'])
+  })
+
+  it('eine leere Pflicht-Variable ist ein Befund, eine fehlende bleibt einer', () => {
+    const platform = SITES.find(s => s.name === 'platform')!
+    const all = new Map(platform.required.map((key: string) => [key, 'set'] as const))
+    expect(missingKeys(platform, all)).toEqual([])
+    expect(emptyKeys(platform, all)).toEqual([])
+
+    const oneEmpty = new Map<string, 'set' | 'empty'>(all)
+    oneEmpty.set('NUXT_PLATFORM_CONTROL_KEY', 'empty')
+    expect(missingKeys(platform, oneEmpty)).toEqual([])
+    expect(emptyKeys(platform, oneEmpty)).toEqual(['NUXT_PLATFORM_CONTROL_KEY'])
+
+    const oneGone = new Map<string, 'set' | 'empty'>(all)
+    oneGone.delete('NUXT_PLATFORM_CONTROL_KEY')
+    expect(missingKeys(platform, oneGone)).toEqual(['NUXT_PLATFORM_CONTROL_KEY'])
+    expect(emptyKeys(platform, oneGone)).toEqual([])
+  })
+
+  it('das Programm kommt ohne einfaches Anführungszeichen aus (es steht auf dem Server in solchen)', () => {
+    expect(ENV_STATE_AWK).not.toContain('\'')
   })
 })

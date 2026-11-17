@@ -55,10 +55,9 @@ export const INSTANCE_SECRETS_TABLE = 'instance_secrets'
  * der Control-Plane-Schlüssel, die Redis-Adresse. Henne und Ei: läge einer
  * davon hier, käme niemand mehr an ihn heran.
  *
- * DIE GETEILTEN Geheimnisse zwischen zwei Deployments (`onboarding-service`,
- * `events-sweep`) SIND seit dem 2026-08-18 dabei — mit genau der
- * Übergangsstufe, die hier vorher als Bedingung stand. Sie müssen auf beiden
- * Seiten gleich sein; deshalb nimmt der EMPFÄNGER die MENGE {Ablage, Env} an,
+ * DAS GETEILTE Geheimnis zwischen zwei Deployments (`onboarding-service`)
+ * ist seit dem 2026-08-18 dabei — mit genau der Übergangsstufe, die hier
+ * vorher als Bedingung stand. Es muss auf beiden Seiten gleich sein; deshalb nimmt der EMPFÄNGER die MENGE {Ablage, Env} an,
  * während der SENDER genau einen Wert schickt (Ablage zuerst). Rotieren ist
  * damit eine Reihenfolge — erst beim Empfänger eintragen, dann beim Sender —
  * und braucht weder Deployment noch Code-Stufe. Regel, Begründung und die
@@ -69,8 +68,15 @@ export const INSTANCE_SECRETS_TABLE = 'instance_secrets'
  * ein halb umgezogener Block wäre eine Konfiguration, die niemand mehr
  * erklären kann. Dafür musste diese Datei eventlos lesbar werden — der
  * Digest-Versand läuft in einem Sweep OHNE Request.
+ *
+ * `events-sweep` ist seit dem 2026-11-17 KEINE Sorte mehr (SE1 d): die Route,
+ * die ein Cron damit aufrief, ist gelöscht, Termin-Erinnerungen laufen als
+ * Zeit-Lauf `event-reminders`. Eine alte Zeile mit dieser Id darf in der
+ * Tabelle liegen bleiben — gelesen wird hier nur je feste Sorte, nie die
+ * ganze Tabelle; der einzige Leser über alle Zeilen ist die Auskunft und
+ * Löschung (`system`-Contributor, fragt nur `updatedBy`).
  */
-export const INSTANCE_SECRET_KINDS = ['ai', 'analytics', 'tickets-ai', 'smtp', 'onboarding-service', 'events-sweep'] as const
+export const INSTANCE_SECRET_KINDS = ['ai', 'analytics', 'tickets-ai', 'smtp', 'onboarding-service'] as const
 export type InstanceSecretKind = typeof INSTANCE_SECRET_KINDS[number]
 
 export interface InstanceSecretRow extends Models.Row {

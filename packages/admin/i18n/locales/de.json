@@ -552,16 +552,14 @@
         "analytics": "Statistik (Plausible)",
         "tickets-ai": "KI der Konsole (Ticket-Triage)",
         "smtp": "Mailversand (SMTP)",
-        "onboarding-service": "Naht zum Control Plane (Service-Secret)",
-        "events-sweep": "Termin-Erinnerungen (Sweep-Schlüssel)"
+        "onboarding-service": "Naht zum Control Plane (Service-Secret)"
       },
       "serviceDesc": {
         "ai": "Treibt Moderations-Assistenten und Übersetzungs-Vorschläge in allen Communities.",
         "analytics": "Liest die Besuchszahlen für die Statistik-Seiten.",
         "tickets-ai": "Eigenes Kontingent für die Ticket-Triage. Ohne eigenen Schlüssel gilt der allgemeine KI-Zugang.",
         "smtp": "Verschickt Benachrichtigungen, Einladungen und die Tageszusammenfassung.",
-        "onboarding-service": "Das gemeinsame Wort, mit dem sich diese Instanz und die Betreiber-Konsole gegenseitig erkennen — Communities anlegen, Mitglieder verwalten, Domains freischalten.",
-        "events-sweep": "Der Schlüssel, mit dem ein Cron den Versand der Termin-Erinnerungen anstößt."
+        "onboarding-service": "Das gemeinsame Wort, mit dem sich diese Instanz und die Betreiber-Konsole gegenseitig erkennen — Communities anlegen, Mitglieder verwalten, Domains freischalten."
       },
       "smtp": {
         "host": "Server",
