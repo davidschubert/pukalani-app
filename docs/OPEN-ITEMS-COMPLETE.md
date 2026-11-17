@@ -30,6 +30,151 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N05 — Nacharbeiten „Lange Läufe und KI-Wege": LL1 (a, Teile von b und c), KI1 (c, Teile von d) und IN1 (c, Teile von d) ✅ 2026-11-17
+
+Drei Einträge aus Schritt 3 der offenen Punkte, fünf Pull Requests mit Code
+(268, 269, 270, 271, 272) und dieser Abschluss. Keine Migration, keine
+Änderung an Production außerhalb des Auslieferns, kein bezahlter KI-Lauf.
+Davids Entscheidung vom 2026-11-16: Marken-Seiten laufen durch dieselbe
+Prüfung wie Artikel. Nicht gebaut, weil es auf sein Startwort wartet: die
+KI-Prüfung als eigener Knopf (IN1 a).
+
+**Was gebaut ist**
+
+- **Radar-Knopf im Hintergrund (LL1 a, PR 268).** „Jetzt laufen lassen" geht
+  denselben Weg wie der Marktvergleich: die Route nimmt die Lauf-Sperre in
+  `insights_runs` (Art `radar`, ein fester Gegenstand je Instanz), antwortet
+  `202` und rechnet hinter der Antwort; die Seite fragt den Stand ab. Ein
+  zweiter Start bekommt `409 run_running` und berührt die Stunden-Drossel
+  nicht; lehnt die Drossel ab, fällt die Sperre wieder. `GET
+  /api/insights/radar` liefert den Lauf-Stand, gegen die Server-Uhr gerechnet.
+  Der Zeitdeckel von 30 Sekunden ist weg; der Lauf hält nur noch an, wenn sein
+  Herzschlag verloren geht (dann Teil-Ergebnis).
+- **Video-Brief unter der Lauf-Sperre (LL1 c, PR 269).** Der Start nimmt nach
+  den kostenlosen Vorprüfungen die Sperre (Art `brief`, Gegenstand = das
+  Fundstück), liest die Zeile DANACH neu und bucht erst dann. Der zweite Start
+  bekommt den gewohnten `409 brief_running`. Die Stempel an der Zeile sind nur
+  noch Anzeige und billige erste Ablehnung.
+- **Modell-Prüfung beim Speichern (KI1 c, PR 270).** Admin-Config-Seite
+  (`app_config.aiModel`) und Ticket-Einstellungen (`ticketsAiModel`) fragen
+  für ein NEUES Modell die öffentliche Endpunkt-Auskunft des Vermittlers —
+  dieselbe Adresse und Deutung wie der tägliche Wächter, per Test aneinander
+  gebunden (`core/shared/aiModelEndpoints.ts`,
+  `core/server/utils/aiModelCheck.ts`). Kein Europa-Endpunkt oder unbekanntes
+  Modell ⇒ `422` mit Grund, nichts gespeichert. Vermittler antwortet nicht
+  (Frist 5 s) ⇒ gespeichert, die Seite warnt. Unverändertes oder leeres Modell
+  ⇒ kein Netz-Aufruf.
+- **Marken-Seiten durch die Artikel-Prüfung (IN1 c, PR 272).** Die
+  Quellen-Regeln sind in EINE Funktion über eine Quellen-Liste herausgezogen,
+  Artikel und Marken rufen dieselbe. Ein Einstieg für Marken
+  (`insightsBrandPublicationGate`) mit derselben Abruf-Auswahl und Frist;
+  `saveInsightsBrandRow` nimmt `published` nur mit dem Freigabe-Zeichen der
+  Prüfung an, das Anlegen lehnt `published` ab. `draft` und `removed`
+  speichern frei — das Entfernen auf Wunsch hängt an keiner Regel. Nicht
+  bestanden ⇒ nichts geschrieben, `200` mit `saved: false` und der Liste; die
+  Seite behält die Eingabe und bietet „Als Entwurf speichern" an.
+- **Lebenszeichen und Kleinigkeiten (LL1 b/c, KI1 d, IN1 d, PR 271).** Die
+  zwei Streams des Markenberaters senden alle 15 s eine SSE-Kommentarzeile
+  (der Leser im Browser nimmt schon immer nur `data:`-Zeilen, ein älterer
+  Browser-Stand überliest sie also auch). Markenberater und Marktvergleich
+  zeigen den genauen Hinweis, wenn das Modell keinen Europa-Endpunkt hat (der
+  Marktvergleich hält dafür nur einen kurzen Code an der Lauf-Zeile fest). Die
+  KI-Wege der Insights-Redaktion stehen in der Bremsen-Liste des Core (6 je
+  Minute und Anschluss). Der Kasten der Prüfregeln sagt an einem öffentlichen
+  Artikel „lässt sich so nicht speichern". `verify-brand-context.mjs` hat eine
+  Voreinstellung, die es gibt; die vier Beweis-Skripte des Marktvergleichs
+  warten die Minuten-Bremse selbst ab.
+
+**Beweise**
+
+- Tests je Teil, vorher rot: Radar 10 von 12 gegen die alte Route, Video-Brief
+  9 von 10 (zehn gleichzeitige Starts liefen alle zehn durch), Marken-Prüfung
+  15 von 20. Zusammenbau aller fünf Zweige auf dem neuesten `main` vor dem
+  ersten Merge: insights 833, core 4227, brand 3495, market 262, admin 176,
+  tickets 140 Tests grün, Lint je Paket, alle Wächter, Typecheck der App
+  `branding`.
+- **Radar lokal über 60 Sekunden** (echte Route, lokale Datenbank, gestellte
+  langsame Abrufe, keine Kosten): fünf gleichzeitige Starts ⇒ einer `202`,
+  vier `409`, alle beantwortet nach 68 ms; der Lauf rechnete 87 s und endete
+  mit Zahlen. Im Browser mit zwei Reitern: „läuft" im ersten, ruhiger Hinweis
+  im zweiten, nach dem Neuladen weiter „läuft", nach 85 s „Fertig: 11 Kanäle,
+  22 Videos". Der nächtliche Zeit-Lauf fiel zufällig in dieselbe Minute und
+  meldete `skipped`.
+- **Modell-Prüfung lokal** gegen die echte, kostenlose Endpunkt-Auskunft, 6
+  von 6: ohne Europa-Endpunkt `422`, unbekannt `422`, nichts gespeichert; mit
+  Europa-Endpunkt gespeichert; dasselbe Modell noch einmal ohne Prüfung.
+- **Marken-Prüfung lokal** gegen die echte Route, 12 von 12, und ein Klick im
+  Browser: Entwurf mit unbelegtem Zitat auf „Veröffentlicht" ⇒ „Nicht
+  gespeichert, ein Punkt ist offen"; „Als Entwurf speichern" geht.
+- Nach jeder Probe aufgeräumt und nachgezählt (Probe-Konto, Probe-Videos,
+  Lauf-Zeilen, Probe-Marken: 0 übrig).
+
+**Nicht geprüft.** Kein Lauf über 60 Sekunden auf Production, keine Klicks auf
+den echten Seiten. Kein echter Video-Brief (kostet einen Aufruf) — die Sperre
+dort ist durch Tests belegt. Das Lebenszeichen ist mit gestellter Uhr
+getestet, nicht hinter dem echten Webserver gemessen. Der Klick auf der
+Config-Seite fehlt (die lokale App blendet das Modell-Feld nicht ein). Die
+Beweis-Skripte des Marktvergleichs wurden nicht ausgeführt, nur auf Syntax
+geprüft und ihre gemeinsame Hilfe getestet.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar; Davids Regel vom
+2026-11-17 für kleine Fragen):
+- Ein eindeutig unbrauchbares Modell wird beim Speichern ABGELEHNT, nicht mit
+  Warnung gespeichert: gespeichert liefe damit kein KI-Aufruf mehr, und ein
+  Hinweis nach dem Speichern wird leicht übersehen. Nur „nicht prüfbar"
+  speichert mit Warnung.
+- Die Modell-Auswahl der Ticket-Einstellungen ist von neun auf zwei Modelle
+  gekürzt: sieben hatten keinen Europa-Endpunkt (gemessen an der öffentlichen
+  Auskunft) und wären beim Speichern immer abgelehnt worden.
+- Der deutsche Hinweis „KI gerade nicht verfügbar" im Core ist ohne Anrede
+  formuliert, weil er jetzt auch im Markenberater erscheint.
+- Radar: erst die Sperre, dann die Stunden-Drossel. Ein abgebrochener Lauf
+  verbraucht einen der drei Starts je Stunde (er kostet kein Geld). Der
+  nächtliche Lauf nimmt die Sperre nicht; ihn schließt weiter der Merker im
+  Prozess aus.
+- Fehlt der Europa-Endpunkt, bricht der Marktvergleich nach dem ersten
+  Kandidaten ab (jeder weitere scheiterte genauso), und der Markenberater
+  sagt es, statt wie bei anderen Ausfällen zu schweigen.
+- Marken unter „Ähnliche Marken" zählen im Namensfilter wie die eigene Marke.
+- Der Video-Brief steht mit in der Bremsen-Liste (derselbe Deckel wie die
+  drei Wege der Redaktion).
+- Die vier übrigen langen Wege sind NICHT umgebaut: jeder braucht eine
+  Lauf-Tabelle im Markenberater-Layer und damit eine Migration auf Production
+  (Reihenfolge-Empfehlung in OPEN-ITEMS „LL1" b).
+
+**Gelernt: Eine Auswahlliste altert schneller als ihr Wächter.** Seit P17 ist
+jeder Textaufruf an zwei Orte in Europa gebunden. Der tägliche Wächter prüfte
+die Modelle aus dem Code — die Liste, aus der ein Mensch in den
+Ticket-Einstellungen WÄHLT, prüfte niemand: sieben von neun Angeboten konnten
+seither nicht mehr laufen. Wer eine Bedingung enger zieht, sieht auch die
+Stellen nach, die eine Auswahl ANBIETEN.
+
+**Gelernt: Ein Entwicklungs-Server überlebt keinen Zweigwechsel.** Nach `git
+checkout` auf einen anderen Zweig antwortete der laufende Server auf jeder
+Route mit 500, auch auf `/api/health` — es sah aus wie ein Fehler der neuen
+Arbeit. Für eine Probe je Zweig den Server neu starten und in `/api/health`
+den Build lesen: er nennt den Commit, gegen den wirklich gemessen wird.
+
+**Gelernt: Ein Ergebnis, das nur als Meldung erscheint, sieht nur, wer
+zusieht.** Die erste Klick-Probe fand nach dem Ende des Radar-Laufs keine
+Zahlen — die Meldung war nach wenigen Sekunden wieder weg, als nachgesehen
+wurde. Die Probe brauchte einen Beobachter auf der Seite; für Menschen steht
+der Rest in OPEN-ITEMS „LL1" c.
+
+**Gelernt: Gemeinsame Register-Dateien sind die Stellen, an denen parallele
+Arbeit zusammenstößt.** Vier Aufträge bauten gleichzeitig in getrennten
+Paketen, ohne sich zu berühren — bis auf den Bestand der Rollen-Tests
+(`routeRoleBacklog.ts`): drei Pull Requests strichen dort je zwei Zeilen, und
+die Datei musste je Zweig von Hand zerlegt werden. Arbeit, die auf einem
+anderen Zweig aufbaut, gehört in ein eigenes Arbeitsverzeichnis.
+
+**Gelernt: Deutsche Anführungszeichen beenden einen Shell-String.** Ein
+Commit-Text mit „…" endet für die Shell am schließenden Zeichen; die halbe
+Befehlskette lief, die andere nicht. Commit-Texte per Datei übergeben
+(`git commit -F`).
+
+---
+
 ### N03 — Nacharbeiten „Kurse, Mitmachen, Termine": KU1, MM1 (b–d) und KK1 (a, b, c) ✅ 2026-11-17
 
 Drei Einträge aus Schritt 3 der offenen Punkte, sechs Pull Requests mit Code
