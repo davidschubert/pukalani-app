@@ -113,6 +113,20 @@ Sammel-Mail und die Termin-Erinnerung liefen nicht gegen die Bühne (der
 Sammel-Lauf ginge lokal über alle gespiegelten Konten) — beide belegen Tests.
 Die Statistik ist an keiner echten Zähl-Seite geklickt.
 
+**Ohne Rückfrage entschieden** (klein und umkehrbar; Davids Regel vom
+2026-11-17 für kleine Fragen):
+- Unter einem geschlossenen Thema ist auch das ZURÜCKNEHMEN eines Likes oder
+  einer Reaktion zu — geschlossen heißt eingefroren, der Stand bleibt.
+- Übersetzen ist auch bei offener Registrierung kein Beitritt, und ein schon
+  gespeicherter Treffer geht ebenfalls nur an Mitglieder.
+- Benachrichtigungen an Entfernte: bei einer Störung des Control Plane wird
+  zugestellt statt verworfen; die neue Einladung bleibt die eine Ausnahme.
+- Kurse: keine Migration, der alte Wert wird weiter angenommen.
+- Statistik: keine neue Spalte; die Adresse wird aus der Zähl-Datei gelesen
+  und zehn Minuten gehalten.
+- Nicht gebaut: das Zurücknehmen einer Zusage zu einem ausgeblendeten Termin
+  und ein Sprach-Präfix in Mail-Links (Gründe in OPEN-ITEMS „MM1" e).
+
 **Reste:** OPEN-ITEMS „MM1" (Klick-Probe, drei Kleinigkeiten ohne Auftrag) und
 „KK1" (Statistik klicken, drei Kleinigkeiten). KU1 ist geschlossen.
 
