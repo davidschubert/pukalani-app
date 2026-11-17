@@ -173,6 +173,8 @@ describe('Ansichten: festgehalten, entprellt, ohne Namen und ohne Suchbegriff', 
     listOnlinePresences: async () => [],
     mapSafeSession: (session: unknown) => session,
     lookupCityForIp: async () => null,
+    // Die Aktivitätsliste (AL1) hat ihren eigenen Test — hier nur still leer.
+    listUserActivity: async () => ({ activity: [], truncated: false }),
   })
 
   it('Konto ansehen: ein Eintrag je (Betreiber, Konto) in 15 Minuten', async () => {

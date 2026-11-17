@@ -5,6 +5,7 @@ import type { TenantMode, TenantPlan, TenantStatus, TenantWave } from '../../../
 import type { CommunitySuspension } from '../../../../core/shared/communitySuspension'
 import type { CustomDomainApprovalResponse, CustomDomainStatus } from '../../../shared/customDomain'
 import type { CustomDomainSweepItem, CustomDomainSweepMode, CustomDomainSweepRouteResponse } from '../../../shared/customDomainSweep'
+import { planLabelKey } from '../../utils/planLabels'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'sites.manage' })
 
@@ -332,6 +333,11 @@ async function toggleDomainApproval(tenant: TenantDto, approved: boolean) {
 // Zahlen wirken im Pool nach ≤ 90 s (Katalog-Cache 60 s + Host-Cache 30 s im
 // platform-Resolver) — kein Deploy nötig. 0 = unbegrenzt.
 interface PlanLimitsDto { key: string, limits: Record<string, { perDay?: number, total?: number }> }
+/** Name eines Plans im Kasten: heutige und Alt-Pläne übersetzt, Unbekanntes roh (app/utils/planLabels.ts). */
+function planLabel(key: string): string {
+  const labelKey = planLabelKey(key)
+  return labelKey ? t(labelKey) : key
+}
 const { data: plansData, refresh: refreshPlans } = await useFetch<{ plans: PlanLimitsDto[] }>('/api/control/plans', { lazy: true, server: false })
 const planEdits = reactive<Record<string, { perDay: number, total: number }>>({})
 watch(() => plansData.value?.plans, (plans) => {
@@ -548,7 +554,8 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
 
       <!-- Editierbarer Quota-Katalog (tenant_plans): Zahlen wirken im Pool
            ohne Deploy (Resolver-Cache ≤ 90 s). 0 = unbegrenzt.
-           BEWUSST KEINE UTable (B6): drei feste Pläne mit Eingabefeldern und
+           BEWUSST KEINE UTable (B6): drei feste Pläne (plus die Alt-Zeilen
+           free/business, app/utils/planLabels.ts) mit Eingabefeldern und
            eigenem Speichern-Knopf — ein Formular, keine Liste. Die Mandanten
            darüber sind die Datenliste dieser Seite und stehen als Tabelle. -->
       <section class="mt-8 rounded-lg border border-default p-4" data-plan-limits>
@@ -556,8 +563,8 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
         <p class="mt-1 text-sm text-muted">{{ t('control.plans.subtitle') }}</p>
         <div class="mt-4 space-y-3">
           <div v-for="plan in plansData?.plans ?? []" :key="plan.key" class="flex flex-wrap items-end gap-3" :data-plan-row="plan.key">
-            <UBadge :color="plan.key === 'pro' ? 'primary' : plan.key === 'personal' ? 'info' : 'neutral'" variant="subtle" class="mb-1.5 w-20 justify-center">
-              {{ t(`control.tenants.plan.${plan.key}`) }}
+            <UBadge :color="plan.key === 'pro' ? 'primary' : plan.key === 'personal' ? 'info' : 'neutral'" variant="subtle" class="mb-1.5 w-36 justify-center" data-plan-label>
+              {{ planLabel(plan.key) }}
             </UBadge>
             <UFormField :label="t('control.plans.commentsPerDay')" size="sm">
               <UInput v-model.number="planEdits[plan.key]!.perDay" type="number" min="0" size="sm" class="w-32" />

@@ -15,12 +15,12 @@ import {
   type WizardStep,
 } from '../../../shared/wizardSteps'
 import {
-  OPERATOR_TERMS_REQUIRED_CODE,
   operatorTermsHref,
   resolveOperatorTerms,
   type OperatorTermsConfig,
 } from '../../../shared/operatorTerms'
 import type { Choice } from '../../components/OnboardingChoices.vue'
+import { classifyWizardCreateError } from '../../utils/wizardCreateError'
 import type { TrialAvailability } from '../../../../control/shared/types/trialClaim'
 
 /**
@@ -155,11 +155,24 @@ const canCreate = computed(() => !operatorTerms.value || operatorTermsAccepted.v
 // ── Anlegen ─────────────────────────────────────────────────────────────────
 const creating = ref(false)
 const createError = ref('')
+/**
+ * Bestätigte Adresse (PD1 c): Anlegen verlangt sie (403 `email_unverified`).
+ * Bei offenem Tor erfährt ein Konto davon sonst erst HIER — deshalb zweierlei:
+ * (1) FRÜH warnen, sobald das Konto als unbestätigt bekannt ist, auf jedem
+ * Schritt und ohne zu sperren (die Autorität bleibt der Server), und (2) bei
+ * genau dieser Ablehnung den Kasten MIT Knopf „Mail erneut senden" statt eines
+ * Satzes. Der Entwurf bleibt dabei unangetastet: nach der Bestätigung genügt
+ * ein neuer Klick auf „Anlegen".
+ */
+const { user: currentUser } = useCurrentUser()
+const ownEmailUnverified = computed(() => currentUser.value?.emailVerification === false)
+const needsVerification = ref(false)
 
 async function create() {
   if (creating.value || !canCreate.value) return
   creating.value = true
   createError.value = ''
+  needsVerification.value = false
   try {
     const site = await $fetch<{ communityId: string, host: string, url: string, trialEndsAt: string | null }>('/api/onboarding/site', {
       method: 'POST',
@@ -193,23 +206,13 @@ async function create() {
   catch (error) {
     const status = (error as { status?: number, statusCode?: number }).status
       ?? (error as { statusCode?: number }).statusCode
-    // Jede Ablehnung bekommt einen Satz, der sagt, was JETZT zu tun ist.
-    // `email_unverified` (Audit 2026-08-02) ist der einzige Grund, den das
-    // Control Plane hier namentlich nennt — er sagt, was zu tun ist, und ohne
-    // ihn stünde ein eingeladener Kunde vor „gilt nicht mehr", obwohl sein Code
-    // in Ordnung ist. Der Weg zur Bestätigung steht schon im Schritt 0.
+    // Jede Ablehnung bekommt einen Satz, der sagt, was JETZT zu tun ist —
+    // außer `email_unverified`: dort ist der Weg ein Knopf (Regel und Tests:
+    // app/utils/wizardCreateError.ts).
     const reason = (error as { data?: { reason?: string } }).data?.reason
-    createError.value = status === 409
-      ? t('onboarding.errors.hostTaken')
-      : status === 403
-        ? (reason === 'email_unverified'
-            ? t('onboarding.errors.verifyFirst')
-            : t('onboarding.errors.notAllowed'))
-        : status === 400
-          ? (reason === OPERATOR_TERMS_REQUIRED_CODE
-              ? t('onboarding.errors.operatorTermsRequired')
-              : t('onboarding.errors.invalid'))
-          : t('onboarding.errors.unavailable')
+    const outcome = classifyWizardCreateError(status, reason)
+    if (outcome.kind === 'verify') needsVerification.value = true
+    else createError.value = t(outcome.key)
   }
   finally {
     creating.value = false
@@ -246,6 +249,15 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
       </h1>
       <p class="text-muted">{{ t(`onboarding.steps.${step}.intro`) }}</p>
     </div>
+
+    <!-- Frühe Warnung (PD1 c): sperrt nichts, zeigt aber den Weg, bevor der
+         letzte Schritt ihn verlangt. Im letzten Schritt übernimmt nach einer
+         Ablehnung der Kasten unten. -->
+    <AuthEmailVerifyRequired
+      v-if="ownEmailUnverified && !(needsVerification && step === 'summary')"
+      :title="t('onboarding.verify.earlyTitle')"
+      data-wizard-verify-early
+    />
 
     <form class="space-y-8" @submit.prevent="step === 'summary' ? create() : next()">
       <!-- 1 · Name und Adresse -->
@@ -337,6 +349,11 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
                 {{ t('onboarding.summary.operatorTermsLink') }}
               </ULink>
             </p>
+          </div>
+
+          <div v-if="needsVerification" class="space-y-2" data-wizard-verify-required>
+            <AuthEmailVerifyRequired :title="t('onboarding.verify.createTitle')" />
+            <p class="text-sm text-muted">{{ t('onboarding.verify.retryHint') }}</p>
           </div>
 
           <p v-if="createError" class="flex items-start gap-2 text-sm text-error">

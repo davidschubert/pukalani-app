@@ -34,7 +34,7 @@
 // `time` schreibt (core/server/utils/logEvent.ts).
 //
 // UMGELAUFENE DATEIEN (SE1 c, 2026-11-17): läuft ein Umlauf über die zwei
-// Dateien (ops/logrotate-pm2.conf), liegt der gestrige Tag in einer Datei
+// Dateien (ops/logrotate-admin-access.conf), liegt der gestrige Tag in einer Datei
 // DANEBEN — ohne sie fehlten dem Fenster Stunden, und ein Tages-Lauf gälte
 // als „nie gelaufen". Gelesen werden deshalb zusätzlich die Dateien, die
 // GENAU den Namen der laufenden Datei tragen plus eine Umlauf-Endung:
