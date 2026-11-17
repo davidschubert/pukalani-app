@@ -7,6 +7,16 @@ export default defineAppConfig({
     // Wächter zählt diese Zeilen in den pm2-Logs.
     observability: { enabled: true, clientErrors: true },
     /**
+     * DER FRISTEN-LAUF DES KONTO-PROTOKOLLS ZÄHLT NUR (EL1 c): 'count' liest
+     * stündlich mit genau der Auswahl, die 'apply' löschen würde (jeder
+     * Eintrag in `audit_logs`, der älter als 12 Monate ist), und schreibt
+     * die Zahlen ins Prozess-Log (`retention.run`, `job: audit-log-retention`).
+     * 'apply' wird erst mit dem Ja des Betreibers zur gezählten Zahl gesetzt;
+     * 'off' stellt den Lauf ab (dann auch die Zeile in ops/timed-jobs.conf
+     * löschen).
+     */
+    audit: { retention: 'count' },
+    /**
      * DER PRODUCTS-AUFKLAPPER (PS1, 2026-09-09 — Plan
      * docs/plans/PRODUCTS-SEITE.md §6, Davids Entscheidung e).
      *
