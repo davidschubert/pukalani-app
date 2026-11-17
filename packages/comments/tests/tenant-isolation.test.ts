@@ -24,7 +24,7 @@ const TENANT_A: TenantContext = { mode: 'pool', tenantId: `t-iso-a-${Date.now()}
 const TENANT_B: TenantContext = { mode: 'pool', tenantId: `t-iso-b-${Date.now()}` }
 const TARGET = { targetId: `tenant-iso-${Date.now()}`, targetType: 'test' }
 
-describe.skipIf(!hasEnv)('Pool-Isolationsbeweis (echte Appwrite, comments.tenantId)', () => {
+describe.skipIf(!hasEnv)('Pool-Isolationsbeweis (echte Appwrite, comments.communityId)', () => {
   const tablesDB = hasEnv
     ? new TablesDB(new Client().setEndpoint(endpoint!).setProject(projectId!).setKey(apiKey!))
     : null!
@@ -76,7 +76,8 @@ describe.skipIf(!hasEnv)('Pool-Isolationsbeweis (echte Appwrite, comments.tenant
     const ids = rows.map(row => row.$id)
     expect(ids).toContain(idA)
     expect(ids).not.toContain(idB)
-    expect(rows.every(row => (row as { tenantId?: string }).tenantId === TENANT_A.tenantId)).toBe(true)
+    // Der Stempel der Zeile heißt seit E8-3 `communityId` und trägt die tenantId.
+    expect(rows.every(row => (row as { communityId?: string }).communityId === TENANT_A.tenantId)).toBe(true)
   })
 
   it('Silo-Pfad (tenant null) bleibt ungefiltert — sieht beide (heutiges Verhalten)', async () => {

@@ -42,7 +42,7 @@ const COMMUNITY_B: NotificationAudience = { kind: 'tenant', tenantId: TENANT_B }
 const ACCOUNT_AREA: NotificationAudience = { kind: 'account' }
 const SILO: NotificationAudience = { kind: 'all' }
 
-describe.skipIf(!hasEnv)('Glocken-Isolationsbeweis (echte Appwrite, notifications.tenantId)', () => {
+describe.skipIf(!hasEnv)('Glocken-Isolationsbeweis (echte Appwrite, notifications.communityId)', () => {
   const tablesDB = hasEnv
     ? new TablesDB(new Client().setEndpoint(endpoint!).setProject(projectId!).setKey(apiKey!))
     : null!
@@ -62,7 +62,8 @@ describe.skipIf(!hasEnv)('Glocken-Isolationsbeweis (echte Appwrite, notification
         body: 'Isolationstest',
         link: '/',
         read: false,
-        ...(tenantId === null ? {} : { tenantId }),
+        // Die Spalte heißt seit E8-3 `communityId` und trägt die tenantId.
+        ...(tenantId === null ? {} : { communityId: tenantId }),
       },
       permissions: [
         Permission.read(Role.user(RECIPIENT)),
@@ -81,7 +82,7 @@ describe.skipIf(!hasEnv)('Glocken-Isolationsbeweis (echte Appwrite, notification
       tableId: TABLE,
       queries: [
         Query.equal('recipientId', RECIPIENT),
-        ...(allowed ? [Query.equal('tenantId', allowed)] : []),
+        ...(allowed ? [Query.equal('communityId', allowed)] : []),
         Query.limit(100),
       ],
     })
@@ -138,7 +139,7 @@ describe.skipIf(!hasEnv)('Glocken-Isolationsbeweis (echte Appwrite, notification
     // muss Bestandszeilen treffen. Wäre der Wert null, wäre die Glocke leer.
     const idLegacy = await createNotification(null, 'Default-Prüfung')
     const row = await tablesDB.getRow({ databaseId: databaseId!, tableId: TABLE, rowId: idLegacy })
-    expect((row as unknown as { tenantId?: unknown }).tenantId).toBe('')
+    expect((row as unknown as { communityId?: unknown }).communityId).toBe('')
     expect(NOTIFICATION_SCOPE_ACCOUNT).not.toBe('')
   })
 })
