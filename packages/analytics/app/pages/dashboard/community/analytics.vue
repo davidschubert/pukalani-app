@@ -85,6 +85,25 @@ const previewUrl = computed(() => plausibleScriptUrl(instance.value, state.plaus
 
 const saving = ref(false)
 
+/**
+ * Die Adresse, für die die Kennung gelten muss — für den Satz bei einer
+ * fremden Kennung. Nur Anzeige: geprüft wird auf dem Server.
+ */
+const currentHost = useRequestURL().hostname
+
+/** Die drei Gründe, aus denen die Route eine Kennung ablehnt (BE-022). */
+const SCRIPT_CHECK_HINTS: Record<string, string> = {
+  analytics_script_foreign: 'analytics.admin.scriptForeign',
+  analytics_script_unknown: 'analytics.admin.scriptUnknown',
+  analytics_script_check_unavailable: 'analytics.admin.scriptCheckUnavailable',
+}
+
+function saveFailedHint(error: unknown): string {
+  const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
+  const key = typeof reason === 'string' ? SCRIPT_CHECK_HINTS[reason] : undefined
+  return key ? t(key, { host: currentHost }) : t('analytics.admin.saveFailedHint')
+}
+
 /** Der EINE Speicherweg — beide Bedienelemente schicken nur ihr eigenes Feld. */
 async function patch(body: { plausibleScriptId?: string, enabled?: boolean }): Promise<AnalyticsConfigResponse | null> {
   saving.value = true
@@ -101,12 +120,14 @@ async function patch(body: { plausibleScriptId?: string, enabled?: boolean }): P
     if (planOk.value && measuring.value) await refreshStats()
     return result
   }
-  catch {
+  catch (error) {
     // Kunden-Dashboard: der rohe Statustext der Route sagt dem Owner nichts
-    // (und fällt unter HTTP/2 ohnehin weg) — siehe Audit-Befund C12.
+    // (und fällt unter HTTP/2 ohnehin weg) — siehe Audit-Befund C12. Den
+    // fachlichen Grund (`data.reason`) gibt es nur für die Prüfung der Kennung
+    // (BE-022); jeder andere Fehler bleibt beim allgemeinen Satz.
     toast.add({
       title: t('analytics.admin.saveFailed'),
-      description: t('analytics.admin.saveFailedHint'),
+      description: saveFailedHint(error),
       color: 'error',
     })
     return null
