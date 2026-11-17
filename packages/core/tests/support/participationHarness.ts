@@ -243,7 +243,7 @@ export interface ProbeRun {
    */
   doorOpened: boolean
   joinHandlerCalls: number
-  /** Was der Handler zurückgab (nur bei Status 200 ohne Datentür-Ende). */
+  /** Die Antwort des Handlers, wenn er ohne Fehler und ohne Datentür endete. */
   result?: unknown
 }
 
