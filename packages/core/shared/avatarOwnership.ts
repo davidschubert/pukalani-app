@@ -15,3 +15,32 @@ export function fileBelongsToUser(permissions: readonly string[] | undefined, us
   }
   return false
 }
+
+/**
+ * Die Konten, denen eine Avatar-Datei laut ihren Rechten GEHÖRT (KE3): die
+ * Konto-Ids aus `update("user:<id>")` und `delete("user:<id>")` — genau die
+ * zwei Rechte, die der Upload-Endpunkt seinem Besitzer gibt. Ein Lese-Recht
+ * macht niemanden zum Besitzer. Ohne Doppel, in der Reihenfolge des ersten
+ * Auftretens. Leer oder mehr als ein Eintrag heißt: kein eindeutiger
+ * Besitzer (Altbestand, Handarbeit in der Konsole).
+ */
+export function avatarFileOwnerIds(permissions: readonly string[] | undefined): string[] {
+  const owners: string[] = []
+  for (const permission of permissions ?? []) {
+    const match = permission.match(/^(?:update|delete)\("user:([^"/]+)(?:\/[^"]*)?"\)$/)
+    if (match && !owners.includes(match[1]!)) owners.push(match[1]!)
+  }
+  return owners
+}
+
+/**
+ * fileId aus einer Storage-Avatar-URL (`/api/storage/<bucket>/<id>?…`), sonst
+ * null. Pur, damit auch die Regel in `avatarOrphan.ts` sie nutzt; die
+ * Server-Seite reicht sie als `avatarFileId` (`server/utils/avatarFile.ts`)
+ * weiter — EINE Lesart der URL für Profil, Kontolöschung und Aufräum-Lauf.
+ */
+export function avatarFileIdFromUrl(url: unknown, bucketId: string): string | null {
+  if (typeof url !== 'string' || !bucketId) return null
+  const match = url.match(/^\/api\/storage\/([^/]+)\/([^/?]+)/)
+  return match && match[1] === bucketId ? match[2]! : null
+}
