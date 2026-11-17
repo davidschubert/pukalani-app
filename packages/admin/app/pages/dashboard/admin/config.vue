@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { AI_MODEL_NO_EU_ENDPOINT_CODE, AI_MODEL_UNKNOWN_CODE } from '../../../../../core/shared/aiModelEndpoints'
+import type { AiModelCheck } from '../../../../../core/shared/aiModelEndpoints'
+
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'system.manage', dashboardScope: 'operator' })
 
 interface AppConfig {
@@ -38,11 +41,16 @@ const flags = computed(() => [
 ])
 
 const loading = ref(false)
+/**
+ * KI1 c (2026-11-17): die Route prüft ein NEUES Modell beim Speichern. 422 mit
+ * Grund ⇒ der genaue Satz, nichts gespeichert; `unverified` ⇒ gespeichert, aber
+ * mit Warnung, weil der Vermittler gerade nicht antwortete.
+ */
 async function save() {
   loading.value = true
   try {
     // Nur die patchbaren Felder senden (aiEnabled/aiDefaultModel sind reine Anzeige)
-    await $fetch('/api/admin/config', {
+    const res = await $fetch<{ aiModelCheck?: AiModelCheck }>('/api/admin/config', {
       method: 'PATCH',
       body: {
         registrationEnabled: state.registrationEnabled,
@@ -52,9 +60,29 @@ async function save() {
       },
     })
     await refresh()
+    if (res.aiModelCheck === 'unverified') {
+      toast.add({
+        title: t('admin.config.aiModelUnverified'),
+        description: t('admin.config.aiModelUnverifiedDesc'),
+        color: 'warning',
+        icon: 'i-ph-warning',
+      })
+      return
+    }
     toast.add({ title: t('admin.config.saved'), color: 'success' })
   }
-  catch {
+  catch (error) {
+    const reason = (error as { data?: { reason?: string } }).data?.reason
+    if (reason === AI_MODEL_NO_EU_ENDPOINT_CODE || reason === AI_MODEL_UNKNOWN_CODE) {
+      toast.add({
+        title: t('admin.config.aiModelRejected'),
+        description: reason === AI_MODEL_UNKNOWN_CODE
+          ? t('admin.config.aiModelUnknown', { model: state.aiModel ?? '' })
+          : t('admin.config.aiModelNoEuEndpoint', { model: state.aiModel ?? '' }),
+        color: 'error',
+      })
+      return
+    }
     toast.add({
       title: t('admin.users.actionFailed'),
       description: t('admin.users.actionFailedDesc'),

@@ -42,7 +42,12 @@
       "aiModelDesc": "Modell für die eingebaute KI (Moderations-Assist). Leer = Build-Default {model}. Format: vendor/model (OpenRouter).",
       "save": "Speichern",
       "saved": "Konfiguration gespeichert.",
-      "aiKeyMoved": "Der Schlüssel wohnt jetzt unter"
+      "aiKeyMoved": "Der Schlüssel wohnt jetzt unter",
+      "aiModelRejected": "Nicht gespeichert",
+      "aiModelNoEuEndpoint": "Das Modell {model} wird nirgends in Europa angeboten (Amazon Bedrock in Irland oder Google Vertex in Europa). Unsere KI rechnet nur dort — mit diesem Modell ginge jeder Aufruf schief. Bitte ein anderes Modell wählen.",
+      "aiModelUnknown": "Das Modell {model} kennt der Vermittler (OpenRouter) nicht. Bitte die Schreibweise prüfen (Anbieter/Modell).",
+      "aiModelUnverified": "Gespeichert, aber nicht geprüft",
+      "aiModelUnverifiedDesc": "Der Vermittler hat gerade nicht geantwortet. Ob das Modell in Europa angeboten wird, steht deshalb nicht fest — der tägliche Wächter prüft es, und im Zweifel einfach später noch einmal speichern."
     },
     "storage": {
       "title": "Speicher",

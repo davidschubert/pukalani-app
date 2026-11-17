@@ -165,7 +165,12 @@
       "loadFailed": "The board settings could not be loaded. Open them again — if that doesn't help, reload the page (your session may have expired).",
       "aiDisabled": "AI triage is not enabled in this app (pukalani.tickets.ai).",
       "readOnly": "Only the operator can change the model",
-      "readOnlyHint": "The AI model is an instance-wide setting and needs the operator role (system.manage). As a moderator you can see which model triage currently uses."
+      "readOnlyHint": "The AI model is an instance-wide setting and needs the operator role (system.manage). As a moderator you can see which model triage currently uses.",
+      "modelRejected": "Not saved",
+      "modelNoEuEndpoint": "The model {model} is not offered anywhere in Europe (Amazon Bedrock in Ireland or Google Vertex in Europe). AI triage only runs there, so please choose a different model. Until then the previous one stays active.",
+      "modelUnknown": "The broker (OpenRouter) does not know the model {model}. Please check the spelling (vendor/model). Until then the previous one stays active.",
+      "modelUnverified": "Saved, but not checked: {model}",
+      "modelUnverifiedHint": "The broker did not respond just now, so it is not confirmed that the model is offered in Europe. If in doubt, save again later."
     }
   }
 }
