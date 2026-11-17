@@ -1754,6 +1754,9 @@
         "recheck": "Fundament erneut prüfen",
         "start": "Fundament prüfen",
         "running": "Das Fundament wird gelesen …",
+        "background": "Der Check rechnet im Hintergrund. Die Seite kann offen bleiben oder später wieder geöffnet werden — das Ergebnis erscheint hier.",
+        "alreadyRunning": "Ein Fundament-Check rechnet schon. Das Ergebnis erscheint hier, sobald er fertig ist.",
+        "interrupted": "Der letzte Fundament-Check wurde unterbrochen. Bitte noch einmal starten.",
         "none": "Das Fundament wurde noch nicht geprüft."
       },
       "diff": {

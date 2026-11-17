@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { RUN_LEASE_STALL_MS } from '../../core/shared/runLease'
 import {
+  BRAND_RUN_NOTICE_MS,
   BRAND_RUN_OUTCOMES,
   BRAND_RUN_PROFILE_SCOPES,
   BRAND_RUN_SCOPES,
+  brandRunNoticeDue,
   brandRunOwesRefund,
   brandRunQuota,
   emptyBrandRunDetail,
@@ -123,5 +125,20 @@ describe('brandRunOwesRefund — nur der abgebrochene, gebuchte, leere Vorgänge
     expect(brandRunOwesRefund('stalled', JSON.stringify({ booked: true, created: 0, refunded: true }))).toBe(false)
     // Kein lesbares Detail ⇒ nichts gebucht ⇒ nichts zurück.
     expect(brandRunOwesRefund('stalled', '')).toBe(false)
+  })
+})
+
+describe('brandRunNoticeDue — eine Übersicht weist nur einen Tag lang auf einen alten Lauf hin', () => {
+  it('gescheitert oder abgebrochen, vor weniger als einem Tag gestartet ⇒ ja', () => {
+    expect(brandRunNoticeDue({ state: 'failed', startedAt: iso(-60_000) }, NOW)).toBe(true)
+    expect(brandRunNoticeDue({ state: 'stalled', startedAt: iso(-BRAND_RUN_NOTICE_MS + 1) }, NOW)).toBe(true)
+  })
+
+  it('GEGENPROBEN: älter als ein Tag, ein anderer Zustand oder ein unlesbarer Zeitpunkt ⇒ nein', () => {
+    expect(brandRunNoticeDue({ state: 'failed', startedAt: iso(-BRAND_RUN_NOTICE_MS) }, NOW)).toBe(false)
+    for (const state of ['none', 'running', 'done'] as const) {
+      expect(brandRunNoticeDue({ state, startedAt: iso(-60_000) }, NOW)).toBe(false)
+    }
+    expect(brandRunNoticeDue({ state: 'failed', startedAt: '' }, NOW)).toBe(false)
   })
 })

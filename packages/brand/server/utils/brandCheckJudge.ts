@@ -4,6 +4,7 @@ import { AI_JSON_QUOTE_RULE_EN } from '../../../core/shared/aiJson'
 import { BRAND_CHECK_CRITERIA, type BrandCheckScoreValue } from '../../shared/brandCheck'
 import { brandIndustryPromptList, normalizeBrandIndustry } from '../../shared/brandIndustries'
 import { createBrandCheckJudgementSchema } from '../../schemas/brandCheck'
+import { brandDevStubDelay } from './brandGenerators'
 import { BRAND_PROVIDER_ROUTING } from './brandProviderRouting'
 
 /**
@@ -345,7 +346,12 @@ export async function judgeBrandCheck(
   event: H3Event,
   input: BrandCheckJudgeInput,
 ): Promise<BrandCheckJudgeResult> {
-  if (judgeStubEnabled()) return stubJudgement()
+  if (judgeStubEnabled()) {
+    // Nur im Beweis gesetzt: der Ersatz braucht dann so lange wie ein
+    // langsames echtes Urteil (`brandDevStubDelay`).
+    await brandDevStubDelay()
+    return stubJudgement()
+  }
   const model = (await getEffectiveAiConfig(event)).model
   const kind = brandCheckJudgeKind(input)
   const raw = await aiCompleteJson<unknown>(event, brandCheckJudgePrompt(input), {

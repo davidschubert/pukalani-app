@@ -1595,11 +1595,19 @@ export interface BrandPublicationReportResponse {
  * (§2 „Reproduzierbarkeit"). Der HONIGTOPF antwortet ebenfalls `cached: true`,
  * dann aber mit leerer `id`: ein Bot bekommt dieselbe Form wie ein Mensch,
  * ohne dass etwas entsteht.
+ *
+ * `run` (seit LL1 b, 2026-11-17) ist gesetzt, wenn der Check NICHT aus dem
+ * Zwischenspeicher kam, sondern als Lauf angenommen wurde (`202`): er rechnet
+ * hinter der Antwort, `id` ist dann noch leer, und die Seite fragt den Stand
+ * ab. Heute so beim Fundament-Check; der Stand kommt dort mit dem Verlauf
+ * (`BrandCheckHistoryResponse.documentRun`), die Id des Ergebnisses steht am
+ * fertigen Lauf (`run.ref`).
  */
 export interface BrandCheckStartResponse {
   ok: true
   id: string
   cached: boolean
+  run?: BrandRunView
 }
 
 /**
@@ -1873,10 +1881,16 @@ export interface BrandCheckDiff {
  * `diff` ist `null`, solange es keinen Vorgänger derselben Quelle gibt — der
  * Normalfall beim ersten Check einer Brand. Die Seite lässt den Abschnitt dann
  * weg, statt eine Tabelle aus Strichen zu zeigen.
+ *
+ * `documentRun` ist der Stand des jüngsten FUNDAMENT-CHECK-Laufs (LL1 b,
+ * 2026-11-17), gegen die Server-Uhr gerechnet: der Lauf rechnet hinter der
+ * Antwort seines Starts, und die Seite fragt den Verlauf ab, bis er nicht
+ * mehr `running` ist — Verlauf und Lauf-Stand kommen aus DERSELBEN Abfrage.
  */
 export interface BrandCheckHistoryResponse {
   items: BrandCheckHistoryItem[]
   diff: BrandCheckDiff | null
+  documentRun: BrandRunView
 }
 
 /** Der jüngste Stand EINER Quelle — für die Karten der Übersicht. */

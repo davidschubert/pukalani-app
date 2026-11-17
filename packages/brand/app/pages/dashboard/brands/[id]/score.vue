@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../../core/shared/runLease'
 import { pickBrandCheckTodos } from '../../../../../shared/brandCheck'
+import {
+  BRAND_RUN_POLL_TIMEOUT_MS,
+  type BrandRunView,
+  brandRunNoticeDue,
+  noBrandRunView,
+} from '../../../../../shared/brandRun'
 import type {
   BrandCheckHistoryItem,
   BrandCheckHistoryResponse,
@@ -214,6 +221,55 @@ function messageKey(error: unknown): string {
 const running = ref<'' | 'website' | 'document'>('')
 const errorKey = ref('')
 
+// ── Der Fundament-Check rechnet im Hintergrund (LL1 b, 2026-11-17) ─────────
+
+/**
+ * DER STAND DES JÜNGSTEN LAUFS kommt mit dem Verlauf (`documentRun`). Der
+ * Start antwortet sofort (`202`); solange der Lauf läuft, fragt die Seite den
+ * Verlauf alle paar Sekunden ab (`useRunPolling`, nur bei sichtbarem Reiter).
+ * Wer die Seite neu lädt oder in einem zweiten Reiter öffnet, sieht denselben
+ * Stand. Ein zweiter Start während eines Laufs ist kein Fehler, sondern ein
+ * ruhiger Hinweis (`run_running`).
+ */
+const documentRun = computed<BrandRunView>(() => history.value?.documentRun ?? noBrandRunView())
+const documentRunning = computed(() => running.value === 'document' || documentRun.value.state === 'running')
+/** Der ruhige Hinweis „läuft schon" nach einem zweiten Start. */
+const documentAlreadyRunning = ref(false)
+
+/**
+ * Was der jüngste Lauf hinterlassen hat — nur einen Tag lang (eine Übersicht
+ * weist nicht wochenlang auf einen alten Fehlschlag hin). Der Grund ist
+ * dasselbe Wort, das früher als Fehler-Code der Anfrage kam.
+ */
+const documentRunMessage = computed(() => {
+  const view = documentRun.value
+  if (!brandRunNoticeDue(view, Date.now())) return ''
+  if (view.state === 'stalled') return t('brand.myScores.document.interrupted')
+  if (view.failure === 'ai_endpoint_unavailable') return t('error.aiEndpointUnavailableHint')
+  return t('brand.myScores.errors.unavailable')
+})
+
+/** EINE NACHFRAGE: der Verlauf samt Lauf-Stand, mit Frist (eine hängende Abfrage hält das Nachfragen sonst an). */
+async function pollDocumentRun(): Promise<void> {
+  if (!profileId.value) return
+  history.value = await $fetch<BrandCheckHistoryResponse>(
+    `/api/brand/profiles/${encodeURIComponent(profileId.value)}/checks`,
+    { timeout: BRAND_RUN_POLL_TIMEOUT_MS },
+  )
+}
+
+useRunPolling({
+  active: () => documentRun.value.state === 'running',
+  intervalMs: RUN_LEASE_POLL_MS,
+  tick: pollDocumentRun,
+})
+
+// Der Lauf ist zu Ende ⇒ der ruhige Hinweis fällt. Die To-dos laden sich
+// selbst nach: sie hängen an der Id des jüngsten Checks (`todoSourceId`).
+watch(() => documentRun.value.state, (next, previous) => {
+  if (previous === 'running' && next !== 'running') documentAlreadyRunning.value = false
+})
+
 async function reload(): Promise<void> {
   await refreshHistory()
   await refreshTodoCheck()
@@ -247,11 +303,12 @@ async function runWebsiteCheck(): Promise<void> {
 }
 
 async function runDocumentCheck(): Promise<void> {
-  if (running.value) return
+  if (running.value || documentRunning.value) return
   running.value = 'document'
   errorKey.value = ''
+  documentAlreadyRunning.value = false
   try {
-    await $fetch<BrandCheckStartResponse>(
+    const started = await $fetch<BrandCheckStartResponse>(
       `/api/brand/profiles/${encodeURIComponent(profileId.value)}/check`,
       {
         method: 'POST',
@@ -263,10 +320,22 @@ async function runDocumentCheck(): Promise<void> {
         body: { force: latestDocument.value !== null },
       },
     )
-    await reload()
+    // EIN LAUF IST ANGENOMMEN (`202`): sein Stand geht an den Verlauf, das
+    // Nachfragen übernimmt ab hier. Ein Treffer im Zwischenspeicher (`200`)
+    // hat nichts gestartet — dann genügt das Nachladen wie bisher.
+    if (started.run && history.value) history.value = { ...history.value, documentRun: started.run }
+    else await reload()
   }
   catch (error) {
-    errorKey.value = messageKey(error)
+    // „Läuft schon" ist KEIN Fehler: ein zweiter Reiter (oder ein Doppelklick)
+    // hat den Lauf gestartet. Stand holen — dann zeigt auch dieser Reiter ihn.
+    if ((error as FetchErrorLike | null)?.data?.reason === RUN_LEASE_BUSY_CODE) {
+      documentAlreadyRunning.value = true
+      await refreshHistory()
+    }
+    else {
+      errorKey.value = messageKey(error)
+    }
   }
   finally {
     running.value = ''
@@ -443,12 +512,23 @@ useBrandTitle(() => t('brand.myScores.title'))
 
             <div class="mt-6">
               <UButton
-                :loading="running === 'document'" :disabled="running !== ''" color="neutral" class="rounded-full"
+                :loading="documentRunning" :disabled="running !== '' || documentRunning" color="neutral" class="rounded-full"
                 :label="latestDocument ? t('brand.myScores.document.recheck') : t('brand.myScores.document.start')"
                 data-score-document-run
                 @click="runDocumentCheck"
               />
-              <p v-if="running === 'document'" class="bw-label mt-3" style="color: var(--bw-muted)">{{ t('brand.myScores.document.running') }}</p>
+              <template v-if="documentRunning">
+                <p class="bw-label mt-3" style="color: var(--bw-muted)" data-score-document-running>
+                  {{ documentAlreadyRunning ? t('brand.myScores.document.alreadyRunning') : t('brand.myScores.document.running') }}
+                </p>
+                <p class="bw-label mt-1" style="color: var(--bw-muted)">{{ t('brand.myScores.document.background') }}</p>
+              </template>
+              <p
+                v-else-if="documentRunMessage" class="mt-3 text-sm leading-relaxed" style="color: var(--bw-stale)"
+                data-score-document-outcome
+              >
+                {{ documentRunMessage }}
+              </p>
             </div>
           </section>
         </div>

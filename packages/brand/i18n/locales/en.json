@@ -1754,6 +1754,9 @@
         "recheck": "Check the foundation again",
         "start": "Check the foundation",
         "running": "We are reading your foundation …",
+        "background": "The check continues in the background. The page can stay open or be reopened later — the result will appear here.",
+        "alreadyRunning": "A foundation check is already in progress. The result will appear here as soon as it is finished.",
+        "interrupted": "The last foundation check was interrupted. Please start it again.",
         "none": "Your foundation has not been checked yet."
       },
       "diff": {
