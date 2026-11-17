@@ -1,7 +1,9 @@
 import { Query } from 'node-appwrite'
 import { eventEditSchema } from '../../../schemas/event'
 import { eventIsEditable, seriesLifecycleFollows } from '../../../shared/eventModerationPolicy'
+import { rescheduleClearsReminder } from '../../../shared/eventReschedule'
 import { EVENTS_TABLE, isSeriesMaster, type EventRow } from '../../../shared/types/event'
+import { assertPaidEventOffered } from '../../utils/eventTickets'
 
 /**
  * Event bearbeiten / publishen (events.manage). Status-Übergänge hier:
@@ -68,6 +70,9 @@ export default defineEventHandler(async (event) => {
   // paid braucht die Stripe-Preis-Referenz — gegen den MERGED Zustand
   const mergedAccess = body.access === undefined ? row.access : body.access
   const mergedLookupKey = body.priceLookupKey === undefined ? row.priceLookupKey : body.priceLookupKey
+  // 'paid' nur, wo diese Instanz auch verkaufen kann — dieselbe Wahrheit wie
+  // das Formular (KK1). Bestand bleibt speicherbar (`row.access`).
+  assertPaidEventOffered(mergedAccess, row.access)
   if (mergedAccess === 'paid' && !mergedLookupKey) {
     throw createError({ status: 422, statusText: 'Paid events need a price lookup key' })
   }
@@ -94,6 +99,12 @@ export default defineEventHandler(async (event) => {
   if (body.priceAmount !== undefined) data.priceAmount = body.priceAmount
   if (body.priceLookupKey !== undefined) data.priceLookupKey = body.priceLookupKey
   if (body.status !== undefined) data.status = body.status
+
+  // Verschoben, nachdem schon erinnert wurde ⇒ der Merker fällt, der nächste
+  // Takt erinnert mit der neuen Uhrzeit (KK1, shared/eventReschedule.ts).
+  if (rescheduleClearsReminder({ previousStartAt: row.startAt, nextStartAt: body.startAt, remindersSentAt: row.remindersSentAt })) {
+    data.remindersSentAt = null
+  }
 
   /**
    * Der Übersetzungs-Cache (events-013) gilt für den ALTEN Text — eine

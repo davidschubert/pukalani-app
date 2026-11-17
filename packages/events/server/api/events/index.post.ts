@@ -1,5 +1,6 @@
 import { eventSchema } from '../../../schemas/event'
 import { EVENTS_TABLE, type EventRow } from '../../../shared/types/event'
+import { assertPaidEventOffered } from '../../utils/eventTickets'
 
 /**
  * Event anlegen — Verwaltungs-Sache (events.manage; „jeder User erstellt
@@ -31,6 +32,8 @@ export default defineEventHandler(async (event) => {
   await assertPoolWriteQuota(event, { kind: 'events', tableId: EVENTS_TABLE })
 
   const body = await readValidatedBody(event, eventSchema.parse)
+  // 'paid' nur, wo diese Instanz auch verkaufen kann (KK1) — vor dem Anlegen.
+  assertPaidEventOffered(body.access)
   const db = tenantDb(event, { as: 'operator', actor })
 
   const status = body.status ?? 'draft'

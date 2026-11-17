@@ -1,6 +1,6 @@
 import { ID, Permission, Query, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { EVENTS_TABLE, EVENT_TICKETS_TABLE, effectiveAccess, type EventRow, type EventTicketRow } from '../../shared/types/event'
+import { EVENTS_TABLE, EVENT_TICKETS_TABLE, effectiveAccess, paidAccessChoosable, type EventRow, type EventTicketRow } from '../../shared/types/event'
 
 /**
  * Paid-Events-Vertrag (EVENTS-V2 §4/§5, Muster registerUserDataContributor):
@@ -136,4 +136,36 @@ export async function grantEventTicket(event: H3Event, input: GrantEventTicketIn
     }
     throw error
   }
+}
+
+/** Diese Instanz verkauft keine Tickets — `reason` im Fehler-Envelope. */
+export const EVENT_PAID_UNAVAILABLE_CODE = 'event_paid_unavailable'
+
+/**
+ * „BEZAHLT" NUR, WO AUCH VERKAUFT WIRD — AUCH AM SERVER (KK1, 2026-11-17).
+ *
+ * Bis dahin entschied das allein das Formular (`paidAccessChoosable`, F13):
+ * die Auswahl fehlt, wo keine Checkout-Route bekanntgegeben ist
+ * (`pukalani.events.ticketCheckoutPath`). Über die API, einen alten Client
+ * oder einen zweiten Tab entstand trotzdem ein bezahlter Termin, an dem der
+ * Knopf nur „Bald verfügbar" sagt und jede Zusage 403 bekommt. Dieselbe Regel,
+ * dieselbe Quelle, jetzt an der Stelle, die niemand umgeht — das Gegenstück zu
+ * `assertPaidAccessOffered` bei den Kursen.
+ *
+ * `currentAccess`: Bestand schlägt die Sperre, genau wie im Formular. Ein
+ * Termin, der schon bezahlt IST, bleibt speicherbar; sonst könnte niemand
+ * mehr seinen Titel korrigieren.
+ *
+ * 422 statt 403: keine fehlende Berechtigung, sondern eine Eingabe, die auf
+ * dieser Instanz keinen Sinn ergibt.
+ */
+export function assertPaidEventOffered(access: EventRow['access'] | undefined, currentAccess?: EventRow['access']): void {
+  if (access !== 'paid') return
+  const appConfig = useAppConfig() as { pukalani?: { events?: { ticketCheckoutPath?: string } } }
+  if (paidAccessChoosable(appConfig.pukalani?.events?.ticketCheckoutPath, currentAccess)) return
+  throw createError({
+    status: 422,
+    statusText: 'Paid events are not available on this instance',
+    data: { code: EVENT_PAID_UNAVAILABLE_CODE },
+  })
 }
