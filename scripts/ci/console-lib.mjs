@@ -125,7 +125,9 @@ export async function openConsole(endpoint) {
       let apiKey
       {
         const { status, json } = await api(`/projects/${projectId}/keys`, 'POST', {
-          keyId: 'ci-key', name: 'ci-key', scopes: CI_KEY_SCOPES,
+          // Die Schlüssel-Id gilt für die ganze Instanz, nicht je Projekt — mit
+          // einer festen Id scheiterte das zweite Projekt mit 409.
+          keyId: `ci-key-${projectId}`, name: 'ci-key', scopes: CI_KEY_SCOPES,
         })
         if (status !== 201) fail('API-Key', status, json)
         apiKey = json.secret
@@ -135,7 +137,7 @@ export async function openConsole(endpoint) {
       // 6) Web-Platform (localhost) — Realtime/Web-SDK-Origin
       {
         const { status, json } = await api(`/projects/${projectId}/platforms`, 'POST', {
-          platformId: 'ci-web', type: 'web', name: 'ci-web', hostname: 'localhost',
+          platformId: `ci-web-${projectId}`, type: 'web', name: 'ci-web', hostname: 'localhost',
         })
         if (status === 201) console.log('✔ Web-Platform localhost')
         else if (status === 409) console.log('↷ Web-Platform existiert')
