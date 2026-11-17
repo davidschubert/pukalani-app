@@ -272,6 +272,16 @@ export default defineAppConfig({
        */
       checkErasure: 'apply',
       /**
+       * DER FRISTEN-LAUF DER WARTELISTE ZÄHLT NUR (EL1 c): 'count' liest
+       * stündlich mit genau der Auswahl, die 'apply' löschen würde (nie
+       * bestätigt 30 Tage, eingeladen/abgelehnt 90 Tage, wartend 12 Monate),
+       * und schreibt die Zahlen ins Prozess-Log (`retention.run`,
+       * `job: brand-waitlist-retention`). 'apply' wird erst mit Davids Ja zur
+       * gezählten Zahl gesetzt; 'off' stellt den Lauf ab (dann auch die Zeile
+       * in ops/timed-jobs.conf löschen).
+       */
+      waitlistRetention: 'count',
+      /**
        * DIE DREI RECHTSWÖRTER IM FUSS SIND SEIT BS1 R1 ECHTE LINKS
        * (2026-09-07). Bis dahin standen sie hier bewusst leer — der
        * Layer-Default lässt die Zeile dann ganz weg, weil ein Wort ohne Ziel
