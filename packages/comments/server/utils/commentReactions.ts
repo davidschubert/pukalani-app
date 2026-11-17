@@ -7,6 +7,7 @@ import {
   allowedReactions,
 } from '../../../core/shared/reactions'
 import { COMMENT_REACTIONS_TABLE, COMMENTS_TABLE, type Comment, type CommentReaction } from '../../shared/types/comment'
+import { isOperatorCommentTarget } from './commentReadPermissions'
 
 /**
  * DIE SERVER-SEITE DER ANTWORT-REAKTIONEN (F57, Davids Entscheidung
@@ -105,8 +106,8 @@ export async function resolveCommentReactionTarget(event: H3Event, targetId: str
     })
   }
 
-  const appConfig = useAppConfig() as { pukalani?: { comments?: { operatorTargets?: string[] } } }
-  if ((appConfig.pukalani?.comments?.operatorTargets ?? []).includes(target.targetType)) {
+  // EINE Liste der Betreiber-Ziele (KK1): dieselbe Funktion wie beim Leserecht.
+  if (isOperatorCommentTarget(target.targetType)) {
     throw createError({
       status: 409,
       statusText: 'Comment is not public',

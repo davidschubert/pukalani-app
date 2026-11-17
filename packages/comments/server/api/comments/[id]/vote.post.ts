@@ -73,6 +73,19 @@ export default defineEventHandler(async (event): Promise<VoteResponse> => {
     throw createError({ status: 409, statusText: 'Comment not votable' })
   }
 
+  /**
+   * GESCHLOSSENES THEMA: AUCH KEINE STIMMEN (MM1, Davids Entscheidung
+   * 2026-11-16). Kommentieren war dort schon zu (`index.post.ts`), Likes an
+   * den vorhandenen Antworten liefen weiter. Gefragt wird derselbe
+   * Core-Vertrag wie beim Kommentieren — der Besitzer des Ziels entscheidet
+   * und nennt den Grund (403 `topic_closed`); ein Ziel ohne Regel bleibt
+   * offen. Auch das ZURÜCKNEHMEN einer Stimme ist zu: geschlossen heißt
+   * eingefroren, der Stand bleibt, wie er war. Steht NACH dem Lesen über die
+   * Mitglieder-Klinke — wer den Kommentar nicht sehen darf, erfährt auch
+   * nichts über sein Thema.
+   */
+  await assertContentWritable(event, target.targetType, target.targetId)
+
   // DIE EIGENE STIMME: gesucht über `userId` = Konto. Nur eine so gefundene
   // Zeile wird unten geändert oder entfernt (ihre Id, aus dieser Anfrage).
   const found = await db.find<CommentVote>(VOTES_TABLE, [
