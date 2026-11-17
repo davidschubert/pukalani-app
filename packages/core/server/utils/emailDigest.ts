@@ -3,6 +3,7 @@ import { notificationMailedSeparately } from '../../shared/communityRemoval'
 import { communityIdsNeedingHost } from '../../shared/notificationLinks'
 import { normalizeTimezonePref } from '../../shared/timezone'
 import { resolveCommunityHosts } from './communityHost'
+import { resolveFormerMembersOfTenant } from './communityMembership'
 import { resolveSiteLinkBase } from './siteOrigin'
 
 /**
@@ -67,6 +68,41 @@ export interface DigestSweepResult {
 
 let sweepRunning = false
 
+/** Schlüssel „diese Community, dieser Empfänger" — für das Set der Entfernten. */
+function formerKey(communityId: string, recipientId: string): string {
+  return `${communityId}\u0000${recipientId}`
+}
+
+/**
+ * Welche (Community, Empfänger)-Paare dieses Laufs betreffen ein ENTFERNTES
+ * Konto? (MM1 b, 2026-11-17)
+ *
+ * `notify()` schreibt für Entfernte nichts mehr — aber was VOR dem Entzug
+ * entstand, liegt ungelesen in der Tabelle (die Glocke dieser Community kann
+ * die Person nicht mehr öffnen) und käme mit der nächsten Sammel-Mail doch
+ * noch an. Deshalb fragt auch der Lauf, gebündelt: EINE Abfrage je Community
+ * mit allen ihren Empfängern, nicht eine je Zeile. Mandantenlose Zeilen
+ * (`_account`, Bestand ohne Stempel) betrifft das nicht. Fail-soft wie der
+ * Vertrag selbst: ohne Antwort bleibt die Zeile in der Mail.
+ */
+async function formerRecipients(rows: ReadonlyArray<{ communityId?: string, recipientId: string }>): Promise<Set<string>> {
+  const recipientsByCommunity = new Map<string, Set<string>>()
+  for (const row of rows) {
+    for (const communityId of communityIdsNeedingHost([row])) {
+      const recipients = recipientsByCommunity.get(communityId) ?? new Set<string>()
+      recipients.add(row.recipientId)
+      recipientsByCommunity.set(communityId, recipients)
+    }
+  }
+  const former = new Set<string>()
+  for (const [communityId, recipients] of recipientsByCommunity) {
+    for (const recipientId of await resolveFormerMembersOfTenant(communityId, [...recipients])) {
+      former.add(formerKey(communityId, recipientId))
+    }
+  }
+  return former
+}
+
 export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
   const result: DigestSweepResult = { candidates: 0, sent: 0, skipped: 0, errors: 0 }
   // Reentranz-Guard (Single-Instanz, wie rate-limit dokumentiert): Plugin-
@@ -105,6 +141,8 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
     // der Lauf hat keine Anfrage, der Site-Resolver braucht keine.
     const appBase = await resolveSiteLinkBase()
     const hosts = await resolveCommunityHosts(communityIdsNeedingHost(unread.rows))
+    // Entfernte Konten EINMAL für den ganzen Lauf (MM1 b) — siehe formerRecipients.
+    const former = await formerRecipients(unread.rows)
 
     for (const [recipientId, rows] of byRecipient) {
       try {
@@ -121,7 +159,10 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
         // eine liegengebliebene ungelesene Notification in jeder Mail.
         // Typen, deren Mail ihr Absender selbst verschickt (SEC-030 Teil 2,
         // `notificationMailedSeparately`), kämen sonst ein zweites Mal an.
-        const fresh = rows.filter(row => Date.parse(row.$createdAt) > lastAt && !notificationMailedSeparately(row.type))
+        // Und nichts aus einer Community, aus der der Empfänger entfernt ist.
+        const fresh = rows.filter(row => Date.parse(row.$createdAt) > lastAt
+          && !notificationMailedSeparately(row.type)
+          && !former.has(formerKey(row.communityId ?? '', row.recipientId)))
         if (fresh.length === 0) { result.skipped++; continue }
 
         // Zeitpunkte in SEINER Zone, wenn er eine gewählt hat (BE-018) — aus

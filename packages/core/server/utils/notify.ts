@@ -1,6 +1,8 @@
 import { ID, Permission, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { type NotifyScope, notificationScopeValue } from '../../shared/notificationScope'
+import { NOTIFICATION_SCOPE_ACCOUNT, NOTIFICATION_SCOPE_UNKNOWN, type NotifyScope, notificationScopeValue } from '../../shared/notificationScope'
+import { communityAccessMemory } from './communityJoin'
+import { resolveFormerMembersOfTenant } from './communityMembership'
 import { useTenant } from './tenant'
 
 export interface NotifyInput {
@@ -72,6 +74,16 @@ export interface NotifyInput {
    * `notificationMailedSeparately` (shared/communityRemoval.ts).
    */
   mail?: 'preference' | 'skip'
+  /**
+   * WAS GILT, WENN DER EMPFÄNGER AUS DIESER COMMUNITY ENTFERNT IST (MM1 b,
+   * 2026-11-17). Default `'skip'`: keine Glocken-Zeile und keine Mail — wem
+   * der Zugang entzogen wurde, den erreicht die Community nicht mehr (eine
+   * Antwort auf einen alten Kommentar trug sonst einen Auszug des neuen
+   * Textes per Mail hinaus). `'deliver'`: trotzdem zustellen — NUR für den
+   * Rückweg, die neue Einladung in dieselbe Community (`siteInvite`).
+   * Wirkt nur bei `scope: 'tenant'` mit einem Community-Stempel.
+   */
+  formerMember?: 'skip' | 'deliver'
 }
 
 export interface NotifyResult {
@@ -88,6 +100,13 @@ export interface NotifyResult {
    * zurückbuchen oder nicht), braucht diese Unterscheidung (SEC-030 Teil 2).
    */
   duplicate?: true
+  /**
+   * Nur bei `created: false`: BEWUSST nicht geschrieben, weil der Empfänger
+   * aus dieser Community entfernt ist (MM1 b). Kein Fehlschlag — ein Aufrufer,
+   * der Störungen nachholt (Termin-Erinnerungen), darf das nicht als Störung
+   * zählen, sonst holte er es jede Stunde wieder nach.
+   */
+  skipped?: 'former_member'
 }
 
 /** Appwrites „gibt es schon" — bei fester `rowId` die einzige Quelle eines 409. */
@@ -131,6 +150,33 @@ export async function notify(event: H3Event | undefined, input: NotifyInput): Pr
       ? input.communityId
       : (tenant?.mode === 'pool' ? tenant.tenantId : null)
     const tenantId = notificationScopeValue(input.scope, scopeTenantId)
+
+    // ENTFERNT ⇒ NICHTS MEHR AUS DIESER COMMUNITY (MM1 b). Vor dem Schreiben,
+    // damit weder Zeile noch Mail entsteht. Gefragt wird über den Stempel —
+    // derselbe Weg mit und ohne Request (communityMembership.ts). Fail-soft:
+    // ohne Antwort geht die Meldung raus wie bisher.
+    if (
+      input.scope === 'tenant'
+      && input.formerMember !== 'deliver'
+      && tenantId !== NOTIFICATION_SCOPE_ACCOUNT
+      && tenantId !== NOTIFICATION_SCOPE_UNKNOWN
+    ) {
+      // ERST DIE FRISCHE NOTIZ, DANN DER RESOLVER: der cacht je Konto 60 s, auch
+      // „nicht ehemalig". Ohne die Notiz ginge in der Minute nach dem Entzug
+      // noch jede Antwort an die entfernte Person — und nach einer angenommenen
+      // neuen Einladung bliebe sie eine Minute lang stumm. Die Notiz kennt die
+      // Community nur über ihre Kennung, die es nur im Request gibt (und nur,
+      // wenn die Meldung in DIESE Community gehört); ein Lauf ohne Request
+      // fragt allein den Resolver. Dieselbe Reihenfolge wie beim Erkennen
+      // entfernter Konten (`detectCommunityRemoval`).
+      const here = tenant?.mode === 'pool' && tenant.tenantId === tenantId ? (tenant.communityId ?? '') : ''
+      const memory = here ? communityAccessMemory(here, input.recipientId) : null
+      if (memory === 'removed') return { created: false, skipped: 'former_member' }
+      if (memory !== 'readmitted') {
+        const former = await resolveFormerMembersOfTenant(tenantId, [input.recipientId])
+        if (former.has(input.recipientId)) return { created: false, skipped: 'former_member' }
+      }
+    }
 
     const data = {
       recipientId: input.recipientId,

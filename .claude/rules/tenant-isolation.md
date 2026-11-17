@@ -318,6 +318,28 @@ paths:
   ohne `H3Event` aufrufbar und nimmt den Ablage-Wert per `communityId`
   explizit entgegen (ein Sweep hat keinen Mandanten-Kontext); ACHTUNG, das ist
   `communities.tenantId` (`t-…`), nicht `communities.$id`.
+- ENTFERNT ⇒ AUCH KEINE BENACHRICHTIGUNG MEHR (MM1 b, seit 2026-11-17): gemessen
+  auf der Bühne — eine Antwort auf den alten Kommentar einer entfernten Person
+  schrieb weiter eine Glocken-Zeile und eine Mail mit einem Auszug. Jetzt fragt
+  `notify()` bei `scope: 'tenant'` VOR dem Schreiben, ob der Empfänger aus der
+  Community des Stempels entfernt ist: keine Zeile, keine Mail, Ergebnis
+  `{ created: false, skipped: 'former_member' }` (kein Fehlschlag — wer
+  Störungen nachholt, wie die Termin-Erinnerung, zählt es nicht). Reihenfolge
+  wie bei `detectCommunityRemoval`: erst die frische Notiz im Request
+  (`communityAccessMemory`: „gerade entzogen" ⇒ aus, „wieder aufgenommen" ⇒
+  zustellen), dann der Vertrag `resolveFormerMembersOfTenant(stempel, konten)`
+  (`core/server/utils/communityMembership.ts`) — er arbeitet OHNE Request über
+  `communities.tenantId`, weil Läufe keinen Mandanten haben (Implementierung
+  `createFormerMembersByTenantResolver` im control-Layer, teilt Regel und
+  60-s-Cache mit dem Zeichen „ehemalig"). Die Sammel-Mail fragt gebündelt je
+  Community und lässt aus, was vor dem Entzug liegen blieb. FAIL-SOFT (bewusst
+  anders als die Sperren): ohne Antwort des Control Plane geht die Meldung
+  raus — sonst verlöre bei einer Störung jedes Mitglied seine Antworten. EINE
+  Ausnahme stellt trotzdem zu: die neue Einladung (`formerMember: 'deliver'`,
+  `siteInvite`), sie ist der Rückweg. Ein neuer `notify()`-Aufruf braucht
+  nichts zu tun. Beweise: `packages/core/tests/notifyFormerMember.test.ts`,
+  `packages/onboarding/scripts/verify-removed-notifications.mjs` (Bühne, mit
+  Gegenprobe; ohne den registrierten Resolver wird die letzte Prüfung rot).
 - MAIL-LINKS FOLGEN DERSELBEN ABLAGE (D5, seit 2026-08-01): eine Benachrichtigungs-
   MAIL verlinkt auf den Host DER COMMUNITY, nicht mehr auf `public.appUrl`. Pure
   Regel `core/shared/notificationLinks.ts` (dieselben drei Spaltenwerte:
