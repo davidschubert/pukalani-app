@@ -229,6 +229,16 @@ Ist die Arbeit doppelt, wird der EIGENE Commit fallen gelassen, nicht gegen die
 fremde Lösung gemergt. Was der Nachbar uncommittet offen hat, wird NIE
 angefasst (kein stash, kein reset) — notfalls warten.
 
+VOR JEDEM MERGE GEGEN DEN NEUESTEN STAND TESTEN (Davids Entscheidung
+2026-11-17, DECISION-LOG): zwei Pull Requests, die einzeln grün sind, können
+`main` zusammen rot machen — GitHub prüft einen Zweig gegen den Stand, von dem
+er abzweigt, nicht gegen den, in den er hineinläuft (PR 233 und PR 237: elf
+rote Tests, eine Stunde ohne Ausliefern). Deshalb direkt vor `gh pr merge`:
+`git fetch`, `git merge origin/main` lokal (ohne zu pushen genügt
+`--no-commit` und danach `--abort`), die Pakete testen, die `main` seit dem
+Abzweigen berührt hat, und erst dann zusammenführen. Die Frage „läuft gerade
+ein Ausliefern?" und der Merge stehen in ZWEI Befehlen.
+
 NACH JEDEM main-PUSH: vier Checks (Test/Lint/Typecheck/E2E) — seit 2026-11-13
 müssen ALLE VIER grün sein, sonst wird nicht ausgeliefert (P07; vorher hielten
 nur Test und E2E auf). Der Deploy feuert per workflow_run auf Test UND E2E,

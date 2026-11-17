@@ -7,6 +7,44 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-17 — Tests über den echten Kundenpfad (P27): die Bühne läuft mit, hält aber noch nichts auf
+
+**Anlass:** Gesamtaudit, Paket P27 (OPS-009). Seit dem 2026-11-17 gibt es einen
+sechsten automatischen Lauf, „Bühne (Kundenpfad)": Er baut zwei
+Probe-Communities auf und fährt bei jeder Änderung 30 Beweis-Skripte dagegen,
+nachts zehn weitere. Und am selben Tag machten zwei Pull Requests, die einzeln
+grün waren, `main` zusammen rot (PR 233 und PR 237; eine Stunde ohne
+Ausliefern).
+
+**Davids Entscheidungen (eine Runde zum Anklicken, je die empfohlene Antwort):**
+- **Der Bühnen-Lauf wird noch keine Pflicht-Prüfung.** Er läuft mit und öffnet
+  auf `main` und nachts ein Issue (`buehne-alarm`), wenn er rot ist, hält aber
+  weder das Zusammenführen noch das Ausliefern auf. Nach zwei Wochen
+  Beobachtung (ab dem 2026-12-01) wird neu entschieden. Verworfen: sofort
+  Pflicht (eine veraltete Probe könnte jede Änderung aufhalten); dauerhaft nur
+  Hinweis.
+- **GitHub erzwingt NICHT, dass ein Zweig vor dem Zusammenführen auf dem
+  neuesten Stand ist.** Die Sitzungen prüfen selbst: vor jedem Merge
+  `origin/main` einmischen und die betroffenen Pakete testen (Regel in
+  CLAUDE.md, Abschnitt Git). Verworfen: die GitHub-Einstellung — sie kostet
+  je Änderung rund fünf Minuten und zwingt gleichzeitige Sitzungen in eine
+  Reihe.
+
+**Beim Zuschnitt entschieden (ohne Frage, durch die Paket-Entscheidung gedeckt):**
+- Die Bühne ist ein eigener Lauf und nicht Teil der Pflicht-Prüfung `e2e` —
+  kein Pull Request wartet länger als vorher.
+- Ein roter Beweis wird nie gestrichen: Regel geändert ⇒ die Prüfung folgt
+  ihr; Programm falsch ⇒ das Skript steht mit Grund auf „von Hand", der Fehler
+  wird gemeldet.
+- Rollen-Tests sind Pflicht für jede neue schreibende oder personenbezogene
+  Route; der Bestand ohne Test darf nur schrumpfen.
+
+**Wieder prüfen:** ab dem 2026-12-01 — wie oft war der Bühnen-Lauf rot, und
+wie oft lag es am Skript statt am Programm? Dann die Frage „Pflicht?" erneut
+stellen (OPEN-ITEMS BT1 c).
+
+---
+
 ## 2026-11-16 — Insights (P19): Änderungshinweis freiwillig, Vorschlag per Knopf, KI-Prüfung später
 
 **Anlass:** Gesamtaudit, Paket P19. Die Entscheidung „Änderungen an
