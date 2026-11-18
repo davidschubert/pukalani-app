@@ -165,3 +165,13 @@ paths:
   Binärdatei mit Prüfsumme gepinnt, Ausnahmen in `.gitleaksignore` (nur
   geprüfte Testwerte; ein echtes Geheimnis wird rotiert, nie eingetragen).
   Lokal: `pnpm check:secrets` (braucht `brew install gitleaks`).
+  „DIE GANZE HISTORIE" HEISST: JEDER ZWEIG AUF ORIGIN (2026-11-18 erwischt):
+  ein Zweig eines Helfers mit einem erfundenen Testwert in einer Variable
+  namens `SECRET` machte die Prüfung dreizehn Minuten lang auf `main` und in
+  JEDEM Pull Request rot — und hielt damit jedes Ausliefern auf. Vor dem
+  ERSTEN Push eines Zweigs: `gitleaks git --no-banner --redact --exit-code 1
+  --log-opts="origin/main..HEAD" .` Testwerte, die wie ein Geheimnis
+  aussehen sollen, nicht in eine Variable legen, deren Name `secret`,
+  `token`, `key` oder `password` enthält. Kur, wenn es passiert ist: den
+  Zweig auf origin löschen, sauber neu aufsetzen (ein Commit ohne den Wert),
+  die roten Läufe neu starten.

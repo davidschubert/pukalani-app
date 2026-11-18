@@ -2,14 +2,15 @@
 
 Zwei SSH-Schlüssel verbinden GitHub Actions mit den Servern. Dieses Runbook
 sagt, welcher wo liegt, was er darf und wie man ihn tauscht, ohne das
-Ausliefern anzuhalten. Stand: 2026-11-14 (GA1 P08, SEC-041/SEC-042).
+Ausliefern anzuhalten. Stand: 2026-11-18 (GA1 P08, SEC-041/SEC-042; seit
+N12 tragen beide Schlüssel auf app-prod einen festen Befehl).
 
 ## 1 · Was es gibt
 
 | Schlüssel | Secret | Umgebung bei GitHub | Liegt auf | Darf dort |
 | --- | --- | --- | --- | --- |
-| Ausliefern | `DEPLOY_SSH_KEY` | `production` | app-prod, Benutzer `ploi` | Befehle und rsync, ohne Weiterleitungen und Terminal (`restrict`) |
-| Wächter | `WATCH_SSH_KEY` | `production-watch` | app-prod, Benutzer `ploi` | wie oben (`restrict`) |
+| Ausliefern | `DEPLOY_SSH_KEY` | `production` | app-prod, Benutzer `ploi` | nur `ops/app-release.sh` (`command=…`, `restrict`): die Worte des Auslieferns, kein rsync, keine freie Befehlszeile (§ 4) |
+| Wächter | `WATCH_SSH_KEY` | `production-watch` | app-prod, Benutzer `ploi` | nur `ops/app-watch-gate.sh` (`command=…`, `restrict`): feste, nur lesende Worte (§ 4) |
 | Wächter | derselbe | `production-watch` | appwrite-prod, Benutzer `ploi` | nur das Tor-Skript (`command=…`, `restrict`) |
 
 Dazu in `production-watch`: `PRODUCTION_WATCH_HEARTBEAT_URL`,
@@ -39,12 +40,12 @@ tauscht ihn (§ 2).
    `fonts` und `deliver` haben den Schlüssel, `build` hat ihn nicht.
 3. Jede fremde Action ist über einen Commit eingebunden.
 
-**Warum der Ausliefer-Schlüssel nicht enger ist:** Er führt auf dem Server
-den Symlink-Wechsel und `pm2` aus und braucht dafür eine Shell. Enger ginge
-es nur mit einem festen Ausliefer-Skript auf dem Server. Der
-Wächter-Schlüssel auf app-prod schickt seit 2026-11-18 nur noch feste Worte an
-ein Tor-Skript (§ 4, „Das Wächter-Tor"); beschränkt wird er, sobald das Tor
-eingespielt ist und ein Wächter-Lauf damit grün war.
+**Kein CI-Schlüssel hat eine Shell (seit 2026-11-18).** Bis dahin führten
+beide auf app-prod freie Befehle aus: der Ausliefer-Schlüssel für
+Symlink-Wechsel und `pm2`, der Wächter-Schlüssel, weil zwei Prüf-Skripte sich
+selbst hinüberkopierten. Jetzt führt sshd für jeden der beiden genau EIN
+Skript aus (§ 4). Was das beim Ausliefer-Schlüssel NICHT ist: ein Schutz
+davor, dass er Programm auf den Server bringt — das ist seine Aufgabe.
 
 ## 2 · Tauschen (beide Schlüssel, gleiches Verfahren)
 
@@ -66,9 +67,10 @@ Fehler kostet bis dahin nichts.
       Optionen stehen VOR dem Schlüssel, alles in EINER Zeile.
 
       ```bash
-      # app-prod: beide Schlüssel
+      # app-prod: beide Schlüssel, jeder mit seinem festen Befehl
       ssh ploi@49.13.211.173 'cp ~/.ssh/authorized_keys ~/.ssh/authorized_keys.bak-$(date +%F)'
-      { printf 'restrict '; cat "$D/deploy.pub"; printf 'restrict '; cat "$D/watch.pub"; } \
+      { printf 'command="/home/ploi/ops/app-release.sh",restrict '; cat "$D/deploy.pub";
+        printf 'command="/home/ploi/ops/app-watch-gate.sh",restrict '; cat "$D/watch.pub"; } \
         | ssh ploi@49.13.211.173 'cat >> ~/.ssh/authorized_keys'
 
       # appwrite-prod: nur der Wächter, mit festem Befehl
@@ -80,8 +82,10 @@ Fehler kostet bis dahin nichts.
       Vorher prüfen, dass die Datei mit einem Zeilenumbruch endet, sonst
       klebt die neue Zeile an der letzten.
 - [ ] **3. Mit dem neuen Schlüssel prüfen**, bevor irgendetwas umgestellt
-      wird: `ssh -i "$D/deploy" -o IdentitiesOnly=yes ploi@49.13.211.173 true`
-      (Exit 0), dasselbe mit `watch`. Auf appwrite-prod:
+      wird: `ssh -i "$D/deploy" -o IdentitiesOnly=yes ploi@49.13.211.173
+      /home/ploi/ops/app-release.sh list help` zeigt die Stände, `… 'echo frei'`
+      endet mit Exit 64; mit `watch`: `… /home/ploi/ops/app-watch-gate.sh sums`
+      zeigt die Summen, `… 'echo frei'` endet mit Exit 64. Auf appwrite-prod:
       `ssh -i "$D/watch" -o IdentitiesOnly=yes ploi@188.245.61.155 probe`
       zeigt die Probe, ein anderes Wort wird mit Exit 64 abgelehnt.
 - [ ] **4. Secrets setzen** (der Wert kommt aus der Datei, nie aus der
@@ -161,14 +165,16 @@ ssh ploi@188.245.61.155 'chmod 755 ~/ops/cron-check.sh && ~/bin/pukalani-cert-ga
 
 ## 4 · Feste Befehle auf app-prod
 
-**Stand 2026-11-18: Übergang.** Die Handgriffe des Auslieferns (Stand
-empfangen, Verweis umlegen, `pm2` neu laden, alte Stände wegräumen) stehen in
-EINER Datei, `ops/app-release.sh`. Der Rückweg `ops/rollback.sh` schickt sie
-bei jedem Aufruf selbst mit; für das Ausliefern liegt sie von Hand eingespielt
-auf dem Server. Liegt sie dort, läuft `deploy.yml` über sie; liegt sie nicht
-dort, nimmt der Workflow die freien Befehle wie bisher. Erst wenn ein echtes
-Ausliefern über das Skript grün war, fällt der alte Weg aus dem Workflow, und
-erst danach wird der Schlüssel auf das Skript beschränkt.
+Die Handgriffe des Auslieferns (Stand empfangen, Verweis umlegen, `pm2` neu
+laden, alte Stände wegräumen) stehen in EINER Datei, `ops/app-release.sh`.
+Der Rückweg `ops/rollback.sh` schickt sie bei jedem Aufruf selbst mit; für das
+Ausliefern liegt sie von Hand eingespielt auf dem Server und ist seit dem
+2026-11-18 der feste Befehl des Ausliefer-Schlüssels. `deploy.yml` kennt
+keinen anderen Weg mehr: fehlt die Datei auf dem Server, scheitert jedes
+Ausliefern (der Rückweg nicht). Der Schritt „Ist der Ausliefer-Schlüssel auf
+das Skript beschränkt?" am Ende des Jobs `deliver` schickt bei jedem
+Ausliefern eine harmlose freie Befehlszeile und wird rot, wenn der Server sie
+ausführt.
 
 Einspielen und Aktualisieren (von Hand, über den eigenen Zugang):
 
@@ -211,13 +217,15 @@ Rückweg), dann einspielen.
 
 ### Das Wächter-Tor
 
-**Stand 2026-11-18: Übergang.** Die sechs Prüf-Skripte des Wächters
+Die sechs Prüf-Skripte des Wächters
 (`verify-site-env`, `verify-stale-keys`, `verify-instance-admins`,
 `verify-mail-breaker`, `verify-app-signals`, `verify-server-config`) schicken
 auf app-prod nur noch feste Worte an `ops/app-watch-gate.sh`, das von Hand
-unter `/home/ploi/ops/app-watch-gate.sh` liegt — mit DERSELBEN Befehlszeile
-`ssh <server> /home/ploi/ops/app-watch-gate.sh <wort> …`, ob der Schlüssel
-noch frei ist oder schon den festen Befehl trägt. Jedes Wort liest nur:
+unter `/home/ploi/ops/app-watch-gate.sh` liegt und seit dem 2026-11-18 der
+feste Befehl des Wächter-Schlüssels ist. Die Befehlszeile ist
+`ssh <server> /home/ploi/ops/app-watch-gate.sh <wort> …` — dieselbe, ob ein
+Schlüssel frei ist (der eigene Zugang) oder den festen Befehl trägt. Jedes
+Wort liest nur:
 
 | Wort | führt auf dem Server aus |
 | --- | --- |
@@ -238,10 +246,8 @@ antwortet das Tor „Nicht geprüft" mit Exit 6, und der Wächter wird rot, nich
 grün. Alles andere, auch `scp`, `rsync` und jede freie Befehlszeile, endet
 mit „Abgelehnt: erlaubt sind …" und Exit 64.
 
-Einspielen und Aktualisieren (von Hand, über den eigenen Zugang). VOR dem
-Zusammenführen der Änderung, die die Prüf-Skripte auf das Tor umstellt, und
-erst NACHDEM ein Ausliefern die beiden `verify-*.mjs` unter
-`<site>/ops/` abgelegt hat:
+Einspielen und Aktualisieren (von Hand, über den eigenen Zugang; die beiden
+`verify-*.mjs` legt das Ausliefern unter `<site>/ops/` ab):
 
 ```bash
 ssh ploi@49.13.211.173 'test ! -e ~/ops/app-watch-gate.sh || cp -p ~/ops/app-watch-gate.sh ~/ops/app-watch-gate.sh.vorher-$(date +%F)'
@@ -250,17 +256,17 @@ ssh ploi@49.13.211.173 'chmod 755 ~/ops/app-watch-gate.sh && ~/ops/app-watch-gat
 shasum -a 256 ops/app-watch-gate.sh ops/apps.conf   # dieselben Summen wie in der Zeile `sums`
 ```
 
-Danach ein Wächter-Lauf (`gh workflow run production-watch.yml`, Job `server`
-grün). Erst dann der feste Befehl — die Zeile des Wächter-Schlüssels in
-`~/.ssh/authorized_keys` (vorher eine Kopie der Datei daneben legen):
+Danach ein Wächter-Lauf (`gh workflow run production-watch.yml --ref main`,
+Job `server` grün). Die Zeile des Wächter-Schlüssels in
+`~/.ssh/authorized_keys`:
 
 ```text
 command="/home/ploi/ops/app-watch-gate.sh",restrict ssh-ed25519 AAAA… pukalani-ci-watch-…
 ```
 
-Der Schritt „Ist der Wächter-Schlüssel beschränkt?" im Job `server` zeigt bis
-dahin eine Warnung und danach „beschränkt". Ihn scharf zu stellen (rot statt
-Warnung) ist eine eigene, spätere Änderung.
+Der Schritt „Ist der Wächter-Schlüssel beschränkt?" im Job `server` schickt
+täglich eine harmlose freie Befehlszeile und wird rot, wenn der Server sie
+ausführt.
 
 Nach JEDER Änderung an `ops/app-watch-gate.sh` oder am ssh-Weg der sechs
 Prüf-Skripte: `ops/app-watch-gate-attrappe.sh` (Wegwerf-Container mit echtem
@@ -274,7 +280,57 @@ stellen und, falls nötig, die Kopie `…vorher-<Datum>` zurücklegen. Die
 Prüf-Skripte bleiben auf dem Tor; ohne Tor auf dem Server ist der Wächter rot,
 bis es wieder liegt.
 
+### Was von Hand auf den Servern liegt (Stand 2026-11-18) — und der Weg zurück
+
+| Server | Datei | Quelle im Repo | Seit N12 | Zurück |
+| --- | --- | --- | --- | --- |
+| app-prod | `~/ops/app-release.sh` | `ops/app-release.sh` | neu; Kopie der ersten Fassung `app-release.sh.vorher-n12` | NICHT löschen, solange der Workflow nur diesen Weg kennt: erst die Änderung am Workflow zurücknehmen (`git revert`), dann die Zeile in `authorized_keys` |
+| app-prod | `~/ops/app-watch-gate.sh` | `ops/app-watch-gate.sh` | neu | wie oben: erst die Prüf-Skripte zurück auf freie Befehle, dann die Zeile |
+| app-prod | `~/.ssh/authorized_keys` | — | zwei Zeilen mit `command=…`; Kopie `authorized_keys.vorher-n12` | die zwei Zeilen wieder auf `restrict` allein (oder die Kopie zurücklegen, wenn seither kein Schlüssel dazukam) — beide Skripte laufen auch mit freiem Schlüssel |
+| app-prod | `~/ops/apps.conf`, `app-env-bundle.sh`, `appwrite-backup.pub.asc` | gleichnamig unter `ops/` | unverändert (seit N11) | — |
+| appwrite-prod | `~/bin/pukalani-cert-gate.sh` | `ops/appwrite-cert-gate.sh` | Wort `sums`; Kopie `pukalani-cert-gate.sh.vorher-n12` | Kopie zurücklegen (der Vergleich meldet dann „nicht geprüft") |
+| appwrite-prod | `~/ops/cron.conf` | `ops/cron.conf` | auf den Stand des Repos; Kopie `cron.conf.vorher-n12` | Kopie zurücklegen |
+
+Der eigene Zugang `ploi@…` steht in keiner dieser Zeilen und ist der Weg
+zurück, wenn sich ein beschränkter Schlüssel aussperrt.
+
+### Wie umgestellt wurde (2026-11-18, zum Nachmachen bei einem dritten Schlüssel)
+
+Jede Stufe für sich, dazwischen ein echter, grüner Lauf:
+
+1. Das Skript ins Repo, der Workflow mit einer Weiche (liegt das Skript auf
+   dem Server? sonst der alte Weg) — ein Ausliefern über den ALTEN Weg mit dem
+   neuen Workflow.
+2. Skript von Hand auf den Server — das nächste Ausliefern lief darüber.
+3. Der alte Weg aus dem Workflow — wieder ein Ausliefern.
+4. Erst dann die Zeile in `authorized_keys` (Kopie `authorized_keys.vorher-n12`
+   daneben; geändert per `awk` in eine neue Datei, vor dem Umbenennen
+   gegengeprüft: gleiche Zeilenzahl, dieselben Fingerabdrücke, genau zwei
+   Zeilen anders) — und noch ein Ausliefern und ein Wächter-Lauf.
+
+Der Aufruf MIT dem Pfad des Skripts ist der Kniff, der Stufe 4 ohne Änderung
+am Workflow möglich macht: unter dem festen Befehl steht dieselbe Zeile in
+`SSH_ORIGINAL_COMMAND`, und das Skript überspringt seinen eigenen Pfad.
+
 ## 5 · Fallen
+
+- **Eine von Hand eingespielte Datei veraltet still — außer jemand
+  vergleicht.** Ändert sich `ops/app-release.sh`, `ops/app-watch-gate.sh`,
+  `ops/apps.conf` oder eine der Dateien auf appwrite-prod im Repo, gehört das
+  Einspielen dazu; der tägliche Blick „Liegen auf den Servern die Dateien aus
+  dem Repo?" (`scripts/ops/verify-server-scripts.mjs`, Worte `sums` in beiden
+  Toren) wird sonst am nächsten Morgen rot. Das ist gewollt.
+- **Ein Zweig mit einem erfundenen Testwert macht `secrets` für ALLE rot.**
+  Die Prüfung liest jeden Zweig auf origin. Ein Wert, der wie ein Schlüssel
+  aussieht, in einer Variable namens `SECRET`, `TOKEN` oder `KEY` hielt am
+  2026-11-18 dreizehn Minuten lang jedes Ausliefern und jeden Pull Request
+  auf. Vor dem ersten Push eines Zweigs: `gitleaks git --no-banner --redact
+  --exit-code 1 --log-opts="origin/main..HEAD" .`
+- **`/dev/stderr` ist unter Linux kein Pfad, wenn die Fehlerausgabe ein
+  Socket ist** (so startet Node Kindprozesse, also jeder vitest-Test eines
+  Shell-Skripts). `2>>/dev/stderr` scheitert dort mit „No such device or
+  address"; am Mac und in einem Container ohne Node fällt es nicht auf. Eine
+  eigene Nummer nehmen (`exec 8>&2`, dann `2>&8`).
 
 - **Ploi verwaltet `authorized_keys` mit.** Ein Schlüssel, der im Ploi-Panel
   angelegt wird, hat keine Optionen. Die CI-Schlüssel deshalb von Hand
@@ -285,8 +341,9 @@ bis es wieder liegt.
   ohne App-Änderung liefert nicht aus und beweist nichts; der Beweis ist
   der Build-SHA auf den Hosts.
 - **`scp` und ein fester Befehl vertragen sich nicht.** Ein Schlüssel mit
-  `command=` kann keine Dateien kopieren. Das ist auf appwrite-prod
-  gewollt.
+  `command=` kann keine Dateien kopieren. Das ist auf beiden Servern
+  gewollt; Dateien reisen als tar über die Standard-Eingabe eines Wortes
+  (`release-put`, `ops-put`, `fonts-put`).
 - **Umgebung und Zweig.** Ein Lauf von Hand von einem Arbeitszweig scheitert
   an der Umgebung. Das ist die Sperre, kein Fehler.
 - **GitHub gibt ein gespeichertes Secret nicht heraus.** Ein Secret zieht

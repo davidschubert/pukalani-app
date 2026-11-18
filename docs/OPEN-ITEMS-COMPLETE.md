@@ -30,6 +30,126 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N12 — Nacharbeiten „Ausliefer-Weg": CI1 (a, b, c), RW1 (c), SI1 (c), MG1 (c) ✅ 2026-11-18
+
+Der Weg, über den alle acht Seiten ihre neuen Fassungen bekommen, ist
+umgebaut — in Stufen, jede mit einem echten, grünen Lauf dazwischen, und jede
+Änderung auf einem Server mit Davids Klick. Pull Requests 328, 332, 335, 339,
+350 und dieser Abschluss. Keine Migration, kein neues Secret, kein neues
+Paket.
+
+**1 · Der tägliche Datenbank-Blick prüft spaltengenau (MG1 c, PR 328).**
+`scripts/ops/verify-schema-parity.mjs` vergleicht je Projekt die Spalten mit
+dem, was die Migrationen anlegen (`scripts/lib/migration-inventory.mjs`,
+Logik pur in `scripts/lib/schema-columns.mjs`) — aber nur für die Layer, die
+die App laut `site.manifest.ts` nutzt (dieselbe Auswahl wie der
+Migrations-Runner). Eine fehlende Soll-Spalte und eine Spalte ohne Soll sind
+rot; im öffentlichen Protokoll steht bei der zweiten nur Tabelle und Anzahl.
+Die alte Instanz-gegen-Instanz-Parität ist darin aufgegangen. Beweis: Lauf
+44260632671 von Hand, alle vier Projekte „spaltengleich mit dem Soll ihrer
+Layer" (account 48 Tabellen, admin 45, portfolio 19, branding 54).
+
+**2 · Der Lint-Lauf ist schneller (SI1 c, PR 335).** Die typisierte Regel
+`no-floating-promises` läuft als eigener Durchgang `pnpm lint:typed`
+(`eslint.typed.config.mjs`, `scripts/lint-typed.mjs`): je App EIN
+TypeScript-Programm statt 34 Aufbauten für acht Programme. Lokal unter
+gleicher Last 66 s → 39 s (Median), nach dem Merge gemessen rund 30 s statt
+45 s; in der CI die zwei Lint-Schritte 129 s → 75 s. Die Regel sieht dieselben
+1.178 Dateien wie vorher (verglichen über die berechnete Config je Datei);
+Gegenproben: ein absichtlicher Verstoß in `packages/core`, `packages/tickets`,
+`packages/posts` und `apps/control` wird gemeldet. Die Pflicht-Prüfung heißt
+weiter `lint`; ein Layer mit `server/` ohne Zuordnung bricht den Durchgang ab.
+
+**3 · Ein Skript für Ausliefern und Rückweg (CI1 b, RW1 c; PR 332, 339).**
+`ops/app-release.sh` trägt die Handgriffe auf dem Server: `release-put`
+(Stand empfangen — in ein FRISCHES Verzeichnis; ein Stand, der gerade läuft,
+wird nicht überschrieben: das war RW1 c), `ops-put`, `activate` (Verweis
+umlegen, `pm2` neu laden; scheitert der Neustart, liegt der Verweis wieder
+auf dem Stand davor — jetzt auch beim Ausliefern), `prune`, `fonts-get`,
+`fonts-put`, `list`. `deploy.yml` schickt nur noch diese Worte (kein `rsync`,
+keine freien Befehle), `ops/rollback.sh` schickt dieselbe Datei aus dem
+eigenen Checkout mit. Je App wartet ein zweiter Lauf auf den ersten; ein
+Abbruch mitten im Empfangen hinterlässt nichts, einer mitten im Umstellen
+wird auf dem Server zu Ende gebracht.
+
+**4 · Kein CI-Schlüssel hat mehr eine Shell (CI1 a, b; PR 350).** Auf dem
+App-Server führt sshd für den Ausliefer-Schlüssel nur `ops/app-release.sh`
+aus und für den Wächter-Schlüssel nur das neue `ops/app-watch-gate.sh` (neun
+feste, nur lesende Worte). Die sechs Prüf-Skripte des täglichen Wächters
+rufen das Tor auf; zwei davon kopierten sich vorher selbst hinüber und reisen
+jetzt mit dem Ausliefern. Beide Workflows schicken eine harmlose freie
+Befehlszeile und werden rot, wenn der Server sie ausführt.
+
+**5 · Der Wächter vergleicht, was von Hand auf den Servern liegt (CI1 c).**
+Neues Wort `sums` in beiden Toren, `scripts/ops/verify-server-scripts.mjs`
+als Blick 16: zwölf Dateien auf beiden Servern gegen das Repo, rot bei einer
+Abweichung. Beim ersten Lauf alle zwölf „wie im Repo".
+
+**Die Stufen und ihre Beweise** (alle 2026-11-18, UTC):
+
+| Stufe | Was | Beweis |
+| --- | --- | --- |
+| 1 | Skript im Repo, Workflow mit Weiche (PR 332); Skript noch nicht auf dem Server | Deploy 44264978424: „Weg: wie bisher", acht Hosts `d0bfc680`, `ok` |
+| 2 | Skript von Hand auf dem App-Server (08:27) | Deploy 44266894389: „Weg: festes Skript", sechs Apps empfangen/umgestellt/aufgeräumt, acht Hosts `cf1fc64f`, `ok` |
+| 3 | Alter Weg aus dem Workflow (PR 339, `fd42b8b6`) | Deploy 44277926568: acht Hosts `fd42b8b6`, `ok`; der Hinweis-Schritt warnt „noch nicht beschränkt" |
+| 4 | Wächter über das Tor (PR 350), Schlüssel noch frei | Wächter 44280890545 grün, zwölf Dateien „wie im Repo", Warnung „noch nicht beschränkt" |
+| 5 | Beide Zeilen in `authorized_keys` mit festem Befehl (10:01) | Wächter 44281361376 grün, „auf das Tor beschränkt"; Deploy 44281191205: acht Hosts `1bc7cb3d`, `ok`, „eine freie Befehlszeile wird abgelehnt" |
+| 6 | Rückweg-Übung an `platform` (10:17) | zurück 13 s, vor 14 s, 75 Abfragen an drei Hosts ohne Fehler; Gegenprobe Exit 3 |
+
+Vor jedem Server sah das Skript einen Wegwerf-Container mit echtem sshd
+(`ops/app-release-attrappe.sh`, 49 Prüfungen; `ops/app-watch-gate-attrappe.sh`,
+41): das ganze Ausliefern mit freiem und mit festem Befehl, `rsync`, `scp`
+und freie Zeilen abgelehnt, Abbruch mittendrin, zwei Läufe zur selben Zeit,
+fehlende Verzeichnisse, der Rückweg.
+
+**Außerhalb des Repos geändert** (je mit Kopie und Rückweg, Tabelle im
+Runbook [CI-SCHLUESSEL-TAUSCHEN.md](runbooks/CI-SCHLUESSEL-TAUSCHEN.md), § 4,
+„Was von Hand auf den Servern liegt"):
+auf app-prod `~/ops/app-release.sh` und `~/ops/app-watch-gate.sh` (neu) und
+zwei Zeilen in `~/.ssh/authorized_keys` (Kopie `authorized_keys.vorher-n12`);
+auf appwrite-prod das Tor mit dem Wort `sums` und die aktuelle `cron.conf`
+(Kopien `…vorher-n12`).
+
+**Kleinigkeiten aus CI1 (c), geschlossen:** Die alten Deploy-Auslöser in Ploi
+werden nicht neu erzeugt (DECISION-LOG 2026-11-18). Die zwei Mails des
+Probealarms vom 2026-11-14 stehen bei Resend als zugestellt (16:45 und 16:46
+UTC); ob sie im Postfach oder unter einem Filter lagen, sieht nur David.
+
+**Nicht geprüft:** der geplante Wächter-Lauf am nächsten Morgen (04:17 UTC)
+mit dem beschränkten Schlüssel — von Hand war er zweimal grün. Ein Ausliefern
+einer NEUEN App über das Skript (erste Lieferung, nur im Container). Ein
+Rückweg über eine Datenbank-Änderung hinweg.
+
+**Gelernt:** (1) **Der Aufruf mit dem Pfad des Skripts macht das Beschränken
+zu einer Zeile.** `ssh <server> /pfad/skript <wort>` ist dieselbe
+Befehlszeile, ob der Schlüssel frei ist oder das Skript sein fester Befehl
+(dann steht sie in `SSH_ORIGINAL_COMMAND`, und das Skript überspringt seinen
+eigenen Pfad). So lag zwischen „neuer Weg läuft" und „alter Zugang weg" keine
+Änderung am Workflow. (2) **Eine Weiche im Workflow („liegt das Skript
+schon?") erlaubt, Repo und Server getrennt umzustellen** — und fällt mit dem
+alten Weg wieder heraus, bevor der Schlüssel enger wird (unter dem festen
+Befehl kann sie nicht mehr fragen). (3) **Die Pflicht-Prüfung `secrets` liest
+jeden Zweig.** Ein Zweig eines Helfers mit einem erfundenen Wert in einer
+Variable namens `SECRET` hielt dreizehn Minuten lang jedes Ausliefern und
+jeden Pull Request aller Gruppen auf. Der Helfer hatte „fertig" gemeldet,
+ohne die Prüfungen seines eigenen Pull Requests anzusehen — vor dem ersten
+Push lokal `gitleaks … --log-opts="origin/main..HEAD"`, und ein Bericht eines
+Helfers ist erst mit `gh pr checks` wahr. (4) **`/dev/stderr` ist unter Linux
+kein Pfad, wenn die Fehlerausgabe ein Socket ist** — so startet Node seine
+Kindprozesse, also jeder vitest-Test eines Shell-Skripts. Am Mac und im
+Container ohne Node fiel es nicht auf; in der CI waren zwölf Tests rot.
+(5) **Wer eine Zeile eines Workflows ändert, lässt ALLE Tests des Pakets
+laufen, nicht die drei, die er kennt:** ein vierter Test las dieselbe
+`rsync`-Zeile. (6) **`pipefail` über `head | tar` kann ein Scheinfehler
+sein;** beurteilt werden die Entpacker, und die Teil-Ergebnisse gehören als
+Zahlen in die Meldung — ein Test, der einmal ohne Ausgabe rot war, ließ sich
+in 2.500 Wiederholungen nicht nachstellen (OPEN-ITEMS „MG1" b). (7) **Fetch
+und Merge in EINEM Befehl sind kein „gegen den neuesten Stand getestet":**
+zwischen beiden lag einmal ein fremder Merge. (8) **Von Hand eingespielte
+Dateien brauchen einen Vergleich, sonst veralten sie still** — die
+Zeitplan-Liste auf dem Datenbank-Server war zwei Tage alt, ohne dass etwas
+rot wurde.
+
 ### N13 — Nacharbeiten „Brand-Check im Hintergrund, Wege über der Wartezeit, Rollen-Tests": LL1 (b, c, d), KI1 (d) und BT1 (b) für brand, insights und market ✅ 2026-11-18
 
 Ein Eintrag aus Schritt 3 der offenen Punkte, neun Pull Requests und dieser

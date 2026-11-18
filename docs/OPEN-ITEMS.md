@@ -58,9 +58,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| CI1 | **Ausliefer-Weg: Nacharbeiten.** (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
-| RW1 | **Rückweg: Nacharbeiten.** Nur noch Kleinigkeiten: ein manueller Start mit dem laufenden Stand, die Übung an einer App mit Datenbank wiederholen. **Wartet auf:** CI1 (b), weil das feste Skript beide Wege zusammenführt. | Niedrig | S | Nein | [Einzelheiten](#rw1) |
-| MG1 | **Migrationen: Nacharbeiten.** (b) Ein Test des Rückweg-Skripts war auf `main` einmal ohne Grund rot — er zeigt jetzt Ausgabe und Exit-Code, die Ursache ist weiter offen (beobachten). (c) Den täglichen Blick spaltengenau prüfen lassen, je App nur für die Layer, die sie nutzt: gezählt am 2026-11-18, dort weicht heute keine Spalte ab. **Wartet auf:** (b) den nächsten roten Lauf, (c) nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#mg1) |
+| MG1 | **Tests von Shell-Skripten, die auf `main` ohne erkennbaren Grund rot waren.** Zweimal: der Test des Rückweg-Skripts (2026-11-16) und der Font-Cache-Fall des Ausliefer-Skripts (2026-11-18). Beide zeigen jetzt Ausgabe und Exit-Code; nachstellen ließ sich keiner. **Wartet auf:** den nächsten roten Lauf. | Niedrig | S | Nein | [Einzelheiten](#mg1) |
 
 **Bündel „Mails und Bremsen":**
 
@@ -97,12 +95,13 @@ am 2026-11-18, COMPLETE „N11").
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
-| SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"), (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll; (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
+| SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"), (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern (COMPLETE „N05") und das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (COMPLETE „N13") sind gebaut. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst. Rollen-Tests: `pages`, `apps/control` und die drei Einzelrouten sind seit dem 2026-11-18 ohne Bestand (COMPLETE „N14"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) erledigt: kein Layer hat mehr Routen ohne Rollen-Test (COMPLETE „N13" und „N14"), (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | NF1 | **Nebenfunde aus den Tests der Apps.** (a) Ticket-Kauf der Test-App: es fehlen Prüfungen, die die übrigen Termin-Routen tragen, (b) die Formulare von `apps/portfolio` und `apps/photos` haben noch nicht alle Bausteine der Regel für öffentliche Formulare, (c) Kleinigkeiten. Gefunden am 2026-11-18 (COMPLETE „N14"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#nf1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** Drei Dinge, die an einem Tag mit vielen parallelen Merges auffielen: der Start der Test-Server in der CI, die Geheimnis-Prüfung über alle Zweige, und das Ausliefern, das immer wieder neu beginnt. Nichts davon ist ein Fehler im Programm. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
+| LN1 | **Zwölf Routen-Dateien sieht der Lint-Lauf nicht.** Eine Ausnahme der Lint-Einrichtung für Ordner namens `public` trifft auch Routen-Ordner (`…/api/insights/public/`, `…/api/pages/public/`). Dort prüft weder der normale noch der typisierte Durchgang. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ln1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -266,67 +265,27 @@ Test-Konto. Was genau zu klicken ist, steht beim jeweiligen Eintrag:
 Nicht Teil der Runde, weil sie auf den ersten Artikel warten: die Proben aus
 BI2 und IN1 (b), siehe BI5.
 
-<a id="ci1"></a>
-
-**CI1 — Ausliefer-Weg: Nacharbeiten (aus dem Gesamtaudit, Paket P08).**
-
-- **(a) Wächter-Zugang auf dem App-Server enger fassen.** Der
-  Wächter-Schlüssel hat dort eine Shell (ohne Terminal und Weiterleitung),
-  weil zwei Prüf-Skripte sich selbst hinüberkopieren. Enger ginge es wie auf
-  dem Appwrite-Server: feste Worte über ein Tor-Skript, die Prüf-Skripte
-  liefert der Deploy mit. Ändert vier Skripte in `scripts/ops/`.
-- **(b) Ausliefern über ein festes Skript.** Dasselbe für den
-  Ausliefer-Schlüssel: Symlink-Wechsel und `pm2` als ein Skript auf dem
-  Server statt freier Befehle. Passt zum Vorhaben „Rückweg bei einer
-  schlechten Version".
-- **(c) Kleinigkeiten.** Die alten Deploy-Auslöser in Ploi neu erzeugen (die
-  Adressen standen nur in den gelöschten Einträgen; ein Klick je Site im
-  Panel). Ob die zwei Mails des Probealarms im Postfach lagen, ist nicht
-  nachgesehen. Das Tor-Skript auf dem
-  Appwrite-Server wird von Hand eingespielt; ein Wächter, der die Datei dort
-  mit `ops/appwrite-cert-gate.sh` vergleicht, fehlt.
-
-<a id="rw1"></a>
-
-**RW1 — Rückweg: Nacharbeiten (aus dem Gesamtaudit, Paket P10).**
-
-- **(c) Kleinigkeiten.** Ein manueller Start mit dem Commit, der gerade live
-  ist, schreibt in das Verzeichnis des laufenden Prozesses (besser: in ein
-  frisches Verzeichnis oder überspringen). Die Übung wiederholen, sobald
-  sich am Ausliefer-Weg etwas ändert, und einmal an einer App mit Datenbank
-  (`platform`). Der Punkt CI1 (b) „Ausliefern über ein festes Skript" würde
-  die Handgriffe von Ausliefern und Rückweg an einer Stelle zusammenführen;
-  heute stehen sie zweimal da (Workflow und `ops/rollback.sh`).
-
 <a id="mg1"></a>
 
-**MG1 — Migrationen: Nacharbeiten (aus dem Gesamtaudit, Paket P21).**
+**MG1 — Tests von Shell-Skripten, die auf `main` ohne erkennbaren Grund rot waren.**
+Gebaut am 2026-11-18 (COMPLETE „N12"): der tägliche Datenbank-Blick prüft
+jetzt spaltengenau, je App nur die Layer, die sie nutzt.
 
-- **(b) Ein fremder Test war einmal rot.** Nach dem ersten Merge von P21
+- **(b) Zwei Fälle, keine Ursache.** (1) Nach dem ersten Merge von P21
   scheiterte auf `main` `packages/core/tests/rollbackScript.test.ts` („legt den
   Verweis um …") mit leerer Ausgabe; im Pull Request und im zweiten Versuch
-  war er grün, lokal nicht nachstellbar. Die Ursache ist NICHT gefunden. Seit
-  dem 2026-11-17 schreibt der Test bei einem Fehlschlag je Skript-Lauf
-  Exit-Code, Signal, Dauer, ob der Prozess überhaupt startete, und die Ausgabe
-  ins Protokoll. Kommt es wieder: dort lesen, dann die Ursache suchen. Gehört
-  zu [RW1](#rw1).
-- **(c) Den täglichen Blick spaltengenau prüfen lassen.** Die Probe je Layer
-  sieht nur Tabellen und Spalten an EINER Stelle je Layer, keine Indizes,
-  Rechte oder Daten. Der Baustein für mehr ist da
-  (`scripts/lib/migration-inventory.mjs` liest alle Spalten aus den
-  Migrationen), angeschlossen ist er nicht. Gezählt am 2026-11-18 in den vier
-  echten Projekten (nur lesend), Soll gegen Ist: über ALLE Tabellen fehlen 40
-  von 1.644 Soll-Spalten, 2 stehen zusätzlich da — 8 in `account`, 34 in
-  `portfolio`, keine in `admin` und `branding`. Jede einzelne liegt in einer
-  Tabelle, deren Layer die App dort gar nicht nutzt (Alt-Tabellen in
-  `portfolio`, der eingefrorene Schatten `communities` und `tickets` in
-  `account`). Beschränkt auf die Layer, die die App nutzt, weicht in keinem
-  Projekt eine Spalte ab. **Empfehlung:** den Blick spaltengenau machen, je
-  App nur für ihre Layer (die Liste kennt der Migrations-Runner aus dem
-  `site.manifest.ts`). Er wäre heute grün und würde eine von Hand angelegte
-  oder vergessene Spalte melden. Die vier lesenden Schlüssel bleiben ohne
-  Ablaufdatum (Davids Entscheidung vom 2026-11-18: sie lesen nur den Aufbau
-  der Tabellen und die Anmelde-Regeln, keine Inhalte).
+  war er grün. (2) Am 2026-11-18 scheiterte auf `main` einmal
+  `packages/core/tests/appReleaseScript.test.ts` („ergänzt Schrift-Dateien nur
+  …", Exit 3 = „Archiv nicht lesbar"), in rund zwölf Läufen davor und danach
+  grün. Nachstellen ließ sich keiner: der zweite nicht in 2.500
+  Wiederholungen im Linux-Container (mit und ohne Node als Aufrufer, mit
+  Last). Beide Tests starten ein Shell-Skript aus vitest heraus. Seitdem
+  schreiben beide bei einem Fehlschlag Exit-Code und Ausgabe ins Protokoll;
+  das Ausliefer-Skript nennt zusätzlich die Teil-Ergebnisse seiner
+  Entpack-Pipe und beurteilt sie einzeln (ein `head`, das mit 141 endet, ist
+  kein Fehler mehr). Kommt es wieder: dort lesen, dann die Ursache suchen.
+  Bis dahin hält ein solcher Fehlschlag das Ausliefern auf, bis jemand den
+  Lauf neu startet ([CW1](#cw1)).
 
 <a id="ab1"></a>
 
@@ -875,11 +834,6 @@ Moderations-Label nach einer Herabstufung; seine Ops-Route ist gebremst.
   Entzug holt der Lauf nach. Ein ganzer Lauf gegen eine Bühne mit
   stillgelegter Community steht noch aus.
   Runbook: [LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md).
-- **(c) Lint-Lauf.** Mit der typisierten Regel dauert `pnpm -r lint` lokal
-  etwa 43 s statt 18 s (in der CI rund 2,5 Minuten für den ganzen Job). Ein
-  eigener Durchgang mit einem TypeScript-Programm je App käme zusammen auf
-  etwa 28 s, nimmt die Regel aber aus dem Lint des einzelnen Pakets. Kommt
-  mit dem Ausliefer-Weg (CI1), damit sich die Prüfungen nur einmal ändern.
 - **(d) Kleinigkeit.** Eine 503 trägt im Umschlag den Code `INTERNAL_ERROR`
   (es gibt keinen eigenen für 503).
 
@@ -1054,7 +1008,8 @@ als offene Punkte (`it.todo`).
 **CW1 — Wackler in CI und Ausliefern (beobachtet von der Gruppe N13 am 2026-11-18).**
 An diesem Tag führten drei Gruppen gleichzeitig zusammen. Drei Beobachtungen,
 jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit. (Ein
-vierter Wackler, der Test des Ausliefer-Skripts, ist am selben Tag behoben.)
+vierter Wackler, ein Test des Ausliefer-Skripts, steht mit dem, was dagegen
+getan ist, unter [MG1](#mg1).)
 
 - **(a) Die Test-Server starten in der CI nicht rechtzeitig.** E2E: „Timed
   out waiting 120000ms from config.webServer" (Pull Request 334 im ersten
@@ -1066,13 +1021,32 @@ vierter Wackler, der Test des Ausliefer-Skripts, ist am selben Tag behoben.)
 - **(b) Die Pflicht-Prüfung `secrets` liest alle Zweige.** Ein Fund in einem
   Zweig färbt jeden Pull Request rot, bis der Zweig weg ist (eine
   Viertelstunde am 2026-11-18). Empfehlung: nur die Historie des geprüften
-  Zweigs lesen — das ist eine Änderung am Workflow, also mit dem
-  Ausliefer-Weg zusammen (CI1).
-- **(c) Dichte Merges starten das Ausliefern immer wieder neu.** Jeder Merge
-  bricht den laufenden Lauf ab, und ein roter Test auf `main` hält alles
-  auf: drei Merges der Gruppe N13 waren erst nach 28, 32 und 40 Minuten
-  live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln oder den
-  laufenden Lauf zu Ende fahren lassen (ebenfalls CI1).
+  Zweigs lesen — das ändert, was eine Pflicht-Prüfung prüft, und ist
+  deshalb eine eigene Entscheidung. Bis dahin vor dem ersten Push eines
+  Zweigs lokal prüfen: `gitleaks git --no-banner --redact --exit-code 1
+  --log-opts="origin/main..HEAD" .` (der Fund am 2026-11-18 war ein
+  erfundener Testwert in einer Variable namens `SECRET`).
+- **(c) Dichte Merges schieben das Ausliefern vor sich her.** Ein laufender
+  Lauf wird nie abgebrochen, aber es wartet immer nur EINER: jeder weitere
+  Merge verdrängt den wartenden Lauf, und ein roter Test auf `main` hält
+  alles auf: drei Merges der Gruppe N13 waren erst nach 28, 32 und 40 Minuten
+  live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln. Verloren
+  geht dabei nichts — der nächste Lauf liefert alles seit dem ältesten
+  lebenden Build aus.
+
+<a id="ln1"></a>
+
+**LN1 — Zwölf Routen-Dateien sieht der Lint-Lauf nicht (gefunden mit SI1 c, 2026-11-18).**
+`@nuxt/eslint-config` nimmt Ordner namens `public` vom Lint aus (gemeint sind
+die statischen Dateien einer App). Das Muster `**/public` trifft auch
+Routen-Ordner: `packages/insights/server/api/insights/public/` und
+`packages/pages/server/api/pages/public/`, zusammen zwölf Dateien. Sie liefen
+schon vor dem eigenen typisierten Durchgang durch keinen Lint; der neue
+Durchgang (`eslint.typed.config.mjs`) übernimmt die Ausnahme bewusst, damit
+er genau dieselben Dateien sieht wie vorher. Ohne die Ausnahme ist er auf
+diesen Dateien grün (gemessen). Zu tun: die Ausnahme in beiden Configs auf
+`public` an der Wurzel einer App oder eines Layers begrenzen und sehen, was
+der normale Lint dort meldet.
 
 <a id="a1-anwalt"></a>
 

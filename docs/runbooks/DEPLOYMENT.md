@@ -60,14 +60,32 @@ Lint, Typecheck, E2E) für genau diesen Commit grün sind
    sich nur Doku, CI oder Meta, wird übersprungen.
 2. `fonts` — holt den Font-Cache vom Server (mit Schlüssel, ohne Installieren).
 3. `build` — installiert und baut alle sechs Apps, ohne jedes Secret.
-4. `deliver` — je App: Build-Ergebnis nach `/home/ploi/releases/<app>/<commit>/`,
-   die Ecosystem-Datei der App und `pm2-heal.sh` nach `/home/ploi/<site>/ops/`
-   (seit 2026-11-15 nur diese zwei, nicht mehr der ganze Ordner `ops/`),
-   Verweis `current` atomar umlegen,
-   `pm2 startOrReload` (der alte Prozess antwortet, bis der neue bereit ist),
-   ältere Stände stutzen (es bleiben vier je App). Danach die Probe: dreimal in Folge der erwartete
-   Commit auf `https://<site>/api/health`.
+4. `deliver` — schickt je App vier Worte an das feste Skript auf dem Server
+   (`ops/app-release.sh`, seit 2026-11-18; vorher freie Befehle und `rsync`):
+   `release-put` (das Build-Ergebnis als Archiv, in ein FRISCHES Verzeichnis
+   `/home/ploi/releases/<app>/<commit>/`; ein Stand, der gerade läuft, wird
+   nicht überschrieben), `ops-put` (die Dateien der Site nach
+   `/home/ploi/<site>/ops/`: Ecosystem-Datei, `pm2-heal.sh`, die Zähl- und
+   Vergleichs-Skripte des Wächters — nur Namen von der Liste des Skripts),
+   `activate` (Verweis `current` atomar umlegen, `pm2 startOrReload`: der alte
+   Prozess antwortet, bis der neue bereit ist; scheitert der Neustart, liegt
+   der Verweis wieder auf dem Stand davor) und `prune` (es bleiben vier
+   Stände je App, der aktive immer). Danach die Probe: dreimal in Folge der
+   erwartete Commit auf `https://<site>/api/health`. Am Ende fragt der Job, ob
+   der Schlüssel noch auf das Skript beschränkt ist.
 5. `tls` — liefert jeder Host noch ein passendes Zertifikat?
+
+**Ein Skript, zwei Aufrufer.** Das Ausliefern und der Rückweg (A3) benutzen
+dieselbe Datei `ops/app-release.sh`: das Ausliefern die Kopie, die von Hand
+auf dem Server liegt (sie ist der feste Befehl des Ausliefer-Schlüssels —
+ohne sie scheitert jedes Ausliefern), der Rückweg schickt sie bei jedem Aufruf
+aus dem eigenen Checkout mit. Je App wartet ein zweiter Lauf auf den ersten
+(Sperre); ein Lauf, der mitten im Empfangen abbricht, hinterlässt nichts,
+einer, der mitten im Umstellen abbricht, wird auf dem Server zu Ende
+gebracht. Nach jeder Änderung an dem Skript:
+`ops/app-release-attrappe.sh`, dann einspielen
+([CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md), § 4) — der tägliche
+Wächter meldet eine Abweichung zwischen Server und Repo.
 
 Vom Merge bis live vergehen rund 15 Minuten. Der Server baut nichts.
 
@@ -113,7 +131,11 @@ ops/rollback.sh <app> <commit> --apply  # stellt um
 
 `--apply` legt den Verweis `current` auf den gewählten Stand, lädt den
 pm2-Prozess der App neu und fragt die Seite, bis sie dreimal in Folge diesen
-Commit UND `ok:true` meldet (dieselbe Probe wie beim Ausliefern). Ein Stand,
+Commit UND `ok:true` meldet (dieselbe Probe wie beim Ausliefern). Die
+Handgriffe auf dem Server sind seit dem 2026-11-18 dieselben wie beim
+Ausliefern (`ops/app-release.sh`, Worte `list` und `activate`); das Skript
+reist dabei aus dem eigenen Checkout mit und braucht nichts, was auf dem
+Server liegt. Ein Stand,
 der nicht oder nur unvollständig auf dem Server liegt, bricht ab, bevor etwas
 angefasst wird. Scheitert der Neustart, geht der Verweis von selbst zurück.
 Das Skript löscht nichts.
@@ -125,7 +147,9 @@ Das Skript löscht nichts.
   aktiven). Die Liste zeigt zu jedem Commit die erste Zeile der Commit-Nachricht.
 - **Läuft gerade ein Ausliefern?** `gh run list --workflow deploy.yml --limit 3`.
   Ein laufender Lauf legt den Verweis wieder nach vorn — abwarten oder
-  abbrechen (`gh run cancel <id>`), dann zurückstellen.
+  abbrechen (`gh run cancel <id>`), dann zurückstellen. Stellen beide zur
+  selben Zeit um, wartet der zweite auf den ersten (bis zu zehn Minuten, dann
+  bricht er ab, ohne etwas zu ändern).
 - **Wie lange dauert es?** Gemessen am 2026-11-15 an der Hilfe-Seite: 12
   Sekunden vom Befehl bis zur dritten bestätigten Antwort.
 
@@ -210,10 +234,15 @@ Ernstfall bekommt hier eine Zeile.
 | 2026-11-15 02:34 | Über GitHub: `gh workflow run deploy.yml` ohne Eingabe — zurück auf die Spitze von `main` | 12 min 44 s | alle acht Hosts auf `90b797e1`, `ok:true`; `help` dabei jede Sekunde gefragt: 674 Antworten, keine ohne 200 und `ok:true` |
 | 2026-11-15 02:20 | Gegenproben am manuellen Start: Eingabe `abc123`; ein Commit, der nicht auf `main` liegt | je unter 1 min | beide im Job `plan` rot, nichts gebaut, nichts ausgeliefert |
 
-Der vorige und der heutige Stand unterschieden sich bei dieser Übung nur in
-Betriebs-Dateien und Tests, nicht im Programm der Apps. Nicht geübt ist ein
-Rückweg über eine Datenbank-Änderung hinweg und der Rückweg an einer App mit
-Appwrite unter Last (`platform`).
+| 2026-11-18 10:17 | Übung nach dem Umbau des Ausliefer-Wegs (gemeinsames Skript, Schlüssel beschränkt): `ops/rollback.sh platform fd42b8b6… --apply` — `platform.pukalani.app`, `account.` und `demo.` vom Stand `1bc7cb3d` auf den vorigen | 13 s | dreimal in Folge `fd42b8b6`, `ok:true`, `schema: ok`; die fünf anderen Hosts unverändert auf `1bc7cb3d` |
+| 2026-11-18 10:17 | Übung: wieder vor — `ops/rollback.sh platform 1bc7cb3d… --apply` | 14 s | alle acht Hosts auf `1bc7cb3d`, `ok:true`; die drei Hosts der App dabei jede Sekunde gefragt: 75 Antworten, keine ohne 200 und `ok:true` |
+| 2026-11-18 10:18 | Gegenprobe: ein Commit, der nicht auf dem Server liegt, mit `--apply` | sofort | Abbruch (Exit 3), Verweis und Prozess unverändert |
+
+Bei beiden Übungen unterschieden sich der vorige und der heutige Stand nur
+in Betriebs-Dateien und Tests, nicht im Programm der Apps, und zwischen ihnen
+lag keine Datenbank-Änderung. Seit dem 2026-11-18 ist der Rückweg an einer
+App mit Datenbank geübt (`platform`, im laufenden Betrieb). Nicht geübt ist
+ein Rückweg über eine Datenbank-Änderung hinweg.
 
 ---
 

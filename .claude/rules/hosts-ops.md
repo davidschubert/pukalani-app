@@ -296,13 +296,39 @@ paths:
   protection rules") — das ist die Sperre, kein Fehler; ein Job OHNE Umgebung
   bekommt auf keinem Zweig ein Secret. `deployment: false` an einem Job nimmt
   nur den Eintrag in der Deployment-Liste weg, die Zweig-Regel greift
-  trotzdem (gemessen). Auf app-prod stehen beide Schlüssel mit `restrict` in
-  `authorized_keys` (kein Terminal, keine Weiterleitung), auf appwrite-prod
-  NUR der Wächter-Schlüssel und nur mit festem Befehl: sshd führt dafür immer
-  `~/bin/pukalani-cert-gate.sh` aus (Quelle `ops/appwrite-cert-gate.sh`,
-  erlaubt `probe`, `renew`, `reset-account`, `backup-status`,
-  `realtime-status`, `cron-status`; Einspielen nur von Hand — ebenso
-  `~/ops/realtime-watchdog.sh`, vorher `ops/realtime-watchdog-attrappe.sh`).
+  trotzdem (gemessen). KEIN CI-SCHLÜSSEL HAT EINE SHELL (seit 2026-11-18,
+  N12): jeder trägt in `authorized_keys` `restrict` UND einen festen Befehl —
+  sshd führt dann immer dieses eine Skript aus, der Wunsch des Aufrufers steht
+  in `SSH_ORIGINAL_COMMAND` und wird dort gegen feste Worte geprüft (alles
+  andere, auch `rsync`, `scp` und `echo`, endet mit Exit 64). Auf app-prod:
+  der Ausliefer-Schlüssel nur `~/ops/app-release.sh` (Quelle
+  `ops/app-release.sh`: `list`, `activate`, `prune`, `release-put`, `ops-put`,
+  `fonts-get`, `fonts-put` — App und Site nur aus `~/ops/apps.conf`, Dateien
+  reisen als tar über die Standard-Eingabe), der Wächter-Schlüssel nur
+  `~/ops/app-watch-gate.sh` (Quelle `ops/app-watch-gate.sh`: `site-env`,
+  `site-project`, `stale-keys`, `instance-admins`, `mail-breaker`,
+  `app-signals`, `nginx-check`, `cron-check`, `sums` — jedes Wort liest nur;
+  die sechs Prüf-Skripte rufen sie über `scripts/ops/app-watch-gate.mjs` auf,
+  keines kopiert sich mehr selbst hinüber). Auf appwrite-prod NUR der
+  Wächter-Schlüssel: `~/bin/pukalani-cert-gate.sh` (Quelle
+  `ops/appwrite-cert-gate.sh`, erlaubt `probe`, `renew`, `reset-account`,
+  `backup-status`, `realtime-status`, `cron-status`, `sums`). ALLE DREI
+  SKRIPTE LIEGEN VON HAND DORT (ebenso `~/ops/realtime-watchdog.sh`, vorher
+  `ops/realtime-watchdog-attrappe.sh`): eine Änderung im Repo heißt
+  einspielen, davor die Attrappe (`ops/app-release-attrappe.sh`,
+  `ops/app-watch-gate-attrappe.sh`: Wegwerf-Container mit echtem sshd). Zwei
+  Netze: der tägliche Blick `verify-server-scripts.mjs` vergleicht über das
+  Wort `sums` zwölf von Hand eingespielte Dateien auf beiden Servern mit dem
+  Repo (rot bei Abweichung), und beide Workflows schicken eine harmlose freie
+  Befehlszeile — führt der Server sie aus, ist der Lauf rot. DER AUFRUF
+  NENNT DEN PFAD DES SKRIPTS (`ssh <server> /home/ploi/ops/<skript> <wort>`):
+  so ist die Zeile dieselbe, ob ein Schlüssel frei ist oder den festen Befehl
+  trägt, und das Beschränken braucht keine Änderung am Workflow. NEUE DATEI
+  FÜR `<site>/ops` ⇒ in `OPS_FILES` von `deploy.yml` UND von
+  `ops/app-release.sh` (Test hält beide zusammen), dann das Skript neu
+  einspielen — sonst lehnt der Server die Lieferung ab. Ein Ausliefer-Schlüssel
+  bringt seiner Aufgabe nach Programm auf den Server; der feste Befehl nimmt
+  ihm alles andere.
   Vom
   App-Server führt KEIN SSH-Weg zum Appwrite-Server. In der Gegenrichtung
   gibt es seit dem 2026-11-18 GENAU EINEN: der Schlüssel `app-env-abholer`
@@ -332,7 +358,13 @@ paths:
   `ops/rollback.sh <app>` zeigt die Stände, die auf app-prod liegen
   (`/home/ploi/releases/<app>/<commit>`), `… <commit> --apply` legt den
   Verweis um, lädt den pm2-Prozess neu und prüft dreimal Build UND `ok` — vom
-  eigenen Rechner über den eigenen SSH-Zugang, OHNE GitHub; ohne `--apply`
+  eigenen Rechner über den eigenen SSH-Zugang, OHNE GitHub. Die Handgriffe
+  auf dem Server stehen seit 2026-11-18 an EINER Stelle, `ops/app-release.sh`:
+  das Ausliefern führt die Kopie auf dem Server aus, der Rückweg schickt die
+  Datei aus dem eigenen Checkout mit (er hängt an nichts, was dort liegt).
+  Scheitert der Neustart, liegt der Verweis wieder auf dem Stand davor — beim
+  Rückweg UND beim Ausliefern; ein Stand, der gerade läuft, wird nie
+  überschrieben; zwei Läufe je App warten aufeinander; ohne `--apply`
   ändert es nichts, ein unbekannter Stand bricht vor jedem Handgriff ab.
   Über GitHub: `gh workflow run deploy.yml -f sha=<vollständiger Commit>`
   liefert einen älteren Commit von `main` auf alle Apps (Riegel „liegt auf
@@ -351,7 +383,8 @@ paths:
   Stände (gezählt 2026-11-15; das Stutzen zählt den Verweis mit). ETWAS NEUES
   ausliefern ohne GitHub Actions geht praktisch nicht: einen Checkout für den
   ploi-Knopf haben nur noch `portfolio` und `platform` (Stand Juli, nie
-  geübt). Ein manueller Start, der hinter einem laufenden Ausliefern WARTET,
+  geübt; die alten Deploy-Auslöser in Ploi sind seit GA1 P08 gelöscht und
+  werden nicht neu erzeugt — das Ausliefern läuft nur über GitHub). Ein manueller Start, der hinter einem laufenden Ausliefern WARTET,
   wird vom nächsten wartenden Lauf verdrängt („cancelled") — nach dem Start
   nachsehen. Der Deploy prüft seitdem auch `ok`:
   Build falsch ⇒ Abbruch wie bisher; Build richtig, `ok` nicht true ⇒ die

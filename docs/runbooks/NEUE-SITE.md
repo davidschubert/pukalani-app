@@ -43,10 +43,20 @@ die Kopfzeilen doppelt, und der tägliche Blick meldet `zuviel`.
 ## Reihenfolge
 
 1. **Im Repo eintragen** (ein Pull Request, vor dem ersten Handgriff auf dem
-   Server): die App in `ops/apps.conf`, die Site mit Art und Port in
-   `ops/nginx-sites.conf`, die Ecosystem-Datei `ops/ecosystem-<app>.config.cjs`.
+   Server): die App in `ops/apps.conf` (ans ENDE der Liste), die Site mit Art
+   und Port in `ops/nginx-sites.conf`, die Ecosystem-Datei
+   `ops/ecosystem-<app>.config.cjs`.
    Der Test `packages/core/tests/serverConfigCheck.test.ts` hält Liste,
    App-Liste und Port zusammen.
+   **Seit dem 2026-11-18 kennt das Ausliefern nur Apps, die in
+   `~/ops/apps.conf` AUF DEM SERVER stehen** (das feste Skript
+   `ops/app-release.sh` nimmt App und Site nur von dort). Zwischen dem
+   Zusammenführen dieses Pull Requests und Schritt 7 endet deshalb jedes
+   Ausliefern rot an der neuen App („Unbekannte App"; die Apps davor in der
+   Liste sind ausgeliefert, die danach nicht), und der tägliche Vergleich
+   meldet die Liste als abweichend. Also: die Schritte 2 bis 4 und 7 am
+   selben Tag wie das Zusammenführen — oder Schritt 7 mit der Liste aus dem
+   ZWEIG vorziehen und erst danach zusammenführen.
 2. **Site in Ploi anlegen** (Panel). Ploi erzeugt eine nginx-Datei nach seiner
    eigenen Schablone.
 3. **Die Datei durch die Vorlage ersetzen** (Ploi → Site → Manage → NGINX
@@ -68,11 +78,14 @@ die Kopfzeilen doppelt, und der tägliche Blick meldet `zuviel`.
 6. **Von außen prüfen:** `curl -sI https://<name>/` zeigt jede Schutz-
    Kopfzeile genau einmal; `curl -s https://<name>/api/health` meldet den
    Build.
-7. **Einstellungen ins Backup:** ist das Abholen der `.env`-Dateien
-   eingerichtet (`APPWRITE-WIEDERHERSTELLUNG.md`, § 6.1), liegt die App-Liste
-   dafür als eigene Kopie in `~/ops/apps.conf` auf dem App-Server — der Deploy
-   aktualisiert sie nicht. Die neue `ops/apps.conf` dorthin kopieren, sobald
-   die `.env` der neuen Site steht; `~/ops/app-env-bundle.sh list` muss die
+7. **Die App-Liste auf dem Server (Ausliefern UND Backup der
+   Einstellungen):** die Liste liegt als eigene Kopie in `~/ops/apps.conf`
+   auf dem App-Server — der Deploy aktualisiert sie nicht. Drei Skripte lesen
+   sie: das Ausliefern (`app-release.sh`), das Wächter-Tor
+   (`app-watch-gate.sh`) und das Abholen der `.env`-Dateien fürs Backup
+   (`APPWRITE-WIEDERHERSTELLUNG.md`, § 6.1). Die neue `ops/apps.conf` dorthin
+   kopieren (`scp ops/apps.conf ploi@49.13.211.173:ops/`, vorher eine Kopie
+   daneben), sobald die `.env` der neuen Site steht; `~/ops/app-env-bundle.sh list` muss die
    Site mit `vorhanden` nennen. Vorher kopiert, endet das nächtliche Backup
    rot im Schritt `app-einstellungen` (die Datenbank ist trotzdem gesichert).
 
