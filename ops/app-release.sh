@@ -68,6 +68,7 @@
 #   APP_RELEASE_APPS        statt <wurzel>/ops/apps.conf
 #   APP_RELEASE_LOCK_WAIT   Sekunden, die auf die Sperre gewartet wird
 #   APP_RELEASE_HOLD        Sekunden Pause IN der Sperre (nur für den Test)
+#   APP_RELEASE_DEBUG       zeigt die Fehlermeldungen von tar und zstd
 #
 # Exit: 0 gut · 2 falscher Aufruf · 3 Stand unbekannt, unvollständig oder
 # Eingabe unbrauchbar (nichts geändert) · 4 Site unvollständig oder Werkzeug
@@ -207,6 +208,29 @@ main() {
 
   mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
 
+  # Was tar und zstd an Fehlern sagen, wird verworfen (es könnte Dateinamen
+  # tragen, und das Protokoll ist öffentlich) — außer im Test.
+  # Über eine eigene Nummer (8), nicht über den Pfad /dev/stderr: der lässt
+  # sich unter Linux nicht öffnen, wenn die Fehlerausgabe ein Socket ist (so
+  # startet Node seine Kindprozesse).
+  if [ -n "${APP_RELEASE_DEBUG:-}" ]; then exec 8>&2; else exec 8>/dev/null; fi
+  # Beurteilt eine Pipe `head | [zstd |] tar` aus ihren Teil-Ergebnissen: es
+  # zählt, was die ENTPACKER sagen. `head` darf mit 141 enden (der Leser war
+  # schon fertig) — mit `pipefail` allein wäre das ein Scheinfehler, und nur
+  # manchmal. Die Teil-Ergebnisse stehen in der Meldung: Zahlen, sonst nichts.
+  pipe_ok() { # $1 = "${PIPESTATUS[*]}"
+    local first=1 code
+    for code in $1; do
+      if [ "$first" = 1 ]; then
+        first=0
+        [ "$code" = 0 ] || [ "$code" = 141 ] || return 1
+      else
+        [ "$code" = 0 ] || return 1
+      fi
+    done
+    return 0
+  }
+
   # Was beim Abbruch verschwinden muss (ein Verzeichnis je Lauf).
   TMP=""
   cleanup() { if [ -n "$TMP" ]; then rm -rf "$TMP"; fi; }
@@ -335,9 +359,12 @@ main() {
       mkdir "$TMP"
       # Das Archiv trägt `.output/…`; die erste Ebene fällt weg. GNU tar lehnt
       # absolute Pfade und `..` von sich aus ab.
-      if ! head -c "$MAX_RELEASE" | zstd -dc 2>/dev/null | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>/dev/null; then
-        die 3 "das Archiv für $APP ist nicht lesbar oder unvollständig — nichts geändert."
-      fi
+      local parts
+      set +e
+      head -c "$MAX_RELEASE" | zstd -dc 2>&8 | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>&8
+      parts="${PIPESTATUS[*]}"
+      set -e
+      pipe_ok "$parts" || die 3 "das Archiv für $APP ist nicht lesbar oder unvollständig (Teil-Ergebnisse: $parts) — nichts geändert."
       [ -f "$TMP/server/index.mjs" ] || die 3 "im Archiv für $APP fehlt server/index.mjs — nichts geändert."
       if [ -e "$RELEASE" ] || [ -L "$RELEASE" ]; then
         # Liegt schon, ist aber nicht aktiv: ersetzen, nicht hineinschreiben.
@@ -359,10 +386,12 @@ main() {
       [ -d "$ROOT/$SITE" ] || die 4 "das Verzeichnis der Site gibt es auf dem Server nicht — nichts geändert."
       lock "$ROOT/$SITE/.ops.lock"
       TMP="$(mktemp -d "$ROOT/$SITE/.ops-incoming.XXXXXX")"
-      if ! head -c "$MAX_OPS" | tar -x -C "$TMP" --no-same-owner 2>/dev/null; then
-        die 3 "das Archiv mit den Dateien der Site ist nicht lesbar — nichts geändert."
-      fi
-      local f name count=0 allowed
+      local f name count=0 allowed parts
+      set +e
+      head -c "$MAX_OPS" | tar -x -C "$TMP" --no-same-owner 2>&8
+      parts="${PIPESTATUS[*]}"
+      set -e
+      pipe_ok "$parts" || die 3 "das Archiv mit den Dateien der Site ist nicht lesbar (Teil-Ergebnisse: $parts) — nichts geändert."
       # ERST alles prüfen, DANN kopieren: eine fremde Datei verwirft die ganze Lieferung.
       for f in "$TMP"/* "$TMP"/.[!.]*; do
         [ -e "$f" ] || [ -L "$f" ] || continue
@@ -401,9 +430,12 @@ main() {
       lock "$ROOT/releases/.fonts.lock"
       TMP="$(mktemp -d "$ROOT/releases/.fonts-incoming.XXXXXX")"
       # Das Archiv trägt `fonts/…`; die erste Ebene fällt weg.
-      if ! head -c "$MAX_FONTS" | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>/dev/null; then
-        die 3 "das Archiv mit dem Font-Cache ist nicht lesbar — nichts geändert."
-      fi
+      local parts
+      set +e
+      head -c "$MAX_FONTS" | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>&8
+      parts="${PIPESTATUS[*]}"
+      set -e
+      pipe_ok "$parts" || die 3 "das Archiv mit dem Font-Cache ist nicht lesbar (Teil-Ergebnisse: $parts) — nichts geändert."
       # Nur Dateien und Verzeichnisse.
       find "$TMP" ! -type f ! -type d -delete
       # ZWEI Durchgänge mit Grund (Krümel vom 2026-08-12): die Metadaten
