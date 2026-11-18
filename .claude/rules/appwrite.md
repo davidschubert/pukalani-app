@@ -97,6 +97,24 @@ paths:
   `updateTable`, das Rechte absolut setzt, öffnet die Tabelle bei jedem vollen
   Lauf wieder: das Tabellenrecht BESITZT genau eine Migration
   (`rights.migration` in `scripts/lib/server-written-tables.mjs`).
+- ZWEI ÄNDERUNGEN AB APPWRITE 2.7.2, die eigenen Code berühren (gemessen am
+  2026-11-18 auf 2.7.3; Production läuft bis zum Upgrade noch OHNE sie):
+  (1) Ein Bucket mit `allowedFileExtensions` prüft den INHALT, sobald die
+  Endung ein Bild oder PDF ist: HTML als `x.png` wird auch mit dem
+  Admin-Schlüssel abgelehnt (400 `storage_file_type_unsupported`), ein JPEG
+  als `x.png` geht durch, wenn der Bucket `jpg` erlaubt. Endungen ohne feste
+  Kennung (`woff2`, `json`, `svg`) prüft Appwrite weiter nur am Namen — die
+  eigene Prüfung der Route bleibt nötig. (2) Die Routen, die einen Code oder
+  ein Geheimnis BESTÄTIGEN (`account.createSession` mit Geheimnis,
+  `updateRecovery`, `updateVerification`, `updateMFAChallenge`), zählen jetzt
+  auch Aufrufe MIT API-Schlüssel: 10 je Konto und Stunde, danach 429
+  `general_rate_limit_exceeded` (ein Erfolg setzt den Zähler der
+  Sitzungs-Route zurück). Vorher zählte Appwrite Schlüssel gar nicht. Bei uns
+  trägt nur `account.createSession` (OTP-Prüfung, OAuth-Rückweg) einen
+  Schlüssel; dort war die einzige Bremse bisher unsere (`accountAttempts.ts`,
+  10 in 15 Minuten). Ein neuer Aufruf dieser Sorte mit dem Admin-Client muss
+  ein 429 von Appwrite erwarten.
+  Einzelheiten: `docs/runbooks/APPWRITE-2-7-UPGRADE.md`, „2.7.1 → 2.7.3".
 - ANMELDE-WEGE DES PROJEKTS (SEC-007, seit 2026-11-16): Appwrite bietet
   Kontoanlage und Anmeldung als öffentliche Endpunkte an — an unserer
   Registrierung (Bot-Prüfung, Zulassung, geschlossene Registrierung,

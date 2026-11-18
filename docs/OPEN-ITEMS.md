@@ -100,6 +100,7 @@ am 2026-11-18, COMPLETE „N11").
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst; zwei E2E-Dateien laufen seit dem 2026-11-18 nachts mit (COMPLETE „N15"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (b) Die Geheimnis-Prüfung liest alle Zweige. (c) Dichte Merges schieben das Ausliefern vor sich her. Die zwei Beweis-Skripte warten seit dem 2026-11-18 auf die erste Seite (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf, (b) Davids Entscheidung. | Niedrig | S je Teil | (b) Ja | [Einzelheiten](#cw1) |
+| AW30 | **Appwrite auf Production von 2.7.1 auf 2.7.3 heben.** Entwicklung und CI laufen seit dem 2026-11-18 auf 2.7.3, Production noch auf 2.7.1. (a) Der Lauf selbst: Skript und Schritte sind fertig, Ausfall unter zwei Minuten. (b) Danach: Doku auf „überall 2.7.3", die neuen SDKs (Issues 352, 353), eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst. **Wartet auf:** Davids Ja zum Lauf. | Mittel | S | **Ja** (Ja zum Lauf) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -983,6 +984,29 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   `packages/admin/tests/route-roles-overview.test.ts` hält das so fest. Soll
   es anders sein, kommt die Rolle dort in die Abweisungs-Liste und die Wache
   wird angepasst.
+
+<a id="aw30"></a>
+
+**AW30 — Appwrite 2.7.3 auf Production (Issue 369, seit 2026-11-18).**
+Entwicklung und CI sind gehoben und bewiesen (Runbook, Abschnitt „2.7.1 →
+2.7.3", Tabelle „Durchläufe"). Bis Production folgt, fahren die Umgebungen
+verschiedene Versionen — die CI prüft also eine Version, die auf Production
+noch nicht läuft.
+
+- **(a) Der Lauf.** `ops/appwrite-upgrade-2.7.3.sh`, Aufruf und die Listen
+  „Vorher" und „Nach dem Lauf" stehen im Runbook. Kein Schema, in der `.env`
+  ändert sich eine Zeile. Das Skript ist einmal gegen die Entwicklungs-Instanz
+  gelaufen, auf Production noch nie.
+- **(b) Danach.** Die Doku auf „überall 2.7.3" stellen, das Skript ins Archiv,
+  Issue 369 schließen, dann die SDKs heben (Issues 352 und 353; erst dann
+  zieht `RESPONSE_FORMAT`). Klein und unabhängig vom Lauf: seit 2.7.2 bremst
+  Appwrite Code-Versuche auch bei Aufrufen mit Schlüssel (10 je Konto und
+  Stunde). Nach zehn falschen Codes meldet `otp/verify.post.ts` für den Rest
+  der Stunde auch beim richtigen Code „ungültig oder abgelaufen" — besser wäre
+  dort die Meldung „zu viele Versuche" mit Wartezeit.
+- **Bis dahin gesperrt:** der Production-Spiegel auf den Entwicklungs-Rechner
+  (`appwrite-mirror-prod-to-local.mjs` verlangt auf beiden Seiten dieselbe
+  Version).
 
 <a id="cw1"></a>
 
