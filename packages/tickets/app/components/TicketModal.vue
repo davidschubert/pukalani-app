@@ -2,7 +2,8 @@
 import type { EditorToolbarItem } from '@nuxt/ui'
 import type { TicketChecklistItem, TicketFileRow, TicketFilesResponse, TicketListRow, TicketMember, TicketRow } from '../../shared/types/ticket'
 import { TICKET_EFFORTS, TICKET_LABELS, TICKET_PRIORITIES } from '../../shared/types/ticket'
-import { composeTicketMarkdown, parseTicketChecklist, parseTicketMembers } from '../utils/ticketMarkdown'
+import { parseTicketChecklist } from '../../shared/ticketChecklist'
+import { composeTicketMarkdown, parseTicketMembers } from '../utils/ticketMarkdown'
 import { TICKET_EFFORT_META, TICKET_LABEL_META, TICKET_PRIORITY_META } from '../utils/ticketMeta'
 
 /**

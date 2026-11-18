@@ -1,18 +1,8 @@
 import type { H3Event } from 'h3'
 import { AI_JSON_QUOTE_RULE } from '../../../core/shared/aiJson'
-import { TICKETS_TABLE, type TicketChecklistItem, type TicketRow } from '../../shared/types/ticket'
+import { parseTicketChecklist } from '../../shared/ticketChecklist'
+import { TICKETS_TABLE, type TicketRow } from '../../shared/types/ticket'
 import { TRIAGE_MARKER, stripTriageBlock } from '../../shared/triageBlock'
-
-/** Defensive Kopie des Client-Parsers — Server importiert nicht aus app/ */
-function parseChecklist(raw: string): TicketChecklistItem[] {
-  try {
-    const parsed = JSON.parse(raw || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  }
-  catch {
-    return []
-  }
-}
 
 /**
  * KI-Triage (Plan P3): bewertet ein Ticket über eine OpenAI-kompatible
@@ -90,7 +80,7 @@ export interface TriageResult {
 }
 
 function buildPrompt(ticket: TicketRow): string {
-  const checklist = parseChecklist(ticket.checklist)
+  const checklist = parseTicketChecklist(ticket.checklist)
   return [
     'Du triagierst ein Ticket für das Entwicklungs-Board einer Community-Plattform',
     '(Nuxt 4 Monorepo mit Layer-Architektur, Appwrite-Backend; Produkte: Kommentare,',
