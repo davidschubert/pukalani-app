@@ -11,6 +11,7 @@ import {
 } from '../../../../../../utils/brandFindingsStore'
 import {
   claimBrandChapterReview,
+  BRAND_REVIEW_INLINE_BUDGET_MS,
   runBrandSessionReview,
 } from '../../../../../../utils/brandReview'
 import {
@@ -92,6 +93,10 @@ export default defineEventHandler(async (event): Promise<BrandStepReviewResponse
     notes: brandReviewNotes(records, stepKey, contentLocale, pathKind, team),
     openSessions: [],
     stubFinding: String(getQuery(event).stub ?? '') === 'conflict',
+    // EIN Deckel über beide Stufen (LL1 d): die Prüfung läuft in der Anfrage,
+    // der Webserver wartet 60 s. Reicht der Rest nicht für Stufe 2, gilt
+    // Stufe 1 (`reviewedBy: 'stage1'`).
+    budgetMs: BRAND_REVIEW_INLINE_BUDGET_MS,
   })
 
   if (outcome.reviewed) {

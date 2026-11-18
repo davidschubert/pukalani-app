@@ -11,8 +11,9 @@ import {
 } from '../../../../utils/brandAcceptance'
 import { brandDesignSnapshotPreset } from '../../../../../shared/brandDesignValues'
 import { brandDesignStand, loadBrandDesignPreset } from '../../../../utils/brandDesignPreset'
-import { readBrandDocumentReview } from '../../../../utils/brandReview'
-import { brandSlotRecordConfirmed, parseSlotRecords } from '../../../../utils/brandStore'
+import { BRAND_RUN_SCOPES } from '../../../../../shared/brandRun'
+import { readBrandRunView } from '../../../../utils/brandRun'
+import { brandSlotRecordConfirmed, parseSlotRecords, requireProfileIdParam } from '../../../../utils/brandStore'
 
 /**
  * „EUER BRANDING" — DAS DOKUMENT (BW2 Paket 7, Plan §10).
@@ -53,6 +54,12 @@ import { brandSlotRecordConfirmed, parseSlotRecords } from '../../../../utils/br
  */
 export default defineEventHandler(async (event): Promise<BrandDocumentResponse> => {
   const { userId, betaAccount } = await requireBrandAccess(event)
+  // DER LAUF-STAND DER DOKUMENT-PRÜFUNG (LL1 d) wird VOR dem Ergebnis gelesen:
+  // endet der Lauf zwischen beiden Lesungen, zeigt die Seite schlimmstenfalls
+  // „läuft" mit fertigen Zeilen und fragt noch einmal — nie „fertig" mit
+  // Zeilen von vorher. Herausgegeben wird er erst nach der Besitz-Prüfung
+  // unten (`loadBrandDocumentContext` wirft für fremde Marken 404).
+  const reviewRun = await readBrandRunView(event, BRAND_RUN_SCOPES.documentReview, requireProfileIdParam(event))
   const context = await loadBrandDocumentContext(event, userId, betaAccount)
   const { profile, stepRows, journey, allFacts, sessionStates, findings } = context
 
@@ -115,8 +122,6 @@ export default defineEventHandler(async (event): Promise<BrandDocumentResponse> 
     if (brandSlotRecordConfirmed(record) && record?.reviewed !== true) unreviewed.push(session.id)
   }
 
-  const lastRun = readBrandDocumentReview(profile.$id)
-
   /* Dasselbe Preset wie in der Leseansicht — eine Quelle, zwei Ansichten. */
   const design = await loadBrandDesignPreset(event, profile, stepRows)
 
@@ -125,14 +130,12 @@ export default defineEventHandler(async (event): Promise<BrandDocumentResponse> 
     title: profile.title ?? '',
     chapters,
     findings,
-    review: {
-      unreviewed,
-      ...(lastRun ? { lastRunAt: lastRun.at, lastRunRevisionKey: lastRun.revisionKey } : {}),
-    },
+    review: { unreviewed },
     // Auch hier ohne die behaltenen Entwürfe (§1.11 b): das Dokument ist eine
     // LESE-Ansicht, und was sie nie zeigt, bekommt sie auch nicht geschickt.
     design: design.preset ? brandDesignSnapshotPreset(design.preset) : null,
     designStand: design.preset ? brandDesignStand(stepRows) : '',
     designKeptDrafts: design.preset?.mark.keptDrafts.length ?? 0,
+    reviewRun,
   }
 })

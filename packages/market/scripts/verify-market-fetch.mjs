@@ -57,7 +57,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { startRunRespectingBrake } from './lib/runStart.mjs'
+import { startRunRespectingBrake, waitForRun } from './lib/runStart.mjs'
 
 const PORT = Number(process.env.BRANDING_PORT || 3016)
 const HOST = process.env.BRANDING_HOST || 'localhost'
@@ -256,15 +256,16 @@ async function runAndWait(base, cookie, query = '') {
   // Hält den Abstand zur Minuten-Bremse selbst (LL1 c, `lib/runStart.mjs`).
   const post = await startRunRespectingBrake(() => call(`${base}/run${query}`, { method: 'POST', cookie }))
   if (post.status !== 202) return { post, run: null }
-  const deadline = Date.now() + 10 * 60_000
-  let run = post.json?.run ?? null
-  while (Date.now() < deadline) {
-    await new Promise(resolve => setTimeout(resolve, 1000))
+  // Gewartet wird mit der geteilten Hilfe (`waitForRun`, LL1 c) — Takt 1 s
+  // und Deckel 10 min wie zuvor hier. Endet das Warten ohne `done`, steht der
+  // Grund in der Ausgabe; die Prüfung danach liest wie bisher `run.state`.
+  const waited = await waitForRun(async () => {
     const overview = await call(base, { cookie })
-    run = overview.json?.run ?? null
-    if (run && run.state !== 'running') break
-  }
-  return { post, run }
+    if (overview.status !== 200) console.log(`  Stand nicht lesbar (${overview.status})`)
+    return overview.json?.run ?? null
+  }, { startedAt: post.json?.run?.startedAt ?? '', intervalMs: 1000, maxMs: 10 * 60_000 })
+  if (waited.action !== 'done') console.log(`  Lauf ohne Ergebnis: ${waited.reason}`)
+  return { post, run: waited.run }
 }
 
 // ── Der Lauf ───────────────────────────────────────────────────────────────

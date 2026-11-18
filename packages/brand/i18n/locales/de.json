@@ -2374,6 +2374,9 @@
       "stillUnreviewed": "{count} Session bleibt noch offen — der nächste Blick holt sie nach. | {count} Sessions bleiben noch offen — der nächste Blick holt sie nach.",
       "noFindings": "Nichts gefunden, was sich reibt.",
       "reviewFailed": "Der Blick kam gerade nicht zustande. Das Dokument steht trotzdem — bitte später noch einmal versuchen.",
+      "reviewProgress": "Das Dokument wird gelesen — bisher keine Session nachgeholt. | Das Dokument wird gelesen — {count} Session nachgeholt. | Das Dokument wird gelesen — {count} Sessions nachgeholt.",
+      "reviewAlreadyRunning": "Der Blick läuft bereits. Das Ergebnis erscheint hier, sobald er fertig ist.",
+      "reviewInterrupted": "Der Blick wurde unterbrochen. Schon nachgeholte Sessions bleiben gegengelesen — ein neuer Versuch ist jederzeit möglich.",
       "readFoundation": "Als Foundation lesen"
     },
     "foundation": {
