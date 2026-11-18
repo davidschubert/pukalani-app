@@ -230,17 +230,10 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
   },
 
   // ── market ────────────────────────────────────────────────────────────────
-  'packages/market/server/api/market/profiles/[id]/report.post.ts': {
-    form: 'over',
-    deadlines: [{
-      constant: 'MARKET_REPORT_TIMEOUT_MS',
-      file: 'packages/market/server/prompts/marketReportPrompt.ts',
-      times: 1,
-      what: 'der Marktbericht (ein Text-Lauf)',
-    }],
-    reason: 'Der Marktbericht rechnet in der Anfrage: ein bezahlter Text-Lauf mit 90 s Frist. '
-      + 'Der Vergleich davor läuft schon im Hintergrund, der Bericht noch nicht.',
-  },
+  // Marktbericht (LL1 d): Lauf-Sperre in `market_runs` (Art `report`), 202, der
+  // Lauf rechnet in `runMarketReport`. Ein wiederverwendeter Bericht antwortet
+  // weiter sofort mit 200.
+  'packages/market/server/api/market/profiles/[id]/report.post.ts': { form: 'detached' },
   'packages/market/server/api/market/profiles/[id]/run.post.ts': { form: 'detached' },
 
   // ── pages ─────────────────────────────────────────────────────────────────

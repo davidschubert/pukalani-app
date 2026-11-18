@@ -81,6 +81,12 @@
       "background": "The comparison runs in the background. You can keep this page open or come back later.",
       "stalled": "The comparison was interrupted. Please start it again — a run that had not analysed anything yet does not count against your daily limit."
     },
+    "reportRun": {
+      "writing": "The comparison is being written.",
+      "background": "This happens in the background. The page can stay open or be revisited later.",
+      "stalled": "Writing the comparison was interrupted. It can be started again — a run that had not asked the model yet does not count against the daily limit.",
+      "failed": "The comparison could not be written this time. Another attempt is possible."
+    },
     "result": {
       "title": "The field, side by side",
       "matrix": "Side by side",
@@ -276,7 +282,9 @@
       "competitor_url_invalid": "We cannot read that address — please include the domain.",
       "self_limit": "One old site of your own per brand, not two.",
       "shared_unavailable": "That brand is not (or no longer) shared for market comparisons.",
-      "run_running": "The comparison is already running — this page shows how far it has got."
+      "run_running": "The comparison is already running — this page shows how far it has got.",
+      "report_running": "A comparison is being written right now. The run can start as soon as it is finished.",
+      "comparison_running": "The comparison run is still working. The comparison can be written as soon as it is finished."
     },
     "about": {
       "title": "What the comparison does and does not do",

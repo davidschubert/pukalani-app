@@ -141,6 +141,12 @@
       "background": "Der Vergleich läuft im Hintergrund. Ihr könnt die Seite offen lassen oder später zurückkommen.",
       "stalled": "Der Vergleich wurde unterbrochen. Startet ihn bitte noch einmal — ein Lauf, der noch nichts ausgewertet hatte, zählt nicht gegen euer Tageskontingent."
     },
+    "reportRun": {
+      "writing": "Der Vergleich wird geschrieben.",
+      "background": "Das geschieht im Hintergrund. Die Seite kann offen bleiben oder später wieder aufgerufen werden.",
+      "stalled": "Das Schreiben des Vergleichs wurde unterbrochen. Ein neuer Start ist möglich — ein Lauf, der das Modell noch nicht gefragt hatte, zählt nicht gegen das Tageskontingent.",
+      "failed": "Der Vergleich konnte diesmal nicht geschrieben werden. Ein neuer Versuch ist möglich."
+    },
     "result": {
       "title": "Das Feld, nebeneinander",
       "matrix": "Gegenüberstellung",
@@ -276,7 +282,9 @@
       "competitor_url_invalid": "Diese Adresse können wir nicht lesen — bitte mit Domain angeben.",
       "self_limit": "Eine eigene alte Website je Branding, nicht zwei.",
       "shared_unavailable": "Diese Marke ist nicht (mehr) für den Marktvergleich freigegeben.",
-      "run_running": "Der Vergleich läuft schon — hier seht ihr, wie weit er ist."
+      "run_running": "Der Vergleich läuft schon — hier seht ihr, wie weit er ist.",
+      "report_running": "Gerade entsteht ein Vergleich. Sobald er fertig ist, lässt sich der Lauf starten.",
+      "comparison_running": "Der Vergleichs-Lauf rechnet noch. Der Vergleich lässt sich schreiben, sobald er fertig ist."
     },
     "about": {
       "title": "Was der Vergleich tut und was nicht",

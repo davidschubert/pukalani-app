@@ -226,6 +226,28 @@ describe('SI1 b — stillgelegte Community, Umstellung gescheitert', () => {
       .toEqual([{ userId: 'u1', communityId: 'cA', case: 'disabled' }])
   })
 
+  /**
+   * WELCHE ZAHL SAGT „HIER STEHT NOCH EINE ZEILE AUF active"? (N14, 2026-11-18)
+   * Der Lauf nimmt nur das Label; die Zeile im Control Plane bleibt `active`
+   * (er liest dort nur). Nach dem ersten Entzug hängt kein Label mehr —
+   * `disabledStale` fällt deshalb auf 0, obwohl die Zeile unverändert dasteht.
+   * Das dauerhafte Zeichen ist `disabledCandidates`: es bleibt über 0, bis
+   * jemand die Zeile im Control Plane umstellt.
+   */
+  it('zweiter Lauf nach dem Entzug: disabledStale ist 0, disabledCandidates zählt die Zeile weiter', async () => {
+    const world: World = { accounts: { u1: ['cA', 'modcA'] }, removed: [], inDisabled: [row('m1', 'cA', 'u1')] }
+    const { deps, users } = build(world)
+
+    const first = await reconcileCommunityLabels('apply', deps)
+    expect(first).toMatchObject({ revoked: 1, disabledCandidates: 1, disabledStale: 1 })
+    expect(world.accounts.u1).toEqual([])
+
+    users.updateLabels.mockClear()
+    const second = await reconcileCommunityLabels('apply', deps)
+    expect(second).toMatchObject({ stale: 0, revoked: 0, failed: 0, disabledCandidates: 1, disabledStale: 0 })
+    expect(users.updateLabels).not.toHaveBeenCalled()
+  })
+
   it('dry-run zählt nur', async () => {
     const world: World = { accounts: { u1: ['cA'] }, removed: [], inDisabled: [row('m1', 'cA', 'u1')] }
     const { deps, users } = build(world)

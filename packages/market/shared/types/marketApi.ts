@@ -171,6 +171,27 @@ export interface MarketReportResponse {
   /** Kam er aus der Ablage statt aus einem Modell-Aufruf (§2.3 Nr. 5)? */
   reused: boolean
   aiEnabled: boolean
+  /**
+   * Der jüngste BERICHT-Lauf (LL1 d): `POST /report` rechnet hinter einer
+   * 202-Antwort, die Seite fragt diesen Stand ab. Nicht lesbar ⇒ „kein Lauf".
+   */
+  reportRun: MarketReportRunView
+}
+
+/**
+ * DER JÜNGSTE BERICHT-LAUF EINES BRANDINGS (LL1 d) — gegen die SERVER-Uhr
+ * gerechnet (`core/shared/runLease.ts`). Dieselben Felder, die das
+ * Beweis-Skript-Werkzeug `waitForRun` liest (`state`, `startedAt`, `failed`,
+ * `failure`).
+ */
+export interface MarketReportRunView {
+  state: RunLeaseState
+  startedAt: string
+  finishedAt: string
+  /** Hat der Lauf mit etwas anderem als `done` geendet? */
+  failed: boolean
+  /** Der kurze Ausgang an der Zeile, wenn er gescheitert ist (`provider_error`, …). */
+  failure?: string
 }
 
 // ── Die freiwillige Bewertung (§2.10, MV1 M5) ──────────────────────────────

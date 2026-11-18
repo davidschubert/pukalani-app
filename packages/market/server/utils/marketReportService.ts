@@ -24,7 +24,8 @@ import type { MarketReportView } from '../../shared/types/marketApi'
 import type { MarketCompetitorRow, MarketProfileRow } from '../../shared/types/market'
 import { marketFieldsSchema, parseMarketJson } from '../../shared/types/market'
 import { MARKET_AI_DISABLED_CODE } from '../../shared/marketLimits'
-import type { MarketReportFinding } from './marketReport'
+import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../../core/shared/aiProviderRouting'
+import type { MarketReportFinding, MarketReportResult } from './marketReport'
 import { buildMarketReport, marketRevisionKey } from './marketReport'
 import { bookMarketReport } from './marketQuota'
 import type { MarketOwnProfile } from './marketOwnProfile'
@@ -408,19 +409,120 @@ export interface ProduceMarketReportResult {
 }
 
 /**
- * EINEN BERICHT HERSTELLEN — die Rechnung, die BEIDE Einstiege teilen
- * (`POST /report` und der Lauf mit `withReport`).
+ * DAS MODELL RUFEN — ohne Wiederverwendung, ohne Buchung, ohne Schreiben
+ * (LL1 d). Beide Einstiege teilen genau diese Rechnung: der Vergleichs-Lauf
+ * mit `withReport` (über `produceMarketReport`) und der Bericht-Lauf hinter
+ * `POST /report` (`marketReportRun.ts`), der VOR dem Schreiben noch einmal
+ * nachsieht, ob das Schreiben noch stimmt.
+ */
+export async function computeMarketReport(
+  event: H3Event,
+  state: MarketReportState,
+  locale: string,
+): Promise<MarketReportResult> {
+  const report = await buildMarketReport(event, {
+    own: state.own.fields,
+    // DIE EIGENE ALTE WEBSITE GEHT DEM MODELL GAR NICHT ERST ZU (§2.3,
+    // MV1 M4): sie ist keine Stimme im Feld, und jede Quote („3 von 4 sagen
+    // das") zählte uns sonst selbst mit. Der Riegel bekommt sie aus demselben
+    // Grund nicht — ihr Name ist unser eigener.
+    candidates: marketFieldCandidates(state.competitors)
+      .filter(competitor => competitor.status !== 'excluded')
+      .map(competitor => ({
+        competitor,
+        fields: state.profiles.find(profile => profile.competitorId === competitor.id)?.fields ?? [],
+      }))
+      .filter(candidate => candidate.fields.some(field => field.value.trim())),
+    locale,
+    slotFor: fieldId => marketOwnSlotId(state.own, fieldId),
+  })
+
+  // DER RIEGEL ZÄHLT, ER SCHREIBT NICHT MIT (Plan §2.10). Was verworfen wurde,
+  // ist ein Text über einen Dritten — er hat in keinem Log etwas verloren.
+  const filteredTotal = marketReportFilteredTotal(report)
+  if (filteredTotal > 0) {
+    logEvent('info', 'market.report_filtered', {
+      total: filteredTotal,
+      competitorName: report.filtered.competitor_name,
+      competitorDomain: report.filtered.competitor_domain,
+      disparagement: report.filtered.disparagement,
+    })
+  }
+  return report
+}
+
+function marketReportFilteredTotal(report: MarketReportResult): number {
+  return report.filtered.competitor_name
+    + report.filtered.competitor_domain
+    + report.filtered.disparagement
+}
+
+/**
+ * EINEN GELUNGENEN BERICHT SCHREIBEN — Befunde, Zeile, Check-Ids — und die
+ * Id-Liste der Befunde zurückgeben.
+ *
+ * FAIL-SOFT davor: ein Bericht, dessen Modell ausgefallen ist, wird NICHT
+ * gespeichert (der Aufrufer ruft diese Hilfe dann gar nicht). Sonst läge ein
+ * leerer Bericht unter dem Schlüssel dieses Standes, und der nächste Versuch
+ * bekäme ihn als „schon gerechnet" zurück — ein Zwischenspeicher voller
+ * Nichts.
+ */
+export async function persistMarketReport(
+  event: H3Event,
+  profileId: string,
+  state: MarketReportState,
+  report: MarketReportResult,
+): Promise<string[]> {
+  const findingIds = await writeMarketFindings(event, profileId, report.findings)
+  await saveMarketReport(event, profileId, state, report.claims, findingIds, {
+    model: report.model,
+    promptVersion: report.promptVersion,
+  })
+  await stampMarketBrandCheckIdsOfState(event, profileId, state)
+  return findingIds
+}
+
+/** Die eine Log-Zeile eines frisch gerechneten Berichts — ZAHLEN, kein Inhalt. */
+export function logMarketReport(
+  state: MarketReportState,
+  report: MarketReportResult,
+  findings: number,
+  startedAtMs: number,
+): void {
+  logEvent('info', 'market.report', {
+    ms: Date.now() - startedAtMs,
+    candidates: state.withProfile,
+    conventions: report.claims.find(list => list.kind === 'convention')?.entries.length ?? 0,
+    overlaps: report.claims.find(list => list.kind === 'overlap')?.entries.length ?? 0,
+    whitespace: report.claims.find(list => list.kind === 'whitespace')?.entries.length ?? 0,
+    findings,
+    filtered: marketReportFilteredTotal(report),
+    reused: false,
+    model: report.model,
+    promptVersion: report.promptVersion,
+    failure: report.failure,
+  })
+}
+
+/**
+ * EINEN BERICHT HERSTELLEN — für den Vergleichs-Lauf mit `withReport`
+ * (`marketRun.ts`). `POST /report` rechnet seit LL1 d über
+ * `marketReportRun.ts`, mit denselben Bausteinen.
  *
  * Die Reihenfolge IST die Kostenkontrolle, wie beim Lauf und beim Brand-Check:
  *
- *  1. Stand laden (kostet nichts).
+ *  1. Stand laden (kostet nichts; macht der Aufrufer).
  *  2. GIBT ES ZU DIESEM STAND SCHON EINEN BERICHT? ⇒ ihn zurückgeben, ohne
  *     Buchung und ohne Modell (§2.3 Nr. 5). Was nichts kostet, kostet kein
  *     Kontingent — andersherum sperrte sich jemand mit drei Klicks auf
  *     dasselbe Ergebnis selbst aus.
  *  3. Erst dann buchen und rufen.
  *
- * WIRFT bei Deckel und bei abgeschalteter KI; alles andere ist fail-soft.
+ * WIRFT bei Deckel, bei abgeschalteter KI und ohne Endpunkt unter der Bindung
+ * (KI1 d: der Vergleichs-Lauf nennt den Grund dann an seiner Zeile); alles
+ * andere ist fail-soft. Er läuft HINTER der Antwort: kein `setResponseHeader`
+ * mehr (bis LL1 d setzte er beim Deckel `Retry-After` an eine Antwort, die
+ * längst gesendet war).
  */
 export async function produceMarketReport(
   event: H3Event,
@@ -446,7 +548,6 @@ export async function produceMarketReport(
 
   const rejection = await bookMarketReport(event, profileId)
   if (rejection) {
-    setResponseHeader(event, 'Retry-After', rejection.retryAfterSec)
     throw createError({
       status: 429,
       statusText: 'Too many market reports',
@@ -455,65 +556,18 @@ export async function produceMarketReport(
   }
 
   const startedAt = Date.now()
-  const report = await buildMarketReport(event, {
-    own: state.own.fields,
-    // DIE EIGENE ALTE WEBSITE GEHT DEM MODELL GAR NICHT ERST ZU (§2.3,
-    // MV1 M4): sie ist keine Stimme im Feld, und jede Quote („3 von 4 sagen
-    // das") zählte uns sonst selbst mit. Der Riegel bekommt sie aus demselben
-    // Grund nicht — ihr Name ist unser eigener.
-    candidates: marketFieldCandidates(state.competitors)
-      .filter(competitor => competitor.status !== 'excluded')
-      .map(competitor => ({
-        competitor,
-        fields: state.profiles.find(profile => profile.competitorId === competitor.id)?.fields ?? [],
-      }))
-      .filter(candidate => candidate.fields.some(field => field.value.trim())),
-    locale: options.locale,
-    slotFor: fieldId => marketOwnSlotId(state.own, fieldId),
-  })
-
-  // DER RIEGEL ZÄHLT, ER SCHREIBT NICHT MIT (Plan §2.10). Was verworfen wurde,
-  // ist ein Text über einen Dritten — er hat in keinem Log etwas verloren.
-  const filteredTotal = report.filtered.competitor_name
-    + report.filtered.competitor_domain
-    + report.filtered.disparagement
-  if (filteredTotal > 0) {
-    logEvent('info', 'market.report_filtered', {
-      total: filteredTotal,
-      competitorName: report.filtered.competitor_name,
-      competitorDomain: report.filtered.competitor_domain,
-      disparagement: report.filtered.disparagement,
+  const report = await computeMarketReport(event, state, options.locale)
+  if (report.failure === 'ai_endpoint_unavailable') {
+    logMarketReport(state, report, 0, startedAt)
+    throw createError({
+      status: 503,
+      statusText: 'No AI endpoint available',
+      data: { code: AI_ENDPOINT_UNAVAILABLE_CODE },
     })
   }
 
-  const findingIds = report.failure ? [] : await writeMarketFindings(event, profileId, report.findings)
-
-  // FAIL-SOFT: ein Bericht, dessen Modell ausgefallen ist, wird NICHT
-  // gespeichert. Sonst läge ein leerer Bericht unter dem Schlüssel dieses
-  // Standes, und der nächste Versuch bekäme ihn als „schon gerechnet" zurück —
-  // ein Zwischenspeicher voller Nichts.
-  if (!report.failure) {
-    await saveMarketReport(event, profileId, state, report.claims, findingIds, {
-      model: report.model,
-      promptVersion: report.promptVersion,
-    })
-    await stampMarketBrandCheckIdsOfState(event, profileId, state)
-  }
-
-  logEvent('info', 'market.report', {
-    // ZAHLEN, kein Inhalt (Log-Regel).
-    ms: Date.now() - startedAt,
-    candidates: state.withProfile,
-    conventions: report.claims.find(list => list.kind === 'convention')?.entries.length ?? 0,
-    overlaps: report.claims.find(list => list.kind === 'overlap')?.entries.length ?? 0,
-    whitespace: report.claims.find(list => list.kind === 'whitespace')?.entries.length ?? 0,
-    findings: findingIds.length,
-    filtered: filteredTotal,
-    reused: false,
-    model: report.model,
-    promptVersion: report.promptVersion,
-    failure: report.failure,
-  })
+  const findingIds = report.failure ? [] : await persistMarketReport(event, profileId, state, report)
+  logMarketReport(state, report, findingIds.length, startedAt)
 
   const findings = await loadMarketFindings(event, profileId)
   return {

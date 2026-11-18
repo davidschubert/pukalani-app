@@ -53,6 +53,25 @@ function stub(name: string, body: string) {
  * `main` vom 2026-11-16 zeigte nur „leere Ausgabe", und daraus ließ sich
  * keine Ursache lesen.
  */
+/**
+ * DIE SPUR (BT1 d, 2026-11-18). Der seltene Fehlschlag mit Exit 141 (eine Pipe
+ * schließt früh, unter `pipefail`) kam mit LEERER Ausgabe — Ausgabe und
+ * Exit-Code allein zeigen dann nicht, an welcher Zeile das Skript endete. Die
+ * verdächtigen Muster ließen sich nicht nachstellen (je 3.000 Läufe unter
+ * Last, macOS und Linux: kein Fehlschlag). Deshalb läuft das Skript hier mit
+ * `bash -x`, und die Spur geht auf einen EIGENEN Kanal (Deskriptor 3,
+ * `BASH_XTRACEFD`) — stdout und stderr bleiben, wie die Tests sie prüfen. Bei
+ * einem roten Test stehen die letzten Zeilen der Spur dabei: die letzte ist
+ * die Stelle. Erst ab bash 4.1; ein älteres bash (macOS bringt 3.2 mit)
+ * schriebe die Spur nach stderr, dort bleibt sie aus.
+ */
+const TRACE_SUPPORTED = (() => {
+  const probe = spawnSync('bash', ['-c', 'echo "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"'], { encoding: 'utf8' })
+  const [major = 0, minor = 0] = (probe.stdout ?? '').trim().split('.').map(Number)
+  return major > 4 || (major === 4 && minor >= 1)
+})()
+const TRACE_TAIL_LINES = 30
+
 interface ScriptRun {
   args: string[]
   code: number | null
@@ -61,6 +80,8 @@ interface ScriptRun {
   ms: number
   stdout: string
   stderr: string
+  /** Die letzten Zeilen der `bash -x`-Spur ('' = dieses bash kann den eigenen Kanal nicht). */
+  trace: string
 }
 let runs: ScriptRun[] = []
 /** Stand der Attrappe am Ende des Tests — festgehalten, BEVOR `afterEach` sie löscht. */
@@ -88,15 +109,20 @@ function describeRuns() {
     entry.stdout || '   (leer)',
     `   stderr (${entry.stderr.length} Zeichen):`,
     entry.stderr || '   (leer)',
+    `   Spur (bash -x, die letzten ${TRACE_TAIL_LINES} Zeilen — die letzte ist die Stelle, an der das Skript endete):`,
+    entry.trace || '   (keine — dieses bash kennt BASH_XTRACEFD nicht)',
   ].join('\n')).join('\n')
 }
 
 function run(...args: string[]) {
   const started = Date.now()
-  const result = spawnSync('bash', [SCRIPT, ...args], {
+  const result = spawnSync('bash', [...(TRACE_SUPPORTED ? ['-x'] : []), SCRIPT, ...args], {
     encoding: 'utf8',
+    // Der vierte Eintrag ist Deskriptor 3: dorthin schreibt bash die Spur.
+    stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
     env: {
       ...process.env,
+      ...(TRACE_SUPPORTED ? { BASH_XTRACEFD: '3', PS4: '+ Zeile ${LINENO}: ' } : {}),
       PATH: `${join(dir, 'bin')}:${process.env.PATH}`,
       ROLLBACK_REMOTE: 'bash -s --',
       ROLLBACK_ROOT: root,
@@ -119,6 +145,7 @@ function run(...args: string[]) {
     ms: Date.now() - started,
     stdout,
     stderr,
+    trace: String(result.output?.[3] ?? '').trimEnd().split('\n').slice(-TRACE_TAIL_LINES).join('\n'),
   })
   return { code: result.status, out: `${stdout}${stderr}` }
 }
