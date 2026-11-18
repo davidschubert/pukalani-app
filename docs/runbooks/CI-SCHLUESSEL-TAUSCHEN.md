@@ -320,8 +320,10 @@ am Workflow möglich macht: unter dem festen Befehl steht dieselbe Zeile in
   Einspielen dazu; der tägliche Blick „Liegen auf den Servern die Dateien aus
   dem Repo?" (`scripts/ops/verify-server-scripts.mjs`, Worte `sums` in beiden
   Toren) wird sonst am nächsten Morgen rot. Das ist gewollt.
-- **Ein Zweig mit einem erfundenen Testwert macht `secrets` für ALLE rot.**
-  Die Prüfung liest jeden Zweig auf origin. Ein Wert, der wie ein Schlüssel
+- **Ein Zweig mit einem erfundenen Testwert machte `secrets` für ALLE rot.**
+  Bis zum 2026-11-18 las die Prüfung jeden Zweig auf origin; seitdem liest
+  sie je Pull Request nur den eigenen Zweig, und alle Zweige liest einmal am
+  Tag `secrets-watch.yml` (Issue `geheimnis-alarm`). Ein Wert, der wie ein Schlüssel
   aussieht, in einer Variable namens `SECRET`, `TOKEN` oder `KEY` hielt am
   2026-11-18 dreizehn Minuten lang jedes Ausliefern und jeden Pull Request
   auf. Vor dem ersten Push eines Zweigs: `gitleaks git --no-banner --redact

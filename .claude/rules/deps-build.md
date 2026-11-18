@@ -161,11 +161,19 @@ paths:
 - ALLE VIER PRÜFUNGEN HALTEN DEN DEPLOY AUF (seit 2026-11-13, P07, Davids
   Entscheidung 2026-11-12): Test, Lint, Typecheck, E2E. Ein roter Wächter im
   Lint-Lauf ist damit kein Hinweis mehr, sondern ein Stopp. Im Lint-Workflow
-  läuft dazu der Job `secrets`: `gitleaks` über die ganze Historie, als
-  Binärdatei mit Prüfsumme gepinnt, Ausnahmen in `.gitleaksignore` (nur
+  läuft dazu der Job `secrets`: `gitleaks` über die ganze Historie des
+  geprüften Zweigs, als Binärdatei mit Prüfsumme gepinnt, Ausnahmen in `.gitleaksignore` (nur
   geprüfte Testwerte; ein echtes Geheimnis wird rotiert, nie eingetragen).
   Lokal: `pnpm check:secrets` (braucht `brew install gitleaks`).
-  „DIE GANZE HISTORIE" HEISST: JEDER ZWEIG AUF ORIGIN (2026-11-18 erwischt):
+  DIE PFLICHT-PRÜFUNG LIEST NUR DEN EIGENEN ZWEIG (CW1 b, Davids
+  Entscheidung 2026-11-18): alles, was vom geprüften Commit aus erreichbar
+  ist — bei einem Pull Request die Geschichte von `main` plus der Zweig.
+  ALLE Zweige und Tags liest einmal am Tag `secrets-watch.yml`; ein Fund
+  dort ist ein Issue `geheimnis-alarm` und hält nichts auf (Probealarm
+  `gh workflow run secrets-watch.yml -f alarm_drill=true`). Version und
+  Prüfsumme von gitleaks stehen in beiden Dateien; der Test
+  `packages/core/tests/secretsWatchWorkflow.test.ts` hält sie gleich.
+  WARUM (bis dahin las die Pflicht-Prüfung jeden Zweig auf origin):
   ein Zweig eines Helfers mit einem erfundenen Testwert in einer Variable
   namens `SECRET` machte die Prüfung dreizehn Minuten lang auf `main` und in
   JEDEM Pull Request rot — und hielt damit jedes Ausliefern auf. Vor dem

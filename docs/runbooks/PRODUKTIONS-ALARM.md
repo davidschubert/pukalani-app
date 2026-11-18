@@ -240,6 +240,31 @@ weiter nur `produktions-alarm`.
 Issue mit dem Zusatz „PROBEALARM"; ein zweiter Lauf ohne den Schalter
 schließt es wieder. Nach jeder Änderung an `buehne.yml` einmal fahren.
 
+## 1c · Der dritte Alarm: Geheimnisse in einem Zweig (`.github/workflows/secrets-watch.yml`, seit 2026-11-18)
+
+Die Pflicht-Prüfung `secrets` liest je Pull Request nur noch den eigenen
+Zweig (Davids Entscheidung 2026-11-18; vorher hielt ein Fund in irgendeinem
+Zweig jeden Pull Request und jedes Ausliefern auf). Damit ein Zweig, der nie
+ein Pull Request wird, trotzdem gelesen wird, liest dieser Lauf jeden Tag um
+02:23 UTC ALLE Zweige und Tags. Rot ⇒ der Job `alarm` DIESES Workflows öffnet
+ein Issue mit dem Label `geheimnis-alarm` (eines, solange es offen ist; jeder
+weitere rote Lauf kommentiert; der nächste grüne Lauf schließt es). Ohne
+Secret, ohne Mail — das Issue ist dem Repo-Besitzer zugewiesen. Der Lauf hält
+weder das Zusammenführen noch das Ausliefern auf.
+
+**Was zu tun ist, wenn `geheimnis-alarm` offen ist:** den verlinkten Lauf
+öffnen. Er nennt Datei, Zeile, Regel und Commit; der Wert ist geschwärzt.
+Zuerst klären, ob es ein echtes Geheimnis ist. **Ein echtes wird rotiert** —
+das Repo ist öffentlich, der Wert gilt als bekannt
+([CI-SCHLUESSEL-TAUSCHEN.md](CI-SCHLUESSEL-TAUSCHEN.md),
+[SICHERHEITSVORFALL.md](SICHERHEITSVORFALL.md)); erst danach wird aufgeräumt.
+Ein erfundener Testwert: den Zweig auf origin löschen und sauber neu
+aufsetzen (ein Commit ohne den Wert).
+
+**Probealarm:** `gh workflow run secrets-watch.yml -f alarm_drill=true` öffnet
+das Issue mit dem Zusatz „PROBEALARM"; ein zweiter Lauf ohne den Schalter
+schließt es wieder. Nach jeder Änderung an `secrets-watch.yml` einmal fahren.
+
 ## 2 · Der Alarmweg (Job `alarm`, läuft nach jedem Wächter-Lauf)
 
 1. **Issue.** Ist irgendein Wächter rot, öffnet der Job EIN Issue mit Label
@@ -891,6 +916,7 @@ ist eine Einstellung bei einem Dienst und braucht Davids Ja.
 | UptimeRobot (§ 3) | zwei Alert Contacts: Mail und Push | Neuen Alert Contact (Mail) anlegen, die Person bestätigt ihn; dann an JEDEN der zehn Monitore hängen. `scripts/ops/uptimerobot-sync.mjs` trägt Kontakte nur bei neuen oder umgebogenen Monitoren ein — ein Monitor, der „passt", bekommt den neuen Kontakt nicht |
 | Heartbeat bei healthchecks.io (§ 2, Schritt 3) | Kanäle des Checks `pukalani-production-watch` | Dort einen weiteren Mail-Kanal anlegen und dem Check zuordnen |
 | Alarm-Issue (§ 2, Schritt 1) | dem Repo-Besitzer zugewiesen | Nur für eine Mitarbeiterin im Repo möglich (Änderung an `ALARM_ASSIGNEE` im Workflow). Nicht nötig, wenn die Mail oben steht |
+| Issues `buehne-alarm` (§ 1b) und `geheimnis-alarm` (§ 1c) | dem Repo-Besitzer zugewiesen, ohne Mail | Wie beim Alarm-Issue: nur für eine Mitarbeiterin im Repo (Zuweisung im jeweiligen Workflow) |
 | GitHub-Mails „Run failed" | Konto des Besitzers | Nur mit eigenem GitHub-Konto und eigenen Benachrichtigungen |
 | Betreiber-Mail der Konsole (`NUXT_ALERT_EMAIL` auf `admin.pukalani.app`): Störungen der Kunden-Sites, Missbrauchs-Meldungen, Anfragen | **niemand:** die Variable ist auf keiner Site gesetzt (nachgesehen am 2026-11-17, nur gezählt) und steht nicht auf der Pflicht-Liste. Es bleibt der Hinweis in der Glocke jedes Kontos mit der Rolle `admin` und die Liste im Dashboard | Erst entscheiden, ob sie gesetzt wird (OPEN-ITEMS „VT1" b); dann beide Adressen mit Komma in den Wert (nodemailer nimmt eine Kommaliste; hier nie geprobt), neu laden über die Ecosystem-Datei |
 | Konto-Mails der Dienste (Resend-Tageslimit, Hetzner, Ploi, Cloudflare, Stripe, OpenRouter) | Konto-Inhaber | In keinem Runbook beschrieben; im jeweiligen Konto nachsehen |
