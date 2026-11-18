@@ -39,8 +39,11 @@ import { communityLabelsFor, type LabelReconcileReader, type MembershipList, typ
  *    Zugangs-Frage unmittelbar davor sagt für eine stillgelegte Community
  *    „kein Zugang" — ist sie inzwischen wieder `active`, wird NICHT entzogen.
  *    Die Zeile selbst repariert der Lauf NICHT (die Platform-App liest das
- *    Control Plane nur); er nimmt nur das Label und zählt die Fälle in
- *    `disabledStale` — wer sie im Log sieht, stellt die Zeilen von Hand um.
+ *    Control Plane nur); er nimmt nur das Label. ZWEI ZAHLEN, zwei Fragen:
+ *    `disabledStale` = hier hing in DIESEM Lauf noch ein Label (fällt nach dem
+ *    ersten Entzug auf 0); `disabledCandidates` = so viele Zeilen stehen noch
+ *    auf `active` — DAS ist das dauerhafte Zeichen. Solange es über 0 steht,
+ *    gehören die Zeilen im Control Plane von Hand auf `removed`.
  *  - HERABGESTUFT: eine `active`-Zeile mit einer Rolle OHNE Moderations-Label
  *    (dieselbe Regel wie die Label-Middleware beim Besuch:
  *    `reports.moderate`), geändert in den letzten `DEMOTED_WINDOW_MS`. Trägt
@@ -123,10 +126,12 @@ export interface LabelReconcileResult {
   /** Ein Deckel hat gegriffen (Log-Zeile je Liste). Bei `removed` macht der
    *  nächste Lauf dahinter weiter, die zwei `active`-Listen haben keinen Cursor. */
   truncated: boolean
-  /** SI1 b: gelesene `active`-Zeilen in stillgelegten Communities. */
+  /** SI1 b: gelesene `active`-Zeilen in stillgelegten Communities. Bleibt über
+   *  0, solange die Zeilen im Control Plane nicht auf `removed` stehen — das
+   *  dauerhafte Zeichen für „von Hand umstellen". */
   disabledCandidates: number
-  /** Davon: Label hängt, kein Zugang (in `stale` mitgezählt). Die Zeile im
-   *  Control Plane bleibt `active` — sie gehört von Hand umgestellt. */
+  /** Davon: Label hängt in DIESEM Lauf noch, kein Zugang (in `stale`
+   *  mitgezählt). Fällt nach dem ersten Entzug auf 0, die Zeile bleibt. */
   disabledStale: number
   /** SI1 b: gelesene kürzlich geänderte Zeilen mit Rolle ohne Moderation. */
   demotedCandidates: number
