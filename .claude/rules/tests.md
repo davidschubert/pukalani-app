@@ -130,7 +130,13 @@ nach dem Konto) und verlangt je Route einen Test, der sie per
 im Bestand `support/routeRoleBacklog.ts`. DER BESTAND DARF NUR SCHRUMPFEN:
 eine neue Route ohne Test ist rot, ein Bestands-Eintrag mit Test ebenso, bis
 er gestrichen ist. Für die neun Pool-Produkte ist er leer und bleibt es
-(`ZERO_BACKLOG_LAYERS`). WAS DER WÄCHTER NICHT SIEHT: ob der Test die
+(`ZERO_BACKLOG_LAYERS`); seit 2026-11-17 auch für `onboarding`, `control`,
+`core`, `admin`, `tickets`, `runner`, `domains` und `billing` (Hilfen je
+Sorte Route: `controlSeam.ts` für die Naht, `controlRouteHarness.ts` für
+Betreiber- und Naht-Routen des Control Plane, `adminRouteHarness.ts` für das
+Dashboard in Pool und Einzel-Instanz, `instanceRoleGate.ts` für ein Recht am
+globalen Label, `appwriteFake.ts` für Konto-Routen). Im Bestand stehen noch
+brand, insights, market, pages und vier App-Routen-Gruppen. WAS DER WÄCHTER NICHT SIEHT: ob der Test die
 richtigen Fragen stellt (er erkennt nur das Laden), und Pfade, die mit
 `${…}` zusammengesetzt werden. WAS DER PRÜFSTAND NICHT BEWEIST: die
 Middleware davor (Sperre für Entfernte, Herkunftsprüfung, Bremsen, Zustimmung)
@@ -213,7 +219,13 @@ Betreiber über den Laufzeit-Schlüssel (der Migrations-Schlüssel darf lokal
 keine Konten anlegen). EIN ROTER BEWEIS IST ENTWEDER EIN VERALTETES SKRIPT
 ODER EIN FEHLER IM PRODUKT — die Prüfung wird nie gestrichen, weil sie rot
 ist: Regel geändert ⇒ Prüfung anpassen und die Regel nennen; Produkt falsch ⇒
-Skript auf `hand` mit neutralem Grund und den Fehler melden. WAS FEHLT: die
-Skripte, die die Einzel-Instanz `apps/comments` oder branding.supply als
-laufenden Server brauchen (26), stehen auf `hand`; Skripte mit echten
-KI-Aufrufen, Stripe oder fremden Websites bleiben dort.
+Skript auf `hand` mit neutralem Grund und den Fehler melden. DIE
+EINZEL-INSTANZ (seit 2026-11-17): nachts startet `buehne.yml` `apps/comments`
+als dritten Server (Projekt `comments`, `bootstrap --seed`); Skripte mit
+`braucht: [..., 'einzel']` bekommen `EINZEL_URL`/`EINZEL_PORT`, lokal nur mit
+`pnpm buehne run --einzel-port N`, sonst „übersprungen". Sie räumen über
+`createEinzelCleanup` mit Nachzählen auf. WAS FEHLT: zwei Skripte, die die
+Einzel-Instanz EIGENS eingestellt brauchen (`verify-silo-domain`,
+`verify-domain-settle`), und die 12 von branding.supply (eigenes Projekt)
+stehen auf `hand`; Skripte mit echten KI-Aufrufen, Stripe oder fremden
+Websites bleiben dort.

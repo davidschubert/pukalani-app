@@ -31,8 +31,10 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup } from '../../../scripts/lib/probe-stage.mjs'
 
-const PORT = Number(process.env.COMMENTS_PORT || 3151)
+// Der Läufer setzt EINZEL_PORT (die Einzel-Instanz im nächtlichen Lauf).
+const PORT = Number(process.env.EINZEL_PORT || process.env.COMMENTS_PORT || 3151)
 const HOST = process.env.SILO_HOST || 'localhost'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
@@ -173,7 +175,13 @@ finally {
     await db.deleteRow({ databaseId, tableId: 'courses', rowId: courseId }).catch(() => {})
   }
   for (const id of cleanup.users) await users.delete({ userId: id }).catch(() => {})
-  console.log(`  ✔ aufgeräumt (${cleanup.courses.length} Kurs(e), ${cleanup.users.length} User)`)
+  // NACHZÄHLEN (Bühnen-Regel 2) statt „✔ aufgeräumt" ohne Zählung: Konten,
+  // die eigenen Zeilen und alles, was an den Wegwerf-Konten hängt, sind weg.
+  const sweep = createEinzelCleanup({ script: 'verify-manage-entrypoints (courses)' })
+  for (const entry of cleanup.courses.map(id => `courses/${id}`)) sweep.track('poolRow', entry)
+  for (const id of cleanup.users) sweep.track('account', id)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

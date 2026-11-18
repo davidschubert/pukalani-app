@@ -43,10 +43,12 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
-import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
-const base = process.argv[2] ?? 'http://localhost:3011'
-const LIMIT = Number(process.argv[3] ?? 3)
+const base = einzelBaseUrl('http://localhost:3011')
+// Ohne Argument: `LIKE_LIMIT` (der Läufer setzt 50 — die App-Config ohne Override).
+const LIMIT = Number(process.argv[3] ?? process.env.LIKE_LIMIT ?? 3)
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
@@ -164,10 +166,15 @@ try {
     pollOptions: null, pollEndsAt: null, categoryId: '',
     upvotes: 0, downvotes: 0, score: 0, communityId: '',
   }
+  // Die Stimm-Routen lesen das Ziel seit SEC-031 so, wie das KONTO liest
+  // (Mitglieder-Klinke): ein Ziel ohne Leserecht ist für sie „nicht da" (404).
+  // Veröffentlichte Beiträge und aktive Antworten tragen in der App das
+  // öffentliche Leserecht — die Wegwerf-Ziele hier also auch.
+  const publicRead = [Permission.read(Role.any())]
   // Ein Ziel mehr als das Kontingent — plus zwei fuer die Sonderfaelle.
   const posts = []
   for (let i = 0; i < LIMIT + 3; i++) {
-    posts.push(await seedRow(POSTS, { ...basePost, title: `Ziel ${i} ${stamp}` }))
+    posts.push(await seedRow(POSTS, { ...basePost, title: `Ziel ${i} ${stamp}` }, publicRead))
   }
 
   const targetId = `like-limit-${stamp}`
@@ -175,7 +182,7 @@ try {
     targetId, targetType: 'page', content: 'Antwort fuer den Limit-Beweis', parentId: null, rootId: null,
     depth: 0, editedAt: null, authorId: ben.id, authorName: 'Ben', targetUrl: `/threads/${targetId}`,
     upvotes: 0, downvotes: 0, score: 0, status: 'active', communityId: '',
-  })
+  }, publicRead)
 
   /* ── 1. Ohne Konto geht gar nichts ───────────────────────────────────── */
   const guestPost = await likePost(posts[0].$id, '')
@@ -341,6 +348,13 @@ finally {
   for (const userId of cleanup.users) {
     await users.delete({ userId }).catch(() => {})
   }
+  // NACHZÄHLEN (Bühnen-Regel 2): alles Registrierte und alles, was an den
+  // Wegwerf-Konten hängt, muss weg sein — nicht dem eigenen Löschen glauben.
+  const sweep = createEinzelCleanup({ script: 'verify-like-limit' })
+  for (const { tableId, id } of cleanup.rows) sweep.track('poolRow', `${tableId}/${id}`)
+  for (const userId of cleanup.users) sweep.track('account', userId)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
 
   console.log(`\n${passed} bestanden, ${failed} fehlgeschlagen`)
   process.exit(failed === 0 ? 0 : 1)
