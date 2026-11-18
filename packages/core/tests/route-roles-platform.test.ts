@@ -213,6 +213,74 @@ describe('POST /api/presence/heartbeat — schreibt nur die eigene Anwesenheit',
   })
 })
 
+/**
+ * ANWESENHEIT NUR FÜR MITGLIEDER (BT1 e, 2026-11-18). Die Route schreibt mit
+ * dem Admin-Client und gibt der Zeile das Lese-Publikum der Community des
+ * Hosts. Wer nicht dazugehört, bekommt ein stilles `ok` — nichts gelesen,
+ * nichts geschrieben. Wer durch darf, steht ausgeschrieben hier.
+ */
+describe('POST /api/presence/heartbeat — im Pool nur für Mitglieder dieser Community', () => {
+  const load = () => import('../server/api/presence/heartbeat.post')
+  const beat = (who: Parameters<typeof probeRoute>[1]['who'], extra: Record<string, unknown> = {}, mode?: 'pool' | 'silo') =>
+    probeRoute(load, { who, mode, body: { scope: 'global' }, globals: { ...heartbeatGlobals([]), ...extra } })
+
+  for (const who of ['member', 'legacy', 'owner', 'admin', 'moderator', 'editor'] as const) {
+    it(`${who}: die Anwesenheit wird geschrieben`, async () => {
+      const run = await beat(who)
+      expect(run.status).toBe(200)
+      expect(appwriteFake.argsOf('admin.presences.upsert')).toHaveLength(1)
+    })
+  }
+
+  for (const who of ['stranger', 'removed', 'operator'] as const) {
+    it(`${who}: stilles ok — nichts gelesen, nichts geschrieben`, async () => {
+      const run = await beat(who)
+      expect(run.status).toBe(200)
+      expect(run.result).toEqual({ ok: true })
+      expect(appwriteFake.calls).toEqual([])
+    })
+  }
+
+  it('auch der Abwesend-Takt eines fremden Kontos liest die Anwesenheit nicht', async () => {
+    const run = await probeRoute(load, { who: 'stranger', body: { scope: 'global', away: true }, globals: heartbeatGlobals([]) })
+    expect(run.status).toBe(200)
+    expect(appwriteFake.calls).toEqual([])
+  })
+
+  it('Einzel-Instanz: dort gibt es die Grenze nicht — jedes angemeldete Konto wird geschrieben', async () => {
+    const run = await beat('stranger', {}, 'silo')
+    expect(run.status).toBe(200)
+    expect(appwriteFake.argsOf('admin.presences.upsert')).toHaveLength(1)
+  })
+
+  describe('die Zugehörigkeit ist gerade nicht prüfbar', () => {
+    const down = { resolveCommunityMembership: async () => { throw new Error('control plane down') } }
+
+    it('Mitglied mit Label: bleibt sichtbar', async () => {
+      const run = await beat('member', down)
+      expect(run.status).toBe(200)
+      expect(appwriteFake.argsOf('admin.presences.upsert')).toHaveLength(1)
+    })
+
+    it('fremdes Konto ohne Label: bleibt draußen', async () => {
+      const run = await beat('stranger', down)
+      expect(run.status).toBe(200)
+      expect(appwriteFake.calls).toEqual([])
+    })
+
+    it('gerade entferntes Konto: bleibt draußen, auch wenn das Label noch hängt', async () => {
+      const run = await probeRoute(load, {
+        who: 'removed',
+        body: { scope: 'global' },
+        userFields: { labels: ['c-a'] },
+        globals: { ...heartbeatGlobals([]), ...down },
+      })
+      expect(run.status).toBe(200)
+      expect(appwriteFake.calls).toEqual([])
+    })
+  })
+})
+
 describe('POST /api/presence/leave — entfernt nur die eigene Anwesenheit', () => {
   const load = () => import('../server/api/presence/leave.post')
   const globals = () => ({ ...coreKit().globals, warnPresenceScopeMissingOnce: () => {} })
