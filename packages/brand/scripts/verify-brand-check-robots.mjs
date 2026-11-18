@@ -85,7 +85,30 @@ const stamp = Date.now()
 const STARTED_AT = new Date(stamp - 1000).toISOString()
 let pass = 0
 let fail = 0
-const cleanup = { users: [], profiles: [], access: [], checks: [] }
+const cleanup = { users: [], profiles: [], access: [], checks: [], aiFlag: null }
+
+/**
+ * Der Check läuft nur, wenn der Betreiber-Schalter für die KI an ist
+ * (`app_config.global.brandAiEnabled`) — sonst antwortet die Route mit 503
+ * `check_paused`. Auf einer frischen Instanz ist er aus. Das Skript SETZT
+ * seine Annahme selbst und stellt sie am Ende zurück (dieselbe Hilfe wie in
+ * den Beweisen des Marktvergleichs).
+ */
+async function ensureAiEnabled() {
+  let row = null
+  try {
+    row = await tablesDB.getRow({ databaseId, tableId: 'app_config', rowId: 'global' })
+  }
+  catch { /* keine Zeile */ }
+  if (row?.brandAiEnabled === true) return
+  cleanup.aiFlag = row ? { existed: true, before: row.brandAiEnabled ?? null } : { existed: false }
+  if (row) {
+    await tablesDB.updateRow({ databaseId, tableId: 'app_config', rowId: 'global', data: { brandAiEnabled: true } })
+  }
+  else {
+    await tablesDB.createRow({ databaseId, tableId: 'app_config', rowId: 'global', data: { brandAiEnabled: true } })
+  }
+}
 const servers = []
 
 function check(label, ok, detail = '') {
@@ -256,6 +279,7 @@ async function checkRowsFor(origin) {
 }
 
 try {
+  await ensureAiEnabled()
   // ── Die drei Websites ───────────────────────────────────────────────────
   console.log('0 · Drei erfundene Websites, jede auf eigenem Ursprung')
 
@@ -440,6 +464,17 @@ finally {
   for (const id of cleanup.users) {
     await removeProbeConsent({ tablesDB, databaseId, userId: id }).catch(() => {})
     await users.delete({ userId: id }).catch(() => {})
+  }
+  if (cleanup.aiFlag) {
+    if (cleanup.aiFlag.existed) {
+      await tablesDB.updateRow({
+        databaseId, tableId: 'app_config', rowId: 'global',
+        data: { brandAiEnabled: cleanup.aiFlag.before },
+      }).catch(() => {})
+    }
+    else {
+      await tablesDB.deleteRow({ databaseId, tableId: 'app_config', rowId: 'global' }).catch(() => {})
+    }
   }
   for (const server of servers) {
     // Erst die Keep-alive-Sockets, dann schliessen — sonst wartet `close()`
