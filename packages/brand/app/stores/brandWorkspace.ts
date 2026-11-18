@@ -7,6 +7,12 @@ import type {
 } from '../../shared/brandJourney'
 import { canEnterBrandStep } from '../../shared/brandJourney'
 import { evaluateInvariants } from '../../shared/brandSessions'
+import {
+  brandDraftTurnFromStored,
+  brandFieldDraftGeneration,
+  brandTruncatedDraftFields,
+  type BrandFieldDraftSource,
+} from '../../shared/brandTruncatedField'
 import type {
   BrandInvariant,
   BrandSlotStateFacts,
@@ -31,6 +37,7 @@ import {
 import type {
   BrandFindingDecisionResponse,
   BrandFindingView,
+  BrandGenerationMeta,
   BrandMessagesResponse,
   BrandProfileDetailResponse,
   BrandProfileListResponse,
@@ -142,6 +149,13 @@ export interface BrandStreamMessage {
    * Menschen ein zweites Mal.
    */
   retrySlotId?: string
+  /**
+   * Das Feld, das dieser Zug ENTWORFEN hat (KI1 d) — live aus `slot.ready`,
+   * nachgeladen aus `parts` (`kind: 'draft'`). Fehlt bei jedem anderen Zug.
+   */
+  draftSlotId?: string
+  /** Die Kennung des Laufs — nur bei einem Entwurfs-Zug gesetzt (KI1 d). */
+  generationId?: string
 }
 
 const EMPTY_PROGRESS: BrandStepProgress = { requiredTotal: 0, requiredFilled: 0, pct: 0 }
@@ -238,6 +252,13 @@ const setup = () => {
   const georgeDrafts = ref<Record<string, string>>({})
 
   /**
+   * Die Historie des Schrittes OHNE Text (`detail.generations.items`) — nur
+   * für die Frage „wessen Entwurf steht nach dem Neuladen im Feld?" (KI1 d,
+   * `brandFieldDraftGeneration`). Im Return, damit SSR sie mitgibt.
+   */
+  const generationMeta = ref<BrandGenerationMeta[]>([])
+
+  /**
    * DER BETA-ZUGANG FEHLT — die Antwort der Datentür auf die LISTE (404).
    * Kein Fehler, ein Zustand: `/dashboard/brands` zeigt dafür einen
    * Leerzustand mit dem Weg zur Einladung, keine Fehlerseite.
@@ -288,6 +309,36 @@ const setup = () => {
     if (edit?.confirmed !== undefined) return edit.confirmed
     return brandSlotIsConfirmed(serverSlots.value[slotId])
   }
+
+  /**
+   * DIE FELDER, DEREN WERT EIN ABGESCHNITTENER ENTWURF IST (KI1 d) — die pure
+   * Regel `brandTruncatedDraftFields` über dem Verlauf, den der Store gerade
+   * hält, und der Herkunft jedes Feldes. Eine Anzeige, keine gespeicherte
+   * Aussage: sie stimmt live und nach dem Neuladen (s. `brandTruncatedField.ts`).
+   */
+  const truncatedDraftSlots = computed<Set<string>>(() => {
+    const turns = streamMessages.value.map(message => ({
+      draftSlotId: message.role === 'george' ? message.draftSlotId ?? null : null,
+      generationId: message.generationId ?? null,
+      truncated: message.truncated === true,
+    }))
+    const fields: Record<string, BrandFieldDraftSource> = {}
+    for (const turn of turns) {
+      const slotId = turn.draftSlotId
+      if (!slotId || !turn.truncated || slotId in fields) continue
+      fields[slotId] = {
+        value: slotValue(slotId),
+        generationId: brandFieldDraftGeneration({
+          slotId,
+          slot: serverSlots.value[slotId],
+          generations: generationMeta.value,
+          liveDraftGenerationId: georgeDrafts.value[slotId] ?? null,
+          locallyEdited: localEdits.value[slotId]?.value !== undefined,
+        }),
+      }
+    }
+    return brandTruncatedDraftFields(turns, fields)
+  })
 
   const pendingSlots = computed<Record<string, BrandSlotPatch>>(
     () => diffBrandSlots(serverSlots.value, localEdits.value),
@@ -667,6 +718,11 @@ const setup = () => {
   function applyGeorgeDraft(slotId: string, value: string, generationId: string): void {
     setSlotValue(slotId, value)
     georgeDrafts.value = { ...georgeDrafts.value, [slotId]: generationId }
+    // Der Zug weiss jetzt, welches Feld er entworfen hat (KI1 d) — dieselbe
+    // Auskunft, die nach dem Neuladen aus `parts` kommt.
+    streamMessages.value = streamMessages.value.map(message => (message.id === generationId
+      ? { ...message, draftSlotId: slotId, generationId }
+      : message))
   }
 
   function slotIsGeorgeDraft(slotId: string): boolean {
@@ -792,6 +848,14 @@ const setup = () => {
     return slotId ? { retrySlotId: slotId } : {}
   }
 
+  /** Feld und Lauf eines gespeicherten ENTWURFS-Zuges, als Spread (KI1 d). */
+  function draftTurnFrom(message: BrandMessagesResponse['messages'][number]): { draftSlotId?: string, generationId?: string } {
+    const facts = brandDraftTurnFromStored(message)
+    return facts.draftSlotId && facts.generationId
+      ? { draftSlotId: facts.draftSlotId, generationId: facts.generationId }
+      : {}
+  }
+
   /** Dasselbe für das Bestätigungs-Angebot (`{ kind: 'reply', confirm: true }`). */
   function confirmFromParts(parts: unknown): boolean {
     if (parts === null || typeof parts !== 'object') return false
@@ -838,6 +902,7 @@ const setup = () => {
           ...(message.role === 'george' && truncatedFromParts(message.parts)
             ? { truncated: true as const, ...retrySlotFrom(message.parts) }
             : {}),
+          ...draftTurnFrom(message),
         }))
       return response.messages.some(message => message.role === 'george')
     }
@@ -990,6 +1055,7 @@ const setup = () => {
   function applyStepDetail(detail: BrandStepDetailResponse): void {
     stepKey.value = detail.stepKey
     serverSlots.value = detail.slots
+    generationMeta.value = detail.generations?.items ?? []
     // Fehlt das Feld (alter Server während eines Deploys), ist die Karte leer
     // — die Bühne fällt dann auf ihren Rückfall zurück, statt zu brechen.
     sourceValues.value = detail.sourceValues ?? {}
@@ -1200,6 +1266,7 @@ const setup = () => {
       // eine Vermischung zweier Kapitel.
       if (detail.stepKey !== stepKey.value) return false
       serverSlots.value = detail.slots
+      generationMeta.value = detail.generations?.items ?? []
       sourceValues.value = detail.sourceValues ?? {}
       revision.value = detail.revision
       serverConfidence.value = detail.confidence
@@ -1260,6 +1327,7 @@ const setup = () => {
     journey.value = []
     stepKey.value = null
     serverSlots.value = {}
+    generationMeta.value = []
     localEdits.value = {}
     revision.value = 0
     serverConfidence.value = null
@@ -1314,6 +1382,8 @@ const setup = () => {
     loading,
     streamMessages,
     georgeDrafts,
+    generationMeta,
+    truncatedDraftSlots,
     confidence,
     pendingSlots,
     pendingConfidence,

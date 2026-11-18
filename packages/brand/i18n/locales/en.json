@@ -1059,7 +1059,9 @@
       "truncated": {
         "hint": "This answer was cut off – the model stopped before it was finished.",
         "retry": "Generate again",
-        "writeAgain": "Just write again and {voice} will answer anew."
+        "writeAgain": "Just write again and {voice} will answer anew.",
+        "fieldBadge": "Cut off",
+        "fieldHint": "Draft cut off – the text ends mid-thought."
       },
       "submitChoice": "Submit",
       "save": {
