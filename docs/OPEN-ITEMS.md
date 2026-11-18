@@ -45,7 +45,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Neun Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1, SV1 und zwei aus P29 (Anmelde-Mail, gestohlenes Passwort). Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
+| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Zehn Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) und seit dem 2026-11-18 das Erstgespräch auf pukalani.studio. Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
 
 ### Schritt 3 — Baut Claude allein
 
@@ -81,7 +81,7 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | MM1 | **Mitmachen nur für Mitglieder: Rest.** (a) Klick-Probe auf den echten Seiten: KR1. Alles andere ist erledigt oder bewusst so entschieden (COMPLETE „N03" und „N08"). **Wartet auf:** Davids Zeit. | Niedrig | S | **Ja: selbst klicken** | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal öffnen und speichern (Handgriff im Dashboard, vor dem Freischalten von Profil, Duell und Ranking), (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten ist gebaut (COMPLETE „N05"), der Seed prüft sie mit (COMPLETE „N08"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
-| PB1 | **Profilbild-Ablage: Nacharbeiten.** (c) Ein voller Lauf des Migrations-Runners baut an drei Tabellen um. Klick-Probe (a): KR1. Schlüssel und Kleinigkeiten sind seit dem 2026-11-18 erledigt (COMPLETE „N11"). **Wartet auf:** (c) nichts. | Niedrig | (c) M | (a) Ja: selbst klicken | [Einzelheiten](#pb1) |
+| PB1 | **Profilbild-Ablage: Rest.** Offen ist nur die Klick-Probe (a): KR1. Ein voller Lauf des Migrations-Runners baut seit dem 2026-11-18 nichts mehr um (COMPLETE „N15"), Schlüssel und Kleinigkeiten sind erledigt (COMPLETE „N11"). **Wartet auf:** Davids Zeit. | Niedrig | S | (a) Ja: selbst klicken | [Einzelheiten](#pb1) |
 | BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (c) Übung jährlich wiederholen — dabei zum ersten Mal auch das Bündel der App-Einstellungen mit dem privaten Schlüssel öffnen. (d) Kleinigkeiten, darunter Kopien auf den Servern löschen (ab dem 2026-12-02). Die Einstellungs-Dateien der Apps liegen seit dem 2026-11-18 im nächtlichen Backup (COMPLETE „N11"). **Wartet auf:** (c) Davids privaten Schlüssel, (d) den Termin. | Mittel | je Teil S | (c) Ja | [Einzelheiten](#bu1) |
 
 **Weitere Nacharbeiten:**
@@ -90,18 +90,16 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. Die Icon-Zeilen, Fehler außerhalb einer Anfrage und der Zahlungswarn-Lauf sind seit 2026-11-17 erledigt (COMPLETE „N09"). **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
-| LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten, (d) EIN Weg über der Wartezeit des Webservers bleibt: die Übersetzung einer ganzen Seite. Brand-Check, Marktbericht und Dokument-Prüfung laufen im Hintergrund, Kapitel-Prüfung und Sitzung schließen haben einen Zeitdeckel (COMPLETE „N13"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ll1) |
+| LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten, (d) die Übersetzung einer ganzen Seite: gebaut und als Entwurf bereit (Pull Request 387), braucht eine neue Tabelle auf der echten Datenbank. Alle anderen Wege laufen im Hintergrund oder haben einen Zeitdeckel (COMPLETE „N13"); die Übersicht der Marken zeigt einen laufenden Check seit dem 2026-11-18 (COMPLETE „N15"). **Wartet auf:** (d) Davids Ja zur Migration `pages-007`. | Niedrig | S | **Ja: (d)** | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
-| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
+| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung — Empfehlung: erst bauen, wenn eine Route erledigte Meldungen beschreibt). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
-| SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"), (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
-| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern (COMPLETE „N05") und das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (COMPLETE „N13") sind gebaut. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
+| SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"). Klick-Probe (a): KR1. Eine 503 trägt seit dem 2026-11-18 einen eigenen Code (COMPLETE „N15"). **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
+| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (ein englisches Bildschirmfoto, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
-| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst. Rollen-Tests: `pages`, `apps/control` und die drei Einzelrouten sind seit dem 2026-11-18 ohne Bestand (COMPLETE „N14"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) erledigt: kein Layer hat mehr Routen ohne Rollen-Test (COMPLETE „N13" und „N14"), (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
-| NF1 | **Nebenfunde aus den Tests der Apps.** (a) Ticket-Kauf der Test-App: es fehlen Prüfungen, die die übrigen Termin-Routen tragen, (b) die Formulare von `apps/portfolio` und `apps/photos` haben noch nicht alle Bausteine der Regel für öffentliche Formulare, (c) Kleinigkeiten. Gefunden am 2026-11-18 (COMPLETE „N14"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#nf1) |
-| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** Drei Dinge, die an einem Tag mit vielen parallelen Merges auffielen: der Start der Test-Server in der CI, die Geheimnis-Prüfung über alle Zweige, und das Ausliefern, das immer wieder neu beginnt. Nichts davon ist ein Fehler im Programm. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
-| LN1 | **Zwölf Routen-Dateien sieht der Lint-Lauf nicht.** Eine Ausnahme der Lint-Einrichtung für Ordner namens `public` trifft auch Routen-Ordner (`…/api/insights/public/`, `…/api/pages/public/`). Dort prüft weder der normale noch der typisierte Durchgang. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ln1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst; zwei E2E-Dateien laufen seit dem 2026-11-18 nachts mit (COMPLETE „N15"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
+| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (b) Die Geheimnis-Prüfung liest alle Zweige. (c) Dichte Merges schieben das Ausliefern vor sich her. Die zwei Beweis-Skripte warten seit dem 2026-11-18 auf die erste Seite (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf, (b) Davids Entscheidung. | Niedrig | S je Teil | (b) Ja | [Einzelheiten](#cw1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -246,7 +244,12 @@ Test-Konto. Was genau zu klicken ist, steht beim jeweiligen Eintrag:
 4. **Einladung und Entziehen** — Einladungslink aus einem Webmail-Fenster
    öffnen; „Zugang entziehen" mit dem Test-Konto ([SI1 a](#si1)).
 5. **Formulare von branding.supply** — Erstgespräch und Warteliste je einmal
-   abschicken ([SR1 a](#sr1)).
+   abschicken ([SR1 a](#sr1)). Dazu das **Erstgespräch auf pukalani.studio**
+   einmal abschicken: es trägt seit dem 2026-11-18 die Bot-Prüfung (die
+   Schlüssel waren dort schon gesetzt). Lokal mit Test-Schlüsseln geklickt;
+   auf der echten Seite laden Widget und Skript wie bei „Passwort vergessen",
+   ein Mensch hat dort aber noch nicht abgeschickt. Erwartet: im letzten
+   Schritt wird der Knopf nach einem Augenblick frei, die Anfrage kommt an.
 6. **KI-Einschätzung** — als Moderator die Einschätzung zu einer Meldung
    holen ([KI1 a](#ki1)).
 7. **Runner** — ein echter Lauf über das Formular mit einem Testbefehl aus
@@ -431,23 +434,10 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   `branding.supply` je einmal ein Profilbild hochladen (wo die Seite eines
   anbietet). Scheitert es, fehlt dem Schlüssel dort das Schreibrecht für
   Dateien ([APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md)).
-- **(c) Ein voller Lauf des Runners baut um.** `scripts/migrate.mjs` führt kein
-  Register und fährt ohne `--only` jede Migration der App jedes Mal. Im Layer
-  `system` legen ältere Migrationen Spalten an, die spätere wieder entfernen
-  (`app_config.features`, `app_config.entitlements`, `activities.tenantId`,
-  `notifications.tenantId` samt Index) — bei JEDEM vollen Lauf, lokal in allen
-  vier Projekten gesehen. Seit GA1 P21 (2026-11-16) gibt es den geprüften Weg
-  für EINE Migration: `pnpm migrate --app <app> --env <datei> --only
-  <layer>-<NNN> --prod`; damit baut ein Production-Lauf nichts mehr um. Offen
-  bleibt der volle Lauf (neues Projekt, lokaler Spiegel). Abhilfe: die
-  Anlege-Migrationen prüfen, ob eine spätere die Spalte entfernt hat, oder ein
-  Register. **Empfehlung (2026-11-18):** die kleine Lösung — die vier
-  bekannten Stellen im Layer `system` legen ihre Spalte nur an, wenn keine
-  spätere Migration sie wieder entfernt (welche Spalten am Ende stehen, weiß
-  `scripts/lib/migration-inventory.mjs` schon). Ein Register ist ein neues
-  Datenmodell je Projekt und lohnt erst, wenn ein fünfter Fall auftaucht.
-  Beweis wäre ein voller Lauf gegen den lokalen Spiegel mit null
-  „✔"-Zeilen.
+- **(c) Erledigt am 2026-11-18 (COMPLETE „N15").** Ein voller Lauf des
+  Migrations-Runners legt nichts mehr an, was eine spätere Migration wieder
+  entfernt. Die alten Migrationen tragen dafür eine Wache; ein Test hält
+  fest, dass jede neue Stelle dieser Art sie auch trägt.
 
 <a id="bu1"></a>
 
@@ -731,9 +721,7 @@ von sechs auf einen Weg gesunken.
   `verify-market-*.mjs` fragen den Stand über dieselbe Hilfe ab, sind aber
   nicht gelaufen (sie bezahlen echte Läufe). Die Lesung der Vorbilder bucht
   bei einem gescheiterten oder abgebrochenen Lauf nicht zurück (nur die
-  Entwürfe tun das). Die Übersicht aller Marken zeigt nach dem Neuladen
-  nicht, dass ein Fundament-Check läuft — ein Klick antwortet dann „läuft
-  schon" und wartet mit. Die Lauf-Zeilen (`market_runs`, `insights_runs`,
+  Entwürfe tun das). Die Lauf-Zeilen (`market_runs`, `insights_runs`,
   `brand_runs`) haben bewusst keine Frist (bewertet am 2026-11-18, COMPLETE
   „N13"): sie nennen niemanden und sind klein. Neu ansehen, wenn eine der
   Tabellen über 50.000 Zeilen wächst — die Läufe des öffentlichen Checks
@@ -750,10 +738,10 @@ von sechs auf einen Weg gesunken.
   abgebrochene Läufe an Lauf-Zeilen ohne Ende mit altem Herzschlag erkennen.
   Auf Production ist ein Lauf ÜBER 60 Sekunden weiter nicht gezeigt, auch
   nicht beim öffentlichen Brand-Check; alles ist lokal gezeigt (65 bis 87 s,
-  je zwei Reiter). Auf den Seiten sind zwei Dinge nur durch Tests belegt,
-  nicht im Browser gesehen: der Wartezustand der Dokument-Prüfung (der Knopf
-  braucht ein abgenommenes Kapitel) und der Hinweis der Marktvergleich-Seite
-  auf einen laufenden Bericht. Die Marktvergleich-Seite startet den Bericht
+  je zwei Reiter). Der Wartezustand der Dokument-Prüfung und der Hinweis der
+  Marktvergleich-Seite auf einen laufenden Bericht sind seit dem 2026-11-18
+  lokal im Browser gezeigt, mit gestellten Läufen (COMPLETE „N15"). Die
+  Marktvergleich-Seite startet den Bericht
   weiter über den Vergleich; die eigene Bericht-Route ruft heute keine Seite.
   Beim öffentlichen Check bekommt ein zweiter Besucher am SELBEN Anschluss
   mit derselben Adresse denselben Lauf (bewusst: so folgt ein zweites Gerät
@@ -762,13 +750,20 @@ von sechs auf einen Weg gesunken.
   nachholt, kann ein gleichzeitiges Speichern im selben Kapitel einen
   Versions-Konflikt bekommen; die Werkstatt löst ihn wie bisher still auf
   (nicht eigens geprüft).
-- **(d) Bestand des Fristen-Wächters** (`packages/core/tests/support/routeDeadlines.ts`,
-  Bauform `over` — die Liste darf nur schrumpfen): EIN Eintrag, die
-  Übersetzung einer ganzen Seite (`packages/pages`, 120 s). Sie braucht eine
-  Lauf-Tabelle, die es in diesem Paket nicht gibt (eine neue Tabelle ist eine
-  Migration), oder den 180-Sekunden-Block des Webservers, den es nur auf
-  branding.supply für die Artikel-Wege gibt. Nicht gezählt sind Aufrufe an
-  ploi, Stripe, Mail und das Control Plane.
+- **(d) Die Übersetzung einer ganzen Seite — gebaut, wartet auf die
+  Migration.** Sie war der letzte Weg über der Wartezeit des Webservers
+  (120 s in der Anfrage). Seit dem 2026-11-18 liegt der Umbau als Entwurf vor
+  (Pull Request 387): Start antwortet sofort, gerechnet wird im Hintergrund,
+  ein zweiter Klick startet keinen zweiten Lauf, der Vorschlag wird
+  angeboten und nie ungefragt ins Formular gesetzt. Er braucht die neue
+  Tabelle `pages_runs` (Migration `pages-007`) in allen vier Projekten, in
+  denen der Layer `pages` läuft (account, admin, portfolio, branding).
+  **Reihenfolge:** erst Davids Ja, dann die Migration je Projekt (`pnpm
+  migrate --app <app> --env <datei> --only pages-007 --dry-run`, danach mit
+  `--prod`), dann zusammenführen. Vorher zusammengeführt meldet
+  `/api/health` „Datenbank hinter dem Programm", und der Übersetzen-Knopf
+  antwortet „hat nicht geklappt". Nicht geprüft: ein echter Lauf über 60
+  Sekunden mit einem Modell.
 
 <a id="sv1"></a>
 
@@ -842,8 +837,6 @@ Moderations-Label nach einer Herabstufung; seine Ops-Route ist gebremst.
   Entzug holt der Lauf nach. Ein ganzer Lauf gegen eine Bühne mit
   stillgelegter Community steht noch aus.
   Runbook: [LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md).
-- **(d) Kleinigkeit.** Eine 503 trägt im Umschlag den Code `INTERNAL_ERROR`
-  (es gibt keinen eigenen für 503).
 
 <a id="ki1"></a>
 
@@ -867,8 +860,8 @@ keinen Europa-Endpunkt hat.
   (BS1 und A1; gesammelt in [DT1](#dt1)).
 - **(d) Kleinigkeiten.** Beim Speichern eines Modells wird nur der Ort
   geprüft; ob der Anbieter nichts speichert, prüft weiter nur der tägliche
-  Wächter. Der Klick auf der Config-Seite ist nicht gezeigt (lokal und auf
-  Live), nur die Route dahinter. Das Kennzeichen am Feldwert eines
+  Wächter. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal
+  gezeigt (COMPLETE „N15"), auf Live nicht. Das Kennzeichen am Feldwert eines
   abgeschnittenen Entwurfs (COMPLETE „N13") ist nur durch Tests belegt, nicht
   im Browser gesehen — dafür bräuchte es einen echten abgeschnittenen Zug.
   Ein englisches Bildschirmfoto der Hinweise fehlt. Die Kosten je Lauf und der Anbieter
@@ -897,8 +890,11 @@ SDK-Versionen aus dem Katalog.
 - **(d) Kleinigkeiten.** Ticket-Kauf (lebt nur in der Test-App): die
   Rückkehr-Adressen kommen weiter aus dem Host der Anfrage; die Prüfung
   „schon bezahlt" liest die 100 jüngsten Sitzungen und braucht ein
-  Zeitfenster, sobald es eine Erstattung mit Rücknahme des Tickets gibt. Der
-  Zähler der Kontakt-Route von `apps/photos` liegt im Speicher des Prozesses.
+  Zeitfenster, sobald es eine Erstattung mit Rücknahme des Tickets gibt; die
+  Route liest den Termin direkt und nicht über die Datentür — zu ändern,
+  bevor der Ticket-Kauf in eine ausgerollte Pool-App zieht (die Prüfungen der
+  Termin-Routen und eine eigene Bremse trägt er seit dem 2026-11-18, COMPLETE
+  „N15").
   Auf dem Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner
   (bewusst behalten) und vier Sicherheitskopien aus dem Backup-Paket
   (`*.vorher-p11*`, gehören zu BU1 d). Der lokale Lauf der Playwright-Suite
@@ -945,12 +941,11 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   und `insights` aus N10 ist seit dem 2026-11-18 auf `main`). Zwei Skripte der
   Einzel-Instanz brauchen eigens eingestellte Server (`verify-silo-domain`,
   `verify-domain-settle`). Bewusst von Hand bleiben sechs mit Fremddiensten.
-  **Passt noch in den Nacht-Lauf, ohne neuen Server:**
-  `apps/comments/e2e/community-removed.spec.ts` (das entfernte Konto steht
-  auf der Bühne; es fehlen die Variablen `PW_POOL_*` aus dem Stand der Bühne
-  und ein Playwright-Schritt) und die eine E2E-Datei von `apps/control` (die
-  Betreiber-App läuft dort schon). Die fünf E2E-Dateien von `apps/portfolio`
-  brauchen einen eigenen Server und ein eigenes Projekt.
+  Seit dem 2026-11-18 laufen nachts zwei E2E-Dateien mit
+  (`apps/comments/e2e/community-removed.spec.ts` und die E2E-Datei von
+  `apps/control`, über `pnpm buehne e2e`; COMPLETE „N15"). Die fünf
+  E2E-Dateien von `apps/portfolio` brauchen einen eigenen Server und ein
+  eigenes Projekt.
 - **(b) Rollen-Tests: erledigt, der Bestand ist leer**
   (`support/routeRoleBacklog.ts`, vorher 85 Routen). Abgebaut am 2026-11-18:
   insights, brand und market (COMPLETE „N13"), `pages`, `apps/control` und die
@@ -989,28 +984,6 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   es anders sein, kommt die Rolle dort in die Abweisungs-Liste und die Wache
   wird angepasst.
 
-<a id="nf1"></a>
-
-**NF1 — Nebenfunde aus den Tests der Apps (Gruppe N14, 2026-11-18).**
-Die neuen Tests halten diese Stellen nicht als richtig fest; sie stehen dort
-als offene Punkte (`it.todo`).
-
-- **(a) Ticket-Kauf (lebt nur in der Test-App `apps/comments`, nicht
-  ausgerollt).** Die Route verlangt eine Anmeldung. Die Prüfungen, die die
-  übrigen Termin-Routen tragen (Zugehörigkeit zur Community, Produkt des
-  Plans, Wartungs-Sperre), und eine eigene Bremse fehlen ihr. Zu bauen, bevor
-  der Ticket-Kauf in eine ausgerollte App zieht.
-- **(b) Öffentliche Formulare von `apps/portfolio` (Erstgespräch) und
-  `apps/photos` (Kontakt).** Beide haben Honigtopf, Eingabe-Prüfung und eine
-  Bremse. Die Bot-Prüfung aus der Regel „öffentliches Formular, das eine Mail
-  auslöst" (`.claude/rules/ki-mail-embed-moderation.md`) ist dort noch nicht
-  eingebaut; der Zähler von `apps/photos` liegt im Speicher des Prozesses.
-- **(c) Kleinigkeiten.** `PATCH /api/pages/navigation` prüft Menü-Links gegen
-  höchstens 100 veröffentlichte Seiten; ab der 101. würde ein gültiger Link
-  abgelehnt. `packages/core/tests/support/participationHarness.ts` hat eine
-  Stelle mit implizitem `any`, die nur bei einer Typprüfung aus einer App
-  heraus auffällt (die Tests der Apps liegen nicht in deren `typecheck`).
-
 <a id="cw1"></a>
 
 **CW1 — Wackler in CI und Ausliefern (beobachtet von der Gruppe N13 am 2026-11-18).**
@@ -1019,13 +992,16 @@ jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit. (Ein
 vierter Wackler, ein Test des Ausliefer-Skripts, steht mit dem, was dagegen
 getan ist, unter [MG1](#mg1).)
 
-- **(a) Die Test-Server starten in der CI nicht rechtzeitig.** E2E: „Timed
-  out waiting 120000ms from config.webServer" (Pull Request 334 im ersten
-  Lauf, 341). Bühne: `comments/verify-embed-boundary.mjs` und
-  `control/verify-account-bell.mjs` mit Status 500 auf der ersten Seite
-  (334 im ersten Lauf, 345). Der zweite Lauf war jeweils grün. Empfehlung:
-  die zwei Skripte warten auf die erste fehlerfreie Seite, bevor sie prüfen;
-  für E2E die Startzeit messen, bevor die Frist steigt.
+- **(a) Sieben E2E-Läufe, in denen der Test-Server nicht startete.**
+  Gemessen am 2026-11-18 aus 56 Läufen: in 49 grünen stand der Server nach
+  20 bis 39 Sekunden, in 7 roten gar nicht (volle 120 Sekunden, alle am
+  2026-11-18 zwischen 07:54 und 08:38 UTC, auf Zweigen von drei Gruppen) —
+  dazwischen liegt kein Lauf. Die Frist ist deshalb NICHT angehoben. Die
+  Ursache ist offen; seit dem 2026-11-18 steht in der CI die Ausgabe des
+  Dev-Servers im Job-Log, beim nächsten Hänger also der Grund. Die zwei
+  Beweis-Skripte der Bühne warten seitdem auf die erste fehlerfreie Seite
+  (COMPLETE „N15"); ob das ihre zwei roten Läufe geheilt hätte, ist nicht
+  belegt.
 - **(b) Die Pflicht-Prüfung `secrets` liest alle Zweige.** Ein Fund in einem
   Zweig färbt jeden Pull Request rot, bis der Zweig weg ist (eine
   Viertelstunde am 2026-11-18). Empfehlung: nur die Historie des geprüften
@@ -1041,20 +1017,6 @@ getan ist, unter [MG1](#mg1).)
   live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln. Verloren
   geht dabei nichts — der nächste Lauf liefert alles seit dem ältesten
   lebenden Build aus.
-
-<a id="ln1"></a>
-
-**LN1 — Zwölf Routen-Dateien sieht der Lint-Lauf nicht (gefunden mit SI1 c, 2026-11-18).**
-`@nuxt/eslint-config` nimmt Ordner namens `public` vom Lint aus (gemeint sind
-die statischen Dateien einer App). Das Muster `**/public` trifft auch
-Routen-Ordner: `packages/insights/server/api/insights/public/` und
-`packages/pages/server/api/pages/public/`, zusammen zwölf Dateien. Sie liefen
-schon vor dem eigenen typisierten Durchgang durch keinen Lint; der neue
-Durchgang (`eslint.typed.config.mjs`) übernimmt die Ausnahme bewusst, damit
-er genau dieselben Dateien sieht wie vorher. Ohne die Ausnahme ist er auf
-diesen Dateien grün (gemessen). Zu tun: die Ausnahme in beiden Configs auf
-`public` an der Wurzel einer App oder eines Layers begrenzen und sehen, was
-der normale Lint dort meldet.
 
 <a id="a1-anwalt"></a>
 
