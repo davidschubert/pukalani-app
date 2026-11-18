@@ -7,6 +7,59 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-18 — Öffentlicher Brand-Check im Hintergrund (N13): wem ein Lauf ohne Konto gehört
+
+**Anlass:** Nacharbeiten-Gruppe N13 (LL1 b, c, d; KI1 d). Der öffentliche
+Brand-Check rechnet seit diesem Tag hinter der Antwort. Er läuft ohne Konto
+(Davids Entscheidung: der Trichter bleibt so einfach wie bisher) — also
+brauchte die Frage „wem gehört ein Lauf, und wer darf seinen Stand lesen?"
+eine Antwort ohne Anmeldung. David wollte in dieser Gruppe nicht gefragt
+werden; alles hier ist klein und umkehrbar.
+
+**Ohne Rückfrage entschieden** (Davids Regel vom 2026-11-17 „bei kleinen
+Fragen nimm deine Empfehlung"):
+- **Ein Lauf gehört der Adresse UND dem Besucher** (Konto, sonst der
+  Tages-Stempel des Anschlusses), als Schlüssel-Hash. Verworfen: die Adresse
+  allein (Empfehlung der Vorgänger-Gruppe) — dann träfe ein Fremder, der
+  dieselbe Website prüft, die Sperre und erführe, dass jemand sie gerade
+  prüft. Preis: zwei verschiedene Besucher derselben Adresse zahlen zur
+  selben Zeit zwei Läufe, wie vor dem Umbau; danach teilen sie sich das
+  Ergebnis über den Zwischenspeicher.
+- **Der zweite Start desselben Besuchers bekommt dasselbe Kennzeichen**
+  statt eines „läuft schon". Ohne Konto hätte er sonst nichts, womit er dem
+  Lauf folgen könnte. Dafür ist das Kennzeichen eine Unterschrift des Servers
+  über einen Zufallswert an der Lauf-Zeile. Verworfen: ein Zufallswert, von
+  dem nur der Hash gespeichert ist (lässt sich kein zweites Mal ausstellen);
+  ein eigener Schlüssel nur dafür (eine Pflicht-Variable mehr für etwas, das
+  Minuten lebt). Bewusste Folge: am selben Anschluss bekommt auch ein zweites
+  Gerät mit derselben Adresse denselben Lauf.
+- **Das Kennzeichen steht in der Adresse der Abfrage** (lesende Route). So
+  zählt die Minuten-Bremse des Checks das Nachfragen nicht mit. Es führt nur
+  auf eine Ergebnis-Id, die ohnehin jeder mit dem Link lesen darf.
+- **Der Browser merkt sich den einen offenen Lauf 15 Minuten** und nimmt ihn
+  nach einem Neuladen wieder auf. Doppelte Läufe verhindert die Sperre, nicht
+  dieser Merker.
+- **Kapitel-Prüfung und Schließen einer Sitzung bekommen einen Zeitdeckel
+  (50 s über beide Stufen) statt eines Laufs im Hintergrund.** Ein Ergebnis
+  nur aus Stufe 1 gab es schon immer, wenn Stufe 2 scheiterte; das Gespräch
+  im Markenberater bleibt, wie es ist. Verworfen: beide in den Hintergrund
+  legen — ein großer Umbau am Gesprächs-Ablauf für einen seltenen Fall.
+- **Bestätigen nimmt das Kennzeichen „Abgeschnitten" weg.** Wer einen
+  abgeschnittenen Entwurf mit sichtbarem Kennzeichen bestätigt, hat
+  entschieden; danach ist es sein Text.
+- **Lauf-Zeilen bekommen keine Frist.** Sie nennen niemanden und sind klein;
+  neu ansehen ab 50.000 Zeilen. Verworfen: ein Fristen-Lauf jetzt (neuer
+  Zeit-Lauf, zuerst zählend) — Aufwand ohne Gegenwert.
+- **Der Radar-Hinweis „ein Lauf war gerade unterwegs" bleibt**, weil ein Weg
+  ihn noch liefert; er nennt nicht mehr nur den nächtlichen Lauf.
+
+**Wo es steht:** COMPLETE „N13"; Regeln in
+`.claude/rules/ki-mail-embed-moderation.md` („LANGE ARBEIT GEHÖRT NICHT IN
+DIE ANFRAGE", „ABGESCHNITTEN HEISST GEKENNZEICHNET"); Code-Kopf von
+`packages/brand/server/utils/brandCheckRunToken.ts`.
+
+---
+
 ## 2026-11-17 — Fristen-Läufe (N04): Protokoll ganz löschen, Runner-Texte nach 12 Monaten, Standard ist Zählen
 
 **Anlass:** Nacharbeiten-Gruppe N04 (EL1 c, KE3, RU1 c). Die Fristen vom

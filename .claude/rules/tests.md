@@ -136,11 +136,14 @@ Sorte Route: `controlSeam.ts` für die Naht, `controlRouteHarness.ts` für
 Betreiber- und Naht-Routen des Control Plane, `adminRouteHarness.ts` für das
 Dashboard in Pool und Einzel-Instanz, `instanceRoleGate.ts` für ein Recht am
 globalen Label, `appwriteFake.ts` für Konto-Routen). Seit 2026-11-18 auch
-`insights`, `brand`, `pages` und die vier App-Routen-Gruppen (`apps/control`,
-`apps/comments`, `apps/photos`, `apps/portfolio` — Tests unter
-`apps/<name>/tests/`, jede dieser Apps hat eine eigene Vitest-Einrichtung
-ohne `nuxi prepare`: `oxc: { tsconfig: false }`). Im Bestand stehen nur
-noch Routen von market. WAS DER WÄCHTER NICHT SIEHT: ob der Test die
+`insights`, `brand`, `market`, `pages` und die vier App-Routen-Gruppen
+(`apps/control`, `apps/comments`, `apps/photos`, `apps/portfolio` — Tests
+unter `apps/<name>/tests/`, jede dieser Apps hat eine eigene
+Vitest-Einrichtung ohne `nuxi prepare`: `oxc: { tsconfig: false }`). DER
+BESTAND IST DAMIT LEER; Hilfen für branding.supply:
+`insights/tests/support/insightsRouteKit.ts`,
+`brand/tests/support/brandRouteKit.ts`,
+`market/tests/support/marketRouteKit.ts`. WAS DER WÄCHTER NICHT SIEHT: ob der Test die
 richtigen Fragen stellt (er erkennt nur das Laden), und Pfade, die mit
 `${…}` zusammengesetzt werden. WAS DER PRÜFSTAND NICHT BEWEIST: die
 Middleware davor (Sperre für Entfernte, Herkunftsprüfung, Bremsen, Zustimmung)
