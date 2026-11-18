@@ -90,16 +90,16 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. Die Icon-Zeilen, Fehler außerhalb einer Anfrage und der Zahlungswarn-Lauf sind seit 2026-11-17 erledigt (COMPLETE „N09"). **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
-| LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten, (d) die Übersetzung einer ganzen Seite: gebaut und als Entwurf bereit (Pull Request 387), braucht eine neue Tabelle auf der echten Datenbank. Alle anderen Wege laufen im Hintergrund oder haben einen Zeitdeckel (COMPLETE „N13"); die Übersicht der Marken zeigt einen laufenden Check seit dem 2026-11-18 (COMPLETE „N15"). **Wartet auf:** (d) Davids Ja zur Migration `pages-007`. | Niedrig | S | **Ja: (d)** | [Einzelheiten](#ll1) |
+| LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten. Kein Weg rechnet mehr länger, als der Webserver wartet: auch die Übersetzung einer ganzen Seite läuft seit dem 2026-11-18 im Hintergrund (COMPLETE „N15"). Offen bleibt, einen echten Lauf über 60 Sekunden einmal zu sehen. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
-| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung — Empfehlung: erst bauen, wenn eine Route erledigte Meldungen beschreibt). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
+| BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten. Die eigene Spalte für den Zeitpunkt der Erledigung wartet nach Davids Entscheidung vom 2026-11-18, bis eine Route erledigte Meldungen beschreibt. Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"). Klick-Probe (a): KR1. Eine 503 trägt seit dem 2026-11-18 einen eigenen Code (COMPLETE „N15"). **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (ein englisches Bildschirmfoto, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst; zwei E2E-Dateien laufen seit dem 2026-11-18 nachts mit (COMPLETE „N15"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
-| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (b) Die Geheimnis-Prüfung liest alle Zweige. (c) Dichte Merges schieben das Ausliefern vor sich her. Die zwei Beweis-Skripte warten seit dem 2026-11-18 auf die erste Seite (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf, (b) Davids Entscheidung. | Niedrig | S je Teil | (b) Ja | [Einzelheiten](#cw1) |
+| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
 | AW30 | **Appwrite auf Production von 2.7.1 auf 2.7.3 heben.** Entwicklung und CI laufen seit dem 2026-11-18 auf 2.7.3, Production noch auf 2.7.1. (a) Der Lauf selbst: Skript und Schritte sind fertig, Ausfall unter zwei Minuten. (b) Danach: Doku auf „überall 2.7.3", die neuen SDKs (Issues 352, 353), eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst. **Wartet auf:** Davids Ja zum Lauf. | Mittel | S | **Ja** (Ja zum Lauf) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
@@ -561,7 +561,7 @@ nicht mehr, das Beweis-Skript der Nachrichten läuft gegen den lokalen Spiegel.
   Meldung lässt die 90 Tage neu beginnen. Eine eigene Spalte machte es genau,
   braucht aber eine Migration auf Production. Empfehlung: erst bauen, wenn
   eine Route erledigte Meldungen beschreibt (heute hält der Fehler Daten nur
-  länger, nie kürzer). Der Lösch-Lauf liest je Takt höchstens 2.000 gemeldete
+  länger, nie kürzer). David hat am 2026-11-18 so entschieden: warten. Der Lösch-Lauf liest je Takt höchstens 2.000 gemeldete
   Nachrichten. Die Schreib-Kette für `app_config` gilt je Prozess. Betreiber-Routen sind weiter an keinen Host
   gebunden — das gehört zum Pukalani-Konto (PK1).
 
@@ -751,20 +751,12 @@ von sechs auf einen Weg gesunken.
   nachholt, kann ein gleichzeitiges Speichern im selben Kapitel einen
   Versions-Konflikt bekommen; die Werkstatt löst ihn wie bisher still auf
   (nicht eigens geprüft).
-- **(d) Die Übersetzung einer ganzen Seite — gebaut, wartet auf die
-  Migration.** Sie war der letzte Weg über der Wartezeit des Webservers
-  (120 s in der Anfrage). Seit dem 2026-11-18 liegt der Umbau als Entwurf vor
-  (Pull Request 387): Start antwortet sofort, gerechnet wird im Hintergrund,
-  ein zweiter Klick startet keinen zweiten Lauf, der Vorschlag wird
-  angeboten und nie ungefragt ins Formular gesetzt. Er braucht die neue
-  Tabelle `pages_runs` (Migration `pages-007`) in allen vier Projekten, in
-  denen der Layer `pages` läuft (account, admin, portfolio, branding).
-  **Reihenfolge:** erst Davids Ja, dann die Migration je Projekt (`pnpm
-  migrate --app <app> --env <datei> --only pages-007 --dry-run`, danach mit
-  `--prod`), dann zusammenführen. Vorher zusammengeführt meldet
-  `/api/health` „Datenbank hinter dem Programm", und der Übersetzen-Knopf
-  antwortet „hat nicht geklappt". Nicht geprüft: ein echter Lauf über 60
-  Sekunden mit einem Modell.
+- **(d) Erledigt am 2026-11-18 (COMPLETE „N15").** Die Übersetzung einer
+  ganzen Seite rechnet im Hintergrund (Lauf-Tabelle `pages_runs`, Migration
+  `pages-007` in allen vier Projekten). Der Bestand des Fristen-Wächters
+  „über der Wartezeit" ist leer. Nicht gesehen: ein echter Lauf über 60
+  Sekunden mit einem Modell, der Hinweis beim zweiten Klick und der Satz bei
+  fehlender Tabelle im Browser (nur in Tests).
 
 <a id="sv1"></a>
 
@@ -1026,14 +1018,12 @@ getan ist, unter [MG1](#mg1).)
   Beweis-Skripte der Bühne warten seitdem auf die erste fehlerfreie Seite
   (COMPLETE „N15"); ob das ihre zwei roten Läufe geheilt hätte, ist nicht
   belegt.
-- **(b) Die Pflicht-Prüfung `secrets` liest alle Zweige.** Ein Fund in einem
-  Zweig färbt jeden Pull Request rot, bis der Zweig weg ist (eine
-  Viertelstunde am 2026-11-18). Empfehlung: nur die Historie des geprüften
-  Zweigs lesen — das ändert, was eine Pflicht-Prüfung prüft, und ist
-  deshalb eine eigene Entscheidung. Bis dahin vor dem ersten Push eines
-  Zweigs lokal prüfen: `gitleaks git --no-banner --redact --exit-code 1
-  --log-opts="origin/main..HEAD" .` (der Fund am 2026-11-18 war ein
-  erfundener Testwert in einer Variable namens `SECRET`).
+- **(b) Erledigt am 2026-11-18 (Davids Entscheidung, COMPLETE „N15").** Die
+  Pflicht-Prüfung `secrets` liest je Pull Request nur noch den eigenen Zweig.
+  Alle Zweige liest einmal am Tag `secrets-watch.yml` und meldet einen Fund
+  als Issue `geheimnis-alarm`. Vor dem ersten Push eines Zweigs weiter lokal
+  prüfen: `gitleaks git --no-banner --redact --exit-code 1
+  --log-opts="origin/main..HEAD" .`
 - **(c) Dichte Merges schieben das Ausliefern vor sich her.** Ein laufender
   Lauf wird nie abgebrochen, aber es wartet immer nur EINER: jeder weitere
   Merge verdrängt den wartenden Lauf, und ein roter Test auf `main` hält

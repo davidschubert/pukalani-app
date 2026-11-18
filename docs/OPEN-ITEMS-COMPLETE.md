@@ -39,8 +39,8 @@ Production. Pull Requests 377 (Lint), 379 (Beweis-Skripte, Menü-Links), 380
 eingebauter Frist, `main` war rot), 382 (Code für 503), 385 (Übersicht der
 Marken), 384 (zwei E2E-Dateien nachts), 386 (voller Lauf des
 Migrations-Runners) und der Abschluss. Pull Request 387 (Übersetzung einer
-ganzen Seite im Hintergrund) ist gebaut und bleibt Entwurf, bis David die
-Migration freigibt — er steht in OPEN-ITEMS bei LL1 (d).
+ganzen Seite im Hintergrund) und 391 (Geheimnis-Prüfung) kamen nach Davids
+Antworten dazu — unten im Nachtrag.
 
 **LN1 — der Lint sieht Routen-Ordner namens `public`.**
 
@@ -179,6 +179,38 @@ nennt den neuen Code.
   (`system-013`, `-033` bis `-035`, `comments-007`/`-008`, `posts-002`); es
   schreibt keine spätere andere Rechte, es baut also nichts um.
 
+**Nachtrag: die eine Fragerunde (David, 2026-11-18, drei Fragen zum
+Anklicken — dreimal die Empfehlung).**
+
+- **LL1 (d) — die Übersetzung einer ganzen Seite rechnet im Hintergrund**
+  (Pull Request 387). Start antwortet sofort mit `202`, ein zweiter Klick
+  startet keinen zweiten Lauf, der Vorschlag liegt an der Lauf-Zeile und wird
+  angeboten statt ungefragt eingesetzt, lesen darf ihn nur, wer die Seite
+  bearbeiten darf. Neue Tabelle `pages_runs` (Migration `pages-007`): nach
+  Davids Ja je Projekt erst der Probelauf ohne Schreiben, dann mit `--prod`
+  — portfolio, account, admin, branding, je Tabelle, elf Spalten und ein
+  Index, Exit 0 — und ERST DANN zusammengeführt. Beweise: zehn gleichzeitige
+  Starts ⇒ einmal `202`, neunmal `409`, ein Modell-Aufruf; neun Gegenproben
+  je Sicherung rot; im Browser mit gestellten Läufen „läuft" → „Vorschlag ist
+  fertig" → übernommen → „unterbrochen". **Nicht geprüft:** ein echter Lauf
+  über 60 Sekunden mit einem Modell. Damit ist der Bestand „Wege über der
+  Wartezeit des Webservers" leer. Live: Build 458cee95 auf allen acht Hosts
+  `ok`, der Datenbank-Stand `ok` (je Host so viele Proben gefunden wie
+  erwartet). Die lokale Datenbank hat die Tabelle ebenfalls in allen vier
+  Projekten.
+- **BP1 (d) — die eigene Spalte für den Zeitpunkt der Erledigung wartet.**
+  Heute fasst keine Stelle eine erledigte Meldung noch einmal an; gebaut
+  wird, sobald es eine gibt.
+- **CW1 (b) — die Pflicht-Prüfung `secrets` liest nur noch den eigenen
+  Zweig** (Pull Request 391). Alle Zweige und Tags liest einmal am Tag der
+  neue Lauf `secrets-watch.yml`; rot wird dort ein Issue `geheimnis-alarm`,
+  kein Tor. Beweis lokal: ein Wegwerf-Zweig mit einem erfundenen Wert (nie
+  hochgeladen) lässt die Lesart „eigener Zweig" grün und macht die Lesart
+  „alle Zweige" rot. Ein Test hält beide Hälften und die Version von
+  gitleaks zusammen. Nach dem Zusammenführen einmal von Hand gestartet: 3362
+  Commits über alle Zweige, kein Fund. Der Probealarm öffnete das Issue 392,
+  der nächste Lauf schloss es wieder.
+
 **Dazwischen: `main` war rot, ohne dass sich Code geändert hatte.** Seit dem
 2026-11-18 12:00 UTC scheiterte `packages/control/tests/customDomainSweep.test.ts`
 („zählt nur …", erwartet 1, gezählt 2). Die Route liest die echte Uhr, die
@@ -191,8 +223,8 @@ die Shell- oder Kind-Prozesse starten (dort war nur die Node-Uhr verstellt —
 vermutlich die Methode, nicht einzeln nachgeprüft).
 
 **Live:** alle acht Hosts meldeten nach jedem Bündel `ok` mit dem Build des
-letzten Merges und Datenbank-Stand `ok` (593000c3, 90f1677d, 8f2d2c8d und
-zuletzt a317dcaa nach PR 386).
+letzten Merges und Datenbank-Stand `ok` (593000c3, 90f1677d, 8f2d2c8d,
+a317dcaa nach PR 386 und 458cee95 nach PR 387).
 
 **Ohne Rückfrage entschieden (klein, umkehrbar; auch im DECISION-LOG):**
 
@@ -218,6 +250,13 @@ zuletzt a317dcaa nach PR 386).
    Nacht-Lauf und der Code-Teil für Kundendomains in den Host-Listen der
    Wächter. Beides ist größer als ein Rest. Der Mail-Blick (WA1 e) liegt in
    `ops/app-watch-gate.sh` und gehörte der Gruppe N12.
+
+**Gelernt (Nachtrag):** (7) **Eine Annahme im Auftrag ist eine Messung
+wert, bevor man fragt.** „Schlüssel für die Studio-Site eintragen" stand als
+Frage an David auf dem Zettel; der Blick von außen zeigte, dass sie längst
+gesetzt waren — die Frage entfiel, und aus vier Fragen wurden drei. (8) **Ein
+Helfer, der auf einem anderen Modell läuft, unterschreibt seine Commits
+anders.** Vor dem Push die Schlusszeilen der Commits ansehen.
 
 **Gelernt:** (1) **Ein Test, dessen Welt an einem festen Datum hängt, darf
 die echte Uhr nirgends lesen.** Die Funktion bekam `now` gereicht, die Route
