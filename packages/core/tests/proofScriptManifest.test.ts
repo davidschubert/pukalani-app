@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BEWEISE, e2eDetector, GRUND_MIN, manifestProblems } from '../../../scripts/buehne/beweise.mjs'
-import { countMarks, missingServices, selectProofs, timeoutSeconds } from '../../../scripts/buehne/run.mjs'
+import { CENSUS_IGNORE, censusGrowth, countMarks, missingServices, selectProofs, timeoutSeconds } from '../../../scripts/buehne/run.mjs'
 import { proofScripts } from '../../../scripts/live-beweise.mjs'
 
 /**
@@ -64,6 +64,40 @@ describe('Selbsttest der Erkennung', () => {
     expect(manifestProblems({ scripts: [ok.skript], beweise: [everyRun], runsInE2e: runsNowhere }).join('\n')).toContain('nur im nächtlichen Lauf')
   })
 
+  it('branding.supply: env „branding" nur mit braucht „branding", und nur nachts', () => {
+    const branding = { skript: ok.skript, lauf: 'nacht' as const, env: 'branding' as const, braucht: ['appwrite' as const, 'branding' as const] }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [branding], runsInE2e: runsNowhere })).toEqual([])
+    const noService = { ...branding, braucht: ['appwrite' as const] }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [noService], runsInE2e: runsNowhere }).join('\n')).toContain('env „branding" braucht')
+    const everyRun = { ...branding, lauf: 'buehne' as const }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [everyRun], runsInE2e: runsNowhere }).join('\n')).toContain('branding.supply steht nur im nächtlichen Lauf')
+  })
+
+  it('kein Skript mit env „branding" ruft eine echte KI, Stripe oder eine fremde Website — die Einteilung sagt es, der Nacht-Lauf stellt die Antworten', () => {
+    const nightly = BEWEISE.filter(entry => entry.env === 'branding' && entry.lauf === 'nacht')
+    // Acht der zwölf Skripte von branding.supply laufen nachts; ausgeschrieben, damit ein neues bewusst dazukommt.
+    expect(nightly.map(entry => entry.skript.split('/').at(-1)).sort()).toEqual([
+      'verify-brand-check-robots.mjs',
+      'verify-brand-events-sweep.mjs',
+      'verify-brand-intro-call.mjs',
+      'verify-brand-share.mjs',
+      'verify-market-fetch.mjs',
+      'verify-market-report.mjs',
+      'verify-market-retention.mjs',
+      'verify-market-ui.mjs',
+    ])
+    const workflow = readFileSync(join(REPO, '.github', 'workflows', 'buehne.yml'), 'utf8')
+    // Der Server des Nacht-Laufs startet mit gestellten Antworten …
+    for (const name of ['BRAND_DEV_STUB_CHECK', 'BRAND_DEV_STUB_REVIEW', 'BRAND_DEV_STUB_VISION', 'BRAND_DEV_STUB_DNA', 'BRAND_DEV_STUB_MARK', 'BRAND_DEV_STUB_IMAGE', 'MARKET_DEV_STUB', 'BRAND_SITE_FETCH_ALLOW_LOOPBACK']) {
+      expect(workflow, name).toContain(`${name}: '1'`)
+    }
+    // … und das Setup schreibt der App keinen Schlüssel für KI oder Stripe.
+    const setup = readFileSync(join(REPO, 'scripts', 'ci', 'buehne-setup.mjs'), 'utf8')
+    const block = setup.slice(setup.indexOf("writeEnv('apps/branding'"), setup.indexOf('Bühnen-Setup fertig'))
+    expect(block).toContain('NUXT_PUBLIC_APPWRITE_PROJECT_ID')
+    expect(block).not.toMatch(/NUXT_AI_KEY|OPENROUTER|STRIPE|RESEND/)
+  })
+
   it('„e2e" muss in e2e.yml stehen, und was dort steht, muss „e2e" sein', () => {
     const e2e = { skript: ok.skript, lauf: 'e2e' as const }
     expect(manifestProblems({ scripts: [ok.skript], beweise: [e2e], runsInE2e: runsNowhere }).join('\n')).toContain('steht aber nicht in')
@@ -109,7 +143,20 @@ describe('Selbsttest des Läufers', () => {
     const einzel = { skript: 'packages/c/scripts/verify-4.mjs', lauf: 'nacht' as const, env: 'einzel' as const, braucht: ['appwrite' as const, 'einzel' as const] }
     expect(missingServices(einzel, [])).toEqual(['einzel'])
     expect(missingServices(einzel, ['einzel'])).toEqual([])
+    const branding = { skript: 'packages/c/scripts/verify-5.mjs', lauf: 'nacht' as const, env: 'branding' as const, braucht: ['appwrite' as const, 'branding' as const, 'mailpit' as const] }
+    expect(missingServices(branding, [])).toEqual(['branding'])
+    expect(missingServices(branding, ['einzel'])).toEqual(['branding'])
+    expect(missingServices(branding, ['einzel', 'branding'])).toEqual([])
     expect(missingServices(list[0]!, [])).toEqual([])
+  })
+
+  it('Nachzählen: mehr als vorher ist ein Befund, weniger nicht, und die Ausnahmen stehen ausgeschrieben da', () => {
+    const before = { brand_steps: 10, brand_events: 5, system_runs: 1, Konten: 3 }
+    expect(censusGrowth(before, { ...before })).toEqual([])
+    expect(censusGrowth(before, { brand_steps: 13, brand_events: 4, system_runs: 4, Konten: 4, neue_tabelle: 2 })).toEqual(['Konten +1', 'brand_steps +3', 'neue_tabelle +2'])
+    // Gegenprobe: ohne Ausnahme zählt auch die Sperr-Tabelle.
+    expect(censusGrowth(before, { ...before, system_runs: 2 }, [])).toEqual(['system_runs +1'])
+    expect(CENSUS_IGNORE).toEqual(['system_runs'])
   })
 
   it('zählt ✔ und ✗ am Zeilenanfang, nicht die Schlusszeile', () => {

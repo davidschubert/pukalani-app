@@ -29,16 +29,25 @@
  * meldet der Läufer das Skript als „übersprungen" — nicht als rot. Das Skript
  * bekommt `EINZEL_URL` und `EINZEL_PORT`.
  *
+ * BRANDING.SUPPLY (`braucht: ['branding']`, seit 2026-11-18): `apps/branding`
+ * als vierter Server mit eigenem Projekt `branding`. Wie die Einzel-Instanz
+ * nur im nächtlichen Lauf und lokal nur mit `--branding-port`; fehlt sie, ist
+ * das Skript „übersprungen". Das Skript bekommt die Env-Datei der App und
+ * `BRANDING_PORT` / `BRANDING_HOST` / `BRANDING_URL`. Der Server läuft dort
+ * mit GESTELLTEN ANTWORTEN — kein Skript mit `env: 'branding'` ruft eine
+ * echte KI, Stripe oder eine fremde Website (je Skript vor dem Einzug
+ * geprüft; die Schalter stehen in `.github/workflows/buehne.yml`).
+ *
  * Wer ein Skript von `hand` nach `buehne`/`nacht` zieht, hat es vorher auf der
  * Bühne grün gesehen (`pnpm buehne run --only <name>`) und trägt die Dauer ein.
  */
 
 /**
- * @typedef {'appwrite' | 'platform' | 'control' | 'mailpit' | 'einzel' | 'browser'} Dienst
+ * @typedef {'appwrite' | 'platform' | 'control' | 'mailpit' | 'einzel' | 'branding' | 'browser'} Dienst
  * @typedef {{
  *   skript: string,
  *   lauf: 'e2e' | 'buehne' | 'nacht' | 'hand',
- *   env?: 'platform' | 'control' | 'einzel' | 'keine',
+ *   env?: 'platform' | 'control' | 'einzel' | 'branding' | 'keine',
  *   grund?: string,
  *   dauer?: number,
  *   braucht?: Dienst[],
@@ -49,22 +58,24 @@
 const E2E = 'läuft als eigener Schritt in .github/workflows/e2e.yml'
 
 // Wiederkehrende Gründe — ein ganzer Satz, einfache Sprache.
-const BRANDING = 'Braucht die App branding.supply mit eigenem Projekt, und die steht auf der Bühne nicht.'
+// branding.supply steht seit dem 2026-11-18 nachts als vierter Server. Was
+// trotzdem von Hand bleibt, sagt je Zeile, warum (gemessen auf der Bühne).
+const DESIGN_VORLAGE = 'Auf der Bühne nicht ganz grün: die Design-Vorlage des Skripts (der DNA-Mix) passt nicht mehr zum heutigen Wortschatz der App, deshalb entsteht kein fertiges Design und die Prüfungen dahinter scheitern — erst die Vorlage im Skript nachziehen.'
 
 /** @type {Beweis[]} */
 export const BEWEISE = [
   // ── activity ──
   { skript: 'packages/activity/scripts/verify-pool-isolation.mjs', lauf: 'buehne', env: 'platform', dauer: 1, braucht: ['appwrite'] },
 
-  // ── brand (branding.supply) ──
-  { skript: 'packages/brand/scripts/verify-brand-check-robots.mjs', lauf: 'hand', grund: BRANDING },
+  // ── brand (branding.supply — vierter Server, nur nachts, gestellte Antworten) ──
+  { skript: 'packages/brand/scripts/verify-brand-check-robots.mjs', lauf: 'nacht', env: 'branding', dauer: 25, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-context.mjs', lauf: 'hand', grund: 'Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet.' },
-  { skript: 'packages/brand/scripts/verify-brand-design.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/brand/scripts/verify-brand-events-sweep.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/brand/scripts/verify-brand-intro-call.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/brand/scripts/verify-brand-kit.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/brand/scripts/verify-brand-sessions.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/brand/scripts/verify-brand-share.mjs', lauf: 'hand', grund: BRANDING },
+  { skript: 'packages/brand/scripts/verify-brand-design.mjs', lauf: 'hand', env: 'branding', dauer: 74, braucht: ['appwrite', 'branding'], grund: DESIGN_VORLAGE },
+  { skript: 'packages/brand/scripts/verify-brand-events-sweep.mjs', lauf: 'nacht', env: 'branding', dauer: 1, braucht: ['appwrite', 'branding'] },
+  { skript: 'packages/brand/scripts/verify-brand-intro-call.mjs', lauf: 'nacht', env: 'branding', dauer: 3, braucht: ['appwrite', 'branding', 'mailpit'] },
+  { skript: 'packages/brand/scripts/verify-brand-kit.mjs', lauf: 'hand', env: 'branding', dauer: 8, braucht: ['appwrite', 'branding'], grund: DESIGN_VORLAGE },
+  { skript: 'packages/brand/scripts/verify-brand-sessions.mjs', lauf: 'hand', env: 'branding', dauer: 82, braucht: ['appwrite', 'branding'], grund: 'Auf der Bühne 302 von 333 Prüfungen: die Design-Vorlage des Skripts ist veraltet (wie bei verify-brand-kit), und einige Prüfungen erwarten einen Server OHNE gestellte Antworten, andere einen MIT — erst das Skript nachziehen.' },
+  { skript: 'packages/brand/scripts/verify-brand-share.mjs', lauf: 'nacht', env: 'branding', dauer: 3, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-tokens.mjs', lauf: 'hand', grund: 'Lädt beim Lauf ein Werkzeug aus dem Netz, und das soll kein automatischer Lauf tun.' },
 
   // ── comments ──
@@ -81,7 +92,7 @@ export const BEWEISE = [
   { skript: 'packages/control/scripts/verify-silo-domain.mjs', lauf: 'hand', grund: 'Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so.' },
 
   // ── core ──
-  { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'hand', grund: BRANDING },
+  { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'hand', grund: 'Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site mit eigenem Projekt), und sein Registrier-Aufruf kennt die Pflicht-Felder der Zustimmung noch nicht (seit 2026-11-16 lehnt die Route ihn ab) — erst das Skript nachziehen, dann mit dem Server der Studio-Site einhängen.' },
   { skript: 'packages/core/scripts/verify-geo-cities.mjs', lauf: 'hand', grund: 'Braucht die Orts-Datei für Städte und Regionen, und die liegt nicht im Repo.' },
   { skript: 'packages/core/scripts/verify-handle-search-boundary.mjs', lauf: 'buehne', env: 'control', dauer: 4, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/core/scripts/verify-mfa.mjs', lauf: 'nacht', env: 'einzel', dauer: 120, braucht: ['appwrite', 'einzel', 'mailpit'] },
@@ -109,11 +120,11 @@ export const BEWEISE = [
   { skript: 'packages/events/scripts/verify-pool-isolation.mjs', lauf: 'nacht', env: 'platform', dauer: 62, braucht: ['appwrite', 'platform'] },
   { skript: 'packages/events/scripts/verify-site-authz.mjs', lauf: 'buehne', env: 'platform', dauer: 32, braucht: ['appwrite', 'platform'] },
 
-  // ── market (branding.supply) ──
-  { skript: 'packages/market/scripts/verify-market-fetch.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/market/scripts/verify-market-report.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/market/scripts/verify-market-retention.mjs', lauf: 'hand', grund: BRANDING },
-  { skript: 'packages/market/scripts/verify-market-ui.mjs', lauf: 'hand', grund: BRANDING },
+  // ── market (branding.supply — gestellte Antworten, Probe-Websites liefert das Skript selbst aus) ──
+  { skript: 'packages/market/scripts/verify-market-fetch.mjs', lauf: 'nacht', env: 'branding', dauer: 4, braucht: ['appwrite', 'branding'] },
+  { skript: 'packages/market/scripts/verify-market-report.mjs', lauf: 'nacht', env: 'branding', dauer: 9, braucht: ['appwrite', 'branding'] },
+  { skript: 'packages/market/scripts/verify-market-retention.mjs', lauf: 'nacht', env: 'branding', dauer: 3, braucht: ['appwrite', 'branding'] },
+  { skript: 'packages/market/scripts/verify-market-ui.mjs', lauf: 'nacht', env: 'branding', dauer: 8, braucht: ['appwrite', 'branding'] },
 
   // ── media ──
   { skript: 'packages/media/scripts/verify-index-nudge.mjs', lauf: 'e2e', grund: E2E },
@@ -180,10 +191,10 @@ export const LAEUFE = /** @type {const} */ ({
   hand: 'von Hand',
 })
 
-export const DIENSTE = ['appwrite', 'platform', 'control', 'mailpit', 'einzel', 'browser']
-export const ENVS = ['platform', 'control', 'einzel', 'keine']
+export const DIENSTE = ['appwrite', 'platform', 'control', 'mailpit', 'einzel', 'branding', 'browser']
+export const ENVS = ['platform', 'control', 'einzel', 'branding', 'keine']
 /** Die Dienste, die nicht in jedem Lauf stehen — ohne sie wird übersprungen. */
-export const OPTIONALE_DIENSTE = ['einzel']
+export const OPTIONALE_DIENSTE = ['einzel', 'branding']
 /** Mindestlänge eines Grundes — ein ganzer Satz, kein Stichwort. */
 export const GRUND_MIN = 30
 
@@ -232,6 +243,13 @@ export function manifestProblems({ scripts, beweise, runsInE2e }) {
     }
     if (entry.lauf === 'buehne' && (entry.braucht ?? []).includes('einzel')) {
       problems.push(`${skript}: die Einzel-Instanz steht nur im nächtlichen Lauf — lauf „nacht" eintragen.`)
+    }
+    // Dasselbe für branding.supply.
+    if (entry.env === 'branding' && !(entry.braucht ?? []).includes('branding')) {
+      problems.push(`${skript}: env „branding" braucht \`braucht: [..., 'branding']\` — sonst läuft es auch, wenn branding.supply fehlt.`)
+    }
+    if (entry.lauf === 'buehne' && (entry.braucht ?? []).includes('branding')) {
+      problems.push(`${skript}: branding.supply steht nur im nächtlichen Lauf — lauf „nacht" eintragen.`)
     }
     if (entry.dauer !== undefined && !(Number.isFinite(entry.dauer) && entry.dauer >= 0)) {
       problems.push(`${skript}: dauer muss eine Zahl in Sekunden sein.`)

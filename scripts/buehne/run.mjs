@@ -9,7 +9,8 @@
  * Weitere Optionen: `--control-port N` (Betreiber-App, Standard 3004),
  * `--platform-port N` (Standard: aus dem Stand der Bühne), `--control-host H`,
  * `--env-platform` / `--env-control` (wie bei den übrigen Befehlen),
- * `--einzel-port N` und `--env-einzel <datei>` (Standard apps/comments/.env).
+ * `--einzel-port N` und `--env-einzel <datei>` (Standard apps/comments/.env),
+ * `--branding-port N` und `--env-branding <datei>` (Standard apps/branding/.env).
  *
  * DIE EINZEL-INSTANZ (`apps/comments`, eigenes Projekt, ohne Mandanten) steht
  * nur, wenn `--einzel-port` gesetzt ist — in der CI nur im nächtlichen Lauf.
@@ -18,6 +19,25 @@
  * Einzel-Instanz und `EINZEL_URL` / `EINZEL_PORT`; antwortet ihr
  * `/api/health` nicht, sind diese Skripte rot — dann fehlt der Server, den der
  * Aufruf versprochen hat.
+ *
+ * BRANDING.SUPPLY (`apps/branding`, eigenes Projekt `branding`) steht nur, wenn
+ * `--branding-port` gesetzt ist — in der CI nur im nächtlichen Lauf. Dieselbe
+ * Regel: ohne sie „übersprungen", mit ihr die Env-Datei der App und
+ * `BRANDING_PORT` / `BRANDING_HOST` / `BRANDING_URL`; antwortet ihr
+ * `/api/health` nicht, sind ihre Skripte rot. DER SERVER MUSS MIT GESTELLTEN
+ * ANTWORTEN LAUFEN (`BRAND_DEV_STUB_*`, `MARKET_DEV_STUB`,
+ * `BRAND_SITE_FETCH_ALLOW_LOOPBACK` — die Zeile steht in `buehne.yml` und in
+ * `docs/referenz/LIVE-BEWEISE.md`): kein Skript der Einteilung ruft eine
+ * echte KI, Stripe oder eine fremde Website.
+ *
+ * NACHZÄHLEN BEI BRANDING.SUPPLY: vor und nach jedem Skript mit
+ * `env: 'branding'` zählt der Läufer die Zeilen JEDER Tabelle und die Konten
+ * des Projekts. Ist danach irgendwo mehr da als vorher, ist das Skript rot
+ * („Zeilen übrig: brand_steps +3") — auch wenn alle seine Prüfungen bestanden
+ * haben. So gilt „räumt auf und zählt nach" für diese Skripte an EINER Stelle
+ * statt in jedem einzeln (gemessen beim Einzug: drei von acht ließen Zeilen
+ * liegen, die die App selbst angelegt hatte). Kann der Schlüssel das Schema
+ * nicht lesen, entfällt das Nachzählen mit einer Zeile.
  *
  * JE SKRIPT: Arbeitsverzeichnis ist der Paket-Ordner (dort löst
  * `node-appwrite` auf), gestartet wird
@@ -41,7 +61,7 @@ import { spawn } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { BEWEISE, OPTIONALE_DIENSTE } from './beweise.mjs'
-import { readEnvFile } from '../lib/probe-stage.mjs'
+import { appwriteRest, AppwriteRestError, Q, readEnvFile } from '../lib/probe-stage.mjs'
 import { assertTarget } from '../lib/target.mjs'
 
 /** Standard-Zeitgrenze, wenn ein Eintrag keine Dauer kennt. */
@@ -50,6 +70,9 @@ const DEFAULT_TIMEOUT_S = 300
 const MIN_TIMEOUT_S = 60
 /** So viele letzte Zeilen werden bei einem Fehlschlag noch einmal gezeigt. */
 const TAIL_LINES = 40
+
+/** Wie ein Dienst, der nicht in jedem Lauf steht, in der Tabelle heißt. */
+const SERVICE_NAMES = { einzel: 'Einzel-Instanz', branding: 'branding.supply' }
 
 /** Importiert ein Skript eine `.ts`-Datei? Dann braucht Node `--experimental-strip-types`. */
 const IMPORTS_TS = /(?:\bfrom\s*|\bimport\s*\(\s*)['"][^'"]+\.ts['"]/
@@ -107,6 +130,51 @@ export function countMarks(lines) {
     else if (start.startsWith('✗')) fail++
   }
   return { pass, fail }
+}
+
+/**
+ * Tabellen, die beim Nachzählen nicht zählen — je Eintrag ein Grund.
+ * `system_runs`: Sperr-Zeilen der Zeit-Läufe des Servers; sie entstehen und
+ * fallen im Takt, unabhängig vom Skript.
+ */
+export const CENSUS_IGNORE = ['system_runs']
+
+/**
+ * Wo ist nach einem Skript MEHR da als vorher? Rein, für den Selbsttest.
+ * Weniger ist kein Befund (ein Skript darf aufräumen, ein Lauf des Servers
+ * auch).
+ *
+ * @param {Record<string, number>} before
+ * @param {Record<string, number>} after
+ * @returns {string[]} z. B. `['brand_steps +3', 'Konten +1']`
+ */
+export function censusGrowth(before, after, ignore = CENSUS_IGNORE) {
+  return Object.keys(after)
+    .filter(name => !ignore.includes(name) && after[name] > (before[name] ?? 0))
+    .sort()
+    .map(name => `${name} +${after[name] - (before[name] ?? 0)}`)
+}
+
+/**
+ * Zeilen je Tabelle und Konten eines Projekts. `null`, wenn der Schlüssel das
+ * Schema nicht lesen darf (dann wird nicht nachgezählt).
+ *
+ * @returns {Promise<Record<string, number> | null>}
+ */
+async function projectCensus({ schema, data, databaseId }) {
+  let tables
+  try {
+    tables = (await schema.listTables(databaseId)).tables.map(table => table.$id)
+  }
+  catch (error) {
+    if (error instanceof AppwriteRestError && (error.status === 401 || error.status === 403)) return null
+    throw error
+  }
+  /** @type {Record<string, number>} */
+  const counts = {}
+  for (const tableId of tables) counts[tableId] = (await data.listRows(databaseId, tableId, [Q.limit(1)])).total
+  counts.Konten = (await data.get('/users', [Q.limit(1)])).total
+  return counts
 }
 
 /** Eine eigene private Adresse je Skript: `10.27.<lauf>.<nr>`. */
@@ -256,7 +324,37 @@ export async function runCommand({ root, opts, state, stageEnv }) {
       EINZEL_ENV_FILE: einzelPath,
     }
   }
-  const available = einzelPort ? ['einzel'] : []
+  // branding.supply: dieselbe Regel wie bei der Einzel-Instanz.
+  const brandingPort = opts['branding-port'] ? Number(opts['branding-port']) : null
+  /** @type {Record<string, string>} */
+  let brandingEnv = {}
+  if (brandingPort) {
+    const brandingPath = resolve(root, String(opts['env-branding'] ?? 'apps/branding/.env'))
+    if (!existsSync(brandingPath)) {
+      console.error(`✗ --branding-port ist gesetzt, aber die Env-Datei fehlt: ${brandingPath.replace(`${root}/`, '')}`)
+      return 1
+    }
+    brandingEnv = readEnvFile(brandingPath)
+    assertTarget({ script: 'buehne run', endpoint: brandingEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: brandingEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID })
+    brandingEnv = {
+      ...brandingEnv,
+      BRANDING_PORT: String(brandingPort),
+      BRANDING_HOST: 'localhost',
+      BRANDING_URL: `http://localhost:${brandingPort}`,
+      BRANDING_ENV_FILE: brandingPath,
+    }
+  }
+  const available = [...(einzelPort ? ['einzel'] : []), ...(brandingPort ? ['branding'] : [])]
+  // Zwei Zugänge fürs Nachzählen bei branding.supply: das Schema liest der
+  // Migrations-Schlüssel (lokal darf der Laufzeit-Schlüssel das nicht), Zeilen
+  // und Konten der Laufzeit-Schlüssel. In der CI ist es derselbe.
+  const brandingCensus = brandingPort
+    ? {
+        schema: appwriteRest({ endpoint: brandingEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: brandingEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID, key: brandingEnv.NUXT_APPWRITE_MIGRATIONS_KEY || brandingEnv.NUXT_APPWRITE_KEY, script: 'buehne run' }),
+        data: appwriteRest({ endpoint: brandingEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: brandingEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID, key: brandingEnv.NUXT_APPWRITE_KEY || brandingEnv.NUXT_APPWRITE_MIGRATIONS_KEY, script: 'buehne run' }),
+        databaseId: brandingEnv.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main',
+      }
+    : null
   const controlPort = Number(opts['control-port'] ?? 3004)
   const controlHost = stageEnv.CONTROL_HOST
   const shared = sharedEnv({ stageEnv, platformEnv, poolDatabaseId: state.poolDatabaseId, controlPort, controlHost })
@@ -267,6 +365,7 @@ export async function runCommand({ root, opts, state, stageEnv }) {
     platform: { ...platformEnv, NUXT_PLATFORM_CONTROL_KEY: controlWriteKey },
     control: controlEnv,
     einzel: einzelEnv,
+    branding: brandingEnv,
     keine: {},
   }
 
@@ -276,11 +375,11 @@ export async function runCommand({ root, opts, state, stageEnv }) {
   /** @type {Array<{ skript: string, ok: boolean, skipped?: boolean, result: string, pass: number, fail: number, seconds: number }>} */
   const results = []
 
-  console.log(`Läufer: ${selected.length} Skript(e) · Platform-Port ${stageEnv.PLATFORM_PORT} · Betreiber-App ${shared.CONTROL_URL} · Kontroll-Host ${controlHost} · Einzel-Instanz ${einzelPort ? `http://localhost:${einzelPort}` : 'keine'}`)
+  console.log(`Läufer: ${selected.length} Skript(e) · Platform-Port ${stageEnv.PLATFORM_PORT} · Betreiber-App ${shared.CONTROL_URL} · Kontroll-Host ${controlHost} · Einzel-Instanz ${einzelPort ? `http://localhost:${einzelPort}` : 'keine'} · branding.supply ${brandingPort ? `http://localhost:${brandingPort}` : 'keine'}`)
   for (const [index, entry] of selected.entries()) {
     const missing = missingServices(entry, available)
     if (missing.length) {
-      const result = `übersprungen (${missing.map(dienst => dienst === 'einzel' ? 'Einzel-Instanz' : dienst).join(', ')} fehlt)`
+      const result = `übersprungen (${missing.map(dienst => SERVICE_NAMES[dienst] ?? dienst).join(', ')} fehlt)`
       results.push({ skript: entry.skript, ok: true, skipped: true, result, pass: 0, fail: 0, seconds: 0 })
       console.log(`↷ ${shortName(entry.skript)}: ${result}`)
       continue
@@ -304,13 +403,21 @@ export async function runCommand({ root, opts, state, stageEnv }) {
     const timeoutS = timeoutSeconds(entry)
     const title = `${shortName(entry.skript)} (${index + 1}/${selected.length})`
     console.log(inActions ? `::group::${title}` : `\n── ${title} ${'─'.repeat(Math.max(3, 66 - title.length))}`)
+    const counting = entry.env === 'branding' && brandingCensus
+    const before = counting ? await projectCensus(brandingCensus) : null
     const run = await runOne({ cwd, args, env, timeoutS })
+    // Nachzählen (s. Kopf): was nach dem Skript MEHR da ist als vorher.
+    const leftovers = before ? censusGrowth(before, (await projectCensus(brandingCensus)) ?? before) : []
+    if (counting && !before) console.log('… Nachzählen entfällt: der Schlüssel darf das Schema dieses Projekts nicht lesen.')
+    if (leftovers.length) run.lines.push(`✗ Zeilen übrig nach dem Lauf: ${leftovers.join(', ')}`)
     if (inActions) console.log('::endgroup::')
     const { pass, fail } = countMarks(run.lines)
-    const ok = !run.timedOut && run.code === 0
+    const passed = !run.timedOut && run.code === 0
+    const ok = passed && leftovers.length === 0
     const result = run.timedOut
       ? `Zeitgrenze (${timeoutS} s)`
-      : ok ? 'bestanden' : `fehlgeschlagen (Exit ${run.code ?? '—'})`
+      : !passed ? `fehlgeschlagen (Exit ${run.code ?? '—'})`
+          : leftovers.length ? `Zeilen übrig: ${leftovers.join(', ')}` : 'bestanden'
     results.push({ skript: entry.skript, ok, result, pass, fail, seconds: run.seconds })
     if (!ok) {
       // Außerhalb der Gruppe, damit der Fehler ohne Aufklappen zu sehen ist.

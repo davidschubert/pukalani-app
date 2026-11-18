@@ -48,6 +48,7 @@
  * Standard-Port belegt.
  */
 import '../../../scripts/lib/assert-target.mjs'
+import { removeProbeRows } from '../../../scripts/lib/probe-stage.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
@@ -55,12 +56,18 @@ const baseArg = process.argv.slice(2).find(arg => arg.startsWith('--base='))
 const baseUrl = baseArg ? new URL(baseArg.slice('--base='.length)) : null
 const PORT = Number(baseUrl?.port || process.env.BRANDING_PORT || 3016)
 const HOST = baseUrl?.hostname || process.env.BRANDING_HOST || 'localhost'
-const MAILPIT = Number(process.env.MAILPIT_PORT || 8025)
+// Der Läufer der Bühne nennt den Briefkasten als Adresse (`MAILPIT_URL`); von
+// Hand genügt weiter `MAILPIT_PORT`. Nennt der Läufer ihn, ist er ZUGESAGT:
+// dann ist „nicht erreichbar" ein roter Befund, kein stiller Rückfall.
+const MAILPIT_BASE = (process.env.MAILPIT_URL || `http://localhost:${Number(process.env.MAILPIT_PORT || 8025)}`).replace(/\/$/, '')
+const MAILPIT_PROMISED = Boolean(process.env.MAILPIT_URL)
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
-const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
+// Der LAUFZEIT-Schlüssel zuerst: das Skript legt Konten an, und der
+// Migrations-Schlüssel darf das lokal und auf Production nicht (`users.write`).
+const apiKey = process.env.NUXT_APPWRITE_KEY || process.env.NUXT_APPWRITE_MIGRATIONS_KEY
 
 if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — Aufruf mit --env-file=apps/branding/.env')
@@ -131,6 +138,8 @@ function call(path, { method = 'GET', body, cookie, port = PORT, host = HOST } =
 }
 
 const stamp = Date.now()
+/** Beginn dieses Laufs — das Aufräumen nimmt Ereignis-Zeilen nur ab hier. */
+const STARTED_AT = new Date(stamp - 1000).toISOString()
 /** Weit über der Mindestzeit — die Bremse hat ihren eigenen Fall. */
 const SLOW = 30_000
 
@@ -156,9 +165,12 @@ function post(body) {
 /** Liegt eine Mail an diese Adresse in Mailpit? `null` = Mailpit nicht da. */
 async function mailpitHas(email) {
   try {
-    const res = await call(`/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`, { port: MAILPIT })
-    if (res.status !== 200 || !res.json) return null
-    return (res.json.messages_count ?? res.json.total ?? 0) > 0
+    // `fetch` statt `call`: der Briefkasten braucht keinen eigenen Host-Header,
+    // und so ist gleich, ob er auf IPv4 oder IPv6 hört.
+    const res = await fetch(`${MAILPIT_BASE}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`, { signal: AbortSignal.timeout(10_000) })
+    if (res.status !== 200) return null
+    const json = await res.json()
+    return (json.messages_count ?? json.total ?? 0) > 0
   }
   catch {
     return null
@@ -209,7 +221,10 @@ async function main() {
     && goodRow?.emailLower === good.toLowerCase())
 
   const mailed = await mailpitHas(good)
-  if (mailed === null) {
+  if (mailed === null && MAILPIT_PROMISED) {
+    check('der Briefkasten ist erreichbar (der Läufer hat ihn zugesagt)', false, MAILPIT_BASE)
+  }
+  else if (mailed === null) {
     console.log('  … Mailpit nicht erreichbar — Zusage 2 bleibt beim Zeilen-Beweis')
   }
   else {
@@ -325,6 +340,10 @@ async function main() {
     await tablesDB.deleteRow({ databaseId, tableId: PROFILES_TABLE, rowId }).catch(() => {})
   }
   for (const userId of cleanup.users) await users.delete({ userId }).catch(() => {})
+  // Je angenommener Anfrage schreibt die App ein Ereignis `intro.submitted`
+  // (ohne Konto, ohne Branding) — die dieses Laufs gehören mit weg.
+  const events = await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_events', column: 'type', value: 'intro.submitted', since: STARTED_AT }).catch(() => 0)
+  console.log(`  ✔ ${events} Ereignis-Zeilen dieses Laufs entfernt`)
   console.log(`  ✔ ${cleanup.rows.length} Zeilen, ${cleanup.profiles.length} Brandings, ${cleanup.users.length} Konten entfernt`)
 
   console.log(`\n${fail === 0 ? '✓' : '✗'} ${pass}/${pass + fail} Prüfungen bestanden\n`)

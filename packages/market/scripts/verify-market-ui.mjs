@@ -64,6 +64,7 @@
  * NICHT mitcommitten, solange die Migration aussteht).
  */
 import '../../../scripts/lib/assert-target.mjs'
+import { confirmProbeConsent, removeProbeConsent, removeProbeRowsOfUser } from '../../../scripts/lib/probe-stage.mjs'
 import { createServer, request } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'
@@ -85,7 +86,9 @@ const KEEP = process.env.KEEP === '1'
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
-const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
+// Der LAUFZEIT-Schlüssel zuerst: das Skript legt Konten an, und der
+// Migrations-Schlüssel darf das lokal und auf Production nicht (`users.write`).
+const apiKey = process.env.NUXT_APPWRITE_KEY || process.env.NUXT_APPWRITE_MIGRATIONS_KEY
 
 if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — Aufruf mit --env-file=apps/branding/.env')
@@ -202,6 +205,9 @@ async function makeAccount(tag) {
   })
   cleanup.access.push(access.$id)
   const session = await users.createSession({ userId: user.$id })
+  // Zustimmung wie nach der Nachfrage im Browser (SEC-008): ohne sie lehnt die
+  // App jede schreibende Route dieses Kontos ab (403 `consent_required`).
+  await confirmProbeConsent({ port: PORT, host: HOST, cookie: `a_session_${projectId}=${encodeURIComponent(session.secret)}` })
   return {
     id: user.$id,
     cookie: `a_session_${projectId}=${encodeURIComponent(session.secret)}`,
@@ -663,6 +669,10 @@ finally {
       await tablesDB.deleteRow({ databaseId, tableId: 'brand_access', rowId: id }).catch(() => {})
     }
     for (const id of cleanup.users) {
+      // Ein Vergleichs-Lauf rechnet für Mitbewerber ohne Brand-Check selbst einen
+      // (im Namen des Kontos) — die Zeilen gehören zu diesem Lauf.
+      await removeProbeRowsOfUser({ tablesDB, databaseId, tableId: 'brand_checks', userId: id }).catch(() => {})
+      await removeProbeConsent({ tablesDB, databaseId, userId: id }).catch(() => {})
       await users.delete({ userId: id }).catch(() => {})
     }
   }

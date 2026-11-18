@@ -55,6 +55,7 @@
  * sind beide Schalter wirkungslos (`NODE_ENV`).
  */
 import '../../../scripts/lib/assert-target.mjs'
+import { confirmProbeConsent, removeProbeConsent, removeProbeRows } from '../../../scripts/lib/probe-stage.mjs'
 import { createServer, request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 
@@ -66,7 +67,9 @@ const HOST = baseUrl?.hostname || process.env.BRANDING_HOST || 'localhost'
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
-const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
+// Der LAUFZEIT-Schlüssel zuerst: das Skript legt Konten an, und der
+// Migrations-Schlüssel darf das lokal und auf Production nicht (`users.write`).
+const apiKey = process.env.NUXT_APPWRITE_KEY || process.env.NUXT_APPWRITE_MIGRATIONS_KEY
 
 if (!endpoint || !projectId || !databaseId || !apiKey) {
   console.error('✗ Env unvollständig — Aufruf mit --env-file=apps/branding/.env')
@@ -78,9 +81,34 @@ const tablesDB = new TablesDB(client)
 const users = new Users(client)
 
 const stamp = Date.now()
+/** Beginn dieses Laufs — das Aufräumen nimmt Lauf-Zeilen nur ab hier. */
+const STARTED_AT = new Date(stamp - 1000).toISOString()
 let pass = 0
 let fail = 0
-const cleanup = { users: [], profiles: [], access: [], checks: [] }
+const cleanup = { users: [], profiles: [], access: [], checks: [], aiFlag: null }
+
+/**
+ * Der Check läuft nur, wenn der Betreiber-Schalter für die KI an ist
+ * (`app_config.global.brandAiEnabled`) — sonst antwortet die Route mit 503
+ * `check_paused`. Auf einer frischen Instanz ist er aus. Das Skript SETZT
+ * seine Annahme selbst und stellt sie am Ende zurück (dieselbe Hilfe wie in
+ * den Beweisen des Marktvergleichs).
+ */
+async function ensureAiEnabled() {
+  let row = null
+  try {
+    row = await tablesDB.getRow({ databaseId, tableId: 'app_config', rowId: 'global' })
+  }
+  catch { /* keine Zeile */ }
+  if (row?.brandAiEnabled === true) return
+  cleanup.aiFlag = row ? { existed: true, before: row.brandAiEnabled ?? null } : { existed: false }
+  if (row) {
+    await tablesDB.updateRow({ databaseId, tableId: 'app_config', rowId: 'global', data: { brandAiEnabled: true } })
+  }
+  else {
+    await tablesDB.createRow({ databaseId, tableId: 'app_config', rowId: 'global', data: { brandAiEnabled: true } })
+  }
+}
 const servers = []
 
 function check(label, ok, detail = '') {
@@ -232,6 +260,9 @@ async function makeAccount(tag) {
   })
   cleanup.access.push(access.$id)
   const session = await users.createSession({ userId: user.$id })
+  // Zustimmung wie nach der Nachfrage im Browser (SEC-008): ohne sie lehnt die
+  // App jede schreibende Route dieses Kontos ab (403 `consent_required`).
+  await confirmProbeConsent({ port: PORT, host: HOST, cookie: `a_session_${projectId}=${encodeURIComponent(session.secret)}` })
   return { id: user.$id, cookie: `a_session_${projectId}=${encodeURIComponent(session.secret)}` }
 }
 
@@ -248,6 +279,7 @@ async function checkRowsFor(origin) {
 }
 
 try {
+  await ensureAiEnabled()
   // ── Die drei Websites ───────────────────────────────────────────────────
   console.log('0 · Drei erfundene Websites, jede auf eigenem Ursprung')
 
@@ -412,14 +444,37 @@ finally {
   for (const id of cleanup.checks) {
     await tablesDB.deleteRow({ databaseId, tableId: 'brand_checks', rowId: id }).catch(() => {})
   }
+  // Was die APP für diesen Lauf selbst angelegt hat: das Ergebnis je
+  // Probe-Website (auch das eines Gastes, es trägt kein Konto), die
+  // Lauf-Zeilen der Checks seit dem Start dieses Skripts, und Kapitel und
+  // Ereignisse des Probe-Brandings.
+  for (const server of servers) {
+    const host = `127.0.0.1:${server.address()?.port}`
+    await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_checks', column: 'host', value: host }).catch(() => {})
+  }
+  await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_runs', column: 'scope', value: 'check', since: STARTED_AT }).catch(() => {})
   for (const id of cleanup.profiles) {
+    await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_steps', column: 'profileId', value: id }).catch(() => {})
+    await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_events', column: 'profileId', value: id }).catch(() => {})
     await tablesDB.deleteRow({ databaseId, tableId: 'brand_profiles', rowId: id }).catch(() => {})
   }
   for (const id of cleanup.access) {
     await tablesDB.deleteRow({ databaseId, tableId: 'brand_access', rowId: id }).catch(() => {})
   }
   for (const id of cleanup.users) {
+    await removeProbeConsent({ tablesDB, databaseId, userId: id }).catch(() => {})
     await users.delete({ userId: id }).catch(() => {})
+  }
+  if (cleanup.aiFlag) {
+    if (cleanup.aiFlag.existed) {
+      await tablesDB.updateRow({
+        databaseId, tableId: 'app_config', rowId: 'global',
+        data: { brandAiEnabled: cleanup.aiFlag.before },
+      }).catch(() => {})
+    }
+    else {
+      await tablesDB.deleteRow({ databaseId, tableId: 'app_config', rowId: 'global' }).catch(() => {})
+    }
   }
   for (const server of servers) {
     // Erst die Keep-alive-Sockets, dann schliessen — sonst wartet `close()`

@@ -231,8 +231,30 @@ EINZEL-INSTANZ (seit 2026-11-17): nachts startet `buehne.yml` `apps/comments`
 als dritten Server (Projekt `comments`, `bootstrap --seed`); Skripte mit
 `braucht: [..., 'einzel']` bekommen `EINZEL_URL`/`EINZEL_PORT`, lokal nur mit
 `pnpm buehne run --einzel-port N`, sonst „übersprungen". Sie räumen über
-`createEinzelCleanup` mit Nachzählen auf. WAS FEHLT: zwei Skripte, die die
-Einzel-Instanz EIGENS eingestellt brauchen (`verify-silo-domain`,
-`verify-domain-settle`), und die 12 von branding.supply (eigenes Projekt)
-stehen auf `hand`; Skripte mit echten KI-Aufrufen, Stripe oder fremden
-Websites bleiben dort.
+`createEinzelCleanup` mit Nachzählen auf. BRANDING.SUPPLY (seit 2026-11-18,
+BT1 a): nachts startet `buehne.yml` `apps/branding` als VIERTEN Server
+(Projekt `branding`, `scripts/bootstrap.mjs --app branding`); Skripte mit
+`env: 'branding'` und `braucht: [..., 'branding']` bekommen `BRANDING_PORT`/
+`BRANDING_HOST`/`BRANDING_URL`, lokal nur mit `pnpm buehne run
+--branding-port N`. Der Server läuft dort mit GESTELLTEN ANTWORTEN
+(`BRAND_DEV_STUB_*`, `MARKET_DEV_STUB`, `BRAND_SITE_FETCH_ALLOW_LOOPBACK` —
+die Start-Zeile steht in docs/referenz/LIVE-BEWEISE.md): KEIN Skript der
+Einteilung ruft eine echte KI, Stripe oder eine fremde Website, und die
+`.env` der CI trägt dafür keinen Schlüssel. Acht von zwölf laufen. Vier
+Dinge, beim Einzug gemessen: (1) ein Skript, das Konten anlegt, nimmt den
+LAUFZEIT-Schlüssel (`NUXT_APPWRITE_KEY` zuerst); (2) eine App mit AGB-Pflicht
+lehnt jede schreibende Route eines direkt angelegten Kontos ab (403
+`consent_required`) — die Zustimmung über die echte Route festhalten
+(`confirmProbeConsent`) und beim Aufräumen wieder nehmen; (3) der Läufer
+ZÄHLT bei `env: 'branding'` SELBST NACH (Zeilen jeder Tabelle und Konten vor
+und nach dem Skript; mehr als vorher ⇒ rot) — Zeilen, die die App anlegt,
+räumt das Skript nach Spalte ab (`removeProbeRows`), nie über eine feste
+Liste von Kapiteln; (4) Tages-Deckel zählen je PROZESS — wer dieselben
+Skripte lokal mehrfach fährt, startet den Server dazwischen neu (429
+`market_instance_limit` sieht sonst aus wie ein roter Beweis). WAS FEHLT:
+zwei Skripte, die die Einzel-Instanz EIGENS eingestellt brauchen
+(`verify-silo-domain`, `verify-domain-settle`), vier von branding.supply mit
+veralteter Vorlage (`verify-brand-kit`, `-design`, `-sessions`,
+`verify-business-confirmation`; OPEN-ITEMS „BT1" a) und die fünf E2E-Dateien
+der Studio-Site; Skripte mit echten KI-Aufrufen, Stripe oder fremden
+Websites bleiben auf `hand`.
