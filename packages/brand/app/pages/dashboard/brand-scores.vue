@@ -205,7 +205,7 @@ async function run(row: BrandProfileScores, source: 'website' | 'document'): Pro
   running.value = runKey(row.profileId, source)
   try {
     if (source === 'website') {
-      await $fetch<BrandCheckStartResponse>('/api/brand/check', {
+      const started = await $fetch<BrandCheckStartResponse>('/api/brand/check', {
         method: 'POST',
         body: {
           url: row.websiteUrl,
@@ -217,6 +217,32 @@ async function run(row: BrandProfileScores, source: 'website' | 'document'): Pro
           profileId: row.profileId,
         },
       })
+      /**
+       * DER WEBSITE-CHECK RECHNET IM HINTERGRUND (LL1 b, 2026-11-18): der
+       * Start antwortet `202` mit einem Kennzeichen, die Übersicht wartet auf
+       * das Ende dieses einen Laufs. Läuft für diese Adresse schon einer
+       * (zweiter Reiter, Klick nach einem Neuladen), führt dieselbe Antwort
+       * auf DIESEN Lauf — es entsteht kein zweiter.
+       */
+      if (started.token) {
+        const end = await awaitBrandCheckRun(started.token)
+        if (end.kind !== 'done') {
+          await refresh()
+          const stillRunning = end.kind === 'running'
+          toast.add({
+            title: stillRunning ? t('brand.myScores.website.running') : t('brand.myScores.list.failed'),
+            description: t(`brand.myScores.errors.${
+              end.kind === 'failed'
+                ? messageKey({ data: { reason: end.reason } })
+                : end.kind === 'interrupted'
+                  ? 'websiteInterrupted'
+                  : stillRunning ? 'websiteBackground' : 'generic'
+            }`),
+            color: stillRunning ? 'info' : 'error',
+          })
+          return
+        }
+      }
     }
     else {
       /**
