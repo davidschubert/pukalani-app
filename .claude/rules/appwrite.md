@@ -98,7 +98,7 @@ paths:
   Lauf wieder: das Tabellenrecht BESITZT genau eine Migration
   (`rights.migration` in `scripts/lib/server-written-tables.mjs`).
 - ZWEI ÄNDERUNGEN AB APPWRITE 2.7.2, die eigenen Code berühren (gemessen am
-  2026-11-18 auf 2.7.3; Production läuft bis zum Upgrade noch OHNE sie):
+  2026-11-18 auf 2.7.3, Production seit demselben Tag):
   (1) Ein Bucket mit `allowedFileExtensions` prüft den INHALT, sobald die
   Endung ein Bild oder PDF ist: HTML als `x.png` wird auch mit dem
   Admin-Schlüssel abgelehnt (400 `storage_file_type_unsupported`), ein JPEG

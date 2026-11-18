@@ -10,6 +10,7 @@ ausgeführt.**
 | `appwrite-upgrade-2.6.sh` | Appwrite 2.0.0 → 2.6.1 auf appwrite-prod | 2026-10-24 | [APPWRITE-2-6-UPGRADE.md](../../runbooks/APPWRITE-2-6-UPGRADE.md) |
 | `appwrite-upgrade-2.6.2.sh` | Appwrite 2.6.1 → 2.6.2 | 2026-10-27 | [APPWRITE-2-6-UPGRADE.md](../../runbooks/APPWRITE-2-6-UPGRADE.md) |
 | `appwrite-upgrade-2.7.1.sh` | Appwrite 2.6.2 → 2.7.1 | 2026-11-06 | [APPWRITE-2-7-UPGRADE.md](../../runbooks/APPWRITE-2-7-UPGRADE.md) |
+| `appwrite-upgrade-2.7.3.sh` | Appwrite 2.7.1 → 2.7.3 | 2026-11-18 | [APPWRITE-2-7-UPGRADE.md](../../runbooks/APPWRITE-2-7-UPGRADE.md) |
 | `appwrite-aw28-drop-smtp-keepalive-patch.sh` | nahm den SMTP-KeepAlive-Patch aus der Override (AW28) | 2026-11-08 | [APPWRITE-2-7-UPGRADE.md](../../runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 Die Pfade in den Köpfen der Skripte (`ops/…`) sind der Stand von damals und
