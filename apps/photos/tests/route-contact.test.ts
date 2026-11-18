@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { requireTurnstile, __resetTurnstileWarnings } from '../../../packages/core/server/utils/turnstile'
 
 /**
  * DAS KONTAKT-FORMULAR (OPS-009, N14).
@@ -6,10 +7,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * `POST /api/contact` ist öffentlich: keine Anmeldung, keine Rolle. Geprüft
  * werden die Schutz-Stufen, die die Route SELBST trägt, am echten Handler:
  *  1. Eingabe-Prüfung (Zod) — ungültig ⇒ abgelehnt, nichts versendet,
- *  2. die eigene Bremse je Adresse (3 Nachrichten in 10 Minuten),
- *  3. der Honigtopf — gefüllt ⇒ freundliche Antwort, nichts versendet,
+ *  2. der Honigtopf — gefüllt ⇒ freundliche Antwort, nichts versendet,
+ *  3. die Bot-Prüfung (Turnstile, Aktion `photos_contact`) mit dem ECHTEN
+ *     `requireTurnstile` des Core — mit Schlüsseln und ohne Token abgelehnt,
+ *     ohne Schlüssel ein No-op,
  *  4. ohne eingerichteten Mail-Versand ⇒ 503, nichts versendet.
- * Nitros Auto-Imports sind Globals; `sendMail` ist ein Spion.
+ * Die Bremse je Adresse (3 Nachrichten in 10 Minuten) sitzt seit NF1 b in der
+ * Core-Middleware und läuft hier nicht mit — ihr Beweis ist
+ * `packages/core/tests/rateLimitPhotosContact.test.ts`.
+ * Nitros Auto-Imports sind Globals; `sendMail` und Cloudflares Gegenprüfung
+ * (`$fetch`) sind Spione.
  */
 
 interface ThrownLike { status?: number, statusText?: string }
@@ -22,12 +29,18 @@ const load = () => import('../server/api/contact.post')
 
 let mails: Array<{ to: string, subject: string, text: string }> = []
 let mailerReady = true
+/** Leer = aus (wie heute auf dem Server), beide gesetzt = an. */
+let turnstileKeys = { site: '', secret: '' }
+const siteverify = vi.fn()
 
 const VALID = { name: 'Probe Person', email: 'probe@example.test', message: 'Eine Anfrage zur Probe.' }
 
 beforeEach(() => {
   mails = []
   mailerReady = true
+  turnstileKeys = { site: '', secret: '' }
+  siteverify.mockReset()
+  __resetTurnstileWarnings()
   vi.stubGlobal('defineEventHandler', (fn: unknown) => fn)
   vi.stubGlobal('createError', makeError)
   vi.stubGlobal('logEvent', () => {})
@@ -38,7 +51,13 @@ beforeEach(() => {
   })
   vi.stubGlobal('trustedClientIp', (event: { ip: string }) => event.ip)
   vi.stubGlobal('mailerConfigured', async () => mailerReady)
-  vi.stubGlobal('useRuntimeConfig', () => ({ contactEmail: 'inbox@example.test' }))
+  vi.stubGlobal('useRuntimeConfig', () => ({
+    contactEmail: 'inbox@example.test',
+    turnstileSecret: turnstileKeys.secret,
+    public: { turnstileSiteKey: turnstileKeys.site },
+  }))
+  vi.stubGlobal('$fetch', siteverify)
+  vi.stubGlobal('requireTurnstile', requireTurnstile)
   vi.stubGlobal('sendMail', async (_event: unknown, mail: { to: string, subject: string, text: string }) => {
     mails.push(mail)
     return true
@@ -49,7 +68,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-/** Jede Probe nimmt eine eigene Adresse — die Bremse der Route lebt im Modul. */
+/** Jede Probe nimmt eine eigene Adresse (wie vor dem Umzug der Bremse). */
 let nextIp = 0
 async function post(body: unknown, ip = `198.51.100.${++nextIp}`): Promise<{ status: number, result?: unknown, error?: ThrownLike }> {
   const handler = (await load()).default as unknown as (event: unknown) => Promise<unknown>
@@ -89,12 +108,10 @@ describe('POST /api/contact (öffentliches Formular)', () => {
     expect(mails).toEqual([])
   })
 
-  it('Bremse: die vierte Nachricht derselben Adresse in 10 Minuten ⇒ 429, nicht versendet', async () => {
+  it('zählt nicht mehr selbst: auch die vierte Nachricht derselben Adresse geht durch (die Bremse sitzt im Core)', async () => {
     const ip = '203.0.113.7'
-    for (let i = 0; i < 3; i++) expect((await post(VALID, ip)).status).toBe(200)
-    const fourth = await post(VALID, ip)
-    expect(fourth.status).toBe(429)
-    expect(mails).toHaveLength(3)
+    for (let i = 0; i < 4; i++) expect((await post(VALID, ip)).status).toBe(200)
+    expect(mails).toHaveLength(4)
   })
 
   it('Mail-Versand nicht eingerichtet: 503, nichts versendet', async () => {
@@ -104,5 +121,57 @@ describe('POST /api/contact (öffentliches Formular)', () => {
     expect(mails).toEqual([])
   })
 
-  it.todo('Bot-Prüfung (Turnstile) vor dem Versand (offen)')
+})
+
+describe('POST /api/contact: Bot-Prüfung (Turnstile, NF1 b)', () => {
+  it('ohne Schlüssel: das Formular geht durch wie vorher — ohne Token, ohne Gegenprüfung', async () => {
+    const run = await post(VALID)
+    expect(run.status, run.error?.statusText).toBe(200)
+    expect(run.result).toEqual({ ok: true })
+    expect(mails).toHaveLength(1)
+    expect(siteverify).not.toHaveBeenCalled()
+  })
+
+  it('mit Schlüsseln und ohne Token: 403 bot_check_required, nichts versendet', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    const run = await post(VALID)
+    expect(run.status).toBe(403)
+    expect((run.error as { data?: { code?: string } } | undefined)?.data?.code).toBe('bot_check_required')
+    expect(mails).toEqual([])
+    expect(siteverify).not.toHaveBeenCalled()
+  })
+
+  it('mit Schlüsseln und abgelehntem Token: 403 bot_check_failed, nichts versendet', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    siteverify.mockResolvedValue({ 'success': false, 'error-codes': ['invalid-input-response'] })
+    const run = await post({ ...VALID, turnstileToken: 'token-aus-dem-widget' })
+    expect(run.status).toBe(403)
+    expect((run.error as { data?: { code?: string } } | undefined)?.data?.code).toBe('bot_check_failed')
+    expect(mails).toEqual([])
+  })
+
+  it('mit Schlüsseln und einem Token aus einem anderen Formular: abgelehnt', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    siteverify.mockResolvedValue({ 'success': true, 'action': 'intro_call', 'error-codes': [] })
+    const run = await post({ ...VALID, turnstileToken: 'token-aus-dem-widget' })
+    expect(run.status).toBe(403)
+    expect(mails).toEqual([])
+  })
+
+  it('mit Schlüsseln und bestätigtem Token der Aktion photos_contact: durch', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    siteverify.mockResolvedValue({ 'success': true, 'action': 'photos_contact', 'error-codes': [] })
+    const run = await post({ ...VALID, turnstileToken: 'token-aus-dem-widget' })
+    expect(run.status, run.error?.statusText).toBe(200)
+    expect(mails).toHaveLength(1)
+    expect(siteverify).toHaveBeenCalledTimes(1)
+  })
+
+  it('der Honigtopf antwortet auch mit Schlüsseln still mit Erfolg — ohne Gegenprüfung', async () => {
+    turnstileKeys = { site: 'site', secret: 'secret' }
+    const run = await post({ ...VALID, website: 'gefüllt' })
+    expect(run.status).toBe(200)
+    expect(mails).toEqual([])
+    expect(siteverify).not.toHaveBeenCalled()
+  })
 })

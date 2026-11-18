@@ -52,8 +52,23 @@ export function turnstileMode(siteKey: string, secret: string): TurnstileMode {
  * `intro_call` und `waitlist` kamen mit SEC-018 dazu (2026-11-15): die zwei
  * öffentlichen Formulare von branding.supply (Erstgespräch, Warteliste)
  * schicken eine Mail an die eingetragene Adresse — dieselbe Angriffsfläche.
+ *
+ * `portfolio_intro_call` und `photos_contact` kamen mit NF1 b dazu
+ * (2026-11-18): das Erstgespräch der Studio-Site (`apps/portfolio`) und das
+ * Kontaktformular von `apps/photos`. Beide mailen nur an den Betreiber, aber
+ * jede Nachricht kostet Mail-Kontingent. Eigene Namen statt `intro_call`: ein
+ * Token aus dem Formular einer Site taugt nicht für das einer anderen.
  */
-export const TURNSTILE_ACTIONS = ['signup', 'otp', 'recovery', 'guest_comment', 'intro_call', 'waitlist'] as const
+export const TURNSTILE_ACTIONS = [
+  'signup',
+  'otp',
+  'recovery',
+  'guest_comment',
+  'intro_call',
+  'waitlist',
+  'portfolio_intro_call',
+  'photos_contact',
+] as const
 export type TurnstileAction = typeof TURNSTILE_ACTIONS[number]
 
 /** Die Grund-Schlüssel, die als `reason` im Fehler-Envelope reisen. */

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { isBotCheckReason } from '../../../../packages/core/shared/turnstile'
+
 definePageMeta({ layout: 'site' })
 
 useHead({
@@ -11,20 +13,50 @@ useHead({
   ],
 })
 
+const { t } = useI18n()
 const form = reactive({ name: '', email: '', message: '', website: '' })
-const state = ref<'idle' | 'sending' | 'sent' | 'unavailable' | 'error'>('idle')
+const state = ref<'idle' | 'sending' | 'sent' | 'unavailable' | 'error' | 'botCheck'>('idle')
 
-// Server-Route (P2-Polish): validiert + drosselt + verschickt über den
-// Core-Mailer; 503 = SMTP nicht konfiguriert → sichtbarer mailto-Fallback.
+/**
+ * BOT-PRÜFUNG (Turnstile, Aktion `photos_contact`, NF1 b). Ohne Site-Key
+ * rendert das Widget nichts, `turnstileEnabled` ist `false`, der Knopf bleibt
+ * offen und das Formular schickt keinen Token — alles wie vorher. Ein Token
+ * gilt EINMAL: nach jedem Versuch `reset()`. Die drei Gründe zeigt der Core-
+ * Text `auth.botCheck.*` (de + en).
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+const botCheckKey = ref<'required' | 'failed' | 'unavailable'>('required')
+
+// Server-Route (P2-Polish): validiert + verschickt über den Core-Mailer (die
+// Drossel sitzt in der Core-Middleware); 503 = SMTP nicht konfiguriert →
+// sichtbarer mailto-Fallback.
 const submit = async () => {
   state.value = 'sending'
   try {
-    await $fetch('/api/contact', { method: 'POST', body: { ...form } })
+    await $fetch('/api/contact', {
+      method: 'POST',
+      body: { ...form, ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}) },
+    })
     state.value = 'sent'
     Object.assign(form, { name: '', email: '', message: '', website: '' })
   }
   catch (error) {
-    state.value = (error as { statusCode?: number })?.statusCode === 503 ? 'unavailable' : 'error'
+    const reason = (error as { data?: { reason?: string } })?.data?.reason
+    if (isBotCheckReason(reason)) {
+      botCheckKey.value = reason === 'bot_check_required' ? 'required' : reason === 'bot_check_failed' ? 'failed' : 'unavailable'
+      state.value = 'botCheck'
+    }
+    else {
+      state.value = (error as { statusCode?: number })?.statusCode === 503 ? 'unavailable' : 'error'
+    }
+  }
+  finally {
+    // Ein Turnstile-Token ist EINMALIG — auch nach einem Erfolg (das Formular
+    // ist danach leer und darf eine zweite Nachricht schicken).
+    botCheck.value?.reset()
   }
 }
 </script>
@@ -62,7 +94,8 @@ const submit = async () => {
           <label for="website">Website</label>
           <input id="website" v-model="form.website" type="text" tabindex="-1" autocomplete="off" />
         </div>
-        <button type="submit" class="btn btn--solid" :disabled="state === 'sending'">
+        <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="photos_contact" />
+        <button type="submit" class="btn btn--solid" :disabled="state === 'sending' || waitingForBotCheck">
           {{ state === 'sending' ? 'Sending…' : 'Send message' }}
         </button>
         <p v-if="state === 'sent'" class="form__note" data-contact-sent>
@@ -71,6 +104,9 @@ const submit = async () => {
         <p v-else-if="state === 'unavailable'" class="form__note">
           The form is taking a break — please email us directly at
           <a href="mailto:hello@maui.photos">hello@maui.photos</a>.
+        </p>
+        <p v-else-if="state === 'botCheck'" class="form__note" role="alert">
+          {{ t(`auth.botCheck.${botCheckKey}`) }}
         </p>
         <p v-else-if="state === 'error'" class="form__note">
           That didn't go through. Try again in a few minutes or email
