@@ -190,6 +190,70 @@ export async function login(call, host, account) {
 }
 
 /**
+ * Die Zustimmung eines Probe-Kontos festhalten (SEC-008, seit 2026-11-16) —
+ * über die ECHTE Route `POST /api/auth/consent` (Weg `prompt`), so wie der
+ * Browser nach der Nachfrage. Eine App mit AGB-Pflicht lehnt sonst jede
+ * schreibende Route eines Kontos ab (403 `consent_required`): ein Konto, das
+ * ein Skript direkt anlegt, hat an der Registrierung vorbei nie zugestimmt.
+ * Ein Konto mit Betreiber-Rolle ist ausgenommen; der Aufruf schadet dort nicht.
+ *
+ * @param {{ port: number, host?: string, cookie: string }} options
+ */
+export async function confirmProbeConsent({ port, host = 'localhost', cookie }) {
+  const { call } = createHttpCaller({ port })
+  const res = await call(host, '/api/auth/consent', { method: 'POST', cookie, body: { terms: true, business: true } })
+  if (res.status !== 200) throw new Error(`Zustimmung des Probe-Kontos nicht festgehalten (${res.status}): ${res.text.slice(0, 160)}`)
+  if (Array.isArray(res.json?.missing) && res.json.missing.length) throw new Error(`Zustimmung des Probe-Kontos unvollständig: ${res.json.missing.join(', ')}`)
+}
+
+/**
+ * Zeilen einer Tabelle löschen, die EINEN Wert in EINER Spalte tragen
+ * (`userId` eines Probe-Kontos, `profileId` eines Probe-Brandings, `host`
+ * eines Probe-Servers) und — mit `since` — frühestens ab diesem Zeitpunkt
+ * entstanden sind. Für Zeilen, die nicht das Skript, sondern die App anlegt:
+ * wer nur das Konto oder die Haupt-Zeile löscht, lässt sie sonst liegen, und
+ * eine feste Liste im Skript veraltet mit jedem neuen Kapitel. Gibt die Zahl
+ * der gelöschten Zeilen zurück; eine Tabelle, die es in dieser App nicht
+ * gibt, ist 0.
+ *
+ * @param {{ tablesDB: { listRows: Function, deleteRow: Function }, databaseId: string, tableId: string, column: string, value: string, since?: string }} options
+ */
+export async function removeProbeRows({ tablesDB, databaseId, tableId, column, value, since }) {
+  const filters = [Q.equal(column, [value]), ...(since ? [{ method: 'greaterThanEqual', attribute: '$createdAt', values: [since] }] : []), Q.limit(100)]
+  let removed = 0
+  for (;;) {
+    let rows
+    try {
+      ({ rows } = await tablesDB.listRows({ databaseId, tableId, queries: filters.map(query => JSON.stringify(query)) }))
+    }
+    catch (error) {
+      // node-appwrite meldet den Status als `code`, die REST-Hilfe hier als `status`.
+      if (isNotFound(error) || error?.code === 404) return removed
+      throw error
+    }
+    if (!rows.length) return removed
+    for (const row of rows) await tablesDB.deleteRow({ databaseId, tableId, rowId: row.$id })
+    removed += rows.length
+  }
+}
+
+/** Die Zeilen EINES Probe-Kontos aus einer Tabelle löschen (Spalte `userId`). */
+export function removeProbeRowsOfUser({ tablesDB, databaseId, tableId, userId }) {
+  return removeProbeRows({ tablesDB, databaseId, tableId, column: 'userId', value: userId })
+}
+
+/**
+ * Die Zustimmungs-Zeilen eines Probe-Kontos wieder löschen (`consent_records`,
+ * angelegt von `confirmProbeConsent`) — nur die Lösch-Route der App nähme sie
+ * sonst mit.
+ *
+ * @param {{ tablesDB: { listRows: Function, deleteRow: Function }, databaseId: string, userId: string }} options
+ */
+export function removeProbeConsent({ tablesDB, databaseId, userId }) {
+  return removeProbeRowsOfUser({ tablesDB, databaseId, tableId: 'consent_records', userId })
+}
+
+/**
  * Wartet, bis der Host aufgelöst wird (`/api/themes` antwortet 200) — keine
  * feste Wartezeit. Der Resolver merkt sich auch „unbekannt" 30 s.
  *
