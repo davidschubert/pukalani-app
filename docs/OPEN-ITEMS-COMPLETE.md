@@ -142,8 +142,14 @@ Container ohne Node fiel es nicht auf; in der CI waren zwölf Tests rot.
 laufen, nicht die drei, die er kennt:** ein vierter Test las dieselbe
 `rsync`-Zeile. (6) **`pipefail` über `head | tar` kann ein Scheinfehler
 sein;** beurteilt werden die Entpacker, und die Teil-Ergebnisse gehören als
-Zahlen in die Meldung — ein Test, der einmal ohne Ausgabe rot war, ließ sich
-in 2.500 Wiederholungen nicht nachstellen (OPEN-ITEMS „MG1" b). (7) **Fetch
+Zahlen in die Meldung. Zwei Fälle des neuen Tests waren in einer halben
+Stunde fünfmal rot (nur die Worte mit ungepacktem tar) und hielten das
+Ausliefern aller Gruppen auf; seit dieser Härtung nicht mehr, nachstellen
+ließ sich der Fehlschlag aber nicht (OPEN-ITEMS „MG1" b). Ein neuer Test in
+einer Pflicht-Prüfung, der ein Skript startet, gehört von Anfang an so
+geschrieben, dass sein erster Fehlschlag Ausgabe und Exit-Code zeigt — der
+erste zeigte nur „3 statt 0", und ein Neustart des Laufs verdeckte, dass er
+gleich wieder scheiterte. (7) **Fetch
 und Merge in EINEM Befehl sind kein „gegen den neuesten Stand getestet":**
 zwischen beiden lag einmal ein fremder Merge. (8) **Von Hand eingespielte
 Dateien brauchen einen Vergleich, sonst veralten sie still** — die
