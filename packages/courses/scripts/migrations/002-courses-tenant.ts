@@ -49,6 +49,7 @@ import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 // alle Migrationen): scripts/migrations-lib/indexRetry.mts. Die Begründung des
 // Races steht dort im Kopf.
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -113,7 +114,17 @@ const TARGETS: { table: string, index: string, columns: string[] }[] = [
   { table: 'lesson_progress', index: 'idx_tenant_progress', columns: ['tenantId', 'courseId', 'userId'] },
 ]
 
+// NACHFOLGER-WACHE (PB1 c): steht `communityId` (courses-005), hat die
+// Tabelle den Weg tenantId → communityId → tenantId gelöscht (courses-006)
+// hinter sich — Spalte, Index und (an `courses`) `uq_tenant_slug` nicht
+// wieder anlegen; dessen Zwilling `uq_community_slug` steht dann. Auf einer
+// frischen Instanz entsteht `communityId` erst weiter hinten — dort legt diese
+// Datei alles an, und courses-005 leitet daraus Spalte, Backfill und
+// Index-Zwillinge ab. Das Löschen von `uq_slug` unten läuft immer.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+
 for (const { table, index, columns } of TARGETS) {
+  if (await superseded({ table, column: 'tenantId' }, { table, column: 'communityId' }, 'courses-005/006')) continue
   await step(`Column ${table}.tenantId`, () => tablesDB.createVarcharColumn({
     databaseId, tableId: table, key: 'tenantId', size: 36, required: false, xdefault: '',
   }))
@@ -126,13 +137,15 @@ for (const { table, index, columns } of TARGETS) {
 // Slug-Eindeutigkeit pro MANDANT (siehe Kopf, Fall a) — erst der Ersatz UND
 // sein 'available', dann der alte Index. Anders herum klaffte ein Fenster ohne
 // Eindeutigkeitsschutz.
-await indexStep('Unique-Index courses.uq_tenant_slug', {
-  tableId: 'courses', key: 'uq_tenant_slug',
-  type: TablesDBIndexType.Unique, columns: ['tenantId', 'slug'],
-})
-// Auch im „existiert bereits"-Fall abwarten: ein noch 'processing'-Ersatz
-// schützt nichts, und der nächste Schritt ist destruktiv.
-await waitForIndex('courses', 'uq_tenant_slug')
+if (!(await superseded({ table: 'courses', index: 'uq_tenant_slug' }, { table: 'courses', column: 'communityId' }, 'courses-005/006'))) {
+  await indexStep('Unique-Index courses.uq_tenant_slug', {
+    tableId: 'courses', key: 'uq_tenant_slug',
+    type: TablesDBIndexType.Unique, columns: ['tenantId', 'slug'],
+  })
+  // Auch im „existiert bereits"-Fall abwarten: ein noch 'processing'-Ersatz
+  // schützt nichts, und der nächste Schritt ist destruktiv.
+  await waitForIndex('courses', 'uq_tenant_slug')
+}
 
 // destruktiv-ok: der alte, NICHT-tenant-aware Unique-Index verschwindet erst,
 // NACHDEM der Ersatz verfügbar ist. Daten bleiben unberührt, nur die Constraint

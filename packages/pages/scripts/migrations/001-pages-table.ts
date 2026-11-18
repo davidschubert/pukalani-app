@@ -9,8 +9,9 @@
  *   pnpm migrate --app <app> --layer pages
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -107,9 +108,20 @@ await columnStep('Column pages.sortOrder', 'sortOrder', cols, () => tablesDB.cre
 await waitForColumns('pages')
 
 // eine Sprachversion je slug: (slug, locale) eindeutig
-await indexStep('Index pages.uq_slug_locale', {
-  tableId: 'pages', key: 'uq_slug_locale', type: TablesDBIndexType.Unique, columns: ['slug', 'locale'],
-})
+// NACHFOLGER-WACHE (PB1 c): pages-004 ersetzt `uq_slug_locale` durch
+// `uq_slug_locale_tenant`, dessen Zwilling `uq_slug_locale_community`
+// (pages-005) bleibt. Steht einer davon, NICHT wieder anlegen — im Pool darf
+// dieselbe Seite in zwei Communities stehen, ein Unique ohne Mandant würde
+// dort scheitern. Auf einer frischen Instanz steht keiner.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (!(await superseded({ table: 'pages', index: 'uq_slug_locale' }, [
+  { table: 'pages', index: 'uq_slug_locale_tenant' },
+  { table: 'pages', index: 'uq_slug_locale_community' },
+], 'pages-004/005'))) {
+  await indexStep('Index pages.uq_slug_locale', {
+    tableId: 'pages', key: 'uq_slug_locale', type: TablesDBIndexType.Unique, columns: ['slug', 'locale'],
+  })
+}
 // Gruppierung im Admin + öffentliches Lookup per slug
 await indexStep('Index pages.idx_slug', {
   tableId: 'pages', key: 'idx_slug', type: TablesDBIndexType.Key, columns: ['slug'],

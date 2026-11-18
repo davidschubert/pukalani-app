@@ -8,8 +8,9 @@
  *   pnpm migrate --app <app> --layer comments
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -72,8 +73,19 @@ await step('Column embed_sites.active', () => tablesDB.createBooleanColumn({
   databaseId, tableId: 'embed_sites', key: 'active', required: false, xdefault: true,
 }))
 await waitForColumn('host')
-await indexStep('Unique-Index embed_sites.uq_host', {
-  tableId: 'embed_sites', key: 'uq_host', type: TablesDBIndexType.Unique, columns: ['host'],
-})
+// NACHFOLGER-WACHE (PB1 c): `uq_host` wird von comments-015 durch
+// `uq_tenant_host` ersetzt, dessen Zwilling `uq_community_host` (comments-016)
+// bleibt. Steht einer der beiden, NICHT wieder anlegen — im Pool kann derselbe
+// Host in zwei Communities stehen, ein globaler Unique würde dort scheitern.
+// Auf einer frischen Instanz steht keiner: dort entsteht `uq_host` wie immer.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (!(await superseded({ table: 'embed_sites', index: 'uq_host' }, [
+  { table: 'embed_sites', index: 'uq_tenant_host' },
+  { table: 'embed_sites', index: 'uq_community_host' },
+], 'comments-015/016'))) {
+  await indexStep('Unique-Index embed_sites.uq_host', {
+    tableId: 'embed_sites', key: 'uq_host', type: TablesDBIndexType.Unique, columns: ['host'],
+  })
+}
 
 console.log('✔ Migration comments-012 fertig')

@@ -8,8 +8,9 @@
  *   pnpm migrate --app <app> --layer courses
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -71,6 +72,8 @@ async function columnStep(label: string, key: string, existing: Set<string>, run
 
 console.log(`Migration courses-001 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+
 await step('Table courses', () => tablesDB.createTable({
   databaseId, tableId: 'courses', name: 'Courses', permissions: [], rowSecurity: true,
 }))
@@ -80,7 +83,13 @@ await columnStep('Column courses.slug', 'slug', c, () => tablesDB.createVarcharC
 await columnStep('Column courses.description', 'description', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'description', size: 5000, required: true }))
 await columnStep('Column courses.status', 'status', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'status', size: 12, required: true }))
 await columnStep('Column courses.access', 'access', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'access', size: 8, required: true }))
-await columnStep('Column courses.entitlementFeature', 'entitlementFeature', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'entitlementFeature', size: 64, required: false }))
+// NACHFOLGER-WACHE (PB1 c): steht `courses.entitlementProduct` (courses-003),
+// ist der Wert umgezogen und `entitlementFeature` fällt mit courses-004 — nicht
+// wieder anlegen. Auf einer frischen Instanz entsteht `entitlementProduct` erst
+// weiter hinten, courses-003 füllt es dann aus dieser Spalte.
+if (!(await superseded({ table: 'courses', column: 'entitlementFeature' }, { table: 'courses', column: 'entitlementProduct' }, 'courses-003/004'))) {
+  await columnStep('Column courses.entitlementFeature', 'entitlementFeature', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'entitlementFeature', size: 64, required: false }))
+}
 await columnStep('Column courses.authorId', 'authorId', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'authorId', size: 36, required: true }))
 await columnStep('Column courses.authorName', 'authorName', c, () => tablesDB.createVarcharColumn({ databaseId, tableId: 'courses', key: 'authorName', size: 255, required: false, xdefault: '' }))
 await columnStep('Column courses.lessonCount', 'lessonCount', c, () => tablesDB.createIntegerColumn({ databaseId, tableId: 'courses', key: 'lessonCount', required: false, min: 0, xdefault: 0 }))
@@ -118,7 +127,17 @@ await waitForColumns('lessons')
 await waitForColumns('enrollments')
 await waitForColumns('lesson_progress')
 
-await indexStep('Index courses.uq_slug', { tableId: 'courses', key: 'uq_slug', type: TablesDBIndexType.Unique, columns: ['slug'] })
+// NACHFOLGER-WACHE (PB1 c): courses-002 ersetzt `uq_slug` durch
+// `uq_tenant_slug`, dessen Zwilling `uq_community_slug` (courses-005) bleibt.
+// Steht einer davon, NICHT wieder anlegen — im Pool darf derselbe Slug in zwei
+// Communities stehen, ein globaler Unique würde dort scheitern. Auf einer
+// frischen Instanz steht keiner.
+if (!(await superseded({ table: 'courses', index: 'uq_slug' }, [
+  { table: 'courses', index: 'uq_tenant_slug' },
+  { table: 'courses', index: 'uq_community_slug' },
+], 'courses-002/005'))) {
+  await indexStep('Index courses.uq_slug', { tableId: 'courses', key: 'uq_slug', type: TablesDBIndexType.Unique, columns: ['slug'] })
+}
 await indexStep('Index courses.idx_status', { tableId: 'courses', key: 'idx_status', type: TablesDBIndexType.Key, columns: ['status'] })
 await indexStep('Index lessons.idx_course_order', { tableId: 'lessons', key: 'idx_course_order', type: TablesDBIndexType.Key, columns: ['courseId', 'order'] })
 await indexStep('Index enrollments.uq_course_user', { tableId: 'enrollments', key: 'uq_course_user', type: TablesDBIndexType.Unique, columns: ['courseId', 'userId'] })

@@ -9,8 +9,9 @@
  *   pnpm migrate --app <app> --layer pages
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -48,12 +49,20 @@ async function waitForIndex(key: string) {
 
 console.log(`Migration pages-004 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
+// NACHFOLGER-WACHE (PB1 c): steht `communityId` (pages-005), hat die Tabelle
+// den Weg tenantId → communityId → tenantId gelöscht (pages-006) hinter sich;
+// `uq_slug_locale_tenant` fiel dabei, sein Zwilling `uq_slug_locale_community`
+// schützt. Ohne `tenantId` (pages-003 legt sie dann nicht mehr an) ließe sich
+// der Index auch gar nicht bauen. Auf einer frischen Instanz entsteht
+// `communityId` erst weiter hinten, dort läuft dieser Umbau wie immer.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+
 // Neuen tenant-aware Unique-Index anlegen (idempotent), dann den alten löschen —
 // in dieser Reihenfolge, damit nie ein Fenster OHNE Eindeutigkeitsschutz klafft.
 if (await indexExists('uq_slug_locale_tenant')) {
   console.log('↷ Unique-Index uq_slug_locale_tenant (existiert bereits)')
 }
-else {
+else if (!(await superseded({ table: 'pages', index: 'uq_slug_locale_tenant' }, { table: 'pages', column: 'communityId' }, 'pages-005/006'))) {
   await createIndex({
     tableId: 'pages', key: 'uq_slug_locale_tenant',
     type: TablesDBIndexType.Unique, columns: ['slug', 'locale', 'tenantId'],
