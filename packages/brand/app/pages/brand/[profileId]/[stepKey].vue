@@ -774,6 +774,23 @@ const truncatedRetryTurnId = computed<string | null>(() => {
 })
 
 /**
+ * DAS KENNZEICHEN AM FELD (KI1 d): der Wert ist ein abgeschnittener Entwurf.
+ * Die Regel rechnet der Store (`truncatedDraftSlots`, pure Regel in
+ * `shared/brandTruncatedField.ts`); hier wird nur gefragt. „Noch einmal
+ * erzeugen" steht am Feld nur, wo es die Blase auch anbietet — dieselbe
+ * Bedingung (`truncatedRetryTurnId`), kein zweiter Erzeugen-Weg.
+ */
+function fieldIsTruncated(slotId: string): boolean {
+  return store.truncatedDraftSlots.has(slotId)
+}
+
+const truncatedRetryFieldId = computed<string | null>(() => {
+  const id = truncatedRetryTurnId.value
+  if (!id) return null
+  return store.streamMessages.find(message => message.id === id)?.retrySlotId ?? null
+})
+
+/**
  * Der vorhandene Erzeugen-Weg des Feldes — dasselbe, was „Nochmal, mit
  * Hinweis" auslöst, nur ohne Hinweis. Ein neuer Idempotenz-Schlüssel je Klick
  * (`useBrandGeneration`), also kein Wiederverwenden des abgeschnittenen Entwurfs.
@@ -4423,6 +4440,24 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                     <p v-if="pendingCard.slot.helpKey" class="bw-msg-help mt-2">{{ t(pendingCard.slot.helpKey) }}</p>
                   </template>
                   <p v-else class="bw-pending mt-3">{{ t('brand.workspace.stage.pending') }}</p>
+                  <!-- ABGESCHNITTEN AM FELD (KI1 d): der Wert endet mitten im
+                       Satz, weil der Entwurfs-Zug die Token-Decke gerissen
+                       hat. Eine Anzeige aus dem Verlauf, keine Spalte — sie
+                       fällt mit dem nächsten vollständigen Entwurf und mit der
+                       ersten eigenen Änderung. -->
+                  <div v-if="fieldIsTruncated(pendingCard.slot.id)" class="mt-3 flex flex-wrap items-center gap-2">
+                    <span class="bw-state bw-state--stale">
+                      <UIcon name="i-ph-scissors" />
+                      {{ t('brand.workspace.truncated.fieldBadge') }}
+                    </span>
+                    <p class="bw-msg-help">{{ t('brand.workspace.truncated.fieldHint') }}</p>
+                    <UButton
+                      v-if="truncatedRetryFieldId === pendingCard.slot.id"
+                      size="sm" color="neutral" variant="soft" class="rounded-full" icon="i-ph-arrow-clockwise"
+                      :label="t('brand.workspace.truncated.retry')"
+                      @click="regenerateTruncated(pendingCard!.slot.id)"
+                    />
+                  </div>
                 </div>
 
                 <!-- DIE ANTWORT-ZEILE. Sie steht VOR den Knöpfen, weil sie
@@ -4592,6 +4627,20 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                     :value="slotDisplayValue(pendingCard.slot.id, store.slotValue(pendingCard.slot.id))"
                   />
                   <p v-else class="bw-pending mt-2">{{ t('brand.workspace.stage.pending') }}</p>
+                  <!-- ABGESCHNITTEN AM FELD (KI1 d), wie im Entwurfs-Modul. -->
+                  <div v-if="fieldIsTruncated(pendingCard.slot.id)" class="mt-2 flex flex-wrap items-center gap-2">
+                    <span class="bw-state bw-state--stale">
+                      <UIcon name="i-ph-scissors" />
+                      {{ t('brand.workspace.truncated.fieldBadge') }}
+                    </span>
+                    <p class="bw-msg-help">{{ t('brand.workspace.truncated.fieldHint') }}</p>
+                    <UButton
+                      v-if="truncatedRetryFieldId === pendingCard.slot.id"
+                      size="sm" color="neutral" variant="soft" class="rounded-full" icon="i-ph-arrow-clockwise"
+                      :label="t('brand.workspace.truncated.retry')"
+                      @click="regenerateTruncated(pendingCard!.slot.id)"
+                    />
+                  </div>
                 </div>
                 <!-- Befund 9, zweite Stelle: dieselbe Auskunft an derselben
                      Regel — ein abgeschalteter Knopf ohne Begründung ist ein
