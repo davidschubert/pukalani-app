@@ -33,6 +33,8 @@
  * über `::1`, weil Nitro dort hört (dieselbe Begründung wie in den
  * onboarding-Skripten).
  */
+// Ziel-Prüfung zuerst (OPS-002): das Skript legt ein Konto an und braucht dafür einen Schlüssel.
+import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createEinzelCleanup, createProbeAccount } from '../../../scripts/lib/probe-stage.mjs'
 
