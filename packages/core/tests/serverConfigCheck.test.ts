@@ -340,9 +340,12 @@ describe('ops/nginx-sites.conf und ops/nginx-check.mjs — eine Liste, ein Regel
   })
 
   it('der Deploy legt Skripte und Listen neben die Ecosystem-Datei', () => {
+    // Seit CI1 b (2026-11-18) schickt der Deploy die Dateien der Site als
+    // Liste `OPS_FILES` an das feste Skript (Namen ohne `ops/`).
     const deploy = readFileSync(join(REPO, '.github', 'workflows', 'deploy.yml'), 'utf8')
-    for (const file of ['ops/nginx-check.mjs', 'ops/nginx-sites.conf', 'ops/cron-check.sh', 'ops/cron.conf', 'ops/logrotate-admin-access.conf']) {
-      expect(deploy, file).toContain(file)
+    const sent = /^ {2}OPS_FILES: '([^']+)'$/m.exec(deploy)?.[1]?.split(' ') ?? []
+    for (const file of ['nginx-check.mjs', 'nginx-sites.conf', 'cron-check.sh', 'cron.conf', 'logrotate-admin-access.conf']) {
+      expect(sent, file).toContain(file)
     }
   })
 })
