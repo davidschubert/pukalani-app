@@ -1,16 +1,7 @@
-import type { TicketChecklistItem, TicketMember, TicketRow } from '../../shared/types/ticket'
+import { parseTicketChecklist } from '../../shared/ticketChecklist'
+import type { TicketMember, TicketRow } from '../../shared/types/ticket'
 
-/** JSON-Spalten defensiv parsen ('' und kaputte Werte → leer) */
-export function parseTicketChecklist(raw: string): TicketChecklistItem[] {
-  try {
-    const parsed = JSON.parse(raw || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  }
-  catch {
-    return []
-  }
-}
-
+/** JSON-Spalte defensiv parsen ('' und kaputte Werte → leer). Die Checkliste liest `shared/ticketChecklist.ts`. */
 export function parseTicketMembers(raw: string): TicketMember[] {
   try {
     const parsed = JSON.parse(raw || '[]')
