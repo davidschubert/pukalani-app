@@ -316,12 +316,18 @@ paths:
   fehlte; der alte Union-Vergleich konnte eine überall-fehlende Tabelle nie
   sehen). Der `system`-Layer läuft auf jeder Instanz mit — Pool, Control Plane
   und jede Einzel-Instanz —, eine neue `system`-Migration gehört also überall
-  gefahren; danach diesen Lauf machen. Die SPALTEN-Parität bleibt bewusst eng
-  (nur `system`+`admin`+`pages`+`analytics`, die jede Instanz im GLEICHKLANG
-  fährt): sonst meldet der Wächter Scheinbefunde aus dem Legacy-Silo portfolio
-  (Single-Tenant, ohne `communityId`) und aus Control-Plane-einheimischen
-  Tabellen wie `communities`, die auf dem Pool nur als eingefrorener Alt-Schatten
-  liegen (control-037 sagt es im eigenen Kopf: „gehört NICHT auf jede Instanz").
+  gefahren; danach diesen Lauf machen. Die SPALTEN prüft er seit 2026-11-18
+  (MG1 c) GENAU: Soll ist, was die Migrationen anlegen
+  (`scripts/lib/migration-inventory.mjs`), aber NUR für die Layer, die die App
+  der Instanz laut `site.manifest.ts` nutzt (dieselbe Auswahl wie der
+  Migrations-Runner, Logik in `scripts/lib/schema-columns.mjs`). Eine fehlende
+  Soll-Spalte und eine Spalte ohne Soll (von Hand angelegt) sind rot; mit
+  `--ci` nennt er bei der zweiten nur Tabelle und Anzahl. Tabellen fremder
+  Layer (Legacy-Silo portfolio, der eingefrorene Alt-Schatten `communities`/
+  `tickets` auf dem Pool — control-037: „gehört NICHT auf jede Instanz")
+  bleiben außen vor; ebenso Appwrites `$`-Felder, Tabellen aus ensure-Skripten
+  und ein Layer mit unlesbaren Migrationen (der steht als ⚠-Zeile da). Die
+  alte Instanz-gegen-Instanz-Parität (`PARITY_TABLES`) ist darin aufgegangen.
   Alt-/unbekannte Ist-Tabellen sind eine nicht-fatale WARNUNG (portfolios sechs
   tote Tabellen). Die Soll-Listen sind GEPFLEGT, nicht aus Migrations-Dateien
   geparst — neue Tabelle ⇒ in ihren Layer-Block im Skript eintragen; das gilt
