@@ -292,6 +292,15 @@ describe('customer-hosts-mail.mjs — die private Mail mit den Namen', () => {
     expect(out).not.toMatch(/kunde-geheim|alarm@|re_probe/)
   })
 
+  it('dieselbe Nummer aus zwei Blicken (Zertifikat und Erreichbarkeit) steht einmal in der Mail', async () => {
+    const { code, calls, out } = await run({ ...base, PUKALANI_CUSTOMER_NUMBERS: '2,1,2' }, answer(200, { hosts: LIST }), answer(200, { id: 'x' }))
+    expect(code).toBe(0)
+    const sent = JSON.parse(String(calls[1]!.init.body)) as { text: string }
+    expect(sent.text.match(/Kundendomain 2\/3/g)).toHaveLength(1)
+    expect(sent.text.indexOf('Kundendomain 1/3')).toBeLessThan(sent.text.indexOf('Kundendomain 2/3'))
+    expect(out).toBe('Mail mit den Namen gesendet (2 Kundendomains).')
+  })
+
   it.each([
     ['keine Nummern', { PUKALANI_CUSTOMER_NUMBERS: '' }],
     ['Nummern, die keine sind', { PUKALANI_CUSTOMER_NUMBERS: 'forum.kunde-geheim.example' }],

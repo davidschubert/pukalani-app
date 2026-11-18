@@ -68,7 +68,8 @@ export function recipients(raw) {
  * @returns {Promise<number>} Exit-Code
  */
 export async function runCustomerMail({ env = process.env, fetchFn = fetch, log = console.log, retryDelayMs = 5000 } = {}) {
-  const numbers = parseNumbers(env.PUKALANI_CUSTOMER_NUMBERS)
+  // Zertifikat UND Erreichbarkeit können dieselbe Kundendomain melden — einmal genügt.
+  const numbers = [...new Set(parseNumbers(env.PUKALANI_CUSTOMER_NUMBERS))].sort((a, b) => a - b)
   if (!numbers.length) {
     log('Keine Nummern mit Befund — nichts zu senden.')
     return 0
