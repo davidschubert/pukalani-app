@@ -6,7 +6,8 @@ import type {
   BrandProfileScores,
   BrandProfileScoresResponse,
 } from '../../../shared/types/brand'
-import { RUN_LEASE_BUSY_CODE } from '../../../../core/shared/runLease'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../core/shared/runLease'
+import { BRAND_RUN_POLL_TIMEOUT_MS } from '../../../shared/brandRun'
 import { safeExternalHref } from '../../../../core/shared/safeHref'
 
 /**
@@ -308,6 +309,25 @@ async function run(row: BrandProfileScores, source: 'website' | 'document'): Pro
   }
 }
 
+/**
+ * EIN CHECK, DEN DIESE SEITE NICHT GESTARTET HAT (LL1 c, 2026-11-18): nach
+ * einem Neuladen oder aus einem zweiten Reiter. Die Liste trägt den Stand je
+ * Marke (`documentRunning`); solange einer läuft und hier kein eigener Klick
+ * wartet, fragt die Seite die Liste im Takt nach (nur bei sichtbarem Reiter,
+ * mit Frist je Abfrage) — endet der Lauf, steht die neue Zahl in der Zeile.
+ */
+async function pollRunningChecks(): Promise<void> {
+  data.value = await $fetch<BrandProfileScoresResponse>('/api/brand/profiles/scores', {
+    timeout: BRAND_RUN_POLL_TIMEOUT_MS,
+  })
+}
+
+useRunPolling({
+  active: () => running.value === '' && rows.value.some(row => row.documentRunning),
+  intervalMs: RUN_LEASE_POLL_MS,
+  tick: pollRunningChecks,
+})
+
 // ── Die Tabelle ────────────────────────────────────────────────────────────
 
 /**
@@ -487,6 +507,13 @@ useBrandTitle(() => t('brand.myScores.list.title'))
               <p class="bw-label mt-0.5" style="color: var(--bw-muted)">{{ formatDate(row.original.document.createdAt) }}</p>
             </div>
             <span v-else style="color: var(--bw-muted)">—</span>
+            <p
+              v-if="row.original.documentRunning && !isRunning(row.original.profileId, 'document')"
+              class="bw-label mt-0.5" style="color: var(--bw-muted)"
+              :data-scores-document-running="row.original.profileId"
+            >
+              {{ t('brand.myScores.document.running') }}
+            </p>
           </template>
 
           <template #lastCheck-cell="{ row }">
@@ -508,8 +535,8 @@ useBrandTitle(() => t('brand.myScores.list.title'))
               />
               <UButton
                 size="xs" color="neutral" variant="ghost"
-                :disabled="running !== '' && !isRunning(row.original.profileId, 'document')"
-                :loading="isRunning(row.original.profileId, 'document')"
+                :disabled="row.original.documentRunning || (running !== '' && !isRunning(row.original.profileId, 'document'))"
+                :loading="row.original.documentRunning || isRunning(row.original.profileId, 'document')"
                 :label="t('brand.myScores.list.runDocument')"
                 :data-scores-run-document="row.original.profileId"
                 @click="run(row.original, 'document')"

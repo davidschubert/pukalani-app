@@ -58,5 +58,8 @@ describe('statusToErrorCode', () => {
     expect(statusToErrorCode(409)).toBe('CONFLICT')
     expect(statusToErrorCode(403)).toBe('FORBIDDEN')
     expect(statusToErrorCode(500)).toBe('INTERNAL_ERROR')
+    expect(statusToErrorCode(502)).toBe('INTERNAL_ERROR')
+    expect(statusToErrorCode(503)).toBe('UNAVAILABLE')
+    expect(statusToErrorCode(504)).toBe('INTERNAL_ERROR')
   })
 })

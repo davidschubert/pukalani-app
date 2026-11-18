@@ -1946,6 +1946,14 @@ export interface BrandProfileScores {
     /** Leer, solange nichts freigegeben wurde. */
     publishedAt: string
   } | null
+  /**
+   * RECHNET GERADE EIN FUNDAMENT-CHECK (`brand_runs`, Art `doc-check`)?
+   * LL1 c (2026-11-18): ohne das Feld zeigte die Liste nach dem Neuladen
+   * nichts, und erst ein Klick antwortete „läuft schon". Gerechnet gegen die
+   * Server-Uhr; ist die Lauf-Tabelle nicht lesbar, `false` (fail-soft — der
+   * Start prüft die Sperre ohnehin selbst).
+   */
+  documentRunning: boolean
 }
 
 export interface BrandProfileScoresResponse {
