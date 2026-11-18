@@ -58,7 +58,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| MG1 | **Tests von Shell-Skripten, die auf `main` ohne erkennbaren Grund rot waren.** Zweimal: der Test des Rückweg-Skripts (2026-11-16) und der Font-Cache-Fall des Ausliefer-Skripts (2026-11-18). Beide zeigen jetzt Ausgabe und Exit-Code; nachstellen ließ sich keiner. **Wartet auf:** den nächsten roten Lauf. | Niedrig | S | Nein | [Einzelheiten](#mg1) |
+| MG1 | **Tests von Shell-Skripten, die in der CI ohne erkennbaren Grund rot waren.** Der Test des Rückweg-Skripts einmal (2026-11-16); zwei Fälle des Ausliefer-Skripts fünfmal in einer halben Stunde (2026-11-18), seit einer Härtung nicht mehr. Beide zeigen jetzt Ausgabe und Exit-Code; nachstellen ließ sich keiner. **Wartet auf:** den nächsten roten Lauf. | Niedrig | S | Nein | [Einzelheiten](#mg1) |
 
 **Bündel „Mails und Bremsen":**
 
@@ -271,21 +271,29 @@ BI2 und IN1 (b), siehe BI5.
 Gebaut am 2026-11-18 (COMPLETE „N12"): der tägliche Datenbank-Blick prüft
 jetzt spaltengenau, je App nur die Layer, die sie nutzt.
 
-- **(b) Zwei Fälle, keine Ursache.** (1) Nach dem ersten Merge von P21
+- **(b) Zwei Tests, keine Ursache.** (1) Nach dem ersten Merge von P21
   scheiterte auf `main` `packages/core/tests/rollbackScript.test.ts` („legt den
   Verweis um …") mit leerer Ausgabe; im Pull Request und im zweiten Versuch
-  war er grün. (2) Am 2026-11-18 scheiterte auf `main` einmal
-  `packages/core/tests/appReleaseScript.test.ts` („ergänzt Schrift-Dateien nur
-  …", Exit 3 = „Archiv nicht lesbar"), in rund zwölf Läufen davor und danach
-  grün. Nachstellen ließ sich keiner: der zweite nicht in 2.500
-  Wiederholungen im Linux-Container (mit und ohne Node als Aufrufer, mit
-  Last). Beide Tests starten ein Shell-Skript aus vitest heraus. Seitdem
-  schreiben beide bei einem Fehlschlag Exit-Code und Ausgabe ins Protokoll;
-  das Ausliefer-Skript nennt zusätzlich die Teil-Ergebnisse seiner
-  Entpack-Pipe und beurteilt sie einzeln (ein `head`, das mit 141 endet, ist
-  kein Fehler mehr). Kommt es wieder: dort lesen, dann die Ursache suchen.
-  Bis dahin hält ein solcher Fehlschlag das Ausliefern auf, bis jemand den
-  Lauf neu startet ([CW1](#cw1)).
+  war er grün. (2) Am 2026-11-18 scheiterte
+  `packages/core/tests/appReleaseScript.test.ts` FÜNFMAL zwischen 08:20 und
+  08:52 UTC (einmal in einem Pull Request, viermal auf `main`: `f9e43b81`,
+  `0bf4d038` zweimal, `3b865d72`) — immer mit der Meldung „Archiv nicht
+  lesbar", und nur in den zwei Worten, die ein UNGEPACKTES tar über
+  `head | tar` lesen (`ops-put`, `fonts-put`), nie in `release-put`
+  (`head | zstd | tar`). Solange hielt er das Ausliefern aller Gruppen auf.
+  Seit der Härtung (PR 339, 09:36 UTC: beurteilt werden die Entpacker
+  einzeln, ein `head`, das mit 141 endet, ist kein Fehler mehr) ist er in
+  rund 25 Läufen nicht wieder aufgetreten. BEWIESEN ist die Ursache damit
+  nicht: nachstellen ließ sich der Fehlschlag weder in 2.500 Wiederholungen
+  im Linux-Container (mit und ohne Node als Aufrufer, mit Last) noch mit
+  einer Eingabe, die in zwei Teilen mit Pause ankommt (geteilt vor und hinter
+  der Ende-Marke des Archivs — das alte Skript bestand beides). Die Häufung
+  in einer halben Stunde spricht auch für die CI-Rechner dieses Zeitraums.
+  Beide Tests schreiben bei einem Fehlschlag jetzt Exit-Code und Ausgabe ins
+  Protokoll, das Ausliefer-Skript nennt die Teil-Ergebnisse seiner
+  Entpack-Pipe als Zahlen, und im Test ist die Fehlerausgabe von tar
+  sichtbar. Kommt es wieder: dort lesen (welcher Teil der Pipe, welche
+  Meldung), dann die Ursache suchen.
 
 <a id="ab1"></a>
 
