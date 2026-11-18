@@ -40,6 +40,10 @@ export const SERVER_WRITTEN_TABLES = [
   { table: 'notifications', layer: 'system' },
   // Alt-Bestand: dort wird nichts mehr vergeben, nur noch gelesen und gelöscht.
   { table: 'community_handles', layer: 'system' },
+  // Von Geburt an ohne Rechte (pages-007, LL1 d): die Lauf-Sperre der
+  // Seiten-Übersetzung samt Vorschlag. Geschrieben über die Operator-Klinke,
+  // jede Zeile mit `permissions: []` — ohne `rights`, es gibt nichts zu nehmen.
+  { table: 'pages_runs', constant: 'PAGES_RUNS_TABLE', layer: 'pages' },
 ]
 
 /**

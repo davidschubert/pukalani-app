@@ -170,8 +170,12 @@ const SYSTEM_TABLES = [
 /** `admin`-Layer — der Betreiber-Changelog. Auf ALLEN ausgerollten Instanzen. */
 const ADMIN_TABLES = ['changelog']
 
-/** `pages`-Layer — CMS-Rechtstexte. account + control + portfolio + branding. */
-const PAGES_TABLES = ['pages']
+/**
+ * `pages`-Layer — CMS-Rechtstexte. account + control + portfolio + branding.
+ * pages-007: `pages_runs`, die Lauf-Sperre der Seiten-Übersetzung (LL1 d) —
+ * ohne sie antwortet der Übersetzen-Knopf 503 (`run_lease_unavailable`).
+ */
+const PAGES_TABLES = ['pages', 'pages_runs']
 
 /** `analytics`-Layer — Plausible-Einstellungen. account + portfolio. */
 const ANALYTICS_TABLES = ['analytics_settings']

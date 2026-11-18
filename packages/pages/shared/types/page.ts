@@ -1,6 +1,14 @@
 import type { Models } from 'node-appwrite'
+import type { RunLeaseState } from '../../../core/shared/runLease'
 
 export const PAGES_TABLE = 'pages'
+
+/**
+ * Die Lauf-Tabelle des Layers (pages-007, LL1 d): je Übersetzungs-Lauf eine
+ * Zeile mit fester Kennung (Lauf-Sperre, `core/shared/runLease.ts`) und dem
+ * Vorschlag, bis die Seite ihn abholt. Nur der Server liest und schreibt sie.
+ */
+export const PAGES_RUNS_TABLE = 'pages_runs'
 
 export const PAGE_STATUSES = ['draft', 'published'] as const
 export type PageStatus = (typeof PAGE_STATUSES)[number]
@@ -128,7 +136,11 @@ export interface PublicPage {
   availableLocales: string[]
 }
 
-/** Antwort des KI-Übersetzungsvorschlags (F60) — die Route SPEICHERT NICHTS. */
+/**
+ * Ein KI-Übersetzungsvorschlag (F60) — er wird NICHT an der Seite gespeichert.
+ * Seit LL1 d (2026-11-18) kommt er nicht mehr als Antwort des Starts, sondern
+ * aus dem Lauf-Stand (`PageTranslateRunView.result`).
+ */
 export interface PageTranslateResponse {
   /** Zielsprache, wie angefragt. */
   locale: string
@@ -137,6 +149,30 @@ export interface PageTranslateResponse {
   body: string
   /** Welches Modell geantwortet hat — für die Nachvollziehbarkeit im Log. */
   model: string
+}
+
+/**
+ * Der Stand des Übersetzungs-Laufs einer Seite, wie die Oberfläche ihn sieht
+ * (gegen die SERVER-Uhr gerechnet, `shared/pageTranslateRun.ts`).
+ *
+ * `failure` ist nur bei `failed` gesetzt (ein kurzes Wort, z. B.
+ * `ai_endpoint_unavailable`). `result` steht nur an einem fertigen Lauf und
+ * nur eine Stunde lang (`PAGE_TRANSLATE_RESULT_TTL_MS`) — danach wäre der
+ * Vorschlag älter als das, was im Formular steht.
+ */
+export interface PageTranslateRunView {
+  state: RunLeaseState
+  startedAt: string
+  finishedAt: string
+  failure: string
+  /** Zielsprache des Laufs ('' ohne Lauf). */
+  locale: string
+  result: PageTranslateResponse | null
+}
+
+/** Antwort von `POST /api/pages/translate` (202) und `GET /api/pages/translate/:slug`. */
+export interface PageTranslateRunResponse {
+  run: PageTranslateRunView
 }
 
 /** Antwort von `GET /api/pages` (Liste im Dashboard). */

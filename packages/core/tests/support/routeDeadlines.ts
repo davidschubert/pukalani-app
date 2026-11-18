@@ -231,12 +231,10 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
   'packages/market/server/api/market/profiles/[id]/run.post.ts': { form: 'detached' },
 
   // ── pages ─────────────────────────────────────────────────────────────────
-  'packages/pages/server/api/pages/translate.post.ts': {
-    form: 'over',
-    deadlines: [{ ms: 120_000, hand: 'packages/pages/server/api/pages/translate.post.ts', times: 1, what: 'die Übersetzung einer Seite (ein Text-Lauf, Frist als Literal in der Route)' }],
-    reason: 'Übersetzung einer ganzen CMS-Seite: ein Text-Lauf mit 120 s Frist in der Anfrage, '
-      + 'ohne den 180-s-Block (der gilt nur auf branding.supply für insights).',
-  },
+  // Übersetzung einer ganzen Seite (LL1 d, 2026-11-18): Lauf-Sperre in
+  // `pages_runs` (pages-007, Art `translate`), 202, der Lauf rechnet in
+  // `runPageTranslation`; der Editor fragt `GET /api/pages/translate/:slug` ab.
+  'packages/pages/server/api/pages/translate.post.ts': { form: 'detached' },
 
   // ── posts ─────────────────────────────────────────────────────────────────
   'packages/posts/server/api/posts/[id]/assist.post.ts': oneTextCall('Moderations-Hilfe (ein Text-Lauf)'),

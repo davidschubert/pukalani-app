@@ -272,7 +272,7 @@ try {
 
   console.log('\n9.–11. Der KI-Vorschlag')
   const anon = await call(site.host, '/api/pages/translate', {
-    method: 'POST', body: { locale: 'en', title: 'Impressum', body: 'Text' },
+    method: 'POST', body: { slug: SLUG, locale: 'en', title: 'Impressum', body: 'Text' },
   })
   check(`ohne Anmeldung dicht (${anon.status})`, [401, 403, 404].includes(anon.status))
 
@@ -288,18 +288,25 @@ try {
    */
   const aiOn = list.json?.aiTranslate === true
   const tooLong = await call(site.host, '/api/pages/translate', {
-    method: 'POST', cookie, body: { locale: 'en', title: 'Impressum', body: 'x'.repeat(12_001) },
+    method: 'POST', cookie, body: { slug: SLUG, locale: 'en', title: 'Impressum', body: 'x'.repeat(12_001) },
   })
   check(aiOn
     ? `Deckel greift vor dem Anbieter (${tooLong.status})`
     : `ohne KI-Schlüssel schließt die Klinke vor dem Deckel (${tooLong.status})`,
   aiOn ? tooLong.status === 400 : [402, 404, 503].includes(tooLong.status), tooLong.text.slice(0, 120))
 
+  // Seit LL1 d (2026-11-18) antwortet der Start `202` und der Vorschlag
+  // steht später am Lauf (`GET /api/pages/translate/:slug`).
   const suggest = await call(site.host, '/api/pages/translate', {
-    method: 'POST', cookie, body: { locale: 'en', title: 'Impressum', body: '## Angaben\n\nMusterstraße 1' },
+    method: 'POST', cookie, body: { slug: SLUG, locale: 'en', title: 'Impressum', body: '## Angaben\n\nMusterstraße 1' },
   })
-  if (suggest.status === 200) {
-    check(`Vorschlag kam (Modell ${suggest.json?.model})`, !!suggest.json?.title)
+  if (suggest.status === 202) {
+    let run = suggest.json?.run
+    for (let i = 0; i < 60 && run?.state === 'running'; i++) {
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      run = (await call(site.host, `/api/pages/translate/${SLUG}`, { cookie })).json?.run
+    }
+    check(`Vorschlag kam (Modell ${run?.result?.model})`, run?.state === 'done' && !!run?.result?.title, JSON.stringify(run?.state))
     const after = await call(site.host, `/api/pages/public/${SLUG}?locale=en`)
     check('… und er wurde NICHT gespeichert (die Seite ist unverändert deutsch)',
       after.json?.locale === 'de' && JSON.stringify(after.json?.availableLocales) === '["de"]')

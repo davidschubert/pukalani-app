@@ -11,8 +11,12 @@ export const MAX_PAGE_TITLE = 256
 // Datenschutzerklärungen liegen bei ~50–80k), kein Storage-Limit mehr.
 export const MAX_PAGE_BODY = 200_000
 
-// slug = sprechender URL-Pfad (imprint, terms, privacy): klein, keine Slashes
-const slugRe = /^[a-z][a-z0-9-]*$/
+// slug = sprechender URL-Pfad (imprint, terms, privacy): klein, keine Slashes.
+// Exportiert, weil die lesende Lauf-Route (`translate/[slug].get.ts`) die
+// Adresse aus dem Pfad mit demselben Muster prüft.
+export const PAGE_SLUG_PATTERN = /^[a-z][a-z0-9-]*$/
+export const MAX_PAGE_SLUG = 64
+const slugRe = PAGE_SLUG_PATTERN
 // locale-Code: en, de, en-US … — dasselbe Muster prüfen die öffentlichen
 // Routen an `?locale=` (BE-019), deshalb liegt es in shared/pageLocales.ts.
 const localeRe = PAGE_LOCALE_PATTERN
@@ -20,7 +24,7 @@ const localeRe = PAGE_LOCALE_PATTERN
 /** Upsert einer Seite in EINER Sprache (Admin). */
 export function createPageUpsertSchema(t: TranslateFn = identity) {
   return z.object({
-    slug: z.string().trim().regex(slugRe, t('pages.validation.slugInvalid')).max(64),
+    slug: z.string().trim().regex(slugRe, t('pages.validation.slugInvalid')).max(MAX_PAGE_SLUG),
     locale: z.string().trim().regex(localeRe, t('pages.validation.localeInvalid')).max(8),
     title: z.string().trim().min(1, t('pages.validation.titleRequired')).max(MAX_PAGE_TITLE, t('pages.validation.titleMax')),
     body: z.string().max(MAX_PAGE_BODY, t('pages.validation.bodyMax')),
@@ -49,6 +53,13 @@ export const MAX_PAGE_TRANSLATE_BODY = 12_000
 /** KI-Übersetzungsvorschlag für EINE Sprachfassung (Admin). */
 export function createPageTranslateSchema(t: TranslateFn = identity) {
   return z.object({
+    /**
+     * WELCHE Seite (LL1 d, 2026-11-18): der Gegenstand der Lauf-Sperre. Seit
+     * die Übersetzung hinter der Antwort rechnet, holt die Seite das Ergebnis
+     * später ab — und dafür braucht der Lauf eine Adresse, unter der er zu
+     * finden ist. Gespeichert wird weiter nichts an der Seite selbst.
+     */
+    slug: z.string().trim().regex(slugRe, t('pages.validation.slugInvalid')).max(MAX_PAGE_SLUG),
     locale: z.string().trim().regex(localeRe, t('pages.validation.localeInvalid')).max(8),
     title: z.string().trim().min(1, t('pages.validation.titleRequired')).max(MAX_PAGE_TITLE, t('pages.validation.titleMax')),
     // Der Text kommt aus dem FORMULAR, nicht aus der Datenbank: sonst ließe
