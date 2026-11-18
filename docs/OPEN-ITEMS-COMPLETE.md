@@ -30,6 +30,186 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N16 — Nacharbeiten „Drei größere Reste": BT1 (a), WA1 (d), WA1 (e) ✅ 2026-11-18
+
+Die drei Reste, die N15 bewusst liegen ließ (Davids „Ja, einplanen" vom
+2026-11-18). Pull Requests 397 (Mail-Blick), 398 (Route für die Host-Liste),
+399 (Wächter lesen die Liste), 400 (vierter Server im Nacht-Lauf) und der
+Abschluss. Nichts an der echten Datenbank, kein bezahlter KI-Lauf, kein
+Stripe, keine Migration; das eine Geheimnis hat David freigegeben (unten).
+
+**WA1 (e) — der Mail-Blick liest nur noch die Dateien des laufenden Prozesses.**
+
+- **Vorher:** der tägliche Blick ließ auf dem App-Server ein `grep` über
+  `~/.pm2/logs/*-error*.log` laufen — also auch über die Dateien früherer
+  Prozess-Nummern, die pm2 daneben liegen lässt. Nur das Zeitfenster hielt
+  ihn richtig.
+- **Jetzt:** er fragt je App das Zähl-Skript `ops/app-watch-counts.mjs`
+  (Tor-Wort `app-signals`). Das liest die zwei Dateien, in die der Prozess
+  gerade schreibt (aus `pm2 jlist`), samt ihren umgelaufenen Geschwistern,
+  und gibt eine neue Zeile zurück: `mailbremse ausgeloest=<n>
+  letzte_min=<m|nie>`. Die Rechnung steht rein in
+  `scripts/ops/mail-breaker-rules.mjs`. Ein Befund nennt jetzt die Site und
+  „zuletzt vor n Minuten".
+- **Kein Eingriff am Server.** Das von Hand eingespielte Tor
+  `ops/app-watch-gate.sh` ist unverändert (der tägliche Prüfsummen-Vergleich
+  bleibt grün); das Zähl-Skript bringt das Ausliefern selbst mit. Das alte
+  Tor-Wort `mail-breaker` nimmt nur noch der Probelauf (`--pattern`).
+- **Zwischen Merge und Ausliefern** antwortet der Server noch ohne die neue
+  Zeile: dann steht dort „nicht gezählt", und ohne eine einzige Zahl endet
+  der Blick mit Exit 2 (kaputter Weg, kein Alarm).
+- **Beweise:** `appWatchCounts.test.ts` (eine Zeile in der Datei einer
+  früheren Prozess-Nummer mitten im Fenster zählt nicht),
+  `verifyMailBreaker.test.ts` (von der Antwort bis zum Exit-Code), die
+  Attrappe mit echtem sshd 41 von 41 — das alte Wort findet dort zwei
+  Zeilen, der Blick genau die eine des laufenden Prozesses.
+
+**WA1 (d) — die Wächter lesen Kundendomains aus dem Control Plane.**
+
+- **Die Route:** `GET /api/control/watch/hosts` (`packages/control`, Regel
+  rein in `shared/watchHosts.ts`). Sie liefert die live geschalteten eigenen
+  Domains von Pool-Communities und Einzel-Sites, nach Name sortiert — je
+  Eintrag der Host-Name und ein Ja/Nein „antwortet selbst" (die eingetragene
+  Form) oder „leitet nur um" (die Geschwister-Form). Keine Kennung, kein
+  Name, nichts über Personen. Nicht dabei: Pukalani-Subdomains (Wildcard),
+  Domains, die noch nicht aktiv oder abgeschaltet sind, stillgelegte und vom
+  Netz genommene Communities.
+- **Die Tür:** nur das eigene Geheimnis `NUXT_CONTROL_WATCH_HOSTS_SECRET`
+  (Kopfzeile `x-pukalani-watch-secret`). Leer oder unter 32 Zeichen ⇒ 404;
+  keine Sitzung zählt, das Naht-Geheimnis auch nicht. Rollen-Test
+  `route-roles-watch-hosts.test.ts`.
+- **Die Wächter:** `verify-tls.mjs` und `verify-health.mjs` lesen die Liste
+  ZUSÄTZLICH zur festen (`scripts/ops/customer-hosts.mjs`). Neuer Job
+  `kundendomains` im Produktions-Wächter (alle 30 Minuten); der Job `tls`
+  bleibt ohne Secret und unverändert.
+- **Vier Zusagen, je mit Test** (`customerHosts.test.ts`): (1) ohne Geheimnis
+  oder ohne Antwort der Route eine Zeile „nicht gelesen", nichts wird rot;
+  (2) kein Host-Name eines Kunden im Protokoll oder im Issue — dort steht
+  „Kundendomain 3/5", ohne SAN-Einträge und ohne Fehlertext; (3) erst zählen
+  (`PUKALANI_CUSTOMER_HOSTS_MODE: count`), scharf ist eine Zeile im Workflow;
+  (4) das Geheimnis reist nur verschlüsselt oder zum eigenen Rechner.
+- **Wo der Name steht:** in einer eigenen Mail „Betroffene Kundendomains" an
+  die Alarm-Adresse, wenn ein Alarm neu aufgeht (Job `kundendomains-namen`,
+  `customer-hosts-mail.mjs`), oder von Hand mit `--namen` (wirkt in keinem
+  CI-Lauf). Über einen Job-Ausgang reisen nur Nummern: GitHub druckt das
+  `env:` jedes Schritts ins Protokoll.
+- **Das Geheimnis** (Davids Ja per Klick am 2026-11-18): ein zufälliger Wert,
+  in einem Zug erzeugt und gesetzt, ohne dass er in einer Ausgabe stand —
+  auf der Site `admin.pukalani.app` (`NUXT_CONTROL_WATCH_HOSTS_SECRET`, eine
+  Zeile angehängt) und in der Umgebung `production-watch`
+  (`PRODUCTION_WATCH_HOSTS_SECRET`). Das laufende Ausliefern hat die
+  Betreiber-App acht Sekunden später neu geladen; zurückgelesen über das
+  Wächter-Tor (`NAME=1`), die Route antwortet ohne Kopfzeile seitdem mit 401
+  statt 404. Der Name steht jetzt auf der Pflicht-Liste der Site admin
+  (Pull Request 403).
+- **Ohne Geheimnis, auf `main` gezeigt** (Lauf 44403362908, vor dem Setzen):
+  `tls` grün und unverändert, `kundendomains` grün mit der Zeile „nicht
+  gelesen — in diesem Lauf ist kein Geheimnis gesetzt".
+- **Mit Geheimnis: der Probealarm** `-f kunden_drill=true` (Davids Ja).
+  Lauf 44411206536: vier Hosts gelesen, im Protokoll nur „Kundendomain 1/4"
+  bis „4/4", der vorgetäuschte Befund rot, Issue 402 auf, Alarm-Mail raus.
+  Die Mail mit dem Namen ging in diesem Lauf NICHT raus: die Datenbank
+  startete genau im Moment des Abrufs neu, die Betreiber-App antwortete erst
+  mit 500, fünf Sekunden später mit 404. Seit Pull Request 403 wiederholt
+  der Abruf auch nach einem 404, und die Namens-Mail liest mit drei weiteren
+  Versuchen im Abstand von 20 Sekunden. Der zweite Probealarm (Lauf
+  44413238809) hat auch den letzten Schritt gezeigt: Issue 406 auf,
+  Alarm-Mail raus, „Mail mit den Namen gesendet (1 Kundendomain)" — Resend
+  hat sie angenommen; ob sie im Postfach liegt, sieht nur David. In den
+  Protokollen der Jobs `kundendomains` und `kundendomains-namen` steht kein
+  Host-Name. Dazwischen lief der erste planmäßige Lauf mit Geheimnis grün
+  (44413088568: vier gelesen, vier geprüft, nur gezählt).
+
+**BT1 (a) — branding.supply als vierter Server im nächtlichen Lauf.**
+
+- **Der Aufbau** (nach dem Muster der Einzel-Instanz):
+  `scripts/ci/buehne-setup.mjs --branding-port` legt ein viertes Projekt
+  `branding` an und schreibt `apps/branding/.env`; `buehne.yml` fährt nur
+  nachts Bootstrap und Anmelde-Regeln, startet den vierten
+  Entwicklungs-Server und wärmt die ersten Seiten vor; der Läufer kennt
+  `--branding-port` und `env: 'branding'` (ohne den Server „übersprungen").
+- **Kein Fremddienst.** Je Skript vorher geprüft. Der Server läuft nachts mit
+  gestellten Antworten (`BRAND_DEV_STUB_*`, `MARKET_DEV_STUB`) und darf
+  fremde Websites nur auf dem eigenen Rechner abrufen
+  (`BRAND_SITE_FETCH_ALLOW_LOOPBACK`; die Skripte liefern ihre Probe-Seiten
+  selbst aus). Die `.env` der CI trägt keinen Schlüssel für KI oder Stripe —
+  ohne Schlüssel lehnt der Transport ohnehin vor jedem Netzaufruf ab. Ein
+  Test hält die Liste der acht Skripte und die Schalter fest.
+- **Die zwölf Skripte:** acht laufen nachts (`verify-brand-check-robots`,
+  `-events-sweep`, `-intro-call`, `-share`, `verify-market-fetch`, `-report`,
+  `-retention`, `-ui`; zusammen 301 Prüfungen). Vier bleiben von Hand, je mit
+  Grund in der Einteilung: `verify-brand-kit` (52 von 58), `-design` (117 von
+  131) und `-sessions` (302 von 333) — ihre Design-Vorlage (der DNA-Mix)
+  passt nicht mehr zum heutigen Wortschatz der App, deshalb entsteht kein
+  fertiges Design (kein Fehler im Produkt); `verify-business-confirmation`
+  braucht zusätzlich die Studio-Site und kennt die Pflicht-Felder der
+  Zustimmung noch nicht.
+- **Was beim Einzug auffiel und behoben ist:** die Skripte legten Konten mit
+  dem Migrations-Schlüssel an, der das nicht darf (jetzt der
+  Laufzeit-Schlüssel); seit der Zustimmungs-Pflicht lehnte die App jede
+  schreibende Route ihrer Konten ab (jetzt halten sie die Zustimmung über die
+  echte Route fest, `confirmProbeConsent`); drei ließen Zeilen liegen, die
+  die App selbst anlegt (jetzt Aufräumen nach Spalte, `removeProbeRows`); eine
+  Gegenprobe im Marktvergleich galt nur ohne laufenden Brand-Check.
+- **Der Läufer zählt selbst nach:** vor und nach jedem Skript mit
+  `env: 'branding'` die Zeilen jeder Tabelle und die Konten des Projekts;
+  mehr als vorher ist rot („Zeilen übrig: brand_steps +3").
+- **Von 84 Beweis-Skripten laufen jetzt 70 von selbst** (vorher 62).
+- **Laufzeit, gemessen:** der nächtliche Lauf von Hand auf dem Zweig, 64 von
+  64 bestanden, 29 Minuten 37 Sekunden (Lauf 44403235796). Rund zweieinhalb
+  Minuten davon gehen auf den vierten Server (Bootstrap 52 s, Start und
+  Vorwärmen 52 s, die acht Skripte zusammen 37 s). Der erste Versuch hatte 63
+  von 64: `verify-brand-check-robots` setzte einen Betreiber-Schalter voraus,
+  der auf einer frischen Datenbank aus ist.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar):
+
+- Der Mail-Blick fragt das Zähl-Skript, statt das Tor auf dem Server zu
+  ändern — so braucht es keinen Eingriff am Server.
+- Für die Route ein EIGENES Geheimnis statt des Naht-Geheimnisses: der Wert
+  liegt bei GitHub und soll nur diese eine Liste lesen können.
+- Nur aktive Domains in der Liste; abgeschaltete und stillgelegte wären Lärm.
+- Ein eigener Job `kundendomains` statt eines Secrets im Job `tls`.
+- Der Name einer Kundendomain reist nur per Mail an die Alarm-Adresse, nie
+  über einen Job-Ausgang.
+- Der neue Blick zählt zuerst nur (`count`).
+- Vier Skripte von branding.supply bleiben von Hand, statt halb grün
+  eingehängt zu werden; das Nachzählen sitzt im Läufer statt in elf Skripten.
+- Die fünf E2E-Dateien der Studio-Site sind nicht gebaut (Rest mit
+  Empfehlung in OPEN-ITEMS „BT1" a).
+- Der Produktions-Wächter lief einmal von Hand auf `main`, um die neuen Jobs
+  am selben Abend zu beweisen.
+
+**Geprüft und nicht geprüft.** Geprüft: alle Pull Requests mit den fünf
+Pflicht-Prüfungen; `main` danach grün; die acht Hosts `ok` mit dem Stand
+`0e0b07a0`, der alle Code-Merges enthält; der neue Mail-Blick in einem echten
+Lauf auf `main` (6 von 6 Apps gezählt, die Notbremse hat nicht gegriffen); der
+Nacht-Lauf von Hand. NICHT geprüft: kein GEPLANTER nächtlicher Lauf wurde
+abgewartet (der erste mit dem vierten Server ist der um 01:41 UTC); der neue
+Blick steht auf `count` und hat noch keinen echten Befund gesehen; die vier
+Skripte von branding.supply, die von Hand bleiben, sind nicht repariert.
+
+**Nebenfund, nicht Teil dieser Arbeit:** der Probelauf des Wächters um 21:39
+UTC war im Blick „KI-Modelle" rot — OpenRouter nennt für zwei unserer Modelle
+keinen EU-Endpunkt mehr. Als eigener Punkt in OPEN-ITEMS („KM1").
+
+**Gelernt:** (1) Ein neues Skript, das „von Hand" lief, ist beim Einzug fast
+immer veraltet — elf von elf brauchten hier eine Anpassung, und keine davon
+war ein Fehler im Produkt: der falsche Schlüssel, die fehlende Zustimmung,
+ein Schalter, der nur auf dem eigenen Rechner an war, eine feste Liste von
+Kapiteln. Was ein Skript voraussetzt, setzt es selbst. (2) „Räumt auf" stimmt
+erst, wenn jemand zählt: drei Skripte ließen Zeilen liegen, die nicht sie,
+sondern die App angelegt hatte — der Läufer zählt deshalb selbst nach, über
+alle Tabellen. (3) Ein Tages-Deckel, der je Prozess zählt, sieht nach dem
+dritten lokalen Lauf aus wie ein roter Beweis (429). (4) Ein 404 heißt nicht
+immer „gibt es nicht": die Betreiber-App antwortet so auch, wenn sie ihre
+Datenbank gerade nicht erreicht. Ein Abruf, an dem etwas Einmaliges hängt
+(hier die eine Mail je Alarm), braucht mehr als einen zweiten Versuch.
+(5) Ein Probealarm, der den täglichen Teil mitfährt, findet auch Echtes —
+hier einen Alarm, der sonst erst um 04:17 UTC gekommen wäre.
+
+---
+
 ### N15 — Nacharbeiten „Die letzten kleinen Reste": LN1, CW1 (a), NF1 (a, b, c), BT1 (a, kleiner Teil), SI1 (d), LL1 (c), KI1 (d), AR1 (d), PB1 (c) ✅ 2026-11-18
 
 Die letzte Gruppe der Nacharbeiten. Alles ohne Davids Hilfe: nichts an der
