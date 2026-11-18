@@ -10,6 +10,7 @@ export type PukalaniErrorCode =
   | 'VALIDATION_ERROR'
   | 'CONFLICT'
   | 'RATE_LIMITED'
+  | 'UNAVAILABLE'
   | 'INTERNAL_ERROR'
 
 export interface PukalaniErrorResponse {
@@ -72,6 +73,12 @@ export function statusToErrorCode(status: number): PukalaniErrorCode {
       return 'CONFLICT'
     case 429:
       return 'RATE_LIMITED'
+    // 503 hat seit SI1 d (2026-11-18) einen eigenen Code: „gerade nicht
+    // verfügbar, später noch einmal" (Anmelde-Prüfung nicht erreichbar, KI
+    // abgeschaltet, Protokoll nicht schreibbar) ist etwas anderes als ein
+    // Fehler im Programm. Alle anderen Status ab 500 bleiben INTERNAL_ERROR.
+    case 503:
+      return 'UNAVAILABLE'
     default:
       return 'INTERNAL_ERROR'
   }

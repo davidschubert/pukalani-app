@@ -1,5 +1,8 @@
 import { Query } from 'node-appwrite'
+import type { Models } from 'node-appwrite'
+import { RUN_LEASE_STALL_MS } from '../../../../../core/shared/runLease'
 import { brandCheckUrlKey } from '../../../../shared/brandCheck'
+import { BRAND_RUN_SCOPES, runningBrandRunSubjects } from '../../../../shared/brandRun'
 import {
   type BrandPublicationViewStatus,
   normalizeBrandPublicationStatus,
@@ -13,6 +16,7 @@ import {
   BRAND_PUBLICATIONS_TABLE,
   type BrandPublicationRow,
 } from '../../../utils/brandPublications'
+import { BRAND_RUNS_TABLE } from '../../../utils/brandRun'
 import {
   BRAND_CHECKS_TABLE,
   BRAND_PROFILES_TABLE,
@@ -78,6 +82,11 @@ import {
  */
 const PROFILE_LIMIT = 50
 const CHECK_SCAN_LIMIT = 200
+/**
+ * Zeilen mit frischem Herzschlag: höchstens eine laufende je Marke, dazu
+ * frisch beendete — zwei je Marke sind schon reichlich.
+ */
+const RUN_SCAN_LIMIT = PROFILE_LIMIT * 2
 
 export default defineEventHandler(async (event): Promise<BrandProfileScoresResponse> => {
   const { userId } = await requireBrandAccess(event)
@@ -189,6 +198,48 @@ export default defineEventHandler(async (event): Promise<BrandProfileScoresRespo
     }
   }
 
+  /**
+   * DER LAUFENDE FUNDAMENT-CHECK, EBENFALLS GEBÜNDELT (LL1 c, 2026-11-18).
+   *
+   * EINE Abfrage für alle Marken: Zeilen der Art `doc-check` mit frischem
+   * Herzschlag. Ein laufender Lauf schreibt ihn alle 20 s, das Ende setzt ihn
+   * auch — die jüngste Zeile je Marke ist also immer dabei, wenn sie etwas zu
+   * sagen hat. Welche davon läuft, rechnet `runningBrandRunSubjects`.
+   *
+   * FAIL-SOFT wie `readBrandRunView`: ohne lesbare Tabelle heisst es „läuft
+   * nicht". Die Liste darf daran nicht scheitern, und ein Klick prüft die
+   * Sperre ohnehin selbst.
+   */
+  let documentRunning = new Set<string>()
+  try {
+    const nowMs = Date.now()
+    const res = await tablesDB.listRows<Models.Row & { subject?: string | null, seq?: number | null, heartbeatAt?: string | null, finishedAt?: string | null, outcome?: string | null }>({
+      databaseId,
+      tableId: BRAND_RUNS_TABLE,
+      queries: [
+        Query.equal('scope', BRAND_RUN_SCOPES.documentCheck),
+        Query.equal('subject', ids),
+        Query.greaterThan('heartbeatAt', new Date(nowMs - RUN_LEASE_STALL_MS).toISOString()),
+        Query.limit(RUN_SCAN_LIMIT),
+      ],
+    })
+    documentRunning = runningBrandRunSubjects(res.rows.map(row => ({
+      subject: row.subject ?? '',
+      seq: typeof row.seq === 'number' ? row.seq : 0,
+      heartbeatAt: row.heartbeatAt ?? '',
+      finishedAt: row.finishedAt ?? '',
+      outcome: row.outcome ?? '',
+    })), nowMs)
+  }
+  catch (error) {
+    if (!isAppwriteNotFound(error)) {
+      logEvent('warn', 'brand.run_state_unreadable', {
+        scope: BRAND_RUN_SCOPES.documentCheck,
+        message: error instanceof Error ? error.message : 'unknown',
+      })
+    }
+  }
+
   const items = new Map<string, BrandProfileScores>(
     profiles.map((profile) => {
       const startCard = profileStartCard(profile)
@@ -200,6 +251,7 @@ export default defineEventHandler(async (event): Promise<BrandProfileScoresRespo
         website: null,
         document: null,
         publication: publications.get(profile.$id) ?? null,
+        documentRunning: documentRunning.has(profile.$id),
       }]
     }),
   )

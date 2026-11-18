@@ -279,8 +279,9 @@ jobs:
           exit 1
 
       # Zwei Beweise der Einzel-Instanz tippen in einem echten Browser
-      # (Erwähnungen). Dieselben drei Schritte wie in e2e.yml (Begründungen
-      # dort), ohne Cache — nachts zählt die Minute nicht.
+      # (Erwähnungen), und die Browser-Tests auf der Bühne (`buehne.mjs e2e`,
+      # weiter unten) brauchen ihn auch. Dieselben drei Schritte wie in
+      # e2e.yml (Begründungen dort), ohne Cache — nachts zählt die Minute nicht.
       - name: Playwright — Systempakete und Chromium (nur nachts)
         if: env.LAUF == 'nacht'
         timeout-minutes: 12
@@ -331,6 +332,23 @@ jobs:
           lauf apps/platform/.env pnpm --filter @pukalani/activity --filter @pukalani/comments --filter @pukalani/media exec vitest run tests/tenant-isolation.test.ts
           lauf apps/platform/.env pnpm --filter @pukalani/core exec vitest run tests/notification-tenant-isolation.test.ts
           lauf apps/control/.env pnpm --filter @pukalani/control exec vitest run tests/community-authz-isolation.test.ts tests/communityHostResolver.test.ts tests/communityJoinDatesResolver.test.ts tests/tenants-resolver.test.ts
+
+      # ZWEI BROWSER-TESTS AUF DER BÜHNE (nur nachts, BT1 a): die entfernte
+      # Person im Pool (`apps/comments/e2e/community-removed.spec.ts`, gegen
+      # den Platform-Server) und die E2E-Datei der Betreiber-App
+      # (`apps/control/e2e/smoke.spec.ts`). Kein neuer Server — beide laufen
+      # schon; die Variablen leitet `pnpm buehne e2e` aus dem Stand der Bühne
+      # ab. Chromium kommt aus dem Schritt oben (`--filter comments`, beide
+      # Apps nehmen dieselbe Playwright-Version aus dem Katalog). Die
+      # Rechtsseiten der Betreiber-App sind auf der leeren Datenbank nicht
+      # da; ohne sie überspränge sich die Hälfte der Smoke-Datei, und ein
+      # übersprungener Test macht diesen Schritt ROT — deshalb erst die
+      # Platzhalter-Seiten anlegen (Wegwerf-Datenbank).
+      - name: Browser-Tests auf der Bühne (nur nachts)
+        if: env.LAUF == 'nacht'
+        run: |
+          node --env-file=apps/control/.env packages/pages/scripts/seed-demo.mjs --single-tenant
+          node scripts/buehne/buehne.mjs e2e --control-port "$CONTROL_PORT"
 
       # Abbau mit Nachzählen: bleibt eine Zeile oder ein Konto der Bühne
       # übrig, endet der Schritt rot. Läuft auch nach einem roten Beweis.

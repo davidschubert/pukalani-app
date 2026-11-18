@@ -151,7 +151,12 @@ catalog:
   # ohne Set-Cookie/private/no-store. Zog vue 3.5.45 + vue-router 5.4 nach.
   nuxt: ^4.6.4
   # 4.12.0 (UL1-Nachtrag 2026-11-08): Paginierung + Toast-Region holen ihre aria-Labels aus dem Sprachpaket. Zog unhead doppelt — nach jedem Bump check:single-copy. 4.11.0 brachte USplitter (Werkstatt-Zonen im brand-Layer).
-  '@nuxt/ui': ^4.12.0
+  # 4.12.2 (2026-11-18) = Sicherheitsrelease vom 2026-11-16, GHSA-x9jw-j844-v24h
+  # („critical", betroffen < 4.12.2): Markdown aus fremder Hand beim Server-
+  # Rendern. 4.12.1 schloss den Weg nur halb, deshalb NICHT bei 4.12.1 stehen
+  # bleiben. Gehört mit `@nuxtjs/mdc` ^0.23.4 zusammen (dieselbe Stelle,
+  # laut Release-Notiz ersetzt das eine Update das andere nicht).
+  '@nuxt/ui': ^4.12.2
   # EXAKT gepinnt, ohne Caret — und das ist hier keine Vorsicht, sondern die
   # Bedingung. Tiptap liegt bereits als auto-installierter optionaler Peer von
   # @nuxt/ui im Baum (Linie aus `overrides`, genau eine Kopie je Paket). Wir nehmen NUR
@@ -188,7 +193,9 @@ catalog:
   # SSR-Seite 500 „Can't resolve 'tailwindcss'". Prod-Builds trifft es nicht —
   # der Defekt ist also nur lokal sichtbar und deshalb doppelt tückisch.
   tailwindcss: ^4.3.5
-  '@nuxtjs/mdc': ^0.23.2
+  # 0.23.4 (2026-11-18): härtet `as`/`is` und gebundene Props gegen Markdown
+  # aus fremder Hand — zieht MIT `@nuxt/ui` 4.12.2 (s. dort).
+  '@nuxtjs/mdc': ^0.23.4
   # Fest gekoppelt: @pinia/nuxt 0.11.x verlangt pinia ^3, 1.0.x verlangt ^4 —
   # einzeln bewegt sich keines von beiden ohne unerfuellten Peer.
   '@pinia/nuxt': ^1.0.3
