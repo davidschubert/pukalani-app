@@ -37,6 +37,7 @@ import {
   login as loginOn,
   runStamp,
   waitForHost as waitForHostOn,
+  waitForPage,
 } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
@@ -160,7 +161,11 @@ try {
 
   // ──────────────────────────────────────────────────────────────────────────
   console.log('\n2. Das Produkt ist im Pool überhaupt an (der Schalter, der fehlte)')
-  const embedPage = await call(a.host, '/embed?targetId=f37&targetType=verify')
+  // Die erste gerenderte Seite eines frischen Servers kam in der CI zweimal
+  // mit 500 (CW1 a) — warten, bis sie ohne Serverfehler antwortet. Bleibt
+  // sie kaputt, ist die Prüfung darunter mit dem letzten Status rot.
+  const embedPage = await waitForPage(() => call(a.host, '/embed?targetId=f37&targetType=verify'))
+    ?? { status: 0, text: '' }
   check('/embed antwortet (kein 404 mehr — pukalani.comments.embed.enabled)',
     embedPage.status === 200, `Status ${embedPage.status}`)
   const loader = await call(a.host, '/embed.js')

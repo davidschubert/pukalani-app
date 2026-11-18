@@ -42,7 +42,7 @@ import { request as httpRequest } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve as resolvePath } from 'node:path'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
-import { appwriteRest, findColumns, PERSON_COLUMNS, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
+import { appwriteRest, findColumns, PERSON_COLUMNS, sweepRows, waitForPage } from '../../../scripts/lib/probe-stage.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolvePath(HERE, '../../..')
@@ -270,7 +270,13 @@ try {
   // über `/workspace` geprüft; die Seite ist mit dem Workspace gefallen, also
   // steht hier die Startseite — dasselbe Layout, derselbe Schalter
   // (pukalani.chrome.accountBell), nur eingeloggt statt als Gast.
-  const home = await callControl('/', { cookie: operator.cookie })
+  // Die erste gerenderte Seite eines frischen Servers kam in der CI zweimal
+  // mit 500 (CW1 a) — warten, bis sie ohne Fehlerseite antwortet. Bleibt sie
+  // kaputt, ist die Prüfung darunter mit dem letzten Status rot.
+  const home = await waitForPage(
+    () => callControl('/', { cookie: operator.cookie }),
+    { isReady: res => res.status === 200 && !isErrorPage(res.text) },
+  ) ?? { status: 0, text: '' }
   check('/ lädt ohne Fehlerseite', home.status === 200 && !isErrorPage(home.text), `Status ${home.status}`)
   check('/ zeigt die Glocke (Default-Layout, eingeloggt)', home.text.includes(BELL))
 
