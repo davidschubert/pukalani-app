@@ -3994,3 +3994,27 @@ Migration, die etwas entfernt, verlangt an der anlegenden Stelle die Wache
 **Wieder prüfen:** das Erstgespräch nach Davids Klick auf der echten Seite
 (OPEN-ITEMS „KR1"); die E2E-Frist beim nächsten Lauf, in dem der Test-Server
 nicht startet (dann steht der Grund im Log).
+
+## 2026-11-18 — Nacharbeiten N15: Seiten-Übersetzung im Hintergrund, Spalte wartet, Geheimnis-Prüfung je Zweig
+
+**Kontext:** die eine Fragerunde am Ende der Gruppe N15
+([OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md), „N15", Nachtrag).
+**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-18):**
+1. **Die neue Tabelle für die Seiten-Übersetzung wird in den vier echten
+   Datenbanken angelegt, der Umbau geht live.** Angeboten und nicht gewählt:
+   später. Zurück: den Pull Request zurücknehmen; die leere Tabelle kann
+   bleiben.
+2. **Die eigene Spalte für den Zeitpunkt, an dem eine Meldung erledigt wurde,
+   wartet.** Angeboten und nicht gewählt: jetzt bauen. Heute hält die
+   Ungenauigkeit Daten nur länger, nie kürzer.
+3. **Die Pflicht-Prüfung auf Geheimnisse liest je Pull Request nur noch den
+   eigenen Zweig; ein neuer Lauf liest einmal am Tag alle Zweige und meldet
+   einen Fund als Issue.** Angeboten und nicht gewählt: so lassen. Zurück:
+   eine Zeile in `lint.yml` zurückstellen.
+**Folgen im Alltag:** Ein Fund in einem Zweig, der kein Pull Request ist,
+kommt bis zu einem Tag später an — als Issue `geheimnis-alarm`, nicht als
+roter Haken an jedem Pull Request. Die Prüfung vor dem ersten Push eines
+Zweigs bleibt Pflicht der Sitzungen.
+**Wieder prüfen:** die Spalte aus 2, sobald eine Route erledigte Meldungen
+beschreibt; den Tages-Lauf, falls `geheimnis-alarm` zu oft wegen erfundener
+Testwerte offen ist.
