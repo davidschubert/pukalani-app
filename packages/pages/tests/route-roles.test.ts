@@ -19,7 +19,7 @@ import { ADMIN_PAGES_MAX, PAGE_DELETE_MAX_ROUNDS } from '../server/utils/pageRow
  * `core/tests/support/participationHarness.ts`). Die Erwartungen stehen hier
  * Person für Person ausgeschrieben, abgelesen aus der Rechte-Matrix
  * (`core/shared/communityAuthz.ts`) — nie berechnet:
- *  - `pages.manage` (Seiten verfassen, ändern, löschen, übersetzen lassen):
+ *  - `pages.manage` (Seiten speichern, lesen, löschen, übersetzen lassen):
  *    Editor, Admin, Owner; der Betreiber im protokollierten Not-Zugang. Der
  *    Moderator NICHT — Seiten sind Inhalt, keine Moderation.
  *
@@ -44,6 +44,10 @@ const loadList = () => import('../server/api/pages/index.get')
 const loadDetail = () => import('../server/api/pages/[slug].get')
 const loadDelete = () => import('../server/api/pages/[slug].delete')
 const loadTranslate = () => import('../server/api/pages/translate.post')
+const loadSave = () => import('../server/api/pages/index.put')
+
+/** Ein gültiger Rumpf für `PUT /api/pages` (neue englische Fassung). */
+const SAVE_BODY = { slug: 'imprint', locale: 'en', title: 'Imprint', body: 'Legal notice.', status: 'draft' }
 
 /** Was hinter der Tür eines Lese-Handlers noch gebraucht wird. */
 const READ_GLOBALS = {
@@ -98,6 +102,11 @@ describeRoleGateToDoor('DELETE /api/pages/:slug', loadDelete, MANAGE, {
   globals: { tenantCacheScope: () => 't-a', forgetPublicPages: () => {} },
 })
 
+describeRoleGateToDoor('PUT /api/pages', loadSave, MANAGE, {
+  body: SAVE_BODY,
+  globals: { forgetPublicPages: () => {} },
+})
+
 // ── Klinken ─────────────────────────────────────────────────────────────────
 
 describe('Seiten-Verwaltung: über welche Klinke gelesen und gelöscht wird', () => {
@@ -144,6 +153,34 @@ describe('Seiten-Verwaltung: über welche Klinke gelesen und gelöscht wird', ()
     expect(opens).toEqual([{ as: 'operator', actor }])
     expect(rows.rows[PAGES_TABLE]!.map(row => row.$id)).toEqual(['pg-3'])
     expect(forgetPublicPages).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['editor', 'member'],
+    ['owner', 'member'],
+    ['operator', 'operator'],
+  ] as const)('PUT /api/pages (%s): Operator-Klinke, Handelnder %s aus dem Tor', async (who, actor) => {
+    const rows = fakeDoor({ rows: { [PAGES_TABLE]: [pageRow('pg-1', 'imprint', 'de')] } })
+    const { opens, door } = recording(rows.tenantDb)
+    const forgetPublicPages = vi.fn()
+    const run = await probeRoute(loadSave, { who, door, body: SAVE_BODY, globals: { forgetPublicPages } })
+
+    expect(run.status).toBe(200)
+    expect(opens).toEqual([{ as: 'operator', actor }])
+    expect(rows.calls.map(call => [call.handle, call.method])).toEqual([['operator', 'find'], ['operator', 'create']])
+    expect(rows.rows[PAGES_TABLE]!.map(row => row.locale)).toEqual(['de', 'en'])
+    expect(forgetPublicPages).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(REJECTED)('PUT /api/pages (%s): abgewiesen, nichts geschrieben', async (who) => {
+    const rows = fakeDoor({ rows: { [PAGES_TABLE]: [pageRow('pg-1', 'imprint', 'de')] } })
+    const forgetPublicPages = vi.fn()
+    const run = await probeRoute(loadSave, { who, door: rows.tenantDb, body: SAVE_BODY, globals: { forgetPublicPages } })
+
+    expect([401, 403]).toContain(run.status)
+    expect(rows.calls).toEqual([])
+    expect(rows.rows[PAGES_TABLE]).toHaveLength(1)
+    expect(forgetPublicPages).not.toHaveBeenCalled()
   })
 
   it.each(REJECTED)('DELETE /api/pages/:slug (%s): abgewiesen, nichts gelöscht', async (who) => {
