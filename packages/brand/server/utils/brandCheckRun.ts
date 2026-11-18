@@ -74,6 +74,19 @@ import { BRAND_CHECKS_TABLE, type BrandCheckRow, brandDb } from './brandStore'
  * aber eine, die etwas anderes misst als sie behauptet — und sie läge dann
  * sieben Tage als „Ergebnis" im Zwischenspeicher.
  *
+ * ── DREI SCHRITTE, ZWEI ARTEN SIE ZU RUFEN (LL1 b, 2026-11-18) ────────────
+ * Die Mechanik ist in drei Schritte geteilt, in genau der Reihenfolge von
+ * oben: `prepareBrandCheck` (Zwischenspeicher, eigene Brand, Abschalter —
+ * kostet nichts), `bookBrandCheck` (die Deckel) und `executeBrandCheck`
+ * (lesen, messen, urteilen, speichern — bis rund 120 s).
+ *  - Der MARKTVERGLEICH ruft weiter alle drei in einem Zug (`runBrandCheck`):
+ *    er steckt selbst schon in einem Lauf hinter der Antwort.
+ *  - Die ÖFFENTLICHE ROUTE nimmt zwischen Schritt 1 und 2 die Lauf-Sperre,
+ *    antwortet nach Schritt 2 mit `202` und fährt Schritt 3 hinter der
+ *    Antwort (`startBrandRun`) — der Webserver wartet nur 60 s.
+ * Der Anschluss-Stempel (`ipHash`) wird in Schritt 1 gelesen und mitgereicht:
+ * Schritt 3 läuft, wenn die Anfrage längst beantwortet ist.
+ *
  * ── LOG-REGEL §6 UND PLAN §5 ──────────────────────────────────────────────
  * Geloggt werden Host, Score, Dauer und Fehlercode — nie ein Stück Seitentext,
  * nie die rohe IP. GESPEICHERT wird ebenfalls kein Seitentext: nur die Belege
@@ -125,10 +138,56 @@ export interface RunBrandCheckResult {
   cached: boolean
 }
 
+/** Was Schritt 1 für die Schritte 2 und 3 festhält. */
+export interface PreparedBrandCheck {
+  /** Der normalisierte Schlüssel der Adresse (Zwischenspeicher, Verlauf). */
+  urlKey: string
+  /** Welcher enge Eimer zahlt (`decideBrandCheckMode`). */
+  quota: ReturnType<typeof decideBrandCheckMode>['quota']
+  /** Die aufgelöste eigene Brand — leer, wenn keine mitkam. */
+  profileId: string
+  /** Der Tages-Stempel des Anschlusses — gelesen, solange die Anfrage lebt. */
+  ipHash: string
+}
+
+export type BrandCheckPreparation =
+  | { cached: RunBrandCheckResult, prepared: null }
+  | { cached: null, prepared: PreparedBrandCheck }
+
+/** Schritt 3 darf vor dem Speichern noch einmal fragen, ob er soll. */
+export interface ExecuteBrandCheckOptions {
+  /**
+   * Unmittelbar VOR dem Speichern gefragt. Ein nicht leerer Rückgabewert ist
+   * ein kurzer Grund (`lease_lost`, `profile_gone`): dann entsteht KEINE Zeile
+   * und der Schritt endet mit 409 und diesem Code. Der Lauf hinter der
+   * Antwort braucht das — ohne Herzschlag darf ein anderer Start übernehmen,
+   * und zwei Zeilen für einen Klick wären zwei Ergebnisse.
+   */
+  abortBeforeSave?: () => Promise<string> | string
+}
+
+/**
+ * ALLE DREI SCHRITTE IN EINEM ZUG — der Weg des Marktvergleichs (und der
+ * frühere Weg der Route). Wirft dieselben Fehler wie die einzelnen Schritte.
+ */
 export async function runBrandCheck(
   event: H3Event,
   input: RunBrandCheckInput,
 ): Promise<RunBrandCheckResult> {
+  const { cached, prepared } = await prepareBrandCheck(event, input)
+  if (cached) return cached
+  await bookBrandCheck(event, input, prepared)
+  return await executeBrandCheck(event, input, prepared)
+}
+
+/**
+ * SCHRITT 1 — was nichts kostet: Zwischenspeicher, eigene Brand, Abschalter.
+ * Ein Treffer im Zwischenspeicher ist schon das Ergebnis.
+ */
+export async function prepareBrandCheck(
+  event: H3Event,
+  input: RunBrandCheckInput,
+): Promise<BrandCheckPreparation> {
   const urlKey = brandCheckUrlKey(input.url)
   if (!urlKey) {
     throw createError({ status: 400, statusText: 'Invalid check payload', data: { code: 'invalid_body' } })
@@ -181,7 +240,7 @@ export async function runBrandCheck(
       ms: 0,
       cached: true,
     })
-    return { id: cached.$id, cached: true }
+    return { cached: { id: cached.$id, cached: true }, prepared: null }
   }
 
   // (2) Die eigene Brand, falls eine mitgeschickt wurde (§5 „Meine Brands").
@@ -201,10 +260,25 @@ export async function runBrandCheck(
     throw createError({ status: 503, statusText: 'Check paused', data: { code: 'check_paused' } })
   }
 
-  // (3) Die Deckel. Erst ab hier kostet der Aufruf etwas.
+  return {
+    cached: null,
+    prepared: { urlKey, quota: mode.quota, profileId, ipHash: brandCheckIpHash(event) },
+  }
+}
+
+/**
+ * SCHRITT 2 — die Deckel. Erst ab hier kostet der Aufruf etwas. Lehnt ein
+ * Deckel ab, wirft der Schritt 429 mit `retryAfterSec` in `data` (den Kopf
+ * setzt die Route, s. Kopf der Datei).
+ */
+export async function bookBrandCheck(
+  event: H3Event,
+  input: Pick<RunBrandCheckInput, 'userId'>,
+  prepared: PreparedBrandCheck,
+): Promise<void> {
   const rejection = await bookBrandCheckQuota(event, {
-    ipHash: brandCheckIpHash(event),
-    quota: mode.quota,
+    ipHash: prepared.ipHash,
+    quota: prepared.quota,
     userId: input.userId,
   })
   if (rejection) {
@@ -216,6 +290,22 @@ export async function runBrandCheck(
       data: { code: rejection.code, retryAfterSec: rejection.retryAfterSec },
     })
   }
+
+}
+
+/**
+ * SCHRITT 3 — lesen, messen, urteilen, speichern. Der lange Teil: bis rund
+ * 120 s (drei Abruf-Fristen und das Urteil). Er schreibt nicht in die Antwort
+ * und liest vom `event` nur noch Konfiguration.
+ */
+export async function executeBrandCheck(
+  event: H3Event,
+  input: RunBrandCheckInput,
+  prepared: PreparedBrandCheck,
+  options: ExecuteBrandCheckOptions = {},
+): Promise<RunBrandCheckResult> {
+  const { urlKey, profileId } = prepared
+  const { tablesDB, databaseId } = brandDb(event)
 
   // (4a) Die Seite lesen — SSRF-Vertrag aus `shared/brandSiteAnalysis.ts`,
   // und seit BS1 R2b MIT der Erlaubnis-Frage davor (`brandCheckFetch.ts`).
@@ -313,6 +403,14 @@ export async function runBrandCheck(
     evidence: criteria.find(entry => entry.id === criterionId)?.evidence ?? '',
   }))
 
+  // (4e-0) Soll noch gespeichert werden? Nur der Lauf hinter der Antwort
+  // fragt das (s. `ExecuteBrandCheckOptions`).
+  const abort = await options.abortBeforeSave?.()
+  if (abort) {
+    logEvent('info', 'brand.check_abandoned', { host: site.finalHost, code: abort, ms: Date.now() - started })
+    throw createError({ status: 409, statusText: 'Check abandoned', data: { code: abort } })
+  }
+
   // (4e) Speichern. JEDE Spalte explizit (CLAUDE.md) — eine neue Spalte soll
   // eine Entscheidung an dieser Stelle sein, kein stiller Default.
   let rowId: string
@@ -336,7 +434,7 @@ export async function runBrandCheck(
         findings: JSON.stringify(findings),
         // Der einzige Rest der gelesenen Seite (Plan §5, „kein Rohtext").
         textHash: createHash('sha256').update(site.content.text).digest('hex'),
-        ipHash: brandCheckIpHash(event),
+        ipHash: prepared.ipHash,
         // Die Branche kam im SELBEN Modell-Aufruf mit (Davids Entscheidung 2)
         // und ist bereits gegen den Katalog geprüft — `unknown`, wenn sie sich
         // aus der Seite nicht ergab.

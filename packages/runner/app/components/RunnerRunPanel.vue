@@ -8,11 +8,19 @@ import { RUNS_TABLE, RUN_EVENTS_TABLE, type RunAttachmentAddedResponse, type Run
  *
  * ER KENNT KEIN TICKET (A14). Was ausgeführt wird, kommt vollständig über
  * Props: ein SUBJEKT (`subjectType`/`subjectId` — heute `'ticket'`, später ein
- * Roadmap-Eintrag oder ein GitHub-Issue), der fertige AUFTRAGSTEXT und zur
- * ANZEIGE die Antwort auf die eine Sicherheitsfrage (§ 8.2: gilt der Text als
- * geprüft?). Entschieden wird sie vom Server aus der Herkunft des Subjekts
- * (SEC-038) — sie reist deshalb nicht im Body. Wer den Bereich einbindet, baut den Text — dieser Layer
- * baut ihn nie selbst, sonst müsste er das Board kennen.
+ * Roadmap-Eintrag oder ein GitHub-Issue), der AUFTRAGSTEXT als Vorschau und
+ * zur ANZEIGE die Antwort auf die eine Sicherheitsfrage (§ 8.2: gilt der Text
+ * als geprüft?). Entschieden wird sie vom Server aus der Herkunft des Subjekts
+ * (SEC-038) — sie reist deshalb nicht im Body.
+ *
+ * DEN AUFTRAG BAUT DER SERVER (RU1 b, seit 2026-11-18): aus dem Subjekt, über
+ * denselben Vertrag, der die Herkunft beantwortet. Der Text aus den Props ist
+ * die VORSCHAU — der Einbindende baut sie mit derselben Funktion wie der
+ * Server (dieser Layer baut sie nie selbst, sonst müsste er das Board
+ * kennen). Mitgeschickt wird sie nur zum VERGLEICH: weicht sie vom frisch
+ * gebauten Text ab, legt der Server nichts an (`prompt_changed`). Für einen
+ * Subjekt-Typ, zu dem niemand den Text baut, ist sie weiter der Auftrag
+ * selbst — und der gilt als ungeprüft.
  *
  * DREI ZUSTÄNDE, und der Lauf entscheidet, welcher gilt:
  *
@@ -28,7 +36,7 @@ import { RUNS_TABLE, RUN_EVENTS_TABLE, type RunAttachmentAddedResponse, type Run
 const props = defineProps<{
   subjectType: string
   subjectId: string
-  /** Der fertige Auftrag, wie er abgeschickt wird — gebaut vom Einbindenden */
+  /** Die Vorschau des Auftrags — gebaut vom Einbindenden; der Server baut den Text selbst und vergleicht */
   promptSource: string
   /**
    * NUR ANZEIGE: false = der Text gilt nicht als vom Betreiber geschrieben
@@ -161,6 +169,7 @@ const START_ERROR_KEYS: Record<string, string> = {
   test_command_not_listed: 'runner.panel.errors.testNotListed',
   subject_not_found: 'runner.panel.errors.subjectNotFound',
   subject_trust_unavailable: 'runner.panel.errors.trustUnavailable',
+  prompt_changed: 'runner.panel.errors.promptChanged',
 }
 
 async function start(options: RunStartOptions) {
@@ -172,6 +181,8 @@ async function start(options: RunStartOptions) {
       body: {
         subjectType: props.subjectType,
         subjectId: props.subjectId,
+        // Nur zum Vergleich: gespeichert wird der Text, den der Server baut
+        // (RU1 b). Weicht er von dieser Vorschau ab, kommt `prompt_changed`.
         promptSource: props.promptSource,
         // KEIN `promptTrusted`: ob der Auftrag als geprüft gilt, bestimmt der
         // Server aus der Herkunft des Subjekts (SEC-038), nie aus dem Body.
@@ -267,6 +278,7 @@ function onResumed(run: RunRow) {
     <RunnerRunForm
       v-if="view === 'form'"
       :prompt-trusted="promptTrusted"
+      :prompt-source="promptSource"
       :attachment-count="attachmentCount"
       :busy="busy"
       @start="start"
