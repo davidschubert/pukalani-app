@@ -58,6 +58,13 @@ export const BRAND_RUN_SCOPES = {
   reading: 'reading',
   /** Fundament-Check — subject = Profil-Id. */
   documentCheck: 'doc-check',
+  /**
+   * Dokument-Prüfung (LL1 d) — subject = Profil-Id. Im `detail` steht unter
+   * `created` die Zahl der nachgeholten Sitzungen und unter `ref` der
+   * Stand-Schlüssel (sha256 hex, 64 Zeichen), für den der Lauf gilt: er ist
+   * der Merker „für diesen Stand schon geprüft".
+   */
+  documentReview: 'doc-review',
   /** Öffentlicher Brand-Check — subject = Schlüssel-Hash aus Adresse und Besucher. */
   check: 'check',
 } as const
@@ -69,6 +76,7 @@ export const BRAND_RUN_PROFILE_SCOPES: readonly BrandRunScope[] = [
   BRAND_RUN_SCOPES.drafts,
   BRAND_RUN_SCOPES.reading,
   BRAND_RUN_SCOPES.documentCheck,
+  BRAND_RUN_SCOPES.documentReview,
 ]
 
 /** Gemeinsame Ausgänge neben `done` und den Gründen der einzelnen Wege. */
@@ -82,6 +90,12 @@ export const BRAND_RUN_OUTCOMES = {
   profileGone: 'profile_gone',
   /** Kein Endpunkt unter der Datenschutz-Bindung (KI1 d) — nur dieser Code. */
   aiEndpointUnavailable: AI_ENDPOINT_UNAVAILABLE_CODE,
+  /**
+   * Dokument-Prüfung: der Blick über das ganze Dokument kam nicht zustande
+   * (KI aus, Drossel, Anbieter, Schema). Schon nachgeholte Sitzungen bleiben
+   * geprüft; ihre Zahl steht in `created`.
+   */
+  reviewUnavailable: 'review_unavailable',
 } as const
 
 export interface BrandRunDetail {
