@@ -88,6 +88,8 @@ export interface IntroCallRequest {
    * bewusst harmlos, damit ein Formular-Ausfüller es überhaupt anfasst.
    */
   website?: string
+  /** Einmal-Token des Turnstile-Widgets — nur, wenn die Site Turnstile-Schlüssel hat. */
+  turnstileToken?: string
 }
 
 /**
