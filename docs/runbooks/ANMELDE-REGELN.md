@@ -38,6 +38,14 @@ und liest sie zurück.
   Skript nimmt `APPWRITE_POLICIES_KEY`, sonst `NUXT_APPWRITE_MIGRATIONS_KEY`,
   sonst `NUXT_APPWRITE_KEY`. Ein 401 heißt: dem Schlüssel fehlt der Scope.
   Am 2026-11-13 hatte lokal kein Entwicklungs-Schlüssel diese Scopes.
+- **Täglich auf Production (seit 2026-11-18):** der Produktions-Wächter ruft
+  dasselbe Skript mit `--ci` für alle vier Projekte, nur lesend (Blick 15 in
+  `production-watch.yml`). Er nimmt die vier Schlüssel des Schema-Blicks
+  (`watch-schema-readonly`, je Projekt einer); sie tragen dafür zusätzlich
+  das Leserecht `project.policies.read` — so heißt der Scope in der
+  Verwaltung. Rot bei einer Abweichung und wenn der Blick nicht lesen kann.
+  Einen Schlüssel, der die Regeln SETZEN darf, gibt es weiter nicht: gesetzt
+  wird in der Verwaltung, danach meldet der Blick, ob es zum Soll passt.
 - **Je Projekt einzeln:** `account`, `admin`, `branding`, `portfolio`. Auf
   Production nur mit Davids Ja.
 - **CI:** `e2e.yml` setzt die Regeln nach dem Seed, die Suite läuft darunter.
@@ -56,8 +64,8 @@ Konsole (Auth → Policies → Passwords, Emails, Sessions), weil es noch keinen
 Schlüssel mit `policies`-Recht gibt; vorher und nachher gegen die Soll-Liste
 gelesen. Wer dort etwas ändert, ändert zuerst das Soll im Skript.
 
-- Der Abgleich mit Datenlecks ist eingeschaltet, lehnt aber erst ab, wenn die
-  Server-Variable gesetzt ist (nächster Abschnitt).
+- Der Abgleich mit Datenlecks lehnt seit dem 2026-11-18 wirklich ab: die
+  Server-Variable ist gesetzt (Abschnitt „Abgleich mit Datenlecks").
 - Die Anmelde-Mail ist auf Production noch nicht angesehen (Sprache, Adresse).
 - Beweis-Skripte mit `@example.com`-Konten scheitern jetzt auch gegen
   Production-Projekte.
@@ -71,12 +79,19 @@ Settings → **Auth methods**.
 | Schalter | Soll | Warum |
 | --- | --- | --- |
 | Email/Password, Magic URL, Email OTP, Anonymous, Phone, Team Invites | **aus** | Kein Konto und keine Anmeldung an unseren Prüfungen vorbei. Unser Server ruft mit API-Schlüssel und ist davon nicht betroffen. |
-| JWT | an | Bewertet am 2026-11-17: nichts im Code hängt daran. Jedes Token entsteht über `users.createJWT` mit Schlüssel (`core/server/api/auth/realtime-token.get.ts`, `core/server/utils/controlService.ts`), der Browser ruft `account.createJWT` nirgends. Der Schalter kann aus; umgestellt ist er noch nicht (ein Klick je Projekt in der Verwaltung, danach die Live-Verbindung auf einer Seite ansehen). |
+| JWT | **aus** (seit 2026-11-18) | Der Schalter trifft nur EINEN Aufruf: `account.createJWT` ohne Schlüssel (in Appwrite 2.7.1 nachgelesen, `auth.type` = `jwt`). Den ruft unser Code nie — jedes Token entsteht über `users.createJWT` mit Schlüssel (`core/server/api/auth/realtime-token.get.ts`, `core/server/utils/controlService.ts`). Ein Token zu BENUTZEN (Live-Verbindung, Naht zum Control Plane) hängt nicht am Schalter. |
 | Passkey | aus | wird nicht angeboten. |
 
 **Stand:** alle vier Production-Projekte umgestellt am 2026-11-16
 (`portfolio` als Probe, danach `branding`, `admin`, `account`; Davids
-Entscheidung) und je Projekt von außen geprüft. Die lokale Datenbank und die
+Entscheidung) und je Projekt von außen geprüft. Der Schalter „JWT" folgte am
+2026-11-18 in allen vier Projekten. Geprüft in `admin` und `account` mit
+einer angemeldeten Sitzung, vorher und nachher: das Token der Seite meldet
+sich bei der Datenbank an (200), die Live-Verbindung erkennt das Konto, die
+Naht zum Control Plane antwortet; ein neues Token direkt bei der Datenbank zu
+holen, endet jetzt in `501 user_auth_method_unsupported` (vorher 403). Von
+außen ohne Anmeldung ist dieser Schalter nicht prüfbar (ein Gast bekommt in
+beiden Stellungen 401). Die lokale Datenbank und die
 der CI haben die Schalter an. Seit dem 2026-11-17 prüft der tägliche Wächter
 die vier Projekte von außen (`scripts/ops/verify-auth-methods.mjs`, Blick 14
 in `production-watch.yml`): je Projekt derselbe Aufruf wie unten, rot bei
@@ -116,6 +131,19 @@ festgehaltene Zustimmung und wird beim ersten Besuch einmal gefragt
 Appwrite schickt nur die ersten fünf Zeichen des SHA-1-Hashes an
 Have I Been Pwned. Ist der Dienst nicht erreichbar, scheitert das Setzen eines
 Passworts mit 503 (`password_check_unavailable`), es wird nicht durchgewunken.
+
+**Auf Production gesetzt am 2026-11-18** (Davids Ja): eine Zeile in der `.env`
+im Compose-Ordner des Appwrite-Servers, danach nur den Dienst `appwrite` neu
+angelegt (`docker compose up -d --no-deps appwrite`; die Compose-Datei reicht
+die Variable nur an diesen Dienst). Gemessen: 3 Sekunden ohne Antwort, danach
+alle acht Hosts `ok`. Die Fassung davor liegt als `.env.vorher-n11-…` daneben.
+**Zurück:** die Zeile wieder auf `none://localhost` stellen (oder die Kopie
+zurücklegen) und denselben Befehl noch einmal. **Nachsehen:**
+`docker exec appwrite printenv _APP_PWNED_PASSWORDS_DSN`. Geprüft ist der
+Stand am Server (Variable im Dienst, der Prüf-Dienst antwortet von dort);
+NICHT geprüft ist eine echte Ablehnung auf einer Seite — dafür einmal ein
+Passwort aus einem bekannten Leck bei einer Registrierung versuchen
+([OPEN-ITEMS](../OPEN-ITEMS.md), Klick-Runde KR1).
 
 ## Was die App daraus macht
 

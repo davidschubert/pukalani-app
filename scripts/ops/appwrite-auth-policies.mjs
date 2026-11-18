@@ -5,6 +5,7 @@
  *   node --env-file=apps/comments/.env scripts/ops/appwrite-auth-policies.mjs           # nur prüfen
  *   node --env-file=apps/comments/.env scripts/ops/appwrite-auth-policies.mjs --apply   # Abweichungen setzen
  *   pnpm ops:auth-policies   (Umgebung vorher laden, s. unten)
+ *   node scripts/ops/appwrite-auth-policies.mjs --ci                                    # täglicher Wächter, alle vier Projekte
  *
  * WARUM ES DAS GIBT: Appwrite kennt je Projekt Regeln für Passwörter und
  * Adressen (Auth → Security in der Console). Von Hand geklickt driften sie
@@ -35,9 +36,20 @@
  * per `node --env-file=<pfad>`. Der Schlüssel braucht `policies.read` (prüfen)
  * und `policies.write` (setzen). DER SCHLÜSSEL WIRD NIE AUSGEGEBEN.
  *
+ * MIT `--ci` (täglicher Produktions-Wächter, seit 2026-11-18): prüft die vier
+ * Production-Projekte nacheinander, nur lesend. Je Projekt der Schlüssel, den
+ * der Schema-Blick schon hat (`SCHEMA_WATCH_KEY_<PROJEKT>`, GitHub-Umgebung
+ * `production-watch`); er trägt dafür zusätzlich `project.policies.read` und
+ * sonst nichts Neues. Das Protokoll in der CI ist ÖFFENTLICH: genannt werden
+ * nur Projekt und Regel-Namen aus dem Repo, nie ein gelesener Wert. Ein
+ * fehlender Schlüssel, ein fehlendes Leserecht und eine nicht erreichbare
+ * Datenbank sind ROT — ein Wächter, der nichts sieht, hätte sonst jeden Tag
+ * grün gemeldet. `--ci` schreibt nie (`--apply` wird dort abgelehnt).
+ *
  * Exit: 0 = alles stimmt (bzw. nach `--apply` zurückgelesen stimmt alles),
- * 1 = Abweichung, 2 = Aufruf- oder Verbindungsfehler.
+ * 1 = Abweichung, 2 = Aufruf- oder Verbindungsfehler (mit `--ci`: 1).
  */
+import { appendFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { assertTarget } from '../lib/target.mjs'
 
@@ -91,6 +103,66 @@ export function formatResult(result) {
 
 class PolicyApiError extends Error {}
 
+/**
+ * Die vier Production-Projekte des täglichen Blicks. Endpunkt und Projekt-Ids
+ * sind öffentliche Angaben; die Schlüssel-Namen sind die des Schema-Blicks
+ * (`scripts/ops/verify-schema-parity.mjs`).
+ */
+export const CI_ENDPOINT = 'https://api.pukalani.app/v1'
+export const CI_PROJECTS = [
+  { project: 'account', keyEnv: 'SCHEMA_WATCH_KEY_ACCOUNT' },
+  { project: 'admin', keyEnv: 'SCHEMA_WATCH_KEY_ADMIN' },
+  { project: 'portfolio', keyEnv: 'SCHEMA_WATCH_KEY_PORTFOLIO' },
+  { project: 'branding', keyEnv: 'SCHEMA_WATCH_KEY_BRANDING' },
+]
+
+const CI_TODO = 'Handgriff: docs/runbooks/ANMELDE-REGELN.md, Abschnitt „Prüfen und setzen".'
+
+/**
+ * Ein Projekt für den Wächter beurteilen (pur bis auf `read`). Rückgabe:
+ * `{ project, ok, line, finding }` — `line` fürs Protokoll, `finding` der eine
+ * Satz fürs Issue. Beide nennen nur Projekt und Regel-Namen.
+ */
+export async function ciCheckProject({ project, keyEnv }, env, read) {
+  const key = env[keyEnv] || ''
+  if (!key) {
+    return { project, ok: false, line: `✖ ${project}: Schlüssel ${keyEnv} fehlt in der Umgebung`, finding: `Projekt ${project}: dem Wächter fehlt der Schlüssel ${keyEnv} — die Anmelde-Regeln sind nicht geprüft.` }
+  }
+  let results
+  try {
+    results = comparePolicies(await read({ endpoint: CI_ENDPOINT, project, key }))
+  }
+  catch (error) {
+    const why = error instanceof PolicyApiError && /^401 /.test(error.message)
+      ? 'dem Schlüssel fehlt das Leserecht project.policies.read'
+      : 'die Regeln ließen sich nicht lesen'
+    return { project, ok: false, line: `✖ ${project}: ${why}`, finding: `Projekt ${project}: ${why} — die Anmelde-Regeln sind nicht geprüft.` }
+  }
+  const off = results.filter(r => !r.ok).map(r => r.id)
+  if (off.length === 0) return { project, ok: true, line: `✔ ${project}: ${results.length} Regeln stimmen`, finding: null }
+  return { project, ok: false, line: `✖ ${project}: weicht ab — ${off.join(', ')}`, finding: `Projekt ${project}: ${off.length} Anmelde-Regel(n) weichen vom Soll ab (${off.join(', ')}).` }
+}
+
+async function mainCi() {
+  if (process.argv.includes('--apply')) {
+    console.error('--ci prüft nur. Setzen geht von Hand, je Projekt, mit eigenem Schlüssel.')
+    process.exit(2)
+  }
+  console.log(`Anmelde-Regeln · täglicher Blick · ${CI_PROJECTS.length} Projekte @ ${CI_ENDPOINT}`)
+  let red = 0
+  for (const entry of CI_PROJECTS) {
+    const result = await ciCheckProject(entry, process.env, readPolicies)
+    console.log(`  ${result.line}`)
+    if (result.ok) continue
+    red++
+    if (process.env.PUKALANI_FINDINGS_FILE) {
+      appendFileSync(process.env.PUKALANI_FINDINGS_FILE, `Anmelde-Regeln: ${result.finding} ${CI_TODO}\n`)
+    }
+  }
+  console.log(red === 0 ? 'Alles stimmt.' : `${red} Projekt(e) rot.`)
+  process.exit(red === 0 ? 0 : 1)
+}
+
 function config() {
   const endpoint = (process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT || '').replace(/\/+$/, '')
   const project = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID || ''
@@ -134,6 +206,7 @@ async function readPolicies(cfg) {
 }
 
 async function main() {
+  if (process.argv.includes('--ci')) return mainCi()
   const apply = process.argv.includes('--apply')
   const cfg = config()
   // Nur `--apply` schreibt; der Vergleich darf jede Instanz lesen (OPS-002).

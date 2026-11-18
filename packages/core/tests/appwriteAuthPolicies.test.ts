@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { AUTH_POLICIES, comparePolicies, formatResult } from '../../../scripts/ops/appwrite-auth-policies.mjs'
+import { AUTH_POLICIES, CI_PROJECTS, ciCheckProject, comparePolicies, formatResult } from '../../../scripts/ops/appwrite-auth-policies.mjs'
 
 /**
  * ANMELDE-REGELN (P29) — der Vergleich IST gegen SOLL aus
@@ -70,5 +73,78 @@ describe('comparePolicies', () => {
 
   it('stimmt-Zeile', () => {
     expect(formatResult({ id: 'session-alert', ok: true, diffs: [] })).toBe('session-alert: stimmt')
+  })
+})
+
+/**
+ * DER TÄGLICHE BLICK (`--ci`, seit 2026-11-18): je Production-Projekt ein
+ * Urteil. Das Protokoll der CI ist öffentlich — eine Zeile darf nur Projekt
+ * und Regel-Namen nennen. Und ein Blick, der nichts lesen kann, muss rot sein.
+ */
+describe('ciCheckProject', () => {
+  const entry = { project: 'account', keyEnv: 'SCHEMA_WATCH_KEY_ACCOUNT' }
+  const env = { SCHEMA_WATCH_KEY_ACCOUNT: 'geheimer-wert' }
+
+  it('alles stimmt → grün, kein Befund', async () => {
+    const result = await ciCheckProject(entry, env, async () => istStimmt())
+    expect(result.ok).toBe(true)
+    expect(result.finding).toBeNull()
+    expect(result.line).toBe('✔ account: 7 Regeln stimmen')
+  })
+
+  it('reicht Projekt und Schlüssel an den Leser weiter', async () => {
+    let seen: unknown
+    await ciCheckProject(entry, env, async (cfg: unknown) => {
+      seen = cfg
+      return istStimmt()
+    })
+    expect(seen).toEqual({ endpoint: 'https://api.pukalani.app/v1', project: 'account', key: 'geheimer-wert' })
+  })
+
+  it('Gegenprobe: eine verstellte Regel → rot, genannt wird nur ihr Name, nie ein Wert', async () => {
+    const ist = istStimmt().map(p => p.$id === 'password-history' ? { ...p, total: 0 } : p)
+    const result = await ciCheckProject(entry, env, async () => ist)
+    expect(result.ok).toBe(false)
+    expect(result.line).toBe('✖ account: weicht ab — password-history')
+    expect(result.finding).toContain('password-history')
+    expect(`${result.line} ${result.finding}`).not.toMatch(/total|[0-9]+ →|→/)
+  })
+
+  it('Gegenprobe: Schlüssel fehlt → rot statt still grün', async () => {
+    const result = await ciCheckProject(entry, {}, async () => istStimmt())
+    expect(result.ok).toBe(false)
+    expect(result.finding).toContain('SCHEMA_WATCH_KEY_ACCOUNT')
+  })
+
+  it('Gegenprobe: Lesen scheitert → rot, ohne Fehlertext und ohne Schlüssel in der Zeile', async () => {
+    const result = await ciCheckProject(entry, env, async () => {
+      throw new Error('fetch failed geheimer-wert')
+    })
+    expect(result.ok).toBe(false)
+    expect(`${result.line} ${result.finding}`).not.toContain('geheimer-wert')
+    expect(result.line).toBe('✖ account: die Regeln ließen sich nicht lesen')
+  })
+})
+
+describe('täglicher Blick: Projekte und Workflow', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'production-watch.yml'), 'utf8')
+
+  it('die vier Production-Projekte, je mit dem Schlüssel des Schema-Blicks', () => {
+    expect(CI_PROJECTS.map(p => p.project)).toEqual(['account', 'admin', 'portfolio', 'branding'])
+    const parity = readFileSync(join(root, 'scripts', 'ops', 'verify-schema-parity.mjs'), 'utf8')
+    for (const { project, keyEnv } of CI_PROJECTS) {
+      expect(parity).toMatch(new RegExp(`project: '${project}', ciKey: '${keyEnv}'`))
+    }
+  })
+
+  it('der Workflow ruft den Blick mit --ci und reicht alle vier Schlüssel durch', () => {
+    const at = workflow.indexOf('scripts/ops/appwrite-auth-policies.mjs --ci')
+    expect(at).toBeGreaterThan(0)
+    const step = workflow.slice(workflow.lastIndexOf('- name:', at), at)
+    for (const { keyEnv } of CI_PROJECTS) {
+      expect(step).toContain(`${keyEnv}: \${{ secrets.${keyEnv} }}`)
+    }
+    expect(step).toContain('PUKALANI_FINDINGS_FILE')
   })
 })
