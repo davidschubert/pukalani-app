@@ -31,9 +31,10 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
-import { Client, ID, Users } from 'node-appwrite'
+import { Client, ID, Permission, Role, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
-const base = process.argv[2] ?? 'http://localhost:3001'
+const base = einzelBaseUrl('http://localhost:3001')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const apiKey = process.env.NUXT_APPWRITE_KEY
@@ -42,7 +43,12 @@ if (!endpoint || !projectId || !apiKey) {
   process.exit(1)
 }
 
-const users = new Users(new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey))
+const adminClient = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey)
+const users = new Users(adminClient)
+const tablesDB = new TablesDB(adminClient)
+const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main'
+/** Aufräumen MIT Nachzählen (Bühnen-Regel 2): Konto, Beitrag und alles, was am Konto hängt. */
+const sweep = createEinzelCleanup({ script: 'verify-new-topic-entry' })
 
 let passed = 0
 let failed = 0
@@ -91,8 +97,19 @@ try {
     name: `Thema Tester ${stamp}`,
   })
   cleanup.users.push(user.$id)
+  sweep.track('account', user.$id)
   const session = await users.createSession({ userId: user.$id })
   cookie = `a_session_${projectId}=${encodeURIComponent(session.secret)}`
+
+  // Eine EIGENE Wegwerf-Kategorie (Bühnen-Regel 1: das Skript setzt seine
+  // Annahmen selbst) — eine frische Instanz hat noch keine. Leserecht wie bei
+  // der Standard-Kategorie der App (seedDefaultCategory.ts).
+  const ownCategory = await tablesDB.createRow({
+    databaseId, tableId: 'post_categories', rowId: ID.unique(),
+    data: { name: `Thema ${stamp}`, slug: `thema-${stamp}`, description: '', sortOrder: 0, active: true, communityId: '' },
+    permissions: [Permission.read(Role.any())],
+  })
+  sweep.track('poolRow', `post_categories/${ownCategory.$id}`)
 
   // ── 1. Der Gast bekommt keinen Einstieg ───────────────────────────────────
   // Dieselbe Bedingung wie beim Feed-Composer (`isLoggedIn`) — nicht neu
@@ -108,11 +125,9 @@ try {
 
   const catRes = await http('/api/posts/categories?all=1')
   const active = JSON.parse(catRes.body).rows.map(row => row.category).filter(category => category.active)
-  if (active.length === 0) {
-    console.error('✗ Keine aktive Kategorie in dieser Instanz — ohne sie gibt es nichts zu eröffnen.')
-    process.exit(1)
-  }
-  const target = active[0]
+  const target = active.find(category => category.$id === ownCategory.$id)
+  check('die eigene Kategorie steht aktiv in /api/posts/categories', Boolean(target))
+  if (!target) throw new Error('ohne die eigene Kategorie gibt es nichts zu eröffnen')
 
   const inCategory = await http(`/discussions/${target.slug}`, { cookie })
   check(`Mitglied: Eröffnen-Knopf in /discussions/${target.slug}`, inCategory.body.includes('data-discussions-new-topic'))
@@ -131,7 +146,10 @@ try {
   })
   check('POST /api/posts mit Kategorie → 201', created.status === 201, `status ${created.status} ${created.body.slice(0, 160)}`)
   const row = created.status === 201 ? JSON.parse(created.body) : null
-  if (row?.$id) cleanup.posts.push(row.$id)
+  if (row?.$id) {
+    cleanup.posts.push(row.$id)
+    sweep.track('poolRow', `community_posts/${row.$id}`)
+  }
 
   const topics = await http(`/api/posts/discussions?category=${target.slug}`)
   check('Thema steht in der Themen-Liste', topics.body.includes(title))
@@ -141,12 +159,19 @@ try {
   const feed = await http('/api/posts')
   check('… und bleibt im Feed (Entscheidung 2)', feed.body.includes(title))
 }
+catch (error) {
+  failed++
+  console.error(`✗ Abbruch: ${error?.message ?? error}`)
+}
 finally {
   // Erst der Beitrag (über die eigene Session — der Autor darf das), dann der
   // Nutzer: umgekehrt gäbe es keine Session mehr, mit der gelöscht werden kann.
   for (const id of cleanup.posts) await http(`/api/posts/${id}`, { method: 'DELETE', cookie }).catch(() => {})
   for (const id of cleanup.users) await users.delete({ userId: id }).catch(() => {})
+  // Was die Route löschen ließ oder liegen ließ — danach NACHZÄHLEN.
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
 }
 
-console.log(`\n${failed === 0 ? '✔' : '✗'} ${passed}/${passed + failed}`)
+console.log(`\n${failed === 0 ? '✔' : '✗'} ${passed}/${passed + failed} Prüfungen bestanden`)
 process.exit(failed === 0 ? 0 : 1)

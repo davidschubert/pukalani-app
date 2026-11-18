@@ -30,8 +30,9 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
-const base = process.argv[2] ?? 'http://localhost:3021'
+const base = einzelBaseUrl('http://localhost:3021')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
@@ -397,6 +398,13 @@ finally {
   for (const userId of cleanup.users) {
     await users.delete({ userId }).catch(() => {})
   }
+  // NACHZÄHLEN (Bühnen-Regel 2): alles Registrierte und alles, was an den
+  // Wegwerf-Konten hängt, muss weg sein — nicht dem eigenen Löschen glauben.
+  const sweep = createEinzelCleanup({ script: 'verify-comment-reactions' })
+  for (const { tableId, id } of cleanup.rows) sweep.track('poolRow', `${tableId}/${id}`)
+  for (const userId of cleanup.users) sweep.track('account', userId)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${failed === 0 ? '✔' : '✗'} ${passed} bestanden, ${failed} fehlgeschlagen`)
   process.exit(failed === 0 ? 0 : 1)
 }

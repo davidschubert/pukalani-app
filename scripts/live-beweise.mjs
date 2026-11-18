@@ -72,7 +72,9 @@ export function proofScripts(root = ROOT) {
 function laufLabel(entry) {
   if (!entry) return '**fehlt in beweise.mjs**'
   if (entry.lauf === 'hand') return `von Hand: ${String(entry.grund ?? '').replace(/\|/g, '/')}`
-  return LAEUFE[entry.lauf] ?? entry.lauf
+  const label = LAEUFE[entry.lauf] ?? entry.lauf
+  // Die Einzel-Instanz ist ein eigener Server im Lauf — das gehört in die Spalte.
+  return (entry.braucht ?? []).includes('einzel') ? `${label}, Einzel-Instanz` : label
 }
 
 /**

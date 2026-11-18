@@ -484,15 +484,22 @@ export async function sweepRows(client, databaseId, targets, values, { remove = 
  * `tenant` (alle Pool-Zeilen mit diesem Stempel), `poolRow`
  * (`tabelle/zeile` im Pool).
  *
- * @param {{ pool: AppwriteRest, control: AppwriteRest, poolDatabaseId?: string, controlDatabaseId: string }} clients
+ * Ohne `control` (`null`, die Einzel-Instanz hat kein Control Plane) fallen
+ * die Schritte im Control Plane weg; `member`, `community` und `inviteCode`
+ * sind dann nicht erlaubt.
+ *
+ * @param {{ pool: AppwriteRest, control: AppwriteRest | null, poolDatabaseId?: string, controlDatabaseId?: string }} clients
  */
-export function createCleanup({ pool, control, poolDatabaseId = 'main', controlDatabaseId }) {
+export function createCleanup({ pool, control, poolDatabaseId = 'main', controlDatabaseId = '' }) {
   /** @type {Map<string, Set<string>>} */
   const tracked = new Map()
 
   /** @param {'account'|'member'|'community'|'inviteCode'|'tenant'|'poolRow'} kind @param {string} id */
   function track(kind, id) {
     if (!id) return
+    if (!control && ['member', 'community', 'inviteCode'].includes(kind)) {
+      throw new Error(`Aufräum-Register ohne Control Plane kennt „${kind}" nicht.`)
+    }
     if (!tracked.has(kind)) tracked.set(kind, new Set())
     tracked.get(kind).add(id)
   }
@@ -520,10 +527,14 @@ export function createCleanup({ pool, control, poolDatabaseId = 'main', controlD
     const poolPerson = await findColumns(pool, poolDatabaseId, PERSON_COLUMNS) ?? []
     // Das Schema des Control Plane zu lesen braucht `tables.read`; fehlt es,
     // bleiben die zwei Tabellen, in denen ein Lauf sicher Spuren hinterlässt.
-    const controlPerson = (await findColumns(control, controlDatabaseId, PERSON_COLUMNS))
-      ?? [{ tableId: 'trial_claims', column: 'runtimeUserId' }, { tableId: 'community_members', column: 'runtimeUserId' }]
-    const controlStamp = (await findColumns(control, controlDatabaseId, STAMP_COLUMNS))
-      ?? [{ tableId: 'community_members', column: 'communityId' }]
+    const controlPerson = !control
+      ? []
+      : (await findColumns(control, controlDatabaseId, PERSON_COLUMNS))
+        ?? [{ tableId: 'trial_claims', column: 'runtimeUserId' }, { tableId: 'community_members', column: 'runtimeUserId' }]
+    const controlStamp = !control
+      ? []
+      : (await findColumns(control, controlDatabaseId, STAMP_COLUMNS))
+        ?? [{ tableId: 'community_members', column: 'communityId' }]
 
     for (const [key, n] of Object.entries(await sweepRows(pool, poolDatabaseId, poolStamp, stamps, { remove: true }))) add(`pool:${key}`, n)
     for (const [key, n] of Object.entries(await sweepRows(pool, poolDatabaseId, poolPerson, accounts, { remove: true }))) add(`pool:${key}`, n)
@@ -576,4 +587,33 @@ export function createCleanup({ pool, control, poolDatabaseId = 'main', controlD
   }
 
   return { track, run, tracked }
+}
+
+// ── Einzel-Instanz ──────────────────────────────────────────────────────────
+
+/**
+ * Aufräum-Register für ein Skript gegen die EINZEL-INSTANZ (`apps/comments`:
+ * ein Projekt, kein Control Plane), aus der Umgebung des Skripts
+ * (`--env-file=…/apps/comments/.env` oder der Läufer). Dieselbe Zählung wie
+ * `createCleanup`: registriert werden Konten (`account`) und einzelne Zeilen
+ * (`poolRow`, `tabelle/zeile`); `run()` löscht auch die Zeilen, die über eine
+ * Personen-Spalte an einem registrierten Konto hängen, und zählt danach nach.
+ * Zurück kommt außerdem der REST-Client des Projekts (`pool`).
+ *
+ * @param {{ script: string, env?: Record<string, string | undefined> }} options
+ */
+export function createEinzelCleanup({ script, env = process.env }) {
+  const pool = appwriteRest({
+    endpoint: env.NUXT_PUBLIC_APPWRITE_ENDPOINT ?? '',
+    projectId: env.NUXT_PUBLIC_APPWRITE_PROJECT_ID ?? '',
+    key: env.NUXT_APPWRITE_KEY ?? '',
+    script,
+  })
+  // `pool` mit zurück: dasselbe Projekt, z. B. für `createProbeAccount`.
+  return { ...createCleanup({ pool, control: null, poolDatabaseId: env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main' }), pool }
+}
+
+/** Adresse der Einzel-Instanz: Argument, sonst `EINZEL_URL` (Läufer), sonst der alte Standard des Skripts. */
+export function einzelBaseUrl(fallback) {
+  return process.argv[2] || process.env.EINZEL_URL || fallback
 }

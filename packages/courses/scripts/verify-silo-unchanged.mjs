@@ -7,15 +7,17 @@
  * `requirePlanProduct` ist ein No-Op. Der Beweis fährt die ECHTE API gegen
  * den laufenden comments-Dev-Server (Default Port 3151):
  *
- *   1. Kein Produkt-Gate: Gast bekommt 401 (nicht 404 wie im Pool auf basic).
+ *   1. Kein Produkt-Gate: die Galerie antwortet dem Gast 200 (die Vorschau ist
+ *      seit SEC-029 für alle offen — im Pool auf basic wäre es 404).
  *   2. Ein User mit globalem admin-Label verwaltet wie bisher: anlegen,
  *      Lektion, Builder-Detail, publish, manage-Liste.
  *   3. Ein User OHNE Label bleibt draußen (403) — im Silo gibt es keine
  *      Site-Rolle, die hilft.
  *   4. Mitglieder-Pfad: Galerie, Detail per Slug, Enroll, Lektions-Content,
  *      Abschluss — genau die Semantik von vor der Umstellung.
- *   5. Rows tragen KEIN tenantId (per Admin-SDK nachgeprüft) und published
- *      trägt read(users).
+ *   5. Rows tragen KEIN tenantId (per Admin-SDK nachgeprüft) und auch eine
+ *      veröffentlichte Kurs-Zeile trägt KEIN Leserecht (SEC-029: die Route ist
+ *      die Grenze, courseAccess.ts).
  *
  * node:http über ::1 (fetch verwirft den Host-Header, Nitro hört auf [::1]).
  *
@@ -25,8 +27,10 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup } from '../../../scripts/lib/probe-stage.mjs'
 
-const PORT = Number(process.env.COMMENTS_PORT || 3151)
+// Der Läufer setzt EINZEL_PORT (die Einzel-Instanz im nächtlichen Lauf).
+const PORT = Number(process.env.EINZEL_PORT || process.env.COMMENTS_PORT || 3151)
 const HOST = process.env.SILO_HOST || 'localhost'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
@@ -44,7 +48,7 @@ const users = new Users(new Client().setEndpoint(endpoint).setProject(projectId)
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], courses: [] }
+const cleanup = { users: [], courses: [], lessons: [] }
 
 function check(label, ok, detail = '') {
   if (ok) { pass++; console.log(`  ✔ ${label}`) }
@@ -102,8 +106,10 @@ try {
   console.log(`\ncourses im Silo (apps/comments) gegen http://[::1]:${PORT} — Verhalten unverändert?\n`)
 
   console.log('1. Kein Produkt-Gate im Einzelbetrieb')
+  // SEC-029 (2026-11-13, Davids Entscheidung): die Galerie ist eine VORSCHAU für
+  // jeden, auch ohne Konto. Vorher stand hier 401. Ein Plan-Gate gäbe 404.
   const guest = await call('/api/courses')
-  check('Gast → 401 (nicht 404: es gibt hier kein Plan-Gate)', guest.status === 401, `Status ${guest.status}`)
+  check('Gast → 200 (Vorschau für alle; nicht 404: es gibt hier kein Plan-Gate)', guest.status === 200, `Status ${guest.status}`)
 
   console.log('\n2. Verwaltung über das globale admin-Label')
   const admin = await createUser('admin', ['admin'])
@@ -122,6 +128,7 @@ try {
     body: { title: 'Silo-Lektion', content: 'Inhalt.', status: 'published' },
   })
   const lessonId = lessonRes.json?.$id
+  if (lessonId) cleanup.lessons.push(lessonId)
   check('POST Lektion → 201', lessonRes.status === 201 && !!lessonId, `Status ${lessonRes.status} ${lessonRes.text.slice(0, 160)}`)
 
   const manage = await call('/api/courses/manage', { cookie: adminCookie })
@@ -168,12 +175,14 @@ try {
   console.log('\n5. Zeilen tragen keinen Mandanten')
   const rawCourse = await db.getRow({ databaseId, tableId: 'courses', rowId: courseId })
   check('courses.communityId ist leer (Silo stempelt nicht)', (rawCourse.communityId ?? rawCourse.tenantId ?? '') === '', `communityId='${rawCourse.communityId}'`)
-  check('published trägt read("users")', (rawCourse.$permissions ?? []).includes('read("users")'), JSON.stringify(rawCourse.$permissions))
+  // SEC-029: Kurs-Zeilen tragen KEIN Leserecht, auch veröffentlichte nicht —
+  // die Routen sind die Grenze (courseAccess.ts). Vorher stand hier read("users").
+  check('published trägt KEIN Leserecht (SEC-029)', (rawCourse.$permissions ?? []).length === 0, JSON.stringify(rawCourse.$permissions))
   const rawLesson = await db.getRow({ databaseId, tableId: 'lessons', rowId: lessonId })
   check('lessons.communityId ist leer und die Lektion trägt keine Read-Permission', (rawLesson.communityId ?? rawLesson.tenantId ?? '') === '' && (rawLesson.$permissions ?? []).length === 0, JSON.stringify(rawLesson.$permissions))
   const unpublish = await call(`/api/courses/${courseId}`, { method: 'PATCH', cookie: adminCookie, body: { status: 'draft' } })
   const rawAfter = await db.getRow({ databaseId, tableId: 'courses', rowId: courseId })
-  check('Unpublish entzieht read("users") wieder', unpublish.status === 200 && !(rawAfter.$permissions ?? []).includes('read("users")'), JSON.stringify(rawAfter.$permissions))
+  check('Unpublish → 200, die Zeile bleibt ohne Leserecht', unpublish.status === 200 && (rawAfter.$permissions ?? []).length === 0, JSON.stringify(rawAfter.$permissions))
   const del = await call(`/api/lessons/${lessonId}`, { method: 'DELETE', cookie: adminCookie })
   check('Lektion löschen → 200', del.status === 200, `Status ${del.status}`)
 }
@@ -191,7 +200,13 @@ finally {
     await db.deleteRow({ databaseId, tableId: 'courses', rowId: courseId }).catch(() => {})
   }
   for (const id of cleanup.users) await users.delete({ userId: id }).catch(() => {})
-  console.log(`  ✔ aufgeräumt (${cleanup.courses.length} Kurs(e), ${cleanup.users.length} User)`)
+  // NACHZÄHLEN (Bühnen-Regel 2) statt „✔ aufgeräumt" ohne Zählung: Konten,
+  // die eigenen Zeilen und alles, was an den Wegwerf-Konten hängt, sind weg.
+  const sweep = createEinzelCleanup({ script: 'verify-silo-unchanged' })
+  for (const entry of [...cleanup.courses.map(id => `courses/${id}`), ...cleanup.lessons.map(id => `lessons/${id}`)]) sweep.track('poolRow', entry)
+  for (const id of cleanup.users) sweep.track('account', id)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass} bestanden, ${fail} fehlgeschlagen\n`)
   process.exit(fail === 0 ? 0 : 1)
 }

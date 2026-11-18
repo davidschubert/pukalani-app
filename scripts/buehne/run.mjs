@@ -8,7 +8,16 @@
  *
  * Weitere Optionen: `--control-port N` (Betreiber-App, Standard 3004),
  * `--platform-port N` (Standard: aus dem Stand der Bühne), `--control-host H`,
- * `--env-platform` / `--env-control` (wie bei den übrigen Befehlen).
+ * `--env-platform` / `--env-control` (wie bei den übrigen Befehlen),
+ * `--einzel-port N` und `--env-einzel <datei>` (Standard apps/comments/.env).
+ *
+ * DIE EINZEL-INSTANZ (`apps/comments`, eigenes Projekt, ohne Mandanten) steht
+ * nur, wenn `--einzel-port` gesetzt ist — in der CI nur im nächtlichen Lauf.
+ * Ohne sie meldet der Läufer jedes Skript mit `braucht: ['einzel']` als
+ * „übersprungen" (zählt nicht als rot). Mit ihr bekommt es die Env-Datei der
+ * Einzel-Instanz und `EINZEL_URL` / `EINZEL_PORT`; antwortet ihr
+ * `/api/health` nicht, sind diese Skripte rot — dann fehlt der Server, den der
+ * Aufruf versprochen hat.
  *
  * JE SKRIPT: Arbeitsverzeichnis ist der Paket-Ordner (dort löst
  * `node-appwrite` auf), gestartet wird
@@ -31,7 +40,7 @@
 import { spawn } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { BEWEISE } from './beweise.mjs'
+import { BEWEISE, OPTIONALE_DIENSTE } from './beweise.mjs'
 import { readEnvFile } from '../lib/probe-stage.mjs'
 import { assertTarget } from '../lib/target.mjs'
 
@@ -56,6 +65,18 @@ export function selectProofs(beweise, { lauf, only = [] }) {
   if (lauf === 'buehne') return beweise.filter(entry => entry.lauf === 'buehne')
   if (lauf === 'nacht') return beweise.filter(entry => entry.lauf === 'buehne' || entry.lauf === 'nacht')
   return []
+}
+
+/**
+ * Welche nicht immer laufenden Dienste fehlen einem Eintrag? Leer = er darf
+ * laufen. Rein, für den Selbsttest.
+ *
+ * @param {import('./beweise.mjs').Beweis} entry
+ * @param {string[]} available die optionalen Dienste, die in diesem Lauf stehen
+ * @returns {string[]}
+ */
+export function missingServices(entry, available) {
+  return (entry.braucht ?? []).filter(dienst => OPTIONALE_DIENSTE.includes(dienst) && !available.includes(dienst))
 }
 
 /** Zeitgrenze in Sekunden: dreimal die gemessene Dauer, mindestens 60 s. */
@@ -214,6 +235,28 @@ export async function runCommand({ root, opts, state, stageEnv }) {
   // prüfen (OPS-002): lokal durch, entfernt nur mit Bestätigung.
   assertTarget({ script: 'buehne run', endpoint: platformEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: platformEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID })
   assertTarget({ script: 'buehne run', endpoint: controlEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: controlEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID })
+
+  // Die Einzel-Instanz: nur mit Port. Ohne ihn werden ihre Skripte übersprungen.
+  const einzelPort = opts['einzel-port'] ? Number(opts['einzel-port']) : null
+  /** @type {Record<string, string>} */
+  let einzelEnv = {}
+  if (einzelPort) {
+    const einzelPath = resolve(root, String(opts['env-einzel'] ?? 'apps/comments/.env'))
+    if (!existsSync(einzelPath)) {
+      console.error(`✗ --einzel-port ist gesetzt, aber die Env-Datei fehlt: ${einzelPath.replace(`${root}/`, '')}`)
+      return 1
+    }
+    einzelEnv = readEnvFile(einzelPath)
+    assertTarget({ script: 'buehne run', endpoint: einzelEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: einzelEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID })
+    einzelEnv = {
+      ...einzelEnv,
+      EINZEL_PORT: String(einzelPort),
+      EINZEL_URL: `http://localhost:${einzelPort}`,
+      // Manche Skripte lesen die Datei selbst (statt `--env-file`).
+      EINZEL_ENV_FILE: einzelPath,
+    }
+  }
+  const available = einzelPort ? ['einzel'] : []
   const controlPort = Number(opts['control-port'] ?? 3004)
   const controlHost = stageEnv.CONTROL_HOST
   const shared = sharedEnv({ stageEnv, platformEnv, poolDatabaseId: state.poolDatabaseId, controlPort, controlHost })
@@ -223,17 +266,25 @@ export async function runCommand({ root, opts, state, stageEnv }) {
   const envFiles = {
     platform: { ...platformEnv, NUXT_PLATFORM_CONTROL_KEY: controlWriteKey },
     control: controlEnv,
+    einzel: einzelEnv,
     keine: {},
   }
 
   const inActions = Boolean(process.env.GITHUB_ACTIONS)
   const runByte = 1 + Math.floor(Math.random() * 254)
   const started = Date.now()
-  /** @type {Array<{ skript: string, ok: boolean, result: string, pass: number, fail: number, seconds: number }>} */
+  /** @type {Array<{ skript: string, ok: boolean, skipped?: boolean, result: string, pass: number, fail: number, seconds: number }>} */
   const results = []
 
-  console.log(`Läufer: ${selected.length} Skript(e) · Platform-Port ${stageEnv.PLATFORM_PORT} · Betreiber-App ${shared.CONTROL_URL} · Kontroll-Host ${controlHost}`)
+  console.log(`Läufer: ${selected.length} Skript(e) · Platform-Port ${stageEnv.PLATFORM_PORT} · Betreiber-App ${shared.CONTROL_URL} · Kontroll-Host ${controlHost} · Einzel-Instanz ${einzelPort ? `http://localhost:${einzelPort}` : 'keine'}`)
   for (const [index, entry] of selected.entries()) {
+    const missing = missingServices(entry, available)
+    if (missing.length) {
+      const result = `übersprungen (${missing.map(dienst => dienst === 'einzel' ? 'Einzel-Instanz' : dienst).join(', ')} fehlt)`
+      results.push({ skript: entry.skript, ok: true, skipped: true, result, pass: 0, fail: 0, seconds: 0 })
+      console.log(`↷ ${shortName(entry.skript)}: ${result}`)
+      continue
+    }
     const [group, pkg] = entry.skript.split('/')
     const cwd = join(root, group, pkg)
     const relative = entry.skript.split('/').slice(2).join('/')
@@ -273,23 +324,25 @@ export async function runCommand({ root, opts, state, stageEnv }) {
 
   const total = Math.round((Date.now() - started) / 1000)
   const failed = results.filter(row => !row.ok).length
+  const skipped = results.filter(row => row.skipped).length
+  const skippedNote = skipped ? ` · ${skipped} übersprungen` : ''
   const nameWidth = Math.max(6, ...results.map(row => row.skript.length))
   const resultWidth = Math.max(8, ...results.map(row => row.result.length))
   console.log(`\n${'Skript'.padEnd(nameWidth)}  ${'Ergebnis'.padEnd(resultWidth)}  ✔ / ✗     Dauer`)
   for (const row of results) {
     console.log(`${row.skript.padEnd(nameWidth)}  ${row.result.padEnd(resultWidth)}  ${`${row.pass} / ${row.fail}`.padEnd(8)}  ${String(row.seconds).padStart(4)} s`)
   }
-  console.log(`\n${failed ? '✗' : '✔'} ${results.length - failed} von ${results.length} bestanden · gesamt ${total} s`)
+  console.log(`\n${failed ? '✗' : '✔'} ${results.length - failed - skipped} von ${results.length - skipped} bestanden${skippedNote} · gesamt ${total} s`)
 
   if (process.env.GITHUB_STEP_SUMMARY) {
     const md = [
       `### Beweise auf der Bühne (${only.length ? `--only ${only.join(', ')}` : `--lauf ${lauf}`})`,
       '',
-      `${results.length - failed} von ${results.length} bestanden · gesamt ${total} s`,
+      `${results.length - failed - skipped} von ${results.length - skipped} bestanden${skippedNote} · gesamt ${total} s`,
       '',
       '| Skript | Ergebnis | ✔ / ✗ | Dauer |',
       '| --- | --- | --- | --- |',
-      ...results.map(row => `| \`${row.skript}\` | ${row.ok ? '✔' : '✗'} ${row.result} | ${row.pass} / ${row.fail} | ${row.seconds} s |`),
+      ...results.map(row => `| \`${row.skript}\` | ${row.skipped ? '↷' : row.ok ? '✔' : '✗'} ${row.result} | ${row.pass} / ${row.fail} | ${row.seconds} s |`),
       '',
     ].join('\n')
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${md}\n`)
