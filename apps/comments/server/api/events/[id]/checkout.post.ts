@@ -8,12 +8,28 @@ import type { EventRow } from '../../../../../../packages/events/shared/types/ev
  * Fulfiller (billing-fulfillment-Plugin) stellt danach das Ticket über
  * grantEventTicket aus. hasEventTicket/grantEventTicket kommen per
  * Auto-Import aus dem events-Layer (App darf beide kennen).
+ *
+ * DIESELBEN WACHEN WIE DIE TERMIN-ROUTEN DES LAYERS (NF1 a), in derselben
+ * Reihenfolge wie die Zusage (`packages/events/server/api/events/[id]/rsvp.post.ts`)
+ * und alle VOR dem ersten Datenbank- oder Stripe-Zugriff:
+ *  1. Produkt des Plans (`requirePlanProduct`, P4) — ohne `events` gibt es
+ *     auch keinen Ticket-Kauf (404 wie jede Termin-Route).
+ *  2. Zugehörigkeit (SEC-030): `requireCommunityParticipant`, NICHT
+ *     `requireCommunityMembership`. Ein Ticket zu kaufen ist wie Zusagen oder
+ *     Einschreiben ein ERSTER eigener Schritt in der Community, kein Ändern
+ *     von Eigenem — bei offener Registrierung ist er der Beitritt (A5),
+ *     geschlossen oder entzogen 403 `not_a_member`. Ohne
+ *     `openDuringSuspension`: anders als die Zusage hat der Kauf keinen
+ *     Rücknahme-Zweig, in einer gesperrten Community bleibt er zu.
+ *  3. Wartungs-Sperre (`assertEventsWritable`, utils/eventPolicy.ts) — der
+ *     Kauf endet in einem Schreibvorgang (das Ticket), er friert mit ein.
+ * Die Bremse davor steht in `core/server/middleware/05.rate-limit.ts`
+ * (`events:checkout`, jeder Ruf legt bei Stripe an).
  */
 export default defineEventHandler(async (event) => {
-  const user = event.context.user
-  if (!user) {
-    throw createError({ status: 401, statusText: 'Unauthorized' })
-  }
+  requirePlanProduct(event, 'events')
+  const user = await requireCommunityParticipant(event)
+  await assertEventsWritable(event)
 
   const id = getRouterParam(event, 'id')
   if (!id) {
