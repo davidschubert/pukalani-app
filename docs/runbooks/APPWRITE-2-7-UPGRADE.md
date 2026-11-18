@@ -1,9 +1,9 @@
 # Runbook: Appwrite 2.6.2 → 2.7.1 → 2.7.3 (self-hosted, MariaDB)
 
-> **Stand 2026-11-18:** dev und CI laufen auf **2.7.3**, Production auf
-> **2.7.1**. Der Schritt 2.7.1 → 2.7.3 steht unten im Abschnitt
-> [„2.7.1 → 2.7.3"](#271--273); die Schritte für Production sind dort fertig
-> und warten auf Davids Ja.
+> **Stand 2026-11-18:** dev, CI und Production laufen auf **2.7.3**. Der
+> Schritt 2.7.1 → 2.7.3 steht unten im Abschnitt
+> [„2.7.1 → 2.7.3"](#271--273); Production lief am 2026-11-18 22:24–22:26 UTC
+> nach Davids „Ja, Production jetzt".
 
 Gilt für beide Instanzen: **dev** (`~/Developer/orbstack/appwrite-maria/`,
 OrbStack) und **prod** (`ploi@188.245.61.155:~/appwrite/`, `api.pukalani.app`),
@@ -451,34 +451,43 @@ CI-Datei ist danach wortgleich mit der Dev-Datei. `docker compose config
 nicht. Live-Beweis ist der E2E-Lauf auf dem Pull Request — er fährt auch die
 zwei Fälle, die lokal Seed-Daten brauchen (s. „Durchläufe").
 
-### Prod — fertige Schritte (NICHT gelaufen, wartet auf Davids Ja)
+### Prod — Ablauf (gelaufen 2026-11-18 nach Davids „Ja, Production jetzt")
 
-Skript [`ops/appwrite-upgrade-2.7.3.sh`](../../ops/appwrite-upgrade-2.7.3.sh)
-— eine Kopie des 2.7.1-Skripts aus dem Archiv, ohne Patchdatei, ohne
-Override-Dreh und ohne Secret-Rotation. Es ist am 2026-11-18 einmal komplett
-gegen die Entwicklungs-Instanz gelaufen (`OLD=2.7.3 APPWRITE_DIR=…`, Exit 0,
-Werkzeug-Aufruf bis Beweise 30 s); auf Production noch nie. Nach dem Lauf
-zieht es nach `docs/archiv/skripte/`.
+Skript [`appwrite-upgrade-2.7.3.sh`](../archiv/skripte/appwrite-upgrade-2.7.3.sh)
+(seit dem Lauf im Archiv; während des Upgrades lag es unter `ops/`) — eine
+Kopie des 2.7.1-Skripts, ohne Patchdatei, ohne Override-Dreh und ohne
+Secret-Rotation. Vor dem Lauf einmal komplett gegen die Entwicklungs-Instanz
+geprobt (`OLD=2.7.3 APPWRITE_DIR=…`, Exit 0, Werkzeug-Aufruf bis Beweise 30 s).
 
 **Vorher:**
 
-- [ ] Davids Ja für diesen Lauf.
-- [ ] Nicht zwischen 03:20 und 04:15 UTC (nächtliches Backup; das Skript
-      bricht ab, wenn es läuft) und nicht, während ein Ausliefern läuft, das
-      eine Migration braucht. Ein gewöhnliches Ausliefern stört nicht.
-- [ ] `curl -s https://api.pukalani.app/v1/health/version` zeigt 2.7.1.
-- [ ] Das nächtliche Backup der letzten Nacht ist da (Wächter grün). Das
-      Skript zieht zusätzlich einen eigenen Dump.
+- [x] Davids Ja für diesen Lauf.
+- [x] Nicht zwischen 03:20 und 04:15 UTC (nächtliches Backup; das Skript
+      bricht ab, wenn es läuft) und nicht, während ein Ausliefern läuft.
+      GEWARTET WURDE AUCH AUF EIN GEWÖHNLICHES AUSLIEFERN: dessen Probe liest
+      `ok` aus `/api/health`, und das ist während des Ausfalls falsch — der
+      Lauf endete sonst rot, ohne dass etwas fehlt.
+- [x] `curl -s https://api.pukalani.app/v1/health/version` zeigt 2.7.1.
+- [x] Das nächtliche Backup der letzten Nacht ist da (Wächter grün, kein
+      offener Alarm). Das Skript zieht zusätzlich einen eigenen Dump.
+- [x] Der Ausfall liegt nicht auf einem Halbstunden-Lauf des Wächters
+      (gemessen starten sie um Minute 10 und Minute 35) — sonst öffnet
+      er einen Alarm für einen gewollten Ausfall.
 
-**Der Lauf** (von Davids Terminal, das Protokoll bleibt auf dem Server):
+**Der Lauf** (das Protokoll bleibt auf dem Server):
 
 ```bash
 scp ops/appwrite-upgrade-2.7.3.sh ploi@188.245.61.155:~/appwrite-upgrade-2.7.3.sh
 ```
 
 ```bash
-ssh -t ploi@188.245.61.155 'bash ~/appwrite-upgrade-2.7.3.sh 2>&1 | tee ~/appwrite-upgrade-2.7.3.log'
+ssh ploi@188.245.61.155 'nohup setsid bash ~/appwrite-upgrade-2.7.3.sh > ~/appwrite-upgrade-2.7.3.log 2>&1 < /dev/null &'
 ```
+
+Gestartet wurde ABGEKOPPELT (`nohup setsid`), nicht wie zuerst geplant mit
+`ssh -t … | tee`: reißt die Verbindung, endet ein Skript an der Leitung mitten
+im Ausfall. Den Stand liest ein zweiter Aufruf aus dem Protokoll (`grep -E
+'^== |ABBRUCH|^FERTIG'`).
 
 Das Skript prüft die Vorbedingungen (`.env` auf 2.7.1, kein Patch-Mount,
 Compose grün, `_APP_TRUSTED_PROXIES` gesetzt), zieht die drei Images und den
@@ -491,19 +500,23 @@ Production: 99 s mit echter Migration; diesmal sind die Images vorgezogen und
 
 **Nach dem Lauf** (von außen):
 
-- [ ] `curl -s https://api.pukalani.app/v1/health/version` → `2.7.3`
-- [ ] `node scripts/ops/verify-health.mjs` (alle Hosts `ok:true`, `schema` ok),
+- [x] `curl -s https://api.pukalani.app/v1/health/version` → `2.7.3`
+- [x] `node scripts/ops/verify-health.mjs` (alle Hosts `ok:true`, `schema` ok),
       `node scripts/ops/verify-tls.mjs`, `node scripts/ops/verify-realtime.mjs --handshake`
-- [ ] `pnpm ops:schema-parity` unverändert
+- [x] `pnpm ops:schema-parity` unverändert
 - [ ] Anmelden, abmelden, erneut anmelden auf `account.pukalani.app`; ein
       Kommentar und eine Stimme in einer Community; die Seite drei Minuten
-      offen lassen (kein neuer Socket, kein `/api/auth/me` im Takt)
-- [ ] Ein Profilbild hochladen (die neue Inhaltsprüfung des Buckets)
-- [ ] OTP-Anmeldung mit einem echten Konto (Code-Bestätigung mit Schlüssel)
-- [ ] `ci.env`-Kommentar, `CLAUDE.md`, `README.md`, `docs/CONCEPT.md`,
+      offen lassen (kein neuer Socket, kein `/api/auth/me` im Takt) —
+      **offen**, braucht ein Konto auf Production (OPEN-ITEMS „AW30" c)
+- [ ] Ein Profilbild hochladen (die neue Inhaltsprüfung des Buckets) — **offen**, wie oben
+- [ ] OTP-Anmeldung mit einem echten Konto (Code-Bestätigung mit Schlüssel) — **offen**, wie oben
+- [x] `ci.env`-Kommentar, `CLAUDE.md`, `README.md`, `docs/CONCEPT.md`,
       `docs/content/` (Setup, Übersicht, Hosts und Ports) und
-      `docs/runbooks/DEPLOYMENT.md` auf „2.7.3 überall" stellen; das Skript ins
-      Archiv; Issue 369 schließen; danach die SDKs (Issues 352, 353)
+      `docs/runbooks/DEPLOYMENT.md` auf „2.7.3 überall" gestellt; das Skript im
+      Archiv; Issue 369 geschlossen. Danach die SDKs (Issues 352, 353)
+- [ ] Die Images der Vorgänger auf dem Server aufräumen (2.6.2 und, wenn
+      2.7.3 eine Weile ruhig lief, 2.7.1 — zusammen rund 11 GB; OPEN-ITEMS
+      „AW30" d). Das Image 2.7.1 ist bis dahin der Rückweg ohne neuen Abruf.
 
 **Rückweg:** `.env` + `docker-compose.yml` aus `*.<epoch>.backup` (legt das
 Werkzeug an) oder aus dem Config-Tar zurück, `docker compose up -d
@@ -517,5 +530,5 @@ stört (beide lesen dasselbe Schema).
 | Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
 | --- | --- | --- | --- | --- | --- |
 | dev (OrbStack, 2.7.1 → 2.7.3) | 2026-11-18 18:17–18:20 | 22,4 MB, 970 Tabellen | „Migration completed", 7,0 s (383 „already exists", 0 andere Fehlerzeilen) | Werkzeug 70 s (Image-Pulls für Console und Executor), `migrate` 8 s | Tabellen vorher gegen nachher (`information_schema`): **940 / 940, 0 verschwunden, 0 neu** · `.env`: nur `_APP_VERSION` · Compose: zwei Image-Zeilen · `health/version` 2.7.3 · PHP 8.5.12 · Executor 1.3.5 (`OPR_EXECUTOR_VERSION`), Secret in appwrite und Executor gleich · Console 1.2.181 (302) · 7 Container auf 2.7.3, keiner auf 2.7.1, alle Up · trustedIPs 2 + mqtt 2 · Realtime 101 für `account`, `admin`, `portfolio`, `branding`, im Log viermal `realtime.success true` · 0 Fehlerzeilen in API, Worker, Realtime · Skript-Probe 18:22–18:26 (Exit 0) · Unit: alle Pakete grün (core 4832, comments 320, darin `realtimeAuth` 14/14 und `server-writes-votes` 8/8), `pnpm -r typecheck` Exit 0 · **E2E `apps/comments` gegen den Worktree-Dev-Server: 29 von 31 Fällen grün** (ohne `themes-visual`; darunter Realtime 1/1, Session-Widerruf 3/3, Profilbild-Ablage 3/3 nach der Anpassung des einen Falls). Die zwei roten brauchen den Demo-Seed, den der Production-Spiegel nicht hat (`uma@demo.local` für den Embed-Login, Changelog „v1.7") — sie laufen in der CI. Die neun Bildvergleiche (`themes-visual`) waren lokal rot (rund 2 % abweichende Pixel in allen neun Themes) und sind in der CI ohnehin ausgeschaltet; ein Bezug zu Appwrite ist weder belegt noch ausgeschlossen · **Klick-Beweis mit zwei Browser-Sitzungen** (Wegwerf-Skript, zwei Wegwerf-Konten, danach gelöscht): Anmelden 200, Abmelden über das Menü 200 und `/api/auth/me` 401, erneut anmelden 200, Kommentar 201 erscheint in der zweiten Sitzung live, Stimme 200 zählt in der ersten Sitzung live auf 1, `docker restart appwrite-realtime` → beide Sitzungen öffnen neue Sockets, danach Kommentar und Stimme wieder live ohne Neuladen |
-| prod (`api.pukalani.app`) | — | — | — | — | **offen**, läuft weiter auf 2.7.1 |
+| prod (`api.pukalani.app`, 2.7.1 → 2.7.3) | 2026-11-18 22:24–22:26 | 22,3 MB, 970 Tabellen | „Migration completed", 12,6 s (383 „already exists", 0 andere Fehlerzeilen) | **45 s** vom Werkzeug-Aufruf (22:25:43) bis zu den Beweisen (22:26:28); Images und Dump davor ohne Ausfall (22:24:07–22:25:43) | Tabellen vorher gegen nachher: **940 / 940** · Compose-Diff genau zwei Image-Zeilen (Console 1.2.138 → 1.2.181, Executor 1.3.1 → 1.3.5) · Schlüsselmenge der `.env` unverändert · `health/version` 2.7.3 · PHP 8.5.12 · Executor 1.3.5, Secret in appwrite und Executor gleich · 7 Container auf 2.7.3, keiner auf einer anderen Version, alle Up · trustedIPs 2 + mqtt 2 · Patch-Mounts 0 · Realtime 101 lokal und von außen für `account`, `admin`, `portfolio`, `branding`; im Realtime-Log 60 gelungene Verbindungen in den ersten Minuten · 0 Fehlerzeilen in API, Worker, Realtime (beim Lauf und zehn Minuten danach) · von außen: `verify-health` 10 von 10 Hosts gesund (alle Apps `schema` ok), `verify-tls` grün, `verify-realtime --handshake` 101, `ops:schema-parity` alle vier Projekte spaltengleich · Platte 45 % → 56 % (drei neue Images neben den alten) · abgekoppelt gestartet (`nohup setsid`), vorher auf das Ende eines laufenden Ausliefern gewartet · **nicht geprüft:** Anmelden, Profilbild und OTP mit einem Konto auf Production |
 
