@@ -343,9 +343,12 @@ describe('ops/app-release.sh — die Dateien der Site', () => {
     const script = readFileSync(SCRIPT, 'utf8')
     const allowed = /OPS_FILES="([^"]+)"/.exec(script)?.[1]?.split(/\s+/) ?? []
     const deploy = readFileSync(join(REPO, '.github', 'workflows', 'deploy.yml'), 'utf8')
-    const sent = /OPS_FILES:\s*'([^']+)'/.exec(deploy)?.[1]?.split(/\s+/) ?? []
-    expect(sent.length).toBeGreaterThan(0)
+    const listOf = (name: string) => new RegExp(`${name}:\\s*'([^']+)'`).exec(deploy)?.[1]?.split(/\s+/) ?? []
+    const sent = [...listOf('OPS_FILES'), ...listOf('WATCH_FILES')]
+    expect(listOf('OPS_FILES').length).toBeGreaterThan(0)
+    expect(listOf('WATCH_FILES').length).toBeGreaterThan(0)
     expect(sent.filter(name => !allowed.includes(name)), 'im Workflow, fehlt in OPS_FILES von ops/app-release.sh').toEqual([])
+    expect(allowed.filter(name => !sent.includes(name)), 'auf der Liste des Skripts, wird aber nie geschickt').toEqual([])
     for (const name of allowed) {
       const source = existsSync(join(REPO, 'ops', name)) || existsSync(join(REPO, 'scripts', 'ops', name))
       expect(source, `${name} steht auf der Liste, liegt aber weder unter ops/ noch unter scripts/ops/`).toBe(true)
