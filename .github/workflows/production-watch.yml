@@ -82,8 +82,10 @@
 #           Laufzeit-Schlüssel. Rot bei `behind`, bei anhaltendem `unknown`
 #           und wenn das Feld fehlt. Braucht weder ssh noch Secret.
 #        b) TÄGLICH (`verify-schema-parity.mjs --ci`): liest je Projekt die
-#           Tabellen- und Spaltenliste und vergleicht sie mit dem gepflegten
-#           Soll und mit denselben Proben — und NENNT die fehlende Migration.
+#           Tabellen- und Spaltenliste und vergleicht die Tabellen mit dem
+#           gepflegten Soll, die Spalten mit dem, was die Migrationen der
+#           Layer der App anlegen (fehlend UND zusätzlich, seit 2026-11-18),
+#           und prüft dieselben Proben — und NENNT die fehlende Migration.
 #           Dafür liegt je Projekt EIN Schlüssel in der Umgebung
 #           `production-watch`, der nur `tables.read` und `columns.read` hat
 #           (Davids Entscheidung 2026-11-12). Fehlt ein Schlüssel, ist der
