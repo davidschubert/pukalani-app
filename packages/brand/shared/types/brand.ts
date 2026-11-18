@@ -752,15 +752,11 @@ export interface BrandDocumentChapter {
  * der Deckel die ersten zehn nimmt und die frühen Felder die sind, an denen
  * der Rest hängt.
  *
- * `lastRunAt`/`lastRunRevisionKey` fehlen, solange in DIESEM Prozess kein
- * Prüfblick lief (s. `claimBrandDocumentReview` — der Merker ist bewusst
- * prozess-lokal). Sie sind eine Auskunft, keine Zusage: der Knopf bleibt
- * klickbar, und der Server entscheidet beim Klick.
+ * Den jüngsten Prüf-Lauf trägt seit LL1 d `BrandDocumentResponse.reviewRun`
+ * (die Lauf-Zeile in `brand_runs`); der frühere Merker im Prozess ist weg.
  */
 export interface BrandDocumentReviewState {
   unreviewed: string[]
-  lastRunAt?: string
-  lastRunRevisionKey?: string
 }
 
 export interface BrandDocumentResponse {
@@ -795,6 +791,14 @@ export interface BrandDocumentResponse {
    * Leitplanke an der Wahl der Seite.
    */
   designKeptDrafts: number
+  /**
+   * DER JÜNGSTE PRÜF-LAUF (LL1 d): die Dokument-Prüfung rechnet hinter der
+   * Antwort, die Seite fragt diese Route ab, solange er läuft. `created` ist
+   * die Zahl der nachgeholten Sitzungen, `failure` der Ausgang eines
+   * gescheiterten Laufs (`review_unavailable`, `ai_endpoint_unavailable`, …).
+   * Fail-soft: ohne lesbare Lauf-Zeile `state: 'none'`.
+   */
+  reviewRun: BrandRunView
 }
 
 /**
@@ -879,35 +883,19 @@ export interface BrandDesignResponse {
 }
 
 /**
- * DIE ANTWORT DES PRÜFBLICKS (§10) — er läuft NUR auf Klick (§16), nie von
- * selbst.
+ * DIE ANTWORT AUF DEN START DES PRÜFBLICKS (§10, seit LL1 d) — er läuft NUR
+ * auf Klick (§16), nie von selbst, und rechnet hinter der Antwort.
  *
- * `ran: false` heisst „derselbe Dokument-Stand wurde in diesem Prozess schon
- * geprüft": kein Aufruf, kein Geld, und trotzdem die volle Auskunft (die
- * Befunde kommen aus der Tabelle, `caughtUp` aus dem gemerkten Lauf). Das ist
- * dieselbe Arbeitsteilung wie beim Kapitel-Blick: der Riegel spart den Aufruf,
- * nicht die Antwort.
- *
- * `stillUnreviewed` ist der Rest hinter dem Deckel (`BRAND_DOCUMENT_CATCHUP_MAX`)
- * — er verschwindet nicht, er wartet auf den nächsten Klick.
+ * `started: true` (HTTP 202): ein Lauf ist angenommen, `run` steht auf
+ * `running`. `started: false` (HTTP 200): nichts zu tun — derselbe
+ * Dokument-Stand ist schon geprüft (dann ist `run` der fertige Lauf dazu) oder
+ * es gibt keinen bestätigten Wert. Das Ergebnis (nachgeholte Sitzungen,
+ * Befunde, Rest) liest die Seite aus `GET …/document`.
  */
-export interface BrandDocumentReviewResponse {
-  ran: boolean
-  /** Sessions, deren Urteil dieser Lauf nachgeholt hat. */
-  caughtUp: string[]
-  /** Sessions, die ungeprüft bleiben — Deckel oder fail-soft ausgefallen. */
-  stillUnreviewed: string[]
-  /** ALLE offenen Befunde nach diesem Lauf. */
-  findings: BrandFindingView[]
-  /** Wer den DOKUMENT-Blick geschrieben hat — `null`, wenn keine Stufe durchkam. */
-  reviewedBy: BrandReviewStage | null
-  /**
-   * Der Stand, für den dieser Lauf gilt (Idempotenz-Schlüssel, §10) — und zwar
-   * der NACH der Nachholung: sie schreibt (`reviewed`, Notizen) und bewegt
-   * damit die `revision` der berührten Kapitel. Der nächste Klick rechnet
-   * genau diesen Schlüssel, und nur so hält der Riegel gegen den Doppelklick.
-   */
-  revisionKey: string
+export interface BrandDocumentReviewStartResponse {
+  ok: true
+  started: boolean
+  run: BrandRunView
 }
 
 /** Die Antwort des KAPITEL-Modus (§5a) — nur Befunde, kein Urteil, kein Wegweiser. */

@@ -499,103 +499,13 @@ export function clearBrandChapterReviews(): void {
   CHAPTER_REVIEWS.clear()
 }
 
-/**
- * DER PRÜFBLICK LÄUFT EINMAL JE DOKUMENT-STAND (§10, Paket 7).
- *
- * ── WARUM ÜBERHAUPT EIN RIEGEL, WENN ER DOCH AUF KLICK LÄUFT ─────────────
- * Weil ein Klick nicht der einzige Weg zu einem zweiten Aufruf ist: ein
- * Doppelklick, ein Reload während der Anfrage, ein zweiter Tab. Der Aufruf
- * wiegt 5 im Eimer von 120 — drei versehentliche Wiederholungen sind ein
- * Achtel des Tages für dasselbe Ergebnis.
- *
- * ── DER MERKER LIEGT IM PROZESS, UND ZWAR MANGELS ORT ────────────────────
- * `brand_profiles` hat kein freies JSON-Feld: `storyMeta` gehört der Brand
- * Story (inputHash, generatedAt, editedByUser), alles andere sind getypte
- * Spalten. Eine EIGENE Spalte für einen Cache-Stempel wäre eine Migration,
- * deren einziger Zweck es ist, einen Aufruf zu sparen, den der Mensch selbst
- * auslöst — dieselbe Rechnung, aus der schon der Kapitel-Blick prozess-lokal
- * merkt (s. dort) und die Gesprächs-Idempotenz ebenso.
- *
- * Der Schaden bei mehreren Prozessen oder nach einem Neustart ist EIN weiterer
- * Aufruf mit Gewicht 5; der Preis einer Spalte wäre eine Migration auf jeder
- * Instanz plus ein Feld, das niemand liest.
- *
- * ── EIN EINTRAG JE BRANDING, NICHT JE STAND ──────────────────────────────
- * Anders als beim Kapitel-Blick (`profileId:stepKey:revision`): der
- * Dokument-Stand ändert sich mit JEDER Bestätigung, und alte Stände sind
- * danach wertlos — sie können nicht zurückkommen (`revision` steigt
- * monoton). Ein Eintrag je Branding reicht also, und die Leseroute kann
- * daraus „zuletzt geprüft am" beantworten, ohne einen Schlüssel zu kennen.
+/*
+ * DER PRÜFBLICK (Dokument-Prüfung) HAT SEIT LL1 d (2026-11-18) KEINEN MERKER
+ * MEHR IM PROZESS: er rechnet hinter der Antwort, die Lauf-Sperre in
+ * `brand_runs` hält den zweiten Start auf, und „für diesen Stand schon
+ * geprüft" steht als Stand-Schlüssel an der Lauf-Zeile
+ * (`brandDocumentReviewRun.ts`).
  */
-export interface BrandDocumentReviewRun {
-  revisionKey: string
-  /** ISO-Zeitpunkt — die Leseroute meldet ihn als `lastRunAt`. */
-  at: string
-  /** Die Sessions, deren Urteil dieser Lauf nachgeholt hat. */
-  caughtUp: readonly string[]
-  reviewedBy: BrandReviewStage | null
-}
-
-const DOCUMENT_REVIEW_TTL_MS = 30 * 60_000
-const DOCUMENT_REVIEW_MAX_KEYS = 500
-const DOCUMENT_REVIEWS = new Map<string, { run: BrandDocumentReviewRun, at: number }>()
-
-function pruneDocumentReviews(now: number): void {
-  for (const [key, entry] of DOCUMENT_REVIEWS) {
-    if (now - entry.at >= DOCUMENT_REVIEW_TTL_MS) DOCUMENT_REVIEWS.delete(key)
-  }
-  while (DOCUMENT_REVIEWS.size > DOCUMENT_REVIEW_MAX_KEYS) {
-    const oldest = DOCUMENT_REVIEWS.keys().next()
-    if (oldest.done) break
-    DOCUMENT_REVIEWS.delete(oldest.value)
-  }
-}
-
-/**
- * `granted: true` = dieser Prüfblick darf laufen. `granted: false` = derselbe
- * Stand wurde in diesem Prozess schon geprüft; `previous` trägt dann das
- * Ergebnis von damals, damit die Antwort vollständig bleibt (die BEFUNDE kommen
- * ohnehin aus der Tabelle — der Riegel spart den Aufruf, nicht die Auskunft).
- */
-export function claimBrandDocumentReview(
-  profileId: string,
-  revisionKey: string,
-  now: number = Date.now(),
-): { granted: boolean, previous: BrandDocumentReviewRun | null } {
-  pruneDocumentReviews(now)
-  const entry = DOCUMENT_REVIEWS.get(profileId)
-  if (entry && entry.run.revisionKey === revisionKey) return { granted: false, previous: entry.run }
-  return { granted: true, previous: null }
-}
-
-/** Was dieser Lauf hinterlässt — erst NACH dem Aufruf, mit seinem Ergebnis. */
-export function rememberBrandDocumentReview(
-  profileId: string,
-  run: BrandDocumentReviewRun,
-  now: number = Date.now(),
-): void {
-  pruneDocumentReviews(now)
-  DOCUMENT_REVIEWS.set(profileId, { run, at: now })
-}
-
-/** „Zuletzt geprüft" für die Leseroute — `null`, solange hier nichts lief. */
-export function readBrandDocumentReview(
-  profileId: string,
-  now: number = Date.now(),
-): BrandDocumentReviewRun | null {
-  const entry = DOCUMENT_REVIEWS.get(profileId)
-  if (!entry) return null
-  if (now - entry.at >= DOCUMENT_REVIEW_TTL_MS) {
-    DOCUMENT_REVIEWS.delete(profileId)
-    return null
-  }
-  return entry.run
-}
-
-/** Nur für Beweise/Tests. */
-export function clearBrandDocumentReviews(): void {
-  DOCUMENT_REVIEWS.clear()
-}
 
 /**
  * DER GANZE AUFRUF: Kill-Switch, Ersatz, Stufe 1, ggf. Stufe 2 (s. Kopf).

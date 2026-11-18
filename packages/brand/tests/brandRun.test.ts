@@ -44,7 +44,9 @@ describe('die Arten', () => {
 
   it('der öffentliche Check hängt an keiner Marke — er fehlt in der Liste „geht mit der Marke"', () => {
     expect(BRAND_RUN_PROFILE_SCOPES).not.toContain(BRAND_RUN_SCOPES.check)
-    expect(BRAND_RUN_PROFILE_SCOPES).toHaveLength(3)
+    expect(BRAND_RUN_PROFILE_SCOPES).toHaveLength(4)
+    // Die Dokument-Prüfung hängt an der Marke (LL1 d) — Auskunft und Löschen nehmen sie mit.
+    expect(BRAND_RUN_PROFILE_SCOPES).toContain(BRAND_RUN_SCOPES.documentReview)
   })
 
   it('jeder gemeinsame Ausgang passt in die Spalte `outcome` (32 Zeichen)', () => {
