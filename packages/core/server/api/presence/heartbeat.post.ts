@@ -43,6 +43,18 @@ async function readPresenceSnapshot(event: H3Event, userId: string): Promise<Pre
   }
 }
 
+/** „Gehört das Konto zur Community dieses Hosts?" — still, mit Rückfall aufs Label (s. u.). */
+async function belongsToThisCommunity(event: H3Event, communityId: string, user: { $id: string, labels?: string[] }): Promise<boolean> {
+  try {
+    return await resolveCommunityMembership(event)
+  }
+  catch {
+    return Boolean(communityId)
+      && (user.labels ?? []).includes(communityId)
+      && !communityAccessRecentlyDenied(communityId, user.$id)
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const user = event.context.user
   if (!user) throw createError({ status: 401, statusText: 'Unauthorized' })
@@ -59,6 +71,29 @@ export default defineEventHandler(async (event) => {
   // unbekannte Felder ohnehin) — nur aus dem serverseitig aufgelösten Kontext.
   // Silo/kein Tenant: NICHT setzen — die Leser erwarten dort „ohne tenantId".
   const tenant = useTenant(event)
+
+  /**
+   * ANWESENHEIT NUR FÜR MITGLIEDER (BT1 e, 2026-11-18).
+   *
+   * Ein Konto im Pool ist auf JEDEM Community-Host angemeldet. Diese Route
+   * schreibt mit dem Admin-Client und gibt der Zeile das Lese-Publikum der
+   * Community des Hosts — ohne die Frage „gehört das Konto hierher?" stünde
+   * ein fremdes Konto mit Namen und Bild in der Anwesenheit einer Community,
+   * der es nicht angehört. Dieselbe Frage wie beim Übersetzen
+   * (`resolveCommunityMembership`), aber STILL: der Takt läuft alle 20 s in
+   * jedem offenen Reiter, ein 403 wäre dort nur Lärm. Kein Mitglied ⇒ nichts
+   * lesen, nichts schreiben, `ok`. Außerhalb des Pools (Einzel-Instanz,
+   * Kontroll-Host) ist jedes angemeldete Konto Mitglied.
+   *
+   * KANN DIE FRAGE NICHT BEANTWORTET WERDEN (das Control Plane antwortet
+   * nicht), entscheidet das Label am Konto: wer es trägt und nicht gerade
+   * entfernt wurde, bleibt sichtbar — eine Störung soll nicht die Anwesenheit
+   * aller Mitglieder löschen.
+   */
+  if (tenant?.mode === 'pool' && !(await belongsToThisCommunity(event, tenant.communityId ?? '', user))) {
+    return { ok: true }
+  }
+
   if (tenant?.mode === 'pool') metadata.tenantId = tenant.tenantId
   if (typeof prefs?.avatarUrl === 'string' && prefs.avatarUrl) metadata.avatarUrl = prefs.avatarUrl
   if (body.scope) metadata.scope = body.scope

@@ -6,6 +6,8 @@ paths:
   - "**/nuxt.config.ts"
   - "**/shared/types/**"
   - "eslint.config.mjs"
+  - "eslint.typed.config.mjs"
+  - "scripts/lint-typed.mjs"
   - ".github/workflows/lint.yml"
   - "scripts/check-*.mjs"
 ---
@@ -94,19 +96,30 @@ paths:
   Intervall-Läufe) bekommt `void` davor — das ist die sichtbare Aussage, nicht
   ein `eslint-disable`. Die Typen kommen aus den GENERIERTEN Server-tsconfigs
   der Apps (`apps/<app>/.nuxt/tsconfig.server.json`, nur dort sind Nitros
-  Auto-Importe typisiert); Layer haben keine eigene. Deshalb: (1) ohne
+  Auto-Importe typisiert); Layer haben keine eigene. EIGENER DURCHGANG (SI1 c,
+  seit 2026-11-18): die Regel läuft NICHT im `eslint .` der Pakete, sondern in
+  `pnpm lint:typed` (`scripts/lint-typed.mjs` + `eslint.typed.config.mjs`) —
+  je App-Programm EIN ESLint-Prozess über alle Server-Ordner, die zu ihr
+  gehören, parallel. Vorher baute jedes Paket das Programm seiner App neu
+  (34 Aufbauten für acht Programme). `pnpm -r lint` sieht lose Promises also
+  NICHT mehr; `pnpm lint` (Wurzel) fährt beides, `lint.yml` fährt
+  `pnpm lint:typed` als eigenen Schritt im Job `lint`. Deshalb: (1) ohne
   `.nuxt` erst `pnpm lint:prepare` (`nuxi prepare` je App, kalt ~7 s; in
-  `lint.yml` als Schritt vor `pnpm -r lint`) — fehlt die tsconfig, bricht der
-  Lint mit genau diesem Hinweis ab. (2) Jeder Layer mit `server/` steht in
-  `SERVER_LINT_PROGRAM` (eslint.config.mjs) mit GENAU EINER App, die ihn per
-  `extends` mitbringt — je `eslint .`-Prozess entsteht so ein Programm.
-  App-eigene `server/`-Ordner nehmen die eigene App automatisch. NEUER LAYER
-  MIT `server/` ⇒ dort eintragen; ohne Eintrag (oder mit einer App, deren
-  tsconfig ihn nicht enthält) ist der Lint rot. Preis: `pnpm -r lint` rund
-  2,5× so lang (gemessen 18 s → 45 s real), weil jedes Paket ein ganzes
-  App-Programm aufbaut.
+  `lint.yml` als Schritt vor dem Lint) — fehlt eine tsconfig, bricht
+  `lint:typed` mit genau diesem Hinweis ab. (2) Jeder Layer mit `server/`
+  steht in `SERVER_LINT_PROGRAM` (eslint.typed.config.mjs) mit GENAU EINER
+  App, die ihn per `extends` mitbringt. App-eigene `server/`-Ordner nehmen
+  die eigene App automatisch. NEUER LAYER MIT `server/` ⇒ dort eintragen;
+  ohne Eintrag (oder mit einer App, deren tsconfig ihn nicht enthält) ist
+  `lint:typed` rot. Die Ausnahmen (`ignores`) dort stehen gleich zu denen von
+  `pnpm -r lint` (samt `**/public` aus @nuxt/eslint-config) — sonst sähe der
+  Durchgang andere Dateien. Gemessen 2026-11-18 lokal, abwechselnd unter
+  gleicher (hoher) Last, Median aus vier Runden: vorher `pnpm -r lint` 66 s,
+  nachher `pnpm -r lint` 27 s + `pnpm lint:typed` 11 s = 39 s. Datei-Menge
+  der Regel vorher und nachher gleich (1178 Dateien, je dieselbe tsconfig).
 - DER LINT-LAUF IST MEHR ALS `lint` (2026-09-10 rot erwischt): `lint.yml` fährt
-  SIEBEN Wächter vor den beiden Lint-Schritten — `check:manifests`,
+  SIEBEN Wächter vor den drei Lint-Schritten (`pnpm -r lint`,
+  `pnpm lint:typed`, `pnpm lint:scripts`) — `check:manifests`,
   `check:i18n-keys`, `check:bilanz`, **`check:doc-links`**, `check:single-copy`,
   `check:prompt-quotes` (seit AI2, 2026-11-09: ein gerades `"` in einem
   KI-PROMPT ist eine Vorlage für genau das Zeichen, das die JSON-Antwort des
