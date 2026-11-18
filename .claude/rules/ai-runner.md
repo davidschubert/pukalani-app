@@ -58,6 +58,30 @@ Testbefehle (sie führten aus, was der Agent nach fremdem Text geschrieben
 hat), und der Dienst rahmt den Text als Zitat. Neuer Schreibweg für Tickets ⇒
 `origin` setzen (Wächter `packages/tickets/tests/ticketOrigin.test.ts`).
 
+AUCH DEN AUFTRAGSTEXT BAUT DER SERVER (RU1 b, seit 2026-11-18): bis dahin
+setzte die Seite den Text aus dem Ticket zusammen und schickte ihn mit; der
+Server sagte „geprüft" über einen Text, den er nie gesehen hatte. Jetzt
+liefert DERSELBE Vertrag (`resolveRunSubjectTrust`) neben der Herkunft den
+Text: der Resolver der App liest die Ticket-Zeile einmal und baut ihn mit
+`buildTicketRunPrompt` (`packages/tickets/shared/ticketRunPrompt.ts` — Titel,
+Beschreibung ohne den KI-Triage-Abschnitt, offene Punkte der Checkliste; der
+eine Checklisten-Leser liegt daneben in `shared/ticketChecklist.ts`). Die
+Anlege-Route speichert GENAU DIESEN Text. `promptSource` im Body ist nur noch
+„was die Person gesehen hat": die Oberfläche zeigt den Auftrag als Vorschau
+(dieselbe Funktion) und schickt ihn zum VERGLEICH mit; weicht er vom frisch
+gebauten Text ab, antwortet die Route 409 `prompt_changed` und legt nichts
+an. Wer das Feld weglässt, bekommt den Text des Servers. GEPRÜFT IST NUR EIN
+TEXT, DEN DER SERVER SELBST GEBAUT HAT: liefert ein Resolver keinen Text
+(oder gibt es für den Subjekt-Typ keinen), ist der Text der Anfrage der
+Auftrag — und der Lauf ungeprüft, egal was der Resolver zur Herkunft sagt.
+Wer den Wortlaut des Auftrags ändert, ändert, was ein Agent liest:
+`packages/tickets/tests/ticketRunPrompt.test.ts` hält ihn fest (samt
+Vergleich mit der Fassung von vor dem Umzug). Die Fortsetzung nach einer
+Rückfrage ist unverändert: ihr Text ist die Antwort der Person. Beweise:
+`packages/runner/tests/runRoutes.test.ts` und
+`apps/control/scripts/verify-run-prompt.mjs` (Bühne: echte Route bis zum
+Abholen durch einen Rechner, mit Gegenprobe gefahren).
+
 FRISTEN (BE-025, seit 2026-11-14): Protokolle 30 Tage nach Laufende,
 Ereignisse 90 Tage. Server: stündlicher Lauf in `apps/control`
 (`packages/runner/server/utils/runRetention.ts`, Schalter

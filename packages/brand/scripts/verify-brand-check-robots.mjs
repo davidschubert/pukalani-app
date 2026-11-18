@@ -9,14 +9,15 @@
  * gar nicht erst GEHOLT wurde.
  *
  *  1. ERLAUBT: eine Website mit harmloser `robots.txt` läuft ganz normal durch
- *     — 200, eine Id, und unter der Id steht ein Score mit Band. Ihr Server hat
+ *     — 202, der Lauf endet mit einer Id (seit LL1 b rechnet der Check hinter
+ *     der Antwort), und unter der Id steht ein Score mit Band. Ihr Server hat
  *     `/robots.txt`, `/.well-known/tdmrep.json` UND `/` gesehen: die
  *     Erlaubnis-Frage kostet genau zwei zusätzliche Abrufe, nicht mehr.
- *  2. ROBOTS-VERBOT: eine Website, die `PukalaniBrandCheck` aussperrt, ergibt
- *     409 `site_blocked` — und ihr Server wurde für die SEITE nie angefasst
+ *  2. ROBOTS-VERBOT: eine Website, die `PukalaniBrandCheck` aussperrt: der
+ *     Lauf endet mit dem Grund `site_blocked` — und ihr Server wurde für die SEITE nie angefasst
  *     (`/` fehlt im Protokoll). Es entsteht KEINE Zeile in `brand_checks`.
  *  3. NUTZUNGSVORBEHALT: eine Website mit `<meta name="robots" content="noai">`
- *     ergibt ebenfalls 409 `site_blocked`. Hier MUSS die Seite geholt worden
+ *     endet ebenfalls mit `site_blocked`. Hier MUSS die Seite geholt worden
  *     sein — der Vorbehalt steht in ihr; gespeichert wird trotzdem nichts.
  *  4. DER ABSENDER: alle drei Server haben `PukalaniBrandCheck/1.0` im
  *     `User-Agent` gesehen, nie den des Wizards. Wer eine `robots.txt` gegen
@@ -90,6 +91,37 @@ function check(label, ok, detail = '') {
   else {
     fail++
     console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`)
+  }
+}
+
+// ── Der Check rechnet hinter der Antwort (LL1 b, 2026-11-18) ───────────────
+
+/**
+ * Den öffentlichen Check starten und sein ENDE abwarten.
+ *
+ * Seit LL1 b antwortet `POST /api/brand/check` mit `202` und einem
+ * Kennzeichen; gelesen und geurteilt wird hinter der Antwort. Was früher die
+ * Antwort der Anfrage war, steht jetzt am Lauf: die Id des Ergebnisses
+ * (`run.ref`) oder der kurze Grund (`run.failure`) — dieselben Wörter wie
+ * früher der Fehler-Code. Ein Treffer im Zwischenspeicher antwortet weiter
+ * sofort mit `200` und der Id.
+ *
+ * @returns {Promise<{ status: number, text: string, id: string, state: string, failure: string }>}
+ */
+async function startCheckAndWait(body, { maxMs = 5 * 60_000 } = {}) {
+  const started = await call('/api/brand/check', { method: 'POST', body })
+  const answer = { status: started.status, text: started.text, id: started.json?.id ?? '', state: '', failure: '' }
+  const token = started.json?.token
+  if (started.status !== 202 || !token) return answer
+
+  const deadline = Date.now() + maxMs
+  for (;;) {
+    const polled = await call(`/api/brand/check/runs/${encodeURIComponent(token)}`)
+    const run = polled.json?.run
+    if (polled.status !== 200 || !run) return { ...answer, state: `abfrage_${polled.status}`, text: polled.text }
+    if (run.state !== 'running') return { ...answer, id: run.ref ?? '', state: run.state, failure: run.failure ?? '' }
+    if (Date.now() > deadline) return { ...answer, state: 'running' }
+    await new Promise(resolve => setTimeout(resolve, 1000))
   }
 }
 
@@ -240,17 +272,15 @@ try {
     `${allowed.origin} · ${blocked.origin} · ${reserved.origin}`)
 
   // ── 1 · Erlaubt ─────────────────────────────────────────────────────────
-  console.log('\n1 · Erlaubte Website: 200 mit Score')
+  console.log('\n1 · Erlaubte Website: der Lauf endet mit einem Score')
 
-  const ok = await call('/api/brand/check', {
-    method: 'POST',
-    body: { url: `${allowed.origin}/`, locale: 'de' },
-  })
-  check('POST /api/brand/check ⇒ 200 mit Id', ok.status === 200 && Boolean(ok.json?.id),
-    `${ok.status} ${ok.text.slice(0, 200)}`)
+  const ok = await startCheckAndWait({ url: `${allowed.origin}/`, locale: 'de' })
+  check('POST /api/brand/check ⇒ 202, der Lauf endet `done` mit einer Id',
+    ok.status === 202 && ok.state === 'done' && Boolean(ok.id),
+    `${ok.status} ${ok.state} ${ok.failure} ${ok.text.slice(0, 200)}`)
 
-  const result = ok.json?.id
-    ? await call(`/api/brand/check/${encodeURIComponent(ok.json.id)}`)
+  const result = ok.id
+    ? await call(`/api/brand/check/${encodeURIComponent(ok.id)}`)
     : { status: 0, json: null, text: '' }
   check('unter der Id steht ein Score mit Band',
     result.status === 200
@@ -272,13 +302,10 @@ try {
   // ── 2 · robots.txt sagt nein ────────────────────────────────────────────
   console.log('\n2 · robots.txt sperrt unseren Absender aus')
 
-  const refused = await call('/api/brand/check', {
-    method: 'POST',
-    body: { url: `${blocked.origin}/`, locale: 'de' },
-  })
-  check('⇒ 409 mit `site_blocked` im Envelope',
-    refused.status === 409 && refused.json?.reason === 'site_blocked',
-    `${refused.status} ${refused.text.slice(0, 200)}`)
+  const refused = await startCheckAndWait({ url: `${blocked.origin}/`, locale: 'de' })
+  check('⇒ der Lauf endet gescheitert mit dem Grund `site_blocked`, ohne Id',
+    refused.state === 'failed' && refused.failure === 'site_blocked' && !refused.id,
+    `${refused.status} ${refused.state} ${refused.failure} ${refused.text.slice(0, 200)}`)
   check('GEGENPROBE, das Herzstück: die SEITE wurde nie angefasst',
     !blocked.paths().includes('/'), blocked.paths().join(' '))
   check('gefragt wurde nur die robots.txt',
@@ -290,13 +317,10 @@ try {
   // ── 3 · Nutzungsvorbehalt ───────────────────────────────────────────────
   console.log('\n3 · Die Seite erklärt einen Nutzungsvorbehalt (noai)')
 
-  const reservedAnswer = await call('/api/brand/check', {
-    method: 'POST',
-    body: { url: `${reserved.origin}/`, locale: 'de' },
-  })
-  check('⇒ 409 mit `site_blocked` im Envelope',
-    reservedAnswer.status === 409 && reservedAnswer.json?.reason === 'site_blocked',
-    `${reservedAnswer.status} ${reservedAnswer.text.slice(0, 200)}`)
+  const reservedAnswer = await startCheckAndWait({ url: `${reserved.origin}/`, locale: 'de' })
+  check('⇒ der Lauf endet gescheitert mit dem Grund `site_blocked`, ohne Id',
+    reservedAnswer.state === 'failed' && reservedAnswer.failure === 'site_blocked' && !reservedAnswer.id,
+    `${reservedAnswer.status} ${reservedAnswer.state} ${reservedAnswer.failure} ${reservedAnswer.text.slice(0, 200)}`)
   check('die Seite MUSSTE geholt werden — der Vorbehalt steht in ihr',
     reserved.paths().includes('/'), reserved.paths().join(' '))
   check('gespeichert wurde trotzdem nichts',

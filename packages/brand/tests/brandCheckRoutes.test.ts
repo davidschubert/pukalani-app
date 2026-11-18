@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
-import type { BrandCheckResult, BrandCheckStartResponse } from '../shared/types/brand'
+import type { MemoryStore } from '../../core/tests/support/runLeaseMemoryStore'
+import { memoryStore } from '../../core/tests/support/runLeaseMemoryStore'
+import type {
+  BrandCheckResult,
+  BrandCheckRunStateResponse,
+  BrandCheckStartResponse,
+} from '../shared/types/brand'
 import { BRAND_CHECK_CRITERIA } from '../shared/brandCheck'
+import { BRAND_RUN_SCOPES, parseBrandRunDetail } from '../shared/brandRun'
 
 /**
  * DER BRAND-CHECK, DURCHGESPIELT — gefälschte Ablage, gefälschter Abruf,
@@ -45,6 +52,16 @@ let clientIp: string
 let routerId: string
 /** Der KI-Riegel des Cores (`aiSwitchedOn`, P17 BE-006) — Standard: an. */
 let aiOn: boolean
+/** Die Lauf-Sperre (LL1 b) — die ECHTE Logik des Core, Store im Speicher. */
+let store: MemoryStore
+/** Der Lauf hinter der Antwort — `postHandler` wartet darauf. */
+let detached: Promise<void> = Promise.resolve()
+/** Hält das Urteil auf, solange es gesetzt ist (ein Lauf, der „läuft"). */
+let judgeGate: Promise<void> | null
+/** Der Status der Antwort (`setResponseStatus`); 200, wenn die Route keinen setzt. */
+let status: number
+/** Der Herzschlag des Laufs gilt als verloren. */
+let leaseLost: boolean
 
 const CLIENT_IP = '203.0.113.7'
 
@@ -97,6 +114,12 @@ const tablesDB = {
   getRow: vi.fn(async ({ tableId, rowId }: { tableId: string, rowId: string }) => {
     if (storeBroken) throw new AppwriteException('Table not found', 404)
     if (profileLookupBroken && tableId === 'brand_profiles') throw new AppwriteException('Server error', 500)
+    // Die lesende Route des Laufs holt EINE Lauf-Zeile über ihre Id.
+    if (tableId === 'brand_runs') {
+      const run = store.rows.get(rowId)
+      if (!run) throw new AppwriteException('Row not found', 404)
+      return { ...run }
+    }
     const table = tableId === 'brand_profiles' ? profiles : stored
     const row = table.find(entry => entry.$id === rowId)
     if (!row) throw new AppwriteException('Row not found', 404)
@@ -164,6 +187,7 @@ vi.mock('../server/utils/brandCheckJudge', async (importOriginal) => {
   return {
     ...actual,
     judgeBrandCheck: vi.fn(async () => {
+      if (judgeGate) await judgeGate
       if (judgeBroken) throw new Error('provider down')
       const judgements: Record<string, { score: 0 | 1 | 2, evidence: string, note: string }> = {}
       for (const id of actual.BRAND_CHECK_JUDGED_IDS) {
@@ -187,6 +211,34 @@ vi.stubGlobal('logEvent', (level: string, event: string, data: Record<string, un
   logs.push({ level, event, data })
 })
 vi.stubGlobal('setHeader', () => {})
+vi.stubGlobal('setResponseStatus', (_event: unknown, code: number) => {
+  status = code
+})
+vi.stubGlobal('isAiEndpointUnavailable', (error: unknown) =>
+  (error as { data?: { code?: string } } | null)?.data?.code === 'ai_endpoint_unavailable')
+// Die ECHTE Sperr-Logik — nur der Store ist im Speicher.
+const lease = await import('../../core/server/utils/runLease')
+vi.stubGlobal('appwriteRunLeaseStore', () => store)
+vi.stubGlobal('acquireRunLease', lease.acquireRunLease)
+vi.stubGlobal('dropRunLease', lease.dropRunLease)
+vi.stubGlobal('touchRunLease', lease.touchRunLease)
+vi.stubGlobal('finishRunLease', lease.finishRunLease)
+vi.stubGlobal('keepRunLeaseAlive', (...args: Parameters<typeof lease.keepRunLeaseAlive>) => {
+  const alive = lease.keepRunLeaseAlive(...args)
+  return { stop: alive.stop, lost: () => leaseLost || alive.lost() }
+})
+vi.stubGlobal('runDetached', (label: string, work: () => Promise<void>) => {
+  detached = new Promise<void>((resolve) => {
+    lease.runDetached(label, async () => {
+      try {
+        await work()
+      }
+      finally {
+        resolve()
+      }
+    })
+  })
+})
 // Die ECHTE Besitz-Regel (Nitro-Auto-Import): die Sichtbarkeit eines
 // Dokument-Checks hängt an ihr, eine Attrappe prüfte hier nur sich selbst.
 vi.stubGlobal('assertBrandOwnerAccess', (await import('../server/utils/brandOwnership')).assertBrandOwnerAccess)
@@ -205,8 +257,40 @@ vi.stubGlobal('useRateLimitStore', () => ({
   },
 }))
 
-const postHandler = (await import('../server/api/brand/check.post'))
+const startHandler = (await import('../server/api/brand/check.post'))
   .default as unknown as (event: H3Event) => Promise<BrandCheckStartResponse>
+const runStateHandler = (await import('../server/api/brand/check/runs/[token].get'))
+  .default as unknown as (event: H3Event) => Promise<BrandCheckRunStateResponse>
+
+/**
+ * DER START, BIS ZUM ENDE SEINES LAUFS (LL1 b).
+ *
+ * Seit der Check hinter der Antwort rechnet, antwortet die Route `202` mit
+ * leerer Id — das Ergebnis entsteht danach. Die Tests dieser Datei fragen
+ * aber fast alle nach dem, was der ganze Vorgang hinterlässt (Zeile, Buchung,
+ * Log). Diese Hilfe ruft deshalb die ECHTE Route, wartet auf den Lauf und
+ * trägt die Id des Ergebnisses nach, die am fertigen Lauf steht (`ref`) —
+ * genau das, was die Seite über die Abfrage liest. Was die ANTWORT selbst
+ * trägt (`202`, Kennzeichen), prüfen die Tests am Ende der Datei mit
+ * `startHandler` direkt.
+ */
+async function postHandler(target: H3Event): Promise<BrandCheckStartResponse> {
+  detached = Promise.resolve()
+  const response = await startHandler(target)
+  await detached
+  if (response.id || !response.token) return response
+  return { ...response, id: parseBrandRunDetail(lastRun()?.detail).ref }
+}
+
+/** Die jüngste Lauf-Zeile (Einfüge-Reihenfolge der Map). */
+function lastRun() {
+  return [...store.rows.values()].at(-1)
+}
+
+/** Der Ausgang des jüngsten Laufs — `done` oder der kurze Grund. */
+function lastOutcome(): string {
+  return lastRun()?.outcome ?? ''
+}
 const getHandler = (await import('../server/api/brand/check/[id].get'))
   .default as unknown as (event: H3Event) => Promise<BrandCheckResult>
 const { runBrandCheck } = await import('../server/utils/brandCheckRun')
@@ -234,6 +318,11 @@ beforeEach(() => {
   clientIp = CLIENT_IP
   routerId = ''
   aiOn = true
+  store = memoryStore()
+  detached = Promise.resolve()
+  judgeGate = null
+  status = 200
+  leaseLost = false
   body = { url: 'kailua.coffee', locale: 'de' }
   vi.mocked(judgeBrandCheck).mockClear()
   vi.mocked(fetchBrandSiteForCheck).mockClear()
@@ -340,24 +429,24 @@ describe('POST /api/brand/check · Abwehr', () => {
     expect(logs.map(entry => entry.event)).toContain('brand.check_honeypot')
   })
 
-  it('verbotenes Ziel ⇒ 400 `blocked_target`', async () => {
+  // Seit LL1 b steht, was NACH der Buchung scheitert, als AUSGANG am Lauf —
+  // mit demselben Wort, das früher der Fehler-Code der Anfrage war. Die
+  // Statuszahl dazu trägt weiter die Mechanik (`runBrandCheck`, s. u.).
+  it('verbotenes Ziel ⇒ der Lauf endet mit `blocked_target`', async () => {
     fetchOutcome = 'blocked'
 
-    await expect(postHandler(event)).rejects.toMatchObject({
-      status: 400,
-      data: { code: 'blocked_target' },
-    })
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('blocked_target')
     expect(tablesDB.createRow).not.toHaveBeenCalled()
   })
 
-  it('robots.txt sagt nein ⇒ 409 `site_blocked`, keine Zeile, ein Ereignis mit Grund (BS1 R2b)', async () => {
+  it('robots.txt sagt nein ⇒ `site_blocked`, keine Zeile, ein Ereignis mit Grund (BS1 R2b)', async () => {
     fetchOutcome = 'robots'
 
-    await expect(postHandler(event)).rejects.toMatchObject({
-      // 409 und nicht 403: nicht WIR verweigern, die fremde Website tut es.
-      status: 409,
-      data: { code: 'site_blocked' },
-    })
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('site_blocked')
     expect(tablesDB.createRow).not.toHaveBeenCalled()
     const blocked = logs.find(entry => entry.event === 'brand.check_blocked')
     expect(blocked?.data.reason).toBe('robots')
@@ -365,13 +454,12 @@ describe('POST /api/brand/check · Abwehr', () => {
     expect(blocked?.data.host).toBe('kailua.coffee')
   })
 
-  it('Nutzungsvorbehalt ⇒ 409 `site_blocked` mit dem anderen Grund im Log', async () => {
+  it('Nutzungsvorbehalt ⇒ `site_blocked` mit dem anderen Grund im Log', async () => {
     fetchOutcome = 'tdm'
 
-    await expect(postHandler(event)).rejects.toMatchObject({
-      status: 409,
-      data: { code: 'site_blocked' },
-    })
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('site_blocked')
     expect(tablesDB.createRow).not.toHaveBeenCalled()
     expect(logs.find(entry => entry.event === 'brand.check_blocked')?.data.reason).toBe('tdm')
   })
@@ -385,22 +473,32 @@ describe('POST /api/brand/check · Abwehr', () => {
     expect(logs.map(entry => entry.event)).not.toContain('brand.check_blocked')
   })
 
-  it('unlesbare Seite ⇒ 422 `fetch_failed` (kein 502 — nicht WIR sind ausgefallen)', async () => {
+  it('unlesbare Seite ⇒ der Lauf endet mit `fetch_failed`', async () => {
     fetchOutcome = 'failed'
 
-    await expect(postHandler(event)).rejects.toMatchObject({
-      status: 422,
-      data: { code: 'fetch_failed' },
-    })
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('fetch_failed')
   })
 
-  it('Anbieter kaputt ⇒ 503 `check_unavailable` UND keine Zeile', async () => {
+  it('die Mechanik selbst wirft dafür weiter 400 / 409 / 422 (der Weg des Marktvergleichs)', async () => {
+    const input = { url: 'https://kailua.coffee/', locale: 'de' as const, userId: '' }
+    fetchOutcome = 'blocked'
+    await expect(runBrandCheck(event, input)).rejects.toMatchObject({ status: 400, data: { code: 'blocked_target' } })
+    fetchOutcome = 'robots'
+    // 409 und nicht 403: nicht WIR verweigern, die fremde Website tut es.
+    await expect(runBrandCheck(event, input)).rejects.toMatchObject({ status: 409, data: { code: 'site_blocked' } })
+    fetchOutcome = 'failed'
+    // 422 und kein 502 — nicht WIR sind ausgefallen.
+    await expect(runBrandCheck(event, input)).rejects.toMatchObject({ status: 422, data: { code: 'fetch_failed' } })
+  })
+
+  it('Anbieter kaputt ⇒ der Lauf endet mit `check_unavailable` UND keine Zeile', async () => {
     judgeBroken = true
 
-    await expect(postHandler(event)).rejects.toMatchObject({
-      status: 503,
-      data: { code: 'check_unavailable' },
-    })
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('check_unavailable')
     expect(tablesDB.createRow).not.toHaveBeenCalled()
     expect(stored).toHaveLength(0)
   })
@@ -415,13 +513,12 @@ describe('POST /api/brand/check · Abwehr', () => {
     expect(buckets.size).toBe(0)
   })
 
-  it('kaputte Ablage beim SCHREIBEN ⇒ 503 (ein Ergebnis, das niemand wiederfindet, ist keins)', async () => {
+  it('kaputte Ablage beim SCHREIBEN ⇒ `check_unavailable` (ein Ergebnis, das niemand wiederfindet, ist keins)', async () => {
     createBroken = true
 
-    await expect(postHandler(event)).rejects.toMatchObject({
-      status: 503,
-      data: { code: 'check_unavailable' },
-    })
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('check_unavailable')
   })
 })
 
@@ -1066,5 +1163,305 @@ describe('GET /api/brand/check/<id> · Dokument-Check', () => {
     routerId = 'w2'
     const result = await getHandler(event)
     expect(result).toMatchObject({ id: 'w2', source: 'website' })
+  })
+})
+
+/**
+ * DER CHECK RECHNET HINTER DER ANTWORT (LL1 b, 2026-11-18).
+ *
+ * Bis hierher prüfte die Datei, was der ganze Vorgang hinterlässt. Dieser
+ * Block prüft, was die ANTWORT trägt und wem ein Lauf gehört — ohne Konto:
+ *
+ *  1. Der Start antwortet `202` mit einem Kennzeichen, BEVOR gelesen und
+ *     geurteilt ist; das Ergebnis steht am fertigen Lauf.
+ *  2. Derselbe Besucher, dieselbe Adresse, zweiter Start ⇒ derselbe Lauf,
+ *     dasselbe Kennzeichen, KEINE zweite Buchung, KEIN zweites Urteil.
+ *  3. Ein FREMDER (anderer Anschluss) trifft die Sperre nie: er bekommt
+ *     seinen eigenen Lauf und erfährt vom anderen nichts.
+ *  4. Die Abfrage antwortet nur auf das richtige Kennzeichen — und auf alles
+ *     andere wortgleich mit 404.
+ */
+describe('POST /api/brand/check · der Lauf hinter der Antwort (LL1 b)', () => {
+  /** Hält das Urteil auf; gibt die Funktion zurück, die es freigibt. */
+  function holdJudge(): () => void {
+    let release: () => void = () => {}
+    judgeGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return () => {
+      judgeGate = null
+      release()
+    }
+  }
+
+  async function runState(token: string): Promise<BrandCheckRunStateResponse> {
+    routerId = token
+    return await runStateHandler(event)
+  }
+
+  it('antwortet 202 mit Kennzeichen, solange der Lauf noch rechnet — ohne Id, ohne Zeile', async () => {
+    const release = holdJudge()
+
+    const started = await startHandler(event)
+
+    expect(status).toBe(202)
+    expect(started).toMatchObject({ ok: true, id: '', cached: false })
+    expect(started.token).toMatch(/^r[0-9a-f]{31}\.[\w-]{43}$/)
+    expect(started.run?.state).toBe('running')
+    // Gebucht ist schon, gespeichert noch nichts.
+    expect(buckets.get('rl:brand-check-instance-day')).toBe(1)
+    expect(stored).toHaveLength(0)
+    expect((await runState(started.token ?? '')).run.state).toBe('running')
+
+    release()
+    await detached
+
+    const ended = await runState(started.token ?? '')
+    expect(ended.run).toMatchObject({ state: 'done', failure: '', ref: 'c1' })
+    expect(stored).toHaveLength(1)
+  })
+
+  it('ein Treffer im Zwischenspeicher antwortet weiter sofort mit 200 — ohne Lauf-Zeile', async () => {
+    stored = [{ $id: 'c9', $createdAt: new Date(Date.now() - 60_000).toISOString(), urlKey: 'kailua.coffee', score: 71 }]
+
+    expect(await startHandler(event)).toEqual({ ok: true, id: 'c9', cached: true })
+    expect(status).toBe(200)
+    expect(store.rows.size).toBe(0)
+  })
+
+  it('der Honigtopf nimmt keine Sperre', async () => {
+    body = { ...body, hp: 'ich bin ein Skript' }
+
+    await startHandler(event)
+
+    expect(store.rows.size).toBe(0)
+  })
+
+  it('zweiter Start desselben Besuchers für dieselbe Adresse ⇒ DERSELBE Lauf, keine zweite Buchung', async () => {
+    const release = holdJudge()
+
+    const first = await startHandler(event)
+    const firstRun = detached
+    // Anders geschrieben, dieselbe Adresse — der Schlüssel ist normalisiert.
+    body = { url: 'https://Kailua.Coffee/?utm_source=news', locale: 'de' }
+    const second = await startHandler(event)
+
+    expect(status).toBe(202)
+    expect(second.token).toBe(first.token)
+    expect(second).toMatchObject({ ok: true, id: '', cached: false })
+    expect(second.run?.state).toBe('running')
+    expect(store.rows.size).toBe(1)
+    // EINE Buchung, EIN Urteil — der zweite Klick hat nichts gekostet.
+    expect(buckets.get('rl:brand-check-instance-day')).toBe(1)
+    expect([...buckets.entries()].filter(([key]) => key.includes('brand-check-ip-day'))).toEqual([[expect.any(String), 1]])
+
+    release()
+    await firstRun
+    expect(judgeBrandCheck).toHaveBeenCalledTimes(1)
+    expect(stored).toHaveLength(1)
+  })
+
+  it('fünf gleichzeitige Starts desselben Besuchers ⇒ genau ein Lauf, alle mit demselben Kennzeichen', async () => {
+    const release = holdJudge()
+
+    const answers = await Promise.all(Array.from({ length: 5 }, () => startHandler(event)))
+
+    expect(new Set(answers.map(answer => answer.token)).size).toBe(1)
+    expect(store.rows.size).toBe(1)
+    expect(buckets.get('rl:brand-check-instance-day')).toBe(1)
+
+    release()
+    await detached
+    expect(judgeBrandCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it('ein FREMDER Anschluss mit derselben Adresse trifft die Sperre nicht — eigener Lauf, eigenes Kennzeichen', async () => {
+    const release = holdJudge()
+
+    const mine = await startHandler(event)
+    clientIp = '198.51.100.4'
+    const theirs = await startHandler(event)
+
+    expect(theirs.token).toBeTruthy()
+    expect(theirs.token).not.toBe(mine.token)
+    expect(store.rows.size).toBe(2)
+    const subjects = [...store.rows.values()].map(row => row.subject)
+    expect(new Set(subjects).size).toBe(2)
+
+    release()
+    await detached
+  })
+
+  it('ein Konto und ein Gast am selben Anschluss sind zwei Besucher', async () => {
+    const release = holdJudge()
+
+    const guest = await startHandler(event)
+    ;(event as unknown as { context: Record<string, unknown> }).context = { user: { $id: 'u-7' } }
+    const account = await startHandler(event)
+
+    expect(account.token).not.toBe(guest.token)
+    expect(store.rows.size).toBe(2)
+
+    release()
+    await detached
+  })
+
+  it('an der Zeile steht weder die Adresse noch der Anschluss noch das Kennzeichen', async () => {
+    const started = await postHandler(event)
+
+    const row = lastRun()
+    expect(row?.scope).toBe(BRAND_RUN_SCOPES.check)
+    expect(row?.subject).toMatch(/^[0-9a-f]{64}$/)
+    const raw = JSON.stringify(row)
+    expect(raw).not.toContain('kailua')
+    expect(raw).not.toContain(CLIENT_IP)
+    // Die Unterschrift des Kennzeichens steht nirgends — nur der Zufallswert,
+    // aus dem sie sich ohne den Server-Schlüssel nicht rechnen lässt.
+    expect(raw).not.toContain((started.token ?? '').split('.')[1])
+  })
+
+  it('der Deckel lehnt ab ⇒ 429 UND die Sperre fällt wieder (der nächste Versuch hängt nicht)', async () => {
+    for (let run = 1; run <= 3; run++) {
+      body = { url: `kailua-${run}.coffee`, locale: 'de' }
+      await postHandler(event)
+    }
+    const before = store.rows.size
+
+    body = { url: 'kailua-4.coffee', locale: 'de' }
+    await expect(startHandler(event)).rejects.toMatchObject({ status: 429, data: { code: 'brand_check_ip_limit' } })
+
+    expect(store.rows.size).toBe(before)
+    expect(judgeBrandCheck).toHaveBeenCalledTimes(3)
+  })
+
+  it('ein gescheiterter Lauf ist frei für den nächsten Start (kein Hängen an der alten Zeile)', async () => {
+    fetchOutcome = 'failed'
+    await postHandler(event)
+    expect(lastOutcome()).toBe('fetch_failed')
+
+    fetchOutcome = 'ok'
+    const again = await postHandler(event)
+
+    expect(lastOutcome()).toBe('done')
+    expect(again.id).toBe('c1')
+    expect(store.rows.size).toBe(2)
+  })
+
+  it('der Herzschlag ging verloren ⇒ der Lauf speichert NICHTS mehr', async () => {
+    leaseLost = true
+
+    await postHandler(event)
+
+    expect(lastOutcome()).toBe('lease_lost')
+    expect(stored).toHaveLength(0)
+  })
+
+  it('die zugeordnete Marke verschwindet während des Laufs ⇒ kein Check, der an ihr hinge', async () => {
+    ;(event as unknown as { context: Record<string, unknown> }).context = { user: { $id: 'u1' } }
+    profiles = [{ $id: 'p1', $createdAt: '2026-09-01T00:00:00.000Z', ownerType: 'user', ownerId: 'u1' }]
+    body = { url: 'kailua.coffee', locale: 'de', force: true, profileId: 'p1' }
+    const release = holdJudge()
+
+    await startHandler(event)
+    profiles = []
+    release()
+    await detached
+
+    expect(lastOutcome()).toBe('profile_gone')
+    expect(stored).toHaveLength(0)
+  })
+})
+
+describe('GET /api/brand/check/runs/<kennzeichen> · wer den Stand lesen darf', () => {
+  const NOT_FOUND = { status: 404, data: { code: 'run_not_found' } }
+
+  async function runState(token: string): Promise<BrandCheckRunStateResponse> {
+    routerId = token
+    return await runStateHandler(event)
+  }
+
+  it('das richtige Kennzeichen ⇒ der Stand, und NUR der Stand', async () => {
+    const started = await postHandler(event)
+
+    const answer = await runState(started.token ?? '')
+
+    expect(Object.keys(answer)).toEqual(['run'])
+    expect(Object.keys(answer.run).sort()).toEqual(
+      ['created', 'failure', 'finishedAt', 'model', 'quota', 'ref', 'refunded', 'startedAt', 'state'],
+    )
+    expect(answer.run).toMatchObject({ state: 'done', ref: 'c1' })
+    // Weder der Gegenstand der Sperre noch der Zufallswert gehen hinaus.
+    const raw = JSON.stringify(answer)
+    expect(raw).not.toContain(lastRun()?.subject ?? 'x')
+    expect(raw).not.toContain(parseBrandRunDetail(lastRun()?.detail).key)
+  })
+
+  it('ein gescheiterter Lauf nennt seinen kurzen Grund', async () => {
+    fetchOutcome = 'robots'
+    const started = await postHandler(event)
+
+    expect((await runState(started.token ?? '')).run).toMatchObject({ state: 'failed', failure: 'site_blocked', ref: '' })
+  })
+
+  it('falsch geformt ⇒ 404, OHNE nachzuschlagen', async () => {
+    await postHandler(event)
+    tablesDB.getRow.mockClear()
+
+    for (const token of ['', 'x', 'c1', '../brand_checks/c1', `${'r'.padEnd(32, '0')}`, `${'r'.padEnd(32, '0')}.zu-kurz`]) {
+      await expect(runState(token)).rejects.toMatchObject(NOT_FOUND)
+    }
+    expect(tablesDB.getRow).not.toHaveBeenCalled()
+  })
+
+  it('richtige Zeile, falsche Unterschrift ⇒ dasselbe 404 wie eine unbekannte Zeile', async () => {
+    const started = await postHandler(event)
+    const [rowId, signature] = (started.token ?? '').split('.') as [string, string]
+    const flipped = signature.startsWith('A') ? `B${signature.slice(1)}` : `A${signature.slice(1)}`
+    const unknownRow = `r${'0'.repeat(31)}`
+
+    await expect(runState(`${rowId}.${flipped}`)).rejects.toMatchObject(NOT_FOUND)
+    await expect(runState(`${unknownRow}.${signature}`)).rejects.toMatchObject(NOT_FOUND)
+    // GEGENPROBE: unverändert geht es.
+    await expect(runState(started.token ?? '')).resolves.toMatchObject({ run: { state: 'done' } })
+  })
+
+  it('das Kennzeichen eines FREMDEN Laufs passt nicht auf den eigenen', async () => {
+    const mine = await postHandler(event)
+    clientIp = '198.51.100.4'
+    const theirs = await postHandler(event)
+    const [mineRow] = (mine.token ?? '').split('.') as [string, string]
+    const [, theirSignature] = (theirs.token ?? '').split('.') as [string, string]
+
+    await expect(runState(`${mineRow}.${theirSignature}`)).rejects.toMatchObject(NOT_FOUND)
+  })
+
+  it('eine Lauf-Zeile einer ANDEREN Art (Entwürfe einer Marke) gibt es hier nicht', async () => {
+    const started = await postHandler(event)
+    const row = lastRun()
+    if (!row) throw new Error('kein Lauf')
+    // Dieselbe Zeile, nur als Lauf einer Marke ausgewiesen — das Kennzeichen
+    // stimmt rechnerisch weiter, die Art nicht.
+    row.scope = BRAND_RUN_SCOPES.drafts
+
+    await expect(runState(started.token ?? '')).rejects.toMatchObject(NOT_FOUND)
+  })
+
+  it('ein anderer Server-Schlüssel hätte ein anderes Kennzeichen ausgestellt', async () => {
+    const started = await postHandler(event)
+
+    vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'main' }, appwriteKey: 'ein-anderer-schluessel' }))
+    try {
+      await expect(runState(started.token ?? '')).rejects.toMatchObject(NOT_FOUND)
+    }
+    finally {
+      vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'main' }, appwriteKey: 'test-server-secret' }))
+    }
+  })
+
+  it('die Ablage ist nicht lesbar ⇒ 404, kein 500 (die Seite fragt einfach wieder)', async () => {
+    const started = await postHandler(event)
+    storeBroken = true
+
+    await expect(runState(started.token ?? '')).rejects.toMatchObject(NOT_FOUND)
   })
 })

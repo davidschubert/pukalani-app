@@ -1,5 +1,5 @@
 import { ID } from 'node-appwrite'
-import { createRunSchema } from '../../../../schemas/run'
+import { MAX_PROMPT_CHARS, createRunSchema } from '../../../../schemas/run'
 import { permissionModeAllowed } from '../../../../shared/runGuards'
 import { checkRequestedTestCommands, offeredTestCommands } from '../../../../shared/testCommands'
 import { resolveRunSubjectTrust } from '../../../utils/runSubjectTrust'
@@ -30,9 +30,36 @@ export default defineEventHandler(async (event): Promise<RunRow> => {
    * nie der Body. Ein Subjekt, das es nicht gibt, bekommt keinen Lauf: ohne
    * Subjekt gibt es auch keine Herkunft, die man prüfen könnte.
    */
-  const { found, trusted: promptTrusted } = await resolveRunSubjectTrust(event, body.subjectType, body.subjectId)
-  if (!found) {
+  const subject = await resolveRunSubjectTrust(event, body.subjectType, body.subjectId)
+  if (!subject.found) {
     throw createError({ status: 404, statusText: 'Subject not found', data: { code: 'subject_not_found' } })
+  }
+  const promptTrusted = subject.trusted
+
+  /**
+   * AUCH DEN TEXT BAUT DER SERVER (RU1 b). Liefert der Resolver den Auftrag,
+   * wird GENAU DER gespeichert — der Text aus der Anfrage ist dann nie die
+   * Quelle. Er dient nur noch einem Vergleich: die Oberfläche schickt mit,
+   * was sie der Person als Auftrag gezeigt hat; weicht das vom frisch
+   * gebauten Text ab (die Karte war veraltet), wird nichts angelegt. So läuft
+   * nie ein anderer Auftrag als der, den jemand vor dem Start gesehen hat.
+   * Wer das Feld weglässt, bekommt ohne Vergleich den Text des Servers.
+   *
+   * OHNE RESOLVER (ein Subjekt-Typ, für den niemand den Text baut) bleibt der
+   * Text aus der Anfrage der Auftrag — wie bisher, und wie bisher ungeprüft
+   * (`runSubjectTrust.ts`, Regel 4).
+   */
+  if (subject.promptSource !== null && body.promptSource && body.promptSource !== subject.promptSource) {
+    throw createError({ status: 409, statusText: 'Prompt changed', data: { code: 'prompt_changed' } })
+  }
+  const promptSource = subject.promptSource ?? body.promptSource
+  if (!promptSource) {
+    throw createError({ status: 400, statusText: 'Prompt required', data: { code: 'prompt_required' } })
+  }
+  // Der Text aus der Anfrage ist durch das Schema begrenzt, der des Servers
+  // hier: die Grenze gilt für den Auftrag, nicht für seinen Weg.
+  if (promptSource.length > MAX_PROMPT_CHARS) {
+    throw createError({ status: 400, statusText: 'Prompt too long', data: { code: 'prompt_too_long' } })
   }
 
   /**
@@ -109,7 +136,8 @@ export default defineEventHandler(async (event): Promise<RunRow> => {
       // headless oder interaktiv (§ 7.3) — die Wahl trifft das Formular; der
       // Runner öffnet bei true ein Terminal statt der headless-Pipe.
       interactive: body.interactive,
-      promptSource: body.promptSource,
+      // Der Text des SERVERS, wenn er ihn gebaut hat (RU1 b, oben).
+      promptSource,
       // Der SERVER-Wert von oben, nie ein Feld aus dem Body (SEC-038).
       promptTrusted,
       testCommands: body.testCommands.length ? JSON.stringify(body.testCommands) : '',
