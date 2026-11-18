@@ -130,6 +130,53 @@ Endpunkts überein. Drittens: wer eine fremde Liste an zwei Stellen liest
 schon so, und nur deshalb fiel die zweite Stelle hier sofort mit auf. Reste
 und Vorschläge: OPEN-ITEMS „KM1".
 
+### AW30 (a) — Appwrite 2.7.3 auf dev, CI und Production ✅ 2026-11-18
+
+**Was.** Issue 369: das Sicherheits-Release 2.7.2 und das Wartungs-Release
+2.7.3. Erst Entwicklung und CI (Pull Request 394, gemergt mit Davids Ja),
+dann Production nach Davids „Ja, Production jetzt". Kein Schema, keine neue
+Einstellung: zwei Image-Zeilen im Compose (Console 1.2.181, Executor 1.3.5)
+und eine Zeile in der `.env`.
+
+**Der Lauf auf Production.** 2026-11-18, Skript
+`docs/archiv/skripte/appwrite-upgrade-2.7.3.sh`. Images und Dump ohne Ausfall
+(22:24:07–22:25:43 UTC), dann Werkzeug, eigenes `up`, `migrate`: **45 s** bis
+zu den Beweisen (22:26:28). Dump 22,3 MB mit 970 Tabellen; Tabellen vorher
+gegen nachher 940 / 940; „Migration completed" in 12,6 s (383 „already
+exists", 0 andere Fehlerzeilen); sieben Container auf 2.7.3, alle Up; PHP
+8.5.12; Executor 1.3.5 mit gleichem Secret; Realtime 101 für alle vier
+Projekte; 0 Fehlerzeilen in API, Worker und Realtime. Von außen:
+`verify-health` 10 von 10 Hosts gesund, `verify-tls` grün,
+`verify-realtime --handshake` 101, `ops:schema-parity` alle vier Projekte
+spaltengleich. Alle Messwerte: Runbook
+[APPWRITE-2-7-UPGRADE.md](runbooks/APPWRITE-2-7-UPGRADE.md), Tabelle
+„Durchläufe".
+
+**Was 2.7.2 für eigenen Code ändert** (steht in `.claude/rules/appwrite.md`):
+ein Bucket mit erlaubten Endungen prüft bei Bild und PDF jetzt den Inhalt,
+auch mit dem Admin-Schlüssel (ein E2E-Fall prüfte das Gegenteil und wurde
+angepasst); und die Code-Bestätigung zählt Fehlversuche auch bei Aufrufen mit
+Schlüssel (10 je Konto und Stunde).
+
+**Nicht geprüft und offen** (OPEN-ITEMS „AW30"): Anmelden, Profilbild und
+Anmeldung per Code mit einem Konto auf Production; die SDKs (Issues 352,
+353); alte Images auf dem Server.
+
+**Gelernt:** (1) Vor einem gewollten Ausfall auch auf ein GEWÖHNLICHES
+Ausliefern warten und die Halbstunden-Läufe des Wächters meiden: die Probe
+des Auslieferns und der Wächter lesen beide `ok` aus `/api/health`, und das
+ist während des Ausfalls falsch — der Lauf wäre rot geworden und der Wächter
+hätte einen Alarm geöffnet, ohne dass etwas fehlt. Hier lief gerade ein
+Ausliefern einer Nachbarsitzung; drei Minuten Warten haben beides vermieden.
+(2) Ein Skript, das einen Ausfall öffnet, startet abgekoppelt (`nohup
+setsid`), nicht an der ssh-Leitung: reißt die Verbindung, endet es sonst
+mitten im Ausfall, und Appwrite kann halb gestartet liegen bleiben. (3) Der Handshake gegen Realtime antwortet auch
+für ein unbekanntes Projekt mit 101 — die Wahrheit steht im Log von
+`appwrite-realtime` oder man fragt mit einer echten Projekt-Kennung. (4) Zwei
+Pull Requests, die beide `docs/OPEN-ITEMS.md` in derselben Tabellenzeile
+berühren, kollidieren sicher: eine neue Zeile unter eine bestehende setzen,
+statt die bestehende mitzuändern.
+
 ### N15 — Nacharbeiten „Die letzten kleinen Reste": LN1, CW1 (a), NF1 (a, b, c), BT1 (a, kleiner Teil), SI1 (d), LL1 (c), KI1 (d), AR1 (d), PB1 (c) ✅ 2026-11-18
 
 Die letzte Gruppe der Nacharbeiten. Alles ohne Davids Hilfe: nichts an der
