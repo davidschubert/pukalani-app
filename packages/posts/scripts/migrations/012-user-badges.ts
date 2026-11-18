@@ -39,8 +39,9 @@
  *   pnpm migrate --app <app> --layer posts
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -130,10 +131,18 @@ await columnStep(`Column ${TABLE}.badgeKey`, 'badgeKey', cols, () => tablesDB.cr
 await waitForColumns(TABLE)
 
 // Die Mechanik der Verleihung: blind schreiben, 409 heißt „hat er schon".
-await indexStep(`Unique-Index ${TABLE}.uq_community_user_badge`, {
-  tableId: TABLE, key: 'uq_community_user_badge', type: TablesDBIndexType.Unique,
-  columns: ['communityId', 'userId', 'badgeKey'],
-})
+// NACHFOLGER-WACHE (PB1 c): posts-015 ersetzt diesen Unique durch
+// `uq_community_user_badge_qual` (mit `qualifier`). Steht der, NICHT wieder
+// anlegen — seit posts-015 darf dasselbe Abzeichen mehrfach vergeben werden,
+// ein Unique über drei Spalten würde an solchen Zeilen scheitern und den Lauf
+// abbrechen. Auf einer frischen Instanz steht er noch nicht.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (!(await superseded({ table: 'user_badges', index: 'uq_community_user_badge' }, { table: 'user_badges', index: 'uq_community_user_badge_qual' }, 'posts-015'))) {
+  await indexStep(`Unique-Index ${TABLE}.uq_community_user_badge`, {
+    tableId: TABLE, key: 'uq_community_user_badge', type: TablesDBIndexType.Unique,
+    columns: ['communityId', 'userId', 'badgeKey'],
+  })
+}
 // Die eine Leseabfrage: „welche Abzeichen hat dieser Mensch hier?"
 await indexStep(`Index ${TABLE}.idx_community_user`, {
   tableId: TABLE, key: 'idx_community_user', type: TablesDBIndexType.Key,

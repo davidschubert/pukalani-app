@@ -15,6 +15,7 @@
  */
 import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -57,10 +58,16 @@ async function columnExists(tableId: string, key: string): Promise<boolean> {
 
 console.log(`Migration system-019 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+
 if (await columnExists('app_config', 'entitlements')) {
   console.log('↷ Column app_config.entitlements (existiert bereits)')
 }
-else {
+// NACHFOLGER-WACHE (PB1 c): steht `app_secrets.entitlements` (system-020),
+// ist das Dokument umgezogen und die Altspalte fällt mit system-027. Auf
+// einer frischen Instanz gibt es `app_secrets` hier noch nicht — dort legt
+// diese Datei die Spalte an, und system-020 übernimmt daraus.
+else if (!(await superseded({ table: 'app_config', column: 'entitlements' }, { table: 'app_secrets', column: 'entitlements' }, 'system-020/027'))) {
   try {
     await tablesDB.createVarcharColumn({
       databaseId, tableId: 'app_config', key: 'entitlements', size: 4000, required: false, xdefault: '',

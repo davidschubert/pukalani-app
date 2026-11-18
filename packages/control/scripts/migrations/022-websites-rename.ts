@@ -26,8 +26,9 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -127,12 +128,24 @@ await step(`Column ${NEW}.healthCheckedAt`, () => tablesDB.createDatetimeColumn(
 await step(`Column ${NEW}.notes`, () => tablesDB.createVarcharColumn({
   databaseId: db, tableId: NEW, key: 'notes', size: 1000, required: false, xdefault: '',
 }))
-await step(`Column ${NEW}.features`, () => tablesDB.createVarcharColumn({
-  databaseId: db, tableId: NEW, key: 'features', size: 1000, required: false, xdefault: '[]',
-}))
-await step(`Column ${NEW}.workspaceId`, () => tablesDB.createVarcharColumn({
-  databaseId: db, tableId: NEW, key: 'workspaceId', size: 36, required: false, xdefault: '',
-}))
+// NACHFOLGER-WACHE (PB1 c): `features` löst control-024 durch `products` ab
+// (control-025 löscht sie), `workspaceId` samt `idx_workspace` fällt mit
+// control-033, nachdem die Abrechnung an die Community gezogen ist (control-028,
+// `communities` ab control-029). Steht der jeweilige Nachfolger, NICHT wieder
+// anlegen. Auf einer frischen Instanz steht keiner — dort entsteht die Tabelle
+// hier mit beiden Spalten, und die Kette läuft wie immer einmal durch.
+const { superseded } = createSupersededGuard(tablesDB, db, { Query })
+if (!(await superseded({ table: 'websites', column: 'features' }, { table: 'websites', column: 'products' }, 'control-024/025'))) {
+  await step(`Column ${NEW}.features`, () => tablesDB.createVarcharColumn({
+    databaseId: db, tableId: NEW, key: 'features', size: 1000, required: false, xdefault: '[]',
+  }))
+}
+const workspaceSuperseded = await superseded({ table: 'websites', column: 'workspaceId' }, { table: 'communities' }, 'control-029/033')
+if (!workspaceSuperseded) {
+  await step(`Column ${NEW}.workspaceId`, () => tablesDB.createVarcharColumn({
+    databaseId: db, tableId: NEW, key: 'workspaceId', size: 36, required: false, xdefault: '',
+  }))
+}
 
 await waitForColumns(NEW)
 
@@ -142,9 +155,11 @@ await indexStep(`Index ${NEW}.idx_slug (unique)`, {
 await indexStep(`Index ${NEW}.idx_status`, {
   tableId: NEW, key: 'idx_status', type: TablesDBIndexType.Key, columns: ['status'],
 })
-await indexStep(`Index ${NEW}.idx_workspace`, {
-  tableId: NEW, key: 'idx_workspace', type: TablesDBIndexType.Key, columns: ['workspaceId'],
-})
+if (!workspaceSuperseded) {
+  await indexStep(`Index ${NEW}.idx_workspace`, {
+    tableId: NEW, key: 'idx_workspace', type: TablesDBIndexType.Key, columns: ['workspaceId'],
+  })
+}
 
 // ── 2. Zeilen kopieren — MIT ihrer Row-Id ────────────────────────────────────
 const alt = await tablesDB.listRows<SiteLike>({

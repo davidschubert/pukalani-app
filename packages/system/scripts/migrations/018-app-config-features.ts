@@ -9,6 +9,7 @@
  */
 import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB } from 'node-appwrite'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -51,10 +52,17 @@ async function columnExists(tableId: string, key: string): Promise<boolean> {
 
 console.log(`Migration system-018 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+
 if (await columnExists('app_config', 'features')) {
   console.log('↷ Column app_config.features (existiert bereits)')
 }
-else {
+// NACHFOLGER-WACHE (PB1 c): steht `app_config.products` (system-023), hat
+// diese Instanz den Weg features → products → features gelöscht (system-024)
+// hinter sich. Auf einer frischen Instanz entsteht `products` erst weiter
+// hinten — dort legt diese Datei `features` an, und system-023 füllt
+// `products` daraus.
+else if (!(await superseded({ table: 'app_config', column: 'features' }, { table: 'app_config', column: 'products' }, 'system-023/024'))) {
   try {
     await tablesDB.createVarcharColumn({
       databaseId, tableId: 'app_config', key: 'features', size: 4000, required: false, xdefault: '',

@@ -3959,3 +3959,38 @@ Stripe-Livegang (A2), falls bis dahin niemand benannt ist.
 Uhrzeit eine Erinnerung aus; für dieselbe Uhrzeit bleibt es bei einer. Ein
 geschlossenes Thema zeigt an seinen Kommentaren den Stand vom Schließen.
 **Wieder prüfen:** wenn Rückmeldungen kommen, dass die zweite Erinnerung stört.
+
+## 2026-11-18 — Nacharbeiten N15: sechs kleine Entscheidungen ohne Rückfrage
+
+**Kontext:** Gruppe N15 der Nacharbeiten, die letzten kleinen Reste
+([OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md), „N15"). Davids Regel vom
+2026-11-17: kleine, umkehrbare Fragen entscheidet die Sitzung selbst und
+schreibt sie auf.
+**Entscheidung (Sitzung N15, ohne Rückfrage):**
+1. **Die Bot-Prüfung am Erstgespräch von pukalani.studio ist mit dem Merge
+   scharf.** Die Schlüssel waren dort schon gesetzt; die Regel „öffentliches
+   Formular, das eine Mail auslöst" hat David am 2026-11-15 entschieden.
+   Zurück: ein Revert von Pull Request 381.
+2. **Die Frist für den Start des E2E-Test-Servers bleibt bei 120 Sekunden.**
+   Gemessen: 49 Läufe mit 20 bis 39 Sekunden, 7 mit vollen 120, dazwischen
+   nichts — eine längere Frist hätte keinen gerettet.
+3. **Ein Ticket zu kaufen zählt als Mitmachen**, nicht als Ändern von
+   Eigenem: bei offener Registrierung kann es der Beitritt sein, in einer
+   gesperrten Community bleibt es zu.
+4. **Eine 503 trägt im Fehler-Umschlag den Code `UNAVAILABLE`.** Der
+   Umschlag ist als fester Vertrag beschrieben; der Status bleibt 503, und im
+   Repo las niemand den alten Code.
+5. **Ein fertiger Übersetzungs-Vorschlag für eine Seite wird angeboten und
+   nicht ungefragt ins Formular gesetzt** — nur der Reiter, der den Lauf
+   gestartet hat, übernimmt ihn von selbst (Pull Request 387, Entwurf).
+6. **Alte Migrationen legen nichts wieder an, was eine spätere entfernt** —
+   über alle Layer, nicht nur die vier zuerst gezählten Stellen, und weiter
+   ohne Register (bewusst, wie beim Datenbank-Stand in `/api/health`).
+**Folgen im Alltag:** Wer das Erstgespräch mit blockierter Bot-Prüfung
+aufruft, kann nicht absenden (wie bei den anderen Formularen). Ein voller
+Lauf des Migrations-Runners auf einem Spiegel baut nichts mehr um; eine neue
+Migration, die etwas entfernt, verlangt an der anlegenden Stelle die Wache
+(der Test nennt sie).
+**Wieder prüfen:** das Erstgespräch nach Davids Klick auf der echten Seite
+(OPEN-ITEMS „KR1"); die E2E-Frist beim nächsten Lauf, in dem der Test-Server
+nicht startet (dann steht der Grund im Log).

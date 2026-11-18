@@ -21,8 +21,9 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -70,103 +71,118 @@ async function waitForColumn(tableId: string, key: string) {
 
 console.log(`Migration control-019 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
-// ── 1. site_members.status += 'removed' ─────────────────────────────────────
-// destruktiv-ok: `updateEnumColumn` ist der EINZIGE Weg, einen Wert zu einem
-// Appwrite-Enum hinzuzufügen — es gibt kein additives „addElement". Zerstörerisch
-// wäre der Aufruf nur, wenn er die Elementliste VERKÜRZTE: das Update ERSETZT
-// sie. Genau dagegen ist der Ablauf unten gebaut — erst die bestehenden Elemente
-// LESEN, dann `[...existing, ...missing]` schicken, und wenn nichts fehlt, gar
-// nicht schreiben. Kein Wert wird entfernt, keine Zeile verändert; required und
-// Default werden aus der bestehenden Spalte übernommen, damit das Update sie
-// nicht still umstellt.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
 const REQUIRED_STATUSES = ['active', 'invited', 'suspended', 'removed']
-{
-  const { columns } = await tablesDB.listColumns({ databaseId, tableId: 'site_members' })
-  const column = columns.find(c => (c as { key?: string }).key === 'status') as
-    { elements?: string[], required?: boolean, default?: string } | undefined
-  if (!column) {
-    throw new Error('site_members.status fehlt — Migration control-015 zuerst laufen lassen')
+
+// NACHFOLGER-WACHE (PB1 c): steht `community_members` (control-023), ist die
+// Tabelle umgezogen und `site_members` fällt mit control-026; control-015 legt
+// sie dann nicht mehr an — Enum, Spalte und Index hätten keine Tabelle. Auf
+// einer frischen Instanz entsteht `community_members` erst weiter hinten,
+// control-023 kopiert dann von hier.
+if (!(await superseded({ table: 'site_members' }, { table: 'community_members' }, 'control-023/026'))) {
+  // ── 1. site_members.status += 'removed' ─────────────────────────────────────
+  // destruktiv-ok: `updateEnumColumn` ist der EINZIGE Weg, einen Wert zu einem
+  // Appwrite-Enum hinzuzufügen — es gibt kein additives „addElement". Zerstörerisch
+  // wäre der Aufruf nur, wenn er die Elementliste VERKÜRZTE: das Update ERSETZT
+  // sie. Genau dagegen ist der Ablauf unten gebaut — erst die bestehenden Elemente
+  // LESEN, dann `[...existing, ...missing]` schicken, und wenn nichts fehlt, gar
+  // nicht schreiben. Kein Wert wird entfernt, keine Zeile verändert; required und
+  // Default werden aus der bestehenden Spalte übernommen, damit das Update sie
+  // nicht still umstellt.
+  {
+    const { columns } = await tablesDB.listColumns({ databaseId, tableId: 'site_members' })
+    const column = columns.find(c => (c as { key?: string }).key === 'status') as
+      { elements?: string[], required?: boolean, default?: string } | undefined
+    if (!column) {
+      throw new Error('site_members.status fehlt — Migration control-015 zuerst laufen lassen')
+    }
+    const existing = column.elements ?? []
+    const missing = REQUIRED_STATUSES.filter(value => !existing.includes(value))
+    if (missing.length === 0) {
+      console.log('↷ Enum site_members.status (enthält \'removed\' schon)')
+    }
+    else {
+      const elements = [...existing, ...missing]
+      await tablesDB.updateEnumColumn({
+        databaseId,
+        tableId: 'site_members',
+        key: 'status',
+        elements,
+        required: column.required ?? false,
+        xdefault: column.default ?? 'active',
+      })
+      console.log(`✔ Enum site_members.status erweitert → ${elements.join(', ')}`)
+    }
   }
-  const existing = column.elements ?? []
-  const missing = REQUIRED_STATUSES.filter(value => !existing.includes(value))
-  if (missing.length === 0) {
-    console.log('↷ Enum site_members.status (enthält \'removed\' schon)')
-  }
-  else {
-    const elements = [...existing, ...missing]
-    await tablesDB.updateEnumColumn({
-      databaseId,
-      tableId: 'site_members',
-      key: 'status',
-      elements,
-      required: column.required ?? false,
-      xdefault: column.default ?? 'active',
-    })
-    console.log(`✔ Enum site_members.status erweitert → ${elements.join(', ')}`)
-  }
+
+  await step('Column site_members.removedAt', () => tablesDB.createDatetimeColumn({
+    databaseId, tableId: 'site_members', key: 'removedAt', required: false,
+  }))
+  await waitForColumn('site_members', 'removedAt')
+
+  // Ehemalige Mitglieder einer Site gebündelt finden (die Kennzeichnung im
+  // Kommentar-Strom fragt genau so: „welche dieser Autoren sind hier raus?").
+  await indexStep('Index site_members.idx_site_status', {
+    tableId: 'site_members', key: 'idx_site_status', type: TablesDBIndexType.Key,
+    columns: ['siteId', 'status'],
+  })
 }
 
-await step('Column site_members.removedAt', () => tablesDB.createDatetimeColumn({
-  databaseId, tableId: 'site_members', key: 'removedAt', required: false,
-}))
-await waitForColumn('site_members', 'removedAt')
+// NACHFOLGER-WACHE (PB1 c): steht `community_invites` (control-023), ist die
+// Tabelle umgezogen und `site_invites` fällt mit control-026 — nicht wieder
+// anlegen. Auf einer frischen Instanz entsteht `community_invites` erst
+// weiter hinten, control-023 kopiert dann von hier.
+if (!(await superseded({ table: 'site_invites' }, { table: 'community_invites' }, 'control-023/026'))) {
+  // ── 2. site_invites (offene Einladungen; nur Token-HASH) ────────────────────
+  await step('Table site_invites', () => tablesDB.createTable({
+    databaseId, tableId: 'site_invites', name: 'Site Invites', rowSecurity: false, permissions: [],
+  }))
+  await step('Column site_invites.siteId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_invites', key: 'siteId', size: 36, required: true,
+  }))
+  await step('Column site_invites.email', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_invites', key: 'email', size: 254, required: true,
+  }))
+  await step('Column site_invites.role', () => tablesDB.createEnumColumn({
+    databaseId, tableId: 'site_invites', key: 'role',
+    elements: ['owner', 'admin', 'moderator', 'editor', 'viewer'], required: true,
+  }))
+  await step('Column site_invites.tokenHash', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_invites', key: 'tokenHash', size: 64, required: true,
+  }))
+  await step('Column site_invites.status', () => tablesDB.createEnumColumn({
+    databaseId, tableId: 'site_invites', key: 'status',
+    elements: ['pending', 'accepted', 'revoked'], required: false, xdefault: 'pending',
+  }))
+  await step('Column site_invites.expiresAt', () => tablesDB.createDatetimeColumn({
+    databaseId, tableId: 'site_invites', key: 'expiresAt', required: true,
+  }))
+  await step('Column site_invites.invitedBy', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_invites', key: 'invitedBy', size: 36, required: false, xdefault: '',
+  }))
+  await step('Column site_invites.acceptedBy', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_invites', key: 'acceptedBy', size: 36, required: false, xdefault: '',
+  }))
 
-// Ehemalige Mitglieder einer Site gebündelt finden (die Kennzeichnung im
-// Kommentar-Strom fragt genau so: „welche dieser Autoren sind hier raus?").
-await indexStep('Index site_members.idx_site_status', {
-  tableId: 'site_members', key: 'idx_site_status', type: TablesDBIndexType.Key,
-  columns: ['siteId', 'status'],
-})
+  await waitForColumn('site_invites', 'tokenHash')
+  await waitForColumn('site_invites', 'siteId')
+  await waitForColumn('site_invites', 'status')
 
-// ── 2. site_invites (offene Einladungen; nur Token-HASH) ────────────────────
-await step('Table site_invites', () => tablesDB.createTable({
-  databaseId, tableId: 'site_invites', name: 'Site Invites', rowSecurity: false, permissions: [],
-}))
-await step('Column site_invites.siteId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_invites', key: 'siteId', size: 36, required: true,
-}))
-await step('Column site_invites.email', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_invites', key: 'email', size: 254, required: true,
-}))
-await step('Column site_invites.role', () => tablesDB.createEnumColumn({
-  databaseId, tableId: 'site_invites', key: 'role',
-  elements: ['owner', 'admin', 'moderator', 'editor', 'viewer'], required: true,
-}))
-await step('Column site_invites.tokenHash', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_invites', key: 'tokenHash', size: 64, required: true,
-}))
-await step('Column site_invites.status', () => tablesDB.createEnumColumn({
-  databaseId, tableId: 'site_invites', key: 'status',
-  elements: ['pending', 'accepted', 'revoked'], required: false, xdefault: 'pending',
-}))
-await step('Column site_invites.expiresAt', () => tablesDB.createDatetimeColumn({
-  databaseId, tableId: 'site_invites', key: 'expiresAt', required: true,
-}))
-await step('Column site_invites.invitedBy', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_invites', key: 'invitedBy', size: 36, required: false, xdefault: '',
-}))
-await step('Column site_invites.acceptedBy', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_invites', key: 'acceptedBy', size: 36, required: false, xdefault: '',
-}))
-
-await waitForColumn('site_invites', 'tokenHash')
-await waitForColumn('site_invites', 'siteId')
-await waitForColumn('site_invites', 'status')
-
-// Einlösen sucht über den Hash — und zwar genau EINE Einladung.
-await indexStep('Unique-Index site_invites.uq_token', {
-  tableId: 'site_invites', key: 'uq_token', type: TablesDBIndexType.Unique,
-  columns: ['tokenHash'],
-})
-// „Offene Einladungen dieser Community" (die Liste im Dashboard).
-await indexStep('Index site_invites.idx_site_status', {
-  tableId: 'site_invites', key: 'idx_site_status', type: TablesDBIndexType.Key,
-  columns: ['siteId', 'status'],
-})
-// Zweite Einladung an dieselbe Adresse ERSETZT die erste — dafür muss man sie finden.
-await indexStep('Index site_invites.idx_site_email', {
-  tableId: 'site_invites', key: 'idx_site_email', type: TablesDBIndexType.Key,
-  columns: ['siteId', 'email'],
-})
+  // Einlösen sucht über den Hash — und zwar genau EINE Einladung.
+  await indexStep('Unique-Index site_invites.uq_token', {
+    tableId: 'site_invites', key: 'uq_token', type: TablesDBIndexType.Unique,
+    columns: ['tokenHash'],
+  })
+  // „Offene Einladungen dieser Community" (die Liste im Dashboard).
+  await indexStep('Index site_invites.idx_site_status', {
+    tableId: 'site_invites', key: 'idx_site_status', type: TablesDBIndexType.Key,
+    columns: ['siteId', 'status'],
+  })
+  // Zweite Einladung an dieselbe Adresse ERSETZT die erste — dafür muss man sie finden.
+  await indexStep('Index site_invites.idx_site_email', {
+    tableId: 'site_invites', key: 'idx_site_email', type: TablesDBIndexType.Key,
+    columns: ['siteId', 'email'],
+  })
+}
 
 console.log('✔ Migration control-019 fertig')

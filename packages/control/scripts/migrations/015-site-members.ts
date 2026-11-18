@@ -17,8 +17,9 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -64,54 +65,68 @@ async function waitForColumn(tableId: string, key: string) {
 
 console.log(`Migration control-015 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
-// ── 1. tenants.workspaceId (Billing-Anker; siteId = tenants.$id) ─────────────
-await step('Column tenants.workspaceId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'tenants', key: 'workspaceId', size: 36, required: false, xdefault: '',
-}))
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
 
-// ── 2. site_members (Site-Rollen; Zugriff nur über Server-Routen) ───────────
-await step('Table site_members', () => tablesDB.createTable({
-  databaseId, tableId: 'site_members', name: 'Site Members', rowSecurity: false, permissions: [],
-}))
-await step('Column site_members.siteId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_members', key: 'siteId', size: 36, required: true,
-}))
-await step('Column site_members.runtimeProjectId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_members', key: 'runtimeProjectId', size: 36, required: true,
-}))
-await step('Column site_members.runtimeUserId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_members', key: 'runtimeUserId', size: 36, required: true,
-}))
-await step('Column site_members.role', () => tablesDB.createEnumColumn({
-  databaseId, tableId: 'site_members', key: 'role',
-  elements: ['owner', 'admin', 'moderator', 'editor', 'viewer'], required: true,
-}))
-await step('Column site_members.status', () => tablesDB.createEnumColumn({
-  databaseId, tableId: 'site_members', key: 'status',
-  elements: ['active', 'invited', 'suspended'], required: false, xdefault: 'active',
-}))
-// E-Mail nur fürs Einladen/Anzeigen — NIE Autorisierungsschlüssel.
-await step('Column site_members.email', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'site_members', key: 'email', size: 254, required: false, xdefault: '',
-}))
-await waitForColumn('site_members', 'siteId')
-await waitForColumn('site_members', 'runtimeUserId')
-await waitForColumn('site_members', 'role')
+// NACHFOLGER-WACHE (PB1 c): steht `communities` (control-029), ist `tenants`
+// umgezogen und fällt mit control-030; `workspaceId` fiel dort mit
+// control-031 — nicht wieder anlegen. Auf einer frischen Instanz entsteht
+// `communities` erst weiter hinten, control-029 spiegelt dann von hier.
+if (!(await superseded({ table: 'tenants', column: 'workspaceId' }, { table: 'communities' }, 'control-029/031'))) {
+  // ── 1. tenants.workspaceId (Billing-Anker; siteId = tenants.$id) ─────────────
+  await step('Column tenants.workspaceId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'tenants', key: 'workspaceId', size: 36, required: false, xdefault: '',
+  }))
+}
 
-// Lookup-Index: Autorisierung fragt „welche Rolle hat DIESER Runtime-User auf
-// DIESER Site?" → (siteId, runtimeProjectId, runtimeUserId).
-await indexStep('Index site_members.idx_lookup', {
-  tableId: 'site_members', key: 'idx_lookup', type: TablesDBIndexType.Key,
-  columns: ['siteId', 'runtimeProjectId', 'runtimeUserId'],
-})
-// Ein User hat je Site GENAU EINE Rolle — Unique verhindert Doppel-Rows.
-await indexStep('Unique-Index site_members.uq_member', {
-  tableId: 'site_members', key: 'uq_member', type: TablesDBIndexType.Unique,
-  columns: ['siteId', 'runtimeProjectId', 'runtimeUserId'],
-})
-// „Alle Mitglieder dieser Site" (Team-Liste im Kundenbereich).
-await indexStep('Index site_members.idx_site', {
-  tableId: 'site_members', key: 'idx_site', type: TablesDBIndexType.Key, columns: ['siteId'],
-})
+// NACHFOLGER-WACHE (PB1 c): steht `community_members` (control-023), ist die
+// Tabelle umgezogen und `site_members` fällt mit control-026 — nicht wieder
+// anlegen. Auf einer frischen Instanz entsteht `community_members` erst
+// weiter hinten, control-023 kopiert dann die Zeilen von hier.
+if (!(await superseded({ table: 'site_members' }, { table: 'community_members' }, 'control-023/026'))) {
+  // ── 2. site_members (Site-Rollen; Zugriff nur über Server-Routen) ───────────
+  await step('Table site_members', () => tablesDB.createTable({
+    databaseId, tableId: 'site_members', name: 'Site Members', rowSecurity: false, permissions: [],
+  }))
+  await step('Column site_members.siteId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_members', key: 'siteId', size: 36, required: true,
+  }))
+  await step('Column site_members.runtimeProjectId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_members', key: 'runtimeProjectId', size: 36, required: true,
+  }))
+  await step('Column site_members.runtimeUserId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_members', key: 'runtimeUserId', size: 36, required: true,
+  }))
+  await step('Column site_members.role', () => tablesDB.createEnumColumn({
+    databaseId, tableId: 'site_members', key: 'role',
+    elements: ['owner', 'admin', 'moderator', 'editor', 'viewer'], required: true,
+  }))
+  await step('Column site_members.status', () => tablesDB.createEnumColumn({
+    databaseId, tableId: 'site_members', key: 'status',
+    elements: ['active', 'invited', 'suspended'], required: false, xdefault: 'active',
+  }))
+  // E-Mail nur fürs Einladen/Anzeigen — NIE Autorisierungsschlüssel.
+  await step('Column site_members.email', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'site_members', key: 'email', size: 254, required: false, xdefault: '',
+  }))
+  await waitForColumn('site_members', 'siteId')
+  await waitForColumn('site_members', 'runtimeUserId')
+  await waitForColumn('site_members', 'role')
+
+  // Lookup-Index: Autorisierung fragt „welche Rolle hat DIESER Runtime-User auf
+  // DIESER Site?" → (siteId, runtimeProjectId, runtimeUserId).
+  await indexStep('Index site_members.idx_lookup', {
+    tableId: 'site_members', key: 'idx_lookup', type: TablesDBIndexType.Key,
+    columns: ['siteId', 'runtimeProjectId', 'runtimeUserId'],
+  })
+  // Ein User hat je Site GENAU EINE Rolle — Unique verhindert Doppel-Rows.
+  await indexStep('Unique-Index site_members.uq_member', {
+    tableId: 'site_members', key: 'uq_member', type: TablesDBIndexType.Unique,
+    columns: ['siteId', 'runtimeProjectId', 'runtimeUserId'],
+  })
+  // „Alle Mitglieder dieser Site" (Team-Liste im Kundenbereich).
+  await indexStep('Index site_members.idx_site', {
+    tableId: 'site_members', key: 'idx_site', type: TablesDBIndexType.Key, columns: ['siteId'],
+  })
+}
 
 console.log('✔ Migration control-015 fertig')

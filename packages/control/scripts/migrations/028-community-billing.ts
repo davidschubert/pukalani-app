@@ -21,8 +21,9 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -70,6 +71,17 @@ async function waitForColumns(tableId: string, keys: string[]) {
 }
 
 console.log(`Migration control-028 gegen ${endpoint} / Projekt ${projectId} / DB ${db}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `communities` (control-029), ist `tenants`
+// umgezogen und fällt mit control-030 — nicht wieder anlegen (control-029
+// spiegelte sonst jede neu angelegte Spalte bei jedem vollen Lauf nach
+// `communities`). Auf einer frischen Instanz entsteht `communities` erst
+// weiter hinten, control-029 spiegelt dann Spalten, Zeilen und Indizes von hier.
+const { superseded } = createSupersededGuard(tablesDB, db, { Query })
+if (await superseded({ table: 'tenants' }, { table: 'communities' }, 'control-029/030')) {
+  console.log('↷ Migration control-028: nichts zu tun')
+  process.exit(0)
+}
 
 // Größen wie beim Workspace-Vorbild (control-005/009): Stripe-Ids sind ≤ 64.
 await step('Column tenants.stripeCustomerId', () => tablesDB.createVarcharColumn({
