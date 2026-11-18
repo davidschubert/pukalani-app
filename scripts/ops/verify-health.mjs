@@ -51,8 +51,34 @@
  * dabei nichts — vorgetäuscht wird nur die gelesene Antwort, der Weg danach
  * (Auswertung, roter Lauf, Issue, Mail) ist der echte.
  *
+ * KUNDENDOMAINS AUS DEM CONTROL PLANE (WA1 d, 2026-11-18): mit dem Geheimnis
+ * `PUKALANI_WATCH_HOSTS_SECRET` fragt der Wächter ZUSÄTZLICH zur festen Liste
+ * die live geschalteten Kundendomains, die selbst antworten (`health: true`
+ * in der Antwort der Route; Regeln in `customer-hosts.mjs`). Ohne Geheimnis
+ * oder ohne Antwort der Route bleibt es bei der festen Liste und einer Zeile
+ * dazu — rot wird davon nichts. Eine Kundendomain heißt in der Ausgabe
+ * „Kundendomain 3/5", nie beim Namen (das Protokoll der Läufe ist öffentlich).
+ *
+ *   node scripts/ops/verify-health.mjs --nur-kundendomains   # nur die aus dem Control Plane (Job `kundendomains`)
+ *   node scripts/ops/verify-health.mjs --namen               # von Hand: Kundendomains beim Namen
+ *
+ * `PUKALANI_CUSTOMER_HOSTS_MODE`: `count` (Vorgabe — ein Befund an einer
+ * Kundendomain ist eine Zeile „Nur gezählt") oder `alarm` (Befund = rot).
+ *
  * Exit 0 = alle Hosts gesund · Exit 1 = mindestens ein Host kaputt (CI rot).
  */
+import { appendFileSync } from 'node:fs'
+import {
+  customerLabel,
+  customerMode,
+  customerStatusLine,
+  DRILL_ENV,
+  namesAllowed,
+  numbersText,
+  planCustomerChecks,
+  readCustomerHosts,
+  safeErrorCode,
+} from './customer-hosts.mjs'
 
 /**
  * Produktions-Hosts mit Health-Endpunkt. Pool-Kunden sind durch `demo`
@@ -85,8 +111,9 @@ const TIMEOUT_MS = 20_000
 
 const DRILL = process.env.PUKALANI_HEALTH_DRILL === '1'
 const SCHEMA_DRILL = process.env.PUKALANI_SCHEMA_DRILL === '1'
-const auswahl = process.argv.slice(2)
-const hosts = (auswahl.length ? HOSTS.filter(h => auswahl.includes(h.host)) : HOSTS).slice()
+const ONLY_CUSTOMER = process.argv.includes('--nur-kundendomains')
+const auswahl = process.argv.slice(2).filter(arg => !arg.startsWith('--'))
+const hosts = ONLY_CUSTOMER ? [] : (auswahl.length ? HOSTS.filter(h => auswahl.includes(h.host)) : HOSTS).slice()
 if (DRILL) hosts.push({ host: 'probealarm.invalid', kind: 'app', note: 'PROBEALARM — Host existiert absichtlich nicht' })
 /** Beweis-Haken: eine beliebige URL zusätzlich wie einen App-Health prüfen —
  *  so lässt sich der `ok:false`-Pfad gegen einen lokalen Wegwerf-Server
@@ -96,7 +123,7 @@ if (PROBE_URL) hosts.push({ host: PROBE_URL, kind: 'app', schema: process.env.PU
 /** Der Host, dessen Antwort der Probealarm für den Datenbank-Stand verfälscht. */
 const schemaDrillHost = SCHEMA_DRILL ? hosts.find(h => h.schema)?.host : undefined
 
-if (auswahl.length && !hosts.length) {
+if (auswahl.length && !hosts.length && !ONLY_CUSTOMER) {
   console.error(`Unbekannte(r) Host(s): ${auswahl.join(', ')} — bekannt sind ${HOSTS.map(h => h.host).join(', ')}`)
   process.exit(2)
 }
@@ -125,7 +152,7 @@ function pruefeSchema(schema) {
 }
 
 /** Ein Versuch. Gibt `{ ok: true, info }` oder `{ ok: false, grund }` zurück. */
-async function pruefe({ host, kind, url: fest, schema: mitSchema }) {
+async function pruefe({ host, kind, url: fest, schema: mitSchema, kunde }) {
   const url = fest ?? `https://${host}${pfad(kind)}`
   let antwort
   try {
@@ -136,6 +163,8 @@ async function pruefe({ host, kind, url: fest, schema: mitSchema }) {
     })
   }
   catch (fehler) {
+    // Bei einer Kundendomain nur das Kürzel: der Wortlaut kann den Namen nennen.
+    if (kunde) return { ok: false, grund: `nicht erreichbar (${safeErrorCode(fehler)})` }
     return { ok: false, grund: `nicht erreichbar (${fehler?.cause?.code || fehler?.name || fehler?.message || 'unbekannt'})` }
   }
   if (antwort.status !== 200) return { ok: false, grund: `HTTP ${antwort.status}` }
@@ -151,8 +180,11 @@ async function pruefe({ host, kind, url: fest, schema: mitSchema }) {
   // dann alles außer /api/health mit 503 ab). `code` stammt aus dem
   // Fehler-Envelope, falls die Route selbst geworfen hat.
   if (json?.ok !== true) {
-    const grund = json?.reason || json?.code
-    return { ok: false, grund: `ok:${JSON.stringify(json?.ok)}${grund ? ` (${grund})` : ''}` }
+    const roh = json?.reason || json?.code
+    // Der Grund kommt aus der Antwort — bei einer Kundendomain nur, wenn er wie
+    // eines unserer Grund-Wörter aussieht (`tenant_resolver_missing`).
+    const grund = kunde && !(typeof roh === 'string' && /^[a-z0-9_]{1,60}$/.test(roh)) ? '' : roh
+    return { ok: false, grund: `ok:${kunde ? (json?.ok === false ? 'false' : 'fehlt') : JSON.stringify(json?.ok)}${grund ? ` (${grund})` : ''}` }
   }
   const build = `build ${String(json.build || '—').slice(0, 8)}`
   if (!mitSchema) return { ok: true, info: build }
@@ -166,8 +198,19 @@ async function pruefe({ host, kind, url: fest, schema: mitSchema }) {
   return { ok: true, info: `${build} · ${stand.info}` }
 }
 
+// ── Kundendomains (s. Kopf) ────────────────────────────────────────────────
+const NAMES = namesAllowed()
+const MODE = customerMode()
+// Nur im vollen Lauf oder mit `--nur-kundendomains`, nicht bei einer Auswahl.
+const customer = auswahl.length ? null : await readCustomerHosts()
+const planned = customer?.state === 'read'
+  ? planCustomerChecks({ hosts: customer.hosts, fixedHosts: HOSTS.map(h => h.host), mode: MODE, drill: process.env[DRILL_ENV] === '1' })
+    // Die Geschwister-Form leitet nur um (kein eigener Health) — für sie gilt der TLS-Blick.
+    .filter(entry => entry.health)
+  : []
+
 const failures = []
-console.log(`Erreichbarkeits-Wächter — ${hosts.length} Hosts${DRILL ? ' (PROBEALARM)' : ''}${SCHEMA_DRILL ? ' (PROBEALARM DATENBANK-STAND)' : ''}\n`)
+console.log(ONLY_CUSTOMER && !hosts.length ? 'Erreichbarkeits-Wächter — nur Kundendomains' : `Erreichbarkeits-Wächter — ${hosts.length} Hosts${DRILL ? ' (PROBEALARM)' : ''}${SCHEMA_DRILL ? ' (PROBEALARM DATENBANK-STAND)' : ''}\n`)
 let schemaFailures = 0
 
 for (const eintrag of hosts) {
@@ -184,6 +227,48 @@ for (const eintrag of hosts) {
     continue
   }
   console.log(`✔ ${eintrag.host.padEnd(24)} ${ergebnis.info.padEnd(33)} — ${eintrag.note}`)
+}
+
+if (customer) console.log(`\n${customerStatusLine(customer, planned, MODE)}${customer.state === 'read' ? ' (Erreichbarkeit: nur die Hosts, die selbst antworten.)' : ''}`)
+const counted = []
+const customerRed = []
+for (const entry of planned) {
+  const label = customerLabel(entry, { names: NAMES })
+  // `ziel` trägt den Namen und geht NUR an `pruefe` — nie in eine Ausgabe
+  // (Wächter-Test in packages/core/tests/customerHosts.test.ts).
+  const ziel = { host: entry.host, kind: 'app', schema: true, kunde: true }
+  let ergebnis = entry.drill ? { ok: false, grund: 'ok:false [PROBEALARM — vorgetäuscht]' } : await pruefe(ziel)
+  if (!ergebnis.ok && !entry.drill) {
+    console.log(`… ${label.padEnd(24)} ${ergebnis.grund} — zweiter Versuch in ${RETRY_DELAY_MS / 1000} s`)
+    await new Promise(r => setTimeout(r, RETRY_DELAY_MS))
+    ergebnis = await pruefe(ziel)
+  }
+  if (ergebnis.ok) {
+    console.log(`✔ ${label.padEnd(24)} ${ergebnis.info}`)
+    continue
+  }
+  if (MODE === 'alarm' || entry.drill) {
+    customerRed.push(entry)
+    if (ergebnis.schema) schemaFailures++
+    failures.push(`${label}: ${ergebnis.grund}`)
+    console.log(`✗ ${label.padEnd(24)} ${ergebnis.grund}`)
+  }
+  else {
+    counted.push(entry)
+    console.log(`· ${label.padEnd(24)} Nur gezählt: ${ergebnis.grund}`)
+  }
+}
+if (counted.length) console.log(`\nNur gezählt: ${counted.length} Kundendomain(s) mit Befund an der Erreichbarkeit (Modus count — rot wird davon nichts).`)
+
+// Für den Job `alarm`: je rotem Befund an einer Kundendomain ein Satz fürs
+// Issue (nur die Nummer) und die Nummern für die private Mail mit den Namen.
+if (customerRed.length) {
+  if (process.env.PUKALANI_FINDINGS_FILE) {
+    for (const entry of customerRed) {
+      appendFileSync(process.env.PUKALANI_FINDINGS_FILE, `${customerLabel(entry)}: antwortet nicht gesund. Tun: den Namen aus der Mail „Betroffene Kundendomains" nehmen (oder am eigenen Rechner \`node scripts/ops/verify-health.mjs --nur-kundendomains --namen\`), dann docs/runbooks/PRODUKTIONS-ALARM.md, „Kundendomain rot".\n`)
+    }
+  }
+  if (process.env.PUKALANI_CUSTOMER_NUMBERS_FILE) appendFileSync(process.env.PUKALANI_CUSTOMER_NUMBERS_FILE, `${numbersText(customerRed)}\n`)
 }
 
 if (failures.length) {
@@ -204,4 +289,4 @@ if (failures.length) {
   }
   process.exit(1)
 }
-console.log('\n✔ Alle Hosts antworten gesund.')
+console.log(hosts.length ? '\n✔ Alle Hosts antworten gesund.' : '\n✔ Kein roter Befund an einer Kundendomain.')

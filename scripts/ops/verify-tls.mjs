@@ -18,9 +18,39 @@
  * Es prüft, was der Server WIRKLICH ausliefert (SNI-Handshake gegen die
  * IP) — nicht, was in einer Konfigurationsdatei behauptet wird.
  *
+ * KUNDENDOMAINS AUS DEM CONTROL PLANE (WA1 d, 2026-11-18): mit dem Geheimnis
+ * `PUKALANI_WATCH_HOSTS_SECRET` liest der Wächter ZUSÄTZLICH zur festen Liste
+ * die live geschalteten Kundendomains (`customer-hosts.mjs`, dort stehen die
+ * Regeln). Ohne Geheimnis oder ohne Antwort der Route bleibt es bei der festen
+ * Liste und einer Zeile dazu — rot wird davon nichts. Eine Kundendomain heißt
+ * in der Ausgabe „Kundendomain 3/5", nie beim Namen (das Protokoll der Läufe
+ * ist öffentlich); auch SAN-Einträge und Fehlertexte bleiben bei ihr weg.
+ *
+ *   node scripts/ops/verify-tls.mjs --nur-kundendomains   # nur die aus dem Control Plane (Job `kundendomains`)
+ *   node scripts/ops/verify-tls.mjs --namen               # von Hand: Kundendomains beim Namen
+ *
+ * `PUKALANI_CUSTOMER_HOSTS_MODE`: `count` (Vorgabe — ein Befund an einer
+ * Kundendomain ist eine Zeile „Nur gezählt") oder `alarm` (Befund = rot).
+ *
  * Exit 0 = alles gut · Exit 1 = mindestens ein Host kaputt (CI wird rot).
  */
+import { appendFileSync } from 'node:fs'
 import tls from 'node:tls'
+import { pathToFileURL } from 'node:url'
+import {
+  customerLabel,
+  customerMode,
+  customerStatusLine,
+  DRILL_ENV,
+  namesAllowed,
+  numbersText,
+  planCustomerChecks,
+  readCustomerHosts,
+  safeErrorCode,
+} from './customer-hosts.mjs'
+
+/** Der App-Server: dorthin zeigt jede Kundendomain (Ursprung, an DNS vorbei). */
+const ORIGIN_IP = '49.13.211.173'
 
 /** Öffentliche Hosts der Zone. Neue Kunden-Subdomains sind von der Wildcard
  *  gedeckt und müssen hier NICHT eingetragen werden — nur eigenständige
@@ -30,7 +60,7 @@ import tls from 'node:tls'
  *  DNS vorbei). Ohne `ip` wird der Name normal aufgelöst — das ist der Weg
  *  für Hosts, die proxied über Cloudflare laufen und am Ursprung bewusst
  *  KEIN eigenes Zertifikat haben (Apex, seit 2026-07-27). */
-const HOSTS = [
+export const HOSTS = [
   { host: 'pukalani.app', note: 'Landing (Apex — proxied über Cloudflare; am Ursprung seit D4 ein Cloudflare-Origin-Zertifikat, NICHT browservertraut und deshalb hier nur über die Kante geprüft)' },
   { host: 'www.pukalani.app', ip: '49.13.211.173', note: 'Landing am Ursprung (von der Wildcard gedeckt)' },
   // Seit AH-4b (2026-08-18) hat die Konsole ihr EIGENES Zertifikat nur für
@@ -132,7 +162,7 @@ const MIN_DAYS = 14
 
 /** Deckt ein SAN-Eintrag den Host ab? Wildcards gelten nur für EINE Ebene
  *  und NIE für die Basis-Domain selbst (*.example.com ≠ example.com). */
-function sanCovers(san, host) {
+export function sanCovers(san, host) {
   if (san === host) return true
   if (!san.startsWith('*.')) return false
   const suffix = san.slice(1) // ".example.com"
@@ -153,53 +183,116 @@ function peerCert(host, ip) {
       socket.end()
       resolve({ cert })
     })
-    socket.on('timeout', () => { socket.destroy(); resolve({ error: 'Zeitüberschreitung' }) })
-    socket.on('error', error => resolve({ error: error.message }))
+    socket.on('timeout', () => { socket.destroy(); resolve({ error: 'Zeitüberschreitung', code: 'Zeitüberschreitung' }) })
+    // `code` = nur das Kürzel — der Wortlaut kann bei einer Kundendomain den Namen nennen.
+    socket.on('error', error => resolve({ error: error.message, code: safeErrorCode(error) }))
   })
 }
 
-const failures = []
-console.log(`TLS-Wächter — ${HOSTS.length} Hosts\n`)
-
-for (const { host, ip, note } of HOSTS) {
-  const { cert, error } = await peerCert(host, ip)
+/**
+ * Ein Zertifikat bewerten. Rein: bekommt, was der Handshake lieferte, und
+ * gibt `{ ok, text, short }` zurück — `short` ist die Fassung OHNE Namen
+ * (keine SAN-Einträge, kein Fehlertext) für Kundendomains.
+ */
+export function judgeCert({ cert, error, code }, host, now = Date.now()) {
   if (error || !cert || !cert.subject) {
-    failures.push(`${host}: kein Zertifikat (${error ?? 'leere Antwort'})`)
-    console.log(`✗ ${host.padEnd(24)} ${error ?? 'kein Zertifikat'}`)
-    continue
+    return { ok: false, text: `kein Zertifikat (${error ?? 'leere Antwort'})`, short: `kein Zertifikat (${code ?? 'leere Antwort'})` }
   }
-
   const sans = String(cert.subjectaltname ?? '')
     .split(',').map(s => s.trim().replace(/^DNS:/, '')).filter(Boolean)
-  const days = Math.floor((Date.parse(cert.valid_to) - Date.now()) / 86_400_000)
-  const covered = sans.some(san => sanCovers(san, host))
-
-  if (!covered) {
-    failures.push(`${host}: ausgeliefertes Zertifikat deckt den Host NICHT ab (SAN: ${sans.join(', ') || '—'})`)
-    console.log(`✗ ${host.padEnd(24)} SAN passt nicht → ${sans.join(', ') || '—'}`)
-    continue
+  const days = Math.floor((Date.parse(cert.valid_to) - now) / 86_400_000)
+  if (!sans.some(san => sanCovers(san, host))) {
+    return { ok: false, text: `ausgeliefertes Zertifikat deckt den Host NICHT ab (SAN: ${sans.join(', ') || '—'})`, short: 'das ausgelieferte Zertifikat deckt den Host nicht ab' }
   }
-  if (days < MIN_DAYS) {
-    failures.push(`${host}: läuft in ${days} Tagen ab`)
-    console.log(`✗ ${host.padEnd(24)} läuft in ${days} Tagen ab`)
-    continue
-  }
-  console.log(`✔ ${host.padEnd(24)} ${sans.join(', ')}  (${days} Tage)  — ${note}`)
+  if (days < MIN_DAYS) return { ok: false, text: `läuft in ${days} Tagen ab`, short: `läuft in ${days} Tagen ab` }
+  return { ok: true, text: `${sans.join(', ')}  (${days} Tage)`, short: `gültig (${days} Tage)` }
 }
 
-if (failures.length) {
-  console.error(`\n✗ ${failures.length} Host(s) kaputt:`)
-  for (const f of failures) console.error(`  · ${f}`)
-  console.error('\nWahrscheinlichste Ursache bei einem *.pukalani.app-Host: eine Zertifikats-')
-  console.error('Anforderung in ploi hat die geteilte Lineage /etc/letsencrypt/live/pukalani.app/')
-  console.error('überschrieben. Reparatur: auf der ploi-Site platform.pukalani.app den Eintrag')
-  console.error('löschen und "*.pukalani.app" per DNS-Prüfung neu anfordern.')
-  console.error('Beim Apex dagegen liegt es NICHT am Ursprung — er läuft proxied über')
-  console.error('Cloudflare (Zonen-Modus "Full", gepinnt) und hat dort bewusst kein Zertifikat.')
-  console.error('Bei api.pukalani.app (Appwrite, nicht ploi): Erneuerung über den manuellen Job')
-  console.error('`appwrite-cert` in production-watch.yml (appwrite_renew) oder das Rezept in')
-  console.error('docs/runbooks/PRODUKTIONS-ALARM.md — vorher _console_rules.status prüfen.')
-  console.error('Details: docs/content/2.architektur/6.hosts-und-ports.md')
-  process.exit(1)
+async function main() {
+  const onlyCustomer = process.argv.includes('--nur-kundendomains')
+  const names = namesAllowed()
+  const mode = customerMode()
+  const auswahl = process.argv.slice(2).filter(arg => !arg.startsWith('--'))
+  const fixed = onlyCustomer ? [] : (auswahl.length ? HOSTS.filter(h => auswahl.includes(h.host)) : HOSTS)
+
+  // Kundendomains: nur im vollen Lauf oder mit `--nur-kundendomains`, nicht
+  // bei einer Auswahl einzelner Hosts.
+  const customer = auswahl.length ? null : await readCustomerHosts()
+  const planned = customer?.state === 'read'
+    ? planCustomerChecks({ hosts: customer.hosts, fixedHosts: HOSTS.map(h => h.host), mode, drill: process.env[DRILL_ENV] === '1' })
+    : []
+
+  const failures = []
+  const counted = []
+  const customerRed = []
+  console.log(onlyCustomer ? 'TLS-Wächter — nur Kundendomains' : `TLS-Wächter — ${fixed.length} Hosts\n`)
+
+  for (const { host, ip, note } of fixed) {
+    const verdict = judgeCert(await peerCert(host, ip), host)
+    if (!verdict.ok) {
+      failures.push(`${host}: ${verdict.text}`)
+      console.log(`✗ ${host.padEnd(24)} ${verdict.text}`)
+      continue
+    }
+    console.log(`✔ ${host.padEnd(24)} ${verdict.text}  — ${note}`)
+  }
+
+  if (customer) console.log(`\n${customerStatusLine(customer, planned, mode)}`)
+  for (const entry of planned) {
+    const label = customerLabel(entry, { names })
+    const verdict = entry.drill
+      ? { ok: false, short: 'läuft in 0 Tagen ab [PROBEALARM — vorgetäuscht]' }
+      : judgeCert(await peerCert(entry.host, ORIGIN_IP), entry.host)
+    if (verdict.ok) {
+      console.log(`✔ ${label.padEnd(24)} ${verdict.short}`)
+      continue
+    }
+    if (mode === 'alarm' || entry.drill) {
+      customerRed.push(entry)
+      failures.push(`${label}: ${verdict.short}`)
+      console.log(`✗ ${label.padEnd(24)} ${verdict.short}`)
+    }
+    else {
+      counted.push(entry)
+      console.log(`· ${label.padEnd(24)} Nur gezählt: ${verdict.short}`)
+    }
+  }
+  if (counted.length) console.log(`\nNur gezählt: ${counted.length} Kundendomain(s) mit Befund am Zertifikat (Modus count — rot wird davon nichts).`)
+
+  // Für den Job `alarm`: je rotem Befund an einer Kundendomain ein Satz fürs
+  // Issue (nur die Nummer) und die Nummern für die private Mail mit den Namen.
+  if (customerRed.length) {
+    if (process.env.PUKALANI_FINDINGS_FILE) {
+      for (const entry of customerRed) {
+        appendFileSync(process.env.PUKALANI_FINDINGS_FILE, `${customerLabel(entry)}: Zertifikat nicht in Ordnung. Tun: den Namen aus der Mail „Betroffene Kundendomains" nehmen (oder am eigenen Rechner \`node scripts/ops/verify-tls.mjs --nur-kundendomains --namen\`), dann docs/runbooks/PRODUKTIONS-ALARM.md, „Kundendomain rot".\n`)
+      }
+    }
+    if (process.env.PUKALANI_CUSTOMER_NUMBERS_FILE) appendFileSync(process.env.PUKALANI_CUSTOMER_NUMBERS_FILE, `${numbersText(customerRed)}\n`)
+  }
+
+  if (failures.length) {
+    console.error(`\n✗ ${failures.length} Host(s) kaputt:`)
+    for (const f of failures) console.error(`  · ${f}`)
+    if (failures.length > customerRed.length) {
+      console.error('\nWahrscheinlichste Ursache bei einem *.pukalani.app-Host: eine Zertifikats-')
+      console.error('Anforderung in ploi hat die geteilte Lineage /etc/letsencrypt/live/pukalani.app/')
+      console.error('überschrieben. Reparatur: auf der ploi-Site platform.pukalani.app den Eintrag')
+      console.error('löschen und "*.pukalani.app" per DNS-Prüfung neu anfordern.')
+      console.error('Beim Apex dagegen liegt es NICHT am Ursprung — er läuft proxied über')
+      console.error('Cloudflare (Zonen-Modus "Full", gepinnt) und hat dort bewusst kein Zertifikat.')
+      console.error('Bei api.pukalani.app (Appwrite, nicht ploi): Erneuerung über den manuellen Job')
+      console.error('`appwrite-cert` in production-watch.yml (appwrite_renew) oder das Rezept in')
+      console.error('docs/runbooks/PRODUKTIONS-ALARM.md — vorher _console_rules.status prüfen.')
+      console.error('Details: docs/content/2.architektur/6.hosts-und-ports.md')
+    }
+    if (customerRed.length) {
+      console.error('\nKundendomain: das Zertifikat hängt als ploi-Tenant an der Site platform.pukalani.app')
+      console.error('(Pool) bzw. an der Site der Einzel-Instanz. NICHT blind neu anfordern — erst')
+      console.error('docs/runbooks/PRODUKTIONS-ALARM.md, „Kundendomain rot".')
+    }
+    process.exit(1)
+  }
+  console.log(fixed.length ? '\n✔ Alle Hosts liefern ein passendes, gültiges Zertifikat.' : '\n✔ Kein roter Befund an einer Kundendomain.')
 }
-console.log('\n✔ Alle Hosts liefern ein passendes, gültiges Zertifikat.')
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main()
