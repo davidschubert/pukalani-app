@@ -66,7 +66,7 @@ const REPO = resolve(import.meta.dirname, '../../..')
  * einen Weg umbaut (Lauf-Sperre + 202), stellt ihn auf `detached` und setzt
  * die Zahl herunter. Eine neue Route über der Grenze kommt NICHT hierher.
  */
-const OVER_EXPECTED = 3
+const OVER_EXPECTED = 2
 
 /** Die langsamen Bausteine, die überall gelten (Namen exportierter Funktionen). */
 const SLOW_BLOCKS: readonly string[] = [

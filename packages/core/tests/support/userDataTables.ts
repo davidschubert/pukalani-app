@@ -205,6 +205,11 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   brand_mark_drafts: { export: 'packages/brand/server/utils/brandMarkDrafts.ts', erase: 'packages/brand/server/utils/brandMarkDrafts.ts' },
   // Die Lauf-Sperre der langen Wege (brand-027): nur Zeitpunkte, Ausgang und
   // Zählerstände — die Läufe einer Marke hängen aber an ihr und gehen mit ihr.
+  // Die Läufe des ÖFFENTLICHEN Checks (Art `check`) hängen an keiner Marke und
+  // an keinem Konto: ihr Gegenstand ist ein Schlüssel-Hash aus Adresse und
+  // Besucher, aus dem sich keines von beiden zurückrechnen lässt
+  // (`brand/server/utils/brandCheckRunToken.ts`). Sie stehen deshalb in keiner
+  // Auskunft und werden mit keinem Konto gelöscht.
   brand_runs: { export: 'packages/brand/server/utils/brandRun.ts', erase: 'packages/brand/server/utils/brandRun.ts' },
 
   // ── market (hängt an der Marke; gelöscht über die Kaskade) ──────────────

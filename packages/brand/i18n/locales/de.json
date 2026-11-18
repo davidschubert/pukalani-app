@@ -1493,6 +1493,8 @@
           "rateLimited": "Für heute sind die kostenlosen Checks aufgebraucht. Morgen geht es weiter — oder tragt euch für den vollständigen Report ein.",
           "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
           "paused": "Der Check ist gerade pausiert. Schaut bitte später noch einmal vorbei.",
+          "interrupted": "Die Prüfung wurde unterbrochen. Startet den Check bitte noch einmal.",
+          "slow": "Die Prüfung dauert länger als üblich. Ladet die Seite in ein paar Minuten neu — das Ergebnis erscheint dann hier.",
           "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
         },
         "ranking": "Diesen Check ins öffentliche Ranking aufnehmen",
@@ -1831,6 +1833,8 @@
         "siteBlocked": "Diese Website untersagt die automatische Auswertung — wir respektieren das. Deshalb gibt es hier kein Ergebnis.",
         "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
         "paused": "Der Check ist gerade pausiert. Schaut bitte später noch einmal vorbei.",
+        "websiteInterrupted": "Der Website-Check wurde unterbrochen. Bitte noch einmal starten.",
+        "websiteBackground": "Der Website-Check rechnet noch im Hintergrund. Das Ergebnis erscheint hier nach einem Neuladen der Seite.",
         "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
       }
     },
