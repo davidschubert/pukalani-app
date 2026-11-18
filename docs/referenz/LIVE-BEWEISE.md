@@ -178,7 +178,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-83 Beweis-Skripte im Repo: 6 E2E-Lauf, 32 Bühne (jeder Lauf), 23 Bühne (nachts), 22 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+84 Beweis-Skripte im Repo: 6 E2E-Lauf, 33 Bühne (jeder Lauf), 23 Bühne (nachts), 22 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -264,6 +264,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/posts/scripts/verify-trust-perks.mjs` | WAS EINE VERTRAUENSSTUFE EINBRINGT — der Beweis (F57-Stufen, 2026-08-14). | Bühne (nachts) |
 | `packages/runner/scripts/verify-runner-boundary.mjs` | Beweis: die RUNNER-NAHT des AI-Runners hält — docs/plans/AI-RUNNER.md § 5. | Bühne (jeder Lauf) |
 | `apps/control/scripts/verify-docs-access.mjs` | Beweis für den internen /docs-Bereich (admin.pukalani.app/docs). | Bühne (jeder Lauf) |
+| `apps/control/scripts/verify-run-prompt.mjs` | Beweis: den Auftragstext eines Runner-Laufs baut der Server (RU1 b). | Bühne (jeder Lauf) |
 | `apps/platform/scripts/verify-og-image.mjs` | Beweis für das Vorschaubild je Community (og:image, OPEN-ITEMS B2). | Bühne (jeder Lauf) |
 
 <!-- ERZEUGT:ENDE -->
