@@ -179,6 +179,9 @@ fi
 APPLYING=1
 log "1/6 Entschlüsseln"
 for enc in "$RUN"/*.gpg; do
+  # Die Einstellungen der Apps gehören auf den App-Server, nicht hierher —
+  # nicht entschlüsseln, nicht auspacken (Hinweis am Ende).
+  [ "$(basename "$enc")" != app-env.tar.gz.gpg ] || continue
   plain="$WORK/$(basename "${enc%.gpg}")"
   [ -e "$plain" ] || decrypt "$enc" "$plain" || die "Entschlüsseln von $(basename "$enc") ist gescheitert"
 done
@@ -310,3 +313,6 @@ echo "  1. Antwortet die Instanz?  curl -s http://localhost/v1/health/version"
 echo "  2. Adresse der API auf den neuen Server zeigen lassen, dann von außen prüfen."
 echo "  3. Ein Konto anmelden, eine hochgeladene Datei öffnen."
 echo "  4. Das nächtliche Backup auf dem neuen Server wieder einrichten."
+if [ -e "$RUN/app-env.tar.gz.gpg" ]; then
+  echo "Im Lauf liegen auch die .env-Dateien der Apps (app-env.tar.gz.gpg, NICHT ausgepackt — sie gehören auf den App-Server): von Hand mit demselben Schlüssel, gpg --import <schlüssel>; gpg --decrypt $RUN/app-env.tar.gz.gpg | tar xzf - -C <ordner> (Runbook, Abschnitt „Die Einstellungen der Apps zurückholen“)."
+fi

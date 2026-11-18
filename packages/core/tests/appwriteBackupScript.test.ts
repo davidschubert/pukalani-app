@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { decrypt, HAS_GPG, makeKey, stopAgent, type ThrowawayKey } from './support/throwawayGpg'
 
 /**
  * OPS-001 (2026-11-15): das nächtliche Backup der Appwrite-Instanz
@@ -155,14 +156,24 @@ beforeEach(() => {
     'esac',
   ].join('\n'))
   stub('gpg', [
-    'out=""; show=0; prev=""',
+    'out=""; show=0; listonly=0; prev=""',
     'for a in "$@"; do',
     '  [ "$prev" = "--output" ] && out="$a"',
     '  [ "$a" = "--show-keys" ] && show=1',
+    '  [ "$a" = "--list-only" ] && listonly=1',
     '  prev="$a"',
     'done',
     'last="${@: -1}"',
-    'if [ "$show" = 1 ]; then echo "fpr:::::::::$(tr -d "\\n" < "$last"):"; exit 0; fi',
+    // Fingerabdruck = Inhalt der Schlüssel-Datei; der Unterschlüssel zum
+    // Verschlüsseln trägt dessen letzte 16 Zeichen als Kennung.
+    'if [ "$show" = 1 ]; then fpr="$(tr -d "\\n" < "$last")"; echo "pub:u:255:22:${fpr: -16}:0::::::scESC:"; echo "fpr:::::::::$fpr:"; echo "sub:u:255:18:${fpr: -16}:0::::::e:"; exit 0; fi',
+    // Empfänger nennen wie `--status-fd 1 --list-only --decrypt`: ein
+    // Stellvertreter-Bündel beginnt mit „BUENDEL-FUER <kennung>".
+    'if [ "$listonly" = 1 ]; then',
+    '  first="$(head -c 200 "$last" | head -n 1)"',
+    '  case "$first" in "BUENDEL-FUER "*) echo "[GNUPG:] ENC_TO ${first#BUENDEL-FUER } 18 0" ;; *) echo "[GNUPG:] NODATA 1" ;; esac',
+    '  exit 2',
+    'fi',
     // base64 statt eines Zeichen-Werkzeugs: der Eingang ist binär (gzip), und
     // `rev` bricht unter Linux an Bytes ab, die kein gültiges Zeichen sind.
     '{ echo "GPG-STELLVERTRETER"; base64 < "$last"; } > "$out"',
@@ -170,6 +181,20 @@ beforeEach(() => {
   const realRsync = spawnSync('bash', ['-c', 'command -v rsync'], { encoding: 'utf8' }).stdout.trim()
   stub('rsync', `echo "rsync $*" >> "$STUB_DIR/rsync.log"\nexec ${realRsync} "$@"`)
   stub('ssh', 'exit 255')
+  // Stellvertreter für ops/app-env-bundle.sh auf dem App-Server (BU1 b).
+  writeFileSync(join(stubDir, 'quelle-id'), FPR.slice(-16))
+  writeFileSync(join(stubDir, 'quelle-list'), 'a.example.test vorhanden\nb.example.test vorhanden\n')
+  stub('quelle', [
+    'case "$1" in',
+    '  list) cat "$STUB_DIR/quelle-list" ;;',
+    '  bundle)',
+    '    if [ -f "$STUB_DIR/quelle-fail" ]; then echo "app-env-bundle: ✗ Die .env von b.example.test ist fehlt" >&2; exit 1; fi',
+    '    if [ -f "$STUB_DIR/quelle-leer" ]; then exit 0; fi',
+    '    if [ -f "$STUB_DIR/quelle-kaputt" ]; then echo "kein OpenPGP"; exit 0; fi',
+    '    echo "BUENDEL-FUER $(cat "$STUB_DIR/quelle-id")"; echo "verschluesselt-$RANDOM" ;;',
+    '  *) exit 2 ;;',
+    'esac',
+  ].join('\n'))
 })
 
 afterEach(() => {
@@ -367,6 +392,184 @@ describe('ops/appwrite-backup.sh — ein Fehler gleicht nichts ab und lässt Fr�
     expect(out).toContain('Ein anderer Lauf ist unterwegs')
     expect(existsSync(join(backupDir, 'state', 'lock'))).toBe(true)
     expect(state().last_result).toBe('ok')
+  })
+})
+
+// ── App-Einstellungen (BU1 b, 2026-11-18) ───────────────────────────────────
+// Das Bündel der .env-Dateien vom App-Server (ops/app-env-bundle.sh). Ein
+// Ausfall darf das Backup der Datenbank NICHT verhindern: der Lauf fährt ganz
+// durch und endet erst danach rot im Schritt `app-einstellungen`.
+
+const DB_FILES = [
+  'SHA256SUMS', 'backup.meta', 'config.tar.gz.gpg', 'counts.tsv.gpg', 'db.sql.gz.gpg',
+  'volume-appwrite-builds.tar.gz.gpg', 'volume-appwrite-certificates.tar.gz.gpg', 'volume-appwrite-config.tar.gz.gpg',
+  'volume-appwrite-functions.tar.gz.gpg', 'volume-appwrite-sites.tar.gz.gpg', 'volume-appwrite-uploads.tar.gz.gpg',
+]
+const meta = (root: string, stamp: string) => readFileSync(join(root, 'runs', stamp, 'backup.meta'), 'utf8')
+const source = () => join(dir, 'bin', 'quelle')
+
+describe('ops/appwrite-backup.sh — App-Einstellungen', () => {
+  it('nicht eingerichtet: kein Bündel, app_env=aus, Vorschau sagt es', () => {
+    expect(run([]).out).toContain('App-Einstellungen: nicht eingerichtet')
+    expect(run(['--run']).code).toBe(0)
+    const [stamp] = runs(backupDir)
+    expect(readdirSync(join(backupDir, 'runs', stamp)).sort()).toEqual(DB_FILES)
+    expect(meta(backupDir, stamp)).toContain('app_env=aus\n')
+    expect(meta(backupDir, stamp)).not.toContain('app_env_bytes')
+  })
+
+  it('eingerichtet: das Bündel liegt im Lauf, lokal und außer Haus, in den Prüfsummen, app_env=ok', () => {
+    const { code, out } = run(['--run'], { APP_ENV_SOURCE: source() })
+    expect(out).toContain('Backup fertig')
+    expect(code).toBe(0)
+    const [stamp] = runs(backupDir)
+    const files = readdirSync(join(backupDir, 'runs', stamp)).sort()
+    expect(files).toEqual([...DB_FILES.slice(0, 1), 'app-env.tar.gz.gpg', ...DB_FILES.slice(1)])
+    expect(readFileSync(join(box, 'runs', stamp, 'app-env.tar.gz.gpg'))).toEqual(readFileSync(join(backupDir, 'runs', stamp, 'app-env.tar.gz.gpg')))
+    expect(readFileSync(join(box, 'runs', stamp, 'SHA256SUMS'), 'utf8')).toContain(' app-env.tar.gz.gpg\n')
+    const bytes = readFileSync(join(backupDir, 'runs', stamp, 'app-env.tar.gz.gpg')).length
+    expect(meta(backupDir, stamp)).toContain(`app_env=ok\napp_env_bytes=${bytes}\n`)
+    expect(state()).toMatchObject({ last_result: 'ok', last_step: 'fertig', last_ok_files: '12' })
+  })
+
+  it('Vorschau: Sites in Zahlen, ein ssh-Ziel nur als <ssh-ziel>', () => {
+    expect(run([], { APP_ENV_SOURCE: source() }).out).toContain('2 Sites, alle vorhanden')
+    writeFileSync(join(stubDir, 'quelle-list'), 'a.example.test vorhanden\nb.example.test fehlt\n')
+    expect(run([], { APP_ENV_SOURCE: source() }).out).toContain('2 Sites, nur 1 vorhanden')
+    const remote = run([], { APP_ENV_SOURCE: 'app-server-alias' })
+    expect(remote.code).toBe(0)
+    expect(remote.out).toContain('App-Einstellungen: <ssh-ziel> — NICHT erreichbar')
+    expect(remote.out).not.toContain('app-server-alias')
+    expect(existsSync(backupDir)).toBe(false)
+  })
+
+  const failures: Array<[string, () => void, string, Record<string, string>?]> = [
+    ['die Quelle scheitert (eine .env fehlt)', () => writeFileSync(join(stubDir, 'quelle-fail'), ''), 'liefert kein Bündel'],
+    ['das Bündel ist leer', () => writeFileSync(join(stubDir, 'quelle-leer'), ''), 'das Bündel ist leer'],
+    ['das Bündel ist kein OpenPGP-Paket', () => writeFileSync(join(stubDir, 'quelle-kaputt'), ''), 'kein für einen Schlüssel verschlüsseltes OpenPGP-Paket'],
+    ['das Bündel ist für einen fremden Schlüssel', () => writeFileSync(join(stubDir, 'quelle-id'), 'C'.repeat(16)), 'fremden Schlüssel'],
+    ['der App-Server ist nicht erreichbar', () => {}, 'liefert kein Bündel', { APP_ENV_SOURCE: 'app-server-alias' }],
+  ]
+  for (const [what, arrange, reason, env] of failures) {
+    it(`${what}: die Datenbank ist trotzdem ganz gesichert, der Lauf endet rot in „app-einstellungen“`, () => {
+      expect(run(['--run']).code).toBe(0)
+      const first = runs(backupDir)[0]
+      nextSecond()
+      arrange()
+      const { code, out } = run(['--run'], { APP_ENV_SOURCE: source(), ...env })
+      expect(code).toBe(1)
+      expect(out).toContain(reason)
+      expect(out).toContain('Das Backup der Datenbank ist vollständig und liegt lokal und auf der Ablage außer Haus')
+      expect(out).toContain('es fehlen die Einstellungen der Apps')
+      // Der Lauf liegt vollständig lokal UND auf der Box, mit stimmigen Prüfsummen.
+      const second = runs(backupDir).find(r => r !== first)!
+      expect(runs(box)).toEqual([first, second].sort())
+      expect(readdirSync(join(backupDir, 'runs', second)).sort()).toEqual(DB_FILES)
+      expect(readdirSync(join(box, 'runs', second)).sort()).toEqual(DB_FILES)
+      expect(spawnSync('bash', ['-c', `cd '${join(box, 'runs', second)}' && (sha256sum -c SHA256SUMS 2>/dev/null || shasum -a 256 -c SHA256SUMS)`]).status).toBe(0)
+      expect(meta(box, second)).toContain('app_env=fehlt\n')
+      expect(state()).toMatchObject({ last_result: 'fehler', last_step: 'app-einstellungen', last_ok_stamp: first })
+      expect(readdirSync(backupDir).sort()).toEqual(['runs', 'state'])
+      // Ein wiederhergestellter Zugang macht den nächsten Lauf wieder grün.
+      for (const f of ['quelle-fail', 'quelle-leer', 'quelle-kaputt']) rmSync(join(stubDir, f), { force: true })
+      writeFileSync(join(stubDir, 'quelle-id'), FPR.slice(-16))
+      nextSecond()
+      expect(run(['--run'], { APP_ENV_SOURCE: source() }).code).toBe(0)
+      expect(state().last_result).toBe('ok')
+    })
+  }
+
+  it('ohne Ablage außer Haus sagt die Meldung „liegt lokal“', () => {
+    writeFileSync(join(stubDir, 'quelle-fail'), '')
+    const { code, out } = run(['--run'], { APP_ENV_SOURCE: source(), OFFSITE_TARGET: '' })
+    expect(code).toBe(1)
+    expect(out).toContain('Das Backup der Datenbank ist vollständig und liegt lokal (Lauf')
+    expect(state()).toMatchObject({ last_result: 'fehler', last_step: 'app-einstellungen' })
+  })
+})
+
+describe('ops/appwrite-backup.sh — App-Einstellungen: Reihenfolge im Skript', () => {
+  const script = readFileSync(BACKUP, 'utf8')
+  const code = script.split('\n').filter(l => !l.trimStart().startsWith('#')).join('\n')
+  const at = (needle: string, from = 0) => code.indexOf(needle, from)
+
+  it('der Schritt steht vor dem Zählen und dem Dump — und sein Ausfall wird erst nach der Aufbewahrung gemeldet', () => {
+    const fetchStep = at(`STEP='app-einstellungen'`)
+    const lateStep = at(`STEP='app-einstellungen'`, fetchStep + 1)
+    expect(fetchStep).toBeGreaterThan(0)
+    expect(fetchStep).toBeLessThan(at(`STEP='zaehlen'`))
+    expect(fetchStep).toBeLessThan(at(`STEP='dump'`))
+    expect(lateStep).toBeGreaterThan(at(`STEP='aufbewahrung'`))
+    expect(lateStep).toBeLessThan(at(`STEP='fertig'`))
+    // Zwischen den beiden Stellen ruft nichts `die` wegen des Bündels.
+    expect(code.slice(fetchStep, at(`STEP='zaehlen'`))).not.toMatch(/\bdie\b/)
+  })
+
+  it('das Holen läuft als Bedingung (sonst bräche errexit das Datenbank-Backup ab), mit Frist und ohne --delete', () => {
+    expect(code).toMatch(/if app_env_fetch "\$PARTIAL\/app-env\.tar\.gz\.gpg"; then/)
+    expect(code).toContain('timeout "$APP_ENV_TIMEOUT"')
+    expect(code).toMatch(/ssh \$SSH_OPTS "\$APP_ENV_SOURCE" "\$1" <\/dev\/null/)
+    expect(code).not.toMatch(/rsync[^\n]*--delete/)
+  })
+})
+
+describe.skipIf(!HAS_GPG)('ops/appwrite-backup.sh — App-Einstellungen mit echtem gpg', () => {
+  let keys: string
+  let right: ThrowawayKey
+  let foreign: ThrowawayKey
+
+  beforeAll(() => {
+    keys = mkdtempSync(join(tmpdir(), 'appwrite-backup-keys-'))
+    right = makeKey(keys, 'richtig')
+    foreign = makeKey(keys, 'fremd')
+  })
+  afterAll(() => {
+    stopAgent(right)
+    stopAgent(foreign)
+    rmSync(keys, { recursive: true, force: true })
+  })
+
+  const sites = ['a.example.test', 'b.example.test']
+  function realRun(env: Record<string, string>) {
+    rmSync(join(dir, 'bin', 'gpg'))
+    const appBase = join(dir, 'app-server')
+    writeFileSync(join(dir, 'apps.conf'), sites.map(s => `x ${s}`).join('\n') + '\n')
+    for (const s of sites) {
+      mkdirSync(join(appBase, s), { recursive: true })
+      writeFileSync(join(appBase, s, '.env'), `NUXT_GEHEIM=KLARTEXT-MARKER-APP-${s}\n`)
+    }
+    return run(['--run'], {
+      BACKUP_PUBLIC_KEY: right.pub,
+      BACKUP_KEY_FINGERPRINT: right.fingerprint,
+      APP_ENV_SOURCE: join(REPO, 'ops', 'app-env-bundle.sh'),
+      APP_ENV_APPS_CONF: join(dir, 'apps.conf'),
+      APP_ENV_BASE: appBase,
+      ...env,
+    })
+  }
+
+  it('das echte Bündel besteht die Prüfung und öffnet sich mit dem privaten Schlüssel', () => {
+    const { code, out } = realRun({})
+    expect(out).toContain('verschlüsselt für unseren Schlüssel')
+    expect(code).toBe(0)
+    const [stamp] = runs(box)
+    expect(meta(box, stamp)).toContain('app_env=ok\n')
+    decrypt(right, join(box, 'runs', stamp, 'app-env.tar.gz.gpg'), join(dir, 'app-env.tar.gz'))
+    const listed = spawnSync('tar', ['tzf', join(dir, 'app-env.tar.gz')], { encoding: 'utf8' }).stdout.trim().split('\n').sort()
+    expect(listed).toEqual(sites.map(s => `${s}/.env`))
+    expect(spawnSync('grep', ['-rl', 'KLARTEXT-MARKER', backupDir, box]).stdout.toString()).toBe('')
+  })
+
+  it('ein Bündel für einen fremden Schlüssel wird erkannt — die Datenbank liegt trotzdem auf der Box', () => {
+    const wrapper = join(dir, 'bin', 'fremd-quelle')
+    writeFileSync(wrapper, `#!/usr/bin/env bash\nBACKUP_PUBLIC_KEY='${foreign.pub}' BACKUP_KEY_FINGERPRINT='${foreign.fingerprint}' exec bash '${join(REPO, 'ops', 'app-env-bundle.sh')}' "$@"\n`)
+    chmodSync(wrapper, 0o755)
+    const { code, out } = realRun({ APP_ENV_SOURCE: wrapper })
+    expect(out).toContain('fremden Schlüssel')
+    expect(code).toBe(1)
+    const [stamp] = runs(box)
+    expect(readdirSync(join(box, 'runs', stamp)).sort()).toEqual(DB_FILES)
+    expect(state()).toMatchObject({ last_result: 'fehler', last_step: 'app-einstellungen' })
   })
 })
 
