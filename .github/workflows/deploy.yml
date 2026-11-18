@@ -1,6 +1,8 @@
 # Deploy nach PHASE-17-Plan (A.5), seit 2026-07-23 als CI-BUILD-DEPLOY:
-# GitHub Actions BAUT alle Apps und schiebt nur das fertige .output per
-# rsync auf den Server (Symlink-Flip + pm2 reload wie bei ZDT Stufe 2).
+# GitHub Actions BAUT alle Apps und schickt nur das fertige .output auf den
+# Server (Symlink-Flip + pm2 reload wie bei ZDT Stufe 2). Die Handgriffe dort
+# macht seit 2026-11-18 EIN Skript, `ops/app-release.sh` (CI1 b) — der
+# Workflow schickt nur noch dessen Worte, keine freien Befehle und kein rsync.
 # Der App-Server (CX23, 2 Cores / 3,7 GB) baut damit NICHTS mehr — die
 # frühere RAM-Regel (nie zwei Nuxt-Builds parallel, OOM-Kill 137, 3584-MB-
 # Heap für platform) betrifft nur noch den ploi-Webhook-FALLBACK (s. u.).
@@ -109,19 +111,23 @@ env:
   OPS_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
   COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
   # DAS FESTE SKRIPT AUF DEM SERVER (CI1 b, 2026-11-18): Quelle
-  # `ops/app-release.sh`, von Hand eingespielt. Es trägt die Handgriffe des
-  # Auslieferns (Stand empfangen, Verweis umlegen, pm2 neu laden, aufräumen) —
-  # dieselbe Datei, die der Rückweg `ops/rollback.sh` benutzt.
-  # ÜBERGANG: liegt das Skript auf dem Server, läuft das Ausliefern darüber;
-  # sonst wie bisher mit freien Befehlen. Der alte Weg fällt weg, sobald ein
-  # echtes Ausliefern über das Skript grün war — erst danach wird der
-  # Schlüssel auf das Skript als festen Befehl beschränkt.
+  # `ops/app-release.sh`, von Hand eingespielt (docs/runbooks/
+  # CI-SCHLUESSEL-TAUSCHEN.md, „Feste Befehle auf app-prod"). Es trägt die
+  # Handgriffe des Auslieferns (Stand empfangen, Verweis umlegen, pm2 neu
+  # laden, aufräumen) — dieselbe Datei, die der Rückweg `ops/rollback.sh`
+  # mitschickt. Der Workflow ruft es MIT seinem Pfad auf: so ist die
+  # Befehlszeile dieselbe, ob der Schlüssel frei ist oder das Skript sein
+  # fester Befehl (dann steht sie in SSH_ORIGINAL_COMMAND).
   RELEASE_SCRIPT: /home/ploi/ops/app-release.sh
   # Was je Site nach <site>/ops geht, neben `ecosystem-<app>.config.cjs`. Das
   # Skript nimmt nur Namen von seiner eigenen Liste an (`OPS_FILES` dort) —
   # NEUE DATEI ⇒ dort eintragen und das Skript neu einspielen, sonst lehnt der
   # Server die Lieferung ab (Test: packages/core/tests/appReleaseScript.test.ts).
   OPS_FILES: 'pm2-heal.sh app-watch-counts.mjs nginx-check.mjs nginx-sites.conf cron-check.sh cron.conf logrotate-admin-access.conf'
+  # Dazu zwei Prüf-Skripte des täglichen Wächters aus scripts/ops/ (CI1 a):
+  # sie lesen nur und geben nur Namen und Zahlen aus. Bis dahin kopierten sie
+  # sich bei jedem Wächter-Lauf selbst auf den Server.
+  WATCH_FILES: 'verify-stale-keys.mjs verify-instance-admins.mjs'
   # DIE EINE APP→HOST-LISTE steht seit 2026-11-15 in `ops/apps.conf` (vorher
   # hier als Workflow-Variable). Der Job `plan` liest sie und reicht sie als
   # `APP_HOSTS` (Paare `app=site`) an `build` und `deliver` weiter; der
@@ -428,17 +434,9 @@ jobs:
       - name: Font-Cache vom Server holen
         run: |
           set -eu
-          mkdir -p fonts-seed
-          if ssh prod "test -x $RELEASE_SCRIPT" </dev/null; then
-            echo "Weg: festes Skript (ops/app-release.sh)"
-            ssh prod "$RELEASE_SCRIPT fonts-get" </dev/null > fonts-seed.tar || true
-            # Kein lesbares Archiv ⇒ ein leeres: der Build läuft dann ohne Cache.
-            tar -tf fonts-seed.tar >/dev/null 2>&1 || tar -cf fonts-seed.tar -T /dev/null
-          else
-            echo "Weg: wie bisher (rsync)"
-            rsync -a "prod:/home/ploi/fonts-cache/" fonts-seed/ || true
-            tar -C fonts-seed -cf fonts-seed.tar .
-          fi
+          ssh prod "$RELEASE_SCRIPT fonts-get" </dev/null > fonts-seed.tar || true
+          # Kein lesbares Archiv ⇒ ein leeres: der Build läuft dann ohne Cache.
+          tar -tf fonts-seed.tar >/dev/null 2>&1 || tar -cf fonts-seed.tar -T /dev/null
 
       # Der Schlüssel verlässt die Platte, bevor der nächste fremde Baustein
       # (hier: die Artefakt-Action) läuft — und auch dann, wenn ein Schritt
@@ -550,7 +548,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.OPS_REF }}
-          sparse-checkout: ops
+          # Ohne Kegel-Modus, mit Anker: `ops` allein träfe auch scripts/ops/.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /ops/
+            /scripts/ops/verify-stale-keys.mjs
+            /scripts/ops/verify-instance-admins.mjs
           persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -558,19 +561,21 @@ jobs:
           name: build-output
           path: ${{ runner.temp }}/out
 
-      - name: Ergebnis entpacken
+      # Entpackt wird hier nichts mehr: die Archive gehen so, wie der Build sie
+      # gepackt hat, an das Skript auf dem Server (`release-put`, `fonts-put`).
+      - name: Sind alle Archive da?
         run: |
           set -euo pipefail
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
-            mkdir -p "apps/$app" "fonts/$app"
-            zstd -dc "$RUNNER_TEMP/out/$app.tar.zst" | tar -C "apps/$app" -xf -
-            tar -C "fonts/$app" -xf "$RUNNER_TEMP/out/$app.fonts.tar"
-            test -f "apps/$app/.output/server/index.mjs" || { echo "::error::apps/$app/.output fehlt nach dem Entpacken."; exit 1; }
+            test -s "$RUNNER_TEMP/out/$app.tar.zst" || { echo "::error::Das Archiv von $app fehlt im Build-Ergebnis."; exit 1; }
+            test -s "$RUNNER_TEMP/out/$app.fonts.tar" || { echo "::error::Der Font-Cache von $app fehlt im Build-Ergebnis."; exit 1; }
           done
+          for file in $OPS_FILES; do test -f "ops/$file" || { echo "::error::ops/$file fehlt."; exit 1; }; done
+          for file in $WATCH_FILES; do test -f "scripts/ops/$file" || { echo "::error::scripts/ops/$file fehlt."; exit 1; }; done
 
       # AB HIER liegt der Schlüssel auf der Platte — und ab hier läuft nur
-      # noch rsync, ssh, curl und jq. Kein `pnpm`, kein `node`, keine weitere
+      # noch ssh, tar, curl und jq. Kein `pnpm`, kein `node`, keine weitere
       # Action.
       - name: SSH einrichten (gepinnter Host-Key)
         env:
@@ -598,19 +603,13 @@ jobs:
       # Auflösung scheiterte, dessen Deploy stirbt vorher.
       - name: Font-Cache zurückschreiben (Blobs additiv, Metadaten aktualisierend)
         run: |
-          if ssh prod "test -x $RELEASE_SCRIPT" </dev/null; then VIA_SCRIPT=1; else VIA_SCRIPT=0; fi
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
-            if [ "$VIA_SCRIPT" = "1" ]; then
-              # Dieselben zwei Durchgänge, auf dem Server (Wort `fonts-put`).
-              ssh prod "$RELEASE_SCRIPT fonts-put" < "$RUNNER_TEMP/out/$app.fonts.tar" || true
-            else
-              rsync -a --ignore-existing "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
-              rsync -a --include='meta/' --include='meta/**' --exclude='*' "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
-            fi
+            # Die zwei Durchgänge macht das Skript auf dem Server (Wort `fonts-put`).
+            ssh prod "$RELEASE_SCRIPT fonts-put" < "$RUNNER_TEMP/out/$app.fonts.tar" || true
           done
 
-      - name: Ausliefern + verifizieren (rsync → Symlink-Flip → pm2 reload)
+      - name: Ausliefern + verifizieren (Stand schicken → Symlink-Flip → pm2 reload)
         run: |
           set -eu
           # SITE  = ploi-Site: VERZEICHNIS auf dem Server (/home/ploi/$site/ops)
@@ -655,14 +654,6 @@ jobs:
           # Apps, deren Datenbank nicht zum ausgelieferten Programm passt
           # (OPS-008, s. Probe unten) — ebenfalls erst NACH allen Apps rot.
           SCHEMA_BEHIND=""
-          # WELCHER WEG (Übergang, s. RELEASE_SCRIPT im Kopf): liegt das feste
-          # Skript auf dem Server, übernimmt es Empfangen, Umlegen, Neuladen
-          # und Aufräumen. Sonst die freien Befehle wie bisher.
-          if ssh prod "test -x $RELEASE_SCRIPT" </dev/null; then
-            VIA_SCRIPT=1; echo "Weg: festes Skript (ops/app-release.sh)"
-          else
-            VIA_SCRIPT=0; echo "Weg: wie bisher (freie Befehle)"
-          fi
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
             site="${pair#*=}"
@@ -670,100 +661,36 @@ jobs:
             # ihrer Site — kein eigenes Array mehr, das auseinanderlaufen kann.
             probe="$site"
             echo "::group::Deploy $app → $site"
-            if [ "$VIA_SCRIPT" = "1" ]; then
-              # EIN STAND, VIER WORTE. Der Stand geht als das Archiv, das der
-              # Build gepackt hat, in ein FRISCHES Verzeichnis (ein Stand, der
-              # gerade aktiv ist, wird nicht überschrieben — RW1 c); die
-              # Dateien der Site als kleines tar; `activate` legt den Verweis
-              # um und lädt den Prozess neu (scheitert das, liegt der Verweis
-              # wieder auf dem Stand davor); `prune` behält vier Stände.
-              # Scheitert ein Wort, bricht `set -e` hier ab — wie bisher.
-              ssh prod "$RELEASE_SCRIPT release-put $app $EXPECTED_SHA" < "$RUNNER_TEMP/out/$app.tar.zst"
-              # shellcheck disable=SC2086
-              tar -C ops -cf - "ecosystem-$app.config.cjs" $OPS_FILES | ssh prod "$RELEASE_SCRIPT ops-put $app"
-              ssh prod "$RELEASE_SCRIPT activate $app $EXPECTED_SHA" </dev/null
-              ssh prod "$RELEASE_SCRIPT prune $app" </dev/null || echo "::warning::[$app] Aufräumen alter Stände ist gescheitert — das Ausliefern selbst ist davon nicht betroffen."
-            else
-            RELEASES="/home/ploi/releases/$app"
-            RELEASE="$RELEASES/$EXPECTED_SHA"
-            # --mkpath, weil rsync sonst nur die LETZTE Pfadebene anlegt: beim
-            # Erst-Deploy einer neuen App existiert /home/ploi/releases/<slot>
-            # noch nicht und der Lauf stirbt mit "mkdir … failed: No such file
-            # or directory" (branding, 2026-09-01 live erwischt — die Slots der
-            # Alt-Apps existieren nur historisch).
-            rsync -az --delete --mkpath "apps/$app/.output/" "prod:$RELEASE/"
-            # ops-Configs liefert die CI selbst aus (rsync) — frueher hielt ein
-            # `git pull` im Site-Checkout sie aktuell, aber ein voller Monorepo-
-            # Checkout auf dem Server nur fuer zwei Config-Dateien ist keiner
-            # mehr wert: die control-Site hat seit dem Cutover bewusst keinen,
-            # die help-Site (2026-07-28) genauso.
-            # (portfolio und platform behalten ihre Checkouts fuer den ploi-
-            # FALLBACK-Deploy — der macht sein eigenes git pull. Fuer control,
-            # marketing, help und branding gibt es diesen Fallback nicht; Ersatz
-            # sind die Runbooks docs/archiv/CONTROL-CUTOVER.md und
-            # BRANDING-SUPPLY-SETUP.md sowie docs/archiv/HELP-GO-LIVE.md;
-            # zurueck auf einen liegenden Stand geht fuer ALLE sechs mit
-            # ops/rollback.sh.)
-            # NUR DIE DATEIEN, die der Server braucht (OPS-005, 2026-11-15):
-            # die Ecosystem-Datei DIESER App, pm2-heal.sh und seit OPS-011
-            # (2026-11-16) das Zaehl-Skript des Produktions-Waechters
-            # (app-watch-counts.mjs: liest nur, gibt nur Zahlen aus — der
-            # taegliche Waechter ruft es ueber seinen eigenen Zugang auf). Bis
-            # dahin ging der ganze Ordner ops/ in jede Site — samt Backup-,
-            # Wiederherstellungs- und Rueckweg-Skript, die dort nie laufen. Was
-            # in ops/ sonst liegt, gehoert auf den Appwrite-Server (von Hand
-            # eingespielt) oder auf den eigenen Rechner. ops/rollback.sh
-            # verlaesst sich auf die ersten zwei Dateien.
-            # Seit OPS-003 (2026-11-16) dazu die zwei Vergleichs-Skripte fuer
-            # Webserver-Einstellungen und Zeitplaene samt ihrer Listen
-            # (nginx-check.mjs + nginx-sites.conf, cron-check.sh + cron.conf:
-            # lesen nur, geben nur Zahlen, Site- und Regel-Namen aus) und die
-            # Umlauf-Einstellung fuer das Zugriffs-Log der Betreiber-Seite
-            # (logrotate-admin-access.conf; der Zeitplan dazu steht im crontab).
-            rsync -az --mkpath "ops/ecosystem-$app.config.cjs" ops/pm2-heal.sh ops/app-watch-counts.mjs ops/nginx-check.mjs ops/nginx-sites.conf ops/cron-check.sh ops/cron.conf ops/logrotate-admin-access.conf "prod:/home/ploi/$site/ops/"
-            # Flip + Reload (ZDT Stufe 2). pm2 startOrReload findet den Prozess
-            # ueber den NAMEN in der Ecosystem-Datei — bei einer Umbenennung
-            # ersetzt es also NICHT, sondern startet daneben (zwei Prozesse,
-            # ein Port, gemischte Builds — passiert beim studio→control-Rename,
-            # gemessen 6:4 bei 10 Aufrufen). Darum unten die Serien-Probe.
-            # MERKE fuer kuenftige Umzuege: pm2 reload behaelt den GESPEICHERTEN
-            # Script-Pfad — ein Pfadwechsel in der Ecosystem-Datei kommt per
-            # reload nie an (der Prozess serviert weiter den alten Build, die
-            # Serien-Probe unten faengt es). Dann braucht es EINMALIG
-            # `pm2 delete <name>` vor dem startOrReload.
-            PROC=$(echo "$site" | tr -d .)
-            # Der pm2-Prozessname ist IMMER die Site ohne Punkte (so heissen
-            # sie in den Ecosystem-Dateien: portfolio.pukalani.app →
-            # portfoliopukalaniapp, pukalani.app → pukalaniapp). Nicht aus dem
-            # App-Namen zusammensetzen — bei marketing waere daraus
-            # "marketingpukalaniapp" geworden und der Heiler haette still
-            # nichts gefunden.
-            # pm2-heal.sh (3. Falle, 2026-07-26): loescht den Prozess vorab,
-            # wenn er errored ist oder sein eingefrorener cwd nicht mehr
-            # existiert (Erststart-Shell-cwd zeigte auf die geloeschte
-            # studio-Site → spawn-ENOENT, portfolio down). Ecosystem-Dateien
-            # setzen seitdem cwd: CURRENT — der Heiler bleibt als Backstop.
-            ssh prod "set -eu
-              # certbot-Webroot sicherstellen (2026-08-13, erster Pool-Tenant):
-              # Tenant-/Alias-Zertifikate legen ihre ACME-Prüfdatei in
-              # /home/ploi/<site>/public — das Verzeichnis existiert bei
-              # CI-deployten Sites sonst nie, und ploi meldet nur
-              # 'does not exist or is not a directory' im Site-Log.
-              mkdir -p '/home/ploi/$site/public'
-              ln -s '$RELEASE' '$RELEASES/current.tmp'
-              mv -Tf '$RELEASES/current.tmp' '$RELEASES/current'
-              bash /home/ploi/$site/ops/pm2-heal.sh $PROC
-              # ÖFFENTLICHES PROTOKOLL (SEC-043): pm2 antwortet mit der Tabelle
-              # ALLER Prozesse samt Prozess-Nummern, Speicher und Host-Last. Die
-              # gehört nicht in ein Protokoll, das jedes GitHub-Konto liest —
-              # gezeigt wird sie nur, wenn der Befehl scheitert (dann ohne die
-              # Tabellenzeilen).
-              pm2 startOrReload /home/ploi/$site/ops/ecosystem-$app.config.cjs --update-env >/tmp/pm2-deploy.out 2>&1 || { grep -v -e \"│\" -e \"host metrics\" /tmp/pm2-deploy.out; rm -f /tmp/pm2-deploy.out; exit 1; }
-              rm -f /tmp/pm2-deploy.out
-              pm2 save >/dev/null
-              ls -1dt $RELEASES/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf
-              echo '$app geflippt auf $EXPECTED_SHA'"
-            fi
+            # EIN STAND, VIER WORTE (ops/app-release.sh, dort stehen die
+            # Begründungen der Handgriffe). Der Stand geht als das Archiv, das
+            # der Build gepackt hat, in ein FRISCHES Verzeichnis unter
+            # /home/ploi/releases/<app>/<commit> (ein Stand, der gerade aktiv
+            # ist, wird nicht überschrieben — RW1 c); die Dateien der Site als
+            # kleines tar nach <site>/ops (das Skript nimmt nur Namen von
+            # seiner Liste); `activate` legt den Verweis um, lässt
+            # pm2-heal.sh laufen und lädt den Prozess über die Ecosystem-Datei
+            # neu — scheitert das, liegt der Verweis wieder auf dem Stand
+            # davor; `prune` behält vier Stände und immer den aktiven.
+            # Scheitert ein Wort, bricht `set -e` hier ab, die restlichen Apps
+            # bleiben stehen (wie bisher bei einem gescheiterten Handgriff).
+            #
+            # ZWEI DINGE, DIE DAS SKRIPT NICHT SIEHT und die deshalb die
+            # Serien-Probe unten beweist: pm2 findet den Prozess über den
+            # NAMEN in der Ecosystem-Datei (Site ohne Punkte) — nach einer
+            # Umbenennung startet es DANEBEN (zwei Prozesse, ein Port,
+            # gemischte Builds; beim studio→control-Rename gemessen 6:4), und
+            # ein `reload` behält den GESPEICHERTEN Script-Pfad — ein
+            # Pfadwechsel in der Ecosystem-Datei kommt nie an (dann EINMALIG
+            # `pm2 delete <name>` davor; pm2-heal.sh räumt bekannte
+            # Vorgänger weg).
+            ssh prod "$RELEASE_SCRIPT release-put $app $EXPECTED_SHA" < "$RUNNER_TEMP/out/$app.tar.zst"
+            # Erst packen, dann schicken — zwei Befehle statt einer Pipe, damit
+            # ein gescheitertes Packen den Lauf selbst beendet.
+            # shellcheck disable=SC2086
+            tar -cf "$RUNNER_TEMP/ops-$app.tar" -C "$GITHUB_WORKSPACE/ops" "ecosystem-$app.config.cjs" $OPS_FILES -C "$GITHUB_WORKSPACE/scripts/ops" $WATCH_FILES
+            ssh prod "$RELEASE_SCRIPT ops-put $app" < "$RUNNER_TEMP/ops-$app.tar"
+            ssh prod "$RELEASE_SCRIPT activate $app $EXPECTED_SHA" </dev/null
+            ssh prod "$RELEASE_SCRIPT prune $app" </dev/null || echo "::warning::[$app] Aufräumen alter Stände ist gescheitert — das Ausliefern selbst ist davon nicht betroffen."
             echo "::endgroup::"
 
             # DREI Treffer in Folge, nicht einer. Eine einzelne Abfrage beweist
@@ -854,6 +781,26 @@ jobs:
           fi
           if [ -n "$UNHEALTHY" ] || [ -n "$SCHEMA_BEHIND" ]; then
             exit 1
+          fi
+
+      # HINWEIS, NOCH KEIN TOR (CI1 b): der Schlüssel soll auf dem Server nur
+      # `ops/app-release.sh` ausführen können (fester Befehl in
+      # authorized_keys). Ob das so ist, sagt nur ein Versuch: eine harmlose
+      # freie Befehlszeile muss abgelehnt werden (Exit 64). Solange der
+      # Schlüssel noch frei eingetragen ist, steht hier eine Warnung und der
+      # Lauf bleibt grün; scharf gestellt wird der Schritt, wenn die
+      # Beschränkung eingetragen und einmal bewiesen ist.
+      - name: Ist der Ausliefer-Schlüssel auf das Skript beschränkt?
+        run: |
+          set -u
+          code=0
+          out=$(ssh prod 'echo frei' </dev/null 2>/dev/null) || code=$?
+          if [ "$out" = "frei" ]; then
+            echo "::warning::Der Ausliefer-Schlüssel führt freie Befehle aus — er ist noch nicht auf ops/app-release.sh beschränkt."
+          elif [ "$code" = "64" ]; then
+            echo "✔ Der Schlüssel führt nur das feste Skript aus (eine freie Befehlszeile wird abgelehnt)."
+          else
+            echo "::warning::Keine klare Antwort auf die Probe (Exit $code) — nicht geprüft."
           fi
 
       # Der Schlüssel verlässt die Platte, auch wenn ein Schritt davor rot wurde.

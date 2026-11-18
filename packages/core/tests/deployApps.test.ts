@@ -72,33 +72,43 @@ describe('die Leser der Liste', () => {
 
   // OPS-005 (2026-11-15): bis dahin kopierte der Deploy den GANZEN Ordner ops/
   // in jede Site — samt Backup-, Wiederherstellungs- und Rückweg-Skript, die
-  // auf dem App-Server nie laufen. Der Server braucht je Site genau drei
-  // Dateien: die Ecosystem-Datei, pm2-heal.sh (auf beide verlässt sich
-  // `ops/rollback.sh`) und seit OPS-011 (2026-11-16) das Zähl-Skript des
-  // Produktions-Wächters, das nur liest und nur Zahlen ausgibt.
-  it('deploy.yml kopiert nur Ecosystem-Datei, pm2-heal.sh, Zähl-Skript und die Vergleichs-Skripte auf den Server', () => {
-    const code = deploy.split('\n').filter(line => !/^\s*#/.test(line))
-    const toSiteOps = code.filter(line => /\brsync\b/.test(line) && line.includes('/ops/'))
-    expect(toSiteOps).toHaveLength(1)
-    const sources = toSiteOps[0]!.trim().split(/\s+/).filter(word => /^"?ops\//.test(word)).map(word => word.replace(/"/g, ''))
-    expect(sources).toEqual([
-      'ops/ecosystem-$app.config.cjs',
-      'ops/pm2-heal.sh',
-      'ops/app-watch-counts.mjs',
-      // OPS-003 (2026-11-16): die zwei nur lesenden Vergleichs-Skripte samt Listen
-      // und die Umlauf-Einstellung des Zugriffs-Logs der Betreiber-Seite.
-      'ops/nginx-check.mjs',
-      'ops/nginx-sites.conf',
-      'ops/cron-check.sh',
-      'ops/cron.conf',
-      'ops/logrotate-admin-access.conf',
+  // auf dem App-Server nie laufen. Der Server braucht je Site die
+  // Ecosystem-Datei, pm2-heal.sh (auf beide verlässt sich `ops/app-release.sh`),
+  // das Zähl-Skript des Produktions-Wächters (OPS-011), die zwei nur lesenden
+  // Vergleichs-Skripte samt Listen und die Umlauf-Einstellung des
+  // Zugriffs-Logs (OPS-003) — und seit CI1 a (2026-11-18) zwei Prüf-Skripte
+  // des täglichen Wächters, die sich vorher selbst hinüberkopierten.
+  it('deploy.yml schickt je Site genau die Dateien der Liste — über das feste Skript', () => {
+    const listOf = (name: string) => new RegExp(`^  ${name}: '([^']+)'$`, 'm').exec(deploy)?.[1]?.split(' ') ?? []
+    expect(listOf('OPS_FILES')).toEqual([
+      'pm2-heal.sh',
+      'app-watch-counts.mjs',
+      'nginx-check.mjs',
+      'nginx-sites.conf',
+      'cron-check.sh',
+      'cron.conf',
+      'logrotate-admin-access.conf',
     ])
-    expect(toSiteOps[0]).not.toContain('--delete')
-    // Was der Server beim Ausliefern ausführt, sind die ersten zwei.
-    expect(deploy).toContain('bash /home/ploi/$site/ops/pm2-heal.sh')
-    expect(deploy).toContain('pm2 startOrReload /home/ploi/$site/ops/ecosystem-$app.config.cjs')
-    // Der Rückweg trägt die Handgriffe nicht mehr selbst (CI1 b, 2026-11-18):
-    // er schickt `ops/app-release.sh`, und DORT stehen dieselben zwei Dateien.
+    expect(listOf('WATCH_FILES')).toEqual(['verify-stale-keys.mjs', 'verify-instance-admins.mjs'])
+    for (const name of listOf('OPS_FILES')) expect(existsSync(join(REPO, 'ops', name)), name).toBe(true)
+    for (const name of listOf('WATCH_FILES')) expect(existsSync(join(REPO, 'scripts', 'ops', name)), name).toBe(true)
+    const code = deploy.split('\n').filter(line => !/^\s*#/.test(line)).join('\n')
+    expect(code).toContain('"ecosystem-$app.config.cjs" $OPS_FILES')
+    // CI1 b (2026-11-18): keine freien Befehle mehr. Was auf dem Server
+    // geschieht, steht in `ops/app-release.sh`; der Workflow schickt Worte.
+    expect(code).not.toMatch(/\brsync\b/)
+    expect(code).not.toContain('pm2 startOrReload')
+    expect(code).not.toContain('pm2 save')
+    expect(code).not.toMatch(/\bln -s/)
+    for (const word of ['fonts-get', 'fonts-put', 'release-put', 'ops-put', 'activate', 'prune']) {
+      expect(code, word).toContain(`$RELEASE_SCRIPT ${word}`)
+    }
+    // Jeder ssh-Aufruf an den Server ist ein Wort des Skripts — bis auf die
+    // eine Probe, die abgelehnt werden MUSS.
+    const calls = code.split('\n').filter(line => /\bssh prod\b/.test(line))
+    const free = calls.filter(line => !line.includes('"$RELEASE_SCRIPT '))
+    expect(free.map(line => line.trim())).toEqual(['out=$(ssh prod \'echo frei\' </dev/null 2>/dev/null) || code=$?'])
+    // Der Rückweg trägt die Handgriffe nicht selbst: er schickt dieselbe Datei.
     const rollback = read('ops', 'rollback.sh')
     expect(rollback).toContain('app-release.sh')
     expect(rollback).not.toContain('startOrReload')

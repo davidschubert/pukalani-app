@@ -138,13 +138,16 @@ pack() { # $1 = Marke → /work/<marke>.tar.zst
   tar -C /work/stage -cf - .output | zstd -q -3 -o "/work/$1.tar.zst" -f
 }
 pack eins; pack zwei; pack drei
-mkdir -p /work/ops && cp /ops/pm2-heal.sh /work/ops/ && echo 'module.exports = {}' > /work/ops/ecosystem-help.config.cjs
+mkdir -p /work/ops /work/watch && cp /ops/pm2-heal.sh /work/ops/ && echo 'module.exports = {}' > /work/ops/ecosystem-help.config.cjs
+echo '// Stellvertreter' > /work/watch/verify-stale-keys.mjs && echo '// Stellvertreter' > /work/watch/verify-instance-admins.mjs
 current() { basename "$(readlink "$REL/current" 2>/dev/null)" 2>/dev/null || true; }
 
-# Ein ganzes Ausliefern — die vier Zeilen aus dem Schritt „Ausliefern" von deploy.yml.
+# Ein ganzes Ausliefern — die Zeilen aus dem Schritt „Ausliefern" von deploy.yml
+# (Dateien der Site aus zwei Ordnern: ops/ und die Prüf-Skripte des Wächters).
 deliver() { # $1 = Archiv, $2 = Commit
   ssh prod "$SCRIPT release-put help $2" < "/work/$1.tar.zst" \
-    && tar -C /work/ops -cf - ecosystem-help.config.cjs pm2-heal.sh | ssh prod "$SCRIPT ops-put help" \
+    && tar -cf /work/ops-help.tar -C /work/ops ecosystem-help.config.cjs pm2-heal.sh -C /work/watch verify-stale-keys.mjs verify-instance-admins.mjs \
+    && ssh prod "$SCRIPT ops-put help" < /work/ops-help.tar \
     && ssh prod "$SCRIPT activate help $2" </dev/null \
     && ssh prod "$SCRIPT prune help" </dev/null
 }
@@ -156,6 +159,7 @@ check "ein ganzes Ausliefern läuft durch" deliver eins "$A"
 [ "$(current)" = "$A" ] && ok "der Verweis zeigt auf den neuen Stand" || bad "der Verweis zeigt auf $(current)"
 grep -q "startOrReload $H/help.pukalani.app/ops/ecosystem-help.config.cjs --update-env" "$STUB/log" && ok "pm2 lud mit der Ecosystem-Datei der Site neu" || bad "kein startOrReload im Protokoll"
 check "der Stand liegt vollständig da" test -f "$REL/$A/public/masse.bin"
+check "die Prüf-Skripte des Wächters liegen bei den Dateien der Site" test -f "$H/help.pukalani.app/ops/verify-stale-keys.mjs"
 check "der Font-Cache kommt als lesbares tar" bash -c "ssh prod '$SCRIPT fonts-get' </dev/null | tar -tf - >/dev/null"
 
 echo "B — fester Befehl"
