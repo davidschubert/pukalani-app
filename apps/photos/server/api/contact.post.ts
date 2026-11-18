@@ -9,41 +9,36 @@ const contactSchema = z.object({
   // Zweig „still schlucken" unten griff — der Bot erfuhr am 400, welches Feld
   // auffällt. Jetzt antwortet er wie ein Mensch mit `{ ok: true }`.
   website: z.string().max(2000).optional().default(''),
+  // Einmal-Token des Turnstile-Widgets — fehlt, solange die App keine
+  // Turnstile-Schlüssel hat.
+  turnstileToken: z.string().max(4096).optional(),
 }).strict()
 
 /**
- * Kontakt-Formular (P2-Polish, ersetzt den mailto-v1): validiert, drosselt
- * pro IP und schickt die Anfrage per sendMail() (Core-Mailer, lokal Mailpit).
- * Ohne konfiguriertes SMTP antwortet die Route 503 — die Seite fällt dann
- * sichtbar auf die direkte E-Mail-Adresse zurück. Eigener Mini-Limiter statt
- * der Core-Middleware: deren Routenlisten sind Core-Verträge, ein App-
- * Endpoint drosselt sich selbst.
+ * Kontakt-Formular (P2-Polish, ersetzt den mailto-v1): validiert und schickt
+ * die Anfrage per sendMail() (Core-Mailer, lokal Mailpit) an die feste
+ * Adresse des Betreibers (`contactEmail`) — nie an die eingetragene, deshalb
+ * braucht es keine Grenze je Empfänger. Ohne konfiguriertes SMTP antwortet die
+ * Route 503 — die Seite fällt dann sichtbar auf die direkte E-Mail-Adresse
+ * zurück.
+ *
+ * DIE BREMSEN (NF1 b, 2026-11-18):
+ *  - Drossel in der Core-Middleware (`05.rate-limit.ts`, Bucket
+ *    `photos:contact`, 3 je 10 Minuten und IP, dazu die Notbremse der
+ *    Gast-Mail-Eimer). Vorher zählte diese Route selbst in einer `Map` im
+ *    Speicher des Prozesses; der Bremsen-Speicher des Core zählt mit
+ *    `NUXT_REDIS_URL` über alle Prozesse.
+ *  - Honigtopf (`website`), still mit `{ ok: true }`.
+ *  - Bot-Prüfung (Turnstile, Aktion `photos_contact`) nach dem Honigtopf und
+ *    vor der Mail. Ohne die zwei Turnstile-Schlüssel ein No-op.
  */
-const WINDOW_MS = 10 * 60_000
-const MAX_PER_WINDOW = 3
-const attempts = new Map<string, number[]>()
-
 export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, contactSchema.parse)
 
-  // `trustedClientIp` (core): das LETZTE X-Forwarded-For-Segment, das unser
-  // nginx anhängt — mit dem ersten konnte ein Bot pro Nachricht einen frischen
-  // Zähler erfinden und diesen Limiter komplett umgehen (Audit 2026-08-02).
-  const ip = trustedClientIp(event) ?? 'unknown'
-  const now = Date.now()
-  const recent = (attempts.get(ip) ?? []).filter(ts => now - ts < WINDOW_MS)
-  if (recent.length >= MAX_PER_WINDOW) {
-    throw createError({ status: 429, statusText: 'Too many requests' })
-  }
-  attempts.set(ip, [...recent, now])
-  if (attempts.size > 1000) {
-    for (const [key, timestamps] of attempts) {
-      if (timestamps.every(ts => now - ts >= WINDOW_MS)) attempts.delete(key)
-    }
-  }
-
   // Honeypot gefüllt → Bot: still schlucken (kein Signal nach außen)
   if (body.website) return { ok: true }
+
+  await requireTurnstile(event, 'photos_contact', body.turnstileToken)
 
   if (!await mailerConfigured(event)) {
     throw createError({ status: 503, statusText: 'Contact mail is not configured' })

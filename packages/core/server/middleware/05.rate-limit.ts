@@ -372,6 +372,10 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // enger (10), weil es zwei Stripe-Objekte je Ruf anlegt.
   { re: /^POST \/api\/billing\/checkout$/, bucket: 'billing:checkout', max: 10 },
   { re: /^POST \/api\/billing\/portal$/, bucket: 'billing:portal', max: 30 },
+  // Ticket-Kauf (NF1 a, App-Route von apps/comments): legt je Ruf eine
+  // Stripe-Checkout-Session an — dieselbe Zahl wie `billing:checkout`, eigener
+  // Eimer, damit ein Ticket-Kauf das Abo nicht sperrt (und umgekehrt).
+  { re: /^POST \/api\/events\/[^/]+\/checkout$/, bucket: 'events:checkout', max: 10 },
   // Client-Error-Inbox (Observability-Gate): der Client dedupliziert/kappt
   // selbst (10/Session) — das Limit hier stoppt Scripting/kaputte Clients.
   { re: /^POST \/api\/telemetry\/error$/, bucket: 'telemetry:error', max: 30 },
@@ -419,6 +423,15 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
    * erst erreicht.
    */
   { re: /^POST \/api\/intro-call$/, bucket: 'portfolio:intro-call', max: 5 },
+  /**
+   * DAS KONTAKTFORMULAR VON apps/photos (NF1 b, 2026-11-18): öffentlich, ohne
+   * Konto, und JEDER Aufruf verschickt eine Mail an den Betreiber. Bis hierhin
+   * zählte die Route selbst in einer `Map` im Speicher des Prozesses — ohne
+   * Redis-Weg und ohne Stundenfenster. Die Zahl blieb: 3 je 10 Minuten und IP
+   * (ein Mensch schreibt eine Nachricht, vielleicht eine zweite mit dem
+   * vergessenen Satz).
+   */
+  { re: /^POST \/api\/contact$/, bucket: 'photos:contact', max: 3, windowMs: 600_000 },
   /**
    * DER CLAIM-POLL DES AI-RUNNERS (docs/plans/AI-RUNNER.md § 5).
    *
@@ -1053,12 +1066,13 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
  * Pfaden (waitlist + waitlist/confirm) einen Eimer teilt. Das Portfolio-
  * Erstgespräch mailt nur an David (keine Relais-Gefahr), hält aber dieselbe
  * Kontingent-Grenze — eine Nacht Formular-Spam kostet Resend-Mails, egal wer
- * der Empfänger ist.
+ * der Empfänger ist. Dasselbe gilt für das Kontaktformular von apps/photos.
  */
 const GUEST_MAIL_BUCKETS = new Set([
   'brand:intro-call',
   'brand:waitlist',
   'insights:newsletter',
+  'photos:contact',
   'portfolio:intro-call',
 ])
 

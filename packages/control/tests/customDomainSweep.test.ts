@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
 import type { TablesDB } from 'node-appwrite'
 import { appwriteRunLeaseStore } from '../../core/server/utils/runLease'
@@ -259,6 +259,19 @@ describe('apply', () => {
 
 describe('Betreiber-Route GET /api/control/sweeps/custom-domain', () => {
   const event = (permissions: string[]) => ({ context: { permissions } }) as unknown as H3Event
+
+  // DIE ROUTE LIEST DIE ECHTE UHR, die Welt oben hängt an `NOW`. Ohne
+  // gestellte Uhr kippt die Zählung, sobald die echte Zeit eine Frist der
+  // Welt überholt: `c-remind` läuft bei NOW + 2 Tagen ab, und seit dem
+  // 2026-11-18 12:00 UTC zählte die Route deshalb zwei statt einer Pause —
+  // der Test war auf `main` rot, ohne dass sich Code geändert hatte. Gestellt
+  // wird NUR `Date` (die Renn-Ablage braucht echte Timer).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: NOW })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
   it('403 ohne sites.manage', async () => {
     await expect(route(event([]))).rejects.toMatchObject({ status: 403 })

@@ -51,6 +51,7 @@ import { createRequire } from 'node:module'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { relative as relativePath, resolve as resolvePath } from 'node:path'
+import { STATIC_PUBLIC_DIRS } from './scripts/lib/lint-static-public.mjs'
 
 export const SERVER_LINT_PROGRAM = {
   // Control Plane und die Betreiber-Produkte — nur apps/control bringt sie mit.
@@ -147,13 +148,15 @@ const floatingPromiseBlock = (serverDir, app) => ({
 
 export default [
   // Dieselben Ausnahmen wie `pnpm -r lint` mit eslint.config.mjs: dessen
-  // eigene Liste plus die von @nuxt/eslint-config (dort `ignores()`, darin
-  // `**/public` — es trifft auch Routen-Ordner wie `server/api/…/public/`).
-  // Gleiche Liste ⇒ gleiche Datei-Menge wie vor dem eigenen Durchgang.
+  // eigene Liste plus die von @nuxt/eslint-config (dort `ignores()`).
+  // Gleiche Liste ⇒ gleiche Datei-Menge in beiden Durchgängen. Seit LN1
+  // sind nur noch die STATISCHEN `public`-Ordner ausgenommen; Routen-Ordner
+  // wie `server/api/…/public/` prüft auch dieser Durchgang.
   {
     ignores: [
       '**/.nuxt/**', '**/.output/**', '**/dist/**', '**/node_modules/**', '**/.playground/.nuxt/**',
-      '**/dist', '**/node_modules', '**/.nuxt', '**/.output', '**/.vercel', '**/.netlify', '**/public',
+      '**/dist', '**/node_modules', '**/.nuxt', '**/.output', '**/.vercel', '**/.netlify',
+      ...STATIC_PUBLIC_DIRS,
     ],
   },
   { linterOptions: { reportUnusedDisableDirectives: 'off' } },
