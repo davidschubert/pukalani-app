@@ -13,25 +13,6 @@
  * `apps/<name>`), Gruppen und Einträge alphabetisch. Pfade relativ zum Repo.
  */
 export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
-  'apps/comments': [
-    'apps/comments/server/api/events/[id]/checkout.post.ts',
-  ],
-  'apps/control': [
-    'apps/control/server/api/control/billing/community/checkout.post.ts',
-    'apps/control/server/api/control/billing/community/portal.post.ts',
-    'apps/control/server/api/control/billing/prices.get.ts',
-    'apps/control/server/api/control/billing/prices.post.ts',
-    'apps/control/server/api/control/stripe/keys.post.ts',
-    'apps/control/server/api/control/stripe/prices.post.ts',
-    'apps/control/server/api/control/stripe/status.get.ts',
-    'apps/control/server/api/control/stripe/webhook.post.ts',
-  ],
-  'apps/photos': [
-    'apps/photos/server/api/contact.post.ts',
-  ],
-  'apps/portfolio': [
-    'apps/portfolio/server/api/intro-call.post.ts',
-  ],
   brand: [
     'packages/brand/server/api/brand/admin/derivation-unlocks/index.get.ts',
     'packages/brand/server/api/brand/admin/design-unlocks/index.get.ts',
@@ -64,34 +45,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/brand/server/api/brand/profiles/scores.get.ts',
     'packages/brand/server/api/brand/share/revoke.post.ts',
   ],
-  insights: [
-    'packages/insights/server/api/insights/brands/[id].get.ts',
-    'packages/insights/server/api/insights/brands/index.get.ts',
-    'packages/insights/server/api/insights/channels/[channelId].delete.ts',
-    'packages/insights/server/api/insights/channels/[channelId].patch.ts',
-    'packages/insights/server/api/insights/channels/index.get.ts',
-    'packages/insights/server/api/insights/channels/index.post.ts',
-    'packages/insights/server/api/insights/channels/resolve.post.ts',
-    'packages/insights/server/api/insights/channels/seed.post.ts',
-    'packages/insights/server/api/insights/corrections/[id]/decision.post.ts',
-    'packages/insights/server/api/insights/corrections/index.get.ts',
-    'packages/insights/server/api/insights/posts/[id].delete.ts',
-    'packages/insights/server/api/insights/posts/[id].get.ts',
-    'packages/insights/server/api/insights/posts/[id]/draft.post.ts',
-    'packages/insights/server/api/insights/posts/[id]/evidence.post.ts',
-    'packages/insights/server/api/insights/posts/index.get.ts',
-    'packages/insights/server/api/insights/posts/index.post.ts',
-    'packages/insights/server/api/insights/public/brands/[slug].get.ts',
-    'packages/insights/server/api/insights/public/corrections.post.ts',
-    'packages/insights/server/api/insights/public/duels/[slug].get.ts',
-    'packages/insights/server/api/insights/public/posts/[slug].get.ts',
-    'packages/insights/server/api/insights/public/rankings/[slug].get.ts',
-    'packages/insights/server/api/insights/watchlist/[videoId].delete.ts',
-    'packages/insights/server/api/insights/watchlist/[videoId].patch.ts',
-    'packages/insights/server/api/insights/watchlist/index.get.ts',
-    'packages/insights/server/api/insights/watchlist/index.post.ts',
-    'packages/insights/server/api/insights/watchlist/verdict.post.ts',
-  ],
   market: [
     'packages/market/server/api/market/ops/sweep.post.ts',
     'packages/market/server/api/market/profiles/[id]/candidates.get.ts',
@@ -103,15 +56,5 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/market/server/api/market/profiles/[id]/report.get.ts',
     'packages/market/server/api/market/profiles/[id]/report.post.ts',
     'packages/market/server/api/market/profiles/[id]/visibility.patch.ts',
-  ],
-  pages: [
-    'packages/pages/server/api/pages/[slug].delete.ts',
-    'packages/pages/server/api/pages/[slug].get.ts',
-    'packages/pages/server/api/pages/index.get.ts',
-    'packages/pages/server/api/pages/navigation.patch.ts',
-    'packages/pages/server/api/pages/redirects.get.ts',
-    'packages/pages/server/api/pages/redirects.patch.ts',
-    'packages/pages/server/api/pages/seo.patch.ts',
-    'packages/pages/server/api/pages/translate.post.ts',
   ],
 }

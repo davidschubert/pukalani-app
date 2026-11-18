@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest'
  * jedes `server/` unter `packages/*` UND `apps/*`, rekursiv — ein neuer Ort
  * für Routen braucht hier keinen Eintrag. Zweites Netz seit demselben Tag:
  * die typisierte Lint-Regel `@typescript-eslint/no-floating-promises` über
- * alle Server-Ordner (eslint.config.mjs).
+ * alle Server-Ordner (`pnpm lint:typed`, eslint.typed.config.mjs).
  */
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))

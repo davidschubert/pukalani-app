@@ -10,7 +10,8 @@ import { AppwriteException } from 'node-appwrite'
  *
  * Geprüft wird, was NICHT in einer puren Funktion steht, sondern in der
  * Reihenfolge der Route: woher `promptTrusted` kommt (SEC-038) und ob die
- * Testbefehle gegen die Liste des Rechners laufen (SEC-037). Die Registry
+ * Testbefehle gegen die Liste des Rechners laufen (SEC-037) und welcher TEXT
+ * gespeichert wird (RU1 b: der des Servers, nie der aus der Anfrage). Die Registry
  * (`runSubjectTrust`) läuft echt mit; nachgebildet wird nur der Resolver, den
  * in Wirklichkeit `apps/control` verdrahtet (die Herkunft des Tickets).
  */
@@ -22,6 +23,14 @@ let body: Record<string, unknown>
 let routeId: string
 /** Herkunft je Ticket-Id, wie sie der Resolver der App melden würde. */
 let ticketTrust: Map<string, boolean>
+/**
+ * Der Auftragstext je Ticket-Id, wie ihn der Resolver der App aus der Zeile
+ * baut. Fehlt ein Eintrag, liefert der Resolver KEINEN Text (so verhält sich
+ * ein Subjekt-Typ, für den niemand den Text baut).
+ */
+let ticketText: Map<string, string>
+
+const SERVER_TEXT = '# Knopf ohne Beschriftung\n\nVom Server aus dem Ticket gebaut.\n'
 
 const tablesDB = {
   getRow: vi.fn(async ({ rowId }: { rowId: string }) => {
@@ -55,7 +64,7 @@ beforeAll(async () => {
   const trust = await import('../server/utils/runSubjectTrust')
   trust.registerRunSubjectTrustResolver('ticket', async (_event, subjectId) => {
     if (!ticketTrust.has(subjectId)) return null
-    return { trusted: ticketTrust.get(subjectId) === true }
+    return { trusted: ticketTrust.get(subjectId) === true, promptSource: ticketText.get(subjectId) }
   })
   createRun = (await import('../server/api/runner/runs/index.post')).default as unknown as Handler
   resumeRun = (await import('../server/api/runner/runs/[id]/resume.post')).default as unknown as Handler
@@ -76,6 +85,12 @@ beforeEach(() => {
   ticketTrust = new Map([
     ['t-feedback', false],
     ['t-operator', true],
+    // Geprüft gemeldet, aber OHNE Text vom Server (Regel 4 des Vertrags).
+    ['t-notext', true],
+  ])
+  ticketText = new Map([
+    ['t-feedback', SERVER_TEXT],
+    ['t-operator', SERVER_TEXT],
   ])
   routeId = ''
   body = {}
@@ -89,7 +104,8 @@ function runBody(overrides: Record<string, unknown> = {}): Record<string, unknow
     repoKey: 'maui',
     model: 'opus',
     permissionMode: 'plan',
-    promptSource: '# Auftrag',
+    // KEIN `promptSource`: den Auftrag baut der Server (RU1 b). Tests, die den
+    // Vergleich mit der Vorschau prüfen, setzen das Feld ausdrücklich.
     ...overrides,
   }
 }
@@ -133,6 +149,63 @@ describe('POST /api/runner/runs — der Server bestimmt „geprüft" (SEC-038)',
   it('unbekanntes Subjekt ⇒ 404 subject_not_found', async () => {
     body = runBody({ subjectId: 't-gone' })
     expect(await rejection(createRun(event))).toMatchObject({ status: 404, data: { code: 'subject_not_found' } })
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/runner/runs — den Auftragstext baut der Server (RU1 b)', () => {
+  it('ohne Text in der Anfrage ⇒ gespeichert wird der Text des Servers', async () => {
+    body = runBody()
+    expect((await createRun(event)).promptSource).toBe(SERVER_TEXT)
+  })
+
+  it('die Vorschau stimmt Zeichen für Zeichen ⇒ angelegt, mit dem Text des Servers', async () => {
+    body = runBody({ promptSource: SERVER_TEXT })
+    expect((await createRun(event)).promptSource).toBe(SERVER_TEXT)
+  })
+
+  it('ein ANDERER Text in der Anfrage wird nicht übernommen ⇒ 409 prompt_changed, nichts angelegt', async () => {
+    body = runBody({ promptSource: '# Ein fremder Auftrag\n\nMach etwas ganz anderes.' })
+    expect(await rejection(createRun(event))).toMatchObject({ status: 409, data: { code: 'prompt_changed' } })
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+
+  it('schon ein einzelnes Zeichen Unterschied reicht (kein Trimmen, kein Angleichen)', async () => {
+    body = runBody({ promptSource: `${SERVER_TEXT} ` })
+    expect(await rejection(createRun(event))).toMatchObject({ status: 409, data: { code: 'prompt_changed' } })
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+
+  it('auch ein ungeprüftes Ticket läuft mit dem Text des Servers', async () => {
+    body = runBody({ subjectId: 't-feedback' })
+    const run = await createRun(event)
+    expect(run.promptSource).toBe(SERVER_TEXT)
+    expect(run.promptTrusted).toBe(false)
+  })
+
+  it('liefert der Resolver KEINEN Text, zählt der Text der Anfrage — und der Lauf ist ungeprüft', async () => {
+    body = runBody({ subjectId: 't-notext', promptSource: '# Freier Auftrag' })
+    const run = await createRun(event)
+    expect(run.promptSource).toBe('# Freier Auftrag')
+    expect(run.promptTrusted).toBe(false)
+  })
+
+  it('Gegenprobe dazu: ein Text aus der Anfrage bekommt die weitreichenden Modi nicht', async () => {
+    body = runBody({ subjectId: 't-notext', promptSource: '# Freier Auftrag', permissionMode: 'bypassPermissions' })
+    expect(await rejection(createRun(event))).toMatchObject({ status: 400, data: { code: 'mode_not_allowed_untrusted' } })
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+
+  it('weder Server noch Anfrage haben einen Text ⇒ 400 prompt_required', async () => {
+    body = runBody({ subjectId: 't-notext' })
+    expect(await rejection(createRun(event))).toMatchObject({ status: 400, data: { code: 'prompt_required' } })
+    expect(tablesDB.createRow).not.toHaveBeenCalled()
+  })
+
+  it('ein Text des Servers über der Grenze ⇒ 400 prompt_too_long, nichts angelegt', async () => {
+    ticketText.set('t-operator', 'x'.repeat(200_001))
+    body = runBody()
+    expect(await rejection(createRun(event))).toMatchObject({ status: 400, data: { code: 'prompt_too_long' } })
     expect(tablesDB.createRow).not.toHaveBeenCalled()
   })
 })
@@ -270,5 +343,22 @@ describe('Wächter: promptTrusted kommt nie aus dem Body', () => {
     expect(source).not.toMatch(/body\.promptTrusted/)
     expect(source).not.toMatch(/body\[['"]promptTrusted['"]\]/)
     expect(source).toContain('resolveRunSubjectTrust(')
+  })
+})
+
+/**
+ * QUELLTEXT-WÄCHTER (RU1 b): die Anlege-Route speichert nie unmittelbar den
+ * Text der Anfrage. Der einzige erlaubte Weg dorthin ist der Rückfall, wenn
+ * der Server keinen Text hat (`subject.promptSource ?? body.promptSource`).
+ */
+describe('Wächter: der gespeicherte Auftrag kommt nicht direkt aus dem Body', () => {
+  const source = readFileSync(fileURLToPath(new URL('../server/api/runner/runs/index.post.ts', import.meta.url)), 'utf8')
+
+  it('keine Spalte wird mit body.promptSource belegt', () => {
+    expect(source).not.toMatch(/promptSource:\s*body\.promptSource/)
+  })
+
+  it('der Text des Servers hat Vorrang', () => {
+    expect(source).toContain('subject.promptSource ?? body.promptSource')
   })
 })

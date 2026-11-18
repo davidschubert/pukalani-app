@@ -1059,7 +1059,9 @@
       "truncated": {
         "hint": "This answer was cut off – the model stopped before it was finished.",
         "retry": "Generate again",
-        "writeAgain": "Just write again and {voice} will answer anew."
+        "writeAgain": "Just write again and {voice} will answer anew.",
+        "fieldBadge": "Cut off",
+        "fieldHint": "Draft cut off – the text ends mid-thought."
       },
       "submitChoice": "Submit",
       "save": {
@@ -1491,6 +1493,8 @@
           "rateLimited": "The free checks for today are used up. Tomorrow it continues — or sign up for the full report.",
           "unavailable": "The check is not reachable right now. Please try again in a few minutes.",
           "paused": "The check is paused at the moment. Please come back later.",
+          "interrupted": "The check was interrupted. Please start it again.",
+          "slow": "The check is taking longer than usual. Reload this page in a few minutes — the result will appear here.",
           "generic": "That did not work just now. Please try again in a moment."
         },
         "ranking": "Add this check to the public ranking",
@@ -1829,6 +1833,8 @@
         "siteBlocked": "This website does not allow automated evaluation — we respect that. So there is no result here.",
         "unavailable": "The check is unavailable right now. Try again in a few minutes.",
         "paused": "The check is paused at the moment. Please come back later.",
+        "websiteInterrupted": "The website check was interrupted. Please start it again.",
+        "websiteBackground": "The website check is still running in the background. The result will appear here after reloading the page.",
         "generic": "That did not work just now. Give it another try in a moment."
       }
     },

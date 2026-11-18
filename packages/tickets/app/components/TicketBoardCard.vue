@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TicketRow } from '../../shared/types/ticket'
-import { parseTicketChecklist, parseTicketMembers } from '../utils/ticketMarkdown'
+import { parseTicketChecklist } from '../../shared/ticketChecklist'
+import { parseTicketMembers } from '../utils/ticketMarkdown'
 import { TICKET_LABEL_META, TICKET_PRIORITY_META } from '../utils/ticketMeta'
 
 /**
