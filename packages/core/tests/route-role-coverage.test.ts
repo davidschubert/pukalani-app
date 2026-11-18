@@ -60,6 +60,10 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // Abgebaut mit N09 (2026-11-17): alle 28 Bestands-Routen des Dashboards
   // (Prüfstand `packages/admin/tests/support/adminRouteHarness.ts`).
   'admin',
+  // Abgebaut mit N13 (2026-11-18): alle 26 Bestands-Routen der Redaktion
+  // hinter `insights.manage` und die öffentlichen Leseseiten samt
+  // Korrektur-Formular (`packages/insights/tests/support/insightsRouteKit.ts`).
+  'insights',
 ]
 
 /**
