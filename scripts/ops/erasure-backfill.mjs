@@ -420,6 +420,17 @@ const RULES = [
   },
 ]
 
+// Ein unbekannter Name hinter `--only` lief früher still durch: keine Regel,
+// keine Zeile, Exit 0 — und sah aus wie „nichts zu tun" (2026-11-18 so
+// erwischt, mit einem Checkout, der die Regel noch nicht kannte).
+if (ONLY) {
+  const unknown = [...ONLY].filter(key => !RULES.some(rule => rule.key === key))
+  if (unknown.length) {
+    console.error(`✗ --only nennt unbekannte Regeln: ${unknown.join(', ')}. Bekannt: ${RULES.map(rule => rule.key).join(', ')}`)
+    process.exit(2)
+  }
+}
+
 console.log(`Altbestand ${APPLY ? 'AUFRÄUMEN' : 'zählen (nur lesen)'} · ${endpoint} · Projekt ${projectId} · ${new Date().toISOString()}`)
 
 let exit = 0

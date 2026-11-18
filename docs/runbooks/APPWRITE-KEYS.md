@@ -79,6 +79,24 @@ setzen voraus, dass die Autorisierung schon durch war. Es misst deshalb nur die
 LESE-Hälfte je Dienst: für „eng oder allmächtig?" reicht das, für ein Audit auf
 Feld-Ebene nicht.
 
+## Stand der Zweck-Schlüssel (2026-11-18)
+
+Gilt für alle vier Projekte (`account`, `admin`, `portfolio`, `branding`):
+
+| Schlüssel | Wozu | Rechte |
+| --- | --- | --- |
+| Migrationen (je Projekt einer; Ablage `~/.appwrite-secrets/migrations/<projekt>.env`) | Migrations-Runner, Zähl- und Aufräum-Skripte von Hand | Datenbank lesen und schreiben, Buckets lesen und schreiben, Dateilisten LESEN (`files.read`, in drei Projekten ergänzt am 2026-11-18 — Dateien schreiben oder löschen darf er weiter nicht) |
+| `watch-schema-readonly` (je Projekt einer; nur als Secret in der GitHub-Umgebung `production-watch`) | täglicher Wächter: Schema-Blick und Anmelde-Regeln | `tables.read`, `columns.read`, `project.policies.read` (das dritte seit dem 2026-11-18). Kein Ablaufdatum — entschieden am 2026-11-18: die Schlüssel lesen keine Inhalte, ein jährlicher Tausch brächte mehr Fehlalarm als Schutz |
+
+In jeder der vier Env-Dateien steht der Migrations-Schlüssel unter
+`NUXT_APPWRITE_MIGRATIONS_KEY` UND unter `NUXT_APPWRITE_KEY` (derselbe Wert):
+der erste Name ist der, den die Migrationen erwarten (sonst warnt jede
+„Fallback"), der zweite bleibt für ältere Skripte, die nur ihn lesen.
+
+Nachmessen, ob ein Schlüssel Dateilisten lesen darf: ein GET auf
+`/storage/buckets/<bucket>/files` mit dem Schlüssel — 200 heißt ja, 401 nein
+(`probe-key-scopes.mjs` misst diesen Scope nicht).
+
 ## Regel
 
 Ein Schlüssel gehört zu **einer** Aufgabe und trägt deren Namen. Wer beim
