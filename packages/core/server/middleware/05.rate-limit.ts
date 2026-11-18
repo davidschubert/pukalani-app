@@ -372,6 +372,10 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // enger (10), weil es zwei Stripe-Objekte je Ruf anlegt.
   { re: /^POST \/api\/billing\/checkout$/, bucket: 'billing:checkout', max: 10 },
   { re: /^POST \/api\/billing\/portal$/, bucket: 'billing:portal', max: 30 },
+  // Ticket-Kauf (NF1 a, App-Route von apps/comments): legt je Ruf eine
+  // Stripe-Checkout-Session an — dieselbe Zahl wie `billing:checkout`, eigener
+  // Eimer, damit ein Ticket-Kauf das Abo nicht sperrt (und umgekehrt).
+  { re: /^POST \/api\/events\/[^/]+\/checkout$/, bucket: 'events:checkout', max: 10 },
   // Client-Error-Inbox (Observability-Gate): der Client dedupliziert/kappt
   // selbst (10/Session) — das Limit hier stoppt Scripting/kaputte Clients.
   { re: /^POST \/api\/telemetry\/error$/, bucket: 'telemetry:error', max: 30 },
