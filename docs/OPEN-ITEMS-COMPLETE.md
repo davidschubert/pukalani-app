@@ -167,7 +167,10 @@ getestet und mit eigenen Gegenproben nachgeprüft.
 - **Dokument-Prüfung lokal an der echten Route** (Ersatz-Prüfung, ohne
   Wartezeit): fünf gleichzeitige Starts ⇒ ein `202`, vier `409`; eine
   Sitzung nachgeholt; ein zweiter Klick auf denselben Stand ⇒ `200` ohne Lauf.
-- **Live:** alle acht Hosts `ok`; die neue Abfrage-Route antwortet auf
+- **Live (2026-11-18, 09:55 UTC):** alle acht Hosts `ok` mit dem Build
+  `fd42b8b6`, der alle sechs Code-Merges enthält; branding.supply
+  `schema.state: ok`. `main` fünfmal grün auf dem letzten Merge der Gruppe
+  (`0f6e6bf1`) und auf dem Stand danach. Die neue Abfrage-Route antwortet auf
   branding.supply mit `run_not_found` (ein Lesezugriff ohne Schlüssel).
 
 **Nicht geprüft**
@@ -192,8 +195,9 @@ Kennzeichen am Feld weg; Zeitdeckel statt Hintergrund-Lauf für
 Kapitel-Prüfung und Sitzung schließen; keine Frist für Lauf-Zeilen; der
 Radar-Text bleibt, umformuliert.
 
-**Reste** stehen in OPEN-ITEMS: „LL1" (c, d), „KI1" (d), „BT1" und der neue
-Punkt „CW1" (Wackler in CI und Ausliefern, an diesem Tag beobachtet).
+**Reste** stehen in OPEN-ITEMS: „LL1" (c, d), „KI1" (d) und der neue Punkt
+„CW1" (Wackler in CI und Ausliefern, an diesem Tag beobachtet). Aus „BT1"
+ist (b) erledigt.
 
 **Gelernt:** (1) Ein `409 läuft schon` ist für einen Besucher OHNE Konto
 eine Sackgasse — er hat nichts, womit er dem Lauf folgen könnte. Deshalb
@@ -215,8 +219,10 @@ parallelen Pull Requests ein sicherer Konflikt — dreimal an diesem Tag; die
 richtige Zahl nennt der Test selbst, nach dem Zusammenlegen mit `main`.
 (6) Die Pflicht-Prüfung `secrets` liest ALLE Zweige: ein Fund in einem
 fremden Zweig färbte eine Viertelstunde lang jeden Pull Request rot. (7)
-Dichte Merges mehrerer Sitzungen starten das Ausliefern immer wieder neu —
-ein Merge war erst nach 28 Minuten live.
+Dichte Merges mehrerer Sitzungen starten das Ausliefern immer wieder neu,
+und ein wackelnder Test auf `main` hält es ganz auf — die Merges dieser
+Gruppe waren erst nach 28, 32 und 40 Minuten live. Die Grenze „höchstens
+zwei Code-Merges ohne Live-Beweis" hat genau dafür getragen.
 
 ---
 

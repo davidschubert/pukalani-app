@@ -102,7 +102,7 @@ am 2026-11-18, COMPLETE „N11").
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst. Rollen-Tests: `pages`, `apps/control` und die drei Einzelrouten sind seit dem 2026-11-18 ohne Bestand (COMPLETE „N14"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) erledigt: kein Layer hat mehr Routen ohne Rollen-Test (COMPLETE „N13" und „N14"), (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | NF1 | **Nebenfunde aus den Tests der Apps.** (a) Ticket-Kauf der Test-App: es fehlen Prüfungen, die die übrigen Termin-Routen tragen, (b) die Formulare von `apps/portfolio` und `apps/photos` haben noch nicht alle Bausteine der Regel für öffentliche Formulare, (c) Kleinigkeiten. Gefunden am 2026-11-18 (COMPLETE „N14"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#nf1) |
-| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** Vier Dinge, die an einem Tag mit vielen parallelen Merges auffielen: der Start der Test-Server, ein Test des Ausliefer-Skripts, die Geheimnis-Prüfung über alle Zweige, und das Ausliefern, das immer wieder neu beginnt. Nichts davon ist ein Fehler im Programm. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
+| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** Drei Dinge, die an einem Tag mit vielen parallelen Merges auffielen: der Start der Test-Server in der CI, die Geheimnis-Prüfung über alle Zweige, und das Ausliefern, das immer wieder neu beginnt. Nichts davon ist ein Fehler im Programm. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -1052,8 +1052,9 @@ als offene Punkte (`it.todo`).
 <a id="cw1"></a>
 
 **CW1 — Wackler in CI und Ausliefern (beobachtet von der Gruppe N13 am 2026-11-18).**
-An diesem Tag führten drei Gruppen gleichzeitig zusammen. Vier Beobachtungen,
-jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit.
+An diesem Tag führten drei Gruppen gleichzeitig zusammen. Drei Beobachtungen,
+jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit. (Ein
+vierter Wackler, der Test des Ausliefer-Skripts, ist am selben Tag behoben.)
 
 - **(a) Die Test-Server starten in der CI nicht rechtzeitig.** E2E: „Timed
   out waiting 120000ms from config.webServer" (Pull Request 334 im ersten
@@ -1062,20 +1063,16 @@ jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit.
   (334 im ersten Lauf, 345). Der zweite Lauf war jeweils grün. Empfehlung:
   die zwei Skripte warten auf die erste fehlerfreie Seite, bevor sie prüfen;
   für E2E die Startzeit messen, bevor die Frist steigt.
-- **(b) `packages/core/tests/appReleaseScript.test.ts` war zweimal rot**
-  („das Archiv mit den Dateien der Site ist nicht lesbar", Pull Requests 344
-  und 348), auf `main` und bei der Wiederholung grün. Sieht aus wie dieselbe
-  Sorte Wackler wie in BT1 (d) bei `rollbackScript.test.ts` (eine Pipe
-  schließt früh).
-- **(c) Die Pflicht-Prüfung `secrets` liest alle Zweige.** Ein Fund in einem
-  Zweig färbt jeden Pull Request rot, bis der Zweig neu aufgesetzt ist (eine
+- **(b) Die Pflicht-Prüfung `secrets` liest alle Zweige.** Ein Fund in einem
+  Zweig färbt jeden Pull Request rot, bis der Zweig weg ist (eine
   Viertelstunde am 2026-11-18). Empfehlung: nur die Historie des geprüften
   Zweigs lesen — das ist eine Änderung am Workflow, also mit dem
   Ausliefer-Weg zusammen (CI1).
-- **(d) Dichte Merges starten das Ausliefern immer wieder neu.** Jeder Merge
-  bricht den laufenden Lauf ab; ein Merge der Gruppe N13 war erst nach 28
-  Minuten live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln
-  oder den laufenden Lauf zu Ende fahren lassen (ebenfalls CI1).
+- **(c) Dichte Merges starten das Ausliefern immer wieder neu.** Jeder Merge
+  bricht den laufenden Lauf ab, und ein roter Test auf `main` hält alles
+  auf: drei Merges der Gruppe N13 waren erst nach 28, 32 und 40 Minuten
+  live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln oder den
+  laufenden Lauf zu Ende fahren lassen (ebenfalls CI1).
 
 <a id="a1-anwalt"></a>
 
