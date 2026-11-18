@@ -82,7 +82,6 @@ const AI_MODEL_CHECK = { constant: 'AI_MODEL_CHECK_TIMEOUT_MS', file: 'packages/
 const BRAND_SITE = { constant: 'BRAND_SITE_ANALYSIS_TIMEOUT_MS', file: 'packages/brand/shared/brandSiteAnalysis.ts' } as const
 const BRAND_CRAWL = { constant: 'BRAND_CRAWL_TIMEOUT_MS', file: 'packages/brand/server/utils/brandSiteCrawl.ts' } as const
 const BRAND_JUDGE = { constant: 'BRAND_CHECK_JUDGE_TIMEOUT_MS', file: 'packages/brand/server/utils/brandCheckJudge.ts' } as const
-const BRAND_REVIEW = { constant: 'BRAND_REVIEW_TIMEOUT_MS', file: 'packages/brand/server/utils/brandReview.ts' } as const
 const BRAND_REVIEW_INLINE = { constant: 'BRAND_REVIEW_INLINE_BUDGET_MS', file: 'packages/brand/server/utils/brandReview.ts' } as const
 const INSIGHTS_GATE = { constant: 'INSIGHTS_GATE_FETCH_BUDGET_MS', file: 'packages/insights/server/utils/insightsReview.ts' } as const
 
@@ -147,16 +146,11 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
     form: 'detached',
     via: 'packages/brand/server/utils/brandRun.ts',
   },
+  // Dokument-Prüfung (LL1 d): Lauf-Sperre, 202, der Lauf rechnet in `startBrandRun`.
+  // Derselbe Stand schon geprüft ⇒ weiter sofort 200, ohne Lauf.
   'packages/brand/server/api/brand/profiles/[id]/review.post.ts': {
-    form: 'over',
-    deadlines: [{
-      ...BRAND_REVIEW,
-      times: 22,
-      what: 'bis zu 10 Nachholungen (BRAND_DOCUMENT_CATCHUP_MAX) und die Prüfung des Dokuments, '
-        + 'je zwei Stufen nacheinander: (10 + 1) × 2',
-    }],
-    reason: 'Dokument-Prüfung des Markenberaters: holt bis zu zehn Sitzungs-Prüfungen nach und prüft dann das Ganze, '
-      + 'alles in der Anfrage. Ein zweiter Klick startet sie nicht noch einmal (eigene Sperre im Prozess).',
+    form: 'detached',
+    via: 'packages/brand/server/utils/brandRun.ts',
   },
   'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/converse.post.ts': { form: 'stream' },
   'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/generate.post.ts': { form: 'stream' },
