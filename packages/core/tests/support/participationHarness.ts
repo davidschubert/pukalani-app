@@ -189,7 +189,7 @@ export function wireCommunityWorld(world: CommunityWorld): WiredWorld {
   })
   vi.stubGlobal('revokeCommunityLabel', async (e: H3Event, communityId: string) => {
     const current = e.context.user
-    if (current?.labels) current.labels = current.labels.filter(label => label !== communityId)
+    if (current?.labels) current.labels = current.labels.filter((label: string) => label !== communityId)
     // Vertrag seit SEC-024: der Entzug meldet sein Ergebnis.
     return { revoked: true }
   })
