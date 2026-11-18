@@ -72,8 +72,6 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/market/server/api/market/profiles/[id]/competitors/index.get.ts',
     'packages/market/server/api/market/profiles/[id]/competitors/index.post.ts',
     'packages/market/server/api/market/profiles/[id]/rating.post.ts',
-    'packages/market/server/api/market/profiles/[id]/report.get.ts',
-    'packages/market/server/api/market/profiles/[id]/report.post.ts',
     'packages/market/server/api/market/profiles/[id]/visibility.patch.ts',
   ],
   pages: [
