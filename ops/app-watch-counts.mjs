@@ -57,6 +57,14 @@
 //   audit.write_failed            ein Eintrag ins Betreiber-Protokoll ist
 //                                 gescheitert (core/server/utils/auditLog.ts,
 //                                 BE-021) — Zeile `protokoll ausfaelle=<n>`
+//   auth.mail_route_breaker       die Notbremse einer Mail-Route hat gegriffen
+//                                 (core/server/middleware/05.rate-limit.ts) —
+//                                 Zeile `mailbremse ausgeloest=<n> letzte_min=<m|nie>`.
+//                                 Seit 2026-11-18 (WA1 e) liest der Mail-Blick
+//                                 (scripts/ops/verify-mail-breaker.mjs) diese
+//                                 Zeile statt eines `grep` über den ganzen
+//                                 Log-Ordner: so zählen nur die Dateien des
+//                                 laufenden Prozesses.
 // Für die Zeit-Läufe zählen zusätzlich die GANZEN Dateien (die laufende und
 // ihre umgelaufenen Geschwister): „letzter guter Lauf vor n Minuten" darf
 // älter sein als das Fenster.
@@ -227,7 +235,9 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0 }
+  /** Jüngster Zeitpunkt, an dem die Notbremse einer Mail-Route im Fenster griff. */
+  let lastMailBreaker = null
   const jobs = new Map()
   const job = (id) => {
     if (typeof id !== 'string' || !JOB_PATTERN.test(id)) return null
@@ -267,6 +277,11 @@ async function main() {
         break
       case 'csp.report_capped':
         if (inWindow) counts.cspCapped++
+        break
+      case 'auth.mail_route_breaker':
+        if (!inWindow) break
+        counts.mailBreaker++
+        if (lastMailBreaker === null || at > lastMailBreaker) lastMailBreaker = at
         break
       case 'job.registered': {
         const item = job(entry.job)
@@ -317,6 +332,8 @@ async function main() {
   // Zeile (ein Server mit dem Skript von vorher) — VERSION bleibt deshalb 1.
   console.log(`protokoll ausfaelle=${counts.auditFailed}`)
   console.log(`skriptregel berichte=${counts.csp} gedeckelt=${counts.cspCapped}`)
+  // Seit WA1 e (2026-11-18), ebenfalls OPTIONAL für die Auswertung.
+  console.log(`mailbremse ausgeloest=${counts.mailBreaker} letzte_min=${minutesSince(now, lastMailBreaker)}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

@@ -31,6 +31,7 @@ const LINE_FORMS = [
   /^ki ausfaelle=\d+ ohne_guthaben=\d+ kein_endpunkt=\d+ abgeschaltet=\d+$/,
   /^protokoll ausfaelle=\d+$/,
   /^skriptregel berichte=\d+ gedeckelt=\d+$/,
+  /^mailbremse ausgeloest=\d+ letzte_min=(\d+|nie)$/,
   /^lauf name=[a-z][a-z0-9-]{1,39} takt_min=\d+ ok=\d+ gescheitert=\d+ uebersprungen=\d+ haengt=\d+ letzter_ok_min=(\d+|nie) letzter_lauf_min=(\d+|nie) letztes_ergebnis=(ok|failed|skipped|nie) angemeldet_min=(\d+|nie)$/,
   /^ende laeufe=\d+$/,
 ]
@@ -200,6 +201,25 @@ describe('ops/app-watch-counts.mjs', () => {
     expect(lines[0]).toContain('status=online')
   })
 
+  it('Notbremse der Mail-Routen: zählt nur die Dateien des laufenden Prozesses und nur das Fenster (WA1 e)', () => {
+    writeLog('error', 4, [
+      event(90, 'warn', 'auth.mail_route_breaker', { route: '/api/auth/signup' }),
+      event(30, 'warn', 'auth.mail_route_breaker', { route: '/api/auth/recovery', x: 'GEHEIM-MARKER' }),
+      // außerhalb des Fensters von 25 h
+      event(26 * 60, 'warn', 'auth.mail_route_breaker', { route: '/api/auth/signup' }),
+    ])
+    // Die Datei einer FRÜHEREN Prozess-Nummer, mit einer Zeile mitten im
+    // Fenster: ein `grep` über `*-error*.log` zählte sie mit.
+    writeLog('error', 9, [event(15, 'warn', 'auth.mail_route_breaker', { route: '/api/auth/signup' })])
+    // Ein fremder Prozess im selben Ordner.
+    writeFileSync(join(logs, 'anderer-error-4.log'), `${event(5, 'warn', 'auth.mail_route_breaker', { route: '/api/auth/signup' })}\n`)
+    const { code, lines, out } = run(PROC)
+    expect(code).toBe(0)
+    expect(lineOf(lines, 'mailbremse ')).toBe('mailbremse ausgeloest=2 letzte_min=30')
+    expect(out).not.toContain('GEHEIM-MARKER')
+    for (const line of lines) expect(LINE_FORMS.some(form => form.test(line)), line).toBe(true)
+  })
+
   it('leere und fehlende Log-Dateien sind kein Fehler', () => {
     pm2Answers(JSON.stringify(processList({ pm_err_log_path: join(logs, 'gibt-es-nicht.log') })))
     const { code, lines } = run(PROC)
@@ -211,6 +231,7 @@ describe('ops/app-watch-counts.mjs', () => {
       'ki ausfaelle=0 ohne_guthaben=0 kein_endpunkt=0 abgeschaltet=0',
       'protokoll ausfaelle=0',
       'skriptregel berichte=0 gedeckelt=0',
+      'mailbremse ausgeloest=0 letzte_min=nie',
       'ende laeufe=0',
     ])
   })

@@ -17,12 +17,21 @@
  * greift sie, schreibt die App EINE Zeile `auth.mail_route_breaker` ins Log —
  * und ein Log, das niemand liest, ist genau die stille Lücke dieser Datei.
  *
- * BLICK 1 — NOTBREMSE AUSGELÖST? (`--ssh`): liest auf dem App-Server die
- * pm2-Fehlerlogs (die App loggt `warn` nach stderr) und zählt die
- * Notbremsen-Zeilen der letzten 25 Stunden (eine Stunde Überlappung zum
- * täglichen Takt). Über ssh läuft nur `grep` auf die EVENT-Zeile; zurück
- * kommen Zeitpunkt und Route, nie ein Request-Inhalt — die Zeile selbst
- * enthält bewusst keinen (logEvent, PII-Regel).
+ * BLICK 1 — NOTBREMSE AUSGELÖST? (`--ssh`): fragt auf dem App-Server je App
+ * das Zähl-Skript (`ops/app-watch-counts.mjs`, Tor-Wort `app-signals`) nach
+ * den Notbremsen-Zeilen der letzten 25 Stunden (eine Stunde Überlappung zum
+ * täglichen Takt). Zurück kommen je App eine Zahl und „zuletzt vor n Minuten"
+ * — nie eine Log-Zeile. Seit WA1 e (2026-11-18) zählt damit nur noch, was in
+ * den Log-Dateien des LAUFENDEN Prozesses und im Zeitfenster steht: vorher
+ * lief ein `grep` über `*-error*.log`, also auch über die Dateien früherer
+ * Prozess-Nummern, die pm2 daneben liegen lässt (die Rechnung:
+ * `mail-breaker-rules.mjs`). Kann eine App nicht gezählt werden, steht das
+ * als eine Zeile da; rot macht sie der Blick „In die App hinein" im selben
+ * Lauf (`verify-app-signals.mjs`, derselbe Aufruf). Nur wenn KEINE App
+ * gezählt werden konnte, endet dieser Blick mit Exit 2.
+ * `--from-dir <ordner>`: gespeicherte Antworten (`<app>.txt`) statt ssh, für
+ * Proben. `--pattern <ereignis>` (nur Probelauf) nimmt weiter das alte
+ * Tor-Wort `mail-breaker`, das im ganzen Log-Ordner sucht.
  *
  * BLICK 2 — WIE VIELE MAILS GINGEN WIRKLICH RAUS? (`--resend`): die Notbremse
  * sieht nur, was ÜBER unsere Routen läuft, und erst ab 61 je Stunde — ein
@@ -81,15 +90,25 @@
  * CI absichtlich KEIN Alarm-Grund — s. Kopf von production-watch.yml).
  */
 import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { APP_SERVER as SERVER, gateSshArgs } from './app-watch-gate.mjs'
+import { summarizeMailBreaker, UNCHECKED_TEXT } from './mail-breaker-rules.mjs'
+import { readApps } from './verify-app-signals.mjs'
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const STRIKT = process.argv.includes('--strict')
 /** Fenster für Blick 1 — der tägliche Takt plus eine Stunde Überlappung. */
 const HOURS = Number(arg('--hours')) || 25
 /** Event-Name, nach dem im Log gesucht wird. Überschreibbar NUR für den
  *  Probelauf (`--pattern community.seo_read_failed --hours 999`), damit der
- *  rote Pfad ohne echten Angriff beweisbar ist. */
+ *  rote Pfad ohne echten Angriff beweisbar ist — dieser Weg nimmt das alte
+ *  Tor-Wort `mail-breaker` (ganzer Log-Ordner). */
 const PATTERN = arg('--pattern') || 'auth.mail_route_breaker'
+/** Gespeicherte Antworten des Zähl-Skripts statt ssh (Proben, Tests). */
+const FROM_DIR = arg('--from-dir')
 /** Blick 2: ab diesem ANTEIL der Tagesgrenze (aus `GET /usage`) ist es kein
  *  normaler Tag mehr — 80 % von 100 = 80, die Schwelle vor dem Umbau. Mit
  *  `--alarm N` eine feste Zahl statt des Anteils (Probelauf). */
@@ -167,34 +186,60 @@ async function auffaelligeDomains(key, seit) {
 let befund = false
 
 // ── BLICK 1: Notbremse im Server-Log ─────────────────────────────────────
-if (process.argv.includes('--ssh')) {
+if ((process.argv.includes('--ssh') || FROM_DIR) && PATTERN === 'auth.mail_route_breaker') {
+  // Das größte Fenster des Zähl-Skripts ist 168 h.
+  const stunden = Math.min(168, Math.max(1, Math.round(HOURS)))
+  const apps = readApps(readFileSync(join(REPO, 'ops', 'apps.conf'), 'utf8'))
+  const antworten = apps.map((entry) => {
+    if (FROM_DIR) {
+      const datei = join(FROM_DIR, `${entry.app}.txt`)
+      return { site: entry.site, text: existsSync(datei) ? readFileSync(datei, 'utf8') : null }
+    }
+    // Tor-Wort `app-signals` (ops/app-watch-gate.sh): geschickt werden nur der
+    // App-Name aus `ops/apps.conf` und eine Zahl. Exit 5 = das Zähl-Skript hat
+    // geantwortet („Prozess fehlt"); alles andere außer 0 ist keine Antwort.
+    const lauf = spawnSync('ssh', gateSshArgs(SERVER, 'app-signals', entry.app, String(stunden)), { encoding: 'utf8', timeout: 120_000 })
+    return { site: entry.site, text: lauf.error || (lauf.status !== 0 && lauf.status !== 5) ? null : lauf.stdout }
+  })
+  const blick = summarizeMailBreaker(antworten)
+  console.log(`Mail-Wächter, Blick 1 — Notbremse (${PATTERN}) in den letzten ${stunden} h, ${blick.counted} von ${apps.length} Apps gezählt${FROM_DIR ? '' : ` auf ${SERVER}`}\n`)
+  for (const { site, reason } of blick.unchecked) console.log(`… ${site}: nicht gezählt — ${UNCHECKED_TEXT[reason]}.`)
+  if (blick.counted === 0) {
+    // Ein kaputter Weg (ssh, Tor, Zähl-Skript), kein Befund — s. Kopf.
+    console.error('Keine App konnte gezählt werden.')
+    process.exit(2)
+  }
+  if (blick.findings.length) {
+    befund = true
+    console.log(`✗ ${blick.total} Mal ausgelöst:`)
+    for (const { site, count, lastMin } of blick.findings) console.log(`  · ${site}: ${count} Mal${lastMin === null ? '' : `, zuletzt vor ${lastMin} min`}`)
+  }
+  else {
+    console.log('✔ Notbremse hat nicht gegriffen.')
+  }
+}
+else if (process.argv.includes('--ssh')) {
+  // PROBELAUF mit fremdem Ereignis-Namen: das alte Tor-Wort `mail-breaker`
+  // (`grep` auf die Event-Zeile in ~/.pm2/logs/*-error*.log seit dem
+  // Zeitpunkt, gekürzt auf „Zeitpunkt Ereignis"). Es sucht im GANZEN
+  // Log-Ordner, also auch in Dateien früherer Prozess-Nummern — für einen
+  // Probelauf ist das gewollt, der echte Blick oben tut es nicht mehr.
   const seit = new Date(Date.now() - HOURS * 3_600_000).toISOString()
-  // Seit CI1 a (2026-11-18) über das Tor-Wort `mail-breaker`
-  // (ops/app-watch-gate.sh): dort läuft das `grep` auf die Event-Zeile in
-  // ~/.pm2/logs/*-error*.log seit diesem Zeitpunkt (ISO-Zeitstempel
-  // vergleichen sich als Zeichenketten korrekt). Dateien fehlen (frische
-  // Instanz) → leer, kein Fehler. Das Tor kürzt jede Zeile auf Zeitpunkt und
-  // Ereignis und gibt nur Zeilen in genau dieser Form aus. Den Ereignis-Namen
-  // schickt es nur mit, wenn er vom Normalfall abweicht (Probelauf).
-  const worte = PATTERN === 'auth.mail_route_breaker' ? [seit] : [seit, PATTERN]
-  const lauf = spawnSync('ssh', gateSshArgs(SERVER, 'mail-breaker', ...worte), { encoding: 'utf8' })
-  if (lauf.error || (lauf.status !== 0 && lauf.status !== 1)) {
-    // Exit 1 bleibt aus der Zeit vor dem Tor erlaubt („nichts gefunden");
-    // das Tor selbst endet hier mit 0. Alles andere ist ein kaputter Weg
-    // (ssh, Tor fehlt oder lehnt ab), kein Befund.
+  const lauf = spawnSync('ssh', gateSshArgs(SERVER, 'mail-breaker', seit, PATTERN), { encoding: 'utf8' })
+  if (lauf.error || lauf.status !== 0) {
     console.error(`ssh fehlgeschlagen — ${lauf.error?.message || `Exit ${lauf.status}`}\n${lauf.stderr || ''}`)
     process.exit(2)
   }
   const zeilen = lauf.stdout.split('\n').map(z => z.trim()).filter(Boolean)
-  console.log(`Mail-Wächter, Blick 1 — Notbremse (${PATTERN}) in den letzten ${HOURS} h auf ${SERVER}\n`)
+  console.log(`Mail-Wächter, Blick 1 — PROBELAUF (${PATTERN}) in den letzten ${HOURS} h auf ${SERVER}\n`)
   if (zeilen.length) {
     befund = true
-    console.log(`✗ ${zeilen.length} Mal ausgelöst:`)
+    console.log(`✗ ${zeilen.length} Mal gefunden:`)
     for (const z of zeilen.slice(-20)) console.log(`  · ${z}`)
     if (zeilen.length > 20) console.log(`  … und ${zeilen.length - 20} weitere`)
   }
   else {
-    console.log('✔ Notbremse hat nicht gegriffen.')
+    console.log('✔ Nichts gefunden.')
   }
 }
 
@@ -265,7 +310,7 @@ if (process.argv.includes('--resend')) {
   }
 }
 
-if (!process.argv.includes('--ssh') && !process.argv.includes('--resend')) {
+if (!process.argv.includes('--ssh') && !process.argv.includes('--resend') && !FROM_DIR) {
   console.error('Nichts zu tun — `--ssh` (Server-Log) und/oder `--resend` (Resend-Zähler) angeben.')
   process.exit(2)
 }
