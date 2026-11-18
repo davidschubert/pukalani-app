@@ -189,9 +189,14 @@ abgewartet (der erste mit dem vierten Server ist der um 01:41 UTC); der neue
 Blick steht auf `count` und hat noch keinen echten Befund gesehen; die vier
 Skripte von branding.supply, die von Hand bleiben, sind nicht repariert.
 
-**Nebenfund, nicht Teil dieser Arbeit:** der Probelauf des Wächters um 21:39
-UTC war im Blick „KI-Modelle" rot — OpenRouter nennt für zwei unserer Modelle
-keinen EU-Endpunkt mehr. Als eigener Punkt in OPEN-ITEMS („KM1").
+**Nebenfunde, nicht Teil dieser Arbeit.** (1) Der Probelauf des Wächters um
+21:39 UTC war im Blick „KI-Modelle" rot (Issue 401): in der Liste von
+OpenRouter fehlten für zwei unserer Modelle die EU-Endpunkte. Eine andere
+Sitzung hat das am selben Abend geklärt (Pull Request 405: der Wächter liest
+jetzt auch die Endpunkt-Liste der Europa-Adresse); danach ist der Blick
+wieder grün. (2) Ein roter Befund des täglichen Teils bekommt vom nächsten
+Halbstunden-Lauf die Entwarnung, ohne neu geprüft zu sein — als Punkt in
+OPEN-ITEMS („WA1" f).
 
 **Gelernt:** (1) Ein neues Skript, das „von Hand" lief, ist beim Einzug fast
 immer veraltet — elf von elf brauchten hier eine Anpassung, und keine davon
@@ -206,7 +211,7 @@ immer „gibt es nicht": die Betreiber-App antwortet so auch, wenn sie ihre
 Datenbank gerade nicht erreicht. Ein Abruf, an dem etwas Einmaliges hängt
 (hier die eine Mail je Alarm), braucht mehr als einen zweiten Versuch.
 (5) Ein Probealarm, der den täglichen Teil mitfährt, findet auch Echtes —
-hier einen Alarm, der sonst erst um 04:17 UTC gekommen wäre.
+hier einen roten Blick, der sonst erst um 04:17 UTC aufgefallen wäre.
 
 ---
 
