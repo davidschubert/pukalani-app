@@ -7,11 +7,12 @@
  * Ordner (`scripts/lib/lint-static-public.mjs`). Dieser Test fragt ESLint
  * selbst, statt die Muster nachzurechnen.
  */
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import { STATIC_PUBLIC_DIRS } from '../../../scripts/lib/lint-static-public.mjs'
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -35,7 +36,14 @@ const publicRouteDirs = (): string[] => {
   return found
 }
 
-const configs = ['eslint.config.mjs', 'eslint.typed.config.mjs']
+/**
+ * Nur die normale Config wird über ESLint gefragt. Die typisierte
+ * (`eslint.typed.config.mjs`) wirft beim Laden, solange die `.nuxt`-tsconfigs
+ * der Apps fehlen (`pnpm lint:prepare`) — im Test-Job der CI gibt es sie
+ * nicht. Für sie wird der Quelltext gelesen: keine breite Ausnahme, dafür
+ * die gemeinsame Liste.
+ */
+const eslintFor = () => new ESLint({ cwd: repoRoot, overrideConfigFile: resolve(repoRoot, 'eslint.config.mjs') })
 
 describe('Lint und Ordner namens public (LN1)', () => {
   const routeDirs = publicRouteDirs()
@@ -46,17 +54,32 @@ describe('Lint und Ordner namens public (LN1)', () => {
     expect(names).toContain(join('packages', 'pages', 'server', 'api', 'pages', 'public'))
   })
 
-  it.each(configs)('%s: eine Route unter server/…/public/ wird geprüft', async (config) => {
-    const eslint = new ESLint({ cwd: repoRoot, overrideConfigFile: resolve(repoRoot, config) })
+  it('eslint.config.mjs: eine Route unter server/…/public/ wird geprüft', async () => {
+    const eslint = eslintFor()
     for (const dir of routeDirs) {
       expect(await eslint.isPathIgnored(join(dir, 'probe.get.ts')), relative(repoRoot, dir)).toBe(false)
     }
   }, 60_000)
 
-  it.each(configs)('%s: statische public-Ordner bleiben ausgenommen', async (config) => {
-    const eslint = new ESLint({ cwd: repoRoot, overrideConfigFile: resolve(repoRoot, config) })
+  it('eslint.config.mjs: statische public-Ordner bleiben ausgenommen', async () => {
+    const eslint = eslintFor()
     for (const dir of ['apps/photos/public', 'packages/themes/public', 'packages/market/.playground/public', 'docs/public']) {
       expect(await eslint.isPathIgnored(resolve(repoRoot, dir, 'probe.js')), dir).toBe(true)
     }
   }, 60_000)
+
+  it('die Liste der statischen Ordner trifft keinen Routen-Ordner', () => {
+    expect(STATIC_PUBLIC_DIRS.length).toBeGreaterThan(0)
+    for (const pattern of STATIC_PUBLIC_DIRS) {
+      expect(pattern.startsWith('**'), pattern).toBe(false)
+      expect(pattern.includes('server'), pattern).toBe(false)
+    }
+  })
+
+  it('eslint.typed.config.mjs: keine breite Ausnahme mehr, dafür die gemeinsame Liste', () => {
+    const source = readFileSync(resolve(repoRoot, 'eslint.typed.config.mjs'), 'utf8')
+    const ignoreLines = source.split('\n').filter(line => !line.trimStart().startsWith('//'))
+    expect(ignoreLines.some(line => line.includes('\'**/public\''))).toBe(false)
+    expect(source).toContain('...STATIC_PUBLIC_DIRS')
+  })
 })
