@@ -193,9 +193,11 @@
 #      mit ihrer sha256); das Skript vergleicht mit dem Repo. Rot: eine Datei
 #      weicht ab oder fehlt. Nicht erreichbar oder „das Tor kennt `sums` noch
 #      nicht" ist KEIN Befund, sondern eine Warnzeile „nicht geprüft".
-#      Dazu ein Hinweis (vorerst nicht rot): ist der Wächter-Schlüssel auf
-#      app-prod schon auf das Tor beschränkt? (`echo frei` muss mit Exit 64
-#      abgelehnt werden.) Runbook: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
+#      Zweiter Teil: ist der Wächter-Schlüssel auf app-prod noch auf das Tor
+#      beschränkt? (`echo frei` muss mit Exit 64 abgelehnt werden; führt der
+#      Server die Zeile aus, ist der Lauf rot.) Dasselbe fragt der Deploy
+#      nach jedem Ausliefern für seinen Schlüssel.
+#      Runbook: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
 #
 # WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
@@ -652,11 +654,13 @@ jobs:
           PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
         run: node scripts/ops/verify-server-scripts.mjs --strict
 
-      # Blick 16, Hinweis (s. Kopf). VORERST NUR EINE WARNUNG: der Schlüssel
-      # wird erst auf das Tor beschränkt, wenn es eingespielt ist und ein
-      # Lauf damit grün war (Runbook CI-SCHLUESSEL-TAUSCHEN.md, „Das
-      # Wächter-Tor"). Das Scharfstellen — hier `exit 1` statt der Warnung —
-      # ist eine eigene, spätere Änderung. Ins Protokoll kommen nur die festen
+      # Blick 16, zweiter Teil (s. Kopf). Der Wächter-Schlüssel trägt auf
+      # app-prod seit 2026-11-18 einen festen Befehl (das Tor). Ob das noch so
+      # ist, sagt nur ein Versuch: eine harmlose freie Befehlszeile muss
+      # abgelehnt werden. Führt der Server sie aus, ist der Lauf ROT — jemand
+      # hat die Zeile in authorized_keys geändert oder den Schlüssel ohne
+      # festen Befehl neu eingetragen. Keine klare Antwort (Netz) ist keine
+      # Aussage und bleibt eine Warnung. Ins Protokoll kommen nur die festen
       # Sätze unten, nie die Antwort des Servers.
       - name: Ist der Wächter-Schlüssel beschränkt?
         if: always()
@@ -667,7 +671,10 @@ jobs:
           if [ "$code" -eq 64 ] && printf '%s\n' "$out" | grep -q '^Abgelehnt'; then
             echo "Der Wächter-Schlüssel ist auf das Tor beschränkt: eine freie Befehlszeile endet mit Exit 64."
           elif [ "$code" -eq 0 ] && [ "$out" = 'frei' ]; then
-            echo "::warning::Wächter-Schlüssel ist noch nicht auf feste Befehle beschränkt (eine freie Befehlszeile wurde ausgeführt). Runbook: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, „Das Wächter-Tor“."
+            satz='Der Wächter-Schlüssel führt auf dem App-Server freie Befehle aus — er ist nicht (mehr) auf das Tor beschränkt. Zeile in authorized_keys prüfen: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, „Das Wächter-Tor".'
+            echo "::error::$satz"
+            echo "$satz" >> "$RUNNER_TEMP/befunde.txt"
+            exit 1
           else
             echo "::warning::Keine Aussage, ob der Wächter-Schlüssel beschränkt ist (Exit $code)."
           fi

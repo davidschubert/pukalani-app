@@ -7,6 +7,48 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-18 — Ausliefer-Weg (N12): ein Skript für Ausliefern und Rückweg, kein CI-Schlüssel mit Shell
+
+**Anlass:** Nacharbeiten-Gruppe N12 (CI1, RW1 c, SI1 c, MG1 c). Der Weg, über
+den alle Seiten ihre neuen Fassungen bekommen, wurde umgebaut: die Handgriffe
+auf dem Server stehen in einer Datei, und beide Zugänge von GitHub können
+dort nur noch je ein festes Skript starten.
+
+**Mit Davids Klick** (2026-11-18, drei Runden): nur lesend auf beiden Servern
+nachsehen und den Wächter einmal von Hand starten · das Ausliefer-Skript und
+das Wächter-Tor auf den App-Server legen, das Tor auf dem Datenbank-Server
+auffrischen · das Skript auf die neueste Fassung bringen, beide Schlüssel auf
+feste Befehle beschränken, die Rückweg-Übung an `platform`.
+
+**Ohne Rückfrage entschieden** (Davids Regel vom 2026-11-17 „bei kleinen
+Fragen nimm deine Empfehlung"):
+- **„Aktiver Stand wird nicht überschrieben" (RW1 c) steckt im neuen Skript,
+  nicht als eigene Änderung am alten Workflow.** Sonst wäre der
+  Ausliefer-Schritt zweimal hintereinander umgebaut worden.
+- **Das Ausliefern legt bei einem gescheiterten Neustart den Verweis
+  zurück.** Bisher tat das nur der Rückweg; mit einem gemeinsamen Skript gibt
+  es dafür keine zwei Antworten mehr. Von selbst auf einen ÄLTEREN Stand
+  zurückgestellt wird weiter nie (Entscheidung vom 2026-11-15).
+- **Der Rückweg schickt das Skript mit, statt die Kopie auf dem Server zu
+  rufen.** Er muss auch gehen, wenn dort etwas fehlt oder veraltet ist.
+- **Als Beweis-Läufe dienten die Merges der Nachbar-Gruppen,** kein eigener
+  Start von Hand: es waren echte Ausliefer-Läufe mit neuem Stand.
+- **Beide „ist der Schlüssel noch beschränkt?"-Schritte sind rot, nicht nur
+  eine Warnung,** sobald der Server eine freie Befehlszeile ausführt. Keine
+  klare Antwort (Netz) bleibt eine Warnung.
+- **Die alten Deploy-Auslöser in Ploi werden nicht neu erzeugt.** Das
+  Ausliefern läuft über GitHub, „kein Notweg ohne GitHub" ist seit dem
+  2026-11-16 geschlossen, und die Checkouts, die ein solcher Auslöser bauen
+  würde, sind vom Juli.
+- **Der typisierte Lint-Durchgang übernimmt die Ausnahme für `public`-Ordner
+  unverändert** (damit er genau dieselben Dateien sieht wie vorher). Dass
+  dadurch zwölf Routen-Dateien ungeprüft bleiben, ist ein eigener offener
+  Punkt (OPEN-ITEMS „LN1"), keine stille Erweiterung dieser Änderung.
+
+**Nicht entschieden, weil es eine Pflicht-Prüfung ändert:** ob `secrets` nur
+noch die Historie des geprüften Zweigs liest (OPEN-ITEMS „CW1" b) und ob die
+Startfrist der Test-Server in E2E steigt (CW1 a).
+
 ## 2026-11-18 — Öffentlicher Brand-Check im Hintergrund (N13): wem ein Lauf ohne Konto gehört
 
 **Anlass:** Nacharbeiten-Gruppe N13 (LL1 b, c, d; KI1 d). Der öffentliche

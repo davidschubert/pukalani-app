@@ -17,7 +17,8 @@
 #
 # Zugang: eigener SSH-Schlüssel NUR für das Ausliefern (Secret
 # DEPLOY_SSH_KEY in der Umgebung `production`, die nur den Zweig `main`
-# zulässt; auf app-prod als ploi-User mit `restrict` in authorized_keys). Die
+# zulässt; auf app-prod als ploi-User mit `restrict` UND festem Befehl in
+# authorized_keys — sshd führt für ihn nur `ops/app-release.sh` aus). Die
 # Wächter haben einen anderen (production-watch.yml). Der Host-Key ist unten
 # GEPINNT (kein blindes ssh-keyscan zur Laufzeit). Ohne Secret wird der Lauf
 # rot. Schlüssel tauschen: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md
@@ -783,20 +784,22 @@ jobs:
             exit 1
           fi
 
-      # HINWEIS, NOCH KEIN TOR (CI1 b): der Schlüssel soll auf dem Server nur
-      # `ops/app-release.sh` ausführen können (fester Befehl in
-      # authorized_keys). Ob das so ist, sagt nur ein Versuch: eine harmlose
-      # freie Befehlszeile muss abgelehnt werden (Exit 64). Solange der
-      # Schlüssel noch frei eingetragen ist, steht hier eine Warnung und der
-      # Lauf bleibt grün; scharf gestellt wird der Schritt, wenn die
-      # Beschränkung eingetragen und einmal bewiesen ist.
+      # DER SCHLÜSSEL DARF AUF DEM SERVER NUR `ops/app-release.sh` AUSFÜHREN
+      # (fester Befehl in authorized_keys, seit 2026-11-18 — CI1 b). Ob das
+      # noch so ist, sagt nur ein Versuch: eine harmlose freie Befehlszeile
+      # muss abgelehnt werden (Exit 64). Führt der Server sie aus, hat jemand
+      # die Zeile geändert oder den Schlüssel ohne festen Befehl neu
+      # eingetragen — dann endet der Lauf rot, NACHDEM ausgeliefert ist
+      # (docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, § 4). Keine klare Antwort
+      # (Netz) ist keine Aussage und bleibt eine Warnung.
       - name: Ist der Ausliefer-Schlüssel auf das Skript beschränkt?
         run: |
           set -u
           code=0
           out=$(ssh prod 'echo frei' </dev/null 2>/dev/null) || code=$?
           if [ "$out" = "frei" ]; then
-            echo "::warning::Der Ausliefer-Schlüssel führt freie Befehle aus — er ist noch nicht auf ops/app-release.sh beschränkt."
+            echo "::error::Der Ausliefer-Schlüssel führt freie Befehle aus — er ist nicht (mehr) auf ops/app-release.sh beschränkt. docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, § 4."
+            exit 1
           elif [ "$code" = "64" ]; then
             echo "✔ Der Schlüssel führt nur das feste Skript aus (eine freie Befehlszeile wird abgelehnt)."
           else
