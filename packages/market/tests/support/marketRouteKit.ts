@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppwriteException, ID } from 'node-appwrite'
 import { assertBrandOwnerAccess } from '../../../brand/server/utils/brandOwnership'
 import { listAllRows, listAllRowsIfTableExists } from '../../../core/server/utils/listAllRows'
@@ -397,4 +397,91 @@ export async function runMarketRoute(
     const code = (error as { data?: { code?: unknown } }).data?.code
     return { status: statusCode, code: typeof code === 'string' ? code : '', result: null, calls: db.calls.slice(before) }
   }
+}
+
+// ── Die Standard-Fragen je Route ────────────────────────────────────────────
+
+export const MARKET_PEOPLE: readonly MarketWho[] = ['guest', 'noAccess', 'stranger', 'owner']
+
+export interface OwnedRouteOptions {
+  method: string
+  /** Wer durch die Wache kommt — AUSGESCHRIEBEN in der Test-Datei, nie berechnet. */
+  passes: Readonly<Record<MarketWho, boolean>>
+  /** Was jeder Aufruf mitbringt (Rumpf, Abfrage, Kandidaten-Id). */
+  probe?: Omit<MarketProbe, 'who' | 'method' | 'profileId'>
+  /** Die Welt je Test (Vorgabe: `marketWorld()`). */
+  world?: () => FakeMarketDb
+  /** Was der Durchgelassene erreicht — gegen die Ablage geprüft. */
+  passed: (run: MarketRun, db: FakeMarketDb) => void | Promise<void>
+}
+
+/**
+ * Die Fragen an eine Route hinter `requireMarketProfile`:
+ *  - die Erwartung nennt jede Person genau einmal;
+ *  - jede abgewiesene Person ⇒ 404, OHNE einen Zugriff hinter der Wache und
+ *    ohne Schreiben;
+ *  - fremdes Konto: fremde und unbekannte Branding-Id antworten gleich;
+ *  - der Besitzer auf einem fremden Branding ⇒ 404 wie jeder andere;
+ *  - jede durchgelassene Person erreicht, was `passed` verlangt.
+ */
+export function describeOwnedMarketRoute(
+  name: string,
+  load: () => Promise<{ default: unknown }>,
+  options: OwnedRouteOptions,
+): void {
+  describe(`${name} (Besitz des Brandings)`, () => {
+    let db: FakeMarketDb
+
+    beforeEach(() => {
+      db = (options.world ?? marketWorld)()
+      installMarketGlobals({ db, marketConfig: { enabled: true } })
+    })
+
+    const call = (who: MarketWho, profileId: string) =>
+      runMarketRoute(db, load, { ...options.probe, who, method: options.method, profileId })
+
+    it('die Erwartung nennt jede Person genau einmal', () => {
+      expect(Object.keys(options.passes).sort()).toEqual([...MARKET_PEOPLE].sort())
+    })
+
+    for (const who of MARKET_PEOPLE.filter(person => !options.passes[person])) {
+      it(`${who}: 404, kein Zugriff hinter der Wache, nichts geschrieben`, async () => {
+        const run = await call(who, targetProfileOf(who))
+        expect(run.status).toBe(404)
+        expect(dataCallsBeyondGuard(run.calls)).toEqual([])
+        expect(writeCalls(run.calls)).toEqual([])
+      })
+    }
+
+    it('fremdes Konto: fremde und unbekannte Branding-Id antworten GLEICH', async () => {
+      const foreign = await call('stranger', FOREIGN_PROFILE)
+      const unknown = await call('stranger', UNKNOWN_PROFILE)
+      expect(foreign.status).toBe(404)
+      expect(unknown.status).toBe(404)
+      expect(foreign.code).toBe(unknown.code)
+      expect(dataCallsBeyondGuard([...foreign.calls, ...unknown.calls])).toEqual([])
+    })
+
+    it('Produkt in dieser App aus (`pukalani.market.enabled`): 404 auch für den Besitzer, VOR jedem Zugriff', async () => {
+      installMarketGlobals({ db, marketConfig: { enabled: false } })
+      const run = await call('owner', OWN_PROFILE)
+      expect(run.status).toBe(404)
+      expect(run.calls).toEqual([])
+    })
+
+    it('der Besitzer auf einem FREMDEN Branding: 404, nichts dahinter', async () => {
+      const run = await call('owner', FOREIGN_PROFILE)
+      expect(run.status).toBe(404)
+      expect(dataCallsBeyondGuard(run.calls)).toEqual([])
+      expect(writeCalls(run.calls)).toEqual([])
+    })
+
+    for (const who of MARKET_PEOPLE.filter(person => options.passes[person])) {
+      it(`${who}: kommt durch`, async () => {
+        const run = await call(who, targetProfileOf(who))
+        expect(run.status, JSON.stringify(run.result)).toBeLessThan(300)
+        await options.passed(run, db)
+      })
+    }
+  })
 }
