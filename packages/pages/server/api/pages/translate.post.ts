@@ -1,72 +1,58 @@
-import { AI_JSON_QUOTE_RULE } from '../../../../core/shared/aiJson'
-import { MAX_PAGE_TITLE, MAX_PAGE_TRANSLATE_BODY, pageTranslateSchema } from '../../../schemas/page'
-import type { PageTranslateResponse } from '../../../shared/types/page'
+import { AI_DISABLED_CODE } from '../../../../core/shared/aiProviderRouting'
+import { pageTranslateSchema } from '../../../schemas/page'
+import { PAGE_TRANSLATE_RUN_SCOPE } from '../../../shared/pageTranslateRun'
+import type { PageTranslateRunResponse } from '../../../shared/types/page'
+import {
+  clearPageTranslateResult,
+  pagesRunStore,
+  pageTranslateRunSubject,
+  runPageTranslation,
+} from '../../utils/pageTranslateRun'
 
 /**
  * KI-VORSCHLAG für eine Sprachfassung einer Betreiber-Seite (F60) — advisory,
  * wie der Kategorie-Vorschlag und der Moderations-Assist.
  *
- * DIE ROUTE SPEICHERT NICHTS. Sie gibt Titel und Text zurück, die im Formular
- * landen; gespeichert und veröffentlicht wird erst, wenn ein Mensch drückt.
- * Hier ist diese Grenze schärfer als anderswo: unter den Seiten, die ein
- * Betreiber pflegt, sind Impressum, AGB und Datenschutzerklärung — Texte, für
- * die er HAFTET. Eine Maschine, die sie unbemerkt in eine zweite Sprache
- * schreibt, wäre kein Komfort, sondern ein Risiko.
+ * DIE ROUTE SPEICHERT NICHTS AN DER SEITE. Der Vorschlag landet im Formular;
+ * gespeichert und veröffentlicht wird erst, wenn ein Mensch drückt. Hier ist
+ * diese Grenze schärfer als anderswo: unter den Seiten, die ein Betreiber
+ * pflegt, sind Impressum, AGB und Datenschutzerklärung — Texte, für die er
+ * HAFTET. Eine Maschine, die sie unbemerkt in eine zweite Sprache schreibt,
+ * wäre kein Komfort, sondern ein Risiko.
  *
- * ZWEI PRODUKT-GATES, nicht eins: `pages` UND `ai`. Wort für Wort die
- * Begründung des Kategorie-Vorschlags — dass 'ai' heute den höheren
- * Mindest-Plan trägt, ist eine KONFIGURATION der App und keine Garantie.
+ * ── SEIT LL1 d (2026-11-18): ANTWORTET SOFORT, RECHNET DAHINTER ───────────
+ * Ein langer Rechtstext braucht beim Modell länger als die 60 s, die der
+ * Webserver wartet (die Route gab ihm 120 s). Der Mensch sah dann einen
+ * Fehler, obwohl der bezahlte Lauf gelang, und klickte noch einmal. Jetzt:
+ *  1. ZWEI PRODUKT-GATES, nicht eins: `pages` UND `ai` (Begründung wie beim
+ *     Kategorie-Vorschlag — dass 'ai' heute den höheren Mindest-Plan trägt,
+ *     ist eine KONFIGURATION der App und keine Garantie). Dann das Rollen-Tor
+ *     `pages.manage`.
+ *  2. Was nichts kostet: Schlüssel da (503), Eingabe gültig (400),
+ *     Abschalter an (503 `ai_disabled`) — alles VOR der Sperre, damit ein
+ *     Betriebszustand keine Lauf-Zeile hinterlässt. Die Drossel
+ *     (`pages:translate`, je Anschluss) liegt in
+ *     `core/server/middleware/05.rate-limit.ts` und zählt vor der Route.
+ *  3. DIE SPERRE (`acquireRunLease`, Gegenstand = Mandant + Adresse der
+ *     Seite): läuft schon eine Übersetzung dieser Seite, kommt 409
+ *     `run_running` — ein zweiter Klick startet keinen zweiten Lauf. Ein
+ *     Kontingent bucht diese Route nicht; es gibt also nichts, das nach der
+ *     Sperre abgelehnt und zurückgenommen werden müsste.
+ *  4. Den Vorschlag des Vorgängers leeren (höchstens einer je Seite).
+ *  5. `202` mit dem Lauf-Stand; gerechnet wird in `runPageTranslation`
+ *     (`server/utils/pageTranslateRun.ts`), die Seite fragt
+ *     `GET /api/pages/translate/:slug` ab.
  *
- * DATENSCHUTZ: keine Speicherung, kein Sammeln, kein Ausweichen und Rechenort
- * Europa setzt seit P17 der Transport selbst (`core/shared/aiProviderRouting.ts`).
+ * DATENSCHUTZ: keine Speicherung beim Anbieter, kein Sammeln, kein Ausweichen
+ * und Rechenort Europa setzt seit P17 der Transport selbst
+ * (`core/shared/aiProviderRouting.ts`). Der Vorschlag liegt bis zum nächsten
+ * Lauf an der Lauf-Zeile (`pages_runs`, ohne Rechte für Konten).
  *
  * DER DECKEL (12.000 Zeichen, `MAX_PAGE_TRANSLATE_BODY`) steht im Schema und
  * damit VOR dem Anbieter: was hier ankommt, ist schon bezahlt, sobald es
  * abgeschickt ist. Begründung der Zahl in `schemas/page.ts`.
- *
- * Die Drossel liegt in `core/server/middleware/05.rate-limit.ts`
- * (`pages:translate`, je IP, vor der Arbeit) — hier steht keine zweite.
  */
-function buildPrompt(title: string, body: string, locale: string): string {
-  return [
-    'Du übersetzt eine Inhaltsseite (z. B. Impressum, Nutzungsbedingungen, Datenschutzerklärung, Über-uns-Seite) einer Online-Community.',
-    '',
-    `Zielsprache (BCP-47-Code): ${locale}`,
-    '',
-    'Titel:',
-    '"""',
-    title,
-    '"""',
-    '',
-    'Inhalt (Markdown):',
-    '"""',
-    body,
-    '"""',
-    '',
-    'Regeln:',
-    '- Übersetze VOLLSTÄNDIG. Lass nichts weg, fasse nichts zusammen, ergänze nichts.',
-    '- Die Markdown-Struktur bleibt Zeichen für Zeichen erhalten: Überschriften, Listen, Links, Zitate, Codeblöcke, Absätze und deren Reihenfolge.',
-    '- Eigennamen, Firmennamen, Produktnamen, Adressen, Registernummern, E-Mail-Adressen und URLs bleiben unverändert stehen.',
-    '- Rechtsbegriffe werden mit dem im Zielland üblichen Begriff übersetzt; gibt es keinen, bleibt der Originalbegriff stehen und du fügst nichts hinzu.',
-    '- Platzhalter in eckigen Klammern (z. B. [AUSFÜLLEN: …]) bleiben Platzhalter und werden mit übersetzt, nicht ausgefüllt.',
-    '- Ist der Text schon in der Zielsprache, gib ihn unverändert zurück.',
-    `- Der Titel bleibt kurz (höchstens ${MAX_PAGE_TITLE} Zeichen) und ohne Satzzeichen am Ende.`,
-    '- Keine Erklärungen, keine Alternativen, keine Anmerkungen zur Übersetzung.',
-    '',
-    // Die Vorsorge VOR dem bezahlten Aufruf (AI2, `core/shared/aiJson.ts`):
-    // ein gerades `"` im Fliesstext beendet den JSON-String. Die Rettung
-    // DANACH ist `parseModelJson`, durch die dieser Aufruf ohnehin läuft.
-    AI_JSON_QUOTE_RULE,
-    '',
-    'Antworte NUR mit einem JSON-Objekt (kein Markdown-Zaun, keine Erklärung außenrum):',
-    '{',
-    '  "title": "<der übersetzte Titel>",',
-    '  "body": "<der übersetzte Inhalt als Markdown>"',
-    '}',
-  ].join('\n')
-}
-
-export default defineEventHandler(async (event): Promise<PageTranslateResponse> => {
+export default defineEventHandler(async (event): Promise<PageTranslateRunResponse> => {
   requirePlanProduct(event, 'pages')
   requirePlanProduct(event, 'ai')
   await requireCommunityPermission(event, 'pages.manage')
@@ -80,37 +66,49 @@ export default defineEventHandler(async (event): Promise<PageTranslateResponse> 
 
   const body = await readValidatedBody(event, pageTranslateSchema.parse)
 
+  // Der Abschalter VOR der Sperre: der Transport fragt ihn ohnehin, aber erst
+  // hinter der Antwort — dann stünde für einen Betriebszustand ein
+  // gescheiterter Lauf an der Zeile statt einer ehrlichen Antwort am Knopf.
+  if (!await aiSwitchedOn(event)) {
+    throw createError({ status: 503, statusText: 'AI switched off', data: { code: AI_DISABLED_CODE } })
+  }
+
   // Laufzeit-Override vor Build-Default (getEffectiveAiConfig, system-016).
   const aiConfig = await getEffectiveAiConfig(event)
-  const parsed = await aiCompleteJson<{ title?: unknown, body?: unknown }>(
-    event,
-    buildPrompt(body.title, body.body, body.locale),
-    {
-      model: aiConfig.model,
-      label: 'pages',
-      /**
-       * Ein Rechtstext ist lang. Der Vorgabewert schnitte die zweite Fassung
-       * mitten im Satz ab, und das sähe für den Betreiber wie ein Modellfehler
-       * aus. 12.000 Zeichen sind grob 4.000 Tokens Eingabe; die Antwort darf
-       * auch in einer wortreicheren Sprache herauskommen.
-       */
-      maxTokens: 8000,
-      temperature: 0.2,
-      // Ein langer Text braucht länger als die Vorgabe — der Knopf wartet.
-      timeoutMs: 120_000,
-    },
-  )
 
-  // Klemmen statt vertrauen: die Antwort ist eine Behauptung, und sie geht in
-  // ein Formular, dessen Schema dieselben Grenzen kennt. Käme hier ein zu
-  // langer Titel an, scheiterte erst das Speichern — mit einem Fehler, für den
-  // der Mensch nichts kann.
-  return {
+  // (3) DIE SPERRE. Fehlt die Lauf-Tabelle (Instanz ohne pages-007) oder ist
+  // sie nicht lesbar, antwortet `acquireRunLease` 503 `run_lease_unavailable`
+  // — nie ein Start ohne Sperre.
+  const store = pagesRunStore(event)
+  const { lease, previous } = await acquireRunLease(store, {
+    scope: PAGE_TRANSLATE_RUN_SCOPE,
+    subject: pageTranslateRunSubject(tenantCacheScope(event), body.slug),
+    detail: { locale: body.locale, model: aiConfig.model, paid: false },
+  })
+
+  // (4) Nur der Gewinner sieht diesen Vorgänger — also leert auch nur einer.
+  // `previous` kommt aus `pagesRunStore` und trägt `result`.
+  if (previous) await clearPageTranslateResult(event, body.slug, previous)
+
+  // (5) Der Lauf BEGINNT hinter der Antwort.
+  runDetached('pages-translate', () => runPageTranslation(event, {
+    store,
+    lease,
     locale: body.locale,
-    // Leer heißt „kein Vorschlag": die Oberfläche lässt das Feld dann in Ruhe,
-    // statt zu löschen, was jemand von Hand geschrieben hat.
-    title: String(parsed.title ?? '').trim().slice(0, MAX_PAGE_TITLE),
-    body: String(parsed.body ?? '').trim().slice(0, MAX_PAGE_TRANSLATE_BODY),
+    title: body.title,
+    body: body.body,
     model: aiConfig.model,
+  }))
+
+  setResponseStatus(event, 202)
+  return {
+    run: {
+      state: 'running',
+      startedAt: lease.startedAt,
+      finishedAt: '',
+      failure: '',
+      locale: body.locale,
+      result: null,
+    },
   }
 })

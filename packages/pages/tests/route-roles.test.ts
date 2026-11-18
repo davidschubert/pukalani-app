@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { acquireRunLease } from '../../core/server/utils/runLease'
 import { requirePlanProduct } from '../../core/server/utils/tenantPlanProducts'
 import {
   describeRoleGateToDoor,
@@ -150,7 +151,9 @@ describe('Seiten-Verwaltung: über welche Klinke gelesen und gelöscht wird', ()
 
     expect(run.status).toBe(200)
     expect(run.result).toEqual({ deleted: 2 })
-    expect(opens).toEqual([{ as: 'operator', actor }])
+    // Die zweite Tür: der letzte KI-Vorschlag der Seite wird geleert (LL1 d,
+    // `pages_runs`) — fest die Operator-Klinke, ohne Handelnden.
+    expect(opens).toEqual([{ as: 'operator', actor }, { as: 'operator', actor: undefined }])
     expect(rows.rows[PAGES_TABLE]!.map(row => row.$id)).toEqual(['pg-3'])
     expect(forgetPublicPages).toHaveBeenCalledTimes(1)
   })
@@ -285,9 +288,14 @@ const PLAN_CONFIG = {
   },
 }
 
-const TRANSLATE_BODY = { locale: 'en', title: 'Impressum', body: 'Angaben gemäß Gesetz.' }
+const TRANSLATE_BODY = { slug: 'imprint', locale: 'en', title: 'Impressum', body: 'Angaben gemäß Gesetz.' }
 
-/** Die Attrappe des KI-Transports — es gibt in diesen Tests keinen echten Aufruf. */
+/**
+ * Die Attrappe des KI-Transports — es gibt in diesen Tests keinen echten
+ * Aufruf. Seit LL1 d rechnet der Lauf hinter der Antwort: `runDetached` fängt
+ * die Arbeit ab, damit eine Probe nie aus Versehen „rechnet". Was hinter der
+ * Tür geschieht (Sperre, Lauf, Vorschlag), belegt `page-translate-run.test.ts`.
+ */
 function translateGlobals(options: { aiConfigured?: boolean } = {}) {
   const ai = vi.fn(async () => ({ title: 'Imprint', body: 'Legal notice.' }))
   return {
@@ -296,8 +304,12 @@ function translateGlobals(options: { aiConfigured?: boolean } = {}) {
       requirePlanProduct,
       useAppConfig: () => PLAN_CONFIG,
       isAiConfigured: async () => options.aiConfigured ?? true,
+      aiSwitchedOn: async () => true,
       getEffectiveAiConfig: async () => ({ model: 'test-model' }),
       aiCompleteJson: ai,
+      tenantCacheScope: () => 't-a',
+      acquireRunLease,
+      runDetached: () => {},
     },
   }
 }
@@ -352,13 +364,27 @@ describe('POST /api/pages/translate — abgewiesen wird VOR dem KI-Aufruf', () =
     expect(ai).not.toHaveBeenCalled()
   })
 
-  it.each(MANAGE.allow)('%s, Plan pro: genau ein KI-Aufruf, Vorschlag zurück, nichts gespeichert', async (who) => {
+  it.each(MANAGE.allow)('%s, Plan pro: erreicht die Lauf-Tabelle über die Operator-Klinke, KEINE KI in der Anfrage, Seiten unberührt', async (who) => {
     const { ai, globals } = translateGlobals()
-    const run = await probeRoute(loadTranslate, { who, body: TRANSLATE_BODY, tenantFields: { plan: 'pro' }, globals })
+    const opens: DoorOpen[] = []
+    const run = await probeRoute(loadTranslate, {
+      who,
+      body: TRANSLATE_BODY,
+      tenantFields: { plan: 'pro' },
+      globals,
+      // Die Probe endet an der Tür (Tabelle „fehlt") — gefragt ist, WELCHE Tür.
+      door: (_event, options) => {
+        opens.push({ as: options?.as, actor: options?.actor })
+        return { list: async (table: string) => {
+          expect(table, 'die Übersetzung fasst die Seiten-Zeilen nicht an').toBe('pages_runs')
+          throw Object.assign(new Error('Table not found'), { code: 404 })
+        } }
+      },
+    })
 
-    expect(run.status).toBe(200)
-    expect(ai).toHaveBeenCalledTimes(1)
-    expect(run.doorOpened, 'die Route speichert nichts').toBe(false)
-    expect(run.result).toEqual({ locale: 'en', title: 'Imprint', body: 'Legal notice.', model: 'test-model' })
+    expect(run.status).toBe(503)
+    expect(run.error?.data?.code).toBe('run_lease_unavailable')
+    expect(ai).not.toHaveBeenCalled()
+    expect(opens).toEqual([{ as: 'operator', actor: undefined }])
   })
 })

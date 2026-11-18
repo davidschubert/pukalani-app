@@ -61,7 +61,7 @@ describe('translationSourceLocale', () => {
 
 describe('pageTranslateSchema', () => {
   const schema = createPageTranslateSchema()
-  const valid = { locale: 'de', title: 'Imprint', body: '# Imprint' }
+  const valid = { slug: 'imprint', locale: 'de', title: 'Imprint', body: '# Imprint' }
 
   it('nimmt eine gültige Anfrage an', () => {
     expect(schema.parse(valid)).toEqual(valid)
@@ -79,6 +79,13 @@ describe('pageTranslateSchema', () => {
 
   it('lässt keine zusätzlichen Felder durch (strict)', () => {
     expect(() => schema.parse({ ...valid, status: 'published' })).toThrow()
+  })
+
+  it('verlangt eine gültige Adresse — sie ist der Gegenstand der Lauf-Sperre (LL1 d)', () => {
+    const { slug: _slug, ...withoutSlug } = valid
+    expect(() => schema.parse(withoutSlug)).toThrow()
+    expect(() => schema.parse({ ...valid, slug: 'Impressum/x' })).toThrow()
+    expect(() => schema.parse({ ...valid, slug: 'a'.repeat(65) })).toThrow()
   })
 })
 
