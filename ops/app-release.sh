@@ -210,8 +210,10 @@ main() {
 
   # Was tar und zstd an Fehlern sagen, wird verworfen (es könnte Dateinamen
   # tragen, und das Protokoll ist öffentlich) — außer im Test.
-  local ERR=/dev/null
-  if [ -n "${APP_RELEASE_DEBUG:-}" ]; then ERR=/dev/stderr; fi
+  # Über eine eigene Nummer (8), nicht über den Pfad /dev/stderr: der lässt
+  # sich unter Linux nicht öffnen, wenn die Fehlerausgabe ein Socket ist (so
+  # startet Node seine Kindprozesse).
+  if [ -n "${APP_RELEASE_DEBUG:-}" ]; then exec 8>&2; else exec 8>/dev/null; fi
   # Beurteilt eine Pipe `head | [zstd |] tar` aus ihren Teil-Ergebnissen: es
   # zählt, was die ENTPACKER sagen. `head` darf mit 141 enden (der Leser war
   # schon fertig) — mit `pipefail` allein wäre das ein Scheinfehler, und nur
@@ -359,7 +361,7 @@ main() {
       # absolute Pfade und `..` von sich aus ab.
       local parts
       set +e
-      head -c "$MAX_RELEASE" | zstd -dc 2>>"$ERR" | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>>"$ERR"
+      head -c "$MAX_RELEASE" | zstd -dc 2>&8 | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>&8
       parts="${PIPESTATUS[*]}"
       set -e
       pipe_ok "$parts" || die 3 "das Archiv für $APP ist nicht lesbar oder unvollständig (Teil-Ergebnisse: $parts) — nichts geändert."
@@ -386,7 +388,7 @@ main() {
       TMP="$(mktemp -d "$ROOT/$SITE/.ops-incoming.XXXXXX")"
       local f name count=0 allowed parts
       set +e
-      head -c "$MAX_OPS" | tar -x -C "$TMP" --no-same-owner 2>>"$ERR"
+      head -c "$MAX_OPS" | tar -x -C "$TMP" --no-same-owner 2>&8
       parts="${PIPESTATUS[*]}"
       set -e
       pipe_ok "$parts" || die 3 "das Archiv mit den Dateien der Site ist nicht lesbar (Teil-Ergebnisse: $parts) — nichts geändert."
@@ -430,7 +432,7 @@ main() {
       # Das Archiv trägt `fonts/…`; die erste Ebene fällt weg.
       local parts
       set +e
-      head -c "$MAX_FONTS" | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>>"$ERR"
+      head -c "$MAX_FONTS" | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>&8
       parts="${PIPESTATUS[*]}"
       set -e
       pipe_ok "$parts" || die 3 "das Archiv mit dem Font-Cache ist nicht lesbar (Teil-Ergebnisse: $parts) — nichts geändert."
