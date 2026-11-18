@@ -31,8 +31,11 @@ Seit SI1 b (2026-11-17) zwei weitere Fälle:
   behandelt sie wie entfernte: beide Labels weg. Die Zugangs-Frage davor
   prüft auch, ob die Community noch stillgelegt ist; ist sie wieder an, bleibt
   das Label. Die Zeile selbst bleibt `active` — die Platform-App liest das
-  Control Plane nur. Steht `disabledStale` > 0 im Log, die Zeilen von Hand auf
-  `removed` stellen.
+  Control Plane nur. **Woran man sie erkennt:** `disabledCandidates` im Log.
+  Die Zahl bleibt über 0, bis die Zeilen im Control Plane von Hand auf
+  `removed` stehen. `disabledStale` sagt nur, ob in diesem Lauf noch ein Label
+  hing — nach dem ersten Entzug steht es auf 0, obwohl die Zeile unverändert
+  ist (bis 2026-11-18 nannte dieses Runbook die falsche der zwei Zahlen).
 - **Herabgestuft.** Wird ein Mitglied aus dem Moderations-Team zu einer Rolle
   ohne Moderation herabgestuft, bleibt seine Zeile `active`, und das
   Moderations-Label fiel bisher erst beim nächsten Besuch. Der Lauf liest die
@@ -101,8 +104,8 @@ Eine Zusammenfassung je Lauf, nur Anzahlen:
 | `failed` | Konto nicht lesbar, Rückfrage oder Entzug gescheitert |
 | `skipped` | Konto gelöscht, wieder eingeladen, oder Kennung ist kein Label |
 | `truncated` | ein Deckel hat gegriffen (siehe Log-Zeile) |
-| `disabledCandidates` | gelesene `active`-Zeilen in stillgelegten Communities |
-| `disabledStale` | davon mit hängendem Label (in `stale` mitgezählt) — Zeile von Hand umstellen |
+| `disabledCandidates` | gelesene `active`-Zeilen in stillgelegten Communities — über 0 heißt: Zeilen von Hand auf `removed` stellen |
+| `disabledStale` | davon in diesem Lauf noch mit hängendem Label (in `stale` mitgezählt); fällt nach dem Entzug auf 0 |
 | `demotedCandidates` | gelesene geänderte Zeilen mit Rolle ohne Moderation (26 h) |
 | `demotedStale` | davon mit hängendem Moderations-Label (in `stale` mitgezählt) |
 

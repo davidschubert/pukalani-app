@@ -31,6 +31,7 @@ import {
   marketReportPrompt,
   marketReportSystemPrompt,
 } from '../prompts/marketReportPrompt'
+import { isMarketAiEndpointUnavailable } from '../../shared/marketRun'
 import { marketDevStubEnabled, marketReportModel } from './marketAi'
 
 /**
@@ -132,7 +133,11 @@ export interface MarketReportResult {
   readonly promptVersion: string
   /** Wie viele Elemente der Riegel verworfen hat, je Grund (Zahl, kein Text). */
   readonly filtered: Record<MarketFilterReason, number>
-  readonly failure: '' | 'ai_disabled' | 'provider_error' | 'schema_error'
+  /**
+   * `ai_endpoint_unavailable` (KI1 d): kein Endpunkt unter der Bindung — der
+   * Bericht-Lauf nennt diesen Grund an seiner Zeile (LL1 d), wie die Auswertung.
+   */
+  readonly failure: '' | 'ai_disabled' | 'provider_error' | 'schema_error' | 'ai_endpoint_unavailable'
 }
 
 // ── Der Bericht-Schlüssel ──────────────────────────────────────────────────
@@ -449,7 +454,7 @@ export async function buildMarketReport(
         model,
         promptVersion: MARKET_REPORT_PROMPT_VERSION,
         filtered: { ...EMPTY_FILTERED },
-        failure: 'provider_error',
+        failure: isMarketAiEndpointUnavailable(error) ? 'ai_endpoint_unavailable' : 'provider_error',
       }
     }
   }

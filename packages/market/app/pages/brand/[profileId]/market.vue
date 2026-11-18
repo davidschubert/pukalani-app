@@ -23,11 +23,18 @@ import type {
   MarketOverviewResponse,
   MarketRatingResponse,
   MarketReportResponse,
+  MarketReportRunView,
   MarketRunResponse,
   MarketRunView,
   MarketVisibilityResponse,
 } from '../../../../shared/types/marketApi'
 import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../core/shared/runLease'
+import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../../../../core/shared/aiProviderRouting'
+import { MARKET_AI_DISABLED_CODE } from '../../../../shared/marketLimits'
+import {
+  MARKET_REPORT_POLL_TIMEOUT_MS,
+  MARKET_REPORT_RUNNING_CODE,
+} from '../../../../shared/marketReportRun'
 import type {
   BrandFindingView,
   BrandFindingsResponse,
@@ -446,10 +453,11 @@ else if (overview.data.value?.run?.state === 'stalled') {
  * Seite dann zeigen soll: ein ruhiger Hinweis, und sie wechselt auf „läuft".
  */
 async function runComparison(): Promise<void> {
-  if (running.value || !unlocked.value || !paywallUnlocked.value) return
+  if (running.value || reportWriting.value || !unlocked.value || !paywallUnlocked.value) return
   runPhase.value = 'running'
   runSteps.value = []
   runInterrupted.value = false
+  reportNotice.value = ''
   runProgress.value = { done: 0, total: fieldCompetitors.value.length, writing: false }
   try {
     const response = await $fetch<MarketRunResponse>(`${base.value}/run?report=1`, { method: 'POST' })
@@ -470,6 +478,13 @@ async function runComparison(): Promise<void> {
       return
     }
     runPhase.value = 'idle'
+    // LL1 d: gerade schreibt ein Bericht-Lauf — ebenfalls KEIN Fehler. Der
+    // ruhige Hinweis, und die Seite beobachtet diesen Bericht.
+    if (reason === MARKET_REPORT_RUNNING_CODE) {
+      toast.add({ color: 'info', title: t('market.rejected.report_running') })
+      reportWriting.value = true
+      return
+    }
     fail(error, 'market.error.run')
   }
 }
@@ -482,6 +497,71 @@ async function refreshAll(): Promise<void> {
 
 const report = computed(() => reportState.data.value?.report ?? null)
 const stale = computed(() => reportState.data.value?.stale === true)
+
+/**
+ * DER BERICHT-LAUF (LL1 d, 2026-11-18).
+ *
+ * `POST /report` antwortet seit LL1 d mit 202 und schreibt den Bericht
+ * dahinter; `GET /report` liefert den Stand als `reportRun`. Diese Seite
+ * startet keinen eigenen Bericht (der Knopf fährt den Vergleichs-Lauf mit
+ * `?report=1`), sie BEOBACHTET aber jeden, der läuft — aus einem zweiten
+ * Reiter, nach einem Neuladen, oder wenn der Vergleichs-Lauf mit
+ * `report_running` abgewiesen wurde. Abgefragt wird im Takt
+ * `RUN_LEASE_POLL_MS`, nur bei sichtbarem Reiter, mit einer Frist je Abfrage
+ * (`useRunPolling` überlappt nicht — eine hängende Abfrage hielte es an).
+ */
+const reportWriting = ref(reportState.data.value?.reportRun?.state === 'running')
+/** Der eine Satz nach einem Bericht-Lauf ohne Ergebnis (`''` = keiner). */
+const reportNotice = ref<'' | 'stalled' | 'failed'>(
+  reportState.data.value?.reportRun?.state === 'stalled' ? 'stalled' : '',
+)
+
+async function applyReportRun(run: MarketReportRunView | undefined): Promise<void> {
+  if (!run) return
+  if (run.state === 'running') {
+    reportWriting.value = true
+    reportNotice.value = ''
+    return
+  }
+  // Nur ein ÜBERGANG „lief ⇒ endet" sagt etwas; ein alter Ausgang beim
+  // Nachfragen ohne Lauf ist kein neues Ereignis.
+  if (!reportWriting.value) return
+  reportWriting.value = false
+  if (run.state === 'stalled') {
+    reportNotice.value = 'stalled'
+  }
+  else if (run.state === 'failed') {
+    if (run.failure === AI_ENDPOINT_UNAVAILABLE_CODE) {
+      toast.add({
+        id: 'ai-endpoint-unavailable',
+        color: 'warning',
+        icon: 'i-ph-shield-check',
+        title: t('error.aiEndpointUnavailable'),
+        description: t('error.aiEndpointUnavailableHint'),
+      })
+    }
+    else if (run.failure === MARKET_AI_DISABLED_CODE) {
+      toast.add({ color: 'warning', title: t('market.rejected.ai_disabled') })
+    }
+    else {
+      reportNotice.value = 'failed'
+    }
+  }
+  // Fertig ODER gescheitert: Übersicht und Befunde neu (der Bericht selbst
+  // kam mit der letzten Abfrage).
+  await Promise.all([overview.refresh(), findings.refresh()])
+}
+
+/** Ein Takt: den Bericht samt Lauf-Stand neu holen. */
+async function pollReport(): Promise<void> {
+  const response = await $fetch<MarketReportResponse>(`${base.value}/report`, {
+    timeout: MARKET_REPORT_POLL_TIMEOUT_MS,
+  })
+  reportState.data.value = response
+  await applyReportRun(response.reportRun)
+}
+
+useRunPolling({ active: reportWriting, intervalMs: RUN_LEASE_POLL_MS, tick: pollReport })
 
 const reportDate = computed(() => (report.value
   ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(report.value.createdAt))
@@ -970,8 +1050,8 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
                   color="neutral" class="rounded-full"
                   icon="i-ph-compass"
                   :label="t(report ? 'market.action.again' : 'market.action.compare')"
-                  :loading="running"
-                  :disabled="running || !fieldCompetitors.length"
+                  :loading="running || reportWriting"
+                  :disabled="running || reportWriting || !fieldCompetitors.length"
                   @click="runComparison"
                 />
                 <UButton
@@ -1004,6 +1084,19 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
             </p>
             <p class="text-sm leading-relaxed" style="color: var(--bw-muted)">{{ t('market.run.background') }}</p>
           </div>
+          <!-- (c2) DER BERICHT-LAUF (LL1 d) -->
+          <div v-if="reportWriting" class="space-y-1" data-market-report-run>
+            <p class="text-sm font-medium">{{ t('market.reportRun.writing') }}</p>
+            <p class="text-sm leading-relaxed" style="color: var(--bw-muted)">{{ t('market.reportRun.background') }}</p>
+          </div>
+          <p
+            v-else-if="reportNotice"
+            class="rounded-xl px-4 py-3 text-sm leading-relaxed"
+            style="background: var(--bw-surface); color: var(--bw-ink)"
+            data-market-report-run-notice
+          >
+            {{ t(reportNotice === 'stalled' ? 'market.reportRun.stalled' : 'market.reportRun.failed') }}
+          </p>
           <MkRunProgress
             v-if="running || runSteps.length"
             :steps="shownSteps"
@@ -1028,7 +1121,7 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
                 <UButton
                   size="xs" color="neutral" class="rounded-full" icon="i-ph-arrows-clockwise"
                   :label="t('market.action.again')"
-                  :loading="running" :disabled="running || !paywallUnlocked"
+                  :loading="running || reportWriting" :disabled="running || reportWriting || !paywallUnlocked"
                   @click="runComparison"
                 />
               </div>
