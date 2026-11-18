@@ -102,6 +102,8 @@
       "attachments": "{count} Anhang/Anhänge werden mitgeschickt",
       "untrustedTitle": "Ungeprüfter Auftrag",
       "untrustedText": "Die Herkunft dieses Tickets ist nicht „vom Betreiber geschrieben“. Deshalb stehen nur die beiden vorsichtigen Arbeitsweisen zur Wahl und keine Testbefehle — das entscheidet der Server, nicht dieses Formular.",
+      "promptPreview": "Auftrag ansehen",
+      "promptPreviewHint": "Diesen Text bekommt der Agent. Der Server baut ihn beim Start frisch aus dem Ticket: Titel, Beschreibung und die offenen Punkte der Checkliste.",
       "noRunnersTitle": "Kein aktiver Rechner",
       "noRunnersText": "Ein Lauf braucht einen Rechner, der ihn abholt. Registrier zuerst einen.",
       "noRunnersAction": "Zu den Rechnern",
@@ -143,7 +145,8 @@
         "testsUntrusted": "Ein ungeprüfter Auftrag darf keine Testbefehle mitnehmen.",
         "testNotListed": "Ein Testbefehl steht nicht (mehr) in der Liste des Rechners.",
         "subjectNotFound": "Das Ticket zu diesem Lauf gibt es nicht mehr.",
-        "trustUnavailable": "Die Herkunft des Tickets konnte gerade nicht geprüft werden. Versuch es gleich noch einmal."
+        "trustUnavailable": "Die Herkunft des Tickets konnte gerade nicht geprüft werden. Versuch es gleich noch einmal.",
+        "promptChanged": "Das Ticket wurde inzwischen geändert — der Auftrag wäre ein anderer als der angezeigte. Lade die Seite neu und starte den Lauf noch einmal."
       }
     },
     "report": {

@@ -25,7 +25,7 @@ export const RUN_SUBJECT_TYPES = ['ticket'] as const
  * nichts. Was begrenzt: ein Prompt, der größer ist als das, ist kein Auftrag
  * mehr, sondern ein Datenleck aus einer Schleife.
  */
-const MAX_PROMPT_CHARS = 200_000
+export const MAX_PROMPT_CHARS = 200_000
 
 export const createRunSchema = z.object({
   subjectType: z.enum(RUN_SUBJECT_TYPES),
@@ -42,7 +42,15 @@ export const createRunSchema = z.object({
   repoKey: z.string().trim().min(1).max(64),
   model: z.string().trim().min(1).max(64),
   permissionMode: z.enum(PERMISSION_MODES),
-  promptSource: z.string().min(1).max(MAX_PROMPT_CHARS),
+  /**
+   * OPTIONAL, UND NIE DIE QUELLE, WENN DER SERVER DEN TEXT SELBST BAUT (RU1 b).
+   * Für ein Subjekt mit Resolver (heute: Tickets) baut der Server den Auftrag
+   * aus der Zeile; dieses Feld ist dann nur „der Text, den die Person gesehen
+   * hat" — die Anlege-Route vergleicht ihn und lehnt bei einer Abweichung ab
+   * (409 `prompt_changed`), gespeichert wird immer der Text des Servers. Nur
+   * ohne Resolver ist es der Auftrag selbst, und der gilt als ungeprüft.
+   */
+  promptSource: z.string().max(MAX_PROMPT_CHARS).optional().default(''),
   /*
    * `promptTrusted` STEHT HIER BEWUSST NICHT MEHR (SEC-038). Ob ein Auftrag als
    * geprüft gilt, bestimmt der SERVER aus der Herkunft des Subjekts

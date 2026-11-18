@@ -64,6 +64,17 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // hinter `insights.manage` und die öffentlichen Leseseiten samt
   // Korrektur-Formular (`packages/insights/tests/support/insightsRouteKit.ts`).
   'insights',
+  // Abgebaut mit N14 (2026-11-18): die App-Routen-Gruppen — Stripe- und
+  // Preis-Routen des Control Plane (Betreiber und Naht), Ticket-Kauf,
+  // Kontakt- und Erstgespräch-Formular (Tests unter `apps/<name>/tests/`).
+  'apps/comments', 'apps/control', 'apps/photos', 'apps/portfolio',
+  // Abgebaut mit N14 (2026-11-18): alle acht Verwaltungs-Routen der Seiten
+  // (`pages.manage`, `branding.manage`, KI-Übersetzung hinter zwei Produkt-Toren).
+  'pages',
+  // Abgebaut mit N13 (2026-11-18): alle 30 Bestands-Routen des Markenberaters
+  // — Werkstatt an einer Marke, Betreiber-Routen, Einladung und Freigabe
+  // (`packages/brand/tests/support/brandRouteKit.ts`).
+  'brand',
 ]
 
 /**

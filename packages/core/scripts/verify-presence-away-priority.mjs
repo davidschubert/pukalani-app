@@ -25,11 +25,16 @@
  * Ohne die Schritte 3/4/6 wäre auch eine Regel grün, die einfach ALLES
  * blockiert — und die wäre schlimmer als der Fehler.
  *
- * MANDANTEN-STEMPEL UND LABELS werden EMPIRISCH ermittelt (Schritt 0), nicht
- * aus einer Tabelle gelesen: `communities` lebt seit AH-1 im Control Plane,
- * und dieses Skript hat dafür keinen Schlüssel (dieselbe Grenze wie bei
- * revokeCommunityLabel). Der Heartbeat verrät beides selbst — den Stempel in
- * `metadata.tenantId`, die Community-Id in `read("label:<communityId>")`.
+ * DER WEGWERF-NUTZER IST MITGLIED BEIDER COMMUNITIES (seit 2026-11-18, BT1 e):
+ * der Heartbeat schreibt im Pool nur noch für Mitglieder der Community des
+ * Hosts. Bis dahin ermittelte Schritt 0 die Community-Ids, indem ein Konto
+ * OHNE Zugehörigkeit auf beiden Hosts schrieb — genau das, was jetzt still
+ * ausbleibt. Die Ids kommen deshalb von der Bühne (`BUEHNE_COMMUNITY_A/B`,
+ * `pnpm buehne run`), der Nutzer bekommt beide Labels VOR dem ersten Takt, und
+ * Schritt 0 prüft die neue Regel gleich mit (ein Konto ohne Label schreibt
+ * nichts). Die MANDANTEN-STEMPEL verrät weiter der Heartbeat selbst
+ * (`metadata.tenantId`); `communities` lebt im Control Plane, dafür hat
+ * dieses Skript keinen Schlüssel.
  *
  * VORAUSSETZUNGEN (alles lokal, nichts zeigt auf Produktion):
  *   - lokale Appwrite + Pool-Projekt (Runtime-Key MIT presences.read/write),
@@ -58,6 +63,9 @@ if (!endpoint || !projectId || !apiKey) {
 const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const HOST_A = process.env.TENANT_HOST_A || 'kunde-a.localhost'
 const HOST_B = process.env.TENANT_HOST_B || 'kunde-b.localhost'
+/** Die Community-Ids der zwei Hosts (= die Labels der Mitglieder) — von der Bühne. */
+const COMMUNITY_A = process.env.BUEHNE_COMMUNITY_A || ''
+const COMMUNITY_B = process.env.BUEHNE_COMMUNITY_B || ''
 
 const admin = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey)
 const adminUsers = new Users(admin)
@@ -144,6 +152,11 @@ try {
     process.exit(0)
   }
 
+  if (!COMMUNITY_A || !COMMUNITY_B) {
+    // Kein stilles Überspringen: ohne die Ids prüft dieser Lauf nichts.
+    throw new Error('BUEHNE_COMMUNITY_A/B fehlen — über `pnpm buehne run --only verify-presence-away-priority` starten')
+  }
+
   const account = {
     email: `away-prio-${stamp}@example.test`,
     password: `Pw-${ID.unique()}`,
@@ -153,6 +166,10 @@ try {
   })
   created.users.push(user.$id)
   created.presences.push(user.$id)
+  // Mitglied beider Communities: das Label ist die Zugehörigkeit, nach der der
+  // Heartbeat fragt (Bestand „Label ohne Zeile" zählt als Mitglied). Gesetzt
+  // VOR der Anmeldung, damit schon der erste Takt als Mitglied läuft.
+  await adminUsers.updateLabels({ userId: user.$id, labels: [COMMUNITY_A, COMMUNITY_B] })
 
   // EIN Cookie für beide Hosts: der Session-Cookie hängt am PROJEKT
   // (a_session_<projectId>) — im Pool teilen sich alle Mandanten-Hosts eines.
@@ -164,7 +181,23 @@ try {
   const cookie = login.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
   if (!cookie) throw new Error('Kein Session-Cookie erhalten')
 
-  console.log('0. Aufwärmen — Mandanten-Stempel + Community-Ids empirisch ermitteln')
+  console.log('0. Aufwärmen — ohne Zugehörigkeit keine Anwesenheit, mit ihr die Stempel der zwei Hosts')
+  // Die Regel selbst, mit einem ZWEITEN Konto ohne jedes Label: der Takt wird
+  // still angenommen (200), geschrieben wird nichts. Die Gegenprobe sind alle
+  // Schritte danach — dasselbe mit Label schreibt.
+  const strangerAccount = { email: `away-prio-fremd-${stamp}@example.test`, password: `Pw-${ID.unique()}` }
+  const stranger = await adminUsers.create({
+    userId: ID.unique(), email: strangerAccount.email, password: strangerAccount.password, name: `Fremd ${stamp}`,
+  })
+  created.users.push(stranger.$id)
+  created.presences.push(stranger.$id)
+  const strangerLogin = await call(HOST_A, '/api/auth/login', { method: 'POST', body: strangerAccount })
+  const strangerCookie = strangerLogin.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
+  if (!strangerCookie) throw new Error('Kein Session-Cookie für das Konto ohne Zugehörigkeit')
+  await heartbeat(HOST_A, strangerCookie, false)
+  check('ein Konto OHNE Zugehörigkeit: der Takt wird angenommen, aber es entsteht keine Anwesenheit',
+    await presenceState(stranger.$id) === null, JSON.stringify(await presenceState(stranger.$id)))
+
   await heartbeat(HOST_A, cookie, false)
   const warmA = await presenceState(user.$id)
   await heartbeat(HOST_B, cookie, false)
@@ -180,11 +213,11 @@ try {
   // SICHTBARE Presence von A überschrieben — sichtbar gated die Regel nicht.
   check('sichtbar über sichtbar bleibt Letzter-gewinnt (die Regel greift NUR bei away)',
     !!warmB?.tenantId && warmB.tenantId !== TENANT_A, JSON.stringify(warmB))
-  // Beide Labels, damit der Nutzer in beiden Communities ein LESE-Publikum hat
-  // (A5) — für den Beweis selbst irrelevant (gelesen wird mit dem Admin-Client),
-  // aber sonst wäre der Wegwerf-Nutzer ein Sonderfall, den es real nicht gibt.
-  if (communityA && communityB) await adminUsers.updateLabels({ userId: user.$id, labels: [communityA, communityB] })
-  console.log(`   Stempel A = ${TENANT_A} · B = ${TENANT_B} · Labels = ${communityA}, ${communityB}`)
+  // Die Zeile trägt das Lese-Publikum der Community des Hosts — verglichen mit
+  // den Ids der Bühne, nicht mit dem, was dieselbe Antwort behauptet.
+  check('die Anwesenheit trägt das Lese-Publikum der Community des jeweiligen Hosts',
+    communityA === COMMUNITY_A && communityB === COMMUNITY_B, `${communityA} / ${communityB}`)
+  console.log(`   Stempel A = ${TENANT_A} · B = ${TENANT_B} · Labels = ${COMMUNITY_A}, ${COMMUNITY_B}`)
 
   console.log('\n1. Sichtbarer Tab auf Host A schreibt')
   await heartbeat(HOST_A, cookie, false)

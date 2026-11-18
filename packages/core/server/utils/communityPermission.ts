@@ -193,7 +193,24 @@ export async function requireCommunityPermission(
 
   const tenant = event.context.tenant
   const tenantScoped = Boolean(tenant)
-  const role = tenantScoped ? await resolveCommunityRole(event) : null
+
+  /**
+   * FRISCH ENTZOGEN SCHLÄGT DEN ROLLEN-CACHE — AUCH HIER (BT1 e, 2026-11-18).
+   *
+   * Nach „Zugang entziehen" antwortet der Rollen-Resolver bis zu 30 s weiter
+   * mit der alten Rolle; die Notiz aus `rememberCommunityAccessRevoked` steht
+   * sofort. Die Mitgliedschafts-Frage daneben (`resolveCommunityMembership`)
+   * und der Beitritt (`joinCommunity`) lesen die Notiz seit SEC-030 VOR der
+   * Rolle — dieses Tor tat es nicht und verließ sich auf die Sperre davor
+   * (`06.community-removed.ts`). Jetzt gilt dieselbe Reihenfolge: steht eine
+   * frische Ablehnung, zählt die gecachte Rolle nicht. Der Betreiber im
+   * Not-Zugang kommt über sein Label, nicht über eine Rolle — ihn betrifft
+   * das nicht. Der Rückweg bleibt: eine angenommene Einladung wirft die Notiz
+   * weg (`forgetCommunityAccessDecision`).
+   */
+  const communityId = tenant?.communityId ?? ''
+  const recentlyDenied = communityId ? communityAccessRecentlyDenied(communityId, user.$id) : false
+  const role = tenantScoped && !recentlyDenied ? await resolveCommunityRole(event) : null
 
   /**
    * DIE STUFE WIRD NUR GEFRAGT, WENN SIE ETWAS ÄNDERN KÖNNTE (F1 Teilpaket 3).

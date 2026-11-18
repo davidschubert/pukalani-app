@@ -168,6 +168,7 @@ export const BEWEISE = [
 
   // ── apps ──
   { skript: 'apps/control/scripts/verify-docs-access.mjs', lauf: 'buehne', env: 'control', dauer: 1, braucht: ['appwrite', 'control'] },
+  { skript: 'apps/control/scripts/verify-run-prompt.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'control'] },
   { skript: 'apps/platform/scripts/verify-og-image.mjs', lauf: 'buehne', env: 'keine', dauer: 1, braucht: ['platform'] },
 ]
 

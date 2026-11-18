@@ -177,4 +177,9 @@ describe('eine Fassung statt zwei', () => {
     expect(source).not.toContain('## Checkliste')
     expect(source).not.toContain('stripTriageBlock')
   })
+
+  it('der Server der Betreiber-App baut den Auftrag mit derselben Funktion', () => {
+    const source = read('../../../apps/control/server/plugins/runner-ticket-trust.ts')
+    expect(source).toContain('promptSource: buildTicketRunPrompt(ticket)')
+  })
 })

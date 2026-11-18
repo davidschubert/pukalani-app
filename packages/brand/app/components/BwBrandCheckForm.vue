@@ -17,6 +17,18 @@ import type { BrandCheckStartResponse } from '../../shared/types/brand'
  * `normalizeBrandWaitlistWebsite`) — ein vorhandenes Schema bleibt unangetastet,
  * auch ein falsches: dessen Ablehnung gehört dem Server, nicht diesem Feld.
  *
+ * ── DER CHECK RECHNET IM HINTERGRUND (LL1 b, 2026-11-18) ──────────────────
+ * Der Start antwortet sofort: entweder mit der Id (die Adresse wurde in den
+ * letzten sieben Tagen schon geprüft) oder mit einem KENNZEICHEN für einen
+ * Lauf, der hinter der Antwort rechnet — der Webserver wartet nur 60 s, ein
+ * Check kann länger brauchen. Mit dem Kennzeichen fragt diese Komponente den
+ * Stand ab (`awaitBrandCheckRun`) und schickt am Ende weiter wie bisher.
+ * Für den Menschen davor ändert sich nichts: ein Feld, ein Knopf, warten,
+ * Ergebnis. NEU ist nur, dass ein NEULADEN den Lauf nicht mehr verliert —
+ * der Browser merkt sich den einen offenen Lauf, und das Formular nimmt ihn
+ * beim Öffnen wieder auf (`onMounted`). Ein zweiter Reiter folgt demselben
+ * Lauf; ein gescheiterter Lauf zeigt seinen Satz auch nach dem Neuladen.
+ *
  * ── DREI STATUSZEILEN SIND ANZEIGE, KEIN FORTSCHRITT ──────────────────────
  * Ein Check dauert 10–40 Sekunden; ein einzelner Spinner sieht in dieser Zeit
  * aus wie ein Hänger. Die Zeilen erscheinen zeitgesteuert (~4 s) und sagen, was
@@ -125,6 +137,14 @@ function messageKey(error: unknown): string {
   const value = error as FetchErrorLike | null
   const code = value?.status ?? value?.statusCode ?? value?.response?.status ?? 0
   const reason = typeof value?.data?.reason === 'string' ? value.data.reason : ''
+  return messageKeyFor(code, reason)
+}
+
+/**
+ * Derselbe Satz für denselben Grund — ob er als Fehler der Anfrage kommt
+ * (`code` + `reason`) oder als Ausgang eines Laufs (nur `reason`, `code` 0).
+ */
+function messageKeyFor(code: number, reason: string): string {
   if (code === 429) return 'rateLimited'
   if (reason === 'invalid_url') return 'invalidUrl'
   if (reason === 'blocked_target') return 'blockedTarget'
@@ -157,23 +177,84 @@ async function submit(): Promise<void> {
         rankingOptIn: rankingOptIn.value,
       },
     })
-    stopStatusTimer()
-    // Ohne Id gibt es nichts anzusehen — das ist die Honigtopf-Antwort
-    // (`cached: true`, leere Id). Ein Mensch sieht sie nie; träfe sie ihn doch,
-    // wäre eine Weiterleitung auf eine leere Adresse schlechter als ein Satz.
-    if (!result.id) {
-      errorKey.value = 'generic'
-      status.value = 'error'
+    // Aus dem Zwischenspeicher: das Ergebnis steht schon.
+    if (result.id) {
+      stopStatusTimer()
+      await navigateTo(localePath(`/brand-check/${result.id}`))
       return
     }
-    await navigateTo(localePath(`/brand-check/${result.id}`))
+    // Ohne Id und ohne Kennzeichen gibt es nichts anzusehen — das ist die
+    // Honigtopf-Antwort (`cached: true`, leere Id). Ein Mensch sieht sie nie;
+    // träfe sie ihn doch, wäre eine Weiterleitung auf eine leere Adresse
+    // schlechter als ein Satz.
+    if (!result.token) {
+      fail('generic')
+      return
+    }
+    // Der Lauf rechnet hinter der Antwort. Erst merken, dann warten — ein
+    // Neuladen in dieser Zeit nimmt ihn wieder auf.
+    rememberBrandCheckRun({ token: result.token, url: url.value.trim() })
+    await follow(result.token, false)
   }
   catch (error) {
-    stopStatusTimer()
-    errorKey.value = messageKey(error)
-    status.value = 'error'
+    fail(messageKey(error))
   }
 }
+
+function fail(key: string): void {
+  stopStatusTimer()
+  errorKey.value = key
+  status.value = 'error'
+}
+
+/**
+ * Auf das Ende EINES Laufs warten und dann weiterschicken oder den Satz
+ * zeigen. `resumed` heisst: nach einem Neuladen wieder aufgenommen — gibt es
+ * den Lauf dann nicht mehr, ist das kein Fehler, sondern ein leeres Formular.
+ */
+async function follow(token: string, resumed: boolean): Promise<void> {
+  const end = await awaitBrandCheckRun(token)
+  // Die Komponente kann in der Wartezeit verlassen worden sein — dann zeigt
+  // und verschiebt sie nichts mehr. Der Merker bleibt für das nächste Öffnen.
+  if (unmounted) return
+
+  if (end.kind === 'running') {
+    // Nach fünf Minuten noch unterwegs: der Merker bleibt, die Seite sagt es.
+    fail('slow')
+    return
+  }
+  forgetBrandCheckRun(token)
+
+  if (end.kind === 'done') {
+    stopStatusTimer()
+    await navigateTo(localePath(`/brand-check/${end.id}`))
+    return
+  }
+  if (end.kind === 'gone' && resumed) {
+    stopStatusTimer()
+    status.value = 'idle'
+    return
+  }
+  if (end.kind === 'interrupted') fail('interrupted')
+  else if (end.kind === 'failed') fail(messageKeyFor(0, end.reason))
+  else fail('generic')
+}
+
+let unmounted = false
+onBeforeUnmount(() => {
+  unmounted = true
+})
+
+// EIN OFFENER LAUF WIRD WIEDER AUFGENOMMEN (s. Kopf): derselbe Wartezustand
+// wie nach dem Klick, mit der Adresse von damals im Feld.
+onMounted(() => {
+  const pending = pendingBrandCheckRun()
+  if (!pending || status.value === 'running') return
+  if (pending.url) url.value = pending.url
+  status.value = 'running'
+  startStatusTimer()
+  void follow(pending.token, true)
+})
 </script>
 
 <template>
