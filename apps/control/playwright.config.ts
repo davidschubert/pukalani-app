@@ -8,9 +8,10 @@ import { defineConfig, devices } from '@playwright/test'
  * macOS GoogleUpdater/chrome_crashpad_handler, die Playwrights stdout/stderr-
  * Socketpair erben, zu launchd reparenten und nie schließen — der Worker
  * bekommt kein EOF und hängt bis zum 300-s-Force-Kill (Exit 1 trotz grüner
- * Suite). Preis: `npx playwright install chromium` einmalig; ein CI-Schritt
- * ist NICHT nötig, weil diese Suite (anders als comments) in keinem Workflow
- * läuft — sie ist ein lokales Smoke-Netz. Läuft gegen einen bereits laufenden
+ * Suite). Preis: `npx playwright install chromium` einmalig. In der CI läuft
+ * die Suite nur im nächtlichen Lauf der Bühne (`buehne.yml`, `pnpm buehne
+ * e2e`); das Chromium installiert dort der Schritt über `--filter comments`
+ * (dieselbe Version aus dem Katalog). Läuft gegen einen bereits laufenden
  * Dev-Server (reuseExistingServer) oder startet ihn selbst.
  *
  * Bewusst auth-frei: Routing, SSR-Render, i18n, Auth-Guards und die
@@ -34,10 +35,12 @@ export default defineConfig({
     // Kein `channel` ⇒ gebündeltes Chromium (siehe Kopfkommentar).
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: {
-    command: 'pnpm dev',
-    url: baseURL,
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  webServer: process.env.PW_EXTERNAL_SERVER
+    ? undefined
+    : {
+        command: 'pnpm dev',
+        url: baseURL,
+        reuseExistingServer: true,
+        timeout: 120_000,
+      },
 })
