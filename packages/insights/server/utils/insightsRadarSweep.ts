@@ -301,6 +301,13 @@ export async function runInsightsRadarSweep(
     channels: 0, videos: 0, upserted: 0, deleted: 0, tooOld: 0, errors: 0, quotaUnits: 0,
   }
 
+  // WANN DIE SEITE `skipped: running` NOCH SIEHT (seit LL1 c selten): ein
+  // Lauf hat seinen Herzschlag verloren, seine Zeile gilt nach 120 s als
+  // abgebrochen, und ein neuer Lauf nimmt die Sperre im SELBEN Prozess,
+  // während der alte Sweep noch sein letztes Stück schreibt. Dann hält der
+  // Merker hier den neuen an; das Ergebnis steht an dessen Lauf-Zeile, und
+  // die Seite zeigt `insights.radar.skipped.running`. Die 409 der Sperre im
+  // Zeit-Lauf (`insightsRadarRun.ts`) erreicht die Seite dagegen nie.
   if (sweepRunning) return { ...result, skipped: 'running' }
   sweepRunning = true
 
