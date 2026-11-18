@@ -64,6 +64,9 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // hinter `insights.manage` und die öffentlichen Leseseiten samt
   // Korrektur-Formular (`packages/insights/tests/support/insightsRouteKit.ts`).
   'insights',
+  // Abgebaut mit N14 (2026-11-18): alle acht Verwaltungs-Routen der Seiten
+  // (`pages.manage`, `branding.manage`, KI-Übersetzung hinter zwei Produkt-Toren).
+  'pages',
 ]
 
 /**

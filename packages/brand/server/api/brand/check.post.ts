@@ -1,7 +1,32 @@
 import type { H3Event } from 'h3'
+import { RUN_LEASE_BUSY_CODE } from '../../../../core/shared/runLease'
 import { createBrandCheckSchema } from '../../../schemas/brandCheck'
+import {
+  BRAND_RUN_OUTCOMES,
+  BRAND_RUN_SCOPES,
+  emptyBrandRunDetail,
+  parseBrandRunDetail,
+  toBrandRunView,
+} from '../../../shared/brandRun'
 import type { BrandCheckStartResponse } from '../../../shared/types/brand'
-import { runBrandCheck } from '../../utils/brandCheckRun'
+import {
+  type RunBrandCheckInput,
+  bookBrandCheck,
+  executeBrandCheck,
+  prepareBrandCheck,
+} from '../../utils/brandCheckRun'
+import {
+  brandCheckRunSubject,
+  brandCheckRunToken,
+  brandCheckRunVisitor,
+  newBrandCheckRunNonce,
+} from '../../utils/brandCheckRunToken'
+import {
+  brandRunProfileExists,
+  brandRunStore,
+  runningBrandRunView,
+  startBrandRun,
+} from '../../utils/brandRun'
 import {
   BRAND_PROFILES_TABLE,
   type BrandProfileRow,
@@ -28,6 +53,31 @@ import {
  * Der Client springt auf `/brand-check/<id>` und holt es dort (`[id].get.ts`).
  * So ist das Ergebnis von der ersten Sekunde an eine ADRESSE — teilbar,
  * nachladbar, und beim zweiten Aufruf derselben Website buchstäblich dieselbe.
+ *
+ * ── DIE ANTWORT KOMMT SOFORT, DER LAUF RECHNET WEITER (LL1 b, 2026-11-18) ─
+ * Lesen und Urteilen brauchen zusammen bis rund 120 s; der Webserver wartet
+ * 60. Bis hierher sah der Mensch dann einen Fehler, obwohl der Check entstand.
+ * Jetzt, in dieser Reihenfolge (Regel „Lange Arbeit gehört nicht in die
+ * Anfrage"):
+ *  1. Honigtopf und Rumpf.
+ *  2. Was nichts kostet (`prepareBrandCheck`): Zwischenspeicher — ein Treffer
+ *     antwortet weiter SOFORT mit `200` und der Id —, eigene Brand, Abschalter.
+ *  3. DIE LAUF-SPERRE (`brand_runs`, Art `check`). Der Gegenstand ist ein
+ *     Hash aus Adresse UND Besucher: derselbe Besucher mit derselben Adresse
+ *     startet nie doppelt, ein Fremder trifft die Sperre nie. Läuft schon
+ *     einer, ist das hier KEIN 409 — die Antwort ist dieselbe `202` mit dem
+ *     Kennzeichen des LAUFENDEN Laufs, ohne Buchung. Ein zweiter Reiter folgt
+ *     damit demselben Lauf.
+ *  4. Die Deckel (`bookBrandCheck`). Lehnt einer ab, fällt die Sperre wieder.
+ *  5. `202` mit dem Lauf-Stand und dem KENNZEICHEN, das nur der Starter
+ *     bekommt (`brandCheckRunToken.ts`). Die Seite fragt damit den Stand ab
+ *     (`GET /api/brand/check/runs/<kennzeichen>`); am fertigen Lauf steht die
+ *     Id des Ergebnisses (`run.ref`).
+ * Was früher der Fehler-Code der Anfrage war (`site_blocked`, `fetch_failed`,
+ * `blocked_target`, `check_unavailable`), ist jetzt der AUSGANG des Laufs —
+ * dieselben Wörter, die Seite bildet sie auf dieselben Sätze ab. Ein
+ * gescheiterter Lauf bleibt gebucht, wie vorher eine gescheiterte Anfrage
+ * (der Abruf ist hinausgegangen; s. Kopf von `brandCheckRun.ts`).
  *
  * ── SEIT DEM RANKING-PAKET (BRAND-CHECK-SEITE §3/§5/§8) ───────────────────
  * Die Route kennt auch KONTEN, ohne eines zu verlangen: wer eingeloggt ist,
@@ -72,29 +122,118 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
   // der Beta-WERKSTATT, und der Check ist das Akquise-Instrument davor.
   const userId = typeof event.context.user?.$id === 'string' ? event.context.user.$id : ''
 
+  const input: RunBrandCheckInput = {
+    url: body.url,
+    locale: body.locale,
+    userId,
+    force: body.force,
+    rankingOptIn: body.rankingOptIn,
+    // Als FUNKTION, damit ein Zwischenspeicher-Treffer keine Besitz-Abfrage
+    // kostet: die Mechanik löst sie erst auf, wenn wirklich geprüft wird.
+    profileId: body.profileId && userId
+      ? () => requireOwnProfileId(event, userId, body.profileId)
+      : '',
+  }
+
+  // (2) Was nichts kostet. Ein Treffer im Zwischenspeicher IST das Ergebnis.
+  const { cached, prepared } = await prepareBrandCheck(event, input)
+  if (cached) return { ok: true, ...cached }
+
+  // (3) DIE SPERRE — vor den Deckeln. Derselbe Besucher mit derselben Adresse
+  // trifft immer denselben Gegenstand (s. Kopf von `brandCheckRunToken.ts`).
+  const store = brandRunStore(event)
+  const scope = BRAND_RUN_SCOPES.check
+  const subject = brandCheckRunSubject(event, prepared.urlKey, brandCheckRunVisitor(userId, prepared.ipHash))
+  const nonce = newBrandCheckRunNonce()
+
+  let lease: Awaited<ReturnType<typeof acquireRunLease>>['lease']
   try {
-    const result = await runBrandCheck(event, {
-      url: body.url,
-      locale: body.locale,
-      userId,
-      force: body.force,
-      rankingOptIn: body.rankingOptIn,
-      // Als FUNKTION, damit ein Zwischenspeicher-Treffer keine Besitz-Abfrage
-      // kostet: die Mechanik löst sie erst auf, wenn wirklich geprüft wird.
-      profileId: body.profileId && userId
-        ? () => requireOwnProfileId(event, userId, body.profileId)
-        : '',
-    })
-    return { ok: true, ...result }
+    lease = (await acquireRunLease(store, { scope, subject, detail: emptyBrandRunDetail({ key: nonce }) })).lease
   }
   catch (error) {
-    // DER EINZIGE GRUND FÜR DIESEN FANG: der `Retry-After`-Kopf. Er gehört zur
-    // ANTWORT und damit der Route — die Mechanik hat zwei Aufrufer, und beim
-    // zweiten (dem Lauf des Marktvergleichs) stempelte ein `setHeader` dort
-    // ein `Retry-After` auf eine 200er-Antwort, die niemand abgewiesen hat.
+    if ((error as { data?: { code?: unknown } } | null)?.data?.code !== RUN_LEASE_BUSY_CODE) throw error
+    // ES LÄUFT SCHON EINER — und zwar der dieses Besuchers für diese Adresse.
+    // Kein zweiter Lauf, keine Buchung: die Antwort führt auf den laufenden.
+    // Ist er zwischen Sperre und Nachlesen zu Ende gegangen, steht das schon
+    // im Stand, und die Seite liest sein Ergebnis beim ersten Nachfragen.
+    const running = await store.latest(scope, subject).catch(() => null)
+    const key = running ? parseBrandRunDetail(running.detail).key : ''
+    if (!running || !key) throw error
+    setResponseStatus(event, 202)
+    return {
+      ok: true,
+      id: '',
+      cached: false,
+      run: toBrandRunView(running, Date.now()),
+      token: brandCheckRunToken(event, running.$id, key),
+    }
+  }
+
+  // (4) Die Deckel. Erst ab hier kostet der Aufruf etwas.
+  try {
+    await bookBrandCheck(event, input, prepared)
+  }
+  catch (error) {
+    // Abgelehnt (429) oder der Zähler war nicht erreichbar — dann läuft auch
+    // nichts, und die Sperre darf den nächsten Versuch nicht festhalten.
+    await dropRunLease(store, lease)
+    // DER `Retry-After`-KOPF gehört zur ANTWORT und damit der Route — die
+    // Mechanik hat zwei Aufrufer, und beim zweiten (dem Lauf des
+    // Marktvergleichs) stempelte ein `setHeader` dort ein `Retry-After` auf
+    // eine 200er-Antwort, die niemand abgewiesen hat.
     const seconds = retryAfterSecOf(error)
     if (seconds) setHeader(event, 'Retry-After', seconds)
     throw error
+  }
+
+  const detail = emptyBrandRunDetail({ key: nonce, booked: true })
+  // Fail-soft — der Lauf schreibt das Detail spätestens mit seinem Ende.
+  await touchRunLease(store, lease, { detail }).catch(() => {})
+
+  // (5) DER LAUF — hinter der Antwort. In die Antwort schreibt er nicht.
+  startBrandRun({
+    label: 'brand-check',
+    store,
+    lease,
+    detail,
+    work: async ({ lost }) => {
+      try {
+        const result = await executeBrandCheck(event, input, prepared, {
+          // Ohne Herzschlag darf ein anderer Start übernehmen — dann speichert
+          // DIESER Lauf nichts mehr. Und gibt es die zugeordnete Marke nicht
+          // mehr, entsteht kein Check, der an ihr hinge.
+          abortBeforeSave: async () => {
+            if (lost()) return BRAND_RUN_OUTCOMES.leaseLost
+            if (prepared.profileId
+              && !await brandRunProfileExists(event, BRAND_PROFILES_TABLE, prepared.profileId)) {
+              return BRAND_RUN_OUTCOMES.profileGone
+            }
+            return ''
+          },
+        })
+        detail.ref = result.id
+        detail.created = 1
+        return BRAND_RUN_OUTCOMES.done
+      }
+      catch (error) {
+        // Die Mechanik benennt ihre Ausgänge selbst (`data.code`) — dieselben
+        // Wörter, die früher der Fehler-Code der Anfrage waren. Alles andere
+        // ist ein Wurf, den `startBrandRun` als `failed` festhält.
+        const code = (error as { data?: { code?: unknown } } | null)?.data?.code
+        if (typeof code === 'string' && code) return code
+        throw error
+      }
+    },
+  })
+
+  // 202: angenommen, nicht erledigt. Die Lauf-Zeile sagt, was daraus wird.
+  setResponseStatus(event, 202)
+  return {
+    ok: true,
+    id: '',
+    cached: false,
+    run: runningBrandRunView(lease, detail),
+    token: brandCheckRunToken(event, lease.$id, nonce),
   }
 })
 

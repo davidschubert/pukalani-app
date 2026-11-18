@@ -27,32 +27,32 @@ const event = {} as H3Event
 
 describe('resolveRunSubjectTrust', () => {
   it('ohne Resolver für den Typ ⇒ gefunden, aber UNGEPRÜFT', async () => {
-    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false })
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false, promptSource: null })
   })
 
   it('ein Resolver für einen ANDEREN Typ hilft nicht', async () => {
     trust.registerRunSubjectTrustResolver('roadmap', async () => ({ trusted: true }))
-    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false })
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false, promptSource: null })
   })
 
   it('Resolver sagt geprüft ⇒ geprüft (die Gegenprobe zu allem anderen)', async () => {
-    trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: true }))
-    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: true })
+    trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: true, promptSource: '# Auftrag' }))
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: true, promptSource: '# Auftrag' })
   })
 
   it('Resolver sagt ungeprüft ⇒ ungeprüft', async () => {
     trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: false }))
-    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false })
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false, promptSource: null })
   })
 
   it('null ⇒ nicht gefunden', async () => {
     trust.registerRunSubjectTrustResolver('ticket', async () => null)
-    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: false, trusted: false })
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: false, trusted: false, promptSource: null })
   })
 
   it.each([['true'], [1], [{}], [undefined]])('nur ein boolesches true zählt (%j ⇒ ungeprüft)', async (value) => {
-    trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: value as unknown as boolean }))
-    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false })
+    trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: value as unknown as boolean, promptSource: '# Auftrag' }))
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({ found: true, trusted: false, promptSource: '# Auftrag' })
   })
 
   it('Resolver wirft ⇒ 503 subject_trust_unavailable, nie ein geratenes Ergebnis', async () => {
@@ -63,6 +63,25 @@ describe('resolveRunSubjectTrust', () => {
     await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).rejects.toMatchObject({
       status: 503,
       data: { code: 'subject_trust_unavailable' },
+    })
+  })
+
+  it('reicht den Text des Resolvers durch — auch für einen ungeprüften Auftrag', async () => {
+    trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: false, promptSource: '# Aus dem Ticket' }))
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({
+      found: true, trusted: false, promptSource: '# Aus dem Ticket',
+    })
+  })
+
+  it.each([
+    ['fehlt', undefined],
+    ['ist leer', ''],
+    ['ist kein Text', 42],
+    ['ist null', null],
+  ])('Regel 4: geprüft gemeldet, aber der Text %s ⇒ UNGEPRÜFT und ohne Text', async (_label, text) => {
+    trust.registerRunSubjectTrustResolver('ticket', async () => ({ trusted: true, promptSource: text as unknown as string }))
+    await expect(trust.resolveRunSubjectTrust(event, 'ticket', 't1')).resolves.toEqual({
+      found: true, trusted: false, promptSource: null,
     })
   })
 
