@@ -173,7 +173,16 @@
 #      und mit sichtbar erfundenen Zugangsdaten: 501 heißt zu, 401 heißt
 #      offen (rot). Legt nichts an. Ohne ssh, ohne Secret.
 #
-# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 14
+#  15. ANMELDE-REGELN DER DATENBANK (`appwrite-auth-policies.mjs --ci`),
+#      TÄGLICH (P29, 2026-11-18). Passwort-, Adress- und Sitzungs-Regeln
+#      stehen je Projekt in der Verwaltung, kein Code. Der Blick liest sie in
+#      allen vier Projekten und vergleicht mit dem Soll im Skript; rot bei
+#      einer Abweichung, bei fehlendem Schlüssel oder Leserecht. Schlüssel:
+#      die vier des Schema-Blicks (8 b), die dafür zusätzlich
+#      `project.policies.read` tragen. Nur lesend; das Protokoll nennt nur
+#      Projekt und Regel-Namen aus dem Repo, nie einen gelesenen Wert.
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 15
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
 # setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
@@ -597,6 +606,19 @@ jobs:
           PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
         run: node scripts/ops/verify-auth-methods.mjs
 
+      # Blick 15 (s. Kopf). Ohne ssh, ohne Installieren. Je Projekt der
+      # Schlüssel des Schema-Blicks; er darf die Regeln nur LESEN. Das Skript
+      # gibt weder Schlüssel noch gelesene Werte aus.
+      - name: Anmelde-Regeln der Datenbank wie im Soll?
+        if: always()
+        env:
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+          SCHEMA_WATCH_KEY_ACCOUNT: ${{ secrets.SCHEMA_WATCH_KEY_ACCOUNT }}
+          SCHEMA_WATCH_KEY_ADMIN: ${{ secrets.SCHEMA_WATCH_KEY_ADMIN }}
+          SCHEMA_WATCH_KEY_PORTFOLIO: ${{ secrets.SCHEMA_WATCH_KEY_PORTFOLIO }}
+          SCHEMA_WATCH_KEY_BRANDING: ${{ secrets.SCHEMA_WATCH_KEY_BRANDING }}
+        run: node scripts/ops/appwrite-auth-policies.mjs --ci
+
       - name: Befunde weiterreichen
         id: befunde
         if: always()
@@ -638,7 +660,7 @@ jobs:
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
       DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill) && '1' || '0' }}
-      # Die Sätze der Blicke 9 bis 14 (s. Kopf) — über `env`, nie direkt in
+      # Die Sätze der Blicke 9 bis 15 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}

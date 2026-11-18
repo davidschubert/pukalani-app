@@ -160,7 +160,11 @@ paths:
   (`~/ops/realtime-watchdog.sh` auf appwrite-prod: höchstens DREI Neustarts
   in Folge, dann `aufgegeben`, bis ein Handshake wieder gelingt; gemessen
   zwei Neustarts in vier Monaten, beide ohne Erfolg). Probealarm
-  `-f realtime_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein
+  `-f realtime_drill=true`. Seit 2026-11-18 liest der tägliche Lauf auch die
+  ANMELDE-REGELN der vier Projekte (`appwrite-auth-policies.mjs --ci`, nur
+  lesend, mit den Schlüsseln des Schema-Blicks — sie tragen dafür
+  `project.policies.read`): rot bei einer verstellten Regel und wenn der
+  Blick nicht lesen kann. JE ROTEM BEFUND dieser Blicke steht im Issue ein
   Satz, was zu tun ist. Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
