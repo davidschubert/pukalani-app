@@ -190,6 +190,29 @@ paths:
   und den Umfang rät man auch nicht am Variablen-NAMEN ab. Runbook
   docs/runbooks/ZUGAENGE-AUFRAEUMEN.md.
   Details: docs/content/2.architektur/6.hosts-und-ports.md
+- KUNDENDOMAINS IM WÄCHTER (WA1 d, seit 2026-11-18): die festen Host-Listen
+  von `verify-tls.mjs` und `verify-health.mjs` bleiben, dazu liest der Job
+  `kundendomains` (alle 30 min, Umgebung `production-watch`) die live
+  geschalteten Kundendomains aus dem Control Plane: `GET
+  /api/control/watch/hosts` (`packages/control`, Regel pur in
+  `shared/watchHosts.ts` — nur Host-Namen, nur `active`, sortiert), geöffnet
+  NUR vom eigenen Geheimnis `NUXT_CONTROL_WATCH_HOSTS_SECRET` (leer oder
+  unter 32 Zeichen ⇒ 404; nie das Naht-Geheimnis, keine Sitzung). OHNE
+  GEHEIMNIS ODER OHNE ANTWORT WIRD NICHTS ROT: eine Zeile „nicht gelesen",
+  die feste Liste läuft weiter (`scripts/ops/customer-hosts.mjs`). EIN
+  HOST-NAME EINES KUNDEN STEHT IN KEINEM PROTOKOLL UND IN KEINEM ISSUE: dort
+  heißt er „Kundendomain 3/5" (Stelle in der Liste der Route), ohne
+  SAN-Einträge und ohne Fehlertext; den Namen bekommt nur die Alarm-Adresse
+  (eigene Mail, Job `kundendomains-namen`, nur wenn ein Alarm neu aufgeht)
+  oder man liest ihn von Hand mit `--namen` (wirkt in keinem CI-Lauf). Ein
+  Name reist nie über einen Job-Ausgang — GitHub druckt das `env:` jedes
+  Schritts. ERST ZÄHLEN, DANN ALARM: `PUKALANI_CUSTOMER_HOSTS_MODE` steht im
+  Workflow auf `count` (alle Hosts der Route geprüft, Befund = Zeile „Nur
+  gezählt"); `alarm` prüft nur, was die feste Liste nicht kennt, und macht
+  rot. Probealarm `-f kunden_drill=true`. Eine NEUE Kundendomain braucht
+  damit keinen Eintrag in den Skripten mehr; eine eigene Zone des Betreibers
+  (wie `branding.supply`) schon. Runbook: docs/runbooks/PRODUKTIONS-ALARM.md,
+  „Kundendomains" und „Kundendomain rot".
 - VERTRETUNG UND ZWEITE ALARM-ADRESSE (GA1 P24, OPS-010, seit 2026-11-17):
   jeder Alarmweg endet bei EINER Person. Vorbereitet ist, dass eine zweite
   ihn mitbekommt — eingetragen ist niemand, bis David jemanden benennt

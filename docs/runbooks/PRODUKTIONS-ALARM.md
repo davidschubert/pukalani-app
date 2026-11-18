@@ -212,6 +212,38 @@ Die Mail-Notbremse selbst (60 je Stunde und Route über alle IPs) lebt in
 `packages/core/server/middleware/05.rate-limit.ts`; sie STOPPT den Versand und
 schreibt eine Zeile — der Wächter liest diese Zeile.
 
+**Kundendomains (seit 2026-11-18, WA1 d).** Die Host-Listen des TLS- und des
+Health-Blicks sind von Hand gepflegt. Der Job `kundendomains` liest alle 30
+Minuten zusätzlich die live geschalteten Kundendomains aus dem Control Plane
+(`GET /api/control/watch/hosts` auf `admin.pukalani.app`, nur mit Geheimnis,
+nur Host-Namen) und prüft sie mit denselben zwei Skripten
+(`--nur-kundendomains`). Die feste Liste bleibt; der Job `tls` läuft weiter
+ohne Secret.
+
+- **Ohne Geheimnis** (Secret `PRODUCTION_WATCH_HOSTS_SECRET` in der Umgebung
+  `production-watch`, derselbe Wert als `NUXT_CONTROL_WATCH_HOSTS_SECRET` auf
+  der Site `admin.pukalani.app`) oder ohne Antwort der Route steht im Lauf
+  eine Zeile „Kundendomains: nicht gelesen — …", und der Job ist grün.
+- **Kein Name im Protokoll.** Die Protokolle der Läufe und das Alarm-Issue
+  sind öffentlich. Eine Kundendomain heißt dort „Kundendomain 3/5" (ihre
+  Stelle in der nach Name sortierten Liste). Den Namen gibt es an zwei
+  privaten Stellen: in einer eigenen Mail „Betroffene Kundendomains" an die
+  Alarm-Adresse, wenn ein Alarm neu aufgeht (Job `kundendomains-namen`), und
+  von Hand am eigenen Rechner (`--namen`, siehe „Kundendomain rot").
+- **Erst zählen, dann Alarm.** Im Job steht `PUKALANI_CUSTOMER_HOSTS_MODE:
+  count`: alle Hosts der Route werden geprüft, ein Befund ist eine Zeile „Nur
+  gezählt", rot wird nichts. Scharf stellen heißt, dort `alarm` einzutragen —
+  dann prüft der Job nur, was die feste Liste nicht schon kennt, und ein
+  Befund ist rot (OPEN-ITEMS „WA1").
+- **Probealarm:** `gh workflow run production-watch.yml -f kunden_drill=true`
+  — tut so, als wäre das Zertifikat der ersten Kundendomain abgelaufen, und
+  prüft die Kette samt der Mail mit dem Namen. Braucht das Geheimnis; ohne es
+  bleibt der Lauf grün.
+- **Das Geheimnis tauschen:** neuen Wert erzeugen, zuerst auf der Site setzen
+  und die App neu laden, dann das Secret bei GitHub ersetzen. Dazwischen
+  meldet der Job „nicht gelesen — das Control Plane hat das Geheimnis
+  abgelehnt (401)" und bleibt grün.
+
 ## 1b · Der zweite Alarm: die Bühne (`.github/workflows/buehne.yml`, seit 2026-11-17)
 
 Kein Blick auf Production, sondern auf das PROGRAMM: der Lauf „Bühne
@@ -613,6 +645,24 @@ die Proben nicht sehen, oder ein Schlüssel fehlt:
 `.claude/rules/hosts-ops.md` (Lineage-Falle: NIE auf `pukalani.app` oder
 `platform.pukalani.app` anfordern, außer `*.pukalani.app` auf platform).
 
+**Kundendomain rot.** Der Satz im Issue nennt nur die Nummer („Kundendomain
+3/5"). Den Namen nennt die Mail „Betroffene Kundendomains"; ohne die Mail am
+eigenen Rechner, mit dem Geheimnis in der Umgebung:
+`PUKALANI_WATCH_HOSTS_SECRET=… node scripts/ops/verify-tls.mjs --nur-kundendomains --namen`
+(bzw. `verify-health.mjs`). Dann:
+
+1. *Zertifikat läuft ab oder deckt den Host nicht.* Die Domain hängt als
+   ploi-Tenant an der Site `platform.pukalani.app` (Pool) oder an der Site der
+   Einzel-Instanz. NICHT blind neu anfordern — erst
+   `docs/runbooks/CUSTOM-DOMAIN-ERSTAKTIVIERUNG.md` lesen. Zeigt die Domain
+   nicht mehr auf unseren Server (der Kunde ist umgezogen), kann ploi nicht
+   erneuern: dann die Domain im Dashboard entfernen oder mit dem Kunden
+   klären.
+2. *Antwortet nicht gesund.* Wie „Ein einzelner Host `ok:false`" weiter oben —
+   die Kundendomain einer Pool-Community bedient die Platform-App.
+3. *Die Domain gibt es mit Absicht nicht mehr.* Im Dashboard entfernen oder
+   abschalten; aus der Liste der Route fällt sie damit von selbst.
+
 **Mail-Missbrauch.** Resend → Emails: die To-Spalte zeigt den Spam-Namen, der
 Betreff das Appwrite-Projekt. Angreifer-IP in `audit_logs` der Instanz (nicht
 in Appwrites `_audit`); Konten aufräumen mit `scripts/ops/purge-spam-accounts.mjs`
@@ -912,7 +962,7 @@ ist eine Einstellung bei einem Dienst und braucht Davids Ja.
 
 | Quelle | Heute | Zweite Adresse |
 | --- | --- | --- |
-| Alarm-Mail des Wächters (§ 2, Schritt 2) | Secret `PRODUCTION_ALARM_MAIL_TO`, eine Adresse | Das Secret neu setzen, beide Adressen mit Komma getrennt: `gh secret set PRODUCTION_ALARM_MAIL_TO --env production-watch --repo davidschubert/pukalani-app` (der Wert nur als Eingabe). Danach Probealarm |
+| Alarm-Mail des Wächters (§ 2, Schritt 2) und die Mail „Betroffene Kundendomains" (§ 1, „Kundendomains" — sie nennt Host-Namen von Kunden) | Secret `PRODUCTION_ALARM_MAIL_TO`, eine Adresse | Das Secret neu setzen, beide Adressen mit Komma getrennt: `gh secret set PRODUCTION_ALARM_MAIL_TO --env production-watch --repo davidschubert/pukalani-app` (der Wert nur als Eingabe). Danach Probealarm |
 | UptimeRobot (§ 3) | zwei Alert Contacts: Mail und Push | Neuen Alert Contact (Mail) anlegen, die Person bestätigt ihn; dann an JEDEN der zehn Monitore hängen. `scripts/ops/uptimerobot-sync.mjs` trägt Kontakte nur bei neuen oder umgebogenen Monitoren ein — ein Monitor, der „passt", bekommt den neuen Kontakt nicht |
 | Heartbeat bei healthchecks.io (§ 2, Schritt 3) | Kanäle des Checks `pukalani-production-watch` | Dort einen weiteren Mail-Kanal anlegen und dem Check zuordnen |
 | Alarm-Issue (§ 2, Schritt 1) | dem Repo-Besitzer zugewiesen | Nur für eine Mitarbeiterin im Repo möglich (Änderung an `ALARM_ASSIGNEE` im Workflow). Nicht nötig, wenn die Mail oben steht |

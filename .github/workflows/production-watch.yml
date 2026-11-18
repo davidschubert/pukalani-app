@@ -199,6 +199,28 @@
 #      nach jedem Ausliefern für seinen Schlüssel.
 #      Runbook: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
 #
+#  17. KUNDENDOMAINS AUS DEM CONTROL PLANE (WA1 d, 2026-11-18), ALLE 30
+#      MINUTEN, eigener Job `kundendomains`. Die Host-Listen der Blicke 0 und
+#      4 sind von Hand gepflegt: eine neue Kundendomain stand dort erst, wenn
+#      jemand sie eintrug. Dieser Job liest die live geschalteten Kundendomains
+#      mit einem Geheimnis aus dem Control Plane (`GET
+#      /api/control/watch/hosts`, nur Host-Namen) und fährt dieselben zwei
+#      Skripte mit `--nur-kundendomains`. DIE FESTE LISTE BLEIBT — der Job
+#      `tls` läuft unverändert ohne Secret. FEHLT DAS GEHEIMNIS (Secret
+#      `PRODUCTION_WATCH_HOSTS_SECRET`) oder antwortet die Route nicht, steht
+#      im Lauf eine Zeile „nicht gelesen" und der Job ist grün.
+#      EIN HOST-NAME EINES KUNDEN STEHT NIE IM PROTOKOLL: dort und im Issue
+#      heißt er „Kundendomain 3/5". Den Namen bekommt nur die Alarm-Adresse,
+#      in einer eigenen Mail, wenn ein Alarm neu aufgeht (Job
+#      `kundendomains-namen`), oder man liest ihn von Hand am eigenen Rechner
+#      (`--namen`). ERST ZÄHLEN, DANN ALARM: `PUKALANI_CUSTOMER_HOSTS_MODE`
+#      steht auf `count` — alle Hosts der Route werden geprüft, ein Befund ist
+#      eine Zeile „Nur gezählt". Scharf wird der Blick mit `alarm` (eine Zeile
+#      im Job; dann prüft er nur, was die feste Liste nicht kennt, und ein
+#      Befund ist rot). Probealarm: `-f kunden_drill=true` (tut so, als wäre
+#      das Zertifikat der ersten Kundendomain abgelaufen).
+#      Regeln: `scripts/ops/customer-hosts.mjs`.
+#
 # WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
@@ -312,6 +334,10 @@ on:
         description: 'PROBEALARM SERVER-EINSTELLUNGEN: der Blick tut so, als fehlte einer Site eine Pflicht-Zeile im Webserver — prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
+      kunden_drill:
+        description: 'PROBEALARM KUNDENDOMAINS: der Blick tut so, als wäre das Zertifikat der ersten Kundendomain abgelaufen — prüft die Kette samt der Mail mit dem Namen; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
       appwrite_probe:
         description: 'appwrite-prod: nur lesen (Erreichbarkeit, Container, Zertifikat)'
         type: boolean
@@ -411,6 +437,72 @@ jobs:
             if [ -f "$f" ]; then head -n 20 "$f" | cut -c1-600; fi
             echo 'BEFUNDE_ENDE'
           } >> "$GITHUB_OUTPUT"
+
+  # ── ALLE 30 MINUTEN: KUNDENDOMAINS (Blick 17, s. Kopf) ───────────────────
+  # Eigener Job, damit `tls` oben ohne Secret bleibt. Braucht das Geheimnis
+  # der Route und deshalb die Umgebung (nur `main`). Installiert nichts.
+  kundendomains:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: production-watch
+      deployment: false
+    if: >
+      github.event.repository.fork == false &&
+      !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
+    outputs:
+      befunde: ${{ steps.befunde.outputs.text }}
+      # Nur Ziffern und Kommas (`3,5`) — die Stellen der Kundendomains mit
+      # rotem Befund in der Liste der Route. Der Name reist NICHT über einen
+      # Ausgang: GitHub druckt das `env:` jedes Schritts ins Protokoll.
+      nummern: ${{ steps.befunde.outputs.nummern }}
+    env:
+      # ERST ZÄHLEN, DANN ALARM (s. Kopf, Blick 17): `count` = Befunde nur
+      # gezählt, der Job bleibt grün. Scharf stellen: hier `alarm` eintragen.
+      PUKALANI_CUSTOMER_HOSTS_MODE: count
+      PUKALANI_CUSTOMER_HOSTS_DRILL: ${{ inputs.kunden_drill && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      # Ohne das Secret: eine Zeile „nicht gelesen", Exit 0.
+      - name: Kundendomains — Zertifikate
+        env:
+          PUKALANI_WATCH_HOSTS_SECRET: ${{ secrets.PRODUCTION_WATCH_HOSTS_SECRET }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+          PUKALANI_CUSTOMER_NUMBERS_FILE: ${{ runner.temp }}/nummern.txt
+        run: node scripts/ops/verify-tls.mjs --nur-kundendomains
+
+      - name: Kundendomains — Erreichbarkeit
+        if: always()
+        env:
+          PUKALANI_WATCH_HOSTS_SECRET: ${{ secrets.PRODUCTION_WATCH_HOSTS_SECRET }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+          PUKALANI_CUSTOMER_NUMBERS_FILE: ${{ runner.temp }}/nummern.txt
+        run: node scripts/ops/verify-health.mjs --nur-kundendomains
+
+      # Sätze fürs Issue (nur Nummern) und die Nummern für die private Mail.
+      # Die Nummern werden hier noch einmal auf Ziffern und Kommas geprüft.
+      - name: Befunde weiterreichen
+        id: befunde
+        if: always()
+        run: |
+          set -u
+          f="$RUNNER_TEMP/befunde.txt"
+          {
+            echo 'text<<BEFUNDE_ENDE'
+            if [ -f "$f" ]; then head -n 20 "$f" | cut -c1-600; fi
+            echo 'BEFUNDE_ENDE'
+          } >> "$GITHUB_OUTPUT"
+          nummern=''
+          if [ -f "$RUNNER_TEMP/nummern.txt" ]; then
+            nummern=$(tr '\n' ',' < "$RUNNER_TEMP/nummern.txt" | tr -s ',' | sed 's/^,//; s/,$//')
+          fi
+          if ! printf '%s' "$nummern" | grep -Eq '^[0-9]{1,4}(,[0-9]{1,4}){0,40}$'; then nummern=''; fi
+          echo "nummern=$nummern" >> "$GITHUB_OUTPUT"
 
   # ── TÄGLICH ──────────────────────────────────────────────────────────────
   server:
@@ -699,7 +791,7 @@ jobs:
   # Befund und darf weder ein Issue öffnen noch eines schließen.
   alarm:
     runs-on: ubuntu-latest
-    needs: [tls, server]
+    needs: [tls, server, kundendomains]
     if: >
       always() && !cancelled() &&
       github.event.repository.fork == false &&
@@ -713,6 +805,10 @@ jobs:
     environment:
       name: production-watch
       deployment: false
+    # `alarm` = in diesem Lauf ist ein Alarm NEU aufgegangen — nur dann geht
+    # die Mail mit den Namen der Kundendomains raus (Job `kundendomains-namen`).
+    outputs:
+      wechsel: ${{ steps.issue.outputs.wechsel }}
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -720,11 +816,13 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
-      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill) && '1' || '0' }}
+      KUNDEN_RESULT: ${{ needs.kundendomains.result }}
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill || inputs.kunden_drill) && '1' || '0' }}
       # Die Sätze der Blicke 9 bis 16 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}
+      BEFUNDE_KUNDEN: ${{ needs.kundendomains.outputs.befunde }}
       ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
       # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
@@ -740,9 +838,10 @@ jobs:
           rot=""
           [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit/Live-Verbindung (alle 30 min)"
           [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Bot-Prüfung, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter, Server-Einstellungen, Schutz-Kopfzeilen)"
-          echo "tls=$TLS_RESULT server=$SERVER_RESULT rot='${rot# }' drill=$DRILL"
+          [ "$KUNDEN_RESULT" = "failure" ] && rot="$rot Kundendomains (alle 30 min: Zertifikat, Erreichbarkeit — im Protokoll nur als Nummer)"
+          echo "tls=$TLS_RESULT server=$SERVER_RESULT kundendomains=$KUNDEN_RESULT rot='${rot# }' drill=$DRILL"
           # Leerzeilen raus; bleibt nichts, gibt es keinen Abschnitt im Issue.
-          befunde="$(printf '%s\n%s\n' "$BEFUNDE_TLS" "$BEFUNDE_SERVER" | sed '/^[[:space:]]*$/d')"
+          befunde="$(printf '%s\n%s\n%s\n' "$BEFUNDE_TLS" "$BEFUNDE_SERVER" "$BEFUNDE_KUNDEN" | sed '/^[[:space:]]*$/d')"
 
           # Label einmalig sicherstellen (--force: vorhandenes nur aktualisieren).
           gh label create "$LABEL" --color B60205 --force \
@@ -874,6 +973,38 @@ jobs:
             exit 0
           fi
           curl -fsS -m 20 -o /dev/null "$HEARTBEAT_URL" && echo "Heartbeat gesendet."
+
+  # ── DIE NAMEN ZU DEN NUMMERN, PRIVAT (Blick 17) ──────────────────────────
+  # Läuft nur, wenn in DIESEM Lauf ein Alarm neu aufgegangen ist UND eine
+  # Kundendomain einen roten Befund hat. Liest die Liste noch einmal und
+  # schickt die Namen zu den Nummern an die Alarm-Adresse — der eine Ort, an
+  # dem der Name steht. Das Skript gibt nur Zahlen und feste Sätze aus.
+  kundendomains-namen:
+    runs-on: ubuntu-latest
+    needs: [alarm, kundendomains]
+    if: >
+      always() && !cancelled() &&
+      github.event.repository.fork == false &&
+      needs.alarm.outputs.wechsel == 'alarm' &&
+      needs.kundendomains.outputs.nummern != ''
+    permissions:
+      contents: read
+    environment:
+      name: production-watch
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Mail „Betroffene Kundendomains" an die Alarm-Adresse
+        env:
+          PUKALANI_CUSTOMER_NUMBERS: ${{ needs.kundendomains.outputs.nummern }}
+          PUKALANI_WATCH_HOSTS_SECRET: ${{ secrets.PRODUCTION_WATCH_HOSTS_SECRET }}
+          RESEND_API_KEY: ${{ secrets.PRODUCTION_ALARM_RESEND_KEY }}
+          ALARM_MAIL_TO: ${{ secrets.PRODUCTION_ALARM_MAIL_TO }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/ops/customer-hosts-mail.mjs
 
   # ── NUR MANUELL: APPWRITE-ZERTIFIKAT ─────────────────────────────────────
   # Vorfall 2026-10-16: das Let's-Encrypt-Zertifikat von api.pukalani.app lief
