@@ -7,8 +7,9 @@
  *   pnpm migrate --app <app> --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -64,9 +65,17 @@ await step('Table entitlements', () => tablesDB.createTable({
 await step('Column entitlements.siteProjectId', () => tablesDB.createVarcharColumn({
   databaseId, tableId: 'entitlements', key: 'siteProjectId', size: 64, required: true,
 }))
-await step('Column entitlements.featureKey', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'entitlements', key: 'featureKey', size: 32, required: true,
-}))
+// NACHFOLGER-WACHE (PB1 c): steht `entitlements.productKey` (control-024),
+// ist der Schlüssel umgezogen; `featureKey` und `idx_site_feature` fallen mit
+// control-025 — beide nicht wieder anlegen. Auf einer frischen Instanz
+// entsteht `productKey` erst weiter hinten, control-024 füllt es von hier.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+const featureKeySuperseded = await superseded({ table: 'entitlements', column: 'featureKey' }, { table: 'entitlements', column: 'productKey' }, 'control-024/025')
+if (!featureKeySuperseded) {
+  await step('Column entitlements.featureKey', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'entitlements', key: 'featureKey', size: 32, required: true,
+  }))
+}
 await step('Column entitlements.status', () => tablesDB.createVarcharColumn({
   databaseId, tableId: 'entitlements', key: 'status', size: 16, required: false, xdefault: 'active',
 }))
@@ -76,9 +85,11 @@ await step('Column entitlements.notes', () => tablesDB.createVarcharColumn({
 
 await waitForColumns('entitlements')
 
-await indexStep('Index entitlements.idx_site_feature (unique)', {
-  tableId: 'entitlements', key: 'idx_site_feature', type: TablesDBIndexType.Unique, columns: ['siteProjectId', 'featureKey'],
-})
+if (!featureKeySuperseded) {
+  await indexStep('Index entitlements.idx_site_feature (unique)', {
+    tableId: 'entitlements', key: 'idx_site_feature', type: TablesDBIndexType.Unique, columns: ['siteProjectId', 'featureKey'],
+  })
+}
 await indexStep('Index entitlements.idx_site', {
   tableId: 'entitlements', key: 'idx_site', type: TablesDBIndexType.Key, columns: ['siteProjectId'],
 })

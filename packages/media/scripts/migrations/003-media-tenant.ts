@@ -40,6 +40,7 @@
 import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -97,6 +98,17 @@ const table = await tablesDB.getTable({ databaseId, tableId: TABLE_ID }).catch((
 })
 if (!table) {
   console.log(`↷ Table ${TABLE_ID} fehlt — media-001 zuerst ausführen`)
+  process.exit(0)
+}
+
+// NACHFOLGER-WACHE (PB1 c): steht `communityId` (media-004), hat die Tabelle
+// den Weg tenantId → communityId → tenantId gelöscht (media-005) hinter sich.
+// Auf einer frischen Instanz entsteht `communityId` erst weiter hinten — dort
+// legt diese Datei Spalte und Index an, und media-004 leitet daraus Spalte,
+// Backfill und Index-Zwilling ab.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'media_items', column: 'tenantId' }, { table: 'media_items', column: 'communityId' }, 'media-004/005')) {
+  console.log('↷ Migration media-003: nichts zu tun')
   process.exit(0)
 }
 

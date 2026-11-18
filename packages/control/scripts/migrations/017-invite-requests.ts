@@ -24,8 +24,9 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -102,9 +103,16 @@ await step('Column invite_requests.redeemedAt', () => tablesDB.createDatetimeCol
   databaseId, tableId: 'invite_requests', key: 'redeemedAt', required: false,
 }))
 // Was aus der Anfrage geworden ist — beantwortet die Folgefrage direkt.
-await step('Column invite_requests.siteId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'invite_requests', key: 'siteId', size: 36, required: false, xdefault: '',
-}))
+// NACHFOLGER-WACHE (PB1 c): steht `invite_requests.communityId` (control-023),
+// ist der Wert umgezogen und `siteId` fällt mit control-026 — nicht wieder
+// anlegen. Auf einer frischen Instanz entsteht `communityId` erst weiter
+// hinten, control-023 überträgt dann die Werte von hier.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (!(await superseded({ table: 'invite_requests', column: 'siteId' }, { table: 'invite_requests', column: 'communityId' }, 'control-023/026'))) {
+  await step('Column invite_requests.siteId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'invite_requests', key: 'siteId', size: 36, required: false, xdefault: '',
+  }))
+}
 await step('Column invite_requests.reminders', () => tablesDB.createIntegerColumn({
   databaseId, tableId: 'invite_requests', key: 'reminders', required: false, xdefault: 0, min: 0, max: 100,
 }))

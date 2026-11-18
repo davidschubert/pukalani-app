@@ -23,8 +23,9 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -70,48 +71,62 @@ async function waitForColumn(tableId: string, key: string) {
 
 console.log(`Migration control-016 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
-// ── 1. tenants: Vibe, Publikum, Testphase, Profil, Code-Spur ────────────────
-await step('Column tenants.theme', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'tenants', key: 'theme', size: 32, required: false, xdefault: '',
-}))
-await step('Column tenants.variant', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'tenants', key: 'variant', size: 32, required: false, xdefault: '',
-}))
-// Enum statt Varchar: „privat" ist eine Sicherheitsgrenze — die Datenbank soll
-// einen Tippfehler abweisen, nicht in einen unbekannten Zustand rutschen.
-await step('Column tenants.audience', () => tablesDB.createEnumColumn({
-  databaseId, tableId: 'tenants', key: 'audience',
-  elements: ['members', 'public'], required: false, xdefault: 'members',
-}))
-await step('Column tenants.trialEndsAt', () => tablesDB.createDatetimeColumn({
-  databaseId, tableId: 'tenants', key: 'trialEndsAt', required: false,
-}))
-// 2000 Zeichen: reicht für alle Antworten inkl. 600-Zeichen-Beschreibung und
-// bleibt weit unter dem utf8mb4-Zeilenbudget (~65 KB) der tenants-Row.
-await step('Column tenants.profile', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'tenants', key: 'profile', size: 2000, required: false, xdefault: '',
-}))
-await step('Column tenants.inviteCodeId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'tenants', key: 'inviteCodeId', size: 36, required: false, xdefault: '',
-}))
-await waitForColumn('tenants', 'audience')
-await waitForColumn('tenants', 'trialEndsAt')
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
 
-// Der Downgrade-Sweep fragt „welche Testphasen sind fällig?" — ohne Index
-// wäre das ein Full-Scan über alle Tenants.
-await indexStep('Index tenants.idx_trial', {
-  tableId: 'tenants', key: 'idx_trial', type: TablesDBIndexType.Key,
-  columns: ['trialEndsAt'],
-})
+// NACHFOLGER-WACHE (PB1 c): steht `communities` (control-029), ist `tenants`
+// umgezogen und fällt mit control-030 — Spalten und Index nicht wieder
+// anlegen. Auf einer frischen Instanz entsteht `communities` erst weiter
+// hinten, control-029 spiegelt dann Spalten, Zeilen und Indizes von hier.
+if (!(await superseded({ table: 'tenants' }, { table: 'communities' }, 'control-029/030'))) {
+  // ── 1. tenants: Vibe, Publikum, Testphase, Profil, Code-Spur ────────────────
+  await step('Column tenants.theme', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'tenants', key: 'theme', size: 32, required: false, xdefault: '',
+  }))
+  await step('Column tenants.variant', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'tenants', key: 'variant', size: 32, required: false, xdefault: '',
+  }))
+  // Enum statt Varchar: „privat" ist eine Sicherheitsgrenze — die Datenbank soll
+  // einen Tippfehler abweisen, nicht in einen unbekannten Zustand rutschen.
+  await step('Column tenants.audience', () => tablesDB.createEnumColumn({
+    databaseId, tableId: 'tenants', key: 'audience',
+    elements: ['members', 'public'], required: false, xdefault: 'members',
+  }))
+  await step('Column tenants.trialEndsAt', () => tablesDB.createDatetimeColumn({
+    databaseId, tableId: 'tenants', key: 'trialEndsAt', required: false,
+  }))
+  // 2000 Zeichen: reicht für alle Antworten inkl. 600-Zeichen-Beschreibung und
+  // bleibt weit unter dem utf8mb4-Zeilenbudget (~65 KB) der tenants-Row.
+  await step('Column tenants.profile', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'tenants', key: 'profile', size: 2000, required: false, xdefault: '',
+  }))
+  await step('Column tenants.inviteCodeId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'tenants', key: 'inviteCodeId', size: 36, required: false, xdefault: '',
+  }))
+  await waitForColumn('tenants', 'audience')
+  await waitForColumn('tenants', 'trialEndsAt')
 
-// ── 1b. site_members: „welche Communities gehören DIESEM Nutzer?" ───────────
-// Der Onboarding-Pfad muss das Konto-Kontingent prüfen (eine Community in der
-// Testphase) — das ist eine Abfrage über den Runtime-User, nicht über die
-// Site. idx_lookup (siteId, projectId, userId) trägt sie nicht.
-await indexStep('Index site_members.idx_owner', {
-  tableId: 'site_members', key: 'idx_owner', type: TablesDBIndexType.Key,
-  columns: ['runtimeProjectId', 'runtimeUserId'],
-})
+  // Der Downgrade-Sweep fragt „welche Testphasen sind fällig?" — ohne Index
+  // wäre das ein Full-Scan über alle Tenants.
+  await indexStep('Index tenants.idx_trial', {
+    tableId: 'tenants', key: 'idx_trial', type: TablesDBIndexType.Key,
+    columns: ['trialEndsAt'],
+  })
+}
+
+// NACHFOLGER-WACHE (PB1 c): steht `community_members` (control-023), fällt
+// `site_members` mit control-026 und wird von control-015 nicht mehr angelegt
+// — der Index hätte keine Tabelle (404). Auf einer frischen Instanz entsteht
+// `community_members` erst weiter hinten, dort läuft dieser Schritt wie immer.
+if (!(await superseded({ table: 'site_members', index: 'idx_owner' }, { table: 'community_members' }, 'control-023/026'))) {
+  // ── 1b. site_members: „welche Communities gehören DIESEM Nutzer?" ───────────
+  // Der Onboarding-Pfad muss das Konto-Kontingent prüfen (eine Community in der
+  // Testphase) — das ist eine Abfrage über den Runtime-User, nicht über die
+  // Site. idx_lookup (siteId, projectId, userId) trägt sie nicht.
+  await indexStep('Index site_members.idx_owner', {
+    tableId: 'site_members', key: 'idx_owner', type: TablesDBIndexType.Key,
+    columns: ['runtimeProjectId', 'runtimeUserId'],
+  })
+}
 
 // ── 2. invite_codes (Early-Access-Tor) ──────────────────────────────────────
 await step('Table invite_codes', () => tablesDB.createTable({

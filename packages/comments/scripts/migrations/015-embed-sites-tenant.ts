@@ -19,8 +19,9 @@
  *   pnpm migrate --app <app> --layer comments
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -67,18 +68,28 @@ async function waitForColumn(key: string) {
 
 console.log(`Migration comments-015 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
-await step(`Column ${TABLE}.tenantId`, () => tablesDB.createVarcharColumn({
-  databaseId, tableId: TABLE, key: 'tenantId', size: 36, required: false, xdefault: '',
-}))
-await waitForColumn('tenantId')
+// NACHFOLGER-WACHE (PB1 c): steht `communityId` (comments-016), hat die
+// Tabelle den Weg tenantId → communityId → tenantId gelöscht (comments-017)
+// hinter sich — Spalte und Unique nicht wieder anlegen; `uq_community_host`
+// schützt dann vor Duplikaten. Auf einer frischen Instanz entsteht
+// `communityId` erst weiter hinten, dort leitet comments-016 Spalte, Backfill
+// und Unique-Zwilling hieraus ab. Das Löschen von `uq_host` unten läuft immer
+// (404 ⇒ schon weg).
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (!(await superseded({ table: 'embed_sites', column: 'tenantId' }, { table: 'embed_sites', column: 'communityId' }, 'comments-016/017'))) {
+  await step(`Column ${TABLE}.tenantId`, () => tablesDB.createVarcharColumn({
+    databaseId, tableId: TABLE, key: 'tenantId', size: 36, required: false, xdefault: '',
+  }))
+  await waitForColumn('tenantId')
 
-// Neuer Unique VOR dem Löschen des alten: so gibt es nie ein Fenster ohne
-// Duplikat-Schutz. Bestand hat tenantId '' → (''‚ host) bleibt so eindeutig
-// wie zuvor host allein.
-await indexStep(`Unique-Index ${TABLE}.uq_tenant_host`, {
-  tableId: TABLE, key: 'uq_tenant_host', type: TablesDBIndexType.Unique,
-  columns: ['tenantId', 'host'],
-})
+  // Neuer Unique VOR dem Löschen des alten: so gibt es nie ein Fenster ohne
+  // Duplikat-Schutz. Bestand hat tenantId '' → (''‚ host) bleibt so eindeutig
+  // wie zuvor host allein.
+  await indexStep(`Unique-Index ${TABLE}.uq_tenant_host`, {
+    tableId: TABLE, key: 'uq_tenant_host', type: TablesDBIndexType.Unique,
+    columns: ['tenantId', 'host'],
+  })
+}
 
 try {
   // destruktiv-ok: uq_host wird durch uq_tenant_host ERSETZT (oben zuerst

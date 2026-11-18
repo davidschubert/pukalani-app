@@ -7,8 +7,9 @@
  *   pnpm migrate --app <app> --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -55,6 +56,16 @@ async function waitForColumn(tableId: string, key: string) {
 }
 
 console.log(`Migration control-006 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `websites` (control-022), ist das Register
+// umgezogen und `sites` fällt mit control-026 — nicht wieder anlegen. Auf
+// einer frischen Instanz entsteht `websites` erst weiter hinten, control-022
+// kopiert dann die Zeilen von hier.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'sites', column: 'workspaceId' }, { table: 'websites' }, 'control-022/026')) {
+  console.log('↷ Migration control-006: nichts zu tun')
+  process.exit(0)
+}
 
 await step('Column sites.workspaceId', () => tablesDB.createVarcharColumn({
   databaseId, tableId: 'sites', key: 'workspaceId', size: 36, required: false, xdefault: '',

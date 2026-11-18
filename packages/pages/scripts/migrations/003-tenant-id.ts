@@ -10,8 +10,9 @@
  *   pnpm migrate --app <app> --layer pages
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -56,6 +57,17 @@ async function waitForColumn(key: string) {
 }
 
 console.log(`Migration pages-003 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `communityId` (pages-005), hat die Tabelle
+// den Weg tenantId → communityId → tenantId gelöscht (pages-006) hinter sich.
+// Auf einer frischen Instanz entsteht `communityId` erst weiter hinten — dort
+// legt diese Datei Spalte und Index an, pages-004 baut den Unique darauf um,
+// und pages-005 leitet daraus Spalte, Backfill und Index-Zwillinge ab.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'pages', column: 'tenantId' }, { table: 'pages', column: 'communityId' }, 'pages-005/006')) {
+  console.log('↷ Migration pages-003: nichts zu tun')
+  process.exit(0)
+}
 
 await step('Column pages.tenantId', () => tablesDB.createVarcharColumn({
   databaseId, tableId: 'pages', key: 'tenantId', size: 36, required: false, xdefault: '',

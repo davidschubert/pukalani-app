@@ -23,7 +23,8 @@
  *   pnpm migrate --app control --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB } from 'node-appwrite'
+import { Client, Query, TablesDB } from 'node-appwrite'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -67,6 +68,17 @@ async function waitForColumn(tableId: string, key: string) {
 }
 
 console.log(`Migration control-018 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `communities` (control-029), ist `tenants`
+// umgezogen und fällt mit control-030 — nicht wieder anlegen (control-029
+// spiegelte sonst jede neu angelegte Spalte bei jedem vollen Lauf nach
+// `communities`). Auf einer frischen Instanz entsteht `communities` erst
+// weiter hinten, control-029 spiegelt dann Spalten, Zeilen und Indizes von hier.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'tenants', column: 'openRegistration' }, { table: 'communities' }, 'control-029/030')) {
+  console.log('↷ Migration control-018: nichts zu tun')
+  process.exit(0)
+}
 
 // Kein Index: das Feld wird IMMER zusammen mit der Host-Auflösung gelesen
 // (eine Row, uq_host) und nie gefiltert — ein Index wäre toter Ballast.

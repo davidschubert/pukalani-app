@@ -20,8 +20,9 @@
  *   pnpm migrate --app <app> --layer comments
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -67,6 +68,17 @@ async function waitForColumn(key: string) {
 }
 
 console.log(`Migration comments-014 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `communityId` (comments-016), hat die
+// Tabelle den Weg tenantId → communityId → tenantId gelöscht (comments-017)
+// hinter sich. Auf einer frischen Instanz entsteht `communityId` erst weiter
+// hinten — dort legt diese Datei Spalte und Index an, und comments-016
+// leitet daraus Spalte, Backfill und Index-Zwilling ab.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'comment_votes', column: 'tenantId' }, { table: 'comment_votes', column: 'communityId' }, 'comments-016/017')) {
+  console.log('↷ Migration comments-014: nichts zu tun')
+  process.exit(0)
+}
 
 await step(`Column ${TABLE}.tenantId`, () => tablesDB.createVarcharColumn({
   databaseId, tableId: TABLE, key: 'tenantId', size: 36, required: false, xdefault: '',

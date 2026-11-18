@@ -17,8 +17,9 @@
  *   pnpm migrate --app <app> --layer comments
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, Permission, Role, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Permission, Query, Role, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -87,17 +88,28 @@ await step('Column guest_authors.email', () => tablesDB.createVarcharColumn({
 await step('Column guest_authors.ipHash', () => tablesDB.createVarcharColumn({
   databaseId, tableId: 'guest_authors', key: 'ipHash', size: 64, required: false, xdefault: '',
 }))
+// NACHFOLGER-WACHE (PB1 c): steht `guest_authors.communityId` (comments-016),
+// hat die Tabelle den Weg tenantId → communityId → tenantId gelöscht
+// (comments-017) hinter sich — Spalte und Index nicht wieder anlegen. Auf
+// einer frischen Instanz entsteht `communityId` erst weiter hinten, dort
+// leitet comments-016 Spalte, Backfill und Index-Zwilling hieraus ab.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+const tenantSuperseded = await superseded({ table: 'guest_authors', column: 'tenantId' }, { table: 'guest_authors', column: 'communityId' }, 'comments-016/017')
 // Pool-Mandant (spiegelt comments.tenantId): '' = Silo/Einzelbetrieb.
-await step('Column guest_authors.tenantId', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'guest_authors', key: 'tenantId', size: 36, required: false, xdefault: '',
-}))
+if (!tenantSuperseded) {
+  await step('Column guest_authors.tenantId', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'guest_authors', key: 'tenantId', size: 36, required: false, xdefault: '',
+  }))
+}
 await waitForColumn('guest_authors', 'commentId')
-await waitForColumn('guest_authors', 'tenantId')
+if (!tenantSuperseded) await waitForColumn('guest_authors', 'tenantId')
 await indexStep('Index guest_authors.idx_comment', {
   tableId: 'guest_authors', key: 'idx_comment', type: TablesDBIndexType.Key, columns: ['commentId'],
 })
-await indexStep('Index guest_authors.idx_tenant', {
-  tableId: 'guest_authors', key: 'idx_tenant', type: TablesDBIndexType.Key, columns: ['tenantId'],
-})
+if (!tenantSuperseded) {
+  await indexStep('Index guest_authors.idx_tenant', {
+    tableId: 'guest_authors', key: 'idx_tenant', type: TablesDBIndexType.Key, columns: ['tenantId'],
+  })
+}
 
 console.log('✔ Migration comments-013 fertig')
