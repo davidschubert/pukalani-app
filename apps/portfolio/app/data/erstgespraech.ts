@@ -473,6 +473,22 @@ export const WIZARD_ERRORS = {
     de: 'Das Absenden hat nicht geklappt. Bitte versuchen Sie es erneut oder schreiben Sie uns direkt eine E-Mail.',
     en: 'Sending failed. Please try again or simply send us an email.',
   },
+  /**
+   * Die drei Gründe der Bot-Prüfung (Turnstile, NF1 b) — nur sichtbar, wenn
+   * die Site Turnstile-Schlüssel hat. Zuordnung wie `auth.botCheck.*` im Core.
+   */
+  botCheckRequired: {
+    de: 'Bitte bestätigen Sie die Roboter-Prüfung.',
+    en: 'Please confirm that you are not a robot.',
+  },
+  botCheckFailed: {
+    de: 'Die Roboter-Prüfung ist fehlgeschlagen. Bitte versuchen Sie es noch einmal.',
+    en: 'The robot check failed, please try again.',
+  },
+  botCheckUnavailable: {
+    de: 'Die Roboter-Prüfung ist gerade nicht erreichbar. Bitte versuchen Sie es in ein paar Minuten noch einmal oder schreiben Sie uns direkt eine E-Mail.',
+    en: 'The robot check is unavailable right now. Please try again in a few minutes or simply send us an email.',
+  },
 } satisfies Record<string, Localized>
 
 /**

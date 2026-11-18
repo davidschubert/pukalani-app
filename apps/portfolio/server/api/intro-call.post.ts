@@ -28,7 +28,7 @@ import {
  * Schreib-Route dieser Site und die einzige OHNE Session: hier meldet sich
  * jemand, der kein Konto hat und nie eins bekommen wird.
  *
- * DREI BREMSEN STATT EINER ANMELDUNG (Muster `onboarding/request.post.ts`):
+ * VIER BREMSEN STATT EINER ANMELDUNG (Muster `onboarding/request.post.ts`):
  *  - Rate-Limit in der core-Middleware (5/min und IP, Bucket
  *    `portfolio:intro-call` — die Route verschickt Mail),
  *  - Honeypot: ein für Menschen unsichtbares Feld. Ist es gefüllt, antworten
@@ -36,7 +36,12 @@ import {
  *    es lag,
  *  - Zod mit engen Längen; die Auswahl-Schlüssel kommen aus dem Vertrag
  *    (`shared/types/introCall.ts`) und aus `SERVICE_CORES`, nicht aus einer
- *    zweiten Liste.
+ *    zweiten Liste,
+ *  - Bot-Prüfung (Turnstile, Aktion `portfolio_intro_call`, seit NF1 b
+ *    2026-11-18) nach dem Honigtopf und vor beiden Zustellwegen. Ohne die
+ *    zwei Schlüssel ein No-op.
+ * Die Mail geht nur an die feste Adresse des Studios (`CONTACT.email`), nie
+ * an die eingetragene — eine Grenze je Empfänger braucht es deshalb nicht.
  *
  * ZWEI ZUSTELLWEGE, EINZELN ABGESICHERT (Davids Entscheidung 4 vom 2026-08-21:
  * Mail UND Appwrite-Tabelle ab v1). Sie hängen bewusst NICHT aneinander:
@@ -80,6 +85,12 @@ const bodySchema = z.object({
   locale: z.enum(['de', 'en']),
   /** Honeypot — muss leer bleiben. Heißt bewusst harmlos. */
   website: z.string().max(200).optional(),
+  /**
+   * Der Einmal-Token des Turnstile-Widgets (Aktion `portfolio_intro_call`).
+   * Ohne Turnstile-Schlüssel schickt der Wizard keinen, und der Server prüft
+   * nicht (`requireTurnstile` ist dann ein No-op).
+   */
+  turnstileToken: z.string().max(4096).optional(),
 }).strict()
 
 type IntroCallBody = z.infer<typeof bodySchema>
@@ -125,6 +136,11 @@ export default defineEventHandler(async (event): Promise<IntroCallResponse> => {
     logEvent('info', 'intro_call.honeypot', {})
     return { ok: true }
   }
+
+  // Bot-Prüfung nach dem Honigtopf und VOR Mail und Zeile (SEC-018, NF1 b).
+  // Ohne Turnstile-Schlüssel kehrt sie sofort zurück — die Route läuft dann
+  // wie bisher.
+  await requireTurnstile(event, 'portfolio_intro_call', body.turnstileToken)
 
   const lang: Lang = body.locale
   const mailOk = await sendMail(event, {

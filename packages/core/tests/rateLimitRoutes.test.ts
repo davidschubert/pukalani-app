@@ -221,6 +221,8 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
     ['POST /api/site/domain/verify', 'domains:verify', 10],
     ['POST /api/community/billing/checkout', 'community:checkout', 10],
     ['POST /api/community/billing/portal', 'community:portal', 30],
+    // NF1 a: der Ticket-Kauf legt je Ruf eine Stripe-Session an — eigener Eimer.
+    ['POST /api/events/ev-1/checkout', 'events:checkout', 10],
     ['POST /api/community/branding/favicon', 'community:favicon', 10],
     ['DELETE /api/posts/p1', 'posts:delete', null],
     ['DELETE /api/comments/c1', 'comments:delete', null],

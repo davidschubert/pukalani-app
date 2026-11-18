@@ -341,7 +341,9 @@ paths:
   das angemeldete Konto nach seiner eigenen Adresse. (3) KEIN FREIER TEXT DES ABSENDERS in einer Mail an
   eine frei eingetragene Adresse: der Name läuft durch `displayNameProblem`,
   eine Nachricht wird nicht zitiert. Heute so: Erstgespräch und Warteliste
-  (brand), Newsletter-Anmeldung (insights, nur die Grenze). Die Meldung an
+  (brand), Newsletter-Anmeldung (insights, nur die Grenze), Erstgespräch
+  (portfolio) und Kontakt (photos, beide nur die Bot-Prüfung — sie mailen nur
+  an den Betreiber). Die Meldung an
   den BETREIBER hat keine eigene Grenze (feste Adresse; davor stehen
   Bot-Prüfung und die Drossel je Leitung).
 - ABMELDE-LINKS DES NEWSLETTERS (SEC-020, seit 2026-11-15): signiert mit

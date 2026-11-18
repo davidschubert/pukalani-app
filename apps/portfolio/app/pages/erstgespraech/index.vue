@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isBotCheckReason, type BotCheckReason } from '../../../../../packages/core/shared/turnstile'
 import { CONTACT } from '../../data/contact'
 import {
   BUDGET_OPTIONS,
@@ -173,6 +174,23 @@ function goBack(): void {
   if (step.value > 1) step.value -= 1
 }
 
+/**
+ * BOT-PRÜFUNG (Turnstile, Aktion `portfolio_intro_call`, NF1 b). Ohne
+ * Site-Key rendert das Widget nichts, `turnstileEnabled` ist `false`, der
+ * Knopf bleibt offen und der Wizard schickt keinen Token — alles wie vorher.
+ * Ein Token gilt EINMAL: nach jedem Fehlschlag `reset()`.
+ */
+const turnstileToken = ref('')
+const botCheck = ref<{ reset: () => void } | null>(null)
+const turnstileEnabled = Boolean(useRuntimeConfig().public.turnstileSiteKey)
+const waitingForBotCheck = computed(() => turnstileEnabled && turnstileToken.value === '')
+
+const BOT_CHECK_ERRORS: Record<BotCheckReason, keyof typeof WIZARD_ERRORS> = {
+  bot_check_required: 'botCheckRequired',
+  bot_check_failed: 'botCheckFailed',
+  bot_check_unavailable: 'botCheckUnavailable',
+}
+
 async function submit(): Promise<void> {
   if (sending.value) return
   if (!validateStep(STEP_COUNT)) return
@@ -199,6 +217,7 @@ async function submit(): Promise<void> {
     phone: form.phone.trim() || undefined,
     locale: lang.value,
     website: form.website,
+    ...(turnstileToken.value ? { turnstileToken: turnstileToken.value } : {}),
   }
 
   try {
@@ -212,10 +231,15 @@ async function submit(): Promise<void> {
     })
     sent.value = true
   }
-  catch {
+  catch (error) {
+    // Ein Turnstile-Token ist EINMALIG: nach jedem Fehlschlag ein neuer.
+    botCheck.value?.reset()
     // Der Grund bleibt draußen: der Server nennt ihn bewusst nicht, und ein
-    // „500" hilft dem Absender nicht weiter. Der zweite Weg (E-Mail) steht im Text.
-    fail('submit', 'submit')
+    // „500" hilft dem Absender nicht weiter. Der zweite Weg (E-Mail) steht im
+    // Text. Einzige Ausnahme sind die Gründe der Bot-Prüfung (`reason` im
+    // Envelope, core/server/error.ts) — die kann der Mensch beheben.
+    const reason = (error as { data?: { reason?: string } })?.data?.reason
+    fail('submit', isBotCheckReason(reason) ? BOT_CHECK_ERRORS[reason] : 'submit')
   }
   finally {
     sending.value = false
@@ -637,6 +661,8 @@ usePortfolioSeo({
               </label>
               <p v-if="errorText('privacy')" class="field__error" role="alert">{{ errorText('privacy') }}</p>
             </div>
+
+            <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="portfolio_intro_call" />
           </template>
 
           <p v-if="errorText('submit')" class="field__error field__error--block" role="alert">
@@ -650,7 +676,7 @@ usePortfolioSeo({
             <button v-if="step < STEP_COUNT" type="button" class="btn btn--solid" @click="goNext">
               {{ WIZARD_UI.next[lang] }} →
             </button>
-            <button v-else type="submit" class="btn btn--solid" :disabled="sending">
+            <button v-else type="submit" class="btn btn--solid" :disabled="sending || waitingForBotCheck">
               {{ sending ? WIZARD_UI.submitting[lang] : WIZARD_UI.submit[lang] }}
             </button>
           </div>
