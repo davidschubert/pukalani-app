@@ -13,25 +13,6 @@
  * `apps/<name>`), Gruppen und Einträge alphabetisch. Pfade relativ zum Repo.
  */
 export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
-  'apps/comments': [
-    'apps/comments/server/api/events/[id]/checkout.post.ts',
-  ],
-  'apps/control': [
-    'apps/control/server/api/control/billing/community/checkout.post.ts',
-    'apps/control/server/api/control/billing/community/portal.post.ts',
-    'apps/control/server/api/control/billing/prices.get.ts',
-    'apps/control/server/api/control/billing/prices.post.ts',
-    'apps/control/server/api/control/stripe/keys.post.ts',
-    'apps/control/server/api/control/stripe/prices.post.ts',
-    'apps/control/server/api/control/stripe/status.get.ts',
-    'apps/control/server/api/control/stripe/webhook.post.ts',
-  ],
-  'apps/photos': [
-    'apps/photos/server/api/contact.post.ts',
-  ],
-  'apps/portfolio': [
-    'apps/portfolio/server/api/intro-call.post.ts',
-  ],
   brand: [
     'packages/brand/server/api/brand/admin/derivation-unlocks/index.get.ts',
     'packages/brand/server/api/brand/admin/design-unlocks/index.get.ts',
