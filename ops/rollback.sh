@@ -34,6 +34,11 @@
 # Die Namen (App, Site, Prozess) kommen aus ops/apps.conf — derselben Liste,
 # die das Ausliefern liest. Eine Umbenennung dort zieht den Rückweg mit.
 #
+# DIE HANDGRIFFE AUF DEM SERVER (Stände lesen, Verweis umlegen, Prozess neu
+# laden) stehen in ops/app-release.sh — derselben Datei, über die das
+# Ausliefern läuft (CI1 b, 2026-11-18). Dieses Skript schickt sie bei jedem
+# Aufruf mit; es braucht dafür nichts, was auf dem Server liegt.
+#
 # Für den Test gegen eine Attrappe (packages/core/tests/rollbackScript.test.ts):
 #   ROLLBACK_REMOTE       Befehl, der das Server-Stück ausführt, statt ssh
 #   ROLLBACK_ROOT         statt /home/ploi
@@ -115,91 +120,22 @@ if [ "$APPLY" -eq 1 ] && [ -z "$WANT" ]; then
 fi
 
 # ── Das Server-Stück ────────────────────────────────────────────────────────
-# Reist über die Standard-Eingabe, die Angaben als Parameter. ssh setzt die
-# Parameter zu EINER Befehlszeile zusammen, die der Server neu zerlegt —
-# deshalb sind oben alle auf harmlose Zeichen geprüft.
+# DIE HANDGRIFFE STEHEN IN ops/app-release.sh — derselben Datei, die das
+# Ausliefern auf dem Server ausführt (CI1 b, 2026-11-18; vorher standen sie
+# hier ein zweites Mal). Sie reist von HIER über die Standard-Eingabe, die
+# Angaben als Parameter: der Rückweg hängt damit nicht an der Kopie auf dem
+# Server. ssh setzt die Parameter zu EINER Befehlszeile zusammen, die der
+# Server neu zerlegt — deshalb sind oben alle auf harmlose Zeichen geprüft.
+RELEASE_SCRIPT="$HERE/app-release.sh"
+[ -f "$RELEASE_SCRIPT" ] || die 2 "ops/app-release.sh fehlt neben diesem Skript."
 remote() {
   if [ -n "${ROLLBACK_REMOTE:-}" ]; then
     # Absichtlich ohne Anführungszeichen: der Befehl darf Parameter tragen.
-    $ROLLBACK_REMOTE "$@"
+    $ROLLBACK_REMOTE "$@" < "$RELEASE_SCRIPT"
   else
-    ssh -o BatchMode=yes -o ConnectTimeout=20 "$SSH_TARGET" bash -s -- "$@"
+    ssh -o BatchMode=yes -o ConnectTimeout=20 "$SSH_TARGET" bash -s -- "$@" < "$RELEASE_SCRIPT"
   fi
 }
-
-# Nur lesen: welche Stände liegen da, worauf zeigt der Verweis?
-read -r -d '' LIST_SCRIPT <<'EOF' || true
-set -eu
-RELEASES="$1/releases/$2"
-if [ ! -d "$RELEASES" ]; then
-  echo "missing"
-  exit 0
-fi
-CUR=$(readlink "$RELEASES/current" 2>/dev/null || true)
-if [ -n "$CUR" ]; then echo "current $(basename "$CUR")"; else echo "current -"; fi
-for d in "$RELEASES"/*; do
-  [ -d "$d" ] || continue
-  [ -L "$d" ] && continue
-  m=$(stat -c %Y "$d" 2>/dev/null || stat -f %m "$d")
-  if [ -f "$d/server/index.mjs" ]; then c=1; else c=0; fi
-  echo "release $(basename "$d") $m $c"
-done
-EOF
-
-# Umstellen — dieselben Handgriffe wie im Job `deliver` von deploy.yml:
-# Verweis atomar umlegen, Heiler, startOrReload, save. Geprüft wird VOR dem
-# ersten Handgriff noch einmal auf dem Server selbst.
-read -r -d '' APPLY_SCRIPT <<'EOF' || true
-set -eu
-ROOT="$1"; APP="$2"; SITE="$3"; PROC="$4"; SHA="$5"
-RELEASES="$ROOT/releases/$APP"
-RELEASE="$RELEASES/$SHA"
-ECO="$ROOT/$SITE/ops/ecosystem-$APP.config.cjs"
-HEAL="$ROOT/$SITE/ops/pm2-heal.sh"
-case "$SHA" in
-  ''|*[!0-9a-f]*) echo "ABBRUCH: „$SHA“ ist kein Commit — nichts geändert."; exit 3 ;;
-esac
-if [ "${#SHA}" -ne 40 ]; then
-  echo "ABBRUCH: „$SHA“ ist kein vollständiger Commit — nichts geändert."; exit 3
-fi
-if [ ! -d "$RELEASE" ] || [ -L "$RELEASE" ] || [ ! -f "$RELEASE/server/index.mjs" ]; then
-  echo "ABBRUCH: der Stand $SHA liegt nicht vollständig unter $RELEASES — nichts geändert."; exit 3
-fi
-if [ ! -f "$ECO" ] || [ ! -f "$HEAL" ]; then
-  echo "ABBRUCH: unter $ROOT/$SITE/ops fehlt die Ecosystem-Datei oder pm2-heal.sh — nichts geändert."; exit 4
-fi
-if ! command -v pm2 >/dev/null 2>&1; then
-  echo "ABBRUCH: pm2 ist auf dem Server nicht im Pfad — nichts geändert."; exit 4
-fi
-PREV=$(readlink "$RELEASES/current" 2>/dev/null || true)
-flip() {
-  ln -sfn "$1" "$RELEASES/current.tmp"
-  # GNU mv (Server) kennt -T, das mv von macOS (nur im Test) -h: beide
-  # ersetzen den Verweis selbst, statt in das Ziel hinein zu verschieben.
-  if mv --version >/dev/null 2>&1; then
-    mv -Tf "$RELEASES/current.tmp" "$RELEASES/current"
-  else
-    mv -fh "$RELEASES/current.tmp" "$RELEASES/current"
-  fi
-}
-flip "$RELEASE"
-OUT=$(mktemp)
-if ! { bash "$HEAL" "$PROC" && pm2 startOrReload "$ECO" --update-env; } >"$OUT" 2>&1; then
-  # Ohne die Tabellenzeilen von pm2 — wie im Ausliefer-Protokoll.
-  grep -v -e "│" -e "host metrics" "$OUT" || true
-  rm -f "$OUT"
-  if [ -n "$PREV" ]; then
-    flip "$PREV"
-    echo "ABBRUCH: der Neustart ist gescheitert — der Verweis steht wieder auf $(basename "$PREV"). Bitte 'pm2 ls' auf dem Server ansehen."
-  else
-    echo "ABBRUCH: der Neustart ist gescheitert, und es gab vorher keinen Verweis. Bitte 'pm2 ls' auf dem Server ansehen."
-  fi
-  exit 5
-fi
-rm -f "$OUT"
-pm2 save >/dev/null 2>&1 || true
-if [ -n "$PREV" ]; then echo "umgestellt: $APP von $(basename "$PREV") auf $SHA"; else echo "umgestellt: $APP auf $SHA"; fi
-EOF
 
 # ── Die Seite fragen ────────────────────────────────────────────────────────
 # Ohne jq (liegt nicht auf jedem Rechner): die Antwort ist ein kleines JSON.
@@ -220,7 +156,7 @@ subject() {
 }
 
 # ── Stände lesen ────────────────────────────────────────────────────────────
-LISTING="$(printf '%s\n' "$LIST_SCRIPT" | remote "$ROOT" "$APP")" \
+LISTING="$(remote list "$APP" --root "$ROOT")" \
   || die 4 "Der Server ist nicht erreichbar (ssh $SSH_TARGET) — nichts geändert."
 if [ "$LISTING" = "missing" ]; then
   die 4 "Auf dem Server gibt es $ROOT/releases/$APP nicht — nichts geändert."
@@ -285,12 +221,13 @@ fi
 START="$(date +%s)"
 echo "Stelle $APP um: $CURRENT → $TARGET …"
 set +e
-printf '%s\n' "$APPLY_SCRIPT" | remote "$ROOT" "$APP" "$SITE" "$PROC" "$TARGET"
+remote activate "$APP" "$TARGET" --root "$ROOT" --site "$SITE"
 code=$?
 set -e
 if [ "$code" -ne 0 ]; then
   case "$code" in
     3|4|5) exit "$code" ;;
+    7) die 4 "Auf dem Server läuft gerade ein anderes Ausliefern oder Umstellen für $APP — nichts geändert. Gleich noch einmal versuchen." ;;
     *) die 4 "Die Verbindung zum Server ist beim Umstellen abgebrochen (Exit $code). Stand prüfen: ops/rollback.sh $APP" ;;
   esac
 fi

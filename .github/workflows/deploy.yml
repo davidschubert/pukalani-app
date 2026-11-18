@@ -108,6 +108,20 @@ env:
   # Prozesse, ein Port). Genau so war der Rückweg schon einmal abgehängt.
   OPS_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
   COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  # DAS FESTE SKRIPT AUF DEM SERVER (CI1 b, 2026-11-18): Quelle
+  # `ops/app-release.sh`, von Hand eingespielt. Es trägt die Handgriffe des
+  # Auslieferns (Stand empfangen, Verweis umlegen, pm2 neu laden, aufräumen) —
+  # dieselbe Datei, die der Rückweg `ops/rollback.sh` benutzt.
+  # ÜBERGANG: liegt das Skript auf dem Server, läuft das Ausliefern darüber;
+  # sonst wie bisher mit freien Befehlen. Der alte Weg fällt weg, sobald ein
+  # echtes Ausliefern über das Skript grün war — erst danach wird der
+  # Schlüssel auf das Skript als festen Befehl beschränkt.
+  RELEASE_SCRIPT: /home/ploi/ops/app-release.sh
+  # Was je Site nach <site>/ops geht, neben `ecosystem-<app>.config.cjs`. Das
+  # Skript nimmt nur Namen von seiner eigenen Liste an (`OPS_FILES` dort) —
+  # NEUE DATEI ⇒ dort eintragen und das Skript neu einspielen, sonst lehnt der
+  # Server die Lieferung ab (Test: packages/core/tests/appReleaseScript.test.ts).
+  OPS_FILES: 'pm2-heal.sh app-watch-counts.mjs nginx-check.mjs nginx-sites.conf cron-check.sh cron.conf logrotate-admin-access.conf'
   # DIE EINE APP→HOST-LISTE steht seit 2026-11-15 in `ops/apps.conf` (vorher
   # hier als Workflow-Variable). Der Job `plan` liest sie und reicht sie als
   # `APP_HOSTS` (Paare `app=site`) an `build` und `deliver` weiter; der
@@ -415,8 +429,16 @@ jobs:
         run: |
           set -eu
           mkdir -p fonts-seed
-          rsync -a "prod:/home/ploi/fonts-cache/" fonts-seed/ || true
-          tar -C fonts-seed -cf fonts-seed.tar .
+          if ssh prod "test -x $RELEASE_SCRIPT" </dev/null; then
+            echo "Weg: festes Skript (ops/app-release.sh)"
+            ssh prod "$RELEASE_SCRIPT fonts-get" </dev/null > fonts-seed.tar || true
+            # Kein lesbares Archiv ⇒ ein leeres: der Build läuft dann ohne Cache.
+            tar -tf fonts-seed.tar >/dev/null 2>&1 || tar -cf fonts-seed.tar -T /dev/null
+          else
+            echo "Weg: wie bisher (rsync)"
+            rsync -a "prod:/home/ploi/fonts-cache/" fonts-seed/ || true
+            tar -C fonts-seed -cf fonts-seed.tar .
+          fi
 
       # Der Schlüssel verlässt die Platte, bevor der nächste fremde Baustein
       # (hier: die Artefakt-Action) läuft — und auch dann, wenn ein Schritt
@@ -576,10 +598,16 @@ jobs:
       # Auflösung scheiterte, dessen Deploy stirbt vorher.
       - name: Font-Cache zurückschreiben (Blobs additiv, Metadaten aktualisierend)
         run: |
+          if ssh prod "test -x $RELEASE_SCRIPT" </dev/null; then VIA_SCRIPT=1; else VIA_SCRIPT=0; fi
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
-            rsync -a --ignore-existing "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
-            rsync -a --include='meta/' --include='meta/**' --exclude='*' "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
+            if [ "$VIA_SCRIPT" = "1" ]; then
+              # Dieselben zwei Durchgänge, auf dem Server (Wort `fonts-put`).
+              ssh prod "$RELEASE_SCRIPT fonts-put" < "$RUNNER_TEMP/out/$app.fonts.tar" || true
+            else
+              rsync -a --ignore-existing "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
+              rsync -a --include='meta/' --include='meta/**' --exclude='*' "fonts/$app/fonts/" "prod:/home/ploi/fonts-cache/" || true
+            fi
           done
 
       - name: Ausliefern + verifizieren (rsync → Symlink-Flip → pm2 reload)
@@ -627,6 +655,14 @@ jobs:
           # Apps, deren Datenbank nicht zum ausgelieferten Programm passt
           # (OPS-008, s. Probe unten) — ebenfalls erst NACH allen Apps rot.
           SCHEMA_BEHIND=""
+          # WELCHER WEG (Übergang, s. RELEASE_SCRIPT im Kopf): liegt das feste
+          # Skript auf dem Server, übernimmt es Empfangen, Umlegen, Neuladen
+          # und Aufräumen. Sonst die freien Befehle wie bisher.
+          if ssh prod "test -x $RELEASE_SCRIPT" </dev/null; then
+            VIA_SCRIPT=1; echo "Weg: festes Skript (ops/app-release.sh)"
+          else
+            VIA_SCRIPT=0; echo "Weg: wie bisher (freie Befehle)"
+          fi
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"
             site="${pair#*=}"
@@ -634,6 +670,20 @@ jobs:
             # ihrer Site — kein eigenes Array mehr, das auseinanderlaufen kann.
             probe="$site"
             echo "::group::Deploy $app → $site"
+            if [ "$VIA_SCRIPT" = "1" ]; then
+              # EIN STAND, VIER WORTE. Der Stand geht als das Archiv, das der
+              # Build gepackt hat, in ein FRISCHES Verzeichnis (ein Stand, der
+              # gerade aktiv ist, wird nicht überschrieben — RW1 c); die
+              # Dateien der Site als kleines tar; `activate` legt den Verweis
+              # um und lädt den Prozess neu (scheitert das, liegt der Verweis
+              # wieder auf dem Stand davor); `prune` behält vier Stände.
+              # Scheitert ein Wort, bricht `set -e` hier ab — wie bisher.
+              ssh prod "$RELEASE_SCRIPT release-put $app $EXPECTED_SHA" < "$RUNNER_TEMP/out/$app.tar.zst"
+              # shellcheck disable=SC2086
+              tar -C ops -cf - "ecosystem-$app.config.cjs" $OPS_FILES | ssh prod "$RELEASE_SCRIPT ops-put $app"
+              ssh prod "$RELEASE_SCRIPT activate $app $EXPECTED_SHA" </dev/null
+              ssh prod "$RELEASE_SCRIPT prune $app" </dev/null || echo "::warning::[$app] Aufräumen alter Stände ist gescheitert — das Ausliefern selbst ist davon nicht betroffen."
+            else
             RELEASES="/home/ploi/releases/$app"
             RELEASE="$RELEASES/$EXPECTED_SHA"
             # --mkpath, weil rsync sonst nur die LETZTE Pfadebene anlegt: beim
@@ -713,6 +763,7 @@ jobs:
               pm2 save >/dev/null
               ls -1dt $RELEASES/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf
               echo '$app geflippt auf $EXPECTED_SHA'"
+            fi
             echo "::endgroup::"
 
             # DREI Treffer in Folge, nicht einer. Eine einzelne Abfrage beweist

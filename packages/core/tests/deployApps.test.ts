@@ -97,9 +97,14 @@ describe('die Leser der Liste', () => {
     // Was der Server beim Ausliefern ausführt, sind die ersten zwei.
     expect(deploy).toContain('bash /home/ploi/$site/ops/pm2-heal.sh')
     expect(deploy).toContain('pm2 startOrReload /home/ploi/$site/ops/ecosystem-$app.config.cjs')
+    // Der Rückweg trägt die Handgriffe nicht mehr selbst (CI1 b, 2026-11-18):
+    // er schickt `ops/app-release.sh`, und DORT stehen dieselben zwei Dateien.
     const rollback = read('ops', 'rollback.sh')
-    expect(rollback).toContain('/ops/ecosystem-$APP.config.cjs')
-    expect(rollback).toContain('/ops/pm2-heal.sh')
+    expect(rollback).toContain('app-release.sh')
+    expect(rollback).not.toContain('startOrReload')
+    const release = read('ops', 'app-release.sh')
+    expect(release).toContain('/ops/ecosystem-$APP.config.cjs')
+    expect(release).toContain('/ops/pm2-heal.sh')
   })
 
   it('rollback.sh liest ops/apps.conf und nennt selbst keine Site', () => {

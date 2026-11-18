@@ -31,7 +31,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` im pm2-Log der letzten 25 h; mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 | Bot-Prüfung | `scripts/ops/verify-turnstile.mjs` | täglich | auf einer Site antwortet die Passwort-vergessen-Route ohne Token nicht mit 403 `bot_check_required` (Bot-Prüfung aus oder Cloudflare nicht erreichbar), oder die Seite trägt das Widget nicht (Gäste ausgesperrt); eine unklare Antwort bekommt nach 20 s einen zweiten Versuch |
-| Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte der gemeinsam gepflegten Tabellen oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
+| Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte, die eine Migration ihrer Layer anlegt, oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder dort steht eine Spalte, die keine Migration anlegt; oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
 | In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, Berichte der Skript-Regel, übrige KI-Ausfälle |
 | Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
 | Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
@@ -124,7 +124,9 @@ Stufen:
   und Spalten, keine Indizes, Rechte oder Daten, und je Layer nur die jüngste
   ablesbare Stelle. Landing und Hilfe haben keine Datenbank und kein Feld.
 - *Gründlich, täglich.* `verify-schema-parity.mjs --ci` liest je Projekt die
-  Tabellen- und Spaltenliste und nennt, was fehlt. Dafür liegen in der
+  Tabellen- und Spaltenliste und nennt, was fehlt; die Spalten vergleicht er
+  mit dem, was die Migrationen der Layer der App anlegen (fehlt eine, oder
+  steht eine ohne Migration da, ist er rot). Dafür liegen in der
   GitHub-Umgebung `production-watch` vier Schlüssel
   (`SCHEMA_WATCH_KEY_ACCOUNT`, `…_ADMIN`, `…_PORTFOLIO`, `…_BRANDING`), je
   einer pro Appwrite-Projekt, jeweils nur mit den Rechten `tables.read` und
@@ -566,11 +568,21 @@ Laufzeit-Schlüssel der Site noch Zeilen lesen darf. Ist die Probe selbst
 falsch (ein Tippfehler im Manifest sieht aus wie eine fehlende Migration),
 zeigt das schon der lokale Lauf — Manifest korrigieren, ausliefern.
 
-**Täglicher Schema-Abgleich rot, Health-Blick grün.** Dann fehlt etwas, das die
-Proben nicht sehen (eine ältere Tabelle, eine Spalte der gemeinsam gepflegten
-Tabellen), oder ein Schlüssel: „Schlüssel … fehlt" bzw. „nicht lesbar" heißt,
-dass einer der vier `SCHEMA_WATCH_KEY_*` fehlt, gelöscht wurde oder seine
-Rechte verloren hat (siehe Abschnitt 1).
+**Täglicher Schema-Abgleich rot, Health-Blick grün.** Dann weicht etwas ab, das
+die Proben nicht sehen, oder ein Schlüssel fehlt:
+
+- „SPALTE FEHLT" nennt Projekt, Tabelle, Spalte und Layer: eine ältere
+  Migration dieses Layers ist dort nicht gelaufen. Am Mac
+  `pnpm ops:schema-parity`, dann wie oben ab Schritt 2 — welche Nummer die
+  Spalte anlegt, zeigt `git grep "key: '<spalte>'" packages/<layer>/scripts/migrations`.
+- „SPALTE OHNE SOLL" heißt: in der Datenbank steht eine Spalte, die keine
+  Migration anlegt (von Hand in der Konsole?). Im öffentlichen Protokoll steht
+  nur die Anzahl; den Namen nennt `pnpm ops:schema-parity` am Mac. Mit Davids
+  Ja entweder eine Migration schreiben, die sie anlegt (wird sie gebraucht),
+  oder die Spalte in der Konsole löschen.
+- „Schlüssel … fehlt" bzw. „nicht lesbar" heißt, dass einer der vier
+  `SCHEMA_WATCH_KEY_*` fehlt, gelöscht wurde oder seine Rechte verloren hat
+  (siehe Abschnitt 1).
 
 **TLS auf einem ploi-Host.** Hinweis am Ende des Wächter-Laufs; Regeln in
 `.claude/rules/hosts-ops.md` (Lineage-Falle: NIE auf `pukalani.app` oder

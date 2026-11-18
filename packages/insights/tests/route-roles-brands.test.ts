@@ -1,6 +1,7 @@
 import { insightsBrandMissing, insightsStorageError, loadInsightsBrandRow } from '../server/utils/insightsPostsAdmin'
 import { insightsDb, isInsightsRowMissing } from '../server/utils/insightsStore'
 import { describeRoleGateToDoor } from '../../core/tests/support/participationHarness'
+import { insightsRouteGlobals } from './support/insightsRouteKit'
 
 /**
  * DAS SPEICHERN EINER MARKEN-SEITE HINTER SEINEM ROLLEN-TOR (OPS-009, mit
@@ -31,4 +32,17 @@ describeRoleGateToDoor('PATCH /api/insights/brands/[id]', () => import('../serve
     insightsStorageError,
     loadInsightsBrandRow,
   },
+})
+
+// ── Die lesenden Marken-Routen der Redaktion (BT1 b) ───────────────────────
+// Dasselbe Tor, dieselbe Erwartung: auch das LESEN der Redaktions-Liste und
+// eines Profils (mit Entwürfen und internen Feldern) ist Betreiber-Sache.
+
+describeRoleGateToDoor('GET /api/insights/brands', () => import('../server/api/insights/brands/index.get'), INSTANCE_ONLY, {
+  globals: insightsRouteGlobals(),
+})
+
+describeRoleGateToDoor('GET /api/insights/brands/[id]', () => import('../server/api/insights/brands/[id].get'), INSTANCE_ONLY, {
+  params: { id: 'b1' },
+  globals: insightsRouteGlobals(),
 })
