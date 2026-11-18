@@ -71,6 +71,11 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // Abgebaut mit N14 (2026-11-18): alle acht Verwaltungs-Routen der Seiten
   // (`pages.manage`, `branding.manage`, KI-Übersetzung hinter zwei Produkt-Toren).
   'pages',
+  // Abgebaut mit N13 (2026-11-18): alle zehn Routen des Marktvergleichs —
+  // Besitz des Brandings über die echte Zugangs-Kette
+  // (`packages/market/tests/support/marketRouteKit.ts`), der Sweep hinter
+  // `system.manage` (`support/instanceRoleGate.ts`).
+  'market',
   // Abgebaut mit N13 (2026-11-18): alle 30 Bestands-Routen des Markenberaters
   // — Werkstatt an einer Marke, Betreiber-Routen, Einladung und Freigabe
   // (`packages/brand/tests/support/brandRouteKit.ts`).

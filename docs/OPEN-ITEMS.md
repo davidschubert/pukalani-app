@@ -75,7 +75,7 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | EL1 | **Export und Löschung: Rest.** (b) Datenschutztexte: DT1. Die alten Textauszüge sind seit dem 2026-11-18 geleert (COMPLETE „N11"). **Wartet auf:** Davids Freigabe der Texte. | Niedrig | S | **Ja** | [Einzelheiten](#el1) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner). Klick-Probe (a): KR1. Der Lauf für nie beendete Läufe ist seit dem 2026-11-18 scharf (COMPLETE „N11"). **Wartet auf:** (b) nichts. | Niedrig | (b) M | (a) Ja: selbst klicken | [Einzelheiten](#ru1) |
+| RU1 | **Runner: Reste.** Offen ist nur noch die Klick-Probe (a): KR1 — dabei auch die neue Vorschau „Auftrag ansehen" im Formular. Den Auftragstext baut seit dem 2026-11-18 der Server (COMPLETE „N14"), der Lauf für nie beendete Läufe ist seit dem 2026-11-18 scharf (COMPLETE „N11"). **Wartet auf:** Davids Zeit. | Niedrig | S | (a) Ja: selbst klicken | [Einzelheiten](#ru1) |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 
@@ -97,10 +97,11 @@ am 2026-11-18, COMPLETE „N11").
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
-| SI1 | **Sicherungen: Reste.** (b) Bekannte Grenzen des Label-Abgleichs, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. Der Abgleich findet seit 2026-11-17 auch stillgelegte Communities und Herabstufungen (COMPLETE „N06"). **Wartet auf:** (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
+| SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"), (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll; (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern (COMPLETE „N05") und das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (COMPLETE „N13") sind gebaut. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
-| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 61 von 83 Beweis-Skripten von selbst, und acht weitere Layer haben Rollen-Tests für jede Route (COMPLETE „N09"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) 85 Routen stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten und vier Stellen zum Bewerten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst. Rollen-Tests: `pages`, `apps/control` und die drei Einzelrouten sind seit dem 2026-11-18 ohne Bestand (COMPLETE „N14"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) erledigt: kein Layer hat mehr Routen ohne Rollen-Test (COMPLETE „N13" und „N14"), (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
+| NF1 | **Nebenfunde aus den Tests der Apps.** (a) Ticket-Kauf der Test-App: es fehlen Prüfungen, die die übrigen Termin-Routen tragen, (b) die Formulare von `apps/portfolio` und `apps/photos` haben noch nicht alle Bausteine der Regel für öffentliche Formulare, (c) Kleinigkeiten. Gefunden am 2026-11-18 (COMPLETE „N14"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#nf1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** Vier Dinge, die an einem Tag mit vielen parallelen Merges auffielen: der Start der Test-Server, ein Test des Ausliefer-Skripts, die Geheimnis-Prüfung über alle Zweige, und das Ausliefern, das immer wieder neu beginnt. Nichts davon ist ein Fehler im Programm. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
@@ -382,16 +383,12 @@ und „N08"). Übrig:
   echten Dienst. Noch nicht gelaufen: ein Lauf mit echtem Agenten, gestartet im
   Formular, mit einem Testbefehl aus der Auswahl. Dabei auch ansehen: ein
   älteres Ticket zeigt „Ungeprüfter Auftrag" und bietet nur zwei Arbeitsweisen.
-- **(b) Den Auftragstext baut der Browser.** Der Server bestimmt aus dem
-  Ticket, ob ein Lauf als geprüft gilt; den Text selbst (Titel, Beschreibung,
-  offene Checkliste) setzt weiter die Seite zusammen und schickt ihn mit.
-  Sauberer wäre, der Server baute ihn aus der Ticket-Zeile. Eingeschätzt am
-  2026-11-17: kein kleiner Umbau. Der Zusammenbau (`TicketModalRunner.vue`)
-  und der Checklisten-Leser (heute nur im Browser, eine zweite Fassung in
-  `ticketTriage.ts`) müssten nach `packages/tickets/shared/` ziehen, der
-  Vertrag `resolveRunSubjectTrust` den Text mitliefern (nur `apps/control`
-  kennt beide Layer), die Anlege-Route ihn nicht mehr aus der Anfrage nehmen;
-  dazu ein Rollen-Test für die Anlege-Route. Rund sechs Dateien plus Tests.
+  Seit dem 2026-11-18 (COMPLETE „N14") gehört dazu: im Formular „Auftrag
+  ansehen" aufklappen — der Text muss dem Ticket entsprechen (ohne erledigte
+  Punkte, ohne den KI-Triage-Abschnitt) — und den Lauf über den Knopf starten.
+  Lokal ist die Vorschau gesehen und der Weg bis zum Abholen durch einen
+  Rechner mit einem Beweis-Skript gefahren; den Knopf hat noch niemand
+  gedrückt.
 
 <a id="mm1"></a>
 
@@ -854,16 +851,29 @@ Moderations-Label nach einer Herabstufung; seine Ops-Route ist gebremst.
   Webmail-Fenster öffnen (die Seite muss die Einladung zeigen). Ein Test-Konto
   entfernen und sehen, dass die Liste „entfernt" zeigt und kein Hinweis auf
   einen offenen Lese-Zugang kommt.
-- **(b) Bekannte Grenzen des Abgleichs (bewertet, kein Auftrag).** Eine
-  Herabstufung, die älter ist als 26 Stunden und in der Zeit keinen Lauf sah,
-  heilt weiter erst der nächste Besuch. Die zwei neuen Listen haben einen
-  Deckel von 1.000 Zeilen ohne Lesestelle (steht im Log, wenn er greift). Die
-  gescheiterte Zeile im Control Plane bleibt `active`; steht `disabledStale`
-  über 0 im Log, gehört sie von Hand auf `removed`. Die Lesestelle der
-  entfernten Zeilen lebt nur im Prozess — das zählt erst ab 1.000 entfernten
-  Zeilen. Die Reihenfolge je Konto gilt nur innerhalb eines Prozesses; der
-  Schreiber liest nach und wiederholt, einen Entzug holt der Lauf nach.
-  Ein ganzer Lauf gegen eine Bühne mit stillgelegter Community steht noch aus.
+- **(b) Bekannte Grenzen des Abgleichs (bewertet am 2026-11-18, COMPLETE
+  „N14").** Findet der Lauf eine aktive Zeile in einer stillgelegten
+  Community, nimmt er das Label; die Zeile im Control Plane bleibt `active`.
+  **Im selben Lauf lässt sich das nicht sauber nachziehen:** der Lauf gehört
+  der Platform-App, und die liest das Control Plane mit Absicht nur.
+  **Woran man solche Zeilen erkennt:** `disabledCandidates` im Log der
+  Platform-App (`community_label.reconcile`) steht über 0, bis die Zeilen von
+  Hand auf `removed` stehen (`disabledStale` fällt nach dem ersten Entzug auf
+  0 — Runbook und Kommentar nannten bis dahin die falsche Zahl).
+  **Empfehlung, wenn es von selbst gehen soll:** ein eigener stündlicher Lauf
+  in der Betreiber-App (sie darf im Control Plane schreiben), der genau diese
+  Zeilen auf `removed` stellt — zuerst nur zählend, scharf erst mit Davids Ja
+  zur Zahl. Dazu gehört eine Zeile in `ops/timed-jobs.conf`; deshalb erst,
+  wenn der Umbau des Ausliefer-Wegs fertig ist. Im lokalen Spiegel waren es
+  drei Zeilen.
+  Weiter offen und klein: eine Herabstufung, die älter ist als 26 Stunden und
+  in der Zeit keinen Lauf sah, heilt erst der nächste Besuch. Die zwei neuen
+  Listen haben einen Deckel von 1.000 Zeilen ohne Lesestelle (steht im Log,
+  wenn er greift). Die Lesestelle der entfernten Zeilen lebt nur im Prozess —
+  das zählt erst ab 1.000 entfernten Zeilen. Die Reihenfolge je Konto gilt nur
+  innerhalb eines Prozesses; der Schreiber liest nach und wiederholt, einen
+  Entzug holt der Lauf nach. Ein ganzer Lauf gegen eine Bühne mit
+  stillgelegter Community steht noch aus.
   Runbook: [LABEL-ABGLEICH.md](runbooks/LABEL-ABGLEICH.md).
 - **(c) Lint-Lauf.** Mit der typisierten Regel dauert `pnpm -r lint` lokal
   etwa 43 s statt 18 s (in der CI rund 2,5 Minuten für den ganzen Job). Ein
@@ -960,8 +970,11 @@ Lauf (zwölf Skripte der Einzel-Instanz), Rollen-Tests für `onboarding`,
 `control`, `core`, `admin`, `tickets`, `runner`, `domains` und `billing`, die
 zwei Skripte mit dem Programm-Fehler, die Probe-Hosts der Isolations-Tests
 und die Tabellen in `docs/referenz/LIVE-BEWEISE.md`.
+Erledigt am 2026-11-18 (COMPLETE „N14"): Rollen-Tests für `pages`,
+`apps/control` und die drei Einzelrouten, drei der vier Stellen aus (e), das
+Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
 
-- **(a) Skripte, die noch von Hand laufen (22 von 83).** 12 brauchen
+- **(a) Skripte, die noch von Hand laufen (22 von 84).** 12 brauchen
   branding.supply mit eigenem Projekt: nötig wären ein viertes Projekt
   `branding` im Bühnen-Setup, `bootstrap --app branding`, ein vierter Server
   (nur nachts) und Einträge `env: 'branding'` im Läufer, nach dem Muster der
@@ -976,15 +989,13 @@ und die Tabellen in `docs/referenz/LIVE-BEWEISE.md`.
   und ein Playwright-Schritt) und die eine E2E-Datei von `apps/control` (die
   Betreiber-App läuft dort schon). Die fünf E2E-Dateien von `apps/portfolio`
   brauchen einen eigenen Server und ein eigenes Projekt.
-- **(b) Rollen-Tests: 85 Routen im Bestand** (`support/routeRoleBacklog.ts`):
-  brand 30, insights 26, market 10 (dort hat N10 umgebaut — jetzt möglich), pages 8,
-  `apps/control` 8, je eine in `apps/comments`, `apps/photos`,
-  `apps/portfolio`. `apps/control` hat noch keine Test-Einrichtung (kein
-  `test`-Skript, keine `vitest.config.ts`): Tests dort führte `pnpm -r test`
-  nie aus. Erst die Einrichtung nach dem Muster von `apps/portfolio`, dann
-  die acht Routen (fünf passen auf
-  `packages/control/tests/support/controlRouteHarness.ts`, dazu der Webhook
-  mit Signatur). Layer ohne Rest nach `ZERO_BACKLOG_LAYERS`.
+- **(b) Rollen-Tests: erledigt, der Bestand ist leer**
+  (`support/routeRoleBacklog.ts`, vorher 85 Routen). Abgebaut am 2026-11-18:
+  insights, brand und market (COMPLETE „N13"), `pages`, `apps/control` und die
+  drei Einzelrouten in `apps/comments`, `apps/photos`, `apps/portfolio`
+  (COMPLETE „N14"; die drei Apps haben seitdem eine eigene Test-Einrichtung).
+  Jeder Layer steht in `ZERO_BACKLOG_LAYERS`; eine neue Route ohne Test ist
+  rot.
 - **(c) Bühnen-Lauf als Pflicht: im Dezember neu entscheiden.** Entschieden
   am 2026-11-17 (DECISION-LOG): Der Lauf „Bühne (Kundenpfad)" bleibt vorerst
   ein Hinweis — er hält weder das Zusammenführen noch das Ausliefern auf und
@@ -999,21 +1010,44 @@ und die Tabellen in `docs/referenz/LIVE-BEWEISE.md`.
   Betreiber noch nicht. `verify-notification-mail-links` stößt den
   Sammel-Lauf für alle Konten der Instanz an und gehört deshalb nur auf eine
   leere Datenbank. Der Test `packages/core/tests/rollbackScript.test.ts`
-  scheiterte am 2026-11-17 einmal in der CI mit Exit 141 („geht denselben Weg
-  wieder nach vorn"; eine Pipe schließt früh, bekannte Falle bei
-  `pipefail`), bei der Wiederholung und in 15 lokalen Läufen grün — die
-  Stelle in `ops/rollback.sh` ist nicht gefunden. `verify-trust-perks`
-  rechnet mit dem Kalendertag: ein Lauf, der über Mitternacht UTC geht, wird
-  rot (so ein von Hand gestarteter Nacht-Lauf am 2026-11-18, 00:00 UTC; der
-  Zeitplan um 01:41 UTC liegt nicht dort).
-- **(e) Vier Stellen zum Bewerten.** Die neuen Rollen-Tests halten sie fest,
-  wie sie heute sind. Nach heutiger Messung gibt keine etwas heraus; bei
-  jeder greift eine zweite Sicherung. Einzelheiten stehen in der
-  Übergabe-Notiz der Gruppe N09 (nicht im Repo). (1) Mitglieder-Verwaltung,
-  drei lesende Routen: die Rechte-Wache soll die Entzugs-Notiz selbst mit
-  abfragen. (2) Anwesenheit: dieselbe Wache wie beim Übersetzen. (3) Übersicht
-  des Dashboards im Pool: soll die Instanz-Rolle „Moderator" hinein dürfen,
-  oder nur der Betreiber? (4) Nutzer löschen: Reihenfolge zweier Prüfungen.
+  scheiterte am 2026-11-17 einmal in der CI mit Exit 141; die Ursache ist
+  nicht gefunden (das verdächtige Muster ließ sich in je 3.000 Läufen auf
+  macOS und Linux nicht nachstellen, das Skript ist seitdem umgebaut). Seit
+  dem 2026-11-18 hält der Test bei einem Fehlschlag die Spur des Skripts
+  fest — wird er wieder rot, steht die Zeile da (COMPLETE „N14").
+- **(e) Eine Frage an David.** Von den vier Stellen, die die Rollen-Tests
+  notiert hatten, sind am 2026-11-18 zwei klein geschlossen und eine mit Test
+  festgehalten (COMPLETE „N14"). Offen ist die vierte, weil sie eine
+  Grundsatzfrage ist: **Übersicht des Dashboards im Pool — soll die
+  Instanz-Rolle „Moderator" (ein Konto mit dem globalen Label, also ein
+  Mitarbeiter des Betreibers) in die Übersicht und die Statistik jeder
+  Community hinein dürfen, oder nur der Betreiber?** Heute darf sie es (über
+  den protokollierten Not-Zugang); der Test
+  `packages/admin/tests/route-roles-overview.test.ts` hält das so fest. Soll
+  es anders sein, kommt die Rolle dort in die Abweisungs-Liste und die Wache
+  wird angepasst.
+
+<a id="nf1"></a>
+
+**NF1 — Nebenfunde aus den Tests der Apps (Gruppe N14, 2026-11-18).**
+Die neuen Tests halten diese Stellen nicht als richtig fest; sie stehen dort
+als offene Punkte (`it.todo`).
+
+- **(a) Ticket-Kauf (lebt nur in der Test-App `apps/comments`, nicht
+  ausgerollt).** Die Route verlangt eine Anmeldung. Die Prüfungen, die die
+  übrigen Termin-Routen tragen (Zugehörigkeit zur Community, Produkt des
+  Plans, Wartungs-Sperre), und eine eigene Bremse fehlen ihr. Zu bauen, bevor
+  der Ticket-Kauf in eine ausgerollte App zieht.
+- **(b) Öffentliche Formulare von `apps/portfolio` (Erstgespräch) und
+  `apps/photos` (Kontakt).** Beide haben Honigtopf, Eingabe-Prüfung und eine
+  Bremse. Die Bot-Prüfung aus der Regel „öffentliches Formular, das eine Mail
+  auslöst" (`.claude/rules/ki-mail-embed-moderation.md`) ist dort noch nicht
+  eingebaut; der Zähler von `apps/photos` liegt im Speicher des Prozesses.
+- **(c) Kleinigkeiten.** `PATCH /api/pages/navigation` prüft Menü-Links gegen
+  höchstens 100 veröffentlichte Seiten; ab der 101. würde ein gültiger Link
+  abgelehnt. `packages/core/tests/support/participationHarness.ts` hat eine
+  Stelle mit implizitem `any`, die nur bei einer Typprüfung aus einer App
+  heraus auffällt (die Tests der Apps liegen nicht in deren `typecheck`).
 
 <a id="cw1"></a>
 

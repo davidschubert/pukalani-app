@@ -12,15 +12,4 @@
  * Gruppiert nach Layer (`packages/<name>` ⇒ `<name>`, `apps/<name>` ⇒
  * `apps/<name>`), Gruppen und Einträge alphabetisch. Pfade relativ zum Repo.
  */
-export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
-  market: [
-    'packages/market/server/api/market/ops/sweep.post.ts',
-    'packages/market/server/api/market/profiles/[id]/candidates.get.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/[cid].delete.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/[cid].patch.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/index.get.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/index.post.ts',
-    'packages/market/server/api/market/profiles/[id]/rating.post.ts',
-    'packages/market/server/api/market/profiles/[id]/visibility.patch.ts',
-  ],
-}
+export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {}
