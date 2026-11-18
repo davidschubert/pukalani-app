@@ -10,10 +10,11 @@ import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type Runne
  * „Vor dem Lauf": Rechner, Modell, Modus, Repo, Budget, Testbefehle
  * (docs/plans/AI-RUNNER.md § 9).
  *
- * DAS FORMULAR KENNT DEN AUFTRAG NICHT — es wählt nur, WIE gelaufen wird. Was
- * gelaufen wird (`promptSource`) bringt der Einbindende mit; `promptTrusted`
- * reist nur als ANZEIGE-Prop durch, damit Modus-Liste und Testbefehle ehrlich
- * sind — entschieden wird es auf dem Server (SEC-038).
+ * DAS FORMULAR BAUT DEN AUFTRAG NICHT — es wählt nur, WIE gelaufen wird. Was
+ * gelaufen wird, baut der Server (RU1 b); `promptSource` und `promptTrusted`
+ * reisen nur als ANZEIGE-Props durch: der Text als aufklappbare Vorschau
+ * („das wird laufen"), das andere, damit Modus-Liste und Testbefehle ehrlich
+ * sind — entschieden wird beides auf dem Server (SEC-038).
  *
  * MODELLE UND REPOS KOMMEN AUS DER `app.config` (`pukalani.runner.*`), nicht
  * aus dem Markup: eine neue Modell-Generation soll eine Config-Zeile sein.
@@ -23,6 +24,8 @@ import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type Runne
 const props = defineProps<{
   /** false = Text gilt nicht als vom Betreiber geschrieben (§ 8.2) — dann nur `plan`/`acceptEdits`, keine Testbefehle */
   promptTrusted: boolean
+  /** Der Auftrag als Vorschau — nur zur Anzeige; '' = keine Vorschau */
+  promptSource?: string
   /** Wie viele Dateien mitgeschickt werden — nur zur Anzeige */
   attachmentCount: number
   busy: boolean
@@ -198,6 +201,28 @@ function onSubmit(event: FormSubmitEvent<FormInput>) {
         :description="t('runner.form.untrustedText')"
         data-runner-untrusted
       />
+
+      <!-- RU1 b: der Auftrag, wie er laufen wird. Zugeklappt, weil er lang
+           sein kann und meist direkt darüber im Ticket steht — aufklappbar,
+           weil nur hier zu sehen ist, was NICHT mitläuft (erledigte Punkte,
+           der KI-Triage-Abschnitt). -->
+      <UCollapsible v-if="promptSource" data-runner-prompt-preview>
+        <UButton
+          color="neutral"
+          variant="link"
+          size="xs"
+          icon="i-ph-file-text"
+          trailing-icon="i-ph-caret-down"
+          class="group px-0"
+          :ui="{ trailingIcon: 'transition-transform group-data-[state=open]:rotate-180' }"
+        >
+          {{ t('runner.form.promptPreview') }}
+        </UButton>
+        <template #content>
+          <p class="mt-1 text-xs text-muted">{{ t('runner.form.promptPreviewHint') }}</p>
+          <pre class="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border border-default bg-elevated/50 p-3 text-xs" data-runner-prompt-text>{{ promptSource }}</pre>
+        </template>
+      </UCollapsible>
 
       <div class="grid gap-3 sm:grid-cols-2">
         <UFormField name="runnerId" :label="t('runner.form.runner')">
