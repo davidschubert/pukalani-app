@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { parseTicketChecklist } from '../../../../packages/tickets/app/utils/ticketMarkdown'
 import type { TicketFilesResponse, TicketFileRow, TicketRow } from '../../../../packages/tickets/shared/types/ticket'
 import { isOperatorWritten, normalizeTicketOrigin } from '../../../../packages/tickets/shared/ticketOrigin'
-import { stripTriageBlock } from '../../../../packages/tickets/shared/triageBlock'
+import { buildTicketRunPrompt } from '../../../../packages/tickets/shared/ticketRunPrompt'
 import type { RunAttachmentSource } from '../../../../packages/runner/shared/types/runner'
 
 /**
@@ -21,43 +20,15 @@ const props = defineProps<{ ticket: TicketRow }>()
 const { t } = useI18n()
 
 /**
- * DER AUFTRAG. Titel als Überschrift, dann die Beschreibung, dann die noch
- * OFFENEN Punkte der Checkliste.
+ * DER AUFTRAG. Titel als Überschrift, dann die Beschreibung (ohne den
+ * KI-Triage-Abschnitt), dann die noch OFFENEN Punkte der Checkliste.
  *
- * DIE BESCHREIBUNG WIRD ROH ÜBERNOMMEN: sie IST Markdown (das Modal
- * bearbeitet sie mit `UEditor`, `content-type="markdown"`), und ein Agent
- * liest Markdown besser als jede Umformung. Sie hier durch den HTML-Renderer
- * zu schicken hiesse, Struktur wegzuwerfen und Tags einzuführen.
- *
- * OHNE DEN KI-TRIAGE-ABSCHNITT (`stripTriageBlock`): den hat ein Modell an die
- * Beschreibung gehängt, kein Mensch hat ihn geschrieben — er gehört nicht in
- * einen Auftrag an einen Agenten. Deshalb ändert die Triage auch die Herkunft
- * des Tickets nicht (SEC-038).
- *
- * ERLEDIGTE Punkte bleiben draussen: sie sind Vergangenheit, und im Auftrag
- * würden sie wie Arbeit aussehen. Ist die ganze Checkliste abgehakt, fehlt der
- * Abschnitt.
- *
- * TESTBEFEHLE STEHEN BEWUSST NICHT HIER: die wählt das Formular des
- * Lauf-Bereichs, und sie reisen als eigenes Feld (`testCommands`). Zweimal
- * dieselbe Angabe — einmal als Fliesstext, einmal als Liste — wäre eine
- * Einladung, dass beide auseinanderlaufen.
+ * Der Zusammenbau steht seit RU1 b (2026-11-18) NICHT mehr hier, sondern im
+ * tickets-Layer (`shared/ticketRunPrompt.ts`) — eine pure Funktion, die auch
+ * der Server benutzen kann. Dort steht, warum die Beschreibung roh bleibt,
+ * erledigte Punkte fehlen und Testbefehle nicht in den Text gehören.
  */
-const promptSource = computed(() => {
-  const lines: string[] = [`# ${props.ticket.title}`, '']
-
-  const description = stripTriageBlock(props.ticket.description).trim()
-  if (description) lines.push(description, '')
-
-  const open = parseTicketChecklist(props.ticket.checklist).filter(item => !item.done)
-  if (open.length) {
-    lines.push('## Checkliste', '')
-    for (const item of open) lines.push(`- [ ] ${item.text}`)
-    lines.push('')
-  }
-
-  return lines.join('\n')
-})
+const promptSource = computed(() => buildTicketRunPrompt(props.ticket))
 
 /**
  * DIE HERKUNFT DES TEXTES (§ 8.2) — hier NUR NOCH ANZEIGE.
