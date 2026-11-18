@@ -320,7 +320,7 @@ services:
       options:
         max-file: "5"
         max-size: 10m
-    image: appwrite/new:1.2.138-self-hosted
+    image: appwrite/new:1.2.181-self-hosted
     restart: unless-stopped
     networks:
     - appwrite
@@ -906,7 +906,7 @@ services:
         max-file: "5"
         max-size: 10m
     stop_signal: SIGINT
-    image: openruntimes/executor:1.3.1
+    image: openruntimes/executor:1.3.5
     restart: unless-stopped
     networks:
     - appwrite

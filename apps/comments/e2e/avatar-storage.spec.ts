@@ -111,19 +111,32 @@ test.describe('Profilbild-Ablage: nur über die Route, nur Bilder (SEC-001)', ()
     expect(rejected.status()).toBe(415)
   })
 
-  test('eine Nicht-Bild-Datei im Bucket wird nicht ausgeliefert', async ({ request }) => {
-    // Per Admin-Key abgelegt — der Name passt zur Endungsliste, der Inhalt ist HTML.
-    const probe = await storage.createFile({
+  /**
+   * Bis Appwrite 2.7.1 prüfte der Bucket nur die ENDUNG: mit dem Admin-Key kam
+   * HTML als `probe.png` hinein, und dieser Fall bewies, dass die Auslieferung
+   * es trotzdem nicht herausgibt. Seit 2.7.2 (appwrite/appwrite#15458, #15546)
+   * prüft ein Bucket mit `allowedFileExtensions` auch den INHALT, sobald die
+   * Endung ein Bild oder PDF ist — die Datei entsteht gar nicht mehr, für
+   * niemanden. Der Fall hält deshalb jetzt DIESE Sperre fest (fällt sie in
+   * einer späteren Version weg, wird er rot). Dass die Auslieferung eine
+   * Nicht-Bild-Datei aus älteren Tagen mit 404 beantwortet, beweist weiter
+   * `packages/core/tests/storageRoutes.test.ts` (gespeicherter Typ text/html,
+   * und image/png mit HTML-Inhalt).
+   */
+  test('eine Nicht-Bild-Datei kommt auch mit dem Admin-Key nicht in den Bucket', async () => {
+    // Der Name passt zur Endungsliste, der Inhalt ist HTML.
+    const outcome = await storage.createFile({
       bucketId: bucketId!,
       fileId: ID.unique(),
       file: InputFile.fromBuffer(HTML, 'probe.png'),
       permissions: [Permission.read(Role.any())],
-    })
-    createdFiles.push(probe.$id)
+    }).then(
+      file => ({ fileId: file.$id, code: 0, type: '' }),
+      (error: { code?: number, type?: string }) => ({ fileId: '', code: error.code ?? -1, type: error.type ?? '' }),
+    )
+    // Darf nicht passieren — aber dann wenigstens aufräumen.
+    if (outcome.fileId) createdFiles.push(outcome.fileId)
 
-    const view = await request.get(`/api/storage/${bucketId}/${probe.$id}`)
-    expect(view.status()).toBe(404)
-    expect(view.headers()['x-content-type-options']).toBe('nosniff')
-    expect(view.headers()['content-type'] ?? '').not.toMatch(/text\/html/)
+    expect(outcome).toEqual({ fileId: '', code: 400, type: 'storage_file_type_unsupported' })
   })
 })
