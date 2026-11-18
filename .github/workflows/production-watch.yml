@@ -184,7 +184,20 @@
 #      `project.policies.read` tragen. Nur lesend; das Protokoll nennt nur
 #      Projekt und Regel-Namen aus dem Repo, nie einen gelesenen Wert.
 #
-# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 15
+#  16. VON HAND EINGESPIELTE DATEIEN (`verify-server-scripts.mjs`), TÄGLICH
+#      (CI1 c, 2026-11-18). Die beiden Tore, das Ausliefer-Skript, der
+#      Realtime-Wächter, das Backup, ihre Listen und der öffentliche
+#      Backup-Schlüssel liegen VON HAND auf den Servern; eine Änderung im Repo,
+#      die nicht eingespielt wurde, lief bis hierher still in der alten
+#      Fassung weiter. Beide Tore kennen das Wort `sums` (je Datei eine Zeile
+#      mit ihrer sha256); das Skript vergleicht mit dem Repo. Rot: eine Datei
+#      weicht ab oder fehlt. Nicht erreichbar oder „das Tor kennt `sums` noch
+#      nicht" ist KEIN Befund, sondern eine Warnzeile „nicht geprüft".
+#      Dazu ein Hinweis (vorerst nicht rot): ist der Wächter-Schlüssel auf
+#      app-prod schon auf das Tor beschränkt? (`echo frei` muss mit Exit 64
+#      abgelehnt werden.) Runbook: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
 # setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
@@ -244,8 +257,15 @@
 # ausschliesslich von Hand, nach der zweiten Frage, die kein Skript beantworten
 # kann („gibt es diesen Wert nirgends sonst?", siehe Runbook).
 #
-# WERTE VERLASSEN DEN SERVER NIE: das Skript kopiert sich hinüber und läuft
-# dort; zurück kommt nur der Bericht (Dateiname, Projekt, Status).
+# WERTE VERLASSEN DEN SERVER NIE: das Skript läuft dort (das Ausliefern legt
+# es ab, das Wächter-Tor `ops/app-watch-gate.sh` startet es); zurück kommt nur
+# der Bericht (Dateiname, Projekt, Status).
+#
+# ── DAS WÄCHTER-TOR AUF APP-PROD (CI1 a, 2026-11-18) ──────────────────────
+# Die Blicke 1, 2, 3, 5 (Server-Log), 9, 12 und 16 schicken auf app-prod nur
+# noch feste Worte an `/home/ploi/ops/app-watch-gate.sh` (von Hand
+# eingespielt). Mit freiem Schlüssel führt die Shell das Tor aus, mit festem
+# Befehl sshd — dieselbe Befehlszeile. Kein scp, keine freie Zeile.
 #
 # Rot wird der Lauf NUR bei einem toten Zugang. „Unklar" (Netz weg, Instanz
 # gerade nicht erreichbar) bleibt grün — ein Wächter, der bei jedem Aussetzer
@@ -621,6 +641,37 @@ jobs:
           SCHEMA_WATCH_KEY_BRANDING: ${{ secrets.SCHEMA_WATCH_KEY_BRANDING }}
         run: node scripts/ops/appwrite-auth-policies.mjs --ci
 
+      # Blick 16 (s. Kopf). Je Server ein Tor-Wort `sums`; zurück kommen nur
+      # Namen aus der festen Liste des Tors und Summen. „Nicht erreichbar" und
+      # „Wort unbekannt" sind Warnzeilen, kein Befund.
+      - name: Liegen auf den Servern die Dateien aus dem Repo?
+        if: always()
+        env:
+          PUKALANI_OPS_SSH: ploi@49.13.211.173
+          PUKALANI_APPWRITE_SSH: appwrite-prod
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: node scripts/ops/verify-server-scripts.mjs --strict
+
+      # Blick 16, Hinweis (s. Kopf). VORERST NUR EINE WARNUNG: der Schlüssel
+      # wird erst auf das Tor beschränkt, wenn es eingespielt ist und ein
+      # Lauf damit grün war (Runbook CI-SCHLUESSEL-TAUSCHEN.md, „Das
+      # Wächter-Tor"). Das Scharfstellen — hier `exit 1` statt der Warnung —
+      # ist eine eigene, spätere Änderung. Ins Protokoll kommen nur die festen
+      # Sätze unten, nie die Antwort des Servers.
+      - name: Ist der Wächter-Schlüssel beschränkt?
+        if: always()
+        run: |
+          set -u
+          code=0
+          out="$(ssh -o BatchMode=yes -o ConnectTimeout=20 ploi@49.13.211.173 'echo frei' 2>/dev/null </dev/null)" || code=$?
+          if [ "$code" -eq 64 ] && printf '%s\n' "$out" | grep -q '^Abgelehnt'; then
+            echo "Der Wächter-Schlüssel ist auf das Tor beschränkt: eine freie Befehlszeile endet mit Exit 64."
+          elif [ "$code" -eq 0 ] && [ "$out" = 'frei' ]; then
+            echo "::warning::Wächter-Schlüssel ist noch nicht auf feste Befehle beschränkt (eine freie Befehlszeile wurde ausgeführt). Runbook: docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, „Das Wächter-Tor“."
+          else
+            echo "::warning::Keine Aussage, ob der Wächter-Schlüssel beschränkt ist (Exit $code)."
+          fi
+
       - name: Befunde weiterreichen
         id: befunde
         if: always()
@@ -662,7 +713,7 @@ jobs:
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
       DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill) && '1' || '0' }}
-      # Die Sätze der Blicke 9 bis 15 (s. Kopf) — über `env`, nie direkt in
+      # Die Sätze der Blicke 9 bis 16 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}

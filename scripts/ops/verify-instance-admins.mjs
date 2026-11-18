@@ -39,33 +39,37 @@
  * WERTE ERSCHEINEN NIRGENDS: der Schlüssel wird nur als Kopfzeile benutzt,
  * ausgegeben werden Projekt, Kontenzahl und Zustand.
  */
-import { execFileSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const STRIKT = process.argv.includes('--strict')
-const SERVER = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
 const SERVER_ORDNER = '/home/ploi'
 
+/**
+ * `--ssh`: auf dem Server laufen lassen (die Schlüssel bleiben dort). Seit
+ * CI1 a (2026-11-18) über das Tor-Wort `instance-admins`
+ * (ops/app-watch-gate.sh): das Ausliefern legt diese Datei unter
+ * /home/ploi/<site>/ops/ ab, das Tor startet sie mit `--dir /home/ploi`.
+ * Vorher kopierte sie sich per scp selbst hinüber. Der Import des Tor-Wegs
+ * steht HIER drin: auf dem Server liegt die Datei allein.
+ */
 if (process.argv.includes('--ssh')) {
-  const ziel = '/tmp/pukalani-instance-admins.mjs'
-  const quelle = new URL(import.meta.url).pathname
-  try {
-    execFileSync('scp', ['-q', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', quelle, `${SERVER}:${ziel}`], { stdio: 'inherit' })
-  }
-  catch (fehler) {
-    console.error(`scp fehlgeschlagen — ${(fehler && fehler.message) || fehler}`)
-    process.exit(2)
-  }
-  // `exit $ergebnis` statt `; rm`: sonst ersetzt der Exit-Code des Aufräumens
-  // den des Laufs und der Wächter wäre IMMER grün.
-  const fern = `node ${ziel} --dir ${SERVER_ORDNER}${STRIKT ? ' --strict' : ''}; e=$?; rm -f ${ziel}; exit $e`
-  const lauf = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', SERVER, fern], { stdio: 'inherit' })
+  const { APP_SERVER, GATE_NOT_CHECKED, GATE_REJECTED, gateSshArgs } = await import('./app-watch-gate.mjs')
+  const args = STRIKT ? ['instance-admins', 'strict'] : ['instance-admins']
+  const lauf = spawnSync('ssh', gateSshArgs(APP_SERVER, ...args), { stdio: 'inherit' })
   if (lauf.error) {
     console.error(`ssh fehlgeschlagen — ${lauf.error.message}`)
     process.exit(2)
   }
-  process.exit(lauf.status ?? 2)
+  // 0 ruhig, 1 Fund (mit --strict); alles andere heißt „nicht geprüft" —
+  // Exit 2, nie „alles gut".
+  if (lauf.status === 0 || lauf.status === 1) process.exit(lauf.status)
+  const grund = lauf.status === GATE_NOT_CHECKED
+    ? 'ein Stück fehlt auf dem Server'
+    : lauf.status === GATE_REJECTED ? 'das Tor lehnt ab' : `Exit ${lauf.status ?? '?'}`
+  console.error(`Nicht geprüft — ${grund}. docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, „Das Wächter-Tor".`)
+  process.exit(2)
 }
 
 const argDir = process.argv.indexOf('--dir')
