@@ -14,6 +14,14 @@
 # Beweise, die sie brauchen (`braucht: ['einzel']`), räumen selbst auf und
 # zählen nach; an Pull Requests und auf main steht sie nicht.
 #
+# NACHTS KOMMT AUCH EIN VIERTES PROJEKT DAZU (seit 2026-11-18, BT1 a):
+# `branding` mit `apps/branding` (branding.supply) auf eigenem Port. Der
+# Server läuft dort mit GESTELLTEN ANTWORTEN (`BRAND_DEV_STUB_*`,
+# `MARKET_DEV_STUB`) und darf fremde Websites nur auf dem eigenen Rechner
+# abrufen (`BRAND_SITE_FETCH_ALLOW_LOOPBACK`, die Beweise liefern ihre
+# Probe-Seiten selbst aus). Kein KI-Schlüssel, kein Stripe-Schlüssel in der
+# `.env` — ein echter Aufruf wäre ohne Schlüssel gar nicht möglich.
+#
 # KEIN TOR FÜRS AUSLIEFERN: `deploy.yml` hört auf „Test" und „E2E (Appwrite)",
 # nicht auf diesen Lauf, und er ist keine Pflicht-Prüfung am Pull Request (das
 # wäre eine GitHub-Einstellung). Er läuft NEBEN den Pflicht-Prüfungen, ein
@@ -83,6 +91,8 @@ jobs:
       CONTROL_PORT: '3004'
       # Die Einzel-Instanz (nur nachts): derselbe Port wie in e2e.yml.
       EINZEL_PORT: '3001'
+      # branding.supply (nur nachts): der Port aus den Köpfen der Beweis-Skripte.
+      BRANDING_PORT: '3016'
       CONTROL_HOST: app.localhost
       SMTP_PORT: '1025'
       # Zeitplan ⇒ nacht; von Hand ⇒ die Eingabe; sonst (Pull Request, Push) ⇒ buehne.
@@ -167,7 +177,7 @@ jobs:
 
       # Zwei Projekte, zwei .env-Dateien, ein Naht-Geheimnis je Lauf. Die
       # Ausgabe nennt nur Schritte und Zahlen — das Protokoll ist öffentlich.
-      - name: Bühnen-Setup (Projekte admin + account, zwei .env)
+      - name: Bühnen-Setup (Projekte admin + account, nachts auch comments + branding)
         run: >
           node scripts/ci/buehne-setup.mjs
           --endpoint http://localhost:8080/v1
@@ -175,7 +185,7 @@ jobs:
           --platform-port "$PLATFORM_PORT"
           --control-host "$CONTROL_HOST"
           --smtp-port "$SMTP_PORT"
-          ${{ env.LAUF == 'nacht' && '--einzel-port "$EINZEL_PORT"' || '' }}
+          ${{ env.LAUF == 'nacht' && '--einzel-port "$EINZEL_PORT" --branding-port "$BRANDING_PORT"' || '' }}
 
       # Beide Datenbanken NEBENEINANDER: verschiedene Projekte, dieselbe
       # Instanz. Die Protokolle wandern in Dateien und werden nacheinander
@@ -221,6 +231,17 @@ jobs:
         run: |
           pnpm --filter comments run bootstrap --seed
           node --env-file=apps/comments/.env scripts/ops/appwrite-auth-policies.mjs --apply
+
+      # ── BRANDING.SUPPLY (nur nachts) ────────────────────────────────────
+      # Das VIERTE Projekt: `branding` (die Id ist nicht frei, s. o.). Die App
+      # hat keine Demo-Daten und braucht keine — jeder Beweis legt an, was er
+      # prüft, und räumt es wieder ab. `bootstrap` läuft hier über das
+      # Wurzel-Skript: `apps/branding` hat kein eigenes `bootstrap`-Skript.
+      - name: branding.supply — Bootstrap, Anmelde-Regeln
+        if: env.LAUF == 'nacht'
+        run: |
+          node --env-file=apps/branding/.env scripts/bootstrap.mjs --app branding
+          node --env-file=apps/branding/.env scripts/ops/appwrite-auth-policies.mjs --apply
 
       # ZWEI ENTWICKLUNGS-SERVER aus dem Checkout. Gewartet wird auf
       # `/api/health` — die Betreiber-App antwortet mit 200, der
@@ -278,6 +299,47 @@ jobs:
           curl -s -m 5 "http://localhost:$EINZEL_PORT/api/health" || true
           exit 1
 
+      # Vierter Entwicklungs-Server, nur nachts — mit GESTELLTEN ANTWORTEN:
+      # `BRAND_DEV_STUB_*` und `MARKET_DEV_STUB` ersetzen jeden KI-Aufruf durch
+      # eine feste Antwort (sie wirken nur außerhalb von Production),
+      # `BRAND_SITE_FETCH_ALLOW_LOOPBACK` erlaubt dem Abruf fremder Websites
+      # ausschließlich den eigenen Rechner — dort liefern die Beweise ihre
+      # Probe-Seiten selbst aus. Kein Schlüssel für KI oder Stripe liegt in der
+      # `.env`. Danach die Seiten aufrufen, die die Beweise zuerst brauchen
+      # (kalt 25 s und mehr je Seite); erst dann sagt BRANDING_READY dem
+      # Läufer, dass er `--branding-port` bekommt.
+      - name: branding.supply starten (apps/branding, gestellte Antworten)
+        if: env.LAUF == 'nacht'
+        env:
+          BRAND_DEV_STUB_CHECK: '1'
+          BRAND_DEV_STUB_REVIEW: '1'
+          BRAND_DEV_STUB_VISION: '1'
+          BRAND_DEV_STUB_DNA: '1'
+          BRAND_DEV_STUB_MARK: '1'
+          BRAND_DEV_STUB_IMAGE: '1'
+          MARKET_DEV_STUB: '1'
+          BRAND_SITE_FETCH_ALLOW_LOOPBACK: '1'
+        run: |
+          (cd apps/branding && nohup pnpm exec nuxi dev --port "$BRANDING_PORT" > "$RUNNER_TEMP/branding.log" 2>&1 &)
+          ready() {
+            curl -s -m 5 "http://localhost:$BRANDING_PORT/api/health" | tr -d ' \n' | grep -q '"ok":true.*"state":"ok"'
+          }
+          for i in $(seq 1 240); do
+            if ready; then
+              echo "branding.supply bereit nach ${i}s."
+              for page in / /de /erstgespraech /de/erstgespraech /brand-check/methodik /market-bot; do
+                code=$(curl -s -o /dev/null -m 180 -H 'accept: text/html' -w '%{http_code}' "http://localhost:$BRANDING_PORT$page" || true)
+                echo "  vorgewärmt: $page → $code"
+              done
+              echo 'BRANDING_READY=1' >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo '::error::branding.supply ist nach 240s nicht bereit'
+          curl -s -m 5 "http://localhost:$BRANDING_PORT/api/health" || true
+          exit 1
+
       # Zwei Beweise der Einzel-Instanz tippen in einem echten Browser
       # (Erwähnungen), und die Browser-Tests auf der Bühne (`buehne.mjs e2e`,
       # weiter unten) brauchen ihn auch. Dieselben drei Schritte wie in
@@ -310,10 +372,11 @@ jobs:
       # aufklappbare Gruppe im Protokoll; die Tabelle (Skript, Ergebnis,
       # Zählung, Dauer) steht in der Zusammenfassung des Laufs. Ein roter
       # Beweis hält die übrigen nicht auf, der Schritt endet dann rot.
-      # Ohne EINZEL_READY (Pull Request, main) kein `--einzel-port`: die
-      # Beweise der Einzel-Instanz stehen ohnehin nur auf `nacht`.
+      # Ohne EINZEL_READY bzw. BRANDING_READY (Pull Request, main) kein
+      # `--einzel-port` und kein `--branding-port`: die Beweise dieser zwei
+      # Server stehen ohnehin nur auf `nacht`.
       - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
-        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"}
+        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"} ${BRANDING_READY:+--branding-port "$BRANDING_PORT"}
 
       # Acht Test-Dateien prüfen die Trennung der Communities gegen eine
       # ECHTE Datenbank und werden ohne sie übersprungen — in `test.yml` also
@@ -367,6 +430,7 @@ jobs:
           echo '── Betreiber-App'; tail -n 60 "$RUNNER_TEMP/control.log" || true
           echo '── Platform-Server'; tail -n 60 "$RUNNER_TEMP/platform.log" || true
           if [ -f "$RUNNER_TEMP/einzel.log" ]; then echo '── Einzel-Instanz'; tail -n 60 "$RUNNER_TEMP/einzel.log" || true; fi
+          if [ -f "$RUNNER_TEMP/branding.log" ]; then echo '── branding.supply'; tail -n 60 "$RUNNER_TEMP/branding.log" || true; fi
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite appwrite-worker mariadb || true
 
   # ── ALARM ───────────────────────────────────────────────────────────────

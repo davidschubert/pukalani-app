@@ -6,6 +6,10 @@
  *
  *   node scripts/ci/buehne-setup.mjs --endpoint http://localhost:8080/v1
  *
+ * Nur nachts kommen zwei weitere Projekte dazu: `--einzel-port N` (Projekt
+ * `comments`, die Einzel-Instanz) und `--branding-port N` (Projekt `branding`,
+ * branding.supply).
+ *
  * Die Projekt-Ids sind NICHT frei wählbar: der Migrations-Runner vergleicht
  * sie mit `appwriteProjects` im `site.manifest.ts` der App (`apps/control`
  * lässt nur `admin` zu, `apps/platform` nur `account`).
@@ -45,11 +49,16 @@ const smtpPort = arg('smtp-port', '')
 // EINEN Account zulässt (ein zweiter Aufruf scheitert mit 501) — alle drei
 // Projekte kommen deshalb aus derselben Console-Sitzung.
 const einzelPort = arg('einzel-port', '')
+// NUR NACHTS: branding.supply (`apps/branding`) als viertes Projekt — aus
+// derselben Console-Sitzung wie die anderen (s. o.).
+const brandingPort = arg('branding-port', '')
 
 const CONTROL_PROJECT = 'admin'
 const POOL_PROJECT = 'account'
 // Nicht frei: `apps/comments/site.manifest.ts` lässt `account` und `comments` zu.
 const EINZEL_PROJECT = 'comments'
+// Nicht frei: `apps/branding/site.manifest.ts` lässt nur `branding` zu.
+const BRANDING_PROJECT = 'branding'
 
 // Wegwerf-Instanz: lokal durch, alles andere nur mit ausdrücklicher
 // Bestätigung (OPS-002). Beide Projekte liegen auf demselben Endpunkt.
@@ -59,7 +68,7 @@ assertTarget({ script: 'ci/buehne-setup', endpoint, projectId: CONTROL_PROJECT }
 // liegen dort die Zugänge der lokalen Instanz; dieses Skript ist für die CI,
 // wo es die Dateien noch nicht gibt. Geprüft wird VOR dem ersten Schritt an
 // der Console — sonst entstünden Projekt und Schlüssel, bevor der Abbruch kommt.
-for (const appDir of ['apps/control', 'apps/platform', ...(einzelPort ? ['apps/comments'] : [])]) {
+for (const appDir of ['apps/control', 'apps/platform', ...(einzelPort ? ['apps/comments'] : []), ...(brandingPort ? ['apps/branding'] : [])]) {
   if (existsSync(resolve(appDir, '.env'))) {
     console.error(`✗ ${appDir}/.env gibt es schon — dieses Skript schreibt nur auf einer frischen CI-Instanz.`)
     console.error('  Lokal gilt die vorhandene `.env`; die Bühne baut dort `pnpm buehne up` auf.')
@@ -71,6 +80,7 @@ const consoleSteps = await openConsole(endpoint)
 const controlKey = await consoleSteps.provisionProject(CONTROL_PROJECT)
 const poolKey = await consoleSteps.provisionProject(POOL_PROJECT)
 const einzelKey = einzelPort ? await consoleSteps.provisionProject(EINZEL_PROJECT) : ''
+const brandingKey = brandingPort ? await consoleSteps.provisionProject(BRANDING_PROJECT) : ''
 
 // Das Naht-Geheimnis zwischen Platform-Server und Betreiber-App: je Lauf neu.
 const seamSecret = randomBytes(32).toString('hex')
@@ -140,6 +150,26 @@ if (einzelPort) {
     'NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET=avatars',
     'NUXT_PUBLIC_APPWRITE_GDPR_BUCKET=gdpr-exports',
     `NUXT_PUBLIC_APP_URL=http://localhost:${einzelPort}`,
+  ])
+}
+
+// branding.supply: ein Projekt ohne Mandanten und ohne Naht zum Control
+// Plane. BEWUSST OHNE Schlüssel für KI, Stripe und Mail nach draußen — die
+// Beweise laufen gegen gestellte Antworten, die der SERVER über seine
+// Umgebung einschaltet (`BRAND_DEV_STUB_*`, `MARKET_DEV_STUB`, in
+// `buehne.yml`). Mails (Erstgespräch) gehen an den lokalen Briefkasten.
+if (brandingPort) {
+  writeEnv('apps/branding', [
+    '# Von scripts/ci/buehne-setup.mjs generiert (CI-Wegwerf-Instanz, branding.supply auf der Bühne)',
+    `NUXT_APPWRITE_KEY=${brandingKey}`,
+    `NUXT_APPWRITE_MIGRATIONS_KEY=${brandingKey}`,
+    `NUXT_PUBLIC_APPWRITE_ENDPOINT=${endpoint}`,
+    `NUXT_PUBLIC_APPWRITE_PROJECT_ID=${BRANDING_PROJECT}`,
+    'NUXT_PUBLIC_APPWRITE_DATABASE_ID=main',
+    'NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET=avatars',
+    'NUXT_PUBLIC_APPWRITE_GDPR_BUCKET=gdpr-exports',
+    `NUXT_PUBLIC_APP_URL=http://localhost:${brandingPort}`,
+    ...smtp,
   ])
 }
 
