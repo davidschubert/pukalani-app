@@ -101,7 +101,7 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterSubsc
   const tokenHash = hashInsightsNewsletterToken(token)
   const tokenExpiresAt = insightsNewsletterTokenExpiry()
 
-  let rowId = ''
+  let rowId: string
   try {
     // Erst nachsehen — und zwar über denselben Unique-Index, der die Dublette
     // ohnehin verhindert.
