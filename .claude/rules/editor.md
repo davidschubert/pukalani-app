@@ -99,7 +99,7 @@ paths:
   inkl. GEGENPROBE (Commit 3d074289: drei Mutationen, drei Rote — Gate,
   Publikums-Filter und Auflösungs-Filter fallen je einzeln).
   `@tiptap/extension-mention` gehört EXAKT auf die Tiptap-Linie gepinnt
-  (Katalog, kein Caret; seit 2026-11-09 `3.33.0`, wandert GEMEINSAM mit den
+  (Katalog, kein Caret; seit 2026-11-18 `3.34.0`, wandert GEMEINSAM mit den
   `overrides` in pnpm-workspace.yaml — dort steht auch das Wechsel-Rezept):
   ungepinnt löst pnpm neu auf und der Lockfile bewegt sich um 1898
   Zeilen statt um 6. Messung, Optionen, Nebenbefunde:

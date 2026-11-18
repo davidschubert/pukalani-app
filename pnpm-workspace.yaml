@@ -33,7 +33,9 @@ onlyBuiltDependencies:
 # Wächter: `pnpm check:single-copy`.
 overrides:
   h3: ^1.15.11
-  # EINE Tiptap-Linie im ganzen Baum — heute 3.33.0 (2026-11-09:
+  # EINE Tiptap-Linie im ganzen Baum — heute 3.34.0 (seit 2026-11-18,
+  # Issue 354: Backspace/Undo nach automatischer Formatierung; davor 3.33.0
+  # seit 2026-11-09:
   # 3.27.1 trug zwei Lücken in @tiptap/core — HIGH ReDoS im Markdown-
   # Attribut-Parser, behoben ab 3.30.5, und mergeAttributes()/__proto__,
   # ab 3.30.4; die Markdown-Kopplung des UEditor trifft der ReDoS im
@@ -60,43 +62,43 @@ overrides:
   # Beweis nach jedem Wechsel: `pnpm why -r @tiptap/core` zeigt EINE
   # Version, keine Tiptap-Peer-Warnung, und eine UEditor-Seite liefert im
   # Dev-Server SSR 200 und rendert im Browser Markdown als Knoten.
-  '@tiptap/core': 3.33.0
-  '@tiptap/extension-blockquote': 3.33.0
-  '@tiptap/extension-bold': 3.33.0
-  '@tiptap/extension-bubble-menu': 3.33.0
-  '@tiptap/extension-bullet-list': 3.33.0
-  '@tiptap/extension-code': 3.33.0
-  '@tiptap/extension-code-block': 3.33.0
-  '@tiptap/extension-collaboration': 3.33.0
-  '@tiptap/extension-document': 3.33.0
-  '@tiptap/extension-drag-handle': 3.33.0
-  '@tiptap/extension-drag-handle-vue-3': 3.33.0
-  '@tiptap/extension-dropcursor': 3.33.0
-  '@tiptap/extension-floating-menu': 3.33.0
-  '@tiptap/extension-gapcursor': 3.33.0
-  '@tiptap/extension-hard-break': 3.33.0
-  '@tiptap/extension-heading': 3.33.0
-  '@tiptap/extension-horizontal-rule': 3.33.0
-  '@tiptap/extension-image': 3.33.0
-  '@tiptap/extension-italic': 3.33.0
-  '@tiptap/extension-link': 3.33.0
-  '@tiptap/extension-list': 3.33.0
-  '@tiptap/extension-list-item': 3.33.0
-  '@tiptap/extension-list-keymap': 3.33.0
-  '@tiptap/extension-mention': 3.33.1
-  '@tiptap/extension-node-range': 3.33.0
-  '@tiptap/extension-ordered-list': 3.33.0
-  '@tiptap/extension-paragraph': 3.33.0
-  '@tiptap/extension-placeholder': 3.33.0
-  '@tiptap/extension-strike': 3.33.0
-  '@tiptap/extension-text': 3.33.0
-  '@tiptap/extension-underline': 3.33.0
-  '@tiptap/extensions': 3.33.0
-  '@tiptap/markdown': 3.33.0
-  '@tiptap/pm': 3.33.0
-  '@tiptap/starter-kit': 3.33.0
-  '@tiptap/suggestion': 3.33.0
-  '@tiptap/vue-3': 3.33.0
+  '@tiptap/core': 3.34.0
+  '@tiptap/extension-blockquote': 3.34.0
+  '@tiptap/extension-bold': 3.34.0
+  '@tiptap/extension-bubble-menu': 3.34.0
+  '@tiptap/extension-bullet-list': 3.34.0
+  '@tiptap/extension-code': 3.34.0
+  '@tiptap/extension-code-block': 3.34.0
+  '@tiptap/extension-collaboration': 3.34.0
+  '@tiptap/extension-document': 3.34.0
+  '@tiptap/extension-drag-handle': 3.34.0
+  '@tiptap/extension-drag-handle-vue-3': 3.34.0
+  '@tiptap/extension-dropcursor': 3.34.0
+  '@tiptap/extension-floating-menu': 3.34.0
+  '@tiptap/extension-gapcursor': 3.34.0
+  '@tiptap/extension-hard-break': 3.34.0
+  '@tiptap/extension-heading': 3.34.0
+  '@tiptap/extension-horizontal-rule': 3.34.0
+  '@tiptap/extension-image': 3.34.0
+  '@tiptap/extension-italic': 3.34.0
+  '@tiptap/extension-link': 3.34.0
+  '@tiptap/extension-list': 3.34.0
+  '@tiptap/extension-list-item': 3.34.0
+  '@tiptap/extension-list-keymap': 3.34.0
+  '@tiptap/extension-mention': 3.34.0
+  '@tiptap/extension-node-range': 3.34.0
+  '@tiptap/extension-ordered-list': 3.34.0
+  '@tiptap/extension-paragraph': 3.34.0
+  '@tiptap/extension-placeholder': 3.34.0
+  '@tiptap/extension-strike': 3.34.0
+  '@tiptap/extension-text': 3.34.0
+  '@tiptap/extension-underline': 3.34.0
+  '@tiptap/extensions': 3.34.0
+  '@tiptap/markdown': 3.34.0
+  '@tiptap/pm': 3.34.0
+  '@tiptap/starter-kit': 3.34.0
+  '@tiptap/suggestion': 3.34.0
+  '@tiptap/vue-3': 3.34.0
 
 # `ipx` ist eine OPTIONALE Abhängigkeit von @nuxt/image und wird ausschliesslich
 # vom eingebauten `ipx`-Anbieter gebraucht — also von dem, der die Bilder AUF DEM
@@ -113,7 +115,7 @@ ignoredOptionalDependencies:
 catalog:
   '@iconify-json/ph': ^1.2.2
   '@iconify-json/circle-flags': ^1.2.14
-  '@iconify-json/lucide': ^1.2.152
+  '@iconify-json/lucide': ^1.2.155
   '@nuxt/content': ^3.16.2
   '@nuxt/eslint-config': ^1.17.0
   # MUSS zur Nuxt-Generation passen: 10.4 gehört zu Nuxt 4.4 und zieht
@@ -166,12 +168,12 @@ catalog:
   # `renderMarkdown`-Handler (PostBodyEditor.vue) macht `@handle` daraus, und
   # `renderMarkdown` ist ein EXTENSION-FELD: `.configure()` erreicht es nicht,
   # nur `.extend()`. Darum die direkte Abhängigkeit.
-  # EINE Caret-Range würde hier alles kaputt machen: `^3.33.0` erlaubt 3.34,
-  # @nuxt/ui bliebe bei 3.33.0, und ZWEI Kopien von `@tiptap/core` heißen,
+  # EINE Caret-Range würde hier alles kaputt machen: `^3.34.0` erlaubt 3.35,
+  # @nuxt/ui bliebe bei 3.34.0, und ZWEI Kopien von `@tiptap/core` heißen,
   # dass Tiptap Extensions aus der fremden Kopie nicht mehr erkennt. Bei einem
   # @nuxt/ui-Bump gehört diese Zeile mitgezogen — `pnpm check:single-copy`
   # (Liste enthält `@tiptap/core`) ist der Wächter.
-  '@tiptap/extension-mention': 3.33.1
+  '@tiptap/extension-mention': 3.34.0
   # Bild-Naht Schritt 2 (C14). 2.2.1 (2026-11-06, GHSA-p5vf-pjf5-ggj3: Speicher-
   # fehler in der /_ipx-Route) haengt an h3 ^1.15.11 — die Linie, die
   # `overrides.h3` festhaelt — und an @nuxt/kit ^4.6.3, also EINE Kit-Linie
@@ -248,7 +250,7 @@ catalog:
   # Wer stripe importiert, deklariert es (apps/control tat es nicht — im
   # Worktree fand TypeScript dann die ALTE Kopie im Haupt-Checkout).
   stripe: ^23.1.0
-  '@playwright/test': ^1.65.0
+  '@playwright/test': ^1.65.1
   # MMDB-Leser für die City-Auflösung der Session-IPs (server/utils/geoCity.ts).
   # Bewusst `mmdb-lib` und nicht `maxmind`: reines JavaScript, keine nativen
   # Abhängigkeiten und kein eigenes Datei-Handling — wir laden den Puffer
