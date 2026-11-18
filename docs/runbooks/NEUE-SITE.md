@@ -68,6 +68,13 @@ die Kopfzeilen doppelt, und der tägliche Blick meldet `zuviel`.
 6. **Von außen prüfen:** `curl -sI https://<name>/` zeigt jede Schutz-
    Kopfzeile genau einmal; `curl -s https://<name>/api/health` meldet den
    Build.
+7. **Einstellungen ins Backup:** ist das Abholen der `.env`-Dateien
+   eingerichtet (`APPWRITE-WIEDERHERSTELLUNG.md`, § 6.1), liegt die App-Liste
+   dafür als eigene Kopie in `~/ops/apps.conf` auf dem App-Server — der Deploy
+   aktualisiert sie nicht. Die neue `ops/apps.conf` dorthin kopieren, sobald
+   die `.env` der neuen Site steht; `~/ops/app-env-bundle.sh list` muss die
+   Site mit `vorhanden` nennen. Vorher kopiert, endet das nächtliche Backup
+   rot im Schritt `app-einstellungen` (die Datenbank ist trotzdem gesichert).
 
 ## Kundendomain einer Community
 

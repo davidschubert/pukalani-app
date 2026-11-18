@@ -39,6 +39,7 @@ Jede Nacht um 03:30 UTC legt `ops/appwrite-backup.sh` einen Ordner an,
 | `volume-<name>.tar.gz.gpg` | je ein Archiv der Volumes aus der Tabelle unten |
 | `config.tar.gz.gpg` | `.env`, `docker-compose.yml`, `docker-compose.override.yml`, `patches/`, die zwei ClickHouse-Dateien |
 | `counts.tsv.gpg` | Zeilen je Tabelle, gezählt direkt vor dem Dump (der Maßstab beim Zurückspielen) |
+| `app-env.tar.gz.gpg` | die `.env`-Dateien der Apps (`<site>/.env` je Site aus `ops/apps.conf`), auf dem App-Server von `ops/app-env-bundle.sh` mit demselben öffentlichen Schlüssel verschlüsselt und vom Appwrite-Server abgeholt. Nur, wenn es eingerichtet ist (§ 6.1); `backup.meta` sagt `app_env=ok`, `aus` (nicht eingerichtet) oder `fehlt` (Abholen gescheitert) |
 | `backup.meta` | Kenndaten im Klartext: Zeitpunkt, Appwrite-Version, Zahl der Tabellen und Zeilen, Größen |
 | `SHA256SUMS` | Prüfsummen aller Dateien des Ordners |
 
@@ -71,10 +72,15 @@ ein Volume, das die Liste nicht kennt, bricht das Backup ab, bis jemand dort
 **Was NICHT im Backup liegt.**
 
 - Die Nutzungs-Statistik (ClickHouse) und alles Flüchtige (Redis, Vorschaubilder).
-- Die `.env`-Dateien der Apps auf dem App-Server. Sie tragen eigene Schlüssel
-  der Apps, auch die, mit denen einzelne Einstellungen in der Datenbank
-  versiegelt sind. Fällt nur der Appwrite-Server aus, sind sie nicht betroffen;
-  fällt der App-Server aus, hilft dieses Backup dabei nicht.
+- Die `.env`-Dateien der Apps auf dem App-Server — es sei denn, das Abholen
+  ist eingerichtet. Eingerichtet ist es, sobald `APP_ENV_SOURCE` im Zeitplan
+  steht (§ 6.1, § 6.2); dann liegen sie als `app-env.tar.gz.gpg` in jedem
+  Lauf. Sie tragen eigene Schlüssel der Apps, auch die, mit denen einzelne
+  Einstellungen in der Datenbank versiegelt sind. Fällt nur der
+  Appwrite-Server aus, sind sie nicht betroffen; fällt der App-Server aus,
+  holt man sie aus dem Lauf zurück („Die Einstellungen der Apps
+  zurückholen“, unter § 4). Ohne `APP_ENV_SOURCE` hilft dieses Backup dabei
+  nicht.
 - Alles, was nach 03:30 UTC geschah. Im schlimmsten Fall fehlt ein Tag.
 
 **Verschlüsselung.** `gpg` mit einem öffentlichen Schlüssel
@@ -247,6 +253,26 @@ Danach weiter bei § 4.2.
 Server zurückspielen. Den Lauf auf einem anderen Rechner zurückspielen (so wie
 in der Übung, § 7) und das Fehlende von dort holen.
 
+### Die Einstellungen der Apps zurückholen
+
+Für den Fall „App-Server weg“ (oder eine einzelne `.env` kaputt). Das Bündel
+`app-env.tar.gz.gpg` liegt in jedem Lauf, in dem `backup.meta` `app_env=ok`
+sagt; `ops/appwrite-restore.sh` packt es bewusst NICHT aus (es gehört auf einen
+anderen Server) und nennt es am Ende nur. Von Hand, auf einem eigenen Rechner,
+mit demselben privaten Schlüssel wie in § 4.3:
+
+```bash
+mkdir -p ~/restore && mkdir -m 700 ~/restore/gpg ~/restore/app-env
+gpg --homedir ~/restore/gpg --batch --import ~/restore/backup-schluessel.asc
+gpg --homedir ~/restore/gpg --batch --decrypt ~/restore/lauf/app-env.tar.gz.gpg > ~/restore/app-env.tar.gz
+tar tzf ~/restore/app-env.tar.gz                 # zeigt <site>/.env je Site
+tar xzf ~/restore/app-env.tar.gz -C ~/restore/app-env
+```
+
+Jede Datei `~/restore/app-env/<site>/.env` gehört auf dem App-Server nach
+`/home/ploi/<site>/.env` (in Ploi: Site → Environment), danach die App neu
+starten. Zum Schluss `rm -rf ~/restore` — dort liegen Schlüssel und Klartext.
+
 ## 5 · Bekannte Fallen
 
 - **Der Schlüssel im Passwort-Manager ist der einzige Weg in die Backups.**
@@ -307,6 +333,68 @@ nichts. Zurück zur vorigen Fassung: `mv ~/ops/appwrite-backup.sh.vorher
 Ändert sich `ops/appwrite-cert-gate.sh`, gehört das Tor dazu
 (`docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md`, Abschnitt „Tor auf appwrite-prod“).
 
+**Die `.env`-Dateien der Apps mitsichern (einmalig).** Der Appwrite-Server
+HOLT jede Nacht ein fertig verschlüsseltes Bündel vom App-Server ab; vom
+App-Server führt kein Weg zum Appwrite-Server oder zur Storage Box. Dafür
+bekommt der Appwrite-Server einen eigenen ssh-Schlüssel, der auf dem
+App-Server NUR `ops/app-env-bundle.sh` starten darf. Der Schlüssel entsteht
+auf dem Appwrite-Server, sein privater Teil verlässt ihn nie. Eingerichtet
+ist es, sobald `APP_ENV_SOURCE` im Zeitplan steht (§ 6.2); bis dahin sagt
+`backup.meta` `app_env=aus`.
+
+1. App-Server: Skript, App-Liste und öffentlichen Schlüssel ablegen, dann die
+   Liste ansehen (nennt je Site nur `vorhanden`, `fehlt`, `leer` oder
+   `unlesbar`, nie einen Wert):
+
+   ```bash
+   A='ploi@<app-server>'
+   ssh "$A" 'mkdir -p ~/ops && cp -p ~/ops/app-env-bundle.sh ~/ops/app-env-bundle.sh.vorher 2>/dev/null; true'
+   scp ops/app-env-bundle.sh ops/apps.conf ops/appwrite-backup.pub.asc "$A":ops/
+   ssh "$A" 'chmod 755 ~/ops/app-env-bundle.sh && ~/ops/app-env-bundle.sh list'
+   ```
+
+2. Appwrite-Server: den Abhol-Schlüssel erzeugen (ohne Passwort, der Zeitplan
+   läuft unbeaufsichtigt) und den ÖFFENTLICHEN Teil ausgeben:
+
+   ```bash
+   W='ploi@<appwrite-server>'
+   ssh "$W" "ssh-keygen -t ed25519 -N '' -C app-env-abholer -f ~/.ssh/app_env_abholer && cat ~/.ssh/app_env_abholer.pub"
+   ```
+
+3. App-Server: die Zeile in `~/.ssh/authorized_keys` eintragen, vorher eine
+   Kopie. `restrict` verbietet Weiterleitungen und Terminal, `command=`
+   erzwingt das Skript; das Wort des Abholers kommt dort als
+   `SSH_ORIGINAL_COMMAND` an und wird nur verglichen. Wer mag, setzt davor
+   noch `from="<adresse-des-appwrite-servers>",`.
+
+   ```bash
+   ssh "$A" 'cp -p ~/.ssh/authorized_keys ~/.ssh/authorized_keys.vorher'
+   ssh "$A" "echo 'restrict,command=\"/home/ploi/ops/app-env-bundle.sh\" ssh-ed25519 <öffentlicher-teil> app-env-abholer' >> ~/.ssh/authorized_keys"
+   ```
+
+4. Appwrite-Server: einen ssh-Alias anlegen, einmal von Hand abholen
+   (nimmt den Host-Schlüssel des App-Servers an) und die Vorschau ansehen:
+
+   ```bash
+   ssh "$W" 'cp -p ~/.ssh/config ~/.ssh/config.vorher 2>/dev/null; printf "\nHost app-env-quelle\n  HostName <app-server>\n  User ploi\n  IdentityFile ~/.ssh/app_env_abholer\n  IdentitiesOnly yes\n" >> ~/.ssh/config'
+   ssh "$W" 'ssh -o StrictHostKeyChecking=accept-new app-env-quelle list'
+   ssh "$W" 'APPWRITE_COMPOSE_DIR=/home/ploi/appwrite OFFSITE_TARGET=storagebox:backups/appwrite APP_ENV_SOURCE=app-env-quelle ~/ops/appwrite-backup.sh'
+   ```
+
+   Die Vorschau sagt „App-Einstellungen: <ssh-ziel> — 6 Sites, alle
+   vorhanden“. Erst dann den Zeitplan ergänzen (§ 6.2: vorher
+   `crontab -l > ~/crontab.vorher`, dann `APP_ENV_SOURCE=app-env-quelle`
+   vor das Skript setzen) und einen Lauf von Hand machen.
+
+Der Rückweg: im Zeitplan `APP_ENV_SOURCE=…` streichen (oder
+`crontab ~/crontab.vorher`); auf dem App-Server die Zeile `app-env-abholer`
+aus `~/.ssh/authorized_keys` löschen (oder die Kopie `.vorher` zurücklegen).
+Danach sagt jeder Lauf wieder `app_env=aus`. Eine neue Fassung von
+`ops/app-env-bundle.sh` kommt wie in Schritt 1 auf den App-Server;
+zurück zur vorigen: `mv ~/ops/app-env-bundle.sh.vorher ~/ops/app-env-bundle.sh`.
+Wird der Backup-Schlüssel getauscht (§ 6.5), gehört die neue
+`ops/appwrite-backup.pub.asc` auch auf den App-Server.
+
 ### 6.2 Der Zeitplan
 
 Im crontab des Benutzers `ploi` auf dem Appwrite-Server (`crontab -e`), eine
@@ -318,7 +406,10 @@ Zeile, kein root:
 
 `storagebox` ist ein Eintrag in `~/.ssh/config` des Servers (Adresse,
 Benutzer, Port 23, eigener Schlüssel). Ohne `--run` zeigt das Skript nur die
-Vorschau — ein Zeitplan ohne den Schalter sichert nichts.
+Vorschau — ein Zeitplan ohne den Schalter sichert nichts. Mit den
+App-Einstellungen (§ 6.1) steht zusätzlich `APP_ENV_SOURCE=app-env-quelle`
+vor dem Skript; sonst ändert sich an der Zeile nichts (auch nicht an
+`ops/cron.conf`, das nur Skript und Schalter prüft).
 
 ### 6.3 Nachsehen, ob es lief
 
@@ -343,6 +434,7 @@ früheren Läufe liegen und nennt den Schritt, an dem er scheiterte:
 | `volumes`, `einstellungen`, `verschluesseln` | Archiv nicht lesbar, Platte voll | `df -h /`, Protokoll |
 | `abgleich`, `pruefung-box` | Storage Box nicht erreichbar oder dort liegt nicht dasselbe | Der Lauf liegt auf dem Server und wird beim nächsten Mal nachgereicht. Hält es an: Zugang zur Box prüfen |
 | `aufbewahrung` | Löschen eines alten Laufs auf der Box scheiterte | von Hand ansehen; das Backup selbst ist vollständig |
+| `app-einstellungen` | Das Bündel der App-`.env`-Dateien kam nicht an oder bestand die Prüfung nicht (App-Server nicht erreichbar, eine `.env` fehlt oder ist leer, falscher Schlüssel). Gemeldet erst am ENDE des Laufs: die Datenbank ist vollständig gesichert und liegt auf der Box (`backup.meta`: `app_env=fehlt`) | Protokoll nennt den Grund; auf dem Appwrite-Server `ssh app-env-quelle list` |
 
 ### 6.4 Aufbewahrung und Löschungen
 

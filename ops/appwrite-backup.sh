@@ -9,6 +9,10 @@
 #                                   Spalten und Dateien verschlüsselt), Compose-
 #                                   Datei, Override, patches/, ClickHouse-Dateien
 #     counts.tsv.gpg                Zeilen je Tabelle, gezählt direkt vor dem Dump
+#     app-env.tar.gz.gpg            die .env-Dateien der Apps (`<site>/.env`), vom
+#                                   App-Server abgeholt, dort schon verschlüsselt
+#                                   (ops/app-env-bundle.sh) — nur, wenn
+#                                   APP_ENV_SOURCE gesetzt ist
 #     backup.meta                   Kenndaten im Klartext (Zahlen, keine Inhalte)
 #     SHA256SUMS                    Prüfsummen der Dateien dieses Ordners
 #
@@ -25,7 +29,7 @@
 #
 # ZEITPLAN (crontab des Benutzers, der in der docker-Gruppe ist; kein root):
 #   30 3 * * * APPWRITE_COMPOSE_DIR=<ordner> BACKUP_DIR=<ordner> \
-#     OFFSITE_TARGET='<ssh-ziel>:backups/appwrite' \
+#     OFFSITE_TARGET='<ssh-ziel>:backups/appwrite' APP_ENV_SOURCE=<ssh-ziel> \
 #     <ordner>/appwrite-backup.sh --run >> <ordner>/logs/appwrite-backup.log 2>&1
 #
 # ZURÜCKSPIELEN: ops/appwrite-restore.sh, Anleitung
@@ -47,6 +51,15 @@
 #   BACKUP_DIR               Default $HOME/backup
 #   OFFSITE_TARGET           rsync-Ziel (`<ssh-ziel>:<pfad>` oder lokaler Pfad);
 #                            leer = kein Abgleich (dann meldet der Lauf das laut)
+#   APP_ENV_SOURCE           woher das Bündel der App-Einstellungen kommt: ein
+#                            ssh-Ziel (Alias; dort startet ein erzwungener Befehl
+#                            ops/app-env-bundle.sh) oder — mit `/` im Wert — ein
+#                            lokales ausführbares Skript (Tests, Attrappe).
+#                            Leer = nicht eingerichtet (backup.meta: app_env=aus).
+#                            Scheitert das Abholen, läuft das Backup der
+#                            Datenbank trotzdem ganz durch; der Lauf endet erst
+#                            danach rot im Schritt `app-einstellungen`.
+#   APP_ENV_TIMEOUT          Sekunden für das Abholen, Default 300
 #   RETENTION_DAYS           lokal, Default 14
 #   OFFSITE_RETENTION_DAYS   auf der Box, Default 30 (nie kleiner als lokal)
 #   OFFSITE_KEEP_MIN         Default 7 · OFFSITE_MAX_DELETE Default 5
@@ -102,6 +115,8 @@ MAX_TABLE_LOSS_PERCENT="${MAX_TABLE_LOSS_PERCENT:-10}"
 ACCEPT_SHRINK="${BACKUP_ACCEPT_SHRINK:-0}"
 MIN_FREE_MB="${MIN_FREE_MB:-1024}"
 HELPER_IMAGE="${BACKUP_HELPER_IMAGE:-alpine}"
+APP_ENV_SOURCE="${APP_ENV_SOURCE:-}"
+APP_ENV_TIMEOUT="${APP_ENV_TIMEOUT:-300}"
 RUN_NAME='^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$'
 SYSTEM_SCHEMAS="'information_schema','performance_schema','mysql','sys'"
 
@@ -167,7 +182,12 @@ finish() {
   trap - EXIT
   [ -n "$WORK" ] && rm -rf "$WORK"
   [ -n "$PARTIAL" ] && rm -rf "$PARTIAL"
-  [ -n "$GNUPG_TMP" ] && rm -rf "$GNUPG_TMP"
+  if [ -n "$GNUPG_TMP" ]; then
+    # Die Prüfung des Bündels (`--list-only --decrypt`) kann einen gpg-agent
+    # in diesem Home starten; er soll mit dem Ordner gehen.
+    gpgconf --homedir "$GNUPG_TMP" --kill gpg-agent >/dev/null 2>&1 || true
+    rm -rf "$GNUPG_TMP"
+  fi
   if [ "$RUNNING" = 1 ] && [ "$code" -ne 0 ]; then
     write_state fehler "$STEP" || true
     log "✗ Backup GESCHEITERT im Schritt „$STEP“ (Exit $code). Frühere Läufe sind unberührt."
@@ -219,6 +239,61 @@ offsite_rm_run() {
 # Schalter, der Löschungen überträgt.
 offsite_rsync() {
   if target_is_remote; then rsync -e "ssh $SSH_OPTS" "$@"; else rsync "$@"; fi
+}
+
+# ── App-Einstellungen (Bündel vom App-Server) ───────────────────────────────
+app_env_is_local() { case "$APP_ENV_SOURCE" in */*) return 0 ;; *) return 1 ;; esac; }
+# Schickt der Quelle EIN Wort (bundle | list). Mit Frist, damit ein hängender
+# App-Server das Backup der Datenbank nicht aufhält.
+with_limit() { if command -v timeout >/dev/null 2>&1; then timeout "$APP_ENV_TIMEOUT" "$@"; else "$@"; fi; }
+app_env_call() { # <wort>
+  if app_env_is_local; then
+    with_limit "$APP_ENV_SOURCE" "$1" </dev/null
+  else
+    # shellcheck disable=SC2086
+    with_limit ssh $SSH_OPTS "$APP_ENV_SOURCE" "$1" </dev/null
+  fi
+}
+app_env_shown() { if app_env_is_local; then printf '%s' "$APP_ENV_SOURCE"; else printf '<ssh-ziel>'; fi; }
+
+# Holt das Bündel nach <ziel> und prüft es, ohne privaten Schlüssel: nicht
+# leer, ein OpenPGP-Paket, verschlüsselt für den Verschlüsselungs-Schlüssel
+# aus BACKUP_PUBLIC_KEY und für keinen anderen. Wahr nur, wenn alles stimmt;
+# sonst steht der Grund in APP_ENV_PROBLEM. Läuft als Bedingung (`if`), also
+# ohne errexit — jeder Schritt prüft seinen Ausgang deshalb selbst.
+app_env_fetch() { # <ziel>
+  local out="$1" err="$WORK/app-env.stderr" status="$WORK/app-env.status" ours theirs id own match
+  if ! app_env_call bundle > "$out" 2> "$err"; then
+    APP_ENV_PROBLEM="die Quelle $(app_env_shown) liefert kein Bündel ($(tail -n 1 "$err" 2>/dev/null | cut -c1-200))"
+    return 1
+  fi
+  if [ ! -s "$out" ]; then APP_ENV_PROBLEM='das Bündel ist leer'; return 1; fi
+  # Der Verschlüsselungs-Schlüssel steht in den Zeilen pub/sub, deren eigene
+  # Fähigkeiten (Feld 12, kleine Buchstaben) ein `e` enthalten; Feld 5 ist die
+  # lange Kennung.
+  ours="$(gpg --batch --no-tty --homedir "$GNUPG_TMP" --show-keys --with-colons "$PUBKEY" 2>/dev/null \
+    | awk -F: '($1 == "pub" || $1 == "sub") && $12 ~ /e/ { print $5 }')"
+  if [ -z "$ours" ]; then APP_ENV_PROBLEM="in $(basename "$PUBKEY") steht kein Schlüssel zum Verschlüsseln"; return 1; fi
+  # `--list-only` nennt nur die Empfänger und entschlüsselt nichts; die
+  # Status-Zeile ENC_TO ist die maschinenlesbare Form (gpg 2.2 und 2.4 gleich).
+  # In eine Datei statt in eine Pipe: kein Scheinfehler 141, und der Exit von
+  # gpg (ohne privaten Schlüssel nie 0) zählt hier nicht.
+  gpg --batch --no-tty --homedir "$GNUPG_TMP" --status-fd 1 --list-only --decrypt "$out" > "$status" 2>/dev/null || true
+  theirs="$(awk '$1 == "[GNUPG:]" && $2 == "ENC_TO" { print $3 }' "$status")"
+  if [ -z "$theirs" ]; then APP_ENV_PROBLEM='das Bündel ist kein für einen Schlüssel verschlüsseltes OpenPGP-Paket'; return 1; fi
+  # Vergleich ohne Pipe (ein `| grep -q` wäre mit pipefail der bekannte
+  # Scheinfehler 141).
+  for id in $theirs; do
+    match=0
+    for own in $ours; do
+      if [ "$own" = "$id" ]; then match=1; fi
+    done
+    if [ "$match" = 0 ]; then
+      APP_ENV_PROBLEM="das Bündel ist (auch) für einen fremden Schlüssel verschlüsselt ($id), nicht nur für $FINGERPRINT"
+      return 1
+    fi
+  done
+  return 0
 }
 
 # Wählt aus einer Liste von Lauf-Namen (Standard-Eingabe) die, die weg dürfen:
@@ -337,6 +412,23 @@ if [ "$MODE" = '' ]; then
   else
     echo "Ablage außer Haus: KEINE (OFFSITE_TARGET ist leer)"
   fi
+  if [ -z "$APP_ENV_SOURCE" ]; then
+    echo "App-Einstellungen: nicht eingerichtet (APP_ENV_SOURCE ist leer)"
+  elif listing="$(app_env_call list 2>/dev/null)"; then
+    # Nur Zahlen: `list` nennt je Site einen Zustand, nie einen Wert.
+    counts="$(printf '%s\n' "$listing" | awk 'NF { n++ } $2 == "vorhanden" { v++ } END { printf "%d %d", n, v }')"
+    sites="${counts% *}"
+    present="${counts#* }"
+    if [ "$sites" = 0 ]; then
+      echo "App-Einstellungen: $(app_env_shown) antwortet, nennt aber keine Site"
+    elif [ "$sites" = "$present" ]; then
+      echo "App-Einstellungen: $(app_env_shown) — $sites Sites, alle vorhanden"
+    else
+      echo "App-Einstellungen: $(app_env_shown) — $sites Sites, nur $present vorhanden (ein Lauf endete so rot im Schritt app-einstellungen)"
+    fi
+  else
+    echo "App-Einstellungen: $(app_env_shown) — NICHT erreichbar (ein Lauf sichert die Datenbank trotzdem und endet rot im Schritt app-einstellungen)"
+  fi
   echo
   print_status
   echo
@@ -383,6 +475,27 @@ shrunk() { # <jetzt> <vorher> <prozent> → wahr, wenn jetzt unter prozent % von
 refuse_shrink() { # <meldung>
   if [ "$ACCEPT_SHRINK" = 1 ]; then log "⚠ $1 — mit BACKUP_ACCEPT_SHRINK=1 angenommen"; else die "$1. Ist das gewollt (bewusst aufgeräumt), einmal von Hand mit BACKUP_ACCEPT_SHRINK=1 laufen lassen."; fi
 }
+
+# 0) App-Einstellungen — das fertig verschlüsselte Bündel vom App-Server
+#    abholen. Früh, weil es Sekunden dauert. Ein Ausfall hier hält das Backup
+#    der Datenbank NICHT auf: Ergebnis merken, weiter, und erst ganz am Ende
+#    (nach Ablage und Aufbewahrung) rot melden.
+APP_ENV=aus
+APP_ENV_BYTES=''
+APP_ENV_PROBLEM=''
+if [ -n "$APP_ENV_SOURCE" ]; then
+  STEP='app-einstellungen'
+  if app_env_fetch "$PARTIAL/app-env.tar.gz.gpg"; then
+    APP_ENV=ok
+    APP_ENV_BYTES="$(wc -c < "$PARTIAL/app-env.tar.gz.gpg" | tr -d ' ')"
+    log "App-Einstellungen: Bündel von $(app_env_shown), $APP_ENV_BYTES Bytes, verschlüsselt für unseren Schlüssel"
+  else
+    APP_ENV=fehlt
+    rm -f "$PARTIAL/app-env.tar.gz.gpg"
+    log "⚠ App-Einstellungen fehlen in diesem Lauf: $APP_ENV_PROBLEM — das Backup der Datenbank läuft weiter"
+  fi
+  rm -f "$WORK/app-env.stderr" "$WORK/app-env.status"
+fi
 
 # 1) Zählen — direkt vor dem Dump, mit derselben Verbindung wie der Dump.
 STEP='zaehlen'
@@ -490,6 +603,8 @@ done
   echo "dump_bytes=$DUMP_BYTES"
   printf '%s' "$VOLUME_META"
   echo "config_files=${PRESENT_CONFIG# }"
+  echo "app_env=$APP_ENV"
+  [ "$APP_ENV" != ok ] || echo "app_env_bytes=$APP_ENV_BYTES"
 } > "$PARTIAL/backup.meta"
 ( cd "$PARTIAL" && sha256sum -- *.gpg backup.meta > SHA256SUMS )
 FILES="$(find "$PARTIAL" -type f | wc -l | tr -d ' ')"
@@ -526,6 +641,14 @@ if [ -n "$OFFSITE_TARGET" ]; then
     if printf '%s\n' "$remaining" | grep -cx "$old" >/dev/null; then die "Der Lauf $old liegt nach dem Löschen noch auf der Ablage außer Haus"; fi
     log "Außer Haus gelöscht (älter als $OFFSITE_RETENTION_DAYS Tage): $old"
   done
+fi
+
+# Erst jetzt, mit der Datenbank sicher in der Ablage: fehlten die
+# App-Einstellungen, endet der Lauf rot (der Wächter liest die Stand-Datei).
+if [ "$APP_ENV" = fehlt ]; then
+  STEP='app-einstellungen'
+  if [ -n "$OFFSITE_TARGET" ]; then where='liegt lokal und auf der Ablage außer Haus'; else where='liegt lokal'; fi
+  die "Das Backup der Datenbank ist vollständig und $where (Lauf $STAMP), es fehlen die Einstellungen der Apps: $APP_ENV_PROBLEM"
 fi
 
 # 8) Stand — erst jetzt gilt der Lauf als gut.
