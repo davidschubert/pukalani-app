@@ -12,9 +12,12 @@
  *   pnpm buehne smoke  # Rauchtest gegen den laufenden Platform-Server
  *   pnpm buehne down
  *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004] [--einzel-port 3001]
+ *   pnpm buehne e2e    [--control-port 3004]  # zwei Browser-Tests gegen die Bühne
  *
  * `run` fährt die Beweis-Skripte laut Einteilung `scripts/buehne/beweise.mjs`
  * gegen die stehende Bühne — Einzelheiten im Kopf von `scripts/buehne/run.mjs`.
+ * `e2e` fährt die Browser-Tests, die die Bühne brauchen (übersprungen ⇒ rot) —
+ * Einzelheiten im Kopf von `scripts/buehne/e2e.mjs`.
  *
  * Weitere Optionen: `--env-platform <datei>` (Standard apps/platform/.env,
  * daraus Endpunkt, Pool-Projekt und Pool-Schlüssel) und `--env-control <datei>`
@@ -55,6 +58,7 @@ import {
   STAMP_COLUMNS,
   sweepRows,
 } from '../lib/probe-stage.mjs'
+import { e2eCommand } from './e2e.mjs'
 import { runCommand } from './run.mjs'
 import { runSmoke } from './smoke.mjs'
 
@@ -401,6 +405,10 @@ async function run() {
   process.exit(code)
 }
 
+async function e2e() {
+  process.exit(await e2eCommand({ root: ROOT, opts, state: readState() }))
+}
+
 async function smoke() {
   const state = readState()
   if (!state?.complete) fail('Keine vollständige Bühne laut Stand-Datei — erst `pnpm buehne up`.')
@@ -414,9 +422,9 @@ async function smoke() {
   process.exit(result.fail === 0 ? 0 : 1)
 }
 
-const COMMANDS = { up, down, status, env, smoke, run }
+const COMMANDS = { up, down, status, env, smoke, run, e2e }
 if (!COMMANDS[command]) {
-  console.error('Aufruf: node scripts/buehne/buehne.mjs <up|status|env|smoke|run|down> [--platform-port N] [--control-host H] [--suffix W] [--env-platform D] [--env-control D]')
+  console.error('Aufruf: node scripts/buehne/buehne.mjs <up|status|env|smoke|run|e2e|down> [--platform-port N] [--control-host H] [--suffix W] [--env-platform D] [--env-control D]')
   process.exit(2)
 }
 await COMMANDS[command]()

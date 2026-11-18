@@ -9,23 +9,29 @@ import { Client, Users } from 'node-appwrite'
  * den Inhalts-Routen 403 `community_removed` und kann der Leitung höchstens
  * eine Nachricht pro Woche schicken.
  *
- * ── WARUM DIESE SPEC IN DER CI ÜBERSPRUNGEN WIRD ───────────────────────────
+ * ── WO DIESE SPEC LÄUFT ────────────────────────────────────────────────────
  * „Entfernt" gibt es nur im POOL (viele Communities, ein Projekt) und nur mit
- * dem Control Plane dahinter, das die Mitgliedschaft führt. Die CI-Bühne ist
- * die Silo-App `apps/comments` ohne Mandant — dort ist das Projekt die Grenze,
- * und niemand kann entfernt sein. Die Spec läuft deshalb gegen eine lokale
- * Pool-Bühne (Platform-App + Betreiber-App, siehe docs/referenz/LIVE-BEWEISE.md)
- * und braucht ein Konto, dem dort der Zugang SCHON entzogen wurde:
+ * dem Control Plane dahinter, das die Mitgliedschaft führt. Die E2E-Suite
+ * (`e2e.yml`) fährt die Silo-App `apps/comments` ohne Mandant — dort ist das
+ * Projekt die Grenze, niemand kann entfernt sein, und die Spec überspringt
+ * sich. Sie läuft gegen die Pool-Bühne (Platform-App + Betreiber-App), deren
+ * Community A ein Konto hat, dem der Zugang SCHON entzogen wurde: nachts in
+ * `buehne.yml`, lokal genauso über
  *
- *   PW_POOL_URL=http://kunde-a.localhost:3150 \
- *   PW_POOL_ENDPOINT=http://localhost/v1 PW_POOL_PROJECT=account PW_POOL_KEY=… \
- *   PW_POOL_REMOVED_USER_ID=… \
- *   pnpm --filter comments exec playwright test community-removed
+ *   pnpm buehne e2e --control-port <port der Betreiber-App>
  *
- * Die Kontakt-Route ist je Adresse auf 5 Aufrufe je Stunde gebremst; wer die
- * Spec öfter hintereinander fährt, sieht danach den allgemeinen Fehlertext
- * statt Bestätigung oder Wochen-Grenze (Zähler im Prozess: Dev-Server neu
- * starten).
+ * Der Befehl leitet die Variablen `PW_POOL_*` aus dem Stand der Bühne ab und
+ * zählt einen übersprungenen Test als rot (scripts/buehne/e2e.mjs).
+ *
+ * Die Kontakt-Route ist je Adresse auf 5 Aufrufe je Stunde gebremst. Ohne
+ * Webserver davor kämen alle Läufe von derselben Adresse, und der sechste in
+ * einer Stunde sah den allgemeinen Fehlertext statt Bestätigung oder
+ * Wochen-Grenze (2026-11-18 beim Einzug gemessen: Lauf 6 rot). Deshalb gibt
+ * `pnpm buehne e2e` jedem Lauf eine eigene Aufrufer-Adresse in
+ * `PW_CLIENT_ADDRESS`, und der Browser schickt sie als `x-forwarded-for` mit —
+ * wie es auf Production der Webserver tut (scripts/buehne/client-address.mjs
+ * tut dasselbe für die Beweis-Skripte). Ohne die Variable bleibt alles wie
+ * vorher.
  *
  * Den HTTP-Beweis ohne Browser (samt Anlegen, Entziehen, Glocke, Mail und
  * Rückkehr per Einladung) führt Abschnitt 10 b2 in
@@ -38,9 +44,11 @@ const projectId = process.env.PW_POOL_PROJECT
 const apiKey = process.env.PW_POOL_KEY
 const removedUserId = process.env.PW_POOL_REMOVED_USER_ID
 const configured = Boolean(poolUrl && endpoint && projectId && apiKey && removedUserId)
+const clientAddress = process.env.PW_CLIENT_ADDRESS
 
 test.describe('Entfernt aus einer Community: nur noch die Hinweisseite', () => {
-  test.skip(!configured, 'Keine Pool-Bühne gesetzt (PW_POOL_*) — in der CI gibt es keinen Pool-Mandanten.')
+  test.skip(!configured, 'Keine Pool-Bühne gesetzt (PW_POOL_*) — in e2e.yml gibt es keinen Pool-Mandanten; auf der Bühne setzt `pnpm buehne e2e` sie.')
+  if (clientAddress) test.use({ extraHTTPHeaders: { 'x-forwarded-for': clientAddress } })
 
   let users: Users
   let sessionId = ''

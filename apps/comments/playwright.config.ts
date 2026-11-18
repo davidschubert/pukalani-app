@@ -27,7 +27,10 @@ catch { /* keine .env → env-gated Tests skippen */ }
  * kein EOF und hing bis zum 300-s-Force-Kill (Exit 1 trotz grüner Suite).
  * Preis: `npx playwright install chromium` einmalig (~120 MB), in CI ein
  * eigener Install-Schritt. Läuft gegen einen bereits laufenden Dev-Server
- * (reuseExistingServer) oder startet ihn selbst.
+ * (reuseExistingServer) oder startet ihn selbst — außer mit
+ * `PW_EXTERNAL_SERVER=1`: dann startet Playwright nie einen eigenen. So fährt
+ * `pnpm buehne e2e` die Pool-Spec gegen den Platform-Server der Bühne; ohne
+ * den Schalter hätte Playwright neben ihm `apps/comments` gestartet.
  *
  * Bewusst auth-frei: die Tests decken Routing, SSR-Render, i18n und die
  * öffentlichen Seiten ab — ohne Appwrite-Credentials, damit sie portabel/CI-
@@ -64,7 +67,7 @@ export default defineConfig({
     // Kein `channel` ⇒ Playwrights gebündeltes Chromium (siehe Kopfkommentar).
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: {
+  webServer: process.env.PW_EXTERNAL_SERVER ? undefined : {
     command: 'pnpm dev',
     url: baseURL,
     reuseExistingServer: true,
