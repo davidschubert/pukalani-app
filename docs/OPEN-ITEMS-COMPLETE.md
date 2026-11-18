@@ -30,6 +30,215 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N15 — Nacharbeiten „Die letzten kleinen Reste": LN1, CW1 (a), NF1 (a, b, c), BT1 (a, kleiner Teil), SI1 (d), LL1 (c), KI1 (d), AR1 (d), PB1 (c) ✅ 2026-11-18
+
+Die letzte Gruppe der Nacharbeiten. Alles ohne Davids Hilfe: nichts an der
+echten Datenbank, kein Schlüssel, kein bezahlter KI-Lauf, keine Migration auf
+Production. Pull Requests 377 (Lint), 379 (Beweis-Skripte, Menü-Links), 380
+(Ticket-Kauf), 381 (Bot-Prüfung an zwei Formularen), 383 (ein Test mit
+eingebauter Frist, `main` war rot), 382 (Code für 503), 385 (Übersicht der
+Marken), 384 (zwei E2E-Dateien nachts), 386 (voller Lauf des
+Migrations-Runners) und der Abschluss. Pull Request 387 (Übersetzung einer
+ganzen Seite im Hintergrund) ist gebaut und bleibt Entwurf, bis David die
+Migration freigibt — er steht in OPEN-ITEMS bei LL1 (d).
+
+**LN1 — der Lint sieht Routen-Ordner namens `public`.**
+
+- **Vorher:** `@nuxt/eslint-config` nimmt jeden Ordner namens `public` aus.
+  Das traf auch `server/api/insights/public/` und `server/api/pages/public/`
+  — zwölf Routen-Dateien liefen durch keinen Lint, weder den normalen noch
+  den typisierten.
+- **Jetzt:** beide Configs nehmen nur noch die statischen Ordner aus
+  (`apps/*/public`, `packages/*/public`, `packages/*/.playground/public`,
+  `docs/public`; eine Liste für beide: `scripts/lib/lint-static-public.mjs`).
+- **Was der Lint dort meldete:** zwei überflüssige Startwerte in der
+  Newsletter-An- und -Abmeldung. Behoben, ohne Änderung am Verhalten. Der
+  typisierte Durchgang war auf den zwölf Dateien grün.
+- **Beweise:** ein absichtlicher Verstoß in einer der Dateien wird gemeldet
+  (normal und typisiert); eine Datei in `apps/photos/public` und
+  `packages/themes/public` bleibt ausgenommen; der Test
+  `packages/core/tests/lintPublicFolders.test.ts` fragt ESLint selbst und
+  wird ohne die neue Zeile rot.
+
+**CW1 (a) — Test-Server in der CI.**
+
+- **Die zwei Beweis-Skripte** (`comments/verify-embed-boundary.mjs`,
+  `control/verify-account-bell.mjs`) holen ihre erste gerenderte Seite über
+  die neue Hilfe `waitForPage` (`scripts/lib/probe-stage.mjs`): sie wartet
+  bis zu 60 Sekunden und gibt IMMER die letzte Antwort zurück — eine
+  dauerhaft kaputte Seite bleibt rot.
+- **E2E, gemessen statt angehoben:** aus 56 Läufen die Zeit vom Beginn des
+  Playwright-Schritts bis „Running N tests". 49 grüne Läufe: 20 bis 39
+  Sekunden. 7 rote: volle 120 Sekunden, alle am 2026-11-18 zwischen 07:54 und
+  08:38 UTC, auf Zweigen von drei Gruppen. Dazwischen liegt kein Lauf — der
+  Server startete dort nicht langsam, sondern gar nicht. Die Frist bleibt bei
+  120 Sekunden. In der CI steht jetzt die Ausgabe des Dev-Servers im Job-Log;
+  bisher stand dort nur „Timed out waiting".
+- **Nicht geprüft:** die Ursache der sieben Hänger (bleibt in OPEN-ITEMS,
+  CW1 a), und ob das Warten die zwei roten Bühnen-Läufe geheilt hätte.
+
+**NF1 — Nebenfunde aus den Tests der Apps.**
+
+- **(a) Ticket-Kauf** (lebt nur in der Test-App): trägt jetzt die Prüfungen
+  der übrigen Termin-Routen, in der Reihenfolge der Zusage und vor dem ersten
+  Zugriff auf Datenbank oder Stripe — Produkt des Plans, Zugehörigkeit zur
+  Community (`requireCommunityParticipant`: ein Ticket zu kaufen ist wie
+  Zusagen ein erster eigener Schritt), Wartungs-Sperre. Dazu eine eigene
+  Bremse (`events:checkout`, 10). Aus dem offenen Punkt im Test sind 17 Tests
+  geworden; jede Ablehnung prüft auch: kein Lesen, kein Stripe-Aufruf.
+  Gegenproben je Sicherung rot.
+- **(b) Bot-Prüfung an zwei Formularen:** Erstgespräch (`apps/portfolio`,
+  Aktion `portfolio_intro_call`) und Kontakt (`apps/photos`, Aktion
+  `photos_contact`), je nach dem Honigtopf und vor Mail und Datenbank. Der
+  Zähler der Kontakt-Route zog aus dem Speicher des Prozesses in die Bremse
+  des Core (`photos:contact`, 3 je 10 Minuten; das war auch AR1 d). Beide
+  Routen mailen nur an den Betreiber, eine Grenze je Empfänger braucht es
+  nicht. Ohne Schlüssel arbeitet alles wie vorher.
+  **Auf pukalani.studio waren die Schlüssel schon gesetzt** — die Prüfung am
+  Erstgespräch ist dort seit dem Ausliefern scharf. Belegt: lokal mit den
+  Test-Schlüsseln von Cloudflare alle fünf Schritte geklickt, Absenden ⇒
+  Dank-Seite, genau eine Mail im lokalen Postfach, eine Zeile; ohne Ergebnis
+  des Widgets ⇒ 403, keine zweite Mail. Auf der echten Seite angesehen, ohne
+  abzusenden: Widget und Skript laden wie auf „Passwort vergessen".
+  **Nicht geprüft:** dass ein Mensch auf der echten Seite absenden kann — in
+  einem ferngesteuerten Browser liefert Cloudflare auf beiden Seiten kein
+  Ergebnis (steht in KR1).
+- **(c) Zwei Kleinigkeiten:** `PATCH /api/pages/navigation` prüft Menü-Links
+  jetzt geblättert gegen alle veröffentlichten Seiten (vorher höchstens 100
+  Zeilen; Gegenprobe mit dem alten Deckel rot), und der Prüfstand der
+  Rollen-Tests hat kein implizites `any` mehr.
+
+**BT1 (a), kleiner Teil — zwei E2E-Dateien laufen nachts mit.**
+
+- `pnpm buehne e2e` (`scripts/buehne/e2e.mjs`) leitet die Variablen aus dem
+  Stand der Bühne ab und fährt `apps/comments/e2e/community-removed.spec.ts`
+  und `apps/control/e2e/smoke.spec.ts`, ohne Wiederholungen. Ein
+  übersprungener Test macht den Lauf rot — sonst liefe der Schritt still
+  leer. Ein Schritt in `buehne.yml`, nur nachts.
+- **Beweise:** lokal sieben Läufe mit dem Endstand grün. Vorher im sechsten
+  und siebten Lauf rot: alle Läufe kamen von einer Adresse und liefen in die
+  Bremse der Kontakt-Route. Behoben im Test (eigene Aufrufer-Adresse je
+  Lauf), keine Wiederholung, keine gestrichene Prüfung. In der CI einmal von
+  Hand als Nacht-Lauf gestartet: 2 und 10 Tests bestanden, nichts
+  übersprungen.
+
+**SI1 (d) — eigener Code für 503.** Eine 503 trägt im Umschlag jetzt
+`UNAVAILABLE` statt `INTERNAL_ERROR`. Vorher geprüft, wer den Code liest:
+niemand im Repo (keine Seite, kein Skript, kein Wächter). Die Kunden-Hilfe
+nennt den neuen Code.
+
+**LL1 (c) und KI1 (d) — im Browser gezeigt, mit gestellten Läufen.**
+
+- **Dokument-Prüfung:** laufende Zeile ⇒ „Wird gelesen …"; Herzschlag alt ⇒
+  die offene Seite wechselt von selbst zu „Der Blick wurde unterbrochen …",
+  der Knopf ist wieder frei; fertig ⇒ der Ergebnis-Satz.
+- **Marktvergleich:** laufender Bericht ⇒ der ruhige Hinweis „Der Vergleich
+  wird geschrieben. Das geschieht im Hintergrund. …".
+- **Übersicht aller Marken — das sah falsch aus und ist behoben:** nach dem
+  Neuladen zeigte sie einen laufenden Fundament-Check nicht. Die lesende
+  Route liefert jetzt je Marke „läuft" (eine Abfrage mehr für alle Marken
+  zusammen), die Seite zeigt den vorhandenen Satz und fragt nach, bis der
+  Lauf endet. Keine neue Tabelle, kein neuer Text.
+- **Config-Seite** (in der Test-App, dort ist das Modell-Feld sichtbar): ein
+  Modell ohne Europa-Endpunkt und ein unbekanntes ⇒ „Nicht gespeichert" mit
+  dem genauen Satz, in der Datenbank unverändert; eines mit Europa-Endpunkt ⇒
+  gespeichert. Die Prüfung fragt nur die öffentliche Modell-Auskunft.
+- Kein bezahlter Aufruf. Alles Gestellte ist wieder entfernt und nachgezählt.
+
+**PB1 (c) — ein voller Lauf des Migrations-Runners baut nichts mehr um.**
+
+- **Gemessen, und es war mehr als die vier bekannten Stellen:** je App ein
+  voller Lauf im lokalen Spiegel mit dem Stand von `main`. Anlege- und
+  Lösch-Schritte je Lauf: portfolio 20, platform 98, control 143, comments
+  90. Nicht nur vier Spalten im Layer `system`, sondern die ganze Kette
+  `tenantId` → `communityId` in sieben Layern, alte Unique-Indizes ohne
+  Mandant, und im Layer `control` ganze abgelöste Tabellen samt Startwerten.
+- **Jetzt:** die alten, anlegenden Migrationen tragen eine Wache nach EINEM
+  Muster — steht der Nachfolger schon, hat die Instanz die Kette hinter sich,
+  das Alte wird nicht wieder angelegt. Auf einer frischen Instanz gibt es den
+  Nachfolger an der Stelle noch nicht, dort läuft die Kette wie bisher
+  einmal durch. Kein Register, keine neue Tabelle, keine neue Migration.
+  Hilfe: `scripts/migrations-lib/supersededGuard.mts`.
+- **Beweise:** je App drei volle Läufe mit dem neuen Stand — 0, 1, 0 und 1
+  Schritt (der eine ist ein Löschaufruf auf einen Index, der schon weg ist).
+  Schema danach mit dem Schema nach einem Lauf von `main` verglichen
+  (Tabellen, Spalten, Indizes, Rechte): keine Abweichung. Die frische
+  Instanz belegen die CI-Läufe (E2E und Bühne setzen leere Projekte auf) und
+  ein von Hand gestarteter Nacht-Lauf mit der Einzel-Instanz: alle grün.
+  Der Test `packages/core/tests/supersededGuards.test.ts` liest aus dem
+  Quelltext 144 Paare „angelegt, später entfernt" und verlangt die Wache;
+  die Ausnahme-Liste ist leer. Gegenprobe: eine Wache entfernt ⇒ der Test
+  nennt genau dieses Paar.
+- **Nicht geprüft:** eine Instanz mitten in einer Kette (nur im Code
+  begründet; Production steht am Ende aller Ketten) und die App `branding`
+  lokal (ihre eigenen Layer sind nicht angefasst).
+- **Nebenbei gesehen, nicht geändert:** vor der Änderung legte jeder volle
+  Lauf die alten Unique-Indizes ohne Mandant kurz wieder an — auf einem Pool
+  mit demselben Wert in zwei Communities wäre der Lauf daran gescheitert.
+  Einige alte Migrationen setzen bei jedem Lauf dieselben Tabellen-Rechte neu
+  (`system-013`, `-033` bis `-035`, `comments-007`/`-008`, `posts-002`); es
+  schreibt keine spätere andere Rechte, es baut also nichts um.
+
+**Dazwischen: `main` war rot, ohne dass sich Code geändert hatte.** Seit dem
+2026-11-18 12:00 UTC scheiterte `packages/control/tests/customDomainSweep.test.ts`
+(„zählt nur …", erwartet 1, gezählt 2). Die Route liest die echte Uhr, die
+Test-Welt hing an einem festen Zeitpunkt, und eine Frist der Welt lag zwei
+Tage dahinter — in genau diesem Augenblick. Behoben mit gestellter Uhr im
+Block der Route (PR 383); solange lieferte das Tor nichts aus. Danach
+gesucht: `pnpm -r test` mit einer um 45 und um 400 Tage vorgestellten
+Node-Uhr. Keine weitere Stelle dieser Sorte; elf Fehlschläge nur in Tests,
+die Shell- oder Kind-Prozesse starten (dort war nur die Node-Uhr verstellt —
+vermutlich die Methode, nicht einzeln nachgeprüft).
+
+**Live:** alle acht Hosts meldeten nach jedem Bündel `ok` mit dem Build des
+letzten Merges und Datenbank-Stand `ok` (593000c3, 90f1677d, 8f2d2c8d und
+zuletzt a317dcaa nach PR 386).
+
+**Ohne Rückfrage entschieden (klein, umkehrbar; auch im DECISION-LOG):**
+
+1. **Die Bot-Prüfung am Erstgespräch ging mit dem Merge scharf**, weil die
+   Schlüssel auf pukalani.studio schon gesetzt waren. Die Regel dafür hatte
+   David am 2026-11-15 entschieden; hier wurde nur ein Formular nachgezogen.
+   Zurück: ein Revert von PR 381.
+2. **Die E2E-Frist bleibt bei 120 Sekunden** — die Zahlen zeigen, dass eine
+   längere keinen Lauf gerettet hätte.
+3. **Ein Ticket zu kaufen zählt als Mitmachen** (kann bei offener
+   Registrierung der Beitritt sein), nicht als „eigenes Ändern". In einer
+   gesperrten Community bleibt der Kauf zu.
+4. **503 heißt im Umschlag `UNAVAILABLE`**, obwohl der Umschlag als fester
+   Vertrag für fremde Aufrufer beschrieben ist: der Status bleibt 503, und es
+   gibt heute keinen bekannten fremden Aufrufer.
+5. **Ein fertiger Übersetzungs-Vorschlag wird angeboten, nicht ungefragt
+   eingesetzt** (nur der Reiter, der gestartet hat, übernimmt von selbst).
+6. **Die Kontakt-Route von `apps/photos` zählt in der Bremse des Core** mit
+   derselben Zahl wie vorher (3 je 10 Minuten).
+7. **PB1 (c) über die vier Stellen hinaus gebaut**, weil erst so der Beweis
+   „der zweite Lauf ändert nichts" stimmt — weiter ohne Register.
+8. **Nicht gebaut (bleibt als Rest):** branding.supply als vierter Server im
+   Nacht-Lauf und der Code-Teil für Kundendomains in den Host-Listen der
+   Wächter. Beides ist größer als ein Rest. Der Mail-Blick (WA1 e) liegt in
+   `ops/app-watch-gate.sh` und gehörte der Gruppe N12.
+
+**Gelernt:** (1) **Ein Test, dessen Welt an einem festen Datum hängt, darf
+die echte Uhr nirgends lesen.** Die Funktion bekam `now` gereicht, die Route
+daneben nicht — zwei Tage lang grün, dann rot auf `main`, ohne dass jemand
+etwas geändert hatte. Wer eine Test-Welt mit Fristen baut, stellt die Uhr für
+JEDEN Einstieg, auch für den, der kein `now` annimmt. (2) **Was im Test-Job
+läuft, hat keine vorbereiteten Apps.** Ein Test, der `eslint.typed.config.mjs`
+lädt, war lokal grün und in der CI rot: die Config verlangt die
+`.nuxt`-tsconfigs, die es dort nicht gibt. (3) **„Vier bekannte Stellen" war
+eine Zählung aus einem Layer.** Die Messung über alle Apps fand ein
+Vielfaches; ohne sie wäre ein Teil repariert und der Beweis trotzdem falsch
+gewesen. Erst messen, dann den Umfang nennen. (4) **„Die Schlüssel sind dort
+nicht gesetzt" war eine Annahme.** Der öffentliche Schlüssel stand im
+ausgelieferten HTML, und der tägliche Wächter sagte, dass die Prüfung scharf
+ist — ein Blick von außen vor dem Merge hat gezeigt, dass die Änderung sofort
+wirkt, und die Klick-Probe lokal war deshalb Pflicht statt Kür. (5) **Ein
+ferngesteuerter Browser beweist bei einer Bot-Prüfung nur „lädt gleich wie
+die alte Seite"**, nicht „geht für einen Menschen". (6) **Mehrere Läufe
+hintereinander von einer Adresse laufen in die Bremsen** — ein E2E-Test, der
+eine gebremste Route trifft, schickt je Lauf eine eigene Aufrufer-Adresse.
+
 ### N12 — Nacharbeiten „Ausliefer-Weg": CI1 (a, b, c), RW1 (c), SI1 (c), MG1 (c) ✅ 2026-11-18
 
 Der Weg, über den alle acht Seiten ihre neuen Fassungen bekommen, ist
