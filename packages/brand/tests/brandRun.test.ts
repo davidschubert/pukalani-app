@@ -11,6 +11,7 @@ import {
   emptyBrandRunDetail,
   noBrandRunView,
   parseBrandRunDetail,
+  runningBrandRunSubjects,
   toBrandRunView,
 } from '../shared/brandRun'
 
@@ -142,5 +143,30 @@ describe('brandRunNoticeDue — eine Übersicht weist nur einen Tag lang auf ein
       expect(brandRunNoticeDue({ state, startedAt: iso(-60_000) }, NOW)).toBe(false)
     }
     expect(brandRunNoticeDue({ state: 'failed', startedAt: '' }, NOW)).toBe(false)
+  })
+})
+
+describe('runningBrandRunSubjects — die Übersicht über viele Marken (LL1 c)', () => {
+  const at = (subject: string, seq: number, input: Parameters<typeof row>[0] = {}) => ({ ...row(input), subject, seq })
+
+  it('nur Marken, deren JÜNGSTE Zeile läuft', () => {
+    const running = runningBrandRunSubjects([
+      at('p-laeuft', 1),
+      at('p-fertig', 1, { finishedAt: iso(0), outcome: 'done' }),
+      at('p-alt', 1, { heartbeatAt: iso(-RUN_LEASE_STALL_MS - 1) }),
+    ], NOW)
+    expect([...running]).toEqual(['p-laeuft'])
+  })
+
+  it('ein beendeter Nachfolger schlägt den älteren, scheinbar laufenden Vorgänger — in beiden Reihenfolgen', () => {
+    const older = at('p', 1)
+    const newer = at('p', 2, { finishedAt: iso(0), outcome: 'done' })
+    expect(runningBrandRunSubjects([older, newer], NOW).size).toBe(0)
+    expect(runningBrandRunSubjects([newer, older], NOW).size).toBe(0)
+    expect([...runningBrandRunSubjects([at('p', 1, { finishedAt: iso(0), outcome: 'failed' }), at('p', 2)], NOW)]).toEqual(['p'])
+  })
+
+  it('keine Zeilen ⇒ keine Marke', () => {
+    expect(runningBrandRunSubjects([], NOW).size).toBe(0)
   })
 })

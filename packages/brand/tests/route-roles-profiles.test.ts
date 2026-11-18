@@ -127,6 +127,60 @@ describe('GET /api/brand/profiles/scores (Punktzahlen)', () => {
     expect(leaks(run.result, 'c-fremd')).toBe(false)
   })
 
+  /**
+   * LL1 c (2026-11-18): die Liste zeigt nach dem Neuladen, dass ein
+   * Fundament-Check rechnet — gerechnet aus `brand_runs`, und nur für die
+   * EIGENE Marke (der laufende Check der fremden reist nicht mit).
+   */
+  const runRow = (id: string, subject: string, input: { heartbeatAt: string, finishedAt?: string, scope?: string }) => ({
+    $id: id,
+    $tableId: 'brand_runs',
+    $createdAt: '2026-11-18T10:00:00.000Z',
+    $updatedAt: '2026-11-18T10:00:00.000Z',
+    scope: input.scope ?? 'doc-check',
+    subject,
+    seq: 1,
+    startedAt: input.heartbeatAt,
+    heartbeatAt: input.heartbeatAt,
+    finishedAt: input.finishedAt ?? null,
+    outcome: input.finishedAt ? 'done' : null,
+    detail: '',
+  })
+
+  it('Besitzer: ein laufender Fundament-Check steht an der Zeile (`documentRunning`)', async () => {
+    const fresh = new Date(Date.now() - 5_000).toISOString()
+    const db = brandWorld([
+      runRow('run-eigen', OWN_PROFILE, { heartbeatAt: fresh }),
+      runRow('run-fremd', FOREIGN_PROFILE, { heartbeatAt: fresh }),
+    ])
+    const run = await callBrandRoute(scoresRoute, { who: 'owner', db })
+    expect(run.status).toBe(200)
+    const items = (run.result as { items: { profileId: string, documentRunning: boolean }[] }).items
+    expect(items).toEqual([expect.objectContaining({ profileId: OWN_PROFILE, documentRunning: true })])
+    expect(leaks(run.result, 'run-fremd')).toBe(false)
+  })
+
+  it('Besitzer: alter Herzschlag, beendeter Lauf oder eine andere Art ⇒ läuft nicht', async () => {
+    const now = Date.now()
+    for (const input of [
+      { heartbeatAt: new Date(now - 10 * 60_000).toISOString() },
+      { heartbeatAt: new Date(now - 5_000).toISOString(), finishedAt: new Date(now - 5_000).toISOString() },
+      { heartbeatAt: new Date(now - 5_000).toISOString(), scope: 'doc-review' },
+    ]) {
+      const run = await callBrandRoute(scoresRoute, { who: 'owner', db: brandWorld([runRow('run-eigen', OWN_PROFILE, input)]) })
+      expect(run.status).toBe(200)
+      expect((run.result as { items: { documentRunning: boolean }[] }).items[0]?.documentRunning).toBe(false)
+    }
+  })
+
+  it('Besitzer: die Lauf-Tabelle ist nicht lesbar ⇒ die Liste kommt trotzdem, „läuft nicht"', async () => {
+    const db = brandWorld()
+    db.failOn.add('brand_runs')
+    const run = await callBrandRoute(scoresRoute, { who: 'owner', db })
+    expect(run.status).toBe(200)
+    expect((run.result as { items: { documentRunning: boolean }[] }).items[0]?.documentRunning).toBe(false)
+  })
+
   it('der Betreiber ohne eigene Marke: leere Liste', async () => {
     const run = await callBrandRoute(scoresRoute, { who: 'operator', db: brandWorld() })
     expect(run.status).toBe(200)
