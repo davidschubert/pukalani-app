@@ -294,7 +294,7 @@
         "not_configured": "Kein API-Schlüssel hinterlegt — der Lauf hat nichts geholt.",
         "no_channels": "Keine Kanäle konfiguriert — der Lauf hat nichts geholt.",
         "quota_estimate": "Der Lauf wäre zu teuer geworden. Die Kanalliste ist zu lang.",
-        "running": "Der nächtliche Lauf war gerade unterwegs. Dieser Lauf hat nichts geholt."
+        "running": "Ein anderer Lauf war gerade unterwegs. Dieser Lauf hat nichts geholt."
       },
       "openLabel": "Auf YouTube ansehen",
       "verdictListed": "In deine Fundstücke gelegt.",

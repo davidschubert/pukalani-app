@@ -294,7 +294,7 @@
         "not_configured": "No API key present — the run fetched nothing.",
         "no_channels": "No channels configured — the run fetched nothing.",
         "quota_estimate": "The run would have been too expensive. The channel list is too long.",
-        "running": "The nightly run was underway. This run fetched nothing."
+        "running": "Another run was underway. This run fetched nothing."
       },
       "openLabel": "Watch on YouTube",
       "verdictListed": "Added to your finds.",
