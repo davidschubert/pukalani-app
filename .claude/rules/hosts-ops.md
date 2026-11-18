@@ -304,7 +304,15 @@ paths:
   `realtime-status`, `cron-status`; Einspielen nur von Hand — ebenso
   `~/ops/realtime-watchdog.sh`, vorher `ops/realtime-watchdog-attrappe.sh`).
   Vom
-  App-Server führt KEIN SSH-Weg zum Appwrite-Server. DER SCHLÜSSEL LIEGT NIE
+  App-Server führt KEIN SSH-Weg zum Appwrite-Server. In der Gegenrichtung
+  gibt es seit dem 2026-11-18 GENAU EINEN: der Schlüssel `app-env-abholer`
+  (entstand auf dem Appwrite-Server, verlässt ihn nie) steht in
+  `authorized_keys` des App-Servers mit `from=`, `restrict` und festem Befehl
+  `~/ops/app-env-bundle.sh` — er kann nur das verschlüsselte Bündel der
+  `.env`-Dateien abholen (`bundle`) oder die Site-Liste lesen (`list`).
+  Skript, `apps.conf` und der öffentliche Backup-Schlüssel liegen dafür VON
+  HAND in `~/ops/` des App-Servers; der Deploy aktualisiert sie nicht (neue
+  App ⇒ docs/runbooks/NEUE-SITE.md, Schritt 7). DER SCHLÜSSEL LIEGT NIE
   NEBEN FREMDEM CODE: `deploy.yml` baut im Job `build` ohne jedes Secret und
   liefert im Job `deliver` ohne `pnpm` aus; `pnpm check:workflows` hält das
   (Job mit Secret ⇒ Umgebung; Job mit Umgebung ⇒ kein Installieren). DIE

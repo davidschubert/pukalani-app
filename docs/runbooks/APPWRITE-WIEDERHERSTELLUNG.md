@@ -333,7 +333,7 @@ nichts. Zurück zur vorigen Fassung: `mv ~/ops/appwrite-backup.sh.vorher
 Ändert sich `ops/appwrite-cert-gate.sh`, gehört das Tor dazu
 (`docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md`, Abschnitt „Tor auf appwrite-prod“).
 
-**Die `.env`-Dateien der Apps mitsichern (einmalig).** Der Appwrite-Server
+**Die `.env`-Dateien der Apps mitsichern (einmalig; eingerichtet seit dem 2026-11-18, mit `from=` in der Zeile aus Schritt 3 und dem Server-Ausweis des App-Servers fest in `known_hosts` statt `accept-new`).** Der Appwrite-Server
 HOLT jede Nacht ein fertig verschlüsseltes Bündel vom App-Server ab; vom
 App-Server führt kein Weg zum Appwrite-Server oder zur Storage Box. Dafür
 bekommt der Appwrite-Server einen eigenen ssh-Schlüssel, der auf dem
@@ -510,6 +510,7 @@ noch berührt. Muss mit „Gescheitert: 0“ enden.
 | 2026-11-15 | Attrappe (`ops/appwrite-backup-attrappe.sh`) | rund 5 min | bestanden, alle Gegenproben rot wie erwartet |
 | 2026-11-15 | Echtes Backup: Lauf vom selben Tag von der Storage Box geholt, in einer eigenen Linux-Maschine (OrbStack) zurückgespielt, nur Kern-Dienste | Herunterladen 14 s · Zurückspielen bis „gesund“ 168 s (58 s, wenn die Programme schon da sind) · die übrigen Programme für einen vollen Start 158 s · Maschine und Docker davor 47 s | 908 von 908 Tabellen zählgleich, Konten je Projekt gleich; https mit dem Zertifikat aus dem Backup; Demo-Konto meldet sich an; Profilbild byte-gleich mit dem Ursprungsbild. Gegenprobe ohne den Schlüssel aus der `.env`: Anmeldung 401, Datei unlesbar. Zwei Funde, beide im Skript behoben: Abruf der Programme riss ab; anderer Ordner als auf dem Server ⇒ ClickHouse startete nicht. Danach alles gelöscht |
 | 2026-11-15 | Zeitplan: die Zeile im crontab einmal wenige Minuten voraus gestellt, danach zurück auf 03:30 | 16 s | cron hat den Lauf selbst gestartet, Exit 0, auf der Box angekommen; crontab danach wortgleich mit vorher |
+| 2026-11-18 | Kein Zurückspielen, nur das Einrichten: Abholen der App-Einstellungen eingeschaltet (§ 6.1), Attrappe mit dem neuen Schritt, dann ein Lauf von Hand mit der Zeile des Zeitplans | Attrappe rund 5 min · Lauf 15 s | Attrappe 102 bestanden. Lauf: 12 Dateien statt 11, `app_env=ok`, auf der Box angekommen, Prüfsummen gleich; das Paket nennt als Empfänger den Backup-Schlüssel und lässt sich auf dem Server nicht öffnen. Gegenprobe am Zugang: ein anderes Wort als `bundle`/`list` wird abgelehnt. **Nicht geprüft:** das Öffnen mit dem privaten Schlüssel — das gehört in die nächste Übung (§ 7) |
 
 Nicht geübt: ein voller Start mit Worker und Zeitplan-Diensten, ein echter
 Ersatz-Server mit Umstellen der Adresse, der Abruf von der Box ohne den alten

@@ -30,6 +30,117 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N11 — Nacharbeiten „Was Davids Klick braucht": P29, SV1 (b), BU1 (b, d), MG1 (c, d), RU1 (c), EL1 (d), AB1 (f), PB1 (b, d) ✅ 2026-11-18
+
+Die Punkte, die sich nicht ohne David erledigen ließen: Einstellungen am
+Datenbank-Server, Schlüssel, Läufe an echten Daten. Alles wurde erst im Repo
+vorbereitet und lokal bewiesen, dann in drei Runden gefragt (je höchstens
+vier Fragen), dann einzeln umgesetzt, nach jedem Schritt der Beweis.
+Pull Requests 321 bis 325 und der Abschluss.
+
+**Mit Davids Ja umgesetzt (alle am 2026-11-18):**
+
+- **Prüfung auf gestohlene Passwörter (P29).** Eine Zeile in der
+  Einstellungs-Datei des Appwrite-Servers, danach nur der eine Dienst neu
+  angelegt. Gemessen: 3 Sekunden ohne Antwort, danach alle acht Hosts `ok`,
+  die Variable steht im Dienst, der Prüf-Dienst antwortet von dort. Wer ein
+  Passwort aus einem bekannten Datenleck setzt, wird abgelehnt
+  (`password_breached`). Rückweg und Nachsehen:
+  [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md), „Abgleich mit Datenlecks".
+- **Täglicher Blick auf die Anmelde-Regeln (P29).** Statt vier neuer
+  Schlüssel mit Schreibrecht: die vier vorhandenen Lese-Schlüssel des Wächters
+  tragen zusätzlich `project.policies.read`, und der tägliche Lauf vergleicht
+  die Regeln aller vier Projekte mit dem Soll
+  (`appwrite-auth-policies.mjs --ci`, Blick 15). Kein neues Secret, kein Wert
+  wurde sichtbar. Erster Lauf gegen die echten Projekte: viermal „7 Regeln
+  stimmen". Gegenproben im Test (verstellte Regel, Schlüssel fehlt, Lesen
+  scheitert — jedes Mal rot, nie ein Wert in der Zeile).
+- **Schalter „JWT" aus (SV1 b)**, in allen vier Projekten. Vorher in Appwrite
+  2.7.1 nachgelesen: der Schalter trifft nur EINEN Aufruf (ein Token ohne
+  Schlüssel direkt bei der Datenbank holen), den unser Code nie macht. Geprüft
+  in `admin` und `account` mit einer angemeldeten Sitzung, vorher und nachher:
+  das Token der Seite meldet sich an (200), die Live-Verbindung erkennt das
+  Konto, die Naht zum Control Plane antwortet; das Holen eines neuen Tokens
+  endet jetzt in 501 statt 403. In `portfolio` und `branding` nur an der
+  Stellung des Schalters abgelesen.
+- **Einstellungs-Dateien der Apps im nächtlichen Backup (BU1 b).** Der
+  Appwrite-Server holt jede Nacht ein Bündel ab, das der App-Server schon
+  verschlüsselt hat (`ops/app-env-bundle.sh`, derselbe öffentliche Schlüssel).
+  Der Zugang dafür kann nur dieses eine Skript starten. Fällt das Abholen aus,
+  wird die Datenbank trotzdem gesichert, und der Lauf endet danach rot.
+  Probelauf: 12 Dateien statt 11, auf der Box angekommen, Prüfsummen gleich;
+  das Paket nennt als Empfänger den Backup-Schlüssel und lässt sich auf dem
+  Server nicht öffnen. Einrichten, Rückweg, Zurückholen:
+  [APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md),
+  § 6.1 und „Die Einstellungen der Apps zurückholen".
+- **Alte Textauszüge geleert (EL1 d).** Neue Regel `notification-excerpts`
+  im vorhandenen Aufräum-Skript. Lokal bewiesen (48 gezählt, 48 geleert, 0
+  danach; alle anderen Felder und alle anderen Auszüge unverändert, zwei
+  Kontroll-Zeilen blieben), dann auf Production: 48 im Projekt `account`,
+  0 in den drei anderen; geleert, nachgezählt 0.
+- **Lauf für nie beendete Runner-Läufe scharf (RU1 c).** Gelesen: sechs
+  Zähl-Läufe, jedes Mal 0. Der Schalter steht in `apps/control` auf `apply`.
+- **Migrations-Schlüssel (PB1 b).** Drei Schlüssel dürfen jetzt Dateilisten
+  lesen (nur lesen; gemessen 401 vorher, 200 nachher), und in drei
+  Schlüssel-Dateien steht die Zeile unter dem Namen, den die Migrationen
+  erwarten. Stand aller Zweck-Schlüssel:
+  [APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md).
+- **Node auf dem Mac (AB1 f):** 22.23.5 neben 22.18.0 installiert; die Tests
+  laufen damit.
+
+**Ohne Klick im Repo:** die Upload-Route antwortet verständlich, wenn die
+Ablage ablehnt (400 `upload_rejected` oder 503 `storage_unavailable` statt
+einer allgemeinen 500 — ein 401 des Server-Schlüssels sähe für die Seite wie
+„abgemeldet" aus); `tests.md` nennt, dass `platform.pukalani.app` nur
+`/api/health` beantwortet (PB1 d); der Satz zum lokalen Projekt stimmt
+wieder, 29 Beweis-Skripte fallen auf `account` statt auf das gelöschte `pool`
+zurück (MG1 d); das Aufräum-Skript lehnt einen unbekannten Regel-Namen ab.
+
+**Gezählt, nicht gebaut (MG1 c):** Soll gegen Ist aller Spalten in den vier
+echten Projekten — 40 von 1.644 fehlen, 2 stehen zusätzlich da, jede davon in
+einer Tabelle, deren Layer die App dort nicht nutzt. In den genutzten Layern
+weicht nichts ab. Die Empfehlung (Blick spaltengenau, je App nur ihre Layer)
+steht in OPEN-ITEMS „MG1" (c). **Schon erledigt gefunden (BU1 d):** der
+Zeitplan steht in `ops/cron.conf`, und `backup_drill` trägt „(Probealarm)".
+
+**Davids Antworten:** kein Ablaufdatum für die vier Lese-Schlüssel (Punkt
+geschlossen); die Adresse `changelog.pukalani.app` später (Cloudflare war in
+keinem Browser angemeldet — bleibt in OPEN-ITEMS „AR1" a).
+
+**Nicht geprüft:** eine echte Ablehnung eines gestohlenen Passworts auf einer
+Seite (steht in der Klick-Runde KR1); das Öffnen des Bündels der
+App-Einstellungen mit dem privaten Schlüssel (nächste Übung, BU1 c); der
+Schalter „JWT" in `portfolio` und `branding` über eine Sitzung; der scharfe
+Runner-Lauf an einem echten Fall (es gibt keinen).
+
+**Gelernt:** (1) Ein Probelauf beweist nur, was er ausführt. Die Warnung
+„Fallback" drucken die Migrationen selbst, der Probelauf des Runners startet
+keine — sein Schweigen sagt nichts. Bewiesen ist die Bedingung der Warnung.
+(2) Ein unbekannter Name hinter `--only` lief still durch und sah aus wie
+„nichts zu tun": das Zählen auf Production kam leer zurück, weil der
+Checkout die Regel noch nicht kannte. Das Skript lehnt das jetzt ab.
+(3) Den Schalter „JWT" sieht man von außen nicht (ein Gast bekommt in beiden
+Stellungen 401), wohl aber mit dem Token einer Sitzung: 403 wird 501. Den
+Vergleichswert VOR dem Umschalten holen — die erste Probe der Live-Verbindung
+schickte das Token falsch und hätte ohne Vergleich wie ein Schaden ausgesehen.
+(4) In der Verwaltung heißt das Leserecht `project.policies.read`, im
+Runbook stand `policies.read` (die Route nimmt beide). Und eine zugeklappte
+Gruppe von Rechten steht nicht in der Seite: vor dem Speichern die Zahl am
+Gruppenkopf lesen, sonst sieht es aus, als fielen Rechte weg.
+(5) Die abweichenden Spalten lagen alle in Tabellen, die die App nicht nutzt.
+„Ältere Instanzen weichen ab" war der Grund, den Vergleich nie anzuschließen
+— auf die genutzten Layer beschränkt, gibt es keine Abweichung.
+(6) Ein Server-Ausweis gehört von dort, wo er schon geprüft steht, und die
+Variable gehört vor dem Eintragen auf „nicht leer" geprüft: der erste Versuch
+las eine leere Zeile, und eine Suche nach der leeren Zeichenkette trifft jede
+Datei. (7) Ein Dienst, der eine neue Einstellung lesen soll, wird einzeln neu
+angelegt (`--no-deps`) und vorher als Probe gefahren; so waren es 3 Sekunden
+statt eines Neustarts des ganzen Stapels. (8) Tests mit echtem gpg laufen auf
+dem Mac nicht (kein gpg) und sind in der CI Pflicht — vor dem PR einmal im
+Linux-Container fahren.
+
+---
+
 ### N10 — Nacharbeiten „Lange Wege des Markenberaters": LL1 (b, drei von vier Wegen), der Fristen-Wächter und Kleinigkeiten aus LL1 (c) ✅ 2026-11-18
 
 Ein Eintrag aus Schritt 3 der offenen Punkte, fünf Pull Requests mit Code

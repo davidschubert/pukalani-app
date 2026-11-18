@@ -31,18 +31,21 @@ eine Zugangsart (gebaut, COMPLETE „N03"); Kurs-Vorschauen bleiben auffindbar
 nur für Mitglieder (beides gebaut, COMPLETE „N03") ·
 **RW1** kein Notweg ohne GitHub, vier Stände reichen (beide geschlossen) ·
 **BU1** Backup-Schlüssel bleibt in Davids zwei Passwort-Managern, keine zweite
-Person (geschlossen); Einstellungs-Dateien ins Backup · **AR1** erledigte
+Person (geschlossen); Einstellungs-Dateien ins Backup (eingerichtet,
+COMPLETE „N11") · **AR1** erledigte
 Umzugs-Anleitungen ins Archiv · **IN1** Marken-Seiten durch dieselbe Prüfung
 wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, nicht aufhalten
-(geschlossen) · **PB1** Migrations-Schlüssel dürfen Dateilisten lesen ·
+(geschlossen) · **PB1** Migrations-Schlüssel dürfen Dateilisten lesen
+(umgesetzt, COMPLETE „N11") ·
 **CI1** Dependabot 155 bis 157 übernehmen (erledigt) · **AB1** (erledigt am
-2026-11-17) und **P29** beide Server-Einstellungen einschalten.
+2026-11-17) und **P29** beide Server-Einstellungen einschalten (eingeschaltet
+am 2026-11-18, COMPLETE „N11").
 
 ### Schritt 2 — Davids Klick-Runde auf den echten Seiten
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Neun Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1, SV1 und die Anmelde-Mail aus P29. Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
+| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Neun Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1, SV1 und zwei aus P29 (Anmelde-Mail, gestohlenes Passwort). Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
 
 ### Schritt 3 — Baut Claude allein
 
@@ -57,22 +60,22 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | --- | --- | --- | --- | --- | --- |
 | CI1 | **Ausliefer-Weg: Nacharbeiten.** (a) Wächter-Zugang auf dem App-Server auf feste Befehle begrenzen, (b) Ausliefern über ein festes Skript, (c) Kleinigkeiten. **Wartet auf:** nichts. | Niedrig | M je Teil, (c) S | Nein (außer ein Klick je Site in Ploi) | [Einzelheiten](#ci1) |
 | RW1 | **Rückweg: Nacharbeiten.** Nur noch Kleinigkeiten: ein manueller Start mit dem laufenden Stand, die Übung an einer App mit Datenbank wiederholen. **Wartet auf:** CI1 (b), weil das feste Skript beide Wege zusammenführt. | Niedrig | S | Nein | [Einzelheiten](#rw1) |
-| MG1 | **Migrationen: Nacharbeiten.** (b) Ein Test des Rückweg-Skripts war auf `main` einmal ohne Grund rot — er zeigt jetzt Ausgabe und Exit-Code, die Ursache ist weiter offen (beobachten). (c) Zwei Reste: der tägliche Blick prüft je Layer nur eine Stelle; die lesenden Schlüssel laufen nie ab. **Wartet auf:** (b) den nächsten roten Lauf, (c) ein Ja. | Niedrig | S je Teil | **Ja: (c)** | [Einzelheiten](#mg1) |
+| MG1 | **Migrationen: Nacharbeiten.** (b) Ein Test des Rückweg-Skripts war auf `main` einmal ohne Grund rot — er zeigt jetzt Ausgabe und Exit-Code, die Ursache ist weiter offen (beobachten). (c) Den täglichen Blick spaltengenau prüfen lassen, je App nur für die Layer, die sie nutzt: gezählt am 2026-11-18, dort weicht heute keine Spalte ab. **Wartet auf:** (b) den nächsten roten Lauf, (c) nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#mg1) |
 
 **Bündel „Mails und Bremsen":**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| AB1 | **Anmelde-Bremse: Reste.** (a) Klick-Probe auf den echten Seiten: KR1. (f) Der Dev-Server warnt bei Node 22.18 (verlangt 22.21 oder neuer). Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02" und „N08"). **Wartet auf:** (a) Davids Zeit, (f) Davids Ja für ein neues Node auf dem Mac. | Niedrig | S je Teil | **Ja: (f)** | [Einzelheiten](#ab1) |
+| AB1 | **Anmelde-Bremse: Rest.** (a) Klick-Probe auf den echten Seiten: KR1. Alles andere ist erledigt (COMPLETE „N02", „N08", „N11"). **Wartet auf:** Davids Zeit. | Niedrig | S | (a) Ja: selbst klicken | [Einzelheiten](#ab1) |
 | SR1 | **Kleine Sicherheitsriegel: Reste.** (a) Klick-Probe: KR1. (b) Datenschutztext: DT1. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02" und „N08"). **Wartet auf:** Davids Zeit (KR1) und seine Freigabe (DT1). | Niedrig | S | **Ja** | [Einzelheiten](#sr1) |
 
 **Bündel „Fristen und Löschen":**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| EL1 | **Export und Löschung: Reste.** (b) Datenschutztexte: DT1. (d) Benachrichtigungen von vor dem 2026-11-15 behalten ihren Textauszug — ein einmaliger Lauf könnte ihn leeren (rund 50 Zeilen, nur im Projekt `account`). **Wartet auf:** (b) Davids Freigabe, (d) Davids Ja zu einem Lauf auf Production. | Niedrig | S | **Ja** | [Einzelheiten](#el1) |
+| EL1 | **Export und Löschung: Rest.** (b) Datenschutztexte: DT1. Die alten Textauszüge sind seit dem 2026-11-18 geleert (COMPLETE „N11"). **Wartet auf:** Davids Freigabe der Texte. | Niedrig | S | **Ja** | [Einzelheiten](#el1) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner). (c) Der neue Lauf für nie beendete Läufe zählt nur — nach den ersten Zahlen scharf schalten. Klick-Probe (a): KR1. **Wartet auf:** (b) nichts, (c) Davids Ja zur gezählten Zahl. | Niedrig | (b) M, Rest S | **Ja: (c)** | [Einzelheiten](#ru1) |
+| RU1 | **Runner: Reste.** (b) Den Auftragstext baut weiter der Browser (eingeschätzt: mittlerer Umbau, kein kleiner). Klick-Probe (a): KR1. Der Lauf für nie beendete Läufe ist seit dem 2026-11-18 scharf (COMPLETE „N11"). **Wartet auf:** (b) nichts. | Niedrig | (b) M | (a) Ja: selbst klicken | [Einzelheiten](#ru1) |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 
@@ -80,9 +83,8 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | --- | --- | --- | --- | --- | --- |
 | MM1 | **Mitmachen nur für Mitglieder: Rest.** (a) Klick-Probe auf den echten Seiten: KR1. Alles andere ist erledigt oder bewusst so entschieden (COMPLETE „N03" und „N08"). **Wartet auf:** Davids Zeit. | Niedrig | S | **Ja: selbst klicken** | [Einzelheiten](#mm1) |
 | IN1 | **Insights-Redaktion: Nacharbeiten.** (a) KI-Prüfung als eigener Knopf (Davids Wunsch, bewusst später), (c) vorhandene Marken-Seiten einmal öffnen und speichern (Handgriff im Dashboard, vor dem Freischalten von Profil, Duell und Ranking), (d) Kleinigkeiten. Klick-Probe (b) nach BI5. Die Prüfung der Marken-Seiten ist gebaut (COMPLETE „N05"), der Seed prüft sie mit (COMPLETE „N08"). **Wartet auf:** (a) Davids Startwort. | Niedrig | S bis M je Teil | **Ja: (a) Startwort** | [Einzelheiten](#in1) |
-| PB1 | **Profilbild-Ablage: Nacharbeiten.** (b) Migrations-Schlüssel angleichen und Dateilisten lesen lassen (entschieden: nur lesen), (c) ein voller Lauf des Migrations-Runners baut an drei Tabellen um, (d) Kleinigkeiten. Klick-Probe (a): KR1. **Wartet auf:** (b) Davids Ja am Tag der Schlüssel-Änderung. | Mittel | S je Teil, (c) M | **Ja: (b) Schlüssel auf Production** | [Einzelheiten](#pb1) |
-| BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (b) Einstellungs-Dateien der Apps verschlüsselt ins nächtliche Backup (entschieden), (c) Übung jährlich wiederholen, (d) Kleinigkeiten. **Wartet auf:** nichts. | Mittel | je Teil S | Nein | [Einzelheiten](#bu1) |
-| P29 | **Anmelde-Regeln auf Production: Reste.** Prüfung auf gestohlene Passwörter am Appwrite-Server einschalten (entschieden), je Projekt ein Schlüssel mit `policies`-Recht für den Skript-Lauf. Anmelde-Mail ansehen: KR1; Cookie-Satz: DT1. **Wartet auf:** Davids Ja am Tag der Umsetzung. | Mittel | S | **Ja: Server-Einstellung, Schlüssel** | [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md) |
+| PB1 | **Profilbild-Ablage: Nacharbeiten.** (c) Ein voller Lauf des Migrations-Runners baut an drei Tabellen um. Klick-Probe (a): KR1. Schlüssel und Kleinigkeiten sind seit dem 2026-11-18 erledigt (COMPLETE „N11"). **Wartet auf:** (c) nichts. | Niedrig | (c) M | (a) Ja: selbst klicken | [Einzelheiten](#pb1) |
+| BU1 | **Backup der Datenbank: Nacharbeiten** (hieß bis 2026-11-16 ebenfalls BK1). (c) Übung jährlich wiederholen — dabei zum ersten Mal auch das Bündel der App-Einstellungen mit dem privaten Schlüssel öffnen. (d) Kleinigkeiten, darunter Kopien auf den Servern löschen (ab dem 2026-12-02). Die Einstellungs-Dateien der Apps liegen seit dem 2026-11-18 im nächtlichen Backup (COMPLETE „N11"). **Wartet auf:** (c) Davids privaten Schlüssel, (d) den Termin. | Mittel | je Teil S | (c) Ja | [Einzelheiten](#bu1) |
 
 **Weitere Nacharbeiten:**
 
@@ -91,13 +93,13 @@ wie Artikel (gebaut, COMPLETE „N05") · **MG1** Datenbank-Rückstand melden, n
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. Die Icon-Zeilen, Fehler außerhalb einer Anfrage und der Zahlungswarn-Lauf sind seit 2026-11-17 erledigt (COMPLETE „N09"). **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Reste.** (b) Der öffentliche Brand-Check rechnet noch in der Anfrage, (c) Kleinigkeiten, (d) fünf weitere Wege über der Wartezeit des Webservers, die der neue Fristen-Wächter kennt. Zeichen-Entwürfe, Vorbilder lesen und Fundament-Check laufen im Hintergrund (COMPLETE „N10"). **Wartet auf:** nichts. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
-| SV1 | **Schreiben nur über den Server: Reste.** Der tägliche Wächter prüft seit 2026-11-17 die Anmelde-Wege der vier Projekte von außen (COMPLETE „N07"). Offen: (a) eine Klick-Probe auf den echten Seiten, (b) den Schalter „JWT" ausschalten, (c) das direkte Lesen, (d) Kleinigkeiten. **Wartet auf:** (a) auf Davids Zeit (KR1), (b) ein Klick je Projekt, (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken · (b) Ja | [Einzelheiten](#sv1) |
+| SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Bekannte Grenzen des Label-Abgleichs, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. Der Abgleich findet seit 2026-11-17 auch stillgelegte Communities und Herabstufungen (COMPLETE „N06"). **Wartet auf:** (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten, darunter das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (liegt in der Seite des Markenberaters, baubar nach N10). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
-| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen, (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
+| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 61 von 83 Beweis-Skripten von selbst, und acht weitere Layer haben Rollen-Tests für jede Route (COMPLETE „N09"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) 85 Routen stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten und vier Stellen zum Bewerten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
@@ -248,7 +250,12 @@ Test-Konto. Was genau zu klicken ist, steht beim jeweiligen Eintrag:
    holen ([KI1 a](#ki1)).
 7. **Runner** — ein echter Lauf über das Formular mit einem Testbefehl aus
    der Auswahl ([RU1 a](#ru1)).
-8. **Anmelde-Mail** — Sprache und Adresse der Mail ansehen (P29,
+8. **Anmelde-Mail und gestohlenes Passwort** — Sprache und Adresse der Mail
+   ansehen; dazu einmal bei einer Registrierung ein Passwort versuchen, das
+   in einem bekannten Datenleck steht. Erwartet: die Seite lehnt es mit einem
+   eigenen Satz ab, es entsteht kein Konto. Die Prüfung ist seit dem
+   2026-11-18 am Server eingeschaltet; gesehen hat die Ablehnung auf einer
+   echten Seite noch niemand (P29,
    [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)).
 9. **Anmeldung per Code und neue Community** — auf `account.pukalani.app`
    einen Code anfordern und damit anmelden; beim Anlegen einer Community das
@@ -301,35 +308,32 @@ BI2 und IN1 (b), siehe BI5.
   Exit-Code, Signal, Dauer, ob der Prozess überhaupt startete, und die Ausgabe
   ins Protokoll. Kommt es wieder: dort lesen, dann die Ursache suchen. Gehört
   zu [RW1](#rw1).
-- **(c) Zwei Reste.** (1) Die Probe je Layer sieht nur Tabellen und Spalten,
-  keine Indizes, Rechte oder Daten, und je Layer nur die jüngste ablesbare
-  Stelle. Der Baustein für mehr ist da: seit P20 liest
-  `scripts/lib/migration-inventory.mjs` alle Spalten aus den Migrationen.
-  Angeschlossen ist er an den täglichen Blick NICHT — der vergleicht Spalten
-  bewusst nur für wenige Tabellen, weil ältere Instanzen erklärbar abweichen.
-  Zu tun: einmal auf Production zählen, wie viele Spalten vom Soll abweichen
-  (nur lesen, Davids Ja), dann entscheiden, ob der Blick spaltengenau prüft.
-  (2) Die vier lesenden Schlüssel `watch-schema-readonly` (je Projekt einer,
-  in der GitHub-Umgebung `production-watch`) haben kein Ablaufdatum. Zu tun,
-  falls gewünscht: je Projekt einen neuen Schlüssel mit Ablauf anlegen, das
-  Secret tauschen (`gh secret set --env production-watch`), den alten
-  löschen, den Termin notieren. Ein abgelaufener Schlüssel macht den Blick rot,
-  nicht blind. Braucht Davids Ja und seinen Klick in der Appwrite-Verwaltung.
-- **(d) Nebenbei gefunden (2026-11-17).** `.claude/rules/appwrite.md` sagt
-  noch „lokal heißt das Dev-Projekt weiterhin `pool`"; seit dem Spiegel vom
-  2026-11-09 heißen die lokalen Projekte `account` und `admin`. Satz
-  anpassen und die Rückfälle auf `pool` in den Beweis-Skripten prüfen.
+- **(c) Den täglichen Blick spaltengenau prüfen lassen.** Die Probe je Layer
+  sieht nur Tabellen und Spalten an EINER Stelle je Layer, keine Indizes,
+  Rechte oder Daten. Der Baustein für mehr ist da
+  (`scripts/lib/migration-inventory.mjs` liest alle Spalten aus den
+  Migrationen), angeschlossen ist er nicht. Gezählt am 2026-11-18 in den vier
+  echten Projekten (nur lesend), Soll gegen Ist: über ALLE Tabellen fehlen 40
+  von 1.644 Soll-Spalten, 2 stehen zusätzlich da — 8 in `account`, 34 in
+  `portfolio`, keine in `admin` und `branding`. Jede einzelne liegt in einer
+  Tabelle, deren Layer die App dort gar nicht nutzt (Alt-Tabellen in
+  `portfolio`, der eingefrorene Schatten `communities` und `tickets` in
+  `account`). Beschränkt auf die Layer, die die App nutzt, weicht in keinem
+  Projekt eine Spalte ab. **Empfehlung:** den Blick spaltengenau machen, je
+  App nur für ihre Layer (die Liste kennt der Migrations-Runner aus dem
+  `site.manifest.ts`). Er wäre heute grün und würde eine von Hand angelegte
+  oder vergessene Spalte melden. Die vier lesenden Schlüssel bleiben ohne
+  Ablaufdatum (Davids Entscheidung vom 2026-11-18: sie lesen nur den Aufbau
+  der Tabellen und die Anmelde-Regeln, keine Inhalte).
 
 <a id="ab1"></a>
 
 **AB1 — Anmelde-Bremse: Reste (aus dem Gesamtaudit, Paket P02).**
 Die Teile (b) bis (e), (g) und die Kleinigkeiten aus (f) sind am 2026-11-17
-erledigt (COMPLETE „N02" und „N08"). Übrig:
+erledigt (COMPLETE „N02" und „N08"), das neue Node auf dem Mac am 2026-11-18
+(COMPLETE „N11"). Übrig:
 
 - **(a) Klick-Probe auf Live.** Steht in der Klick-Runde ([KR1](#kr1)).
-- **(f) Node auf dem Mac.** Der Dev-Server warnt bei Node 22.18 (verlangt 22.21
-  oder neuer); die Prüfungen laufen damit trotzdem grün. Ein neues Node ist
-  eine Änderung auf Davids Mac — deshalb sein Ja.
 
 <a id="sr1"></a>
 
@@ -367,20 +371,6 @@ und „N08"). Übrig:
   pukalani.studio brauchte keine Änderung (keine Konten, keine Prüfergebnisse).
   Auf branding.supply gibt es KEINE Sicherungskopie (kein Bucket eingetragen),
   der Text nennt dort deshalb keine.
-- **(d) Alte Textauszüge.** Benachrichtigungen zu Kommentaren und Erwähnungen,
-  die VOR dem 2026-11-15 entstanden, behalten ihren Textauszug, auch wenn der
-  Kommentar gelöscht wird (neue werden mit aufgeräumt; die Funktion dafür
-  liegt seit 2026-11-17 im Core, COMPLETE „N08"). Sie tragen eine zufällige
-  Kennung und lassen sich keinem Kommentar zuordnen. Gezählt im lokalen
-  Spiegel (Stand 2026-11-09): 52 solche Zeilen im Projekt `account`, keine in
-  `admin`, `branding` und `portfolio`. **Empfehlung:** ein einmaliger Lauf, der
-  bei genau diesen Zeilen den Auszug leert (die Meldung selbst bleibt, „X hat
-  geantwortet" steht weiter da) — erst zählen, dann leeren. Das ändert echte
-  Daten und braucht Davids Ja; ohne den Lauf verschwinden die Auszüge erst,
-  wenn der Empfänger die Meldung löscht oder sein Konto geht. Erinnerungen an
-  einen Termin nennen dessen alten Titel (so belassen: der Titel war zum
-  Zeitpunkt der Erinnerung richtig).
-  Referenz: [EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md).
 
 <a id="ru1"></a>
 
@@ -401,15 +391,6 @@ und „N08"). Übrig:
   Vertrag `resolveRunSubjectTrust` den Text mitliefern (nur `apps/control`
   kennt beide Layer), die Anlege-Route ihn nicht mehr aus der Anfrage nehmen;
   dazu ein Rollen-Test für die Anlege-Route. Rund sechs Dateien plus Tests.
-- **(c) Nie beendete Läufe: scharf schalten.** Seit dem 2026-11-17 gibt es
-  den Lauf `stale-run-retention` (COMPLETE „N08"): ein Lauf, der 7 Tage kein
-  Lebenszeichen zeigt und nie endete, wird wie mit dem Abbrechen-Knopf
-  beendet. Er steht in `apps/control` auf `count` und ZÄHLT NUR. Zu tun: die
-  Zahl in der Log-Zeile `retention.run` (job `stale-run-retention`) ansehen,
-  dann mit Davids Ja `staleRunRetention: 'apply'` setzen. Im lokalen Spiegel
-  (Stand 2026-11-09) gab es keinen solchen Lauf. Ohne Frist bleiben auf dem
-  Rechner die Arbeits-Zweige alter Läufe und das Log des Dienstes (Davids
-  Mac, kein Auftrag).
 
 <a id="mm1"></a>
 
@@ -485,14 +466,6 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   `branding.supply` je einmal ein Profilbild hochladen (wo die Seite eines
   anbietet). Scheitert es, fehlt dem Schlüssel dort das Schreibrecht für
   Dateien ([APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md)).
-- **(b) Schlüssel der Migrations-Envs — entschieden am 2026-11-16: sie
-  dürfen Dateilisten lesen (nur lesen).** In drei der vier Dateien steht der
-  Schlüssel unter `NUXT_APPWRITE_KEY` statt unter
-  `NUXT_APPWRITE_MIGRATIONS_KEY`; jeder Lauf warnt deshalb „Fallback". Und
-  drei der vier Schlüssel dürfen keine Dateilisten lesen (`admin`,
-  `portfolio`, `branding`). Zu tun: Namen angleichen, das Leserecht
-  ergänzen. Das Ändern der Schlüssel auf Production ist ein eigener Schritt
-  mit Davids Ja am Tag der Umsetzung.
 - **(c) Ein voller Lauf des Runners baut um.** `scripts/migrate.mjs` führt kein
   Register und fährt ohne `--only` jede Migration der App jedes Mal. Im Layer
   `system` legen ältere Migrationen Spalten an, die spätere wieder entfernen
@@ -503,41 +476,43 @@ und die 9 in der CI übersprungenen E2E-Tests sind die neun Themes aus
   <layer>-<NNN> --prod`; damit baut ein Production-Lauf nichts mehr um. Offen
   bleibt der volle Lauf (neues Projekt, lokaler Spiegel). Abhilfe: die
   Anlege-Migrationen prüfen, ob eine spätere die Spalte entfernt hat, oder ein
-  Register.
-- **(d) Kleinigkeiten.** Die Upload-Route fängt einen Fehler von Appwrite nicht
-  ab; er wird zu einer allgemeinen 500 statt zu einer verständlichen Meldung
-  (`packages/core/server/api/storage/[bucket]/index.post.ts`). In
-  `.claude/rules/tests.md` fehlt der Hinweis, dass `platform.pukalani.app` nur
-  `/api/health` beantwortet: eine Live-Probe einer Route gehört auf einen
-  Kontroll- oder Community-Host. Und lokal tragen alle vier Projekte die neue
-  Ablage: ein Checkout, der älter ist als `8b658900`, kann lokal kein
-  Profilbild mehr hochladen (Haupt-Checkout aktualisieren).
+  Register. **Empfehlung (2026-11-18):** die kleine Lösung — die vier
+  bekannten Stellen im Layer `system` legen ihre Spalte nur an, wenn keine
+  spätere Migration sie wieder entfernt (welche Spalten am Ende stehen, weiß
+  `scripts/lib/migration-inventory.mjs` schon). Ein Register ist ein neues
+  Datenmodell je Projekt und lohnt erst, wenn ein fünfter Fall auftaucht.
+  Beweis wäre ein voller Lauf gegen den lokalen Spiegel mit null
+  „✔"-Zeilen.
 
 <a id="bu1"></a>
 
 **BU1 — Backup der Datenbank: Nacharbeiten (aus dem Gesamtaudit, Paket P11).**
 
-- **(b) Die `.env`-Dateien der Apps — entschieden am 2026-11-16:
-  verschlüsselt ins nächtliche Backup.** Sie liegen heute nur auf dem
-  App-Server. Darin stehen eigene Schlüssel der Apps, auch die, mit denen
-  einzelne Einstellungen in der Datenbank versiegelt sind. Zu bauen: mit
-  demselben Schlüssel verschlüsselt mitsichern, dieselbe Box.
 - **(c) Übung wiederholen.** Einmal im Jahr und nach jeder Änderung an den
-  Skripten (Runbook `APPWRITE-WIEDERHERSTELLUNG.md`, § 7). Noch nie geübt:
-  ein voller Start mit allen Diensten, ein echter Ersatz-Server mit Umstellen
-  der Adresse, der Abruf von der Storage Box ohne den alten Server.
-- **(d) Kleinigkeiten.** Der nächtliche Zeitplan steht nur im crontab auf dem
-  Server und als Zeile im Runbook (als Vorlage ins Repo: eigener Punkt des
-  Gesamtaudits). Die Backups sind verschlüsselt, aber nicht signiert — wer
-  Zugang zur Box hat, könnte einen Lauf ersetzen; dagegen stehen die
+  Skripten (Runbook `APPWRITE-WIEDERHERSTELLUNG.md`, § 7). Die Skripte sind am
+  2026-11-18 geändert worden (das Bündel der App-Einstellungen kam dazu): die
+  nächste Übung öffnet zum ersten Mal `app-env.tar.gz.gpg` mit dem privaten
+  Schlüssel und vergleicht eine Datei daraus mit dem Server — bis dahin ist
+  nur bewiesen, dass verschlüsselt und abgelegt wird, nicht, dass sich das
+  Bündel wieder lesen lässt. Noch nie geübt: ein voller Start mit allen
+  Diensten, ein echter Ersatz-Server mit Umstellen der Adresse, der Abruf von
+  der Storage Box ohne den alten Server. Braucht Davids privaten Schlüssel.
+- **(d) Kleinigkeiten.** Die Backups sind verschlüsselt, aber nicht signiert
+  — wer Zugang zur Box hat, könnte einen Lauf ersetzen; dagegen stehen die
   Schnappschüsse und die Zählung beim Zurückspielen. Auf dem Appwrite-Server
   liegen alte Sicherungskopien im Appwrite-Ordner und zwei Volume-Reste ohne
   Eintrag in der Compose-Datei; beides aufräumen. Der Zugang zum Konto beim
-  Hoster gehört gehärtet (Einzelheiten privat). Ein Probealarm über
-  `backup_drill` trägt im Titel des Issues nicht „(Probealarm)“ — das
-  Kennzeichen hängt nur am Schalter `alarm_drill`. Auf dem Appwrite-Server
-  liegen die Vorgänger-Fassungen der Skripte als Weg zurück
-  (`*.vorher-p11*`); nach zwei ruhigen Wochen löschen.
+  Hoster gehört gehärtet (Einzelheiten privat). **Kopien löschen, ab dem
+  2026-12-02** (zwei ruhige Wochen nach dem 2026-11-18, Davids Ja): auf dem
+  Appwrite-Server die Vorgänger der Skripte (`*.vorher-p11*`,
+  `*.vorher-n11`), die Kopie der Einstellungs-Datei im Compose-Ordner
+  (`.env.vorher-n11-…`, sie trägt die alten Werte im Klartext) und die Kopien
+  von `config`, `known_hosts` und des Zeitplans; auf dem App-Server
+  `authorized_keys.vorher-n11-…`; auf dem Mac die drei
+  `*.env.vorher-n11` neben den Migrations-Schlüsseln. Erledigt und nur noch
+  nachgemessen: der nächtliche Zeitplan steht als erwarteter Eintrag in
+  `ops/cron.conf` und als Zeile im Runbook, und ein Probealarm über
+  `backup_drill` trägt „(Probealarm)" im Titel.
 
 <a id="pd1"></a>
 
@@ -832,7 +807,10 @@ Webservers (`packages/core/tests/routeDeadlineBudget.test.ts`).
 
 **SV1 — Schreiben nur über den Server: Reste (aus dem Gesamtaudit, Paket P13).**
 Erledigt am 2026-11-17 (COMPLETE „N07"): der tägliche Blick von außen auf die
-Anmelde-Wege der vier Projekte.
+Anmelde-Wege der vier Projekte. Erledigt am 2026-11-18 (COMPLETE „N11"): der
+Schalter „JWT" ist in allen vier Projekten aus. Die lokale Datenbank und die
+der CI haben alle Schalter AN — Tests laufen dort unter anderen Bedingungen
+als Production.
 
 - **(a) Eine Klick-Probe** (KR1, Nummer 9). Auf den echten Seiten ist am
   2026-11-16 gezeigt: Beitrag, Kommentar und Stimme anlegen, ändern und
@@ -846,15 +824,6 @@ Anmelde-Wege der vier Projekte.
   geprüft). Antwortet eine Anmeldeseite mit „hier gerade nicht verfügbar":
   Schalter „Email OTP" im Projekt wieder einschalten
   ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)) und hier melden.
-- **(b) Anmelde-Wege.** Der Wächter sieht von außen nur den Schalter
-  „Email/Password" (die fünf anderen würden bei offenem Weg ein Konto anlegen
-  oder eine Mail schicken). Der erste Lauf gegen die echten Projekte war am
-  2026-11-17 (von Hand gestartet, mit Davids Ja): alle vier „zu". Der Schalter
-  „JWT" ist bewertet: nichts im Code hängt
-  daran — er kann aus (ein Klick je Projekt in der Verwaltung, danach die
-  Live-Verbindung auf einer Seite ansehen). Die lokale Datenbank und die der
-  CI haben die Schalter AN, Tests laufen dort also unter anderen Bedingungen
-  als Production.
 - **(c) Das direkte Lesen.** Ein Konto liest direkt bei der Datenbank weiter
   jede Zeile, für die es ein Leserecht trägt, und immer die ganze Zeile. Das
   hängt an der Live-Verbindung und gehört zum Pukalani-Konto
@@ -943,11 +912,15 @@ SDK-Versionen aus dem Katalog.
 
 - **(a) Die Adresse `changelog.pukalani.app` löschen.** Sie zeigt noch auf den
   Datenbank-Server, dahinter ist nichts mehr (die Function und der Webhook
-  sind weg). David hat das Löschen am 2026-11-15 freigegeben; im Browser war
-  Cloudflare nicht angemeldet. Zu tun: bei Cloudflare in der Zone
-  `pukalani.app` den A-Eintrag `changelog` löschen. Der Name bleibt für
-  Kunden gesperrt (`RESERVED_SUBDOMAINS`). Danach die Zeile in
-  `docs/content/2.architektur/6.hosts-und-ports.md` streichen.
+  sind weg). David hat das Löschen am 2026-11-15 freigegeben und am
+  2026-11-18 auf später gelegt: Cloudflare war in keinem Browser angemeldet,
+  und ein Passwort gibt dort niemand außer ihm ein. Zu tun (David, oder eine
+  Session, sobald er angemeldet ist): Cloudflare → Zone `pukalani.app` → DNS
+  → Eintrag `changelog` (Typ A) → löschen. Der Name bleibt für Kunden gesperrt
+  (`RESERVED_SUBDOMAINS`). Danach von außen prüfen, dass der Name nicht mehr
+  auflöst, und die Zeile in `docs/content/2.architektur/6.hosts-und-ports.md`
+  streichen. Zurück: denselben Eintrag wieder anlegen (er zeigte auf dieselbe
+  Adresse wie `api.pukalani.app`).
 - **(d) Kleinigkeiten.** Ticket-Kauf (lebt nur in der Test-App): die
   Rückkehr-Adressen kommen weiter aus dem Host der Anfrage; die Prüfung
   „schon bezahlt" liest die 100 jüngsten Sitzungen und braucht ein
