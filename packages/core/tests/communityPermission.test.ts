@@ -7,6 +7,11 @@ import {
   __resetCommunityRoleResolver,
   type CommunityRoleResolver,
 } from '../server/utils/communityPermission'
+import {
+  communityAccessRecentlyDenied,
+  forgetCommunityAccessDecision,
+  rememberCommunityAccessRevoked,
+} from '../server/utils/communityJoin'
 
 // Nitro stellt createError global bereit (Auto-Import). h3 ist keine direkte
 // core-Dependency → im Node-Test ein minimaler Stub, der status/statusText
@@ -23,10 +28,15 @@ beforeAll(() => {
   // stiller Dauer-Bypass"). Im Node-Test ein No-Op — geprüft wird hier die
   // Entscheidung, nicht das Log.
   ;(globalThis as { logEvent?: (...args: unknown[]) => void }).logEvent = () => {}
+  // Auto-Import aus `communityJoin.ts`: das Tor liest die frische
+  // Entzugs-Notiz VOR der Rolle (BT1 e). Hier läuft die echte Funktion mit.
+  ;(globalThis as { communityAccessRecentlyDenied?: typeof communityAccessRecentlyDenied }).communityAccessRecentlyDenied
+    = communityAccessRecentlyDenied
 })
 
 afterEach(() => {
   __resetCommunityRoleResolver()
+  forgetCommunityAccessDecision('site-1', 'runtime-user-1')
   vi.restoreAllMocks()
 })
 
@@ -144,5 +154,64 @@ describe('requireCommunityPermission liefert den Handelnden mit', () => {
     const result = await requireCommunityPermission(fakeEvent({ user: operator }), 'pages.manage')
     expect(result.via).toBe('single-tenant')
     expect(result.actor).toBe('operator')
+  })
+})
+
+/**
+ * FRISCH ENTZOGEN SCHLÄGT DEN ROLLEN-CACHE (BT1 e, 2026-11-18).
+ *
+ * Nach „Zugang entziehen" meldet der Rollen-Resolver bis zu 30 s die alte
+ * Rolle. Für ein Recht, das schon die einfachste Rolle trägt
+ * (`members.invite`), ließ das Tor die entfernte Person in dieser Zeit durch;
+ * aufgehalten hat sie nur die Sperre davor. Jetzt liest das Tor die Notiz
+ * selbst — mit Gegenprobe, Rückweg und dem Betreiber, den es nicht betrifft.
+ */
+describe('requireCommunityPermission: die frische Entzugs-Notiz zählt vor der Rolle', () => {
+  it('Gegenprobe: ohne Notiz kommt die Rolle durch', async () => {
+    registerCommunityRoleResolver(() => 'viewer')
+    expect(await status(() => requireCommunityPermission(fakeEvent({ user, tenant }), 'members.invite'))).toBe(0)
+  })
+
+  it('mit Notiz: 403, obwohl der Resolver noch die alte Rolle meldet — und er wird gar nicht gefragt', async () => {
+    const resolver = vi.fn<CommunityRoleResolver>(() => 'viewer')
+    registerCommunityRoleResolver(resolver)
+    rememberCommunityAccessRevoked('site-1', user.$id)
+    expect(await status(() => requireCommunityPermission(fakeEvent({ user, tenant }), 'members.invite'))).toBe(403)
+    expect(resolver).not.toHaveBeenCalled()
+  })
+
+  it('auch eine hohe Rolle im Cache hilft nicht', async () => {
+    registerCommunityRoleResolver(() => 'owner')
+    rememberCommunityAccessRevoked('site-1', user.$id)
+    expect(await status(() => requireCommunityPermission(fakeEvent({ user, tenant }), 'community.transfer'))).toBe(403)
+  })
+
+  it('die Notiz gilt nur für DIESE Community und DIESES Konto', async () => {
+    registerCommunityRoleResolver(() => 'viewer')
+    rememberCommunityAccessRevoked('site-other', user.$id)
+    rememberCommunityAccessRevoked('site-1', 'someone-else')
+    try {
+      expect(await status(() => requireCommunityPermission(fakeEvent({ user, tenant }), 'members.invite'))).toBe(0)
+    }
+    finally {
+      forgetCommunityAccessDecision('site-other', user.$id)
+      forgetCommunityAccessDecision('site-1', 'someone-else')
+    }
+  })
+
+  it('Rückweg: ist die Notiz weg (Einladung angenommen), zählt die Rolle wieder', async () => {
+    registerCommunityRoleResolver(() => 'viewer')
+    rememberCommunityAccessRevoked('site-1', user.$id)
+    forgetCommunityAccessDecision('site-1', user.$id)
+    expect(await status(() => requireCommunityPermission(fakeEvent({ user, tenant }), 'members.invite'))).toBe(0)
+  })
+
+  it('der Betreiber im Not-Zugang kommt über sein Label, nicht über eine Rolle', async () => {
+    registerCommunityRoleResolver(() => null)
+    const operator = { $id: user.$id, labels: ['admin'] }
+    rememberCommunityAccessRevoked('site-1', operator.$id)
+    const result = await requireCommunityPermission(fakeEvent({ user: operator, tenant }), 'members.invite')
+    expect(result.via).toBe('operator')
+    expect(result.role).toBeNull()
   })
 })

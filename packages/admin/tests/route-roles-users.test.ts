@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { requireRecentAuth } from '../../core/server/utils/recentAuth'
+import { userIdOf } from '../../core/tests/support/participationHarness'
 import {
   type AdminExpectation,
   describeAdminRoute,
@@ -69,6 +70,75 @@ describeAdminRoute('DELETE /api/admin/gdpr-exports/:fileId', () => import('../se
 })
 
 describeAdminRoute('GET /api/admin/audit', () => import('../server/api/admin/audit.get'), OPERATOR_ONLY)
+
+// ── Nutzer löschen: die Reihenfolge der zwei Prüfungen ─────────────────────
+
+/**
+ * BEWERTET UND SO BELASSEN (BT1 e, 2026-11-18): die Prüfung „letzter Admin"
+ * steht VOR der frischen Anmeldung. Das ist Absicht (ein fachliches Nein
+ * braucht niemand erst nach einem neuen Login zu erfahren) und gibt nichts
+ * heraus: gefragt hat der Betreiber selbst, und die Antwort betrifft die
+ * Liste, die er ohnehin sieht. Festgehalten wird hier, was dabei NICHT
+ * passieren darf — vor der frischen Anmeldung wird kein Konto gelesen, nichts
+ * gelöscht und nichts protokolliert.
+ */
+describe('DELETE /api/admin/users/:id — die Reihenfolge der zwei Prüfungen', () => {
+  afterEach(resetAdminWorld)
+
+  const load = () => import('../server/api/admin/users/[id]/index.delete')
+
+  function world(overrides: Record<string, unknown> = {}) {
+    const touched: string[] = []
+    return {
+      touched,
+      globals: {
+        assertNotLastAdmin: async () => { touched.push('letzter-admin') },
+        requireRecentAuth: async () => { touched.push('frische-anmeldung') },
+        createAdminClient: () => ({ users: { get: async () => { touched.push('konto-lesen'); return { $id: TARGET } } } }),
+        deleteUserCompletely: async () => { touched.push('löschen'); return { ok: true, results: [], exportFileId: '' } },
+        recordAudit: async () => { touched.push('protokoll') },
+        ...overrides,
+      },
+    }
+  }
+
+  it('Gegenprobe: alles in Ordnung ⇒ erst die zwei Prüfungen, dann lesen, löschen, protokollieren', async () => {
+    const { touched, globals } = world()
+    const run = await probeAdminRoute(load, 'operator', { params: { id: TARGET }, globals })
+    expect(run.status, run.error?.statusText).toBe(200)
+    expect(touched).toEqual(['letzter-admin', 'frische-anmeldung', 'konto-lesen', 'löschen', 'protokoll'])
+  })
+
+  it('letzter Admin: abgelehnt, bevor nach der Anmeldung gefragt wird — nichts gelesen, nichts gelöscht', async () => {
+    const { touched, globals } = world({
+      assertNotLastAdmin: async () => {
+        throw Object.assign(new Error('At least one admin must remain'), { status: 400, data: { code: 'last_admin' } })
+      },
+    })
+    const run = await probeAdminRoute(load, 'operator', { params: { id: TARGET }, globals })
+    expect(run.status).toBe(400)
+    expect(run.error?.data).toEqual({ code: 'last_admin' })
+    expect(touched).toEqual([])
+  })
+
+  it('Anmeldung nicht frisch: abgelehnt, bevor das Ziel-Konto gelesen, gelöscht oder protokolliert wird', async () => {
+    const { touched, globals } = world({
+      requireRecentAuth: async () => {
+        throw Object.assign(new Error('Recent authentication required'), { status: 403, data: { code: 'recent_auth_required' } })
+      },
+    })
+    const run = await probeAdminRoute(load, 'operator', { params: { id: TARGET }, globals })
+    expect(run.status).toBe(403)
+    expect(touched).toEqual(['letzter-admin'])
+  })
+
+  it('das eigene Konto: abgelehnt vor beiden Prüfungen', async () => {
+    const { touched, globals } = world()
+    const run = await probeAdminRoute(load, 'operator', { params: { id: userIdOf('operator') }, globals })
+    expect(run.status).toBe(400)
+    expect(touched).toEqual([])
+  })
+})
 
 // ── Der Betreiber hinterlässt einen Eintrag ────────────────────────────────
 
