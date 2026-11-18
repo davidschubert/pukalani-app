@@ -11,6 +11,8 @@ import { type MarketRouteContext, requireMarketProfile, requireMarketUnlocked } 
 import { bookMarketRun } from '../../../../utils/marketQuota'
 import { listMarketCompetitors } from '../../../../utils/marketStore'
 import { marketRunStore, runMarketComparison } from '../../../../utils/marketRun'
+import { refuseWhileMarketRunActive } from '../../../../utils/marketReportRun'
+import { MARKET_REPORT_RUNNING_CODE, MARKET_REPORT_RUN_SCOPE } from '../../../../../shared/marketReportRun'
 
 /**
  * DER LAUF (Plan §2.3 Schritte 2–3, §7.5; MV1 M2) — seit GA1 P18 (BE-008)
@@ -72,6 +74,9 @@ import { marketRunStore, runMarketComparison } from '../../../../utils/marketRun
  *     bekommt 409 `run_running`, BEVOR er den Zähler berührt. Die Sperre hält
  *     auch zwei Anfragen in derselben Millisekunde auf (feste Zeilen-Id, der
  *     zweite `createRow` ist ein Konflikt — Kopf von `core/shared/runLease.ts`).
+ *  c2. DER AUSSCHLUSS (LL1 d): rechnet auf demselben Branding gerade ein
+ *     Bericht (`POST /report`), nimmt der Start seine Sperre zurück und
+ *     antwortet 409 `report_running` — Begründung im Kopf von `report.post.ts`.
  *  d. DAS KONTINGENT. Normal: `bookMarketRun` wie bisher. AUSNAHME: übernimmt
  *     dieser Start einen ABGEBROCHENEN Lauf (`stalled`), der gebucht und noch
  *     NICHT bezahlt war, erbt er dessen Buchung und bucht nicht neu. Ein Lauf,
@@ -141,6 +146,22 @@ export default defineEventHandler(async (event): Promise<MarketRunResponse> => {
     throw error
   }
   const { lease, previous, previousState } = acquired
+
+  // (c2) DER AUSSCHLUSS gegen den Bericht-Lauf (LL1 d): rechnet auf diesem
+  // Branding gerade `POST /report`, wartet der Vergleich — er schriebe die
+  // Marktprofile neu, über die der Bericht gerade rechnet (Begründung im Kopf
+  // von `report.post.ts`).
+  try {
+    await refuseWhileMarketRunActive(store, lease, {
+      scope: MARKET_REPORT_RUN_SCOPE,
+      subject: profileId,
+      code: MARKET_REPORT_RUNNING_CODE,
+    })
+  }
+  catch (error) {
+    logEvent('info', 'market.run_rejected', { code: rejectionCodeOf(error) })
+    throw error
+  }
 
   // (d) DAS KONTINGENT — oder die geerbte Buchung (s. Kopf).
   const inherits = marketRunInheritsBooking(previousState, previous?.detail)
