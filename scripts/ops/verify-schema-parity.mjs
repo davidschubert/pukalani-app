@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Hat jede Instanz die Tabellen, die dort existieren SOLLEN — und dieselben
- * Spalten, wo sich zwei Instanzen eine Tabelle teilen?
+ * Hat jede Instanz die Tabellen, die dort existieren SOLLEN — und in den
+ * Tabellen ihrer Layer genau die Spalten, die die Migrationen anlegen?
  *
  *   node --experimental-strip-types scripts/ops/verify-schema-parity.mjs        # am Mac (pnpm ops:schema-parity)
  *   node --experimental-strip-types scripts/ops/verify-schema-parity.mjs --ci   # im täglichen Produktions-Wächter
@@ -54,13 +54,37 @@
  * ein Wächter, der solche Altlasten anmahnt, wird weggelesen. Neue Tabelle ⇒
  * hier im passenden Layer-Block eintragen (Details bei jedem Block).
  *
- * DREI ARTEN VON BEFUND:
+ * SPALTEN GENAU (MG1 c, seit 2026-11-18): das Spalten-Soll ist NICHT
+ * gepflegt, sondern kommt aus den Migrations-Dateien
+ * (`scripts/lib/migration-inventory.mjs`) — und nur für die Layer, die die
+ * App der Instanz laut `site.manifest.ts` nutzt (`allowedLayersOf` aus
+ * `scripts/lib/migrate-plan.mjs` über der `LAYER_ORDER` aus
+ * `scripts/migrate.mjs`, dieselbe Auswahl wie beim Migrations-Runner; die
+ * Liste wird wie in `check-manifests.mjs` aus dem Quelltext gelesen, weil
+ * `migrate.mjs` beim Import losliefe). So stört weder der Altbestand in `portfolio` noch
+ * der eingefrorene Schatten (`communities`, `tickets`) in `account`: deren
+ * Layer nutzt die App dort nicht, sie haben kein Spalten-Soll. Gezählt am
+ * 2026-11-18 in den vier Projekten: auf die genutzten Layer beschränkt weicht
+ * keine Spalte ab. Was bewusst NICHT verglichen wird (unlesbare Migrationen,
+ * Tabellen aus ensure-Skripten, Appwrites `$`-Felder) und warum: Kopf von
+ * `scripts/lib/schema-columns.mjs`; ein ausgelassener Layer steht als
+ * ⚠-Zeile in der Ausgabe.
+ *
+ * DIE ALTE SPALTEN-PARITÄT ENTFÄLLT (`PARITY_TABLES`, Instanz gegen
+ * Instanz für system/admin/pages/analytics): jede dieser Tabellen gehört
+ * einem Layer, den JEDE Instanz, die sie trägt, auch nutzt — der
+ * Soll-Vergleich deckt sie also vollständig ab, und schärfer: die Parität sah
+ * eine Spalte nicht, die auf ALLEN Instanzen fehlte (dieselbe Lücke wie AU4
+ * bei den Tabellen), und keine zusätzliche.
+ *
+ * FÜNF ARTEN VON BEFUND:
  *   • Soll-Tabelle FEHLT       → FATAL (exit 1). Der Kern-Fix (changelog-Lücke).
- *   • Spalte fehlt (Parität)   → FATAL (exit 1). Wie E5: eine Tabelle, die auf
- *                                mehreren Instanzen im GLEICHKLANG läuft, muss
- *                                dieselben Spalten tragen — sonst hing dort eine
- *                                Migration zurück. Der SCOPE ist bewusst eng,
- *                                siehe PARITY_TABLES weiter unten.
+ *   • Spalte FEHLT             → FATAL (exit 1). Eine Migration des Layers lief
+ *                                hier nicht (Name steht im Repo, auch mit --ci).
+ *   • Spalte OHNE SOLL         → FATAL (exit 1). Von Hand angelegt oder eine
+ *                                Migration fehlt im Repo. Mit --ci nur Tabelle
+ *                                und ANZAHL (der Name ist nur Production bekannt).
+ *   • Probe eines Layers fehlt → FATAL (exit 1), nennt die Migration.
  *   • Ist-Tabelle NICHT im Soll → WARNUNG (nicht-fatal). Fängt neue, noch nicht
  *                                eingetragene Tabellen UND tote Alt-Tabellen
  *                                (portfolio schleppt sechs davon). Nicht fatal,
@@ -68,14 +92,19 @@
  *                                rot und „wird weggelesen".
  *
  * Schlüssel werden nie ausgegeben; gelesen werden nur Schema-Metadaten.
- * Exit 0 = alle Soll-Tabellen da + Spalten deckungsgleich (Warnungen erlaubt) ·
- * Exit 1 = irgendwo fehlt eine Soll-Tabelle oder eine Spalte ·
- * Exit 2 = weniger als zwei Instanzen lesbar (ohne Vergleich wertlos).
+ * Exit 0 = alle Soll-Tabellen da + Spalten wie im Soll (Warnungen erlaubt) ·
+ * Exit 1 = irgendwo fehlt eine Soll-Tabelle, eine Spalte oder eine Probe, eine
+ *          Spalte steht ohne Soll da, oder eine ausgerollte Instanz war nicht
+ *          lesbar ·
+ * Exit 2 = keine Instanz lesbar.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { allowedLayersOf } from '../lib/migrate-plan.mjs'
+import { layerInventory } from '../lib/migration-inventory.mjs'
+import { columnReport, columnSoll, compareColumns, readLayerOrder } from '../lib/schema-columns.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 /** `--ci`: Schlüssel aus der Umgebung, Protokoll ohne Namen, die nur Production kennt. */
@@ -316,8 +345,8 @@ const CONTROL_SOLL = [
 /**
  * brand (packages/brand) — der Brand-Wizard. Die acht Tabellen laufen
  * AUSSCHLIESSLICH auf `branding` (branding.supply) und stehen deshalb NUR im
- * BRANDING_SOLL: sie gehören nicht in die instanzweite Spalten-Parität (die
- * vergleicht nur system+admin+pages+analytics, s. u.).
+ * BRANDING_SOLL; ihre Spalten prüft der Soll-Vergleich nur dort (Layer
+ * `brand` steht nur im Manifest von `apps/branding`).
  * Schema: docs/plans/BRAND-WIZARD-SCHEMA.md.
  *
  * BIS 2026-08-31 STANDEN SIE IM PORTFOLIO_SOLL — das war der P1b-Zwischenstand
@@ -389,7 +418,7 @@ const BRAND_TABLES = [
  * market (packages/market) — der Marktvergleich (MV1 M1, Plan
  * docs/archiv/BRAND-MARKTVERGLEICH.md §2.6, Schema-Anhang B). Wie die
  * brand_*-Tabellen laufen die drei AUSSCHLIESSLICH auf `branding` und stehen
- * deshalb NUR im BRANDING_SOLL — nicht in der instanzweiten Spalten-Parität.
+ * deshalb NUR im BRANDING_SOLL — ihre Spalten prüft der Soll-Vergleich nur dort.
  *
  * Sie hängen an `brand_profiles.$id` (Spalte `profileId`) und fallen mit dem
  * Branding: die Kaskade läuft über `registerBrandProfileCascade`
@@ -417,7 +446,7 @@ const MARKET_TABLES = [
  * insights (packages/insights) — der redaktionelle Bereich Brand Insights
  * (BI1 I1, Plan docs/plans/BRAND-INSIGHTS.md §9.3). Wie die brand_*- und die
  * market_*-Tabellen laufen die drei AUSSCHLIESSLICH auf `branding` und stehen
- * deshalb NUR im BRANDING_SOLL — nicht in der instanzweiten Spalten-Parität.
+ * deshalb NUR im BRANDING_SOLL — ihre Spalten prüft der Soll-Vergleich nur dort.
  *
  * Sie hängen an KEINEM Branding: der Layer schreibt über FREMDE Marken, nicht
  * über Kunden. Es gibt daher auch keine Profil-Kaskade; der GDPR-Contributor
@@ -552,41 +581,17 @@ const BRANDING_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...BRAND_TABLES, ...MA
 const PHOTOS_SOLL = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...MEDIA_TABLES]
 
 /* ────────────────────────────────────────────────────────────────────────────
- * SPALTEN-PARITÄT — bewusst ENGER SCOPE als „jede Tabelle auf ≥2 Instanzen".
- *
- * Die naheliegende Regel „vergleiche die Spalten JEDER Tabelle, die auf mehr als
- * einer Instanz steht" ist FALSCH — sie meldet massenhaft Scheinbefunde, weil
- * dieselbe Tabelle auf zwei Instanzen NICHT heißt, dass beide sie im Gleichklang
- * pflegen. Am 2026-08-16 gemessen: 29 Spalten-„Funde", ALLE erklärbar und KEINER
- * ein echter Rückstand:
- *
- *   1. LEGACY-SILO (portfolio): seine Produkt-Tabellen sind Single-Tenant und
- *      tragen die Mandanten-Spalten des Pools (`communityId`, `authorKind`)
- *      NICHT — plus alte Namen aus der Zeit vor dem feature→product-Umzug
- *      (`entitlementFeature` statt `entitlementProduct`, `featureKey` statt
- *      `productKey`). Das ist Architektur, kein Fehler.
- *   2. CONTROL-PLANE-EINHEIMISCHE Tabellen (`communities` & Co.): sie leben
- *      AUSSCHLIESSLICH im Control-Plane-Projekt — Migration control-037 sagt es
- *      im eigenen Kopf wörtlich („gehört NICHT auf jede Instanz gefahren"). Auf
- *      dem Pool liegen sie nur als EINGEFRORENE Alt-Schatten; `account` trägt
- *      z. B. jede communities-Spalte AUSSER `memberInvitesEnabled` (control-037,
- *      die jüngste) — kein Rückstand, sondern Absicht.
- *
- * Spalten-Parität ist nur dort AUSSAGEKRÄFTIG, wo eine Tabelle auf jeder Instanz
- * vom SELBEN Migrations-Lauf im Gleichklang gepflegt wird. Das sind die Layer,
- * die JEDE ausgerollte Instanz identisch fährt (die Schnittmenge der Manifeste):
- * `system` (läuft überall — der ganze Grund für E5), `admin` (changelog),
- * `pages` und `analytics` (analytics_settings, account+portfolio). Für genau
- * DIESE Tabellen ist eine fehlende Spalte ein echter, behebbarer Rückstand.
- *
- * NICHT hier: alles aus den Produkt-Layern (comments/posts/events/…, nur der
- * Pool fährt sie), dem Control-Datenmodell und billing/feedback (nur die Control
- * Plane fährt sie) — dort gibt es keinen Gleichklang zu prüfen. Neue Tabelle in
- * einem Layer, den MEHRERE Instanzen identisch fahren ⇒ ihren Block hier
- * aufnehmen. Verglichen wird je Tabelle gegen die Vereinigung genau der
- * Instanzen, die sie PRÄSENT haben (≥2, sonst nichts zu vergleichen).
+ * SPALTEN — kein gepflegtes Soll mehr, sondern die Migrationen der Layer, die
+ * die App nutzt (Kopf dieser Datei, MG1 c). Die frühere Instanz-gegen-Instanz-
+ * Parität (`PARITY_TABLES` = system+admin+pages+analytics) war bewusst eng,
+ * weil ein Vergleich ALLER geteilten Tabellen am 2026-08-16 29 Schein-Funde
+ * lieferte — alle in Tabellen, deren Layer die Instanz gar nicht fährt
+ * (Legacy-Silo `portfolio` ohne Mandanten-Spalten, eingefrorene
+ * Control-Plane-Schatten in `account`, z. B. `communities` ohne
+ * `memberInvitesEnabled` aus control-037). Genau diese Tabellen lässt der
+ * Soll-Vergleich je App weg; die vier Paritäts-Layer nutzt jede Instanz, die
+ * ihre Tabellen trägt, sie sind also vollständig darin enthalten.
  * ──────────────────────────────────────────────────────────────────────────── */
-const PARITY_TABLES = [...SYSTEM_TABLES, ...ADMIN_TABLES, ...PAGES_TABLES, ...ANALYTICS_TABLES]
 
 /**
  * Jede Instanz mit ihrer Env-Datei, ihrem Soll und dem Flag `ausgerollt`.
@@ -733,10 +738,21 @@ for (const instance of INSTANCES) {
   found.push({ name: instance.name, app: instance.app, cfg, soll: instance.soll, present })
 }
 
-if (found.length < 2) {
-  console.error('\n✗ Weniger als zwei Instanzen lesbar — ohne Vergleich ist die Aussage wertlos.')
+// Seit MG1 c vergleicht jede Instanz gegen ihr eigenes Soll — eine lesbare
+// Instanz ist schon eine Aussage (bis dahin hieß es „weniger als zwei").
+// Fehlt eine ausgerollte, ist der Lauf über `envErrors` ohnehin rot.
+if (found.length === 0) {
+  console.error('\n✗ Keine Instanz lesbar — der Lauf hat nichts gesehen.')
   process.exit(2)
 }
+
+/** Spalten einer Tabelle je Instanz nur EINMAL holen (Spalten-Vergleich und Proben). */
+async function cachedColumns(inst, table) {
+  inst.columns ??= new Map()
+  if (!inst.columns.has(table)) inst.columns.set(table, await columnsOf(inst.cfg, table))
+  return inst.columns.get(table)
+}
+const loadManifest = async rel => (await import(pathToFileURL(join(ROOT, rel)).href)).default
 
 // ── (b) Präsenz: fehlt eine Soll-Tabelle? (FATAL) ───────────────────────────
 // ── (d) Drift-Netz: eine Ist-Tabelle ohne Soll-Eintrag? (WARNUNG) ───────────
@@ -762,45 +778,45 @@ for (const inst of found) {
   }
 }
 
-// ── (c) Spalten-Parität: NUR über PARITY_TABLES (Begründung dort). Je Tabelle
-//        gegen die Vereinigung genau der Instanzen, die sie präsent haben;
-//        <2 Instanzen ⇒ nichts zu vergleichen. ────────────────────────────────
-let missingColumns = 0
-const columnFindings = [] // { instance, table, missing[] }
-for (const table of [...PARITY_TABLES].sort()) {
-  const insts = found.filter(inst => inst.present.has(table))
-  if (insts.length < 2) continue
-  const colsByInstance = new Map()
-  for (const inst of insts) colsByInstance.set(inst.name, await columnsOf(inst.cfg, table))
-  const union = new Set()
-  for (const cols of colsByInstance.values()) for (const c of cols ?? []) union.add(c)
-  for (const inst of insts) {
-    const cols = colsByInstance.get(inst.name)
-    const missing = [...union].filter(c => !(cols ?? new Set()).has(c)).sort()
-    if (missing.length) {
-      missingColumns += missing.length
-      columnFindings.push({ instance: inst.name, table, missing })
-    }
+// ── (c) Spalten je Tabelle: Soll aus den Migrationen der Layer, die die App
+//        nutzt (Kopf dieser Datei und scripts/lib/schema-columns.mjs). ───────
+let columnFindings = 0
+let columnErrors = 0
+let columnWarnings = 0
+const LAYER_ORDER = readLayerOrder(readFileSync(join(ROOT, 'scripts', 'migrate.mjs'), 'utf8'))
+console.log('\nSpalten je Tabelle (Soll aus den Migrationen der Layer, die die App nutzt):')
+for (const inst of found) {
+  let layers
+  try {
+    if (LAYER_ORDER.length === 0) throw new Error('LAYER_ORDER in scripts/migrate.mjs nicht gefunden')
+    layers = allowedLayersOf(LAYER_ORDER, await loadManifest(`apps/${inst.app}/site.manifest.ts`))
   }
+  catch (fehler) {
+    columnErrors++
+    console.log(`✖  ${inst.name.padEnd(10)} Layer der App nicht bestimmbar (${String(fehler?.message ?? fehler).slice(0, 80)}) — Spalten ungeprüft`)
+    continue
+  }
+  const soll = columnSoll(layers.map(layer => ({ layer, inventory: layerInventory(ROOT, layer) })))
+  const ist = new Map()
+  for (const table of soll.tables.keys()) {
+    ist.set(table, inst.present.has(table) ? await cachedColumns(inst, table) : null)
+  }
+  const result = compareColumns(soll.tables, ist)
+  // Eine fehlende Tabelle, die auch im gepflegten Soll steht, meldet (b) schon.
+  const curated = new Set(inst.soll)
+  result.missingTables = result.missingTables.filter(({ table }) => !curated.has(table))
+  const report = columnReport(inst.name, soll, result, { ci: CI })
+  for (const line of report.lines) console.log(line)
+  columnFindings += report.fatal
+  columnWarnings += soll.skipped.length
 }
 
-if (columnFindings.length) {
-  console.log('\nSpalten-Parität — es fehlt:')
-  for (const f of columnFindings.sort((a, b) => a.instance.localeCompare(b.instance) || a.table.localeCompare(b.table))) {
-    console.log(`✖  ${f.instance.padEnd(10)} ${f.table}: ${CI ? `${f.missing.length} Spalte(n) — Namen am Mac: pnpm ops:schema-parity` : f.missing.join(', ')}`)
-  }
-} else {
-  console.log('\nSpalten-Parität: alle geteilten Tabellen deckungsgleich.')
-}
-
-// ── Fazit ────────────────────────────────────────────────────────────────────
 // ── (e) Proben je Layer: ist die jüngste ablesbare Migration gelaufen? (FATAL) ──
 // Dieselben Proben, die `/api/health` jeder App prüft (product.manifest.ts →
 // `schema.probe`), hier über die Spaltenliste — und mit NAMEN der Migration.
 // Layer und Nummer stehen im Repo; Tabellen- und Spaltennamen der Probe auch.
 let missingProbes = 0
 let probeErrors = 0
-const loadManifest = async rel => (await import(pathToFileURL(join(ROOT, rel)).href)).default
 console.log('\nProben je Layer (jüngste ablesbare Migration):')
 for (const inst of found) {
   let probes
@@ -818,10 +834,8 @@ for (const inst of found) {
     continue
   }
   const missing = []
-  const columnsByTable = new Map()
   for (const probe of probes) {
-    if (!columnsByTable.has(probe.table)) columnsByTable.set(probe.table, await columnsOf(inst.cfg, probe.table))
-    const columns = columnsByTable.get(probe.table)
+    const columns = await cachedColumns(inst, probe.table)
     if (columns === null || (probe.column && !columns.has(probe.column))) missing.push(probe.name)
   }
   if (missing.length === 0) {
@@ -849,13 +863,24 @@ if (missingProbes > 0) {
     + '  pnpm migrate --app <app> --env ~/.appwrite-secrets/migrations/<projekt>.env --only <layer>-<NNN> --prod',
   )
 }
-if (missingTables > 0 || missingColumns > 0 || envErrors > 0 || missingProbes > 0 || probeErrors > 0) {
-  if (missingTables > 0 || missingColumns > 0) {
+if (columnWarnings > 0) {
+  console.log(`\n${columnWarnings} Stelle(n) beim Spalten-Vergleich ausgelassen (⚠-Zeilen oben; Grund steht dort).`)
+}
+if (columnFindings > 0) {
+  console.log(
+    `\n${columnFindings} Spalten-Befund(e). SPALTE FEHLT ⇒ die Migration des genannten Layers ist hier nicht gelaufen: `
+    + 'nachholen wie bei einer fehlenden Probe. SPALTE OHNE SOLL ⇒ keine Migration legt sie an (von Hand angelegt?): '
+    + 'am Mac `pnpm ops:schema-parity` nennt den Namen; dann Migration schreiben oder Spalte entfernen (nach Davids Ja). '
+    + 'Runbook: docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm".',
+  )
+}
+if (missingTables > 0 || columnFindings > 0 || columnErrors > 0 || envErrors > 0 || missingProbes > 0 || probeErrors > 0) {
+  if (missingTables > 0) {
     console.log(
-      `\n${missingTables} fehlende Tabelle(n), ${missingColumns} fehlende Spalte(n). `
+      `\n${missingTables} fehlende Tabelle(n). `
       + 'Nachfahren mit:  pnpm migrate --app <app> --env <env-datei> --prod  (ggf. --layer <layer> oder --only <layer>-<NNN>)',
     )
   }
   process.exit(1)
 }
-console.log('\nJede Instanz trägt ihr volles Soll; geteilte Tabellen sind spaltengleich.')
+console.log('\nJede Instanz trägt ihr volles Soll; die Tabellen ihrer Layer haben genau die Spalten der Migrationen.')
