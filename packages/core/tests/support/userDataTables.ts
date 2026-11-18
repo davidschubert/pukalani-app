@@ -88,6 +88,11 @@ export const USER_DATA_TABLES: Record<string, Coverage> = {
   // ── admin, pages, analytics, media ──────────────────────────────────────
   changelog: NONE,
   pages: NONE,
+  // Die Lauf-Sperre der Seiten-Übersetzung (pages-007, LL1 d): Zeitpunkte,
+  // Ausgang, Zielsprache, Modell und der letzte Vorschlag — eine Abschrift der
+  // Seite, die wie `pages` keinen Autor trägt. `subject` ist ein Hash aus
+  // Mandant und Adresse der Seite; niemand ist darin genannt.
+  pages_runs: NONE,
   analytics_settings: NONE,
   media_items: NONE,
 
