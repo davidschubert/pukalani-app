@@ -9,6 +9,11 @@
 # Probe-Communities mit Konten je Rolle an (`pnpm buehne up`) und fährt die
 # Beweise dagegen. Am Ende wird alles wieder abgebaut und NACHGEZÄHLT.
 #
+# NACHTS KOMMT EIN DRITTES PROJEKT DAZU: `comments` mit `apps/comments` als
+# Einzel-Instanz (ohne Mandanten, mit Demo-Daten) auf eigenem Port. Die
+# Beweise, die sie brauchen (`braucht: ['einzel']`), räumen selbst auf und
+# zählen nach; an Pull Requests und auf main steht sie nicht.
+#
 # KEIN TOR FÜRS AUSLIEFERN: `deploy.yml` hört auf „Test" und „E2E (Appwrite)",
 # nicht auf diesen Lauf, und er ist keine Pflicht-Prüfung am Pull Request (das
 # wäre eine GitHub-Einstellung). Er läuft NEBEN den Pflicht-Prüfungen, ein
@@ -76,6 +81,8 @@ jobs:
     env:
       PLATFORM_PORT: '3150'
       CONTROL_PORT: '3004'
+      # Die Einzel-Instanz (nur nachts): derselbe Port wie in e2e.yml.
+      EINZEL_PORT: '3001'
       CONTROL_HOST: app.localhost
       SMTP_PORT: '1025'
       # Zeitplan ⇒ nacht; von Hand ⇒ die Eingabe; sonst (Pull Request, Push) ⇒ buehne.
@@ -168,6 +175,7 @@ jobs:
           --platform-port "$PLATFORM_PORT"
           --control-host "$CONTROL_HOST"
           --smtp-port "$SMTP_PORT"
+          ${{ env.LAUF == 'nacht' && '--einzel-port "$EINZEL_PORT"' || '' }}
 
       # Beide Datenbanken NEBENEINANDER: verschiedene Projekte, dieselbe
       # Instanz. Die Protokolle wandern in Dateien und werden nacheinander
@@ -197,6 +205,23 @@ jobs:
       - name: Anmelde-Regeln setzen (Pool-Projekt)
         run: node --env-file=apps/platform/.env scripts/ops/appwrite-auth-policies.mjs --apply
 
+      # ── DIE EINZEL-INSTANZ (nur nachts) ─────────────────────────────────
+      # Ein DRITTES Projekt auf derselben Wegwerf-Appwrite: `apps/comments`
+      # als Einzel-Instanz ohne Mandanten, wie in e2e.yml (Projekt `comments`
+      # — die Id ist nicht frei, der Migrations-Runner prüft sie gegen
+      # `site.manifest.ts`), mit Demo-Daten. Projekt und `.env` legt schon das
+      # Bühnen-Setup an (`--einzel-port`, nur nachts): die Console lässt nur
+      # EINEN Account zu, ein zweites Setup-Skript scheiterte mit 501. Die
+      # Beweise mit `braucht: ['einzel']` in `scripts/buehne/beweise.mjs`
+      # laufen gegen sie; ohne sie meldet der Läufer sie als „übersprungen".
+      # Nur bei LAUF=nacht, damit der Lauf an Pull Requests und auf main nicht
+      # länger wird.
+      - name: Einzel-Instanz — Bootstrap mit Demo-Daten, Anmelde-Regeln
+        if: env.LAUF == 'nacht'
+        run: |
+          pnpm --filter comments run bootstrap --seed
+          node --env-file=apps/comments/.env scripts/ops/appwrite-auth-policies.mjs --apply
+
       # ZWEI ENTWICKLUNGS-SERVER aus dem Checkout. Gewartet wird auf
       # `/api/health` — die Betreiber-App antwortet mit 200, der
       # Platform-Server zusätzlich mit `ok: true` (ohne die vier
@@ -225,6 +250,55 @@ jobs:
           echo '── Antwort Platform-Server'; curl -s -m 5 "http://localhost:$PLATFORM_PORT/api/health" || true
           exit 1
 
+      # Dritter Entwicklungs-Server, nur nachts. Danach einmal die Seiten
+      # aufrufen, die die Beweise zuerst brauchen: der Server kompiliert jede
+      # Seite beim ersten Zugriff (kalt 25 s und mehr), und das soll nicht in
+      # der Zeitgrenze des ersten Beweises landen. Erst wenn alles steht, sagt
+      # EINZEL_READY dem Läufer, dass er `--einzel-port` bekommt.
+      - name: Einzel-Instanz starten (apps/comments)
+        if: env.LAUF == 'nacht'
+        run: |
+          (cd apps/comments && nohup pnpm exec nuxi dev --port "$EINZEL_PORT" > "$RUNNER_TEMP/einzel.log" 2>&1 &)
+          ready() {
+            curl -s -m 5 "http://localhost:$EINZEL_PORT/api/health" | tr -d ' \n' | grep -q '"ok":true.*"state":"ok"'
+          }
+          for i in $(seq 1 240); do
+            if ready; then
+              echo "Einzel-Instanz bereit nach ${i}s."
+              for page in / /discussions /courses /events; do
+                code=$(curl -s -o /dev/null -m 120 -H 'accept: text/html' -w '%{http_code}' "http://localhost:$EINZEL_PORT$page" || true)
+                echo "  vorgewärmt: $page → $code"
+              done
+              echo 'EINZEL_READY=1' >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo '::error::Die Einzel-Instanz ist nach 240s nicht bereit'
+          curl -s -m 5 "http://localhost:$EINZEL_PORT/api/health" || true
+          exit 1
+
+      # Zwei Beweise der Einzel-Instanz tippen in einem echten Browser
+      # (Erwähnungen). Dieselben drei Schritte wie in e2e.yml (Begründungen
+      # dort), ohne Cache — nachts zählt die Minute nicht.
+      - name: Playwright — Systempakete und Chromium (nur nachts)
+        if: env.LAUF == 'nacht'
+        timeout-minutes: 12
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
+          pnpm --filter comments exec playwright install-deps chromium
+          for attempt in 1 2; do
+            if timeout 240 pnpm --filter comments exec playwright install chromium; then
+              exit 0
+            fi
+            echo "::warning::Chromium-Download: Versuch $attempt fehlgeschlagen oder hing (240 s) — neuer Versuch"
+            sleep 10
+          done
+          echo "::error::Chromium liess sich in zwei Versuchen nicht herunterladen."
+          exit 1
+
       - name: Bühne aufbauen (zwei Communities, Konten je Rolle)
         run: node scripts/buehne/buehne.mjs up --platform-port "$PLATFORM_PORT" --control-host "$CONTROL_HOST"
 
@@ -235,8 +309,10 @@ jobs:
       # aufklappbare Gruppe im Protokoll; die Tabelle (Skript, Ergebnis,
       # Zählung, Dauer) steht in der Zusammenfassung des Laufs. Ein roter
       # Beweis hält die übrigen nicht auf, der Schritt endet dann rot.
+      # Ohne EINZEL_READY (Pull Request, main) kein `--einzel-port`: die
+      # Beweise der Einzel-Instanz stehen ohnehin nur auf `nacht`.
       - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
-        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT"
+        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"}
 
       # Acht Test-Dateien prüfen die Trennung der Communities gegen eine
       # ECHTE Datenbank und werden ohne sie übersprungen — in `test.yml` also
@@ -272,6 +348,7 @@ jobs:
         run: |
           echo '── Betreiber-App'; tail -n 60 "$RUNNER_TEMP/control.log" || true
           echo '── Platform-Server'; tail -n 60 "$RUNNER_TEMP/platform.log" || true
+          if [ -f "$RUNNER_TEMP/einzel.log" ]; then echo '── Einzel-Instanz'; tail -n 60 "$RUNNER_TEMP/einzel.log" || true; fi
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite appwrite-worker mariadb || true
 
   # ── ALARM ───────────────────────────────────────────────────────────────

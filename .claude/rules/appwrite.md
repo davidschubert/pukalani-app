@@ -54,8 +54,10 @@ paths:
   Rows, Buckets) und braucht eine EIGENE Web-Platform `*.pukalani.app`, sonst
   ist dort jede Realtime tot (F45). Code-Default neuer Communities:
   `pukalani.control.defaultPoolProject` (packages/control/app/app.config.ts),
-  Env-Override NUXT_PUBLIC_CONTROL_POOL_PROJECT. LOKAL heißt das Dev-Projekt
-  weiterhin `pool` — die Verify-Skripte fallen bewusst darauf zurück.
+  Env-Override NUXT_PUBLIC_CONTROL_POOL_PROJECT. LOKAL heißen die Projekte
+  seit dem Spiegel vom 2026-11-09 wie auf Production (`account`, `admin`) —
+  ein lokales `pool` gibt es nicht mehr; die Verify-Skripte fallen ohne die
+  Variable auf `account` zurück.
   Runbook: docs/archiv/ACCOUNT-CUTOVER.md.
 - Jede App: EIGENE Appwrite-Instanz, Config aus .env
   (NUXT_APPWRITE_KEY server-only, NUXT_PUBLIC_* für Endpoint/Project)

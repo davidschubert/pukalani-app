@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BEWEISE, e2eDetector, GRUND_MIN, manifestProblems } from '../../../scripts/buehne/beweise.mjs'
-import { countMarks, selectProofs, timeoutSeconds } from '../../../scripts/buehne/run.mjs'
+import { countMarks, missingServices, selectProofs, timeoutSeconds } from '../../../scripts/buehne/run.mjs'
 import { proofScripts } from '../../../scripts/live-beweise.mjs'
 
 /**
@@ -55,6 +55,15 @@ describe('Selbsttest der Erkennung', () => {
     expect(manifestProblems({ scripts: [ok.skript], beweise: [noEnv], runsInE2e: runsNowhere }).join('\n')).toContain('braucht `env`')
   })
 
+  it('die Einzel-Instanz: env „einzel" nur mit braucht „einzel", und nur nachts', () => {
+    const einzel = { skript: ok.skript, lauf: 'nacht' as const, env: 'einzel' as const, braucht: ['einzel' as const] }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [einzel], runsInE2e: runsNowhere })).toEqual([])
+    const noService = { ...einzel, braucht: ['appwrite' as const] }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [noService], runsInE2e: runsNowhere }).join('\n')).toContain('env „einzel" braucht')
+    const everyRun = { ...einzel, lauf: 'buehne' as const }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [everyRun], runsInE2e: runsNowhere }).join('\n')).toContain('nur im nächtlichen Lauf')
+  })
+
   it('„e2e" muss in e2e.yml stehen, und was dort steht, muss „e2e" sein', () => {
     const e2e = { skript: ok.skript, lauf: 'e2e' as const }
     expect(manifestProblems({ scripts: [ok.skript], beweise: [e2e], runsInE2e: runsNowhere }).join('\n')).toContain('steht aber nicht in')
@@ -94,6 +103,13 @@ describe('Selbsttest des Läufers', () => {
     expect(timeoutSeconds(list[1]!)).toBe(300)
     expect(timeoutSeconds({ skript: 'x', lauf: 'buehne', dauer: 30 })).toBe(90)
     expect(timeoutSeconds(list[2]!)).toBe(300)
+  })
+
+  it('ohne Einzel-Instanz wird ihr Skript übersprungen, mit ihr läuft es; die übrigen laufen immer', () => {
+    const einzel = { skript: 'packages/c/scripts/verify-4.mjs', lauf: 'nacht' as const, env: 'einzel' as const, braucht: ['appwrite' as const, 'einzel' as const] }
+    expect(missingServices(einzel, [])).toEqual(['einzel'])
+    expect(missingServices(einzel, ['einzel'])).toEqual([])
+    expect(missingServices(list[0]!, [])).toEqual([])
   })
 
   it('zählt ✔ und ✗ am Zeilenanfang, nicht die Schlusszeile', () => {

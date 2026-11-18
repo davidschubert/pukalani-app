@@ -160,7 +160,11 @@ paths:
   (`~/ops/realtime-watchdog.sh` auf appwrite-prod: höchstens DREI Neustarts
   in Folge, dann `aufgegeben`, bis ein Handshake wieder gelingt; gemessen
   zwei Neustarts in vier Monaten, beide ohne Erfolg). Probealarm
-  `-f realtime_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein
+  `-f realtime_drill=true`. Seit 2026-11-18 liest der tägliche Lauf auch die
+  ANMELDE-REGELN der vier Projekte (`appwrite-auth-policies.mjs --ci`, nur
+  lesend, mit den Schlüsseln des Schema-Blicks — sie tragen dafür
+  `project.policies.read`): rot bei einer verstellten Regel und wenn der
+  Blick nicht lesen kann. JE ROTEM BEFUND dieser Blicke steht im Issue ein
   Satz, was zu tun ist. Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
@@ -369,7 +373,12 @@ paths:
   Tage, der Server 14, aufgeräumt wird auf der Box nur nach dem NAMEN mit
   Unter- und Obergrenze, dazu tägliche Schnappschüsse der Box. Der Lauf prüft
   sich selbst und schreibt eine Stand-Datei; der Wächter liest sie über das
-  Tor (`backup-status`). ZURÜCK: `ops/appwrite-restore.sh` spielt nur auf einen
+  Tor (`backup-status`). Seit BU1 b kann ein Lauf auch `app-env.tar.gz.gpg`
+  tragen, die `.env`-Dateien der Apps: der Appwrite-Server HOLT das auf dem
+  App-Server schon verschlüsselte Bündel ab (`ops/app-env-bundle.sh` als
+  erzwungener ssh-Befehl, Env `APP_ENV_SOURCE`), und ein Ausfall dabei
+  verhindert das Datenbank-Backup nicht — der Lauf endet erst danach rot im
+  Schritt `app-einstellungen`. ZURÜCK: `ops/appwrite-restore.sh` spielt nur auf einen
   Rechner OHNE Appwrite und überschreibt nie etwas — nie auf dem Mac mit der
   Entwicklungs-Instanz laufen lassen (es weigert sich dort). Nach JEDER
   Änderung an einem der Skripte oder der Liste: `ops/appwrite-backup-attrappe.sh`

@@ -27,7 +27,12 @@
 # Aufbewahrung löscht nur Altes, nie die jüngsten, nie mehr als erlaubt ·
 # Zurückspielen aus der „Box" nach „Server weg" ergibt dieselben Zeilen,
 # dieselben Dateien, dieselbe .env · Gegenproben dazu (falscher Schlüssel,
-# beschädigte Datei, Ziel nicht leer, Rechner nicht leer).
+# beschädigte Datei, Ziel nicht leer, Rechner nicht leer) · die .env-Dateien
+# der Apps (ops/app-env-bundle.sh, BU1 b) kommen als Bündel mit, öffnen sich
+# mit dem privaten Schlüssel, und ein Ausfall der Quelle (fehlende .env,
+# fremder Schlüssel, App-Server nicht erreichbar) lässt das Backup der
+# Datenbank vollständig auf der Box und endet rot im Schritt
+# „app-einstellungen" · das Zurückspielen packt das Bündel nicht aus.
 #
 # Exit: 0 alles bestanden · 1 mindestens eine Prüfung gescheitert
 set -euo pipefail
@@ -85,7 +90,8 @@ SRC=/srv/prod/appwrite        # der „Server": Compose-Ordner
 BK=/srv/prod/backup           # BACKUP_DIR auf dem „Server"
 BOX=/srv/box/backups/appwrite # die „Storage Box"
 KEYS=/srv/keys
-mkdir -p "$SRC/patches" "$BK" "$BOX" "$KEYS"
+APP=/srv/app                  # der „App-Server": je Site <site>/.env
+mkdir -p "$SRC/patches" "$BK" "$BOX" "$KEYS" "$APP"
 
 # Zwei Schlüsselpaare: das richtige und ein fremdes (für die Gegenproben).
 make_key() { # <name>
@@ -192,12 +198,21 @@ sums_of() { docker run --rm -v "$1":/d:ro alpine sh -c 'cd /d && find . -type f 
 sums_of appwrite_appwrite-uploads > /tmp/uploads.before
 sums_of appwrite-builds > /tmp/builds.before
 sha256sum < "$SRC/.env" > /tmp/env.before
+# Die .env-Dateien der Apps, je Site aus der echten Liste.
+APP_SITES="$(awk '!/^[[:space:]]*(#|$)/ { print $2 }' /ops/apps.conf)"
+for site in $APP_SITES; do
+  mkdir -p "$APP/$site"
+  printf 'NUXT_SESSION_PASSWORD=KLARTEXT-MARKER-APPENV-%s\nNUXT_PUBLIC_SITE=%s\n' "$site" "$site" > "$APP/$site/.env"
+done
+# shellcheck disable=SC2086  # die Liste soll sich an Leerzeichen teilen
+APP_COUNT="$(printf '%s\n' $APP_SITES | wc -l | tr -d ' ')"
 echo "SELECT table_name FROM information_schema.tables WHERE table_schema='appwrite' ORDER BY 1;" | sql_src > /tmp/tables.before
 
 backup() { # [env…] -- [schalter]
   env APPWRITE_COMPOSE_DIR="$SRC" BACKUP_DIR="$BK" OFFSITE_TARGET="$BOX" \
     BACKUP_PUBLIC_KEY="$KEYS/richtig.pub.asc" BACKUP_KEY_FINGERPRINT="$FPR" \
-    BACKUP_VOLUMES_CONF=/ops/appwrite-volumes.conf MIN_FREE_MB=50 "$@"
+    BACKUP_VOLUMES_CONF=/ops/appwrite-volumes.conf MIN_FREE_MB=50 \
+    APP_ENV_SOURCE=/ops/app-env-bundle.sh APP_ENV_BASE="$APP" "$@"
 }
 runs_local() { ls "$BK/runs" 2>/dev/null | wc -l | tr -d ' '; }
 runs_box() { ls "$BOX/runs" 2>/dev/null | wc -l | tr -d ' '; }
@@ -205,6 +220,7 @@ tree_sum() { ( cd "$1" && find . -type f | sort | xargs sha256sum 2>/dev/null | 
 
 echo "── Vorschau ──"
 expect "Vorschau zeigt den Plan" 0 'es wird NICHTS geändert' backup bash /ops/appwrite-backup.sh
+grep -q "App-Einstellungen: /ops/app-env-bundle.sh — $APP_COUNT Sites, alle vorhanden" /tmp/out.txt && ok "Vorschau nennt die App-Einstellungen in Zahlen" || bad "Vorschau: $(grep 'App-Einstellungen' /tmp/out.txt)"
 grep -q 'appwrite-builds  ←  appwrite-builds$' /tmp/out.txt && ok "Vorschau nimmt das echte builds-Volume, nicht den Rest" || bad "builds-Volume falsch aufgelöst"
 [ "$(runs_local)" = 0 ] && [ ! -e "$BK/state" ] && [ "$(runs_box)" = 0 ] && ok "Vorschau hat nichts angelegt" || bad "Vorschau hat etwas angelegt"
 expect "Unbekannter Schalter wird abgelehnt" 2 'Aufruf:' backup bash /ops/appwrite-backup.sh --apply
@@ -212,10 +228,10 @@ expect "Unbekannter Schalter wird abgelehnt" 2 'Aufruf:' backup bash /ops/appwri
 echo "── Erster Lauf ──"
 expect "Lauf endet gut" 0 'Backup fertig' backup bash /ops/appwrite-backup.sh --run
 FIRST="$(ls "$BK/runs" | sed -n 1p)"
-want_files='SHA256SUMS backup.meta config.tar.gz.gpg counts.tsv.gpg db.sql.gz.gpg volume-appwrite-builds.tar.gz.gpg volume-appwrite-certificates.tar.gz.gpg volume-appwrite-config.tar.gz.gpg volume-appwrite-functions.tar.gz.gpg volume-appwrite-sites.tar.gz.gpg volume-appwrite-uploads.tar.gz.gpg'
+want_files='SHA256SUMS app-env.tar.gz.gpg backup.meta config.tar.gz.gpg counts.tsv.gpg db.sql.gz.gpg volume-appwrite-builds.tar.gz.gpg volume-appwrite-certificates.tar.gz.gpg volume-appwrite-config.tar.gz.gpg volume-appwrite-functions.tar.gz.gpg volume-appwrite-sites.tar.gz.gpg volume-appwrite-uploads.tar.gz.gpg'
 [ "$(ls "$BK/runs/$FIRST" | tr '\n' ' ' | sed 's/ $//')" = "$want_files" ] && ok "Lauf-Ordner enthält genau die erwarteten Dateien" || bad "Lauf-Ordner: $(ls "$BK/runs/$FIRST" | tr '\n' ' ')"
 [ "$(tree_sum "$BK/runs/$FIRST")" = "$(tree_sum "$BOX/runs/$FIRST")" ] && ok "Auf der Box liegt dasselbe wie lokal" || bad "Box weicht ab"
-if grep -rl 'KLARTEXT-MARKER' "$BK" "$BOX" >/dev/null 2>&1; then bad "Klartext gefunden in: $(grep -rl 'KLARTEXT-MARKER' "$BK" "$BOX" | head -3)"; else ok "Kein Klartext in Ablage lokal und Box (.env, Datenbank, Dateien, Zertifikat)"; fi
+if grep -rl 'KLARTEXT-MARKER' "$BK" "$BOX" >/dev/null 2>&1; then bad "Klartext gefunden in: $(grep -rl 'KLARTEXT-MARKER' "$BK" "$BOX" | head -3)"; else ok "Kein Klartext in Ablage lokal und Box (.env, .env der Apps, Datenbank, Dateien, Zertifikat)"; fi
 [ -z "$(ls -d "$BK"/work-* 2>/dev/null)" ] && ok "Arbeitsordner mit Klartext ist gelöscht" || bad "Arbeitsordner liegt noch da"
 ( cd "$BOX/runs/$FIRST" && sha256sum -c SHA256SUMS >/dev/null 2>&1 ) && ok "Prüfsummen auf der Box stimmen" || bad "Prüfsummen auf der Box"
 grep -q '^tables=17$' "$BK/runs/$FIRST/backup.meta" && grep -q '^databases=1$' "$BK/runs/$FIRST/backup.meta" && ok "Kenndaten: 1 Datenbank, 17 Tabellen" || bad "Kenndaten: $(grep -E '^(tables|databases)=' "$BK/runs/$FIRST/backup.meta" | tr '\n' ' ')"
@@ -329,9 +345,57 @@ expect "Mit OFFSITE_KEEP_MIN über dem Bestand" 0 'Backup fertig' backup OFFSITE
 [ "$(ls "$BOX/runs" | grep -c -- '-033000$' || true)" = 4 ] && ok "Untergrenze hält: nichts gelöscht, solange zu wenige Läufe da sind" || bad "Untergrenze nicht gehalten"
 LAST="$(ls "$BK/runs" | tail -1)"
 
+echo "── App-Einstellungen: Bündel vom App-Server ──"
+grep -q "^app_env=ok$" "$BK/runs/$LAST/backup.meta" && grep -q '^app_env_bytes=[0-9]*$' "$BK/runs/$LAST/backup.meta" && ok "backup.meta: app_env=ok samt Größe" || bad "backup.meta: $(grep '^app_env' "$BK/runs/$LAST/backup.meta" | tr '\n' ' ')"
+rm -rf /tmp/appenv && mkdir -p /tmp/appenv
+if gpg --batch --quiet --homedir "$KEYS/richtig.home" --decrypt "$BOX/runs/$LAST/app-env.tar.gz.gpg" 2>/dev/null > /tmp/appenv.tar.gz && tar xzf /tmp/appenv.tar.gz -C /tmp/appenv; then
+  same=1
+  for site in $APP_SITES; do cmp -s "$APP/$site/.env" "/tmp/appenv/$site/.env" || same=0; done
+  [ "$same" = 1 ] && [ "$(tar tzf /tmp/appenv.tar.gz | wc -l | tr -d ' ')" = "$APP_COUNT" ] \
+    && ok "Bündel von der Box öffnet sich mit dem privaten Schlüssel: $APP_COUNT .env, byte-gleich, nichts sonst" || bad "Bündel-Inhalt weicht ab: $(tar tzf /tmp/appenv.tar.gz | tr '\n' ' ')"
+else
+  bad "Bündel von der Box lässt sich nicht entschlüsseln"
+fi
+rm -rf /tmp/appenv /tmp/appenv.tar.gz
+# Gegenproben: die Datenbank liegt trotzdem vollständig auf der Box, der Lauf endet rot.
+db_complete() { # <was>
+  local run
+  run="$(ls "$BOX/runs" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$' | tail -1)"
+  if [ "$run" != "$LAST" ] && [ -s "$BOX/runs/$run/db.sql.gz.gpg" ] && [ -s "$BOX/runs/$run/config.tar.gz.gpg" ] && [ -s "$BOX/runs/$run/volume-appwrite-uploads.tar.gz.gpg" ] \
+    && [ ! -e "$BOX/runs/$run/app-env.tar.gz.gpg" ] && grep -q '^app_env=fehlt$' "$BOX/runs/$run/backup.meta" \
+    && ( cd "$BOX/runs/$run" && sha256sum -c SHA256SUMS >/dev/null 2>&1 ); then
+    ok "$1: Datenbank, Volumes und Einstellungen liegen vollständig auf der Box (Prüfsummen stimmen), ohne Bündel"
+  else
+    bad "$1: Lauf auf der Box unvollständig oder mit Bündel ($run)"
+  fi
+  grep -q '^last_result=fehler$' "$BK/state/last-run" && grep -q '^last_step=app-einstellungen$' "$BK/state/last-run" \
+    && ok "$1: Stand-Datei meldet fehler im Schritt „app-einstellungen“" || bad "$1: Stand-Datei: $(tr '\n' ' ' < "$BK/state/last-run")"
+  LAST="$run"
+}
+# shellcheck disable=SC2086  # die Liste soll sich an Leerzeichen teilen
+FIRST_SITE="$(printf '%s\n' $APP_SITES | sed -n 1p)"
+mv "$APP/$FIRST_SITE/.env" /tmp/app.env.weg
+sleep 1
+expect "Eine .env der Apps fehlt" 1 'Das Backup der Datenbank ist vollständig und liegt lokal und auf der Ablage außer Haus' backup bash /ops/appwrite-backup.sh --run
+grep -q "$FIRST_SITE" /tmp/out.txt && ok "… die Meldung nennt die Site" || bad "… die Site fehlt in der Meldung"
+db_complete "Fehlende .env"
+mv /tmp/app.env.weg "$APP/$FIRST_SITE/.env"
+printf '#!/usr/bin/env bash\nBACKUP_PUBLIC_KEY=%s BACKUP_KEY_FINGERPRINT=%s exec bash /ops/app-env-bundle.sh "$@"\n' "$KEYS/fremd.pub.asc" "$(cat "$KEYS/fremd.fpr")" > /tmp/fremd-quelle.sh
+chmod 755 /tmp/fremd-quelle.sh
+sleep 1
+expect "Bündel für einen fremden Schlüssel" 1 'fremden Schlüssel' backup APP_ENV_SOURCE=/tmp/fremd-quelle.sh bash /ops/appwrite-backup.sh --run
+db_complete "Fremder Schlüssel"
+sleep 1
+expect "App-Server nicht erreichbar" 1 'es fehlen die Einstellungen der Apps' backup APP_ENV_SOURCE=app-server.invalid bash /ops/appwrite-backup.sh --run
+db_complete "App-Server nicht erreichbar"
+sleep 1
+expect "Danach wieder ein guter Lauf mit Bündel" 0 'verschlüsselt für unseren Schlüssel' backup bash /ops/appwrite-backup.sh --run
+LAST="$(ls "$BK/runs" | tail -1)"
+[ -s "$BOX/runs/$LAST/app-env.tar.gz.gpg" ] && ok "… und das Bündel liegt auf der Box" || bad "… Bündel fehlt auf der Box"
+
 echo "── Tor-Skript: Wort backup-status ──"
 gate() { env BACKUP_STATE_FILE="$BK/state/last-run" "$@" bash /ops/appwrite-cert-gate.sh backup-status; }
-expect "Stand nach gutem Lauf" 0 '^backup ergebnis=ok schritt=fertig alter_stunden=0 groesse_mb=[0-9]* dateien=11$' gate
+expect "Stand nach gutem Lauf" 0 '^backup ergebnis=ok schritt=fertig alter_stunden=0 groesse_mb=[0-9]* dateien=12$' gate
 [ "$(wc -l < /tmp/out.txt | tr -d ' ')" = 1 ] && ok "Das Tor gibt genau eine Zeile aus" || bad "Das Tor gibt mehr aus: $(cat /tmp/out.txt)"
 cp "$BK/state/last-run" /tmp/state.gut
 sed "s/^last_ok_epoch=.*/last_ok_epoch=$(( $(date +%s) - 30 * 3600 ))/" /tmp/state.gut > /tmp/state.alt
@@ -371,6 +435,8 @@ rm -rf "$NEW"
 [ -z "$(docker ps -aq)" ] && [ -z "$(docker volume ls -q)" ] && ok "Gegenproben haben nichts angelegt" || bad "Gegenproben haben etwas angelegt"
 
 expect "Zurückspielen" 0 '✔ Zurückgespielt' restore "$RUN" --key "$KEYS/richtig.private.asc" --target "$NEW" --apply --services "mariadb appwrite"
+grep -q 'app-env.tar.gz.gpg, NICHT ausgepackt' /tmp/out.txt && ok "Hinweis auf die App-Einstellungen am Ende" || bad "Hinweis auf die App-Einstellungen fehlt"
+[ -z "$(find "$NEW" -path "*/$FIRST_SITE/*" 2>/dev/null)" ] && ! grep -rqs 'KLARTEXT-MARKER-APPENV' "$NEW" && ok "Die App-Einstellungen wurden nicht ausgepackt" || bad "App-Einstellungen liegen im Zielordner"
 grep -q 'zählgleich: 5 · abweichend, weil flüchtig: 0 · abweichend sonst: 0 · fehlend: 0' /tmp/out.txt && ok "Alle 5 Tabellen zählgleich mit dem Backup" || bad "Zählung: $(grep 'Tabellen im Backup' /tmp/out.txt)"
 grep -q 'Projekt account: 34 Konten (Backup: 34)' /tmp/out.txt && grep -q 'Projekt admin: 1 Konten (Backup: 1)' /tmp/out.txt && ok "Konten je Projekt: account 34, admin 1" || bad "Konten je Projekt fehlen"
 [ "$(sha256sum < "$NEW/.env")" = "$(cat /tmp/env.before)" ] && ok ".env ist byte-gleich zurück (samt Schlüssel)" || bad ".env weicht ab"

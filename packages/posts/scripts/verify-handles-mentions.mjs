@@ -34,6 +34,7 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
 /** Playwright wohnt in apps/comments — absoluter Pfad, siehe verify-composer-editor.mjs. */
 const playwrightEntry = new URL('../../../apps/comments/node_modules/@playwright/test/index.mjs', import.meta.url)
@@ -42,7 +43,7 @@ const { chromium } = await import(playwrightEntry.href).catch(() => {
   process.exit(1)
 })
 
-const base = process.argv[2] ?? 'http://localhost:3001'
+const base = einzelBaseUrl('http://localhost:3001')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
@@ -137,8 +138,18 @@ try {
   // ──────────────────────────────────────────────────────────────────────
   // (2) REGELN — der SERVER lehnt ab, nicht nur das Formular
   // ──────────────────────────────────────────────────────────────────────
+  // Die Route ist gedrosselt: 5 Änderungsversuche je Minute und ADRESSE
+  // (`account:handle`, 05.rate-limit.ts, seit AU2 2026-08-15). Dieses Skript
+  // prüft die REGELN der Namensvergabe, nicht die Drossel — jeder Versuch kommt
+  // deshalb von einer eigenen Adresse, wie mehrere Menschen hinter dem Webserver
+  // (die App nimmt das letzte Segment von x-forwarded-for).
+  let patchAddress = 0
   async function patchHandle(ctx, handle) {
-    const res = await ctx.request.patch('/api/account/handle', { data: { handle } })
+    patchAddress += 1
+    const res = await ctx.request.patch('/api/account/handle', {
+      data: { handle },
+      headers: { 'x-forwarded-for': `10.28.${Math.floor(Math.random() * 250) + 1}.${patchAddress}` },
+    })
     let body
     try { body = await res.json() } catch { body = null }
     return { status: res.status(), reason: body?.reason ?? null, handle: body?.handle ?? null }
@@ -350,6 +361,14 @@ finally {
     await users.delete({ userId: user.$id }).catch(() => {})
   }
   await browser?.close()
+
+  // NACHZÄHLEN (Bühnen-Regel 2): Beiträge, Konten und alles, was an ihnen
+  // hängt (Namen, Benachrichtigungen, Zähler), sind wirklich weg.
+  const sweep = createEinzelCleanup({ script: 'verify-handles-mentions' })
+  for (const postId of createdPosts) sweep.track('poolRow', `community_posts/${postId}`)
+  for (const user of [author, target]) if (user) sweep.track('account', user.$id)
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
 
   console.log(`\n${passed}/${passed + failed} Prüfungen bestanden`)
   process.exit(failed === 0 ? 0 : 1)

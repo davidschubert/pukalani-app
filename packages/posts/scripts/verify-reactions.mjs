@@ -29,8 +29,9 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
-const base = process.argv[2] ?? 'http://localhost:3011'
+const base = einzelBaseUrl('http://localhost:3011')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
@@ -88,10 +89,13 @@ function http(path, { method = 'GET', cookie = '', body } = {}) {
 
 const stamp = Date.now().toString(36)
 const cleanup = { users: [], rows: [] }
+/** Aufräumen MIT Nachzählen (Bühnen-Regel 2). */
+const sweep = createEinzelCleanup({ script: 'verify-reactions' })
 
 async function seedRow(tableId, data) {
   const row = await tablesDB.createRow({ databaseId, tableId, rowId: ID.unique(), data })
   cleanup.rows.push({ tableId, id: row.$id })
+  sweep.track('poolRow', `${tableId}/${row.$id}`)
   return row
 }
 
@@ -103,6 +107,7 @@ async function makeUser(tag) {
     name: `Reaktions-Tester ${tag}`,
   })
   cleanup.users.push(user.$id)
+  sweep.track('account', user.$id)
   const session = await users.createSession({ userId: user.$id })
   return { id: user.$id, cookie: `a_session_${projectId}=${encodeURIComponent(session.secret)}` }
 }
@@ -123,9 +128,13 @@ async function countRows(tableId, queries) {
 try {
   console.log(`Emoji-Reaktionen gegen ${base} / Projekt ${projectId} / DB ${databaseId}\n`)
 
-  const category = await tablesDB.listRows({ databaseId, tableId: 'post_categories', queries: [Query.limit(1)] })
-  if (category.total === 0) throw new Error('Keine Kategorie vorhanden — Discussions ist hier nicht eingerichtet.')
-  const categoryId = category.rows[0].$id
+  // Eine EIGENE Wegwerf-Kategorie (Bühnen-Regel 1: das Skript setzt seine
+  // Annahmen selbst) — eine frische Instanz hat noch keine.
+  const category = await seedRow('post_categories', {
+    name: `Reaktionen ${stamp}`, slug: `reaktionen-${stamp}`, description: '',
+    sortOrder: 0, active: true, communityId: '',
+  })
+  const categoryId = category.$id
 
   const anna = await makeUser('anna')
   const ben = await makeUser('ben')
@@ -316,6 +325,9 @@ finally {
   for (const userId of cleanup.users) {
     await users.delete({ userId }).catch(() => {})
   }
+  // NACHZÄHLEN — nicht dem eigenen Löschen glauben.
+  const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+  check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
   console.log(`\n${failed === 0 ? '✔' : '✗'} ${passed} bestanden, ${failed} fehlgeschlagen`)
   process.exit(failed === 0 ? 0 : 1)
 }

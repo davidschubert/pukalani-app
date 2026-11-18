@@ -56,7 +56,7 @@ const controlKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_
 // `users.write`. Der Laufzeit-Schlüssel der Betreiber-App hat das, der
 // Migrations-Schlüssel lokal nicht (in der CI hat EIN Schlüssel alle Rechte).
 const controlUsersKey = process.env.NUXT_APPWRITE_KEY || controlKey
-const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'pool'
+const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'account'
 const poolKey = process.env.POOL_KEY
 
 if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {

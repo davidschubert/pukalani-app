@@ -116,7 +116,7 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Kontaktdaten von Gästen (`guest_authors`, Altbestand) | 90 Tage | `comments/server/plugins/guest-author-prune.ts` | keiner | `comments.guest_authors_pruned` |
 | Protokolle und Ereignisse der Runner-Läufe | 30 / 90 Tage | `runner/server/plugins/run-retention.ts` | `pukalani.runner.retention` | `runner.retention` |
 | Texte und Anhänge der Runner-Läufe (Auftragstext, Bericht-Text, Fehlertext, Anhang-Dateien; Kosten, Dauer, Commit und Kennungen bleiben) | 12 Monate nach dem Ende des Laufs | `runner/server/plugins/run-text-retention.ts`, stündlich (Regel `runner/shared/runTextRetention.ts`) | `pukalani.runner.textRetention` (off / count / apply; control: `apply` seit 2026-11-17) | `retention.run` mit `job: run-text-retention` (`deleted` zählt hier geleerte Läufe, die Zeile bleibt) |
-| Runner-Läufe, die nie beendet wurden (Entwurf, oder hängt auf `queued`/`claimed`/`running`): werden abgebrochen (`cancelled`, Grund `abandoned`), danach greifen die beiden Fristen darüber | 7 Tage ohne Lebenszeichen (letzte Änderung der Zeile, Claim, Start, jüngstes Ereignis) | `runner/server/plugins/stale-run-retention.ts`, stündlich (Regel `runner/shared/staleRunRetention.ts`) | `pukalani.runner.staleRunRetention` (off / count / apply; control: `count` seit 2026-11-17, zählt nur) | `retention.run` mit `job: stale-run-retention` (`deleted` zählt beendete Läufe, die Zeile bleibt) |
+| Runner-Läufe, die nie beendet wurden (Entwurf, oder hängt auf `queued`/`claimed`/`running`): werden abgebrochen (`cancelled`, Grund `abandoned`), danach greifen die beiden Fristen darüber | 7 Tage ohne Lebenszeichen (letzte Änderung der Zeile, Claim, Start, jüngstes Ereignis) | `runner/server/plugins/stale-run-retention.ts`, stündlich (Regel `runner/shared/staleRunRetention.ts`) | `pukalani.runner.staleRunRetention` (off / count / apply; control: `apply` seit 2026-11-18 — davor zählte er einen Tag lang nur, sechs Läufe, jedes Mal 0) | `retention.run` mit `job: stale-run-retention` (`deleted` zählt beendete Läufe, die Zeile bleibt) |
 | Ereignisse des Marken-Bereichs (`brand_events`) | 24 Monate | `brand/server/plugins/brand-events-sweep.ts` | – | – |
 | Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
 | Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `apply` seit 2026-11-17; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
@@ -243,6 +243,13 @@ Instanz, die nicht lokal ist, braucht `--apply` zusätzlich `PUKALANI_TARGET_CON
 `ERASURE_BACKFILL_CONFIRM`).
 Zwei kleine Tests (in `messages` und `comments`) halten die Feldwerte des Skripts gegen die
 Konstanten der Layer.
+
+Seit dem 2026-11-18 kennt das Skript die Regel `notification-excerpts` (EL1 d): Meldungen zu
+Antworten und Erwähnungen von vor dem 2026-11-15 behalten sonst ihren Textauszug, auch wenn der
+Kommentar gelöscht ist. Die Regel leert nur den Auszug (`body`), die Meldung bleibt. „Alt" erkennt
+sie an der Id (neue Meldungen tragen die feste Id `cmn…`), nicht am Text; eine Zeile mit zufälliger
+Id von nach dem Stichtag bleibt und zählt als „nicht prüfbar". Ein dritter Test in `comments` hält
+Id-Form und Typen gegen den Layer. Aufruf nur für diese Regel: `--only notification-excerpts`.
 
 ## Beweise
 

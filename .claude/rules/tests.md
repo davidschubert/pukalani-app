@@ -136,7 +136,7 @@ Sorte Route: `controlSeam.ts` für die Naht, `controlRouteHarness.ts` für
 Betreiber- und Naht-Routen des Control Plane, `adminRouteHarness.ts` für das
 Dashboard in Pool und Einzel-Instanz, `instanceRoleGate.ts` für ein Recht am
 globalen Label, `appwriteFake.ts` für Konto-Routen). Im Bestand stehen noch
-88 Routen (brand, insights, market, pages, vier App-Routen-Gruppen). WAS DER WÄCHTER NICHT SIEHT: ob der Test die
+brand, insights, market, pages und vier App-Routen-Gruppen. WAS DER WÄCHTER NICHT SIEHT: ob der Test die
 richtigen Fragen stellt (er erkennt nur das Laden), und Pfade, die mit
 `${…}` zusammengesetzt werden. WAS DER PRÜFSTAND NICHT BEWEIST: die
 Middleware davor (Sperre für Entfernte, Herkunftsprüfung, Bremsen, Zustimmung)
@@ -179,6 +179,12 @@ Exit 0 und sieht aus wie ein bestandener Lauf — der Rauchtest weigert sich
 deshalb ohne `pnpm buehne smoke`. Einordnung aller Skripte:
 docs/referenz/LIVE-BEWEISE.md.
 
+EINE LIVE-PROBE EINER ROUTE GEHÖRT AUF EINEN KONTROLL- ODER COMMUNITY-HOST
+(PB1 d): `platform.pukalani.app` selbst hat keinen Mandanten und beantwortet
+nur `/api/health` — jede andere Route dort endet in 404 `unknown_host` und
+sieht aus wie „Route fehlt". Für eine Probe `account.pukalani.app`
+(Kontroll-Host) oder `demo.pukalani.app` (Community) nehmen.
+
 DIE BEWEISE LAUFEN VON SELBST (OPS-009, seit 2026-11-17): bis dahin liefen
 6 von 82 Beweis-Skripten in der CI, alle anderen nur, wenn jemand daran
 dachte — und ein Beweis, der nicht läuft, veraltet still (beim Einzug auf die
@@ -213,7 +219,13 @@ Betreiber über den Laufzeit-Schlüssel (der Migrations-Schlüssel darf lokal
 keine Konten anlegen). EIN ROTER BEWEIS IST ENTWEDER EIN VERALTETES SKRIPT
 ODER EIN FEHLER IM PRODUKT — die Prüfung wird nie gestrichen, weil sie rot
 ist: Regel geändert ⇒ Prüfung anpassen und die Regel nennen; Produkt falsch ⇒
-Skript auf `hand` mit neutralem Grund und den Fehler melden. WAS FEHLT: die
-Skripte, die die Einzel-Instanz `apps/comments` oder branding.supply als
-laufenden Server brauchen (26), stehen auf `hand`; Skripte mit echten
-KI-Aufrufen, Stripe oder fremden Websites bleiben dort.
+Skript auf `hand` mit neutralem Grund und den Fehler melden. DIE
+EINZEL-INSTANZ (seit 2026-11-17): nachts startet `buehne.yml` `apps/comments`
+als dritten Server (Projekt `comments`, `bootstrap --seed`); Skripte mit
+`braucht: [..., 'einzel']` bekommen `EINZEL_URL`/`EINZEL_PORT`, lokal nur mit
+`pnpm buehne run --einzel-port N`, sonst „übersprungen". Sie räumen über
+`createEinzelCleanup` mit Nachzählen auf. WAS FEHLT: zwei Skripte, die die
+Einzel-Instanz EIGENS eingestellt brauchen (`verify-silo-domain`,
+`verify-domain-settle`), und die 12 von branding.supply (eigenes Projekt)
+stehen auf `hand`; Skripte mit echten KI-Aufrufen, Stripe oder fremden
+Websites bleiben dort.
