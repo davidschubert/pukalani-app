@@ -38,9 +38,18 @@ dieselbe exakte Version.
 (Functions und Sites). Das ist Appwrites eigene Laufzeit, nicht die der Apps.
 
 **Wieder prüfen:** vor April 2028 (Ende der Pflege für Linie 24) der Sprung
-auf die nächste Langzeit-Linie. Einen Wächter, der die Version des Servers
-mit `.nvmrc` vergleicht, gibt es nicht — ein Auseinanderlaufen fällt heute
-nur beim Nachsehen auf.
+auf die nächste Langzeit-Linie.
+
+**Nachtrag 2026-11-19 — der Wächter dazu.** Am Tag der Entscheidung gab es
+keinen Wächter, der die Version des Servers mit `.nvmrc` vergleicht; ein
+Auseinanderlaufen fiel nur beim Nachsehen auf. Seit dem 2026-11-19 fragt der
+tägliche Produktions-Wächter das Wächter-Tor nach dem Wort `node-version`
+und vergleicht das Programm `/usr/bin/node` und jeden pm2-Prozess mit
+`.nvmrc` (`scripts/ops/verify-node-version.mjs`). **Ohne Rückfrage
+entschieden:** rot ist jede andere Version, auch eine neuere („dieselbe"
+heißt dieselbe); ein Prozess, der fehlt, ist nur eine Warnzeile (ob eine App
+läuft, melden andere Blicke); keine Antwort ist keine Aussage. Der Blick
+sieht erst etwas, wenn das geänderte Tor von Hand auf dem Server liegt.
 
 ## 2026-11-18 — Ausliefer-Weg (N12): ein Skript für Ausliefern und Rückweg, kein CI-Schlüssel mit Shell
 

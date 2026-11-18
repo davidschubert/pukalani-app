@@ -166,7 +166,15 @@ paths:
   ANMELDE-REGELN der vier Projekte (`appwrite-auth-policies.mjs --ci`, nur
   lesend, mit den Schlüsseln des Schema-Blicks — sie tragen dafür
   `project.policies.read`): rot bei einer verstellten Regel und wenn der
-  Blick nicht lesen kann. JE ROTEM BEFUND dieser Blicke steht im Issue ein
+  Blick nicht lesen kann. Seit 2026-11-19 vergleicht er die NODE-VERSION
+  des App-Servers mit `.nvmrc` (`verify-node-version.mjs`, Tor-Wort
+  `node-version`: das Programm `/usr/bin/node` und je pm2-Prozess einer App
+  die Version aus `pm2 jlist`): rot bei jeder ANDEREN Version, auch einer
+  neueren — also auch zwischen „`.nvmrc` gehoben" und „Server gehoben"
+  (docs/runbooks/DEPLOYMENT.md, A4: am selben Tag erledigen); ein fehlender
+  Prozess ist nur eine Warnzeile, „nicht erreichbar" und „das Tor kennt das
+  Wort noch nicht" sind Exit 2 und bleiben grün. Probealarm
+  `-f node_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein
   Satz, was zu tun ist. Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900
@@ -332,9 +340,10 @@ paths:
   reisen als tar über die Standard-Eingabe), der Wächter-Schlüssel nur
   `~/ops/app-watch-gate.sh` (Quelle `ops/app-watch-gate.sh`: `site-env`,
   `site-project`, `stale-keys`, `instance-admins`, `mail-breaker`,
-  `app-signals`, `nginx-check`, `cron-check`, `sums` — jedes Wort liest nur;
-  die sechs Prüf-Skripte rufen sie über `scripts/ops/app-watch-gate.mjs` auf,
-  keines kopiert sich mehr selbst hinüber). Auf appwrite-prod NUR der
+  `app-signals`, `nginx-check`, `cron-check`, `sums`, `node-version` — jedes
+  Wort liest nur; die Prüf-Skripte rufen sie über
+  `scripts/ops/app-watch-gate.mjs` auf, keines kopiert sich mehr selbst
+  hinüber). Auf appwrite-prod NUR der
   Wächter-Schlüssel: `~/bin/pukalani-cert-gate.sh` (Quelle
   `ops/appwrite-cert-gate.sh`, erlaubt `probe`, `renew`, `reset-account`,
   `backup-status`, `realtime-status`, `cron-status`, `sums`). ALLE DREI

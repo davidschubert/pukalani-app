@@ -40,6 +40,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Anmelde-Wege der Datenbank | `scripts/ops/verify-auth-methods.mjs` | täglich | in einem der vier Projekte nimmt die Datenbank eine Anmeldung ohne Schlüssel wieder an (Antwort 401 statt 501), oder die Probe bekommt eine unerwartete Antwort. Je Projekt ein Aufruf von außen mit erfundenen Zugangsdaten; legt nichts an. Störung (429, 5xx) ist „keine Aussage" |
 | Anmelde-Regeln der Datenbank | `scripts/ops/appwrite-auth-policies.mjs --ci` | täglich | in einem der vier Projekte weicht eine Passwort-, Adress- oder Sitzungs-Regel vom Soll im Skript ab, oder der Blick kann die Regeln nicht lesen (Schlüssel oder Leserecht fehlt). Nur lesend, mit den vier Schlüsseln des Schema-Blicks |
 | Schutz-Kopfzeilen | `scripts/ops/verify-security-headers.mjs` | täglich | auf einem Host kommt eine Schutz-Kopfzeile (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS) nicht genau einmal an — auf einer Seite, auf `/api/health` oder auf einer Datei unter `/_nuxt/` —, oder es kommt eine, die niemand mehr senden soll (`X-Frame-Options`, `X-XSS-Protection`, `x-powered-by`). Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
+| Node-Version des App-Servers | `scripts/ops/verify-node-version.mjs` (fragt das Tor-Wort `node-version` von `ops/app-watch-gate.sh`) | täglich | das Programm `/usr/bin/node` oder ein pm2-Prozess einer App läuft mit einer anderen Node-Version als `.nvmrc` — auch mit einer neueren. Ein Prozess, der fehlt, ist nur eine Warnzeile. Ist der Server nicht erreichbar oder kennt sein Tor das Wort noch nicht, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 
 **In die App hinein (seit 2026-11-16, OPS-011).** Bis dahin sah der Alarm, ob
 ein Host antwortet, aber nicht, ob die App darin Fehler macht. Jetzt schreibt
@@ -179,6 +180,17 @@ legt sie neben die Ecosystem-Datei), auf dem Appwrite-Server das Tor-Wort
 Probealarm: `gh workflow run production-watch.yml -f config_drill=true`
 (täuscht eine fehlende Pflicht-Zeile vor, auf dem Server fehlt nichts).
 Neue Site, Kundendomain, neuer Zeitplan: [NEUE-SITE.md](NEUE-SITE.md).
+
+**Node-Version des App-Servers (seit 2026-11-19).** `.nvmrc` nennt eine
+exakte Node-Version für den eigenen Rechner, die CI und den App-Server; auf
+dem Server hebt sie niemand von selbst. Das Wächter-Tor antwortet auf das
+Wort `node-version` mit der Version des Programms `/usr/bin/node` und je
+pm2-Prozess einer App mit der Version, mit der er läuft — nur Versionsnummern,
+Zahlen und Prozess-Namen aus der App-Liste. Von Hand:
+`node scripts/ops/verify-node-version.mjs`. Probealarm:
+`gh workflow run production-watch.yml -f node_drill=true` (tut so, als liefe
+der Prozess der ersten App mit einer anderen Version; auf dem Server ändert
+das nichts).
 
 **Schutz-Kopfzeilen (seit 2026-11-16, SEC-006).** Die Kopfzeilen setzt die
 App selbst, für jede Antwort gleich
@@ -936,6 +948,15 @@ gescheiterter Lauf lässt alle früheren liegen — es eilt, aber es brennt nich
 Ist der Lauf nur zu alt und das Protokoll endet mit dem Vortag, lief der
 Zeitplan nicht: `crontab -l` dort ansehen, dann EIN Lauf von Hand
 (`… appwrite-backup.sh --run`, mit den Variablen aus der crontab-Zeile).
+
+**Node-Version rot.** Der Satz im Issue nennt, WAS abweicht. „Das Programm
+/usr/bin/node nennt …“: auf dem Server liegt ein anderes Paket als in
+`.nvmrc` — entweder wurde `.nvmrc` gehoben und der Server noch nicht, oder
+ein Paket-Update hat den Server gehoben. „Der Prozess … läuft mit Node …“
+bei richtigem Programm: das Paket ist gehoben, der pm2-Dienst aber nicht neu
+gestartet. Beide Handgriffe und ihre Reihenfolge:
+[DEPLOYMENT.md](DEPLOYMENT.md), Abschnitt A4. Es eilt nicht — die Apps
+laufen; nur beweisen die Prüfungen bis dahin nicht genau das, was live läuft.
 
 **Env / Zugänge / Admin-Konto rot.** `docs/runbooks/ZUGAENGE-AUFRAEUMEN.md`
 bzw. die Pflichtliste in `scripts/ops/verify-site-env.mjs`.
