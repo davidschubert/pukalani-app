@@ -42,8 +42,9 @@ tauscht ihn (§ 2).
 **Warum der Ausliefer-Schlüssel nicht enger ist:** Er führt auf dem Server
 den Symlink-Wechsel und `pm2` aus und braucht dafür eine Shell. Enger ginge
 es nur mit einem festen Ausliefer-Skript auf dem Server. Der
-Wächter-Schlüssel auf app-prod kopiert zwei Prüf-Skripte hinüber und führt
-sie aus; auch das braucht eine Shell.
+Wächter-Schlüssel auf app-prod schickt seit 2026-11-18 nur noch feste Worte an
+ein Tor-Skript (§ 4, „Das Wächter-Tor"); beschränkt wird er, sobald das Tor
+eingespielt ist und ein Wächter-Lauf damit grün war.
 
 ## 2 · Tauschen (beide Schlüssel, gleiches Verfahren)
 
@@ -138,6 +139,17 @@ ssh ploi@188.245.61.155 'chmod 755 ~/bin/pukalani-cert-gate.sh && ~/bin/pukalani
 Ändert sich `ops/appwrite-cert-gate.sh` im Repo, gehört dieser Schritt dazu.
 Der Deploy kopiert `ops/` nur auf app-prod.
 
+Seit 2026-11-18 kennt das Tor das Wort `sums`: je von Hand eingespielter
+Datei eine Zeile `sum <name> <sha256>` (oder `sum <name> fehlt`) — für das Tor
+selbst und für `cron-check.sh`, `cron.conf`, `realtime-watchdog.sh`,
+`appwrite-backup.sh`, `appwrite-volumes.conf` und `appwrite-backup.pub.asc`
+unter `~/ops`. Der tägliche Wächter (`scripts/ops/verify-server-scripts.mjs`)
+vergleicht sie mit dem Repo und wird rot, wenn eine Datei abweicht oder fehlt.
+Solange hier noch ein Tor ohne `sums` liegt, antwortet es mit Exit 64; der
+Wächter schreibt dann „nicht geprüft" als Warnung, kein Rot. Von Hand
+nachsehen: `ssh ploi@188.245.61.155 '~/bin/pukalani-cert-gate.sh sums'` und
+`shasum -a 256 ops/<datei>` im Repo.
+
 Für `cron-status` liegen zwei weitere Dateien von Hand auf dem Server. Ändert
 sich `ops/cron.conf` oder `ops/cron-check.sh`, gehören sie mit hinüber — sonst
 vergleicht der Server mit einer alten Liste:
@@ -196,6 +208,71 @@ Rückweg), dann einspielen.
 **Rückweg:** die Kopie `…vorher-<Datum>` zurücklegen bzw. die Zeile in
 `authorized_keys` wieder auf `restrict` allein stellen. Der eigene Zugang
 `ploi@…` ist von alldem nicht berührt.
+
+### Das Wächter-Tor
+
+**Stand 2026-11-18: Übergang.** Die sechs Prüf-Skripte des Wächters
+(`verify-site-env`, `verify-stale-keys`, `verify-instance-admins`,
+`verify-mail-breaker`, `verify-app-signals`, `verify-server-config`) schicken
+auf app-prod nur noch feste Worte an `ops/app-watch-gate.sh`, das von Hand
+unter `/home/ploi/ops/app-watch-gate.sh` liegt — mit DERSELBEN Befehlszeile
+`ssh <server> /home/ploi/ops/app-watch-gate.sh <wort> …`, ob der Schlüssel
+noch frei ist oder schon den festen Befehl trägt. Jedes Wort liest nur:
+
+| Wort | führt auf dem Server aus |
+| --- | --- |
+| `site-env <site>` | `awk` über `<site>/.env`: je Variable `NAME=1` oder `NAME=0`, nie ein Wert |
+| `site-project <site>` | die Projekt-Id aus `<site>/.env` (öffentlich), nur in fester Form |
+| `stale-keys [strict]` | `node <site>/ops/verify-stale-keys.mjs --dir /home/ploi [--strict]` |
+| `instance-admins [strict]` | `node <site>/ops/verify-instance-admins.mjs --dir /home/ploi [--strict]` |
+| `mail-breaker <zeitpunkt>` | `grep` der Notbremsen-Zeile in `~/.pm2/logs/*-error*.log`, nur „Zeitpunkt Ereignis" |
+| `app-signals <app> <stunden>` | `node <site der app>/ops/app-watch-counts.mjs <prozess> <stunden>` |
+| `nginx-check` | `node <site>/ops/nginx-check.mjs` |
+| `cron-check` | `bash <site>/ops/cron-check.sh app-prod` |
+| `sums` | je von Hand eingespielter Datei unter `~/ops` eine Zeile `sum <name> <sha256>` |
+
+App und Site kommen nur aus `~/ops/apps.conf`. `<site>` bei den Prüf-Skripten
+ist `platform.pukalani.app` (sonst die erste Site der Liste); dort legt das
+Ausliefern die Dateien ab (`OPS_FILES` in `ops/app-release.sh`). Fehlt eine,
+antwortet das Tor „Nicht geprüft" mit Exit 6, und der Wächter wird rot, nicht
+grün. Alles andere, auch `scp`, `rsync` und jede freie Befehlszeile, endet
+mit „Abgelehnt: erlaubt sind …" und Exit 64.
+
+Einspielen und Aktualisieren (von Hand, über den eigenen Zugang). VOR dem
+Zusammenführen der Änderung, die die Prüf-Skripte auf das Tor umstellt, und
+erst NACHDEM ein Ausliefern die beiden `verify-*.mjs` unter
+`<site>/ops/` abgelegt hat:
+
+```bash
+ssh ploi@49.13.211.173 'test ! -e ~/ops/app-watch-gate.sh || cp -p ~/ops/app-watch-gate.sh ~/ops/app-watch-gate.sh.vorher-$(date +%F)'
+scp ops/app-watch-gate.sh ops/apps.conf ploi@49.13.211.173:ops/
+ssh ploi@49.13.211.173 'chmod 755 ~/ops/app-watch-gate.sh && ~/ops/app-watch-gate.sh sums && ~/ops/app-watch-gate.sh stale-keys'
+shasum -a 256 ops/app-watch-gate.sh ops/apps.conf   # dieselben Summen wie in der Zeile `sums`
+```
+
+Danach ein Wächter-Lauf (`gh workflow run production-watch.yml`, Job `server`
+grün). Erst dann der feste Befehl — die Zeile des Wächter-Schlüssels in
+`~/.ssh/authorized_keys` (vorher eine Kopie der Datei daneben legen):
+
+```text
+command="/home/ploi/ops/app-watch-gate.sh",restrict ssh-ed25519 AAAA… pukalani-ci-watch-…
+```
+
+Der Schritt „Ist der Wächter-Schlüssel beschränkt?" im Job `server` zeigt bis
+dahin eine Warnung und danach „beschränkt". Ihn scharf zu stellen (rot statt
+Warnung) ist eine eigene, spätere Änderung.
+
+Nach JEDER Änderung an `ops/app-watch-gate.sh` oder am ssh-Weg der sechs
+Prüf-Skripte: `ops/app-watch-gate-attrappe.sh` (Wegwerf-Container mit echtem
+sshd: jedes Wort mit und ohne festen Befehl, die Ablehnungen, die echten
+Prüf-Skripte, der Vergleich `sums`), dann einspielen. Ob die Datei auf dem
+Server der im Repo entspricht, sagt der tägliche Blick „Liegen auf den
+Servern die Dateien aus dem Repo?".
+
+**Rückweg:** die Zeile in `authorized_keys` wieder auf `restrict` allein
+stellen und, falls nötig, die Kopie `…vorher-<Datum>` zurücklegen. Die
+Prüf-Skripte bleiben auf dem Tor; ohne Tor auf dem Server ist der Wächter rot,
+bis es wieder liegt.
 
 ## 5 · Fallen
 

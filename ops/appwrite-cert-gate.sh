@@ -51,8 +51,17 @@
 # Form geprüft: eine Zeile aus einem crontab kommt so auch dann nicht hinaus,
 # wenn das Skript daneben ausgetauscht würde.
 #
+# SIEBTES WORT (CI1 c, 2026-11-18): `sums` gibt je von Hand eingespielter
+# Datei EINE Zeile `sum <name> <sha256>` (oder `sum <name> fehlt`) aus — für
+# das Tor selbst und für cron-check.sh, cron.conf, realtime-watchdog.sh,
+# appwrite-backup.sh, appwrite-volumes.conf und appwrite-backup.pub.asc unter
+# ~/ops. Nur lesend, kein docker. Der tägliche Wächter
+# (scripts/ops/verify-server-scripts.mjs) vergleicht die Summen mit dem Repo:
+# eine Datei, die nach einer Änderung im Repo nicht neu eingespielt wurde,
+# fiel bis dahin niemandem auf.
+#
 # AUFRUF
-#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status | realtime-status | cron-status
+#   aus der CI:      ssh appwrite-prod probe | renew | reset-account | backup-status | realtime-status | cron-status | sums
 #   von Hand (Mac):  ssh ploi@<server> '~/bin/pukalani-cert-gate.sh probe'
 #
 # EINSPIELEN (nur von Hand, es gibt bewusst keinen CI-Weg auf diesen Server):
@@ -74,6 +83,10 @@ BACKUP_STATE_FILE="${BACKUP_STATE_FILE:-$HOME/backup/state/last-run}"
 # Stand-Datei des Realtime-Wächters (gleicher Default wie dort).
 REALTIME_STATE_FILE="${REALTIME_STATE_FILE:-$HOME/ops/state/realtime-watchdog}"
 CRON_CHECK_SCRIPT="${CRON_CHECK_SCRIPT:-$HOME/ops/cron-check.sh}"
+# Für `sums`: das Tor selbst und die von Hand eingespielten Dateien daneben.
+SUMS_SELF="${SUMS_SELF:-$HOME/bin/pukalani-cert-gate.sh}"
+SUMS_OPS_DIR="${SUMS_OPS_DIR:-$HOME/ops}"
+SUM_FILES='cron-check.sh cron.conf realtime-watchdog.sh appwrite-backup.sh appwrite-volumes.conf appwrite-backup.pub.asc'
 CRON_LINE='^cron server=appwrite-prod quelle=(benutzer|system) erwartet=[0-9]{1,3} gefunden=[0-9]{1,3} fehlt=[a-z0-9,-]{1,255} unbekannt=[0-9]{1,3} doppelt=[0-9]{1,3}$'
 
 # Von Hand als $1; mit festem Befehl (kein Argument) in SSH_ORIGINAL_COMMAND.
@@ -223,8 +236,23 @@ case "$REQUEST" in
     printf '%s\n' "$CRON_OUT"
     ;;
 
+  sums)
+    # ÖFFENTLICHES PROTOKOLL: je Datei eine Zeile `sum <name> <sha256>` oder
+    # `sum <name> fehlt`. Die Namen stehen hier fest; jede Summe wird auf ihre
+    # Form geprüft, bevor sie das Tor verlässt.
+    file_sum() {
+      if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi
+    }
+    for NAME in pukalani-cert-gate.sh $SUM_FILES; do
+      if [ "$NAME" = pukalani-cert-gate.sh ]; then FILE="$SUMS_SELF"; else FILE="$SUMS_OPS_DIR/$NAME"; fi
+      SUM=''
+      [ -f "$FILE" ] && SUM="$(file_sum "$FILE" 2>/dev/null)"
+      if printf '%s' "$SUM" | grep -Eq '^[0-9a-f]{64}$'; then echo "sum $NAME $SUM"; else echo "sum $NAME fehlt"; fi
+    done
+    ;;
+
   *)
-    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status, realtime-status, cron-status."
+    echo "Abgelehnt: erlaubt sind probe, renew, reset-account, backup-status, realtime-status, cron-status, sums."
     exit 64
     ;;
 esac

@@ -18,8 +18,9 @@
  * ist falsch, aber nichts wird rot. Deshalb dieselbe Antwort — nachsehen, was
  * WIRKLICH auf dem Server steht, statt zu glauben, was in einer Vorlage steht.
  *
- * WERTE VERLASSEN DEN SERVER NIE. Über ssh läuft nur ein kleines `awk`, das je
- * Zeile den SCHLÜSSELNAMEN und eine Ziffer ausgibt: `1` = dahinter steht
+ * WERTE VERLASSEN DEN SERVER NIE. Über ssh läuft nur das Tor-Wort `site-env`
+ * (ops/app-watch-gate.sh; bis 2026-11-18 eine freie Befehlszeile): ein
+ * kleines `awk`, das je Zeile den SCHLÜSSELNAMEN und eine Ziffer ausgibt: `1` = dahinter steht
  * etwas, `0` = dahinter steht nichts. Ein Passwort steht damit weder im
  * Terminal noch in einem CI-Log. Deshalb erkennt dieses Skript „fehlt ganz"
  * und (seit 2026-11-17, WL1 d) „steht drin, ist aber leer" — nicht „steht
@@ -57,8 +58,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-
-const SERVER = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
+import { APP_SERVER as SERVER, gateSshArgs } from './app-watch-gate.mjs'
 
 /**
  * Pflicht = „ohne das erfüllt die Site eine Aufgabe still nicht".
@@ -588,6 +588,9 @@ export const SITES = [
  * Bewusst schlichtes awk (läuft mit mawk, gawk und dem awk von macOS) und
  * ohne einfaches Anführungszeichen im Text — das Programm steht auf dem
  * Server in einfachen Anführungszeichen (`sprintf("%c", 39)` ist das Zeichen).
+ * Ausgeführt wird es dort vom Tor (ops/app-watch-gate.sh, `ENV_STATE_AWK`):
+ * eine ÄNDERUNG HIER gehört WORTGLEICH dorthin und ins Einspielen — der Test
+ * appWatchGate.test.ts wird sonst rot.
  */
 export const ENV_STATE_AWK = [
   'BEGIN { q = sprintf("%c", 39) }',
@@ -620,31 +623,27 @@ export function parseKeyStates(output) {
   return states
 }
 
-/** Liest NUR Schlüsselnamen und „leer / nicht leer" einer Server-.env. Werte bleiben dort. */
+/**
+ * Liest NUR Schlüsselnamen und „leer / nicht leer" einer Server-.env. Werte
+ * bleiben dort. Seit CI1 a (2026-11-18) über das Tor-Wort `site-env`
+ * (ops/app-watch-gate.sh führt dort genau `ENV_STATE_AWK` aus, wortgleich).
+ */
 function readKeyStates(dir) {
-  const out = execFileSync('ssh', [
-    '-o', 'BatchMode=yes',
-    '-o', 'ConnectTimeout=20',
-    SERVER,
-    `test -f /home/ploi/${dir}/.env && awk '${ENV_STATE_AWK}' /home/ploi/${dir}/.env || echo __NO_ENV_FILE__`,
-  ], { encoding: 'utf8' })
+  const out = execFileSync('ssh', gateSshArgs(SERVER, 'site-env', dir), { encoding: 'utf8' })
   if (out.split('\n').some(line => line.trim() === '__NO_ENV_FILE__')) return null
   return parseKeyStates(out)
 }
 
 /**
  * Der EINE öffentliche Wert vom Server: welches Appwrite-Projekt diese Site
- * bedient. `head -1`, damit ein doppelter Eintrag nicht zwei Zeilen liefert —
- * gemeint ist die Zeile, die Nitro auch liest.
+ * bedient (Tor-Wort `site-project`). Das Tor gibt nur die erste Zeile aus —
+ * gemeint ist die Zeile, die Nitro auch liest — und nur in der Form einer
+ * Projekt-Id, sonst `__INVALID__` (hier: nicht lesbar).
  */
 function readServerProjectId(dir) {
-  const out = execFileSync('ssh', [
-    '-o', 'BatchMode=yes',
-    '-o', 'ConnectTimeout=20',
-    SERVER,
-    `test -f /home/ploi/${dir}/.env && grep -m1 -oE '^NUXT_PUBLIC_APPWRITE_PROJECT_ID=.*' /home/ploi/${dir}/.env | cut -d= -f2- || echo __NO_ENV_FILE__`,
-  ], { encoding: 'utf8' })
+  const out = execFileSync('ssh', gateSshArgs(SERVER, 'site-project', dir), { encoding: 'utf8' })
   const value = out.trim()
+  if (value === '__INVALID__') throw new Error('die Projekt-Id auf dem Server hat keine gültige Form')
   if (!value || value === '__NO_ENV_FILE__') return null
   return value
 }

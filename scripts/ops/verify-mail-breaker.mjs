@@ -81,9 +81,9 @@
  * CI absichtlich KEIN Alarm-Grund — s. Kopf von production-watch.yml).
  */
 import { spawnSync } from 'node:child_process'
+import { APP_SERVER as SERVER, gateSshArgs } from './app-watch-gate.mjs'
 
 const STRIKT = process.argv.includes('--strict')
-const SERVER = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
 /** Fenster für Blick 1 — der tägliche Takt plus eine Stunde Überlappung. */
 const HOURS = Number(arg('--hours')) || 25
 /** Event-Name, nach dem im Log gesucht wird. Überschreibbar NUR für den
@@ -169,21 +169,19 @@ let befund = false
 // ── BLICK 1: Notbremse im Server-Log ─────────────────────────────────────
 if (process.argv.includes('--ssh')) {
   const seit = new Date(Date.now() - HOURS * 3_600_000).toISOString()
-  // ISO-Zeitstempel vergleichen sich als Zeichenketten korrekt; `-F` sucht
-  // die Event-Zeile wörtlich. Dateien fehlen (frische Instanz) → leer, kein
-  // Fehler. Die Zeile wird auf time/event/route gekürzt, mehr enthält sie
-  // ohnehin nicht — aber so bleibt es auch bei einer künftigen Erweiterung
-  // des Log-Events bei dieser Zusage.
-  const fern = [
-    `grep -h -F '"event":"${PATTERN}"' ~/.pm2/logs/*-error*.log 2>/dev/null`,
-    `| awk -F'"time":"' -v seit='${seit}' '{ split($2, t, "\\""); if (t[1] >= seit) print }'`,
-    `| sed -E 's/.*"time":"([^"]*)".*"event":"([^"]*)".*("route":"[^"]*")?.*/\\1 \\2 \\3/'`,
-    `| sort | tail -200`,
-  ].join(' ')
-  const lauf = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', SERVER, fern], { encoding: 'utf8' })
+  // Seit CI1 a (2026-11-18) über das Tor-Wort `mail-breaker`
+  // (ops/app-watch-gate.sh): dort läuft das `grep` auf die Event-Zeile in
+  // ~/.pm2/logs/*-error*.log seit diesem Zeitpunkt (ISO-Zeitstempel
+  // vergleichen sich als Zeichenketten korrekt). Dateien fehlen (frische
+  // Instanz) → leer, kein Fehler. Das Tor kürzt jede Zeile auf Zeitpunkt und
+  // Ereignis und gibt nur Zeilen in genau dieser Form aus. Den Ereignis-Namen
+  // schickt es nur mit, wenn er vom Normalfall abweicht (Probelauf).
+  const worte = PATTERN === 'auth.mail_route_breaker' ? [seit] : [seit, PATTERN]
+  const lauf = spawnSync('ssh', gateSshArgs(SERVER, 'mail-breaker', ...worte), { encoding: 'utf8' })
   if (lauf.error || (lauf.status !== 0 && lauf.status !== 1)) {
-    // grep liefert 1 bei „nichts gefunden" — das ist der Normalfall. Alles
-    // andere ist ein kaputter Weg, kein Befund.
+    // Exit 1 bleibt aus der Zeit vor dem Tor erlaubt („nichts gefunden");
+    // das Tor selbst endet hier mit 0. Alles andere ist ein kaputter Weg
+    // (ssh, Tor fehlt oder lehnt ab), kein Befund.
     console.error(`ssh fehlgeschlagen — ${lauf.error?.message || `Exit ${lauf.status}`}\n${lauf.stderr || ''}`)
     process.exit(2)
   }
