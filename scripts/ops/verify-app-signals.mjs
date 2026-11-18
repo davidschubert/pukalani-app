@@ -20,7 +20,8 @@
  * WIE: auf dem App-Server liegt neben jeder Ecosystem-Datei das Zähl-Skript
  * `ops/app-watch-counts.mjs` (der Deploy legt es dorthin). Es liest die zwei
  * aktuellen pm2-Logs des Prozesses und gibt NUR Zahlen und Kennungen in fester
- * Form zurück. Dieses Skript ruft es je App über ssh auf, prüft jede Zeile
+ * Form zurück. Dieses Skript ruft es je App über ssh auf (Tor-Wort
+ * `app-signals`, ops/app-watch-gate.sh), prüft jede Zeile
  * gegen ihre Form, bevor sie in die Rechnung oder ins (öffentliche) Protokoll
  * kommt, und wendet die Regeln aus `app-signals-rules.mjs` an. Die erwarteten
  * Zeit-Läufe je App stehen in `ops/timed-jobs.conf`.
@@ -47,6 +48,7 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { WINDOW_HOURS, drillCounts, evaluateApp, parseCounts, parseExpectedJobs, summaryLine } from './app-signals-rules.mjs'
+import { APP_SERVER, gateSshArgs } from './app-watch-gate.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const RETRY_DELAY_MS = 15_000
@@ -68,12 +70,15 @@ function sleep(ms) {
 }
 
 function askServer(server, entry) {
-  // Geschickt werden nur Namen aus `ops/apps.conf` (dort auf Kleinbuchstaben,
-  // Ziffern, Punkt und Bindestrich begrenzt) und eine Zahl.
-  const remote = `node /home/ploi/${entry.site}/ops/app-watch-counts.mjs ${entry.process} ${WINDOW_HOURS}`
-  const run = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', server, remote], { encoding: 'utf8', timeout: 120_000 })
+  // Seit CI1 a (2026-11-18) über das Tor-Wort `app-signals`
+  // (ops/app-watch-gate.sh): geschickt werden nur der App-Name aus
+  // `ops/apps.conf` und eine Zahl; Site und Prozess wählt das Tor aus der
+  // Liste auf dem Server und ruft dort
+  // `node /home/ploi/<site>/ops/app-watch-counts.mjs <prozess> <stunden>`.
+  const run = spawnSync('ssh', gateSshArgs(server, 'app-signals', entry.app, String(WINDOW_HOURS)), { encoding: 'utf8', timeout: 120_000 })
   // Exit 5 = das Zähl-Skript hat geantwortet („Prozess fehlt"); alles andere
-  // außer 0 heißt: keine Antwort des Skripts.
+  // außer 0 heißt: keine Antwort des Skripts (auch 6 = Skript fehlt dort,
+  // 64 = das Tor lehnt ab).
   if (run.error || (run.status !== 0 && run.status !== 5)) return null
   return run.stdout
 }
@@ -100,7 +105,7 @@ async function main() {
     console.error('Aufruf: verify-app-signals.mjs --ssh [--strict]   oder   --from-dir <ordner> [--strict]')
     process.exit(2)
   }
-  const server = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
+  const server = APP_SERVER
   const drill = process.env.PUKALANI_SIGNALS_DRILL === '1'
   const findingsFile = process.env.PUKALANI_FINDINGS_FILE
 

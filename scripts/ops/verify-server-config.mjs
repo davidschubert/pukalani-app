@@ -12,7 +12,10 @@
  *
  * WIE: auf den Servern laufen zwei feste, nur lesende Skripte —
  *   app-prod       node …/ops/nginx-check.mjs   und   bash …/ops/cron-check.sh app-prod
- *                  (der Deploy legt beide neben die Ecosystem-Datei)
+ *                  (der Deploy legt beide neben die Ecosystem-Datei; seit
+ *                  2026-11-18 über die Tor-Worte `nginx-check` und
+ *                  `cron-check` von ops/app-watch-gate.sh — das Tor wählt
+ *                  den Ordner: platform.pukalani.app, sonst die erste Site)
  *   appwrite-prod  das Tor-Wort `cron-status` (ops/appwrite-cert-gate.sh ruft
  *                  ~/ops/cron-check.sh; von Hand eingespielt)
  * Sie geben nur Zahlen, Site-Namen aus der Liste und Regel-Namen aus. Bewertet
@@ -35,12 +38,11 @@ import { spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { APP_SERVER, gateSshArgs } from './app-watch-gate.mjs'
 import { drillNginx, evaluateCron, evaluateNginx, parseCronOutput, parseNginxOutput, summaryLines } from './server-config-rules.mjs'
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const RETRY_DELAY_MS = 15_000
-/** Die Skripte liegen in jeder Site gleich; gefragt wird die erste aus ops/apps.conf. */
-const SCRIPT_SITE_FALLBACK = 'platform.pukalani.app'
 
 /** Namen der Sites aus ops/nginx-sites.conf (erste Spalte). */
 export function readSiteNames(text) {
@@ -59,8 +61,10 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/** `remote`: eine Befehlszeile (appwrite-prod: das Tor-Wort) oder ein Wort des Wächter-Tors auf app-prod als Liste. */
 function ssh(target, remote) {
-  const run = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', target, remote], { encoding: 'utf8', timeout: 120_000 })
+  const args = Array.isArray(remote) ? gateSshArgs(target, ...remote) : ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', target, remote]
+  const run = spawnSync('ssh', args, { encoding: 'utf8', timeout: 120_000 })
   if (run.error || run.status !== 0) return null
   return run.stdout
 }
@@ -83,7 +87,7 @@ async function main() {
     console.error('Aufruf: verify-server-config.mjs --ssh [--strict]   oder   --from-dir <ordner> [--strict]')
     process.exit(2)
   }
-  const appServer = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
+  const appServer = APP_SERVER
   const appwriteServer = process.env.PUKALANI_APPWRITE_SSH || 'appwrite-prod'
   // Der Wächter-Schlüssel hat auf appwrite-prod einen festen Befehl: geschickt
   // wird nur das WORT. Mit dem eigenen Zugang (freie Shell) ruft man das Tor
@@ -97,8 +101,10 @@ async function main() {
     console.error('ops/nginx-sites.conf ist nicht lesbar (erwartet je Zeile: <site> <art> <port> <an|aus>).')
     process.exit(2)
   }
-  const scriptDir = `/home/ploi/${siteNames.includes(SCRIPT_SITE_FALLBACK) ? SCRIPT_SITE_FALLBACK : siteNames[0]}/ops`
-
+  // Auf app-prod wählt das Wächter-Tor (ops/app-watch-gate.sh) den Ordner der
+  // Skripte selbst — nach der Regel von früher (platform.pukalani.app, sonst
+  // die erste Site), aber aus der App-Liste auf dem Server. Geschickt wird nur das
+  // Wort (seit CI1 a, 2026-11-18).
   const read = async (file, target, remote) => {
     if (fromDir) {
       const path = join(fromDir, file)
@@ -109,10 +115,10 @@ async function main() {
 
   console.log(`Server-Einstellungen wie in der Vorlage? — Webserver und Zeitpläne${drill ? '  [PROBEALARM]' : ''}\n`)
 
-  let nginx = parseNginxOutput(await read('nginx.txt', appServer, `node ${scriptDir}/nginx-check.mjs`))
+  let nginx = parseNginxOutput(await read('nginx.txt', appServer, ['nginx-check']))
   if (drill) nginx = drillNginx(nginx, siteNames[0])
   const cron = new Map([
-    ['app-prod', parseCronOutput(await read('cron-app-prod.txt', appServer, `bash ${scriptDir}/cron-check.sh app-prod`), 'app-prod')],
+    ['app-prod', parseCronOutput(await read('cron-app-prod.txt', appServer, ['cron-check']), 'app-prod')],
     ['appwrite-prod', parseCronOutput(await read('cron-appwrite-prod.txt', appwriteServer, appwriteCommand), 'appwrite-prod')],
   ])
 

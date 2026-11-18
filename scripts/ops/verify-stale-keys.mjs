@@ -59,7 +59,8 @@
  * `pool`, das der Cutover eingefroren hatte. Ein ✖ auf einer LEBENDEN Site ist
  * deshalb kein Aufräum-Hinweis, sondern ein Betriebs-Alarm.
  *
- * Das Skript kopiert sich dafür selbst auf den Server und läuft DORT — die
+ * Das Skript läuft dafür AUF dem Server (das Ausliefern legt es dort ab, das
+ * Wächter-Tor startet es; bis 2026-11-18 kopierte es sich selbst hinüber) — die
  * Schlüssel verlassen ihn nie, zurück kommt nur der Bericht (Dateiname,
  * Projekt, Status). Dieselbe Zusage wie bei `verify-site-env.mjs`, nur mit dem
  * Unterschied, dass hier tatsächlich geprüft werden muss, ob ein Schlüssel
@@ -68,7 +69,7 @@
  * WERTE ERSCHEINEN NIRGENDS. Gelesen wird der Schlüssel nur, um ihn als
  * Kopfzeile zu schicken; ausgegeben werden Dateiname, Projekt und Status.
  */
-import { execFileSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, relative } from 'node:path'
@@ -87,33 +88,20 @@ const ORDNER = argDir !== -1 && process.argv[argDir + 1]
  */
 const STRIKT = process.argv.includes('--strict')
 
-const SERVER = process.env.PUKALANI_OPS_SSH || 'ploi@49.13.211.173'
-/** Verzeichnis auf dem Server, unter dem Sites und Reste liegen. */
-const SERVER_ORDNER = '/home/ploi'
-
 /**
- * `--ssh`: sich selbst hinüberkopieren und dort laufen lassen. Der Umweg
- * existiert, damit kein Schlüssel über die Leitung zurückkommt — geprüft wird
- * am Ort, zurück kommt nur der Bericht.
+ * `--ssh`: auf dem Server laufen lassen. Geprüft wird am Ort, damit kein
+ * Schlüssel über die Leitung zurückkommt — zurück kommt nur der Bericht.
+ *
+ * Seit CI1 a (2026-11-18) kopiert sich das Skript NICHT mehr hinüber: das
+ * Ausliefern legt es unter /home/ploi/<site>/ops/ ab, und das Tor-Wort
+ * `stale-keys` (ops/app-watch-gate.sh) startet es dort mit `--dir /home/ploi`.
+ * Der Import des Tor-Wegs steht deshalb HIER drin und nicht oben: auf dem
+ * Server liegt diese Datei allein, ohne ihre Nachbarn.
  */
 if (process.argv.includes('--ssh')) {
-  const ziel = '/tmp/pukalani-stale-keys.mjs'
-  const quelle = new URL(import.meta.url).pathname
-
-  try {
-    execFileSync('scp', ['-q', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', quelle, `${SERVER}:${ziel}`], { stdio: 'inherit' })
-  }
-  catch (fehler) {
-    console.error(`scp fehlgeschlagen — ${(fehler && fehler.message) || fehler}`)
-    process.exit(2)
-  }
-
-  // Die Ferne entscheidet über den Ausgang, nicht diese Hülle. `rm` läuft
-  // getrennt, damit der Exit-Code des Laufs erhalten bleibt (ein `;` dahinter
-  // würde ihn durch den des Aufräumens ersetzen — der Wächter wäre dann
-  // IMMER grün, und das ist die Sorte Fehler, die man nie bemerkt).
-  const fern = `node ${ziel} --dir ${SERVER_ORDNER}${STRIKT ? ' --strict' : ''}; ergebnis=$?; rm -f ${ziel}; exit $ergebnis`
-  const lauf = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', SERVER, fern], { stdio: 'inherit' })
+  const { APP_SERVER, GATE_NOT_CHECKED, GATE_REJECTED, gateSshArgs } = await import('./app-watch-gate.mjs')
+  const args = STRIKT ? ['stale-keys', 'strict'] : ['stale-keys']
+  const lauf = spawnSync('ssh', gateSshArgs(APP_SERVER, ...args), { stdio: 'inherit' })
 
   // spawnSync meldet einen START-Fehler in `error`, nicht in `status` — das
   // zuerst prüfen, sonst liest man `null` als Erfolg.
@@ -121,7 +109,15 @@ if (process.argv.includes('--ssh')) {
     console.error(`ssh fehlgeschlagen — ${lauf.error.message}`)
     process.exit(2)
   }
-  process.exit(lauf.status ?? 2)
+  // Die Ferne entscheidet über den Ausgang: 0 ruhig, 1 Fund (mit --strict).
+  // Alles andere heißt „nicht geprüft" (ssh kaputt, Tor fehlt oder lehnt ab,
+  // das Skript liegt dort noch nicht) — Exit 2, nie „alles gut".
+  if (lauf.status === 0 || lauf.status === 1) process.exit(lauf.status)
+  const grund = lauf.status === GATE_NOT_CHECKED
+    ? 'ein Stück fehlt auf dem Server'
+    : lauf.status === GATE_REJECTED ? 'das Tor lehnt ab' : `Exit ${lauf.status ?? '?'}`
+  console.error(`Nicht geprüft — ${grund}. docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md, „Das Wächter-Tor".`)
+  process.exit(2)
 }
 
 /**
