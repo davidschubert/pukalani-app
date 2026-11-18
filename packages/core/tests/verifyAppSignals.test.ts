@@ -302,10 +302,10 @@ describe('Listen und Skripte passen zusammen', () => {
     const script = readFileSync(join(REPO, 'ops', 'app-watch-counts.mjs'), 'utf8')
     expect(script).toContain(`const VERSION = ${COUNTS_VERSION}\n`)
     // Jede Zeilenart, die das Skript ausgibt, hat hier eine Form.
-    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'lauf name=', 'ende laeufe=']) {
+    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'mailbremse ausgeloest=', 'lauf name=', 'ende laeufe=']) {
       expect(script, start).toContain(`console.log(\`${start}`)
     }
-    expect(Object.keys(LINE_FORMS)).toHaveLength(8)
+    expect(Object.keys(LINE_FORMS)).toHaveLength(9)
   })
 })
 

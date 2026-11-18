@@ -115,6 +115,8 @@ export const LINE_FORMS = {
   /** Seit BE-021 — OPTIONAL: ein Server mit dem älteren Skript schreibt sie nicht. */
   audit: /^protokoll ausfaelle=(\d{1,9})$/,
   csp: /^skriptregel berichte=(\d{1,9}) gedeckelt=(\d{1,9})$/,
+  /** Seit WA1 e (2026-11-18) — OPTIONAL wie `audit`; gelesen vom Mail-Blick. */
+  mailBreaker: new RegExp(`^mailbremse ausgeloest=(\\d{1,9}) letzte_min=${WORD.age}$`),
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -168,6 +170,9 @@ export function parseCounts(text) {
     }
     else if ((hit = line.match(LINE_FORMS.csp))) {
       Object.assign(counts, { cspReports: Number(hit[1]), cspCapped: Number(hit[2]) })
+    }
+    else if ((hit = line.match(LINE_FORMS.mailBreaker))) {
+      Object.assign(counts, { mailBreaker: Number(hit[1]), mailBreakerLastMin: age(hit[2]) })
     }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])

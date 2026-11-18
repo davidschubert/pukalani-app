@@ -233,7 +233,7 @@ Wort liest nur:
 | `site-project <site>` | die Projekt-Id aus `<site>/.env` (öffentlich), nur in fester Form |
 | `stale-keys [strict]` | `node <site>/ops/verify-stale-keys.mjs --dir /home/ploi [--strict]` |
 | `instance-admins [strict]` | `node <site>/ops/verify-instance-admins.mjs --dir /home/ploi [--strict]` |
-| `mail-breaker <zeitpunkt>` | `grep` der Notbremsen-Zeile in `~/.pm2/logs/*-error*.log`, nur „Zeitpunkt Ereignis" |
+| `mail-breaker <zeitpunkt>` | `grep` der Notbremsen-Zeile in `~/.pm2/logs/*-error*.log`, nur „Zeitpunkt Ereignis" — seit 2026-11-18 nur noch für den Probelauf (`verify-mail-breaker.mjs --pattern …`); der tägliche Mail-Blick fragt `app-signals` |
 | `app-signals <app> <stunden>` | `node <site der app>/ops/app-watch-counts.mjs <prozess> <stunden>` |
 | `nginx-check` | `node <site>/ops/nginx-check.mjs` |
 | `cron-check` | `bash <site>/ops/cron-check.sh app-prod` |
