@@ -45,14 +45,4 @@ export const ROUTE_ROLE_BACKLOG: Readonly<Record<string, readonly string[]>> = {
     'packages/brand/server/api/brand/profiles/scores.get.ts',
     'packages/brand/server/api/brand/share/revoke.post.ts',
   ],
-  market: [
-    'packages/market/server/api/market/ops/sweep.post.ts',
-    'packages/market/server/api/market/profiles/[id]/candidates.get.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/[cid].delete.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/[cid].patch.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/index.get.ts',
-    'packages/market/server/api/market/profiles/[id]/competitors/index.post.ts',
-    'packages/market/server/api/market/profiles/[id]/rating.post.ts',
-    'packages/market/server/api/market/profiles/[id]/visibility.patch.ts',
-  ],
 }
