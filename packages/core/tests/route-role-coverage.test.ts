@@ -76,6 +76,10 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // (`packages/market/tests/support/marketRouteKit.ts`), der Sweep hinter
   // `system.manage` (`support/instanceRoleGate.ts`).
   'market',
+  // Abgebaut mit N13 (2026-11-18): alle 30 Bestands-Routen des Markenberaters
+  // — Werkstatt an einer Marke, Betreiber-Routen, Einladung und Freigabe
+  // (`packages/brand/tests/support/brandRouteKit.ts`).
+  'brand',
 ]
 
 /**

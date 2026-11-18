@@ -219,6 +219,22 @@ paths:
   steht; dass sie in jedem Zweig greift, belegen die Proben je Paket
   (`tests/participation-guard.test.ts`, Prüfstand
   `core/tests/support/participationHarness.ts`).
+- AUCH DAS ROLLEN-TOR UND DIE ANWESENHEIT FRAGEN DIE ZUGEHÖRIGKEIT (BT1 e,
+  seit 2026-11-18): `requireCommunityPermission` liest die frische
+  Entzugs-Notiz VOR der Rolle — dieselbe Reihenfolge wie
+  `resolveCommunityMembership` und `joinCommunity`. Steht sie, zählt die
+  gecachte Rolle nicht; vorher ließ ein Recht, das schon die einfachste Rolle
+  trägt (`members.invite`), eine entfernte Person bis zu 30 s durch, und nur
+  die Sperre davor hielt sie auf. Der Betreiber im Not-Zugang kommt über sein
+  Label und ist nicht betroffen. `POST /api/presence/heartbeat` schreibt im
+  Pool nur für Mitglieder der Community des Hosts
+  (`resolveCommunityMembership`); alle anderen bekommen ein stilles `ok`,
+  ohne dass gelesen oder geschrieben wird (kein 403 — der Takt läuft alle
+  20 s in jedem Reiter). Ist die Frage gerade nicht beantwortbar, entscheidet
+  das Label am Konto, damit eine Störung nicht die Anwesenheit aller
+  Mitglieder löscht. Beweise: `packages/core/tests/communityPermission.test.ts`,
+  `packages/core/tests/route-roles-platform.test.ts`,
+  `packages/onboarding/tests/route-roles-members.test.ts`.
 - ENTFERNT ⇒ KEIN ZUGRIFF, NUR DER HINWEIS (SEC-030 Teil 2, seit 2026-11-13 —
   Davids Entscheidung 2026-11-12): wem ein Admin den Zugang entzogen hat
   (`community_members.status='removed'` — eine POSITIVE Tatsache; „war nie

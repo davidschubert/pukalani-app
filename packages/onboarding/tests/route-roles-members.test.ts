@@ -199,6 +199,16 @@ for (const route of INVITE_ROUTES) {
       })
     }
 
+    it('entferntes Konto: 403, kein Ruf — das Tor liest die frische Entzugs-Notiz selbst', async () => {
+      // Der Rollen-Cache des Prüfstands meldet für das entfernte Konto noch
+      // `viewer`, und diese Rolle trüge `members.invite`. Bis BT1 e
+      // (2026-11-18) hielt hier nur die Sperre davor.
+      const result = await run('removed')
+      expect(result.status).toBe(403)
+      expect(result.guardPassed).toBe(false)
+      expect(result.calls).toEqual([])
+    })
+
     it('entferntes Konto: die Sperre davor (Middleware 06) lässt diesen Pfad nicht durch', async () => {
       vi.stubGlobal('defineAppConfig', (config: unknown) => config)
       const appConfig = (await import('../app/app.config')).default as {
