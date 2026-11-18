@@ -1,338 +1,120 @@
-import { createHash } from 'node:crypto'
-import type { BrandFinding, BrandReviewStage } from '../../../../../shared/brandFindings'
-import {
-  brandDocumentRevisionInput,
-  splitBrandDocumentCatchUp,
-} from '../../../../../shared/brandDocument'
-import {
-  BRAND_SLOTS,
-  type BrandStepKey,
-  slotById,
-} from '../../../../../shared/slotRegistry'
-import type {
-  BrandDocumentReviewResponse,
-  BrandFindingView,
-} from '../../../../../shared/types/brand'
+import { BRAND_RUN_SCOPES, emptyBrandRunDetail, parseBrandRunDetail, toBrandRunView } from '../../../../../shared/brandRun'
+import type { BrandStepKey } from '../../../../../shared/slotRegistry'
+import type { BrandDocumentReviewStartResponse } from '../../../../../shared/types/brand'
 import { loadBrandDocumentContext } from '../../../../utils/brandAcceptance'
-import { loadBrandConversationHistory } from '../../../../utils/brandConversationHistory'
 import {
-  listBrandFindings,
-  toBrandFindingView,
-  writeBrandFindings,
-} from '../../../../utils/brandFindingsStore'
+  brandDocumentHasConfirmed,
+  brandDocumentReviewKey,
+  runBrandDocumentReview,
+} from '../../../../utils/brandDocumentReviewRun'
 import {
-  claimBrandDocumentReview,
-  rememberBrandDocumentReview,
-  runBrandSessionReview,
-} from '../../../../utils/brandReview'
-import {
-  brandReviewAllNotes,
-  brandReviewChapter,
-  brandReviewDocument,
-  brandReviewSessionInfo,
-} from '../../../../utils/brandReviewInputs'
-import {
-  BRAND_STEPS_TABLE,
-  type BrandSlotRecord,
-  brandDb,
-  brandSlotRecordConfirmed,
-  parseSlotRecords,
-  profileFacts,
-  serializeSlotRecords,
-} from '../../../../utils/brandStore'
+  brandRunStore,
+  readBrandRunView,
+  runningBrandRunView,
+  startBrandRun,
+} from '../../../../utils/brandRun'
 
 /**
  * DER PRÜFBLICK (BW2 Paket 7, Plan §10) — der Spezialist über das GANZE
- * Dokument, ausgelöst von einem Menschen.
+ * Dokument, ausgelöst von einem Menschen. Seit LL1 d (2026-11-18) rechnet er
+ * HINTER DER ANTWORT.
  *
  * ── NIE AUTOMATISCH (§16, Davids Entscheidung 2026-09-04) ────────────────
- * Es gibt genau einen Auslöser: diesen POST, hinter dem Knopf „Dokument
- * prüfen". Kein Seitenaufruf, kein Öffnen, kein Reload. Der Aufruf wiegt 5 im
- * Tages-Eimer (§13) und liest neun Kapitel — er gehört bestellt, nicht
- * verabreicht.
+ * Genau ein Auslöser: dieser POST, hinter dem Knopf „Dokument prüfen".
  *
- * ── DREI SCHRITTE, IN DIESER REIHENFOLGE ─────────────────────────────────
- *  1. NACHHOLUNG: jede bestätigte Session ohne Urteil bekommt ihren
- *     Schliess-Aufruf nachgereicht (Modus `session`, Gewicht 1 je Session,
- *     höchstens `BRAND_DOCUMENT_CATCHUP_MAX`). Sie steht ZUERST, weil ihre
- *     Notizen in den Dokument-Blick eingehen: erst wenn die Sessions gelesen
- *     sind, hat der Blick über alles die volle Grundlage.
- *  2. DOKUMENT: EIN Aufruf im Kapitel-Modus mit `scope: 'document'` — nur
- *     `findings` als Nutzlast (Widersprüche, Lücken, Schärfungen).
- *  3. Was dabei herauskommt, geht in `brand_findings` — dedupliziert wie
- *     überall (gleiche Art, gleiche Felder, noch offen).
+ * ── WARUM IM HINTERGRUND ─────────────────────────────────────────────────
+ * Er holt bis zu zehn Sitzungs-Prüfungen nach und prüft dann das ganze
+ * Dokument — je zwei Stufen, im ungünstigsten Fall (10 + 1) × 2 Text-Läufe.
+ * Das dauert länger, als der Webserver wartet (60 s); der Mensch sähe einen
+ * Fehler, obwohl der Lauf gelingt. Ein Zeitdeckel wäre hier kein ehrliches
+ * Teil-Ergebnis (der Dokument-Blick käme fast nie dran). Deshalb wie die drei
+ * N10-Wege: prüfen, was nichts kostet → Lauf-Sperre in `brand_runs` (Art
+ * `doc-review`, Gegenstand = die Marke; ein zweiter Start ⇒ 409
+ * `run_running`) → `202` → der Lauf rechnet in `startBrandRun`
+ * (`brandDocumentReviewRun.ts`). Das Kontingent bucht jede Stufe selbst
+ * (`runBrandSessionReview`), also erst NACH der Sperre.
  *
- * ── ALLES FAIL-SOFT (§7) ─────────────────────────────────────────────────
- * Eine gescheiterte Nachholung bleibt ungeprüft und wird gemeldet
- * (`stillUnreviewed`); ein gescheiterter Dokument-Blick antwortet mit
- * `reviewedBy: null` und der Liste, die ohnehin in der Tabelle steht. Nichts
- * davon sperrt etwas — der Prüfblick ist eine ZUGABE, so wie jeder Befund.
+ * ── WAS AUS DER SPERRE IM PROZESS WURDE ──────────────────────────────────
+ * `claimBrandDocumentReview` ist weg. Sie hatte zwei Zwecke, und beide trägt
+ * jetzt die Lauf-Zeile, über Prozesse und Neustarts hinweg: (1) „läuft schon"
+ * hält die Lauf-Sperre — ein Merker im Prozess hielt einen zweiten Prozess
+ * nicht auf; (2) „für diesen Stand schon geprüft" steht als Stand-Schlüssel in
+ * `detail.ref` des letzten fertigen Laufs. Gleicher Schlüssel ⇒ sofort 200,
+ * kein Lauf, kein Geld. Ein gescheiterter Lauf hinterlässt keinen Schlüssel,
+ * der nächste Klick versucht es wieder.
  *
- * ── IDEMPOTENT JE DOKUMENT-STAND ─────────────────────────────────────────
- * `claimBrandDocumentReview` riegelt über einen Hash aus profileId und den
- * `revision`-Ständen aller Kapitel des Weges. Derselbe Stand ⇒ 200 mit dem
- * gemerkten Ergebnis und ohne einen einzigen Anbieter-Aufruf. Der Merker ist
- * PROZESS-lokal, und der Grund steht bei ihm: `brand_profiles` hat kein freies
- * JSON-Feld, und eine Spalte, deren einziger Zweck ein Cache-Stempel ist, wäre
- * eine Migration auf jeder Instanz für einen gesparten Klick.
+ * ── DAS ERGEBNIS ─────────────────────────────────────────────────────────
+ * Die Seite fragt `GET …/document` ab: dort steht der Lauf-Stand
+ * (`reviewRun`: Zustand, Ausgang, nachgeholte Sitzungen), die Befunde (aus
+ * der Tabelle) und was noch ungeprüft ist.
  *
  * ── SIE HAT KEINEN RUMPF ─────────────────────────────────────────────────
- * Wie der Kapitel-Blick: der Idempotenz-Schlüssel ist der Stand, wie der SERVER
- * ihn liest. Ihn vom Client entgegenzunehmen wäre eine zweite Wahrheit über
- * denselben Augenblick — und ein veralteter Wert von dort liesse denselben
- * Blick ein zweites Mal zu.
+ * Der Stand ist der, den der SERVER liest — nie ein Wert vom Client.
  */
-export default defineEventHandler(async (event): Promise<BrandDocumentReviewResponse> => {
+export default defineEventHandler(async (event): Promise<BrandDocumentReviewStartResponse> => {
+  // (1) Zugang und Besitz — ein fremdes Konto bekommt dieselbe 404 wie eine
+  // unbekannte Marke (`loadOwnedProfile`).
   const { userId, betaAccount } = await requireBrandAccess(event)
   const context = await loadBrandDocumentContext(event, userId, betaAccount)
-  const { profile, stepRows, journey, sessionStates } = context
-
-  const contentLocale = profile.contentLocale
-  const { pathKind, team } = profileFacts(profile, betaAccount)
+  const { profile, stepRows, journey } = context
 
   /** Die Kapitel des WEGES — übersprungene gehören nicht zum Dokument (§10). */
-  const included = journey.filter(entry => entry.state !== 'skipped').map(entry => entry.stepKey)
-  const includedSet = new Set<BrandStepKey>(included)
-
-  /**
-   * DER STAND, WIE ER JETZT IST — und wie er nach der Nachholung sein wird.
-   *
-   * Die Nachholung SCHREIBT (`reviewed`, Notizen), also bewegt sie die
-   * `revision` der Kapitel, die sie berührt. Gemerkt wird deshalb der Stand
-   * DANACH: der nächste Klick rechnet genau ihn, und ohne diese Unterscheidung
-   * wäre der Riegel wirkungslos, sobald ein einziges Urteil nachzuholen war —
-   * ein Doppelklick kostete dann zweimal 5.
-   */
-  const revisionByStep = new Map<string, number>(
-    stepRows.map(row => [row.stepKey, row.revision ?? 0]),
+  const included: BrandStepKey[] = journey.filter(entry => entry.state !== 'skipped').map(entry => entry.stepKey)
+  const includedSet = new Set<string>(included)
+  const revisionKey = brandDocumentReviewKey(
+    profile.$id,
+    included,
+    stepKey => stepRows.find(row => row.stepKey === stepKey)?.revision ?? 0,
   )
 
-  function documentKey(): string {
-    return createHash('sha256').update(brandDocumentRevisionInput(
-      profile.$id,
-      included.map(stepKey => ({ stepKey, revision: revisionByStep.get(stepKey) ?? 0 })),
-    )).digest('hex')
+  // (2) Nichts zu tun? — ohne Lauf, sofort.
+  const store = brandRunStore(event)
+  let previous: Awaited<ReturnType<typeof store.latest>> = null
+  try {
+    previous = await store.latest(BRAND_RUN_SCOPES.documentReview, profile.$id)
+  }
+  catch {
+    // Fail-soft: ohne lesbaren Vorgänger gibt es keinen Merker; die Sperre
+    // unten liest selbst und lehnt sauber ab, wenn die Tabelle fehlt.
+  }
+  const previousView = toBrandRunView(previous, Date.now())
+  if (previousView.state === 'done' && parseBrandRunDetail(previous?.detail).ref === revisionKey) {
+    logEvent('info', 'brand.document_review_unchanged', { profileId: profile.$id })
+    return { ok: true, started: false, run: previousView }
+  }
+  if (!brandDocumentHasConfirmed(stepRows, includedSet)) {
+    return { ok: true, started: false, run: await readBrandRunView(event, BRAND_RUN_SCOPES.documentReview, profile.$id) }
   }
 
-  const revisionKey = documentKey()
+  // (3) DIE SPERRE — ein Doppelklick, ein zweiter Reiter, ein zweiter Prozess
+  // bekommt 409 `run_running`.
+  const detail = emptyBrandRunDetail()
+  const { lease } = await acquireRunLease(store, {
+    scope: BRAND_RUN_SCOPES.documentReview,
+    subject: profile.$id,
+    detail,
+  })
 
-  /** Die gelesenen Slots je Kapitel — lokal fortgeschrieben, am Ende geschrieben. */
-  const recordsByStep = new Map<string, Record<string, BrandSlotRecord>>(
-    stepRows.map(row => [row.stepKey, parseSlotRecords(row.slots)]),
-  )
-
-  function unreviewedNow(): string[] {
-    const open: string[] = []
-    for (const session of BRAND_SLOTS) {
-      if (session.deactivated || !includedSet.has(session.stepId)) continue
-      const record = recordsByStep.get(session.stepId)?.[session.id]
-      if (brandSlotRecordConfirmed(record) && record?.reviewed !== true) open.push(session.id)
-    }
-    return open
-  }
-
-  /** Die offenen Befunde nach diesem Lauf — sie kommen IMMER aus der Tabelle. */
-  async function openFindings(): Promise<BrandFindingView[]> {
-    return (await listBrandFindings(event, profile.$id, 'open')).map(toBrandFindingView)
-  }
-
-  const claim = claimBrandDocumentReview(profile.$id, revisionKey)
-  if (!claim.granted) {
-    const previous = claim.previous
-    return {
-      ran: false,
-      caughtUp: [...(previous?.caughtUp ?? [])],
-      // Was JETZT noch ungeprüft ist, sagt der Stand und nicht der alte Lauf:
-      // zwischen den beiden Klicks kann eine Session geschlossen worden sein.
-      stillUnreviewed: unreviewedNow(),
-      findings: await openFindings(),
-      reviewedBy: previous?.reviewedBy ?? null,
-      revisionKey,
-    }
-  }
-
-  /** ALLE bestätigten Werte, quer über die Kapitel — die Eingabe beider Stufen. */
-  function allRecords(): Record<string, BrandSlotRecord> {
-    const merged: Record<string, BrandSlotRecord> = {}
-    for (const session of BRAND_SLOTS) {
-      const record = recordsByStep.get(session.stepId)?.[session.id]
-      if (record) merged[session.id] = record
-    }
-    return merged
-  }
-
-  // ── 1 · Die Nachholung (§10) ────────────────────────────────────────────
-  const split = splitBrandDocumentCatchUp(unreviewedNow())
-  const caughtUp: string[] = []
-  const missed: string[] = []
-  /** Kapitel, deren Zeile sich durch die Nachholung bewegt hat. */
-  const touched = new Set<string>()
-
-  for (const slotId of split.take) {
-    const session = slotById(slotId)
-    const records = session ? recordsByStep.get(session.stepId) : undefined
-    const record = session ? records?.[slotId] : undefined
-    if (!session || !records || !record) {
-      missed.push(slotId)
-      continue
-    }
-    const stepRow = stepRows.find(row => row.stepKey === session.stepId)
-    const merged = allRecords()
-
-    const outcome = await runBrandSessionReview({
+  // (4) DER LAUF — hinter der Antwort. In die Antwort schreibt er nicht; der
+  // Beweis-Schalter wird deshalb JETZT gelesen.
+  const stubFinding = String(getQuery(event).stub ?? '') === 'conflict'
+  startBrandRun({
+    label: 'brand-doc-review',
+    store,
+    lease,
+    detail,
+    work: context => runBrandDocumentReview({
       event,
       userId,
-      profileId: profile.$id,
-      mode: 'session',
-      stepKey: session.stepId,
-      session: brandReviewSessionInfo(session, contentLocale, pathKind, team),
-      value: record.confirmed ?? '',
-      history: await loadBrandConversationHistory(
-        event, profile.$id, session.stepId, session.id, stepRow?.restartedAt,
-      ),
-      document: brandReviewDocument(merged, contentLocale, pathKind, team),
-      chapter: brandReviewChapter(merged, session.stepId, contentLocale, pathKind, team),
-      notes: brandReviewAllNotes(merged, contentLocale, pathKind, team),
-      // KEIN Wegweiser: der Prüfblick schickt niemanden in ein Gespräch, er
-      // holt ein Urteil nach. Eine leere Liste heisst „antworte null" (s. Prompt).
-      openSessions: [],
-    })
-
-    if (!outcome.reviewed) {
-      missed.push(slotId)
-      continue
-    }
-
-    const review = outcome.review
-    const reviewedRecord: BrandSlotRecord = {
-      ...record,
-      reviewed: true,
-      review: {
-        goalReached: review.goalReached,
-        missing: [...review.missing],
-        reviewedBy: outcome.reviewedBy ?? 'stage1',
-        at: new Date().toISOString(),
-      },
-      ...(review.notes.length ? { notes: review.notes.join('\n') } : {}),
-      ...(review.goalReached ? {} : { briefDelivered: false }),
-    }
-    if (review.goalReached) delete reviewedRecord.briefDelivered
-    records[slotId] = reviewedRecord
-    touched.add(session.stepId)
-    caughtUp.push(slotId)
-
-    // Die Befunde einer nachgeholten Session gehören IHR — wie beim
-    // gewöhnlichen Schliess-Aufruf (§8).
-    await writeBrandFindings(event, {
-      profileId: profile.$id,
-      stepKey: session.stepId,
-      sourceSession: session.id,
-      findings: review.findings,
-    })
-  }
-
-  /**
-   * EINE SCHREIBUNG JE KAPITEL, am Ende der Nachholung.
-   *
-   * Die Marke `reviewed` ändert den Dokument-INHALT nicht — die späteren
-   * Aufrufe lesen dieselben Werte wie die früheren. Deshalb darf gesammelt
-   * werden, und zehn Nachholungen in einem Kapitel kosten eine Fassung statt
-   * zehn. Fail-soft: eine klemmende Zeile kostet die Marken dieses Kapitels,
-   * nicht den Prüfblick.
-   */
-  const { tablesDB, databaseId } = brandDb(event)
-  for (const stepKey of touched) {
-    const row = stepRows.find(entry => entry.stepKey === stepKey)
-    const records = recordsByStep.get(stepKey)
-    if (!row || !records) continue
-    const nextRevision = (row.revision ?? 0) + 1
-    try {
-      await tablesDB.updateRow({
-        databaseId,
-        tableId: BRAND_STEPS_TABLE,
-        rowId: row.$id,
-        data: { slots: serializeSlotRecords(records), revision: nextRevision },
-      })
-      revisionByStep.set(stepKey, nextRevision)
-    }
-    catch (error) {
-      logEvent('warn', 'brand.document_catchup_write_failed', {
-        stepKey,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }
-
-  // ── 2 · Der Blick über das ganze Dokument (§10) ─────────────────────────
-  const merged = allRecords()
-  const documentEntries = brandReviewDocument(merged, contentLocale, pathKind, team)
-
-  const outcome = await runBrandSessionReview({
-    event,
-    userId,
-    profileId: profile.$id,
-    mode: 'chapter',
-    scope: 'document',
-    // Der Modus verlangt einen Kapitel-Schlüssel für seine Aufgabe; im
-    // Prüfblick ist er nur eine Ansage und wird vom Prompt nicht mehr benutzt
-    // (s. `taskLines`). Das erste Kapitel des Weges ist der ehrlichste Wert —
-    // eine erfundene Zeichenkette wäre einer, den ein Log nicht einordnen kann.
-    stepKey: included[0] ?? 'context',
-    session: null,
-    value: '',
-    history: [],
-    document: documentEntries,
-    // Dieselbe Liste: der Prompt schickt sie GENAU EINMAL (s. `inputBlocks`).
-    chapter: documentEntries,
-    notes: brandReviewAllNotes(merged, contentLocale, pathKind, team),
-    openSessions: [],
-    stubFinding: String(getQuery(event).stub ?? '') === 'conflict',
+      betaAccount,
+      profile,
+      included,
+      stepRows,
+      stubFinding,
+    }, context),
   })
 
-  if (outcome.reviewed) {
-    /**
-     * EIN DOKUMENT-BEFUND GEHÖRT DORTHIN, WO SEIN FELD WOHNT.
-     *
-     * Anders als beim Schliess-Aufruf gibt es hier keine Quell-Session: der
-     * Blick lief über alles. Der Anker ist deshalb das ERSTE beteiligte Feld —
-     * dort findet ein Mensch ihn wieder, dort landet ein Ablehnungs-Grund als
-     * Notiz, und dort sperrt ein offener Konflikt die Abnahme seines Kapitels
-     * (§5a Schritt 3). Ein fester Stempel für alle wäre neunmal falsch.
-     */
-    const anchorOf = (finding: BrandFinding) => slotById(finding.slots[0] ?? '')
-    await writeBrandFindings(event, {
-      profileId: profile.$id,
-      stepKey: finding => anchorOf(finding)?.stepId ?? included[0] ?? 'context',
-      sourceSession: finding => anchorOf(finding)?.id ?? finding.slots[0] ?? '',
-      findings: outcome.review.findings,
-    })
-  }
-
-  const reviewedBy: BrandReviewStage | null = outcome.reviewed ? outcome.reviewedBy : null
-  // Der Stand NACH der Nachholung — s. `documentKey`.
-  const finalKey = documentKey()
-  rememberBrandDocumentReview(profile.$id, {
-    revisionKey: finalKey,
-    at: new Date().toISOString(),
-    caughtUp,
-    reviewedBy,
-  })
-
-  logEvent('info', 'brand.document_reviewed', {
-    caughtUp: caughtUp.length,
-    stillUnreviewed: missed.length + split.rest.length,
-    reviewedBy: reviewedBy ?? '',
-    sessions: Object.keys(sessionStates).length,
-  })
-
-  return {
-    ran: true,
-    caughtUp,
-    // Der Deckel-Rest UND die fail-soft ausgefallenen — beide warten auf den
-    // nächsten Klick, und beide gehören genannt.
-    stillUnreviewed: [...missed, ...split.rest],
-    findings: await openFindings(),
-    reviewedBy,
-    revisionKey: finalKey,
-  }
+  // 202: angenommen, nicht erledigt. Die Lauf-Zeile sagt, was daraus wird.
+  setResponseStatus(event, 202)
+  return { ok: true, started: true, run: runningBrandRunView(lease, detail) }
 })

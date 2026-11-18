@@ -2,12 +2,21 @@
 import type { BwSidebarBrand } from '../../../components/BwWorkspaceSidebar.vue'
 import type { BwTocLink } from '../../../components/BwReadingToc.vue'
 import type { BwRailLayer, BwRailStep } from '../../../components/BwProgressRail.vue'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../core/shared/runLease'
 import { brandAiRejectionMessageKey } from '../../../../shared/brandAiLimits'
+import {
+  BRAND_RUN_NOTICE_MS,
+  BRAND_RUN_OUTCOMES,
+  BRAND_RUN_POLL_TIMEOUT_MS,
+  type BrandRunView,
+  brandRunNoticeDue,
+  noBrandRunView,
+} from '../../../../shared/brandRun'
 import type {
   BrandAcceptanceSessionView,
   BrandDocumentChapter,
   BrandDocumentResponse,
-  BrandDocumentReviewResponse,
+  BrandDocumentReviewStartResponse,
   BrandFindingDecisionResponse,
   BrandSessionAcceptResponse,
 } from '../../../../shared/types/brand'
@@ -46,9 +55,11 @@ import { useBrandImpactConsent } from '../../../composables/useBrandImpactConsen
  * was die Mitte nicht sagt: wie weit die Abnahme ist, je Kapitel und im Ganzen.
  *
  * ── DER PRÜFBLICK LÄUFT NUR AUF KLICK (§16) ──────────────────────────────
- * Kein `watch`, kein `onMounted`, kein Nachladen. Er wiegt 5 im Tages-Eimer,
- * und diese Seite wird beim Durchblättern eines fertigen Brandings oft
- * geöffnet. Der Server hat zusätzlich seinen eigenen Riegel je Dokument-Stand.
+ * Kein `watch`, kein `onMounted`, kein STARTEN von selbst. Er wiegt 5 im
+ * Tages-Eimer, und diese Seite wird beim Durchblättern eines fertigen
+ * Brandings oft geöffnet. Der Server hat zusätzlich seinen eigenen Riegel je
+ * Dokument-Stand. Seit LL1 d rechnet er hinter der Antwort; die Seite fragt
+ * nur den STAND ab (s. „Der Prüfblick" unten).
  */
 definePageMeta({ layout: 'brand-workspace' })
 
@@ -284,9 +295,41 @@ async function findingDecided(_decision: BrandFindingDecisionResponse): Promise<
 
 // ── Der Prüfblick (§10) ───────────────────────────────────────────────────
 
-const reviewing = ref(false)
-const reviewResult = ref<BrandDocumentReviewResponse | null>(null)
+/**
+ * DER LAUF IM HINTERGRUND (LL1 d, 2026-11-18). Der Start antwortet sofort
+ * (`202`); den Stand trägt `GET …/document` (`reviewRun`). Solange er läuft,
+ * fragt die Seite das Dokument alle paar Sekunden neu ab (`useRunPolling`,
+ * nur bei sichtbarem Reiter, Frist je Abfrage) — damit kommen nachgeholte
+ * Urteile, Befunde und der Rest mit derselben Antwort. Wer neu lädt oder einen
+ * zweiten Reiter öffnet, sieht denselben Stand.
+ */
+const reviewRun = computed<BrandRunView>(() => view.value?.reviewRun ?? noBrandRunView())
+const reviewStarting = ref(false)
+const reviewing = computed(() => reviewStarting.value || reviewRun.value.state === 'running')
+/** Der ruhige Hinweis „läuft schon" nach einem zweiten Start. */
+const reviewAlreadyRunning = ref(false)
+/** Ein Start, der abgelehnt wurde (Drossel, Netz) — sein Satz. */
 const reviewNotice = ref('')
+/** In DIESER Sitzung geklickt? Dann zeigt die Seite auch ein älteres Ergebnis. */
+const reviewAsked = ref(false)
+
+/** EINE NACHFRAGE: das Dokument samt Lauf-Stand, mit Frist (eine hängende Abfrage hielte das Nachfragen sonst an). */
+async function pollReview(): Promise<void> {
+  doc.data.value = await $fetch<BrandDocumentResponse>(
+    `/api/brand/profiles/${profileId.value}/document`,
+    { timeout: BRAND_RUN_POLL_TIMEOUT_MS },
+  )
+}
+
+useRunPolling({
+  active: () => reviewRun.value.state === 'running',
+  intervalMs: RUN_LEASE_POLL_MS,
+  tick: pollReview,
+})
+
+watch(() => reviewRun.value.state, (next, previous) => {
+  if (previous === 'running' && next !== 'running') reviewAlreadyRunning.value = false
+})
 
 /**
  * ER BRAUCHT MINDESTENS EIN ABGENOMMENES KAPITEL.
@@ -298,35 +341,65 @@ const reviewNotice = ref('')
  */
 const hasDoneChapter = computed(() => chapters.value.some(chapter => chapter.storedState === 'done'))
 
-/** Neue Befunde dieses Laufs — die Chips darunter, sonst nichts. */
-const reviewFindings = computed(() => reviewResult.value?.findings ?? [])
+/** Ein fertiges Ergebnis steht ohne Klick einen Tag lang da. */
+function recent(at: string): boolean {
+  const ms = Date.parse(at)
+  return !Number.isNaN(ms) && Date.now() - ms < BRAND_RUN_NOTICE_MS
+}
+
+/**
+ * DAS ERGEBNIS DES JÜNGSTEN LAUFS — fertig, oder gescheitert mit schon
+ * nachgeholten Sitzungen (die bleiben geprüft). Die Befunde und der Rest
+ * kommen aus dem Dokument selbst: sie sind der Stand von JETZT.
+ */
+const reviewShown = computed(() => {
+  const run = reviewRun.value
+  if (run.state !== 'done' && !(run.state === 'failed' && run.created > 0)) return false
+  return reviewAsked.value || recent(run.finishedAt || run.startedAt)
+})
+const reviewFindings = computed(() => (view.value?.findings ?? []).filter(finding => finding.status === 'open'))
+const stillUnreviewedCount = computed(() => view.value?.review.unreviewed.length ?? 0)
+
+/** Ein gescheiterter oder abgebrochener Lauf — ein klarer Satz, einen Tag lang. */
+const reviewRunMessage = computed(() => {
+  const run = reviewRun.value
+  if (!brandRunNoticeDue(run, Date.now())) return ''
+  if (run.state === 'stalled') return t('brand.document.reviewInterrupted')
+  if (run.failure === BRAND_RUN_OUTCOMES.aiEndpointUnavailable) return t('error.aiEndpointUnavailableHint')
+  return t('brand.document.reviewFailed')
+})
 
 async function runReview(): Promise<void> {
   if (reviewing.value || !hasDoneChapter.value) return
-  reviewing.value = true
+  reviewStarting.value = true
   reviewNotice.value = ''
+  reviewAlreadyRunning.value = false
+  reviewAsked.value = true
   try {
-    const response = await $fetch<BrandDocumentReviewResponse>(
+    const started = await $fetch<BrandDocumentReviewStartResponse>(
       `/api/brand/profiles/${profileId.value}/review`,
       { method: 'POST' },
     )
-    reviewResult.value = response
-    // Ein Lauf ohne Urteil und ohne Nachholung ist fail-soft ausgefallen (§7) —
-    // ein RUHIGER Hinweis, keine Fehlermeldung: der Mensch verliert nichts.
-    if (response.ran && !response.reviewedBy && response.caughtUp.length === 0) {
-      reviewNotice.value = t('brand.document.reviewFailed')
-    }
-    // Nachgeholte Urteile stehen an ihren Zeilen — die Seite liest sich neu.
-    if (response.caughtUp.length || response.findings.length) await doc.refresh()
+    // `202`: der Stand geht ans Dokument, das Nachfragen übernimmt ab hier.
+    // `200` (schon geprüft / nichts zu tun): den fertigen Stand neu lesen.
+    if (started.started && doc.data.value) doc.data.value = { ...doc.data.value, reviewRun: started.run }
+    else await doc.refresh()
   }
   catch (error) {
     const reason = (error as { data?: { reason?: string } }).data?.reason
-    // Der Eimer-Deckel bekommt SEINEN Satz (Muster `generate.reviewLimit`);
-    // alles andere den allgemeinen.
-    reviewNotice.value = t(brandAiRejectionMessageKey(reason) ?? 'brand.document.reviewFailed')
+    // „Läuft schon" ist KEIN Fehler: ein zweiter Reiter (oder ein Doppelklick)
+    // hat den Lauf gestartet. Stand holen — dann zeigt auch dieser Reiter ihn.
+    if (reason === RUN_LEASE_BUSY_CODE) {
+      reviewAlreadyRunning.value = true
+      await doc.refresh()
+    }
+    else {
+      // Der Eimer-Deckel bekommt SEINEN Satz; alles andere den allgemeinen.
+      reviewNotice.value = t(brandAiRejectionMessageKey(reason) ?? 'brand.document.reviewFailed')
+    }
   }
   finally {
-    reviewing.value = false
+    reviewStarting.value = false
   }
 }
 
@@ -602,8 +675,8 @@ useBrandTitle(() => (store.profile?.title || view.value?.title || t('brand.docum
           <p v-if="!hasDoneChapter" class="bw-label mt-2" style="color: var(--bw-muted)">
             {{ t('brand.document.reviewNeedsChapter') }}
           </p>
-          <p v-else-if="view?.review.unreviewed.length" class="bw-label mt-2" style="color: var(--bw-muted)">
-            {{ t('brand.document.unreviewedCount', { count: view.review.unreviewed.length }, view.review.unreviewed.length) }}
+          <p v-else-if="stillUnreviewedCount && !reviewShown" class="bw-label mt-2" style="color: var(--bw-muted)">
+            {{ t('brand.document.unreviewedCount', { count: stillUnreviewedCount }, stillUnreviewedCount) }}
           </p>
 
           <UButton
@@ -613,17 +686,27 @@ useBrandTitle(() => (store.profile?.title || view.value?.title || t('brand.docum
             @click="runReview"
           />
 
+          <!-- Läuft: ein Fortschritt statt eines Wartekreisels ohne Auskunft. -->
+          <p v-if="reviewRun.state === 'running'" class="bw-label mt-3" style="color: var(--bw-muted)">
+            {{ t('brand.document.reviewProgress', { count: reviewRun.created }, reviewRun.created) }}
+          </p>
+          <p v-if="reviewAlreadyRunning" class="bw-label mt-1" style="color: var(--bw-muted)">
+            {{ t('brand.document.reviewAlreadyRunning') }}
+          </p>
           <p v-if="reviewNotice" class="bw-label mt-3" style="color: var(--bw-muted)">{{ reviewNotice }}</p>
+          <p v-else-if="reviewRunMessage && reviewRun.state !== 'running'" class="bw-label mt-3" style="color: var(--bw-muted)">
+            {{ reviewRunMessage }}
+          </p>
 
-          <template v-if="reviewResult">
+          <template v-if="reviewShown && reviewRun.state !== 'running'">
             <p class="mt-3 text-sm" style="color: var(--bw-ink-soft)">
               {{ t('brand.document.reviewResult', {
-                caughtUp: reviewResult.caughtUp.length,
+                caughtUp: reviewRun.created,
                 findings: reviewFindings.length,
               }) }}
             </p>
-            <p v-if="reviewResult.stillUnreviewed.length" class="bw-label mt-1" style="color: var(--bw-muted)">
-              {{ t('brand.document.stillUnreviewed', { count: reviewResult.stillUnreviewed.length }, reviewResult.stillUnreviewed.length) }}
+            <p v-if="stillUnreviewedCount" class="bw-label mt-1" style="color: var(--bw-muted)">
+              {{ t('brand.document.stillUnreviewed', { count: stillUnreviewedCount }, stillUnreviewedCount) }}
             </p>
             <p v-if="!reviewFindings.length" class="bw-label mt-1" style="color: var(--bw-muted)">
               {{ t('brand.document.noFindings') }}

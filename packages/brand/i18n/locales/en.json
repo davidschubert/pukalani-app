@@ -2374,6 +2374,9 @@
       "stillUnreviewed": "{count} session is still waiting — the next look will catch it up. | {count} sessions are still waiting — the next look will catch them up.",
       "noFindings": "Nothing found that rubs.",
       "reviewFailed": "The look did not come through just now. Your document stands either way — try again later.",
+      "reviewProgress": "Reading the document — no session caught up yet. | Reading the document — {count} session caught up. | Reading the document — {count} sessions caught up.",
+      "reviewAlreadyRunning": "The look is already running. The result will appear here once it is done.",
+      "reviewInterrupted": "The look was interrupted. Sessions already caught up stay read over — a new attempt is possible at any time.",
       "readFoundation": "Read as foundation"
     },
     "foundation": {

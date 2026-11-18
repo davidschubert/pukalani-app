@@ -54,6 +54,8 @@ let findingSeq = 0
 let aiQueue: unknown[]
 const aiPrompts: string[] = []
 const aiModels: string[] = []
+/** Die Frist, die jeder Aufruf bekam (LL1 d: ein Deckel über beide Stufen). */
+const aiTimeouts: number[] = []
 /** Jeder Treffer im Drossel-Eimer — die Länge IST das Gewicht. */
 const hits: string[] = []
 /** Der Zählerstand, den jeder Eimer meldet — 1 heisst „erster Lauf des Tages". */
@@ -171,10 +173,11 @@ vi.stubGlobal('getEffectiveAiConfig', async () => ({
 }))
 /** Wie viele Läufe dieses Kontos belegt waren, WÄHREND das Modell rechnete. */
 const activeDuringCall: number[] = []
-vi.stubGlobal('aiCompleteJson', async (_event: H3Event, prompt: string, options: { model?: string }) => {
+vi.stubGlobal('aiCompleteJson', async (_event: H3Event, prompt: string, options: { model?: string, timeoutMs?: number }) => {
   activeDuringCall.push(countActiveBrandGenerations('u1'))
   aiPrompts.push(prompt)
   aiModels.push(options.model ?? '')
+  aiTimeouts.push(options.timeoutMs ?? Number.POSITIVE_INFINITY)
   const next = aiQueue.shift()
   if (next instanceof Error) throw next
   return next
@@ -193,7 +196,7 @@ const acceptance = (await import('../server/api/brand/profiles/[id]/steps/[stepK
   .default as unknown as (event: H3Event) => Promise<Record<string, unknown>>
 const complete = (await import('../server/api/brand/profiles/[id]/steps/[stepKey]/complete.post'))
   .default as unknown as (event: H3Event) => Promise<Record<string, unknown>>
-const { clearBrandChapterReviews } = await import('../server/utils/brandReview')
+const { BRAND_REVIEW_INLINE_BUDGET_MS, clearBrandChapterReviews } = await import('../server/utils/brandReview')
 const {
   clearActiveBrandGenerations,
   countActiveBrandGenerations,
@@ -244,6 +247,7 @@ beforeEach(() => {
   aiQueue = []
   aiPrompts.length = 0
   aiModels.length = 0
+  aiTimeouts.length = 0
   hits.length = 0
   hitCount = 1
   logs.length = 0
@@ -375,6 +379,8 @@ describe('Die zwei Stufen (§7, Davids Entscheidung)', () => {
     const result = await close(event)
 
     expect(aiModels).toEqual(['cheap/model', 'george/model'])
+    // LL1 d: das Schliessen prüft in der Anfrage — EIN Deckel über beide Stufen.
+    expect(aiTimeouts.every(ms => ms <= BRAND_REVIEW_INLINE_BUDGET_MS)).toBe(true)
     expect(aiPrompts[1]).toMatch(/HYPOTHESIS/)
     expect(result.reviewedBy).toBe('stage2')
     // Die BEFUNDE kommen von Stufe 2 …
@@ -583,6 +589,9 @@ describe('POST …/review — der Kapitel-Modus (§5a)', () => {
 
     expect(result.reviewed).toBe(true)
     expect((result.findings as unknown[])).toHaveLength(1)
+    // LL1 d: die Kapitel-Prüfung läuft in der Anfrage — EIN Deckel über beide Stufen.
+    expect(aiTimeouts).toHaveLength(2)
+    expect(aiTimeouts.every(ms => ms <= BRAND_REVIEW_INLINE_BUDGET_MS)).toBe(true)
     expect(aiPrompts[0]).toMatch(/Only "findings" carries content in this mode/)
     // Gewicht 2 für Stufe 1 plus 3 für Stufe 2.
     expect(hits.filter(key => key.startsWith('brand-ai-review-day:'))).toHaveLength(5)

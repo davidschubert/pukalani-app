@@ -47,7 +47,9 @@ import {
  *
  * Scheitert Stufe 2 (Drossel, Anbieter, Schema), gilt Stufe 1 — mit
  * `reviewedBy: 'stage1'` im Ergebnis, damit man einer Befund-Liste ansieht,
- * wer sie geschrieben hat.
+ * wer sie geschrieben hat. Dasselbe gilt, wenn ein Zeitdeckel (`budgetMs`,
+ * nur die zwei Routen in der Anfrage) für Stufe 2 keinen sinnvollen Rest
+ * mehr lässt: dann läuft sie gar nicht (`brand.review_stage2_skipped`).
  *
  * ── FAIL-SOFT IST DIE REGEL, NICHT DER AUSNAHMEFALL (§7) ──────────────────
  * Drossel, Anbieter, Schema, fehlender Schlüssel, ausgeschaltete KI: in JEDEM
@@ -141,6 +143,13 @@ export interface BrandReviewRequest {
    * alle mechanisch veralteten Felder wieder grün stempelt.
    */
   stubAffected?: boolean
+  /**
+   * EIN ZEITDECKEL ÜBER BEIDE STUFEN (ms, ab Beginn des Aufrufs) — NUR die
+   * zwei Routen, die in der Anfrage prüfen, setzen ihn
+   * (`BRAND_REVIEW_INLINE_BUDGET_MS`, s. dort). Ohne Angabe bekommt jede
+   * Stufe ihre volle Frist wie bisher.
+   */
+  budgetMs?: number
 }
 
 /**
@@ -172,6 +181,63 @@ function reviewModel(): string {
 
 /** Ein JSON-Aufruf ist kein Strom — 45 s Core-Default reichen, 60 s sind Luft. */
 export const BRAND_REVIEW_TIMEOUT_MS = 60_000
+
+/**
+ * EIN ZEITDECKEL ÜBER BEIDE STUFEN — NUR FÜR DIE PRÜFUNG IN DER ANFRAGE (LL1 d).
+ *
+ * Die Kapitel-Prüfung und das Schliessen einer Sitzung rechnen in der Anfrage,
+ * und der Webserver wartet 60 s (`proxy_read_timeout`, wird nicht angehoben).
+ * Zwei Stufen à `BRAND_REVIEW_TIMEOUT_MS` hintereinander wären bis 120 s — der
+ * Mensch sähe einen Fehler, während Node weiterrechnet. Deshalb bekommen diese
+ * zwei Routen EINEN Deckel über beide Stufen (`budgetMs`): Stufe 1 endet
+ * spätestens am Deckel, Stufe 2 bekommt nur den REST.
+ *
+ * WARUM HIER EIN ZEITDECKEL STATT LAUF-SPERRE UND 202 GENÜGT: ein Ergebnis nur
+ * aus Stufe 1 ist im Datenmodell vorgesehen (`reviewedBy: 'stage1'`) und
+ * schon heute der Ausgang, wenn Stufe 2 scheitert — ein ehrliches
+ * Teil-Ergebnis, kein verschwiegener Abbruch. Üblich ist eine Stufe in
+ * wenigen Sekunden; der Deckel greift nur im seltenen langsamen Fall.
+ *
+ * 50 s lassen 10 s Luft für Datenbank, Buchung und Antwort. Die
+ * Dokument-Prüfung und alle anderen Aufrufer setzen keinen Deckel und
+ * behalten die vollen Fristen.
+ */
+export const BRAND_REVIEW_INLINE_BUDGET_MS = 50_000
+
+/**
+ * DIE MINDESTFRIST FÜR STUFE 2 UNTER DEM DECKEL. Ein Lauf des George-Modells
+ * über das Dokument braucht üblich einige Sekunden; mit weniger als 10 s
+ * Rest wäre der Versuch fast sicher ein bezahlter Abbruch (die Buchung fiele
+ * vor dem Aufruf). Dann läuft Stufe 2 nicht, und Stufe 1 gilt.
+ */
+export const BRAND_REVIEW_STAGE2_MIN_MS = 10_000
+
+/**
+ * WIE VIEL FRIST BEKOMMT STUFE 2? — pur, damit die Uhr im Test stellbar ist.
+ *
+ * `null` heisst: der Rest unter dem Deckel reicht nicht für einen sinnvollen
+ * Versuch, Stufe 2 läuft nicht. Sonst der Rest, höchstens die volle Frist
+ * einer Stufe. Ohne Deckel (`budgetMs` fehlt) die volle Frist wie bisher.
+ */
+export function brandReviewStageTwoTimeout(
+  budgetMs: number | undefined,
+  elapsedMs: number,
+): number | null {
+  if (budgetMs === undefined) return BRAND_REVIEW_TIMEOUT_MS
+  const rest = Math.floor(budgetMs - Math.max(0, elapsedMs))
+  if (rest < BRAND_REVIEW_STAGE2_MIN_MS) return null
+  return Math.min(rest, BRAND_REVIEW_TIMEOUT_MS)
+}
+
+/**
+ * Die Frist eines Aufrufs unmittelbar davor: die volle Frist, unter einem
+ * Deckel höchstens bis zu seinem Ende (`deadlineAt`, Server-Uhr). Nie unter
+ * 1 ms — ein Aufruf mit 0 würde nicht abbrechen, sondern ohne Frist laufen.
+ */
+function stageTimeoutMs(deadlineAt: number | undefined): number {
+  if (deadlineAt === undefined) return BRAND_REVIEW_TIMEOUT_MS
+  return Math.max(1, Math.min(BRAND_REVIEW_TIMEOUT_MS, Math.floor(deadlineAt - Date.now())))
+}
 
 /**
  * LÄUFT DER ERSATZ-SPEZIALIST? — der Ersatz-Generator ODER die
@@ -301,12 +367,13 @@ async function runStage(
   model: string,
   weight: number,
   prompt: string,
+  deadlineAt?: number,
 ): Promise<StageResult> {
   if (!model) return { failure: 'provider_error' }
 
   const burst = retainBrandGeneration(request.userId)
   try {
-    return await runStageCall(request, model, weight, prompt)
+    return await runStageCall(request, model, weight, prompt, deadlineAt)
   }
   finally {
     burst.release()
@@ -318,6 +385,7 @@ async function runStageCall(
   model: string,
   weight: number,
   prompt: string,
+  deadlineAt: number | undefined,
 ): Promise<StageResult> {
   const rejection = await bookBrandAiQuota(request.event, {
     userId: request.userId,
@@ -340,8 +408,11 @@ async function runStageCall(
       model,
       system: brandReviewSystemPrompt(),
       label: 'brand-review',
+      // Die Decke bleibt, wie sie ist — gekürzt wird nur die FRIST, und die
+      // erst unmittelbar vor dem Aufruf (nach Belegen und Buchen) gerechnet,
+      // damit auch diese Zeit unter dem Deckel liegt.
       maxTokens: BRAND_REVIEW_MAX_TOKENS,
-      timeoutMs: BRAND_REVIEW_TIMEOUT_MS,
+      timeoutMs: stageTimeoutMs(deadlineAt),
       // Ein Urteil soll bei gleicher Eingabe möglichst gleich ausfallen —
       // deutlich unter dem Core-Default von 0.2.
       temperature: 0,
@@ -428,103 +499,13 @@ export function clearBrandChapterReviews(): void {
   CHAPTER_REVIEWS.clear()
 }
 
-/**
- * DER PRÜFBLICK LÄUFT EINMAL JE DOKUMENT-STAND (§10, Paket 7).
- *
- * ── WARUM ÜBERHAUPT EIN RIEGEL, WENN ER DOCH AUF KLICK LÄUFT ─────────────
- * Weil ein Klick nicht der einzige Weg zu einem zweiten Aufruf ist: ein
- * Doppelklick, ein Reload während der Anfrage, ein zweiter Tab. Der Aufruf
- * wiegt 5 im Eimer von 120 — drei versehentliche Wiederholungen sind ein
- * Achtel des Tages für dasselbe Ergebnis.
- *
- * ── DER MERKER LIEGT IM PROZESS, UND ZWAR MANGELS ORT ────────────────────
- * `brand_profiles` hat kein freies JSON-Feld: `storyMeta` gehört der Brand
- * Story (inputHash, generatedAt, editedByUser), alles andere sind getypte
- * Spalten. Eine EIGENE Spalte für einen Cache-Stempel wäre eine Migration,
- * deren einziger Zweck es ist, einen Aufruf zu sparen, den der Mensch selbst
- * auslöst — dieselbe Rechnung, aus der schon der Kapitel-Blick prozess-lokal
- * merkt (s. dort) und die Gesprächs-Idempotenz ebenso.
- *
- * Der Schaden bei mehreren Prozessen oder nach einem Neustart ist EIN weiterer
- * Aufruf mit Gewicht 5; der Preis einer Spalte wäre eine Migration auf jeder
- * Instanz plus ein Feld, das niemand liest.
- *
- * ── EIN EINTRAG JE BRANDING, NICHT JE STAND ──────────────────────────────
- * Anders als beim Kapitel-Blick (`profileId:stepKey:revision`): der
- * Dokument-Stand ändert sich mit JEDER Bestätigung, und alte Stände sind
- * danach wertlos — sie können nicht zurückkommen (`revision` steigt
- * monoton). Ein Eintrag je Branding reicht also, und die Leseroute kann
- * daraus „zuletzt geprüft am" beantworten, ohne einen Schlüssel zu kennen.
+/*
+ * DER PRÜFBLICK (Dokument-Prüfung) HAT SEIT LL1 d (2026-11-18) KEINEN MERKER
+ * MEHR IM PROZESS: er rechnet hinter der Antwort, die Lauf-Sperre in
+ * `brand_runs` hält den zweiten Start auf, und „für diesen Stand schon
+ * geprüft" steht als Stand-Schlüssel an der Lauf-Zeile
+ * (`brandDocumentReviewRun.ts`).
  */
-export interface BrandDocumentReviewRun {
-  revisionKey: string
-  /** ISO-Zeitpunkt — die Leseroute meldet ihn als `lastRunAt`. */
-  at: string
-  /** Die Sessions, deren Urteil dieser Lauf nachgeholt hat. */
-  caughtUp: readonly string[]
-  reviewedBy: BrandReviewStage | null
-}
-
-const DOCUMENT_REVIEW_TTL_MS = 30 * 60_000
-const DOCUMENT_REVIEW_MAX_KEYS = 500
-const DOCUMENT_REVIEWS = new Map<string, { run: BrandDocumentReviewRun, at: number }>()
-
-function pruneDocumentReviews(now: number): void {
-  for (const [key, entry] of DOCUMENT_REVIEWS) {
-    if (now - entry.at >= DOCUMENT_REVIEW_TTL_MS) DOCUMENT_REVIEWS.delete(key)
-  }
-  while (DOCUMENT_REVIEWS.size > DOCUMENT_REVIEW_MAX_KEYS) {
-    const oldest = DOCUMENT_REVIEWS.keys().next()
-    if (oldest.done) break
-    DOCUMENT_REVIEWS.delete(oldest.value)
-  }
-}
-
-/**
- * `granted: true` = dieser Prüfblick darf laufen. `granted: false` = derselbe
- * Stand wurde in diesem Prozess schon geprüft; `previous` trägt dann das
- * Ergebnis von damals, damit die Antwort vollständig bleibt (die BEFUNDE kommen
- * ohnehin aus der Tabelle — der Riegel spart den Aufruf, nicht die Auskunft).
- */
-export function claimBrandDocumentReview(
-  profileId: string,
-  revisionKey: string,
-  now: number = Date.now(),
-): { granted: boolean, previous: BrandDocumentReviewRun | null } {
-  pruneDocumentReviews(now)
-  const entry = DOCUMENT_REVIEWS.get(profileId)
-  if (entry && entry.run.revisionKey === revisionKey) return { granted: false, previous: entry.run }
-  return { granted: true, previous: null }
-}
-
-/** Was dieser Lauf hinterlässt — erst NACH dem Aufruf, mit seinem Ergebnis. */
-export function rememberBrandDocumentReview(
-  profileId: string,
-  run: BrandDocumentReviewRun,
-  now: number = Date.now(),
-): void {
-  pruneDocumentReviews(now)
-  DOCUMENT_REVIEWS.set(profileId, { run, at: now })
-}
-
-/** „Zuletzt geprüft" für die Leseroute — `null`, solange hier nichts lief. */
-export function readBrandDocumentReview(
-  profileId: string,
-  now: number = Date.now(),
-): BrandDocumentReviewRun | null {
-  const entry = DOCUMENT_REVIEWS.get(profileId)
-  if (!entry) return null
-  if (now - entry.at >= DOCUMENT_REVIEW_TTL_MS) {
-    DOCUMENT_REVIEWS.delete(profileId)
-    return null
-  }
-  return entry.run
-}
-
-/** Nur für Beweise/Tests. */
-export function clearBrandDocumentReviews(): void {
-  DOCUMENT_REVIEWS.clear()
-}
 
 /**
  * DER GANZE AUFRUF: Kill-Switch, Ersatz, Stufe 1, ggf. Stufe 2 (s. Kopf).
@@ -533,6 +514,8 @@ export async function runBrandSessionReview(
   request: BrandReviewRequest,
 ): Promise<BrandReviewOutcome> {
   const started = Date.now()
+  // Das Ende des Deckels auf der Server-Uhr — `undefined` ohne Deckel.
+  const deadlineAt = request.budgetMs === undefined ? undefined : started + request.budgetMs
 
   // DER KILL-SWITCH ZUERST, wie in jeder anderen KI-Route dieses Layers
   // (`brandAiEnabled`, system-038, fail-closed). Er steht VOR dem Ersatz:
@@ -558,7 +541,7 @@ export async function runBrandSessionReview(
         ? BRAND_AI_REVIEW_WEIGHTS.document
         : BRAND_AI_REVIEW_WEIGHTS.chapter)
     : BRAND_AI_REVIEW_WEIGHTS.stage1
-  const stage1 = await runStage(request, reviewModel(), stage1Weight, promptFor(request))
+  const stage1 = await runStage(request, reviewModel(), stage1Weight, promptFor(request), deadlineAt)
   if (!stage1.review) {
     return { reviewed: false, reviewedBy: null, review: BRAND_REVIEW_EMPTY, failure: stage1.failure }
   }
@@ -568,13 +551,28 @@ export async function runBrandSessionReview(
 
   if (needsStageTwo(review.findings)) {
     const georgeModel = (await getEffectiveAiConfig(request.event)).model
-    const stage2 = await runStage(
-      request,
-      georgeModel,
-      BRAND_AI_REVIEW_WEIGHTS.stage2,
-      promptFor(request, review.findings),
-    )
-    if (stage2.review) {
+    // UNTER DEM DECKEL: reicht der Rest nicht, läuft Stufe 2 gar nicht — sie
+    // wird dann auch nicht gebucht. Stufe 1 gilt, wie wenn Stufe 2 scheitert.
+    const stage2Ms = brandReviewStageTwoTimeout(request.budgetMs, Date.now() - started)
+    const stage2 = stage2Ms === null
+      ? null
+      : await runStage(
+          request,
+          georgeModel,
+          BRAND_AI_REVIEW_WEIGHTS.stage2,
+          promptFor(request, review.findings),
+          deadlineAt,
+        )
+    if (stage2Ms === null) {
+      logEvent('info', 'brand.review_stage2_skipped', {
+        mode: request.mode,
+        stepKey: request.stepKey,
+        slotId: request.session?.id ?? '',
+        ms: Date.now() - started,
+        budgetMs: request.budgetMs ?? 0,
+      })
+    }
+    if (stage2?.review) {
       // NUR die Befunde — alles andere ist ein Urteil über die Session, und
       // das hat Stufe 1 mit denselben Eingaben gefällt (s. Kopf).
       review = { ...review, findings: stage2.review.findings }
