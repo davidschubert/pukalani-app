@@ -7,6 +7,7 @@ import {
   loadMarketReportState,
   toMarketReportView,
 } from '../../../../utils/marketReportService'
+import { readMarketReportRunView } from '../../../../utils/marketReportRun'
 
 /**
  * DER LETZTE BERICHT — mit der Auskunft, ob er noch gilt (Plan §2.4, MV1 M3).
@@ -36,16 +37,24 @@ import {
  * (offen/angenommen/abgelehnt) ändert sich, nachdem er geschrieben wurde. Ein
  * mitgespeicherter Zustand zeigte einen Chip, den der Mensch längst
  * entschieden hat.
+ *
+ * ── DER BERICHT-LAUF KOMMT MIT (LL1 d) ────────────────────────────────────
+ * `POST /report` rechnet hinter einer 202-Antwort; die Seite fragt DIESE
+ * Route ab (`reportRun`). Gelesen wird der Lauf VOR dem Bericht: endet er
+ * zwischen den zwei Abfragen, steht sein Bericht schon in der Antwort —
+ * andersherum meldete sie „fertig" neben dem alten Bericht. Fail-soft: eine
+ * nicht lesbare Lauf-Tabelle heisst „kein Lauf".
  */
 export default defineEventHandler(async (event): Promise<MarketReportResponse> => {
   const { profileId } = await requireMarketProfile(event)
 
+  const reportRun = await readMarketReportRunView(event, profileId)
   const [row, aiEnabled] = await Promise.all([
     latestMarketReport(event, profileId),
     readBrandAiEnabled(event),
   ])
 
-  if (!row) return { report: null, stale: false, reused: false, aiEnabled }
+  if (!row) return { report: null, stale: false, reused: false, aiEnabled, reportRun }
 
   const [state, findings] = await Promise.all([
     loadMarketReportState(event, profileId),
@@ -58,5 +67,6 @@ export default defineEventHandler(async (event): Promise<MarketReportResponse> =
     // Aus der Ablage — diese Route rechnet grundsätzlich nichts.
     reused: true,
     aiEnabled,
+    reportRun,
   }
 })

@@ -28,6 +28,9 @@
  *    festen Zeitpunkten fest. Hier wird die andere Hälfte gezeigt, die man nur
  *    live widerlegen kann: derselbe Tag wird auch nach einem Aufstieg NICHT
  *    zweimal gebucht.
+ *    Damit die Abschnitte 7 und 8 nicht selbst über Mitternacht UTC laufen,
+ *    wartet das Skript davor, wenn der Tag in weniger als zweieinhalb Minuten
+ *    endet (`waitOutUtcMidnight`).
  *  - **Die Ernennung (Stufe 4).** Sie meldet dem Einladenden bewusst nichts;
  *    die Regel dazu ist pur und getestet (`inviteeLevelCrossings`).
  *  - Den Klick selbst (Toast am Knopf) — Browser-Verhalten.
@@ -240,6 +243,36 @@ async function seedCounters(tenantId, userId, values) {
     permissions: [],
   })
   return created.$id
+}
+
+/**
+ * DIE ABSCHNITTE 7 UND 8 BRAUCHEN EINEN GANZEN UTC-TAG AM STÜCK.
+ *
+ * Das Tages-Kontingent zählt je Kalendertag in UTC (`utcDayKey`,
+ * `core/shared/likeAllowance.ts`). Wechselt der Tag, während Anna ihre
+ * Aufstimmen vergibt, beginnt ihr Zähler neu und der Abzeichen-Tag wird ein
+ * zweites Mal gebucht — beides ist richtig, macht die Prüfungen „genau
+ * einmal" und „am selben Tag" aber rot. So endete ein von Hand gestarteter
+ * Nacht-Lauf am 2026-11-18 um 00:00 UTC mit 55 von 56.
+ *
+ * Die Uhr des Servers lässt sich von hier nicht stellen. Deshalb das
+ * FENSTER: endet der Tag in weniger als `DAY_WINDOW_MS`, wartet das Skript
+ * bis kurz nach Mitternacht und beginnt die Abschnitte im neuen Tag. Die
+ * beiden Abschnitte brauchen zusammen deutlich weniger als das Fenster
+ * (der ganze Lauf dauert rund zwei Minuten). Danach hält eine eigene
+ * Prüfung fest, DASS sie in einem Tag lagen — wird sie je rot, steht die
+ * Ursache da und nicht eine verrutschte Zahl.
+ */
+const DAY_WINDOW_MS = 150_000
+const utcDay = (at = Date.now()) => new Date(at).toISOString().slice(0, 10)
+
+async function waitOutUtcMidnight() {
+  const now = new Date()
+  const nextMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+  const left = nextMidnight - now.getTime()
+  if (left > DAY_WINDOW_MS) return
+  console.log(`   … der UTC-Tag endet in ${Math.ceil(left / 1000)} s — warte bis nach Mitternacht, damit die Tages-Prüfungen in EINEM Tag liegen`)
+  await new Promise(resolve => setTimeout(resolve, left + 3000))
 }
 
 let postCounter = 0
@@ -470,6 +503,10 @@ try {
   /* ── 7. Die Staffel: was ein Neuling am Tag darf ────────────────────────── */
   console.log(`\n7. Die Staffel — Stufe 0 bekommt ${LIMIT_TL0} Likes am Tag`)
 
+  // Ab hier zählt der Kalendertag (Kopf von `waitOutUtcMidnight`).
+  await waitOutUtcMidnight()
+  const dayAtStart = utcDay()
+
   const anna = await createPoolUser('anna')
   const annaCookie = await loginWithCookies(anna)
   await call(a.host, '/api/community/members', {
@@ -503,9 +540,10 @@ try {
     `${overTl0.status} ${reasonOf(overTl0) || overTl0.text.slice(0, 120)}`)
 
   const annaRow = await counterRow(a.tenantId, anna.userId)
-  const today = new Date().toISOString().slice(0, 10)
+  // Der Tag von VOR den Stimmen — nicht „jetzt": zwischen der letzten Stimme
+  // und dieser Zeile darf die Uhr nicht über die Erwartung entscheiden.
   check('der Abzeichen-Tag ist gebucht (likeLimitDays = 1)', annaRow?.likeLimitDays === 1, `${annaRow?.likeLimitDays}`)
-  check('und der gebuchte Tag steht in der Zeile', annaRow?.likeLimitDay === today, `${annaRow?.likeLimitDay}`)
+  check('und der gebuchte Tag steht in der Zeile', annaRow?.likeLimitDay === dayAtStart, `${annaRow?.likeLimitDay} statt ${dayAtStart}`)
   check('„Out of Love" ist GENAU EINMAL verliehen',
     await badgeCount(a.tenantId, anna.userId, 'out-of-love') === 1,
     String(await badgeCount(a.tenantId, anna.userId, 'out-of-love')))
@@ -535,6 +573,10 @@ try {
   check('„Higher Love" (5 Tage) ist folgerichtig NICHT verliehen',
     await badgeCount(a.tenantId, anna.userId, 'higher-love') === 0)
   check('und ihr Verbrauch steht auf dem neuen Limit', annaRow2?.likesToday === LIMIT_TL2, `${annaRow2?.likesToday}`)
+  // Die Voraussetzung der Abschnitte 7 und 8, als eigene Zeile: rot heißt
+  // „der Lauf ging über Mitternacht UTC", nicht „das Kontingent ist falsch".
+  check('die Abschnitte 7 und 8 lagen in EINEM UTC-Tag (sonst sind die Tages-Prüfungen oben nicht aussagekräftig)',
+    utcDay() === dayAtStart, `${dayAtStart} → ${utcDay()}`)
 
   /* ── 9. Die Galerie sagt die Zahl, nicht das Versprechen ────────────────── */
   console.log('\n9. Die Abzeichen-Galerie nennt das Kontingent — und was die nächste Stufe bringt')
