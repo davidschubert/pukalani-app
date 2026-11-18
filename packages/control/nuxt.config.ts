@@ -44,6 +44,13 @@ export default defineNuxtConfig({
     // LEER = die Onboarding-Routen existieren nicht (404) — Default-aus, damit
     // ein vergessenes Secret nicht in einen offenen Trichter mündet.
     controlOnboardingSecret: '',
+    // server-only! Geheimnis des Produktions-Wächters (WA1 d): öffnet NUR
+    // GET /api/control/watch/hosts — die Liste der Kundendomains, die der
+    // TLS- und der Health-Wächter prüfen sollen (nur Host-Namen). Bewusst ein
+    // EIGENER Wert, nicht das Naht-Geheimnis: er liegt bei GitHub und soll
+    // nichts schreiben können. Env: NUXT_CONTROL_WATCH_HOSTS_SECRET.
+    // LEER oder kürzer als 32 Zeichen = die Route existiert nicht (404).
+    controlWatchHostsSecret: '',
     // Wohin die Einladungs-Mail verlinkt (Kundenbereich, nicht das Control).
     // Env: NUXT_ONBOARDING_START_URL — Default zeigt auf die Prod-Adresse.
     // AH-1 (2026-08-11): der Kurz-Link-Host `start.` ist abgeschaltet, der
