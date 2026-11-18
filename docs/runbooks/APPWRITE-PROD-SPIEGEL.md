@@ -34,7 +34,7 @@ schreibende SQL-Befehle ab.
 ## Ablauf
 
 ```bash
-source ~/.nvm/nvm.sh && nvm use 22
+source ~/.nvm/nvm.sh && nvm use   # liest .nvmrc
 node scripts/ops/appwrite-mirror-prod-to-local.mjs --phase all --yes
 ```
 

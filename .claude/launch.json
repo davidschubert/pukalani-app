@@ -6,7 +6,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter comments dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter comments dev"
       ],
       "port": 3001
     },
@@ -15,7 +15,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter comments exec nuxi dev --port 3002"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter comments exec nuxi dev --port 3002"
       ],
       "port": 3002
     },
@@ -24,7 +24,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter @pukalani/docs dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter @pukalani/docs dev"
       ],
       "port": 4000
     },
@@ -33,7 +33,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter photos dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter photos dev"
       ],
       "port": 3003
     },
@@ -42,7 +42,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter control dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter control dev"
       ],
       "port": 3004
     },
@@ -51,7 +51,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter portfolio dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter portfolio dev"
       ],
       "port": 3005
     },
@@ -60,7 +60,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter portfolio exec nuxi dev --port 3015"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter portfolio exec nuxi dev --port 3015"
       ],
       "port": 3015
     },
@@ -69,7 +69,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter comments exec nuxi dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter comments exec nuxi dev"
       ],
       "autoPort": true
     },
@@ -78,7 +78,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter @pukalani/core exec nuxi dev .playground --port 3010"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter @pukalani/core exec nuxi dev .playground --port 3010"
       ],
       "port": 3010
     },
@@ -87,7 +87,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter platform dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter platform dev"
       ],
       "port": 3006
     },
@@ -96,7 +96,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && NUXT_PUBLIC_TENANCY_CONTROL_HOSTS=localhost exec pnpm --filter platform dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && NUXT_PUBLIC_TENANCY_CONTROL_HOSTS=localhost exec pnpm --filter platform dev"
       ],
       "port": 3006
     },
@@ -105,7 +105,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter help dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter help dev"
       ],
       "port": 3008
     },
@@ -114,7 +114,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter marketing dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter marketing dev"
       ],
       "port": 3007
     },
@@ -123,7 +123,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter @pukalani/brand exec nuxi dev .playground --port 3031"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter @pukalani/brand exec nuxi dev .playground --port 3031"
       ],
       "port": 3031
     },
@@ -132,7 +132,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter @pukalani/insights exec nuxi dev .playground --port 3013"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter @pukalani/insights exec nuxi dev .playground --port 3013"
       ],
       "port": 3013
     },
@@ -141,7 +141,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter branding dev"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter branding dev"
       ],
       "port": 3010
     },
@@ -150,7 +150,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && NUXT_TURNSTILE_SECRET=1x0000000000000000000000000000000AA NUXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA exec pnpm --filter comments exec nuxi dev --port 3012"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && NUXT_TURNSTILE_SECRET=1x0000000000000000000000000000000AA NUXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA exec pnpm --filter comments exec nuxi dev --port 3012"
       ],
       "port": 3012
     },
@@ -159,7 +159,7 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 >/dev/null && exec pnpm --filter branding exec nuxi dev --port 3016"
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && exec pnpm --filter branding exec nuxi dev --port 3016"
       ],
       "port": 3016
     }
