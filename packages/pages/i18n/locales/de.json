@@ -69,7 +69,18 @@
       "translatedHint": "Er ist noch nicht gespeichert und noch nicht veröffentlicht — lies ihn durch, ändere was nötig ist, dann speichern.",
       "translateFailed": "Übersetzen hat nicht geklappt",
       "translateFailedHint": "Bitte versuch es gleich noch einmal. Bleibt es dabei, übersetze den Text von Hand.",
-      "translateTooLong": "Zu lang für den Vorschlag (höchstens {max} Zeichen) — dieser Text gehört in Menschenhand."
+      "translateTooLong": "Zu lang für den Vorschlag (höchstens {max} Zeichen) — dieser Text gehört in Menschenhand.",
+      "translateNeedsSlug": "Erst eine Adresse eintragen — unter ihr wartet der Vorschlag, bis er fertig ist.",
+      "translateRunning": "Übersetzung nach {language} läuft",
+      "translateRunningHint": "Das dauert bei einem langen Text bis zu zwei Minuten. Du kannst weiterarbeiten; der Vorschlag landet im Formular, sobald er fertig ist — gespeichert wird er erst, wenn du speicherst.",
+      "translateBusy": "Für diese Seite läuft schon eine Übersetzung",
+      "translateBusyHint": "Ein zweiter Lauf startet nicht. Sobald der laufende fertig ist, kannst du seinen Vorschlag hier übernehmen.",
+      "translateReady": "Ein Übersetzungsvorschlag nach {language} ist fertig",
+      "translateReadyHint": "Er steht noch nicht im Formular. Übernimm ihn, wenn du ihn haben willst — was du dort schon geschrieben hast, wird dann ersetzt.",
+      "translateApply": "Vorschlag übernehmen",
+      "translateStalled": "Die Übersetzung wurde unterbrochen",
+      "translateStalledHint": "Der Server hat sie vor dem Ende abgebrochen (zum Beispiel durch ein Update). Im Formular hat sich nichts geändert. Du kannst sie neu starten.",
+      "translateEmptyHint": "Die KI hat keinen Text zurückgegeben. Im Formular hat sich nichts geändert — versuch es noch einmal oder übersetze von Hand."
     },
     "draftNotice": {
       "title": "Entwurf, in anwaltlicher Prüfung",

@@ -5,8 +5,9 @@ export default {
   tier: 'optional',
   hasMigrations: true,
   userData: false,
-  // Schema-Probe (OPS-008): pages-005 legt pages.communityId an; 006 löscht nur tenantId (nicht ablesbar).
-  schema: { latest: '006', probe: { migration: '005', table: 'pages', column: 'communityId' } },
+  // Schema-Probe (OPS-008): pages-007 legt `pages_runs` an (Lauf-Sperre der
+  // Seiten-Übersetzung, LL1 d); `result` ist die letzte Spalte, die sie anlegt.
+  schema: { latest: '007', probe: { migration: '007', table: 'pages_runs', column: 'result' } },
   apiPrefixes: ['/api/pages'],
   title: { en: 'Pages', de: 'Seiten' },
   description: {

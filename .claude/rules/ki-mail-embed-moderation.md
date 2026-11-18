@@ -207,7 +207,13 @@ paths:
   Deckel über beide Stufen (`BRAND_REVIEW_INLINE_BUDGET_MS`, 50 s; Stufe 2
   bekommt nur den Rest und läuft unter 10 s Rest gar nicht) — erlaubt, weil
   ein Ergebnis nur aus Stufe 1 schon immer ein ehrlicher Ausgang ist
-  (`reviewedBy: 'stage1'`). WÄCHTER (seit 2026-11-17):
+  (`reviewedBy: 'stage1'`). SEIT LL1 d (2026-11-18) AUCH DIE ÜBERSETZUNG
+  EINER GANZEN CMS-SEITE (`POST /api/pages/translate`): Sperre in der
+  Lauf-Tabelle `pages_runs` (pages-007, Art `translate`, Gegenstand = Hash aus
+  Mandant und Adresse der Seite, Zugriff über die Datentür), der Vorschlag
+  liegt an der Lauf-Zeile (`result`), bis der Editor ihn über `GET
+  /api/pages/translate/:slug` abholt — nie in der Seiten-Zeile; der Bestand
+  `over` des Wächters ist damit leer. WÄCHTER (seit 2026-11-17):
   `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
   KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
   Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe

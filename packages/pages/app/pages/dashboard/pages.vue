@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import type { EditorToolbarItem, TableColumn, TabsItem } from '@nuxt/ui'
-import { MAX_PAGE_BODY, MAX_PAGE_TRANSLATE_BODY } from '../../../schemas/page'
+import { MAX_PAGE_BODY, MAX_PAGE_SLUG, MAX_PAGE_TRANSLATE_BODY, PAGE_SLUG_PATTERN } from '../../../schemas/page'
 import { bodyToSave as decideBodyToSave } from '../../../../core/shared/editorBody'
 import { orderedLocales, translationSourceLocale } from '../../../shared/pageLocales'
-import type { PageDetailResponse, PageGroup, PageTranslateResponse, PagesListResponse } from '../../../shared/types/page'
+import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../core/shared/runLease'
+import { noPageTranslateRunView, PAGE_TRANSLATE_POLL_TIMEOUT_MS, pageTranslateNoticeDue } from '../../../shared/pageTranslateRun'
+import type {
+  PageDetailResponse,
+  PageGroup,
+  PageTranslateResponse,
+  PageTranslateRunResponse,
+  PageTranslateRunView,
+  PagesListResponse,
+} from '../../../shared/types/page'
 
 /**
  * Seiten-Editor (Betreiber). Text-Editieren bestehender Inhalte, AUSBAUSTUFE (a)
@@ -203,6 +212,7 @@ function closeEditor() {
 }
 
 function resetForms() {
+  resetTranslateRun()
   for (const l of LOCALES.value) {
     forms[l] = emptyLocale()
     pristineBody[l] = ''
@@ -233,7 +243,15 @@ async function selectPage(slug: string) {
   }
   catch {
     toast.add({ title: t('pages.admin.loadFailed'), description: t('pages.admin.loadFailedHint'), color: 'error' })
+    return
   }
+  // Ein Lauf, der noch rechnet (oder eben fertig wurde), wird wieder
+  // aufgenommen (LL1 d). Erst NACH dem Formular: ob der Vorschlag dort schon
+  // steht, entscheidet, ob er angeboten wird. Scheitert die Abfrage, bleibt
+  // der Editor benutzbar — der Knopf sagt dann beim Klick, was los ist.
+  // Auch ohne Knopf (Schlüssel inzwischen entfernt): ein fertiger Vorschlag
+  // ist schon bezahlt und wird weiter angeboten.
+  await loadTranslateRun(slug, { fromOpen: true }).catch(() => {})
 }
 
 function newPage() {
@@ -326,7 +344,6 @@ async function saveActiveLocale() {
  * beides trotzdem selbst, sie ist die Grenze, dies hier nur die Höflichkeit.
  */
 const aiTranslateAvailable = computed(() => !!listData.value?.aiTranslate && planAllows('ai'))
-const translating = ref(false)
 
 /** Sprachen, in denen im Formular gerade wirklich etwas steht. */
 const filledLocales = computed(() => LOCALES.value.filter(locale => (forms[locale]?.title.trim() || forms[locale]?.body.trim())))
@@ -349,44 +366,148 @@ const translateSourceTooLong = computed(() => {
   return !!source && (forms[source]?.body.length ?? 0) > MAX_PAGE_TRANSLATE_BODY
 })
 
+/**
+ * DIE ÜBERSETZUNG LÄUFT IM HINTERGRUND (LL1 d, 2026-11-18).
+ *
+ * Der Start antwortet `202`, der Vorschlag entsteht hinter der Antwort, und
+ * diese Seite fragt den Stand unter der Adresse der Seite ab
+ * (`GET /api/pages/translate/:slug`, mit `useRunPolling`: ruht im versteckten
+ * Reiter, Frist je Abfrage). Der Lauf braucht deshalb eine Adresse — bei einer
+ * neuen Seite erst, wenn sie eingetragen ist.
+ *
+ * WOHIN DER VORSCHLAG GEHT, hängt daran, WER den Lauf gestartet hat:
+ *  - der Lauf aus DIESEM Reiter (Start-Zeit merken) ⇒ ins Formular, wie
+ *    früher die Antwort des Knopfs;
+ *  - jeder andere fertige Lauf (nach dem Neuladen, aus einem zweiten Reiter,
+ *    von einer Kollegin) ⇒ nur ein Angebot mit Knopf. Ungefragt ins Formular
+ *    geschrieben, überschriebe er, was hier inzwischen getippt wurde.
+ */
+const translateRun = ref<PageTranslateRunView>(noPageTranslateRunView())
+/** Start-Zeit des Laufs, den dieser Reiter gestartet hat ('' = keiner). */
+const ownRunStartedAt = ref('')
+/** Ein fertiger Vorschlag, der nur angeboten wird (s. oben). */
+const offeredSuggestion = ref<PageTranslateResponse | null>(null)
+/** Ein gescheiterter oder abgebrochener Lauf, auf den die Seite hinweist. */
+const translateProblem = ref<{ kind: 'failed' | 'stalled', failure: string } | null>(null)
+const translateStarting = ref(false)
+
+const translating = computed(() => translateStarting.value || translateRun.value.state === 'running')
+/** Die Adresse, unter der der Lauf steht — beim Anlegen das, was im Feld steht. */
+const translateSlug = computed(() => (isNew.value ? slugInput.value : selectedSlug.value ?? '').trim())
+const translateSlugValid = computed(() => PAGE_SLUG_PATTERN.test(translateSlug.value) && translateSlug.value.length <= MAX_PAGE_SLUG)
+
+function resetTranslateRun() {
+  translateRun.value = noPageTranslateRunView()
+  ownRunStartedAt.value = ''
+  offeredSuggestion.value = null
+  translateProblem.value = null
+}
+
+/** Den Vorschlag in die Fassung seiner Zielsprache übernehmen — gespeichert ist er damit nicht. */
+function applySuggestion(suggestion: PageTranslateResponse) {
+  const form = forms[suggestion.locale]
+  if (!form) return
+  // Ein leerer Vorschlag lässt das Feld in Ruhe — sonst löschte ein
+  // misslungener Versuch, was jemand von Hand geschrieben hat.
+  if (suggestion.title) form.title = suggestion.title
+  if (suggestion.body) {
+    form.body = suggestion.body
+    // Der Vorschlag IST jetzt die Fassung, die gespeichert werden soll:
+    // ohne diese Zeile hielte `bodyToSave` die (leere) Urfassung für den
+    // Wahrheitswert und schriebe sie zurück (core/shared/editorBody.ts).
+    pristineBody[suggestion.locale] = ''
+    normalizedBody[suggestion.locale] = suggestion.body
+  }
+  offeredSuggestion.value = null
+  // Der Vorschlag ist NICHT gespeichert und NICHT veröffentlicht — das
+  // muss dastehen, sonst hält man ihn für erledigt.
+  toast.add({
+    title: t('pages.admin.translated'),
+    description: t('pages.admin.translatedHint'),
+    color: 'success',
+  })
+}
+
+/** Steht der Vorschlag schon so im Formular (übernommen und gespeichert)? */
+function suggestionAlreadyInForm(suggestion: PageTranslateResponse): boolean {
+  const form = forms[suggestion.locale]
+  return !!form && form.title === suggestion.title && form.body === suggestion.body
+}
+
+/**
+ * Einen neuen Stand vom Server verarbeiten. `fromOpen`: beim Öffnen der Seite
+ * gelesen (nicht beim Abfragen eines laufenden Laufs).
+ */
+function takeTranslateRun(view: PageTranslateRunView, options: { fromOpen?: boolean } = {}) {
+  const wasRunning = translateRun.value.state === 'running'
+  translateRun.value = view
+  const own = !!ownRunStartedAt.value && view.startedAt === ownRunStartedAt.value
+  if (view.state === 'running') {
+    translateProblem.value = null
+    return
+  }
+  if (view.state === 'done') {
+    translateProblem.value = null
+    if (!view.result || suggestionAlreadyInForm(view.result)) return
+    if (own) applySuggestion(view.result)
+    else offeredSuggestion.value = view.result
+    ownRunStartedAt.value = ''
+    return
+  }
+  // Gescheitert oder abgebrochen: der eigene (oder eben beobachtete) Lauf
+  // bekommt den Satz; beim Öffnen nur ein junger Lauf, kein alter Stand.
+  if ((view.state === 'failed' || view.state === 'stalled')
+    && (own || wasRunning || (options.fromOpen && pageTranslateNoticeDue(view, Date.now())))) {
+    translateProblem.value = { kind: view.state, failure: view.failure }
+  }
+  ownRunStartedAt.value = ''
+}
+
+async function loadTranslateRun(slug: string, options: { fromOpen?: boolean } = {}) {
+  const { run } = await $fetch<PageTranslateRunResponse>(`/api/pages/translate/${encodeURIComponent(slug)}`, {
+    timeout: PAGE_TRANSLATE_POLL_TIMEOUT_MS,
+  })
+  // Inzwischen eine andere Seite geöffnet? Dann gehört der Stand nicht hierher.
+  if (translateSlug.value !== slug) return
+  takeTranslateRun(run, options)
+}
+
+useRunPolling({
+  active: () => translateRun.value.state === 'running' && translateSlugValid.value,
+  intervalMs: RUN_LEASE_POLL_MS,
+  tick: () => loadTranslateRun(translateSlug.value),
+})
+
 async function translateWithAi() {
   const target = activeLocale.value
   const source = translateSource.value
   const from = source ? forms[source] : null
-  if (translating.value || !from || translateSourceTooLong.value) return
-  translating.value = true
+  const slug = translateSlug.value
+  if (translating.value || !from || translateSourceTooLong.value || !translateSlugValid.value) return
+  translateStarting.value = true
+  offeredSuggestion.value = null
+  translateProblem.value = null
   try {
-    const suggestion = await $fetch<PageTranslateResponse>('/api/pages/translate', {
+    const { run } = await $fetch<PageTranslateRunResponse>('/api/pages/translate', {
       method: 'POST',
       // Aus dem FORMULAR, nicht aus der Datenbank — sonst ließe sich beim
       // Anlegen einer Seite nichts übersetzen (da gibt es noch keine Zeile).
-      body: { locale: target, title: from.title.trim(), body: from.body },
+      body: { slug, locale: target, title: from.title.trim(), body: from.body },
     })
-    const form = forms[target]
-    if (!form) return
-    // Ein leerer Vorschlag lässt das Feld in Ruhe — sonst löschte ein
-    // misslungener Versuch, was jemand von Hand geschrieben hat.
-    if (suggestion.title) form.title = suggestion.title
-    if (suggestion.body) {
-      form.body = suggestion.body
-      // Der Vorschlag IST jetzt die Fassung, die gespeichert werden soll:
-      // ohne diese Zeile hielte `bodyToSave` die (leere) Urfassung für den
-      // Wahrheitswert und schriebe sie zurück (core/shared/editorBody.ts).
-      pristineBody[target] = ''
-      normalizedBody[target] = suggestion.body
-    }
-    // Der Vorschlag ist NICHT gespeichert und NICHT veröffentlicht — das
-    // muss dastehen, sonst hält man ihn für erledigt.
-    toast.add({
-      title: t('pages.admin.translated'),
-      description: t('pages.admin.translatedHint'),
-      color: 'success',
-    })
+    ownRunStartedAt.value = run.startedAt
+    translateRun.value = run
   }
   catch (error) {
     // Kein Modell unter der Datenschutz-Bindung: den Hinweis zeigt der zentrale
     // Fehler-Leser (P17) — eine zweite Meldung hier wäre doppelt.
     if (isAiEndpointUnavailable(error)) return
+    // Ein zweiter Klick (dieser oder ein anderer Reiter, eine Kollegin) ist
+    // kein Fehler: ein ruhiger Hinweis, und die Seite folgt dem laufenden Lauf.
+    if ((error as { data?: { reason?: string } })?.data?.reason === RUN_LEASE_BUSY_CODE) {
+      toast.add({ title: t('pages.admin.translateBusy'), description: t('pages.admin.translateBusyHint'), color: 'neutral' })
+      await loadTranslateRun(slug).catch(() => {})
+      return
+    }
     toast.add({
       title: t('pages.admin.translateFailed'),
       description: t('pages.admin.translateFailedHint'),
@@ -394,9 +515,35 @@ async function translateWithAi() {
     })
   }
   finally {
-    translating.value = false
+    translateStarting.value = false
   }
 }
+
+/** Der eine Knopf am angebotenen Vorschlag. */
+const offerActions = computed(() => [{
+  label: t('pages.admin.translateApply'),
+  color: 'neutral' as const,
+  variant: 'outline' as const,
+  onClick: () => {
+    if (offeredSuggestion.value) applySuggestion(offeredSuggestion.value)
+  },
+}])
+
+/** Der Satz zu einem gescheiterten Lauf — je Grund, sonst der allgemeine. */
+const translateProblemText = computed(() => {
+  const problem = translateProblem.value
+  if (!problem) return null
+  if (problem.kind === 'stalled') {
+    return { title: t('pages.admin.translateStalled'), description: t('pages.admin.translateStalledHint') }
+  }
+  if (problem.failure === 'ai_endpoint_unavailable') {
+    return { title: t('error.aiEndpointUnavailable'), description: t('error.aiEndpointUnavailableHint') }
+  }
+  if (problem.failure === 'empty') {
+    return { title: t('pages.admin.translateFailed'), description: t('pages.admin.translateEmptyHint') }
+  }
+  return { title: t('pages.admin.translateFailed'), description: t('pages.admin.translateFailedHint') }
+})
 
 async function deletePage() {
   const slug = selectedSlug.value
@@ -557,6 +704,41 @@ async function deletePage() {
             <UInput v-model="slugInput" :disabled="!isNew" :placeholder="t('pages.admin.slugPlaceholder')" class="w-full font-mono" />
           </UFormField>
 
+          <!-- KI-Übersetzung im Hintergrund (LL1 d): läuft / fertig, nur angeboten /
+               gescheitert oder abgebrochen. Ein Satz, kein Fehler-Toast. -->
+          <UAlert
+            v-if="translateRun.state === 'running'"
+            icon="i-ph-spinner-gap"
+            color="neutral"
+            variant="subtle"
+            :title="t('pages.admin.translateRunning', { language: languageName(translateRun.locale || activeLocale) })"
+            :description="t('pages.admin.translateRunningHint')"
+            data-page-translate-running
+          />
+          <UAlert
+            v-else-if="offeredSuggestion"
+            icon="i-ph-sparkle"
+            color="neutral"
+            variant="subtle"
+            :title="t('pages.admin.translateReady', { language: languageName(offeredSuggestion.locale) })"
+            :description="t('pages.admin.translateReadyHint')"
+            :actions="offerActions"
+            close
+            data-page-translate-ready
+            @update:open="offeredSuggestion = null"
+          />
+          <UAlert
+            v-else-if="translateProblemText"
+            icon="i-ph-warning"
+            color="warning"
+            variant="subtle"
+            :title="translateProblemText.title"
+            :description="translateProblemText.description"
+            close
+            data-page-translate-problem
+            @update:open="translateProblem = null"
+          />
+
           <UTabs v-model="activeLocale" :items="localeTabs" class="w-full">
             <template #content="{ item }">
               <div class="space-y-3 pt-2">
@@ -568,10 +750,10 @@ async function deletePage() {
                       variant="ghost"
                       size="xs"
                       :loading="translating"
-                      :disabled="translating || translateSourceTooLong"
+                      :disabled="translating || translateSourceTooLong || !translateSlugValid"
                       :title="translateSourceTooLong
                         ? t('pages.admin.translateTooLong', { max: MAX_PAGE_TRANSLATE_BODY.toLocaleString() })
-                        : undefined"
+                        : (!translateSlugValid ? t('pages.admin.translateNeedsSlug') : undefined)"
                       data-page-translate
                       @click="translateWithAi"
                     >

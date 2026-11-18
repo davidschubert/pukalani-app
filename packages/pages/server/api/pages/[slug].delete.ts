@@ -1,4 +1,5 @@
 import { removePageVersions } from '../../utils/pageRows'
+import { clearPageTranslateResult } from '../../utils/pageTranslateRun'
 
 /**
  * Admin: eine Seite (alle Sprachversionen) löschen.
@@ -34,6 +35,11 @@ export default defineEventHandler(async (event) => {
   if (result.remaining > 0) {
     throw createError({ status: 500, statusText: 'Could not delete page', data: { code: 'delete_incomplete' } })
   }
+
+  // Der letzte KI-Vorschlag dieser Seite (LL1 d) ist eine Abschrift ihres
+  // Texts — er geht mit ihr. Wirft nie; die Lauf-Zeile selbst bleibt stehen
+  // (sie ist die Sperre, `core/server/utils/runLease.ts`).
+  await clearPageTranslateResult(event, slug)
 
   return { deleted: result.deleted }
 })

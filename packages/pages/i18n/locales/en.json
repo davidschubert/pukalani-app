@@ -69,7 +69,18 @@
       "translatedHint": "It is not saved and not published yet — read it through, change what needs changing, then save.",
       "translateFailed": "Translation failed",
       "translateFailedHint": "Please try again in a moment. If it keeps failing, translate the text by hand.",
-      "translateTooLong": "Too long for a suggestion (up to {max} characters) — this text belongs in human hands."
+      "translateTooLong": "Too long for a suggestion (up to {max} characters) — this text belongs in human hands.",
+      "translateNeedsSlug": "Enter an address first — the suggestion waits under it until it is ready.",
+      "translateRunning": "Translating into {language}",
+      "translateRunningHint": "For a long text this can take up to two minutes. You can keep working; the suggestion lands in the form as soon as it is ready — it is only saved when you save.",
+      "translateBusy": "A translation of this page is already running",
+      "translateBusyHint": "A second run does not start. As soon as the running one finishes, you can take over its suggestion here.",
+      "translateReady": "A translation suggestion into {language} is ready",
+      "translateReadyHint": "It is not in the form yet. Take it over if you want it — whatever you have written there will be replaced.",
+      "translateApply": "Use suggestion",
+      "translateStalled": "The translation was interrupted",
+      "translateStalledHint": "The server stopped it before it finished (for example during an update). Nothing in the form has changed. You can start it again.",
+      "translateEmptyHint": "The AI returned no text. Nothing in the form has changed — try again or translate by hand."
     },
     "draftNotice": {
       "title": "Draft, under review by our lawyers",
