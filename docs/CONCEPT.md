@@ -98,20 +98,20 @@ Vier Prüffragen pro Feature:
 ## Stack & Tooling
 
 Verbindlich ist der **pnpm-Katalog** in `pnpm-workspace.yaml`, nicht diese Tabelle —
-sie ist eine Momentaufnahme (Stand 08/2026) und veraltet zwangsläufig.
+sie ist eine Momentaufnahme (Stand 2026-11-18) und veraltet zwangsläufig.
 
 | Technologie | Version | Rolle |
 |---|---|---|
-| Nuxt | ^4.5.1 | Framework (Composition API, SSR) |
-| Nuxt UI | ^4.10.0 | UI-Komponentenbibliothek (inkl. `UAuthForm`, `UEditor`) |
-| Appwrite (self-hosted) | 2.6.1 (dev/CI seit 2026-10-23, prod seit 2026-10-24) — MariaDB | Backend: Auth, TablesDB, Storage, Realtime, Presences |
-| Pinia | ^4.0.2 (`@pinia/nuxt` ^1.0.1) | State Management — die beiden sind fest gekoppelt, nur gemeinsam bumpen |
-| node-appwrite | ^26.2.0 | **Server SDK** — Auth + TablesDB via Server Routes |
-| appwrite (Web SDK) | ^26.2.0 | **Nur Realtime** im Browser |
-| Tailwind CSS | ^4.3.2 | Styling |
-| Zod | ^4.4.3 | Schema Validation |
-| @nuxtjs/i18n | ^10.6.0 | Internationalisierung (de + en) — gehört zur Nuxt-Generation (10.6 ↔ 4.5) und wird **mit Nuxt zusammen** gezogen |
-| TypeScript | ^5.9.3, strict | Typsicherheit |
+| Nuxt | ^4.6.4 | Framework (Composition API, SSR) |
+| Nuxt UI | ^4.12.0 | UI-Komponentenbibliothek (inkl. `UAuthForm`, `UEditor`) |
+| Appwrite (self-hosted) | 2.7.1 (dev, CI und prod seit 2026-11-06) — MariaDB | Backend: Auth, TablesDB, Storage, Realtime, Presences |
+| Pinia | ^4.1.0 (`@pinia/nuxt` ^1.0.3) | State Management — die beiden sind fest gekoppelt, nur gemeinsam bumpen |
+| node-appwrite | ^31.1.0 | **Server SDK** — Auth + TablesDB via Server Routes |
+| appwrite (Web SDK) | ^29.2.0 | **Nur Realtime** im Browser |
+| Tailwind CSS | ^4.3.5 | Styling |
+| Zod | ^4.6.7 | Schema Validation |
+| @nuxtjs/i18n | ^10.6.0 | Internationalisierung (de + en) — gehört zur Nuxt-Generation (10.6 ↔ ab 4.5) und wird **mit Nuxt zusammen** gezogen |
+| TypeScript | ^6.0.3, strict | Typsicherheit — 6.0 ist die Decke, TypeScript 7 erst, wenn `vue-tsc` und typescript-eslint es können |
 | pnpm Workspaces | Node 22 | Monorepo-Verwaltung |
 
 > **Eine Caret-Range pinnt nichts** (`^4.4.8` erlaubt 4.5.1). Die wirkliche Version
