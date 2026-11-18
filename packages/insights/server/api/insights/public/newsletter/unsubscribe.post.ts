@@ -72,7 +72,7 @@ export default defineEventHandler(async (event): Promise<InsightsNewsletterUnsub
 
   const { tablesDB, databaseId } = insightsDb(event)
 
-  let row: InsightsSubscriberRow | null = null
+  let row: InsightsSubscriberRow
   try {
     row = await tablesDB.getRow<InsightsSubscriberRow>({
       databaseId,

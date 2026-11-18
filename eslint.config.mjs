@@ -2,6 +2,7 @@
 // jedem Package aus (Lookup in Eltern-Verzeichnissen).
 import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
 import { dataDoorGlobs } from './scripts/lib/data-door-layers.mjs'
+import { staticPublicIgnores } from './scripts/lib/lint-static-public.mjs'
 
 // Layer-Grenzen-Durchsetzung (CONCEPT.md A14, Stufe 2 / Backstop).
 // Verhindert KÜNFTIGE explizite Cross-Layer-Imports. Implizite Kopplung
@@ -193,6 +194,10 @@ export default createConfigForNuxt({
     '**/dist/**',
     '**/node_modules/**',
     '**/.playground/.nuxt/**',
+    // LN1: die Ausnahme von @nuxt/eslint-config für JEDEN Ordner namens
+    // `public` traf auch Routen-Ordner (`server/api/…/public/`). Aufgehoben
+    // und auf die statischen Ordner begrenzt — scripts/lib/lint-static-public.mjs.
+    ...staticPublicIgnores,
   ],
 }).append({
   // Nuxt benennt diese Dateien per Konvention einwortig (login.vue, auth.vue,
