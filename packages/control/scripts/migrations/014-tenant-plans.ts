@@ -13,6 +13,7 @@
 import '../../../../scripts/lib/assert-target.mjs'
 import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -57,6 +58,19 @@ async function waitForColumn(key: string) {
 }
 
 console.log(`Migration control-014 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `community_plans` (control-029), ist
+// `tenant_plans` umgezogen und fällt mit control-030 — nicht wieder anlegen
+// und NICHT wieder säen: control-029 und -030 kopieren `tenant_plans` per
+// Upsert nach `community_plans` und schrieben so bei jedem vollen Lauf die
+// Saat dieser Datei über die Pläne `free`/`pro`/`business` (gemessen am
+// 2026-11-18: je Lauf zweimal „3 aktualisiert"). Auf einer frischen Instanz
+// entsteht `community_plans` erst weiter hinten, dort läuft die Kette wie immer.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'tenant_plans' }, { table: 'community_plans' }, 'control-029/030')) {
+  console.log('↷ Migration control-014: nichts zu tun')
+  process.exit(0)
+}
 
 // Zugriff NUR über Control-Admin-Routen (sites.manage) + den read-only
 // Cross-Projekt-Key der platform — keine Table-Permissions.

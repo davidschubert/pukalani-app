@@ -16,8 +16,9 @@
  *   pnpm migrate --app <app> --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -131,34 +132,41 @@ await indexStep('Index provisioning_jobs.idx_status', {
 })
 
 // ── feature_catalog (rowId = Feature-Key) ───────────────────────────────────
-await step('Table feature_catalog', () => tablesDB.createTable({
-  databaseId, tableId: 'feature_catalog', name: 'Feature Catalog',
-  permissions: [], // nur Server; Sync schreibt der Job-Runner
-  rowSecurity: false,
-}))
+// NACHFOLGER-WACHE (PB1 c): steht `product_catalog` (control-024), ist der
+// Katalog umgezogen und `feature_catalog` fällt mit control-025 — nicht wieder
+// anlegen. Auf einer frischen Instanz entsteht `product_catalog` erst weiter
+// hinten, control-024 kopiert dann die Zeilen von hier.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (!(await superseded({ table: 'feature_catalog' }, { table: 'product_catalog' }, 'control-024/025'))) {
+  await step('Table feature_catalog', () => tablesDB.createTable({
+    databaseId, tableId: 'feature_catalog', name: 'Feature Catalog',
+    permissions: [], // nur Server; Sync schreibt der Job-Runner
+    rowSecurity: false,
+  }))
 
-await step('Column feature_catalog.tier', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'feature_catalog', key: 'tier', size: 16, required: true,
-}))
-await step('Column feature_catalog.requires', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'feature_catalog', key: 'requires', size: 400, required: false, xdefault: '[]',
-}))
-await step('Column feature_catalog.hasMigrations', () => tablesDB.createBooleanColumn({
-  databaseId, tableId: 'feature_catalog', key: 'hasMigrations', required: false, xdefault: false,
-}))
-await step('Column feature_catalog.title', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'feature_catalog', key: 'title', size: 400, required: true,
-}))
-await step('Column feature_catalog.description', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'feature_catalog', key: 'description', size: 2000, required: true,
-}))
-await step('Column feature_catalog.icon', () => tablesDB.createVarcharColumn({
-  databaseId, tableId: 'feature_catalog', key: 'icon', size: 64, required: false, xdefault: '',
-}))
-await step('Column feature_catalog.syncedAt', () => tablesDB.createDatetimeColumn({
-  databaseId, tableId: 'feature_catalog', key: 'syncedAt', required: false,
-}))
+  await step('Column feature_catalog.tier', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'feature_catalog', key: 'tier', size: 16, required: true,
+  }))
+  await step('Column feature_catalog.requires', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'feature_catalog', key: 'requires', size: 400, required: false, xdefault: '[]',
+  }))
+  await step('Column feature_catalog.hasMigrations', () => tablesDB.createBooleanColumn({
+    databaseId, tableId: 'feature_catalog', key: 'hasMigrations', required: false, xdefault: false,
+  }))
+  await step('Column feature_catalog.title', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'feature_catalog', key: 'title', size: 400, required: true,
+  }))
+  await step('Column feature_catalog.description', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'feature_catalog', key: 'description', size: 2000, required: true,
+  }))
+  await step('Column feature_catalog.icon', () => tablesDB.createVarcharColumn({
+    databaseId, tableId: 'feature_catalog', key: 'icon', size: 64, required: false, xdefault: '',
+  }))
+  await step('Column feature_catalog.syncedAt', () => tablesDB.createDatetimeColumn({
+    databaseId, tableId: 'feature_catalog', key: 'syncedAt', required: false,
+  }))
 
-await waitForColumns('feature_catalog')
+  await waitForColumns('feature_catalog')
+}
 
 console.log('✔ Migration control-002 fertig')

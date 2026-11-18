@@ -7,8 +7,9 @@
  *   pnpm migrate --app <app> --layer control
  */
 import '../../../../scripts/lib/assert-target.mjs'
-import { Client, TablesDB, TablesDBIndexType } from 'node-appwrite'
+import { Client, Query, TablesDB, TablesDBIndexType } from 'node-appwrite'
 import { createIndexSteps } from '../../../../scripts/migrations-lib/indexRetry.mts'
+import { createSupersededGuard } from '../../../../scripts/migrations-lib/supersededGuard.mts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -54,6 +55,18 @@ async function waitForColumns(tableId: string) {
 }
 
 console.log(`Migration control-005 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
+
+// NACHFOLGER-WACHE (PB1 c): steht `communities` (control-029), hat diese
+// Instanz die Workspace-Zeit hinter sich — die Abrechnung hängt seit
+// control-028 an der Community, `workspaces*` fallen mit control-031. Nicht
+// wieder anlegen. `communities` entsteht NACH allen Workspace-Migrationen und
+// bleibt; zwischen control-029 und -031 stehen beide, das Anlegen hier wäre
+// dort ein 409. Auf einer frischen Instanz gibt es `communities` hier noch nicht.
+const { superseded } = createSupersededGuard(tablesDB, databaseId, { Query })
+if (await superseded({ table: 'workspaces' }, { table: 'communities' }, 'control-028/031')) {
+  console.log('↷ Migration control-005: nichts zu tun')
+  process.exit(0)
+}
 
 await step('Table workspaces', () => tablesDB.createTable({
   databaseId, tableId: 'workspaces', name: 'Workspaces',
