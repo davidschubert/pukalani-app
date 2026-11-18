@@ -177,8 +177,17 @@ paths:
   es die Marke noch?"); mit dem Stand vom Start überschriebe er, was der
   Mensch während des Laufs gespeichert hat. (2) Das Nachfragen der Seite hat
   eine Frist je Abfrage (`BRAND_RUN_POLL_TIMEOUT_MS`): `useRunPolling`
-  überlappt nicht, eine hängende Abfrage hielte es sonst an. NOCH IN DER
-  ANFRAGE rechnet der öffentliche Brand-Check (OPEN-ITEMS „LL1" b). WÄCHTER (seit 2026-11-17):
+  überlappt nicht, eine hängende Abfrage hielte es sonst an. SEIT N13
+  (2026-11-18) AUCH DER ÖFFENTLICHE BRAND-CHECK (Art `check`) — er läuft
+  OHNE KONTO, deshalb zwei Dinge anders: der Gegenstand der Sperre ist ein
+  Schlüssel-Hash aus Adresse UND Besucher (Konto, sonst Tages-Stempel des
+  Anschlusses), und der Start gibt ein KENNZEICHEN zurück, mit dem die Seite
+  den Stand abfragt (`GET /api/brand/check/runs/<kennzeichen>`, 404 für alles
+  andere; `brand/server/utils/brandCheckRunToken.ts`). Ein zweiter Start
+  desselben Besuchers ist dort kein 409, sondern dieselbe `202` mit dem
+  Kennzeichen des laufenden Laufs; ein Fremder trifft die Sperre nie. Der
+  Browser merkt sich den einen offenen Lauf und nimmt ihn nach einem Neuladen
+  wieder auf. WÄCHTER (seit 2026-11-17):
   `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
   KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
   Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe
@@ -193,7 +202,8 @@ paths:
   `packages/brand/tests/brandStreamHeartbeat.test.ts`,
   `packages/brand/tests/brandMarkDraftsRunRoute.test.ts`,
   `packages/brand/tests/brandReadingRunRoute.test.ts`,
-  `packages/brand/tests/brandDocumentCheckRoute.test.ts`.
+  `packages/brand/tests/brandDocumentCheckRoute.test.ts`,
+  `packages/brand/tests/brandCheckRoutes.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,

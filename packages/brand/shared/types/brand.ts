@@ -1599,15 +1599,27 @@ export interface BrandPublicationReportResponse {
  * `run` (seit LL1 b, 2026-11-17) ist gesetzt, wenn der Check NICHT aus dem
  * Zwischenspeicher kam, sondern als Lauf angenommen wurde (`202`): er rechnet
  * hinter der Antwort, `id` ist dann noch leer, und die Seite fragt den Stand
- * ab. Heute so beim Fundament-Check; der Stand kommt dort mit dem Verlauf
- * (`BrandCheckHistoryResponse.documentRun`), die Id des Ergebnisses steht am
- * fertigen Lauf (`run.ref`).
+ * ab. Beim Fundament-Check kommt der Stand mit dem Verlauf
+ * (`BrandCheckHistoryResponse.documentRun`), beim öffentlichen Check über das
+ * Kennzeichen (`token`); die Id des Ergebnisses steht am fertigen Lauf
+ * (`run.ref`).
  */
 export interface BrandCheckStartResponse {
   ok: true
   id: string
   cached: boolean
   run?: BrandRunView
+  /**
+   * Nur beim ÖFFENTLICHEN Check (LL1 b, 2026-11-18): das Kennzeichen des
+   * Laufs. Die Seite fragt damit den Stand ab
+   * (`GET /api/brand/check/runs/<token>`); nur der Starter bekommt es.
+   */
+  token?: string
+}
+
+/** Der Stand eines Laufs des öffentlichen Checks, über sein Kennzeichen gelesen. */
+export interface BrandCheckRunStateResponse {
+  run: BrandRunView
 }
 
 /**
