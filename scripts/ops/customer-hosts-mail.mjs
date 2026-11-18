@@ -64,10 +64,10 @@ export function recipients(raw) {
 }
 
 /**
- * @param {{ env?: Record<string, string | undefined>, fetchFn?: typeof fetch, log?: (line: string) => void, retryDelayMs?: number }} [options]
+ * @param {{ env?: Record<string, string | undefined>, fetchFn?: typeof fetch, log?: (line: string) => void, retries?: number, retryDelayMs?: number }} [options]
  * @returns {Promise<number>} Exit-Code
  */
-export async function runCustomerMail({ env = process.env, fetchFn = fetch, log = console.log, retryDelayMs = 5000 } = {}) {
+export async function runCustomerMail({ env = process.env, fetchFn = fetch, log = console.log, retries = 3, retryDelayMs = 20_000 } = {}) {
   // Zertifikat UND Erreichbarkeit können dieselbe Kundendomain melden — einmal genügt.
   const numbers = [...new Set(parseNumbers(env.PUKALANI_CUSTOMER_NUMBERS))].sort((a, b) => a - b)
   if (!numbers.length) {
@@ -80,7 +80,10 @@ export async function runCustomerMail({ env = process.env, fetchFn = fetch, log 
     log('Mail mit den Namen nicht eingerichtet (Resend-Schlüssel oder Empfänger fehlt) — die Namen zeigt von Hand `node scripts/ops/verify-tls.mjs --nur-kundendomains --namen`.')
     return 0
   }
-  const list = await readCustomerHosts({ env, fetchFn, retryDelayMs })
+  // Geduldiger als die Wächter (drei weitere Versuche, je 20 s Pause): diese
+  // Mail geht nur EINMAL je Alarm raus, und beim ersten Probealarm startete
+  // die Datenbank genau in dem Moment neu.
+  const list = await readCustomerHosts({ env, fetchFn, retries, retryDelayMs })
   if (list.state !== 'read') {
     log(`Die Liste der Kundendomains ließ sich nicht lesen — ${UNREAD_TEXT[list.reason]}. Mail NICHT raus.`)
     return 1

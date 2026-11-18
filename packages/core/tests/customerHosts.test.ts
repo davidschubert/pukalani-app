@@ -135,7 +135,7 @@ describe('readCustomerHosts — lesen, ohne je rot zu werden', () => {
 
   it.each([
     ['401', answer(401), 'abgelehnt', 1],
-    ['404 (kein Geheimnis auf der Site)', answer(404), 'route-fehlt', 1],
+    ['404 (kein Geheimnis auf der Site, oder die Betreiber-App erreicht ihre Datenbank gerade nicht) — nach genau einem zweiten Versuch', answer(404), 'route-fehlt', 2],
     ['eine Antwort, die kein JSON ist', { status: 200, json: async () => { throw new Error('kein JSON') } } as unknown as Response, 'form', 1],
     ['eine Antwort außerhalb der Form', answer(200, { hosts: [{ host: 'x' }] }), 'form', 1],
     ['ein Fehler der Gegenseite — nach genau einem zweiten Versuch', answer(503), 'fehler', 2],
@@ -145,6 +145,22 @@ describe('readCustomerHosts — lesen, ohne je rot zu werden', () => {
     expect(await readCustomerHosts({ env, fetchFn, retryDelayMs: 1 })).toEqual({ state: 'unread', reason })
     expect(calls).toHaveLength(expectedCalls)
     expect(UNREAD_TEXT[reason as keyof typeof UNREAD_TEXT]).toBeTruthy()
+  })
+
+  it('wie am 2026-11-18 gemessen (die Datenbank startete neu): erst 500, dann 404, dann die Liste — mit mehr Versuchen gelesen, mit einem nicht', async () => {
+    const steps = [answer(500), answer(404), answer(200, { hosts: LIST })]
+    const patient = fetchSequence(...steps)
+    expect(await readCustomerHosts({ env, fetchFn: patient.fetchFn, retries: 3, retryDelayMs: 1 })).toEqual({ state: 'read', hosts: LIST })
+    expect(patient.calls).toHaveLength(3)
+    const single = fetchSequence(...steps)
+    expect(await readCustomerHosts({ env, fetchFn: single.fetchFn, retryDelayMs: 1 })).toEqual({ state: 'unread', reason: 'route-fehlt' })
+    expect(single.calls).toHaveLength(2)
+  })
+
+  it('ein abgelehntes Geheimnis wird nicht wiederholt', async () => {
+    const { fetchFn, calls } = fetchSequence(answer(401), answer(200, { hosts: LIST }))
+    expect(await readCustomerHosts({ env, fetchFn, retries: 3, retryDelayMs: 1 })).toEqual({ state: 'unread', reason: 'abgelehnt' })
+    expect(calls).toHaveLength(1)
   })
 
   it('ein Aussetzer ist kein Befund: erst ein Fehler, dann die Liste', async () => {
@@ -276,7 +292,7 @@ describe('customer-hosts-mail.mjs — die private Mail mit den Namen', () => {
   async function run(env: Record<string, string>, ...steps: Array<Response | Error>) {
     const { fetchFn, calls } = fetchSequence(...steps)
     const lines: string[] = []
-    const code = await runCustomerMail({ env, fetchFn, log: line => lines.push(line), retryDelayMs: 1 })
+    const code = await runCustomerMail({ env, fetchFn, log: line => lines.push(line), retries: 1, retryDelayMs: 1 })
     return { code, calls, out: lines.join('\n') }
   }
 
@@ -301,6 +317,15 @@ describe('customer-hosts-mail.mjs — die private Mail mit den Namen', () => {
     expect(out).toBe('Mail mit den Namen gesendet (2 Kundendomains).')
   })
 
+  it('die Mail wartet einen Aussetzer der Gegenseite ab (500, 404, dann die Liste) und geht raus', async () => {
+    const { fetchFn, calls } = fetchSequence(answer(500), answer(404), answer(200, { hosts: LIST }), answer(200, { id: 'x' }))
+    const lines: string[] = []
+    const code = await runCustomerMail({ env: base, fetchFn, log: line => lines.push(line), retryDelayMs: 1 })
+    expect(code).toBe(0)
+    expect(calls).toHaveLength(4)
+    expect(lines.join('\n')).toBe('Mail mit den Namen gesendet (1 Kundendomain).')
+  })
+
   it.each([
     ['keine Nummern', { PUKALANI_CUSTOMER_NUMBERS: '' }],
     ['Nummern, die keine sind', { PUKALANI_CUSTOMER_NUMBERS: 'forum.kunde-geheim.example' }],
@@ -315,7 +340,7 @@ describe('customer-hosts-mail.mjs — die private Mail mit den Namen', () => {
   it('Liste nicht lesbar ⇒ keine Mail, Exit 1, ein Satz ohne Namen', async () => {
     const { code, calls, out } = await run(base, answer(404))
     expect(code).toBe(1)
-    expect(calls).toHaveLength(1)
+    expect(calls).toHaveLength(2)
     expect(out).toContain('Mail NICHT raus')
   })
 
@@ -348,7 +373,8 @@ describe('die Wächter-Skripte ohne Geheimnis und ohne Antwort (kein Aufruf nach
   function run(script: string, env: Record<string, string>): Promise<{ code: number | null, out: string }> {
     return new Promise((resolve) => {
       const child = spawn(process.execPath, [join(REPO, 'scripts', 'ops', script), '--nur-kundendomains'], {
-        env: { PATH: process.env.PATH ?? '', ...env },
+        // Die Pause vor dem zweiten Versuch auf 1 ms: sonst kostete jeder Fall fünf Sekunden.
+        env: { PATH: process.env.PATH ?? '', PUKALANI_WATCH_HOSTS_RETRY_MS: '1', ...env },
         stdio: ['ignore', 'pipe', 'pipe'],
       })
       let out = ''

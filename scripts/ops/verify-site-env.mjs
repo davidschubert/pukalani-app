@@ -314,6 +314,10 @@ export const SITES = [
       'NUXT_PUBLIC_TURNSTILE_SITE_KEY',
       RESEND_WEBHOOK_SECRET,
       'NUXT_CONTROL_ONBOARDING_SECRET',
+      // WA1 d (2026-11-18, gesetzt mit Davids Ja): ohne den Wert gibt es die
+      // Route der Kundendomains nicht (404), und der Wächter prüft dann
+      // still nur noch seine feste Liste.
+      'NUXT_CONTROL_WATCH_HOSTS_SECRET',
       'NUXT_SMTP_HOST',
       'NUXT_SMTP_PORT',
       'NUXT_SMTP_USER',

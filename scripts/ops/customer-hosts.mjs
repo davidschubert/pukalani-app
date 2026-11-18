@@ -106,13 +106,19 @@ export function parseWatchHosts(body) {
 
 /**
  * Die Liste lesen. Wirft NIE — jede Störung ist ein Wort aus `UNREAD_TEXT`.
- * Bei „nicht erreichbar" oder einem Fehler der Gegenseite genau EIN zweiter
- * Versuch nach kurzer Pause (ein Aussetzer ist kein Befund).
+ * Bei „nicht erreichbar", einem Fehler der Gegenseite ODER einem 404 gibt es
+ * nach kurzer Pause weitere Versuche (`retries`, Vorgabe einer — ein Aussetzer
+ * ist kein Befund). Das 404 gehört dazu, weil die Betreiber-App ihre Routen
+ * auch dann mit 404 beantwortet, wenn sie ihre eigene Datenbank gerade nicht
+ * erreicht (das Produkt-Tor lehnt dann ab): gemessen am 2026-11-18, während
+ * die Datenbank neu startete — erst 500, fünf Sekunden später 404.
  *
- * @param {{ env?: Record<string, string | undefined>, fetchFn?: typeof fetch, retryDelayMs?: number, timeoutMs?: number }} [options]
+ * @param {{ env?: Record<string, string | undefined>, fetchFn?: typeof fetch, retries?: number, retryDelayMs?: number, timeoutMs?: number }} [options]
  * @returns {Promise<{ state: 'read', hosts: Array<{ host: string, health: boolean }> } | { state: 'unread', reason: keyof typeof UNREAD_TEXT }>}
  */
-export async function readCustomerHosts({ env = process.env, fetchFn = fetch, retryDelayMs = 5000, timeoutMs = 15_000 } = {}) {
+export async function readCustomerHosts({ env = process.env, fetchFn = fetch, retries = 1, retryDelayMs, timeoutMs = 15_000 } = {}) {
+  // Die Pause lässt sich für Proben und Tests verkürzen (`PUKALANI_WATCH_HOSTS_RETRY_MS`).
+  const pauseMs = retryDelayMs ?? (Number(env.PUKALANI_WATCH_HOSTS_RETRY_MS) || 5000)
   const secret = (env[SECRET_ENV] ?? '').trim()
   if (!secret) return { state: 'unread', reason: 'kein-geheimnis' }
   const url = watchHostsUrl(env)
@@ -131,7 +137,7 @@ export async function readCustomerHosts({ env = process.env, fetchFn = fetch, re
       return { state: 'unread', reason: 'nicht-erreichbar', retry: true }
     }
     if (response.status === 401 || response.status === 403) return { state: 'unread', reason: 'abgelehnt' }
-    if (response.status === 404) return { state: 'unread', reason: 'route-fehlt' }
+    if (response.status === 404) return { state: 'unread', reason: 'route-fehlt', retry: true }
     if (response.status !== 200) return { state: 'unread', reason: 'fehler', retry: response.status >= 500 }
     let body
     try {
@@ -145,8 +151,8 @@ export async function readCustomerHosts({ env = process.env, fetchFn = fetch, re
   }
 
   let result = await attempt()
-  if (result.state === 'unread' && result.retry) {
-    await new Promise(resolve => setTimeout(resolve, retryDelayMs))
+  for (let extra = 0; extra < retries && result.state === 'unread' && result.retry; extra++) {
+    await new Promise(resolve => setTimeout(resolve, pauseMs))
     result = await attempt()
   }
   return result.state === 'read' ? result : { state: 'unread', reason: result.reason }

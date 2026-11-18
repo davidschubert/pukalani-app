@@ -23,9 +23,6 @@ export const ENV_NOT_REQUIRED = {
   NUXT_BRAND_CARD_CACHE_DIR: 'Ordner für den Zwischenspeicher der Marken-Karten; ohne Angabe ein Ordner im Temp-Verzeichnis des Systems.',
   NUXT_DISCOVER_OG_CACHE_DIR: 'Ordner für den Zwischenspeicher der Galerie-Vorschaubilder; ohne Angabe ein Ordner im Temp-Verzeichnis des Systems.',
 
-  // WA1 d (2026-11-18): die Route läuft ohne den Wert nicht (404) und der Wächter prüft dann seine feste Liste weiter.
-  NUXT_CONTROL_WATCH_HOSTS_SECRET: 'Geheimnis, mit dem der Produktions-Wächter die Liste der Kundendomains im Control Plane liest; ohne Wert gibt es die Route nicht und der Wächter prüft nur seine feste Liste. Wird Pflicht auf admin, sobald der Wert dort gesetzt ist (Davids Ja; Reihenfolge im Kopf dieser Datei).',
-
   // ── Bewertet am 2026-11-17 (WL1 a): der frühere Bestand „noch nicht bewertet" ──
 
   // Wird beim Bauen gesetzt — ein Wert auf dem Server würde den gebauten Stand überschreiben.
