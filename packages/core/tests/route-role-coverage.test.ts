@@ -64,6 +64,10 @@ const ZERO_BACKLOG_LAYERS: readonly string[] = [
   // hinter `insights.manage` und die öffentlichen Leseseiten samt
   // Korrektur-Formular (`packages/insights/tests/support/insightsRouteKit.ts`).
   'insights',
+  // Abgebaut mit N13 (2026-11-18): alle 30 Bestands-Routen des Markenberaters
+  // — Werkstatt an einer Marke, Betreiber-Routen, Einladung und Freigabe
+  // (`packages/brand/tests/support/brandRouteKit.ts`).
+  'brand',
 ]
 
 /**
