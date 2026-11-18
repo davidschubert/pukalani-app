@@ -29,7 +29,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Tote Zugänge | `scripts/ops/verify-stale-keys.mjs` | täglich | Schlüssel auf ein gelöschtes Projekt |
 | Admin-Konto | `scripts/ops/verify-instance-admins.mjs` | täglich | Instanz ohne Admin |
 | Mail-Missbrauch | `scripts/ops/verify-mail-breaker.mjs` | täglich | Notbremse `auth.mail_route_breaker` in den Log-Dateien der LAUFENDEN Prozesse, letzte 25 h (je App gezählt vom Zähl-Skript `ops/app-watch-counts.mjs`, seit 2026-11-18 nicht mehr per `grep` über den ganzen Log-Ordner); mit Resend-Secret zusätzlich ≥ 80 % der Tagesgrenze in 24 h (heute 80 von 100, Grenze aus `GET /usage`) und ≥ 3 Bounces / ≥ 1 Beschwerde (`GET /emails/metrics`) |
-| KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
+| KI-Modelle | `scripts/ops/verify-ai-models.mjs` | täglich | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Gelesen werden je Modell zwei Listen, die weltweite und die der Europa-Adresse. Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 | Bot-Prüfung | `scripts/ops/verify-turnstile.mjs` | täglich | auf einer Site antwortet die Passwort-vergessen-Route ohne Token nicht mit 403 `bot_check_required` (Bot-Prüfung aus oder Cloudflare nicht erreichbar), oder die Seite trägt das Widget nicht (Gäste ausgesperrt); eine unklare Antwort bekommt nach 20 s einen zweiten Versuch |
 | Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte, die eine Migration ihrer Layer anlegt, oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder dort steht eine Spalte, die keine Migration anlegt; oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
 | In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, Berichte der Skript-Regel, übrige KI-Ausfälle |
@@ -194,11 +194,21 @@ unter „Skript-Regel" (zählt nur). Welche Quelle auf welcher Seite:
 Test im Repo den Webserver davor nicht sieht. Von Hand:
 `node scripts/ops/verify-security-headers.mjs [host]`.
 
-**KI-Modelle (seit 2026-11-14, BE-004).** Ein roter Blick heißt: eine
-KI-Funktion scheitert gerade bei JEDEM Aufruf, obwohl sie eingeschaltet ist
-(der Aufruf endet beim Vermittler mit 404, die Oberfläche sagt nur „hat nicht
-geklappt"). Die Ausgabe nennt Modell, Konfigurationsdatei und Feld, die
-verlangten und die vorhandenen Endpunkte. Reparatur: entweder ein Modell
+**KI-Modelle (seit 2026-11-14, BE-004).** Ein roter Blick heißt: in den
+öffentlichen Listen des Vermittlers fehlt ein Endpunkt, auf den der Code ein
+Modell festlegt. Meist scheitert dann JEDER Aufruf dieser Funktion, obwohl
+sie eingeschaltet ist (der Aufruf endet beim Vermittler mit 404, die
+Oberfläche zeigt „KI gerade nicht verfügbar"). ERST MESSEN, DANN TAUSCHEN:
+am 2026-11-18 war der Blick für fünf Modell-Wahlen rot, und kein Aufruf
+scheiterte — der Vermittler hatte die Europa-Endpunkte nur aus der Liste
+seiner weltweiten Adresse genommen und führt sie seitdem auf
+`eu.openrouter.ai` (der Blick liest seither beide Listen). Zwei schnelle
+Proben: der tägliche Blick „In die App hinein" zählt die KI-Ausfälle je App
+(0 heißt: nichts ist gescheitert, oder niemand hat es benutzt), und die
+Endpunkt-Liste des Modells auf der Europa-Adresse zeigt, ob es die Namen
+noch gibt. Die Ausgabe nennt Modell, Konfigurationsdatei und Feld, die
+verlangten und die vorhandenen Endpunkte (mit „(Europa-Liste)", wenn ein
+Endpunkt nur dort steht). Reparatur, wenn wirklich etwas fehlt: entweder ein Modell
 wählen, das den verlangten Endpunkt hat, oder die Anbieter-Liste in
 `packages/brand/server/utils/brandProviderRouting.ts` anpassen — dann aber
 auch die Tabelle `scripts/ops/ai-model-endpoints.mjs` (ein Test hält beide

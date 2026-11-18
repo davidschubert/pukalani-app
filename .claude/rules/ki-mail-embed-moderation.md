@@ -61,6 +61,18 @@ paths:
   `core/shared/aiModelEndpoints.ts` — dieselbe öffentliche Auskunft wie der
   Wächter, per Test an ihn gebunden): kein Europa-Endpunkt oder unbekannt ⇒
   422 `ai_model_no_eu_endpoint` / `ai_model_unknown`, nichts gespeichert;
+  ZWEI LISTEN (seit 2026-11-18): der Vermittler führt die Europa-Endpunkte
+  mit Aufpreis nur noch in der Endpunkt-Liste seiner Europa-Adresse
+  (`eu.openrouter.ai`), nicht mehr in der weltweiten — dieselben Namen, und
+  ein Aufruf über die weltweite Adresse erreicht sie weiter, sobald
+  `provider.only` sie nennt (gemessen: 200 zum Europa-Preis). Wächter und
+  Speicher-Prüfung lesen deshalb BEIDE Listen, ein Ort zählt, sobald er in
+  einer steht, und „kein Ort" ist nur eine Aussage, wenn beide lesbar waren.
+  Die Europa-Adresse wird nur GELESEN; kein Transport ruft dort ein Modell
+  (das wäre ein anderer Tarif des Vermittlers und eine eigene Entscheidung).
+  EIN ROTER MODELL-WÄCHTER HEISST NICHT „AUFRUFE SCHEITERN": erst messen
+  (ein gebundener Aufruf, oder die KI-Ausfälle im täglichen Blick in die
+  App), dann ein Modell tauschen;
   nicht prüfbar (Frist 5 s, Ausfall, anderer Vermittler) ⇒ gespeichert mit
   `aiModelCheck: 'unverified'` und Warnung — ein Ausfall des Vermittlers
   blockiert das Speichern nie. Eine weitere Route, die ein Modell speichert,
