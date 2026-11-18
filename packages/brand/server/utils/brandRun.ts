@@ -83,6 +83,46 @@ export async function readBrandRunView(
   }
 }
 
+/**
+ * EINE Lauf-Zeile über ihre Id — für die lesende Route des öffentlichen
+ * Brand-Checks, die den Lauf über das Kennzeichen des Starters findet
+ * (`brandCheckRunToken.ts`) und nicht über (Art, Gegenstand).
+ *
+ * `null` für „gibt es nicht" UND für „nicht lesbar": die Route antwortet auf
+ * beides gleich (sie verrät nicht, ob es eine Zeile gibt), und ein Aussetzer
+ * heilt sich beim nächsten Nachfragen der Seite.
+ */
+export async function readBrandRunRow(event: H3Event, rowId: string): Promise<BrandRunLease | null> {
+  const { tablesDB, databaseId } = brandDb(event)
+  try {
+    const row = await tablesDB.getRow<BrandRunExportRow & { subject?: string | null }>({
+      databaseId,
+      tableId: BRAND_RUNS_TABLE,
+      rowId,
+    })
+    return {
+      $id: row.$id,
+      scope: row.scope ?? '',
+      subject: row.subject ?? '',
+      seq: typeof row.seq === 'number' ? row.seq : 0,
+      startedAt: row.startedAt ?? '',
+      heartbeatAt: row.heartbeatAt ?? '',
+      finishedAt: row.finishedAt ?? '',
+      outcome: row.outcome ?? '',
+      detail: row.detail ?? '',
+    }
+  }
+  catch (error) {
+    if (!isAppwriteNotFound(error)) {
+      logEvent('warn', 'brand.run_state_unreadable', {
+        scope: 'row',
+        message: error instanceof Error ? error.message : 'unknown',
+      })
+    }
+    return null
+  }
+}
+
 /** Was die Arbeit eines Laufs in die Hand bekommt. */
 export interface BrandRunContext {
   /** Das Detail der Zeile — die Arbeit ändert es und ruft `progress()`. */

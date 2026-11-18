@@ -2,6 +2,7 @@
 import type { TableColumn } from '@nuxt/ui'
 import { RUN_LEASE_BUSY_CODE, RUN_LEASE_POLL_MS } from '../../../../../../core/shared/runLease'
 import { pickBrandCheckTodos } from '../../../../../shared/brandCheck'
+import type { BrandCheckRunEnd } from '../../../../../shared/brandCheckRunClient'
 import {
   BRAND_RUN_POLL_TIMEOUT_MS,
   type BrandRunView,
@@ -218,6 +219,15 @@ function messageKey(error: unknown): string {
   return 'generic'
 }
 
+/** Der Satz zu einem Website-Lauf, der nicht mit einem Ergebnis endete. */
+function websiteRunErrorKey(end: BrandCheckRunEnd): string {
+  // Der Grund eines Laufs ist dasselbe Wort wie früher der Fehler-Code.
+  if (end.kind === 'failed') return messageKey({ data: { reason: end.reason } })
+  if (end.kind === 'interrupted') return 'websiteInterrupted'
+  if (end.kind === 'running') return 'websiteBackground'
+  return 'generic'
+}
+
 const running = ref<'' | 'website' | 'document'>('')
 const errorKey = ref('')
 
@@ -280,7 +290,7 @@ async function runWebsiteCheck(): Promise<void> {
   running.value = 'website'
   errorKey.value = ''
   try {
-    await $fetch<BrandCheckStartResponse>('/api/brand/check', {
+    const started = await $fetch<BrandCheckStartResponse>('/api/brand/check', {
       method: 'POST',
       body: {
         url: websiteUrl.value,
@@ -292,6 +302,15 @@ async function runWebsiteCheck(): Promise<void> {
         profileId: profileId.value,
       },
     })
+    // DER CHECK RECHNET IM HINTERGRUND (LL1 b, 2026-11-18): der Start
+    // antwortet `202` mit einem Kennzeichen, die Seite wartet auf das Ende
+    // dieses einen Laufs. Läuft für diese Adresse schon einer (zweiter
+    // Reiter, Klick nach einem Neuladen), führt dieselbe Antwort auf DIESEN
+    // Lauf — es entsteht kein zweiter.
+    if (started.token) {
+      const end = await awaitBrandCheckRun(started.token)
+      if (end.kind !== 'done') errorKey.value = websiteRunErrorKey(end)
+    }
     await reload()
   }
   catch (error) {

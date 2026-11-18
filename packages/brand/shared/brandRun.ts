@@ -18,7 +18,7 @@ import { parseRunLeaseDetail, runLeaseState } from '../../core/shared/runLease'
  *
  * ── EINE TABELLE, VIER ARTEN ─────────────────────────────────────────────
  * `scope` nennt den Weg, `subject` den Gegenstand (die Marke; beim
- * öffentlichen Check der Hash der geprüften Adresse). Ein Lauf je (Art,
+ * öffentlichen Check ein Hash aus Adresse und Besucher). Ein Lauf je (Art,
  * Gegenstand) zur selben Zeit — zwei verschiedene Arten derselben Marke
  * dürfen nebeneinander laufen.
  *
@@ -58,7 +58,7 @@ export const BRAND_RUN_SCOPES = {
   reading: 'reading',
   /** Fundament-Check — subject = Profil-Id. */
   documentCheck: 'doc-check',
-  /** Öffentlicher Brand-Check — subject = Hash der geprüften Adresse. */
+  /** Öffentlicher Brand-Check — subject = Schlüssel-Hash aus Adresse und Besucher. */
   check: 'check',
 } as const
 
@@ -99,7 +99,11 @@ export interface BrandRunDetail {
   ref: string
   /** Modell-Kennung des Laufs, für die Zeile unter dem Knopf. */
   model: string
-  /** Öffentlicher Check: Hash des Kennzeichens, das nur der Starter bekam. */
+  /**
+   * Öffentlicher Check: der Zufallswert des Laufs. Das Kennzeichen, das nur
+   * der Starter bekommt, ist eine Unterschrift darüber
+   * (`server/utils/brandCheckRunToken.ts`); er verlässt den Server nie.
+   */
   key: string
 }
 

@@ -442,8 +442,22 @@ try {
 
   // ── 4 · Der Bericht ─────────────────────────────────────────────────────
   console.log('\n4 · Der Vergleich — vier Teile')
-  const made = await call(`${base}/report`, { method: 'POST', cookie: owner.cookie })
-  check('nach dem Lauf ⇒ 200 (GEGENPROBE zu 1)',
+  // SEIT LL1 d antwortet `POST /report` mit 202 und schreibt den Bericht
+  // dahinter; der Ausgang steht an der Lauf-Zeile (`reportRun` von
+  // `GET /report`). Gewartet wird mit `waitForRun` (`lib/runStart.mjs`), dann
+  // kommt der Bericht aus `GET /report`.
+  const started = await call(`${base}/report`, { method: 'POST', cookie: owner.cookie })
+  check('nach dem Lauf ⇒ 202, der Bericht rechnet im Hintergrund (GEGENPROBE zu 1)',
+    started.status === 202 && started.json?.reportRun?.state === 'running',
+    `${started.status} ${started.text.slice(0, 300)}`)
+  const waitedReport = await waitForRun(async () => {
+    const polled = await call(`${base}/report`, { cookie: owner.cookie })
+    return polled.json?.reportRun ?? null
+  }, { startedAt: started.json?.reportRun?.startedAt ?? '' })
+  check('der Bericht-Lauf endet mit `done`', waitedReport.action === 'done',
+    waitedReport.action === 'done' ? '' : waitedReport.reason)
+  const made = await call(`${base}/report`, { cookie: owner.cookie })
+  check('danach liefert GET /report den Bericht',
     made.status === 200 && Boolean(made.json?.report),
     `${made.status} ${made.text.slice(0, 300)}`)
   const report = made.json?.report

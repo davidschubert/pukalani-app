@@ -48,6 +48,19 @@ describeInstanceRoleGate('GET /api/runner/runs', () => import('../server/api/run
   query: { subjectType: 'ticket', subjectId: 't-1' },
 })
 
+// Anlegen und Fortsetzen: beide enden für den Betreiber an der Ablage. Kein
+// Resolver ist registriert — der Auftrag kommt hier aus der Anfrage und gilt
+// als ungeprüft (was die Route daraus macht, prüft `runRoutes.test.ts`).
+describeInstanceRoleGate('POST /api/runner/runs', () => import('../server/api/runner/runs/index.post'), OPERATOR_ONLY, {
+  ...base,
+  body: { subjectType: 'ticket', subjectId: 't-1', repoKey: 'maui', model: 'opus', permissionMode: 'plan', promptSource: '# Probe' },
+})
+
+describeInstanceRoleGate('POST /api/runner/runs/:id/resume', () => import('../server/api/runner/runs/[id]/resume.post'), OPERATOR_ONLY, {
+  ...run,
+  body: { answer: 'Ja.' },
+})
+
 describeInstanceRoleGate('GET /api/runner/runs/recent', () => import('../server/api/runner/runs/recent.get'), OPERATOR_ONLY, base)
 
 describeInstanceRoleGate('POST /api/runner/runs/:id/cancel', () => import('../server/api/runner/runs/[id]/cancel.post'), OPERATOR_ONLY, run)
