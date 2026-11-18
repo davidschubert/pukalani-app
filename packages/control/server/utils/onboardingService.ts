@@ -68,7 +68,7 @@ const SERVICE_HEADER = 'x-pukalani-onboarding-secret'
  * auf `await` fest (bis SEC-023 nur in diesem Layer — zwei Routen in
  * `apps/control` liefen daran vorbei), und die typisierte Lint-Regel
  * `@typescript-eslint/no-floating-promises` meldet jedes lose Promise im
- * Server-Code (eslint.config.mjs, SERVER_LINT_PROGRAM).
+ * Server-Code (`pnpm lint:typed`, eslint.typed.config.mjs).
  */
 export async function requireOnboardingCaller(event: H3Event): Promise<void> {
   const config = useRuntimeConfig(event) as { controlOnboardingSecret?: string }
