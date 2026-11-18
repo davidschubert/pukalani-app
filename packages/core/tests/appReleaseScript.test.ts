@@ -58,6 +58,8 @@ function gate(command: string, input?: Buffer | string) {
       SSH_ORIGINAL_COMMAND: command,
       APP_RELEASE_ROOT: root,
       APP_RELEASE_LOCK_WAIT: '5',
+      // Zeigt bei einem Fehlschlag, was tar und zstd gesagt haben (s. `run`-Meldungen unten).
+      APP_RELEASE_DEBUG: '1',
       STUB_DIR: state,
       STUB_ROOT: root,
     },
@@ -127,7 +129,7 @@ describe('ops/app-release.sh — das Tor', () => {
     ['ein leerer Wunsch', ' '],
   ])('lehnt %s ab', (_label, command) => {
     const { code, out } = gate(command)
-    expect(code).toBe(64)
+    expect(code, out).toBe(64)
     expect(out).toContain('Abgelehnt')
     expect(pm2Calls()).toEqual([])
   })
@@ -139,7 +141,7 @@ describe('ops/app-release.sh — das Tor', () => {
     ['Anführungszeichen', `activate "help" ${OLD}`],
   ])('lehnt %s ab, bevor ein Wort gelesen wird', (_label, command) => {
     const { code, out } = gate(command)
-    expect(code).toBe(64)
+    expect(code, out).toBe(64)
     expect(out).toContain('unerlaubte Zeichen')
     expect(current()).toBe(LIVE)
   })
@@ -147,7 +149,7 @@ describe('ops/app-release.sh — das Tor', () => {
   it('lässt den Aufrufer weder Site noch Wurzel wählen', () => {
     for (const command of [`activate help ${OLD} --site help.pukalani.app`, `list help --root /tmp`]) {
       const { code, out } = gate(command)
-      expect(code).toBe(64)
+      expect(code, out).toBe(64)
       expect(out).toContain('nicht erlaubt')
     }
     expect(current()).toBe(LIVE)
@@ -164,7 +166,7 @@ describe('ops/app-release.sh — das Tor', () => {
 
   it('nimmt den eigenen Pfad als erstes Wort an (so ruft der Workflow es auf)', () => {
     const { code, out } = gate(`${INSTALLED} list help`)
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     expect(out).toContain(`current ${LIVE}`)
     expect(out).toMatch(new RegExp(`release ${OLD} \\d+ 1`))
   })
@@ -174,7 +176,7 @@ describe('ops/app-release.sh — einen Stand empfangen', () => {
   it('legt einen neuen Stand vollständig an seinen Platz und fasst den Verweis nicht an', () => {
     const { code, out } = gate(`release-put help ${NEXT}`, outputOf('neu'))
     expect(out).toContain(`empfangen: help ${NEXT}`)
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     expect(readFileSync(join(releases(), NEXT, 'server', 'index.mjs'), 'utf8')).toBe('// neu\n')
     expect(existsSync(join(releases(), NEXT, 'public', 'a.txt'))).toBe(true)
     expect(current()).toBe(LIVE)
@@ -185,7 +187,7 @@ describe('ops/app-release.sh — einen Stand empfangen', () => {
   it('überschreibt den aktiven Stand NICHT', () => {
     const before = lstatSync(join(releases(), LIVE, 'server', 'index.mjs')).ino
     const { code, out } = gate(`release-put help ${LIVE}`, outputOf('anderer Inhalt'))
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     expect(out).toContain('nicht überschrieben')
     expect(readFileSync(join(releases(), LIVE, 'server', 'index.mjs'), 'utf8')).toBe(`// ${LIVE}\n`)
     expect(lstatSync(join(releases(), LIVE, 'server', 'index.mjs')).ino).toBe(before)
@@ -193,8 +195,8 @@ describe('ops/app-release.sh — einen Stand empfangen', () => {
 
   it('ersetzt einen liegenden, nicht aktiven Stand als Ganzes', () => {
     writeFileSync(join(releases(), OLD, 'rest-von-frueher.txt'), 'x')
-    const { code } = gate(`release-put help ${OLD}`, outputOf('frisch'))
-    expect(code).toBe(0)
+    const { code, out } = gate(`release-put help ${OLD}`, outputOf('frisch'))
+    expect(code, out).toBe(0)
     expect(readFileSync(join(releases(), OLD, 'server', 'index.mjs'), 'utf8')).toBe('// frisch\n')
     expect(existsSync(join(releases(), OLD, 'rest-von-frueher.txt'))).toBe(false)
     expect(readdirSync(releases()).filter(name => name.startsWith('.'))).toEqual(['.lock'].filter(() => existsSync(join(releases(), '.lock'))))
@@ -207,7 +209,7 @@ describe('ops/app-release.sh — einen Stand empfangen', () => {
     ['eine leere Eingabe', () => Buffer.alloc(0)],
   ])('verwirft %s und lässt nichts liegen', (_label, make) => {
     const { code, out } = gate(`release-put help ${NEXT}`, make())
-    expect(code).toBe(3)
+    expect(code, out).toBe(3)
     expect(out).toContain('nichts geändert')
     expect(existsSync(join(releases(), NEXT))).toBe(false)
     expect(readdirSync(releases()).filter(name => name.startsWith('.incoming-'))).toEqual([])
@@ -219,8 +221,8 @@ describe('ops/app-release.sh — einen Stand empfangen', () => {
     ['einen Pfad', '../current'],
     ['den Namen des Verweises', 'current'],
   ])('nimmt %s nicht als Commit', (_label, sha) => {
-    const { code } = gate(`release-put help ${sha}`, outputOf('x'))
-    expect(code).toBe(3)
+    const { code, out } = gate(`release-put help ${sha}`, outputOf('x'))
+    expect(code, out).toBe(3)
     expect(current()).toBe(LIVE)
   })
 })
@@ -229,7 +231,7 @@ describe('ops/app-release.sh — umstellen', () => {
   it('legt den Verweis um, heilt, lädt den Prozess der Site neu und sichert', () => {
     const { code, out } = gate(`activate help ${OLD}`)
     expect(out).toContain(`umgestellt: help von ${LIVE} auf ${OLD}`)
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     expect(current()).toBe(OLD)
     const calls = pm2Calls()
     expect(calls.some(c => c.startsWith('pm2 startOrReload') && c.endsWith('/help.pukalani.app/ops/ecosystem-help.config.cjs --update-env'))).toBe(true)
@@ -242,7 +244,7 @@ describe('ops/app-release.sh — umstellen', () => {
   it('legt den Verweis zurück, wenn der Neustart scheitert, und zeigt keine pm2-Tabelle', () => {
     writeFileSync(join(state, 'pm2-fail'), '')
     const { code, out } = gate(`activate help ${OLD}`)
-    expect(code).toBe(5)
+    expect(code, out).toBe(5)
     expect(out).toContain('Neustart ist gescheitert')
     expect(out).toContain('Script not found')
     expect(out).not.toContain('│')
@@ -253,7 +255,7 @@ describe('ops/app-release.sh — umstellen', () => {
     rmSync(join(releases(), OLD, 'server', 'index.mjs'))
     for (const sha of [OLD, NEXT]) {
       const { code, out } = gate(`activate help ${sha}`)
-      expect(code).toBe(3)
+      expect(code, out).toBe(3)
       expect(out).toContain('nichts geändert')
     }
     expect(current()).toBe(LIVE)
@@ -262,18 +264,22 @@ describe('ops/app-release.sh — umstellen', () => {
 
   it('bricht ab, wenn der Site die Ecosystem-Datei fehlt', () => {
     rmSync(join(root, 'help.pukalani.app', 'ops', 'ecosystem-help.config.cjs'))
-    const { code } = gate(`activate help ${OLD}`)
-    expect(code).toBe(4)
+    const { code, out } = gate(`activate help ${OLD}`)
+    expect(code, out).toBe(4)
     expect(current()).toBe(LIVE)
     expect(pm2Calls()).toEqual([])
   })
 
   it('empfangen und umstellen ergeben zusammen ein Ausliefern', () => {
-    expect(gate(`release-put help ${NEXT}`, outputOf('neu')).code).toBe(0)
-    expect(gate(`activate help ${NEXT}`).code).toBe(0)
+    const steps = [`release-put help ${NEXT}`, `activate help ${NEXT}`]
+    for (const step of steps) {
+      const { code, out } = gate(step, step.startsWith('release-put') ? outputOf('neu') : undefined)
+      expect(code, `${step}: ${out}`).toBe(0)
+    }
     expect(current()).toBe(NEXT)
     // … und der Weg zurück auf den Stand davor.
-    expect(gate(`activate help ${LIVE}`).code).toBe(0)
+    const back = gate(`activate help ${LIVE}`)
+    expect(back.code, back.out).toBe(0)
     expect(current()).toBe(LIVE)
   })
 })
@@ -288,7 +294,7 @@ describe('ops/app-release.sh — aufräumen', () => {
     mkdirSync(join(releases(), 'kein-stand'))
 
     const { code, out } = gate('prune help')
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     // Sieben Stände: LIVE (1 min) und extra[0..2] sind die vier neuesten, OLD ist aktiv.
     expect(out).toContain('2 alte Stände entfernt')
     const left = readdirSync(releases()).filter(name => /^[0-9a-f]{40}$/.test(name)).sort()
@@ -308,7 +314,7 @@ describe('ops/app-release.sh — die Dateien der Site', () => {
       'cron.conf': '# liste\n',
     }))
     expect(out).toContain('empfangen: 3 Dateien für help')
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     expect(readFileSync(join(opsDir(), 'ecosystem-help.config.cjs'), 'utf8')).toContain('neu: true')
     expect(lstatSync(join(opsDir(), 'pm2-heal.sh')).mode & 0o111).not.toBe(0)
     expect(lstatSync(join(opsDir(), 'cron.conf')).mode & 0o111).toBe(0)
@@ -322,7 +328,7 @@ describe('ops/app-release.sh — die Dateien der Site', () => {
   ] as [string, Record<string, string | null>][])('verwirft die ganze Lieferung bei %s', (_label, files) => {
     const before = readFileSync(join(opsDir(), 'pm2-heal.sh'), 'utf8')
     const { code, out } = gate('ops-put help', archive(files))
-    expect(code).toBe(3)
+    expect(code, out).toBe(3)
     expect(out).toContain('nichts geändert')
     expect(readFileSync(join(opsDir(), 'pm2-heal.sh'), 'utf8')).toBe(before)
     expect(readdirSync(join(root, 'help.pukalani.app')).filter(name => name.startsWith('.ops-incoming'))).toEqual([])
@@ -332,8 +338,8 @@ describe('ops/app-release.sh — die Dateien der Site', () => {
     const stage = mkdtempSync(join(dir, 'link-'))
     symlinkSync('/etc/passwd', join(stage, 'pm2-heal.sh'))
     const tar = spawnSync('tar', ['-C', stage, '-cf', '-', 'pm2-heal.sh'])
-    const { code } = gate('ops-put help', tar.stdout)
-    expect(code).toBe(3)
+    const { code, out } = gate('ops-put help', tar.stdout)
+    expect(code, out).toBe(3)
     expect(lstatSync(join(opsDir(), 'pm2-heal.sh')).isSymbolicLink()).toBe(false)
   })
 
@@ -363,12 +369,12 @@ describe('ops/app-release.sh — Font-Cache', () => {
     mkdirSync(join(cache(), 'meta'), { recursive: true })
     writeFileSync(join(cache(), 'gut.woff2'), 'gut')
     writeFileSync(join(cache(), 'meta', 'a-data.json'), 'alt')
-    const { code } = gate('fonts-put', archive({
+    const { code, out } = gate('fonts-put', archive({
       'fonts/gut.woff2': 'vom Runner',
       'fonts/neu.woff2': 'neu',
       'fonts/meta/a-data.json': 'frisch',
     }))
-    expect(code).toBe(0)
+    expect(code, out).toBe(0)
     expect(readFileSync(join(cache(), 'gut.woff2'), 'utf8')).toBe('gut')
     expect(readFileSync(join(cache(), 'neu.woff2'), 'utf8')).toBe('neu')
     expect(readFileSync(join(cache(), 'meta', 'a-data.json'), 'utf8')).toBe('frisch')
@@ -379,8 +385,8 @@ describe('ops/app-release.sh — Font-Cache', () => {
     expect(empty.code).toBe(0)
     mkdirSync(join(cache(), 'meta'), { recursive: true })
     writeFileSync(join(cache(), 'meta', 'a-data.json'), 'x')
-    const { code, stdout } = gate('fonts-get')
-    expect(code).toBe(0)
+    const { code, out, stdout } = gate('fonts-get')
+    expect(code, out.slice(0, 300)).toBe(0)
     const names = spawnSync('tar', ['-tf', '-'], { input: stdout }).stdout.toString()
     expect(names).toContain('meta/a-data.json')
   })
