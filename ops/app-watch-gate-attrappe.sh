@@ -119,9 +119,12 @@ echo '127.0.0.1 api.pukalani.app' >> /etc/hosts
 # Ein leerer Webserver-Ordner: nginx-check antwortet (mit Befunden, die hier nicht zählen).
 mkdir -p /etc/nginx/sites-enabled
 
-# Stellvertreter: pm2 kennt keinen Prozess.
-printf '#!/usr/bin/env bash\ncase "$1" in jlist) echo "[]" ;; esac\nexit 0\n' > /usr/local/bin/pm2
+# Stellvertreter: pm2 kennt genau EINEN Prozess (die Platform-App) und nennt
+# die zwei Log-Dateien, in die er gerade schreibt — daran hängt der Mail-Blick
+# (WA1 e): er zählt nur diese, nicht die Datei einer früheren Prozess-Nummer.
+printf '#!/usr/bin/env bash\ncase "$1" in jlist) cat /etc/pm2-jlist.json ;; esac\nexit 0\n' > /usr/local/bin/pm2
 chmod 755 /usr/local/bin/pm2
+printf '[{"name":"platformpukalaniapp","monit":{"memory":104857600},"pm2_env":{"status":"online","restart_time":1,"pm_uptime":%s000,"pm_err_log_path":"%s/.pm2/logs/platformpukalaniapp-error-0.log","pm_out_log_path":"%s/.pm2/logs/platformpukalaniapp-out-0.log"}}]\n' "$(date -u -d '-2 hours' +%s)" "$H" "$H" > /etc/pm2-jlist.json
 
 # Der App-Server: Tor und Liste von Hand eingespielt, die Dateien der Sites
 # so, wie das Ausliefern sie ablegt (`OPS_FILES` in ops/app-release.sh).
@@ -147,7 +150,12 @@ NUXT_PUBLIC_APPWRITE_PROJECT_ID='admin'
 NUXT_APPWRITE_KEY=$MARKE
 EOF
 NOW_MINUS_1H="$(date -u -d '-1 hour' +%Y-%m-%dT%H:%M:%S.000Z)"
-printf '{"level":"warn","time":"%s","event":"auth.mail_route_breaker","route":"/api/auth/signup","ip":"%s"}\n' "$NOW_MINUS_1H" "$MARKE" > "$H/.pm2/logs/platformpukalaniapp-error-0.log"
+# Die Zeile in der Form der App (`time` zuerst, core/server/utils/logEvent.ts).
+printf '{"time":"%s","level":"warn","event":"auth.mail_route_breaker","route":"/api/auth/signup","ip":"%s"}\n' "$NOW_MINUS_1H" "$MARKE" > "$H/.pm2/logs/platformpukalaniapp-error-0.log"
+# Die Datei einer FRÜHEREN Prozess-Nummer mit einer Zeile mitten im Fenster:
+# das alte Tor-Wort `mail-breaker` findet sie mit, der Mail-Blick nicht mehr.
+NOW_MINUS_2H="$(date -u -d '-2 hours' +%Y-%m-%dT%H:%M:%S.000Z)"
+printf '{"time":"%s","level":"warn","event":"auth.mail_route_breaker","route":"/api/auth/signup","ip":"%s"}\n' "$NOW_MINUS_2H" "$MARKE" > "$H/.pm2/logs/platformpukalaniapp-error-7.log"
 chown -R ploi:ploi "$H"
 
 # Der Datenbank-Server: zuerst ein Tor, das `sums` noch nicht kennt.
@@ -220,7 +228,8 @@ grep -qx '__NO_ENV_FILE__' /work/a/1.out && ok "site-env ohne .env: die feste Ma
 grep -qx 'account' /work/a/2.out && grep -qx 'admin' /work/a/3.out && ok "site-project: die Projekt-Id, ohne Anführungszeichen" || bad "site-project"
 [ "$(cat /work/a/5.code)" = 0 ] && grep -q 'Zugangs-Wächter' /work/a/5.out && ok "stale-keys: das ausgelieferte Skript lief auf dem Server" || bad "stale-keys: Exit $(cat /work/a/5.code)"
 grep -q 'Aussperr-Wächter' /work/a/6.out && ok "instance-admins: das ausgelieferte Skript lief auf dem Server" || bad "instance-admins"
-[ "$(cat /work/a/7.out)" = "$NOW_MINUS_1H auth.mail_route_breaker" ] && ok "mail-breaker: genau eine Zeile „Zeitpunkt Ereignis“" || bad "mail-breaker: $(cat /work/a/7.out)"
+[ "$(cat /work/a/7.out)" = "$NOW_MINUS_2H auth.mail_route_breaker
+$NOW_MINUS_1H auth.mail_route_breaker" ] && ok "mail-breaker (altes Wort, nur noch Probelauf): zwei Zeilen „Zeitpunkt Ereignis“ — auch die aus der Datei der früheren Prozess-Nummer" || bad "mail-breaker: $(cat /work/a/7.out)"
 grep -q '^sum app-watch-gate.sh [0-9a-f]\{64\}$' /work/a/12.out && ok "sums: das Tor meldet sich selbst" || bad "sums: $(cat /work/a/12.out)"
 
 echo "B — fester Befehl"
@@ -260,7 +269,7 @@ for i in "${!CHAIN[@]}"; do
 done
 grep -q '✔ platform .*Pflicht-Variablen gesetzt\|FEHLT\|LEER' /work/cb/0.out && ! grep -q 'ssh/Lesen fehlgeschlagen' /work/cb/0.out && ok "verify-site-env liest jede Site über das Tor" || bad "verify-site-env: $(grep -m3 'fehlgeschlagen' /work/cb/0.out)"
 [ "$(cat /work/cb/1.code)" = 0 ] && grep -q 'Zugangs-Wächter' /work/cb/1.out && ok "verify-stale-keys --ssh: Bericht vom Server, Exit 0 (nur „unklar“)" || bad "verify-stale-keys: Exit $(cat /work/cb/1.code)"
-[ "$(cat /work/cb/3.code)" = 1 ] && grep -q '1 Mal ausgelöst' /work/cb/3.out && ok "verify-mail-breaker --ssh --strict: die Notbremse wird gesehen (Exit 1)" || bad "verify-mail-breaker: Exit $(cat /work/cb/3.code)"
+[ "$(cat /work/cb/3.code)" = 1 ] && grep -q '✗ 1 Mal ausgelöst' /work/cb/3.out && grep -q 'platform.pukalani.app: 1 Mal, zuletzt vor' /work/cb/3.out && ok "verify-mail-breaker --ssh --strict: die Notbremse wird gesehen (Exit 1) — genau die eine Zeile des laufenden Prozesses, nicht die der früheren Prozess-Nummer" || bad "verify-mail-breaker: Exit $(cat /work/cb/3.code)"
 ! grep -q 'nicht erreichbar' /work/cb/4.out && ok "verify-app-signals: jede App hat geantwortet" || bad "verify-app-signals: $(grep -m2 'nicht erreichbar' /work/cb/4.out)"
 grep -q 'Webserver (app-prod): ' /work/cb/5.out && ! grep -q '(app-prod): keine lesbare Antwort' /work/cb/5.out && ok "verify-server-config: Antwort von nginx-check und cron-check über das Tor" || bad "verify-server-config: $(head -c 400 /work/cb/5.out)"
 rm -f "$H/platform.pukalani.app/ops/verify-stale-keys.mjs"

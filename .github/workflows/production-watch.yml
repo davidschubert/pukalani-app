@@ -487,8 +487,9 @@ jobs:
           PUKALANI_OPS_SSH: ploi@49.13.211.173
         run: node scripts/ops/verify-instance-admins.mjs --ssh --strict
 
-      # Blick 1 liest die pm2-Fehlerlogs auf app-prod (nur die Event-Zeile,
-      # kein Request-Inhalt). Blick 2 zählt bei Resend — ohne das Secret wird
+      # Blick 1 fragt auf app-prod je App das Zähl-Skript (Tor-Wort
+      # `app-signals`): nur die Log-Dateien der laufenden Prozesse, zurück
+      # kommen Zahlen. Blick 2 zählt bei Resend — ohne das Secret wird
       # er übersprungen und bleibt grün (Klickliste im Runbook).
       - name: Mail-Missbrauch? (Notbremse im Log, Resend-Zähler)
         if: always()
