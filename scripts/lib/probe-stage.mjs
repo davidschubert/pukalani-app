@@ -207,6 +207,34 @@ export async function waitForHost(call, host, { timeoutMs = 45_000, intervalMs =
   }
 }
 
+/**
+ * Wartet auf die erste fehlerfreie SEITE und gibt die letzte Antwort zurück.
+ *
+ * Warum neben `waitForHost`: der fragt eine API-Route. Die erste gerenderte
+ * Seite eines frisch gestarteten Servers kann trotzdem noch mit 500 kommen
+ * (CW1 a, 2026-11-18: zweimal in der CI, der zweite Lauf war je grün). Ein
+ * Skript, das als Erstes eine Seite prüft, holt sie deshalb über diese Hilfe.
+ *
+ * Die Hilfe verschluckt nichts: sie gibt IMMER die letzte Antwort zurück, auch
+ * nach Ablauf der Frist — bleibt die Seite kaputt, wird die Prüfung danach
+ * mit genau dieser Antwort rot.
+ *
+ * @template {{ status?: number }} T
+ * @param {() => Promise<T>} load holt die Seite
+ * @param {{ isReady?: (res: T) => boolean, timeoutMs?: number, intervalMs?: number }} [options]
+ *   `isReady`: ohne Angabe „der Server antwortet ohne Serverfehler" (Status unter 500)
+ * @returns {Promise<T | null>} `null` nur, wenn bis zum Schluss keine Antwort kam
+ */
+export async function waitForPage(load, { isReady = res => typeof res?.status === 'number' && res.status < 500, timeoutMs = 60_000, intervalMs = 1500 } = {}) {
+  const until = Date.now() + timeoutMs
+  for (;;) {
+    const res = await load().catch(() => null)
+    if (res && isReady(res)) return res
+    if (Date.now() >= until) return res
+    await sleep(intervalMs)
+  }
+}
+
 // ── Appwrite über REST ──────────────────────────────────────────────────────
 
 /** Abfrage-Bausteine im JSON-Format der REST-Schnittstelle. */

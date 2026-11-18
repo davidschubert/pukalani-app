@@ -68,7 +68,15 @@ export default defineConfig({
     command: 'pnpm dev',
     url: baseURL,
     reuseExistingServer: true,
+    // GEMESSEN, nicht angehoben (CW1 a, 2026-11-18): in 49 grünen CI-Läufen
+    // stand der Server nach 20 bis 39 s, in 7 roten gar nicht (volle 120 s,
+    // alle zwischen 07:54 und 08:38 UTC am selben Tag) — dazwischen liegt
+    // nichts. Eine längere Frist hätte keinen dieser Läufe gerettet.
     timeout: 120_000,
+    // In der CI die Ausgabe des Dev-Servers ins Job-Log: bei den sieben roten
+    // Läufen stand dort nur „Timed out waiting", der Grund nirgends
+    // (Playwright zeigt sonst nur stderr). Lokal bleibt es still.
+    stdout: process.env.CI ? 'pipe' : 'ignore',
     /**
      * Schaltet die Nuxt DevTools ab (nuxt.config liest `PW_E2E`) — ihr
      * Abzeichen trägt eine wechselnde ms-Zahl und saß sonst mitten in den

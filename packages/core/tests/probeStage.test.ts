@@ -9,6 +9,7 @@ import {
   probeEmail,
   probeSiteBody,
   runStamp,
+  waitForPage,
 } from '../../../scripts/lib/probe-stage.mjs'
 
 /**
@@ -110,5 +111,50 @@ describe('parseEnvFile', () => {
 
   it('verträgt Windows-Zeilenenden', () => {
     expect(parseEnvFile('A=1\r\nB=2\r\n')).toEqual({ A: '1', B: '2' })
+  })
+})
+
+describe('waitForPage (CW1 a)', () => {
+  const sequence = (statuses: number[]) => {
+    let index = 0
+    return async () => ({ status: statuses[Math.min(index++, statuses.length - 1)] ?? 0 })
+  }
+
+  it('wartet über einen Serverfehler hinweg auf die erste fehlerfreie Seite', async () => {
+    const res = await waitForPage(sequence([500, 500, 200]), { intervalMs: 1, timeoutMs: 2000 })
+    expect(res?.status).toBe(200)
+  })
+
+  it('gibt nach Ablauf der Frist die letzte kaputte Antwort zurück — nichts wird verschluckt', async () => {
+    const res = await waitForPage(sequence([500]), { intervalMs: 1, timeoutMs: 20 })
+    expect(res?.status).toBe(500)
+  })
+
+  it('fragt bei einer sofort guten Seite genau einmal', async () => {
+    let calls = 0
+    const res = await waitForPage(async () => {
+      calls += 1
+      return { status: 200 }
+    }, { intervalMs: 1, timeoutMs: 2000 })
+    expect(res?.status).toBe(200)
+    expect(calls).toBe(1)
+  })
+
+  it('nimmt eine eigene Bedingung (200 mit Fehlerseite zählt nicht)', async () => {
+    const pages = [{ status: 200, text: 'error-page' }, { status: 200, text: 'ok' }]
+    let index = 0
+    const res = await waitForPage(async () => pages[Math.min(index++, 1)]!, {
+      isReady: page => page.status === 200 && page.text === 'ok',
+      intervalMs: 1,
+      timeoutMs: 2000,
+    })
+    expect(res?.text).toBe('ok')
+  })
+
+  it('übersteht einen Verbindungsfehler und meldet null, wenn nie eine Antwort kam', async () => {
+    const res = await waitForPage(async () => {
+      throw new Error('ECONNREFUSED')
+    }, { intervalMs: 1, timeoutMs: 20 })
+    expect(res).toBeNull()
   })
 })
