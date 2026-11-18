@@ -1,4 +1,9 @@
-# Runbook: Appwrite 2.6.2 → 2.7.1 (self-hosted, MariaDB)
+# Runbook: Appwrite 2.6.2 → 2.7.1 → 2.7.3 (self-hosted, MariaDB)
+
+> **Stand 2026-11-18:** dev und CI laufen auf **2.7.3**, Production auf
+> **2.7.1**. Der Schritt 2.7.1 → 2.7.3 steht unten im Abschnitt
+> [„2.7.1 → 2.7.3"](#271--273); die Schritte für Production sind dort fertig
+> und warten auf Davids Ja.
 
 Gilt für beide Instanzen: **dev** (`~/Developer/orbstack/appwrite-maria/`,
 OrbStack) und **prod** (`ploi@188.245.61.155:~/appwrite/`, `api.pukalani.app`),
@@ -319,3 +324,198 @@ NEUES Skript lässt diese Prüfung und den Mount-Dreh weg. Es entsteht als Kopie
 des letzten aus dem Archiv, liegt für die Dauer des Upgrades unter `ops/` und
 zieht nach dem Lauf auf Production ebenfalls ins Archiv (Regel:
 [archiv/skripte/README.md](../archiv/skripte/README.md)).
+
+## 2.7.1 → 2.7.3
+
+**Anlass:** das Sicherheits-Release 2.7.2 (2026-11-12) und das Wartungs-Release
+2.7.3 (2026-11-17), Issue 369. Gelesen: `gh release view 2.7.2 -R
+appwrite/appwrite`, `… 2.7.3`, der Quelltext beider Images gegeneinander
+(`/usr/src/code/src` und `/app` aus `appwrite/appwrite:2.7.1` und `:2.7.3`
+gezogen, 51 geänderte Dateien) und die Pull Requests #15277, #15470, #15280,
+#15458, #15546, #15308, #15176. Die neuen SDKs (`node-appwrite` 31.3,
+`appwrite` 29.3; Issues 352 und 353) senden das Antwortformat 2.7.2 — deshalb
+kommt ERST der Server, dann die SDKs. `RESPONSE_FORMAT` in
+`packages/core/server/utils/appwriteHealth.ts` bleibt bis dahin bei `2.6.2`.
+
+**Kein Schema, keine neuen Einstellungen.** Die Migrationsklasse bleibt V25
+(`Migration.php` bekommt nur die zwei Versionszeilen). `migrate` läuft
+trotzdem (Vorgabe des Herstellers) und meldet nur „already exists". Die `.env`
+ändert sich in genau EINER Zeile (`_APP_VERSION`), die Schlüsselmenge bleibt.
+
+### Images 2.7.1 → 2.7.3
+
+`appwrite/appwrite` **2.7.3** (Basis-Image 2.2.12; PHP weiter 8.5.12), Console
+`appwrite/new` 1.2.138 → **1.2.181-self-hosted** (kam mit 2.7.2),
+`openruntimes/executor` 1.3.1 → **1.3.5** (kam mit 2.7.3). Unverändert:
+browser 0.3.10, orchestrator 4.0.0, autogravity 0.0.11, exiftool 0.1.1, geo
+0.3.2, embedding 0.3.1, mariadb 10.11, redis 7.4.7-alpine, traefik 3.6,
+clickhouse 26.4.3-alpine.
+
+**Compose-Diff:** das offizielle Compose (`docker-compose.yml` am Tag 2.7.1,
+2.7.2, 2.7.3) unterscheidet sich in genau diesen zwei Image-Zeilen, und die
+Datei, die das Werkzeug auf dev erzeugt hat, ebenso (`diff` alt/neu: zwei
+Zeilen). Das offizielle Compose enthält daneben Dienste, die wir nicht fahren
+(`appwrite/postgres`, `mongo`, `hansi`) — sie standen dort schon bei 2.7.1 und
+kommen nicht hinzu.
+
+### Was 2.7.2 für uns ändert — geprüft gegen den Code
+
+- **Code-Bestätigungen zählen jetzt auch API-Schlüssel (#15277, #15470).**
+  Appwrite zählt jetzt auf `POST /account/sessions/token`, `PUT
+  /account/recovery`, `PUT /account/verification` und `PUT
+  /account/mfa/challenges` jeden Aufrufer; bis 2.7.1 waren Aufrufe mit
+  Schlüssel von jeder Bremse ausgenommen. Es gilt 10 je Konto (bei MFA: je
+  Challenge) und Stunde. **Bei uns trifft das genau einen Aufruf:**
+  `account.createSession` mit dem Admin-Client, in `otp/verify.post.ts` (Code
+  aus der Mail) und `oauth/callback.get.ts` (Geheimnis des Anbieters, ein
+  Versuch je Anmeldung). Rücksetzen, Bestätigen und der zweite Faktor laufen
+  ohne Schlüssel (Gast- oder Sitzungs-Client) und wurden schon immer gezählt.
+  **Gemessen auf dev (2.7.3, mit dem
+  Laufzeit-Schlüssel):** zwölf falsche Codes für ein Wegwerf-Konto → zehnmal
+  401, dann 429 `general_rate_limit_exceeded`; ein richtiger Code dazwischen
+  setzt den Zähler zurück (6 falsche, 1 richtiger mit 201, danach wieder 10 ×
+  401 vor dem 429). Unsere eigene Bremse (`accountAttempts.ts`, 10 Fehlversuche
+  in 15 Minuten je Konto) greift bei derselben Zahl zuerst. **Neu ist der
+  Rest der Stunde:** läuft unser Fenster nach 15 Minuten ab, lehnt Appwrite
+  weiter ab, und `otp/verify.post.ts` macht aus jedem 4xx ein 401 „Invalid or
+  expired code" — auch für den RICHTIGEN Code. Das ist strenger als vorher und
+  gewollt (der Zähler schützt vor dem Durchprobieren von sechs Ziffern); die
+  ehrlichere Meldung ist als Nacharbeit notiert (OPEN-ITEMS „AW30" b).
+- **Bremsen je Konto und je Adresse gelten jetzt je Projekt (#15280).** Vorher
+  teilten sich alle Projekte einer Instanz einen Zähler; zehn
+  Passwort-Rücksetzungen für eine Adresse in `portfolio` sperrten dieselbe
+  Adresse in `account`. Für uns nur besser, kein Code betroffen.
+- **Buckets prüfen den Inhalt (#15458, #15546).** Hat ein Bucket
+  `allowedFileExtensions` und trägt die Datei eine Bild- oder PDF-Endung, muss
+  der Inhalt eines der ERLAUBTEN Formate sein, sonst 400
+  `storage_file_type_unsupported` — auch mit Admin-Schlüssel. **Gemessen auf
+  dev:** HTML als `probe.png` in den Profilbild-Bucket → abgelehnt; ein JPEG
+  als `x.png` → 201 (der Bucket erlaubt `jpg`). Endungen ohne feste Kennung
+  (`woff2`, `json`, `svg`) prüft Appwrite weiter nur am Namen. Alle unsere
+  Upload-Routen prüfen die ersten Bytes selbst, bevor sie schreiben (Profilbild
+  benennt nach dem erkannten Typ, Favicon ist immer PNG, Event-Cover und Medien
+  nehmen nur JPEG, PNG und WebP, nach Endung UND Inhalt) — über unsere Routen
+  kommt damit nichts an, was Appwrite jetzt zusätzlich ablehnte. **Ein
+  E2E-Fall hing an der alten Lücke:**
+  `avatar-storage.spec.ts` legte HTML als `probe.png` mit dem Admin-Schlüssel
+  ab, um zu zeigen, dass die Auslieferung es nicht herausgibt. Das Ablegen
+  scheitert jetzt; der Fall hält seitdem die Sperre selbst fest, die
+  Auslieferung beweist weiter `packages/core/tests/storageRoutes.test.ts`.
+- **Realtime: Konto-Ereignisse gehen an die ganze Nutzer-Id (#15308),
+  Mitglieder-Ereignisse achten die Privatsphäre-Schalter (#15176), Sockets
+  enden, wenn das Projekt-Team gelöscht wird (#15335).** Unsere Nutzer-Ids
+  kommen aus `ID.unique()` und tragen keinen Punkt; die Sofort-Abmeldung über
+  den `account`-Channel ist mit `session-revoke.spec.ts` (3 Fälle) gegen 2.7.3
+  grün.
+- **Bestätigungs-Token der E-Mail wird unter der Zeilensperre des Nutzers
+  eingelöst (#15278).** `verification.put.ts` macht aus jedem Fehler dieser
+  Route ein 400 „Invalid or expired verification link" — daran ändert sich
+  nichts.
+- **Ohne Bezug zu unserem Code** (per `grep` geprüft: kein `Messaging`-Dienst,
+  kein GraphQL-Aufruf, kein Abo auf Team- oder Mitglieder-Channels):
+  Push-Bilder und Nachrichten-Routen, Functions/Sites/VCS (keine fremden
+  Deployments), GraphQL-Kosten, Projekt-Übergaben zwischen
+  Organisationen, Rule-Domains an der Label-Grenze, Listen-Cache je Version.
+
+### Ablauf dev (OrbStack) — gelaufen 2026-11-18
+
+1. `docker pull appwrite/appwrite:2.7.3`. KEINE Patchdatei mehr (AW28).
+2. Dump + Config-Tar im `appwrite/`-Ordner (Befehl wie in
+   [APPWRITE-2-0-UPGRADE.md](APPWRITE-2-0-UPGRADE.md)):
+   `backups/appwrite-dev-pre-2.7.3-<zeit>.sql.gz`. Die Schlusszeile „Dump
+   completed" und die Zahl der `CREATE TABLE` prüfen.
+3. Werkzeug im Elternverzeichnis, `--entrypoint="upgrade"`, `--interactive=N`
+   → „Appwrite installed successfully".
+4. `docker compose up -d --remove-orphans`, dann
+   `docker compose exec -T appwrite migrate </dev/null` → „Migration
+   completed".
+5. Beweise (s. „Durchläufe").
+
+Die lokale Instanz ist seit dem 2026-11-09 ein Spiegel der vier
+Production-Projekte ([APPWRITE-PROD-SPIEGEL.md](APPWRITE-PROD-SPIEGEL.md)) —
+ein Realtime-Handshake nennt deshalb `project=account` (oder `console`), nicht
+mehr `reddit-comments`: der Handshake antwortet auch für ein unbekanntes
+Projekt mit 101 und schließt erst danach mit 1008, die Wahrheit steht im Log
+des Realtime-Containers (`realtime.success`). **Solange dev und Production
+verschiedene Versionen fahren, bricht das Spiegel-Werkzeug ab** (es verlangt
+dieselbe `_APP_VERSION` auf beiden Seiten) — ein neuer Spiegel geht erst
+wieder nach dem Production-Lauf.
+
+### CI (`ci/appwrite/`)
+
+`ci.env`: `_APP_VERSION="2.7.3"`, keine neuen Schlüssel (Schlüsselmenge
+weiter deckungsgleich mit der Dev-`.env` bis auf `_APP_OPENSSL_KEY_V1`).
+Compose: die zwei Image-Zeilen (Console, Executor); die Image-Liste der
+CI-Datei ist danach wortgleich mit der Dev-Datei. `docker compose config
+--quiet` grün. Die CI installiert je Lauf FRISCH, ein `migrate` gibt es dort
+nicht. Live-Beweis ist der E2E-Lauf auf dem Pull Request — er fährt auch die
+zwei Fälle, die lokal Seed-Daten brauchen (s. „Durchläufe").
+
+### Prod — fertige Schritte (NICHT gelaufen, wartet auf Davids Ja)
+
+Skript [`ops/appwrite-upgrade-2.7.3.sh`](../../ops/appwrite-upgrade-2.7.3.sh)
+— eine Kopie des 2.7.1-Skripts aus dem Archiv, ohne Patchdatei, ohne
+Override-Dreh und ohne Secret-Rotation. Es ist am 2026-11-18 einmal komplett
+gegen die Entwicklungs-Instanz gelaufen (`OLD=2.7.3 APPWRITE_DIR=…`, Exit 0,
+Werkzeug-Aufruf bis Beweise 30 s); auf Production noch nie. Nach dem Lauf
+zieht es nach `docs/archiv/skripte/`.
+
+**Vorher:**
+
+- [ ] Davids Ja für diesen Lauf.
+- [ ] Nicht zwischen 03:20 und 04:15 UTC (nächtliches Backup; das Skript
+      bricht ab, wenn es läuft) und nicht, während ein Ausliefern läuft, das
+      eine Migration braucht. Ein gewöhnliches Ausliefern stört nicht.
+- [ ] `curl -s https://api.pukalani.app/v1/health/version` zeigt 2.7.1.
+- [ ] Das nächtliche Backup der letzten Nacht ist da (Wächter grün). Das
+      Skript zieht zusätzlich einen eigenen Dump.
+
+**Der Lauf** (von Davids Terminal, das Protokoll bleibt auf dem Server):
+
+```bash
+scp ops/appwrite-upgrade-2.7.3.sh ploi@188.245.61.155:~/appwrite-upgrade-2.7.3.sh
+```
+
+```bash
+ssh -t ploi@188.245.61.155 'bash ~/appwrite-upgrade-2.7.3.sh 2>&1 | tee ~/appwrite-upgrade-2.7.3.log'
+```
+
+Das Skript prüft die Vorbedingungen (`.env` auf 2.7.1, kein Patch-Mount,
+Compose grün, `_APP_TRUSTED_PROXIES` gesetzt), zieht die drei Images und den
+Dump OHNE Ausfall, wartet auf eine ruhige Stelle im Fünf-Minuten-Takt des
+Realtime-Wächters (der würde `appwrite-realtime` mitten im Ausfall neu
+erstellen), ruft das Werkzeug, fährt `up` und `migrate` und druckt die
+Beweise — ohne `doctor`. Erwartetes Fenster: unter zwei Minuten (2.7.1 auf
+Production: 99 s mit echter Migration; diesmal sind die Images vorgezogen und
+`migrate` ändert nichts).
+
+**Nach dem Lauf** (von außen):
+
+- [ ] `curl -s https://api.pukalani.app/v1/health/version` → `2.7.3`
+- [ ] `node scripts/ops/verify-health.mjs` (alle Hosts `ok:true`, `schema` ok),
+      `node scripts/ops/verify-tls.mjs`, `node scripts/ops/verify-realtime.mjs --handshake`
+- [ ] `pnpm ops:schema-parity` unverändert
+- [ ] Anmelden, abmelden, erneut anmelden auf `account.pukalani.app`; ein
+      Kommentar und eine Stimme in einer Community; die Seite drei Minuten
+      offen lassen (kein neuer Socket, kein `/api/auth/me` im Takt)
+- [ ] Ein Profilbild hochladen (die neue Inhaltsprüfung des Buckets)
+- [ ] OTP-Anmeldung mit einem echten Konto (Code-Bestätigung mit Schlüssel)
+- [ ] `ci.env`-Kommentar, `CLAUDE.md`, `README.md`, `docs/CONCEPT.md`,
+      `docs/content/` (Setup, Übersicht, Hosts und Ports) und
+      `docs/runbooks/DEPLOYMENT.md` auf „2.7.3 überall" stellen; das Skript ins
+      Archiv; Issue 369 schließen; danach die SDKs (Issues 352, 353)
+
+**Rückweg:** `.env` + `docker-compose.yml` aus `*.<epoch>.backup` (legt das
+Werkzeug an) oder aus dem Config-Tar zurück, `docker compose up -d
+--remove-orphans`. `migrate` legt bei diesem Schritt nichts an — der Dump ist
+die Sicherung, gebraucht wird er für den Rückweg voraussichtlich nicht. Nicht
+geprüft: ob eine Sitzung oder ein Zähler, den 2.7.3 geschrieben hat, 2.7.1
+stört (beide lesen dasselbe Schema).
+
+### Durchläufe
+
+| Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
+| --- | --- | --- | --- | --- | --- |
+| dev (OrbStack, 2.7.1 → 2.7.3) | 2026-11-18 18:17–18:20 | 22,4 MB, 970 Tabellen | „Migration completed", 7,0 s (383 „already exists", 0 andere Fehlerzeilen) | Werkzeug 70 s (Image-Pulls für Console und Executor), `migrate` 8 s | Tabellen vorher gegen nachher (`information_schema`): **940 / 940, 0 verschwunden, 0 neu** · `.env`: nur `_APP_VERSION` · Compose: zwei Image-Zeilen · `health/version` 2.7.3 · PHP 8.5.12 · Executor 1.3.5 (`OPR_EXECUTOR_VERSION`), Secret in appwrite und Executor gleich · Console 1.2.181 (302) · 7 Container auf 2.7.3, keiner auf 2.7.1, alle Up · trustedIPs 2 + mqtt 2 · Realtime 101 für `account`, `admin`, `portfolio`, `branding`, im Log viermal `realtime.success true` · 0 Fehlerzeilen in API, Worker, Realtime · Skript-Probe 18:22–18:26 (Exit 0) · Unit: alle Pakete grün (core 4832, comments 320, darin `realtimeAuth` 14/14 und `server-writes-votes` 8/8), `pnpm -r typecheck` Exit 0 · **E2E `apps/comments` gegen den Worktree-Dev-Server: 29 von 31 Fällen grün** (ohne `themes-visual`; darunter Realtime 1/1, Session-Widerruf 3/3, Profilbild-Ablage 3/3 nach der Anpassung des einen Falls). Die zwei roten brauchen den Demo-Seed, den der Production-Spiegel nicht hat (`uma@demo.local` für den Embed-Login, Changelog „v1.7") — sie laufen in der CI. Die neun Bildvergleiche (`themes-visual`) waren lokal rot (rund 2 % abweichende Pixel in allen neun Themes) und sind in der CI ohnehin ausgeschaltet; ein Bezug zu Appwrite ist weder belegt noch ausgeschlossen · **Klick-Beweis mit zwei Browser-Sitzungen** (Wegwerf-Skript, zwei Wegwerf-Konten, danach gelöscht): Anmelden 200, Abmelden über das Menü 200 und `/api/auth/me` 401, erneut anmelden 200, Kommentar 201 erscheint in der zweiten Sitzung live, Stimme 200 zählt in der ersten Sitzung live auf 1, `docker restart appwrite-realtime` → beide Sitzungen öffnen neue Sockets, danach Kommentar und Stimme wieder live ohne Neuladen |
+| prod (`api.pukalani.app`) | — | — | — | — | **offen**, läuft weiter auf 2.7.1 |
+
