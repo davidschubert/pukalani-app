@@ -353,7 +353,9 @@ paths:
   schreiben — der Web-SDK-Client hat keine Session, daher wird realtime.
   upsertPresence() über einen Guest-WS verworfen und PUT /presences → 401. Der
   WRITE läuft daher server-seitig: POST /api/presence/heartbeat upsertet mit dem
-  Admin-Client (expiresAt 90s). usePresenceState() = einzige
+  Admin-Client (expiresAt 90s) — im Pool seit 2026-11-18 nur für MITGLIEDER der
+  Community des Hosts, alle anderen bekommen ein stilles `ok` (BT1 e, Regel in
+  tenant-isolation.md). usePresenceState() = einzige
   Heartbeat-Autorität pro Tab (ruft die Route bei Login/metadata-Änderung + alle
   20s + bei visibilitychange/focus). usePresence(predicate) = Reader — liest
   direkt über die Presences-API (presences.list() per Cookie-GET funktioniert +

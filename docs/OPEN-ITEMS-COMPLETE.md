@@ -30,6 +30,151 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N14 — Nacharbeiten „Runner-Auftrag vom Server, Rollen-Tests für pages und die Apps, vier Stellen, Label-Abgleich, wackelnde Tests": RU1 (b), BT1 (b, d, e), SI1 (b) ✅ 2026-11-18
+
+Eine Gruppe ohne Davids Hilfe: nichts an der echten Datenbank, kein
+Schlüssel, kein echter Agenten-Lauf, keine Migration. Pull Requests 331, 336
+(Runner), 337 (pages), 338 (Apps), 340 (vier Stellen), 342 (Label-Abgleich
+und zwei wackelnde Tests) und der Abschluss.
+
+**RU1 (b) — den Auftragstext eines Runner-Laufs baut der Server.**
+
+- **Vorher:** Die Seite setzte den Text aus dem Ticket zusammen (Titel,
+  Beschreibung, offene Checkliste) und schickte ihn mit. Der Server sagte
+  „geprüft" über einen Text, den er nie gesehen hatte. Den Checklisten-Leser
+  gab es zweimal (Browser und KI-Triage).
+- **Jetzt:** EINE Fassung in `packages/tickets/shared/`
+  (`ticketRunPrompt.ts`, `ticketChecklist.ts`). Der Vertrag
+  `resolveRunSubjectTrust` liefert neben der Herkunft den Text; der Resolver
+  der Betreiber-App liest die Ticket-Zeile einmal und baut ihn. Die
+  Anlege-Route speichert genau diesen Text.
+- **Der Text ist wortgleich zu vorher.** Der Test hält den Wortlaut in neun
+  Fällen ausgeschrieben fest und vergleicht 18 Fälle mit der alten Fassung,
+  die als Referenz im Test steht.
+- **Eine Vorschau gab es vorher gar nicht** — der Text war in der Oberfläche
+  nirgends zu sehen. Jetzt zeigt das Formular „Auftrag ansehen".
+- **Lokale Probe** (Betreiber-App aus dem Arbeitsbaum, lokale Test-Instanz):
+  `apps/control/scripts/verify-run-prompt.mjs`, 17 von 17 — Ticket über die
+  echte Route, Lauf ohne Text, mit fremdem Text (409, kein Lauf), mit
+  passender Vorschau, nach einer Änderung des Tickets, Freigabe, Abholen als
+  Probe-Rechner: der abgeholte Text ist Zeichen für Zeichen der des Servers.
+  Gegenprobe: mit einer Route, die den Text der Anfrage wieder nimmt, werden
+  drei Prüfungen rot. Die Vorschau einmal im Browser aufgeklappt (lokal).
+  Das Skript läuft seitdem bei jedem Pull Request auf der Bühne mit. Der
+  Resolver der Betreiber-App hat dazu einen eigenen Test im Pflicht-Lauf
+  (`apps/control/tests/runner-ticket-trust.test.ts`).
+- **Live:** alle acht Hosts meldeten nach dem Ausliefern `ok` mit dem Build
+  des zweiten Schritts (PR 336).
+
+**Ohne Rückfrage entschieden (klein, umkehrbar):**
+
+1. **Weicht die Vorschau vom frisch gebauten Text ab, wird abgelehnt**
+   (409 `prompt_changed`) statt still der Text des Servers genommen. So läuft
+   nie ein anderer Auftrag als der, den jemand vor dem Start gesehen hat.
+   Preis: Wer eine veraltete Karte offen hat, lädt neu.
+2. **Die kleine Vorschau im Formular.** Seit der Browser den Text nicht mehr
+   bestimmt, soll man sehen, was laufen wird — auch, was fehlt (erledigte
+   Punkte, der KI-Triage-Abschnitt).
+3. **Geprüft ist nur ein Text, den der Server selbst gebaut hat.** Meldet ein
+   Resolver „vom Betreiber", liefert aber keinen Text, gilt der Text der
+   Anfrage als ungeprüft. Ein Lauf ohne Resolver bleibt möglich wie vorher.
+4. **Anwesenheit: stilles `ok` statt einer Ablehnung**, und bei einer Störung
+   entscheidet das Label am Konto (unten, BT1 e).
+
+**BT1 (b) — Rollen-Tests, Bestand vorher und nachher:**
+
+| Gruppe | Bestand vorher | nachher | Tests vorher → nachher |
+| --- | --- | --- | --- |
+| `pages` | 8 | 0 | 134 → 302 |
+| `apps/control` | 8 | 0 | kein Test-Lauf → 108 |
+| `apps/comments` | 1 | 0 | kein Test-Lauf → 6 |
+| `apps/photos` | 1 | 0 | kein Test-Lauf → 8 |
+| `apps/portfolio` | 1 | 0 | 53 → 64 |
+
+Dazu `PUT /api/pages` (die Route galt als getestet, ihr Test ersetzte das
+Rollen-Tor aber durch eine Attrappe) und das Rollen-Tor für Anlegen und
+Fortsetzen eines Runner-Laufs. Die drei Apps haben eine eigene, kleine
+Test-Einrichtung bekommen — ohne `nuxi prepare` (`oxc: { tsconfig: false }`).
+Laufzeit je App rund eine Sekunde, für `pnpm -r test` zusammen etwa 3 bis 4
+Sekunden mehr; pages rund eine Sekunde mehr. Keine Route ließ eine falsche
+Rolle durch. Der Rest des Bestands (brand, market) gehört der Gruppe N13.
+
+**BT1 (e) — die vier Stellen, die die Rollen-Tests notiert hatten:**
+
+1. **Drei lesende Routen hinter dem Einladen-Recht — geschlossen.** Das
+   Rollen-Tor (`requireCommunityPermission`) liest die frische Entzugs-Notiz
+   jetzt selbst, vor der Rolle. Gilt für jedes Rollen-Tor.
+2. **Anwesenheit — geschlossen.** Der Takt schreibt im Pool nur noch für
+   Mitglieder der Community des Hosts; alle anderen bekommen ein stilles
+   `ok`. Sichtbare Folge: Wer angemeldet ist, aber (noch) nicht Mitglied,
+   erscheint in einer Pool-Community nicht mehr als „online". Auf einer
+   Einzel-Instanz ändert sich nichts.
+3. **Instanz-Rolle „Moderator" in der Dashboard-Übersicht jeder Community —
+   nicht entschieden.** Das ist eine Grundsatzfrage und steht unverändert als
+   Frage an David in OPEN-ITEMS („BT1" e).
+4. **Nutzer löschen, Reihenfolge zweier Prüfungen — so belassen.** Die
+   Reihenfolge ist Absicht und gibt nichts heraus. Ein Test hält fest, dass
+   vor der frischen Anmeldung kein Konto gelesen, nichts gelöscht und nichts
+   protokolliert wird.
+
+**SI1 (b) — Grenze des Label-Abgleichs, bewertet:** Eine aktive Zeile in
+einer stillgelegten Community lässt sich nicht sauber im selben Lauf
+umstellen: der Lauf gehört der Platform-App, und die liest das Control Plane
+mit Absicht nur. Gezählt wird schon — korrigiert ist, WELCHE Zahl zählt:
+`disabledCandidates` bleibt über 0, bis die Zeile umgestellt ist;
+`disabledStale` fällt nach dem ersten Entzug auf 0. Runbook und Kommentar
+nannten die falsche. Ein Test hält das über zwei Läufe fest. Die Empfehlung
+für das Umstellen selbst (ein eigener Lauf in der Betreiber-App, zuerst nur
+zählend) steht in OPEN-ITEMS („SI1" b).
+
+**BT1 (d) — zwei wackelnde Tests:**
+
+- **`verify-trust-perks` — behoben.** Das Skript wartet vor den zwei
+  Abschnitten zum Tages-Kontingent, wenn der Tag (UTC) in weniger als
+  zweieinhalb Minuten endet, und hält in einer eigenen Prüfung fest, dass
+  beide Abschnitte in einem Tag lagen.
+- **Rückweg-Test, Exit 141 — Ursache nicht gefunden.** Das verdächtige Muster
+  (mehrzeilige Ausgabe in eine Pipe, deren Leser früh endet) ließ sich nicht
+  nachstellen: je 3.000 Läufe unter Last auf macOS und in einem
+  Linux-Container, kein Fehlschlag. Das Skript ist am selben Tag umgebaut
+  worden. Der Test fährt es jetzt mit Spur auf einem eigenen Kanal; bei
+  einem roten Test stehen die letzten 30 Zeilen dabei.
+
+**Nicht geprüft:** kein Lauf mit echtem Agenten und kein Start über den
+Knopf im Formular (RU1 a bleibt eine Klick-Probe); nichts auf den echten
+Seiten geklickt; der Fall „Lauf kurz vor Mitternacht" selbst (nur die
+Rechnung des Fensters). Nebenfunde stehen als neuer Punkt „NF1" in
+OPEN-ITEMS.
+
+**Gelernt:**
+
+- **Eine Sicherung, die ein Beweis-Skript umgeht, merkt man erst, wenn man
+  sie schließt.** `verify-presence-away-priority` ermittelte seine
+  Community-Ids, indem ein Konto ohne Zugehörigkeit auf beiden Hosts
+  Anwesenheit schrieb — genau die Stelle, die BT1 (e) geschlossen hat. Der
+  Bühnen-Lauf wurde rot, und zwar zu Recht: das Skript war veraltet, nicht
+  das Programm. Regel bestätigt: ein roter Beweis wird angepasst und die neue
+  Regel als eigene Prüfung aufgenommen, nicht gestrichen.
+- **Eine Gegenprobe gegen einen Entwicklungs-Server braucht Geduld und
+  Fristen.** Nach einer Änderung an einer Route lädt der Server neu; eine
+  Anfrage in diesem Augenblick blieb ohne Antwort hängen, das Skript kam nie
+  in sein Aufräumen, und Konto, Liste und Ticket der Probe blieben liegen.
+  Seitdem hat jede Anfrage des Skripts eine Frist, und vor dem Lauf wird
+  gewartet, bis der Server wieder antwortet.
+- **„Die Vorschau bleibt gleich" setzt voraus, dass es eine gibt.** Der
+  Auftrag nannte eine Vorschau, die es nie gab. Erst das Nachmessen am Code
+  hat das gezeigt — sonst wäre „unverändert" gemeldet worden, ohne dass je
+  jemand den Text sehen konnte.
+- **Zwei Zahlen mit ähnlichem Namen brauchen je einen Satz, was sie
+  bedeuten.** `disabledStale` klang nach „hier ist etwas zu tun" und fiel
+  nach dem ersten Lauf auf 0, während die Zeile unverändert dastand.
+- **Eine Vermutung zur Ursache wird erst nachgestellt, dann behoben.** Für
+  den Exit 141 lag eine plausible Erklärung bereit; 6.000 Läufe haben sie
+  nicht bestätigt. Ohne den Versuch stünde jetzt eine „Reparatur" im Skript,
+  die nichts repariert.
+
+---
+
 ### N11 — Nacharbeiten „Was Davids Klick braucht": P29, SV1 (b), BU1 (b, d), MG1 (c, d), RU1 (c), EL1 (d), AB1 (f), PB1 (b, d) ✅ 2026-11-18
 
 Die Punkte, die sich nicht ohne David erledigen ließen: Einstellungen am
