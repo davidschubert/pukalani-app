@@ -30,6 +30,196 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N13 — Nacharbeiten „Brand-Check im Hintergrund, Wege über der Wartezeit, Rollen-Tests": LL1 (b, c, d), KI1 (d) und BT1 (b) für brand, insights und market ✅ 2026-11-18
+
+Ein Eintrag aus Schritt 3 der offenen Punkte, neun Pull Requests und dieser
+Abschluss: 334 (öffentlicher Brand-Check im Hintergrund), 330 (Kennzeichen am
+abgeschnittenen Entwurf), 329 (Kleinigkeiten), 345 (Marktbericht im
+Hintergrund), 341 (Zeitdeckel der Prüfung in der Anfrage), 348
+(Dokument-Prüfung im Hintergrund) und drei nur mit Tests: 333 (Rollen-Tests
+insights), 344 (brand), 347 (market). KEINE Migration, kein bezahlter
+KI-Lauf, kein Lauf gegen Production, kein Blick mit Schlüsseln auf
+Production. Gebaut von einer Session mit sechs Helfern in eigenen
+Arbeitsordnern; jede Abgabe ist am Diff gelesen, mit dem neuesten Stand
+getestet und mit eigenen Gegenproben nachgeprüft.
+
+**Was gebaut ist**
+
+- **Öffentlicher Brand-Check (PR 334, LL1 b).** `POST /api/brand/check`
+  prüft, was nichts kostet (Zwischenspeicher, eigene Brand, Abschalter),
+  nimmt die Lauf-Sperre in `brand_runs` (Art `check`), bucht und antwortet
+  `202` mit einem Kennzeichen; gelesen und geurteilt wird hinter der Antwort
+  (`startBrandRun`). Ein Treffer im Zwischenspeicher antwortet weiter sofort
+  mit `200` und der Id. `GET /api/brand/check/runs/<kennzeichen>` liefert den
+  Stand: am fertigen Lauf die Id des Ergebnisses, am gescheiterten dasselbe
+  kurze Wort, das früher der Fehler-Code der Anfrage war. Die Mechanik
+  (`brandCheckRun.ts`) ist in drei Schritte geteilt (vorbereiten, buchen,
+  ausführen); der Marktvergleich ruft weiter alle drei in einem Zug.
+- **Ohne Konto: wem ein Lauf gehört.** Der Gegenstand der Sperre ist ein
+  Schlüssel-Hash aus Adresse UND Besucher (Konto, sonst der Tages-Stempel des
+  Anschlusses). Derselbe Besucher mit derselben Adresse startet nie doppelt:
+  sein zweiter Start ist kein 409, sondern dieselbe `202` mit dem Kennzeichen
+  des laufenden Laufs, ohne zweite Buchung. Ein Fremder trifft die Sperre
+  nie. Das Kennzeichen ist `<Zeilen-Id>.<Unterschrift>` — die Unterschrift
+  über einen Zufallswert, der nur an der Zeile steht, mit dem
+  Server-Schlüssel; die lesende Route antwortet auf alles andere wortgleich
+  mit 404 und schlägt ein falsch geformtes Kennzeichen gar nicht erst nach.
+  An der Zeile stehen weder Adresse noch Anschluss.
+- **Für Besucher.** Ein Feld, ein Knopf, warten, Ergebnis — wie vorher. Neu:
+  der Browser merkt sich den einen offenen Lauf (15 Minuten), das Formular
+  nimmt ihn nach einem Neuladen wieder auf, ein zweiter Reiter folgt
+  demselben Lauf, und ein gescheiterter Lauf zeigt denselben Satz wie
+  vorher. Score-Seite und Übersicht aller Marken warten ebenfalls auf den
+  Lauf. Honigtopf, Minuten-Bremse und die Tages-Deckel sind unverändert.
+- **Marktbericht (PR 345, LL1 d).** `POST …/report` nimmt die Sperre in
+  `market_runs` (neue Art `report`), antwortet `202` und rechnet hinter der
+  Antwort; ein Bericht zu genau diesem Stand antwortet sofort mit `200`.
+  Bericht und Vergleich schließen sich auf demselben Branding gegenseitig
+  aus (409 `comparison_running` bzw. `report_running`, geprüft nach dem
+  Nehmen der eigenen Sperre). Der Lauf prüft vor dem Schreiben: Branding
+  noch da, kein Bericht zu diesem Stand, kein jüngerer seit dem Start,
+  Herzschlag. Zwei Korrekturen am Rand: „kein Endpunkt unter der Bindung"
+  heißt auch beim Bericht `ai_endpoint_unavailable` (vorher `provider_error`),
+  und ein `Retry-After` wird nicht mehr an eine schon gesendete Antwort
+  gehängt.
+- **Dokument-Prüfung des Markenberaters (PR 348, LL1 d).** Bis zu elf
+  Prüfungen mit je zwei Stufen liefen in der Anfrage (ungünstigster Fall
+  1.320 s). Jetzt: Sperre in `brand_runs` (neue Art `doc-review`), `202`, die
+  Seite fragt `GET …/document` ab (Feld `reviewRun`) und zeigt den
+  Fortschritt. Der Lauf schreibt nach JEDER nachgeholten Sitzung, liest die
+  Kapitel-Zeile unmittelbar davor neu und markiert ein Feld nicht als
+  geprüft, dessen bestätigter Wert sich seit dem Lesen geändert hat. „Für
+  diesen Stand schon geprüft" steht als Schlüssel am letzten fertigen Lauf;
+  die Sperre im Prozess ist entfernt.
+- **Kapitel-Prüfung und Schließen einer Sitzung (PR 341, LL1 d).** Sie
+  rechnen weiter in der Anfrage, aber mit EINEM Zeitdeckel von 50 Sekunden
+  über beide Stufen: Stufe 2 bekommt nur den Rest und läuft unter 10
+  Sekunden Rest gar nicht (dann auch nicht gebucht). Das Ergebnis gilt dann
+  mit `reviewedBy: 'stage1'` — derselbe Ausgang wie schon immer, wenn Stufe 2
+  scheitert. `max_tokens` ist unverändert.
+- **Kennzeichen am abgeschnittenen Entwurf (PR 330, KI1 d).** Ein Feld
+  trägt „Abgeschnitten", solange der letzte Entwurfs-Zug zu ihm die
+  Token-Decke gerissen hat UND das Feld noch dessen Text trägt. Ohne neue
+  Spalte: der Erzeugen-Weg schreibt Feld und Historien-Eintrag mit derselben
+  Zeit, jedes spätere Schreiben bewegt die Zeit des Felds. Die Regel steht
+  pur in `brand/shared/brandTruncatedField.ts`, ein Test bindet die zwei
+  Zeitstempel der Route aneinander.
+- **Kleinigkeiten (PR 329, LL1 c).** Die vier `verify-market-*.mjs` warten
+  über die gemeinsame Hilfe `waitForRun` statt über je eine kopierte
+  Schleife (nicht gelaufen — sie bezahlen echte Läufe). Der Radar-Hinweis
+  `insights.radar.skipped.running` bleibt, weil ein Weg ihn noch liefert (der
+  Merker im Prozess, wenn ein übernommener Lauf auf einen noch schreibenden
+  trifft); er sagt jetzt „ein anderer Lauf" statt „der nächtliche Lauf".
+  Das Beweis-Skript `verify-brand-check-robots.mjs` folgt dem Lauf hinter
+  der Antwort.
+- **Alte Lauf-Zeilen: bewertet, keine Frist.** `market_runs`,
+  `insights_runs` und `brand_runs` nennen niemanden (Zeitpunkte, Ausgang,
+  Zahlen, Kennungen). Die Läufe einer Marke gehen mit ihr; die Läufe des
+  öffentlichen Checks tragen nur Schlüssel-Hash, Zufallswert und die Id des
+  Ergebnisses und kommen durch den Instanz-Deckel höchstens 200 am Tag
+  dazu. Eine Frist bräuchte einen neuen Zeit-Lauf und wäre heute Aufwand
+  ohne Gegenwert; neu ansehen ab 50.000 Zeilen (steht in OPEN-ITEMS „LL1" c).
+- **Rollen-Tests (PR 333, 344, 347, BT1 b).** Alle 66 Bestands-Routen von
+  insights (26), brand (30) und market (10) haben einen Test, der den echten
+  Handler lädt und ausführt: ohne Anmeldung, Konto ohne Zugang, fremdes
+  Konto, richtige Rolle; bei Werkstatt-Routen dieselbe Antwort für fremde
+  und unbekannte Marken und kein Zugriff auf fremde Inhalte vor der
+  Ablehnung; bei öffentlichen Routen der Beweis, dass nichts Unveröffentlichtes
+  oder Fremdes hinausgeht (mit Gegenprobe, dass die Probe-Daten die internen
+  Werte wirklich tragen). Je Layer eine gemeinsame Hilfe
+  (`insightsRouteKit.ts`, `brandRouteKit.ts`, `marketRouteKit.ts`). Alle drei
+  Layer stehen in `ZERO_BACKLOG_LAYERS`. Keine Route ließ die falsche Person
+  durch.
+
+**Zahlen**
+
+- Fristen-Wächter, Bestand über der Wartezeit: 6 → 1 (übrig: die
+  Übersetzung einer ganzen Seite im Paket `pages`).
+- Rollen-Tests, Bestand: brand 30 → 0, insights 26 → 0, market 10 → 0.
+  Zusammen mit den Abgaben der Nachbar-Gruppe am selben Tag ist die
+  Bestands-Liste des Repos leer (vorher 85).
+- Neue Tests an echten Routen: 22 Fragen zum Brand-Check-Lauf, 288
+  Rollen-Tests in brand, sechs Dateien in insights, vier in market, dazu die
+  Lauf-Tests für Marktbericht und Dokument-Prüfung.
+
+**Beweise**
+
+- Je Pull Request alle fünf Pflicht-Prüfungen grün, vor jedem Merge lokal
+  mit dem neuesten `main` zusammengelegt und die berührten Pakete getestet.
+- Gegenproben (Sicherung kurz entfernt ⇒ Test rot) für jede Sicherung des
+  Brand-Check-Laufs (Besucher im Gegenstand, Art der Zeile, Unterschrift,
+  Sperre fällt bei abgelehntem Deckel, Herzschlag), dazu eigene Gegenproben
+  an den Rollen-Tests aller drei Layer und die Gegenproben der Helfer am
+  Marktbericht (18) und an der Dokument-Prüfung (7).
+- **Lokal über 60 Sekunden** (echte Routen, lokaler Spiegel, Ersatz-Urteil
+  mit 65 bis 75 s, Probe-Seite auf dem eigenen Rechner, keine Kosten): Start
+  `202` in 0,2 s; derselbe Besucher bekommt beim zweiten Start dasselbe
+  Kennzeichen, ein anderer Anschluss ein eigenes; nach 75 s `done` mit Id;
+  dritter Start `200` aus dem Zwischenspeicher. Falsche Kennzeichen 404.
+  Browser: Formular, zweiter Reiter und Neuladen zeigen denselben
+  Wartezustand (nur Abfragen, kein neuer Start) und landen auf demselben
+  Ergebnis; ein fremdes Browser-Profil sieht ein leeres Formular; eine
+  Website, die es untersagt, zeigt denselben Satz wie vorher. Angemeldet:
+  Score-Seite und Übersicht aller Marken folgen demselben Lauf, zwei Klicks
+  ergeben EINEN Check. `verify-brand-check-robots.mjs` lokal 18 von 19 (die
+  letzte Prüfung braucht ein Konto, das der lokale Schlüssel nicht anlegen
+  darf — alte Grenze des Skripts).
+- **Dokument-Prüfung lokal an der echten Route** (Ersatz-Prüfung, ohne
+  Wartezeit): fünf gleichzeitige Starts ⇒ ein `202`, vier `409`; eine
+  Sitzung nachgeholt; ein zweiter Klick auf denselben Stand ⇒ `200` ohne Lauf.
+- **Live:** alle acht Hosts `ok`; die neue Abfrage-Route antwortet auf
+  branding.supply mit `run_not_found` (ein Lesezugriff ohne Schlüssel).
+
+**Nicht geprüft**
+
+- Kein Lauf über 60 s auf Production, kein echter Modell-Lauf, keine Klicks
+  auf den echten Seiten.
+- Nicht im Browser gesehen: das Kennzeichen am Feld (braucht einen echten
+  abgeschnittenen Zug), der Wartezustand der Dokument-Prüfung auf der Seite
+  (der Knopf braucht ein abgenommenes Kapitel) und der Hinweis der
+  Marktvergleich-Seite auf einen laufenden Bericht.
+- Die Dokument-Prüfung lokal nicht über 60 s (die Ersatz-Prüfung wartet
+  nicht); der Zeitdeckel nur mit gestellter Uhr in Tests.
+- Die geänderten Marktvergleich-Skripte sind nicht gelaufen.
+- Die Rollen-Tests fahren den Handler mit nachgebauter Ablage; die
+  Middleware davor (Bremsen, Herkunft, Notabschaltung) läuft nicht mit.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar, Begründung im
+DECISION-LOG vom 2026-11-18): der Lauf gehört Adresse UND Besucher; der
+zweite Start desselben Besuchers bekommt dasselbe Kennzeichen; das
+Kennzeichen steht in der Adresse der Abfrage; Bestätigen nimmt das
+Kennzeichen am Feld weg; Zeitdeckel statt Hintergrund-Lauf für
+Kapitel-Prüfung und Sitzung schließen; keine Frist für Lauf-Zeilen; der
+Radar-Text bleibt, umformuliert.
+
+**Reste** stehen in OPEN-ITEMS: „LL1" (c, d), „KI1" (d), „BT1" und der neue
+Punkt „CW1" (Wackler in CI und Ausliefern, an diesem Tag beobachtet).
+
+**Gelernt:** (1) Ein `409 läuft schon` ist für einen Besucher OHNE Konto
+eine Sackgasse — er hat nichts, womit er dem Lauf folgen könnte. Deshalb
+braucht der Server einen Weg, dem zweiten Start desselben Besuchers dasselbe
+Kennzeichen noch einmal zu geben; ein Zufallswert, von dem nur der Hash an
+der Zeile steht, kann das nicht (daher Unterschrift über einen Zufallswert
+an der Zeile). (2) Vor einem Umbau die AUFRUFER zählen, nicht nur die
+Route: die Bericht-Route des Marktvergleichs ruft keine Seite — der Knopf
+fährt den Vergleich. Der Auftrag an den Helfer ging vom Gegenteil aus und
+war insoweit falsch. (3) Eine Gegenprobe muss selbst belegen, dass sie
+etwas verändert hat: zweimal blieb eine „Gegenprobe" grün, weil die
+Veränderung die falsche Stelle traf (eine Sitemap-Abfrage) oder gar nicht
+angewendet wurde — erst die Prüfung „Muster gefunden?" macht sie zum Beweis.
+(4) `pnpm check:bilanz` gehört zum Lint-Job und wird rot, sobald sich die
+Zahl der Routen eines Layers ändert; vor dem Push alle Schritte des
+Lint-Jobs fahren, nicht nur `pnpm -r lint`. (5) Eine Zahl, die jeder Umbau
+anfasst (`OVER_EXPECTED` im Fristen-Wächter, die Bestands-Liste), ist bei
+parallelen Pull Requests ein sicherer Konflikt — dreimal an diesem Tag; die
+richtige Zahl nennt der Test selbst, nach dem Zusammenlegen mit `main`.
+(6) Die Pflicht-Prüfung `secrets` liest ALLE Zweige: ein Fund in einem
+fremden Zweig färbte eine Viertelstunde lang jeden Pull Request rot. (7)
+Dichte Merges mehrerer Sitzungen starten das Ausliefern immer wieder neu —
+ein Merge war erst nach 28 Minuten live.
+
+---
+
 ### N11 — Nacharbeiten „Was Davids Klick braucht": P29, SV1 (b), BU1 (b, d), MG1 (c, d), RU1 (c), EL1 (d), AB1 (f), PB1 (b, d) ✅ 2026-11-18
 
 Die Punkte, die sich nicht ohne David erledigen ließen: Einstellungen am

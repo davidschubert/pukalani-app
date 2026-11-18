@@ -108,8 +108,15 @@ paths:
   Erzeugen-Weg), ein Gesprächs-Zug bekommt den Satz „schreib einfach noch
   einmal" — ihn zu wiederholen schickte die Antwort des Menschen doppelt.
   Eine Rückfrage der Nachprüfung ist nie „abgeschnitten" (sie schreibt der
-  Server). Der FELDWERT selbst trägt kein Kennzeichen; `max_tokens` bleibt
-  großzügig und wird nicht gesenkt.
+  Server). AUCH DER FELDWERT TRÄGT EIN KENNZEICHEN (KI1 d, seit 2026-11-18) —
+  als Anzeige, ohne neue Spalte: ein Feld ist gekennzeichnet, solange der
+  letzte Entwurfs-Zug zu ihm abgeschnitten war UND das Feld noch dessen Text
+  trägt (`brand/shared/brandTruncatedField.ts`). Woran „noch dessen Text"
+  hängt: der Erzeugen-Weg schreibt Feld und Historien-Eintrag mit DERSELBEN
+  Zeit; jedes spätere Schreiben (tippen, ältere Fassung, bestätigen) bewegt
+  die Zeit des Felds, und das Kennzeichen fällt. Wer den Erzeugen-Weg
+  umbaut, hält die zwei Zeitstempel gleich (ein Test bindet sie).
+  `max_tokens` bleibt großzügig und wird nicht gesenkt.
 - LANGE ARBEIT GEHÖRT NICHT IN DIE ANFRAGE (BE-008/BE-010, seit 2026-11-16 —
   Davids Entscheidung „antwortet sofort und rechnet im Hintergrund; ein
   zweiter Klick startet keinen zweiten Lauf"): der Webserver wartet 60 s
@@ -187,7 +194,20 @@ paths:
   desselben Besuchers ist dort kein 409, sondern dieselbe `202` mit dem
   Kennzeichen des laufenden Laufs; ein Fremder trifft die Sperre nie. Der
   Browser merkt sich den einen offenen Lauf und nimmt ihn nach einem Neuladen
-  wieder auf. WÄCHTER (seit 2026-11-17):
+  wieder auf. Ebenfalls seit N13: der MARKTBERICHT (`market_runs`, Art
+  `report`; Bericht und Vergleich schließen sich auf demselben Branding
+  gegenseitig aus — 409 `comparison_running` bzw. `report_running`, geprüft
+  NACH dem Nehmen der eigenen Sperre) und die DOKUMENT-PRÜFUNG des
+  Markenberaters (`brand_runs`, Art `doc-review`): sie schreibt nach JEDER
+  nachgeholten Sitzung, liest die Kapitel-Zeile davor neu und markiert ein
+  Feld nicht als geprüft, dessen bestätigter Wert sich seit dem Lesen geändert
+  hat; „für diesen Stand schon geprüft" steht als Schlüssel am letzten
+  fertigen Lauf, nicht mehr im Prozess. ZEITDECKEL STATT LAUF: Kapitel-Prüfung
+  und Schließen einer Sitzung rechnen weiter in der Anfrage, aber mit EINEM
+  Deckel über beide Stufen (`BRAND_REVIEW_INLINE_BUDGET_MS`, 50 s; Stufe 2
+  bekommt nur den Rest und läuft unter 10 s Rest gar nicht) — erlaubt, weil
+  ein Ergebnis nur aus Stufe 1 schon immer ein ehrlicher Ausgang ist
+  (`reviewedBy: 'stage1'`). WÄCHTER (seit 2026-11-17):
   `core/tests/routeDeadlineBudget.test.ts` findet jede Route, die ein
   KI-Modell, eine fremde Website oder YouTube erreicht, und verlangt einen
   Eintrag in `core/tests/support/routeDeadlines.ts` — `inline` mit der Summe
@@ -203,7 +223,10 @@ paths:
   `packages/brand/tests/brandMarkDraftsRunRoute.test.ts`,
   `packages/brand/tests/brandReadingRunRoute.test.ts`,
   `packages/brand/tests/brandDocumentCheckRoute.test.ts`,
-  `packages/brand/tests/brandCheckRoutes.test.ts`.
+  `packages/brand/tests/brandCheckRoutes.test.ts`,
+  `packages/brand/tests/brandDocumentRoutes.test.ts`,
+  `packages/brand/tests/brandReviewBudget.test.ts`,
+  `packages/market/tests/marketReportRunRoute.test.ts`.
 - ANBIETER-LISTE JE TRANSPORT (BE-004, seit 2026-11-14): die Aufrufe von
   brand, market und insights geben eine von DREI Konstanten mit
   (`packages/brand/server/utils/brandProviderRouting.ts`), alle mit `zdr`,

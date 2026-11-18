@@ -92,15 +92,16 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. Die Icon-Zeilen, Fehler außerhalb einer Anfrage und der Zahlungswarn-Lauf sind seit 2026-11-17 erledigt (COMPLETE „N09"). **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
-| LL1 | **Lange Läufe: Reste.** (b) Der öffentliche Brand-Check rechnet noch in der Anfrage, (c) Kleinigkeiten, (d) fünf weitere Wege über der Wartezeit des Webservers, die der neue Fristen-Wächter kennt. Zeichen-Entwürfe, Vorbilder lesen und Fundament-Check laufen im Hintergrund (COMPLETE „N10"). **Wartet auf:** nichts. | Niedrig | M je Weg | Nein | [Einzelheiten](#ll1) |
+| LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten, (d) EIN Weg über der Wartezeit des Webservers bleibt: die Übersetzung einer ganzen Seite. Brand-Check, Marktbericht und Dokument-Prüfung laufen im Hintergrund, Kapitel-Prüfung und Sitzung schließen haben einen Zeitdeckel (COMPLETE „N13"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten (eigene Spalte für den Zeitpunkt der Erledigung). Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Bekannte Grenzen des Label-Abgleichs, (c) Lint-Lauf schneller machen, (d) Kleinigkeiten. Klick-Probe (a): KR1. Der Abgleich findet seit 2026-11-17 auch stillgelegte Communities und Herabstufungen (COMPLETE „N06"). **Wartet auf:** (c) auf CI1. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
-| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten, darunter das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (liegt in der Seite des Markenberaters, baubar nach N10). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern ist gebaut (COMPLETE „N05"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
+| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten. Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Die Modell-Prüfung beim Speichern (COMPLETE „N05") und das Kennzeichen am Feldwert eines abgeschnittenen Entwurfs (COMPLETE „N13") sind gebaut. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Seit 2026-11-17 laufen 61 von 83 Beweis-Skripten von selbst, und acht weitere Layer haben Rollen-Tests für jede Route (COMPLETE „N09"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, drei E2E-Dateien passen noch in den Nacht-Lauf, (b) 85 Routen stehen noch ohne Rollen-Test im Bestand, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten und vier Stellen zum Bewerten. **Wartet auf:** (c) zwei Wochen Beobachtung. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung | [Einzelheiten](#bt1) |
+| CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** Vier Dinge, die an einem Tag mit vielen parallelen Merges auffielen: der Start der Test-Server, ein Test des Ausliefer-Skripts, die Geheimnis-Prüfung über alle Zweige, und das Ausliefern, das immer wieder neu beginnt. Nichts davon ist ein Fehler im Programm. **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -754,33 +755,25 @@ Gebaut am 2026-11-18 (COMPLETE „N10"): Zeichen-Entwürfe, Vorbilder lesen und
 Fundament-Check rechnen im Hintergrund (Lauf-Tabelle `brand_runs`); ein
 Wächter hält je Route die Summe ihrer Fristen gegen die Wartezeit des
 Webservers (`packages/core/tests/routeDeadlineBudget.test.ts`).
+Gebaut am 2026-11-18 (COMPLETE „N13"): der öffentliche Brand-Check, der
+Marktbericht und die Dokument-Prüfung des Markenberaters rechnen im
+Hintergrund; Kapitel-Prüfung und Schließen einer Sitzung haben einen
+Zeitdeckel von 50 Sekunden über beide Stufen. Der Bestand des Wächters ist
+von sechs auf einen Weg gesunken.
 
-- **(b) Der öffentliche Brand-Check rechnet noch in der Anfrage** (Website
-  lesen und urteilen, zusammen bis rund 120 s; üblich viel schneller). Er ist
-  der Trichter von branding.supply und läuft ohne Konto. Empfehlung für den
-  Umbau, in dieser Reihenfolge: (1) die Mechanik in `brandCheckRun.ts` in
-  drei Schritte teilen (Zwischenspeicher und Vorprüfung, Buchung, Ausführung)
-  — der Marktvergleich ruft weiter alle drei in einem Zug; (2) die Route
-  nimmt die Lauf-Sperre (Art `check` in `brand_runs`, Gegenstand = Hash der
-  Adresse) VOR der Buchung und antwortet `202` mit einem Kennzeichen, das nur
-  der Starter bekommt (an der Zeile steht nur dessen Hash); (3) eine lesende
-  Route liefert den Stand zu diesem Kennzeichen — die Minuten-Bremse des
-  Checks darf das Abfragen nicht mitzählen; (4) drei Aufrufer umstellen:
-  das öffentliche Formular (das Kennzeichen im Browser merken, damit ein
-  zweiter Reiter und ein Neuladen denselben Lauf sehen), die Score-Seite und
-  die Übersicht aller Marken; (5) Lauf-Zeilen dieser Art hängen an keiner
-  Marke — sie brauchen eine Frist (zuerst nur zählen, Muster aus „N04").
-  Ein Treffer im Zwischenspeicher antwortet weiter sofort.
 - **(c) Kleinigkeiten.** Ein abgebrochener Knopf-Lauf des Radars verbraucht
   einen der drei Starts je Stunde (bekannte Grenze: nur ein Ausliefern mitten
-  im Lauf bricht ihn ab). `market-library-compute.mjs` fragt den Stand jetzt
-  ab, ist aber nicht gelaufen (es bezahlt echte Läufe). Die Lesung der
-  Vorbilder bucht bei einem gescheiterten oder abgebrochenen Lauf nicht
-  zurück (nur die Entwürfe tun das). Die Übersicht aller Marken zeigt nach
-  dem Neuladen nicht, dass ein Fundament-Check läuft — ein Klick antwortet
-  dann „läuft schon" und wartet mit. Die Lauf-Zeilen (`market_runs`,
-  `insights_runs`, `brand_runs`) werden nicht nach Alter geräumt; sie sind
-  klein und verschwinden mit der Marke.
+  im Lauf bricht ihn ab). `market-library-compute.mjs` und die vier
+  `verify-market-*.mjs` fragen den Stand über dieselbe Hilfe ab, sind aber
+  nicht gelaufen (sie bezahlen echte Läufe). Die Lesung der Vorbilder bucht
+  bei einem gescheiterten oder abgebrochenen Lauf nicht zurück (nur die
+  Entwürfe tun das). Die Übersicht aller Marken zeigt nach dem Neuladen
+  nicht, dass ein Fundament-Check läuft — ein Klick antwortet dann „läuft
+  schon" und wartet mit. Die Lauf-Zeilen (`market_runs`, `insights_runs`,
+  `brand_runs`) haben bewusst keine Frist (bewertet am 2026-11-18, COMPLETE
+  „N13"): sie nennen niemanden und sind klein. Neu ansehen, wenn eine der
+  Tabellen über 50.000 Zeilen wächst — die Läufe des öffentlichen Checks
+  hängen an keiner Marke und kommen höchstens 200 am Tag dazu.
   Der Hinweis „Quelle in der Zeit nicht gelesen" erscheint nur beim
   Zustandswechsel, nicht beim Speichern eines veröffentlichten Artikels (dort
   steht weiter „Zitat nicht belegt"). Ein Artikel mit sehr vielen langsamen
@@ -791,16 +784,26 @@ Webservers (`packages/core/tests/routeDeadlineBudget.test.ts`).
   Grenze, unverändert). Der Newsletter ist auf Production ausgeschaltet; die
   Sperre ist dort nur durch Tests belegt. Der Alarm (Paket P22) kann
   abgebrochene Läufe an Lauf-Zeilen ohne Ende mit altem Herzschlag erkennen.
-  Auf Production ist ein Lauf ÜBER 60 Sekunden weiter nicht gezeigt, weder
-  beim Marktvergleich noch beim Radar noch bei den drei Wegen des
-  Markenberaters; alles ist lokal gezeigt (75 bis 87 s, je zwei Reiter).
+  Auf Production ist ein Lauf ÜBER 60 Sekunden weiter nicht gezeigt, auch
+  nicht beim öffentlichen Brand-Check; alles ist lokal gezeigt (65 bis 87 s,
+  je zwei Reiter). Auf den Seiten sind zwei Dinge nur durch Tests belegt,
+  nicht im Browser gesehen: der Wartezustand der Dokument-Prüfung (der Knopf
+  braucht ein abgenommenes Kapitel) und der Hinweis der Marktvergleich-Seite
+  auf einen laufenden Bericht. Die Marktvergleich-Seite startet den Bericht
+  weiter über den Vergleich; die eigene Bericht-Route ruft heute keine Seite.
+  Beim öffentlichen Check bekommt ein zweiter Besucher am SELBEN Anschluss
+  mit derselben Adresse denselben Lauf (bewusst: so folgt ein zweites Gerät
+  demselben Lauf; das Ergebnis teilen sich beide ohnehin über den
+  Zwischenspeicher). Während die Dokument-Prüfung im Hintergrund eine Sitzung
+  nachholt, kann ein gleichzeitiges Speichern im selben Kapitel einen
+  Versions-Konflikt bekommen; die Werkstatt löst ihn wie bisher still auf
+  (nicht eigens geprüft).
 - **(d) Bestand des Fristen-Wächters** (`packages/core/tests/support/routeDeadlines.ts`,
-  Bauform `over` — die Liste darf nur schrumpfen): neben dem öffentlichen
-  Brand-Check stehen dort die Dokument-Prüfung des Markenberaters (bis
-  1.320 s: zehn Nachholungen und die Prüfung, je zwei Stufen; sie hat eine
-  eigene Sperre im Prozess), die Kapitel-Prüfung und das Schließen einer
-  Sitzung (je bis 120 s, üblich wenige Sekunden), der Marktbericht (90 s) und
-  die Übersetzung einer ganzen Seite (120 s). Nicht gezählt sind Aufrufe an
+  Bauform `over` — die Liste darf nur schrumpfen): EIN Eintrag, die
+  Übersetzung einer ganzen Seite (`packages/pages`, 120 s). Sie braucht eine
+  Lauf-Tabelle, die es in diesem Paket nicht gibt (eine neue Tabelle ist eine
+  Migration), oder den 180-Sekunden-Block des Webservers, den es nur auf
+  branding.supply für die Artikel-Wege gibt. Nicht gezählt sind Aufrufe an
   ploi, Stripe, Mail und das Control Plane.
 
 <a id="sv1"></a>
@@ -893,12 +896,10 @@ keinen Europa-Endpunkt hat.
 - **(d) Kleinigkeiten.** Beim Speichern eines Modells wird nur der Ort
   geprüft; ob der Anbieter nichts speichert, prüft weiter nur der tägliche
   Wächter. Der Klick auf der Config-Seite ist nicht gezeigt (lokal und auf
-  Live), nur die Route dahinter. Der Feldwert eines abgeschnittenen Entwurfs
-  trägt kein Kennzeichen, nur die Sprechblase darüber — die Stelle liegt in
-  der Seite des Markenberaters (`packages/brand`, `[stepKey].vue`), an der am
-  2026-11-17 die Gruppe N10 baute; ohne neue Spalte ginge es als Anzeige (der
-  letzte Zug zu diesem Feld war abgeschnitten). Ein englisches
-  Bildschirmfoto der Hinweise fehlt. Die Kosten je Lauf und der Anbieter
+  Live), nur die Route dahinter. Das Kennzeichen am Feldwert eines
+  abgeschnittenen Entwurfs (COMPLETE „N13") ist nur durch Tests belegt, nicht
+  im Browser gesehen — dafür bräuchte es einen echten abgeschnittenen Zug.
+  Ein englisches Bildschirmfoto der Hinweise fehlt. Die Kosten je Lauf und der Anbieter
   stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für KI-Ausfälle
   und Ausgaben" des Gesamtaudits).
 
@@ -1013,6 +1014,34 @@ und die Tabellen in `docs/referenz/LIVE-BEWEISE.md`.
   abfragen. (2) Anwesenheit: dieselbe Wache wie beim Übersetzen. (3) Übersicht
   des Dashboards im Pool: soll die Instanz-Rolle „Moderator" hinein dürfen,
   oder nur der Betreiber? (4) Nutzer löschen: Reihenfolge zweier Prüfungen.
+
+<a id="cw1"></a>
+
+**CW1 — Wackler in CI und Ausliefern (beobachtet von der Gruppe N13 am 2026-11-18).**
+An diesem Tag führten drei Gruppen gleichzeitig zusammen. Vier Beobachtungen,
+jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit.
+
+- **(a) Die Test-Server starten in der CI nicht rechtzeitig.** E2E: „Timed
+  out waiting 120000ms from config.webServer" (Pull Request 334 im ersten
+  Lauf, 341). Bühne: `comments/verify-embed-boundary.mjs` und
+  `control/verify-account-bell.mjs` mit Status 500 auf der ersten Seite
+  (334 im ersten Lauf, 345). Der zweite Lauf war jeweils grün. Empfehlung:
+  die zwei Skripte warten auf die erste fehlerfreie Seite, bevor sie prüfen;
+  für E2E die Startzeit messen, bevor die Frist steigt.
+- **(b) `packages/core/tests/appReleaseScript.test.ts` war zweimal rot**
+  („das Archiv mit den Dateien der Site ist nicht lesbar", Pull Requests 344
+  und 348), auf `main` und bei der Wiederholung grün. Sieht aus wie dieselbe
+  Sorte Wackler wie in BT1 (d) bei `rollbackScript.test.ts` (eine Pipe
+  schließt früh).
+- **(c) Die Pflicht-Prüfung `secrets` liest alle Zweige.** Ein Fund in einem
+  Zweig färbt jeden Pull Request rot, bis der Zweig neu aufgesetzt ist (eine
+  Viertelstunde am 2026-11-18). Empfehlung: nur die Historie des geprüften
+  Zweigs lesen — das ist eine Änderung am Workflow, also mit dem
+  Ausliefer-Weg zusammen (CI1).
+- **(d) Dichte Merges starten das Ausliefern immer wieder neu.** Jeder Merge
+  bricht den laufenden Lauf ab; ein Merge der Gruppe N13 war erst nach 28
+  Minuten live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln
+  oder den laufenden Lauf zu Ende fahren lassen (ebenfalls CI1).
 
 <a id="a1-anwalt"></a>
 
