@@ -147,7 +147,57 @@ scp ops/cron-check.sh ops/cron.conf ploi@188.245.61.155:ops/
 ssh ploi@188.245.61.155 'chmod 755 ~/ops/cron-check.sh && ~/bin/pukalani-cert-gate.sh cron-status'
 ```
 
-## 4 · Fallen
+## 4 · Feste Befehle auf app-prod
+
+**Stand 2026-11-18: Übergang.** Die Handgriffe des Auslieferns (Stand
+empfangen, Verweis umlegen, `pm2` neu laden, alte Stände wegräumen) stehen in
+EINER Datei, `ops/app-release.sh`. Der Rückweg `ops/rollback.sh` schickt sie
+bei jedem Aufruf selbst mit; für das Ausliefern liegt sie von Hand eingespielt
+auf dem Server. Liegt sie dort, läuft `deploy.yml` über sie; liegt sie nicht
+dort, nimmt der Workflow die freien Befehle wie bisher. Erst wenn ein echtes
+Ausliefern über das Skript grün war, fällt der alte Weg aus dem Workflow, und
+erst danach wird der Schlüssel auf das Skript beschränkt.
+
+Einspielen und Aktualisieren (von Hand, über den eigenen Zugang):
+
+```bash
+ssh ploi@49.13.211.173 'test ! -e ~/ops/app-release.sh || cp -p ~/ops/app-release.sh ~/ops/app-release.sh.vorher-$(date +%F)'
+scp ops/app-release.sh ops/apps.conf ploi@49.13.211.173:ops/
+ssh ploi@49.13.211.173 'chmod 755 ~/ops/app-release.sh && sha256sum ~/ops/app-release.sh ~/ops/apps.conf && ~/ops/app-release.sh list help'
+shasum -a 256 ops/app-release.sh ops/apps.conf   # muss dieselben zwei Summen zeigen
+```
+
+`~/ops/apps.conf` ist dieselbe Liste, die dort schon für das Backup der
+App-Einstellungen liegt. Unter dem festen Befehl ist sie die EINZIGE Quelle
+für App und Site — eine neue App gehört deshalb zuerst dorthin
+([NEUE-SITE.md](NEUE-SITE.md), Schritt 7). Das Skript nimmt für `<site>/ops`
+nur Dateinamen von seiner eigenen Liste an (`OPS_FILES`); eine neue Datei im
+Workflow heißt: Liste ergänzen, Skript neu einspielen.
+
+Der feste Befehl (eine Zeile in `~/.ssh/authorized_keys`, Optionen VOR dem
+Schlüssel; vorher eine Kopie der Datei daneben legen):
+
+```text
+command="/home/ploi/ops/app-release.sh",restrict ssh-ed25519 AAAA… pukalani-ci-deploy-…
+```
+
+Danach führt sshd für diesen Schlüssel nur noch das Skript aus. Erlaubt sind
+die Worte `list`, `activate`, `prune`, `release-put`, `ops-put`, `fonts-get`,
+`fonts-put`; `rsync`, `scp` und jede freie Befehlszeile enden mit Exit 64.
+Was der feste Befehl NICHT ist: ein Schutz davor, dass der Schlüssel Programm
+auf den Server bringt — das ist seine Aufgabe. Er nimmt ihm alles andere.
+
+Nach JEDER Änderung an `ops/app-release.sh`, `ops/rollback.sh` oder am
+Schritt „Ausliefern" in `deploy.yml`: `ops/app-release-attrappe.sh` (ein
+Wegwerf-Container mit echtem sshd: das ganze Ausliefern mit und ohne festen
+Befehl, die Ablehnungen, Abbruch mittendrin, zwei Läufe zur selben Zeit, der
+Rückweg), dann einspielen.
+
+**Rückweg:** die Kopie `…vorher-<Datum>` zurücklegen bzw. die Zeile in
+`authorized_keys` wieder auf `restrict` allein stellen. Der eigene Zugang
+`ploi@…` ist von alldem nicht berührt.
+
+## 5 · Fallen
 
 - **Ploi verwaltet `authorized_keys` mit.** Ein Schlüssel, der im Ploi-Panel
   angelegt wird, hat keine Optionen. Die CI-Schlüssel deshalb von Hand
