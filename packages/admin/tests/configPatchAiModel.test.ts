@@ -72,6 +72,14 @@ const FLAGS = { registrationEnabled: true, commentsEnabled: true, maintenanceMod
 const json = (status: number, payload: unknown) => new Response(JSON.stringify(payload), { status })
 const withTags = (...tags: string[]) => json(200, { data: { endpoints: tags.map(tag => ({ tag })) } })
 
+/**
+ * BEIDE Listen des Vermittlers, je Aufruf eine frische Antwort: die weltweite
+ * und die der Europa-Adresse (dort stehen seit 2026-11-18 die Europa-Endpunkte
+ * mit Aufpreis). Ohne zweite Angabe ist die Europa-Liste leer.
+ */
+const lists = (world: string[], europe: string[] = []) => async (url: RequestInfo | URL) =>
+  withTags(...(String(url).startsWith('https://eu.') ? europe : world))
+
 beforeEach(() => {
   stored = { ...FLAGS, aiModel: 'anthropic/claude-haiku-4.5' }
   user = ADMIN
@@ -123,7 +131,7 @@ describe('PATCH /api/admin/config — Modell-Prüfung beim Speichern', () => {
   })
 
   it('unverändertes Modell ⇒ kein Netz, auch wenn es heute keinen EU-Ort hätte', async () => {
-    fetchMock.mockResolvedValue(withTags('openai/default'))
+    fetchMock.mockImplementation(lists(['openai/default']))
     body = { ...FLAGS, maintenanceMode: true, aiModel: '  anthropic/claude-haiku-4.5 ' }
     await call()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -131,10 +139,12 @@ describe('PATCH /api/admin/config — Modell-Prüfung beim Speichern', () => {
   })
 
   it('neues Modell ohne EU-Ort ⇒ 422 `ai_model_no_eu_endpoint`, NICHTS geschrieben', async () => {
-    fetchMock.mockResolvedValue(withTags('openai/default', 'google-vertex/global'))
+    fetchMock.mockImplementation(lists(['openai/default', 'google-vertex/global']))
     body = { ...FLAGS, maintenanceMode: true, aiModel: 'openai/gpt-4o' }
     await expect(call()).rejects.toMatchObject({ status: 422, data: { code: 'ai_model_no_eu_endpoint' } })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // Beide Listen gelesen — erst dann ist „kein Ort" eine Aussage.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).host).sort()).toEqual(['eu.openrouter.ai', 'openrouter.ai'])
     expect(tablesDB.updateRow).not.toHaveBeenCalled()
     expect(tablesDB.createRow).not.toHaveBeenCalled()
     expect(stored).toMatchObject({ maintenanceMode: false, aiModel: 'anthropic/claude-haiku-4.5' })
@@ -172,15 +182,33 @@ describe('PATCH /api/admin/config — Modell-Prüfung beim Speichern', () => {
   })
 
   it('neues Modell mit EU-Ort ⇒ gespeichert mit `aiModelCheck: ok`', async () => {
-    fetchMock.mockResolvedValue(withTags('amazon-bedrock/eu-west-1', 'anthropic/default'))
+    fetchMock.mockImplementation(lists(['amazon-bedrock/eu-west-1', 'anthropic/default']))
     body = { ...FLAGS, aiModel: 'anthropic/claude-sonnet-4.5' }
     await expect(call()).resolves.toMatchObject({ aiModel: 'anthropic/claude-sonnet-4.5', aiModelCheck: 'ok' })
     expect(stored?.aiModel).toBe('anthropic/claude-sonnet-4.5')
   })
 
+  it('EU-Ort steht NUR in der Europa-Liste (Stand 2026-11-18) ⇒ gespeichert mit `ok`', async () => {
+    fetchMock.mockImplementation(lists(
+      ['azure/global', 'amazon-bedrock/global', 'google-vertex/global', 'anthropic'],
+      ['amazon-bedrock/eu-west-1', 'google-vertex/europe'],
+    ))
+    body = { ...FLAGS, aiModel: 'anthropic/claude-sonnet-4.5' }
+    await expect(call()).resolves.toMatchObject({ aiModel: 'anthropic/claude-sonnet-4.5', aiModelCheck: 'ok' })
+    expect(stored?.aiModel).toBe('anthropic/claude-sonnet-4.5')
+  })
+
+  it('Europa-Liste gestört, weltweite ohne EU-Ort ⇒ gespeichert mit `unverified`, NICHT abgelehnt', async () => {
+    fetchMock.mockImplementation(async url =>
+      String(url).startsWith('https://eu.') ? json(503, {}) : withTags('azure/global', 'anthropic'))
+    body = { ...FLAGS, aiModel: 'anthropic/claude-sonnet-4.5' }
+    await expect(call()).resolves.toMatchObject({ aiModelCheck: 'unverified' })
+    expect(stored?.aiModel).toBe('anthropic/claude-sonnet-4.5')
+  })
+
   it('Zeile fehlt noch ⇒ geprüft, dann angelegt', async () => {
     stored = null
-    fetchMock.mockResolvedValue(withTags('google-vertex/europe'))
+    fetchMock.mockImplementation(lists(['google-vertex/europe']))
     body = { ...FLAGS, aiModel: 'google/gemini-2.5-flash' }
     await expect(call()).resolves.toMatchObject({ aiModelCheck: 'ok' })
     expect(tablesDB.createRow).toHaveBeenCalledTimes(1)
