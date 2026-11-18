@@ -10,6 +10,7 @@
     "preview": "nuxi preview",
     "typecheck": "nuxi typecheck",
     "bootstrap": "node --env-file=.env ../../scripts/bootstrap.mjs --app control",
+    "test": "vitest run",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "@types/nodemailer": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:"
   }
 }
