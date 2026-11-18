@@ -53,13 +53,33 @@ function pageRow(id: string, slug: string, status: string): FakeRow {
   return { $id: id, communityId: COMMUNITY_ID, slug, locale: 'de', title: slug, body: 'Text', status, sortOrder: 10 }
 }
 
+/**
+ * Die Liste der nachgebauten Tür gibt immer ALLE Treffer zurück. Appwrite
+ * blättert: `limit` und `cursorAfter` zählen. Diese Hülle macht genau das
+ * nach — sonst sähe ein Test nicht, ob die Route über die erste Seite
+ * hinaus liest (NF1 c).
+ */
+function pagingHandle<T extends { list: (name: string, queries?: string[]) => Promise<{ rows: FakeRow[], total: number }> }>(handle: T): T {
+  return {
+    ...handle,
+    async list(name: string, queries: string[] = []) {
+      const all = await handle.list(name, queries)
+      const parsed = queries.map(raw => JSON.parse(raw) as { method: string, values?: unknown[] })
+      const cursor = parsed.find(q => q.method === 'cursorAfter')?.values?.[0]
+      const limit = Number(parsed.find(q => q.method === 'limit')?.values?.[0] ?? 25)
+      const from = cursor === undefined ? 0 : all.rows.findIndex(row => row.$id === cursor) + 1
+      return { rows: all.rows.slice(from, from + limit), total: all.total }
+    },
+  }
+}
+
 /** Die Speicher-Attrappen einer Probe, frisch je Test. */
-function stores() {
+function stores(pages: FakeRow[] = [pageRow('pg-1', 'imprint', 'published'), pageRow('pg-2', 'draft-page', 'draft')]) {
   const nav = vi.fn(async () => {})
   const redirects = vi.fn(async () => {})
   const seo = vi.fn(async () => {})
   const readRedirects = vi.fn(async () => SAVED_REDIRECTS)
-  const door = fakeDoor({ rows: { [PAGES_TABLE]: [pageRow('pg-1', 'imprint', 'published'), pageRow('pg-2', 'draft-page', 'draft')] } })
+  const door = fakeDoor({ rows: { [PAGES_TABLE]: pages } })
   const opens: Array<{ as?: string, actor?: string }> = []
   return {
     nav,
@@ -71,10 +91,11 @@ function stores() {
     probe: {
       door: (...[event, options]: Parameters<NonNullable<RouteProbe['door']>>) => {
         opens.push({ as: options?.as, actor: options?.actor })
-        return door.tenantDb(event, options)
+        return pagingHandle(door.tenantDb(event, options))
       },
       globals: {
         communitySettingsRowIdFor,
+        tenantCacheScope: () => 't-a',
         writeCommunityNavOverride: nav,
         writeCommunityRedirects: redirects,
         writeCommunitySeo: seo,
@@ -144,6 +165,18 @@ describe.each(BRANDING.allow)('Auftritt der Website: %s speichert für DIESE Com
     expect(run.status).toBe(400)
     expect(run.error?.data?.code).toBe('unknown_page')
     expect(s.nav).not.toHaveBeenCalled()
+  })
+
+  it('PATCH /api/pages/navigation: ein Link auf die 151. veröffentlichte Seite wird angenommen (geblättert, NF1 c)', async () => {
+    const many = Array.from({ length: 150 }, (_, i) => pageRow(`pg-${String(i).padStart(4, '0')}`, `seite-${i}`, 'published'))
+    const s = stores([...many, pageRow('pg-9999', 'ganz-hinten', 'published')])
+    const body = { entries: [{ id: 'link-hinten', label: 'Ganz hinten', to: '/ganz-hinten' }] }
+    const run = await probeRoute(loadNavigation, { who, body, ...s.probe })
+
+    expect(run.status).toBe(200)
+    // Zwei Abfragen: die erste Seite ist voll (100), die zweite bringt den Rest.
+    expect(s.door.calls.filter(call => call.method === 'list')).toHaveLength(2)
+    expect(s.nav).toHaveBeenCalledTimes(1)
   })
 
   it('GET /api/pages/redirects: liest die Zeile DIESER Community', async () => {

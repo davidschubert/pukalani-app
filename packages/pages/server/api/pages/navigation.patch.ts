@@ -4,6 +4,7 @@ import { communityNavigationSchema } from '../../../schemas/navigation'
 import { isCustomNavLinkId } from '../../../../core/shared/communityNavigation'
 import type { CommunityNavOverride } from '../../../../core/shared/communityNavigation'
 import { PAGES_TABLE, type PageRow } from '../../../shared/types/page'
+import { ADMIN_PAGES_MAX, ADMIN_PAGES_PAGE_SIZE, listPageRowsPaged } from '../../utils/pageRows'
 
 /**
  * Das MENÜ dieser Community speichern (U15 Teil 1).
@@ -92,10 +93,22 @@ async function publishedPagePaths(event: H3Event): Promise<Set<string>> {
   // `/api/pages/public`. `actor: 'operator'` ist hier richtig und nicht bloss
   // geerbt: gelesen wird, um eine OWNER-EINSTELLUNG zu prüfen; das ist kein
   // Inhalt (M13 greift nicht) und macht niemanden zum Mitglied (A5).
-  const res = await tenantDb(event, { as: 'operator', actor: 'operator' }).list<PageRow>(PAGES_TABLE, [
-    Query.equal('status', 'published'),
-    Query.limit(100),
-  ])
+  //
+  // GEBLÄTTERT (NF1 c, 2026-11-18): bis dahin `limit(100)` ohne Blättern — ab
+  // der 101. veröffentlichten Zeile (eine je Seite UND Sprache) wäre ein
+  // gültiger Link als `unknown_page` abgelehnt worden. Dieselbe Hilfe und
+  // dasselbe Netz wie die Verwaltungs-Liste.
+  const res = await listPageRowsPaged<PageRow>(
+    tenantDb(event, { as: 'operator', actor: 'operator' }),
+    PAGES_TABLE,
+    [Query.equal('status', 'published')],
+    {
+      pageSize: ADMIN_PAGES_PAGE_SIZE,
+      maxRows: ADMIN_PAGES_MAX,
+      logName: 'pages.navigation_targets_capped',
+      scope: tenantCacheScope(event),
+    },
+  )
   const paths = new Set<string>(['/'])
   for (const row of res.rows) paths.add(`/${row.slug}`)
   return paths
