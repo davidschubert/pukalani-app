@@ -165,6 +165,187 @@ zehn Sekunden.
 Seiten-Übersetzung), und die Dokument-Prüfung zählt 1.320 s statt 660 s, weil
 jede Prüfung eine zweite Stufe starten kann.
 
+---
+
+### N09 — Nacharbeiten „Wächter, Listen, Tests, Abhängigkeiten": WL1 (a, d), BT1 (a, b, d), WA1 (e) und die Hinweise zu Abhängigkeiten aus AR1 (d) ✅ 2026-11-17
+
+Die baubaren Reste an Wächtern, Listen, Tests und am Katalog der
+Abhängigkeiten. Pull Requests 295, 299, 304, 306, 307, 310, 311, 312, 313,
+314, 320 und der Abschluss-PR. Keine Migration, nichts auf Production
+geändert. Mit Davids Ja (zwei Klicks am 2026-11-17) nachgesehen: die NAMEN in
+den Einstellungs-Dateien der sechs Sites samt „leer / nicht leer", und im
+Fehler-Protokoll der Platform-App nur die Zeilen „[Icon] failed to load".
+
+**Zahlen vorher / nachher**
+
+| | vorher | nachher |
+| --- | --- | --- |
+| Routen ohne Rollen-Test im Bestand | 301 | 88 (mit drei weiteren aus N10 heute 85) |
+| Layer ohne Bestand (`ZERO_BACKLOG_LAYERS`) | 9 | 17 |
+| Einstellungen „noch nicht bewertet" | 36 | 0 |
+| Beweis-Skripte „von Hand" | 36 | 22 |
+| Offene Hinweise zu Abhängigkeiten | 5 | 4 |
+| Zeilen „[Icon] failed to load" je Stunde (Platform-App) | rund 130 | 0 |
+| `pnpm -r test` lokal | 1:05 min | 1:02 bis 1:13 min |
+
+**Was gebaut ist**
+
+- **Isolations-Tests stoßen nicht mehr zusammen (BT1 d, PR 295).**
+  `tenants-resolver.test.ts` und `communityHostResolver.test.ts` bildeten
+  ihren Probe-Host beide als `off-<Uhrzeit>.test.local`. Jetzt: Uhrzeit plus
+  Zufall, im Resolver-Test dazu ein eigenes Präfix. Der Stempel ist kurz
+  gehalten (Basis 36 + 6 Hex-Zeichen), weil `tenantId` nur 36 Zeichen fasst.
+  Der Kopf von `packages/events/tests/participation-guard.test.ts` nennt, wo
+  der Test für das Übersetzen liegt.
+- **Abhängigkeiten (AR1 d, PR 299).** eslint 10.14.0 → 10.15.0 (Katalog),
+  `@vercel/nft` 1.11.1 → 1.11.2, damit glob 13.0.6 → 14.0.6, minimatch 11.0.8
+  für eslint und glob. Geschlossen ist damit der Hinweis zu glob. Beweis für
+  den Datei-Sammler beim Bauen: `apps/platform` einmal mit altem, einmal mit
+  neuem Lockfile gebaut — dieselben 1320 Dateien unter
+  `.output/server/node_modules`. Was offen bleibt und warum, steht in
+  OPEN-ITEMS „AR1" (d).
+- **Env-Wächter merkt leere Werte (WL1 d, PR 304).** Auf dem Server läuft
+  statt `grep` ein kleines `awk` (`ENV_STATE_AWK` in
+  `scripts/ops/verify-site-env.mjs`), das je Zeile den Namen und `0` oder `1`
+  ausgibt — der Wert verlässt den Server weiter nie. Gelesen wird wie in den
+  Ecosystem-Dateien (Leerraum und ein Paar Anführungszeichen zählen nicht, bei
+  doppelten Namen gilt die letzte Zeile). Eine leere Pflicht-Variable ist ein
+  Befund wie eine fehlende. Der Test lässt genau dieses Programm über eine
+  Probe-Datei laufen; dasselbe lief in einem Linux-Container mit `mawk`.
+- **36 Einstellungen bewertet (WL1 a, PR 304).** `ENV_UNDECIDED` ist leer, der
+  Test hält die Liste bei null. Pflicht geworden: die zwei Ablagen des Kontos
+  (platform, control, portfolio), der Name für das Anmelden mit Google
+  (platform, control, branding), die drei ploi-Namen (control). 30 Namen
+  stehen mit Grund in `ENV_NOT_REQUIRED`: wird beim Bauen gesetzt · nur für
+  Entwicklung · der Standard im Code ist der Wert für Production · nur
+  während eines Wechsels · zweiter Weg neben der verschlüsselten Ablage ·
+  Funktion heute bewusst aus. 26 ließen sich aus dem Code allein entscheiden;
+  für zehn brauchte es den Blick auf die Namen. Der Wächter lief danach einmal
+  von Hand: alle sechs Sites grün (19 / 24 / 20 / 22 Pflicht-Einträge gesetzt,
+  keine leer).
+- **Rollen-Tests für acht weitere Layer (BT1 b, PR 306, 307, 312, 313, 314).**
+  `onboarding` (47 Routen), `control` (64), `core` (37), `admin` (28),
+  `tickets` (16), `runner` (14), `domains` (4), `billing` (3): je Route ein
+  Test am echten Handler, mindestens ohne Anmeldung, mit Konto ohne Label und
+  mit der richtigen Rolle; die Erwartung je Person steht ausgeschrieben im
+  Test. Neue Hilfen: `packages/onboarding/tests/support/controlSeam.ts`
+  (nachgebildete Naht), `packages/control/tests/support/controlRouteHarness.ts`
+  (Betreiber- und Naht-Routen), `packages/admin/tests/support/adminRouteHarness.ts`
+  (Pool und Einzel-Instanz), `packages/core/tests/support/instanceRoleGate.ts`
+  (Recht am globalen Label), `appwriteFake.ts` und `coreRouteKit.ts`
+  (Konto-Routen), `packages/runner/tests/support/runnerMachineHarness.ts`
+  (Runner-Ausweis). Der Core-Prüfstand kennt jetzt den Kontroll-Host
+  (`mode: 'control'`) und gibt die Antwort des Handlers zurück. Rund 2200 neue
+  Tests; der Test-Lauf in der CI blieb bei rund zwei Minuten.
+- **Zwei Beweis-Skripte zeigten zwei Programm-Fehler — beide behoben (BT1 d,
+  PR 311).** (1) Einladungs-Vorrat: die Zuweisung holte die zehn ältesten
+  freien Plätze und sortierte abgelaufene erst danach aus; waren die ältesten
+  abgelaufen, fand sie nie einen Platz, legte jedes Mal einen neuen Code an,
+  und der Vorrat schrumpfte nie. Jetzt übergeht schon die Abfrage abgelaufene
+  Plätze (`packages/control/server/utils/inviteRequests.ts`). (2) Zusage
+  zurückziehen: seit die Mitmach-Wache am Anfang der Route steht, war in einer
+  Community mit Zahlungsverzug auch das Zurückziehen zu — gegen die
+  Entscheidung F26 vom August. Die Route ruft die Wache jetzt mit
+  `openDuringSuspension` auf; Zusagen und Wechseln hält weiter die Datentür
+  zu, außerhalb einer Sperre ändert sich nichts. `verify-invite-stock` läuft
+  im Lauf `buehne`, `verify-community-suspension` im Lauf `nacht`.
+- **Dritter Server im nächtlichen Bühnen-Lauf (BT1 a, PR 320).** `buehne.yml`
+  startet nachts zusätzlich `apps/comments` als Einzel-Instanz (drittes
+  Projekt auf derselben Wegwerf-Appwrite über
+  `scripts/ci/buehne-setup.mjs --einzel-port` — ein zweites Setup-Skript
+  scheiterte, weil die Console der Wegwerf-Appwrite nur EIN Konto erlaubt).
+  Ein Skript sagt mit `env: 'einzel'`, dass es sie braucht; steht sie im Lauf
+  nicht, meldet der Läufer „übersprungen" statt rot. 12 der 14 Skripte der
+  Einzel-Instanz laufen jetzt nachts. Fünf waren veraltet, nicht falsch
+  (Lesen wie das Konto liest, offene Kursliste, Bremse der Namensänderung,
+  ein Einmal-Code gilt seit Appwrite 2.7 nur einmal, eigene Probe-Daten statt
+  vorhandener). Neu: `createEinzelCleanup` in `scripts/lib/probe-stage.mjs` —
+  die alten Aufräum-Blöcke ließen je Lauf Namen, Zähler, Abzeichen,
+  Benachrichtigungen und Protokoll-Zeilen der Wegwerf-Konten liegen.
+  Laufzeit: Lauf `buehne` unverändert (4:51 → 5:09 min, Schwankung), Lauf
+  `nacht` 16:12 → 23:16 min. Zwei Skripte bleiben von Hand (brauchen eigens
+  eingestellte Server).
+- **Symbol-Route und Mandanten-Wache (WA1 e, PR 310).** Ursache der Zeilen
+  „[Icon] failed to load" (29.609 im aktuellen Fehler-Log der Platform-App,
+  263.073 im älteren): Ein Symbol, dessen Name erst beim Rendern feststeht,
+  holt `@nuxt/icon` beim Server-Rendern über einen inneren Abruf, der die
+  Kopfzeilen der Anfrage nicht trägt (`useRequestFetch().native` gibt es an
+  Nitros `event.$fetch` nicht, das Modul fällt auf den nackten lokalen Abruf
+  zurück). Ohne Host endete er in `00.tenant.ts` im 404 für unbekannte Hosts.
+  `/api/_nuxt_icon/` steht jetzt neben `/_i18n/` in der Liste der
+  host-unabhängigen Pfade. Lokal an einem Platform-Server: zwei Seitenaufrufe
+  schreiben ohne die Änderung 38 Zeilen, mit ihr 0. Auf Production: vorher
+  rund 130 Zeilen je Stunde, seit dem Ausliefern keine.
+- **Fehler außerhalb einer Anfrage (WA1 e, PR 310).** Nicht behandelte
+  Ablehnungen und Ausnahmen ohne Anfrage schreiben dieselbe strukturierte
+  Zeile wie ein 5xx (`server.error`, `source: process`), hinter dem Gate
+  `pukalani.observability` (`core/server/plugins/process-errors.ts`). Der
+  tägliche Blick zählt sie ohne Umbau mit. Am Prozess ändert sich nichts: kein
+  eigener `process.on(...)`, gelesen wird Nitros Haken `error`.
+- **Zahlungswarn-Lauf (WA1 e, PR 310).** Lief schon ein Sweep, stand im
+  Protokoll der Zeit-Läufe ein guter Lauf. Der Zeit-Lauf fragt jetzt vorher
+  (`isPastDueNoticeRunning`) und meldet `skipped`, wie der Label-Abgleich.
+- **Gruppen-Tabellen in `LIVE-BEWEISE.md` (BT1 d).** Die drei Tabellen vom
+  2026-08-02 sind durch eine kurze Erklärung und eine ERZEUGTE Übersicht je
+  Lauf ersetzt (`pnpm live-beweise`); die Zahlen können nicht mehr veralten.
+
+**Ohne Rückfrage entschieden** (Davids Regel vom 2026-11-17: kleine,
+umkehrbare Fragen mit eigener Empfehlung)
+
+- *Keine Version jünger als drei Tage.* Für die Hinweise zu minimatch wären
+  `@typescript-eslint` 8.73.0 (einen Tag alt) und `@nuxt/content` 3.17.0 (acht
+  Stunden alt) nötig gewesen; `@vercel/nft` hatte sechs Ausgaben in vier
+  Tagen, die jüngste eine Stunde alt. Genommen ist nur, was mindestens drei
+  Tage alt war (`@vercel/nft` 1.11.2 — die Ausgabe, deren einzige Änderung der
+  Sprung von glob ist). Grund: das Repo liefert nach jedem Merge von selbst
+  aus; eine frische Ausgabe eines Bau-Werkzeugs gehört nicht ungeprüft dorthin.
+- *Stripe- und KI-Schlüssel sind keine Pflicht-Namen.* Beide haben einen
+  zweiten Weg (verschlüsselte Ablage, die Datenbank wird zuerst gelesen);
+  Pflicht ist der Umschlag. Ein Wächter, der einen von zwei gleichwertigen
+  Wegen anmahnt, erzieht zum Weglesen.
+- *Die Symbol-Route ist auf jedem Host offen, nicht nur ohne Host.* Dieselbe
+  Regel wie für `/_i18n/`: build-statischer Inhalt, keine Datenbank. Eine
+  engere Regel („nur ohne Host") wäre eine zweite Sorte Ausnahme gewesen.
+- *Prozess-Fehler zählen als `server.error`.* Kein neuer Zähler im
+  Zähl-Skript auf dem Server; die Zeile trägt `source: process` und ist damit
+  unterscheidbar.
+- *Die zwei Programm-Fehler aus den Beweis-Skripten sind behoben statt
+  gemeldet:* je eine Stelle, wenige Zeilen, die richtige Antwort stand schon
+  fest (Kommentar im Code bzw. Entscheidung F26).
+
+**Geprüft:** alle Pull Requests fünfmal grün und vor dem Zusammenführen gegen
+den neuesten Stand von `main` getestet; nach dem Update der Abhängigkeiten und
+nach den zwei Programm-Änderungen der Live-Build auf allen acht Hosts (`ok`,
+`schema: ok`); die Rollen-Tests je Layer mit einer Gegenprobe (eine Erwartung
+absichtlich falsch ⇒ rot).
+
+**Nicht geprüft:** die zwei Programm-Korrekturen aus PR 311 auf Production
+(nur lokal auf der Bühne und in der CI); der neue Env-Wächter im täglichen
+Lauf der CI (läuft erstmals am 2026-11-18 um 04:17 UTC, von Hand war er
+grün); ob auf Production je eine Zeile `server.error` mit `source: process`
+entsteht (dazu müsste ein solcher Fehler auftreten).
+
+**Gelernt:** Ein Beweis, der nicht läuft, verdeckt nicht nur sein eigenes
+Veralten — die zwei Skripte, die „von Hand" standen, zeigten zwei echte
+Programm-Fehler, von denen einer (der Vorrat) auf jeder Instanz mit der Zeit
+von selbst eintritt. Ein Zweig, den ein Helfer in seinem eigenen Worktree
+ausgecheckt hat, lässt sich im Haupt-Worktree nicht unter demselben Namen
+auschecken (`git checkout -B` scheitert, und eine Befehlskette mit `;` läuft
+dann auf dem ALTEN Zweig weiter — der Test danach misst den falschen Stand):
+immer einen eigenen lokalen Namen nehmen und mit `HEAD:<zweig>` pushen. Bauen
+mehrere Helfer am selben Bestand, die Zweige in fester Reihenfolge
+aufeinander stapeln, statt jeden einzeln gegen `main` zu mergen. Eine
+Commit-Meldung mit „deutschen" Anführungszeichen in einem Shell-Argument
+bricht das Quoting — Meldungen über eine Datei (`git commit -F`). Und: eine
+innere Anfrage ohne Kopfzeilen ist für eine Mandanten-Wache ein unbekannter
+Host; ein Modul, das beim Server-Rendern sich selbst aufruft, gehört in die
+Liste der host-unabhängigen Pfade oder es schreibt still das Fehler-Log voll.
+Wer ein Beweis-Skript umbaut, fährt danach den GANZEN Core-Test, nicht nur
+die Wächter der Bühne: ein Skript, das neu einen Schlüssel benutzt, braucht
+die Ziel-Prüfung (`scriptTargetGuard`), und das fiel erst in der CI auf.
+
+---
+
 ### N08 — Nacharbeiten „Kleine Reste quer durch die Produkte": Warteliste, AB1 (g), EL1 (d), KK1 (c), BP1 (d), RU1 (c, d, e), SR1 (d), MM1 (e), SI1 (d), IN1 (c) und zwei Reste aus N07 ✅ 2026-11-17
 
 Die kleinen, baubaren Reste aus zehn offenen Punkten. Pull Requests 296, 297,
