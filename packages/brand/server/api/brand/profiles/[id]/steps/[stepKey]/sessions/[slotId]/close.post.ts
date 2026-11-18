@@ -20,7 +20,11 @@ import {
   writeBrandFindings,
 } from '../../../../../../../../utils/brandFindingsStore'
 import { loadBrandConversationHistory } from '../../../../../../../../utils/brandConversationHistory'
-import { BRAND_REVIEW_EMPTY, runBrandSessionReview } from '../../../../../../../../utils/brandReview'
+import {
+  BRAND_REVIEW_EMPTY,
+  BRAND_REVIEW_INLINE_BUDGET_MS,
+  runBrandSessionReview,
+} from '../../../../../../../../utils/brandReview'
 import { brandSlotPromptLabel } from '../../../../../../../../utils/brandSlotPromptLabels'
 import {
   brandReviewChapter,
@@ -223,6 +227,10 @@ export default defineEventHandler(async (event): Promise<BrandSessionCloseRespon
     // Nur wirksam, solange der Ersatz-Spezialist läuft (Beweis-Schalter).
     stubFinding: String(getQuery(event).stub ?? '') === 'conflict',
     stubAffected: String(getQuery(event).stub ?? '') === 'affected',
+    // EIN Deckel über beide Stufen (LL1 d): das Schliessen prüft in der
+    // Anfrage, der Webserver wartet 60 s. Reicht der Rest nicht für Stufe 2,
+    // gilt Stufe 1 (`reviewedBy: 'stage1'`) — wie wenn Stufe 2 scheitert.
+    budgetMs: BRAND_REVIEW_INLINE_BUDGET_MS,
   })
 
   if (!outcome.reviewed) {

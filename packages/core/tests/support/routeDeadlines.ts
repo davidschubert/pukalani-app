@@ -82,6 +82,7 @@ const AI_MODEL_CHECK = { constant: 'AI_MODEL_CHECK_TIMEOUT_MS', file: 'packages/
 const BRAND_SITE = { constant: 'BRAND_SITE_ANALYSIS_TIMEOUT_MS', file: 'packages/brand/shared/brandSiteAnalysis.ts' } as const
 const BRAND_CRAWL = { constant: 'BRAND_CRAWL_TIMEOUT_MS', file: 'packages/brand/server/utils/brandSiteCrawl.ts' } as const
 const BRAND_REVIEW = { constant: 'BRAND_REVIEW_TIMEOUT_MS', file: 'packages/brand/server/utils/brandReview.ts' } as const
+const BRAND_REVIEW_INLINE = { constant: 'BRAND_REVIEW_INLINE_BUDGET_MS', file: 'packages/brand/server/utils/brandReview.ts' } as const
 const INSIGHTS_GATE = { constant: 'INSIGHTS_GATE_FETCH_BUDGET_MS', file: 'packages/insights/server/utils/insightsReview.ts' } as const
 
 /** Eine Aufrufstelle ohne eigene `timeoutMs` an `aiCompleteJson` & Co. */
@@ -155,17 +156,16 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
   },
   'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/converse.post.ts': { form: 'stream' },
   'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/generate.post.ts': { form: 'stream' },
+  // Kapitel-Prüfung und Schliessen (LL1 d): EIN Zeitdeckel über beide Stufen —
+  // Stufe 2 bekommt nur den Rest oder läuft nicht, dann gilt Stufe 1
+  // (`reviewedBy: 'stage1'`, ein ehrliches Teil-Ergebnis).
   'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/review.post.ts': {
-    form: 'over',
-    deadlines: [{ ...BRAND_REVIEW, times: 2, what: 'Kapitel-Prüfung, zwei Stufen nacheinander (Stufe 2 nur bei Befunden)' }],
-    reason: 'Kapitel-Prüfung des Markenberaters: zwei Text-Läufe nacheinander in der Anfrage, bis 120 s. '
-      + 'Üblich ist eine Stufe in wenigen Sekunden.',
+    form: 'inline',
+    deadlines: [{ ...BRAND_REVIEW_INLINE, times: 1, what: 'Kapitel-Prüfung: ein Deckel über beide Stufen (Stufe 2 nur mit dem Rest)' }],
   },
   'packages/brand/server/api/brand/profiles/[id]/steps/[stepKey]/sessions/[slotId]/close.post.ts': {
-    form: 'over',
-    deadlines: [{ ...BRAND_REVIEW, times: 2, what: 'Sitzungs-Prüfung beim Schliessen, zwei Stufen nacheinander (Stufe 2 nur bei Befunden)' }],
-    reason: 'Schliessen einer Sitzung prüft sie in der Anfrage: zwei Text-Läufe nacheinander, bis 120 s. '
-      + 'Üblich ist eine Stufe in wenigen Sekunden.',
+    form: 'inline',
+    deadlines: [{ ...BRAND_REVIEW_INLINE, times: 1, what: 'Sitzungs-Prüfung beim Schliessen: ein Deckel über beide Stufen (Stufe 2 nur mit dem Rest)' }],
   },
 
   // ── comments ──────────────────────────────────────────────────────────────
