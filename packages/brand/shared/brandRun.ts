@@ -223,6 +223,34 @@ export function toBrandRunView(lease: RunLeaseSnapshot | null, nowMs: number): B
   }
 }
 
+/**
+ * WELCHE GEGENSTÄNDE GERADE EINEN LAUF HABEN — für eine Übersicht über viele
+ * Marken (LL1 c, 2026-11-18: die Liste der Brand-Scores zeigte nach dem
+ * Neuladen nicht, dass ein Fundament-Check rechnet).
+ *
+ * Die Route liest dafür EINMAL alle Zeilen einer Art mit frischem Herzschlag
+ * (`heartbeatAt` jünger als die Frist — das Ende setzt ihn ebenfalls), statt
+ * je Marke `latest()` zu fragen. Gezählt wird je Gegenstand nur die JÜNGSTE
+ * Zeile (höchste `seq`): ein beendeter Nachfolger schlägt einen älteren
+ * Vorgänger, und der Zustand kommt aus derselben Rechnung wie überall
+ * (`runLeaseState`).
+ */
+export function runningBrandRunSubjects(
+  rows: readonly (Pick<RunLeaseSnapshot, 'seq' | 'heartbeatAt' | 'finishedAt' | 'outcome'> & { subject: string })[],
+  nowMs: number,
+): Set<string> {
+  const latest = new Map<string, (typeof rows)[number]>()
+  for (const row of rows) {
+    const seen = latest.get(row.subject)
+    if (!seen || row.seq > seen.seq) latest.set(row.subject, row)
+  }
+  const running = new Set<string>()
+  for (const [subject, row] of latest) {
+    if (runLeaseState(row, nowMs) === 'running') running.add(subject)
+  }
+  return running
+}
+
 /** Wie lange eine Übersicht auf einen gescheiterten oder abgebrochenen Lauf hinweist. */
 export const BRAND_RUN_NOTICE_MS = 24 * 60 * 60_000
 
