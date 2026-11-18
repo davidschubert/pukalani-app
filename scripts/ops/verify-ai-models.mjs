@@ -22,6 +22,19 @@
  * richtig, nur die Gegenseite hat sich geändert. Genau diese Lücke schließt
  * dieses Skript.
  *
+ * ZWEI LISTEN JE MODELL (seit 2026-11-18, Alarm vom selben Tag): der
+ * Vermittler führt die Europa-Endpunkte MIT AUFPREIS (`google-vertex/europe`,
+ * `google-vertex/eu`, `amazon-bedrock/eu-west-1` der Anthropic-Modelle) nicht
+ * mehr in der Endpunkt-Liste seiner weltweiten Adresse, sondern nur noch in
+ * der seiner Europa-Adresse `eu.openrouter.ai`. Die Namen sind dieselben, und
+ * ein Aufruf über die weltweite Adresse erreicht sie weiter, sobald
+ * `provider.only` sie nennt — gemessen am 2026-11-18: 200, abgerechnet zum
+ * Europa-Preis. Dieser Wächter las nur die weltweite Liste und meldete fünf
+ * tote Modell-Wahlen, während kein Aufruf scheiterte. Er liest deshalb BEIDE
+ * Listen; ein verlangter Endpunkt zählt, sobald er in EINER steht. Die
+ * Europa-Adresse wird nur gelesen (öffentlich, ohne Schlüssel) — die App ruft
+ * dort nichts auf.
+ *
  * Es braucht KEINEN Schlüssel: `/models?zdr=true` ist öffentlich. Damit ist
  * es gefahrlos wiederholbar und kostet nichts. Was es NICHT kann: beweisen,
  * dass ein Aufruf gelingt — das kann nur eine echte Anfrage. Es beweist die
@@ -44,6 +57,10 @@ import {
 
 const MODELS_URL = 'https://openrouter.ai/api/v1/models?zdr=true'
 const ENDPOINTS_URL = slug => `https://openrouter.ai/api/v1/models/${slug}/endpoints`
+// Dieselbe Liste auf der Europa-Adresse — nur dort stehen die Europa-Endpunkte
+// mit Aufpreis (Kopf). Ein Modell ohne solchen Endpunkt antwortet dort 200
+// mit leerer Liste, ein unbekannter Slug 404 (beides gemessen).
+const EU_ENDPOINTS_URL = slug => `https://eu.openrouter.ai/api/v1/models/${slug}/endpoints`
 
 /**
  * WO MODELLE KONFIGURIERT WERDEN. Bewusst die `app.config.ts`-Dateien und
@@ -160,13 +177,20 @@ for (const { file, field, slug } of slugs) {
   }
 
   if (!endpointCache.has(slug)) {
-    endpointCache.set(
-      slug,
-      await fetchJson(ENDPOINTS_URL(slug)).catch(error => unreachable(ENDPOINTS_URL(slug), error)),
-    )
+    // BEIDE Listen, nacheinander. Scheitert eine, ist das „keine Aussage"
+    // (Exit 2) und kein Befund: die fehlende könnte den Endpunkt tragen.
+    const lists = []
+    for (const url of [ENDPOINTS_URL(slug), EU_ENDPOINTS_URL(slug)]) {
+      const data = await fetchJson(url).catch(error => unreachable(url, error))
+      lists.push((data?.data?.endpoints ?? []).map(endpoint => endpoint.tag))
+    }
+    endpointCache.set(slug, { world: lists[0], europe: lists[1] })
   }
-  const data = endpointCache.get(slug)
-  const tags = (data?.data?.endpoints ?? []).map(endpoint => endpoint.tag)
+  const { world, europe } = endpointCache.get(slug)
+  const tags = [...new Set([...world, ...europe])]
+  // Woher ein Endpunkt bekannt ist — steht er nur in der Europa-Liste, sagt
+  // die Zeile es dazu (so sieht man, wenn der Vermittler wieder umbaut).
+  const source = tag => world.includes(tag) ? tag : `${tag} (Europa-Liste)`
   // NUR EINE INFO, kein Befund: verlangt das Feld ausschließlich ortlose
   // Endpunkte (heute `imageModel` → `google-vertex/global`) und hat das Modell
   // inzwischen einen EU-Endpunkt, ist eine bewusste Entscheidung fällig —
@@ -184,11 +208,11 @@ for (const { file, field, slug } of slugs) {
     console.log(`   ${where}`)
     console.log('   ist ZDR-fähig, hat aber keinen der verlangten Endpunkte — der Pin')
     console.log(`   macht daraus ein 404. verlangt (einer genügt): ${needed.join(', ')}`)
-    console.log(`   vorhanden: ${tags.join(', ') || '—'}\n`)
+    console.log(`   vorhanden: ${tags.map(source).join(', ') || '—'}\n`)
     if (euInfo) console.log(euInfo)
     continue
   }
-  console.log(`✔ ${slug} (${where}) — inkl. ${usable.join(', ')}`)
+  console.log(`✔ ${slug} (${where}) — inkl. ${usable.map(source).join(', ')}`)
   if (euInfo) console.log(euInfo)
 }
 

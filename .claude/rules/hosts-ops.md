@@ -117,7 +117,9 @@ paths:
   pm2-Log, Resend-Zähler mit Secret) und seit 2026-11-14 `verify-ai-models.mjs`
   (BE-004: hat jedes konfigurierte KI-Modell noch den Endpunkt, auf den der
   Code es festlegt? öffentliche Liste, kein Secret; „OpenRouter nicht
-  erreichbar" ist Exit 2 und bleibt grün), seit 2026-11-16 `verify-turnstile.mjs`
+  erreichbar" ist Exit 2 und bleibt grün; seit 2026-11-18 liest er je Modell
+  ZWEI Listen, die weltweite und die der Europa-Adresse — Regel in
+  `ki-mail-embed-moderation.md`), seit 2026-11-16 `verify-turnstile.mjs`
   (OPS-012: ist die Bot-Prüfung auf jeder Site scharf? je Site ein Aufruf ohne
   Token und ein Seitenabruf, kein Secret; eine unklare Antwort bekommt nach
   20 s einen zweiten Versuch) und seit 2026-11-15 der Blick aufs
