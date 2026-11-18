@@ -1059,7 +1059,9 @@
       "truncated": {
         "hint": "Diese Antwort ist abgeschnitten – das Modell hat aufgehört, bevor es fertig war.",
         "retry": "Noch einmal erzeugen",
-        "writeAgain": "Schreib einfach noch einmal, dann antwortet {voice} neu."
+        "writeAgain": "Schreib einfach noch einmal, dann antwortet {voice} neu.",
+        "fieldBadge": "Abgeschnitten",
+        "fieldHint": "Entwurf abgeschnitten – der Text endet mitten im Gedanken."
       },
       "submitChoice": "Übermitteln",
       "save": {
