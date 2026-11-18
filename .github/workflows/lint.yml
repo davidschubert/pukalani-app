@@ -99,7 +99,7 @@ jobs:
   # gepushtes Geheimnis steht für immer in der Historie. GitHubs eigene Suche
   # mit Push-Sperre ist seit 2026-11-12 an, kennt aber nur die Muster der
   # großen Anbieter; gitleaks ergänzt allgemeine Muster und liest die GANZE
-  # Historie, nicht nur den neuen Commit. Eigener Job: läuft parallel zu
+  # Historie des geprüften Zweigs, nicht nur den neuen Commit. Eigener Job: läuft parallel zu
   # `lint`, braucht kein `pnpm install`, und ein Fund färbt „Lint" rot (und
   # hält damit den Deploy auf).
   #
@@ -139,5 +139,13 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
           "$RUNNER_TEMP/gitleaks" version
 
-      - name: gitleaks (ganze Historie)
-        run: '"$RUNNER_TEMP/gitleaks" git --no-banner --redact --verbose --exit-code 1 .'
+      # NUR DIE HISTORIE DIESES ZWEIGS (CW1 b, Davids Entscheidung 2026-11-18):
+      # gelesen wird alles, was von dem geprüften Commit aus erreichbar ist —
+      # bei einem Pull Request die ganze Geschichte von `main` plus die
+      # Commits des Zweigs, auf `main` die ganze Geschichte von `main`. Vorher
+      # las die Prüfung JEDEN Zweig auf origin: ein Fund in einem fremden
+      # Zweig färbte jeden Pull Request und `main` rot und hielt jedes
+      # Ausliefern auf. Alle Zweige liest weiter der tägliche Lauf
+      # `secrets-watch.yml` (meldet als Issue, hält nichts auf).
+      - name: gitleaks (Historie dieses Zweigs)
+        run: '"$RUNNER_TEMP/gitleaks" git --no-banner --redact --verbose --exit-code 1 --log-opts="--full-history HEAD" .'
