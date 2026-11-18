@@ -27,7 +27,7 @@ const PORT = Number(process.env.PLATFORM_PORT || 3006)
 const HOST = process.env.TENANT_HOST || process.env.CONTROL_HOST || 'app.localhost'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
-const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'pool'
+const poolProject = process.env.NUXT_PUBLIC_CONTROL_POOL_PROJECT || 'account'
 const poolKey = process.env.POOL_KEY
 
 if (!endpoint || !poolKey) {
