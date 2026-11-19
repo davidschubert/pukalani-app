@@ -75,11 +75,14 @@ describe('Selbsttest der Erkennung', () => {
 
   it('kein Skript mit env „branding" ruft eine echte KI, Stripe oder eine fremde Website — die Einteilung sagt es, der Nacht-Lauf stellt die Antworten', () => {
     const nightly = BEWEISE.filter(entry => entry.env === 'branding' && entry.lauf === 'nacht')
-    // Acht der zwölf Skripte von branding.supply laufen nachts; ausgeschrieben, damit ein neues bewusst dazukommt.
+    // Elf der zwölf Skripte von branding.supply laufen nachts; ausgeschrieben, damit ein neues bewusst dazukommt.
     expect(nightly.map(entry => entry.skript.split('/').at(-1)).sort()).toEqual([
       'verify-brand-check-robots.mjs',
+      'verify-brand-design.mjs',
       'verify-brand-events-sweep.mjs',
       'verify-brand-intro-call.mjs',
+      'verify-brand-kit.mjs',
+      'verify-brand-sessions.mjs',
       'verify-brand-share.mjs',
       'verify-market-fetch.mjs',
       'verify-market-report.mjs',
