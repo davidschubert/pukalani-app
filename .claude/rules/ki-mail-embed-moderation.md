@@ -270,7 +270,15 @@ paths:
   (`brandImageModelLabel`). KEIN ERGEBNIS, KEIN SICHTBARER VERBRAUCH: endet
   ein Entwurfs-Lauf ohne ein abgelegtes Bild, bucht die Route den
   Marken-Tageszähler zurück (`refundBrandAiQuota`); Konto- und Instanz-Deckel
-  bleiben gebucht (Missbrauchsnetz). Ein Teil-Erfolg ist ein Lauf.
+  bleiben gebucht (Missbrauchsnetz). Ein Teil-Erfolg ist ein Lauf. Seit
+  2026-11-19 (LL1 c) gilt dasselbe für die LESUNG DER VORBILDER — die zwei
+  Läufe, deren Zähler der Mensch sieht. Das Muster für einen weiteren Lauf
+  dieser Art: im Abschluss (`settle`) zurückbuchen, wenn nichts geschrieben
+  wurde und der Herzschlag nicht verloren ging; den abgebrochenen Vorgänger
+  holt der nächste Start nach (`brandRunOwesRefund`: erst der Vermerk, dann
+  die Rückbuchung); und die Zahl des Geschriebenen SOFORT an die Lauf-Zeile
+  (`progress()`), sonst bucht ein Nachfolger für einen Lauf mit Ergebnis
+  zurück.
 - UGC-ÜBERSETZUNG (2026-08-18, Davids Entscheidungen): Knopf statt Automatik,
   Gate = das jeweilige INHALTS-Produkt (bewusst NICHT 'ai'), seit 2026-11-17
   nur MITGLIEDER der Community (MM1; Regel in tenant-isolation.md).

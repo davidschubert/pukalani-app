@@ -206,6 +206,19 @@ unter „Skript-Regel" (zählt nur). Welche Quelle auf welcher Seite:
 Test im Repo den Webserver davor nicht sieht. Von Hand:
 `node scripts/ops/verify-security-headers.mjs [host]`.
 
+**Erinnerungen in nicht erreichbaren Communities (seit 2026-11-19, SE1 d —
+zählt nur).** Der stündliche Lauf `event-reminders` der Platform-App erkennt
+Termine stillgelegter oder wegen Missbrauchs gesperrter Communities. Heute
+erinnert er dort noch weiter und zählt nur. Der Blick „In die App hinein"
+nennt in der Übersicht „Termine nicht erreichbar" und unter „Nur gezählt"
+einen Satz: so viele Takte gemeldet, so viele davon mit Frage ans Control
+Plane, so viele ohne Antwort, so viele Termine (und wie viele Erinnerungen
+im Zähl-Modus trotzdem gesendet wurden). Rot wird davon nichts. So liest man
+ihn: „0 mit Frage" heißt nur, dass kein Termin fällig war — das sagt nichts
+über die Erkennung. „Ohne Antwort" über mehrere Tage heißt, die Platform-App
+erreicht das Control Plane für diese Frage nicht (erinnert wird dann wie
+früher). Woran das Scharfstellen hängt: OPEN-ITEMS „SE1" d.
+
 **KI-Modelle (seit 2026-11-14, BE-004; seit 2026-11-19 alle 30 Minuten im
 Job `tls`, ein Befund trägt also `alarm:tls` und schließt sich mit dem
 nächsten grünen Halbstunden-Lauf).** Ein roter Blick heißt: in den
@@ -893,6 +906,12 @@ neuen Zähl-Skript.
   (Pull Request). Die umgelaufenen Dateien bleiben liegen — von Hand löschen.
 - *Dateien früherer Prozess-Nummern* laufen einmal um; ihre Kopie `.1` bleibt
   liegen und kann von Hand weg.
+- *Der erste Umlauf, nachgesehen am 2026-11-19 (nur gelesen, mit Davids Ja):*
+  gelaufen um 03:12; im Ordner liegen 33 Dateien `.1`, die laufenden Dateien
+  sind geleert und werden weiter beschrieben, zusammen 66 MB. Eine seit Juli
+  leere Datei hat keine `.1` (leere Dateien dreht `logrotate` nicht). Der
+  tägliche Wächter am Morgen danach war grün und zählte alle 39 erwarteten
+  Zeit-Läufe als gut.
 
 **Server-Einstellungen.** Der Satz im Issue nennt Site und Pflicht-Zeile
 oder den Zeitplan.
