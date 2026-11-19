@@ -244,6 +244,50 @@ lag keine Datenbank-Änderung. Seit dem 2026-11-18 ist der Rückweg an einer
 App mit Datenbank geübt (`platform`, im laufenden Betrieb). Nicht geübt ist
 ein Rückweg über eine Datenbank-Änderung hinweg.
 
+## A4. Node: eine Version an drei Orten
+
+Die Node-Version steht als EXAKTE Zahl in [`.nvmrc`](../../.nvmrc). Sie gilt
+lokal (`nvm use`), in jedem GitHub-Lauf (`node-version-file`) und auf dem
+App-Server. Gebaut wird in der CI, betrieben auf dem Server: nur mit
+derselben Version beweisen die Prüfungen das, was live läuft. Bis zum
+2026-11-18 stand in `.nvmrc` nur die Linie `22`, der Server lief auf 24, und
+die CI nahm, was der Runner gerade vorrätig hatte.
+
+Auf dem App-Server kommt Node aus dem Paket `nodejs` (Paketquelle NodeSource,
+Linie 24). **Von selbst wird es dort nicht gehoben** (nachgesehen 2026-11-18).
+pm2 startet jede App mit `/usr/bin/node`.
+
+**Ein neuer Patch-Stand — in dieser Reihenfolge:**
+
+1. `.nvmrc` heben, als Pull Request. Alle Prüfungen und der Bau fahren damit
+   schon die neue Version. Lokal holt `nvm install` im Repo-Ordner sie.
+2. Auf dem Server das Paket auf GENAU diese Version heben. Das braucht
+   `sudo` (der Zugang `ploi` hat es nicht ohne Passwort):
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install nodejs=<Version aus .nvmrc>-1nodesource1
+   ```
+
+3. Als `ploi` den pm2-Dienst mit der neuen Version neu starten:
+
+   ```bash
+   pm2 update
+   ```
+
+   Das startet ALLE Apps neu (eine kurze Unterbrechung auf jeder Site). Ein
+   `pm2 reload` reicht nicht: im Cluster-Modus nimmt der pm2-Dienst selbst die
+   Verbindungen an, und er läuft bis zu seinem Neustart mit dem alten Stand
+   weiter.
+4. Beweis: `pm2 jlist` nennt je Prozess die Node-Version (`node_version`) —
+   sie ist die aus `.nvmrc`; danach `node scripts/ops/verify-health.mjs`.
+
+Ein Sprung auf eine neue LINIE (24 → 26) ist dasselbe mit einem Schritt
+davor: die Paketquelle auf dem Server zeigt auf eine Linie
+(`/etc/apt/sources.list.d/nodesource.sources`), und `@types/node` im Katalog
+zieht mit (die Typen folgen der Laufzeit, nie darüber). Einen Wächter, der
+die Version des Servers mit `.nvmrc` vergleicht, gibt es nicht.
+
 ---
 
 # Teil B — Eine neue Silo-Site aufsetzen (Rezept, Juli 2026)
@@ -331,7 +375,7 @@ cp apps/comments/.env.example apps/comments/.env.production
 
 # EIN Befehl: Datenbank + Buckets + alle Migrationen
 # (system→comments→moderation→admin), idempotent (409→skip).
-nvm use 22
+nvm use   # liest .nvmrc
 node --env-file=apps/comments/.env.production \
   scripts/bootstrap.mjs --app comments      # OHNE --seed (Prod!)
 ```

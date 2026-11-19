@@ -112,7 +112,7 @@ sie ist eine Momentaufnahme (Stand 2026-11-18) und veraltet zwangsläufig.
 | Zod | ^4.6.7 | Schema Validation |
 | @nuxtjs/i18n | ^10.6.0 | Internationalisierung (de + en) — gehört zur Nuxt-Generation (10.6 ↔ ab 4.5) und wird **mit Nuxt zusammen** gezogen |
 | TypeScript | ^6.0.3, strict | Typsicherheit — 6.0 ist die Decke, TypeScript 7 erst, wenn `vue-tsc` und typescript-eslint es können |
-| pnpm Workspaces | Node 22 | Monorepo-Verwaltung |
+| pnpm Workspaces | Node 24 (genau laut `.nvmrc`) | Monorepo-Verwaltung |
 
 > **Eine Caret-Range pinnt nichts** (`^4.4.8` erlaubt 4.5.1). Die wirkliche Version
 > steht nur im Lockfile: `node -p "require('./apps/<app>/node_modules/<pkg>/package.json').version"`.
@@ -380,7 +380,7 @@ maui-monorepo/
 │   └── _template/                         # Vorlage für neue Apps
 │
 ├── .github/workflows/                     # typecheck, lint, deploy
-├── .nvmrc                                 # Node 22
+├── .nvmrc                                 # Node 24, exakte Version
 ├── pnpm-workspace.yaml
 ├── package.json                           # Root: nur dev tooling
 ├── tsconfig.json
@@ -593,7 +593,7 @@ NUXT_PUBLIC_APP_URL=https://<app-domain>
 
 ### A12 — Node.js, Ports, Git
 
-- `.nvmrc`: Node 22 (nvm lokal, ploi.io + GitHub Actions via `node-version-file`)
+- `.nvmrc`: Node 24 als EXAKTE Version — dieselbe lokal (`nvm use`), in GitHub Actions (`node-version-file`) und auf dem App-Server (Paket `nodejs`, Patch-Weg: `docs/runbooks/DEPLOYMENT.md` A4)
 - Ports (fest je App in ihrer `package.json`): Core-Playground 3000 · comments 3001 ·
   _template 3002 · photos 3003 · control 3004 · portfolio 3005 · platform 3006 ·
   marketing 3007 · help 3008 · Docs-Site 4000 (`pnpm dev:docs`).

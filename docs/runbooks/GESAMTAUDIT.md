@@ -124,7 +124,7 @@ Erfasse:
 - Externe Integrationen: Stripe, Resend, OpenRouter/KI, Plausible, Turnstile, Cloudflare
 - Deployment (ploi, GitHub Actions), Wächter (check:*), Tests, Monitoring, vorhandene Dokumentation
 
-Baseline: pnpm -r lint, pnpm -r typecheck, pnpm -r test, ein lokaler Build und pnpm audit einmal ausführen (Node 22). Rohausgaben unter {{AUDIT_DIR}}/evidence/baseline/. Exit-Codes getrennt von der Ausgabe festhalten, nie über eine Pipe.
+Baseline: pnpm -r lint, pnpm -r typecheck, pnpm -r test, ein lokaler Build und pnpm audit einmal ausführen (Node laut `.nvmrc`). Rohausgaben unter {{AUDIT_DIR}}/evidence/baseline/. Exit-Codes getrennt von der Ausgabe festhalten, nie über eine Pipe.
 
 # Schritt 2 – Projekt verstehen und einordnen
 - Was ist das Produkt, für wen, wie verdient es Geld? Gleiche Code, Doku und Marketing-Seiten mit context.md ab. Markiere jede Ableitung als Annahme.
@@ -245,7 +245,7 @@ Prüfe Konsistenz gegen Theme-Tokens, app.config.ts und Nuxt UI; UTable als Stan
 
 ```text
 # Zusatz Dokumentation & DX
-Folge dem README in einem frischen Klon in einem temporären Ordner außerhalb des Repos (Node 22). Notiere jeden Schritt, der fehlt, falsch ist oder Vorwissen voraussetzt. Prüfe die Doku-Ordnung (.claude/rules/docs-ordnung.md): Offenes nur in OPEN-ITEMS, keine zweite Liste, Pläne ohne Erledigtes. Vergleiche Referenz-Doku und docs/content stichprobenartig mit dem Code und melde Abweichungen mit Fundstelle.
+Folge dem README in einem frischen Klon in einem temporären Ordner außerhalb des Repos (Node laut `.nvmrc`). Notiere jeden Schritt, der fehlt, falsch ist oder Vorwissen voraussetzt. Prüfe die Doku-Ordnung (.claude/rules/docs-ordnung.md): Offenes nur in OPEN-ITEMS, keine zweite Liste, Pläne ohne Erledigtes. Vergleiche Referenz-Doku und docs/content stichprobenartig mit dem Code und melde Abweichungen mit Fundstelle.
 ```
 
 ## Prompt Synthese-Session

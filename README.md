@@ -53,7 +53,7 @@ Geteilte Dependency-Versionen sind ausschließlich im Catalog ([pnpm-workspace.y
 
 ## Setup
 
-Voraussetzungen: **Node 22** (`.nvmrc`), **pnpm 10** und eine laufende **Appwrite-Instanz 2.7.x** (wie dev, CI und prod) (self-hosted, z. B. via Docker/OrbStack). Empfohlener DB-Adapter: **MariaDB** (Appwrites dokumentierter Default; MongoDB ist als Multi-Adapter neuer/weniger erprobt).
+Voraussetzungen: **Node 24** (genau die Version aus `.nvmrc`, `nvm install` im Repo-Ordner holt sie), **pnpm 10** und eine laufende **Appwrite-Instanz 2.7.x** (wie dev, CI und prod) (self-hosted, z. B. via Docker/OrbStack). Empfohlener DB-Adapter: **MariaDB** (Appwrites dokumentierter Default; MongoDB ist als Multi-Adapter neuer/weniger erprobt).
 
 ```bash
 pnpm install

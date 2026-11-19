@@ -14,7 +14,9 @@ Vollständiges Konzept: docs/CONCEPT.md
   `new WebSocket` braucht alle 20 s `{"type":"ping"}` wie die SDKs. Upgrade-Wege,
   Beweis-Fallen und die Versionsgeschichte: `docs/runbooks/APPWRITE-2-7-UPGRADE.md`
   (und die Runbooks davor)
-- Zod, @nuxtjs/i18n (de+en), TypeScript strict, pnpm Workspaces, Node 22
+- Zod, @nuxtjs/i18n (de+en), TypeScript strict, pnpm Workspaces, Node 24 — GENAU die Version aus `.nvmrc`,
+  dieselbe lokal, in der CI und auf Production (seit 2026-11-18; Patch-Weg:
+  `docs/runbooks/DEPLOYMENT.md` A4)
 
 ## Architektur (3 Ebenen)
 - packages/core → Fundament-Layer. Besitzt KEINE Appwrite Tables.

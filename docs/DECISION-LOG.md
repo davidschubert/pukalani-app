@@ -7,6 +7,41 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-18 — Node: eine Version an drei Orten (Linie 24, exakt in `.nvmrc`)
+
+**Anlass:** Ein Update-Issue wollte nur den Patch-Stand der 22er-Linie
+prüfen. Beim Nachsehen zeigte sich: der App-Server läuft auf der 24er-Linie,
+Repo und CI prüften und bauten mit 22. Die Prüfungen bewiesen damit nicht
+ganz das, was live läuft, und keine Stelle im Repo nannte den Unterschied.
+
+**Davids Entscheidung** (2026-11-18): Der Server bleibt auf 24; Repo, CI und
+der eigene Rechner ziehen nach — „alle auf dieselbe". Der Server zieht auf
+dieselbe exakte Version.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar):
+- **`.nvmrc` nennt die exakte Version, nicht die Linie.** Mit `22` nahm die
+  CI, was der Runner vorrätig hatte (eine Woche nach einem Sicherheits-Stand
+  noch den davor). „Dieselbe" geht nur mit einer Zahl. Preis: jeder
+  Patch-Stand ist ein Pull Request und ein Handgriff am Server
+  (`docs/runbooks/DEPLOYMENT.md`, A4).
+- **`@types/node` zieht auf die Linie 24.** Das löst die frühere Entscheidung
+  „bleibt auf ^22.x" ab; ihre Regel bleibt: die Typen folgen der Laufzeit und
+  stehen nie über ihr.
+- **`engines` im Wurzel-`package.json` verlangt 24.** Geprüft wird nur noch
+  damit; eine ältere Linie zu versprechen wäre unbelegt.
+- **Die Startbefehle in `.claude/launch.json` rufen `nvm use` ohne Zahl.** So
+  lesen sie `.nvmrc` und brauchen beim nächsten Stand keine Änderung.
+- **`tools/ai-runner` behält `>=22.6`.** Das ist der Mindeststand einer
+  Fähigkeit (Typen beim Laden entfernen), keine Aussage über den Betrieb.
+
+**Nicht geändert:** die Laufzeit `node-22` in den Appwrite-Einstellungen
+(Functions und Sites). Das ist Appwrites eigene Laufzeit, nicht die der Apps.
+
+**Wieder prüfen:** vor April 2028 (Ende der Pflege für Linie 24) der Sprung
+auf die nächste Langzeit-Linie. Einen Wächter, der die Version des Servers
+mit `.nvmrc` vergleicht, gibt es nicht — ein Auseinanderlaufen fällt heute
+nur beim Nachsehen auf.
+
 ## 2026-11-18 — Ausliefer-Weg (N12): ein Skript für Ausliefern und Rückweg, kein CI-Schlüssel mit Shell
 
 **Anlass:** Nacharbeiten-Gruppe N12 (CI1, RW1 c, SI1 c, MG1 c). Der Weg, über
@@ -3377,7 +3412,7 @@ Sonderfälle (StudioEditor `draft!`, TicketModal `splice`). Erkenntnis: der
 Migrationswert lag nicht im Bump, sondern im Aufdecken einer latenten
 Typ-Unsauberkeit. Commit `7dc1c8d`.
 
-### Entscheidung: @types/node bleibt auf ^22.x (Dependabot #10 abgelehnt)
+### Entscheidung: @types/node bleibt auf ^22.x (Dependabot #10 abgelehnt) — abgelöst am 2026-11-18, s. „Node: eine Version an drei Orten"
 `@types/node` 22→26 würde die Typen ÜBER die Node-22-Runtime heben (typisiert
 APIs, die es zur Laufzeit nicht gibt). Bei `^22.x` bleiben, bis die Runtime auf
 Node 26 geht. PR #10 geschlossen.
