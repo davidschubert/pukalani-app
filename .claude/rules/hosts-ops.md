@@ -111,10 +111,12 @@ paths:
 - DIE WÄCHTER, EIN WORKFLOW, EIN ALARMWEG (`.github/workflows/
   production-watch.yml`, seit 2026-08-20; Alarmweg MON1 seit 2026-10-28): Job
   `tls` alle 30 min (`verify-tls.mjs` + `verify-health.mjs` — ok:true auf
-  jedem Host, Appwrite-Version; weder ssh noch Secret), Job `server` täglich
+  jedem Host, Appwrite-Version; weder ssh noch Secret; seit 2026-11-19 läuft
+  hier auch `verify-ai-models.mjs`, KM1 a — vorher täglich), Job `server` täglich
   04:17 UTC mit `verify-site-env.mjs`, `verify-stale-keys.mjs --strict`,
   `verify-instance-admins.mjs`, `verify-mail-breaker.mjs` (Notbremse im
-  pm2-Log, Resend-Zähler mit Secret) und seit 2026-11-14 `verify-ai-models.mjs`
+  pm2-Log, Resend-Zähler mit Secret) und von 2026-11-14 bis 2026-11-19
+  `verify-ai-models.mjs`, seitdem im Job `tls`
   (BE-004: hat jedes konfigurierte KI-Modell noch den Endpunkt, auf den der
   Code es festlegt? öffentliche Liste, kein Secret; „OpenRouter nicht
   erreichbar" ist Exit 2 und bleibt grün; seit 2026-11-18 liest er je Modell

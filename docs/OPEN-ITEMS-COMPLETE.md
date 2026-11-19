@@ -30,6 +30,45 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KM1 a — Der Blick auf die KI-Modelle läuft alle 30 Minuten statt einmal am Tag ✅ 2026-11-19
+
+**Was war:** Der Wächter `scripts/ops/verify-ai-models.mjs` lief im täglichen
+Teil des Produktions-Wächters (04:17 UTC). Als der Anbieter am 2026-11-18
+seine Endpunkt-Listen umbaute (COMPLETE „KA1"), lag der Umbau zwischen 04:21
+und 21:38 UTC — aufgefallen ist er nur, weil jemand den Lauf am Abend von
+Hand startete. Von selbst wäre er erst am nächsten Morgen rot geworden.
+
+**Was jetzt gilt (Davids Klick 2026-11-19: „Ja, alle 30 Minuten"):** Der
+Schritt steht im Job `tls` von `.github/workflows/production-watch.yml` und
+läuft damit in jedem Lauf — alle 30 Minuten, im Tageslauf und im Lauf von
+Hand. Er braucht weder ssh noch ein Secret (zwei öffentliche Listen je
+Modell). Ein Befund gehört jetzt zur Quelle `alarm:tls`: derselbe Takt, der
+das Issue öffnet, sieht den Blick auch wieder grün und schließt es. „Anbieter
+nicht erreichbar" bleibt eine Warnung und kein Alarm (Exit 2), wie vorher.
+Der Satz der Quelle in Titel und Mail nennt die KI-Modelle jetzt beim
+Halbstunden-Teil (`scripts/ops/alarm-issue.mjs`).
+
+**Mit entschieden (Davids Klick 2026-11-19: „Nein, vorerst nicht"):** KM1 (b),
+ein täglicher winziger echter Aufruf als Probe, wird nicht gebaut. Echte
+Ausfälle zählt der tägliche Blick „In die App hinein" schon je App, und ein
+weiterer Schlüssel bei GitHub wäre eine weitere Sache zum Pflegen.
+
+**Nicht gebaut:** eine zweite Messung, bevor der Blick rot wird. Der Blick
+wiederholt nur gescheiterte Abrufe (drei Versuche). Liefert der Anbieter
+einmal eine unvollständige Liste mit Status 200, öffnet das jetzt einen
+Alarm, den der nächste Lauf nach 30 Minuten schließt. Bisher nie gesehen;
+kommt es vor, ist „erst nach zwei roten Läufen in Folge" der nächste Schritt.
+
+**Beweis:** steht im Pull Request dieses Eintrags (Lauf von Hand auf `main`,
+Schritt im Job `tls`).
+
+**Gelernt:** Ein Blick, der nichts kostet und keinen Schlüssel braucht,
+gehört in den schnellen Takt. Der Takt eines Blicks entscheidet außerdem,
+WER seinen Alarm schließen darf — ein Blick zieht deshalb immer mit seinem
+Schritt UND mit seiner Quelle um, nie nur mit einem von beiden.
+
+---
+
 ### KM1 e — Alarmweg: ein Alarm aus dem täglichen Teil schloss sich nach 30 Minuten von selbst ✅ 2026-11-19
 
 **Was war:** Der Produktions-Wächter läuft in zwei Takten in einer Datei —

@@ -72,13 +72,13 @@ export const SOURCES = Object.freeze([
   Object.freeze({
     key: 'tls',
     label: 'alarm:tls',
-    text: 'Zertifikate/Erreichbarkeit/Live-Verbindung (alle 30 min)',
+    text: 'Zertifikate/Erreichbarkeit/Live-Verbindung/KI-Modelle (alle 30 min)',
     description: 'Alarm-Quelle: Job tls (alle 30 min) war rot und ist seither nicht grün gesehen',
   }),
   Object.freeze({
     key: 'server',
     label: 'alarm:server',
-    text: 'Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Bot-Prüfung, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter, Server-Einstellungen, Schutz-Kopfzeilen)',
+    text: 'Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, Bot-Prüfung, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter, Server-Einstellungen, Schutz-Kopfzeilen)',
     description: 'Alarm-Quelle: Job server (täglich) war rot — nur ein Lauf MIT dem täglichen Teil nimmt das Label weg',
   }),
   Object.freeze({
