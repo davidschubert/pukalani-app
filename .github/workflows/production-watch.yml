@@ -42,7 +42,8 @@
 #      VOR dem Limit — RS1 c) und
 #      Blick 3 (MZ1): ≥ 3 Bounces oder ≥ 1 Spam-Beschwerde in 24 h ⇒ rot.
 #
-#   6. KI-MODELLE (`verify-ai-models.mjs`), TÄGLICH (BE-004, 2026-11-14). Ein
+#   6. KI-MODELLE (`verify-ai-models.mjs`), ALLE 30 MINUTEN (BE-004,
+#      2026-11-14; bis 2026-11-19 täglich, s. Ende dieses Absatzes). Ein
 #      Modell-Slug bei OpenRouter ist ein Angebot, kein Versprechen: verliert
 #      ein konfiguriertes Modell den Endpunkt, auf den unser Code es festlegt
 #      (zwei EU-Endpunkte für Text, `google-vertex/eu` für Bild- und
@@ -54,6 +55,13 @@
 #      (öffentliche Modell-Liste). „OpenRouter nicht erreichbar" ist KEIN
 #      Befund (Exit 2 ⇒ Warnung, der Lauf bleibt grün) — rot wird nur ein
 #      Modell, das unter unseren Bedingungen nachweislich keinen Weg mehr hat.
+#      IM HALBSTUNDEN-TAKT (KM1 a, 2026-11-19, Davids Ja): der Blick lief
+#      einmal am Tag. Als OpenRouter am 2026-11-18 seine Endpunkt-Listen
+#      umbaute, wäre das erst nach bis zu 24 Stunden aufgefallen — bemerkt
+#      wurde es nur, weil jemand den Lauf von Hand startete. Der Schritt
+#      steht deshalb im Job `tls` (ohne ssh, ohne Secret). Damit gehört ein
+#      Befund zur Quelle `alarm:tls`: derselbe Takt, der ihn öffnet, sieht
+#      ihn auch wieder grün und schließt ihn.
 #
 #   7. NÄCHTLICHES BACKUP (Tor-Wort `backup-status`), TÄGLICH (OPS-001,
 #      2026-11-15). Das Backup der Appwrite-Instanz lief seit Juli jede Nacht
@@ -323,7 +331,8 @@ name: Produktions-Wächter
 
 on:
   schedule:
-    # Alle 30 Minuten: nur die Zertifikate.
+    # Alle 30 Minuten: der Job `tls` (Zertifikate, Erreichbarkeit,
+    # Live-Verbindung, KI-Modelle) und die Kundendomains.
     - cron: '*/30 * * * *'
     # Täglich 04:17 UTC: zusätzlich die beiden Server-Blicke. Abseits der
     # vollen Stunde, damit der Lauf nicht mit den Deploy-Wellen konkurriert.
@@ -447,6 +456,23 @@ jobs:
           PUKALANI_REALTIME_DRILL: ${{ inputs.realtime_drill && '1' || '0' }}
           PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
         run: node scripts/ops/verify-realtime.mjs --handshake
+
+      # Blick 6 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Modell-Listen
+      # von OpenRouter. Exit 1 = ein Modell hat keinen passenden Endpunkt mehr
+      # (rot). Exit 2 = OpenRouter war nicht erreichbar, also keine Aussage —
+      # das ist eine Warnung und kein Alarm; der nächste Lauf in 30 Minuten
+      # prüft neu.
+      - name: KI-Modelle unter unseren Bedingungen erreichbar?
+        if: always()
+        run: |
+          set -u
+          code=0
+          node scripts/ops/verify-ai-models.mjs || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::OpenRouter war nicht erreichbar — keine Aussage über die KI-Modelle. Kein Alarm; der nächste Lauf prüft neu."
+            exit 0
+          fi
+          exit "$code"
 
       # Höchstens 20 Sätze, je höchstens 600 Zeichen — sie kommen aus unseren
       # eigenen Skripten und enthalten nur Zahlen und Namen aus dem Repo.
@@ -613,22 +639,6 @@ jobs:
           PUKALANI_OPS_SSH: ploi@49.13.211.173
           RESEND_API_KEY: ${{ secrets.PRODUCTION_WATCH_RESEND_KEY }}
         run: node scripts/ops/verify-mail-breaker.mjs --ssh --resend --strict
-
-      # Blick 6 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Modell-Liste
-      # von OpenRouter. Exit 1 = ein Modell hat keinen passenden Endpunkt mehr
-      # (rot). Exit 2 = OpenRouter war nicht erreichbar, also keine Aussage —
-      # das ist eine Warnung und kein Alarm; der nächste Tageslauf prüft neu.
-      - name: KI-Modelle unter unseren Bedingungen erreichbar?
-        if: always()
-        run: |
-          set -u
-          code=0
-          node scripts/ops/verify-ai-models.mjs || code=$?
-          if [ "$code" -eq 2 ]; then
-            echo "::warning::OpenRouter war nicht erreichbar — keine Aussage über die KI-Modelle. Kein Alarm; der nächste Tageslauf prüft neu."
-            exit 0
-          fi
-          exit "$code"
 
       # Blick 11 (s. Kopf). Ohne ssh und ohne Secret: je Site ein Aufruf ohne
       # Token und ein Seitenabruf. Die Ausgabe nennt nur Host, Status und den

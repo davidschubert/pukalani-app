@@ -53,7 +53,8 @@ paths:
   kostet rund 10 %, und er ist eine Bedingung an die MODELLWAHL — ein Modell
   ohne die zwei Endpunkte (auch ein per Konsole eingetragenes
   `app_config.aiModel`) läuft nicht langsamer, sondern gar nicht;
-  `pnpm ops:ai-models` prüft die konfigurierten Slugs täglich, seit P17 auch
+  `pnpm ops:ai-models` prüft die konfigurierten Slugs alle 30 Minuten
+  (bis 2026-11-19 täglich, KM1 a), seit P17 auch
   `ticketsAiModel`. SEIT KI1 c (2026-11-17) PRÜFT AUCH DAS SPEICHERN: beide
   Routen, die ein Modell aus der Oberfläche annehmen (`admin/config.patch.ts`,
   `tickets/settings.patch.ts`), rufen für ein NEUES Modell
@@ -260,7 +261,7 @@ paths:
   `packages/brand/tests/brandAiCallSites.test.ts` hält je Aufrufstelle
   Transport und Konstante gegeneinander (neue Aufrufstelle ⇒ dort mitzählen);
   (2) die Wächter-Tabelle `scripts/ops/ai-model-endpoints.mjs` ist per Test an
-  die drei Konstanten gebunden, `pnpm ops:ai-models` läuft täglich im
+  die drei Konstanten gebunden, `pnpm ops:ai-models` läuft alle 30 Minuten im
   Produktions-Wächter; (3) WER DEN ORT ÄNDERT, ändert drei Texte mit: den
   Hinweis vor dem Knopf (`brand.mark.drafts.notice.*`, steht für ALLE
   Besucher vor dem Auslösen — Davids Wortlaut), den Datenschutztext
