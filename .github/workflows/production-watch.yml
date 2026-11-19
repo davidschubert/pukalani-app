@@ -42,7 +42,8 @@
 #      VOR dem Limit — RS1 c) und
 #      Blick 3 (MZ1): ≥ 3 Bounces oder ≥ 1 Spam-Beschwerde in 24 h ⇒ rot.
 #
-#   6. KI-MODELLE (`verify-ai-models.mjs`), TÄGLICH (BE-004, 2026-11-14). Ein
+#   6. KI-MODELLE (`verify-ai-models.mjs`), ALLE 30 MINUTEN (BE-004,
+#      2026-11-14; bis 2026-11-19 täglich, s. Ende dieses Absatzes). Ein
 #      Modell-Slug bei OpenRouter ist ein Angebot, kein Versprechen: verliert
 #      ein konfiguriertes Modell den Endpunkt, auf den unser Code es festlegt
 #      (zwei EU-Endpunkte für Text, `google-vertex/eu` für Bild- und
@@ -54,6 +55,13 @@
 #      (öffentliche Modell-Liste). „OpenRouter nicht erreichbar" ist KEIN
 #      Befund (Exit 2 ⇒ Warnung, der Lauf bleibt grün) — rot wird nur ein
 #      Modell, das unter unseren Bedingungen nachweislich keinen Weg mehr hat.
+#      IM HALBSTUNDEN-TAKT (KM1 a, 2026-11-19, Davids Ja): der Blick lief
+#      einmal am Tag. Als OpenRouter am 2026-11-18 seine Endpunkt-Listen
+#      umbaute, wäre das erst nach bis zu 24 Stunden aufgefallen — bemerkt
+#      wurde es nur, weil jemand den Lauf von Hand startete. Der Schritt
+#      steht deshalb im Job `tls` (ohne ssh, ohne Secret). Damit gehört ein
+#      Befund zur Quelle `alarm:tls`: derselbe Takt, der ihn öffnet, sieht
+#      ihn auch wieder grün und schließt ihn.
 #
 #   7. NÄCHTLICHES BACKUP (Tor-Wort `backup-status`), TÄGLICH (OPS-001,
 #      2026-11-15). Das Backup der Appwrite-Instanz lief seit Juli jede Nacht
@@ -252,15 +260,39 @@
 # einen ZUSTAND, der nicht untergehen kann:
 #   · rot  ⇒ EIN offenes Issue mit Label `produktions-alarm` (kein zweites,
 #            solange es offen ist; alle 12 h ein Kommentar „weiterhin rot")
-#   · grün ⇒ das offene Issue bekommt „Entwarnung" und wird geschlossen
+#   · grün ⇒ das offene Issue bekommt „Entwarnung" und wird geschlossen —
+#            aber erst, wenn JEDE Quelle des Alarms grün GESEHEN wurde (s. u.)
 #   · dazu, wenn eingerichtet: Mail bei JEDEM Wechsel (Resend-Secret) und
 #     ein Heartbeat-Ping bei jedem grünen Lauf (UptimeRobot-Heartbeat —
 #     bleibt der Ping aus, schlägt UptimeRobot an: das deckt auch den Fall
 #     „der Workflow läuft gar nicht mehr", den kein Job hier sehen kann).
+#
+# WESHALB EIN ISSUE OFFEN IST, STEHT ALS LABEL AM ISSUE (seit 2026-11-19):
+# je Quelle eines — `alarm:tls`, `alarm:server`, `alarm:kundendomains`. Ein
+# Lauf ändert nur, was er GEMESSEN hat: Job rot ⇒ Label dazu, Job grün ⇒
+# Label weg, `skipped` ⇒ Label bleibt. Geschlossen wird mit dem letzten Label.
+# Anlass (Issue 401, 2026-11-18): der tägliche Teil öffnete um 21:39 UTC, der
+# nächste Halbstunden-Lauf schloss um 22:10 UTC mit „alle Wächter wieder
+# grün" — dabei läuft `server` dort gar nicht. Ein Alarm aus dem täglichen
+# Teil stand so höchstens 30 Minuten offen, mit einer Entwarnungs-Mail dazu.
+# Jetzt lässt der Halbstunden-Lauf `alarm:server` stehen; das Issue schließt
+# der nächste Tageslauf oder ein Lauf von Hand, wenn `server` grün ist.
+# LABELS, weil sie ein Wert sind und kein Text: der Titel nennt nur den Stand
+# beim Öffnen, ein Vermerk im Issue-Text müsste bei jedem Wechsel neu
+# geschrieben und wieder herausgelesen werden. Ein Label setzt und entfernt
+# EIN Aufruf, man sieht es in der Issue-Liste, und ein Mensch kann es von
+# Hand korrigieren. Die Regel selbst steht mit ihren Tests in
+# `scripts/ops/alarm-issue.mjs` (`packages/core/tests/alarmIssue.test.ts`).
+# DER HEARTBEAT hängt weiter am LAUF („dieser Lauf sah nichts Rotes"), nicht
+# am Issue — ein offenes Tages-Issue hält ihn im Halbstunden-Takt nicht auf.
+#
 # PROBEALARM: `workflow_dispatch` mit `alarm_drill` macht den Health-Blick
-# sicher rot und prüft damit die ganze Kette (Issue, Mail, Heartbeat-Ausfall);
-# der nächste Lauf ohne Schalter räumt wieder auf. Runbook mit Klickliste:
-# docs/runbooks/PRODUKTIONS-ALARM.md
+# sicher rot und prüft damit die ganze Kette (Issue, Mail, Heartbeat-Ausfall).
+# AUFRÄUMEN: ein Lauf von Hand OHNE Schalter (`gh workflow run
+# production-watch.yml`) — dort laufen alle drei Jobs, er schließt also auch
+# einen Probealarm des täglichen Teils sofort. Der Halbstunden-Takt räumt nur
+# Probealarme auf, die den täglichen Teil nicht betreffen. Runbook mit
+# Klickliste: docs/runbooks/PRODUKTIONS-ALARM.md
 #
 # Die beiden täglichen laufen IMMER beide, auch wenn der erste rot wird
 # (`if: always()`) — sonst verdeckt ein Befund den anderen und man repariert
@@ -315,7 +347,8 @@ name: Produktions-Wächter
 
 on:
   schedule:
-    # Alle 30 Minuten: nur die Zertifikate.
+    # Alle 30 Minuten: der Job `tls` (Zertifikate, Erreichbarkeit,
+    # Live-Verbindung, KI-Modelle) und die Kundendomains.
     - cron: '*/30 * * * *'
     # Täglich 04:17 UTC: zusätzlich die beiden Server-Blicke. Abseits der
     # vollen Stunde, damit der Lauf nicht mit den Deploy-Wellen konkurriert.
@@ -443,6 +476,23 @@ jobs:
           PUKALANI_REALTIME_DRILL: ${{ inputs.realtime_drill && '1' || '0' }}
           PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
         run: node scripts/ops/verify-realtime.mjs --handshake
+
+      # Blick 6 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Modell-Listen
+      # von OpenRouter. Exit 1 = ein Modell hat keinen passenden Endpunkt mehr
+      # (rot). Exit 2 = OpenRouter war nicht erreichbar, also keine Aussage —
+      # das ist eine Warnung und kein Alarm; der nächste Lauf in 30 Minuten
+      # prüft neu.
+      - name: KI-Modelle unter unseren Bedingungen erreichbar?
+        if: always()
+        run: |
+          set -u
+          code=0
+          node scripts/ops/verify-ai-models.mjs || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::OpenRouter war nicht erreichbar — keine Aussage über die KI-Modelle. Kein Alarm; der nächste Lauf prüft neu."
+            exit 0
+          fi
+          exit "$code"
 
       # Höchstens 20 Sätze, je höchstens 600 Zeichen — sie kommen aus unseren
       # eigenen Skripten und enthalten nur Zahlen und Namen aus dem Repo.
@@ -609,22 +659,6 @@ jobs:
           PUKALANI_OPS_SSH: ploi@49.13.211.173
           RESEND_API_KEY: ${{ secrets.PRODUCTION_WATCH_RESEND_KEY }}
         run: node scripts/ops/verify-mail-breaker.mjs --ssh --resend --strict
-
-      # Blick 6 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Modell-Liste
-      # von OpenRouter. Exit 1 = ein Modell hat keinen passenden Endpunkt mehr
-      # (rot). Exit 2 = OpenRouter war nicht erreichbar, also keine Aussage —
-      # das ist eine Warnung und kein Alarm; der nächste Tageslauf prüft neu.
-      - name: KI-Modelle unter unseren Bedingungen erreichbar?
-        if: always()
-        run: |
-          set -u
-          code=0
-          node scripts/ops/verify-ai-models.mjs || code=$?
-          if [ "$code" -eq 2 ]; then
-            echo "::warning::OpenRouter war nicht erreichbar — keine Aussage über die KI-Modelle. Kein Alarm; der nächste Tageslauf prüft neu."
-            exit 0
-          fi
-          exit "$code"
 
       # Blick 11 (s. Kopf). Ohne ssh und ohne Secret: je Site ein Aufruf ohne
       # Token und ein Seitenabruf. Die Ausgabe nennt nur Host, Status und den
@@ -838,8 +872,10 @@ jobs:
       always() && !cancelled() &&
       github.event.repository.fork == false &&
       !(inputs.appwrite_probe || inputs.appwrite_renew || inputs.appwrite_reset_account)
-    # Kein Checkout: nur Issues lesen und schreiben.
+    # Issues lesen und schreiben; `contents: read` nur für den Checkout des
+    # einen Skripts (`scripts/ops/alarm-issue.mjs`).
     permissions:
+      contents: read
       issues: write
     # Secrets nur aus der Umgebung `production-watch` (SEC-041): sie lässt
     # ausschließlich den Zweig `main` zu — ein Lauf von einem anderen Zweig
@@ -867,88 +903,24 @@ jobs:
       BEFUNDE_KUNDEN: ${{ needs.kundendomains.outputs.befunde }}
       ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
-      # Ergebnis der Wächter in EINEN Zustand übersetzen. `skipped` ist kein
-      # Fehler (der tägliche Job läuft im Halbstunden-Takt nicht).
+      # Nur das Skript mit der Regel. KEIN setup-node und kein Installieren:
+      # es nutzt allein eingebaute Module, das Node des Runners genügt — jeder
+      # Schritt weniger ist eine Stelle weniger, an der der Alarmweg scheitert.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Ergebnis der Wächter in EINEN Zustand übersetzen (Regel und Gründe im
+      # Kopf des Skripts). `skipped` ist weder rot noch grün: der tägliche Job
+      # läuft im Halbstunden-Takt nicht, und ein Lauf, der ihn nicht gemessen
+      # hat, nimmt `alarm:server` nicht weg — er schließt ein Issue aus dem
+      # täglichen Teil nicht und schreibt keine Entwarnung.
+      # STRENG: bricht das Skript ab, ist der Lauf rot und der Heartbeat
+      # bleibt aus — ein kaputter Alarmweg darf nicht grün aussehen (der
+      # erste Probealarm, 2026-10-28, starb genau so: ein `null` aus jq, ein
+      # Rechenfehler, Job trotzdem grün). Die Folge-Schritte prüfen EXPLIZIT
+      # auf die Ausgänge `wechsel` und `gruen`.
       - name: Issue öffnen, bestätigen oder schließen
         id: issue
-        run: |
-          # STRENG: bricht dieser Schritt ab, ist der Lauf rot und der
-          # Heartbeat bleibt aus — ein kaputter Alarmweg darf nicht grün
-          # aussehen (der erste Probealarm, 2026-10-28, starb genau so: ein
-          # `null` aus jq, ein Rechenfehler, Job trotzdem grün).
-          set -euo pipefail
-          rot=""
-          [ "$TLS_RESULT" = "failure" ] && rot="$rot Zertifikate/Erreichbarkeit/Live-Verbindung (alle 30 min)"
-          [ "$SERVER_RESULT" = "failure" ] && rot="$rot Server-Blicke (täglich: Env, Zugänge, Admin-Konto, Mail, KI-Modelle, Bot-Prüfung, Datenbank-Stand, Backup, in die App hinein, Realtime-Wächter, Server-Einstellungen, Schutz-Kopfzeilen)"
-          [ "$KUNDEN_RESULT" = "failure" ] && rot="$rot Kundendomains (alle 30 min: Zertifikat, Erreichbarkeit — im Protokoll nur als Nummer)"
-          echo "tls=$TLS_RESULT server=$SERVER_RESULT kundendomains=$KUNDEN_RESULT rot='${rot# }' drill=$DRILL"
-          # Leerzeilen raus; bleibt nichts, gibt es keinen Abschnitt im Issue.
-          befunde="$(printf '%s\n%s\n%s\n' "$BEFUNDE_TLS" "$BEFUNDE_SERVER" "$BEFUNDE_KUNDEN" | sed '/^[[:space:]]*$/d')"
-
-          # Label einmalig sicherstellen (--force: vorhandenes nur aktualisieren).
-          gh label create "$LABEL" --color B60205 --force \
-            --description 'Produktions-Wächter rot — offen = Alarm aktiv, zu = Entwarnung' >/dev/null
-
-          # Leere Liste ⇒ leere Zeichenkette (NICHT "null null" — Probealarm 1).
-          offen=$(gh issue list --label "$LABEL" --state open --limit 1 --json number,updatedAt \
-            --jq 'if length > 0 then "\(.[0].number) \(.[0].updatedAt)" else "" end')
-          nummer="${offen%% *}"; zuletzt="${offen#* }"
-          stand=$(date -u +'%Y-%m-%d %H:%M UTC')
-          wechsel="keiner"
-
-          if [ -n "$rot" ] && [ -z "$nummer" ]; then
-            probe=""; [ "$DRILL" = "1" ] && probe=" (Probealarm)"
-            titel="🔴 Produktions-Alarm${probe}:${rot} — $stand"
-            {
-              echo "Der Produktions-Wächter ist ROT. Betroffen:**${rot}**."
-              echo
-              echo "- Lauf: $RUN_URL"
-              echo "- Was zuerst tun: \`docs/runbooks/PRODUKTIONS-ALARM.md\`, Abschnitt „Wenn ein Alarm kommt\" (Appwrite-Zertifikat, ok:false, Mail-Missbrauch)."
-              echo "- Dieses Issue schließt der Wächter SELBST, sobald ein Lauf wieder grün ist. Solange es offen ist, ist der Alarm aktiv."
-              [ "$DRILL" = "1" ] && echo "- **PROBEALARM**: absichtlich ausgelöst über einen Probe-Schalter; der nächste Lauf ohne Schalter räumt auf."
-              if [ -n "$befunde" ]; then
-                echo
-                echo "**Was zu tun ist** (je Befund ein Satz; Blicke ohne eigenen Satz stehen im Lauf):"
-                echo
-                printf '%s\n' "$befunde" | sed 's/^/- /'
-              fi
-              echo
-              echo "_Erzeugt vom Job \`alarm\` in \`.github/workflows/production-watch.yml\` (MON1)._"
-            } > /tmp/issue-body.md
-            # ZUWEISEN statt nur öffnen (MON2, 2026-11-08): ein Bot-Issue
-            # erreicht den Besitzer nur über „Watching" — und das lieferte
-            # trotz Watch + Mail-Haken KEINE Mail (Probealarme #72/#73 standen
-            # nur in github.com/notifications). Eine Zuweisung ist
-            # „Participating" und kommt als Mail an wie jeder PR-Review-Ruf.
-            url=$(gh issue create --title "$titel" --label "$LABEL" --assignee "$ALARM_ASSIGNEE" --body-file /tmp/issue-body.md)
-            echo "Issue geöffnet: $url"
-            wechsel="alarm"
-          elif [ -n "$rot" ]; then
-            # Weiterhin rot: alle 12 h ein Lebenszeichen, nicht alle 30 min.
-            alt=$(( $(date -u +%s) - $(date -u -d "$zuletzt" +%s) ))
-            if [ "$alt" -ge 43200 ]; then
-              {
-                echo "Weiterhin rot ($stand):${rot}. Lauf: $RUN_URL"
-                if [ -n "$befunde" ]; then echo; printf '%s\n' "$befunde" | sed 's/^/- /'; fi
-              } > /tmp/issue-comment.md
-              gh issue comment "$nummer" --body-file /tmp/issue-comment.md >/dev/null
-              echo "Issue #$nummer: weiterhin rot, Kommentar gesetzt (zuletzt vor $((alt / 3600)) h)."
-            else
-              echo "Issue #$nummer ist offen (zuletzt vor $((alt / 60)) min) — nichts zu tun."
-            fi
-          elif [ -n "$nummer" ]; then
-            gh issue comment "$nummer" --body "✅ Entwarnung ($stand): alle Wächter wieder grün. Lauf: $RUN_URL" >/dev/null
-            gh issue close "$nummer" --reason completed >/dev/null
-            echo "Issue #$nummer geschlossen (Entwarnung)."
-            wechsel="entwarnung"
-          else
-            echo "Alles grün, kein offenes Alarm-Issue."
-          fi
-          # Die Folge-Schritte prüfen EXPLIZIT auf diese Werte: fehlen sie
-          # (Schritt abgebrochen), läuft weder Mail noch Heartbeat.
-          echo "wechsel=$wechsel" >> "$GITHUB_OUTPUT"
-          echo "rot=${rot# }" >> "$GITHUB_OUTPUT"
-          [ -z "$rot" ] && echo "gruen=1" >> "$GITHUB_OUTPUT" || echo "gruen=0" >> "$GITHUB_OUTPUT"
+        run: node scripts/ops/alarm-issue.mjs
 
       # Mail NUR bei einem Wechsel (Alarm / Entwarnung) — nie im Takt.
       # Ohne Secret+Variable: sichtbar übersprungen, nicht rot (das Fehlen
@@ -978,7 +950,7 @@ jobs:
             text="Der Produktions-Wächter ist rot: $ROT. Lauf: $RUN_URL — Issue-Liste: ${{ github.server_url }}/${{ github.repository }}/issues?q=label%3Aproduktions-alarm"
           else
             betreff="✅ Entwarnung: Produktions-Wächter wieder grün"
-            text="Alle Wächter sind wieder grün. Lauf: $RUN_URL"
+            text="Jede Quelle des Alarms war in einem Lauf wieder grün, das Issue ist geschlossen. Lauf: $RUN_URL"
           fi
           # MEHRERE EMPFÄNGER (OPS-010, 2026-11-17): das Secret darf eine
           # Kommaliste sein („a@…, b@…") — bis dahin trug die Anfrage genau

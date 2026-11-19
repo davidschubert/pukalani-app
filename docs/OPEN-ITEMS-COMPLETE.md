@@ -30,6 +30,431 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW30 (c) — Klick-Beweis hinter der Anmeldung auf Production nach Appwrite 2.7.3 ✅ 2026-11-19
+
+**Was.** Nach dem Upgrade vom 2026-11-18 war Production nur von außen
+geprüft. Am 2026-11-19 folgte der Teil hinter der Anmeldung, auf
+`demo.pukalani.app` mit dem Konto des Betreibers in seinem Browser. Passwort
+und Code hat er selbst getippt, die Klicks davor und danach und das Ablesen
+liefen über die Fernsteuerung des Browsers.
+
+**Geprüft.**
+
+- Die bestehende Sitzung galt: `/api/auth/me` 200, auch auf
+  `account.pukalani.app`.
+- Abmelden: der Klick führt auf `/login`, danach antwortet `/api/auth/me` 401.
+- Anmelden mit Passwort: neue Sitzung, Weg `email`, Faktor `password`.
+- Anmelden per Code: Code angefordert, Mail kam, neue Sitzung mit dem Weg
+  `token` und dem Faktor `email`.
+- Profilbild: ein Probe-Bild (108 Bytes) über die Upload-Route der Seite —
+  200, gespeichert als `avatar.png`; Abruf 200 `image/png` mit `nosniff`;
+  Löschen 200, danach 404. HTML mit Bild-Typ: 415. Das echte Profilbild blieb
+  unverändert.
+- Live-Verbindung mit dem Token der Sitzung: `connected` mit Konto, Ping und
+  Pong.
+- Die Seite 188 s offen: kein neuer Socket, kein `/api/auth/me`, 10
+  Heartbeats (Takt 20 s) und 19 Lese-Aufrufe der Presence.
+
+**Nicht geprüft** (steht weiter in OPEN-ITEMS „AW30" c): ein Kommentar und
+eine Stimme, und der Speichern-Knopf im Profil mit einem neuen Bild.
+
+**Gelernt:** Der Profilbild-Upload hängt am Speichern-Knopf des Profils, und
+der ersetzt das Bild und löscht die alte Datei. Ein Beweis mit einem echten
+Konto geht deshalb über die drei Routen der Seite (hochladen, abrufen,
+löschen) mit derselben Sitzung — das sagt man dann auch so, es ist nicht der
+Klick. Und: ob eine Sitzung ein Upgrade überlebt hat, liest man an ihrem
+Anlage-Datum ab, BEVOR man abmeldet; hier fehlt diese Zahl. Nach dem Abmelden
+füllt der Passwort-Manager das Anmelde-Formular von selbst, auch mit einem
+anderen Konto — nichts abschicken, die Zielseite direkt aufrufen.
+
+---
+
+
+### KM1 a — Der Blick auf die KI-Modelle läuft alle 30 Minuten statt einmal am Tag ✅ 2026-11-19
+
+**Was war:** Der Wächter `scripts/ops/verify-ai-models.mjs` lief im täglichen
+Teil des Produktions-Wächters (04:17 UTC). Als der Anbieter am 2026-11-18
+seine Endpunkt-Listen umbaute (COMPLETE „KA1"), lag der Umbau zwischen 04:21
+und 21:38 UTC — aufgefallen ist er nur, weil jemand den Lauf am Abend von
+Hand startete. Von selbst wäre er erst am nächsten Morgen rot geworden.
+
+**Was jetzt gilt (Davids Klick 2026-11-19: „Ja, alle 30 Minuten"):** Der
+Schritt steht im Job `tls` von `.github/workflows/production-watch.yml` und
+läuft damit in jedem Lauf — alle 30 Minuten, im Tageslauf und im Lauf von
+Hand. Er braucht weder ssh noch ein Secret (zwei öffentliche Listen je
+Modell). Ein Befund gehört jetzt zur Quelle `alarm:tls`: derselbe Takt, der
+das Issue öffnet, sieht den Blick auch wieder grün und schließt es. „Anbieter
+nicht erreichbar" bleibt eine Warnung und kein Alarm (Exit 2), wie vorher.
+Der Satz der Quelle in Titel und Mail nennt die KI-Modelle jetzt beim
+Halbstunden-Teil (`scripts/ops/alarm-issue.mjs`).
+
+**Mit entschieden (Davids Klick 2026-11-19: „Nein, vorerst nicht"):** KM1 (b),
+ein täglicher winziger echter Aufruf als Probe, wird nicht gebaut. Echte
+Ausfälle zählt der tägliche Blick „In die App hinein" schon je App, und ein
+weiterer Schlüssel bei GitHub wäre eine weitere Sache zum Pflegen.
+
+**Nicht gebaut:** eine zweite Messung, bevor der Blick rot wird. Der Blick
+wiederholt nur gescheiterte Abrufe (drei Versuche). Liefert der Anbieter
+einmal eine unvollständige Liste mit Status 200, öffnet das jetzt einen
+Alarm, den der nächste Lauf nach 30 Minuten schließt. Bisher nie gesehen;
+kommt es vor, ist „erst nach zwei roten Läufen in Folge" der nächste Schritt.
+
+**Beweis:** steht im Pull Request dieses Eintrags (Lauf von Hand auf `main`,
+Schritt im Job `tls`).
+
+**Gelernt:** Ein Blick, der nichts kostet und keinen Schlüssel braucht,
+gehört in den schnellen Takt. Der Takt eines Blicks entscheidet außerdem,
+WER seinen Alarm schließen darf — ein Blick zieht deshalb immer mit seinem
+Schritt UND mit seiner Quelle um, nie nur mit einem von beiden.
+
+---
+
+### KM1 e — Alarmweg: ein Alarm aus dem täglichen Teil schloss sich nach 30 Minuten von selbst ✅ 2026-11-19
+
+**Was war:** Der Produktions-Wächter läuft in zwei Takten in einer Datei —
+`tls` und `kundendomains` alle 30 Minuten, `server` einmal am Tag. Der Job
+`alarm` schloss das Issue `produktions-alarm`, sobald in EINEM Lauf kein Job
+rot war. Im Halbstunden-Lauf ist `server` aber „skipped", und das zählte nicht
+als rot. Gesehen an Issue 401 (2026-11-18): geöffnet 21:39 UTC vom täglichen
+Teil, geschlossen 22:10 UTC mit „alle Wächter wieder grün", der Befund bestand
+um 22:31 UTC noch. Ein Alarm aus dem täglichen Teil stand so höchstens 30
+Minuten offen, dazu kam eine Entwarnungs-Mail.
+
+**Was jetzt gilt:** Das Issue trägt je Quelle, die rot war und seither nicht
+grün gesehen wurde, ein Label: `alarm:tls`, `alarm:server`,
+`alarm:kundendomains`. Ein Lauf ändert nur, was er gemessen hat (rot ⇒ Label
+dazu, grün ⇒ weg, nicht gelaufen ⇒ bleibt); geschlossen wird mit dem letzten
+Label. Ein Issue mit `alarm:server` schließt also nur der Tageslauf oder ein
+Lauf von Hand, in dem `server` grün ist. Waren beide Teile rot, nimmt jeder
+Lauf seinen Teil weg und schreibt einen Kommentar. Die Regel steht nicht mehr
+als Shell im Workflow, sondern in `scripts/ops/alarm-issue.mjs`, mit 26 Tests
+(`packages/core/tests/alarmIssue.test.ts`) — auch dafür, dass ein
+gescheiterter Aufruf den Lauf rot macht und weder Mail noch Heartbeat schickt.
+
+**Selbst entschieden (klein, umkehrbar):**
+- Labels statt Titel oder Vermerk im Text: ein Wert, den GitHub führt und den
+  ein Mensch von Hand korrigieren kann.
+- Der Heartbeat hängt weiter am Lauf, nicht am Issue. Sonst meldete
+  UptimeRobot einen Befund aus dem täglichen Teil ein zweites Mal.
+- Probealarme werden von Hand aufgeräumt (`gh workflow run
+  production-watch.yml`, dort laufen alle Jobs). Eine Sonderregel „Probe-Issue
+  schließt jeder Lauf" gibt es nicht: ein Probelauf kann auch einen echten
+  Befund treffen, und der ginge dann wieder nach 30 Minuten verloren.
+- Wird eine weitere Quelle rot, während ein Issue offen ist, bekommt das
+  Issue das Label und einen Kommentar, aber keine zweite Mail (wie vorher).
+
+**Beweis:** Tests und ein Lauf des Skripts gegen ein gestelltes `gh` lokal,
+danach zwei Probealarme auf `main` (2026-11-19, Zeiten in UTC, die Zeile in
+Anführungszeichen steht so im Protokoll des Jobs `alarm`):
+
+| Lauf | Zeit | Was | Protokoll | Issue |
+|---|---|---|---|---|
+| 44498685593 | 09:41 | `signals_drill`, `server` rot | `plan=open` | 412 offen mit `alarm:server`, Alarm-Mail |
+| 44503302199 | 10:11 | Halbstunden-Lauf, `server` skipped | `plan=waiting` — „Issue #412 bleibt offen: 'server' ist in diesem Lauf nicht geprüft worden — keine Entwarnung", Heartbeat gesendet | 412 offen, kein Kommentar, keine Mail |
+| fünf weitere | bis 12:38 | Halbstunden-Läufe | dasselbe | 412 offen |
+| 44528708013 | 12:57 | von Hand ohne Schalter, `server` grün | `plan=close` | 412 zu um 13:00, Label weg, Entwarnungs-Mail |
+| 44530968523 | 13:11 | `alarm_drill`, `tls` rot | `plan=open` | 413 offen mit `alarm:tls`, Alarm-Mail |
+| 44535098965 | 13:36 | Halbstunden-Lauf, `server` skipped | `plan=close` | 413 zu um 13:36, Entwarnungs-Mail |
+
+Vorher (Issue 401) schloss der Halbstunden-Lauf ein Issue aus dem täglichen
+Teil nach 31 Minuten; Issue 412 stand drei Stunden und sechs Halbstunden-Läufe
+offen, bis ein Lauf den täglichen Teil grün sah. Kein Probe-Issue blieb offen.
+
+**Gelernt:** „Kein Job rot" ist nicht „alles grün", wenn ein Lauf nicht alles
+prüft. Ein übersprungener Job ist keine Aussage — wer aus mehreren Takten
+EINEN Zustand macht, muss je Quelle festhalten, wann sie zuletzt wirklich
+gemessen wurde, und darf nur schließen, was er selbst grün gesehen hat. Und:
+eine Entwarnung, die niemand geprüft hat, ist schlimmer als gar keine — sie
+kam hier als Mail.
+
+### KA1 — KI-Alarm vom 2026-11-18: der Wächter war rot, kein Modell war ausgefallen ✅ 2026-11-18
+
+**Anlass.** Der tägliche Blick „KI-Modelle unter unseren Bedingungen
+erreichbar?" meldete am 2026-11-18 um 21:38 UTC fünf Modell-Wahlen als nicht
+erreichbar (Alarm-Issue 401): das Textmodell an drei Stellen (Core, Tickets,
+Prüf-Modell des Markenberaters) und das Modell für Bild- und Video-Lesen auf
+branding.supply. Der Lauf um 04:21 UTC desselben Tages war noch grün. Am Code
+hatte sich nichts geändert. Davids Auftrag: untersuchen und einen Ersatz
+vorschlagen.
+
+**Befund: kein Ersatz nötig.** Der Vermittler hat nicht die Endpunkte
+entfernt, sondern seine LISTE umgebaut. Die Europa-Endpunkte mit Aufpreis
+(`amazon-bedrock/eu-west-1` und `google-vertex/europe` der Anthropic-Modelle,
+`google-vertex/eu` der Gemini-Modelle) stehen nicht mehr in der Endpunkt-Liste
+der weltweiten Adresse, sondern nur noch in der seiner Europa-Adresse
+(`eu.openrouter.ai/api/v1/models/<slug>/endpoints`, öffentlich, ohne
+Schlüssel). Die Namen sind dieselben. Das trifft JEDES Modell von Anthropic
+und Google, nicht nur unsere zwei: in der weltweiten Liste hatte keines mehr
+einen Europa-Endpunkt. Endpunkte ohne Aufpreis (Amazon Nova, Mistral) stehen
+weiter in beiden Listen.
+
+**Beweise.**
+
+- Der alte Wächter dreimal über acht Minuten: Exit 1, fünf Befunde, stabil.
+- Beide Listen nebeneinander gelesen, für sieben Modelle: die verlangten
+  Namen stehen nur noch in der Europa-Liste.
+- ZWEI echte lokale Aufrufe über die weltweite Adresse, mit genau dem
+  `provider`-Block der Transporte (der zweite mit Davids Klick):
+  Text (`anthropic/claude-haiku-4.5`, beide Europa-Endpunkte erlaubt) ⇒ 200,
+  Anbieter Amazon Bedrock, Kosten 0,0000429 $; Bild-Lesen
+  (`google/gemini-3.1-flash-lite`, nur `google-vertex/eu`, ein 64×64-PNG) ⇒
+  200, „Rot und Blau.", Kosten 0,00031185 $. Beide Beträge sind auf die
+  letzte Stelle der EUROPA-Preis (1,10 / 5,50 $ und 0,275 / 1,65 $ je
+  Million Tokens), nicht der weltweite (1,00 / 5,00 $ und 0,25 / 1,50 $).
+  Zusammen 0,04 Cent.
+- Der Blick „In die App hinein" im roten Lauf: 0 KI-Ausfälle in 25 Stunden
+  auf allen sechs Apps.
+
+**Was wirklich kaputt war.** Nicht die Aufrufe, aber zwei Dinge, die dieselbe
+Liste lesen: der Wächter (falscher Alarm) und die Prüfung beim Speichern
+eines Modells (`checkAiModelEndpoints`, COMPLETE „N05") — sie lehnte seit dem
+Umbau jedes Modell von Anthropic und Google mit 422
+`ai_model_no_eu_endpoint` ab.
+
+**Gebaut (Pull Request 405).**
+
+- `scripts/ops/verify-ai-models.mjs` liest je Modell beide Listen; ein
+  verlangter Endpunkt zählt, sobald er in einer steht. Die Zeile sagt
+  „(Europa-Liste)", wenn er nur dort steht. Scheitert eine der zwei
+  Abfragen, bleibt es bei „keine Aussage" (Exit 2, kein Alarm).
+- `core/shared/aiModelEndpoints.ts` und `core/server/utils/aiModelCheck.ts`
+  lesen ebenfalls beide, zugleich und unter EINER Frist (5 s). „Kein
+  Europa-Endpunkt" ist nur noch eine Aussage, wenn beide Listen lesbar
+  waren; fehlt eine, wird gespeichert und „nicht prüfbar" gemeldet.
+- Die Europa-Adresse wird nur gelesen. Kein Transport ruft dort ein Modell —
+  das wäre ein anderer Tarif des Vermittlers. Ein Test hält das.
+- Gegenprobe: ein Modell ohne Europa-Endpunkt in beiden Listen
+  (`openai/gpt-4o`) macht den Wächter weiter rot.
+- An der Bindung der Aufrufe und an den Modellen ist nichts geändert.
+
+**Nach dem Zusammenführen.** Der Wächter von Hand auf `main` (Lauf
+44414263601, 2026-11-18 22:50 UTC): alle Jobs grün, der Schritt „KI-Modelle"
+nennt 6 von 6 Modell-Wahlen, fünf davon mit dem Zusatz „(Europa-Liste)".
+Issue 401 war da schon zu — aber NICHT durch die Reparatur: der nächste
+Halbstunden-Lauf hatte es um 22:10 UTC mit „Entwarnung" geschlossen, obwohl
+er die täglichen Blicke gar nicht prüft und der Befund weiter bestand (um
+22:23 und 22:31 UTC nachgemessen). Das ist ein eigener Befund am Alarmweg
+(OPEN-ITEMS „KM1" e).
+
+**Was eine Nutzerin gesehen hätte, wäre es ein echter Ausfall gewesen.** Mit
+gestellter Antwort des Vermittlers (404) werfen alle fünf Transporte 503 mit
+`ai_endpoint_unavailable`, und die Oberfläche zeigt den Satz „KI gerade
+nicht verfügbar" mit dem Hinweis, dass nichts an ein Modell ging
+(`aiTransportPolicy.test.ts`, `aiEndpointNotice.test.ts`). Kein Absturz. Im
+Browser geklickt wurde das nicht.
+
+**Nicht geprüft.** Kein Aufruf gegen Production. Ob in der Datenbank eines
+Deployments ein anderes Modell steht, ist nicht nachgesehen (für diesen
+Alarm ohne Belang: jedes Modell mit Europa-Endpunkt läuft wie vorher).
+Video-Lesen hat keinen eigenen Aufruf bekommen — es nutzt dasselbe Modell
+und denselben Endpunkt wie das Bild-Lesen.
+
+**Ohne Rückfrage entschieden.** Kein Modell-Tausch vorgeschlagen, weil
+nichts ausgefallen war; den Wächter und die Speicher-Prüfung auf beide
+Listen umgestellt (klein, umkehrbar); Vereinigung beider Listen statt „nur
+noch die Europa-Liste" (hält auch, wenn der Vermittler zurückbaut).
+
+**Gelernt:** **Ein roter Wächter sagt, was er LIEST, nicht was IST.** Dieser
+liest eine öffentliche Liste, und der Vermittler darf sie umbauen, ohne dass
+sich ein einziger Aufruf ändert. Bei Rot deshalb erst messen (die zweite
+Liste, die KI-Ausfälle im täglichen Blick, notfalls ein gebundener Aufruf
+für unter einen Cent), dann über ein anderes Modell reden — der Auftrag
+hieß schon „Ersatz vorschlagen". Zweitens: **der Preis ist der Beleg für den
+Ort.** `data_region` meldet immer `global` (COMPLETE „AI1"), aber die Kosten
+eines Aufrufs stimmen auf die letzte Stelle mit dem Preis genau EINES
+Endpunkts überein. Drittens: wer eine fremde Liste an zwei Stellen liest
+(Wächter und Speicher-Prüfung), bindet beide per Test aneinander — das war
+schon so, und nur deshalb fiel die zweite Stelle hier sofort mit auf. Reste
+und Vorschläge: OPEN-ITEMS „KM1".
+
+### N16 — Nacharbeiten „Drei größere Reste": BT1 (a), WA1 (d), WA1 (e) ✅ 2026-11-18
+
+Die drei Reste, die N15 bewusst liegen ließ (Davids „Ja, einplanen" vom
+2026-11-18). Pull Requests 397 (Mail-Blick), 398 (Route für die Host-Liste),
+399 (Wächter lesen die Liste), 400 (vierter Server im Nacht-Lauf) und der
+Abschluss. Nichts an der echten Datenbank, kein bezahlter KI-Lauf, kein
+Stripe, keine Migration; das eine Geheimnis hat David freigegeben (unten).
+
+**WA1 (e) — der Mail-Blick liest nur noch die Dateien des laufenden Prozesses.**
+
+- **Vorher:** der tägliche Blick ließ auf dem App-Server ein `grep` über
+  `~/.pm2/logs/*-error*.log` laufen — also auch über die Dateien früherer
+  Prozess-Nummern, die pm2 daneben liegen lässt. Nur das Zeitfenster hielt
+  ihn richtig.
+- **Jetzt:** er fragt je App das Zähl-Skript `ops/app-watch-counts.mjs`
+  (Tor-Wort `app-signals`). Das liest die zwei Dateien, in die der Prozess
+  gerade schreibt (aus `pm2 jlist`), samt ihren umgelaufenen Geschwistern,
+  und gibt eine neue Zeile zurück: `mailbremse ausgeloest=<n>
+  letzte_min=<m|nie>`. Die Rechnung steht rein in
+  `scripts/ops/mail-breaker-rules.mjs`. Ein Befund nennt jetzt die Site und
+  „zuletzt vor n Minuten".
+- **Kein Eingriff am Server.** Das von Hand eingespielte Tor
+  `ops/app-watch-gate.sh` ist unverändert (der tägliche Prüfsummen-Vergleich
+  bleibt grün); das Zähl-Skript bringt das Ausliefern selbst mit. Das alte
+  Tor-Wort `mail-breaker` nimmt nur noch der Probelauf (`--pattern`).
+- **Zwischen Merge und Ausliefern** antwortet der Server noch ohne die neue
+  Zeile: dann steht dort „nicht gezählt", und ohne eine einzige Zahl endet
+  der Blick mit Exit 2 (kaputter Weg, kein Alarm).
+- **Beweise:** `appWatchCounts.test.ts` (eine Zeile in der Datei einer
+  früheren Prozess-Nummer mitten im Fenster zählt nicht),
+  `verifyMailBreaker.test.ts` (von der Antwort bis zum Exit-Code), die
+  Attrappe mit echtem sshd 41 von 41 — das alte Wort findet dort zwei
+  Zeilen, der Blick genau die eine des laufenden Prozesses.
+
+**WA1 (d) — die Wächter lesen Kundendomains aus dem Control Plane.**
+
+- **Die Route:** `GET /api/control/watch/hosts` (`packages/control`, Regel
+  rein in `shared/watchHosts.ts`). Sie liefert die live geschalteten eigenen
+  Domains von Pool-Communities und Einzel-Sites, nach Name sortiert — je
+  Eintrag der Host-Name und ein Ja/Nein „antwortet selbst" (die eingetragene
+  Form) oder „leitet nur um" (die Geschwister-Form). Keine Kennung, kein
+  Name, nichts über Personen. Nicht dabei: Pukalani-Subdomains (Wildcard),
+  Domains, die noch nicht aktiv oder abgeschaltet sind, stillgelegte und vom
+  Netz genommene Communities.
+- **Die Tür:** nur das eigene Geheimnis `NUXT_CONTROL_WATCH_HOSTS_SECRET`
+  (Kopfzeile `x-pukalani-watch-secret`). Leer oder unter 32 Zeichen ⇒ 404;
+  keine Sitzung zählt, das Naht-Geheimnis auch nicht. Rollen-Test
+  `route-roles-watch-hosts.test.ts`.
+- **Die Wächter:** `verify-tls.mjs` und `verify-health.mjs` lesen die Liste
+  ZUSÄTZLICH zur festen (`scripts/ops/customer-hosts.mjs`). Neuer Job
+  `kundendomains` im Produktions-Wächter (alle 30 Minuten); der Job `tls`
+  bleibt ohne Secret und unverändert.
+- **Vier Zusagen, je mit Test** (`customerHosts.test.ts`): (1) ohne Geheimnis
+  oder ohne Antwort der Route eine Zeile „nicht gelesen", nichts wird rot;
+  (2) kein Host-Name eines Kunden im Protokoll oder im Issue — dort steht
+  „Kundendomain 3/5", ohne SAN-Einträge und ohne Fehlertext; (3) erst zählen
+  (`PUKALANI_CUSTOMER_HOSTS_MODE: count`), scharf ist eine Zeile im Workflow;
+  (4) das Geheimnis reist nur verschlüsselt oder zum eigenen Rechner.
+- **Wo der Name steht:** in einer eigenen Mail „Betroffene Kundendomains" an
+  die Alarm-Adresse, wenn ein Alarm neu aufgeht (Job `kundendomains-namen`,
+  `customer-hosts-mail.mjs`), oder von Hand mit `--namen` (wirkt in keinem
+  CI-Lauf). Über einen Job-Ausgang reisen nur Nummern: GitHub druckt das
+  `env:` jedes Schritts ins Protokoll.
+- **Das Geheimnis** (Davids Ja per Klick am 2026-11-18): ein zufälliger Wert,
+  in einem Zug erzeugt und gesetzt, ohne dass er in einer Ausgabe stand —
+  auf der Site `admin.pukalani.app` (`NUXT_CONTROL_WATCH_HOSTS_SECRET`, eine
+  Zeile angehängt) und in der Umgebung `production-watch`
+  (`PRODUCTION_WATCH_HOSTS_SECRET`). Das laufende Ausliefern hat die
+  Betreiber-App acht Sekunden später neu geladen; zurückgelesen über das
+  Wächter-Tor (`NAME=1`), die Route antwortet ohne Kopfzeile seitdem mit 401
+  statt 404. Der Name steht jetzt auf der Pflicht-Liste der Site admin
+  (Pull Request 403).
+- **Ohne Geheimnis, auf `main` gezeigt** (Lauf 44403362908, vor dem Setzen):
+  `tls` grün und unverändert, `kundendomains` grün mit der Zeile „nicht
+  gelesen — in diesem Lauf ist kein Geheimnis gesetzt".
+- **Mit Geheimnis: der Probealarm** `-f kunden_drill=true` (Davids Ja).
+  Lauf 44411206536: vier Hosts gelesen, im Protokoll nur „Kundendomain 1/4"
+  bis „4/4", der vorgetäuschte Befund rot, Issue 402 auf, Alarm-Mail raus.
+  Die Mail mit dem Namen ging in diesem Lauf NICHT raus: die Datenbank
+  startete genau im Moment des Abrufs neu, die Betreiber-App antwortete erst
+  mit 500, fünf Sekunden später mit 404. Seit Pull Request 403 wiederholt
+  der Abruf auch nach einem 404, und die Namens-Mail liest mit drei weiteren
+  Versuchen im Abstand von 20 Sekunden. Der zweite Probealarm (Lauf
+  44413238809) hat auch den letzten Schritt gezeigt: Issue 406 auf,
+  Alarm-Mail raus, „Mail mit den Namen gesendet (1 Kundendomain)" — Resend
+  hat sie angenommen; ob sie im Postfach liegt, sieht nur David. In den
+  Protokollen der Jobs `kundendomains` und `kundendomains-namen` steht kein
+  Host-Name. Dazwischen lief der erste planmäßige Lauf mit Geheimnis grün
+  (44413088568: vier gelesen, vier geprüft, nur gezählt).
+
+**BT1 (a) — branding.supply als vierter Server im nächtlichen Lauf.**
+
+- **Der Aufbau** (nach dem Muster der Einzel-Instanz):
+  `scripts/ci/buehne-setup.mjs --branding-port` legt ein viertes Projekt
+  `branding` an und schreibt `apps/branding/.env`; `buehne.yml` fährt nur
+  nachts Bootstrap und Anmelde-Regeln, startet den vierten
+  Entwicklungs-Server und wärmt die ersten Seiten vor; der Läufer kennt
+  `--branding-port` und `env: 'branding'` (ohne den Server „übersprungen").
+- **Kein Fremddienst.** Je Skript vorher geprüft. Der Server läuft nachts mit
+  gestellten Antworten (`BRAND_DEV_STUB_*`, `MARKET_DEV_STUB`) und darf
+  fremde Websites nur auf dem eigenen Rechner abrufen
+  (`BRAND_SITE_FETCH_ALLOW_LOOPBACK`; die Skripte liefern ihre Probe-Seiten
+  selbst aus). Die `.env` der CI trägt keinen Schlüssel für KI oder Stripe —
+  ohne Schlüssel lehnt der Transport ohnehin vor jedem Netzaufruf ab. Ein
+  Test hält die Liste der acht Skripte und die Schalter fest.
+- **Die zwölf Skripte:** acht laufen nachts (`verify-brand-check-robots`,
+  `-events-sweep`, `-intro-call`, `-share`, `verify-market-fetch`, `-report`,
+  `-retention`, `-ui`; zusammen 301 Prüfungen). Vier bleiben von Hand, je mit
+  Grund in der Einteilung: `verify-brand-kit` (52 von 58), `-design` (117 von
+  131) und `-sessions` (302 von 333) — ihre Design-Vorlage (der DNA-Mix)
+  passt nicht mehr zum heutigen Wortschatz der App, deshalb entsteht kein
+  fertiges Design (kein Fehler im Produkt); `verify-business-confirmation`
+  braucht zusätzlich die Studio-Site und kennt die Pflicht-Felder der
+  Zustimmung noch nicht.
+- **Was beim Einzug auffiel und behoben ist:** die Skripte legten Konten mit
+  dem Migrations-Schlüssel an, der das nicht darf (jetzt der
+  Laufzeit-Schlüssel); seit der Zustimmungs-Pflicht lehnte die App jede
+  schreibende Route ihrer Konten ab (jetzt halten sie die Zustimmung über die
+  echte Route fest, `confirmProbeConsent`); drei ließen Zeilen liegen, die
+  die App selbst anlegt (jetzt Aufräumen nach Spalte, `removeProbeRows`); eine
+  Gegenprobe im Marktvergleich galt nur ohne laufenden Brand-Check.
+- **Der Läufer zählt selbst nach:** vor und nach jedem Skript mit
+  `env: 'branding'` die Zeilen jeder Tabelle und die Konten des Projekts;
+  mehr als vorher ist rot („Zeilen übrig: brand_steps +3").
+- **Von 84 Beweis-Skripten laufen jetzt 70 von selbst** (vorher 62).
+- **Laufzeit, gemessen:** der nächtliche Lauf von Hand auf dem Zweig, 64 von
+  64 bestanden, 29 Minuten 37 Sekunden (Lauf 44403235796). Rund zweieinhalb
+  Minuten davon gehen auf den vierten Server (Bootstrap 52 s, Start und
+  Vorwärmen 52 s, die acht Skripte zusammen 37 s). Der erste Versuch hatte 63
+  von 64: `verify-brand-check-robots` setzte einen Betreiber-Schalter voraus,
+  der auf einer frischen Datenbank aus ist.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar):
+
+- Der Mail-Blick fragt das Zähl-Skript, statt das Tor auf dem Server zu
+  ändern — so braucht es keinen Eingriff am Server.
+- Für die Route ein EIGENES Geheimnis statt des Naht-Geheimnisses: der Wert
+  liegt bei GitHub und soll nur diese eine Liste lesen können.
+- Nur aktive Domains in der Liste; abgeschaltete und stillgelegte wären Lärm.
+- Ein eigener Job `kundendomains` statt eines Secrets im Job `tls`.
+- Der Name einer Kundendomain reist nur per Mail an die Alarm-Adresse, nie
+  über einen Job-Ausgang.
+- Der neue Blick zählt zuerst nur (`count`).
+- Vier Skripte von branding.supply bleiben von Hand, statt halb grün
+  eingehängt zu werden; das Nachzählen sitzt im Läufer statt in elf Skripten.
+- Die fünf E2E-Dateien der Studio-Site sind nicht gebaut (Rest mit
+  Empfehlung in OPEN-ITEMS „BT1" a).
+- Der Produktions-Wächter lief einmal von Hand auf `main`, um die neuen Jobs
+  am selben Abend zu beweisen.
+
+**Geprüft und nicht geprüft.** Geprüft: alle Pull Requests mit den fünf
+Pflicht-Prüfungen; `main` danach grün; die acht Hosts `ok` mit dem Stand
+`0e0b07a0`, der alle Code-Merges enthält; der neue Mail-Blick in einem echten
+Lauf auf `main` (6 von 6 Apps gezählt, die Notbremse hat nicht gegriffen); der
+Nacht-Lauf von Hand und, am Morgen danach nachgesehen, der erste GEPLANTE
+Nacht-Lauf mit dem vierten Server (2026-11-19, 01:43 UTC, Lauf 44439102016):
+64 von 64 bestanden, die acht Skripte von branding.supply alle grün, nach dem
+Aufräumen nichts übrig, 31 min 28 s. NICHT geprüft: der neue
+Blick steht auf `count` und hat noch keinen echten Befund gesehen; die vier
+Skripte von branding.supply, die von Hand bleiben, sind nicht repariert.
+
+**Nebenfunde, nicht Teil dieser Arbeit.** (1) Der Probelauf des Wächters um
+21:39 UTC war im Blick „KI-Modelle" rot (Issue 401): in der Liste von
+OpenRouter fehlten für zwei unserer Modelle die EU-Endpunkte. Eine andere
+Sitzung hat das am selben Abend geklärt (Pull Request 405: der Wächter liest
+jetzt auch die Endpunkt-Liste der Europa-Adresse); danach ist der Blick
+wieder grün. (2) Ein roter Befund des täglichen Teils bekommt vom nächsten
+Halbstunden-Lauf die Entwarnung, ohne neu geprüft zu sein. Auch das hat eine
+andere Sitzung am 2026-11-19 behoben (Pull Request 411, oben „KM1 e"); der
+Punkt „WA1 (f)", der dafür vorbereitet war, ist deshalb nicht in OPEN-ITEMS
+gelandet.
+
+**Gelernt:** (1) Ein neues Skript, das „von Hand" lief, ist beim Einzug fast
+immer veraltet — elf von elf brauchten hier eine Anpassung, und keine davon
+war ein Fehler im Produkt: der falsche Schlüssel, die fehlende Zustimmung,
+ein Schalter, der nur auf dem eigenen Rechner an war, eine feste Liste von
+Kapiteln. Was ein Skript voraussetzt, setzt es selbst. (2) „Räumt auf" stimmt
+erst, wenn jemand zählt: drei Skripte ließen Zeilen liegen, die nicht sie,
+sondern die App angelegt hatte — der Läufer zählt deshalb selbst nach, über
+alle Tabellen. (3) Ein Tages-Deckel, der je Prozess zählt, sieht nach dem
+dritten lokalen Lauf aus wie ein roter Beweis (429). (4) Ein 404 heißt nicht
+immer „gibt es nicht": die Betreiber-App antwortet so auch, wenn sie ihre
+Datenbank gerade nicht erreicht. Ein Abruf, an dem etwas Einmaliges hängt
+(hier die eine Mail je Alarm), braucht mehr als einen zweiten Versuch.
+(5) Ein Probealarm, der den täglichen Teil mitfährt, findet auch Echtes —
+hier einen roten Blick, der sonst erst um 04:17 UTC aufgefallen wäre.
+
+---
 ### AW30 (a) — Appwrite 2.7.3 auf dev, CI und Production ✅ 2026-11-18
 
 **Was.** Issue 369: das Sicherheits-Release 2.7.2 und das Wartungs-Release

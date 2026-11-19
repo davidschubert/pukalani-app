@@ -30,8 +30,9 @@ import { parseRunLeaseDetail, runLeaseState } from '../../core/shared/runLease'
  *
  * ── `booked` UND `refunded` ──────────────────────────────────────────────
  * Gebucht wird VOR der Antwort, der Zähler steht deshalb schon in der
- * Antwort des Starts. Endet ein Entwurfs-Lauf ohne ein Bild, geht der
- * sichtbare Zähler zurück (BE-004) — `refunded` sagt der Seite, dass ihr
+ * Antwort des Starts. Endet ein Entwurfs-Lauf ohne ein Bild oder eine Lesung
+ * der Vorbilder ohne eine Lesung, geht der sichtbare Zähler zurück (BE-004,
+ * LL1 c) — `refunded` sagt der Seite, dass ihr
  * „noch x von y" wieder einen mehr zeigt. Stirbt ein Lauf mittendrin (Deploy,
  * Absturz), kann er selbst nichts mehr zurückbuchen; der NÄCHSTE Start tut es
  * für ihn (`brandRunOwesRefund`) — dieselbe Zusage, nur einen Start später.
@@ -272,8 +273,9 @@ export function brandRunNoticeDue(view: Pick<BrandRunView, 'state' | 'startedAt'
 /**
  * SCHULDET DER VORGÄNGER NOCH EINE RÜCKBUCHUNG?
  *
- * Ein Entwurfs-Lauf ohne ein abgelegtes Bild gibt den sichtbaren Zähler
- * zurück (BE-004). Ein Lauf, der mittendrin stirbt, kommt nicht mehr dazu.
+ * Ein Entwurfs-Lauf ohne ein abgelegtes Bild und eine Vorbilder-Lesung ohne
+ * eine geschriebene Lesung geben den sichtbaren Zähler zurück (BE-004,
+ * LL1 c). Ein Lauf, der mittendrin stirbt, kommt nicht mehr dazu.
  * Der nächste Start holt es nach — aber nur, wenn alle vier Dinge stimmen:
  * der Vorgänger ist ABGEBROCHEN (nicht fertig, nicht gescheitert — die buchen
  * selbst zurück), er hatte gebucht, er hat nichts abgelegt, und es ist noch
