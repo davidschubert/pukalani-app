@@ -97,7 +97,7 @@ am 2026-11-18, COMPLETE „N11").
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"). Klick-Probe (a): KR1. Eine 503 trägt seit dem 2026-11-18 einen eigenen Code (COMPLETE „N15"). **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (ein englisches Bildschirmfoto, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
-| KM1 | **KI-Modell-Wächter: Vorschläge nach dem Alarm vom 2026-11-18.** Der Alarm war falsch: der Anbieter hatte seine Liste umgebaut, kein Aufruf scheiterte (COMPLETE „KA1"). Offen sind nur Vorschläge: (a) den Modell-Blick alle 30 Minuten laufen lassen statt einmal am Tag, (b) täglich ein echter winziger Aufruf statt nur die Liste zu lesen, (c) ein günstigeres Textmodell ansehen, (e) ein Befund am Alarmweg: ein Alarm aus dem täglichen Lauf wird nach 30 Minuten von selbst geschlossen, ohne dass jemand neu geprüft hat. **Wartet auf:** Davids Ja oder Nein je Vorschlag; (e) kann eine Session allein bauen. | Mittel für (e), sonst niedrig | S je Teil | Ja: je Vorschlag eine Antwort | [Einzelheiten](#km1) |
+| KM1 | **KI-Modell-Wächter: Vorschläge nach dem Alarm vom 2026-11-18.** Der Alarm war falsch: der Anbieter hatte seine Liste umgebaut, kein Aufruf scheiterte (COMPLETE „KA1"). Offen sind nur Vorschläge: (a) den Modell-Blick alle 30 Minuten laufen lassen statt einmal am Tag, (b) täglich ein echter winziger Aufruf statt nur die Liste zu lesen, (c) ein günstigeres Textmodell ansehen. Der Befund am Alarmweg (e) ist seit dem 2026-11-19 behoben (COMPLETE „KM1 e"). **Wartet auf:** Davids Ja oder Nein je Vorschlag. | Niedrig | S je Teil | Ja: je Vorschlag eine Antwort | [Einzelheiten](#km1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst; zwei E2E-Dateien laufen seit dem 2026-11-18 nachts mit (COMPLETE „N15"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
@@ -892,19 +892,6 @@ Zeit. Der Wächter und die Prüfung beim Speichern lesen seitdem beide Listen
   die Bindung je Aufruf greift — und das ist am 2026-11-18 gemessen. Ob auf
   Production in der Datenbank eines Deployments ein anderes Modell steht,
   hat niemand nachgesehen; dafür bräuchte es Davids Ja.
-- **(e) Ein täglicher Alarm schließt sich nach 30 Minuten von selbst.**
-  Gesehen an Issue 401: geöffnet um 21:39 UTC vom täglichen Teil, geschlossen
-  um 22:10 UTC mit „Entwarnung: alle Wächter wieder grün" — vom nächsten
-  Halbstunden-Lauf. Der prüft die täglichen Blicke gar nicht (der Job
-  `server` ist dort „skipped", und „skipped" zählt im Job `alarm` nicht als
-  rot). Der Befund bestand zu dem Zeitpunkt weiter (um 22:23 und 22:31 UTC
-  nachgemessen). Folge: ein Alarm aus dem täglichen Teil steht höchstens 30
-  Minuten offen, dazu kommt eine Entwarnungs-Mail, und erst der nächste
-  Tageslauf öffnet ein neues Issue. Vorschlag: ein Issue, das der tägliche
-  Teil geöffnet hat, schließt nur ein Lauf, in dem der tägliche Teil
-  gelaufen UND grün ist. Änderung am Workflow, danach Probealarm
-  (`alarm_drill`); nicht gebaut, weil gerade eine andere Gruppe an
-  derselben Datei arbeitet.
 
 <a id="ar1"></a>
 

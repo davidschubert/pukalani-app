@@ -313,7 +313,23 @@ schließt es wieder. Nach jeder Änderung an `secrets-watch.yml` einmal fahren.
    `produktions-alarm` (kein zweites, solange es offen ist; alle 12 h ein
    Kommentar „weiterhin rot"). Ist alles wieder grün, kommentiert er
    „Entwarnung" und schließt es. **Offenes Issue = Alarm aktiv.** Braucht
-   kein Secret — nur `issues: write` des Workflow-Tokens. Seit 2026-11-16
+   kein Secret — nur `issues: write` des Workflow-Tokens.
+   **Weshalb es offen ist, steht als Label am Issue** (seit 2026-11-19): je
+   Quelle eines — `alarm:tls` und `alarm:kundendomains` (alle 30 Minuten
+   geprüft), `alarm:server` (der tägliche Teil). Ein Lauf ändert nur, was er
+   gemessen hat: Job rot ⇒ Label dazu, Job grün ⇒ Label weg, Job nicht
+   gelaufen ⇒ Label bleibt. Geschlossen wird mit dem letzten Label.
+   **Ein Issue mit `alarm:server` schließt deshalb nur ein Lauf, in dem der
+   tägliche Teil gelaufen UND grün ist** — der Tageslauf um 04:17 UTC oder
+   ein Lauf von Hand (`gh workflow run production-watch.yml`). Der
+   Halbstunden-Lauf lässt es offen und schreibt keine Entwarnung; im
+   Protokoll steht dann „bleibt offen: 'server' ist in diesem Lauf nicht
+   geprüft worden". Waren beide Teile rot, nimmt jeder Lauf seinen Teil weg
+   und schreibt einen Kommentar, was grün wurde und was offen bleibt. Wer
+   einen Befund aus dem täglichen Teil behoben hat, startet also einen Lauf
+   von Hand, statt auf den nächsten Morgen zu warten. Ein offenes Issue ohne
+   eines dieser Labels (von Hand geöffnet) schließt der erste Lauf ohne
+   roten Job. Die Regel mit ihren Tests: `scripts/ops/alarm-issue.mjs`. Seit 2026-11-16
    steht im Issue unter „Was zu tun ist" je rotem Befund der Blicke „In die
    App hinein" und „Live-Verbindung" EIN Satz mit dem Handgriff und dem
    Abschnitt in diesem Runbook; die älteren Blicke nennt weiter nur der Lauf.
@@ -325,7 +341,9 @@ schließt es wieder. Nach jeder Änderung an `secrets-watch.yml` einmal fahren.
 3. **Heartbeat bei jedem grünen Lauf** an `PRODUCTION_WATCH_HEARTBEAT_URL`
    (Klickliste). Das ist der einzige Weg, der auch meldet, wenn der Workflow
    GAR NICHT mehr läuft (GitHub schaltet Zeitpläne nach 60 Tagen ohne Commit
-   ab; eine kaputte cron-Zeile; ein Runner-Ausfall).
+   ab; eine kaputte cron-Zeile; ein Runner-Ausfall). „Grün" meint den LAUF,
+   nicht das Issue: ein Halbstunden-Lauf ohne roten Job schickt den Heartbeat
+   auch, während ein Issue aus dem täglichen Teil offen ist.
 
 **Probealarm — monatlich, und nach jeder Änderung am Workflow:**
 
@@ -334,12 +352,27 @@ gh workflow run production-watch.yml -f alarm_drill=true
 ```
 
 Das macht den Health-Blick sicher rot (Host `probealarm.invalid`) und muss ein
-Issue „🔴 Produktions-Alarm (Probealarm)" + (wenn eingerichtet) die Mail
-erzeugen. Danach ohne Haken laufen lassen — das Issue muss von selbst zugehen:
+Issue „🔴 Produktions-Alarm (Probealarm)" mit dem Label `alarm:tls` + (wenn
+eingerichtet) die Mail erzeugen. Danach von Hand ohne Haken laufen lassen —
+das Issue muss von selbst zugehen:
 
 ```bash
 gh workflow run production-watch.yml
 ```
+
+**„Der nächste Lauf ohne Haken räumt auf" heißt in diesem Runbook immer:
+dieser Lauf von Hand.** In ihm laufen alle drei Jobs, er schließt also jeden
+Probealarm sofort. Der Halbstunden-Takt räumt nur Probealarme auf, die den
+täglichen Teil nicht betreffen (`alarm_drill`, `schema_drill`,
+`kunden_drill`); ein Probealarm des täglichen Teils (`backup_drill`,
+`signals_drill`, `config_drill`, auch `realtime_drill`, der beide Teile rot
+macht) bleibt sonst bis zum Tageslauf um 04:17 UTC offen.
+
+**Nach einer Änderung am Alarmweg selbst** (Job `alarm`,
+`scripts/ops/alarm-issue.mjs`) beide Teile proben: erst
+`-f signals_drill=true`, einen Halbstunden-Lauf abwarten (das Issue muss
+OFFEN bleiben, ohne Entwarnung), dann der Lauf von Hand ohne Haken (schließt);
+danach `-f alarm_drill=true` und wieder der Lauf von Hand.
 
 Lokal, ohne CI (der zweite Befehl MUSS mit Exit 1 enden):
 
@@ -940,7 +973,15 @@ Zeitplan nicht: `crontab -l` dort ansehen, dann EIN Lauf von Hand
 **Env / Zugänge / Admin-Konto rot.** `docs/runbooks/ZUGAENGE-AUFRAEUMEN.md`
 bzw. die Pflichtliste in `scripts/ops/verify-site-env.mjs`.
 
-**Probealarm vergessen aufzuräumen?** Ein Lauf ohne Haken schließt das Issue.
+**Probealarm vergessen aufzuräumen?** Ein Lauf von Hand ohne Haken
+(`gh workflow run production-watch.yml`) schließt das Issue. Von selbst geht
+es nur zu, wenn es den täglichen Teil nicht betrifft (nächster
+Halbstunden-Lauf), sonst erst mit dem Tageslauf um 04:17 UTC.
+
+**Befund aus dem täglichen Teil behoben, das Issue ist noch offen?** Das ist
+so gewollt: der Halbstunden-Lauf prüft den täglichen Teil nicht und darf
+deshalb nicht entwarnen (§ 2). Ein Lauf von Hand ohne Haken prüft alles und
+schließt das Issue, wenn der Befund wirklich weg ist.
 
 ## 5 · Vertretung: wenn David nicht erreichbar ist
 
