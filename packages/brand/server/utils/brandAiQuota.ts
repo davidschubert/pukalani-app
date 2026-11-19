@@ -48,7 +48,9 @@ import { countActiveBrandGenerations } from './brandGenerators'
  *
  * EINE BEGRÜNDETE AUSNAHME (Finding BE-004, 2026-11-13): die Zeichen-Entwürfe
  * buchen den ENGEN Zähler zurück (`refundBrandAiQuota`), wenn ein Lauf ohne
- * einen einzigen abgelegten Entwurf endet. Dort war ein Lauf wochenlang IMMER
+ * einen einzigen abgelegten Entwurf endet — seit LL1 c (2026-11-19) ebenso
+ * die Vorbilder-Lesung ohne eine einzige geschriebene Lesung (die beiden
+ * Läufe, deren Zähler der Mensch sieht). Dort war ein Lauf wochenlang IMMER
  * leer (falscher Pin ⇒ 404 je Aufruf), und der Mensch sah „Noch 0 von 3
  * Läufen heute" für null Bilder. Zurück geht NUR der enge Eimer — der Zähler,
  * den der Mensch sieht. Konto-Tageszähler und Instanz-Deckel BLEIBEN gebucht:
@@ -233,7 +235,8 @@ function brandAiQuotaWeight(request: BrandAiQuotaRequest): number {
 
 /**
  * DEN ENGEN EIMER ZURÜCKBUCHEN — die eine Ausnahme aus dem Kopf („gebucht
- * wird beim Start"), heute nur für die Zeichen-Entwürfe ohne Ergebnis.
+ * wird beim Start"), heute für die Zeichen-Entwürfe und die Vorbilder-Lesung,
+ * jeweils ohne Ergebnis.
  *
  * NUR der enge Schlüssel, und zwar mit demselben Gewicht wie die Buchung;
  * Konto und Instanz bleiben gebucht (Begründung im Kopf). Der Aufrufer ruft

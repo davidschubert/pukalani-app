@@ -217,9 +217,10 @@ Rückweg), dann einspielen.
 
 ### Das Wächter-Tor
 
-Die sechs Prüf-Skripte des Wächters
+Die Prüf-Skripte des Wächters
 (`verify-site-env`, `verify-stale-keys`, `verify-instance-admins`,
-`verify-mail-breaker`, `verify-app-signals`, `verify-server-config`) schicken
+`verify-mail-breaker`, `verify-app-signals`, `verify-server-config`, seit
+2026-11-19 `verify-node-version`) schicken
 auf app-prod nur noch feste Worte an `ops/app-watch-gate.sh`, das von Hand
 unter `/home/ploi/ops/app-watch-gate.sh` liegt und seit dem 2026-11-18 der
 feste Befehl des Wächter-Schlüssels ist. Die Befehlszeile ist
@@ -238,6 +239,7 @@ Wort liest nur:
 | `nginx-check` | `node <site>/ops/nginx-check.mjs` |
 | `cron-check` | `bash <site>/ops/cron-check.sh app-prod` |
 | `sums` | je von Hand eingespielter Datei unter `~/ops` eine Zeile `sum <name> <sha256>` |
+| `node-version` | `/usr/bin/node --version` und `pm2 jlist`: eine Zeile `program <version>`, je pm2-Prozess einer Site der Liste `proc <prozess> <version>` (oder `fehlt`), dazu `fremd <n>` — kein Pfad, kein Name außerhalb der Liste |
 
 App und Site kommen nur aus `~/ops/apps.conf`. `<site>` bei den Prüf-Skripten
 ist `platform.pukalani.app` (sonst die erste Site der Liste); dort legt das
@@ -252,7 +254,7 @@ Einspielen und Aktualisieren (von Hand, über den eigenen Zugang; die beiden
 ```bash
 ssh ploi@49.13.211.173 'test ! -e ~/ops/app-watch-gate.sh || cp -p ~/ops/app-watch-gate.sh ~/ops/app-watch-gate.sh.vorher-$(date +%F)'
 scp ops/app-watch-gate.sh ops/apps.conf ploi@49.13.211.173:ops/
-ssh ploi@49.13.211.173 'chmod 755 ~/ops/app-watch-gate.sh && ~/ops/app-watch-gate.sh sums && ~/ops/app-watch-gate.sh stale-keys'
+ssh ploi@49.13.211.173 'chmod 755 ~/ops/app-watch-gate.sh && ~/ops/app-watch-gate.sh sums && ~/ops/app-watch-gate.sh stale-keys && ~/ops/app-watch-gate.sh node-version'
 shasum -a 256 ops/app-watch-gate.sh ops/apps.conf   # dieselben Summen wie in der Zeile `sums`
 ```
 
@@ -268,10 +270,15 @@ Der Schritt „Ist der Wächter-Schlüssel beschränkt?" im Job `server` schickt
 täglich eine harmlose freie Befehlszeile und wird rot, wenn der Server sie
 ausführt.
 
-Nach JEDER Änderung an `ops/app-watch-gate.sh` oder am ssh-Weg der sechs
+Nach JEDER Änderung an `ops/app-watch-gate.sh` oder am ssh-Weg der
 Prüf-Skripte: `ops/app-watch-gate-attrappe.sh` (Wegwerf-Container mit echtem
 sshd: jedes Wort mit und ohne festen Befehl, die Ablehnungen, die echten
-Prüf-Skripte, der Vergleich `sums`), dann einspielen. Ob die Datei auf dem
+Prüf-Skripte, die Vergleiche `sums` und `node-version`), dann einspielen.
+ZWISCHEN MERGE UND EINSPIELEN meldet der Blick „Liegen auf den Servern die
+Dateien aus dem Repo?" die Abweichung — beides am selben Tag vor 04:17 UTC
+erledigen, sonst geht ein Alarm auf. Ein Wort, das das Tor auf dem Server
+noch nicht kennt, beantwortet es mit Exit 64; der Blick dazu bleibt dann
+grün und schreibt „nicht geprüft". Ob die Datei auf dem
 Server der im Repo entspricht, sagt der tägliche Blick „Liegen auf den
 Servern die Dateien aus dem Repo?".
 

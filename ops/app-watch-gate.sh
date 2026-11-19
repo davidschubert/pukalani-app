@@ -26,6 +26,16 @@
 #   cron-check                 ops/cron-check.sh app-prod
 #   sums                       je von Hand eingespielter Datei unter ~/ops eine
 #                              Zeile `sum <name> <sha256>` oder `sum <name> fehlt`
+#   node-version               mit welchem Node laufen die Apps? Eine Zeile
+#                              `program <version>` (das Programm, mit dem pm2
+#                              startet: /usr/bin/node), je pm2-Prozess einer
+#                              Site der Liste `proc <prozess> <version>` (aus
+#                              `pm2 jlist`, Feld `node_version`), je Site ohne
+#                              Prozess `proc <prozess> fehlt`, dazu `fremd <n>`
+#                              (pm2-Prozesse, die die Liste nicht kennt — nur
+#                              die Zahl). Statt einer Version steht `fehlt`
+#                              oder `unlesbar`; antwortet pm2 nicht, die eine
+#                              Zeile `pm2 unlesbar`. Kein Pfad, kein freier Text
 #
 # App und Site kommen NUR aus der Liste auf dem Server (~/ops/apps.conf, von
 # Hand eingespielt, dasselbe Format wie ops/apps.conf im Repo). Die beiden
@@ -61,6 +71,7 @@
 # Für Tests (packages/core/tests/appWatchGate.test.ts, ops/app-watch-gate-attrappe.sh):
 #   APP_WATCH_ROOT   statt /home/ploi
 #   APP_WATCH_APPS   statt <wurzel>/ops/apps.conf
+#   APP_WATCH_NODE   statt /usr/bin/node (nur für `node-version`)
 #
 # Exit: 0 gut · 6 ein Stück auf dem Server fehlt (Liste, Skript) — „nicht
 # geprüft" · 64 Befehl oder Angabe nicht erlaubt · sonst der Exit-Code des
@@ -73,9 +84,54 @@ set -u
 ROOT="${APP_WATCH_ROOT:-/home/ploi}"
 APPS_FILE="${APP_WATCH_APPS:-$ROOT/ops/apps.conf}"
 SCRIPT_SITE_FALLBACK='platform.pukalani.app'
-WORDS='site-env, site-project, stale-keys, instance-admins, mail-breaker, app-signals, nginx-check, cron-check, sums'
+WORDS='site-env, site-project, stale-keys, instance-admins, mail-breaker, app-signals, nginx-check, cron-check, sums, node-version'
 # Was `sums` zeigt: von Hand eingespielte Dateien unter <wurzel>/ops.
 SUM_FILES='app-release.sh app-watch-gate.sh apps.conf app-env-bundle.sh appwrite-backup.pub.asc'
+# Das Programm, mit dem pm2 die Apps startet (docs/runbooks/DEPLOYMENT.md, A4).
+NODE_BIN="${APP_WATCH_NODE:-/usr/bin/node}"
+
+# `node-version`: liest `pm2 jlist` von der Standard-Eingabe; die Angaben sind
+# die Prozess-Namen der Liste (Site ohne Punkte). Hinaus geht je Zeile nur ein
+# Name AUS DIESEN ANGABEN und eine Version in fester Form — nie ein Name, ein
+# Pfad oder ein Wert aus der Antwort von pm2. Ohne einfache Anführungszeichen
+# (das Programm steht in einem Shell-Wort).
+NODE_VERSION_JS='
+const allowed = process.argv.slice(1)
+let raw = ""
+process.stdin.setEncoding("utf8")
+process.stdin.on("data", (chunk) => { raw += chunk })
+process.stdin.on("end", () => {
+  // pm2 schreibt gelegentlich Hinweise vor das JSON, und die beginnen selbst
+  // mit einer Klammer — gelesen wird ab der ersten Zeile, die wie der Anfang
+  // der Liste aussieht (dieselbe Regel wie in ops/app-watch-counts.mjs).
+  const start = raw.search(/^\[(\{|\])/m)
+  let list = null
+  if (start >= 0) {
+    try { list = JSON.parse(raw.slice(start)) }
+    catch { list = null }
+  }
+  if (!Array.isArray(list)) {
+    console.log("pm2 unlesbar")
+    return
+  }
+  const seen = new Set()
+  let foreign = 0
+  for (const entry of list) {
+    const name = entry && typeof entry.name === "string" ? entry.name : ""
+    if (!allowed.includes(name)) {
+      foreign += 1
+      continue
+    }
+    seen.add(name)
+    const version = entry.pm2_env && typeof entry.pm2_env.node_version === "string" ? entry.pm2_env.node_version : ""
+    console.log("proc " + name + " " + (/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/.test(version) ? version : "unlesbar"))
+  }
+  for (const name of allowed) {
+    if (!seen.has(name)) console.log("proc " + name + " fehlt")
+  }
+  console.log("fremd " + foreign)
+})
+'
 
 # Dasselbe Programm wie ENV_STATE_AWK in scripts/ops/verify-site-env.mjs —
 # WORTGLEICH (der Test appWatchGate.test.ts hält beide zusammen).
@@ -120,7 +176,7 @@ WORD="${1:-}"
 # Das Wort ZUERST: ein fremder Befehl (scp, rsync, eine Shell-Zeile) wird
 # abgelehnt, bevor irgendeine seiner Angaben gelesen wird.
 case "$WORD" in
-  site-env|site-project|stale-keys|instance-admins|mail-breaker|app-signals|nginx-check|cron-check|sums) ;;
+  site-env|site-project|stale-keys|instance-admins|mail-breaker|app-signals|nginx-check|cron-check|sums|node-version) ;;
   *) reject "erlaubt sind $WORDS." ;;
 esac
 
@@ -246,6 +302,22 @@ case "$WORD" in
       [ -f "$FILE" ] && SUM="$(sha256 "$FILE" 2>/dev/null)"
       if printf '%s' "$SUM" | grep -Eq '^[0-9a-f]{64}$'; then echo "sum $NAME $SUM"; else echo "sum $NAME fehlt"; fi
     done
+    ;;
+
+  node-version)
+    need_count 0
+    need_list
+    if [ -x "$NODE_BIN" ]; then
+      # `v24.22.3` ⇒ `24.22.3`; alles andere (auch ein Zusatz wie `-nightly`) ist „unlesbar".
+      PROGRAM="$("$NODE_BIN" --version 2>/dev/null </dev/null | tr -d '\r' | sed -n '1s/^v//p')"
+      if printf '%s' "$PROGRAM" | grep -Eq '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then echo "program $PROGRAM"; else echo 'program unlesbar'; fi
+    else
+      echo 'program fehlt'
+    fi
+    # Die Prozess-Namen der Liste: Site ohne Punkte (ops/apps.conf).
+    # shellcheck disable=SC2046
+    { pm2 jlist 2>/dev/null </dev/null || true; } | node -e "$NODE_VERSION_JS" $(list_rows | awk '{ gsub(/\./, "", $2); print $2 }')
+    exit 0
     ;;
 esac
 exit 0

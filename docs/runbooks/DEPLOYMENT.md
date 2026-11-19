@@ -281,12 +281,33 @@ pm2 startet jede App mit `/usr/bin/node`.
    weiter.
 4. Beweis: `pm2 jlist` nennt je Prozess die Node-Version (`node_version`) —
    sie ist die aus `.nvmrc`; danach `node scripts/ops/verify-health.mjs`.
+   Vom eigenen Rechner fragt beides in einem Zug
+   `node scripts/ops/verify-node-version.mjs` (Programm und jeder Prozess
+   gegen `.nvmrc`).
 
 Ein Sprung auf eine neue LINIE (24 → 26) ist dasselbe mit einem Schritt
 davor: die Paketquelle auf dem Server zeigt auf eine Linie
 (`/etc/apt/sources.list.d/nodesource.sources`), und `@types/node` im Katalog
-zieht mit (die Typen folgen der Laufzeit, nie darüber). Einen Wächter, der
-die Version des Servers mit `.nvmrc` vergleicht, gibt es nicht.
+zieht mit (die Typen folgen der Laufzeit, nie darüber).
+
+**Der Wächter (seit 2026-11-19).** Täglich vergleicht der Produktions-Wächter
+die Version des Servers mit `.nvmrc` (`scripts/ops/verify-node-version.mjs`,
+Schritt „Läuft auf dem App-Server das Node aus .nvmrc?"). Er fragt das
+Wächter-Tor nach dem Wort `node-version`: die Version des Programms
+`/usr/bin/node` und je pm2-Prozess die Version, mit der er gerade läuft. Rot
+ist jede ANDERE Version, auch eine neuere — am Programm (Schritt 2 fehlt)
+oder an einem Prozess (Schritt 3 fehlt: das Paket ist gehoben, der pm2-Dienst
+läuft noch mit dem alten Stand). Zwei Dinge folgen daraus:
+
+- Zwischen dem Merge von Schritt 1 und Schritt 3 ist der Blick zu Recht rot.
+  Wer beides am selben Tag vor 04:17 UTC erledigt, sieht keinen Alarm.
+- Hebt jemand das Paket auf dem Server, ohne `.nvmrc` zu ändern (ein
+  `apt upgrade`, „Run updates now" in Ploi), wird der Blick ebenfalls rot.
+  Dann entweder das Paket auf die Version aus `.nvmrc` zurücksetzen (Schritt
+  2 mit dieser Zahl) oder `.nvmrc` per Pull Request nachziehen.
+
+Nicht erreichbar ist keine Aussage und bleibt grün (eine Warnzeile im Lauf).
+Probealarm: `gh workflow run production-watch.yml -f node_drill=true`.
 
 ---
 

@@ -3,9 +3,20 @@ import {
   type BrandReadingSummary,
   brandReadingSlotValue,
 } from '../../../../../../shared/brandReading'
-import { BRAND_RUN_OUTCOMES, BRAND_RUN_SCOPES, emptyBrandRunDetail } from '../../../../../../shared/brandRun'
+import {
+  BRAND_RUN_OUTCOMES,
+  BRAND_RUN_SCOPES,
+  brandRunOwesRefund,
+  emptyBrandRunDetail,
+  parseBrandRunDetail,
+} from '../../../../../../shared/brandRun'
 import type { BrandInspirationReadResponse } from '../../../../../../shared/types/brand'
-import { type BrandAiQuotaMeasurement, bookBrandAiQuota } from '../../../../../utils/brandAiQuota'
+import {
+  type BrandAiQuotaMeasurement,
+  type BrandAiQuotaRequest,
+  bookBrandAiQuota,
+  refundBrandAiQuota,
+} from '../../../../../utils/brandAiQuota'
 import { recordBrandEvent } from '../../../../../utils/brandEvents'
 import { readBrandAiEnabled, retainBrandGeneration } from '../../../../../utils/brandGenerators'
 import {
@@ -78,6 +89,18 @@ import { BRAND_PROFILES_TABLE, loadStepRows } from '../../../../../utils/brandSt
  * `design.reading.run` mit Bildzahl, gelesenen Zeilen, Urteils-Verteilung,
  * Modell-Kennung und Dauer. NIE ein Bild, NIE der Prompt, NIE eine Begründung
  * (Regel 1 im Kopf von `brandEvents.ts`).
+ *
+ * ── KEINE LESUNG ⇒ DER SICHTBARE LAUF ZÄHLT NICHT (LL1 c, wie BE-004) ────
+ * Dasselbe Muster wie bei den Zeichen-Entwürfen: endet der Lauf, ohne dass
+ * EINE Lesung geschrieben wurde (Anbieter, zu gross, Wurf, Marke gelöscht),
+ * bucht sein Abschluss (`settle`) den ENGEN Zähler zurück — „Heute noch X
+ * von 3 Läufen" — und vermerkt `refunded` an der Lauf-Zeile. Konto- und
+ * Instanz-Deckel bleiben gebucht (Missbrauchsnetz, Kopf von
+ * `brandAiQuota.ts`). Ein TEILERFOLG (eine Lesung von zwölf) bleibt gebucht.
+ * Nach einer 429 oder einem Fehler vor der Buchung startet gar kein Lauf —
+ * dann gibt es nichts zurückzubuchen. Stirbt der Lauf mittendrin, holt der
+ * NÄCHSTE Start die Rückbuchung nach (`brandRunOwesRefund`): erst der Vermerk
+ * am Vorgänger, dann die Rückbuchung.
  */
 export default defineEventHandler(async (event): Promise<BrandInspirationReadResponse> => {
   const { userId, betaAccount } = await requireBrandAccess(event)
@@ -123,11 +146,32 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
   // (4) DIE SPERRE — vor Burst-Platz und Buchung. Ein Doppelklick (oder ein
   // zweiter Reiter) bekommt 409 `run_running`, bevor er einen Zähler berührt.
   const store = brandRunStore(event)
-  const { lease } = await acquireRunLease(store, {
+  const quotaRequest: BrandAiQuotaRequest = { userId, profileId: profile.$id, kind: 'reading' }
+  const { lease, previous, previousState } = await acquireRunLease(store, {
     scope: BRAND_RUN_SCOPES.reading,
     subject: profile.$id,
     detail: emptyBrandRunDetail({ limit: BRAND_DESIGN_READING_DAILY_LIMIT }),
   })
+
+  // DER ABGEBROCHENE VORGÄNGER (s. Kopf): erst vermerken, dann zurückbuchen.
+  // Scheitert der Vermerk, wird NICHT zurückgebucht — lieber verliert ein
+  // Mensch einmal einen sichtbaren Lauf, als dass derselbe Vorgänger zweimal
+  // zurückbucht.
+  if (previous && brandRunOwesRefund(previousState, previous.detail)) {
+    try {
+      await store.update(previous.$id, {
+        detail: JSON.stringify({ ...parseBrandRunDetail(previous.detail), refunded: true }),
+      })
+      await refundBrandAiQuota(event, quotaRequest)
+      logEvent('info', 'brand.reading_stalled_refunded', { profileId: profile.$id, previousSeq: previous.seq })
+    }
+    catch (error) {
+      logEvent('warn', 'brand.reading_stalled_refund_failed', {
+        profileId: profile.$id,
+        message: error instanceof Error ? error.message : 'unknown',
+      })
+    }
+  }
 
   /**
    * DER BURST-PLATZ (Audit-Befund 2026-09-09) — die Sicherung gegen den
@@ -141,11 +185,7 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
   const measurement: BrandAiQuotaMeasurement = { narrowCount: 0, narrowResetSec: 0 }
   let rejection: Awaited<ReturnType<typeof bookBrandAiQuota>>
   try {
-    rejection = await bookBrandAiQuota(
-      event,
-      { userId, profileId: profile.$id, kind: 'reading' },
-      measurement,
-    )
+    rejection = await bookBrandAiQuota(event, quotaRequest, measurement)
   }
   catch (error) {
     // Der Zähler war nicht erreichbar — dann läuft auch nichts, und die
@@ -181,7 +221,7 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
     store,
     lease,
     detail,
-    work: async ({ lost }) => {
+    work: async ({ lost, progress }) => {
       const model = stub ? 'dev-stub' : (await getEffectiveAiVisionConfig(event)).model
       const result = await runBrandInspirationReading(event, profile, stepRows, entries, model)
       detail.model = result.model ?? model
@@ -191,7 +231,8 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
           type: 'design.reading.run',
           profileId: profile.$id,
           userId,
-          payload: { images: entries.length, read: 0, failure: result.failure ?? 'empty_result', model },
+          // `refunded`: der enge Zähler geht im Abschluss zurück (s. Kopf).
+          payload: { images: entries.length, read: 0, failure: result.failure ?? 'empty_result', model, refunded: true },
         })
         /**
          * ZU GROSS IST KEIN FEHLSCHLAG DES ANBIETERS (Audit-Befund 2026-09-09):
@@ -211,6 +252,10 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
 
       const written = await storeBrandReadings(event, result.readings)
       detail.created = written
+      // SOFORT an die Zeile: stirbt der Lauf nach dem Schreiben, sieht der
+      // Nachfolger die Lesungen und bucht nicht für einen Lauf mit Ergebnis
+      // zurück (`brandRunOwesRefund`). Fail-soft — das Ende schreibt alles.
+      if (written > 0) await progress()
 
       const locale = profile.contentLocale === 'en' ? 'en' : 'de'
       const summary: BrandReadingSummary = result.summary
@@ -239,12 +284,24 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
           ...verdicts,
           model: result.model ?? model,
           ms: result.ms ?? 0,
+          // Keine Zeile ließ sich schreiben ⇒ auch dieser Lauf geht zurück.
+          ...(written === 0 ? { refunded: true } : {}),
         },
       })
       return BRAND_RUN_OUTCOMES.done
     },
-    // Der Platz gehört dem Lauf, nicht seinem Ergebnis — immer freigeben.
-    settle: () => burst.release(),
+    settle: async (outcome) => {
+      // Der Platz gehört dem Lauf, nicht seinem Ergebnis — immer freigeben.
+      burst.release()
+      // Keine einzige Lesung geschrieben ⇒ den sichtbaren Lauf zurückgeben.
+      // Fail-soft in `refundBrandAiQuota` selbst. NICHT nach verlorenem
+      // Herzschlag: dann gilt dieser Lauf für den nächsten Start als
+      // abgebrochen, und DER bucht zurück — sonst ginge es zweimal zurück.
+      if (detail.created === 0 && outcome !== BRAND_RUN_OUTCOMES.leaseLost) {
+        await refundBrandAiQuota(event, quotaRequest)
+        detail.refunded = true
+      }
+    },
   })
 
   // 202: angenommen, nicht erledigt. Die Lauf-Zeile sagt, was daraus wird.
