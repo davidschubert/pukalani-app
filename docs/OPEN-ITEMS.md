@@ -89,7 +89,7 @@ am 2026-11-18, COMPLETE „N11").
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) der neue Blick auf Kundendomains zählt erst nur — scharf stellen, (e) Kleinigkeiten. Seit 2026-11-18 lesen die Wächter die Kundendomains aus dem Control Plane, und der Mail-Blick liest nur noch die Dateien des laufenden Prozesses (COMPLETE „N16"). **Wartet auf:** (a), (c) und (d) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil | Nein | [Einzelheiten](#wa1) |
-| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
+| SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) alte Log-Kopien am Server-Termin löschen, (d) Reste der alten Erinnerungs-Route auf dem Server, (e) Kleinigkeiten am Server. Der Log-Umlauf ist angesehen; der Erinnerungs-Lauf erkennt stillgelegte und gesperrte Communities seit dem 2026-11-19, zählt aber erst nur (COMPLETE „N17") — (d) scharf stellen, sobald der tägliche Blick eine echte Antwort gezählt hat. **Wartet auf:** (a) eine Woche Berichte, (d) den ersten fälligen Termin auf Production, (c), (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten. Kein Weg rechnet mehr länger, als der Webserver wartet: auch die Übersetzung einer ganzen Seite läuft seit dem 2026-11-18 im Hintergrund (COMPLETE „N15"). Offen bleibt, einen echten Lauf über 60 Sekunden einmal zu sehen. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
 | BP1 | **Betreiber-Dashboard und gemeldete Nachrichten: Reste.** (a) Ein Klick auf der echten Seite, (b) Zahlen des Protokoll-Zählers nach einer Woche ansehen, (d) Kleinigkeiten. Die eigene Spalte für den Zeitpunkt der Erledigung wartet nach Davids Entscheidung vom 2026-11-18, bis eine Route erledigte Meldungen beschreibt. Löschen im Speicher, die Schalter und die Konfig-Seite sind seit 2026-11-17 erledigt (COMPLETE „N06" und „N08"). **Wartet auf:** (a) Davids Klick. | Niedrig | S je Teil | **Ja: (a)** | [Einzelheiten](#bp1) |
@@ -99,7 +99,7 @@ am 2026-11-18, COMPLETE „N11").
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (ein englisches Bildschirmfoto, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | KM1 | **Günstigeres Textmodell ansehen (Rest der Vorschläge nach dem KI-Alarm vom 2026-11-18).** Das neuere Textmodell kostet in Europa ein Zehntel. David will die Proben vorbereitet sehen (Klick 2026-11-19); gewechselt wird erst nach einem weiteren Ja. Erledigt: der Modell-Blick läuft alle 30 Minuten (COMPLETE „KM1 a"), der Alarmweg (COMPLETE „KM1 e"). Entschieden: kein täglicher echter Probe-Aufruf (Davids Nein, 2026-11-19). Die Aufstellung liegt vor: [Plan](plans/KI-TEXTMODELL-WECHSEL.md). **Wartet auf:** David sieht beim Anbieter nach, was die KI im Monat kostet, und sagt dann Ja oder Nein zur ersten Probe. | Niedrig | S bis M | Ja: Monatssumme ansehen, dann Ja oder Nein | [Einzelheiten](#km1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
-| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 70 von 84 von selbst; seit dem 2026-11-18 steht nachts auch branding.supply als vierter Server (COMPLETE „N16"). Offen: (a) vier Skripte von branding.supply brauchen eine neue Test-Vorlage, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 73 von 84 von selbst; nachts steht auch branding.supply als vierter Server, elf seiner zwölf Skripte laufen mit (COMPLETE „N16" und „N17"). Offen: (a) die fünf E2E-Dateien der Studio-Site und ein Skript brauchen einen fünften Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
 | AW30 | **Reste nach dem Appwrite-Upgrade auf 2.7.3.** Production läuft seit dem 2026-11-18 auf 2.7.3, geprüft von außen und auf dem Server. Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) ein Kommentar und eine Stimme mit einem Konto auf Production (Anmelden, Profilbild und Anmeldung per Code sind seit dem 2026-11-19 geprüft); (d) alte Images auf dem Server aufräumen (rund 11 GB). | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
@@ -668,15 +668,15 @@ und den Link im Kommentar-Bereich.
   Unter-Adresse der Zone sicher per HTTPS antwortet (auch die, die nicht diese
   App bedient). Kundendomains bleiben ohne. Lässt sich nicht zurücknehmen
   (Browser merken es sich ein Jahr) — nur mit Davids Entscheidung.
-- **(c) Umlauf der pm2-Logs: nach dem ersten Umlauf nachsehen.** Eingeschaltet
-  am 2026-11-17 mit Davids Ja (zweiter Block in
-  `ops/logrotate-admin-access.conf`, gefahren vom vorhandenen Zeitplan um
-  03:12). Die erste Nacht merkt sich die Dateien nur, gedreht wird ab der
-  zweiten (2026-11-19). Offen ist nur der Blick danach: der tägliche Wächter
-  am Morgen muss grün bleiben und jeden Zeit-Lauf nennen; auf dem Server liegt
-  je Log eine Datei `.1` ([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), „Umlauf
-  der pm2-Logs"). Die 59 MB große Alt-Datei einer früheren Prozess-Nummer
-  läuft einmal um; ihre Kopie kann von Hand weg.
+- **(c) Umlauf der pm2-Logs: erledigt, ein Rest am Server-Termin.**
+  Nachgesehen am 2026-11-19 (COMPLETE „N17"): der Umlauf lief in der Nacht um
+  03:12, der tägliche Wächter blieb grün. Rest für den Server-Termin ab
+  2026-11-30 (zusammen mit d und e): die umgelaufenen Kopien der Dateien
+  FRÜHERER Prozess-Nummern liegen weiter im Ordner `~/.pm2/logs/` (die größte
+  rund 57 MB, `platformpukalaniapp-error-3.log.1`) — niemand schreibt mehr in
+  sie, sie können von Hand weg. In der Nacht auf den 2026-11-20 muss zum
+  ersten Mal je Log eine Datei `.2.gz` dazukommen; das zeigt derselbe Blick
+  am Server-Termin.
 - **(d) Erinnerungs-Lauf.** Die Route ist aus dem Code. Auf dem Server liegen
   noch die Einstellung `NUXT_EVENTS_SWEEP_KEY` und die Datei
   `~/events-sweep.log` — sie gehen am Server-Termin ab 2026-11-30 mit weg
@@ -684,17 +684,28 @@ und den Link im Kommentar-Bereich.
   Schlüssel-Sorte `events-sweep` sind seit 2026-11-17 aus dem Code (COMPLETE
   „N08"); in der Tabelle `instance_secrets` des Projekts kann noch eine Zeile
   dieser Sorte liegen — niemand liest sie mehr, sie kann am selben Termin mit
-  weg. Der Zeit-Lauf `event-reminders`
-  erinnert auch in einer Community, die wegen Missbrauchs vom Netz genommen
-  ist (der Link in der Erinnerung führt dann auf eine Seite, die es nicht
-  gibt). Bewertet: der PLAN spielt keine Rolle (eine Erinnerung ist kein neuer
-  Inhalt, und eine Zahlungs-Sperre soll sie laut Code-Kommentar nicht
-  verschlucken) — nur die Sperre wegen Missbrauchs und das Stilllegen.
-  Empfehlung: ein Vertrag im Core wie `resolveCommunityHosts`, der für eine
-  Liste von Communities die NICHT erreichbaren nennt (stillgelegt oder wegen
-  Missbrauchs gesperrt), bedient vom Control Plane mit derselben Abfrage;
-  ohne Antwort wird erinnert. Der vorhandene Vertrag reicht dafür nicht: er
-  unterscheidet „nicht erreichbar" nicht von „keine Antwort".
+  weg.
+  **Erinnerungen in nicht erreichbaren Communities: gebaut, zählt erst nur.**
+  Seit dem 2026-11-19 erkennt der Zeit-Lauf `event-reminders` Termine
+  stillgelegter und wegen Missbrauchs gesperrter Communities (COMPLETE
+  „N17"). Er erinnert dort noch WEITER und zählt nur, was er ausließe. Der
+  erste Takt auf Production zählte lauter Nullen — es war kein Termin
+  fällig, und ohne fälligen Termin fragt der Lauf das Control Plane gar
+  nicht. Das zeigt die Erkennung nicht; ein fälschlich ausgelassener Termin
+  ließe sich nicht nachholen, länger zählen kostet nichts.
+  **Scharf stellen, wenn** der tägliche Blick in die App (Hinweis-Zeile zum
+  Erinnerungs-Lauf bei `platform.pukalani.app`) einen Tag zeigt, an dem
+  mindestens ein Takt „mit Frage ans Control Plane" gezählt ist und nicht
+  alle davon „ohne Antwort" — UND die Zahl „Termine stillgelegter oder
+  gesperrter Communities" zu dem passt, was im Control Plane wirklich
+  stillgelegt oder gesperrt ist (das sieht nur, wer die Betreiber-Tabelle
+  liest: ist dort nichts stillgelegt und nichts gesperrt, muss die Zahl 0
+  sein). **Was dann zu ändern ist:** eine Zeile,
+  `EVENT_REMINDER_UNREACHABLE_MODE` in
+  `packages/events/shared/eventReminderJob.ts` von `'count'` auf `'skip'`
+  (Vorlage: der Zweig des geschlossenen Pull Requests 424). Über mehrere Tage
+  „ohne Antwort" größer als 0 hieße: die Platform-App erreicht das Control
+  Plane für diese Frage nicht — dann erst das klären.
 - **(e) Kleinigkeiten.** Sicherungen nach zwei Wochen löschen (ab 2026-11-30):
   auf dem App-Server `/home/ploi/logs/nginx/*.vorher-p23*` und
   `/home/ploi/portfolio.pukalani.app/.env.vorher-p23*`, auf dem Appwrite-Server
@@ -733,8 +744,14 @@ von sechs auf einen Weg gesunken.
   im Lauf bricht ihn ab). `market-library-compute.mjs` und die vier
   `verify-market-*.mjs` fragen den Stand über dieselbe Hilfe ab, sind aber
   nicht gelaufen (sie bezahlen echte Läufe). Die Lesung der Vorbilder bucht
-  bei einem gescheiterten oder abgebrochenen Lauf nicht zurück (nur die
-  Entwürfe tun das). Die Lauf-Zeilen (`market_runs`, `insights_runs`,
+  seit dem 2026-11-19 wie die Entwürfe zurück (COMPLETE „N17"). Dabei
+  aufgefallen, beides selten und klein: (1) der Entwurfs-Lauf schreibt die
+  Zahl seiner abgelegten Entwürfe erst am Ende an die Lauf-Zeile — stirbt er
+  nach dem Ablegen, bucht der nächste Start trotzdem zurück (die Lesung
+  schreibt die Zahl seit N17 sofort); (2) verliert ein Lauf seinen
+  Herzschlag und startet danach niemand neu, bucht keiner zurück, und der
+  Mensch verliert einen sichtbaren Lauf (bei Entwürfen und Lesung gleich).
+  Die Lauf-Zeilen (`market_runs`, `insights_runs`,
   `brand_runs`) haben bewusst keine Frist (bewertet am 2026-11-18, COMPLETE
   „N13"): sie nennen niemanden und sind klein. Neu ansehen, wenn eine der
   Tabellen über 50.000 Zeilen wächst — die Läufe des öffentlichen Checks
@@ -963,29 +980,23 @@ Erledigt am 2026-11-18 (COMPLETE „N14"): Rollen-Tests für `pages`,
 `apps/control` und die drei Einzelrouten, drei der vier Stellen aus (e), das
 Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
 
-- **(a) Skripte, die noch von Hand laufen (14 von 84).** Seit dem 2026-11-18
-  steht nachts branding.supply als vierter Server, acht seiner zwölf Skripte
-  laufen mit (COMPLETE „N16"). Offen:
-  - **Drei Skripte mit veralteter Test-Vorlage** (`verify-brand-kit` 52 von
-    58, `verify-brand-design` 117 von 131, `verify-brand-sessions` 302 von
-    333 auf der Bühne). Gemeinsame Ursache: die Vorlage `DNA_MIX` in den
-    Skripten passt nicht mehr zum heutigen Wortschatz der App
-    (`parseBrandDnaMixSlotValue` liefert nichts, also entsteht kein fertiges
-    Design). Kein Fehler im Produkt. Tun: die Vorlage in den drei Skripten
-    nachziehen; bei `sessions` zusätzlich klären, welche Prüfungen einen
-    Server ohne gestellte Antworten erwarten.
-  - **`verify-business-confirmation`:** braucht zusätzlich die Studio-Site,
-    und sein Registrier-Aufruf schickt die Pflicht-Felder der Zustimmung
-    nicht (die Route lehnt ihn seit dem 2026-11-16 ab).
-  - **Die fünf E2E-Dateien von `apps/portfolio`** brauchen einen fünften
-    Server mit eigenem Projekt `portfolio`. Empfehlung: nach demselben Muster
-    wie der vierte Server bauen (`--portfolio-port` im Setup, Start nur
+- **(a) Skripte, die noch von Hand laufen (11 von 84).** Nachts steht
+  branding.supply als vierter Server; seit dem 2026-11-19 laufen elf seiner
+  zwölf Skripte mit (COMPLETE „N17": die drei Design-Skripte haben wieder
+  eine gültige Vorlage). Offen:
+  - **Die fünf E2E-Dateien von `apps/portfolio`** und
+    **`verify-business-confirmation`** brauchen einen fünften Server mit
+    eigenem Projekt `portfolio`. Das Skript selbst ist seit dem 2026-11-19
+    nachgezogen (lokal 27 von 27, COMPLETE „N17"). Empfehlung: nach demselben
+    Muster wie der vierte Server bauen (`--portfolio-port` im Setup, Start nur
     nachts, die Dateien über `pnpm buehne e2e`), aber erst nach der
-    Entscheidung in (c) — der nächtliche Lauf dauert schon rund 30 Minuten.
-    `verify-business-confirmation` kann dann mit einziehen.
+    Entscheidung in (c) — der nächtliche Lauf dauert schon rund 32 Minuten.
   - Zwei Skripte der Einzel-Instanz brauchen eigens eingestellte Server
     (`verify-silo-domain`, `verify-domain-settle`). Bewusst von Hand bleiben
     sechs mit Fremddiensten.
+  - `verify-brand-sessions` hat einen Zweig für einen Server OHNE gestellte
+    Antworten (vier Prüfungen „ohne Modell ⇒ 503"). Er ist nach dem Umbau
+    nicht gelaufen; die Bühne überspringt ihn mit Grund.
 - **(b) Rollen-Tests: erledigt, der Bestand ist leer**
   (`support/routeRoleBacklog.ts`, vorher 85 Routen). Abgebaut am 2026-11-18:
   insights, brand und market (COMPLETE „N13"), `pages`, `apps/control` und die
@@ -1001,8 +1012,9 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   Programm? Danach David erneut fragen. Ebenfalls entschieden: GitHub
   erzwingt nicht, dass ein Zweig vor dem Zusammenführen aktuell ist; die
   Sitzungen testen selbst gegen den neuesten Stand (CLAUDE.md, Abschnitt Git).
-  Der nächtliche Lauf dauert seit dem vierten Server rund 30 Minuten (gemessen
-  29 min 37 s; mit drei Servern rund 23, mit zweien 16).
+  Der nächtliche Lauf dauert rund 32 Minuten (gemessen am 2026-11-19 mit 67
+  Skripten: 31 min 35 s; davor mit 64 Skripten 29 min 37 s und 31 min 28 s;
+  mit drei Servern rund 23, mit zweien 16).
 - **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
   Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
   Betreiber noch nicht. `verify-notification-mail-links` stößt den

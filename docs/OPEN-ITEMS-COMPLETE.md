@@ -30,6 +30,203 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N17 — Nacharbeiten „Skripte, Erinnerungen, Rückbuchung, Log-Umlauf": BT1 (a), SE1 (c, d), LL1 (c) ✅ 2026-11-19
+
+Die fünfte Gruppe nach den „drei größeren Resten" (Davids „Ja, starten" vom
+2026-11-19). Pull Requests 419 (Rückbuchung), 420 (Erinnerungen zählen), 421
+(Skripte), 425 (der tägliche Blick nennt die Fragen) und der Abschluss; 424
+(Erinnerungen scharf) ist NICHT zusammengeführt. Keine Migration, kein
+bezahlter KI-Lauf, kein Stripe, nichts an der echten Datenbank geändert. Auf
+dem Server wurde einmal nur gelesen, mit Davids Ja (unten).
+
+**BT1 (a) — drei Design-Skripte hatten eine veraltete Vorlage.**
+
+- **Die Ursache war ein einziges Etikett.** `verify-brand-kit`, `-design` und
+  `-sessions` schreiben einen fertigen DNA-Mix direkt in die Ablage. In der
+  Vorlage stand als Herkunft „Aus eurer Foundation"; die App kennt seit der
+  anredefreien Textrunde nur noch „Aus der Foundation". `parseBrandDnaMixSlotValue`
+  las deshalb nichts, es entstand kein fertiges Design, und alles dahinter
+  wurde rot. Kein Fehler im Produkt.
+- **Eine Stelle statt drei Kopien:** `packages/brand/scripts/lib/designProbe.mjs`.
+  Die Skripte sind `.mjs` und können den Wortschatz (`shared/*.ts`) nicht
+  selbst laden; deshalb hält ein Test die Vorlage gegen ihn
+  (`packages/brand/tests/designProbeTemplate.test.ts`): die App muss sie
+  lesen UND Zeichen für Zeichen wieder so schreiben, das Etikett von gestern
+  liest sie nicht (Gegenprobe), und eine Kopie in einem Skript ist rot.
+- **`verify-brand-sessions` hatte mehr als die Vorlage.** Mit ihr waren es
+  329 von 348; die übrigen 19 kamen aus dem Skript, nicht aus dem Produkt:
+  Wege, die inzwischen im Hintergrund rechnen (Dokument-Prüfung, Lesung,
+  Entwürfe — das Skript fragt jetzt den Stand ab), die anredefreien Texte auf
+  acht gerenderten Seiten, die Regel „ein Beta-Konto ist ohne Freischaltung
+  offen" (die Sperre wird dafür mit einem gewöhnlichen Konto geprüft, die
+  Gegenprobe bleibt) und eine Hilfe, die nie Kopfzeilen zurückgab. Eine
+  Gegenprobe wurde dabei strenger: „läuft durch (kein 409)" war auch bei 403
+  grün.
+- **Übersprungen heißt gemeldet.** Vier Prüfungen gelten nur für einen Server
+  OHNE gestellte Antworten („ohne Modell ⇒ 503"). Am Server der Bühne stehen
+  sie als `○ übersprungen` mit Grund da und zählen nicht mit; umgekehrt
+  meldet ein Server ohne Modell die gestellten Blöcke so. Der Zweig „ohne
+  gestellte Antworten" ist nach dem Umbau nicht gelaufen.
+- **Ergebnis, lokal gegen den Server mit gestellten Antworten:**
+  `verify-brand-kit` 58 von 58 (vorher 52), `verify-brand-design` 131 von 131
+  (vorher 117), `verify-brand-sessions` 394 von 394 und 4 übersprungen
+  (vorher 302 von 333). Vor und nach jedem Skript die Zeilen jeder Tabelle
+  und die Konten gezählt: gleich. Beim ersten Zählen ließ das Design-Skript
+  eine Zeile im Betreiber-Protokoll liegen (es löscht ein Konto über die
+  echte Route, die App vermerkt das) — es räumt sie jetzt ab.
+- **Alle drei laufen nachts mit.** Von den zwölf Skripten von branding.supply
+  laufen elf von selbst, von allen 84 jetzt 73 (vorher 70).
+- **Laufzeit, gemessen:** der nächtliche Lauf von Hand auf dem Zweig (Lauf
+  44572553680, vier Server): 67 von 67 bestanden, nichts übrig, **31 Minuten
+  35 Sekunden**. Die drei Skripte brauchen zusammen rund drei Minuten (7 s,
+  78 s, 94 s).
+
+**BT1 (a) — `verify-business-confirmation` schickt die Pflicht-Felder.**
+
+- Der Registrier-Aufruf trug weder `terms` noch `business`; die Route lehnt
+  das seit dem 2026-11-16 ab. Das Skript schickt sie jetzt mit und prüft neu,
+  was vorher ausdrücklich „keine Zusage" war: ohne `business` 400
+  `business_required`, ohne `terms` 400 `terms_required`, und in beiden
+  Fällen entsteht kein Konto. Nach der Anlage stehen genau zwei Zeilen in
+  `consent_records` (Weg `password`); auf der App ohne den Schalter entsteht
+  für denselben Rumpf keine `business`-Zeile.
+- Es setzt seine Annahme selbst (Registrierung beider Apps für die Dauer des
+  Laufs offen, danach wie vorher) und liest das Projekt der Gegenprobe aus
+  `PLAIN_ENV_FILE` — die zwei Apps haben längst je ein eigenes Projekt, das
+  alte Skript suchte das Konto der Gegenprobe im falschen.
+- Lokal mit beiden Servern: 27 von 27 (vorher 12 von 15). Es bleibt von Hand,
+  weil die Bühne keinen Server der Studio-Site hat (OPEN-ITEMS „BT1" a).
+- **Das Aufräum-Register sah lokal keine Spalten.** Der Laufzeit-Schlüssel
+  darf im lokalen Spiegel das Schema nicht lesen; `createEinzelCleanup` fand
+  deshalb keine Zeile, die an einem Konto hängt, löschte nur die Konten und
+  zählte „nichts übrig". Es liest das Schema jetzt mit dem
+  Migrations-Schlüssel, wenn die Umgebung einen nennt, und ein Skript kann
+  mit `schemaReadable()` vorher fragen. In der CI war das Schema schon
+  lesbar.
+
+**SE1 (d) — der Erinnerungs-Lauf erkennt nicht erreichbare Communities (zählt erst nur).**
+
+- **Der Vertrag (Core):** `resolveUnreachableCommunities(stempel)` — viele
+  Ablage-Stempel hinein, zurück `answered` und die Menge der NICHT
+  erreichbaren. Der vorhandene Host-Vertrag unterschied „nicht erreichbar"
+  nicht von „keine Antwort". Ohne Resolver, bei einer Störung und auf einer
+  Einzel-Instanz gilt „keine Antwort", und dann wird erinnert.
+- **Die Regel (Control Plane):** `communityUnreachableReason` — stillgelegt
+  (`status !== 'active'`, dieselbe Lesart wie der Mandanten-Resolver) oder
+  wegen Missbrauchs gesperrt. Die Zahlungs-Sperre zählt nicht; ein Stempel
+  ohne Zeile wird nicht genannt (unbekannt ist keine Tatsache). Der Leser hat
+  bewusst keinen Zwischenspeicher: der einzige Aufrufer läuft stündlich, und
+  ein Cache hielte eine aufgehobene Sperre fest. Verdrahtet in der
+  Platform-App, die das Control Plane nur liest.
+- **Der Lauf:** fragt je Takt einmal, nur im Pool und nur bei fälligen
+  Terminen. Der Schalter ist eine Konstante
+  (`EVENT_REMINDER_UNREACHABLE_MODE`): `count` erinnert weiter und zählt,
+  `skip` gibt einem Termin einer genannten Community keine Erinnerung und
+  KEINEN Merker — geht die Community vor dem Beginn wieder ans Netz, erinnert
+  ein späterer Takt. Beides ist gebaut und getestet; live ist `count`.
+- **Lesbar ohne Server-Zugang:** je Takt eine Zeile mit Zahlen im Protokoll
+  der App, und das Zähl-Skript des täglichen Wächters gibt sie als `erinnerungen
+  takte=… ohne_antwort=… termine=… empfaenger=… gefragt=…` weiter (nie rot).
+- **Der erste Takt auf Production,** gelesen über den Wächter von Hand (Lauf
+  44583614057): 1 Takt, 0 Termine, 0 Erinnerungen, 0 Takte ohne Antwort.
+- **Warum trotzdem nicht scharf.** Die Null ist erklärt — es war kein Termin
+  fällig (die öffentliche Demo-Community hat gar keine Termine). Aber ohne
+  fälligen Termin FRAGT der Lauf gar nicht; der Takt zeigt also nichts über
+  die Erkennung. Pull Request 424 (scharf) war schon offen und ist auf den
+  Einwand des Leitstands hin geschlossen worden: ein fälschlich ausgelassener
+  Termin lässt sich nicht nachholen, länger zählen kostet nichts. Dafür nennt
+  die Zähl-Zeile seit Pull Request 425 auch, wie viele Takte gefragt haben —
+  daran hängt das Scharfstellen (OPEN-ITEMS „SE1" d, mit der einen Zeile).
+- **Tests je Fall:** erreichbar, stillgelegt, gesperrt, Zahlungs-Sperre,
+  unbekannt, keine Antwort (Resolver wirft, keiner registriert),
+  Einzel-Instanz ohne Control Plane (der Vertrag wird nie gefragt) — für
+  beide Stufen.
+
+**LL1 (c) — die Lesung der Vorbilder bucht zurück.**
+
+- Endet ein Lauf ohne eine einzige geschriebene Lesung, geht der sichtbare
+  Tageszähler im Abschluss zurück; ein abgebrochener Lauf wird beim nächsten
+  Start nachgeholt, genau einmal (erst der Vermerk am Vorgänger, dann die
+  Rückbuchung). Konto- und Instanz-Deckel bleiben gebucht. Dasselbe Muster
+  wie bei den Zeichen-Entwürfen, 15 Tests mit Gegenproben.
+- Eine Lücke, die die Rückbuchung sonst geöffnet hätte: die Zahl der
+  geschriebenen Lesungen steht jetzt SOFORT an der Lauf-Zeile. Sonst sähe ein
+  Nachfolger nach einem Absturz „nichts geschrieben" und buchte für einen
+  Lauf mit Ergebnis zurück.
+- Die Seite brauchte nichts: sie liest ihr Rest-Kontingent schon aus der
+  Lauf-Ansicht. Kein neuer Text.
+
+**SE1 (c) — der Umlauf der pm2-Logs ist angesehen.**
+
+- Der tägliche Wächter am Morgen nach dem ersten Umlauf (Lauf 44457799074,
+  04:21 UTC) war grün und zählte alle 39 erwarteten Zeit-Läufe als gut (5, 13,
+  10 und 11 je App); der Schritt „Server-Einstellungen" meldete nichts Rotes.
+- Ob je Log eine Datei `.1` liegt, zeigt nur der Server, und das Wächter-Tor
+  hat dafür kein Wort. Mit Davids Ja (per Klick, 2026-11-19) einmal nur
+  gelesen (`ls` im Log-Ordner): der Umlauf lief um 03:12, 33 Dateien `.1`,
+  die laufenden Dateien geleert und weiter beschrieben, zusammen 66 MB. Die
+  große Alt-Datei einer früheren Prozess-Nummer ist einmal umgelaufen (ihre
+  Kopie liegt noch da, Rest in OPEN-ITEMS „SE1" c).
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar):
+
+- Die Design-Vorlage bleibt ein ausgeschriebener Text mit einem Test davor,
+  statt aus dem Wortschatz erzeugt zu werden — die Beweise vergleichen gegen
+  feste Entscheidungen, und die Skripte können die `.ts`-Dateien nicht laden.
+- Alle drei Design-Skripte ziehen in den nächtlichen Lauf ein (rund drei
+  Minuten mehr), statt nur die zwei kurzen.
+- `verify-business-confirmation` prüft jetzt auch die Ablehnung ohne die
+  Pflicht-Felder und räumt mit Nachzählen auf — mehr als „den Aufruf
+  reparieren", aber sonst hätte es weiter Zeilen liegen lassen.
+- Im Modus `skip` setzt der Erinnerungs-Lauf für einen ausgelassenen Termin
+  keinen Merker.
+- „Nicht erreichbar" nennt nur Zeilen, die es gibt; ein unbekannter Stempel
+  wird erinnert wie bisher.
+- Der Zähl-Lauf wurde über den täglichen Wächter lesbar gemacht (eine Zeile
+  mehr im Zähl-Skript) statt über einen Blick auf den Server.
+- Die Zähl-Zeile bekam nachträglich das Feld `gefragt` (am Ende, damit die
+  Auswertung auch die Zeile ohne es liest).
+- Bei der Lesung zählt auch „fertig, aber keine Zeile ließ sich schreiben"
+  als Lauf ohne Ergebnis (wie bei den Entwürfen).
+- Den Produktions-Wächter einmal von Hand gestartet, um den gezählten Takt am
+  selben Abend zu lesen (Folge unten).
+
+**Geprüft und nicht geprüft.** Geprüft: alle vier Code-Pull-Requests mit den
+fünf Pflicht-Prüfungen, vor dem Zusammenführen gegen den neuesten Stand von
+`main`; nach jedem Merge die acht Hosts (`ok`, Build, `schema`) — nach dem
+letzten Code-Merge melden alle acht den Build `724e83dc` (2026-11-19, 18:35
+UTC). Nicht
+geprüft: eine echte Antwort des Control Plane auf die neue Frage (kein
+Termin war fällig) und damit auch kein scharfer Lauf; die Rückbuchung gegen
+einen echten Anbieter; der Zweig
+„Server ohne gestellte Antworten" von `verify-brand-sessions`; die Datei
+`.2.gz` des zweiten Umlaufs (entsteht erst in der Nacht auf den 2026-11-20).
+
+**Nebenbei aufgefallen.** Der Wächter von Hand öffnete ein Alarm-Issue
+(Nummer 423): die Datei `app-watch-gate.sh` auf dem Server wich vom Repo ab.
+Das gehört zum Node-Wächter einer Nachbar-Sitzung (Pull Request 410: das Tor
+wird von Hand eingespielt), nicht zu N17; der Tageslauf hätte es am nächsten
+Morgen gemeldet. Derselbe Lauf zählte weniger „gute" Zeit-Läufe als zwei
+Stunden davor (zum Beispiel 8 von 10 statt 10 von 10), ohne Rot und ohne
+Hinweis. Zähl-Skript und Auswertung sind dafür nachgelesen — an der Änderung
+aus N17 liegt es nicht. Beides hat der Leitstand an die Nachbar-Sitzung und
+an David weitergegeben.
+
+**Gelernt:** Eine Test-Vorlage, die den Text der App KOPIERT, veraltet mit der
+nächsten Textrunde — und zwar still, weil der Beweis dann „Produkt kaputt"
+ruft. Wenn ein Skript einen Wert schreibt, den die App zurücklesen muss,
+gehört der Wert an EINE Stelle und ein Test davor, der ihn durch den echten
+Leser UND den echten Schreiber schickt. Zweitens: ein Aufräumen, das „nichts
+übrig" meldet, hat nur dann gezählt, wenn es das Schema lesen konnte — eine
+Hilfe, die ohne Leserecht still nichts findet, sieht genauso aus wie ein
+sauberer Lauf. Drittens: ein Zähl-Lauf, der nur ins Protokoll schreibt, ist
+für eine Sitzung ohne Server-Zugang unsichtbar; die Zahl gehört von Anfang an
+in den Blick, der ohnehin täglich liest. Viertens: „die Zahl lässt sich
+erklären" ist nicht „die Sache ist gezeigt". Ein Zähl-Lauf belegt nur, was
+er wirklich ausgeführt hat — hier fragte er ohne fälligen Termin gar nicht,
+und die Zeile sagte das nicht. Eine Zähl-Zeile nennt deshalb auch, WIE OFT
+der geprüfte Weg überhaupt gegangen wurde.
+
 ### AW30 (c) — Klick-Beweis hinter der Anmeldung auf Production nach Appwrite 2.7.3 ✅ 2026-11-19
 
 **Was.** Nach dem Upgrade vom 2026-11-18 war Production nur von außen
