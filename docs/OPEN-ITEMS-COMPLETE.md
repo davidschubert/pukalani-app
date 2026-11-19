@@ -64,9 +64,22 @@ gescheiterter Aufruf den Lauf rot macht und weder Mail noch Heartbeat schickt.
 - Wird eine weitere Quelle rot, während ein Issue offen ist, bekommt das
   Issue das Label und einen Kommentar, aber keine zweite Mail (wie vorher).
 
-**Beweis:** Tests und ein Lauf des Skripts gegen ein gestelltes `gh` lokal;
-die zwei Probealarme auf `main` stehen im Pull Request und im Runbook
-(`docs/runbooks/PRODUKTIONS-ALARM.md`, § 2).
+**Beweis:** Tests und ein Lauf des Skripts gegen ein gestelltes `gh` lokal,
+danach zwei Probealarme auf `main` (2026-11-19, Zeiten in UTC, die Zeile in
+Anführungszeichen steht so im Protokoll des Jobs `alarm`):
+
+| Lauf | Zeit | Was | Protokoll | Issue |
+|---|---|---|---|---|
+| 44498685593 | 09:41 | `signals_drill`, `server` rot | `plan=open` | 412 offen mit `alarm:server`, Alarm-Mail |
+| 44503302199 | 10:11 | Halbstunden-Lauf, `server` skipped | `plan=waiting` — „Issue #412 bleibt offen: 'server' ist in diesem Lauf nicht geprüft worden — keine Entwarnung", Heartbeat gesendet | 412 offen, kein Kommentar, keine Mail |
+| fünf weitere | bis 12:38 | Halbstunden-Läufe | dasselbe | 412 offen |
+| 44528708013 | 12:57 | von Hand ohne Schalter, `server` grün | `plan=close` | 412 zu um 13:00, Label weg, Entwarnungs-Mail |
+| 44530968523 | 13:11 | `alarm_drill`, `tls` rot | `plan=open` | 413 offen mit `alarm:tls`, Alarm-Mail |
+| 44535098965 | 13:36 | Halbstunden-Lauf, `server` skipped | `plan=close` | 413 zu um 13:36, Entwarnungs-Mail |
+
+Vorher (Issue 401) schloss der Halbstunden-Lauf ein Issue aus dem täglichen
+Teil nach 31 Minuten; Issue 412 stand drei Stunden und sechs Halbstunden-Läufe
+offen, bis ein Lauf den täglichen Teil grün sah. Kein Probe-Issue blieb offen.
 
 **Gelernt:** „Kein Job rot" ist nicht „alles grün", wenn ein Lauf nicht alles
 prüft. Ein übersprungener Job ist keine Aussage — wer aus mehreren Takten
