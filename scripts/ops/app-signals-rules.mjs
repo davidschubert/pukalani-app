@@ -117,6 +117,8 @@ export const LINE_FORMS = {
   csp: /^skriptregel berichte=(\d{1,9}) gedeckelt=(\d{1,9})$/,
   /** Seit WA1 e (2026-11-18) — OPTIONAL wie `audit`; gelesen vom Mail-Blick. */
   mailBreaker: new RegExp(`^mailbremse ausgeloest=(\\d{1,9}) letzte_min=${WORD.age}$`),
+  /** Seit SE1 d (2026-11-19) — OPTIONAL wie `audit`: der Erinnerungs-Lauf im Pool. */
+  reminders: /^erinnerungen takte=(\d{1,9}) ohne_antwort=(\d{1,9}) termine=(\d{1,9}) empfaenger=(\d{1,9})$/,
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -173,6 +175,9 @@ export function parseCounts(text) {
     }
     else if ((hit = line.match(LINE_FORMS.mailBreaker))) {
       Object.assign(counts, { mailBreaker: Number(hit[1]), mailBreakerLastMin: age(hit[2]) })
+    }
+    else if ((hit = line.match(LINE_FORMS.reminders))) {
+      Object.assign(counts, { reminderRuns: Number(hit[1]), reminderNoAnswer: Number(hit[2]), reminderEvents: Number(hit[3]), reminderRecipients: Number(hit[4]) })
     }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])
@@ -319,6 +324,16 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
     notes.push(`${where} ${counts.cspReports} Bericht(e) der Skript-Regel in ${counts.hours} h${counts.cspCapped > 0 ? `, der Deckel hat ${counts.cspCapped}× gegriffen` : ''} — zählt nur; welche Quelle auf welcher Seite, steht im Fehler-Log der App in den Zeilen \`csp.report\``)
   }
 
+  // ── Erinnerungen an nicht erreichbare Communities (SE1 d) ─────────────
+  // Zählt nur, nie rot: Stufe 1 erinnert weiter und zählt, wen Stufe 2
+  // ausließe. Ein Hinweis nur dort, wo der Lauf im Fenster gezählt hat (die
+  // Apps ohne Pool-Erinnerungen schreiben lauter Nullen). Ohne die Zeile ist
+  // das Zähl-Skript auf dem Server älter — dann steht in der Übersicht
+  // „nicht gezählt", und das ist kein Fehler.
+  if (counts.reminderRuns > 0) {
+    notes.push(`${where} der Erinnerungs-Lauf hat in ${counts.hours} h ${counts.reminderRuns} Takt(e) gezählt: ${counts.reminderEvents} Termin(e) stillgelegter oder gesperrter Communities mit ${counts.reminderRecipients} Erinnerung(en), ${counts.reminderNoAnswer} Takt(e) ohne Antwort des Control Plane — zählt nur`)
+  }
+
   return { red, notes }
 }
 
@@ -329,7 +344,7 @@ export function summaryLine({ site, counts, expected = new Set() }) {
     const job = counts.jobs.get(name)
     return job && job.lastResult !== 'failed' && job.lastOkMin !== null
   }).length
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Erinnerungen ins Leere ${counts.reminderRecipients ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
 }
 
 /**
