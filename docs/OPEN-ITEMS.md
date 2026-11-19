@@ -88,7 +88,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) Kundendomains aus dem Control Plane lesen, (e) Kleinigkeiten. Die Icon-Zeilen, Fehler außerhalb einer Anfrage und der Zahlungswarn-Lauf sind seit 2026-11-17 erledigt (COMPLETE „N09"). **Wartet auf:** (a) und (c) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil, (d) M | Nein | [Einzelheiten](#wa1) |
+| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) der neue Blick auf Kundendomains zählt erst nur — scharf stellen, (e) Kleinigkeiten. Seit 2026-11-18 lesen die Wächter die Kundendomains aus dem Control Plane, und der Mail-Blick liest nur noch die Dateien des laufenden Prozesses (COMPLETE „N16"). **Wartet auf:** (a), (c) und (d) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten. Kein Weg rechnet mehr länger, als der Webserver wartet: auch die Übersetzung einer ganzen Seite läuft seit dem 2026-11-18 im Hintergrund (COMPLETE „N15"). Offen bleibt, einen echten Lauf über 60 Sekunden einmal zu sehen. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
@@ -99,7 +99,7 @@ am 2026-11-18, COMPLETE „N11").
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (ein englisches Bildschirmfoto, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | KM1 | **Günstigeres Textmodell ansehen (Rest der Vorschläge nach dem KI-Alarm vom 2026-11-18).** Das neuere Textmodell kostet in Europa ein Zehntel. David will die Proben vorbereitet sehen (Klick 2026-11-19); gewechselt wird erst nach einem weiteren Ja. Erledigt: der Modell-Blick läuft alle 30 Minuten (COMPLETE „KM1 a"), der Alarmweg (COMPLETE „KM1 e"). Entschieden: kein täglicher echter Probe-Aufruf (Davids Nein, 2026-11-19). Die Aufstellung liegt vor: [Plan](plans/KI-TEXTMODELL-WECHSEL.md). **Wartet auf:** David sieht beim Anbieter nach, was die KI im Monat kostet, und sagt dann Ja oder Nein zur ersten Probe. | Niedrig | S bis M | Ja: Monatssumme ansehen, dann Ja oder Nein | [Einzelheiten](#km1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
-| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 62 von 84 von selbst; zwei E2E-Dateien laufen seit dem 2026-11-18 nachts mit (COMPLETE „N15"). Offen: (a) 12 Skripte brauchen branding.supply als laufenden Server, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
+| BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 70 von 84 von selbst; seit dem 2026-11-18 steht nachts auch branding.supply als vierter Server (COMPLETE „N16"). Offen: (a) vier Skripte von branding.supply brauchen eine neue Test-Vorlage, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
 | AW30 | **Reste nach dem Appwrite-Upgrade auf 2.7.3.** Production läuft seit dem 2026-11-18 auf 2.7.3, geprüft von außen und auf dem Server. Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) einmal anmelden, Profilbild hochladen und per Code anmelden mit einem Konto auf Production; (d) alte Images auf dem Server aufräumen (rund 11 GB). | Niedrig | S | (c) und (d): **Ja** (Konto bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
@@ -615,18 +615,29 @@ nicht mehr, das Beweis-Skript der Nachrichten läuft gegen den lokalen Spiegel.
   neu, deshalb erst mit Messwerten: der tägliche Lauf berichtet den Speicher je
   Prozess. Gemessen am 2026-11-16: fünf Apps 99 bis 182 MB, `platform` 291 MB
   kurz nach dem Start und 555 MB nach gut einer Stunde (Rechner: 3,8 GB).
-- **(d) Kundendomains aus dem Control Plane lesen.** Die Host-Listen des TLS-
-  und des Health-Wächters sind von Hand gepflegt; eine neue Kundendomain steht
-  dort erst, wenn jemand sie einträgt. Braucht eine lesende Route mit
-  Geheimnis und ein Secret bei GitHub.
+- **(d) Kundendomains: der neue Blick zählt erst nur.** Gebaut am 2026-11-18
+  (COMPLETE „N16"): der Job `kundendomains` liest alle 30 Minuten die live
+  geschalteten Kundendomains aus dem Control Plane und prüft Zertifikat und
+  Erreichbarkeit. Er läuft mit `PUKALANI_CUSTOMER_HOSTS_MODE: count` — ein
+  Befund ist eine Zeile „Nur gezählt", rot wird nichts. Ab dem 2026-11-23 die
+  Zeilen der Läufe ansehen; sind sie sauber, in
+  `.github/workflows/production-watch.yml` `alarm` eintragen (dann prüft der
+  Job nur, was die feste Liste nicht schon kennt, und ein Befund ist rot) und
+  danach einmal `-f kunden_drill=true`. Das Geheimnis ist seit dem 2026-11-18
+  gesetzt (Davids Ja; Site `admin.pukalani.app` und Umgebung
+  `production-watch`), tauschen: docs/runbooks/PRODUKTIONS-ALARM.md,
+  „Kundendomains". Heute stehen alle Kundendomains der Route auch in der
+  festen Liste — der Nutzen kommt mit der nächsten.
 - **(e) Kleinigkeiten.** Erledigt am 2026-11-17 (COMPLETE „N09"): die Zeilen
   „[Icon] failed to load" (Ursache behoben), Fehler außerhalb einer Anfrage
   (zählbare Zeile `server.error` mit `source: process`), der Lauf
   `past-due-notice` meldet „schon im Gange" als übersprungen. Offen: Das
   Guthaben bei OpenRouter lässt sich nicht im Voraus prüfen (nur mit einem
   Verwaltungs-Schlüssel) — gemeldet wird der erste abgelehnte Aufruf. Der
-  Mail-Blick liest im Log-Ordner auch Dateien früherer Prozess-Nummern mit (das
-  Zeitfenster hält ihn richtig). Auf dem Appwrite-Server liegen die
+  Mail-Blick liest seit dem 2026-11-18 nur noch die Dateien des laufenden
+  Prozesses (COMPLETE „N16"); das alte Tor-Wort `mail-breaker` braucht nur
+  noch der Probelauf — beim nächsten geplanten Einspielen des Wächter-Tors
+  (`ops/app-watch-gate.sh`) kann es entfallen. Auf dem Appwrite-Server liegen die
   Sicherungen `*.vorher-p22` (nach zwei Wochen löschen). Im Log-Ordner der
   Platform-App liegt noch die Datei einer früheren Prozess-Nummer mit rund
   263.000 Icon-Zeilen (nur Platz; mit dem Aufräumen am 2026-11-30 löschen).
@@ -952,20 +963,29 @@ Erledigt am 2026-11-18 (COMPLETE „N14"): Rollen-Tests für `pages`,
 `apps/control` und die drei Einzelrouten, drei der vier Stellen aus (e), das
 Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
 
-- **(a) Skripte, die noch von Hand laufen (22 von 84).** 12 brauchen
-  branding.supply mit eigenem Projekt: nötig wären ein viertes Projekt
-  `branding` im Bühnen-Setup, `bootstrap --app branding`, ein vierter Server
-  (nur nachts) und Einträge `env: 'branding'` im Läufer, nach dem Muster der
-  Einzel-Instanz (`env: 'einzel'`). Vorher je Skript prüfen, ob es echte KI,
-  Stripe oder eine fremde Website anfasst (der Umbau in `brand`, `market`
-  und `insights` aus N10 ist seit dem 2026-11-18 auf `main`). Zwei Skripte der
-  Einzel-Instanz brauchen eigens eingestellte Server (`verify-silo-domain`,
-  `verify-domain-settle`). Bewusst von Hand bleiben sechs mit Fremddiensten.
-  Seit dem 2026-11-18 laufen nachts zwei E2E-Dateien mit
-  (`apps/comments/e2e/community-removed.spec.ts` und die E2E-Datei von
-  `apps/control`, über `pnpm buehne e2e`; COMPLETE „N15"). Die fünf
-  E2E-Dateien von `apps/portfolio` brauchen einen eigenen Server und ein
-  eigenes Projekt.
+- **(a) Skripte, die noch von Hand laufen (14 von 84).** Seit dem 2026-11-18
+  steht nachts branding.supply als vierter Server, acht seiner zwölf Skripte
+  laufen mit (COMPLETE „N16"). Offen:
+  - **Drei Skripte mit veralteter Test-Vorlage** (`verify-brand-kit` 52 von
+    58, `verify-brand-design` 117 von 131, `verify-brand-sessions` 302 von
+    333 auf der Bühne). Gemeinsame Ursache: die Vorlage `DNA_MIX` in den
+    Skripten passt nicht mehr zum heutigen Wortschatz der App
+    (`parseBrandDnaMixSlotValue` liefert nichts, also entsteht kein fertiges
+    Design). Kein Fehler im Produkt. Tun: die Vorlage in den drei Skripten
+    nachziehen; bei `sessions` zusätzlich klären, welche Prüfungen einen
+    Server ohne gestellte Antworten erwarten.
+  - **`verify-business-confirmation`:** braucht zusätzlich die Studio-Site,
+    und sein Registrier-Aufruf schickt die Pflicht-Felder der Zustimmung
+    nicht (die Route lehnt ihn seit dem 2026-11-16 ab).
+  - **Die fünf E2E-Dateien von `apps/portfolio`** brauchen einen fünften
+    Server mit eigenem Projekt `portfolio`. Empfehlung: nach demselben Muster
+    wie der vierte Server bauen (`--portfolio-port` im Setup, Start nur
+    nachts, die Dateien über `pnpm buehne e2e`), aber erst nach der
+    Entscheidung in (c) — der nächtliche Lauf dauert schon rund 30 Minuten.
+    `verify-business-confirmation` kann dann mit einziehen.
+  - Zwei Skripte der Einzel-Instanz brauchen eigens eingestellte Server
+    (`verify-silo-domain`, `verify-domain-settle`). Bewusst von Hand bleiben
+    sechs mit Fremddiensten.
 - **(b) Rollen-Tests: erledigt, der Bestand ist leer**
   (`support/routeRoleBacklog.ts`, vorher 85 Routen). Abgebaut am 2026-11-18:
   insights, brand und market (COMPLETE „N13"), `pages`, `apps/control` und die
@@ -981,7 +1001,8 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   Programm? Danach David erneut fragen. Ebenfalls entschieden: GitHub
   erzwingt nicht, dass ein Zweig vor dem Zusammenführen aktuell ist; die
   Sitzungen testen selbst gegen den neuesten Stand (CLAUDE.md, Abschnitt Git).
-  Der nächtliche Lauf dauert seit dem dritten Server rund 23 statt 16 Minuten.
+  Der nächtliche Lauf dauert seit dem vierten Server rund 30 Minuten (gemessen
+  29 min 37 s; mit drei Servern rund 23, mit zweien 16).
 - **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
   Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
   Betreiber noch nicht. `verify-notification-mail-links` stößt den
