@@ -275,8 +275,10 @@ Prüf-Skripte: `ops/app-watch-gate-attrappe.sh` (Wegwerf-Container mit echtem
 sshd: jedes Wort mit und ohne festen Befehl, die Ablehnungen, die echten
 Prüf-Skripte, die Vergleiche `sums` und `node-version`), dann einspielen.
 ZWISCHEN MERGE UND EINSPIELEN meldet der Blick „Liegen auf den Servern die
-Dateien aus dem Repo?" die Abweichung — beides am selben Tag vor 04:17 UTC
-erledigen, sonst geht ein Alarm auf. Ein Wort, das das Tor auf dem Server
+Dateien aus dem Repo?" die Abweichung — beides direkt hintereinander
+erledigen, sonst geht ein Alarm auf: im Tageslauf um 04:17 UTC und in JEDEM
+Lauf von Hand davor (2026-11-19: Issue 423 stand so knapp sechs Stunden
+offen). Ein Wort, das das Tor auf dem Server
 noch nicht kennt, beantwortet es mit Exit 64; der Blick dazu bleibt dann
 grün und schreibt „nicht geprüft". Ob die Datei auf dem
 Server der im Repo entspricht, sagt der tägliche Blick „Liegen auf den
@@ -292,7 +294,7 @@ bis es wieder liegt.
 | Server | Datei | Quelle im Repo | Seit N12 | Zurück |
 | --- | --- | --- | --- | --- |
 | app-prod | `~/ops/app-release.sh` | `ops/app-release.sh` | neu; Kopie der ersten Fassung `app-release.sh.vorher-n12` | NICHT löschen, solange der Workflow nur diesen Weg kennt: erst die Änderung am Workflow zurücknehmen (`git revert`), dann die Zeile in `authorized_keys` |
-| app-prod | `~/ops/app-watch-gate.sh` | `ops/app-watch-gate.sh` | neu | wie oben: erst die Prüf-Skripte zurück auf freie Befehle, dann die Zeile |
+| app-prod | `~/ops/app-watch-gate.sh` | `ops/app-watch-gate.sh` | neu; seit 2026-11-19 mit dem Wort `node-version`, Kopie der Fassung davor `app-watch-gate.sh.vorher-2026-11-19` | wie oben: erst die Prüf-Skripte zurück auf freie Befehle, dann die Zeile |
 | app-prod | `~/.ssh/authorized_keys` | — | zwei Zeilen mit `command=…`; Kopie `authorized_keys.vorher-n12` | die zwei Zeilen wieder auf `restrict` allein (oder die Kopie zurücklegen, wenn seither kein Schlüssel dazukam) — beide Skripte laufen auch mit freiem Schlüssel |
 | app-prod | `~/ops/apps.conf`, `app-env-bundle.sh`, `appwrite-backup.pub.asc` | gleichnamig unter `ops/` | unverändert (seit N11) | — |
 | appwrite-prod | `~/bin/pukalani-cert-gate.sh` | `ops/appwrite-cert-gate.sh` | Wort `sums`; Kopie `pukalani-cert-gate.sh.vorher-n12` | Kopie zurücklegen (der Vergleich meldet dann „nicht geprüft") |
