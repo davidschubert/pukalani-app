@@ -269,21 +269,41 @@ pm2 startet jede App mit `/usr/bin/node`.
    sudo apt-get install nodejs=<Version aus .nvmrc>-1nodesource1
    ```
 
-3. Als `ploi` den pm2-Dienst mit der neuen Version neu starten:
+   Der Knopf „Run updates now" in Ploi (Server → Verwalte → Updates) hebt
+   das Paket auch, aber zusammen mit ALLEN wartenden Paketen und auf den
+   neuesten Stand der Linie statt auf eine genannte Zahl. Der Auftrag kam am
+   2026-11-19 erst 28 Minuten nach dem Klick auf dem Server an.
+3. Als `ploi` den pm2-Dienst mit der neuen Version neu starten, NICHT
+   während eines Ausliefer-Laufs:
 
    ```bash
    pm2 update
    ```
 
-   Das startet ALLE Apps neu (eine kurze Unterbrechung auf jeder Site). Ein
-   `pm2 reload` reicht nicht: im Cluster-Modus nimmt der pm2-Dienst selbst die
-   Verbindungen an, und er läuft bis zu seinem Neustart mit dem alten Stand
-   weiter.
+   Das startet ALLE Apps neu (gemessen 2026-11-19: rund zwei Sekunden, alle
+   sechs kamen aus dem gespeicherten Stand zurück). Eine App, die nach
+   Schritt 2 neu geladen wird — jedes Ausliefern tut das —, läuft schon mit
+   dem neuen Programm. Der pm2-Dienst selbst läuft bis zu `pm2 update` aus
+   der alten, ersetzten Datei weiter, und im Cluster-Modus nimmt er die
+   Verbindungen an. `pm2 jlist` zeigt ihn nicht, der Wächter unten sieht ihn
+   deshalb auch nicht: `readlink /proc/$(cat ~/.pm2/pm2.pid)/exe` endet auf `(deleted)`, solange
+   er noch aus der alten Datei läuft.
 4. Beweis: `pm2 jlist` nennt je Prozess die Node-Version (`node_version`) —
    sie ist die aus `.nvmrc`; danach `node scripts/ops/verify-health.mjs`.
    Vom eigenen Rechner fragt beides in einem Zug
    `node scripts/ops/verify-node-version.mjs` (Programm und jeder Prozess
    gegen `.nvmrc`).
+5. Der AI-Runner auf dem Rechner zieht mit. Er liest `.nvmrc` NICHT: seine
+   Start-Datei (LaunchAgent) und `claudeBin` in seiner Config nennen den
+   Node-Pfad fest, und der Ordner von `claudeBin` bestimmt auch das Node der
+   Testbefehle eines Laufs. Beide Zeilen heben, mit `--dry-config` prüfen,
+   dann den Dienst mit `launchctl bootout` und `launchctl bootstrap` neu
+   laden — `kickstart -k` liest die Start-Datei nicht neu
+   ([AI-RUNNER-BETRIEB.md](AI-RUNNER-BETRIEB.md), Abschnitt 4).
+
+**Protokoll.** 2026-11-19: erstes Heben nach diesem Weg, 24.22.1 → 24.22.3
+(Paket über Ploi, `pm2 update` 17:57 UTC, danach jeder Prozess auf 24.22.3
+und alle Hosts `ok`; der Runner am selben Tag).
 
 Ein Sprung auf eine neue LINIE (24 → 26) ist dasselbe mit einem Schritt
 davor: die Paketquelle auf dem Server zeigt auf eine Linie
