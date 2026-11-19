@@ -229,7 +229,23 @@
 #      das Zertifikat der ersten Kundendomain abgelaufen).
 #      Regeln: `scripts/ops/customer-hosts.mjs`.
 #
-# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16
+#  18. NODE-VERSION DES APP-SERVERS (`verify-node-version.mjs`), TÄGLICH
+#      (2026-11-19). `.nvmrc` nennt EINE exakte Node-Version für den eigenen
+#      Rechner, die CI und den App-Server. Lokal und in der CI liest jedes
+#      Werkzeug die Datei; auf dem Server kommt Node aus dem Paket `nodejs`
+#      und wird nicht von selbst gehoben — das Repo prüfte wochenlang mit
+#      Linie 22, während der Server auf 24 lief, und es fiel nur beim
+#      Nachsehen auf. Das Wächter-Tor kennt dafür das Wort `node-version`:
+#      eine Zeile für das Programm, mit dem pm2 startet (`/usr/bin/node`), und
+#      je pm2-Prozess einer Site der App-Liste eine Zeile mit seiner Version
+#      (aus `pm2 jlist`). Zurück kommen nur Versionsnummern, Zahlen und
+#      Prozess-Namen aus der Liste. Rot: das Programm oder ein Prozess nennt
+#      eine andere Version als `.nvmrc` (auch eine NEUERE). Nicht erreichbar
+#      oder „das Tor kennt `node-version` noch nicht" ist KEIN Befund (Exit 2,
+#      eine Warnzeile). Probealarm: `-f node_drill=true`.
+#      Runbook: docs/runbooks/DEPLOYMENT.md, Abschnitt A4.
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16 und 18
 # schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
 # setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
@@ -318,7 +334,7 @@
 # der Bericht (Dateiname, Projekt, Status).
 #
 # ── DAS WÄCHTER-TOR AUF APP-PROD (CI1 a, 2026-11-18) ──────────────────────
-# Die Blicke 1, 2, 3, 5 (Server-Log), 9, 12 und 16 schicken auf app-prod nur
+# Die Blicke 1, 2, 3, 5 (Server-Log), 9, 12, 16 und 18 schicken auf app-prod nur
 # noch feste Worte an `/home/ploi/ops/app-watch-gate.sh` (von Hand
 # eingespielt). Mit freiem Schlüssel führt die Shell das Tor aus, mit festem
 # Befehl sshd — dieselbe Befehlszeile. Kein scp, keine freie Zeile.
@@ -369,6 +385,10 @@ on:
         default: false
       kunden_drill:
         description: 'PROBEALARM KUNDENDOMAINS: der Blick tut so, als wäre das Zertifikat der ersten Kundendomain abgelaufen — prüft die Kette samt der Mail mit dem Namen; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
+      node_drill:
+        description: 'PROBEALARM NODE-VERSION: der Blick tut so, als liefe der Prozess der ersten App mit einer anderen Node-Version als .nvmrc — prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
       appwrite_probe:
@@ -806,6 +826,28 @@ jobs:
             echo "::warning::Keine Aussage, ob der Wächter-Schlüssel beschränkt ist (Exit $code)."
           fi
 
+      # Blick 18 (s. Kopf). Ein Tor-Wort `node-version`; zurück kommen nur
+      # Versionsnummern, Zahlen und Prozess-Namen aus der App-Liste. Exit 1 =
+      # das Programm oder ein Prozess nennt eine andere Version als `.nvmrc`
+      # (rot). Exit 2 = keine Aussage (nicht erreichbar, oder das Tor auf dem
+      # Server kennt das Wort noch nicht) — eine Warnung und kein Alarm; die
+      # Warnzeile mit dem Handgriff schreibt das Skript selbst.
+      - name: Läuft auf dem App-Server das Node aus .nvmrc?
+        if: always()
+        env:
+          PUKALANI_OPS_SSH: ploi@49.13.211.173
+          PUKALANI_NODE_DRILL: ${{ inputs.node_drill && '1' || '0' }}
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+        run: |
+          set -u
+          code=0
+          node scripts/ops/verify-node-version.mjs --strict || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::Keine Aussage über die Node-Version auf dem App-Server. Kein Alarm; der nächste Tageslauf prüft neu."
+            exit 0
+          fi
+          exit "$code"
+
       - name: Befunde weiterreichen
         id: befunde
         if: always()
@@ -853,8 +895,8 @@ jobs:
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
       KUNDEN_RESULT: ${{ needs.kundendomains.result }}
-      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill || inputs.kunden_drill) && '1' || '0' }}
-      # Die Sätze der Blicke 9 bis 16 (s. Kopf) — über `env`, nie direkt in
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill || inputs.kunden_drill || inputs.node_drill) && '1' || '0' }}
+      # Die Sätze der Blicke 9 bis 16 und 18 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}
