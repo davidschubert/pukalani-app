@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { H3Event } from 'h3'
+import { RUN_LEASE_STALL_MS } from '../../core/shared/runLease'
 import type { MemoryStore } from '../../core/tests/support/runLeaseMemoryStore'
 import { memoryStore } from '../../core/tests/support/runLeaseMemoryStore'
-import { brandAiAccountDayKey, brandDesignReadingDayKey } from '../shared/brandAiLimits'
+import { brandAiAccountDayKey, brandAiInstanceDayKey, brandDesignReadingDayKey } from '../shared/brandAiLimits'
 import { BRAND_RUN_SCOPES, parseBrandRunDetail } from '../shared/brandRun'
 import type { BrandInspirationListResponse, BrandInspirationReadResponse } from '../shared/types/brand'
 
@@ -13,7 +14,8 @@ import type { BrandInspirationListResponse, BrandInspirationReadResponse } from 
  * und rechnet hinter der Antwort; `GET …/inspiration` liefert Liste, Fazit
  * und Lauf-Stand. Dieser Test lädt beide Routen und fährt sie mit der ECHTEN
  * Sperr-Logik des Core (Store im Speicher, echter Konflikt beim Anlegen), der
- * ECHTEN Buchung (`brandAiQuota.ts`) und dem ECHTEN Burst-Zähler. Attrappe
+ * ECHTEN Buchung und Rückbuchung (`brandAiQuota.ts`) und dem ECHTEN
+ * Burst-Zähler. Attrappe
  * ist nur, was Geld kostet oder eine Datenbank braucht: Zugang, Datentür, der
  * Vision-Lauf, die Ablage.
  */
@@ -117,6 +119,7 @@ vi.mock('../shared/brandReading', async (original) => {
 
 const NARROW = `rl:${brandDesignReadingDayKey('p1')}`
 const ACCOUNT = `rl:${brandAiAccountDayKey('u1')}`
+const INSTANCE = `rl:${brandAiInstanceDayKey()}`
 
 const lease = await import('../../core/server/utils/runLease')
 
@@ -166,6 +169,7 @@ vi.stubGlobal('runDetached', (label: string, work: () => Promise<void>) => {
   })
 })
 
+/** Ein Zähl-Store mit `refund` wie der des Core — jede Rückbuchung ein Zeuge. */
 function countingStore() {
   return {
     prefix: 'rl:',
@@ -177,6 +181,8 @@ function countingStore() {
       },
       refund: async (key: string) => {
         refunds.push(key)
+        const count = counts.get(key) ?? 0
+        if (count > 0) counts.set(key, count - 1)
       },
     },
   }
@@ -204,6 +210,24 @@ async function latestRow() {
   return await store.latest(BRAND_RUN_SCOPES.reading, 'p1')
 }
 
+/** Ein abgebrochener Vorgänger: Herzschlag älter als die Frist, kein Ende. */
+function seedStalled(detail: Record<string, unknown>): string {
+  const at = new Date(Date.now() - RUN_LEASE_STALL_MS - 60_000).toISOString()
+  const id = lease.runLeaseRowId(BRAND_RUN_SCOPES.reading, 'p1', 1)
+  store.rows.set(id, {
+    $id: id,
+    scope: BRAND_RUN_SCOPES.reading,
+    subject: 'p1',
+    seq: 1,
+    startedAt: at,
+    heartbeatAt: at,
+    finishedAt: '',
+    outcome: '',
+    detail: JSON.stringify(detail),
+  })
+  return id
+}
+
 beforeEach(() => {
   store = memoryStore()
   runResult = goodResult()
@@ -229,6 +253,7 @@ beforeEach(() => {
   readOrder = []
   generators.clearActiveBrandGenerations()
   vi.stubGlobal('useRateLimitStore', countingStore)
+  vi.stubGlobal('keepRunLeaseAlive', lease.keepRunLeaseAlive)
 })
 
 describe('Wer darf — Start und Liste', () => {
@@ -333,12 +358,15 @@ describe('POST …/inspiration/read — Vorprüfungen kosten nichts', () => {
     expect(counts.size).toBe(0)
   })
 
-  it('429 der Drossel ⇒ `Retry-After`, die Sperre fällt wieder, kein Lauf', async () => {
+  it('429 der Drossel ⇒ `Retry-After`, die Sperre fällt wieder, kein Lauf, nichts zurückgebucht', async () => {
     counts.set(NARROW, 3)
     await expect(start(event)).rejects.toMatchObject({ status: 429 })
     expect(headers['Retry-After']).toBeGreaterThan(0)
     expect(store.rows.size).toBe(0)
     expect(runCalls).toBe(0)
+    expect(refunds).toEqual([])
+    // Die Absage hat den engen Eimer gezählt (4) — und das bleibt so.
+    expect(counts.get(NARROW)).toBe(4)
     expect(generators.countActiveBrandGenerations('u1')).toBe(0)
     // GEGENPROBE: der Knopf hängt nicht — der nächste Start erreicht wieder die Drossel.
     await expect(start(event)).rejects.toMatchObject({ status: 429 })
@@ -362,13 +390,8 @@ describe('Der Lauf scheitert — der Grund steht an der Zeile, nichts wird gesch
     expect((await latestRow())?.outcome).toBe('reading_unavailable')
     expect(stored).toEqual([])
     expect(slotWrites).toEqual([])
-    expect(events).toEqual([expect.objectContaining({ read: 0, failure: 'provider_error' })])
-    // Die Lesung bucht nicht zurück (unverändert) — der Platz ist trotzdem frei.
-    expect(refunds).toEqual([])
+    expect(events).toEqual([expect.objectContaining({ read: 0, failure: 'provider_error', refunded: true })])
     expect(generators.countActiveBrandGenerations('u1')).toBe(0)
-
-    const view = await read(event)
-    expect(view.run).toMatchObject({ state: 'failed', failure: 'reading_unavailable' })
   })
 
   it('zu gross für einen Zug ⇒ eigener Grund `reading_too_large`', async () => {
@@ -402,6 +425,215 @@ describe('Der Lauf scheitert — der Grund steht an der Zeile, nichts wird gesch
     expect(stored).toEqual([])
     expect(slotWrites).toEqual([])
     expect((await latestRow())?.outcome).toBe('profile_gone')
+  })
+})
+
+describe('Lauf ohne Lesung — der sichtbare Zähler geht zurück (LL1 c, wie BE-004)', () => {
+  it('der Anbieter liefert nichts ⇒ genau EINE Rückbuchung auf den engen Eimer, `refunded` an der Zeile', async () => {
+    runResult = { failure: 'provider_error' }
+    await start(event)
+    await detached
+
+    const row = await latestRow()
+    expect(row?.outcome).toBe('reading_unavailable')
+    expect(parseBrandRunDetail(row?.detail)).toMatchObject({ booked: true, created: 0, refunded: true, used: 1, limit: 3 })
+    expect(refunds).toEqual([NARROW])
+    // Der Mensch sieht wieder „3 von 3" — Konto und Instanz bleiben gebucht.
+    expect(counts.get(NARROW)).toBe(0)
+    expect(counts.get(ACCOUNT)).toBe(1)
+    expect(counts.get(INSTANCE)).toBe(1)
+
+    // Die Liste zeigt den Grund UND den zurückgebuchten Zähler.
+    const view = await read(event)
+    expect(view.run).toMatchObject({
+      state: 'failed',
+      failure: 'reading_unavailable',
+      refunded: true,
+      quota: { used: 0, limit: 3, remaining: 3 },
+    })
+  })
+
+  it('zu gross für einen Zug ⇒ `reading_too_large`, zurückgebucht', async () => {
+    runResult = { failure: 'too_large' }
+    await start(event)
+    await detached
+    expect((await latestRow())?.outcome).toBe('reading_too_large')
+    expect(refunds).toEqual([NARROW])
+    expect(events).toEqual([expect.objectContaining({ read: 0, failure: 'too_large', refunded: true })])
+  })
+
+  it('der Vision-Lauf WIRFT ⇒ `failed`, zurückgebucht', async () => {
+    runThrows = new Error('boom')
+    await start(event)
+    await detached
+    const row = await latestRow()
+    expect(row?.outcome).toBe('failed')
+    expect(parseBrandRunDetail(row?.detail).refunded).toBe(true)
+    expect(refunds).toEqual([NARROW])
+  })
+
+  it('die Marke ist während des Laufs gelöscht ⇒ `profile_gone`, zurückgebucht (wie bei den Entwürfen)', async () => {
+    profileExists = false
+    await start(event)
+    await detached
+    const row = await latestRow()
+    expect(row?.outcome).toBe('profile_gone')
+    expect(parseBrandRunDetail(row?.detail)).toMatchObject({ created: 0, refunded: true })
+    expect(refunds).toEqual([NARROW])
+    expect(counts.get(ACCOUNT)).toBe(1)
+  })
+
+  it('keine Zeile ließ sich schreiben ⇒ `done`, aber zurückgebucht, das Ereignis sagt `refunded`', async () => {
+    runResult = { ...goodResult(), readings: {} }
+    await start(event)
+    await detached
+    const row = await latestRow()
+    expect(row?.outcome).toBe('done')
+    expect(parseBrandRunDetail(row?.detail)).toMatchObject({ created: 0, refunded: true })
+    expect(refunds).toEqual([NARROW])
+    expect(events).toEqual([expect.objectContaining({ read: 0, refunded: true })])
+  })
+
+  it('eine gestörte Rückbuchung ändert den Ausgang nicht (fail-soft)', async () => {
+    runResult = { failure: 'provider_error' }
+    vi.stubGlobal('useRateLimitStore', () => ({
+      prefix: 'rl:',
+      store: {
+        hit: async () => ({ count: 1, resetInMs: 1000 }),
+        refund: async () => {
+          throw new Error('redis down')
+        },
+      },
+    }))
+    await start(event)
+    await detached
+    expect((await latestRow())?.outcome).toBe('reading_unavailable')
+    expect(logs.some(entry => entry.name === 'brand.ai_quota_refund_failed')).toBe(true)
+  })
+})
+
+describe('Ein Lauf mit Lesung bleibt gebucht', () => {
+  it('GEGENPROBE: zwei Lesungen ⇒ `done`, keine Rückbuchung, kein `refunded`', async () => {
+    await start(event)
+    await detached
+    const row = await latestRow()
+    expect(row?.outcome).toBe('done')
+    expect(parseBrandRunDetail(row?.detail)).toMatchObject({ created: 2, refunded: false })
+    expect(refunds).toEqual([])
+    expect(counts.get(NARROW)).toBe(1)
+    expect(events).toHaveLength(1)
+    expect(events[0]).not.toHaveProperty('refunded')
+    expect((await read(event)).run.quota).toEqual({ used: 1, limit: 3, remaining: 2 })
+  })
+
+  it('GEGENPROBE: Teil-Erfolg (eine Lesung von zwei) ⇒ `done`, keine Rückbuchung', async () => {
+    runResult = { ...goodResult(), readings: { f1: { verdict: 'fits' } } }
+    await start(event)
+    await detached
+    expect((await latestRow())?.outcome).toBe('done')
+    expect(parseBrandRunDetail((await latestRow())?.detail).created).toBe(1)
+    expect(refunds).toEqual([])
+    expect(counts.get(NARROW)).toBe(1)
+  })
+
+  it('verlorener Herzschlag ⇒ `lease_lost`, nichts geschrieben, KEINE Rückbuchung im Abschluss', async () => {
+    vi.stubGlobal('keepRunLeaseAlive', () => ({ stop: () => {}, lost: () => true }))
+    await start(event)
+    await detached
+    const row = await latestRow()
+    expect(row?.outcome).toBe('lease_lost')
+    expect(parseBrandRunDetail(row?.detail)).toMatchObject({ created: 0, refunded: false })
+    expect(stored).toEqual([])
+    expect(refunds).toEqual([])
+    expect(counts.get(NARROW)).toBe(1)
+  })
+
+  it('Fehler VOR der Buchung (Zähler nicht erreichbar) ⇒ kein Lauf, nichts zurückgebucht, Sperre zurück', async () => {
+    vi.stubGlobal('useRateLimitStore', () => ({
+      prefix: 'rl:',
+      store: {
+        hit: async () => {
+          throw new Error('redis down')
+        },
+        refund: async (key: string) => {
+          refunds.push(key)
+        },
+      },
+    }))
+    await expect(start(event)).rejects.toThrow('redis down')
+    expect(runCalls).toBe(0)
+    expect(refunds).toEqual([])
+    expect(store.rows.size).toBe(0)
+    expect(generators.countActiveBrandGenerations('u1')).toBe(0)
+  })
+})
+
+describe('Der abgebrochene Vorgänger — die Rückbuchung holt der nächste Start nach', () => {
+  it('abgebrochen, gebucht, nichts gelesen ⇒ GENAU EINE Rückbuchung, am Vorgänger vermerkt; ein zweiter Start bucht nicht noch einmal', async () => {
+    counts.set(NARROW, 1)
+    const previousId = seedStalled({ booked: true, created: 0, used: 1, limit: 3 })
+
+    // Die Seite nennt ihn „unterbrochen".
+    expect((await read(event)).run.state).toBe('stalled')
+
+    const res = await start(event)
+    await detached
+    expect(refunds).toEqual([NARROW])
+    expect(parseBrandRunDetail(store.rows.get(previousId)?.detail).refunded).toBe(true)
+    expect(logs.filter(entry => entry.name === 'brand.reading_stalled_refunded').map(entry => entry.data))
+      .toEqual([{ profileId: 'p1', previousSeq: 1 }])
+    // Der Zähler des Vorgängers ist zurück, der neue Lauf zählt als der erste.
+    expect(res.quota).toEqual({ used: 1, limit: 3, remaining: 2 })
+
+    // GEGENPROBE: der nächste Start bucht für niemanden zurück.
+    const again = await start(event)
+    await detached
+    expect(refunds).toEqual([NARROW])
+    expect(again.quota).toEqual({ used: 2, limit: 3, remaining: 1 })
+  })
+
+  it('lehnt die Drossel NACH der Rückbuchung ab, bucht der übernächste Start nicht noch einmal zurück', async () => {
+    counts.set(NARROW, 1)
+    seedStalled({ booked: true, created: 0, used: 1, limit: 3 })
+    counts.set(ACCOUNT, 1000)
+
+    await expect(start(event)).rejects.toMatchObject({ status: 429 })
+    expect(refunds).toEqual([NARROW])
+    await expect(start(event)).rejects.toMatchObject({ status: 429 })
+    // GEGENPROBE zum Schlupfloch: weiter genau EINE Rückbuchung.
+    expect(refunds).toEqual([NARROW])
+  })
+
+  it('GEGENPROBE: der abgebrochene Vorgänger hatte schon gelesen ⇒ keine Rückbuchung', async () => {
+    seedStalled({ booked: true, created: 2, used: 1, limit: 3 })
+    await start(event)
+    await detached
+    expect(refunds).toEqual([])
+  })
+
+  it('GEGENPROBE: der abgebrochene Vorgänger hatte nie gebucht ⇒ keine Rückbuchung', async () => {
+    seedStalled({ booked: false, created: 0, used: 0, limit: 3 })
+    await start(event)
+    await detached
+    expect(refunds).toEqual([])
+  })
+
+  it('GEGENPROBE: lässt sich der Vermerk nicht schreiben, wird NICHT zurückgebucht', async () => {
+    seedStalled({ booked: true, created: 0, used: 1, limit: 3 })
+    const update = store.update.bind(store)
+    let first = true
+    store.update = async (id, data) => {
+      if (first) {
+        first = false
+        throw new Error('update failed')
+      }
+      return await update(id, data)
+    }
+    await start(event)
+    await detached
+    expect(refunds).toEqual([])
+    expect(logs.filter(entry => entry.name === 'brand.reading_stalled_refund_failed').map(entry => entry.data))
+      .toEqual([{ profileId: 'p1', message: 'update failed' }])
   })
 })
 
