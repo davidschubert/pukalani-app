@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * DER ERINNERUNGS-LAUF ÜBER ALLE COMMUNITIES (OPS-003).
@@ -88,6 +88,10 @@ vi.stubGlobal('notify', (_event: unknown, input: Record<string, unknown>) => {
 vi.stubGlobal('logEvent', (level: string, name: string, fields: Record<string, unknown>) => {
   logged.push({ level, name, fields })
 })
+// SE1 d: der ECHTE core-Vertrag (Auto-Import im Lauf). Gestellt ist nur, was
+// dahinter liegt — der Resolver, den sonst die Platform-App registriert.
+const reachability = await import('../../core/server/utils/communityReachability')
+vi.stubGlobal('resolveUnreachableCommunities', reachability.resolveUnreachableCommunities)
 
 const {
   EVENT_REMINDER_RUN_CAP,
@@ -142,13 +146,20 @@ beforeEach(() => {
   productEnabled = true
   tenancy = true
   logged.length = 0
+  // Ohne Registrierung antwortet niemand: der Lauf erinnert wie vor SE1 d.
+  reachability.__resetUnreachableCommunitiesResolver()
 })
+
+/** Die SE1-d-Felder eines Pool-Laufs, in dem niemand nach Erreichbarkeit antwortet. */
+const NO_ANSWER = { reachabilityAsked: true, reachabilityAnswered: false, unreachableCommunities: 0, unreachableEvents: 0, unreachableRecipients: 0 }
+/** … und eines Laufs, in dem gar nicht gefragt wurde (nichts fällig, Einzel-Instanz). */
+const NOT_ASKED = { reachabilityAsked: false, reachabilityAnswered: false, unreachableCommunities: 0, unreachableEvents: 0, unreachableRecipients: 0 }
 
 describe('sweepAllEventReminders — alle Communities', () => {
   it('erinnert in beiden Communities, jede Meldung mit dem Stempel IHRER Community', async () => {
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
 
-    expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0 })
+    expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0, ...NO_ANSWER })
     const byUser = Object.fromEntries(notified.map(input => [input.recipientId, input]))
     expect(byUser.u1).toMatchObject({ scope: 'tenant', communityId: 't-kunde-a', type: 'reminder', title: 'Titel ev-a', link: '/events/ev-a' })
     expect(byUser.u2).toMatchObject({ communityId: 't-kunde-a' })
@@ -167,15 +178,15 @@ describe('sweepAllEventReminders — alle Communities', () => {
     )
     for (const id of ['draft', 'done', 'later', 'past']) tables.event_rsvps!.push(going(`g-${id}`, id, `user-${id}`))
 
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(result.dueEvents).toBe(2)
     expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u2', 'u3'])
   })
 
   it('dryRun schreibt nichts und zählt dieselben Zahlen', async () => {
-    const result = await sweepAllEventReminders({ dryRun: true })
+    const result = await sweepAllEventReminders({ dryRun: true, unreachableMode: 'count' })
 
-    expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 0, errors: 0 })
+    expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 0, errors: 0, ...NO_ANSWER })
     expect(tablesDB.updateRow).not.toHaveBeenCalled()
     expect(notified).toEqual([])
     expect(tables.events!.every(row => row.remindersSentAt === null)).toBe(true)
@@ -183,7 +194,7 @@ describe('sweepAllEventReminders — alle Communities', () => {
 
   it('notify meldet „nicht geschrieben" ⇒ errors, nicht reminded, und KEIN Merker', async () => {
     notifyImpl = async () => ({ created: false })
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(result).toMatchObject({ reminded: 0, errors: 3 })
     expect(tables.events!.every(row => row.remindersSentAt === null)).toBe(true)
   })
@@ -193,7 +204,7 @@ describe('sweepAllEventReminders — alle Communities', () => {
     notifyImpl = async input => input.recipientId === 'u2'
       ? { created: false, skipped: 'former_member' as const }
       : deliver(input)
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
 
     expect(result).toMatchObject({ recipients: 3, reminded: 2, errors: 0 })
     expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u3'])
@@ -203,10 +214,10 @@ describe('sweepAllEventReminders — alle Communities', () => {
 
   it('scheitert der Merker NACH den Benachrichtigungen, zählt errors — der nächste Takt läuft in die Dubletten', async () => {
     updateError = new Error('Schreiben gescheitert')
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(result).toMatchObject({ dueEvents: 2, reminded: 3, errors: 2 })
     updateError = undefined
-    const second = await sweepAllEventReminders({ dryRun: false })
+    const second = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(second).toMatchObject({ dueEvents: 2, reminded: 0, errors: 0 })
     expect(notified).toHaveLength(3)
     expect(tables.events!.every(row => typeof row.remindersSentAt === 'string')).toBe(true)
@@ -214,22 +225,22 @@ describe('sweepAllEventReminders — alle Communities', () => {
 
   it('ein Lesefehler der Termin-Liste wirft (der Zeit-Lauf meldet failed)', async () => {
     tablesDB.listRows.mockImplementationOnce(async () => { throw new Error('Datenbank weg') })
-    await expect(sweepAllEventReminders({ dryRun: false })).rejects.toThrow('Datenbank weg')
+    await expect(sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })).rejects.toThrow('Datenbank weg')
     // Die Warteschlange bleibt danach benutzbar
-    expect((await sweepAllEventReminders({ dryRun: false })).reminded).toBe(3)
+    expect((await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })).reminded).toBe(3)
   })
 
   it('ein zweiter Lauf erinnert nicht noch einmal', async () => {
-    await sweepAllEventReminders({ dryRun: false })
-    const second = await sweepAllEventReminders({ dryRun: false })
-    expect(second).toEqual({ communities: 0, dueEvents: 0, recipients: 0, reminded: 0, errors: 0 })
+    await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+    const second = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+    expect(second).toEqual({ communities: 0, dueEvents: 0, recipients: 0, reminded: 0, errors: 0, ...NOT_ASKED })
     expect(notified).toHaveLength(3)
   })
 
   it('Pool-Zeile ohne Stempel wird gezählt, nicht geraten', async () => {
     tables.events!.push(dueEvent('ev-x', undefined))
     tables.event_rsvps!.push(going('rx', 'ev-x', 'ux'))
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(result.errors).toBe(1)
     expect(notified.some(input => input.recipientId === 'ux')).toBe(false)
   })
@@ -238,8 +249,8 @@ describe('sweepAllEventReminders — alle Communities', () => {
     tenancy = false
     tables.events = [dueEvent('ev-s', undefined)]
     tables.event_rsvps = [going('rs', 'ev-s', 'us')]
-    const result = await sweepAllEventReminders({ dryRun: false })
-    expect(result).toEqual({ communities: 1, dueEvents: 1, recipients: 1, reminded: 1, errors: 0 })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+    expect(result).toEqual({ communities: 1, dueEvents: 1, recipients: 1, reminded: 1, errors: 0, ...NOT_ASKED })
     expect(notified[0]).toMatchObject({ scope: 'tenant', recipientId: 'us' })
     expect(notified[0]).not.toHaveProperty('communityId')
   })
@@ -252,7 +263,7 @@ describe('sweepAllEventReminders — alle Communities', () => {
       }))
     tables.event_rsvps = []
 
-    const first = await sweepAllEventReminders({ dryRun: false })
+    const first = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(first.dueEvents).toBe(EVENT_REMINDER_RUN_CAP)
     // Seitenweise gelesen, keine Seite über 100
     const pages = listCalls.filter(call => call.tableId === 'events')
@@ -265,7 +276,7 @@ describe('sweepAllEventReminders — alle Communities', () => {
     expect(tables.events.find(row => row.$id === 'ev-0000')!.remindersSentAt).not.toBeNull()
     expect(tables.events.find(row => row.$id === `ev-${String(total - 1).padStart(4, '0')}`)!.remindersSentAt).toBeNull()
 
-    const second = await sweepAllEventReminders({ dryRun: false })
+    const second = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(second.dueEvents).toBe(30)
   })
 })
@@ -280,16 +291,17 @@ describe('eine Warteschlange im Prozess', () => {
   it('zwei Zeit-Läufe gleichzeitig ⇒ der spätere liest den Merker des früheren', async () => {
     // Liefen sie parallel, sähen beide `remindersSentAt: null` — der Speicher
     // oben antwortet mit einem Takt Verzögerung, das Fenster wäre also offen.
-    await Promise.all([sweepAllEventReminders({ dryRun: false }), sweepAllEventReminders({ dryRun: false })])
+    await Promise.all([sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' }), sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })])
     expect(remindersPerUser()).toEqual({ u1: 1, u2: 1, u3: 1 })
   })
 })
 
 describe('runEventReminderJob — ein Takt des Zeit-Laufs', () => {
   it("Modus 'count': genau eine Zeile events.reminder_count, nur Zahlen, nichts geschrieben", async () => {
-    expect(await runEventReminderJob('count')).toBeUndefined()
+    expect(await runEventReminderJob('count', 'count')).toBeUndefined()
 
-    expect(logged).toHaveLength(1)
+    // Im Pool steht daneben die Zählzeile von SE1 d (eigener Block unten).
+    expect(logged.map(entry => entry.name)).toEqual(['events.reminder_count', 'events.reminder_unreachable'])
     expect(logged[0]).toEqual({
       level: 'info',
       name: 'events.reminder_count',
@@ -303,22 +315,311 @@ describe('runEventReminderJob — ein Takt des Zeit-Laufs', () => {
 
   it("Modus 'count' schreibt die Zeile auch bei lauter Nullen", async () => {
     tables.events = []
-    await runEventReminderJob('count')
-    expect(logged.map(entry => entry.name)).toEqual(['events.reminder_count'])
+    await runEventReminderJob('count', 'count')
+    expect(logged.map(entry => entry.name)).toEqual(['events.reminder_count', 'events.reminder_unreachable'])
   })
 
   it("Modus 'send' erinnert", async () => {
-    await runEventReminderJob('send')
+    await runEventReminderJob('send', 'count')
     expect(notified).toHaveLength(3)
-    expect(logged.map(entry => entry.name)).toEqual(['events.reminders_sent'])
+    expect(logged.map(entry => entry.name)).toEqual(['events.reminders_sent', 'events.reminder_unreachable'])
   })
 
   it('abgeschaltetes Produkt ⇒ skipped, kein Lesen, keine Zeile', async () => {
     productEnabled = false
-    expect(await runEventReminderJob('send')).toBe('skipped')
+    expect(await runEventReminderJob('send', 'count')).toBe('skipped')
     expect(listCalls).toEqual([])
     expect(notified).toEqual([])
     expect(logged).toEqual([])
+  })
+})
+
+describe('SE1 d — Termine nicht erreichbarer Communities', () => {
+  /**
+   * Das gestellte Control Plane: Zeilen je Stempel. Der Resolver nennt, was
+   * eine Zeile HAT und stillgelegt oder wegen Missbrauchs gesperrt ist — die
+   * Regel selbst liegt im control-Layer (dort getestet); hier zählt nur, was
+   * der Lauf mit der Antwort macht.
+   */
+  let controlRows: Record<string, { status: string, suspension?: string }>
+  let resolverCalls: string[][]
+
+  function registerControlPlane() {
+    reachability.registerUnreachableCommunitiesResolver(async (ids) => {
+      resolverCalls.push(ids)
+      return ids.filter((id) => {
+        const row = controlRows[id]
+        return row !== undefined && (row.status !== 'active' || row.suspension === 'abuse')
+      })
+    })
+  }
+
+  function event(id: string): Row {
+    return tables.events!.find(row => row.$id === id)!
+  }
+
+  function rsvpReadsFor(eventId: string): number {
+    return listCalls.filter(call => call.tableId === 'event_rsvps' && call.queries.some(q => q.includes(`"${eventId}"`))).length
+  }
+
+  let warn: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    controlRows = { 't-kunde-a': { status: 'active', suspension: '' }, 't-kunde-b': { status: 'active', suspension: '' } }
+    resolverCalls = []
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    warn.mockRestore()
+  })
+
+  describe("Modus 'count' — erinnert wie bisher UND zählt", () => {
+    it('erreichbar ⇒ erinnert, nichts gezählt, EINE Frage für beide Communities', async () => {
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({
+        communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 0, unreachableEvents: 0, unreachableRecipients: 0,
+      })
+      expect(resolverCalls).toEqual([['t-kunde-a', 't-kunde-b']])
+    })
+
+    it('stillgelegt ⇒ erinnert (mit Merker) und zählt Termin, Zusagen, Community', async () => {
+      controlRows['t-kunde-a'] = { status: 'disabled', suspension: '' }
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({
+        communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 1, unreachableEvents: 1, unreachableRecipients: 2,
+      })
+      expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u2', 'u3'])
+      expect(typeof event('ev-a').remindersSentAt).toBe('string')
+    })
+
+    it('wegen Missbrauchs gesperrt ⇒ erinnert und zählt', async () => {
+      controlRows['t-kunde-b'] = { status: 'active', suspension: 'abuse' }
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({
+        communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 1, unreachableEvents: 1, unreachableRecipients: 1,
+      })
+      expect(typeof event('ev-b').remindersSentAt).toBe('string')
+    })
+
+    it('Zahlungs-Sperre ⇒ nicht gezählt (Gegenprobe)', async () => {
+      controlRows['t-kunde-b'] = { status: 'active', suspension: 'billing' }
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toMatchObject({ reminded: 3, reachabilityAnswered: true, unreachableCommunities: 0, unreachableEvents: 0, unreachableRecipients: 0 })
+    })
+
+    it('zwei Termine derselben stillgelegten Community ⇒ zwei Termine, eine Community', async () => {
+      tables.events!.push(dueEvent('ev-a2', 't-kunde-a'))
+      tables.event_rsvps!.push(going('r5', 'ev-a2', 'u5'))
+      controlRows['t-kunde-a'] = { status: 'disabled' }
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toMatchObject({ dueEvents: 3, reminded: 4, unreachableCommunities: 1, unreachableEvents: 2, unreachableRecipients: 3 })
+    })
+
+    it('keine Antwort (Resolver wirft) ⇒ erinnert, nichts gezählt, answered: false', async () => {
+      controlRows['t-kunde-a'] = { status: 'disabled' }
+      reachability.registerUnreachableCommunitiesResolver(async () => {
+        throw new Error('Control Plane weg')
+      })
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0, ...NO_ANSWER })
+    })
+
+    it('keine Antwort (kein Resolver registriert) ⇒ erinnert, answered: false', async () => {
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0, ...NO_ANSWER })
+    })
+
+    it('Einzel-Instanz (Mandanten-Auflösung aus) ⇒ der Vertrag wird nie gefragt', async () => {
+      tenancy = false
+      tables.events = [dueEvent('ev-s', undefined)]
+      tables.event_rsvps = [going('rs', 'ev-s', 'us')]
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({ communities: 1, dueEvents: 1, recipients: 1, reminded: 1, errors: 0, ...NOT_ASKED })
+      expect(resolverCalls).toEqual([])
+    })
+
+    it('nichts fällig ⇒ nicht gefragt', async () => {
+      tables.events = []
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
+      expect(result).toEqual({ communities: 0, dueEvents: 0, recipients: 0, reminded: 0, errors: 0, ...NOT_ASKED })
+      expect(resolverCalls).toEqual([])
+    })
+  })
+
+  describe("Modus 'skip' — lässt aus, ohne Merker und ohne Fehler", () => {
+    it('erreichbar ⇒ erinnert wie bisher', async () => {
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(result).toEqual({
+        communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 0, unreachableEvents: 0, unreachableRecipients: 0,
+      })
+    })
+
+    it('stillgelegt ⇒ keine Zusagen gelesen, keine Erinnerung, kein Merker, kein Fehler — wieder erreichbar ⇒ nächster Takt erinnert', async () => {
+      controlRows['t-kunde-a'] = { status: 'disabled', suspension: '' }
+      registerControlPlane()
+      const first = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(first).toEqual({
+        communities: 2, dueEvents: 2, recipients: 1, reminded: 1, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 1, unreachableEvents: 1, unreachableRecipients: 0,
+      })
+      expect(notified.map(input => input.recipientId)).toEqual(['u3'])
+      expect(rsvpReadsFor('ev-a')).toBe(0)
+      expect(event('ev-a').remindersSentAt).toBeNull()
+      // Gegenprobe: die erreichbare Community bekam ihre Erinnerung samt Merker.
+      expect(rsvpReadsFor('ev-b')).toBe(1)
+      expect(typeof event('ev-b').remindersSentAt).toBe('string')
+
+      // Die Community geht vor dem Beginn wieder ans Netz.
+      controlRows['t-kunde-a'] = { status: 'active', suspension: '' }
+      const second = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(second).toEqual({
+        communities: 1, dueEvents: 1, recipients: 2, reminded: 2, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 0, unreachableEvents: 0, unreachableRecipients: 0,
+      })
+      expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u2', 'u3'])
+      expect(typeof event('ev-a').remindersSentAt).toBe('string')
+    })
+
+    it('bleibt sie aus, bleibt der Termin fällig und wird bei jedem Takt wieder ausgelassen', async () => {
+      controlRows['t-kunde-a'] = { status: 'disabled' }
+      registerControlPlane()
+      await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      const second = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(second).toEqual({
+        communities: 1, dueEvents: 1, recipients: 0, reminded: 0, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 1, unreachableEvents: 1, unreachableRecipients: 0,
+      })
+      expect(notified.map(input => input.recipientId)).toEqual(['u3'])
+    })
+
+    it('wegen Missbrauchs gesperrt ⇒ ausgelassen, kein Merker, kein Fehler', async () => {
+      controlRows['t-kunde-b'] = { status: 'active', suspension: 'abuse' }
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(result).toEqual({
+        communities: 2, dueEvents: 2, recipients: 2, reminded: 2, errors: 0,
+        reachabilityAsked: true, reachabilityAnswered: true, unreachableCommunities: 1, unreachableEvents: 1, unreachableRecipients: 0,
+      })
+      expect(notified.map(input => input.recipientId).sort()).toEqual(['u1', 'u2'])
+      expect(rsvpReadsFor('ev-b')).toBe(0)
+      expect(event('ev-b').remindersSentAt).toBeNull()
+    })
+
+    it('Zahlungs-Sperre ⇒ erinnert (Gegenprobe)', async () => {
+      controlRows['t-kunde-b'] = { status: 'active', suspension: 'billing' }
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(result).toMatchObject({ reminded: 3, unreachableEvents: 0 })
+      expect(typeof event('ev-b').remindersSentAt).toBe('string')
+    })
+
+    it('keine Antwort (Resolver wirft) ⇒ erinnert wie bisher', async () => {
+      controlRows['t-kunde-a'] = { status: 'disabled' }
+      reachability.registerUnreachableCommunitiesResolver(async () => {
+        throw new Error('Control Plane weg')
+      })
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0, ...NO_ANSWER })
+      expect(typeof event('ev-a').remindersSentAt).toBe('string')
+    })
+
+    it('keine Antwort (kein Resolver registriert) ⇒ erinnert wie bisher', async () => {
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(result).toEqual({ communities: 2, dueEvents: 2, recipients: 3, reminded: 3, errors: 0, ...NO_ANSWER })
+    })
+
+    it('Einzel-Instanz ⇒ nie gefragt, erinnert', async () => {
+      tenancy = false
+      tables.events = [dueEvent('ev-s', undefined)]
+      tables.event_rsvps = [going('rs', 'ev-s', 'us')]
+      registerControlPlane()
+      const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'skip' })
+      expect(result).toEqual({ communities: 1, dueEvents: 1, recipients: 1, reminded: 1, errors: 0, ...NOT_ASKED })
+      expect(resolverCalls).toEqual([])
+    })
+  })
+
+  describe('runEventReminderJob — die Zeile events.reminder_unreachable', () => {
+    function unreachableLines() {
+      return logged.filter(entry => entry.name === 'events.reminder_unreachable')
+    }
+
+    it("'count' im Pool: GENAU EINE Zeile je Takt, nur Zahlen und feste Wörter", async () => {
+      controlRows['t-kunde-a'] = { status: 'disabled' }
+      registerControlPlane()
+      await runEventReminderJob('send', 'count')
+      expect(unreachableLines()).toEqual([{
+        level: 'info',
+        name: 'events.reminder_unreachable',
+        fields: { mode: 'count', asked: true, answered: true, dueEvents: 2, communities: 1, events: 1, recipients: 2 },
+      }])
+      const line = JSON.stringify(unreachableLines())
+      for (const leak of ['Titel', 'ev-a', 'ev-b', 't-kunde', 'u1', '/events/', '.local']) expect(line).not.toContain(leak)
+      // Stufe 1 sendet weiter.
+      expect(notified).toHaveLength(3)
+    })
+
+    it("'count' im Pool schreibt die Zeile auch bei lauter Nullen (nichts fällig)", async () => {
+      tables.events = []
+      registerControlPlane()
+      await runEventReminderJob('send', 'count')
+      expect(unreachableLines()).toEqual([{
+        level: 'info',
+        name: 'events.reminder_unreachable',
+        fields: { mode: 'count', asked: false, answered: false, dueEvents: 0, communities: 0, events: 0, recipients: 0 },
+      }])
+    })
+
+    it("'count' ohne Antwort: answered false steht in der Zeile", async () => {
+      await runEventReminderJob('send', 'count')
+      expect(unreachableLines().map(entry => entry.fields)).toEqual([
+        { mode: 'count', asked: true, answered: false, dueEvents: 2, communities: 0, events: 0, recipients: 0 },
+      ])
+    })
+
+    it("'skip': still, wenn nichts ausgelassen wurde und die Antwort kam", async () => {
+      registerControlPlane()
+      await runEventReminderJob('send', 'skip')
+      expect(unreachableLines()).toEqual([])
+      expect(notified).toHaveLength(3)
+    })
+
+    it("'skip': eine Zeile, wenn etwas ausgelassen wurde", async () => {
+      controlRows['t-kunde-b'] = { status: 'active', suspension: 'abuse' }
+      registerControlPlane()
+      await runEventReminderJob('send', 'skip')
+      expect(unreachableLines().map(entry => entry.fields)).toEqual([
+        { mode: 'skip', asked: true, answered: true, dueEvents: 2, communities: 1, events: 1, recipients: 0 },
+      ])
+    })
+
+    it("'skip': eine Zeile, wenn die Antwort ausblieb", async () => {
+      await runEventReminderJob('send', 'skip')
+      expect(unreachableLines().map(entry => entry.fields)).toEqual([
+        { mode: 'skip', asked: true, answered: false, dueEvents: 2, communities: 0, events: 0, recipients: 0 },
+      ])
+    })
+
+    it('Einzel-Instanz: keine Zeile, auch im Modus count', async () => {
+      tenancy = false
+      tables.events = [dueEvent('ev-s', undefined)]
+      tables.event_rsvps = [going('rs', 'ev-s', 'us')]
+      await runEventReminderJob('send', 'count')
+      expect(unreachableLines()).toEqual([])
+    })
   })
 })
 
@@ -328,18 +629,18 @@ describe('BE-018 — Rohwert, feste Zeilen-Id, Merker zuletzt', () => {
   it('body ist das Token mit dem Beginn und der Zone DES TERMINS — kein fertiger Text', async () => {
     tables.events = [dueEvent('ev-ny', 't-kunde-a', { timezone: 'America/New_York' })]
     tables.event_rsvps = [going('rn', 'ev-ny', 'un')]
-    await sweepAllEventReminders({ dryRun: false })
+    await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(notified[0]!.body).toBe(`@when:${String(tables.events[0]!.startAt)};America/New_York`)
     // Gegenprobe: ein Termin ohne Zone trägt eine leere Zone, nie die des Servers
     tables.events.push(dueEvent('ev-nozone', 't-kunde-a', { timezone: null }))
     tables.event_rsvps.push(going('rz', 'ev-nozone', 'uz'))
-    await sweepAllEventReminders({ dryRun: false })
+    await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     const nozone = notified.find(input => input.recipientId === 'uz')!
     expect(nozone.body).toBe(`@when:${String(tables.events[1]!.startAt)};`)
   })
 
   it('rowId je (Termin, Empfänger, Beginn): stabil, gültig für Appwrite, verschieden je Teil', async () => {
-    await sweepAllEventReminders({ dryRun: false })
+    await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     const u1 = notified.find(input => input.recipientId === 'u1')!
     const startAt = String(tables.events!.find(row => row.$id === 'ev-a')!.startAt)
     expect(u1.rowId).toBe(eventReminderRowId('ev-a', 'u1', startAt))
@@ -354,7 +655,7 @@ describe('BE-018 — Rohwert, feste Zeilen-Id, Merker zuletzt', () => {
   })
 
   it('der Merker steht erst NACH allen Benachrichtigungen seines Termins', async () => {
-    await sweepAllEventReminders({ dryRun: false })
+    await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     const mark = callLog.indexOf('mark:ev-a')
     expect(mark).toBeGreaterThan(callLog.indexOf('notify:u1'))
     expect(mark).toBeGreaterThan(callLog.indexOf('notify:u2'))
@@ -367,13 +668,13 @@ describe('BE-018 — Rohwert, feste Zeilen-Id, Merker zuletzt', () => {
       if (input.recipientId === 'u2' && failU2) return { created: false }
       return deliver(input)
     }
-    const first = await sweepAllEventReminders({ dryRun: false })
+    const first = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(first).toMatchObject({ dueEvents: 2, recipients: 3, reminded: 2, errors: 1 })
     expect(tables.events!.find(row => row.$id === 'ev-a')!.remindersSentAt).toBeNull()
     expect(typeof tables.events!.find(row => row.$id === 'ev-b')!.remindersSentAt).toBe('string')
 
     failU2 = false
-    const second = await sweepAllEventReminders({ dryRun: false })
+    const second = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     // u1 läuft in die Dublette (keine Zeile, keine Mail), u2 bekommt seine Erinnerung
     expect(second).toMatchObject({ dueEvents: 1, recipients: 2, reminded: 1, errors: 0 })
     expect(remindersPerUserOf(notified)).toEqual({ u1: 1, u2: 1, u3: 1 })
@@ -385,14 +686,14 @@ describe('BE-018 — Rohwert, feste Zeilen-Id, Merker zuletzt', () => {
       if (input.recipientId === 'u3') throw new Error('Glocke kaputt')
       return deliver(input)
     }
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(result).toMatchObject({ reminded: 2, errors: 1 })
     expect(tables.events!.find(row => row.$id === 'ev-b')!.remindersSentAt).toBeNull()
   })
 
   it('Termin ohne Zusagen ⇒ Merker sofort', async () => {
     tables.event_rsvps = []
-    const result = await sweepAllEventReminders({ dryRun: false })
+    const result = await sweepAllEventReminders({ dryRun: false, unreachableMode: 'count' })
     expect(result).toMatchObject({ dueEvents: 2, recipients: 0, reminded: 0, errors: 0 })
     expect(tables.events!.every(row => typeof row.remindersSentAt === 'string')).toBe(true)
   })

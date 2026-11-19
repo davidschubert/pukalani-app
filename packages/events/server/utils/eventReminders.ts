@@ -3,7 +3,7 @@ import { Query } from 'node-appwrite'
 import { encodeNotificationWhen } from '../../../core/shared/notificationWhen'
 import type { NotifyInput, NotifyResult } from '../../../core/server/utils/notify'
 import { listAllRows } from '../../../core/server/utils/listAllRows'
-import type { EventReminderJobMode } from '../../shared/eventReminderJob'
+import type { EventReminderJobMode, EventReminderUnreachableMode } from '../../shared/eventReminderJob'
 import { EVENT_RSVPS_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow } from '../../shared/types/event'
 
 /** Vorlauf der Erinnerung (Entscheidung David, EVENTS-V2 §8.2: 24 h) */
@@ -174,6 +174,23 @@ export interface EventReminderSweepResult {
   reminded: number
   /** Fehler je Termin oder Empfänger — sie halten den Lauf nicht an. */
   errors: number
+  /**
+   * SE1 d: wurde das Control Plane gefragt, welche Communities nicht
+   * erreichbar sind? Nur im Pool und nur, wenn es fällige Termine MIT Stempel
+   * gab — einmal je Takt.
+   */
+  reachabilityAsked: boolean
+  /** … und hat es geantwortet? `false` ⇒ es wurde erinnert wie bisher. */
+  reachabilityAnswered: boolean
+  /** Verschiedene genannte (nicht erreichbare) Communities mit fälligen Terminen. */
+  unreachableCommunities: number
+  /** Fällige Termine dieser Communities. */
+  unreachableEvents: number
+  /**
+   * Zusagen dieser Termine — die Erinnerungen, die Stufe 2 (`'skip'`)
+   * auslassen würde. Nur im Modus `'count'`; `'skip'` liest die Zusagen nicht.
+   */
+  unreachableRecipients: number
 }
 
 /** Eine Termin-Zeile mit Mandanten-Stempel (Pool: `communities.tenantId`, Silo: fehlt). */
@@ -209,12 +226,23 @@ function tenancyEnabled(): boolean {
  * Ein Lesefehler der Termin-Liste wirft (der Zeit-Lauf meldet `failed`);
  * Fehler bei EINEM Termin oder Empfänger werden gezählt.
  */
-export function sweepAllEventReminders(options: { dryRun: boolean }): Promise<EventReminderSweepResult> {
-  return inReminderQueue(() => sweepAll(options.dryRun))
+export function sweepAllEventReminders(options: { dryRun: boolean, unreachableMode: EventReminderUnreachableMode }): Promise<EventReminderSweepResult> {
+  return inReminderQueue(() => sweepAll(options.dryRun, options.unreachableMode))
 }
 
-async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
-  const result: EventReminderSweepResult = { communities: 0, dueEvents: 0, recipients: 0, reminded: 0, errors: 0 }
+async function sweepAll(dryRun: boolean, unreachableMode: EventReminderUnreachableMode): Promise<EventReminderSweepResult> {
+  const result: EventReminderSweepResult = {
+    communities: 0,
+    dueEvents: 0,
+    recipients: 0,
+    reminded: 0,
+    errors: 0,
+    reachabilityAsked: false,
+    reachabilityAnswered: false,
+    unreachableCommunities: 0,
+    unreachableEvents: 0,
+    unreachableRecipients: 0,
+  }
   const config = useRuntimeConfig()
   const databaseId = config.public.appwriteDatabaseId
   const { tablesDB } = createAdminClient()
@@ -250,6 +278,21 @@ async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
   result.dueEvents = due.length
   result.communities = new Set(due.map(row => row.communityId || '')).size
 
+  // SE1 d — EINMAL je Takt fragen, welche dieser Communities nicht erreichbar
+  // sind (stillgelegt, Missbrauchs-Sperre). Nur im Pool: in der Einzel-Instanz
+  // ist das Projekt die Community, und es gibt kein Control Plane zu fragen.
+  // Nur eine positive Antwort nennt eine Community; ohne Antwort
+  // (`answered: false`) wird in BEIDEN Modi erinnert wie bisher.
+  let unreachable: ReadonlySet<string> = new Set()
+  const stamps = pooled ? [...new Set(due.map(row => row.communityId || '').filter(Boolean))] : []
+  if (stamps.length > 0) {
+    const reachability = await resolveUnreachableCommunities(stamps)
+    result.reachabilityAsked = true
+    result.reachabilityAnswered = reachability.answered
+    if (reachability.answered) unreachable = reachability.unreachable
+  }
+  const unreachableSeen = new Set<string>()
+
   for (const row of due) {
     const communityId = row.communityId || ''
     // Im Pool ohne Stempel wüsste niemand, in WESSEN Glocke die Erinnerung
@@ -260,6 +303,17 @@ async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
     if (pooled && !communityId) {
       result.errors++
       continue
+    }
+
+    const named = Boolean(communityId) && unreachable.has(communityId)
+    if (named) {
+      result.unreachableEvents++
+      unreachableSeen.add(communityId)
+      // Stufe 2: KEINE Zusagen lesen, keine Benachrichtigung, KEIN Merker,
+      // kein Fehler. Ohne Merker bleibt der Termin fällig — geht die Community
+      // vor dem Beginn wieder ans Netz, erinnert ein späterer Takt; sonst fällt
+      // er mit seinem Beginn von selbst aus dem Fenster.
+      if (unreachableMode === 'skip') continue
     }
 
     const outcome = await remindEvent(row, {
@@ -278,7 +332,10 @@ async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
     result.recipients += outcome.recipients
     result.reminded += outcome.reminded
     result.errors += outcome.errors
+    // Stufe 1: erinnert wie bisher, gezählt wird, wen Stufe 2 ausließe.
+    if (named) result.unreachableRecipients += outcome.recipients
   }
+  result.unreachableCommunities = unreachableSeen.size
   return result
 }
 
@@ -293,10 +350,17 @@ async function sweepAll(dryRun: boolean): Promise<EventReminderSweepResult> {
  * Im Zähl-Modus GENAU EINE Zeile `events.reminder_count` je Takt, auch bei
  * lauter Nullen — die Zahlen sind der Vergleich mit dem alten Zeitplan. Nur
  * Zahlen: keine Titel, keine Ids, keine Adressen.
+ *
+ * NICHT ERREICHBARE COMMUNITIES (SE1 d), nur im Pool: im Modus `'count'`
+ * GENAU EINE Zeile `events.reminder_unreachable` je Takt, auch bei lauter
+ * Nullen — sie ist der Beleg, dass gezählt wurde (der tägliche Wächter liest
+ * sie über ops/app-watch-counts.mjs). Im Modus `'skip'` nur, wenn etwas
+ * ausgelassen wurde oder die Antwort ausblieb. Nur Zahlen und feste Wörter:
+ * keine Titel, keine Ids, keine Stempel, keine Hosts.
  */
-export async function runEventReminderJob(mode: EventReminderJobMode): Promise<'skipped' | undefined> {
+export async function runEventReminderJob(mode: EventReminderJobMode, unreachableMode: EventReminderUnreachableMode): Promise<'skipped' | undefined> {
   if (!await isProductEnabled(undefined, 'events')) return 'skipped'
-  const result = await sweepAllEventReminders({ dryRun: mode === 'count' })
+  const result = await sweepAllEventReminders({ dryRun: mode === 'count', unreachableMode })
   const counts = {
     communities: result.communities,
     dueEvents: result.dueEvents,
@@ -311,6 +375,20 @@ export async function runEventReminderJob(mode: EventReminderJobMode): Promise<'
     // Im Versand-Modus still bei „nichts zu tun" — die `job.run`-Zeile
     // belegt den Takt schon.
     logEvent('info', 'events.reminders_sent', counts)
+  }
+  if (tenancyEnabled()) {
+    const noAnswer = result.reachabilityAsked && !result.reachabilityAnswered
+    if (unreachableMode === 'count' || result.unreachableEvents > 0 || noAnswer) {
+      logEvent('info', 'events.reminder_unreachable', {
+        mode: unreachableMode,
+        asked: result.reachabilityAsked,
+        answered: result.reachabilityAnswered,
+        dueEvents: result.dueEvents,
+        communities: result.unreachableCommunities,
+        events: result.unreachableEvents,
+        recipients: result.unreachableRecipients,
+      })
+    }
   }
   return undefined
 }
