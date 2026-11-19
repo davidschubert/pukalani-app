@@ -9,7 +9,7 @@
 # → Prüf-Skript auf dem Server) hält, zeigt nur ein echter sshd — der
 # Schlüssel der CI hat keine lokale Kopie, und an Production übt man das nicht.
 # Nach JEDER Änderung an ops/app-watch-gate.sh, an `sums` in
-# ops/appwrite-cert-gate.sh oder am ssh-Weg der sechs Prüf-Skripte noch einmal
+# ops/appwrite-cert-gate.sh oder am ssh-Weg der Prüf-Skripte noch einmal
 # laufen lassen.
 #
 # WIE: ein Wegwerf-Container (Ubuntu wie der Server) mit sshd, node, den
@@ -28,6 +28,9 @@
 #   D  der Vergleich verify-server-scripts.mjs: altes Tor auf dem
 #      Datenbank-Server („Wort unbekannt" ⇒ Warnung, kein Rot), neues Tor
 #      (grün), eine abweichende Datei (rot)
+#   E  der Vergleich verify-node-version.mjs: ein Tor, das `node-version`
+#      noch nicht kennt (Exit 2, keine Aussage), das Node der Attrappe gegen
+#      `.nvmrc` (rot), dieselbe Version an allen Stellen (grün)
 # Der Rechner selbst wird nicht berührt; das Repo ist nur lesend eingehängt.
 #
 # AUFRUF (vom Rechner, braucht nur docker und Netz für die Pakete):
@@ -53,7 +56,7 @@ if [ "${1:-}" != '--inside' ]; then
   }
   docker rm -f -v "$NAME" >/dev/null 2>&1 || true
   trap cleanup EXIT
-  docker run -d --name "$NAME" -v "$REPO_DIR/ops":/repo/ops:ro -v "$REPO_DIR/scripts":/repo/scripts:ro "$IMAGE" sleep 3600 >/dev/null
+  docker run -d --name "$NAME" -v "$REPO_DIR/ops":/repo/ops:ro -v "$REPO_DIR/scripts":/repo/scripts:ro -v "$REPO_DIR/.nvmrc":/repo/.nvmrc:ro "$IMAGE" sleep 3600 >/dev/null
   docker exec "$NAME" bash -c 'export DEBIAN_FRONTEND=noninteractive; apt-get update -qq >/dev/null && apt-get install -y -qq openssh-server openssh-client rsync nodejs >/dev/null 2>&1' \
     || { echo "Die Pakete für die Attrappe ließen sich nicht installieren (Netz?)."; exit 1; }
   docker exec "$NAME" bash /repo/ops/app-watch-gate-attrappe.sh --inside </dev/null
@@ -124,7 +127,14 @@ mkdir -p /etc/nginx/sites-enabled
 # (WA1 e): er zählt nur diese, nicht die Datei einer früheren Prozess-Nummer.
 printf '#!/usr/bin/env bash\ncase "$1" in jlist) cat /etc/pm2-jlist.json ;; esac\nexit 0\n' > /usr/local/bin/pm2
 chmod 755 /usr/local/bin/pm2
-printf '[{"name":"platformpukalaniapp","monit":{"memory":104857600},"pm2_env":{"status":"online","restart_time":1,"pm_uptime":%s000,"pm_err_log_path":"%s/.pm2/logs/platformpukalaniapp-error-0.log","pm_out_log_path":"%s/.pm2/logs/platformpukalaniapp-out-0.log"}}]\n' "$(date -u -d '-2 hours' +%s)" "$H" "$H" > /etc/pm2-jlist.json
+# Er läuft „mit" der Version aus `.nvmrc`; daneben ein Prozess, den die Liste
+# nicht kennt (wie pm2-logrotate) und dessen Name nie hinausgehen darf.
+NVMRC="$(tr -d ' v\r\n' < /repo/.nvmrc)"
+ATTRAPPE_NODE="$(/usr/bin/node --version | tr -d 'v\r\n')"
+jlist() { # $1 = Node-Version der Platform-App
+  printf '[{"name":"platformpukalaniapp","monit":{"memory":104857600},"pm2_env":{"status":"online","node_version":"%s","restart_time":1,"pm_uptime":%s000,"pm_err_log_path":"%s/.pm2/logs/platformpukalaniapp-error-0.log","pm_out_log_path":"%s/.pm2/logs/platformpukalaniapp-out-0.log"}},{"name":"%s-fremd","pm2_env":{"status":"online","node_version":"%s"}}]\n' "$1" "$(date -u -d '-2 hours' +%s)" "$H" "$H" "$MARKE" "$1" > /etc/pm2-jlist.json
+}
+jlist "$NVMRC"
 
 # Der App-Server: Tor und Liste von Hand eingespielt, die Dateien der Sites
 # so, wie das Ausliefern sie ablegt (`OPS_FILES` in ops/app-release.sh).
@@ -182,6 +192,7 @@ WORDS=(
   "nginx-check"
   "cron-check"
   "sums"
+  "node-version"
 )
 # Jedes Wort mit DERSELBEN Befehlszeile, die die Prüf-Skripte schicken; Ausgabe und Exit getrennt festhalten.
 record() { # $1 = Ordner
@@ -203,6 +214,7 @@ CHAIN=(
   "verify-mail-breaker.mjs --ssh --strict"
   "verify-app-signals.mjs --ssh"
   "verify-server-config.mjs --ssh"
+  "verify-node-version.mjs --strict"
 )
 chain() { # $1 = Ordner
   local i=0 c code
@@ -231,6 +243,9 @@ grep -q 'Aussperr-Wächter' /work/a/6.out && ok "instance-admins: das ausgeliefe
 [ "$(cat /work/a/7.out)" = "$NOW_MINUS_2H auth.mail_route_breaker
 $NOW_MINUS_1H auth.mail_route_breaker" ] && ok "mail-breaker (altes Wort, nur noch Probelauf): zwei Zeilen „Zeitpunkt Ereignis“ — auch die aus der Datei der früheren Prozess-Nummer" || bad "mail-breaker: $(cat /work/a/7.out)"
 grep -q '^sum app-watch-gate.sh [0-9a-f]\{64\}$' /work/a/12.out && ok "sums: das Tor meldet sich selbst" || bad "sums: $(cat /work/a/12.out)"
+[ "$(cat /work/a/13.code)" = 0 ] && grep -qx "program $ATTRAPPE_NODE" /work/a/13.out && grep -qx "proc platformpukalaniapp $NVMRC" /work/a/13.out && grep -qx 'proc helppukalaniapp fehlt' /work/a/13.out && grep -qx 'fremd 1' /work/a/13.out \
+  && [ "$(grep -cvE '^(program|proc [a-z0-9-]+) ([0-9]+\.[0-9]+\.[0-9]+|fehlt|unlesbar)$|^fremd [0-9]+$' /work/a/13.out)" = 0 ] \
+  && ok "node-version: das Programm, je Site der Liste ein Prozess oder „fehlt“, Fremde nur als Zahl — jede Zeile in fester Form" || bad "node-version: $(cat /work/a/13.out)"
 
 echo "B — fester Befehl"
 authorize "command=\"$GATE\",restrict"
@@ -276,6 +291,7 @@ rm -f "$H/platform.pukalani.app/ops/verify-stale-keys.mjs"
 expect_exit "fehlt das Prüf-Skript auf dem Server: „nicht geprüft“, Exit 2 (nie grün)" 2 bash -c "cd /repo && PUKALANI_OPS_SSH=prod node scripts/ops/verify-stale-keys.mjs --ssh --strict"
 grep -q 'Nicht geprüft' /tmp/last.out && ok "… mit einem klaren Satz" || bad "Meldung: $(cat /tmp/last.out)"
 cp /repo/scripts/ops/verify-stale-keys.mjs "$H/platform.pukalani.app/ops/"
+[ "$(cat /work/cb/6.code)" = 1 ] && grep -q "app-prod: das Programm /usr/bin/node nennt $ATTRAPPE_NODE, .nvmrc verlangt $NVMRC" /work/cb/6.out && grep -q "^✔ platformpukalaniapp  *$NVMRC\$" /work/cb/6.out && ok "verify-node-version --strict: das Node der Attrappe ($ATTRAPPE_NODE) ist nicht das aus .nvmrc — rot mit Handgriff (Exit 1); der Prozess mit $NVMRC ist grün" || bad "verify-node-version: Exit $(cat /work/cb/6.code): $(head -c 400 /work/cb/6.out)"
 
 echo "D — der Vergleich „liegt auf dem Server, was im Repo steht?“"
 sums() { (cd /repo && PUKALANI_OPS_SSH=prod PUKALANI_APPWRITE_SSH=awprod GITHUB_ACTIONS='' node scripts/ops/verify-server-scripts.mjs --strict) </dev/null; }
@@ -291,6 +307,29 @@ rm -f "$H/ops/app-env-bundle.sh"
 expect_exit "eine abweichende und eine fehlende Datei: rot mit --strict" 1 sums
 cat /tmp/last.out >> /tmp/alles.out
 grep -q 'appwrite-prod: cron.conf weicht von ops/cron.conf ab' /tmp/last.out && grep -q 'app-prod: app-env-bundle.sh fehlt auf dem Server' /tmp/last.out && ok "… je Befund ein Satz mit Handgriff" || bad "$(cat /tmp/last.out)"
+
+echo "E — der Vergleich „läuft auf dem Server das Node aus .nvmrc?“"
+nodecheck() { (cd "$1" && PUKALANI_OPS_SSH=prod GITHUB_ACTIONS='' PUKALANI_NODE_DRILL="${2:-0}" node scripts/ops/verify-node-version.mjs --strict) </dev/null; }
+# Das Tor, wie es auf Production liegt, bis das neue von Hand eingespielt ist.
+cp -p "$GATE" /work/gate-neu.sh
+sed 's/|sums|node-version) ;;/|sums) ;;/' /repo/ops/app-watch-gate.sh > "$GATE"
+expect_exit "ein Tor, das das Wort noch nicht kennt: keine Aussage (Exit 2), kein Rot" 2 nodecheck /repo
+cat /tmp/last.out >> /tmp/alles.out
+grep -q 'app-prod: das Tor kennt das Wort „node-version“ noch nicht — NICHT GEPRÜFT' /tmp/last.out && ok "… mit der Warnzeile „nicht geprüft“ und dem Handgriff" || bad "Warnzeile fehlt: $(cat /tmp/last.out)"
+expect_exit "… der Probealarm ist trotzdem rot" 1 nodecheck /repo 1
+grep -q '^✗ PROBEALARM — app-prod: der Prozess portfoliopukalaniapp läuft mit Node 0.0.0' /tmp/last.out && ok "… mit dem Satz „PROBEALARM — …“" || bad "$(cat /tmp/last.out)"
+install -m 755 -o ploi -g ploi /work/gate-neu.sh "$GATE"
+# Ein Repo, dessen .nvmrc das Node der Attrappe nennt: dann stimmt alles.
+mkdir -p /work/repo/ops && cp -r /repo/scripts /work/repo/ && cp /repo/ops/apps.conf /work/repo/ops/ && echo "$ATTRAPPE_NODE" > /work/repo/.nvmrc
+jlist "$ATTRAPPE_NODE"
+expect_exit "Programm und Prozess nennen die Version aus .nvmrc: grün" 0 nodecheck /work/repo
+cat /tmp/last.out >> /tmp/alles.out
+[ "$(grep -c '^✔ ' /tmp/last.out)" = 2 ] && grep -q '^· 1 weitere pm2-Prozesse' /tmp/last.out && ok "… zwei Vergleiche, der fremde Prozess nur als Zahl" || bad "$(cat /tmp/last.out)"
+jlist '22.21.0'
+expect_exit "ein Prozess läuft noch mit dem alten Stand (pm2 nicht neu gestartet): rot" 1 nodecheck /work/repo
+cat /tmp/last.out >> /tmp/alles.out
+grep -q "app-prod: der Prozess platformpukalaniapp läuft mit Node 22.21.0, .nvmrc verlangt $ATTRAPPE_NODE" /tmp/last.out && grep -q 'DEPLOYMENT.md, Abschnitt A4' /tmp/last.out && ok "… mit Handgriff und Runbook-Abschnitt" || bad "$(cat /tmp/last.out)"
+jlist "$NVMRC"
 
 echo "Kein Geheimnis in irgendeiner Ausgabe"
 if grep -q "$MARKE" /tmp/alles.out; then bad "der Geheimnis-Wert steht in einer Ausgabe"; else ok "der Geheimnis-Wert aus den .env steht in keiner Ausgabe ($(wc -l < /tmp/alles.out | tr -d ' ') Zeilen geprüft)"; fi

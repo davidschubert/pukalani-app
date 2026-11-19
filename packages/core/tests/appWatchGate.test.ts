@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { GATE_NOT_CHECKED, GATE_REJECTED, WATCH_GATE, gateSshArgs } from '../../../scripts/ops/app-watch-gate.mjs'
+import { answerFrom as answerFromNode } from '../../../scripts/ops/verify-node-version.mjs'
 import { SERVER_FILES, answerFrom, compareSums, parseSums } from '../../../scripts/ops/verify-server-scripts.mjs'
 import { ENV_STATE_AWK } from '../../../scripts/ops/verify-site-env.mjs'
 
@@ -51,6 +52,22 @@ function stub(path: string) {
     : 'console.log(`stub ${process.argv[1].split("/").pop()} ${process.argv.slice(2).join(" ")}`)\nprocess.exit(Number(process.env.STUB_EXIT || 0))\n')
 }
 
+/** Stellvertreter für pm2 (`jlist` gibt den Text aus) und für das Programm, mit dem pm2 startet. */
+function nodeWorld(jlist: string | null, program: string | null = 'v24.22.3') {
+  const bin = join(dir, 'bin')
+  mkdirSync(bin, { recursive: true })
+  const env: Record<string, string> = { PATH: `${bin}:${process.env.PATH}`, APP_WATCH_NODE: join(bin, 'server-node') }
+  if (jlist !== null) {
+    writeFileSync(join(dir, 'jlist.txt'), jlist)
+    writeFileSync(join(bin, 'pm2'), `#!/usr/bin/env bash\n[ "$1" = jlist ] && cat "${join(dir, 'jlist.txt')}"\nexit 0\n`, { mode: 0o755 })
+  }
+  else {
+    writeFileSync(join(bin, 'pm2'), '#!/usr/bin/env bash\necho "kaputt" >&2\nexit 1\n', { mode: 0o755 })
+  }
+  if (program !== null) writeFileSync(env.APP_WATCH_NODE, `#!/usr/bin/env bash\necho "${program}"\n`, { mode: 0o755 })
+  return env
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'app-watch-gate-'))
   root = join(dir, 'server')
@@ -87,7 +104,7 @@ describe('ops/app-watch-gate.sh — was abgelehnt wird', () => {
   ])('lehnt %s ab (Exit 64, „Abgelehnt: erlaubt sind …")', (_label, command) => {
     const { code, out } = gate(command)
     expect(code).toBe(GATE_REJECTED)
-    expect(out).toMatch(/^Abgelehnt: erlaubt sind site-env, site-project, stale-keys, instance-admins, mail-breaker, app-signals, nginx-check, cron-check, sums\.\n$/)
+    expect(out).toMatch(/^Abgelehnt: erlaubt sind site-env, site-project, stale-keys, instance-admins, mail-breaker, app-signals, nginx-check, cron-check, sums, node-version\.\n$/)
   })
 
   it.each([
@@ -114,6 +131,7 @@ describe('ops/app-watch-gate.sh — was abgelehnt wird', () => {
     ['eine fremde Angabe bei stale-keys', 'stale-keys --strict', 'nimmt nur'],
     ['eine Wurzel vom Aufrufer', 'stale-keys --dir /tmp', 'falsche Zahl'],
     ['zu viele Angaben', 'sums all', 'falsche Zahl'],
+    ['eine Angabe bei node-version', 'node-version /usr/local/bin/node', 'falsche Zahl'],
     ['fehlende Angaben', 'site-project', 'falsche Zahl'],
   ])('lehnt %s ab', (_label, line, reason) => {
     const { code, out } = word(line)
@@ -240,6 +258,54 @@ describe('ops/app-watch-gate.sh — die Worte', () => {
     ].join('\n'))
   })
 
+  describe('node-version', () => {
+    const proc = (name: string, version: unknown, extra: Record<string, unknown> = {}) => ({ name, pm2_env: { status: 'online', node_version: version, pm_cwd: `/home/ploi/${MARKER}`, ...extra } })
+
+    it('das Programm und je Prozess der Liste die Version — Fremde nur als Zahl, nie ein Name oder Pfad', () => {
+      const env = nodeWorld(`[PM2] Spawning PM2 daemon with pm2_home=/home/ploi/.pm2\n${JSON.stringify([
+        proc('platformpukalaniapp', '24.22.3'),
+        proc(`${MARKER}-logrotate`, '24.22.3'),
+        proc('helppukalaniapp', '24.11.0'),
+        proc('platformpukalaniapp', '24.22.3'),
+      ])}\n`)
+      const { code, stdout, out } = word('node-version', env)
+      expect(code).toBe(0)
+      expect(stdout).toBe([
+        'program 24.22.3',
+        'proc platformpukalaniapp 24.22.3',
+        'proc helppukalaniapp 24.11.0',
+        'proc platformpukalaniapp 24.22.3',
+        'fremd 1',
+        '',
+      ].join('\n'))
+      expect(out).not.toContain(MARKER)
+    })
+
+    it('eine Site ohne Prozess heißt „fehlt", eine Version in fremder Form „unlesbar"', () => {
+      const env = nodeWorld(JSON.stringify([proc('helppukalaniapp', `24.22.3 ${MARKER}`), proc('adminpukalaniapp', 24)]), `v24.22.3-${MARKER}`)
+      const { code, stdout, out } = word('node-version', env)
+      expect(code).toBe(0)
+      expect(stdout).toBe('program unlesbar\nproc helppukalaniapp unlesbar\nproc platformpukalaniapp fehlt\nfremd 1\n')
+      expect(out).not.toContain(MARKER)
+    })
+
+    it('ohne Programm und ohne Antwort von pm2: feste Marken, Exit 0', () => {
+      expect(word('node-version', nodeWorld(null, null))).toMatchObject({ code: 0, stdout: 'program fehlt\npm2 unlesbar\n' })
+      expect(word('node-version', nodeWorld(`kein JSON ${MARKER}`))).toMatchObject({ code: 0, stdout: 'program 24.22.3\npm2 unlesbar\n' })
+      expect(word('node-version', nodeWorld('[]'))).toMatchObject({ code: 0, stdout: 'program 24.22.3\nproc helppukalaniapp fehlt\nproc platformpukalaniapp fehlt\nfremd 0\n' })
+    })
+
+    it('ohne Vorgabe fragt das Tor /usr/bin/node — das Programm, mit dem pm2 startet', () => {
+      expect(readFileSync(GATE, 'utf8')).toContain('NODE_BIN="${APP_WATCH_NODE:-/usr/bin/node}"')
+    })
+
+    it('jede Zeile des Tors liest das Prüf-Skript, und nur diese', () => {
+      const env = nodeWorld(JSON.stringify([proc('platformpukalaniapp', '24.22.3'), proc('fremd', '1.2.3')]))
+      const answer = answerFromNode({ status: 0, stdout: word('node-version', env).stdout })
+      expect(answer).toEqual({ state: 'ok', program: '24.22.3', procs: [{ name: 'platformpukalaniapp', version: '24.22.3' }, { name: 'helppukalaniapp', version: 'fehlt' }], foreign: 1, pm2Unreadable: false })
+    })
+  })
+
   it('ohne festen Befehl (freier Schlüssel): dieselbe Zeile als Parameter liefert dasselbe', () => {
     const viaShell = spawnSync('bash', [GATE, 'site-env', 'platform.pukalani.app'], { encoding: 'utf8', env: { ...process.env, APP_WATCH_ROOT: root, SSH_ORIGINAL_COMMAND: '' } })
     expect(viaShell.status).toBe(0)
@@ -249,8 +315,10 @@ describe('ops/app-watch-gate.sh — die Worte', () => {
   })
 
   it('kein Wort legt etwas an', () => {
+    // Mit Stellvertreter für pm2: ein echtes `pm2 jlist` auf dem eigenen Rechner würde dessen Dienst starten.
+    const env = nodeWorld('[]')
     const before = spawnSync('find', [root], { encoding: 'utf8' }).stdout
-    for (const line of ['sums', 'site-env platform.pukalani.app', 'stale-keys strict', 'mail-breaker 2026-11-18T00:00:00.000Z', 'echo frei', 'scp -t /home/ploi/x']) word(line)
+    for (const line of ['sums', 'node-version', 'site-env platform.pukalani.app', 'stale-keys strict', 'mail-breaker 2026-11-18T00:00:00.000Z', 'echo frei', 'scp -t /home/ploi/x']) word(line, env)
     expect(spawnSync('find', [root], { encoding: 'utf8' }).stdout).toBe(before)
   })
 })
@@ -347,8 +415,8 @@ describe('Tor, Zuordnung und Prüf-Skripte gehören zusammen', () => {
     for (const file of SERVER_FILES) expect(existsSync(join(REPO, file.repo)), file.repo).toBe(true)
   })
 
-  it('die sechs Prüf-Skripte schicken nur noch Tor-Worte — kein scp, keine freie Zeile', () => {
-    const scripts = ['verify-site-env', 'verify-stale-keys', 'verify-instance-admins', 'verify-mail-breaker', 'verify-app-signals', 'verify-server-config']
+  it('die Prüf-Skripte schicken nur Tor-Worte — kein scp, keine freie Zeile', () => {
+    const scripts = ['verify-site-env', 'verify-stale-keys', 'verify-instance-admins', 'verify-mail-breaker', 'verify-app-signals', 'verify-server-config', 'verify-node-version']
     const gateWords = /^ {2}([a-z-]+(?:\|[a-z-]+)*)\)$/m
     const allowed = new Set(readFileSync(GATE, 'utf8').split('\n').filter(l => gateWords.test(l)).flatMap(l => l.trim().slice(0, -1).split('|')))
     for (const name of scripts) {
@@ -383,6 +451,15 @@ describe('Tor, Zuordnung und Prüf-Skripte gehören zusammen', () => {
     expect(workflow).toContain('run: node scripts/ops/verify-server-scripts.mjs --strict')
     expect(workflow).toContain('- name: Ist der Wächter-Schlüssel beschränkt?')
     expect(workflow).toMatch(/^# {1,2}16\. VON HAND EINGESPIELTE DATEIEN/m)
+  })
+
+  it('der Workflow fährt den Blick auf die Node-Version: Exit 2 ist eine Warnung, mit eigenem Probealarm', () => {
+    const workflow = readFileSync(join(REPO, '.github', 'workflows', 'production-watch.yml'), 'utf8')
+    expect(workflow).toContain('node scripts/ops/verify-node-version.mjs --strict || code=$?')
+    expect(workflow).toMatch(/^# {1,2}18\. NODE-VERSION DES APP-SERVERS/m)
+    expect(workflow).toContain('node_drill:')
+    expect(workflow).toContain(`PUKALANI_NODE_DRILL: \${{ inputs.node_drill && '1' || '0' }}`)
+    expect(workflow).toMatch(/DRILL: \$\{\{ \([^)]*inputs\.node_drill[^)]*\) && '1' \|\| '0' \}\}/)
   })
 
   it('das Tor ist ausführbar und für bash 3.2 geschrieben (keine assoziativen Felder)', () => {
