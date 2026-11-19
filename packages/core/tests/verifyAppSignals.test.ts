@@ -20,7 +20,8 @@ const SCRIPT = join(REPO, 'scripts', 'ops', 'verify-app-signals.mjs')
 
 interface JobLine { name: string, every?: number, ok?: number, failed?: number, skipped?: number, overlap?: number, lastOk?: number | 'nie', lastRun?: number | 'nie', result?: string, registered?: number | 'nie' }
 
-interface ReminderLine { runs?: number, noAnswer?: number, events?: number, recipients?: number }
+/** `asked: null` = Zeile eines Servers mit dem Skript von vor dem Feld `gefragt`. */
+interface ReminderLine { runs?: number, noAnswer?: number, events?: number, recipients?: number, asked?: number | null }
 
 function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, csp?: number | null, cspCapped?: number, reminders?: ReminderLine | null, jobs?: JobLine[], version?: number } = {}): string {
   const jobs = options.jobs ?? []
@@ -34,7 +35,7 @@ function countsText(options: { status?: string, up?: number, server?: number, br
     // `csp: null` = Ausgabe eines Servers mit dem Skript von VOR SE1 a (ohne die Zeile).
     ...(options.csp === null ? [] : [`skriptregel berichte=${options.csp ?? 0} gedeckelt=${options.cspCapped ?? 0}`]),
     // `reminders: null` = Ausgabe eines Servers mit dem Skript von VOR SE1 d (ohne die Zeile).
-    ...(options.reminders === null ? [] : [`erinnerungen takte=${options.reminders?.runs ?? 0} ohne_antwort=${options.reminders?.noAnswer ?? 0} termine=${options.reminders?.events ?? 0} empfaenger=${options.reminders?.recipients ?? 0}`]),
+    ...(options.reminders === null ? [] : [`erinnerungen takte=${options.reminders?.runs ?? 0} ohne_antwort=${options.reminders?.noAnswer ?? 0} termine=${options.reminders?.events ?? 0} empfaenger=${options.reminders?.recipients ?? 0}${options.reminders?.asked === null ? '' : ` gefragt=${options.reminders?.asked ?? 0}`}`]),
     ...jobs.map(job => `lauf name=${job.name} takt_min=${job.every ?? 60} ok=${job.ok ?? 24} gescheitert=${job.failed ?? 0} uebersprungen=${job.skipped ?? 0} haengt=${job.overlap ?? 0} letzter_ok_min=${job.lastOk ?? 10} letzter_lauf_min=${job.lastRun ?? 10} letztes_ergebnis=${job.result ?? 'ok'} angemeldet_min=${job.registered ?? 600}`),
     `ende laeufe=${jobs.length}`,
   ].join('\n')
@@ -252,28 +253,56 @@ describe('Berichte der Skript-Regel (SE1 a) — zählt nur', () => {
 
 describe('Erinnerungen an nicht erreichbare Communities (SE1 d) — zählt nur', () => {
   it('liest die Zeile und nennt die Zahlen in einem Satz — nie rot', () => {
-    const text = countsText({ reminders: { runs: 24, noAnswer: 1, events: 3, recipients: 11 } })
+    const text = countsText({ reminders: { runs: 24, asked: 4, noAnswer: 1, events: 3, recipients: 11 } })
     const counts = parseCounts(text)
     expect(counts.problem).toBeUndefined()
-    expect(counts).toMatchObject({ reminderRuns: 24, reminderNoAnswer: 1, reminderEvents: 3, reminderRecipients: 11 })
+    expect(counts).toMatchObject({ reminderRuns: 24, reminderAsked: 4, reminderNoAnswer: 1, reminderEvents: 3, reminderRecipients: 11 })
     const result = evaluate(text, [], 'platform')
     expect(result.red).toEqual([])
     expect(result.notes).toEqual([
-      'test.example: der Erinnerungs-Lauf hat in 25 h 24 Takt(e) gezählt: 3 Termin(e) stillgelegter oder gesperrter Communities mit 11 Erinnerung(en), 1 Takt(e) ohne Antwort des Control Plane — zählt nur',
+      'test.example: der Erinnerungs-Lauf hat in 25 h 24 Takt(e) gemeldet, 4 davon mit Frage ans Control Plane, 1 ohne Antwort: 3 Termin(e) stillgelegter oder gesperrter Communities (im Zähl-Modus trotzdem erinnert: 11) — zählt nur',
     ])
-    expect(summaryLine({ site: 'test.example', counts })).toContain('Erinnerungen ins Leere 11')
+    expect(summaryLine({ site: 'test.example', counts })).toContain('Termine nicht erreichbar 3')
+  })
+
+  it('lauter Takte OHNE Frage (kein Termin fällig): der Satz sagt es — „0 Termine" belegt dann nichts', () => {
+    const result = evaluate(countsText({ reminders: { runs: 24, asked: 0 } }), [], 'platform')
+    expect(result.red).toEqual([])
+    expect(result.notes).toEqual([
+      'test.example: der Erinnerungs-Lauf hat in 25 h 24 Takt(e) gemeldet, 0 davon mit Frage ans Control Plane, 0 ohne Antwort: 0 Termin(e) stillgelegter oder gesperrter Communities — zählt nur',
+    ])
+  })
+
+  it('Stufe 2 (ausgelassen, niemand erinnert): der Satz nennt Termine und Takte, keine Erinnerungen', () => {
+    const result = evaluate(countsText({ reminders: { runs: 2, asked: 2, noAnswer: 0, events: 2, recipients: 0 } }), [], 'platform')
+    expect(result.red).toEqual([])
+    expect(result.notes).toEqual([
+      'test.example: der Erinnerungs-Lauf hat in 25 h 2 Takt(e) gemeldet, 2 davon mit Frage ans Control Plane, 0 ohne Antwort: 2 Termin(e) stillgelegter oder gesperrter Communities — zählt nur',
+    ])
+  })
+
+  it('Zeile eines Servers OHNE das Feld `gefragt` (zwischen Merge und Ausliefern) ⇒ gelesen, der Satz sagt „nicht gezählt"', () => {
+    const text = countsText({ reminders: { runs: 3, asked: null, events: 1, recipients: 2 } })
+    const counts = parseCounts(text)
+    expect(counts.problem).toBeUndefined()
+    expect(counts.reminderAsked).toBeUndefined()
+    expect(counts).toMatchObject({ reminderRuns: 3, reminderEvents: 1, reminderRecipients: 2 })
+    expect(evaluate(text, [], 'platform')).toEqual({
+      red: [],
+      notes: ['test.example: der Erinnerungs-Lauf hat in 25 h 3 Takt(e) gemeldet, Fragen ans Control Plane nicht gezählt, 0 ohne Antwort: 1 Termin(e) stillgelegter oder gesperrter Communities (im Zähl-Modus trotzdem erinnert: 2) — zählt nur'],
+    })
   })
 
   it('auch viele Takte ohne Antwort machen nicht rot', () => {
     const result = evaluate(countsText({ reminders: { runs: 24, noAnswer: 24 } }), [], 'platform')
     expect(result.red).toEqual([])
     expect(result.notes).toHaveLength(1)
-    expect(result.notes[0]).toContain('24 Takt(e) ohne Antwort des Control Plane')
+    expect(result.notes[0]).toContain('24 ohne Antwort')
   })
 
   it('eine App, in der der Lauf nicht zählt (lauter Nullen), bekommt keinen Hinweis', () => {
     expect(evaluate(countsText({ reminders: {} })).notes).toEqual([])
-    expect(summaryLine({ site: 'test.example', counts: parseCounts(countsText({ reminders: {} })) })).toContain('Erinnerungen ins Leere 0')
+    expect(summaryLine({ site: 'test.example', counts: parseCounts(countsText({ reminders: {} })) })).toContain('Termine nicht erreichbar 0')
   })
 
   it('ALTE Ausgabe ohne die Zeile (zwischen Merge und Ausliefern) ⇒ kein Problem, nicht rot, „nicht gezählt"', () => {
@@ -282,7 +311,7 @@ describe('Erinnerungen an nicht erreichbare Communities (SE1 d) — zählt nur',
     expect(counts.version).toBe(1)
     expect(counts.reminderRuns).toBeUndefined()
     expect(evaluate(countsText({ reminders: null }))).toEqual({ red: [], notes: [] })
-    expect(summaryLine({ site: 'test.example', counts })).toContain('Erinnerungen ins Leere nicht gezählt')
+    expect(summaryLine({ site: 'test.example', counts })).toContain('Termine nicht erreichbar nicht gezählt')
   })
 
   it.each([
