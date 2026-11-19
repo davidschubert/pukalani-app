@@ -30,6 +30,51 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KM1 e — Alarmweg: ein Alarm aus dem täglichen Teil schloss sich nach 30 Minuten von selbst ✅ 2026-11-19
+
+**Was war:** Der Produktions-Wächter läuft in zwei Takten in einer Datei —
+`tls` und `kundendomains` alle 30 Minuten, `server` einmal am Tag. Der Job
+`alarm` schloss das Issue `produktions-alarm`, sobald in EINEM Lauf kein Job
+rot war. Im Halbstunden-Lauf ist `server` aber „skipped", und das zählte nicht
+als rot. Gesehen an Issue 401 (2026-11-18): geöffnet 21:39 UTC vom täglichen
+Teil, geschlossen 22:10 UTC mit „alle Wächter wieder grün", der Befund bestand
+um 22:31 UTC noch. Ein Alarm aus dem täglichen Teil stand so höchstens 30
+Minuten offen, dazu kam eine Entwarnungs-Mail.
+
+**Was jetzt gilt:** Das Issue trägt je Quelle, die rot war und seither nicht
+grün gesehen wurde, ein Label: `alarm:tls`, `alarm:server`,
+`alarm:kundendomains`. Ein Lauf ändert nur, was er gemessen hat (rot ⇒ Label
+dazu, grün ⇒ weg, nicht gelaufen ⇒ bleibt); geschlossen wird mit dem letzten
+Label. Ein Issue mit `alarm:server` schließt also nur der Tageslauf oder ein
+Lauf von Hand, in dem `server` grün ist. Waren beide Teile rot, nimmt jeder
+Lauf seinen Teil weg und schreibt einen Kommentar. Die Regel steht nicht mehr
+als Shell im Workflow, sondern in `scripts/ops/alarm-issue.mjs`, mit 26 Tests
+(`packages/core/tests/alarmIssue.test.ts`) — auch dafür, dass ein
+gescheiterter Aufruf den Lauf rot macht und weder Mail noch Heartbeat schickt.
+
+**Selbst entschieden (klein, umkehrbar):**
+- Labels statt Titel oder Vermerk im Text: ein Wert, den GitHub führt und den
+  ein Mensch von Hand korrigieren kann.
+- Der Heartbeat hängt weiter am Lauf, nicht am Issue. Sonst meldete
+  UptimeRobot einen Befund aus dem täglichen Teil ein zweites Mal.
+- Probealarme werden von Hand aufgeräumt (`gh workflow run
+  production-watch.yml`, dort laufen alle Jobs). Eine Sonderregel „Probe-Issue
+  schließt jeder Lauf" gibt es nicht: ein Probelauf kann auch einen echten
+  Befund treffen, und der ginge dann wieder nach 30 Minuten verloren.
+- Wird eine weitere Quelle rot, während ein Issue offen ist, bekommt das
+  Issue das Label und einen Kommentar, aber keine zweite Mail (wie vorher).
+
+**Beweis:** Tests und ein Lauf des Skripts gegen ein gestelltes `gh` lokal;
+die zwei Probealarme auf `main` stehen im Pull Request und im Runbook
+(`docs/runbooks/PRODUKTIONS-ALARM.md`, § 2).
+
+**Gelernt:** „Kein Job rot" ist nicht „alles grün", wenn ein Lauf nicht alles
+prüft. Ein übersprungener Job ist keine Aussage — wer aus mehreren Takten
+EINEN Zustand macht, muss je Quelle festhalten, wann sie zuletzt wirklich
+gemessen wurde, und darf nur schließen, was er selbst grün gesehen hat. Und:
+eine Entwarnung, die niemand geprüft hat, ist schlimmer als gar keine — sie
+kam hier als Mail.
+
 ### KA1 — KI-Alarm vom 2026-11-18: der Wächter war rot, kein Modell war ausgefallen ✅ 2026-11-18
 
 **Anlass.** Der tägliche Blick „KI-Modelle unter unseren Bedingungen
