@@ -30,6 +30,43 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW30 (c) — Klick-Beweis hinter der Anmeldung auf Production nach Appwrite 2.7.3 ✅ 2026-11-19
+
+**Was.** Nach dem Upgrade vom 2026-11-18 war Production nur von außen
+geprüft. Am 2026-11-19 folgte der Teil hinter der Anmeldung, auf
+`demo.pukalani.app` mit dem Konto des Betreibers in seinem Browser. Passwort
+und Code hat er selbst getippt, die Klicks davor und danach und das Ablesen
+liefen über die Fernsteuerung des Browsers.
+
+**Geprüft.**
+
+- Die bestehende Sitzung galt: `/api/auth/me` 200, auch auf
+  `account.pukalani.app`.
+- Abmelden: der Klick führt auf `/login`, danach antwortet `/api/auth/me` 401.
+- Anmelden mit Passwort: neue Sitzung, Weg `email`, Faktor `password`.
+- Anmelden per Code: Code angefordert, Mail kam, neue Sitzung mit dem Weg
+  `token` und dem Faktor `email`.
+- Profilbild: ein Probe-Bild (108 Bytes) über die Upload-Route der Seite —
+  200, gespeichert als `avatar.png`; Abruf 200 `image/png` mit `nosniff`;
+  Löschen 200, danach 404. HTML mit Bild-Typ: 415. Das echte Profilbild blieb
+  unverändert.
+- Live-Verbindung mit dem Token der Sitzung: `connected` mit Konto, Ping und
+  Pong.
+- Die Seite 188 s offen: kein neuer Socket, kein `/api/auth/me`, 10
+  Heartbeats (Takt 20 s) und 19 Lese-Aufrufe der Presence.
+
+**Nicht geprüft** (steht weiter in OPEN-ITEMS „AW30" c): ein Kommentar und
+eine Stimme, und der Speichern-Knopf im Profil mit einem neuen Bild.
+
+**Gelernt:** Der Profilbild-Upload hängt am Speichern-Knopf des Profils, und
+der ersetzt das Bild und löscht die alte Datei. Ein Beweis mit einem echten
+Konto geht deshalb über die drei Routen der Seite (hochladen, abrufen,
+löschen) mit derselben Sitzung — das sagt man dann auch so, es ist nicht der
+Klick. Und: ob eine Sitzung ein Upgrade überlebt hat, liest man an ihrem
+Anlage-Datum ab, BEVOR man abmeldet; hier fehlt diese Zahl. Nach dem Abmelden
+füllt der Passwort-Manager das Anmelde-Formular von selbst, auch mit einem
+anderen Konto — nichts abschicken, die Zielseite direkt aufrufen.
+
 ### KM1 e — Alarmweg: ein Alarm aus dem täglichen Teil schloss sich nach 30 Minuten von selbst ✅ 2026-11-19
 
 **Was war:** Der Produktions-Wächter läuft in zwei Takten in einer Datei —
