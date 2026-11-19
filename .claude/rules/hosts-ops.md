@@ -173,6 +173,21 @@ paths:
   Läufe rot, api.pukalani.app lief ab, niemand sah es): der Job `alarm` macht
   daraus ein Issue `produktions-alarm` (offen = Alarm, grün schließt es),
   eine Mail bei jedem Wechsel (Secret) und einen Heartbeat bei grün (Secret).
+  WESHALB EIN ISSUE OFFEN IST, STEHT ALS LABEL DARAN (seit 2026-11-19, KM1 e):
+  `alarm:tls`, `alarm:server`, `alarm:kundendomains`. Ein Lauf ändert nur, was
+  er GEMESSEN hat (Job rot ⇒ Label dazu, grün ⇒ weg, `skipped` ⇒ bleibt),
+  geschlossen wird mit dem letzten Label. Ein Issue mit `alarm:server`
+  schließt also nur ein Lauf, in dem der tägliche Teil gelaufen UND grün ist
+  (Tageslauf oder `gh workflow run production-watch.yml`); der
+  Halbstunden-Lauf lässt es offen und entwarnt nicht — vorher schloss er
+  jeden Alarm aus dem täglichen Teil nach höchstens 30 Minuten, ohne neu zu
+  prüfen (Issue 401). Der Heartbeat hängt am LAUF, nicht am Issue. Die Regel
+  steht mit Tests in `scripts/ops/alarm-issue.mjs`
+  (`packages/core/tests/alarmIssue.test.ts`), nicht mehr als Shell im
+  Workflow. NEUER WÄCHTER-JOB ⇒ eine Zeile in `SOURCES` dort, sonst kennt der
+  Alarmweg ihn nicht. EIN PROBEALARM WIRD VON HAND AUFGERÄUMT (Lauf ohne
+  Schalter, dort laufen alle Jobs); nach einer Änderung am Alarmweg selbst
+  beide Teile proben (`signals_drill`, dann `alarm_drill`).
   Probealarm `gh workflow run production-watch.yml -f alarm_drill=true` —
   monatlich und nach JEDER Workflow-Änderung; Runbook + Klickliste
   docs/runbooks/PRODUKTIONS-ALARM.md (Befunde 2026-10-28 dort in § 3: die

@@ -30,6 +30,164 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KM1 e — Alarmweg: ein Alarm aus dem täglichen Teil schloss sich nach 30 Minuten von selbst ✅ 2026-11-19
+
+**Was war:** Der Produktions-Wächter läuft in zwei Takten in einer Datei —
+`tls` und `kundendomains` alle 30 Minuten, `server` einmal am Tag. Der Job
+`alarm` schloss das Issue `produktions-alarm`, sobald in EINEM Lauf kein Job
+rot war. Im Halbstunden-Lauf ist `server` aber „skipped", und das zählte nicht
+als rot. Gesehen an Issue 401 (2026-11-18): geöffnet 21:39 UTC vom täglichen
+Teil, geschlossen 22:10 UTC mit „alle Wächter wieder grün", der Befund bestand
+um 22:31 UTC noch. Ein Alarm aus dem täglichen Teil stand so höchstens 30
+Minuten offen, dazu kam eine Entwarnungs-Mail.
+
+**Was jetzt gilt:** Das Issue trägt je Quelle, die rot war und seither nicht
+grün gesehen wurde, ein Label: `alarm:tls`, `alarm:server`,
+`alarm:kundendomains`. Ein Lauf ändert nur, was er gemessen hat (rot ⇒ Label
+dazu, grün ⇒ weg, nicht gelaufen ⇒ bleibt); geschlossen wird mit dem letzten
+Label. Ein Issue mit `alarm:server` schließt also nur der Tageslauf oder ein
+Lauf von Hand, in dem `server` grün ist. Waren beide Teile rot, nimmt jeder
+Lauf seinen Teil weg und schreibt einen Kommentar. Die Regel steht nicht mehr
+als Shell im Workflow, sondern in `scripts/ops/alarm-issue.mjs`, mit 26 Tests
+(`packages/core/tests/alarmIssue.test.ts`) — auch dafür, dass ein
+gescheiterter Aufruf den Lauf rot macht und weder Mail noch Heartbeat schickt.
+
+**Selbst entschieden (klein, umkehrbar):**
+- Labels statt Titel oder Vermerk im Text: ein Wert, den GitHub führt und den
+  ein Mensch von Hand korrigieren kann.
+- Der Heartbeat hängt weiter am Lauf, nicht am Issue. Sonst meldete
+  UptimeRobot einen Befund aus dem täglichen Teil ein zweites Mal.
+- Probealarme werden von Hand aufgeräumt (`gh workflow run
+  production-watch.yml`, dort laufen alle Jobs). Eine Sonderregel „Probe-Issue
+  schließt jeder Lauf" gibt es nicht: ein Probelauf kann auch einen echten
+  Befund treffen, und der ginge dann wieder nach 30 Minuten verloren.
+- Wird eine weitere Quelle rot, während ein Issue offen ist, bekommt das
+  Issue das Label und einen Kommentar, aber keine zweite Mail (wie vorher).
+
+**Beweis:** Tests und ein Lauf des Skripts gegen ein gestelltes `gh` lokal,
+danach zwei Probealarme auf `main` (2026-11-19, Zeiten in UTC, die Zeile in
+Anführungszeichen steht so im Protokoll des Jobs `alarm`):
+
+| Lauf | Zeit | Was | Protokoll | Issue |
+|---|---|---|---|---|
+| 44498685593 | 09:41 | `signals_drill`, `server` rot | `plan=open` | 412 offen mit `alarm:server`, Alarm-Mail |
+| 44503302199 | 10:11 | Halbstunden-Lauf, `server` skipped | `plan=waiting` — „Issue #412 bleibt offen: 'server' ist in diesem Lauf nicht geprüft worden — keine Entwarnung", Heartbeat gesendet | 412 offen, kein Kommentar, keine Mail |
+| fünf weitere | bis 12:38 | Halbstunden-Läufe | dasselbe | 412 offen |
+| 44528708013 | 12:57 | von Hand ohne Schalter, `server` grün | `plan=close` | 412 zu um 13:00, Label weg, Entwarnungs-Mail |
+| 44530968523 | 13:11 | `alarm_drill`, `tls` rot | `plan=open` | 413 offen mit `alarm:tls`, Alarm-Mail |
+| 44535098965 | 13:36 | Halbstunden-Lauf, `server` skipped | `plan=close` | 413 zu um 13:36, Entwarnungs-Mail |
+
+Vorher (Issue 401) schloss der Halbstunden-Lauf ein Issue aus dem täglichen
+Teil nach 31 Minuten; Issue 412 stand drei Stunden und sechs Halbstunden-Läufe
+offen, bis ein Lauf den täglichen Teil grün sah. Kein Probe-Issue blieb offen.
+
+**Gelernt:** „Kein Job rot" ist nicht „alles grün", wenn ein Lauf nicht alles
+prüft. Ein übersprungener Job ist keine Aussage — wer aus mehreren Takten
+EINEN Zustand macht, muss je Quelle festhalten, wann sie zuletzt wirklich
+gemessen wurde, und darf nur schließen, was er selbst grün gesehen hat. Und:
+eine Entwarnung, die niemand geprüft hat, ist schlimmer als gar keine — sie
+kam hier als Mail.
+
+### KA1 — KI-Alarm vom 2026-11-18: der Wächter war rot, kein Modell war ausgefallen ✅ 2026-11-18
+
+**Anlass.** Der tägliche Blick „KI-Modelle unter unseren Bedingungen
+erreichbar?" meldete am 2026-11-18 um 21:38 UTC fünf Modell-Wahlen als nicht
+erreichbar (Alarm-Issue 401): das Textmodell an drei Stellen (Core, Tickets,
+Prüf-Modell des Markenberaters) und das Modell für Bild- und Video-Lesen auf
+branding.supply. Der Lauf um 04:21 UTC desselben Tages war noch grün. Am Code
+hatte sich nichts geändert. Davids Auftrag: untersuchen und einen Ersatz
+vorschlagen.
+
+**Befund: kein Ersatz nötig.** Der Vermittler hat nicht die Endpunkte
+entfernt, sondern seine LISTE umgebaut. Die Europa-Endpunkte mit Aufpreis
+(`amazon-bedrock/eu-west-1` und `google-vertex/europe` der Anthropic-Modelle,
+`google-vertex/eu` der Gemini-Modelle) stehen nicht mehr in der Endpunkt-Liste
+der weltweiten Adresse, sondern nur noch in der seiner Europa-Adresse
+(`eu.openrouter.ai/api/v1/models/<slug>/endpoints`, öffentlich, ohne
+Schlüssel). Die Namen sind dieselben. Das trifft JEDES Modell von Anthropic
+und Google, nicht nur unsere zwei: in der weltweiten Liste hatte keines mehr
+einen Europa-Endpunkt. Endpunkte ohne Aufpreis (Amazon Nova, Mistral) stehen
+weiter in beiden Listen.
+
+**Beweise.**
+
+- Der alte Wächter dreimal über acht Minuten: Exit 1, fünf Befunde, stabil.
+- Beide Listen nebeneinander gelesen, für sieben Modelle: die verlangten
+  Namen stehen nur noch in der Europa-Liste.
+- ZWEI echte lokale Aufrufe über die weltweite Adresse, mit genau dem
+  `provider`-Block der Transporte (der zweite mit Davids Klick):
+  Text (`anthropic/claude-haiku-4.5`, beide Europa-Endpunkte erlaubt) ⇒ 200,
+  Anbieter Amazon Bedrock, Kosten 0,0000429 $; Bild-Lesen
+  (`google/gemini-3.1-flash-lite`, nur `google-vertex/eu`, ein 64×64-PNG) ⇒
+  200, „Rot und Blau.", Kosten 0,00031185 $. Beide Beträge sind auf die
+  letzte Stelle der EUROPA-Preis (1,10 / 5,50 $ und 0,275 / 1,65 $ je
+  Million Tokens), nicht der weltweite (1,00 / 5,00 $ und 0,25 / 1,50 $).
+  Zusammen 0,04 Cent.
+- Der Blick „In die App hinein" im roten Lauf: 0 KI-Ausfälle in 25 Stunden
+  auf allen sechs Apps.
+
+**Was wirklich kaputt war.** Nicht die Aufrufe, aber zwei Dinge, die dieselbe
+Liste lesen: der Wächter (falscher Alarm) und die Prüfung beim Speichern
+eines Modells (`checkAiModelEndpoints`, COMPLETE „N05") — sie lehnte seit dem
+Umbau jedes Modell von Anthropic und Google mit 422
+`ai_model_no_eu_endpoint` ab.
+
+**Gebaut (Pull Request 405).**
+
+- `scripts/ops/verify-ai-models.mjs` liest je Modell beide Listen; ein
+  verlangter Endpunkt zählt, sobald er in einer steht. Die Zeile sagt
+  „(Europa-Liste)", wenn er nur dort steht. Scheitert eine der zwei
+  Abfragen, bleibt es bei „keine Aussage" (Exit 2, kein Alarm).
+- `core/shared/aiModelEndpoints.ts` und `core/server/utils/aiModelCheck.ts`
+  lesen ebenfalls beide, zugleich und unter EINER Frist (5 s). „Kein
+  Europa-Endpunkt" ist nur noch eine Aussage, wenn beide Listen lesbar
+  waren; fehlt eine, wird gespeichert und „nicht prüfbar" gemeldet.
+- Die Europa-Adresse wird nur gelesen. Kein Transport ruft dort ein Modell —
+  das wäre ein anderer Tarif des Vermittlers. Ein Test hält das.
+- Gegenprobe: ein Modell ohne Europa-Endpunkt in beiden Listen
+  (`openai/gpt-4o`) macht den Wächter weiter rot.
+- An der Bindung der Aufrufe und an den Modellen ist nichts geändert.
+
+**Nach dem Zusammenführen.** Der Wächter von Hand auf `main` (Lauf
+44414263601, 2026-11-18 22:50 UTC): alle Jobs grün, der Schritt „KI-Modelle"
+nennt 6 von 6 Modell-Wahlen, fünf davon mit dem Zusatz „(Europa-Liste)".
+Issue 401 war da schon zu — aber NICHT durch die Reparatur: der nächste
+Halbstunden-Lauf hatte es um 22:10 UTC mit „Entwarnung" geschlossen, obwohl
+er die täglichen Blicke gar nicht prüft und der Befund weiter bestand (um
+22:23 und 22:31 UTC nachgemessen). Das ist ein eigener Befund am Alarmweg
+(OPEN-ITEMS „KM1" e).
+
+**Was eine Nutzerin gesehen hätte, wäre es ein echter Ausfall gewesen.** Mit
+gestellter Antwort des Vermittlers (404) werfen alle fünf Transporte 503 mit
+`ai_endpoint_unavailable`, und die Oberfläche zeigt den Satz „KI gerade
+nicht verfügbar" mit dem Hinweis, dass nichts an ein Modell ging
+(`aiTransportPolicy.test.ts`, `aiEndpointNotice.test.ts`). Kein Absturz. Im
+Browser geklickt wurde das nicht.
+
+**Nicht geprüft.** Kein Aufruf gegen Production. Ob in der Datenbank eines
+Deployments ein anderes Modell steht, ist nicht nachgesehen (für diesen
+Alarm ohne Belang: jedes Modell mit Europa-Endpunkt läuft wie vorher).
+Video-Lesen hat keinen eigenen Aufruf bekommen — es nutzt dasselbe Modell
+und denselben Endpunkt wie das Bild-Lesen.
+
+**Ohne Rückfrage entschieden.** Kein Modell-Tausch vorgeschlagen, weil
+nichts ausgefallen war; den Wächter und die Speicher-Prüfung auf beide
+Listen umgestellt (klein, umkehrbar); Vereinigung beider Listen statt „nur
+noch die Europa-Liste" (hält auch, wenn der Vermittler zurückbaut).
+
+**Gelernt:** **Ein roter Wächter sagt, was er LIEST, nicht was IST.** Dieser
+liest eine öffentliche Liste, und der Vermittler darf sie umbauen, ohne dass
+sich ein einziger Aufruf ändert. Bei Rot deshalb erst messen (die zweite
+Liste, die KI-Ausfälle im täglichen Blick, notfalls ein gebundener Aufruf
+für unter einen Cent), dann über ein anderes Modell reden — der Auftrag
+hieß schon „Ersatz vorschlagen". Zweitens: **der Preis ist der Beleg für den
+Ort.** `data_region` meldet immer `global` (COMPLETE „AI1"), aber die Kosten
+eines Aufrufs stimmen auf die letzte Stelle mit dem Preis genau EINES
+Endpunkts überein. Drittens: wer eine fremde Liste an zwei Stellen liest
+(Wächter und Speicher-Prüfung), bindet beide per Test aneinander — das war
+schon so, und nur deshalb fiel die zweite Stelle hier sofort mit auf. Reste
+und Vorschläge: OPEN-ITEMS „KM1".
+
 ### N16 — Nacharbeiten „Drei größere Reste": BT1 (a), WA1 (d), WA1 (e) ✅ 2026-11-18
 
 Die drei Reste, die N15 bewusst liegen ließ (Davids „Ja, einplanen" vom
@@ -195,8 +353,10 @@ OpenRouter fehlten für zwei unserer Modelle die EU-Endpunkte. Eine andere
 Sitzung hat das am selben Abend geklärt (Pull Request 405: der Wächter liest
 jetzt auch die Endpunkt-Liste der Europa-Adresse); danach ist der Blick
 wieder grün. (2) Ein roter Befund des täglichen Teils bekommt vom nächsten
-Halbstunden-Lauf die Entwarnung, ohne neu geprüft zu sein — als Punkt in
-OPEN-ITEMS („WA1" f).
+Halbstunden-Lauf die Entwarnung, ohne neu geprüft zu sein. Auch das hat eine
+andere Sitzung am 2026-11-19 behoben (Pull Request 411, oben „KM1 e"); der
+Punkt „WA1 (f)", der dafür vorbereitet war, ist deshalb nicht in OPEN-ITEMS
+gelandet.
 
 **Gelernt:** (1) Ein neues Skript, das „von Hand" lief, ist beim Einzug fast
 immer veraltet — elf von elf brauchten hier eine Anpassung, und keine davon

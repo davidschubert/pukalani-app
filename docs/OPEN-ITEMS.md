@@ -88,7 +88,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) der neue Blick auf Kundendomains zählt erst nur — scharf stellen, (e) Kleinigkeiten, (f) ein roter Tages-Blick bekommt vom nächsten Halbstunden-Lauf die Entwarnung, ohne neu geprüft zu sein — entscheiden, ob die Entwarnung je Blick getrennt wird. Seit 2026-11-18 lesen die Wächter die Kundendomains aus dem Control Plane, und der Mail-Blick liest nur noch die Dateien des laufenden Prozesses (COMPLETE „N16"). **Wartet auf:** (a), (c) und (d) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil | Nein | [Einzelheiten](#wa1) |
+| WA1 | **Alarm in die App hinein: Nacharbeiten.** Seit 2026-11-16 zählt der tägliche Wächter Fehler, Zeit-Läufe und KI-Ausfälle (COMPLETE „GA1 P22"). (a) Nach einer Woche Zahlen die Schwellen scharf stellen, die heute nur zählen, (c) Speichergrenze je Prozess, (d) der neue Blick auf Kundendomains zählt erst nur — scharf stellen, (e) Kleinigkeiten. Seit 2026-11-18 lesen die Wächter die Kundendomains aus dem Control Plane, und der Mail-Blick liest nur noch die Dateien des laufenden Prozesses (COMPLETE „N16"). **Wartet auf:** (a), (c) und (d) auf die Zahlen ab 2026-11-23. | Niedrig | S je Teil | Nein | [Einzelheiten](#wa1) |
 | SE1 | **Server-Einstellungen und Schutz-Kopfzeilen: Reste.** Seit 2026-11-17 sammelt jede App die Berichte der Skript-Regel ein, der tägliche Blick nennt die Zahl (COMPLETE „N07"). Offen: (a) eine Woche Zahlen ansehen, dann Nonces und scharf stellen, (b) „nur verschlüsselt" auch für Unter-Adressen, (c) den Umlauf der pm2-Logs nach dem ersten Umlauf ansehen, (d) Erinnerungen gesperrter Communities und Reste der alten Route, (e) Kleinigkeiten am Server. **Wartet auf:** (a) eine Woche Berichte, (c) den ersten Umlauf am 2026-11-19, (d) und (e) den Server-Termin ab 2026-11-30 (Davids Entscheidung vom 2026-11-17: die alte Einstellung und die alte Log-Datei gehen dann mit weg). | Niedrig | S je Teil | Nein | [Einzelheiten](#se1) |
 | LL1 | **Lange Läufe: Reste.** (c) Kleinigkeiten. Kein Weg rechnet mehr länger, als der Webserver wartet: auch die Übersetzung einer ganzen Seite läuft seit dem 2026-11-18 im Hintergrund (COMPLETE „N15"). Offen bleibt, einen echten Lauf über 60 Sekunden einmal zu sehen. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ll1) |
 | SV1 | **Schreiben nur über den Server: Reste.** Offen: (a) eine Klick-Probe auf den echten Seiten, (c) das direkte Lesen, (d) Kleinigkeiten. Der Schalter „JWT" ist seit dem 2026-11-18 in allen vier Projekten aus (COMPLETE „N11"). **Wartet auf:** (a) auf Davids Zeit (KR1), (c) auf das Pukalani-Konto. | Mittel | S je Teil | (a) Ja: selbst klicken | [Einzelheiten](#sv1) |
@@ -97,6 +97,7 @@ am 2026-11-18, COMPLETE „N11").
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"). Klick-Probe (a): KR1. Eine 503 trägt seit dem 2026-11-18 einen eigenen Code (COMPLETE „N15"). **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (ein englisches Bildschirmfoto, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
+| KM1 | **KI-Modell-Wächter: Vorschläge nach dem Alarm vom 2026-11-18.** Der Alarm war falsch: der Anbieter hatte seine Liste umgebaut, kein Aufruf scheiterte (COMPLETE „KA1"). Offen sind nur Vorschläge: (a) den Modell-Blick alle 30 Minuten laufen lassen statt einmal am Tag, (b) täglich ein echter winziger Aufruf statt nur die Liste zu lesen, (c) ein günstigeres Textmodell ansehen. Der Befund am Alarmweg (e) ist seit dem 2026-11-19 behoben (COMPLETE „KM1 e"). **Wartet auf:** Davids Ja oder Nein je Vorschlag. | Niedrig | S je Teil | Ja: je Vorschlag eine Antwort | [Einzelheiten](#km1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 70 von 84 von selbst; seit dem 2026-11-18 steht nachts auch branding.supply als vierter Server (COMPLETE „N16"). Offen: (a) vier Skripte von branding.supply brauchen eine neue Test-Vorlage, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
@@ -644,21 +645,6 @@ nicht mehr, das Beweis-Skript der Nachrichten läuft gegen den lokalen Spiegel.
   Schwellen in (a) gesetzt werden, die Zeilen mit `source: process` einmal
   getrennt ansehen.
 
-- **(f) Die Entwarnung gilt für den ganzen Alarm, nicht je Blick.** Gemessen
-  am 2026-11-18: der tägliche Blick „KI-Modelle" war um 21:39 UTC rot (Issue
-  401). Um 22:10 UTC schloss der halbstündliche Lauf das Issue mit „alle
-  Wächter wieder grün" — dort läuft der tägliche Teil gar nicht mit (Job
-  `server` übersprungen), und um 22:24 UTC war derselbe Blick weiter rot.
-  Ursache: der Job `alarm` in `.github/workflows/production-watch.yml` rechnet
-  „rot" nur aus den Jobs DES EIGENEN Laufs; ein übersprungener Job zählt als
-  nicht rot. Ein Befund des täglichen Teils steht deshalb höchstens eine
-  halbe Stunde als offenes Issue da und kommt erst mit dem nächsten Tages-Lauf
-  (04:17 UTC) wieder. Offen ist eine Entscheidung, kein Umbau auf Verdacht:
-  soll ein Halbstunden-Lauf ein Issue nur schließen dürfen, wenn es von einem
-  Halbstunden-Blick kam (zum Beispiel über ein Kennzeichen im Issue oder zwei
-  Labels)? Dasselbe gilt für den Probealarm der Kundendomains, wenn er von
-  Hand gestartet wird (dann fährt der tägliche Teil mit).
-
 <a id="se1"></a>
 
 **SE1 — Server-Einstellungen und Schutz-Kopfzeilen: Reste (aus dem Gesamtaudit, Paket P23).**
@@ -886,6 +872,37 @@ keinen Europa-Endpunkt hat.
   Ein englisches Bildschirmfoto der Hinweise fehlt. Die Kosten je Lauf und der Anbieter
   stehen weiter nicht im Protokoll (gehört zum Paket „Alarm für KI-Ausfälle
   und Ausgaben" des Gesamtaudits).
+
+<a id="km1"></a>
+
+**KM1 — KI-Modell-Wächter: Vorschläge nach dem Alarm vom 2026-11-18.**
+Der Alarm (Issue 401) war ein falscher: der Anbieter führt die
+Europa-Endpunkte jetzt in einer zweiten Liste, die Aufrufe liefen die ganze
+Zeit. Der Wächter und die Prüfung beim Speichern lesen seitdem beide Listen
+(COMPLETE „KA1"). Nichts davon ist dringend, nichts ist gebaut.
+
+- **(a) Früher warnen.** Der Modell-Blick läuft einmal am Tag (04:17 UTC).
+  Ein Umbau beim Anbieter fällt so erst nach bis zu 24 Stunden auf — hier
+  nur früher, weil jemand den Lauf von Hand startete. Vorschlag: den Blick
+  in den Halbstunden-Takt legen. Er braucht keinen Schlüssel und keinen
+  Server, nur zwei kleine Abfragen je Modell. Eine Störung beim Anbieter
+  bleibt dabei eine Warnung und kein Alarm (wie heute).
+- **(b) Den Aufruf prüfen, nicht nur die Liste.** Der Blick beweist nur,
+  dass ein Name in einer Liste steht. Vorschlag: einmal täglich je Weg
+  (Text, Bild-Lesen) ein echter winziger Aufruf mit der Europa-Bindung,
+  und der Blick vergleicht die Kosten mit dem Europa-Preis. Kostet rund
+  1 Cent im Monat. Braucht einen eigenen KI-Schlüssel als Secret bei GitHub
+  mit kleinem Ausgaben-Deckel — das ist Davids Klick.
+- **(c) Günstigeres Textmodell.** `anthropic/claude-haiku-5.5` hat dieselben
+  zwei Europa-Endpunkte und kostet dort ein Zehntel (0,11 / 0,55 $ je
+  Million Tokens statt 1,10 / 5,50 $). Kein Handlungsbedarf. Ein Wechsel
+  ist Davids Entscheidung und braucht vorher Proben aller Prompts (ein
+  anderes Modell antwortet anders).
+- **(d) Zur Kenntnis.** Der Anbieter bietet „nur Europa" inzwischen auch als
+  eigene Adresse an (in einem teureren Tarif). Nötig ist das nicht, solange
+  die Bindung je Aufruf greift — und das ist am 2026-11-18 gemessen. Ob auf
+  Production in der Datenbank eines Deployments ein anderes Modell steht,
+  hat niemand nachgesehen; dafür bräuchte es Davids Ja.
 
 <a id="ar1"></a>
 
