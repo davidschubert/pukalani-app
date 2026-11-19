@@ -32,6 +32,7 @@ const LINE_FORMS = [
   /^protokoll ausfaelle=\d+$/,
   /^skriptregel berichte=\d+ gedeckelt=\d+$/,
   /^mailbremse ausgeloest=\d+ letzte_min=(\d+|nie)$/,
+  /^erinnerungen takte=\d+ ohne_antwort=\d+ termine=\d+ empfaenger=\d+$/,
   /^lauf name=[a-z][a-z0-9-]{1,39} takt_min=\d+ ok=\d+ gescheitert=\d+ uebersprungen=\d+ haengt=\d+ letzter_ok_min=(\d+|nie) letzter_lauf_min=(\d+|nie) letztes_ergebnis=(ok|failed|skipped|nie) angemeldet_min=(\d+|nie)$/,
   /^ende laeufe=\d+$/,
 ]
@@ -232,8 +233,40 @@ describe('ops/app-watch-counts.mjs', () => {
       'protokoll ausfaelle=0',
       'skriptregel berichte=0 gedeckelt=0',
       'mailbremse ausgeloest=0 letzte_min=nie',
+      'erinnerungen takte=0 ohne_antwort=0 termine=0 empfaenger=0',
       'ende laeufe=0',
     ])
+  })
+
+  it('Erinnerungen an nicht erreichbare Communities: Summen im Fenster, nur Ziffern (SE1 d)', () => {
+    const line = (minutes: number, fields: Record<string, unknown>) => event(minutes, 'info', 'events.reminder_unreachable', fields)
+    writeLog('out', 4, [
+      line(10, { mode: 'count', asked: true, answered: true, dueEvents: 5, communities: 1, events: 2, recipients: 7 }),
+      line(70, { mode: 'count', asked: true, answered: false, dueEvents: 3, communities: 0, events: 0, recipients: 0 }),
+      line(130, { mode: 'count', asked: false, answered: false, dueEvents: 0, communities: 0, events: 0, recipients: 0 }),
+      line(190, { mode: 'skip', asked: true, answered: true, dueEvents: 4, communities: 2, events: 3, recipients: 0 }),
+      // außerhalb des Fensters von 25 h
+      line(26 * 60, { mode: 'count', asked: true, answered: false, dueEvents: 9, communities: 9, events: 9, recipients: 9 }),
+    ])
+    writeLog('error', 4, [
+      // Vergiftet: nichts davon darf als etwas anderes als 0 durchkommen —
+      // und nur `asked: true` + `answered: false` (Wahrheitswerte) ist „ohne Antwort".
+      line(20, { mode: 'GEHEIM-MARKER', asked: 'true', answered: 0, events: -4, recipients: 2.5 }),
+      line(21, { asked: true, answered: 'false', events: '12', recipients: 'GEHEIM-MARKER t-kunde-a' }),
+      line(22, { asked: true, answered: false, events: 1e12, recipients: Number.MAX_SAFE_INTEGER, title: 'GEHEIM-MARKER' }),
+      line(23, { events: null, recipients: { n: 1 } }),
+    ])
+    // Die Datei einer FRÜHEREN Prozess-Nummer zählt nicht mit.
+    writeLog('error', 9, [line(15, { asked: true, answered: false, events: 50, recipients: 50 })])
+
+    const { code, lines, out } = run(PROC)
+    expect(code).toBe(0)
+    // 4 + 4 Zeilen im Fenster; ohne Antwort: 70 min und 22 min.
+    expect(lineOf(lines, 'erinnerungen ')).toBe('erinnerungen takte=8 ohne_antwort=2 termine=5 empfaenger=7')
+    expect(out).not.toContain('GEHEIM-MARKER')
+    expect(out).not.toContain('t-kunde')
+    expect(out).not.toContain('skip')
+    for (const entry of lines) expect(LINE_FORMS.some(form => form.test(entry)), entry).toBe(true)
   })
 
   describe('umgelaufene Log-Dateien (SE1 c)', () => {

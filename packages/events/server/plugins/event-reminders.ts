@@ -1,4 +1,4 @@
-import { EVENT_REMINDER_JOB_MODE } from '../../shared/eventReminderJob'
+import { EVENT_REMINDER_JOB_MODE, EVENT_REMINDER_UNREACHABLE_MODE } from '../../shared/eventReminderJob'
 import { runEventReminderJob } from '../utils/eventReminders'
 
 /**
@@ -9,8 +9,10 @@ import { runEventReminderJob } from '../utils/eventReminders'
  * Community rief. Alle anderen Communities bekamen ihre Erinnerung nur, wenn
  * zufällig jemand in den 24 h vor dem Termin vorbeischaute. Dieser Lauf geht
  * stündlich alle Communities durch (Arbeit und Begründungen in
- * `server/utils/eventReminders.ts`). Was er tut — zählen oder erinnern —
- * steht in `shared/eventReminderJob.ts`.
+ * `server/utils/eventReminders.ts`). Was er tut — zählen oder erinnern, und
+ * was mit Terminen nicht erreichbarer Communities geschieht (SE1 d) — steht in
+ * `shared/eventReminderJob.ts`; beide Konstanten reicht dieses Plugin durch,
+ * damit die Tests jeden Modus fahren können.
  *
  * STÜNDLICH, weil der Vorlauf 24 h beträgt: eine Stunde Versatz verschiebt
  * eine Erinnerung von „24 h vorher" auf „23 h vorher", mehr nicht.
@@ -36,6 +38,6 @@ export default defineNitroPlugin(() => {
     everyMs: SWEEP_INTERVAL_MS,
     firstRunMs: FIRST_RUN_DELAY_MS,
     unref: true,
-    run: () => runEventReminderJob(EVENT_REMINDER_JOB_MODE),
+    run: () => runEventReminderJob(EVENT_REMINDER_JOB_MODE, EVENT_REMINDER_UNREACHABLE_MODE),
   })
 })

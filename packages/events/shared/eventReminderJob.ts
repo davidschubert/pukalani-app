@@ -23,3 +23,31 @@
 export type EventReminderJobMode = 'count' | 'send'
 
 export const EVENT_REMINDER_JOB_MODE: EventReminderJobMode = 'send'
+
+/**
+ * WAS DER LAUF MIT TERMINEN NICHT ERREICHBARER COMMUNITIES TUT (SE1 d).
+ *
+ * Nicht erreichbar heißt: das Control Plane nennt die Community stillgelegt
+ * (`status !== 'active'`) oder wegen Missbrauchs gesperrt (`suspension ===
+ * 'abuse'`) — ihr Host antwortet 404, der Link in der Erinnerung führte ins
+ * Leere. Die Zahlungs-Sperre zählt NICHT dazu (dort wird weiter erinnert).
+ * Ohne Antwort des Control Plane wird in beiden Modi erinnert.
+ *
+ * Stufe 1 — `'count'`: der Lauf erinnert WEITER wie bisher und zählt nur, wie
+ * viele Erinnerungen er auslassen würde (Zeile `events.reminder_unreachable`
+ * je Takt, im Pool auch bei lauter Nullen). Grund wie bei
+ * `EVENT_REMINDER_JOB_MODE` oben: bevor der Lauf etwas WEGLÄSST, soll an den
+ * Zahlen von Production ablesbar sein, dass die Frage ans Control Plane
+ * beantwortet wird und nur die gemeinten Termine trifft.
+ *
+ * Stufe 2 — `'skip'`: erst NACH einem gezählten Lauf auf Production, eigener
+ * Commit. Dann bekommt ein Termin einer genannten Community keine Erinnerung
+ * und keinen Merker — er bleibt fällig, und geht die Community vor dem Beginn
+ * wieder ans Netz, erinnert ein späterer Takt.
+ *
+ * Eine Konstante im Code statt eines Schalters, aus demselben Grund wie oben:
+ * der Wechsel ist ein einmaliger, geprüfter Schritt.
+ */
+export type EventReminderUnreachableMode = 'count' | 'skip'
+
+export const EVENT_REMINDER_UNREACHABLE_MODE: EventReminderUnreachableMode = 'count'
