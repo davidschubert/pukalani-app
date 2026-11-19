@@ -240,7 +240,11 @@ BT1 a): nachts startet `buehne.yml` `apps/branding` als VIERTEN Server
 (`BRAND_DEV_STUB_*`, `MARKET_DEV_STUB`, `BRAND_SITE_FETCH_ALLOW_LOOPBACK` —
 die Start-Zeile steht in docs/referenz/LIVE-BEWEISE.md): KEIN Skript der
 Einteilung ruft eine echte KI, Stripe oder eine fremde Website, und die
-`.env` der CI trägt dafür keinen Schlüssel. Acht von zwölf laufen. Vier
+`.env` der CI trägt dafür keinen Schlüssel. Elf von zwölf laufen (seit
+2026-11-19 auch `verify-brand-kit`, `-design` und `-sessions`: ihre
+Design-Vorlage steht an EINER Stelle, `packages/brand/scripts/lib/designProbe.mjs`,
+und `packages/brand/tests/designProbeTemplate.test.ts` hält sie gegen den
+Wortschatz der App — eine kopierte Vorlage war still veraltet). Vier
 Dinge, beim Einzug gemessen: (1) ein Skript, das Konten anlegt, nimmt den
 LAUFZEIT-Schlüssel (`NUXT_APPWRITE_KEY` zuerst); (2) eine App mit AGB-Pflicht
 lehnt jede schreibende Route eines direkt angelegten Kontos ab (403
@@ -253,8 +257,16 @@ Liste von Kapiteln; (4) Tages-Deckel zählen je PROZESS — wer dieselben
 Skripte lokal mehrfach fährt, startet den Server dazwischen neu (429
 `market_instance_limit` sieht sonst aus wie ein roter Beweis). WAS FEHLT:
 zwei Skripte, die die Einzel-Instanz EIGENS eingestellt brauchen
-(`verify-silo-domain`, `verify-domain-settle`), vier von branding.supply mit
-veralteter Vorlage (`verify-brand-kit`, `-design`, `-sessions`,
-`verify-business-confirmation`; OPEN-ITEMS „BT1" a) und die fünf E2E-Dateien
-der Studio-Site; Skripte mit echten KI-Aufrufen, Stripe oder fremden
-Websites bleiben auf `hand`.
+(`verify-silo-domain`, `verify-domain-settle`), `verify-business-confirmation`
+(nachgezogen, braucht aber zusätzlich einen Server der Studio-Site; OPEN-ITEMS
+„BT1" a) und die fünf E2E-Dateien der Studio-Site; Skripte mit echten
+KI-Aufrufen, Stripe oder fremden Websites bleiben auf `hand`. EIN SKRIPT, DAS
+EINEN TEIL AM LAUFENDEN SERVER NICHT PRÜFEN KANN (eine Prüfung gilt nur ohne
+gestellte Antworten, eine andere nur mit), meldet ihn als `○ übersprungen`
+mit Grund und zählt ihn nicht mit — nie still weglassen, nie als bestanden
+zählen (`verify-brand-sessions`). UND DAS AUFRÄUM-REGISTER BRAUCHT DAS SCHEMA:
+ohne `tables.read` findet es keine Zeile, die an einem Konto hängt, und
+zählte trotzdem „nichts übrig" (lokal gemessen am 2026-11-19) —
+`createEinzelCleanup` liest das Schema deshalb mit dem Migrations-Schlüssel,
+wenn die Umgebung einen nennt, und ein Skript fragt mit `schemaReadable()`
+vorher nach.

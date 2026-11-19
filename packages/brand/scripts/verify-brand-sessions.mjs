@@ -189,7 +189,8 @@
  *     packages/brand/scripts/verify-brand-sessions.mjs
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { confirmProbeConsent, removeProbeConsent } from '../../../scripts/lib/probe-stage.mjs'
+import { confirmProbeConsent, removeProbeConsent, removeProbeRows } from '../../../scripts/lib/probe-stage.mjs'
+import { PROBE_DNA_MIX } from './lib/designProbe.mjs'
 import { createHash, randomBytes } from 'node:crypto'
 import { request } from 'node:http'
 import { Client, ID, Query, Storage, TablesDB, Users } from 'node-appwrite'
@@ -217,7 +218,39 @@ const users = new Users(client)
 
 let pass = 0
 let fail = 0
-const cleanup = { users: [], profiles: [], access: [], messages: [], inspiration: [], drafts: [], aiFlag: null }
+const cleanup = { users: [], profiles: [], access: [], messages: [], inspiration: [], drafts: [], aiFlag: null, admission: null }
+const skipped = []
+
+/**
+ * ÜBERSPRUNGEN IST WEDER BESTANDEN NOCH STILL (N17, 2026-11-19).
+ *
+ * Fünf Wege des Markenberaters (Lesung, DNA-Vorschlag, Briefing, Entwürfe)
+ * haben ZWEI richtige Antworten: mit Modell (oder gestellten Antworten) den
+ * Lauf, ohne Modell eine ruhige 503. Ein Server zeigt immer nur eine davon —
+ * die andere Hälfte wird hier als übersprungen GEMELDET, mit Grund, und am
+ * Ende gezählt. Sie zählt weder zu `pass` noch zu `fail`.
+ */
+function skip(label, reason) {
+  skipped.push(label)
+  console.log(`  ○ übersprungen: ${label} — ${reason}`)
+}
+
+/**
+ * EINEN LAUF IM HINTERGRUND ABWARTEN (LL1 b–d, seit 2026-11-17/18) — wie in
+ * verify-brand-design.mjs. Lesung, Entwürfe und Dokument-Prüfung antworten
+ * `202` und rechnen hinter der Antwort; der Ausgang steht an der Lauf-Zeile,
+ * die die LESENDE Route mitliefert (`pick` sagt, wo: `run` an der Liste,
+ * `reviewRun` am Dokument). Fragt ab, bis der Lauf nicht mehr läuft.
+ */
+async function awaitRun(listPath, cookie, pick = json => json?.run, { timeoutMs = 180_000 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const final = await call(listPath, { cookie })
+    if (final.status !== 200 || pick(final.json)?.state !== 'running') return final
+    if (Date.now() > deadline) return final
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+}
 
 function check(label, ok, detail = '') {
   if (ok) {
@@ -257,6 +290,10 @@ function call(path, { method = 'GET', body, cookie } = {}) {
         resolve({
           status: res.statusCode,
           contentType: String(res.headers['content-type'] ?? ''),
+          // Die Kopfzeilen reisen mit: Abschnitt 31 prüft `cache-control` an
+          // der Werkstatt-Route — ohne sie brach der Lauf dort ab, statt rot
+          // zu werden.
+          headers: res.headers,
           json,
           text,
         })
@@ -657,14 +694,24 @@ try {
     && sessions['a.facts']?.sensitivity === 'internal'
     && typeof sessions['a.facts']?.effort?.minutes === 'number',
     JSON.stringify(sessions['a.facts'] ?? null))
-  // 29 Felder in 7 Kapiteln — auch nach Brand Design D0: die Registry zählt
-  // seither 55 in 13 (26 Design-Sessions hängen an `c.final`, `d.primary`,
-  // `d.toneWords`, `result.direction`), aber der HINWEIS nennt nur erreichbare
-  // Kapitel (`affectsView`), und diese Marke ist nicht freigeschaltet.
+  // 27 Felder in 8 Kapiteln. Der HINWEIS nennt nur erreichbare Kapitel
+  // (`affectsView`, D0), und seit zwei Regeln sind das für DIESE Marke andere
+  // als zu D0-Zeiten (29 in 7):
+  //  - die Weichen fallen aus dem Hinweis (Befund 6, 2026-09-09): `architecture`
+  //    und `naming` sind übersprungen (s. Abschnitt 18), `nomenclature` folgt
+  //    der Weiche `architecture` — zusammen 24 Felder in 6 Foundation-Kapiteln;
+  //  - EIN BETA-KONTO IST OHNE FELD FREI (BS1 §9 Entscheidung 6, K1): das Konto
+  //    hier hat eine `brand_access`-Zeile, also liegen `aiguide` und `presskit`
+  //    auf dem Weg (+5). Brand Design bleibt gesperrt (keine Design-Kapitel).
+  // Die Zahlen sind von Hand aus `sessionsAffectedBy('a.customerPraise')`
+  // nachgezählt, nicht aus dieser Antwort.
+  const praiseAffects = sessions['a.customerPraise']?.affects ?? null
   check('„wohin fliesst das später" ist gerechnet, nicht gepflegt',
-    sessions['a.customerPraise']?.affects?.count === 29
-    && (sessions['a.customerPraise']?.affects?.steps ?? []).length === 7,
-    JSON.stringify(sessions['a.customerPraise']?.affects ?? null))
+    praiseAffects?.count === 27
+    && JSON.stringify(praiseAffects?.steps ?? []) === JSON.stringify([
+      'pvm', 'values', 'archetype', 'manifesto', 'verbal', 'result', 'aiguide', 'presskit',
+    ]),
+    JSON.stringify(praiseAffects))
   check('GEGENPROBE: ein Feld ganz unten berührt nichts',
     sessions['a.challenge']?.affects?.count === 0,
     JSON.stringify(sessions['a.challenge']?.affects ?? null))
@@ -1278,21 +1325,41 @@ try {
 
   // ── 19 · Der Prüfblick (Paket 7, §10/§16) ─────────────────────────────
   console.log('\n19 · Der Prüfblick: nachholen, prüfen, beim zweiten Klick schweigen')
+  /*
+   * SEIT LL1 d (2026-11-18) RECHNET DER PRÜFBLICK HINTER DER ANTWORT: der
+   * Start antwortet `202` (Lauf-Zeile in `brand_runs`, Art `doc-review`), die
+   * Seite fragt `GET …/document` ab — dort steht der Lauf als `reviewRun`
+   * (`created` = Zahl der nachgeholten Sitzungen, `ref` = Stand-Schlüssel).
+   * Was früher in der Start-Antwort stand (`ran`, `caughtUp`, `findings`,
+   * `revisionKey`), steht jetzt dort bzw. in der Befund-Tabelle.
+   */
+  const lookStartedAt = Date.now() - 2000
   const look = await call(`${base}/review?stub=conflict`, { method: 'POST', cookie: account.cookie })
+  const docAfter = look.status === 202
+    ? await awaitRun(`${base}/document`, account.cookie, json => json?.reviewRun)
+    : await call(`${base}/document`, { cookie: account.cookie })
+  const reviewRun = docAfter.json?.reviewRun ?? null
   check('er läuft und holt genau die ungeprüften Sessions nach',
-    look.status === 200 && look.json?.ran === true
-    && JSON.stringify(look.json?.caughtUp) === JSON.stringify(unreviewed),
-    `${look.status} ${JSON.stringify(look.json?.caughtUp ?? null)}`)
+    look.status === 202 && look.json?.started === true
+    && reviewRun?.state === 'done' && reviewRun?.created === unreviewed.length,
+    `${look.status} ${JSON.stringify(reviewRun)}`)
   check('… und nichts bleibt liegen (der Deckel greift hier nicht)',
-    (look.json?.stillUnreviewed ?? []).length === 0,
-    JSON.stringify(look.json?.stillUnreviewed ?? null))
-
-  const docAfter = await call(`${base}/document`, { cookie: account.cookie })
-  check('… die nachgeholten Urteile stehen an ihren Zeilen',
     (docAfter.json?.review?.unreviewed ?? []).length === 0,
     JSON.stringify(docAfter.json?.review?.unreviewed ?? null))
 
-  const documentFinding = (look.json?.findings ?? []).find(entry => entry.kind === 'conflict')
+  // An den ZEILEN gelesen, nicht an der Auskunft der Route, die gerade
+  // „nichts mehr ungeprüft" gesagt hat.
+  const reviewedAt = async (stepKey, slotId) => JSON.parse((await tablesDB.getRow({
+    databaseId, tableId: 'brand_steps', rowId: `${profileId}_${stepKey}`,
+  })).slots || '{}')[slotId]?.reviewed === true
+  const caughtUpRows = [await reviewedAt('context', 'a.customerPraise'), await reviewedAt('values', 'c.discovery1')]
+  check('… die nachgeholten Urteile stehen an ihren Zeilen',
+    caughtUpRows.every(Boolean), JSON.stringify(caughtUpRows))
+
+  // Der Befund des Dokument-Blicks: ein `conflict`, der WÄHREND dieses Laufs
+  // entstand (die Befund-Tabelle trägt auch die aus Abschnitt 14).
+  const documentFinding = (docAfter.json?.findings ?? []).find(entry => entry.kind === 'conflict'
+    && Date.parse(entry.createdAt) >= lookStartedAt)
   check('… der Ersatz-Blick hinterlässt einen Dokument-Befund an SEINEM Feld',
     Boolean(documentFinding) && documentFinding.slots.length === 2
     && documentFinding.sourceSession === documentFinding.slots[0],
@@ -1302,21 +1369,26 @@ try {
     method: 'POST', cookie: account.cookie,
   })
   check('derselbe Stand wird NICHT ein zweites Mal geprüft',
-    documentAgain.status === 200 && documentAgain.json?.ran === false,
+    documentAgain.status === 200 && documentAgain.json?.started === false
+    && documentAgain.json?.run?.state === 'done',
     `${documentAgain.status} ${documentAgain.text.slice(0, 200)}`)
+  const docAgain = await call(`${base}/document`, { cookie: account.cookie })
   check('… die Auskunft kommt trotzdem vollständig aus der Tabelle',
-    (documentAgain.json?.findings ?? []).length === (look.json?.findings ?? []).length
-    && documentAgain.json?.revisionKey === look.json?.revisionKey,
-    `${(documentAgain.json?.findings ?? []).length} statt ${(look.json?.findings ?? []).length}`)
+    (docAgain.json?.findings ?? []).length === (docAfter.json?.findings ?? []).length
+    && Boolean(reviewRun?.ref) && documentAgain.json?.run?.ref === reviewRun?.ref,
+    `${(docAgain.json?.findings ?? []).length} statt ${(docAfter.json?.findings ?? []).length}`)
 
   const valuesRevision = (docAfter.json?.chapters ?? [])
     .find(entry => entry.stepKey === 'values')?.revision ?? 0
   await bumpRevision(profileId, 'values', valuesRevision + 1)
   const documentThird = await call(`${base}/review`, { method: 'POST', cookie: account.cookie })
+  const thirdRun = documentThird.status === 202
+    ? (await awaitRun(`${base}/document`, account.cookie, json => json?.reviewRun)).json?.reviewRun ?? null
+    : null
   check('GEGENPROBE: eine NEUE Fassung wird wieder geprüft',
-    documentThird.status === 200 && documentThird.json?.ran === true
-    && documentThird.json?.revisionKey !== look.json?.revisionKey,
-    `${documentThird.status} ${documentThird.json?.ran}`)
+    documentThird.status === 202 && documentThird.json?.started === true
+    && thirdRun?.state === 'done' && Boolean(thirdRun?.ref) && thirdRun?.ref !== reviewRun?.ref,
+    `${documentThird.status} ${JSON.stringify(thirdRun)}`)
 
   // ── 20 · Die Seiten: fremd oder unbekannt ⇒ 404 (Paket 9) ──────────────
   //
@@ -1828,18 +1900,30 @@ try {
    * 503 `vision_unavailable` ist die vollständige, richtige Antwort einer
    * Instanz OHNE Vision-Modell (Leitplanke „Stufe 1+2 pur") — und damit selbst
    * eine geprüfte Zusage, keine Ausrede.
+   *
+   * SEIT LL1 b (2026-11-17) RECHNET DIE LESUNG HINTER DER ANTWORT: die 503
+   * kommt weiter SOFORT (die Route fragt das Modell vor der Lauf-Sperre), ein
+   * Server, der lesen kann, antwortet `202` — Liste, Fazit und Lauf-Stand
+   * stehen danach an `GET …/inspiration`. Die Weiche hängt deshalb an der
+   * 202, und das Ergebnis wird an der Liste gelesen, wenn der Lauf fertig ist.
    */
-  const run1 = await call(readPath, { method: 'POST', cookie: account.cookie })
-  const readingStub = run1.status === 200
+  const run1Start = await call(readPath, { method: 'POST', cookie: account.cookie })
+  const readingStub = run1Start.status === 202
+  const run1 = readingStub ? await awaitRun(inspBase, account.cookie) : run1Start
   if (!readingStub) {
     check('ohne Vision-Modell antwortet der Lauf ruhig mit 503 `vision_unavailable`',
       run1.status === 503 && run1.json?.reason === 'vision_unavailable',
       `${run1.status} ${JSON.stringify(run1.json?.reason ?? null)}`)
+    skip('die Lesung mit Modell (Abschnitt 23: Urteile, Fazit, Slot, Veralten, Drossel, Funnel)',
+      'dieser Server liest keine Bilder (kein Vision-Modell, kein BRAND_DEV_STUB_VISION)')
   }
   else {
-    check('der Lauf antwortet 200 und nennt das Rest-Kontingent',
-      run1.status === 200 && run1.json?.quota?.limit === 3 && run1.json?.quota?.remaining === 2,
-      `${run1.status} ${JSON.stringify(run1.json?.quota ?? null)}`)
+    skip('ohne Vision-Modell antwortet der Lauf ruhig mit 503 `vision_unavailable`',
+      'dieser Server liest Bilder (Vision-Modell oder BRAND_DEV_STUB_VISION) — die 503 zeigt nur ein Server ohne')
+    check('der Lauf antwortet 202, endet fertig und nennt das Rest-Kontingent',
+      run1.json?.run?.state === 'done'
+      && run1Start.json?.quota?.limit === 3 && run1Start.json?.quota?.remaining === 2,
+      `${run1.json?.run?.state} ${JSON.stringify(run1Start.json?.quota ?? null)}`)
 
     check('… jedes Bild hat danach eine Lesung mit Vokabular-Ids, Urteil, Anker und Begründung',
       (run1.json?.items ?? []).length === beforeCount
@@ -1918,11 +2002,16 @@ try {
       `${afterRemove.json?.reading?.state} · ${afterRemove.json?.items?.length} Bilder`)
 
     // ── Die Drossel: drei Läufe je Marke und Tag ──────────────────────────
+    // Jeder Lauf wird abgewartet: während einer läuft, hält die Lauf-Sperre
+    // den nächsten mit 409 `run_running` auf — das ist die Sperre, nicht die
+    // Drossel, die hier geprüft wird.
     const run2 = await call(readPath, { method: 'POST', cookie: account.cookie })
+    if (run2.status === 202) await awaitRun(inspBase, account.cookie)
     const run3 = await call(readPath, { method: 'POST', cookie: account.cookie })
+    if (run3.status === 202) await awaitRun(inspBase, account.cookie)
     check('zweiter und dritter Lauf gehen — und das Kontingent zählt herunter',
-      run2.status === 200 && run2.json?.quota?.remaining === 1
-      && run3.status === 200 && run3.json?.quota?.remaining === 0,
+      run2.status === 202 && run2.json?.quota?.remaining === 1
+      && run3.status === 202 && run3.json?.quota?.remaining === 0,
       `${run2.status}/${run2.json?.quota?.remaining} · ${run3.status}/${run3.json?.quota?.remaining}`)
 
     const run4 = await call(readPath, { method: 'POST', cookie: account.cookie })
@@ -2124,8 +2213,12 @@ try {
     check('ohne Text-Modell antwortet der Lauf ruhig mit 503 `dna_unavailable`',
       run1Dna.status === 503 && run1Dna.json?.reason === 'dna_unavailable',
       `${run1Dna.status} ${JSON.stringify(run1Dna.json?.reason ?? null)}`)
+    skip('der DNA-Vorschlag mit Modell (Abschnitt 24: zehn Zeilen, Herkunft, Kontingent)',
+      'dieser Server hat kein Text-Modell und kein BRAND_DEV_STUB_DNA')
   }
   else {
+    skip('ohne Text-Modell antwortet der Lauf ruhig mit 503 `dna_unavailable`',
+      'dieser Server schlägt vor (Text-Modell oder BRAND_DEV_STUB_DNA) — die 503 zeigt nur ein Server ohne')
     check('der Lauf antwortet 200, nennt das Rest-Kontingent und sagt „ohne Vorbilder"',
       run1Dna.json?.entries?.length === 10
       && run1Dna.json?.hasInspiration === false
@@ -2478,8 +2571,11 @@ try {
   check('Vorprobe: die Basisfarbe steht auf dem Mittelton der Richtung',
     cremaSet.status === 200, `${cremaSet.status} ${cremaSet.text.slice(0, 160)}`)
   const cremaView = await colorPage()
-  check('DIE ABSTANDS-REGEL steht auf der Seite: „zu nah an eurer Basisfarbe"',
-    cremaView.text.includes('Zu nah an eurer Basisfarbe'), 'Hinweis nicht gefunden')
+  // Wortlaut seit der anredefreien Inhaltsrunde (BW1, 2026-09-09): die
+  // Oberfläche spricht niemanden an — „der Basisfarbe", „Aus der DNA",
+  // „Kräftiger als die Schrift" statt „eurer"/„eure".
+  check('DIE ABSTANDS-REGEL steht auf der Seite: „zu nah an der Basisfarbe"',
+    cremaView.text.includes('Zu nah an der Basisfarbe'), 'Hinweis nicht gefunden')
 
   /*
    * Und jetzt ein Akzent, der den Knopf-Text nicht trägt: die Kontrast-Prüfung
@@ -2633,8 +2729,8 @@ try {
     TYPE_PAIRS.every(pair => typeView.text.includes(`data-type-pair="${pair.id}"`)),
     TYPE_PAIRS.filter(pair => !typeView.text.includes(`data-type-pair="${pair.id}"`)).map(p => p.id).join(', '))
   check('… und mit einem markierten Vorschlag aus der DNA (genau einer)',
-    typeView.text.split('Aus eurer DNA').length - 1 === 1,
-    `${typeView.text.split('Aus eurer DNA').length - 1}× gefunden`)
+    typeView.text.split('Aus der DNA').length - 1 === 1,
+    `${typeView.text.split('Aus der DNA').length - 1}× gefunden`)
 
   /**
    * DER UNTERSCHIED ZU G4, GEMESSEN: die Seite liefert die ECHTEN
@@ -2807,8 +2903,8 @@ try {
     markKinds.every(kind => markView.text.includes(`data-mark-kind="${kind}"`)),
     markKinds.filter(kind => !markView.text.includes(`data-mark-kind="${kind}"`)).join(', '))
   check('… und mit genau einem markierten Vorschlag',
-    markView.text.split('Aus eurer DNA').length - 1 === 1,
-    `${markView.text.split('Aus eurer DNA').length - 1}× gefunden`)
+    markView.text.split('Aus der DNA').length - 1 === 1,
+    `${markView.text.split('Aus der DNA').length - 1}× gefunden`)
 
   /**
    * DER UNTERSCHIED ZU EINER BESCHREIBUNG, GEMESSEN: die Seite liefert die
@@ -2877,8 +2973,12 @@ try {
     check('ohne Text-Modell antwortet der Lauf ruhig mit 503 `mark_brief_unavailable`',
       runBrief.status === 503 && runBrief.json?.reason === 'mark_brief_unavailable',
       `${runBrief.status} ${JSON.stringify(runBrief.json?.reason ?? null)}`)
+    skip('der Briefing-Lauf mit Modell (Abschnitt 27: sechs Felder, Kontingent, Slot)',
+      'dieser Server hat kein Text-Modell und kein BRAND_DEV_STUB_MARK')
   }
   else {
+    skip('ohne Text-Modell antwortet der Lauf ruhig mit 503 `mark_brief_unavailable`',
+      'dieser Server schreibt Briefings (Text-Modell oder BRAND_DEV_STUB_MARK) — die 503 zeigt nur ein Server ohne')
     const brief = runBrief.json?.brief ?? {}
     check('der Lauf antwortet 200, nennt das Rest-Kontingent und liefert sechs Felder',
       Object.keys(brief).length === 6 && runBrief.json?.quota?.limit === 10,
@@ -3023,18 +3123,7 @@ try {
    * Abschnitt 24 direkt in die Ablage, weil das Kapitel `dna` längst
    * abgeschlossen ist.
    */
-  const realMix = [
-    '## Visueller Stil\nRedaktionell · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Ästhetische Epoche\nZeitlos · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Formsprache\nWeich gerundet · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Typografie-Charakter\nBuchhafte Serif · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Farb-Charakter\nErdig gedämpft · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Bildwelt\nNah am Handwerk · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Komposition\nRuhig und luftig · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Materialität\nPapier, matt · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Bewegungs-Charakter\nRuhig · Eine Stufe ruhiger · Aus eurer Foundation',
-    '## Grundstimmung\nWarm einladend · Eine Stufe ruhiger · Aus eurer Foundation',
-  ].join('\n\n')
+  const realMix = PROBE_DNA_MIX
   await writeDnaSlots((slots) => {
     slots['g.mix'] = { ...slots['g.mix'], latestDraft: realMix, confirmed: realMix }
   })
@@ -3075,11 +3164,11 @@ try {
    * Icons), nicht einmal insgesamt.
    */
   check('… und mit genau drei markierten Vorschlägen — einer je Abschnitt',
-    imageryView.text.split('Aus eurer DNA').length - 1 === 3,
-    `${imageryView.text.split('Aus eurer DNA').length - 1}× gefunden`)
+    imageryView.text.split('Aus der DNA').length - 1 === 3,
+    `${imageryView.text.split('Aus der DNA').length - 1}× gefunden`)
   check('der Vorschlag ist das Prinzip der DNA-Bildwelt („Nah am Handwerk" ⇒ `closeup`)',
-    cardChunk(imageryView.text, 'closeup').includes('Aus eurer DNA')
-    && !cardChunk(imageryView.text, 'daylight').includes('Aus eurer DNA'),
+    cardChunk(imageryView.text, 'closeup').includes('Aus der DNA')
+    && !cardChunk(imageryView.text, 'daylight').includes('Aus der DNA'),
     'der Chip steht nicht auf der Karte „closeup"')
 
   /**
@@ -3148,7 +3237,7 @@ try {
     heavyIcons.status === 200, `${heavyIcons.status} ${heavyIcons.text.slice(0, 160)}`)
   const heavyView = await imageryPage()
   check('… die Seite meldet die Strichstärke gegen die Schrift, ohne zu sperren',
-    heavyView.text.includes('Kräftiger als eure Schrift') && heavyView.text.includes('2,25 px'),
+    heavyView.text.includes('Kräftiger als die Schrift') && heavyView.text.includes('2,25 px'),
     'der Hinweis zur zu kräftigen Strichstärke fehlt')
 
   // ── EINE ERFUNDENE ID IST KEINE WAHL (Invariante `oneOf`, D6) ──────────
@@ -3273,9 +3362,15 @@ try {
    * Instanz OHNE Bild-Modell (§2.19 Frage 1: „bis dahin Stufe 3 hinter dem
    * Config-Gate aus — das Kapitel funktioniert ohne sie") und damit selbst
    * eine geprüfte Zusage, keine Ausrede.
+   *
+   * SEIT LL1 b (2026-11-17) ENTSTEHEN DIE ENTWÜRFE HINTER DER ANTWORT: die 503
+   * kommt weiter SOFORT (vor der Lauf-Sperre), ein Server, der Bilder machen
+   * kann, antwortet `202`, und Liste wie Lauf-Stand (`run.created`) stehen
+   * danach an `GET …/mark/drafts`. Die Weiche hängt an der 202.
    */
-  const draftRun1 = await call(draftsBase, { method: 'POST', cookie: account.cookie })
-  const draftsStub = draftRun1.status === 200
+  const draftStart1 = await call(draftsBase, { method: 'POST', cookie: account.cookie })
+  const draftsStub = draftStart1.status === 202
+  const draftRun1 = draftsStub ? await awaitRun(draftsBase, account.cookie) : draftStart1
   if (!draftsStub) {
     check('ohne Bild-Modell antwortet der Lauf ruhig mit 503 `image_unavailable`',
       draftRun1.status === 503 && draftRun1.json?.reason === 'image_unavailable',
@@ -3283,15 +3378,19 @@ try {
     check('… und die Liste bleibt leer — das Kapitel läuft mit Stufe 1 und 2 weiter',
       ((await call(draftsBase, { cookie: account.cookie })).json?.items ?? []).length === 0,
       'es liegen doch Entwürfe da')
+    skip('die Entwürfe mit Modell (Abschnitt 29: vier Dateien, Auslieferung, Behalten, Leitplanke, Platz-Deckel, Drossel, Funnel)',
+      'dieser Server macht keine Bilder (kein Bild-Modell, kein BRAND_DEV_STUB_IMAGE)')
   }
   else {
+    skip('ohne Bild-Modell antwortet der Lauf ruhig mit 503 `image_unavailable` (samt „die Liste bleibt leer")',
+      'dieser Server macht Bilder (Bild-Modell oder BRAND_DEV_STUB_IMAGE) — die 503 zeigt nur ein Server ohne')
     const firstItems = draftRun1.json?.items ?? []
     for (const item of firstItems) cleanup.drafts.push(item.id)
 
-    check('der Lauf antwortet 200, legt VIER Entwürfe an und nennt das Rest-Kontingent',
-      draftRun1.json?.created === 4 && firstItems.length === 4
-      && draftRun1.json?.quota?.limit === 3 && draftRun1.json?.quota?.remaining === 2,
-      `${draftRun1.json?.created} · ${firstItems.length} · ${JSON.stringify(draftRun1.json?.quota ?? null)}`)
+    check('der Lauf antwortet 202, legt VIER Entwürfe an und nennt das Rest-Kontingent',
+      draftRun1.json?.run?.state === 'done' && draftRun1.json?.run?.created === 4 && firstItems.length === 4
+      && draftStart1.json?.quota?.limit === 3 && draftStart1.json?.quota?.remaining === 2,
+      `${draftRun1.json?.run?.state}/${draftRun1.json?.run?.created} · ${firstItems.length} · ${JSON.stringify(draftStart1.json?.quota ?? null)}`)
 
     // DIE HERKUNFT IST DIE LEITPLANKE (§1.11 b) — sie steht an der ZEILE, nicht
     // nur im Ereignis-Funnel, und alle vier tragen denselben Prompt-Hash: sie
@@ -3469,13 +3568,15 @@ try {
       JSON.stringify(goneFile?.code ?? 'existiert noch'))
 
     // ── DIE DROSSEL: DREI LÄUFE JE MARKE UND TAG ─────────────────────────
+    // Jeder Lauf wird abgewartet (Lauf-Sperre, s. Abschnitt 23). Die Zeilen
+    // räumt der `finally` über `profileId` ab.
     const draftRun2 = await call(draftsBase, { method: 'POST', cookie: account.cookie })
-    for (const item of draftRun2.json?.items ?? []) cleanup.drafts.push(item.id)
+    if (draftRun2.status === 202) await awaitRun(draftsBase, account.cookie)
     const draftRun3 = await call(draftsBase, { method: 'POST', cookie: account.cookie })
-    for (const item of draftRun3.json?.items ?? []) cleanup.drafts.push(item.id)
+    if (draftRun3.status === 202) await awaitRun(draftsBase, account.cookie)
     check('zweiter und dritter Lauf gehen — und das Kontingent zählt herunter',
-      draftRun2.status === 200 && draftRun2.json?.quota?.remaining === 1
-      && draftRun3.status === 200 && draftRun3.json?.quota?.remaining === 0,
+      draftRun2.status === 202 && draftRun2.json?.quota?.remaining === 1
+      && draftRun3.status === 202 && draftRun3.json?.quota?.remaining === 0,
       `${draftRun2.status}/${draftRun2.json?.quota?.remaining} · ${draftRun3.status}/${draftRun3.json?.quota?.remaining}`)
 
     /**
@@ -3603,12 +3704,12 @@ try {
     return html.slice(start, ends.length ? Math.min(...ends) : html.length)
   }
   check('der Vorschlag ist das Tempo der DNA („Ruhig" ⇒ `calm`)',
-    motionChunk(motionView.text, 'data-motion-tempo', 'calm', 'data-motion-token').includes('Aus eurer DNA')
-    && !motionChunk(motionView.text, 'data-motion-tempo', 'snappy', 'data-motion-token').includes('Aus eurer DNA'),
+    motionChunk(motionView.text, 'data-motion-tempo', 'calm', 'data-motion-token').includes('Aus der DNA')
+    && !motionChunk(motionView.text, 'data-motion-tempo', 'snappy', 'data-motion-token').includes('Aus der DNA'),
     'der Chip steht nicht auf der Karte „calm"')
   check('… und das stillstehende Zeichen ist der Vorschlag dazu',
-    motionChunk(motionView.text, 'data-motion-logo', 'no', 'data-motion-rules').includes('Aus eurer DNA')
-    && !motionChunk(motionView.text, 'data-motion-logo', 'yes', 'data-motion-rules').includes('Aus eurer DNA'),
+    motionChunk(motionView.text, 'data-motion-logo', 'no', 'data-motion-rules').includes('Aus der DNA')
+    && !motionChunk(motionView.text, 'data-motion-logo', 'yes', 'data-motion-rules').includes('Aus der DNA'),
     'der Chip steht nicht auf der Karte „nein"')
 
   // ── DIE SZENE LÄUFT MIT DER GERECHNETEN DAUER, NICHT MIT EINER ZAHL AUS
@@ -4112,7 +4213,41 @@ try {
    * Route 403 mit `derivation_locked` (nicht 404 — der Sperrsatz braucht den
    * Code, K1). Sie ist der Zustand JEDER Marke vor dem Kauf, und ein Beweis,
    * der nur den offenen Fall kennt, sagt über sie nichts.
+   *
+   * EIN BETA-KONTO IST OHNE FELD FREI (BS1 §9 Entscheidung 6, seit K1) — und
+   * das Konto dieses Skripts ist eines (`makeAccount`). Für die Sperre wird es
+   * deshalb für die Dauer von „zu" und „offen" zu einem GEWÖHNLICHEN Konto:
+   * Aufnahme-Modus kurz auf 'open' (sonst käme es gar nicht mehr hinein, 404
+   * statt 403 — wie in verify-brand-kit.mjs), seine `brand_access`-Zeile
+   * weg. So beweist „offen" danach das FELD, nicht die Beta. Beides wird
+   * gleich nach der Auskunft zurückgestellt (und im `finally`, falls der Lauf
+   * vorher abbricht).
    */
+  const configRow = await tablesDB.getRow({ databaseId, tableId: 'app_config', rowId: 'global' })
+  cleanup.admission = { before: configRow.brandAdmissionMode ?? null }
+  await tablesDB.updateRow({
+    databaseId, tableId: 'app_config', rowId: 'global', data: { brandAdmissionMode: 'open' },
+  })
+  const betaRows = await tablesDB.listRows({
+    databaseId, tableId: 'brand_access', queries: [Query.equal('userId', account.id), Query.limit(5)],
+  })
+  for (const row of betaRows.rows) {
+    await tablesDB.deleteRow({ databaseId, tableId: 'brand_access', rowId: row.$id })
+  }
+  const restoreBeta = async () => {
+    const access = await tablesDB.createRow({
+      databaseId,
+      tableId: 'brand_access',
+      rowId: ID.unique(),
+      data: { userId: account.id, grantedVia: 'operator', inviteId: '', revokedAt: null },
+    })
+    cleanup.access.push(access.$id)
+    await tablesDB.updateRow({
+      databaseId, tableId: 'app_config', rowId: 'global', data: { brandAdmissionMode: cleanup.admission.before },
+    })
+    cleanup.admission = null
+  }
+
   const lockedWorkshop = await call(`${base}/kit/workshop`, { cookie: account.cookie })
   check('ohne Freischaltung ⇒ 403 `derivation_locked` (K1)',
     lockedWorkshop.status === 403 && lockedWorkshop.json?.reason === 'derivation_locked',
@@ -4128,12 +4263,13 @@ try {
   const workshop = await call(`${base}/kit/workshop`, { cookie: account.cookie })
   check('die Werkstatt-Quellen kommen beim Besitzer an — vier Teile, `private, no-store`',
     workshop.status === 200
-    && String(workshop.headers['cache-control'] || '').includes('no-store')
+    && String(workshop.headers?.['cache-control'] || '').includes('no-store')
     && Array.isArray(workshop.json?.prompts)
     && Array.isArray(workshop.json?.facts)
     && Array.isArray(workshop.json?.contactTemplates)
     && typeof workshop.json?.summary === 'string',
-    `${workshop.status} · ${workshop.headers['cache-control']}`)
+    `${workshop.status} · ${workshop.headers?.['cache-control']}`)
+  await restoreBeta()
 
   check('… drei Prompt-Vorlagen, PUR gerechnet (§2.11: null KI-Aufrufe)',
     (workshop.json?.prompts ?? []).map(entry => entry.id).join(',') === 'system,social,email',
@@ -4173,6 +4309,17 @@ try {
     scopeRun.status === 400 && scopeRun.json?.reason === 'slot_not_generated',
     `${scopeRun.status} ${JSON.stringify(scopeRun.json)}`)
 
+  /*
+   * NOMENKLATUR NUR AUF DEM B2-WEG (K0, §2.20 Nr. 4): das Kapitel erbt die
+   * Weiche W4 von `architecture` — bei `subBrands: 'unknown'` (der Stand
+   * dieser Marke, s. Abschnitt 18) liegt es gar nicht auf dem Weg, und die
+   * Route antwortet 403 `skipped`, bevor sie nach den Typen fragt. Für die
+   * beiden Prüfungen hier bekommt die Marke deshalb Untermarken; danach folgt
+   * nichts mehr, das die Weiche liest.
+   */
+  await tablesDB.updateRow({
+    databaseId, tableId: 'brand_profiles', rowId: profileId, data: { subBrands: 'yes' },
+  })
   await setSlots(profileId, 'nomenclature', { 'm.types': { confirmed: '' } })
   const patternsCold = await call(`${base}/steps/nomenclature/generate`, {
     method: 'POST', cookie: account.cookie, body: { slotId: 'm.patterns' },
@@ -4185,8 +4332,10 @@ try {
   const patternsWarm = await call(`${base}/steps/nomenclature/generate`, {
     method: 'POST', cookie: account.cookie, body: { slotId: 'm.patterns' },
   })
+  // „Durch" heisst auch: nicht an der Weiche hängen geblieben (403 `skipped`
+  // war bis hierher ebenfalls „kein 409").
   check('GEGENPROBE: mit gewählten Typen läuft derselbe Aufruf durch (kein 409)',
-    patternsWarm.status !== 409,
+    patternsWarm.status !== 409 && patternsWarm.status !== 403,
     `${patternsWarm.status} ${JSON.stringify(patternsWarm.json)}`)
 
 }
@@ -4285,6 +4434,22 @@ finally {
       await tablesDB.deleteRow({ databaseId, tableId: 'brand_events', rowId: row.$id }).catch(() => {})
     }
   }
+  /*
+   * Was die APP anlegt, wird nach Spalte abgeräumt, nicht über eine feste
+   * Liste von Kapiteln (Regel der Bühne, `removeProbeRows`): die Liste oben
+   * kennt die Kit-Kapitel nicht, und die Lauf-Zeilen in `brand_runs`
+   * (LL1 b–d: Lesung, Entwürfe, Dokument-Prüfung) hängen über `subject`.
+   */
+  for (const id of cleanup.profiles) {
+    await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_steps', column: 'profileId', value: id }).catch(() => {})
+    await removeProbeRows({ tablesDB, databaseId, tableId: 'brand_runs', column: 'subject', value: id }).catch(() => {})
+  }
+  // Der Aufnahme-Modus aus Abschnitt 31, falls der Lauf dazwischen abbrach.
+  if (cleanup.admission) {
+    await tablesDB.updateRow({
+      databaseId, tableId: 'app_config', rowId: 'global', data: { brandAdmissionMode: cleanup.admission.before },
+    }).catch(() => {})
+  }
   for (const id of cleanup.access) {
     await tablesDB.deleteRow({ databaseId, tableId: 'brand_access', rowId: id }).catch(() => {})
   }
@@ -4306,6 +4471,7 @@ finally {
     }
   }
 
-  console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail} Prüfungen bestanden`)
+  console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail} Prüfungen bestanden`
+    + (skipped.length ? ` · ${skipped.length} übersprungen (Server-Ausstattung, s. „○")` : ''))
   process.exit(fail === 0 ? 0 : 1)
 }

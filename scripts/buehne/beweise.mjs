@@ -57,10 +57,9 @@
 
 const E2E = 'läuft als eigener Schritt in .github/workflows/e2e.yml'
 
-// Wiederkehrende Gründe — ein ganzer Satz, einfache Sprache.
-// branding.supply steht seit dem 2026-11-18 nachts als vierter Server. Was
-// trotzdem von Hand bleibt, sagt je Zeile, warum (gemessen auf der Bühne).
-const DESIGN_VORLAGE = 'Auf der Bühne nicht ganz grün: die Design-Vorlage des Skripts (der DNA-Mix) passt nicht mehr zum heutigen Wortschatz der App, deshalb entsteht kein fertiges Design und die Prüfungen dahinter scheitern — erst die Vorlage im Skript nachziehen.'
+// branding.supply steht seit dem 2026-11-18 nachts als vierter Server; seit dem
+// 2026-11-19 laufen dort elf der zwölf Skripte mit (die Design-Vorlage der drei
+// Design-Skripte steht jetzt an einer Stelle: packages/brand/scripts/lib/designProbe.mjs).
 
 /** @type {Beweis[]} */
 export const BEWEISE = [
@@ -70,11 +69,11 @@ export const BEWEISE = [
   // ── brand (branding.supply — vierter Server, nur nachts, gestellte Antworten) ──
   { skript: 'packages/brand/scripts/verify-brand-check-robots.mjs', lauf: 'nacht', env: 'branding', dauer: 25, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-context.mjs', lauf: 'hand', grund: 'Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet.' },
-  { skript: 'packages/brand/scripts/verify-brand-design.mjs', lauf: 'hand', env: 'branding', dauer: 74, braucht: ['appwrite', 'branding'], grund: DESIGN_VORLAGE },
+  { skript: 'packages/brand/scripts/verify-brand-design.mjs', lauf: 'nacht', env: 'branding', dauer: 74, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-events-sweep.mjs', lauf: 'nacht', env: 'branding', dauer: 1, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-intro-call.mjs', lauf: 'nacht', env: 'branding', dauer: 3, braucht: ['appwrite', 'branding', 'mailpit'] },
-  { skript: 'packages/brand/scripts/verify-brand-kit.mjs', lauf: 'hand', env: 'branding', dauer: 8, braucht: ['appwrite', 'branding'], grund: DESIGN_VORLAGE },
-  { skript: 'packages/brand/scripts/verify-brand-sessions.mjs', lauf: 'hand', env: 'branding', dauer: 82, braucht: ['appwrite', 'branding'], grund: 'Auf der Bühne 302 von 333 Prüfungen: die Design-Vorlage des Skripts ist veraltet (wie bei verify-brand-kit), und einige Prüfungen erwarten einen Server OHNE gestellte Antworten, andere einen MIT — erst das Skript nachziehen.' },
+  { skript: 'packages/brand/scripts/verify-brand-kit.mjs', lauf: 'nacht', env: 'branding', dauer: 8, braucht: ['appwrite', 'branding'] },
+  { skript: 'packages/brand/scripts/verify-brand-sessions.mjs', lauf: 'nacht', env: 'branding', dauer: 90, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-share.mjs', lauf: 'nacht', env: 'branding', dauer: 3, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-tokens.mjs', lauf: 'hand', grund: 'Lädt beim Lauf ein Werkzeug aus dem Netz, und das soll kein automatischer Lauf tun.' },
 
@@ -92,7 +91,7 @@ export const BEWEISE = [
   { skript: 'packages/control/scripts/verify-silo-domain.mjs', lauf: 'hand', grund: 'Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so.' },
 
   // ── core ──
-  { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'hand', grund: 'Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site mit eigenem Projekt), und sein Registrier-Aufruf kennt die Pflicht-Felder der Zustimmung noch nicht (seit 2026-11-16 lehnt die Route ihn ab) — erst das Skript nachziehen, dann mit dem Server der Studio-Site einhängen.' },
+  { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'hand', grund: 'Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht.' },
   { skript: 'packages/core/scripts/verify-geo-cities.mjs', lauf: 'hand', grund: 'Braucht die Orts-Datei für Städte und Regionen, und die liegt nicht im Repo.' },
   { skript: 'packages/core/scripts/verify-handle-search-boundary.mjs', lauf: 'buehne', env: 'control', dauer: 4, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/core/scripts/verify-mfa.mjs', lauf: 'nacht', env: 'einzel', dauer: 120, braucht: ['appwrite', 'einzel', 'mailpit'] },

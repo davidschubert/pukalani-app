@@ -580,9 +580,15 @@ export async function sweepRows(client, databaseId, targets, values, { remove = 
  * die Schritte im Control Plane weg; `member`, `community` und `inviteCode`
  * sind dann nicht erlaubt.
  *
- * @param {{ pool: AppwriteRest, control: AppwriteRest | null, poolDatabaseId?: string, controlDatabaseId?: string }} clients
+ * `poolSchema` (optional): ein zweiter Zugang NUR zum Lesen des Schemas. Ein
+ * Laufzeit-Schlüssel ohne `tables.read` sieht keine Spalten — dann fände der
+ * Lauf keine Zeile, die an einem Konto hängt, löschte nur das Konto und
+ * zählte „nichts übrig" (gemessen am 2026-11-19 im lokalen Spiegel). Mit
+ * `schemaReadable()` fragt ein Skript vorher, ob das Nachzählen trägt.
+ *
+ * @param {{ pool: AppwriteRest, control: AppwriteRest | null, poolDatabaseId?: string, controlDatabaseId?: string, poolSchema?: AppwriteRest }} clients
  */
-export function createCleanup({ pool, control, poolDatabaseId = 'main', controlDatabaseId = '' }) {
+export function createCleanup({ pool, control, poolDatabaseId = 'main', controlDatabaseId = '', poolSchema = pool }) {
   /** @type {Map<string, Set<string>>} */
   const tracked = new Map()
 
@@ -615,8 +621,8 @@ export function createCleanup({ pool, control, poolDatabaseId = 'main', controlD
 
     const accounts = ids('account')
     const stamps = [...ids('tenant'), ...ids('community')]
-    const poolStamp = await findColumns(pool, poolDatabaseId, STAMP_COLUMNS) ?? []
-    const poolPerson = await findColumns(pool, poolDatabaseId, PERSON_COLUMNS) ?? []
+    const poolStamp = await findColumns(poolSchema, poolDatabaseId, STAMP_COLUMNS) ?? []
+    const poolPerson = await findColumns(poolSchema, poolDatabaseId, PERSON_COLUMNS) ?? []
     // Das Schema des Control Plane zu lesen braucht `tables.read`; fehlt es,
     // bleiben die zwei Tabellen, in denen ein Lauf sicher Spuren hinterlässt.
     const controlPerson = !control
@@ -678,7 +684,10 @@ export function createCleanup({ pool, control, poolDatabaseId = 'main', controlD
     return { deleted, leftovers }
   }
 
-  return { track, run, tracked }
+  /** Sieht dieser Lauf die Spalten des Projekts? Ohne sie zählt `run()` Zeilen an Konten nicht nach. */
+  const schemaReadable = async () => (await findColumns(poolSchema, poolDatabaseId, PERSON_COLUMNS)) !== null
+
+  return { track, run, tracked, schemaReadable }
 }
 
 // ── Einzel-Instanz ──────────────────────────────────────────────────────────
@@ -701,8 +710,19 @@ export function createEinzelCleanup({ script, env = process.env }) {
     key: env.NUXT_APPWRITE_KEY ?? '',
     script,
   })
+  // Das Schema liest der Migrations-Schlüssel, wenn die Umgebung einen nennt
+  // (der Laufzeit-Schlüssel darf es nicht überall) — geschrieben und gelöscht
+  // wird weiter mit dem Laufzeit-Schlüssel.
+  const poolSchema = env.NUXT_APPWRITE_MIGRATIONS_KEY
+    ? appwriteRest({
+        endpoint: env.NUXT_PUBLIC_APPWRITE_ENDPOINT ?? '',
+        projectId: env.NUXT_PUBLIC_APPWRITE_PROJECT_ID ?? '',
+        key: env.NUXT_APPWRITE_MIGRATIONS_KEY,
+        script,
+      })
+    : pool
   // `pool` mit zurück: dasselbe Projekt, z. B. für `createProbeAccount`.
-  return { ...createCleanup({ pool, control: null, poolDatabaseId: env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main' }), pool }
+  return { ...createCleanup({ pool, control: null, poolDatabaseId: env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main', poolSchema }), pool }
 }
 
 /** Adresse der Einzel-Instanz: Argument, sonst `EINZEL_URL` (Läufer), sonst der alte Standard des Skripts. */

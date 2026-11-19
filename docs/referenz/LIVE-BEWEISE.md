@@ -31,7 +31,7 @@ erste Zeile.
 | **E2E** (`e2e`) | nur die migrierte Wegwerf-Appwrite | `.github/workflows/e2e.yml`, je Skript ein EIGENER Schritt mit sprechendem Namen — ein roter Lauf zeigt am Schritt, welche Zusage gebrochen ist |
 | **Bühne, jeder Lauf** (`buehne`) | Betreiber-App und Platform-Server, zwei Probe-Communities mit Konten je Rolle, Mailpit | `.github/workflows/buehne.yml` bei jedem Pull Request und auf `main`; zusammen wenige Minuten |
 | **Bühne, nachts** (`nacht`) | dasselbe; dazu Skripte ab rund 45 s oder mit Wartezeiten, und — nur nachts gestartet — die Einzel-Instanz `apps/comments` als dritter Server (`env: 'einzel'`) und branding.supply (`apps/branding`) als vierter (`env: 'branding'`, mit gestellten Antworten statt echter KI) | `buehne.yml` im nächtlichen Lauf (`lauf=nacht`) |
-| **von Hand** (`hand`) | etwas, das die Bühne nicht stellt: echte KI, eine fremde Website, eigens eingestellte Server, ein Skript, dessen Vorlage veraltet ist — jedes mit GRUND in der Liste | nur, wenn jemand es startet |
+| **von Hand** (`hand`) | etwas, das die Bühne nicht stellt: echte KI, eine fremde Website, eigens eingestellte Server, ein zweiter Server, den die Bühne nicht hat — jedes mit GRUND in der Liste | nur, wenn jemand es startet |
 
 Zwei Dinge, die man beim Lesen von `e2e.yml` wissen muss:
 
@@ -169,6 +169,20 @@ brand_steps +3"); (3) Zeilen, die die App selbst anlegt (Kapitel, Ereignisse,
 Lauf-Zeilen, der Brand-Check eines Mitbewerbers), räumt das Skript über
 `removeProbeRows` nach Spalte ab, nicht über eine feste Liste.
 
+**Die Design-Vorlage der drei Design-Skripte (seit 2026-11-19):**
+`verify-brand-kit`, `verify-brand-design` und `verify-brand-sessions`
+schreiben einen fertigen DNA-Mix direkt in die Ablage. Er steht an EINER
+Stelle, `packages/brand/scripts/lib/designProbe.mjs`, und der Test
+`packages/brand/tests/designProbeTemplate.test.ts` hält ihn gegen den
+Wortschatz der App (die App muss ihn lesen und Zeichen für Zeichen wieder so
+schreiben). Vorher trug jedes Skript eine Kopie; als ein Etikett der App
+umformuliert wurde, las die App die Vorlage nicht mehr, es entstand kein
+fertiges Design, und rund fünfzig Prüfungen wurden rot, ohne dass am Produkt
+etwas falsch war. `verify-brand-sessions` meldet außerdem, was es am
+laufenden Server NICHT prüfen kann: vier Prüfungen gelten nur für einen
+Server ohne gestellte Antworten („ohne Modell ⇒ 503") — am Server der Bühne
+stehen sie als `○ übersprungen` mit Grund da und zählen nicht mit.
+
 Er gibt jedem Skript die richtige Env-Datei, die Hosts der Bühne und eine
 EIGENE Aufrufer-Adresse (`scripts/buehne/client-address.mjs` hängt
 `x-forwarded-for` an, wie es auf Production der Webserver tut) — ohne die
@@ -178,11 +192,11 @@ das Issue `buehne-alarm` (docs/runbooks/PRODUKTIONS-ALARM.md, Abschnitt 1b).
 **Von Hand bleiben** (Stand 2026-11-18, der Grund steht je Skript in der
 Liste): zwei Skripte der Einzel-Instanz, die sie EIGENS eingestellt brauchen
 (`verify-silo-domain`: Trockenlauf-Betreiber-App, Naht, portfolio gegen eine
-tote Naht; `verify-domain-settle`: beschnittener Schlüssel); vier Skripte
-von branding.supply (`verify-brand-kit`, `verify-brand-design`,
-`verify-brand-sessions`: ihre Design-Vorlage ist veraltet;
-`verify-business-confirmation`: braucht zusätzlich die Studio-Site und kennt
-die Pflicht-Felder der Zustimmung noch nicht); die mit Fremddiensten (echte
+tote Naht; `verify-domain-settle`: beschnittener Schlüssel);
+`verify-business-confirmation` (braucht branding.supply UND die Studio-Site
+nebeneinander, jede mit eigenem Projekt — die Bühne hat keinen Server der
+Studio-Site; das Skript selbst ist seit dem 2026-11-19 nachgezogen und liest
+das Projekt der Gegenprobe aus `PLAIN_ENV_FILE`); die mit Fremddiensten (echte
 KI, eine fremde Website, Dateien, die nicht im Repo liegen);
 `verify-custom-domain` (braucht eine Betreiber-App im Trockenlauf mit eigenem
 Namens-Server); `verify-notification-mail-links` (stößt den Sammel-Lauf für
@@ -211,18 +225,18 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-84 Beweis-Skripte im Repo: 6 E2E-Lauf, 33 Bühne (jeder Lauf), 31 Bühne (nachts), 14 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+84 Beweis-Skripte im Repo: 6 E2E-Lauf, 33 Bühne (jeder Lauf), 34 Bühne (nachts), 11 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
 | `packages/activity/scripts/verify-pool-isolation.mjs` | activity im Pool — LIVE-DB-Isolationsbeweis + BESTANDS-MESSUNG (Muster: comments/posts/events/courses `verify-pool-isolation.mjs`). Fällig geworden mit dem Umzug von `activity` nach apps/platform (2026-08-02). | Bühne (jeder Lauf) |
 | `packages/brand/scripts/verify-brand-check-robots.mjs` | Beweis für BS1 R2b — der Brand-Check respektiert `robots.txt` und den TDM-Nutzungsvorbehalt (Davids Entscheidung 2026-09-08). | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-context.mjs` | H5 — TAUGT `brand.md` ALS SYSTEM-PROMPT? (Konzept docs/plans/BRAND-BOOK-KIT.md §2.13, Paket K3.) | von Hand: Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet. |
-| `packages/brand/scripts/verify-brand-design.mjs` | DER PRODUKT-BEWEIS DER SCHICHT 2 „BRAND DESIGN" (Konzept docs/archiv/BRAND-DESIGN.md §2.18, Paket D9) — EIN Lauf von der gesperrten Schicht bis zum geteilten Abbild. | von Hand: Auf der Bühne nicht ganz grün: die Design-Vorlage des Skripts (der DNA-Mix) passt nicht mehr zum heutigen Wortschatz der App, deshalb entsteht kein fertiges Design und die Prüfungen dahinter scheitern — erst die Vorlage im Skript nachziehen. |
+| `packages/brand/scripts/verify-brand-design.mjs` | DER PRODUKT-BEWEIS DER SCHICHT 2 „BRAND DESIGN" (Konzept docs/archiv/BRAND-DESIGN.md §2.18, Paket D9) — EIN Lauf von der gesperrten Schicht bis zum geteilten Abbild. | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-events-sweep.mjs` | Beweis für BS1 R1b — die 24-Monats-Frist der Funnel-Ereignisse (`brand_events`) hat ab jetzt eine MECHANIK, nicht nur einen Kommentar im Kopf von `007-brand-events.ts`. | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-intro-call.mjs` | Beweis für BS1 Paket Z0 „Erstgespräch-Seite im brand-Layer" (Plan docs/plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md §7 Zeile Z0) — gegen einen ECHTEN Server, weil keine pure Funktion und kein Route-Test mit gefälschter… | Bühne (nachts), branding.supply |
-| `packages/brand/scripts/verify-brand-kit.mjs` | DER BEWEIS DER FREISCHALTUNG „ABLEITUNG" (Konzept docs/plans/BRAND-BOOK-KIT.md §2.8/§2.9, Paket K1) — EIN Lauf von der gesperrten Schicht 3 über die Betreiber-Handlung bis zur Rücknahme, und derselbe Weg noch einmal für… | von Hand: Auf der Bühne nicht ganz grün: die Design-Vorlage des Skripts (der DNA-Mix) passt nicht mehr zum heutigen Wortschatz der App, deshalb entsteht kein fertiges Design und die Prüfungen dahinter scheitern — erst die Vorlage im Skript nachziehen. |
-| `packages/brand/scripts/verify-brand-sessions.mjs` | Beweis für BW2 Paket 3a — „Gespräch je Session" gegen einen echten Server. | von Hand: Auf der Bühne 302 von 333 Prüfungen: die Design-Vorlage des Skripts ist veraltet (wie bei verify-brand-kit), und einige Prüfungen erwarten einen Server OHNE gestellte Antworten, andere einen MIT — erst das Skript nachziehen. |
+| `packages/brand/scripts/verify-brand-kit.mjs` | DER BEWEIS DER FREISCHALTUNG „ABLEITUNG" (Konzept docs/plans/BRAND-BOOK-KIT.md §2.8/§2.9, Paket K1) — EIN Lauf von der gesperrten Schicht 3 über die Betreiber-Handlung bis zur Rücknahme, und derselbe Weg noch einmal für… | Bühne (nachts), branding.supply |
+| `packages/brand/scripts/verify-brand-sessions.mjs` | Beweis für BW2 Paket 3a — „Gespräch je Session" gegen einen echten Server. | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-share.mjs` | Beweis für Paket G3 „Teilen sichtbar" (Konzept docs/archiv/BRAND-FOUNDATION-LESEANSICHT.md §5, Zeile G3) — gegen einen echten Server, weil keine pure Funktion belegen kann, was an Route, Ablage und Kopfzeilen hängt: | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-tokens.mjs` | DER FREMDE LESER (Konzept docs/plans/BRAND-BOOK-KIT.md §2.18 Zeile K2: „Style-Dictionary-v5-Probelauf im Skript"). | von Hand: Lädt beim Lauf ein Werkzeug aus dem Netz, und das soll kein automatischer Lauf tun. |
 | `packages/comments/scripts/verify-comment-reactions.mjs` | EMOJI-REAKTIONEN AUF ANTWORTEN — der Beweis (F57, Davids Entscheidung 2026-08-13 „Ja, nachbauen"). | Bühne (nachts), Einzel-Instanz |
@@ -234,7 +248,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/control/scripts/verify-invite-stock.mjs` | Beweis für Vorrat + Zuweisung MIT echter Betreiber-Session (control-017). | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-onboarding.mjs` | Beweis für O2 — die Provisionierungs-Route des Control Plane. | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so. |
-| `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site mit eigenem Projekt), und sein Registrier-Aufruf kennt die Pflicht-Felder der Zustimmung noch nicht (seit 2026-11-16 lehnt die Route ihn ab) — erst das Skript nachziehen, dann mit dem Server der Studio-Site einhängen. |
+| `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht. |
 | `packages/core/scripts/verify-geo-cities.mjs` | Beweis: der Orts-Picker im Profil — Suche, Länder-Filter und der Standort am KONTO (Mitglieder-Karte, Etappe 1). | von Hand: Braucht die Orts-Datei für Städte und Regionen, und die liegt nicht im Repo. |
 | `packages/core/scripts/verify-handle-search-boundary.mjs` | Beweis: die Handle-Grenze einer Community hält — beim LESEN und beim NEHMEN. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-mfa.mjs` | Beweis für den Zweitfaktor (U15 Teil 4). | Bühne (nachts), Einzel-Instanz |

@@ -79,6 +79,7 @@
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { confirmProbeConsent, removeProbeConsent } from '../../../scripts/lib/probe-stage.mjs'
+import { PROBE_DNA_MIX } from './lib/designProbe.mjs'
 import { request } from 'node:http'
 import { strFromU8, unzipSync } from 'fflate'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
@@ -177,18 +178,8 @@ const DESIGN_STEP_KEYS = ['dna', 'color', 'type', 'mark', 'imagery', 'motion']
 const BASE_HEX = '#4a3123'
 const ACCENT_HEX = '#22392f'
 
-const DNA_MIX = [
-  '## Visueller Stil\nRedaktionell · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Ästhetische Epoche\nZeitlos · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Formsprache\nWeich gerundet · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Typografie-Charakter\nBuchhafte Serif · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Farb-Charakter\nErdig gedämpft · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Bildwelt\nNah am Handwerk · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Komposition\nRuhig und luftig · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Materialität\nPapier, matt · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Bewegungs-Charakter\nRuhig · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Grundstimmung\nWarm einladend · Eine Stufe ruhiger · Aus eurer Foundation',
-].join('\n\n')
+/** Der fertige DNA-Mix — EINE Vorlage für alle Beweis-Skripte (`lib/designProbe.mjs`). */
+const DNA_MIX = PROBE_DNA_MIX
 
 const ROLES_PLACEHOLDER = ['Grund & Text', 'Wärme & Flächen', 'Helle Flächen', 'Akzent & Signal', 'Papier & Ruhe']
   .map(label => `## ${label}\n${BASE_HEX} · Rampe 900 · Platzhalter`).join('\n\n')

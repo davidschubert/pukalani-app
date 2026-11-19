@@ -75,7 +75,8 @@
  *     packages/brand/scripts/verify-brand-design.mjs
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { confirmProbeConsent, removeProbeConsent } from '../../../scripts/lib/probe-stage.mjs'
+import { confirmProbeConsent, removeProbeConsent, removeProbeRows } from '../../../scripts/lib/probe-stage.mjs'
+import { PROBE_DNA_MIX } from './lib/designProbe.mjs'
 import { createHash, randomBytes } from 'node:crypto'
 import { request } from 'node:http'
 import { Client, ID, Query, Storage, TablesDB, Users } from 'node-appwrite'
@@ -467,18 +468,8 @@ const DESIGN_STEP_KEYS = ['dna', 'color', 'type', 'mark', 'imagery', 'motion']
 const BASE_HEX = '#4a3123'
 const ACCENT_HEX = '#22392f'
 
-const DNA_MIX = [
-  '## Visueller Stil\nRedaktionell · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Ästhetische Epoche\nZeitlos · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Formsprache\nWeich gerundet · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Typografie-Charakter\nBuchhafte Serif · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Farb-Charakter\nErdig gedämpft · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Bildwelt\nNah am Handwerk · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Komposition\nRuhig und luftig · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Materialität\nPapier, matt · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Bewegungs-Charakter\nRuhig · Eine Stufe ruhiger · Aus eurer Foundation',
-  '## Grundstimmung\nWarm einladend · Eine Stufe ruhiger · Aus eurer Foundation',
-].join('\n\n')
+/** Der fertige DNA-Mix — EINE Vorlage für alle Beweis-Skripte (`lib/designProbe.mjs`). */
+const DNA_MIX = PROBE_DNA_MIX
 
 const BOARDS_PLACEHOLDER = ['style', 'era', 'form']
   .map(id => `## ${id}\nPlatzhalter`).join('\n\n')
@@ -1588,6 +1579,10 @@ finally {
   }
   for (const id of cleanup.users) {
     await removeProbeConsent({ tablesDB, databaseId, userId: id }).catch(() => {})
+    // Abschnitt 11 löscht ein Konto über die ECHTE Route — die App schreibt
+    // dafür eine Zeile ins Betreiber-Protokoll (`user.self_deleted`). Sie
+    // hängt am Probe-Konto und gehört mit weg (der Läufer zählt nach).
+    await removeProbeRows({ tablesDB, databaseId, tableId: 'audit_logs', column: 'actorId', value: id }).catch(() => {})
     await users.delete({ userId: id }).catch(() => {})
   }
   if (cleanup.aiFlag) {
