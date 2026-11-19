@@ -32,7 +32,7 @@ const LINE_FORMS = [
   /^protokoll ausfaelle=\d+$/,
   /^skriptregel berichte=\d+ gedeckelt=\d+$/,
   /^mailbremse ausgeloest=\d+ letzte_min=(\d+|nie)$/,
-  /^erinnerungen takte=\d+ ohne_antwort=\d+ termine=\d+ empfaenger=\d+$/,
+  /^erinnerungen takte=\d+ ohne_antwort=\d+ termine=\d+ empfaenger=\d+ gefragt=\d+$/,
   /^lauf name=[a-z][a-z0-9-]{1,39} takt_min=\d+ ok=\d+ gescheitert=\d+ uebersprungen=\d+ haengt=\d+ letzter_ok_min=(\d+|nie) letzter_lauf_min=(\d+|nie) letztes_ergebnis=(ok|failed|skipped|nie) angemeldet_min=(\d+|nie)$/,
   /^ende laeufe=\d+$/,
 ]
@@ -233,7 +233,7 @@ describe('ops/app-watch-counts.mjs', () => {
       'protokoll ausfaelle=0',
       'skriptregel berichte=0 gedeckelt=0',
       'mailbremse ausgeloest=0 letzte_min=nie',
-      'erinnerungen takte=0 ohne_antwort=0 termine=0 empfaenger=0',
+      'erinnerungen takte=0 ohne_antwort=0 termine=0 empfaenger=0 gefragt=0',
       'ende laeufe=0',
     ])
   })
@@ -261,8 +261,9 @@ describe('ops/app-watch-counts.mjs', () => {
 
     const { code, lines, out } = run(PROC)
     expect(code).toBe(0)
-    // 4 + 4 Zeilen im Fenster; ohne Antwort: 70 min und 22 min.
-    expect(lineOf(lines, 'erinnerungen ')).toBe('erinnerungen takte=8 ohne_antwort=2 termine=5 empfaenger=7')
+    // 4 + 4 Zeilen im Fenster; ohne Antwort: 70 min und 22 min; gefragt
+    // (nur der Wahrheitswert `asked: true`): 10, 70, 190, 21 und 22 min.
+    expect(lineOf(lines, 'erinnerungen ')).toBe('erinnerungen takte=8 ohne_antwort=2 termine=5 empfaenger=7 gefragt=5')
     expect(out).not.toContain('GEHEIM-MARKER')
     expect(out).not.toContain('t-kunde')
     expect(out).not.toContain('skip')

@@ -248,7 +248,7 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0, reminderRuns: 0, reminderNoAnswer: 0, reminderEvents: 0, reminderRecipients: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0, reminderRuns: 0, reminderAsked: 0, reminderNoAnswer: 0, reminderEvents: 0, reminderRecipients: 0 }
   /** Jüngster Zeitpunkt, an dem die Notbremse einer Mail-Route im Fenster griff. */
   let lastMailBreaker = null
   const jobs = new Map()
@@ -302,6 +302,10 @@ async function main() {
         // Nur die Wahrheitswerte zählen: ein anderer Wert (Text, Zahl) ist
         // weder „gefragt" noch „ohne Antwort".
         if (entry.asked === true && entry.answered === false) counts.reminderNoAnswer++
+        // Gefragt wird nur, wenn ein Termin fällig ist. Ohne diese Zahl sähe
+        // „0 Termine" nach einem Takt ohne Frage genauso aus wie nach einer
+        // echten Antwort des Control Plane.
+        if (entry.asked === true) counts.reminderAsked++
         // Was keine nicht-negative Ganzzahl im Rahmen ist, zählt 0 — eine
         // vergiftete Zeile kann so nichts anderes ausgeben als Ziffern.
         counts.reminderEvents += wholeNumber(entry.events, MAX_REMINDER_EVENTS)
@@ -360,7 +364,9 @@ async function main() {
   console.log(`mailbremse ausgeloest=${counts.mailBreaker} letzte_min=${minutesSince(now, lastMailBreaker)}`)
   // Seit SE1 d (2026-11-19), ebenfalls OPTIONAL für die Auswertung — VERSION bleibt 1.
   const sum = value => Math.min(value, MAX_SUM)
-  console.log(`erinnerungen takte=${sum(counts.reminderRuns)} ohne_antwort=${sum(counts.reminderNoAnswer)} termine=${sum(counts.reminderEvents)} empfaenger=${sum(counts.reminderRecipients)}`)
+  // `gefragt` steht am ENDE: die Auswertung liest die Zeile auch ohne das Feld
+  // (ein Server mit dem Skript davor), ein Feld in der Mitte verschöbe sie.
+  console.log(`erinnerungen takte=${sum(counts.reminderRuns)} ohne_antwort=${sum(counts.reminderNoAnswer)} termine=${sum(counts.reminderEvents)} empfaenger=${sum(counts.reminderRecipients)} gefragt=${sum(counts.reminderAsked)}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

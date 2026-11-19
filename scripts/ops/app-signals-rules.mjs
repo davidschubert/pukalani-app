@@ -118,7 +118,7 @@ export const LINE_FORMS = {
   /** Seit WA1 e (2026-11-18) — OPTIONAL wie `audit`; gelesen vom Mail-Blick. */
   mailBreaker: new RegExp(`^mailbremse ausgeloest=(\\d{1,9}) letzte_min=${WORD.age}$`),
   /** Seit SE1 d (2026-11-19) — OPTIONAL wie `audit`: der Erinnerungs-Lauf im Pool. */
-  reminders: /^erinnerungen takte=(\d{1,9}) ohne_antwort=(\d{1,9}) termine=(\d{1,9}) empfaenger=(\d{1,9})$/,
+  reminders: /^erinnerungen takte=(\d{1,9}) ohne_antwort=(\d{1,9}) termine=(\d{1,9}) empfaenger=(\d{1,9})(?: gefragt=(\d{1,9}))?$/,
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -177,7 +177,8 @@ export function parseCounts(text) {
       Object.assign(counts, { mailBreaker: Number(hit[1]), mailBreakerLastMin: age(hit[2]) })
     }
     else if ((hit = line.match(LINE_FORMS.reminders))) {
-      Object.assign(counts, { reminderRuns: Number(hit[1]), reminderNoAnswer: Number(hit[2]), reminderEvents: Number(hit[3]), reminderRecipients: Number(hit[4]) })
+      // `gefragt` fehlt in der Ausgabe eines Servers mit dem Skript davor — dann bleibt es undefiniert.
+      Object.assign(counts, { reminderRuns: Number(hit[1]), reminderNoAnswer: Number(hit[2]), reminderEvents: Number(hit[3]), reminderRecipients: Number(hit[4]), ...(hit[5] === undefined ? {} : { reminderAsked: Number(hit[5]) }) })
     }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])
@@ -325,13 +326,20 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
   }
 
   // ── Erinnerungen an nicht erreichbare Communities (SE1 d) ─────────────
-  // Zählt nur, nie rot: Stufe 1 erinnert weiter und zählt, wen Stufe 2
-  // ausließe. Ein Hinweis nur dort, wo der Lauf im Fenster gezählt hat (die
-  // Apps ohne Pool-Erinnerungen schreiben lauter Nullen). Ohne die Zeile ist
-  // das Zähl-Skript auf dem Server älter — dann steht in der Übersicht
-  // „nicht gezählt", und das ist kein Fehler.
+  // Zählt nur, nie rot. Der Satz passt zu BEIDEN Stufen des Laufs: in Stufe 1
+  // (`count`, heute) erinnert er weiter und zählt, wen Stufe 2 ausließe —
+  // `empfaenger` sind die trotzdem gesendeten Erinnerungen; in Stufe 2
+  // (`skip`) lässt er die Termine aus, und `empfaenger` bleibt 0.
+  // WORAN MAN SCHARFSTELLEN FESTMACHT: `gefragt` — der Lauf fragt das Control
+  // Plane nur, wenn ein Termin fällig ist. Erst ein Takt mit Frage UND
+  // Antwort (`gefragt` größer als `ohne_antwort`) zeigt die Erkennung;
+  // „0 Termine" nach lauter Takten ohne Frage zeigt nichts.
+  // Ohne die Zeile ist das Zähl-Skript auf dem Server älter — dann steht in
+  // der Übersicht „nicht gezählt", und das ist kein Fehler.
   if (counts.reminderRuns > 0) {
-    notes.push(`${where} der Erinnerungs-Lauf hat in ${counts.hours} h ${counts.reminderRuns} Takt(e) gezählt: ${counts.reminderEvents} Termin(e) stillgelegter oder gesperrter Communities mit ${counts.reminderRecipients} Erinnerung(en), ${counts.reminderNoAnswer} Takt(e) ohne Antwort des Control Plane — zählt nur`)
+    const asked = counts.reminderAsked === undefined ? 'Fragen ans Control Plane nicht gezählt' : `${counts.reminderAsked} davon mit Frage ans Control Plane`
+    const counted = counts.reminderRecipients > 0 ? ` (im Zähl-Modus trotzdem erinnert: ${counts.reminderRecipients})` : ''
+    notes.push(`${where} der Erinnerungs-Lauf hat in ${counts.hours} h ${counts.reminderRuns} Takt(e) gemeldet, ${asked}, ${counts.reminderNoAnswer} ohne Antwort: ${counts.reminderEvents} Termin(e) stillgelegter oder gesperrter Communities${counted} — zählt nur`)
   }
 
   return { red, notes }
@@ -344,7 +352,7 @@ export function summaryLine({ site, counts, expected = new Set() }) {
     const job = counts.jobs.get(name)
     return job && job.lastResult !== 'failed' && job.lastOkMin !== null
   }).length
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Erinnerungen ins Leere ${counts.reminderRecipients ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Termine nicht erreichbar ${counts.reminderEvents ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
 }
 
 /**

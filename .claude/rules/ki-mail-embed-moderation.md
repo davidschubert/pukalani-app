@@ -335,6 +335,21 @@ paths:
   `events/shared/eventReschedule.ts` — verglichen wird der Zeitpunkt, das
   Formular schickt den Beginn immer mit); die neue Erinnerung trägt die neue
   Uhrzeit und eine neue Kennung, für die alte Uhrzeit bleibt es bei einer.
+  ERINNERUNGEN IN EINE COMMUNITY, DIE ES GERADE NICHT GIBT (SE1 d, seit
+  2026-11-19 — GEBAUT, ABER NOCH NICHT SCHARF): der Lauf fragt je Takt
+  einmal den Core-Vertrag `resolveUnreachableCommunities()` (Regel in
+  tenant-isolation.md), nur im Pool und nur, wenn ein Termin fällig ist. Die
+  Konstante `EVENT_REMINDER_UNREACHABLE_MODE`
+  (`events/shared/eventReminderJob.ts`) steht auf `count`: er erinnert WEITER
+  und zählt, was er ausließe. `skip` ist gebaut und getestet: dann bekommt
+  ein Termin einer stillgelegten oder wegen Missbrauchs gesperrten Community
+  keine Erinnerung und KEINEN Merker (geht sie vor dem Beginn wieder ans
+  Netz, erinnert ein späterer Takt). Die Zahlungs-Sperre zählt nicht dazu,
+  und OHNE ANTWORT WIRD ERINNERT. SCHARF ERST NACH EINER GESEHENEN ANTWORT:
+  ein Takt ohne fälligen Termin fragt gar nicht — „0 Termine" belegt dann
+  nichts. Der tägliche Blick in die App nennt deshalb auch, wie viele Takte
+  gefragt haben (Zeile `erinnerungen … gefragt=…` des Zähl-Skripts, nie
+  rot); OPEN-ITEMS „SE1" d sagt, woran das Scharfstellen hängt.
 - ÖFFENTLICHES FORMULAR, DAS EINE MAIL AUSLÖST (SEC-018, seit 2026-11-15 —
   Davids Entscheidung): drei Dinge, immer zusammen. (1) BOT-PRÜFUNG:
   `requireTurnstile(event, aktion, body.turnstileToken)` nach dem Honigtopf
