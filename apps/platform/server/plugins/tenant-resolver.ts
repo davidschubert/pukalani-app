@@ -2,6 +2,7 @@ import { createTenantsTableResolver } from '../../../../packages/control/server/
 import { createFormerCommunityMembersResolver, createFormerMembersByTenantResolver, createCommunityMembersResolver } from '../../../../packages/control/server/utils/communityMembersResolver'
 import { createCommunityHostResolver } from '../../../../packages/control/server/utils/communityHostResolver'
 import { createCommunityJoinDatesResolver } from '../../../../packages/control/server/utils/communityJoinDatesResolver'
+import { createUnreachableCommunitiesResolver } from '../../../../packages/control/server/utils/unreachableCommunitiesResolver'
 
 /**
  * A14-Komposition: die APP verdrahtet die core-Resolver-Verträge mit den
@@ -27,6 +28,11 @@ import { createCommunityJoinDatesResolver } from '../../../../packages/control/s
  *    App-Host. Gebündelt und OHNE H3Event, weil der Digest-Sweep ohne Request
  *    läuft; Cache 60 s, fail-soft (kein Host ⇒ App-Basis, nie eine verworfene
  *    Mail).
+ *  - ERREICHBARKEITS-Resolver (SE1 d): Ablage-Stempel → welche Communities
+ *    stillgelegt oder wegen Missbrauchs gesperrt sind, für den Erinnerungs-Lauf
+ *    `event-reminders`. Gebündelt, ohne H3Event, OHNE Cache (der Lauf fragt
+ *    stündlich, ein Cache hielte eine aufgehobene Sperre fest); ein Lesefehler
+ *    heißt im core-Vertrag „keine Antwort" — dann wird erinnert.
  *
  * OHNE VOLLSTÄNDIGE NUXT_PLATFORM_CONTROL_*-Env wird KEIN Resolver
  * registriert — und seit SEC-025 (2026-11-13, Davids Entscheidung: „Eine
@@ -65,4 +71,5 @@ export default defineNitroPlugin(() => {
   registerFormerMembersByTenantResolver(createFormerMembersByTenantResolver({ endpoint, projectId, apiKey, databaseId }, formerMembers))
   registerCommunityHostResolver(createCommunityHostResolver({ endpoint, projectId, apiKey, databaseId }))
   registerCommunityJoinDatesResolver(createCommunityJoinDatesResolver({ endpoint, projectId, apiKey, databaseId }))
+  registerUnreachableCommunitiesResolver(createUnreachableCommunitiesResolver({ endpoint, projectId, apiKey, databaseId }))
 })

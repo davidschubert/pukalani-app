@@ -65,6 +65,14 @@
 //                                 Zeile statt eines `grep` über den ganzen
 //                                 Log-Ordner: so zählen nur die Dateien des
 //                                 laufenden Prozesses.
+//   events.reminder_unreachable   ein Takt des Erinnerungs-Laufs im Pool hat
+//                                 gezählt, wie viele Termine nicht erreichbarer
+//                                 Communities er erinnert (bzw. ausgelassen)
+//                                 hat (SE1 d, events/server/utils/eventReminders.ts)
+//                                 — Zeile `erinnerungen takte=<n> ohne_antwort=<n>
+//                                 termine=<n> empfaenger=<n>`: Summen über das
+//                                 Fenster; `ohne_antwort` = Takte, in denen das
+//                                 Control Plane gefragt wurde und nicht antwortete.
 // Für die Zeit-Läufe zählen zusätzlich die GANZEN Dateien (die laufende und
 // ihre umgelaufenen Geschwister): „letzter guter Lauf vor n Minuten" darf
 // älter sein als das Fenster.
@@ -94,6 +102,11 @@ const MAX_READ_BYTES = 200 * 1024 * 1024
 /** Umgelaufene Dateien: so weit zurück wie das größte Fenster (168 h) plus ein Tag. */
 const ROTATED_MAX_AGE_MS = 8 * 24 * 3600000
 const MAX_ROTATED_FILES = 16
+/** Höchstwerte je Zeile `events.reminder_unreachable` (ein Takt fasst höchstens 200 Termine an). */
+const MAX_REMINDER_EVENTS = 100000
+const MAX_REMINDER_RECIPIENTS = 10000000
+/** Jede Summe bleibt in der Form `\d{1,9}`, die die Auswertung annimmt. */
+const MAX_SUM = 999999999
 
 function refuse(message) {
   console.log(message)
@@ -235,7 +248,7 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0, reminderRuns: 0, reminderNoAnswer: 0, reminderEvents: 0, reminderRecipients: 0 }
   /** Jüngster Zeitpunkt, an dem die Notbremse einer Mail-Route im Fenster griff. */
   let lastMailBreaker = null
   const jobs = new Map()
@@ -282,6 +295,17 @@ async function main() {
         if (!inWindow) break
         counts.mailBreaker++
         if (lastMailBreaker === null || at > lastMailBreaker) lastMailBreaker = at
+        break
+      case 'events.reminder_unreachable':
+        if (!inWindow) break
+        counts.reminderRuns++
+        // Nur die Wahrheitswerte zählen: ein anderer Wert (Text, Zahl) ist
+        // weder „gefragt" noch „ohne Antwort".
+        if (entry.asked === true && entry.answered === false) counts.reminderNoAnswer++
+        // Was keine nicht-negative Ganzzahl im Rahmen ist, zählt 0 — eine
+        // vergiftete Zeile kann so nichts anderes ausgeben als Ziffern.
+        counts.reminderEvents += wholeNumber(entry.events, MAX_REMINDER_EVENTS)
+        counts.reminderRecipients += wholeNumber(entry.recipients, MAX_REMINDER_RECIPIENTS)
         break
       case 'job.registered': {
         const item = job(entry.job)
@@ -334,6 +358,9 @@ async function main() {
   console.log(`skriptregel berichte=${counts.csp} gedeckelt=${counts.cspCapped}`)
   // Seit WA1 e (2026-11-18), ebenfalls OPTIONAL für die Auswertung.
   console.log(`mailbremse ausgeloest=${counts.mailBreaker} letzte_min=${minutesSince(now, lastMailBreaker)}`)
+  // Seit SE1 d (2026-11-19), ebenfalls OPTIONAL für die Auswertung — VERSION bleibt 1.
+  const sum = value => Math.min(value, MAX_SUM)
+  console.log(`erinnerungen takte=${sum(counts.reminderRuns)} ohne_antwort=${sum(counts.reminderNoAnswer)} termine=${sum(counts.reminderEvents)} empfaenger=${sum(counts.reminderRecipients)}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)
