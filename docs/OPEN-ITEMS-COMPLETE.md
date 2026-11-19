@@ -342,8 +342,10 @@ Stripe, keine Migration; das eine Geheimnis hat David freigegeben (unten).
 Pflicht-Prüfungen; `main` danach grün; die acht Hosts `ok` mit dem Stand
 `0e0b07a0`, der alle Code-Merges enthält; der neue Mail-Blick in einem echten
 Lauf auf `main` (6 von 6 Apps gezählt, die Notbremse hat nicht gegriffen); der
-Nacht-Lauf von Hand. NICHT geprüft: kein GEPLANTER nächtlicher Lauf wurde
-abgewartet (der erste mit dem vierten Server ist der um 01:41 UTC); der neue
+Nacht-Lauf von Hand und, am Morgen danach nachgesehen, der erste GEPLANTE
+Nacht-Lauf mit dem vierten Server (2026-11-19, 01:43 UTC, Lauf 44439102016):
+64 von 64 bestanden, die acht Skripte von branding.supply alle grün, nach dem
+Aufräumen nichts übrig, 31 min 28 s. NICHT geprüft: der neue
 Blick steht auf `count` und hat noch keinen echten Befund gesehen; die vier
 Skripte von branding.supply, die von Hand bleiben, sind nicht repariert.
 
