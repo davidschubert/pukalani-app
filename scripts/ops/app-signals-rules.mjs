@@ -325,13 +325,16 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
   }
 
   // ── Erinnerungen an nicht erreichbare Communities (SE1 d) ─────────────
-  // Zählt nur, nie rot: Stufe 1 erinnert weiter und zählt, wen Stufe 2
-  // ausließe. Ein Hinweis nur dort, wo der Lauf im Fenster gezählt hat (die
-  // Apps ohne Pool-Erinnerungen schreiben lauter Nullen). Ohne die Zeile ist
-  // das Zähl-Skript auf dem Server älter — dann steht in der Übersicht
-  // „nicht gezählt", und das ist kein Fehler.
+  // Zählt nur, nie rot. Seit Stufe 2 (2026-11-19) LÄSST der Lauf die Termine
+  // stillgelegter oder gesperrter Communities aus und schreibt nur noch dann
+  // eine Zeile, wenn er etwas ausgelassen hat oder das Control Plane nicht
+  // antwortete. `empfaenger` stammt aus Stufe 1 (dort wurde trotzdem
+  // erinnert) und steht nur dabei, solange solche Zeilen im Fenster liegen.
+  // Ohne die Zeile ist das Zähl-Skript auf dem Server älter — dann steht in
+  // der Übersicht „nicht gezählt", und das ist kein Fehler.
   if (counts.reminderRuns > 0) {
-    notes.push(`${where} der Erinnerungs-Lauf hat in ${counts.hours} h ${counts.reminderRuns} Takt(e) gezählt: ${counts.reminderEvents} Termin(e) stillgelegter oder gesperrter Communities mit ${counts.reminderRecipients} Erinnerung(en), ${counts.reminderNoAnswer} Takt(e) ohne Antwort des Control Plane — zählt nur`)
+    const counted = counts.reminderRecipients > 0 ? ` (im Zähl-Modus trotzdem erinnert: ${counts.reminderRecipients})` : ''
+    notes.push(`${where} der Erinnerungs-Lauf hat in ${counts.hours} h ${counts.reminderRuns} Takt(e) gemeldet: ${counts.reminderEvents} Termin(e) stillgelegter oder gesperrter Communities${counted}, ${counts.reminderNoAnswer} Takt(e) ohne Antwort des Control Plane — zählt nur`)
   }
 
   return { red, notes }
@@ -344,7 +347,7 @@ export function summaryLine({ site, counts, expected = new Set() }) {
     const job = counts.jobs.get(name)
     return job && job.lastResult !== 'failed' && job.lastOkMin !== null
   }).length
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Erinnerungen ins Leere ${counts.reminderRecipients ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Termine nicht erreichbar ${counts.reminderEvents ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
 }
 
 /**

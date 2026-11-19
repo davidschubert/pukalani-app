@@ -377,6 +377,26 @@ paths:
   Beweise: `packages/core/tests/notificationLinks.test.ts`,
   `packages/control/tests/communityHostResolver.test.ts` und der Mailpit-Beweis
   `packages/core/scripts/verify-notification-mail-links.mjs` (11/11).
+- „NICHT ERREICHBAR" IST EINE EIGENE FRAGE (SE1 d, seit 2026-11-19): der
+  Host-Vertrag oben sagt bei „kein Host" nicht, ob die Community stillgelegt
+  ist oder ob nur die Antwort ausblieb — für eine Mail genügt das (sie geht
+  mit der App-Basis raus), für „soll ein Lauf hier noch etwas tun?" nicht.
+  Dafür gibt es `resolveUnreachableCommunities(stempel)`
+  (`core/server/utils/communityReachability.ts`, ohne Request, gebündelt,
+  über `communities.tenantId`): zurück kommen `answered` und die Menge der
+  NICHT erreichbaren Stempel. Genannt wird nur eine POSITIVE Tatsache — eine
+  Zeile, die stillgelegt ist (`status !== 'active'`) oder wegen Missbrauchs
+  gesperrt (`communityUnreachableReason`,
+  `packages/control/shared/communityReachability.ts`; die Zahlungs-Sperre
+  zählt nicht, ein unbekannter Stempel auch nicht). FAIL-SOFT wie bei
+  `resolveFormerMembersOfTenant`: kein Resolver, eine Störung oder eine
+  Einzel-Instanz ⇒ `answered: false`, und der Aufrufer macht weiter wie ohne
+  die Frage. Leser im control-Layer (`unreachableCommunitiesResolver.ts`,
+  bewusst ohne Zwischenspeicher), verdrahtet in apps/platform. Erster
+  Aufrufer: der Erinnerungs-Lauf (`ki-mail-embed-moderation.md`). Beweise:
+  `packages/core/tests/communityReachability.test.ts`,
+  `packages/control/tests/unreachableCommunitiesResolver.test.ts`,
+  `packages/events/tests/event-reminders-sweep.test.ts`.
 - WO HÄNGT DIE GLOCKE? (C17, seit 2026-07-29): sie wird NUR aus
   `pukalani.chrome.utilities` gerendert, und dessen einziger Konsument ist das
   blueprint-Layout — eine App OHNE blueprint hat also keine. Genau das traf

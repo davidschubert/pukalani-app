@@ -335,7 +335,10 @@ paths:
   nimmt `resolveSiteLinkBase(event)` statt `config.public.appUrl`. TERMIN-ERINNERUNGEN fährt die
   App selbst (Zeit-Lauf `event-reminders` im events-Layer, stündlich, alle
   Communities, der Mandant kommt aus dem Stempel der Termin-Zeile) — auf dem
-  Server gibt es dafür KEINEN Zeitplan mehr.
+  Server gibt es dafür KEINEN Zeitplan mehr. Termine stillgelegter oder
+  gesperrter Communities lässt er seit 2026-11-19 aus; der tägliche Blick in
+  die App nennt die Zahl („Termine nicht erreichbar", Zeile `erinnerungen …`
+  des Zähl-Skripts — zählt nur).
 - ZWEI CI-SCHLÜSSEL, ZWEI UMGEBUNGEN (GA1 P08, seit 2026-11-14): GitHub
   Actions erreicht die Server über ZWEI getrennte SSH-Schlüssel, und beide
   liegen nicht mehr auf Repo-Ebene, sondern in GitHub-Umgebungen, die nur den

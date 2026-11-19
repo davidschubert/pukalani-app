@@ -259,9 +259,17 @@ describe('Erinnerungen an nicht erreichbare Communities (SE1 d) — zählt nur',
     const result = evaluate(text, [], 'platform')
     expect(result.red).toEqual([])
     expect(result.notes).toEqual([
-      'test.example: der Erinnerungs-Lauf hat in 25 h 24 Takt(e) gezählt: 3 Termin(e) stillgelegter oder gesperrter Communities mit 11 Erinnerung(en), 1 Takt(e) ohne Antwort des Control Plane — zählt nur',
+      'test.example: der Erinnerungs-Lauf hat in 25 h 24 Takt(e) gemeldet: 3 Termin(e) stillgelegter oder gesperrter Communities (im Zähl-Modus trotzdem erinnert: 11), 1 Takt(e) ohne Antwort des Control Plane — zählt nur',
     ])
-    expect(summaryLine({ site: 'test.example', counts })).toContain('Erinnerungen ins Leere 11')
+    expect(summaryLine({ site: 'test.example', counts })).toContain('Termine nicht erreichbar 3')
+  })
+
+  it('Stufe 2 (ausgelassen, niemand erinnert): der Satz nennt nur Termine und Takte', () => {
+    const result = evaluate(countsText({ reminders: { runs: 2, noAnswer: 0, events: 2, recipients: 0 } }), [], 'platform')
+    expect(result.red).toEqual([])
+    expect(result.notes).toEqual([
+      'test.example: der Erinnerungs-Lauf hat in 25 h 2 Takt(e) gemeldet: 2 Termin(e) stillgelegter oder gesperrter Communities, 0 Takt(e) ohne Antwort des Control Plane — zählt nur',
+    ])
   })
 
   it('auch viele Takte ohne Antwort machen nicht rot', () => {
@@ -273,7 +281,7 @@ describe('Erinnerungen an nicht erreichbare Communities (SE1 d) — zählt nur',
 
   it('eine App, in der der Lauf nicht zählt (lauter Nullen), bekommt keinen Hinweis', () => {
     expect(evaluate(countsText({ reminders: {} })).notes).toEqual([])
-    expect(summaryLine({ site: 'test.example', counts: parseCounts(countsText({ reminders: {} })) })).toContain('Erinnerungen ins Leere 0')
+    expect(summaryLine({ site: 'test.example', counts: parseCounts(countsText({ reminders: {} })) })).toContain('Termine nicht erreichbar 0')
   })
 
   it('ALTE Ausgabe ohne die Zeile (zwischen Merge und Ausliefern) ⇒ kein Problem, nicht rot, „nicht gezählt"', () => {
@@ -282,7 +290,7 @@ describe('Erinnerungen an nicht erreichbare Communities (SE1 d) — zählt nur',
     expect(counts.version).toBe(1)
     expect(counts.reminderRuns).toBeUndefined()
     expect(evaluate(countsText({ reminders: null }))).toEqual({ red: [], notes: [] })
-    expect(summaryLine({ site: 'test.example', counts })).toContain('Erinnerungen ins Leere nicht gezählt')
+    expect(summaryLine({ site: 'test.example', counts })).toContain('Termine nicht erreichbar nicht gezählt')
   })
 
   it.each([

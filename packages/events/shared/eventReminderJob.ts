@@ -45,9 +45,16 @@ export const EVENT_REMINDER_JOB_MODE: EventReminderJobMode = 'send'
  * und keinen Merker — er bleibt fällig, und geht die Community vor dem Beginn
  * wieder ans Netz, erinnert ein späterer Takt.
  *
+ * STAND: `'skip'` seit 2026-11-19. Der Zähl-Lauf lief auf Production (ein
+ * Takt: 0 Termine, 0 Erinnerungen, kein Takt ohne Antwort — es war kein
+ * Termin fällig, also gab es auch nichts zu fragen). NICHT gesehen ist damit
+ * eine echte Antwort des Control Plane auf Production und ein ausgelassener
+ * Termin; beides zeigt der tägliche Blick in die App, sobald es vorkommt
+ * (Zeile `erinnerungen …` des Zähl-Skripts). Der Rückweg ist diese eine Zeile.
+ *
  * Eine Konstante im Code statt eines Schalters, aus demselben Grund wie oben:
  * der Wechsel ist ein einmaliger, geprüfter Schritt.
  */
 export type EventReminderUnreachableMode = 'count' | 'skip'
 
-export const EVENT_REMINDER_UNREACHABLE_MODE: EventReminderUnreachableMode = 'count'
+export const EVENT_REMINDER_UNREACHABLE_MODE: EventReminderUnreachableMode = 'skip'
