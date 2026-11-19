@@ -18,13 +18,32 @@
  *   D) Dieselbe Registrierung auf der App ohne Schalter hinterlässt KEIN
  *      `businessConfirmedAt`.
  *
- * WAS HIER BEWUSST NICHT GEPRÜFT WIRD: „Registrierung ohne Häkchen ⇒ 400".
- * Das Feld `business` reist gar nicht zum Server (wie `terms` seit jeher, s.
- * `RegisterForm.vue`) — die Pflicht ist eine Zod-Regel im Formular und steht
- * als solche in `tests/businessConfirmation.test.ts`. Ein Route-Test dafür würde eine
- * Zusage messen, die es nicht gibt.
+ * SEIT 2026-11-16 PRÜFT DER SERVER (SEC-008): `POST /api/auth/signup` verlangt
+ * `terms: true` und — in einer App mit `businessOnly` — `business: true` im
+ * Rumpf, sonst 400 `terms_required` bzw. `business_required` VOR der Anlage.
+ * Der Nachweis ist je Bestätigung EINE Zeile in `consent_records`; die
+ * Prefs-Felder gehören dem Konto und belegen allein nichts. Dieser Beweis
+ * schickt deshalb die Felder mit und prüft dazu:
  *
- * AUFRUF (zwei Dev-Server aus DEMSELBEN Worktree, sonst misst man fremden Code):
+ *   E) Ohne `business` (bzw. ohne `terms`) lehnt die B2B-App ab, und es
+ *      entsteht KEIN Konto.
+ *   F) Nach der Anlage stehen in `consent_records` genau die zwei Zeilen
+ *      (`terms`, `business`), beide über den Weg `password`; auf der App ohne
+ *      den Schalter entsteht für DENSELBEN Rumpf keine `business`-Zeile.
+ *
+ * (Bis dahin stand hier, „ohne Häkchen ⇒ 400" sei keine Zusage, weil das Feld
+ * nicht zum Server reise. Das Skript schickte die Felder nie, und die Route
+ * lehnte seit dem 2026-11-16 jede seiner Anlagen ab.)
+ *
+ * DAS SKRIPT SETZT SEINE ANNAHME SELBST: die Registrierung ist in beiden Apps
+ * für die Dauer des Laufs offen (`app_config.registrationEnabled`) und steht
+ * danach wieder wie vorher. Aufgeräumt wird je Projekt mit Nachzählen
+ * (`createEinzelCleanup`): Konten und alle Zeilen, die an ihnen hängen.
+ *
+ * AUFRUF (zwei Dev-Server aus DEMSELBEN Worktree, sonst misst man fremden Code;
+ * die zwei Apps haben je ein EIGENES Projekt — das der B2B-App kommt aus der
+ * Umgebung, das der Gegenprobe aus `PLAIN_ENV_FILE`, Standard
+ * `apps/portfolio/.env`):
  *
  *   NUXT_PUBLIC_AUTH_OAUTH_PROVIDERS=google \
  *     pnpm --filter branding exec nuxi dev --port 3021
@@ -36,26 +55,65 @@
  * Social-Login-Fläche, und die Sperre daran ist dann nicht prüfbar (der Lauf
  * sagt es dann und zählt sie nicht mit).
  *
- * B2B_PORT / PLAIN_PORT überschreiben die Ports.
+ * B2B_PORT / PLAIN_PORT überschreiben die Ports. Bleibt von Hand
+ * (`scripts/buehne/beweise.mjs`): die Bühne hat keinen Server der Studio-Site.
  */
 import '../../../scripts/lib/assert-target.mjs'
-import { request } from 'node:http'
-import { Client, Users } from 'node-appwrite'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
+  Q,
+  createEinzelCleanup,
+  createHttpCaller,
+  generatePassword,
+  isNotFound,
+  probeEmail,
+  readEnvFile,
+  runStamp,
+} from '../../../scripts/lib/probe-stage.mjs'
 
+const SCRIPT = 'verify-business-confirmation'
 const B2B_PORT = Number(process.env.B2B_PORT || 3021)
 const PLAIN_PORT = Number(process.env.PLAIN_PORT || 3020)
 const HOST = process.env.VERIFY_HOST || 'localhost'
+const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..')
+const PLAIN_ENV_FILE = resolve(ROOT, process.env.PLAIN_ENV_FILE || 'apps/portfolio/.env')
 
-const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
-const project = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
-const key = process.env.NUXT_APPWRITE_KEY
+/** Die Fassung der AGB, die `apps/branding/app/app.config.ts` nennt (`termsVersion`). */
+const B2B_TERMS_VERSION = '2026-09-draft-1'
 
-if (!endpoint || !project || !key) {
-  console.error('✗ Env unvollständig (NUXT_PUBLIC_APPWRITE_ENDPOINT + _PROJECT_ID + NUXT_APPWRITE_KEY nötig).')
-  process.exit(1)
+function projectOf(env, label) {
+  if (!env.NUXT_PUBLIC_APPWRITE_ENDPOINT || !env.NUXT_PUBLIC_APPWRITE_PROJECT_ID || !env.NUXT_APPWRITE_KEY) {
+    console.error(`✗ Env der ${label} unvollständig (NUXT_PUBLIC_APPWRITE_ENDPOINT + _PROJECT_ID + NUXT_APPWRITE_KEY nötig).`)
+    process.exit(1)
+  }
+  // `createEinzelCleanup` prüft das Ziel (lokal durch, sonst nur mit Bestätigung).
+  const cleanup = createEinzelCleanup({ script: SCRIPT, env })
+  return {
+    label,
+    projectId: env.NUXT_PUBLIC_APPWRITE_PROJECT_ID,
+    databaseId: env.NUXT_PUBLIC_APPWRITE_DATABASE_ID || 'main',
+    pool: cleanup.pool,
+    cleanup,
+    /** Vorwert von `registrationEnabled`, falls dieser Lauf ihn umgestellt hat. */
+    registrationBefore: undefined,
+  }
 }
 
-const users = new Users(new Client().setEndpoint(endpoint).setProject(project).setKey(key))
+let plainEnv
+try {
+  plainEnv = readEnvFile(PLAIN_ENV_FILE)
+}
+catch {
+  console.error(`✗ Env-Datei der Gegenprobe nicht lesbar: ${PLAIN_ENV_FILE.replace(`${ROOT}/`, '')} (PLAIN_ENV_FILE setzen).`)
+  process.exit(1)
+}
+const b2bProject = projectOf(process.env, 'B2B-App')
+const plainProject = projectOf(plainEnv, 'Gegenprobe')
+if (b2bProject.projectId === plainProject.projectId) {
+  console.error('✗ B2B-App und Gegenprobe zeigen auf dasselbe Projekt — die Gegenprobe braucht ihre eigene App mit eigenem Projekt.')
+  process.exit(1)
+}
 
 let pass = 0
 let fail = 0
@@ -64,35 +122,34 @@ function check(label, ok, detail = '') {
   else { fail++; console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`) }
 }
 
-/** node:http, weil `fetch` einen eigenen Host-Header verwirft; ::1 = Nitro. */
+const callers = new Map()
+/** Seiten wie ein Browser (`Accept: text/html`), Routen als JSON — je Port ein Aufrufer. */
 function call(port, path, { method = 'GET', body } = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = body ? JSON.stringify(body) : null
-    const req = request({
-      host: '::1',
-      port,
-      path,
-      method,
-      headers: {
-        host: HOST,
-        ...(payload ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) } : {}),
-      },
-    }, (res) => {
-      let text = ''
-      res.on('data', chunk => text += chunk)
-      res.on('end', () => {
-        let json = null
-        try { json = JSON.parse(text) }
-        catch { /* HTML */ }
-        resolve({ status: res.statusCode, json, text })
-      })
-    })
-    req.on('error', reject)
-    if (payload) req.write(payload)
-    // Der erste Aufruf einer SEITE kompiliert sie im Dev-Server (~25 s).
-    req.setTimeout(180_000, () => req.destroy(new Error('Zeitüberschreitung')))
-    req.end()
-  })
+  if (!callers.has(port)) callers.set(port, createHttpCaller({ port }))
+  const caller = callers.get(port)
+  return method === 'GET' ? caller.page(HOST, path) : caller.call(HOST, path, { method, body })
+}
+
+/** Registrierung für die Dauer des Laufs öffnen; der Vorwert wird gemerkt. */
+async function openRegistration(project) {
+  let row
+  try {
+    row = await project.pool.getRow(project.databaseId, 'app_config', 'global')
+  }
+  catch (error) {
+    // Ohne Zeile gelten die Vorgaben der App (Registrierung offen).
+    if (isNotFound(error)) return
+    throw error
+  }
+  if (row.registrationEnabled === false) {
+    project.registrationBefore = false
+    await project.pool.updateRow(project.databaseId, 'app_config', 'global', { registrationEnabled: true })
+  }
+}
+
+async function restoreRegistration(project) {
+  if (project.registrationBefore === undefined) return
+  await project.pool.updateRow(project.databaseId, 'app_config', 'global', { registrationEnabled: project.registrationBefore })
 }
 
 const DE_LABEL = 'Ich handle als Unternehmer/in oder Selbstständige/r, nicht als Verbraucher/in'
@@ -100,26 +157,53 @@ const DE_NOTICE = 'Unser Angebot richtet sich ausschliesslich an Unternehmen und
 const EN_LABEL = 'I am acting as a business or self-employed person, not as a consumer'
 const EN_NOTICE = 'Our offer is intended for businesses and self-employed people only'
 
-const created = []
+const stamp = runStamp()
 
-async function signup(port, label) {
-  const email = `r1c-${label}-${Date.now()}@example.test`
+/** Das Konto zu einer Adresse im Projekt der App, sonst `null`. */
+async function findAccount(project, email) {
+  const list = await project.pool.get('/users', [Q.equal('email', [email]), Q.limit(1)])
+  return list.users?.[0] ?? null
+}
+
+/**
+ * Eine Registrierung über die echte Route. `consent` sind die Felder, die das
+ * Formular seit SEC-008 mitschickt; ein angelegtes Konto steht sofort im
+ * Aufräum-Register seines Projekts.
+ */
+async function signup(port, project, tag, consent) {
+  const email = probeEmail(`r1c-${tag}`, stamp)
   const res = await call(port, '/api/auth/signup', {
     method: 'POST',
-    body: { name: 'R1c Beweis', email, password: `Pw-${Date.now()}-x!A1` },
+    body: { name: 'R1c Beweis', email, password: generatePassword(), ...consent },
   })
-  if (res.status !== 200 && res.status !== 201) {
-    return { ok: false, email, res }
+  // Die Route gibt die Id nicht zurück — über die Adresse nachschlagen. Auch
+  // nach einer Ablehnung: ein Konto, das trotzdem entstand, wäre der Befund
+  // (und muss wieder weg).
+  const user = await findAccount(project, email)
+  if (user) project.cleanup.track('account', user.$id)
+  return { ok: res.status === 200 || res.status === 201, email, user, res }
+}
+
+/** Die Zustimmungs-Zeilen eines Kontos als `art:weg:fassung`, sortiert. */
+async function consentRows(project, userId) {
+  const { rows } = await project.pool.listRows(project.databaseId, 'consent_records', [Q.equal('userId', [userId]), Q.limit(25)])
+  return rows.map(row => `${row.kind}:${row.way}:${row.version ?? ''}`).sort()
+}
+
+// Ohne lesbares Schema fände das Aufräumen die Zeilen nicht, die die App bei
+// einer Registrierung anlegt (Zustimmung, Aktivität, Protokoll) — dann lieber
+// gar nicht erst anlegen.
+for (const project of [b2bProject, plainProject]) {
+  if (!await project.cleanup.schemaReadable()) {
+    console.error(`✗ ${project.label}: das Schema des Projekts „${project.projectId}" ist mit diesen Schlüsseln nicht lesbar (NUXT_APPWRITE_MIGRATIONS_KEY in der Env-Datei?) — ohne es ließe der Lauf Zeilen liegen.`)
+    process.exit(1)
   }
-  // Die Route gibt die Id nicht zurück — über die Adresse nachschlagen.
-  const list = await users.list({ queries: [], search: email })
-  const user = list.users.find(u => u.email === email)
-  if (user) created.push(user.$id)
-  return { ok: true, email, user, res }
 }
 
 try {
-  console.log(`\nBS1-R1c-Beweis — B2B-App :${B2B_PORT}, Gegenprobe :${PLAIN_PORT}, Projekt ${project}\n`)
+  console.log(`\nBS1-R1c-Beweis — B2B-App :${B2B_PORT} (Projekt ${b2bProject.projectId}), Gegenprobe :${PLAIN_PORT} (Projekt ${plainProject.projectId})\n`)
+  await openRegistration(b2bProject)
+  await openRegistration(plainProject)
 
   // ── A) Die B2B-App zeigt das Pflicht-Häkchen ───────────────────────────
   console.log('A) App MIT pukalani.auth.businessOnly')
@@ -176,18 +260,31 @@ try {
   check('… zeigt KEIN Unternehmer-Häkchen', !plainDe.text.includes('data-business-check'))
   check('… und KEINE Begründung', !plainDe.text.includes('data-business-notice') && !plainDe.text.includes(DE_LABEL))
 
+  // ── E) Ohne die Bestätigung lehnt der Server ab (SEC-008) ──────────────
+  console.log('\nE) Registrierung auf der B2B-App OHNE die Bestätigungen')
+  const noBusiness = await signup(B2B_PORT, b2bProject, 'no-business', { terms: true })
+  check('ohne `business` ⇒ 400 `business_required`',
+    noBusiness.res.status === 400 && noBusiness.res.json?.reason === 'business_required',
+    `status ${noBusiness.res.status} ${JSON.stringify(noBusiness.res.json)}`)
+  check('… und es ist KEIN Konto entstanden', noBusiness.user === null, noBusiness.email)
+  const noTerms = await signup(B2B_PORT, b2bProject, 'no-terms', { business: true })
+  check('ohne `terms` ⇒ 400 `terms_required`',
+    noTerms.res.status === 400 && noTerms.res.json?.reason === 'terms_required',
+    `status ${noTerms.res.status} ${JSON.stringify(noTerms.res.json)}`)
+  check('… und es ist KEIN Konto entstanden', noTerms.user === null, noTerms.email)
+
   // ── C) Eine echte Anlage hinterlässt die Tatsache ──────────────────────
   console.log('\nC) Registrierung auf der B2B-App')
   const before = Date.now()
-  const b2b = await signup(B2B_PORT, 'b2b')
+  const b2b = await signup(B2B_PORT, b2bProject, 'b2b', { terms: true, business: true })
   check('POST /api/auth/signup legt ein Konto an', b2b.ok, `status ${b2b.res.status} ${JSON.stringify(b2b.res.json)}`)
   if (b2b.ok) {
     check('… das Konto ist auffindbar', Boolean(b2b.user), b2b.email)
     const prefs = b2b.user?.prefs ?? {}
     const at = typeof prefs.businessConfirmedAt === 'string' ? prefs.businessConfirmedAt : ''
     check('… prefs.businessConfirmedAt ist gesetzt', at.length > 0, JSON.stringify(prefs))
-    const stamp = at ? Date.parse(at) : Number.NaN
-    check('… und ist ein frischer ISO-Zeitstempel', Number.isFinite(stamp) && stamp >= before - 60_000 && stamp <= Date.now() + 60_000, at)
+    const confirmedAt = at ? Date.parse(at) : Number.NaN
+    check('… und ist ein frischer ISO-Zeitstempel', Number.isFinite(confirmedAt) && confirmedAt >= before - 60_000 && confirmedAt <= Date.now() + 60_000, at)
     /**
      * Der MERGE-Beweis: `updatePrefs` ERSETZT das ganze Fach. Liefen die
      * beiden Schreiber (R1 und R1c) nacheinander ohne Spread, stünde hier nur
@@ -195,16 +292,23 @@ try {
      */
     check('… die AGB-Felder aus R1 stehen unversehrt daneben (Merge)',
       typeof prefs.termsAcceptedAt === 'string' && prefs.termsAcceptedAt.length > 0
-      && prefs.termsVersion === '2026-09-draft-1', JSON.stringify(prefs))
+      && prefs.termsVersion === B2B_TERMS_VERSION, JSON.stringify(prefs))
+    // F) Der eigentliche Nachweis: je Bestätigung eine Zeile, Weg `password`.
+    const rows = b2b.user ? await consentRows(b2bProject, b2b.user.$id) : []
+    check('… `consent_records` trägt genau die zwei Zeilen (business, terms), Weg `password`',
+      JSON.stringify(rows) === JSON.stringify(['business:password:', `terms:password:${B2B_TERMS_VERSION}`]), JSON.stringify(rows))
   }
 
   // ── D) Gegenprobe: dieselbe Anlage ohne den Schalter ───────────────────
-  console.log('\nD) Gegenprobe — Registrierung auf der App ohne den Schalter')
-  const plain = await signup(PLAIN_PORT, 'plain')
+  console.log('\nD) Gegenprobe — DERSELBE Rumpf auf der App ohne den Schalter')
+  const plain = await signup(PLAIN_PORT, plainProject, 'plain', { terms: true, business: true })
   check('POST /api/auth/signup legt ein Konto an', plain.ok, `status ${plain.res.status} ${JSON.stringify(plain.res.json)}`)
   if (plain.ok) {
+    check('… das Konto ist auffindbar', Boolean(plain.user), plain.email)
     const prefs = plain.user?.prefs ?? {}
     check('… prefs tragen KEIN businessConfirmedAt', !('businessConfirmedAt' in prefs), JSON.stringify(prefs))
+    const rows = plain.user ? await consentRows(plainProject, plain.user.$id) : []
+    check('… und `consent_records` trägt KEINE `business`-Zeile', !rows.some(row => row.startsWith('business:')), JSON.stringify(rows))
   }
 }
 catch (error) {
@@ -212,10 +316,28 @@ catch (error) {
   console.error('\n✗ Lauf abgebrochen:', error instanceof Error ? error.message : error)
 }
 finally {
-  for (const id of created) {
-    try { await users.delete({ userId: id }) }
-    catch { console.log(`  ! Testkonto ${id} blieb stehen — bitte von Hand löschen.`) }
+  let removed = 0
+  for (const project of [b2bProject, plainProject]) {
+    try {
+      await restoreRegistration(project)
+    }
+    catch {
+      fail++
+      console.log(`  ✗ ${project.label}: \`registrationEnabled\` ließ sich nicht zurückstellen — bitte von Hand auf ${project.registrationBefore} setzen.`)
+    }
+    try {
+      const { deleted, leftovers } = await project.cleanup.run()
+      removed += Object.values(deleted).reduce((sum, n) => sum + n, 0)
+      if (leftovers.length) {
+        fail++
+        console.log(`  ✗ ${project.label}: nach dem Aufräumen übrig — ${leftovers.join(', ')}`)
+      }
+    }
+    catch (error) {
+      fail++
+      console.log(`  ✗ ${project.label}: Aufräumen gescheitert — ${error instanceof Error ? error.message : error}`)
+    }
   }
-  console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail} Zusagen erfüllt (${created.length} Testkonten wieder entfernt)\n`)
+  console.log(`\n${fail === 0 ? '✔' : '✗'} ${pass}/${pass + fail} Zusagen erfüllt (aufgeräumt: ${removed} Konten und Zeilen, nachgezählt)\n`)
   process.exit(fail === 0 ? 0 : 1)
 }
