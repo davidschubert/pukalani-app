@@ -101,7 +101,7 @@ am 2026-11-18, COMPLETE „N11").
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) vier Hinweise zu Abhängigkeiten bleiben offen (einer ist seit 2026-11-17 geschlossen, COMPLETE „N09"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete, ein kleines Update ab dem 2026-11-20. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 70 von 84 von selbst; seit dem 2026-11-18 steht nachts auch branding.supply als vierter Server (COMPLETE „N16"). Offen: (a) vier Skripte von branding.supply brauchen eine neue Test-Vorlage, die fünf E2E-Dateien der Studio-Site einen eigenen Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
-| AW30 | **Reste nach dem Appwrite-Upgrade auf 2.7.3.** Production läuft seit dem 2026-11-18 auf 2.7.3, geprüft von außen und auf dem Server. Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) einmal anmelden, Profilbild hochladen und per Code anmelden mit einem Konto auf Production; (d) alte Images auf dem Server aufräumen (rund 11 GB). | Niedrig | S | (c) und (d): **Ja** (Konto bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
+| AW30 | **Reste nach dem Appwrite-Upgrade auf 2.7.3.** Production läuft seit dem 2026-11-18 auf 2.7.3, geprüft von außen und auf dem Server. Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) ein Kommentar und eine Stimme mit einem Konto auf Production (Anmelden, Profilbild und Anmeldung per Code sind seit dem 2026-11-19 geprüft); (d) alte Images auf dem Server aufräumen (rund 11 GB). | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -1033,12 +1033,14 @@ Production-Spiegel auf den Entwicklungs-Rechner ist damit wieder möglich.
   Stunde). Nach zehn falschen Codes meldet `otp/verify.post.ts` für den Rest
   der Stunde auch beim richtigen Code „ungültig oder abgelaufen" — besser wäre
   dort die Meldung „zu viele Versuche" mit Wartezeit.
-- **(c) Klick-Beweis hinter der Anmeldung.** Auf Production nicht geprüft:
-  anmelden, abmelden, erneut anmelden; ein Kommentar und eine Stimme; ein
-  Profilbild hochladen (die Inhaltsprüfung des Buckets ist neu); Anmeldung
-  per Code. Auf der Entwicklungs-Instanz ist all das mit 2.7.3 bewiesen. Für
-  Production braucht es ein Konto — Davids eigenes oder ein Wegwerf-Konto mit
-  seinem Ja.
+- **(c) Rest des Klick-Beweises.** Anmelden mit Passwort, abmelden, Anmeldung
+  per Code, Profilbild-Upload und die Live-Verbindung sind seit dem
+  2026-11-19 auf Production geprüft
+  ([Erledigt-Liste](OPEN-ITEMS-COMPLETE.md), „AW30 (c)"). Nicht geklickt: ein
+  Kommentar und eine Stimme in einer Community (ein öffentlicher Beitrag auf
+  der Demo, braucht Davids Ja) und der Speichern-Knopf im Profil mit neuem
+  Bild (er ersetzt das echte Profilbild). Kommentar und Stimme sind auf der
+  Entwicklungs-Instanz und in der CI mit 2.7.3 bewiesen.
 - **(d) Alte Images.** Auf appwrite-prod liegen die Images von 2.6.2 und
   2.7.1 neben 2.7.3 (Platte 56 %, 32 GB frei). 2.6.2 kann weg; 2.7.1 erst,
   wenn 2.7.3 eine Weile ruhig lief (es ist der Rückweg ohne neuen Abruf).

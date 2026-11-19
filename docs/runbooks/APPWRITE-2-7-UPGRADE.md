@@ -504,12 +504,28 @@ Production: 99 s mit echter Migration; diesmal sind die Images vorgezogen und
 - [x] `node scripts/ops/verify-health.mjs` (alle Hosts `ok:true`, `schema` ok),
       `node scripts/ops/verify-tls.mjs`, `node scripts/ops/verify-realtime.mjs --handshake`
 - [x] `pnpm ops:schema-parity` unverändert
-- [ ] Anmelden, abmelden, erneut anmelden auf `account.pukalani.app`; ein
-      Kommentar und eine Stimme in einer Community; die Seite drei Minuten
-      offen lassen (kein neuer Socket, kein `/api/auth/me` im Takt) —
-      **offen**, braucht ein Konto auf Production (OPEN-ITEMS „AW30" c)
-- [ ] Ein Profilbild hochladen (die neue Inhaltsprüfung des Buckets) — **offen**, wie oben
-- [ ] OTP-Anmeldung mit einem echten Konto (Code-Bestätigung mit Schlüssel) — **offen**, wie oben
+- [x] Anmelden, abmelden, erneut anmelden — 2026-11-19 auf
+      `demo.pukalani.app` mit dem Konto des Betreibers in seinem Browser
+      (Passwort und Code hat er selbst getippt): die bestehende Sitzung galt
+      (`/api/auth/me` 200, auch auf `account.pukalani.app`; ob sie von vor dem
+      Upgrade stammte, wurde nicht abgelesen); Abmelden führt auf `/login`,
+      danach 401; die neue Sitzung trägt den Weg `email` mit dem Faktor
+      `password`. Die Seite blieb 188 s offen: kein neuer Socket, kein
+      `/api/auth/me`, nur der Presence-Takt (10 Heartbeats, 19 Lese-Aufrufe).
+      Die Live-Verbindung mit dem Token der Sitzung meldet `connected` mit
+      Konto, Ping und Pong laufen.
+- [ ] Ein Kommentar und eine Stimme in einer Community — **nicht geklickt**:
+      das wäre ein öffentlicher Beitrag auf der Demo und braucht ein eigenes Ja
+      (OPEN-ITEMS „AW30" c)
+- [x] Ein Profilbild hochladen (die neue Inhaltsprüfung des Buckets) —
+      2026-11-19 über die Routen der Seite mit derselben Sitzung: Probe-Bild
+      hoch (200, gespeichert als `avatar.png`), Abruf 200 `image/png`,
+      Löschen 200, danach 404; HTML mit Bild-Typ 415. Bewusst NICHT über den
+      Speichern-Knopf im Profil: der ersetzt das echte Profilbild und löscht
+      die alte Datei.
+- [x] OTP-Anmeldung mit einem echten Konto (Code-Bestätigung mit Schlüssel) —
+      2026-11-19: Code angefordert, Mail kam, Sitzung mit dem Weg `token` und
+      dem Faktor `email`
 - [x] `ci.env`-Kommentar, `CLAUDE.md`, `README.md`, `docs/CONCEPT.md`,
       `docs/content/` (Setup, Übersicht, Hosts und Ports) und
       `docs/runbooks/DEPLOYMENT.md` auf „2.7.3 überall" gestellt; das Skript im
