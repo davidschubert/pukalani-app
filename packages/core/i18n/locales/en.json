@@ -216,6 +216,11 @@
     "showMore": "Show more",
     "showLess": "Show less",
     "more": "More",
+    "menu": {
+      "title": "Menu",
+      "open": "Open menu",
+      "close": "Close menu"
+    },
     "metaTitle": "{page} · {brand}",
     "ogImageAlt": "Preview image for {brand}"
   },
