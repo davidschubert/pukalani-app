@@ -47,7 +47,11 @@
       "lower": "At least one lowercase letter (a-z)",
       "number": "At least one number (0-9)",
       "special": "At least one special character",
-      "match": "Passwords must match"
+      "match": "Passwords must match",
+      "rules": "Password rules",
+      "met": "met",
+      "missing": "missing",
+      "progress": "Password rules: {done} of {total} met"
     },
     "fields": {
       "name": "Name",

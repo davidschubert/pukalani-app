@@ -86,9 +86,9 @@ async function onCancel() {
       </p>
     </div>
 
-    <UAlert v-if="errorMessage" color="error" variant="subtle" :title="errorMessage" data-mfa-error />
+    <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" data-mfa-error />
 
-    <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @submit="onSubmit">
+    <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="onSubmit">
       <UFormField :label="isRecovery ? t('auth.mfa.fields.recoveryCode') : t('auth.mfa.fields.code')" name="code" required>
         <UInput
           v-model="state.code"

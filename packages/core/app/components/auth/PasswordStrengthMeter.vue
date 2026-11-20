@@ -20,6 +20,7 @@ const checks = computed(() => {
   ]
 })
 const score = computed(() => checks.value.filter(check => check.valid).length)
+const progressLabel = () => t('auth.password.progress', { done: score.value, total: checks.value.length })
 const color = computed(() => {
   if (score.value === 0) return 'neutral' as const
   if (score.value <= 2) return 'error' as const
@@ -30,16 +31,20 @@ const color = computed(() => {
 
 <template>
   <div class="space-y-2">
-    <UProgress :model-value="score" :max="6" :color="color" size="sm" />
-    <ul class="space-y-1">
+    <!-- Der Balken nennt sich selbst (UX-010): ohne eigenen Namen hieß er nur
+         „17%". Die Regeln darunter sagen je Zeile „erfüllt" oder „fehlt" —
+         Symbol und Farbe allein kann niemand abfragen. -->
+    <UProgress :model-value="score" :max="checks.length" :color="color" size="sm" :get-value-label="progressLabel" />
+    <ul class="space-y-1" :aria-label="t('auth.password.rules')">
       <li
         v-for="(check, index) in checks"
         :key="index"
         class="flex items-center gap-1.5 text-xs"
         :class="check.valid ? 'text-success' : 'text-muted'"
       >
-        <UIcon :name="check.valid ? 'i-ph-check-circle' : 'i-ph-circle-dashed'" class="size-4 shrink-0" />
+        <UIcon :name="check.valid ? 'i-ph-check-circle' : 'i-ph-circle-dashed'" class="size-4 shrink-0" aria-hidden="true" />
         <span>{{ check.label }}</span>
+        <span class="sr-only" data-password-rule-state>{{ check.valid ? t('auth.password.met') : t('auth.password.missing') }}</span>
       </li>
     </ul>
   </div>

@@ -114,11 +114,14 @@ async function dismiss() {
             :name="step.done ? 'i-ph-check-circle-fill' : 'i-ph-circle-dashed'"
             class="mt-0.5 size-5 shrink-0"
             :class="step.done ? 'text-primary' : 'text-dimmed'"
+            aria-hidden="true"
           />
           <span class="min-w-0">
             <span class="block text-sm font-medium" :class="step.done ? 'text-muted line-through' : ''">
               {{ t(`onboarding.gettingStarted.steps.${step.key}.label`) }}
             </span>
+            <!-- Durchgestrichen sieht man, hören kann man es nicht (UX-010). -->
+            <span v-if="step.done" class="sr-only">{{ t('onboarding.gettingStarted.stepDone') }}</span>
             <span v-if="!step.done" class="block text-sm text-muted">
               {{ t(`onboarding.gettingStarted.steps.${step.key}.hint`) }}
             </span>

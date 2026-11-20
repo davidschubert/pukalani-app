@@ -49,9 +49,9 @@ async function onSubmit(event: FormSubmitEvent<PasswordChangeInput>) {
 
 <template>
   <UPageCard :title="t('account.password.title')" :description="t('account.password.description')" variant="subtle">
-    <UForm :schema="schema" :validate-on="[]" :state="state" class="flex w-full max-w-sm flex-col gap-4" @submit="onSubmit">
+    <UForm :schema="schema" :validate-on="[]" :state="state" class="flex w-full max-w-sm flex-col gap-4" @error="focusFirstFormError" @submit="onSubmit">
       <UFormField :label="t('account.password.current')" name="currentPassword" required>
-        <UInput v-model="state.currentPassword" :type="showCurrent ? 'text' : 'password'" size="lg" class="w-full">
+        <UInput v-model="state.currentPassword" :type="showCurrent ? 'text' : 'password'" autocomplete="current-password" size="lg" class="w-full">
           <template #trailing>
             <UButton color="neutral" variant="link" size="sm" :icon="showCurrent ? 'i-ph-eye-slash' : 'i-ph-eye'" :aria-label="t('auth.fields.togglePassword')" tabindex="-1" @click="() => { showCurrent = !showCurrent }" />
           </template>
@@ -59,7 +59,7 @@ async function onSubmit(event: FormSubmitEvent<PasswordChangeInput>) {
       </UFormField>
 
       <UFormField :label="t('account.password.new')" name="password" required>
-        <UInput v-model="state.password" :type="showNew ? 'text' : 'password'" size="lg" :placeholder="t('auth.fields.passwordHint')" class="w-full">
+        <UInput v-model="state.password" :type="showNew ? 'text' : 'password'" autocomplete="new-password" size="lg" :placeholder="t('auth.fields.passwordHint')" class="w-full">
           <template #trailing>
             <UButton color="neutral" variant="link" size="sm" :icon="showNew ? 'i-ph-eye-slash' : 'i-ph-eye'" :aria-label="t('auth.fields.togglePassword')" tabindex="-1" @click="() => { showNew = !showNew }" />
           </template>
@@ -67,7 +67,7 @@ async function onSubmit(event: FormSubmitEvent<PasswordChangeInput>) {
       </UFormField>
 
       <UFormField :label="t('account.password.confirm')" name="passwordConfirm" required>
-        <UInput v-model="state.passwordConfirm" :type="showConfirm ? 'text' : 'password'" size="lg" class="w-full">
+        <UInput v-model="state.passwordConfirm" :type="showConfirm ? 'text' : 'password'" autocomplete="new-password" size="lg" class="w-full">
           <template #trailing>
             <UButton color="neutral" variant="link" size="sm" :icon="showConfirm ? 'i-ph-eye-slash' : 'i-ph-eye'" :aria-label="t('auth.fields.togglePassword')" tabindex="-1" @click="() => { showConfirm = !showConfirm }" />
           </template>

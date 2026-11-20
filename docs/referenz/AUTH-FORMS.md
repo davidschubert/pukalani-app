@@ -49,6 +49,19 @@ Die Häkchen „AGB" (`pukalani.auth.termsUrl`) und „Unternehmer"
   nicht schreiben. Nachweis und Tür: `.claude/rules/appwrite.md`, Abschnitt
   ZUSTIMMUNG.
 
+## Namen, Ausfüllen, Ansagen (Q08, seit 2026-11-21)
+
+- **Jedes Feld nennt `autocomplete`.** `UInput` setzt sonst `off`. Login:
+  E-Mail `username`, Passwort `current-password`; neues Passwort überall
+  `new-password`; Name `name`; E-Mail sonst `email`; Codes `one-time-code`.
+- **Der Fehlerkasten trägt `role="alert"`** (`UAlert` hat von sich aus keine
+  Rolle), jedes `UForm` hängt `@error="focusFirstFormError"` an
+  (`app/utils/formFocus.ts`): der Fokus geht ins erste fehlerhafte Feld.
+- **Nichts Anklickbares in `#hint`** eines `UFormField`: der Platz liegt im
+  Quelltext vor dem Feld und stiehlt den Tab-Schritt.
+- Wächter: `apps/comments/e2e/auth-forms.spec.ts`. Ein neues Feld auf einer
+  Anmelde-Seite braucht dort eine Zeile.
+
 ## Regel (ersetzt „UAuthForm für Auth!")
 
 - **Neue, simple Auth-Ansichten**: erst prüfen, ob `UAuthForm` reicht — wenn
