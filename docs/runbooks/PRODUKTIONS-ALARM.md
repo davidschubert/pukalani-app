@@ -60,6 +60,11 @@ jede ausgerollte App drei Arten von Zeilen mit Zeitstempel in ihr pm2-Log:
 - `audit.write_failed` (seit 2026-11-16, BE-021), wenn ein Eintrag ins
   Betreiber-Protokoll `audit_logs` scheitert — Zeile `protokoll ausfaelle=<n>`,
   rot ab 3 in 25 Stunden (Abschnitt 4, „Betreiber-Protokoll fällt aus").
+- `soft_fail` (seit 2026-11-21, Q13), wenn eine Stelle im Server einen Fehler
+  abfängt und mit ihrem Ersatzwert weitermacht (`.catch(softFail(…))`,
+  `packages/core/server/utils/softFail.ts`) — Zeile
+  `stillefehler zeilen=<n> stellen=<m>`, zählt nur (Abschnitt 4, „Still
+  abgefangene Fehler").
 
 Gezählt wird auf dem App-Server: neben jeder Ecosystem-Datei liegt das feste
 Skript `ops/app-watch-counts.mjs` (der Deploy legt es dorthin). Es liest die
@@ -891,6 +896,28 @@ einer Missbrauchs-Meldung (`/dashboard/abuse`,
 [ANFRAGEN-VON-AUSSEN.md](ANFRAGEN-VON-AUSSEN.md)) oder durch Stilllegen
 (`.claude/rules/onboarding.md`, „Stilllegen statt Vernichten"). Verdacht auf
 fremden Zugriff: [SICHERHEITSVORFALL.md](SICHERHEITSVORFALL.md).
+
+**Still abgefangene Fehler.** Kein Alarm, nur ein Hinweis im täglichen Blick:
+die App hat an so vielen Stellen einen Fehler abgefangen und mit „leer",
+„nichts" oder „0" weitergemacht (Zeile `soft_fail`, eine Hilfe für alle:
+`packages/core/server/utils/softFail.ts`). Der Mensch vor der Seite hat davon
+keinen Fehler gesehen — eine Liste war kürzer, ein Zähler stand auf 0, eine
+Nebensache fiel aus. Nicht gezählt wird der erwartete Fehlgriff (eine Zeile,
+die es nicht gibt; der Blick auf die Sitzung eines Gastes). Nachsehen auf dem
+App-Server:
+`grep '"event":"soft_fail"' ~/.pm2/logs/<prozess>-error-*.log | tail -40` —
+die Zeile nennt nur die Stelle (`where`: Layer, Datei, Aufruf), Status,
+Appwrite-`type`, Fehlerklasse und `repeated` (so viele gleiche Fehler hat die
+Bremse in der Minute davor zusammengefasst); nie eine Meldung, nie eine Id.
+Lesen wie beim Betreiber-Protokoll: Status 400 `general_query_invalid` oder
+404 `table_not_found` / `column_not_found` ⇒ eine Migration fehlt
+(`/api/health` → `schema.state`); 401 ⇒ dem Laufzeit-Schlüssel fehlt ein
+Recht; 429 ⇒ Appwrite bremst; 5xx oder ohne Status ⇒ Appwrite oder ein fremder
+Dienst war nicht erreichbar. Viele Zeilen an EINER Stelle über Tage sind ein
+Fehler im Programm und gehören in OPEN-ITEMS; viele Stellen in derselben
+Stunde sind eine Störung dahinter. Eine Schwelle gibt es bewusst noch nicht —
+erst die Zahlen einer Woche ansehen. „Nicht gezählt" in der Übersicht heißt:
+auf dem Server liegt noch das Zähl-Skript von vor dem 2026-11-21.
 
 **Betreiber-Protokoll fällt aus.** Der Satz nennt App und Zahl der
 gescheiterten Einträge in `audit_logs` (Zeile `audit.write_failed`, ein
