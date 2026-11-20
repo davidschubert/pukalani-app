@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import type { CommunityRole } from '../../../core/shared/communityAuthz'
 import { oneMailLine } from '../../shared/mailText'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Die Einladungs-Mail in EINE Kunden-Community (control-019).
@@ -85,5 +86,5 @@ export async function sendCommunityInviteMail(event: H3Event, input: CommunityIn
         'The invitation is tied to this email address. If you did not expect it, simply ignore this email.',
       ].join('\n')
 
-  return sendMail(event, { to: input.to, subject, text }).catch(() => false)
+  return sendMail(event, { to: input.to, subject, text }).catch(softFail('control:utils/communityInviteMail:sendMail', false))
 }

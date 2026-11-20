@@ -1,6 +1,7 @@
 import { isPlausibleScriptId, plausibleScriptUrl } from '../../../core/shared/analyticsScript'
 import { createMicrocache } from '../../../core/server/utils/microcache'
 import { scriptBelongsToCommunity, scriptSiteDomain } from '../../shared/analyticsScriptOwner'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * GEHÖRT DIESE ZÄHL-KENNUNG ZUR EIGENEN SEITE? (BE-022)
@@ -48,7 +49,7 @@ async function readLimited(response: Response, limit: number): Promise<string | 
     if (done) break
     total += value.byteLength
     if (total > limit) {
-      await reader.cancel().catch(() => {})
+      await reader.cancel().catch(softFail('analytics:utils/verifyAnalyticsScriptOwner:cancel', undefined))
       return null
     }
     chunks.push(value)

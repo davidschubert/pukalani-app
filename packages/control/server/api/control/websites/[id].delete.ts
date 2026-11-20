@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { WEBSITES_TABLE, type WebsiteRow } from '../../../../shared/types/website'
 import { ENTITLEMENTS_TABLE, type EntitlementRow } from '../../../../shared/types/entitlement'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Site aus dem Register entfernen (sites.manage) — entfernt NUR den
@@ -32,9 +33,9 @@ export default defineEventHandler(async (event) => {
   const { rows: entitlements } = await admin.tablesDB.listRows<EntitlementRow>({
     databaseId, tableId: ENTITLEMENTS_TABLE,
     queries: [Query.equal('siteProjectId', row.projectId), Query.limit(100)],
-  }).catch(() => ({ rows: [] as EntitlementRow[] }))
+  }).catch(softFail('control:api/control/websites/[id].delete:listRows', { rows: [] as EntitlementRow[] }))
   await Promise.all(entitlements.map(entitlement =>
-    admin.tablesDB.deleteRow({ databaseId, tableId: ENTITLEMENTS_TABLE, rowId: entitlement.$id }).catch(() => {}),
+    admin.tablesDB.deleteRow({ databaseId, tableId: ENTITLEMENTS_TABLE, rowId: entitlement.$id }).catch(softFail('control:api/control/websites/[id].delete:deleteRow', undefined)),
   ))
 
   return { ok: true, slug: row.slug }

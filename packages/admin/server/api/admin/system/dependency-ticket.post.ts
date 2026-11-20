@@ -3,6 +3,7 @@ import type { DependencyTicketInput } from '../../../../../core/shared/dependenc
 import type { DependencyTicketResponse } from '../../../../shared/types/system'
 import { ALL_DEP_NAMES, latestAppwriteVersion, latestVersion, pkgVersion } from '../../../utils/dependencies'
 import { readManifest, usableVersion } from '../../../utils/systemManifestRead'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 const schema = z.object({
   kind: z.enum(['package', 'appwrite']),
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event): Promise<DependencyTicketRespons
     // apps/platform/server/utils/tenantBrandMark.ts.
     const versionRes = await $fetch<{ version: string }>(`${config.public.appwriteEndpoint}/health/version`, {
       headers: { 'X-Appwrite-Project': config.public.appwriteProjectId },
-    }).catch(() => null)
+    }).catch(softFail('admin:api/admin/system/dependency-ticket.post:$fetch', null))
     const to = await latestAppwriteVersion()
     if (!to) {
       throw createError({ status: 502, statusText: 'Could not resolve latest version' })

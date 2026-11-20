@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { toCoursePreview } from '../../../shared/coursePreview'
 import { COURSES_TABLE, ENROLLMENTS_TABLE, type CourseListResponse, type CourseRow, type EnrollmentRow } from '../../../shared/types/course'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 const PAGE_SIZE = 25
 
@@ -33,14 +34,14 @@ export default defineEventHandler(async (event): Promise<CourseListResponse> => 
   })
 
   const user = event.context.user
-  const member = user ? await resolveCommunityMembership(event).catch(() => false) : false
+  const member = user ? await resolveCommunityMembership(event).catch(softFail('courses:api/courses/index.get:resolveCommunityMembership', false)) : false
 
   const ids = res.rows.map(row => row.$id)
   const enrolled = new Set<string>()
   if (user && member && ids.length > 0) {
     const enrollments = await db.list<EnrollmentRow>(ENROLLMENTS_TABLE, [
       Query.equal('userId', user.$id), Query.equal('courseId', ids), Query.limit(ids.length),
-    ]).catch(() => ({ rows: [] as EnrollmentRow[] }))
+    ]).catch(softFail('courses:api/courses/index.get:list', { rows: [] as EnrollmentRow[] }))
     for (const row of enrollments.rows) enrolled.add(row.courseId)
   }
 

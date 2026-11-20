@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Die Einladungs-Mail (control-017).
@@ -58,5 +59,5 @@ export async function sendInviteMail(event: H3Event, input: InviteMailInput): Pr
         'If you did not request this, simply ignore this email.',
       ].join('\n')
 
-  return sendMail(event, { to: input.to, subject, text }).catch(() => false)
+  return sendMail(event, { to: input.to, subject, text }).catch(softFail('control:utils/inviteMail:sendMail', false))
 }

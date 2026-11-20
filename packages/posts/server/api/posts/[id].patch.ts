@@ -6,6 +6,7 @@ import { decidePostAuthorAction } from '../../../shared/postAuthorPolicy'
 import { postContentEdited } from '../../../shared/postEdit'
 import { mayEditPost, mayEditPostFields, type PostEditActor, type PostEditField } from '../../../shared/postEditRights'
 import { POLL_VOTES_TABLE, POSTS_TABLE, type CommunityPost } from '../../../shared/types/post'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * Titel/Body/Kategorie bearbeiten — nur published/scheduled. Polls sind nach
@@ -254,7 +255,7 @@ export default defineEventHandler(async (event) => {
      * darunter). Best-effort im Core-Vertrag (wirft nie, loggt).
      */
     await updateActivitySnippetForObject(event, 'post', id, postActivitySnippet(updated))
-    const linked = await syncTopicLinks(event, updated).catch(() => ({ added: 0, removed: 0 }))
+    const linked = await syncTopicLinks(event, updated).catch(softFail('posts:api/posts/[id].patch:syncTopicLinks', { added: 0, removed: 0 }))
     if (linked.added > 0 && isAuthor) {
       await recordUserCounterEvents(event, [{ userId: user.$id, kind: 'linksMade', delta: linked.added }])
     }

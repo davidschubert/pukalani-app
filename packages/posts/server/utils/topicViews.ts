@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { POST_VIEWS_TABLE, type PostViewCounter } from '../../shared/types/post'
 import { viewBufferKey, viewDedupeSubject } from '../../shared/topicViewKeys'
+import { softFail, softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * AUFRUF-ZÄHLUNG JE TOPIC (F1 Stufe 2, Spalte „Aufrufe").
@@ -189,7 +190,7 @@ async function flushScope(event: H3Event, scope: string): Promise<void> {
     const bumped = await db
       .increment<PostViewCounter>(POST_VIEWS_TABLE, postId, 'count', { value: delta }, 'View counter not found')
       .then(() => true)
-      .catch(() => false)
+      .catch(softFail('posts:utils/topicViews:increment', false))
     if (bumped) continue
 
     await db.create<PostViewCounter>(POST_VIEWS_TABLE, { postId, count: delta }, {
@@ -199,12 +200,12 @@ async function flushScope(event: H3Event, scope: string): Promise<void> {
       // ohne Leser gibt es kein Realtime-Ereignis, was der halbe Grund für die
       // eigene Tabelle ist.
       permissions: [],
-    }).catch(async () => {
+    }).catch(softFailWith('posts:utils/topicViews:create', async () => {
       // 409 aus einem Wettlauf: die Zeile existiert jetzt, also nachzählen.
       await db
         .increment<PostViewCounter>(POST_VIEWS_TABLE, postId, 'count', { value: delta }, 'View counter not found')
-        .catch(() => null)
-    })
+        .catch(softFail('posts:utils/topicViews:increment#2', null))
+    }, { quiet: [409] }))
   }
 }
 
@@ -230,7 +231,7 @@ export async function topicViewsFor(event: H3Event, postIds: string[]): Promise<
       Query.equal('postId', ids),
       Query.limit(ids.length),
     ])
-    .catch(() => ({ rows: [] as PostViewCounter[] }))
+    .catch(softFail('posts:utils/topicViews:list', { rows: [] as PostViewCounter[] }))
 
   return new Map(rows.map(row => [row.postId, row.count]))
 }

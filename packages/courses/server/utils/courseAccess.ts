@@ -1,6 +1,7 @@
 import { Permission, Query, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { COURSE_PAID_UNAVAILABLE_CODE, COURSE_UPGRADE_REQUIRED_CODE, COURSES_TABLE, ENROLLMENTS_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, normalizeCourseAccess, type CourseAccess, type CourseRow, type EnrollmentRow, type LessonProgressRow, type LessonRow } from '../../shared/types/course'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * RECHTE-MODELL „NUR SERVER-ZUGRIFF" (SEC-029, Muster `pages`/`lessons`):
@@ -74,7 +75,7 @@ export async function assertCourseAccess(event: H3Event, course: CourseRow): Pro
       data: { code: COURSE_PAID_UNAVAILABLE_CODE },
     })
   }
-  const allowed = await accessGuard(event, course).catch(() => false)
+  const allowed = await accessGuard(event, course).catch(softFail('courses:utils/courseAccess:accessGuard', false))
   if (!allowed) {
     throw createError({
       status: 403,
@@ -115,7 +116,7 @@ export async function enrollmentFor(event: H3Event, courseId: string, userId: st
   return tenantDb(event, { as: 'operator' }).find<EnrollmentRow>(ENROLLMENTS_TABLE, [
     Query.equal('courseId', courseId),
     Query.equal('userId', userId),
-  ]).catch(() => null)
+  ]).catch(softFail('courses:utils/courseAccess:find', null))
 }
 
 /** published-Lektionen eines Kurses zählen (Recount für lessonCount) */
@@ -175,7 +176,7 @@ export async function removeLessonProgress(event: H3Event, lessonId: string): Pr
     }
   }
   catch {
-    const remaining = await db.count(LESSON_PROGRESS_TABLE, byLesson).catch(() => null)
+    const remaining = await db.count(LESSON_PROGRESS_TABLE, byLesson).catch(softFail('courses:utils/courseAccess:count', null))
     logEvent('error', 'courses.lesson_progress_cleanup_failed', { lessonId, remaining })
   }
 }

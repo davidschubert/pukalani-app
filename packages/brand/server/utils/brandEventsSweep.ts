@@ -2,6 +2,7 @@ import type { Models } from 'node-appwrite'
 import { Query } from 'node-appwrite'
 import { BRAND_EVENTS_TABLE } from './brandStore'
 import { brandEventSweepDue, brandEventsRetentionCutoff } from '../../shared/brandEventsRetention'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DER EREIGNIS-SWEEP (BS1 R1b) — die Mechanik zur 24-Monats-Frist aus dem Kopf
@@ -103,7 +104,7 @@ export async function runBrandEventsSweep(now: Date = new Date()): Promise<Brand
         Query.orderAsc('$createdAt'),
         Query.limit(SWEEP_BATCH),
       ],
-    }).catch(() => null)
+    }).catch(softFail('brand:utils/brandEventsSweep:listRows', null))
 
     // FAIL-SOFT UND STILL: auf einer Instanz OHNE die brand-Migrationen gibt es
     // die Tabelle nicht, und der Layer kann trotzdem einkompiliert sein (der

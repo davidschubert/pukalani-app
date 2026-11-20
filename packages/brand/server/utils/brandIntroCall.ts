@@ -18,6 +18,7 @@ import {
   brandDb,
   isAppwriteNotFound,
 } from './brandStore'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DER UNTERBAU DES ERSTGESPRÄCHS (BS1 Paket Z0) — die zwei Mails, die eine
@@ -118,7 +119,7 @@ export async function notifyBrandIntroOperator(
       entry.message,
       '',
     ].join('\n'),
-  }).catch(() => false)
+  }).catch(softFail('brand:utils/brandIntroCall:sendMail', false))
 }
 
 /**
@@ -181,7 +182,7 @@ export async function sendBrandIntroConfirmMail(
       ? 'Eure Anfrage für ein Erstgespräch'
       : 'Your request for an intro call',
     text: entry.locale === 'de' ? de : en,
-  }).catch(() => false)
+  }).catch(softFail('brand:utils/brandIntroCall:sendMail#2', false))
 }
 
 /**

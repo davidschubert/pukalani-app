@@ -4,6 +4,7 @@ import { createAdminClient } from '../../lib/appwrite'
 import { decoySecurityPhrase } from '../../utils/securityPhrase'
 import { recoverySchema } from '../../../schemas/auth'
 import { AUTH_METHOD_UNAVAILABLE_CODE, instanceAuthFeatureGap } from '../../../shared/authMethodAvailability'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Email-OTP anfordern (passwortloser Login). Appwrite legt unbekannte
@@ -89,7 +90,7 @@ export default defineEventHandler(async (event) => {
   if (!(await allowRecipientMail(event, 'auth:otp', email, AUTH_MAIL_RECIPIENT_LIMIT))) {
     const existing = await createAdminClient(event).users
       .list({ queries: [Query.equal('email', email), Query.limit(1)] })
-      .catch(() => null)
+      .catch(softFail('core:api/auth/otp.post:list', null))
     return { ok: true, userId: existing?.users[0]?.$id ?? ID.unique(), phrase: decoySecurityPhrase() }
   }
 

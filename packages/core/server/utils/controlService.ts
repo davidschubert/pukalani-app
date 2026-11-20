@@ -1,6 +1,7 @@
 import { Account, Client } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { seamSecretToSend } from './sharedSeamSecret'
+import { softFail } from './softFail'
 
 /**
  * Der Ruf ins Control Plane — als GENERISCHER Transport im Fundament.
@@ -133,7 +134,7 @@ export async function mintServiceJwt(event: H3Event, sessionSecret?: string): Pr
  *  anonym gehen dürfen (Feedback senden, Entscheidung 4). */
 export async function mintServiceJwtIfPossible(event: H3Event): Promise<string | undefined> {
   if (!event.context.user) return undefined
-  return await mintServiceJwt(event).catch(() => undefined)
+  return await mintServiceJwt(event).catch(softFail('core:utils/controlService:mintServiceJwt', undefined, { quiet: [401] }))
 }
 
 export async function callControlService<T>(event: H3Event | undefined, path: string, body: Record<string, unknown>): Promise<T> {

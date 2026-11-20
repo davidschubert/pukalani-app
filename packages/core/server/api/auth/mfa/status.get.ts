@@ -1,5 +1,6 @@
 import { createSessionClient } from '../../../lib/appwrite'
 import type { MfaStatusResponse } from '../../../../shared/types/auth-responses'
+import { softFail } from '../../../utils/softFail'
 
 /**
  * Zeigt die Sicherheits-Karte, ob der Zweitfaktor an ist.
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event): Promise<MfaStatusResponse> => {
   }
 
   const { account } = createSessionClient(event)
-  const factors = await account.listMFAFactors().catch(() => null)
+  const factors = await account.listMFAFactors().catch(softFail('core:api/auth/mfa/status.get:listMFAFactors', null, { quiet: [401] }))
 
   return {
     // `mfa` steht auf dem User-Modell von account.get() (Middleware 02.auth).

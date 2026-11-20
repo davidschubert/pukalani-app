@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
 import { BILLING_CUSTOMERS_TABLE, type BillingCustomerRow } from '../../shared/types/billing'
 import { customerIdempotencyKey } from './checkoutIdempotency'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * userId ↔ stripeCustomerId (B11): lazy beim ersten Checkout.
@@ -69,7 +70,7 @@ export async function ensureCustomer(event: H3Event, user: Models.User<Models.Pr
         // Nur einen ECHTEN Doppel-Kunden aufräumen (best-effort), nie den
         // gemeinsamen aus dem Idempotenz-Schlüssel.
         if (row.stripeCustomerId !== customer.id) {
-          await stripe.customers.del(customer.id).catch(() => {})
+          await stripe.customers.del(customer.id).catch(softFail('billing:utils/billingCustomer:del', undefined))
         }
         return row
       }

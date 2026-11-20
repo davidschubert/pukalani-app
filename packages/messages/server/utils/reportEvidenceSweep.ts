@@ -16,6 +16,7 @@ import {
   type ReportEvidenceSweepMode,
 } from '../../shared/messageReport'
 import { MESSAGE_REPORT_TARGET, MESSAGES_TABLE } from '../../shared/types/message'
+import { softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * DER LÖSCH-LAUF FÜR DEN BELEG GEMELDETER NACHRICHTEN (SEC-033, Davids
@@ -256,10 +257,10 @@ export async function sweepReportEvidence(
       outcome: lost ? 'lost' : result.failed > 0 ? 'incomplete' : 'done',
       detail,
       nowMs: now(),
-    }).catch(() => {
+    }).catch(softFailWith('messages:utils/reportEvidenceSweep:finishRunLease', () => {
       // Der Herzschlag hört auf; nach der Frist gilt der Lauf als abgebrochen
       // und der nächste Takt darf wieder (runLeaseState).
-    })
+    }))
   }
   if (lost) return { skipped: 'lease_lost' }
   return result

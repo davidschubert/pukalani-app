@@ -1,6 +1,7 @@
 import { Account, Client } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { seamSecretMatches, seamSecretsFor } from '../../../core/server/utils/sharedSeamSecret'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Die Vertrauensnaht des Self-Service-Onboardings.
@@ -180,7 +181,7 @@ export async function verifyIdentityAgainst(endpoint: string, projectId: string,
     .setProject(projectId)
     .setJWT(jwt)
 
-  const user = await new Account(client).get().catch(() => null)
+  const user = await new Account(client).get().catch(softFail('control:utils/onboardingService:get', null, { quiet: [401] }))
   if (!user) {
     throw createError({ status: 401, statusText: 'Invalid runtime session' })
   }

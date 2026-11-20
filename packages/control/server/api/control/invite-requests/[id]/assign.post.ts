@@ -1,6 +1,7 @@
 import { INVITE_REQUESTS_TABLE, type InviteRequestRow } from '../../../../../shared/types/inviteRequest'
 import { assignCode, remindCode } from '../../../../utils/inviteRequests'
 import { sendInviteMail } from '../../../../utils/inviteMail'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Betreiber: Code zuweisen bzw. erinnern (sites.manage).
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
     databaseId: config.public.appwriteDatabaseId,
     tableId: INVITE_REQUESTS_TABLE,
     rowId: id,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/invite-requests/[id]/assign.post:getRow', null))
   if (!request) throw createError({ status: 404, statusText: 'Request not found' })
 
   if ((request.status || 'new') === 'redeemed') {

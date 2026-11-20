@@ -4,6 +4,7 @@ import { communityRoleHasCapability, isCommunityRole } from '../../../../../core
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../shared/types/communityMember'
 import { COMMUNITIES_TABLE, resolveTenantOpenRegistration, type TenantRow } from '../../../../shared/types/tenantRecord'
 import { requireOnboardingCaller, verifyRuntimeIdentity } from '../../../utils/onboardingService'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Self-Service: „Offene Registrierung" EINER Community umschalten
@@ -80,7 +81,7 @@ export default defineEventHandler(async (event) => {
   // Tenant zeigen. 404 statt 403 — eine fremde Id soll sich nicht bestätigen.
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/registration.post:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

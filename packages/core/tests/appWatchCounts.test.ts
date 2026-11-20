@@ -34,6 +34,7 @@ const LINE_FORMS = [
   /^mailbremse ausgeloest=\d+ letzte_min=(\d+|nie)$/,
   /^erinnerungen takte=\d+ ohne_antwort=\d+ termine=\d+ empfaenger=\d+ gefragt=\d+$/,
   /^reichweite aelteste_zeile_min=(\d+|nie)$/,
+  /^stillefehler zeilen=\d+ stellen=\d+$/,
   /^lauf name=[a-z][a-z0-9-]{1,39} takt_min=\d+ ok=\d+ gescheitert=\d+ uebersprungen=\d+ haengt=\d+ letzter_ok_min=(\d+|nie) letzter_lauf_min=(\d+|nie) letztes_ergebnis=(ok|failed|skipped|nie) angemeldet_min=(\d+|nie)$/,
   /^ende laeufe=\d+$/,
 ]
@@ -236,6 +237,7 @@ describe('ops/app-watch-counts.mjs', () => {
       'mailbremse ausgeloest=0 letzte_min=nie',
       'erinnerungen takte=0 ohne_antwort=0 termine=0 empfaenger=0 gefragt=0',
       'reichweite aelteste_zeile_min=nie',
+      'stillefehler zeilen=0 stellen=0',
       'ende laeufe=0',
     ])
   })
@@ -311,6 +313,23 @@ describe('ops/app-watch-counts.mjs', () => {
       const old = new Date(Date.now() - 9 * 24 * 3600_000)
       utimesSync(rotated('.9'), old, old)
       expect(lineOf(run(PROC).lines, 'fehler ')).toBe('fehler server=0 browser=0 browser_gedeckelt=0')
+    })
+
+    it('zählt still abgefangene Fehler (Q13): Zeilen samt `repeated`, verschiedene Stellen — und gibt nur zwei Zahlen aus', () => {
+      writeLog('out', 4, [
+        event(10, 'warn', 'soft_fail', { where: 'posts:utils/topicLinks:listCategories', status: 500, type: 'general_unknown' }),
+        event(9, 'warn', 'soft_fail', { where: 'posts:utils/topicLinks:listCategories', status: 500, repeated: 40 }),
+        event(8, 'warn', 'soft_fail', { where: 'control:api/control/invites/[id].patch:getRow#2', status: 503 }),
+        // Vergiftet: die Stelle zählt als Zeile, aber nicht als Kennung; `repeated` in falscher Form zählt 0.
+        event(7, 'warn', 'soft_fail', { where: 'mail@example.org mit leerzeichen', status: 500, repeated: 'viele' }),
+        // Älter als das Fenster.
+        event(40 * 60, 'warn', 'soft_fail', { where: 'core:utils/x:get', status: 500 }),
+      ])
+      writeLog('error', 4, [])
+      const { lines } = run(PROC)
+      expect(lineOf(lines, 'stillefehler ')).toBe('stillefehler zeilen=44 stellen=2')
+      expect(lines.join('\n')).not.toContain('topicLinks')
+      expect(lines.join('\n')).not.toContain('example.org')
     })
 
     it('nennt, wie weit die gelesenen Zeilen zurückreichen — über die laufende Datei und ihre Geschwister', () => {

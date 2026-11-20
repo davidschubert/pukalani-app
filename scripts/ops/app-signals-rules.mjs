@@ -125,6 +125,8 @@ export const LINE_FORMS = {
   reminders: /^erinnerungen takte=(\d{1,9}) ohne_antwort=(\d{1,9}) termine=(\d{1,9}) empfaenger=(\d{1,9})(?: gefragt=(\d{1,9}))?$/,
   /** Seit 2026-11-20 — OPTIONAL wie `audit`: Alter der ältesten gelesenen Log-Zeile. */
   coverage: new RegExp(`^reichweite aelteste_zeile_min=${WORD.age}$`),
+  /** Seit Q13 (2026-11-21) — OPTIONAL wie `audit`: still abgefangene Fehler (`soft_fail`) und die Zahl der Stellen. */
+  softFail: /^stillefehler zeilen=(\d{1,9}) stellen=(\d{1,4})$/,
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -190,6 +192,10 @@ export function parseCounts(text) {
       // `null` = das Skript hat keine einzige Zeile mit Zeit gelesen; ohne die
       // Zeile (Server mit dem Skript davor) bleibt das Feld undefiniert.
       counts.oldestLineMin = age(hit[1])
+    }
+    else if ((hit = line.match(LINE_FORMS.softFail))) {
+      // Ohne die Zeile (Server mit dem Skript davor) bleiben beide Felder undefiniert.
+      Object.assign(counts, { softFail: Number(hit[1]), softFailPlaces: Number(hit[2]) })
     }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])
@@ -355,6 +361,16 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
     notes.push(`${where} ${counts.auditFailed} Eintrag/Einträge ins Betreiber-Protokoll gescheitert in ${counts.hours} h, Schwelle ${rules.auditWriteFailures}`)
   }
 
+  // ── Still abgefangene Fehler (Q13) ────────────────────────────────────
+  // Zählt nur: eine Stelle hat einen Fehler abgefangen und mit ihrem
+  // Ersatzwert weitergemacht (`soft_fail`, core/server/utils/softFail.ts).
+  // Eine Schwelle gibt es erst, wenn die Zahlen einer Woche vorliegen. Ohne
+  // die Zeile ist das Zähl-Skript auf dem Server älter — dann steht in der
+  // Übersicht „nicht gezählt", ein Hinweis wäre nur Lärm.
+  if (counts.softFail > 0) {
+    notes.push(`${where} ${counts.softFail} still abgefangene(r) Fehler an ${counts.softFailPlaces} Stelle(n) in ${counts.hours} h — zählt nur. Welche: im Log der App die Zeilen \`soft_fail\` lesen, das Feld \`where\` nennt die Stelle. (${RUNBOOK}, „Still abgefangene Fehler")`)
+  }
+
   // ── Berichte der Skript-Regel (SE1 a) ─────────────────────────────────
   // Zählt nur: die Regel beobachtet. Eine Zeile `csp.report` je VERSCHIEDENEM
   // Verstoß und Stunde — ohne die Zeile ist das Zähl-Skript auf dem Server
@@ -413,7 +429,7 @@ export function summaryLine({ site, counts, expected = new Set(), rules = RULES 
     count('overdue') ? `${count('overdue')} überfällig` : '',
     count('missing') ? `${count('missing')} nicht gemeldet` : '',
   ].filter(Boolean).join(', ')
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Termine nicht erreichbar ${counts.reminderEvents ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut${rest ? ` (${rest})` : ''}`
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Termine nicht erreichbar ${counts.reminderEvents ?? 'nicht gezählt'} · Still abgefangen ${counts.softFail ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut${rest ? ` (${rest})` : ''}`
 }
 
 /**

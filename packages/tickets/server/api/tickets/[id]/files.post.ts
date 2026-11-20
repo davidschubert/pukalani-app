@@ -1,6 +1,7 @@
 import { ID } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { TICKET_FILES_BUCKET, TICKET_FILES_TABLE, type TicketFileRow } from '../../../../shared/types/ticket'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Anhang hochladen (multipart) — Bilder/PDF per Magic Bytes, Text-Formate
@@ -52,7 +53,7 @@ export default defineEventHandler(async (event): Promise<TicketFileRow> => {
     },
   }).catch(async (error) => {
     // Storage-Leiche vermeiden, wenn die Metadaten-Row scheitert
-    await admin.storage.deleteFile({ bucketId: TICKET_FILES_BUCKET, fileId: stored.$id }).catch(() => {})
+    await admin.storage.deleteFile({ bucketId: TICKET_FILES_BUCKET, fileId: stored.$id }).catch(softFail('tickets:api/tickets/[id]/files.post:deleteFile', undefined))
     throw toH3Error(error, 'Could not save file metadata')
   })
 })

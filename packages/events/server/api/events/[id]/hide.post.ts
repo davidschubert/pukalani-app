@@ -1,5 +1,6 @@
 import { canHideEvent, hideIsRepair } from '../../../../shared/eventModerationPolicy'
 import { EVENTS_TABLE, type EventRow } from '../../../../shared/types/event'
+import { softFailWith } from '../../../../../core/server/utils/softFail'
 
 /**
  * Moderation: Termin ausblenden (F15) — zweiphasig wie posts/comments: erst der
@@ -89,7 +90,7 @@ export default defineEventHandler(async (event) => {
     const withdraw = () => db.updatePermissions(EVENTS_TABLE, id, withdrawn)
     // Phase 2 muss halten — Retry für transiente Fehler, persistente laut loggen
     await withdraw()
-      .catch(() => withdraw())
+      .catch(softFailWith('events:api/events/[id]/hide.post:withdraw', () => withdraw()))
       .catch((error) => {
         console.error(`[events] Permission-Entzug fehlgeschlagen — hidden-Event ${id} bleibt Roh-REST-lesbar bis zum erneuten Ausblenden (holt den Entzug nach):`, error)
       })

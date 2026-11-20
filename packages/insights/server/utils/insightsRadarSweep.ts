@@ -26,6 +26,7 @@ import {
   insightsYoutubeVideosSchema,
   insightsYoutubeVideosUrl,
 } from '../../shared/insightsYoutube'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DER TÄGLICHE LAUF DES THEMENRADARS (BI1 I4, Plan §9.6).
@@ -271,7 +272,7 @@ interface TablesDbLike {
  */
 async function defaultFetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
-  const body = await response.json().catch(() => null)
+  const body = await response.json().catch(softFail('insights:utils/insightsRadarSweep:json', null))
   if (!response.ok) throw new InsightsYoutubeError(response.status, insightsYoutubeReason(body))
   return body
 }

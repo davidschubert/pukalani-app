@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import type { DashboardStatValue } from '../../shared/types/dashboard-stat'
+import { softFail } from './softFail'
 
 /**
  * DIE ZAHLEN zur Kennzahlen-Registry (U9/K2, 2026-08-11) — die zweite Hälfte
@@ -72,7 +73,7 @@ export async function collectDashboardStatValues(
   if (ids.size === 0) return {}
   const results = await Promise.all(
     [...providers.values()].map(provider =>
-      provider.collect(event, ids).catch(() => ({} as Record<string, DashboardStatValue>)),
+      provider.collect(event, ids).catch(softFail('core:utils/dashboardStatValues:collect', {} as Record<string, DashboardStatValue>)),
     ),
   )
   return Object.assign({}, ...results) as Record<string, DashboardStatValue>

@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { BILLING_SUBSCRIPTIONS_TABLE, ENTITLED_STATUSES, type BillingSubscriptionRow } from '../../shared/types/billing'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Entitlement-Fundament (B6): EINE indizierte Query nach userId, pro Request
@@ -20,7 +21,7 @@ export async function getActiveSubscription(event: H3Event): Promise<BillingSubs
     databaseId: config.public.appwriteDatabaseId,
     tableId: BILLING_SUBSCRIPTIONS_TABLE,
     queries: [Query.equal('userId', user.$id), Query.orderDesc('$updatedAt'), Query.limit(5)],
-  }).catch(() => ({ rows: [] as BillingSubscriptionRow[] }))
+  }).catch(softFail('billing:utils/entitlements:listRows', { rows: [] as BillingSubscriptionRow[] }))
 
   const active = res.rows.find(row => (ENTITLED_STATUSES as readonly string[]).includes(row.status)) ?? null
   ctx._billingSubscription = active

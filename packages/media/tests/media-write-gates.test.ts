@@ -61,7 +61,9 @@ describe('Sichtbarkeit: die zweite Phase bleibt nicht still', () => {
   it('versucht sie erneut und loggt laut, statt den halben Zustand zu verschweigen', () => {
     // Scheitert Phase 2, sagt der Eintrag „Entwurf", während die Datei per
     // Roh-URL weiter abrufbar ist (Muster: Zwei-Phasen-Hide der Kommentare).
-    expect(permissions).toContain('.catch(() => run())')
+    // Der zweite Versuch läuft seit Q13 über softFailWith: derselbe Rückweg,
+    // dazu steht der erste Fehlschlag im Protokoll.
+    expect(permissions).toContain(".catch(softFailWith('media:utils/mediaPermissions:run', () => run()))")
     expect(permissions).toContain('console.error')
   })
 })

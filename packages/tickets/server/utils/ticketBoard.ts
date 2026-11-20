@@ -3,6 +3,7 @@ import type { TablesDB } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { TICKETS_TABLE, TICKET_LISTS_TABLE } from '../../shared/types/ticket'
 import type { TicketListRow, TicketRow } from '../../shared/types/ticket'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Gemeinsame Helfer der Ticket-Routen. Alle Writes laufen über den
@@ -47,7 +48,7 @@ export async function requireTicketList(event: H3Event, listId: string): Promise
     databaseId: config.public.appwriteDatabaseId,
     tableId: TICKET_LISTS_TABLE,
     rowId: listId,
-  }).catch(() => null)
+  }).catch(softFail('tickets:utils/ticketBoard:getRow', null))
   if (!row) {
     throw createError({ status: 400, statusText: 'Unknown list' })
   }

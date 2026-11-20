@@ -118,6 +118,7 @@ export default defineEventHandler(async (event): Promise<MarketRunResponse> => {
   // Das Flag darf aus der Adresszeile ODER dem Rumpf kommen: die Seite ruft
   // mit `?report=1`, ein Beweis bequemer mit Rumpf. Beides meint dasselbe.
   const query = getQuery(event)
+  // eslint-disable-next-line pukalani/no-silent-catch -- ein fehlender oder kaputter Rumpf des Aufrufers ist kein Serverfehler, der Ersatz ist die Antwort darauf
   const body = await readBody(event).catch(() => null) as { withReport?: unknown } | null
   const withReport = query.report === '1' || query.report === 'true' || body?.withReport === true
 

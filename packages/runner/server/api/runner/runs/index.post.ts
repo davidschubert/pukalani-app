@@ -4,6 +4,7 @@ import { permissionModeAllowed } from '../../../../shared/runGuards'
 import { checkRequestedTestCommands, offeredTestCommands } from '../../../../shared/testCommands'
 import { resolveRunSubjectTrust } from '../../../utils/runSubjectTrust'
 import { RUNNERS_TABLE, RUNS_TABLE, type RunRow, type RunnerRow } from '../../../../shared/types/runner'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Einen Lauf anlegen — docs/plans/AI-RUNNER.md § 5, Board-Seite.
@@ -91,7 +92,7 @@ export default defineEventHandler(async (event): Promise<RunRow> => {
   if (body.runnerId) {
     runner = await tablesDB.getRow<RunnerRow>({
       databaseId, tableId: RUNNERS_TABLE, rowId: body.runnerId,
-    }).catch(() => null)
+    }).catch(softFail('runner:api/runner/runs/index.post:getRow', null))
     if (!runner || runner.status !== 'active') {
       throw createError({ status: 400, statusText: 'Runner unavailable', data: { code: 'runner_unavailable' } })
     }

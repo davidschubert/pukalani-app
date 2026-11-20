@@ -1,5 +1,6 @@
 import { callControlPlane, mintRuntimeJwt } from '../../../utils/controlPlane'
 import type { CustomDomainState } from '../../../../../control/server/utils/customDomainService'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Die eigene Domain wieder abgeben (control-035).
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event) => {
   )
 
   if (before.forms.length) {
-    await removeAppwriteWebPlatforms(event, before.forms).catch(() => null)
+    await removeAppwriteWebPlatforms(event, before.forms).catch(softFail('onboarding:api/community/domain/index.delete:removeAppwriteWebPlatforms', null))
   }
   return after
 })

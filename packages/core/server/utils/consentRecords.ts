@@ -15,6 +15,7 @@ import {
   type ConsentConfig,
 } from '../../shared/consent'
 import type { ConsentKind, ConsentRecordData, ConsentWay, RequiredConsent } from '../../shared/types/consent'
+import { softFail } from './softFail'
 
 /**
  * DER NACHWEIS DER ZUSTIMMUNG (SEC-008) — Schreiber und Leser der Tabelle
@@ -310,7 +311,7 @@ export async function missingConsents(event: H3Event, userId: string): Promise<C
   const contextUser = event.context.user
   let account: AccountSnapshot | null = contextUser?.$id === userId ? contextUser : null
   if (!account) {
-    account = await createAdminClient(event).users.get({ userId }).catch(() => null)
+    account = await createAdminClient(event).users.get({ userId }).catch(softFail('core:utils/consentRecords:get', null))
   }
 
   const stillMissing: ConsentKind[] = []

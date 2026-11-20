@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { COMMENTS_TABLE } from '../../../shared/types/comment'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 const MAX_TARGETS = 50
 
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event): Promise<{ counts: Record<string
       Query.equal('targetId', id),
       Query.equal('targetType', targetType),
       Query.notEqual('status', 'hidden'),
-    ]).catch(() => 0),
+    ]).catch(softFail('comments:api/comments/counts.get:count', 0)),
   ))
 
   return { counts: Object.fromEntries(ids.map((id, index) => [id, totals[index] ?? 0])) }

@@ -2,6 +2,7 @@ import { ID, Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { ABUSE_REPORTS_TABLE, type AbuseCategory, type AbuseReportRow } from '../../shared/abuseReports'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Missbrauchsmeldungen — die I/O-Seite (M13, Auslöser 3). Die Entscheidungen
@@ -42,7 +43,7 @@ export async function createAbuseReport(event: H3Event, input: IncomingAbuseRepo
     databaseId,
     tableId: COMMUNITIES_TABLE,
     queries: [Query.equal('host', input.host), Query.limit(1)],
-  }).catch(() => ({ rows: [] as TenantRow[] }))
+  }).catch(softFail('control:utils/abuseReports:listRows', { rows: [] as TenantRow[] }))
   const community = rows[0]
 
   return await admin.tablesDB.createRow<AbuseReportRow>({
@@ -95,7 +96,7 @@ export async function notifyOperatorsAboutAbuse(event: H3Event, report: AbuseRep
         '',
         `Sichten im Dashboard: ${appUrl}${link}`,
       ].filter(Boolean).join('\n'),
-    }).catch(() => false)
+    }).catch(softFail('control:utils/abuseReports:sendMail', false))
   }
 
   try {

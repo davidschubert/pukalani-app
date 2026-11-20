@@ -6,6 +6,7 @@ import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tena
 import { parseSiteProfile, serializeSiteProfile } from '../../../../shared/onboarding'
 import { communityProfileSchema, type CommunityProfileResult } from '../../../../schemas/communityProfile'
 import { requireOnboardingCaller, verifyRuntimeIdentity } from '../../../utils/onboardingService'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Self-Service: NAME UND BESCHREIBUNG einer Community ändern (U5, Befund K1).
@@ -76,7 +77,7 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
   // geprüft haben? 404 statt 403 — eine fremde Id soll sich nicht bestätigen.
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/profile.post:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

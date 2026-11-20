@@ -9,6 +9,7 @@ import {
   userActivityFromAuditRow,
   type UserActivityAuditRow,
 } from '../../shared/userActivity'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Leseweg der Aktivitätsliste in der Admin-Nutzeransicht (AL1; Regeln:
@@ -85,7 +86,7 @@ export async function readUserActivity(
     // Ort NUR für Selbst-Zeilen: die IP einer Betreiber-Zeile gehört dem
     // Betreiber, für sie wird gar nicht erst nachgeschlagen.
     const place = first.origin === 'self' && first.ip
-      ? await source.resolvePlace(first.ip).catch(() => '')
+      ? await source.resolvePlace(first.ip).catch(softFail('admin:utils/userActivity:resolvePlace', ''))
       : ''
     activity.push(place ? { ...first, place } : first)
   }

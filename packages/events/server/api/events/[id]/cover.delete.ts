@@ -1,4 +1,5 @@
 import { EVENTS_TABLE, EVENT_COVERS_BUCKET, type EventRow } from '../../../../shared/types/event'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Cover entfernen (events.manage) — Row zuerst, Datei danach (best-effort).
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
   await db.update(EVENTS_TABLE, id, { coverFileId: null }, 'Event not found')
     .catch((error) => { throw toH3Error(error, 'Could not remove cover') })
 
-  await createAdminClient(event).storage.deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: row.coverFileId }).catch(() => {})
+  await createAdminClient(event).storage.deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: row.coverFileId }).catch(softFail('events:api/events/[id]/cover.delete:deleteFile', undefined))
 
   return { ok: true }
 })

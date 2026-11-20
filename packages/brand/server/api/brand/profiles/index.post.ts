@@ -14,6 +14,7 @@ import {
   toProfileSummary,
 } from '../../../utils/brandStore'
 import { recordBrandEvent } from '../../../utils/brandEvents'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * EIN NEUES BRANDING ANLEGEN — Profil-Kopf UND alle NEUN Baustein-Zeilen in
@@ -156,11 +157,11 @@ export default defineEventHandler(async (event): Promise<BrandProfileDetailRespo
     for (const stepKey of BRAND_STEP_KEYS) {
       await tablesDB.deleteRow({
         databaseId, tableId: BRAND_STEPS_TABLE, rowId: brandStepRowId(profileId, stepKey),
-      }).catch(() => {})
+      }).catch(softFail('brand:api/brand/profiles/index.post:deleteRow', undefined))
     }
     await tablesDB.deleteRow({
       databaseId, tableId: BRAND_PROFILES_TABLE, rowId: profileId,
-    }).catch(() => {})
+    }).catch(softFail('brand:api/brand/profiles/index.post:deleteRow#2', undefined))
     throw toH3Error(error, 'Brand profile could not be created')
   }
 
