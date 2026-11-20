@@ -1,0 +1,104 @@
+/* Pukalani Schrift-Kontrast — GENERIERT von scripts/generate-themes.ts, nicht von Hand editieren.
+   Die zwei blassen Textfarben je neutraler Palette und die zwei Statusfarben: Farbton wie
+   in neutral.css bzw. Tailwind, Helligkeit so weit verschoben, dass sie als Schrift
+   4,5 zu 1 erreichen (Logik + Gate: shared/textContrast.ts). Immer geladen. */
+
+:root {
+  --ui-error: #c6001d;
+  --ui-success: #007432;
+}
+
+.dark {
+  --ui-error: #ff7071;
+  --ui-success: #05df72;
+}
+
+:root[data-neutral='neutral'] {
+  --ui-text-dimmed: #6f6f6f;
+  --ui-text-muted: #606060;
+}
+
+.dark[data-neutral='neutral'] {
+  --ui-text-dimmed: #8e8e8e;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='slate'] {
+  --ui-text-dimmed: #607087;
+  --ui-text-muted: #51627b;
+}
+
+.dark[data-neutral='slate'] {
+  --ui-text-dimmed: #7f92ad;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='gray'] {
+  --ui-text-dimmed: #686f7c;
+  --ui-text-muted: #5a6171;
+}
+
+.dark[data-neutral='gray'] {
+  --ui-text-dimmed: #8890a1;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='zinc'] {
+  --ui-text-dimmed: #6e6e77;
+  --ui-text-muted: #5f5f69;
+}
+
+.dark[data-neutral='zinc'] {
+  --ui-text-dimmed: #8e8e98;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='stone'] {
+  --ui-text-dimmed: #746e6a;
+  --ui-text-muted: #675f59;
+}
+
+.dark[data-neutral='stone'] {
+  --ui-text-dimmed: #948c85;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='mist'] {
+  --ui-text-dimmed: #657073;
+  --ui-text-muted: #546468;
+}
+
+.dark[data-neutral='mist'] {
+  --ui-text-dimmed: #819296;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='taupe'] {
+  --ui-text-dimmed: #756b67;
+  --ui-text-muted: #6a5b56;
+}
+
+.dark[data-neutral='taupe'] {
+  --ui-text-dimmed: #9a8a84;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='mauve'] {
+  --ui-text-dimmed: #746a75;
+  --ui-text-muted: #69596b;
+}
+
+.dark[data-neutral='mauve'] {
+  --ui-text-dimmed: #978699;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+:root[data-neutral='olive'] {
+  --ui-text-dimmed: #6f6f61;
+  --ui-text-muted: #656551;
+}
+
+.dark[data-neutral='olive'] {
+  --ui-text-dimmed: #93937d;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}

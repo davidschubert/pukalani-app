@@ -1,3 +1,4 @@
+import { neutralTextCssBlocks, neutralTextTokens } from './textContrast'
 import { oklchToHex, rgbToOklch } from './oklch'
 
 /**
@@ -291,6 +292,11 @@ export function customThemeCss(theme: CustomThemeDto, attrOverride?: string): st
     if (neutralRamp) {
       const neutralVars = SHADES.map(shade => `  --ui-color-neutral-${shade}: ${neutralRamp[shade]};`).join('\n')
       blocks.push(`:root[data-neutral='${attr}'] {\n${neutralVars}\n}`)
+      // Die zwei blassen Textfarben dieser Palette (Q07): dieselbe Rechnung
+      // wie für die neun festen Paletten in contrast.css — nur entsteht diese
+      // Palette erst hier, aus dem Farbton der Marke.
+      const textTokens = neutralTextTokens(neutralRamp)
+      if (textTokens) blocks.push(...neutralTextCssBlocks(attr, textTokens))
     }
   }
   return blocks.join('\n')

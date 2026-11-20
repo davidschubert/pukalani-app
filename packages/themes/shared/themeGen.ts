@@ -1,5 +1,14 @@
 import { SHADES, type Shade, generateRamp, contrastRatio, HEX_COLOR_RE } from './ramp'
 import { oklchToHex } from './oklch'
+import {
+  TEXT_MIN_RATIO,
+  auditNeutralTextTokens,
+  auditStatusTokens,
+  neutralTextCssBlocks,
+  neutralTextTokens,
+  statusTokens,
+  type NeutralRamp,
+} from './textContrast'
 
 /**
  * Pure Generator-Logik für den Theme-Katalog (Vollausbau-Plan Schritt 3):
@@ -169,4 +178,100 @@ export function buildRegistryModule(themes: GeneratedTheme[], specs: ThemeSpec[]
     `]`,
     ``,
   ].join('\n')
+}
+
+// ── Schrift-Kontrast der Text- und Statusfarben (Q07) ─────────────────────
+
+/**
+ * Ausgangswerte der zwei Statusfarben: Tailwind v4 `red` und `green`, Stufe
+ * 500 (hell) und 400 (dunkel) — genau die Stufen, auf die Nuxt UI
+ * `--ui-error` und `--ui-success` legt. Hier als Werte statt als
+ * `var(--ui-color-error-500)`, weil das Gate die fertige Farbe nachrechnen
+ * muss (dieselbe Lage wie bei den Paletten in neutral.css).
+ */
+export const STATUS_BASES = {
+  error: { light: 'oklch(63.7% 0.237 25.331)', dark: 'oklch(70.4% 0.191 22.216)' },
+  success: { light: 'oklch(72.3% 0.219 149.579)', dark: 'oklch(79.2% 0.209 151.711)' },
+} as const
+
+/** neutral.css → { mist: { 50: '#…', … }, … }; wirft bei einer unvollständigen Palette. */
+export function parseNeutralPalettes(css: string): Record<string, NeutralRamp> {
+  const palettes: Record<string, NeutralRamp> = {}
+  for (const block of css.matchAll(/:root\[data-neutral='([a-z0-9-]+)'\]\s*\{([^}]+)\}/g)) {
+    const name = block[1]!
+    const ramp = {} as NeutralRamp
+    for (const line of block[2]!.matchAll(/--ui-color-neutral-(\d+):\s*([^;]+);/g)) {
+      const hex = specColorToHex(line[2]!.trim())
+      if (!hex) throw new Error(`neutral.css, Palette '${name}': ungültige Farbe '${line[2]}'`)
+      ramp[Number(line[1]) as Shade] = hex
+    }
+    const missing = SHADES.filter(shade => !ramp[shade])
+    if (missing.length) throw new Error(`neutral.css, Palette '${name}': Stufen fehlen (${missing.join(', ')})`)
+    palettes[name] = ramp
+  }
+  if (!Object.keys(palettes).length) throw new Error('neutral.css: keine Palette gefunden')
+  return palettes
+}
+
+export interface GeneratedContrast {
+  css: string
+  /** Für das Log: was sich gegenüber der Nuxt-UI-Vorgabe bewegt hat */
+  notes: string[]
+}
+
+/**
+ * public/themes/contrast.css: die zwei blassen Textfarben je neutraler
+ * Palette und die zwei Statusfarben, jeweils hell und dunkel. Immer geladen,
+ * NACH neutral.css. Die Datei ist unlayered und schlägt damit die Vorgaben
+ * von Nuxt UI (`@layer theme`) — deshalb nennt JEDER helle Block sein dunkles
+ * Gegenstück: ein unlayered `:root` gewänne sonst auch gegen `.dark`.
+ *
+ * KONTRAST-GATE: jede Paarung wird nach dem Erzeugen nachgerechnet; liegt
+ * eine unter 4,5 zu 1, bricht der Generator ab.
+ */
+export function generateContrastCss(palettes: Record<string, NeutralRamp>): GeneratedContrast {
+  const ramps = Object.values(palettes)
+  const failures: string[] = []
+  const notes: string[] = []
+  const parts: string[] = [
+    `/* Pukalani Schrift-Kontrast — GENERIERT von scripts/generate-themes.ts, nicht von Hand editieren.`,
+    `   Die zwei blassen Textfarben je neutraler Palette und die zwei Statusfarben: Farbton wie`,
+    `   in neutral.css bzw. Tailwind, Helligkeit so weit verschoben, dass sie als Schrift`,
+    `   ${String(TEXT_MIN_RATIO).replace('.', ',')} zu 1 erreichen (Logik + Gate: shared/textContrast.ts). Immer geladen. */`,
+  ]
+
+  const status = {} as Record<keyof typeof STATUS_BASES, { light: string, dark: string }>
+  for (const name of Object.keys(STATUS_BASES) as (keyof typeof STATUS_BASES)[]) {
+    const base = { light: specColorToHex(STATUS_BASES[name].light)!, dark: specColorToHex(STATUS_BASES[name].dark)! }
+    const tokens = statusTokens(base, ramps)
+    if (!tokens) throw new Error(`Kontrast-Gate: für '${name}' gibt es keine Helligkeit, die ${TEXT_MIN_RATIO}:1 erreicht`)
+    failures.push(...auditStatusTokens(name, tokens, palettes).map(f => `${f.where}: ${f.ratio.toFixed(2)}:1`))
+    status[name] = tokens
+    notes.push(`${name}: hell ${base.light}→${tokens.light}, dunkel ${base.dark}→${tokens.dark}`)
+  }
+  parts.push(
+    '',
+    `:root {`,
+    `  --ui-error: ${status.error.light};`,
+    `  --ui-success: ${status.success.light};`,
+    `}`,
+    '',
+    `.dark {`,
+    `  --ui-error: ${status.error.dark};`,
+    `  --ui-success: ${status.success.dark};`,
+    `}`,
+  )
+
+  for (const [name, ramp] of Object.entries(palettes)) {
+    const tokens = neutralTextTokens(ramp)
+    if (!tokens) throw new Error(`Kontrast-Gate: Palette '${name}' erreicht ${TEXT_MIN_RATIO}:1 mit keiner Helligkeit`)
+    failures.push(...auditNeutralTextTokens(name, ramp, tokens).map(f => `${f.where}: ${f.ratio.toFixed(2)}:1`))
+    parts.push('', ...neutralTextCssBlocks(name, tokens).flatMap((block, i) => (i ? ['', block] : [block])))
+    notes.push(`${name}: dimmed hell ${ramp[400]}→${tokens.light.dimmed}, muted hell ${ramp[500]}→${tokens.light.muted}, dimmed dunkel ${ramp[500]}→${tokens.dark.dimmed}`)
+  }
+
+  if (failures.length) {
+    throw new Error(`Kontrast-Gate (Schrift, mindestens ${TEXT_MIN_RATIO}:1) nicht bestanden:\n  ${failures.join('\n  ')}`)
+  }
+  return { css: `${parts.join('\n')}\n`, notes }
 }

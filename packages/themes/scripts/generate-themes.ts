@@ -4,6 +4,11 @@
  * die Logik (Ramps, Kontrast-Gate, CSS-Format) lebt testbar in
  * shared/themeGen.ts. Deterministisch: gleicher Spec = byte-gleicher Output.
  *
+ * ZWEITE AUSGABE (Q07): public/themes/contrast.css — die blassen Textfarben
+ * je neutraler Palette und die Statusfarben, aus der handgepflegten
+ * neutral.css gerechnet. Ändert jemand dort eine Palette, muss neu erzeugt
+ * werden; `--check` merkt es.
+ *
  *   pnpm --filter @pukalani/themes generate            # Vorschau nach .generated/
  *   pnpm --filter @pukalani/themes generate -- --write # nach public/themes/ + app/utils/
  *   pnpm --filter @pukalani/themes check:themes        # CI: Output aktuell? (E6a)
@@ -16,7 +21,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { generateTheme, buildRegistryModule, type GeneratedTheme } from '../shared/themeGen'
+import { generateTheme, buildRegistryModule, generateContrastCss, parseNeutralPalettes, type GeneratedTheme } from '../shared/themeGen'
 import { THEME_CATALOG } from '../theme.catalog'
 
 const PKG_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -75,6 +80,28 @@ for (const spec of THEME_CATALOG) {
 const HAND_MAINTAINED_CSS = new Set(['neutral.css'])
 
 /**
+ * SCHRIFT-KONTRAST (Q07): die eine erzeugte Datei, die nicht aus dem Katalog
+ * kommt, sondern aus neutral.css. Das Gate sitzt in generateContrastCss().
+ */
+const CONTRAST_CSS = 'contrast.css'
+try {
+  const palettes = parseNeutralPalettes(readFileSync(resolve(PKG_DIR, 'public/themes/neutral.css'), 'utf8'))
+  const contrast = generateContrastCss(palettes)
+  if (check) {
+    checkFile(resolve(PKG_DIR, 'public/themes', CONTRAST_CSS), contrast.css, `public/themes/${CONTRAST_CSS}`)
+  }
+  else {
+    writeFileSync(resolve(outDir, CONTRAST_CSS), contrast.css)
+    console.log(`✔ ${CONTRAST_CSS} — ${Object.keys(palettes).length} Paletten, 2 Statusfarben`)
+    for (const note of contrast.notes) console.log(`    ${note}`)
+  }
+}
+catch (error) {
+  console.error(`✗ ${(error as Error).message}`)
+  process.exit(1)
+}
+
+/**
  * VERWAISTE DATEIEN (Audit-Befund 2026-08-02).
  *
  * `--check` verglich bisher nur in EINE Richtung: Katalog → Datei. Eine CSS,
@@ -87,7 +114,7 @@ const HAND_MAINTAINED_CSS = new Set(['neutral.css'])
 function checkOrphans(): void {
   const dir = resolve(PKG_DIR, 'public/themes')
   if (!existsSync(dir)) return
-  const expected = new Set([...THEME_CATALOG.map(spec => `${spec.id}.css`), ...HAND_MAINTAINED_CSS])
+  const expected = new Set([...THEME_CATALOG.map(spec => `${spec.id}.css`), ...HAND_MAINTAINED_CSS, CONTRAST_CSS])
   for (const file of readdirSync(dir)) {
     if (!file.endsWith('.css') || expected.has(file)) continue
     console.error(`✗ public/themes/${file} gehört zu keinem Katalog-Eintrag — Datei löschen oder den Katalog ergänzen.`)
@@ -100,7 +127,7 @@ if (check) {
   checkFile(resolve(PKG_DIR, 'app/utils/themeRegistry.gen.ts'), registryModule, 'app/utils/themeRegistry.gen.ts')
   checkOrphans()
   if (drift > 0) process.exit(1)
-  console.log(`✔ Generator-Output aktuell (${generated.length} Themes, Registry byte-gleich, keine verwaisten CSS)`)
+  console.log(`✔ Generator-Output aktuell (${generated.length} Themes, Registry byte-gleich, Schrift-Kontrast byte-gleich, keine verwaisten CSS)`)
 }
 else {
   writeFileSync(registryOut, registryModule)
