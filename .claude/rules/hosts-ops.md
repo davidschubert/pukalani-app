@@ -507,6 +507,23 @@ paths:
   -q` schließt die Pipe früh — mit `pipefail` ein Scheinfehler (Exit 141),
   und nur manchmal. Runbook mit Ernstfall, Betrieb und dem Protokoll der
   Übung: docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md.
+- BACKUP DES DOCKER-SERVERS (seit 2026-11-20): die Dienste dort (Plausible =
+  Pukalani Analytics, Chatwoot, Umami, Shlink) sichert täglich
+  `~/ops/docker-apps-backup.sh --run` aus dem crontab des Benutzers (Quelle
+  `ops/docker-apps-backup.sh`, Schwester des Appwrite-Skripts: derselbe
+  öffentliche Schlüssel, dieselbe Storage Box, Ordner `backups/docker-apps`,
+  derselbe Aufbau eines Laufs, abgeglichen ohne `--delete`). DIE EINE LISTE
+  ist `ops/docker-apps.conf`: je Abzug eine Zeile (`postgres`, `clickhouse`,
+  `sqlite`, `dateien`, `einstellungen`), je bewusst ausgelassenem Dienst ein
+  `ohne`. NICHTS WIRD STILL AUSGELASSEN: ein Compose-Ordner oder ein Dienst,
+  den die Liste nicht kennt, bricht den Lauf ab — NEUER DIENST DORT ⇒ am
+  selben Tag die Liste nachziehen und auf den Server kopieren (von Hand, kein
+  CI-Weg). ClickHouse wird je Tabelle abgezogen (Bauanleitung + Format
+  Native) und NUR über `ops/docker-apps-restore-clickhouse.sh`
+  zurückgespielt: Wörterbücher vor den Tabellen, die über sie rechnen, Daten
+  der Quell-Tabellen zuerst — von Hand in falscher Reihenfolge rechnet
+  ClickHouse still mit leeren Werten. Den Stand liest noch KEIN Wächter
+  (OPEN-ITEMS „DS1"). Runbook: docs/runbooks/DOCKER-APPS-WIEDERHERSTELLUNG.md.
 - EINE FEHLENDE ENV-VARIABLE WIRD NICHT ROT (F44, 2026-08-02): `platform`
   hatte kein `NUXT_SMTP_*`, also ging für JEDE Kunden-Community nie eine
   Benachrichtigungs-Mail raus — die App lief, die Seiten antworteten, nur die
