@@ -1,6 +1,6 @@
 # Deployment-Runbook — Prod-Sites
 
-Stand: 2026-11-15. Zwei Teile:
+Stand: 2026-11-20. Zwei Teile:
 
 - **Teil A — Betrieb heute:** was wo läuft, wie ausgeliefert wird, und was zu
   tun ist, wenn ein schlechter Stand live ist.
@@ -329,6 +329,100 @@ läuft noch mit dem alten Stand). Zwei Dinge folgen daraus:
 Nicht erreichbar ist keine Aussage und bleibt grün (eine Warnzeile im Lauf).
 Probealarm: `gh workflow run production-watch.yml -f node_drill=true`.
 
+## A5. Server neu starten (app-prod)
+
+Nötig, wenn ein Paket-Update einen neuen Kernel gebracht hat: Ploi zeigt dann
+unter „Insights" den Hinweis „reboot this server to load the new kernel", und
+auf dem Server liegt `/var/run/reboot-required`. Der Abschnitt gilt NUR für
+den App-Server. Auf dem Appwrite-Server kommen einige Container nach einem
+Neustart nicht von selbst zurück
+([PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md), § 4).
+
+**Was von selbst wiederkommt** (nachgesehen und am 2026-11-20 gemessen):
+
+- nginx, Redis, cron, die Firewall und fail2ban starten über systemd
+  (`systemctl is-enabled` sagt bei allen `enabled`; der SSH-Zugang hängt an
+  `ssh.socket`, nicht an `ssh.service`).
+- Die sechs Apps startet der crontab von `ploi`:
+  `@reboot sleep 10 && /usr/bin/pm2 resurrect`. Einen pm2-Systemdienst gibt
+  es nicht. `pm2 resurrect` liest den gespeicherten Stand `~/.pm2/dump.pm2`;
+  den schreibt jedes Ausliefern neu (`pm2 save`).
+- Der gespeicherte Stand nennt je App den Verweis `…/releases/<app>/current`
+  und das Programm `/usr/bin/node`, dazu die UMGEBUNG vom letzten Neuladen.
+  Ein Neustart des Servers liest die `.env`-Dateien also NICHT neu — die Apps
+  kommen mit denselben Einstellungen zurück, mit denen sie vorher liefen.
+- cron kennt nur den knappen Suchpfad `/usr/bin:/bin`. Das trägt, weil `pm2`
+  und `node` beide unter `/usr/bin` liegen (Paket `nodejs`, A4). Zieht Node
+  einmal an einen anderen Ort, braucht die Zeile im crontab den Pfad.
+
+**Vorher prüfen** (als `ploi`, alles nur lesend):
+
+```bash
+cat /var/run/reboot-required; uname -r; readlink /boot/vmlinuz   # wartet ein Neustart, und auf welchen Kernel?
+crontab -l | grep resurrect                                      # die Zeile steht da
+env -i PATH=/usr/bin:/bin sh -c 'command -v pm2; node -v'        # cron fände pm2 und das richtige Node
+ls -l ~/.pm2/dump.pm2; pm2 ls                                    # Stand jünger als der letzte Prozess-Start, alle sechs online
+systemctl is-enabled nginx redis-server cron ssh.socket ufw
+```
+
+Dazu von außen: alle Hosts `ok` (`node scripts/ops/verify-health.mjs`), kein
+offenes Issue `produktions-alarm`, kein laufender Ausliefer-Lauf und kein
+Lauf auf `main`, aus dem gleich einer wird (`gh run list`). Ein Neustart
+bricht jede lange Arbeit ab, die gerade im Hintergrund einer App rechnet
+(Marktvergleich, Entwürfe, Radar) — ein Zeitpunkt ohne Betrieb ist besser.
+Der Halbstunden-Wächter sollte gerade durch sein.
+
+**Auslösen:** Ploi → Server `app-prod` → „Verwalte" → Knopf „Restart server"
+→ Rückfrage bestätigen. GENAU EINMAL: Plois Aufträge können in einer
+Warteschlange liegen. Der Ploi-MCP hat dafür keinen Befehl, und `sudo reboot`
+verlangt ein Passwort.
+
+**Nachher belegen:**
+
+```bash
+uptime -s; uname -r; ls /var/run/reboot-required   # frisch, neuer Kernel, die Datei ist weg
+pm2 ls                                             # sechs Prozesse online, 0 Neustarts
+```
+
+Dann von außen: jeder Host `ok` mit demselben Build und Datenbank-Stand wie
+vorher, und einmal `gh workflow run production-watch.yml` (dort laufen alle
+Blicke, auch die Node-Version und die Live-Verbindung). Plois Hinweis
+verschwindet von selbst.
+
+**Kommen die Apps nicht von selbst** (nginx antwortet dann mit 502):
+
+```bash
+pm2 resurrect          # der Handgriff, den cron hätte machen sollen
+pm2 ls
+```
+
+Ist der gespeicherte Stand leer oder beschädigt, startet jede App aus ihrer
+Ecosystem-Datei (das liest auch die `.env` neu), danach sichern:
+
+```bash
+for s in portfolio.pukalani.app:portfolio admin.pukalani.app:control platform.pukalani.app:platform pukalani.app:marketing help.pukalani.app:help branding.supply:branding; do
+  pm2 startOrReload /home/ploi/${s%%:*}/ops/ecosystem-${s##*:}.config.cjs --update-env; done; pm2 save
+```
+
+**Protokoll.** 2026-11-20, Kernel 6.8.0-147 → 6.8.0-151 (das Paket-Update
+lief am 2026-11-19). Zeiten in UTC, von außen alle zwei Sekunden gemessen:
+
+| Zeit | Was |
+| --- | --- |
+| 00:19:43 | Klick bestätigt; Ploi führte den Auftrag sofort aus |
+| 00:19:44 | erste Anfrage ohne Antwort |
+| 00:19:52 | der Server ist wieder hochgefahren (`uptime -s`) |
+| 00:20:10 | nginx antwortet wieder, die Apps noch nicht (502) |
+| 00:20:20 | cron startet den pm2-Dienst; eine Sekunde später sind alle sechs Apps `online` |
+| 00:20:23 | erste gesunde Antwort — **39 Sekunden Ausfall** |
+
+Nichts musste von Hand gestartet werden. Alle acht Hosts meldeten danach
+denselben Build und denselben Datenbank-Stand wie vorher, jeder Prozess lief
+auf dem Node aus `.nvmrc`. Eine einzelne Anfrage an eine App lief 25 Sekunden
+nach dem Start noch einmal in die Zeitgrenze der Messung (4 Sekunden), danach
+keine mehr. Der Neustart davor (2026-10-24) lief genauso: pm2 kam 22
+Sekunden nach dem Hochfahren.
+
 ---
 
 # Teil B — Eine neue Silo-Site aufsetzen (Rezept, Juli 2026)
@@ -482,7 +576,7 @@ pnpm migrate --wave stable   --control-env ~/.appwrite-secrets/migrations/contro
 | Site-Typ | NodeJS — ploi vergibt den Port (hier **3001**); nginx-vHost proxied NICHT automatisch → `location /` manuell auf `proxy_pass http://127.0.0.1:3001` + WebSocket-Header umstellen. **Robuster Weg (Learning 2026-07-23): die ploi-API statt des Panel-Editors** — `GET/PATCH /api/servers/{srv}/sites/{site}/nginx-configuration` (JSON `{"content": …}`) + `POST /api/servers/{srv}/services/nginx/restart`; der Monaco-Editor im Panel lässt sich nicht zuverlässig automatisiert befüllen. Auch Deploy-Script (`…/deploy/script`) und Deploy-Trigger (`POST …/deploy`) gehen per API |
 | NodeJS-Service | pm2 **Cluster-Mode** via [`ops/ecosystem-platform.config.cjs`](../../ops/ecosystem-platform.config.cjs) (je App eine gleichnamige Config; das comments-Exemplar fiel mit F3, das Muster ist unverändert; seit 2026-07-19, Zero-Downtime Stufe 2). „Restart process after deployment" **AUS** — den Prozesswechsel macht `pm2 reload` im Deploy-Script. ploi-Start-command `bash start-prod.sh` ist nur noch historischer Rest (ploi startet nichts mehr) |
 | Deploy-Script | `git pull` → corepack-Install/Build wie gehabt → **dann Release-Flow**: `.output` nach `/home/ploi/releases/comments/<sha>/` kopieren, `current`-Symlink atomar flippen (`ln -s` + `mv -Tf`), `pm2 startOrReload ops/ecosystem-comments.config.cjs --update-env`, `pm2 save`, alte Releases auf 5 stutzen. Der alte Worker serviert bis der neue `listening` ist → **kein 502**, und der laufende Prozess liest nie aus einem halb überschriebenen `.output` |
-| Reboot-Festigkeit | `pm2 save` macht das Deploy-Script; `@reboot pm2 resurrect` im ploi-Crontab (kein sudo nötig) |
+| Reboot-Festigkeit | `pm2 save` macht das Deploy-Script; `@reboot sleep 10 && /usr/bin/pm2 resurrect` im ploi-Crontab (kein sudo nötig) — geprüft und gemessen in Abschnitt A5 |
 | HSTS | eigene Include-Datei `server/hsts.conf` mit `add_header Strict-Transport-Security "max-age=15768000" always;` |
 
 **Runtime-Env** liegt in `/home/ploi/<site>/.env` (chmod 600) und wird von
