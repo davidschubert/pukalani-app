@@ -11,6 +11,7 @@ import {
   type PrivateMessage,
   type ReportedMessageView,
 } from '../../shared/types/message'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DIE MODERATIONS-SEITE (Konzept § 2.2, Davids Entscheidung 2).
@@ -73,7 +74,7 @@ function moderationDb(event: H3Event) {
  */
 export async function freezeReportedMessage(event: H3Event, messageId: string): Promise<void> {
   const db = moderationDb(event)
-  const message = await db.get<PrivateMessage>(MESSAGES_TABLE, messageId, 'Message not found').catch(() => null)
+  const message = await db.get<PrivateMessage>(MESSAGES_TABLE, messageId, 'Message not found').catch(softFail('messages:utils/messageReports:get', null))
   if (!message) return
 
   if (!shouldFreezeSnapshot({ reportedBody: message.reportedBody ?? '', reportedAt: message.reportedAt ?? '' })) return
@@ -106,11 +107,11 @@ export async function messageExists(event: H3Event, messageId: string): Promise<
   const db = moderationDb(event)
   const row = await db
     .get<PrivateMessage>(MESSAGES_TABLE, messageId, 'Message not found')
-    .catch(() => null)
+    .catch(softFail('messages:utils/messageReports:get#2', null))
   if (!row) return false
   const conversation = await db
     .get<Conversation>(CONVERSATIONS_TABLE, row.conversationId, 'Conversation not found')
-    .catch(() => null)
+    .catch(softFail('messages:utils/messageReports:get#3', null))
   return !!conversation && isParticipant(conversation.participants ?? [], userId)
 }
 
@@ -197,7 +198,7 @@ async function toReportedView(
 ): Promise<ReportedMessageView> {
   const conversation = await moderationDb(event)
     .get<Conversation>(CONVERSATIONS_TABLE, message.conversationId, 'Conversation not found')
-    .catch(() => null)
+    .catch(softFail('messages:utils/messageReports:get#4', null))
 
   const participants = conversation?.participants ?? []
   const recipientId = otherParticipant(participants, message.authorId)
