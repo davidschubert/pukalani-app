@@ -55,8 +55,8 @@ Wichtige Fakten:
 const OUTRO = `## Referenz-Ergebnisse (anonymisierte Projekte)
 
 - SaaS Analytics Dashboard: +43 % Feature-Adoption, −67 % Support-Tickets
-- E-Commerce Checkout: +73 % Conversion, −41 % Kaufabbrüche, LCP 1,8 s
-- Corporate Website Relaunch: +156 % organischer Traffic, PageSpeed 94
+- E-Commerce Checkout: von sieben auf drei Schritte verkürzt, −41 % Kaufabbrüche, LCP 1,8 s
+- Corporate Website Relaunch: barrierefrei und mobile-first, PageSpeed 94
 - B2B SaaS MVP: Launch in 12 Wochen, developer-ready Design System
 
 ## Profile

@@ -24,10 +24,20 @@ const { t } = useI18n()
 const { demo } = useProductLinks()
 const { changelogUrl } = useMarketingSite()
 
+/**
+ * Die erste Karte zeigt auf EINEN BEITRAG der Demo-Community, unter dem
+ * Kommentare und Antworten sichtbar sind (Q02, 2026-11-20) — vorher auf eine
+ * fast leere Community. Der Pfad hängt an der Demo-Adresse aus
+ * `useProductLinks()`, damit der Schalter für lokal/Staging weiter greift.
+ * Wird die Demo neu befüllt, ändert sich die Kennung im Pfad: dann hier
+ * nachziehen (die Seite antwortet sonst mit 404).
+ */
+const DEMO_DISCUSSION_PATH = '/discussions/fragen/6a84314b003940117c01/wie-weckt-ihr-euch-ohne-sofort-auf-das-handy-zu-schauen'
+
 const PROOF_ITEMS = [
-  { slug: 'comments', url: 'https://comments.pukalani.app' },
+  { slug: 'comments', url: `${demo.replace(/\/+$/, '')}${DEMO_DISCUSSION_PATH}` },
   { slug: 'demo', url: demo },
-  { slug: 'portfolio', url: 'https://portfolio.pukalani.app' },
+  { slug: 'portfolio', url: 'https://pukalani.studio' },
   { slug: 'changelog', url: changelogUrl },
 ] as const
 

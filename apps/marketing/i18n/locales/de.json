@@ -2,13 +2,13 @@
   "marketing": {
     "meta": {
       "title": "Pukalani – Community-Plattform, in Deutschland gehostet",
-      "description": "Beiträge, Kurse, Events und Kommentare unter deinem Namen und Design. Datenschutz-nativ, in Deutschland gehostet, ohne Werbe-Tracking. Die schlanke Alternative zu Circle & Skool. Kostenlos starten."
+      "description": "Beiträge, Kurse, Events und Kommentare unter deinem Namen und Design. Datenschutz-nativ, in Deutschland gehostet, ohne Werbe-Tracking. Die schlanke Alternative zu Circle & Skool. 14 Tage kostenlos testen."
     },
     "hero": {
       "eyebrow": "Deine Community-Plattform, DSGVO-nativ",
       "title": "Deine Community. Deine Kurse. Deine Regeln.",
       "sub": "Beiträge, Kurse, Events und Kommentare unter deinem Namen und deinem Design. In Deutschland gehostet und ohne Werbe-Tracking. Die schlanke, faire Alternative zu großen Community-Suiten.",
-      "ctaPrimary": "Kostenlos starten",
+      "ctaPrimary": "14 Tage kostenlos testen",
       "ctaRequest": "Zugang anfragen",
       "ctaHasCode": "Ich habe einen Code",
       "ctaSecondary": "Live-Demo ansehen",
@@ -134,7 +134,7 @@
     "privacy": {
       "kicker": "Datenschutz & Hosting",
       "title": "DSGVO ist bei uns der Standard – nicht das Upgrade.",
-      "lead": "Deine Community-Daten liegen in Deutschland, nicht in einer fernen Cloud. Kein Werbe-Tracking, kein Weiterverkauf – datensparsam by Design.",
+      "lead": "Die Datenbank deiner Community liegt in Deutschland, auf Servern, die wir selbst betreiben. Kein Werbe-Tracking, kein Weiterverkauf – datensparsam by Design.",
       "points": [
         {
           "icon": "i-ph-flag-bold",
@@ -162,7 +162,7 @@
     "products": {
       "backHome": "Zur Startseite",
       "highlightsTitle": "Was drin ist",
-      "ctaTitle": "Ausprobieren – kostenlos",
+      "ctaTitle": "Ausprobieren – 14 Tage kostenlos",
       "ctaLead": "In 60 Sekunden steht deine Community. Danach entscheidest du.",
       "items": {
         "diskussionen": {
@@ -337,7 +337,7 @@
         }
       ],
       "ctaTitle": "Genug gelesen?",
-      "ctaLead": "Starte deine Community kostenlos – erklären kannst du sie danach."
+      "ctaLead": "Teste deine Community 14 Tage kostenlos – erklären kannst du sie danach."
     },
     "switch": {
       "metaTitle": "Von Circle oder Skool wechseln – ohne Risiko umziehen",
@@ -352,7 +352,7 @@
         {
           "n": "1",
           "title": "Parallel starten",
-          "text": "Lege deine Pukalani-Community kostenlos an – deine alte Plattform läuft unverändert weiter. Kein Risiko, kein Stichtag."
+          "text": "Lege deine Pukalani-Community an und teste sie 14 Tage kostenlos – deine alte Plattform läuft unverändert weiter. Kein Risiko, kein Stichtag."
         },
         {
           "n": "2",
@@ -377,7 +377,7 @@
         "Deine Domain, dein Design – deine Community heißt wie du",
         "Kein Lock-in: Konto-Export, Community-Export und Löschung sind eingebaut, nicht erkauft"
       ],
-      "ctaTitle": "Parallel starten – kostenlos",
+      "ctaTitle": "Parallel starten – 14 Tage kostenlos",
       "ctaLead": "Erst anlegen, dann entscheiden. Die alte Plattform bleibt, bis du sicher bist."
     },
     "gdpr": {
@@ -393,7 +393,7 @@
         {
           "icon": "i-ph-flag-bold",
           "title": "Wo deine Daten liegen",
-          "text": "Auf Servern in Deutschland (Hetzner). Wir betreiben die Datenbank selbst gehostet – es sitzt keine US-Cloud im Datenpfad deiner Community."
+          "text": "Die Datenbank betreiben wir selbst, auf Servern in Deutschland (Hetzner). Für Bot-Schutz, E-Mail, Zahlung und KI-Hilfen setzen wir Dienstleister ein."
         },
         {
           "icon": "i-ph-eye-slash-bold",
@@ -437,7 +437,7 @@
           "why": "Wir sichern regelmäßig. Eine Zusage zu Wiederherstellungszeit und maximalem Datenverlust veröffentlichen wir erst, wenn ein dokumentierter Restore-Test dahintersteht."
         }
       ],
-      "ctaTitle": "Community starten – kostenlos",
+      "ctaTitle": "Community starten – 14 Tage kostenlos",
       "ctaLead": "14 Tage kostenlos testen, jederzeit exportieren, jederzeit löschen."
     },
     "audience": {
@@ -473,12 +473,12 @@
       "fitTitle": "Warum Pukalani hier passt",
       "blocksTitle": "Diese Produkte brauchst du dafür",
       "ctaTitle": "Klingt nach dir?",
-      "ctaLead": "Starte kostenlos – in 60 Sekunden steht deine Community.",
+      "ctaLead": "Teste 14 Tage kostenlos – in 60 Sekunden steht deine Community.",
       "items": {
         "coaches": {
           "name": "Coaches & Trainer",
           "metaTitle": "Community-Plattform für Coaches – DSGVO-nah, in Deutschland gehostet",
-          "metaDescription": "Ein geschützter Ort für Teilnehmer: Kommentare, Kurse und Treffen unter deinem Namen. In Deutschland gehostet, ohne Werbe-Tracking. Kostenlos starten.",
+          "metaDescription": "Ein geschützter Ort für Teilnehmer: Kommentare, Kurse und Treffen unter deinem Namen. In Deutschland gehostet, ohne Werbe-Tracking. 14 Tage kostenlos testen.",
           "title": "Deine Community als Coach oder Trainerin",
           "sub": "Ein Ort, an dem deine Teilnehmer diskutieren, lernen und sich treffen – und den DU steuerst.",
           "intro": "Wenn Begleitung endet, weil die WhatsApp-Gruppe unübersichtlich wird, verliert dein Programm seine Wirkung. Eine eigene Community hält Menschen zusammen: Fragen landen sichtbar, Antworten bleiben auffindbar, Termine sind an einem Ort.",
@@ -508,11 +508,11 @@
         "vereine": {
           "name": "Vereine & Organisationen",
           "metaTitle": "Community-Software für Vereine – in Deutschland gehostet, DSGVO-nah",
-          "metaDescription": "Mitgliederbereich mit Kommentaren, Ankündigungen und Terminen – in Deutschland gehostet, datensparsam, ohne Werbe-Tracking. Kostenlos starten.",
+          "metaDescription": "Mitgliederbereich mit Kommentaren, Ankündigungen und Terminen – in Deutschland gehostet, datensparsam, ohne Werbe-Tracking. 14 Tage kostenlos testen.",
           "title": "Mitglieder, Termine und Austausch an einem Ort",
           "sub": "Ein Mitgliederbereich, den auch Nicht-Techniker bedienen – gehostet in Deutschland.",
           "intro": "Rundmails, drei Chatgruppen und ein PDF-Kalender: so verliert man Mitglieder statt sie einzubinden. Ein ruhiger, gemeinsamer Ort ersetzt das – ohne dass jemand einen Server betreuen muss.",
-          "fit": "Kein Betrieb, keine Plugin-Bastelei: du legst die Community an und arbeitest los. Daten liegen in Deutschland, Rollen regeln klar, wer moderiert, schreibt oder nur mitliest – und der Einstieg ist kostenlos.",
+          "fit": "Kein Betrieb, keine Plugin-Bastelei: du legst die Community an und arbeitest los. Daten liegen in Deutschland, Rollen regeln klar, wer moderiert, schreibt oder nur mitliest – und du testest 14 Tage kostenlos.",
           "blocks": "Kommentare · Moderation · Seiten & Branding · später Events"
         }
       }
@@ -521,7 +521,7 @@
       "kicker": "Ehrlich verglichen",
       "title": "Ehrlich verglichen. Auch da, wo wir (noch) nicht die Antwort sind.",
       "lead": "Wir vergleichen nur, was wir belegen können — mit Quellen und Datum. Wo wir schwächer sind, steht es hier genauso drin.",
-      "asOf": "Stand: 24. Juli 2026 · Angaben der Anbieter-Preisseiten, quartalsweise geprüft",
+      "asOf": "Stand: 24. Juli 2026 · Angaben der Anbieter-Preisseiten",
       "sources": "Quellen:",
       "criterion": "Kriterium",
       "us": "Pukalani",
@@ -583,7 +583,7 @@
       "backHome": "Zur Startseite",
       "whenThemTitle": "Wann {name} die bessere Wahl ist",
       "whenUsTitle": "Wann Pukalani passt",
-      "ctaTitle": "Community starten – kostenlos",
+      "ctaTitle": "Community starten – 14 Tage kostenlos",
       "ctaLead": "Kein Risiko, keine Mindestlaufzeit, Datenexport inklusive.",
       "items": {
         "circle": {
@@ -759,9 +759,9 @@
     },
     "cta": {
       "title": "Bereit für deine eigene Community?",
-      "lead": "Tritt durch das Tor – in 60 Sekunden steht deine Community. Kostenlos, ohne Risiko.",
+      "lead": "Tritt durch das Tor – in 60 Sekunden steht deine Community. 14 Tage kostenlos, ohne Risiko.",
       "leadGated": "Tritt durch das Tor. Im Early Access brauchst du dafür noch eine Einladung — frag sie an, wir melden uns.",
-      "primary": "Kostenlos starten",
+      "primary": "14 Tage kostenlos testen",
       "secondary": "Live-Demo ansehen",
       "refrain": "„Wo die Sonne durchbricht.“"
     },
@@ -974,15 +974,15 @@
       "visit": "Ansehen",
       "items": {
         "comments": {
-          "name": "comments.pukalani.app",
-          "what": "Kommentare (auch von Gästen), Moderation und das Embed-Widget im täglichen Einsatz — mit Live-Präsenz."
+          "name": "demo.pukalani.app · Diskussion",
+          "what": "Kommentare und Antworten unter einem Beitrag der Demo-Community. Die Inhalte sind Beispiele, die Technik ist dieselbe wie bei dir."
         },
         "demo": {
           "name": "demo.pukalani.app",
-          "what": "Eine echte Pool-Community: per Klick im Control angelegt, eigener Host, eigener Datenraum — genau der Weg, den auch du gehst."
+          "what": "Eine Community wie deine: in einer Minute angelegt, eigene Adresse, eigener Datenraum — genau der Weg, den auch du gehst."
         },
         "portfolio": {
-          "name": "portfolio.pukalani.app",
+          "name": "pukalani.studio",
           "what": "Dieselbe Plattform in einem völlig anderen Design — der Beweis, dass Branding nicht bei einer Akzentfarbe endet."
         },
         "changelog": {
