@@ -179,8 +179,20 @@ const mobileItems = computed(() => [
   // Der Ausgang für Bestandskunden (U3) — eigene Liste, damit `UNavigationMenu`
   // einen Trenner davor zieht: „Anmelden" verlässt diese Seite, alles darüber
   // bleibt auf ihr.
+  // „Ich habe einen Code" steht hier, solange es ein Tor gibt (Q01): unter
+  // 1024px ist der Textlink der Leiste ausgeblendet, und wer eingeladen ist,
+  // fände seinen Weg sonst nur am breiten Bildschirm.
   [
     { ...LINK_DEFAULTS, label: t('marketing.nav.signIn'), icon: 'i-ph-sign-in-bold', to: signIn },
+    ...(gate.value.inviteRequired
+      ? [{
+          ...LINK_DEFAULTS,
+          label: t('marketing.nav.hasCode'),
+          icon: 'i-ph-ticket-bold',
+          to: start,
+          onSelect: () => trackFunnel('funnel_cta_start', { gate: 'on', cta: 'code' }),
+        }]
+      : []),
   ],
 ])
 
@@ -210,7 +222,7 @@ const openMenu = ref('')
  * Ausgang — er nimmt dem CTA seine Fläche nicht weg, und wer ihn sucht,
  * sucht ihn genau hier.
  *
- * Auf schmalen Fenstern ist er ausgeblendet (`hidden md:inline-flex`): dort
+ * Auf schmalen Fenstern ist er ausgeblendet (`hidden lg:inline-flex`): dort
  * steht neben dem CTA nur noch das Burger-Zeichen, und ein dritter Eintrag
  * bräche die Leiste auf drei Zeilen. Im Mobil-Menü unten steht er dafür als
  * eigener Eintrag.
@@ -235,23 +247,21 @@ const HEADER_UI = {
   // als der Inhalt und kippte die Hierarchie.
   //
   // DIE SENKRECHTE LUFT WECHSELT DEN BESITZER, sobald das Menü sichtbar wird.
-  // Ab 768px steckt sie schon im Menü-Eintrag (`item: py-2`) und gehört auch
+  // Ab 1024px steckt sie schon im Menü-Eintrag (`item: py-2`) und gehört auch
   // DORTHIN: der Ausklapper hängt an der Unterkante des MENÜS, nicht an der
   // der Leiste — zöge man sie in den Container, klaffte dazwischen eine Lücke,
   // in der die Maus das Menü verlässt und der Ausklapper zufällt. Darunter
   // gibt es kein Menü, dort muss der Container polstern, sonst klebte der
   // zweizeilige CTA an beiden Kanten.
-  // Gemessen: 53px ab 768px, 69px auf 375px — beides exakt der Bestand.
-  container: 'h-auto py-3 md:py-1 gap-6',
-  // Die Vorgabe teilt Schreibtisch und Handy bei 1024px, der Bestand bei
-  // 768px. Ohne diese vier Zeilen bekämen Tablets ab 768px plötzlich das
-  // Burger-Menü statt der Navigation.
-  left: 'md:flex-1',
-  right: 'md:flex-1 gap-3',
-  center: 'md:flex',
-  toggle: 'md:hidden',
-  content: 'md:hidden',
-  overlay: 'md:hidden',
+  container: 'h-auto py-3 lg:py-1 gap-6',
+  // DER UMSCHALTPUNKT IST 1024px — die Vorgabe von `UHeader` (Q01, 2026-11-20).
+  // Bis dahin stand hier 768px: das passte für Logo, vier Punkte und ZWEI
+  // Knöpfe. Mit „Ich habe einen Code" kam ein dritter dazu, die Zeile braucht
+  // seither rund 880px — bei 768px (Tablet hochkant) brach der Text in vier
+  // Zeilen, der Hauptknopf ragte aus dem Fenster und die Seite rollte quer
+  // (gemessen 826px breit). Deshalb steht hier KEINE eigene Breite mehr; wer
+  // einen vierten Knopf ergänzt, misst bei 1024px nach.
+  right: 'gap-3',
   title: 'items-center gap-2 text-[1.1rem] font-extrabold tracking-[-0.01em]',
 }
 
@@ -414,7 +424,7 @@ const MOBILE_NAV_UI = {
         color="neutral"
         variant="link"
         size="sm"
-        class="hidden md:inline-flex px-2.5 text-[0.95rem] font-medium text-toned hover:text-primary-600"
+        class="hidden lg:inline-flex px-2.5 text-[0.95rem] font-medium text-toned hover:text-primary-600"
       >
         {{ t('marketing.nav.signIn') }}
       </UButton>
@@ -428,7 +438,7 @@ const MOBILE_NAV_UI = {
         color="neutral"
         variant="link"
         size="sm"
-        class="hidden md:inline-flex px-2.5 text-[0.95rem] font-medium text-toned hover:text-primary-600"
+        class="hidden lg:inline-flex px-2.5 text-[0.95rem] font-medium text-toned hover:text-primary-600"
         @click="trackFunnel('funnel_cta_start', { gate: 'on', cta: 'code' })"
       >
         {{ t('marketing.nav.hasCode') }}

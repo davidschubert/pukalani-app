@@ -1,12 +1,14 @@
 /**
- * Browser-Tests auf der Bühne (OPS-009, BT1 a): zwei E2E-Dateien, die vorher
- * nur von Hand liefen, gegen die stehende Bühne.
+ * Browser-Tests auf der Bühne (OPS-009, BT1 a): E2E-Dateien, die den Pool oder
+ * die Betreiber-App brauchen, gegen die stehende Bühne.
  *
  *   pnpm buehne e2e [--control-port 3004] [--platform-port N]
  *
  * WELCHE DATEIEN, steht in `E2E_AUF_DER_BUEHNE` unten:
  *   - `apps/comments/e2e/community-removed.spec.ts` — die entfernte Person der
  *     Community A sieht nur noch die Hinweisseite (Pool, Platform-Server);
+ *   - `apps/comments/e2e/narrow-screens-pool.spec.ts` — Handy und Tablet:
+ *     eigene Menüpunkte, Unterpunkte und der Feedback-Knopf (Q01, Community B);
  *   - `apps/control/e2e/smoke.spec.ts` — die eine E2E-Datei der Betreiber-App.
  *
  * Die Variablen kommen aus dem Stand der Bühne (`.buehne/state.json`) und der
@@ -37,6 +39,7 @@ import { assertTarget } from '../lib/target.mjs'
 /** @type {E2eDatei[]} */
 export const E2E_AUF_DER_BUEHNE = [
   { app: 'comments', datei: 'e2e/community-removed.spec.ts', server: 'platform' },
+  { app: 'comments', datei: 'e2e/narrow-screens-pool.spec.ts', server: 'platform' },
   { app: 'control', datei: 'e2e/smoke.spec.ts', server: 'control' },
 ]
 
@@ -66,6 +69,9 @@ export function e2eEnv({ state, platformEnv, platformPort, controlPort, clientAd
   if (state.poolProject && state.poolProject !== project) {
     throw new Error(`Die Bühne steht im Pool-Projekt „${state.poolProject}", die Env-Datei zeigt auf „${project}".`)
   }
+  const b = state.communities?.b
+  const ownerB = b?.accounts?.owner?.userId
+  if (!b?.host || !ownerB) throw new Error('Der Stand der Bühne hat keine Community B mit einem Owner.')
   const poolUrl = `http://${a.host}:${platformPort ?? state.platformPort}`
   return {
     comments: {
@@ -76,6 +82,10 @@ export function e2eEnv({ state, platformEnv, platformPort, controlPort, clientAd
       PW_POOL_PROJECT: project,
       PW_POOL_KEY: key,
       PW_POOL_REMOVED_USER_ID: removed,
+      // Schmale Fenster (Q01): der Owner der Community B setzt eigene
+      // Menüpunkte über die echte Route und stellt sie danach zurück.
+      PW_POOL_URL_B: `http://${b.host}:${platformPort ?? state.platformPort}`,
+      PW_POOL_OWNER_B_USER_ID: ownerB,
       // Eine eigene Aufrufer-Adresse je Lauf: die Kontakt-Route bremst je
       // Adresse (5 je Stunde) — ohne sie war der sechste Lauf rot.
       ...(clientAddress ? { PW_CLIENT_ADDRESS: clientAddress } : {}),

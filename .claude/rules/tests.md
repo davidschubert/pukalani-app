@@ -105,6 +105,16 @@ seither 24/24 in ~25 s, Exit 0. Test-eigene `node:http`-Server rufen weiterhin
 sonst auf Keep-alive-Sockets), das war nie die Hang-Ursache. NICHT auf
 `channel: 'chrome'` zurückwechseln.
 
+SCHMALE FENSTER (Q01, seit 2026-11-20): `apps/comments/e2e/narrow-screens.spec.ts`
+misst Community und pukalani.app bei 375 und 768 px (die Marketing-App fährt
+dafür als zweiter Server von Playwright mit), `narrow-screens-pool.spec.ts`
+auf der Bühne eigene Menüpunkte und den Feedback-Knopf. Wer eine Kopfzeile,
+ein Menü oder ein schwebendes Bauteil ändert, ergänzt dort einen Fall — mit
+den Hilfen aus `e2e/support/narrowScreens.ts`: „erreichbar" heisst sichtbar,
+quer im Fenster UND an der Mitte liegt nichts obenauf (`toBeVisible()` sieht
+einen überdeckten Link als sichtbar). Fälle zu Textbreite laufen auf DEUTSCH:
+die längeren Wörter sind der Ernstfall, auf Englisch blieb eine Gegenprobe grün.
+
 ROLLEN-TESTS AN DER ECHTEN ROUTE (OPS-009, seit 2026-11-17 — Davids
 Entscheidung „Klein beginnen: Die Prüfungen aus P04 und P05 bekommen sofort
 ihre Tests"): die häufigste Fehlerklasse des Gesamtaudits war eine Route, der

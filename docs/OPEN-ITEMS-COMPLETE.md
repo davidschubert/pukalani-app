@@ -30,6 +30,73 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q01 — Navigation auf dem Handy: Menü-Knopf in jeder Community, Kopfzeile von pukalani.app passt bei 768 px, Feedback-Knopf verdeckt am Seitenende nichts (UX-001, UX-003, UX-008) ✅ 2026-11-20
+
+**Was.** Drei Fehler, die nur im schmalen Fenster auftreten, und ein
+Browser-Test, der dort misst:
+
+- **Community (`packages/blueprint`, Layout `default.vue`).** Unter 1024 px
+  steht links ein Knopf mit drei Strichen. Er öffnet eine Schublade mit ALLEN
+  Menüpunkten untereinander: Produkte, eigene Punkte, Unterpunkte (sofort
+  aufgeklappt), externe Links mit neuem Tab. Die Schublade liest dieselbe
+  Liste wie die breite Reihe (`useCommunityNav()`), es wird nichts doppelt
+  gepflegt; was unter einem Hauptpunkt steht, entscheidet wie in der Reihe
+  `navMenuChildren()`. Der Name der Community wird gekürzt, statt in die
+  Symbole zu laufen. Pool und Silo bekommen dasselbe, weil es EIN Layout ist.
+- **pukalani.app und Hilfe (`packages/marketing`, `MarketingHeader.vue`).** Die
+  breite Kopfzeile schaltet erst ab 1024 px ein (die Vorgabe von `UHeader`)
+  statt ab 768 px. „Ich habe einen Code" steht dafür zusätzlich im Menü.
+- **Feedback-Knopf (`packages/feedback`).** Das Bauteil bringt einen leeren
+  Streifen am Seitenende mit, so hoch wie der Knopf samt Abstand. Am Ende der
+  Seite steht der Knopf damit über nichts; alles weiter oben lässt sich
+  freirollen. Gilt für jede Breite.
+- **Neue Texte** in `packages/core` (`ui.menu.title/open/close`, de + en).
+
+**Ursache.** Die Community-Kopfzeile hatte keine schmale Fassung: der Name
+durfte nicht schrumpfen, die Reihe der Menüpunkte schon, also blieb ihr auf
+dem Handy keine Breite. Die Kopfzeile von pukalani.app bekam einen dritten
+Knopf, der Umschaltpunkt blieb, wo er für zwei passte. Der Feedback-Knopf
+schwebt fest unten links und wusste nichts von der Fusszeile darunter.
+Gemeinsam: kein Test lief im schmalen Fenster.
+
+**Entscheidung.** Menü-Knopf statt zweiter Zeile: Davids Antwort auf Frage J1
+(2026-11-20, „Ja, alle Empfehlungen"). Selbst entschieden, klein und
+umkehrbar: Umschaltpunkt 1024 px auch für die Community (Name + fünf Punkte +
+vier Symbole passen bei 768 px nur mit kurzen Namen, und beides legt der Owner
+fest); Schublade von links; der Feedback-Knopf bleibt schwebend und bekommt
+den Streifen, statt ins Menü zu wandern.
+
+**Beweis.**
+- `apps/comments/e2e/narrow-screens.spec.ts` (Pflicht-Prüfung `e2e`): Community
+  und pukalani.app bei 375 und 768 px — Menü-Knopf öffnet alle Punkte der
+  breiten Reihe, jedes Teil der Kopfzeile ist treffbar, die Seite rollt nicht
+  quer; dazu je ein Fall bei 1024 px. Playwright startet dafür die
+  Marketing-App als zweiten Server.
+- `apps/comments/e2e/narrow-screens-pool.spec.ts` (Bühne, nachts): als Owner
+  eigene Punkte, eine Gruppe mit Unterpunkten und ein externer Link über die
+  echte Route gesetzt und wieder zurückgestellt; alle in der Schublade
+  erreichbar; Feedback-Knopf am Seitenende über keinem Link bei 375, 768 und
+  1440 px.
+- Gegenprobe gegen den Stand davor: Community 375 und 768 px rot (kein
+  Menü-Knopf), pukalani.app 768 px rot („Seite 826 px breit im Fenster
+  768 px"), Feedback 375 px rot (überdeckt den Link zum Impressum).
+
+**Nicht geprüft.** Echte Geräte (nur Chromium mit schmalem Fenster). Der
+Feedback-Knopf kann beim Rollen weiterhin kurz über Inhalt liegen — geprüft
+ist das Seitenende. Die Kopfzeile der Hilfe erbt die Änderung, hat aber keinen
+eigenen Fall im Test.
+
+**Gelernt:** Eine Gegenprobe gehört in die Sprache, in der der Fehler
+auftritt. Der erste Entwurf des Tests lief auf Englisch und blieb gegen den
+alten Stand GRÜN: „I have a code" ist kürzer als „Ich habe einen Code", die
+alte Kopfzeile passte auf Englisch bei 768 px gerade noch. Ohne Gegenprobe
+wäre ein Test eingezogen, der den gemeldeten Fehler nie hätte sehen können.
+Und: „sichtbar" ist für Playwright auch ein Link, der unter einem anderen
+Bauteil liegt — wer Erreichbarkeit prüft, fragt mit `elementFromPoint`, was an
+der Stelle obenauf ist (`e2e/support/narrowScreens.ts`).
+
+---
+
 ### Q05 — pukalani.studio: Der Seitenkopf ist sofort sichtbar, die Nebenfarbe ist als Schrift lesbar (PERF-002, UI-003) ✅ 2026-11-20
 
 **Was.** Zwei Änderungen in `apps/portfolio`, beide an EINER Stelle in

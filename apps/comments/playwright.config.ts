@@ -40,6 +40,16 @@ catch { /* keine .env → env-gated Tests skippen */ }
 // laufenden Dev-Server auf einem anderen Port zu testen (parallele Sessions).
 const baseURL = process.env.PW_BASE_URL ?? 'http://localhost:3001'
 
+/**
+ * Die Marketing-App als ZWEITER Server (Q01, 2026-11-20): `narrow-screens.spec.ts`
+ * misst die Kopfzeile von pukalani.app bei 375 und 768 px. Sie hat keine
+ * eigene Browser-Suite; ihr Server braucht weder Datenbank noch Env-Datei
+ * (ohne Antwort der Betreiber-App zeigt sie das geschlossene Tor, also die
+ * Kopfzeile mit den meisten Knöpfen). Wer `PW_MARKETING_URL` setzt, startet
+ * den Server selbst — das `dev`-Skript der App kennt nur Port 3007.
+ */
+const marketingURL = process.env.PW_MARKETING_URL ?? 'http://localhost:3007'
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -67,7 +77,7 @@ export default defineConfig({
     // Kein `channel` ⇒ Playwrights gebündeltes Chromium (siehe Kopfkommentar).
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: process.env.PW_EXTERNAL_SERVER ? undefined : {
+  webServer: process.env.PW_EXTERNAL_SERVER ? undefined : [{
     command: 'pnpm dev',
     url: baseURL,
     reuseExistingServer: true,
@@ -92,5 +102,13 @@ export default defineConfig({
      * Der Visual-Test prüft das und schlägt sonst mit klarer Ansage fehl.
      */
     env: { PW_E2E: '1' },
-  },
+  }, ...(process.env.PW_MARKETING_URL
+    ? []
+    : [{
+        command: 'pnpm --filter marketing dev',
+        url: marketingURL,
+        reuseExistingServer: true,
+        timeout: 120_000,
+        stdout: process.env.CI ? 'pipe' as const : 'ignore' as const,
+      }])],
 })

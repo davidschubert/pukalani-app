@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { E2E_AUF_DER_BUEHNE, e2eEnv, summarizeReport } from '../../../scripts/buehne/e2e.mjs'
 
 /**
- * BT1 a: zwei E2E-Dateien laufen nachts auf der Bühne (`pnpm buehne e2e`,
+ * BT1 a: E2E-Dateien laufen nachts auf der Bühne (`pnpm buehne e2e`,
  * scripts/buehne/e2e.mjs). Geprüft wird hier ohne Netz: dass die Variablen
  * aus dem Stand der Bühne richtig abgeleitet werden, dass ein ÜBERSPRUNGENER
  * Test rot zählt (sonst liefe der Schritt still leer), und dass die Spec genau
@@ -38,6 +38,8 @@ describe('Variablen aus dem Stand der Bühne', () => {
       PW_POOL_PROJECT: 'account',
       PW_POOL_KEY: 'pool-runtime-value',
       PW_POOL_REMOVED_USER_ID: 'u-removed',
+      PW_POOL_URL_B: 'http://kunde-b-x.localhost:3150',
+      PW_POOL_OWNER_B_USER_ID: 'u-b',
     })
     expect(env.control).toEqual({ PW_EXTERNAL_SERVER: '1', PW_BASE_URL: 'http://localhost:3004' })
   })
@@ -56,6 +58,8 @@ describe('Variablen aus dem Stand der Bühne', () => {
   it('ohne entferntes Konto, ohne Schlüssel oder bei fremdem Pool-Projekt: Abbruch statt halber Variablen', () => {
     const noRemoved = { ...state, communities: { ...state.communities, a: { host: 'kunde-a-x.localhost', accounts: {} } } }
     expect(() => e2eEnv({ state: noRemoved, platformEnv, controlPort: 3004 })).toThrow(/entfernten Konto/)
+    const noOwnerB = { ...state, communities: { ...state.communities, b: { host: 'kunde-b-x.localhost', accounts: {} } } }
+    expect(() => e2eEnv({ state: noOwnerB, platformEnv, controlPort: 3004 })).toThrow(/Community B/)
     expect(() => e2eEnv({ state, platformEnv: { ...platformEnv, NUXT_APPWRITE_KEY: '' }, controlPort: 3004 })).toThrow(/Schlüssel/)
     expect(() => e2eEnv({ state, platformEnv: { ...platformEnv, NUXT_PUBLIC_APPWRITE_PROJECT_ID: 'other' }, controlPort: 3004 })).toThrow(/Pool-Projekt/)
   })
@@ -101,13 +105,16 @@ describe('Die Dateien passen zum Repo', () => {
     for (const entry of E2E_AUF_DER_BUEHNE) expect(existsSync(join(REPO, 'apps', entry.app, entry.datei)), entry.datei).toBe(true)
   })
 
-  it('die Pool-Spec liest genau die Variablen, die der Befehl für sie setzt', () => {
-    const source = readFileSync(join(REPO, 'apps/comments/e2e/community-removed.spec.ts'), 'utf8')
-    const read = [...new Set([...source.matchAll(/process\.env\.(PW_[A-Z_]+)/g)].map(match => match[1]))].sort()
+  it('die Pool-Specs lesen zusammen genau die Variablen, die der Befehl für sie setzt', () => {
+    const read = new Set<string>()
+    for (const entry of E2E_AUF_DER_BUEHNE.filter(entry => entry.app === 'comments')) {
+      const source = readFileSync(join(REPO, 'apps/comments', entry.datei), 'utf8')
+      for (const match of source.matchAll(/process\.env\.(PW_[A-Z_]+)/g)) read.add(match[1]!)
+    }
     // PW_BASE_URL und PW_EXTERNAL_SERVER liest die Playwright-Konfiguration, nicht die Spec.
     const forConfig = new Set(['PW_BASE_URL', 'PW_EXTERNAL_SERVER'])
     const provided = Object.keys(e2eEnv({ state, platformEnv, controlPort: 3004, clientAddress: '10.28.1.2' }).comments).filter(key => !forConfig.has(key)).sort()
-    expect(read).toEqual(provided)
+    expect([...read].sort()).toEqual(provided)
   })
 
   it('beide Playwright-Konfigurationen starten mit PW_EXTERNAL_SERVER keinen eigenen Server', () => {
