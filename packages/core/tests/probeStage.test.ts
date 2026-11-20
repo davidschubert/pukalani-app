@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   generateInviteCode,
   generatePassword,
@@ -82,9 +82,24 @@ describe('Probe-Konten', () => {
   })
 
   it('der Lauf-Stempel taugt als Teil einer Zeilen-Id und eines Labels (alphanumerisch)', () => {
-    const stamps = Array.from({ length: 20 }, () => runStamp())
-    for (const stamp of stamps) expect(stamp).toMatch(/^[a-z0-9]+$/)
-    expect(new Set(stamps).size).toBe(stamps.length)
+    // DIE UHR IST GESTELLT. Der Stempel ist die Millisekunde plus zwei
+    // Zufalls-Bytes; 20 Stempel aus DERSELBEN Millisekunde sind rechnerisch
+    // in einem von 350 Läufen zufällig doppelt — so war dieser Test am
+    // 2026-11-20 auf main einmal rot. Ein Lauf ruft den Stempel einmal;
+    // geprüft wird deshalb, was gilt: verschiedene Zeitpunkte ergeben
+    // verschiedene Stempel.
+    vi.useFakeTimers()
+    try {
+      const stamps = Array.from({ length: 20 }, (_, index) => {
+        vi.setSystemTime(new Date(Date.UTC(2026, 10, 20, 12, 0, 0, index)))
+        return runStamp()
+      })
+      for (const stamp of stamps) expect(stamp).toMatch(/^[a-z0-9]+$/)
+      expect(new Set(stamps).size).toBe(stamps.length)
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 })
 
