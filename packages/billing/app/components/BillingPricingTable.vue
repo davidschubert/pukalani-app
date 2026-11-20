@@ -137,8 +137,8 @@ async function openPortal() {
         </p>
         <!-- PAngV: Endpreis-Hinweis AM Preis, nur für Bezahlpläne mit echtem
              Betrag (free braucht keinen, „—" ist kein Preis). Der Satz steckt
-             im i18n-Key, damit eine App mit anderem Steuersitz ihn überschreiben
-             kann — der Anbieter sitzt heute in Deutschland (19 %). -->
+             im i18n-Key, damit eine App mit anderem Steuersatz ihn überschreiben
+             kann — der Satz nennt heute die deutsche Umsatzsteuer (19 %). -->
         <p
           v-if="plan.lookupKeys && planPrice(plan.id, plan.lookupKeys)"
           class="mt-1 text-sm font-medium text-toned"

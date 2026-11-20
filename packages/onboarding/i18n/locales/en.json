@@ -303,7 +303,7 @@
       "claimExpires": "Without proof we keep this entry until {date}."
     },
     "layout": {
-      "footer": "Pukalani · Community software made and hosted in Germany",
+      "footer": "Pukalani · Community software, hosted in Germany",
       "accountMenu": "Account menu"
     },
     "communities": {
