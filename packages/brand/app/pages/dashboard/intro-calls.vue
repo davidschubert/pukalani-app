@@ -332,7 +332,7 @@ function rowActions(entry: BrandIntroRequestItem): DropdownMenuItem[][] {
         </template>
         <template #footer>
           <div class="flex w-full justify-end">
-            <UButton color="neutral" variant="ghost" :label="t('ui.close')" @click="reading = null" />
+            <UButton color="neutral" variant="ghost" :label="t('brand.admin.introCalls.close')" @click="reading = null" />
           </div>
         </template>
       </UModal>

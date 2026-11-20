@@ -15,9 +15,9 @@
 // Der SLUG ist seit Davids Entscheidung 2026-07-31 übersetzt (wie bei den
 // Produkten): /de/use-cases/kurse ↔ /use-cases/course-creators. Das Segment
 // bleibt dabei in beiden Sprachen gleich — übersetzt ist nur das Wort, das die
-// Zielgruppe benennt. Die drei schon veröffentlichten EN-Adressen mit
-// deutschem Slug: 301 in nuxt.config.ts.
-import { audienceKeyFromSlug, audienceSlugForLocale } from '#shared/marketing'
+// Zielgruppe benennt. Ein Name der anderen Sprache (`/use-cases/kurse`,
+// `/de/use-cases/clubs`): 301 hier in der Seite.
+import { audienceSlugForLocale, matchAudienceSlug } from '#shared/marketing'
 
 definePageMeta({ layout: 'site' })
 
@@ -25,18 +25,26 @@ definePageMeta({ layout: 'site' })
 // Link-Ziele in Abschnitt und Fuß.
 const route = useRoute()
 const { t, locale } = useI18n()
+const localePath = useLocalePath()
 
 /**
  * Der Slug in der Adresse gehört der AKTUELLEN Sprache; gearbeitet wird ab hier
  * nur noch mit dem kanonischen Schlüssel (i18n-Texte, OG-Bild). Ein Slug der
- * ANDEREN Sprache ist kein Treffer — `audienceKeyFromSlug` prüft je Sprache,
- * sonst gäbe es dieselbe Seite unter zwei URLs (`/de/use-cases/clubs` wäre
- * dann eine zweite deutsche Adresse für dieselbe Seite).
+ * ANDEREN Sprache zeigt die Seite nicht (`/de/use-cases/clubs` wäre sonst eine
+ * zweite deutsche Adresse), er leitet auf die richtige Adresse weiter —
+ * Begründung in pages/produkte/[slug].vue.
  */
-const audienceKey = audienceKeyFromSlug(String(route.params.slug), locale.value)
-if (!audienceKey) {
+const match = matchAudienceSlug(String(route.params.slug), locale.value)
+if (!match) {
   throw createError({ status: 404, statusText: 'Page not found' })
 }
+if (match.redirect) {
+  await navigateTo(
+    localePath({ name: 'use-cases-slug', params: { slug: match.slug }, query: route.query }),
+    { redirectCode: 301 },
+  )
+}
+const audienceKey = match.key
 
 /**
  * DIE ÜBERSETZTE ADRESSE DIESER SEITE — für `switchLocalePath()` (Sprach-
@@ -54,7 +62,6 @@ setI18nParams({
   en: { slug: audienceSlugForLocale(audienceKey, 'en') },
 })
 
-const localePath = useLocalePath()
 const { start, demo } = useProductLinks()
 useReveal()
 

@@ -38,13 +38,16 @@ export default defineNuxtConfig({
   // Self-Redirect '/products/**' → '/products/**' — alle EN-Produktseiten
   // waren tot (Weiterleitungsschleife), und '/de/products/**' bewachte eine
   // Quell-URL, die es nie gegeben hat.
-  // Dritte Welle (Davids Entscheidung 2026-07-31): auf der ENGLISCHEN Seite
-  // ist jetzt auch der SLUG übersetzt (`/products/courses` statt
-  // `/products/kurse`). Betroffen sind genau die drei Produkte, deren Wort
-  // sich unterscheidet — moderation, branding und events heißen in beiden
-  // Sprachen gleich und brauchen nichts. Exakte Pfade genügen: es sind sechs
-  // feste Seiten, kein Muster (`/products/**` würde ins Ziel selbst greifen).
-  // Die DEUTSCHEN Adressen ändern sich NICHT.
+  // Dritte Welle (Davids Entscheidung 2026-07-31): auch der SLUG ist je
+  // Sprache übersetzt (`/products/courses` ↔ `/de/produkte/kurse`). Ein Name
+  // der ANDEREN Sprache (`/products/kurse`, `/de/produkte/courses`) braucht
+  // hier KEINE Regel mehr: die beiden Seiten leiten ihn selbst per 301 auf
+  // die richtige Adresse (Q03, 2026-11-20 — `matchProductSlug` und
+  // `matchAudienceSlug` lesen die Namens-Tabelle, eine neue Seite ist damit
+  // von selbst gedeckt). Bis dahin standen hier fünf feste Regeln für die
+  // englische Seite, für die deutsche keine: ein deutscher Browser auf einem
+  // englischen Link endete auf einer Fehlerseite.
+  // Hier bleiben nur Adressen, die in KEINER Sprache mehr ein Name sind.
   routeRules: {
     '/features/**': { redirect: { to: '/products/**', statusCode: 301 } },
     '/de/features/**': { redirect: { to: '/de/produkte/**', statusCode: 301 } },
@@ -52,27 +55,12 @@ export default defineNuxtConfig({
     '/de/fuer/**': { redirect: { to: '/de/use-cases/**', statusCode: 301 } },
     // Zwei Sprünge für die ältesten Adressen (`/features/kurse` → `/products/
     // kurse` → `/products/courses`) sind bewusst in Kauf genommen: eine Kette
-    // aus zwei 301 wertet Google wie eine, und je Produkt eine zweite
-    // Sonderregel zu führen kostet mehr Klarheit als sie einbringt.
-    // Kommentar-Baustein: seit 2026-08-04 unter /products/comments — beide
+    // aus zwei 301 wertet Google wie eine.
+    // Kommentar-Baustein: seit 2026-08-04 unter /products/comments — die
     // Altpfade zeigen DIREKT dorthin (keine 301-Ketten), der DE-Pfad ebenso.
     '/products/diskussionen': { redirect: { to: '/products/comments', statusCode: 301 } },
     '/products/discussions': { redirect: { to: '/products/comments', statusCode: 301 } },
     '/de/produkte/diskussionen': { redirect: { to: '/de/produkte/kommentare', statusCode: 301 } },
-    '/products/beitraege': { redirect: { to: '/products/posts', statusCode: 301 } },
-    '/products/kurse': { redirect: { to: '/products/courses', statusCode: 301 } },
-    // Vierte Welle, dieselbe Entscheidung für die Anwendungsfälle: auf der
-    // ENGLISCHEN Seite ist auch dort der Slug übersetzt. Betroffen sind genau
-    // die drei, deren Wort sich unterscheidet — `coaches` heißt in beiden
-    // Sprachen gleich und braucht KEINE Regel (sie wäre ein Self-Redirect).
-    // Die DEUTSCHEN Adressen (/de/use-cases/kurse …) ändern sich NICHT und
-    // dürfen deshalb NICHT mit umgeleitet werden: die Muster hier sind exakte
-    // Pfade OHNE /de-Präfix und treffen sie nicht. `/for/kurse` springt
-    // entsprechend zweimal (→ /use-cases/kurse → /use-cases/course-creators),
-    // aus demselben Grund wie oben bei den Produkten.
-    '/use-cases/kurse': { redirect: { to: '/use-cases/course-creators', statusCode: 301 } },
-    '/use-cases/creator': { redirect: { to: '/use-cases/creators', statusCode: 301 } },
-    '/use-cases/vereine': { redirect: { to: '/use-cases/clubs', statusCode: 301 } },
   },
 
   // DIE HELL-KLEMME IST WEG (Davids Entscheidung B7, 2026-08-01).
