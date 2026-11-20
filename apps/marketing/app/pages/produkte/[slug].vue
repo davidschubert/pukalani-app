@@ -6,7 +6,7 @@
 // SIND Early Access. Ihre Seiten existieren, aber sie dürfen nicht wie ein
 // aktueller Tarifbestandteil aussehen. Deshalb:
 //   1. ein prominenter Early-Access-Banner GANZ OBEN (nicht kleingedruckt),
-//   2. KEIN Kauf-/„Kostenlos starten"-CTA — nur „Early Access anfragen",
+//   2. KEIN Kauf-/„14 Tage kostenlos testen"-CTA — nur „Early Access anfragen",
 //   3. die Highlights beschreiben ausschließlich, was tatsächlich existiert.
 //
 // Locale-Pfade: EN /products/<en-slug> · DE /de/produkte/<de-slug> —

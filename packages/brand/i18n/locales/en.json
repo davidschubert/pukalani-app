@@ -1161,7 +1161,7 @@
       "progress": "{filled} of {total} decisions",
       "noAccess": {
         "title": "No access yet",
-        "description": "The brand wizard is in a closed beta. If you have an invitation link, open it — otherwise we'll get in touch once your access is ready.",
+        "description": "This account has no access to the brand wizard yet. If you have an invitation link, open it — otherwise we'll get in touch once your access is ready.",
         "action": "Redeem invitation code"
       },
       "stepLocked": {
