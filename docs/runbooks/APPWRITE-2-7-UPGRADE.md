@@ -535,9 +535,9 @@ Production: 99 s mit echter Migration; diesmal sind die Images vorgezogen und
       `docs/content/` (Setup, Übersicht, Hosts und Ports) und
       `docs/runbooks/DEPLOYMENT.md` auf „2.7.3 überall" gestellt; das Skript im
       Archiv; Issue 369 geschlossen. Danach die SDKs (Issues 352, 353)
-- [ ] Die Images der Vorgänger auf dem Server aufräumen (2.6.2 und, wenn
-      2.7.3 eine Weile ruhig lief, 2.7.1 — zusammen rund 11 GB; OPEN-ITEMS
-      „AW30" d). Das Image 2.7.1 ist bis dahin der Rückweg ohne neuen Abruf.
+- [x] Die Images der Vorgänger auf dem Server aufräumen (2.6.2 und 2.7.1) —
+      gelöscht am 2026-11-20 nach dem Schritt auf 2.7.4 (Erledigt-Liste,
+      „AW30 (d)").
 
 **Rückweg:** `.env` + `docker-compose.yml` aus `*.<epoch>.backup` (legt das
 Werkzeug an) oder aus dem Config-Tar zurück, `docker compose up -d
@@ -662,9 +662,11 @@ Pull Requests.
       940 / 940 und der Datenbank-Stand je App in `/api/health`.
 - [x] Ein Wächter-Lauf von Hand (`gh workflow run production-watch.yml`),
       kein offener Alarm
-- [ ] Die Images der Vorgänger aufräumen (2.6.2, 2.7.1 und, wenn 2.7.4 eine
-      Weile ruhig lief, 2.7.3 — OPEN-ITEMS „AW30" d). Das Image 2.7.3 ist bis
-      dahin der Rückweg ohne neuen Abruf.
+- [x] Die Images der Vorgänger 2.6.2 und 2.7.1 samt Begleitern sind am
+      2026-11-20 gelöscht (Platte 66 % → 40 %; Erledigt-Liste, „AW30 (d)").
+- [ ] Das Image 2.7.3 (und Executor 1.3.5) aufräumen, wenn 2.7.4 eine Weile
+      ruhig lief — bis dahin ist es der Rückweg ohne neuen Abruf (OPEN-ITEMS
+      „AW30" d).
 
 **Rückweg:** wie bei 2.7.3 — `.env` + `docker-compose.yml` aus
 `*.1795187724.backup` (legt das Werkzeug an) oder aus dem Config-Tar zurück,
