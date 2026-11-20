@@ -30,6 +30,54 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW30 (d) — Rückweg-Images und Sicherungskopien auf appwrite-prod gelöscht ✅ 2026-11-20
+
+**Was.** Davids Auftrag vom Abend des 2026-11-20: die zwei Images, die als
+Rückweg geblieben waren, und die Sicherungen im Compose-Ordner löschen.
+
+1. **Images.** `appwrite/appwrite:2.7.3` und `openruntimes/executor:1.3.5`,
+   einzeln mit `docker image rm` (ohne `-f`, kein `prune`). Vorher gelesen,
+   dass kein Container sie benutzt — nach Name und nach Image-Id.
+2. **Sicherungskopien.** 25 alte Kopien der drei Einstellungs-Dateien im
+   Compose-Ordner (sieben der Override, neun der `docker-compose.yml`, neun
+   der `.env`; die ältesten vom Juli) und neun Dateien im Heimatverzeichnis
+   (zwei Upgrade-Skripte, sieben Protokolle). Jede einzeln mit vollem Pfad,
+   kein Platzhalter.
+
+**Vorher gemessen (2.7.4 lief sechs Stunden).** API 200 mit 2.7.4, 18 von 18
+Containern, Neustart-Zähler überall 0, alle laufen ohne Unterbrechung seit
+dem Beweis-Neustart, Handshake der Live-Verbindung 101, `verify-health.mjs` grün
+für alle zehn Hosts. Im Log des Haupt-Containers seit dem Upgrade 274.000
+Zeilen: Antwort-Codes 200, 301, 404, 201, 204 — kein 5xx; die 680
+Fehler-Blöcke sind alle „nicht gefunden" (optionale Zeilen, fremde Abrufe).
+„Eine Weile ruhig" heißt hier also sechs Stunden, nicht Tage.
+
+**Vor dem Löschen der Kopien geprüft.** Jede Kopie gegen die lebende Datei
+verglichen, bei der `.env` nur die NAMEN der Schlüssel: die Unterschiede sind
+Versionsnummern, Image-Zeilen, der alte Patch-Block der Override, die
+Neustart-Regel und Werte, die seither bewusst getauscht wurden. Der Schlüssel
+`_APP_OPENSSL_KEY_V1` ist in allen neun Kopien derselbe wie heute. Die zwei
+Skripte liegen bytegleich in `docs/archiv/skripte/`. `docker compose config
+-q` endet vor und nach dem Löschen mit 0, die drei lebenden Dateien sind
+unverändert (Prüfsumme), das Backup der Nacht war gut (`backup-status`:
+`ergebnis=ok`).
+
+**Beweis danach.** 18 von 18, API 200 mit 2.7.4 von außen und vom Server,
+Handshake 101, alle zehn Hosts gesund. Platte 40 % → 38 %.
+
+**Geblieben** (OPEN-ITEMS „AW30" d und e): der Ordner `~/backups` mit den
+Datenbank-Abzügen der letzten zwei Upgrades (stand nicht im Auftrag; trägt
+Personendaten) und die alten Patch-Dateien. Die Neustart-Regel bei einem
+Docker-Update ließ sich nicht beweisen: es wartet keines.
+
+**Gelernt:** Das Upgrade-Werkzeug und jeder Handgriff von Hand legen bei
+jedem Lauf zwei bis drei Kopien an, und niemand räumt sie ab — nach vier
+Monaten lagen 25 Kopien neben drei lebenden Dateien, neun davon mit allen
+Geheimnissen im Klartext. Aufräumen gehört in die Abschluss-Liste des
+jeweiligen Laufs, sobald das nächtliche Backup den neuen Stand trägt.
+
+---
+
 ### Q05 — pukalani.studio: Der Seitenkopf ist sofort sichtbar, die Nebenfarbe ist als Schrift lesbar (PERF-002, UI-003) ✅ 2026-11-20
 
 **Was.** Zwei Änderungen in `apps/portfolio`, beide an EINER Stelle in
@@ -147,6 +195,9 @@ löscht kein Image, das ein Container benutzt — die Liste „in Benutzung"
 `openruntimes/executor:1.3.5` als Rückweg ohne neuen Abruf, die
 Laufzeit-Images für Functions (`openruntimes/node`, `flutter`, `static` — der
 Executor holt sie beim Start) und die Sicherungsdateien im Compose-Ordner.
+Nachtrag: die zwei Rückweg-Images und die Sicherungsdateien sind am selben
+Abend ebenfalls gelöscht (Eintrag „AW30 (d) — Rückweg-Images und
+Sicherungskopien" oben).
 
 **Gelernt:** Das Console-Image ist mit 4,3 GB je Version der größte Posten,
 nicht das Appwrite-Image (0,8 GB) — die Schätzung „rund 11 GB" aus dem
