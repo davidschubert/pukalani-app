@@ -544,7 +544,9 @@ Werkzeug an) oder aus dem Config-Tar zurück, `docker compose up -d
 --remove-orphans`. `migrate` legt bei diesem Schritt nichts an — der Dump ist
 die Sicherung, gebraucht wird er für den Rückweg voraussichtlich nicht. Nicht
 geprüft: ob eine Sitzung oder ein Zähler, den 2.7.3 geschrieben hat, 2.7.1
-stört (beide lesen dasselbe Schema).
+stört (beide lesen dasselbe Schema). Seit dem 2026-11-20 sind die Kopien und
+die Images dieses Schritts vom Server gelöscht — was heute gilt, steht im
+Rückweg-Absatz von [„2.7.3 → 2.7.4"](#273--274).
 
 ### Durchläufe
 
@@ -664,13 +666,32 @@ Pull Requests.
       kein offener Alarm
 - [x] Die Images der Vorgänger 2.6.2 und 2.7.1 samt Begleitern sind am
       2026-11-20 gelöscht (Platte 66 % → 40 %; Erledigt-Liste, „AW30 (d)").
-- [ ] Das Image 2.7.3 (und Executor 1.3.5) aufräumen, wenn 2.7.4 eine Weile
-      ruhig lief — bis dahin ist es der Rückweg ohne neuen Abruf (OPEN-ITEMS
-      „AW30" d).
+- [x] Das Image 2.7.3 (und Executor 1.3.5) aufräumen — gelöscht am
+      2026-11-20 um 21:20 UTC, sechs Stunden nach dem Upgrade (Davids
+      Auftrag; Erledigt-Liste, „AW30 (d) — Rückweg-Images und
+      Sicherungskopien"). Vorher gemessen: API 200 mit 2.7.4, 18 von 18
+      Containern, Neustart-Zähler überall 0, Handshake 101, alle zehn Hosts
+      gesund, im Log seit dem Upgrade kein 5xx.
+- [x] Die Sicherungskopien im Compose-Ordner (`*.backup`,
+      `docker-compose.yml.pre-2.7.*`, `docker-compose.override.yml.bak-*`,
+      alte `.env`-Kopien) und die Upgrade-Skripte samt Protokollen im
+      Heimatverzeichnis sind am selben Abend gelöscht. Im Ordner liegen nur
+      noch die lebenden Dateien.
 
-**Rückweg:** wie bei 2.7.3 — `.env` + `docker-compose.yml` aus
-`*.1795187724.backup` (legt das Werkzeug an) oder aus dem Config-Tar zurück,
-`docker compose up -d --remove-orphans`.
+**Rückweg (seit dem 2026-11-20 abends):** die alten Images liegen nicht mehr
+auf dem Server, also zuerst `docker pull appwrite/appwrite:2.7.3` und
+`docker pull openruntimes/executor:1.3.5` (beide öffentlich). Die
+Einstellungen von 2.7.3 unterscheiden sich von den heutigen in genau zwei
+Zeilen (vor dem Löschen der Kopien gemessen): `_APP_VERSION` in der `.env`
+und die Zeile `image: openruntimes/executor:…` in `docker-compose.yml`. Beide
+von Hand zurückstellen oder die drei Dateien aus dem Config-Tar des Laufs
+holen (`~/backups/appwrite-config-pre-2.7.4-*.tgz`, solange der Ordner
+besteht — OPEN-ITEMS „AW30" d), sonst aus dem nächtlichen Backup vom
+2026-11-20 03:30 UTC (Stand 2.7.3, verschlüsselt —
+[APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md)). Danach
+`docker compose up -d --remove-orphans`. Die Kopien `*.<epoch>.backup`, die
+die Rückweg-Absätze der früheren Schritte nennen, gibt es nicht mehr; das
+Werkzeug legt beim nächsten Upgrade neue an.
 
 ### Beweis-Neustart (Neustart-Regel der Container)
 
