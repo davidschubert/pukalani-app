@@ -21,7 +21,7 @@ erste Handgriffe bei einem Ausfall: [PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md)
 
 EIN App-Server (`app-prod`, 49.13.211.173, ploi-verwaltet) mit sechs Apps;
 Appwrite daneben auf `appwrite-prod` (188.245.61.155) unter `api.pukalani.app`,
-self-hosted **2.7.3**, vier Projekte: `account` (Pool-Communities und Konten),
+self-hosted **2.7.4**, vier Projekte: `account` (Pool-Communities und Konten),
 `admin` (Betreiber-Konsole), `portfolio`, `branding`.
 
 | App (`apps/<app>`) | Site = Verzeichnis `/home/ploi/<site>` | antwortet auch auf | Port | pm2-Prozess |

@@ -101,7 +101,7 @@ am 2026-11-18, COMPLETE „N11").
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) drei Hinweise zu Abhängigkeiten bleiben offen (nachgemessen am 2026-11-20, COMPLETE „N18"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete — für `minimatch` fehlt noch eine, das kleine Update allein schließt den Hinweis nicht. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 73 von 84 von selbst; nachts steht auch branding.supply als vierter Server, elf seiner zwölf Skripte laufen mit (COMPLETE „N16" und „N17"). Offen: (a) die fünf E2E-Dateien der Studio-Site und ein Skript brauchen einen fünften Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
-| AW30 | **Reste nach dem Appwrite-Upgrade auf 2.7.3.** Production läuft seit dem 2026-11-18 auf 2.7.3, geprüft von außen und auf dem Server. Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) ein Kommentar und eine Stimme mit einem Konto auf Production (Anmelden, Profilbild und Anmeldung per Code sind seit dem 2026-11-19 geprüft); (d) alte Images auf dem Server aufräumen (rund 11 GB). | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
+| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) alte Images auf dem Server aufräumen (rund 15 GB); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -1069,8 +1069,9 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
 **AW30 — Reste nach Appwrite 2.7.3 (Issue 369 geschlossen am 2026-11-18).**
 Der Lauf auf Production und die Doku sind erledigt
 ([Erledigt-Liste](OPEN-ITEMS-COMPLETE.md), „AW30 (a)"; Messwerte im Runbook,
-Tabelle „Durchläufe"). Dev, CI und Production fahren dieselbe Version, der
-Production-Spiegel auf den Entwicklungs-Rechner ist damit wieder möglich.
+Tabelle „Durchläufe"). Seit dem 2026-11-20 fahren dev, CI und Production
+2.7.4 (Erledigt-Liste, „AW31"); der Production-Spiegel auf den
+Entwicklungs-Rechner ist damit weiter möglich.
 
 - **(b) SDKs und Meldung.** Die SDKs heben (Issues 352 und 353; erst dann
   zieht `RESPONSE_FORMAT`). Klein und unabhängig davon: seit 2.7.2 bremst
@@ -1086,12 +1087,21 @@ Production-Spiegel auf den Entwicklungs-Rechner ist damit wieder möglich.
   der Demo, braucht Davids Ja) und der Speichern-Knopf im Profil mit neuem
   Bild (er ersetzt das echte Profilbild). Kommentar und Stimme sind auf der
   Entwicklungs-Instanz und in der CI mit 2.7.3 bewiesen.
-- **(d) Alte Images.** Auf appwrite-prod liegen die Images von 2.6.2 und
-  2.7.1 neben 2.7.3 (Platte 56 %, 32 GB frei). 2.6.2 kann weg; 2.7.1 erst,
-  wenn 2.7.3 eine Weile ruhig lief (es ist der Rückweg ohne neuen Abruf).
-  Ebenso die Sicherungsdateien des Werkzeugs im Compose-Ordner
-  (`*.backup`, `docker-compose.yml.pre-2.7.3`) und Skript samt Protokoll im
+- **(d) Alte Images.** Auf appwrite-prod liegen die Images von 2.6.2, 2.7.1
+  und 2.7.3 neben 2.7.4 (Platte 66 %, 25 GB frei, Stand 2026-11-20). 2.6.2
+  und 2.7.1 können weg; 2.7.3 erst, wenn 2.7.4 eine Weile ruhig lief (es ist
+  der Rückweg ohne neuen Abruf). Ebenso die Sicherungsdateien des Werkzeugs
+  im Compose-Ordner (`*.backup`, `docker-compose.yml.pre-2.7.*`,
+  `docker-compose.override.yml.bak-*`) und Skripte samt Protokollen im
   Heimatverzeichnis. Löschen nur mit Davids Ja.
+- **(e) Neustart-Regel bei einem Docker-Update.** Seit dem 2026-11-20 trägt
+  jeder Container auf appwrite-prod eine Neustart-Regel; bewiesen ist sie für
+  den Neustart des Servers (42 s, ohne Eingriff — COMPLETE „AW31"). Ein
+  Paket-Update, das Docker oder containerd anhebt, hält die Container
+  ebenfalls an; dass sie auch danach von selbst wiederkommen, ist noch nicht
+  eigens gesehen. Beim nächsten solchen Update zusehen und das Ergebnis im
+  Runbook [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) § 4
+  nachtragen. Kein eigener Lauf dafür.
 
 <a id="cw1"></a>
 

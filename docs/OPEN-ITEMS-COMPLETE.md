@@ -30,6 +30,66 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW31 — Appwrite 2.7.4 auf dev, CI und Production; die Container auf appwrite-prod kommen nach einem Neustart von selbst wieder ✅ 2026-11-20
+
+**Was.** Zwei Dinge in einem Wartungsfenster (Davids Entscheidung vom selben
+Tag: der Beweis der Neustart-Regel läuft im Fenster des Upgrades, nicht eigens
+davor).
+
+1. **Appwrite 2.7.3 → 2.7.4** (Wartungs-Release vom 2026-11-19: Basis-Image
+   2.2.13 mit PHP 8.5.13, Executor 1.3.7). Mit PHP 8.5.12 konnte ein
+   Swoole-Worker durch einen Fehler im OPcache jede `DateTime` ablehnen, bis
+   er neu startete. Der Quelltext des Images unterscheidet sich von 2.7.3 nur
+   in zwei Versionszeilen, das Compose in der Zeile des Executors — für
+   unseren Code ändert sich nichts.
+2. **Neustart-Regel.** Vier Container auf appwrite-prod (`appwrite`,
+   `appwrite-traefik`, `appwrite-redis`, `appwrite-browser`) hatten keine und
+   blieben nach jedem Docker-Update und jedem Neustart des Servers unten, bis
+   jemand `docker compose up -d` fuhr (Vorfall 2026-10-24). Jetzt stehen vier
+   Zeilen `restart: unless-stopped` in `docker-compose.override.yml` auf dem
+   Server; die Override überlebt das Upgrade-Werkzeug.
+
+**Beweis.**
+
+- dev (OrbStack), 14:24–14:26 UTC: Fenster 34 s, Tabellen 940 / 940, PHP
+  8.5.13, Executor 1.3.7, Realtime 101 für alle vier Projekte, 0 Fehlerzeilen.
+- CI: Pull Request 434, alle Pflicht-Prüfungen grün; der E2E-Lauf fährt eine
+  frische 2.7.4.
+- Production, 15:11–15:16 UTC nach Davids „ja production jetzt": von außen
+  fehlte die API rund 30 s, Tabellen 940 / 940, „Container ohne
+  Neustart-Regel: keiner", `verify-health` 10 von 10, `verify-tls` grün,
+  Realtime-Handshake 101.
+- Beweis-Neustart des Servers, 15:17 UTC, ohne Eingriff: 18 von 18 Containern
+  liefen von selbst, API und Live-Verbindung antworteten **42 s** nach dem
+  ersten Ausfall-Abruf, kein Container startete zweimal, der Realtime-Wächter
+  musste nicht eingreifen. Am selben Vormittag, noch ohne die Regel: derselbe
+  Neustart ließ vier Container unten, bis ein Skript sie zurückholte.
+
+Messwerte: [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md), „2.7.3 → 2.7.4" und
+„Beweis-Neustart". Das Handrezept in
+[PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) § 4 ist seitdem der
+Rückfall. Skript: `docs/archiv/skripte/appwrite-upgrade-2.7.4.sh`.
+
+**Nicht geprüft und offen** (OPEN-ITEMS „AW30"): dieselbe Regel nach einem
+Paket-Update, das Docker anhebt (e); `ops:schema-parity` lief nach diesem
+Upgrade nicht; kein Klick hinter der Anmeldung auf Production.
+
+**Gelernt:** (1) Eine Neustart-Regel lässt sich an einem LAUFENDEN Container
+ohne Ausfall setzen (`docker update --restart unless-stopped <name>`); in die
+Compose-Datei gehört sie trotzdem, sonst verliert sie der nächste neu
+erstellte Container — und weil die Datei dann vom Container abweicht,
+erstellt der nächste `docker compose up -d` ihn einmal neu (`up -d --dry-run`
+zeigt es vorher). (2) „Gesetzt" ist nicht „bewiesen": erst der Neustart
+zeigte, dass auch die Reihenfolge stimmt (Realtime kam vor der API und blieb
+nicht in der Schleife hängen, die das Runbook beschrieb). (3) Ein Upgrade-
+Skript, das am Ende die Container OHNE Regel nennt, findet die Lücke beim
+nächsten Mal von selbst — auf der Entwicklungs-Instanz nennt es vier.
+(4) Plois Auftrag „Run updates now" lag an diesem Tag zwischen 16 Minuten und
+zwei Stunden in der Warteschlange; wer nachklickt, bekommt später einen
+zweiten Lauf zu einem unbekannten Zeitpunkt.
+
+---
+
 ### BRD-011 — Öffentliche Texte nennen keinen Firmensitz mehr, nur noch das Hosting ✅ 2026-11-20
 
 Zwei öffentliche Texte sagten mehr, als belegt ist (Davids „Ja, korrigieren"
@@ -55,6 +115,8 @@ unberührt.
 einer Vergleichstabelle ein Kriterium umbenennt, liest danach JEDE Zelle der
 Zeile neu gegen die genannten Quellen, auch die der Mitbewerber. Und: „gehostet
 in" und „aus" sind zwei Aussagen; die zweite braucht einen eigenen Beleg.
+
+---
 
 ### N18 — Nacharbeiten „Zähl-Lücke im täglichen Blick, Rückbuchung, Abhängigkeiten": Nebenfund aus N17, LL1 (c), AR1 (e), KI1 (d) ✅ 2026-11-20
 

@@ -266,9 +266,12 @@ paths:
   `NUXT_ALERT_EMAIL` (Mail bei Missbrauchs-Meldungen, Anfragen und
   Statuswechseln der Kunden-Sites) ist auf KEINER Site gesetzt (nachgesehen
   2026-11-17): diese Hinweise erreichen heute nur die Glocke im Dashboard.
-  Was ohne Server-Zugang NICHT geht: Appwrite nach einem Paket-Update oder
-  Neustart wieder starten (`docker compose up -d` in `/home/ploi/appwrite` —
-  das Tor kennt dafür kein Wort; Runbook § 4). Störfälle ohne eigenes Runbook
+  Was ohne Server-Zugang NICHT geht: Appwrite von Hand wieder starten, falls
+  ein Container nach einem Paket-Update oder Neustart doch unten bleibt
+  (`docker compose up -d` in `/home/ploi/appwrite` — das Tor kennt dafür kein
+  Wort; Runbook § 4). Seit dem 2026-11-20 trägt jeder Container dort eine
+  Neustart-Regel aus der Override und kommt nach einem Neustart des Servers
+  von selbst wieder (bewiesen am selben Tag). Störfälle ohne eigenes Runbook
   bis dahin: docs/runbooks/SICHERHEITSVORFALL.md und
   docs/runbooks/ANFRAGEN-VON-AUSSEN.md (beide nennen, was fehlt).
 - SERVER-EINSTELLUNGEN STEHEN ALS VORLAGE IM REPO (GA1 P23, seit 2026-11-16,
