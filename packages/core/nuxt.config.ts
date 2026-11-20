@@ -138,6 +138,17 @@ export default defineNuxtConfig({
     ],
   },
 
+  // SYMBOLE NUR AUS DEN INSTALLIERTEN PAKETEN (FE-002, 2026-11-20). Die Vorgabe
+  // des Moduls fragt ein Symbol, das der eigene Server nicht kennt, vom
+  // BROWSER aus bei einem fremden Dienst an — bei jedem Seitenaufruf, mit der
+  // Adresse des Besuchers, und für einen Namen, den es nicht gibt, ohne jeden
+  // Nutzen. Aus heißt: ein fehlendes Symbol bleibt leer. Damit das nicht erst
+  // im Browser auffällt, prüft `pnpm check:icons` (Lint-Lauf) jeden
+  // Symbol-Namen im Code gegen die installierten Symbol-Pakete.
+  icon: {
+    fallbackToApi: false,
+  },
+
   // Absoluter Pfad statt ~/ — Aliases würden relativ zur App aufgelöst
   css: [join(currentDir, './app/assets/css/main.css')],
 
@@ -252,6 +263,22 @@ export default defineNuxtConfig({
 
   // Skeleton mit Leer-Defaults (Typ-Inferenz) — echte Werte aus .env der App.
   // Der API Key ist server-only und gehört NIE in public.*
+  // DIE APP PACKT IHRE DATEIEN SELBST (PERF-001, 2026-11-20). Beim Bauen legt
+  // Nitro neben jede öffentliche Datei ab 1 KB (Skripte, Stylesheets,
+  // WebAssembly, SVG, JSON) eine `.gz` und eine `.br` und liefert sie je nach
+  // `Accept-Encoding` mit `content-encoding` und `vary` aus. Vorher hing das
+  // an der Grundeinstellung des Webservers, die Skripte nicht kannte: fünf von
+  // sechs öffentlichen Hosts lieferten jedes Skript ungepackt (gemessen: eine
+  // Community-Seite 1,8 MB statt 0,74 MB). Der Webserver und ein Dienst davor
+  // reichen eine schon gepackte Antwort unverändert durch — doppelt gepackt
+  // wird nichts. NICHT gepackt werden gerenderte Seiten und API-Antworten
+  // (die packt weiter der Webserver) und Dateien unter 1 KB. Der tägliche
+  // Blick `scripts/ops/verify-delivery.mjs` prüft je Host, dass ein Skript
+  // gepackt ankommt.
+  nitro: {
+    compressPublicAssets: { gzip: true, brotli: true },
+  },
+
   runtimeConfig: {
     appwriteKey: '',
     // server-only! Env-Mapping: NUXT_AI_KEY — API-Key für aiComplete()

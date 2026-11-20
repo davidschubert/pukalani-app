@@ -810,6 +810,7 @@ export default defineAppConfig({
       plus: 'i-ph-plus',
       reload: 'i-ph-arrow-counter-clockwise',
       search: 'i-ph-magnifying-glass',
+      star: 'i-ph-star',
       stop: 'i-ph-square',
       success: 'i-ph-check-circle',
       system: 'i-ph-monitor',

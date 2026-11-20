@@ -67,7 +67,7 @@ async function save() {
       v-if="data?.undeliverable"
       color="error"
       variant="subtle"
-      icon="i-ph-envelope-simple-x"
+      icon="i-ph-warning-circle"
       :title="t('notifications.email.undeliverableTitle')"
       :description="data.undeliverable === 'complaint' ? t('notifications.email.undeliverableComplaint') : t('notifications.email.undeliverableBounce')"
       data-notification-undeliverable

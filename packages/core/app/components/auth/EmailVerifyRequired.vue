@@ -37,7 +37,7 @@ const description = computed(() =>
   <UAlert
     color="warning"
     variant="subtle"
-    icon="i-lucide-mail-warning"
+    icon="i-ph-envelope-simple"
     :title="props.title"
     :description="description"
     data-email-verify-required

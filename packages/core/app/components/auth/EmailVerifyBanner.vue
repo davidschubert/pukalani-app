@@ -33,7 +33,7 @@ async function onResend() {
 <template>
   <UBanner
     v-if="visible"
-    icon="i-lucide-mail-warning"
+    icon="i-ph-envelope-simple"
     color="neutral"
     :title="t('auth.verification.bannerMessage')"
     :actions="actions"

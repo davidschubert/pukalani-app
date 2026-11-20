@@ -88,6 +88,13 @@ paths:
   andere öffentliche Adresse braucht einen Eintrag MIT GRUND in der
   Erlaubnisliste des Skripts (eigene Server, öffentliche Resolver,
   Test-Grenzwerte).
+  Seit 2026-11-20 fährt `lint:scripts` auch `check:icons` (FE-002): jeder fest
+  geschriebene Symbol-Name (`i-ph-…`, `i-lucide-…`) in `apps/`, `packages/`
+  und der Doku-Site existiert in seinem Symbol-Paket, das Paket ist im
+  Workspace-Paket der Datei oder im Core eingetragen, der Core überschreibt
+  jedes Standard-Symbol von Nuxt UI, und `icon.fallbackToApi` bleibt `false`
+  (ein fehlendes Symbol bleibt leer, der Browser fragt keinen fremden Dienst).
+  Zusammengesetzte Namen (`i-circle-flags-${code}`) sieht der Wächter nicht.
 - LOSE PROMISES IM SERVER-CODE SIND ROT (SEC-023, seit 2026-11-13): für jedes
   `packages/*/server/**/*.ts` und `apps/*/server/**/*.ts` gilt die TYPISIERTE
   Regel `@typescript-eslint/no-floating-promises`. Eine Wache oder ein
