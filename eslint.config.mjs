@@ -173,6 +173,79 @@ const pukalaniPlugin = {
         }
       },
     },
+    /**
+     * KEIN STILLES `.catch` IM SERVER-CODE (Q13, ARC-002).
+     *
+     * `.catch(() => null)` macht aus „konnte nicht gelesen werden" ein „gibt
+     * es nicht" und schreibt nichts ins Protokoll. Rot ist deshalb jedes
+     * `.catch(<Funktion>)`, dessen Funktion ihren Fehler WEDER ANSIEHT (kein
+     * Parameter, oder einer, den der Rumpf nie liest) NOCH WEITERWIRFT (kein
+     * `throw`). Der Weg daran vorbei ist die Hilfe aus dem Core:
+     * `.catch(softFail('<layer>:<pfad>:<aufruf>', ersatz))` — derselbe
+     * Ersatzwert, dazu eine gezählte Zeile `soft_fail`
+     * (packages/core/server/utils/softFail.ts).
+     *
+     * WARUM EINE EIGENE REGEL UND KEIN `no-restricted-syntax`: der wird von
+     * einem späteren Block ERSETZT, nicht ergänzt (Flat Config) — ein Selektor
+     * für alle `server`-Ordner hätte die tablesDB-Sperre der gepoolten Layer
+     * abgeschaltet (s. u., Block „JEDER $fetch NENNT SEINEN ANTWORTTYP").
+     *
+     * ZWEITE PRÜFUNG: die Kennung von `softFail`/`softFailWith` ist ein festes
+     * Text-Literal. Eine zusammengesetzte Kennung trüge Ids ins Protokoll, und
+     * der tägliche Wächter könnte Stellen nicht mehr auseinanderhalten.
+     *
+     * WAS SIE NICHT SIEHT (bewusst): `try { … } catch { … }` ohne Weiterwurf
+     * (dort steht meist mehr als ein Ersatzwert, das ist keine mechanische
+     * Form), eine Funktion, die ihren Fehler liest und dann doch nichts damit
+     * tut, und einen NAMEN als Argument (`.catch(noop)`). Wer wirklich
+     * schweigen muss (das Ende einer Sperr-Kette, deren Fehler der Aufrufer
+     * schon bekommt), schreibt eine `eslint-disable-next-line` MIT GRUND.
+     */
+    'no-silent-catch': {
+      meta: {
+        type: 'problem',
+        docs: { description: 'Ein `.catch` im Server-Code sieht seinen Fehler an oder wirft ihn weiter (Q13).' },
+        schema: [],
+        messages: {
+          silent: 'Stilles `.catch`: der Fehler wird weder angesehen noch weitergeworfen — ein Lesefehler sieht dann aus wie „leer". Nimm `.catch(softFail(\'<layer>:<pfad>:<aufruf>\', ersatz))` aus packages/core/server/utils/softFail.ts (gleicher Ersatzwert, dazu eine gezählte Protokoll-Zeile) oder `softFailWith` für einen berechneten Ersatz. Muss die Stelle wirklich schweigen: eslint-disable-next-line mit Grund.',
+          literal: 'Die Kennung von `{{name}}` ist ein festes Text-Literal (`<layer>:<pfad>:<aufruf>`) — nie zusammengesetzt, sie stünde sonst mit Ids im Protokoll.',
+        },
+      },
+      create(context) {
+        const hasThrow = (node) => {
+          if (!node || typeof node.type !== 'string') return false
+          if (node.type === 'ThrowStatement') return true
+          for (const key of Object.keys(node)) {
+            if (key === 'parent') continue
+            const value = node[key]
+            if (Array.isArray(value)) {
+              if (value.some(item => item && typeof item.type === 'string' && hasThrow(item))) return true
+            }
+            else if (value && typeof value.type === 'string' && hasThrow(value)) return true
+          }
+          return false
+        }
+        return {
+          CallExpression(node) {
+            const callee = node.callee
+            if (callee.type === 'Identifier' && (callee.name === 'softFail' || callee.name === 'softFailWith')) {
+              const first = node.arguments[0]
+              if (!first || first.type !== 'Literal' || typeof first.value !== 'string') {
+                context.report({ node: first ?? node, messageId: 'literal', data: { name: callee.name } })
+              }
+              return
+            }
+            if (callee.type !== 'MemberExpression' || callee.computed || callee.property.name !== 'catch') return
+            const handler = node.arguments[0]
+            if (!handler || (handler.type !== 'ArrowFunctionExpression' && handler.type !== 'FunctionExpression')) return
+            const reads = context.sourceCode.getDeclaredVariables(handler)
+              .some(variable => variable.references.length > 0)
+            if (reads || hasThrow(handler.body)) return
+            context.report({ node: handler, messageId: 'silent' })
+          },
+        }
+      },
+    },
   },
 }
 
@@ -652,5 +725,20 @@ export default createConfigForNuxt({
       { selector: 'CallExpression[callee.name="useFetch"]:not([typeArguments])',
         message: 'useFetch braucht ein Typ-Argument: useFetch<AntwortTyp>(…). Nitros Routen-Ableitung ist bewusst aus (packages/core/nuxt.config.ts, types:extend) — ohne Angabe ist `data` vom Typ `unknown`. Antwort-Typ nach shared/types/ (CLAUDE.md).' },
     ],
+  },
+})
+.append({
+  /**
+   * KEIN STILLES `.catch` IM SERVER-CODE (Q13) — Regel und Begründung stehen
+   * oben am Plugin (`no-silent-catch`). Das Plugin wird hier noch einmal
+   * genannt, weil der Block oben nur `packages/**` kennt und die Server-Ordner
+   * der Apps dazugehören. Tests sind ausgenommen: dort ist ein geschluckter
+   * Fehler oft genau die Probe.
+   */
+  files: ['packages/*/server/**/*.ts', 'apps/*/server/**/*.ts'],
+  ignores: ['**/*.test.ts', '**/tests/**'],
+  plugins: { pukalani: pukalaniPlugin },
+  rules: {
+    'pukalani/no-silent-catch': 'error',
   },
 })
