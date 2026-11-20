@@ -15,6 +15,7 @@ import {
   type TopicLink,
 } from '../../shared/types/post'
 import { listCategories, topicTitle } from './discussions'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DIE THEMEN-VERLINKUNG, SERVERSEITIG (F57).
@@ -139,7 +140,7 @@ async function resolveTopics(event: H3Event, ids: string[]): Promise<Map<string,
   const topics = rows.filter(row => Boolean(row.categoryId))
   if (topics.length === 0) return resolved
 
-  const categories = await listCategories(db).catch(() => [])
+  const categories = await listCategories(db).catch(softFail('posts:utils/topicLinks:listCategories', []))
   const slugById = new Map(categories.map(category => [category.$id, category.slug]))
 
   for (const row of topics) {
@@ -239,14 +240,14 @@ export async function syncTopicLinks(
   const { rows: existing } = await db.list<DiscussionLink>(DISCUSSION_LINKS_TABLE, [
     Query.equal('sourceId', source.$id),
     Query.limit(MAX_TOPIC_LINKS_PER_CONTENT * 2),
-  ]).catch(() => ({ rows: [] as DiscussionLink[] }))
+  ]).catch(softFail('posts:utils/topicLinks:list', { rows: [] as DiscussionLink[] }))
 
   const had = new Set(existing.map(row => row.targetId))
 
   let removed = 0
   for (const row of existing) {
     if (targets.has(row.targetId)) continue
-    await db.remove(DISCUSSION_LINKS_TABLE, row.$id).then(() => { removed++ }).catch(() => undefined)
+    await db.remove(DISCUSSION_LINKS_TABLE, row.$id).then(() => { removed++ }).catch(softFail('posts:utils/topicLinks:remove', undefined))
   }
 
   let added = 0
@@ -257,7 +258,7 @@ export async function syncTopicLinks(
     const created = await db.create<DiscussionLink>(DISCUSSION_LINKS_TABLE, {
       sourceId: source.$id,
       targetId,
-    }).then(() => true).catch(() => false)
+    }).then(() => true).catch(softFail('posts:utils/topicLinks:create', false, { quiet: [409] }))
     if (created) added++
   }
 
@@ -280,7 +281,7 @@ export async function backlinksForTopic(event: H3Event, targetId: string): Promi
     Query.equal('targetId', targetId),
     Query.orderDesc('$createdAt'),
     Query.limit(MAX_TOPIC_BACKLINKS),
-  ]).catch(() => ({ rows: [] as DiscussionLink[] }))
+  ]).catch(softFail('posts:utils/topicLinks:list#2', { rows: [] as DiscussionLink[] }))
 
   const sourceIds = [...new Set(rows.map(row => row.sourceId))].filter(id => id !== targetId)
   if (sourceIds.length === 0) return []

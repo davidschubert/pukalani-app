@@ -1,4 +1,5 @@
 import { POSTS_TABLE, type CommunityPost } from '../../shared/types/post'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * MELDBAR: Beiträge (Moderations-Audit Befund 8, 2026-08-01).
@@ -20,7 +21,7 @@ export default defineNitroPlugin(() => {
   registerReportTarget('post', async (event, targetId) => {
     const row = await tenantDb(event)
       .get<CommunityPost>(POSTS_TABLE, targetId, 'Post not found')
-      .catch(() => null)
+      .catch(softFail('posts:plugins/report-target:get', null))
     return !!row
   })
 })

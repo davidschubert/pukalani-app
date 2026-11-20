@@ -8,6 +8,7 @@ const queues = new Map<string, Promise<unknown>>()
 
 export async function serializePerPost<T>(postId: string, fn: () => Promise<T>): Promise<T> {
   const prev = queues.get(postId) ?? Promise.resolve()
+  // eslint-disable-next-line pukalani/no-silent-catch -- Ende einer Sperr-Kette: den Fehler bekommt der Aufrufer des Glieds, die Kette selbst darf nie abgelehnt sein
   const run = prev.catch(() => {}).then(fn)
   queues.set(postId, run)
   try {
