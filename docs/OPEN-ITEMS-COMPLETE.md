@@ -66,6 +66,96 @@ jemand mehr als 100 Zusagen hat. Die kleinere Menge (das Fenster) zuerst lesen.
 Und: eine nachgebaute Datentür, die Zeitgrenzen ignoriert, kann so etwas nicht
 zeigen — der Test braucht eine, die Grenzen, Sortierung und Kappung rechnet.
 
+### N19 — Update-Runde: elf Issues zu Versionen (sieben geschlossen, vier mit Frist oder Blocker offen) ✅ 2026-11-20
+
+**Was.** Elf Issues mit dem Label `dependencies`, in vier Pull Requests:
+
+| Issue | Ergebnis |
+| --- | --- |
+| 376 Redis im CI-Verbund | 7.4.7-alpine → 7.4.12-alpine (PR 436) |
+| 363 TypeScript-ESLint | 8.72.2 (und eine zweite Kopie 8.62.0) → 8.73.0 (PR 438) |
+| 360 Simple Icons | 1.2.102 → 1.2.103 (PR 438) |
+| 357 minimatch, 11er-Zweig | 11.0.8 → 11.0.9 (PR 438) |
+| 367 Nuxt Content | 3.16.2 → 3.17.0 (PR 439) |
+| 353 `node-appwrite` | 31.1.0 → 31.3.0 (PR 440) |
+| 352 `appwrite` (Web-SDK) | 29.2.0 → 29.3.1 (PR 440) |
+| 374 minimatch 10 | drei von vier Wegen gelöst, der vierte hängt an `archiver` — offen |
+| 373 MariaDB 10.11.20 | CI läuft 10.11.19, das Image 10.11.20 gibt es noch nicht — offen |
+| 359 Vitest 5.1.1 | unter der Drei-Tage-Frist bis 2026-11-21 07:35 UTC — offen |
+| 356 `@vercel/nft` 1.11.7 | unter der Frist bis 2026-11-20 21:17 UTC — offen |
+
+Was offen bleibt, steht in [OPEN-ITEMS.md](OPEN-ITEMS.md) unter AR1 (e).
+
+**Wie.**
+- **Pakete, die nur im Lockfile stehen** (TypeScript-ESLint kommt über
+  `@nuxt/eslint-config`, minimatch über ESLint und glob): für EINEN Lauf
+  Einträge unter `overrides` setzen (`'@typescript-eslint/parser': 8.73.0`
+  …, `'minimatch@^11': 11.0.9`), `pnpm install --lockfile-only
+  --config.minimumReleaseAge=4320`, die Einträge wieder entfernen und noch
+  einmal auflösen. pnpm behält die neue Auflösung, weil sie die Bereiche der
+  Elternpakete erfüllt; im Lockfile ändern sich nur diese Pakete, und kein
+  Override bleibt zurück. Die zweite Kopie 8.62.0 (über
+  `@intlify/unplugin-vue-i18n`, erlaubt `^8.13.0`) fiel dabei auf dieselbe
+  Ausgabe.
+- **Nuxt Content 3.17.0** bringt `nuxt-component-meta` 0.19.0, `oxc-parser`
+  0.154.0 und `isomorphic-git` 1.44.16 mit. Der Lockfile-Diff ist groß (rund
+  2000 Zeilen), weil die Varianten-Schlüssel der Nuxt-Pakete die neue
+  `oxc-parser`-Version tragen — die Liste der Pakete, die wirklich die Version
+  wechseln, ist kurz (aus dem Abschnitt `packages:` gelesen, nicht aus der
+  Zeilenzahl).
+- **Appwrite-SDKs:** beide senden das Antwortformat 2.7.2, der Server läuft
+  auf 2.7.4. `RESPONSE_FORMAT` im Health-Helfer zieht mit (eigener
+  Core-Commit). `scripts/ops/appwrite-auth-policies.mjs` nennt weiter `2.6.2`
+  — bewusst nicht angefasst, das Skript ist kein Teil der Issues.
+- **Redis im CI-Verbund** ist die fünfte Abweichung von der Compose-Vorlage
+  (Kopf von `ci/appwrite/docker-compose.yml`). Der E2E-Lauf schreibt seitdem
+  die laufende Version von MariaDB und Redis in sein Protokoll.
+
+**Beweise.**
+- Je Pull Request lokal alle Wächter des Lint-Laufs, Lint, `lint:typed`,
+  `lint:scripts`, Typecheck, Tests; installierte Versionen per `node -p`
+  nachgelesen; in der CI alle Pflicht-Prüfungen grün.
+- 376: einmaliger CI-Lauf mit Probe (danach wieder aus dem Zweig entfernt) —
+  `Redis server v=7.4.12`, zwei Realtime-Verbindungen nacheinander, Neustart
+  von Redis, wieder zwei Verbindungen beim ersten Versuch, API, Realtime und
+  Worker laufen, danach die ganze Suite (31 bestanden, 11 übersprungen).
+- 360: der einzige verwendete Bezeichner (`github`) ist in beiden Datensätzen
+  gleich; in der Docs-Site angesehen.
+- 367: Builds von `apps/help`, `apps/control`, Docs-Site und `apps/platform`;
+  Hilfe auf Deutsch und Englisch mit Seitenleiste und Suche;
+  `apps/control/scripts/verify-docs-access.mjs` gegen die gebaute App 13 von
+  13 (Gast: Anmeldung bzw. 401, Betreiber sieht die Doku).
+- 353/352, lokal gegen Appwrite 2.7.4: Health-Endpunkte mit Format 2.7.2;
+  zwei Browser-Sitzungen eines Wegwerf-Kontos — anmelden, abmelden (die
+  zweite Sitzung sieht das Ereignis und bleibt angemeldet), erneut anmelden,
+  Reconnect nach erzwungenem Abbruch in 1,3 s; in 150 s Stille sendet das SDK
+  8 Pings, derselbe Socket bleibt offen, ein Ereignis danach kommt an.
+- Live: nach jedem Merge `/api/health` → `ok` und der Build des Merges auf
+  allen acht Hosts.
+
+**Selbst entschieden.** Der CI-Pull-Request lief zuerst, nicht zuletzt: er
+braucht keinen lokalen Lauf, und auf dem Rechner maß bis 16:20 UTC eine
+andere Sitzung Ladezeiten. Issue 353 verlangt eine Probe „in Staging" — eine
+Staging-Umgebung gibt es nicht; gewertet wurden die CI-Instanz (E2E mit
+Session), die lokale Probe und `/api/health` auf Production.
+
+**Gelernt:** (1) **Die Frist gilt je Paket, nicht je Runde.** Zwei von elf
+Zielen waren am Tag der Runde noch zu jung (Vitest um 16 Stunden, der
+Build-Tracer um fünf) — `npm view <paket> time --json` für JEDES Ziel, bevor
+ein Zweig entsteht. (2) **Ein beweglicher Image-Tag sagt nichts über den
+Patchstand.** `mariadb:10.11` war 10.11.19, das Ziel 10.11.20 gab es als Image
+noch gar nicht; erst eine Zeile im Protokoll (`SELECT VERSION()`) macht aus
+der Vermutung eine Messung. (3) **`Network.emulateNetworkConditions offline`
+schließt keinen offenen WebSocket.** Wer einen Reconnect im Browser beweisen
+will, leitet den Socket über `page.routeWebSocket` und schließt ihn dort.
+(4) **Unter Last sind Zeit-Tests lokal rot.** Bei einer Last von über 50
+liefen drei verschiedene Tests in ihre Zeitgrenzen (`aiModelEndpoints`,
+`verifyAuthMethods`, und zweimal der Test von `ops/app-release.sh` mit
+„Teil-Ergebnisse: 0 141 0" — 141 ist ein abgerissenes Rohr in einer
+Befehlskette, ein Fingerzeig für MG1); einzeln wiederholt waren alle grün.
+
+---
+
 ### AW31 — Appwrite 2.7.4 auf dev, CI und Production; die Container auf appwrite-prod kommen nach einem Neustart von selbst wieder ✅ 2026-11-20
 
 **Was.** Zwei Dinge in einem Wartungsfenster (Davids Entscheidung vom selben

@@ -339,6 +339,8 @@ gezogen, 51 geänderte Dateien) und die Pull Requests #15277, #15470, #15280,
 `appwrite` 29.3; Issues 352 und 353) senden das Antwortformat 2.7.2 — deshalb
 kommt ERST der Server, dann die SDKs. `RESPONSE_FORMAT` in
 `packages/core/server/utils/appwriteHealth.ts` bleibt bis dahin bei `2.6.2`.
+Nachtrag 2026-11-20: beide SDKs sind gehoben (`node-appwrite` 31.3.0,
+`appwrite` 29.3.1), `RESPONSE_FORMAT` steht auf `2.7.2`.
 
 **Kein Schema, keine neuen Einstellungen.** Die Migrationsklasse bleibt V25
 (`Migration.php` bekommt nur die zwei Versionszeilen). `migrate` läuft
