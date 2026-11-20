@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { GUEST_AUTHORS_TABLE } from '../../shared/types/comment'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Gast-Kontaktdaten verfallen (Audit-Befund 2026-08-01, Muster
@@ -87,7 +88,7 @@ export async function pruneGuestAuthors(now: number = Date.now()): Promise<Guest
       Query.orderAsc('$createdAt'),
       Query.limit(100),
     ],
-  }).catch(() => null)
+  }).catch(softFail('comments:utils/guestAuthorPrune:listRows', null))
 
   // Fail-soft und STILL: die Tabelle entsteht erst mit Migration comments-013,
   // und Gast-Kommentare sind ein Gate, das die meisten Deployments nie

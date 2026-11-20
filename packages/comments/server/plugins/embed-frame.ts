@@ -1,6 +1,7 @@
 import { resolveEmbedOrigins } from '../../shared/embedOrigins'
 import { listEmbedSites } from '../utils/embedSites'
 import { embedStaticOrigins } from '../utils/embedStaticOrigins'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Registriert /embed bei der core Frame-Ancestors-Registry (expliziter
@@ -25,7 +26,7 @@ export default defineNitroPlugin(() => {
       if (staticOrigins.includes('*')) return ['*']
       // Registry-Lese-Fehler → nur statische Liste (fail-safe: nie 500 im
       // Header-Pfad, aber auch nie stillschweigend '*')
-      const sites = await listEmbedSites(event).catch(() => [])
+      const sites = await listEmbedSites(event).catch(softFail('comments:plugins/embed-frame:listEmbedSites', []))
       return resolveEmbedOrigins(staticOrigins, sites)
     },
   })

@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { communityContentIsPublic } from '../../../../core/shared/communityAudience'
 import { COMMENTS_TABLE } from '../../../shared/types/comment'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * E3 (Embed-Plan Task 15): öffentliche Kommentar-Anzahl EINES Targets für
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event): Promise<{ count: number }> => {
     Query.equal('targetId', targetId),
     Query.equal('targetType', targetType),
     Query.notEqual('status', 'hidden'),
-  ]).catch(() => 0)
+  ]).catch(softFail('comments:api/comments/count.get:count', 0))
 
   countCache.set(cacheKey, count)
   return { count }

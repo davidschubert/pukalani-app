@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { COMMENTS_TABLE, VOTES_TABLE, type Comment } from '../../shared/types/comment'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Community-Export des comments-Layers (Vertrag: core/server/utils/communityExport.ts).
@@ -41,7 +42,7 @@ export async function commentsCommunityExport(event: H3Event) {
 
   // Die Stimmen sind Beiwerk: steht auf einer Instanz noch eine Migration aus,
   // fehlt lieber die Zahl als das ganze Bündel.
-  const votes = await db.count(VOTES_TABLE, []).catch(() => 0)
+  const votes = await db.count(VOTES_TABLE, []).catch(softFail('comments:utils/commentsCommunityExport:count', 0))
 
   /**
    * GELÖSCHTE KOMMENTARE ALS PLATZHALTER (SEC-032, 2026-11-15): ohne Text,
