@@ -30,6 +30,61 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q05 — pukalani.studio: Der Seitenkopf ist sofort sichtbar, die Nebenfarbe ist als Schrift lesbar (PERF-002, UI-003) ✅ 2026-11-20
+
+**Was.** Zwei Änderungen in `apps/portfolio`, beide an EINER Stelle in
+`app/assets/css/portfolio.css`:
+
+- **Seitenkopf.** Der oberste Block von sieben Seiten (`.reveal`: Start,
+  Erstgespräch, UX-Audit, Nuxt-Entwickler, beide Wissens-Seiten, Fallbeispiel)
+  begann bei Deckkraft 0 und blendete sich per CSS ein. Jetzt bleibt die
+  Deckkraft 1, der Block rückt nur noch 24 px nach oben. Bei „weniger
+  Bewegung" steht er wie bisher still.
+- **Schriftfarbe.** `--metal` (`#565584`) färbte an 29 Stellen Schrift. Neu ist
+  `--metal-text` (`#8180ac`, derselbe Farbton, heller); alle 29 Stellen nehmen
+  die neue Variable. `--metal` bleibt für Flächen, Linien und Akzente.
+
+**Beweis** (lokaler Production-Build, Lighthouse mobil, je drei Läufe, Median;
+Last des Rechners 4 bis 5, andere Sitzungen liefen):
+
+| | vorher | nachher |
+| --- | --- | --- |
+| Hauptinhalt (LCP), gepackt ausgeliefert wie auf Production | 5,7 s | 1,4 s |
+| Hauptinhalt (LCP), ungepackt (lokaler Server allein) | 12,9 s | 3,3 s |
+| Erster Inhalt (FCP), gepackt / ungepackt | 1,4 s / 3,3 s | 1,4 s / 3,3 s |
+| Kontrastfehler auf der Startseite | 49 | 0 |
+
+| Schrift auf | `--metal` (alt) | `--metal-text` (neu) |
+| --- | --- | --- |
+| `--bg` `#0b0b10` | 2,83 zu 1 | 5,25 zu 1 |
+| `--bg-soft` `#121218` | 2,69 zu 1 | 4,99 zu 1 |
+| `--surface` `#181822` | 2,54 zu 1 | 4,71 zu 1 |
+
+Ohne Skripte geladen ist der Kopf auf allen sieben Seiten sichtbar (kleinste
+Deckkraft bis zur Wurzel: 1). Übergänge zwischen den Seiten laufen im
+Production-Build wie vorher, die Konsole zeigt keinen Hydration-Fehler.
+Lighthouse meldet auf acht Seiten keinen Kontrastfehler mehr. Wächter:
+`apps/portfolio/tests/siteCssGuards.test.ts` rechnet den Kontrast aus den
+Werten der CSS-Datei nach, verbietet `--metal` als Schriftfarbe und Deckkraft
+in `.reveal`.
+
+**Nicht geprüft.** Die Rechtstexte (`/datenschutz`, `/impressum`) gibt es
+lokal nicht (404, die Inhalte liegen in der Datenbank von Production); ihre
+eine Zeile in der neuen Farbe steht auf `--bg`, gerechnet 5,25 zu 1. Die Site
+ist nur dunkel, einen hellen Modus hat sie nicht.
+
+**Gelernt:** Eine Einblendung über `opacity: 0` kostet das Auge eine knappe
+Sekunde, die Messung aber die ganze Ladezeit: Chrome zählt einen unsichtbar
+gemalten Block nicht als größten Inhalt, und das Einblenden per CSS malt ihn
+nicht neu. Gezählt wird er erst, wenn Vue die Seite übernimmt, also nach allen
+Skripten. Wer einen Kopfbereich bewegt, bewegt ihn (`transform`) und lässt die
+Deckkraft in Ruhe. Und: Der lokale Server packt nichts, Production schon. Eine
+Messung „lokal" ohne gzip davor zeigt 3,3 s bis zum ersten Inhalt, wo
+Production 1,4 s braucht; für einen ehrlichen Vergleich gehört ein packender
+Proxy davor.
+
+---
+
 ### AW30 (d) — Alte Appwrite-Images auf appwrite-prod gelöscht ✅ 2026-11-20
 
 **Was.** Nach dem Upgrade auf 2.7.4 lagen auf dem Appwrite-Server die Images
