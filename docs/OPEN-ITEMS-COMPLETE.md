@@ -30,6 +30,42 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Issue 417 — Terminliste: „Wochenende" und „Zugesagt" lassen sich zusammen wählen ✅ 2026-11-20
+
+**Was.** In der Terminliste ersetzte jeder Filter den vorigen, und die Liste
+`GET /api/events` überging das Zeitfenster, sobald zugleich die eigenen Zusagen
+gefragt waren. Jetzt ist „Zugesagt" ein Schalter, der sich zu „Kommende" und
+„Wochenende" zuschalten lässt und beim Wechsel zwischen den beiden an bleibt.
+
+- **Oberfläche** (`packages/events/app/components/EventList.vue`): eine Ansicht
+  plus der Schalter. Die Klick-Regel steht pur in
+  `packages/events/shared/eventListFilter.ts`. Die Knöpfe sind eine Gruppe mit
+  `aria-pressed` — vorher stand dort `role="tablist"` ohne einen Reiter.
+- **Liste** (`server/api/events/index.get.ts`, `goingInWindow`): `mine=going`
+  mit `from`/`to` liest ERST die Termine des Fensters über die
+  Mitglieder-Klinke (sichtbar, veröffentlicht, ab jetzt, nach Beginn sortiert)
+  und fragt DANN je Seite die eigenen Zusagen genau zu diesen Terminen ab.
+  Gekappt wird erst das Ergebnis. Kein neuer Index, keine Migration: die
+  Abfragen laufen über `status + startAt` und `eventId + userId`.
+- **Selbst entschieden:** „Heute", „Morgen" und „Archiv" schalten „Zugesagt"
+  aus (Umfang des Issues: nur „Kommende" und „Wochenende"); ein Klick auf
+  „Zugesagt" führt von dort wie bisher zu „Kommende" mit Zusagen. „Geliked" und
+  „Teilgenommen" kennen weiter kein Zeitfenster.
+
+**Beweis.** `packages/events/tests/event-list-filter.test.ts` (beide
+Klickreihenfolgen, Ausschalten, Sonntag) und
+`tests/event-list-going-window.test.ts` (echter Handler: nur eigene Zusagen im
+Fenster, Gast 401, Suche, 150 fremde Termine vor dem eigenen) — fünf der elf
+Proben sind gegen die alte Route rot. Lokal im Browser mit einem Wegwerf-Konto
+geklickt, auch per Tastatur.
+
+**Gelernt:** Wer zwei Filter verbindet, prüft, WO gekappt wird. Der alte Weg
+holte die jüngsten 100 Zusagen und suchte dann die Termine dazu — mit einem
+Zeitfenster dahinter wäre ein Termin am Wochenende still verschwunden, sobald
+jemand mehr als 100 Zusagen hat. Die kleinere Menge (das Fenster) zuerst lesen.
+Und: eine nachgebaute Datentür, die Zeitgrenzen ignoriert, kann so etwas nicht
+zeigen — der Test braucht eine, die Grenzen, Sortierung und Kappung rechnet.
+
 ### AW31 — Appwrite 2.7.4 auf dev, CI und Production; die Container auf appwrite-prod kommen nach einem Neustart von selbst wieder ✅ 2026-11-20
 
 **Was.** Zwei Dinge in einem Wartungsfenster (Davids Entscheidung vom selben

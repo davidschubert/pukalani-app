@@ -1,4 +1,5 @@
 import { Query } from 'node-appwrite'
+import type { H3Event } from 'h3'
 import { EVENT_RSVPS_TABLE, EVENT_VOTES_TABLE, EVENTS_TABLE, type EventListResponse, type EventRow, type EventRsvpRow, type EventVote, type EventWithRsvp } from '../../../shared/types/event'
 
 const PAGE_SIZE = 25
@@ -8,6 +9,13 @@ const RANGE_LIMIT = 100
 const MAX_RANGE_MS = 62 * 24 * 3600_000
 /** Meine-Filter: die JÜNGSTEN 100 RSVPs/Likes werden aufgelöst (Kappung dokumentiert) */
 const MINE_IDS_LIMIT = 100
+
+/**
+ * Zusagen IM ZEITFENSTER: so viele Seiten (je `RANGE_LIMIT` Termine) des
+ * Fensters werden höchstens durchgesehen. Ein Wochenende hat selten mehr als
+ * eine; die Kappung hält nur einen Ausreißer in Grenzen.
+ */
+const WINDOW_SCAN_PAGES = 5
 
 const MINE_FILTERS = ['going', 'liked', 'attended'] as const
 type MineFilter = (typeof MINE_FILTERS)[number]
@@ -21,6 +29,10 @@ type MineFilter = (typeof MINE_FILTERS)[number]
  * - ?mine=going|liked|attended (nur eingeloggt): Events mit eigener
  *   going-RSVP (kommend), eigenem Upvote bzw. besuchte (going + vorbei —
  *   der Unterschied zum Archiv: nur MEINE).
+ * - ?mine=going MIT ?from&to (Issue 417, „Wochenende" + „Zugesagt"): eigene
+ *   Zusagen im Zeitfenster, nur noch Bevorstehendes. Zusage und Fenster
+ *   werden GEMEINSAM geprüft, bevor gekappt wird — siehe `goingInWindow`.
+ *   (`liked`/`attended` kennen kein Zeitfenster; dort zählt wie bisher `mine`.)
  * ?q (Fulltext auf title) kombiniert mit allen Modi.
  * Öffentlich lesbar (Gäste sehen die Liste — RSVP erst nach Login).
  */
@@ -50,11 +62,15 @@ export default defineEventHandler(async (event): Promise<EventListResponse> => {
   // Operator (die Tabellen haben bewusst keine breite Read-Permission; die
   // Tür scopet im Pool zusätzlich auf den Mandanten)
   let mineIds: string[] | null = null
-  if (mine) {
-    const user = event.context.user
-    if (!user) {
-      throw createError({ status: 401, statusText: 'Unauthorized' })
-    }
+  let windowRows: EventRow[] | null = null
+  const user = mine ? event.context.user : null
+  if (mine && !user) {
+    throw createError({ status: 401, statusText: 'Unauthorized' })
+  }
+  if (user && mine === 'going' && range) {
+    windowRows = await goingInWindow(event, user.$id, { from, to, now, q })
+  }
+  else if (user) {
     const ops = tenantDb(event, { as: 'operator' })
     if (mine === 'liked') {
       const res = await ops.list<EventVote>(EVENT_VOTES_TABLE, [
@@ -75,7 +91,7 @@ export default defineEventHandler(async (event): Promise<EventListResponse> => {
 
   // Datentür (member): Session-Client wie bisher — Gäste sehen nur
   // read(any)-Rows — plus Mandanten-Filter im Pool.
-  const res = await tenantDb(event).list<EventRow>(EVENTS_TABLE, [
+  const res = windowRows ? { rows: windowRows } : await tenantDb(event).list<EventRow>(EVENTS_TABLE, [
     Query.equal('status', 'published'),
     ...(q.length > 0 ? [Query.search('title', q)] : []),
     ...(mineIds
@@ -127,3 +143,68 @@ export default defineEventHandler(async (event): Promise<EventListResponse> => {
     nextCursor: !range && !mine && res.rows.length === PAGE_SIZE ? res.rows.at(-1)!.$id : null,
   }
 })
+
+/**
+ * Eigene Zusagen in einem Zeitfenster (Issue 417).
+ *
+ * WARUM NICHT WIE `?mine=going` OHNE FENSTER: dort werden erst die jüngsten
+ * 100 Zusagen geholt und dann die Termine dazu. Wer mehr Zusagen hat, verlöre
+ * so einen Termin am Wochenende, bevor das Fenster überhaupt geprüft ist.
+ * Hier läuft es umgekehrt: erst die Termine des Fensters (klein, sortiert,
+ * über die Mitglieder-Klinke — die Sichtbarkeit entscheidet also wie in jeder
+ * anderen Ansicht das Leserecht der Zeile), dann je Seite EINE Abfrage nach
+ * den eigenen Zusagen genau zu diesen Terminen. Gekappt wird erst das
+ * Ergebnis. Ein neuer Index ist nicht nötig: die Termine laufen über
+ * `status + startAt`, die Zusagen über `eventId + userId`.
+ *
+ * „Noch bevorstehend": der Anfang des Fensters wird auf JETZT gezogen. Am
+ * Sonntag beginnt das Fenster des Browsers um Mitternacht — ohne das kämen
+ * Termine vom Vormittag mit.
+ *
+ * Die Zusagen liest die Operator-Klinke (die Tabelle trägt bewusst kein
+ * breites Leserecht), gefiltert auf das EIGENE Konto und nur zu Terminen, die
+ * dieses Konto gerade selbst lesen durfte.
+ */
+async function goingInWindow(
+  event: H3Event,
+  userId: string,
+  window: { from: number, to: number, now: string, q: string },
+): Promise<EventRow[]> {
+  const fromIso = new Date(window.from).toISOString()
+  const lower = fromIso > window.now ? fromIso : window.now
+  const upper = new Date(window.to).toISOString()
+  if (lower >= upper) return []
+
+  const found: EventRow[] = []
+  let cursor: string | null = null
+  for (let page = 0; page < WINDOW_SCAN_PAGES && found.length < RANGE_LIMIT; page++) {
+    const candidates: { rows: EventRow[] } = await tenantDb(event).list<EventRow>(EVENTS_TABLE, [
+      Query.equal('status', 'published'),
+      ...(window.q.length > 0 ? [Query.search('title', window.q)] : []),
+      Query.greaterThanEqual('startAt', lower),
+      Query.lessThan('startAt', upper),
+      Query.orderAsc('startAt'),
+      Query.limit(RANGE_LIMIT),
+      ...(cursor ? [Query.cursorAfter(cursor)] : []),
+    ]).catch((error) => {
+      throw toH3Error(error, 'Could not load events')
+    })
+    if (candidates.rows.length === 0) break
+
+    // Ein Lesefehler ist hier KEIN „keine Zusagen": die Liste wäre sonst still leer.
+    const rsvps = await tenantDb(event, { as: 'operator' }).list<EventRsvpRow>(EVENT_RSVPS_TABLE, [
+      Query.equal('userId', userId),
+      Query.equal('status', 'going'),
+      Query.equal('eventId', candidates.rows.map(row => row.$id)),
+      Query.limit(candidates.rows.length),
+    ]).catch((error) => {
+      throw toH3Error(error, 'Could not load events')
+    })
+    const going = new Set(rsvps.rows.map(row => row.eventId))
+    found.push(...candidates.rows.filter(row => going.has(row.$id)))
+
+    if (candidates.rows.length < RANGE_LIMIT) break
+    cursor = candidates.rows.at(-1)!.$id
+  }
+  return found.slice(0, RANGE_LIMIT)
+}
