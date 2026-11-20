@@ -25,9 +25,9 @@
  *                   Adresse, und die Adresse antwortet 200 mit einem Bild
  *   4. `symbole`    das HTML der Seite nennt den fremden Symbol-Dienst nicht,
  *                   und die Symbol-Route der App reicht eine Anfrage für ein
- *                   Paket, das sie nicht hat, NICHT an ihn weiter (404 statt
- *                   200 — die Route ist die Stelle, an der der Schalter
- *                   `icon.fallbackToApi` von außen sichtbar ist)
+ *                   Paket, das sie nicht hat, NICHT an ihn weiter (sie
+ *                   liefert kein Symbol — die Route ist die Stelle, an der
+ *                   der Schalter `icon.fallbackToApi` von außen sichtbar ist)
  *
  * WELCHER HOST WAS SCHULDET, steht in `HOSTS`: die Betreiber-Oberfläche hat
  * keine Sitemap und kein Vorschaubild, der Kundenbereich keine Sitemap (seine
@@ -75,8 +75,8 @@ export const FOREIGN_ICON_HOST = 'api.iconify.design'
 
 /**
  * Ein Symbol-Paket, das in KEINER App installiert ist. Die Symbol-Route
- * antwortet dafür 404 — oder 200, wenn sie die Anfrage an den fremden Dienst
- * weiterreicht. Wird dieses Paket je installiert, hier ein anderes nennen.
+ * liefert dafür nichts — oder das Symbol, wenn sie die Anfrage an den fremden
+ * Dienst weiterreicht. Wird dieses Paket je installiert, hier ein anderes nennen.
  */
 export const ICON_PROBE_PATH = '/api/_nuxt_icon/mdi.json?icons=home'
 
@@ -177,12 +177,30 @@ export function checkOgResponse(response) {
   return []
 }
 
+/**
+ * Hat die Symbol-Route ein Symbol GELIEFERT? Der Status allein sagt es nicht:
+ * die Route hält ihre Antworten eine Woche vor, und eine vorgehaltene
+ * Ablehnung kommt beim zweiten Abruf mit Status 200 und dem Text
+ * `{"statusCode":404}` zurück (gemessen 2026-11-20). Geliefert ist nur eine
+ * Antwort, die wirklich Symbole trägt.
+ */
+export function iconProbeDelivered(probe) {
+  if (!probe || probe.status !== 200) return false
+  try {
+    const data = JSON.parse(probe.body)
+    return Boolean(data && typeof data.icons === 'object' && data.icons !== null && Object.keys(data.icons).length > 0)
+  }
+  catch {
+    return false
+  }
+}
+
 /** Prüfung 4. `probe`: Antwort der Symbol-Route für ein nicht installiertes Paket. */
 export function checkForeignIcons(html, probe) {
   const problems = []
   if (html.includes(FOREIGN_ICON_HOST)) problems.push('symbole: die Seite nennt den fremden Symbol-Dienst')
   if (!probe) problems.push('symbole: die Symbol-Route antwortet nicht')
-  else if (probe.status === 200) problems.push('symbole: die App reicht fehlende Symbole an den fremden Dienst weiter')
+  else if (iconProbeDelivered(probe)) problems.push('symbole: die App reicht fehlende Symbole an den fremden Dienst weiter')
   else if (probe.status >= 500) problems.push(`symbole: die Symbol-Route antwortet ${probe.status}`)
   return problems
 }
@@ -233,7 +251,7 @@ async function inspect(entry, { drill = false } = {}) {
     if (tag.url) problems.push(...checkOgResponse(await get(tag.url, { wantBody: false })))
   }
 
-  problems.push(...checkForeignIcons(page.body, await get(`${origin}${ICON_PROBE_PATH}`, { wantBody: false })))
+  problems.push(...checkForeignIcons(page.body, await get(`${origin}${ICON_PROBE_PATH}`)))
   return { conclusive: true, problems }
 }
 

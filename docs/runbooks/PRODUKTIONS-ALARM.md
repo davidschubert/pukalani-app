@@ -36,11 +36,11 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
 | Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
-| Server-Einstellungen | `scripts/ops/verify-server-config.mjs` (vergleicht auf den Servern mit `ops/nginx-check.mjs`, `ops/cron-check.sh` und dem Tor-Wort `cron-status`) | täglich | einer Site fehlt eine Pflicht-Zeile der Webserver-Vorlage (`ops/nginx/`), oder der Webserver setzt eine Schutz-Kopfzeile selbst; auf dem App-Server liegt eine Site, die `ops/nginx-sites.conf` nicht kennt; ein Zeitplan aus `ops/cron.conf` fehlt, steht doppelt, oder es gibt einen unbekannten. Verglichen werden Pflicht-Zeilen, nicht Zeichen — ein Handgriff in Ploi (Zertifikat, Alias) macht den Blick nicht rot |
+| Server-Einstellungen | `scripts/ops/verify-server-config.mjs` (vergleicht auf den Servern mit `ops/nginx-check.mjs`, `ops/cron-check.sh` und dem Tor-Wort `cron-status`) | täglich | einer Site fehlt eine Pflicht-Zeile der Webserver-Vorlage (`ops/nginx/`), oder der Webserver setzt eine Schutz-Kopfzeile selbst oder beantwortet `/robots.txt` in einem eigenen Block (Regel `eigene-robots`, seit 2026-11-20); auf dem App-Server liegt eine Site, die `ops/nginx-sites.conf` nicht kennt; ein Zeitplan aus `ops/cron.conf` fehlt, steht doppelt, oder es gibt einen unbekannten. Verglichen werden Pflicht-Zeilen, nicht Zeichen — ein Handgriff in Ploi (Zertifikat, Alias) macht den Blick nicht rot |
 | Anmelde-Wege der Datenbank | `scripts/ops/verify-auth-methods.mjs` | täglich | in einem der vier Projekte nimmt die Datenbank eine Anmeldung ohne Schlüssel wieder an (Antwort 401 statt 501), oder die Probe bekommt eine unerwartete Antwort. Je Projekt ein Aufruf von außen mit erfundenen Zugangsdaten; legt nichts an. Störung (429, 5xx) ist „keine Aussage" |
 | Anmelde-Regeln der Datenbank | `scripts/ops/appwrite-auth-policies.mjs --ci` | täglich | in einem der vier Projekte weicht eine Passwort-, Adress- oder Sitzungs-Regel vom Soll im Skript ab, oder der Blick kann die Regeln nicht lesen (Schlüssel oder Leserecht fehlt). Nur lesend, mit den vier Schlüsseln des Schema-Blicks |
 | Schutz-Kopfzeilen | `scripts/ops/verify-security-headers.mjs` | täglich | auf einem Host kommt eine Schutz-Kopfzeile (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS) nicht genau einmal an — auf einer Seite, auf `/api/health` oder auf einer Datei unter `/_nuxt/` —, oder es kommt eine, die niemand mehr senden soll (`X-Frame-Options`, `X-XSS-Protection`, `x-powered-by`). Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
-| Auslieferung | `scripts/ops/verify-delivery.mjs` | täglich | **zählt vorerst nur** (`PUKALANI_DELIVERY_MODE: count` im Workflow). Je öffentlichem Host von außen: ein Skript unter `/_nuxt/` kommt ohne `content-encoding` an; `/robots.txt` antwortet nicht mit 200, enthält keine Regel oder nennt (wo der Host eine hat) keine Sitemap des eigenen Hosts; die Seite trägt nicht genau ein `og:image`, oder das Bild antwortet nicht mit 200; die Symbol-Route der App reicht ein fehlendes Symbol an einen fremden Dienst weiter. Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
+| Auslieferung | `scripts/ops/verify-delivery.mjs` | täglich | Je öffentlichem Host von außen (scharf seit 2026-11-20, `PUKALANI_DELIVERY_MODE: alarm` im Workflow): ein Skript unter `/_nuxt/` kommt ohne `content-encoding` an; `/robots.txt` antwortet nicht mit 200, enthält keine Regel oder nennt (wo der Host eine hat) keine Sitemap des eigenen Hosts; die Seite trägt nicht genau ein `og:image`, oder das Bild antwortet nicht mit 200; die Symbol-Route der App reicht ein fehlendes Symbol an einen fremden Dienst weiter. Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
 | Node-Version des App-Servers | `scripts/ops/verify-node-version.mjs` (fragt das Tor-Wort `node-version` von `ops/app-watch-gate.sh`) | täglich | das Programm `/usr/bin/node` oder ein pm2-Prozess einer App läuft mit einer anderen Node-Version als `.nvmrc` — auch mit einer neueren. Ein Prozess, der fehlt, ist nur eine Warnzeile. Ist der Server nicht erreichbar oder kennt sein Tor das Wort noch nicht, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 
 **In die App hinein (seit 2026-11-16, OPS-011).** Bis dahin sah der Alarm, ob
@@ -220,9 +220,14 @@ Webserver reicht sie durch), der Abruf fehlender Symbole ist aus
 prüft je öffentlichem Host von außen vier Dinge: `gepackt`, `robots`,
 `vorschau`, `symbole`. Welcher Host was schuldet, steht in `HOSTS` des
 Skripts (die Betreiber-Oberfläche hat keine Sitemap und kein Vorschaubild,
-der Kundenbereich keine Sitemap). ERST ZÄHLEN, DANN ALARM: im Workflow steht
-`PUKALANI_DELIVERY_MODE: count`, ein Befund ist dann nur eine Zeile „Nur
-gezählt". Von Hand: `node scripts/ops/verify-delivery.mjs [host]`.
+der Kundenbereich keine Sitemap). Im Workflow steht
+`PUKALANI_DELIVERY_MODE: alarm` (seit 2026-11-20 besteht jeder Host);
+`count` macht aus einem Befund nur eine Zeile „Nur gezählt" — der Weg, einen
+neuen Host oder eine neue Prüfung einzuführen, ohne dass der Blick vorher
+rot wird. Die Symbol-Route hält ihre Antworten eine Woche vor: eine
+vorgehaltene Ablehnung kommt mit Status 200 und dem Text
+`{"statusCode":404}` zurück, deshalb wertet der Blick den Inhalt aus, nicht
+den Status. Von Hand: `node scripts/ops/verify-delivery.mjs [host]`.
 Probealarm: `gh workflow run production-watch.yml -f delivery_drill=true`.
 
 **Erinnerungen in nicht erreichbaren Communities (seit 2026-11-19, SE1 d —
