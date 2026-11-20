@@ -32,7 +32,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | KI-Modelle | `scripts/ops/verify-ai-models.mjs` | alle 30 Minuten (seit 2026-11-19, vorher täglich; Quelle `alarm:tls`) | ein konfiguriertes Modell steht nicht mehr in OpenRouters Liste ohne Datenspeicherung, oder es hat keinen der Endpunkte mehr, auf die der Code es festlegt (Text: zwei EU-Endpunkte · Bild- und Videolesen: `google-vertex/eu` · Bild-Erzeugen: `google-vertex/global`). Gelesen werden je Modell zwei Listen, die weltweite und die der Europa-Adresse. Ohne ssh, ohne Secret. Ist OpenRouter nicht erreichbar, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 | Bot-Prüfung | `scripts/ops/verify-turnstile.mjs` | täglich | auf einer Site antwortet die Passwort-vergessen-Route ohne Token nicht mit 403 `bot_check_required` (Bot-Prüfung aus oder Cloudflare nicht erreichbar), oder die Seite trägt das Widget nicht (Gäste ausgesperrt); eine unklare Antwort bekommt nach 20 s einen zweiten Versuch |
 | Datenbank-Stand (gründlich) | `scripts/ops/verify-schema-parity.mjs --ci` | täglich | in einem der vier Projekte fehlt eine Soll-Tabelle, eine Spalte, die eine Migration ihrer Layer anlegt, oder die Probe eines Layers (dann nennt die Zeile die Migration, z. B. `brand-026`); oder dort steht eine Spalte, die keine Migration anlegt; oder einer der vier nur lesenden Schlüssel fehlt oder liest nicht mehr |
-| In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, Berichte der Skript-Regel, übrige KI-Ausfälle |
+| In die App hinein | `scripts/ops/verify-app-signals.mjs` (zählt auf dem App-Server mit `ops/app-watch-counts.mjs`) | täglich | ein Zeit-Lauf hatte seit mehr als zwei Takten plus 30 Minuten keinen guten Lauf; ein Tages-Lauf ist zuletzt gescheitert; ein erwarteter Lauf hat sich nie gemeldet; ein KI-Aufruf wurde mit Status 402 (kein Guthaben) oder 404 (kein Endpunkt) abgelehnt; auf `platform` ab 25 Server-Fehlern (5xx) in 25 Stunden; ein Prozess läuft nicht oder das Zähl-Skript antwortet nicht. **Zählt nur** (wird berichtet, nicht rot): Server-Fehler der fünf anderen Apps, Fehler aus dem Browser, Berichte der Skript-Regel, übrige KI-Ausfälle, Zeit-Läufe, die nach einem Start noch auf ihren ersten Lauf warten, und eine Zählung, die nicht über die vollen 25 Stunden zurückreicht |
 | Live-Verbindung von außen | `scripts/ops/verify-realtime.mjs --handshake` | alle 30 min | drei WebSocket-Handshakes gegen `api.pukalani.app` in Folge gescheitert (der dritte erst nach 5½ Minuten). Ohne ssh, ohne Secret |
 | Realtime-Wächter | Tor-Wort `realtime-status` (`ops/appwrite-cert-gate.sh`), ausgewertet von `verify-realtime.mjs` | täglich | der Wächter auf dem Appwrite-Server hat aufgegeben; sein letzter Neustart half nicht; drei oder mehr Neustarts in 24 Stunden; sein letzter Lauf ist älter als 20 Minuten; kein lesbarer Stand |
 | Nächtliches Backup | Tor-Wort `backup-status` (`ops/appwrite-cert-gate.sh`) | täglich | der letzte Backup-Lauf der Appwrite-Instanz ist gescheitert, oder der letzte gute Lauf ist zu alt: im täglichen Lauf älter als 6 Stunden (verlangt wird der Lauf DIESER Nacht, 03:30 UTC), bei einem Start von Hand älter als 26 Stunden |
@@ -878,6 +878,25 @@ Ausliefern steht aus oder ist gescheitert (`deploy.yml`-Lauf lesen). „Nicht
 erreichbar" oder „nicht in der festen Form": den Lauf von Hand wiederholen;
 bleibt es, am Mac `node scripts/ops/verify-app-signals.mjs --ssh` und
 `ssh ploi@49.13.211.173 'node /home/ploi/<site>/ops/app-watch-counts.mjs <prozess>'`.
+
+**In die App hinein — die Zählung reicht nicht zurück.** Kein Alarm, nur ein
+Hinweis unter „Nur gezählt": die älteste Zeile, die das Zähl-Skript für diese
+App gelesen hat, ist jünger als das Fenster von 25 Stunden. Was davor war
+(Server-Fehler, KI-Ausfälle, gescheiterte Läufe), steht in keiner Zahl dieses
+Laufs. Der übliche Grund ist `pm2 update` (nach dem Heben von Node,
+[DEPLOYMENT.md](DEPLOYMENT.md), A4) oder ein gelöschter und neu angelegter
+Prozess: der Prozess bekommt eine neue pm2-Nummer, die Nummer steht im Namen
+der Log-Datei, und das Zähl-Skript liest nur die zwei Dateien, in die der
+Prozess gerade schreibt (und ihre umgelaufenen Geschwister). In den Minuten
+danach nennt die Übersicht außerdem weniger „gute" Zeit-Läufe und sagt in
+Klammern, warum („noch ohne guten Lauf"): jeder Lauf wartet nach einem Start
+seine erste Verzögerung ab, die längste beträgt 14 Minuten. Gemessen am
+2026-11-19: `pm2 update` um 17:57 UTC, der Blick um 18:04 UTC zählte 28 von
+39 Läufen als gut, der nächste Lauf um 23:42 UTC wieder alle 39. Zu tun
+ist nichts; der Hinweis verschwindet von selbst, sobald die Dateien 25
+Stunden alt sind. Wer wissen will, was VOR dem Neustart war, liest die Datei
+der früheren Nummer von Hand:
+`ls -t ~/.pm2/logs/<prozess>-error-*.log | head -3`.
 
 **Umlauf der pm2-Logs (eingeschaltet am 2026-11-17, mit Davids Ja).** pm2
 dreht seine Logs nicht selbst; die zwei Dateien je Prozess wuchsen ohne

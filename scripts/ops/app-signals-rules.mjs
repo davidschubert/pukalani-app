@@ -36,7 +36,11 @@ export const RULES = {
    * ÜBERFÄLLIG: kein guter Lauf seit mehr als zwei Takten plus dieser Luft.
    * Zwei Takte, weil ein einzelner gescheiterter oder ausgefallener Takt sich
    * von selbst heilt (der nächste kommt immer); die Luft deckt die erste
-   * Verzögerung nach einem Neustart (höchstens 6 Minuten) und den Lauf selbst.
+   * Verzögerung nach einem Neustart und den Lauf selbst. Die erste
+   * Verzögerung steht je Lauf im Code (`firstRunMs`) — gemessen am 2026-11-20:
+   * von 10 Sekunden bis 14 Minuten (`audit-log-retention`). In dieser Zeit
+   * zählt ein Lauf in der Übersicht als „noch ohne guten Lauf", nicht als gut und
+   * nicht als Befund (s. `evaluateApp`).
    */
   overdueTakte: 2,
   overdueGraceMin: 30,
@@ -119,6 +123,8 @@ export const LINE_FORMS = {
   mailBreaker: new RegExp(`^mailbremse ausgeloest=(\\d{1,9}) letzte_min=${WORD.age}$`),
   /** Seit SE1 d (2026-11-19) — OPTIONAL wie `audit`: der Erinnerungs-Lauf im Pool. */
   reminders: /^erinnerungen takte=(\d{1,9}) ohne_antwort=(\d{1,9}) termine=(\d{1,9}) empfaenger=(\d{1,9})(?: gefragt=(\d{1,9}))?$/,
+  /** Seit 2026-11-20 — OPTIONAL wie `audit`: Alter der ältesten gelesenen Log-Zeile. */
+  coverage: new RegExp(`^reichweite aelteste_zeile_min=${WORD.age}$`),
 }
 
 const age = value => (value === 'nie' ? null : Number(value))
@@ -179,6 +185,11 @@ export function parseCounts(text) {
     else if ((hit = line.match(LINE_FORMS.reminders))) {
       // `gefragt` fehlt in der Ausgabe eines Servers mit dem Skript davor — dann bleibt es undefiniert.
       Object.assign(counts, { reminderRuns: Number(hit[1]), reminderNoAnswer: Number(hit[2]), reminderEvents: Number(hit[3]), reminderRecipients: Number(hit[4]), ...(hit[5] === undefined ? {} : { reminderAsked: Number(hit[5]) }) })
+    }
+    else if ((hit = line.match(LINE_FORMS.coverage))) {
+      // `null` = das Skript hat keine einzige Zeile mit Zeit gelesen; ohne die
+      // Zeile (Server mit dem Skript davor) bleibt das Feld undefiniert.
+      counts.oldestLineMin = age(hit[1])
     }
     else if ((hit = line.match(LINE_FORMS.end))) {
       ended = Number(hit[1])
@@ -252,6 +263,8 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
   }
 
   // ── Zeit-Läufe ────────────────────────────────────────────────────────
+  /** Angemeldet, in der Frist, aber in den gelesenen Protokollen steht noch kein guter Lauf. */
+  const waiting = []
   for (const name of [...expected].sort()) {
     const job = counts.jobs.get(name)
     if (!job) {
@@ -278,6 +291,31 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
       const stand = job.lastResult === 'failed' ? 'zuletzt gescheitert, noch in der Frist' : 'zuletzt wieder gut'
       notes.push(`${where} „${name}" ${job.failed}× gescheitert in ${counts.hours} h, ${stand}`)
     }
+    else if (job.lastOkMin === null) {
+      waiting.push({ name, registeredMin: job.registeredMin })
+    }
+  }
+  // JEDER LAUF, DEN DIE ÜBERSICHT NICHT ALS „GUT" ZÄHLT, HAT EINEN SATZ
+  // (2026-11-20). Vorher blieb genau dieser Fall stumm: am 2026-11-19 stand
+  // sieben Minuten nach einem Neustart des pm2-Dienstes „2/5 gut" im Protokoll
+  // und darunter „Nichts Rotes" — richtig gerechnet (die erste Verzögerung
+  // der drei Läufe war noch nicht um), aber ohne Grund nicht zu lesen.
+  if (waiting.length) {
+    const ages = waiting.map(item => item.registeredMin).filter(value => value !== null)
+    const since = ages.length ? `, angemeldet vor ${Math.min(...ages)}${Math.min(...ages) === Math.max(...ages) ? '' : ` bis ${Math.max(...ages)}`} min` : ''
+    notes.push(`${where} ${waiting.length} Zeit-Lauf/-Läufe noch ohne guten Lauf in den gelesenen Protokollen (${waiting.map(item => `„${item.name}"`).join(', ')}${since}) — in der Frist; jeder Lauf wartet nach einem Start seine erste Verzögerung ab`)
+  }
+  // DAS FENSTER IST NICHT VOLL: die älteste gelesene Zeile ist jünger als das
+  // Fenster. Das Zähl-Skript liest nur die zwei Dateien, in die der Prozess
+  // gerade schreibt, und ihre umgelaufenen Geschwister; bekommt der Prozess
+  // eine neue pm2-Nummer (`pm2 update`, ein gelöschter und neu angelegter
+  // Prozess), beginnt eine neue Datei, und alles davor steht in keiner Zahl.
+  // Zählt nur — aber wer die Zahlen liest, muss es wissen. Nur für Apps mit
+  // Zeit-Läufen: sie schreiben mindestens stündlich eine Zeile, dort IST die
+  // älteste Zeile die Reichweite. Eine App ohne Läufe schreibt oft tagelang
+  // nichts; ihre älteste Zeile sagt nichts über die Dateien.
+  if (expected.size > 0 && typeof counts.oldestLineMin === 'number' && counts.oldestLineMin < counts.hours * 60) {
+    notes.push(`${where} die Zählung reicht nur ${counts.oldestLineMin} min zurück statt ${counts.hours} h (so alt ist die älteste gelesene Log-Zeile) — was davor war, steht in keiner Zahl dieses Laufs. Üblicher Grund: neue Log-Dateien nach \`pm2 update\` oder einem neu angelegten Prozess. (${RUNBOOK}, „In die App hinein — die Zählung reicht nicht zurück")`)
   }
   for (const name of [...counts.jobs.keys()].sort()) {
     if (!expected.has(name)) notes.push(`${where} „${name}" läuft, steht aber nicht in ops/timed-jobs.conf (dort eintragen, sonst fällt sein Ausfall nicht auf)`)
@@ -345,14 +383,37 @@ export function evaluateApp({ app, site, counts, expected = new Set(), rules = R
   return { red, notes }
 }
 
+/**
+ * Der Stand EINES erwarteten Laufs für die Übersicht — ein Wort:
+ * `good` · `waiting` (angemeldet, in der Frist, noch kein guter Lauf) ·
+ * `failed` (letzter Lauf gescheitert, noch in der Frist) · `overdue` (Frist
+ * um) · `missing` (keine Zeile).
+ */
+export function jobState(job, rules = RULES) {
+  if (!job) return 'missing'
+  const since = job.lastOkMin ?? job.registeredMin
+  if (since === null || since > rules.overdueTakte * job.everyMin + rules.overdueGraceMin) return 'overdue'
+  if (job.lastResult === 'failed') return 'failed'
+  return job.lastOkMin === null ? 'waiting' : 'good'
+}
+
 /** Eine Zeile Zahlen je App fürs Protokoll (nur Zahlen und Namen aus dem Repo). */
-export function summaryLine({ site, counts, expected = new Set() }) {
+export function summaryLine({ site, counts, expected = new Set(), rules = RULES }) {
   if (counts.problem) return `${site.padEnd(24)} keine Zahlen (${counts.problem})`
-  const good = [...expected].filter((name) => {
-    const job = counts.jobs.get(name)
-    return job && job.lastResult !== 'failed' && job.lastOkMin !== null
-  }).length
-  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Termine nicht erreichbar ${counts.reminderEvents ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut`
+  // Was nicht „gut" ist, wird beim Namen genannt — sonst liest sich „2/5 gut"
+  // wie ein Befund, auch wenn nur die erste Verzögerung noch läuft. Dieselbe
+  // Reihenfolge wie in `evaluateApp`: ein überfälliger Lauf ist nicht gut,
+  // auch wenn sein letzter Lauf vor Tagen gelang.
+  const states = [...expected].map(name => jobState(counts.jobs.get(name), rules))
+  const count = state => states.filter(item => item === state).length
+  const good = count('good')
+  const rest = [
+    count('waiting') ? `${count('waiting')} noch ohne guten Lauf` : '',
+    count('failed') ? `${count('failed')} zuletzt gescheitert` : '',
+    count('overdue') ? `${count('overdue')} überfällig` : '',
+    count('missing') ? `${count('missing')} nicht gemeldet` : '',
+  ].filter(Boolean).join(', ')
+  return `${site.padEnd(24)} ${counts.status} · ${counts.memoryMb} MB · 5xx ${counts.server} · Browser ${counts.browser} · KI-Ausfälle ${counts.ai} · Protokoll-Ausfälle ${counts.auditFailed ?? 'nicht gezählt'} · Skript-Regel ${counts.cspReports ?? 'nicht gezählt'} · Termine nicht erreichbar ${counts.reminderEvents ?? 'nicht gezählt'} · Zeit-Läufe ${good}/${expected.size} gut${rest ? ` (${rest})` : ''}`
 }
 
 /**

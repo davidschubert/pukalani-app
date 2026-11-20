@@ -156,7 +156,13 @@ paths:
   ANDERE ZÄHLT NUR (Server-Fehler der fünf anderen Apps, Browser-Fehler,
   übrige KI-Ausfälle), bis die Zahlen einer Woche vorliegen — eine Schwelle
   ohne Messung ist geraten, und ein Blick, der zu oft rot ist, wird
-  überlesen. Probealarm `-f signals_drill=true`. Dazu die LIVE-VERBINDUNG
+  überlesen. NACH `pm2 update` BEGINNT DIE ZÄHLUNG NEU (gemessen
+  2026-11-19): der Prozess bekommt eine neue pm2-Nummer und damit neue
+  Log-Dateien, was davor war, steht in keiner Zahl — der Blick sagt es seit
+  2026-11-20 selbst (Hinweis „die Zählung reicht nur … zurück", Zeile
+  `reichweite` des Zähl-Skripts), und die Übersicht nennt in Klammern, warum
+  ein Lauf nicht als gut zählt (noch ohne guten Lauf, zuletzt gescheitert,
+  überfällig, nicht gemeldet). Probealarm `-f signals_drill=true`. Dazu die LIVE-VERBINDUNG
   (OPS-004): alle 30 min ein WebSocket-Handshake von außen
   (`verify-realtime.mjs --handshake`, drei Versuche, der dritte nach 5½
   Minuten — länger als der Takt des Wächters auf dem Server), täglich der

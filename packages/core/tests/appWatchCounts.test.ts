@@ -33,6 +33,7 @@ const LINE_FORMS = [
   /^skriptregel berichte=\d+ gedeckelt=\d+$/,
   /^mailbremse ausgeloest=\d+ letzte_min=(\d+|nie)$/,
   /^erinnerungen takte=\d+ ohne_antwort=\d+ termine=\d+ empfaenger=\d+ gefragt=\d+$/,
+  /^reichweite aelteste_zeile_min=(\d+|nie)$/,
   /^lauf name=[a-z][a-z0-9-]{1,39} takt_min=\d+ ok=\d+ gescheitert=\d+ uebersprungen=\d+ haengt=\d+ letzter_ok_min=(\d+|nie) letzter_lauf_min=(\d+|nie) letztes_ergebnis=(ok|failed|skipped|nie) angemeldet_min=(\d+|nie)$/,
   /^ende laeufe=\d+$/,
 ]
@@ -234,6 +235,7 @@ describe('ops/app-watch-counts.mjs', () => {
       'skriptregel berichte=0 gedeckelt=0',
       'mailbremse ausgeloest=0 letzte_min=nie',
       'erinnerungen takte=0 ohne_antwort=0 termine=0 empfaenger=0 gefragt=0',
+      'reichweite aelteste_zeile_min=nie',
       'ende laeufe=0',
     ])
   })
@@ -309,6 +311,37 @@ describe('ops/app-watch-counts.mjs', () => {
       const old = new Date(Date.now() - 9 * 24 * 3600_000)
       utimesSync(rotated('.9'), old, old)
       expect(lineOf(run(PROC).lines, 'fehler ')).toBe('fehler server=0 browser=0 browser_gedeckelt=0')
+    })
+
+    it('nennt, wie weit die gelesenen Zeilen zurückreichen — über die laufende Datei und ihre Geschwister', () => {
+      writeLog('error', 4, [event(10, 'error', 'server.error', { status: 500 })])
+      writeLog('out', 4, [event(90, 'info', 'job.run', { job: 'trial-sweep', result: 'ok', ms: 3, everyMin: 60 })])
+      // Älter als das Fenster von 25 Stunden: zählt nicht als Fehler, wohl aber für die Reichweite.
+      writeFileSync(rotated('.1'), `${event(40 * 60, 'error', 'server.error', { status: 500 })}\n`)
+      const { lines } = run(PROC)
+      expect(lineOf(lines, 'fehler ')).toBe('fehler server=1 browser=0 browser_gedeckelt=0')
+      expect(lineOf(lines, 'reichweite ')).toBe(`reichweite aelteste_zeile_min=${40 * 60}`)
+    })
+
+    it('der Fall vom 2026-11-19: neue pm2-Nummer ⇒ neue Dateien, die Zählung beginnt neu — und die Reichweite sagt es', () => {
+      // Bis zum Neustart des pm2-Dienstes schrieb der Prozess unter Nummer 3.
+      writeFileSync(join(logs, `${PROC}-error-3.log`), `${[
+        event(20 * 60, 'error', 'server.error', { status: 500 }),
+        event(19 * 60, 'error', 'job.run', { job: 'gdpr-export-prune', result: 'failed', ms: 3, everyMin: 1440 }),
+      ].join('\n')}\n`)
+      writeFileSync(join(logs, `${PROC}-out-3.log`), `${[
+        event(30 * 60, 'info', 'job.registered', { job: 'audit-log-retention', everyMin: 1440 }),
+        event(29 * 60, 'info', 'job.run', { job: 'audit-log-retention', result: 'ok', ms: 3, everyMin: 1440 }),
+      ].join('\n')}\n`)
+      // Seit sieben Minuten unter Nummer 4: angemeldet, die erste Verzögerung (14 Minuten) läuft noch.
+      writeLog('out', 4, [event(7, 'info', 'job.registered', { job: 'audit-log-retention', everyMin: 1440 })])
+      writeLog('error', 4, [])
+      const { code, lines } = run(PROC)
+      expect(code).toBe(0)
+      expect(lineOf(lines, 'fehler ')).toBe('fehler server=0 browser=0 browser_gedeckelt=0')
+      expect(lineOf(lines, 'lauf name=audit-log-retention ')).toBe('lauf name=audit-log-retention takt_min=1440 ok=0 gescheitert=0 uebersprungen=0 haengt=0 letzter_ok_min=nie letzter_lauf_min=nie letztes_ergebnis=nie angemeldet_min=7')
+      expect(lines.some(line => line.startsWith('lauf name=gdpr-export-prune '))).toBe(false)
+      expect(lineOf(lines, 'reichweite ')).toBe('reichweite aelteste_zeile_min=7')
     })
 
     it('eine beschädigte gepackte Datei beendet nur ihr eigenes Lesen', () => {
