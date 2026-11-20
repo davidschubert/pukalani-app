@@ -132,6 +132,17 @@ jobs:
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite mariadb
           exit 1
 
+      # Welcher Patchstand läuft WIRKLICH? `mariadb:10.11` ist ein beweglicher
+      # Tag, und Redis läuft einen Patch vor der Compose-Vorlage (Abweichung 5
+      # in ci/appwrite/docker-compose.yml). Die zwei Zeilen im Protokoll sind
+      # der Beleg dafür — ohne sie müsste man den Stand aus dem Tag raten.
+      # Das Passwort liest die Shell IM Container, es steht nie im Protokoll.
+      - name: Versionen im Verbund (MariaDB, Redis)
+        run: |
+          C="docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml"
+          echo "MariaDB: $($C exec -T mariadb sh -c 'mariadb --protocol=tcp -h127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -N -s -e "SELECT VERSION()"')"
+          echo "Redis: $($C exec -T redis redis-server --version)"
+
       - name: Console-Setup (Projekt, Key, Platform, .env)
         run: node scripts/ci/appwrite-setup.mjs --endpoint http://localhost:8080/v1 --app apps/comments
 
