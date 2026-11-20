@@ -12,7 +12,13 @@ body.portfolio-site {
   --line: rgba(255, 255, 255, 0.09);
   --accent: #a4f5b9;
   --accent-ink: #0c1d12;
+  /* --metal bleibt für Flächen, Linien und Akzente. ALS TEXT ist der Ton zu
+     dunkel (2,5 bis 2,8 zu 1 gegen die drei Hintergründe); Schrift nimmt
+     deshalb --metal-text: derselbe Farbton, heller, 5,25 zu 1 auf --bg,
+     4,99 auf --bg-soft, 4,71 auf --surface (WCAG AA verlangt 4,5 zu 1).
+     Wächter: tests/siteCssGuards.test.ts. */
   --metal: #565584;
+  --metal-text: #8180ac;
   --maxw: 1200px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -157,7 +163,7 @@ html:has(body.portfolio-site) {
 .portfolio-site .section-note {
   margin-top: 1.5rem;
   max-width: 78ch;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.86rem;
 }
 
@@ -350,7 +356,7 @@ html:has(body.portfolio-site) {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 
 .portfolio-site .data-table tbody th {
@@ -378,23 +384,31 @@ html:has(body.portfolio-site) {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 
 .portfolio-site .breadcrumb a:hover {
   color: var(--accent);
 }
 
-/* fade-in on load */
+/* Auftritt des Seitenkopfs beim Laden: NUR die Verschiebung, nie die
+   Deckkraft. Bis 2026-11-20 begann der Block bei `opacity: 0` und blendete
+   sich per CSS ein. Fürs Auge kostete das eine knappe Sekunde, für die
+   Messung zehn: Chrome wertet einen unsichtbar gemalten Block nicht als
+   größten Inhalt (LCP), und das Einblenden läuft ohne neues Malen ab. Gezählt
+   wurde der Kopf erst, als Vue die Seite übernahm und ihn neu malte, also
+   nach dem Laden aller Skripte (mobil rund 10 s statt 2,5 s). Der Kopf steht
+   jetzt im HTML des Servers sofort sichtbar da und rückt nur noch 24 px
+   nach oben. Wächter: tests/siteCssGuards.test.ts. */
 .portfolio-site .reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  animation: portfolio-reveal 0.9s var(--ease) forwards;
+  animation: portfolio-reveal 0.9s var(--ease) both;
 }
 
 @keyframes portfolio-reveal {
+  from {
+    transform: translateY(24px);
+  }
   to {
-    opacity: 1;
     transform: none;
   }
 }

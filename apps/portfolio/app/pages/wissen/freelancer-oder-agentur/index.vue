@@ -238,7 +238,7 @@ usePortfolioSeo({
   flex-wrap: wrap;
   gap: 0.5rem 2rem;
   margin-top: 2rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.82rem;
 }
 .head__note {
@@ -254,7 +254,7 @@ usePortfolioSeo({
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .toc__list {
   display: grid;
@@ -297,7 +297,7 @@ usePortfolioSeo({
   content: "→";
   position: absolute;
   left: 0;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .risks {
   display: grid;

@@ -234,7 +234,7 @@ const knowledgeLinks = computed(() => [
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .footer__link {
   font-size: 0.88rem;
@@ -248,7 +248,7 @@ const knowledgeLinks = computed(() => [
   font-style: normal;
 }
 .footer__muted {
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.8rem;
 }
 .footer__base {

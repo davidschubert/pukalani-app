@@ -138,7 +138,7 @@ const links = computed(() => [
   white-space: nowrap;
 }
 .header__lang-link {
-  color: var(--metal);
+  color: var(--metal-text);
   transition: color 0.3s var(--ease);
 }
 .header__lang-link:hover {
@@ -148,7 +148,7 @@ const links = computed(() => [
   color: var(--text);
 }
 .header__lang-sep {
-  color: var(--metal);
+  color: var(--metal-text);
 }
 /* Gestaffeltes Ausblenden statt Umbruch — die Kopfzeile bleibt einzeilig. */
 @media (max-width: 1080px) {
