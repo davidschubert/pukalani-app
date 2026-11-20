@@ -82,7 +82,7 @@ const addable = computed(() => {
         size="xs"
         color="neutral"
         variant="ghost"
-        icon="i-ph-smiley-plus"
+        icon="i-ph-smiley"
         :disabled="busy"
         :aria-label="t('reactions.add')"
         data-reaction-add
