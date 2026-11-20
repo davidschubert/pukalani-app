@@ -134,7 +134,10 @@ catalog:
   # `BrowserTheme`; 29 — nullable Modellfelder sind `T | null`, fehlende
   # Felder kommen mit Doku-Default (traf unseren Code nicht, Typecheck grün).
   # Beweis Realtime: Session-Widerruf ⇒ Sofort-Abmeldung im Tab.
-  appwrite: ^29.2.0
+  # 29.3.1 (2026-11-20, Issue 352): sendet Response-Format 2.7.2, Server läuft
+  # auf 2.7.4. Neu ist `client.setEnvironment` (Projektumgebungen der Cloud):
+  # ohne den Aufruf bleibt die Realtime-URL, wie sie war — wir rufen ihn nicht.
+  appwrite: ^29.3.1
   # Server-SDK auf 31.1 (2026-11-10): sendet Response-Format 2.6.2 — der
   # REST-Helfer core/server/utils/appwriteHealth.ts zieht mit. 30 entfernte
   # `users.listLogs`; den Endpunkt hatte schon Server 2.5 gestrichen (2.7.1:
@@ -145,7 +148,11 @@ catalog:
   # `account.createJWT` seit 28 (Ersatz: `users.createJWT` am Admin-Client),
   # und seit 29 heißt `Execution.functionId` `resourceId`/`resourceType`
   # sowie `tablesDB.cutoverMigration` `createCutover` (beide ungenutzt).
-  node-appwrite: ^31.1.0
+  # 31.3.0 (2026-11-20, Issue 353): sendet Response-Format 2.7.2 (31.2 sendete
+  # 2.7.1) — der REST-Helfer zieht mit. Nur neue Methoden, kein Bruch. 32.0.0
+  # ändert die Reihenfolge der Parameter von `functions.update` (ungenutzt)
+  # und ist ein eigener Schritt.
+  node-appwrite: ^31.3.0
   # Die Typen folgen der Laufzeit (DECISION-LOG 2026-11-18): Linie 24, nie darüber.
   '@types/node': ^24.19.2
   # 4.6.4 (2026-11-09) = Sicherheitsrelease vom 2026-11-02 (acht Nuxt-, drei
