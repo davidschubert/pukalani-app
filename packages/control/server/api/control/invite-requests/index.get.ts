@@ -7,6 +7,7 @@ import {
   type InviteRequestRow,
 } from '../../../../shared/types/inviteRequest'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tenantRecord'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Betreiber: die Warteschlange (sites.manage).
@@ -40,13 +41,13 @@ export default defineEventHandler(async (event) => {
       ? admin.tablesDB.listRows<InviteCodeRow>({
           databaseId, tableId: INVITE_CODES_TABLE,
           queries: [Query.equal('$id', codeIds), Query.limit(100)],
-        }).then(res => res.rows).catch(() => [])
+        }).then(res => res.rows).catch(softFail('control:api/control/invite-requests/index.get:listRows', []))
       : Promise.resolve([] as InviteCodeRow[]),
     communityIds.length
       ? admin.tablesDB.listRows<TenantRow>({
           databaseId, tableId: COMMUNITIES_TABLE,
           queries: [Query.equal('$id', communityIds), Query.limit(100)],
-        }).then(res => res.rows).catch(() => [])
+        }).then(res => res.rows).catch(softFail('control:api/control/invite-requests/index.get:listRows#2', []))
       : Promise.resolve([] as TenantRow[]),
   ])
 

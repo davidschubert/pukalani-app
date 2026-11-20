@@ -5,6 +5,7 @@ import { decideJoin } from '../../../../../shared/communityTeam'
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../../shared/types/communityMember'
 import { COMMUNITIES_TABLE, resolveTenantOpenRegistration, type TenantRow } from '../../../../../shared/types/tenantRecord'
 import { verifyRuntimeIdentity } from '../../../../utils/onboardingService'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * BEITRETEN — die Stelle, an der Mitgliedschaft entsteht, wenn niemand einlädt
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event): Promise<JoinResponse> => {
 
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/members/join.post:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }
@@ -139,7 +140,7 @@ export default defineEventHandler(async (event): Promise<JoinResponse> => {
         Query.equal('runtimeUserId', identity.userId),
         Query.limit(1),
       ],
-    }).then(res => res.rows[0] ?? null).catch(() => null)
+    }).then(res => res.rows[0] ?? null).catch(softFail('control:api/control/community/members/join.post:listRows', null))
     return raced && raced.status === 'active'
       ? { outcome: 'member', role: raced.role }
       : { outcome: 'removed', role: null }

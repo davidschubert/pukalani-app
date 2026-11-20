@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../../../../shared/types/communityInvite'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../../shared/types/tenantRecord'
 import { verifyRuntimeIdentity } from '../../../../utils/onboardingService'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * „Bin ich in DIESE Community eingeladen?" — die Antwort für die /join-Seite,
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
 
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/invites/mine.post:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

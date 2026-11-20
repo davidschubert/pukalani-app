@@ -5,6 +5,7 @@ import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../..
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../../shared/types/tenantRecord'
 import { verifyRuntimeIdentity } from '../../../../utils/onboardingService'
 import { hashInviteToken } from '../../../../utils/communityTeam'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Einladung annehmen — der EINE Klick aus Davids Entscheidung 2.
@@ -60,7 +61,7 @@ export default defineEventHandler(async (event) => {
   else if (body.inviteId) {
     invite = await admin.tablesDB.getRow<CommunityInviteRow>({
       databaseId, tableId: COMMUNITY_INVITES_TABLE, rowId: body.inviteId,
-    }).catch(() => null)
+    }).catch(softFail('control:api/control/community/members/accept.post:getRow', null))
   }
 
   const expired = invite ? Date.parse(invite.expiresAt) < Date.now() : true
@@ -109,7 +110,7 @@ export default defineEventHandler(async (event) => {
   // Mandant). Die Antwort ist die neutrale wie bei einer ungültigen Einladung.
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: invite.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/members/accept.post:getRow#2', null))
   if (!tenant || tenant.projectId !== identity.projectId || tenant.status !== 'active') {
     throw createError({ status: 400, statusText: 'Invalid or expired invitation' })
   }
@@ -158,7 +159,7 @@ export default defineEventHandler(async (event) => {
   await admin.tablesDB.updateRow({
     databaseId, tableId: COMMUNITY_INVITES_TABLE, rowId: invite.$id,
     data: { status: 'accepted', acceptedBy: identity.userId },
-  }).catch(() => {})
+  }).catch(softFail('control:api/control/community/members/accept.post:updateRow', undefined))
 
   logEvent('info', 'site.invite_accepted', {
     communityId: invite.communityId,

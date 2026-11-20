@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { WEBSITES_TABLE, type HealthStatus, type WebsiteRow } from '../../shared/types/website'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Health-Check + Produkt-Snapshot einer registrierten Site (M6-T1/T4,
@@ -97,7 +98,7 @@ export async function runHealthSweep(): Promise<HealthSweepResult> {
 
   const result: HealthSweepResult = { checked: 0, notOk: [], changed: [] }
   for (const site of rows) {
-    const check = await checkSiteHealth(admin, databaseId, site).catch(() => null)
+    const check = await checkSiteHealth(admin, databaseId, site).catch(softFail('control:utils/websiteHealth:checkSiteHealth', null))
     if (!check) continue
     result.checked++
     if (check.healthStatus !== 'ok') result.notOk.push(`${site.slug}=${check.healthStatus}`)
