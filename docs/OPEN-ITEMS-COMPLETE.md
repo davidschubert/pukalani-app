@@ -90,6 +90,34 @@ zweiten Lauf zu einem unbekannten Zeitpunkt.
 
 ---
 
+### BRD-011 — Öffentliche Texte nennen keinen Firmensitz mehr, nur noch das Hosting ✅ 2026-11-20
+
+Zwei öffentliche Texte sagten mehr, als belegt ist (Davids „Ja, korrigieren"
+vom 2026-11-20). Belegt ist: Pukalani wird in Deutschland gehostet. Eine
+Aussage über Sitz oder Herkunft der Firma steht jetzt nirgends mehr; ein neuer
+Sitz wird nicht genannt. Rechtstexte (Impressum, Datenschutz, AGB) sind
+unberührt.
+
+- **Vergleichstabelle auf pukalani.app** (`apps/marketing`, Schlüssel
+  `marketing.compare.rows.2`): das Label „Hosting / Firmensitz" (en: „Hosting /
+  company base") heißt jetzt „Hosting". Pukalani bleibt „Deutschland". Für
+  Circle, Skool und Mighty Networks stand „USA"; die Quellen der Tabelle sind
+  deren Preisseiten und sagen nichts über den Hosting-Ort. Nach der Regel der
+  Seite („was wir nicht belegen können, behaupten wir nicht") steht dort jetzt
+  „k. A." (en: „n/a").
+- **Fußzeile im Kundenbereich** (`packages/onboarding`, Schlüssel
+  `onboarding.layout.footer`): aus „Community-Software aus Deutschland,
+  gehostet in Deutschland" (en: „made and hosted in Germany") wurde
+  „Community-Software, gehostet in Deutschland" (en: „Community software,
+  hosted in Germany").
+
+**Gelernt:** Ein Wort im Label ändert, was die ganze Zeile behauptet. Wer in
+einer Vergleichstabelle ein Kriterium umbenennt, liest danach JEDE Zelle der
+Zeile neu gegen die genannten Quellen, auch die der Mitbewerber. Und: „gehostet
+in" und „aus" sind zwei Aussagen; die zweite braucht einen eigenen Beleg.
+
+---
+
 ### N18 — Nacharbeiten „Zähl-Lücke im täglichen Blick, Rückbuchung, Abhängigkeiten": Nebenfund aus N17, LL1 (c), AR1 (e), KI1 (d) ✅ 2026-11-20
 
 Die sechste Gruppe der Nacharbeiten (Davids „Ja, starten" vom 2026-11-20).
