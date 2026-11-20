@@ -30,6 +30,70 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Node-Wächter — der tägliche Blick vergleicht die Node-Version des App-Servers mit `.nvmrc` ✅ 2026-11-19
+
+**Was war:** `.nvmrc` nennt seit Pull Request 409 eine exakte Node-Version für
+Rechner, CI und App-Server. Auf dem Server kommt Node aus dem Paket `nodejs`
+und wird nicht von selbst gehoben; ein Auseinanderlaufen fiel nur beim
+Nachsehen auf (DECISION-LOG: „Einen Wächter … gibt es nicht").
+
+**Was gebaut ist** (Pull Request 410, Merge-Commit `eb3e292f`):
+
+- **Tor-Wort `node-version`** in `ops/app-watch-gate.sh`: liest nur. Eine
+  Zeile `program <version>` für `/usr/bin/node`, je pm2-Prozess einer Site der
+  App-Liste `proc <prozess> <version>`, dazu `fremd <n>`. Kein Pfad, kein
+  freier Text, kein Name außerhalb der Liste.
+- **`scripts/ops/verify-node-version.mjs`** (`pnpm ops:node-version`): rot,
+  wenn Programm oder ein Prozess eine andere Version nennt als `.nvmrc`, auch
+  eine neuere. Keine klare Antwort ist Exit 2 und bleibt grün mit Warnzeile.
+- **Blick 18** im täglichen Job `server` von `production-watch.yml`,
+  Probealarm `-f node_drill=true`.
+- Regel pur getestet (`verifyNodeVersion.test.ts`), das Wort am echten Tor
+  (`appWatchGate.test.ts`) und in der Attrappe mit echtem sshd (52 von 52).
+
+**Ohne Rückfrage entschieden** (steht auch im DECISION-LOG): eine neuere
+Version auf dem Server ist rot („dieselbe heißt dieselbe"); ein fehlender
+pm2-Prozess ist nur eine Warnzeile, weil der Health-Blick ihn schon meldet.
+
+**Einspielen und Beweis auf Production** (Davids „Ja, mergen" und „Ja,
+einspielen" vom 2026-11-19):
+
+- Zusammengeführt 17:09 UTC, nach den Prüfungen gegen den neuesten Stand von
+  `main`; Ausliefern grün, `/api/health` nennt `eb3e292f`.
+- Das Tor liegt seit 23:41 UTC auf app-prod. Vorher geprüft: das Tor dort war
+  genau die Fassung des Repos vor Pull Request 410, `apps.conf` war gleich und
+  wurde nicht angefasst. Die Fassung davor liegt daneben als
+  `app-watch-gate.sh.vorher-2026-11-19`. Kopiert unter einem Zwischennamen,
+  Summe verglichen, dann umbenannt; die Zeile `sums` nennt dieselbe Summe wie
+  das Repo.
+- Probe über den eigenen Zugang: Programm und alle sechs pm2-Prozesse auf
+  24.22.3, `fremd 0`; `sums` und `stale-keys` wie vorher; eine freie
+  Befehlszeile weiter abgelehnt (Exit 64).
+- Wächter von Hand über den CI-Schlüssel mit festem Befehl: Lauf 44639872535,
+  Job `server` grün, der neue Schritt zeigt sieben Haken.
+- Probealarm: Lauf 44640374523, Job `server` rot wie gewollt (ein Prozess mit
+  `0.0.0`, Befund mit dem Zusatz „PROBEALARM"), Issue 427 mit `alarm:server`.
+  Aufgeräumt mit dem Lauf 44640703472 ohne Schalter: grün, Issue 427 um
+  23:50 UTC geschlossen.
+
+**Nicht gemacht:** Das Wort `mail-breaker` steht weiter im Tor (OPEN-ITEMS:
+„beim nächsten geplanten Einspielen … kann es entfallen") — es war nicht Teil
+dieses Auftrags und gilt für das nächste Mal.
+
+**Gelernt:** (1) Zwischen Merge und Einspielen ist nicht nur der Tageslauf
+um 04:17 UTC rot, sondern JEDER Lauf mit dem Job `server`: eine
+Nachbar-Sitzung startete den Wächter um 18:05 UTC von Hand, der Summen-Blick
+öffnete Issue 423, und es stand bis zum Einspielen fünf Stunden und vierzig
+Minuten offen. Das Netz hat getan, was es soll — aber wer ein von Hand
+eingespieltes Skript ändert, plant Merge und Einspielen direkt
+hintereinander und nicht „bis morgen früh". Der Satz im Runbook nennt das
+jetzt. (2) Ein Wächter-Skript unter `scripts/ops/` kennt kein `--help`: ein
+Start „zur Probe" vom eigenen Rechner fragte während des Baus einmal den
+echten App-Server (nur lesend, das alte Tor lehnte das Wort ab). Eine Datei
+dort prüft man mit `node --check`, die Logik über den Test oder die Attrappe.
+
+---
+
 ### N17 — Nacharbeiten „Skripte, Erinnerungen, Rückbuchung, Log-Umlauf": BT1 (a), SE1 (c, d), LL1 (c) ✅ 2026-11-19
 
 Die fünfte Gruppe nach den „drei größeren Resten" (Davids „Ja, starten" vom
