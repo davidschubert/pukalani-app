@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { renderBrandCardPng, type BrandCardInput } from '../../../../packages/themes/shared/brandCardPng'
 import { renderBrandIconPng, type BrandIconInput } from '../../../../packages/themes/shared/brandIconPng'
 import { BRAND_ICON_DEFAULT_SIZE } from '../../../../packages/themes/shared/brandIcon'
+import { softFail } from '../../../../packages/core/server/utils/softFail'
 
 /**
  * Die Ablage der erzeugten Bildmarken-Bilder: Speicher → Platte → erst dann
@@ -63,7 +64,7 @@ async function cached(name: string, render: () => Promise<Buffer>): Promise<Buff
   if (hit) return hit
 
   const file = join(CACHE_DIR, `${name}.png`)
-  const fromDisk = await readFile(file).catch(() => null)
+  const fromDisk = await readFile(file).catch(softFail('app.platform:utils/brandImageStore:readFile', null))
   if (fromDisk) {
     remember(name, fromDisk)
     return fromDisk
@@ -75,7 +76,7 @@ async function cached(name: string, render: () => Promise<Buffer>): Promise<Buff
   // bleibt das Bild im Speicher und die Antwort korrekt.
   await mkdir(CACHE_DIR, { recursive: true })
     .then(() => writeFile(file, png))
-    .catch(() => undefined)
+    .catch(softFail('app.platform:utils/brandImageStore:mkdir', undefined))
   return png
 }
 
