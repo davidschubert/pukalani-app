@@ -240,11 +240,20 @@ Auf dem Server, als der Benutzer, der in der docker-Gruppe ist (kein root):
 3. Zugang zur Storage Box: ein eigenes Schlüsselpaar auf dem Server erzeugen,
    den öffentlichen Teil auf der Box eintragen, in `~/.ssh/config` einen Alias
    mit Port und Schlüssel anlegen. `ssh <box-alias> ls` muss ohne Rückfrage
-   antworten.
+   antworten. Den Ziel-Ordner einmal anlegen — der Abgleich legt nur die
+   letzte Ebene selbst an: `ssh <box-alias> mkdir -p backups/docker-apps/runs`.
+   Die Box hat eine eingeschränkte Shell (kein `cd`, kein `&&`, keine
+   Platzhalter): eine Prüfsumme dort rechnet man je Datei mit vollem Pfad,
+   `ssh <box-alias> sha256sum backups/docker-apps/runs/<lauf>/<datei>`.
 4. Ein Lauf von Hand mit den Variablen der crontab-Zeile; er endet mit
    „Außer Haus angekommen und Prüfsummen gleich".
-5. Die crontab-Zeile (steht im Kopf des Skripts). **Ohne `--run` sichert ein
-   Zeitplan nichts** — dann läuft nur die Vorschau.
+5. `mkdir -p ~/ops/logs`, dann die crontab-Zeile (steht im Kopf des Skripts;
+   heute täglich 03:15 UTC). **Ohne `--run` sichert ein Zeitplan nichts** —
+   dann läuft nur die Vorschau.
+6. Die Zeile einmal so ausführen, wie cron es tut — mit leerer Umgebung:
+   `env -i HOME="$HOME" PATH=/usr/bin:/bin /bin/sh -c '<die Zeile ohne die fünf Zeitfelder>'`.
+   Ein Programm, das nur im Pfad der eigenen Anmeldung liegt, fiele sonst
+   erst in der Nacht auf.
 
 ### 6.2 Nachsehen
 
@@ -300,3 +309,4 @@ Docker:
 | Datum | Was | Ergebnis |
 | --- | --- | --- |
 | 2026-11-20 | Erster Lauf auf dem Server (zehn Abzüge, rund 30 Sekunden, rund 6 MB). Danach Plausible zurückgespielt in zwei Wegwerf-Container auf einem anderen Rechner: Postgres und ClickHouse. | Postgres: 51 Tabellen, jede Zeilenzahl gleich. ClickHouse: 20 Tabellen mit Daten und drei Wörterbücher, jede Zeilenzahl gleich; Besuche bis zum Tag des Laufs, Ländernamen kommen aus dem Wörterbuch. Der erste Versuch von Hand scheiterte an der Reihenfolge (§ 5) — daraus entstand `ops/docker-apps-restore-clickhouse.sh`. **Einschränkung:** verschlüsselt war dieser Übungs-Lauf für einen Wegwerf-Schlüssel, nicht für den echten; mit dem echten privaten Schlüssel wurde noch kein Lauf dieses Servers geöffnet. Chatwoot, Umami und Shlink sind abgezogen und geprüft, aber noch nicht zurückgespielt. |
+| 2026-11-20 | Ablage außer Haus und Zeitplan eingerichtet. Ein Lauf von Hand mit Ablage, einer mit der leeren Umgebung von cron. | Beide grün. Die 13 Dateien des Laufs tragen auf der Storage Box dieselben Prüfsummen wie auf dem Server (dort je Datei nachgerechnet, nicht nur über den Abgleich). |
