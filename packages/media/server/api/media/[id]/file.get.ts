@@ -1,5 +1,6 @@
 import { ImageFormat } from 'node-appwrite'
 import { MEDIA_BUCKET, MEDIA_TABLE, type MediaItem } from '../../../../shared/types/media'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * VORSCHAU EINES MEDIEN-EINTRAGS FÜR DIE REDAKTION (media.manage) — die
@@ -68,7 +69,7 @@ export default defineEventHandler(async (event) => {
     width: 640,
     quality: 78,
     output: ImageFormat.Webp,
-  }).catch(() => null)
+  }).catch(softFail('media:api/media/[id]/file.get:getFilePreview', null))
 
   setHeader(event, 'Cache-Control', 'private, no-store')
   if (preview) {
