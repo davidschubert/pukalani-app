@@ -52,10 +52,11 @@ const TIMEOUT_MS = 5_000
  * Header wendet der Server sein NEUESTES Format an — läge der Helfer damit auf
  * einem anderen Stand als jeder SDK-Aufruf daneben, und zwar lautlos. Beim
  * nächsten SDK-Bump mitziehen (Wert steht in dessen `dist/client.js`; das
- * Web-SDK 29.2 sendet denselben). 2.0.0 → 2.6.2 am 2026-11-10 (node-appwrite
- * 29 → 31, appwrite 27 → 29.2; Server läuft auf 2.7.1).
+ * Web-SDK 29.3 sendet denselben). 2.0.0 → 2.6.2 am 2026-11-10 (node-appwrite
+ * 29 → 31, appwrite 27 → 29.2; Server lief auf 2.7.1). 2.6.2 → 2.7.2 am
+ * 2026-11-20 (node-appwrite 31.3, appwrite 29.3.1; Server läuft auf 2.7.4).
  */
-const RESPONSE_FORMAT = '2.6.2'
+const RESPONSE_FORMAT = '2.7.2'
 
 async function fetchHealth<T>(endpoint: string, projectId: string, apiKey: string, path: string): Promise<T> {
   let response: Response
