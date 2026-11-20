@@ -2,6 +2,7 @@ import { ID } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { parseRunAttachments, runAttachmentsFull, serializeRunAttachments } from '../../../../../shared/runAttachments'
 import { MAX_RUN_ATTACHMENTS, RUNNER_FILES_BUCKET, RUNS_TABLE, type RunAttachment, type RunAttachmentAddedResponse, type RunRow } from '../../../../../shared/types/runner'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Einen Anhang an einen ENTWURF hängen — docs/plans/AI-RUNNER.md § 6,
@@ -73,7 +74,7 @@ export default defineEventHandler(async (event): Promise<RunAttachmentAddedRespo
   }).catch(async (error) => {
     // Ohne Zeile ist die Datei nicht erreichbar (die Liste IST die Erlaubnis) —
     // also weg damit, statt eine Leiche im Bucket zu lassen.
-    await admin.storage.deleteFile({ bucketId: RUNNER_FILES_BUCKET, fileId: stored.$id }).catch(() => {})
+    await admin.storage.deleteFile({ bucketId: RUNNER_FILES_BUCKET, fileId: stored.$id }).catch(softFail('runner:api/runner/runs/[id]/files.post:deleteFile', undefined))
     throw toH3Error(error, 'Could not save attachment')
   })
 

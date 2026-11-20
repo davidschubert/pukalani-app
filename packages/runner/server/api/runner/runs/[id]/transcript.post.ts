@@ -1,5 +1,6 @@
 import { InputFile } from 'node-appwrite/file'
 import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow, type TranscriptUploadResponse } from '../../../../../shared/types/runner'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Das volle Transkript als Datei — docs/plans/AI-RUNNER.md § 4/§ 7.2 Schritt 9.
@@ -58,7 +59,7 @@ export default defineEventHandler(async (event): Promise<TranscriptUploadRespons
   const stored = await upload().catch(async (error) => {
     const code = (error as { code?: number }).code
     if (code !== 409) throw toH3Error(error, 'Could not store transcript')
-    await admin.storage.deleteFile({ bucketId: RUNNER_FILES_BUCKET, fileId: id }).catch(() => {})
+    await admin.storage.deleteFile({ bucketId: RUNNER_FILES_BUCKET, fileId: id }).catch(softFail('runner:api/runner/runs/[id]/transcript.post:deleteFile', undefined))
     return await upload().catch((retryError) => {
       throw toH3Error(retryError, 'Could not store transcript')
     })

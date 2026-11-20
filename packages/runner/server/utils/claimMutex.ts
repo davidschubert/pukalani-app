@@ -25,6 +25,7 @@ export function withClaimMutex<T>(task: () => Promise<T>): Promise<T> {
   // An die Kette hängen, egal wie der Vorgänger ausging — ein Fehler im
   // einen Claim darf die Reihe nicht für alle folgenden vergiften.
   const next = chain.then(task, task)
+  // eslint-disable-next-line pukalani/no-silent-catch -- Ende einer Sperr-Kette: den Fehler bekommt der Aufrufer des Glieds, die Kette selbst darf nie abgelehnt sein
   chain = next.catch(() => {})
   return next
 }
