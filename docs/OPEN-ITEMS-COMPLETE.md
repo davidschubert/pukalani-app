@@ -30,6 +30,77 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q08 — Formulare und Ansagen: Felder haben Namen, Fehler werden angesagt, der Browser darf Anmelde-Felder ausfüllen (UX-004, UX-005, UX-007, UX-009, UX-010) ✅ 2026-11-21
+
+**Was.** Fünf Dinge, die man nur mit Hilfsmittel, Tastatur oder
+Passwort-Manager merkt:
+
+- **Anmelde-Formulare (`packages/core`).** Jedes Feld sagt dem Browser, was
+  hineingehört: E-Mail im Login `username`, Passwort `current-password`, in
+  Registrierung, „Passwort zurücksetzen" und „Passwort ändern"
+  `new-password`, Name `name`, E-Mail sonst `email`. Der rote Fehlerkasten
+  trägt `role="alert"` (Login, Registrierung, Code, zweiter Faktor, Passwort
+  vergessen und zurücksetzen). Nach einem gescheiterten Absenden steht der
+  Fokus im ersten fehlerhaften Feld, nach einem falschen Passwort im
+  Passwortfeld (`app/utils/formFocus.ts`). „Passwort vergessen?" steht im
+  Quelltext hinter dem Passwortfeld und sieht aus wie vorher. Die
+  Passwort-Regeln sagen je Zeile „erfüllt" oder „fehlt", der Balken heißt
+  „Passwort-Regeln: 1 von 6 erfüllt". Ablauf und Prüfungen der Formulare
+  sind unverändert.
+- **Neues Branding (`packages/brand`).** Jede Frage ist das `label` ihres
+  Feldes (Arbeitstitel, Website, Branche, „was machst du", „für wen").
+- **Feed (`packages/posts`).** Schreibfläche (als Textfeld UND als Editor),
+  Titel, Umfrage-Optionen, beide Zeitfelder und die Kategorie-Auswahl haben
+  einen Namen; die Abstimm-Knöpfe sagen mit `aria-pressed`, wofür man
+  gestimmt hat. Dazu das Kommentar-Feld (`packages/comments`).
+- **Onboarding (`packages/onboarding`).** Der Wizard setzt beim
+  Schrittwechsel den Fokus auf die neue Überschrift. Die Suche der
+  Mitgliederliste hat einen Namen, „Team / Alle Mitglieder" sagt, was gilt,
+  und ein erledigter Start-Schritt sagt „erledigt".
+- **Neue Texte:** `auth.password.rules/met/missing/progress` (core),
+  `onboarding.gettingStarted.stepDone` — je de + en. Alle anderen Namen
+  nehmen den Text, der schon als Platzhalter dasteht.
+
+**Ursache.** Dreimal eine Voreinstellung, die niemand nachgemessen hat:
+`UInput` setzt `autocomplete="off"`, wenn ein Formular nichts angibt; `UAlert`
+trägt von sich aus keine Rolle; der Platz „Hinweis" von `UFormField` liegt im
+Quelltext VOR dem Feld. Und überall, wo ein Feld von Hand statt mit
+`UFormField` gebaut ist, fehlte der Name. Der Zustand war gestaltet (Farbe,
+Symbol, durchgestrichen), aber nicht benannt.
+
+**Beweis.** `apps/comments/e2e/auth-forms.spec.ts`: sechs Fälle lesen das
+ausgelieferte HTML von `/login`, `/login/code`, `/register`,
+`/register/code`, `/forgot-password` und `/reset-password` (genau diese
+Felder, je Feld Beschriftung und `autocomplete` — die Erwartung steht im Test
+ausgeschrieben), vier Fälle prüfen im Browser Tab-Reihenfolge, Fokus nach
+leerem Absenden, Ansage und Fokus nach einer Ablehnung und die
+Passwort-Regeln. Gegenprobe: ohne die Änderung an den Formularen sind alle
+zehn rot. Lokal mit axe-core über Playwright gemessen, je vorher und
+nachher: Marken-Formular (`label` 4 → 0), Feed im Pool (`button-name` 1 → 0,
+zwei Felder ohne Namen → 0), Mitgliederliste, Start-Schritte, die vier
+Schritte des Wizards und die sechs Anmelde-Seiten. Registrierung und
+Anmeldung lokal mit einem Wegwerf-Konto durchgespielt, danach gelöscht.
+
+**Nicht gemacht.** Drei Stellen aus denselben Befunden liegen außerhalb des
+Pakets: das Termin-Formular (Pflichtfeld meldet sich nur als Hinweis oben
+rechts, `packages/events`), der Fokus nach dem Absenden des Erstgesprächs
+(Studio-Site) und der Umschalter der Seitenleiste (`UDashboardSidebarCollapse`
+ohne `aria-expanded`, ein Baustein der Bibliothek auf jeder Dashboard-Seite).
+
+**Gelernt:** `UForm` sperrt während des Absendens ALLE seine Felder und gibt
+sie erst nach dem `@error`-Ereignis bzw. nach dem eigenen `@submit`-Handler
+frei. Ein `focus()` an dieser Stelle trifft ein gesperrtes Feld und tut
+nichts, ohne Fehler und ohne Warnung; auch `nextTick()` reicht im
+`@submit`-Handler nicht. Die Hilfe verschiebt den Fokus deshalb um einen
+Takt (`setTimeout 0`). Und: Der Fokus fiel nach einem falschen Passwort
+nicht „auf den Knopf zurück", sondern auf die Seite, weil der Knopf beim
+Warten gesperrt wird. Zweitens: Eine Messung „vorher/nachher" per
+`git apply -R` braucht den Patch mit vollem Pfad; mit `git -C <ordner>` wird
+ein relativer Pfad gegen den Ordner gelesen, der Befehl scheitert, und beide
+Messungen laufen still gegen denselben Stand.
+
+---
+
 ### Q01 — Navigation auf dem Handy: Menü-Knopf in jeder Community, Kopfzeile von pukalani.app passt bei 768 px, Feedback-Knopf verdeckt am Seitenende nichts (UX-001, UX-003, UX-008) ✅ 2026-11-20
 
 **Was.** Drei Fehler, die nur im schmalen Fenster auftreten, und ein
