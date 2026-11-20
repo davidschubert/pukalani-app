@@ -101,7 +101,7 @@ am 2026-11-18, COMPLETE „N11").
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) Abhängigkeiten: drei Hinweise und vier kleine Updates bleiben offen (Stand 2026-11-20, COMPLETE „N19"). **Wartet auf:** (a) David; (e) auf neue Ausgaben fremder Pakete und auf zwei Fristen (Issues 356, 359, 373, 374). | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 73 von 84 von selbst; nachts steht auch branding.supply als vierter Server, elf seiner zwölf Skripte laufen mit (COMPLETE „N16" und „N17"). Offen: (a) die fünf E2E-Dateien der Studio-Site und ein Skript brauchen einen fünften Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
-| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst (die SDKs sind seit dem 2026-11-20 gehoben, COMPLETE „N19"); (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) zwei Datenbank-Abzüge der letzten Upgrades auf dem Server (Images und Sicherungskopien sind seit dem 2026-11-20 weg, COMPLETE „AW30 (d)"); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. **Wartet auf:** (e) ein solches Update. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
+| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst (die SDKs sind seit dem 2026-11-20 gehoben, COMPLETE „N19"); (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) neun alte Patch-Dateien ohne Aufgabe auf dem Server (Images, Sicherungskopien und die Datenbank-Abzüge der Upgrades sind seit dem 2026-11-20 weg, COMPLETE „AW30 (d)"); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. **Wartet auf:** (e) ein solches Update. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -1094,17 +1094,14 @@ Entwicklungs-Rechner ist damit weiter möglich.
   der Demo, braucht Davids Ja) und der Speichern-Knopf im Profil mit neuem
   Bild (er ersetzt das echte Profilbild). Kommentar und Stimme sind auf der
   Entwicklungs-Instanz und in der CI mit 2.7.3 bewiesen.
-- **(d) Die Datenbank-Abzüge der letzten zwei Upgrades.** Alle alten Images
-  (auch der Rückweg 2.7.3 und Executor 1.3.5) und die Sicherungskopien der
-  Einstellungs-Dateien sind seit dem 2026-11-20 gelöscht (Erledigt-Liste,
-  zwei Einträge „AW30 (d)"). Geblieben ist der Ordner `~/backups` auf dem
-  Server: je ein Datenbank-Abzug und ein Archiv der Einstellungen von vor
-  2.7.3 und vor 2.7.4 (zusammen 43 MB; anders als das nächtliche Backup
-  nicht verschlüsselt). Das nächtliche Backup trägt dasselbe.
-  Löschen nur mit Davids Ja; danach führt der Rückweg auf 2.7.3 nur noch
-  über das nächtliche Backup (Runbook, „Rückweg"). Ebenfalls noch dort, ohne
-  Aufgabe: neun alte Patch-Dateien `registers-*` im Ordner `patches/` (die
-  zehnte Datei dort, `clickhouse-logging.xml`, ist in Benutzung).
+- **(d) Alte Patch-Dateien.** Alle alten Images (auch der Rückweg 2.7.3 und
+  Executor 1.3.5), die Sicherungskopien der Einstellungs-Dateien und der
+  Ordner `~/backups` mit den Datenbank-Abzügen der letzten zwei Upgrades
+  sind seit dem 2026-11-20 gelöscht (Erledigt-Liste, zwei Einträge „AW30
+  (d)"); der Rückweg auf 2.7.3 führt seitdem über das nächtliche Backup
+  (Runbook, „Rückweg"). Noch dort, ohne Aufgabe: neun alte Patch-Dateien
+  `registers-*` im Ordner `patches/` (die zehnte Datei dort,
+  `clickhouse-logging.xml`, ist in Benutzung). Löschen nur mit Davids Ja.
 - **(e) Neustart-Regel bei einem Docker-Update.** Seit dem 2026-11-20 trägt
   jeder Container auf appwrite-prod eine Neustart-Regel; bewiesen ist sie für
   den Neustart des Servers (42 s, ohne Eingriff — COMPLETE „AW31"). Ein

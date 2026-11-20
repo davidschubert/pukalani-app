@@ -684,11 +684,12 @@ auf dem Server, also zuerst `docker pull appwrite/appwrite:2.7.3` und
 Einstellungen von 2.7.3 unterscheiden sich von den heutigen in genau zwei
 Zeilen (vor dem Löschen der Kopien gemessen): `_APP_VERSION` in der `.env`
 und die Zeile `image: openruntimes/executor:…` in `docker-compose.yml`. Beide
-von Hand zurückstellen oder die drei Dateien aus dem Config-Tar des Laufs
-holen (`~/backups/appwrite-config-pre-2.7.4-*.tgz`, solange der Ordner
-besteht — OPEN-ITEMS „AW30" d), sonst aus dem nächtlichen Backup vom
-2026-11-20 03:30 UTC (Stand 2.7.3, verschlüsselt —
-[APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md)). Danach
+von Hand zurückstellen oder die drei Dateien aus dem nächtlichen Backup vom
+2026-11-20 03:30 UTC holen (Stand 2.7.3, verschlüsselt —
+[APPWRITE-WIEDERHERSTELLUNG.md](APPWRITE-WIEDERHERSTELLUNG.md)); der Ordner
+`~/backups` mit dem Config-Tar und dem Datenbank-Abzug des Laufs ist seit dem
+2026-11-20 abends gelöscht. Die DATEN gehen bei einem Rückweg nur mit dem
+nächtlichen Backup zurück, also auf den Stand von 03:30 UTC. Danach
 `docker compose up -d --remove-orphans`. Die Kopien `*.<epoch>.backup`, die
 die Rückweg-Absätze der früheren Schritte nennen, gibt es nicht mehr; das
 Werkzeug legt beim nächsten Upgrade neue an.
