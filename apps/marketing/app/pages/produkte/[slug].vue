@@ -13,9 +13,9 @@
 // Kundensprache ist „Produkte" (im CODE bleibt das Vokabular `products`).
 // Seit Davids Entscheidung 2026-07-31 ist NICHT NUR das Segment übersetzt,
 // sondern auch der Slug (/de/produkte/kurse ↔ /products/courses).
-// Die alten /features/*-URLs und die drei EN-Adressen mit deutschem Slug waren
-// schon veröffentlicht: 301 in nuxt.config.ts.
-import { EARLY_ACCESS_KEYS, keyFromSlug, slugForLocale } from '#shared/marketing'
+// Die alten /features/*-URLs: 301 in nuxt.config.ts. Ein Name der anderen
+// Sprache (`/products/kurse`, `/de/produkte/courses`): 301 hier in der Seite.
+import { EARLY_ACCESS_KEYS, matchProductSlug, slugForLocale } from '#shared/marketing'
 
 definePageMeta({ layout: 'site' })
 defineI18nRoute({ paths: { en: '/products/[slug]', de: '/produkte/[slug]' } })
@@ -26,17 +26,31 @@ defineI18nRoute({ paths: { en: '/products/[slug]', de: '/produkte/[slug]' } })
 // zwei Fassungen existieren.
 const route = useRoute()
 const { t, te, locale } = useI18n()
+const localePath = useLocalePath()
 
 /**
  * Der Slug in der Adresse gehört der AKTUELLEN Sprache; gearbeitet wird ab
  * hier nur noch mit dem kanonischen Schlüssel (i18n-Texte, OG-Bild,
- * Claim-Gate). Ein Slug der ANDEREN Sprache ist kein Treffer — `keyFromSlug`
- * prüft je Sprache, sonst gäbe es dieselbe Seite unter zwei URLs.
+ * Claim-Gate).
+ *
+ * Ein Slug der ANDEREN Sprache zeigt die Seite NICHT (sonst gäbe es sie unter
+ * zwei URLs), er leitet auf die richtige Adresse weiter (Q03, 2026-11-20). Das
+ * braucht es, weil die Sprach-Erkennung einen deutschen Browser von
+ * `/products/posts` auf `/de/produkte/posts` schickt: sie übersetzt nur den
+ * festen Teil der Adresse. 301, weil das Ziel nicht vom Besucher abhängt.
+ * Die Abfrage reist mit (Kampagnen-Links).
  */
-const productKey = keyFromSlug(String(route.params.slug), locale.value)
-if (!productKey) {
+const match = matchProductSlug(String(route.params.slug), locale.value)
+if (!match) {
   throw createError({ status: 404, statusText: 'Page not found' })
 }
+if (match.redirect) {
+  await navigateTo(
+    localePath({ name: 'produkte-slug', params: { slug: match.slug }, query: route.query }),
+    { redirectCode: 301 },
+  )
+}
+const productKey = match.key
 
 /**
  * DIE ÜBERSETZTE ADRESSE DIESER SEITE — für `switchLocalePath()` (Sprach-
@@ -74,7 +88,6 @@ setI18nParams({
  * Endlosschleife, falls `te` je etwas anderes beantwortet als `t`.
  */
 const HIGHLIGHT_MAX = 12
-const localePath = useLocalePath()
 const { start, demo, request } = useProductLinks()
 useReveal()
 

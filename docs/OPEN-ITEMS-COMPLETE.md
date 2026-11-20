@@ -85,6 +85,50 @@ Proxy davor.
 
 ---
 
+### Q03 — Sprach-Umleitung ohne Fehlerseite, Wächter für fest genannte Text-Schlüssel ✅ 2026-11-20
+
+**Was.** Zwei Funde aus dem zweiten Durchlauf des Gesamtaudits (FE-001,
+FE-005).
+
+1. **Umleitung.** Wer mit deutschem Browser einen englischen Link auf eine
+   Produkt- oder Anwendungsfall-Seite von pukalani.app öffnete
+   (`/products/posts`), landete auf `/de/produkte/posts` und dort auf einer
+   Fehlerseite. Die Sprach-Erkennung übersetzt nur den festen Teil der
+   Adresse; den Namen dahinter suchte die Seite nur in der eigenen Sprache.
+   Betroffen waren sechs Adressen in dieser Richtung und eine in der anderen
+   (`/de/produkte/kommentare` im englischen Browser; für die übrigen fünf gab
+   es feste Regeln). Jetzt sucht die Seite bei einem Fehlgriff in der anderen
+   Sprache und leitet mit 301 auf die richtige Adresse; die Abfrage reist mit.
+   Die fünf festen Regeln in `apps/marketing/nuxt.config.ts` sind dadurch
+   überflüssig und entfernt; eine neue Seite mit zwei Namen ist von selbst
+   gedeckt.
+2. **Knopf und Wächter.** Der Schließen-Knopf der Erstgespräch-Liste im
+   Betreiber-Dashboard von branding.supply zeigte „ui.close“; er nimmt jetzt
+   den vorhandenen Schlüssel der Seite. `pnpm check:i18n-keys` liest seitdem
+   zusätzlich jeden fest genannten Schlüssel im Code (`t('…')`, `$t('…')`,
+   `keypath`) und verlangt ihn in jeder App, die die Datei mitbringt, in
+   beiden Sprachen. Erster Lauf: 7.089 Schlüssel in 1.143 Dateien, außer dem
+   Knopf kein Fund.
+
+**Beweis.** `apps/marketing/tests/localeSlugRedirect.test.ts` (alle Seiten,
+beide Richtungen, Erwartungen ausgeschrieben), `packages/core/tests/
+checkI18nKeys.test.ts` (echtes Skript gegen einen Probe-Baum, zehn
+Gegenproben, neun Formen ohne Fehlalarm). Lokal und live: Abruf mit
+`Accept-Language` der anderen Sprache auf alle zwölf Adressen endet mit 200
+auf der richtigen Seite.
+
+**Nicht gedeckt.** Zusammengesetzte Schlüssel (t(`a.${x}`)), `server/` und
+Felder wie `labelKey:` im Code liest der Wächter nicht (Gründe im Kopf von
+`scripts/lib/i18n-static-keys.mjs`). Der Test der Umleitung prüft die Regel
+und dass beide Seiten sie aufrufen, nicht den laufenden Server.
+
+**Gelernt:** Eine Umleitung, die nur mit einer Browser-Sprache auftritt, sieht
+niemand, der ohne Sprach-Vorgabe prüft — `curl` ohne `Accept-Language` zeigte
+immer 200. Und: die feste Regel je Adresse deckte nur die Richtung, an die
+beim Anlegen jemand dachte; die Regel aus der Tabelle deckt beide.
+
+---
+
 ### AW30 (d) — Alte Appwrite-Images auf appwrite-prod gelöscht ✅ 2026-11-20
 
 **Was.** Nach dem Upgrade auf 2.7.4 lagen auf dem Appwrite-Server die Images

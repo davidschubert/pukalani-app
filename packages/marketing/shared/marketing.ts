@@ -133,10 +133,9 @@ function localizedSlug<Key extends string>(table: SlugTable<Key>, key: Key, loca
  * Slug DIESER Sprache → Schlüssel; `undefined` heißt 404.
  *
  * Bewusst streng je Sprache: `/products/kurse` (deutscher Slug auf der
- * englischen Seite) ist KEIN Treffer, sondern eine alte Adresse — sie wird in
- * `nuxt.config.ts` per 301 auf `/products/courses` geschickt. Würde hier
- * beides gelten, gäbe es dieselbe Seite unter zwei URLs (Duplicate Content),
- * und die Weiterleitung käme nie zum Zug.
+ * englischen Seite) ist KEIN Treffer — die Seite leitet von dort auf
+ * `/products/courses` weiter (`matchSlug` unten). Würde hier beides gelten,
+ * gäbe es dieselbe Seite unter zwei URLs (Duplicate Content).
  *
  * Die Schlüssel-Liste kommt als Argument dazu (statt `Object.keys(table)`):
  * so bleibt die deklarierte Reihenfolge der Katalog-Wahrheit erhalten und der
@@ -150,6 +149,55 @@ function keyForSlug<Key extends string>(
 ): Key | undefined {
   const wanted = marketingLocale(locale)
   return keys.find(key => table[key][wanted] === slug)
+}
+
+/**
+ * Wohin gehört der Name aus der Adresse? (Q03, 2026-11-20)
+ *
+ * Drei Antworten:
+ *  - der Name gehört zur Sprache der Seite ⇒ `redirect: false`, die Seite
+ *    zeigt sich,
+ *  - der Name gehört zur ANDEREN Sprache ⇒ `redirect: true` und `slug` nennt
+ *    den Namen der Sprache der Seite; die Seite leitet dorthin weiter,
+ *  - der Name ist unbekannt ⇒ `undefined`, also 404.
+ *
+ * WARUM: die Sprach-Erkennung (`redirectOn: 'all'`) schickt einen deutschen
+ * Browser von `/products/posts` auf `/de/produkte/posts`. Sie übersetzt nur
+ * den festen Teil der Adresse, weil sie läuft, bevor die Seite geladen ist und
+ * den Namen übersetzen könnte. Bis dahin endete jeder so geöffnete Link auf
+ * einer Fehlerseite. Die Seite bleibt dabei unter GENAU EINER Adresse je
+ * Sprache erreichbar: der fremde Name zeigt nichts, er leitet nur weiter.
+ */
+export interface SlugMatch<Key extends string> {
+  key: Key
+  /** Der Name in der Sprache der Seite. */
+  slug: string
+  /** Die Adresse trug den Namen der anderen Sprache. */
+  redirect: boolean
+}
+
+function matchSlug<Key extends string>(
+  table: SlugTable<Key>,
+  keys: readonly Key[],
+  slug: string,
+  locale: string,
+): SlugMatch<Key> | undefined {
+  const own = keyForSlug(table, keys, slug, locale)
+  if (own) return { key: own, slug, redirect: false }
+  const other: MarketingLocale = marketingLocale(locale) === 'de' ? 'en' : 'de'
+  const foreign = keyForSlug(table, keys, slug, other)
+  if (!foreign) return undefined
+  return { key: foreign, slug: localizedSlug(table, foreign, locale), redirect: true }
+}
+
+/** Produkt-Seite: Name aus der Adresse → Treffer, Weiterleitung oder 404. */
+export function matchProductSlug(slug: string, locale: string): SlugMatch<ProductKey> | undefined {
+  return matchSlug(PRODUCT_SLUGS, PRODUCT_KEYS, slug, locale)
+}
+
+/** Anwendungsfall-Seite: Name aus der Adresse → Treffer, Weiterleitung oder 404. */
+export function matchAudienceSlug(slug: string, locale: string): SlugMatch<AudienceKey> | undefined {
+  return matchSlug(AUDIENCE_SLUGS, AUDIENCE_KEYS, slug, locale)
 }
 
 /** Produkt-Schlüssel → Slug DIESER Sprache (Link-Ziele, Sitemap). */

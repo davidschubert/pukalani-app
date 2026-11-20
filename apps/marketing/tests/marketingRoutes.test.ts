@@ -50,14 +50,14 @@ const NOINDEX_PAGES = new Set(['agb.vue', 'betreiber-bedingungen.vue', 'datensch
  */
 const DYNAMIC_GUARDS = [
   {
-    name: 'keyFromSlug (PRODUCT_KEYS)',
-    pattern: /\bkeyFromSlug\(/,
+    name: 'matchProductSlug (PRODUCT_KEYS)',
+    pattern: /\bmatchProductSlug\(/,
     en: PRODUCT_KEYS.map(key => slugForLocale(key, 'en')),
     de: PRODUCT_KEYS.map(key => slugForLocale(key, 'de')),
   },
   {
-    name: 'audienceKeyFromSlug (AUDIENCE_KEYS)',
-    pattern: /\baudienceKeyFromSlug\(/,
+    name: 'matchAudienceSlug (AUDIENCE_KEYS)',
+    pattern: /\bmatchAudienceSlug\(/,
     en: AUDIENCE_KEYS.map(key => audienceSlugForLocale(key, 'en')),
     de: AUDIENCE_KEYS.map(key => audienceSlugForLocale(key, 'de')),
   },

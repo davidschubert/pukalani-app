@@ -24,8 +24,16 @@
  *
  * ── WAS GEPRÜFT WIRD ──────────────────────────────────────────────────────
  *
- * NUR CONFIG-DEKLARIERTE Schlüssel, keine beliebigen `t()`-Aufrufe. Das ist
- * eine bewusste Verengung, kein Versehen: ein `t()` im Markup steht neben
+ * ZWEI TEILE (seit 2026-11-20, Q03):
+ *
+ *  1. Schlüssel, die eine `app.config` nennt (dieser Kopf beschreibt ihn),
+ *  2. Schlüssel, die FEST im Code stehen: `t('…')`, `$t('…')`, `keypath="…"`
+ *     in `app/` und `shared/` — Regeln, Grenzen und Begründung im Kopf von
+ *     `scripts/lib/i18n-static-keys.mjs`. Anlass: `t('ui.close')` stand zehn
+ *     Wochen auf einem Knopf, den Schlüssel gab es nie.
+ *
+ * TEIL 1 prüft NUR CONFIG-DEKLARIERTE Schlüssel. Das war bis 2026-11-20 der
+ * ganze Wächter und ist eine eigene Rechnung, kein Versehen: ein `t()` im Markup steht neben
  * seinem Layer und wandert mit ihm; ein Schlüssel in `app.config.ts` dagegen
  * wird von einem FREMDEN Layer gerendert (das Fuß-Layout gehört blueprint, der
  * Text gehört der App) — dort reißt die Verbindung, und genau dort riss sie
@@ -69,22 +77,21 @@
  *
  * ── WAS ER NICHT FÄNGT, UND WARUM DAS SO BLEIBT ───────────────────────────
  *
- * Vorfall 1 (die rohen `home.features.*` im Baseline-Bild) fällt NICHT in
- * diese Klasse und wird hier auch nicht gefangen: er entstand in
- * `app/pages/visual.vue` an t(`home.products.${key}.text`) und an zwei festen
- * t()-Aufrufen im Markup — keine Zeile davon steht in einer `app.config`.
- * Nachgemessen am 2026-08-06: die benachbarte Klasse „statisches t('…')-
- * Literal in .vue/.ts, das die App nicht kennt" hätte HEUTE null Befunde
- * (der einzige Treffer eines rohen Greps stand in einem Kommentar). Sie wäre
- * ein EIGENER Wächter mit eigener Textanalyse — nicht ein Feld mehr in der
- * Tabelle unten. Diese Trennung ist Absicht: dieser hier prüft, was die
- * Config VERSPRICHT, und das kann er falsch-positiv-frei.
+ * Schlüssel, die erst zur Laufzeit entstehen: t(`home.products.${key}.text`).
+ * So entstand Vorfall 1 (die rohen `home.features.*` im Baseline-Bild). Ein
+ * Wächter müsste den Wert raten. Feste Aufrufe im Markup fing bis 2026-11-20
+ * niemand; seither prüft sie Teil 2.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
+import { checkStaticKeys } from './lib/i18n-static-keys.mjs'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+// `PUKALANI_CHECK_ROOT`: der Test lässt das echte Skript gegen einen kleinen
+// Probe-Baum laufen (packages/core/tests/checkI18nKeys.test.ts).
+const ROOT = process.env.PUKALANI_CHECK_ROOT
+  ? resolve(process.env.PUKALANI_CHECK_ROOT)
+  : resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const LOCALES = ['de', 'en']
 
 /**
@@ -303,6 +310,8 @@ if (existsSync(join(playground, 'nuxt.config.ts'))) {
 const findings = []
 const errors = []
 let checkedKeys = 0
+/** Für Teil 2: je App ihre Verzeichnisse und die bekannten Schlüssel. */
+const staticApps = []
 
 for (const app of apps) {
   const chain = extendsChain(app.dir)
@@ -334,6 +343,8 @@ for (const app of apps) {
     }
   }
 
+  staticApps.push({ name: app.name, dirs: [app.dir, ...chain], known })
+
   const pukalani = effective.pukalani ?? {}
   for (const field of FIELDS) {
     for (const key of new Set(field.keys(pukalani))) {
@@ -343,6 +354,9 @@ for (const app of apps) {
     }
   }
 }
+
+// ── Teil 2: fest im Code genannte Schlüssel ───────────────────────────────
+const fixed = checkStaticKeys({ root: ROOT, apps: staticApps, locales: LOCALES })
 
 // ── Ergebnis ──────────────────────────────────────────────────────────────
 if (errors.length) {
@@ -361,8 +375,19 @@ if (findings.length) {
   console.error('')
 }
 
-if (errors.length || findings.length) process.exit(1)
+if (fixed.findings.length) {
+  console.error(`\n✗ i18n-Schlüssel-Check: ${fixed.findings.length} Befund(e) — der Code nennt Schlüssel, die es nicht gibt\n`)
+  console.error('  (vue-i18n zeigt dann den SCHLÜSSEL — so stand „ui.close" auf einem Knopf)\n')
+  for (const f of fixed.findings) {
+    console.error(`  ✗ ${f.file}:${f.line} · Schlüssel „${f.key}"`)
+    for (const a of f.apps) console.error(`      fehlt in App „${a.app}": ${a.missing.join(', ')}`)
+  }
+  console.error('\n  Schlüssel anlegen (de und en) oder den Aufruf auf einen vorhandenen Schlüssel stellen.\n')
+}
+
+if (errors.length || findings.length || fixed.findings.length) process.exit(1)
 
 // Gezählt werden NENNUNGEN (App × Schlüssel), nicht verschiedene Schlüssel:
 // derselbe `legal.imprint` ist in drei Apps drei Versprechen an drei Hosts.
 console.log(`✔ i18n-Schlüssel-Check: ${checkedKeys} Config-Nennungen (App × Schlüssel) in ${apps.length} Apps, ${FIELDS.length} Felder, de+en — alle Übersetzungen vorhanden`)
+console.log(`✔ i18n-Schlüssel-Check: ${fixed.calls} fest genannte Schlüssel in ${fixed.files} Dateien (app/ und shared/) — jeder in jeder App bekannt, die die Datei mitbringt`)

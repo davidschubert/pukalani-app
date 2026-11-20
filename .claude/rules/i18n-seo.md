@@ -38,8 +38,28 @@ paths:
   comments.pukalani.app wörtlich `legal.imprint` — Typecheck, Lint und
   Unit-Tests sehen davon nichts. NEUES CONFIG-FELD MIT SCHLÜSSEL ⇒ in die
   `FIELDS`-Tabelle von `scripts/check-i18n-keys.mjs` eintragen, sonst ist es
-  ungedeckt. Der Wächter prüft BEWUSST nur Config-Schlüssel, keine
-  `t()`-Aufrufe im Markup — Begründung im Kopf des Skripts.
+  ungedeckt. ZWEITER TEIL (Q03, seit 2026-11-20): derselbe Lauf liest jeden
+  FEST genannten Schlüssel im Code — `t('…')`, `$t('…')`, `keypath="…"` in
+  `app/` und `shared/` — und verlangt ihn in JEDER App, die die Datei
+  mitbringt, in beiden Sprachen (`scripts/lib/i18n-static-keys.mjs`, Test mit
+  Gegenproben: `packages/core/tests/checkI18nKeys.test.ts`). Anlass:
+  `t('ui.close')` stand zehn Wochen auf einem Knopf, den Schlüssel gab es nie.
+  WAS ER NICHT LIEST: zusammengesetzte Schlüssel (t(`a.${x}`)), `te()`,
+  `server/` (dort heißt auch eine eigene Hilfe `t`) und Felder wie
+  `labelKey:` im Code (manche tragen nur den Anfang eines Schlüssels).
+- EIN NAME JE SPRACHE IN DER ADRESSE BRAUCHT DEN RÜCKWEG (Q03, seit
+  2026-11-20, live erwischt): die Sprach-Erkennung (`redirectOn: 'all'`)
+  übersetzt nur den FESTEN Teil einer Adresse — sie läuft, bevor die Seite
+  geladen ist. Aus `/products/posts` wird im deutschen Browser
+  `/de/produkte/posts`, und eine Seite, die den Namen nur in der eigenen
+  Sprache sucht, antwortet 404. Deshalb: eine `[slug]`-Seite mit übersetzten
+  Namen sucht bei einem Fehlgriff in der ANDEREN Sprache und leitet per 301
+  über `localePath()` auf die richtige Adresse (sie ZEIGT die Seite dort nicht,
+  sonst gäbe es zwei Adressen). Vorbild: `matchProductSlug` /
+  `matchAudienceSlug` in `packages/marketing/shared/marketing.ts`, Test
+  `apps/marketing/tests/localeSlugRedirect.test.ts`. Beweis ist ein Abruf mit
+  `Accept-Language` der anderen Sprache — ohne Sprach-Vorgabe sieht man den
+  Fehler nicht.
 - i18n-Strategie 'prefix_except_default' (en Default ohne Prefix unter /...,
   de unter /de/*, detectBrowserLanguage redirectOn: 'all' → jede Seite folgt dem
   i18n_redirected-Cookie, nicht nur '/'; BEWUSST ohne fallbackLocale — signal-
