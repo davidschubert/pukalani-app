@@ -245,8 +245,22 @@
 #      eine Warnzeile). Probealarm: `-f node_drill=true`.
 #      Runbook: docs/runbooks/DEPLOYMENT.md, Abschnitt A4.
 #
-# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16 und 18
-# schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
+#  19. AUSLIEFERUNG (`verify-delivery.mjs`), TÄGLICH (2026-11-20). Vier Dinge
+#      waren monatelang falsch, ohne dass etwas rot wurde, weil jeder Test
+#      nur prüft, was die App ERZEUGT: Skripte kamen ungepackt an, eine
+#      robots.txt beantwortete der Webserver selbst, zwei Sites hatten kein
+#      Vorschaubild, fehlende Symbole fragte der Browser bei einem fremden
+#      Dienst an. Je öffentlichem Host von außen, nur lesend: ein Skript
+#      kommt mit `content-encoding` an; `/robots.txt` enthält Regeln und (wo
+#      es eine gibt) die Sitemap des eigenen Hosts; die Seite trägt genau ein
+#      Vorschaubild, das 200 antwortet; die Symbol-Route reicht nichts an den
+#      fremden Dienst weiter. Ohne ssh, ohne Secret. ERST ZÄHLEN, DANN ALARM:
+#      `PUKALANI_DELIVERY_MODE` steht unten auf `count` (Befund = Zeile „Nur
+#      gezählt"), bis jeder Host besteht; `alarm` macht rot. Probealarm:
+#      `-f delivery_drill=true` (immer rot, auch im Zähl-Modus).
+#
+# WAS ZU TUN IST, STEHT IM ISSUE (seit 2026-11-16): die Blicke 9 bis 16, 18
+# und 19 schreiben je rotem Befund EINEN Satz mit Handgriff und Runbook-Abschnitt in
 # eine Datei; die Jobs reichen sie als Ausgabe weiter, und der Job `alarm`
 # setzt sie ins Issue. Die Sätze bestehen nur aus Zahlen und Namen, die im
 # Repo stehen.
@@ -389,6 +403,10 @@ on:
         default: false
       node_drill:
         description: 'PROBEALARM NODE-VERSION: der Blick tut so, als liefe der Prozess der ersten App mit einer anderen Node-Version als .nvmrc — prüft die Kette; nächster Lauf ohne Haken räumt auf'
+        type: boolean
+        default: false
+      delivery_drill:
+        description: 'PROBEALARM AUSLIEFERUNG: der Blick tut so, als käme das Skript des ersten Hosts ungepackt an — prüft die Kette; nächster Lauf ohne Haken räumt auf'
         type: boolean
         default: false
       appwrite_probe:
@@ -769,6 +787,16 @@ jobs:
           PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
         run: node scripts/ops/verify-security-headers.mjs
 
+      # Blick 19 (s. Kopf). Ohne ssh und ohne Secret: öffentliche Antworten.
+      # `count` = nur zählen; auf `alarm` erst, wenn jeder Host besteht.
+      - name: Kommt beim Browser an, was die App erzeugt? (gepackt, robots, Vorschaubild, Symbole)
+        if: always()
+        env:
+          PUKALANI_FINDINGS_FILE: ${{ runner.temp }}/befunde.txt
+          PUKALANI_DELIVERY_MODE: count
+          PUKALANI_DELIVERY_DRILL: ${{ inputs.delivery_drill && '1' || '0' }}
+        run: node scripts/ops/verify-delivery.mjs
+
       # Blick 14 (s. Kopf). Ohne ssh und ohne Secret: je Projekt ein Aufruf
       # ohne Schlüssel, der nichts anlegt.
       - name: Anmelde-Wege der Datenbank von außen zu?
@@ -895,8 +923,8 @@ jobs:
       TLS_RESULT: ${{ needs.tls.result }}
       SERVER_RESULT: ${{ needs.server.result }}
       KUNDEN_RESULT: ${{ needs.kundendomains.result }}
-      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill || inputs.kunden_drill || inputs.node_drill) && '1' || '0' }}
-      # Die Sätze der Blicke 9 bis 16 und 18 (s. Kopf) — über `env`, nie direkt in
+      DRILL: ${{ (inputs.alarm_drill || inputs.schema_drill || inputs.backup_drill || inputs.signals_drill || inputs.realtime_drill || inputs.config_drill || inputs.kunden_drill || inputs.node_drill || inputs.delivery_drill) && '1' || '0' }}
+      # Die Sätze der Blicke 9 bis 16, 18 und 19 (s. Kopf) — über `env`, nie direkt in
       # den Skripttext eingesetzt.
       BEFUNDE_TLS: ${{ needs.tls.outputs.befunde }}
       BEFUNDE_SERVER: ${{ needs.server.outputs.befunde }}
