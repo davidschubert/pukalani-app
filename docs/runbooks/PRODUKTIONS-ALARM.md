@@ -598,15 +598,28 @@ curl -s https://api.pukalani.app/v1/health/version; echo; node scripts/ops/verif
 **Appwrite steht nach einem Server-Update oder Neustart.** Der häufigste
 Grund für „alle Apps `ok:false`", der kein Zertifikat ist. Ein Paket-Update
 auf dem Appwrite-Server (Ploi → Server → Verwalte → Updates → „Run updates
-now"), das `containerd` oder `docker` anhebt, hält ALLE Container an — und
-`appwrite`, `appwrite-traefik`, `appwrite-redis` und `appwrite-browser` haben
-keine Neustart-Regel: sie bleiben unten (Vorfall 2026-10-24, `containerd.io`
-2.2.6 → 2.4.2; die übrigen Dienste drehten in einer Neustart-Schleife, weil
-Redis fehlte). Ein Neustart des Servers bringt sie ebenfalls NICHT zurück.
+now"), das `containerd` oder `docker` anhebt, hält ALLE Container an. Bis zum
+2026-11-20 hatten `appwrite`, `appwrite-traefik`, `appwrite-redis` und
+`appwrite-browser` keine Neustart-Regel und blieben danach unten (Vorfall
+2026-10-24, `containerd.io` 2.2.6 → 2.4.2; die übrigen Dienste drehten in
+einer Neustart-Schleife, weil Redis fehlte), ebenso nach jedem Neustart des
+Servers.
+
+**Seit dem 2026-11-20 kommen sie von selbst wieder:** die vier tragen
+`restart: unless-stopped` aus `docker-compose.override.yml` (die Override
+überlebt das Upgrade-Werkzeug). Bewiesen mit einem Neustart des Servers am
+selben Tag: alle 18 Container liefen ohne Eingriff, die API antwortete 42
+Sekunden nach dem letzten guten Abruf wieder, die Live-Verbindung ebenso
+([APPWRITE-2-7-UPGRADE.md](APPWRITE-2-7-UPGRADE.md), „Beweis-Neustart"). Für
+ein Paket-Update, das Docker anhebt, gilt dieselbe Regel; ein eigener Lauf
+damit steht noch aus. Die Schritte unten sind seitdem der RÜCKFALL — für den
+Fall, dass die Regel fehlt (nach einem Appwrite-Upgrade nachsehen:
+`docker compose config` nennt für jeden Dienst `restart`) oder ein Container
+trotzdem unten bleibt.
 
 1. Auf `ploi@188.245.61.155` in `~/appwrite` (das ist `/home/ploi/appwrite`;
    den Pfad `/usr/src/code/appwrite` gibt es auf dem Server nicht):
-   `docker compose ps` — stehen die vier oben auf „Exited"?
+   `docker compose ps` — steht einer der vier oben auf „Exited"?
 2. `docker compose up -d`, als `ploi`, ohne `sudo`. Am 2026-10-24 antwortete
    die API danach in rund 15 Sekunden.
 3. Beweis: `curl -s https://api.pukalani.app/v1/health/version` nennt die
@@ -619,7 +632,10 @@ Redis fehlte). Ein Neustart des Servers bringt sie ebenfalls NICHT zurück.
 NIE den Docker-Dienst oder containerd neu starten — das ist derselbe Ausfall
 noch einmal. Vorbeugen: vor „Run updates now" auf diesem Server
 `apt list --upgradable | grep -E 'containerd|docker'`; steht eines der beiden
-an, das Update nur fahren, wenn direkt danach jemand Schritt 2 gehen kann. Der
+an, das Update nur fahren, wenn jemand danach nachsehen und notfalls Schritt 2
+gehen kann. Der Auftrag kann lange in Plois Warteschlange liegen (gemessen am
+2026-11-20: 16 Minuten bis zwei Stunden) — nicht ein zweites Mal klicken,
+sondern `/var/log/apt/history.log` beobachten. Der
 App-Server braucht nach einem Neustart nichts (pm2 holt die sechs Prozesse
 selbst zurück, so gesehen am 2026-10-24). **Ohne Zugang zum Server geht hier
 nur Nachsehen** (Haken `appwrite_probe`): Das Tor kennt kein Wort, das
@@ -651,7 +667,7 @@ Füllstand.
 Die Ursache von damals ist seit dem 2026-09-28 abgestellt
 (`~/appwrite/patches/clickhouse-logging.xml`, eingebunden über
 `docker-compose.override.yml`) — nach JEDEM Appwrite-Upgrade nachsehen, dass
-der Mount noch dasteht. NIE ein Volume löschen: darin liegen die Datenbank und
+der Mount noch dasteht (und die vier `restart`-Zeilen, s. oben). NIE ein Volume löschen: darin liegen die Datenbank und
 jede hochgeladene Datei (`ops/appwrite-volumes.conf`); und nichts unter
 `~/backup/runs` von Hand wegräumen, die Aufbewahrung räumt selbst (14 Tage).
 Auf dem App-Server gab es den Fall noch nicht; die pm2-Logs haben dort keinen

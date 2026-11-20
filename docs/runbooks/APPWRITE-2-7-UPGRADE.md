@@ -1,9 +1,10 @@
 # Runbook: Appwrite 2.6.2 → 2.7.1 → 2.7.3 → 2.7.4 (self-hosted, MariaDB)
 
-> **Stand 2026-11-20:** dev und CI laufen auf **2.7.4**, Production noch auf
-> **2.7.3** (der Lauf wartet auf Davids Ja). Der Schritt steht unten im
-> Abschnitt [„2.7.3 → 2.7.4"](#273--274), samt dem Beweis-Neustart für die
-> Neustart-Regel der Container. Der Schritt 2.7.1 → 2.7.3 steht im Abschnitt
+> **Stand 2026-11-20:** dev, CI und Production laufen auf **2.7.4**. Der
+> Schritt steht unten im Abschnitt [„2.7.3 → 2.7.4"](#273--274); Production
+> lief am 2026-11-20 15:11–15:16 UTC nach Davids „ja production jetzt", danach
+> der Beweis-Neustart für die Neustart-Regel der Container (grün). Der Schritt
+> 2.7.1 → 2.7.3 steht im Abschnitt
 > [„2.7.1 → 2.7.3"](#271--273); Production lief am 2026-11-18 22:24–22:26 UTC
 > nach Davids „Ja, Production jetzt".
 
@@ -605,26 +606,30 @@ Image-Zeile (Executor). `docker compose --env-file ci/appwrite/ci.env -f
 ci/appwrite/docker-compose.yml config --quiet` grün. Live-Beweis ist der
 E2E-Lauf auf dem Pull Request.
 
-### Prod — Ablauf
+### Prod — Ablauf (gelaufen 2026-11-20 nach Davids „ja production jetzt")
 
-Skript `ops/appwrite-upgrade-2.7.4.sh` (nach dem Lauf zieht es nach
-`docs/archiv/skripte/`) — eine Kopie des 2.7.3-Skripts mit zwei statt drei
+Skript [`appwrite-upgrade-2.7.4.sh`](../archiv/skripte/appwrite-upgrade-2.7.4.sh)
+(seit dem Lauf im Archiv; während des Upgrades lag es unter `ops/`) — eine
+Kopie des 2.7.3-Skripts mit zwei statt drei
 Images und einer Zeile mehr in den Beweisen: „Container ohne Neustart-Regel"
 (Production: erwartet „keiner"; die Entwicklungs-Instanz nennt dort vier, ihre
 Override trägt die Regel nicht).
 
 **Vorher:**
 
-- [ ] Davids Ja für diesen Lauf.
-- [ ] Nicht zwischen 03:20 und 04:15 UTC (nächtliches Backup) und nicht,
+- [x] Davids Ja für diesen Lauf.
+- [x] Nicht zwischen 03:20 und 04:15 UTC (nächtliches Backup) und nicht,
       während ein Ausliefern läuft (auch ein gewöhnliches: seine Probe liest
       `ok` aus `/api/health`).
-- [ ] `curl -s https://api.pukalani.app/v1/health/version` zeigt 2.7.3.
-- [ ] Das nächtliche Backup der letzten Nacht ist da (Wächter grün, kein
+- [x] `curl -s https://api.pukalani.app/v1/health/version` zeigt 2.7.3.
+- [x] Das nächtliche Backup der letzten Nacht ist da (Wächter grün, kein
       offener Alarm).
-- [ ] Der Ausfall liegt nicht auf einem Halbstunden-Lauf des Wächters (sie
-      starten um Minute 10 und Minute 35).
-- [ ] `docker compose config` auf dem Server zeigt für JEDEN Dienst eine
+- [x] Der Ausfall liegt nicht auf einem Halbstunden-Lauf des Wächters (sie
+      starten um Minute 10 und Minute 35) — der Lauf von 15:11 war fertig,
+      bevor das Werkzeug um 15:15 begann.
+- [x] Die Prüfungen des Pull Requests sind grün (der E2E-Lauf fährt eine
+      frische 2.7.4).
+- [x] `docker compose config` auf dem Server zeigt für JEDEN Dienst eine
       Neustart-Regel (seit dem 2026-11-20 trägt die Override `restart:
       unless-stopped` für `traefik`, `appwrite`, `redis`, `appwrite-browser`).
 
@@ -640,15 +645,28 @@ ssh ploi@188.245.61.155 'nohup setsid bash ~/appwrite-upgrade-2.7.4.sh > ~/appwr
 
 Den Stand liest ein zweiter Aufruf aus dem Protokoll (`grep -E '^==
 |ABBRUCH|^FERTIG'`). Erwartetes Fenster: unter einer Minute (dev: 34 s; 2.7.3
-auf Production: 45 s).
+auf Production: 45 s). Das Skript lag dabei noch unter `ops/` im Zweig des
+Pull Requests.
 
 **Nach dem Lauf** (von außen):
 
-- [ ] `curl -s https://api.pukalani.app/v1/health/version` → `2.7.4`
-- [ ] `node scripts/ops/verify-health.mjs`, `node scripts/ops/verify-tls.mjs`,
-      `node scripts/ops/verify-realtime.mjs --handshake`
-- [ ] `pnpm ops:schema-parity` unverändert
-- [ ] Ein Wächter-Lauf von Hand ist grün (`gh workflow run production-watch.yml`)
+- [x] `curl -s https://api.pukalani.app/v1/health/version` → `2.7.4`
+- [x] `node scripts/ops/verify-health.mjs` (alle zehn Hosts gesund, jede App
+      mit Datenbank meldet ihren Stand vollständig), `node
+      scripts/ops/verify-tls.mjs`, `node scripts/ops/verify-realtime.mjs
+      --handshake` (101) — nach dem Upgrade und noch einmal nach dem Neustart
+- [ ] `pnpm ops:schema-parity` — **nicht gefahren** (der Arbeitsbaum dieses
+      Laufs hatte keine installierten Pakete). Stattdessen gelesen: Tabellen
+      940 / 940 und der Datenbank-Stand je App in `/api/health`.
+- [x] Ein Wächter-Lauf von Hand (`gh workflow run production-watch.yml`),
+      kein offener Alarm
+- [ ] Die Images der Vorgänger aufräumen (2.6.2, 2.7.1 und, wenn 2.7.4 eine
+      Weile ruhig lief, 2.7.3 — OPEN-ITEMS „AW30" d). Das Image 2.7.3 ist bis
+      dahin der Rückweg ohne neuen Abruf.
+
+**Rückweg:** wie bei 2.7.3 — `.env` + `docker-compose.yml` aus
+`*.1795187724.backup` (legt das Werkzeug an) oder aus dem Config-Tar zurück,
+`docker compose up -d --remove-orphans`.
 
 ### Beweis-Neustart (Neustart-Regel der Container)
 
@@ -678,6 +696,29 @@ Entscheidung: im Fenster dieses Upgrades, nicht eigens davor.
 5. Ist der Beweis grün: § 4 in PRODUKTIONS-ALARM.md anpassen (die Regel
    kommt aus der Override; das Handrezept bleibt als Rückfall).
 
+**Ergebnis (2026-11-20, appwrite-prod): grün, ohne Eingriff.** Nach dem
+Upgrade nannte das Skript „Container ohne Neustart-Regel: keiner". Neustart
+über das Ploi-Panel; von außen mitgeschrieben:
+
+| Zeit (UTC) | Beobachtung |
+| --- | --- |
+| 15:16:51 | letzter guter Abruf von `/v1/health/version` |
+| 15:17:10 | keine Antwort mehr |
+| 15:17:22 | der Server meldet seine neue Startzeit |
+| 15:17:37 | 18 von 18 Containern laufen (erster SSH-Kontakt nach dem Start) |
+| 15:17:45 | Realtime-Handshake 101; die API antwortet noch 404 (Traefik da, Appwrite startet) |
+| 15:17:52 | API 200 und Handshake 101 — **42 s** nach dem ersten Ausfall-Abruf |
+
+Kein Container wurde von Docker ein zweites Mal gestartet (alle
+Neustart-Zähler 0), der Realtime-Wächter auf dem Server musste nicht
+eingreifen, 0 Fehlerzeilen in API, Worker und Realtime, im Realtime-Log 82
+gelungene Verbindungen in den ersten Minuten. `verify-health` und
+`verify-realtime --handshake` danach grün. Zum Vergleich, am selben Tag VOR
+der Regel: nach einem Neustart blieben vier Container unten, bis `docker
+compose up -d` lief (55 s Ausfall mit einem Skript, das sofort eingriff).
+**Nicht bewiesen:** dasselbe nach einem Paket-Update, das Docker oder
+containerd anhebt (OPEN-ITEMS „AW30" e).
+
 **Nach JEDEM späteren Appwrite-Upgrade:** die vier `restart`-Zeilen der
 Override gegen das neue `docker-compose.yml` abgleichen (Dienstnamen) und die
 Zeile „Container ohne Neustart-Regel" lesen.
@@ -687,3 +728,4 @@ Zeile „Container ohne Neustart-Regel" lesen.
 | Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
 | --- | --- | --- | --- | --- | --- |
 | dev (OrbStack, 2.7.3 → 2.7.4) | 2026-11-20 14:24–14:26 | 22,4 MB, 970 Tabellen | „Migration completed", 8,3 s (383 „already exists", 0 andere Fehlerzeilen) | **34 s** vom Werkzeug-Aufruf (14:25:22) bis zu den Beweisen; Images und Dump davor ohne Ausfall | Tabellen vorher gegen nachher: **940 / 940** · `.env`: nur `_APP_VERSION` · Compose: eine Image-Zeile (Executor) · `health/version` 2.7.4 · PHP 8.5.13 · Executor 1.3.7, Secret in appwrite und Executor gleich · Console weiter 1.2.181 · 7 Container auf 2.7.4, keiner auf 2.7.3, alle Up · trustedIPs 2 + mqtt 2 · Patch-Mounts 0 · Realtime 101 für `account`, `admin`, `portfolio`, `branding`, im Log zehnmal `realtime.success true` · 0 Fehlerzeilen in API, Worker, Realtime · „Container ohne Neustart-Regel" nennt auf dev die vier bekannten (die Override dort trägt die Regel nicht) · **nicht gefahren:** Unit-Tests und die E2E-Suite lokal — der Quelltext des Images unterscheidet sich nur in zwei Versionszeilen, den Live-Beweis führt der E2E-Lauf des Pull Requests gegen eine frische 2.7.4 |
+| prod (`api.pukalani.app`, 2.7.3 → 2.7.4) | 2026-11-20 15:11–15:16 | 22,3 MB, 970 Tabellen | „Migration completed", 13,8 s (383 „already exists", 0 andere Fehlerzeilen) | **47 s** vom Werkzeug-Aufruf (15:15:23) bis zu den Beweisen (15:16:10); von außen fehlte die API von 15:15:29 bis 15:15:54 (rund 30 s). Images und Dump davor ohne Ausfall (15:11:21–15:11:48), dann das Warten auf die ruhige Stelle | Tabellen vorher gegen nachher: **940 / 940** · Compose-Diff genau eine Image-Zeile (Executor 1.3.5 → 1.3.7) · `health/version` 2.7.4 · PHP 8.5.13 · Executor 1.3.7, Secret in appwrite und Executor gleich · Console weiter 1.2.181 · 7 Container auf 2.7.4, keiner auf einer anderen Version, alle Up · trustedIPs 2 + mqtt 2 · Patch-Mounts 0 · Realtime 101 · 0 Fehlerzeilen in API, Worker, Realtime · **Container ohne Neustart-Regel: keiner** (die vier neu erstellten tragen sie aus der Override) · von außen: `verify-health` 10 von 10 Hosts gesund, `verify-tls` grün, `verify-realtime --handshake` 101 · Platte 60 % → 66 % (zwei neue Images neben den alten) · abgekoppelt gestartet (`nohup setsid`) · danach der Beweis-Neustart (oben): 42 s, alles von selbst · **nicht gefahren:** `ops:schema-parity`; **nicht geprüft:** Anmelden, Profilbild und OTP mit einem Konto auf Production (der Quelltext des Images unterscheidet sich von 2.7.3 nur in zwei Versionszeilen) |
