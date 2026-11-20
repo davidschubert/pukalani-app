@@ -3,6 +3,7 @@
 import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
 import { dataDoorGlobs } from './scripts/lib/data-door-layers.mjs'
 import { staticPublicIgnores } from './scripts/lib/lint-static-public.mjs'
+import { noSilentCatchRule } from './scripts/lib/eslint-no-silent-catch.mjs'
 
 // Layer-Grenzen-Durchsetzung (CONCEPT.md A14, Stufe 2 / Backstop).
 // Verhindert KÜNFTIGE explizite Cross-Layer-Imports. Implizite Kopplung
@@ -201,51 +202,7 @@ const pukalaniPlugin = {
      * schweigen muss (das Ende einer Sperr-Kette, deren Fehler der Aufrufer
      * schon bekommt), schreibt eine `eslint-disable-next-line` MIT GRUND.
      */
-    'no-silent-catch': {
-      meta: {
-        type: 'problem',
-        docs: { description: 'Ein `.catch` im Server-Code sieht seinen Fehler an oder wirft ihn weiter (Q13).' },
-        schema: [],
-        messages: {
-          silent: 'Stilles `.catch`: der Fehler wird weder angesehen noch weitergeworfen — ein Lesefehler sieht dann aus wie „leer". Nimm `.catch(softFail(\'<layer>:<pfad>:<aufruf>\', ersatz))` aus packages/core/server/utils/softFail.ts (gleicher Ersatzwert, dazu eine gezählte Protokoll-Zeile) oder `softFailWith` für einen berechneten Ersatz. Muss die Stelle wirklich schweigen: eslint-disable-next-line mit Grund.',
-          literal: 'Die Kennung von `{{name}}` ist ein festes Text-Literal (`<layer>:<pfad>:<aufruf>`) — nie zusammengesetzt, sie stünde sonst mit Ids im Protokoll.',
-        },
-      },
-      create(context) {
-        const hasThrow = (node) => {
-          if (!node || typeof node.type !== 'string') return false
-          if (node.type === 'ThrowStatement') return true
-          for (const key of Object.keys(node)) {
-            if (key === 'parent') continue
-            const value = node[key]
-            if (Array.isArray(value)) {
-              if (value.some(item => item && typeof item.type === 'string' && hasThrow(item))) return true
-            }
-            else if (value && typeof value.type === 'string' && hasThrow(value)) return true
-          }
-          return false
-        }
-        return {
-          CallExpression(node) {
-            const callee = node.callee
-            if (callee.type === 'Identifier' && (callee.name === 'softFail' || callee.name === 'softFailWith')) {
-              const first = node.arguments[0]
-              if (!first || first.type !== 'Literal' || typeof first.value !== 'string') {
-                context.report({ node: first ?? node, messageId: 'literal', data: { name: callee.name } })
-              }
-              return
-            }
-            if (callee.type !== 'MemberExpression' || callee.computed || callee.property.name !== 'catch') return
-            const handler = node.arguments[0]
-            if (!handler || (handler.type !== 'ArrowFunctionExpression' && handler.type !== 'FunctionExpression')) return
-            const reads = context.sourceCode.getDeclaredVariables(handler)
-              .some(variable => variable.references.length > 0)
-            if (reads || hasThrow(handler.body)) return
-            context.report({ node: handler, messageId: 'silent' })
-          },
-        }
-      },
-    },
+    'no-silent-catch': noSilentCatchRule,
   },
 }
 

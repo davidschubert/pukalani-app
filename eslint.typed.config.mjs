@@ -52,6 +52,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { relative as relativePath, resolve as resolvePath } from 'node:path'
 import { STATIC_PUBLIC_DIRS } from './scripts/lib/lint-static-public.mjs'
+import { noSilentCatchRule } from './scripts/lib/eslint-no-silent-catch.mjs'
 
 export const SERVER_LINT_PROGRAM = {
   // Control Plane und die Betreiber-Produkte — nur apps/control bringt sie mit.
@@ -160,6 +161,11 @@ export default [
     ],
   },
   { linterOptions: { reportUnusedDisableDirectives: 'off' } },
+  // Die Regel `pukalani/no-silent-catch` läuft im Hauptdurchgang
+  // (eslint.config.mjs). Hier wird nur ihr NAME bekannt gemacht, damit die
+  // begründeten `eslint-disable-next-line`-Zeilen im Server-Code in diesem
+  // Durchgang nicht als „Regel nicht gefunden" rot werden (Q13).
+  { plugins: { pukalani: { rules: { 'no-silent-catch': noSilentCatchRule } } } },
   ...Object.entries(serverDirsByProgram())
     .flatMap(([app, dirs]) => dirs.map(dir => floatingPromiseBlock(dir, app))),
 ]
