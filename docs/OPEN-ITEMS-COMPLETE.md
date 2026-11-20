@@ -94,6 +94,8 @@ wäre ein Test eingezogen, der den gemeldeten Fehler nie hätte sehen können.
 Und: „sichtbar" ist für Playwright auch ein Link, der unter einem anderen
 Bauteil liegt — wer Erreichbarkeit prüft, fragt mit `elementFromPoint`, was an
 der Stelle obenauf ist (`e2e/support/narrowScreens.ts`).
+---
+
 ### Q04 — Auslieferung: gepackt, robots.txt, Vorschaubild, Symbole — und ein täglicher Blick darauf ✅ 2026-11-20
 
 **Was.** Vier Dinge kamen beim Browser anders an, als die App sie erzeugt,
