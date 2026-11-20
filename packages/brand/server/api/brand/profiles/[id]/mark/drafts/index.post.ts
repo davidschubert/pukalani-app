@@ -172,7 +172,7 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
   // Scheitert der Vermerk, wird NICHT zurückgebucht — lieber verliert ein
   // Mensch einmal einen sichtbaren Lauf, als dass derselbe Vorgänger zweimal
   // zurückbucht.
-  if (previous && brandRunOwesRefund(previousState, previous.detail)) {
+  if (previous && brandRunOwesRefund(previousState, previous.detail, previous.outcome)) {
     try {
       await store.update(previous.$id, {
         detail: JSON.stringify({ ...parseBrandRunDetail(previous.detail), refunded: true }),
@@ -349,8 +349,9 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
       burst.release()
       // Kein einziger Entwurf abgelegt ⇒ den sichtbaren Lauf zurückgeben.
       // Fail-soft in `refundBrandAiQuota` selbst. NICHT nach verlorenem
-      // Herzschlag: dann gilt dieser Lauf für den nächsten Start als
-      // abgebrochen, und DER bucht zurück — sonst ginge es zweimal zurück.
+      // Herzschlag: dann bucht der NÄCHSTE Start für diesen Lauf zurück
+      // (`brandRunOwesRefund` — ob er ihn als abgebrochen vorfindet oder mit
+      // dem Ende `lease_lost`), sonst ginge es zweimal zurück.
       if (detail.created === 0 && outcome !== BRAND_RUN_OUTCOMES.leaseLost) {
         await refundBrandAiQuota(event, quotaRequest)
         detail.refunded = true

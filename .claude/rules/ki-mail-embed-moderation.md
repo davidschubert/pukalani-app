@@ -276,9 +276,17 @@ paths:
   dieser Art: im Abschluss (`settle`) zurückbuchen, wenn nichts geschrieben
   wurde und der Herzschlag nicht verloren ging; den abgebrochenen Vorgänger
   holt der nächste Start nach (`brandRunOwesRefund`: erst der Vermerk, dann
-  die Rückbuchung); und die Zahl des Geschriebenen SOFORT an die Lauf-Zeile
-  (`progress()`), sonst bucht ein Nachfolger für einen Lauf mit Ergebnis
-  zurück.
+  die Rückbuchung) — seit 2026-11-20 auch den, der seinen Herzschlag verloren
+  und sein Ende `lease_lost` noch selbst geschrieben hat (vorher buchte für
+  ihn niemand zurück); und die Zahl des Geschriebenen SOFORT an die Lauf-Zeile
+  (`progress()`, bei den Entwürfen nach jedem Bild), sonst bucht ein
+  Nachfolger für einen Lauf mit Ergebnis zurück. ZWEI DINGE HALTEN DAS
+  ZUSAMMEN: ein Lauf mit verlorenem Herzschlag schreibt an seinem Ende KEIN
+  Detail mehr (`startBrandRun` — sonst überschriebe er den Vermerk eines
+  Nachfolgers, und ein späterer Start buchte ein zweites Mal zurück), und die
+  Ansicht der Seite rechnet eine geschuldete Rückbuchung schon ein
+  (`toBrandRunView`), damit „noch x von y" nicht bis zum nächsten Start einen
+  Lauf zu wenig zeigt.
 - UGC-ÜBERSETZUNG (2026-08-18, Davids Entscheidungen): Knopf statt Automatik,
   Gate = das jeweilige INHALTS-Produkt (bewusst NICHT 'ai'), seit 2026-11-17
   nur MITGLIEDER der Community (MM1; Regel in tenant-isolation.md).

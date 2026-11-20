@@ -206,11 +206,21 @@ export function brandRunQuota(detail: Pick<BrandRunDetail, 'used' | 'limit' | 'r
   return { used, limit: detail.limit, remaining: Math.max(0, detail.limit - used) }
 }
 
-/** Die Lauf-Zeile als Ansicht — gegen die SERVER-Uhr gerechnet. */
+/**
+ * Die Lauf-Zeile als Ansicht — gegen die SERVER-Uhr gerechnet.
+ *
+ * DER ZÄHLER ZEIGT EINE GESCHULDETE RÜCKBUCHUNG SCHON MIT (LL1 c, 2026-11-20):
+ * ein abgebrochener Lauf ohne Ergebnis (oder einer mit verlorenem Herzschlag)
+ * bekommt seinen sichtbaren Lauf beim NÄCHSTEN Start zurück
+ * (`brandRunOwesRefund`). Bis dahin zeigte die Seite einen Lauf zu wenig —
+ * und wer deshalb nicht noch einmal startete, bekam ihn nie zurück. `refunded`
+ * bleibt die Tatsache an der Zeile; nur `quota` rechnet die Schuld ein.
+ */
 export function toBrandRunView(lease: RunLeaseSnapshot | null, nowMs: number): BrandRunView {
   if (!lease) return noBrandRunView()
   const state = runLeaseState(lease, nowMs)
   const detail = parseBrandRunDetail(lease.detail)
+  const owed = brandRunOwesRefund(state, lease.detail, lease.outcome)
   return {
     state,
     startedAt: lease.startedAt,
@@ -218,7 +228,7 @@ export function toBrandRunView(lease: RunLeaseSnapshot | null, nowMs: number): B
     failure: state === 'failed' ? lease.outcome : '',
     created: detail.created,
     refunded: detail.refunded,
-    quota: brandRunQuota(detail),
+    quota: brandRunQuota({ ...detail, refunded: detail.refunded || owed }),
     ref: detail.ref,
     model: detail.model,
   }
@@ -277,19 +287,36 @@ export function brandRunNoticeDue(view: Pick<BrandRunView, 'state' | 'startedAt'
  * eine geschriebene Lesung geben den sichtbaren Zähler zurück (BE-004,
  * LL1 c). Ein Lauf, der mittendrin stirbt, kommt nicht mehr dazu.
  * Der nächste Start holt es nach — aber nur, wenn alle vier Dinge stimmen:
- * der Vorgänger ist ABGEBROCHEN (nicht fertig, nicht gescheitert — die buchen
- * selbst zurück), er hatte gebucht, er hat nichts abgelegt, und es ist noch
- * nicht zurückgebucht. Konto- und Instanz-Deckel bleiben wie bei BE-004
- * gebucht: sie sind das Netz gegen provozierte Leer-Läufe.
+ * der Vorgänger hat SELBST NICHT ZURÜCKGEBUCHT (s. u.), er hatte gebucht, er
+ * hat nichts abgelegt, und es ist noch nicht zurückgebucht. Konto- und
+ * Instanz-Deckel bleiben wie bei BE-004 gebucht: sie sind das Netz gegen
+ * provozierte Leer-Läufe.
+ *
+ * WER BUCHT NICHT SELBST ZURÜCK? Zwei Fälle, mehr nicht:
+ *  · ABGEBROCHEN (`stalled`) — der Prozess ist weg, niemand schreibt ein Ende.
+ *  · HERZSCHLAG VERLOREN (Ende mit `lease_lost`; LL1 c, 2026-11-20) — der Lauf
+ *    lebt noch, konnte seine Zeile aber eine Minute lang nicht schreiben. Er
+ *    legt dann nichts mehr ab und bucht bewusst NICHT selbst zurück (ein
+ *    anderer Start kann ihn in der Zwischenzeit schon als abgebrochen
+ *    übernommen und für ihn zurückgebucht haben). Vor diesem Tag galt sein
+ *    geschriebenes Ende als „gescheitert", und für ihn buchte NIEMAND zurück,
+ *    wenn in der Lücke keiner neu gestartet hatte.
+ * Jeder andere beendete Lauf (fertig, gescheitert mit eigenem Grund) hat in
+ * seinem Abschluss selbst entschieden.
  *
  * Gerufen wird das NACH dem Nehmen der Sperre: nur der eine Gewinner sieht
- * diesen Vorgänger, also bucht auch nur einer zurück.
+ * diesen Vorgänger, also bucht auch nur einer zurück. Damit der Vermerk
+ * `refunded` eines Nachfolgers stehen bleibt, schreibt ein Lauf, der seinen
+ * Herzschlag verloren hat, an seinem Ende KEIN Detail mehr (`startBrandRun`).
  */
 export function brandRunOwesRefund(
   previousState: RunLeaseState,
   previousDetail: string | null | undefined,
+  previousOutcome: string | null | undefined = '',
 ): boolean {
-  if (previousState !== 'stalled') return false
+  const leftUnsettled = previousState === 'stalled'
+    || (previousState === 'failed' && previousOutcome === BRAND_RUN_OUTCOMES.leaseLost)
+  if (!leftUnsettled) return false
   const detail = parseBrandRunDetail(previousDetail)
   return detail.booked && !detail.refunded && detail.created === 0
 }

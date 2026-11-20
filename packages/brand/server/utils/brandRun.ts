@@ -35,7 +35,8 @@ import { brandDb, isAppwriteNotFound } from './brandStore'
  * aus der Arbeit wird zu `failed` (bzw. zum Code „kein Endpunkt unter der
  * Bindung"). Lässt sich auch das Ende nicht schreiben, bleibt der Herzschlag
  * stehen und die Zeile wird nach der Frist `stalled` — unschärfer, aber nie
- * „läuft für immer".
+ * „läuft für immer". Nach verlorenem Herzschlag (`lease_lost`) schreibt der
+ * Lauf nur sein Ende, nicht mehr sein Detail (s. `startBrandRun`).
  *
  * ── DER `event` REIST MIT ────────────────────────────────────────────────
  * Hinter der Antwort wird er nur noch LESEND benutzt (Runtime-Config,
@@ -201,7 +202,16 @@ export function startBrandRun(input: BrandRunInput): void {
     }
 
     try {
-      await finishRunLease(input.store, input.lease, { outcome, detail })
+      // WER DEN HERZSCHLAG VERLOREN HAT, SCHREIBT NUR NOCH SEIN ENDE (LL1 c,
+      // 2026-11-20): in der Lücke darf ein anderer Start übernommen und an
+      // DIESER Zeile etwas vermerkt haben (`refunded`). Das Detail aus dem
+      // Speicher dieses Laufs kennt den Vermerk nicht und überschriebe ihn —
+      // dann buchte ein späterer Start ein zweites Mal zurück. An der Zeile
+      // steht der letzte Zwischenstand (`progress()`), und der stimmt: nach
+      // verlorenem Herzschlag legt kein Lauf mehr etwas ab.
+      await finishRunLease(input.store, input.lease, outcome === BRAND_RUN_OUTCOMES.leaseLost
+        ? { outcome }
+        : { outcome, detail })
     }
     catch (error) {
       // Das Ende steht nicht an der Zeile ⇒ sie wird nach der Frist `stalled`.
