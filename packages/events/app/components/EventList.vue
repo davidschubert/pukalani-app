@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import type { EventListResponse, EventWithRsvp } from '../../shared/types/event'
+import {
+  EVENT_MINE_VIEWS,
+  EVENT_TIME_VIEWS,
+  INITIAL_EVENT_LIST_FILTER,
+  eventListQuery,
+  selectEventListView,
+  toggleEventListGoing,
+  type EventListFilterState,
+  type EventListView,
+} from '../../shared/eventListFilter'
 
 /**
  * Event-Übersicht als ZWEI Spalten (kein Ansicht-Switch mehr — die Filter
  * wirkten im Kalender nicht, und Platz ist da): links die Liste mit
  * Filter-Chips (Kommende/Heute/Morgen/Wochenende/Archiv + eingeloggt:
- * Zugesagt/Geliked/Teilgenommen — Letzteres ist der Unterschied zum Archiv:
- * nur MEINE besuchten Events), Monats-Gruppierung und Cursor-Pagination
+ * Geliked/Teilgenommen — Letzteres ist der Unterschied zum Archiv: nur MEINE
+ * besuchten Events — und der SCHALTER „Zugesagt", der sich zu „Kommende" und
+ * „Wochenende" zuschalten lässt, Issue 417), Monats-Gruppierung und Cursor-Pagination
  * (nur Kommende/Archiv); rechts DAUERHAFT der Monats-Kalender (sticky,
  * eigene Monats-Navigation). Hover auf einer Card hebt das Event im
  * Kalender hervor. Zeitfenster (Heute/Morgen/Wochenende) rechnet der
@@ -15,8 +26,7 @@ import type { EventListResponse, EventWithRsvp } from '../../shared/types/event'
 const { t, locale, locales } = useI18n()
 const { isLoggedIn } = useCurrentUser()
 
-type EventFilter = 'upcoming' | 'today' | 'tomorrow' | 'weekend' | 'archive' | 'going' | 'liked' | 'attended'
-const filter = ref<EventFilter>('upcoming')
+const filter = ref<EventListFilterState>({ ...INITIAL_EVENT_LIST_FILTER })
 const rows = ref<EventWithRsvp[]>([])
 const nextCursor = ref<string | null>(null)
 const loadingMore = ref(false)
@@ -32,33 +42,11 @@ watch(calendarHoveredId, (id) => {
     ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 })
 
-const TIME_FILTERS: EventFilter[] = ['upcoming', 'today', 'tomorrow', 'weekend', 'archive']
-const MINE_FILTERS: EventFilter[] = ['going', 'liked', 'attended']
-
-/** lokaler Kalendertag (+offset) als [from, to)-Fenster */
-function dayRange(offsetDays: number): { from: string, to: string } {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  start.setDate(start.getDate() + offsetDays)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 1)
-  return { from: start.toISOString(), to: end.toISOString() }
+function selectView(view: EventListView) {
+  filter.value = selectEventListView(filter.value, view)
 }
-
-/** kommendes Wochenende (Sa+So) — am Sonntag zählt der Rest-Sonntag */
-function weekendRange(): { from: string, to: string } {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const day = start.getDay()
-  if (day === 0) {
-    const end = new Date(start)
-    end.setDate(end.getDate() + 1)
-    return { from: start.toISOString(), to: end.toISOString() }
-  }
-  start.setDate(start.getDate() + (6 - day))
-  const end = new Date(start)
-  end.setDate(end.getDate() + 2)
-  return { from: start.toISOString(), to: end.toISOString() }
+function toggleGoing() {
+  filter.value = toggleEventListGoing(filter.value)
 }
 
 // Suche: debounct gegen ?q (Fulltext auf title, Migration 003)
@@ -71,19 +59,8 @@ watch(search, (value) => {
 })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
-const listQuery = computed<Record<string, string>>(() => {
-  const base: Record<string, string> = debouncedSearch.value ? { q: debouncedSearch.value } : {}
-  switch (filter.value) {
-    case 'archive': return { ...base, past: 'true' }
-    case 'today': return { ...base, ...dayRange(0) }
-    case 'tomorrow': return { ...base, ...dayRange(1) }
-    case 'weekend': return { ...base, ...weekendRange() }
-    case 'going':
-    case 'liked':
-    case 'attended': return { ...base, mine: filter.value }
-    default: return base
-  }
-})
+// Zeitfenster rechnet der Browser in SEINER Zone (shared/eventListFilter.ts)
+const listQuery = computed<Record<string, string>>(() => eventListQuery(filter.value, debouncedSearch.value, new Date()))
 
 /**
  * `useRequestFetch` statt `$fetch`: im Pool entscheidet der HOST über den
@@ -158,28 +135,52 @@ const groups = computed(() => {
   <div class="gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
     <!-- Linke Spalte: Filter + Suche + Liste -->
     <div class="min-w-0">
-      <div class="flex flex-wrap items-center gap-1" role="tablist" data-testid="events-filters">
+      <!--
+        Eine Gruppe aus Umschalt-Knöpfen (`aria-pressed`), keine Reiter: seit
+        Issue 417 können ZWEI zugleich an sein („Wochenende" + „Zugesagt"), und
+        das kann eine Reiterleiste nicht ausdrücken. Vorher stand hier
+        `role="tablist"` ohne einen einzigen Reiter darin.
+      -->
+      <div
+        class="flex flex-wrap items-center gap-1"
+        role="group"
+        :aria-label="t('events.list.filtersLabel')"
+        data-testid="events-filters"
+      >
         <UButton
-          v-for="item in TIME_FILTERS"
+          v-for="item in EVENT_TIME_VIEWS"
           :key="item"
-          :color="filter === item ? 'primary' : 'neutral'"
-          :variant="filter === item ? 'soft' : 'ghost'"
+          :color="filter.view === item ? 'primary' : 'neutral'"
+          :variant="filter.view === item ? 'soft' : 'ghost'"
           size="sm"
+          :aria-pressed="filter.view === item"
           :data-filter="item"
-          @click="() => { filter = item }"
+          @click="() => selectView(item)"
         >
           {{ t(`events.list.filters.${item}`) }}
         </UButton>
         <template v-if="isLoggedIn">
           <span class="mx-1 h-4 w-px bg-accented" aria-hidden="true" />
           <UButton
-            v-for="item in MINE_FILTERS"
-            :key="item"
-            :color="filter === item ? 'primary' : 'neutral'"
-            :variant="filter === item ? 'soft' : 'ghost'"
+            :color="filter.going ? 'primary' : 'neutral'"
+            :variant="filter.going ? 'soft' : 'ghost'"
+            :icon="filter.going ? 'i-ph-check' : undefined"
             size="sm"
+            :aria-pressed="filter.going"
+            data-filter="going"
+            @click="toggleGoing"
+          >
+            {{ t('events.list.filters.going') }}
+          </UButton>
+          <UButton
+            v-for="item in EVENT_MINE_VIEWS"
+            :key="item"
+            :color="filter.view === item ? 'primary' : 'neutral'"
+            :variant="filter.view === item ? 'soft' : 'ghost'"
+            size="sm"
+            :aria-pressed="filter.view === item"
             :data-filter="item"
-            @click="() => { filter = item }"
+            @click="() => selectView(item)"
           >
             {{ t(`events.list.filters.${item}`) }}
           </UButton>
@@ -201,8 +202,8 @@ const groups = computed(() => {
       <p v-else-if="rows.length === 0" class="py-16 text-center text-sm text-muted" data-testid="events-empty">
         {{ debouncedSearch
           ? t('events.list.searchEmpty')
-          : filter === 'archive' ? t('events.list.pastEmpty')
-            : filter === 'upcoming' ? t('events.list.empty') : t('events.list.filterEmpty') }}
+          : filter.view === 'archive' ? t('events.list.pastEmpty')
+            : filter.view === 'upcoming' && !filter.going ? t('events.list.empty') : t('events.list.filterEmpty') }}
       </p>
 
       <div v-else class="mt-4 space-y-6" data-testid="events-list">

@@ -12,6 +12,7 @@
       "loadMore": "Mehr laden",
       "searchPlaceholder": "Events durchsuchen …",
       "searchEmpty": "Keine Events zu dieser Suche.",
+      "filtersLabel": "Termine filtern",
       "filters": {
         "upcoming": "Kommende",
         "today": "Heute",
