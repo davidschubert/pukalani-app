@@ -13,6 +13,7 @@ import {
   checkRobots,
   checkSitemap,
   firstScriptPath,
+  iconProbeDelivered,
   ogImages,
   robotsSitemaps,
   // @ts-expect-error — reines .mjs ohne Typen (Betriebs-Skript)
@@ -114,17 +115,28 @@ describe('3 · vorschau', () => {
 })
 
 describe('4 · symbole', () => {
+  const delivered = { status: 200, body: '{"prefix":"mdi","icons":{"home":{"body":"<path/>"}},"width":24,"height":24}' }
+
   it('die Route lehnt ein fremdes Paket ab, die Seite nennt den Dienst nicht', () => {
-    expect(checkForeignIcons('<html><span class="iconify i-ph:x"></span></html>', { status: 404 })).toEqual([])
+    expect(checkForeignIcons('<html><span class="iconify i-ph:x"></span></html>', { status: 404, body: '' })).toEqual([])
   })
 
-  it('GEGENPROBE: 200 heißt, die App hat beim fremden Dienst nachgefragt', () => {
-    expect(checkForeignIcons('<html></html>', { status: 200 })).toEqual(['symbole: die App reicht fehlende Symbole an den fremden Dienst weiter'])
+  it('eine VORGEHALTENE Ablehnung kommt mit Status 200 zurück — sie ist trotzdem eine Ablehnung', () => {
+    // So antwortet die Route beim zweiten Abruf derselben Adresse (gemessen).
+    const cached = { status: 200, body: '{"message":"","statusCode":404}' }
+    expect(iconProbeDelivered(cached)).toBe(false)
+    expect(checkForeignIcons('<html></html>', cached)).toEqual([])
+    expect(checkForeignIcons('<html></html>', { status: 200, body: '{"prefix":"mdi","icons":{},"not_found":["home"]}' })).toEqual([])
+  })
+
+  it('GEGENPROBE: eine Antwort MIT Symbol heißt, die App hat beim fremden Dienst nachgefragt', () => {
+    expect(iconProbeDelivered(delivered)).toBe(true)
+    expect(checkForeignIcons('<html></html>', delivered)).toEqual(['symbole: die App reicht fehlende Symbole an den fremden Dienst weiter'])
   })
 
   it('GEGENPROBE: der Name im HTML, eine 5xx oder keine Antwort', () => {
-    expect(checkForeignIcons(`<link href="https://${FOREIGN_ICON_HOST}">`, { status: 404 })).toHaveLength(1)
-    expect(checkForeignIcons('<html></html>', { status: 502 })).toHaveLength(1)
+    expect(checkForeignIcons(`<link href="https://${FOREIGN_ICON_HOST}">`, { status: 404, body: '' })).toHaveLength(1)
+    expect(checkForeignIcons('<html></html>', { status: 502, body: '' })).toHaveLength(1)
     expect(checkForeignIcons('<html></html>', null)).toHaveLength(1)
   })
 

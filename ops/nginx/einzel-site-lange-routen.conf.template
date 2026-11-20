@@ -9,6 +9,13 @@
 # NEUE LANGE ROUTE? Erst prüfen, ob sie nicht aus der Anfrage gehört (Lauf-
 # Sperre, 202, Abfragen — .claude/rules/ki-mail-embed-moderation.md). Eine
 # längere Frist ist die Ausnahme; mehr als 180s lässt der tägliche Blick nicht zu.
+#
+# KEIN BLOCK FÜR /robots.txt UND KEINE ZEILE ZUR KOMPRESSION (2026-11-20):
+# die robots.txt liefert die App (ein eigener Block hier beantwortet die
+# Anfrage mit „nicht gefunden" — Regel `eigene-robots` in ops/nginx-check.mjs),
+# und ihre Dateien packt die App beim Bauen selbst; der Webserver reicht eine
+# gepackte Antwort unverändert durch. Plois Schablone legt für /robots.txt
+# und /favicon.ico zwei eigene Blöcke an — den für /robots.txt löschen.
 
 # Ploi Webserver Configuration, do not remove!
 include /etc/nginx/ploi/{{SITE}}/before/*;

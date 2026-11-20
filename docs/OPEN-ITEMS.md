@@ -720,8 +720,9 @@ und den Link im Kommentar-Bereich.
   Ploi-Panel das Skript „P23: nginx-Zugriffs-Log 14 Tage". Auf `pukalani.app`
   liefert Cloudflare unveränderte Dateien noch mit den Kopfzeilen des alten
   Webservers aus (löst sich mit dem nächsten Build der Landing). Auf `admin`
-  beantwortet der Webserver `/robots.txt` und `/favicon.ico` selbst mit 404
-  (zwei leere Blöcke aus Plois Schablone). Zwei Sites senden
+  beantwortet der Webserver `/favicon.ico` selbst mit 404 (ein leerer Block
+  aus Plois Schablone; der für `/robots.txt` ist seit dem 2026-11-20 weg,
+  COMPLETE „Q04"). Zwei Sites senden
   `Connection 'upgrade'` fest. Die Umleitungs-Blöcke des Webservers schreiben
   weiter ins allgemeine Zugriffs-Log (jetzt 14 Tage). Der Vergleich der
   Webserver-Einstellung läuft nur auf dem App-Server (der Appwrite-Server hat

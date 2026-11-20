@@ -28,6 +28,7 @@ export const NGINX_RULES = [
   'punkt-dateien',
   'zugriffs-log',
   'schutz-kopfzeilen',
+  'eigene-robots',
   'auffangblock',
 ]
 
@@ -118,6 +119,7 @@ const RULE_WORDS = {
   'punkt-dateien': 'die Sperre für Dateien mit Punkt am Anfang fehlt',
   'zugriffs-log': 'das Zugriffs-Log ist nicht so eingestellt wie in ops/nginx-sites.conf',
   'schutz-kopfzeilen': 'der Webserver setzt eine Schutz-Kopfzeile selbst (add_header) — die sendet die App, hier käme sie doppelt; Zeile entfernen',
+  'eigene-robots': 'der Webserver beantwortet /robots.txt selbst (eigener Block) — die robots.txt der App kommt so nicht an; Block entfernen',
 }
 
 function sentenceForSite(site, kind, rule) {

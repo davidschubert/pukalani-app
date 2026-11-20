@@ -187,7 +187,10 @@ paths:
   öffentlichem Host kommt ein Skript gepackt an, `/robots.txt` enthält
   Regeln und nennt die Sitemap des eigenen Hosts, die Seite trägt genau ein
   Vorschaubild, und die Symbol-Route reicht nichts an einen fremden Dienst
-  weiter. Erst zählen, dann Alarm (`PUKALANI_DELIVERY_MODE` im Workflow).
+  weiter. Scharf seit dem 2026-11-20 (`PUKALANI_DELIVERY_MODE: alarm` im
+  Workflow; `count` zählt nur — so führt man einen neuen Host oder eine neue
+  Prüfung ein). Der Webserver-Vergleich kennt dazu die Regel `eigene-robots`
+  (ein eigener Block für `/robots.txt` ist `zuviel`).
   DIE APP PACKT IHRE DATEIEN SELBST (`nitro.compressPublicAssets` im Core);
   die nginx-Vorlagen tragen dazu nichts und keinen Block für `/robots.txt`.
   Probealarm `-f delivery_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein

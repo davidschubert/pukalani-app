@@ -258,6 +258,21 @@ describe('ops/nginx-check.mjs — jede Pflicht-Zeile wird vermisst', () => {
       .toEqual(['nginx site=einzel.example.org ergebnis=passt'])
   })
 
+  it('ein eigener Block für /robots.txt ist zu viel (die Datei liefert die App)', () => {
+    // So schreibt ihn Plois Schablone; auch ohne `=` und mit anderem Inhalt.
+    for (const block of [
+      'location = /robots.txt  { access_log off; log_not_found off; }',
+      'location /robots.txt { return 404; }',
+    ]) {
+      expect(broken(text => text.replace('charset utf-8;', `charset utf-8;\n    ${block}`)))
+        .toEqual(['nginx site=einzel.example.org ergebnis=zuviel regel=eigene-robots'])
+    }
+    // GEGENPROBE: ein Block für eine andere Datei ist erlaubt, ebenso einer,
+    // der /robots.txt an die App weiterreicht.
+    expect(broken(text => text.replace('charset utf-8;', 'charset utf-8;\n    location = /favicon.ico { access_log off; log_not_found off; }')))
+      .toEqual(['nginx site=einzel.example.org ergebnis=passt'])
+  })
+
   it('die Datei fehlt · die Site reicht nicht weiter', () => {
     expect(nginxCheck({ sites: {}, list: only }).lines).toContain('nginx site=einzel.example.org ergebnis=fehlt regel=site-datei')
     expect(nginxCheck({ sites: { 'einzel.example.org': 'server {\n server_name einzel.example.org;\n return 404;\n}\n' }, list: only }).lines)

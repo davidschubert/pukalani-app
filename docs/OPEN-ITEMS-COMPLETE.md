@@ -30,6 +30,77 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q04 — Auslieferung: gepackt, robots.txt, Vorschaubild, Symbole — und ein täglicher Blick darauf ✅ 2026-11-20
+
+**Was.** Vier Dinge kamen beim Browser anders an, als die App sie erzeugt,
+und kein Test sah es. Alle vier sind behoben, und ein täglicher Blick von
+außen prüft sie je öffentlichem Host (PR 445, 446, 447 und der Abschluss-PR).
+
+1. **Gepackt.** Die App legt beim Bauen neben jede öffentliche Datei ab 1 KB
+   eine `.gz` und eine `.br` (`nitro.compressPublicAssets` im Core) und
+   liefert sie je nach `Accept-Encoding` aus. Vorher hing das an der
+   Grundeinstellung des Webservers, die den Dateityp der Skripte nicht
+   kannte. Am Webserver ist dafür NICHTS geändert: er reicht eine gepackte
+   Antwort durch, gerenderte Seiten packt er weiter selbst.
+2. **Symbole.** Sechs Symbol-Namen berichtigt (vier gab es im Paket nicht,
+   einer davon der Knopf „Reaktion hinzufügen"; zwei kamen aus einem Paket,
+   das der Core nicht einträgt). Ein Symbol, das der eigene Server nicht
+   kennt, bleibt jetzt leer (`icon.fallbackToApi: false`). Neuer Wächter
+   `pnpm check:icons` im Lint-Lauf, mit Gegenprobe je Regel.
+3. **Vorschaubild.** Hilfe (je Sprache eines) und branding.supply (Zeichen
+   und Schriftzug, dazu `og:site_name`) tragen ein festes Bild; erzeugt von
+   `scripts/og-site-cards.mjs` nach dem Verfahren der Landing.
+4. **Sitemaps und robots.txt.** branding.supply mit den sechs Produktseiten
+   (mit ihren deutschen Adressen), pukalani.studio mit dem Erstgespräch,
+   Hilfe mit neuer Sitemap aus den Inhalten und `robots.txt`, die
+   Betreiber-Oberfläche mit eigener `robots.txt`-Route. Vergleichstests
+   Liste gegen Seiten-Ordner für branding und portfolio.
+5. **Hilfe.** Die Suchdaten (Datenbank-Laufzeit, rund 850 KB) werden erst
+   geholt, wenn jemand die Suche öffnet.
+6. **Am Server (Davids Ja zu genau diesem Handgriff).** In den
+   Webserver-Dateien von `pukalani.app` und `admin.pukalani.app` ist der
+   eigene Block für `/robots.txt` entfernt (je eine Zeile, über das
+   Ploi-Werkzeug, danach Reload). Eine Zeile zur Kompression war nicht
+   nötig. Der Webserver-Vergleich kennt seitdem die Regel `eigene-robots`.
+7. **Täglicher Blick.** `scripts/ops/verify-delivery.mjs` (Blick 19 im
+   Produktions-Wächter): gepackt, robots, Vorschaubild, Symbole. Erst nur
+   zählend eingeführt, scharf, seit jeder Host besteht.
+
+**Gemessen von außen, vorher → nachher.**
+
+| Host | Skript gepackt | robots.txt mit Regeln (und Sitemap) | Vorschaubild | Symbol-Route reicht weiter |
+| --- | --- | --- | --- | --- |
+| pukalani.app | ja → ja | nein (Text ohne Regel) → ja | ja → ja | ja → nein |
+| account.pukalani.app | nein → ja | ja → ja (ohne Sitemap, sperrt alles) | ja → ja | ja → nein |
+| demo.pukalani.app | nein → ja | ja → ja | ja → ja | ja → nein |
+| admin.pukalani.app | nein → ja | nein (404 vom Webserver) → ja (ohne Sitemap) | keines, gewollt | ja → nein |
+| help.pukalani.app | nein → ja | nein (404) → ja | nein → ja | ja → nein |
+| pukalani.studio | nein → ja | ja → ja | ja → ja | ja → nein |
+| branding.supply | nein → ja | ja → ja | nein → ja | ja → nein |
+
+`platform.pukalani.app` ist kein Mandant und beantwortet nur `/api/health`.
+Einstiegs-Skript der Hilfe am Build: 360 KB → 81 KB.
+
+**Selbst entschieden.** branding.supply bekommt EIN Bild für beide Sprachen.
+Die `robots.txt` der Betreiber-Oberfläche bleibt schmal (`/api/` und
+`/dashboard/` zu): ob der Host ganz aus der Suche soll, entscheidet ein
+eigenes Vorhaben über `noindex`, und ein `Disallow: /` würde genau das
+verhindern. `/privacy` von branding.supply bleibt außerhalb der Sitemap.
+
+**Gelernt:** (1) Die Symbol-Route hält ihre Antworten eine Woche vor, und eine
+vorgehaltene Ablehnung kommt beim zweiten Abruf mit Status 200 und dem Text
+`{"statusCode":404}` zurück. Eine Probe, die nur den Status liest, sieht
+dann „geliefert" — der Blick wertet deshalb den Inhalt aus. Aufgefallen ist
+es nur, weil derselbe Host erst 404 und eine Stunde später 200 zeigte. (2)
+Der neue Wächter fand zwei Symbol-Namen, die im Browser funktionierten: ihr
+Paket war nirgends für diese Apps eingetragen, das Symbol-Modul fand es
+trotzdem über den gemeinsamen Ordner der Paketverwaltung. Was nur zufällig
+geht, gehört eingetragen oder ersetzt. (3) Ein Blick, der prüft, was
+ausgeliefert wird, gehört zuerst zählend eingeführt: am ersten Tag hatten
+sieben von sieben Hosts einen Befund.
+
+---
+
 ### AW30 (d) — Rückweg-Images und Sicherungskopien auf appwrite-prod gelöscht ✅ 2026-11-20
 
 **Was.** Davids Auftrag vom Abend des 2026-11-20: die zwei Images, die als
