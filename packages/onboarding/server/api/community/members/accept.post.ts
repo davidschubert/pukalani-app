@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { callControlPlane, mintRuntimeJwt } from '../../../utils/controlPlane'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Einladung annehmen — der Klick der eingeladenen Person (nicht des Betreibers).
@@ -93,7 +94,7 @@ export default defineEventHandler(async (event) => {
     if (result.invitedBy && result.invitedBy !== userId) {
       await recordUserCounterEvents(event, [
         { userId: result.invitedBy, kind: 'invitesAccepted', delta: 1 },
-      ]).catch(() => {})
+      ]).catch(softFail('onboarding:api/community/members/accept.post:recordUserCounterEvents', undefined))
 
       /**
        * UND DIE ZUORDNUNG SELBST FESTHALTEN (F57-Stufen): `invitedBy` wandert

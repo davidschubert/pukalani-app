@@ -12,6 +12,7 @@ import {
   type GettingStartedResponse,
 } from '../../../shared/gettingStarted'
 import { resolveCommunityTeamSnapshot } from '../../utils/communityTeamSnapshot'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * DIE FÜNF TATSACHEN HINTER DER WILLKOMMENS-CHECKLISTE (U4).
@@ -141,5 +142,5 @@ async function homePageTouched(db: TenantDb): Promise<boolean> {
   return await db
     .list<PageRow>(PAGES_TABLE, [Query.equal('slug', 'home'), Query.limit(4)])
     .then(res => res.rows.some(row => homePageEdited(row.$createdAt, row.$updatedAt)))
-    .catch(() => true)
+    .catch(softFail('onboarding:api/community/getting-started.get:list', true))
 }
