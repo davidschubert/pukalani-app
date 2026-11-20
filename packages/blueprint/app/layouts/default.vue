@@ -24,7 +24,7 @@
  * Das core-default-Layout bleibt unverändert die Basis für Apps OHNE
  * blueprint (control/photos/portfolio/marketing/_template).
  */
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 import { isProductStateEnabled } from '../../../core/shared/types/config'
 import type { PukalaniChromeUtility } from '../../../core/shared/types/chrome'
 import type { CommunityNavItem } from '../../../core/shared/communityNavigation'
@@ -32,6 +32,7 @@ import { isLegalPageSlug, navMenuChildren } from '../../../core/shared/community
 import { safeExternalHref } from '../../../core/shared/safeHref'
 
 const { t } = useI18n()
+const route = useRoute()
 const localePath = useLocalePath()
 const { isLoggedIn } = useCurrentUser()
 const appConfig = useAppConfig()
@@ -122,6 +123,58 @@ const overflowNav = computed<DropdownMenuItem[]>(() =>
         : toDropdownItem(item)))
     : [])
 
+/**
+ * DIE SCHMALE FASSUNG (Q01, 2026-11-20 — Davids Entscheidung „Menü-Knopf").
+ *
+ * Unter 1024 px steht statt der Reihe ein Knopf mit drei Strichen; er öffnet
+ * eine Schublade mit ALLEN Punkten untereinander. Vorher gab es keine schmale
+ * Fassung: der Name durfte nicht schrumpfen, der Reihe blieb auf dem Handy
+ * keine Breite, und Feed, Diskussionen, Events und Kurse lagen unter den
+ * Symbolen oder ausserhalb des Fensters.
+ *
+ * DIESELBE QUELLE wie die Reihe (`navItems`) — nichts wird doppelt gepflegt.
+ * Zwei Unterschiede zur Reihe, beide gewollt: (1) KEIN Überlauf, die Liste hat
+ * Platz für alles, „Mehr" gibt es hier nicht; (2) Unterpunkte stehen sofort
+ * aufgeklappt da (`defaultOpen`), damit niemand raten muss, was sich hinter
+ * einem Wort verbirgt. Was im Aufklapper steht, entscheidet wie in der Reihe
+ * `navMenuChildren()`.
+ *
+ * WARUM 1024 UND NICHT 768: die Reihe braucht Name + bis zu fünf Punkte + vier
+ * Symbole nebeneinander. Bei 768 px reicht das nur für kurze Namen und kurze
+ * Punkte; beides legt der Owner selbst fest.
+ */
+const menuOpen = ref(false)
+// Als Wert und nicht als Literal im Template: `aria-label` steht nicht in den
+// Button-Props, ein Literal dort wäre ein Typfehler (Muster `TOGGLE_PROPS` in
+// MarketingHeader.vue). Ohne den Text spräche der Knopf Nuxt UIs Englisch.
+const closeProps = computed(() => ({
+  color: 'neutral' as const,
+  variant: 'ghost' as const,
+  'aria-label': t('ui.menu.close'),
+}))
+
+function toMenuItem(item: CommunityNavItem): NavigationMenuItem {
+  return {
+    label: item.label,
+    icon: item.icon,
+    to: item.to,
+    planProduct: item.planProduct,
+    ...(item.external ? { target: '_blank' as const, rel: 'noopener' } : {}),
+  }
+}
+
+const drawerNav = computed<NavigationMenuItem[]>(() =>
+  navItems.value.map(item => (item.children?.length
+    ? { label: item.label, icon: item.icon, defaultOpen: true, children: navMenuChildren(item).map(toMenuItem) }
+    : toMenuItem(item))))
+
+// Zu nach jedem Seitenwechsel — und nach einem Klick auf einen Link, der auf
+// die Seite zeigt, auf der man schon steht (dann ändert sich die Route nicht).
+watch(() => route.fullPath, () => { menuOpen.value = false })
+function onMenuClick(event: MouseEvent) {
+  if ((event.target as HTMLElement | null)?.closest('a')) menuOpen.value = false
+}
+
 // Utilities (Komponenten global registriert — `.global.vue`): Zone 'menu'
 // rechts im Header, Zone 'overlay' (schwebende Widgets) außerhalb.
 const utilities = computed(() =>
@@ -155,10 +208,26 @@ const showChangelog = computed(() => chrome.value.changelogLink === true)
     <CoreDemoBanner />
     <AuthEmailVerifyBanner />
     <header class="border-b border-default">
-      <nav data-testid="main-nav" class="mx-auto flex w-full max-w-(--ui-container) items-center justify-between gap-4 p-4">
-        <div class="flex min-w-0 items-center gap-6">
-          <NuxtLink :to="localePath('/')" class="shrink-0 font-bold tracking-tight">{{ brand }}</NuxtLink>
-          <div data-testid="chrome-nav" class="flex items-center gap-4 overflow-x-auto text-sm">
+      <nav data-testid="main-nav" class="mx-auto flex w-full max-w-(--ui-container) items-center justify-between gap-2 p-4 lg:gap-4">
+        <div class="flex min-w-0 items-center gap-2 lg:gap-6">
+          <!-- Der Menü-Knopf der schmalen Fassung (Q01). Die Schublade selbst
+               steht unten neben den schwebenden Teilen. -->
+          <UButton
+            class="shrink-0 lg:hidden"
+            color="neutral"
+            variant="ghost"
+            icon="i-ph-list"
+            :aria-label="t('ui.menu.open')"
+            aria-haspopup="dialog"
+            :aria-expanded="menuOpen"
+            data-testid="chrome-nav-toggle"
+            @click="menuOpen = true"
+          />
+          <!-- Der Name wird gekürzt statt in die Symbole zu laufen. Ab 1024 px
+               schrumpft er nicht mehr, ist aber gedeckelt: ein sehr langer Name
+               nähme der Reihe sonst wieder die Breite. -->
+          <NuxtLink :to="localePath('/')" class="min-w-0 truncate font-bold tracking-tight lg:max-w-xs lg:shrink-0">{{ brand }}</NuxtLink>
+          <div data-testid="chrome-nav" class="hidden items-center gap-4 overflow-x-auto text-sm lg:flex">
             <template v-for="item in inlineNav" :key="item.id">
               <!-- HAUPTPUNKT MIT UNTERPUNKTEN (U15 Teil 3, 2026-09-08):
                    dasselbe Bauteil wie das „Mehr"-Menü daneben, damit ein
@@ -241,6 +310,32 @@ const showChangelog = computed(() => chrome.value.changelogLink === true)
         </nav>
       </div>
     </footer>
+
+    <!-- Die Schublade der schmalen Fassung (Q01): dieselben Punkte wie die
+         Reihe oben, untereinander. Titel und Schliessen-Knopf tragen eigene
+         Texte — Nuxt UI nähme sonst seine englische Vorgabe. -->
+    <USlideover
+      v-model:open="menuOpen"
+      side="left"
+      :title="brand"
+      :description="t('ui.menu.title')"
+      :close="closeProps"
+      :ui="{ content: 'max-w-xs' }"
+    >
+      <template #body>
+        <div data-testid="chrome-nav-drawer" @click="onMenuClick">
+          <UNavigationMenu
+            :items="drawerNav"
+            orientation="vertical"
+            :aria-label="t('ui.menu.title')"
+          >
+            <template #item-trailing="{ item }">
+              <CorePlanBadge v-if="item.planProduct" :product="item.planProduct" />
+            </template>
+          </UNavigationMenu>
+        </div>
+      </template>
+    </USlideover>
 
     <!-- Schwebende Widgets (z. B. FeedbackButton, fixed-positioniert) -->
     <component :is="u.component" v-for="u in overlayUtilities" :key="u.id" />

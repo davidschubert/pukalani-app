@@ -12,7 +12,7 @@
  *   pnpm buehne smoke  # Rauchtest gegen den laufenden Platform-Server
  *   pnpm buehne down
  *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004] [--einzel-port 3001] [--branding-port 3016]
- *   pnpm buehne e2e    [--control-port 3004]  # zwei Browser-Tests gegen die Bühne
+ *   pnpm buehne e2e    [--control-port 3004]  # die Browser-Tests gegen die Bühne
  *
  * `run` fährt die Beweis-Skripte laut Einteilung `scripts/buehne/beweise.mjs`
  * gegen die stehende Bühne — Einzelheiten im Kopf von `scripts/buehne/run.mjs`.

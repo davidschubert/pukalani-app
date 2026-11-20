@@ -110,6 +110,15 @@ async function submit() {
 </script>
 
 <template>
+  <!-- DER PARKPLATZ (Q01, 2026-11-20): ein leerer Streifen am Seitenende, so
+       hoch wie der Knopf samt Abstand. Der Knopf schwebt fest unten links und
+       lag am Ende der Seite über dem, was dort steht — auf dem Handy über dem
+       Link „Impressum", am breiten Bildschirm über dem Namen im Fuss. Was
+       darunter liegt, liess sich nicht freirollen. Mit dem Streifen steht der
+       Knopf am Seitenende über NICHTS, und alles weiter oben rollt man frei.
+       Der Streifen gehört hierher und nicht ins Layout: nur dieses Bauteil
+       kennt seine eigene Höhe, und er verschwindet mit ihm. -->
+  <div class="h-14 shrink-0 print:hidden" aria-hidden="true" data-testid="feedback-spacer" />
   <div class="fixed bottom-4 left-4 z-40 print:hidden">
     <UPopover v-model:open="open" :content="{ side: 'top', align: 'start' }" @update:open="(value: boolean) => { if (value) reset() }">
       <UButton
