@@ -70,6 +70,14 @@ Datenbank-Abzügen der letzten zwei Upgrades (stand nicht im Auftrag; trägt
 Personendaten) und die alten Patch-Dateien. Die Neustart-Regel bei einem
 Docker-Update ließ sich nicht beweisen: es wartet keines.
 
+**Nachtrag, derselbe Abend (21:58 UTC, Davids Ja):** auch der Ordner
+`~/backups` ist gelöscht — vier Dateien, je ein Datenbank-Abzug und ein
+Archiv der Einstellungen von vor 2.7.3 und vor 2.7.4, einzeln mit vollem
+Pfad, danach der leere Ordner. Vorher gelesen: das nächtliche Backup benutzt
+einen ANDEREN Ordner (`~/backup`, Einzahl; `backups/appwrite` in seinem
+Zeitplan ist der Pfad außer Haus) und war in dieser Nacht gut. Danach: 18 von
+18, API 200 mit 2.7.4. Offen bleiben nur die alten Patch-Dateien.
+
 **Gelernt:** Das Upgrade-Werkzeug und jeder Handgriff von Hand legen bei
 jedem Lauf zwei bis drei Kopien an, und niemand räumt sie ab — nach vier
 Monaten lagen 25 Kopien neben drei lebenden Dateien, neun davon mit allen
