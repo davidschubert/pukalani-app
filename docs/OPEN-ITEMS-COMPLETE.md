@@ -30,6 +30,31 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW30 (d) — Alte Appwrite-Images auf appwrite-prod gelöscht ✅ 2026-11-20
+
+**Was.** Nach dem Upgrade auf 2.7.4 lagen auf dem Appwrite-Server die Images
+von drei Vorgänger-Versionen. Gelöscht mit Davids Ja: `appwrite/appwrite`
+2.6.2 und 2.7.1, die Console `appwrite/new` 1.2.108 und 1.2.138, `appwrite/
+browser` 0.3.8, `openruntimes/executor` 1.1.2 und 1.3.1, der Orchestrator
+2.2.4, `hello-world` und neun verwaiste Schichten (`docker rmi <name>`, dann
+`docker image prune -f`). Alle sind öffentlich und lassen sich neu abrufen.
+
+**Beweis.** Platte 66 % → 40 % (25 GB → 44 GB frei), Images 36 → 18,
+`/v1/health/version` danach 2.7.4, 18 von 18 Containern laufen. `docker rmi`
+löscht kein Image, das ein Container benutzt — die Liste „in Benutzung"
+(`docker ps -a --format '{{.Image}}' | sort -u`) vorher gelesen.
+
+**Geblieben** (OPEN-ITEMS „AW30" d): `appwrite/appwrite:2.7.3` und
+`openruntimes/executor:1.3.5` als Rückweg ohne neuen Abruf, die
+Laufzeit-Images für Functions (`openruntimes/node`, `flutter`, `static` — der
+Executor holt sie beim Start) und die Sicherungsdateien im Compose-Ordner.
+
+**Gelernt:** Das Console-Image ist mit 4,3 GB je Version der größte Posten,
+nicht das Appwrite-Image (0,8 GB) — die Schätzung „rund 11 GB" aus dem
+2.7.3-Lauf zählte es nicht mit, frei wurden 18 GB.
+
+---
+
 ### Issue 417 — Terminliste: „Wochenende" und „Zugesagt" lassen sich zusammen wählen ✅ 2026-11-20
 
 **Was.** In der Terminliste ersetzte jeder Filter den vorigen, und die Liste
