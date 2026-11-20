@@ -61,6 +61,10 @@
 //   schutz-kopfzeilen       KEIN `add_header` für eine Schutz-Kopfzeile: die
 //                           setzt seit SEC-006 die App für alle Antworten
 //                           gleich; im Webserver käme sie doppelt (`zuviel`).
+//   eigene-robots           KEIN eigener Block für `/robots.txt` (Ploi legt ihn
+//                           bei einer neuen Site an): er beantwortet die
+//                           Anfrage im Webserver mit „nicht gefunden", und die
+//                           robots.txt der App kommt bei niemandem an (`zuviel`).
 //   Für den Server:
 //   auffangblock            ein `default_server`, der mit 444 antwortet —
 //                           unbekannte Namen enden dort, nicht in einer App.
@@ -94,6 +98,7 @@ export const RULES = [
   'punkt-dateien',
   'zugriffs-log',
   'schutz-kopfzeilen',
+  'eigene-robots',
   'auffangblock',
 ]
 
@@ -313,6 +318,12 @@ export function checkAppServer(server, { port, accessLog, tree }) {
   }
 
   if (addHeaderNames(server.children).some(name => APP_OWNED_HEADERS.has(name))) extra.add('schutz-kopfzeilen')
+
+  // Ein eigener Block für /robots.txt beantwortet die Anfrage im Webserver —
+  // die Datei der App kommt dann bei niemandem an (SEO-001).
+  const ownRobots = locationsOf(server.children).some(location =>
+    location.args[location.args.length - 1] === '/robots.txt' && directives(location.children, 'proxy_pass').length === 0)
+  if (ownRobots) extra.add('eigene-robots')
 
   return { missing: [...missing], extra: [...extra] }
 }

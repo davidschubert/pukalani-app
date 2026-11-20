@@ -101,7 +101,7 @@ am 2026-11-18, COMPLETE „N11").
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) Abhängigkeiten: drei Hinweise und vier kleine Updates bleiben offen (Stand 2026-11-20, COMPLETE „N19"). **Wartet auf:** (a) David; (e) auf neue Ausgaben fremder Pakete und auf zwei Fristen (Issues 356, 359, 373, 374). | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 73 von 84 von selbst; nachts steht auch branding.supply als vierter Server, elf seiner zwölf Skripte laufen mit (COMPLETE „N16" und „N17"). Offen: (a) die fünf E2E-Dateien der Studio-Site und ein Skript brauchen einen fünften Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
-| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst (die SDKs sind seit dem 2026-11-20 gehoben, COMPLETE „N19"); (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) der Rest der alten Images und die Sicherungsdateien auf dem Server (die großen Vorgänger sind seit dem 2026-11-20 weg); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
+| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst (die SDKs sind seit dem 2026-11-20 gehoben, COMPLETE „N19"); (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) zwei Datenbank-Abzüge der letzten Upgrades auf dem Server (Images und Sicherungskopien sind seit dem 2026-11-20 weg, COMPLETE „AW30 (d)"); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. **Wartet auf:** (e) ein solches Update. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -720,8 +720,9 @@ und den Link im Kommentar-Bereich.
   Ploi-Panel das Skript „P23: nginx-Zugriffs-Log 14 Tage". Auf `pukalani.app`
   liefert Cloudflare unveränderte Dateien noch mit den Kopfzeilen des alten
   Webservers aus (löst sich mit dem nächsten Build der Landing). Auf `admin`
-  beantwortet der Webserver `/robots.txt` und `/favicon.ico` selbst mit 404
-  (zwei leere Blöcke aus Plois Schablone). Zwei Sites senden
+  beantwortet der Webserver `/favicon.ico` selbst mit 404 (ein leerer Block
+  aus Plois Schablone; der für `/robots.txt` ist seit dem 2026-11-20 weg,
+  COMPLETE „Q04"). Zwei Sites senden
   `Connection 'upgrade'` fest. Die Umleitungs-Blöcke des Webservers schreiben
   weiter ins allgemeine Zugriffs-Log (jetzt 14 Tage). Der Vergleich der
   Webserver-Einstellung läuft nur auf dem App-Server (der Appwrite-Server hat
@@ -1093,22 +1094,33 @@ Entwicklungs-Rechner ist damit weiter möglich.
   der Demo, braucht Davids Ja) und der Speichern-Knopf im Profil mit neuem
   Bild (er ersetzt das echte Profilbild). Kommentar und Stimme sind auf der
   Entwicklungs-Instanz und in der CI mit 2.7.3 bewiesen.
-- **(d) Alte Images — der Rest.** Die Images der Vorgänger (2.6.2, 2.7.1 und
-  ihre Begleiter) sind seit dem 2026-11-20 gelöscht (Erledigt-Liste, „AW30
-  (d)"; Platte 66 % → 40 %). Geblieben sind `appwrite/appwrite:2.7.3` und
-  `openruntimes/executor:1.3.5` — der Rückweg ohne neuen Abruf; sie können
-  weg, wenn 2.7.4 eine Weile ruhig lief. Ebenso die Sicherungsdateien des
-  Werkzeugs im Compose-Ordner (`*.backup`, `docker-compose.yml.pre-2.7.*`,
-  `docker-compose.override.yml.bak-*`) und Skripte samt Protokollen im
-  Heimatverzeichnis: sie lassen sich nicht neu abrufen. Löschen nur mit
-  Davids Ja.
+- **(d) Die Datenbank-Abzüge der letzten zwei Upgrades.** Alle alten Images
+  (auch der Rückweg 2.7.3 und Executor 1.3.5) und die Sicherungskopien der
+  Einstellungs-Dateien sind seit dem 2026-11-20 gelöscht (Erledigt-Liste,
+  zwei Einträge „AW30 (d)"). Geblieben ist der Ordner `~/backups` auf dem
+  Server: je ein Datenbank-Abzug und ein Archiv der Einstellungen von vor
+  2.7.3 und vor 2.7.4 (zusammen 43 MB; anders als das nächtliche Backup
+  nicht verschlüsselt). Das nächtliche Backup trägt dasselbe.
+  Löschen nur mit Davids Ja; danach führt der Rückweg auf 2.7.3 nur noch
+  über das nächtliche Backup (Runbook, „Rückweg"). Ebenfalls noch dort, ohne
+  Aufgabe: neun alte Patch-Dateien `registers-*` im Ordner `patches/` (die
+  zehnte Datei dort, `clickhouse-logging.xml`, ist in Benutzung).
 - **(e) Neustart-Regel bei einem Docker-Update.** Seit dem 2026-11-20 trägt
   jeder Container auf appwrite-prod eine Neustart-Regel; bewiesen ist sie für
   den Neustart des Servers (42 s, ohne Eingriff — COMPLETE „AW31"). Ein
   Paket-Update, das Docker oder containerd anhebt, hält die Container
   ebenfalls an; dass sie auch danach von selbst wiederkommen, ist noch nicht
-  eigens gesehen. Beim nächsten solchen Update zusehen und das Ergebnis im
-  Runbook [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) § 4
+  eigens gesehen. Am 2026-11-20 abends nachgesehen: es wartet kein solches
+  Update (Docker 29.10.0, containerd 2.4.2, Ploi meldet 0 Pakete) — nichts
+  erzwungen. **So weit ist es,** wenn `apt list --upgradable` auf dem Server
+  `docker-ce` oder `containerd.io` nennt (Ploi zeigt dann eine Zahl unter
+  „Updates"). Dann VOR „Run updates now" einen Beobachter starten (jede
+  Sekunde: Zeit, Zahl laufender Container, Code von `/v1/health/version`)
+  und messen: kommen alle 18 ohne Eingriff wieder, nach wie vielen Sekunden,
+  dreht keiner in einer Neustart-Schleife, gelingt der Handshake der
+  Live-Verbindung.
+  Erst wenn nach drei Minuten noch Container fehlen, der Rückfall aus
+  [PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md) § 4; das Ergebnis dort
   nachtragen. Kein eigener Lauf dafür.
 
 <a id="cw1"></a>

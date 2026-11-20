@@ -94,6 +94,189 @@ wäre ein Test eingezogen, der den gemeldeten Fehler nie hätte sehen können.
 Und: „sichtbar" ist für Playwright auch ein Link, der unter einem anderen
 Bauteil liegt — wer Erreichbarkeit prüft, fragt mit `elementFromPoint`, was an
 der Stelle obenauf ist (`e2e/support/narrowScreens.ts`).
+### Q04 — Auslieferung: gepackt, robots.txt, Vorschaubild, Symbole — und ein täglicher Blick darauf ✅ 2026-11-20
+
+**Was.** Vier Dinge kamen beim Browser anders an, als die App sie erzeugt,
+und kein Test sah es. Alle vier sind behoben, und ein täglicher Blick von
+außen prüft sie je öffentlichem Host (PR 445, 446, 447 und der Abschluss-PR).
+
+1. **Gepackt.** Die App legt beim Bauen neben jede öffentliche Datei ab 1 KB
+   eine `.gz` und eine `.br` (`nitro.compressPublicAssets` im Core) und
+   liefert sie je nach `Accept-Encoding` aus. Vorher hing das an der
+   Grundeinstellung des Webservers, die den Dateityp der Skripte nicht
+   kannte. Am Webserver ist dafür NICHTS geändert: er reicht eine gepackte
+   Antwort durch, gerenderte Seiten packt er weiter selbst.
+2. **Symbole.** Sechs Symbol-Namen berichtigt (vier gab es im Paket nicht,
+   einer davon der Knopf „Reaktion hinzufügen"; zwei kamen aus einem Paket,
+   das der Core nicht einträgt). Ein Symbol, das der eigene Server nicht
+   kennt, bleibt jetzt leer (`icon.fallbackToApi: false`). Neuer Wächter
+   `pnpm check:icons` im Lint-Lauf, mit Gegenprobe je Regel.
+3. **Vorschaubild.** Hilfe (je Sprache eines) und branding.supply (Zeichen
+   und Schriftzug, dazu `og:site_name`) tragen ein festes Bild; erzeugt von
+   `scripts/og-site-cards.mjs` nach dem Verfahren der Landing.
+4. **Sitemaps und robots.txt.** branding.supply mit den sechs Produktseiten
+   (mit ihren deutschen Adressen), pukalani.studio mit dem Erstgespräch,
+   Hilfe mit neuer Sitemap aus den Inhalten und `robots.txt`, die
+   Betreiber-Oberfläche mit eigener `robots.txt`-Route. Vergleichstests
+   Liste gegen Seiten-Ordner für branding und portfolio.
+5. **Hilfe.** Die Suchdaten (Datenbank-Laufzeit, rund 850 KB) werden erst
+   geholt, wenn jemand die Suche öffnet.
+6. **Am Server (Davids Ja zu genau diesem Handgriff).** In den
+   Webserver-Dateien von `pukalani.app` und `admin.pukalani.app` ist der
+   eigene Block für `/robots.txt` entfernt (je eine Zeile, über das
+   Ploi-Werkzeug, danach Reload). Eine Zeile zur Kompression war nicht
+   nötig. Der Webserver-Vergleich kennt seitdem die Regel `eigene-robots`.
+7. **Täglicher Blick.** `scripts/ops/verify-delivery.mjs` (Blick 19 im
+   Produktions-Wächter): gepackt, robots, Vorschaubild, Symbole. Erst nur
+   zählend eingeführt, scharf, seit jeder Host besteht.
+
+**Gemessen von außen, vorher → nachher.**
+
+| Host | Skript gepackt | robots.txt mit Regeln (und Sitemap) | Vorschaubild | Symbol-Route reicht weiter |
+| --- | --- | --- | --- | --- |
+| pukalani.app | ja → ja | nein (Text ohne Regel) → ja | ja → ja | ja → nein |
+| account.pukalani.app | nein → ja | ja → ja (ohne Sitemap, sperrt alles) | ja → ja | ja → nein |
+| demo.pukalani.app | nein → ja | ja → ja | ja → ja | ja → nein |
+| admin.pukalani.app | nein → ja | nein (404 vom Webserver) → ja (ohne Sitemap) | keines, gewollt | ja → nein |
+| help.pukalani.app | nein → ja | nein (404) → ja | nein → ja | ja → nein |
+| pukalani.studio | nein → ja | ja → ja | ja → ja | ja → nein |
+| branding.supply | nein → ja | ja → ja | nein → ja | ja → nein |
+
+`platform.pukalani.app` ist kein Mandant und beantwortet nur `/api/health`.
+Einstiegs-Skript der Hilfe am Build: 360 KB → 81 KB.
+
+**Selbst entschieden.** branding.supply bekommt EIN Bild für beide Sprachen.
+Die `robots.txt` der Betreiber-Oberfläche bleibt schmal (`/api/` und
+`/dashboard/` zu): ob der Host ganz aus der Suche soll, entscheidet ein
+eigenes Vorhaben über `noindex`, und ein `Disallow: /` würde genau das
+verhindern. `/privacy` von branding.supply bleibt außerhalb der Sitemap.
+
+**Gelernt:** (1) Die Symbol-Route hält ihre Antworten eine Woche vor, und eine
+vorgehaltene Ablehnung kommt beim zweiten Abruf mit Status 200 und dem Text
+`{"statusCode":404}` zurück. Eine Probe, die nur den Status liest, sieht
+dann „geliefert" — der Blick wertet deshalb den Inhalt aus. Aufgefallen ist
+es nur, weil derselbe Host erst 404 und eine Stunde später 200 zeigte. (2)
+Der neue Wächter fand zwei Symbol-Namen, die im Browser funktionierten: ihr
+Paket war nirgends für diese Apps eingetragen, das Symbol-Modul fand es
+trotzdem über den gemeinsamen Ordner der Paketverwaltung. Was nur zufällig
+geht, gehört eingetragen oder ersetzt. (3) Ein Blick, der prüft, was
+ausgeliefert wird, gehört zuerst zählend eingeführt: am ersten Tag hatten
+sieben von sieben Hosts einen Befund.
+
+---
+
+### Q02 — Öffentliche Aussagen richtiggestellt (BRD-002, BRD-003, BRD-004, BRD-005, BRD-009, GEO-004) ✅ 2026-11-20
+
+**Was.** Werbesätze, die dem Stand hinterherhinkten, sind ersetzt — in beiden
+Sprachen und in allen Kopien (Beschreibung im Seitenkopf, og-Angaben,
+strukturierte Daten, `llms.txt`). Wortlaut nach Davids Entscheidung vom
+2026-11-20; kein Rechtstext wurde angefasst.
+
+- **pukalani.app, Datenstandort** (`apps/marketing`, Seite zum Datenschutz):
+  statt „keine US-Cloud im Datenpfad" steht „Die Datenbank betreiben wir
+  selbst, auf Servern in Deutschland (Hetzner). Für Bot-Schutz, E-Mail, Zahlung
+  und KI-Hilfen setzen wir Dienstleister ein." Der verwandte Satz „nicht in
+  einer fernen Cloud" auf der Startseite sagt jetzt dasselbe.
+- **pukalani.app, „Kostenlos starten"**: überall, wo die eigene Community
+  gemeint ist, steht „14 Tage kostenlos testen" (vierzehn Texte in
+  `apps/marketing`, darunter drei Beschreibungen für Suchmaschinen, und die
+  Knöpfe in Kopf und Fuß aus `packages/marketing`). Die strukturierten Daten der
+  Startseite lesen dieselben Schlüssel und ziehen von selbst mit.
+- **pukalani.app, „Wir nutzen es selbst"**: die erste Karte zeigt auf einen
+  Beitrag der Demo-Community mit fünf sichtbaren Kommentaren und sagt, dass die
+  Inhalte Beispiele sind; die Karte zur Demo kommt ohne interne Wörter aus und
+  sagt in beiden Sprachen dasselbe; die dritte Karte heißt `pukalani.studio`
+  und zeigt direkt dorthin.
+- **pukalani.app, Vergleichstabelle**: „quartalsweise geprüft" ist gestrichen
+  (die Prüfung war überfällig), das Datum der Angaben bleibt stehen.
+- **branding.supply**: die Beschreibung für Suchmaschinen endet nicht mehr mit
+  „Geschlossene Beta."; die Team-Texte nennen keine Zahl mehr, die nicht zu den
+  elf Karten passt; der Hinweis „noch kein Zugang" im Wizard behauptet keine
+  geschlossene Beta mehr. Die zwei Sätze, die an `signupOpen` hängen
+  (`home.beta`, `brand.invite.betaText`), bleiben: sie erscheinen nur, wenn die
+  Registrierung wirklich geschlossen ist.
+- **pukalani.studio**: die vier Kennzahlen, die David nicht als belegt genannt
+  hat („+73 % Conversion", „+156 % organischer Traffic", „500 Beta-User in
+  Woche 1", „Series A erfolgreich"), sind heraus — aus den Fallbeispielen, aus
+  den drei Leistungs-Karten, aus dem Einleitungssatz, aus einer Kundenstimme
+  und aus der `llms.txt`. An ihrer Stelle steht, was das Fallbeispiel selbst
+  beschreibt (zum Beispiel „Checkout in drei Schritten"); jedes Fallbeispiel
+  hat weiter Titel und drei Ergebnis-Marken.
+
+**Beweis.** Gegenprobe im Repo (leer bis auf Code-Kommentare und die zwei
+Schalter-Sätze):
+
+```
+rg -n -i "US-Cloud|US cloud|kostenlos starten|start free|starten – kostenlos|einstieg ist kostenlos|Geschlossene Beta\.|Closed beta\.|pool-community|im Control angelegt|in the studio|comments\.pukalani\.app|\+ ?73|\+ ?156|500 beta|Series A|quartalsweise geprüft|reviewed quarterly" \
+  apps/marketing apps/branding apps/portfolio packages/marketing/i18n packages/brand/i18n -g '!*.md'
+```
+
+Der Beitrag der Demo-Community antwortet von außen mit 200 und zeigt
+„Comments (5)" samt fünf Texten im ausgelieferten HTML.
+
+**Nicht erledigt, bewusst.** Die übrigen Zahlen der Fallbeispiele (zum Beispiel
+„−41 % Kaufabbrüche", „+84 % Anfragen", „+43 % Feature-Adoption") stehen
+weiter: Davids Entscheidung nannte vier, über die anderen ist nicht
+entschieden (OPEN-ITEMS W2–W4 c). Die Liste der Dienstleister auf der Seite
+zum Datenschutz wartet auf DT1.
+
+**Gelernt:** Derselbe Satz stand an bis zu sechzehn Stellen von Hand — Knopf,
+Fließtext, Beschreibung, `llms.txt` — und die Zahl im Befund („14") stimmte
+nicht. Vor dem Ersetzen deshalb nie der Liste eines Befunds trauen, sondern
+nach dem KERNWORT suchen („kostenlos", „free"), nicht nach dem ganzen Satz:
+neun der Stellen sagten dasselbe in anderen Worten („der Einstieg ist
+kostenlos", „Parallel starten – kostenlos"). Und eine Karte, die auf einen
+einzelnen Beitrag zeigt, hängt an dessen Kennung: wird die Demo neu befüllt,
+bricht der Link still — die Stelle steht dafür mit Kommentar in
+`ProofSection.vue`.
+
+---
+
+### AW30 (d) — Rückweg-Images und Sicherungskopien auf appwrite-prod gelöscht ✅ 2026-11-20
+
+**Was.** Davids Auftrag vom Abend des 2026-11-20: die zwei Images, die als
+Rückweg geblieben waren, und die Sicherungen im Compose-Ordner löschen.
+
+1. **Images.** `appwrite/appwrite:2.7.3` und `openruntimes/executor:1.3.5`,
+   einzeln mit `docker image rm` (ohne `-f`, kein `prune`). Vorher gelesen,
+   dass kein Container sie benutzt — nach Name und nach Image-Id.
+2. **Sicherungskopien.** 25 alte Kopien der drei Einstellungs-Dateien im
+   Compose-Ordner (sieben der Override, neun der `docker-compose.yml`, neun
+   der `.env`; die ältesten vom Juli) und neun Dateien im Heimatverzeichnis
+   (zwei Upgrade-Skripte, sieben Protokolle). Jede einzeln mit vollem Pfad,
+   kein Platzhalter.
+
+**Vorher gemessen (2.7.4 lief sechs Stunden).** API 200 mit 2.7.4, 18 von 18
+Containern, Neustart-Zähler überall 0, alle laufen ohne Unterbrechung seit
+dem Beweis-Neustart, Handshake der Live-Verbindung 101, `verify-health.mjs` grün
+für alle zehn Hosts. Im Log des Haupt-Containers seit dem Upgrade 274.000
+Zeilen: Antwort-Codes 200, 301, 404, 201, 204 — kein 5xx; die 680
+Fehler-Blöcke sind alle „nicht gefunden" (optionale Zeilen, fremde Abrufe).
+„Eine Weile ruhig" heißt hier also sechs Stunden, nicht Tage.
+
+**Vor dem Löschen der Kopien geprüft.** Jede Kopie gegen die lebende Datei
+verglichen, bei der `.env` nur die NAMEN der Schlüssel: die Unterschiede sind
+Versionsnummern, Image-Zeilen, der alte Patch-Block der Override, die
+Neustart-Regel und Werte, die seither bewusst getauscht wurden. Der Schlüssel
+`_APP_OPENSSL_KEY_V1` ist in allen neun Kopien derselbe wie heute. Die zwei
+Skripte liegen bytegleich in `docs/archiv/skripte/`. `docker compose config
+-q` endet vor und nach dem Löschen mit 0, die drei lebenden Dateien sind
+unverändert (Prüfsumme), das Backup der Nacht war gut (`backup-status`:
+`ergebnis=ok`).
+
+**Beweis danach.** 18 von 18, API 200 mit 2.7.4 von außen und vom Server,
+Handshake 101, alle zehn Hosts gesund. Platte 40 % → 38 %.
+
+**Geblieben** (OPEN-ITEMS „AW30" d und e): der Ordner `~/backups` mit den
+Datenbank-Abzügen der letzten zwei Upgrades (stand nicht im Auftrag; trägt
+Personendaten) und die alten Patch-Dateien. Die Neustart-Regel bei einem
+Docker-Update ließ sich nicht beweisen: es wartet keines.
+
+**Gelernt:** Das Upgrade-Werkzeug und jeder Handgriff von Hand legen bei
+jedem Lauf zwei bis drei Kopien an, und niemand räumt sie ab — nach vier
+Monaten lagen 25 Kopien neben drei lebenden Dateien, neun davon mit allen
+Geheimnissen im Klartext. Aufräumen gehört in die Abschluss-Liste des
+jeweiligen Laufs, sobald das nächtliche Backup den neuen Stand trägt.
 
 ---
 
@@ -214,6 +397,9 @@ löscht kein Image, das ein Container benutzt — die Liste „in Benutzung"
 `openruntimes/executor:1.3.5` als Rückweg ohne neuen Abruf, die
 Laufzeit-Images für Functions (`openruntimes/node`, `flutter`, `static` — der
 Executor holt sie beim Start) und die Sicherungsdateien im Compose-Ordner.
+Nachtrag: die zwei Rückweg-Images und die Sicherungsdateien sind am selben
+Abend ebenfalls gelöscht (Eintrag „AW30 (d) — Rückweg-Images und
+Sicherungskopien" oben).
 
 **Gelernt:** Das Console-Image ist mit 4,3 GB je Version der größte Posten,
 nicht das Appwrite-Image (0,8 GB) — die Schätzung „rund 11 GB" aus dem
