@@ -131,6 +131,53 @@ describe('brandRunOwesRefund — nur der abgebrochene, gebuchte, leere Vorgänge
   })
 })
 
+describe('brandRunOwesRefund — verlorener Herzschlag (LL1 c, 2026-11-20)', () => {
+  const owed = JSON.stringify({ booked: true, created: 0 })
+
+  it('beendet mit `lease_lost` + gebucht + nichts abgelegt + nicht zurückgebucht ⇒ ja', () => {
+    expect(brandRunOwesRefund('failed', owed, 'lease_lost')).toBe(true)
+  })
+
+  it('GEGENPROBEN: jeder andere Grund hat selbst entschieden; fehlende Bedingungen ⇒ nein', () => {
+    for (const outcome of ['drafts_failed', 'reading_unavailable', 'failed', 'profile_gone', 'ai_endpoint_unavailable', '', null, undefined]) {
+      expect(brandRunOwesRefund('failed', owed, outcome), String(outcome)).toBe(false)
+    }
+    // `done` ist `done`, auch wenn dort je `lease_lost` stünde.
+    expect(brandRunOwesRefund('done', owed, 'lease_lost')).toBe(false)
+    expect(brandRunOwesRefund('running', owed, 'lease_lost')).toBe(false)
+    expect(brandRunOwesRefund('failed', JSON.stringify({ booked: false, created: 0 }), 'lease_lost')).toBe(false)
+    expect(brandRunOwesRefund('failed', JSON.stringify({ booked: true, created: 1 }), 'lease_lost')).toBe(false)
+    expect(brandRunOwesRefund('failed', JSON.stringify({ booked: true, created: 0, refunded: true }), 'lease_lost')).toBe(false)
+  })
+})
+
+describe('toBrandRunView — der Zähler rechnet eine geschuldete Rückbuchung ein (LL1 c, 2026-11-20)', () => {
+  const booked = { booked: true, created: 0, used: 3, limit: 3 }
+
+  it('abgebrochen ohne Ergebnis ⇒ die Seite zeigt den Lauf schon wieder; `refunded` bleibt die Tatsache an der Zeile', () => {
+    const view = toBrandRunView(row({ heartbeatAt: iso(-RUN_LEASE_STALL_MS - 1), detail: booked }), NOW)
+    expect(view.state).toBe('stalled')
+    expect(view.refunded).toBe(false)
+    expect(view.quota).toEqual({ used: 2, limit: 3, remaining: 1 })
+  })
+
+  it('Ende `lease_lost` ohne Ergebnis ⇒ ebenso', () => {
+    const view = toBrandRunView(row({ finishedAt: iso(0), outcome: 'lease_lost', detail: booked }), NOW)
+    expect(view.quota).toEqual({ used: 2, limit: 3, remaining: 1 })
+  })
+
+  it('GEGENPROBEN: läuft noch, hat abgelegt, eigener Grund ohne Vermerk, schon zurückgebucht ⇒ nichts doppelt', () => {
+    expect(toBrandRunView(row({ detail: booked }), NOW).quota).toEqual({ used: 3, limit: 3, remaining: 0 })
+    expect(toBrandRunView(row({ heartbeatAt: iso(-RUN_LEASE_STALL_MS - 1), detail: { ...booked, created: 2 } }), NOW).quota)
+      .toEqual({ used: 3, limit: 3, remaining: 0 })
+    expect(toBrandRunView(row({ finishedAt: iso(0), outcome: 'drafts_failed', detail: booked }), NOW).quota)
+      .toEqual({ used: 3, limit: 3, remaining: 0 })
+    // Schon zurückgebucht: genau EINER zurück, nicht zwei.
+    expect(toBrandRunView(row({ heartbeatAt: iso(-RUN_LEASE_STALL_MS - 1), detail: { ...booked, refunded: true } }), NOW).quota)
+      .toEqual({ used: 2, limit: 3, remaining: 1 })
+  })
+})
+
 describe('brandRunNoticeDue — eine Übersicht weist nur einen Tag lang auf einen alten Lauf hin', () => {
   it('gescheitert oder abgebrochen, vor weniger als einem Tag gestartet ⇒ ja', () => {
     expect(brandRunNoticeDue({ state: 'failed', startedAt: iso(-60_000) }, NOW)).toBe(true)

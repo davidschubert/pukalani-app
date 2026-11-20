@@ -239,6 +239,7 @@ beforeEach(() => {
   detached = Promise.resolve()
   generators.clearActiveBrandGenerations()
   vi.stubGlobal('useRateLimitStore', countingStore)
+  vi.stubGlobal('keepRunLeaseAlive', lease.keepRunLeaseAlive)
 })
 
 describe('Wer darf — Start und Liste', () => {
@@ -697,5 +698,106 @@ describe('GET …/mark/drafts — der Lauf-Stand', () => {
     const view = await read(event)
     expect(view.run.state).toBe('none')
     expect(view.items).toEqual([])
+  })
+})
+
+/**
+ * LL1 c (2026-11-20): VERLORENER HERZSCHLAG. Der Lauf lebt, konnte seine
+ * Zeile aber eine Minute lang nicht schreiben. Er legt dann nichts mehr ab
+ * und bucht bewusst nicht selbst zurück. Bis hierher buchte für ihn NIEMAND
+ * zurück, wenn in der Lücke keiner neu gestartet hatte: sein geschriebenes
+ * Ende galt als „gescheitert", und nur ein Vorgänger OHNE Ende schuldete
+ * eine Rückbuchung.
+ */
+describe('Verlorener Herzschlag — für diesen Lauf bucht der nächste Start zurück', () => {
+  function loseHeartbeat() {
+    vi.stubGlobal('keepRunLeaseAlive', () => ({ stop: () => {}, lost: () => true }))
+  }
+  function keepHeartbeat() {
+    vi.stubGlobal('keepRunLeaseAlive', lease.keepRunLeaseAlive)
+  }
+
+  it('NIEMAND STARTET IN DER LÜCKE: Ende `lease_lost` ⇒ die Seite zeigt den Lauf schon wieder, der nächste Start bucht genau einmal zurück', async () => {
+    loseHeartbeat()
+    await start(event)
+    await detached
+    const lostRow = await latestRow()
+    expect(lostRow?.outcome).toBe('lease_lost')
+    expect(created).toEqual([])
+    // Der Lauf selbst bucht nicht zurück: der Zähler steht noch auf eins.
+    expect(refunds).toEqual([])
+    expect(counts.get(NARROW)).toBe(1)
+    // Die Seite rechnet die geschuldete Rückbuchung schon ein: wieder 3 von 3.
+    expect((await read(event)).run).toMatchObject({
+      state: 'failed',
+      failure: 'lease_lost',
+      refunded: false,
+      quota: { used: 0, limit: 3, remaining: 3 },
+    })
+
+    keepHeartbeat()
+    const res = await start(event)
+    await detached
+    expect(refunds).toEqual([NARROW])
+    expect(parseBrandRunDetail(store.rows.get(lostRow!.$id)?.detail).refunded).toBe(true)
+    expect(logs.filter(entry => entry.name === 'brand.mark_drafts_stalled_refunded')).toHaveLength(1)
+    // Der Zähler des Vorgängers ist zurück, der neue Lauf zählt als der erste.
+    expect(res.quota).toEqual({ used: 1, limit: 3, remaining: 2 })
+
+    // GEGENPROBE: der übernächste Start bucht für niemanden mehr zurück.
+    await start(event)
+    await detached
+    expect(refunds).toEqual([NARROW])
+  })
+
+  it('IN DER LÜCKE HAT SCHON EIN ANDERER START ZURÜCKGEBUCHT ⇒ das Ende lässt den Vermerk stehen, niemand bucht ein zweites Mal', async () => {
+    loseHeartbeat()
+    let open = () => {}
+    runGate = new Promise<void>((resolve) => {
+      open = resolve
+    })
+    await start(event)
+    const firstRun = detached
+    for (let turn = 0; turn < 200 && runCalls < 1; turn++) await new Promise(resolve => setTimeout(resolve, 1))
+    const firstId = (await latestRow())!.$id
+
+    // Die Zeile sieht abgebrochen aus (Herzschlag älter als die Frist). Ein
+    // zweiter Start übernimmt, vermerkt und bucht zurück — und wird dann von
+    // der Drossel abgelehnt: seine eigene Zeile fällt wieder.
+    const stale = new Date(Date.now() - RUN_LEASE_STALL_MS - 60_000).toISOString()
+    store.rows.set(firstId, { ...store.rows.get(firstId)!, heartbeatAt: stale })
+    counts.set(ACCOUNT, 1000)
+    await expect(start(event)).rejects.toMatchObject({ status: 429 })
+    expect(refunds).toEqual([NARROW])
+    expect(parseBrandRunDetail(store.rows.get(firstId)?.detail).refunded).toBe(true)
+    counts.delete(ACCOUNT)
+
+    // Jetzt kommt der erste Lauf zurück und schreibt sein Ende.
+    open()
+    await firstRun
+    const ended = store.rows.get(firstId)
+    expect(ended?.outcome).toBe('lease_lost')
+    // Der Vermerk des Nachfolgers steht noch — das Ende hat kein Detail geschrieben.
+    expect(parseBrandRunDetail(ended?.detail)).toMatchObject({ booked: true, created: 0, refunded: true })
+
+    keepHeartbeat()
+    runGate = null
+    await start(event)
+    await detached
+    // Weiter genau EINE Rückbuchung für den einen Lauf.
+    expect(refunds).toEqual([NARROW])
+  })
+
+  it('GEGENPROBE: ein Lauf, der mit eigenem Grund scheitert, hat selbst zurückgebucht ⇒ der nächste Start bucht nicht noch einmal', async () => {
+    runResult = { images: [], model: 'm' }
+    await start(event)
+    await detached
+    expect((await latestRow())?.outcome).toBe('drafts_failed')
+    expect(refunds).toEqual([NARROW])
+
+    runResult = fourImages()
+    await start(event)
+    await detached
+    expect(refunds).toEqual([NARROW])
   })
 })
