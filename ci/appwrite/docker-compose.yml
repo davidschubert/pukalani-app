@@ -20,6 +20,12 @@
 #     Grund, warum diese Datei eigene Namen trägt.
 #  4. Volume `appwrite-builds` OHNE festen `name:` (sonst teilen sich CI und
 #     Entwicklung dasselbe Volume).
+#  5. REDIS LÄUFT EINEN PATCH VOR DER VORLAGE (seit 2026-11-20, Issue 376):
+#     `redis:7.4.12-alpine` statt `7.4.7-alpine`. Dieselbe Linie 7.4, nur
+#     Fehler- und Sicherheitskorrekturen. Beim nächsten Ableiten bleibt der
+#     höhere der beiden Stände stehen (Vorlage oder diese Zeile). Welche
+#     Version wirklich läuft, schreibt der E2E-Lauf in sein Protokoll
+#     (Schritt „Versionen im Verbund").
 #
 # GESTARTET wird nur ein Ausschnitt — die Liste steht in
 # .github/workflows/e2e.yml („Appwrite-Stack starten"). Der Rest der Dienste
@@ -1005,7 +1011,7 @@ services:
     networks:
     - appwrite
   redis:
-    image: redis:7.4.7-alpine
+    image: redis:7.4.12-alpine
     logging:
       driver: json-file
       options:
