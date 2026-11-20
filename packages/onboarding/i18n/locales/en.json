@@ -624,6 +624,7 @@
       "progress": "{done} of {total}",
       "dismiss": "Hide this list",
       "dismissFailed": "The list could not be hidden.",
+      "stepDone": "done",
       "steps": {
         "post": {
           "label": "Write the first post",

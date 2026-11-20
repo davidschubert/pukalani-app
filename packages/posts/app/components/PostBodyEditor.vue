@@ -128,7 +128,9 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   /** Cursor beim Montieren ans Textende setzen (Bearbeiten-Fall). */
   autofocus?: boolean
-}>(), { placeholder: '', autofocus: false })
+  /** Name der Schreibfläche für Hilfsmittel — siehe `PostBodyField`. */
+  label?: string
+}>(), { placeholder: '', autofocus: false, label: undefined })
 
 const model = defineModel<string>({ required: true })
 
@@ -172,9 +174,16 @@ const RULE_EXTENSIONS = [
  * Zeichenketten-Ersetzung: `transformPastedHTML` bekommt das rohe HTML, BEVOR
  * ProseMirror es liest — das kostet keine eigene Tiptap-Abhängigkeit.
  */
-const editorProps = {
+const editorProps = computed(() => ({
   transformPastedHTML: (html: string) => html.replace(/<hr\b[^>]*>/gi, ''),
-}
+  // Die Schreibfläche hatte eine Rolle (`textbox`, von Tiptap), aber keinen
+  // Namen (UX-004): ein Hilfsmittel las nur „Textfeld". `UEditor` mischt
+  // diese Attribute mit seinen eigenen (defu), es geht also nichts verloren.
+  attributes: {
+    'aria-multiline': 'true',
+    ...(props.label ? { 'aria-label': props.label } : {}),
+  },
+}))
 
 /**
  * Der Mention-Knoten, der zu GEWÖHNLICHEM TEXT serialisiert — siehe Kopf.

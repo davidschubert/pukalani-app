@@ -158,6 +158,7 @@ async function onSubmit(event: FormSubmitEvent<FormInput>) {
           :rows="expanded ? (parentId ? 2 : 3) : 1"
           autoresize
           :placeholder="parentId ? t('comments.form.replyPlaceholder') : t('comments.form.placeholder')"
+          :aria-label="parentId ? t('comments.form.replyPlaceholder') : t('comments.form.placeholder')"
           class="w-full"
           data-comment-input
           @focusin="() => { expanded = true; activateReply() }"

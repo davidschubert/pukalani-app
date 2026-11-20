@@ -196,6 +196,7 @@ async function submit() {
         v-if="type === 'post'"
         v-model="title"
         :placeholder="t('posts.composer.titlePlaceholder')"
+        :aria-label="t('posts.composer.titlePlaceholder')"
         size="lg"
         class="w-full"
         data-composer-title
@@ -212,6 +213,7 @@ async function submit() {
           <UInput
             v-model="options[index]"
             :placeholder="t('posts.composer.optionPlaceholder', { n: index + 1 })"
+            :aria-label="t('posts.composer.optionPlaceholder', { n: index + 1 })"
             class="flex-1"
           />
           <UButton
@@ -237,7 +239,7 @@ async function submit() {
           </UButton>
           <div class="flex items-center gap-2 text-sm text-muted">
             <span>{{ t('posts.composer.pollEnd') }}</span>
-            <UInput v-model="pollEndsAt" type="datetime-local" size="xs" />
+            <UInput v-model="pollEndsAt" type="datetime-local" size="xs" :aria-label="t('posts.composer.pollEnd')" />
           </div>
         </div>
       </div>
@@ -248,6 +250,7 @@ async function submit() {
           v-model="categorySelection"
           :items="categoryItems"
           :placeholder="t('posts.composer.categoryChoose')"
+          :aria-label="t('posts.composer.category')"
           size="xs"
           class="min-w-40"
         />
@@ -259,7 +262,7 @@ async function submit() {
       <div v-if="showSchedule" class="flex items-center gap-2 text-sm text-muted" data-composer-schedule>
         <UIcon name="i-ph-clock" class="size-4" />
         <span>{{ t('posts.composer.scheduleAt') }}</span>
-        <UInput v-model="scheduledAt" type="datetime-local" size="xs" />
+        <UInput v-model="scheduledAt" type="datetime-local" size="xs" :aria-label="t('posts.composer.scheduleAt')" />
       </div>
 
       <div class="flex justify-end">
