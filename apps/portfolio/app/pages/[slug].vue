@@ -124,7 +124,7 @@ const updatedHuman = computed<string | null>(() => {
   margin-top: clamp(2rem, 4vw, 3rem);
   padding-top: 1.2rem;
   border-top: 1px solid var(--line);
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.82rem;
 }
 .cms-page__body :deep(a) {

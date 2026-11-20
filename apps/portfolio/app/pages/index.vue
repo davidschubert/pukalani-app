@@ -472,7 +472,7 @@ usePortfolioSeo({
 }
 .hero__eyebrow {
   margin-top: 1.6rem;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .hero__title {
   margin-top: 0.9rem;
@@ -488,7 +488,7 @@ usePortfolioSeo({
 .hero__brands {
   margin-top: 1.1rem;
   max-width: 62ch;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.9rem;
 }
 .hero__brands strong {
@@ -538,7 +538,7 @@ usePortfolioSeo({
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .facts__value {
   margin-top: 0.4rem;
@@ -586,7 +586,7 @@ usePortfolioSeo({
   font-size: 1rem;
 }
 .service__duration {
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.8rem;
 }
 .service__cta {
@@ -622,7 +622,7 @@ usePortfolioSeo({
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 
 /* REFERENZEN ----------------------------------------------------------- */
@@ -645,7 +645,7 @@ usePortfolioSeo({
 }
 .quote-source {
   margin-top: 0.9rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.82rem;
 }
 
@@ -671,7 +671,7 @@ usePortfolioSeo({
 }
 .case__index {
   font-weight: 800;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.9rem;
 }
 .case__main {
@@ -700,7 +700,7 @@ usePortfolioSeo({
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--metal);
+  color: var(--metal-text);
   font-weight: 700;
 }
 .case__arrow {
@@ -748,7 +748,7 @@ usePortfolioSeo({
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .stackgroups__items {
   margin-top: 0.7rem;

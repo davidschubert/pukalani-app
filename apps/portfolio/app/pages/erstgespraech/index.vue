@@ -724,7 +724,7 @@ usePortfolioSeo({
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.86rem;
   font-weight: 700;
 }
@@ -762,7 +762,7 @@ usePortfolioSeo({
   margin-top: 2rem;
   padding-top: 1.4rem;
   border-top: 1px solid var(--line);
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.8rem;
 }
 
@@ -800,7 +800,7 @@ usePortfolioSeo({
 }
 .field__hint {
   margin-top: 0.35rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.82rem;
 }
 .field__error {
@@ -886,7 +886,7 @@ usePortfolioSeo({
   border-color: var(--accent);
 }
 .input::placeholder {
-  color: var(--metal);
+  color: var(--metal-text);
 }
 .input--area {
   max-width: 44rem;

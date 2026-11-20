@@ -275,7 +275,7 @@ usePortfolioSeo({
 }
 .tier__audience {
   margin-top: 0.3rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.85rem;
 }
 .tier__price {
@@ -287,7 +287,7 @@ usePortfolioSeo({
 }
 .tier__meta {
   margin-top: 0.5rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.8rem;
 }
 .tier__list {
@@ -327,7 +327,7 @@ usePortfolioSeo({
 }
 .quote__source {
   margin-top: 0.8rem;
-  color: var(--metal);
+  color: var(--metal-text);
   font-size: 0.82rem;
 }
 .faq--top {
