@@ -2,13 +2,13 @@
   "marketing": {
     "meta": {
       "title": "Pukalani – Your own community platform, privacy-first",
-      "description": "Posts, courses, events and comments under your own brand and domain. Privacy-first, hosted in Germany, no ad tracking. The lean alternative to Circle & Skool. Start free."
+      "description": "Posts, courses, events and comments under your own brand and domain. Privacy-first, hosted in Germany, no ad tracking. The lean alternative to Circle & Skool. Try it free for 14 days."
     },
     "hero": {
       "eyebrow": "Your community platform, privacy-first",
       "title": "Your community. Your courses. Your rules.",
       "sub": "Posts, courses, events and comments under your own name and design. Hosted in Germany, no ad tracking. The lean, fair alternative to bloated community suites.",
-      "ctaPrimary": "Start free",
+      "ctaPrimary": "Try free for 14 days",
       "ctaRequest": "Request access",
       "ctaHasCode": "I have a code",
       "ctaSecondary": "See the live demo",
@@ -134,7 +134,7 @@
     "privacy": {
       "kicker": "Privacy & hosting",
       "title": "Privacy is the standard here – not the upgrade.",
-      "lead": "Your community data lives in Germany, not in some far-away cloud. No ad tracking, no reselling – data-minimal by design.",
+      "lead": "Your community's database lives in Germany, on servers we run ourselves. No ad tracking, no reselling – data-minimal by design.",
       "points": [
         {
           "icon": "i-ph-flag-bold",
@@ -162,7 +162,7 @@
     "products": {
       "backHome": "Back to home",
       "highlightsTitle": "What's inside",
-      "ctaTitle": "Try it – free",
+      "ctaTitle": "Try it – 14 days free",
       "ctaLead": "Your community stands in 60 seconds. You decide after that.",
       "items": {
         "diskussionen": {
@@ -337,7 +337,7 @@
         }
       ],
       "ctaTitle": "Read enough?",
-      "ctaLead": "Start your community for free – you can explain it afterwards."
+      "ctaLead": "Try your community free for 14 days – you can explain it afterwards."
     },
     "switch": {
       "metaTitle": "Switching from Circle or Skool – move without risk",
@@ -352,7 +352,7 @@
         {
           "n": "1",
           "title": "Start in parallel",
-          "text": "Create your Pukalani community for free – your old platform keeps running untouched. No risk, no deadline."
+          "text": "Create your Pukalani community and try it free for 14 days – your old platform keeps running untouched. No risk, no deadline."
         },
         {
           "n": "2",
@@ -377,7 +377,7 @@
         "Your domain, your design – your community is named after you",
         "No lock-in: account export, community export and deletion are built in, not sold to you"
       ],
-      "ctaTitle": "Start in parallel – free",
+      "ctaTitle": "Start in parallel – 14 days free",
       "ctaLead": "Create first, decide later. The old platform stays until you're sure."
     },
     "gdpr": {
@@ -393,7 +393,7 @@
         {
           "icon": "i-ph-flag-bold",
           "title": "Where your data lives",
-          "text": "On servers in Germany (Hetzner). We run the database self-hosted – there is no US cloud in your community's data path."
+          "text": "We run the database ourselves, on servers in Germany (Hetzner). For bot protection, email, payment and AI assistance we use service providers."
         },
         {
           "icon": "i-ph-eye-slash-bold",
@@ -437,7 +437,7 @@
           "why": "We back up regularly. We'll publish a commitment on recovery time and maximum data loss only once a documented restore test stands behind it."
         }
       ],
-      "ctaTitle": "Start your community – free",
+      "ctaTitle": "Start your community – 14 days free",
       "ctaLead": "Try it free for 14 days, export anytime, delete anytime."
     },
     "audience": {
@@ -473,12 +473,12 @@
       "fitTitle": "Why Pukalani fits here",
       "blocksTitle": "The products you need for this",
       "ctaTitle": "Sounds like you?",
-      "ctaLead": "Start free – your community stands in 60 seconds.",
+      "ctaLead": "Try it free for 14 days – your community stands in 60 seconds.",
       "items": {
         "coaches": {
           "name": "Coaches & trainers",
           "metaTitle": "Community platform for coaches – privacy-first, hosted in Germany",
-          "metaDescription": "A protected place for participants: comments, courses and meetups under your name. Hosted in Germany, no ad tracking. Start free.",
+          "metaDescription": "A protected place for participants: comments, courses and meetups under your name. Hosted in Germany, no ad tracking. Try it free for 14 days.",
           "title": "Your community as a coach or trainer",
           "sub": "A place where your participants discuss, learn and meet – and that YOU steer.",
           "intro": "When guidance fades because the WhatsApp group turns into noise, your programme loses its effect. Your own community holds people together: questions land visibly, answers stay findable, dates live in one place.",
@@ -508,11 +508,11 @@
         "vereine": {
           "name": "Clubs & organisations",
           "metaTitle": "Community software for clubs – hosted in Germany, privacy-first",
-          "metaDescription": "A members' area with comments, announcements and dates – hosted in Germany, data-minimal, no ad tracking. Start free.",
+          "metaDescription": "A members' area with comments, announcements and dates – hosted in Germany, data-minimal, no ad tracking. Try it free for 14 days.",
           "title": "Members, dates and exchange in one place",
           "sub": "A members' area that non-technical people can run – hosted in Germany.",
           "intro": "Mass emails, three chat groups and a PDF calendar: that's how you lose members instead of involving them. One calm, shared place replaces it – without anyone having to maintain a server.",
-          "fit": "No ops, no plugin tinkering: you create the community and get going. Data sits in Germany, roles clearly govern who moderates, writes or just reads – and getting started is free.",
+          "fit": "No ops, no plugin tinkering: you create the community and get going. Data sits in Germany, roles clearly govern who moderates, writes or just reads – and you can try it free for 14 days.",
           "blocks": "Comments · moderation · pages & branding · events later"
         }
       }
@@ -521,7 +521,7 @@
       "kicker": "An honest comparison",
       "title": "Compared honestly. Including where we're (not yet) the answer.",
       "lead": "We only compare what we can back up — with sources and a date. Where we're weaker, it says so right here.",
-      "asOf": "As of 24 July 2026 · from the providers' own pricing pages, reviewed quarterly",
+      "asOf": "As of 24 July 2026 · from the providers' own pricing pages",
       "sources": "Sources:",
       "criterion": "Criterion",
       "us": "Pukalani",
@@ -583,7 +583,7 @@
       "backHome": "Back to home",
       "whenThemTitle": "When {name} is the better choice",
       "whenUsTitle": "When Pukalani fits",
-      "ctaTitle": "Start your community – free",
+      "ctaTitle": "Start your community – 14 days free",
       "ctaLead": "No risk, no minimum term, data export included.",
       "items": {
         "circle": {
@@ -759,9 +759,9 @@
     },
     "cta": {
       "title": "Ready for your own community?",
-      "lead": "Step through the door – your community stands in 60 seconds. Free, no risk.",
+      "lead": "Step through the door – your community stands in 60 seconds. Free for 14 days, no risk.",
       "leadGated": "Step through the gate. During early access you still need an invitation — request one and we'll get back to you.",
-      "primary": "Start free",
+      "primary": "Try free for 14 days",
       "secondary": "See the live demo",
       "refrain": "“Where the sun breaks through.”"
     },
@@ -974,15 +974,15 @@
       "visit": "Visit",
       "items": {
         "comments": {
-          "name": "comments.pukalani.app",
-          "what": "Comments (guests included), moderation and the embed widget in daily use — with live presence."
+          "name": "demo.pukalani.app · discussion",
+          "what": "Comments and replies under a post in the demo community. The content is sample content, the technology is the same as yours."
         },
         "demo": {
           "name": "demo.pukalani.app",
-          "what": "A real pool community: created with one click in the studio, own host, own data space — exactly the path you take."
+          "what": "A community like yours: set up in a minute, its own address, its own data space — exactly the path you take."
         },
         "portfolio": {
-          "name": "portfolio.pukalani.app",
+          "name": "pukalani.studio",
           "what": "The same platform in a completely different design — proof that branding doesn't stop at an accent colour."
         },
         "changelog": {

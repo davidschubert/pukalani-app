@@ -6,7 +6,7 @@
       "request": "Request access",
       "hasCode": "I have a code",
       "signIn": "Sign in",
-      "start": "Start free",
+      "start": "Try free for 14 days",
       "menu": "Open menu",
       "menuClose": "Close menu",
       "aria": {
@@ -82,7 +82,7 @@
       "colProduct": "Product",
       "colCompany": "About",
       "colLegal": "Legal",
-      "start": "Start free",
+      "start": "Try free for 14 days",
       "demo": "Live demo",
       "help": "Help",
       "changelog": "Changelog",

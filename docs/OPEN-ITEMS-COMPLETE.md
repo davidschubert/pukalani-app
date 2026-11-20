@@ -30,6 +30,73 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q02 — Öffentliche Aussagen richtiggestellt (BRD-002, BRD-003, BRD-004, BRD-005, BRD-009, GEO-004) ✅ 2026-11-20
+
+**Was.** Werbesätze, die dem Stand hinterherhinkten, sind ersetzt — in beiden
+Sprachen und in allen Kopien (Beschreibung im Seitenkopf, og-Angaben,
+strukturierte Daten, `llms.txt`). Wortlaut nach Davids Entscheidung vom
+2026-11-20; kein Rechtstext wurde angefasst.
+
+- **pukalani.app, Datenstandort** (`apps/marketing`, Seite zum Datenschutz):
+  statt „keine US-Cloud im Datenpfad" steht „Die Datenbank betreiben wir
+  selbst, auf Servern in Deutschland (Hetzner). Für Bot-Schutz, E-Mail, Zahlung
+  und KI-Hilfen setzen wir Dienstleister ein." Der verwandte Satz „nicht in
+  einer fernen Cloud" auf der Startseite sagt jetzt dasselbe.
+- **pukalani.app, „Kostenlos starten"**: überall, wo die eigene Community
+  gemeint ist, steht „14 Tage kostenlos testen" (vierzehn Texte in
+  `apps/marketing`, darunter drei Beschreibungen für Suchmaschinen, und die
+  Knöpfe in Kopf und Fuß aus `packages/marketing`). Die strukturierten Daten der
+  Startseite lesen dieselben Schlüssel und ziehen von selbst mit.
+- **pukalani.app, „Wir nutzen es selbst"**: die erste Karte zeigt auf einen
+  Beitrag der Demo-Community mit fünf sichtbaren Kommentaren und sagt, dass die
+  Inhalte Beispiele sind; die Karte zur Demo kommt ohne interne Wörter aus und
+  sagt in beiden Sprachen dasselbe; die dritte Karte heißt `pukalani.studio`
+  und zeigt direkt dorthin.
+- **pukalani.app, Vergleichstabelle**: „quartalsweise geprüft" ist gestrichen
+  (die Prüfung war überfällig), das Datum der Angaben bleibt stehen.
+- **branding.supply**: die Beschreibung für Suchmaschinen endet nicht mehr mit
+  „Geschlossene Beta."; die Team-Texte nennen keine Zahl mehr, die nicht zu den
+  elf Karten passt; der Hinweis „noch kein Zugang" im Wizard behauptet keine
+  geschlossene Beta mehr. Die zwei Sätze, die an `signupOpen` hängen
+  (`home.beta`, `brand.invite.betaText`), bleiben: sie erscheinen nur, wenn die
+  Registrierung wirklich geschlossen ist.
+- **pukalani.studio**: die vier Kennzahlen, die David nicht als belegt genannt
+  hat („+73 % Conversion", „+156 % organischer Traffic", „500 Beta-User in
+  Woche 1", „Series A erfolgreich"), sind heraus — aus den Fallbeispielen, aus
+  den drei Leistungs-Karten, aus dem Einleitungssatz, aus einer Kundenstimme
+  und aus der `llms.txt`. An ihrer Stelle steht, was das Fallbeispiel selbst
+  beschreibt (zum Beispiel „Checkout in drei Schritten"); jedes Fallbeispiel
+  hat weiter Titel und drei Ergebnis-Marken.
+
+**Beweis.** Gegenprobe im Repo (leer bis auf Code-Kommentare und die zwei
+Schalter-Sätze):
+
+```
+rg -n -i "US-Cloud|US cloud|kostenlos starten|start free|starten – kostenlos|einstieg ist kostenlos|Geschlossene Beta\.|Closed beta\.|pool-community|im Control angelegt|in the studio|comments\.pukalani\.app|\+ ?73|\+ ?156|500 beta|Series A|quartalsweise geprüft|reviewed quarterly" \
+  apps/marketing apps/branding apps/portfolio packages/marketing/i18n packages/brand/i18n -g '!*.md'
+```
+
+Der Beitrag der Demo-Community antwortet von außen mit 200 und zeigt
+„Comments (5)" samt fünf Texten im ausgelieferten HTML.
+
+**Nicht erledigt, bewusst.** Die übrigen Zahlen der Fallbeispiele (zum Beispiel
+„−41 % Kaufabbrüche", „+84 % Anfragen", „+43 % Feature-Adoption") stehen
+weiter: Davids Entscheidung nannte vier, über die anderen ist nicht
+entschieden (OPEN-ITEMS W2–W4 c). Die Liste der Dienstleister auf der Seite
+zum Datenschutz wartet auf DT1.
+
+**Gelernt:** Derselbe Satz stand an bis zu sechzehn Stellen von Hand — Knopf,
+Fließtext, Beschreibung, `llms.txt` — und die Zahl im Befund („14") stimmte
+nicht. Vor dem Ersetzen deshalb nie der Liste eines Befunds trauen, sondern
+nach dem KERNWORT suchen („kostenlos", „free"), nicht nach dem ganzen Satz:
+neun der Stellen sagten dasselbe in anderen Worten („der Einstieg ist
+kostenlos", „Parallel starten – kostenlos"). Und eine Karte, die auf einen
+einzelnen Beitrag zeigt, hängt an dessen Kennung: wird die Demo neu befüllt,
+bricht der Link still — die Stelle steht dafür mit Kommentar in
+`ProofSection.vue`.
+
+---
+
 ### AW30 (d) — Rückweg-Images und Sicherungskopien auf appwrite-prod gelöscht ✅ 2026-11-20
 
 **Was.** Davids Auftrag vom Abend des 2026-11-20: die zwei Images, die als

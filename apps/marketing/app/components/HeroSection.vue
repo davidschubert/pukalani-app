@@ -13,7 +13,7 @@ const { trackFunnel } = useFunnelEvent()
  * Tor führt der Haupt-Knopf deshalb dorthin, wo man wirklich etwas erreicht
  * (Zugang anfragen), und daneben steht der Weg für die, die schon eingeladen
  * sind. Macht der Betreiber das Tor auf, steht hier wieder der eine
- * „Kostenlos starten"-Knopf — ohne Text-Deploy.
+ * „14 Tage kostenlos testen"-Knopf — ohne Text-Deploy.
  */
 const gate = useOnboardingGate()
 

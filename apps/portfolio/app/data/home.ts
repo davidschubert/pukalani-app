@@ -330,8 +330,8 @@ const SERVICE_DETAILS: Record<ServiceId, ServiceDetail> = {
       ],
     },
     result: {
-      de: 'Referenzprojekt: +73 % Conversion nach Umsetzung',
-      en: 'Reference project: +73% conversion after implementation',
+      de: 'Ergebnis: priorisierte Maßnahmenliste mit Quick Wins',
+      en: 'Outcome: a prioritised action list with quick wins',
     },
     price: { de: '€2.500 – €5.000', en: '€2,500 – €5,000' },
     duration: { de: '1–2 Wochen', en: '1–2 weeks' },
@@ -362,8 +362,8 @@ const SERVICE_DETAILS: Record<ServiceId, ServiceDetail> = {
       ],
     },
     result: {
-      de: 'Referenzprojekt: Ø +73 % Conversion nach Redesign',
-      en: 'Reference project: +73% conversion on average after the redesign',
+      de: 'Referenzprojekt: Checkout von sieben auf drei Schritte verkürzt',
+      en: 'Reference project: checkout cut from seven steps to three',
     },
     price: { de: '€5.000 – €12.000', en: '€5,000 – €12,000' },
     duration: { de: '2–3 Wochen', en: '2–3 weeks' },
@@ -394,8 +394,8 @@ const SERVICE_DETAILS: Record<ServiceId, ServiceDetail> = {
       ],
     },
     result: {
-      de: 'Referenzprojekt: +156 % organischer Traffic',
-      en: 'Reference project: +156% organic traffic',
+      de: 'Referenzprojekt: barrierefreier Mobile-First-Relaunch',
+      en: 'Reference project: accessible mobile-first relaunch',
     },
     price: { de: '€15.000 – €35.000', en: '€15,000 – €35,000' },
     duration: { de: '6–12 Wochen', en: '6–12 weeks' },
@@ -559,8 +559,8 @@ export const CASE_STUDIES: CaseStudy[] = [
   },
   {
     title: {
-      de: '+73 % Conversion: E-Commerce Checkout-Optimierung',
-      en: '+73% conversion: e-commerce checkout optimisation',
+      de: 'Drei statt sieben Schritte: E-Commerce Checkout-Optimierung',
+      en: 'Three steps instead of seven: e-commerce checkout optimisation',
     },
     tags: ['E-Commerce', 'CRO', 'Mobile'],
     challenge: {
@@ -572,14 +572,14 @@ export const CASE_STUDIES: CaseStudy[] = [
       en: 'Checkout cut from seven steps to three, form UX improved, trust elements added.',
     },
     results: {
-      de: ['+73 % Conversion', '−41 % Kaufabbrüche', 'LCP 1,8 s'],
-      en: ['+73% conversion', '−41% cart abandonment', 'LCP 1.8 s'],
+      de: ['Checkout in drei Schritten', '−41 % Kaufabbrüche', 'LCP 1,8 s'],
+      en: ['Three-step checkout', '−41% cart abandonment', 'LCP 1.8 s'],
     },
   },
   {
     title: {
-      de: '+156 % organischer Traffic: Corporate Website Relaunch',
-      en: '+156% organic traffic: corporate website relaunch',
+      de: 'Barrierefrei und mobile-first: Corporate Website Relaunch',
+      en: 'Accessible and mobile-first: corporate website relaunch',
     },
     tags: ['Corporate', 'WCAG 2.1 AA', 'SEO'],
     challenge: {
@@ -591,8 +591,8 @@ export const CASE_STUDIES: CaseStudy[] = [
       en: 'Mobile-first relaunch to WCAG 2.1 AA with SEO optimisation and fast load times.',
     },
     results: {
-      de: ['+156 % organischer Traffic', '+84 % Anfragen', 'PageSpeed 94'],
-      en: ['+156% organic traffic', '+84% enquiries', 'PageSpeed 94'],
+      de: ['Mobile-First-Relaunch', '+84 % Anfragen', 'PageSpeed 94'],
+      en: ['Mobile-first relaunch', '+84% enquiries', 'PageSpeed 94'],
     },
   },
   {
@@ -610,8 +610,8 @@ export const CASE_STUDIES: CaseStudy[] = [
       en: 'A complete design system, user testing and a developer-ready Figma library, delivered in sprints.',
     },
     results: {
-      de: ['Launch in 12 Wochen', '500 Beta-User in Woche 1', 'Series A erfolgreich'],
-      en: ['Launched in 12 weeks', '500 beta users in week 1', 'Series A closed'],
+      de: ['Launch in 12 Wochen', 'Komplettes Design System', 'Developer-ready Figma Library'],
+      en: ['Launched in 12 weeks', 'Complete design system', 'Developer-ready Figma library'],
     },
   },
 ]
@@ -619,8 +619,8 @@ export const CASE_STUDIES: CaseStudy[] = [
 export const TESTIMONIALS: Testimonial[] = [
   {
     text: {
-      de: '+73 % Conversion in sechs Wochen. David verbindet UX-Design, Technik und Business-KPIs – genau das, was wir brauchten.',
-      en: '+73% conversion in six weeks. David connects UX design, engineering and business KPIs — exactly what we needed.',
+      de: 'David verbindet UX-Design, Technik und Business-KPIs – genau das, was wir brauchten.',
+      en: 'David connects UX design, engineering and business KPIs — exactly what we needed.',
     },
     attribution: {
       de: 'Co-Founder eines SaaS-Start-ups, Berlin',
@@ -1015,8 +1015,8 @@ export const SECTIONS = {
       en: 'Selected work: case studies from SaaS, e-commerce & corporate websites',
     },
     lead: {
-      de: 'Ausgewählte Projekte mit messbaren Ergebnissen – von +43 % Feature-Adoption in einem SaaS-Dashboard bis +73 % Conversion nach einem Checkout-Redesign. Aus Vertraulichkeitsgründen anonymisiert; Details und weitere Referenzen gern im persönlichen Gespräch.',
-      en: 'Selected projects with measurable outcomes — from +43% feature adoption in a SaaS dashboard to +73% conversion after a checkout redesign. Anonymised for confidentiality; we are happy to share details and further references in a call.',
+      de: 'Ausgewählte Projekte mit messbaren Ergebnissen – von +43 % Feature-Adoption in einem SaaS-Dashboard bis zu einem Checkout mit drei statt sieben Schritten. Aus Vertraulichkeitsgründen anonymisiert; Details und weitere Referenzen gern im persönlichen Gespräch.',
+      en: 'Selected projects with measurable outcomes — from +43% feature adoption in a SaaS dashboard to a checkout cut from seven steps to three. Anonymised for confidentiality; we are happy to share details and further references in a call.',
     },
   },
   ownWork: {
