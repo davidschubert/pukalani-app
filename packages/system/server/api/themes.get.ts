@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
+import { softFail } from '../../../core/server/utils/softFail'
 
 type CustomThemeRow = Models.Row & { name: string, primary: string, order: number, config?: string | null, variants?: string | null }
 
@@ -32,12 +33,12 @@ export default defineEventHandler(async (event) => {
       databaseId,
       tableId: 'custom_themes',
       queries: [Query.orderAsc('order'), Query.limit(100)],
-    }).then(res => res.rows).catch(() => [] as CustomThemeRow[]),
+    }).then(res => res.rows).catch(softFail('system:api/themes.get:listRows', [] as CustomThemeRow[])),
     admin.tablesDB.getRow<Models.Row & { themeSettings?: string | null }>({
       databaseId,
       tableId: 'app_config',
       rowId: 'global',
-    }).then(row => row.themeSettings).catch(() => null),
+    }).then(row => row.themeSettings).catch(softFail('system:api/themes.get:getRow', null)),
   ])
 
   const settings = parseJson<Record<string, unknown>>(settingsRaw) ?? {}
