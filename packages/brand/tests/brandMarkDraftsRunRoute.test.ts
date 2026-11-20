@@ -36,6 +36,9 @@ let runCalls = 0
 let hasBrief = true
 let createThrowsAt = -1
 let createCalls = 0
+/** Hält das Ablegen VOR dem Entwurf mit dieser Nummer auf (0 = vor dem ersten). */
+let createGateAt = -1
+let createGate: Promise<void> | null = null
 let created: { title: string }[] = []
 /** Was `listBrandMarkDrafts` je Aufruf liefert (letzter Eintrag bleibt). */
 let listings: unknown[][] = [[]]
@@ -68,6 +71,7 @@ vi.mock('../server/utils/brandMarkDrafts', async () => ({
   brandMarkDraftsFree: (entries: unknown[]) => Math.max(0, 12 - entries.length),
   brandMarkDraftsStubEnabled: () => true,
   createBrandMarkDraft: async (_event: unknown, input: { title: string }) => {
+    if (createGate && createCalls === createGateAt) await createGate
     if (createCalls++ === createThrowsAt) throw new Error('storage down')
     created.push({ title: input.title })
   },
@@ -217,6 +221,8 @@ beforeEach(() => {
   hasBrief = true
   createThrowsAt = -1
   createCalls = 0
+  createGateAt = -1
+  createGate = null
   created = []
   listings = [[]]
   listCalls = 0
@@ -542,6 +548,121 @@ describe('Der abgebrochene Vorgänger — die Rückbuchung holt der nächste Sta
     await detached
     expect(refunds).toEqual([])
     expect(logs.some(entry => entry.name === 'brand.mark_drafts_stalled_refund_failed')).toBe(true)
+  })
+})
+
+/**
+ * LL1 c (2026-11-20): die Zahl der abgelegten Entwürfe steht SOFORT an der
+ * Lauf-Zeile, nicht erst am Ende. Vorher sah ein Nachfolger nach einem
+ * Absturz zwischen Ablegen und Ende „nichts abgelegt" und buchte für einen
+ * Lauf mit Ergebnis zurück.
+ *
+ * „Stirbt" heißt hier: der Lauf bleibt an einer Stelle stehen (Tor), und sein
+ * Herzschlag wird alt gestellt — genau das sieht der nächste Start nach einem
+ * Ausliefern oder Absturz. Am Ende geht das Tor auf, damit der Test keinen
+ * hängenden Lauf zurücklässt.
+ */
+describe('Der Lauf stirbt mittendrin — was der nächste Start an der Zeile findet', () => {
+  /** Den laufenden Lauf wie abgestürzt aussehen lassen: Herzschlag älter als die Frist. */
+  async function letHeartbeatDie() {
+    const row = await latestRow()
+    const at = new Date(Date.now() - RUN_LEASE_STALL_MS - 60_000).toISOString()
+    store.rows.set(row!.$id, { ...store.rows.get(row!.$id)!, heartbeatAt: at })
+  }
+
+  /** Warten, bis der Lauf an seinem Tor steht (er rechnet hinter der Antwort). */
+  async function untilStanding(reached: () => boolean) {
+    for (let turn = 0; turn < 200 && !reached(); turn++) await new Promise(resolve => setTimeout(resolve, 1))
+    expect(reached()).toBe(true)
+  }
+
+  it('ABGELEGT, DANN ABGEBROCHEN ⇒ die Zahl steht schon an der Zeile, der nächste Start bucht NICHT zurück', async () => {
+    let open = () => {}
+    createGate = new Promise<void>((resolve) => {
+      open = resolve
+    })
+    // Der erste Entwurf wird abgelegt, vor dem zweiten bleibt der Lauf stehen.
+    createGateAt = 1
+
+    await start(event)
+    const firstRun = detached
+    await untilStanding(() => created.length === 1 && createCalls === 1)
+    // Der Lauf ist NICHT zu Ende — und trotzdem nennt die Zeile den Entwurf.
+    const row = await latestRow()
+    expect(row?.finishedAt).toBe('')
+    expect(parseBrandRunDetail(row?.detail).created).toBe(1)
+
+    await letHeartbeatDie()
+    expect((await read(event)).run.state).toBe('stalled')
+
+    await start(event)
+    expect(refunds).toEqual([])
+    expect(logs.some(entry => entry.name === 'brand.mark_drafts_stalled_refunded')).toBe(false)
+    // Beide Läufe sind gebucht: der abgebrochene mit Ergebnis und der neue.
+    expect(counts.get(NARROW)).toBe(2)
+
+    open()
+    await Promise.all([firstRun, detached])
+  })
+
+  it('GEGENPROBE: NICHTS ABGELEGT, dann abgebrochen ⇒ der nächste Start bucht genau einmal zurück', async () => {
+    let open = () => {}
+    runGate = new Promise<void>((resolve) => {
+      open = resolve
+    })
+
+    await start(event)
+    const firstRun = detached
+    await untilStanding(() => runCalls === 1)
+    expect(parseBrandRunDetail((await latestRow())?.detail)).toMatchObject({ booked: true, created: 0 })
+    const stalledId = (await latestRow())!.$id
+
+    await letHeartbeatDie()
+    // Der neue Lauf soll nicht am selben Tor stehen bleiben.
+    runGate = null
+    await start(event)
+    const secondRun = detached
+    expect(refunds).toEqual([NARROW])
+    expect(parseBrandRunDetail(store.rows.get(stalledId)?.detail).refunded).toBe(true)
+    // Der Zähler des Vorgängers ist zurück, der neue Lauf zählt als der eine.
+    expect(counts.get(NARROW)).toBe(1)
+
+    open()
+    await Promise.all([firstRun, secondRun])
+    // Es bleibt bei der EINEN Rückbuchung für den abgebrochenen Lauf.
+    expect(refunds).toEqual([NARROW])
+  })
+
+  it('nach JEDEM abgelegten Bild steht die neue Zahl an der Zeile', async () => {
+    const seen: number[] = []
+    const update = store.update.bind(store)
+    store.update = async (id, data) => {
+      const row = await update(id, data)
+      if (data.detail !== undefined && !row.finishedAt) seen.push(parseBrandRunDetail(row.detail).created)
+      return row
+    }
+    await start(event)
+    await detached
+    // 0 beim Buchen (`booked`), dann 1, 2, 3, 4 — je Bild ein Zwischenstand.
+    expect(seen).toEqual([0, 1, 2, 3, 4])
+    expect((await latestRow())?.outcome).toBe('done')
+  })
+
+  it('ein gestörter Zwischenstand bricht das Ablegen nicht ab (fail-soft) — das Ende schreibt die Zahl', async () => {
+    const update = store.update.bind(store)
+    store.update = async (id, data) => {
+      // Nur die Zwischenstände scheitern: Detail mit Entwürfen, noch kein Ende.
+      if (data.detail !== undefined && data.finishedAt === undefined && parseBrandRunDetail(data.detail).created > 0) {
+        throw new Error('update failed')
+      }
+      return await update(id, data)
+    }
+    await start(event)
+    await detached
+    expect(created).toHaveLength(4)
+    expect((await latestRow())?.outcome).toBe('done')
+    expect(parseBrandRunDetail((await latestRow())?.detail).created).toBe(4)
+    expect(refunds).toEqual([])
   })
 })
 
