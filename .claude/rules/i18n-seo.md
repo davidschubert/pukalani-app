@@ -84,4 +84,10 @@ paths:
   Schriften der backenden Maschine). Der Schlüssel in der URL ist NIE Eingabe
   (sonst füllt ein Bot mit erfundenen Schlüsseln die Platte), sondern nur
   Cache-Brecher; Ablage in tmpdir(), nie in .output (Release-Slots wechseln
-  den Pfad)
+  den Pfad). EINE SITE OHNE EIGENES BILD JE SEITE trägt ein festes Bild
+  in ihrer `app.vue` ein (`useBrandOgImage().value = { path: '/og/…' }`,
+  committete Datei unter `public/og/`; pukalani.studio, Hilfe und
+  branding.supply — die letzten zwei erzeugt `scripts/og-site-cards.mjs`).
+  SITEMAP-LISTEN VON HAND brauchen einen Vergleichstest gegen den
+  Seiten-Ordner (marketing, branding, portfolio haben einen); die Hilfe baut
+  ihre Sitemap aus den Inhalten.

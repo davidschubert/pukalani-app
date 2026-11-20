@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   BRANDING_ROUTES,
@@ -32,6 +35,12 @@ describe('branding: die feste Routen-Liste', () => {
       '/erstgespraech',
       '/brand-check/ranking',
       '/brand-check/methodik',
+      '/products',
+      '/products/brand-check',
+      '/products/brand-foundation',
+      '/products/brand-design',
+      '/products/brand-book-kit',
+      '/products/market-comparison',
       '/about',
       '/team',
     ])
@@ -211,5 +220,72 @@ describe('branding: Sitemap-Einträge mit nur EINER Sprache', () => {
     const withBoth = brandingSitemapXml('https://x', [{ path: '/about', priority: 0.5, locales: ['en', 'de'] }])
     const without = brandingSitemapXml('https://x', [{ path: '/about', priority: 0.5 }])
     expect(withBoth).toBe(without)
+  })
+})
+
+/**
+ * LISTE GEGEN SEITEN-ORDNER (SEO-006, 2026-11-20). Die feste Liste wird von
+ * Hand geführt — das ist begründet (noindex-Seiten, Seiten hinter Anmeldung),
+ * aber ohne Vergleich driftet sie: die sechs Produktseiten standen zehn Wochen
+ * im Hauptmenü und nicht in der Sitemap. Geprüft werden die EIGENEN Seiten der
+ * App (`app/pages`); die Seiten der Layer stehen oben als ausgeschriebene
+ * Liste mit ihren Ausschlüssen.
+ */
+describe('branding: jede Seite der App steht in der Liste', () => {
+  const pagesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'pages')
+
+  function pageFiles(dir: string, prefix = ''): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap(entry =>
+      entry.isDirectory()
+        ? pageFiles(join(dir, entry.name), `${prefix}${entry.name}/`)
+        : entry.name.endsWith('.vue') ? [`${prefix}${entry.name}`] : [])
+  }
+
+  /** `products/index.vue` → `/products`, `about.vue` → `/about`, `index.vue` → `/`. */
+  function filePath(file: string): string {
+    const path = `/${file.replace(/\.vue$/, '').replace(/(^|\/)index$/, '')}`.replace(/\/$/, '')
+    return path === '' ? '/' : path
+  }
+
+  /** Die Adressen einer Seite: aus `defineI18nRoute({ paths })`, sonst aus dem Dateipfad. */
+  function pageUrls(file: string): { en: string, de: string } {
+    const source = readFileSync(join(pagesDir, file), 'utf8')
+    const en = /defineI18nRoute\(\{\s*paths:\s*\{[^}]*\ben:\s*'([^']+)'/.exec(source)?.[1]
+    const de = /defineI18nRoute\(\{\s*paths:\s*\{[^}]*\bde:\s*'([^']+)'/.exec(source)?.[1]
+    const fallback = filePath(file)
+    return { en: en ?? fallback, de: `/de${(de ?? fallback) === '/' ? '' : (de ?? fallback)}` }
+  }
+
+  const files = pageFiles(pagesDir)
+
+  it('findet die Seiten überhaupt (sonst wäre der Vergleich leer und immer grün)', () => {
+    expect(files).toContain('index.vue')
+    expect(files).toContain('products/index.vue')
+    expect(files.length).toBeGreaterThanOrEqual(9)
+  })
+
+  it('jede Seite hat einen Eintrag mit der richtigen englischen UND deutschen Adresse', () => {
+    for (const file of files) {
+      const urls = pageUrls(file)
+      const entry = BRANDING_ROUTES.find(route => route.path === urls.en)
+      expect(entry, `${file} (${urls.en}) fehlt in BRANDING_ROUTES`).toBeDefined()
+      expect(entry?.dePath ?? dePathFor(urls.en), `${file}: deutsche Adresse`).toBe(urls.de)
+    }
+  })
+
+  it('GEGENPROBE: eine Seite mit eigenem deutschen Pfad wird wirklich so gelesen', () => {
+    expect(pageUrls('products/market-comparison.vue')).toEqual({
+      en: '/products/market-comparison',
+      de: '/de/produkte/marktvergleich',
+    })
+    expect(pageUrls('about.vue')).toEqual({ en: '/about', de: '/de/about' })
+    expect(pageUrls('index.vue')).toEqual({ en: '/', de: '/de' })
+  })
+
+  it('die deutsche Adresse einer Produktseite steht im XML — nicht /de/products', () => {
+    const xml = brandingSitemapXml('https://example.test', BRANDING_ROUTES)
+    expect(xml).toContain('<loc>https://example.test/de/produkte/marktvergleich</loc>')
+    expect(xml).toContain('hreflang="de" href="https://example.test/de/produkte"')
+    expect(xml).not.toContain('/de/products')
   })
 })
