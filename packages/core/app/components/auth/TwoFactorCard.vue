@@ -141,7 +141,7 @@ async function copyCodes() {
     data-two-factor
   >
     <div class="flex w-full max-w-sm flex-col gap-4">
-      <UAlert v-if="errorMessage" color="error" variant="subtle" :title="errorMessage" data-two-factor-error />
+      <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" data-two-factor-error />
 
       <!-- Zustand: aus oder an -->
       <template v-if="step === 'idle'">

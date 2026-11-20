@@ -73,12 +73,12 @@ async function onSubmit(event: FormSubmitEvent<RecoveryInput>) {
       <p class="text-sm text-muted">{{ t('auth.forgot.description') }}</p>
     </div>
 
-    <UAlert v-if="blockedMessage" color="error" variant="subtle" :title="blockedMessage" />
-    <UAlert v-if="sent" color="success" variant="subtle" :title="t('auth.forgot.success')" />
+    <UAlert v-if="blockedMessage" role="alert" color="error" variant="subtle" :title="blockedMessage" />
+    <UAlert v-if="sent" role="status" color="success" variant="subtle" :title="t('auth.forgot.success')" />
 
-    <UForm v-else :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @submit="onSubmit">
+    <UForm v-else :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="onSubmit">
       <UFormField :label="t('auth.fields.email')" name="email" required>
-        <UInput v-model="state.email" type="email" size="lg" :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
+        <UInput v-model="state.email" type="email" autocomplete="email" size="lg" :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
       </UFormField>
       <AuthTurnstileWidget ref="botCheck" v-model="turnstileToken" action="recovery" />
       <UButton type="submit" block size="lg" :loading="loading" :disabled="waitingForBotCheck">{{ t('auth.forgot.submit') }}</UButton>
