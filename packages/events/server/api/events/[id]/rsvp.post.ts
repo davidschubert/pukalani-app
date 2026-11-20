@@ -2,6 +2,7 @@ import { Permission, Query, Role } from 'node-appwrite'
 import { rsvpSchema } from '../../../../schemas/event'
 import { toEventRsvpCounts } from '../../../../shared/eventCounts'
 import { EVENT_RSVPS_TABLE, EVENTS_TABLE, type EventRow, type EventRsvpRow, type RsvpResponse, type RsvpStatus } from '../../../../shared/types/event'
+import { softFailWith } from '../../../../../core/server/utils/softFail'
 
 /**
  * RSVP: setzen, wechseln oder (gleicher Status erneut) zurückziehen — Upsert
@@ -194,7 +195,7 @@ export default defineEventHandler(async (event): Promise<RsvpResponse> => {
       // Upsert gescheitert → Zähler-Gate zurückrollen, sonst driftet er. Scheitert
       // auch das, wird nachgezählt (BE-018) — vorher verschluckt, der Zähler
       // stand dann dauerhaft um eins zu hoch.
-      await decrement().catch(() => recountAfter('events.rsvp_rollback_failed'))
+      await decrement().catch(softFailWith('events:api/events/[id]/rsvp.post:decrement', () => recountAfter('events.rsvp_rollback_failed')))
       throw toH3Error(error, 'Could not save RSVP')
     }
 

@@ -1,4 +1,5 @@
 import { selectUsagePosts, type CommunityUsageResponse } from '../../../shared/communityUsage'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * VERBRAUCH DIESER COMMUNITY gegen ihr Kontingent — die Datenquelle des
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event): Promise<CommunityUsageResponse>
   const db = tenantDb(event, { as: 'operator', actor })
   const counts = await Promise.all(listCommunityUsageCounters().map(async counter => ({
     kind: counter.kind,
-    total: await db.count(counter.tableId).catch(() => null),
+    total: await db.count(counter.tableId).catch(softFail('onboarding:api/community/usage.get:count', null)),
   })))
 
   return {

@@ -10,6 +10,7 @@ import {
 } from '../../../shared/types/billing'
 import { checkoutOutcome, invoiceSubscriptionId, isNewPaymentFailure, isStale, paymentFailureAudience, subscriptionForEvent, subscriptionToPatch, subscriptionToVerifiedUpdate, toSubscriptionStatus, type CheckoutOutcome, type SubscriptionPatch } from '../../utils/webhookMapping'
 import { WEBHOOK_ALLOWLIST } from '../../../shared/webhookEvents'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * Stripe-Webhook (B1/B4): Signatur-Verifikation über den RAW-Body, Event-
@@ -193,7 +194,7 @@ export default defineEventHandler(async (event) => {
             // eine Zeile weiter oben abbiegt: ein Empfänger, den dieses Projekt
             // nicht kennt, erreicht über KEINEN Kanal etwas — und ein stiller
             // Fehlschlag im Geldpfad fällt erst auf, wenn ein Kunde kündigt.
-            const recipient = await users.get({ userId: row.userId }).catch(() => null)
+            const recipient = await users.get({ userId: row.userId }).catch(softFail('billing:api/stripe/webhook.post:get', null))
             if (!recipient) {
               logEvent('error', 'billing.notify_recipient_missing', {
                 subscriptionId,

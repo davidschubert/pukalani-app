@@ -1,4 +1,5 @@
 import type { Models } from 'node-appwrite'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Customize theme: eigene Schrift löschen — inkl. der Storage-Dateien
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
   try {
     const files = JSON.parse(row.files ?? '[]') as { fileId?: string }[]
     await Promise.all(files.map(file => file.fileId
-      ? admin.storage.deleteFile({ bucketId: 'fonts', fileId: file.fileId }).catch(() => undefined)
+      ? admin.storage.deleteFile({ bucketId: 'fonts', fileId: file.fileId }).catch(softFail('admin:api/admin/fonts/[id].delete:deleteFile', undefined))
       : undefined))
   }
   catch { /* kaputtes JSON — Row trotzdem löschen */ }

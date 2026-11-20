@@ -1,6 +1,7 @@
 import { ID } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { MEDIA_TABLE, MEDIA_BUCKET, MAX_MEDIA_BYTES, type MediaItem } from '../../../shared/types/media'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * Bild hochladen + Row anlegen (media.manage): Multipart mit `file` +
@@ -117,7 +118,7 @@ export default defineEventHandler(async (event) => {
     title, subtitle, alt, fileId: file.$id, featured: false, published, sortOrder: 0,
   }, { permissions }).catch(async (error) => {
     // Row gescheitert → verwaiste Datei nicht liegen lassen
-    await admin.storage.deleteFile({ bucketId: MEDIA_BUCKET, fileId: file.$id }).catch(() => {})
+    await admin.storage.deleteFile({ bucketId: MEDIA_BUCKET, fileId: file.$id }).catch(softFail('media:api/media/index.post:deleteFile', undefined))
     throw toH3Error(error, 'Could not save media item')
   })
 

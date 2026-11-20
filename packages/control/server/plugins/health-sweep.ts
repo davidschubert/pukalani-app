@@ -1,4 +1,5 @@
 import { runHealthSweep } from '../utils/websiteHealth'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Health-Automatik (M6-T4, L6-Grundstein): prüft alle registrierten Sites
@@ -44,7 +45,7 @@ export default defineNitroPlugin(() => {
             '',
             'Details im Control: /dashboard/websites',
           ].join('\n'),
-        }).catch(() => false)
+        }).catch(softFail('control:plugins/health-sweep:sendMail', false))
         if (!sent) {
           console.warn('[control] Health-Alert konnte nicht gemailt werden (SMTP konfiguriert?)')
         }

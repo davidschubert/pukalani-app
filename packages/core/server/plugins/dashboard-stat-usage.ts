@@ -1,3 +1,5 @@
+import { softFail } from '../utils/softFail'
+
 /**
  * DIE ZÄHLENDEN KACHELN — EINMAL, FÜR ALLE LAYER (U9/K2, 2026-08-11).
  *
@@ -45,7 +47,7 @@ export default defineNitroPlugin(() => {
       const entries = await Promise.all(counters.map(async (counter) => {
         // Eine fehlende Tabelle (Layer komponiert, Migration noch nicht
         // gelaufen) darf die Nachbar-Kachel nicht mitnehmen.
-        const total = await db.count(counter.tableId).catch(() => null)
+        const total = await db.count(counter.tableId).catch(softFail('core:plugins/dashboard-stat-usage:count', null))
         if (total === null) return null
         const limit = tenantLimitsFor(event, counter.kind)?.total
         return [counter.kind, { value: total, ...(limit && limit > 0 ? { limit } : {}) }] as const

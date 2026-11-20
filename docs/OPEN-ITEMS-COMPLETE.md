@@ -101,6 +101,96 @@ Messungen laufen still gegen denselben Stand.
 
 ---
 
+### Q13 — Stille Fehler im Server: eine Hilfe protokolliert, eine Lint-Regel hält neue Stellen auf, der tägliche Blick zählt (ARC-002) ✅ 2026-11-21
+
+**Was.** Im Server-Code stand an 247 Stellen ein `.catch`, das seinen Fehler
+weder ansah noch weiterwarf (`.catch(() => null)`, `=> []`, `=> {}`, `=> 0`,
+`=> false` und Verwandte). Ein Lesefehler sah für den Aufrufer aus wie „gibt
+es nicht", und nichts stand im Protokoll.
+
+- **Die Hilfe (`packages/core/server/utils/softFail.ts`).**
+  `.catch(softFail('<layer>:<pfad>:<aufruf>', ersatz))` liefert denselben
+  Ersatzwert wie vorher und schreibt eine Zeile `soft_fail` (Stufe `warn`) mit
+  der Kennung der Stelle, dem Status, der Appwrite-Fehlerart und dem Namen der
+  Fehlerklasse — nie die Meldung, sie trägt Ids. `softFailWith` nimmt einen
+  Ersatz, der erst im Fehlerfall berechnet wird (zweiter Versuch, Rückweg).
+  Still bleibt der erwartete Fehlgriff: 404 für eine Zeile, eine Datei, ein
+  Konto; `ENOENT`; und was die Stelle in `quiet` nennt (401 beim Blick auf die
+  Sitzung eines Gastes, 409 bei einem Wettlauf um dieselbe Zeile). Ein 404 für
+  eine fehlende TABELLE, Spalte oder Ablage ist kein Fehlgriff und steht im
+  Protokoll. Je Kennung höchstens eine Zeile je Minute, die nächste zählt das
+  Verschluckte in `repeated` mit.
+- **Die Umstellung.** 236 Stellen in 24 Ordnern laufen über die Hilfe, per
+  Skript über den Syntaxbaum, je Layer ein Commit. Produkt-Layer importieren
+  die Hilfe ausdrücklich aus dem Core (derselbe Weg wie `listAllRows` und
+  `runLease`), kein neuer Auto-Import. 11 Stellen bleiben bewusst still, mit
+  Grund in einer `eslint-disable`-Zeile: sieben Enden einer Sperr-Kette (den
+  Fehler bekommt der Aufrufer des Glieds), vier `readBody` (ein kaputter Rumpf
+  des Aufrufers ist kein Serverfehler).
+- **Die Regel (`eslint.config.mjs`, `pukalani/no-silent-catch`).** Unter
+  `packages/*/server` und `apps/*/server` ist jedes `.catch(<Funktion>)` rot,
+  dessen Funktion ihren Fehler nicht liest und nicht weiterwirft. Zweite
+  Prüfung: die Kennung von `softFail` ist ein festes Text-Literal.
+- **Der tägliche Blick.** `ops/app-watch-counts.mjs` gibt
+  `stillefehler zeilen=<n> stellen=<m>` aus (zwei Zahlen, die Kennungen
+  bleiben im Log des Servers), `app-signals-rules.mjs` liest die Zeile als
+  optionale und berichtet sie als Hinweis. Rot wird davon nichts, bis die
+  Zahlen einer Woche vorliegen. Runbook: PRODUKTIONS-ALARM.md, „Still
+  abgefangene Fehler".
+
+| Ordner | vorher still | jetzt über die Hilfe | still mit Grund |
+| --- | --- | --- | --- |
+| core | 38 | 37 | 1 |
+| control | 42 | 42 | 0 |
+| posts | 40 | 39 | 1 |
+| events | 22 | 20 | 2 |
+| brand | 16 | 14 | 2 |
+| comments | 16 | 15 | 1 |
+| admin | 13 | 13 | 0 |
+| onboarding | 9 | 9 | 0 |
+| courses | 8 | 8 | 0 |
+| messages | 7 | 7 | 0 |
+| runner | 7 | 6 | 1 |
+| insights | 4 | 4 | 0 |
+| billing, media, system | je 3 | je 3 | 0 |
+| market | 2 | 1 | 1 |
+| tickets | 2 | 2 | 0 |
+| analytics, domains, feedback, moderation | je 1 | je 1 | 0 |
+| apps/platform | 4 | 4 | 0 |
+| apps/branding | 2 | 2 | 0 |
+| apps/control | 2 | 0 | 2 |
+| **Summe** | **247** | **236** | **11** |
+
+**Beweis.** `packages/core/tests/softFail.test.ts` (13 Fälle: Fehler wird
+protokolliert, 404 nicht, fehlende Tabelle doch, Ersatzwert bleibt, keine
+Meldung in der Zeile, Bremse). Gegenproben der Regel über die Standard-Eingabe,
+ohne eine Datei anzulegen: eine neue stille Stelle in einem Layer und in einer
+App ist rot, ebenso ein ungenutzter Parameter, die `function`-Form und eine
+zusammengesetzte Kennung; `softFail`, ein Weiterwurf und ein gelesener Fehler
+sind grün. `appWatchCounts.test.ts` und `verifyAppSignals.test.ts` halten die
+neue Zeile (auch eine vergiftete Kennung kommt nicht in die Ausgabe; eine
+Ausgabe ohne die Zeile bleibt lesbar).
+
+**Was die Regel nicht sieht.** `try { … } catch { … }` ohne Weiterwurf (221
+Blöcke im Server-Code; dort steht meist mehr als ein Ersatzwert, das ist
+keine mechanische Form), eine Funktion, die ihren Fehler liest und dann
+nichts damit tut, und einen Namen als Argument (`.catch(noop)`).
+
+**Gelernt:** Die Zahl aus dem Audit (191) kam aus einer Text-Suche nach sechs
+festen Ersatzwerten. Der Syntaxbaum findet 247: dazu kommen `=> ({ rows: [] as
+X[] })`, `=> true`, `=> ''`, ein zweiter Versuch (`=> withdraw()`) und Rümpfe
+über mehrere Zeilen. Wer Stellen „mechanisch" umstellt, zählt mit dem
+Werkzeug, das auch umstellt — sonst bleibt ein Fünftel liegen und die
+Lint-Regel ist am ersten Tag rot. Zweitens: „derselbe Fehler" ist nicht
+überall ein Fehler. Ohne die Unterscheidung nach Status hätte jeder Gast auf
+jeder Seite eine Zeile geschrieben (401 beim Blick auf die Sitzung) und der
+Zähler wäre vom ersten Tag an Lärm gewesen. Drittens: ein Umstell-Skript, das
+seine Ausnahmen über Zeilennummern findet, darf nicht zweimal über denselben
+Ordner laufen — beim zweiten Lauf stand die Ausnahme eine Zeile tiefer und
+wurde umgestellt (beim Committen bemerkt und zurückgenommen).
+
+---
+
 ### Q01 — Navigation auf dem Handy: Menü-Knopf in jeder Community, Kopfzeile von pukalani.app passt bei 768 px, Feedback-Knopf verdeckt am Seitenende nichts (UX-001, UX-003, UX-008) ✅ 2026-11-20
 
 **Was.** Drei Fehler, die nur im schmalen Fenster auftreten, und ein

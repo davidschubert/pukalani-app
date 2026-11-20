@@ -24,6 +24,7 @@ import {
   voterKeyFor,
 } from '../../shared/customerFeedback'
 import { feedbackCommentSchema, feedbackQuerySchema, feedbackSubmitSchema, feedbackUpdateSchema } from '../../schemas/customerFeedback'
+import { softFail, softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * Das Kunden-Feedback, wie das CONTROL PLANE es sieht — die einzige Stelle mit
@@ -131,7 +132,7 @@ async function votedIdsFor(event: H3Event, actor: FeedbackActor, feedbackIds: st
       Query.equal('feedbackId', feedbackIds),
       Query.limit(feedbackIds.length),
     ],
-  }).catch(() => null)
+  }).catch(softFail('control:utils/customerFeedback:listRows', null))
   // Fail-soft: ohne diese Information sehen die Knöpfe ungewählt aus. Ein
   // doppelter Klick wird ohnehin vom Unique-Index abgefangen.
   return new Set((rows?.rows ?? []).map(row => row.feedbackId))
@@ -324,7 +325,7 @@ export async function toggleFeedbackVote(
   const counted = await tablesDB.listRows<CustomerFeedbackVoteRow>({
     databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE,
     queries: [Query.equal('feedbackId', feedbackId), Query.limit(1)],
-  }).catch(() => null)
+  }).catch(softFail('control:utils/customerFeedback:listRows#2', null))
   const voteCount = counted?.total ?? Math.max(0, row.voteCount + (voted ? 1 : -1))
 
   // BREITE: die Zahl der verschiedenen Communities. Bewusst über ein
@@ -334,7 +335,7 @@ export async function toggleFeedbackVote(
   const sample = await tablesDB.listRows<CustomerFeedbackVoteRow>({
     databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE,
     queries: [Query.equal('feedbackId', feedbackId), Query.limit(1000)],
-  }).catch(() => null)
+  }).catch(softFail('control:utils/customerFeedback:listRows#3', null))
   const communities = new Set<string>()
   if (row.communityId) communities.add(row.communityId)
   for (const vote of sample?.rows ?? []) {
@@ -387,11 +388,11 @@ export async function addFeedbackComment(
   const commentCount = row.commentCount + 1
   await tablesDB.updateRow({
     databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, rowId: feedbackId, data: { commentCount },
-  }).catch(() => {
+  }).catch(softFailWith('control:utils/customerFeedback:updateRow', () => {
     // Der Zähler ist Anzeige, der Kommentar ist die Tatsache — ein
     // fehlgeschlagenes Nachziehen darf den Beitrag nicht verwerfen.
     logEvent('warn', 'feedback.comment_count_stale', { feedbackId })
-  })
+  }))
 
   return { id: created.$id, commentCount }
 }

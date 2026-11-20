@@ -25,6 +25,7 @@ import {
   type ConversationMember,
   type PrivateMessage,
 } from '../../shared/types/message'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * KONVERSATIONEN UND NACHRICHTEN — der Datenzugriff (Konzept § 4).
@@ -472,7 +473,7 @@ export async function markConversationRead(
     if (row.authorId === userId) continue
     // Best-effort: ein fehlgeschlagener Stempel kostet eine Auskunft, nicht
     // den Zähler — der steht schon.
-    await db.update(MESSAGES_TABLE, row.$id, { readAt: now }, 'Message not found').catch(() => {})
+    await db.update(MESSAGES_TABLE, row.$id, { readAt: now }, 'Message not found').catch(softFail('messages:utils/conversations:update', undefined))
   }
 }
 
@@ -514,7 +515,7 @@ export async function closeConversationFor(
     }
   }
   for (const member of members) {
-    await db.remove(CONVERSATION_MEMBERS_TABLE, member.$id, 'Member not found').catch(() => {})
+    await db.remove(CONVERSATION_MEMBERS_TABLE, member.$id, 'Member not found').catch(softFail('messages:utils/conversations:remove', undefined))
   }
   await db.remove(CONVERSATIONS_TABLE, conversation.$id, 'Conversation not found')
   return { deleted: true }

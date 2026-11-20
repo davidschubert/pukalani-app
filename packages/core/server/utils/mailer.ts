@@ -5,6 +5,7 @@ import {
   pickMailerSettings,
   type MailerSettings,
 } from '../../shared/mailerSettings'
+import { softFail } from './softFail'
 
 /**
  * SMTP-Mailer (Core): EIN Versandweg für alle E-Mail-Produkte (Notification-
@@ -74,7 +75,7 @@ export async function resolveMailerSettings(event?: H3Event): Promise<MailerSett
   // Fail-soft: ist die Ablage nicht lesbar (Tabelle fehlt, Umschlag fehlt),
   // trägt die Env weiter. Ein Mailversand darf nicht an einer Ablage sterben,
   // die es vielleicht gar nicht geben soll.
-  const stored = parseMailerSettings(await readInstanceSecret(event, 'smtp').catch(() => ''))
+  const stored = parseMailerSettings(await readInstanceSecret(event, 'smtp').catch(softFail('core:utils/mailer:readInstanceSecret', '')))
   const value = pickMailerSettings(stored, env)
   settingsCache = { at: now, value }
   return value

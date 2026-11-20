@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
+import { softFail } from '../../../core/server/utils/softFail'
 
 type CustomFontRow = Models.Row & { name: string, files?: string | null, order?: number }
 
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
     databaseId: config.public.appwriteDatabaseId,
     tableId: 'custom_fonts',
     queries: [Query.orderAsc('order'), Query.limit(100)],
-  }).then(res => res.rows).catch(() => [] as CustomFontRow[])
+  }).then(res => res.rows).catch(softFail('system:api/fonts.get:listRows', [] as CustomFontRow[]))
 
   return {
     fonts: rows

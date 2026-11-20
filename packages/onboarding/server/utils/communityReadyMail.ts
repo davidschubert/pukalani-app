@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { buildCommunityReadyMail } from '../../shared/communityReadyMail'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Versand der „Deine Community steht"-Mail (G6). Text + Regeln stehen pur in
@@ -42,5 +43,5 @@ export async function sendCommunityReadyMail(event: H3Event, args: CommunityRead
     trialEndsAt: args.trialEndsAt,
     locale,
   })
-  return await sendMail(event, { to: args.to, subject, text }).catch(() => false)
+  return await sendMail(event, { to: args.to, subject, text }).catch(softFail('onboarding:utils/communityReadyMail:sendMail', false))
 }

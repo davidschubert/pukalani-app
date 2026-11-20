@@ -23,7 +23,7 @@ interface JobLine { name: string, every?: number, ok?: number, failed?: number, 
 /** `asked: null` = Zeile eines Servers mit dem Skript von vor dem Feld `gefragt`. */
 interface ReminderLine { runs?: number, noAnswer?: number, events?: number, recipients?: number, asked?: number | null }
 
-function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, csp?: number | null, cspCapped?: number, reminders?: ReminderLine | null, coverage?: number | 'nie' | null, jobs?: JobLine[], version?: number } = {}): string {
+function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, csp?: number | null, cspCapped?: number, reminders?: ReminderLine | null, coverage?: number | 'nie' | null, softFail?: { lines?: number, places?: number } | null, jobs?: JobLine[], version?: number } = {}): string {
   const jobs = options.jobs ?? []
   return [
     `zaehler version=${options.version ?? COUNTS_VERSION} prozess=testprozess stunden=25 status=${options.status ?? 'online'}`,
@@ -38,6 +38,8 @@ function countsText(options: { status?: string, up?: number, server?: number, br
     ...(options.reminders === null ? [] : [`erinnerungen takte=${options.reminders?.runs ?? 0} ohne_antwort=${options.reminders?.noAnswer ?? 0} termine=${options.reminders?.events ?? 0} empfaenger=${options.reminders?.recipients ?? 0}${options.reminders?.asked === null ? '' : ` gefragt=${options.reminders?.asked ?? 0}`}`]),
     // `coverage: null` = Ausgabe eines Servers mit dem Skript von VOR der Zeile `reichweite`.
     ...(options.coverage === null ? [] : [`reichweite aelteste_zeile_min=${options.coverage ?? 9000}`]),
+    // `softFail: null` = Ausgabe eines Servers mit dem Skript von VOR Q13 (ohne die Zeile).
+    ...(options.softFail === null ? [] : [`stillefehler zeilen=${options.softFail?.lines ?? 0} stellen=${options.softFail?.places ?? 0}`]),
     ...jobs.map(job => `lauf name=${job.name} takt_min=${job.every ?? 60} ok=${job.ok ?? 24} gescheitert=${job.failed ?? 0} uebersprungen=${job.skipped ?? 0} haengt=${job.overlap ?? 0} letzter_ok_min=${job.lastOk ?? 10} letzter_lauf_min=${job.lastRun ?? 10} letztes_ergebnis=${job.result ?? 'ok'} angemeldet_min=${job.registered ?? 600}`),
     `ende laeufe=${jobs.length}`,
   ].join('\n')
@@ -245,6 +247,22 @@ describe('die Zählung reicht nicht über das ganze Fenster zurück — zählt n
     expect(old.oldestLineMin).toBeUndefined()
     expect(evaluateApp({ app: 'control', site: 'test.example', counts: old, expected: new Set(['trial-sweep']) })).toEqual({ red: [], notes: [] })
     expect(parseCounts(countsText({ coverage: 'nie' })).oldestLineMin).toBeNull()
+  })
+
+  it('still abgefangene Fehler (Q13) zählen nur: ein Hinweis mit beiden Zahlen, nie rot', () => {
+    const result = evaluate(countsText({ softFail: { lines: 4200, places: 7 } }))
+    expect(result.red).toEqual([])
+    expect(result.notes).toHaveLength(1)
+    expect(result.notes[0]).toContain('4200 still abgefangene(r) Fehler an 7 Stelle(n) in 25 h')
+    expect(evaluate(countsText({ softFail: { lines: 0, places: 0 } })).notes).toEqual([])
+  })
+
+  it('ALTE Ausgabe ohne die Zeile `stillefehler` (zwischen Merge und Ausliefern) ⇒ kein Problem, kein Hinweis', () => {
+    const old = parseCounts(countsText({ softFail: null }))
+    expect(old.problem).toBeUndefined()
+    expect(old.softFail).toBeUndefined()
+    expect(evaluateApp({ app: 'control', site: 'test.example', counts: old, expected: new Set() })).toEqual({ red: [], notes: [] })
+    expect(parseCounts(countsText({ softFail: { lines: 3, places: 2 } }))).toMatchObject({ softFail: 3, softFailPlaces: 2 })
   })
 
   it('eine kaputte Zeile ist „unlesbar"', () => {
@@ -497,10 +515,10 @@ describe('Listen und Skripte passen zusammen', () => {
     const script = readFileSync(join(REPO, 'ops', 'app-watch-counts.mjs'), 'utf8')
     expect(script).toContain(`const VERSION = ${COUNTS_VERSION}\n`)
     // Jede Zeilenart, die das Skript ausgibt, hat hier eine Form.
-    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'mailbremse ausgeloest=', 'erinnerungen takte=', 'reichweite aelteste_zeile_min=', 'lauf name=', 'ende laeufe=']) {
+    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'mailbremse ausgeloest=', 'erinnerungen takte=', 'reichweite aelteste_zeile_min=', 'stillefehler zeilen=', 'lauf name=', 'ende laeufe=']) {
       expect(script, start).toContain(`console.log(\`${start}`)
     }
-    expect(Object.keys(LINE_FORMS)).toHaveLength(11)
+    expect(Object.keys(LINE_FORMS)).toHaveLength(12)
   })
 })
 

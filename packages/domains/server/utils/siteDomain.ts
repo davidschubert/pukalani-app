@@ -26,6 +26,7 @@
  */
 import type { H3Event } from 'h3'
 import type { SiteDomainAddress, SiteDomainState, SiteDomainVerifyResult } from '../../../core/shared/types/siteDomain'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /** Die Projekt-Id DIESER App — ihre Identität im Website-Register. */
 export function siteProjectId(event: H3Event | undefined): string {
@@ -181,7 +182,7 @@ export async function removeSiteDomain(event: H3Event): Promise<SiteDomainState>
   invalidateSiteDomainAddress()
 
   if (before.forms.length) {
-    await removeAppwriteWebPlatforms(event, before.forms).catch(() => null)
+    await removeAppwriteWebPlatforms(event, before.forms).catch(softFail('domains:utils/siteDomain:removeAppwriteWebPlatforms', null))
   }
   return after
 }

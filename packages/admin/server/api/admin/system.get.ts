@@ -6,6 +6,7 @@ import { DEP_GROUPS, isOutdated, latestAppwriteVersion, latestVersion, pkgVersio
 import { layerBreakdown, workspaceRoot } from '../../utils/layers'
 import { readManifest, usableVersion } from '../../utils/systemManifestRead'
 import { LAYER_PKGS } from '../../../build/systemManifest'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 const MODULES = ['@nuxt/ui', '@pinia/nuxt', '@nuxtjs/i18n']
 
@@ -56,7 +57,7 @@ export default defineEventHandler(async (event): Promise<SystemInfo> => {
     // apps/platform/server/utils/tenantBrandMark.ts.
     $fetch<{ version: string }>(`${endpoint}/health/version`, {
       headers: { 'X-Appwrite-Project': projectId },
-    }).catch(() => null),
+    }).catch(softFail('admin:api/admin/system.get:$fetch', null)),
     latestAppwriteVersion(),
   ])
   const version: string | null = versionRes?.version ?? null

@@ -20,6 +20,7 @@ import {
   type MemberCounterValues,
 } from '../../shared/memberCounters'
 import { MEMBER_COUNTERS_TABLE, type MemberCounters } from '../../shared/types/post'
+import { softFail, softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * DIE AUTORITÄT ÜBER `member_counters` (F1, gemeinsames Paket) — die
@@ -102,7 +103,7 @@ async function findRow(event: H3Event, db: TenantDb, userId: string): Promise<Me
   const scope = tenantCacheScope(event)
   const remembered = rowIds.get(memoryKey(scope, userId))
   if (remembered) {
-    const row = await db.get<MemberCounters>(MEMBER_COUNTERS_TABLE, remembered, 'Counters not found').catch(() => null)
+    const row = await db.get<MemberCounters>(MEMBER_COUNTERS_TABLE, remembered, 'Counters not found').catch(softFail('posts:utils/memberCounters:get', null))
     if (row) return row
     rowIds.delete(memoryKey(scope, userId))
   }
@@ -140,7 +141,7 @@ async function createRow(
     // Zähler, der bei jeder fremden Stimme in offene Fenster funkt, wäre
     // Aufregung ohne Neuigkeit (dieselbe Überlegung wie bei `post_views`).
     permissions: [],
-  }).catch(() => null)
+  }).catch(softFail('posts:utils/memberCounters:create', null, { quiet: [409] }))
 
   if (row) {
     rememberRowId(tenantCacheScope(event), userId, row.$id)
@@ -221,7 +222,7 @@ export async function applyMemberCounterEvents(event: H3Event, events: readonly 
           // `min: 0` — Appwrite weist den Schritt ab, statt unter null zu
           // gehen. Der Fehlschlag ist hier die gewünschte Wirkung.
           latest = await db.decrement<MemberCounters>(MEMBER_COUNTERS_TABLE, row.$id, entry.kind, { value: -entry.delta, min: 0 }, 'Counters not found')
-            .catch(() => latest)
+            .catch(softFailWith('posts:utils/memberCounters:decrement', () => latest, { quiet: [400] }))
         }
       }
 
@@ -313,7 +314,7 @@ async function stampAndBookLikeLimitDay(
   today: string,
 ): Promise<void> {
   const stamped = await db.update<MemberCounters>(MEMBER_COUNTERS_TABLE, rowId, { likeLimitDay: today }, 'Counters not found')
-    .catch(() => null)
+    .catch(softFail('posts:utils/memberCounters:update', null))
   if (!stamped) return
   await bookLikeLimitDay(event, userId)
 }
@@ -526,7 +527,7 @@ export async function rememberCommunityInviter(
 
 /** Der aktuelle Stand dieses Menschen — `null`, wenn es noch keine Zeile gibt. */
 export async function readMemberCounters(event: H3Event, userId: string): Promise<MemberCounters | null> {
-  return findRow(event, counterDb(event), userId).catch(() => null)
+  return findRow(event, counterDb(event), userId).catch(softFail('posts:utils/memberCounters:findRow', null))
 }
 
 /**
@@ -581,13 +582,13 @@ export async function ensureSeededCounters(
       upvotesReceived: stored.upvotesReceived,
       edits: stored.edits,
     }
-    await db.update(MEMBER_COUNTERS_TABLE, row.$id, { ...merged, seeded: true }, 'Counters not found').catch(() => null)
+    await db.update(MEMBER_COUNTERS_TABLE, row.$id, { ...merged, seeded: true }, 'Counters not found').catch(softFail('posts:utils/memberCounters:update#2', null))
     return merged
   }
 
   if (counterFellBehind(stored, aggregates)) {
     const healed = healedValues(stored, aggregates)
-    await db.update(MEMBER_COUNTERS_TABLE, row.$id, healed, 'Counters not found').catch(() => null)
+    await db.update(MEMBER_COUNTERS_TABLE, row.$id, healed, 'Counters not found').catch(softFail('posts:utils/memberCounters:update#3', null))
     return healed
   }
 

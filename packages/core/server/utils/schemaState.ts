@@ -6,6 +6,7 @@ import type { ProbeOutcome, SchemaState } from '../../shared/schemaState'
 import type { ProductSchemaState } from '../../shared/types/manifest'
 import { getProductRegistry } from './productRegistry'
 import { logEvent } from './logEvent'
+import { softFailWith } from './softFail'
 
 /**
  * Schema-Stand für `/api/health` (OPS-008): passt die Datenbank zum
@@ -151,7 +152,7 @@ export function resolveSchemaState(event: H3Event): Promise<SchemaState> {
     if (cached && Date.now() < cached.expiresAt) return cached.result.then(resolved => resolved.state)
 
     const entry = {
-      result: probeAll(event).catch((): Resolved => ({ state: aggregateSchemaState(['unknown']), missing: [] })),
+      result: probeAll(event).catch(softFailWith('core:utils/schemaState:probeAll', (): Resolved => ({ state: aggregateSchemaState(['unknown']), missing: [] }))),
       expiresAt: Date.now() + IN_FLIGHT_MS,
     }
     void entry.result.then((resolved) => {

@@ -193,6 +193,15 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   Zeilen regeln nur das Lesen. Wem eine Zeile gehört, prüft die Route selbst,
   vor dem Schreiben. Neue Tabelle ⇒ `scripts/lib/server-written-tables.mjs`.
   Regel: `.claude/rules/tenant-isolation.md` („DER SERVER SCHREIBT").
+- KEIN STILLES `.catch` IM SERVER (Q13, seit 2026-11-21): ein `.catch`, das
+  seinen Fehler weder liest noch weiterwirft, ist unter `server/` rot
+  (ESLint `pukalani/no-silent-catch`). Der Weg:
+  `.catch(softFail('<layer>:<pfad>:<aufruf>', ersatz))` aus
+  `core/server/utils/softFail.ts` (in Produkt-Layern ausdrücklich
+  importieren) — derselbe Ersatzwert, dazu eine gezählte Zeile `soft_fail`.
+  404 für eine Zeile bleibt still, eine fehlende Tabelle nicht; was an der
+  Stelle sonst erwartet ist, nennt `quiet` (401 Gast, 409 Wettlauf). Die
+  Kennung ist ein festes Literal, nie mit Ids zusammengesetzt.
 - createError mit status/statusText (nicht statusCode/statusMessage),
   keine Appwrite-Fehlerdetails an Clients leaken. FACHLICHE Ablehnungsgründe
   reisen als `data: { code: 'last_owner' }` → der zentrale Handler

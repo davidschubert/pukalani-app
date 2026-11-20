@@ -5,6 +5,7 @@ import { normalizeTimezonePref } from '../../shared/timezone'
 import { resolveCommunityHosts } from './communityHost'
 import { resolveFormerMembersOfTenant } from './communityMembership'
 import { resolveSiteLinkBase } from './siteOrigin'
+import { softFail } from './softFail'
 
 /**
  * Digest-Sweep (Modus 'digest'): sammelt UNGELESENE Notifications, gruppiert
@@ -146,7 +147,7 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
 
     for (const [recipientId, rows] of byRecipient) {
       try {
-        const recipient = await admin.users.get({ userId: recipientId }).catch(() => null)
+        const recipient = await admin.users.get({ userId: recipientId }).catch(softFail('core:utils/emailDigest:get', null))
         if (!recipient?.email) { result.skipped++; continue }
         // Spam-Schutz: nur verifizierte Adressen (wie der Instant-Zweig)
         if (!recipient.emailVerification) { result.skipped++; continue }

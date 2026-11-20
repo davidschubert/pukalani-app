@@ -4,6 +4,7 @@ import de from '../../i18n/locales/de.json'
 import en from '../../i18n/locales/en.json'
 import { POSTS_TABLE, type CommunityPost } from '../../shared/types/post'
 import { welcomePostRowId } from '../../shared/welcomePost'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DER ERSTE BEITRAG IM FEED (U4 Teil 5, Benchmark-E2: „der erste Zustand darf
@@ -245,7 +246,7 @@ export async function communityHasAuthoredPost(event: H3Event): Promise<boolean 
   if (tenant?.mode !== 'pool') return null
 
   const db = tenantDb(event, { as: 'operator', actor: 'member' })
-  const total = await db.count(POSTS_TABLE).catch(() => null)
+  const total = await db.count(POSTS_TABLE).catch(softFail('posts:utils/seedWelcomePost:count', null))
   if (total === null) return null
   if (total === 0) return false
   if (total > 1) return true
@@ -254,6 +255,6 @@ export async function communityHasAuthoredPost(event: H3Event): Promise<boolean 
   // Mandanten gehört — beides heißt hier dasselbe: das ist nicht unsere Saat.
   const seeded = await db.get(POSTS_TABLE, welcomePostRowId(tenant.tenantId))
     .then(() => true)
-    .catch(() => false)
+    .catch(softFail('posts:utils/seedWelcomePost:get', false))
   return !seeded
 }

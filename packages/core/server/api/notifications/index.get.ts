@@ -3,6 +3,7 @@ import type { Models } from 'node-appwrite'
 import { createSessionClient } from '../../lib/appwrite'
 import { runScopedNotificationQuery } from '../../utils/notificationScope'
 import type { NotificationListResponse, UserNotification } from '../../../shared/types/notification'
+import { softFail, softFailWith } from '../../utils/softFail'
 
 type NotifRow = Models.Row & Omit<UserNotification, '$id' | '$createdAt'>
 
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event): Promise<NotificationListRespons
     // recipientId-Filter als Defense-in-Depth zusätzlich zur Row-Security:
     // schützt auch, falls die Tabelle je ohne Per-User-Read-Permissions migriert wird.
     queries: [recipientFilter, ...scope, Query.orderDesc('$createdAt'), Query.limit(50)],
-  })).catch(() => ({ rows: [] as NotifRow[] }))
+  })).catch(softFail('core:api/notifications/index.get:runScopedNotificationQuery', { rows: [] as NotifRow[] }))
 
   const notifications = res.rows.map(r => ({
     $id: r.$id,
@@ -62,7 +63,7 @@ export default defineEventHandler(async (event): Promise<NotificationListRespons
     databaseId,
     tableId: 'notifications',
     queries: [recipientFilter, ...scope, Query.equal('read', false), Query.limit(1)],
-  })).then(r => r.total).catch(() => notifications.filter(n => !n.read).length)
+  })).then(r => r.total).catch(softFailWith('core:api/notifications/index.get:runScopedNotificationQuery#2', () => notifications.filter(n => !n.read).length))
 
   return { notifications, unread }
 })

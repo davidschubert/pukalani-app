@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { publicTeamFrom, type PublicTeamResponse } from '../../../../shared/communityTeam'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tenantRecord'
 import { listCommunityMembers } from '../../../utils/communityTeam'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * DIE ÖFFENTLICHE TEAM-SICHT einer Community (F1 Stufe 3, Davids Entscheidung
@@ -71,7 +72,7 @@ export default defineEventHandler(async (event): Promise<PublicTeamResponse> => 
     databaseId: config.public.appwriteDatabaseId,
     tableId: COMMUNITIES_TABLE,
     rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/team.post:getRow', null))
 
   if (!tenant || tenant.projectId !== runtimeProjectId) {
     throw createError({ status: 404, statusText: 'Site not found' })

@@ -6,6 +6,7 @@ import {
   oauthFailureTarget,
   oauthLocalePrefix,
 } from '../../../../shared/oauthProviders'
+import { softFail } from '../../../utils/softFail'
 
 /**
  * RÜCKKEHR des Social-Logins (U14): tauscht `userId`+`secret` gegen eine
@@ -74,7 +75,7 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, failure)
   }
 
-  const user = await users.get({ userId: session.userId }).catch(() => null)
+  const user = await users.get({ userId: session.userId }).catch(softFail('core:api/auth/oauth/callback.get:get', null))
   const createdAt = user ? Date.parse(user.$createdAt) : Number.NaN
   const isNewAccount = Number.isFinite(createdAt) && Date.now() - createdAt < NEW_ACCOUNT_WINDOW_MS
 
@@ -97,7 +98,7 @@ export default defineEventHandler(async (event) => {
       && tenantRegistrationOpen(event)
 
     if (!registrationOpen) {
-      await account.deleteSession({ sessionId: session.$id }).catch(() => {})
+      await account.deleteSession({ sessionId: session.$id }).catch(softFail('core:api/auth/oauth/callback.get:deleteSession', undefined))
       logEvent('warn', 'auth.oauth_registration_closed', { userId: session.userId })
       // Die Register-Seite erklärt den Zustand bereits ehrlich (geschlossen,
       // Wartung oder „nur auf Einladung") — dorthin, statt einen zweiten Text.
@@ -139,7 +140,7 @@ export default defineEventHandler(async (event) => {
       objectId: session.userId,
       link: '/',
     })
-    const totalUsers = await users.list({ queries: [Query.limit(1)] }).then(r => r.total).catch(() => 0)
+    const totalUsers = await users.list({ queries: [Query.limit(1)] }).then(r => r.total).catch(softFail('core:api/auth/oauth/callback.get:list', 0))
     await maybeRecordMilestone(event, { type: 'milestone.members', count: totalUsers })
   }
 

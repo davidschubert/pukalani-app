@@ -6,6 +6,7 @@ import {
   type DiscussionSidebarResponse,
   type PostCategory,
 } from '../../../../shared/types/post'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /** Wie viele Kategorien in der Seitenleiste stehen (Davids Entscheidung 7). */
 const SIDEBAR_SIZE = 5
@@ -68,7 +69,7 @@ export default defineEventHandler(async (event): Promise<DiscussionSidebarRespon
         Query.notEqual('categoryId', ''),
         Query.orderDesc('$createdAt'),
         Query.limit(OWN_POSTS_SCAN),
-      ]).catch(() => ({ rows: [] as CommunityPost[] })),
+      ]).catch(softFail('posts:api/posts/discussions/sidebar.get:list', { rows: [] as CommunityPost[] })),
       /**
        * Mehr Ziele erfragen als Kategorien gebraucht werden: mehrere Themen
        * können in derselben Kategorie hängen, und dann bliebe von fünf Zielen
@@ -106,7 +107,7 @@ export default defineEventHandler(async (event): Promise<DiscussionSidebarRespon
         Query.equal('$id', postIds),
         Query.notEqual('categoryId', ''),
         Query.limit(postIds.length),
-      ]).catch(() => ({ rows: [] as CommunityPost[] }))
+      ]).catch(softFail('posts:api/posts/discussions/sidebar.get:list#2', { rows: [] as CommunityPost[] }))
 
       for (const row of rows) {
         const at = commentedAt.get(row.$id)

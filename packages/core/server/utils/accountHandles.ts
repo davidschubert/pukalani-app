@@ -13,6 +13,7 @@ import {
   handleAudienceWithout,
 } from '../../shared/accountHandleAudience'
 import { ACCOUNT_HANDLES_TABLE, type AccountHandleRow } from '../../shared/types/handle'
+import { softFail } from './softFail'
 
 /**
  * DER KONTO-WEITE @NAME (AH-7, 2026-08-11) — der EINE Dienst dafür.
@@ -441,7 +442,7 @@ export async function changeAccountHandle(
     // `activeAccountHandleRow` nimmt die erste. Der Wechsel selbst ist bereits
     // vollzogen und soll nicht an der Aufräumarbeit scheitern.
     await tablesDB.updateRow({ databaseId, tableId, rowId: previous.$id, data: { status: 'former' } })
-      .catch(() => undefined)
+      .catch(softFail('core:utils/accountHandles:updateRow', undefined))
   }
 
   return created

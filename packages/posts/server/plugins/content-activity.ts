@@ -1,4 +1,5 @@
 import { POSTS_TABLE, type CommunityPost } from '../../shared/types/post'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * AKTIVITÄT AN BEITRÄGEN (F1 Stufe 2) — die posts-Seite des Core-Vertrags
@@ -50,6 +51,6 @@ export default defineNitroPlugin(() => {
   registerContentActivityHandler('post', async (event, input) => {
     await tenantDb(event, { as: 'operator', actor: 'operator' })
       .update<CommunityPost>(POSTS_TABLE, input.targetId, { lastActivityAt: input.at }, 'Post not found')
-      .catch(() => null)
+      .catch(softFail('posts:plugins/content-activity:update', null))
   })
 })

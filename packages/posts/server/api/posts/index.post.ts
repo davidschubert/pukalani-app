@@ -2,6 +2,7 @@ import { Permission, Role } from 'node-appwrite'
 import { postSchema } from '../../../schemas/post'
 import { postActivitySnippet } from '../../../shared/postActivitySnippet'
 import { POSTS_TABLE, type CommunityPost } from '../../../shared/types/post'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * Post/Poll/Frage erstellen — member-led: JEDER eingeloggte User (Plan P5).
@@ -131,7 +132,7 @@ export default defineEventHandler(async (event) => {
     })
     // Gescopt gezählt: der Meilenstein gehört DIESER Community, nicht dem
     // Pool (dieselbe Falle wie beim 1000-Kommentare-Meilenstein).
-    const total = await db.count(POSTS_TABLE).catch(() => 0)
+    const total = await db.count(POSTS_TABLE).catch(softFail('posts:api/posts/index.post:count', 0))
     await maybeRecordMilestone(event, { type: 'milestone.posts', count: total, link: '/feed' })
 
     /**
@@ -155,7 +156,7 @@ export default defineEventHandler(async (event) => {
     await ensureAccountHandle(event, user.$id, user.name)
     await ensureAccountHandleAudience(event, user.$id)
     await notifyPostMentions(event, row, user, '/feed')
-      .catch(() => undefined)
+      .catch(softFail('posts:api/posts/index.post:notifyPostMentions', undefined))
 
     /**
      * F57: der Rückverweis-Index der Themen-Verlinkung.
@@ -170,7 +171,7 @@ export default defineEventHandler(async (event) => {
      * zeigte auf etwas, das niemand aufrufen kann. Nachgeholt wird er beim
      * Fälligwerden nicht — dieselbe bewusste Lücke wie bei den Erwähnungen.
      */
-    const linked = await syncTopicLinks(event, row).catch(() => ({ added: 0, removed: 0 }))
+    const linked = await syncTopicLinks(event, row).catch(softFail('posts:api/posts/index.post:syncTopicLinks', { added: 0, removed: 0 }))
     if (linked.added > 0) {
       await recordUserCounterEvents(event, [{ userId: user.$id, kind: 'linksMade', delta: linked.added }])
     }

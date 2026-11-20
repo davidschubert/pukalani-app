@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { z } from 'zod'
 import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../../../../shared/types/communityInvite'
 import { hashInviteToken } from '../../../../utils/communityTeam'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Wem gehört diese Einladung? — die EINE Frage, die man ohne Konto stellen darf.
@@ -52,7 +53,7 @@ export default defineEventHandler(async (event) => {
     databaseId,
     tableId: COMMUNITY_INVITES_TABLE,
     queries: [Query.equal('tokenHash', hashInviteToken(body.token)), Query.limit(1)],
-  }).catch(() => ({ rows: [] as CommunityInviteRow[] }))
+  }).catch(softFail('control:api/control/community/invites/preview.post:listRows', { rows: [] as CommunityInviteRow[] }))
 
   const invite = rows[0] ?? null
   const expired = invite ? Date.parse(invite.expiresAt) < Date.now() : true

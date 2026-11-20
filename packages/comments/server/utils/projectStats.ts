@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { Query } from 'node-appwrite'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Öffentliche Eckdaten einer Installation OHNE Mandanten: Anzahl aktiver
@@ -47,8 +48,8 @@ export async function readProjectStats(event: H3Event): Promise<{ comments: numb
       databaseId,
       tableId: 'comments',
       queries: [Query.equal('status', ['active']), Query.limit(1)],
-    }).then(r => r.total).catch(() => 0),
-    users.list([Query.limit(1)]).then(r => r.total).catch(() => 0),
+    }).then(r => r.total).catch(softFail('comments:utils/projectStats:listRows', 0)),
+    users.list([Query.limit(1)]).then(r => r.total).catch(softFail('comments:utils/projectStats:list', 0)),
   ])
 
   const response = { comments, members }

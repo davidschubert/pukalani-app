@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { FEEDBACK_SERVICE_PATHS } from '../../../control/shared/customerFeedback'
 import { callFeedbackService, feedbackServiceReachable } from './feedbackGateway'
+import { softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * DSGVO-Beitrag des feedback-Layers.
@@ -38,7 +39,7 @@ export async function feedbackExportUserData(event: H3Event, userId: string): Pr
   return await callFeedbackService<Record<string, unknown>>(event, FEEDBACK_SERVICE_PATHS.userData, {
     projectId: runtimeProjectId(event),
     userId,
-  }).catch(() => ({ ...FEEDBACK_EXPORT_UNAVAILABLE }))
+  }).catch(softFailWith('feedback:utils/feedbackUserData:callFeedbackService', () => ({ ...FEEDBACK_EXPORT_UNAVAILABLE })))
 }
 
 export async function feedbackDeleteUserData(event: H3Event, userId: string): Promise<UserDataDeleteResult> {

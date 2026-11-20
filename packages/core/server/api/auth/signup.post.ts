@@ -5,6 +5,7 @@ import { registerSchema } from '../../../schemas/auth'
 import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
 import { BUSINESS_REQUIRED_CODE, TERMS_REQUIRED_CODE, requiredConsents, type ConsentConfig } from '../../../shared/consent'
 import { resolveSiteLinkBase } from '../../utils/siteOrigin'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Der Token gehört NICHT ins geteilte `registerSchema`: das trägt auch das
@@ -220,7 +221,7 @@ export default defineEventHandler(async (event) => {
   })
   // Meilenstein („Die Community hat N Mitglieder") — best-effort wie der Feed
   const { users } = createAdminClient(event)
-  const totalUsers = await users.list({ queries: [Query.limit(1)] }).then(r => r.total).catch(() => 0)
+  const totalUsers = await users.list({ queries: [Query.limit(1)] }).then(r => r.total).catch(softFail('core:api/auth/signup.post:list', 0))
   await maybeRecordMilestone(event, { type: 'milestone.members', count: totalUsers })
 
   return { ok: true }

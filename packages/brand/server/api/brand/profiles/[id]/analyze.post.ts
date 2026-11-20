@@ -79,6 +79,7 @@ export default defineEventHandler(async (event): Promise<BrandSiteAnalyzeRespons
   // wird die Adresse der Startkarte. `readBody` wirft bei leerem Rumpf je nach
   // Content-Type — ein 400 dafür wäre die falsche Antwort auf „lies meine
   // Website".
+  // eslint-disable-next-line pukalani/no-silent-catch -- ein fehlender oder kaputter Rumpf des Aufrufers ist kein Serverfehler, der Ersatz ist die Antwort darauf
   const raw = await readBody(event).catch(() => ({}))
   const parsed = createBrandAnalyzeSchema().safeParse(raw ?? {})
   if (!parsed.success) {

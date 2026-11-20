@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { COMMUNITY_INVITES_TABLE, type CommunityInviteRow } from '../../../../../shared/types/communityInvite'
 import { requireCommunityTeamContext } from '../../../../utils/communityTeam'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Eine offene Einladung widerrufen — der Link stirbt sofort.
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
     databaseId: context.databaseId,
     tableId: COMMUNITY_INVITES_TABLE,
     rowId: body.inviteId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/invites/revoke.post:getRow', null))
   if (!invite || invite.communityId !== body.communityId || invite.status !== 'pending') {
     throw createError({ status: 404, statusText: 'Invitation not found' })
   }

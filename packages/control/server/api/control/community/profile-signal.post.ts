@@ -6,6 +6,7 @@ import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tena
 import { parseSiteProfile, serializeSiteProfile } from '../../../../shared/onboarding'
 import { communityProfileSignalSchema, type CommunityProfileSignalResult } from '../../../../schemas/profileSignal'
 import { requireOnboardingCaller, verifyRuntimeIdentity } from '../../../utils/onboardingService'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * DAS MARKT-SIGNAL EINER COMMUNITY SPEICHERN (U19) — Größe, Zweck, Ziel.
@@ -81,7 +82,7 @@ export default defineEventHandler(async (event): Promise<CommunityProfileSignalR
   // geprüft haben? 404 statt 403 — eine fremde Id soll sich nicht bestätigen.
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/profile-signal.post:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

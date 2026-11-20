@@ -8,6 +8,7 @@ import {
 } from '../../../shared/handles'
 import type { AccountHandleChangeResponse } from '../../../shared/types/handle'
 import { activeAccountHandleRow, changeAccountHandle, ensureAccountHandleAudience } from '../../utils/accountHandles'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Den eigenen @namen ändern — konto-weit (AH-7, 2026-08-11).
@@ -89,7 +90,7 @@ export default defineEventHandler(async (event): Promise<AccountHandleChangeResp
   //    ERSTEN Namen per PATCH setzt, das Publikum seiner eigenen Community.
   //    Fail-soft wie dort: die Zugehörigkeits-Frage ist fail-closed und darf
   //    eine erfolgreiche Umbenennung nicht nachträglich umbringen.
-  if (await resolveCommunityMembership(event).catch(() => false)) {
+  if (await resolveCommunityMembership(event).catch(softFail('core:api/account/handle.patch:resolveCommunityMembership', false))) {
     await ensureAccountHandleAudience(event, user.$id)
   }
 

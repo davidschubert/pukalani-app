@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { BrandWaitlistLocale } from '../../schemas/brandWaitlist'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DAS DOUBLE-OPT-IN DER WARTELISTE — Token, Frist und die zwei Mails, an EINER
@@ -193,5 +194,5 @@ export async function notifyBrandWaitlistOperator(
     to,
     subject: `Neue Warteliste-Anfrage: ${entry.company || entry.email}`,
     text: `Jemand möchte Frühzugang zu branding.supply — Adresse bestätigt.\n\n${lines.join('\n')}\n`,
-  }).catch(() => false)
+  }).catch(softFail('brand:utils/brandWaitlist:sendMail', false))
 }

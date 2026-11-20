@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { EVENT_RSVPS_TABLE, EVENT_VOTES_TABLE, EVENTS_TABLE, type EventListResponse, type EventRow, type EventRsvpRow, type EventVote, type EventWithRsvp } from '../../../shared/types/event'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 const PAGE_SIZE = 25
 
@@ -75,13 +76,13 @@ export default defineEventHandler(async (event): Promise<EventListResponse> => {
     if (mine === 'liked') {
       const res = await ops.list<EventVote>(EVENT_VOTES_TABLE, [
         Query.equal('userId', user.$id), Query.equal('value', 1), Query.orderDesc('$createdAt'), Query.limit(MINE_IDS_LIMIT),
-      ]).catch(() => ({ rows: [] as EventVote[] }))
+      ]).catch(softFail('events:api/events/index.get:list', { rows: [] as EventVote[] }))
       mineIds = res.rows.map(r => r.eventId)
     }
     else {
       const res = await ops.list<EventRsvpRow>(EVENT_RSVPS_TABLE, [
         Query.equal('userId', user.$id), Query.equal('status', 'going'), Query.orderDesc('$createdAt'), Query.limit(MINE_IDS_LIMIT),
-      ]).catch(() => ({ rows: [] as EventRsvpRow[] }))
+      ]).catch(softFail('events:api/events/index.get:list#2', { rows: [] as EventRsvpRow[] }))
       mineIds = res.rows.map(r => r.eventId)
     }
     if (mineIds.length === 0) {

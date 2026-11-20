@@ -132,6 +132,7 @@ function tick(entry: TimedJobEntry, run: TimedJobOptions['run']): void {
   }
   // Das Netz unter dem Netz: selbst eine werfende Log-Zeile darf den Takt
   // nicht als unbehandelte Ablehnung beenden.
+  // eslint-disable-next-line pukalani/no-silent-catch -- Netz unter dem Netz: der Takt protokolliert sich selbst (job.run), hier darf nur keine unbehandelte Ablehnung entstehen
   void once().catch(() => {})
 }
 

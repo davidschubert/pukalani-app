@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { coverReadPermissions } from '../../shared/coverAudience'
 import { EVENT_COVERS_BUCKET, type EventRow } from '../../shared/types/event'
+import { softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * SICHTBARKEIT DER TITELBILDER — die zweite Seite desselben Schutzes.
@@ -63,7 +64,7 @@ export async function applyEventCoverVisibility(
   const set = () => createAdminClient(event).storage.updateFile({
     bucketId: EVENT_COVERS_BUCKET, fileId: row.coverFileId!, permissions,
   })
-  await set().catch(() => set()).catch((error) => {
+  await set().catch(softFailWith('events:utils/eventCovers:set', () => set())).catch((error) => {
     console.error(
       `[events] Titelbild folgt dem Termin NICHT — Event ${row.$id}, Datei ${row.coverFileId}. `
       + 'Die Datei bleibt mit ihrem alten Publikum abrufbar, bis erneut gespeichert wird:',
