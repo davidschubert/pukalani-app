@@ -98,10 +98,10 @@ am 2026-11-18, COMPLETE „N11").
 | SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"). Klick-Probe (a): KR1. Eine 503 trägt seit dem 2026-11-18 einen eigenen Code (COMPLETE „N15"). **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
 | KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (englische Hinweise hinter der Anmeldung nicht im Browser gesehen, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | KM1 | **Günstigeres Textmodell ansehen (Rest der Vorschläge nach dem KI-Alarm vom 2026-11-18).** Das neuere Textmodell kostet in Europa ein Zehntel. David will die Proben vorbereitet sehen (Klick 2026-11-19); gewechselt wird erst nach einem weiteren Ja. Erledigt: der Modell-Blick läuft alle 30 Minuten (COMPLETE „KM1 a"), der Alarmweg (COMPLETE „KM1 e"). Entschieden: kein täglicher echter Probe-Aufruf (Davids Nein, 2026-11-19). Die Aufstellung liegt vor: [Plan](plans/KI-TEXTMODELL-WECHSEL.md). **Wartet auf:** David sieht beim Anbieter nach, was die KI im Monat kostet, und sagt dann Ja oder Nein zur ersten Probe. | Niedrig | S bis M | Ja: Monatssumme ansehen, dann Ja oder Nein | [Einzelheiten](#km1) |
-| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) drei Hinweise zu Abhängigkeiten bleiben offen (nachgemessen am 2026-11-20, COMPLETE „N18"). **Wartet auf:** (a) David; (e) auf neue Ausgaben der Pakete — für `minimatch` fehlt noch eine, das kleine Update allein schließt den Hinweis nicht. | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
+| AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) Abhängigkeiten: drei Hinweise und vier kleine Updates bleiben offen (Stand 2026-11-20, COMPLETE „N19"). **Wartet auf:** (a) David; (e) auf neue Ausgaben fremder Pakete und auf zwei Fristen (Issues 356, 359, 373, 374). | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 73 von 84 von selbst; nachts steht auch branding.supply als vierter Server, elf seiner zwölf Skripte laufen mit (COMPLETE „N16" und „N17"). Offen: (a) die fünf E2E-Dateien der Studio-Site und ein Skript brauchen einen fünften Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
 | CW1 | **Wackler in CI und Ausliefern (beobachtet am 2026-11-18).** (a) Sieben E2E-Läufe, in denen der Test-Server gar nicht startete — Ursache offen, beim nächsten steht sie im Log. (c) Dichte Merges schieben das Ausliefern vor sich her. Die Geheimnis-Prüfung liest seit dem 2026-11-18 je Pull Request nur noch den eigenen Zweig (COMPLETE „N15"). **Wartet auf:** (a) den nächsten roten Lauf. | Niedrig | S je Teil | Nein | [Einzelheiten](#cw1) |
-| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) die neuen SDKs (Issues 352, 353) und eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst; (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) der Rest der alten Images und die Sicherungsdateien auf dem Server (die großen Vorgänger sind seit dem 2026-11-20 weg); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
+| AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst (die SDKs sind seit dem 2026-11-20 gehoben, COMPLETE „N19"); (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (d) der Rest der alten Images und die Sicherungsdateien auf dem Server (die großen Vorgänger sind seit dem 2026-11-20 weg); (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. | Niedrig | S | (c) und (d): **Ja** (öffentlicher Beitrag bzw. Ja zum Löschen) | [Einzelheiten](#aw30) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
 
@@ -960,40 +960,45 @@ SDK-Versionen aus dem Katalog.
   (`*.vorher-p11*`, gehören zu BU1 d). Der lokale Lauf der Playwright-Suite
   braucht einen Browser-Download. Ein UptimeRobot-Monitor heißt vielleicht
   noch „studio…" (nur der Name, nicht nachgesehen).
-- **(e) Drei Hinweise zu Abhängigkeiten bleiben offen** (gemessen am
-  2026-11-20 mit `pnpm audit` und den Hinweisen des Repos; `glob` ist seit
-  dem 2026-11-17 geschlossen, `picomatch` nennt am 2026-11-20 keine der
-  beiden Quellen mehr). Keine davon ist eine direkte Abhängigkeit:
-  - `minimatch` (mittel): die betroffene Ausgabe 10.2.6 kommt über VIER
-    Wege, nicht über zwei (am 2026-11-17 standen hier nur die ersten zwei):
-    (1) `@typescript-eslint` 8.72.2 — schließt mit 8.73.0, über der
-    Drei-Tage-Frist seit dem 2026-11-19 17:08 UTC; (2) eine zweite, ältere
-    Kopie `@typescript-eslint` 8.62.0 über `@intlify/unplugin-vue-i18n`
-    (erlaubt `^8.13.0`, lässt sich im Lockfile auf dieselbe Ausgabe ziehen);
-    (3) `@nuxt/content` 3.16.2 — schließt mit 3.17.0, über der Frist ab dem
-    2026-11-20 14:11 UTC; (4) `readdir-glob` 3.0.0 über `archiver` 8.0.0, das
-    `nitropack` 2.13.6 mitbringt — dafür gibt es KEINE Ausgabe mit der
-    Korrektur (`archiver` hat nichts Neueres). Der Hinweis schließt deshalb
-    auch nach dem kleinen Update nicht. Am 2026-11-20 bewusst nicht gehoben:
-    ein Paket war noch 14 Stunden zu jung, und ein halbes Update liefert alle
-    sechs Apps neu aus, ohne den Hinweis zu schließen. **Empfehlung:** die
-    Wege (1) bis (3) mit der nächsten Sammel-Runde der Abhängigkeiten heben
-    (frühestens 2026-11-20 14:11 UTC; Lockfile-Diff lesen, alle fünf
-    Prüfungen, Live-Build). Geschlossen ist der Hinweis erst mit einer neuen
-    Ausgabe von `archiver` oder `nitropack` — kein erzwungener Sprung auf
-    eine andere Hauptversion.
+- **(e) Abhängigkeiten: was nach der Update-Runde vom 2026-11-20 offen
+  bleibt** (gemessen mit `pnpm audit`, dem Lockfile und `npm view`; die Runde
+  selbst steht in der [Erledigt-Liste](OPEN-ITEMS-COMPLETE.md), „N19"). Keine
+  der drei Stellen mit Hinweis ist eine direkte Abhängigkeit:
+  - `minimatch` (mittel, Issue 374): die betroffene Ausgabe 10.2.6 hängt nur
+    noch an EINEM Weg — `nitropack` 2.13.6 → `archiver` 8.0.0 → `readdir-glob`
+    3.0.0. `readdir-glob` 4.0.0 verlangt `minimatch` 11, ist aber eine neue
+    Hauptversion, und `archiver` 8.0.0 (die neueste Ausgabe) erlaubt nur
+    `readdir-glob` 3. **Wartet auf:** eine neue Ausgabe von `archiver` oder
+    `nitropack`; dann genügt ein Neuauflösen des Lockfiles. Kein erzwungener
+    Sprung auf eine andere Hauptversion.
   - `zod` 3 (hoch): kommt nur über `@nuxt/content`; unser eigenes `zod` ist
     aktuell. Behoben ist es erst ab zod 4.6.6, und `@nuxt/content` verlangt
     auch in 3.17.0 zod 3. **Empfehlung:** warten, bis `@nuxt/content`
     umstellt; kein erzwungener Sprung (ein Override auf eine andere
     Hauptversion wäre ein Umbau, kein Update).
   - `esbuild` 0.27 (niedrig): kommt über `fontless` 0.2.1 in `@nuxt/fonts`
-    0.14, das `@nuxt/ui` mitbringt. Neu am 2026-11-20: `@nuxt/ui` 4.13.0
-    (veröffentlicht am 2026-11-18 16:51 UTC) verlangt `@nuxt/fonts` 1.2, und
-    dessen `fontless` 1.3 braucht `esbuild` nicht mehr. Der Hinweis schließt
-    also mit dem nächsten Heben von `@nuxt/ui` (innerhalb des Katalogs, über
-    der Frist ab dem 2026-11-21 16:51 UTC). **Empfehlung:** als eigene Runde
-    — es ist ein Update der Oberfläche für alle Apps, kein Nebenbei.
+    0.14, das `@nuxt/ui` mitbringt. `@nuxt/ui` 4.13.0 (veröffentlicht am
+    2026-11-18 16:51 UTC) verlangt `@nuxt/fonts` 1.2, und dessen `fontless`
+    1.3 braucht `esbuild` nicht mehr. Der Hinweis schließt also mit dem
+    nächsten Heben von `@nuxt/ui` (über der Frist ab dem 2026-11-21 16:51
+    UTC). **Empfehlung:** als eigene Runde — es ist ein Update der Oberfläche
+    für alle Apps, kein Nebenbei.
+  - Vier kleine Updates, die am 2026-11-20 noch nicht gingen:
+    `vitest` 5.1.1 (Issue 359, über der Drei-Tage-Frist ab dem 2026-11-21
+    07:35 UTC); `@vercel/nft` 1.11.7 (Issue 356, ab dem 2026-11-20 21:17 UTC;
+    nur im Lockfile, kommt über `nitropack`); MariaDB 10.11.20 im CI-Verbund
+    (Issue 373 — das offizielle Image gibt es noch nicht, der Tag `10.11`
+    zeigt auf 10.11.19; der E2E-Lauf schreibt die laufende Version in sein
+    Protokoll, mit dem neuen Image stehen ein zurückgespieltes Test-Backup und
+    die Vote-Probe aus); `node-appwrite` 32.0.0 (neue Hauptversion, ändert
+    die Parameter-Reihenfolge von `functions.update`; kein Issue, eigener
+    Schritt).
+  - **Redis und MariaDB außerhalb der CI (braucht Davids Ja).** Der
+    CI-Verbund fährt seit dem 2026-11-20 Redis 7.4.12; die
+    Entwicklungs-Instanz und Production stehen laut Compose-Vorlage bei
+    7.4.7-alpine und `mariadb:10.11` (auf Production nicht nachgesehen). Ob
+    und wann sie nachziehen, ist eine eigene Entscheidung mit Wartungsfenster
+    — am einfachsten zusammen mit dem nächsten Appwrite-Upgrade.
 
 <a id="bt1"></a>
 
@@ -1073,12 +1078,13 @@ Tabelle „Durchläufe"). Seit dem 2026-11-20 fahren dev, CI und Production
 2.7.4 (Erledigt-Liste, „AW31"); der Production-Spiegel auf den
 Entwicklungs-Rechner ist damit weiter möglich.
 
-- **(b) SDKs und Meldung.** Die SDKs heben (Issues 352 und 353; erst dann
-  zieht `RESPONSE_FORMAT`). Klein und unabhängig davon: seit 2.7.2 bremst
+- **(b) Meldung bei gebremsten Code-Versuchen.** Seit 2.7.2 bremst
   Appwrite Code-Versuche auch bei Aufrufen mit Schlüssel (10 je Konto und
   Stunde). Nach zehn falschen Codes meldet `otp/verify.post.ts` für den Rest
   der Stunde auch beim richtigen Code „ungültig oder abgelaufen" — besser wäre
-  dort die Meldung „zu viele Versuche" mit Wartezeit.
+  dort die Meldung „zu viele Versuche" mit Wartezeit. Die SDKs sind seit dem
+  2026-11-20 gehoben (`node-appwrite` 31.3.0, `appwrite` 29.3.1,
+  `RESPONSE_FORMAT` 2.7.2 — [Erledigt-Liste](OPEN-ITEMS-COMPLETE.md), „N19").
 - **(c) Rest des Klick-Beweises.** Anmelden mit Passwort, abmelden, Anmeldung
   per Code, Profilbild-Upload und die Live-Verbindung sind seit dem
   2026-11-19 auf Production geprüft
