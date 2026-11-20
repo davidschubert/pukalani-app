@@ -9,6 +9,7 @@ import {
   type AccountEventEntry,
   type AccountEventsSection,
 } from '../../shared/accountEvents'
+import { softFail } from './softFail'
 
 /**
  * Leseweg der eigenen Konto-Ereignisse (Regeln: shared/accountEvents.ts).
@@ -64,7 +65,7 @@ export async function readAccountEvents(
     // ERST der Besitz, DANN der Ort: für eine fremde Zeile wird gar nicht
     // erst nachgeschlagen, wo ihre IP liegt.
     if (!accountEventFromAuditRow(row, userId)) continue
-    const place = row.ip ? await source.resolvePlace(row.ip).catch(() => '') : ''
+    const place = row.ip ? await source.resolvePlace(row.ip).catch(softFail('core:utils/accountEvents:resolvePlace', '')) : ''
     const entry = accountEventFromAuditRow(row, userId, place)
     if (entry) events.push(entry)
   }

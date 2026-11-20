@@ -4,6 +4,7 @@ import { createSessionClient, createAdminClient } from '../../lib/appwrite'
 import { recoverySchema } from '../../../schemas/auth'
 import { unexpectedRecoveryFailure } from '../../../shared/authFailure'
 import { resolveTrustedOrigin } from '../../utils/trustedOrigin'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Recovery-Mail anfordern. Läuft als GUEST (SessionClient ohne Session) —
@@ -65,7 +66,7 @@ export default defineEventHandler(async (event) => {
     // Security-Signal ins Aktivitätsprotokoll — nur intern (admin-only Audit),
     // die Antwort bleibt in JEDEM Pfad identisch (keine Account-Enumeration).
     const { users } = createAdminClient(event)
-    const match = await users.list({ queries: [Query.equal('email', email), Query.limit(1)] }).catch(() => null)
+    const match = await users.list({ queries: [Query.equal('email', email), Query.limit(1)] }).catch(softFail('core:api/auth/recovery.post:list', null))
     const found = match?.users[0]
     if (found) {
       await logAuthEvent(event, 'user.recovery_requested', { userId: found.$id, name: found.name })

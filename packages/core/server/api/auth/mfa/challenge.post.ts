@@ -2,6 +2,7 @@ import type { AuthenticationFactor } from 'node-appwrite'
 import { createSessionClient } from '../../../lib/appwrite'
 import { mfaChallengeSchema } from '../../../../schemas/auth'
 import { isInvalidMfaCode, mfaFactorFor, mfaLoginMethod } from '../../../../shared/mfa'
+import { softFail } from '../../../utils/softFail'
 
 /**
  * Der zweite Schritt der Anmeldung: die halbe Session (nur `password` — oder
@@ -72,7 +73,7 @@ export default defineEventHandler(async (event) => {
   const user = await account.get()
   // Bekanntes Gerät (P29): die Anmeldung ist jetzt vollständig. Wirft nie.
   rememberKnownDevice(event, { email: user.email, userId: user.$id })
-  const factors = await account.getSession({ sessionId: 'current' }).then(s => s.factors).catch(() => [])
+  const factors = await account.getSession({ sessionId: 'current' }).then(s => s.factors).catch(softFail('core:api/auth/mfa/challenge.post:getSession', [], { quiet: [401] }))
   await logAuthEvent(event, 'user.login', { userId: user.$id, name: user.name, method: mfaLoginMethod(factors, mode) })
   return { ok: true }
 })

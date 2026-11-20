@@ -2,6 +2,7 @@ import { createSessionClient } from '../../lib/appwrite'
 import { AppwriteException } from 'node-appwrite'
 import { passwordChangeServerSchema } from '../../../schemas/auth'
 import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Passwort ändern (eingeloggter User) — läuft als der User selbst (SessionClient).
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
     await Promise.all(
       sessions
         .filter(session => !session.current)
-        .map(session => account.deleteSession({ sessionId: session.$id }).catch(() => {})),
+        .map(session => account.deleteSession({ sessionId: session.$id }).catch(softFail('core:api/auth/password.put:deleteSession', undefined))),
     )
   }
   catch {

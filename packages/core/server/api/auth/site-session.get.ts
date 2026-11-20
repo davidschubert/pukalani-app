@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { deriveHandoffKey, handoffAudience, openHandoffToken } from '../../utils/embedHandoff'
 import { setSessionCookie } from '../../lib/appwrite'
 import { safeRedirectTarget } from '../../../shared/redirectTarget'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Session-Handoff auf einen ANDEREN Host desselben Deployments (O6, Schritt 9).
@@ -67,7 +68,7 @@ export default defineEventHandler(async (event) => {
     .setEndpoint(config.public.appwriteEndpoint)
     .setProject(config.public.appwriteProjectId)
     .setSession(secret)
-  const session = await new Account(client).getSession({ sessionId: 'current' }).catch(() => null)
+  const session = await new Account(client).getSession({ sessionId: 'current' }).catch(softFail('core:api/auth/site-session.get:getSession', null, { quiet: [401] }))
   if (!session) {
     throw createError({ status: 401, statusText: 'Session no longer valid' })
   }
