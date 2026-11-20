@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { decideCommunityAccess } from '../../../../core/shared/communityAccess'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 interface SearchResult {
   users: { $id: string, name: string, email: string }[]
@@ -67,10 +68,10 @@ export default defineEventHandler(async (event): Promise<SearchResult> => {
     poolTenant
       ? Promise.resolve({ users: [] as Models.User<Models.Preferences>[] })
       : admin.users.list({ search: q, queries: [Query.limit(5)] })
-          .catch(() => ({ users: [] as Models.User<Models.Preferences>[] })),
+          .catch(softFail('admin:api/admin/search.get:list', { users: [] as Models.User<Models.Preferences>[] })),
     canModerate
       ? db.list<CommentRow>('comments', [Query.search('content', q), Query.limit(5)])
-          .catch(() => ({ rows: [] as CommentRow[] }))
+          .catch(softFail('admin:api/admin/search.get:list#2', { rows: [] as CommentRow[] }))
       : Promise.resolve({ rows: [] as CommentRow[] }),
   ])
 

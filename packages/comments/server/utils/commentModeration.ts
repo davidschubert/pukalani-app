@@ -2,6 +2,7 @@ import { Query, type Models } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { COMMENTS_TABLE } from '../../shared/types/comment'
 import { commentNotificationCommunityId, removeCommentNotifications } from './commentNotifications'
+import { softFail, softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * Server-Vertrag des comments-Layers fürs Ausblenden (Moderation): die
@@ -71,7 +72,7 @@ export async function hideCommentRow(
     // laut geloggt statt geschluckt (Re-Hide über die UI ist idempotent und
     // zieht die Phase nach).
     await withdraw()
-      .catch(() => withdraw())
+      .catch(softFailWith('comments:utils/commentModeration:withdraw', () => withdraw()))
       .catch((error) => {
         console.error(`[moderation] Permission-Entzug fehlgeschlagen — hidden-Kommentar ${row.$id} bleibt Roh-REST-lesbar bis zum Re-Hide:`, error)
       })
@@ -97,7 +98,7 @@ async function removeHiddenCommentNotifications(event: H3Event, row: Models.Row 
   if (!authorId && row.authorKind === 'guest' && row.parentId) {
     const parent = await tenantDb(event, { as: 'operator' })
       .get<Models.Row & { authorId?: string | null }>(COMMENTS_TABLE, row.parentId, 'Comment not found')
-      .catch(() => null)
+      .catch(softFail('comments:utils/commentModeration:get', null))
     parentAuthorId = parent?.authorId || null
   }
   if (!authorId && !parentAuthorId) return

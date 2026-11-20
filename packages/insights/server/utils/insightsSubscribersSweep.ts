@@ -6,6 +6,7 @@ import {
   insightsNewsletterPendingPurgeDue,
   insightsNewsletterPiiSweepDue,
 } from '../../shared/insightsNewsletter'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DER FRISTEN-SWEEP DER NEWSLETTER-LISTE (BI1 I5a; Muster:
@@ -147,7 +148,7 @@ export async function runInsightsSubscribersSweep(
       // Tabelle nicht, und der Layer kann trotzdem einkompiliert sein (der
       // Playground ist genau so). Ein täglicher Fehler-Stapel wäre dort kein
       // Hinweis, sondern Rauschen.
-    }).catch(() => null)
+    }).catch(softFail('insights:utils/insightsSubscribersSweep:listRows', null))
 
     if (pending) {
       result.checkedPending = pending.rows.length
@@ -177,7 +178,7 @@ export async function runInsightsSubscribersSweep(
         Query.orderAsc('retentionAt'),
         Query.limit(SWEEP_BATCH),
       ],
-    }).catch(() => null)
+    }).catch(softFail('insights:utils/insightsSubscribersSweep:listRows#2', null))
 
     if (expired) {
       result.checkedUnsubscribed = expired.rows.length

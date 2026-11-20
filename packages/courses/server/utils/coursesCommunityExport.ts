@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { COURSES_TABLE, ENROLLMENTS_TABLE, LESSONS_TABLE, normalizeCourseAccess, type CourseRow, type LessonRow } from '../../shared/types/course'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Community-Export des courses-Layers (Vertrag: core/server/utils/communityExport.ts).
@@ -58,7 +59,7 @@ export async function coursesCommunityExport(event: H3Event) {
 
   // Nur die Anzahl, und sie degradiert: eine Instanz mit ausstehender Migration
   // liefert lieber ein Bündel ohne diese Zahl als gar keins.
-  const enrollments = await db.count(ENROLLMENTS_TABLE, []).catch(() => 0)
+  const enrollments = await db.count(ENROLLMENTS_TABLE, []).catch(softFail('courses:utils/coursesCommunityExport:count', 0))
 
   return {
     courses: courses.map(c => ({

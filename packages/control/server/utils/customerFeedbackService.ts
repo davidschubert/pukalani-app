@@ -4,6 +4,7 @@ import { hasCapability } from '../../../core/shared/authz'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { ANONYMOUS_ACTOR, type FeedbackActor } from '../../shared/customerFeedback'
 import { verifyRuntimeIdentity } from './onboardingService'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Wer handelt gerade? — die Naht zwischen „irgendein Aufrufer" und dem
@@ -54,7 +55,7 @@ async function resolveCommunity(
     databaseId: config.public.appwriteDatabaseId,
     tableId: COMMUNITIES_TABLE,
     rowId: communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:utils/customerFeedbackService:getRow', null))
   if (!row || row.projectId !== projectId) {
     logEvent('warn', 'feedback.community_mismatch', { communityId, projectId })
     return { communityId: '', communityName: '' }

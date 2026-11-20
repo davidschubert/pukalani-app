@@ -4,6 +4,7 @@ import {
   type CustomDomainGraceNotice,
 } from '../../../control/shared/customDomainNotice'
 import { buildCustomDomainNoticeMail, customDomainNoticeBellBody } from '../../shared/customDomainNoticeMail'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DIE ZWEI HINWEISE ZUR FRIST DER EIGENEN DOMAIN (BE-014) — geschrieben HIER,
@@ -90,7 +91,7 @@ export async function runCustomDomainNoticeSweep(now: number = Date.now()): Prom
       }
 
       for (const ownerId of community.ownerUserIds) {
-        const recipient = await users.get({ userId: ownerId }).catch(() => null)
+        const recipient = await users.get({ userId: ownerId }).catch(softFail('onboarding:utils/customDomainNotice:get', null))
         if (!recipient) {
           logEvent('error', 'custom_domain.notice_recipient_missing', { communityId: community.communityId, recipientId: ownerId })
           continue
@@ -127,7 +128,7 @@ export async function runCustomDomainNoticeSweep(now: number = Date.now()): Prom
             domain: community.domain,
             graceEndsAt: community.graceEndsAt,
           })
-          const sent = await sendMail(undefined, { to: recipient.email, subject: mail.subject, text: mail.text }).catch(() => false)
+          const sent = await sendMail(undefined, { to: recipient.email, subject: mail.subject, text: mail.text }).catch(softFail('onboarding:utils/customDomainNotice:sendMail', false))
           if (sent) result.mailed++
           else logEvent('error', 'custom_domain.notice_mail_failed', { communityId: community.communityId, kind })
         }

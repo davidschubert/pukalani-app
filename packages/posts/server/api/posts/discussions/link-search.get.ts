@@ -4,6 +4,7 @@ import { topicSlug } from '../../../../shared/discussionUrl'
 import { topicLinkToken } from '../../../../shared/topicLinks'
 import { POSTS_TABLE, type CommunityPost, type TopicLinkSuggestion } from '../../../../shared/types/post'
 import { topicTitle } from '../../../utils/discussions'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * DIE THEMEN-SUCHE FÜR DAS `#`-MENÜ DER SCHREIBFLÄCHE (F57).
@@ -68,7 +69,7 @@ export default defineEventHandler(async (event): Promise<TopicLinkSuggestion[]> 
     Query.orderDesc('lastActivityAt'),
     // Reserve für den Kategorie-Filter, der erst nach der Abfrage greift.
     Query.limit(LIMIT * 4),
-  ]).catch(() => ({ rows: [] as CommunityPost[] }))
+  ]).catch(softFail('posts:api/posts/discussions/link-search.get:list', { rows: [] as CommunityPost[] }))
 
   return rows
     .filter(row => Boolean(row.categoryId))

@@ -4,6 +4,7 @@ import { InputFile } from 'node-appwrite/file'
 import type { H3Event } from 'h3'
 import { createSessionClient } from '../lib/appwrite'
 import type { UserDataAudience, UserDataExportContext } from './userData'
+import { softFail, softFailWith } from './softFail'
 
 /**
  * GDPR-Orchestrierung (Plan: docs/archiv/GDPR-DELETE-AND-EXPORT.md §4.3).
@@ -97,7 +98,7 @@ export async function exportUserCompletely(
   // Account immer über die Users-API (voller Datensatz); im Session-Pfad ist
   // der Context-User der Fallback für einen einzelnen Blip.
   const account = await admin.users.get({ userId })
-    .catch(() => (opts.via === 'session' ? event.context.user : null))
+    .catch(softFailWith('core:utils/userDataOrchestration:get', () => (opts.via === 'session' ? event.context.user : null)))
   if (!account) {
     throw createError({ status: 404, statusText: 'User not found' })
   }
@@ -162,7 +163,7 @@ async function writeSnapshot(event: H3Event, userId: string, payload: UserDataEx
   // Zusätzliches Netz: abgelaufene Alt-Snapshots gleich mit abräumen. Die
   // Frist GARANTIERT der stündliche Lauf (plugins/gdpr-export-prune.ts,
   // SEC-009) — ein Fehler hier darf die Löschung deshalb nicht aufhalten.
-  await cleanupExpiredGdprExports(event).catch(() => {})
+  await cleanupExpiredGdprExports(event).catch(softFail('core:utils/userDataOrchestration:cleanupExpiredGdprExports', undefined))
 
   return file.$id
 }
@@ -340,7 +341,7 @@ export async function deleteUserCompletely(
     await admin.users.updateStatus({ userId, status: false })
     // Session-Kill bleibt best effort: der Block macht bestehende Sessions
     // ohnehin handlungsunfähig.
-    await admin.users.deleteSessions({ userId }).catch(() => {})
+    await admin.users.deleteSessions({ userId }).catch(softFail('core:utils/userDataOrchestration:deleteSessions', undefined))
 
     // (3) AUDIT — OHNE Klarnamen (der steht im Snapshot, nicht im Log)
     if (opts.actor === 'self') {
@@ -383,7 +384,7 @@ export async function deleteUserCompletely(
   if (avatarCleanup.failed > 0) {
     logEvent('error', 'gdpr.avatar_cleanup_failed', { userId, failed: avatarCleanup.failed, deleted: avatarCleanup.deleted })
   }
-  await admin.presences.delete({ presenceId: userId }).catch(() => {})
+  await admin.presences.delete({ presenceId: userId }).catch(softFail('core:utils/userDataOrchestration:delete', undefined))
 
   // (6) FINALISIEREN — users.delete NUR bei Voll-Erfolg (hartes Abschlusskriterium)
   const allOk = results.every(r => r.ok)

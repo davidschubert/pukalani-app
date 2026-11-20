@@ -1,6 +1,7 @@
 import { Permission, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { MEDIA_BUCKET, MEDIA_TABLE } from '../../shared/types/media'
+import { softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * Sichtbarkeit der Medien-Galerie — EIN Muster mit events: die Table trägt
@@ -115,7 +116,7 @@ export async function applyMediaVisibility(
    * der Fehler fliegt, der Zustand von vorher steht unverändert.
    */
   const secondPhase = (what: 'row' | 'file', run: () => Promise<unknown>): Promise<unknown> =>
-    run().catch(() => run()).catch((error) => {
+    run().catch(softFailWith('media:utils/mediaPermissions:run', () => run())).catch((error) => {
       console.error(
         `[media] Sichtbarkeit nur halb gesetzt — Eintrag ${row.$id} steht auf `
         + `${published ? 'veröffentlicht' : 'Entwurf'}, aber `

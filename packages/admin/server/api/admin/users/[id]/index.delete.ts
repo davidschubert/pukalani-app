@@ -1,3 +1,5 @@
+import { softFail } from '../../../../../../core/server/utils/softFail'
+
 /**
  * DSGVO: einen User VOLLSTÄNDIG löschen (Admin) — nicht den eigenen Account.
  * Orchestriert über deleteUserCompletely (Snapshot → Sperren → Contributors →
@@ -26,7 +28,7 @@ export default defineEventHandler(async (event) => {
   const admin = createAdminClient(event)
   // Existenz-Check VOR dem Orchestrator: die Route soll 404 liefern; der
   // Orchestrator selbst behandelt 404 als Orphan-Cleanup (Re-Run-Pfad).
-  const exists = await admin.users.get({ userId }).catch(() => null)
+  const exists = await admin.users.get({ userId }).catch(softFail('admin:api/admin/users/[id]/index.delete:get', null))
   if (!exists) {
     throw createError({ status: 404, statusText: 'User not found' })
   }

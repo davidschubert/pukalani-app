@@ -1,6 +1,7 @@
 import { ID } from 'node-appwrite'
 import { z } from 'zod'
 import { INVITE_CODES_TABLE, type InviteCodeRow } from '../../../../shared/types/inviteCode'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Betreiber: Vorrat auffüllen (sites.manage).
@@ -52,7 +53,7 @@ export default defineEventHandler(async (event) => {
         boundEmail: '',
         requestId: '',
       },
-    }).catch(() => null)
+    }).catch(softFail('control:api/control/invites/bulk.post:createRow', null, { quiet: [409] }))
     if (row) created.push(row.$id)
   }
 

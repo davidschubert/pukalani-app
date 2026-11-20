@@ -1,5 +1,6 @@
 import { canRestoreEvent } from '../../../../shared/eventModerationPolicy'
 import { EVENTS_TABLE, type EventRow } from '../../../../shared/types/event'
+import { softFailWith } from '../../../../../core/server/utils/softFail'
 
 /**
  * Moderation: ausgeblendeten Termin wiederherstellen (F15) — Leserecht und
@@ -64,9 +65,9 @@ export default defineEventHandler(async (event) => {
   }
   catch (error) {
     // Rückweg auf `hidden`, damit der nächste Versuch wieder erlaubt ist.
-    await db.update(EVENTS_TABLE, id, { status: 'hidden' }).catch(() => {
+    await db.update(EVENTS_TABLE, id, { status: 'hidden' }).catch(softFailWith('events:api/events/[id]/restore.post:update', () => {
       logEvent('error', 'events.restore_rollback_failed', { eventId: id })
-    })
+    }))
     throw toH3Error(error, 'Could not restore event')
   }
 

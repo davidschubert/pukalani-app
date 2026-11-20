@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { COMMENTS_TABLE, type Comment } from '../../shared/types/comment'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * „WO HABE ICH ZULETZT KOMMENTIERT?" — die comments-Seite des Core-Vertrags
@@ -52,7 +53,7 @@ export default defineNitroPlugin(() => {
       Query.equal('status', 'active'),
       Query.orderDesc('$createdAt'),
       Query.limit(Math.min(query.limit * ROWS_PER_TARGET, MAX_ROWS)),
-    ]).catch(() => ({ rows: [] as Comment[] }))
+    ]).catch(softFail('comments:plugins/user-activity:list', { rows: [] as Comment[] }))
 
     return rows.map(row => ({
       targetType: row.targetType,

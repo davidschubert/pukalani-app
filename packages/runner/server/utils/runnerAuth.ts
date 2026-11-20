@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { RUNNERS_TABLE, type RunnerRow } from '../../shared/types/runner'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Die Runner-Naht: Bearer-Secret statt Session (docs/plans/AI-RUNNER.md § 5).
@@ -62,7 +63,7 @@ export async function requireRunner(event: H3Event): Promise<RunnerRow> {
     databaseId: config.public.appwriteDatabaseId,
     tableId: RUNNERS_TABLE,
     rowId: runnerId,
-  }).catch(() => null)
+  }).catch(softFail('runner:utils/runnerAuth:getRow', null))
   if (!runner) throw unauthorized()
 
   // Stillgelegt ist der Aus-Schalter (§ 4) — er muss VOR dem Vergleich

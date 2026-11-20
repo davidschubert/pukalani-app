@@ -1,4 +1,5 @@
 import { POSTS_TABLE, type CommunityPost } from '../../../../shared/types/post'
+import { softFailWith } from '../../../../../core/server/utils/softFail'
 
 /**
  * Moderation: Post ausblenden — zweiphasig wie comments (Status-Update
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event) => {
     const withdraw = () => db.updatePermissions(POSTS_TABLE, id, withdrawn)
     // Phase 2 muss halten — Retry für transiente Fehler, persistente laut loggen
     await withdraw()
-      .catch(() => withdraw())
+      .catch(softFailWith('posts:api/posts/[id]/hide.post:withdraw', () => withdraw()))
       .catch((error) => {
         console.error(`[posts] Permission-Entzug fehlgeschlagen — hidden-Post ${id} bleibt Roh-REST-lesbar bis zum Re-Hide:`, error)
       })

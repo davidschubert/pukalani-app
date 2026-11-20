@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { categorySchema } from '../../../../schemas/postCategory'
 import { serializeCategoryTranslations } from '../../../../shared/categoryI18n'
 import { MAX_CATEGORY_SORT_ORDER, POST_CATEGORIES_TABLE, type PostCategory } from '../../../../shared/types/post'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Kategorie anlegen — Struktur ist Admin-Sache (Davids Konzept Teil 1:
@@ -85,7 +86,7 @@ export default defineEventHandler(async (event) => {
 /** Die nächste freie Position: hinter der letzten vergebenen (0, wenn es noch
  *  keine gibt), gedeckelt auf den Wertebereich der Spalte. */
 async function nextCategorySortOrder(db: ReturnType<typeof tenantDb>): Promise<number> {
-  const existing = await listCategories(db).catch(() => [] as PostCategory[])
+  const existing = await listCategories(db).catch(softFail('posts:api/posts/categories/index.post:listCategories', [] as PostCategory[]))
   const highest = existing.reduce((max, category) => Math.max(max, category.sortOrder), -1)
   return Math.min(highest + 1, MAX_CATEGORY_SORT_ORDER)
 }

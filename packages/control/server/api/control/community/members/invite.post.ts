@@ -8,6 +8,7 @@ import { COMMUNITY_ROLES, communityRoleHasCapability } from '../../../../../../c
 import { countCommunityInvitesBy, memberInviteLimit, requireCommunityTeamContext, createCommunityInviteToken, memberFacts, throwOnDenied } from '../../../../utils/communityTeam'
 import { sendCommunityInviteMail } from '../../../../utils/communityInviteMail'
 import { withControlLock } from '../../../../utils/controlLock'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Jemanden in eine Community einladen — EIN Feld, eine Rollenwahl (Davids
@@ -186,7 +187,7 @@ export default defineEventHandler(async (event) => {
         await admin.tablesDB.updateRow({
           databaseId: context.databaseId, tableId: COMMUNITY_INVITES_TABLE, rowId: invite.$id,
           data: { status: 'revoked' },
-        }).catch(() => {})
+        }).catch(softFail('control:api/control/community/members/invite.post:updateRow', undefined))
       }
     }
 

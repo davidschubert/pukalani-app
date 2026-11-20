@@ -1,5 +1,6 @@
 import { communityRoleHasCapability } from '../../shared/communityAuthz'
 import { communityModeratorLabel } from '../../shared/communityModeratorLabel'
+import { softFailWith } from '../utils/softFail'
 
 /**
  * Community-Label-Vergabe (H3-Naht 4) — läuft nach Dateiname NACH
@@ -59,10 +60,10 @@ export default defineEventHandler(async (event) => {
   // Auflösung ÜBERHAUPT stattfand, wird getrennt gemerkt — siehe unten beim
   // Moderations-Label.
   let resolved = true
-  const role = await resolveCommunityRole(event).catch(() => {
+  const role = await resolveCommunityRole(event).catch(softFailWith('core:middleware/06.community-label:resolveCommunityRole', () => {
     resolved = false
     return null
-  })
+  }))
 
   // Gerade selbst entzogen? Dann NICHT der Rolle glauben. Der Rollen-Resolver
   // cacht 30 s — ohne diese Frage hätte „Zugang entziehen" ein halbminütiges

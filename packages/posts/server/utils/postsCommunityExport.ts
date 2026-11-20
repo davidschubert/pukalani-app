@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { POLL_VOTES_TABLE, POSTS_TABLE, POST_CATEGORIES_TABLE, POST_VOTES_TABLE, type CommunityPost, type PostCategory } from '../../shared/types/post'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Community-Export des posts-Layers (Vertrag: core/server/utils/communityExport.ts).
@@ -43,9 +44,9 @@ export async function postsCommunityExport(event: H3Event) {
   // auf der eine Migration noch aussteht, liefert dann eben ein Bündel ohne
   // Kategorien (Muster der GDPR-Contributors).
   const categories = await collectTenantRows<PostCategory>(db, POST_CATEGORIES_TABLE)
-    .catch(() => [] as PostCategory[])
-  const votes = await db.count(POST_VOTES_TABLE, []).catch(() => 0)
-  const pollVotes = await db.count(POLL_VOTES_TABLE, []).catch(() => 0)
+    .catch(softFail('posts:utils/postsCommunityExport:collectTenantRows', [] as PostCategory[]))
+  const votes = await db.count(POST_VOTES_TABLE, []).catch(softFail('posts:utils/postsCommunityExport:count', 0))
+  const pollVotes = await db.count(POLL_VOTES_TABLE, []).catch(softFail('posts:utils/postsCommunityExport:count#2', 0))
 
   /**
    * GELÖSCHTE BEITRÄGE ALS PLATZHALTER (SEC-032, 2026-11-15): Zeile mit Id,

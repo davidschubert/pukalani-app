@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import type { AdminUserActivity, AdminUserComment, AdminUserDetailResponse } from '../../../../../shared/types/admin'
 import { USER_ACTIVITY_LIMIT } from '../../../../../shared/userActivity'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 type CommentRow = Models.Row & Omit<AdminUserComment, '$id' | '$createdAt'>
 
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
   const viewingSelf = event.context.user?.$id === userId
   const currentSessionId = viewingSelf
     ? await createSessionClient(event).account.getSession({ sessionId: 'current' })
-        .then(s => s.$id).catch(() => '')
+        .then(s => s.$id).catch(softFail('admin:api/admin/users/[id]/index.get:getSession', '', { quiet: [401] }))
     : ''
 
   // Startet hier, damit es neben den drei Abfragen darunter läuft (Begründung
@@ -72,12 +73,12 @@ export default defineEventHandler(async (event): Promise<AdminUserDetailResponse
     })
 
   const [sessions, targets, comments] = await Promise.all([
-    admin.users.listSessions({ userId }).catch(() => ({ sessions: [] as Models.Session[] })),
+    admin.users.listSessions({ userId }).catch(softFail('admin:api/admin/users/[id]/index.get:listSessions', { sessions: [] as Models.Session[] })),
     // Benachrichtigungskanäle (email/sms/push-Targets)
-    admin.users.listTargets({ userId }).catch(() => ({ targets: [] as Models.Target[] })),
+    admin.users.listTargets({ userId }).catch(softFail('admin:api/admin/users/[id]/index.get:listTargets', { targets: [] as Models.Target[] })),
     tenantDb(event, { as: 'operator' }).list<CommentRow>('comments', [
       Query.equal('authorId', userId), Query.orderDesc('$createdAt'), Query.limit(10),
-    ]).catch(() => ({ total: 0, rows: [] as CommentRow[] })),
+    ]).catch(softFail('admin:api/admin/users/[id]/index.get:list', { total: 0, rows: [] as CommentRow[] })),
   ])
 
   // AKTIVITÄT (AL1, 2026-11-17): bis Appwrite 2.5 kam die Liste aus

@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { EVENT_RSVPS_TABLE, EVENT_VOTES_TABLE, type EventAttendee, type EventRsvpRow, type EventVote, type EventVoteValue, type RsvpStatus } from '../../shared/types/event'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Die Veröffentlichungs-Permission eines Events steht seit C18 (2026-07-30)
@@ -31,7 +32,7 @@ export async function myRsvpsFor(
     Query.equal('userId', userId),
     Query.equal('eventId', eventIds),
     Query.limit(eventIds.length),
-  ]).catch(() => ({ rows: [] as EventRsvpRow[] }))
+  ]).catch(softFail('events:utils/eventsShared:list', { rows: [] as EventRsvpRow[] }))
 
   for (const row of res.rows) map.set(row.eventId, row.status)
   return map
@@ -50,7 +51,7 @@ export async function myVotesFor(
     Query.equal('userId', userId),
     Query.equal('eventId', eventIds),
     Query.limit(eventIds.length),
-  ]).catch(() => ({ rows: [] as EventVote[] }))
+  ]).catch(softFail('events:utils/eventsShared:list#2', { rows: [] as EventVote[] }))
 
   for (const row of res.rows) map.set(row.eventId, row.value)
   return map
@@ -64,7 +65,7 @@ async function goingRsvpsFor(event: H3Event, eventIds: string[], limit: number):
     Query.equal('status', 'going'),
     Query.orderAsc('$createdAt'),
     Query.limit(limit),
-  ]).catch(() => ({ rows: [] as EventRsvpRow[] }))
+  ]).catch(softFail('events:utils/eventsShared:list#3', { rows: [] as EventRsvpRow[] }))
   return res.rows
 }
 
@@ -141,6 +142,7 @@ const voteQueues = new Map<string, Promise<unknown>>()
 
 export async function serializePerEvent<T>(eventId: string, fn: () => Promise<T>): Promise<T> {
   const prev = voteQueues.get(eventId) ?? Promise.resolve()
+  // eslint-disable-next-line pukalani/no-silent-catch -- Ende einer Sperr-Kette: den Fehler bekommt der Aufrufer des Glieds, die Kette selbst darf nie abgelehnt sein
   const run = prev.catch(() => {}).then(fn)
   voteQueues.set(eventId, run)
   try {

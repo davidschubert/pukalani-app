@@ -90,6 +90,7 @@ function oneAtATime<T>(task: () => Promise<T>): Promise<T> {
   // `.then(task, task)` statt `.finally`: ein FEHLER des Vorgängers darf den
   // Nachfolger nicht mitreißen, die Kette muss ihn aber abwarten.
   const run = webhookChain.then(task, task)
+  // eslint-disable-next-line pukalani/no-silent-catch -- Ende einer Sperr-Kette: den Fehler bekommt der Aufrufer des Glieds, die Kette selbst darf nie abgelehnt sein
   webhookChain = run.catch(() => {})
   return run
 }
@@ -102,6 +103,7 @@ export default defineEventHandler(async (event) => {
 
 async function ensureWebhookEndpoint(event: H3Event, user: { $id: string }) {
 
+  // eslint-disable-next-line pukalani/no-silent-catch -- ein fehlender oder kaputter Rumpf des Aufrufers ist kein Serverfehler, der Ersatz ist die Antwort darauf
   const body = schema.parse(await readBody(event).catch(() => ({})) ?? {})
 
   const url = stripeWebhookUrl(event)

@@ -12,6 +12,7 @@ import {
 import { COMMUNITY_FAVICON_BUCKET } from '../../../../../packages/core/shared/communityFavicon'
 import { resolveTenantBrandMark } from '../../utils/tenantBrandMark'
 import { brandIconPng } from '../../utils/brandImageStore'
+import { softFailWith } from '../../../../../packages/core/server/utils/softFail'
 
 /**
  * Das App-Icon EINER Community für den Home-Bildschirm (OPEN-ITEMS C7):
@@ -91,10 +92,10 @@ export default defineEventHandler(async (event) => {
         height: size,
         gravity: ImageGravity.Center,
         output: ImageFormat.Png,
-      }).catch(() => admin.storage.getFileView({
+      }).catch(softFailWith('app.platform:routes/icon/[key].get:getFilePreview', () => admin.storage.getFileView({
         bucketId: COMMUNITY_FAVICON_BUCKET,
         fileId: communityId,
-      }))
+      })))
       const uploaded = Buffer.from(bytes)
       setHeader(event, 'content-type', 'image/png')
       setHeader(event, 'content-length', uploaded.length)

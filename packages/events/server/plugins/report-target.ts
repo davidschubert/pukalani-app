@@ -1,4 +1,5 @@
 import { EVENTS_TABLE, type EventRow } from '../../shared/types/event'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * MELDBAR: Termine (F15, 2026-08-03 — schließt Moderations-Audit Befund 4).
@@ -32,7 +33,7 @@ export default defineNitroPlugin(() => {
   registerReportTarget('event', async (event, targetId) => {
     const row = await tenantDb(event)
       .get<EventRow>(EVENTS_TABLE, targetId, 'Event not found')
-      .catch(() => null)
+      .catch(softFail('events:plugins/report-target:get', null))
     return !!row
   })
 })

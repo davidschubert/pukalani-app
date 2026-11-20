@@ -5,6 +5,7 @@ import {
   onboardingInviteRequired,
   type OnboardingGateState,
 } from '../../../core/shared/onboardingGate'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Das Early-Access-Tor als LAUFZEIT-Einstellung (U2, 2026-08-10).
@@ -28,7 +29,7 @@ import {
 export async function readOnboardingGate(event?: H3Event): Promise<OnboardingGateState> {
   // getAppConfig fällt bei fehlender Zeile/Tabelle/Verbindung selbst auf
   // DEFAULT_APP_CONFIG zurück — und dessen `onboardingInviteOnly` ist `true`.
-  const config = await getAppConfig(event).catch(() => null)
+  const config = await getAppConfig(event).catch(softFail('control:utils/onboardingGate:getAppConfig', null))
   if (!config) return { ...FAILSAFE_ONBOARDING_GATE }
   return { inviteRequired: onboardingInviteRequired(config.onboardingInviteOnly) }
 }

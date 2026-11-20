@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { InsightsCorrectionRow } from '../../shared/insightsRows'
 import { INSIGHTS_CORRECTIONS_TABLE } from '../../shared/insightsRows'
 import { insightsCorrectionSweepDue } from '../../shared/insightsCorrection'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DER FRISTEN-SWEEP DER KORREKTUR-ZEILEN (Plan §9.3 „Retention und
@@ -109,7 +110,7 @@ export async function runInsightsCorrectionsSweep(
         Query.orderAsc('retentionAt'),
         Query.limit(SWEEP_BATCH),
       ],
-    }).catch(() => null)
+    }).catch(softFail('insights:utils/insightsCorrectionsSweep:listRows', null))
 
     // FAIL-SOFT UND STILL: auf einer Instanz OHNE die insights-Migrationen
     // gibt es die Tabelle nicht, und der Layer kann trotzdem einkompiliert

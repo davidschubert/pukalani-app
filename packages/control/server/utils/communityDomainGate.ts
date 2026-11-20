@@ -38,6 +38,7 @@ import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/t
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { customDomainEntitlement, type CustomDomainDenial } from '../../shared/customDomain'
 import { verifyRuntimeIdentity, type RuntimeIdentity } from './onboardingService'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Der fachliche Grund im 403 — die Seite liest ihn als `error.data.reason`.
@@ -94,7 +95,7 @@ export async function requireCommunityDomainOwner(
   // nicht bestätigen.
   const row = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:utils/communityDomainGate:getRow', null))
   if (!row || row.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Community not found' })
   }

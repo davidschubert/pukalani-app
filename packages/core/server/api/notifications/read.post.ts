@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { createAdminClient } from '../../lib/appwrite'
 import { runScopedNotificationQuery } from '../../utils/notificationScope'
+import { softFail } from '../../utils/softFail'
 
 /**
  * Alle eigenen ungelesenen Benachrichtigungen als gelesen markieren — GESCOPT
@@ -51,14 +52,14 @@ export default defineEventHandler(async (event) => {
         Query.equal('read', false),
         Query.limit(100),
       ],
-    })).catch(() => ({ rows: [] as (Models.Row & { read: boolean, recipientId: string })[] }))
+    })).catch(softFail('core:api/notifications/read.post:runScopedNotificationQuery', { rows: [] as (Models.Row & { read: boolean, recipientId: string })[] }))
     if (res.rows.length === 0) break
 
     // Netz hinter dem Filter: eine Zeile, die nicht dem Konto gehört, wird
     // nie angefasst — auch wenn eine Abfrage einmal mehr lieferte, als sie soll.
     const own = res.rows.filter(r => r.recipientId === recipientId)
     await Promise.all(own.map(r =>
-      tablesDB.updateRow({ databaseId, tableId: 'notifications', rowId: r.$id, data: { read: true } }).catch(() => {}),
+      tablesDB.updateRow({ databaseId, tableId: 'notifications', rowId: r.$id, data: { read: true } }).catch(softFail('core:api/notifications/read.post:updateRow', undefined)),
     ))
     marked += res.rows.length
     if (res.rows.length < 100) break

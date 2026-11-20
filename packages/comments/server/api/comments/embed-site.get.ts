@@ -1,6 +1,7 @@
 import { checkEmbedHost } from '../../../shared/embedOrigins'
 import { listEmbedSites } from '../../utils/embedSites'
 import { embedStaticOrigins } from '../../utils/embedStaticOrigins'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * E3: Best-effort-Registry-Check für die /embed-Seite (SSR-intern aufgerufen).
@@ -20,6 +21,6 @@ export default defineEventHandler(async (event): Promise<{ verdict: string }> =>
   const query = getQuery(event)
   const url = typeof query.url === 'string' ? query.url : undefined
   const targetType = String(query.targetType ?? '')
-  const sites = await listEmbedSites(event).catch(() => [])
+  const sites = await listEmbedSites(event).catch(softFail('comments:api/comments/embed-site.get:listEmbedSites', []))
   return { verdict: checkEmbedHost(embedStaticOrigins(event, embed.allowedOrigins), sites, url, targetType) }
 })

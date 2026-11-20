@@ -1,4 +1,5 @@
 import { Query } from 'node-appwrite'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * GDPR-Snapshots listen (Admin). Räumt dabei Abgelaufenes mit ab (älter als
@@ -13,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const bucketId = config.public.appwriteGdprBucket
   if (!bucketId) return { total: 0, files: [] }
 
-  await cleanupExpiredGdprExports(event).catch(() => {})
+  await cleanupExpiredGdprExports(event).catch(softFail('admin:api/admin/gdpr-exports/index.get:cleanupExpiredGdprExports', undefined))
 
   const admin = createAdminClient(event)
   const res = await admin.storage.listFiles({

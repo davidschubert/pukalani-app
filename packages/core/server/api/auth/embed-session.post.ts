@@ -2,6 +2,7 @@ import { Account, Client } from 'node-appwrite'
 import { z } from 'zod'
 import { deriveHandoffKey, handoffAudience, openHandoffToken } from '../../utils/embedHandoff'
 import { setSessionCookie } from '../../lib/appwrite'
+import { softFail } from '../../utils/softFail'
 
 const bodySchema = z.object({ token: z.string().min(1).max(2048) }).strict()
 
@@ -33,7 +34,7 @@ export default defineEventHandler(async (event) => {
     .setEndpoint(config.public.appwriteEndpoint)
     .setProject(config.public.appwriteProjectId)
     .setSession(secret)
-  const session = await new Account(client).getSession({ sessionId: 'current' }).catch(() => null)
+  const session = await new Account(client).getSession({ sessionId: 'current' }).catch(softFail('core:api/auth/embed-session.post:getSession', null, { quiet: [401] }))
   if (!session) {
     throw createError({ status: 401, statusText: 'Session no longer valid' })
   }

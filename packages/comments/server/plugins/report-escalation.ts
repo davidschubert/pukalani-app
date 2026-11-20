@@ -1,5 +1,6 @@
 import type { ModeratableCommentRow } from '../utils/commentModeration'
 import { COMMENTS_TABLE } from '../../shared/types/comment'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Auto-Hide-Threshold (OPEN-ITEMS Idee 5, Embed-Plan § 3f): erreichen die
@@ -33,7 +34,7 @@ export default defineNitroPlugin(() => {
   registerReportTarget('comment', async (event, targetId) => {
     const row = await tenantDb(event)
       .get<ModeratableCommentRow>(COMMENTS_TABLE, targetId, 'Comment not found')
-      .catch(() => null)
+      .catch(softFail('comments:plugins/report-escalation:get', null))
     return !!row
   })
 
@@ -49,7 +50,7 @@ export default defineNitroPlugin(() => {
     // niemand auslöst und niemand sieht.
     const row = await tenantDb(event, { as: 'operator' })
       .get<ModeratableCommentRow>(COMMENTS_TABLE, targetId, 'Comment not found')
-      .catch(() => null)
+      .catch(softFail('comments:plugins/report-escalation:get#2', null))
     if (!row || row.status !== 'active') return
 
     await hideCommentRow(event, row)

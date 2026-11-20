@@ -5,6 +5,7 @@ import { resolveCommunitySuspension } from '../../../../../core/shared/community
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../shared/types/communityMember'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tenantRecord'
 import { requireOnboardingCaller, verifyRuntimeIdentity } from '../../../utils/onboardingService'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Warum ist meine Community gesperrt? (M13) — der GRUND, für den Owner.
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event) => {
 
   const community = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/suspension.post:getRow', null))
   if (!community || community.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

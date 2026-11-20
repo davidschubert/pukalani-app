@@ -34,6 +34,7 @@ import {
   startBrandRun,
 } from '../../../../../../utils/brandRun'
 import { BRAND_PROFILES_TABLE, loadStepRows } from '../../../../../../utils/brandStore'
+import { softFail } from '../../../../../../../../core/server/utils/softFail'
 
 /**
  * DIE KI-ENTWÜRFE ERZEUGEN (Konzept docs/archiv/BRAND-DESIGN.md §2.5 Stufe 3,
@@ -231,7 +232,7 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
   // `booked` SOFORT an die Zeile: erst damit kann ein Nachfolger nach einem
   // Absturz die Rückbuchung nachholen. Fail-soft — der Lauf schreibt es
   // spätestens mit seinem Ende.
-  await touchRunLease(store, lease, { detail }).catch(() => {})
+  await touchRunLease(store, lease, { detail }).catch(softFail('brand:api/brand/profiles/[id]/mark/drafts/index.post:touchRunLease', undefined))
 
   const locale = profile.contentLocale === 'en' ? 'en' : 'de'
 

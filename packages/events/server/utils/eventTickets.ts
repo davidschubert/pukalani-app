@@ -1,6 +1,7 @@
 import { ID, Permission, Query, Role } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { EVENTS_TABLE, EVENT_TICKETS_TABLE, effectiveAccess, paidAccessChoosable, type EventRow, type EventTicketRow } from '../../shared/types/event'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Paid-Events-Vertrag (EVENTS-V2 §4/§5, Muster registerUserDataContributor):
@@ -30,7 +31,7 @@ export async function assertCanRsvpGoing(event: H3Event, row: EventRow, userId: 
     // FAIL-CLOSED: ohne Guard-Verdrahtung ist kein paid-Zugang möglich
     throw createError({ status: 403, statusText: 'Paid event — ticketing not configured' })
   }
-  const allowed = await ticketGuard(event, row, userId).catch(() => false)
+  const allowed = await ticketGuard(event, row, userId).catch(softFail('events:utils/eventTickets:ticketGuard', false))
   if (!allowed) {
     throw createError({ status: 403, statusText: 'Ticket required' })
   }
@@ -47,7 +48,7 @@ export async function hasEventTicket(event: H3Event, eventId: string, userId: st
     Query.equal('eventId', eventId),
     Query.equal('userId', userId),
     Query.equal('status', 'paid'),
-  ]).catch(() => null)
+  ]).catch(softFail('events:utils/eventTickets:find', null))
   return ticket !== null
 }
 

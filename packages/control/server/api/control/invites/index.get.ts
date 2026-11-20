@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { INVITE_CODES_TABLE, inviteCodeState, summarizeStock, type InviteCodeRow } from '../../../../shared/types/inviteCode'
 import { COMMUNITIES_TABLE } from '../../../../shared/types/tenantRecord'
 import { readOnboardingGate } from '../../../utils/onboardingGate'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Betreiber: ausgestellte Einladungs-Codes (sites.manage).
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
     databaseId: config.public.appwriteDatabaseId,
     tableId: COMMUNITIES_TABLE,
     queries: [Query.limit(1)],
-  }).then(res => res.total).catch(() => 0)
+  }).then(res => res.total).catch(softFail('control:api/control/invites/index.get:listRows', 0))
 
   // Der Zustand des Tors gehört auf DIESE Seite (U2): der Vorrat ist nur so
   // wichtig, wie das Tor geschlossen ist. Steht es offen, sagt die Seite oben,
