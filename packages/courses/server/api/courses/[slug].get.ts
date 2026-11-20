@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import { toCoursePreview, toLessonSummary } from '../../../shared/coursePreview'
 import { COURSES_TABLE, LESSON_PROGRESS_TABLE, LESSONS_TABLE, type CourseDetailResponse, type CourseRow, type EnrollmentRow, type LessonProgressRow, type LessonRow } from '../../../shared/types/course'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * Kurs-VORSCHAU (per Slug): Beschreibung + Gliederung (Lektions-TITEL der
@@ -33,7 +34,7 @@ export default defineEventHandler(async (event): Promise<CourseDetailResponse> =
   }
 
   const user = event.context.user
-  const member = user ? await resolveCommunityMembership(event).catch(() => false) : false
+  const member = user ? await resolveCommunityMembership(event).catch(softFail('courses:api/courses/[slug].get:resolveCommunityMembership', false)) : false
 
   const [lessons, enrollment, progress] = await Promise.all([
     db.list<LessonRow>(LESSONS_TABLE, [
@@ -43,7 +44,7 @@ export default defineEventHandler(async (event): Promise<CourseDetailResponse> =
     user && member
       ? db.list<LessonProgressRow>(LESSON_PROGRESS_TABLE, [
           Query.equal('courseId', course.$id), Query.equal('userId', user.$id), Query.limit(500),
-        ]).catch(() => ({ rows: [] as LessonProgressRow[] }))
+        ]).catch(softFail('courses:api/courses/[slug].get:list', { rows: [] as LessonProgressRow[] }))
       : Promise.resolve({ rows: [] as LessonProgressRow[] }),
   ])
 

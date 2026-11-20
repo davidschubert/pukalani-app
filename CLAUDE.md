@@ -193,6 +193,15 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   Zeilen regeln nur das Lesen. Wem eine Zeile gehört, prüft die Route selbst,
   vor dem Schreiben. Neue Tabelle ⇒ `scripts/lib/server-written-tables.mjs`.
   Regel: `.claude/rules/tenant-isolation.md` („DER SERVER SCHREIBT").
+- KEIN STILLES `.catch` IM SERVER (Q13, seit 2026-11-21): ein `.catch`, das
+  seinen Fehler weder liest noch weiterwirft, ist unter `server/` rot
+  (ESLint `pukalani/no-silent-catch`). Der Weg:
+  `.catch(softFail('<layer>:<pfad>:<aufruf>', ersatz))` aus
+  `core/server/utils/softFail.ts` (in Produkt-Layern ausdrücklich
+  importieren) — derselbe Ersatzwert, dazu eine gezählte Zeile `soft_fail`.
+  404 für eine Zeile bleibt still, eine fehlende Tabelle nicht; was an der
+  Stelle sonst erwartet ist, nennt `quiet` (401 Gast, 409 Wettlauf). Die
+  Kennung ist ein festes Literal, nie mit Ids zusammengesetzt.
 - createError mit status/statusText (nicht statusCode/statusMessage),
   keine Appwrite-Fehlerdetails an Clients leaken. FACHLICHE Ablehnungsgründe
   reisen als `data: { code: 'last_owner' }` → der zentrale Handler
@@ -255,8 +264,12 @@ NACH JEDEM main-PUSH: vier Checks (Test/Lint/Typecheck/E2E) — seit 2026-11-13
 müssen ALLE VIER grün sein, sonst wird nicht ausgeliefert (P07; vorher hielten
 nur Test und E2E auf). Der Deploy feuert per workflow_run auf Test UND E2E,
 startet also ZWEIMAL — einer der Läufe endet per Concurrency „cancelled", das
-ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, den Deploy-Lauf
-ebenfalls neu starten (er feuert nicht von selbst). Der einzige Prod-Beweis ist
+ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, feuert der Deploy
+VON SELBST — für den Commit DIESES Laufs. Eine rote Prüfung deshalb nur neu
+starten, solange ihr Commit die Spitze von `main` ist: am 2026-11-20 lieferte
+ein Re-run auf einem älteren Commit dessen Stand über den neueren (seitdem
+überspringt „Deploy nötig?" einen überholten Commit). Nach jedem Re-run den
+Live-Build mit der Spitze von `main` vergleichen. Der einzige Prod-Beweis ist
 der Live-Build-SHA: `curl https://<host>/api/health` → `.build`. Daneben steht
 seit 2026-11-16 `.schema.state` (ok | behind | unknown): passt die Datenbank
 zum ausgerollten Programm? `behind` heißt, eine Migration fehlt — der

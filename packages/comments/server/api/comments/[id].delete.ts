@@ -1,6 +1,7 @@
 import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
 import { COMMENT_TOMBSTONE_DATA, commentTombstonePermissions, toPublicCommentRow } from '../../utils/commentTombstone'
 import { commentNotificationCommunityId, removeCommentNotifications } from '../../utils/commentNotifications'
+import { softFailWith } from '../../../../core/server/utils/softFail'
 
 /**
  * Soft-Delete (Spec): die Row bleibt erhalten — Antworten darunter bleiben
@@ -97,7 +98,7 @@ export default defineEventHandler(async (event) => {
   if (permissions.length !== tombstone.$permissions.length) {
     const withdraw = () => ops.updatePermissions<Comment>(COMMENTS_TABLE, commentId, permissions, 'Comment not found')
     await withdraw()
-      .catch(() => withdraw())
+      .catch(softFailWith('comments:api/comments/[id].delete:withdraw', () => withdraw()))
       .then((row) => { tombstone = row })
       .catch((error) => {
         console.error(`[comments] Rechte-Entzug am gelöschten Kommentar ${commentId} fehlgeschlagen — der Autor behält Schreibrecht auf den leeren Grabstein:`, error)

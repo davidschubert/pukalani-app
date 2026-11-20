@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { EVENTS_TABLE, EVENT_RSVPS_TABLE, type EventRow } from '../../shared/types/event'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Community-Export des events-Layers (Vertrag: core/server/utils/communityExport.ts).
@@ -42,7 +43,7 @@ export async function eventsCommunityExport(event: H3Event) {
 
   // Nur die Anzahl, und die degradiert: eine Instanz mit ausstehender Migration
   // soll ein Bündel ohne diese Zahl liefern, nicht gar keins.
-  const rsvps = await db.count(EVENT_RSVPS_TABLE, []).catch(() => 0)
+  const rsvps = await db.count(EVENT_RSVPS_TABLE, []).catch(softFail('events:utils/eventsCommunityExport:count', 0))
 
   return {
     events: events.map(e => ({

@@ -1,5 +1,6 @@
 import { ImageFormat } from 'node-appwrite'
 import { EVENTS_TABLE, EVENT_COVERS_BUCKET, type EventRow } from '../../../../shared/types/event'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * VORSCHAU EINES TITELBILDS FÜR DIE REDAKTION (events.manage) — der Weg, der
@@ -68,7 +69,7 @@ export default defineEventHandler(async (event) => {
     width: 800,
     quality: 78,
     output: ImageFormat.Webp,
-  }).catch(() => null)
+  }).catch(softFail('events:api/events/[id]/cover.get:getFilePreview', null))
 
   setHeader(event, 'Cache-Control', 'private, no-store')
   if (preview) {

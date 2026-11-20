@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import { communityContentIsPublic } from '../../../../../core/shared/communityAudience'
 import { periodStartIso } from '../../../../shared/discussionSort'
 import { POSTS_TABLE, type DiscussionAboutResponse } from '../../../../shared/types/post'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Die Zahlen der About-Seite (F1 Stufe 2, Konzept § 3.4).
@@ -80,15 +81,15 @@ export default defineEventHandler(async (event): Promise<DiscussionAboutResponse
   const maySeeJoins = communityContentIsPublic(tenant) || Boolean(event.context.user)
 
   const [topicsTotal, topicsLast7Days, postsToday, categories, signups] = await Promise.all([
-    db.count(POSTS_TABLE, topic).catch(() => 0),
-    db.count(POSTS_TABLE, [...topic, ...(weekAgo ? [Query.greaterThanEqual('publishedAt', weekAgo)] : [])]).catch(() => 0),
+    db.count(POSTS_TABLE, topic).catch(softFail('posts:api/posts/discussions/about.get:count', 0)),
+    db.count(POSTS_TABLE, [...topic, ...(weekAgo ? [Query.greaterThanEqual('publishedAt', weekAgo)] : [])]).catch(softFail('posts:api/posts/discussions/about.get:count#2', 0)),
     // BEWUSST OHNE Kategorie-Filter: „Beiträge heute" zählt den ganzen Strom.
     // Davids Entscheidung 2 sagt, eine Community hat EINEN Ort — der Feed ist
     // der Strom über alles, Discussions die gegliederte Sicht darauf. Eine Zahl,
     // die nur die kategorisierte Hälfte zählte, hieße dasselbe wie die Zeile
     // darüber und wäre doppelt gemoppelt.
-    db.count(POSTS_TABLE, [...published, ...(todayStart ? [Query.greaterThanEqual('publishedAt', todayStart)] : [])]).catch(() => 0),
-    listCategories(db, { activeOnly: true }).then(rows => rows.length).catch(() => 0),
+    db.count(POSTS_TABLE, [...published, ...(todayStart ? [Query.greaterThanEqual('publishedAt', todayStart)] : [])]).catch(softFail('posts:api/posts/discussions/about.get:count#3', 0)),
+    listCategories(db, { activeOnly: true }).then(rows => rows.length).catch(softFail('posts:api/posts/discussions/about.get:listCategories', 0)),
     // SIEBEN TAGE wie die Zeile darüber — dieselbe Frage („was ist hier gerade
     // los?"), also dasselbe Fenster. Fail-soft steckt im Resolver: null.
     maySeeJoins ? resolveRecentJoinCount(event, 7) : null,

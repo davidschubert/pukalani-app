@@ -115,6 +115,12 @@ const MAX_REMINDER_EVENTS = 100000
 const MAX_REMINDER_RECIPIENTS = 10000000
 /** Jede Summe bleibt in der Form `\d{1,9}`, die die Auswertung annimmt. */
 const MAX_SUM = 999999999
+/** Kennung einer Stelle in `soft_fail` (core/server/utils/softFail.ts) — nur gezählt, nie ausgegeben. */
+const SOFT_FAIL_WHERE = /^[a-z][A-Za-z0-9.:/_#[\]-]{2,159}$/
+/** Mehr verschiedene Stellen zählt das Skript nicht; der Deckel hält eine vergiftete Datei klein. */
+const MAX_SOFT_FAIL_PLACES = 2000
+/** Höchstwert für `repeated` einer Zeile (die Bremse fasst eine Minute zusammen). */
+const MAX_SOFT_FAIL_REPEATED = 1000000
 
 function refuse(message) {
   console.log(message)
@@ -256,7 +262,9 @@ async function main() {
   const restarts = wholeNumber(env.restart_time, 100000000)
   const upMinutes = Number.isFinite(env.pm_uptime) ? wholeNumber(Math.round((now - env.pm_uptime) / 60000), 100000000) : 0
 
-  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0, reminderRuns: 0, reminderAsked: 0, reminderNoAnswer: 0, reminderEvents: 0, reminderRecipients: 0 }
+  const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0, reminderRuns: 0, reminderAsked: 0, reminderNoAnswer: 0, reminderEvents: 0, reminderRecipients: 0, softFail: 0 }
+  /** Verschiedene Stellen mit einem still abgefangenen Fehler im Fenster. */
+  const softFailPlaces = new Set()
   /** Jüngster Zeitpunkt, an dem die Notbremse einer Mail-Route im Fenster griff. */
   let lastMailBreaker = null
   /** Älteste gelesene Zeile überhaupt (nicht nur im Fenster) — s. Kopf, „WIE WEIT DIE ZÄHLUNG ZURÜCKREICHT". */
@@ -295,6 +303,14 @@ async function main() {
         break
       case 'audit.write_failed':
         if (inWindow) counts.auditFailed++
+        break
+      case 'soft_fail':
+        // Eine Stelle hat einen Fehler abgefangen und mit ihrem Ersatzwert
+        // weitergemacht (Q13). Die Hilfe schreibt je Stelle höchstens eine
+        // Zeile je Minute; was dazwischen fiel, steht in `repeated`.
+        if (!inWindow) break
+        counts.softFail += 1 + wholeNumber(entry.repeated, MAX_SOFT_FAIL_REPEATED)
+        if (typeof entry.where === 'string' && SOFT_FAIL_WHERE.test(entry.where) && softFailPlaces.size < MAX_SOFT_FAIL_PLACES) softFailPlaces.add(entry.where)
         break
       case 'csp.report':
         if (inWindow) counts.csp++
@@ -380,6 +396,9 @@ async function main() {
   console.log(`erinnerungen takte=${sum(counts.reminderRuns)} ohne_antwort=${sum(counts.reminderNoAnswer)} termine=${sum(counts.reminderEvents)} empfaenger=${sum(counts.reminderRecipients)} gefragt=${sum(counts.reminderAsked)}`)
   // Seit 2026-11-20, ebenfalls OPTIONAL für die Auswertung — VERSION bleibt 1.
   console.log(`reichweite aelteste_zeile_min=${oldestLine === null ? 'nie' : String(Math.min(Number(minutesSince(now, oldestLine)), MAX_SUM))}`)
+  // Seit Q13 (2026-11-21), ebenfalls OPTIONAL für die Auswertung — VERSION bleibt 1.
+  // Nur zwei Zahlen: die Kennungen der Stellen bleiben im Log des Servers.
+  console.log(`stillefehler zeilen=${sum(counts.softFail)} stellen=${softFailPlaces.size}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

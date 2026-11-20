@@ -10,6 +10,7 @@ import {
   type DiscussionTopic,
   type PostCategory,
 } from '../../shared/types/post'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Gemeinsamer Unterbau der Discussions-Routen (F1 Stufe 1).
@@ -48,7 +49,7 @@ export async function resolveCategoryId(db: TenantDb, categoryId: string | undef
 
   const category = await db
     .get<PostCategory>(POST_CATEGORIES_TABLE, wanted, 'Category not found')
-    .catch(() => null)
+    .catch(softFail('posts:utils/discussions:get', null))
 
   if (!category || !category.active) {
     throw createError({
@@ -89,7 +90,7 @@ export async function topicCountsFor(db: TenantDb, categories: PostCategory[]): 
     db.count(POSTS_TABLE, [
       Query.equal('categoryId', category.$id),
       Query.equal('status', 'published'),
-    ]).catch(() => 0),
+    ]).catch(softFail('posts:utils/discussions:count', 0)),
   ))
   return new Map(categories.map((category, index) => [category.$id, counts[index] ?? 0]))
 }

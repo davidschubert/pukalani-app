@@ -4,6 +4,7 @@ import { createSessionClient } from '../../../lib/appwrite'
 import { mfaChallengeSchema } from '../../../../schemas/auth'
 import { isInvalidMfaCode, mfaFactorFor } from '../../../../shared/mfa'
 import type { MfaDisableResponse } from '../../../../shared/types/auth-responses'
+import { softFail } from '../../../utils/softFail'
 
 /**
  * Zwei-Faktor abschalten.
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event): Promise<MfaDisableResponse> => 
   // Best effort: das Flag ist schon aus, die Anmeldung verlangt also keinen
   // zweiten Faktor mehr. Ein hängengebliebener Authenticator wäre unschön,
   // aber kein Grund, dem Nutzer ein „hat nicht geklappt" zu zeigen.
-  await account.deleteMFAAuthenticator({ type: AuthenticatorType.Totp }).catch(() => {})
+  await account.deleteMFAAuthenticator({ type: AuthenticatorType.Totp }).catch(softFail('core:api/auth/mfa/disable.post:deleteMFAAuthenticator', undefined))
 
   await logAuthEvent(event, 'user.mfa_disabled', { userId: event.context.user.$id, name: event.context.user.name })
   return { ok: true }

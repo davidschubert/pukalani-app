@@ -8,6 +8,7 @@ import {
   type BrandStepRow,
   confirmedSlotValues,
 } from './brandStore'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DAS PRESET EINER MARKE — AUS DER WAHRHEIT, NICHT AUS EINEM SPIEGEL (Konzept
@@ -106,7 +107,7 @@ export async function loadBrandDesignPreset(
 
   const keptDrafts = await listBrandMarkDrafts(event, profile.$id)
     .then(entries => entries.filter(entry => entry.kept).map(entry => entry.id))
-    .catch(() => [] as string[])
+    .catch(softFail('brand:utils/brandDesignPreset:listBrandMarkDrafts', [] as string[]))
 
   const preset = brandDesignPresetFromSlots({
     title: profile.title ?? '',

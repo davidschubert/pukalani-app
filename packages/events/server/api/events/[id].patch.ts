@@ -4,6 +4,7 @@ import { eventIsEditable, seriesLifecycleFollows } from '../../../shared/eventMo
 import { rescheduleClearsReminder } from '../../../shared/eventReschedule'
 import { EVENTS_TABLE, isSeriesMaster, type EventRow } from '../../../shared/types/event'
 import { assertPaidEventOffered } from '../../utils/eventTickets'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * Event bearbeiten / publishen (events.manage). Status-Übergänge hier:
@@ -149,7 +150,7 @@ export default defineEventHandler(async (event) => {
   // gekappt (Audit-Befund 2026-08-02).
   if ((publishing || unpublishing) && isSeriesMaster(updated)) {
     const instances = await listSeriesInstances(db, updated.$id, [Query.notEqual('$id', updated.$id)])
-      .catch(() => [] as EventRow[])
+      .catch(softFail('events:api/events/[id].patch:listSeriesInstances', [] as EventRow[]))
     for (const instance of instances) {
       if (!seriesLifecycleFollows(instance.status)) continue
       const permissions = publishing

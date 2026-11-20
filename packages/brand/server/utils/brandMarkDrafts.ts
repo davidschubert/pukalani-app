@@ -41,6 +41,7 @@ import {
   serializeSlotRecords,
 } from './brandStore'
 import { BRAND_MARK_DRAFT_ANGLES, brandMarkDraftPrompt } from './markPrompt'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DIE KI-ENTWÜRFE DES ZEICHENS — DER SPEICHER UND DER LAUF (Konzept
@@ -232,7 +233,7 @@ export async function createBrandMarkDraft(
   catch (error) {
     await admin.storage
       .deleteFile({ bucketId: BRAND_MARK_DRAFTS_BUCKET, fileId })
-      .catch(() => {})
+      .catch(softFail('brand:utils/brandMarkDrafts:deleteFile', undefined))
     throw brandMarkDraftsUnavailable(error, { profileId: input.profileId, stage: 'row' })
   }
 }

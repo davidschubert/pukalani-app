@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { TARGET_NOT_FOUND_CODE, UNKNOWN_TARGET_CODE } from '../../shared/reportErrors'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * WOGEGEN DARF GEMELDET WERDEN? (Moderations-Audit Befund 8, 2026-08-01)
@@ -95,7 +96,7 @@ export async function assertReportTarget(event: H3Event, targetType: string, tar
    * belegt". Deshalb `.then()` auf ein leeres Promise — damit liegt der Aufruf
    * selbst schon in der Kette.
    */
-  const exists = await Promise.resolve().then(() => probe(event, targetId)).catch(() => false)
+  const exists = await Promise.resolve().then(() => probe(event, targetId)).catch(softFail('moderation:utils/reportTargets:probe', false))
   if (!exists) {
     throw createError({
       status: 404,

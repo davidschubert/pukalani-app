@@ -1,6 +1,7 @@
 import { handleChangeAvailableAt, mayChangeHandleAt } from '../../../shared/handles'
 import type { AccountHandleResponse } from '../../../shared/types/handle'
 import { activeAccountHandleRow, ensureAccountHandle, ensureAccountHandleAudience } from '../../utils/accountHandles'
+import { softFail } from '../../utils/softFail'
 
 /**
  * „Wie heisse ich?" — und zugleich die VERGABE (AH-7, 2026-08-11).
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event): Promise<AccountHandleResponse> 
 
   // Nur für Mitglieder — und fail-soft: die Zugehörigkeits-Frage wirft
   // (fail-closed by design), diese Auskunft soll daran nicht sterben.
-  if (await resolveCommunityMembership(event).catch(() => false)) {
+  if (await resolveCommunityMembership(event).catch(softFail('core:api/account/handle.get:resolveCommunityMembership', false))) {
     await ensureAccountHandleAudience(event, user.$id)
   }
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { INVITE_REQUESTS_TABLE, type InviteRequestRow } from '../../../../shared/types/inviteRequest'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Betreiber: eine Anfrage ablehnen oder zurückstellen (sites.manage).
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
     databaseId: config.public.appwriteDatabaseId,
     tableId: INVITE_REQUESTS_TABLE,
     rowId: id,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/invite-requests/[id].patch:getRow', null))
   if (!current) throw createError({ status: 404, statusText: 'Request not found' })
 
   // Eine eingelöste Anfrage ist Geschichte, kein Zustand zum Umschalten.

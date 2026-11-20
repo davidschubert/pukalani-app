@@ -4,6 +4,7 @@ import { otpVerifySchema } from '../../../../schemas/auth'
 import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../../shared/authFailure'
 import { secondFactorPending } from '../../../../shared/mfa'
 import type { OtpVerifyResponse } from '../../../../shared/types/auth-responses'
+import { softFail } from '../../../utils/softFail'
 
 /**
  * Code prüfen → Session erzeugen → Cookie setzen (wie OAuth-Callback) — und
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
   // auf true): OTP-Auto-Signups haben weder verifizierte E-Mail noch je ein
   // Passwort gesetzt. Passwort-User, die erstmals OTP nutzen, sind hier
   // bewusst raus — deren user.joined kam schon vom Signup.
-  const before = await users.get({ userId }).catch(() => null)
+  const before = await users.get({ userId }).catch(softFail('core:api/auth/otp/verify.post:get', null))
   const isFirstJoin = !!before && !before.emailVerification && !before.passwordUpdate
 
   /**
@@ -117,7 +118,7 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
         objectId: session.userId,
         link: '/',
       })
-      const totalUsers = await users.list({ queries: [Query.limit(1)] }).then(r => r.total).catch(() => 0)
+      const totalUsers = await users.list({ queries: [Query.limit(1)] }).then(r => r.total).catch(softFail('core:api/auth/otp/verify.post:list', 0))
       await maybeRecordMilestone(event, { type: 'milestone.members', count: totalUsers })
     }
 

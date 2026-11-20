@@ -6,6 +6,7 @@ import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../../../sh
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tenantRecord'
 import { isSafeThemeToken } from '../../../../shared/onboarding'
 import { requireOnboardingCaller, verifyRuntimeIdentity } from '../../../utils/onboardingService'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Self-Service: das Erscheinungsbild EINER Community setzen (Davids
@@ -118,7 +119,7 @@ export default defineEventHandler(async (event) => {
   // Tenant zeigen. 404 statt 403 — eine fremde Id soll sich nicht bestätigen.
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:api/control/community/branding.post:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import { runFinishSchema } from '../../../../../schemas/run'
 import { runTransitionAllowed } from '../../../../../shared/runGuards'
 import { RUNS_TABLE, type RunFinishResponse, type RunRow } from '../../../../../shared/types/runner'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * Der Abschluss — docs/plans/AI-RUNNER.md § 5/§ 7.2 Schritt 9.
@@ -90,7 +91,7 @@ async function notifyRunFinished(event: H3Event, run: RunRow): Promise<void> {
   try {
     if (!run.createdBy) return
     const { users } = createAdminClient(event)
-    const exists = await users.get({ userId: run.createdBy }).then(() => true).catch(() => false)
+    const exists = await users.get({ userId: run.createdBy }).then(() => true).catch(softFail('runner:api/runner/runs/[id]/finish.post:get', false))
     if (!exists) return
 
     /**

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { PAST_DUE_GRACE_DAYS } from '../../../control/shared/communityBilling'
 import { pastDueNoticeTitle, type PastDueCommunityNotice } from '../../../control/shared/pastDueNotice'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DIE ZAHLUNGSWARNUNG EINES COMMUNITY-ABOS LANDET IN DER COMMUNITY-GLOCKE
@@ -166,7 +167,7 @@ export async function runPastDueNoticeSweep(): Promise<PastDueNoticeSweepResult>
         // Dieselbe Auflösung wie im Webhook; fehlt das Konto, bleibt es bei 'en'
         // und die Zeile entsteht trotzdem (der Empfänger kann existieren und
         // nur unlesbare prefs haben).
-        const recipient = await users.get({ userId: ownerId }).catch(() => null)
+        const recipient = await users.get({ userId: ownerId }).catch(softFail('onboarding:utils/pastDueNotice:get', null))
         if (!recipient) {
           logEvent('error', 'billing.past_due_notice_recipient_missing', {
             communityId: community.communityId,

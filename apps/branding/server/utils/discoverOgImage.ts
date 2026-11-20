@@ -23,6 +23,7 @@ import {
   type Rgb,
   toRgb,
 } from '../../../../packages/themes/shared/brandRaster'
+import { softFail } from '../../../../packages/core/server/utils/softFail'
 
 /**
  * DAS VORSCHAUBILD EINER ANATOMIE — `/og/discover/<slug>.png`, 1200×630
@@ -269,7 +270,7 @@ export async function discoverOgPng(key: string, input: DiscoverOgInput): Promis
   if (hit) return hit
 
   const file = join(CACHE_DIR, `${key}.png`)
-  const fromDisk = await readFile(file).catch(() => null)
+  const fromDisk = await readFile(file).catch(softFail('app.branding:utils/discoverOgImage:readFile', null))
   if (fromDisk) {
     remember(key, fromDisk)
     return fromDisk
@@ -281,6 +282,6 @@ export async function discoverOgPng(key: string, input: DiscoverOgInput): Promis
   // bleibt das Bild im Speicher und die Antwort korrekt.
   await mkdir(CACHE_DIR, { recursive: true })
     .then(() => writeFile(file, png))
-    .catch(() => undefined)
+    .catch(softFail('app.branding:utils/discoverOgImage:mkdir', undefined))
   return png
 }

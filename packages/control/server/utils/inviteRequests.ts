@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { INVITE_CODES_TABLE, type InviteCodeRow } from '../../shared/types/inviteCode'
 import { INVITE_REQUESTS_TABLE, evaluateReminder, type InviteRequestRow } from '../../shared/types/inviteRequest'
 import { hashInviteCode, issueCodeValue } from './inviteCodes'
+import { softFail, softFailWith } from '../../../core/server/utils/softFail'
 
 /**
  * Die Warteschlange: Anfrage annehmen, Code zuweisen, erinnern (control-017).
@@ -56,7 +57,7 @@ async function takeFromStock(event: H3Event, now: number): Promise<InviteCodeRow
       Query.orderAsc('$createdAt'),
       Query.limit(10),
     ],
-  }).catch(() => ({ rows: [] as InviteCodeRow[] }))
+  }).catch(softFail('control:utils/inviteRequests:listRows', { rows: [] as InviteCodeRow[] }))
 
   // Abgelaufene nie zuweisen — sonst bekäme jemand eine Einladung, die beim
   // Öffnen schon tot ist.
@@ -136,7 +137,7 @@ export async function remindCode(
     await admin.tablesDB.updateRow<InviteCodeRow>({
       databaseId: db, tableId: INVITE_CODES_TABLE, rowId: request.inviteCodeId,
       data: { status: 'revoked' },
-    }).catch(() => { /* schon weg — dann ist nichts zu sperren */ })
+    }).catch(softFailWith('control:utils/inviteRequests:updateRow', () => { /* schon weg — dann ist nichts zu sperren */ }))
   }
 
   const result = await assignCode(event, request, {}, now)
@@ -290,7 +291,7 @@ export async function notifyOperators(event: H3Event, request: InviteRequestRow)
         request.note ? `\n„${request.note}"\n` : '',
         `Zuweisen im Dashboard: ${appUrl}${link}`,
       ].filter(Boolean).join('\n'),
-    }).catch(() => false)
+    }).catch(softFail('control:utils/inviteRequests:sendMail', false))
   }
 
   // In-App für jeden Betreiber (Label admin) — notify() wirft nie.

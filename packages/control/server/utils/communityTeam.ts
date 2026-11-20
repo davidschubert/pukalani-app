@@ -9,6 +9,7 @@ import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantReco
 import { COMMUNITY_INVITE_LIST_MAX, type CommunityTeamDecision, type CommunityTeamMemberFacts } from '../../shared/communityTeam'
 import { memberInviteLimitFrom } from '../../shared/communityInviteQuota'
 import { verifyRuntimeIdentity, type RuntimeIdentity } from './onboardingService'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Der gemeinsame Vorraum ALLER Mitglieder-Routen des Control Plane.
@@ -254,7 +255,7 @@ export async function requireCommunityTeamRole(
   const admin = createAdminClient(event)
   const tenant = await admin.tablesDB.getRow<TenantRow>({
     databaseId, tableId: COMMUNITIES_TABLE, rowId: body.communityId,
-  }).catch(() => null)
+  }).catch(softFail('control:utils/communityTeam:getRow', null))
   if (!tenant || tenant.projectId !== identity.projectId) {
     throw createError({ status: 404, statusText: 'Site not found' })
   }

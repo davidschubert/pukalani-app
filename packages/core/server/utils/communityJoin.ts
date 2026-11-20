@@ -5,6 +5,7 @@ import {
   type CommunityJoinOutcome,
   type CommunityJoinTrigger,
 } from '../../shared/communityJoin'
+import { softFail } from './softFail'
 
 /**
  * A5 — die RUNTIME-Seite des Beitritts: „diese Person macht jetzt mit, sorge für
@@ -301,7 +302,7 @@ async function decideJoin(
   // fängt intern ab — aber die Registry ist ein offener Vertrag, und ein
   // werfender Resolver würde hier über die Datentür einen Kommentar zum 500
   // machen. Fail-closed wie in 06.community-label.ts: kein Wissen heißt keine Rolle.
-  if (!options.userId && await resolveCommunityRole(event).catch(() => null)) return 'member'
+  if (!options.userId && await resolveCommunityRole(event).catch(softFail('core:utils/communityJoin:resolveCommunityRole', null))) return 'member'
 
   let outcome: CommunityJoinOutcome
   try {

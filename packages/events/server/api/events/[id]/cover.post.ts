@@ -1,6 +1,7 @@
 import { ID, Query } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { EVENTS_TABLE, EVENT_COVERS_BUCKET, MAX_EVENT_COVER_BYTES, isSeriesEvent, isSeriesMaster, type EventRow } from '../../../../shared/types/event'
+import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
  * Cover-Upload (events.manage): JPEG/PNG/WebP mit Magic-Bytes-Check —
@@ -79,7 +80,7 @@ export default defineEventHandler(async (event) => {
 
   await db.update(EVENTS_TABLE, id, { coverFileId: file.$id }, 'Event not found').catch(async (error) => {
     // Row-Update gescheitert → verwaiste Datei nicht liegen lassen
-    await admin.storage.deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: file.$id }).catch(() => {})
+    await admin.storage.deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: file.$id }).catch(softFail('events:api/events/[id]/cover.post:deleteFile', undefined))
     throw toH3Error(error, 'Could not save cover')
   })
 
@@ -89,10 +90,10 @@ export default defineEventHandler(async (event) => {
     // Cursor-paginiert statt limit(200) — eine lange Serie wurde sonst still
     // gekappt (Audit-Befund 2026-08-02).
     const instances = await listSeriesInstances(db, row.$id, [Query.notEqual('$id', row.$id)])
-      .catch(() => [] as EventRow[])
+      .catch(softFail('events:api/events/[id]/cover.post:listSeriesInstances', [] as EventRow[]))
     for (const instance of instances) {
       if (instance.coverFileId !== row.coverFileId) continue
-      await db.update(EVENTS_TABLE, instance.$id, { coverFileId: file.$id }).catch(() => {})
+      await db.update(EVENTS_TABLE, instance.$id, { coverFileId: file.$id }).catch(softFail('events:api/events/[id]/cover.post:update', undefined))
     }
   }
 
@@ -100,7 +101,7 @@ export default defineEventHandler(async (event) => {
   // ist dort meist das geteilte Master-Cover (Master + Geschwister nutzen es
   // weiter). Master ist safe: die Propagation oben hat alle Verweise umgebogen.
   if (row.coverFileId && !(isSeriesEvent(row) && !isSeriesMaster(row))) {
-    await admin.storage.deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: row.coverFileId }).catch(() => {})
+    await admin.storage.deleteFile({ bucketId: EVENT_COVERS_BUCKET, fileId: row.coverFileId }).catch(softFail('events:api/events/[id]/cover.post:deleteFile#2', undefined))
   }
 
   setResponseStatus(event, 201)

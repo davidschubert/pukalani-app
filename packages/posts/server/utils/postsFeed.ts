@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import { postActivitySnippet } from '../../shared/postActivitySnippet'
 import { POLL_VOTES_TABLE, POSTS_TABLE, POST_VOTES_TABLE, type CommunityPost, type PollState, type PollVote, type PostVote, type PostVoteValue } from '../../shared/types/post'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * Die Veröffentlichungs-Permission eines Posts steht seit C18 (2026-07-30)
@@ -115,7 +116,7 @@ export async function postVotesFor(
     Query.equal('userId', userId),
     Query.equal('postId', posts.map(p => p.$id)),
     Query.limit(posts.length),
-  ]).catch(() => ({ rows: [] as PostVote[] }))
+  ]).catch(softFail('posts:utils/postsFeed:list', { rows: [] as PostVote[] }))
   return new Map(res.rows.map(vote => [vote.postId, vote.value]))
 }
 

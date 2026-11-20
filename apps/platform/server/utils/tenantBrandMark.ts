@@ -5,6 +5,7 @@ import type { H3Event } from 'h3'
 import { THEME_REGISTRY } from '../../../../packages/themes/app/utils/themeRegistry'
 import { customThemeAttr } from '../../../../packages/themes/shared/ramp'
 import { resolveBrandColor, type BrandThemeEntry } from '../../../../packages/themes/shared/brandMark'
+import { softFail } from '../../../../packages/core/server/utils/softFail'
 
 /**
  * Farbe + Name der Community, aus denen JEDE Bildmarke dieses Hosts entsteht:
@@ -99,7 +100,7 @@ export async function resolveTenantBrandMark(event: H3Event): Promise<TenantBran
    * openRegistration" schreibt — und die Grenze wäre bei der nächsten Route
    * trotzdem wieder da gewesen.
    */
-  const data = await $fetch<ThemesResponse>('/api/themes', { headers: { host } }).catch(() => null)
+  const data = await $fetch<ThemesResponse>('/api/themes', { headers: { host } }).catch(softFail('app.platform:utils/tenantBrandMark:$fetch', null))
   const customs: BrandThemeEntry[] = (data?.themes ?? []).map(entry => ({
     id: customThemeAttr(entry.id),
     color: entry.primary,

@@ -4,6 +4,7 @@ import { commentSnippet } from '../../../shared/commentSnippet'
 import { assertReplyParent } from '../../utils/replyParent'
 import { commentNotificationCommunityId, commentNotificationRowId } from '../../utils/commentNotifications'
 import { commentReadPermissions, isOperatorCommentTarget } from '../../utils/commentReadPermissions'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user
@@ -207,7 +208,7 @@ export default defineEventHandler(async (event) => {
   // Durch die Tür zählt der Meilenstein die Kommentare DIESER Community —
   // vorher war es die Gesamtzahl über alle Mandanten, und Kunde B hätte den
   // „1.000 Kommentare"-Moment von Kunde A gefeiert.
-  const commentTotal = await db.count(COMMENTS_TABLE).catch(() => 0)
+  const commentTotal = await db.count(COMMENTS_TABLE).catch(softFail('comments:api/comments/index.post:count', 0))
   await maybeRecordMilestone(event, { type: 'milestone.comments', count: commentTotal, link })
 
   setResponseStatus(event, 201)

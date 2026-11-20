@@ -34,6 +34,7 @@ import {
   loadStepRows,
   requireProfileIdParam,
 } from '../../../../utils/brandStore'
+import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
  * DER FUNDAMENT-CHECK (docs/archiv/BRAND-CHECK-SEITE.md §5b, Davids
@@ -106,6 +107,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
   // dieselbe Nachsicht wie in `analyze.post.ts`. `readBody` wirft bei leerem
   // Rumpf je nach Content-Type, und ein 400 dafür wäre die falsche Antwort auf
   // „prüf mein Fundament".
+  // eslint-disable-next-line pukalani/no-silent-catch -- ein fehlender oder kaputter Rumpf des Aufrufers ist kein Serverfehler, der Ersatz ist die Antwort darauf
   const raw = await readBody(event).catch(() => ({}))
   const parsed = createBrandDocumentCheckSchema().safeParse(raw ?? {})
   if (!parsed.success) {
@@ -204,7 +206,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
 
   const detail = emptyBrandRunDetail({ booked: true })
   // Fail-soft — der Lauf schreibt das Detail spätestens mit seinem Ende.
-  await touchRunLease(store, lease, { detail }).catch(() => {})
+  await touchRunLease(store, lease, { detail }).catch(softFail('brand:api/brand/profiles/[id]/check.post:touchRunLease', undefined))
 
   // (6) DER LAUF — hinter der Antwort. Was er braucht, ist hier schon gelesen
   // (Material, Häkchen, Anschluss-Stempel); in die Antwort schreibt er nicht.

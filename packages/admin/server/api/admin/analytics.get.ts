@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import type { AdminAnalytics } from '../../../shared/types/admin'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 const ALLOWED_DAYS = [7, 30, 90]
 const PAGE = 100
@@ -26,7 +27,7 @@ async function collectCreatedAt(
   const out: string[] = []
   let cursor: string | undefined
   for (let p = 0; p < MAX_PAGES; p++) {
-    const res = await loadPage(cursor).catch(() => null)
+    const res = await loadPage(cursor).catch(softFail('admin:api/admin/analytics.get:loadPage', null))
     if (!res) break
     out.push(...res.items.map(item => item.createdAt))
     total.count = res.total

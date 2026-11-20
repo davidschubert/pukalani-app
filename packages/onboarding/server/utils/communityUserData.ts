@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import type { CommunityErasureResult, CommunityUserDataExport } from '../../../control/shared/communityTeam'
 import { callControlPlane } from './controlPlane'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * F3 — DSGVO-Beitrag des onboarding-Layers.
@@ -86,7 +87,7 @@ export async function communityExportUserData(
   // Naht konfiguriert, aber nicht erreichbar: die Auskunft geht ohne diesen
   // Abschnitt raus, SAGT es aber — `{ unavailable: true }` statt `{}`.
   return await callControlPlane<CommunityUserDataExport>(event, USER_DATA_PATH, identity)
-    .catch(() => ({ unavailable: true as const }))
+    .catch(softFail('onboarding:utils/communityUserData:callControlPlane', { unavailable: true as const }))
 }
 
 export async function communityDeleteUserData(event: H3Event, userId: string): Promise<UserDataDeleteResult> {

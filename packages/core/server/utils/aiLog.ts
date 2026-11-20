@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { AI_ENDPOINT_UNAVAILABLE_CODE } from '../../shared/aiProviderRouting'
 import { logEvent } from './logEvent'
+import { softFail } from './softFail'
 
 /**
  * DAS PROTOKOLL DER KI-TRANSPORTE — NUR KENNUNGEN (P17, SEC-017, 2026-11-15).
@@ -190,7 +191,7 @@ export async function aiHttpFailure(
   what: AiLogWhat,
   extra: AiLogFields = {},
 ): Promise<never> {
-  const body = await res.text().catch(() => '')
+  const body = await res.text().catch(softFail('core:utils/aiLog:text', ''))
   console.error(aiLogLine(ctx.label, what, {
     status: res.status,
     tag: aiProviderErrorCode(body),

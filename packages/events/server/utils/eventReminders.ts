@@ -55,6 +55,7 @@ function inReminderQueue<T>(work: () => Promise<T>): Promise<T> {
   const run = reminderQueue.then(work, work)
   // Die Kette selbst darf nie abgelehnt sein, sonst übersprängen spätere
   // Glieder ihre Arbeit — der Fehler gehört dem Aufrufer, nicht der Kette.
+  // eslint-disable-next-line pukalani/no-silent-catch -- Ende einer Sperr-Kette: den Fehler bekommt der Aufrufer des Glieds, die Kette selbst darf nie abgelehnt sein
   reminderQueue = run.catch(() => {})
   return run
 }
