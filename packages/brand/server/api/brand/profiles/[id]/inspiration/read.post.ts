@@ -38,6 +38,7 @@ import {
   startBrandRun,
 } from '../../../../../utils/brandRun'
 import { BRAND_PROFILES_TABLE, loadStepRows } from '../../../../../utils/brandStore'
+import { softFail } from '../../../../../../../core/server/utils/softFail'
 
 /**
  * DIE VORBILDER LESEN (Konzept docs/archiv/BRAND-DESIGN.md §2.2 Schritt 3,
@@ -214,7 +215,7 @@ export default defineEventHandler(async (event): Promise<BrandInspirationReadRes
   }
   const detail = emptyBrandRunDetail({ booked: true, used, limit: BRAND_DESIGN_READING_DAILY_LIMIT })
   // Fail-soft — der Lauf schreibt das Detail spätestens mit seinem Ende.
-  await touchRunLease(store, lease, { detail }).catch(() => {})
+  await touchRunLease(store, lease, { detail }).catch(softFail('brand:api/brand/profiles/[id]/inspiration/read.post:touchRunLease', undefined))
 
   startBrandRun({
     label: 'brand-reading',

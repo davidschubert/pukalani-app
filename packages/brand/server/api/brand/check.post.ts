@@ -33,6 +33,7 @@ import {
   brandDb,
   isAppwriteNotFound,
 } from '../../utils/brandStore'
+import { softFail } from '../../../../core/server/utils/softFail'
 
 /**
  * DER KOSTENLOSE BRAND-CHECK (docs/archiv/BRAND-CHECK.md) — die vierte
@@ -156,7 +157,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
     // Kein zweiter Lauf, keine Buchung: die Antwort führt auf den laufenden.
     // Ist er zwischen Sperre und Nachlesen zu Ende gegangen, steht das schon
     // im Stand, und die Seite liest sein Ergebnis beim ersten Nachfragen.
-    const running = await store.latest(scope, subject).catch(() => null)
+    const running = await store.latest(scope, subject).catch(softFail('brand:api/brand/check.post:latest', null))
     const key = running ? parseBrandRunDetail(running.detail).key : ''
     if (!running || !key) throw error
     setResponseStatus(event, 202)
@@ -188,7 +189,7 @@ export default defineEventHandler(async (event): Promise<BrandCheckStartResponse
 
   const detail = emptyBrandRunDetail({ key: nonce, booked: true })
   // Fail-soft — der Lauf schreibt das Detail spätestens mit seinem Ende.
-  await touchRunLease(store, lease, { detail }).catch(() => {})
+  await touchRunLease(store, lease, { detail }).catch(softFail('brand:api/brand/check.post:touchRunLease', undefined))
 
   // (5) DER LAUF — hinter der Antwort. In die Antwort schreibt er nicht.
   startBrandRun({

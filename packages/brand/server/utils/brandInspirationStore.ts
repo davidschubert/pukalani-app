@@ -24,6 +24,7 @@ import {
   serializeSlotRecords,
   toStepFacts,
 } from './brandStore'
+import { softFail } from '../../../core/server/utils/softFail'
 
 /**
  * DIE VORBILDER — DER SPEICHER (Konzept docs/archiv/BRAND-DESIGN.md §2.2/§2.13,
@@ -404,7 +405,7 @@ export async function createBrandInspiration(
   catch (error) {
     await admin.storage
       .deleteFile({ bucketId: BRAND_INSPIRATION_BUCKET, fileId })
-      .catch(() => {})
+      .catch(softFail('brand:utils/brandInspirationStore:deleteFile', undefined))
     throw brandInspirationUnavailable(error, { profileId: input.profileId, stage: 'row' })
   }
 }
