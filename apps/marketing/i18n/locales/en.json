@@ -541,11 +541,11 @@
           "mighty": "2%"
         },
         {
-          "label": "Hosting / company base",
+          "label": "Hosting",
           "us": "Germany",
-          "circle": "USA",
-          "skool": "USA",
-          "mighty": "USA"
+          "circle": "n/a",
+          "skool": "n/a",
+          "mighty": "n/a"
         },
         {
           "label": "Courses with lessons and progress",
