@@ -27,7 +27,7 @@ const PROVIDERS: Array<{ hosts: string[], provider: LiveProvider }> = [
   { hosts: ['teams.microsoft.com', 'teams.live.com'], provider: { id: 'teams', label: 'Microsoft Teams', icon: 'i-ph-video-conference' } },
   { hosts: ['whereby.com'], provider: { id: 'whereby', label: 'Whereby', icon: 'i-ph-video-conference' } },
   { hosts: ['discord.gg', 'discord.com'], provider: { id: 'discord', label: 'Discord', icon: 'i-ph-discord-logo' } },
-  { hosts: ['vimeo.com'], provider: { id: 'vimeo', label: 'Vimeo', icon: 'i-ph-vimeo-logo' } },
+  { hosts: ['vimeo.com'], provider: { id: 'vimeo', label: 'Vimeo', icon: 'i-ph-play-circle' } },
   { hosts: ['kick.com'], provider: { id: 'kick', label: 'Kick', icon: 'i-ph-broadcast' } },
 ]
 

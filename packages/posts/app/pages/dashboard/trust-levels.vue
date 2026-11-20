@@ -222,7 +222,7 @@ async function setLeader(entry: TrustLevelMember, leader: boolean) {
                 color="neutral"
                 variant="ghost"
                 size="xs"
-                icon="i-ph-medal-slash"
+                icon="i-ph-prohibit"
                 :label="t('posts.trustLevels.revoke')"
                 @click="setLeader(row.original, false)"
               />
