@@ -1,7 +1,9 @@
-# Runbook: Appwrite 2.6.2 → 2.7.1 → 2.7.3 (self-hosted, MariaDB)
+# Runbook: Appwrite 2.6.2 → 2.7.1 → 2.7.3 → 2.7.4 (self-hosted, MariaDB)
 
-> **Stand 2026-11-18:** dev, CI und Production laufen auf **2.7.3**. Der
-> Schritt 2.7.1 → 2.7.3 steht unten im Abschnitt
+> **Stand 2026-11-20:** dev und CI laufen auf **2.7.4**, Production noch auf
+> **2.7.3** (der Lauf wartet auf Davids Ja). Der Schritt steht unten im
+> Abschnitt [„2.7.3 → 2.7.4"](#273--274), samt dem Beweis-Neustart für die
+> Neustart-Regel der Container. Der Schritt 2.7.1 → 2.7.3 steht im Abschnitt
 > [„2.7.1 → 2.7.3"](#271--273); Production lief am 2026-11-18 22:24–22:26 UTC
 > nach Davids „Ja, Production jetzt".
 
@@ -548,3 +550,140 @@ stört (beide lesen dasselbe Schema).
 | dev (OrbStack, 2.7.1 → 2.7.3) | 2026-11-18 18:17–18:20 | 22,4 MB, 970 Tabellen | „Migration completed", 7,0 s (383 „already exists", 0 andere Fehlerzeilen) | Werkzeug 70 s (Image-Pulls für Console und Executor), `migrate` 8 s | Tabellen vorher gegen nachher (`information_schema`): **940 / 940, 0 verschwunden, 0 neu** · `.env`: nur `_APP_VERSION` · Compose: zwei Image-Zeilen · `health/version` 2.7.3 · PHP 8.5.12 · Executor 1.3.5 (`OPR_EXECUTOR_VERSION`), Secret in appwrite und Executor gleich · Console 1.2.181 (302) · 7 Container auf 2.7.3, keiner auf 2.7.1, alle Up · trustedIPs 2 + mqtt 2 · Realtime 101 für `account`, `admin`, `portfolio`, `branding`, im Log viermal `realtime.success true` · 0 Fehlerzeilen in API, Worker, Realtime · Skript-Probe 18:22–18:26 (Exit 0) · Unit: alle Pakete grün (core 4832, comments 320, darin `realtimeAuth` 14/14 und `server-writes-votes` 8/8), `pnpm -r typecheck` Exit 0 · **E2E `apps/comments` gegen den Worktree-Dev-Server: 29 von 31 Fällen grün** (ohne `themes-visual`; darunter Realtime 1/1, Session-Widerruf 3/3, Profilbild-Ablage 3/3 nach der Anpassung des einen Falls). Die zwei roten brauchen den Demo-Seed, den der Production-Spiegel nicht hat (`uma@demo.local` für den Embed-Login, Changelog „v1.7") — sie laufen in der CI. Die neun Bildvergleiche (`themes-visual`) waren lokal rot (rund 2 % abweichende Pixel in allen neun Themes) und sind in der CI ohnehin ausgeschaltet; ein Bezug zu Appwrite ist weder belegt noch ausgeschlossen · **Klick-Beweis mit zwei Browser-Sitzungen** (Wegwerf-Skript, zwei Wegwerf-Konten, danach gelöscht): Anmelden 200, Abmelden über das Menü 200 und `/api/auth/me` 401, erneut anmelden 200, Kommentar 201 erscheint in der zweiten Sitzung live, Stimme 200 zählt in der ersten Sitzung live auf 1, `docker restart appwrite-realtime` → beide Sitzungen öffnen neue Sockets, danach Kommentar und Stimme wieder live ohne Neuladen |
 | prod (`api.pukalani.app`, 2.7.1 → 2.7.3) | 2026-11-18 22:24–22:26 | 22,3 MB, 970 Tabellen | „Migration completed", 12,6 s (383 „already exists", 0 andere Fehlerzeilen) | **45 s** vom Werkzeug-Aufruf (22:25:43) bis zu den Beweisen (22:26:28); Images und Dump davor ohne Ausfall (22:24:07–22:25:43) | Tabellen vorher gegen nachher: **940 / 940** · Compose-Diff genau zwei Image-Zeilen (Console 1.2.138 → 1.2.181, Executor 1.3.1 → 1.3.5) · Schlüsselmenge der `.env` unverändert · `health/version` 2.7.3 · PHP 8.5.12 · Executor 1.3.5, Secret in appwrite und Executor gleich · 7 Container auf 2.7.3, keiner auf einer anderen Version, alle Up · trustedIPs 2 + mqtt 2 · Patch-Mounts 0 · Realtime 101 lokal und von außen für `account`, `admin`, `portfolio`, `branding`; im Realtime-Log 60 gelungene Verbindungen in den ersten Minuten · 0 Fehlerzeilen in API, Worker, Realtime (beim Lauf und zehn Minuten danach) · von außen: `verify-health` 10 von 10 Hosts gesund (alle Apps `schema` ok), `verify-tls` grün, `verify-realtime --handshake` 101, `ops:schema-parity` alle vier Projekte spaltengleich · Platte 45 % → 56 % (drei neue Images neben den alten) · abgekoppelt gestartet (`nohup setsid`), vorher auf das Ende eines laufenden Ausliefern gewartet · **nicht geprüft:** Anmelden, Profilbild und OTP mit einem Konto auf Production |
 
+
+## 2.7.3 → 2.7.4
+
+**Anlass:** das Wartungs-Release 2.7.4 (2026-11-19). Es baut auf PHP 8.5.13
+(vorher 8.5.12): mit 8.5.12 konnte ein Swoole-Worker durch einen Fehler im
+OPcache jede `DateTime` ablehnen (`must be of type DateTime, DateTime given`),
+bis er neu startete. Gelesen: `gh release view 2.7.4 -R appwrite/appwrite`,
+der Vergleich der Tags (`gh api repos/appwrite/appwrite/compare/2.7.3...2.7.4`:
+sechs Commits, sechs Dateien) und der Quelltext beider Images gegeneinander
+(`/usr/src/code/src` und `/usr/src/code/app` aus `appwrite/appwrite:2.7.3` und
+`:2.7.4` gezogen).
+
+**Für unseren Code ändert sich nichts.** Der Quelltext der Images unterscheidet
+sich in genau ZWEI Dateien und dort nur in Versionszeilen:
+`app/init/constants.php` (`APP_VERSION_STABLE`) und
+`src/Appwrite/Migration/Migration.php` (eine Zeile `'2.7.4' => 'V25'`). Kein
+Schema, keine neue Einstellung, kein neuer Dienst, dasselbe Antwortformat.
+`migrate` läuft trotzdem (Vorgabe des Herstellers) und meldet nur „already
+exists". Die `.env` ändert sich in genau EINER Zeile (`_APP_VERSION`).
+
+### Images 2.7.3 → 2.7.4
+
+`appwrite/appwrite` **2.7.4** (Basis-Image 2.2.12 → **2.2.13**, PHP 8.5.12 →
+**8.5.13**, Swoole weiter 6.2.5), `openruntimes/executor` 1.3.5 → **1.3.7**
+(dieselbe PHP-Version; ein Runtime, der beim Start abstürzt, meldet das jetzt
+sofort). Unverändert: Console `appwrite/new` 1.2.181-self-hosted, browser
+0.3.10, orchestrator 4.0.0, autogravity 0.0.11, exiftool 0.1.1, geo 0.3.2,
+embedding 0.3.1, mariadb 10.11, redis 7.4.7-alpine, traefik 3.6, clickhouse
+26.4.3-alpine.
+
+**Compose-Diff:** das offizielle Compose unterscheidet sich zwischen den Tags
+in genau EINER Zeile (Executor), und die Datei, die das Werkzeug auf dev
+erzeugt hat, ebenso (`diff` alt/neu: eine Zeile).
+
+### Ablauf dev (OrbStack) — gelaufen 2026-11-20
+
+Diesmal fährt dasselbe Skript wie auf Production auch den ersten Lauf auf dev
+(vorher war es dort nur die Probe danach):
+
+```bash
+APPWRITE_DIR=~/Developer/orbstack/appwrite-maria/appwrite bash ops/appwrite-upgrade-2.7.4.sh
+```
+
+Vorher nachsehen, ob jemand die Instanz gerade benutzt (`lsof -nP -iTCP
+-sTCP:LISTEN | grep node`, `docker logs --since 3m appwrite | grep http.uri`):
+sie steht rund eine halbe Minute. Solange dev und Production verschiedene
+Versionen fahren, bricht das Spiegel-Werkzeug ab (s. Abschnitt 2.7.1 → 2.7.3).
+
+### CI (`ci/appwrite/`)
+
+`ci.env`: `_APP_VERSION="2.7.4"`, keine neuen Schlüssel. Compose: die eine
+Image-Zeile (Executor). `docker compose --env-file ci/appwrite/ci.env -f
+ci/appwrite/docker-compose.yml config --quiet` grün. Live-Beweis ist der
+E2E-Lauf auf dem Pull Request.
+
+### Prod — Ablauf
+
+Skript `ops/appwrite-upgrade-2.7.4.sh` (nach dem Lauf zieht es nach
+`docs/archiv/skripte/`) — eine Kopie des 2.7.3-Skripts mit zwei statt drei
+Images und einer Zeile mehr in den Beweisen: „Container ohne Neustart-Regel"
+(Production: erwartet „keiner"; die Entwicklungs-Instanz nennt dort vier, ihre
+Override trägt die Regel nicht).
+
+**Vorher:**
+
+- [ ] Davids Ja für diesen Lauf.
+- [ ] Nicht zwischen 03:20 und 04:15 UTC (nächtliches Backup) und nicht,
+      während ein Ausliefern läuft (auch ein gewöhnliches: seine Probe liest
+      `ok` aus `/api/health`).
+- [ ] `curl -s https://api.pukalani.app/v1/health/version` zeigt 2.7.3.
+- [ ] Das nächtliche Backup der letzten Nacht ist da (Wächter grün, kein
+      offener Alarm).
+- [ ] Der Ausfall liegt nicht auf einem Halbstunden-Lauf des Wächters (sie
+      starten um Minute 10 und Minute 35).
+- [ ] `docker compose config` auf dem Server zeigt für JEDEN Dienst eine
+      Neustart-Regel (seit dem 2026-11-20 trägt die Override `restart:
+      unless-stopped` für `traefik`, `appwrite`, `redis`, `appwrite-browser`).
+
+**Der Lauf** (abgekoppelt; das Protokoll bleibt auf dem Server):
+
+```bash
+scp ops/appwrite-upgrade-2.7.4.sh ploi@188.245.61.155:~/appwrite-upgrade-2.7.4.sh
+```
+
+```bash
+ssh ploi@188.245.61.155 'nohup setsid bash ~/appwrite-upgrade-2.7.4.sh > ~/appwrite-upgrade-2.7.4.log 2>&1 < /dev/null &'
+```
+
+Den Stand liest ein zweiter Aufruf aus dem Protokoll (`grep -E '^==
+|ABBRUCH|^FERTIG'`). Erwartetes Fenster: unter einer Minute (dev: 34 s; 2.7.3
+auf Production: 45 s).
+
+**Nach dem Lauf** (von außen):
+
+- [ ] `curl -s https://api.pukalani.app/v1/health/version` → `2.7.4`
+- [ ] `node scripts/ops/verify-health.mjs`, `node scripts/ops/verify-tls.mjs`,
+      `node scripts/ops/verify-realtime.mjs --handshake`
+- [ ] `pnpm ops:schema-parity` unverändert
+- [ ] Ein Wächter-Lauf von Hand ist grün (`gh workflow run production-watch.yml`)
+
+### Beweis-Neustart (Neustart-Regel der Container)
+
+**Wozu:** bis zum 2026-11-20 hatten `appwrite`, `appwrite-traefik`,
+`appwrite-redis` und `appwrite-browser` keine Neustart-Regel. Nach jedem
+Paket-Update, das Docker oder containerd anhebt, und nach jedem Neustart des
+Servers blieben sie unten, bis jemand `docker compose up -d` fuhr
+([PRODUKTIONS-ALARM.md](PRODUKTIONS-ALARM.md), § 4). Seit dem 2026-11-20 steht
+die Regel in der Override (sie überlebt das Upgrade-Werkzeug). Ob danach
+wirklich ALLES von selbst wiederkommt, zeigt nur ein Neustart — Davids
+Entscheidung: im Fenster dieses Upgrades, nicht eigens davor.
+
+**Ablauf** (nach dem Upgrade, mit demselben Ja):
+
+1. `docker inspect` zeigt für jeden Container eine Regel (das Skript nennt in
+   den Beweisen „Container ohne Neustart-Regel: keiner").
+2. Server EINMAL neu starten: Ploi → Server → Verwalte → Allgemein → „Restart
+   server". Nicht den Docker-Dienst neu starten.
+3. NICHT eingreifen und mitschreiben: wann antwortet `/v1/health/version`
+   wieder, wann gelingt der Realtime-Handshake (101), laufen alle Container?
+   `appwrite-realtime` kann in einer Schleife hängen, wenn es vor Redis
+   startet; der Wächter auf dem Server stellt es dann innerhalb von fünf
+   Minuten selbst neu her — festhalten, ob das nötig war.
+4. Kommt nach 90 Sekunden etwas nicht: das Handrezept (`cd /home/ploi/appwrite
+   && docker compose up -d`, dann `docker restart appwrite-realtime`) und den
+   Befund hier eintragen. Das Runbook § 4 bleibt dann, wie es ist.
+5. Ist der Beweis grün: § 4 in PRODUKTIONS-ALARM.md anpassen (die Regel
+   kommt aus der Override; das Handrezept bleibt als Rückfall).
+
+**Nach JEDEM späteren Appwrite-Upgrade:** die vier `restart`-Zeilen der
+Override gegen das neue `docker-compose.yml` abgleichen (Dienstnamen) und die
+Zeile „Container ohne Neustart-Regel" lesen.
+
+### Durchläufe
+
+| Instanz | Datum (UTC) | Dump | Migration | Fenster | Besonderheiten |
+| --- | --- | --- | --- | --- | --- |
+| dev (OrbStack, 2.7.3 → 2.7.4) | 2026-11-20 14:24–14:26 | 22,4 MB, 970 Tabellen | „Migration completed", 8,3 s (383 „already exists", 0 andere Fehlerzeilen) | **34 s** vom Werkzeug-Aufruf (14:25:22) bis zu den Beweisen; Images und Dump davor ohne Ausfall | Tabellen vorher gegen nachher: **940 / 940** · `.env`: nur `_APP_VERSION` · Compose: eine Image-Zeile (Executor) · `health/version` 2.7.4 · PHP 8.5.13 · Executor 1.3.7, Secret in appwrite und Executor gleich · Console weiter 1.2.181 · 7 Container auf 2.7.4, keiner auf 2.7.3, alle Up · trustedIPs 2 + mqtt 2 · Patch-Mounts 0 · Realtime 101 für `account`, `admin`, `portfolio`, `branding`, im Log zehnmal `realtime.success true` · 0 Fehlerzeilen in API, Worker, Realtime · „Container ohne Neustart-Regel" nennt auf dev die vier bekannten (die Override dort trägt die Regel nicht) · **nicht gefahren:** Unit-Tests und die E2E-Suite lokal — der Quelltext des Images unterscheidet sich nur in zwei Versionszeilen, den Live-Beweis führt der E2E-Lauf des Pull Requests gegen eine frische 2.7.4 |
