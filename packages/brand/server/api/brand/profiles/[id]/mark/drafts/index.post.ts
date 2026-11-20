@@ -107,7 +107,11 @@ import { BRAND_PROFILES_TABLE, loadStepRows } from '../../../../../../utils/bran
  * mehr zurückbuchen. Der NÄCHSTE Start holt es nach, wenn der abgebrochene
  * Vorgänger gebucht und nichts abgelegt hatte (`brandRunOwesRefund`): erst
  * der Vermerk am Vorgänger, dann die Rückbuchung — so bucht auch nach einer
- * abgelehnten Drossel niemand ein zweites Mal zurück.
+ * abgelehnten Drossel niemand ein zweites Mal zurück. Damit der Nachfolger
+ * „nichts abgelegt" richtig liest, schreibt der Lauf die Zahl seiner Entwürfe
+ * nach JEDEM abgelegten Bild an die Zeile (wie die Lesung der Vorbilder) —
+ * sonst bekäme ein Lauf, der NACH dem Ablegen stirbt, seinen sichtbaren Lauf
+ * zurück, obwohl die Entwürfe da sind.
  */
 export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunResponse> => {
   const { userId, betaAccount } = await requireBrandAccess(event)
@@ -236,7 +240,7 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
     store,
     lease,
     detail,
-    work: async ({ lost }) => {
+    work: async ({ lost, progress }) => {
       const model = stub ? 'dev-stub' : (await getEffectiveAiImageConfig(event)).model
       const result = await runBrandMarkDrafts(event, profile, stepRows, model)
       detail.model = result.model ?? model
@@ -287,6 +291,12 @@ export default defineEventHandler(async (event): Promise<BrandMarkDraftsRunRespo
             promptHash: result.promptHash ?? '',
           })
           detail.created += 1
+          // SOFORT an die Zeile (LL1 c, 2026-11-20): stirbt der Lauf nach dem
+          // Ablegen, sieht der Nachfolger den Entwurf und bucht nicht für
+          // einen Lauf mit Ergebnis zurück (`brandRunOwesRefund`). Nach JEDEM
+          // Bild, nicht erst nach dem letzten — schon der erste Entwurf macht
+          // den Lauf zu einem Lauf. Fail-soft: das Ende schreibt alles.
+          await progress()
         }
         catch (error) {
           // Ein Wurf beim Ablegen: was schon liegt, bleibt (Teilerfolg ist
