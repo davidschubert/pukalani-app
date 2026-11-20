@@ -77,7 +77,14 @@ die Kopfzeilen doppelt, und der tägliche Blick meldet `zuviel`.
    liegt neben dem Skript).
 6. **Von außen prüfen:** `curl -sI https://<name>/` zeigt jede Schutz-
    Kopfzeile genau einmal; `curl -s https://<name>/api/health` meldet den
-   Build.
+   Build. `node scripts/ops/verify-delivery.mjs <name>` (nach dem
+   Eintrag in `HOSTS` dort) zeigt, ob Skripte gepackt ankommen, die
+   `robots.txt` von der App kommt und die Seite ein Vorschaubild trägt. Die
+   Vorlagen haben BEWUSST keinen Block für `/robots.txt` und keine Zeile zur
+   Kompression: die `robots.txt` liefert die App, und ihre Dateien packt sie
+   beim Bauen selbst. Plois Schablone legt für `/robots.txt` und
+   `/favicon.ico` zwei eigene Blöcke an — mit der Vorlage aus Schritt 3
+   sind sie weg.
 7. **Die App-Liste auf dem Server (Ausliefern UND Backup der
    Einstellungen):** die Liste liegt als eigene Kopie in `~/ops/apps.conf`
    auf dem App-Server — der Deploy aktualisiert sie nicht. Drei Skripte lesen

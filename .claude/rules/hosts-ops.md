@@ -182,7 +182,15 @@ paths:
   (docs/runbooks/DEPLOYMENT.md, A4: am selben Tag erledigen); ein fehlender
   Prozess ist nur eine Warnzeile, „nicht erreichbar" und „das Tor kennt das
   Wort noch nicht" sind Exit 2 und bleiben grün. Probealarm
-  `-f node_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein
+  `-f node_drill=true`. Seit 2026-11-20 prüft der tägliche Lauf die
+  AUSLIEFERUNG von außen (`verify-delivery.mjs`, ohne ssh und Secret): je
+  öffentlichem Host kommt ein Skript gepackt an, `/robots.txt` enthält
+  Regeln und nennt die Sitemap des eigenen Hosts, die Seite trägt genau ein
+  Vorschaubild, und die Symbol-Route reicht nichts an einen fremden Dienst
+  weiter. Erst zählen, dann Alarm (`PUKALANI_DELIVERY_MODE` im Workflow).
+  DIE APP PACKT IHRE DATEIEN SELBST (`nitro.compressPublicAssets` im Core);
+  die nginx-Vorlagen tragen dazu nichts und keinen Block für `/robots.txt`.
+  Probealarm `-f delivery_drill=true`. JE ROTEM BEFUND dieser Blicke steht im Issue ein
   Satz, was zu tun ist. Alle decken dieselbe blinde Stelle ab —
   die Konfiguration ist falsch, aber nichts wird von selbst rot. EIN ROTER
   LAUF IST NUR EINE FARBE (Oktober 2026: der TLS-Wächter war 19 Tage und ~900

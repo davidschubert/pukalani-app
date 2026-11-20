@@ -40,6 +40,7 @@ wurde das nur, weil Resend das Tageslimit per Mail an David meldete.
 | Anmelde-Wege der Datenbank | `scripts/ops/verify-auth-methods.mjs` | täglich | in einem der vier Projekte nimmt die Datenbank eine Anmeldung ohne Schlüssel wieder an (Antwort 401 statt 501), oder die Probe bekommt eine unerwartete Antwort. Je Projekt ein Aufruf von außen mit erfundenen Zugangsdaten; legt nichts an. Störung (429, 5xx) ist „keine Aussage" |
 | Anmelde-Regeln der Datenbank | `scripts/ops/appwrite-auth-policies.mjs --ci` | täglich | in einem der vier Projekte weicht eine Passwort-, Adress- oder Sitzungs-Regel vom Soll im Skript ab, oder der Blick kann die Regeln nicht lesen (Schlüssel oder Leserecht fehlt). Nur lesend, mit den vier Schlüsseln des Schema-Blicks |
 | Schutz-Kopfzeilen | `scripts/ops/verify-security-headers.mjs` | täglich | auf einem Host kommt eine Schutz-Kopfzeile (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS) nicht genau einmal an — auf einer Seite, auf `/api/health` oder auf einer Datei unter `/_nuxt/` —, oder es kommt eine, die niemand mehr senden soll (`X-Frame-Options`, `X-XSS-Protection`, `x-powered-by`). Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
+| Auslieferung | `scripts/ops/verify-delivery.mjs` | täglich | **zählt vorerst nur** (`PUKALANI_DELIVERY_MODE: count` im Workflow). Je öffentlichem Host von außen: ein Skript unter `/_nuxt/` kommt ohne `content-encoding` an; `/robots.txt` antwortet nicht mit 200, enthält keine Regel oder nennt (wo der Host eine hat) keine Sitemap des eigenen Hosts; die Seite trägt nicht genau ein `og:image`, oder das Bild antwortet nicht mit 200; die Symbol-Route der App reicht ein fehlendes Symbol an einen fremden Dienst weiter. Ohne ssh, ohne Secret. Ein Host, der gerade nicht antwortet, sagt hier nichts aus |
 | Node-Version des App-Servers | `scripts/ops/verify-node-version.mjs` (fragt das Tor-Wort `node-version` von `ops/app-watch-gate.sh`) | täglich | das Programm `/usr/bin/node` oder ein pm2-Prozess einer App läuft mit einer anderen Node-Version als `.nvmrc` — auch mit einer neueren. Ein Prozess, der fehlt, ist nur eine Warnzeile. Ist der Server nicht erreichbar oder kennt sein Tor das Wort noch nicht, bleibt der Blick grün und schreibt eine Warnung (Exit 2) |
 
 **In die App hinein (seit 2026-11-16, OPS-011).** Bis dahin sah der Alarm, ob
@@ -205,6 +206,24 @@ unter „Skript-Regel" (zählt nur). Welche Quelle auf welcher Seite:
 `add_header` für diese Namen. Der Blick zählt von außen roh nach, weil ein
 Test im Repo den Webserver davor nicht sieht. Von Hand:
 `node scripts/ops/verify-security-headers.mjs [host]`.
+
+**Auslieferung (seit 2026-11-20).** Tests im Repo prüfen, was die App
+erzeugt — nicht, was beim Browser ankommt. Vier Dinge waren deshalb lange
+falsch, ohne dass etwas rot wurde: Skripte kamen ungepackt an (der Webserver
+kannte ihren Dateityp nicht), die `robots.txt` der Landing beantwortete der
+Webserver selbst, zwei Sites hatten kein Vorschaubild für geteilte Links, und
+ein Symbol, das der Server nicht kennt, fragte der Browser bei einem fremden
+Dienst an. Seitdem packt die App ihre Dateien beim Bauen selbst
+(`nitro.compressPublicAssets` in `packages/core/nuxt.config.ts`; der
+Webserver reicht sie durch), der Abruf fehlender Symbole ist aus
+(`icon.fallbackToApi: false`, Wächter `pnpm check:icons`), und der Blick
+prüft je öffentlichem Host von außen vier Dinge: `gepackt`, `robots`,
+`vorschau`, `symbole`. Welcher Host was schuldet, steht in `HOSTS` des
+Skripts (die Betreiber-Oberfläche hat keine Sitemap und kein Vorschaubild,
+der Kundenbereich keine Sitemap). ERST ZÄHLEN, DANN ALARM: im Workflow steht
+`PUKALANI_DELIVERY_MODE: count`, ein Befund ist dann nur eine Zeile „Nur
+gezählt". Von Hand: `node scripts/ops/verify-delivery.mjs [host]`.
+Probealarm: `gh workflow run production-watch.yml -f delivery_drill=true`.
 
 **Erinnerungen in nicht erreichbaren Communities (seit 2026-11-19, SE1 d —
 zählt nur).** Der stündliche Lauf `event-reminders` der Platform-App erkennt
@@ -986,6 +1005,18 @@ Site als `zuviel`. Für `pukalani.app` zusätzlich bei Cloudflare nachsehen
 die App sendet sie nicht; den letzten Stand von
 `packages/core/server/plugins/security-headers.ts` und den Build des Hosts
 (`/api/health` → `.build`) prüfen.
+
+**Auslieferung.** Der Satz im Issue nennt Host und Sorte. „gepackt": die
+App legt beim Bauen neben jede Datei eine `.br` und eine `.gz`
+(`nitro.compressPublicAssets` im Core) — steht das noch dort, entfernt etwas
+davor die Kopfzeile; mit `curl -sI -H 'Accept-Encoding: br, gzip'
+https://<host>/_nuxt/<datei>.js` nachsehen. „robots": antwortet die App
+(`curl -s https://<host>/robots.txt`)? Kommt statt ihrer Datei eine
+Fehlerseite des Webservers, hat die nginx-Datei der Site einen eigenen Block
+für `/robots.txt` (Ploi legt ihn bei einer neuen Site an) — entfernen,
+Reload. „vorschau": das Bild trägt die `app.vue` der App über
+`useBrandOgImage()` ein. „symbole": `pnpm check:icons` fahren; der Schalter
+steht in `packages/core/nuxt.config.ts`.
 
 **Anmelde-Wege.** Der Satz im Issue nennt das Projekt. „Wieder offen": in der
 Verwaltung der Datenbank das Projekt öffnen, Auth → Settings → Auth methods,
