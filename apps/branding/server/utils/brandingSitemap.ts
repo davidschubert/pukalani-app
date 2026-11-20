@@ -50,6 +50,14 @@ export interface BrandingSitemapEntry {
    * vermeidet — nur an einer zweiten Stelle.
    */
   locales?: readonly ('en' | 'de')[]
+  /**
+   * DIE DEUTSCHE ADRESSE, WENN SIE NICHT `/de` + `path` IST. Nur die
+   * Produktseiten haben locale-eigene Pfade (`definePageMeta({ i18n: { paths
+   * } })`: `/products/market-comparison` ↔ `/de/produkte/marktvergleich`).
+   * Mit dem Präfix samt `/de` angeben. Ohne Angabe gilt die mechanische
+   * Regel `dePathFor()`.
+   */
+  dePath?: string
 }
 
 /** Beide Sprachen — der Normalfall und der Default eines Eintrags. */
@@ -100,6 +108,19 @@ export const BRANDING_ROUTES: readonly BrandingSitemapEntry[] = [
   { path: '/erstgespraech', priority: 0.8 },
   { path: '/brand-check/ranking', priority: 0.7 },
   { path: '/brand-check/methodik', priority: 0.6 },
+  /**
+   * DIE PRODUKTSEITEN (seit 2026-09-09 im Hauptmenü). Sie fehlten hier bis
+   * zum 2026-11-20: die Liste trug den Vermerk „nachgesehen 2026-09-08", die
+   * Seiten kamen einen Tag später. Seitdem vergleicht ein Test die Liste mit
+   * dem Seiten-Ordner (`tests/brandingSitemap.test.ts`, „jede Seite der App").
+   * Sie haben als einzige locale-eigene Pfade, deshalb `dePath`.
+   */
+  { path: '/products', dePath: '/de/produkte', priority: 0.8 },
+  { path: '/products/brand-check', dePath: '/de/produkte/brand-check', priority: 0.7 },
+  { path: '/products/brand-foundation', dePath: '/de/produkte/brand-foundation', priority: 0.7 },
+  { path: '/products/brand-design', dePath: '/de/produkte/brand-design', priority: 0.7 },
+  { path: '/products/brand-book-kit', dePath: '/de/produkte/brand-book-kit', priority: 0.7 },
+  { path: '/products/market-comparison', dePath: '/de/produkte/marktvergleich', priority: 0.7 },
   { path: '/about', priority: 0.5 },
   { path: '/team', priority: 0.5 },
 ]
@@ -142,9 +163,9 @@ export const BRANDING_INSIGHTS_ENTRY_PRIORITY = 0.5
  * EN-Pfad → DE-Pfad (i18n-Strategie 'prefix_except_default': en ohne Prefix,
  * de unter /de/*). Die Startseite ist '/de', nicht '/de/'.
  *
- * Diese Site hat KEINE locale-eigenen Pfade (kein `defineI18nRoute` in App
- * oder Layern — nachgesehen), die Umrechnung ist deshalb rein mechanisch.
- * Käme je eine dazu, gehört sie in die Tabelle oben, nicht hierher.
+ * Die Umrechnung ist mechanisch. Die einzige Ausnahme sind die Produktseiten
+ * mit locale-eigenen Pfaden: sie nennen ihre deutsche Adresse selbst
+ * (`dePath` am Eintrag in `BRANDING_ROUTES`), nicht hier.
  */
 export function dePathFor(enPath: string): string {
   return enPath === '/' ? '/de' : `/de${enPath}`
@@ -200,7 +221,7 @@ export function brandingSitemapXml(origin: string, entries: readonly BrandingSit
 
   const urls = entries.flatMap((entry) => {
     const enUrl = `${base}${entry.path === '/' ? '' : escapeXmlText(entry.path)}`
-    const deUrl = `${base}${escapeXmlText(dePathFor(entry.path))}`
+    const deUrl = `${base}${escapeXmlText(entry.dePath ?? dePathFor(entry.path))}`
 
     /**
      * Nur die Sprachen, die es GIBT (s. `locales`). `x-default` zeigt auf EN,

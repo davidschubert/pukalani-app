@@ -53,6 +53,17 @@ export const SITE_ROUTES: SiteRoute[] = [
       description: 'Drei Festpreis-Pakete (€2.500 / €3.900 / €5.000), Ergebnisse in 1–2 Wochen',
     },
   },
+  // Das Erstgespräch ist das EINE Ziel, auf das die ganze Site hinführt — und
+  // fehlte hier bis zum 2026-11-20 (die Seite kam nach der Liste). Seitdem
+  // vergleicht `tests/siteRoutes.test.ts` die Liste mit dem Seiten-Ordner.
+  {
+    path: '/erstgespraech',
+    priority: 0.9,
+    llms: {
+      title: 'Kostenloses Erstgespräch',
+      description: 'In drei Minuten die Eckdaten des Projekts schildern, danach Termin direkt buchen oder Rückmeldung innerhalb von 24 Stunden',
+    },
+  },
   {
     path: '/nuxt-entwickler-freelancer',
     priority: 0.8,

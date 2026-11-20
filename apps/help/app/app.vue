@@ -19,13 +19,33 @@ const { data: navigation } = await useAsyncData(() => `docs-navigation-${locale.
 // Volltextsuche über beide Abschnitte der aktuellen Sprache (client-only, wie
 // im Nuxt-UI-Vorbild). Bewusst NICHT über beide Sprachen: ein Treffer, den man
 // nicht lesen kann, ist kein Treffer.
-const { data: searchFiles } = useLazyAsyncData(() => `docs-search-${locale.value}`, async () => {
-  const [anleitung, entwickler] = await Promise.all([
-    queryCollectionSearchSections(docsCollection('anleitung', locale.value)),
-    queryCollectionSearchSections(docsCollection('entwickler', locale.value)),
-  ])
-  return [...anleitung, ...entwickler]
-}, { server: false, watch: [locale] })
+//
+// ERST BEI BEDARF (PERF-007, 2026-11-20): die Such-Abschnitte holt Nuxt Content
+// im Browser aus einer Datenbank-Laufzeit (WebAssembly, rund 850 KB) samt
+// Inhalts-Abzug. Bis dahin lud das jede Seite beim ersten Aufruf — rund ein
+// Megabyte für eine Suche, die die meisten nie öffnen. Jetzt fragt die Seite
+// erst, wenn jemand die Suche öffnet (Knopf oder Tastenkürzel; beide setzen
+// `open` aus `useContentSearch`). Bis die Antwort da ist, zeigt die Suche die
+// Navigation und ihren Lade-Zustand. Einmal geöffnet, bleibt sie geladen und
+// folgt dem Sprachwechsel wie vorher.
+const { open: searchOpen } = useContentSearch()
+const searchWanted = ref(false)
+watch(searchOpen, (isOpen) => {
+  if (isOpen) searchWanted.value = true
+}, { immediate: true })
+
+const { data: searchFiles, status: searchStatus } = useLazyAsyncData(
+  () => `docs-search-${locale.value}-${searchWanted.value ? 'wanted' : 'idle'}`,
+  async () => {
+    if (!searchWanted.value) return []
+    const [anleitung, entwickler] = await Promise.all([
+      queryCollectionSearchSections(docsCollection('anleitung', locale.value)),
+      queryCollectionSearchSections(docsCollection('entwickler', locale.value)),
+    ])
+    return [...anleitung, ...entwickler]
+  },
+  { server: false, watch: [locale, searchWanted] },
+)
 
 const searchNavigation = computed(() => [
   ...(navigation.value?.anleitung ?? []),
@@ -42,6 +62,21 @@ provide(docsNavigationKey, navigation)
 // hreflang-Alternates — vorher konnte er das nicht, weil beide Sprachen
 // dieselbe URL trugen.
 useLocaleSeoHead()
+
+// VORSCHAUBILD FÜR GETEILTE LINKS (SEO-005, 2026-11-20): bis dahin hatte keine
+// Seite der Hilfe eines. Je Sprache eine committete Datei im Look der Marke
+// (erzeugt von `scripts/og-site-cards.mjs`); der Kern macht aus dem Pfad die
+// absolute Adresse und ergänzt Maße, Typ und `twitter:card`. Der Eintrag folgt
+// der Sprache der Seite.
+const ogImage = useBrandOgImage()
+watch(locale, (code) => {
+  ogImage.value = {
+    path: `/og/help-${code === 'de' ? 'de' : 'en'}.jpg`,
+    width: 1200,
+    height: 630,
+    type: 'image/jpeg',
+  }
+}, { immediate: true })
 
 // KEIN eigenes titleTemplate mehr: den Titel setzen die Seiten selbst über
 // useBrandTitle() im Hausmuster „<Seite> · <Brand>" (Audit-Befund S8).
@@ -87,6 +122,7 @@ const uiLocale = useNuxtUiLocale()
         :files="searchFiles"
         :navigation="searchNavigation"
         :placeholder="t('docs.search.placeholder')"
+        :loading="searchWanted && searchStatus === 'pending'"
       />
     </ClientOnly>
   </UApp>
