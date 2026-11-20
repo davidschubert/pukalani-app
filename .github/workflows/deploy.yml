@@ -350,6 +350,18 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "Älteste lebende Diff-Basis: $BASE"
+          # EIN ÄLTERER COMMIT ÜBERSCHREIBT NIE DEN NEUEREN (2026-11-20 live
+          # erwischt): die rote Prüfung eines ÄLTEREN Commits wurde per Re-run
+          # grün, der Auslöser feuerte für diesen Commit, und der Lauf lieferte
+          # ihn über den neueren Stand, der schon lief — der Vergleich unten
+          # sieht dann Unterschiede (rückwärts gelesen) und sagt „deploye".
+          # Läuft auf JEDEM Host schon ein Nachfahre dieses Commits, ist hier
+          # nichts mehr zu tun. Der manuelle Start (der Rückweg auf einen
+          # älteren Commit) ist weiter oben schon entschieden und bleibt frei.
+          if [ "$BASE" != "$EXPECTED_SHA" ] && git merge-base --is-ancestor "$EXPECTED_SHA" "$BASE"; then
+            echo "Überholt: auf jedem Host läuft schon ein neuerer Stand ($BASE) — $EXPECTED_SHA wird nicht ausgeliefert."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
           FILES=$(git diff --name-only "$BASE" "$EXPECTED_SHA" || true)
           if [ -z "$FILES" ]; then
             echo "Keine Datei-Änderungen ggü. der Basis ($BASE) — nichts zu deployen."

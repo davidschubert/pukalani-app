@@ -264,8 +264,12 @@ NACH JEDEM main-PUSH: vier Checks (Test/Lint/Typecheck/E2E) — seit 2026-11-13
 müssen ALLE VIER grün sein, sonst wird nicht ausgeliefert (P07; vorher hielten
 nur Test und E2E auf). Der Deploy feuert per workflow_run auf Test UND E2E,
 startet also ZWEIMAL — einer der Läufe endet per Concurrency „cancelled", das
-ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, den Deploy-Lauf
-ebenfalls neu starten (er feuert nicht von selbst). Der einzige Prod-Beweis ist
+ist KEIN Fehler. Wird eine rote Prüfung per Re-run grün, feuert der Deploy
+VON SELBST — für den Commit DIESES Laufs. Eine rote Prüfung deshalb nur neu
+starten, solange ihr Commit die Spitze von `main` ist: am 2026-11-20 lieferte
+ein Re-run auf einem älteren Commit dessen Stand über den neueren (seitdem
+überspringt „Deploy nötig?" einen überholten Commit). Nach jedem Re-run den
+Live-Build mit der Spitze von `main` vergleichen. Der einzige Prod-Beweis ist
 der Live-Build-SHA: `curl https://<host>/api/health` → `.build`. Daneben steht
 seit 2026-11-16 `.schema.state` (ok | behind | unknown): passt die Datenbank
 zum ausgerollten Programm? `behind` heißt, eine Migration fehlt — der
