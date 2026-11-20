@@ -30,6 +30,175 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N18 — Nacharbeiten „Zähl-Lücke im täglichen Blick, Rückbuchung, Abhängigkeiten": Nebenfund aus N17, LL1 (c), AR1 (e), KI1 (d) ✅ 2026-11-20
+
+Die sechste Gruppe der Nacharbeiten (Davids „Ja, starten" vom 2026-11-20).
+Pull Requests 429 (täglicher Blick), 430 (Entwurfs-Zahl sofort), 432
+(verlorener Herzschlag) und der Abschluss. Keine Migration, kein bezahlter
+KI-Lauf, kein neues Paket, nichts an der echten Datenbank, kein Blick auf den
+Server.
+
+Live seit dem 2026-11-20 00:56 UTC: alle acht Hosts melden `ok` und den Build
+`0a87781f` (der Merge von 432), `main` ist auf diesem Stand fünfmal grün.
+NICHT gesehen ist der neue Hinweis im echten Lauf — der tägliche Wächter um
+04:17 UTC zeigt ihn zum ersten Mal: nach dem `pm2 update` vom Vortag reicht
+die Zählung dann rund zehn Stunden zurück, also steht unter „Nur gezählt" je
+App mit Zeit-Läufen „die Zählung reicht nur … zurück". Von Hand ist der
+Wächter dafür nicht gestartet worden (das wäre ein Blick auf den Server).
+
+**Nebenfund aus N17 — der tägliche Blick zählte weniger „gute" Zeit-Läufe, ohne rot zu werden.**
+
+- **Was war.** Am 2026-11-19 um 18:04 UTC stand im Lauf 44583614057 je App
+  „2/5 gut", „10/13 gut", „8/10 gut", „8/11 gut" und darunter „Nichts
+  Rotes" — zwei Stunden vorher (Lauf 44563440082) waren es alle 39.
+- **Die Ursache, nur gelesen (Lauf-Protokolle, Code, Runbook).** Um 17:57 UTC
+  hatte die Nachbar-Session beim Heben von Node den pm2-Dienst neu gestartet
+  (`pm2 update`, docs/runbooks/DEPLOYMENT.md A4). Die Apps laufen im
+  Cluster-Modus; dort trägt der Name der Log-Datei die pm2-Nummer, und nach
+  dem Neustart des Dienstes schrieben die Prozesse in NEUE Dateien. Das
+  Zähl-Skript liest nur die zwei Dateien, in die der Prozess gerade schreibt
+  (und ihre umgelaufenen Geschwister) — also nur, was seit 17:57 geschrieben
+  war. Sieben Minuten nach dem Start hatte ein Lauf noch keinen Lauf, wenn
+  seine erste Verzögerung länger ist.
+- **Der Beleg ist eine Rechnung, die aufgeht.** Jeder Zeit-Lauf wartet nach
+  einem Start eine feste erste Verzögerung (`firstRunMs`, je Lauf im Code:
+  10 Sekunden bis 14 Minuten). Die elf Läufe, die fehlten, sind genau die
+  mit 8, 10, 12 und 14 Minuten: Studio-Site drei von fünf, Betreiber-Konsole
+  drei von dreizehn, Pool-App zwei von zehn, branding.supply drei von elf.
+  Auf der Betreiber-Konsole (gezählt um 18:04:14) war der Lauf mit sieben
+  Minuten schon gelaufen, auf branding.supply (18:04:22) der mit acht noch
+  nicht — der Start lag also zwischen 17:56:21 und 17:57:13 UTC. Das Runbook
+  nennt 17:57.
+- **Dass wirklich die Vorgeschichte fehlte,** zeigt ein zweites Zeichen: die
+  Betreiber-Konsole hatte zwischen 22:24 und 22:36 UTC am Vortag zwei
+  gescheiterte Takte, die jeder Lauf danach als „1× gescheitert in 25 h"
+  nannte. Um 18:04 UTC lagen sie noch im Fenster und standen nicht mehr da.
+  Ein gewöhnliches Ausliefern macht das nicht (es lädt den Prozess unter
+  derselben Nummer neu) — den ganzen Tag über waren nach jedem Ausliefern
+  alle Läufe „gut".
+- **Bewertung.** Die Rechnung war richtig: alle elf waren in der Frist,
+  nichts gehörte rot. Zwei Dinge fehlten trotzdem. (1) Die Zeile sagte den
+  Grund nicht — der eine Fall ohne Satz: angemeldet, in der Frist, noch kein
+  guter Lauf. (2) Nach `pm2 update` zählt der Blick 25 Stunden lang nur ab
+  dem Neustart: Server-Fehler, KI-Ausfälle und gescheiterte Takte von davor
+  stehen in keiner Zahl, und niemand erfuhr es.
+- **Gebaut (Pull Request 429).** Die Übersicht nennt in Klammern, was nicht
+  „gut" ist („2/5 gut (3 noch ohne guten Lauf)", dazu „zuletzt gescheitert",
+  „überfällig", „nicht gemeldet"); ein überfälliger Lauf zählt dort nicht
+  mehr als gut. Ein Hinweis je App nennt die wartenden Läufe beim Namen. Das
+  Zähl-Skript gibt das Alter der ältesten gelesenen Zeile aus (`reichweite`,
+  für die Auswertung optional wie die Zeilen davor); ist sie jünger als das
+  Fenster, steht unter „Nur gezählt": „die Zählung reicht nur … zurück" —
+  nur für Apps mit Zeit-Läufen (eine App ohne Läufe schreibt oft tagelang
+  nichts, ihre älteste Zeile sagt nichts über die Dateien). Nie rot.
+- **Bewusst nicht gebaut:** die Dateien der früheren pm2-Nummer mitzulesen.
+  Das Zähl-Skript liest seit P22 mit Absicht nie nach Muster (im Ordner
+  liegen Dateien früherer Nummern seit Juli), und `pm2 update` kommt nur
+  beim Heben von Node vor. Sichtbar statt still genügt (OPEN-ITEMS „WA1" e).
+- **Tests:** der Fall vom 2026-11-19 an der Auswertung und am echten
+  Zähl-Skript (neue Nummer ⇒ neue Dateien ⇒ `letzter_ok_min=nie`, Reichweite
+  7 Minuten), fünf Fälle „kein stummer Rest", Gegenproben (alle gut ⇒ keine
+  Klammer; Fenster voll ⇒ kein Hinweis; App ohne Läufe ⇒ kein Hinweis; alte
+  Ausgabe ohne die Zeile ⇒ kein Problem). Mit gespeicherten Antworten durch
+  das echte Prüf-Skript gefahren.
+
+**LL1 (c), Punkt 1 — der Entwurfs-Lauf schreibt seine Zahl sofort (Pull Request 430).**
+
+- Nach JEDEM abgelegten Bild steht die neue Zahl an der Lauf-Zeile
+  (`progress()`, fail-soft) — dasselbe Muster wie bei der Lesung der
+  Vorbilder. Vorher stand sie erst am Ende; starb der Lauf nach dem Ablegen,
+  buchte der nächste Start für einen Lauf MIT Ergebnis zurück.
+- Tests an der echten Route: abgelegt, dann abgebrochen ⇒ die Zahl steht
+  schon an der Zeile, der nächste Start bucht nicht zurück; Gegenprobe
+  nichts abgelegt ⇒ genau eine Rückbuchung; je Bild ein Zwischenstand; ein
+  gestörter Zwischenstand bricht das Ablegen nicht ab. Ohne die eine Zeile
+  sind zwei der Tests rot.
+
+**LL1 (c), Punkt 2 — verlorener Herzschlag (Pull Request 432).**
+
+- **Was genau fehlte.** Ein Lauf, der seine Zeile eine Minute lang nicht
+  schreiben kann, legt nichts mehr ab und bucht bewusst nicht selbst zurück
+  (ein anderer Start kann ihn schon übernommen haben). Schrieb er danach sein
+  Ende `lease_lost`, galt er als „gescheitert" — und die Regel „der nächste
+  Start holt es nach" griff nur für Läufe OHNE Ende. Für ihn buchte niemand
+  zurück. (Ein Lauf, dessen Prozess stirbt, war nie betroffen: ihn holte der
+  nächste Start schon immer nach; nur die Anzeige hinkte bis dahin.)
+- **Die kleine Lösung, ohne neuen Zeit-Lauf und ohne schreibende
+  Lese-Route:** (1) `brandRunOwesRefund` zählt auch einen Vorgänger mit dem
+  Ende `lease_lost` — zurückgebucht wird weiter nur vom einen Gewinner der
+  Sperre, erst der Vermerk, dann die Rückbuchung. (2) Ein Lauf mit
+  verlorenem Herzschlag schreibt an seinem Ende kein Detail mehr
+  (`startBrandRun`): sonst überschriebe er den Vermerk eines Nachfolgers,
+  und ein späterer Start buchte ein zweites Mal zurück. (3) Die Ansicht der
+  Seite rechnet eine geschuldete Rückbuchung schon ein (`toBrandRunView`):
+  „noch x von y" stimmt sofort, nicht erst nach dem nächsten Start.
+- **Warum kein Aufräum-Lauf.** Er änderte auf Production von selbst Zähler,
+  bräuchte eine eigene Sperre gegen den Start-Weg und brächte nichts, was
+  der nächste Start nicht ohnehin tut: der Knopf bleibt auch bei „noch 0"
+  drückbar, und der Start bucht zuerst für den Vorgänger zurück.
+- Tests für Entwürfe und Lesung: niemand startet in der Lücke ⇒ die Seite
+  zeigt den Lauf schon wieder, der nächste Start bucht genau einmal zurück,
+  der übernächste nicht; in der Lücke hat schon ein anderer Start
+  zurückgebucht ⇒ das Ende lässt den Vermerk stehen, es bleibt bei einer
+  Rückbuchung; ein Lauf mit eigenem Grund ⇒ keine zweite. Beide Teile mit
+  Gegenprobe am Code (je ohne die Änderung rot).
+- **Bekannte Grenze, nicht gebaut** (OPEN-ITEMS „LL1" c): hängt das
+  Schreiben des Herzschlags, statt zu scheitern, merkt der Lauf nichts.
+
+**AR1 (e) — das Paket-Update ist NICHT gemacht, mit Grund.**
+
+- **Auf die Stunde gerechnet (2026-11-20 00:24 UTC):** `@typescript-eslint`
+  8.73.0 war 3,30 Tage alt (über der Frist seit dem 2026-11-19 17:08 UTC),
+  `@nuxt/content` 3.17.0 erst 2,43 Tage (über der Frist ab dem 2026-11-20
+  14:11 UTC).
+- **Der Hinweis zu `minimatch` schließt mit den zwei Paketen nicht.** Die
+  betroffene Ausgabe 10.2.6 hängt im Lockfile an vier Paketen: zweimal
+  `@typescript-eslint/typescript-estree` (8.72.2 und eine ältere Kopie
+  8.62.0 über `@intlify/unplugin-vue-i18n`), `@nuxt/content` 3.16.2 und
+  `readdir-glob` 3.0.0 über `archiver` 8.0.0 aus `nitropack` 2.13.6. Für den
+  vierten Weg gibt es keine Ausgabe mit der Korrektur. `pnpm audit` zeigt je
+  Hinweis nur einen Pfad — daher stand am 2026-11-17 nur die halbe Bedingung
+  in der Liste.
+- **Entscheidung:** nichts gehoben. Ein halbes Update lieferte alle sechs
+  Apps neu aus, ohne den Hinweis zu schließen. Stand und Empfehlung je
+  Hinweis stehen in OPEN-ITEMS „AR1" e.
+- **Die anderen Hinweise, kurz nachgemessen:** offen sind `minimatch`, `zod`
+  und `esbuild`. `picomatch` nennt weder `pnpm audit` noch das Repo mehr.
+  `zod` 3 unverändert (`@nuxt/content` 3.17.0 verlangt es weiter). Neu bei
+  `esbuild`: `@nuxt/ui` 4.13.0 bringt `@nuxt/fonts` 1.2, und dessen
+  `fontless` braucht `esbuild` nicht mehr.
+
+**KI1 (d) — ein englischer Hinweis im Browser gesehen.**
+
+- Lokal, ohne KI-Lauf: der Server von branding.supply aus dem Worktree, der
+  KI-Schalter in der LOKALEN Datenbank für zwei Minuten aus, auf der
+  englischen Brand-Check-Seite eine Adresse eingetragen ⇒ „The check is
+  paused at the moment. Please come back later." Bildschirmfoto in den
+  Notizen der Sitzungen (`n18-hinweis-check-pausiert-en.jpg`, neben dem
+  deutschen Foto aus P09). Danach Schalter wieder an, Kopie der `.env`
+  gelöscht, in den drei Tabellen des Checks keine neue Zeile.
+- Nicht gesehen: die englischen Hinweise hinter der Anmeldung (OPEN-ITEMS
+  „KI1" d).
+
+**Gelernt:** (1) **Eine Zahl, die kleiner wird und nichts rot macht, braucht
+einen Satz.** „2/5 gut" neben „Nichts Rotes" liest jeder als Fehler oder als
+Unsinn; beides kostet eine Suche. Eine Übersicht nennt deshalb, was der Rest
+ist. (2) **Die Ursache ließ sich nachrechnen, ohne auf den Server zu
+sehen:** feste erste Verzögerungen im Code, zwei Zeitstempel im öffentlichen
+Lauf-Protokoll, eine Uhrzeit im Runbook — das ergab ein Fenster von rund 50
+Sekunden, in dem der Neustart gelegen haben muss. Erst rechnen, dann nach
+einem Zugang fragen. (3) **Ein Zähler über Log-Dateien zählt nur, was in
+SEINEN Dateien steht.** Wechselt die Datei (neue pm2-Nummer), ist das
+Fenster still kürzer. Wer zählt, sagt dazu, wie weit er zurücksieht.
+(4) **`pnpm audit` zeigt je Hinweis EINEN Pfad.** Wer daraus ableitet,
+„schließt mit Paket X", liest das Lockfile nach: wer hängt alles an der
+betroffenen Ausgabe? Hier waren es vier Pakete statt zwei, und für eines gab
+es gar keine Korrektur. (5) **„Zurückbuchen holt der Nächste nach" hat zwei
+Hälften:** die Regel, WANN ein Vorgänger etwas schuldet, und die Frage, wer
+dessen Zeile danach noch überschreibt. Die zweite Hälfte fiel erst beim
+Durchspielen der Reihenfolgen auf — ein Test je Reihenfolge, nicht je
+Funktion.
+
 ### Node-Wächter — der tägliche Blick vergleicht die Node-Version des App-Servers mit `.nvmrc` ✅ 2026-11-19
 
 **Was war:** `.nvmrc` nennt seit Pull Request 409 eine exakte Node-Version für
