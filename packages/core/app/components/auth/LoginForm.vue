@@ -15,6 +15,7 @@ const { isEmbedPopup, completeEmbedLogin } = useEmbedPopup()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
 const showPassword = ref(false)
+const formRoot = ref<HTMLElement | null>(null)
 
 /**
  * Zwei-Faktor (U15 Teil 4): steht das auf true, hat das PASSWORT bereits
@@ -72,6 +73,9 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
   }
   catch (error) {
     errorMessage.value = authErrorMessage(error, t('auth.login.failed'))
+    // Der Knopf ist während des Wartens gesperrt, der Fokus fiele sonst auf
+    // die Seite (UX-005).
+    focusFormField(formRoot.value, 'password')
   }
   finally {
     loading.value = false
@@ -87,32 +91,28 @@ function onMfaCancelled() {
 <template>
   <AuthMfaChallengeForm v-if="mfaRequired" @solved="finishLogin" @cancel="onMfaCancelled" />
 
-  <div v-else class="w-full max-w-sm space-y-4" data-login-form>
+  <div v-else ref="formRoot" class="w-full max-w-sm space-y-4" data-login-form>
     <div class="text-center">
       <UIcon name="i-ph-user-circle" class="mx-auto size-8 text-primary" />
       <h1 class="mt-2 text-xl font-semibold">{{ t('auth.login.title') }}</h1>
       <p class="text-sm text-muted">{{ t('auth.login.description') }}</p>
     </div>
 
-    <UAlert v-if="errorMessage" color="error" variant="subtle" :title="errorMessage" />
-    <UAlert v-else-if="oauthError" color="error" variant="subtle" :title="oauthError" data-oauth-error />
+    <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" />
+    <UAlert v-else-if="oauthError" role="alert" color="error" variant="subtle" :title="oauthError" data-oauth-error />
 
     <AuthOauthButtons />
 
-    <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @submit="onSubmit">
+    <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="onSubmit">
       <UFormField :label="t('auth.fields.email')" name="email" required>
-        <UInput v-model="state.email" type="email" size="lg" autofocus :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
+        <UInput v-model="state.email" type="email" autocomplete="username" size="lg" autofocus :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
       </UFormField>
 
-      <UFormField :label="t('auth.fields.password')" name="password" required>
-        <template #hint>
-          <ULink :to="authLinkTarget('/forgot-password')" class="text-sm text-muted hover:text-primary">
-            {{ t('auth.login.forgot') }}
-          </ULink>
-        </template>
+      <UFormField :label="t('auth.fields.password')" name="password" required class="relative" :ui="{ container: 'static' }">
         <UInput
           v-model="state.password"
           :type="showPassword ? 'text' : 'password'"
+          autocomplete="current-password"
           size="lg"
           :placeholder="t('auth.fields.passwordPlaceholder')"
           class="w-full"
@@ -129,6 +129,17 @@ function onMfaCancelled() {
             />
           </template>
         </UInput>
+        <!-- „Passwort vergessen?" steht im QUELLTEXT hinter dem Feld (UX-009):
+             als Hinweis der Beschriftung lag der Link davor, und Tab führte
+             von der E-Mail auf ihn statt ins Passwortfeld. Zu sehen ist er
+             weiter oben rechts neben der Beschriftung. -->
+        <ULink
+          :to="authLinkTarget('/forgot-password')"
+          class="absolute top-0 end-0 text-sm text-muted hover:text-primary"
+          data-login-forgot
+        >
+          {{ t('auth.login.forgot') }}
+        </ULink>
       </UFormField>
 
       <UButton type="submit" block size="lg" :loading="loading">{{ t('auth.login.submit') }}</UButton>

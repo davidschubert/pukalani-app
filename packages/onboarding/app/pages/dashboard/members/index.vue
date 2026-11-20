@@ -511,6 +511,7 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
               v-model="search"
               icon="i-ph-magnifying-glass"
               :placeholder="t('members.searchPlaceholder')"
+              :aria-label="t('members.searchPlaceholder')"
               class="flex-1"
               data-members-search
             />
@@ -526,6 +527,7 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
               :color="scope === item.value ? 'primary' : 'neutral'"
               :variant="scope === item.value ? 'solid' : 'outline'"
               :data-members-scope-option="item.value"
+              :aria-pressed="scope === item.value"
               @click="scope = item.value"
             >
               {{ item.label }}

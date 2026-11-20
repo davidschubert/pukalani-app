@@ -203,11 +203,11 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
       <p class="text-sm text-muted">{{ t('auth.register.description') }}</p>
     </div>
 
-    <UAlert v-if="errorMessage" color="error" variant="subtle" :title="errorMessage" />
+    <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" />
 
-    <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @submit="onSubmit">
+    <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="onSubmit">
       <UFormField :label="t('auth.fields.name')" name="name" required>
-        <UInput v-model="state.name" size="lg" :placeholder="t('auth.fields.namePlaceholder')" class="w-full" />
+        <UInput v-model="state.name" autocomplete="name" size="lg" :placeholder="t('auth.fields.namePlaceholder')" class="w-full" />
       </UFormField>
 
       <UFormField
@@ -219,6 +219,7 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
         <UInput
           v-model="state.email"
           type="email"
+          autocomplete="email"
           size="lg"
           :readonly="Boolean(lockedEmail)"
           :placeholder="t('auth.fields.emailPlaceholder')"
@@ -230,6 +231,7 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
         <UInput
           v-model="state.password"
           :type="showPassword ? 'text' : 'password'"
+          autocomplete="new-password"
           size="lg"
           :placeholder="t('auth.fields.passwordHint')"
           class="w-full"
@@ -252,6 +254,7 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
         <UInput
           v-model="state.passwordConfirm"
           :type="showPasswordConfirm ? 'text' : 'password'"
+          autocomplete="new-password"
           size="lg"
           :placeholder="t('auth.fields.passwordConfirmPlaceholder')"
           class="w-full"

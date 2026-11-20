@@ -59,17 +59,17 @@ async function onSubmit(event: FormSubmitEvent<ResetFormInput>) {
       <p class="text-sm text-muted">{{ t('auth.reset.description') }}</p>
     </div>
 
-    <UAlert v-if="!linkValid" color="error" variant="subtle" :title="t('auth.reset.invalidLink')" />
+    <UAlert v-if="!linkValid" role="alert" color="error" variant="subtle" :title="t('auth.reset.invalidLink')" />
 
     <template v-else>
-      <UAlert v-if="failed" color="error" variant="subtle" :title="failedMessage || t('auth.reset.failed')" />
+      <UAlert v-if="failed" role="alert" color="error" variant="subtle" :title="failedMessage || t('auth.reset.failed')" />
 
-      <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @submit="onSubmit">
+      <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="onSubmit">
         <UFormField :label="t('auth.fields.password')" name="password" required>
-          <UInput v-model="state.password" type="password" size="lg" :placeholder="t('auth.fields.passwordHint')" class="w-full" />
+          <UInput v-model="state.password" type="password" autocomplete="new-password" size="lg" :placeholder="t('auth.fields.passwordHint')" class="w-full" />
         </UFormField>
         <UFormField :label="t('auth.fields.passwordConfirm')" name="passwordConfirm" required>
-          <UInput v-model="state.passwordConfirm" type="password" size="lg" :placeholder="t('auth.fields.passwordConfirmPlaceholder')" class="w-full" />
+          <UInput v-model="state.passwordConfirm" type="password" autocomplete="new-password" size="lg" :placeholder="t('auth.fields.passwordConfirmPlaceholder')" class="w-full" />
         </UFormField>
         <UButton type="submit" block size="lg" :loading="loading">{{ t('auth.reset.submit') }}</UButton>
       </UForm>

@@ -35,7 +35,15 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   /** Direkt mit dem Editor starten (Bearbeiten-Fall — die Absicht steht fest). */
   immediate?: boolean
-}>(), { placeholder: '', immediate: false })
+  /**
+   * Name der Schreibfläche für Hilfsmittel (UX-004). Ohne Angabe der
+   * Platzhalter: der verschwindet beim Tippen, der Name bleibt — und er
+   * wandert mit, wenn das Textfeld beim ersten Fokus zum Editor wird.
+   */
+  label?: string
+}>(), { placeholder: '', immediate: false, label: '' })
+
+const fieldLabel = computed(() => props.label || props.placeholder || undefined)
 
 const model = defineModel<string>({ required: true })
 
@@ -55,12 +63,14 @@ const editorActive = ref(props.immediate)
       v-if="editorActive"
       v-model="model"
       :placeholder="props.placeholder"
+      :label="fieldLabel"
       autofocus
     />
     <UTextarea
       v-else
       v-model="model"
       :placeholder="props.placeholder"
+      :aria-label="fieldLabel"
       :rows="3"
       autoresize
       class="w-full"

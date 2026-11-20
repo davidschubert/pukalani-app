@@ -47,7 +47,11 @@
       "lower": "Mindestens ein Kleinbuchstabe (a-z)",
       "number": "Mindestens eine Zahl (0-9)",
       "special": "Mindestens ein zulässiges Sonderzeichen",
-      "match": "Passwörter müssen übereinstimmen"
+      "match": "Passwörter müssen übereinstimmen",
+      "rules": "Passwort-Regeln",
+      "met": "erfüllt",
+      "missing": "fehlt",
+      "progress": "Passwort-Regeln: {done} von {total} erfüllt"
     },
     "fields": {
       "name": "Name",

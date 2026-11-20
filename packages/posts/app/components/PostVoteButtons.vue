@@ -60,6 +60,7 @@ async function vote(value: PostVoteValue) {
       icon="i-ph-arrow-up"
       :disabled="!isLoggedIn || busy"
       :aria-label="t('posts.card.upvote')"
+      :aria-pressed="post.myPostVote === 1"
       data-post-upvote
       @click="vote(1)"
     />
@@ -71,6 +72,7 @@ async function vote(value: PostVoteValue) {
       icon="i-ph-arrow-down"
       :disabled="!isLoggedIn || busy"
       :aria-label="t('posts.card.downvote')"
+      :aria-pressed="post.myPostVote === -1"
       data-post-downvote
       @click="vote(-1)"
     />

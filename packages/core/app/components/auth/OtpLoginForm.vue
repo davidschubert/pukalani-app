@@ -271,15 +271,15 @@ function onMfaCancelled() {
       </p>
     </div>
 
-    <UAlert v-if="errorMessage" color="error" variant="subtle" :title="errorMessage" />
+    <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" />
 
-    <UForm v-if="step === 'email'" :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @submit="requestCode">
+    <UForm v-if="step === 'email'" :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="requestCode">
       <!-- Name nur im Register-Kontext — auf /login hat der User längst einen -->
       <UFormField v-if="register" :label="t('auth.fields.name')" name="name" required>
-        <UInput v-model="state.name" size="lg" :placeholder="t('auth.fields.namePlaceholder')" class="w-full" />
+        <UInput v-model="state.name" autocomplete="name" size="lg" :placeholder="t('auth.fields.namePlaceholder')" class="w-full" />
       </UFormField>
       <UFormField :label="t('auth.fields.email')" name="email" required>
-        <UInput v-model="state.email" type="email" size="lg" :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
+        <UInput v-model="state.email" type="email" autocomplete="email" size="lg" :placeholder="t('auth.fields.emailPlaceholder')" class="w-full" />
       </UFormField>
       <UFormField v-if="requireTerms" name="terms">
         <UCheckbox v-model="state.terms" :label="t('auth.register.termsLabel')" />

@@ -73,7 +73,18 @@ const showNamingOpt = computed(() => draft.value.relaunchScope === 'recut')
  * (Seite + Modal) dürften sie sich nicht teilen — eine doppelte Id im Dokument
  * bindet das zweite Feld an die Vorschläge des ersten.
  */
-const listId = `bw-industry-${useId()}`
+const uid = useId()
+const listId = `bw-industry-${uid}`
+
+/**
+ * FRAGE UND FELD GEHÖREN ZUSAMMEN (UX-004, Q08): die Fragen standen als Absatz
+ * über den Feldern und waren nicht mit ihnen verbunden — ein Hilfsmittel las
+ * fünfmal nur „Textfeld". Jede Frage ist jetzt das `label` ihres Feldes; die
+ * Kennung hängt aus demselben Grund wie oben an `useId()`.
+ */
+function fieldId(field: 'title' | 'website' | 'industry' | 'about' | 'audience'): string {
+  return `bw-new-${field}-${uid}`
+}
 
 /**
  * DIE STARTKARTE FOLGT DER WEICHE W3 (Testlauf-Befund 5, 2026-09-10) — die
@@ -121,11 +132,11 @@ const copy = computed(() => brandNewDetailsCopy(draft.value.team))
     </template>
 
     <!-- Rahmendaten -->
-    <p class="bw-label mt-6" style="color: var(--bw-muted)">
+    <label :for="fieldId('title')" class="bw-label block mt-6" style="color: var(--bw-muted)">
       {{ pathKind === 'new' ? t('brand.new.titleField.new') : t('brand.new.titleField.relaunch') }}
-    </p>
+    </label>
     <UInput
-      :model-value="draft.title" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
+      :id="fieldId('title')" :model-value="draft.title" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
       :disabled="disabled"
       :placeholder="pathKind === 'new' ? t('brand.new.titleField.placeholderNew') : t('brand.new.titleField.placeholderRelaunch')"
       style="background: var(--bw-surface)"
@@ -171,20 +182,20 @@ const copy = computed(() => brandNewDetailsCopy(draft.value.team))
          Wort daneben für den Screenreader; die Zeile unter dem Knopf nennt
          beim Namen, was noch fehlt (`brandNewDraftMissing`). -->
     <p class="bw-label mt-8" style="color: var(--bw-muted)">{{ t('brand.new.requiredHint') }}</p>
-    <p class="bw-label mt-6" style="color: var(--bw-muted)">{{ t(copy.website) }}</p>
+    <label :for="fieldId('website')" class="bw-label block mt-6" style="color: var(--bw-muted)">{{ t(copy.website) }}</label>
     <UInput
-      :model-value="draft.websiteUrl" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
+      :id="fieldId('website')" :model-value="draft.websiteUrl" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
       :disabled="disabled" type="url" inputmode="url" :maxlength="BRAND_WEBSITE_URL_MAX"
       style="background: var(--bw-surface)"
       @update:model-value="value => set('websiteUrl', String(value))"
     />
 
-    <p class="bw-label mt-6" style="color: var(--bw-muted)">
+    <label :for="fieldId('industry')" class="bw-label block mt-6" style="color: var(--bw-muted)">
       {{ t(copy.industry) }} <span aria-hidden="true">*</span>
       <span class="sr-only">{{ t('brand.new.requiredField') }}</span>
-    </p>
+    </label>
     <UInput
-      :model-value="draft.industry" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
+      :id="fieldId('industry')" :model-value="draft.industry" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-full px-4' }"
       :disabled="disabled" :list="listId" :maxlength="BRAND_INDUSTRY_MAX"
       style="background: var(--bw-surface)"
       @update:model-value="value => set('industry', String(value))"
@@ -195,23 +206,23 @@ const copy = computed(() => brandNewDetailsCopy(draft.value.team))
       <option v-for="suggestion in industrySuggestions" :key="suggestion" :value="suggestion" />
     </datalist>
 
-    <p class="bw-label mt-6" style="color: var(--bw-muted)">
+    <label :for="fieldId('about')" class="bw-label block mt-6" style="color: var(--bw-muted)">
       {{ t(copy.about) }} <span aria-hidden="true">*</span>
       <span class="sr-only">{{ t('brand.new.requiredField') }}</span>
-    </p>
+    </label>
     <UTextarea
-      :model-value="draft.about" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-2xl px-4 py-3' }"
+      :id="fieldId('about')" :model-value="draft.about" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-2xl px-4 py-3' }"
       :disabled="disabled" :rows="3" :maxlength="BRAND_ABOUT_MAX"
       style="background: var(--bw-surface)"
       @update:model-value="value => set('about', String(value))"
     />
 
-    <p class="bw-label mt-6" style="color: var(--bw-muted)">
+    <label :for="fieldId('audience')" class="bw-label block mt-6" style="color: var(--bw-muted)">
       {{ t(copy.audience) }} <span aria-hidden="true">*</span>
       <span class="sr-only">{{ t('brand.new.requiredField') }}</span>
-    </p>
+    </label>
     <UTextarea
-      :model-value="draft.audience" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-2xl px-4 py-3' }"
+      :id="fieldId('audience')" :model-value="draft.audience" variant="none" class="mt-2 w-full" :ui="{ base: 'rounded-2xl px-4 py-3' }"
       :disabled="disabled" :rows="2" :maxlength="BRAND_AUDIENCE_MAX"
       style="background: var(--bw-surface)"
       @update:model-value="value => set('audience', String(value))"

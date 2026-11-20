@@ -624,6 +624,7 @@
       "progress": "{done} von {total}",
       "dismiss": "Liste ausblenden",
       "dismissFailed": "Die Liste konnte nicht ausgeblendet werden.",
+      "stepDone": "erledigt",
       "steps": {
         "post": {
           "label": "Schreib den ersten Beitrag",

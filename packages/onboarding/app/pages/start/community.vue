@@ -60,6 +60,19 @@ function goTo(next: WizardStep) {
   router.push({ query: { ...route.query, step: next } })
 }
 
+/**
+ * EIN NEUER SCHRITT WIRD ANGESAGT (UX-005, Q08): beim Wechsel ändert sich nur
+ * `?step=`, die Seite bleibt dieselbe — der Fokus lag danach auf der Seite und
+ * ein Hilfsmittel schwieg. Die Überschrift bekommt den Fokus (`tabindex="-1"`,
+ * also nicht in der Tab-Reihenfolge) und wird damit vorgelesen. Nur beim
+ * WECHSEL, nicht beim ersten Laden: dort steht der Fokus im Namensfeld.
+ */
+const stepHeading = ref<HTMLElement | null>(null)
+watch(step, async () => {
+  await nextTick()
+  stepHeading.value?.focus()
+})
+
 // ── Kataloge als Auswahlkarten (Beschriftungen aus i18n, Ids aus dem Vertrag) ─
 const categoryOptions = computed<Choice[]>(() => SITE_CATEGORIES.map(id => ({
   value: id, label: t(`onboarding.categories.${id}.label`), hint: t(`onboarding.categories.${id}.hint`),
@@ -244,7 +257,7 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
     />
 
     <div class="space-y-2">
-      <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
+      <h1 ref="stepHeading" tabindex="-1" class="text-2xl font-bold tracking-tight outline-none sm:text-3xl" data-wizard-heading>
         {{ step === 'basics' ? t('onboarding.steps.basics.heading', { name: auth.user?.name || t('onboarding.gate.fallbackName') }) : t(`onboarding.steps.${step}.title`) }}
       </h1>
       <p class="text-muted">{{ t(`onboarding.steps.${step}.intro`) }}</p>
