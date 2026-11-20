@@ -77,6 +77,14 @@
 // ihre umgelaufenen Geschwister): „letzter guter Lauf vor n Minuten" darf
 // älter sein als das Fenster.
 //
+// WIE WEIT DIE ZÄHLUNG ZURÜCKREICHT (2026-11-20): die Zeile
+// `reichweite aelteste_zeile_min=<n|nie>` nennt das Alter der ÄLTESTEN
+// gelesenen Zeile. Anlass: am 2026-11-19 startete `pm2 update` den pm2-Dienst
+// neu, die Prozesse bekamen neue pm2-Nummern und damit NEUE Log-Dateien (der
+// Dateiname trägt die Nummer). Sieben Minuten später zählte der Blick nur,
+// was seit dem Neustart geschrieben war — ohne es zu sagen. Mit der Zeile
+// kann die Auswertung melden, dass das Fenster nicht voll ist.
+//
 // AUFRUF
 //   node app-watch-counts.mjs <prozess> [stunden]      (Standard: 25)
 //   prozess = pm2-Name, Site ohne Punkte (ops/apps.conf)
@@ -251,6 +259,8 @@ async function main() {
   const counts = { server: 0, browser: 0, capped: 0, ai: 0, aiNoCredit: 0, aiNoEndpoint: 0, aiDisabled: 0, auditFailed: 0, csp: 0, cspCapped: 0, mailBreaker: 0, reminderRuns: 0, reminderAsked: 0, reminderNoAnswer: 0, reminderEvents: 0, reminderRecipients: 0 }
   /** Jüngster Zeitpunkt, an dem die Notbremse einer Mail-Route im Fenster griff. */
   let lastMailBreaker = null
+  /** Älteste gelesene Zeile überhaupt (nicht nur im Fenster) — s. Kopf, „WIE WEIT DIE ZÄHLUNG ZURÜCKREICHT". */
+  let oldestLine = null
   const jobs = new Map()
   const job = (id) => {
     if (typeof id !== 'string' || !JOB_PATTERN.test(id)) return null
@@ -262,6 +272,7 @@ async function main() {
   }
 
   const onEvent = (entry, at) => {
+    if (oldestLine === null || at < oldestLine) oldestLine = at
     const inWindow = at >= since
     switch (entry.event) {
       case 'server.error':
@@ -367,6 +378,8 @@ async function main() {
   // `gefragt` steht am ENDE: die Auswertung liest die Zeile auch ohne das Feld
   // (ein Server mit dem Skript davor), ein Feld in der Mitte verschöbe sie.
   console.log(`erinnerungen takte=${sum(counts.reminderRuns)} ohne_antwort=${sum(counts.reminderNoAnswer)} termine=${sum(counts.reminderEvents)} empfaenger=${sum(counts.reminderRecipients)} gefragt=${sum(counts.reminderAsked)}`)
+  // Seit 2026-11-20, ebenfalls OPTIONAL für die Auswertung — VERSION bleibt 1.
+  console.log(`reichweite aelteste_zeile_min=${oldestLine === null ? 'nie' : String(Math.min(Number(minutesSince(now, oldestLine)), MAX_SUM))}`)
   for (const id of [...jobs.keys()].sort()) {
     const item = jobs.get(id)
     console.log(`lauf name=${id} takt_min=${item.everyMin} ok=${item.ok} gescheitert=${item.failed} uebersprungen=${item.skipped} haengt=${item.overlap} letzter_ok_min=${minutesSince(now, item.lastOk)} letzter_lauf_min=${minutesSince(now, item.lastRun)} letztes_ergebnis=${item.lastResult} angemeldet_min=${minutesSince(now, item.registered)}`)

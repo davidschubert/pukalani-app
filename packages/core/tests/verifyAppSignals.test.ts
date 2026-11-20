@@ -23,7 +23,7 @@ interface JobLine { name: string, every?: number, ok?: number, failed?: number, 
 /** `asked: null` = Zeile eines Servers mit dem Skript von vor dem Feld `gefragt`. */
 interface ReminderLine { runs?: number, noAnswer?: number, events?: number, recipients?: number, asked?: number | null }
 
-function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, csp?: number | null, cspCapped?: number, reminders?: ReminderLine | null, jobs?: JobLine[], version?: number } = {}): string {
+function countsText(options: { status?: string, up?: number, server?: number, browser?: number, capped?: number, ai?: number, noCredit?: number, noEndpoint?: number, disabled?: number, audit?: number | null, csp?: number | null, cspCapped?: number, reminders?: ReminderLine | null, coverage?: number | 'nie' | null, jobs?: JobLine[], version?: number } = {}): string {
   const jobs = options.jobs ?? []
   return [
     `zaehler version=${options.version ?? COUNTS_VERSION} prozess=testprozess stunden=25 status=${options.status ?? 'online'}`,
@@ -36,6 +36,8 @@ function countsText(options: { status?: string, up?: number, server?: number, br
     ...(options.csp === null ? [] : [`skriptregel berichte=${options.csp ?? 0} gedeckelt=${options.cspCapped ?? 0}`]),
     // `reminders: null` = Ausgabe eines Servers mit dem Skript von VOR SE1 d (ohne die Zeile).
     ...(options.reminders === null ? [] : [`erinnerungen takte=${options.reminders?.runs ?? 0} ohne_antwort=${options.reminders?.noAnswer ?? 0} termine=${options.reminders?.events ?? 0} empfaenger=${options.reminders?.recipients ?? 0}${options.reminders?.asked === null ? '' : ` gefragt=${options.reminders?.asked ?? 0}`}`]),
+    // `coverage: null` = Ausgabe eines Servers mit dem Skript von VOR der Zeile `reichweite`.
+    ...(options.coverage === null ? [] : [`reichweite aelteste_zeile_min=${options.coverage ?? 9000}`]),
     ...jobs.map(job => `lauf name=${job.name} takt_min=${job.every ?? 60} ok=${job.ok ?? 24} gescheitert=${job.failed ?? 0} uebersprungen=${job.skipped ?? 0} haengt=${job.overlap ?? 0} letzter_ok_min=${job.lastOk ?? 10} letzter_lauf_min=${job.lastRun ?? 10} letztes_ergebnis=${job.result ?? 'ok'} angemeldet_min=${job.registered ?? 600}`),
     `ende laeufe=${jobs.length}`,
   ].join('\n')
@@ -131,6 +133,122 @@ describe('Regeln — Zeit-Läufe', () => {
     const result = evaluate(countsText({ jobs: [{ name: 'neuer-lauf' }] }), [])
     expect(result.red).toEqual([])
     expect(result.notes[0]).toContain('ops/timed-jobs.conf')
+  })
+})
+
+/**
+ * 2026-11-20 (N18). Am 2026-11-19 um 18:04 UTC stand im Protokoll des
+ * Wächters „2/5 gut", „10/13 gut", „8/10 gut", „8/11 gut" — und darunter
+ * „Nichts Rotes", ohne einen Satz dazu. Der Grund: um 17:57 UTC hatte
+ * `pm2 update` den pm2-Dienst neu gestartet; die Prozesse schrieben in neue
+ * Log-Dateien, und die Läufe mit einer ersten Verzögerung von 8, 10, 12 und
+ * 14 Minuten waren sieben Minuten danach noch nicht gelaufen. Die Rechnung
+ * war richtig, die Zeile sagte den Grund nicht.
+ */
+describe('nicht „gut" heißt: es steht dabei, warum', () => {
+  const SEVEN_MIN_AFTER_RESTART: JobLine[] = [
+    // erste Verzögerung 2 und 5 Minuten: schon gelaufen
+    { name: 'email-digest', every: 30, ok: 1, lastOk: 5, lastRun: 5, registered: 7 },
+    { name: 'gdpr-export-prune', every: 1440, ok: 1, lastOk: 2, lastRun: 2, registered: 7 },
+    // 10, 12 und 14 Minuten: noch nicht
+    { name: 'intro-request-retention', every: 1440, ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 7 },
+    { name: 'avatar-orphan-sweep', every: 1440, ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 7 },
+    { name: 'audit-log-retention', every: 1440, ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 7 },
+  ]
+  const EXPECTED = SEVEN_MIN_AFTER_RESTART.map(job => job.name)
+
+  it('der Fall vom 2026-11-19: drei Läufe warten auf ihre erste Verzögerung ⇒ nicht rot, aber Übersicht und Hinweis sagen es', () => {
+    const text = countsText({ up: 7, coverage: 7, jobs: SEVEN_MIN_AFTER_RESTART })
+    const result = evaluate(text, EXPECTED, 'portfolio')
+    expect(result.red).toEqual([])
+    const waiting = result.notes.find(line => line.includes('noch ohne guten Lauf'))
+    expect(waiting).toContain('3 Zeit-Lauf/-Läufe')
+    expect(waiting).toContain('„audit-log-retention", „avatar-orphan-sweep", „intro-request-retention"')
+    expect(waiting).toContain('angemeldet vor 7 min')
+    expect(waiting).toContain('in der Frist')
+    const line = summaryLine({ site: 'test.example', counts: parseCounts(text), expected: new Set(EXPECTED) })
+    expect(line).toContain('Zeit-Läufe 2/5 gut (3 noch ohne guten Lauf)')
+  })
+
+  it('GEGENPROBE: alle gut ⇒ die Übersicht nennt nur die Zahl, kein Hinweis', () => {
+    const text = countsText({ jobs: EXPECTED.map(name => ({ name })) })
+    expect(evaluate(text, EXPECTED, 'portfolio')).toEqual({ red: [], notes: [] })
+    expect(summaryLine({ site: 'test.example', counts: parseCounts(text), expected: new Set(EXPECTED) })).toMatch(/Zeit-Läufe 5\/5 gut$/)
+  })
+
+  it('die Übersicht nennt auch „zuletzt gescheitert" und „nicht gemeldet" beim Namen', () => {
+    const text = countsText({ up: 5, jobs: [
+      { name: 'trial-sweep' },
+      { name: 'health-sweep', every: 5, failed: 1, lastOk: 8, lastRun: 3, result: 'failed' },
+    ] })
+    const line = summaryLine({ site: 'test.example', counts: parseCounts(text), expected: new Set(['trial-sweep', 'health-sweep', 'past-due-sweep']) })
+    expect(line).toContain('Zeit-Läufe 1/3 gut (1 zuletzt gescheitert, 1 nicht gemeldet)')
+  })
+
+  it('ein überfälliger Lauf zählt nicht als gut, auch wenn sein letzter Lauf gelang', () => {
+    const text = countsText({ jobs: [{ name: 'trial-sweep', lastOk: 9999, lastRun: 9999 }, { name: 'health-sweep', every: 5, lastOk: 3 }] })
+    expect(summaryLine({ site: 'test.example', counts: parseCounts(text), expected: new Set(['trial-sweep', 'health-sweep']) })).toContain('Zeit-Läufe 1/2 gut (1 überfällig)')
+  })
+
+  it('verschieden alte Anmeldungen ⇒ der Hinweis nennt die Spanne; ohne Anmeldung in den Protokollen keine', () => {
+    const spread = evaluate(countsText({ jobs: [
+      { name: 'trial-sweep', ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 3 },
+      { name: 'past-due-sweep', ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 9 },
+    ] }), ['trial-sweep', 'past-due-sweep'])
+    expect(spread.notes[0]).toContain('angemeldet vor 3 bis 9 min')
+  })
+
+  it.each([
+    ['wartet auf den ersten Lauf', { ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 5 }],
+    ['zuletzt gescheitert, in der Frist', { failed: 1, lastOk: 70, lastRun: 10, result: 'failed' }],
+    ['überfällig', { lastOk: 9999 }],
+    ['nie ein guter Lauf, Frist um', { ok: 0, lastOk: 'nie', lastRun: 'nie', result: 'nie', registered: 9999 }],
+    ['gescheitert vor dem Fenster, kein guter Lauf', { ok: 0, failed: 0, lastOk: 'nie', lastRun: 2000, result: 'failed', registered: 20 }],
+  ] as Array<[string, Partial<JobLine>]>)('kein stummer Fall — %s: weniger als „alle gut" hat immer einen Satz', (_name, job) => {
+    const text = countsText({ jobs: [{ name: 'trial-sweep', ...job }] })
+    const counts = parseCounts(text)
+    expect(summaryLine({ site: 'test.example', counts, expected: new Set(['trial-sweep']) })).toContain('Zeit-Läufe 0/1 gut (')
+    const result = evaluate(text, ['trial-sweep'])
+    expect(result.red.length + result.notes.length).toBeGreaterThan(0)
+  })
+
+  it('erwarteter Lauf ohne jede Zeile: der vorhandene Satz bleibt der Grund (nicht gemeldet)', () => {
+    const text = countsText({ up: 3 })
+    expect(summaryLine({ site: 'test.example', counts: parseCounts(text), expected: new Set(['trial-sweep']) })).toContain('Zeit-Läufe 0/1 gut (1 nicht gemeldet)')
+    expect(evaluate(text, ['trial-sweep']).notes[0]).toContain('noch nicht gemeldet')
+  })
+})
+
+describe('die Zählung reicht nicht über das ganze Fenster zurück — zählt nur', () => {
+  it('älteste gelesene Zeile jünger als das Fenster ⇒ ein Hinweis mit der Zahl und dem Abschnitt im Runbook, nie rot', () => {
+    const result = evaluate(countsText({ coverage: 620, jobs: [{ name: 'trial-sweep' }] }), ['trial-sweep'])
+    expect(result.red).toEqual([])
+    expect(result.notes).toHaveLength(1)
+    expect(result.notes[0]).toContain('reicht nur 620 min zurück statt 25 h')
+    expect(result.notes[0]).toContain('pm2 update')
+    expect(result.notes[0]).toContain('„In die App hinein — die Zählung reicht nicht zurück"')
+  })
+
+  it('GEGENPROBE: genau das Fenster oder älter ⇒ kein Hinweis', () => {
+    expect(evaluate(countsText({ coverage: 25 * 60, jobs: [{ name: 'trial-sweep' }] }), ['trial-sweep']).notes).toEqual([])
+    expect(evaluate(countsText({ coverage: 25 * 60 - 1, jobs: [{ name: 'trial-sweep' }] }), ['trial-sweep']).notes).toHaveLength(1)
+  })
+
+  it('eine App OHNE Zeit-Läufe bekommt den Hinweis nicht — sie schreibt oft tagelang nichts, ihre älteste Zeile sagt nichts', () => {
+    expect(evaluate(countsText({ coverage: 30 }), [], 'marketing').notes).toEqual([])
+    expect(evaluate(countsText({ coverage: 'nie' }), [], 'help').notes).toEqual([])
+  })
+
+  it('ALTE Ausgabe ohne die Zeile (zwischen Merge und Ausliefern) und „nie" ⇒ kein Problem, kein Hinweis', () => {
+    const old = parseCounts(countsText({ coverage: null, jobs: [{ name: 'trial-sweep' }] }))
+    expect(old.problem).toBeUndefined()
+    expect(old.oldestLineMin).toBeUndefined()
+    expect(evaluateApp({ app: 'control', site: 'test.example', counts: old, expected: new Set(['trial-sweep']) })).toEqual({ red: [], notes: [] })
+    expect(parseCounts(countsText({ coverage: 'nie' })).oldestLineMin).toBeNull()
+  })
+
+  it('eine kaputte Zeile ist „unlesbar"', () => {
+    expect(parseCounts(countsText().replace('aelteste_zeile_min=9000', 'aelteste_zeile_min=gestern')).problem).toBe('unlesbar')
   })
 })
 
@@ -379,10 +497,10 @@ describe('Listen und Skripte passen zusammen', () => {
     const script = readFileSync(join(REPO, 'ops', 'app-watch-counts.mjs'), 'utf8')
     expect(script).toContain(`const VERSION = ${COUNTS_VERSION}\n`)
     // Jede Zeilenart, die das Skript ausgibt, hat hier eine Form.
-    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'mailbremse ausgeloest=', 'erinnerungen takte=', 'lauf name=', 'ende laeufe=']) {
+    for (const start of ['zaehler version=', 'prozess speicher_mb=', 'fehler server=', 'ki ausfaelle=', 'protokoll ausfaelle=', 'skriptregel berichte=', 'mailbremse ausgeloest=', 'erinnerungen takte=', 'reichweite aelteste_zeile_min=', 'lauf name=', 'ende laeufe=']) {
       expect(script, start).toContain(`console.log(\`${start}`)
     }
-    expect(Object.keys(LINE_FORMS)).toHaveLength(10)
+    expect(Object.keys(LINE_FORMS)).toHaveLength(11)
   })
 })
 
