@@ -56,6 +56,45 @@ ihr Cache bleiben gültig.
 **Nicht geprüft:** das deutsche Bild live (erst nach dem Ausliefern).
 
 
+### TY1 Nachtrag — Rundung im Browser geprüft, CSS auf Stufen, Wächter liest CSS (UI-007) ✅ 2026-11-21
+
+**Was.**
+
+- **Im Browser angesehen** (lokal, 1440 und 375 px, Test-Konto in der lokalen
+  Appwrite; vorher = alter Pixelwert als Inline-Stil daneben): Neue Marke
+  (28 → 24 px), Foundation (Kapitel 26 → 24), Dokument und Markt (Seitentitel
+  26 → 24), Marketing-Kopf (15,2 → 14 px), Preis-Karten (25,6 → 24 px).
+  Ergebnis: keine Stelle sieht schlechter aus, die Rangfolge der Überschriften
+  bleibt überall (Seitentitel 24 über Abschnitt 20; Foundation 36 über
+  Kapitel 24 über Block 20), kein Umbruch ändert sich. Die gerundeten 26 und
+  28 px waren eine Rolle („Seiten- und Dialogtitel") mit zwei Werten; jetzt
+  ist es einer. Nichts zurückgestellt.
+- **CSS auf Stufen:** 60 `font-size` in `<style>`-Blöcken und CSS-Dateien
+  heißen jetzt `var(--text-…)` (Tailwind legt die Stufen als Variablen an; im
+  Browser in marketing, branding, portfolio und photos nachgemessen: jede
+  Variable ist definiert, jedes Element hat genau die Stufe). Marketing und
+  Brand nach der nächsten Stufe (höchstens 0,8 px Abstand), Studio-Site und
+  Photos nur, wo sich höchstens 0,25 px ändern.
+- **Wächter** `fontSizeGuard.test.ts` liest jetzt auch CSS (`px` und `rem`;
+  `em` und `clamp()` bleiben frei), Ausnahmen je Datei mit Grund:
+  Mikro-Beschriftungen unter 12 px, die gestaltete Vorschau-Szene und die
+  Probe des bewegten Zeichens, der Gesprächstext der Werkstatt (bis Bahn 6
+  steht), Studio-Site und Photos mit eigener Skala. Gegenprobe an einer
+  echten Datei.
+- **Nicht angesehen:** die Gestaltungstafel (40 → 36 px Wortmarke) und die
+  Schriftprobe (22 → 20 px) — sie erscheinen erst, wenn alle Design-Kapitel
+  abgenommen sind; dafür hätte die Probe-Marke den ganzen Design-Weg
+  gebraucht. Dialoge „Neue Marke" und Schritt-Info (28 → 24) nur über
+  dieselbe Klasse wie die Seite geprüft.
+
+**Gelernt:** Eine CSS-Variable, die es nicht gibt, macht keinen Fehler — die
+Schrift fällt still auf die Größe des Elternteils. Wer `font-size` auf
+`var(--text-…)` umstellt, misst deshalb im Browser nach, ob die Variable in
+DIESER App definiert ist (ein Lauf über `document.styleSheets` vergleicht
+jede Regel mit ihrem Element). Und ein Vorher-Foto braucht keinen alten
+Commit: den alten Pixelwert als Inline-Stil auf dieselben Elemente setzen
+zeigt beide Fassungen auf derselben Seite mit denselben Daten.
+
 ### TY1 — Schriftgrößen als Stufen statt von Hand (UI-007) ✅ 2026-11-21
 
 **Was.** Klassen wie `text-[26px]` und `text-[0.95rem]` in `app/`-Code sind

@@ -615,7 +615,7 @@ const renderedBlocks = computed(() => (props.chapter.state === 'locked' && !isPr
  * um — ein Prompt-Block, der quer scrollt, lässt den Seitenkörper mitscrollen. */
 .fd-prompt {
   font-family: var(--bw-font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 20px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

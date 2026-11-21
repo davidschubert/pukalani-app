@@ -296,7 +296,7 @@ const studio = computed(() => ({
 .pricing-trial {
   margin-top: 1.5rem;
   text-align: center;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   color: hsl(var(--puka-ink-soft));
 }
 </style>

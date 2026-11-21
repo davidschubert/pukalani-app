@@ -202,7 +202,7 @@ const knowledgeLinks = computed(() => [
 .footer__about {
   margin-top: 0.9rem;
   color: var(--text-soft);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   max-width: 42ch;
 }
 .footer__available {
@@ -213,7 +213,7 @@ const knowledgeLinks = computed(() => [
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 999px;
   padding: 0.3rem 0.9rem;
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -245,7 +245,7 @@ const knowledgeLinks = computed(() => [
   color: var(--metal-text);
 }
 .footer__link {
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: var(--text-soft);
   transition: color 0.3s var(--ease);
 }

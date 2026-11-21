@@ -125,7 +125,7 @@ useHead(() => ({
 }
 .glos-term {
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   color: hsl(var(--puka-ink));
   margin-bottom: 0.3rem;
 }

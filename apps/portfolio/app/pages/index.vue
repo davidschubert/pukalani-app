@@ -458,7 +458,7 @@ usePortfolioSeo({
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 999px;
   padding: 0.35rem 0.95rem;
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -583,7 +583,7 @@ usePortfolioSeo({
 }
 .service__price {
   font-weight: 800;
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 .service__duration {
   color: var(--metal-text);
@@ -618,7 +618,7 @@ usePortfolioSeo({
 }
 .step__duration {
   margin-top: 0.9rem;
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -697,7 +697,7 @@ usePortfolioSeo({
   max-width: 62ch;
 }
 .case__meta {
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--metal-text);
