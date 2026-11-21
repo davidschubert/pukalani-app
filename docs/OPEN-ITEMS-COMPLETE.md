@@ -30,6 +30,77 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GW1 — Seitengewicht, Rest von PERF-006: zwei Bausteine laden erst bei Bedarf; der Textkatalog bleibt (Bahn 5, Paket 2) ✅ 2026-11-21
+
+**Erst gemessen.** Skripte, die die Startseite sofort lädt (Einstieg, Seite,
+Layout, transitiv, gzip — dieselbe Rechnung wie der Wächter aus Q22), dazu
+der Textkatalog, den der Browser vor dem Start holt
+(`/_i18n/…/messages.json`). Live vor der Änderung, je `/de`:
+
+| Site | Skripte | Katalog | davon auf der Startseite gebraucht |
+| --- | --- | --- | --- |
+| pukalani.app | 281 KB | 27 KB | fast alles (`marketing`), ~6 KB Konto-Texte nicht |
+| Hilfe | 291 KB | — (eigener Weg) | — |
+| pukalani.studio | 245 KB | 27 KB | wie Landing |
+| branding.supply | 381 KB | 102 KB | ~3 KB (Server-Messung, s. u.) |
+| Community (Demo) | 408 KB | 54 KB | Dashboard/Onboarding ~27 KB nicht |
+
+Q22 hatte 280/290/245 KB für Landing/Hilfe/Studio gemessen — unverändert.
+
+**Gebaut (je mehr als 10 % der Startseite):**
+
+- **branding.supply: „Neue Marke" aus der Kopfzeile lädt erst beim ersten
+  Klick.** `BwSiteNav` (jede Seite) importierte das Fenster und
+  `useBrandCreate()` fest; beide hängen über `brandJourney` am ganzen
+  Fragen-Katalog des Wizards. Jetzt eigener Baustein `BwSiteNavNewBrand`,
+  eingebunden als `<LazyBwSiteNavNewBrand v-if>`. Verhalten unverändert.
+- **Community: der Kommentar-Block der Startseite lädt nur, wo er steht.**
+  `CommentSection` (Formular, Realtime, zod) war fest eingebunden, gebraucht
+  nur mit `[[comments]]` im Text der Startseite. Jetzt `LazyCommentSection`;
+  dort, wo der Block steht, rendert der Server ihn wie bisher.
+
+| Site (lokal, Production-Build) | vorher | nachher | Grenze |
+| --- | --- | --- | --- |
+| branding.supply | 383 KB | 305 KB (−20 %) | 320 KB (neu) |
+| Community-Startseite | 376 KB | 313 KB (−17 %) | 329 KB (neu) |
+| pukalani.app, Hilfe, Studio | 281 / 286 / 245 KB | unverändert | 295 / 300 / 258 KB |
+
+**Gelassen, mit Zahl.**
+
+- **Textkatalog nach Bereich schneiden.** Würde auf branding.supply rund
+  99 KB sparen (Katalog 102 KB, die Startseite braucht beim Server-Rendern
+  ~3 KB), auf der Community ~27 KB, auf Landing und Studio ~6 KB. Versucht
+  mit dem eingebauten Weg des i18n-Moduls (`experimental.preload`, legt nur
+  die beim Rendern benutzten Texte in die Seite): in @nuxtjs/i18n 10.6 holt
+  der Browser den vollen Katalog TROTZDEM vor der Hydration, die Seite wird
+  nur 2 KB schwerer — zurückgenommen. Ein eigener Lader (Katalog je Bereich,
+  Nachladen beim Wechsel ins Dashboard) wäre ein Umbau der Text-Ladung im
+  Core mit dem Risiko fehlender Texte; offen als TK1.
+- **Landing, Hilfe, Studio: kein Baustein über 10 %.** Jeder Zweig, der dort
+  mehr als 4 % ausmacht, hängt direkt am Einstieg von Nuxt (Vue, Router,
+  i18n, Nuxt UI) und wird auf jeder Seite gebraucht.
+- Die Konto-Startseite (`AccountHome`) auf derselben Seite der Community
+  wiegt unter 4 % — bleibt fest.
+
+**Beweis.** Gewichts-Wächter mit den neuen Grenzen
+(`scripts/lib/page-weight-budgets.mjs`), Probelauf wie im Ausliefern:
+frischer Build-Ordner, `CI=true`, Build landet wie in der CI unter `.nuxt/`,
+dann `node scripts/check-page-weight.mjs --app <app>`. Gegenprobe: mit dem
+alten `BwSiteNav` 381 KB > 320 KB, Exit 1. Wächter im Pull Request:
+`packages/brand/tests/siteNavLazyGuard.test.ts`,
+`apps/platform/tests/homeCommentsLazy.test.ts` (je mit Gegenprobe);
+Render-Test `packages/brand/tests/render/siteNavNewBrand.test.ts` (geöffnet
+steht das Fenster, geschlossen nicht). Browser: gebaute Startseite von
+branding.supply ohne Konsolen-Fehler, hydriert, keine rohen Schlüssel.
+
+**Gelernt:** Der schwerste Teil einer Startseite war kein Paket, sondern ein
+FESTER Import in einem Baustein, der überall steht — die Kopfzeile zog über
+eine Hilfsfunktion den Katalog eines ganz anderen Bereichs. Gefunden hat ihn
+nur die Frage „was fällt weg, wenn dieser eine Zweig fehlt?" über das
+Client-Manifest; die Namen der Teile sind Hashes und verraten nichts. Und:
+eine Modul-Option, die nach genau der Lösung klingt (`preload`), erst im
+gebauten Browser messen — sie tat hier etwas anderes.
+
 ### SU1 (b–f) — Such-Reste: strukturierte Daten für Diskussion, Kurs und Termin; eine maßgebliche Adresse je Marke der Galerie; kürzere Titel; `/insights` nur mit Beitrag (SEO-003, SEO-004, SEO-008, je der offene Teil) ✅ 2026-11-21
 
 **Was.**
