@@ -21,7 +21,7 @@ const toast = useToast()
 
 useBrandTitle(() => t('messages.settings.title'))
 
-const { data, refresh } = await useFetch<{ enabled: boolean }>('/api/messages/settings', {
+const { data, error, refresh } = await useFetch<{ enabled: boolean }>('/api/messages/settings', {
   lazy: true,
   server: false,
   default: () => ({ enabled: false }),
@@ -54,7 +54,12 @@ async function save() {
     :description="t('messages.settings.description')"
     variant="subtle"
   >
-    <div class="space-y-4">
+    <!-- Fehler statt „keine Einstellungen" (FE-004, LZ1) -->
+    <div v-if="error" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <div v-else class="space-y-4">
       <USwitch
         v-model="enabled"
         :label="t('messages.settings.enabled')"

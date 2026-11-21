@@ -14,7 +14,7 @@ const { sortField, sortDir, toggle } = useTableSort('$createdAt', 'desc')
 
 useBrandTitle(() => t('admin.audit.title'))
 
-const { data, status, refresh } = useFetch<AuditLogListResponse>('/api/admin/audit', {
+const { data, status, error, refresh } = useFetch<AuditLogListResponse>('/api/admin/audit', {
   query: computed(() => ({ page: page.value, sort: sortField.value, dir: sortDir.value })),
   lazy: true,
   server: false,
@@ -97,6 +97,11 @@ const columns: TableColumn<AuditLogEntry>[] = [
     <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
       <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
     </div>
+    <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+    <div v-else-if="error && !data" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
 
     <!-- CoreEmptyState statt nacktem Absatz (M8). OHNE Aktion: ein Protokoll
          legt man nicht an, es füllt sich bei der nächsten Admin-Handlung von

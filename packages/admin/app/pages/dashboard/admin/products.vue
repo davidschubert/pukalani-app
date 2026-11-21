@@ -12,7 +12,7 @@ const toast = useToast()
 
 useBrandTitle(() => t('admin.products.title'))
 
-const { data, refresh } = await useFetch<{ products: AdminProductEntry[] }>('/api/admin/products')
+const { data, error, refresh } = await useFetch<{ products: AdminProductEntry[] }>('/api/admin/products')
 
 const lang = computed(() => (locale.value === 'de' ? 'de' : 'en'))
 
@@ -47,7 +47,12 @@ async function toggle(entry: AdminProductEntry, enabled: boolean) {
 
 <template>
   <div class="mx-auto w-full lg:max-w-3xl">
-    <UPageCard :title="t('admin.products.title')" :description="t('admin.products.description')" variant="subtle">
+    <!-- Fehler statt „keine Produkte" (FE-004, LZ1) -->
+    <div v-if="error && !data" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <UPageCard v-else :title="t('admin.products.title')" :description="t('admin.products.description')" variant="subtle">
       <!--
         Leerzustand wie auf den Nachbarseiten (Audit-Befund C12): die Liste
         kommt aus der Laufzeit-Registry und ist in der Praxis nie leer — aber
