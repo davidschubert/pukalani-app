@@ -30,6 +30,40 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### NS1 — alle fünf Server neu gestartet ✅ 2026-11-20
+
+**Was.** Nach dem Paket-Lauf vom 2026-11-19/20 meldete Ploi auf allen fünf
+Servern „Neustart nötig". Der App-Server war schon neu gestartet (39 Sekunden,
+alles kam von selbst); offen waren Appwrite-Server, Docker-Server, Maui und
+hawaiifromthesky. Mit Davids Ja je Server am selben Tag erledigt, jeweils über
+Ploi („Restart server"), davor alle wartenden Pakete.
+
+| Server | Neustart (UTC) | Ausfall | Danach |
+|---|---|---|---|
+| Maui | 08:03 und 21:43 | je rund 45 s | alle Sites, pm2-Prozesse und Dienste wie vorher |
+| hawaiifromthesky | 08:03 | rund 25 s | Site antwortet, Dienste laufen |
+| Docker-Server | 10:06 | rund 35 s | alle Container wie vorher, vier Dienste von außen gesund |
+| Appwrite-Server | 11:07 und 15:17 | rund 55 s, dann 42 s | 18 von 18 Containern, API und Live-Verbindung |
+
+Ploi meldet seitdem auf allen fünf Servern 0 Pakete und keinen offenen
+Neustart. Der „eigene Plan" für den Appwrite-Server ist die Neustart-Regel aus
+der Override (Eintrag „AW31"): beim ersten Neustart um 11:07 UTC holte ein
+Beobachter-Skript vier Container von Hand zurück, beim zweiten um 15:17 UTC
+kamen alle ohne Eingriff.
+
+**Nicht geprüft:** Inhalte hinter Passwort-Sperren auf Maui; auf
+hawaiifromthesky nur von außen (dort liegt kein SSH-Schlüssel).
+
+**Gelernt:** (1) Plois „Run updates now" lag zwischen 16 Minuten und zwei
+Stunden in der Schlange — nie ein zweites Mal klicken. (2) Ein Neustart räumt
+nur ab, was bis dahin installiert ist: auf Maui kam am selben Abend ein neuer
+Kernel nach, und der Server brauchte einen zweiten Neustart. Erst die Pakete,
+dann nachsehen, dass nichts mehr wartet, dann neu starten. (3) Ein Eintrag
+wie dieser bleibt stehen, wenn die Arbeit in einer Sitzung ohne Repo-Zweig
+geschieht — er fiel erst beim Zählen der Liste auf.
+
+---
+
 ### Q08 — Formulare und Ansagen: Felder haben Namen, Fehler werden angesagt, der Browser darf Anmelde-Felder ausfüllen (UX-004, UX-005, UX-007, UX-009, UX-010) ✅ 2026-11-21
 
 **Was.** Fünf Dinge, die man nur mit Hilfsmittel, Tastatur oder
