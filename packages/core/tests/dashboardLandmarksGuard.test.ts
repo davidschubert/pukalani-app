@@ -87,6 +87,18 @@ describe('Wächter: Aufbau des Dashboards', () => {
     expect(skip).toBeGreaterThan(-1)
     expect(skip).toBeLessThan(sidebar)
     expect(layout.match(/<main[\s>]/g)).toHaveLength(1)
-    expect(layout).toMatch(/<main[^>]*id="dashboard-main"[^>]*tabindex="-1"[\s\S]*?<slot \/>\s*<\/main>/)
+    expect(layout).toMatch(/<main[^>]*id="dashboard-main"[^>]*tabindex="-1"[\s\S]*?<slot \/>\s*<\/CoreDashboardToggleState>\s*<\/main>/)
+  })
+
+  it('der Schubladen-Knopf bekommt seinen Zustand zentral: die Hülle umschließt den Slot (Q09-Rest)', () => {
+    const layout = templateOf(files.find(f => f.file === LAYOUT)!.source)
+    expect(layout).toMatch(/<CoreDashboardToggleState>\s*<slot \/>\s*<\/CoreDashboardToggleState>/)
+    const hull = files.find(f => f.file === 'packages/core/app/components/core/DashboardToggleState.vue')
+    expect(hull?.source).toMatch(/dashboardNavbar: \{ toggle: \{ 'aria-expanded': sidebarOpen\?\.value === true \} \}/)
+    // Eine Seite, die `toggle` selbst setzt, überginge die Vorgabe.
+    const own = files
+      .filter(f => /<UDashboardNavbar[^>]*\s:?toggle[=\s>]/.test(templateOf(f.source)))
+      .map(f => f.file)
+    expect(own).toEqual([])
   })
 })

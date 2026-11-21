@@ -265,7 +265,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
       <!-- Runde 20c (David): die 1px-Trennlinie zur Bühne zeichnete vorher der
            Splitter-Griff — bei fester Breite trägt die Rail sie selbst
            (border-e, wie das DashboardSidebar-Theme des Vorbilds). -->
-      <aside v-show="!railCollapsed" class="bw-rail flex h-full flex-none flex-col" :style="`width: ${railWidth}; border-right: 1px solid var(--bw-line)`">
+      <aside v-show="!railCollapsed" :aria-label="t('brand.workspace.regions.rail')" class="bw-rail flex h-full flex-none flex-col" :style="`width: ${railWidth}; border-right: 1px solid var(--bw-line)`">
         <div class="bw-rail-scroll min-h-0 flex-1"><slot name="rail" /></div>
         <div v-if="railFooter" class="bw-rail-foot flex-none">
           <BwRailFooter :progress-pct="progressPct" :progress-note="progressNote" :progress-subnote="progressSubnote" :progress-to="progressTo" :score="score" :progress-title="progressTitle" :progress-count="progressCount" :progress-time="progressTime" />
@@ -286,14 +286,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
           <!-- Runde 23 (David): stage-footer = fester Fuß der Bühne (das
                Chat-Prompt des Nuxt-UI-Chat-Templates) — außerhalb des
                Scrollers, auf der 46rem-Flucht des Gesprächs. -->
-          <div class="flex h-full w-full min-w-0 flex-col">
+          <main class="flex h-full w-full min-w-0 flex-col">
             <div v-if="$slots['stage-bar']" class="bw-stage-bar flex-none"><slot name="stage-bar" /></div>
-            <main class="bw-stage min-h-0 w-full min-w-0 flex-1"><div class="bw-stage-inner"><slot /></div></main>
+            <div class="bw-stage min-h-0 w-full min-w-0 flex-1"><div class="bw-stage-inner"><slot /></div></div>
             <div v-if="$slots['stage-footer']" class="bw-stage-foot flex-none"><div class="bw-stage-inner"><slot name="stage-footer" /></div></div>
-          </div>
+          </main>
         </template>
         <template #george>
-          <aside class="bw-george h-full w-full" :inert="georgeCollapsed || undefined"><slot name="george" /></aside>
+          <aside :aria-label="t('brand.workspace.regions.log')" class="bw-george h-full w-full" :inert="georgeCollapsed || undefined"><slot name="george" /></aside>
         </template>
       </USplitter>
     </div>
@@ -302,7 +302,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
          (63/37 wie zoneItemsFixedRail). SSR und erster Paint sehen damit
          exakt das Endlayout; nach dem Mount übernimmt der Splitter lautlos. -->
     <div v-else-if="railWidth && !mounted" class="flex min-h-0 flex-1">
-      <aside v-show="!railCollapsed" class="bw-rail flex h-full flex-none flex-col" :style="`width: ${railWidth}; border-right: 1px solid var(--bw-line)`">
+      <aside v-show="!railCollapsed" :aria-label="t('brand.workspace.regions.rail')" class="bw-rail flex h-full flex-none flex-col" :style="`width: ${railWidth}; border-right: 1px solid var(--bw-line)`">
         <div class="bw-rail-scroll min-h-0 flex-1"><slot name="rail" /></div>
         <div v-if="railFooter" class="bw-rail-foot flex-none">
           <BwRailFooter :progress-pct="progressPct" :progress-note="progressNote" :progress-subnote="progressSubnote" :progress-to="progressTo" :score="score" :progress-title="progressTitle" :progress-count="progressCount" :progress-time="progressTime" />
@@ -311,14 +311,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
       <!-- Runde 32 (David): der Balken endet an der Naht — er gehört NUR zur
            Gesprächs-Spalte, der Stand beginnt oben direkt mit dem Log. -->
       <div class="flex min-h-0 min-w-0 flex-1">
-        <div class="flex h-full min-w-0 flex-col" style="flex: 63 1 0">
+        <main class="flex h-full min-w-0 flex-col" style="flex: 63 1 0">
           <div v-if="$slots['stage-bar']" class="bw-stage-bar flex-none"><slot name="stage-bar" /></div>
-          <main class="bw-stage min-h-0 w-full min-w-0 flex-1"><div class="bw-stage-inner"><slot /></div></main>
+          <div class="bw-stage min-h-0 w-full min-w-0 flex-1"><div class="bw-stage-inner"><slot /></div></div>
           <div v-if="$slots['stage-footer']" class="bw-stage-foot flex-none"><div class="bw-stage-inner"><slot name="stage-footer" /></div></div>
-        </div>
+        </main>
         <!-- Runde 30b: die 1px-Naht Bühne↔Stand zeichnet nach dem Mount der
              Splitter-Griff — hier statisch, damit sie nicht nachspringt. -->
-        <aside v-show="!georgeCollapsed" class="bw-george h-full min-w-0" style="flex: 37 1 0; border-left: 1px solid var(--bw-line)"><slot name="george" /></aside>
+        <aside v-show="!georgeCollapsed" :aria-label="t('brand.workspace.regions.log')" class="bw-george h-full min-w-0" style="flex: 37 1 0; border-left: 1px solid var(--bw-line)"><slot name="george" /></aside>
       </div>
     </div>
     <USplitter
@@ -327,7 +327,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
       :ui="{ handle: HANDLE }"
     >
       <template #rail>
-        <aside class="bw-rail flex h-full w-full flex-col" :inert="railCollapsed || undefined">
+        <aside :aria-label="t('brand.workspace.regions.rail')" class="bw-rail flex h-full w-full flex-col" :inert="railCollapsed || undefined">
           <!-- Runde 12 (David): der Scroller trägt das Spalten-Padding SELBST
                (.bw-rail-scroll) — vorher lag es außen an .bw-rail und der
                Scrollbalken schwebte mitten in der Spalte statt an ihrer Kante. -->
@@ -341,14 +341,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
         <!-- Audit B4: der Dreizonen-Zweig war der EINZIGE ohne Balken- und
              Fuß-Zone — Seiten mit diesen Slots, aber ohne feste Rail-Breite,
              verloren beide ab 1280 px. Dieselbe Anatomie wie oben. -->
-        <div class="flex h-full w-full min-w-0 flex-col">
+        <main class="flex h-full w-full min-w-0 flex-col">
           <div v-if="$slots['stage-bar']" class="bw-stage-bar flex-none"><slot name="stage-bar" /></div>
-          <main class="bw-stage min-h-0 w-full min-w-0 flex-1"><div class="bw-stage-inner"><slot /></div></main>
+          <div class="bw-stage min-h-0 w-full min-w-0 flex-1"><div class="bw-stage-inner"><slot /></div></div>
           <div v-if="$slots['stage-footer']" class="bw-stage-foot flex-none"><div class="bw-stage-inner"><slot name="stage-footer" /></div></div>
-        </div>
+        </main>
       </template>
       <template #george>
-        <aside class="bw-george h-full w-full" :inert="georgeCollapsed || undefined"><slot name="george" /></aside>
+        <aside :aria-label="t('brand.workspace.regions.log')" class="bw-george h-full w-full" :inert="georgeCollapsed || undefined"><slot name="george" /></aside>
       </template>
     </USplitter>
     <!-- Der Grid-Zweig: unter 1280 px und (ohne feste Rail-Breite) vor dem
@@ -387,7 +387,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
         :class="railOverlay ? 'bw-rail-overlay' : ''"
         :role="railOverlay ? 'dialog' : undefined"
         :aria-modal="railOverlay ? 'true' : undefined"
-        :aria-label="railOverlay ? t('brand.workspace.rail.progressNav') : undefined"
+        :aria-label="railOverlay ? t('brand.workspace.rail.progressNav') : t('brand.workspace.regions.rail')"
         :tabindex="railOverlay ? -1 : undefined"
         :inert="(railCollapsed && !railOverlay) || undefined"
       >
@@ -406,12 +406,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onRailOverlayKey))
           <BwRailFooter :progress-pct="progressPct" :progress-note="progressNote" :progress-subnote="progressSubnote" :progress-to="progressTo" :score="score" :progress-title="progressTitle" :progress-count="progressCount" :progress-time="progressTime" />
         </div>
       </aside>
-      <div class="flex min-h-0 min-w-0 flex-col" :inert="railOverlay || undefined">
+      <main class="flex min-h-0 min-w-0 flex-col" :inert="railOverlay || undefined">
         <div v-if="$slots['stage-bar']" class="bw-stage-bar flex-none"><slot name="stage-bar" /></div>
-        <main class="bw-stage min-h-0 flex-1"><div class="bw-stage-inner"><slot /></div></main>
+        <div class="bw-stage min-h-0 flex-1"><div class="bw-stage-inner"><slot /></div></div>
         <div v-if="$slots['stage-footer']" class="bw-stage-foot flex-none"><div class="bw-stage-inner"><slot name="stage-footer" /></div></div>
-      </div>
-      <aside class="bw-george" :inert="georgeCollapsed || railOverlay || undefined"><slot name="george" /></aside>
+      </main>
+      <aside :aria-label="t('brand.workspace.regions.log')" class="bw-george" :inert="georgeCollapsed || railOverlay || undefined"><slot name="george" /></aside>
     </div>
   </div>
 </template>

@@ -1135,6 +1135,10 @@
         "confirmed": "Fertig",
         "stale": "Wird aktualisiert"
       },
+      "regions": {
+        "rail": "Kapitel",
+        "log": "Dein Markendokument"
+      },
       "rail": {
         "progressNav": "Fortschritt",
         "overview": "Übersicht",
