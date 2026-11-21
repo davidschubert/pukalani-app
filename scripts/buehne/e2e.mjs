@@ -22,6 +22,17 @@
  * so leer läuft, sähe sonst grün aus. Die übersprungenen Tests stehen beim
  * Namen in der Ausgabe (Reporter `list` und die eigene Liste am Ende).
  *
+ * DER SOLL-STAND DER BÜHNE (`baseline.mjs`, seit 2026-11-21): die Dateien
+ * verlassen sich auf das, was `pnpm buehne up` zusagt — die Schmale-Fenster-
+ * Datei etwa auf Plan `pro` in Community B, sonst fehlen im Menü alle
+ * Produkte ab `personal`. Vor dem ersten Test liest dieser Befehl deshalb
+ * beide Communities; weicht etwas ab (ein Beweis-Skript davor hat es so
+ * hinterlassen), stellt er es zurück, sagt es in einer Zeile und wartet, bis
+ * der Platform-Server den Stand neu gelesen hat. Rot wird davon hier nichts:
+ * den Verursacher nennt der Läufer (`pnpm buehne run`), der nach jedem Skript
+ * dasselbe prüft. Fehlt die Env-Datei der Betreiber-App, entfällt die Prüfung
+ * mit einer Zeile.
+ *
  * GEHEIMNISSE: der Pool-Schlüssel geht nur über die Umgebung an Playwright;
  * ausgegeben werden nur Namen von Variablen.
  */
@@ -29,8 +40,9 @@ import { spawn } from 'node:child_process'
 import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { readEnvFile } from '../lib/probe-stage.mjs'
+import { appwriteRest, readEnvFile } from '../lib/probe-stage.mjs'
 import { assertTarget } from '../lib/target.mjs'
+import { checkStageBaseline, RESOLVER_SETTLE_MS } from './baseline.mjs'
 
 /**
  * @typedef {{ app: 'comments' | 'control', datei: string, server: 'platform' | 'control' }} E2eDatei
@@ -208,6 +220,30 @@ export async function e2eCommand({ root, opts, state }) {
     if (!(await answers(url))) {
       console.error(`✗ ${name === 'platform' ? 'Platform-Server' : 'Betreiber-App'} antwortet nicht (${url}).`)
       return 1
+    }
+  }
+
+  // Der Soll-Stand der Bühne (s. Kopf): zurückstellen, bevor ein Test misst.
+  const controlPath = resolve(root, String(opts['env-control'] ?? 'apps/control/.env'))
+  if (!existsSync(controlPath) || !state.controlDatabaseId) {
+    console.log('… Soll-Stand der Bühne nicht geprüft: die Env-Datei der Betreiber-App fehlt.')
+  }
+  else {
+    const controlEnv = readEnvFile(controlPath)
+    const stage = await checkStageBaseline({
+      control: appwriteRest({
+        endpoint: controlEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT,
+        projectId: controlEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID,
+        key: controlEnv.NUXT_APPWRITE_KEY || controlEnv.NUXT_APPWRITE_MIGRATIONS_KEY || '',
+        script: 'buehne e2e',
+      }),
+      databaseId: state.controlDatabaseId,
+      state,
+    })
+    if (stage.unreadable.length) console.log(`… Soll-Stand der Bühne nicht lesbar (${stage.unreadable.join(', ')}).`)
+    if (stage.drift.length) {
+      console.log(`… Die Bühne stand nicht im Soll-Stand (${stage.drift.join(', ')})${stage.repaired ? ` — zurückgestellt, ${RESOLVER_SETTLE_MS / 1000} s Wartezeit` : ''}. Den Verursacher nennt \`pnpm buehne run\`.`)
+      if (stage.repaired) await new Promise(done => setTimeout(done, RESOLVER_SETTLE_MS))
     }
   }
 

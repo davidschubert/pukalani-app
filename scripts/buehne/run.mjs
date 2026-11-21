@@ -39,6 +39,19 @@
  * liegen, die die App selbst angelegt hatte). Kann der Schlüssel das Schema
  * nicht lesen, entfällt das Nachzählen mit einer Zeile.
  *
+ * DER SOLL-STAND DER BÜHNE (`baseline.mjs`, seit 2026-11-21): nach JEDEM
+ * Skript liest der Läufer die zwei Zeilen der Probe-Communities und
+ * vergleicht Status, Plan, Publikum, Registrierung und Sperre mit dem, was
+ * `pnpm buehne up` zugesagt hat. Eine Abweichung macht DIESES Skript rot
+ * („Bühne verändert: B plan (leer) statt pro") — auch wenn alle seine
+ * Prüfungen bestanden haben. Danach stellt der Läufer die Felder zurück und
+ * wartet 31 s (so lange hält der Platform-Server eine Auflösung fest), damit
+ * das nächste Skript wieder die zugesagte Bühne sieht. Anlass: ein Skript
+ * ließ beide Communities ohne Plan zurück, und rot wurde 40 Skripte später
+ * ein Browser-Test, dem Menüpunkte fehlten. Vor dem ersten Skript wird
+ * einmal geprüft und zurückgestellt, ohne Rot — was dort abweicht, stammt
+ * von einem früheren (abgebrochenen) Lauf.
+ *
  * JE SKRIPT: Arbeitsverzeichnis ist der Paket-Ordner (dort löst
  * `node-appwrite` auf), gestartet wird
  * `node [--experimental-strip-types] --import <client-address.mjs> scripts/<name>.mjs`.
@@ -60,6 +73,7 @@
 import { spawn } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { checkStageBaseline, RESOLVER_SETTLE_MS } from './baseline.mjs'
 import { BEWEISE, OPTIONALE_DIENSTE } from './beweise.mjs'
 import { appwriteRest, AppwriteRestError, Q, readEnvFile } from '../lib/probe-stage.mjs'
 import { assertTarget } from '../lib/target.mjs'
@@ -372,6 +386,23 @@ export async function runCommand({ root, opts, state, stageEnv }) {
   const inActions = Boolean(process.env.GITHUB_ACTIONS)
   const runByte = 1 + Math.floor(Math.random() * 254)
   const started = Date.now()
+
+  // Der Soll-Stand der Bühne (s. Kopf): derselbe Schlüssel mit Schreibrecht,
+  // den auch die Skripte bekommen.
+  const stageControl = appwriteRest({
+    endpoint: controlEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT,
+    projectId: controlEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID,
+    key: controlWriteKey,
+    script: 'buehne run',
+  })
+  const stageCheck = () => checkStageBaseline({ control: stageControl, databaseId: state.controlDatabaseId, state })
+  const settle = () => new Promise(done => setTimeout(done, RESOLVER_SETTLE_MS))
+  const opening = await stageCheck()
+  if (opening.unreadable.length) console.log(`… Soll-Stand der Bühne nicht lesbar (${opening.unreadable.join(', ')}) — die Prüfung je Skript läuft trotzdem.`)
+  if (opening.drift.length) {
+    console.log(`… Die Bühne stand vor dem ersten Skript nicht im Soll-Stand (${opening.drift.join(', ')}) — zurückgestellt, ${RESOLVER_SETTLE_MS / 1000} s Wartezeit.`)
+    if (opening.repaired) await settle()
+  }
   /** @type {Array<{ skript: string, ok: boolean, skipped?: boolean, result: string, pass: number, fail: number, seconds: number }>} */
   const results = []
 
@@ -410,14 +441,24 @@ export async function runCommand({ root, opts, state, stageEnv }) {
     const leftovers = before ? censusGrowth(before, (await projectCensus(brandingCensus)) ?? before) : []
     if (counting && !before) console.log('… Nachzählen entfällt: der Schlüssel darf das Schema dieses Projekts nicht lesen.')
     if (leftovers.length) run.lines.push(`✗ Zeilen übrig nach dem Lauf: ${leftovers.join(', ')}`)
+    // Soll-Stand der Bühne (s. Kopf): was das Skript verändert hinterlässt.
+    const stage = await stageCheck()
+    if (stage.unreadable.length) console.log(`… Soll-Stand der Bühne nicht lesbar (${stage.unreadable.join(', ')}).`)
+    if (stage.drift.length) {
+      const line = `✗ Bühne verändert hinterlassen: ${stage.drift.join(', ')}${stage.repaired ? ` — zurückgestellt, ${RESOLVER_SETTLE_MS / 1000} s Wartezeit` : ''}`
+      run.lines.push(line)
+      console.log(line)
+      if (stage.repaired) await settle()
+    }
     if (inActions) console.log('::endgroup::')
     const { pass, fail } = countMarks(run.lines)
     const passed = !run.timedOut && run.code === 0
-    const ok = passed && leftovers.length === 0
+    const ok = passed && leftovers.length === 0 && stage.drift.length === 0
     const result = run.timedOut
       ? `Zeitgrenze (${timeoutS} s)`
       : !passed ? `fehlgeschlagen (Exit ${run.code ?? '—'})`
-          : leftovers.length ? `Zeilen übrig: ${leftovers.join(', ')}` : 'bestanden'
+          : leftovers.length ? `Zeilen übrig: ${leftovers.join(', ')}`
+            : stage.drift.length ? `Bühne verändert: ${stage.drift.join(', ')}` : 'bestanden'
     results.push({ skript: entry.skript, ok, result, pass, fail, seconds: run.seconds })
     if (!ok) {
       // Außerhalb der Gruppe, damit der Fehler ohne Aufklappen zu sehen ist.
