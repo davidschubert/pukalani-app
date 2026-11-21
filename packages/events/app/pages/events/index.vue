@@ -5,7 +5,8 @@
 const { t } = useI18n()
 const localePath = useLocalePath()
 
-useBrandTitle(() => t('events.list.title'))
+// Fester Satz als Beschreibung (Q10, SEO-003) — die Übersicht hatte keine.
+useBrandTitle(() => t('events.list.title'), { description: () => t('events.list.description') })
 
 /**
  * DER EINSTIEG IN DIE VERWALTUNG (F58, 2026-08-16) — wie bei den Kursen gab es

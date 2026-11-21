@@ -80,3 +80,55 @@ export function filterSeoAlternates<L extends object, M extends object>(
     }),
   }
 }
+
+/**
+ * EINE MASSGEBLICHE FASSUNG (Q10, SEO-004): der Kopf einer Seite, deren Inhalt
+ * es nur in EINER Sprache gibt, obwohl sie unter jeder Sprach-Adresse
+ * erreichbar ist (Beiträge von Nutzern).
+ *
+ * Der Unterschied zu `filterSeoAlternates`: dort FEHLT eine Fassung, die
+ * übrigen bleiben Sprachfassungen voneinander. Hier gibt es überhaupt nur
+ * eine — also
+ *   · zeigt `canonical` (und `og:url`) von JEDER Sprach-Adresse auf die
+ *     Adresse der genannten Sprache,
+ *   · fallen ALLE `hreflang`-Einträge weg, auch `x-default`: eine einzelne
+ *     Fassung hat keine Alternativen, und `x-default` zeigte sonst weiter auf
+ *     die Adresse ohne Vorsatz — bei einer deutschen Hauptsprache genau die,
+ *     die nicht maßgeblich ist,
+ *   · fällt `og:locale:alternate` weg.
+ * `og:locale` bleibt: es beschreibt die Bedienoberfläche der abgerufenen
+ * Seite, und die ist wirklich in dieser Sprache.
+ *
+ * FAIL-OPEN: nennt der Kopf für die Sprache keine Adresse (unbekannter Code,
+ * App ohne diese Sprache), bleibt alles, wie es hereinkam — lieber der alte
+ * Kopf als ein canonical ins Leere.
+ *
+ * Die Adresse kommt aus dem `hreflang`-Eintrag derselben Sprache, nicht aus
+ * einer eigenen Rechnung: die Übersetzung der Adresse (Vorsatz, übersetzte
+ * Pfade) kennt nur nuxt-i18n, und eine zweite Rechnung daneben wiche früher
+ * oder später ab.
+ */
+export function collapseSeoToLocale<L extends object, M extends object>(
+  links: readonly L[],
+  meta: readonly M[],
+  locale: string,
+): { links: L[], meta: M[] } {
+  const wanted = languageOf(locale)
+  const candidates = wanted
+    ? links.filter(link => stringField(link, 'hreflang') && languageOf(stringField(link, 'hreflang')) === wanted)
+    : []
+  // Die kurze Form (`de`) vor der Regionsform (`de-DE`) — beide tragen dieselbe
+  // Adresse, aber die Wahl soll nicht an der Reihenfolge der Einträge hängen.
+  const source = candidates.find(link => stringField(link, 'hreflang').toLowerCase() === wanted) ?? candidates[0]
+  const target = source ? stringField(source, 'href') : ''
+  if (!target) return { links: [...links], meta: [...meta] }
+
+  return {
+    links: links
+      .filter(link => !stringField(link, 'hreflang'))
+      .map(link => stringField(link, 'rel') === 'canonical' ? { ...link, href: target } : link),
+    meta: meta
+      .filter(entry => stringField(entry, 'property') !== 'og:locale:alternate')
+      .map(entry => stringField(entry, 'property') === 'og:url' ? { ...entry, content: target } : entry),
+  }
+}

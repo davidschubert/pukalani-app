@@ -84,6 +84,19 @@ export interface CommunitySettings {
    * das Feld kostet also keinen zusätzlichen Zugriff.
    */
   description?: string
+  /**
+   * HAUPTSPRACHE der Community (Q10, Davids Entscheidung B1 vom 2026-11-21):
+   * die Sprache, unter der ihre Beiträge für Suchmaschinen zählen. Ein Beitrag
+   * von Nutzern hat EINEN Text, aber zwei Adressen (`/…` und `/de/…`) — die
+   * Adresse dieser Sprache ist die maßgebliche (`canonical`), und nur sie steht
+   * in der Sitemap. Quelle: `locale` im `profile`-JSON der Community (gesetzt
+   * beim Anlegen aus der Sprache des Owners, änderbar im Dashboard).
+   *
+   * FEHLT bei Communities aus der Zeit davor — dann gilt die Vorgabe aus
+   * `shared/primaryLocale.ts` (die Grundsprache der App, also die Adresse ohne
+   * Vorsatz). Der Resolver lässt nur bekannte Codes durch.
+   */
+  primaryLocale?: string
 }
 
 /**

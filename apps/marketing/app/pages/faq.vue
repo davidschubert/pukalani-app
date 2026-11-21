@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Dedizierte FAQ-Seite (§3.1) für Frage-Keywords/Featured Snippets. Nutzt
 // dieselbe FaqSection wie die Startseite — eine Quelle, eine Wahrheit — und
-// liefert das FAQPage-JSON-LD hier eigenständig (auf der Startseite steckt es
-// im Seiten-Graph).
+// liefert das FAQPage-JSON-LD — NUR hier (SEO-008, 2026-11-21: auf der
+// Startseite stand es bis dahin zusätzlich im Seiten-Graph; zwei Seiten mit
+// denselben ausgezeichneten Fragen konkurrieren um dasselbe Suchergebnis).
 import { FAQ_COUNT } from '#shared/marketing'
 
 definePageMeta({ layout: 'site' })

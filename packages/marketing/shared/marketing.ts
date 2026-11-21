@@ -273,8 +273,8 @@ export const VS_SLUGS = ['circle', 'skool', 'mighty-networks'] as const
 
 /**
  * Anzahl der FAQ-Einträge (`marketing.faq.items.0…n-1` in beiden Locales).
- * Gelesen von `FaqSection.vue` (sichtbare Liste), `/faq` und der Startseite
- * (beide JSON-LD): das sichtbare Element und seine strukturierten Daten
+ * Gelesen von `FaqSection.vue` (sichtbare Liste) und `/faq` (JSON-LD — seit
+ * SEO-008 nur noch dort): das sichtbare Element und seine strukturierten Daten
  * MÜSSEN deckungsgleich sein — Google verlangt, dass eine ausgezeichnete
  * Antwort auch im Seiteninhalt steht.
  */

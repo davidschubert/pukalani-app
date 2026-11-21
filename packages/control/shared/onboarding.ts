@@ -13,6 +13,8 @@
  * i18n-Keys im UI; hier stehen ausschließlich stabile Ids.
  */
 
+import { parsePrimaryLocale, type PrimaryLocale } from '../../core/shared/primaryLocale'
+
 // ── 1. Antwort-Kataloge ─────────────────────────────────────────────────────
 
 /**
@@ -261,6 +263,15 @@ export interface SiteProfile {
   category?: SiteCategory
   goal?: SiteGoal
   description?: string
+  /**
+   * HAUPTSPRACHE der Community (Q10, Davids Entscheidung B1 vom 2026-11-21):
+   * beim Anlegen die Sprache des Owners, später im Dashboard änderbar. Liegt
+   * BEWUSST hier im Profil-JSON und nicht in einer eigenen Spalte: das Feld
+   * ist additiv, braucht keine Migration, und eine Community aus der Zeit
+   * davor hat es schlicht nicht (dann gilt die Vorgabe,
+   * core/shared/primaryLocale.ts).
+   */
+  locale?: PrimaryLocale
 }
 
 /** PURE: Profil-JSON defensiv lesen — fremde/kaputte Werte fallen weg statt
@@ -289,6 +300,8 @@ export function parseSiteProfile(raw: string | undefined): SiteProfile {
     if (typeof value.description === 'string' && value.description.trim()) {
       profile.description = value.description.slice(0, SITE_DESCRIPTION_MAX)
     }
+    const locale = parsePrimaryLocale(value.locale)
+    if (locale) profile.locale = locale
     return profile
   }
   catch {
