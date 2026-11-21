@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'billing',
   tier: 'foundation',
+  kind: 'foundation',
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): billing-003 legt stripe_settings.webhookEndpointId an.

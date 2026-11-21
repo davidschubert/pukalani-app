@@ -46,9 +46,11 @@ Each layer is a contract; files inherit their layer's contract. Check your slice
 - `comments`: owns `comments` / `comment_votes` tables, comment API/UI/store. MUST NOT hold
   admin logic, foreign feature tables, or other domains' resolution. Depends on core, moderation.
 - `admin`: owns `changelog` table, dashboard / moderation-queue UI+API. MUST NOT import
-  feature-layer code or hold feature domain logic. Depends on core, moderation, (system).
-- FOUNDATION RULE: core (and moderation/system) NEVER depend on a feature layer. Graph stays
-  acyclic: comments/admin → moderation → core.
+  feature-layer code or hold feature domain logic. Depends on core, system, themes (`useTheme`).
+- FOUNDATION RULE: the field `kind` in each `product.manifest.ts` is the one source.
+  `base` (core, system) knows only `base`; `foundation` (moderation, marketing, themes, admin,
+  billing) knows only `base`; products never know each other. Auto-import use of another
+  layer must be in `requires` (`pnpm check:manifests`).
 - Cross-layer dependencies must be EXPLICIT contracts (a typed export the consumer imports),
   not implicit auto-import or string coupling. Verify `eslint.config.mjs` carries the per-layer
   `no-restricted-imports` backstop blocks (themes / feature-layers / foundation).

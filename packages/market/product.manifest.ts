@@ -41,6 +41,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'market',
   tier: 'optional',
+  kind: 'product',
   requires: ['brand'],
   hasMigrations: true,
   userData: true,

@@ -3,7 +3,10 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'comments',
   tier: 'optional',
-  requires: ['moderation'],
+  kind: 'product',
+  // admin: Moderations-Präsenz im Dashboard und `recordAudit` beim Ändern
+  // des Status (Auto-Import, Q18).
+  requires: ['moderation', 'admin'],
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): comments-020 legt comments.translations an.

@@ -4,83 +4,68 @@ import { createConfigForNuxt } from '@nuxt/eslint-config/flat'
 import { dataDoorGlobs } from './scripts/lib/data-door-layers.mjs'
 import { staticPublicIgnores } from './scripts/lib/lint-static-public.mjs'
 import { noSilentCatchRule } from './scripts/lib/eslint-no-silent-catch.mjs'
+import { readLayerKinds } from './scripts/lib/layer-kinds.mjs'
 
 // Layer-Grenzen-Durchsetzung (CONCEPT.md A14, Stufe 2 / Backstop).
 // Verhindert KÜNFTIGE explizite Cross-Layer-Imports. Implizite Kopplung
 // (Auto-Import, tableId-Strings) fängt das NICHT — die löst Stufe 1 (Verträge).
 // Jeweils Paketname + Subpfade (`/**`) abdecken.
-//
-// DIE LISTE IST DER WÄCHTER (Paritäts-Audit 2026-08-02): sie wird jetzt aus
-// den Ordnern unter `packages/` abgeleitet statt von Hand gepflegt. Vorher
-// stand dort ein Layer `feed`, den es seit dem posts-Rename nicht mehr gibt,
-// und es FEHLTEN pages, media, activity, onboarding, control und blueprint —
-// genau die Layer, die zuletzt dazugekommen sind. Eine handgepflegte Liste
-// vergisst immer den neuesten Fall; ein abgeleiteter Wächter kann das nicht.
 const pkg = name => [`@pukalani/${name}`, `@pukalani/${name}/**`]
 
 /**
- * Die A14-Matrix in drei Töpfen — wer wen kennen darf.
+ * Die A14-Matrix — wer wen kennen darf.
  *
- *  - FOUNDATION: Fundament. Hängt NIE von einem Produkt ab. `themes` steht
- *    hier, weil es rein visuell ist (eigener, schärferer Block weiter unten);
- *    `marketing` aus demselben Grund — es ist der Chrome der öffentlichen
- *    Seiten (Kopf, Fuß, Marken-CSS), besitzt keine Tabellen und darf von
- *    keinem Produkt- oder Naht-Layer abhängen. Ein Chrome, der ein Produkt
- *    voraussetzt, wäre in der ersten App ohne dieses Produkt ein Loch.
- *  - PRODUCTS: Produkt-Layer. Kennen einander nicht; Fundament nutzen sie über
- *    Auto-Import, nicht über `@pukalani/*`.
- *  - SEAM: Naht-Layer. Sie DÜRFEN mehrere andere kennen, weil genau das ihre
- *    Aufgabe ist — `blueprint` verdrahtet Produkte miteinander (CLAUDE.md:
- *    „der EINZIGE Layer, der mehrere Produkt-Layer kennen darf"), `onboarding`
- *    und `control` bilden die Naht zum Control Plane. Sie sind deshalb von der
- *    Produkt-Sperre ausgenommen — aber NICHT von allem: was sie trotzdem nicht
- *    dürfen, steht in ihren eigenen Blöcken.
+ * DIE EINTEILUNG STEHT NICHT HIER (Q18, ARC-008): jeder Layer sagt sie selbst,
+ * im Feld `kind` seines `product.manifest.ts`. Diese Datei liest sie nur
+ * (scripts/lib/layer-kinds.mjs). Ein Layer ohne Manifest oder ohne lesbare
+ * Zeile bricht den Lint SOFORT — sonst wüchse wieder eine stille Lücke.
+ *
+ *  - BASE (`kind: 'base'`): Fundament, Stufe 1 — `core` und `system`. In
+ *    jeder App dabei, kennen NUR einander. Ein Import von dort in irgendeinen
+ *    anderen Layer bräche jede App, die diesen Layer nicht mitliefert.
+ *  - FOUNDATION (`kind: 'foundation'`): Fundament, Stufe 2 (Davids
+ *    Entscheidung R1, 2026-11-21: `admin`, `billing`, `themes` gehören
+ *    hierher). Kennt Stufe 1, hängt NIE von einem Produkt oder einer Naht ab
+ *    und greift auch nicht quer in einen Nachbarn der eigenen Stufe.
+ *    `themes` hat dazu seinen eigenen, schärferen Block (rein visuell).
+ *  - PRODUCTS (`kind: 'product'`): kennen einander nicht; Fundament nutzen sie
+ *    über Auto-Import, nicht über `@pukalani/*`.
+ *  - SEAM (`kind: 'seam'`): Naht-Layer. Sie DÜRFEN mehrere andere kennen, weil
+ *    genau das ihre Aufgabe ist — `blueprint` verdrahtet Produkte miteinander
+ *    (CLAUDE.md: „der EINZIGE Layer, der mehrere Produkt-Layer kennen darf"),
+ *    `onboarding` und `control` bilden die Naht zum Control Plane, `domains`
+ *    ist die Naht aus dem Silo (eigener, engerer Block). Sie sind deshalb von
+ *    der Produkt-Sperre ausgenommen — aber NICHT von allem: was sie trotzdem
+ *    nicht dürfen, steht in ihren eigenen Blöcken.
  */
-const FOUNDATION = ['core', 'system', 'moderation', 'admin', 'billing', 'themes', 'marketing']
-// `domains` ist eine NAHT und kein Produkt: die eigene Domain einer Silo-Site
-// lebt im Control Plane, dieser Layer ist nur ihre Oberfläche und ihr Ruf
-// dorthin (control-036). Er bekommt trotzdem seinen EIGENEN Block weiter
-// unten — enger als onboarding/control, weil er in Apps läuft, die den
-// control-Layer gar nicht mitliefern und ihn deshalb auch nicht kennen dürfen.
-const SEAM = ['blueprint', 'onboarding', 'control', 'domains']
-const PRODUCTS = ['comments', 'posts', 'events', 'courses', 'tickets', 'runner', 'feedback', 'media', 'activity', 'pages', 'analytics', 'messages', 'brand', 'market', 'insights']
-
-// Stimmt die Aufteilung noch mit dem Dateisystem überein? Ein neuer Layer ohne
-// Topf soll den Lint SOFORT brechen — sonst wächst wieder eine stille Lücke.
-// (fs im Config-Load ist billig und läuft einmal pro eslint-Aufruf.)
-const { readdirSync } = await import('node:fs')
 const { fileURLToPath } = await import('node:url')
 const { dirname, relative: relativePath, resolve: resolvePath, sep } = await import('node:path')
-const packagesDir = fileURLToPath(new URL('packages', import.meta.url))
-const layersOnDisk = readdirSync(packagesDir, { withFileTypes: true })
-  .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-  .map(entry => entry.name)
-const classified = new Set([...FOUNDATION, ...SEAM, ...PRODUCTS])
-const unclassified = layersOnDisk.filter(name => !classified.has(name))
-const ghosts = [...classified].filter(name => !layersOnDisk.includes(name))
-if (unclassified.length || ghosts.length) {
-  throw new Error([
-    'eslint.config.mjs: Layer-Einteilung und packages/ laufen auseinander (CONCEPT.md A14).',
-    unclassified.length ? `  ohne Topf: ${unclassified.join(', ')}` : '',
-    ghosts.length ? `  im Topf, aber nicht auf der Platte: ${ghosts.join(', ')}` : '',
-  ].filter(Boolean).join('\n'))
-}
+const repoRoot = dirname(fileURLToPath(import.meta.url))
+const packagesDir = resolvePath(repoRoot, 'packages')
+const {
+  layers: layersOnDisk,
+  base: BASE,
+  foundation: FOUNDATION,
+  seam: SEAM,
+  product: PRODUCTS,
+} = readLayerKinds(repoRoot)
 
 const featureLayers = PRODUCTS.flatMap(pkg)
-const allPukalaniFeatures = [...featureLayers, ...FOUNDATION.filter(n => n !== 'core').flatMap(pkg)]
+const allPukalaniFeatures = [...featureLayers, ...[...BASE, ...FOUNDATION].filter(n => n !== 'core').flatMap(pkg)]
 /** Datei-Globs eines Topfes — für die `files`-Angabe der Blöcke. */
 const filesOf = names => names.map(name => `packages/${name}/**`)
 /**
- * Alle Layer-Pakete AUSSER `core`/`system` (die kommen per Auto-Import, ein
- * expliziter Import darauf ist erlaubt) und außer den ausdrücklich erlaubten.
+ * Alle Layer-Pakete AUSSER Stufe 1 (`core`/`system` — die kommen per
+ * Auto-Import, ein expliziter Import darauf ist erlaubt) und außer den
+ * ausdrücklich erlaubten.
  * So steht in jedem Block, was ERLAUBT ist — die Sperre ergibt sich daraus,
  * statt dass jemand eine Verbotsliste nachpflegen muss.
  */
 const otherLayers = (allowed = []) => layersOnDisk
-  .filter(name => !['core', 'system', ...allowed].includes(name))
+  .filter(name => ![...BASE, ...allowed].includes(name))
   .flatMap(pkg)
 /** Die Kehrseite von `otherLayers` — was der relative Wächter DURCHLÄSST. */
-const alsoAllowed = (allowed = []) => ['core', 'system', ...allowed]
+const alsoAllowed = (allowed = []) => [...BASE, ...allowed]
 
 /**
  * DER WÄCHTER GRIFF NIE (F41, Paritäts-Audit 2026-08-02).
@@ -216,6 +201,13 @@ const pukalaniPlugin = {
 export default createConfigForNuxt({
   features: {
     stylistic: false,
+    // AUSDRÜCKLICH AN (Q18, ARC-004): ohne Angabe schaut die Vorlage, ob das
+    // Paket im ARBEITSVERZEICHNIS `typescript` kennt. Aus dem Hauptordner tut
+    // es das nicht — dann fehlten Parser und Regeln für jede `.ts`-Datei, und
+    // `eslint packages/<layer>/server/…` meldete „ignored" mit Code 0 oder
+    // las TypeScript mit dem JavaScript-Parser. Wächter:
+    // packages/core/tests/eslintRootProbes.test.ts.
+    typescript: true,
   },
 }).append({
   ignores: [
@@ -404,25 +396,41 @@ export default createConfigForNuxt({
     }],
   },
 }).append({
-  // Fundament-Layer dürfen NIE von Produkten abhängen (azyklisch).
-  // moderation zählt dazu (CLAUDE.md/A14) — ohne diesen Scope wäre es der
-  // einzige Layer ganz ohne Import-Backstop. admin/billing stehen ebenfalls
-  // als Fundament im Manifest (tier: 'foundation') und werden hier gleich
-  // behandelt; `themes` hat weiter oben seinen schärferen eigenen Block.
+  // STUFE 1 (`core`, `system`) KENNT NUR SICH SELBST (Q18, ARC-008). Bis
+  // dahin galt hier die Erlaubnis „Fundament kennt Fundament" — ein Import
+  // aus dem Core nach `admin` oder `billing` ging ohne Meldung durch, und
+  // `apps/marketing` und `apps/help` liefern beide Layer gar nicht mit.
+  files: filesOf(BASE),
+  rules: {
+    'no-restricted-imports': ['error', {
+      patterns: [
+        { group: otherLayers(),
+          message: 'Fundament Stufe 1 (core/system) hängt von KEINEM anderen Layer ab (CONCEPT.md A14).' },
+      ],
+    }],
+    'pukalani/no-cross-layer-relative': ['error', {
+      allow: BASE,
+      hint: 'Fundament Stufe 1 (core/system) hängt von KEINEM anderen Layer ab — auch nicht von admin, billing oder themes (CONCEPT.md A14).',
+    }],
+  },
+}).append({
+  // STUFE 2 hängt NIE von Produkten oder Nähten ab (azyklisch) und greift
+  // nicht quer in einen Nachbarn der eigenen Stufe: erlaubt ist nur Stufe 1
+  // (heute real: ein admin-Test liest `system/server/utils/userDataContributor`).
+  // Was ein Layer dieser Stufe von einem Nachbarn per Auto-Import braucht,
+  // steht in seinem `requires` (`pnpm check:manifests`, Prüfung 12).
+  // `themes` hat weiter oben seinen schärferen eigenen Block.
   files: filesOf(FOUNDATION.filter(name => name !== 'themes')),
   rules: {
     'no-restricted-imports': ['error', {
       patterns: [
-        { group: [...featureLayers, ...SEAM.flatMap(pkg)],
-          message: 'Fundament-Layer (core/system/moderation/admin/billing/marketing) dürfen nicht von Produkt- oder Naht-Layern abhängen (CONCEPT.md A14).' },
+        { group: otherLayers(),
+          message: 'Fundament Stufe 2 kennt nur core und system — keine Produkt-, Naht- oder Nachbar-Layer (CONCEPT.md A14).' },
       ],
     }],
-    // Untereinander dürfen Fundament-Layer sich kennen (heute real: ein
-    // admin-Test liest `system/server/utils/userDataContributor`) — verboten
-    // ist die Abhängigkeit NACH UNTEN auf Produkte und Nähte.
     'pukalani/no-cross-layer-relative': ['error', {
-      allow: FOUNDATION,
-      hint: 'Fundament-Layer (core/system/moderation/admin/billing/marketing) dürfen nicht von Produkt- oder Naht-Layern abhängen (CONCEPT.md A14).',
+      allow: BASE,
+      hint: 'Fundament Stufe 2 kennt nur core und system — keine Produkt-, Naht- oder Nachbar-Layer (CONCEPT.md A14).',
     }],
   },
 }).append({

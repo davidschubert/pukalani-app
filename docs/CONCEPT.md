@@ -5,7 +5,7 @@
 >
 > **Was aktuell ist:** die Ebenen-Darstellung (inkl. Kompositions-Layer `blueprint`),
 > Stack & Katalog, Verzeichnisstruktur (24 Layer, 8 Apps), Layer-Tabelle,
-> A9 (Deployment), A10 (Migrations), A11–A13, **A14 (Layer-Grenzen-Matrix, alle 24
+> A9 (Deployment), A10 (Migrations), A11–A13, **A14 (Layer-Grenzen-Matrix, alle 26
 > Layer + Durchsetzung inkl. Datentür-Backstop)**, **A15 (Mandanten-Architektur:
 > Pool/Silo, Datentür, Publikum, Sperr-Stufen)**, Stolperfallen.
 >
@@ -627,49 +627,59 @@ Vertrag ihres Layers — Regeln stehen auf **Layer-Ebene**, nicht pro Component 
 veralten sie beim Verschieben). Eine Component in `themes/` ist „kein Appwrite" nicht weil
 in ihrer Datei eine Regel steht, sondern weil sie im Themes-Layer liegt.
 
-**Fundament** — hängt nie von einem Produkt ab:
+**Die Einordnung hat EINE Quelle:** das Feld `kind` im `product.manifest.ts` jedes Layers
+(Q18). `eslint.config.mjs` liest es, `pnpm check:manifests` hält diese Tabelle dagegen
+(Prüfung 11) — ein Layer unter der falschen Überschrift, doppelt oder gar nicht ist rot.
+
+**Fundament, Stufe 1** (`kind: 'base'`) — in jeder App dabei, kennt nur einander:
 
 | Layer | darf besitzen | darf nie | hängt ab von |
 |---|---|---|---|
 | `core` | Auth, Client-Factories, RBAC-Matrix, SSR-Session, **Datentür `tenantDb`**, Registry-Verträge (`notify`, `sendMail`, `aiComplete`, GDPR-/Stats-/Join-/Host-Contributors), Base-UI, Shared-Utils | Produkt-Domäne, **eigene Tables** (A1) | — |
 | `system` | `audit_logs`, `app_config`, `app_secrets`, `notifications`, `activities`, `custom_themes`, `custom_fonts`, `community_branding`, `community_navigation`, `community_redirects`, `community_seo`, `account_handles`, `community_handles` (+ Bucket `fonts`) | Produkt-Domäne, UI-Welt | core |
+
+**Fundament, Stufe 2** (`kind: 'foundation'`, Davids Entscheidung R1 vom 2026-11-21 für `themes`,
+`admin`, `billing`) — kennt Stufe 1, nie ein Produkt, nie eine Naht, und importiert keinen
+Nachbarn derselben Stufe (was per Auto-Import nötig ist, steht in `requires`):
+
+| Layer | darf besitzen | darf nie | hängt ab von |
+|---|---|---|---|
 | `moderation` | `reports`, Melde-Erfassung + Queue + Lifecycle, generische Melde-UI | Domänen-Wissen, Konsequenz-Logik | core |
 | `marketing` | Kopf- und Fußbereich der Marke Pukalani (Chrome der öffentlichen Seiten), Link-Auflösung `useMarketingSite()`, Marken-CSS, i18n-Schlüssel beider Bauteile | Tables, Migrationen, Produkt-Logik; ein Produkt voraussetzen (der Chrome muss auf jeder Silo-Site tragen) | core |
+| `themes` | Tokens, CSS, Theme-Studio, Ramp-Generator, Color-Mode | Appwrite-Tables (die gehören `system`), Auth, Business-Logik | core, system |
+| `admin` | `changelog`, Dashboard-Shell + Nav-Registry, Moderations-Queue-UI | Produkt-interne Imports, Produkt-Domänen-Logik | core, system, themes (`useTheme` im Konto-Menü) |
+| `billing` | `billing_customers`, `billing_subscriptions`, `stripe_settings` | Produkt-Wissen (Fulfillment nur über `registerCheckoutFulfillment`) | core |
 
-**Komposition:**
+**Nähte** (`kind: 'seam'`) — verdrahten mehrere andere; ihre Grenzen stehen je Layer in
+`eslint.config.mjs`. `control` und `onboarding` laufen nicht auf Mandanten-Hosts:
 
 | Layer | darf besitzen | darf nie | hängt ab von |
 |---|---|---|---|
 | `blueprint` | Die Verdrahtung mehrerer Produkte (Layouts, Chrome, Kompositions-Seiten) — genau einmal, für Pool **und** Silo | Produkt-Logik, Tables, **`server/`** | posts, comments, events, courses (+ core) |
+| `control` | `communities`, `community_members`, `community_invites`, `websites`, `entitlements`, `product_catalog`, `community_plans`, `invite_codes`, `invite_requests`, `provisioning_jobs`, `abuse_reports`, `customer_feedback*` | Auf einem Mandanten-Host laufen; Pool-Daten direkt lesen (kein Pool-Schlüssel) | core, system, admin (`recordAudit`), feedback (Backend der Rückmeldungen) |
+| `onboarding` | Trichter/Wizard, `/join`, Mitglieder-Verwaltung, Community-Einstellungen — **und die Service-Naht zum Control Plane** | Eigene Tables (die Wahrheit liegt im Control Plane) | core, pages (Richtlinien-Seite säen), themes (Farbwelt-Auswahl), (control über die Naht) |
+| `domains` | Oberfläche + Prüfweg — **keine eigene Table** (die Domain steht an `communities`/`websites`) | Eigenes Schema, TLS-Anforderung selbst auslösen | core, (control über die Naht) |
 
-**Plattform & Betrieb** — laufen nicht auf Mandanten-Hosts:
-
-| Layer | darf besitzen | darf nie | hängt ab von |
-|---|---|---|---|
-| `control` | `communities`, `community_members`, `community_invites`, `websites`, `entitlements`, `product_catalog`, `community_plans`, `invite_codes`, `invite_requests`, `provisioning_jobs`, `abuse_reports`, `customer_feedback*` | Auf einem Mandanten-Host laufen; Pool-Daten direkt lesen (kein Pool-Schlüssel) | core, system |
-| `onboarding` | Trichter/Wizard, `/join`, Mitglieder-Verwaltung, Community-Einstellungen — **und die Service-Naht zum Control Plane** | Eigene Tables (die Wahrheit liegt im Control Plane) | core, (control über die Naht) |
-| `runner` | `runners`, `runs`, `run_events` — AI-Runner-Board + Naht zum Daemon `tools/ai-runner`; Capability `runner.manage` (nur admin) | Auf Mandanten-Hosts laufen; selbst committen/pushen oder Modi/Modelle/Budget entscheiden (Allowlist und Commit gehören dem Daemon auf dem Mac) | core |
-
-**Produkt-Layer:**
+**Produkt-Layer** (`kind: 'product'`) — kennen einander nicht (Ausnahmen mit Vertrag:
+`market`/`insights` → `brand`, `feedback` → `control`). `runner` läuft nicht auf Mandanten-Hosts:
 
 | Layer | darf besitzen | darf nie | hängt ab von |
 |---|---|---|---|
-| `themes` | Tokens, CSS, Theme-Studio, Ramp-Generator, Color-Mode | Appwrite-Tables (die gehören `system`), Auth, Business-Logik | core, system |
-| `admin` | `changelog`, Dashboard-Shell + Nav-Registry, Moderations-Queue-UI | Produkt-interne Imports, Produkt-Domänen-Logik | core, (moderation, system) |
-| `comments` | `comments`, `comment_votes`, `guest_authors`, `embed_sites` | Admin-Logik, fremde Produkt-Tables | core, moderation |
+| `comments` | `comments`, `comment_votes`, `guest_authors`, `embed_sites` | Admin-Logik, fremde Produkt-Tables | core, moderation, admin (`recordAudit`, Moderations-Präsenz) |
 | `posts` | `community_posts`, `post_votes`, `poll_votes` | — | core, moderation |
-| `events` | `events`, `event_rsvps`, `event_votes`, `event_tickets` | Stripe-Code (nur Vertrag + `lookup_key`) | core, (billing über den Vertrag) |
+| `events` | `events`, `event_rsvps`, `event_votes`, `event_tickets` | Stripe-Code (nur Vertrag + `lookup_key`) | core, moderation, (billing über den Vertrag) |
 | `courses` | `courses`, `lessons`, `enrollments`, `lesson_progress` | Stripe-Code (nur `registerCourseAccessGuard`) | core, (billing über den Vertrag) |
 | `messages` | `conversations`, `conversation_members`, `messages`, `message_blocks`, `message_settings` | — | core, moderation, posts |
 | `media` | `media_items` | — | core |
 | `pages` | `pages` | — | core |
 | `tickets` | `tickets`, `ticket_lists`, `ticket_files`, `ticket_watchers` | — | core, (comments über `operatorTargets`) |
 | `analytics` | `analytics_settings` | Eigenen Tracker bauen (nur Plausible-Script-Id) | core |
-| `billing` | `billing_customers`, `billing_subscriptions`, `stripe_settings` | Produkt-Wissen (Fulfillment nur über `registerCheckoutFulfillment`) | core |
 | `brand` | `brand_profiles`, `brand_steps`, `brand_messages`, `brand_shares`, `brand_invites`, `brand_access`, `brand_events` — **server-only** (Permissions `[]`, `rowSecurity: false`) und nur auf der `branding`-Instanz | Andere Produkt-Layer kennen; eigene Theme-Tokens/Presets erfinden (Design-Richtungen werden aus `themes` KONSUMIERT, nie dort geschrieben); KI-Transport selbst bauen | core, system, (themes über den Preset-Vertrag) |
+| `market` | `market_*`-Tabellen des Marktvergleichs, nur auf der `branding`-Instanz | Ein zweiter Abruf- oder Score-Vertrag neben `brand` | core, brand (gebündelt in `server/utils/brandContract.ts`) |
+| `insights` | Tabellen der Brand Insights (ohne `communityId`), nur auf der `branding`-Instanz; Redaktion über `insights.manage` | Eine zweite Skala, Slug-Regel oder SSRF-Schutz neben `brand` | core, brand (gebündelt in `server/contracts/brandContract.ts`), comments (Kommentarbereich) |
 | `activity` | **keine eigene Table** — liest `activities` (system) über den Core-Vertrag `recordActivity()` | Eigenes Schema | core, system |
 | `feedback` | Widget + Admin-Sichtung + Naht — **keine eigene Table** (`customer_feedback*` liegen im Control Plane) | Eigenes Schema | core, (control über die Naht) |
-| `domains` | Oberfläche + Prüfweg — **keine eigene Table** (die Domain steht an `communities`/`websites`) | Eigenes Schema, TLS-Anforderung selbst auslösen | core, (control über die Naht) |
+| `runner` | `runners`, `runs`, `run_events` — AI-Runner-Board + Naht zum Daemon `tools/ai-runner`; Capability `runner.manage` (nur admin) | Auf Mandanten-Hosts laufen; selbst committen/pushen oder Modi/Modelle/Budget entscheiden (Allowlist und Commit gehören dem Daemon auf dem Mac) | core |
 
 > **Vier Layer besitzen bewusst keine Tabelle** (`activity`, `feedback`, `domains`,
 > `marketing`) und einer bewusst kein `server/` (`blueprint`). Das ist kein Rückstand, sondern die
@@ -720,8 +730,9 @@ Stufe 3 kam 2026-07-27 dazu und steht dort noch nicht):
    Fundament→Fundament-Nutzung, system bleibt reiner Schema-Owner + GDPR/Stats-Anbieter.
 2. **ESLint `no-restricted-imports` (Backstop):** pro `files`-Scope in `eslint.config.mjs` —
    themes verbietet `*appwrite*`/`@pukalani/*`, Produkt-Layer verbieten andere
-   `@pukalani/`-Produkt-Layer, Fundament-Layer (core/moderation) verbieten jeden
-   Produkt-Import. Fängt *künftige* explizite Kopplung; die implizite löst Stufe 1.
+   `@pukalani/`-Produkt-Layer, Stufe 1 (core/system) verbietet jeden anderen Layer,
+   Stufe 2 jeden außer Stufe 1. Dazu der relative Wächter `pukalani/no-cross-layer-relative`
+   (der echte Importe sieht: sie sind relativ, nicht `@pukalani/…`). Fängt *künftige* explizite Kopplung; die implizite löst Stufe 1.
 
 3. **ESLint `no-restricted-syntax` — die harte Grenze (seit 2026-07-27):** in
    `server/api/**` **und** `server/plugins/**` der gepoolten Layer ist rohes

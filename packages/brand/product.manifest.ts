@@ -15,6 +15,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'brand',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): brand-027 legt die Lauf-Tabelle `brand_runs` an.

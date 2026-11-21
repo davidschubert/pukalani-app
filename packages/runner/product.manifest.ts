@@ -11,6 +11,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'runner',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): runner-003 legt runs.resumeSessionId an.

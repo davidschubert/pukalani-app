@@ -54,6 +54,17 @@
  * 10. DIE DATENTÜR-LISTE (OPS-012): legt ein Layer `communityId` an, steht er
  *     in DATA_DOOR_LAYERS (ESLint verbietet dort rohes tablesDB) oder mit
  *     Grund in DATA_DOOR_EXEMPT — scripts/lib/data-door-layers.mjs.
+ * 11. DIE EINORDNUNG DER LAYER (Q18, ARC-008): das Feld `kind` im Manifest ist
+ *     die EINE Quelle dafür, wer wen kennen darf (Stufe 1 `base`, Stufe 2
+ *     `foundation`, `seam`, `product`). `eslint.config.mjs` liest es als TEXT
+ *     (scripts/lib/layer-kinds.mjs) — hier steht, dass der Text-Leser dasselbe
+ *     sieht wie das geladene Manifest. Dazu: Stufe 1 ist genau `core` und
+ *     `system`, und `foundation`-tier heißt nicht abschaltbar, also nie
+ *     `product`.
+ * 12. ABHÄNGIGKEITEN ÜBER AUTO-IMPORT (Q18, ARC-003): nutzt ein Layer einen
+ *     Namen eines anderen Layers ohne Import-Zeile, steht dieser in
+ *     `requires` (auch transitiv) oder ist Stufe 1; ein Fundament-Layer
+ *     braucht nie ein Produkt oder eine Naht. scripts/lib/autoimport-coupling.mjs.
  *
  * Ausgabe pro Verstoß eine Zeile (Datei · erwartet/ist), Exit 1 bei Fehlern.
  */
@@ -64,6 +75,8 @@ import { layerRoutes, routeCoverageProblems } from './lib/manifest-routes.mjs'
 import { layerInventory } from './lib/migration-inventory.mjs'
 import { CONTRIBUTOR_FILE, userDataDutyProblems } from './lib/user-data-duty.mjs'
 import { dataDoorProblems } from './lib/data-door-layers.mjs'
+import { kindFromManifestSource } from './lib/layer-kinds.mjs'
+import { couplingProblems } from './lib/autoimport-coupling.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -218,6 +231,60 @@ for (const [layer, m] of manifests) {
   for (const req of m.requires ?? []) {
     if (!manifests.has(req)) err(`packages/${layer}/product.manifest.ts: requires „${req}" — Layer existiert nicht`)
   }
+}
+
+// ── 11: die Einordnung hat eine Quelle, und der Text-Leser sieht sie ──────
+{
+  const BASE_LAYERS = ['core', 'system']
+  for (const [layer, m] of manifests) {
+    const rel = `packages/${layer}/product.manifest.ts`
+    let fromText
+    try {
+      fromText = kindFromManifestSource(readFileSync(join(ROOT, rel), 'utf8'), rel)
+    }
+    catch (e) {
+      err(e.message)
+      continue
+    }
+    if (fromText !== m.kind) err(`${rel}: der Text-Leser für eslint.config.mjs liest kind '${fromText}', das Manifest sagt '${m.kind}' (scripts/lib/layer-kinds.mjs)`)
+    if ((m.kind === 'base') !== BASE_LAYERS.includes(layer)) err(`${rel}: kind 'base' (Fundament Stufe 1) haben genau ${BASE_LAYERS.join(' und ')} — sie sind in jeder App; ein weiterer Layer gehört nach 'foundation'`)
+    if (m.tier === 'foundation' && m.kind === 'product') err(`${rel}: tier 'foundation' (nicht abschaltbar) und kind 'product' passen nicht zusammen — ein Produkt lässt sich abschalten`)
+  }
+
+  // Die Doku liest nicht, sie wird gelesen: die Tabelle in CONCEPT.md A14
+  // steht je Layer unter der Überschrift seines `kind` (eine Zeile je Layer).
+  const conceptRel = 'docs/CONCEPT.md'
+  const concept = readFileSync(join(ROOT, conceptRel), 'utf8')
+  const a14Start = concept.search(/^### A14\b/m)
+  const fromA14 = a14Start < 0 ? '' : concept.slice(a14Start)
+  const nextSection = fromA14.slice(1).search(/^### /m)
+  const a14 = nextSection < 0 ? fromA14 : fromA14.slice(0, nextSection + 1)
+  if (!a14) err(`${conceptRel}: Abschnitt „### A14" nicht gefunden — Prüfung 11 kann die Layer-Tabelle nicht lesen`)
+  const documented = new Map()
+  let heading = null
+  for (const line of a14.split('\n')) {
+    const kindHeading = line.match(/^\*\*[^*]+\*\* \(`kind: '([a-z]+)'`/)
+    if (kindHeading) heading = kindHeading[1]
+    else if (/^\*\*/.test(line)) heading = null
+    const row = line.match(/^\| `([a-z][a-z0-9-]*)` \|/)
+    if (!row) continue
+    if (documented.has(row[1])) err(`${conceptRel} A14: Layer „${row[1]}" steht zweimal in der Tabelle`)
+    documented.set(row[1], heading)
+  }
+  for (const [layer, m] of manifests) {
+    if (!documented.has(layer)) err(`${conceptRel} A14: Layer „${layer}" fehlt in der Tabelle (unter der Überschrift mit \`kind: '${m.kind}'\`)`)
+    else if (documented.get(layer) !== m.kind) err(`${conceptRel} A14: Layer „${layer}" steht unter ${documented.get(layer) ? `\`kind: '${documented.get(layer)}'\`` : 'einer Überschrift ohne kind'}, sein Manifest sagt '${m.kind}'`)
+  }
+  for (const layer of documented.keys()) {
+    if (!manifests.has(layer)) err(`${conceptRel} A14: Layer „${layer}" steht in der Tabelle, existiert aber nicht unter packages/`)
+  }
+}
+
+// ── 12: Abhängigkeiten über Auto-Import stehen in requires ────────────────
+{
+  const kindOf = Object.fromEntries([...manifests].map(([layer, m]) => [layer, m.kind]))
+  const requiresOf = Object.fromEntries([...manifests].map(([layer, m]) => [layer, m.requires ?? []]))
+  for (const problem of couplingProblems({ root: ROOT, kindOf, requiresOf })) err(problem)
 }
 
 // Destruktiv-Guard (M3): zerstörerische Appwrite-Aufrufe in Migrationen nur

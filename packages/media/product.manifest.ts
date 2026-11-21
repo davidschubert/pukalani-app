@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'media',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: true,
   userData: false,
   // Schema-Probe (OPS-008): media-004 legt media_items.communityId an; 005 löscht nur tenantId (nicht ablesbar).

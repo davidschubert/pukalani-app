@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'domains',
   tier: 'optional',
+  kind: 'seam',
   hasMigrations: false,
   userData: false,
   apiPrefixes: ['/api/site/domain'],
