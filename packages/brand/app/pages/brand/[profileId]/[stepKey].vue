@@ -3484,82 +3484,24 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
               <!-- CONFIRM: die Karte trägt als Kopf die URSPRUNGSFRAGE des
                    Inhalts (Runde 37c), die Abschluss-Frage steht über den
                    Knöpfen, „Korrigieren" links neben „Bestätigen". -->
-              <div v-else-if="stageModule === 'confirm' && pendingCard" class="mt-3">
-                <div class="bw-draft-frame mb-3">
-                  <p class="bw-label" style="color: var(--bw-muted)">{{ slotLabel(pendingCard.slot) }}</p>
-                  <UTextarea
-                    v-if="editingSlotId === pendingCard.slot.id && pendingCard.controls.editable"
-                    class="mt-2 w-full" :rows="3" :maxlength="pendingCard.slot.maxLength"
-                    :model-value="store.slotValue(pendingCard.slot.id)"
-                    @update:model-value="value => onInput(pendingCard!.slot.id, String(value))"
-                    @blur="autosave.flush()"
-                  />
-                  <p
-                    v-else-if="store.slotValue(pendingCard.slot.id) && renderedAbove(pendingCard.slot.id)"
-                    class="bw-pending mt-2"
-                  >
-                    {{ t('brand.dna.card.above') }}
-                  </p>
-                  <BwSlotValue
-                    v-else-if="store.slotValue(pendingCard.slot.id)"
-                    class="mt-2"
-                    :slot-id="pendingCard.slot.id"
-                    :value="slotDisplayValue(pendingCard.slot.id, store.slotValue(pendingCard.slot.id))"
-                  />
-                  <p v-else class="bw-pending mt-2">{{ t('brand.workspace.stage.pending') }}</p>
-                  <!-- ABGESCHNITTEN AM FELD (KI1 d), wie im Entwurfs-Modul. -->
-                  <div v-if="fieldIsTruncated(pendingCard.slot.id)" class="mt-2 flex flex-wrap items-center gap-2">
-                    <span class="bw-state bw-state--stale">
-                      <UIcon name="i-ph-scissors" />
-                      {{ t('brand.workspace.truncated.fieldBadge') }}
-                    </span>
-                    <p class="bw-msg-help">{{ t('brand.workspace.truncated.fieldHint') }}</p>
-                    <UButton
-                      v-if="truncatedRetryFieldId === pendingCard.slot.id"
-                      size="sm" color="neutral" variant="soft" class="rounded-full" icon="i-ph-arrow-clockwise"
-                      :label="t('brand.workspace.truncated.retry')"
-                      @click="regenerateTruncated(pendingCard!.slot.id)"
-                    />
-                  </div>
-                </div>
-                <!-- Befund 9, zweite Stelle: dieselbe Auskunft an derselben
-                     Regel — ein abgeschalteter Knopf ohne Begründung ist ein
-                     stiller No-op, egal in welchem Modul er steht. -->
-                <p v-if="pendingCard.controls.showConfirmBlockedNote" class="bw-pending mb-2">
-                  {{ t('brand.workspace.confirmNeedsValue') }}
-                </p>
-                <p class="mb-2 font-medium">{{ t('brand.workspace.confirmQuestion') }}</p>
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                  <!-- Dieselben zwei Ausgänge wie im Entwurfs-Modul (Befund 3). -->
-                  <template v-if="pendingCard.controls.editable && editingSlotId === pendingCard.slot.id">
-                    <button type="button" class="bw-confirm bw-confirm--ghost" @click="applyEdit()">
-                      <UIcon name="i-ph-check" class="size-4" />
-                      {{ t('brand.workspace.reviseApply') }}
-                    </button>
-                    <button type="button" class="bw-confirm bw-confirm--ghost" @click="discardEdit(pendingCard.slot.id)">
-                      <UIcon name="i-ph-arrow-counter-clockwise" class="size-4" />
-                      {{ t('brand.workspace.reviseDiscard') }}
-                    </button>
-                  </template>
-                  <button
-                    v-else-if="pendingCard.controls.editable"
-                    type="button" class="bw-confirm bw-confirm--ghost"
-                    @click="openEditor(pendingCard.slot.id)"
-                  >
-                    <UIcon name="i-ph-pencil-simple" class="size-4" />
-                    {{ t('brand.workspace.reviseSlot') }}
-                  </button>
-                  <button
-                    v-if="pendingCard.controls.showConfirm"
-                    type="button" class="bw-confirm bw-confirm--open"
-                    :disabled="!pendingCard.controls.confirmEnabled"
-                    @click="confirmSlot(pendingCard.slot.id)"
-                  >
-                    <UIcon name="i-ph-check" class="size-4" />
-                    {{ t('brand.workspace.confirmSlot') }}
-                  </button>
-                </div>
-              </div>
+              <BwStageConfirm
+                v-else-if="stageModule === 'confirm' && pendingCard"
+                :field="pendingCard.slot"
+                :controls="pendingCard.controls"
+                :label="slotLabel(pendingCard.slot)"
+                :editing="editingSlotId === pendingCard.slot.id"
+                :rendered-above="renderedAbove(pendingCard.slot.id)"
+                :display="slotDisplayValue(pendingCard.slot.id, store.slotValue(pendingCard.slot.id))"
+                :truncated="fieldIsTruncated(pendingCard.slot.id)"
+                :can-retry-truncated="truncatedRetryFieldId === pendingCard.slot.id"
+                @input="value => onInput(pendingCard!.slot.id, value)"
+                @flush="autosave.flush()"
+                @retry-truncated="regenerateTruncated(pendingCard!.slot.id)"
+                @apply="applyEdit()"
+                @discard="discardEdit(pendingCard!.slot.id)"
+                @edit="openEditor(pendingCard!.slot.id)"
+                @confirm="confirmSlot(pendingCard!.slot.id)"
+              />
 
               <!-- GATE: die Weiche selbst ist auf die Abnahme-Seite gezogen
                    (§5a, Paket 3c-ii) — hier steht nur noch der VERWEIS. Die
