@@ -79,6 +79,143 @@ eine Mikroaufgabe später dran — für Menschen unsichtbar, aber ein Test, der 
 eine feste Runde wartet, wird rot; der Test wartet auf das Ergebnis
 (`vi.waitFor`), nicht auf die Runde.
 
+### GW1 — Seitengewicht, Rest von PERF-006: zwei Bausteine laden erst bei Bedarf; der Textkatalog bleibt (Bahn 5, Paket 2) ✅ 2026-11-21
+
+**Erst gemessen.** Skripte, die die Startseite sofort lädt (Einstieg, Seite,
+Layout, transitiv, gzip — dieselbe Rechnung wie der Wächter aus Q22), dazu
+der Textkatalog, den der Browser vor dem Start holt
+(`/_i18n/…/messages.json`). Live vor der Änderung, je `/de`:
+
+| Site | Skripte | Katalog | davon auf der Startseite gebraucht |
+| --- | --- | --- | --- |
+| pukalani.app | 281 KB | 27 KB | fast alles (`marketing`), ~6 KB Konto-Texte nicht |
+| Hilfe | 291 KB | — (eigener Weg) | — |
+| pukalani.studio | 245 KB | 27 KB | wie Landing |
+| branding.supply | 381 KB | 102 KB | ~3 KB (Server-Messung, s. u.) |
+| Community (Demo) | 408 KB | 54 KB | Dashboard/Onboarding ~27 KB nicht |
+
+Q22 hatte 280/290/245 KB für Landing/Hilfe/Studio gemessen — unverändert.
+
+**Gebaut (je mehr als 10 % der Startseite):**
+
+- **branding.supply: „Neue Marke" aus der Kopfzeile lädt erst beim ersten
+  Klick.** `BwSiteNav` (jede Seite) importierte das Fenster und
+  `useBrandCreate()` fest; beide hängen über `brandJourney` am ganzen
+  Fragen-Katalog des Wizards. Jetzt eigener Baustein `BwSiteNavNewBrand`,
+  eingebunden als `<LazyBwSiteNavNewBrand v-if>`. Verhalten unverändert.
+- **Community: der Kommentar-Block der Startseite lädt nur, wo er steht.**
+  `CommentSection` (Formular, Realtime, zod) war fest eingebunden, gebraucht
+  nur mit `[[comments]]` im Text der Startseite. Jetzt `LazyCommentSection`;
+  dort, wo der Block steht, rendert der Server ihn wie bisher.
+
+| Site (lokal, Production-Build) | vorher | nachher | Grenze |
+| --- | --- | --- | --- |
+| branding.supply | 383 KB | 305 KB (−20 %) | 320 KB (neu) |
+| Community-Startseite | 376 KB | 313 KB (−17 %) | 329 KB (neu) |
+| pukalani.app, Hilfe, Studio | 281 / 286 / 245 KB | unverändert | 295 / 300 / 258 KB |
+
+**Gelassen, mit Zahl.**
+
+- **Textkatalog nach Bereich schneiden.** Würde auf branding.supply rund
+  99 KB sparen (Katalog 102 KB, die Startseite braucht beim Server-Rendern
+  ~3 KB), auf der Community ~27 KB, auf Landing und Studio ~6 KB. Versucht
+  mit dem eingebauten Weg des i18n-Moduls (`experimental.preload`, legt nur
+  die beim Rendern benutzten Texte in die Seite): in @nuxtjs/i18n 10.6 holt
+  der Browser den vollen Katalog TROTZDEM vor der Hydration, die Seite wird
+  nur 2 KB schwerer — zurückgenommen. Ein eigener Lader (Katalog je Bereich,
+  Nachladen beim Wechsel ins Dashboard) wäre ein Umbau der Text-Ladung im
+  Core mit dem Risiko fehlender Texte; offen als TK1.
+- **Landing, Hilfe, Studio: kein Baustein über 10 %.** Jeder Zweig, der dort
+  mehr als 4 % ausmacht, hängt direkt am Einstieg von Nuxt (Vue, Router,
+  i18n, Nuxt UI) und wird auf jeder Seite gebraucht.
+- Die Konto-Startseite (`AccountHome`) auf derselben Seite der Community
+  wiegt unter 4 % — bleibt fest.
+
+**Beweis.** Gewichts-Wächter mit den neuen Grenzen
+(`scripts/lib/page-weight-budgets.mjs`), Probelauf wie im Ausliefern:
+frischer Build-Ordner, `CI=true`, Build landet wie in der CI unter `.nuxt/`,
+dann `node scripts/check-page-weight.mjs --app <app>`. Gegenprobe: mit dem
+alten `BwSiteNav` 381 KB > 320 KB, Exit 1. Wächter im Pull Request:
+`packages/brand/tests/siteNavLazyGuard.test.ts`,
+`apps/platform/tests/homeCommentsLazy.test.ts` (je mit Gegenprobe);
+Render-Test `packages/brand/tests/render/siteNavNewBrand.test.ts` (geöffnet
+steht das Fenster, geschlossen nicht). Browser: gebaute Startseite von
+branding.supply ohne Konsolen-Fehler, hydriert, keine rohen Schlüssel.
+
+**Gelernt:** Der schwerste Teil einer Startseite war kein Paket, sondern ein
+FESTER Import in einem Baustein, der überall steht — die Kopfzeile zog über
+eine Hilfsfunktion den Katalog eines ganz anderen Bereichs. Gefunden hat ihn
+nur die Frage „was fällt weg, wenn dieser eine Zweig fehlt?" über das
+Client-Manifest; die Namen der Teile sind Hashes und verraten nichts. Und:
+eine Modul-Option, die nach genau der Lösung klingt (`preload`), erst im
+gebauten Browser messen — sie tat hier etwas anderes.
+
+### SU1 (b–f) — Such-Reste: strukturierte Daten für Diskussion, Kurs und Termin; eine maßgebliche Adresse je Marke der Galerie; kürzere Titel; `/insights` nur mit Beitrag (SEO-003, SEO-004, SEO-008, je der offene Teil) ✅ 2026-11-21
+
+**Was.**
+
+- **Strukturierte Daten (SEO-003, zweiter Schritt).** Diskussion
+  (`DiscussionForumPosting`), Kurs (`Course`) und Termin (`Event`) tragen je
+  einen JSON-LD-Block. WAS drinsteht, baut der Produkt-Layer als pure Funktion
+  (`posts/shared/topicStructuredData.ts`, `courses/shared/courseStructuredData.ts`,
+  `events/shared/eventStructuredData.ts`): nur, was die Seite öffentlich zeigt —
+  Titel, Anfang des Textes, angezeigter Name, Datum, beim Termin Ort und
+  Anschrift wie sie dastehen, abgesagt oder nicht. Nie: Mail-Adresse,
+  Konto-Id, Handle, Teilnahme-Link eines Online-Termins (dort steht als Ort
+  die Seite selbst), Lektionen, Teilnehmende. WANN entscheidet EINE Stelle im
+  Core (`useCommunityStructuredData`, Regel `core/shared/communityStructuredData.ts`):
+  keine Daten in einer Community „nur für Mitglieder" und keine mit `noindex`
+  — dieselben zwei Gründe, aus denen der Kopf `noindex` setzt. Entwürfe,
+  Ausgeblendetes und Gelöschtes erreichen die Seiten nicht (404), ein
+  geschwärzter Termin und ein Beitrag ohne Text tragen nichts. Die Adresse in
+  den Daten ist `canonical` (Hauptsprache, `useCommunityContentUrl`).
+  Dazu `og:site_name` (Name der Community) und `og:type` auf der Platform.
+- **Themen ohne Titel bleiben aus der Sitemap (entschieden).** Ihr `<title>`
+  ist das allgemeine Wort „Diskussionen": in der Suche wären es viele gleich
+  benannte Einträge. Gefunden werden sie über die Kategorie-Seite, die in der
+  Sitemap steht. Neu draußen: ein Titel ohne Buchstaben (nur Zeichen wie
+  Emojis) — sein Adress-Name kommt aus dem Text, die Sitemap nannte bisher
+  eine Adresse, die per 301 umleitete.
+- **Marken-Galerie (SEO-004).** Maßgeblich ist die Sprache der Marke — das
+  Feld `locale` der Veröffentlichung, das die Seite schon als „Sprache" zeigt
+  (keine neue Spalte). `canonical` beider Sprach-Adressen zeigt dorthin, die
+  Sitemap nennt nur diese Adresse; ohne bekannte Sprache die Grundsprache.
+- **Titel auf branding.supply (SEO-008).** Startseite 102/113 → 54/58
+  Zeichen, About 95/101 → 54/49; die Beschreibungen beider Seiten von
+  178–233 auf 148–151 Zeichen.
+- **`/insights` (SEO-008).** Ohne einen öffentlichen Beitrag: nicht in der
+  Sitemap und `noindex, follow` (ein Lesefehler zählt nicht als leer). Der
+  Satz über das Zählwerkzeug ist weg, „Meistgelesen" steht nicht mehr
+  gesperrt in der Leiste, sondern gar nicht, bis es eine Zählung gibt.
+- **Regel-Datei** `i18n-seo.md` nennt den Vertrag (SU1 f).
+
+**Bewusst nicht.** Der Menüpunkt „Brand Insights" bleibt auch ohne Beitrag:
+ihn nach Datenlage auszublenden bräuchte einen neuen Vertrag in der
+Core-Navigation; die Seite selbst ist jetzt ehrlich und aus der Suche. Die
+Beschreibungen auf pukalani.studio (live 185–257 Zeichen auf Startseite,
+UX-Audit, Nuxt-Seite und zwei Wissens-Artikeln) bleiben — der Befund nennt
+dort keine Titel, und es ist Verkaufstext in der Studio-Stimme; Suchmaschinen
+kürzen ihn nur. Die Sprach-Berichtigung bleibt 302 (Q10).
+
+**Beweis.** `apps/platform/scripts/verify-community-search-pages.mjs` (jetzt
+68 Prüfungen, Bühne, jeder Pull Request): je Seitenart genau ein gültiger
+Block mit Titel, Text bzw. Beschreibung, Autor, Datum, Adresse = `canonical`;
+keine Mail-Adresse und keine Konto-Kennung; Gegenproben: Kurs- und
+Termin-Entwurf (404, keine Daten), die Übersicht, und dieselbe Community auf
+„nur für Mitglieder" gestellt (Seite für den Owner da, `noindex`, keine
+Daten). Gegenprobe der Gegenprobe: mit ausgeschaltetem Tor ist genau diese
+Prüfung rot. Unit-Tests je Layer (`*StructuredData.test.ts`),
+`apps/platform/tests/tenantSitemap.test.ts`,
+`apps/branding/tests/productGateRoutes.test.ts` (Sprache der Marke,
+Journal ohne Beitrag).
+
+**Gelernt:** Eine Gegenprobe, die einen Schalter der Community umlegt, muss
+ihn SELBST zurückstellen und warten, bis es angekommen ist — der
+Mandanten-Kontext wird bis zu 30 s gehalten. Das Zurückstellen im `finally`
+allein reichte nicht: der nächste Lauf direkt danach sah noch „nur für
+Mitglieder" und wurde an Stellen rot, die mit der Änderung nichts zu tun
+hatten.
+
 ### Sammelpaket kleine Reste (Bahn 3, Paket 1) ✅ 2026-11-21
 
 **Was.**
@@ -104,6 +241,86 @@ ihr Cache bleiben gültig.
 
 **Nicht geprüft:** das deutsche Bild live (erst nach dem Ausliefern).
 
+
+### Bahn 4 / Paket 3 — Nachgesehen im Browser: Abrechnung, Plan, Betreiber-Seiten, Insights-Rückfragen, KI-Schalter, Einladungs-Anfragen ✅ 2026-11-21
+
+**Was.** Was in Q14 und Bahn 2 nur durch Lint und Tests belegt war, lokal mit
+Test-Konten angesehen (Bühne: Owner und Mitglied; Betreiber-Konsole mit einem
+Wegwerf-Betreiber-Konto; branding.supply mit Probe-Konto als Betreiber).
+Fehler-Zustände über einen im Browser mit 500 beantworteten Abruf und
+clientseitigen Seitenwechsel.
+
+- **Konto-Abrechnung** (`/settings/billing`, Kontroll-Host): Liste der eigenen
+  Communities mit Plan und Zustand; bei Fehler „Konnte nicht geladen werden"
+  mit Neuversuch, danach wieder die Liste.
+- **Plan-Seite** (`/dashboard/community/plan`): bei gestörtem Abo-Abruf „Abo-
+  Stand nicht geladen" mit Neuversuch, „Plan wählen" ist solange weg;
+  danach normal.
+- **Betreiber: Einladungscodes und Abos** — Fehler, Neuversuch, Daten
+  stimmen. Gefunden und behoben: die Kopfzeile der Abo-Liste zeigte bei einem
+  Fehler „Abos (0)"; dasselbe Muster stand in der Nutzer-Liste und bei den
+  Kommentaren (3 Stellen). Die Zahl steht jetzt nur mit Daten.
+- **Drei Rückfragen in Insights** (Kanal entfernen, Fund wegnehmen, Brief
+  erzeugen): Dialog der Seite erscheint mit klarem Text, „Abbrechen" schließt
+  ohne Abruf, nichts geändert. „Brief erzeugen" über eine gestellte Liste
+  (der einzige lokale Fund hat schon einen Brief), ohne KI-Lauf.
+- **Schalter „KI-Training"**: an ⇒ `robots.txt` der Probe-Community sagt
+  „AI training: allowed" und `Allow: /` für die Trainings-Crawler; aus ⇒
+  wieder `Disallow: /`. Wirkt nach höchstens rund 30 s (Cache des Mandanten).
+  Zurückgeschaltet.
+- **Einladungs-Anfragen**: die Seite las das Feld `incomplete` nicht.
+  Ergänzt: Hinweis „Angaben unvollständig" (de/en) mit dem, was fehlt; im
+  Browser mit gestellter Antwort belegt, „Erinnern" ist bei der Anfrage
+  gesperrt.
+
+**Nicht geprüft:** kein echter Stripe-Weg (Kauf, Portal), kein
+Vorleseprogramm; die Roadmap-Seite antwortet lokal 403, weil der
+Kontroll-Dienst die Bühnen-Community nicht kennt.
+
+**Gelernt:** Eine Prüfung „steht der Crawler-Name noch drin?" ist bei
+`robots.txt` falsch — der Name bleibt, nur die Regel darunter wechselt
+zwischen `Allow` und `Disallow`; und der Mandant ist bis zu 30 s
+zwischengespeichert, eine Prüfung direkt nach dem Klick sieht den alten
+Stand. Erst die Regel lesen, dann nach Ablauf des Caches messen.
+
+### TY1 Nachtrag — Rundung im Browser geprüft, CSS auf Stufen, Wächter liest CSS (UI-007) ✅ 2026-11-21
+
+**Was.**
+
+- **Im Browser angesehen** (lokal, 1440 und 375 px, Test-Konto in der lokalen
+  Appwrite; vorher = alter Pixelwert als Inline-Stil daneben): Neue Marke
+  (28 → 24 px), Foundation (Kapitel 26 → 24), Dokument und Markt (Seitentitel
+  26 → 24), Marketing-Kopf (15,2 → 14 px), Preis-Karten (25,6 → 24 px).
+  Ergebnis: keine Stelle sieht schlechter aus, die Rangfolge der Überschriften
+  bleibt überall (Seitentitel 24 über Abschnitt 20; Foundation 36 über
+  Kapitel 24 über Block 20), kein Umbruch ändert sich. Die gerundeten 26 und
+  28 px waren eine Rolle („Seiten- und Dialogtitel") mit zwei Werten; jetzt
+  ist es einer. Nichts zurückgestellt.
+- **CSS auf Stufen:** 60 `font-size` in `<style>`-Blöcken und CSS-Dateien
+  heißen jetzt `var(--text-…)` (Tailwind legt die Stufen als Variablen an; im
+  Browser in marketing, branding, portfolio und photos nachgemessen: jede
+  Variable ist definiert, jedes Element hat genau die Stufe). Marketing und
+  Brand nach der nächsten Stufe (höchstens 0,8 px Abstand), Studio-Site und
+  Photos nur, wo sich höchstens 0,25 px ändern.
+- **Wächter** `fontSizeGuard.test.ts` liest jetzt auch CSS (`px` und `rem`;
+  `em` und `clamp()` bleiben frei), Ausnahmen je Datei mit Grund:
+  Mikro-Beschriftungen unter 12 px, die gestaltete Vorschau-Szene und die
+  Probe des bewegten Zeichens, der Gesprächstext der Werkstatt (bis Bahn 6
+  steht), Studio-Site und Photos mit eigener Skala. Gegenprobe an einer
+  echten Datei.
+- **Nicht angesehen:** die Gestaltungstafel (40 → 36 px Wortmarke) und die
+  Schriftprobe (22 → 20 px) — sie erscheinen erst, wenn alle Design-Kapitel
+  abgenommen sind; dafür hätte die Probe-Marke den ganzen Design-Weg
+  gebraucht. Dialoge „Neue Marke" und Schritt-Info (28 → 24) nur über
+  dieselbe Klasse wie die Seite geprüft.
+
+**Gelernt:** Eine CSS-Variable, die es nicht gibt, macht keinen Fehler — die
+Schrift fällt still auf die Größe des Elternteils. Wer `font-size` auf
+`var(--text-…)` umstellt, misst deshalb im Browser nach, ob die Variable in
+DIESER App definiert ist (ein Lauf über `document.styleSheets` vergleicht
+jede Regel mit ihrem Element). Und ein Vorher-Foto braucht keinen alten
+Commit: den alten Pixelwert als Inline-Stil auf dieselben Elemente setzen
+zeigt beide Fassungen auf derselben Seite mit denselben Daten.
 
 ### TY1 — Schriftgrößen als Stufen statt von Hand (UI-007) ✅ 2026-11-21
 
@@ -138,6 +355,52 @@ führt sie als Ausnahme statt sie hochzurunden. Und `font-size` in CSS-Dateien
 schlägt Klassen aus dem Utility-Layer — ein Inline-Stil kann deshalb ein
 gewollter Überschreiber sein und gehört nicht blind in eine Klasse. Im Browser
 angesehen nur: Marketing (1440 und 375 px); Brand-Seiten nicht.
+
+### LZ1 Nachtrag — Stichprobe im Browser, Sackgassen, ein Lade-Zeichen, Listen-Gründe (FE-004, UX-012, UI-008, UI-009) ✅ 2026-11-21
+
+**Was.**
+
+- **Stichprobe im Browser** (lokal: Bühne mit Owner-, Mitglieds- und
+  Betreiber-Konto, branding.supply mit Probe-Konto; Abruf im Browser mit 500
+  beantwortet, dann „Noch einmal versuchen"): je Schub vier Seiten — Beiträge,
+  Kategorien, Termine, Kurse; Nachrichten-Einstellung, gemeldete Nachrichten,
+  Roadmap, Weiterleitungen; Produkte, Speicher, Insights-Marken,
+  Freischaltungen; Marken entdecken, Ranking, Insights, Brand-Scores. Fehler,
+  Neuversuch und danach „leer" oder Daten stimmen überall bis auf:
+  - **Fehlerzweig im Daten-Zweig** (2 Seiten: Insights-Kanäle und -Funde):
+    `<CoreLoadError>` stand in `v-else-if="rows.length > 0"` — ohne Daten
+    ist die Liste leer, die Seite sagte „leer" statt „Fehler". Zweig vor den
+    Leer-Zustand gezogen; neuer Wächter `loadErrorBranchGuard.test.ts` (mit
+    Gegenprobe) hält das für alle Seiten fest.
+  - **Zähler im Fehlerfall** (3 Seiten: Ranking, Marken entdecken,
+    Insights-Marken): „0 Präsenzen" / „Alle 0" neben der Fehlermeldung —
+    ausgeblendet, solange ohne Daten ein Fehler steht.
+  - Roadmap blieb nach dem Neuversuch rot — kein Muster-Fehler: der echte
+    Abruf antwortet lokal 403, weil der Kontroll-Dienst die Bühnen-Community
+    nicht kennt.
+- **(e) Sackgassen UX-012:** Nachrichten aus — wer sie einschalten darf
+  (`messages.manage`), liest „Du kannst sie … einschalten" mit Knopf zur
+  Einstellung, „Neue Nachricht" ist ausgeblendet; Dashboard eines Mitglieds
+  ohne Team-Rolle zeigt einen Leer-Zustand mit Weg in die Seitenleiste und
+  Knopf zu den Einstellungen (der admin-Layer kennt die Bereiche nicht
+  einzeln, daher kein Link dorthin); der Startseiten-Satz einer NEUEN
+  Community spricht den Besucher an („Hier entsteht gerade …"). Bestehende
+  Startseiten bleiben, wie ihr Owner sie hat.
+- **(f) UI-008:** 24 Seiten-Ladezeichen sind `CoreLoadingState`, 6 kleine
+  Zeichen nehmen den offenen Kreis aus `icons.loading`; `i-ph-spinner` ist
+  weg, ein Wächter hält es fest.
+- **(g) UI-009:** alle vier Stellen tragen den Grund mit „B6" (Rang-Mini-
+  Listen, fester Preiskatalog, Gegenüberstellung zweier Messungen,
+  Plan-Matrix mit Zwischenüberschriften) — keine ist ein Datenbestand.
+- **Rest-Liste:** 59 → 56 Dateien (Insights-Rankings und -Themen,
+  Brand-Scores; dort hielt ein `catch` jeden Fehler für „leer"). Die übrigen
+  Begründungen im Kopf von `listStateBacklog.ts` gelesen; sie stimmen.
+
+**Gelernt:** Ein Wächter, der zählt, ob `error` gelesen wird, sieht nicht,
+WO der Fehlerzweig steht — „gelesen, aber nie gezeigt" fand erst der
+blockierte Abruf im Browser. Die Prüfung im Browser braucht keinen
+Fremddienst: `window.fetch` für EINE Adresse mit 500 beantworten und
+clientseitig navigieren zeigt Fehler, Neuversuch und Erholung in einem Lauf.
 
 ### LZ1 — Listen-Zustände: Rest-Liste nach Q14 von 110 auf 59 Dateien (FE-004, UI-005) ✅ 2026-11-21
 
@@ -312,6 +575,19 @@ acht echten Fälle hatten dieselbe Form: aus „nicht gelesen" wurde „leer", u
 danach wurde auf Grund von „leer" gelöscht (Rückverweise), gezählt (Breite),
 verkauft (zweites Abo) oder „gut" gemeldet (Takt). Beim Durchsehen eines
 `.catch` deshalb zuerst fragen: was tut der Code DANACH mit dem Ersatzwert?
+
+### Klick-Liste für Davids Runde (Bahn 3, Paket 2) ✅ 2026-11-21
+
+`docs/plans/offen/KR1.md` ist eine durchnummerierte Liste mit Adresse, Konto
+(Rolle), Klicks, Erwartung und Gegenmaßnahme je Probe, nach Anmeldung in Blöcke
+sortiert (Gast, Wegwerf-Konto, Owner, Betreiber), dazu der Block „Neu seit den
+Paketen" mit zwölf Proben. Wortlaute stammen aus den Sprachdateien; was nicht
+am Bildschirm gesehen wurde, trägt „Wortlaut kann abweichen".
+
+**Gelernt:** eine Klick-Liste nach Konto statt nach Eintrag zu ordnen spart die
+Wechsel der Anmeldung; die Kürzel bleiben als Verweis an jeder Probe.
+
+**Nicht geprüft:** keine Probe wurde auf den echten Seiten ausgeführt.
 
 ### Q21 — Render-Test und erster Schnitt der Werkstatt (ARC-001) ✅ 2026-11-21
 

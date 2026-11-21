@@ -16,20 +16,6 @@ Konto-Seiten, Kundenbereich und Betreiber-Oberfläche.
   Sprach-Vorsatz. Eine deutschsprachige Community stellt unter
   Dashboard → Community → „Name und Beschreibung" auf „Deutsch". Für die
   Demo-Community ist das ein Klick des Owners.
-- **(b) Strukturierte Daten.** `DiscussionForumPosting`, `Course` und `Event`
-  auf den drei Seitenarten, dazu `og:site_name` und `og:type`. Im Befund als
-  zweiter Schritt genannt.
-- **(c) Themen ohne Titel** fehlen in der Sitemap: ihr Adress-Name entsteht
-  aus dem Text des Beitrags, den die Liste bewusst nicht lädt. Lösbar, wenn
-  der Adress-Name einmal mit dem Beitrag gespeichert wird.
-- **(d) Marken-Galerie von branding.supply.** Die Profil-Seiten haben
-  dieselbe Frage (ein Text, zwei Sprach-Adressen) und noch keine Hauptsprache.
-  Der Baustein steht (`useSeoCanonicalLocale` im Core); es fehlt die
-  Entscheidung, woher die Sprache einer Marke kommt.
-- **(e) Aus dem Sammelbefund offen.** Titel- und Beschreibungs-Längen auf
-  branding.supply und pukalani.studio (hängt am Wortlaut), `/insights` ohne
-  Beiträge in Menü und Sitemap. Die Sprach-Berichtigung bleibt bewusst 302.
-- **(f) Regel-Datei.** Der neue Vertrag (`useCommunityContentSeo`,
-  `pukalani.seo.indexOnly`, `seoNoindex`) steht noch nicht in
-  `.claude/rules/i18n-seo.md` — die Datei war am Tag des Baus in Arbeit einer
-  anderen Sitzung.
+Erledigt am 2026-11-21 (COMPLETE „SU1 (b–f)"): strukturierte Daten,
+Themen ohne Titel (bleiben bewusst draußen), Marken-Galerie, Titel und
+`/insights`, Regel-Datei. Offen ist nur noch (a).

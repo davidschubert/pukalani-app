@@ -394,7 +394,8 @@ async function createUser() {
 <template>
   <UDashboardPanel id="users">
     <template #header>
-      <UDashboardNavbar :title="`${t(`admin.users.filter.${filter ?? 'all'}`)} (${data?.total ?? 0})`">
+      <!-- Die Zahl nur mit Daten: „(0)" neben einem Abruffehler wäre falsch. -->
+      <UDashboardNavbar :title="data ? `${t(`admin.users.filter.${filter ?? 'all'}`)} (${data.total})` : t(`admin.users.filter.${filter ?? 'all'}`)">
         <template #leading>
           <CoreSidebarCollapse />
         </template>
@@ -421,7 +422,7 @@ async function createUser() {
 
       <ClientOnly>
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
       <div v-if="selected.size > 0" class="mb-3 flex flex-wrap items-center gap-2" data-users-bulkbar>
         <UBadge color="neutral" variant="subtle">{{ t('admin.users.bulk.count', { count: selected.size }) }}</UBadge>

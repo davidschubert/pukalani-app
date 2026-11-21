@@ -188,6 +188,20 @@ const { data: analytics, refresh: refreshAnalytics } = await useFetch<AdminAnaly
   server: chartHere,
 })
 
+/**
+ * Ein Mitglied ohne Team-Rolle sieht keine Kachel, keinen Verlauf, nichts zu
+ * moderieren — die Seite war bis auf die Begrüßung leer (UX-012). Dann sagt
+ * sie, wo es weitergeht: die Bereiche stehen in der Seitenleiste (die kennt
+ * dieser Layer nicht einzeln), das eigene Konto in den Einstellungen.
+ */
+const memberOnly = computed(() =>
+  !cards.value.length
+  && !(chartHere && analytics.value)
+  && !canModerateComments.value
+  && !canReadAudit.value
+  && !canManageStorage.value
+  && !notices.value.length)
+
 // --- Online-Presence (live) ---------------------------------------------------
 // NICHT auf dem Kontroll-Host (Davids Entscheidung 2026-09-08, S3-Nachlese):
 // dort gibt es keine Community, also nichts zu zählen — die Presence-Routen
@@ -389,6 +403,17 @@ onScopeDispose(() => {
             </component>
           </UCard>
         </div>
+
+        <CoreEmptyState
+          v-if="memberOnly"
+          icon="i-ph-compass"
+          :title="t('admin.overview.memberTitle')"
+          :description="t('admin.overview.memberHint')"
+          :action-label="t('admin.overview.memberAction')"
+          action-icon="i-ph-gear-six"
+          :action-to="localePath('/dashboard/settings')"
+          data-member-overview
+        />
 
         <!-- Chart — nur wo seine Nutzer-Achse die Site meint (s. `chartHere`) -->
         <UCard v-if="chartHere && analytics">

@@ -173,25 +173,25 @@ useMarketingSeo({
   padding-left: 1.1rem;
 }
 .vs-quote blockquote {
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   line-height: 1.6;
   font-style: italic;
   color: hsl(var(--puka-ink));
 }
 .vs-quote figcaption {
   margin-top: 0.55rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-ink-soft) / 0.85);
 }
 .vs-quote cite { font-style: normal; }
 .vs-fact {
   margin-top: 1.1rem;
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: hsl(var(--puka-ink-soft));
 }
 .vs-source {
   margin-top: 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-ink-soft) / 0.8);
 }
 </style>

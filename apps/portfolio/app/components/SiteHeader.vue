@@ -111,7 +111,7 @@ const links = computed(() => [
   gap: clamp(0.9rem, 2.2vw, 1.8rem);
 }
 .header__link {
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -132,7 +132,7 @@ const links = computed(() => [
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   white-space: nowrap;

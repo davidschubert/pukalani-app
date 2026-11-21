@@ -49,7 +49,10 @@ beforeEach(() => {
   })
   vi.stubGlobal('listPublishedBrandPublications', async () => {
     reads.push('publications')
-    return [{ slug: 'acme', updatedAt: '2026-11-01T00:00:00.000Z', publishedAt: '' }]
+    return [
+      { slug: 'acme', updatedAt: '2026-11-01T00:00:00.000Z', publishedAt: '' },
+      { slug: 'kaffee', locale: 'de', updatedAt: '2026-11-01T00:00:00.000Z', publishedAt: '' },
+    ]
   })
   vi.stubGlobal('findPublicInsightsPost', async () => {
     reads.push('insights-post')
@@ -128,12 +131,35 @@ describe('Sitemap', () => {
     expect(xml).toContain('https://example.test/insights/story')
   })
 
+  it('nennt je Marke NUR die Adresse in ihrer Sprache (SU1, dieselbe wie canonical)', async () => {
+    enabled.add('brand')
+    const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
+    // deutsche Marke: nur /de/…
+    expect(xml).toContain('<loc>https://example.test/de/discover/kaffee</loc>')
+    expect(xml).not.toContain('<loc>https://example.test/discover/kaffee</loc>')
+    // Gegenprobe: Marke ohne Sprache ⇒ nur die Grundsprache (EN)
+    expect(xml).toContain('<loc>https://example.test/discover/acme</loc>')
+    expect(xml).not.toContain('<loc>https://example.test/de/discover/acme</loc>')
+  })
+
   it('führt die zwei festen Übersichten, solange beide Produkte an sind (Gegenprobe zu WL1 d)', async () => {
     enabled.add('brand')
     enabled.add('insights')
     const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
     expect(xml).toContain('<loc>https://example.test/discover</loc>')
     expect(xml).toContain('<loc>https://example.test/insights</loc>')
+  })
+
+  it('lässt das Journal weg, solange es keinen öffentlichen Beitrag gibt (SU1; die Ranking-Übersicht zählt nicht)', async () => {
+    enabled.add('brand')
+    enabled.add('insights')
+    vi.stubGlobal('listInsightsSitemapEntries', async () => [{ path: '/rankings', lastmod: '', locales: ['en', 'de'] }])
+    const xml = String(await (await load('../server/routes/sitemap.xml.get'))({}))
+    expect(xml).not.toContain('<loc>https://example.test/insights</loc>')
+    expect(xml).not.toContain('<loc>https://example.test/de/insights</loc>')
+    expect(xml).toContain('<loc>https://example.test/rankings</loc>')
+    // die Galerie-Übersicht bleibt (sie hängt nicht an Beiträgen)
+    expect(xml).toContain('<loc>https://example.test/discover</loc>')
   })
 
   it('bleibt bei den festen Seiten und liest nichts, wenn `brand` abgeschaltet ist', async () => {

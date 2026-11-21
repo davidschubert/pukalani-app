@@ -219,7 +219,7 @@
    Signature-Element für Zahlen: Prozent, Zähler, später Scores. */
 /* Etiketten (Runde 11, David): Geist Mono, 12px / 18px — Leisten-
    Überschriften, Eyebrows, Zustands-Badges. */
-.bw-label { font-family: var(--bw-font-mono); font-size: 12px; line-height: 18px; }
+.bw-label { font-family: var(--bw-font-mono); font-size: var(--text-xs); line-height: 18px; }
 
 .bw-num { font-family: var(--bw-font-pixel); font-weight: 700; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
 .bw-pop-chip {
@@ -351,12 +351,12 @@
 
 /* Noch-nicht-Texte (Davids Regel, Runde 30): Platzhalter/Wartetexte
    hellgrau in Geist Mono (12px/18px) — fertiger Inhalt steht schwarz in der Sans. Kursiv ausprobiert und verworfen (Runde 31). */
-.bw-pending { color: var(--bw-muted); font-family: var(--bw-font-mono); font-size: 12px; line-height: 18px; }
+.bw-pending { color: var(--bw-muted); font-family: var(--bw-font-mono); font-size: var(--text-xs); line-height: 18px; }
 
 /* Zustands-Kennzeichen (nie nur Farbe: Icon + Text) */
 .bw-state {
   display: inline-flex; align-items: center; gap: 0.35rem;
-  font-family: var(--bw-font-mono); font-size: 12px; line-height: 18px;
+  font-family: var(--bw-font-mono); font-size: var(--text-xs); line-height: 18px;
   letter-spacing: 0.04em; text-transform: uppercase;
   padding: 0.15rem 0.55rem; border-radius: 999px; background: var(--bw-line);
   color: var(--bw-muted);
@@ -401,7 +401,7 @@
 .bw-confirm {
   display: inline-flex; align-items: center; gap: 0.4rem;
   border-radius: 999px; padding: 0.3rem 0.85rem;
-  font-size: 0.875rem; line-height: 1.25rem; cursor: pointer;
+  font-size: var(--text-sm); line-height: 1.25rem; cursor: pointer;
   background: transparent; color: var(--bw-draft);
   box-shadow: inset 0 0 0 1px var(--bw-draft);
   transition: background 120ms, color 120ms;
@@ -409,7 +409,7 @@
 .bw-confirm:hover:not(:disabled) { background: var(--bw-draft-soft); }
 /* Runde 36 (David): kompakte Fassung für die Log-Karten im Stand — gleiche
    Größe wie der Korrigieren-Knopf (UButton xs). */
-.bw-confirm--xs { padding: 0.15rem 0.65rem; font-size: 0.75rem; line-height: 1rem; gap: 0.3rem; }
+.bw-confirm--xs { padding: 0.15rem 0.65rem; font-size: var(--text-xs); line-height: 1rem; gap: 0.3rem; }
 /* Runde 37b (David): der Korrigieren-Knopf in EXAKT der Bestätigen-Größe —
    gleiche bw-confirm-Metrik, nur neutral statt bernstein und ohne Ring. */
 .bw-confirm--ghost { color: var(--bw-ink-soft); box-shadow: none; }
@@ -495,7 +495,7 @@
 .bw-msg-mark {
   flex: none; width: 2rem; height: 2rem; border-radius: 999px;
   color: var(--bw-ink); background: var(--bw-pop);
-  display: grid; place-items: center; font-size: 1.25rem; font-weight: 600;
+  display: grid; place-items: center; font-size: var(--text-xl); font-weight: 600;
 }
 .bw-msg--user { justify-content: flex-end; }
 .bw-msg--user .bw-msg-body {
@@ -503,7 +503,7 @@
   padding: 0.45rem 0.7rem; max-width: 85%;
 }
 .bw-msg-body { font-size: 0.925rem; line-height: 1.55; color: var(--bw-ink); max-width: 38rem; }
-.bw-msg-help { font-family: var(--bw-font-mono); font-size: 12px; line-height: 18px; color: var(--bw-muted); margin-top: 0.9rem; }
+.bw-msg-help { font-family: var(--bw-font-mono); font-size: var(--text-xs); line-height: 18px; color: var(--bw-muted); margin-top: 0.9rem; }
 /* George schreibt: ein Cursor am Textende. Er blinkt nur, wo Bewegung erwünscht
    ist — `prefers-reduced-motion` bekommt denselben Cursor, nur still. */
 .bw-caret { color: var(--bw-muted); margin-left: 0.1rem; animation: bw-caret-blink 1.1s steps(1) infinite; }
@@ -513,7 +513,7 @@
 /* Chips: Empfehlung-zuerst, Tastatur-Fokus sichtbar */
 .bw-chip {
   border: 1px solid transparent; border-radius: 999px;
-  padding: 0.5rem 1rem; font-size: 0.875rem; background: var(--bw-surface-hi);
+  padding: 0.5rem 1rem; font-size: var(--text-sm); background: var(--bw-surface-hi);
   box-shadow: var(--bw-shadow-card);
   cursor: pointer; transition: background 120ms, color 120ms;
   color: var(--bw-ink);
@@ -548,7 +548,7 @@
    übrige Körper — die Zeilenumbrüche bleiben stehen, damit Listen und
    beschriftete Blöcke ihre Form behalten. */
 .bw-doc-text {
-  font-size: 1rem; line-height: 1.65; color: var(--bw-ink);
+  font-size: var(--text-base); line-height: 1.65; color: var(--bw-ink);
   max-width: 42rem;
 }
 

@@ -97,7 +97,7 @@ const strands = computed(() =>
   box-shadow: 0 8px 22px -12px hsl(var(--puka-sun-deep) / 0.7);
 }
 .strand-title {
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   font-weight: 800;
   margin-bottom: 0.3rem;
   color: hsl(var(--puka-ink));
@@ -110,7 +110,7 @@ const strands = computed(() =>
    Abstand zu ihm. */
 .story-outro {
   margin-top: 1.75rem;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   line-height: 1.65;
   font-style: italic;
   color: hsl(var(--puka-ink) / 0.82);

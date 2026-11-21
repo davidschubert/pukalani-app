@@ -713,7 +713,7 @@ async function deletePage() {
                gescheitert oder abgebrochen. Ein Satz, kein Fehler-Toast. -->
           <UAlert
             v-if="translateRun.state === 'running'"
-            icon="i-ph-spinner-gap"
+            icon="i-ph-circle-notch"
             color="neutral"
             variant="subtle"
             :title="t('pages.admin.translateRunning', { language: languageName(translateRun.locale || activeLocale) })"

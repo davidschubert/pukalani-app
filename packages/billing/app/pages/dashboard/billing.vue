@@ -86,7 +86,8 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
 <template>
   <UDashboardPanel id="billing-admin">
     <template #header>
-      <UDashboardNavbar :title="`${t('billing.admin.title')} (${data?.total ?? 0})`">
+      <!-- Die Zahl nur mit Daten: „(0)" neben einem Abruffehler wäre falsch. -->
+      <UDashboardNavbar :title="data ? `${t('billing.admin.title')} (${data.total})` : t('billing.admin.title')">
         <template #leading>
           <CoreSidebarCollapse />
         </template>
@@ -96,7 +97,7 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
     <template #body>
       <ClientOnly>
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
 
         <UAlert

@@ -102,7 +102,12 @@ if (!isControlCenter) {
     <article v-if="page" class="mx-auto max-w-3xl space-y-4">
       <h1 class="text-2xl font-bold tracking-tight">{{ page.title }}</h1>
       <MarkdownContent :source="parts.markdown" />
-      <CommentSection
+      <!-- BEI BEDARF (PERF-006, Bahn 5): der Kommentar-Block steht nur auf
+           Startseiten mit `[[comments]]`. Fest eingebunden zog er Formular,
+           Realtime und zod in JEDE Community-Startseite (64 KB gepackt, 17 %
+           ihrer Skripte). Als Lazy-Baustein lädt Nuxt ihn nur, wo er gerendert
+           wird — dort auch schon beim Server-Rendern, die Seite bleibt gleich. -->
+      <LazyCommentSection
         v-if="parts.showComments"
         target-id="home"
         target-type="page"

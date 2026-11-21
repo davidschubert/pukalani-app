@@ -398,7 +398,8 @@ const startTarget = computed(() =>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-          <span class="bw-label" style="color: var(--bw-muted)" data-discover-total>
+          <!-- Ohne Daten ist „0 Marken" falsch: der Abruf fehlte, nicht die Marken. -->
+          <span v-if="!(error && !items.length)" class="bw-label" style="color: var(--bw-muted)" data-discover-total>
             {{ t('brand.discover.total', { count: total }, total) }}
           </span>
           <UButton
