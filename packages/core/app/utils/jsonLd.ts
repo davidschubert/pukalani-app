@@ -1,5 +1,7 @@
 /**
- * Structured Data als `<script type="application/ld+json">`.
+ * Structured Data als `<script type="application/ld+json">` — die EINE Hilfe
+ * für Apps und Layer (Q26; vorher je eine Kopie in branding, portfolio und
+ * brand).
  *
  * Das `<` wird zu `<` escapet: ohne das könnte ein Datenwert die Zeichen
  * `</script>` enthalten und den Script-Block vorzeitig schließen — aus einem

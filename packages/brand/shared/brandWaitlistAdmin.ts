@@ -54,10 +54,6 @@ export function normalizeBrandWaitlistStatus(value: string | undefined | null): 
   return 'pending'
 }
 
-export function isBrandWaitlistFilter(value: unknown): value is BrandWaitlistFilter {
-  return typeof value === 'string' && (BRAND_WAITLIST_FILTERS as readonly string[]).includes(value)
-}
-
 /**
  * WELCHE Spaltenwerte ein Filter meint — die Abfrage der Route, nicht die
  * Anzeige. `pending` fasst den Alt-Wert mit ein (`Query.equal` nimmt ein Array

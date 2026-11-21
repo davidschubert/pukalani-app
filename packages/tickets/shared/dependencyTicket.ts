@@ -8,8 +8,7 @@ import type { DependencyTicketInput } from '../../core/shared/dependencyTicket'
  * core-Vertrag `shared/dependencyTicket.ts`; was daraus für ein Ticket wird,
  * gehört diesem Layer. Kein `##`-Heading in der Beschreibung: der
  * Core-Markdown-Sink (MarkdownContent) rendert Headings nicht — fett gesetzte
- * Zeilen und Listen sind die einzige Struktur, die beim Leser ankommt (dieselbe
- * Regel wie in server/utils/ticketIngest.ts).
+ * Zeilen und Listen sind die einzige Struktur, die beim Leser ankommt.
  */
 
 export type { DependencyTicketInput }

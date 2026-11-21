@@ -3,7 +3,6 @@ import { isBotCheckReason, type BotCheckReason } from '../../../core/shared/turn
 import { BRAND_INTRO_MESSAGE_MAX } from '../../schemas/brandIntroCall'
 import { resolveBrandLegalLinks } from '../../shared/brandLegalLinks'
 import type { BrandIntroCallResponse, BrandProfileListResponse } from '../../shared/types/brand'
-import { brandJsonLdScript } from '../utils/brandJsonLd'
 
 /**
  * DAS ERSTGESPRÄCH — `/erstgespraech` (BS1 Paket Z0; Plan
@@ -67,7 +66,7 @@ useSeoMeta({
 })
 
 useHead({
-  script: computed(() => [brandJsonLdScript({
+  script: computed(() => [jsonLdScript({
     '@context': 'https://schema.org',
     '@type': 'ContactPage',
     'name': t('brand.introCall.seoTitle'),

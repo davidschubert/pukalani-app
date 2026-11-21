@@ -259,11 +259,6 @@ export function brandTypeDefaults(
   return { pair, scale, rules: { ...BRAND_TYPE_DEFAULT_RULES } }
 }
 
-/** Das Paar zu einer Id — mit dem Rückfall des Katalogs (nie `undefined`). */
-export function brandTypePairOrFirst(pairId: string): BrandFontPair {
-  return brandFontPair(pairId) ?? BRAND_FONT_PAIRS[0]!
-}
-
 // ── Der Slot-Wert von `i.rules` ────────────────────────────────────────────
 //
 // DASSELBE MUSTER WIE IN D3 (`brandSlotFormat.ts`): beschriftete Blöcke,

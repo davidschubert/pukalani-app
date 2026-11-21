@@ -349,19 +349,6 @@ export const BRAND_PUBLICATION_VISIBILITIES = ['private', 'public'] as const
 export type BrandPublicationVisibility = (typeof BRAND_PUBLICATION_VISIBILITIES)[number]
 
 /**
- * Der gelesene Wert am Profil — FAIL-CLOSED, wie bei `marketVisibility`.
- *
- * Eine Zeile von vor brand-020 liest `undefined`, ein unbekannter Wert ist ein
- * Datenfehler: beides heisst `private`. Eine Zustimmung, die niemand gegeben
- * hat, darf nicht durch einen fehlenden Wert entstehen.
- */
-export function brandPublicationVisibilityOf(
-  row: Pick<BrandProfileRow, 'publicationVisibility'>,
-): BrandPublicationVisibility {
-  return row.publicationVisibility === 'public' ? 'public' : 'private'
-}
-
-/**
  * DAS OPT-IN SETZEN. Der Aufrufer hat den Besitz VORHER belegt
  * (`loadOwnedProfile`) — diese Funktion prüft ihn nicht noch einmal.
  *

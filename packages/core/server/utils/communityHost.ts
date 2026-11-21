@@ -60,11 +60,6 @@ export function getCommunityHostResolver(): CommunityHostResolver | null {
   return hostResolver
 }
 
-/** Nur für Tests: Registry zurücksetzen. */
-export function __resetCommunityHostResolver(): void {
-  hostResolver = null
-}
-
 /**
  * Hosts für diese Ablage-Werte auflösen. Filtert selbst, was gar keine
  * Community ist (`_account`, `''`, Dubletten) — der Aufrufer soll seine Liste

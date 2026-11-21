@@ -86,11 +86,6 @@ export const TRUST_LEVEL_CAPABILITIES: Record<TrustLevel, readonly Capability[]>
   4: ['messages.write', 'posts.curate', 'posts.arrange', 'posts.revise'],
 }
 
-/** Type-Guard: ist die Zahl eine bekannte Stufe? */
-export function isTrustLevel(value: unknown): value is TrustLevel {
-  return typeof value === 'number' && (TRUST_LEVELS as readonly number[]).includes(value)
-}
-
 /**
  * Eine gelesene Zahl auf eine gültige Stufe bringen.
  *

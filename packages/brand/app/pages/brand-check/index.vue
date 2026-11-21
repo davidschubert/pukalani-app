@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { BRAND_CHECK_CATEGORIES } from '../../../shared/brandCheck'
-import { brandJsonLdScript } from '../../utils/brandJsonLd'
 
 /**
  * DIE START-SEITE DES BRAND-CHECKS — `/brand-check`
@@ -30,10 +29,8 @@ import { brandJsonLdScript } from '../../utils/brandJsonLd'
  * lässt ihn stehen (dieselbe Haltung wie das handgebaute FAQ auf /about, nur
  * mit der Nuxt-UI-Komponente statt einem eigenen Klapp-Mechanismus).
  *
- * ── JSON-LD LIEGT IM LAYER, NICHT IN DER APP ──────────────────────────────
- * `apps/branding/app/utils/jsonLd.ts` gehört den App-Seiten; eine Layer-Seite
- * darf sich nicht auf eine Datei ihres Wirts stützen (A14). Deshalb die
- * eigene, gleichlautende Fassung `../../utils/brandJsonLd`.
+ * JSON-LD über `jsonLdScript` aus dem Core (Auto-Import) — nie eine Datei des
+ * Wirts (A14).
  */
 definePageMeta({ layout: 'default' })
 
@@ -51,7 +48,7 @@ useSeoMeta({
 const FAQ_IDS = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'] as const
 
 useHead({
-  script: computed(() => [brandJsonLdScript({
+  script: computed(() => [jsonLdScript({
     '@context': 'https://schema.org',
     '@graph': [
       {

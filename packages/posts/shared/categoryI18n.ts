@@ -52,13 +52,6 @@ export interface CategoryTranslation {
 export type CategoryTranslations = Record<string, CategoryTranslation>
 
 /**
- * Wieviel JSON auf der Zeile Platz hat. Zwei Sprachen × (80 Zeichen Name +
- * 500 Zeichen Beschreibung) sind rund 1200 — 4000 lässt Luft für zwei weitere,
- * ohne das Zeilenbudget von MariaDB zu berühren (utf8mb4, ~65 KB je Zeile).
- */
-export const MAX_CATEGORY_TRANSLATIONS_JSON = 4000
-
-/**
  * Ein plausibler Sprachcode ('de', 'en', 'pt-BR') — keine Liste, weil neue
  * App-Sprachen hier nichts zu ändern haben sollen.
  *

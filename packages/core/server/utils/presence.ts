@@ -3,8 +3,6 @@ import type { H3Event } from 'h3'
 import { logEvent } from './logEvent'
 import { toOnlinePresences, PRESENCE_FRESH_MS, type OnlinePresence, type RawServerPresence } from './presenceFilter'
 
-export type { OnlinePresence }
-
 let presenceScopeWarned = false
 
 /**

@@ -61,11 +61,6 @@ export function registerCommunityInviterRecorder(fn: CommunityInviterRecorder): 
   recorder = fn
 }
 
-/** Nur für Tests: Registry zurücksetzen. */
-export function __resetCommunityInviterRecorder(): void {
-  recorder = null
-}
-
 /**
  * Den Einladenden hinterlegen. Wirft nie.
  *

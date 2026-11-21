@@ -30,6 +30,51 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q26 — Aufräumen im Code: Doppelungen, tote Exporte, veraltete Kommentare, ein Satz zu den Rechten (ARC-005, ARC-006, ARC-007, ARC-009, DOC-016) ✅ 2026-11-21
+
+**Was.** Ein kleines Paket, abgearbeitet nach der Liste des Audits, kein
+Großputz. Kein Verhalten ändert sich.
+
+1. **Doppelungen (ARC-005).** Die Bildprüfung von Event-Cover und Mediathek
+   ist eine Funktion: `isUploadImage` (`packages/core/server/utils/uploadImage.ts`,
+   gebaut auf `sniffImageMime`, gleiche Antwort für jede Eingabe: JPEG, PNG,
+   WebP, unter 12 Bytes nie). Die drei wortgleichen JSON-LD-Hilfen (branding,
+   portfolio, brand) und die gleiche Rechnung in `discover/[slug].vue` sind
+   `jsonLdScript` in `packages/core/app/utils/jsonLd.ts` (Auto-Import). Neuer
+   Test `packages/runner/tests/runnerProtocolCopy.test.ts` vergleicht die
+   Kopie `tools/ai-runner/src/protocol.ts` als Text mit dem Layer (Modi,
+   Sperr-Modi, Zustände, Ereignis-Arten, Feldnamen); Gegenprobe: ein Modus
+   weniger oder ein umbenanntes Feld ⇒ rot.
+2. **Toter Code (ARC-006).** 30 der 32 Exporte ohne Nutzer gelöscht (vorher
+   im ganzen Repo nach Namen gesucht, auch in Tests, Skripten und Vorlagen —
+   Auto-Import heißt: ohne `import`-Zeile). `createTicketFromFeedback` ist weg
+   (Antwort aus dem Audit: entfernen, bis der Bedarf da ist); der Herkunfts-Wert
+   `feedback` bleibt, damit ein neuer Weg nicht als geprüft gilt. Der doppelte
+   Typ-Export in `core/server/utils/presence.ts` ist weg.
+3. **Kommentare (ARC-007, DOC-016).** Berichtigt: `main.css` (Dashboard ist
+   1280 px, nicht `--ui-container`), `heartbeat.post.ts` (240 s, nicht 90 s),
+   `brandingSitemap.ts` (statt „nachgesehen" der Vergleichstest),
+   `usePresence.ts` (240 s statt ~120 s), der Hinweis in
+   `verify-auth-methods.mjs` (JWT ist seit 2026-11-18 auch aus). `feed.vue`
+   war schon mit Q12 berichtigt.
+4. **Rechte (ARC-009, Davids Ja zu A4).** Im README steht „Alle Rechte
+   vorbehalten; öffentlich nur aus Abrechnungsgründen". Keine Lizenzdatei;
+   `package.json` hat kein `license`-Feld und bekommt keins.
+
+**Bleibt stehen, mit Grund.** `realtimeCookieClient` (die Regeln nennen ihn
+als Einstieg); `__resetCustomDomainNoticeReader` und `apps/control/app/app.config.ts`
+(in einem offenen Pull Request); die drei Marketing- und vier Insights-Seiten
+mit rohem `JSON.stringify` (die Hilfe escapet `<`, die Ausgabe änderte sich);
+die übrigen rund 16 Kommentar-Stellen aus der Liste zu DOC-016 (nicht erneut
+nachgelesen).
+
+**Gelernt:** Ein ungenutzter Export ist in einem Nuxt-Layer nur per Textsuche
+zu finden — der Compiler meldet ihn nicht, weil Auto-Import jeden Namen
+überall erlaubt. Vor dem Löschen deshalb nach dem NAMEN suchen (auch in
+Regeln und Vorlagen), nicht nach `import`-Zeilen. Und eine „Kopie mit Grund"
+(Runner-Typen) braucht trotzdem einen Vergleich: der Kopf der Datei erklärt
+das Warum, warnt aber niemanden, wenn die Seiten auseinanderlaufen.
+
 ### Q12 — Weniger Datenbank-Aufrufe je Seite: das Konto einmal, der Feed einmal, Kommentare in einem Zug (PERF-003, PERF-004, PERF-005, PERF-008, FE-006) ✅ 2026-11-21
 
 **Was.** Beim Rendern einer Seite ruft Nuxt die eigenen `/api`-Routen auf,

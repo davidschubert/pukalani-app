@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { jsonLdScript } from '../utils/jsonLd'
 
 /**
  * DIE ABOUT-SEITE — „Wer wir sind", als Produkt-Seite gedacht (Davids

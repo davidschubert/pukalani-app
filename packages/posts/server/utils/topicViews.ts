@@ -85,12 +85,6 @@ const DEDUPE_WINDOW_MS = 30 * 60_000
 const buffer = new Map<string, number>()
 const lastFlushAt = new Map<string, number>()
 
-/** Nur für Tests/Diagnose: Puffer leeren. */
-export function __resetTopicViewBuffer(): void {
-  buffer.clear()
-  lastFlushAt.clear()
-}
-
 /**
  * Hat dieser Betrachter das Topic gerade schon angesehen?
  *

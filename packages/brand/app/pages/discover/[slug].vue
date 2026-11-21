@@ -148,30 +148,24 @@ onUnmounted(() => { ogImage.value = null })
  * Der Brotkrumen als JSON-LD (§4.2: „nur `WebPage` + BreadcrumbList" — kein
  * `Organization`: wir behaupten nichts über eine fremde Firma).
  *
- * Das `<` wird escapet, damit ein Markenname mit einem schliessenden
- * Script-Tag darin den Block nicht vorzeitig beendet (dieselbe Regel wie in
- * `apps/branding/app/utils/jsonLd.ts` — hier lokal, weil eine Layer-Seite
- * nicht in die App greifen darf).
+ * `jsonLdScript` (Core) escapet `<`, damit ein Markenname mit einem
+ * schliessenden Script-Tag darin den Block nicht vorzeitig beendet.
  *
  * Und ja: dieser Kommentar UMSCHREIBT das Tag, statt es hinzuschreiben. Ein
  * SFC-Block endet am ersten schliessenden Script-Tag — auch mitten in einem
- * Kommentar. Der Parser meldet dann einen unbeendeten Block-Kommentar an einer
- * Zeile, an der nichts fehlt (live erwischt, 2026-09-08).
+ * Kommentar.
  */
 useHead({
   script: computed(() => (missing.value
     ? []
-    : [{
-        type: 'application/ld+json' as const,
-        innerHTML: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'BreadcrumbList',
-          'itemListElement': [
-            { '@type': 'ListItem', 'position': 1, 'name': t('brand.discover.eyebrow'), 'item': localePath('/discover') },
-            { '@type': 'ListItem', 'position': 2, 'name': title.value },
-          ],
-        }).replace(/</g, '\\u003c'),
-      }])),
+    : [jsonLdScript({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': t('brand.discover.eyebrow'), 'item': localePath('/discover') },
+          { '@type': 'ListItem', 'position': 2, 'name': title.value },
+        ],
+      })])),
 })
 
 // ── Steckbrief ─────────────────────────────────────────────────────────────

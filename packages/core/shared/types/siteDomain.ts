@@ -41,13 +41,6 @@ export const SITE_DOMAIN_STATUSES = [
 ] as const
 export type SiteDomainStatus = (typeof SITE_DOMAIN_STATUSES)[number]
 
-/** FAIL-CLOSED wie überall an dieser Spalte: unbekannt ⇒ „keine Domain". */
-export function resolveSiteDomainStatus(value: string | null | undefined): SiteDomainStatus {
-  return (SITE_DOMAIN_STATUSES as readonly string[]).includes(value ?? '')
-    ? value as SiteDomainStatus
-    : 'none'
-}
-
 /**
  * Die ÖFFENTLICHE Auskunft: „unter welcher Adresse bin ich zu Hause, und
  * welche Adressen gehören mir sonst noch?"

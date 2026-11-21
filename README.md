@@ -361,3 +361,7 @@ im Detail in [docs/referenz/WORKFLOW.md](docs/referenz/WORKFLOW.md).
 - Ein Zweig je Vorhaben, Pull Request gegen `main`; zusammengeführt wird erst, wenn die Pflicht-Prüfungen grün sind
 - Im Layer nur relative Pfade (kein `~/` oder `@/`) · Domain-Types in `shared/types/`
 - CRUD nur über `server/api/*` — das Web SDK macht im Browser ausschließlich Realtime
+
+## Rechte
+
+Alle Rechte vorbehalten; öffentlich nur aus Abrechnungsgründen.
