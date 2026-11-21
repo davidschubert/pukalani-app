@@ -529,6 +529,9 @@ jobs:
             app="${pair%%=*}"
             echo "::group::Build $app"
             pnpm --filter "$app" build
+            # Skript-Gewicht der Startseite gegen die Grenze (Q22); Apps ohne
+            # Grenze in scripts/lib/page-weight-budgets.mjs überspringt er.
+            node scripts/check-page-weight.mjs --app "$app"
             echo "::endgroup::"
           done
 
