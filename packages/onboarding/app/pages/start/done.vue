@@ -92,9 +92,7 @@ useBrandTitle(() => t('onboarding.done.title'))
 <template>
   <div class="space-y-8">
     <div class="space-y-3">
-      <span class="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-        <UIcon name="i-ph-sun-horizon" class="size-6" />
-      </span>
+      <PukaMark :size="44" />
       <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
         {{ t('onboarding.done.heading', { name }) }}
       </h1>

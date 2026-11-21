@@ -37,7 +37,7 @@ export default defineNuxtConfig({
    * beantworteten /favicon.ico mit 404 — der Browser-Tab blieb ohne Zeichen.
    * Die Dateien liegen im public/ DIESES Layers (Layer-public wird von den
    * erbenden Apps ausgeliefert, dasselbe Muster wie public/themes/* im
-   * themes-Layer) und sind aus der puka in PukaMark.vue abgeleitet:
+   * themes-Layer) und sind aus der puka in packages/core/app/components/PukaMark.vue abgeleitet:
    * favicon.svg (Original, skaliert verlustfrei), favicon.ico (32er-PNG im
    * ICO-Mantel für Alt-Konsumenten), apple-touch-icon.png (iOS nimmt NUR
    * Bitmaps, mit hellem Grund — dieselbe Begründung wie in

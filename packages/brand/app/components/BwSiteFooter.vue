@@ -53,5 +53,7 @@ const legal = computed(() => resolveBrandLegalLinks(appConfig.pukalani?.brand?.l
         <NuxtLink v-for="l in legal" :key="l.id" :to="l.to" class="text-sm whitespace-nowrap transition-colors hover:!text-(--bw-ink)" style="color: var(--bw-muted)">{{ l.label }}</NuxtLink>
       </nav>
     </div>
+    <!-- Die zwei anderen Marken, ruhig (Q24, R9). -->
+    <CoreBrandFamily current="branding" class="mt-4 text-xs leading-relaxed" style="color: var(--bw-muted)" />
   </footer>
 </template>
