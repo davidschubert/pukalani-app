@@ -55,6 +55,12 @@ paths:
 - Unit: `pnpm -r test`. Playwright-E2E in `apps/comments` (CI `e2e.yml`),
   `apps/control` (nachts auf der Bühne) und `apps/portfolio` (nur lokal);
   Base-URL je App per `PW_BASE_URL` überschreibbar (parallele Sitzungen).
+- RENDER-TESTS (Q21): eine Seite aufbauen nur im EIGENEN Vitest-Projekt
+  `render` (`@nuxt/test-utils`, `happy-dom`; Vorbild
+  `packages/brand/vitest.config.ts`), nie in `unit`. Abrufe über
+  `registerEndpoint`, KI-Routen zählen mit und müssen 0 bleiben; Erwartungen
+  aus der Sprachdatei ROH gelesen (ein JSON-`import` liefert kompilierte
+  Nachrichten).
 - `themes-visual` zielt auf die deterministische `/visual`-Seite — NIE
   Live-Daten screenshotten.
 - CI `e2e.yml` fährt eine echte Wegwerf-Appwrite (`ci/appwrite` +
