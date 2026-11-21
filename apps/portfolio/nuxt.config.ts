@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   // core + system bilden das Fundament und bleiben immer.
   //
   // `brand` STAND HIER und ist mit dem Rückbau vom 2026-08-31 wieder raus
-  // (docs/plans/BRANDING-SUPPLY-INFRA.md §2): der Brand-Wizard lebt seit
+  // (docs/archiv/BRANDING-SUPPLY-INFRA.md §2): der Brand-Wizard lebt seit
   // Davids Kehrtwende unter seiner eigenen Marke in `apps/branding` —
   // eigene Domain, eigenes Appwrite-Projekt, eigener Konten-Stamm. Die
   // P1b-Einhängung hier war der Zwischenstand „eine Site, eine Login-Welt".

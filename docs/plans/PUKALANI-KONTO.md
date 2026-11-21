@@ -55,7 +55,7 @@ sind zwei Konten, die nichts voneinander wissen
 | Projekt | Wer meldet sich dort an | App | Beleg |
 | --- | --- | --- | --- |
 | `account` | alle Mitglieder aller Pool-Communities (`*.pukalani.app`, Kundendomains) und der Kundenbereich `account.pukalani.app` | `apps/platform` | `.claude/rules/appwrite.md` („Das geteilte Projekt … heißt seit AH-1 `account`") |
-| `branding` | Nutzer von branding.supply | `apps/branding` | `apps/branding/.env.example:12`, `docs/plans/BRANDING-SUPPLY-INFRA.md` (eigener Konten-Stamm, Davids Entscheidung 2026-08-31) |
+| `branding` | Nutzer von branding.supply | `apps/branding` | `apps/branding/.env.example:12`, `docs/archiv/BRANDING-SUPPLY-INFRA.md` (eigener Konten-Stamm, Davids Entscheidung 2026-08-31) |
 | `portfolio` | pukalani.studio (Davids eigene Site) | `apps/portfolio` | `apps/portfolio/nuxt.config.ts:13`, ACCOUNT-HORIZONT („bleibt als Davids eigenes Silo unberührt") |
 | `admin` | Betreiber | `apps/control` | `.claude/rules/hosts-ops.md` (AH-4c, Cookie `a_session_admin`) |
 

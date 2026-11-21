@@ -10,7 +10,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
  * der Layer steht deshalb im BRANDING_SOLL von
  * scripts/ops/verify-schema-parity.mjs, nicht in der instanzweiten
  * Spalten-Parität. Bis zum 2026-08-31 hing er am `portfolio`-Silo (P1b); die
- * Kehrtwende steht in docs/plans/BRANDING-SUPPLY-INFRA.md.
+ * Kehrtwende steht in docs/archiv/BRANDING-SUPPLY-INFRA.md.
  */
 export default {
   key: 'brand',

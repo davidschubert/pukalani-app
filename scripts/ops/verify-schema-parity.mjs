@@ -355,7 +355,7 @@ const CONTROL_SOLL = [
  *
  * BIS 2026-08-31 STANDEN SIE IM PORTFOLIO_SOLL — das war der P1b-Zwischenstand
  * („eine Site, eine Login-Welt"). Mit Davids Kehrtwende
- * (docs/plans/BRANDING-SUPPLY-INFRA.md) bekommt der Wizard ein eigenes
+ * (docs/archiv/BRANDING-SUPPLY-INFRA.md) bekommt der Wizard ein eigenes
  * Appwrite-Projekt; angelegt wurde in `portfolio` nie eine brand_*-Tabelle
  * (Plan §0: „Prod-Appwrite: KEINE brand_*-Tabellen irgendwo — bewusst
  * gewartet"), der Umzug hier hinterlässt also weder eine Lücke noch eine
@@ -541,7 +541,7 @@ const PORTFOLIO_SOLL = [
 
 /**
  * branding (apps/branding) = branding.supply, das neue Zuhause des
- * Brand-Wizards (docs/plans/BRANDING-SUPPLY-INFRA.md §3). Layer laut
+ * Brand-Wizards (docs/archiv/BRANDING-SUPPLY-INFRA.md §3). Layer laut
  * Site-Manifest: themes + admin + brand + market (+ core/system als
  * Fundament) — deshalb steht hier der system-Block plus die brand_*- und die
  * market_*-Tabellen. `themes` besitzt keine eigenen Tabellen (die

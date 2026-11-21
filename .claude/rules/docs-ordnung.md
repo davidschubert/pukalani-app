@@ -3,47 +3,54 @@ paths:
   - "docs/**"
   - "README.md"
 ---
-<!-- Ausgelagert aus CLAUDE.md am 2026-11-08 (Token-Hygiene, SH1 e): lädt
-     automatisch, sobald eine Datei aus `paths` gelesen wird; bei Bash-Lesen
-     (cat/sed) diese Datei bewusst per Read öffnen. Wortlaut unverändert. -->
 
-## Doku-Ordnung (seit 2026-07-28) — Karte: docs/README.md
+## Doku-Ordnung — Karte: `docs/README.md`
 Vier Sorten, jede mit genau EINEM Zuhause. Wer eine neue Datei anlegt,
-entscheidet zuerst die Sorte; sonst wächst wieder ein Wildwuchs, in dem
-niemand weiß, ob ein Häkchen noch Arbeit bedeutet.
-- **Steuerung** `docs/` — **docs/OPEN-ITEMS.md ist DIE EINE offene-Punkte-
-  Liste** und enthält seit 2026-07-30 (Davids Regel) **NUR noch Offenes**:
-  EINE Tabelle „Jetzt dran — in dieser Reihenfolge" mit den Spalten
+entscheidet zuerst die Sorte und trägt sie in die Karte ein
+(`pnpm check:doc-links` hält Verweise, Karte und Plan-Status).
+- **Steuerung** `docs/` — **`docs/OPEN-ITEMS.md` ist DIE EINE offene-Punkte-
+  Liste** und enthält NUR Offenes (Davids Regel): Tabellen je Schritt unter
+  „Jetzt dran — in dieser Reihenfolge" mit den Spalten
   # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details,
-  darunter „Geparkt / wartet" und ein Anhang „Notizen". Jeder Eintrag max.
-  3 gerenderte Zeilen; die Tiefe lebt im verlinkten Plan, nicht in der Liste.
+  darunter Geparktes und bewusst Zurückgestelltes. Jeder Eintrag hat ein
+  KÜRZEL und höchstens 3 gerenderte Zeilen; die Tiefe lebt im verlinkten Plan
+  oder je Kürzel in `docs/plans/offen/<Kürzel>.md`, nicht in der Liste.
   **Erledigtes zieht SOFORT und FINAL nach `docs/OPEN-ITEMS-COMPLETE.md`** —
   das ist das Lern-Gedächtnis (vollständiger Eintrag + Datum + eine fette
   Zeile **Gelernt:**, wo etwas nicht auf Anhieb ging), ausdrücklich KEINE
   Arbeitsliste. Offene Punkte gehören AUSSCHLIESSLICH in OPEN-ITEMS.md, NIE in
-  ein Plan-Dokument und NIE in eine zweite Liste (am 2026-07-28 gab es kurz
-  `OFFENE-TASKS.md` daneben — genau die Doppelpflege, die das verhindert).
-  Dazu CONCEPT.md (Architektur A1–A14), GOALS.md, DECISION-LOG.md.
+  ein Plan-Dokument und NIE in eine zweite Liste.
+  Dazu `docs/CONCEPT.md` (Architektur, Abschnitte A1 ff.), `docs/GOALS.md`,
+  `docs/DECISION-LOG.md`.
 - **Referenz** `docs/referenz/` — wie ist X gebaut (RBAC, Themes, Embed,
-  Auth-Forms, Moderation, Pool/Silo-Blueprint, Produkt-Bilanz, Manifest-
-  Strategie, Produktvertrag, Changelog-Workflow). Lebt mit dem Code.
-- **Runbooks** `docs/runbooks/` — Betriebs-Anleitungen (Deployment, Stripe
-  Go-Live + Testmodus, Control-Cutover, Key-Swap). Die Häkchen dort sind ECHT
-  und werden pro Durchlauf abgehakt.
-- **Archiv** `docs/archiv/` (+ `archiv/audits/`) — ausgeführte Pläne und
-  Audits. Wertvoll als Begründung und Rezept, aber KEINE Arbeitsliste:
-  offene Kästchen sind bewusst zu Aufzählungen entschärft.
-  Seit 2026-11-15 (OPS-005) auch `archiv/skripte/`: einmalige Betriebs-
-  Skripte, die auf Production gelaufen sind (Appwrite-Upgrades). `ops/` und
-  `scripts/ops/` enthalten nur, was heute läuft; große Umzugs-Werkzeuge mit
-  Schreibzugriff auf Production werden nach dem Lauf GELÖSCHT (samt Tests),
-  das Runbook nennt den letzten Commit. Regel: docs/archiv/skripte/README.md.
-- `docs/plans/` enthält nur, was NOCH NICHT gebaut ist. Sobald ein Plan
-  ausgeführt ist: Datei nach `archiv/`, Reste nach OPEN-ITEMS.md.
+  Auth-Forms, Moderation, Produkt-Bilanz, Manifest-Strategie, Produktvertrag,
+  Changelog-Workflow, …). Lebt mit dem Code.
+- **Runbooks** `docs/runbooks/` — Betriebs-Anleitungen, die heute gelten
+  (Deployment, Stripe Go-Live + Testmodus, Wiederherstellung, Alarm, …). Die
+  Häkchen dort sind ECHT und werden pro Durchlauf abgehakt. Eine erledigte
+  Umzugs-Anleitung zieht ins Archiv.
+- **Archiv** `docs/archiv/` (+ `docs/archiv/audits/`) — ausgeführte Pläne,
+  erledigte Umzüge und Audits. Wertvoll als Begründung und Rezept, aber KEINE
+  Arbeitsliste: offene Kästchen sind zu Aufzählungen entschärft (der Wächter
+  macht ein offenes Kästchen dort rot), Pfade von damals bleiben stehen.
+  `docs/archiv/skripte/` (OPS-005): einmalige Betriebs-Skripte, die auf
+  Production gelaufen sind. `ops/` und `scripts/ops/` enthalten nur, was
+  heute läuft; große Umzugs-Werkzeuge mit Schreibzugriff auf Production werden
+  nach dem Lauf GELÖSCHT (samt Tests), das Runbook nennt den letzten Commit.
+  Regel: `docs/archiv/skripte/README.md`.
+- `docs/plans/` enthält nur, was NOCH NICHT (ganz) gebaut ist. JEDER Plan
+  trägt oben die Zeile `> **Plan-Status (JJJJ-MM-TT):** …` (nicht gebaut |
+  teils gebaut — offen: … | Unterlage zu … | gebaut). Sobald ein Plan
+  ausgeführt ist: Datei nach `docs/archiv/`, Verweise nachziehen, Reste nach
+  OPEN-ITEMS.md.
 - `docs/content/` = interne Doku-SITE (admin.pukalani.app/docs),
   `apps/help/content/` = Kunden-Hilfe (help.pukalani.app) — beides Produkt,
   kein Planungsdokument.
-- **Arbeitsablauf je Vorhaben** (Davids Workflow 2026-08-28): Strategie
-  (inkl. Analyse/Konkurrenz) → Konzeption → Prototyp (echte Nuxt-UI-
-  Komponenten) → Freigabe → Umsetzung → Audit → Testing → finale Freigabe
-  → Deployment → Changelog/Docs — Details: docs/referenz/WORKFLOW.md.
+- **Arbeitsablauf je Vorhaben** (Davids Workflow): Strategie (inkl.
+  Analyse/Konkurrenz) → Konzeption → Prototyp (echte Nuxt-UI-Komponenten) →
+  Freigabe → Umsetzung → Audit → Testing → finale Freigabe → Deployment →
+  Changelog/Docs — Details: `docs/referenz/WORKFLOW.md`.
+- **Regelwerk** (`CLAUDE.md`, `.claude/rules/`): eine Regel sagt, was gilt und
+  woran man es prüft. Herleitung, Datum, Messwert und Vorfall gehören in den
+  Eintrag von OPEN-ITEMS-COMPLETE; die Regel nennt dessen Kürzel. Deckel und
+  Pfad-Prüfung: `pnpm check:rules`.

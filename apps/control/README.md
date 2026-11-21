@@ -32,7 +32,7 @@ Runner und nur gegen das Projekt aus `appwriteProjects`:
 pnpm migrate --app control
 ```
 
-Production: `.claude/rules/appwrite.md` („ZIEL-PRÜFUNG VOR DEM SCHREIBEN") —
+Production: `.claude/rules/appwrite-migrationen.md` („ZIEL-PRÜFUNG VOR DEM SCHREIBEN") —
 immer mit `--only`, erst `--dry-run`, und nur mit Freigabe.
 
 ## Interne Projekt-Doku unter `/docs`
@@ -59,7 +59,7 @@ direkt dorthin (Collection `internalDocs`, `prefix: '/docs'`).
 
 ## Weiterlesen
 
-- Hosts, Altnamen und Pflicht-Einstellungen: `.claude/rules/hosts-ops.md`
+- Hosts, Altnamen und Pflicht-Einstellungen: `.claude/rules/hosts-ops.md`, `.claude/rules/ops-server.md`
 - Anlegen, Mitglieder, Stilllegen: `.claude/rules/onboarding.md`
 - Pläne und Produkte: `.claude/rules/plans-products.md`
 - Betrieb und Ausliefern: `docs/runbooks/DEPLOYMENT.md`

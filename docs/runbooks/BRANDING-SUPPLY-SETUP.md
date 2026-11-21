@@ -1,7 +1,7 @@
 # branding.supply — Einrichtung (Runbook)
 
 Stand: 2026-09-01 — Site LIVE, Beta im Invite-Modus. Ausführung des abgenommenen Plans
-[BRANDING-SUPPLY-INFRA.md](../plans/BRANDING-SUPPLY-INFRA.md).
+[BRANDING-SUPPLY-INFRA.md](../archiv/BRANDING-SUPPLY-INFRA.md).
 Arbeitsteilung: **Schritt 1 klickt David** (Konsole, ~5 min — es gibt
 bewusst keinen Script-Console-Zugang), den Rest fährt Claude. Häkchen
 sind ECHT — je Durchlauf abhaken.

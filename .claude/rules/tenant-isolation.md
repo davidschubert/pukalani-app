@@ -5,419 +5,184 @@ paths:
   - "apps/*/server/**"
   - "packages/core/app/plugins/**"
   - "eslint.config.mjs"
+  - "scripts/lib/data-door-layers.mjs"
+  - "scripts/lib/server-written-tables.mjs"
+  - "scripts/migrations-lib/tableWriteRights.mts"
 ---
-<!-- Ausgelagert aus CLAUDE.md am 2026-09-08 (Token-Hygiene): lädt automatisch,
-     sobald eine Datei aus `paths` gelesen wird; bei Bash-Lesen (cat/sed) diese
-     Datei bewusst per Read öffnen. Wortlaut unverändert übernommen. -->
 
-## Mandanten-Isolation: EINE Datentür (seit 2026-07-26)
-- In `server/api/**` mandantenfähiger Layer geht Datenzugriff über
-  `tenantDb(event)` (core/server/utils/tenantDb.ts) — NICHT über
+# Mandanten-Isolation: Datentür, Schreiben, Sperre, Mitmachen
+
+WER `notify(` RUFT, EIN LABEL SCHREIBT, EINE ROLLE PRÜFT ODER EINE ROUTE FÜR
+ENTFERNTE ÖFFNET, liest vorher `tenant-mitglieder.md` (Label, Beitritt,
+Entzug, Benachrichtigungen) — sie lädt nicht bei jeder Server-Datei.
+
+## EINE Datentür
+- EINE DATENTÜR: in `server/api/**` mandantenfähiger Layer geht Datenzugriff
+  über `tenantDb(event)` (`core/server/utils/tenantDb.ts`), NIE über
   `createAdminClient().tablesDB` / `createSessionClient().tablesDB` direkt.
   `list/find/count` scopen immer, `get/update/remove` belegen die Zugehörigkeit
-  VOR der Aktion, `create` stempelt communityId + Row-Permissions. `as:'operator'`
-  = Admin-Client (Moderation) — dort ist die Tür die EINZIGE Grenze, weil der
-  Admin-Client die Row-Permissions bewusst umgeht.
-- ZWEI FRAGEN, ZWEI FELDER (seit 2026-08-02, Audit-Befund C1c): `as` sagt, WELCHER
-  CLIENT zugreift (Technik: Row-Permissions setzen, rowSecurity-Rows schreiben),
-  `actor` sagt, WER HANDELT (Fachlichkeit: `'member' | 'guest' | 'operator'`,
-  Default = `as`). Daran hängen die M13-Sperre (`actorFacesContentLock`) und der
-  A5-Beitritt (`actorJoinsByWriting`). WARUM getrennt: viele Routen wählen
-  `'operator'` NUR wegen der Label-Permissions — gehandelt hat trotzdem ein
-  Mitglied. Solange die Sperre an der Klinke hing, meldeten sich diese Routen
-  still von ihr ab: von den fünf Inhaltsarten, die M13 namentlich zusagt, war
-  genau EINE tatsächlich zu (Umfrage-Stimme, Beitrags-Löschung, RSVP,
-  Einschreibung, Lektions-Abschluss liefen vorbei). Drei Actor-Werte, weil ein
-  GAST-Kommentar Inhalt ist (Sperre gilt) und trotzdem niemanden zum Mitglied
-  macht (kein Konto) — ein Ja/Nein-Flag kann beides nicht gleichzeitig sagen.
-  Neue Route mit Operator-Klinke: IMMER prüfen, ob `actor` gesetzt gehört.
-- DER SERVER SCHREIBT, ZEILEN-RECHTE REGELN NUR DAS LESEN (SEC-002, seit
-  2026-11-16 — Davids Entscheidung „künftig schreibt nur noch unser Server"):
-  Appwrite ist unter eigener Adresse für jedes Konto direkt erreichbar. Ein
-  Schreibrecht an einer Tabelle oder Zeile gilt deshalb NEBEN unseren Routen —
-  und was die Route prüft (Mandant, Zugehörigkeit, Sperre, Eingabe, Bremse),
-  prüft Appwrite nicht. Darum: (1) KEINE Tabelle trägt ein Schreibrecht für
-  Konten, (2) KEINE Zeile bekommt `update`/`delete` für ein Konto (kein
-  `ownerUserId`, kein `Permission.update/delete(Role.user(…))`), (3) JEDER
-  Schreibvorgang läuft über den Admin-Client: `tenantDb(event, { as:
-  'operator', actor: 'member' })`, wenn ein Mitglied handelt (Inhalts-Sperre
-  M13 und Beitritt A5 hängen am `actor` und gelten unverändert), `actor:
-  'guest'` für Gäste, ohne `actor` für Zähler und Moderation. GELESEN wird
-  weiter über die Mitglieder-Klinke, wo das Leserecht der Zeile die
-  Sichtbarkeit entscheidet — Leserechte bleiben, Realtime hängt an ihnen.
-  FOLGE, DIE MAN NICHT VERGESSEN DARF: mit dem Admin-Client ist die Prüfung in
-  der Route die EINZIGE. „Gehört die Zeile diesem Konto?" beantwortet die
-  Route selbst und VOR dem Schreiben — durch den Vergleich der Konto-Id
-  (`authorId === user.$id`; Gast-Zeilen und Grabsteine tragen eine leere Id
-  und gehören niemandem) oder indem sie die eigene Zeile über `userId`/
-  `reporterId` = Konto sucht und nur die so gefundene Zeile anfasst. Zwei
-  Routen verließen sich dafür bis dahin allein auf Appwrites 401. DIE LISTE
-  der Tabellen steht in `scripts/lib/server-written-tables.mjs`; drei Netze
-  halten sie: `packages/core/tests/serverWrittenTables.test.ts` (jede
-  schreibende Aufrufstelle hängt fest an der Operator-Klinke, keine Datei
-  vergibt beim Anlegen ein Schreibrecht), `pnpm check:permissions` Stufe 2
-  (keine Migration gibt einer dieser Tabellen ein Schreib-Recht zurück) und
-  das Beweis-Skript `packages/core/scripts/verify-server-only-writes.mjs`
-  (nur lokal: direkt anlegen, ändern, löschen ⇒ 401; `--expect-closed all
-  --expect-clean all`). NEUE TABELLE MIT INHALT VON KONTEN ⇒ ohne Tabellenrecht
-  anlegen, in die Liste eintragen, Route mit Operator-Klinke. EINE BESTEHENDE
-  TABELLE UMSTELLEN geht in drei Schritten und NIE zwei auf einmal: erst der
-  Code (läuft mit alten Rechten und ohne sie) auf allen Seiten live, dann die
-  Rechte-Migration der Tabelle (`scripts/migrations-lib/tableWriteRights.mts`,
-  Rückweg unter `packages/<layer>/scripts/rollback/` — nicht im Ordner
-  `migrations/`, der Runner führe ihn sonst mit aus), dann der Aufräum-Lauf
-  für vorhandene Zeilen (`pnpm ops:strip-row-write-rights`, zählt ohne
-  `--apply` nur, Lauf-Sperre in `system_runs`, bricht ab, solange die Tabelle
-  noch ein Schreib-Recht trägt). Das ist die EINE begründete Ausnahme von
-  „Migration vor dem Merge". Was offen bleibt: das LESEN — ein Konto liest
-  direkt bei Appwrite weiter jede Zeile, für die seine Rollen ein Leserecht
-  tragen, und immer die ganze Zeile (docs/plans/PUKALANI-KONTO.md, § 9).
-- Warum: Isolation hing an drei Dingen, an die man sich erinnern musste
-  (scopeQuery/scopeRow/ID-Prüfung). Am 2026-07-26 hat genau das versagt (drei
-  Moderations-Routen lasen fremde Zeilen per ID, commit 1cc4855).
-- OHNE RESOLVER LEHNT DIE PLATTFORM AB (SEC-025, seit 2026-11-13 — Davids
-  Entscheidung „Eine Sicherung, die nicht prüfen kann, lehnt ab"): die Tür
-  scopt nur, wenn `00.tenant.ts` einen Mandanten gesetzt hat. Ist
-  `pukalani.tenancy.enabled` an, aber kein Resolver registriert (fehlende
-  Control-Env), kehrte die Middleware bis dahin STILL zurück — kein Mandant,
-  kein 404, also keine Trennung, und `/api/health` war grün. Jetzt: 503
-  `tenant_resolver_missing` für jeden Host und Pfad, auch für Kontroll-Hosts
-  (ohne Resolver belegt niemand, dass ein Host KEIN Mandant ist). Durch kommen
-  nur `/api/health` (meldet `ok:false` mit diesem Grund), `/_i18n/` und Nuxts
-  Fehlerseiten-Durchgang (gebrandete Seite mit eigenem Satz; Realtime startet
-  dort nicht, `isHostUnservedError`). Kein Schalter, kein Rückfall auf
-  „Single-Tenant". Ein ZWEITES Netz in der Tür selbst gibt es bewusst nicht:
-  Exporte, Spiegel und Sweeps rufen sie mit Ereignissen ohne Mandant, die
-  Prüfung bräche sie. Beweis: `packages/core/tests/tenantMiddleware.test.ts`.
+  VOR der Aktion, `create` stempelt communityId + Row-Permissions. `as:
+  'operator'` = Admin-Client: er umgeht die Row-Permissions, dort ist die Tür
+  die EINZIGE Grenze. Warum EINE Tür: Isolation darf nicht an Dingen hängen,
+  an die man sich erinnern muss (Scope-Query, Zeilen-Prüfung, ID-Prüfung).
+- ZWEI FRAGEN, ZWEI FELDER (C1c): `as` = WELCHER CLIENT (Technik: Rechte
+  setzen, rowSecurity-Zeilen schreiben), `actor` = WER HANDELT (`'member' |
+  'guest' | 'operator'`, Default = `as`). Die M13-Sperre
+  (`actorFacesContentLock`) und der A5-Beitritt (`actorJoinsByWriting`) hängen
+  am `actor`, nicht an der Klinke — viele Routen wählen `'operator'` nur wegen
+  der Rechte, gehandelt hat trotzdem ein Mitglied. Ein GAST-Inhalt ist Inhalt
+  (Sperre gilt) und macht niemanden zum Mitglied (`actor: 'guest'`). Neue
+  Route mit Operator-Klinke: IMMER prüfen, ob `actor` gesetzt gehört.
+- DIE MANDANTEN-ID KOMMT NIE VOM AUFRUFER: `stripTenantKey` entfernt BEIDE
+  Schlüssel, `communityId` und `tenantId` — sonst schreibt ein durchgereichter
+  Body in einen fremden Mandanten.
 - AUSSERHALB der Tür erlaubt (per Definition mandantenübergreifend):
   Migrationen, Sweeps/Intervall-Plugins, GDPR-Orchestrierung, Control Plane.
-- Die Mandanten-Id kommt NIE vom Aufrufer (`stripTenantKey` entfernt BEIDE
-  Schlüssel, `communityId` und den Übergangs-Stempel `tenantId`) — sonst schreibt
-  ein durchgereichter Body in einen fremden Mandanten.
-- BACKSTOP (seit 2026-07-27): ESLint verbietet rohes `.tablesDB` in
-  `server/api/**` UND `server/plugins/**` der gepoolten Layer (comments, posts,
-  pages, moderation, events, courses — eslint.config.mjs, no-restricted-syntax).
-  `server/plugins/**` kam am 2026-07-28 dazu (Dashboard-Audit B2): der
-  Stats-Contributor von comments liegt dort und zählte deshalb ungebremst
-  pool-weit in eine Kunden-Ansicht. Wer einen H3Event bekommt, bedient einen
-  REQUEST und gehört hinter dieselbe Tür wie eine Route; eventlose Sweeps
-  brauchen eine begründete eslint-disable-Zeile statt einer Aufweichung.
-  DIE LISTE steht seit 2026-11-16 (P20) in `scripts/lib/data-door-layers.mjs`
-  (ESLint liest sie von dort), und `pnpm check:manifests` hält sie gegen die
-  Migrationen: legt ein Layer `communityId` an, steht er dort — in der Liste
-  oder mit Grund in `DATA_DOOR_EXEMPT` (heute `control` und `system`). Pool-Unique-
-  Regel gilt weiter, ABER nur für tenant-RELATIVE Schlüssel: Host/Slug brauchen
-  communityId (comments-015 uq_tenant_host, pages-004, courses-002 uq_tenant_slug
-  — die INDEXNAMEN blieben, nur die Spalte wurde umbenannt),
-  Row-Id-basierte NICHT (events/courses (courseId,userId) — eine Row-Id ist
-  global eindeutig, da kann kein Mandant kollidieren).
-- DIE SPERRE FRIERT NUR INHALTE EIN (M13, seit 2026-08-02 — Davids
-  Entscheidung, festgehalten 2026-08-03): `communities.suspension` hat zwei
-  Stufen (`core/shared/communitySuspension.ts`). `'abuse'` nimmt der Resolver
-  vom Netz (⇒ 404 wie ein unbekannter Host, Seite UND API); `'billing'` macht
-  die Community NUR-LESEND — und zwar AN DER DATENTÜR, nur an der Türklinke
-  `member`. Zu ist damit jeder INHALT (Kommentare, Beiträge, Umfragen,
-  Zu-/Absagen, Kursfortschritt). OFFEN bleiben bewusst alle Owner-Einstellungen
-  (Branding, Team/Rollen, Publikum, Registrierung) und die Moderation
-  (Klinke `operator`) — die laufen über die Service-Naht ins Control Plane, nicht
-  durch die Tür. Grund: die Sperre soll zum ZAHLEN bewegen, nicht den Owner aus
-  seiner Community aussperren; eine gesperrte Community, die niemand mehr
-  moderieren kann, wird zum Problem des Betreibers. Eine neue Owner-Einstellung
-  gehört also NICHT hinter die Sperre, eine neue Inhalts-Route braucht nichts zu
-  tun. Der Abgewiesene erfährt den GRUND nicht (`community.billing`), wohl aber
-  die TATSACHE: das 403 trägt `reason: community_suspended`, den EINEN Leser
-  dafür stellt `core/app/plugins/community-suspended-notice.client.ts`
-  ($fetch-Interceptor, ein Toast für alle Layer). Dieselbe Trennung auf der
-  `my.*`-Karte: `readOnly` (DASS) für jede Rolle, `suspension` (WARUM) nur mit
-  `community.billing`.
-- SITE-LABEL = „ist Mitglied dieser Community" (A5, seit 2026-07-29 — ersetzt
-  die A4-Regel „hat den Host eingeloggt benutzt", die noch am selben Tag zur
-  Lüge wurde: „Zugang entziehen" nahm nur die Rolle, das Label kam beim nächsten
-  Besuch zurück, die entfernte Person las weiter mit).
-  `core/server/middleware/06.community-label.ts` vergibt `Role.label(communityId)` genau dem,
-  der eine `community_members`-Zeile MIT ZUGANG hat (idempotent, additiv — mehrere
-  Communities = mehrere Labels; `grantCommunityLabel`/`revokeCommunityLabel` in
-  core/server/utils/communityLabel.ts). Ein Label ist ein LESE-Publikum, KEINE Rolle —
-  Autorisierung läuft über requireCommunityPermission/Site-Rollen, `hasCapability`
-  kennt nur 'admin'/'moderator' (grantCommunityLabel verweigert solche Labels).
-  EIN SCHREIBER, ENTZUG WIRD NACHGEPRÜFT (SEC-024, seit 2026-11-13 — Davids
-  Entscheidung „Eine Sicherung, die nicht prüfen kann, lehnt ab"): JEDER
-  Schreibvorgang auf Konto-Labels (Community-Labels UND Betreiber-Rollen der
-  admin-Routen) läuft über `mutateUserLabels` (core/server/utils/userLabels.ts):
-  je Konto im Prozess serialisiert, frisch gelesen, NUR die genannten Labels
-  hinzu/weg, nachgelesen, einmal wiederholt, Ergebnis zurück statt nur Log —
-  `updateLabels` setzt die ganze Liste, und zwei Schreiber vom selben alten
-  Stand überschrieben einander. Vergabe bleibt fail-soft; `revokeCommunityLabel`
-  gibt `{ revoked }` zurück, und „Zugang entziehen" antwortet bei `false` mit
-  502 `label_revoke_failed` statt `ok` (Stilllegen zählt `labels.failed`).
-  Zwischen PROZESSEN hilft die Kette nicht — dafür gleicht ein stündlicher Lauf
-  der Platform-App nach (`onboarding/server/utils/labelReconcile.ts`, Schalter
-  `pukalani.community.labelReconcile` off/dry-run/apply): nur Labels mit
-  `removed`-Zeile und ohne Zeile MIT Zugang, nie Betreiber-Rollen, nie Bestand
-  ohne Zeile. Seit 2026-11-17 (SI1 b) zwei Fälle mehr: eine `active`-Zeile in
-  einer STILLGELEGTEN Community (beide Labels fallen; die Community wird
-  unmittelbar vorher frisch gefragt) und das Moderations-Label nach einer
-  Herabstufung in den letzten 26 Stunden (nur dieses Label, über
-  `revokeCommunityModeratorLabel`; die Rolle wird frisch gelesen). Das Label ist `communities.$id` (= `community_members.communityId`),
-  NICHT `tenantId`. Runbook: docs/runbooks/LABEL-ABGLEICH.md.
-- MITGLIEDSCHAFT IST EIN EREIGNIS (A5): Vertrag `core/shared/communityJoin.ts` +
-  Registry `core/server/utils/communityJoin.ts` (`registerCommunityJoinHandler` — die
-  Naht zum Control Plane besitzt der onboarding-Layer, A14), Regel `decideJoin`
-  in `packages/control/shared/communityTeam.ts`, Route
-  `POST /api/control/community/members/join`. Gesteuert vom BESTEHENDEN Schalter
-  `communities.openRegistration`: OFFEN ⇒ Beitritt (Rolle `viewer`), GESCHLOSSEN ⇒
-  nur per Einladung. ZWEI Auslöser, mehr nicht: (1) `registration` — Kontoanlage
-  auf dem Mandanten-Host (signup.post.ts + otp/verify.post.ts, dort wo der Feed
-  schon „user.joined" sagt); (2) `contribution` — der erste eigene
-  Schreibvorgang, abgefangen in der DATENTÜR (`tenantDb().create`, nur Türklinke
-  'member') statt in zwanzig Routen. Ein SEITENAUFRUF löst bewusst NICHTS aus
-  (sonst wäre jeder Vorbeisurfer Mitglied und „Zugang entziehen" wieder
-  wirkungslos). Preis: bei `contribution` steht das Label erst mitten in der
-  Sitzung — der offene Realtime-WS behält seine Rollen, die Anwesenheit kommt
-  über Heartbeat + den 20-s-Leser-Poll (usePresence POLL_MS) an. ENTZOGEN
-  schlägt jeden Auslöser (Rückkehr nur per Einladung); BESTAND aus der A4-Zeit
-  (Label ohne Zeile) übernimmt sich beim nächsten Besuch selbst
-  (`trigger: 'legacy'`, umgeht den Schalter — kein Backfill-Skript, weil die
-  Wahrheit im Runtime-Projekt und die Zeile im Control Plane liegt). Beweis:
-  Abschnitt 10 in `packages/onboarding/scripts/verify-site-authz.mjs`.
-- MITMACHEN VERLANGT ZUGEHÖRIGKEIT (SEC-030, seit 2026-11-13 — Davids
-  Entscheidung 2026-11-12): ein Konto im Pool ist auf JEDEM Community-Host
-  angemeldet, „angemeldet" sagt also nichts über „gehört hierher". Bis dahin
-  fragte die Datentür zwar nach dem Beitritt, las die Antwort aber nicht —
-  geschlossene Registrierung und „Zugang entziehen" hielten niemanden vom
-  Schreiben ab. Jetzt ZÄHLT DER AUSGANG, an zwei Stellen: (1) jede schreibende
-  Route der Pool-Produkte ruft eine Wache, VOR dem ersten Datenbankzugriff —
-  `requireCommunityParticipant(event)` für alles, was ein erster eigener
-  Beitrag sein kann (Beitrag, Kommentar, Stimme, Reaktion, Zusage,
-  Einschreiben, Melden; bei OFFENER Registrierung ist das weiter der Beitritt,
-  A5), `requireCommunityMembership(event)` für eigenes Bearbeiten/Löschen und
-  alle Routen der privaten Nachrichten (kein Beitritt), oder ein Rollen-Gate;
-  (2) die Datentür wertet beim Anlegen denselben Ausgang als Netz dahinter.
-  `closed`/`removed` ⇒ 403 `reason: not_a_member`; `unavailable` ⇒ die
-  Mitgliedschaft entscheidet (Pool fail-closed, Silo durch — ein Ausfall des
-  Control Plane kostet ein Mitglied mit Label keinen Kommentar, einen
-  Erst-Beitritt schon). Melden bleibt in einer gesperrten Community offen
-  (`openDuringSuspension`), tritt dort aber nicht bei. ÜBERSETZEN GIBT ES NUR
-  FÜR MITGLIEDER (MM1, seit 2026-11-17 — Davids Entscheidung 2026-11-16;
-  vorher genügte die Anmeldung, und ein fremdes Konto verbrauchte das
-  Tages-Kontingent der Community): alle fünf Routen rufen
-  `requireCommunityMembership` (Kurse: `requireCourseMember`) vor dem ersten
-  Datenbankzugriff — kein Beitritt, keine Inhalts-Sperre (der Cache wird
-  weiter als `actor: 'operator'` geschrieben, eine gesperrte Community bleibt
-  lesbar). posts, comments und events lesen ihr Ziel danach weiter über die
-  Session-Klinke. Den Knopf zeigt der Browser nur mit `useCommunityMember()`
-  (Spiegel aus `07.community-role.ts`, dieselbe Funktion wie die Wache; ohne
-  Mandant ist jedes angemeldete Konto Mitglied). Die gemerkte
-  Ablehnung schlägt in `joinCommunity` den Rollen-Cache (sonst schrieb eine
-  entfernte Person noch 30 s weiter). EINEN Leser für den Grund stellt der
-  Core (`community-suspended-notice.client.ts`, nur bei Schreibversuchen;
-  Layer mit eigenem Satz melden sich über
-  `pukalani.notices.notAMemberSelfExplained` ab). Wächter:
-  `packages/core/tests/participation-guard-routes.test.ts` zählt die Routen
-  selbst — eine neue schreibende Route ohne Wache wird rot, Ausnahmen stehen
-  mit Grund in der Liste. Der Wächter prüft nur, DASS eine Wache im Quelltext
-  steht; dass sie in jedem Zweig greift, belegen die Proben je Paket
+- OHNE RESOLVER LEHNT DIE PLATTFORM AB (SEC-025, Davids Entscheidung): ist
+  `pukalani.tenancy.enabled` an, aber kein Resolver registriert, antwortet
+  `00.tenant.ts` mit 503 `tenant_resolver_missing` für JEDEN Host und Pfad,
+  auch Kontroll-Hosts. Durch kommen nur `/api/health` (`ok:false` mit Grund),
+  `/_i18n/` und Nuxts Fehlerseiten-Durchgang (Realtime startet dort nicht,
+  `isHostUnservedError`). Kein Schalter, kein Rückfall auf „Single-Tenant".
+  KEIN zweites Netz in der Tür selbst: Exporte, Spiegel und Sweeps rufen sie
+  ohne Mandant. Beweis: `packages/core/tests/tenantMiddleware.test.ts`.
+- BACKSTOP: ESLint (`no-restricted-syntax`) verbietet rohes `.tablesDB` in
+  `server/api/**` UND `server/plugins/**` der Datentür-Layer. Die Liste IST
+  `scripts/lib/data-door-layers.mjs` (`DATA_DOOR_LAYERS`; `eslint.config.mjs`
+  liest sie), `pnpm check:manifests` hält sie gegen die Migrationen: legt ein
+  Layer `communityId` an, steht er dort oder mit Grund in `DATA_DOOR_EXEMPT`.
+  Wer einen H3Event bekommt (auch ein Plugin/Contributor), bedient einen
+  Request und gehört hinter die Tür; ein eventloser Sweep bekommt eine
+  begründete eslint-disable-Zeile statt einer Aufweichung.
+- POOL-UNIQUE nur für tenant-RELATIVE Schlüssel: Host/Slug brauchen
+  `communityId` im Unique-Index; Row-Id-basierte (z. B. `(courseId, userId)`)
+  nicht — eine Row-Id ist global eindeutig. Die INDEXNAMEN heißen weiter
+  `uq_tenant_*` (nur die Spalte wurde auf `communityId` umbenannt).
+
+## DER SERVER SCHREIBT (SEC-002, Davids Entscheidung)
+- Appwrite ist für jedes Konto direkt erreichbar; ein Schreibrecht gilt NEBEN
+  unseren Routen, und was die Route prüft (Mandant, Zugehörigkeit, Sperre,
+  Eingabe, Bremse), prüft Appwrite nicht. Darum:
+  (1) KEINE Tabelle trägt ein Schreibrecht für Konten;
+  (2) KEINE TABELLENZEILE bekommt `update`/`delete` für ein Konto (kein
+  `ownerUserId`, kein `Permission.update/delete(Role.user(…))`) — die
+  Anwesenheit (Presence, keine Tabellenzeile) trägt sie bewusst, weil
+  Appwrites Realtime sie im Namen des Kontos ändert
+  (`core/server/api/presence/heartbeat.post.ts`);
+  (3) JEDER Schreibvorgang läuft über den Admin-Client: `tenantDb(event, { as:
+  'operator', actor: 'member' })`, wenn ein Mitglied handelt (M13 und A5
+  gelten über `actor`), `actor: 'guest'` für Gäste, ohne `actor` für Zähler
+  und Moderation.
+- GELESEN wird weiter über die Mitglieder-Klinke, wo das Leserecht der Zeile
+  die Sichtbarkeit entscheidet — Leserechte bleiben, Realtime hängt an ihnen.
+- EIGENTUM PRÜFT DIE ROUTE, VOR DEM SCHREIBEN: mit dem Admin-Client ist ihre
+  Prüfung die EINZIGE. Entweder Vergleich der Konto-Id (`authorId ===
+  user.$id`; Gast-Zeilen und Grabsteine tragen eine leere Id und gehören
+  niemandem) oder die eigene Zeile über `userId`/`reporterId` = Konto suchen
+  und nur die so gefundene anfassen. Nie auf Appwrites 401 verlassen.
+- DIE LISTE der Tabellen IST `scripts/lib/server-written-tables.mjs`. Drei
+  Netze: `packages/core/tests/serverWrittenTables.test.ts` (jede schreibende
+  Aufrufstelle an der Operator-Klinke, kein Schreibrecht beim Anlegen),
+  `pnpm check:permissions` Stufe 2 (keine Migration gibt ein Schreibrecht
+  zurück), `packages/core/scripts/verify-server-only-writes.mjs` (NUR lokal:
+  direkt anlegen/ändern/löschen ⇒ 401; `--expect-closed all --expect-clean
+  all`).
+- NEUE TABELLE MIT INHALT VON KONTEN ⇒ ohne Tabellenrecht anlegen, in die
+  Liste eintragen, Route mit Operator-Klinke.
+- BESTEHENDE TABELLE UMSTELLEN in drei Schritten, NIE zwei auf einmal: (1) der
+  Code (läuft mit und ohne alte Rechte) auf allen Seiten live; (2) die
+  Rechte-Migration (`scripts/migrations-lib/tableWriteRights.mts`, Rückweg
+  unter `packages/<layer>/scripts/rollback/` — nie im Ordner `migrations/`,
+  der Runner führe ihn sonst aus); (3) der Aufräum-Lauf `pnpm
+  ops:strip-row-write-rights` (ohne `--apply` zählt er nur, Lauf-Sperre in
+  `system_runs`, bricht ab, solange die Tabelle noch ein Schreibrecht trägt).
+  Das ist die EINE begründete Ausnahme von „Migration vor dem Merge".
+- OFFEN BLEIBT DAS LESEN: ein Konto liest direkt bei Appwrite jede Zeile, für
+  die seine Rollen ein Leserecht tragen, und immer die ganze Zeile
+  (`docs/plans/PUKALANI-KONTO.md`, § 9).
+
+## Sperre (M13, Davids Entscheidung)
+- DIE SPERRE FRIERT NUR INHALTE EIN: `communities.suspension` hat zwei Stufen
+  (`core/shared/communitySuspension.ts`). `'abuse'` nimmt der Resolver vom
+  Netz (404 wie ein unbekannter Host, Seite UND API). `'billing'` macht die
+  Community NUR-LESEND — an der DATENTÜR, nur an der Klinke `member`: zu ist
+  jeder INHALT. OFFEN bleiben alle Owner-Einstellungen (Branding, Team/Rollen,
+  Publikum, Registrierung) und die Moderation (Klinke `operator`) — die
+  Sperre soll zum Zahlen bewegen, nicht den Owner aussperren. Eine neue
+  Owner-Einstellung gehört NICHT hinter die Sperre, eine neue Inhalts-Route
+  braucht nichts zu tun.
+- Der Abgewiesene erfährt den GRUND nicht (`community.billing`), wohl aber die
+  TATSACHE: 403 mit `reason: community_suspended`, EIN Leser dafür
+  (`core/app/plugins/community-suspended-notice.client.ts`, ein Toast für
+  alle Layer). `my.*`-Karte genauso: `readOnly` (DASS) für jede Rolle,
+  `suspension` (WARUM) nur mit `community.billing`.
+
+## Mitmachen verlangt Zugehörigkeit (SEC-030, Davids Entscheidung)
+- Ein Pool-Konto ist auf JEDEM Community-Host angemeldet; „angemeldet" sagt
+  nichts über „gehört hierher". JEDE schreibende Route der Pool-Produkte ruft
+  VOR dem ersten Datenbankzugriff eine Wache: `requireCommunityParticipant
+  (event)` für alles, was ein erster eigener Beitrag sein kann (Beitrag,
+  Kommentar, Stimme, Reaktion, Zusage, Einschreiben, Melden; bei OFFENER
+  Registrierung ist das der Beitritt, A5), `requireCommunityMembership(event)`
+  für eigenes Bearbeiten/Löschen und alle Routen der privaten Nachrichten
+  (kein Beitritt), oder ein Rollen-Gate. Die Datentür wertet beim Anlegen
+  denselben Ausgang als Netz dahinter.
+- AUSGÄNGE: `closed`/`removed` ⇒ 403 `reason: not_a_member`; `unavailable` ⇒
+  die Mitgliedschaft entscheidet (Pool fail-closed, Silo durch). Melden bleibt
+  in einer gesperrten Community offen (`openDuringSuspension`), tritt dort
+  aber nicht bei. Die gemerkte Ablehnung schlägt in `joinCommunity` den
+  Rollen-Cache.
+- EIN Leser für den Grund stellt der Core
+  (`community-suspended-notice.client.ts`, nur bei Schreibversuchen); Layer
+  mit eigenem Satz melden sich über `pukalani.notices.notAMemberSelfExplained`
+  ab.
+- WÄCHTER: `packages/core/tests/participation-guard-routes.test.ts` zählt die
+  Routen — eine neue schreibende Route ohne Wache ist rot, Ausnahmen stehen
+  mit Grund in der Liste. Er prüft nur, DASS eine Wache im Quelltext steht;
+  dass sie in jedem Zweig greift, belegen die Proben je Paket
   (`tests/participation-guard.test.ts`, Prüfstand
   `core/tests/support/participationHarness.ts`).
-- AUCH DAS ROLLEN-TOR UND DIE ANWESENHEIT FRAGEN DIE ZUGEHÖRIGKEIT (BT1 e,
-  seit 2026-11-18): `requireCommunityPermission` liest die frische
-  Entzugs-Notiz VOR der Rolle — dieselbe Reihenfolge wie
-  `resolveCommunityMembership` und `joinCommunity`. Steht sie, zählt die
-  gecachte Rolle nicht; vorher ließ ein Recht, das schon die einfachste Rolle
-  trägt (`members.invite`), eine entfernte Person bis zu 30 s durch, und nur
-  die Sperre davor hielt sie auf. Der Betreiber im Not-Zugang kommt über sein
-  Label und ist nicht betroffen. `POST /api/presence/heartbeat` schreibt im
-  Pool nur für Mitglieder der Community des Hosts
-  (`resolveCommunityMembership`); alle anderen bekommen ein stilles `ok`,
-  ohne dass gelesen oder geschrieben wird (kein 403 — der Takt läuft alle
-  20 s in jedem Reiter). Ist die Frage gerade nicht beantwortbar, entscheidet
-  das Label am Konto, damit eine Störung nicht die Anwesenheit aller
-  Mitglieder löscht. Beweise: `packages/core/tests/communityPermission.test.ts`,
-  `packages/core/tests/route-roles-platform.test.ts`,
-  `packages/onboarding/tests/route-roles-members.test.ts`.
-- ENTFERNT ⇒ KEIN ZUGRIFF, NUR DER HINWEIS (SEC-030 Teil 2, seit 2026-11-13 —
-  Davids Entscheidung 2026-11-12): wem ein Admin den Zugang entzogen hat
-  (`community_members.status='removed'` — eine POSITIVE Tatsache; „war nie
-  Mitglied" ist etwas anderes und sieht den Hinweis NICHT), der bekommt auf
-  dem Host dieser Community angemeldet nichts mehr. ERKENNEN:
-  `isRemovedFromCommunity(event)` (core/server/utils/communityRemoval.ts, pure
-  Reihenfolge `detectCommunityRemoval`): frische Notiz „gerade entzogen" ⇒ ja
-  (schlägt Rollen-Cache 30 s UND den Cache „ehemalig" 60 s) · frische Notiz
-  „wieder aufgenommen" ⇒ nein (`rememberCommunityAccessRestored` in
-  accept.post.ts, sonst bliebe eine neu Eingeladene bis zu 60 s draußen) ·
-  aktive Rolle ⇒ nein · sonst `resolveFormerMembers`. FAIL-SOFT: bei Störung
-  „nein" — die Sperre darf kein Mitglied auf Verdacht aussperren; die
-  Schreib-Wachen dahinter bleiben fail-closed. SPERREN:
-  `server/middleware/06.community-removed.ts` (nach `06.community-label`)
-  setzt `event.context.communityRemoved` und antwortet JEDER `/api/**`-Route
-  mit 403 `reason: community_removed`, außer der ERLAUBNISLISTE
-  (`removedApiAllowed`, fail-closed, Segmentgrenze): Core `/api/auth/me`,
-  `/api/auth/logout`, `/api/health`, `/api/_nuxt_icon`; Layer melden weitere
-  über `pukalani.community.removedAllowedApi` an (onboarding: Kontakt-Route und
-  die zwei Routen des Rückwegs per Einladung). NEUE ROUTE AUF DER LISTE ⇒ sie
-  darf nur über das EIGENE Konto antworten, nie etwas aus der Community.
-  ZEIGEN: der Zustand reist per SSR in den Client (`useCommunityRemoved`), die
-  globale Routen-Middleware `community-removed.global.ts` führt jede Seite auf
-  `pukalani.community.removedNoticePath` (onboarding: `/removed`), der zentrale
-  403-Leser lädt bei `community_removed` dorthin um (Entzug mitten in der
-  Sitzung). Realtime ist für Entfernte aus (`realtimeEnabled()`): kein Socket,
-  kein Token, kein Heartbeat. KONTAKT:
-  `POST /api/community/removed-contact` (onboarding) — nur für Entfernte (sonst
-  404), eine Nachricht je 7 Tage je (Community, Konto), atomar VOR dem Versand
-  gezählt (`store.hit`) plus dauerhaft über die `rowId` der Glocken-Zeile;
-  Glocke (`member.appeal`) und genau eine Mail je Owner/Admin mit `Reply-To`
-  der Person; die Antwort verrät nichts über die Empfänger. Abgemeldet liest
-  eine entfernte Person in einer ÖFFENTLICHEN Community weiter, was jeder Gast
-  liest — das ist die Bedeutung von „öffentlich", keine Lücke. Beweis:
-  Abschnitt 10 b2 in `packages/onboarding/scripts/verify-site-authz.mjs`,
-  E2E `apps/comments/e2e/community-removed.spec.ts` (nur gegen eine
-  Pool-Bühne, in der CI übersprungen).
-- KURSE: VORSCHAU FÜR ALLE, INHALT FÜR MITGLIEDER (SEC-029, seit 2026-11-13 —
-  Davids Entscheidung 2026-11-12): Übersicht und Vorschau eines
-  VERÖFFENTLICHTEN Kurses sieht jeder, auch ohne Konto und auch in einer
-  Community „nur für Mitglieder"; Lektions-Inhalt, Einschreiben, Fortschritt
-  und Übersetzen gibt es nur für angemeldete Mitglieder. Rechte-Modell „nur
-  Server-Zugriff" wie bei `pages`: Zeilen in `courses` und `lessons` tragen
-  KEIN Leserecht (auch veröffentlichte nicht), die Routen lesen über die
-  Operator-Klinke und sind die EINZIGE Grenze. Deshalb gibt es für Kurse auch
-  keinen Eintrag beim Publikums-Wechsel (kein Recht, das umziehen könnte).
-  Drei Dinge, die eine neue Kurs-Route braucht: (1) öffentliche Antworten
-  NUR über die Feldauswahl `toCoursePreview`/`toLessonSummary`
-  (`courses/shared/coursePreview.ts`) — nie die rohe Zeile, ein neues Feld
-  wird sonst von selbst öffentlich; (2) alles hinter der Vorschau ruft
-  `requireCourseMember(event)` VOR dem ersten Datenbankzugriff (gleiche
-  Antwort für vorhandene und unbekannte Ids; 403 mit `reason: not_a_member`);
-  (3) nur das EINSCHREIBEN darf der Beitritt sein
+- ÜBERSETZEN NUR FÜR MITGLIEDER (MM1, Davids Entscheidung): jede
+  Übersetzungs-Route für Inhalte der Mitglieder ruft
+  `requireCommunityMembership` (Kurse: `requireCourseMember`) vor dem ersten
+  Datenbankzugriff — kein Beitritt, keine Inhalts-Sperre (eine gesperrte Community bleibt LESBAR,
+  darum wird der Cache als `actor: 'operator'` geschrieben — nicht auf
+  `member` „korrigieren"). posts, comments und events lesen ihr Ziel
+  danach über die Session-Klinke. Den Knopf zeigt der Browser nur mit
+  `useCommunityMember()` (Spiegel aus `07.community-role.ts`, DIESELBE
+  Funktion wie die Wache — Knopf und Wache dürfen nicht auseinanderlaufen; ohne Mandant ist
+  jedes angemeldete Konto Mitglied).
+
+## Kurse: Vorschau für alle, Inhalt für Mitglieder (SEC-029, Davids Entscheidung)
+- Übersicht und Vorschau eines VERÖFFENTLICHTEN Kurses sieht jeder, auch ohne
+  Konto und in einer Community „nur für Mitglieder"; Lektions-Inhalt,
+  Einschreiben, Fortschritt und Übersetzen nur angemeldete Mitglieder.
+- Zeilen in `courses` und `lessons` tragen KEIN Leserecht (auch
+  veröffentlichte nicht); die Routen lesen über die Operator-Klinke und sind
+  die EINZIGE Grenze. Ein Recht an der Zeile gilt neben den Routen und weiß
+  nichts von Mitgliedschaft oder Feldauswahl; `Role.users()` ist im Pool kein
+  Publikum einer Community. Darum auch kein Eintrag beim Publikums-Wechsel.
+- NEUE KURS-ROUTE braucht: (1) öffentliche Antworten NUR über
+  `toCoursePreview`/`toLessonSummary` (`courses/shared/coursePreview.ts`),
+  nie die rohe Zeile (ein neues Feld würde sonst öffentlich); (2) alles hinter
+  der Vorschau ruft `requireCourseMember(event)` VOR dem ersten
+  Datenbankzugriff (gleiche Antwort für vorhandene und unbekannte Ids; 403
+  `reason: not_a_member`); (3) nur das EINSCHREIBEN ist der Beitritt
   (`requireCourseMemberJoining`: erst Inhalts-Sperre, dann
-  `joinCommunity('contribution')`, und der AUSGANG zählt — direkt nach einem
+  `joinCommunity('contribution')`, der AUSGANG zählt — direkt nach einem
   frischen Beitritt sagt der Mitgliedschafts-Cache noch bis zu 30 s „nein").
-  WARUM KEIN LESERECHT AN DER ZEILE: ein Recht an der Zeile gilt NEBEN den
-  Routen und weiß nichts von Mitgliedschaft oder Feldauswahl; im Pool ist
-  `Role.users()` außerdem kein Publikum einer Community. Wächter: `packages/courses/tests/course-server-only-read.test.ts`
-  (kein `Permission.read` außer `ownRowRead`, keine Route über die
+- Wächter: `packages/courses/tests/course-server-only-read.test.ts` (kein
+  `Permission.read` außer `ownRowRead`, keine Route über die
   Mitglieder-Klinke); Live-Beweis: Abschnitt 7 in
   `packages/courses/scripts/verify-pool-isolation.mjs`.
-- BENACHRICHTIGUNGEN sind ABLAGE, nicht Zugriff (C15, seit 2026-07-29):
-  `notifications.communityId` (system-022, seit E8-3 so benannt) entscheidet, in WELCHER Glocke eine
-  Meldung erscheint — wer sie lesen darf, bleiben die Row-Permissions (nur
-  `recipientId`). `notify()` verlangt daher ein PFLICHTFELD
-  `scope: 'tenant' | 'account'`: 'account' = bewusst mandantenlos (Stripe-
-  Zahlungsproblem, Control-Anfragen — die betreffen den Vertrag, nicht die
-  Community). Kein Default, weil ein geratener Stempel eine Zahlungswarnung in
-  fremde Glocken legt; der Typfehler ersetzt hier den ESLint-Backstop, der in
-  `server/utils/**` nicht greift. EINE pure Regel für Schreiben, Leseroute UND
-  Realtime-`where`: `core/shared/notificationScope.ts`. Drei Spaltenwerte:
-  `<communityId>` · `_account` (kollisionsfrei — Row-Ids beginnen nie mit `_`) ·
-  `''` = unbekannt. `''` ist hier FAIL-OPEN und damit die BEGRÜNDETE AUSNAHME
-  von `rowBelongsToTenant` — ohne Backfill würde fail-closed jedem Nutzer im
-  Deploy-Moment die Glocke leeren. Nicht „korrigieren". Der Digest-Sweep bleibt
-  mandantenübergreifend (eine Mail/Tag, nicht eine je Community).
-  WER ZAHLT, ENTSCHEIDET DIE GLOCKE (Davids Entscheidung 2026-08-03 — schärft
-  C15, hebt es NICHT auf): eine Zahlungswarnung ist `scope: 'account'`, solange
-  ein KONTO der Vertragspartner ist (Silo/Einzel-Abo — Stripe-Webhook,
-  `/account/billing`). Bei einem COMMUNITY-Abo (A6) zahlt die COMMUNITY, und
-  ihr Owner ist genau dort eingeloggt, wo auch der Knopf sitzt: `scope:
-  'tenant'` mit der communityId, Link `/dashboard/settings/subscription`. Kein
-  Mitglied sieht sie deswegen — das war NIE die Aufgabe des Stempels, sondern
-  die der Row-Permissions (`read(user:<owner>)`). GESCHRIEBEN WIRD SIE IM POOL,
-  nicht im Webhook: der läuft auf `control`, `metadata.userId` eines
-  Community-Checkouts ist aber eine POOL-Id (dort 404 `user_not_found`), und
-  das Control Plane hat keinen Pool-Schlüssel (dieselbe Grenze wie bei
-  `revokeCommunityLabel`, A5). Arbeitsteilung wie bei M13: der Webhook stempelt
-  (`billingStatus`/`pastDueSince`), der stündliche Lauf der Platform-App meldet
-  (`packages/onboarding/server/utils/pastDueNotice.ts`, Leser
-  `packages/control/server/utils/pastDueNoticeReader.ts`, verdrahtet in
-  `apps/platform/server/plugins/past-due-notice.ts`). BEWUSST KEINE neue
-  Service-Naht control→platform: die kostete ein zweites Secret, einen
-  Dienst-Endpunkt auf einem öffentlichen Mehr-Mandanten-Host und einen
-  Geldpfad, der bei einem Platform-Ausfall Stripe-Retrys auslöst — für
-  Sofortigkeit, die neben einer 14-Tage-Frist wertlos ist. „Genau einmal" macht
-  der neue Idempotenz-Schlüssel von `notify()` (`rowId`, 409 → kein Eintrag UND
-  keine Mail, `created: false`) aus communityId + `pastDueSince` +
-  recipientId — kein „erst nachsehen, dann schreiben". `notify()` ist dafür
-  ohne `H3Event` aufrufbar und nimmt den Ablage-Wert per `communityId`
-  explizit entgegen (ein Sweep hat keinen Mandanten-Kontext); ACHTUNG, das ist
-  `communities.tenantId` (`t-…`), nicht `communities.$id`.
-- ENTFERNT ⇒ AUCH KEINE BENACHRICHTIGUNG MEHR (MM1 b, seit 2026-11-17): gemessen
-  auf der Bühne — eine Antwort auf den alten Kommentar einer entfernten Person
-  schrieb weiter eine Glocken-Zeile und eine Mail mit einem Auszug. Jetzt fragt
-  `notify()` bei `scope: 'tenant'` VOR dem Schreiben, ob der Empfänger aus der
-  Community des Stempels entfernt ist: keine Zeile, keine Mail, Ergebnis
-  `{ created: false, skipped: 'former_member' }` (kein Fehlschlag — wer
-  Störungen nachholt, wie die Termin-Erinnerung, zählt es nicht). Reihenfolge
-  wie bei `detectCommunityRemoval`: erst die frische Notiz im Request
-  (`communityAccessMemory`: „gerade entzogen" ⇒ aus, „wieder aufgenommen" ⇒
-  zustellen), dann der Vertrag `resolveFormerMembersOfTenant(stempel, konten)`
-  (`core/server/utils/communityMembership.ts`) — er arbeitet OHNE Request über
-  `communities.tenantId`, weil Läufe keinen Mandanten haben (Implementierung
-  `createFormerMembersByTenantResolver` im control-Layer, teilt Regel und
-  60-s-Cache mit dem Zeichen „ehemalig"). Die Sammel-Mail fragt gebündelt je
-  Community und lässt aus, was vor dem Entzug liegen blieb. FAIL-SOFT (bewusst
-  anders als die Sperren): ohne Antwort des Control Plane geht die Meldung
-  raus — sonst verlöre bei einer Störung jedes Mitglied seine Antworten. EINE
-  Ausnahme stellt trotzdem zu: die neue Einladung (`formerMember: 'deliver'`,
-  `siteInvite`), sie ist der Rückweg. Ein neuer `notify()`-Aufruf braucht
-  nichts zu tun. Beweise: `packages/core/tests/notifyFormerMember.test.ts`,
-  `packages/onboarding/scripts/verify-removed-notifications.mjs` (Bühne, mit
-  Gegenprobe; ohne den registrierten Resolver wird die letzte Prüfung rot).
-- MAIL-LINKS FOLGEN DERSELBEN ABLAGE (D5, seit 2026-08-01): eine Benachrichtigungs-
-  MAIL verlinkt auf den Host DER COMMUNITY, nicht mehr auf `public.appUrl`. Pure
-  Regel `core/shared/notificationLinks.ts` (dieselben drei Spaltenwerte:
-  `<communityId>` ⇒ Community-Host · `_account` ⇒ App-Host · `''` ⇒ App-Host).
-  Aufgelöst über den Registry-Vertrag `registerCommunityHostResolver`
-  (core/server/utils/communityHost.ts; Implementierung
-  `packages/control/server/utils/communityHostResolver.ts`, verdrahtet in
-  apps/platform) — zwei Eigenheiten mit Grund: OHNE `H3Event`, weil der
-  Digest-Sweep ohne Request läuft, und GEBÜNDELT, weil der Sweep sonst N+1 über
-  Projektgrenzen liefe. Nachgeschlagen wird `communities.tenantId`, NICHT `$id`
-  (E8-3 hat die Spalte umbenannt, nicht den Wert). FAIL-SOFT: kein Host ⇒
-  App-Basis, eine Mail wird NIE verworfen — deshalb muss jeder Test hier eine
-  Gegenprobe haben, sonst ist er immer grün. JEDER EINTRAG einer Digest-Mail
-  trägt seinen eigenen Host (die Sammel-Mail ist bewusst mandantenübergreifend).
-  Beweise: `packages/core/tests/notificationLinks.test.ts`,
-  `packages/control/tests/communityHostResolver.test.ts` und der Mailpit-Beweis
-  `packages/core/scripts/verify-notification-mail-links.mjs` (11/11).
-- „NICHT ERREICHBAR" IST EINE EIGENE FRAGE (SE1 d, seit 2026-11-19): der
-  Host-Vertrag oben sagt bei „kein Host" nicht, ob die Community stillgelegt
-  ist oder ob nur die Antwort ausblieb — für eine Mail genügt das (sie geht
-  mit der App-Basis raus), für „soll ein Lauf hier noch etwas tun?" nicht.
-  Dafür gibt es `resolveUnreachableCommunities(stempel)`
-  (`core/server/utils/communityReachability.ts`, ohne Request, gebündelt,
-  über `communities.tenantId`): zurück kommen `answered` und die Menge der
-  NICHT erreichbaren Stempel. Genannt wird nur eine POSITIVE Tatsache — eine
-  Zeile, die stillgelegt ist (`status !== 'active'`) oder wegen Missbrauchs
-  gesperrt (`communityUnreachableReason`,
-  `packages/control/shared/communityReachability.ts`; die Zahlungs-Sperre
-  zählt nicht, ein unbekannter Stempel auch nicht). FAIL-SOFT wie bei
-  `resolveFormerMembersOfTenant`: kein Resolver, eine Störung oder eine
-  Einzel-Instanz ⇒ `answered: false`, und der Aufrufer macht weiter wie ohne
-  die Frage. Leser im control-Layer (`unreachableCommunitiesResolver.ts`,
-  bewusst ohne Zwischenspeicher), verdrahtet in apps/platform. Erster
-  Aufrufer: der Erinnerungs-Lauf, der damit vorerst nur ZÄHLT
-  (`ki-mail-embed-moderation.md`). Beweise:
-  `packages/core/tests/communityReachability.test.ts`,
-  `packages/control/tests/unreachableCommunitiesResolver.test.ts`,
-  `packages/events/tests/event-reminders-sweep.test.ts`.
-- WO HÄNGT DIE GLOCKE? (C17, seit 2026-07-29): sie wird NUR aus
-  `pukalani.chrome.utilities` gerendert, und dessen einziger Konsument ist das
-  blueprint-Layout — eine App OHNE blueprint hat also keine. Genau das traf
-  `apps/control`, wo BEIDE `scope:'account'`-Absender leben (Stripe-Webhook,
-  Early-Access-Anfragen) und wo auch ihre Empfänger Konten sind: Absender,
-  Empfänger und Leser liegen alle im control-Projekt — `my.pukalani.app` (Pool)
-  war nie der Leser, dort entsteht heute keine `_account`-Zeile. Schalter
-  `pukalani.chrome.accountBell` (Core-Default AUS, apps/control an) hängt sie ins
-  core-default-Layout und in die Dashboard-Shell, dort in die SEITENLEISTE neben
-  die Suche (oben rechts sitzen die Aktionen der Seiten-Kopfzeilen — eine
-  schwebende Glocke verdeckte sie). Der Schalter sagt nur, OB sie hängt; WAS sie
-  zeigt, bleibt das Publikum ihres Hosts. Jeder neue notify()-TYP braucht einen
-  Zweig in messageKey() + Text in de/en — der Rückfall auf 'replied' macht ein
-  Loch unsichtbar; Netz: `packages/core/tests/notificationBellTexts.test.ts`.
-- BETREIBER-Inhalt gehört nicht auf Mandanten-Hosts (N7, seit 2026-07-28):
-  der öffentliche Changelog (admin-Layer) antwortet dort 404 — Seite via
-  `useIsTenantHost()` (core, pure Ausschluss-Rechnung in shared/controlCenter.ts:
-  Tenant-Gate an UND kein Kontroll-Host ⇒ Mandant), API via `useTenant(event)`.
-  Die Chrome-Registry (`pukalani.chrome.changelogLink/whatsNew: false`) versteckt
-  nur — jede neue Betreiber-Seite braucht BEIDE Sperren, Seite und Route.
-  Kontroll-Hosts und Silo-Apps (comments) bleiben unberührt. Dieselbe Sperre
-  trägt seit 2026-11-15 (BE-023) die App-Route `/api/stats` der Test-App: sie
-  zählt das ganze Projekt und antwortet mit Mandant 404.
+
+## Betreiber-Inhalt (N7)
+- BETREIBER-INHALT gehört nicht auf Mandanten-Hosts: dort 404 — Seite über
+  `useIsTenantHost()` (pure Rechnung `isTenantHost` in
+  `core/shared/controlCenter.ts`: Tenant-Gate an UND kein Kontroll-Host),
+  API über `useTenant(event)`. Die Chrome-Registry
+  (`pukalani.chrome.changelogLink/whatsNew: false`) versteckt nur — jede neue
+  Betreiber-Seite braucht BEIDE Sperren, Seite und Route. Kontroll-Hosts und
+  Silo-Apps bleiben unberührt. Dieselbe Sperre trägt
+  `apps/comments/server/api/stats.get.ts` (zählt das ganze Projekt, mit
+  Mandant 404, BE-023).

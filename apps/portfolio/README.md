@@ -35,7 +35,7 @@ Die Landkarte aller Hosts: `docs/content/2.architektur/6.hosts-und-ports.md`.
 und `system`.
 
 `brand` stand hier bis zum Rückbau am 2026-08-31 und lebt seither in
-`apps/branding` (docs/plans/BRANDING-SUPPLY-INFRA.md).
+`apps/branding` (docs/archiv/BRANDING-SUPPLY-INFRA.md).
 
 ## Entwickeln
 

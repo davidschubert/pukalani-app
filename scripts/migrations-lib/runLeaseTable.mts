@@ -40,7 +40,7 @@
  *
  * Idempotent: vorhandene Tabelle (409) und vorhandene Spalten werden
  * übersprungen, Indizes nur über `createIndexSteps` (Retry + Cache-Anstoß,
- * `.claude/rules/appwrite.md`). Zerstört nichts.
+ * `.claude/rules/appwrite-migrationen.md`). Zerstört nichts.
  */
 import { createIndexSteps, hasCode, type IndexingTablesDB } from './indexRetry.mts'
 

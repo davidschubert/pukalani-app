@@ -1133,7 +1133,7 @@ Strategie), 2026-09-05 (Brand Foundation als Guidelines) ·
 [archiv/BRAND-MARKTVERGLEICH.md](../archiv/BRAND-MARKTVERGLEICH.md) §1.7, §1.9,
 Anhang G · [plans/BRAND-INSIGHTS.md](BRAND-INSIGHTS.md) §4 ·
 [archiv/BRAND-DESIGN.md](../archiv/BRAND-DESIGN.md) §1.7–§1.10 ·
-[plans/BRANDING-SUPPLY-INFRA.md](BRANDING-SUPPLY-INFRA.md) (D4) ·
+[archiv/BRANDING-SUPPLY-INFRA.md](../archiv/BRANDING-SUPPLY-INFRA.md) (D4) ·
 [runbooks/STRIPE-GO-LIVE-RUNBOOK.md](../runbooks/STRIPE-GO-LIVE-RUNBOOK.md) ·
 [runbooks/BRANDING-SUPPLY-SETUP.md](../runbooks/BRANDING-SUPPLY-SETUP.md)
 

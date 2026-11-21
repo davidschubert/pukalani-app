@@ -806,7 +806,7 @@ prüfen:
 4. *Fehlt eine Einstellung?* `pnpm ops:site-env` (liest nur die Namen). Im
    pm2-Log steht beim ersten verworfenen Versand einmal
    `NUXT_SMTP_HOST fehlt — … wurde NICHT verschickt`. Eine fehlende Variable
-   wird sonst nirgends rot (Regel F44 in `.claude/rules/hosts-ops.md`).
+   wird sonst nirgends rot (Regel F44 in `.claude/rules/ops-server.md`).
 5. *Schlüssel getauscht oder widerrufen?* Der Sende-Schlüssel steckt an fünf
    Stellen, und jede wird anders wirksam:
    [RESEND-WEBHOOK.md](RESEND-WEBHOOK.md), § 6.1.
