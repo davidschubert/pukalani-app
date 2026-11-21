@@ -441,7 +441,9 @@ es ist; der Feed lud seine Liste doppelt und zählte Kommentare je Beitrag.
   Community-Rolle (dort immer 404).
 - **Indizes (PERF-008).** `control-041` (`communities.tenantId`) und
   `system-042` (`notifications`: `read`, `$createdAt`). Lokal gefahren; auf
-  Production offen (OPEN-ITEMS „Q12M"). Der Code arbeitet ohne sie richtig,
+  Production am 2026-11-21 mit Davids Ja (Q12M): `control-041` im Projekt
+  admin, `system-042` in account, admin, portfolio und branding, je erst als
+  Probelauf; danach `pnpm ops:schema-parity` grün und alle Hosts `ok`. Der Code arbeitet ohne sie richtig,
   `/api/health` bleibt ohne sie `ok` (die Proben zeigen auf Spalten, nicht auf
   Indizes) — lokal nachgesehen, bevor die Migrationen liefen.
 
