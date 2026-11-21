@@ -11,7 +11,7 @@
  * nach jedem `pnpm --filter <app> build` — ein zu schwerer Stand wird
  * nicht ausgeliefert.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { PAGE_WEIGHT_BUDGETS } from './lib/page-weight-budgets.mjs'
@@ -20,14 +20,30 @@ import { gzipBytes, startPageScripts } from './lib/page-weight.mjs'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
+ * Wo Nuxt seinen Build-Ordner ablegt, hängt von der Umgebung ab: in der CI
+ * `.nuxt/`, auf dem Mac `node_modules/.cache/nuxt/.nuxt/` (am 2026-11-21 im
+ * Ausliefern erwischt — der Wächter fand dort „keinen Build"). Gibt es
+ * beide, gilt der jüngere.
+ * @param {string} appDir
+ */
+export function findManifest(appDir) {
+  const candidates = [
+    join(appDir, '.nuxt/dist/server/client.manifest.mjs'),
+    join(appDir, 'node_modules/.cache/nuxt/.nuxt/dist/server/client.manifest.mjs'),
+  ].filter(path => existsSync(path))
+  candidates.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)
+  return candidates[0]
+}
+
+/**
  * @param {string} app
  * @param {{ roots: string[], maxScriptGzipKB: number }} budget
  * @param {string} appDir
  */
 export async function measureApp(app, budget, appDir = join(ROOT, 'apps', app)) {
-  const manifestPath = join(appDir, 'node_modules/.cache/nuxt/.nuxt/dist/server/client.manifest.mjs')
+  const manifestPath = findManifest(appDir)
   const publicDir = join(appDir, '.output/public/_nuxt')
-  if (!existsSync(manifestPath) || !existsSync(publicDir)) return { app, built: false }
+  if (!manifestPath || !existsSync(publicDir)) return { app, built: false }
   const manifest = (await import(pathToFileURL(manifestPath).href)).default
   const { files, missing } = startPageScripts(manifest, budget.roots)
   let bytes = 0
