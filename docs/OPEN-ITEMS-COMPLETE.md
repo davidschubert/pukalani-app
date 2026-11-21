@@ -75,6 +75,56 @@ Formulars daneben neu setzen — sonst wirft er dessen ungespeicherte
 Änderungen weg. Er bekommt einen eigenen Wert und schickt die Nachbar-Felder
 im GESPEICHERTEN Stand mit.
 
+### Bahn 2 / Paket 1 — Acht Stellen, an denen ein verschluckter Lesefehler den Ablauf verfälschte (Rest aus Q13, ARC-002) ✅ 2026-11-21
+
+**Was.** Q13 hatte 236 stille Lesefehler auf `softFail` umgestellt (Verhalten
+gleich, nur Protokoll) und acht Stellen gemeldet, an denen das Schlucken den
+Ablauf selbst trägt. Je Stelle entschieden: ehrlich scheitern, „unbekannt"
+statt „nein", oder bewusst beim Alten. Zwei Pull Requests: Geld und Anmeldung
+(#498) getrennt vom Rest.
+
+| # | Stelle | Entscheidung | Änderung |
+| --- | --- | --- | --- |
+| 1 | `control/…/websites/[id].delete.ts` | ehrlich scheitern | erst Entitlements lesen (Fehler ⇒ 503, nichts gelöscht), dann löschen (Rest ⇒ 503 `entitlements_left`, der Eintrag BLEIBT, derselbe Klick räumt nach), zuletzt der Eintrag. Die Seite sagt schon „steht weiter im Register". |
+| 2 | `posts/server/utils/topicLinks.ts` | beim Schreiben streng, beim Lesen fail-soft | Ja, `syncTopicLinks` ENTFERNTE bei einem Lesefehler (Beiträge oder Kategorien) jeden Rückverweis der Quelle. Jetzt `resolveTopics(…, { strict: true })` und die Liste der vorhandenen Zeilen werfen; der Aufrufer fängt, der alte Index bleibt. Die Anzeige verliert weiter nur Verweise. |
+| 3 | `control/…/invite-requests/index.get.ts` | „unbekannt" statt „nichts" | Liste bleibt sichtbar, `incomplete: ['codes' \| 'communities']`; eine Anfrage MIT Code ist dann nicht erinnerbar (`remindBlocked: code-unknown`, Satz de+en). Die Seite selbst zeigt `incomplete` noch nicht (sie steht in der LZ1-Liste von Bahn 1). |
+| 4 | `billing/server/utils/entitlements.ts` | „gerade nicht feststellbar" | 503 `billing_unavailable`, nichts gemerkt; der Kurs-Wächter reicht einen gescheiterten Guard als Fehler durch statt „Upgrade nötig"; `useBilling` schluckt nur noch 404, die Abo-Karte zeigt Fehler mit Neuversuch (PR #498). |
+| 5 | `brand/…/profiles/index.post.ts` | Fehler bleibt, Reste werden sichtbar | Rückweg löscht zuerst die Marken-Zeile (das Sichtbare), dann die Kapitel (404 = nie angelegt); scheitert etwas, EINE Zeile `brand.profile_create_rollback_failed` mit `profileLeft`/`stepsLeft`. |
+| 6 | `core/server/api/auth/otp.post.ts` | ehrlich scheitern, Gleichförmigkeit bleibt | Lesefehler über der Mail-Grenze ⇒ 503 `auth_unavailable` statt erfundener `userId`. `users.list` antwortet für unbekannte Adressen mit leerer Liste; ein Fehler hängt nur an der Datenbank. Test: Fehlerfall für vorhandene und unbekannte Adresse gleich (PR #498). |
+| 7 | brand-, comments-, insights- (2), market-Läufe; `control/…/customerFeedback.ts` | Takt `failed` statt `ok` | Neue Hilfe `softFailMissingSchema` (`core/server/utils/softFail.ts`): still nur bei fehlendem Schema, sonst weiterwerfen ⇒ `defineTimedJob` zählt `failed`. Der Newsletter-Lauf merkt den Fehler, lässt die zweite Regel laufen und wirft am Ende. `customerFeedback.ts` ist KEIN Lauf: dort schrieb eine gescheiterte Stichprobe eine zu kleine Breite („aus N Communities") in den Eintrag — jetzt bleibt der gespeicherte Wert. |
+| 8 | `posts/server/utils/memberCounters.ts` | bewusst beim Alten | Den Rückstand holt `ensureSeededCounters` beim Hinsehen (`counterFellBehind`); kein neuer Lauf. Begründung an der Stelle. Nicht geheilt: `upvotesReceived` und `edits` (kein Aggregat). |
+
+**Was ein Aufräumen der Reste bräuchte (nicht gebaut, löscht Daten):**
+(1) Entitlements ohne Register-Eintrag: `entitlements.siteProjectId` gegen
+`websites.projectId`, zählen, mit Davids Ja löschen — seit diesem Paket
+entsteht der Zustand nicht mehr (der Eintrag geht zuletzt). (5) Marken ohne
+Kapitel-Zeilen bzw. Kapitel ohne Marke: `brand_steps.profileId` gegen
+`brand_profiles.$id`, Anlass ist die Protokoll-Zeile
+`brand.profile_create_rollback_failed`. Beides gehört auf das Gerüst
+`rowRetention` (Vorgabe `off`, live mit `count`).
+
+**Tests** (Fehlerfall und Gegenprobe je Stelle):
+`control/tests/websiteDeregisterLeftovers.test.ts`,
+`posts/tests/topicLinksSyncReadFailure.test.ts`,
+`control/tests/inviteRequestsListReadFailure.test.ts`,
+`billing/tests/entitlements-read-failure.test.ts`,
+`courses/tests/course-paid-access.test.ts`,
+`brand/tests/route-roles-profiles.test.ts` (Rückweg),
+`core/tests/authMailRecipientLimit.test.ts`,
+`core/tests/softFail.test.ts`, je ein `*ReadFailure.test.ts` in brand,
+comments, insights, market, `insights/tests/insightsSubscribersSweep.test.ts`,
+`control/tests/customerFeedbackVoteReadFailure.test.ts`.
+
+**Nicht geprüft:** keine Laufzeitprobe gegen eine echte Datenbank mit
+erzwungenem Ausfall (nur gestellte Antworten); die Preistabelle zeigt bei
+einer 503 weiter die Kauf-Knöpfe (der Checkout antwortet dann selbst 503).
+
+**Gelernt:** Ein Ersatzwert ist nur dort harmlos, wo er nichts SCHREIBT. Alle
+acht echten Fälle hatten dieselbe Form: aus „nicht gelesen" wurde „leer", und
+danach wurde auf Grund von „leer" gelöscht (Rückverweise), gezählt (Breite),
+verkauft (zweites Abo) oder „gut" gemeldet (Takt). Beim Durchsehen eines
+`.catch` deshalb zuerst fragen: was tut der Code DANACH mit dem Ersatzwert?
+
 ### Q21 — Render-Test und erster Schnitt der Werkstatt (ARC-001) ✅ 2026-11-21
 
 **Was.** Die Werkstatt-Seite in `packages/brand` (`pages/brand/[profileId]/[stepKey].vue`)

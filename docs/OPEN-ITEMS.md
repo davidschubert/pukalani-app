@@ -221,6 +221,11 @@ stehen.
 
 ### Bewusst zurückgestellt (kein Aufgabenpunkt)
 
+- **Reste nach gescheiterter Anlage oder Austragung** (Bahn 2, 2026-11-21):
+  Entitlements ohne Register-Eintrag und halbe Marken-Anlagen werden seit
+  Bahn 2 gemeldet statt verschwiegen, aber nicht automatisch gelöscht. Was ein
+  Aufräumen bräuchte, steht in COMPLETE „Bahn 2 / Paket 1"; erst angehen, wenn
+  die Protokoll-Zeilen dort je auftauchen.
 - **Brand Design, zwei Nebenbefunde aus dem Audit (2026-09-09):** `aiComplete`
   loggt bei Anbieter-Fehlern weiter 300 Zeichen Rumpf (Text-Weg, nicht Teil des
   Audits; `aiVision`/`aiImage` schweigen); die 413-Antwort `reading_too_large` hat

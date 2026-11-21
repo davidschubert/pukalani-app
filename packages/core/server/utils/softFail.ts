@@ -130,6 +130,30 @@ export function softFailWith<T>(where: string, fallback: () => T, options?: Soft
   }
 }
 
+/**
+ * Fehlt das SCHEMA (Tabelle, Spalte, Datenbank, Bucket — 404 mit einer
+ * Appwrite-Fehlerart aus `STRUCTURAL_NOT_FOUND`)? Pur, getestet.
+ */
+export function isMissingSchema(error: unknown): boolean {
+  const shaped = shapeSoftFail(error)
+  return shaped.status === 404 && Boolean(shaped.type && STRUCTURAL_NOT_FOUND.test(shaped.type))
+}
+
+/**
+ * FÜR LÄUFE IM TAKT (Bahn 2, Q13-Stelle 7): Ersatzwert NUR, wenn das Schema
+ * fehlt (ein Layer ist einkompiliert, seine Migration aber nicht gelaufen —
+ * dort gibt es nichts zu tun). JEDER andere Fehler wird weitergeworfen, damit
+ * `defineTimedJob` den Takt als `failed` zählt, statt „gut, nichts zu tun"
+ * zu melden, obwohl der Lauf gar nicht lesen konnte.
+ */
+export function softFailMissingSchema<T>(where: string, fallback: T): (error: unknown) => T {
+  return (error) => {
+    if (!isMissingSchema(error)) throw error
+    report(where, error, undefined)
+    return fallback
+  }
+}
+
 /** Nur für Tests: die Merkliste der Bremse leeren. */
 export function resetSoftFailThrottle(): void {
   seen.clear()

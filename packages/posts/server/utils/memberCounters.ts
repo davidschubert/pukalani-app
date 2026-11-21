@@ -247,6 +247,15 @@ export async function applyMemberCounterEvents(event: H3Event, events: readonly 
       await refreshTrustLevelAfterCounters(event, userId, latest)
     }
     catch (error) {
+      /**
+       * BLEIBT FAIL-SOFT, BEWUSST (Bahn 2, Q13-Stelle 8): ein Zähler ist die
+       * Folge einer Handlung, nie ihr Preis. Den Rückstand holt das Netz
+       * beim Hinsehen nach — `ensureSeededCounters` zieht eine Zeile, die
+       * HINTER den Aggregaten liegt, auf deren Stand (`counterFellBehind`);
+       * ein eigener Abgleich-Lauf ist deshalb nicht nötig. Nicht geheilt
+       * werden `upvotesReceived` und `edits` (dafür gibt es kein Aggregat):
+       * dort bleibt ein verlorenes Delta verloren — sichtbar über diese Zeile.
+       */
       logEvent('warn', 'posts.member_counters_failed', {
         kinds: entries.map(entry => entry.kind).join(','),
         message: error instanceof Error ? error.message : String(error),

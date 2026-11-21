@@ -2,7 +2,7 @@ import { Query } from 'node-appwrite'
 import type { MarketCompetitorRow } from '../../shared/types/market'
 import { MARKET_COMPETITORS_TABLE } from '../../shared/types/market'
 import { marketRawSweepDue, marketRawSweepPatch } from '../../shared/marketRetention'
-import { softFail } from '../../../core/server/utils/softFail'
+import { softFailMissingSchema } from '../../../core/server/utils/softFail'
 
 /**
  * DER ROHTEXT-SWEEP (Plan §2.6, §2.9 Nr. 6; MV1 M5).
@@ -95,8 +95,11 @@ export async function runMarketRawSweep(now: Date = new Date()): Promise<MarketR
         Query.orderAsc('rawExpiresAt'),
         Query.limit(SWEEP_BATCH),
       ],
-    }).catch(softFail('market:utils/marketRawSweep:listRows', null))
+    }).catch(softFailMissingSchema('market:utils/marketRawSweep:listRows', null))
 
+    // NUR DAS FEHLENDE SCHEMA ENDET STILL (Bahn 2, Q13-Stelle 7): jeder andere
+    // Lesefehler wird weitergeworfen, und `defineTimedJob` zählt den Takt als
+    // `failed` — vorher meldete ein Lauf, der gar nicht lesen konnte, „ok".
     // FAIL-SOFT UND STILL: auf einer Instanz OHNE die market-Migration gibt es
     // die Tabelle nicht, und der Layer kann trotzdem einkompiliert sein (genau
     // der Zustand von `branding`, solange die Prod-Migration aussteht). Ein

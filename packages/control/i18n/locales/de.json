@@ -121,7 +121,8 @@
         "cooldown": "Zuletzt vor weniger als 24 Stunden erinnert.",
         "limit": "Nach drei Erinnerungen ist Schluss — melde dich persönlich.",
         "not-assigned": "Erst zuweisen.",
-        "already-redeemed": "Bereits eingelöst."
+        "already-redeemed": "Bereits eingelöst.",
+        "code-unknown": "Code gerade nicht lesbar — bitte die Seite neu laden."
       },
       "defer": "Zurückstellen",
       "decline": "Ablehnen",
