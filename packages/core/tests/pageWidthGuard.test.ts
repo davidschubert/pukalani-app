@@ -25,7 +25,9 @@ const REPO = resolve(import.meta.dirname, '../../..')
 const SKIP_DIRS = new Set(['node_modules', '.nuxt', '.output', '.playground'])
 
 /** Ausnahmen — Schlüssel `Datei`, Wert = Grund in einem Satz. */
-const EXCEPTIONS: Record<string, string> = {}
+const EXCEPTIONS: Record<string, string> = {
+  'packages/admin/app/pages/dashboard/users/[id].vue': 'wird in Q14 (PR 485) behoben',
+}
 
 function vueFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
