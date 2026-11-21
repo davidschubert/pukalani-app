@@ -30,6 +30,64 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q21 — Render-Test und erster Schnitt der Werkstatt (ARC-001) ✅ 2026-11-21
+
+**Was.** Die Werkstatt-Seite in `packages/brand` (`pages/brand/[profileId]/[stepKey].vue`)
+hatte 5.235 Zeilen, und es gab im Projekt keinen einzigen Test, der eine
+Komponente aufbaut. Ein Umbau dieser Seite war damit blind. Bewusst begrenzt
+auf zwei Dinge: ein Rauch-Test und der ERSTE Schnitt. Die übrigen Schnitte
+stehen als **WS1** in der Liste (Kapitel mit Zeilen in `docs/plans/offen/WS1.md`).
+
+1. **Werkzeug.** `@nuxt/test-utils` 4.4.0 über den Katalog (13 Tage alt, passt
+   zu Nuxt 4.6.4 und Vitest 5.1.1). Es verlangt für einen echten Aufbau eine
+   DOM-Umgebung und `@vue/test-utils`; beide fehlten, David hat am
+   2026-11-21 ausdrücklich Ja gesagt: `happy-dom` 21.0.4 und
+   `@vue/test-utils` 2.6.0. Alle drei nur als devDependencies von
+   `packages/brand`. `check:single-copy` bleibt grün (Vitest hat eine Kopie,
+   jetzt mit `happy-dom` als Peer).
+2. **Eigenes Vitest-Projekt.** `packages/brand/vitest.config.ts` hat zwei
+   Projekte: `unit` (wie bisher, `node`) und `render` (Umgebung `nuxt`, Wurzel
+   der Playground mit `brand` + `core`). Allein gemessen: `unit` 4,6 s vorher,
+   5,0 s nachher; `render` 2,4 s (kalt rund 8 s). Ganzer `pnpm test`:
+   93,5 s vorher, 95,4 s nachher. Im vollen Lauf braucht `packages/brand`
+   29 statt 18 s, weil `render` einen Nuxt-Start parallel zu allen Paketen
+   macht; die Wand-Zeit bleibt fast gleich.
+3. **Rauch-Test** `packages/brand/tests/render/workshopPage.test.ts`: baut die
+   Seite in `UApp` → Layout → Router auf, mit gestellten Antworten aus
+   `tests/render/support/workshopFixtures.ts` (die Kapitel-Zustände kommen aus
+   denselben geteilten Regeln wie auf dem Server). Prüft: genau ein `main`,
+   der Kapitel-Name als einzige `h1` (Q09), Navigation „Fortschritt", der Zug
+   von George, je Feld eine Karte im Log; Klick-Weg „Website lesen" →
+   Zustimmung → „Ja, lesen" → Meldung mit Zeichenzahl. Keine Vue-Warnung,
+   kein Fehler, KI-Routen 0 Aufrufe. Einzige erlaubte Meldung, mit Grund:
+   vue-router findet `/about` nicht (die Seite gibt es nur in `apps/branding`).
+   **Gegenproben, alle rot:** ein Lesefehler in der Vorlage der Seite, der
+   Knopf „Ja, lesen" falsch verdrahtet, ein falsch geschriebener Baustein-Name.
+4. **Erster Schnitt: der Website-Streifen** → `BwSiteStrip.vue`. Gewählt, weil
+   er die klarste Grenze der Seite hat: eine Route (`POST …/analyze`), ein
+   Stück Profil aus dem Store, und nichts sonst auf der Seite liest seinen
+   Zustand. Verhalten und Aussehen gleich; die Zustände des Streifens waren
+   schon vorher lokal, das Profil bleibt im Store. Seite **5.235 → 5.119**
+   Zeilen. Rauch-Test vor und nach dem Schnitt grün.
+5. **Klick lokal** (`apps/branding` aus dem Worktree, Build-SHA = Commit,
+   lokale Appwrite, Wegwerf-Konto): Werkstatt geöffnet, „Website lesen" →
+   „Not now" → „Website lesen" → „Yes, read it" gegen eine lokale Probe-Seite
+   → „Read on 11/21/2026", „116 characters kept". Konsole ohne Fehler. Die
+   App lief ohne Weg nach draußen (toter Proxy für alle Verbindungen außer
+   localhost); der Eröffnungszug antwortete `skipped`. Konto, Profil,
+   Zugangs- und Zustimmungs-Zeilen danach gelöscht und nachgezählt (0).
+6. Regel-Zeile „RENDER-TESTS" in `.claude/rules/tests.md`.
+
+**Gelernt:** In der Nuxt-Umgebung von Vitest liefert ein `import` einer
+Sprachdatei (auch mit `?raw`) die vom i18n-Modul KOMPILIERTEN Nachrichten,
+keinen Text, und `import.meta.url` ist dort keine Datei-Adresse; die
+Erwartungen kommen deshalb per `readFileSync(join(process.cwd(), …))`.
+`mountSuspended` einer Seite ALLEIN wirft bei Nuxt-UI-Tooltips
+(`TooltipProvider` fehlt) und warnt bei `onBeforeRouteLeave` — eine Seite wird
+so aufgebaut wie im Betrieb, in `UApp` → `NuxtLayout` → `NuxtPage` mit der
+Route als Option. `@nuxt/test-utils` schreibt beim ersten Lauf eine
+`.nuxtrc` in die Wurzel (`setups.@nuxt/test-utils`); sie ist eingecheckt.
+
 ### Q22 — Seitengewicht und fertig gehaltene Seiten (PERF-006, PERF-009, PERF-010) ✅ 2026-11-21
 
 **Erst gemessen, dann gebaut** (Synthese: „erst nach Q04 messen"). Live vor

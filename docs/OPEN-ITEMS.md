@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 45 offen · 2 geparkt/wartend · 15 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 46 offen · 2 geparkt/wartend · 15 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-21**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -105,6 +105,7 @@ am 2026-11-18, COMPLETE „N11").
 | KC1 | **KI-Training je Community als Schalter für den Owner.** Heute gilt für jede öffentliche Community fest: Suche und Antworten ja, Training nein (DECISION-LOG 2026-11-21, COMPLETE „Q11“). Später ein Schalter neben dem `noindex` im Dashboard; im Code ändert er nur einen Wert (`aiCrawlerPolicy('community', { training })` in `tenantRobotsTxt`). **Wartet auf:** Davids „jetzt“. | Niedrig | S | Nein | `packages/core/shared/aiCrawlers.ts` |
 | SU1 | **Community-Seiten in der Suche: Reste.** Seit dem 2026-11-21 haben Diskussionen, Kurse und Termine Beschreibung, Hauptüberschrift, eine maßgebliche Adresse und einen Platz in der Sitemap (COMPLETE „Q10"). Offen: (a) bestehende Communities wählen ihre Hauptsprache im Dashboard (Demo: ein Klick), (b) strukturierte Daten, (c) Themen ohne Titel in der Sitemap, (d) die Marken-Galerie, (e) Kleinigkeiten, (f) Regel-Datei nachziehen. **Wartet auf:** (a) den Owner der Demo-Community, sonst nichts. | Niedrig | S je Teil | (a) Ja: ein Klick | [Einzelheiten](plans/offen/SU1.md) |
 | LZ1 | **Listen-Zustände: Rest nach Q14.** Seit dem 2026-11-21 zeigen die Seiten mit Geld und Mitgliedern lädt, Fehler (mit „Noch einmal versuchen“), leer oder Daten (COMPLETE „Q14“). Offen: 110 weitere Seiten, deren Abruf den Fehler nicht liest — die Liste ist eine Datei mit Wächter, sie darf nur schrumpfen; dazu Sackgassen (UX-012), Lade-Zeichen, Listen ohne Grund. | Mittel | M | Nein | [Einzelheiten](plans/offen/LZ1.md) |
+| WS1 | **Werkstatt-Seite in Teile schneiden: Rest nach Q21.** Die Seite hat noch 5.119 Zeilen; seit dem 2026-11-21 baut ein Rauch-Test sie auf, und der Website-Streifen ist eine eigene Komponente (COMPLETE „Q21“). Offen: sieben weitere Kapitel, je eines pro Pull Request. | Niedrig | L | Nein | [Einzelheiten](plans/offen/WS1.md) |
 | AW30 | **Reste nach den Appwrite-Upgrades (2.7.3, 2.7.4).** Production läuft seit dem 2026-11-20 auf 2.7.4 (COMPLETE „AW31"). Offen: (b) eine ehrlichere Meldung, wenn Appwrite Code-Versuche bremst (die SDKs sind seit dem 2026-11-20 gehoben, COMPLETE „N19"); (c) ein Kommentar und eine Stimme mit einem Konto auf Production; (e) die Neustart-Regel der Container beim nächsten Paket-Update von Docker beobachten. Alle alten Dateien auf dem Server sind seit dem 2026-11-21 weg (COMPLETE „AW30 (d)"). **Wartet auf:** (e) ein solches Update. | Niedrig | S | (c): **Ja** (öffentlicher Beitrag) | [Einzelheiten](plans/offen/AW30.md) · [Runbook](runbooks/APPWRITE-2-7-UPGRADE.md) |
 
 ### Schritt 4 — Ein Anwaltstermin für alles
