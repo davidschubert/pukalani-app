@@ -167,6 +167,29 @@ describe('POST /api/auth/otp — Grenze je Empfänger', () => {
     expect(createEmailToken).toHaveBeenCalledTimes(5)
   })
 
+  it('Lesefehler über der Grenze ⇒ 503 auth_unavailable, keine erfundene Kennung (Bahn 2)', async () => {
+    for (let i = 0; i < 5; i++) await otp(ask('person@example.com'))
+    listUsers.mockRejectedValueOnce(Object.assign(new Error('db down'), { code: 500 }))
+    await expect(otp(ask('person@example.com'))).rejects.toMatchObject({
+      status: 503,
+      data: { code: 'auth_unavailable' },
+    })
+    expect(createEmailToken).toHaveBeenCalledTimes(5)
+    // Gegenprobe: ist die Datenbank wieder da, kommt dieselbe Konto-Kennung.
+    expect((await otp(ask('person@example.com'))).userId).toBe('user-person')
+  })
+
+  it('der Lesefehler sieht für vorhandene und unbekannte Adressen gleich aus', async () => {
+    const failures: unknown[] = []
+    for (const email of ['person@example.com', 'niemand@example.com']) {
+      for (let i = 0; i < 5; i++) await otp(ask(email))
+      listUsers.mockRejectedValueOnce(Object.assign(new Error('db down'), { code: 500 }))
+      failures.push(await otp(ask(email)).catch((error: { status: number, data: unknown, message: string }) =>
+        ({ status: error.status, data: error.data, message: error.message })))
+    }
+    expect(failures[0]).toEqual(failures[1])
+  })
+
   it('Code- und Reset-Mails zählen getrennt', async () => {
     for (let i = 0; i < 6; i++) await otp(ask('person@example.com'))
     await recovery(ask('person@example.com'))
