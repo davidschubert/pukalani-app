@@ -90,15 +90,6 @@ function warnGeoCityUnreadableOnce(path: string, error: unknown): void {
   console.warn(`[core] NUXT_GEO_CITY_DB_PATH zeigt auf "${path}", die Datei ist aber nicht lesbar (${detail}) — Sitzungen zeigen weiterhin nur das Land.`)
 }
 
-/** Nur für Tests/Beweise: gehaltene Datei vergessen. */
-export function __resetGeoCityCache(): void {
-  readerPromise = null
-  loadedPath = ''
-  loadedMtimeMs = 0
-  lastStatAt = 0
-  warnedUnreadable = false
-}
-
 /** Datei einlesen — wirft NIE, ein Fehlschlag ist `null`. */
 async function loadReader(path: string): Promise<Reader<CityResponse> | null> {
   try {

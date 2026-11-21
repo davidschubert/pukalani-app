@@ -78,11 +78,6 @@ export function registerCommunityFirstContentProvider(next: CommunityFirstConten
   provider = next
 }
 
-/** Nur für Tests. */
-export function __resetCommunityFirstContentProvider(): void {
-  provider = null
-}
-
 /**
  * Beispiel-Inhalt säen — ohne Anbieter passiert nichts.
  *
