@@ -3,6 +3,7 @@ import type { BrandProfileFacts } from '../../../shared/brandJourney'
 import { affectsView } from '../../../shared/brandSessions'
 import { type BrandStepKey, slotsForStep } from '../../../shared/slotRegistry'
 import type {
+  BrandGenerationVersionsResponse,
   BrandMessagesResponse,
   BrandProfileDetailResponse,
   BrandProfileListResponse,
@@ -60,7 +61,7 @@ export function workshopProfileSummary(): BrandProfileSummary {
     namingOpted: false,
     team: 'solo',
     subBrands: 'no',
-    startCard: { websiteUrl: WORKSHOP_SITE_URL, industry: '', about: '', audience: '' },
+    startCard: { websiteUrl: WORKSHOP_SITE_URL, industry: 'Design', about: 'Wir bauen Marken.', audience: 'Kleine Firmen' },
     siteAnalysis: { url: WORKSHOP_SITE_URL, analyzedAt: '', textLength: 0, stale: false },
     progressPct: 0,
     currentStepKey: WORKSHOP_STEP_KEY,
@@ -94,6 +95,15 @@ export function workshopProfileList(): BrandProfileListResponse {
   return { profiles: [workshopProfileSummary()] }
 }
 
+/**
+ * Die Ableitung „Kategorie" mit einer ERSTEN FASSUNG: so zeigt ihre Karte
+ * auf der Bühne „Frühere Fassungen" (`showVersions` = erzeugbar UND Historie).
+ * Der Test öffnet sie über die Adresse (`?s=a.category`); bereit ist sie, weil der Startbogen eine Branche nennt.
+ */
+export const WORKSHOP_VERSIONS_SLOT = 'a.category'
+export const WORKSHOP_FIRST_DRAFT = 'Markenberatung für kleine Firmen'
+export const WORKSHOP_OLDER_DRAFT = 'Design-Studio'
+
 export function workshopStepDetail(): BrandStepDetailResponse {
   const journey = resolveBrandJourney(FACTS, STEP_FACTS)
   const step = journey.find(entry => entry.stepKey === WORKSHOP_STEP_KEY)!
@@ -111,6 +121,18 @@ export function workshopStepDetail(): BrandStepDetailResponse {
       reviewed: false,
     }
   }
+  // Das Entwurfs-Feld ist offen (sonst führt die Adresse `?s=` nicht
+  // hinein) und trägt ihre erste Fassung.
+  sessions[WORKSHOP_VERSIONS_SLOT] = { ...sessions[WORKSHOP_VERSIONS_SLOT]!, state: 'open' }
+  const slots: BrandStepDetailResponse['slots'] = {
+    [WORKSHOP_VERSIONS_SLOT]: {
+      firstDraft: WORKSHOP_FIRST_DRAFT,
+      latestDraft: WORKSHOP_FIRST_DRAFT,
+      confirmed: null,
+      confidence: null,
+      updatedAt: NOW,
+    },
+  }
   return {
     profileId: WORKSHOP_PROFILE_ID,
     stepKey: WORKSHOP_STEP_KEY,
@@ -122,7 +144,7 @@ export function workshopStepDetail(): BrandStepDetailResponse {
     completedAt: null,
     restartedAt: null,
     activeSeconds: 0,
-    slots: {},
+    slots,
     sessions,
     findings: [],
     generations: { items: [], count: 0 },
@@ -156,5 +178,27 @@ export function workshopMessages(sessionKey: string): BrandMessagesResponse {
     }],
     cursor: null,
     hasMore: false,
+  }
+}
+
+/** Die Historie eines Felds (`GET …/generations?slotId=`): eine ältere Fassung plus die erste. */
+export function workshopVersions(slotId: string): BrandGenerationVersionsResponse {
+  return {
+    slotId,
+    items: [{
+      generationId: 'render-gen-1',
+      slotId,
+      schemaVersion: 1,
+      promptVersion: 'v1',
+      model: 'render-model',
+      provider: 'render',
+      locale: 'de',
+      inputHash: '',
+      createdAt: NOW,
+      draft: WORKSHOP_OLDER_DRAFT,
+    }],
+    count: 1,
+    firstDraft: WORKSHOP_FIRST_DRAFT,
+    latestDraft: WORKSHOP_FIRST_DRAFT,
   }
 }
