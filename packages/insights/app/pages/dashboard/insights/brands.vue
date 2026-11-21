@@ -58,7 +58,7 @@ useBrandTitle(() => t('insights.brands.title'))
 
 // ── Laden ──────────────────────────────────────────────────────────────────
 
-const { data, refresh, status } = await useFetch<InsightsBrandsListResponse>('/api/insights/brands', {
+const { data, refresh, status, error } = await useFetch<InsightsBrandsListResponse>('/api/insights/brands', {
   lazy: true,
   server: false,
 })
@@ -491,7 +491,13 @@ async function createBrand(): Promise<void> {
       <!-- `whitespace-normal`: Nuxt UI setzt auf jede Zelle `whitespace-nowrap`, und
            ein Grund-Satz schob bei 1440 px die Aktions-Spalte aus dem Panel
            (Klick-Beweis 2026-09-10, dieselbe Falle wie die Kit-Lizenztabelle). -->
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <UTable
+        v-else
         :data="rows" :columns="columns" :loading="pending"
         :ui="{ td: 'whitespace-normal align-top' }"
         data-insights-brands-list

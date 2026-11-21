@@ -46,7 +46,7 @@ const { plan } = useTenantPlan()
 /** null = kein Pool-Mandant (Silo, Kontroll-Host) — dort gibt es kein Kontingent. */
 const isTenantHost = computed(() => plan.value !== null)
 
-const { data, status } = await useFetch<CommunityUsageResponse>('/api/community/usage', {
+const { data, status, error, refresh } = await useFetch<CommunityUsageResponse>('/api/community/usage', {
   default: () => ({ plan: '', posts: [] }),
 })
 
@@ -100,8 +100,13 @@ function postColor(percent: number): 'primary' | 'warning' | 'error' {
       :description="t('onboarding.communityStorage.description')"
       variant="subtle"
     >
+      <!-- Fehler statt „noch nichts verbraucht" (FE-004, LZ1) -->
+      <div v-if="error" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <CoreEmptyState
-        v-if="status !== 'pending' && !data?.posts?.length"
+        v-else-if="status !== 'pending' && !data?.posts?.length"
         icon="i-ph-gauge"
         :title="t('onboarding.communityStorage.emptyTitle')"
         :description="t('onboarding.communityStorage.emptyDesc')"
